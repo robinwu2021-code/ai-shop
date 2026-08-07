@@ -556,7 +556,7 @@ async function save() {
   border-radius: 16rpx;
   background: var(--sh-faint);
   color: var(--sh-sub);
-  font-size: 22rpx;
+  font-size: 24rpx;
 }
 .lang.is-on {
   background: var(--sh-primary-tint);
@@ -602,7 +602,7 @@ async function save() {
   height: 140rpx;
 }
 .shoot__ph {
-  font-size: 60rpx;
+  font-size: 48rpx;
 }
 .shoot__ops {
   display: flex;
@@ -635,7 +635,7 @@ async function save() {
 }
 .tpl {
   padding: 18rpx 20rpx;
-  border-radius: 20rpx;
+  border-radius: 24rpx;
   background: var(--sh-surface);
   margin-bottom: 12rpx;
 }
@@ -646,7 +646,7 @@ async function save() {
   margin-bottom: 8rpx;
 }
 .tpl__name {
-  font-size: 27rpx;
+  font-size: 26rpx;
   font-weight: 600;
   color: var(--sh-ink);
 }
@@ -679,7 +679,7 @@ async function save() {
 }
 .del.small {
   width: 40rpx;
-  font-size: 22rpx;
+  font-size: 24rpx;
 }
 .opts {
   display: flex;
@@ -745,7 +745,7 @@ async function save() {
 }
 .from__v {
   font-size: 34rpx;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--sh-primary);
 }
 .save {
@@ -754,7 +754,7 @@ async function save() {
 .tip {
   display: block;
   margin: 20rpx 8rpx;
-  font-size: 22rpx;
+  font-size: 24rpx;
   color: var(--sh-sub);
   line-height: 1.6;
 }

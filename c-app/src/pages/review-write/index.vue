@@ -93,13 +93,11 @@ onLoad((q) => {
 <template>
   <sh-scaffold v-if="target" title-key="review.writeTitle">
     <view class="sh-card">
-      <view class="row">
-        <view class="row__cover">{{ target.cover }}</view>
-        <view class="row__main">
-          <text class="row__title">{{ target.title }}</text>
-          <text class="row__spec">{{ target.spec }}</text>
-        </view>
-      </view>
+      <biz-sku-row
+        :cover="target.cover"
+        :title="target.title"
+        :spec="target.spec"
+      ></biz-sku-row>
 
       <!-- 星级：默认 5 星。默认 0 星会让人以为「必须选」，多一步操作 -->
       <view class="stars">
@@ -182,41 +180,6 @@ onLoad((q) => {
   font-size: 34rpx;
 }
 
-.row {
-  display: flex;
-  gap: 20rpx;
-  align-items: center;
-}
-.row__cover {
-  width: 108rpx;
-  height: 108rpx;
-  border-radius: 22rpx;
-  background: var(--sh-faint);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 50rpx;
-  flex-shrink: 0;
-}
-.row__main {
-  flex: 1;
-  min-width: 0;
-}
-.row__title {
-  display: block;
-  font-size: 27rpx;
-  font-weight: 600;
-  color: var(--sh-ink);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.row__spec {
-  display: block;
-  font-size: 21rpx;
-  color: var(--sh-sub);
-  margin-top: 6rpx;
-}
 .stars {
   display: flex;
   align-items: center;
@@ -225,7 +188,7 @@ onLoad((q) => {
   direction: ltr;
 }
 .star {
-  font-size: 56rpx;
+  font-size: 48rpx;
   color: var(--sh-line);
   line-height: 1;
 }
@@ -253,7 +216,7 @@ onLoad((q) => {
 .counter {
   display: block;
   text-align: end;
-  font-size: 21rpx;
+  font-size: 24rpx;
   color: var(--sh-sub);
   margin-top: 10rpx;
 }
@@ -295,7 +258,7 @@ onLoad((q) => {
 }
 .tip {
   display: block;
-  font-size: 21rpx;
+  font-size: 24rpx;
   color: var(--sh-sub);
   margin-top: 18rpx;
 }

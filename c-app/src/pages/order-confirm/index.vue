@@ -220,17 +220,19 @@ onMounted(async () => {
 
     <!-- 商品 -->
     <view class="sh-card block">
-      <view v-for="it in items" :key="it.skuNo" class="row">
-        <view class="row__cover">{{ it.cover }}</view>
-        <view class="row__main">
-          <text class="row__title">{{ it.title }}</text>
-          <text class="row__spec">{{ it.spec }}</text>
-          <view class="row__foot">
-            <text class="row__price sh-num">{{ money(it.price) }}</text>
-            <text class="row__qty sh-num">×{{ it.qty }}</text>
-          </view>
+      <biz-sku-row
+        v-for="it in items"
+        :key="it.skuNo"
+        :cover="it.cover"
+        :title="it.title"
+        :spec="it.spec"
+        size="lg"
+      >
+        <view class="row__foot">
+          <text class="row__price sh-num">{{ money(it.price) }}</text>
+          <text class="row__qty sh-num">×{{ it.qty }}</text>
         </view>
-      </view>
+      </biz-sku-row>
 
       <!-- 赠品：单独列出来，让用户在付款前就看见 -->
       <view v-for="g in gifts" :key="`gift-${g.skuNo}`" class="giftrow">
@@ -330,7 +332,7 @@ onMounted(async () => {
   color: var(--sh-ink);
 }
 .recv__phone {
-  font-size: 25rpx;
+  font-size: 24rpx;
   color: var(--sh-sub);
 }
 .recv__more {
@@ -358,44 +360,6 @@ onMounted(async () => {
 .block {
   margin-top: 20rpx;
 }
-.row {
-  display: flex;
-  gap: 24rpx;
-  margin-bottom: 24rpx;
-}
-.row:last-child {
-  margin-bottom: 0;
-}
-.row__cover {
-  width: 128rpx;
-  height: 128rpx;
-  border-radius: 24rpx;
-  background: var(--sh-faint);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 58rpx;
-  flex-shrink: 0;
-}
-.row__main {
-  flex: 1;
-  min-width: 0;
-}
-.row__title {
-  display: block;
-  font-size: 27rpx;
-  font-weight: 600;
-  color: var(--sh-ink);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.row__spec {
-  display: block;
-  font-size: 22rpx;
-  color: var(--sh-sub);
-  margin-top: 6rpx;
-}
 .row__foot {
   display: flex;
   align-items: center;
@@ -421,13 +385,13 @@ onMounted(async () => {
   padding: 12rpx 18rpx;
 }
 .giftrow__tag {
-  font-size: 20rpx;
-  font-weight: 700;
+  font-size: 24rpx;
+  font-weight: 400;
   color: var(--sh-danger);
   flex-shrink: 0;
 }
 .giftrow__text {
-  font-size: 21rpx;
+  font-size: 24rpx;
   color: var(--sh-danger);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -441,12 +405,12 @@ onMounted(async () => {
   padding: 20rpx 0;
 }
 .cell__k {
-  font-size: 27rpx;
+  font-size: 26rpx;
   color: var(--sh-ink);
   flex-shrink: 0;
 }
 .cell__v {
-  font-size: 25rpx;
+  font-size: 24rpx;
   color: var(--sh-sub);
   text-align: end;
 }
@@ -456,7 +420,7 @@ onMounted(async () => {
 }
 .cell__input {
   flex: 1;
-  font-size: 25rpx;
+  font-size: 24rpx;
   color: var(--sh-ink);
   text-align: end;
 }
@@ -466,11 +430,11 @@ onMounted(async () => {
   padding: 12rpx 0;
 }
 .amt__k {
-  font-size: 25rpx;
+  font-size: 24rpx;
   color: var(--sh-sub);
 }
 .amt__v {
-  font-size: 25rpx;
+  font-size: 24rpx;
   color: var(--sh-ink);
 }
 .amt__v--off {
@@ -511,9 +475,8 @@ onMounted(async () => {
 }
 .actionbar__total {
   display: block;
-  font-size: 36rpx;
+  font-size: 34rpx;
   font-weight: 700;
-  letter-spacing: -0.6rpx;
   color: var(--sh-ink);
 }
 .actionbar__btn {

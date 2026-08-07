@@ -50,7 +50,7 @@ const text = computed(() => props.value.toFixed(1));
   letter-spacing: 2rpx;
 }
 .rating__value {
-  font-weight: 700;
+  font-weight: 400;
   color: var(--sh-ink);
 }
 </style>

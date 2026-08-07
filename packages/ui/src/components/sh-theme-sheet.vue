@@ -202,14 +202,14 @@ function close() {
 .swatch__tick {
   color: #fff;
   font-size: 34rpx;
-  font-weight: 700;
+  font-weight: 600;
   /* 勾压在任意皮肤色上都要看得见，用遮罩 token 做一层暗描边兜底（不写死颜色） */
   text-shadow: 0 2rpx 6rpx var(--sh-scrim);
 }
 .sheet__tip {
   display: block;
   margin-top: 16rpx;
-  font-size: 22rpx;
+  font-size: 24rpx;
   color: var(--sh-sub);
   line-height: 1.5;
 }

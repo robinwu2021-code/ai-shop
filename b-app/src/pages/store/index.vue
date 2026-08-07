@@ -208,21 +208,21 @@ onShow(load);
 }
 .scope__name {
   display: block;
-  font-size: 27rpx;
+  font-size: 26rpx;
   font-weight: 600;
   color: var(--sh-ink);
 }
 .scope__desc {
   display: block;
   margin-top: 6rpx;
-  font-size: 22rpx;
+  font-size: 24rpx;
   line-height: 1.5;
   color: var(--sh-sub);
 }
 .scope__tick {
   flex-shrink: 0;
   font-size: 30rpx;
-  font-weight: 700;
+  font-weight: 400;
   color: var(--sh-primary);
 }
 .cms {
@@ -241,7 +241,7 @@ onShow(load);
 .warn {
   display: block;
   margin-top: 16rpx;
-  font-size: 22rpx;
+  font-size: 24rpx;
   color: var(--sh-danger);
 }
 .mt {
@@ -250,7 +250,7 @@ onShow(load);
 .hint {
   display: block;
   margin-top: 16rpx;
-  font-size: 22rpx;
+  font-size: 24rpx;
   color: var(--sh-sub);
   line-height: 1.6;
 }
@@ -266,18 +266,18 @@ onShow(load);
 }
 .qr__ph {
   display: block;
-  font-size: 140rpx;
+  font-size: 48rpx;
   line-height: 1;
   color: var(--sh-sub);
 }
 .qr__note {
   display: block;
   margin-top: 20rpx;
-  font-size: 22rpx;
+  font-size: 24rpx;
 }
 .link {
   display: block;
-  font-size: 22rpx;
+  font-size: 24rpx;
   color: var(--sh-sub);
   word-break: break-all;
 }

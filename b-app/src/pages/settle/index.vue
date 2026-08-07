@@ -103,8 +103,8 @@ onShow(load);
   margin-top: 14rpx;
 }
 .ratecard__v {
-  font-size: 32rpx;
-  font-weight: 700;
+  font-size: 30rpx;
+  font-weight: 400;
   color: var(--sh-ink);
 }
 .ratecard__note {
@@ -134,7 +134,7 @@ onShow(load);
 }
 .big {
   font-size: 48rpx;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--sh-ink);
 }
 .rows {
@@ -154,7 +154,7 @@ onShow(load);
 .tip {
   display: block;
   margin: 24rpx 8rpx 0;
-  font-size: 22rpx;
+  font-size: 24rpx;
   color: var(--sh-sub);
   line-height: 1.6;
 }

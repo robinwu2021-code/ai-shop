@@ -24,8 +24,8 @@ const SUBJECTS: MerchantSubject[] = ["PERSONAL", "INDIVIDUAL_BIZ", "COMPANY"];
 const form = ref({
   name: "",
   subject: "PERSONAL" as MerchantSubject,
-  contact: "",
-  phone: "",
+  contactName: "",
+  contactPhone: "",
   category: "",
   desc: "",
   asPickupPoint: true,
@@ -39,7 +39,7 @@ const settleType = computed(() =>
   needLicense.value ? "settleMERCHANT_ID" : "settlePERSONAL_OPENID",
 );
 const canSubmit = computed(
-  () => !!form.value.name && !!form.value.contact && /^\d{11}$/.test(form.value.phone),
+  () => !!form.value.name && !!form.value.contactName && /^\d{11}$/.test(form.value.contactPhone),
 );
 
 /** 已上传的资质图（个体户/企业必需，个人免） */
@@ -47,7 +47,9 @@ const licenses = ref<string[]>([]);
 const uploading = ref(false);
 
 onShow(async () => {
-  form.value.phone = merchant.profile?.phone || form.value.phone;
+  // **不拿 profile.phone 预填**：那是脱敏后的登录号（138****8000），
+  // 填进去看着像已填好，实际过不了 11 位校验，人只会盯着一个"填了的"框发愣。
+  // 联系号码本来也不一定等于登录号 —— 店主登录，留的是店里座机是常事。
   // 驳回后回填上次填过的内容 —— 驳回往往只是缺一张执照，
   // 让人从头重填一遍是把「补交」变成「重来」
   const draft = await api.mApplyDraft().catch(() => null);
@@ -55,13 +57,15 @@ onShow(async () => {
   form.value = {
     name: draft.name,
     subject: draft.subject,
-    contact: draft.contact,
-    phone: draft.phone || form.value.phone,
+    contactName: draft.contactName,
+    contactPhone: draft.contactPhone,
     category: draft.category,
     desc: draft.desc,
-    asPickupPoint: draft.asPickupPoint,
+    // 契约里这几项是选填（分账主体属于独立开户流程，ADR-002），
+    // 但 B 端表单确实收，草稿回显时给默认值
+    asPickupPoint: draft.asPickupPoint ?? false,
   };
-  licenses.value = [...draft.licenses];
+  licenses.value = [...(draft.licenses ?? [])];
 });
 
 /** 上传资质。缺它正是个体户/企业被驳回的主因，所以入口要显眼 */
@@ -170,13 +174,13 @@ async function submit() {
 
       <view class="field">
         <text class="field__label">{{ $t("apply.contact") }}</text>
-        <input v-model="form.contact" class="field__input" placeholder="张老板" />
+        <input v-model="form.contactName" class="field__input" placeholder="张老板" />
       </view>
 
       <view class="field">
         <text class="field__label">{{ $t("apply.phone") }}</text>
         <input
-          v-model="form.phone"
+          v-model="form.contactPhone"
           class="field__input sh-num"
           type="number"
           maxlength="11"
@@ -264,7 +268,7 @@ async function submit() {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 44rpx;
+  font-size: 40rpx;
   color: var(--sh-sub);
 }
 
@@ -297,7 +301,7 @@ async function submit() {
 .hint {
   display: block;
   margin-top: 12rpx;
-  font-size: 22rpx;
+  font-size: 24rpx;
   color: var(--sh-sub);
   line-height: 1.5;
 }

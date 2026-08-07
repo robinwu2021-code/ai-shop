@@ -234,8 +234,8 @@ onShow(load);
 }
 .overview__n {
   display: block;
-  font-size: 38rpx;
-  font-weight: 700;
+  font-size: 40rpx;
+  font-weight: 600;
   color: var(--sh-sub);
   margin-bottom: 6rpx;
 }
@@ -268,13 +268,13 @@ onShow(load);
   justify-content: space-between;
   gap: 16rpx;
   margin-top: 10rpx;
-  font-size: 23rpx;
+  font-size: 24rpx;
   color: var(--sh-danger);
 }
 .link {
   display: block;
   margin-top: 20rpx;
-  font-size: 25rpx;
+  font-size: 24rpx;
   color: var(--sh-primary);
 }
 .is-disabled {
@@ -333,7 +333,7 @@ onShow(load);
 .row-item__code {
   display: block;
   font-size: 34rpx;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 4rpx;
   color: var(--sh-ink);
 }

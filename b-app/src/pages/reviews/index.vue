@@ -168,7 +168,7 @@ onShow(load);
   margin-top: 10rpx;
 }
 .dims__i {
-  font-size: 21rpx;
+  font-size: 24rpx;
   color: var(--sh-sub);
   background: var(--sh-faint);
   padding: 4rpx 12rpx;
@@ -177,7 +177,7 @@ onShow(load);
 .appeal {
   margin-top: 14rpx;
   padding: 16rpx 20rpx;
-  border-radius: 20rpx;
+  border-radius: 24rpx;
   background: var(--sh-faint);
 }
 .appeal.is-UPHELD {
@@ -223,7 +223,7 @@ onShow(load);
 .item__meta {
   display: block;
   margin-top: 6rpx;
-  font-size: 22rpx;
+  font-size: 24rpx;
 }
 .item__content {
   display: block;
@@ -242,7 +242,7 @@ onShow(load);
   height: 110rpx;
   border-radius: 24rpx;
   background: var(--sh-faint);
-  font-size: 56rpx;
+  font-size: 48rpx;
   text-align: center;
   line-height: 110rpx;
 }
@@ -257,7 +257,7 @@ onShow(load);
 }
 .reply__label {
   display: block;
-  font-size: 22rpx;
+  font-size: 24rpx;
   color: var(--sh-sub);
   margin-bottom: 6rpx;
 }

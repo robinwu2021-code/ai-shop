@@ -16,7 +16,7 @@ import { useCommunityStore } from "@/stores/community";
 import { useCartStore } from "@/stores/cart";
 import { useUserStore } from "@/stores/user";
 import { buildShareMessage } from "@shared/ports/share";
-import { ROUTES } from "@shared/utils/constants";
+import { GOODS_COVER_FALLBACK, ROUTES } from "@shared/utils/constants";
 import { countdownShort, money } from "@shared/utils/format";
 import { firstSku } from "@shared/utils/goods";
 import { flyToCart, tapPoint } from "@/shared/fly";
@@ -59,7 +59,7 @@ async function addToCart(g: Goods, e: unknown) {
   try {
     await cart.add(g.goodsNo, firstSku(g).skuNo, 1);
     const p = tapPoint(e as Parameters<typeof tapPoint>[0]);
-    flyToCart(p.x, p.y, g.cover);
+    flyToCart(p.x, p.y, g.cover || GOODS_COVER_FALLBACK);
   } catch (err) {
     uni.showToast({ title: (err as Error).message, icon: "none" });
   }
@@ -121,7 +121,9 @@ onShareAppMessage(() =>
         </text>
         <text class="place__sub">
           {{
-            community.pickup ? community.pickup.arrivalDesc : $t("home.choosePickupHint")
+            community.pickup
+              ? community.pickup.arrivalDesc
+              : $t("home.choosePickupHint")
           }}
         </text>
       </view>
@@ -134,11 +136,15 @@ onShareAppMessage(() =>
     </view>
 
     <!-- 团购：活动，有时效，蹭首页曝光。只放**还能参与**的，最多 3 条 ——
-         首页给它一小段就够，完整列表（含商家团/邻里求团/发起）在团购页。 -->
-    <template v-if="groups.length">
-      <view class="section">
+         首页给它一小段就够，完整列表（含商家团/邻里求团/发起）在团购页。
+         白底页上它需要自己站住：给一层极淡填充，这是首页少数几个「真色块」之一 —— 
+         它是**限时的、要立刻决定的**，与下面可以慢慢逛的商品流不是一类。 -->
+    <view v-if="groups.length" class="sh-block">
+      <view class="sh-block__head">
         <text class="sh-h2">{{ $t("home.groups") }}</text>
-        <text class="sh-muted" @tap="gotoGroups">{{ $t("home.groupsMore") }}</text>
+        <text class="sh-muted" @tap="gotoGroups">{{
+          $t("home.groupsMore")
+        }}</text>
       </view>
       <biz-group-card
         v-for="g in groups"
@@ -147,17 +153,22 @@ onShareAppMessage(() =>
         :now="now"
         @tap="openGroup(g)"
       ></biz-group-card>
-    </template>
+    </view>
 
     <!-- 推荐商品：运营位。横滑窄卡，不与下面的主商品流抢版面 -->
-    <template v-if="promoted.length">
-      <view class="section">
+    <view v-if="promoted.length" class="sh-block">
+      <view class="sh-block__head">
         <text class="sh-h2">{{ $t("home.promoted") }}</text>
         <text class="sh-muted">{{ $t("home.promotedHint") }}</text>
       </view>
       <view class="freq">
-        <view v-for="g in promoted" :key="g.goodsNo" class="freq__i" @tap="openGoods(g)">
-          <text class="freq__cover">{{ g.cover }}</text>
+        <view
+          v-for="g in promoted"
+          :key="g.goodsNo"
+          class="freq__i"
+          @tap="openGoods(g)"
+        >
+          <text class="freq__cover">{{ g.cover || GOODS_COVER_FALLBACK }}</text>
           <text class="freq__title">{{ g.title }}</text>
           <view class="freq__foot">
             <text class="freq__price sh-num">{{ money(g.price) }}</text>
@@ -167,26 +178,31 @@ onShareAppMessage(() =>
           </view>
         </view>
       </view>
-    </template>
-
-    <!-- 社区在卖：首页主体。已在 goodsList 里按覆盖范围滤过 + 按距离排过 -->
-    <view class="section">
-      <text class="sh-h2">{{ $t("home.communityFeed") }}</text>
-      <text class="sh-muted">
-        {{ community.community?.name || $t("home.communityFeedHint") }}
-      </text>
     </view>
 
-    <sh-empty bare v-if="!goods.length" :text='$t("home.communityFeedEmpty")'></sh-empty>
+    <!-- 社区在卖：首页主体。已在 goodsList 里按覆盖范围滤过 + 按距离排过 -->
+    <view class="sh-block">
+      <view class="sh-block__head">
+        <text class="sh-h2">{{ $t("home.communityFeed") }}</text>
+        <text class="sh-muted">
+          {{ community.community?.name || $t("home.communityFeedHint") }}
+        </text>
+      </view>
 
-    <biz-goods-card
-      v-for="g in goods"
-      :key="g.goodsNo"
-      :goods="g"
-      :countdown-text="cutdownOf(g)"
-      @add="addToCart(g, $event)"
-      @tap="openGoods(g)"
-    ></biz-goods-card>
+      <sh-empty
+        bare
+        v-if="!goods.length"
+        :text="$t('home.communityFeedEmpty')"
+      ></sh-empty>
+      <biz-goods-card
+        v-for="g in goods"
+        :key="g.goodsNo"
+        :goods="g"
+        :countdown-text="cutdownOf(g)"
+        @add="addToCart(g, $event)"
+        @tap="openGoods(g)"
+      ></biz-goods-card>
+    </view>
   </sh-scaffold>
 </template>
 
@@ -211,21 +227,31 @@ onShareAppMessage(() =>
   width: 64rpx;
   height: 64rpx;
   border-radius: 9999px;
-  background: var(--sh-faint);
+  /* 可点区域要可见，但用**有色**而不是灰：同样一块底，
+     主色浅调读作「这是个按钮」，灰读作「这儿有块脏东西」 */
+  background: var(--sh-primary-tint);
   display: flex;
   align-items: center;
   justify-content: center;
 }
 .place__name {
-  font-size: 26rpx;
-  font-weight: 600;
+  font-size: 28rpx;
+  font-weight: 400;
+  line-height: 1.5;
   color: var(--sh-ink);
-  flex-shrink: 0;
+  /* 英文店名比中文长得多（Sunnyside Block 3 Point vs 阳光里 3 幢自提点）：
+     原本 flex-shrink: 0 会让它独占整行、把右边的到货时间挤到只剩省略号。
+     两边都可收缩，长的那个先让步。 */
+  min-width: 0;
+  flex-shrink: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .place__sub {
   flex: 1;
   min-width: 0;
-  font-size: 23rpx;
+  font-size: 24rpx;
   color: var(--sh-sub);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -239,32 +265,39 @@ onShareAppMessage(() =>
   overflow-x: auto;
   padding-bottom: 4rpx;
 }
+/* 白底页上不需要再铺一层白。横滑排回归纯粹的间距分隔 */
+/* 横滑排通铺到块边，首尾各留出与标题一致的内边距 —— 半张卡露在边缘才是「可以滑」的暗示 */
+.freq {
+  gap: 16rpx;
+  padding: 0 26rpx;
+}
 .freq__i {
   flex-shrink: 0;
   width: 200rpx;
-  background: var(--sh-surface);
-  border-radius: 24rpx;
-  padding: 18rpx;
 }
 .freq__cover {
   display: block;
   width: 100%;
   height: 120rpx;
-  border-radius: 18rpx;
-  background: var(--sh-faint);
-  font-size: 56rpx;
+  border-radius: 16rpx;
+  /* 同商品卡：不给底色，emoji 自带形状，字号放大填满占位区 */
+  font-size: 88rpx;
   line-height: 120rpx;
   text-align: center;
 }
 .freq__title {
-  display: block;
+  /* 单行截断在英文下等于没有信息：「Streaming Me…」「4-Ply Facial Ti…」。
+     给两行并锁定高度 —— 高度固定，横滑排里每张卡的价格行才对得齐。 */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
   margin-top: 12rpx;
-  font-size: 24rpx;
+  height: 80rpx;
+  font-size: 28rpx;
   font-weight: 600;
+  line-height: 40rpx;
   color: var(--sh-ink);
   overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
 }
 .freq__foot {
   display: flex;
@@ -274,8 +307,9 @@ onShareAppMessage(() =>
   margin-top: 10rpx;
 }
 .freq__price {
-  font-size: 28rpx;
+  font-size: 30rpx;
   font-weight: 700;
+  line-height: 1.3;
   color: var(--sh-ink);
   min-width: 0;
   overflow: hidden;
@@ -287,6 +321,7 @@ onShareAppMessage(() =>
   width: 48rpx;
   height: 48rpx;
   border-radius: 9999px;
+  /* 与商品卡的加购钮同色 —— 同一个动作在两处长得不一样，是没道理的 */
   background: var(--sh-primary-tint);
   display: flex;
   align-items: center;
@@ -295,14 +330,6 @@ onShareAppMessage(() =>
 .freq__sign {
   color: var(--sh-primary);
   font-size: 28rpx;
-  font-weight: 600;
   line-height: 1;
-}
-/* 分段标题的上下留白：48/24 在手机上几乎占掉一行的高度，收到 32/16 */
-.section {
-  display: flex;
-  align-items: baseline;
-  gap: 16rpx;
-  margin: 32rpx 0 16rpx;
 }
 </style>

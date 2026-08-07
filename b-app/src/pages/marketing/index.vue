@@ -326,7 +326,7 @@ onShow(load);
 .item__name {
   flex: 1;
   font-size: 30rpx;
-  font-weight: 700;
+  font-weight: 400;
   color: var(--sh-ink);
 }
 .item__sum {
@@ -346,7 +346,7 @@ onShow(load);
 .tip {
   display: block;
   margin: 32rpx 8rpx;
-  font-size: 22rpx;
+  font-size: 24rpx;
   color: var(--sh-sub);
   line-height: 1.6;
 }

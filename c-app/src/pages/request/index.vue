@@ -259,7 +259,7 @@ onShareAppMessage(() => {
 }
 .head__by {
   display: block;
-  font-size: 22rpx;
+  font-size: 24rpx;
   color: var(--sh-sub);
   margin-top: 8rpx;
 }
@@ -283,7 +283,7 @@ onShareAppMessage(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 64rpx;
+  font-size: 48rpx;
 }
 .facts {
   margin-top: 24rpx;
@@ -294,11 +294,11 @@ onShareAppMessage(() => {
   padding: 12rpx 0;
 }
 .fact__k {
-  font-size: 25rpx;
+  font-size: 24rpx;
   color: var(--sh-sub);
 }
 .fact__v {
-  font-size: 25rpx;
+  font-size: 24rpx;
   color: var(--sh-ink);
 }
 .block {
@@ -327,13 +327,13 @@ onShareAppMessage(() => {
   font-size: 26rpx;
 }
 .member__n {
-  font-size: 23rpx;
+  font-size: 24rpx;
   color: var(--sh-ink);
 }
 .quote {
   margin-top: 24rpx;
   background: var(--sh-faint);
-  border-radius: 28rpx;
+  border-radius: 32rpx;
   padding: 26rpx;
 }
 .quote.is-chosen {
@@ -347,7 +347,7 @@ onShareAppMessage(() => {
 .quote__logo {
   width: 68rpx;
   height: 68rpx;
-  border-radius: 20rpx;
+  border-radius: 24rpx;
   background: var(--sh-surface);
   text-align: center;
   line-height: 68rpx;
@@ -368,7 +368,7 @@ onShareAppMessage(() => {
   margin-bottom: 8rpx;
 }
 .quote__name {
-  font-size: 27rpx;
+  font-size: 26rpx;
   font-weight: 600;
   color: var(--sh-ink);
   /* 名字整体优先占位，不参与压缩 */
@@ -380,7 +380,7 @@ onShareAppMessage(() => {
 }
 .tiny {
   padding: 4rpx 14rpx;
-  font-size: 19rpx;
+  font-size: 24rpx;
   flex-shrink: 0;
 }
 .quote__price {
@@ -415,7 +415,7 @@ onShareAppMessage(() => {
   padding: 22rpx 26rpx;
 }
 .antihike__text {
-  font-size: 23rpx;
+  font-size: 24rpx;
   color: var(--sh-sub);
   line-height: 1.7;
 }
@@ -428,7 +428,6 @@ onShareAppMessage(() => {
 .matched__price {
   font-size: 48rpx;
   font-weight: 700;
-  letter-spacing: -1rpx;
   color: var(--sh-ink);
 }
 .is-disabled {

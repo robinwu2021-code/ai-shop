@@ -123,7 +123,7 @@ onShow(load);
   font-size: 48rpx;
   width: 76rpx;
   height: 76rpx;
-  border-radius: 20rpx;
+  border-radius: 24rpx;
   background: var(--sh-faint);
   text-align: center;
   line-height: 76rpx;
@@ -144,7 +144,7 @@ onShow(load);
   margin-top: 12rpx;
 }
 .row__amount {
-  font-size: 32rpx;
+  font-size: 30rpx;
   font-weight: 700;
   color: var(--sh-ink);
 }

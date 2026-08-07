@@ -94,8 +94,8 @@ onShow(load);
 }
 .pair__v {
   display: block;
-  font-size: 44rpx;
-  font-weight: 700;
+  font-size: 40rpx;
+  font-weight: 600;
   color: var(--sh-ink);
   line-height: 1.2;
 }
@@ -109,8 +109,8 @@ onShow(load);
   justify-content: space-between;
 }
 .owned__v {
-  font-size: 52rpx;
-  font-weight: 700;
+  font-size: 48rpx;
+  font-weight: 600;
   color: var(--sh-primary);
 }
 .bar {

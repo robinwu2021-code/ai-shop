@@ -182,7 +182,7 @@ onShow(load);
 .info__title {
   flex: 1;
   font-size: 30rpx;
-  font-weight: 700;
+  font-weight: 400;
   color: var(--sh-ink);
 }
 .addr {
@@ -193,10 +193,10 @@ onShow(load);
   display: block;
   margin-top: 16rpx;
   padding: 16rpx 20rpx;
-  border-radius: 20rpx;
+  border-radius: 24rpx;
   background: var(--sh-primary-tint);
   color: var(--sh-primary);
-  font-size: 22rpx;
+  font-size: 24rpx;
   line-height: 1.6;
 }
 .receive {
@@ -233,7 +233,7 @@ onShow(load);
   display: block;
   margin-top: 20rpx;
   padding: 18rpx 22rpx;
-  border-radius: 20rpx;
+  border-radius: 24rpx;
   background: var(--sh-danger-tint);
   color: var(--sh-danger);
   font-size: 24rpx;
@@ -257,14 +257,14 @@ onShow(load);
 .row-item__code {
   display: block;
   font-size: 34rpx;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 4rpx;
   color: var(--sh-ink);
 }
 .tip {
   display: block;
   margin: 32rpx 8rpx;
-  font-size: 22rpx;
+  font-size: 24rpx;
   color: var(--sh-sub);
   line-height: 1.6;
 }

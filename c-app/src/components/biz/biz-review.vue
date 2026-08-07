@@ -73,12 +73,12 @@ defineEmits<{ (e: "like"): void }>();
   margin-bottom: 4rpx;
 }
 .rv__date {
-  font-size: 22rpx;
+  font-size: 24rpx;
   color: var(--sh-sub);
 }
 .rv__content {
   display: block;
-  font-size: 27rpx;
+  font-size: 26rpx;
   color: var(--sh-ink);
   line-height: 1.6;
   margin-top: 16rpx;
@@ -100,7 +100,7 @@ defineEmits<{ (e: "like"): void }>();
 }
 .rv__spec {
   display: block;
-  font-size: 22rpx;
+  font-size: 24rpx;
   color: var(--sh-sub);
   margin-top: 14rpx;
 }
@@ -146,7 +146,7 @@ defineEmits<{ (e: "like"): void }>();
   transform: scale(1.25);
 }
 .like__count {
-  font-size: 22rpx;
+  font-size: 24rpx;
   color: var(--sh-sub);
 }
 .like.is-on .like__count {

@@ -164,20 +164,23 @@ onShow(load);
 
     <!-- 商品 -->
     <view class="sh-card block">
-      <view v-for="(it, i) in order.items" :key="i" class="row">
-        <view class="row__cover">{{ it.cover }}</view>
-        <view class="row__main">
-          <text class="row__title">{{ it.title }}</text>
-          <text class="row__spec">{{ it.spec }}</text>
-        </view>
-        <view class="row__right">
-          <text v-if="it.isGift" class="sh-chip sh-chip--danger tiny">
-            {{ $t("promo.gift") }}
-          </text>
-          <text v-else class="row__price sh-num">{{ money(it.price) }}</text>
-          <text class="row__qty sh-num">×{{ it.qty }}</text>
-        </view>
-      </view>
+      <biz-sku-row
+        v-for="(it, i) in order.items"
+        :key="i"
+        :cover="it.cover"
+        :title="it.title"
+        :spec="it.spec"
+      >
+        <template #right>
+          <view class="row__right">
+            <text v-if="it.isGift" class="sh-chip sh-chip--danger tiny">
+              {{ $t("promo.gift") }}
+            </text>
+            <text v-else class="row__price sh-num">{{ money(it.price) }}</text>
+            <text class="row__qty sh-num">×{{ it.qty }}</text>
+          </view>
+        </template>
+      </biz-sku-row>
     </view>
 
     <!-- 金额 -->
@@ -293,7 +296,7 @@ onShow(load);
 .as__title {
   display: block;
   font-size: 28rpx;
-  font-weight: 700;
+  font-weight: 400;
   color: var(--sh-ink);
 }
 .as__reply,
@@ -330,7 +333,7 @@ onShow(load);
 }
 .codecard__label {
   display: block;
-  font-size: 22rpx;
+  font-size: 24rpx;
   color: var(--sh-primary);
 }
 .codecard--redeem .codecard__label {
@@ -338,15 +341,15 @@ onShow(load);
 }
 .codecard__v {
   display: block;
-  font-size: 64rpx;
-  font-weight: 700;
+  font-size: 48rpx;
+  font-weight: 600;
   letter-spacing: 8rpx;
   color: var(--sh-ink);
   margin-top: 14rpx;
 }
 .codecard__hint {
   display: block;
-  font-size: 21rpx;
+  font-size: 24rpx;
   color: var(--sh-sub);
   margin-top: 14rpx;
 }
@@ -356,7 +359,7 @@ onShow(load);
 .status {
   display: block;
   font-size: 34rpx;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--sh-primary);
 }
 .status.is-WAIT_PAY {
@@ -400,47 +403,9 @@ onShow(load);
 }
 .node__at {
   display: block;
-  font-size: 21rpx;
+  font-size: 24rpx;
   color: var(--sh-sub);
   margin-top: 4rpx;
-}
-.row {
-  display: flex;
-  align-items: center;
-  gap: 20rpx;
-  margin-bottom: 24rpx;
-}
-.row:last-child {
-  margin-bottom: 0;
-}
-.row__cover {
-  width: 108rpx;
-  height: 108rpx;
-  border-radius: 22rpx;
-  background: var(--sh-faint);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 50rpx;
-  flex-shrink: 0;
-}
-.row__main {
-  flex: 1;
-  min-width: 0;
-}
-.row__title {
-  display: block;
-  font-size: 26rpx;
-  color: var(--sh-ink);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.row__spec {
-  display: block;
-  font-size: 21rpx;
-  color: var(--sh-sub);
-  margin-top: 6rpx;
 }
 .row__right {
   text-align: end;
@@ -448,7 +413,7 @@ onShow(load);
 }
 .tiny {
   padding: 4rpx 14rpx;
-  font-size: 19rpx;
+  font-size: 24rpx;
 }
 .row__price {
   display: block;
@@ -458,7 +423,7 @@ onShow(load);
 }
 .row__qty {
   display: block;
-  font-size: 21rpx;
+  font-size: 24rpx;
   color: var(--sh-sub);
   margin-top: 4rpx;
 }
@@ -471,11 +436,11 @@ onShow(load);
   margin-top: 12rpx;
 }
 .amt__k {
-  font-size: 25rpx;
+  font-size: 24rpx;
   color: var(--sh-sub);
 }
 .amt__v {
-  font-size: 25rpx;
+  font-size: 24rpx;
   color: var(--sh-ink);
 }
 .amt__v--off {
@@ -493,12 +458,12 @@ onShow(load);
   padding: 12rpx 0;
 }
 .fact__k {
-  font-size: 25rpx;
+  font-size: 24rpx;
   color: var(--sh-sub);
   flex-shrink: 0;
 }
 .fact__v {
-  font-size: 25rpx;
+  font-size: 24rpx;
   color: var(--sh-ink);
   text-align: end;
 }

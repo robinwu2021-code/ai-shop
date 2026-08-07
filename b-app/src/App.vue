@@ -83,7 +83,7 @@ onLaunch(() => {
 .field__hint {
   display: block;
   margin-top: 10rpx;
-  font-size: 22rpx;
+  font-size: 24rpx;
   color: var(--sh-sub);
   line-height: 1.5;
 }

@@ -2,7 +2,7 @@
 // 商品卡（扁平色块）：图占位是纯色块，信息用 chip 色块，价格不用红色堆砌 —— 靠字重与留白分层。
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
-import { CATEGORY_TYPE } from "@shared/utils/constants";
+import { GOODS_COVER_FALLBACK, CATEGORY_TYPE } from "@shared/utils/constants";
 import { money } from "@shared/utils/format";
 import type { Goods } from "@shared/types";
 
@@ -37,7 +37,7 @@ const off = computed(() => {
 
 <template>
   <view class="card" @tap="$emit('tap')">
-    <view class="card__cover">{{ goods.cover }}</view>
+    <view class="card__cover">{{ goods.cover || GOODS_COVER_FALLBACK }}</view>
 
     <view class="card__body">
       <text class="card__title">{{ goods.title }}</text>
@@ -85,24 +85,38 @@ const off = computed(() => {
  * 与 168 的方形封面天然齐平 —— 高度不用互相迁就，也就没有「图片被拉长」这回事。
  * 之前正文有五行、图片跟着 stretch，卡片高出图片近一倍，图顶在上面右边空一片。
  */
+/*
+ * 卡片**自身不浮起**：背景与圆角由外层列表容器统一给。
+ *
+ * 原先每张卡各自带 surface 底 + 圆角 + 14rpx 下边距，于是一屏商品变成
+ * 一叠互相分离的白块，缝隙里全是灰页底 —— 加上卡内封面还是一块灰，
+ * 「灰页底 → 白卡 → 灰封面」三层叠着，灰的面积比内容还大。
+ *
+ * 现在列表是一整片连续表面，行与行只留 2rpx 缝。色块从「每行一个」降到「每组一个」。
+ */
 .card {
   display: flex;
   align-items: flex-start;
   gap: 20rpx;
-  background: var(--sh-surface);
-  border-radius: 28rpx;
   padding: 20rpx;
-  margin-bottom: 14rpx;
 }
+
 .card__cover {
   width: 168rpx;
   height: 168rpx;
-  border-radius: 22rpx;
-  background: var(--sh-faint);
+  /*
+   * **不给底色。** emoji 自带形状，托一层灰只是把它框起来，
+   * 而这块 168rpx 见方 × 每行一个，是整页灰面积的主体。
+   *
+   * 尺寸保留：它撑着每行左侧的对齐节奏。emoji 相应放大填满这块区域 ——
+   * 底色去掉后若字号不变，图标会缩在角落，一列商品读起来就散了。
+   * 真实商品图上线后这里直接换成 <image>，尺寸不用再动。
+   */
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 64rpx;
+  font-size: 104rpx;
+  line-height: 1;
   flex-shrink: 0;
 }
 .card__body {
@@ -110,20 +124,23 @@ const off = computed(() => {
   min-width: 0;
 }
 .card__title {
-  display: block;
+  /* 商品名是列表的主体 —— 用户是照着它找东西的，所以按「卡片主标题」处理
+     （字阶的 .txt-strong，30rpx/600）。
+     它现在真的醒目，靠的不是自己变重，而是**周围都轻了**：
+     副标题、店铺、销量、标签统统降到 400，一列扫下来先看见的就是名字和价格。 */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
   font-size: 30rpx;
   font-weight: 600;
-  letter-spacing: -0.2rpx;
-  line-height: 1.35;
+  line-height: 1.4;
   color: var(--sh-ink);
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 .card__sub {
   display: block;
-  font-size: 24rpx;
-  line-height: 1.35;
+  font-size: 26rpx;
+  line-height: 1.5;
   color: var(--sh-sub);
   margin-top: 4rpx;
   overflow: hidden;
@@ -139,17 +156,16 @@ const off = computed(() => {
 /* 卡片里的 chip 比通用件矮一档：通用 chip 是给正文用的，密排列表里显得肿 */
 .card__foot .sh-chip {
   padding: 5rpx 14rpx;
-  font-size: 21rpx;
 }
 .price__now {
-  font-size: 36rpx;
+  font-size: 34rpx;
   font-weight: 700;
-  letter-spacing: -0.6rpx;
+  line-height: 1.3;
   color: var(--sh-ink);
   flex-shrink: 0;
 }
 .price__was {
-  font-size: 22rpx;
+  font-size: 24rpx;
   color: var(--sh-sub);
   text-decoration: line-through;
   flex-shrink: 0;
@@ -172,7 +188,6 @@ const off = computed(() => {
 .add__sign {
   color: var(--sh-primary);
   font-size: 32rpx;
-  font-weight: 600;
   line-height: 1;
 }
 .card__merchant {
@@ -183,7 +198,7 @@ const off = computed(() => {
   margin-top: 8rpx;
 }
 .card__shop {
-  font-size: 21rpx;
+  font-size: 24rpx;
   color: var(--sh-sub);
   min-width: 0;
   overflow: hidden;
@@ -191,7 +206,7 @@ const off = computed(() => {
   white-space: nowrap;
 }
 .card__sales {
-  font-size: 21rpx;
+  font-size: 24rpx;
   color: var(--sh-sub);
   flex-shrink: 0;
 }

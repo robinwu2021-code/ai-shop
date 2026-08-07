@@ -124,7 +124,7 @@ onShow(load);
 .hint {
   display: block;
   margin-top: 12rpx;
-  font-size: 22rpx;
+  font-size: 24rpx;
   color: var(--sh-sub);
 }
 .save {
@@ -168,7 +168,7 @@ onShow(load);
 .tip {
   display: block;
   margin: 32rpx 8rpx;
-  font-size: 22rpx;
+  font-size: 24rpx;
   color: var(--sh-sub);
   line-height: 1.6;
 }

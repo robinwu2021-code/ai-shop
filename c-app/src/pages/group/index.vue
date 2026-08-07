@@ -9,7 +9,7 @@ import { api } from "@/api";
 import { useUserStore } from "@/stores/user";
 import { useCommunityStore } from "@/stores/community";
 import { buildShareMessage } from "@shared/ports/share";
-import { ROUTES } from "@shared/utils/constants";
+import { GOODS_COVER_FALLBACK, ROUTES } from "@shared/utils/constants";
 import { countdown, money } from "@shared/utils/format";
 import type { GroupBuy } from "@shared/types";
 
@@ -85,7 +85,7 @@ onShareAppMessage(() => {
     <!-- 头部：当前价 + 自提点 -->
     <view class="sh-card">
       <view class="head">
-        <view class="head__cover" @tap="openGoods">{{ group.cover }}</view>
+        <view class="head__cover" @tap="openGoods">{{ group.cover || GOODS_COVER_FALLBACK }}</view>
         <view class="head__main">
           <text class="sh-h2">{{ group.title }}</text>
           <text class="head__pickup">📍 {{ group.pickupName }}</text>
@@ -156,7 +156,7 @@ onShareAppMessage(() => {
 .head__cover {
   width: 130rpx;
   height: 130rpx;
-  border-radius: 28rpx;
+  border-radius: 32rpx;
   background: var(--sh-primary-tint);
   display: flex;
   align-items: center;
@@ -181,9 +181,8 @@ onShareAppMessage(() => {
   margin-top: 28rpx;
 }
 .price__now {
-  font-size: 56rpx;
+  font-size: 48rpx;
   font-weight: 700;
-  letter-spacing: -1.2rpx;
   color: var(--sh-ink);
 }
 .price__base {
@@ -206,7 +205,7 @@ onShareAppMessage(() => {
 }
 .cd__v {
   font-size: 28rpx;
-  font-weight: 700;
+  font-weight: 400;
   color: var(--sh-warning);
 }
 .block {
@@ -224,7 +223,7 @@ onShareAppMessage(() => {
 .tier {
   flex: 1;
   background: var(--sh-faint);
-  border-radius: 28rpx;
+  border-radius: 32rpx;
   padding: 24rpx 8rpx;
   text-align: center;
 }
@@ -238,19 +237,19 @@ onShareAppMessage(() => {
 }
 .tier__count {
   display: block;
-  font-size: 22rpx;
+  font-size: 24rpx;
   color: var(--sh-sub);
 }
 .tier__price {
   display: block;
-  font-size: 32rpx;
+  font-size: 30rpx;
   font-weight: 700;
   color: var(--sh-ink);
   margin-top: 8rpx;
 }
 .tier__state {
   display: block;
-  font-size: 20rpx;
+  font-size: 24rpx;
   color: var(--sh-sub);
   margin-top: 6rpx;
 }
@@ -293,7 +292,7 @@ onShareAppMessage(() => {
   color: var(--sh-ink);
 }
 .member__q {
-  font-size: 22rpx;
+  font-size: 24rpx;
   color: var(--sh-sub);
 }
 .notice {

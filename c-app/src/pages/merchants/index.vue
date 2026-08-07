@@ -72,51 +72,61 @@ onShow(load);
 <template>
   <sh-scaffold title-key="shops.title" tab="merchants">
     <!-- 1. 我买过的：真实消费过的关系，回购主路径，放最上面 -->
-    <template v-if="visited.length">
-      <view class="section">
+    <view v-if="visited.length" class="sh-block">
+      <view class="sh-block__head">
         <text class="sh-h2">{{ $t("shops.visited") }}</text>
         <text class="sh-muted">{{ $t("shops.visitedHint") }}</text>
       </view>
       <view
         v-for="m in visited"
         :key="m.merchantNo"
-        class="sh-card card"
+        class="card"
         @tap="open(m.merchantNo)"
       >
-        <biz-merchant-bar :merchant="m" @tap="open(m.merchantNo)"></biz-merchant-bar>
+        <biz-merchant-bar
+          :merchant="m"
+          @tap="open(m.merchantNo)"
+        ></biz-merchant-bar>
         <view class="meta">
-          <text class="sh-chip sh-num">{{ $t("visited.orders", { n: m.orderCount }) }}</text>
+          <text class="sh-chip sh-num">{{
+            $t("visited.orders", { n: m.orderCount })
+          }}</text>
           <text class="sh-chip sh-num">
             {{ $t("visited.last", { d: isoDate(m.lastOrderAt) }) }}
           </text>
           <text class="sh-chip">{{ $t(`merchant.type.${m.type}`) }}</text>
         </view>
       </view>
-    </template>
+    </view>
 
     <!-- 2. 平台推荐：运营位，给新店一个不看历史成绩的位置 -->
-    <template v-if="promotedShown.length">
-      <view class="section">
+    <view v-if="promotedShown.length" class="sh-block">
+      <view class="sh-block__head">
         <text class="sh-h2">{{ $t("shops.promoted") }}</text>
         <text class="sh-muted">{{ $t("shops.promotedHint") }}</text>
       </view>
       <view
         v-for="m in promotedShown"
         :key="m.merchantNo"
-        class="sh-card card"
+        class="card"
         @tap="open(m.merchantNo)"
       >
-        <biz-merchant-bar :merchant="m" @tap="open(m.merchantNo)"></biz-merchant-bar>
+        <biz-merchant-bar
+          :merchant="m"
+          @tap="open(m.merchantNo)"
+        ></biz-merchant-bar>
         <text class="desc">{{ m.desc }}</text>
         <view class="meta">
-          <text class="sh-chip">{{ $t(`serviceScope.${m.serviceScope}`) }}</text>
+          <text class="sh-chip">{{
+            $t(`serviceScope.${m.serviceScope}`)
+          }}</text>
         </view>
       </view>
-    </template>
+    </view>
 
     <!-- 3. 附近的：服务范围覆盖本社区，按距离。密排一点 —— 到这一档只需要认个脸 -->
-    <template v-if="nearbyShown.length">
-      <view class="section">
+    <view v-if="nearbyShown.length" class="sh-block">
+      <view class="sh-block__head">
         <text class="sh-h2">{{ $t("shops.nearby") }}</text>
         <text class="sh-muted">{{ $t("shops.nearbyHint") }}</text>
       </view>
@@ -132,30 +142,29 @@ onShow(load);
             <text class="near__name">{{ m.name }}</text>
             <text class="near__desc">{{ m.desc }}</text>
           </view>
-          <text v-if="m.distance" class="near__dist sh-num">{{ distance(m.distance) }}</text>
+          <text v-if="m.distance" class="near__dist sh-num">{{
+            distance(m.distance)
+          }}</text>
         </view>
       </view>
-    </template>
+    </view>
 
-    <view v-if="loaded && !visited.length && !promoted.length && !nearby.length" class="empty">
+    <view
+      v-if="loaded && !visited.length && !promoted.length && !nearby.length"
+      class="empty"
+    >
       <text class="empty__text">{{ $t("shops.empty") }}</text>
-      <view class="sh-btn empty__btn" @tap="goShopping">{{ $t("visited.go") }}</view>
+      <view class="sh-btn empty__btn" @tap="goShopping">{{
+        $t("visited.go")
+      }}</view>
     </view>
   </sh-scaffold>
 </template>
 
 <style scoped>
-.section {
-  display: flex;
-  align-items: baseline;
-  gap: 16rpx;
-  margin: 32rpx 0 16rpx;
-}
-.section:first-child {
-  margin-top: 4rpx;
-}
+/* 卡在分区白块内成行 —— 行的边界靠内边距，不再各自一张卡 */
 .card {
-  margin-bottom: 20rpx;
+  padding: 20rpx 26rpx;
 }
 .meta {
   display: flex;
@@ -166,18 +175,15 @@ onShow(load);
 .desc {
   display: block;
   margin-top: 18rpx;
-  font-size: 23rpx;
+  font-size: 24rpx;
   line-height: 1.5;
   color: var(--sh-sub);
 }
 /* 附近的店：一行一家，密排 —— 这一档只是「附近还有谁」，不需要展开介绍 */
+/* 底和圆角由外层 .sh-block 给 —— 白底套白底只会多一圈看不见的边 */
 .near {
   display: flex;
   flex-direction: column;
-  gap: 2rpx;
-  background: var(--sh-surface);
-  border-radius: 28rpx;
-  overflow: hidden;
 }
 .near__i {
   display: flex;
@@ -201,7 +207,7 @@ onShow(load);
 }
 .near__name {
   display: block;
-  font-size: 27rpx;
+  font-size: 26rpx;
   font-weight: 600;
   color: var(--sh-ink);
   overflow: hidden;
@@ -211,7 +217,7 @@ onShow(load);
 .near__desc {
   display: block;
   margin-top: 4rpx;
-  font-size: 22rpx;
+  font-size: 24rpx;
   color: var(--sh-sub);
   overflow: hidden;
   white-space: nowrap;
@@ -219,7 +225,7 @@ onShow(load);
 }
 .near__dist {
   flex-shrink: 0;
-  font-size: 23rpx;
+  font-size: 24rpx;
   color: var(--sh-sub);
 }
 .empty {

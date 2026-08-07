@@ -51,11 +51,14 @@ onShow(() => cart.load());
     <view v-for="g in cart.groups" :key="g.fulfillment" class="sh-card group">
       <text class="sh-chip sh-chip--primary">{{ $t(`fulfillment.${g.fulfillment}`) }}</text>
 
-      <view v-for="it in g.items" :key="it.skuNo" class="row">
-        <view class="row__cover">{{ it.cover }}</view>
-        <view class="row__main">
-          <text class="row__title">{{ it.title }}</text>
-          <text class="row__spec">{{ it.spec }}</text>
+      <biz-sku-row
+        v-for="it in g.items"
+        :key="it.skuNo"
+        :cover="it.cover"
+        :title="it.title"
+        :spec="it.spec"
+        size="lg"
+      >
           <view v-if="it.giftQty" class="giftrow">
             <text class="giftrow__tag">{{ $t("promo.gift") }}</text>
             <text class="giftrow__text sh-num">
@@ -71,8 +74,7 @@ onShow(() => cart.load());
               <view class="stepper__btn" @tap="inc(it.skuNo, it.qty)"><text>＋</text></view>
             </view>
           </view>
-        </view>
-      </view>
+      </biz-sku-row>
     </view>
 
     <sh-empty bare v-if="!cart.items.length" :text='$t("cart.empty")'></sh-empty>
@@ -96,41 +98,6 @@ onShow(() => cart.load());
 .group {
   margin-bottom: 20rpx;
 }
-.row {
-  display: flex;
-  gap: 24rpx;
-  margin-top: 28rpx;
-}
-.row__cover {
-  width: 140rpx;
-  height: 140rpx;
-  border-radius: 28rpx;
-  background: var(--sh-faint);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 64rpx;
-  flex-shrink: 0;
-}
-.row__main {
-  flex: 1;
-  min-width: 0;
-}
-.row__title {
-  display: block;
-  font-size: 28rpx;
-  font-weight: 600;
-  color: var(--sh-ink);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.row__spec {
-  display: block;
-  font-size: 22rpx;
-  color: var(--sh-sub);
-  margin-top: 6rpx;
-}
 .giftrow {
   display: flex;
   align-items: center;
@@ -141,13 +108,13 @@ onShow(() => cart.load());
   padding: 10rpx 16rpx;
 }
 .giftrow__tag {
-  font-size: 20rpx;
-  font-weight: 700;
+  font-size: 24rpx;
+  font-weight: 400;
   color: var(--sh-danger);
   flex-shrink: 0;
 }
 .giftrow__text {
-  font-size: 21rpx;
+  font-size: 24rpx;
   color: var(--sh-danger);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -160,7 +127,7 @@ onShow(() => cart.load());
   margin-top: 20rpx;
 }
 .row__price {
-  font-size: 32rpx;
+  font-size: 30rpx;
   font-weight: 700;
   color: var(--sh-ink);
 }
@@ -208,9 +175,8 @@ onShow(() => cart.load());
 }
 .checkoutbar__total {
   display: block;
-  font-size: 36rpx;
+  font-size: 34rpx;
   font-weight: 700;
-  letter-spacing: -0.6rpx;
   color: var(--sh-ink);
 }
 .checkoutbar__btn {

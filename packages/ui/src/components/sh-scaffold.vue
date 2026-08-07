@@ -50,6 +50,7 @@ watch(() => app.lang, applyTitle);
 </template>
 
 <style scoped>
+
 /*
  * 宽屏（PC 浏览器）下把整页收进一条居中的窄栏。
  *

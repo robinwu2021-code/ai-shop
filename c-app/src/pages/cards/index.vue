@@ -100,7 +100,7 @@ onShow(load);
 }
 .card__no {
   display: block;
-  font-size: 20rpx;
+  font-size: 24rpx;
   color: var(--sh-sub);
   margin-top: 6rpx;
 }
@@ -113,12 +113,11 @@ onShow(load);
 }
 .card__v {
   font-size: 48rpx;
-  font-weight: 700;
-  letter-spacing: -1rpx;
+  font-weight: 600;
   color: var(--sh-ink);
 }
 .card__exp {
-  font-size: 21rpx;
+  font-size: 24rpx;
   color: var(--sh-sub);
 }
 .empty__text {

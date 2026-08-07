@@ -114,14 +114,13 @@ onShow(load);
 .ticket__v {
   display: block;
   font-size: 40rpx;
-  font-weight: 700;
-  letter-spacing: -0.8rpx;
+  font-weight: 600;
   color: var(--sh-danger);
   line-height: 1.1;
 }
 .ticket__cond {
   display: block;
-  font-size: 19rpx;
+  font-size: 24rpx;
   color: var(--sh-danger);
   margin-top: 6rpx;
 }
@@ -137,13 +136,13 @@ onShow(load);
 }
 .ticket__scope {
   display: block;
-  font-size: 22rpx;
+  font-size: 24rpx;
   color: var(--sh-sub);
   margin-top: 8rpx;
 }
 .ticket__exp {
   display: block;
-  font-size: 20rpx;
+  font-size: 24rpx;
   color: var(--sh-sub);
   margin-top: 10rpx;
 }
@@ -153,7 +152,7 @@ onShow(load);
   border-radius: 9999px;
   background: var(--sh-primary);
   color: var(--sh-on-primary);
-  font-size: 25rpx;
+  font-size: 24rpx;
   font-weight: 600;
 }
 .ticket__btn.is-busy {

@@ -167,8 +167,8 @@ onShow(load);
 }
 .item__title {
   flex: 1;
-  font-size: 32rpx;
-  font-weight: 700;
+  font-size: 30rpx;
+  font-weight: 400;
   color: var(--sh-ink);
 }
 .item__desc {
@@ -207,19 +207,19 @@ onShow(load);
   color: var(--sh-ink);
 }
 .mine-tag {
-  font-size: 20rpx;
+  font-size: 24rpx;
   color: var(--sh-primary);
 }
 .raised {
   display: block;
   margin-top: 6rpx;
-  font-size: 22rpx;
+  font-size: 24rpx;
   color: var(--sh-warning);
 }
 .breach {
   display: block;
   margin-top: 4rpx;
-  font-size: 22rpx;
+  font-size: 24rpx;
   color: var(--sh-danger);
 }
 .quote__r {
@@ -227,8 +227,8 @@ onShow(load);
 }
 .quote__p {
   display: block;
-  font-size: 32rpx;
-  font-weight: 700;
+  font-size: 30rpx;
+  font-weight: 400;
   color: var(--sh-ink);
 }
 .btns {
@@ -256,7 +256,7 @@ onShow(load);
 .tip {
   display: block;
   margin-top: 16rpx;
-  font-size: 22rpx;
+  font-size: 24rpx;
   color: var(--sh-sub);
   line-height: 1.6;
 }

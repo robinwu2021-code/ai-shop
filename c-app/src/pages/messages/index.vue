@@ -91,7 +91,7 @@ onShow(load);
   display: flex;
   gap: 16rpx;
   background: var(--sh-surface);
-  border-radius: 28rpx;
+  border-radius: 32rpx;
   padding: 28rpx;
   margin-bottom: 16rpx;
 }
@@ -117,17 +117,17 @@ onShow(load);
   gap: 20rpx;
 }
 .msg__title {
-  font-size: 27rpx;
+  font-size: 26rpx;
   color: var(--sh-ink);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .msg__title.is-unread {
-  font-weight: 700;
+  font-weight: 400;
 }
 .msg__at {
-  font-size: 20rpx;
+  font-size: 24rpx;
   color: var(--sh-sub);
   flex-shrink: 0;
 }
@@ -140,7 +140,7 @@ onShow(load);
 }
 .msg__more {
   display: block;
-  font-size: 23rpx;
+  font-size: 24rpx;
   color: var(--sh-primary);
   margin-top: 14rpx;
 }

@@ -160,7 +160,7 @@ onLoad((q) => {
   font-size: 48rpx;
   width: 76rpx;
   height: 76rpx;
-  border-radius: 20rpx;
+  border-radius: 24rpx;
   background: var(--sh-faint);
   text-align: center;
   line-height: 76rpx;
@@ -179,7 +179,7 @@ onLoad((q) => {
 }
 .total__v {
   font-size: 34rpx;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--sh-ink);
 }
 </style>

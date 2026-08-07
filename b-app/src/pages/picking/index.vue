@@ -215,8 +215,8 @@ onShow(load);
   color: var(--sh-ink);
 }
 .row__qty {
-  font-size: 36rpx;
-  font-weight: 700;
+  font-size: 34rpx;
+  font-weight: 600;
   color: var(--sh-primary);
 }
 .buyers {

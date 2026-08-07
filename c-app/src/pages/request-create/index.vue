@@ -124,13 +124,13 @@ async function submit() {
   margin-top: 28rpx;
 }
 .row__k {
-  font-size: 27rpx;
+  font-size: 26rpx;
   color: var(--sh-ink);
 }
 .row__input {
   flex: 1;
   text-align: end;
-  font-size: 27rpx;
+  font-size: 26rpx;
   color: var(--sh-ink);
 }
 .stepper {
@@ -166,7 +166,7 @@ async function submit() {
   background: var(--sh-faint);
 }
 .note__text {
-  font-size: 23rpx;
+  font-size: 24rpx;
   color: var(--sh-sub);
   line-height: 1.7;
 }

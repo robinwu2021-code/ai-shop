@@ -120,11 +120,10 @@ watch(
 /* 字号 28rpx —— 原生 tabBar 固定在 ~20rpx，这是本次要解决的问题 */
 .tabbar__label {
   font-size: 28rpx;
-  font-weight: 500;
-  letter-spacing: -0.2rpx;
+  font-weight: 400;
 }
 .tabbar__item.is-on .tabbar__label {
-  font-weight: 700;
+  font-weight: 400;
 }
 .tabbar__badge {
   position: absolute;
@@ -136,7 +135,7 @@ watch(
   border-radius: 9999px;
   background: var(--sh-danger);
   color: #fff;
-  font-size: 20rpx;
+  font-size: 24rpx;
   line-height: 32rpx;
   text-align: center;
 }

@@ -118,14 +118,17 @@ onLoad((q) => {
     <!-- 申请表单 -->
     <template v-else>
       <view class="sh-card">
-        <view v-for="(it, i) in order.items.filter((x) => !x.isGift)" :key="i" class="row">
-          <view class="row__cover">{{ it.cover }}</view>
-          <view class="row__main">
-            <text class="row__title">{{ it.title }}</text>
-            <text class="row__spec">{{ it.spec }}</text>
-          </view>
-          <text class="row__price sh-num">{{ money(it.price) }}</text>
-        </view>
+        <biz-sku-row
+          v-for="(it, i) in order.items.filter((x) => !x.isGift)"
+          :key="i"
+          :cover="it.cover"
+          :title="it.title"
+          :spec="it.spec"
+        >
+          <template #right>
+            <text class="row__price sh-num">{{ money(it.price) }}</text>
+          </template>
+        </biz-sku-row>
       </view>
 
       <view class="sh-card block">
@@ -197,44 +200,6 @@ onLoad((q) => {
 .block {
   margin-top: 20rpx;
 }
-.row {
-  display: flex;
-  align-items: center;
-  gap: 20rpx;
-  margin-bottom: 20rpx;
-}
-.row:last-child {
-  margin-bottom: 0;
-}
-.row__cover {
-  width: 108rpx;
-  height: 108rpx;
-  border-radius: 22rpx;
-  background: var(--sh-faint);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 50rpx;
-  flex-shrink: 0;
-}
-.row__main {
-  flex: 1;
-  min-width: 0;
-}
-.row__title {
-  display: block;
-  font-size: 26rpx;
-  color: var(--sh-ink);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.row__spec {
-  display: block;
-  font-size: 21rpx;
-  color: var(--sh-sub);
-  margin-top: 6rpx;
-}
 .row__price {
   font-size: 26rpx;
   font-weight: 600;
@@ -259,13 +224,13 @@ onLoad((q) => {
 }
 .type__t {
   display: block;
-  font-size: 27rpx;
+  font-size: 26rpx;
   font-weight: 600;
   color: var(--sh-ink);
 }
 .type__d {
   display: block;
-  font-size: 21rpx;
+  font-size: 24rpx;
   color: var(--sh-sub);
   line-height: 1.5;
   margin-top: 8rpx;
@@ -357,7 +322,7 @@ onLoad((q) => {
 .done__title {
   display: block;
   font-size: 34rpx;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--sh-ink);
   margin-top: 24rpx;
 }
@@ -385,7 +350,7 @@ onLoad((q) => {
   background: var(--sh-primary);
 }
 .node__label {
-  font-size: 25rpx;
+  font-size: 24rpx;
   color: var(--sh-ink);
 }
 .actionbar {

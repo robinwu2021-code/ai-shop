@@ -59,7 +59,7 @@ defineEmits<{ (e: "tap"): void }>();
 .bar__verified {
   flex-shrink: 0;
   padding: 4rpx 14rpx;
-  font-size: 20rpx;
+  font-size: 24rpx;
 }
 .bar__more {
   font-size: 24rpx;

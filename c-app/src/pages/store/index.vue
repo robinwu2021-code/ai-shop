@@ -35,7 +35,8 @@ const goods = computed(() => {
   const k = keyword.value.trim().toLowerCase();
   if (!k) return list;
   return list.filter(
-    (g) => g.title.toLowerCase().includes(k) || g.subtitle.toLowerCase().includes(k),
+    (g) =>
+      g.title.toLowerCase().includes(k) || g.subtitle.toLowerCase().includes(k),
   );
 });
 
@@ -96,9 +97,15 @@ async function reorder() {
     await cart.load();
     // 丢了什么、涨了什么都要说清楚 —— 静默少加是投诉源头
     const parts = [t("store.reorderAdded", { n: r.added })];
-    if (r.dropped.length) parts.push(t("store.reorderDropped", { s: r.dropped.join("、") }));
-    if (r.priceUp.length) parts.push(t("store.reorderPriceUp", { s: r.priceUp.join("、") }));
-    uni.showModal({ title: t("store.reorder"), content: parts.join("\n"), showCancel: false });
+    if (r.dropped.length)
+      parts.push(t("store.reorderDropped", { s: r.dropped.join("、") }));
+    if (r.priceUp.length)
+      parts.push(t("store.reorderPriceUp", { s: r.priceUp.join("、") }));
+    uni.showModal({
+      title: t("store.reorder"),
+      content: parts.join("\n"),
+      showCancel: false,
+    });
   } finally {
     busy.value = false;
   }
@@ -111,7 +118,10 @@ async function toggleFav() {
   }
   const on = await api.toggleFavoriteStore(merchantNo.value);
   if (data.value) data.value.favorited = on;
-  uni.showToast({ title: on ? t("store.faved") : t("store.unfaved"), icon: "none" });
+  uni.showToast({
+    title: on ? t("store.faved") : t("store.unfaved"),
+    icon: "none",
+  });
 }
 
 function gotoGoods(goodsNo: string) {
@@ -121,7 +131,9 @@ function gotoGoods(goodsNo: string) {
 // 分享出去的链接必须带 merchantNo，否则进店归因断掉（ADR-004 §5.4）
 onShareAppMessage(() =>
   buildShareMessage({
-    title: data.value ? `${data.value.merchant.name} · ${data.value.store.announcement}` : "",
+    title: data.value
+      ? `${data.value.merchant.name} · ${data.value.store.announcement}`
+      : "",
     // from=SHARE 让落地页知道这是分享进来的，与扫码同样计入商家自带客流
     path: `${ROUTES.store}?from=SHARE`,
     merchantNo: merchantNo.value,
@@ -156,43 +168,62 @@ onShareAppMessage(() =>
     </view>
 
     <!-- 第一屏：我买过的。这是本页存在的理由 -->
-    <view class="sec">
-      <text class="sh-h2">{{ hasFrequent ? $t("store.frequent") : $t("store.hot") }}</text>
-      <text v-if="hasFrequent" class="link" @tap="reorder">{{ $t("store.reorder") }}</text>
-    </view>
+    <view class="sh-block">
+      <view class="sh-block__head sec">
+        <text class="sh-h2">{{
+          hasFrequent ? $t("store.frequent") : $t("store.hot")
+        }}</text>
+        <text v-if="hasFrequent" class="link" @tap="reorder">{{
+          $t("store.reorder")
+        }}</text>
+      </view>
 
-    <view v-for="f in frequent" :key="f.skuNo" class="freq" :class="{ 'is-off': f.invalid }">
-      <text class="freq__cover">{{ f.cover }}</text>
-      <view class="freq__main" @tap="gotoGoods(f.goodsNo)">
-        <text class="freq__title">{{ f.title }}</text>
-        <text class="sh-muted">{{ f.spec }}</text>
-        <view class="freq__tags">
-          <text v-if="f.times > 1" class="sh-chip">{{ $t("store.times", { n: f.times }) }}</text>
-          <text v-if="f.price > f.lastPrice" class="sh-chip sh-chip--warning">
-            {{ $t("store.priceUp", { p: money(f.lastPrice) }) }}
-          </text>
-          <text v-if="f.invalid" class="sh-chip sh-chip--danger">{{ $t("store.invalid") }}</text>
+      <view
+        v-for="f in frequent"
+        :key="f.skuNo"
+        class="freq"
+        :class="{ 'is-off': f.invalid }"
+      >
+        <text class="freq__cover">{{ f.cover }}</text>
+        <view class="freq__main" @tap="gotoGoods(f.goodsNo)">
+          <text class="freq__title">{{ f.title }}</text>
+          <text class="sh-muted">{{ f.spec }}</text>
+          <view class="freq__tags">
+            <text v-if="f.times > 1" class="sh-chip">{{
+              $t("store.times", { n: f.times })
+            }}</text>
+            <text v-if="f.price > f.lastPrice" class="sh-chip sh-chip--warning">
+              {{ $t("store.priceUp", { p: money(f.lastPrice) }) }}
+            </text>
+            <text v-if="f.invalid" class="sh-chip sh-chip--danger">{{
+              $t("store.invalid")
+            }}</text>
+          </view>
+        </view>
+        <view class="freq__buy">
+          <text class="freq__price sh-num">{{ money(f.price) }}</text>
+          <text class="add" @tap="addOne(f)">＋</text>
         </view>
       </view>
-      <view class="freq__buy">
-        <text class="freq__price sh-num">{{ money(f.price) }}</text>
-        <text class="add" @tap="addOne(f)">＋</text>
-      </view>
-    </view>
 
-    <!-- 履约说明：超区在店铺页就说清楚，不等到结算 -->
-    <view class="ship">
-      <text class="sh-muted">{{ $t("store.fulfillHint") }}</text>
+      <!-- 履约说明：超区在店铺页就说清楚，不等到结算 -->
+      <view class="ship">
+        <text class="sh-muted">{{ $t("store.fulfillHint") }}</text>
+      </view>
     </view>
 
     <!-- 店内搜索 + 全部商品 -->
-    <view class="sec">
-      <text class="sh-h2">{{ $t("store.allGoods") }}</text>
-      <text class="sh-muted sh-num">{{ goods.length }}</text>
-    </view>
-    <input v-model="keyword" class="search" :placeholder="$t('store.searchPh')" />
+    <view class="sh-block">
+      <view class="sh-block__head sec">
+        <text class="sh-h2">{{ $t("store.allGoods") }}</text>
+        <text class="sh-muted sh-num">{{ goods.length }}</text>
+      </view>
+      <input
+        v-model="keyword"
+        class="search"
+        :placeholder="$t('store.searchPh')"
+      />
 
-    <view class="grid">
       <biz-goods-card
         v-for="g in goods"
         :key="g.goodsNo"
@@ -213,7 +244,7 @@ onShareAppMessage(() =>
 .store__logo {
   width: 96rpx;
   height: 96rpx;
-  border-radius: 28rpx;
+  border-radius: 32rpx;
   background: var(--sh-surface);
   font-size: 56rpx;
   text-align: center;
@@ -230,11 +261,11 @@ onShareAppMessage(() =>
 }
 .store__name {
   font-size: 34rpx;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--sh-ink);
 }
 .fav {
-  font-size: 44rpx;
+  font-size: 40rpx;
   color: var(--sh-sub);
 }
 .fav.is-on {
@@ -248,25 +279,22 @@ onShareAppMessage(() =>
   font-size: 26rpx;
   line-height: 1.6;
 }
+/* 排布由 .sh-block__head 给，这里只把右侧的「再来一单 / 计数」推到头 */
 .sec {
-  display: flex;
   align-items: center;
   justify-content: space-between;
-  margin: 36rpx 0 16rpx;
 }
 .link {
   font-size: 26rpx;
   font-weight: 600;
   color: var(--sh-primary);
 }
+/* 底和圆角由外层 .sh-block 给 —— 常买行在块内成行，不再各自一张卡 */
 .freq {
   display: flex;
   align-items: center;
   gap: 20rpx;
-  background: var(--sh-surface);
-  border-radius: 28rpx;
-  padding: 20rpx 24rpx;
-  margin-bottom: 16rpx;
+  padding: 20rpx 26rpx;
 }
 .freq.is-off {
   opacity: 0.5;
@@ -285,9 +313,12 @@ onShareAppMessage(() =>
   min-width: 0;
 }
 .freq__title {
+  /* 常买清单的行内商品名 —— 与购物车/订单里的商品行同类，用同一档
+     （这里的 .freq 是**横向行**，不是首页那个同名的横滑窄卡） */
   display: block;
-  font-size: 28rpx;
+  font-size: 30rpx;
   font-weight: 600;
+  line-height: 1.4;
   color: var(--sh-ink);
 }
 .freq__tags {
@@ -313,29 +344,26 @@ onShareAppMessage(() =>
   border-radius: 9999px;
   background: var(--sh-primary);
   color: var(--sh-on-primary);
-  font-size: 32rpx;
+  font-size: 30rpx;
   text-align: center;
   line-height: 56rpx;
 }
+/* 履约说明在常买块内收尾：它解释的就是上面这些东西怎么送到 */
 .ship {
-  margin-top: 24rpx;
+  margin: 8rpx 26rpx 0;
   padding: 20rpx 24rpx;
   border-radius: 24rpx;
   background: var(--sh-faint);
   line-height: 1.6;
 }
+/* 搜索框在白块内，底要比块浅一档才看得出是个输入框 */
 .search {
   height: 80rpx;
   padding: 0 24rpx;
   border-radius: 24rpx;
-  background: var(--sh-surface);
+  background: var(--sh-faint);
   font-size: 26rpx;
   color: var(--sh-ink);
-  margin-bottom: 20rpx;
-}
-.grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 20rpx;
+  margin: 0 26rpx 12rpx;
 }
 </style>

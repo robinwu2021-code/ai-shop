@@ -84,7 +84,7 @@ async function submit() {
 }
 .field {
   background: var(--sh-surface);
-  border-radius: 28rpx;
+  border-radius: 32rpx;
   padding: 32rpx;
   font-size: 30rpx;
   color: var(--sh-ink);
@@ -98,7 +98,7 @@ async function submit() {
 .agree {
   display: block;
   text-align: center;
-  font-size: 22rpx;
+  font-size: 24rpx;
   color: var(--sh-sub);
   margin-top: 40rpx;
   line-height: 1.6;

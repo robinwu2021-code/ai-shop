@@ -5,7 +5,7 @@ import { onShow } from "@dcloudio/uni-app";
 import { api } from "@/api";
 import { useCartStore } from "@/stores/cart";
 import { useCommunityStore } from "@/stores/community";
-import { CATEGORY_TYPE, ROUTES } from "@shared/utils/constants";
+import { GOODS_COVER_FALLBACK, CATEGORY_TYPE, ROUTES } from "@shared/utils/constants";
 import { firstSku } from "@shared/utils/goods";
 import { flyToCart, tapPoint } from "@/shared/fly";
 import type { CategoryType, Goods } from "@shared/types";
@@ -52,7 +52,7 @@ async function add(g: Goods, e: unknown) {
   try {
     await cart.add(g.goodsNo, firstSku(g).skuNo, 1);
     const p = tapPoint(e as Parameters<typeof tapPoint>[0]);
-    flyToCart(p.x, p.y, g.cover);
+    flyToCart(p.x, p.y, g.cover || GOODS_COVER_FALLBACK);
   } catch (err) {
     uni.showToast({ title: (err as Error).message, icon: "none" });
   }
@@ -75,23 +75,36 @@ onShow(load);
       <text class="searchentry__text">{{ $t("search.placeholder") }}</text>
     </view>
 
-    <sh-tabs
-      :items="tabs.map((t) => ({ key: t.type, label: String($t(`category.${t.key}`)) }))"
-      :active="active"
-      @change="switchTab"
-    ></sh-tabs>
+    <view class="sh-block">
+      <view class="sh-block__head sh-block__head--tabs">
+        <sh-tabs
+          :items="
+            tabs.map((t) => ({
+              key: t.type,
+              label: String($t(`category.${t.key}`)),
+            }))
+          "
+          :active="active"
+          @change="switchTab"
+        ></sh-tabs>
+      </view>
 
-    <biz-goods-card
-      v-for="g in list"
-      :key="g.goodsNo"
-      :goods="g"
-      @add="add(g, $event)"
-      @tap="openGoods(g)"
-    ></biz-goods-card>
+      <biz-goods-card
+        v-for="g in list"
+        :key="g.goodsNo"
+        :goods="g"
+        @add="add(g, $event)"
+        @tap="openGoods(g)"
+      ></biz-goods-card>
 
-    <!-- 加了社区过滤之后，「空」的含义变了：不是没上架，是**这个社区没人做这门生意**。
-         照旧显示「还没有内容」会让人以为 App 坏了 -->
-    <sh-empty bare v-if="!list.length" :text='$t("category.emptyInCommunity")'></sh-empty>
+      <!-- 加了社区过滤之后，「空」的含义变了：不是没上架，是**这个社区没人做这门生意**。
+           照旧显示「还没有内容」会让人以为 App 坏了 -->
+      <sh-empty
+        bare
+        v-if="!list.length"
+        :text="$t('category.emptyInCommunity')"
+      ></sh-empty>
+    </view>
   </sh-scaffold>
 </template>
 

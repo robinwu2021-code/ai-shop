@@ -124,8 +124,8 @@ onShow(load);
 }
 .sum__v {
   display: block;
-  font-size: 44rpx;
-  font-weight: 700;
+  font-size: 40rpx;
+  font-weight: 600;
   color: var(--sh-ink);
   line-height: 1.2;
 }
@@ -177,7 +177,7 @@ onShow(load);
 .tip {
   display: block;
   margin: 20rpx 8rpx 0;
-  font-size: 22rpx;
+  font-size: 24rpx;
   color: var(--sh-sub);
   line-height: 1.6;
 }

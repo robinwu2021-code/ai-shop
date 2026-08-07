@@ -441,7 +441,7 @@ onShareAppMessage(() =>
 .hero {
   position: relative;
   height: 440rpx;
-  border-radius: 40rpx;
+  border-radius: 44rpx;
   background: var(--sh-primary-tint);
   display: flex;
   align-items: center;
@@ -458,7 +458,7 @@ onShareAppMessage(() =>
   background: var(--sh-danger);
   color: #fff;
   font-size: 24rpx;
-  font-weight: 700;
+  font-weight: 400;
   padding: 8rpx 20rpx;
   border-radius: 9999px;
 }
@@ -479,9 +479,8 @@ onShareAppMessage(() =>
   margin-top: 28rpx;
 }
 .price__now {
-  font-size: 56rpx;
+  font-size: 48rpx;
   font-weight: 700;
-  letter-spacing: -1.2rpx;
   color: var(--sh-ink);
 }
 .price__was {
@@ -521,7 +520,7 @@ onShareAppMessage(() =>
   opacity: 0.35;
 }
 .spec__name {
-  font-size: 27rpx;
+  font-size: 26rpx;
   color: var(--sh-ink);
   font-weight: 600;
 }
@@ -618,13 +617,13 @@ onShareAppMessage(() =>
 }
 .time__t {
   display: block;
-  font-size: 27rpx;
+  font-size: 26rpx;
   font-weight: 600;
   color: var(--sh-ink);
 }
 .time__left {
   display: block;
-  font-size: 20rpx;
+  font-size: 24rpx;
   color: var(--sh-sub);
   margin-top: 2rpx;
 }
@@ -701,7 +700,7 @@ onShareAppMessage(() =>
   border-radius: 9999px;
   background: var(--sh-danger);
   color: #fff;
-  font-size: 19rpx;
+  font-size: 24rpx;
   line-height: 30rpx;
   text-align: center;
 }
@@ -709,7 +708,7 @@ onShareAppMessage(() =>
 .actionbar__buy {
   flex: 1;
   min-width: 0;
-  font-size: 27rpx;
+  font-size: 26rpx;
   padding: 26rpx 8rpx;
   white-space: nowrap;
   overflow: hidden;
@@ -732,7 +731,7 @@ onShareAppMessage(() =>
   display: block;
   text-align: center;
   color: var(--sh-sub);
-  font-size: 25rpx;
+  font-size: 24rpx;
   padding: 40rpx 0;
 }
 </style>

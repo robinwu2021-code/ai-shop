@@ -8,6 +8,7 @@ import { useCommunityStore } from "@/stores/community";
 import { useCartStore } from "@/stores/cart";
 import { getLocation } from "@shared/ports/location";
 import { distance } from "@shared/utils/format";
+import { ROUTES } from "@shared/utils/constants";
 import type { Community, Pickup } from "@shared/types";
 
 const { t } = useI18n();
@@ -43,7 +44,21 @@ async function choose(c: Community, p: Pickup) {
   await community.bind(c, p);
   if (switching) await cart.refreshOnCommunityChange();
   uni.showToast({ title: String(t("community.bound")), icon: "none" });
-  setTimeout(() => uni.navigateBack(), 400);
+  /*
+   * 绑定完回哪儿：**这一页有两种到达方式**。
+   * 从首页点「切社区」进来 —— 有返回栈，navigateBack 正确；
+   * 而没归属的新用户是被**直接送到这里当首屏**的 —— 此时返回栈是空的，
+   * navigateBack 无声失败，人就卡在选社区页，选中了也走不掉。
+   * 后者恰恰是每个新用户的第一屏，所以兜底不是可选项。
+   */
+  setTimeout(() => {
+    const stack = getCurrentPages();
+    if (stack.length > 1) {
+      uni.navigateBack();
+    } else {
+      uni.switchTab({ url: ROUTES.home });
+    }
+  }, 400);
 }
 
 onLoad(load);
@@ -112,9 +127,8 @@ onLoad(load);
 }
 .cm__name {
   display: block;
-  font-size: 32rpx;
+  font-size: 30rpx;
   font-weight: 600;
-  letter-spacing: -0.3rpx;
   color: var(--sh-ink);
 }
 .cm__addr {
@@ -135,7 +149,7 @@ onLoad(load);
   align-items: center;
   gap: 20rpx;
   background: var(--sh-faint);
-  border-radius: 28rpx;
+  border-radius: 32rpx;
   padding: 24rpx;
 }
 .pk.is-on {
@@ -163,12 +177,12 @@ onLoad(load);
 }
 .pk__sub {
   display: block;
-  font-size: 22rpx;
+  font-size: 24rpx;
   color: var(--sh-sub);
   margin-top: 6rpx;
 }
 .pk__dist {
-  font-size: 22rpx;
+  font-size: 24rpx;
   color: var(--sh-sub);
   flex-shrink: 0;
 }

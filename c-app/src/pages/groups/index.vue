@@ -225,7 +225,7 @@ onShow(() => {
 .toggle__box {
   width: 40rpx;
   height: 40rpx;
-  border-radius: 12rpx;
+  border-radius: 16rpx;
   background: var(--sh-faint);
   color: var(--sh-on-primary);
   font-size: 26rpx;
@@ -257,7 +257,7 @@ onShow(() => {
 .privacy {
   display: block;
   margin-top: 16rpx;
-  font-size: 22rpx;
+  font-size: 24rpx;
   color: var(--sh-sub);
   line-height: 1.6;
 }
@@ -283,7 +283,7 @@ onShow(() => {
 
 .hint {
   display: block;
-  font-size: 23rpx;
+  font-size: 24rpx;
   color: var(--sh-sub);
   line-height: 1.6;
   margin: 24rpx 4rpx;
@@ -312,19 +312,19 @@ onShow(() => {
 }
 .rq__title {
   display: block;
-  font-size: 29rpx;
+  font-size: 28rpx;
   font-weight: 600;
   color: var(--sh-ink);
 }
 .rq__by {
   display: block;
-  font-size: 22rpx;
+  font-size: 24rpx;
   color: var(--sh-sub);
   margin-top: 6rpx;
 }
 .rq__desc {
   display: block;
-  font-size: 25rpx;
+  font-size: 24rpx;
   color: var(--sh-sub);
   line-height: 1.6;
   margin-top: 20rpx;

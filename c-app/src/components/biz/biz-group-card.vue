@@ -9,7 +9,10 @@ const props = defineProps<{ group: GroupBuy; now: number }>();
 defineEmits<{ (e: "tap"): void }>();
 
 const progress = computed(() =>
-  Math.min(100, Math.round((props.group.joinedCount / props.group.minCount) * 100)),
+  Math.min(
+    100,
+    Math.round((props.group.joinedCount / props.group.minCount) * 100),
+  ),
 );
 
 const off = computed(() =>
@@ -26,8 +29,12 @@ const off = computed(() =>
         <text class="gcard__pickup">{{ group.pickupName }}</text>
         <view class="gcard__price">
           <text class="gcard__now sh-num">{{ money(group.groupPrice) }}</text>
-          <text v-if="off > 0" class="gcard__base sh-num">{{ money(group.basePrice) }}</text>
-          <text v-if="off > 0" class="sh-chip sh-chip--danger sh-num">-{{ off }}%</text>
+          <text v-if="off > 0" class="gcard__base sh-num">{{
+            money(group.basePrice)
+          }}</text>
+          <text v-if="off > 0" class="sh-chip sh-chip--danger sh-num"
+            >-{{ off }}%</text
+          >
         </view>
       </view>
     </view>
@@ -40,7 +47,9 @@ const off = computed(() =>
       <text v-else class="gcard__goal-text gcard__goal-text--max">
         {{ $t("group.done") }}
       </text>
-      <text class="gcard__cd sh-num">{{ countdown(group.expireAt - now) }}</text>
+      <text class="gcard__cd sh-num">{{
+        countdown(group.expireAt - now)
+      }}</text>
     </view>
 
     <view class="bar">
@@ -49,7 +58,11 @@ const off = computed(() =>
 
     <view class="gcard__foot">
       <view class="avatars">
-        <text v-for="(m, i) in group.members.slice(0, 5)" :key="i" class="avatars__a">
+        <text
+          v-for="(m, i) in group.members.slice(0, 5)"
+          :key="i"
+          class="avatars__a"
+        >
           {{ m.avatar }}
         </text>
         <text class="avatars__n sh-num">
@@ -64,11 +77,18 @@ const off = computed(() =>
 </template>
 
 <style scoped>
+/*
+ * 团购卡是首页少数几个「真色块」之一 —— 它是**限时的、要立刻决定的**，
+ * 与下面可以慢慢逛的商品流不是一类，所以要自己站得住。
+ *
+ * 用 faint 而不是 surface：首页已翻成白底，surface 在那儿等于透明，
+ * 卡就化在背景里了；而在灰底页（团购页、店铺页）faint 同样比页底浅一档，两处都成立。
+ */
+/* 团购卡在「今日团」白块内，边界由外层白块给 —— 自己再描一圈是重复 */
 .gcard {
-  background: var(--sh-surface);
   border-radius: 32rpx;
-  padding: 28rpx;
-  margin-bottom: 20rpx;
+  /* 卡在「今日团」白块内，块自己给上下留白 —— 卡再加外边距会在块底叠出一道空白 */
+  padding: 4rpx 26rpx;
 }
 .gcard__top {
   display: flex;
@@ -77,12 +97,11 @@ const off = computed(() =>
 .gcard__cover {
   width: 150rpx;
   height: 150rpx;
-  border-radius: 28rpx;
-  background: var(--sh-faint);
+  border-radius: 32rpx;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 70rpx;
+  font-size: 96rpx;
   flex-shrink: 0;
 }
 .gcard__main {
@@ -93,6 +112,7 @@ const off = computed(() =>
   display: block;
   font-size: 30rpx;
   font-weight: 600;
+  line-height: 1.4;
   color: var(--sh-ink);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -100,7 +120,7 @@ const off = computed(() =>
 }
 .gcard__pickup {
   display: block;
-  font-size: 22rpx;
+  font-size: 24rpx;
   color: var(--sh-sub);
   margin-top: 8rpx;
 }
@@ -111,9 +131,9 @@ const off = computed(() =>
   margin-top: 18rpx;
 }
 .gcard__now {
-  font-size: 38rpx;
+  font-size: 40rpx;
   font-weight: 700;
-  letter-spacing: -0.6rpx;
+  line-height: 1.2;
   color: var(--sh-ink);
 }
 .gcard__base {
@@ -129,22 +149,26 @@ const off = computed(() =>
   margin-top: 24rpx;
 }
 .gcard__goal-text {
+  /* 强调靠**主色**，不靠字重 —— 这行已经是全卡唯一的彩色文字，
+     再加一道粗体是同一件事说两遍。 */
   font-size: 26rpx;
-  font-weight: 600;
+  font-weight: 400;
+  line-height: 1.5;
   color: var(--sh-primary);
 }
 .gcard__goal-text--max {
   color: var(--sh-success);
 }
 .gcard__cd {
-  font-size: 22rpx;
+  font-size: 24rpx;
   color: var(--sh-warning);
   flex-shrink: 0;
 }
 .bar {
   height: 12rpx;
   border-radius: 9999px;
-  background: var(--sh-faint);
+  /* 槽用主色浅调：与进度条同色系，一眼读作「还没走完的部分」 */
+  background: var(--sh-primary-tint);
   margin-top: 14rpx;
   overflow: hidden;
 }
@@ -171,13 +195,13 @@ const off = computed(() =>
   width: 46rpx;
   height: 46rpx;
   border-radius: 9999px;
-  background: var(--sh-faint);
+  background: var(--sh-primary-tint);
   text-align: center;
   line-height: 46rpx;
   font-size: 24rpx;
 }
 .avatars__n {
-  font-size: 22rpx;
+  font-size: 24rpx;
   color: var(--sh-sub);
   margin-inline-start: 8rpx;
 }

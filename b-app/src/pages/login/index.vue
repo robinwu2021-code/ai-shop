@@ -206,7 +206,7 @@ async function doLogin(method: LoginMethod) {
 .agree__box {
   width: 36rpx;
   height: 36rpx;
-  border-radius: 12rpx;
+  border-radius: 16rpx;
   background: var(--sh-faint);
   color: var(--sh-on-primary);
   font-size: 24rpx;
@@ -229,7 +229,7 @@ async function doLogin(method: LoginMethod) {
 .tip {
   display: block;
   margin: 24rpx 8rpx;
-  font-size: 22rpx;
+  font-size: 24rpx;
   color: var(--sh-sub);
   line-height: 1.6;
 }

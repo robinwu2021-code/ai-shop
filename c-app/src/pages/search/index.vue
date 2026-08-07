@@ -6,7 +6,7 @@ import { computed, ref } from "vue";
 import { onLoad } from "@dcloudio/uni-app";
 import { api } from "@/api";
 import { useCartStore } from "@/stores/cart";
-import { ROUTES, STORAGE } from "@shared/utils/constants";
+import { GOODS_COVER_FALLBACK, ROUTES, STORAGE } from "@shared/utils/constants";
 import { firstSku } from "@shared/utils/goods";
 import { flyToCart, tapPoint } from "@/shared/fly";
 import type { Goods, Merchant } from "@shared/types";
@@ -31,7 +31,10 @@ function loadHistory() {
 }
 
 function pushHistory(k: string) {
-  const next = [k, ...history.value.filter((x) => x !== k)].slice(0, HISTORY_MAX);
+  const next = [k, ...history.value.filter((x) => x !== k)].slice(
+    0,
+    HISTORY_MAX,
+  );
   history.value = next;
   uni.setStorageSync(STORAGE.searchHistory, next);
 }
@@ -71,7 +74,7 @@ async function add(g: Goods, e: unknown) {
   try {
     await cart.add(g.goodsNo, firstSku(g).skuNo, 1);
     const p = tapPoint(e as Parameters<typeof tapPoint>[0]);
-    flyToCart(p.x, p.y, g.cover);
+    flyToCart(p.x, p.y, g.cover || GOODS_COVER_FALLBACK);
   } catch (err) {
     uni.showToast({ title: (err as Error).message, icon: "none" });
   }
@@ -100,28 +103,43 @@ onLoad((q) => {
     </view>
 
     <!-- 搜索历史 -->
-    <view v-if="!searched && history.length" class="sh-card block">
-      <view class="hist__head">
+    <view v-if="!searched && history.length" class="sh-block">
+      <view class="sh-block__head hist__head">
         <text class="sh-muted">{{ $t("search.history") }}</text>
-        <text class="hist__clear" @tap="clearHistory">{{ $t("search.clear") }}</text>
+        <text class="hist__clear" @tap="clearHistory">{{
+          $t("search.clear")
+        }}</text>
       </view>
       <view class="hist__list">
-        <text v-for="h in history" :key="h" class="sh-chip hist__item" @tap="search(h)">
+        <text
+          v-for="h in history"
+          :key="h"
+          class="sh-chip hist__item"
+          @tap="search(h)"
+        >
           {{ h }}
         </text>
       </view>
     </view>
 
     <!-- 结果 -->
-    <template v-if="searched">
-      <sh-tabs
-        :items="[
-          { key: 'goods', label: String($t('search.goodsTab', { n: goods.length })) },
-          { key: 'merchants', label: String($t('search.merchantTab', { n: merchants.length })) },
-        ]"
-        :active="tab"
-        @change="(k: string) => (tab = k as typeof tab)"
-      ></sh-tabs>
+    <view v-if="searched" class="sh-block">
+      <view class="sh-block__head sh-block__head--tabs">
+        <sh-tabs
+          :items="[
+            {
+              key: 'goods',
+              label: String($t('search.goodsTab', { n: goods.length })),
+            },
+            {
+              key: 'merchants',
+              label: String($t('search.merchantTab', { n: merchants.length })),
+            },
+          ]"
+          :active="tab"
+          @change="(k: string) => (tab = k as typeof tab)"
+        ></sh-tabs>
+      </view>
 
       <template v-if="tab === 'goods'">
         <biz-goods-card
@@ -131,31 +149,48 @@ onLoad((q) => {
           @add="add(g, $event)"
           @tap="openGoods(g)"
         ></biz-goods-card>
-        <sh-empty bare v-if="!goods.length" :text='$t("search.noGoods")'></sh-empty>
+        <sh-empty
+          bare
+          v-if="!goods.length"
+          :text="$t('search.noGoods')"
+        ></sh-empty>
       </template>
 
       <template v-else>
         <view
           v-for="m in merchants"
           :key="m.merchantNo"
-          class="sh-card mcard"
+          class="mcard"
           @tap="openMerchant(m)"
         >
-          <biz-merchant-bar :merchant="m" @tap="openMerchant(m)"></biz-merchant-bar>
+          <biz-merchant-bar
+            :merchant="m"
+            @tap="openMerchant(m)"
+          ></biz-merchant-bar>
           <text class="mcard__desc">{{ m.desc }}</text>
           <view class="mcard__meta">
             <text class="sh-chip">{{ $t(`merchant.type.${m.type}`) }}</text>
             <text class="sh-chip sh-num">
               {{ $t("merchant.goodsTab", { n: m.goodsCount }) }}
             </text>
-            <text class="sh-chip sh-num">{{ $t("search.orders", { n: m.salesCount }) }}</text>
+            <text class="sh-chip sh-num">{{
+              $t("search.orders", { n: m.salesCount })
+            }}</text>
           </view>
         </view>
-        <sh-empty bare v-if="!merchants.length" :text='$t("search.noMerchant")'></sh-empty>
+        <sh-empty
+          bare
+          v-if="!merchants.length"
+          :text="$t('search.noMerchant')"
+        ></sh-empty>
       </template>
 
-      <sh-empty bare v-if="empty" :text='$t("search.nothing", { k: keyword })'></sh-empty>
-    </template>
+      <sh-empty
+        bare
+        v-if="empty"
+        :text="$t('search.nothing', { k: keyword })"
+      ></sh-empty>
+    </view>
   </sh-scaffold>
 </template>
 
@@ -186,8 +221,8 @@ onLoad((q) => {
 .block {
   margin-top: 24rpx;
 }
+/* 布局由 .sh-block__head 给，这里只补「清空」右对齐 */
 .hist__head {
-  display: flex;
   align-items: center;
   justify-content: space-between;
 }
@@ -199,18 +234,21 @@ onLoad((q) => {
   display: flex;
   flex-wrap: wrap;
   gap: 14rpx;
+  /* 块本身只管上下留白，横向由内容自己给 */
+  padding: 0 26rpx;
   margin-top: 20rpx;
 }
 .hist__item {
   padding: 12rpx 26rpx;
   font-size: 24rpx;
 }
+/* 商家结果在结果块内成行 —— 行与行之间靠内边距分隔，不再各自一张卡 */
 .mcard {
-  margin-bottom: 20rpx;
+  padding: 20rpx 26rpx;
 }
 .mcard__desc {
   display: block;
-  font-size: 25rpx;
+  font-size: 24rpx;
   color: var(--sh-sub);
   line-height: 1.6;
   margin-top: 20rpx;

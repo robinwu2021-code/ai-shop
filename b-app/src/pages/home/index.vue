@@ -168,8 +168,8 @@ onShow(load);
 }
 .grid__n {
   display: block;
-  font-size: 52rpx;
-  font-weight: 700;
+  font-size: 48rpx;
+  font-weight: 600;
   color: var(--sh-primary);
   line-height: 1.2;
 }
@@ -195,8 +195,8 @@ onShow(load);
 }
 .stats__v {
   display: block;
-  font-size: 36rpx;
-  font-weight: 700;
+  font-size: 34rpx;
+  font-weight: 600;
   color: var(--sh-ink);
 }
 .owned {
@@ -210,8 +210,8 @@ onShow(load);
   margin-bottom: 12rpx;
 }
 .owned__v {
-  font-size: 44rpx;
-  font-weight: 700;
+  font-size: 40rpx;
+  font-weight: 600;
   color: var(--sh-primary);
 }
 .entry {

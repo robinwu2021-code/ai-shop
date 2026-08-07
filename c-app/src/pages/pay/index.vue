@@ -169,9 +169,8 @@ onUnmounted(() => clearInterval(timer));
 }
 .hero__amount {
   display: block;
-  font-size: 72rpx;
+  font-size: 48rpx;
   font-weight: 700;
-  letter-spacing: -1.6rpx;
   color: var(--sh-ink);
 }
 .hero__label {
@@ -224,7 +223,7 @@ onUnmounted(() => clearInterval(timer));
 .method__tick {
   font-size: 30rpx;
   color: var(--sh-primary);
-  font-weight: 700;
+  font-weight: 400;
 }
 .done {
   text-align: center;
@@ -245,14 +244,14 @@ onUnmounted(() => clearInterval(timer));
 }
 .done__title {
   display: block;
-  font-size: 38rpx;
-  font-weight: 700;
+  font-size: 40rpx;
+  font-weight: 600;
   color: var(--sh-ink);
   margin-top: 28rpx;
 }
 .done__hint {
   display: block;
-  font-size: 25rpx;
+  font-size: 24rpx;
   color: var(--sh-sub);
   line-height: 1.6;
   margin-top: 16rpx;
@@ -260,7 +259,7 @@ onUnmounted(() => clearInterval(timer));
 .code {
   margin-top: 36rpx;
   background: var(--sh-primary-tint);
-  border-radius: 28rpx;
+  border-radius: 32rpx;
   padding: 28rpx;
 }
 .code--redeem {
@@ -268,7 +267,7 @@ onUnmounted(() => clearInterval(timer));
 }
 .code__label {
   display: block;
-  font-size: 22rpx;
+  font-size: 24rpx;
   color: var(--sh-primary);
 }
 .code--redeem .code__label {
@@ -276,8 +275,8 @@ onUnmounted(() => clearInterval(timer));
 }
 .code__v {
   display: block;
-  font-size: 52rpx;
-  font-weight: 700;
+  font-size: 48rpx;
+  font-weight: 600;
   letter-spacing: 6rpx;
   color: var(--sh-ink);
   margin-top: 12rpx;
