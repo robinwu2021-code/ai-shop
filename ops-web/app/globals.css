@@ -1,0 +1,421 @@
+@import "tailwindcss";
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ai-shop 平台运营端 · 设计 token
+   提取自 powerbank/ops-web（该体系已试错四轮、实机验证，见 docs/technical/TDD-ops-web.md §3.3）
+   规范：本文件即真源；组件层的约束由 lib/design-tokens.test.ts 拦截
+
+   三层架构，组件只准消费 Tier 2：
+     Tier 1 原始层  --gray-N / --accent-N / --green-N …  只有数值没有含义
+     Tier 2 语义层  --canvas / --border / --text-…       有岗位定义
+     Tier 3 组件层  --ctl-h / --row-h                     语义层表达不了时才加
+
+   为什么要分层：此前 token 是逐轮累加的，命名按用途随手起，彼此没有数量关系，
+   每次调色都要凭感觉试。分层后「这个灰好不好看」变成「这里该用第 6 档还是第 7 档」
+   —— 可判定、可争论出对错。
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* ── Tier 1 · 中性色阶（12 档，Radix Colors 岗位模型）────────────────────
+     色相偏冷（略带蓝）而非纯中性：纯灰读起来像"没选过"，微冷与设备/科技属性
+     相合，且四套主色（青绿/蓝/紫/近黑）都能坐得住。
+     ⚠️ 每档的岗位是**规定死的**，见下方 Tier 2 映射。混用档位就是 bug。 */
+  --gray-1:  #fcfcfd;   /* 最底层背景 */
+  --gray-2:  #f7f8fa;   /* 次级背景：卡片内的浅带（表头/隔行）*/
+  --gray-3:  #f1f2f5;   /* UI 元件底：输入框 / 分段槽 / 页面画布 */
+  --gray-4:  #ecedf1;   /* UI 元件 hover */
+  --gray-5:  #e5e7ec;   /* UI 元件 active / 选中 */
+  --gray-6:  #dee0e6;   /* 弱分隔线：表格行线 —— "隐约的界" */
+  --gray-7:  #d2d5dd;   /* 元件描边 —— "明确的边" */
+  --gray-8:  #b9bdc8;   /* 元件描边 hover */
+  --gray-9:  #8b8f9c;   /* 实心中性底 / 占位符文字 */
+  --gray-10: #7e828f;   /* 实心中性底 hover */
+  --gray-11: #61656f;   /* 次要文字（对白底 ≥4.5:1）*/
+  --gray-12: #1b1f27;   /* 主要文字：**不追求最大对比度**。#16171D 对白是 17.9:1，
+                           近乎极限，长时间盯表格发刺；15:1 上下更耐看也更沉稳 */
+
+  /* ── Tier 1 · 语义色（四套皮肤下恒定，状态含义不能随皮肤漂移）──────────
+     每色三档派生：subtle 底 / border 边 / text 文字。
+     ⚠️ text 档是必须的不是优化：直接拿 solid 当 tint 底上的文字色只有约 2.8:1，
+        小字过不了 AA —— 本项目真实踩过的坑。 */
+  --green-solid:  #12b76a;  --green-subtle:  #e7f7ef;  --green-text:  #05663a;
+  --amber-solid:  #f79009;  --amber-subtle:  #fdf1e3;  --amber-text:  #79450b;
+  /* red-600 而非 red-500(#F04438)：实心红按钮压白字，#F04438 只有 3.76:1，
+     过不了 AA（14px bold 不算大字，阈值仍是 4.5）。#D92D20 给到 4.83。
+     是同一色阶往下一档，不是随手调深。 */
+  --red-solid:    #d92d20;  --red-subtle:    #fdeceb;  --red-text:    #8f221b;
+  --blue-solid:   #2f6bff;  --blue-subtle:   #e9eeff;  --blue-text:   #1a3f9e;
+
+  /* ── Tier 2 · 语义层（组件只准用这一层）──────────────────────────────── */
+
+  /* 背景 */
+  /* ⚠️ 画布与卡片**必须差一档**。此前两者都是 #ffffff（对比度 1.00），卡片只靠
+     一层几乎看不见的 elevation-1 与画布区分 —— 这正是"UI 边界不清晰"的根因，
+     而暗色块里自己写着「画布/卡片 ≥1.10」这条硬指标，浅色下却没有满足。
+     现在：画布 = gray-2 的浅带，卡片保持纯白，再配一条 hairline 描边。 */
+  --surface: #ffffff;             /* 白面：rail / content / 卡片 */
+  --sunken: var(--gray-3);        /* 灰块：二级面板，全局唯一 */
+  --canvas: var(--gray-2);
+  --background: var(--gray-2);
+  --card: #ffffff;
+  --muted: var(--gray-2);         /* 卡片内浅带：表头 / 隔行 */
+  --secondary: var(--gray-3);     /* 元件填充：输入 / 分段槽（与画布同深，读作"凹陷"）*/
+  --accent: var(--gray-4);        /* hover */
+  --sidebar: var(--gray-3);
+
+  /* 文字 */
+  --foreground: var(--gray-12);
+  --card-foreground: var(--gray-12);
+  --muted-foreground: var(--gray-11);
+  --secondary-foreground: var(--gray-12);
+  --accent-foreground: var(--gray-12);
+  --sidebar-foreground: var(--gray-11);
+
+  /* 边界：**两档，别混用** —— 6 是表格行线，7 是元件描边 */
+  --border: var(--gray-6);
+  --border-strong: var(--gray-7);
+  --input: var(--gray-3);
+  /* 卡片/表格容器的 hairline。密集界面里"边界"应当由线来说，阴影只负责"浮起来"；
+     只给阴影的话，白卡压白底在低亮度屏幕上几乎看不出边。 */
+  --card-border: var(--gray-6);
+
+  /* 主色（Tier 1 由皮肤块注入 --primary，此处派生五档）*/
+  --primary: #18181b;
+  --primary-foreground: #ffffff;
+  --accent-subtle: color-mix(in srgb, var(--primary) 12%, var(--background));
+  /**
+   * 压在**主色浅底**上的文字色（与 --success-ink 等是同一档位的东西，此前唯独主色缺这一档）。
+   * 缺了它的后果是实测出来的：Badge 的 default tone 直接拿 --primary 当文字压在 14% 主色底上，
+   * 时尚蓝皮肤下只有 3.18:1，小字过不了 AA —— 而语义色那几档早就因为同样的原因修过一轮了。
+   * 浅色下往黑里压，暗色下往白里提（见 .dark 块）。
+   */
+  --primary-ink: color-mix(in oklch, var(--primary) 62%, #000);
+  --accent-border: color-mix(in srgb, var(--primary) 32%, var(--background));
+  --ring: var(--primary);
+  --ring-offset-bg: var(--background);
+
+  /* 语义色语义名（组件用这些，不用 Tier 1）*/
+  --success: var(--green-solid);  --success-tint: var(--green-subtle);  --success-ink: var(--green-text);
+  --warning: var(--amber-solid);  --warning-tint: var(--amber-subtle);  --warning-ink: var(--amber-text);
+  --destructive: var(--red-solid); --destructive-tint: var(--red-subtle); --destructive-ink: var(--red-text);
+  --info: var(--blue-solid);      --info-tint: var(--blue-subtle);      --info-ink: var(--blue-text);
+  /* 压在**实心语义底**上的文字色（区别于 --*-ink，那个是压在 tint 浅底上的）。
+     浅色下语义底够深 → 用白字；暗色下语义色被提亮 → 必须换深字，
+     否则 #F97066 配白字只有 2.79:1。此前 Button 写死 text-white，暗色下就是这个问题。 */
+  --on-semantic: #ffffff;
+
+  /* ── 形状（五档，仅此五档）──────────────────────────────────────────── */
+  --r-control: 3px;   /* 复选框 */
+  --r-field:   6px;   /* 控件：按钮/输入/下拉/分段项 */
+  --r-card:    10px;  /* 卡片、表格容器 */
+  --r-sheet:   14px;  /* 抽屉、模态框 */
+  --r-chip:    9999px;/* **仅徽章/状态芯片** —— 药丸是"标签"隐喻 */
+  --radius: var(--r-card);
+
+  /* ── 层次：密集界面优先描边，阴影只给真浮层 ──────────────────────────── */
+  --elevation-1: 0 1px 2px rgb(16 18 24 / 0.04), 0 1px 3px rgb(16 18 24 / 0.06);
+  --elevation-2: 0 4px 8px rgb(16 18 24 / 0.06), 0 8px 16px rgb(16 18 24 / 0.08);
+  --card-shadow: var(--elevation-1);
+  --shadow-pop:  var(--elevation-2);
+
+  /* ── 动效 ────────────────────────────────────────────────────────────── */
+  --dur-fast: 120ms;
+  --dur: 180ms;
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+
+  /* ── 层级（六档，禁止即兴取值）──────────────────────────────────────── */
+  --z-sticky: 100;
+  --z-drawer: 200;
+  --z-dialog: 300;
+  --z-popover: 400;
+  --z-toast: 500;
+  --z-tooltip: 600;   /* 恒在最上：它是对其它浮层的说明 */
+
+  /* ── Tier 3 · 密度（列表页紧凑 / 表单舒适）────────────────────────────
+     ⚠️ 控件高度必须走这两个 token，否则密度切换无效
+        —— 此前定义了却没有组件消费，切了等于没切。 */
+  --ctl-h: 36px;
+  --row-h: 48px;
+}
+
+/* ── 皮肤 ────────────────────────────────────────────────────────────────────
+   前四套**只换主色**，中性色与语义色恒定 —— 与 C 端
+   `packages/shared/src/design/tokens.ts` 的 SKINS 同名同色（改一处要改两处）。
+   第五套 `business` 是**整套配色**（连画布/卡片/中性阶一起换），破例的理由写在它自己那块。
+
+   ⚠️ **主按钮的文字色不是一律白的**。白字压在亮色主色上过不了 AA —— 实测
+   生鲜绿 2.66:1、促销橙(原 #ff6010) 3.03:1、时尚蓝(原 #2f6bff) 4.50:1，
+   全都低于 4.5。这不是本项目新发现的：C 端 `packages/shared` 的注释里早就写着
+   「绿底配墨字 6.80，配白字只有 2.66」，运营端此前只是没跟上那个结论。
+   现在每套皮肤各自选白字或墨字，取能过 4.5 的那个，由 `lib/skin-contrast.test.ts` 锁死。
+
+   顺带修正两个**与 C 端对不上的色值**（注释一直写着"同名同色"，实际并不同）：
+   promo 用的是 C 端的 **dark** 值 #ff6010（light 应为 #d24600）；blue #2f6bff 应为 #2c69ff。
+
+   ⚠️ mono 的黑改过一次：原值 #1c2029 与正文色 --gray-12(#1b1f27) **几乎是同一个值**，
+   于是主按钮和正文一样重，一屏上"最重的东西"有两个，主次分不出来。
+   现在压到 #0f1218：比正文明显更深，按钮才读得出是"那个要点的东西"；
+   同时它不是纯黑 —— 纯黑在白底上边缘会有光晕感，微冷的墨色更稳（对照 Linear / Vercel）。
+   这一档是**运营端刻意与 C 端(#18181B)不同**的：两者对白字都是 17~19:1，肉眼无差，
+   但 #18181B 与正文色几乎同亮度，会让主按钮和正文一样重。 */
+[data-theme="mono"]  { --primary: #0f1218; --primary-foreground: #ffffff; }
+[data-theme="fresh"] { --primary: #00b578; --primary-foreground: #14161a; }
+[data-theme="promo"] { --primary: #d24600; --primary-foreground: #ffffff; }
+[data-theme="blue"]  { --primary: #2c69ff; --primary-foreground: #ffffff; }
+
+/* ── business：商务范（整套，含背景）────────────────────────────────────────
+   为什么这套可以动中性阶，而前四套不行：前四套要与 C 端同源，C 端换肤只换主色；
+   business 是**运营端专有**的一套（C 端没有对应皮肤），不受那条同源约束。
+
+   做法：中性阶整体往蓝灰偏（石板色），画布再压深一档，卡片保持纯白。
+   结果是白卡在冷灰画布上"浮"得更明确，长时间盯表格时眼睛比纯白底松弛；
+   主色取深海军蓝而不是黑 —— 黑是中性的"重"，藏蓝是有方向的"稳"，商务感来自后者。
+   语义色（成功/警告/危险/信息）仍然不动：状态含义不能随皮肤漂移。 */
+[data-theme="business"] {
+  --gray-1:  #fbfcfd;
+  --gray-2:  #f3f5f8;
+  --gray-3:  #eaeef3;
+  --gray-4:  #e2e7ee;
+  --gray-5:  #d9e0e9;
+  --gray-6:  #cfd7e2;   /* 行线：比默认灰更"蓝"，与藏蓝主色同族 */
+  --gray-7:  #bcc6d4;
+  --gray-8:  #9daabd;
+  --gray-9:  #74839a;
+  --gray-10: #66748a;
+  --gray-11: #4d5a6e;   /* 次要文字：对白底 7.4:1，比默认灰更实 */
+  --gray-12: #16202e;   /* 主要文字：带蓝的深墨 */
+
+  --primary: #1b3b6f;
+  --primary-foreground: #ffffff;
+
+  --canvas: var(--gray-3);        /* 画布比默认更深一档：卡片浮得更明确 */
+  --background: var(--gray-3);
+  --surface: #ffffff;
+  --card: #ffffff;
+  --sunken: var(--gray-4);
+  --muted: var(--gray-2);
+  --secondary: var(--gray-3);
+  --accent: var(--gray-4);
+  --sidebar: var(--gray-2);
+  --input: var(--gray-3);
+  --card-border: var(--gray-6);
+}
+
+.dark {
+  --gray-1:  #0c0d10;
+  --gray-2:  #111318;
+  --gray-3:  #191c22;
+  --gray-4:  #1e2128;
+  --gray-5:  #23272f;
+  --gray-6:  #2a2e37;
+  --gray-7:  #343945;
+  --gray-8:  #454b59;
+  --gray-9:  #6c7280;
+  --gray-10: #7a8090;
+  --gray-11: #a0a6b2;
+  --gray-12: #f2f4f7;
+
+  /* 暗底上语义色要提亮才够对比，色相不变；subtle 改为混入卡片色（不能用浅色底）*/
+  --green-solid: #32d583; --green-subtle: #10281d; --green-text: #6ce9a6;
+  --amber-solid: #fdb022; --amber-subtle: #2a1d09; --amber-text: #fec84b;
+  --red-solid:   #f97066; --red-subtle:   #2d1513; --red-text:   #fda29b;
+  --blue-solid:  #6690ff; --blue-subtle:  #131c33; --blue-text:  #a4bcfd;
+  /* 实心语义底上的文字：暗色下语义色被提亮，白字只有 2.79:1 → 必须压深。
+     浅色是白字（4.83:1）。这一档明暗必须不同，不能只定义一次。 */
+  --on-semantic: var(--gray-1);
+
+  /* ⚠️ 暗色下卡片要**整体上移一档**（用 gray-3 而不是 gray-2）：
+     gray-1 与 gray-2 只差 1.05 的对比度，卡片浮不起来。规范里"画布/卡片 ≥1.10"
+     这条硬指标在暗色下同样要满足，不能因为"暗色本来就该靠描边"就放过。 */
+  /* ⚠️ 上面那句"卡片上移一档"此前**没有真的落到代码里**：canvas 与 card 都是 gray-2，
+     对比度 1.00 —— 与浅色下那个已修的坑一模一样，只是被"暗色本来就靠描边"的说法盖过去了。
+     现在画布 gray-2、卡片 gray-3，差一档；再配 --card-border(gray-7) 描边。 */
+  --surface: var(--gray-3);
+  --sunken: var(--gray-1);        /* 暗色下"下沉"是更深，不是更浅 */
+  --canvas: var(--gray-2);
+  --background: var(--gray-2);
+  --card: var(--gray-3);
+  --muted: var(--gray-4);         /* 卡片内浅带：比卡片(gray-3)再上一档才看得出是"带" */
+  --secondary: var(--gray-4);
+  --accent: var(--gray-5);
+  --sidebar: var(--gray-2);       /* 侧栏与画布同色：外壳是一整块，不该看着像浮在上面 */
+  --input: var(--gray-4);
+  --card-border: var(--gray-7);   /* 暗色下阴影不可见，边界全靠这条线，要比行线重一档 */
+
+  /* 暗色下主色本身已被提亮，ink 要继续往白里走，不能沿用浅色那条往黑压的公式 */
+  --primary-ink: color-mix(in oklch, var(--primary) 72%, #fff);
+
+  /* 暗色下浅字压深底会显胖，此时才需要 antialiased 把笔画收细 */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  /* ⚠️ 暗色下阴影不可见，浮层边界改用描边表达 —— 加深阴影是无效的 */
+  --card-shadow: none;
+  --shadow-pop: 0 8px 24px rgb(0 0 0 / 0.5);
+}
+
+/* 黑白灰皮肤在暗色下主色要反相，否则近黑主色在深底上完全看不见 */
+.dark[data-theme="mono"] { --primary: #f2f4f7; --primary-foreground: #16171d; }
+/* 商务蓝同理：#1b3b6f 压在深底上几乎与背景同亮度，按钮会"消失"。
+   提到中蓝并换深色前景 —— 与语义色在暗色下提亮是同一套做法。
+   ⚠️ business 在浅色下会重写整条 gray 阶，但 `.dark` 块在它之后、特异度相同，
+   所以暗色下中性阶回到标准暗色阶，只有主色需要单独给一档。 */
+.dark[data-theme="business"] { --primary: #7ea6e0; --primary-foreground: #0c1830; }
+
+[data-density="dense"] {
+  --ctl-h: 30px;
+  --row-h: 36px;
+}
+
+@theme inline {
+  --radius-control: var(--r-control);
+  --radius-field: var(--r-field);
+  --radius-card: var(--r-card);
+  --radius-sheet: var(--r-sheet);
+  --radius-chip: var(--r-chip);
+  --shadow-card: var(--card-shadow);
+  --shadow-pop: var(--shadow-pop);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-canvas: var(--canvas);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent-subtle: var(--accent-subtle);
+  --color-accent-border: var(--accent-border);
+  --color-destructive: var(--destructive);
+  --color-on-semantic: var(--on-semantic);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-info: var(--info);
+  --color-success-tint: var(--success-tint);
+  --color-warning-tint: var(--warning-tint);
+  --color-destructive-tint: var(--destructive-tint);
+  --color-info-tint: var(--info-tint);
+  --color-success-ink: var(--success-ink);
+  --color-warning-ink: var(--warning-ink);
+  --color-destructive-ink: var(--destructive-ink);
+  --color-info-ink: var(--info-ink);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  /* 兼容层：把 Tailwind 默认阶**映射到五档**，而不是让它们各行其是。
+     本工程从零起步，组件层与页面层都由 lib/design-tokens.test.ts 锁在五档（基线 0）；
+     这一段只是给第三方/临时片段兜底，不要当成可以随便写 rounded-lg 的许可。 */
+  --radius-sm: var(--r-control);
+  --radius-md: var(--r-field);
+  --radius-lg: var(--r-field);
+  --radius-xl: var(--r-card);
+  --radius-2xl: var(--r-sheet);
+}
+/* ── 外壳：一整块白底，中间嵌一条灰带 ─────────────────────────────────────
+   规范：docs/technical/设计规范-布局与外壳.md §2
+
+   **只用两级色调**：白（rail + content）与灰（panel）。
+   灰色的二级面板**自己就是分隔物** —— 它同时隔开 rail 与 content，
+   不需要缝隙、不需要线、不需要第三个色阶。
+
+   一级菜单与内容同为白面：一级是主功能入口，不该被压成灰底推到背景里。
+   二级是"上下文"，比一级更临时、比内容更辅助，用一个下沉色块表达刚好。
+
+   走到这版之前试错了四轮（见规范 §9）：三栏同色 → 加竖线 → 三级灰阶梯
+   （导航整片发灰）→ 两张白纸（主次菜单又混在一起）。
+   本版关键是**减少色块层级**：层级越少越不容易乱，且"一级白、二级灰"
+   直接对应导航的主次关系，而不是靠深浅程度去暗示。 */
+[data-shell="page"],
+[data-shell="rail"],
+[data-shell="sheet"] { background: var(--surface); }
+
+/* 全局唯一的灰块 */
+aside[class*="bg-sidebar"]:not([data-shell="rail"]) {
+  background: var(--sunken);
+  color: var(--foreground);
+}
+
+* {
+  border-color: var(--border);
+}
+body {
+  background: var(--canvas);
+  color: var(--foreground);
+  /* 拉丁与数字走 IBM Plex（0/O、1/l 分得开，金额与单号密集时靠它）；
+     汉字走**系统 CJK 字族**。
+     ⚠️ IBM Plex Sans SC 那条 CDN 链接实测在本机没有注册任何 @font-face
+     （`[...document.fonts]` 里查无 SC 家族），也就是说汉字一直在无声地回退。
+     与其依赖一个可能拿不到的网络字体，不如把回退链写成**刻意的选择**：
+     PingFang / 苹方与 Plex 的字面高度接近，中英混排时基线不会打架。 */
+  font-family: var(--font-plex), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "PingFang SC", "HarmonyOS Sans SC", "Source Han Sans SC", "Noto Sans CJK SC",
+    "Hiragino Sans GB", "Microsoft YaHei", "微软雅黑", sans-serif;
+  /* = C 端 28rpx/1.5（750 设计宽下 28rpx≈14px，见 packages/shared/src/design/tokens.ts）。只影响未显式标 text-* 的元素；
+     Tailwind 的 text-sm 等是 rem 基准（跟 html 字号），不受这里影响。 */
+  font-size: 14px;
+  line-height: 1.5;
+  /* 刻意不设 -webkit-font-smoothing: antialiased —— 它是从 C 端手机端抄来的。
+     在 macOS 上它让笔画变细：对深色底的大字有利，但对浅底小字恰恰相反，
+     11~13px 被削薄后发虚，正是"tip 字看不清"的直接原因之一。
+     密集后台用系统默认的次像素渲染，小字更实。暗色下反过来（见 .dark 块）。 */
+  text-rendering: optimizeLegibility;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 类型阶（规范 §3.2 的实现）—— 组件层正在接入中
+   **字号下限 12px**：此前页面上真实出现过 10px 文字，任何屏幕都读不清。
+   小字（≤12px）一律 500 以上字重 —— 400 在小字号下笔画太细，是 tip 看不清的直接原因。 */
+.txt-display { font-size: 24px; font-weight: 700; line-height: 1.25; letter-spacing: -0.2px; }
+.txt-title   { font-size: 18px; font-weight: 700; line-height: 1.3;  letter-spacing: -0.2px; }
+.txt-heading { font-size: 15px; font-weight: 600; line-height: 1.4; }
+.txt-body    { font-size: 14px; font-weight: 400; line-height: 1.5; }
+.txt-strong  { font-size: 14px; font-weight: 500; line-height: 1.5; }
+.txt-label   { font-size: 12px; font-weight: 500; line-height: 1.4; }
+.txt-caption { font-size: 12px; font-weight: 500; line-height: 1.4; }
+.tabular-nums, .txt-num { font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1; }
+
+/* ── 焦点环：全站唯一一份配方 ────────────────────────────────────────────────
+   此前这串四个类在 14 个组件里各手写一遍，于是 **Button 漏了 ring-offset 两项** ——
+   最常用的控件反而是唯一不合规的那个，`/dev/ui` 规范体检一次报出 35 处。
+   配方沉到这里之后，调用方只写 `focus-ring`，想漏都漏不掉。
+
+   用 `@utility` 而不是自己写一条 `box-shadow`：Tailwind 的 ring 是通过 `--tw-ring-*`
+   与 `--tw-shadow` **叠加**成一条 box-shadow 的。手写 box-shadow 会把元素原有的阴影
+   整个顶掉 —— 主按钮带 `shadow-[var(--card-shadow)]`，一聚焦阴影就没了。
+
+   `app/dev/ui/audit.ts` 的 DOM 扫描认这个类名（它读 class 字符串，看不到展开结果）。 */
+@utility focus-ring {
+  @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--ring-offset-bg)];
+}
+
+/* ── 入场动效 ──────────────────────────────────────────────────────────────
+   drawer / confirm-dialog 里用了 `animate-in` `fade-in` `slide-in-from-right`
+   这几个类名，但项目**没有装 tailwindcss-animate**，Tailwind 4 下它们一个都不生成
+   —— 也就是说抽屉和弹窗一直是"瞬间出现"的，代码却看着像有动画。
+
+   这里补上真实实现，而不是加一个依赖：只需要三个类，且用我们自己的
+   --dur/--ease（= C 端按钮的实测缓动），比插件默认值更贴近 C 端手感。 */
+@keyframes pb-fade-in { from { opacity: 0 } to { opacity: 1 } }
+@keyframes pb-slide-in-end { from { transform: translateX(100%) } to { transform: translateX(0) } }
+@keyframes pb-zoom-in { from { opacity: 0; transform: translate(-50%, -50%) scale(0.96) } to { opacity: 1; transform: translate(-50%, -50%) scale(1) } }
+
+.animate-in { animation-duration: var(--dur); animation-timing-function: var(--ease); animation-fill-mode: both; }
+.fade-in { animation-name: pb-fade-in; }
+.zoom-in { animation-name: pb-zoom-in; }
+/* 抽屉从**行末方向**滑入：LTR 是右、RTL 是左。写死 right 会让阿语界面从错误的一侧飞进来。 */
+.slide-in-from-right { animation-name: pb-slide-in-end; }
+[dir="rtl"] .slide-in-from-right { animation-name: pb-slide-in-end; transform-origin: left; }
+@keyframes pb-slide-in-end-rtl { from { transform: translateX(-100%) } to { transform: translateX(0) } }
+[dir="rtl"] .slide-in-from-right { animation-name: pb-slide-in-end-rtl; }
+
+/* 尊重系统的「减少动态效果」设置 —— 前庭失调用户会因位移动画不适。 */
+@media (prefers-reduced-motion: reduce) {
+  .animate-in { animation: none !important; }
+}

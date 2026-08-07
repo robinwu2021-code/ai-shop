@@ -1,0 +1,2575 @@
+# C 端 API 详情 · c-app（消费者小程序 / H5）
+
+> 由 `npm run gen:api-detail` 从 OpenAPI 生成，**请勿手改**。
+> 契约源：[`openapi.yaml`](openapi.yaml)　总表：[API 清单](API清单.md)
+
+## 通用约定
+
+| 项 | 约定 |
+|---|---|
+| 响应包 | `{ code, msg, data }`，`code=0` 表示成功；下文「出参」只描述 `data` |
+| 分页 | 入参 `page`（从 1 起）、`size`；出参 `{ records, total, page, size }` |
+| 金额 | 一律**最小货币单位整数**（分），字段名以 `Minor` 结尾。禁止浮点 |
+| 时间 | 毫秒时间戳整数，字段名以 `At` 结尾 |
+| 业务单号 | 字符串，字段名以 `No` 结尾（`orderNo`/`goodsNo`…），非自增 ID |
+| 枚举 | 大写下划线常量；取值见「数据模型」对应条目 |
+| 命名 | camelCase |
+| 鉴权 | 🔒 = 需 Bearer token；越权拦截以后端为准，前端仅做展示裁剪 |
+
+完整口径（错误码分段、HTTP 状态码取舍、空值语义、幂等）见 [响应格式规范](响应格式规范.md)。
+
+---
+
+## 接口
+
+### after-sale
+
+#### POST `/mp/after-sale/{afterSaleNo}/escalate`
+
+上升平台裁决　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `afterSaleNo` | path | `string` | 是 | 售后单号 |
+
+**出参**（`data`）
+
+类型：[`Order`](#order)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `orderNo` | `string` | 是 | 订单单号 |
+| `status` | [`OrderStatus`](#orderstatus) | 是 | 订单状态。粗粒度；售后细节见 `afterSale` |
+| `fulfillment` | [`FulfillmentType`](#fulfillmenttype) | 是 | 履约方式，下单时锁定 |
+| `items` | [`OrderItem`](#orderitem)\[\] | 是 | 订单行。含赠品行（`isGift`，价格为 0） |
+| `amount` | [`OrderAmount`](#orderamount) | 是 | 金额明细 |
+| `verifyCode` | `string` | 否 | 自提码 / 核销码 |
+| `redeemCode` | `string` | 否 | VIRTUAL：兑换码；CARD：卡号 |
+| `pickupNo` | `string` | 否 | PICKUP：自提点单号 |
+| `pickupName` | `string` | 否 | PICKUP：自提点名称快照 |
+| `expressNo` | `string` | 否 | EXPRESS：快递单号，发货后才有 |
+| `appointmentAt` | `number` | 否 | APPOINTMENT：预约开始时间戳 |
+| `createdAt` | `number` | 是 | 下单时间 |
+| `payDeadlineAt` | `number` | 否 | 支付截止时间。超时自动取消，仅 WAIT_PAY 有意义 |
+| `timeline` | [`OrderTimelineNode`](#ordertimelinenode)\[\] | 是 | 状态流转轨迹，按时间正序。订单详情的进度条据此渲染 |
+| `idempotencyKey` | `string` | 否 | 下单幂等 key。端上生成，重复提交返回同一笔订单而不是新建 |
+| `buyerNickname` | `string` | 否 | 下单人昵称。团长视角（分拣单/核销台）要看得见是谁的单 |
+| `reviewed` | `boolean` | 否 | 已评价 |
+| `pointsGranted` | `boolean` | 否 | 积分是否已发放（幂等标记，防止重复核销重复发分） |
+| `trafficSource` | `MERCHANT_OWNED` \| `PLATFORM` | 否 | 客流来源。**决定平台费率档**：商家自带客流建议零佣金 —— 他带来的客户 在别家的消费才是平台的收益（ADR-004 §6）。从店铺码/店铺分享进入即为 MERCHANT_OWNED。 |
+| `groupNo` | `string` | 否 | 参与的团。邻里自提的核销作用域就靠它裁剪（E16） |
+| `afterSale` | [`AfterSale`](#aftersale) | 否 | 售后单。订单状态只有粗粒度的 REFUNDING/REFUNDED，细节在这里 |
+| `merchantNo` | `string` | 否 | 本单归属的商家。**一单只属于一个商家** —— 购物车跨商家时拆成多笔子订单（E3）。 不拆的话分账无从谈起：一笔钱要分给几家、各分多少，没有承载的单据。 |
+| `merchantName` | `string` | 否 | 商家名快照 |
+| `payGroupNo` | `string` | 否 | 支付组号。同一次结算拆出的子订单共享它，**一次支付付掉整组**。 用户感知是「买了一次」，资金与分账感知是「N 笔各归各家」。 |
+
+
+#### POST `/mp/after-sale/{afterSaleNo}/ship`
+
+填退货运单号　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `afterSaleNo` | path | `string` | 是 | 售后单号 |
+
+**出参**（`data`）
+
+类型：[`Order`](#order)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `orderNo` | `string` | 是 | 订单单号 |
+| `status` | [`OrderStatus`](#orderstatus) | 是 | 订单状态。粗粒度；售后细节见 `afterSale` |
+| `fulfillment` | [`FulfillmentType`](#fulfillmenttype) | 是 | 履约方式，下单时锁定 |
+| `items` | [`OrderItem`](#orderitem)\[\] | 是 | 订单行。含赠品行（`isGift`，价格为 0） |
+| `amount` | [`OrderAmount`](#orderamount) | 是 | 金额明细 |
+| `verifyCode` | `string` | 否 | 自提码 / 核销码 |
+| `redeemCode` | `string` | 否 | VIRTUAL：兑换码；CARD：卡号 |
+| `pickupNo` | `string` | 否 | PICKUP：自提点单号 |
+| `pickupName` | `string` | 否 | PICKUP：自提点名称快照 |
+| `expressNo` | `string` | 否 | EXPRESS：快递单号，发货后才有 |
+| `appointmentAt` | `number` | 否 | APPOINTMENT：预约开始时间戳 |
+| `createdAt` | `number` | 是 | 下单时间 |
+| `payDeadlineAt` | `number` | 否 | 支付截止时间。超时自动取消，仅 WAIT_PAY 有意义 |
+| `timeline` | [`OrderTimelineNode`](#ordertimelinenode)\[\] | 是 | 状态流转轨迹，按时间正序。订单详情的进度条据此渲染 |
+| `idempotencyKey` | `string` | 否 | 下单幂等 key。端上生成，重复提交返回同一笔订单而不是新建 |
+| `buyerNickname` | `string` | 否 | 下单人昵称。团长视角（分拣单/核销台）要看得见是谁的单 |
+| `reviewed` | `boolean` | 否 | 已评价 |
+| `pointsGranted` | `boolean` | 否 | 积分是否已发放（幂等标记，防止重复核销重复发分） |
+| `trafficSource` | `MERCHANT_OWNED` \| `PLATFORM` | 否 | 客流来源。**决定平台费率档**：商家自带客流建议零佣金 —— 他带来的客户 在别家的消费才是平台的收益（ADR-004 §6）。从店铺码/店铺分享进入即为 MERCHANT_OWNED。 |
+| `groupNo` | `string` | 否 | 参与的团。邻里自提的核销作用域就靠它裁剪（E16） |
+| `afterSale` | [`AfterSale`](#aftersale) | 否 | 售后单。订单状态只有粗粒度的 REFUNDING/REFUNDED，细节在这里 |
+| `merchantNo` | `string` | 否 | 本单归属的商家。**一单只属于一个商家** —— 购物车跨商家时拆成多笔子订单（E3）。 不拆的话分账无从谈起：一笔钱要分给几家、各分多少，没有承载的单据。 |
+| `merchantName` | `string` | 否 | 商家名快照 |
+| `payGroupNo` | `string` | 否 | 支付组号。同一次结算拆出的子订单共享它，**一次支付付掉整组**。 用户感知是「买了一次」，资金与分账感知是「N 笔各归各家」。 |
+
+
+### card
+
+#### GET `/mp/card/mine`
+
+我的卡包　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`UserCard`](#usercard)\[\]
+
+
+### cart
+
+#### GET `/mp/cart`
+
+购物车　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`CartItem`](#cartitem)\[\]
+
+
+#### POST `/mp/cart/add`
+
+加入购物车　🔒
+
+**入参**
+
+请求体：[`CartAddReq`](#cartaddreq)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `goodsNo` | `string` | 是 | 商品单号 |
+| `skuNo` | `string` | 是 | SKU 单号。购物车按 SKU 去重，同商品不同规格是两行 |
+| `qty` | `number` | 是 | 加购件数，正整数 |
+
+**出参**（`data`）
+
+类型：[`CartItem`](#cartitem)\[\]
+
+
+#### POST `/mp/cart/remove`
+
+移除商品　🔒
+
+**入参**
+
+请求体：[`CartRemoveReq`](#cartremovereq)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `skuNos` | `string`\[\] | 是 | 要删除的 SKU 列表。批量是因为购物车支持多选删除 |
+
+**出参**（`data`）
+
+类型：[`CartItem`](#cartitem)\[\]
+
+
+#### POST `/mp/cart/update`
+
+修改数量　🔒
+
+**入参**
+
+请求体：[`CartUpdateReq`](#cartupdatereq)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `skuNo` | `string` | 是 | 要改的 SKU |
+| `qty` | `number` | 是 | 改后的件数。传 0 等同于删除该行 |
+
+**出参**（`data`）
+
+类型：[`CartItem`](#cartitem)\[\]
+
+
+### community
+
+#### GET `/mp/community/nearby`
+
+附近社区与自提点　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `lat` | query | `number` | 否 | 纬度 |
+| `lng` | query | `number` | 否 | 经度 |
+
+**出参**（`data`）
+
+类型：[`Community`](#community)\[\]
+
+
+### coupon
+
+#### GET `/mp/coupon`
+
+优惠券列表　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`Coupon`](#coupon)\[\]
+
+
+#### POST `/mp/coupon/{couponNo}/receive`
+
+领取优惠券　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `couponNo` | path | `string` | 是 | 券单号 |
+
+**出参**（`data`）
+
+类型：[`Coupon`](#coupon)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `couponNo` | `string` | 是 | 券单号 |
+| `name` | `string` | 是 | 券名，如「满 50 减 5」 |
+| `thresholdMinor` | `number` | 是 | 使用门槛（最小货币单位）。0 表示无门槛 |
+| `discountMinor` | `number` | 是 | 抵扣金额（最小货币单位） |
+| `expireAt` | `number` | 是 | 过期时间 |
+| `received` | `boolean` | 是 | 当前用户是否已领取。列表页据此显示「领取」还是「去使用」 |
+| `scopeDesc` | `string` | 是 | 适用范围文案，如「仅限张记生鲜」。展示用，实际校验在服务端 |
+
+
+### goods
+
+#### GET `/mp/goods`
+
+商品列表　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `page` | query | `number` | 否 | 页码，从 1 起 |
+| `size` | query | `number` | 否 | 每页条数 |
+| `merchantNo` | query | `string` | 否 | 商家单号 |
+| `type` | query | [`CategoryType`](#categorytype) | 否 | 类型筛选，取值见对应枚举 |
+| `categoryNo` | query | `string` | 否 | 类目单号 |
+| `keyword` | query | `string` | 否 | 搜索关键词 |
+| `communityNo` | query | `string` | 否 | 社区单号 |
+
+**出参**（`data`）
+
+类型：`object`（见下）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `records` | [`Goods`](#goods)\[\] | 是 | — |
+| `total` | `integer` | 是 | — |
+| `page` | `integer` | 是 | — |
+| `size` | `integer` | 是 | — |
+
+
+#### GET `/mp/goods/{goodsNo}`
+
+商品详情　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `goodsNo` | path | `string` | 是 | 商品单号 |
+
+**出参**（`data`）
+
+类型：[`Goods`](#goods)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `goodsNo` | `string` | 是 | 商品单号 |
+| `title` | `string` | 是 | 商品标题 |
+| `subtitle` | `string` | 是 | 副标题/卖点一句话 |
+| `cover` | `string` | 是 | 封面图 URL。列表页用这一张 |
+| `images` | `string`\[\] | 是 | 详情轮播图 URL 列表 |
+| `type` | [`CategoryType`](#categorytype) | 是 | 商品形态，与所属类目的 type 一致。决定详情页用哪套字段 |
+| `categoryNo` | `string` | 是 | 所属类目 |
+| `merchant` | [`MerchantBrief`](#merchantbrief) | 是 | 所属商家 —— 商品与服务都要展示商家信息 |
+| `rating` | `number` | 否 | 本商品的评分与评价数（区别于商家整体评分） |
+| `ratingCount` | `number` | 否 | 本商品的评价条数 |
+| `price` | `number` | 是 | 展示价（最小货币单位），取各 SKU 最低价 |
+| `originPrice` | `number` | 否 | 划线价（最小货币单位） |
+| `fulfillments` | [`FulfillmentType`](#fulfillmenttype)\[\] | 是 | 支持的履约方式。**数组**：同一商品可以既自提又快递，下单时由用户选 |
+| `specGroups` | [`SpecGroup`](#specgroup)\[\] | 是 | 规格维度定义；单规格商品也有一组 |
+| `skus` | [`Sku`](#sku)\[\] | 是 | SKU 列表。单规格商品也有且仅有一条 |
+| `sales` | `number` | 是 | 累计销量，展示用 |
+| `cutoffAt` | `number` | 否 | FRESH：预售截单时间戳 |
+| `arrivalDesc` | `string` | 否 | FRESH：预计到货描述 |
+| `weighed` | `boolean` | 否 | FRESH：是否按实称多退少补 |
+| `origin` | `string` | 否 | FRESH：产地 |
+| `durationMin` | `number` | 否 | SERVICE：服务时长（分钟） |
+| `storeName` | `string` | 否 | SERVICE：可核销门店 |
+| `slots` | [`AppointmentSlot`](#appointmentslot)\[\] | 否 | SERVICE + APPOINTMENT：可预约时段 |
+| `card` | [`CardSpec`](#cardspec) | 否 | CARD |
+| `virtual` | [`VirtualSpec`](#virtualspec) | 否 | VIRTUAL |
+| `promotions` | [`Promotion`](#promotion)\[\] | 否 | 促销（一期只有买 N 送 M） |
+| `groupBuy` | `object`（见下） | 否 | 商家为本商品开放的拼团档：够 minCount 人享 price。不配则本商品不能发起团 |
+| `points` | `number` | 否 | 本商品每件赠送的积分。不同商品可以给不同积分，不配则按成交额比例默认发放 |
+| `limitPerUser` | `number` | 是 | 每人限购，0 = 不限 |
+| `onSale` | `boolean` | 是 | 是否在售。下架后详情页仍可访问（历史订单要点得进去），但不可下单 |
+
+`groupBuy` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `minCount` | `number` | 是 | — |
+| `price` | `number` | 是 | — |
+
+
+#### GET `/mp/goods/promoted`
+
+推荐商品（运营位）　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `communityNo` | query | `string` | 否 | 社区单号 |
+| `size` | query | `number` | 否 | 每页条数 |
+
+**出参**（`data`）
+
+类型：[`Goods`](#goods)\[\]
+
+
+### group-buy
+
+#### GET `/mp/group-buy`
+
+商家团列表　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `pickupNo` | query | `string` | 否 | 自提点单号 |
+
+**出参**（`data`）
+
+类型：[`GroupBuy`](#groupbuy)\[\]
+
+
+#### POST `/mp/group-buy`
+
+发起商家团　🔒
+
+**入参**
+
+请求体：[`CreateGroupBuyReq`](#creategroupbuyreq)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `goodsNo` | `string` | 是 | 要开团的商品，必须是已上架商品 |
+| `pickupNo` | `string` | 是 | 成团的自提点 |
+| `neighbor` | `object`（见下） | 否 | 邻里自提：送到我家（ADR-005）。只能是发起人自己家，不能指定别人家 |
+
+`neighbor` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `toMyHome` | `boolean` | 是 | — |
+| `address` | `string` | 是 | — |
+| `timeSlot` | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`GroupBuy`](#groupbuy)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `groupNo` | `string` | 是 | 团单号 |
+| `goodsNo` | `string` | 是 | 开团的商品 |
+| `title` | `string` | 是 | 商品标题快照 |
+| `cover` | `string` | 是 | 商品封面快照 |
+| `merchant` | [`MerchantBrief`](#merchantbrief) | 是 | 供货商家 |
+| `initiatorNickname` | `string` | 是 | 发起人昵称 |
+| `initiatorAvatar` | `string` | 是 | 发起人头像 |
+| `pickupNo` | `string` | 是 | ★ 成团范围：**成团单位是自提点**，拼的是一车送到一个点的成本 |
+| `pickupName` | `string` | 是 | 自提点名称快照 |
+| `basePrice` | `number` | 是 | 不成团时的价格（降级发货用此价） |
+| `groupPrice` | `number` | 是 | 成团价 |
+| `minCount` | `number` | 是 | 成团所需人数 |
+| `joinedCount` | `number` | 是 | 已参团人数 |
+| `reached` | `boolean` | 是 | 已成团 |
+| `need` | `number` | 是 | 还差几人 |
+| `expireAt` | `number` | 是 | 截止时间：发起后 validHours 与商品截单时间取更早 |
+| `members` | `object`（见下）\[\] | 是 | 已参团的人及各自件数，展示用 |
+| `joined` | `boolean` | 是 | 当前用户是否已参团 |
+| `neighborPickup` | [`PickupPoint`](#pickuppoint) | 否 | 邻里自提点（C-GB-06）：发起人勾选「送到我家」时有值。 参团者在这里取货，发起人负责签收与逐单核销 —— **零报酬**（ADR-005 §3）。 |
+| `isOwner` | `boolean` | 否 | 我是不是这个团的发起人 —— 决定是否显示轻核销入口 |
+
+`members[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `avatar` | `string` | 是 | — |
+| `nickname` | `string` | 是 | — |
+| `qty` | `number` | 是 | — |
+
+
+#### GET `/mp/group-buy/{groupNo}`
+
+商家团详情　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `groupNo` | path | `string` | 是 | 团单号 |
+
+**出参**（`data`）
+
+类型：[`GroupBuy`](#groupbuy)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `groupNo` | `string` | 是 | 团单号 |
+| `goodsNo` | `string` | 是 | 开团的商品 |
+| `title` | `string` | 是 | 商品标题快照 |
+| `cover` | `string` | 是 | 商品封面快照 |
+| `merchant` | [`MerchantBrief`](#merchantbrief) | 是 | 供货商家 |
+| `initiatorNickname` | `string` | 是 | 发起人昵称 |
+| `initiatorAvatar` | `string` | 是 | 发起人头像 |
+| `pickupNo` | `string` | 是 | ★ 成团范围：**成团单位是自提点**，拼的是一车送到一个点的成本 |
+| `pickupName` | `string` | 是 | 自提点名称快照 |
+| `basePrice` | `number` | 是 | 不成团时的价格（降级发货用此价） |
+| `groupPrice` | `number` | 是 | 成团价 |
+| `minCount` | `number` | 是 | 成团所需人数 |
+| `joinedCount` | `number` | 是 | 已参团人数 |
+| `reached` | `boolean` | 是 | 已成团 |
+| `need` | `number` | 是 | 还差几人 |
+| `expireAt` | `number` | 是 | 截止时间：发起后 validHours 与商品截单时间取更早 |
+| `members` | `object`（见下）\[\] | 是 | 已参团的人及各自件数，展示用 |
+| `joined` | `boolean` | 是 | 当前用户是否已参团 |
+| `neighborPickup` | [`PickupPoint`](#pickuppoint) | 否 | 邻里自提点（C-GB-06）：发起人勾选「送到我家」时有值。 参团者在这里取货，发起人负责签收与逐单核销 —— **零报酬**（ADR-005 §3）。 |
+| `isOwner` | `boolean` | 否 | 我是不是这个团的发起人 —— 决定是否显示轻核销入口 |
+
+`members[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `avatar` | `string` | 是 | — |
+| `nickname` | `string` | 是 | — |
+| `qty` | `number` | 是 | — |
+
+
+#### POST `/mp/group-buy/{groupNo}/join`
+
+参团　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `groupNo` | path | `string` | 是 | 团单号 |
+
+请求体：[`JoinGroupBuyReq`](#joingroupbuyreq)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `qty` | `number` | 是 | 参团件数，正整数 |
+
+**出参**（`data`）
+
+类型：[`GroupBuy`](#groupbuy)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `groupNo` | `string` | 是 | 团单号 |
+| `goodsNo` | `string` | 是 | 开团的商品 |
+| `title` | `string` | 是 | 商品标题快照 |
+| `cover` | `string` | 是 | 商品封面快照 |
+| `merchant` | [`MerchantBrief`](#merchantbrief) | 是 | 供货商家 |
+| `initiatorNickname` | `string` | 是 | 发起人昵称 |
+| `initiatorAvatar` | `string` | 是 | 发起人头像 |
+| `pickupNo` | `string` | 是 | ★ 成团范围：**成团单位是自提点**，拼的是一车送到一个点的成本 |
+| `pickupName` | `string` | 是 | 自提点名称快照 |
+| `basePrice` | `number` | 是 | 不成团时的价格（降级发货用此价） |
+| `groupPrice` | `number` | 是 | 成团价 |
+| `minCount` | `number` | 是 | 成团所需人数 |
+| `joinedCount` | `number` | 是 | 已参团人数 |
+| `reached` | `boolean` | 是 | 已成团 |
+| `need` | `number` | 是 | 还差几人 |
+| `expireAt` | `number` | 是 | 截止时间：发起后 validHours 与商品截单时间取更早 |
+| `members` | `object`（见下）\[\] | 是 | 已参团的人及各自件数，展示用 |
+| `joined` | `boolean` | 是 | 当前用户是否已参团 |
+| `neighborPickup` | [`PickupPoint`](#pickuppoint) | 否 | 邻里自提点（C-GB-06）：发起人勾选「送到我家」时有值。 参团者在这里取货，发起人负责签收与逐单核销 —— **零报酬**（ADR-005 §3）。 |
+| `isOwner` | `boolean` | 否 | 我是不是这个团的发起人 —— 决定是否显示轻核销入口 |
+
+`members[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `avatar` | `string` | 是 | — |
+| `nickname` | `string` | 是 | — |
+| `qty` | `number` | 是 | — |
+
+
+#### GET `/mp/group-buy/{groupNo}/orders`
+
+本团待取订单　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `groupNo` | path | `string` | 是 | 团单号 |
+
+**出参**（`data`）
+
+类型：[`Order`](#order)\[\]
+
+
+#### POST `/mp/group-buy/{groupNo}/receive`
+
+批次签收　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `groupNo` | path | `string` | 是 | 团单号 |
+
+**出参**（`data`）
+
+类型：[`Order`](#order)\[\]
+
+
+#### POST `/mp/group-buy/{groupNo}/verify`
+
+发起人核销　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `groupNo` | path | `string` | 是 | 团单号 |
+
+**出参**（`data`）
+
+类型：[`Order`](#order)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `orderNo` | `string` | 是 | 订单单号 |
+| `status` | [`OrderStatus`](#orderstatus) | 是 | 订单状态。粗粒度；售后细节见 `afterSale` |
+| `fulfillment` | [`FulfillmentType`](#fulfillmenttype) | 是 | 履约方式，下单时锁定 |
+| `items` | [`OrderItem`](#orderitem)\[\] | 是 | 订单行。含赠品行（`isGift`，价格为 0） |
+| `amount` | [`OrderAmount`](#orderamount) | 是 | 金额明细 |
+| `verifyCode` | `string` | 否 | 自提码 / 核销码 |
+| `redeemCode` | `string` | 否 | VIRTUAL：兑换码；CARD：卡号 |
+| `pickupNo` | `string` | 否 | PICKUP：自提点单号 |
+| `pickupName` | `string` | 否 | PICKUP：自提点名称快照 |
+| `expressNo` | `string` | 否 | EXPRESS：快递单号，发货后才有 |
+| `appointmentAt` | `number` | 否 | APPOINTMENT：预约开始时间戳 |
+| `createdAt` | `number` | 是 | 下单时间 |
+| `payDeadlineAt` | `number` | 否 | 支付截止时间。超时自动取消，仅 WAIT_PAY 有意义 |
+| `timeline` | [`OrderTimelineNode`](#ordertimelinenode)\[\] | 是 | 状态流转轨迹，按时间正序。订单详情的进度条据此渲染 |
+| `idempotencyKey` | `string` | 否 | 下单幂等 key。端上生成，重复提交返回同一笔订单而不是新建 |
+| `buyerNickname` | `string` | 否 | 下单人昵称。团长视角（分拣单/核销台）要看得见是谁的单 |
+| `reviewed` | `boolean` | 否 | 已评价 |
+| `pointsGranted` | `boolean` | 否 | 积分是否已发放（幂等标记，防止重复核销重复发分） |
+| `trafficSource` | `MERCHANT_OWNED` \| `PLATFORM` | 否 | 客流来源。**决定平台费率档**：商家自带客流建议零佣金 —— 他带来的客户 在别家的消费才是平台的收益（ADR-004 §6）。从店铺码/店铺分享进入即为 MERCHANT_OWNED。 |
+| `groupNo` | `string` | 否 | 参与的团。邻里自提的核销作用域就靠它裁剪（E16） |
+| `afterSale` | [`AfterSale`](#aftersale) | 否 | 售后单。订单状态只有粗粒度的 REFUNDING/REFUNDED，细节在这里 |
+| `merchantNo` | `string` | 否 | 本单归属的商家。**一单只属于一个商家** —— 购物车跨商家时拆成多笔子订单（E3）。 不拆的话分账无从谈起：一笔钱要分给几家、各分多少，没有承载的单据。 |
+| `merchantName` | `string` | 否 | 商家名快照 |
+| `payGroupNo` | `string` | 否 | 支付组号。同一次结算拆出的子订单共享它，**一次支付付掉整组**。 用户感知是「买了一次」，资金与分账感知是「N 笔各归各家」。 |
+
+
+#### GET `/mp/group-buy/hosted`
+
+我发起的团　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`GroupBuy`](#groupbuy)\[\]
+
+
+### group-request
+
+#### GET `/mp/group-request`
+
+求团列表　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `pickupNo` | query | `string` | 否 | 自提点单号 |
+
+**出参**（`data`）
+
+类型：[`GroupRequest`](#grouprequest)\[\]
+
+
+#### POST `/mp/group-request`
+
+发起求团　🔒
+
+**入参**
+
+请求体：[`CreateRequestReq`](#createrequestreq)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `pickupNo` | `string` | 是 | 需求所属的自提点/小区 |
+| `title` | `string` | 是 | 需求标题，如「想团儿童床垫」。发起时**商品还不存在** |
+| `desc` | `string` | 是 | 需求详述：尺寸、材质、用途，供商家判断能不能接 |
+| `expectQty` | `number` | 是 | 期望数量 |
+| `budgetMinor` | `number` | 否 | 心理价位（最小货币单位），可不填。填了商家报价更有的放矢 |
+
+**出参**（`data`）
+
+类型：[`GroupRequest`](#grouprequest)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `requestNo` | `string` | 是 | 求团需求单号 |
+| `initiatorNickname` | `string` | 是 | 发起人昵称 |
+| `initiatorAvatar` | `string` | 是 | 发起人头像 |
+| `pickupNo` | `string` | 是 | 需求的范围仍是自提点/小区 —— 邻里的意义就在于此 |
+| `pickupName` | `string` | 是 | 自提点名称快照 |
+| `title` | `string` | 是 | 需求标题，如「想团儿童床垫」。**此时商品还不存在**，只有这句话 |
+| `desc` | `string` | 是 | 需求详述：尺寸、材质、用途等，供商家判断能不能接 |
+| `images` | `string`\[\] | 是 | 参考图。发起人拍的样图或截图 |
+| `expectQty` | `number` | 是 | 发起人期望的数量 |
+| `budgetMinor` | `number` | 否 | 心理价位（可不填） |
+| `status` | [`GroupRequestStatus`](#grouprequeststatus) | 是 | 需求单状态 |
+| `interestedCount` | `number` | 是 | 表达意向的邻居数（含发起人）—— 不是订单数 |
+| `interested` | `boolean` | 是 | 当前用户是否已 +1。决定按钮显示「我也要」还是「已加入」 |
+| `neighbours` | `object`（见下）\[\] | 是 | +1 的邻居头像墙。只取前若干个用于展示，不是全量 |
+| `quotes` | [`Quote`](#quote)\[\] | 是 | 收到的报价。一个需求单可多家报价，由发起人挑 |
+| `createdAt` | `number` | 是 | 发起时间 |
+| `expireAt` | `number` | 是 | 需求单过期时间。过期即 EXPIRED，不再接受报价 |
+| `groupNo` | `string` | 否 | MATCHED 后指向生成的正式团 |
+| `lockedPriceMinor` | `number` | 否 | 选定的报价快照。转成正式团后下单用这个价，**不读商家当前价** —— 这是防加价最硬的一层：加价在技术上做不到，不需要审核。 |
+| `confirmed` | `boolean` | 否 | 我（+1 的邻居）是否已二次确认下单。+1 不等于承诺，必须各自确认 |
+| `confirmedCount` | `number` | 否 | 已确认下单的人数 |
+
+`neighbours[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `avatar` | `string` | 是 | — |
+| `nickname` | `string` | 是 | — |
+
+
+#### GET `/mp/group-request/{requestNo}`
+
+求团详情　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `requestNo` | path | `string` | 是 | 求团需求单号 |
+
+**出参**（`data`）
+
+类型：[`GroupRequest`](#grouprequest)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `requestNo` | `string` | 是 | 求团需求单号 |
+| `initiatorNickname` | `string` | 是 | 发起人昵称 |
+| `initiatorAvatar` | `string` | 是 | 发起人头像 |
+| `pickupNo` | `string` | 是 | 需求的范围仍是自提点/小区 —— 邻里的意义就在于此 |
+| `pickupName` | `string` | 是 | 自提点名称快照 |
+| `title` | `string` | 是 | 需求标题，如「想团儿童床垫」。**此时商品还不存在**，只有这句话 |
+| `desc` | `string` | 是 | 需求详述：尺寸、材质、用途等，供商家判断能不能接 |
+| `images` | `string`\[\] | 是 | 参考图。发起人拍的样图或截图 |
+| `expectQty` | `number` | 是 | 发起人期望的数量 |
+| `budgetMinor` | `number` | 否 | 心理价位（可不填） |
+| `status` | [`GroupRequestStatus`](#grouprequeststatus) | 是 | 需求单状态 |
+| `interestedCount` | `number` | 是 | 表达意向的邻居数（含发起人）—— 不是订单数 |
+| `interested` | `boolean` | 是 | 当前用户是否已 +1。决定按钮显示「我也要」还是「已加入」 |
+| `neighbours` | `object`（见下）\[\] | 是 | +1 的邻居头像墙。只取前若干个用于展示，不是全量 |
+| `quotes` | [`Quote`](#quote)\[\] | 是 | 收到的报价。一个需求单可多家报价，由发起人挑 |
+| `createdAt` | `number` | 是 | 发起时间 |
+| `expireAt` | `number` | 是 | 需求单过期时间。过期即 EXPIRED，不再接受报价 |
+| `groupNo` | `string` | 否 | MATCHED 后指向生成的正式团 |
+| `lockedPriceMinor` | `number` | 否 | 选定的报价快照。转成正式团后下单用这个价，**不读商家当前价** —— 这是防加价最硬的一层：加价在技术上做不到，不需要审核。 |
+| `confirmed` | `boolean` | 否 | 我（+1 的邻居）是否已二次确认下单。+1 不等于承诺，必须各自确认 |
+| `confirmedCount` | `number` | 否 | 已确认下单的人数 |
+
+`neighbours[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `avatar` | `string` | 是 | — |
+| `nickname` | `string` | 是 | — |
+
+
+#### POST `/mp/group-request/{requestNo}/choose`
+
+发起人选定报价（锁价）　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `requestNo` | path | `string` | 是 | 求团需求单号 |
+
+请求体：[`ChooseQuoteReq`](#choosequotereq)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `quoteNo` | `string` | 是 | 选定的报价。**选定即锁价**，此后下单一律用快照价（ADR-003） |
+
+**出参**（`data`）
+
+类型：[`GroupRequest`](#grouprequest)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `requestNo` | `string` | 是 | 求团需求单号 |
+| `initiatorNickname` | `string` | 是 | 发起人昵称 |
+| `initiatorAvatar` | `string` | 是 | 发起人头像 |
+| `pickupNo` | `string` | 是 | 需求的范围仍是自提点/小区 —— 邻里的意义就在于此 |
+| `pickupName` | `string` | 是 | 自提点名称快照 |
+| `title` | `string` | 是 | 需求标题，如「想团儿童床垫」。**此时商品还不存在**，只有这句话 |
+| `desc` | `string` | 是 | 需求详述：尺寸、材质、用途等，供商家判断能不能接 |
+| `images` | `string`\[\] | 是 | 参考图。发起人拍的样图或截图 |
+| `expectQty` | `number` | 是 | 发起人期望的数量 |
+| `budgetMinor` | `number` | 否 | 心理价位（可不填） |
+| `status` | [`GroupRequestStatus`](#grouprequeststatus) | 是 | 需求单状态 |
+| `interestedCount` | `number` | 是 | 表达意向的邻居数（含发起人）—— 不是订单数 |
+| `interested` | `boolean` | 是 | 当前用户是否已 +1。决定按钮显示「我也要」还是「已加入」 |
+| `neighbours` | `object`（见下）\[\] | 是 | +1 的邻居头像墙。只取前若干个用于展示，不是全量 |
+| `quotes` | [`Quote`](#quote)\[\] | 是 | 收到的报价。一个需求单可多家报价，由发起人挑 |
+| `createdAt` | `number` | 是 | 发起时间 |
+| `expireAt` | `number` | 是 | 需求单过期时间。过期即 EXPIRED，不再接受报价 |
+| `groupNo` | `string` | 否 | MATCHED 后指向生成的正式团 |
+| `lockedPriceMinor` | `number` | 否 | 选定的报价快照。转成正式团后下单用这个价，**不读商家当前价** —— 这是防加价最硬的一层：加价在技术上做不到，不需要审核。 |
+| `confirmed` | `boolean` | 否 | 我（+1 的邻居）是否已二次确认下单。+1 不等于承诺，必须各自确认 |
+| `confirmedCount` | `number` | 否 | 已确认下单的人数 |
+
+`neighbours[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `avatar` | `string` | 是 | — |
+| `nickname` | `string` | 是 | — |
+
+
+#### POST `/mp/group-request/{requestNo}/confirm`
+
+二次确认下单　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `requestNo` | path | `string` | 是 | 求团需求单号 |
+
+**出参**（`data`）
+
+类型：[`GroupRequest`](#grouprequest)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `requestNo` | `string` | 是 | 求团需求单号 |
+| `initiatorNickname` | `string` | 是 | 发起人昵称 |
+| `initiatorAvatar` | `string` | 是 | 发起人头像 |
+| `pickupNo` | `string` | 是 | 需求的范围仍是自提点/小区 —— 邻里的意义就在于此 |
+| `pickupName` | `string` | 是 | 自提点名称快照 |
+| `title` | `string` | 是 | 需求标题，如「想团儿童床垫」。**此时商品还不存在**，只有这句话 |
+| `desc` | `string` | 是 | 需求详述：尺寸、材质、用途等，供商家判断能不能接 |
+| `images` | `string`\[\] | 是 | 参考图。发起人拍的样图或截图 |
+| `expectQty` | `number` | 是 | 发起人期望的数量 |
+| `budgetMinor` | `number` | 否 | 心理价位（可不填） |
+| `status` | [`GroupRequestStatus`](#grouprequeststatus) | 是 | 需求单状态 |
+| `interestedCount` | `number` | 是 | 表达意向的邻居数（含发起人）—— 不是订单数 |
+| `interested` | `boolean` | 是 | 当前用户是否已 +1。决定按钮显示「我也要」还是「已加入」 |
+| `neighbours` | `object`（见下）\[\] | 是 | +1 的邻居头像墙。只取前若干个用于展示，不是全量 |
+| `quotes` | [`Quote`](#quote)\[\] | 是 | 收到的报价。一个需求单可多家报价，由发起人挑 |
+| `createdAt` | `number` | 是 | 发起时间 |
+| `expireAt` | `number` | 是 | 需求单过期时间。过期即 EXPIRED，不再接受报价 |
+| `groupNo` | `string` | 否 | MATCHED 后指向生成的正式团 |
+| `lockedPriceMinor` | `number` | 否 | 选定的报价快照。转成正式团后下单用这个价，**不读商家当前价** —— 这是防加价最硬的一层：加价在技术上做不到，不需要审核。 |
+| `confirmed` | `boolean` | 否 | 我（+1 的邻居）是否已二次确认下单。+1 不等于承诺，必须各自确认 |
+| `confirmedCount` | `number` | 否 | 已确认下单的人数 |
+
+`neighbours[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `avatar` | `string` | 是 | — |
+| `nickname` | `string` | 是 | — |
+
+
+#### POST `/mp/group-request/{requestNo}/interest`
+
++1 / 取消（意向，非订单）　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `requestNo` | path | `string` | 是 | 求团需求单号 |
+
+**出参**（`data`）
+
+类型：[`GroupRequest`](#grouprequest)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `requestNo` | `string` | 是 | 求团需求单号 |
+| `initiatorNickname` | `string` | 是 | 发起人昵称 |
+| `initiatorAvatar` | `string` | 是 | 发起人头像 |
+| `pickupNo` | `string` | 是 | 需求的范围仍是自提点/小区 —— 邻里的意义就在于此 |
+| `pickupName` | `string` | 是 | 自提点名称快照 |
+| `title` | `string` | 是 | 需求标题，如「想团儿童床垫」。**此时商品还不存在**，只有这句话 |
+| `desc` | `string` | 是 | 需求详述：尺寸、材质、用途等，供商家判断能不能接 |
+| `images` | `string`\[\] | 是 | 参考图。发起人拍的样图或截图 |
+| `expectQty` | `number` | 是 | 发起人期望的数量 |
+| `budgetMinor` | `number` | 否 | 心理价位（可不填） |
+| `status` | [`GroupRequestStatus`](#grouprequeststatus) | 是 | 需求单状态 |
+| `interestedCount` | `number` | 是 | 表达意向的邻居数（含发起人）—— 不是订单数 |
+| `interested` | `boolean` | 是 | 当前用户是否已 +1。决定按钮显示「我也要」还是「已加入」 |
+| `neighbours` | `object`（见下）\[\] | 是 | +1 的邻居头像墙。只取前若干个用于展示，不是全量 |
+| `quotes` | [`Quote`](#quote)\[\] | 是 | 收到的报价。一个需求单可多家报价，由发起人挑 |
+| `createdAt` | `number` | 是 | 发起时间 |
+| `expireAt` | `number` | 是 | 需求单过期时间。过期即 EXPIRED，不再接受报价 |
+| `groupNo` | `string` | 否 | MATCHED 后指向生成的正式团 |
+| `lockedPriceMinor` | `number` | 否 | 选定的报价快照。转成正式团后下单用这个价，**不读商家当前价** —— 这是防加价最硬的一层：加价在技术上做不到，不需要审核。 |
+| `confirmed` | `boolean` | 否 | 我（+1 的邻居）是否已二次确认下单。+1 不等于承诺，必须各自确认 |
+| `confirmedCount` | `number` | 否 | 已确认下单的人数 |
+
+`neighbours[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `avatar` | `string` | 是 | — |
+| `nickname` | `string` | 是 | — |
+
+
+### merchant
+
+#### GET `/mp/merchant`
+
+商家列表/搜索　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `keyword` | query | `string` | 否 | 搜索关键词 |
+| `communityNo` | query | `string` | 否 | 社区单号 |
+
+**出参**（`data`）
+
+类型：[`Merchant`](#merchant)\[\]
+
+
+#### GET `/mp/merchant/{merchantNo}`
+
+商家详情　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `merchantNo` | path | `string` | 是 | 商家单号 |
+
+**出参**（`data`）
+
+类型：[`Merchant`](#merchant)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `merchantNo` | `string` | 是 | 商家单号。贯穿商品/订单/评价/结算，是多商家模型的主线（ADR-001） |
+| `name` | `string` | 是 | 店铺名 |
+| `logo` | `string` | 是 | 店铺 logo URL |
+| `rating` | `number` | 是 | 综合评分，0–5，保留一位小数 |
+| `verified` | `boolean` | 是 | 是否通过资质认证 |
+| `breachCount` | `number` | 是 | 选定报价后不履约的次数。>0 会在报价卡上公示 —— 事后信用替代事前审核 |
+| `type` | [`MerchantType`](#merchanttype) | 是 | 商家类型：平台自营 / 企业 / 个体 |
+| `desc` | `string` | 是 | 店铺简介 |
+| `serviceScope` | [`ServiceScope`](#servicescope) | 是 | 经营范围 —— 邻里购物的核心约束：**商家是有服务半径的**。 隔壁区的生鲜店对我没有意义，它送不到我的自提点。见 SERVICE_SCOPE。 |
+| `serviceCommunityNos` | `string`\[\] | 是 | 覆盖哪些社区。**仅 scope=COMMUNITY 时有意义**，其余情况忽略 |
+| `serviceCityCode` | `string` | 否 | 覆盖哪个城市。**仅 scope=CITY 时有意义** |
+| `distance` | `number` | 否 | 距当前社区的距离（米）。由服务端按用户当前社区算好下发，端上不自己算 |
+| `salesCount` | `number` | 是 | 累计订单量（评分权重之一） |
+| `ratingCount` | `number` | 是 | 参与评分的评价条数 |
+| `goodsCount` | `number` | 是 | 在售商品数 |
+| `address` | `string` | 否 | 店铺地址。纯线上商家可能没有 |
+| `openHours` | `string` | 否 | 营业时间文案 |
+| `joinedAt` | `number` | 是 | 入驻时间 |
+| `tags` | `string`\[\] | 是 | 店铺标签，如「生鲜」「次日达」。展示用，不参与筛选 |
+| `scores` | `object`（见下） | 是 | 分维度评分：商品/服务/时效 |
+
+`scores` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `goods` | `number` | 是 | — |
+| `service` | `number` | 是 | — |
+| `speed` | `number` | 是 | — |
+
+
+#### POST `/mp/merchant/apply`
+
+商家入驻申请　🔒
+
+**入参**
+
+请求体：[`MerchantApplyReq`](#merchantapplyreq)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `name` | `string` | 是 | 拟用店铺名 |
+| `type` | [`MerchantApplyType`](#merchantapplytype) | 是 | 主体类型 |
+| `contact` | `string` | 是 | 联系人姓名 |
+| `phone` | `string` | 是 | 联系手机号 |
+| `category` | `string` | 是 | 主营类目 |
+| `desc` | `string` | 是 | 店铺简介 |
+
+**出参**（`data`）
+
+类型：`object`
+
+
+#### GET `/mp/merchant/point/account`
+
+商家积分账户　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`PointAccount`](#pointaccount)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `balance` | `number` | 是 | 当前可用余额 |
+| `totalEarned` | `number` | 是 | 累计获得（含已用、已过期），只增不减 |
+| `totalUsed` | `number` | 是 | 累计已抵扣 |
+| `expiringSoon` | `number` | 是 | 30 天内将过期的积分 |
+| `expiringAt` | `number` | 否 | 最近一批积分的过期时间。`expiringSoon=0` 时为空 |
+
+
+#### GET `/mp/merchant/point/records`
+
+商家积分流水　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`PointRecord`](#pointrecord)\[\]
+
+
+#### GET `/mp/merchant/promoted`
+
+推荐门店（运营位）　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `communityNo` | query | `string` | 否 | 社区单号 |
+| `size` | query | `number` | 否 | 每页条数 |
+
+**出参**（`data`）
+
+类型：[`Merchant`](#merchant)\[\]
+
+
+#### GET `/mp/merchant/visited`
+
+我买过的商家　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`VisitedMerchant`](#visitedmerchant)\[\]
+
+
+### message
+
+#### GET `/mp/message`
+
+消息列表　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`Message`](#message)\[\]
+
+
+#### POST `/mp/message/{messageNo}/read`
+
+标记已读　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `messageNo` | path | `string` | 是 | 站内消息单号 |
+
+**出参**（`data`）
+
+类型：[`Message`](#message)\[\]
+
+
+#### POST `/mp/message/read-all`
+
+全部已读　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`Message`](#message)\[\]
+
+
+### order
+
+#### POST `/mp/order`
+
+下单（幂等）　🔒
+
+**入参**
+
+请求体：[`CreateOrderReqBody`](#createorderreqbody)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `items` | `object`（见下）\[\] | 是 | 下单行。跨商家时服务端**拆成多笔子订单**，共享一个 payGroupNo（E3） |
+| `fulfillment` | [`FulfillmentType`](#fulfillmenttype) | 是 | 履约方式。决定下面 pickupNo / addressId / appointmentAt 哪个必填 |
+| `pickupNo` | `string` | 否 | PICKUP 必填：自提点单号 |
+| `addressId` | `string` | 否 | EXPRESS / 自送必填：收货地址。下单时地址整体**快照**进订单 |
+| `couponNo` | `string` | 否 | 使用的优惠券 |
+| `usePoints` | `number` | 否 | 使用的积分数。服务端按抵扣上限与账户余额截断，端上传的只是意愿 |
+| `remark` | `string` | 否 | 买家留言 |
+| `groupNo` | `string` | 否 | 参团下单时传团单号。**后端 CreateOrderReq 目前不认这个字段**，接上去会静默变成普通单 |
+| `appointmentAt` | `number` | 否 | APPOINTMENT：预约开始时间戳 |
+| `idempotencyKey` | `string` | 是 | 幂等 key，防重复提交 |
+
+`items[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `goodsNo` | `string` | 是 | 商品单号 |
+| `skuNo` | `string` | 是 | SKU 单号 |
+| `qty` | `number` | 是 | 件数 |
+
+**出参**（`data`）
+
+类型：[`Order`](#order)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `orderNo` | `string` | 是 | 订单单号 |
+| `status` | [`OrderStatus`](#orderstatus) | 是 | 订单状态。粗粒度；售后细节见 `afterSale` |
+| `fulfillment` | [`FulfillmentType`](#fulfillmenttype) | 是 | 履约方式，下单时锁定 |
+| `items` | [`OrderItem`](#orderitem)\[\] | 是 | 订单行。含赠品行（`isGift`，价格为 0） |
+| `amount` | [`OrderAmount`](#orderamount) | 是 | 金额明细 |
+| `verifyCode` | `string` | 否 | 自提码 / 核销码 |
+| `redeemCode` | `string` | 否 | VIRTUAL：兑换码；CARD：卡号 |
+| `pickupNo` | `string` | 否 | PICKUP：自提点单号 |
+| `pickupName` | `string` | 否 | PICKUP：自提点名称快照 |
+| `expressNo` | `string` | 否 | EXPRESS：快递单号，发货后才有 |
+| `appointmentAt` | `number` | 否 | APPOINTMENT：预约开始时间戳 |
+| `createdAt` | `number` | 是 | 下单时间 |
+| `payDeadlineAt` | `number` | 否 | 支付截止时间。超时自动取消，仅 WAIT_PAY 有意义 |
+| `timeline` | [`OrderTimelineNode`](#ordertimelinenode)\[\] | 是 | 状态流转轨迹，按时间正序。订单详情的进度条据此渲染 |
+| `idempotencyKey` | `string` | 否 | 下单幂等 key。端上生成，重复提交返回同一笔订单而不是新建 |
+| `buyerNickname` | `string` | 否 | 下单人昵称。团长视角（分拣单/核销台）要看得见是谁的单 |
+| `reviewed` | `boolean` | 否 | 已评价 |
+| `pointsGranted` | `boolean` | 否 | 积分是否已发放（幂等标记，防止重复核销重复发分） |
+| `trafficSource` | `MERCHANT_OWNED` \| `PLATFORM` | 否 | 客流来源。**决定平台费率档**：商家自带客流建议零佣金 —— 他带来的客户 在别家的消费才是平台的收益（ADR-004 §6）。从店铺码/店铺分享进入即为 MERCHANT_OWNED。 |
+| `groupNo` | `string` | 否 | 参与的团。邻里自提的核销作用域就靠它裁剪（E16） |
+| `afterSale` | [`AfterSale`](#aftersale) | 否 | 售后单。订单状态只有粗粒度的 REFUNDING/REFUNDED，细节在这里 |
+| `merchantNo` | `string` | 否 | 本单归属的商家。**一单只属于一个商家** —— 购物车跨商家时拆成多笔子订单（E3）。 不拆的话分账无从谈起：一笔钱要分给几家、各分多少，没有承载的单据。 |
+| `merchantName` | `string` | 否 | 商家名快照 |
+| `payGroupNo` | `string` | 否 | 支付组号。同一次结算拆出的子订单共享它，**一次支付付掉整组**。 用户感知是「买了一次」，资金与分账感知是「N 笔各归各家」。 |
+
+
+#### GET `/mp/order`
+
+订单列表　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `page` | query | `number` | 否 | 页码，从 1 起 |
+| `size` | query | `number` | 否 | 每页条数 |
+| `status` | query | `string` | 否 | 状态筛选，取值见对应枚举 |
+
+**出参**（`data`）
+
+类型：`object`（见下）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `records` | [`Order`](#order)\[\] | 是 | — |
+| `total` | `integer` | 是 | — |
+| `page` | `integer` | 是 | — |
+| `size` | `integer` | 是 | — |
+
+
+#### GET `/mp/order/{orderNo}`
+
+订单详情　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `orderNo` | path | `string` | 是 | 订单单号（按商家拆单后的子订单） |
+
+**出参**（`data`）
+
+类型：[`Order`](#order)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `orderNo` | `string` | 是 | 订单单号 |
+| `status` | [`OrderStatus`](#orderstatus) | 是 | 订单状态。粗粒度；售后细节见 `afterSale` |
+| `fulfillment` | [`FulfillmentType`](#fulfillmenttype) | 是 | 履约方式，下单时锁定 |
+| `items` | [`OrderItem`](#orderitem)\[\] | 是 | 订单行。含赠品行（`isGift`，价格为 0） |
+| `amount` | [`OrderAmount`](#orderamount) | 是 | 金额明细 |
+| `verifyCode` | `string` | 否 | 自提码 / 核销码 |
+| `redeemCode` | `string` | 否 | VIRTUAL：兑换码；CARD：卡号 |
+| `pickupNo` | `string` | 否 | PICKUP：自提点单号 |
+| `pickupName` | `string` | 否 | PICKUP：自提点名称快照 |
+| `expressNo` | `string` | 否 | EXPRESS：快递单号，发货后才有 |
+| `appointmentAt` | `number` | 否 | APPOINTMENT：预约开始时间戳 |
+| `createdAt` | `number` | 是 | 下单时间 |
+| `payDeadlineAt` | `number` | 否 | 支付截止时间。超时自动取消，仅 WAIT_PAY 有意义 |
+| `timeline` | [`OrderTimelineNode`](#ordertimelinenode)\[\] | 是 | 状态流转轨迹，按时间正序。订单详情的进度条据此渲染 |
+| `idempotencyKey` | `string` | 否 | 下单幂等 key。端上生成，重复提交返回同一笔订单而不是新建 |
+| `buyerNickname` | `string` | 否 | 下单人昵称。团长视角（分拣单/核销台）要看得见是谁的单 |
+| `reviewed` | `boolean` | 否 | 已评价 |
+| `pointsGranted` | `boolean` | 否 | 积分是否已发放（幂等标记，防止重复核销重复发分） |
+| `trafficSource` | `MERCHANT_OWNED` \| `PLATFORM` | 否 | 客流来源。**决定平台费率档**：商家自带客流建议零佣金 —— 他带来的客户 在别家的消费才是平台的收益（ADR-004 §6）。从店铺码/店铺分享进入即为 MERCHANT_OWNED。 |
+| `groupNo` | `string` | 否 | 参与的团。邻里自提的核销作用域就靠它裁剪（E16） |
+| `afterSale` | [`AfterSale`](#aftersale) | 否 | 售后单。订单状态只有粗粒度的 REFUNDING/REFUNDED，细节在这里 |
+| `merchantNo` | `string` | 否 | 本单归属的商家。**一单只属于一个商家** —— 购物车跨商家时拆成多笔子订单（E3）。 不拆的话分账无从谈起：一笔钱要分给几家、各分多少，没有承载的单据。 |
+| `merchantName` | `string` | 否 | 商家名快照 |
+| `payGroupNo` | `string` | 否 | 支付组号。同一次结算拆出的子订单共享它，**一次支付付掉整组**。 用户感知是「买了一次」，资金与分账感知是「N 笔各归各家」。 |
+
+
+#### POST `/mp/order/{orderNo}/after-sale`
+
+申请售后　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `orderNo` | path | `string` | 是 | 订单单号（按商家拆单后的子订单） |
+
+请求体：[`AfterSaleReq`](#aftersalereq)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `type` | `REFUND_ONLY` \| `RETURN_REFUND` | 否 | 仅退款 / 退货退款 —— 两者流程根本不同，不能合成一个 |
+| `reason` | `string` | 是 | 已拼好的原因文案（前端把 reason 枚举与补充说明合并后提交） |
+| `images` | `string`\[\] | 是 | 举证图。破损/少件类售后没有图基本判不了 |
+| `reasonCode` | [`AfterSaleReason`](#aftersalereason) | 否 | 结构化原因，便于服务端统计与风控 |
+
+**出参**（`data`）
+
+类型：[`Order`](#order)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `orderNo` | `string` | 是 | 订单单号 |
+| `status` | [`OrderStatus`](#orderstatus) | 是 | 订单状态。粗粒度；售后细节见 `afterSale` |
+| `fulfillment` | [`FulfillmentType`](#fulfillmenttype) | 是 | 履约方式，下单时锁定 |
+| `items` | [`OrderItem`](#orderitem)\[\] | 是 | 订单行。含赠品行（`isGift`，价格为 0） |
+| `amount` | [`OrderAmount`](#orderamount) | 是 | 金额明细 |
+| `verifyCode` | `string` | 否 | 自提码 / 核销码 |
+| `redeemCode` | `string` | 否 | VIRTUAL：兑换码；CARD：卡号 |
+| `pickupNo` | `string` | 否 | PICKUP：自提点单号 |
+| `pickupName` | `string` | 否 | PICKUP：自提点名称快照 |
+| `expressNo` | `string` | 否 | EXPRESS：快递单号，发货后才有 |
+| `appointmentAt` | `number` | 否 | APPOINTMENT：预约开始时间戳 |
+| `createdAt` | `number` | 是 | 下单时间 |
+| `payDeadlineAt` | `number` | 否 | 支付截止时间。超时自动取消，仅 WAIT_PAY 有意义 |
+| `timeline` | [`OrderTimelineNode`](#ordertimelinenode)\[\] | 是 | 状态流转轨迹，按时间正序。订单详情的进度条据此渲染 |
+| `idempotencyKey` | `string` | 否 | 下单幂等 key。端上生成，重复提交返回同一笔订单而不是新建 |
+| `buyerNickname` | `string` | 否 | 下单人昵称。团长视角（分拣单/核销台）要看得见是谁的单 |
+| `reviewed` | `boolean` | 否 | 已评价 |
+| `pointsGranted` | `boolean` | 否 | 积分是否已发放（幂等标记，防止重复核销重复发分） |
+| `trafficSource` | `MERCHANT_OWNED` \| `PLATFORM` | 否 | 客流来源。**决定平台费率档**：商家自带客流建议零佣金 —— 他带来的客户 在别家的消费才是平台的收益（ADR-004 §6）。从店铺码/店铺分享进入即为 MERCHANT_OWNED。 |
+| `groupNo` | `string` | 否 | 参与的团。邻里自提的核销作用域就靠它裁剪（E16） |
+| `afterSale` | [`AfterSale`](#aftersale) | 否 | 售后单。订单状态只有粗粒度的 REFUNDING/REFUNDED，细节在这里 |
+| `merchantNo` | `string` | 否 | 本单归属的商家。**一单只属于一个商家** —— 购物车跨商家时拆成多笔子订单（E3）。 不拆的话分账无从谈起：一笔钱要分给几家、各分多少，没有承载的单据。 |
+| `merchantName` | `string` | 否 | 商家名快照 |
+| `payGroupNo` | `string` | 否 | 支付组号。同一次结算拆出的子订单共享它，**一次支付付掉整组**。 用户感知是「买了一次」，资金与分账感知是「N 笔各归各家」。 |
+
+
+#### POST `/mp/order/{orderNo}/cancel`
+
+取消订单　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `orderNo` | path | `string` | 是 | 订单单号（按商家拆单后的子订单） |
+
+**出参**（`data`）
+
+类型：[`Order`](#order)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `orderNo` | `string` | 是 | 订单单号 |
+| `status` | [`OrderStatus`](#orderstatus) | 是 | 订单状态。粗粒度；售后细节见 `afterSale` |
+| `fulfillment` | [`FulfillmentType`](#fulfillmenttype) | 是 | 履约方式，下单时锁定 |
+| `items` | [`OrderItem`](#orderitem)\[\] | 是 | 订单行。含赠品行（`isGift`，价格为 0） |
+| `amount` | [`OrderAmount`](#orderamount) | 是 | 金额明细 |
+| `verifyCode` | `string` | 否 | 自提码 / 核销码 |
+| `redeemCode` | `string` | 否 | VIRTUAL：兑换码；CARD：卡号 |
+| `pickupNo` | `string` | 否 | PICKUP：自提点单号 |
+| `pickupName` | `string` | 否 | PICKUP：自提点名称快照 |
+| `expressNo` | `string` | 否 | EXPRESS：快递单号，发货后才有 |
+| `appointmentAt` | `number` | 否 | APPOINTMENT：预约开始时间戳 |
+| `createdAt` | `number` | 是 | 下单时间 |
+| `payDeadlineAt` | `number` | 否 | 支付截止时间。超时自动取消，仅 WAIT_PAY 有意义 |
+| `timeline` | [`OrderTimelineNode`](#ordertimelinenode)\[\] | 是 | 状态流转轨迹，按时间正序。订单详情的进度条据此渲染 |
+| `idempotencyKey` | `string` | 否 | 下单幂等 key。端上生成，重复提交返回同一笔订单而不是新建 |
+| `buyerNickname` | `string` | 否 | 下单人昵称。团长视角（分拣单/核销台）要看得见是谁的单 |
+| `reviewed` | `boolean` | 否 | 已评价 |
+| `pointsGranted` | `boolean` | 否 | 积分是否已发放（幂等标记，防止重复核销重复发分） |
+| `trafficSource` | `MERCHANT_OWNED` \| `PLATFORM` | 否 | 客流来源。**决定平台费率档**：商家自带客流建议零佣金 —— 他带来的客户 在别家的消费才是平台的收益（ADR-004 §6）。从店铺码/店铺分享进入即为 MERCHANT_OWNED。 |
+| `groupNo` | `string` | 否 | 参与的团。邻里自提的核销作用域就靠它裁剪（E16） |
+| `afterSale` | [`AfterSale`](#aftersale) | 否 | 售后单。订单状态只有粗粒度的 REFUNDING/REFUNDED，细节在这里 |
+| `merchantNo` | `string` | 否 | 本单归属的商家。**一单只属于一个商家** —— 购物车跨商家时拆成多笔子订单（E3）。 不拆的话分账无从谈起：一笔钱要分给几家、各分多少，没有承载的单据。 |
+| `merchantName` | `string` | 否 | 商家名快照 |
+| `payGroupNo` | `string` | 否 | 支付组号。同一次结算拆出的子订单共享它，**一次支付付掉整组**。 用户感知是「买了一次」，资金与分账感知是「N 笔各归各家」。 |
+
+
+#### POST `/mp/order/{orderNo}/pay`
+
+支付　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `orderNo` | path | `string` | 是 | 订单单号（按商家拆单后的子订单） |
+
+**出参**（`data`）
+
+类型：[`Order`](#order)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `orderNo` | `string` | 是 | 订单单号 |
+| `status` | [`OrderStatus`](#orderstatus) | 是 | 订单状态。粗粒度；售后细节见 `afterSale` |
+| `fulfillment` | [`FulfillmentType`](#fulfillmenttype) | 是 | 履约方式，下单时锁定 |
+| `items` | [`OrderItem`](#orderitem)\[\] | 是 | 订单行。含赠品行（`isGift`，价格为 0） |
+| `amount` | [`OrderAmount`](#orderamount) | 是 | 金额明细 |
+| `verifyCode` | `string` | 否 | 自提码 / 核销码 |
+| `redeemCode` | `string` | 否 | VIRTUAL：兑换码；CARD：卡号 |
+| `pickupNo` | `string` | 否 | PICKUP：自提点单号 |
+| `pickupName` | `string` | 否 | PICKUP：自提点名称快照 |
+| `expressNo` | `string` | 否 | EXPRESS：快递单号，发货后才有 |
+| `appointmentAt` | `number` | 否 | APPOINTMENT：预约开始时间戳 |
+| `createdAt` | `number` | 是 | 下单时间 |
+| `payDeadlineAt` | `number` | 否 | 支付截止时间。超时自动取消，仅 WAIT_PAY 有意义 |
+| `timeline` | [`OrderTimelineNode`](#ordertimelinenode)\[\] | 是 | 状态流转轨迹，按时间正序。订单详情的进度条据此渲染 |
+| `idempotencyKey` | `string` | 否 | 下单幂等 key。端上生成，重复提交返回同一笔订单而不是新建 |
+| `buyerNickname` | `string` | 否 | 下单人昵称。团长视角（分拣单/核销台）要看得见是谁的单 |
+| `reviewed` | `boolean` | 否 | 已评价 |
+| `pointsGranted` | `boolean` | 否 | 积分是否已发放（幂等标记，防止重复核销重复发分） |
+| `trafficSource` | `MERCHANT_OWNED` \| `PLATFORM` | 否 | 客流来源。**决定平台费率档**：商家自带客流建议零佣金 —— 他带来的客户 在别家的消费才是平台的收益（ADR-004 §6）。从店铺码/店铺分享进入即为 MERCHANT_OWNED。 |
+| `groupNo` | `string` | 否 | 参与的团。邻里自提的核销作用域就靠它裁剪（E16） |
+| `afterSale` | [`AfterSale`](#aftersale) | 否 | 售后单。订单状态只有粗粒度的 REFUNDING/REFUNDED，细节在这里 |
+| `merchantNo` | `string` | 否 | 本单归属的商家。**一单只属于一个商家** —— 购物车跨商家时拆成多笔子订单（E3）。 不拆的话分账无从谈起：一笔钱要分给几家、各分多少，没有承载的单据。 |
+| `merchantName` | `string` | 否 | 商家名快照 |
+| `payGroupNo` | `string` | 否 | 支付组号。同一次结算拆出的子订单共享它，**一次支付付掉整组**。 用户感知是「买了一次」，资金与分账感知是「N 笔各归各家」。 |
+
+
+#### POST `/mp/order/{orderNo}/reorder`
+
+一键再来一单　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `orderNo` | path | `string` | 是 | 订单单号（按商家拆单后的子订单） |
+
+**出参**（`data`）
+
+类型：[`ReorderResult`](#reorderresult)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `added` | `number` | 是 | 成功加入购物车的件数 |
+| `dropped` | `string`\[\] | 是 | 已失效、没加进购物车的商品名 |
+| `priceUp` | `string`\[\] | 是 | 涨价了但仍加入的商品名 |
+
+
+### point
+
+#### GET `/mp/point/account`
+
+积分账户　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`PointAccount`](#pointaccount)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `balance` | `number` | 是 | 当前可用余额 |
+| `totalEarned` | `number` | 是 | 累计获得（含已用、已过期），只增不减 |
+| `totalUsed` | `number` | 是 | 累计已抵扣 |
+| `expiringSoon` | `number` | 是 | 30 天内将过期的积分 |
+| `expiringAt` | `number` | 否 | 最近一批积分的过期时间。`expiringSoon=0` 时为空 |
+
+
+#### GET `/mp/point/records`
+
+积分流水　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`PointRecord`](#pointrecord)\[\]
+
+
+### review
+
+#### GET `/mp/review`
+
+评价列表　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `goodsNo` | query | `string` | 否 | 商品单号 |
+| `merchantNo` | query | `string` | 否 | 商家单号 |
+
+**出参**（`data`）
+
+类型：[`Review`](#review)\[\]
+
+
+#### POST `/mp/review`
+
+发表评价　🔒
+
+**入参**
+
+请求体：[`CreateReviewReq`](#createreviewreq)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `orderNo` | `string` | 是 | 被评价的订单。**必须是已完成订单**，且一单一评 |
+| `goodsNo` | `string` | 是 | 被评价的商品。一单多商品时逐个评 |
+| `rating` | `number` | 是 | 总分，1–5 整数 |
+| `content` | `string` | 是 | 评价正文 |
+| `images` | `string`\[\] | 是 | 评价图 URL 列表，可为空数组 |
+| `scores` | [`ReviewScores`](#reviewscores) | 否 | 三维分（商品 / 履约 / 服务）。**可选** —— 老客户端只给总分。 评价页一直在发这个字段，但类型里漏了它，于是它是**悄悄漏出去的**： `satisfies` 检查不到、OpenAPI 里没有、后端也就无从知道要收。 是 wire-alignment 守卫在后端实现时把它抓出来的。 |
+
+**出参**（`data`）
+
+类型：[`Review`](#review)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `reviewNo` | `string` | 是 | 评价单号 |
+| `goodsNo` | `string` | 是 | 被评价的商品 |
+| `merchantNo` | `string` | 是 | 被评价的商家。差评会计入商家评分与申诉流程 |
+| `nickname` | `string` | 是 | 评价人昵称（匿名评价时为「匿名用户」） |
+| `avatar` | `string` | 是 | 评价人头像 |
+| `rating` | `number` | 是 | 总分，1–5 整数 |
+| `content` | `string` | 是 | 评价正文 |
+| `images` | `string`\[\] | 是 | 评价图 URL 列表 |
+| `spec` | `string` | 是 | 购买规格。展示在评价上，让人知道这条评价说的是哪个 SKU |
+| `createdAt` | `number` | 是 | 评价提交时间 |
+| `likeCount` | `number` | 是 | 点赞数 |
+| `liked` | `boolean` | 是 | 当前用户是否已点赞 |
+| `reply` | `string` | 否 | 商家回复 |
+| `scores` | [`ReviewScores`](#reviewscores) | 否 | 三维度评分（B-9.3 / P-13.1.4）。总分 `rating` 仍保留 —— 老数据没有分维度分，列表页也只显示一个星级；维度分用于**评分算法与商家诊断**： 「货好但送得慢」这种问题，只看总分永远看不出来。 |
+| `appeal` | [`ReviewAppeal`](#reviewappeal) | 否 | 商家申诉（B-9.4）。裁决在平台端 P-13.1 |
+
+
+#### POST `/mp/review/{reviewNo}/like`
+
+点赞/取消　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `reviewNo` | path | `string` | 是 | 评价单号 |
+
+**出参**（`data`）
+
+类型：[`Review`](#review)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `reviewNo` | `string` | 是 | 评价单号 |
+| `goodsNo` | `string` | 是 | 被评价的商品 |
+| `merchantNo` | `string` | 是 | 被评价的商家。差评会计入商家评分与申诉流程 |
+| `nickname` | `string` | 是 | 评价人昵称（匿名评价时为「匿名用户」） |
+| `avatar` | `string` | 是 | 评价人头像 |
+| `rating` | `number` | 是 | 总分，1–5 整数 |
+| `content` | `string` | 是 | 评价正文 |
+| `images` | `string`\[\] | 是 | 评价图 URL 列表 |
+| `spec` | `string` | 是 | 购买规格。展示在评价上，让人知道这条评价说的是哪个 SKU |
+| `createdAt` | `number` | 是 | 评价提交时间 |
+| `likeCount` | `number` | 是 | 点赞数 |
+| `liked` | `boolean` | 是 | 当前用户是否已点赞 |
+| `reply` | `string` | 否 | 商家回复 |
+| `scores` | [`ReviewScores`](#reviewscores) | 否 | 三维度评分（B-9.3 / P-13.1.4）。总分 `rating` 仍保留 —— 老数据没有分维度分，列表页也只显示一个星级；维度分用于**评分算法与商家诊断**： 「货好但送得慢」这种问题，只看总分永远看不出来。 |
+| `appeal` | [`ReviewAppeal`](#reviewappeal) | 否 | 商家申诉（B-9.4）。裁决在平台端 P-13.1 |
+
+
+### store
+
+#### GET `/mp/store/{merchantNo}`
+
+门店主页　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `merchantNo` | path | `string` | 是 | 商家单号 |
+
+**出参**（`data`）
+
+类型：[`StoreHome`](#storehome)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `merchant` | [`Merchant`](#merchant) | 是 | 平台建档的商家主数据（名称/资质/评分），店主改不了 |
+| `store` | [`StoreProfile`](#storeprofile) | 是 | 店主自己维护的门面内容（公告/营业时间/地址） |
+| `goods` | [`Goods`](#goods)\[\] | 是 | 在售商品。首屏展示，分页靠单独的商品列表接口 |
+| `favorited` | `boolean` | 是 | 我是否收藏了这家店 |
+
+
+#### POST `/mp/store/{merchantNo}/favorite`
+
+收藏本店　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `merchantNo` | path | `string` | 是 | 商家单号 |
+
+**出参**（`data`）
+
+类型：`object`
+
+
+#### GET `/mp/store/{merchantNo}/frequent`
+
+常买清单　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `merchantNo` | path | `string` | 是 | 商家单号 |
+
+**出参**（`data`）
+
+类型：[`FrequentItem`](#frequentitem)\[\]
+
+
+#### GET `/mp/store/mine`
+
+我的常去店　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`Merchant`](#merchant)\[\]
+
+
+### user
+
+#### GET `/mp/user/address`
+
+地址列表　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`Address`](#address)\[\]
+
+
+#### POST `/mp/user/address`
+
+新增/编辑地址　🔒
+
+**入参**
+
+请求体：[`SaveAddressReq`](#saveaddressreq)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `addressId` | `string` | 否 | 有值 = 编辑，无值 = 新增 |
+| `name` | `string` | 是 | 收货人姓名 |
+| `phone` | `string` | 是 | 收货人手机号 |
+| `region` | `string` | 是 | 省市区 |
+| `detail` | `string` | 是 | 详细地址（街道门牌） |
+| `isDefault` | `boolean` | 是 | 设为默认。置 true 会把原默认地址改为 false |
+| `tag` | `string` | 否 | 标签：家 / 公司 / 其他 |
+
+**出参**（`data`）
+
+类型：[`Address`](#address)\[\]
+
+
+#### POST `/mp/user/address/{addressId}/archive`
+
+删除地址（软删除）　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `addressId` | path | `string` | 是 | 地址簿记录 ID（非业务单号，不进订单快照） |
+
+**出参**（`data`）
+
+类型：[`Address`](#address)\[\]
+
+
+#### POST `/mp/user/address/{addressId}/default`
+
+设为默认地址　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `addressId` | path | `string` | 是 | 地址簿记录 ID（非业务单号，不进订单快照） |
+
+**出参**（`data`）
+
+类型：[`Address`](#address)\[\]
+
+
+#### POST `/mp/user/community`
+
+绑定社区自提点　🔒
+
+**入参**
+
+请求体：[`BindCommunityReq`](#bindcommunityreq)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `communityNo` | `string` | 是 | 要绑定的社区。**商品可见范围依赖它**，绑错了首页就是别的小区的货 |
+| `pickupNo` | `string` | 是 | 默认自提点，须属于该社区 |
+
+**出参**（`data`）
+
+类型：[`User`](#user)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `cUserNo` | `string` | 是 | C 端用户单号。前缀 `cUser` 是有意的：B 端商家、平台 STAFF 是**另外两个账号池**，单号不通用 |
+| `nickname` | `string` | 是 | 昵称。微信授权取来的，用户可改 |
+| `avatar` | `string` | 是 | 头像 URL |
+| `phone` | `string` | 是 | 手机号。已脱敏（中间四位星号），完整号码不下发到端上 |
+| `communityNo` | `string` | 否 | 当前绑定的社区。未绑定时为空 —— 首页的商品可见范围依赖它 |
+| `pickupNo` | `string` | 否 | 默认自提点。下单时预选，用户可改 |
+| `merchantNo` | `string` | 否 | 常去的店。与 communityNo 正交 —— 可以在 A 社区却常买 B 店（ADR-004 §5.1） |
+
+
+#### POST `/mp/user/login`
+
+登录建户　🔒
+
+**入参**
+
+请求体：[`LoginReqBody`](#loginreqbody)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `grantType` | [`GrantType`](#granttype) | 是 | 登录方式，决定 principal / credential 各放什么 |
+| `principal` | `string` | 是 | WX_MINI: wx.login code；PHONE_OTP: 手机号 |
+| `credential` | `string` | 否 | PHONE_OTP: 验证码 |
+| `inviterNo` | `string` | 否 | 裂变归因：邀请人 |
+| `merchantNo` | `string` | 否 | 进店归因：从店铺码/店铺分享进入时带上（ADR-004 §5.4） |
+
+**出参**（`data`）
+
+类型：[`LoginResp`](#loginresp)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `token` | `string` | 是 | 访问令牌。后续请求放 `Authorization: Bearer <token>` |
+| `user` | [`User`](#user) | 是 | 登录用户档案 |
+
+
+#### GET `/mp/user/profile`
+
+我的资料　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`User`](#user)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `cUserNo` | `string` | 是 | C 端用户单号。前缀 `cUser` 是有意的：B 端商家、平台 STAFF 是**另外两个账号池**，单号不通用 |
+| `nickname` | `string` | 是 | 昵称。微信授权取来的，用户可改 |
+| `avatar` | `string` | 是 | 头像 URL |
+| `phone` | `string` | 是 | 手机号。已脱敏（中间四位星号），完整号码不下发到端上 |
+| `communityNo` | `string` | 否 | 当前绑定的社区。未绑定时为空 —— 首页的商品可见范围依赖它 |
+| `pickupNo` | `string` | 否 | 默认自提点。下单时预选，用户可改 |
+| `merchantNo` | `string` | 否 | 常去的店。与 communityNo 正交 —— 可以在 A 社区却常买 B 店（ADR-004 §5.1） |
+
+
+---
+
+## 数据模型
+
+### Address
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `addressId` | `string` | 是 | 地址 ID。这里是 `Id` 不是 `No` —— 它不是业务单号，是用户地址簿里的一条本地记录， 不跨端流转、不出现在订单快照里（下单时地址是**整体快照**进订单的） |
+| `name` | `string` | 是 | 收货人姓名 |
+| `phone` | `string` | 是 | 收货人手机号 |
+| `region` | `string` | 是 | 省市区 |
+| `detail` | `string` | 是 | 详细地址（街道门牌） |
+| `isDefault` | `boolean` | 是 | 是否默认地址。整个地址簿至多一条为 true |
+| `tag` | `string` | 否 | 标签：家 / 公司 / 其他 |
+
+### AfterSale
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `afterSaleNo` | `string` | 是 | 售后单号。**售后是独立资源，不是订单上的一个字段** —— 它有自己的生命周期（申请→同意/驳回→寄回→收货→退款），能被取消、能上升平台， 一个订单还可能先后发起多次。挂在订单下用 orderNo 寻址，第二次申请就没法表达了。 后端一开始就是这么建的（/mp/after-sale/{afterSaleNo}/**），这里向它对齐。 |
+| `type` | [`AfterSaleType`](#aftersaletype) | 是 | 售后类型：仅退款 / 退货退款 |
+| `status` | [`AfterSaleStatus`](#aftersalestatus) | 是 | 售后单状态，独立于订单状态流转 |
+| `reason` | `string` | 是 | 用户填写的售后原因 |
+| `images` | `string`\[\] | 是 | 举证图（破损、少件的照片）。是否必填由售后类型决定 |
+| `merchantReply` | `string` | 否 | 商家同意/驳回时的说明 |
+| `returnExpressNo` | `string` | 否 | 用户寄回的运单号（RETURN_REFUND） |
+| `disputeReason` | `string` | 否 | 上升平台时用户的申诉理由 |
+| `updatedAt` | `number` | 是 | 最后一次状态变更时间。超时自动同意等时效规则以它为基准 |
+
+### AfterSaleReason
+
+枚举取值：
+
+- `MISSING`
+- `DAMAGED`
+- `QUALITY`
+- `WRONG_ITEM`
+- `NOT_ARRIVED`
+- `OTHER`
+
+### AfterSaleReq
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `type` | `REFUND_ONLY` \| `RETURN_REFUND` | 否 | 仅退款 / 退货退款 —— 两者流程根本不同，不能合成一个 |
+| `reason` | `string` | 是 | 已拼好的原因文案（前端把 reason 枚举与补充说明合并后提交） |
+| `images` | `string`\[\] | 是 | 举证图。破损/少件类售后没有图基本判不了 |
+| `reasonCode` | [`AfterSaleReason`](#aftersalereason) | 否 | 结构化原因，便于服务端统计与风控 |
+
+### AfterSaleStatus
+
+枚举取值：
+
+- `PENDING`
+- `AGREED`
+- `RETURNING`
+- `RECEIVED`
+- `DONE`
+- `REJECTED`
+- `DISPUTED`
+
+### AfterSaleType
+
+售后类型。**仅退款与退货退款的流程根本不同** —— 仅退款同意即退；退货退款必须**先收到货再退款**，否则「退款了货没回来」。 此前两者走同一条路，是售后闭环缺的后半段（B-7.3）。
+
+枚举取值：
+
+- `REFUND_ONLY`
+- `RETURN_REFUND`
+
+### AppointmentSlot
+
+预约可选时段（SERVICE + APPOINTMENT）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `date` | `string` | 是 | YYYY-MM-DD（市场本地时区） |
+| `times` | `object`（见下）\[\] | 是 | 当天各时段的余量。`time` 形如 `14:00`，`left` 为剩余可约数，0 表示约满 |
+
+`times[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `time` | `string` | 是 | — |
+| `left` | `number` | 是 | — |
+
+### BindCommunityReq
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `communityNo` | `string` | 是 | 要绑定的社区。**商品可见范围依赖它**，绑错了首页就是别的小区的货 |
+| `pickupNo` | `string` | 是 | 默认自提点，须属于该社区 |
+
+### CardSpec
+
+卡券属性（CARD）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `faceValueMinor` | `number` | 否 | 储值卡面值（最小货币单位）；次卡为空 |
+| `timesTotal` | `number` | 否 | 次卡总次数；储值卡为空 |
+| `validDays` | `number` | 是 | 有效期天数 |
+
+### CartAddReq
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `goodsNo` | `string` | 是 | 商品单号 |
+| `skuNo` | `string` | 是 | SKU 单号。购物车按 SKU 去重，同商品不同规格是两行 |
+| `qty` | `number` | 是 | 加购件数，正整数 |
+
+### CartItem
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `goodsNo` | `string` | 是 | 商品单号 |
+| `skuNo` | `string` | 是 | SKU 单号。购物车按 SKU 去重，不是按商品 |
+| `title` | `string` | 是 | 商品标题快照 |
+| `cover` | `string` | 是 | 封面图快照 |
+| `spec` | `string` | 是 | 规格文案快照 |
+| `price` | `number` | 是 | 加购时的单价（最小货币单位）。结算时以服务端最新价为准，不一致会提示 |
+| `qty` | `number` | 是 | 数量 |
+| `type` | [`CategoryType`](#categorytype) | 是 | 商品形态 |
+| `fulfillment` | [`FulfillmentType`](#fulfillmenttype) | 是 | 用户选定的履约方式。跨履约方式的商品结算时会拆单 |
+| `invalidReason` | `string` | 否 | 失效原因，如「已下架」「库存不足」。有值即不可勾选结算 |
+| `giftQty` | `number` | 否 | 买赠自动带出的赠品件数（不计价） |
+| `giftLabel` | `string` | 否 | 赠品说明，如「买 2 送 1」 |
+
+### CartRemoveReq
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `skuNos` | `string`\[\] | 是 | 要删除的 SKU 列表。批量是因为购物车支持多选删除 |
+
+### CartUpdateReq
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `skuNo` | `string` | 是 | 要改的 SKU |
+| `qty` | `number` | 是 | 改后的件数。传 0 等同于删除该行 |
+
+### CategoryType
+
+枚举取值：
+
+- `GOODS`
+- `FRESH`
+- `SERVICE`
+- `VIRTUAL`
+- `CARD`
+
+### ChooseQuoteReq
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `quoteNo` | `string` | 是 | 选定的报价。**选定即锁价**，此后下单一律用快照价（ADR-003） |
+
+### Community
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `communityNo` | `string` | 是 | 社区单号 |
+| `name` | `string` | 是 | 社区名（小区名） |
+| `address` | `string` | 是 | 社区地址 |
+| `cityCode` | `string` | 是 | 所属城市。全市范围的商家靠它判定可达 |
+| `distance` | `number` | 是 | 米 |
+| `pickups` | [`Pickup`](#pickup)\[\] | 是 | 本社区可用的自提点 |
+
+### Coupon
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `couponNo` | `string` | 是 | 券单号 |
+| `name` | `string` | 是 | 券名，如「满 50 减 5」 |
+| `thresholdMinor` | `number` | 是 | 使用门槛（最小货币单位）。0 表示无门槛 |
+| `discountMinor` | `number` | 是 | 抵扣金额（最小货币单位） |
+| `expireAt` | `number` | 是 | 过期时间 |
+| `received` | `boolean` | 是 | 当前用户是否已领取。列表页据此显示「领取」还是「去使用」 |
+| `scopeDesc` | `string` | 是 | 适用范围文案，如「仅限张记生鲜」。展示用，实际校验在服务端 |
+
+### CreateGroupBuyReq
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `goodsNo` | `string` | 是 | 要开团的商品，必须是已上架商品 |
+| `pickupNo` | `string` | 是 | 成团的自提点 |
+| `neighbor` | `object`（见下） | 否 | 邻里自提：送到我家（ADR-005）。只能是发起人自己家，不能指定别人家 |
+
+`neighbor` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `toMyHome` | `boolean` | 是 | — |
+| `address` | `string` | 是 | — |
+| `timeSlot` | `string` | 是 | — |
+
+### CreateOrderReqBody
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `items` | `object`（见下）\[\] | 是 | 下单行。跨商家时服务端**拆成多笔子订单**，共享一个 payGroupNo（E3） |
+| `fulfillment` | [`FulfillmentType`](#fulfillmenttype) | 是 | 履约方式。决定下面 pickupNo / addressId / appointmentAt 哪个必填 |
+| `pickupNo` | `string` | 否 | PICKUP 必填：自提点单号 |
+| `addressId` | `string` | 否 | EXPRESS / 自送必填：收货地址。下单时地址整体**快照**进订单 |
+| `couponNo` | `string` | 否 | 使用的优惠券 |
+| `usePoints` | `number` | 否 | 使用的积分数。服务端按抵扣上限与账户余额截断，端上传的只是意愿 |
+| `remark` | `string` | 否 | 买家留言 |
+| `groupNo` | `string` | 否 | 参团下单时传团单号。**后端 CreateOrderReq 目前不认这个字段**，接上去会静默变成普通单 |
+| `appointmentAt` | `number` | 否 | APPOINTMENT：预约开始时间戳 |
+| `idempotencyKey` | `string` | 是 | 幂等 key，防重复提交 |
+
+`items[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `goodsNo` | `string` | 是 | 商品单号 |
+| `skuNo` | `string` | 是 | SKU 单号 |
+| `qty` | `number` | 是 | 件数 |
+
+### CreateRequestReq
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `pickupNo` | `string` | 是 | 需求所属的自提点/小区 |
+| `title` | `string` | 是 | 需求标题，如「想团儿童床垫」。发起时**商品还不存在** |
+| `desc` | `string` | 是 | 需求详述：尺寸、材质、用途，供商家判断能不能接 |
+| `expectQty` | `number` | 是 | 期望数量 |
+| `budgetMinor` | `number` | 否 | 心理价位（最小货币单位），可不填。填了商家报价更有的放矢 |
+
+### CreateReviewReq
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `orderNo` | `string` | 是 | 被评价的订单。**必须是已完成订单**，且一单一评 |
+| `goodsNo` | `string` | 是 | 被评价的商品。一单多商品时逐个评 |
+| `rating` | `number` | 是 | 总分，1–5 整数 |
+| `content` | `string` | 是 | 评价正文 |
+| `images` | `string`\[\] | 是 | 评价图 URL 列表，可为空数组 |
+| `scores` | [`ReviewScores`](#reviewscores) | 否 | 三维分（商品 / 履约 / 服务）。**可选** —— 老客户端只给总分。 评价页一直在发这个字段，但类型里漏了它，于是它是**悄悄漏出去的**： `satisfies` 检查不到、OpenAPI 里没有、后端也就无从知道要收。 是 wire-alignment 守卫在后端实现时把它抓出来的。 |
+
+### CurrencyCode
+
+枚举取值：
+
+- `CNY`
+- `USD`
+- `AED`
+
+### FrequentItem
+
+常买清单的一行（C-ST-02）。按购买频次排序，不是按时间
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `goodsNo` | `string` | 是 | 商品单号 |
+| `skuNo` | `string` | 是 | SKU 单号。常买是按 SKU 记的 —— 买惯了 5 斤装的人不想要 10 斤装 |
+| `title` | `string` | 是 | 商品标题 |
+| `cover` | `string` | 是 | 封面图 |
+| `spec` | `string` | 是 | 规格文案 |
+| `price` | `number` | 是 | 当前价（可能已与上次购买时不同） |
+| `lastPrice` | `number` | 是 | 上次买的价，用于「涨价了」提示 |
+| `times` | `number` | 是 | 买过几次。列表按它排序，不是按时间 |
+| `lastAt` | `number` | 是 | 上次购买时间 |
+| `invalid` | `boolean` | 否 | 已下架/无库存 —— 一键再来一单时要显式标出，不能静默丢掉 |
+
+### FulfillmentType
+
+枚举取值：
+
+- `PICKUP`
+- `NEIGHBOR_PICKUP`
+- `DELIVERY`
+- `EXPRESS`
+- `STORE_VERIFY`
+- `APPOINTMENT`
+- `INSTANT`
+
+### Goods
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `goodsNo` | `string` | 是 | 商品单号 |
+| `title` | `string` | 是 | 商品标题 |
+| `subtitle` | `string` | 是 | 副标题/卖点一句话 |
+| `cover` | `string` | 是 | 封面图 URL。列表页用这一张 |
+| `images` | `string`\[\] | 是 | 详情轮播图 URL 列表 |
+| `type` | [`CategoryType`](#categorytype) | 是 | 商品形态，与所属类目的 type 一致。决定详情页用哪套字段 |
+| `categoryNo` | `string` | 是 | 所属类目 |
+| `merchant` | [`MerchantBrief`](#merchantbrief) | 是 | 所属商家 —— 商品与服务都要展示商家信息 |
+| `rating` | `number` | 否 | 本商品的评分与评价数（区别于商家整体评分） |
+| `ratingCount` | `number` | 否 | 本商品的评价条数 |
+| `price` | `number` | 是 | 展示价（最小货币单位），取各 SKU 最低价 |
+| `originPrice` | `number` | 否 | 划线价（最小货币单位） |
+| `fulfillments` | [`FulfillmentType`](#fulfillmenttype)\[\] | 是 | 支持的履约方式。**数组**：同一商品可以既自提又快递，下单时由用户选 |
+| `specGroups` | [`SpecGroup`](#specgroup)\[\] | 是 | 规格维度定义；单规格商品也有一组 |
+| `skus` | [`Sku`](#sku)\[\] | 是 | SKU 列表。单规格商品也有且仅有一条 |
+| `sales` | `number` | 是 | 累计销量，展示用 |
+| `cutoffAt` | `number` | 否 | FRESH：预售截单时间戳 |
+| `arrivalDesc` | `string` | 否 | FRESH：预计到货描述 |
+| `weighed` | `boolean` | 否 | FRESH：是否按实称多退少补 |
+| `origin` | `string` | 否 | FRESH：产地 |
+| `durationMin` | `number` | 否 | SERVICE：服务时长（分钟） |
+| `storeName` | `string` | 否 | SERVICE：可核销门店 |
+| `slots` | [`AppointmentSlot`](#appointmentslot)\[\] | 否 | SERVICE + APPOINTMENT：可预约时段 |
+| `card` | [`CardSpec`](#cardspec) | 否 | CARD |
+| `virtual` | [`VirtualSpec`](#virtualspec) | 否 | VIRTUAL |
+| `promotions` | [`Promotion`](#promotion)\[\] | 否 | 促销（一期只有买 N 送 M） |
+| `groupBuy` | `object`（见下） | 否 | 商家为本商品开放的拼团档：够 minCount 人享 price。不配则本商品不能发起团 |
+| `points` | `number` | 否 | 本商品每件赠送的积分。不同商品可以给不同积分，不配则按成交额比例默认发放 |
+| `limitPerUser` | `number` | 是 | 每人限购，0 = 不限 |
+| `onSale` | `boolean` | 是 | 是否在售。下架后详情页仍可访问（历史订单要点得进去），但不可下单 |
+
+`groupBuy` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `minCount` | `number` | 是 | — |
+| `price` | `number` | 是 | — |
+
+### GrantType
+
+登录方式。 · WX_MINI  小程序静默登录（只拿 openid，拿不到手机号） · WX_PHONE 小程序一键取手机号（推荐：一次授权直接拿到号，省掉短信） · WX_OPEN  App 微信开放平台 · APPLE    Apple 登录（iOS 上架硬要求） · PHONE_OTP 手机号 + 短信验证码（全端兜底，也是商家账号的主标识）
+
+枚举取值：
+
+- `WX_MINI`
+- `WX_PHONE`
+- `WX_OPEN`
+- `PHONE_OTP`
+- `APPLE`
+
+### GroupBuy
+
+商家团 —— 商家在已上架商品上开的团，用户可参与或自己开一桌。 定位：**只是一种活动**，不是平台核心机制。所以单档成团，不做阶梯价。，不是运营配置的活动位。 成团单位是自提点（拼的是一车送到一个点的成本），单档成团，不做阶梯。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `groupNo` | `string` | 是 | 团单号 |
+| `goodsNo` | `string` | 是 | 开团的商品 |
+| `title` | `string` | 是 | 商品标题快照 |
+| `cover` | `string` | 是 | 商品封面快照 |
+| `merchant` | [`MerchantBrief`](#merchantbrief) | 是 | 供货商家 |
+| `initiatorNickname` | `string` | 是 | 发起人昵称 |
+| `initiatorAvatar` | `string` | 是 | 发起人头像 |
+| `pickupNo` | `string` | 是 | ★ 成团范围：**成团单位是自提点**，拼的是一车送到一个点的成本 |
+| `pickupName` | `string` | 是 | 自提点名称快照 |
+| `basePrice` | `number` | 是 | 不成团时的价格（降级发货用此价） |
+| `groupPrice` | `number` | 是 | 成团价 |
+| `minCount` | `number` | 是 | 成团所需人数 |
+| `joinedCount` | `number` | 是 | 已参团人数 |
+| `reached` | `boolean` | 是 | 已成团 |
+| `need` | `number` | 是 | 还差几人 |
+| `expireAt` | `number` | 是 | 截止时间：发起后 validHours 与商品截单时间取更早 |
+| `members` | `object`（见下）\[\] | 是 | 已参团的人及各自件数，展示用 |
+| `joined` | `boolean` | 是 | 当前用户是否已参团 |
+| `neighborPickup` | [`PickupPoint`](#pickuppoint) | 否 | 邻里自提点（C-GB-06）：发起人勾选「送到我家」时有值。 参团者在这里取货，发起人负责签收与逐单核销 —— **零报酬**（ADR-005 §3）。 |
+| `isOwner` | `boolean` | 否 | 我是不是这个团的发起人 —— 决定是否显示轻核销入口 |
+
+`members[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `avatar` | `string` | 是 | — |
+| `nickname` | `string` | 是 | — |
+| `qty` | `number` | 是 | — |
+
+### GroupRequest
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `requestNo` | `string` | 是 | 求团需求单号 |
+| `initiatorNickname` | `string` | 是 | 发起人昵称 |
+| `initiatorAvatar` | `string` | 是 | 发起人头像 |
+| `pickupNo` | `string` | 是 | 需求的范围仍是自提点/小区 —— 邻里的意义就在于此 |
+| `pickupName` | `string` | 是 | 自提点名称快照 |
+| `title` | `string` | 是 | 需求标题，如「想团儿童床垫」。**此时商品还不存在**，只有这句话 |
+| `desc` | `string` | 是 | 需求详述：尺寸、材质、用途等，供商家判断能不能接 |
+| `images` | `string`\[\] | 是 | 参考图。发起人拍的样图或截图 |
+| `expectQty` | `number` | 是 | 发起人期望的数量 |
+| `budgetMinor` | `number` | 否 | 心理价位（可不填） |
+| `status` | [`GroupRequestStatus`](#grouprequeststatus) | 是 | 需求单状态 |
+| `interestedCount` | `number` | 是 | 表达意向的邻居数（含发起人）—— 不是订单数 |
+| `interested` | `boolean` | 是 | 当前用户是否已 +1。决定按钮显示「我也要」还是「已加入」 |
+| `neighbours` | `object`（见下）\[\] | 是 | +1 的邻居头像墙。只取前若干个用于展示，不是全量 |
+| `quotes` | [`Quote`](#quote)\[\] | 是 | 收到的报价。一个需求单可多家报价，由发起人挑 |
+| `createdAt` | `number` | 是 | 发起时间 |
+| `expireAt` | `number` | 是 | 需求单过期时间。过期即 EXPIRED，不再接受报价 |
+| `groupNo` | `string` | 否 | MATCHED 后指向生成的正式团 |
+| `lockedPriceMinor` | `number` | 否 | 选定的报价快照。转成正式团后下单用这个价，**不读商家当前价** —— 这是防加价最硬的一层：加价在技术上做不到，不需要审核。 |
+| `confirmed` | `boolean` | 否 | 我（+1 的邻居）是否已二次确认下单。+1 不等于承诺，必须各自确认 |
+| `confirmedCount` | `number` | 否 | 已确认下单的人数 |
+
+`neighbours[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `avatar` | `string` | 是 | — |
+| `nickname` | `string` | 是 | — |
+
+### GroupRequestStatus
+
+邻里求团：**需求先于供给**。 与「商家团」是两条完全不同的线，刻意不复用一个模型：   商家团 —— 商品已上架、价格已定、库存已备，用户只是参与；适合生鲜日用这类高频标品。   求团   —— 发起时**商品还不存在，甚至没有商家**，用户只有一句「想买儿童床垫」；            适合床垫、校服、家电这类低频高单价、有议价空间的非标品。 关键约束：**意向 ≠ 订单**。求团阶段不收钱、不锁库存 —— 商品还不存在时收钱是给自己找麻烦。 只有发起人选定报价、转成正式商家团之后，才进入交易链路。
+
+枚举取值：
+
+- `OPEN`
+- `QUOTING`
+- `MATCHED`
+- `CLOSED`
+- `EXPIRED`
+
+### JoinGroupBuyReq
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `qty` | `number` | 是 | 参团件数，正整数 |
+
+### LoginReqBody
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `grantType` | [`GrantType`](#granttype) | 是 | 登录方式，决定 principal / credential 各放什么 |
+| `principal` | `string` | 是 | WX_MINI: wx.login code；PHONE_OTP: 手机号 |
+| `credential` | `string` | 否 | PHONE_OTP: 验证码 |
+| `inviterNo` | `string` | 否 | 裂变归因：邀请人 |
+| `merchantNo` | `string` | 否 | 进店归因：从店铺码/店铺分享进入时带上（ADR-004 §5.4） |
+
+### LoginResp
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `token` | `string` | 是 | 访问令牌。后续请求放 `Authorization: Bearer <token>` |
+| `user` | [`User`](#user) | 是 | 登录用户档案 |
+
+### Merchant
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `merchantNo` | `string` | 是 | 商家单号。贯穿商品/订单/评价/结算，是多商家模型的主线（ADR-001） |
+| `name` | `string` | 是 | 店铺名 |
+| `logo` | `string` | 是 | 店铺 logo URL |
+| `rating` | `number` | 是 | 综合评分，0–5，保留一位小数 |
+| `verified` | `boolean` | 是 | 是否通过资质认证 |
+| `breachCount` | `number` | 是 | 选定报价后不履约的次数。>0 会在报价卡上公示 —— 事后信用替代事前审核 |
+| `type` | [`MerchantType`](#merchanttype) | 是 | 商家类型：平台自营 / 企业 / 个体 |
+| `desc` | `string` | 是 | 店铺简介 |
+| `serviceScope` | [`ServiceScope`](#servicescope) | 是 | 经营范围 —— 邻里购物的核心约束：**商家是有服务半径的**。 隔壁区的生鲜店对我没有意义，它送不到我的自提点。见 SERVICE_SCOPE。 |
+| `serviceCommunityNos` | `string`\[\] | 是 | 覆盖哪些社区。**仅 scope=COMMUNITY 时有意义**，其余情况忽略 |
+| `serviceCityCode` | `string` | 否 | 覆盖哪个城市。**仅 scope=CITY 时有意义** |
+| `distance` | `number` | 否 | 距当前社区的距离（米）。由服务端按用户当前社区算好下发，端上不自己算 |
+| `salesCount` | `number` | 是 | 累计订单量（评分权重之一） |
+| `ratingCount` | `number` | 是 | 参与评分的评价条数 |
+| `goodsCount` | `number` | 是 | 在售商品数 |
+| `address` | `string` | 否 | 店铺地址。纯线上商家可能没有 |
+| `openHours` | `string` | 否 | 营业时间文案 |
+| `joinedAt` | `number` | 是 | 入驻时间 |
+| `tags` | `string`\[\] | 是 | 店铺标签，如「生鲜」「次日达」。展示用，不参与筛选 |
+| `scores` | `object`（见下） | 是 | 分维度评分：商品/服务/时效 |
+
+`scores` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `goods` | `number` | 是 | — |
+| `service` | `number` | 是 | — |
+| `speed` | `number` | 是 | — |
+
+### MerchantApplyReq
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `name` | `string` | 是 | 拟用店铺名 |
+| `type` | [`MerchantApplyType`](#merchantapplytype) | 是 | 主体类型 |
+| `contact` | `string` | 是 | 联系人姓名 |
+| `phone` | `string` | 是 | 联系手机号 |
+| `category` | `string` | 是 | 主营类目 |
+| `desc` | `string` | 是 | 店铺简介 |
+
+### MerchantApplyType
+
+入驻申请可选的商家类型。 不用 `Extract<MerchantType, ...>` —— 生成 schema 时它的名字会变成 `Extract<MerchantType,("COMPANY"\|"INDIVIDUAL")>`，不符合 OpenAPI 的组件命名规则。 契约类型要能干净地映射成 DTO 名，所以这里写成直白的联合。
+
+枚举取值：
+
+- `COMPANY`
+- `INDIVIDUAL`
+
+### MerchantBrief
+
+商品卡/详情上挂的商家简要信息
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `merchantNo` | `string` | 是 | 商家单号。贯穿商品/订单/评价/结算，是多商家模型的主线（ADR-001） |
+| `name` | `string` | 是 | 店铺名 |
+| `logo` | `string` | 是 | 店铺 logo URL |
+| `rating` | `number` | 是 | 综合评分，0–5，保留一位小数 |
+| `verified` | `boolean` | 是 | 是否通过资质认证 |
+| `breachCount` | `number` | 是 | 选定报价后不履约的次数。>0 会在报价卡上公示 —— 事后信用替代事前审核 |
+
+### MerchantType
+
+枚举取值：
+
+- `PLATFORM`
+- `COMPANY`
+- `INDIVIDUAL`
+
+### Message
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `messageNo` | `string` | 是 | 消息单号 |
+| `type` | [`MessageType`](#messagetype) | 是 | 消息分类，决定它落在哪个 tab |
+| `title` | `string` | 是 | 标题（列表页展示） |
+| `body` | `string` | 是 | 正文 |
+| `link` | `string` | 否 | 点进去要跳哪（订单详情/商品/团），已是完整页面路径带参 |
+| `read` | `boolean` | 是 | 是否已读。未读数按 type 分别统计 |
+| `at` | `number` | 是 | 消息产生时间 |
+
+### MessageType
+
+站内消息。 三类分开是因为**用户对它们的期待完全不同**：交易类必须看到（到货了要去取）， 活动类可以错过，系统类是通知。混在一个列表里，交易消息会被活动消息淹没。
+
+枚举取值：
+
+- `TRADE`
+- `MARKETING`
+- `SYSTEM`
+
+### Order
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `orderNo` | `string` | 是 | 订单单号 |
+| `status` | [`OrderStatus`](#orderstatus) | 是 | 订单状态。粗粒度；售后细节见 `afterSale` |
+| `fulfillment` | [`FulfillmentType`](#fulfillmenttype) | 是 | 履约方式，下单时锁定 |
+| `items` | [`OrderItem`](#orderitem)\[\] | 是 | 订单行。含赠品行（`isGift`，价格为 0） |
+| `amount` | [`OrderAmount`](#orderamount) | 是 | 金额明细 |
+| `verifyCode` | `string` | 否 | 自提码 / 核销码 |
+| `redeemCode` | `string` | 否 | VIRTUAL：兑换码；CARD：卡号 |
+| `pickupNo` | `string` | 否 | PICKUP：自提点单号 |
+| `pickupName` | `string` | 否 | PICKUP：自提点名称快照 |
+| `expressNo` | `string` | 否 | EXPRESS：快递单号，发货后才有 |
+| `appointmentAt` | `number` | 否 | APPOINTMENT：预约开始时间戳 |
+| `createdAt` | `number` | 是 | 下单时间 |
+| `payDeadlineAt` | `number` | 否 | 支付截止时间。超时自动取消，仅 WAIT_PAY 有意义 |
+| `timeline` | [`OrderTimelineNode`](#ordertimelinenode)\[\] | 是 | 状态流转轨迹，按时间正序。订单详情的进度条据此渲染 |
+| `idempotencyKey` | `string` | 否 | 下单幂等 key。端上生成，重复提交返回同一笔订单而不是新建 |
+| `buyerNickname` | `string` | 否 | 下单人昵称。团长视角（分拣单/核销台）要看得见是谁的单 |
+| `reviewed` | `boolean` | 否 | 已评价 |
+| `pointsGranted` | `boolean` | 否 | 积分是否已发放（幂等标记，防止重复核销重复发分） |
+| `trafficSource` | `MERCHANT_OWNED` \| `PLATFORM` | 否 | 客流来源。**决定平台费率档**：商家自带客流建议零佣金 —— 他带来的客户 在别家的消费才是平台的收益（ADR-004 §6）。从店铺码/店铺分享进入即为 MERCHANT_OWNED。 |
+| `groupNo` | `string` | 否 | 参与的团。邻里自提的核销作用域就靠它裁剪（E16） |
+| `afterSale` | [`AfterSale`](#aftersale) | 否 | 售后单。订单状态只有粗粒度的 REFUNDING/REFUNDED，细节在这里 |
+| `merchantNo` | `string` | 否 | 本单归属的商家。**一单只属于一个商家** —— 购物车跨商家时拆成多笔子订单（E3）。 不拆的话分账无从谈起：一笔钱要分给几家、各分多少，没有承载的单据。 |
+| `merchantName` | `string` | 否 | 商家名快照 |
+| `payGroupNo` | `string` | 否 | 支付组号。同一次结算拆出的子订单共享它，**一次支付付掉整组**。 用户感知是「买了一次」，资金与分账感知是「N 笔各归各家」。 |
+
+### OrderAmount
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `goodsMinor` | `number` | 是 | 商品小计（最小货币单位），不含运费与优惠 |
+| `freightMinor` | `number` | 是 | 运费 |
+| `discountMinor` | `number` | 是 | 优惠合计（券 + 活动），正数表示减掉多少 |
+| `payableMinor` | `number` | 是 | 应付：`goodsMinor + freightMinor - discountMinor - pointsDeductMinor` |
+| `paidMinor` | `number` | 是 | 实付。未支付时为 0；称重差价补退后与 payableMinor 可能不等 |
+| `weighAdjustMinor` | `number` | 否 | 称重差价（正=补款 负=退款），仅 FRESH |
+| `pointsDeductMinor` | `number` | 是 | 积分抵扣的金额 |
+| `pointsUsed` | `number` | 是 | 本单使用的积分数 |
+| `pointsEarn` | `number` | 是 | 本单可获得的积分（订单完成时才真正入账） |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | 下单时的货币，订单一经创建即锁定，不随用户切市场变化 |
+
+### OrderItem
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `goodsNo` | `string` | 是 | 商品单号 |
+| `merchantNo` | `string` | 是 | 所属商家 —— 分账与「我买过的商家」都依赖它落在订单行上 |
+| `skuNo` | `string` | 是 | SKU 单号 |
+| `title` | `string` | 是 | 下单时的商品标题**快照**。商品后续改名不影响历史订单 |
+| `cover` | `string` | 是 | 封面图快照 |
+| `spec` | `string` | 是 | 规格文案快照 |
+| `price` | `number` | 是 | 成交单价（最小货币单位）快照。改价不追溯已成交订单 |
+| `qty` | `number` | 是 | 数量 |
+| `type` | [`CategoryType`](#categorytype) | 是 | 商品形态 |
+| `nominalGram` | `number` | 否 | FRESH 且按重计价：下单时的标称重量（克） |
+| `weighed` | `boolean` | 否 | 是否已实际称重。称重后按实重产生差价，见 `OrderAmount.weighAdjustMinor` |
+| `isGift` | `boolean` | 否 | 赠品行：价格为 0，不参与计价，履约时随单发出 |
+| `points` | `number` | 否 | 该商品每件赠送的积分 |
+
+### OrderStatus
+
+枚举取值：
+
+- `WAIT_PAY`
+- `PAID`
+- `PREPARING`
+- `ARRIVED`
+- `SHIPPED`
+- `COMPLETED`
+- `CANCELLED`
+- `REFUNDING`
+- `REFUNDED`
+
+### OrderTimelineNode
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `status` | [`OrderStatus`](#orderstatus) | 是 | 流转到的状态 |
+| `label` | `string` | 是 | 展示文案，如「已到货，请到自提点取货」。后端下发已本地化 |
+| `at` | `number` | 是 | 发生时间 |
+
+### Pickup
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `pickupNo` | `string` | 是 | 自提点单号 |
+| `name` | `string` | 是 | 自提点名称（通常是承接店铺的店名） |
+| `address` | `string` | 是 | 自提点地址 |
+| `distance` | `number` | 是 | 距当前社区的距离（米），服务端算好下发 |
+| `hostMerchantNo` | `string` | 是 | 承接这个自提点的商家（ADR-005：PickupPoint.type=STORE，承接方是入驻商家而非团长） |
+| `hostName` | `string` | 是 | 承接商家的店名 |
+| `hostAvatar` | `string` | 是 | 承接商家的头像/门头图 |
+| `openHours` | `string` | 是 | 营业时间文案，如 `08:00-21:00`。展示用，不参与计算 |
+| `arrivalDesc` | `string` | 是 | 到货时间说明，如「次日 18:00 后到」。影响用户选不选这个点 |
+
+### PickupPoint
+
+自提点实体。 取代了原先的 `Merchant.isPickupPoint` 布尔字段 —— 那个表达不了「承接方是用户」： 邻里自提是送到**团发起人家里**，承接的是邻居本人，不是商家。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `pickupNo` | `string` | 是 | 自提点单号 |
+| `type` | `STORE` \| `NEIGHBOR` \| `PLATFORM` | 是 | 自提点由谁承接。**三档，各自的费用规则完全不同**（2026-08-06 定）：   · STORE    商家自己的门店 —— 商家自行解决，平台不收履约服务费   · NEIGHBOR 团发起人家里 —— **零报酬**（ADR-005），有报酬就是团长招募换个名字   · PLATFORM 平台提供的点 —— 收履约服务费，**费率线下逐点协商，由运营平台录入** |
+| `ownerType` | `MERCHANT` \| `USER` \| `PLATFORM` | 是 | 承接方所属账号池 |
+| `ownerNo` | `string` | 是 | 承接方单号，按 ownerType 落在 merchantNo 或 cUserNo 上 |
+| `scope` | `PERMANENT` \| `GROUP_INSTANCE` | 是 | 常驻 \| 团粒度（一团一销） |
+| `groupNo` | `string` | 否 | type=NEIGHBOR 时必填：这个点只服务这一个团 |
+| `name` | `string` | 是 | 自提点名称 |
+| `address` | `string` | 是 | 展示地址。**成团前只到楼栋，付款后才给完整门牌**（B13）—— 未成团的团不该暴露发起人住址。 |
+| `timeSlot` | `string` | 否 | 约定取货时段。邻居家不能一直堆着货（B15） |
+| `feeMode` | `NONE` \| `PER_ITEM` \| `RATE` | 是 | 计费口径。**必须显式标出用哪一种** —— 库里按件与按率两列长期并存， 没有判别列的话结算侧只能猜，猜错就是给自提点少付或多付钱。 之所以两种都留：费率是**线下逐点协商**的，有的点谈成按件、有的谈成按成交额抽成， 硬统一成一种会让运营在谈判里没有筹码。 |
+| `serviceFeePerItemMinor` | `number` | 是 | feeMode=PER_ITEM 时的按件服务费。STORE 与 NEIGHBOR 恒为 0 |
+| `serviceFeeRate` | `number` | 是 | feeMode=RATE 时的费率（万分比）。STORE 与 NEIGHBOR 恒为 0 |
+
+### PointAccount
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `balance` | `number` | 是 | 当前可用余额 |
+| `totalEarned` | `number` | 是 | 累计获得（含已用、已过期），只增不减 |
+| `totalUsed` | `number` | 是 | 累计已抵扣 |
+| `expiringSoon` | `number` | 是 | 30 天内将过期的积分 |
+| `expiringAt` | `number` | 否 | 最近一批积分的过期时间。`expiringSoon=0` 时为空 |
+
+### PointRecord
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `recordNo` | `string` | 是 | 流水单号。积分是平台负债，每一笔变动都要可追溯（ADR-006） |
+| `type` | [`PointRecordType`](#pointrecordtype) | 是 | 变动类型，决定这笔是增是减 |
+| `points` | `number` | 是 | 变动量，正=增加 负=减少 |
+| `title` | `string` | 是 | 流水标题，如「订单消费获得」「过期作废」。展示用 |
+| `orderNo` | `string` | 否 | 关联订单。消费/退款类必有，过期/结算类为空 |
+| `at` | `number` | 是 | 发生时间 |
+| `balanceAfter` | `number` | 是 | 变动后余额，用于对账 —— 只存变动量的话，一条记录出错后面全错 |
+
+### PointRecordType
+
+枚举取值：
+
+- `EARN`
+- `USE`
+- `REFUND`
+- `EXPIRE`
+- `RECEIVE`
+- `SETTLE`
+
+### Promotion
+
+促销：买 N 送 M。 语义：购买数量达到 N 件，赠送 M 件 —— 用户**付 N 件的钱，收到 N+M 件**。 赠品不进计价（价格为 0），只作为订单里的独立行存在，履约时随单发出。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `type` | `string` | 是 | 促销类型。目前只有买 N 送 M 一种 |
+| `buyN` | `number` | 是 | 购买件数门槛 N |
+| `giftM` | `number` | 是 | 赠送件数 M |
+| `giftGoodsNo` | `string` | 否 | 赠品商品号；不填则赠同款 |
+| `giftTitle` | `string` | 否 | 赠品展示名（后端下发已本地化） |
+
+### Quote
+
+商家对某个需求单的报价。一个需求单可多家报价，由发起人挑。 **报价不做事前审核，防加价靠三层机制**（见 docs/technical/ADR/ADR-003）：   1. 锁价 —— 被选定后 `locked`，下单一律用快照价，系统层面加不了价   2. 公示 —— 每次改价都写进 `revisions` 并对所有邻居可见，谁涨价谁被看见   3. 信用 —— 选定后不履约计入商家 `breachCount` 与评分，累计则限制报价资格
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `quoteNo` | `string` | 是 | 报价单号 |
+| `merchant` | [`MerchantBrief`](#merchantbrief) | 是 | 报价商家。`breachCount` 会在报价卡上公示 —— 事后信用替代事前审核 |
+| `priceMinor` | `number` | 是 | 报价单价 |
+| `minCount` | `number` | 是 | 起订量：低于这个数商家不接 |
+| `desc` | `string` | 是 | 报价说明：规格、材质、是否含安装等 |
+| `validUntil` | `number` | 是 | 报价有效期。过期后不可被选定 —— 报价不能无限期挂着 |
+| `createdAt` | `number` | 是 | 报价时间 |
+| `chosen` | `boolean` | 是 | 是否被发起人选定。一个需求单只有一条为 true |
+| `revisions` | [`QuoteRevision`](#quoterevision)\[\] | 是 | 改价历史，公示给所有人。空数组 = 从未改过价 |
+| `locked` | `boolean` | 是 | 已锁价：选定后为 true，此后价格不可变 |
+
+### QuoteRevision
+
+一次改价的留痕
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `priceMinor` | `number` | 是 | 改价后的单价（最小货币单位） |
+| `at` | `number` | 是 | 改价时间 |
+
+### ReorderResult
+
+一键再来一单的结果（C-ST-03）。**丢了什么必须说清楚**，静默少加是投诉源头
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `added` | `number` | 是 | 成功加入购物车的件数 |
+| `dropped` | `string`\[\] | 是 | 已失效、没加进购物车的商品名 |
+| `priceUp` | `string`\[\] | 是 | 涨价了但仍加入的商品名 |
+
+### Review
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `reviewNo` | `string` | 是 | 评价单号 |
+| `goodsNo` | `string` | 是 | 被评价的商品 |
+| `merchantNo` | `string` | 是 | 被评价的商家。差评会计入商家评分与申诉流程 |
+| `nickname` | `string` | 是 | 评价人昵称（匿名评价时为「匿名用户」） |
+| `avatar` | `string` | 是 | 评价人头像 |
+| `rating` | `number` | 是 | 总分，1–5 整数 |
+| `content` | `string` | 是 | 评价正文 |
+| `images` | `string`\[\] | 是 | 评价图 URL 列表 |
+| `spec` | `string` | 是 | 购买规格。展示在评价上，让人知道这条评价说的是哪个 SKU |
+| `createdAt` | `number` | 是 | 评价提交时间 |
+| `likeCount` | `number` | 是 | 点赞数 |
+| `liked` | `boolean` | 是 | 当前用户是否已点赞 |
+| `reply` | `string` | 否 | 商家回复 |
+| `scores` | [`ReviewScores`](#reviewscores) | 否 | 三维度评分（B-9.3 / P-13.1.4）。总分 `rating` 仍保留 —— 老数据没有分维度分，列表页也只显示一个星级；维度分用于**评分算法与商家诊断**： 「货好但送得慢」这种问题，只看总分永远看不出来。 |
+| `appeal` | [`ReviewAppeal`](#reviewappeal) | 否 | 商家申诉（B-9.4）。裁决在平台端 P-13.1 |
+
+### ReviewAppeal
+
+商家对差评的申诉。 这是**唯一**能把差评送进平台裁决台的入口 —— 平台端 P-13.1 的裁决页早就建好了， 但 B 端一直没有申诉入口，那张台子收不到任何单，等于空转。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `appealNo` | `string` | 是 | 申诉单号 |
+| `reason` | `string` | 是 | 申诉理由，商家填写 |
+| `images` | `string`\[\] | 是 | 举证图（聊天记录、物流截图） |
+| `status` | [`ReviewAppealStatus`](#reviewappealstatus) | 是 | 裁决状态 |
+| `submittedAt` | `number` | 是 | 申诉提交时间 |
+| `verdict` | `string` | 否 | 裁决说明。**无论成立还是驳回都必须写** —— 商家会看到，「已读不处理」不是一种结果 |
+
+### ReviewAppealStatus
+
+枚举取值：
+
+- `PENDING`
+- `UPHELD`
+- `REJECTED`
+
+### ReviewScores
+
+三维度：商品本身 / 履约（快慢、包装、缺损） / 服务（沟通、售后态度）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `goods` | `number` | 是 | 商品本身，1–5 |
+| `fulfillment` | `number` | 是 | 履约：快慢、包装、缺损，1–5 |
+| `service` | `number` | 是 | 服务：沟通、售后态度，1–5 |
+
+### SaveAddressReq
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `addressId` | `string` | 否 | 有值 = 编辑，无值 = 新增 |
+| `name` | `string` | 是 | 收货人姓名 |
+| `phone` | `string` | 是 | 收货人手机号 |
+| `region` | `string` | 是 | 省市区 |
+| `detail` | `string` | 是 | 详细地址（街道门牌） |
+| `isDefault` | `boolean` | 是 | 设为默认。置 true 会把原默认地址改为 false |
+| `tag` | `string` | 否 | 标签：家 / 公司 / 其他 |
+
+### ServiceScope
+
+枚举取值：
+
+- `COMMUNITY`
+- `CITY`
+- `PLATFORM`
+
+### Sku
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `skuNo` | `string` | 是 | SKU 单号。下单、库存、订单行都指向它，不是指向 goodsNo |
+| `optionValues` | `string`\[\] | 是 | 各规格维度上的取值，顺序与 Goods.specGroups 一一对应。 单规格商品长度为 1；多规格（如 重量 × 包装）长度 >1。 |
+| `spec` | `string` | 是 | 展示用拼接文案（后端下发，端上不自己拼，避免多语言分隔符差异） |
+| `price` | `number` | 是 | 售价（最小货币单位） |
+| `originPrice` | `number` | 否 | 划线价（最小货币单位）。为空表示不展示划线价 |
+| `stock` | `number` | 是 | 可售库存。下单时服务端二次校验，端上这个值只用于展示与预校验 |
+| `nominalGram` | `number` | 否 | FRESH 且按重计价：标称重量（克） |
+
+### SpecGroup
+
+规格维度，例：{ name: "重量", options: ["约5斤", "约10斤"] }
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `name` | `string` | 是 | 规格维度名，如「重量」「包装」 |
+| `options` | `string`\[\] | 是 | 该维度的可选值，如 `["约5斤", "约10斤"]` |
+| `optionCodes` | `string` \| `any`\[\] | 否 | 与 options 一一对应的模板编码。来自模板的选项有值，自由输入的为空。 一期只写入不消费 —— 但不留位的话，二期做规格聚合要刷全部历史商品。 |
+| `templateNo` | `string` | 否 | 该规格组来自哪个模板（便于「用的人多不多」这类平台侧统计） |
+
+### StoreHome
+
+门店主页数据（C-ST-01）。 ⚠️ 这是**交易页不是介绍页**：登录用户第一屏是「我买过的」，不是店招 Banner。 粮油副食的复购路径必须压到三步 —— 打开 → 常买 → 下单（ADR-004 §3.3）。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `merchant` | [`Merchant`](#merchant) | 是 | 平台建档的商家主数据（名称/资质/评分），店主改不了 |
+| `store` | [`StoreProfile`](#storeprofile) | 是 | 店主自己维护的门面内容（公告/营业时间/地址） |
+| `goods` | [`Goods`](#goods)\[\] | 是 | 在售商品。首屏展示，分页靠单独的商品列表接口 |
+| `favorited` | `boolean` | 是 | 我是否收藏了这家店 |
+
+### StoreProfile
+
+店铺门面（B-11.2 店铺装修 → C 端门店主页的数据源）。 与 Merchant 分开：Merchant 是平台建档的商家主数据（名称/资质/评分，商家改不了）， 这里是**店主自己能改的门面内容**。混在一起的话，改公告要走审核就荒谬了。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `announcement` | `string` | 是 | 店铺公告：「今日到货」「今天有土鸡蛋」，店主自发（C-ST-04） |
+| `openHours` | `string` | 是 | 营业时间文案，店主自填 |
+| `address` | `string` | 是 | 店铺地址，店主自填 |
+| `featured` | `string`\[\] | 是 | 主推商品，按顺序展示在门店主页首屏 |
+| `serviceScope` | [`ServiceScope`](#servicescope) | 是 | 经营范围（B 端自选）。**决定这家店的货在 C 端能被谁看到** —— 选错不是展示问题：选大了会卖到送不到的地方（下单后提不了货 → 退款）， 选小了则整片小区的人都搜不到这家店。所以 B 端要给出后果说明，不能只给三个单选。 |
+| `serviceCommunityNos` | `string`\[\] | 是 | scope=COMMUNITY 时覆盖的社区。空表示还没谈下任何小区，此时 C 端一律不可见 |
+| `serviceCityCode` | `string` | 否 | scope=CITY 时覆盖的城市 |
+
+### User
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `cUserNo` | `string` | 是 | C 端用户单号。前缀 `cUser` 是有意的：B 端商家、平台 STAFF 是**另外两个账号池**，单号不通用 |
+| `nickname` | `string` | 是 | 昵称。微信授权取来的，用户可改 |
+| `avatar` | `string` | 是 | 头像 URL |
+| `phone` | `string` | 是 | 手机号。已脱敏（中间四位星号），完整号码不下发到端上 |
+| `communityNo` | `string` | 否 | 当前绑定的社区。未绑定时为空 —— 首页的商品可见范围依赖它 |
+| `pickupNo` | `string` | 否 | 默认自提点。下单时预选，用户可改 |
+| `merchantNo` | `string` | 否 | 常去的店。与 communityNo 正交 —— 可以在 A 社区却常买 B 店（ADR-004 §5.1） |
+
+### UserCard
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `cardNo` | `string` | 是 | 卡号。核销时出示的就是它 |
+| `goodsNo` | `string` | 是 | 购买时的商品单号 |
+| `title` | `string` | 是 | 卡名快照 |
+| `cover` | `string` | 是 | 卡面图 |
+| `balanceMinor` | `number` | 否 | 储值卡剩余额度（最小货币单位） |
+| `timesLeft` | `number` | 否 | 次卡剩余次数 |
+| `expireAt` | `number` | 是 | 过期时间。过期后余额/次数作废 |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | 购卡时锁定的货币，不随用户切市场变化 |
+
+### VirtualSpec
+
+虚拟商品属性（VIRTUAL）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `deliverDesc` | `string` | 是 | 发放说明，如「支付后 1 分钟内短信发码」 |
+
+### VisitedMerchant
+
+消费过的商家（「我买过的」列表用）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `merchantNo` | `string` | 是 | 商家单号。贯穿商品/订单/评价/结算，是多商家模型的主线（ADR-001） |
+| `name` | `string` | 是 | 店铺名 |
+| `logo` | `string` | 是 | 店铺 logo URL |
+| `rating` | `number` | 是 | 综合评分，0–5，保留一位小数 |
+| `verified` | `boolean` | 是 | 是否通过资质认证 |
+| `breachCount` | `number` | 是 | 选定报价后不履约的次数。>0 会在报价卡上公示 —— 事后信用替代事前审核 |
+| `type` | [`MerchantType`](#merchanttype) | 是 | 商家类型：平台自营 / 企业 / 个体 |
+| `desc` | `string` | 是 | 店铺简介 |
+| `serviceScope` | [`ServiceScope`](#servicescope) | 是 | 经营范围 —— 邻里购物的核心约束：**商家是有服务半径的**。 隔壁区的生鲜店对我没有意义，它送不到我的自提点。见 SERVICE_SCOPE。 |
+| `serviceCommunityNos` | `string`\[\] | 是 | 覆盖哪些社区。**仅 scope=COMMUNITY 时有意义**，其余情况忽略 |
+| `serviceCityCode` | `string` | 否 | 覆盖哪个城市。**仅 scope=CITY 时有意义** |
+| `distance` | `number` | 否 | 距当前社区的距离（米）。由服务端按用户当前社区算好下发，端上不自己算 |
+| `salesCount` | `number` | 是 | 累计订单量（评分权重之一） |
+| `ratingCount` | `number` | 是 | 参与评分的评价条数 |
+| `goodsCount` | `number` | 是 | 在售商品数 |
+| `address` | `string` | 否 | 店铺地址。纯线上商家可能没有 |
+| `openHours` | `string` | 否 | 营业时间文案 |
+| `joinedAt` | `number` | 是 | 入驻时间 |
+| `tags` | `string`\[\] | 是 | 店铺标签，如「生鲜」「次日达」。展示用，不参与筛选 |
+| `scores` | `object`（见下） | 是 | 分维度评分：商品/服务/时效 |
+| `orderCount` | `number` | 是 | 在该商家的下单次数 |
+| `lastOrderAt` | `number` | 是 | 最近一次下单时间 |
+
+`scores` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `goods` | `number` | 是 | — |
+| `service` | `number` | 是 | — |
+| `speed` | `number` | 是 | — |

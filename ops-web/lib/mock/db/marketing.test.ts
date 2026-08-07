@@ -1,0 +1,117 @@
+// 营销域规则测试（P-7）。锁的是**花钱的边界**与**场次不重叠**这两条。
+import { beforeEach, describe, expect, it } from "vitest";
+import { marketingMock } from "@/lib/api/mocks/marketing";
+import { campaigns, contentSlots, couponIssues, coupons } from "./marketing";
+
+const C0 = JSON.parse(JSON.stringify(coupons)) as typeof coupons;
+const I0 = JSON.parse(JSON.stringify(couponIssues)) as typeof couponIssues;
+const A0 = JSON.parse(JSON.stringify(campaigns)) as typeof campaigns;
+const S0 = JSON.parse(JSON.stringify(contentSlots)) as typeof contentSlots;
+beforeEach(() => {
+  coupons.length = 0; coupons.push(...(JSON.parse(JSON.stringify(C0)) as typeof coupons));
+  couponIssues.length = 0; couponIssues.push(...(JSON.parse(JSON.stringify(I0)) as typeof couponIssues));
+  campaigns.length = 0; campaigns.push(...(JSON.parse(JSON.stringify(A0)) as typeof campaigns));
+  contentSlots.length = 0; contentSlots.push(...(JSON.parse(JSON.stringify(S0)) as typeof contentSlots));
+});
+
+describe("券预算（P-7.1.3）", () => {
+  it("预算不能改到低于已发放金额（否则账面立刻超支）", async () => {
+    await expect(marketingMock.setCouponBudget("CP9001", 100_000)).rejects.toThrow(/不能低于已发放/);
+  });
+
+  it("调高预算落库", async () => {
+    await marketingMock.setCouponBudget("CP9001", 800_000);
+    const page = await marketingMock.listCoupons({ keyword: "CP9001" });
+    expect(page.records[0].budget).toBe(800_000);
+  });
+
+  it("超预算发券被拒绝 —— 不做部分发放", async () => {
+    // CP9002 预算 1200 元，已发 1168 元，单张 8 元 → 最多再发 4 张
+    await expect(
+      marketingMock.issueCoupon({ couponNo: "CP9002", target: "ALL", targetDesc: "全体", count: 10 }),
+    ).rejects.toThrow(/超出预算/);
+    const page = await marketingMock.listCoupons({ keyword: "CP9002" });
+    // 失败不能留下任何痕迹：金额与张数都不该变
+    expect(page.records[0].issuedAmount).toBe(116_800);
+    expect(page.records[0].issued).toBe(146);
+  });
+
+  it("预算内发券：扣预算 + 留痕", async () => {
+    const rec = await marketingMock.issueCoupon({ couponNo: "CP9002", target: "COMMUNITY", targetDesc: "梧桐苑", count: 4 });
+    expect(rec.amount).toBe(3_200);
+    const page = await marketingMock.listCoupons({ keyword: "CP9002" });
+    expect(page.records[0].issuedAmount).toBe(120_000);
+    const issues = await marketingMock.listCouponIssues({ keyword: "梧桐苑" });
+    expect(issues.records[0].count).toBe(4);
+    // 操作人必须留痕：客服也能发补偿券
+    expect(issues.records[0].operator).toBeTruthy();
+  });
+
+  it("非启用状态的券不能发放", async () => {
+    await expect(
+      marketingMock.issueCoupon({ couponNo: "CP9004", target: "ALL", targetDesc: "全体", count: 1 }),
+    ).rejects.toThrow(/启用中/);
+    await expect(
+      marketingMock.issueCoupon({ couponNo: "CP9003", target: "ALL", targetDesc: "全体", count: 1 }),
+    ).rejects.toThrow(/启用中/);
+  });
+
+  it("状态机：结束是终态", async () => {
+    await expect(marketingMock.setCouponStatus("CP9005", "ACTIVE")).rejects.toThrow(/不允许/);
+  });
+});
+
+describe("活动时间（P-7.2）", () => {
+  it("结束必须晚于开始", async () => {
+    await expect(
+      marketingMock.saveCampaign({
+        campaignNo: "", name: "反向时间", type: "FLASH", position: "首页秒杀位",
+        startAt: "2026-08-09T02:00:00Z", endAt: "2026-08-09T01:00:00Z",
+      }),
+    ).rejects.toThrow(/晚于开始/);
+  });
+
+  it("同一位置的秒杀场次不可重叠", async () => {
+    await expect(
+      marketingMock.saveCampaign({
+        campaignNo: "", name: "插队场", type: "SECKILL", position: "首页秒杀位",
+        startAt: "2026-08-07T10:30:00Z", endAt: "2026-08-07T11:30:00Z",
+      }),
+    ).rejects.toThrow(/重叠/);
+  });
+
+  it("首尾相接不算重叠（07-08 与 08-09 可连排）", async () => {
+    const saved = await marketingMock.saveCampaign({
+      campaignNo: "", name: "紧接场", type: "SECKILL", position: "首页秒杀位",
+      startAt: "2026-08-07T11:00:00Z", endAt: "2026-08-07T12:00:00Z",
+    });
+    expect(saved.campaignNo).toMatch(/^AC/);
+  });
+
+  it("跨位置重叠是合法的（首页与频道页可同时跑）", async () => {
+    const saved = await marketingMock.saveCampaign({
+      campaignNo: "", name: "频道秒杀", type: "SECKILL", position: "生鲜频道",
+      startAt: "2026-08-07T10:00:00Z", endAt: "2026-08-07T11:00:00Z",
+    });
+    expect(saved.position).toBe("生鲜频道");
+  });
+});
+
+describe("内容位（P-7.3）", () => {
+  it("下线必须晚于上线", async () => {
+    await expect(
+      marketingMock.setSlotSchedule("SL9002", "2026-08-10T00:00:00Z", "2026-08-09T00:00:00Z"),
+    ).rejects.toThrow(/晚于上线/);
+  });
+
+  it("上下线开关落库", async () => {
+    await marketingMock.setSlotEnabled("SL9004", true);
+    const page = await marketingMock.listContentSlots({ keyword: "SL9004" });
+    expect(page.records[0].enabled).toBe(true);
+  });
+
+  it("按启用状态筛选（下拉给字符串）", async () => {
+    const off = await marketingMock.listContentSlots({ enabled: "0", size: 100 });
+    expect(off.records.every((s) => !s.enabled)).toBe(true);
+  });
+});

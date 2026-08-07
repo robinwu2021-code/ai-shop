@@ -1,0 +1,165 @@
+{
+  "easycom": {
+    "autoscan": true,
+    "custom": {
+      "^sh-(.*)": "@ai-shop/ui/components/sh-$1.vue",
+      "^app-(.*)": "@/components/app-$1.vue",
+      "^biz-(.*)": "@/components/biz/biz-$1.vue",
+      "^wd-(.*)": "wot-design-uni/components/wd-$1/wd-$1.vue"
+    }
+  },
+  "pages": [
+    {
+      "path": "pages/home/index",
+      "style": {
+        "navigationBarTitleText": "工作台"
+      }
+    },
+    {
+      "path": "pages/orders/index",
+      "style": {
+        "navigationBarTitleText": "订单"
+      }
+    },
+    {
+      "path": "pages/goods-list/index",
+      "style": {
+        "navigationBarTitleText": "商品"
+      }
+    },
+    {
+      "path": "pages/me/index",
+      "style": {
+        "navigationBarTitleText": "我的"
+      }
+    },
+    {
+      "path": "pages/login/index",
+      "style": {
+        "navigationBarTitleText": ""
+      }
+    },
+    {
+      "path": "pages/apply/index",
+      "style": {
+        "navigationBarTitleText": ""
+      }
+    },
+    {
+      "path": "pages/goods-edit/index",
+      "style": {
+        "navigationBarTitleText": ""
+      }
+    },
+    {
+      "path": "pages/order/index",
+      "style": {
+        "navigationBarTitleText": ""
+      }
+    },
+    {
+      "path": "pages/verify/index",
+      "style": {
+        "navigationBarTitleText": "核销台"
+      }
+    },
+    {
+      "path": "pages/picking/index",
+      "style": {
+        "navigationBarTitleText": "分拣单"
+      }
+    },
+    {
+      "path": "pages/delivery/index",
+      "style": {
+        "navigationBarTitleText": "商家自送"
+      }
+    },
+    {
+      "path": "pages/store/index",
+      "style": {
+        "navigationBarTitleText": "店铺与获客"
+      }
+    },
+    {
+      "path": "pages/after-sale/index",
+      "style": {
+        "navigationBarTitleText": "售后处理"
+      }
+    },
+    {
+      "path": "pages/reviews/index",
+      "style": {
+        "navigationBarTitleText": "评价与回复"
+      }
+    },
+    {
+      "path": "pages/quotes/index",
+      "style": {
+        "navigationBarTitleText": "邻里求团报价"
+      }
+    },
+    {
+      "path": "pages/groups/index",
+      "style": {
+        "navigationBarTitleText": "商家团"
+      }
+    },
+    {
+      "path": "pages/settle/index",
+      "style": {
+        "navigationBarTitleText": "结算单"
+      }
+    },
+    {
+      "path": "pages/stats/index",
+      "style": {
+        "navigationBarTitleText": "经营数据"
+      }
+    },
+    {
+      "path": "pages/marketing/index",
+      "style": {
+        "navigationBarTitleText": "营销活动"
+      }
+    },
+    {
+      "path": "pages/customers/index",
+      "style": {
+        "navigationBarTitleText": "我的客户"
+      }
+    }
+  ],
+  "globalStyle": {
+    "navigationBarTextStyle": "black",
+    "navigationBarBackgroundColor": "#FFFFFF",
+    "backgroundColor": "#F4F5F7",
+    "rpxCalcMaxDeviceWidth": 600,
+    "rpxCalcBaseDeviceWidth": 375
+  },
+  "tabBar": {
+    "custom": true,
+    "color": "#7B808A",
+    "selectedColor": "#00B578",
+    "backgroundColor": "#FFFFFF",
+    "borderStyle": "white",
+    "list": [
+      {
+        "pagePath": "pages/home/index",
+        "text": "工作台"
+      },
+      {
+        "pagePath": "pages/orders/index",
+        "text": "订单"
+      },
+      {
+        "pagePath": "pages/goods-list/index",
+        "text": "商品"
+      },
+      {
+        "pagePath": "pages/me/index",
+        "text": "我的"
+      }
+    ]
+  }
+}

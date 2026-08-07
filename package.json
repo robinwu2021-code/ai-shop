@@ -1,0 +1,36 @@
+{
+  "name": "ai-shop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "邻里购物平台 · C 端 / B 端 / 平台端 同仓",
+  "workspaces": [
+    "packages/*",
+    "c-app",
+    "b-app",
+    "ops-web"
+  ],
+  "scripts": {
+    "dev:c": "npm run dev:h5 -w ai-shop-c-app",
+    "dev:b": "npm run dev:h5 -w ai-shop-b-app",
+    "type-check": "npm run type-check -w ai-shop-c-app && npm run type-check -w ai-shop-b-app",
+    "dev:p": "npm run dev -w ai-shop-ops-web",
+    "build:p": "npm run build -w ai-shop-ops-web",
+    "check:p": "npm run check -w ai-shop-ops-web",
+    "test": "npm run test -w @ai-shop/shared",
+    "gen:api": "npm run gen:api -w ai-shop-c-app && npm run gen:api -w ai-shop-b-app && npm run gen:api -w ai-shop-ops-web",
+    "check:api": "npm run gen:api && python3 backend/scripts/api-align.py",
+    "gen:skins": "npm run gen:skins -w @ai-shop/shared",
+    "postinstall": "node scripts/link-ui.mjs",
+    "build:web": "node scripts/build-web.mjs",
+    "build:mp": "npm run build:mp-weixin -w ai-shop-c-app && npm run build:mp-weixin -w ai-shop-b-app",
+    "gen:rules": "node scripts/gen-rules-table.mjs",
+    "gen:spec": "node scripts/gen-behaviour-spec.mjs",
+    "gen:api-index": "node scripts/gen-api-index.mjs",
+    "gen:api-detail": "node scripts/gen-api-detail.mjs",
+    "gen:model-align": "node scripts/gen-model-align.mjs",
+    "gen:docs": "npm run gen:api && npm run gen:api-index && npm run gen:api-detail && npm run gen:model-align"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

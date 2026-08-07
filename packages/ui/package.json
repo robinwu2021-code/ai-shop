@@ -1,0 +1,15 @@
+{
+  "name": "@ai-shop/ui",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "C 端与 B 端共享的 uni-app 组件与三个同构 store（换肤 / 三语 / 多市场）",
+  "exports": {
+    "./*": "./src/*"
+  },
+  "peerDependencies": {
+    "pinia": "*",
+    "vue": "*",
+    "vue-i18n": "*"
+  }
+}

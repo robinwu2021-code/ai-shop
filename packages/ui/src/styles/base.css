@@ -1,0 +1,441 @@
+/* 全局样式基座：设计语言 + 皮肤变量 + 通用积木 + 宽屏适配。
+ *
+ * 这一整份原来在两端的 App.vue 里各存一份（约 400 行，逐字节相同），
+ * 由 gen-skins 同时往两处写。同一份东西有两个副本就迟早有一处忘了改 ——
+ * 尤其是「只在 B 端出现的配色不对」这种，没人会想到去比对另一个 App.vue。
+ *
+ * 两端 App.vue 现在只 `@import` 本文件。改色仍然是：
+ * tokens.ts 的 SKIN_HEX → npm run gen:skins → npm test
+ */
+/* ============================================================================
+   设计语言：扁平色块
+   —— 分层靠「面色 + 色块底(tint)」，不靠描边与阴影；全局几乎没有 1px 线条。
+   —— 圆角偏大、留白偏松（西式），信息密度低于国内电商惯例。
+   —— 强调色只用于「可点」与「状态」，不用于装饰。
+
+   主题变量：皮肤(色) × 明暗(风格)
+   H5/App：改 <html data-skin data-theme dir>
+   小程序：改 <view class="sh-root skin-… mode-… is-rtl">（sh-scaffold 统一注入）
+
+   ⚠️ 铁律：同一个变量在同一条继承链上只许声明一次。
+   自定义属性一旦声明在元素自身，就永远胜过从祖先继承的值 —— 如果 .sh-root（或 page）
+   再声明一份默认值，:root[data-theme="dark"] 的覆盖就会被挡掉，换肤**静默失效**。
+   所以严格分层：常量 / 主色 / 中性面 三组各自只在一处声明。
+   ⚠️ CSS 注释里不能出现星号加斜杠的组合（会提前闭合注释，PostCSS 直接报错）。
+   ============================================================================ */
+
+/* ---- 与主题无关的常量 ---- */
+:root,
+.sh-root {
+  /* 自定义底部菜单的高度（不含安全区）。悬浮条要压在它上面，靠这个变量对齐，
+     不许各页面各写各的数字 —— 改菜单高度时只改这一处。 */
+  --sh-tabbar-h: 124rpx;
+  /* 应用最大宽度。窄屏（手机、小程序、App）恒为 100% —— 等于这条规则不存在；
+     PC 浏览器上收成一条居中的窄栏，因为这套界面的信息密度、字号、点按区都是按手机排的，
+     铺满 1920px 后一行能横跨半米，读起来比手机还累。
+     谁在用它：sh-scaffold（页面框）与 sh-tabbar（底部菜单）。
+     ⚠️ 页面里的 `position: fixed` 悬浮条**不需要**各自处理 —— sh-scaffold 的 transform
+     让它们以应用框为包含块，自动跟着收窄（漏改一处就会横跨整屏，所以不用逐页的写法）。 */
+  --sh-app-max: 100%;
+  /* 弹层遮罩。它压在所有皮肤之上，故不随主色变；但集中一处定义 ——
+     之前 4 个文件各抄一份 rgba(10,12,16,.45)，改一次要找四个地方 */
+  --sh-scrim: rgba(10, 12, 16, 0.45);
+  --sh-success: #12b76a;
+  --sh-success-tint: rgba(18, 183, 106, 0.14);
+  --sh-warning: #f79009;
+  --sh-warning-tint: rgba(247, 144, 9, 0.14);
+  --sh-danger: #f04438;
+  --sh-danger-tint: rgba(240, 68, 56, 0.14);
+}
+
+/* ---- 配色方案：主色 + 前景 + 中性面（背景与文字）。按明暗分别取值 ----
+
+   ⚠️ 本段由 packages/shared/scripts/gen-skins.mjs 生成，**不要手改**。
+   改色：改 tokens.ts 的 SKIN_HEX → npm run gen:skins → npm test
+
+   一套配色 = 主色 + 前景 + 中性面。只换主色不换面，暖色主色配冷灰底会「脏」。
+
+   三条：
+   · 前景色按对比度算，不手填 —— 微信绿配墨字 6.80，配白字只有 2.66
+   · mono 的近黑放到深色底上对比 1.09，主按钮会糊进背景，故两端反着取
+   · 中性面来自「面感」(pure/neutral/warm/cool)，**纯白底方案保留**给要「白纸一张」的场景
+
+   取值全部由 packages/shared/tests/design-tokens.test.ts 的对比度断言守着。 */
+:root,
+:root[data-skin="fresh"],
+:root[data-skin="fresh"][data-theme="light"],
+.sh-root.skin-fresh.mode-light {
+  --sh-primary: #00B578;
+  --sh-primary-tint: rgba(0, 181, 120, 0.12);
+  --sh-on-primary: #14161A;
+  --sh-bg: #F5F6F8;
+  --sh-surface: #FFFFFF;
+  --sh-elev: #FFFFFF;
+  --sh-ink: #14161A;
+  --sh-sub: #7B808A;
+  --sh-faint: #EDEEF1;
+  --sh-line: #E4E6EA;
+}
+:root[data-skin="fresh"][data-theme="dark"],
+.sh-root.skin-fresh.mode-dark {
+  --sh-primary: #00B578;
+  --sh-primary-tint: rgba(0, 181, 120, 0.2);
+  --sh-on-primary: #14161A;
+  --sh-bg: #000000;
+  --sh-surface: #111214;
+  --sh-elev: #17191C;
+  --sh-ink: #F3F4F6;
+  --sh-sub: #9AA1AC;
+  --sh-faint: #1C1E22;
+  --sh-line: #24262B;
+}
+:root[data-skin="mono"],
+:root[data-skin="mono"][data-theme="light"],
+.sh-root.skin-mono.mode-light {
+  --sh-primary: #18181B;
+  --sh-primary-tint: rgba(24, 24, 27, 0.12);
+  --sh-on-primary: #FFFFFF;
+  --sh-bg: #F5F6F8;
+  --sh-surface: #FFFFFF;
+  --sh-elev: #FFFFFF;
+  --sh-ink: #18181B;
+  --sh-sub: #7B808A;
+  --sh-faint: #EDEEF1;
+  --sh-line: #E4E6EA;
+}
+:root[data-skin="mono"][data-theme="dark"],
+.sh-root.skin-mono.mode-dark {
+  --sh-primary: #F2F3F5;
+  --sh-primary-tint: rgba(242, 243, 245, 0.2);
+  --sh-on-primary: #14161A;
+  --sh-bg: #000000;
+  --sh-surface: #111214;
+  --sh-elev: #17191C;
+  --sh-ink: #F2F3F5;
+  --sh-sub: #9AA1AC;
+  --sh-faint: #1C1E22;
+  --sh-line: #24262B;
+}
+:root[data-skin="blue"],
+:root[data-skin="blue"][data-theme="light"],
+.sh-root.skin-blue.mode-light {
+  --sh-primary: #2C69FF;
+  --sh-primary-tint: rgba(44, 105, 255, 0.12);
+  --sh-on-primary: #FFFFFF;
+  --sh-bg: #F5F6F8;
+  --sh-surface: #FFFFFF;
+  --sh-elev: #FFFFFF;
+  --sh-ink: #121619;
+  --sh-sub: #7B808A;
+  --sh-faint: #EDEEF1;
+  --sh-line: #E4E6EA;
+}
+:root[data-skin="blue"][data-theme="dark"],
+.sh-root.skin-blue.mode-dark {
+  --sh-primary: #5B8CFF;
+  --sh-primary-tint: rgba(91, 140, 255, 0.2);
+  --sh-on-primary: #14161A;
+  --sh-bg: #000000;
+  --sh-surface: #111214;
+  --sh-elev: #17191C;
+  --sh-ink: #F1F4F6;
+  --sh-sub: #9AA1AC;
+  --sh-faint: #1C1E22;
+  --sh-line: #24262B;
+}
+:root[data-skin="crimson"],
+:root[data-skin="crimson"][data-theme="light"],
+.sh-root.skin-crimson.mode-light {
+  --sh-primary: #D6303A;
+  --sh-primary-tint: rgba(214, 48, 58, 0.12);
+  --sh-on-primary: #FFFFFF;
+  --sh-bg: #F5F6F8;
+  --sh-surface: #FFFFFF;
+  --sh-elev: #FFFFFF;
+  --sh-ink: #1A1214;
+  --sh-sub: #7B808A;
+  --sh-faint: #EDEEF1;
+  --sh-line: #E4E6EA;
+}
+:root[data-skin="crimson"][data-theme="dark"],
+.sh-root.skin-crimson.mode-dark {
+  --sh-primary: #E8555E;
+  --sh-primary-tint: rgba(232, 85, 94, 0.2);
+  --sh-on-primary: #14161A;
+  --sh-bg: #000000;
+  --sh-surface: #111214;
+  --sh-elev: #17191C;
+  --sh-ink: #F5F0F0;
+  --sh-sub: #9AA1AC;
+  --sh-faint: #1C1E22;
+  --sh-line: #24262B;
+}
+:root[data-skin="promo"],
+:root[data-skin="promo"][data-theme="light"],
+.sh-root.skin-promo.mode-light {
+  --sh-primary: #D24600;
+  --sh-primary-tint: rgba(210, 70, 0, 0.12);
+  --sh-on-primary: #FFFFFF;
+  --sh-bg: #FAF7F2;
+  --sh-surface: #FFFFFF;
+  --sh-elev: #FFFFFF;
+  --sh-ink: #1A1712;
+  --sh-sub: #857C6E;
+  --sh-faint: #F3EEE5;
+  --sh-line: #EBE4D8;
+}
+:root[data-skin="promo"][data-theme="dark"],
+.sh-root.skin-promo.mode-dark {
+  --sh-primary: #FF6010;
+  --sh-primary-tint: rgba(255, 96, 16, 0.2);
+  --sh-on-primary: #14161A;
+  --sh-bg: #12100D;
+  --sh-surface: #1B1813;
+  --sh-elev: #221E18;
+  --sh-ink: #F5F2EC;
+  --sh-sub: #A79C8B;
+  --sh-faint: #241F18;
+  --sh-line: #2C271F;
+}
+:root[data-skin="amber"],
+:root[data-skin="amber"][data-theme="light"],
+.sh-root.skin-amber.mode-light {
+  --sh-primary: #A46911;
+  --sh-primary-tint: rgba(164, 105, 17, 0.12);
+  --sh-on-primary: #FFFFFF;
+  --sh-bg: #FAF7F2;
+  --sh-surface: #FFFFFF;
+  --sh-elev: #FFFFFF;
+  --sh-ink: #1A1712;
+  --sh-sub: #857C6E;
+  --sh-faint: #F3EEE5;
+  --sh-line: #EBE4D8;
+}
+:root[data-skin="amber"][data-theme="dark"],
+.sh-root.skin-amber.mode-dark {
+  --sh-primary: #E8961B;
+  --sh-primary-tint: rgba(232, 150, 27, 0.2);
+  --sh-on-primary: #14161A;
+  --sh-bg: #12100D;
+  --sh-surface: #1B1813;
+  --sh-elev: #221E18;
+  --sh-ink: #F5F2EC;
+  --sh-sub: #A79C8B;
+  --sh-faint: #241F18;
+  --sh-line: #2C271F;
+}
+:root[data-skin="teal"],
+:root[data-skin="teal"][data-theme="light"],
+.sh-root.skin-teal.mode-light {
+  --sh-primary: #008484;
+  --sh-primary-tint: rgba(0, 132, 132, 0.12);
+  --sh-on-primary: #FFFFFF;
+  --sh-bg: #F2F6FA;
+  --sh-surface: #FFFFFF;
+  --sh-elev: #FFFFFF;
+  --sh-ink: #121619;
+  --sh-sub: #74808A;
+  --sh-faint: #E9F0F6;
+  --sh-line: #DFE7EE;
+}
+:root[data-skin="teal"][data-theme="dark"],
+.sh-root.skin-teal.mode-dark {
+  --sh-primary: #00A3A3;
+  --sh-primary-tint: rgba(0, 163, 163, 0.2);
+  --sh-on-primary: #14161A;
+  --sh-bg: #0A0E12;
+  --sh-surface: #141A20;
+  --sh-elev: #1A222A;
+  --sh-ink: #F1F4F6;
+  --sh-sub: #93A0AC;
+  --sh-faint: #1B232B;
+  --sh-line: #212B34;
+}
+:root[data-skin="violet"],
+:root[data-skin="violet"][data-theme="light"],
+.sh-root.skin-violet.mode-light {
+  --sh-primary: #7A4CE0;
+  --sh-primary-tint: rgba(122, 76, 224, 0.12);
+  --sh-on-primary: #FFFFFF;
+  --sh-bg: #F2F6FA;
+  --sh-surface: #FFFFFF;
+  --sh-elev: #FFFFFF;
+  --sh-ink: #121619;
+  --sh-sub: #74808A;
+  --sh-faint: #E9F0F6;
+  --sh-line: #DFE7EE;
+}
+:root[data-skin="violet"][data-theme="dark"],
+.sh-root.skin-violet.mode-dark {
+  --sh-primary: #9A78E8;
+  --sh-primary-tint: rgba(154, 120, 232, 0.2);
+  --sh-on-primary: #14161A;
+  --sh-bg: #0A0E12;
+  --sh-surface: #141A20;
+  --sh-elev: #1A222A;
+  --sh-ink: #F1F4F6;
+  --sh-sub: #93A0AC;
+  --sh-faint: #1B232B;
+  --sh-line: #212B34;
+}
+
+/* ============================================================================
+   基座
+   ============================================================================ */
+/* 字体栈的排序就是「按字符找字体」的优先级：
+   拉丁字符命中 Inter，阿拉伯字符命中 Noto Kufi Arabic，中日韩落到系统 PingFang / Noto Sans SC。
+   中文不配远程字体 —— 子集动辄数 MB，移动端不可接受，系统中文字体质量也足够。
+   远程字体加载失败时整条栈自动回落，不影响可用性。 */
+page {
+  background-color: var(--sh-bg, #f4f5f7);
+  color: var(--sh-ink, #14161a);
+  font-family:
+    "Inter", "Noto Kufi Arabic", -apple-system, "SF Pro Text", "Segoe UI",
+    "PingFang SC", "Noto Sans SC", Roboto, sans-serif;
+  font-size: 28rpx;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+.sh-root {
+  min-height: 100vh;
+  background-color: var(--sh-bg);
+  color: var(--sh-ink);
+  transition:
+    background-color 0.24s ease,
+    color 0.24s ease;
+}
+
+/* 阿语 RTL：direction 会让 flex 行、文本对齐、逻辑内边距整体镜像 */
+.sh-root.is-rtl {
+  direction: rtl;
+}
+
+/* pages.json 的 tabBar.custom 只有微信小程序认；H5 / App 仍会渲染原生 tabBar，
+   于是原生（静态中文、字号锁死）会盖住自定义的 sh-tabbar。
+   tabBar 配置本身不能删 —— switchTab 依赖它 —— 所以这里把原生的隐藏掉，
+   并去掉它给页面留的底部占位。 */
+/* #ifdef H5 || APP-PLUS */
+uni-tabbar {
+  display: none !important;
+}
+uni-page-wrapper[style*="--window-bottom"] {
+  --window-bottom: 0px !important;
+}
+/* #endif */
+
+/* ---- 通用排版件（扁平风的公共积木） ---- */
+/* 数值：等宽数字，且在 RTL 下强制 LTR 方向 ——
+   金额、百分比、倒计时是 LTR 序列，跟着 RTL 走会把符号甩到另一端（例：-25% 变成 25%-）。 */
+.sh-num {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+
+/* 卡片：纯面色 + 大圆角，无边框无阴影 */
+.sh-card {
+  background: var(--sh-surface);
+  border-radius: 32rpx;
+  padding: 32rpx;
+}
+
+/* 色块标签：语义色的 12–14% 透明底，替代描边标签 */
+.sh-chip {
+  display: inline-block;
+  padding: 8rpx 20rpx;
+  border-radius: 9999px;
+  font-size: 22rpx;
+  line-height: 1.3;
+  background: var(--sh-faint);
+  color: var(--sh-sub);
+}
+.sh-chip--primary {
+  background: var(--sh-primary-tint);
+  color: var(--sh-primary);
+}
+.sh-chip--warning {
+  background: var(--sh-warning-tint);
+  color: var(--sh-warning);
+}
+.sh-chip--danger {
+  background: var(--sh-danger-tint);
+  color: var(--sh-danger);
+}
+
+/* 区块标题：靠字重与留白分段，不用分隔线 */
+.sh-h1 {
+  font-size: 46rpx;
+  font-weight: 700;
+  letter-spacing: -0.6rpx;
+  line-height: 1.25;
+  color: var(--sh-ink);
+}
+.sh-h2 {
+  font-size: 34rpx;
+  font-weight: 700;
+  letter-spacing: -0.3rpx;
+  color: var(--sh-ink);
+}
+.sh-muted {
+  color: var(--sh-sub);
+  font-size: 24rpx;
+}
+
+/* 主按钮：实心色块 */
+.sh-btn {
+  display: block;
+  text-align: center;
+  padding: 30rpx 0;
+  border-radius: 9999px;
+  background: var(--sh-primary);
+  color: var(--sh-on-primary);
+  font-size: 30rpx;
+  font-weight: 600;
+}
+.sh-btn--soft {
+  background: var(--sh-primary-tint);
+  color: var(--sh-primary);
+}
+.sh-btn--muted {
+  background: var(--sh-faint);
+  color: var(--sh-sub);
+}
+
+/* 宽屏：应用收成居中窄栏，框外铺一层比页面底色更沉的背景以示边界。
+   两个数各管一段，别混：
+   · **≤600px：按设备自身宽度缩放**（uni 默认行为）—— 320 的 SE、390 的 13、
+     430 的 Pro Max、412 的安卓各自铺满，字号与留白按比例自适应，这是「匹配不同机型」
+   · **>600px：固定按 375 渲染**，并收成 375 的居中版心 —— 桌面浏览器上与手机逐像素同构
+
+   600 这个分界取「比最宽的手机再宽一截」，横屏手机与竖屏小平板仍按自身宽度铺满，
+   不会被误判成桌面。
+
+   版心取 **375** —— 这套界面的原始画布宽度（750rpx 设计稿 = 375pt），也是 uni 自己的
+   默认 rpx 基准。取过 480、又取过 390：数值一大，同样的 rpx 内边距在更窄的版心里
+   占比就更高，列表看着就散。回到 375 才是「最初的那一版」的疏密。
+
+   三处必须对齐：本断点 = rpxCalcMaxDeviceWidth + 1，--sh-app-max = rpxCalcBaseDeviceWidth。
+   （packages/shared/tests/ui-package.test.ts 有断言守着） */
+@media (min-width: 601px) {
+  :root,
+  .sh-root {
+    --sh-app-max: 375px;
+  }
+  /* 框外用 --sh-line（比页面底色深一档的中性色）：它随皮肤与明暗一起变，
+     不会出现「深色模式里两侧还是浅灰」这种漏网 */
+  body {
+    background: var(--sh-line);
+  }
+  /* uni 自己的导航栏也要收窄，否则标题栏横跨整屏、与下方窄栏对不齐。
+     注意 fixed 的是内部的 .uni-page-head，外层 uni-page-head 是 static —— 定位写在外层不生效 */
+  .uni-page-head {
+    left: 50%;
+    right: auto;
+    width: var(--sh-app-max);
+    transform: translateX(-50%);
+  }
+}

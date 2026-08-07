@@ -1,0 +1,34 @@
+{
+  "name": "社区好物",
+  "appid": "",
+  "description": "社区电商 C 端",
+  "versionName": "0.1.0",
+  "versionCode": "100",
+  "transformPx": false,
+  "app-plus": {
+    "usingComponents": true,
+    "nvueStyleCompiler": "uni-app",
+    "compilerVersion": 3,
+    "distribute": {
+      "android": { "permissions": [] },
+      "ios": {},
+      "sdkConfigs": {}
+    }
+  },
+  "mp-weixin": {
+    "appid": "",
+    "setting": { "urlCheck": false, "minified": true },
+    "usingComponents": true,
+    "permission": {
+      "scope.userLocation": {
+        "desc": "用于查找附近的社区自提点"
+      }
+    },
+    "requiredPrivateInfos": ["getLocation"]
+  },
+  "h5": {
+    "router": { "mode": "hash" },
+    "//rpx": "rpx 的换算基准不在这里 —— uni 运行时读的是 pages.json 的 globalStyle（见那里的 rpxCalcMaxDeviceWidth）"
+  },
+  "vueVersion": "3"
+}

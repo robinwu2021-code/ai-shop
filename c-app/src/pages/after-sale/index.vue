@@ -1,0 +1,402 @@
+<script setup lang="ts">
+// 售后申请。
+// 生鲜的坏果包赔走的也是这条 —— 原因选「品质问题」+ 传图，小额自动通过（极速退）。
+import { computed, ref } from "vue";
+import { useI18n } from "vue-i18n";
+import { onLoad } from "@dcloudio/uni-app";
+import { api } from "@/api";
+import { chooseImages } from "@shared/ports/media";
+import { ROUTES, TRADE_RULES } from "@shared/utils/constants";
+import { money } from "@shared/utils/format";
+import type { AfterSaleReason, AfterSaleType, Order } from "@shared/types";
+
+const { t } = useI18n();
+
+const REASONS: AfterSaleReason[] = [
+  "MISSING",
+  "DAMAGED",
+  "QUALITY",
+  "WRONG_ITEM",
+  "NOT_ARRIVED",
+  "OTHER",
+];
+
+const order = ref<Order | null>(null);
+/**
+ * 售后类型默认「仅退款」—— 邻里生鲜绝大多数是坏了/少了，退回来没意义。
+ * 退货退款是主动选择，不是默认路径。
+ */
+const type = ref<AfterSaleType>("REFUND_ONLY");
+const TYPES: AfterSaleType[] = ["REFUND_ONLY", "RETURN_REFUND"];
+/** 拼 key 后 `$t` 的类型收窄不住，包一层比在模板里写断言干净 */
+const typeText = (tp: AfterSaleType, suffix = "") => String(t(`afterSale.type${tp}${suffix}`));
+const reason = ref<AfterSaleReason | "">("");
+const detail = ref("");
+const images = ref<string[]>([]);
+const submitting = ref(false);
+const submitted = ref(false);
+
+/** 小额自动通过：让用户提交前就知道会不会秒退，而不是提交后才发现 */
+// 只对仅退款成立：要退货的，货还没回来就秒退等于白送
+const instantRefund = computed(
+  () =>
+    !!order.value &&
+    type.value === "REFUND_ONLY" &&
+    (order.value.amount.paidMinor || order.value.amount.payableMinor) <=
+      TRADE_RULES.instantRefundMaxMinor,
+);
+
+const canSubmit = computed(() => !!reason.value && !submitting.value);
+
+async function load(orderNo: string) {
+  order.value = await api.orderDetail(orderNo);
+}
+
+async function pickImages() {
+  try {
+    const paths = await chooseImages(3);
+    images.value = [...images.value, ...paths].slice(0, 3);
+  } catch {
+    // 用户取消，不提示
+  }
+}
+
+async function submit() {
+  const o = order.value;
+  if (!o || !canSubmit.value) return;
+  submitting.value = true;
+  try {
+    const label = String(t(`afterSale.reason.${reason.value}`));
+    order.value = await api.applyAfterSale(
+      o.orderNo,
+      detail.value ? `${label}：${detail.value}` : label,
+      images.value,
+      type.value,
+    );
+    submitted.value = true;
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: "none" });
+  } finally {
+    submitting.value = false;
+  }
+}
+
+function gotoOrder() {
+  uni.redirectTo({ url: `${ROUTES.order}?orderNo=${order.value?.orderNo}` });
+}
+
+onLoad((q) => {
+  const no = (q?.orderNo as string) || "";
+  if (no) load(no);
+});
+</script>
+
+<template>
+  <sh-scaffold v-if="order" title-key="afterSale.title">
+    <!-- 已提交：展示进度 -->
+    <template v-if="submitted">
+      <view class="sh-card done">
+        <text class="done__icon">✓</text>
+        <text class="done__title">
+          {{ order.status === "REFUNDED" ? $t("afterSale.refunded") : $t("afterSale.applied") }}
+        </text>
+        <text class="done__hint">
+          {{ order.status === "REFUNDED" ? $t("afterSale.refundedHint") : $t("afterSale.appliedHint") }}
+        </text>
+      </view>
+
+      <view class="sh-card block">
+        <view v-for="(n, i) in order.timeline.slice(-3)" :key="i" class="node">
+          <view class="node__dot" :class="{ 'is-last': i === order.timeline.slice(-3).length - 1 }" />
+          <text class="node__label">{{ n.label }}</text>
+        </view>
+      </view>
+
+      <view class="sh-btn block" @tap="gotoOrder">{{ $t("pay.viewOrder") }}</view>
+    </template>
+
+    <!-- 申请表单 -->
+    <template v-else>
+      <view class="sh-card">
+        <view v-for="(it, i) in order.items.filter((x) => !x.isGift)" :key="i" class="row">
+          <view class="row__cover">{{ it.cover }}</view>
+          <view class="row__main">
+            <text class="row__title">{{ it.title }}</text>
+            <text class="row__spec">{{ it.spec }}</text>
+          </view>
+          <text class="row__price sh-num">{{ money(it.price) }}</text>
+        </view>
+      </view>
+
+      <view class="sh-card block">
+        <text class="sh-h2">{{ $t("afterSale.pickType") }}</text>
+        <view class="types">
+          <view
+            v-for="tp in TYPES"
+            :key="tp"
+            class="type"
+            :class="{ 'is-on': type === tp }"
+            @tap="type = tp"
+          >
+            <text class="type__t">{{ typeText(tp) }}</text>
+            <text class="type__d">{{ typeText(tp, "Desc") }}</text>
+          </view>
+        </view>
+      </view>
+
+      <view class="sh-card block">
+        <text class="sh-h2">{{ $t("afterSale.pickReason") }}</text>
+        <view class="reasons">
+          <view
+            v-for="r in REASONS"
+            :key="r"
+            class="reason"
+            :class="{ 'is-on': reason === r }"
+            @tap="reason = r"
+          >
+            {{ $t(`afterSale.reason.${r}`) }}
+          </view>
+        </view>
+      </view>
+
+      <view class="sh-card block">
+        <text class="sh-h2">{{ $t("afterSale.detail") }}</text>
+        <textarea
+          v-model="detail"
+          class="ta"
+          :placeholder="$t('afterSale.detailPh')"
+          maxlength="200"
+        />
+
+        <text class="sh-muted imglabel">{{ $t("afterSale.images") }}</text>
+        <view class="imgs">
+          <view v-for="(img, i) in images" :key="i" class="img">
+            <image class="img__i" :src="img" mode="aspectFill" />
+          </view>
+          <view v-if="images.length < 3" class="img img--add" @tap="pickImages">
+            <text class="img__plus">＋</text>
+          </view>
+        </view>
+      </view>
+
+      <view v-if="instantRefund" class="sh-card block notice">
+        <text class="notice__text">{{ $t("afterSale.instant") }}</text>
+      </view>
+
+      <view class="actionbar">
+        <view class="sh-btn" :class="{ 'is-disabled': !canSubmit }" @tap="submit">
+          {{ submitting ? $t("confirm.submitting") : $t("afterSale.submit") }}
+        </view>
+      </view>
+      <view class="spacer" />
+    </template>
+  </sh-scaffold>
+</template>
+
+<style scoped>
+.block {
+  margin-top: 20rpx;
+}
+.row {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  margin-bottom: 20rpx;
+}
+.row:last-child {
+  margin-bottom: 0;
+}
+.row__cover {
+  width: 108rpx;
+  height: 108rpx;
+  border-radius: 22rpx;
+  background: var(--sh-faint);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 50rpx;
+  flex-shrink: 0;
+}
+.row__main {
+  flex: 1;
+  min-width: 0;
+}
+.row__title {
+  display: block;
+  font-size: 26rpx;
+  color: var(--sh-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.row__spec {
+  display: block;
+  font-size: 21rpx;
+  color: var(--sh-sub);
+  margin-top: 6rpx;
+}
+.row__price {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: var(--sh-ink);
+  flex-shrink: 0;
+}
+.types {
+  display: flex;
+  gap: 16rpx;
+  margin-top: 24rpx;
+}
+.type {
+  flex: 1;
+  padding: 22rpx 20rpx;
+  border-radius: 24rpx;
+  background: var(--sh-faint);
+  border: 2rpx solid transparent;
+}
+.type.is-on {
+  border-color: var(--sh-primary);
+  background: var(--sh-primary-tint);
+}
+.type__t {
+  display: block;
+  font-size: 27rpx;
+  font-weight: 600;
+  color: var(--sh-ink);
+}
+.type__d {
+  display: block;
+  font-size: 21rpx;
+  color: var(--sh-sub);
+  line-height: 1.5;
+  margin-top: 8rpx;
+}
+.reasons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+  margin-top: 24rpx;
+}
+.reason {
+  padding: 20rpx 30rpx;
+  border-radius: 24rpx;
+  background: var(--sh-faint);
+  color: var(--sh-ink);
+  font-size: 26rpx;
+}
+.reason.is-on {
+  background: var(--sh-primary);
+  color: var(--sh-on-primary);
+  font-weight: 600;
+}
+.ta {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 160rpx;
+  background: var(--sh-faint);
+  border-radius: 24rpx;
+  padding: 24rpx;
+  font-size: 26rpx;
+  color: var(--sh-ink);
+  margin-top: 20rpx;
+}
+.imglabel {
+  display: block;
+  margin-top: 28rpx;
+}
+.imgs {
+  display: flex;
+  gap: 16rpx;
+  margin-top: 16rpx;
+}
+.img {
+  width: 160rpx;
+  height: 160rpx;
+  border-radius: 24rpx;
+  background: var(--sh-faint);
+  overflow: hidden;
+}
+.img__i {
+  width: 100%;
+  height: 100%;
+}
+.img--add {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.img__plus {
+  font-size: 48rpx;
+  color: var(--sh-sub);
+  line-height: 1;
+}
+.notice {
+  background: var(--sh-primary-tint);
+}
+.notice__text {
+  font-size: 24rpx;
+  color: var(--sh-primary);
+  line-height: 1.6;
+}
+.done {
+  text-align: center;
+  padding-top: 48rpx;
+  padding-bottom: 40rpx;
+}
+.done__icon {
+  display: block;
+  width: 96rpx;
+  height: 96rpx;
+  line-height: 96rpx;
+  margin: 0 auto;
+  border-radius: 9999px;
+  background: var(--sh-primary);
+  color: var(--sh-on-primary);
+  font-size: 48rpx;
+  font-weight: 700;
+}
+.done__title {
+  display: block;
+  font-size: 34rpx;
+  font-weight: 700;
+  color: var(--sh-ink);
+  margin-top: 24rpx;
+}
+.done__hint {
+  display: block;
+  font-size: 24rpx;
+  color: var(--sh-sub);
+  line-height: 1.6;
+  margin-top: 14rpx;
+}
+.node {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  padding: 12rpx 0;
+}
+.node__dot {
+  width: 16rpx;
+  height: 16rpx;
+  border-radius: 9999px;
+  background: var(--sh-line);
+  flex-shrink: 0;
+}
+.node__dot.is-last {
+  background: var(--sh-primary);
+}
+.node__label {
+  font-size: 25rpx;
+  color: var(--sh-ink);
+}
+.actionbar {
+  position: fixed;
+  inset-inline: 28rpx;
+  bottom: calc(28rpx + env(safe-area-inset-bottom));
+}
+.is-disabled {
+  opacity: 0.45;
+}
+.spacer {
+  height: 180rpx;
+}
+</style>

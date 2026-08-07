@@ -1,0 +1,1452 @@
+// 契约镜像 —— 与后端 /mp/** 同源。后端 openapi 就绪后改为自动生成。
+// 口径：camelCase · 单号 xxxNo · 时间 xxxAt(毫秒时间戳/UTC) · 枚举大写下划线
+// 金额：一律「最小货币单位」整数（人民币分 / 美分 / 菲尔），展示时按市场货币格式化
+
+import type {
+  CATEGORY_TYPE,
+  CURRENCIES,
+  FULFILLMENT,
+  LANGS,
+  MARKETS,
+  SERVICE_SCOPE,
+} from "@shared/utils/constants";
+
+export type CategoryType = (typeof CATEGORY_TYPE)[keyof typeof CATEGORY_TYPE];
+export type FulfillmentType = (typeof FULFILLMENT)[keyof typeof FULFILLMENT];
+export type Lang = (typeof LANGS)[number]["id"];
+export type CurrencyCode = keyof typeof CURRENCIES;
+export type MarketId = (typeof MARKETS)[number]["id"];
+export type ServiceScope = (typeof SERVICE_SCOPE)[keyof typeof SERVICE_SCOPE];
+
+/** 多语言文案（mock 内部用；对外契约由后端按 Accept-Language 返回已本地化的 string） */
+export type I18nText = Record<Lang, string>;
+
+/** 统一响应包 */
+export interface Result<T> {
+  /** 业务状态码，`0` 表示成功；非 0 时 `data` 无意义，按 `msg` 提示用户 */
+  code: number;
+  /** 面向用户的提示文案，已按 Accept-Language 本地化 */
+  msg: string;
+  /** 业务数据。成功时必定存在（无返回值的接口给 `null`） */
+  data: T;
+}
+
+/** 统一分页包 */
+export interface PageResult<T> {
+  /** 当前页数据 */
+  records: T[];
+  /** 满足条件的总条数（不是总页数）——端上据此判断还有没有下一页 */
+  total: number;
+  /** 当前页码，从 1 起 */
+  page: number;
+  /** 每页条数 */
+  size: number;
+}
+
+export interface PageQuery {
+  /** 页码，从 1 起。不传按 1 处理 */
+  page?: number;
+  /** 每页条数。不传按各接口默认值（通常 10 或 20） */
+  size?: number;
+}
+
+// ---------------------------------------------------------------- 用户与归属
+
+export interface User {
+  /** C 端用户单号。前缀 `cUser` 是有意的：B 端商家、平台 STAFF 是**另外两个账号池**，单号不通用 */
+  cUserNo: string;
+  /** 昵称。微信授权取来的，用户可改 */
+  nickname: string;
+  /** 头像 URL */
+  avatar: string;
+  /** 手机号。已脱敏（中间四位星号），完整号码不下发到端上 */
+  phone: string;
+  /** 当前绑定的社区。未绑定时为空 —— 首页的商品可见范围依赖它 */
+  communityNo?: string;
+  /** 默认自提点。下单时预选，用户可改 */
+  pickupNo?: string;
+  /** 常去的店。与 communityNo 正交 —— 可以在 A 社区却常买 B 店（ADR-004 §5.1） */
+  merchantNo?: string;
+}
+
+export interface Community {
+  /** 社区单号 */
+  communityNo: string;
+  /** 社区名（小区名） */
+  name: string;
+  /** 社区地址 */
+  address: string;
+  /** 所属城市。全市范围的商家靠它判定可达 */
+  cityCode: string;
+  /** 米 */
+  distance: number;
+  /** 本社区可用的自提点 */
+  pickups: Pickup[];
+}
+
+export interface Pickup {
+  /** 自提点单号 */
+  pickupNo: string;
+  /** 自提点名称（通常是承接店铺的店名） */
+  name: string;
+  /** 自提点地址 */
+  address: string;
+  /** 距当前社区的距离（米），服务端算好下发 */
+  distance: number;
+  /** 承接这个自提点的商家（ADR-005：PickupPoint.type=STORE，承接方是入驻商家而非团长） */
+  hostMerchantNo: string;
+  /** 承接商家的店名 */
+  hostName: string;
+  /** 承接商家的头像/门头图 */
+  hostAvatar: string;
+  /** 营业时间文案，如 `08:00-21:00`。展示用，不参与计算 */
+  openHours: string;
+  /** 到货时间说明，如「次日 18:00 后到」。影响用户选不选这个点 */
+  arrivalDesc: string;
+}
+
+// ---------------------------------------------------------------- 积分
+//
+// 积分能被商家接收并向平台兑付 → 它是平台的负债，不是营销数字。
+// 因此账户、流水、有效期都要按「资金」的标准建模，见 ADR-006。
+
+export type PointRecordType =
+  /** 消费获得 */
+  | "EARN"
+  /** 下单抵扣 */
+  | "USE"
+  /** 退款返还 */
+  | "REFUND"
+  /** 过期作废 */
+  | "EXPIRE"
+  /** 商家收款（B 端账户） */
+  | "RECEIVE"
+  /** 平台兑付给商家（B 端账户） */
+  | "SETTLE";
+
+export interface PointRecord {
+  /** 流水单号。积分是平台负债，每一笔变动都要可追溯（ADR-006） */
+  recordNo: string;
+  /** 变动类型，决定这笔是增是减 */
+  type: PointRecordType;
+  /** 变动量，正=增加 负=减少 */
+  points: number;
+  /** 流水标题，如「订单消费获得」「过期作废」。展示用 */
+  title: string;
+  /** 关联订单。消费/退款类必有，过期/结算类为空 */
+  orderNo?: string;
+  /** 发生时间 */
+  at: number;
+  /** 变动后余额，用于对账 —— 只存变动量的话，一条记录出错后面全错 */
+  balanceAfter: number;
+}
+
+export interface PointAccount {
+  /** 当前可用余额 */
+  balance: number;
+  /** 累计获得（含已用、已过期），只增不减 */
+  totalEarned: number;
+  /** 累计已抵扣 */
+  totalUsed: number;
+  /** 30 天内将过期的积分 */
+  expiringSoon: number;
+  /** 最近一批积分的过期时间。`expiringSoon=0` 时为空 */
+  expiringAt?: number;
+}
+
+// ---------------------------------------------------------------- 消息
+
+/**
+ * 站内消息。
+ * 三类分开是因为**用户对它们的期待完全不同**：交易类必须看到（到货了要去取），
+ * 活动类可以错过，系统类是通知。混在一个列表里，交易消息会被活动消息淹没。
+ */
+export type MessageType = "TRADE" | "MARKETING" | "SYSTEM";
+
+export interface Message {
+  /** 消息单号 */
+  messageNo: string;
+  /** 消息分类，决定它落在哪个 tab */
+  type: MessageType;
+  /** 标题（列表页展示） */
+  title: string;
+  /** 正文 */
+  body: string;
+  /** 点进去要跳哪（订单详情/商品/团），已是完整页面路径带参 */
+  link?: string;
+  /** 是否已读。未读数按 type 分别统计 */
+  read: boolean;
+  /** 消息产生时间 */
+  at: number;
+}
+
+// ---------------------------------------------------------------- 地址簿
+
+export interface Address {
+  /**
+   * 地址 ID。这里是 `Id` 不是 `No` —— 它不是业务单号，是用户地址簿里的一条本地记录，
+   * 不跨端流转、不出现在订单快照里（下单时地址是**整体快照**进订单的）
+   */
+  addressId: string;
+  /** 收货人姓名 */
+  name: string;
+  /** 收货人手机号 */
+  phone: string;
+  /** 省市区 */
+  region: string;
+  /** 详细地址（街道门牌） */
+  detail: string;
+  /** 是否默认地址。整个地址簿至多一条为 true */
+  isDefault: boolean;
+  /** 标签：家 / 公司 / 其他 */
+  tag?: string;
+}
+
+// ---------------------------------------------------------------- 售后
+
+export type AfterSaleReason =
+  | "MISSING"
+  | "DAMAGED"
+  | "QUALITY"
+  | "WRONG_ITEM"
+  | "NOT_ARRIVED"
+  | "OTHER";
+
+// ---------------------------------------------------------------- 商家
+//
+// 数据模型从一开始就按**多商家**建：merchantNo 贯穿商品/订单/评价/结算。
+// 一期平台方是唯一入驻方，所有数据都挂在它名下 —— 二期开放第三方入驻是配置变更，不是重构。
+// 形态与拆分时机见 docs/technical/ADR/ADR-001。
+
+export type MerchantType = "PLATFORM" | "COMPANY" | "INDIVIDUAL";
+
+/** 商品卡/详情上挂的商家简要信息 */
+export interface MerchantBrief {
+  /** 商家单号。贯穿商品/订单/评价/结算，是多商家模型的主线（ADR-001） */
+  merchantNo: string;
+  /** 店铺名 */
+  name: string;
+  /** 店铺 logo URL */
+  logo: string;
+  /** 综合评分，0–5，保留一位小数 */
+  rating: number;
+  /** 是否通过资质认证 */
+  verified: boolean;
+  /** 选定报价后不履约的次数。>0 会在报价卡上公示 —— 事后信用替代事前审核 */
+  breachCount: number;
+}
+
+/** 消费过的商家（「我买过的」列表用） */
+export interface VisitedMerchant extends Merchant {
+  /** 在该商家的下单次数 */
+  orderCount: number;
+  /** 最近一次下单时间 */
+  lastOrderAt: number;
+}
+
+export interface Merchant extends MerchantBrief {
+  /** 商家类型：平台自营 / 企业 / 个体 */
+  type: MerchantType;
+  /** 店铺简介 */
+  desc: string;
+  /**
+   * 经营范围 —— 邻里购物的核心约束：**商家是有服务半径的**。
+   * 隔壁区的生鲜店对我没有意义，它送不到我的自提点。见 SERVICE_SCOPE。
+   */
+  serviceScope: ServiceScope;
+  /** 覆盖哪些社区。**仅 scope=COMMUNITY 时有意义**，其余情况忽略 */
+  serviceCommunityNos: string[];
+  /** 覆盖哪个城市。**仅 scope=CITY 时有意义** */
+  serviceCityCode?: string;
+  /** 距当前社区的距离（米）。由服务端按用户当前社区算好下发，端上不自己算 */
+  distance?: number;
+  /** 累计订单量（评分权重之一） */
+  salesCount: number;
+  /** 参与评分的评价条数 */
+  ratingCount: number;
+  /** 在售商品数 */
+  goodsCount: number;
+  /** 店铺地址。纯线上商家可能没有 */
+  address?: string;
+  /** 营业时间文案 */
+  openHours?: string;
+  /** 入驻时间 */
+  /** 入驻时间 */
+  joinedAt: number;
+  /** 店铺标签，如「生鲜」「次日达」。展示用，不参与筛选 */
+  tags: string[];
+  /** 分维度评分：商品/服务/时效 */
+  scores: { goods: number; service: number; speed: number };
+}
+
+// ---------------------------------------------------------------- 评价
+
+export interface Review {
+  /** 评价单号 */
+  reviewNo: string;
+  /** 被评价的商品 */
+  goodsNo: string;
+  /** 被评价的商家。差评会计入商家评分与申诉流程 */
+  merchantNo: string;
+  /** 评价人昵称（匿名评价时为「匿名用户」） */
+  nickname: string;
+  /** 评价人头像 */
+  avatar: string;
+  /** 总分，1–5 整数 */
+  rating: number;
+  /** 评价正文 */
+  content: string;
+  /** 评价图 URL 列表 */
+  images: string[];
+  /** 购买规格。展示在评价上，让人知道这条评价说的是哪个 SKU */
+  spec: string;
+  /** 评价提交时间 */
+  createdAt: number;
+  /** 点赞数 */
+  likeCount: number;
+  /** 当前用户是否已点赞 */
+  liked: boolean;
+  /** 商家回复 */
+  reply?: string;
+  /**
+   * 三维度评分（B-9.3 / P-13.1.4）。总分 `rating` 仍保留 ——
+   * 老数据没有分维度分，列表页也只显示一个星级；维度分用于**评分算法与商家诊断**：
+   * 「货好但送得慢」这种问题，只看总分永远看不出来。
+   */
+  scores?: ReviewScores;
+  /** 商家申诉（B-9.4）。裁决在平台端 P-13.1 */
+  appeal?: ReviewAppeal;
+}
+
+/** 三维度：商品本身 / 履约（快慢、包装、缺损） / 服务（沟通、售后态度） */
+export interface ReviewScores {
+  /** 商品本身，1–5 */
+  goods: number;
+  /** 履约：快慢、包装、缺损，1–5 */
+  fulfillment: number;
+  /** 服务：沟通、售后态度，1–5 */
+  service: number;
+}
+
+/**
+ * 批量核销结果。
+ * **不是整批回滚**：逐条尝试，失败的逐条回报 —— 店主需要知道**哪一单**没成，
+ * 而不是「3 成功 2 失败」然后自己一个个找。整批回滚更糟：一张废码会让另外四单白扫。
+ */
+export interface VerifyBatchResult {
+  /** 成功核销的单数 */
+  successCount: number;
+  /** 失败明细。code 是那张码，reason 是为什么不行 */
+  failed: { code: string; reason: string }[];
+}
+
+/**
+ * 自提点履约总览（后端 `GET /biz/pickup/overview`）。
+ * 承接方最关心的三个数：还有几单没人来取、今天到了几批、这些活挣了多少服务费。
+ */
+export interface PickupOverview {
+  /** 自提点单号 */
+  pickupNo: string;
+  /** 自提点名称 */
+  pickupName: string;
+  /** 待核销单数 —— 到货了还没人来取的 */
+  pendingVerify: number;
+  /** 今日到货批次 */
+  arrivedBatches: number;
+  /** 累计履约服务费（最小货币单位） */
+  serviceFeeMinor: number;
+}
+
+/**
+ * 费率卡（后端 `GET /biz/settle/rate-card`）。
+ *
+ * ⚠️ 费率是**万分比整数**（后端 `platformRate / 100.0` 才是百分数）——
+ * 直接当百分数显示会把 2% 显示成 200%。
+ * 语义同样要照搬：**费率以下单时快照为准，调整不影响历史订单** ——
+ * 不写清楚的话，商家会以为平台调价能追溯到已成交的单。
+ */
+export interface RateCard {
+  /** 自带客流费率（万分比）。商家自己带来的客人，平台抽成低 */
+  merchantOwnedRate: number;
+  /** 平台客流费率（万分比）。平台分发带来的订单 */
+  platformRate: number;
+  /** 费率说明文案。**须写明「以下单时快照为准，调整不影响历史订单」** */
+  note: string;
+}
+
+export type ReviewAppealStatus =
+  | "PENDING" // 待平台裁决
+  | "UPHELD" // 申诉成立 —— 原评价下架
+  | "REJECTED"; // 申诉驳回 —— 评价保留
+
+/**
+ * 商家对差评的申诉。
+ * 这是**唯一**能把差评送进平台裁决台的入口 —— 平台端 P-13.1 的裁决页早就建好了，
+ * 但 B 端一直没有申诉入口，那张台子收不到任何单，等于空转。
+ */
+export interface ReviewAppeal {
+  /** 申诉单号 */
+  appealNo: string;
+  /** 申诉理由，商家填写 */
+  reason: string;
+  /** 举证图（聊天记录、物流截图） */
+  images: string[];
+  /** 裁决状态 */
+  status: ReviewAppealStatus;
+  /** 申诉提交时间 */
+  submittedAt: number;
+  /** 裁决说明。**无论成立还是驳回都必须写** —— 商家会看到，「已读不处理」不是一种结果 */
+  verdict?: string;
+}
+
+// ---------------------------------------------------------------- 商品
+
+export interface Category {
+  /** 类目单号 */
+  categoryNo: string;
+  /** 类目名（后端按 Accept-Language 下发已本地化文案） */
+  name: string;
+  /** 类目形态。决定商品用哪套字段（生鲜有截单时间、服务有预约时段…） */
+  type: CategoryType;
+  /** 子类目。仅两级，不再往下 */
+  children?: Category[];
+}
+
+/** 规格维度，例：{ name: "重量", options: ["约5斤", "约10斤"] } */
+export interface SpecGroup {
+  /** 规格维度名，如「重量」「包装」 */
+  name: string;
+  /** 该维度的可选值，如 `["约5斤", "约10斤"]` */
+  options: string[];
+  /**
+   * 与 options 一一对应的模板编码。来自模板的选项有值，自由输入的为空。
+   * 一期只写入不消费 —— 但不留位的话，二期做规格聚合要刷全部历史商品。
+   */
+  optionCodes?: (string | undefined)[];
+  /** 该规格组来自哪个模板（便于「用的人多不多」这类平台侧统计） */
+  templateNo?: string;
+}
+
+export interface Sku {
+  /** SKU 单号。下单、库存、订单行都指向它，不是指向 goodsNo */
+  skuNo: string;
+  /**
+   * 各规格维度上的取值，顺序与 Goods.specGroups 一一对应。
+   * 单规格商品长度为 1；多规格（如 重量 × 包装）长度 >1。
+   */
+  optionValues: string[];
+  /** 展示用拼接文案（后端下发，端上不自己拼，避免多语言分隔符差异） */
+  spec: string;
+  /** 售价（最小货币单位） */
+  price: number;
+  /** 划线价（最小货币单位）。为空表示不展示划线价 */
+  originPrice?: number;
+  /** 可售库存。下单时服务端二次校验，端上这个值只用于展示与预校验 */
+  stock: number;
+  /** FRESH 且按重计价：标称重量（克） */
+  nominalGram?: number;
+}
+
+/** 预约可选时段（SERVICE + APPOINTMENT） */
+export interface AppointmentSlot {
+  /** YYYY-MM-DD（市场本地时区） */
+  date: string;
+  /** 当天各时段的余量。`time` 形如 `14:00`，`left` 为剩余可约数，0 表示约满 */
+  times: { time: string; left: number }[];
+}
+
+/** 卡券属性（CARD） */
+export interface CardSpec {
+  /** 储值卡面值（最小货币单位）；次卡为空 */
+  faceValueMinor?: number;
+  /** 次卡总次数；储值卡为空 */
+  timesTotal?: number;
+  /** 有效期天数 */
+  validDays: number;
+}
+
+/**
+ * 促销：买 N 送 M。
+ * 语义：购买数量达到 N 件，赠送 M 件 —— 用户**付 N 件的钱，收到 N+M 件**。
+ * 赠品不进计价（价格为 0），只作为订单里的独立行存在，履约时随单发出。
+ */
+export interface Promotion {
+  /** 促销类型。目前只有买 N 送 M 一种 */
+  type: "BUY_N_GET_M";
+  /** 购买件数门槛 N */
+  buyN: number;
+  /** 赠送件数 M */
+  giftM: number;
+  /** 赠品商品号；不填则赠同款 */
+  giftGoodsNo?: string;
+  /** 赠品展示名（后端下发已本地化） */
+  giftTitle?: string;
+}
+
+/** 虚拟商品属性（VIRTUAL） */
+export interface VirtualSpec {
+  /** 发放说明，如「支付后 1 分钟内短信发码」 */
+  deliverDesc: string;
+}
+
+export interface Goods {
+  /** 商品单号 */
+  goodsNo: string;
+  /** 商品标题 */
+  title: string;
+  /** 副标题/卖点一句话 */
+  subtitle: string;
+  /** 封面图 URL。列表页用这一张 */
+  cover: string;
+  /** 详情轮播图 URL 列表 */
+  images: string[];
+  /** 商品形态，与所属类目的 type 一致。决定详情页用哪套字段 */
+  type: CategoryType;
+  /** 所属类目 */
+  categoryNo: string;
+  /** 所属商家 —— 商品与服务都要展示商家信息 */
+  merchant: MerchantBrief;
+  /** 本商品的评分与评价数（区别于商家整体评分） */
+  rating?: number;
+  /** 本商品的评价条数 */
+  ratingCount?: number;
+  /** 展示价（最小货币单位），取各 SKU 最低价 */
+  price: number;
+  /** 划线价（最小货币单位） */
+  originPrice?: number;
+  /** 支持的履约方式。**数组**：同一商品可以既自提又快递，下单时由用户选 */
+  fulfillments: FulfillmentType[];
+  /** 规格维度定义；单规格商品也有一组 */
+  specGroups: SpecGroup[];
+  /** SKU 列表。单规格商品也有且仅有一条 */
+  skus: Sku[];
+  /** 累计销量，展示用 */
+  sales: number;
+  /** FRESH：预售截单时间戳 */
+  cutoffAt?: number;
+  /** FRESH：预计到货描述 */
+  arrivalDesc?: string;
+  /** FRESH：是否按实称多退少补 */
+  weighed?: boolean;
+  /** FRESH：产地 */
+  origin?: string;
+  /** SERVICE：服务时长（分钟） */
+  durationMin?: number;
+  /** SERVICE：可核销门店 */
+  storeName?: string;
+  /** SERVICE + APPOINTMENT：可预约时段 */
+  slots?: AppointmentSlot[];
+  /** CARD */
+  card?: CardSpec;
+  /** VIRTUAL */
+  virtual?: VirtualSpec;
+  /** 促销（一期只有买 N 送 M） */
+  promotions?: Promotion[];
+  /** 商家为本商品开放的拼团档：够 minCount 人享 price。不配则本商品不能发起团 */
+  groupBuy?: { minCount: number; price: number };
+  /** 本商品每件赠送的积分。不同商品可以给不同积分，不配则按成交额比例默认发放 */
+  points?: number;
+  /** 每人限购，0 = 不限 */
+  limitPerUser: number;
+  /** 是否在售。下架后详情页仍可访问（历史订单要点得进去），但不可下单 */
+  onSale: boolean;
+}
+
+// ---------------------------------------------------------------- 购物车
+
+export interface CartItem {
+  /** 商品单号 */
+  goodsNo: string;
+  /** SKU 单号。购物车按 SKU 去重，不是按商品 */
+  skuNo: string;
+  /** 商品标题快照 */
+  title: string;
+  /** 封面图快照 */
+  cover: string;
+  /** 规格文案快照 */
+  spec: string;
+  /** 加购时的单价（最小货币单位）。结算时以服务端最新价为准，不一致会提示 */
+  price: number;
+  /** 数量 */
+  qty: number;
+  /** 商品形态 */
+  type: CategoryType;
+  /** 用户选定的履约方式。跨履约方式的商品结算时会拆单 */
+  fulfillment: FulfillmentType;
+  /** 失效原因，如「已下架」「库存不足」。有值即不可勾选结算 */
+  invalidReason?: string;
+  /** 买赠自动带出的赠品件数（不计价） */
+  giftQty?: number;
+  /** 赠品说明，如「买 2 送 1」 */
+  giftLabel?: string;
+}
+
+// ---------------------------------------------------------------- 订单
+
+export type OrderStatus =
+  | "WAIT_PAY"
+  | "PAID"
+  | "PREPARING"
+  | "ARRIVED"
+  | "SHIPPED"
+  | "COMPLETED"
+  | "CANCELLED"
+  | "REFUNDING"
+  | "REFUNDED";
+
+export interface OrderItem {
+  /** 商品单号 */
+  goodsNo: string;
+  /** 所属商家 —— 分账与「我买过的商家」都依赖它落在订单行上 */
+  merchantNo: string;
+  /** SKU 单号 */
+  skuNo: string;
+  /** 下单时的商品标题**快照**。商品后续改名不影响历史订单 */
+  title: string;
+  /** 封面图快照 */
+  cover: string;
+  /** 规格文案快照 */
+  spec: string;
+  /** 成交单价（最小货币单位）快照。改价不追溯已成交订单 */
+  price: number;
+  /** 数量 */
+  qty: number;
+  /** 商品形态 */
+  type: CategoryType;
+  /** FRESH 且按重计价：下单时的标称重量（克） */
+  nominalGram?: number;
+  /** 是否已实际称重。称重后按实重产生差价，见 `OrderAmount.weighAdjustMinor` */
+  weighed?: boolean;
+  /** 赠品行：价格为 0，不参与计价，履约时随单发出 */
+  isGift?: boolean;
+  /** 该商品每件赠送的积分 */
+  points?: number;
+}
+
+export interface OrderAmount {
+  /** 商品小计（最小货币单位），不含运费与优惠 */
+  goodsMinor: number;
+  /** 运费 */
+  freightMinor: number;
+  /** 优惠合计（券 + 活动），正数表示减掉多少 */
+  discountMinor: number;
+  /** 应付：`goodsMinor + freightMinor - discountMinor - pointsDeductMinor` */
+  payableMinor: number;
+  /** 实付。未支付时为 0；称重差价补退后与 payableMinor 可能不等 */
+  paidMinor: number;
+  /** 称重差价（正=补款 负=退款），仅 FRESH */
+  weighAdjustMinor?: number;
+  /** 积分抵扣的金额 */
+  pointsDeductMinor: number;
+  /** 本单使用的积分数 */
+  pointsUsed: number;
+  /** 本单可获得的积分（订单完成时才真正入账） */
+  pointsEarn: number;
+  /** 下单时的货币，订单一经创建即锁定，不随用户切市场变化 */
+  currency: CurrencyCode;
+}
+
+export interface Order {
+  /** 订单单号 */
+  orderNo: string;
+  /** 订单状态。粗粒度；售后细节见 `afterSale` */
+  status: OrderStatus;
+  /** 履约方式，下单时锁定 */
+  fulfillment: FulfillmentType;
+  /** 订单行。含赠品行（`isGift`，价格为 0） */
+  items: OrderItem[];
+  /** 金额明细 */
+  amount: OrderAmount;
+  /** 自提码 / 核销码 */
+  verifyCode?: string;
+  /** VIRTUAL：兑换码；CARD：卡号 */
+  redeemCode?: string;
+  /** PICKUP：自提点单号 */
+  pickupNo?: string;
+  /** PICKUP：自提点名称快照 */
+  pickupName?: string;
+  /** EXPRESS：快递单号，发货后才有 */
+  expressNo?: string;
+  /** APPOINTMENT：预约开始时间戳 */
+  appointmentAt?: number;
+  /** 下单时间 */
+  createdAt: number;
+  /** 支付截止时间。超时自动取消，仅 WAIT_PAY 有意义 */
+  payDeadlineAt?: number;
+  /** 状态流转轨迹，按时间正序。订单详情的进度条据此渲染 */
+  timeline: OrderTimelineNode[];
+  /** 下单幂等 key。端上生成，重复提交返回同一笔订单而不是新建 */
+  idempotencyKey?: string;
+  /** 下单人昵称。团长视角（分拣单/核销台）要看得见是谁的单 */
+  buyerNickname?: string;
+  /** 已评价 */
+  reviewed?: boolean;
+  /** 积分是否已发放（幂等标记，防止重复核销重复发分） */
+  pointsGranted?: boolean;
+  /**
+   * 客流来源。**决定平台费率档**：商家自带客流建议零佣金 —— 他带来的客户
+   * 在别家的消费才是平台的收益（ADR-004 §6）。从店铺码/店铺分享进入即为 MERCHANT_OWNED。
+   */
+  trafficSource?: "MERCHANT_OWNED" | "PLATFORM";
+  /** 参与的团。邻里自提的核销作用域就靠它裁剪（E16） */
+  groupNo?: string;
+  /** 售后单。订单状态只有粗粒度的 REFUNDING/REFUNDED，细节在这里 */
+  afterSale?: AfterSale;
+  /**
+   * 本单归属的商家。**一单只属于一个商家** —— 购物车跨商家时拆成多笔子订单（E3）。
+   * 不拆的话分账无从谈起：一笔钱要分给几家、各分多少，没有承载的单据。
+   */
+  merchantNo?: string;
+  /** 商家名快照 */
+  merchantName?: string;
+  /**
+   * 支付组号。同一次结算拆出的子订单共享它，**一次支付付掉整组**。
+   * 用户感知是「买了一次」，资金与分账感知是「N 笔各归各家」。
+   */
+  payGroupNo?: string;
+}
+
+export interface OrderTimelineNode {
+  /** 流转到的状态 */
+  status: OrderStatus;
+  /** 展示文案，如「已到货，请到自提点取货」。后端下发已本地化 */
+  label: string;
+  /** 发生时间 */
+  at: number;
+}
+
+// ---------------------------------------------------------------- 卡包
+
+export interface UserCard {
+  /** 卡号。核销时出示的就是它 */
+  cardNo: string;
+  /** 购买时的商品单号 */
+  goodsNo: string;
+  /** 卡名快照 */
+  title: string;
+  /** 卡面图 */
+  cover: string;
+  /** 储值卡剩余额度（最小货币单位） */
+  balanceMinor?: number;
+  /** 次卡剩余次数 */
+  timesLeft?: number;
+  /** 过期时间。过期后余额/次数作废 */
+  expireAt: number;
+  /** 购卡时锁定的货币，不随用户切市场变化 */
+  currency: CurrencyCode;
+}
+
+// ---------------------------------------------------------------- 营销
+
+export interface Coupon {
+  /** 券单号 */
+  couponNo: string;
+  /** 券名，如「满 50 减 5」 */
+  name: string;
+  /** 使用门槛（最小货币单位）。0 表示无门槛 */
+  thresholdMinor: number;
+  /** 抵扣金额（最小货币单位） */
+  discountMinor: number;
+  /** 过期时间 */
+  expireAt: number;
+  /** 当前用户是否已领取。列表页据此显示「领取」还是「去使用」 */
+  received: boolean;
+  /** 适用范围文案，如「仅限张记生鲜」。展示用，实际校验在服务端 */
+  scopeDesc: string;
+}
+
+/**
+ * 邻里求团：**需求先于供给**。
+ *
+ * 与「商家团」是两条完全不同的线，刻意不复用一个模型：
+ *   商家团 —— 商品已上架、价格已定、库存已备，用户只是参与；适合生鲜日用这类高频标品。
+ *   求团   —— 发起时**商品还不存在，甚至没有商家**，用户只有一句「想买儿童床垫」；
+ *            适合床垫、校服、家电这类低频高单价、有议价空间的非标品。
+ *
+ * 关键约束：**意向 ≠ 订单**。求团阶段不收钱、不锁库存 —— 商品还不存在时收钱是给自己找麻烦。
+ * 只有发起人选定报价、转成正式商家团之后，才进入交易链路。
+ */
+export type GroupRequestStatus =
+  /** 刚发起，等邻居 +1 */
+  | "OPEN"
+  /** 已有商家报价 */
+  | "QUOTING"
+  /** 发起人已选定报价，已转成正式团 */
+  | "MATCHED"
+  | "CLOSED"
+  | "EXPIRED";
+
+/** 一次改价的留痕 */
+export interface QuoteRevision {
+  /** 改价后的单价（最小货币单位） */
+  priceMinor: number;
+  /** 改价时间 */
+  at: number;
+}
+
+/**
+ * 商家对某个需求单的报价。一个需求单可多家报价，由发起人挑。
+ *
+ * **报价不做事前审核，防加价靠三层机制**（见 docs/technical/ADR/ADR-003）：
+ *   1. 锁价 —— 被选定后 `locked`，下单一律用快照价，系统层面加不了价
+ *   2. 公示 —— 每次改价都写进 `revisions` 并对所有邻居可见，谁涨价谁被看见
+ *   3. 信用 —— 选定后不履约计入商家 `breachCount` 与评分，累计则限制报价资格
+ */
+export interface Quote {
+  /** 报价单号 */
+  quoteNo: string;
+  /** 报价商家。`breachCount` 会在报价卡上公示 —— 事后信用替代事前审核 */
+  merchant: MerchantBrief;
+  /** 报价单价 */
+  priceMinor: number;
+  /** 起订量：低于这个数商家不接 */
+  minCount: number;
+  /** 报价说明：规格、材质、是否含安装等 */
+  desc: string;
+  /** 报价有效期。过期后不可被选定 —— 报价不能无限期挂着 */
+  validUntil: number;
+  /** 报价时间 */
+  createdAt: number;
+  /** 是否被发起人选定。一个需求单只有一条为 true */
+  chosen: boolean;
+  /** 改价历史，公示给所有人。空数组 = 从未改过价 */
+  revisions: QuoteRevision[];
+  /** 已锁价：选定后为 true，此后价格不可变 */
+  locked: boolean;
+}
+
+export interface GroupRequest {
+  /** 求团需求单号 */
+  requestNo: string;
+  /** 发起人昵称 */
+  initiatorNickname: string;
+  /** 发起人头像 */
+  initiatorAvatar: string;
+  /** 需求的范围仍是自提点/小区 —— 邻里的意义就在于此 */
+  pickupNo: string;
+  /** 自提点名称快照 */
+  pickupName: string;
+  /** 需求标题，如「想团儿童床垫」。**此时商品还不存在**，只有这句话 */
+  title: string;
+  /** 需求详述：尺寸、材质、用途等，供商家判断能不能接 */
+  desc: string;
+  /** 参考图。发起人拍的样图或截图 */
+  images: string[];
+  /** 发起人期望的数量 */
+  expectQty: number;
+  /** 心理价位（可不填） */
+  budgetMinor?: number;
+  /** 需求单状态 */
+  status: GroupRequestStatus;
+  /** 表达意向的邻居数（含发起人）—— 不是订单数 */
+  interestedCount: number;
+  /** 当前用户是否已 +1。决定按钮显示「我也要」还是「已加入」 */
+  interested: boolean;
+  /** +1 的邻居头像墙。只取前若干个用于展示，不是全量 */
+  neighbours: { avatar: string; nickname: string }[];
+  /** 收到的报价。一个需求单可多家报价，由发起人挑 */
+  quotes: Quote[];
+  /** 发起时间 */
+  createdAt: number;
+  /** 需求单过期时间。过期即 EXPIRED，不再接受报价 */
+  expireAt: number;
+  /** MATCHED 后指向生成的正式团 */
+  groupNo?: string;
+  /**
+   * 选定的报价快照。转成正式团后下单用这个价，**不读商家当前价** ——
+   * 这是防加价最硬的一层：加价在技术上做不到，不需要审核。
+   */
+  lockedPriceMinor?: number;
+  /** 我（+1 的邻居）是否已二次确认下单。+1 不等于承诺，必须各自确认 */
+  confirmed?: boolean;
+  /** 已确认下单的人数 */
+  confirmedCount?: number;
+}
+
+/**
+ * 商家团 —— 商家在已上架商品上开的团，用户可参与或自己开一桌。
+ * 定位：**只是一种活动**，不是平台核心机制。所以单档成团，不做阶梯价。，不是运营配置的活动位。
+ * 成团单位是自提点（拼的是一车送到一个点的成本），单档成团，不做阶梯。
+ */
+export interface GroupBuy {
+  /** 团单号 */
+  groupNo: string;
+  /** 开团的商品 */
+  goodsNo: string;
+  /** 商品标题快照 */
+  title: string;
+  /** 商品封面快照 */
+  cover: string;
+  /** 供货商家 */
+  merchant: MerchantBrief;
+  /** 发起人昵称 */
+  initiatorNickname: string;
+  /** 发起人头像 */
+  initiatorAvatar: string;
+  /** ★ 成团范围：**成团单位是自提点**，拼的是一车送到一个点的成本 */
+  pickupNo: string;
+  /** 自提点名称快照 */
+  pickupName: string;
+  /** 不成团时的价格（降级发货用此价） */
+  basePrice: number;
+  /** 成团价 */
+  groupPrice: number;
+  /** 成团所需人数 */
+  minCount: number;
+  /** 已参团人数 */
+  joinedCount: number;
+  /** 已成团 */
+  reached: boolean;
+  /** 还差几人 */
+  need: number;
+  /** 截止时间：发起后 validHours 与商品截单时间取更早 */
+  expireAt: number;
+  /** 已参团的人及各自件数，展示用 */
+  members: { avatar: string; nickname: string; qty: number }[];
+  /** 当前用户是否已参团 */
+  joined: boolean;
+  /**
+   * 邻里自提点（C-GB-06）：发起人勾选「送到我家」时有值。
+   * 参团者在这里取货，发起人负责签收与逐单核销 —— **零报酬**（ADR-005 §3）。
+   */
+  neighborPickup?: PickupPoint;
+  /** 我是不是这个团的发起人 —— 决定是否显示轻核销入口 */
+  isOwner?: boolean;
+}
+
+// ---------------------------------------------------------------- 团长
+
+
+/** 分拣单的一行：按商品汇总，团长照着这个点数 */
+export interface PickingRow {
+  /** 商品单号 */
+  goodsNo: string;
+  /** SKU 单号。分拣按 SKU 汇总，不是按商品 */
+  skuNo: string;
+  /** 商品标题 */
+  title: string;
+  /** 封面图，照着点数时用来认货 */
+  cover: string;
+  /** 规格文案 */
+  spec: string;
+  /** 该 SKU 在本自提点的总件数（含赠品） */
+  totalQty: number;
+  /** 谁要几件 */
+  buyers: { nickname: string; qty: number; orderNo: string }[];
+}
+
+// ---------------------------------------------------------------- 登录
+
+/**
+ * 登录方式。
+ * · WX_MINI  小程序静默登录（只拿 openid，拿不到手机号）
+ * · WX_PHONE 小程序一键取手机号（推荐：一次授权直接拿到号，省掉短信）
+ * · WX_OPEN  App 微信开放平台
+ * · APPLE    Apple 登录（iOS 上架硬要求）
+ * · PHONE_OTP 手机号 + 短信验证码（全端兜底，也是商家账号的主标识）
+ */
+export type GrantType = "WX_MINI" | "WX_PHONE" | "WX_OPEN" | "PHONE_OTP" | "APPLE";
+
+export interface LoginReq {
+  /** 登录方式，决定 principal / credential 各放什么 */
+  grantType: GrantType;
+  /** 凭证主体：`WX_*` 放 wx.login 的 code；`PHONE_OTP` 放手机号；`APPLE` 放 identityToken */
+  principal: string;
+  /** 凭证副本：仅 `PHONE_OTP` 需要，放短信验证码 */
+  credential?: string;
+  /** 邀请人。从邀请链接进入时带上，用于拉新归因 */
+  inviterNo?: string;
+  /** 从店铺码/店铺分享进入时带上，用于进店归因与费率分档（ADR-004 §5.4） */
+  merchantNo?: string;
+  /** 是否已勾选同意用户协议与隐私政策 —— 注册的合规前置，服务端要留痕 */
+  agreed?: boolean;
+}
+
+export interface LoginResp {
+  /** 访问令牌。后续请求放 `Authorization: Bearer <token>` */
+  token: string;
+  /** 登录用户档案 */
+  user: User;
+}
+
+// ================================================================ B 端（商家端）
+// 说明：B 端复用 C 端的 Goods / Order / Review / Merchant 等主类型，
+// 只在此追加「经营侧独有」的类型。两端共享同一份定义，避免契约漂移。
+
+/** 商家入驻审核状态。与 C 端 LeaderStatus 无关 —— 团长角色已删除（ADR-004） */
+export type MerchantStatus =
+  | "NONE" // 未申请
+  | "APPLYING" // 待审核
+  | "REJECTED" // 驳回，可补交
+  | "ACTIVE" // 正常经营
+  | "SUSPENDED"; // 被封禁
+
+/** 主体类型。个人 → 个体户 → 企业，门槛前低后高（ADR-002 §4） */
+export type MerchantSubject = "PERSONAL" | "INDIVIDUAL_BIZ" | "COMPANY";
+
+/** 商家分层。为「流量起来后引入大商家」预留，一期只用 SMALL（ADR-004 §7） */
+export type MerchantTier = "SMALL" | "MEDIUM" | "LARGE";
+
+/** 登录后的商家会话 */
+export interface MerchantProfile {
+  /** 商家单号 */
+  merchantNo: string;
+  /** 店铺名 */
+  name: string;
+  /** 店铺 logo */
+  logo: string;
+  /** 入驻审核状态。非 ACTIVE 时 B 端只能看到入驻流程页 */
+  status: MerchantStatus;
+  /** 主体类型 */
+  subject: MerchantSubject;
+  /** 商家分层。一期恒为 SMALL */
+  tier: MerchantTier;
+  /** 登录手机号，也是商家账号的主标识 */
+  phone: string;
+  /** 是否承接自提点 —— 决定 B 端是否出现「履约台」入口（ADR-005） */
+  isPickupPoint: boolean;
+  /** 承接的自提点单号。`isPickupPoint=true` 时有值 */
+  pickupNo?: string;
+  /** 驳回原因，status=REJECTED 时有值 */
+  rejectReason?: string;
+  /** 本次会话的登录方式。第三方登录且 phone 为空时，要引导补绑手机号 */
+  loginBy?: GrantType;
+}
+
+export interface MerchantLoginResp {
+  /** 访问令牌。**商家池与 C 端用户池是两套账号**，token 不通用 */
+  token: string;
+  /** 商家档案 */
+  merchant: MerchantProfile;
+}
+
+export interface MerchantApplyReq {
+  /** 拟用店铺名 */
+  name: string;
+  /** 主体类型。个人 → 个体户 → 企业，门槛前低后高 */
+  subject: MerchantSubject;
+  /** 联系人姓名 */
+  contact: string;
+  /** 联系手机号 */
+  phone: string;
+  /** 主营类目 */
+  category: string;
+  /** 店铺简介 */
+  desc: string;
+  /** 承接自提点：小店既是供给方也是取货点（ADR-005 type=STORE） */
+  asPickupPoint: boolean;
+  /** 资质图片（营业执照/身份证），个人主体可为空 */
+  licenses: string[];
+  /** 结算账户类型。真实账号由后端持有，C 端与 B 端都不回显（ADR-002 §5） */
+  settleAccountType: "PERSONAL_OPENID" | "MERCHANT_ID";
+}
+
+/** 商品在商家侧的状态。C 端只看得到 ON_SALE */
+export type GoodsStatus = "ON_SALE" | "OFF_SALE" | "AUDITING" | "REJECTED";
+
+/** 商家自送规则（ADR-005 §5：不做骑手系统，只有范围与门槛） */
+export interface DeliveryRule {
+  /** 配送半径，米 */
+  radius: number;
+  /** 起送价，最小货币单位 */
+  minOrderMinor: number;
+  /** 配送费，最小货币单位 */
+  feeMinor: number;
+  /** 免配送费门槛，最小货币单位；0 表示不免 */
+  freeThresholdMinor: number;
+}
+
+/** 结算单。分账以子订单为单位（ADR-002 §5） */
+export interface SettleBill {
+  /** 结算单号 */
+  billNo: string;
+  /** 结算周期起（含） */
+  periodStart: number;
+  /** 结算周期止（含） */
+  periodEnd: number;
+  /** 应分金额 */
+  payableMinor: number;
+  /** 已分账金额 */
+  settledMinor: number;
+  /** 平台佣金 */
+  commissionMinor: number;
+  /** 自提点履约服务费（承接方收，供货方付；口径待定 B9） */
+  fulfillFeeMinor: number;
+  /** 结算状态：待结算 / 部分已结 / 已结清 / 已过期 */
+  status: "PENDING" | "PARTIAL" | "DONE" | "EXPIRED";
+  /** 结算币种 */
+  currency: CurrencyCode;
+  /** 本期订单笔数 */
+  orderCount: number;
+}
+
+/** 工作台待办。**数字即入口** —— 商家打开 App 只想知道「有几件事要我做」 */
+export interface MerchantTodo {
+  /** 待发货单数（EXPRESS 履约） */
+  toShip: number;
+  /** 待自送单数（商家自送履约） */
+  toDeliver: number;
+  /** 待核销单数（自提到货、买家还没来取） */
+  toVerify: number;
+  /** 待分拣单数（到货后按商品汇总点数） */
+  toPick: number;
+  /** 待处理售后单数 */
+  afterSale: number;
+  /** 待回复的评价数 */
+  toReply: number;
+  /** 可报价的求团需求数 */
+  quotable: number;
+}
+
+export interface MerchantStats {
+  /** 今日订单数（自然日，按市场本地时区切分） */
+  todayOrders: number;
+  /** 今日成交额（最小货币单位） */
+  todayGmvMinor: number;
+  /** 本月订单数 */
+  monthOrders: number;
+  /** 本月成交额（最小货币单位） */
+  monthGmvMinor: number;
+  /** 统计口径的币种 */
+  currency: CurrencyCode;
+  /** 店铺综合评分，0–5 */
+  rating: number;
+  /** 参与评分的评价条数 */
+  ratingCount: number;
+  /** 自带客流占比（trafficSource=MERCHANT_OWNED），决定费率档（ADR-004 §6） */
+  ownedTrafficRate: number;
+}
+
+/**
+ * 店铺门面（B-11.2 店铺装修 → C 端门店主页的数据源）。
+ * 与 Merchant 分开：Merchant 是平台建档的商家主数据（名称/资质/评分，商家改不了），
+ * 这里是**店主自己能改的门面内容**。混在一起的话，改公告要走审核就荒谬了。
+ */
+export interface StoreProfile {
+  /** 店铺公告：「今日到货」「今天有土鸡蛋」，店主自发（C-ST-04） */
+  announcement: string;
+  /** 营业时间文案，店主自填 */
+  openHours: string;
+  /** 店铺地址，店主自填 */
+  address: string;
+  /** 主推商品，按顺序展示在门店主页首屏 */
+  featured: string[];
+  /**
+   * 经营范围（B 端自选）。**决定这家店的货在 C 端能被谁看到** ——
+   * 选错不是展示问题：选大了会卖到送不到的地方（下单后提不了货 → 退款），
+   * 选小了则整片小区的人都搜不到这家店。所以 B 端要给出后果说明，不能只给三个单选。
+   */
+  serviceScope: ServiceScope;
+  /** scope=COMMUNITY 时覆盖的社区。空表示还没谈下任何小区，此时 C 端一律不可见 */
+  serviceCommunityNos: string[];
+  /** scope=CITY 时覆盖的城市 */
+  serviceCityCode?: string;
+}
+
+/** 店铺码（C-ST-08 扫码进店的商家侧） */
+export interface StoreQrcode {
+  /** 扫码后进入的落地页地址，带 merchant_no 归因参数 */
+  url: string;
+  /** 可打印版（贴纸尺寸），真实环境由后端生成小程序码 */
+  printUrl: string;
+}
+
+/** 分享素材（B-11.2.7）。文案与海报由服务端按当前语言与市场生成 */
+export interface ShareKit {
+  /** 分享文案，已按当前语言与市场生成 */
+  text: string;
+  /** 分享海报图 URL */
+  posterUrl: string;
+}
+
+// ================================================================ 营销（B 端配置侧）
+
+/**
+ * 商家营销活动。
+ *
+ * 为什么统一成一个 `MarketingCampaign` 而不是四张表：券、满减、限时特价、买赠
+ * 在数据上只差「触发条件 + 优惠方式」，各建一套的结果是四份几乎一样的增删改查，
+ * 以及四份互不知情的叠加规则 —— 而叠加恰恰是最容易算错的地方。
+ */
+export type CampaignType =
+  | "COUPON" // 店铺券：用户领取后在结算页抵扣
+  | "FULL_CUT" // 满减：满 X 减 Y，无需领取
+  | "FLASH" // 限时特价：指定商品在时段内改价
+  | "BUY_GIFT"; // 买赠：买 N 送 M
+
+export type CampaignStatus = "DRAFT" | "RUNNING" | "PAUSED" | "ENDED";
+
+export interface MarketingCampaign {
+  /** 活动单号 */
+  campaignNo: string;
+  /** 所属商家。活动是店铺级的，不跨店 */
+  merchantNo: string;
+  /** 活动类型，决定下面哪几个可选字段有意义 */
+  type: CampaignType;
+  /** 活动名，展示给用户 */
+  name: string;
+  /** 活动状态 */
+  status: CampaignStatus;
+  /** 生效开始时间 */
+  startAt: number;
+  /** 生效结束时间 */
+  endAt: number;
+  /** 门槛：满多少（最小货币单位）。FLASH / BUY_GIFT 不用 */
+  thresholdMinor?: number;
+  /** 优惠额：COUPON / FULL_CUT 用（最小货币单位） */
+  discountMinor?: number;
+  /** FLASH：活动价（最小货币单位） */
+  flashPriceMinor?: number;
+  /** BUY_GIFT：购买件数门槛 N */
+  buyN?: number;
+  /** BUY_GIFT：赠送件数 M */
+  giftM?: number;
+  /** 参与商品；空 = 全店 */
+  goodsNos: string[];
+  /** COUPON：发放总量。**预算上限，防止发穿** */
+  totalCount?: number;
+  /** COUPON：已被领取的数量 */
+  takenCount?: number;
+  /** 已核销/已使用次数，衡量效果 */
+  usedCount: number;
+}
+
+/** 新建/编辑活动的入参 */
+export interface CampaignDraft {
+  /** 活动单号。新建时不传，编辑时必传 */
+  campaignNo?: string;
+  /** 活动类型。**创建后不可改** —— 改类型等于换一套优惠语义，应当新建 */
+  type: CampaignType;
+  /** 活动名 */
+  name: string;
+  /** 生效开始时间 */
+  startAt: number;
+  /** 生效结束时间。须晚于 startAt */
+  endAt: number;
+  /** 门槛：满多少（最小货币单位）。COUPON / FULL_CUT 用 */
+  thresholdMinor?: number;
+  /** 优惠额（最小货币单位）。COUPON / FULL_CUT 用 */
+  discountMinor?: number;
+  /** 活动价（最小货币单位）。FLASH 用 */
+  flashPriceMinor?: number;
+  /** 购买件数门槛 N。BUY_GIFT 用 */
+  buyN?: number;
+  /** 赠送件数 M。BUY_GIFT 用 */
+  giftM?: number;
+  /** 参与商品；空数组 = 全店 */
+  goodsNos: string[];
+  /** 发放总量。COUPON 用，不传表示不限量 */
+  totalCount?: number;
+}
+
+// ================================================================ 门店主页（C 端）
+
+/**
+ * 门店主页数据（C-ST-01）。
+ * ⚠️ 这是**交易页不是介绍页**：登录用户第一屏是「我买过的」，不是店招 Banner。
+ * 粮油副食的复购路径必须压到三步 —— 打开 → 常买 → 下单（ADR-004 §3.3）。
+ */
+export interface StoreHome {
+  /** 平台建档的商家主数据（名称/资质/评分），店主改不了 */
+  merchant: Merchant;
+  /** 店主自己维护的门面内容（公告/营业时间/地址） */
+  store: StoreProfile;
+  /** 在售商品。首屏展示，分页靠单独的商品列表接口 */
+  goods: Goods[];
+  /** 我是否收藏了这家店 */
+  favorited: boolean;
+}
+
+/** 常买清单的一行（C-ST-02）。按购买频次排序，不是按时间 */
+export interface FrequentItem {
+  /** 商品单号 */
+  goodsNo: string;
+  /** SKU 单号。常买是按 SKU 记的 —— 买惯了 5 斤装的人不想要 10 斤装 */
+  skuNo: string;
+  /** 商品标题 */
+  title: string;
+  /** 封面图 */
+  cover: string;
+  /** 规格文案 */
+  spec: string;
+  /** 当前价（可能已与上次购买时不同） */
+  price: number;
+  /** 上次买的价，用于「涨价了」提示 */
+  lastPrice: number;
+  /** 买过几次。列表按它排序，不是按时间 */
+  times: number;
+  /** 上次购买时间 */
+  lastAt: number;
+  /** 已下架/无库存 —— 一键再来一单时要显式标出，不能静默丢掉 */
+  invalid?: boolean;
+}
+
+/** 一键再来一单的结果（C-ST-03）。**丢了什么必须说清楚**，静默少加是投诉源头 */
+export interface ReorderResult {
+  /** 成功加入购物车的件数 */
+  added: number;
+  /** 已失效、没加进购物车的商品名 */
+  dropped: string[];
+  /** 涨价了但仍加入的商品名 */
+  priceUp: string[];
+}
+
+// ================================================================ 自提点（ADR-005）
+
+/**
+ * 自提点实体。
+ *
+ * 取代了原先的 `Merchant.isPickupPoint` 布尔字段 —— 那个表达不了「承接方是用户」：
+ * 邻里自提是送到**团发起人家里**，承接的是邻居本人，不是商家。
+ */
+export interface PickupPoint {
+  /** 自提点单号 */
+  pickupNo: string;
+  /**
+   * 自提点由谁承接。**三档，各自的费用规则完全不同**（2026-08-06 定）：
+   *   · STORE    商家自己的门店 —— 商家自行解决，平台不收履约服务费
+   *   · NEIGHBOR 团发起人家里 —— **零报酬**（ADR-005），有报酬就是团长招募换个名字
+   *   · PLATFORM 平台提供的点 —— 收履约服务费，**费率线下逐点协商，由运营平台录入**
+   */
+  type: "STORE" | "NEIGHBOR" | "PLATFORM";
+  /** 承接方所属账号池 */
+  ownerType: "MERCHANT" | "USER" | "PLATFORM";
+  /** 承接方单号，按 ownerType 落在 merchantNo 或 cUserNo 上 */
+  ownerNo: string;
+  /** 常驻 | 团粒度（一团一销） */
+  scope: "PERMANENT" | "GROUP_INSTANCE";
+  /** type=NEIGHBOR 时必填：这个点只服务这一个团 */
+  groupNo?: string;
+  /** 自提点名称 */
+  name: string;
+  /**
+   * 展示地址。**成团前只到楼栋，付款后才给完整门牌**（B13）——
+   * 未成团的团不该暴露发起人住址。
+   */
+  address: string;
+  /** 约定取货时段。邻居家不能一直堆着货（B15） */
+  timeSlot?: string;
+  /**
+   * 计费口径。**必须显式标出用哪一种** —— 库里按件与按率两列长期并存，
+   * 没有判别列的话结算侧只能猜，猜错就是给自提点少付或多付钱。
+   * 之所以两种都留：费率是**线下逐点协商**的，有的点谈成按件、有的谈成按成交额抽成，
+   * 硬统一成一种会让运营在谈判里没有筹码。
+   */
+  feeMode: "NONE" | "PER_ITEM" | "RATE";
+  /** feeMode=PER_ITEM 时的按件服务费。STORE 与 NEIGHBOR 恒为 0 */
+  serviceFeePerItemMinor: number;
+  /** feeMode=RATE 时的费率（万分比）。STORE 与 NEIGHBOR 恒为 0 */
+  serviceFeeRate: number;
+}
+
+/**
+ * 商家的客户（B-11.2.8）。
+ *
+ * 这是「商家自带客流」定位下最该给店主看的东西：**谁在买、谁不来了**。
+ * 平台电商给商家看的是流量与转化；小店老板要的是「张阿姨上个月每周都来，这半个月没来」。
+ */
+export interface MerchantCustomer {
+  /** 脱敏昵称，不给完整手机号（B12） */
+  /** 客户昵称 */
+  nickname: string;
+  /** 客户头像 */
+  avatar: string;
+  /** 在本店的累计下单次数 */
+  orderCount: number;
+  /** 在本店的累计消费额（最小货币单位） */
+  totalSpentMinor: number;
+  /** 最近一次下单时间 */
+  lastOrderAt: number;
+  /** 距上次下单天数 */
+  daysSinceLast: number;
+  /** 沉默客户：曾经常来、最近没来。**这是店主唯一能立刻行动的信号** */
+  silent: boolean;
+  /** 客流来源：他是你自己带来的，还是平台分配的 */
+  source: "MERCHANT_OWNED" | "PLATFORM";
+}
+
+// ================================================================ 规格模板
+
+/**
+ * 规格选项。
+ *
+ * `code` 是**能不能做规格聚合的分水岭**：
+ * 三家店卖同一种米，自由输入会写成「5斤」「五斤」「2.5kg」——
+ * 这三个字符串在库里毫无关系，将来想做「按重量筛选 / 同规格比价」全部落空，
+ * 而且不可回溯（历史商品已经写死）。所以模板带来的值必须带 code。
+ *
+ * 自由输入的值只有 label、没有 code：照常展示，但不参与聚合。
+ * **一期只写入不消费**，聚合搜索是二期 —— 但字段现在就得留位。
+ */
+export interface SpecOption {
+  /** 来自模板时有值；商家自己输入的没有 */
+  code?: string;
+  /** 选项展示文案，如「约5斤」 */
+  label: string;
+}
+
+/**
+ * 规格模板。两层：
+ *   · PLATFORM —— 平台按类目预置，可聚合可筛选
+ *   · MERCHANT —— 商家把自己常用的存下来，第二次建品直接套
+ *
+ * ⚠️ **模板是建议不是强制**：卖手工酱菜的没有匹配模板，硬要他选就只能瞎选。
+ */
+export interface SpecTemplate {
+  /** 模板单号 */
+  templateNo: string;
+  /** 模板归属：平台统一维护 or 商家自存。商家只能改自己的 */
+  scope: "PLATFORM" | "MERCHANT";
+  /** 平台模板按类目推荐；商家模板不限类目 */
+  categoryType?: CategoryType;
+  /** 规格维度名，如「重量」「香型」 */
+  name: string;
+  /** 该维度的可选项 */
+  options: SpecOption[];
+  /** scope=MERCHANT 时归属的商家 */
+  merchantNo?: string;
+}
+
+// ================================================================ 售后（完整状态机）
+
+/**
+ * 售后类型。**仅退款与退货退款的流程根本不同** ——
+ * 仅退款同意即退；退货退款必须**先收到货再退款**，否则「退款了货没回来」。
+ * 此前两者走同一条路，是售后闭环缺的后半段（B-7.3）。
+ */
+export type AfterSaleType = "REFUND_ONLY" | "RETURN_REFUND";
+
+export type AfterSaleStatus =
+  | "PENDING" // 待商家处理
+  | "AGREED" // 商家已同意，等用户寄回（仅 RETURN_REFUND）
+  | "RETURNING" // 用户已填退货单号，货在路上
+  | "RECEIVED" // 商家已确认收货 → 随即退款
+  | "DONE" // 退款完成
+  | "REJECTED" // 商家驳回
+  | "DISPUTED"; // 用户不服，已上升平台裁决
+
+export interface AfterSale {
+  /**
+   * 售后单号。**售后是独立资源，不是订单上的一个字段** ——
+   * 它有自己的生命周期（申请→同意/驳回→寄回→收货→退款），能被取消、能上升平台，
+   * 一个订单还可能先后发起多次。挂在订单下用 orderNo 寻址，第二次申请就没法表达了。
+   * 后端一开始就是这么建的（/mp/after-sale/{afterSaleNo}/**），这里向它对齐。
+   */
+  afterSaleNo: string;
+  /** 售后类型：仅退款 / 退货退款 */
+  type: AfterSaleType;
+  /** 售后单状态，独立于订单状态流转 */
+  status: AfterSaleStatus;
+  /** 用户填写的售后原因 */
+  reason: string;
+  /** 举证图（破损、少件的照片）。是否必填由售后类型决定 */
+  images: string[];
+  /** 商家同意/驳回时的说明 */
+  merchantReply?: string;
+  /** 用户寄回的运单号（RETURN_REFUND） */
+  returnExpressNo?: string;
+  /** 上升平台时用户的申诉理由 */
+  disputeReason?: string;
+  /** 最后一次状态变更时间。超时自动同意等时效规则以它为基准 */
+  updatedAt: number;
+}

@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>ai.neargo.shop</groupId>
+        <artifactId>shop-parent</artifactId>
+        <version>0.1.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>shop-common</artifactId>
+    <packaging>jar</packaging>
+    <description>横切基础设施：契约包 · 认证双池 · 数据域 · Outbox · 幂等 · 异常 · i18n。零业务依赖。</description>
+
+    <dependencies>
+        <!-- neargo L1 纯库（IdGenerator/ErrorCode 等），不含 autoconfig -->
+        <dependency>
+            <groupId>ai.neargo</groupId>
+            <artifactId>neargo-common-core</artifactId>
+        </dependency>
+        <!-- 复用 neargo RBAC（@perm/PermissionCarrier/Permissions）。
+             其 SecurityAutoConfiguration/SessionStoreAutoConfiguration 在 app 层 exclude 掉（TDD-backend §2.1-3）。 -->
+        <dependency>
+            <groupId>ai.neargo</groupId>
+            <artifactId>neargo-common-security</artifactId>
+        </dependency>
+        <!-- 复用 neargo 数据权限引擎（scope 包）：DataScopeSpec/Context/Handler/TableRegistry。
+             其 DataAutoConfiguration 同样在 app 层 exclude。 -->
+        <dependency>
+            <groupId>ai.neargo</groupId>
+            <artifactId>neargo-common-data</artifactId>
+        </dependency>
+
+        <!-- ⚠️ Boot4 starter 不传递 extension（分页/乐观锁拦截器在里面），必须显式引；
+             jsqlparser 是 DataScopeHandler 拼 where 的依赖（TDD-backend §2.1-2）。 -->
+        <dependency>
+            <groupId>com.baomidou</groupId>
+            <artifactId>mybatis-plus-spring-boot4-starter</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.baomidou</groupId>
+            <artifactId>mybatis-plus-extension</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.baomidou</groupId>
+            <artifactId>mybatis-plus-jsqlparser</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis</artifactId>
+        </dependency>
+    </dependencies>
+
+</project>

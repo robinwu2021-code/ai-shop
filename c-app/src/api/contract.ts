@@ -1,0 +1,229 @@
+// 唯一契约。页面只依赖这个接口，不感知 mock / 真实后端。
+// 端点对齐后端 C 端 BFF `/mp/**`（见 docs/api）。
+import type {
+  CartItem,
+  Community,
+  Coupon,
+  Goods,
+  GroupBuy,
+  LoginReq,
+  LoginResp,
+  Order,
+  PageQuery,
+  PageResult,
+  Address,
+  GroupRequest,
+  AfterSaleType,
+  FrequentItem,
+  Merchant,
+  ReorderResult,
+  StoreHome,
+  Message,
+  PointAccount,
+  PointRecord,
+  Review,
+  VisitedMerchant,
+  User,
+  UserCard,
+  CategoryType,
+  FulfillmentType,
+  ReviewScores,
+} from "@shared/types";
+
+export interface GoodsQuery extends PageQuery {
+  merchantNo?: string;
+  type?: CategoryType;
+  categoryNo?: string;
+  keyword?: string;
+  communityNo?: string;
+}
+
+export interface CreateOrderReq {
+  items: { goodsNo: string; skuNo: string; qty: number }[];
+  fulfillment: FulfillmentType;
+  pickupNo?: string;
+  addressId?: string;
+  couponNo?: string;
+  /** 使用的积分数（后端会按抵扣上限截断，端上算的只是预览） */
+  usePoints?: number;
+  remark?: string;
+  /** 幂等 key，防重复提交 */
+  idempotencyKey: string;
+  /** 拼团：参与的团 */
+  groupNo?: string;
+  /** APPOINTMENT：用户选定的预约开始时间戳 */
+  appointmentAt?: number;
+}
+
+export interface ShopApi {
+  // ---- 用户
+  login(req: LoginReq): Promise<LoginResp>;
+  profile(): Promise<User>;
+  bindCommunity(communityNo: string, pickupNo: string): Promise<User>;
+
+  // ---- 地址簿（送货上门 / 快递的前置）
+  addressList(): Promise<Address[]>;
+  saveAddress(payload: Omit<Address, "addressId"> & { addressId?: string }): Promise<Address[]>;
+  removeAddress(addressId: string): Promise<Address[]>;
+  setDefaultAddress(addressId: string): Promise<Address[]>;
+
+  // ---- 社区
+  nearbyCommunities(lat?: number, lng?: number): Promise<Community[]>;
+
+  // ---- 商品
+  goodsList(q: GoodsQuery): Promise<PageResult<Goods>>;
+  goodsDetail(goodsNo: string): Promise<Goods>;
+
+  // ---- 购物车（服务端购物车；本地 store 做乐观更新）
+  cartList(): Promise<CartItem[]>;
+  cartAdd(goodsNo: string, skuNo: string, qty: number): Promise<CartItem[]>;
+  cartUpdate(skuNo: string, qty: number): Promise<CartItem[]>;
+  cartRemove(skuNos: string[]): Promise<CartItem[]>;
+
+  // ---- 交易
+  createOrder(req: CreateOrderReq): Promise<Order>;
+  payOrder(orderNo: string): Promise<Order>;
+  orderList(q: PageQuery & { status?: string }): Promise<PageResult<Order>>;
+  /**
+   * 首页推广位。**是运营位，不是自动热销榜** —— 社区里 SKU 就那么几十个，
+   * 按销量自动排出来的「热卖」和「全部商品」几乎是同一个列表，那样没有意义。
+   * 它的价值在于平台/商家能主动推某样东西（新店冷启动、滞销清仓、节日主推）。
+   * 一期后台配置还没有，先用销量兜底；接上配置时只换这个接口的实现，端上不动。
+   */
+  promotedGoods(q?: { communityNo?: string; size?: number }): Promise<Goods[]>;
+  /**
+   * 推荐门店（运营位）。和 promotedGoods 同一套心智：**运营意图，不是销量事实**。
+   * 用途是新店冷启动 —— 一家刚入驻的店没有订单、没有评分，
+   * 在任何按销量/评分排的列表里都永远排在最后，靠自然流量起不来。
+   */
+  promotedMerchants(q?: { communityNo?: string; size?: number }): Promise<Merchant[]>;
+  orderDetail(orderNo: string): Promise<Order>;
+  cancelOrder(orderNo: string): Promise<Order>;
+
+  // ---- 售后
+  /** 申请售后。**仅退款与退货退款流程不同** —— 后者必须先收到货再退款 */
+  applyAfterSale(
+    orderNo: string,
+    reason: string,
+    images: string[],
+    type?: AfterSaleType,
+  ): Promise<Order>;
+  /**
+   * 退货退款：用户寄回后填运单号，商家据此收货。
+   * **按售后单号寻址，不是订单号** —— 售后是独立资源（见 AfterSale.afterSaleNo）。
+   */
+  fillReturnExpress(afterSaleNo: string, expressNo: string): Promise<Order>;
+  /** 商家驳回后上升平台裁决（B-7.4）—— 驳回不能是终点，否则用户没有退路 */
+  raiseDispute(afterSaleNo: string, reason: string): Promise<Order>;
+
+  // ---- 营销
+  couponList(): Promise<Coupon[]>;
+  receiveCoupon(couponNo: string): Promise<Coupon>;
+  /** 只取当前自提点的团 —— 成团单位是自提点 */
+  groupBuyList(pickupNo?: string): Promise<GroupBuy[]>;
+  groupBuyDetail(groupNo: string): Promise<GroupBuy>;
+  joinGroupBuy(
+    groupNo: string,
+    qty: number,
+  ): Promise<{ group: GroupBuy; justReached: boolean; refundPerMember: number }>;
+  /**
+   * 用户自发发起一个团。
+   * `toMyHome` = 送到我家（邻里自提，ADR-005）—— 求团买床垫、校服这类东西
+   * 本来就没有门店可提，缺了这条求团落不了地。**零报酬，只能是自己发起的团。**
+   */
+  createGroupBuy(
+    goodsNo: string,
+    pickupNo: string,
+    neighbor?: { toMyHome: true; address: string; timeSlot: string },
+  ): Promise<GroupBuy>;
+
+  // ---- 邻里自提：发起人侧（C-FF-09/10，作用域限本团）
+  /** 我发起的团 */
+  myHostedGroups(): Promise<GroupBuy[]>;
+  /** 批次签收：整批到货后发起人点一次，之后个别缺损照常走售后 */
+  confirmGroupBatch(groupNo: string): Promise<Order[]>;
+  /** 发起人轻核销。**作用域严格限该团** —— 与商家履约台是两套权限 */
+  verifyGroupPickup(groupNo: string, code: string): Promise<Order>;
+  /** 本团待取的订单（只回履约必需字段，脱敏更严，B12） */
+  groupPickupOrders(groupNo: string): Promise<Order[]>;
+
+  // ---- 邻里求团（需求先于供给，意向不是订单）
+  requestList(pickupNo?: string): Promise<GroupRequest[]>;
+  requestDetail(requestNo: string): Promise<GroupRequest>;
+  createRequest(payload: {
+    pickupNo: string;
+    title: string;
+    desc: string;
+    expectQty: number;
+    budgetMinor?: number;
+  }): Promise<GroupRequest>;
+  /** +1 / 取消 +1。只是意向，不产生订单 */
+  toggleInterest(requestNo: string): Promise<GroupRequest>;
+  /** 发起人选定某个商家的报价 → 转成正式商家团 */
+  chooseQuote(requestNo: string, quoteNo: string): Promise<GroupRequest>;
+  /** 选定报价后，+1 的邻居各自二次确认下单（+1 不等于承诺） */
+  confirmRequest(requestNo: string): Promise<GroupRequest>;
+
+  // ---- 商家
+  merchantList(q?: { keyword?: string; communityNo?: string }): Promise<Merchant[]>;
+  /** 我消费过的商家，按最近下单时间倒序 */
+  visitedMerchants(): Promise<VisitedMerchant[]>;
+  merchantDetail(merchantNo: string): Promise<Merchant>;
+
+  // ---- 门店主页（**一期主获客路径**，ADR-004 决策 3）
+  /** 扫码/分享进店。`from=QR` 时写进店归因，决定订单 trafficSource 与费率档 */
+  storeHome(merchantNo: string, from?: string): Promise<StoreHome>;
+  /** 常买清单：按购买频次排序；未登录时降级为店铺热销 */
+  frequentItems(merchantNo: string): Promise<FrequentItem[]>;
+  /** 一键再来一单：整单复制到购物车，失效品与涨价品分别回报 */
+  reorderFrom(orderNo: string): Promise<ReorderResult>;
+  /** 收藏/取消收藏本店 */
+  toggleFavoriteStore(merchantNo: string): Promise<boolean>;
+  /** 我的常去店（首页入口用） */
+  myStores(): Promise<Merchant[]>;
+
+  // ---- 评价
+  reviewList(q: { goodsNo?: string; merchantNo?: string }): Promise<Review[]>;
+  /** 点赞/取消点赞，返回更新后的评价 */
+  toggleReviewLike(reviewNo: string): Promise<Review>;
+  /** 发表评价（订单完成后） */
+  createReview(payload: {
+    orderNo: string;
+    goodsNo: string;
+    rating: number;
+    content: string;
+    images: string[];
+    /**
+     * 三维度评分（可选，B-9.3 / P-13.1.4）。
+     * 不填时后端按总分回填三维 —— 老客户端与「懒得细评」的用户都要能提交，
+     * 但**平台的评分权重要的是维度分**，没有维度分那套权重就没有输入。
+     */
+    scores?: ReviewScores;
+  }): Promise<Review>;
+
+  // ---- 积分（C 端账户）
+  pointAccount(): Promise<PointAccount>;
+  pointRecords(): Promise<PointRecord[]>;
+  /** 商家侧积分账户：收到的积分与平台兑付情况 */
+  merchantPointAccount(): Promise<PointAccount>;
+  merchantPointRecords(): Promise<PointRecord[]>;
+
+  // ---- 卡包（CARD 品类购买后入包）
+  myCards(): Promise<UserCard[]>;
+
+  // ---- 站内消息
+  messageList(): Promise<Message[]>;
+  readMessage(messageNo: string): Promise<Message[]>;
+  readAllMessages(): Promise<Message[]>;
+
+
+  // ---- 商家入驻
+  merchantApply(payload: {
+    name: string;
+    type: "COMPANY" | "INDIVIDUAL";
+    contact: string;
+    phone: string;
+    category: string;
+    desc: string;
+  }): Promise<{ applied: true }>;
+}

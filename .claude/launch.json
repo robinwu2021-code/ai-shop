@@ -1,0 +1,38 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "c-app-h5",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev:h5"
+      ],
+      "cwd": "c-app",
+      "port": 5173,
+      "autoPort": true
+    },
+    {
+      "name": "b-app-h5",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev:h5"
+      ],
+      "cwd": "b-app",
+      "port": 5273,
+      "autoPort": true
+    },
+    {
+      "name": "ops-web",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
+      "cwd": "ops-web",
+      "port": 3000,
+      "autoPort": true
+    }
+  ]
+}

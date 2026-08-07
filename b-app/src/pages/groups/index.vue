@@ -1,0 +1,194 @@
+<script setup lang="ts">
+// 商家团（B-11.6.1 / 6.2）。
+//
+// 一期的团**绝大多数应该由商家和运营铺出来**，不是等用户自发（ADR-004 §3.3）——
+// 所以这个页面是团购这条线的起点。社区里还没人的时候，用户发不起团。
+//
+// 规则（需求 §五之四）：
+//   · 成团单位是**自提点**（拼的是一车送到一个点的成本）
+//   · **单档成团**，不做阶梯价
+//   · **不成团不作废**，按原价照常发货 —— 生鲜场景下「不成团退款」= 用户白等一天没菜
+import { ref } from "vue";
+import { onShow } from "@dcloudio/uni-app";
+import { useI18n } from "vue-i18n";
+import { api } from "@/api";
+import { money } from "@shared/utils/money";
+import { countdown } from "@shared/utils/datetime";
+import type { GroupBuy } from "@shared/types";
+
+/** 只取开团要用的三个字段，不把整个 Goods 拖进页面状态 */
+interface Groupable {
+  goodsNo: string;
+  title: string;
+  cover: string;
+}
+
+const { t } = useI18n();
+
+const groups = ref<GroupBuy[]>([]);
+/** 可开团的商品 = 配过 {起团人数, 团购价} 的 —— 没配就没有团价可用 */
+const groupable = ref<Groupable[]>([]);
+const busy = ref(false);
+
+async function load() {
+  const [gs, res] = await Promise.all([api.mGroupList(), api.mGoodsList({ size: 100 })]);
+  groups.value = gs;
+  groupable.value = res.records
+    .filter((g) => g.groupBuy && g.onSale)
+    .map((g) => ({ goodsNo: g.goodsNo, title: g.title, cover: g.cover }));
+}
+
+async function create(goodsNo: string) {
+  if (busy.value) return;
+  busy.value = true;
+  try {
+    await api.mCreateGroup(goodsNo);
+    uni.showToast({ title: t("groups.created"), icon: "none" });
+    await load();
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: "none" });
+  } finally {
+    busy.value = false;
+  }
+}
+
+onShow(load);
+</script>
+
+<template>
+  <sh-scaffold title-key="groups.title">
+    <text class="sh-h1">{{ $t("groups.title") }}</text>
+    <text class="sh-muted intro">{{ $t("groups.intro") }}</text>
+
+    <text class="sh-h2 sec">{{ $t("groups.running") }}</text>
+    <sh-empty v-if="!groups.length" :text='$t("groups.noRunning")'></sh-empty>
+
+    <view v-for="g in groups" :key="g.groupNo" class="sh-card item">
+      <view class="item__head">
+        <text class="item__cover">{{ g.cover }}</text>
+        <view class="item__main">
+          <text class="item__title">{{ g.title }}</text>
+          <text class="sh-muted">{{ g.pickupName }}</text>
+        </view>
+        <view class="item__price">
+          <text class="sh-num now">{{ money(g.groupPrice) }}</text>
+          <text class="sh-num base">{{ money(g.basePrice) }}</text>
+        </view>
+      </view>
+
+      <view class="progress">
+        <text class="sh-chip" :class="g.reached ? 'sh-chip--primary' : 'sh-chip--warning'">
+          {{ g.reached ? $t("groups.reached") : $t("groups.need", { n: g.need }) }}
+        </text>
+        <text class="sh-muted sh-num">{{ $t("groups.joined", { n: g.joinedCount }) }}</text>
+        <text class="sh-muted sh-num">{{ countdown(g.expireAt - Date.now()) }}</text>
+      </view>
+    </view>
+
+    <text class="sh-h2 sec">{{ $t("groups.canOpen") }}</text>
+    <sh-empty v-if="!groupable.length" :text='$t("groups.noGroupable")'></sh-empty>
+
+    <view v-for="g in groupable" :key="g.goodsNo" class="sh-card row">
+      <text class="row__cover">{{ g.cover }}</text>
+      <text class="row__title">{{ g.title }}</text>
+      <text class="btn" @tap="create(g.goodsNo)">{{ $t("groups.open") }}</text>
+    </view>
+
+    <text class="tip">{{ $t("groups.rules") }}</text>
+  </sh-scaffold>
+</template>
+
+<style scoped>
+.intro {
+  display: block;
+  margin: 12rpx 8rpx 0;
+  line-height: 1.6;
+}
+.sec {
+  display: block;
+  margin: 40rpx 8rpx 16rpx;
+}
+.item {
+  margin-bottom: 20rpx;
+}
+.item__head {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+}
+.item__cover {
+  width: 88rpx;
+  height: 88rpx;
+  border-radius: 24rpx;
+  background: var(--sh-faint);
+  font-size: 52rpx;
+  text-align: center;
+  line-height: 88rpx;
+}
+.item__main {
+  flex: 1;
+  min-width: 0;
+}
+.item__title {
+  display: block;
+  font-size: 28rpx;
+  font-weight: 600;
+  color: var(--sh-ink);
+}
+.item__price {
+  text-align: end;
+}
+.now {
+  display: block;
+  font-size: 32rpx;
+  font-weight: 700;
+  color: var(--sh-primary);
+}
+.base {
+  font-size: 22rpx;
+  color: var(--sh-sub);
+  text-decoration: line-through;
+}
+.progress {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  margin-top: 20rpx;
+}
+.row {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  margin-bottom: 16rpx;
+}
+.row__cover {
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 20rpx;
+  background: var(--sh-faint);
+  font-size: 44rpx;
+  text-align: center;
+  line-height: 72rpx;
+}
+.row__title {
+  flex: 1;
+  min-width: 0;
+  font-size: 28rpx;
+  color: var(--sh-ink);
+}
+.btn {
+  padding: 18rpx 32rpx;
+  border-radius: 9999px;
+  background: var(--sh-primary);
+  color: var(--sh-on-primary);
+  font-size: 24rpx;
+  font-weight: 600;
+}
+.tip {
+  display: block;
+  margin: 32rpx 8rpx;
+  font-size: 22rpx;
+  color: var(--sh-sub);
+  line-height: 1.6;
+}
+</style>

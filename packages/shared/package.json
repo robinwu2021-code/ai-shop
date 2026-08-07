@@ -1,0 +1,16 @@
+{
+  "name": "@ai-shop/shared",
+  "version": "0.1.0",
+  "private": true,
+  "description": "C 端与 B 端共享层：types / design token / 工具 / 计价与履约策略 / 端能力抽象 / mock 数据",
+  "type": "module",
+  "main": "src/index.ts",
+  "exports": {
+    "./*": "./src/*"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "gen:skins": "node scripts/gen-skins.mjs"
+  }
+}

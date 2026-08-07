@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!-- 站在 neargo 地基上（TDD-backend §2）：继承 neargo-parent → Java 21 + Spring Boot 4.0.x
+         + maven-enforcer(锁 JDK21) + MyBatis-Plus BOM + neargo commons 版本管理。
+         relativePath 留空 → 从本机 ~/.m2 解析。 -->
+    <parent>
+        <groupId>ai.neargo</groupId>
+        <artifactId>neargo-parent</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+        <relativePath/>
+    </parent>
+
+    <groupId>ai.neargo.shop</groupId>
+    <artifactId>shop-parent</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+    <packaging>pom</packaging>
+    <name>shop-parent</name>
+    <description>社区电商 ai-shop 服务端 · 模块化单体（TDD-backend §4）</description>
+
+    <!-- 模块数 = 未来可能的部署单元数；域数 = 包数（TDD-backend §4.1） -->
+    <modules>
+        <!-- 横切基础设施，零业务依赖 -->
+        <module>shop-common</module>
+        <!-- 只有接口：Port + DTO + Event，谁都能依赖 -->
+        <module>shop-spi</module>
+        <!-- 领域服务实现（jar，不可独立启动） -->
+        <module>shop-svc-user</module>
+        <module>shop-svc-product</module>
+        <module>shop-svc-trade</module>
+        <module>shop-svc-fulfillment</module>
+        <module>shop-svc-marketing</module>
+        <module>shop-svc-settle</module>
+        <module>shop-svc-message</module>
+        <module>shop-svc-platform</module>
+        <!-- 启动模块：portal(三端 Controller) + config + 装配 -->
+        <module>shop-app</module>
+    </modules>
+
+    <properties>
+        <archunit.version>1.3.0</archunit.version>
+        <flyway.version>11.14.1</flyway.version>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>com.tngtech.archunit</groupId>
+                <artifactId>archunit-junit5</artifactId>
+                <version>${archunit.version}</version>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.flywaydb</groupId>
+                <artifactId>flyway-core</artifactId>
+                <version>${flyway.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.flywaydb</groupId>
+                <artifactId>flyway-mysql</artifactId>
+                <version>${flyway.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+</project>

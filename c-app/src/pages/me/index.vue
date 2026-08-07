@@ -1,0 +1,342 @@
+<script setup lang="ts">
+// 我的：登录入口 + 归属信息 + 外观与语言。
+// 列表项之间用间距分块，不用分隔线（扁平色块风格）。
+import { computed, ref } from "vue";
+import { useI18n } from "vue-i18n";
+import { onShow } from "@dcloudio/uni-app";
+import { api } from "@/api";
+import { useUserStore } from "@/stores/user";
+import { useCommunityStore } from "@/stores/community";
+import { FEATURES, ROUTES } from "@shared/utils/constants";
+
+const { t } = useI18n();
+const user = useUserStore();
+const community = useCommunityStore();
+const themeVisible = ref(false);
+const points = ref(0);
+const unread = ref(0);
+
+function gotoLogin() {
+  uni.navigateTo({ url: ROUTES.login });
+}
+function gotoCommunity() {
+  uni.navigateTo({ url: ROUTES.community });
+}
+
+function gotoPoints() {
+  uni.navigateTo({ url: ROUTES.points });
+}
+
+function gotoMessages() {
+  uni.navigateTo({ url: ROUTES.messages });
+}
+
+function gotoCoupons() {
+  uni.navigateTo({ url: ROUTES.coupons });
+}
+
+function gotoCards() {
+  uni.navigateTo({ url: ROUTES.cards });
+}
+
+function gotoOrders() {
+  uni.navigateTo({ url: ROUTES.orders });
+}
+
+function gotoAddress() {
+  uni.navigateTo({ url: ROUTES.address });
+}
+
+function gotoGroupHost() {
+  uni.navigateTo({ url: ROUTES.groupHost });
+}
+
+function gotoGroups() {
+  uni.navigateTo({ url: ROUTES.groups });
+}
+
+function gotoVisited() {
+  uni.switchTab({ url: ROUTES.merchants });
+}
+
+function applyMerchant() {
+  merchantVisible.value = true;
+}
+
+const merchantVisible = ref(false);
+const mForm = ref({
+  name: "",
+  type: "INDIVIDUAL" as "INDIVIDUAL" | "COMPANY",
+  contact: "",
+  phone: "",
+  category: "",
+  desc: "",
+});
+const mValid = computed(
+  () =>
+    mForm.value.name.trim() &&
+    mForm.value.contact.trim() &&
+    /^\d{11}$/.test(mForm.value.phone.trim()) &&
+    mForm.value.category.trim(),
+);
+
+async function submitMerchant() {
+  if (!mValid.value) return;
+  await api.merchantApply({ ...mForm.value });
+  merchantVisible.value = false;
+  uni.showToast({ title: String(t("merchant.applySubmitted")), icon: "none" });
+}
+
+onShow(() => {
+  if (user.isLogin) user.loadProfile();
+  if (FEATURES.points) api.pointAccount().then((a) => (points.value = a.balance));
+  api.messageList().then((m) => (unread.value = m.filter((x) => !x.read).length));
+});
+</script>
+
+<template>
+  <sh-scaffold title-key="tab.me" tab="me">
+    <view class="sh-card head" @tap="!user.isLogin && gotoLogin()">
+      <text class="head__avatar">{{ user.user?.avatar || "🙂" }}</text>
+      <view class="head__main">
+        <text class="head__name">
+          {{ user.isLogin ? user.user?.nickname : $t("me.login") }}
+        </text>
+        <text class="head__sub">
+          {{ user.isLogin ? user.user?.phone : $t("me.loginHint") }}
+        </text>
+      </view>
+    </view>
+
+    <view class="cells">
+      <view class="cell" @tap="gotoCommunity">
+        <text class="cell__label">{{ $t("me.myCommunity") }}</text>
+        <text class="cell__value">{{ community.pickup?.name || $t("me.unset") }}</text>
+      </view>
+      <view class="cell">
+        <text class="cell__label">{{ $t("me.myStore") }}</text>
+        <text class="cell__value">{{ community.hostName || "—" }}</text>
+      </view>
+      <view class="cell" @tap="gotoMessages">
+        <text class="cell__label">{{ $t("message.title") }}</text>
+        <text class="cell__value sh-num">
+          {{ unread ? $t("message.unread", { n: unread }) : $t("message.allRead") }}
+        </text>
+      </view>
+      <view class="cell" @tap="gotoOrders">
+        <text class="cell__label">{{ $t("orders.title") }}</text>
+        <text class="cell__value">{{ $t("orders.entryHint") }}</text>
+      </view>
+      <view class="cell" @tap="gotoCoupons">
+        <text class="cell__label">{{ $t("coupon.title") }}</text>
+        <text class="cell__value">{{ $t("coupon.entryHint") }}</text>
+      </view>
+      <view v-if="FEATURES.cards" class="cell" @tap="gotoCards">
+        <text class="cell__label">{{ $t("cards.title") }}</text>
+        <text class="cell__value">{{ $t("cards.entryHint") }}</text>
+      </view>
+      <view class="cell" @tap="gotoAddress">
+        <text class="cell__label">{{ $t("address.title") }}</text>
+        <text class="cell__value">{{ $t("address.entryHint") }}</text>
+      </view>
+      <view v-if="FEATURES.points" class="cell" @tap="gotoPoints">
+        <text class="cell__label">{{ $t("points.title") }}</text>
+        <text class="cell__value sh-num">{{ $t("points.entryHint", { n: points }) }}</text>
+      </view>
+      <view class="cell" @tap="gotoGroupHost">
+        <text class="cell__label">{{ $t("groupHost.title") }}</text>
+        <text class="cell__value">{{ $t("groupHost.entryHint") }}</text>
+      </view>
+      <view class="cell" @tap="gotoGroups">
+        <text class="cell__label">{{ $t("groups.title") }}</text>
+        <text class="cell__value">{{ $t("groups.entryHint") }}</text>
+      </view>
+      <view class="cell" @tap="gotoVisited">
+        <text class="cell__label">{{ $t("visited.title") }}</text>
+        <text class="cell__value">{{ $t("visited.hint") }}</text>
+      </view>
+      <view class="cell" @tap="applyMerchant">
+        <text class="cell__label">{{ $t("merchant.apply") }}</text>
+        <text class="cell__value">{{ $t("merchant.applyHint") }}</text>
+      </view>
+      <view class="cell" @tap="themeVisible = true">
+        <text class="cell__label">{{ $t("me.appearance") }}</text>
+        <text class="cell__value">{{ $t("me.appearanceValue") }}</text>
+      </view>
+      <view class="cell">
+        <text class="cell__label">{{ $t("me.help") }}</text>
+        <text class="cell__value">{{ $t("me.helpValue") }}</text>
+      </view>
+    </view>
+
+    <sh-theme-sheet v-model:visible="themeVisible"></sh-theme-sheet>
+
+    <!-- 商家入驻申请 -->
+    <view v-if="merchantVisible" class="sheet">
+      <view class="sheet__mask" @tap="merchantVisible = false" />
+      <view class="sheet__panel">
+        <view class="sheet__grip" />
+        <text class="sh-h2">{{ $t("merchant.apply") }}</text>
+        <text class="sh-muted sheet__hint">{{ $t("merchant.applyFormHint") }}</text>
+
+        <view class="types">
+          <view
+            v-for="tp in ['INDIVIDUAL', 'COMPANY']"
+            :key="tp"
+            class="type"
+            :class="{ 'is-on': mForm.type === tp }"
+            @tap="mForm.type = tp as 'INDIVIDUAL' | 'COMPANY'"
+          >
+            {{ $t(`merchant.type.${tp}`) }}
+          </view>
+        </view>
+
+        <input v-model="mForm.name" class="field" :placeholder="$t('merchant.shopName')" />
+        <input v-model="mForm.category" class="field" :placeholder="$t('merchant.category')" />
+        <input v-model="mForm.contact" class="field" :placeholder="$t('merchant.contact')" />
+        <input
+          v-model="mForm.phone"
+          class="field"
+          type="number"
+          maxlength="11"
+          :placeholder="$t('merchant.phone')"
+        />
+        <input v-model="mForm.desc" class="field" :placeholder="$t('merchant.descPh')" />
+
+        <view class="sh-btn sheet__save" :class="{ 'is-disabled': !mValid }" @tap="submitMerchant">
+          {{ $t("merchant.submitApply") }}
+        </view>
+      </view>
+    </view>
+  </sh-scaffold>
+</template>
+
+<style scoped>
+.sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+}
+.sheet__mask {
+  position: absolute;
+  inset: 0;
+  background: var(--sh-scrim);
+}
+.sheet__panel {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--sh-surface);
+  border-radius: 44rpx 44rpx 0 0;
+  padding: 24rpx 36rpx calc(48rpx + env(safe-area-inset-bottom));
+}
+.sheet__grip {
+  width: 72rpx;
+  height: 8rpx;
+  border-radius: 9999px;
+  background: var(--sh-faint);
+  margin: 0 auto 32rpx;
+}
+.sheet__hint {
+  display: block;
+  margin-top: 10rpx;
+  line-height: 1.6;
+}
+.types {
+  display: flex;
+  gap: 16rpx;
+  margin-top: 24rpx;
+}
+.type {
+  flex: 1;
+  text-align: center;
+  padding: 22rpx 0;
+  border-radius: 24rpx;
+  background: var(--sh-faint);
+  color: var(--sh-sub);
+  font-size: 26rpx;
+}
+.type.is-on {
+  background: var(--sh-primary);
+  color: var(--sh-on-primary);
+  font-weight: 600;
+}
+.field {
+  background: var(--sh-faint);
+  border-radius: 24rpx;
+  padding: 26rpx 28rpx;
+  font-size: 27rpx;
+  color: var(--sh-ink);
+  margin-top: 16rpx;
+}
+.sheet__save {
+  margin-top: 32rpx;
+}
+.is-disabled {
+  opacity: 0.45;
+}
+.head {
+  display: flex;
+  align-items: center;
+  gap: 28rpx;
+}
+.head__avatar {
+  width: 104rpx;
+  height: 104rpx;
+  border-radius: 9999px;
+  background: var(--sh-faint);
+  text-align: center;
+  line-height: 104rpx;
+  font-size: 52rpx;
+  flex-shrink: 0;
+}
+.head__main {
+  flex: 1;
+  min-width: 0;
+}
+.head__name {
+  display: block;
+  font-size: 34rpx;
+  font-weight: 700;
+  letter-spacing: -0.3rpx;
+  color: var(--sh-ink);
+}
+.head__sub {
+  display: block;
+  font-size: 24rpx;
+  color: var(--sh-sub);
+  margin-top: 8rpx;
+}
+/* 每行一个独立色块，靠间距分隔，不用 border */
+.cells {
+  margin-top: 16rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+/* 32rpx 内边距 + 12rpx 行距，一屏只放得下 8 行，翻起来很累。
+   收到 22/8 之后仍有 ~76rpx 行高（远超 44pt 的点按下限），一屏多两三行 */
+.cell {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24rpx;
+  background: var(--sh-surface);
+  border-radius: 24rpx;
+  padding: 22rpx 26rpx;
+}
+.cell__label {
+  font-size: 28rpx;
+  color: var(--sh-ink);
+  flex-shrink: 0;
+}
+.cell__value {
+  font-size: 26rpx;
+  color: var(--sh-sub);
+  text-align: end;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+</style>

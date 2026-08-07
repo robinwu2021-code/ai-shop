@@ -1,0 +1,9 @@
+node_modules
+# 合站产物（npm run build:web），随时可重建
+dist
+.DS_Store
+*.local
+.env.local
+
+# Maven 构建产物（mvn package 随时可重建；其中 shop-app 的 fat jar 有 50MB+）
+target/
