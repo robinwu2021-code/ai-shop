@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.context.annotation.Profile;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -18,6 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
  * <p><b>回调只推进不回退</b>：重复回调由 {@code markPaid} 的幂等保证，
  * 乱序回调由状态机保证（{@code CANCELLED} 不能变 {@code PAID}）。
  */
+@Profile("api")
 @RestController
 @RequestMapping("/callback")
 public class PayCallbackController {

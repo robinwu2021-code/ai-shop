@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.context.annotation.Profile;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
  * <p>返回的是**子单**（一个子单 = 一个商家的一次交易）—— 与 C 端 Q6 的粒度一致，
  * 双方谈同一个订单号时不会各说各的。
  */
+@Profile("api")
 @RestController
 public class BizOrderController {
 

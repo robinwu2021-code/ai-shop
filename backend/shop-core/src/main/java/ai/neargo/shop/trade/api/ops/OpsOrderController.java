@@ -8,9 +8,11 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.context.annotation.Profile;
 import org.springframework.web.bind.annotation.RestController;
 
 /** 平台端 · 订单查询（由原 {@code OpsController} 拆出，S7）。 */
+@Profile("ops")
 @RestController
 @Validated
 public class OpsOrderController {

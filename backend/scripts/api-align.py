@@ -27,7 +27,14 @@ OPENAPI_B = ROOT / "docs/api/openapi-b.yaml"
 OPENAPI_OPS = ROOT / "docs/api/openapi-ops.yaml"
 ENDPOINTS_TS = ROOT / "c-app/src/api/endpoints.ts"
 ENDPOINTS_TS_B = ROOT / "b-app/src/api/endpoints.ts"
-PORTAL_DIR = ROOT / "backend/shop-app/src/main/java/ai/neargo/shop/portal"
+# Controller 不只在 shop-app：2026-08 模块合并（S7 垂直切片）之后，
+# 25 个里有 20 个搬进了各自域模块的 `api` 包。
+# 只扫 portal 会让后端端点数从 151 掉到 56 —— 而报告照样打印，
+# 看起来像「后端突然少实现了 95 条」，实际是这个脚本瞎了。
+BACKEND_ROOTS = [
+    ROOT / "backend" / m / "src/main/java/ai/neargo/shop"
+    for m in ("shop-app", "shop-core", "shop-merchant", "shop-settle", "shop-channel")
+]
 
 
 def norm(path):
@@ -112,7 +119,8 @@ def from_ops_frontend():
 def from_backend():
     """@RequestMapping 前缀 + @GetMapping/@PostMapping 后缀。"""
     out = set()
-    for f in PORTAL_DIR.rglob("*.java"):
+    for f in (f for root in BACKEND_ROOTS if root.exists()
+              for f in root.rglob("*Controller.java")):
         text = f.read_text()
         base = ""
         m = re.search(r'@RequestMapping\("([^"]+)"\)', text)

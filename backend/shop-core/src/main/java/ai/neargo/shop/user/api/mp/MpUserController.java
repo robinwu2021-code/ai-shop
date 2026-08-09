@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.context.annotation.Profile;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -20,6 +21,7 @@ import java.util.List;
 /**
  * C 端用户端点（[API 清单 §2.1]）。路径与 {@code c-app/src/api/endpoints.ts} 逐条对齐。
  */
+@Profile("api")
 @RestController
 @RequestMapping("/mp/user")
 @Validated

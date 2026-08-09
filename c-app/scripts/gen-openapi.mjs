@@ -143,6 +143,7 @@ const RESPONSE_TYPES = {
   // boolean 没有对应 schema，用 object 兜底并在此说明，避免下次又有人以为是漏配
   toggleFavoriteStore: "object",
   verifyGroupPickup: "Order",
+  sendOtp: "void",
   login: "LoginResp",
   profile: "User",
   bindCommunity: "User",

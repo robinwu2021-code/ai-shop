@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.context.annotation.Profile;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -20,6 +21,7 @@ import java.util.List;
  * <p>**极速退的单商家只能看，不能拒**（矩阵 6.2）—— 那是平台的规则决定的退款，
  * 拒绝入口交给状态机挡，而不是在这里判身份：判身份的写法迟早会漏掉某个入口。
  */
+@Profile("api")
 @RestController
 @Validated
 public class BizAfterSaleController {

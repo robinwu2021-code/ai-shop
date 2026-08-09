@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.context.annotation.Profile;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -22,6 +23,7 @@ import java.util.List;
  * <p>作用域是 {@code pickup_no}，与商家域的 {@code entity_no} **正交**：
  * 一家店可以不做自提点，一个自提点也会承接别家的货。因此这里不复用 `/biz/order` 的过滤。
  */
+@Profile("api")
 @RestController
 public class BizPickupController {
 

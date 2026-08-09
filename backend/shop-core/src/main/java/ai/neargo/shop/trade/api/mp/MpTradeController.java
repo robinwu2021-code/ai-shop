@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.context.annotation.Profile;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -22,6 +23,7 @@ import java.util.List;
 /**
  * 购物车与交易端点（[API 清单 §2.4]）。全部需要登录，由过滤器链保证。
  */
+@Profile("api")
 @RestController
 @Validated
 public class MpTradeController {

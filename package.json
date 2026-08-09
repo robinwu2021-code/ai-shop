@@ -31,6 +31,7 @@
     "gen:docs": "npm run gen:api && npm run gen:api-index && npm run gen:api-detail && npm run gen:model-align && npm run gen:erd && npm run gen:doc-html",
     "gen:erd": "node scripts/gen-erd.mjs",
     "gen:delivery": "node scripts/gen-delivery-status.mjs",
+    "e2e": "node scripts/e2e/run.mjs",
     "gen:doc-html": "node scripts/gen-doc-html.mjs docs/technical/*.md docs/technical/ADR/*.md && INDEX=docs/technical node scripts/gen-doc-html.mjs --index"
   },
   "engines": {

@@ -1,0 +1,11 @@
+# ops-only 上下文的独立内存库。
+#
+# 必须独立：DeploymentProfileTest 是第二个 Spring 上下文，而 testcfg 用的
+# `jdbc:h2:mem:shop;DB_CLOSE_DELAY=-1` 是**进程内共享**的一个库。
+# 共用的话 schema-test.sql 会在同一个库里跑第二遍，整套测试成片挂在主键冲突上
+# —— application-testcfg.yml 里那条关于 @TestPropertySource 的注释警告的就是这件事。
+#
+# 排在 profile group 的最后一位，才能盖住 testcfg 的 url。
+spring:
+  datasource:
+    url: jdbc:h2:mem:shop_opsonly;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1

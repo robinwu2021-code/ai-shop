@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.context.annotation.Profile;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -20,6 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
  * <p>审计日志走 {@link AuditLogPort} 而不是直接调 platform 域的 {@code OpsService}：
  * 商品域为了写一行审计而依赖整个平台域，是把「记账本」变成了模块依赖。
  */
+@Profile("ops")
 @RestController
 @Validated
 public class OpsGoodsController {

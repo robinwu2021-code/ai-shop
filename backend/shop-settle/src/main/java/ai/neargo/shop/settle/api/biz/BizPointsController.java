@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.context.annotation.Profile;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -22,6 +23,7 @@ import java.util.List;
  * 所以这里只有他自己发分的成本与开关 —— 没有「兑付进账」「账期单」这些概念，
  * 那两样随 {@code pts_merchant_ledger} / {@code stl_points_bill} 一起废除了。
  */
+@Profile("api")
 @RestController
 @RequestMapping("/biz/points")
 @Validated

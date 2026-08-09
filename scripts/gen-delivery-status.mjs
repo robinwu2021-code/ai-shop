@@ -23,7 +23,15 @@ const norm = (p) => p.replace(/\$\{[^}]*\}/g, "{id}").replace(/[:{](\w+)\}?/g, "
 
 /** 后端：@RequestMapping 前缀 + 各方法后缀 */
 function backendPaths() {
-  const dir = path.join(ROOT, "backend/shop-app/src/main/java/ai/neargo/shop/portal");
+  /*
+   * Controller 不只在 shop-app：2026-08 模块合并（S7 垂直切片）之后，
+   * 单域 API 跟着域走进了各自模块的 `api` 包。
+   * 只扫 portal 会让「后端已实现」少算 100 多条 —— 报告照常输出，
+   * 看起来像后端突然退化，实际是这个生成器瞎了。
+   */
+  const dirs = ["shop-app", "shop-core", "shop-merchant", "shop-settle", "shop-channel"]
+    .map((m) => path.join(ROOT, "backend", m, "src/main/java/ai/neargo/shop"))
+    .filter((d) => fs.existsSync(d));
   const out = new Set();
   const walk = (d) => {
     for (const e of fs.readdirSync(d, { withFileTypes: true })) {
@@ -38,7 +46,7 @@ function backendPaths() {
       }
     }
   };
-  walk(dir);
+  dirs.forEach(walk);
   return out;
 }
 

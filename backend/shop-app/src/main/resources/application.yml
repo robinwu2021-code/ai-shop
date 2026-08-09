@@ -5,6 +5,20 @@ spring:
   application:
     name: shop-app
 
+  profiles:
+    group:
+      # 测试要同时验三端的接口，所以 test/e2e 同时装 api 与 ops 两套面。
+      # 用 profile group 而不是在 20 个测试类上各加 @ActiveProfiles("test","api","ops")：
+      # 「测试环境包含哪些面」是一个部署问题，不该由每个测试类各自声明一遍。
+      #
+      # testcfg 是共享的测试配置（H2 + 桩网关 + 种子数据），与「装哪几个面」正交——
+      # 拆开才能让 ops-only 复用同一份配置却只装运营面。
+      test: testcfg,api,ops
+      e2e: testcfg,api,ops
+      # 只装运营面：给部署隔离的守卫测试用（DeploymentProfileTest）。
+      # 它要证明的恰恰是「C/B 端的面不会同时存在」，所以不能复用 test。
+      ops-only: testcfg,ops,opsdb
+
   # 只启用 neargo 的 RBAC(@perm) 与 DataScope 引擎；它自带的会话/安全/数据自动配置与本项目
   # 自持的双池会话链冲突，必须精确排除（TDD-backend §2.1-3）。
   autoconfigure:
@@ -87,3 +101,43 @@ shop:
       # 平台自己的收款账号：补差时作为出资方（trans_out）。
       # 不配的话补差会明确失败，而不是静默补 0
       platform-account: ${ALIPAY_PLATFORM_ACCOUNT:}
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 三种起法（模块优化实施步骤 S8 / diagrams/deploy-topology.svg）
+#
+# 同一个 shop.jar，只差 --spring.profiles.active，代码零分叉：
+#   api    公网 · 承载 C 端与 B 端 · 多实例可水平扩
+#   ops    内网 · 只有运营面 · 1–2 实例
+#   worker 无 HTTP · 独占定时任务与 Outbox 派发
+#
+# 隔离不是靠安全链，是靠**路由不存在**：Controller 各自带 @Profile，
+# 以 ops 起时 /mp/** 返回 404 而不是 401。少一条链只是少一层过滤器，
+# 少一个路由才是少一个攻击面。
+#
+# 不设默认 profile 是有意的：忘了指定就起不出完整的服务，
+# 比默认起成 api（把运营面也带上公网）安全得多。
+# ─────────────────────────────────────────────────────────────────────────────
+---
+spring:
+  config:
+    activate:
+      on-profile: api
+
+---
+spring:
+  config:
+    activate:
+      on-profile: ops
+server:
+  # 与 api 不同端口：即使误挂到公网，也不会撞上已开放的 8080
+  port: 8081
+
+---
+spring:
+  config:
+    activate:
+      on-profile: worker
+  main:
+    # 不起 HTTP。批量任务与 API 抢同一个线程池与连接池时，
+    # 结算跑一轮能把下单接口拖到超时——而这种拖慢在监控上看起来像「数据库慢」
+    web-application-type: none

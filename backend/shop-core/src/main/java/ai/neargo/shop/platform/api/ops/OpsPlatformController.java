@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.context.annotation.Profile;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -31,6 +32,7 @@ import java.util.List;
  * <p><b>授权只在这一层</b>（{@code @PreAuthorize}），Service 不判功能权限——
  * 把授权散进 Service，同一个业务方法被两个入口调用时就会漏掉一处。
  */
+@Profile("ops")
 @RestController
 @Validated
 public class OpsPlatformController {

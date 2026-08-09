@@ -15,7 +15,7 @@ export interface EndpointDef {
 
 /** key 与 MerchantApi 的方法名一一对应，缺一个就编译不过 */
 export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
-  mSendOtp: { method: "POST", path: "/mp/user/otp/send", auth: false, summary: "发送验证码" },
+  mSendOtp: { method: "POST", path: "/biz/auth/otp/send", auth: false, summary: "发送验证码" },
   mLogin: { method: "POST", path: "/biz/auth/login", auth: false, summary: "商家登录" },
   mStaffLogin: { method: "POST", path: "/biz/auth/staff-login", auth: false, summary: "员工登录" },
   mProfile: { method: "GET", path: "/biz/merchant/profile", auth: true, summary: "商家资料" },

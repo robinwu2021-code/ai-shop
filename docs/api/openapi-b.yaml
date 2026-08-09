@@ -3420,6 +3420,33 @@ components:
           type: "number"
       additionalProperties: false
 paths: 
+  "/biz/auth/otp/send": 
+    post: 
+      operationId: "mSendOtp"
+      summary: "发送验证码"
+      tags: 
+        - "auth"
+      security: []
+      parameters: []
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/void"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
   "/biz/auth/login": 
     post: 
       operationId: "mLogin"

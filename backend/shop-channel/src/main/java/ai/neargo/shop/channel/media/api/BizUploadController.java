@@ -6,6 +6,7 @@ import ai.neargo.shop.common.ErrorCode;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.context.annotation.Profile;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -31,6 +32,7 @@ import java.util.Set;
  * 部署上这也是对的：ops 部署需要素材上传但不需要支付通道，
  * 两者同在 channel 且互不依赖，按需装配才谈得上（见 diagrams/deploy-topology.svg）。
  */
+@Profile({"api", "ops"})
 @RestController
 public class BizUploadController {
 

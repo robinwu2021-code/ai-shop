@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.context.annotation.Profile;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -26,6 +27,7 @@ import java.util.List;
  * <p>主页与扫码进店**游客可访问**：扫码的人多数还没登录，
  * 要求先登录才能看店，这条路径就断在第一步。
  */
+@Profile("api")
 @RestController
 public class MpStoreController {
 

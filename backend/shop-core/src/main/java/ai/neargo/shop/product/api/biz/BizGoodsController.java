@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.context.annotation.Profile;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -22,6 +23,7 @@ import java.util.Map;
  * 一律不接受 merchantNo</b>。接受了就等于把「我是谁」交给调用方声明，
  * 而那正是越权访问的入口。
  */
+@Profile("api")
 @RestController
 public class BizGoodsController {
 

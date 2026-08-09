@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.context.annotation.Profile;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -36,6 +37,7 @@ import java.util.List;
  * 申请人此刻手里没有 merchantNo，如果照搬 {@link BizContext#requireMerchantNo()} 一律 403，
  * 那么被驳回的人就永远看不到驳回原因，也就永远补不了料 —— 闭环在这里断掉。
  */
+@Profile("api")
 @RestController
 public class BizMerchantController {
 

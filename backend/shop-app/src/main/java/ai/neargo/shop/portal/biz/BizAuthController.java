@@ -6,6 +6,7 @@ import ai.neargo.shop.community.service.CommunityService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.context.annotation.Profile;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -25,6 +26,7 @@ import java.util.List;
  * <p>真正的隔离在<b>运营池</b>：C 端 token 打 {@code /ops/**} 一律 401（realm 前缀不符），
  * 那才是必须分开的两套。
  */
+@Profile("api")
 @RestController
 public class BizAuthController {
 
@@ -72,9 +74,29 @@ public class BizAuthController {
      * 合成一条就要在里面判断「这个手机号是消费者还是店员」——
      * 而同一个手机号完全可能两者都是。
      *
-     * <p>验证码沿用 {@code /mp/user/otp/send} 发送 —— 短信通道只有一条，
-     * 再开一条只会多一份限流与计费口径。
+     * <p>验证码走 {@link #sendOtp} —— 与 C 端**同一个实现、各自的入口**，
+     * 与 {@code /mp/merchant/apply} 和 {@code /biz/merchant/apply} 是同一套做法。
      */
+    /**
+     * 发验证码（B 端入口）。
+     *
+     * <p><b>它和 C 端的 {@code /mp/user/otp/send} 是同一个实现</b> ——
+     * 短信通道只有一条，限流与计费口径也只有一份。开这条只是因为
+     * <b>B 端不该去打 C 端的路径</b>：前缀纪律（ADR-007）之外，
+     * 更实际的原因是这两个端的鉴权链、限流策略将来会分开。
+     *
+     * <p>此前 B 端根本没有这条链：登录页的「发送验证码」只是把 1234 填进输入框，
+     * mock 下看不出问题，而真实环境里没有人收得到验证码。
+     */
+    @PostMapping("/biz/auth/otp/send")
+    public void sendOtp(@RequestBody OtpReq req) {
+        authService.sendOtp(req.phone());
+    }
+
+    /** @param phone 收码手机号 */
+    public record OtpReq(String phone) {
+    }
+
     @PostMapping("/biz/auth/staff-login")
     public MerchantLoginResp staffLogin(@RequestBody StaffLoginReq req) {
         String token = merchantStaffService.loginByPhone(req.phone(), req.code());

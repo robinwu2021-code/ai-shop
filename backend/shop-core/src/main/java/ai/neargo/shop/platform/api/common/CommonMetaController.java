@@ -3,6 +3,7 @@ package ai.neargo.shop.platform.api.common;
 import ai.neargo.shop.platform.MasterDataService;
 import ai.neargo.shop.platform.dto.MasterDataVO;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.context.annotation.Profile;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
  * <p><b>游客可读</b>：入驻表单在用户登录之前就要显示行业与主体选项。
  * 这里没有任何敏感内容 —— 只有取值域与展示名，密钥与平台资金账户不在其中。
  */
+@Profile({"api", "ops"})
 @RestController
 public class CommonMetaController {
 

@@ -6,6 +6,7 @@ import ai.neargo.shop.settle.dto.RateCardVO;
 import ai.neargo.shop.settle.dto.SettleBillVO;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.context.annotation.Profile;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -16,6 +17,7 @@ import java.util.List;
  * <p>金额三列都给出去（基数/佣金/实得）—— 商家要能自己核对，
  * 只给一个「实得」会让每一次结算都变成一次客服对话。
  */
+@Profile("api")
 @RestController
 public class BizSettleController {
 

@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.context.annotation.Profile;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -20,6 +21,7 @@ import java.util.List;
  * <p>路径用<b>复数</b> {@code /mp/points/**}：与 B 端 {@code /biz/points/**}
  * 和设计文档一致。契约里曾是单数 {@code /mp/point/**}，已随本次对齐改掉。
  */
+@Profile("api")
 @RestController
 @RequestMapping("/mp/points")
 @Validated

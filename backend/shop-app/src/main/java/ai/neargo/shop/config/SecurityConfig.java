@@ -8,6 +8,7 @@ import ai.neargo.shop.auth.TokenStore;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -30,8 +31,16 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @EnableMethodSecurity   // 开 @PreAuthorize("@perm.can('码')")，仅 /ops 使用
 public class SecurityConfig {
 
-    /** C 端：登录可选（游客可逛），属主鉴权在 Service 层。 */
+    /**
+     * C 端与 B 端：登录可选（游客可逛），属主鉴权在 Service 层。
+     *
+     * <p>{@code @Profile("api")}（S8）：ops 部署不装这条链。但真正的隔离不靠它——
+     * {@code /mp/**} 的 Controller 自己也带 {@code @Profile("api")}，
+     * 在 ops 部署里**路由压根不存在**，打过去是 404 而不是 401。
+     * 少一条链只是少一层过滤器；少一个路由才是少一个攻击面。
+     */
     @Bean
+    @Profile("api")
     @Order(1)
     SecurityFilterChain consumerChain(HttpSecurity http, TokenStore tokenStore,
                                       ObjectProvider<BizIdentityResolver> resolver) throws Exception {
@@ -57,8 +66,9 @@ public class SecurityConfig {
                 .build();
     }
 
-    /** 运营端：全部需要登录 + RBAC。 */
+    /** 运营端：全部需要登录 + RBAC。仅 ops 部署装配，且 ops 只在内网可达。 */
     @Bean
+    @Profile("ops")
     @Order(2)
     SecurityFilterChain operatorChain(HttpSecurity http, TokenStore tokenStore) throws Exception {
         return http
@@ -76,6 +86,7 @@ public class SecurityConfig {
 
     /** 公共与回调：{@code /callback/**} 各自验签，不走 Bearer（[API 清单 §5.2]）。 */
     @Bean
+    @Profile({"api", "ops"})
     @Order(3)
     SecurityFilterChain publicChain(HttpSecurity http) throws Exception {
         return http

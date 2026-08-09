@@ -17,6 +17,7 @@ import ai.neargo.shop.merchant.service.MerchantService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.context.annotation.Profile;
 import org.springframework.web.bind.annotation.RestController;
 
 import ai.neargo.shop.platform.OpsService;
@@ -32,6 +33,7 @@ import java.util.List;
  * 但**跨了两个 svc 模块**（user 与 product）—— 这在 portal 层是允许的，
  * portal 本来就是聚合层；不允许的是 svc 之间互相依赖（ArchUnit 管这个）。
  */
+@Profile("api")
 @RestController
 public class MpCatalogController {
 

@@ -127,6 +127,7 @@ if (Object.keys(renamed).length) {
 
 /** 契约方法 → 响应类型名 */
 const RESPONSE_TYPES = {
+  mSendOtp: "void",
   mLogin: "MerchantLoginResp",
   mStaffLogin: "MerchantLoginResp",
   mProfile: "MerchantProfile",

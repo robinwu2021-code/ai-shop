@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.context.annotation.Profile;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -18,6 +19,7 @@ import java.util.List;
  * <p>**报价不做事前审核**（ADR-003）：这里没有任何审核环节，
  * 约束来自锁价、改价公示与毁约记录 —— 见 {@code GroupServiceImpl}。
  */
+@Profile("api")
 @RestController
 public class BizQuoteController {
 
