@@ -1,0 +1,22 @@
+# 测试用内存库：S0 验证契约、装配与越权防线，不验证 MySQL 方言。
+# 真正的 SQL 兼容性由集成测试对 MySQL 跑（Flyway 脚本本来就是 MySQL 语法）。
+#
+# **为什么它从 testcfg 里拆了出来**：
+# testcfg 原本同时管两件正交的事 —— 「用哪个库」和「测试行为开关」（桩网关 / 种子 / 门店额度）。
+# E2E 要后者、绝不要前者：它的整个存在意义就是跑**真 MariaDB**。
+# 而 profile 组成员的优先级高于组名（`e2e: testcfg,…` 展开后 testcfg 排在 e2e 之后），
+# 于是这份 H2 配置会把 application-e2e.yml 的真库连接和 flyway 开关一起盖掉 ——
+# 症状是 E2E 启动时报「没有 Flyway bean」，看上去像依赖缺失，
+# 实际是**整套 E2E 悄悄跑在了内存库上**。
+spring:
+  datasource:
+    url: jdbc:h2:mem:shop;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1
+    username: sa
+    password: ""
+    driver-class-name: org.h2.Driver
+  flyway:
+    enabled: false     # V1__baseline.sql 是 MySQL 语法，H2 下不跑；测试建表见 schema-test.sql
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:schema-test.sql

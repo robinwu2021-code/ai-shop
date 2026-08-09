@@ -11,13 +11,18 @@ spring:
       # 用 profile group 而不是在 20 个测试类上各加 @ActiveProfiles("test","api","ops")：
       # 「测试环境包含哪些面」是一个部署问题，不该由每个测试类各自声明一遍。
       #
-      # testcfg 是共享的测试配置（H2 + 桩网关 + 种子数据），与「装哪几个面」正交——
+      # testcfg 是共享的**测试行为**配置（桩网关 + 种子数据 + 放开的额度），与「装哪几个面」正交——
       # 拆开才能让 ops-only 复用同一份配置却只装运营面。
-      test: testcfg,api,ops
+      #
+      # h2db（内存库）单独一档，**e2e 不带它**：E2E 的全部意义就是跑真 MariaDB。
+      # 带上的话，组成员优先级高于组名，H2 会把 application-e2e.yml 的真库连接盖掉，
+      # 而报出来的错是「没有 Flyway bean」—— 看着像依赖问题，实际是跑错了库。
+      test: h2db,testcfg,api,ops
       e2e: testcfg,api,ops
       # 只装运营面：给部署隔离的守卫测试用（DeploymentProfileTest）。
       # 它要证明的恰恰是「C/B 端的面不会同时存在」，所以不能复用 test。
-      ops-only: testcfg,ops,opsdb
+      # opsdb 必须排在 h2db 之后才能盖住它的 url。
+      ops-only: h2db,testcfg,ops,opsdb
 
   # 只启用 neargo 的 RBAC(@perm) 与 DataScope 引擎；它自带的会话/安全/数据自动配置与本项目
   # 自持的双池会话链冲突，必须精确排除（TDD-backend §2.1-3）。

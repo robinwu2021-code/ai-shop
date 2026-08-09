@@ -131,15 +131,24 @@ public class MpCatalogController {
         return merchantService.promoted(communityNo, size);
     }
 
-    /** 入驻申请（C-11.x）。提交后进平台审核队列。 */
+    /**
+     * 入驻申请（C-11.x）。提交后进平台审核队列。
+     *
+     * <p><b>返回的是提交后的完整状态，不是一个 applyNo。</b>
+     * 端上拿这个返回值直接替换页面上的申请状态（{@code c-app/src/pages/me/index.vue}），
+     * 只给单号的话，状态、主体名、提交时间全是 undefined —— 提交成功却渲染出一张空白卡片，
+     * 而且不报错，用户只会以为没提交上。
+     *
+     * <p>与 B 端 {@code POST /biz/merchant/apply} 同一口径（那边返回提交后的 profile）。
+     */
     @PostMapping("/mp/merchant/apply")
-    public Map<String, String> merchantApply(@RequestBody ApplyReq req) {
-        String applyNo = opsService.createApply(new OpsService.SubmitApplyCommand(
+    public MerchantApplyVO merchantApply(@RequestBody ApplyReq req) {
+        opsService.createApply(new OpsService.SubmitApplyCommand(
                 SecurityUtils.currentUserNo(), req.name(), req.subject(),
                 req.contactName(), req.contactPhone(), req.category(), req.desc(),
                 req.serviceScope(), req.communityNos(), req.licenses(),
                 false, req.industry()));
-        return Map.of("applyNo", applyNo);
+        return opsService.myApply(SecurityUtils.currentUserNo());
     }
 
     /**

@@ -8,8 +8,16 @@ import { call, payCallback, session } from "../client.mjs";
 
 export const name = "J1 · 商家从零到能做生意（按端上契约驱动）";
 
-/** OTP 在开发环境是固定的 —— 端上登录页也写着同一条口径 */
-const OTP = "1234";
+/**
+ * 验证码。
+ *
+ * 进程外的测试拿不到随机码，所以后端提供了 `shop.auth.otp.fixed`（默认关闭）。
+ * 起服务时给上 `SHOP_AUTH_OTP_FIXED=123456`，这里用同一个值。
+ *
+ * **必须是 6 位** —— 后端校验码长，4 位会被当成参数错误挡在登录之外，
+ * 而报错是「请求参数有误」，看上去像请求体拼错了，很容易往错的方向查。
+ */
+const OTP = process.env.SHOP_AUTH_OTP_FIXED ?? "123456";
 
 export async function run(step) {
   const seq = Date.now() % 100000;
