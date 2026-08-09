@@ -1,6 +1,7 @@
 package ai.neargo.shop.product.entity;
 
 import ai.neargo.shop.common.BaseEntity;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Getter;
 import lombok.Setter;
@@ -8,9 +9,9 @@ import lombok.Setter;
 /**
  * SKU 与价格。**价格的唯一权威**（TDD-backend §6.3 / R17 / B11）。
  *
- * <p>唯一键是 {@code (merchant_no, sku_no, market)}：
+ * <p>唯一键是 {@code (entity_no, sku_no, market)}：
  * <ul>
- *   <li>带 {@code merchant_no}：同一件货不同商家可以不同价，这是撮合平台的常态</li>
+ *   <li>带 {@code entity_no}：同一件货不同商家可以不同价，这是撮合平台的常态</li>
  *   <li>带 {@code market}：多市场必须分别定价，不做汇率换算（B6）—— 汇率换算出来的
  *       价格会随汇率跳动，商家无法接受</li>
  * </ul>
@@ -25,7 +26,7 @@ public class PrdSku extends BaseEntity {
 
     private String skuNo;
     private String goodsNo;
-    private String merchantNo;
+    private String entityNo;
 
     /** 市场：CN / AE / … 一期恒 CN。 */
     private String market;

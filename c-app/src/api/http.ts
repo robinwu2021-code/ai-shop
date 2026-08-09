@@ -23,7 +23,6 @@ import type {
   JoinGroupBuyReq,
   LoginReqBody,
   MarkArrivedReq,
-  MerchantApplyReq,
   MerchantListQuery,
   NearbyQuery,
   PromotedGoodsQuery,
@@ -33,6 +32,7 @@ import type {
   ReviewListQuery,
   SaveAddressReq,
   VerifyPickupReq,
+  PointsDeductibleQuery,
 } from "./requests";
 import type {
   Address,
@@ -53,8 +53,12 @@ import type {
   PageQuery,
   PageResult,
   PointAccount,
+  PointsDeductible,
   PointRecord,
   Review,
+  MerchantApplyReq,
+  MasterData,
+  MerchantApplyStatus,
   User,
   UserCard,
   VisitedMerchant,
@@ -170,8 +174,10 @@ export const httpApi: ShopApi = {
 
   merchantDetail: (merchantNo) => call<Merchant>("merchantDetail", { merchantNo }),
   visitedMerchants: () => call<VisitedMerchant[]>("visitedMerchants"),
+  myMerchantApply: () => call<MerchantApplyStatus | null>("myMerchantApply"),
+  masterData: () => call<MasterData>("masterData"),
   merchantApply: (payload) =>
-    call<{ applied: true }>("merchantApply", undefined, { ...payload } satisfies MerchantApplyReq),
+    call<MerchantApplyStatus>("merchantApply", undefined, { ...payload } satisfies MerchantApplyReq),
 
   // ---- 评价
   reviewList: (q) => call<Review[]>("reviewList", undefined, { ...q } satisfies ReviewListQuery),
@@ -181,8 +187,7 @@ export const httpApi: ShopApi = {
   // ---- 积分
   pointAccount: () => call<PointAccount>("pointAccount"),
   pointRecords: () => call<PointRecord[]>("pointRecords"),
-  merchantPointAccount: () => call<PointAccount>("merchantPointAccount"),
-  merchantPointRecords: () => call<PointRecord[]>("merchantPointRecords"),
+  pointsDeductible: (q) => call<PointsDeductible>("pointsDeductible", undefined, { ...q } satisfies PointsDeductibleQuery),
 
   // ---- 卡包
   myCards: () => call<UserCard[]>("myCards"),

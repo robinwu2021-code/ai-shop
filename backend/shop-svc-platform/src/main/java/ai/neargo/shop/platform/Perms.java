@@ -18,6 +18,12 @@ public final class Perms {
     public static final String GOODS_AUDIT = "goods:audit";
     public static final String ORDER_VIEW = "order:view";
 
+    /**
+     * 行业主数据维护。<b>不给 BD</b> —— 它改的是「哪些行业能开小微」，
+     * 那是通道规则的落点，不是招商能自行判断的事；改错的后果是一批商家进件被拒。
+     */
+    public static final String INDUSTRY_MANAGE = "industry:manage";
+
     private static final Map<String, List<String>> ROLE_PERMS = Map.of(
             "SUPER_ADMIN", List.of("*"),
             "BD", List.of(MERCHANT_AUDIT, ORDER_VIEW),

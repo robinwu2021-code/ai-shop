@@ -1,5 +1,6 @@
 package ai.neargo.shop.trade.service.impl;
 
+import ai.neargo.shop.spi.user.PickupQueryPort;
 import ai.neargo.shop.trade.service.OrderService;
 import ai.neargo.shop.trade.service.OrderStateMachine;
 
@@ -67,7 +68,7 @@ public class OrderServiceImpl implements OrderService {
     private final CouponPort couponPort;
     private final SettlePort settlePort;
     private final StatusLogMapper statusLogMapper;
-    private final ai.neargo.shop.spi.user.PickupQueryPort pickupPort;
+    private final PickupQueryPort pickupPort;
     private final IdempotencyService idempotency;
     private final OutboxEventBus eventBus;
 
@@ -76,7 +77,7 @@ public class OrderServiceImpl implements OrderService {
                             MerchantQueryPort merchantPort, AttributionPort attributionPort,
                             CouponPort couponPort, SettlePort settlePort,
                             StatusLogMapper statusLogMapper,
-                            ai.neargo.shop.spi.user.PickupQueryPort pickupPort,
+                            PickupQueryPort pickupPort,
                             IdempotencyService idempotency, OutboxEventBus eventBus) {
         this.orderMapper = orderMapper;
         this.subOrderMapper = subOrderMapper;
@@ -171,8 +172,17 @@ public class OrderServiceImpl implements OrderService {
             sub.setSubOrderNo(subOrderNo);
             sub.setOrderNo(orderNo);
             sub.setUserNo(userNo);
-            sub.setMerchantNo(g.merchantNo);
-            sub.setMerchantName(g.merchantName);
+            sub.setEntityNo(g.merchantNo);
+            /*
+             * 双写门店（M2）：entity_no 是**结算键**（分账/积分/对账都按它），
+             * store_no 是**履约键**（发货/自提/评价/门店报表按它）。
+             * 单店时两者恒等 —— 这正是多门店能分阶段发布的原因。
+             *
+             * 取不到门店不让下单失败：订单照常创建，履约侧按「空 → 默认门店」兜底。
+             * 为了一个统计维度把下单挡住，代价和收益完全不成比例。
+             */
+            sub.setStoreNo(merchantPort.defaultStoreNo(g.merchantNo).orElse(null));
+            sub.setEntityName(g.merchantName);
             sub.setFulfillment(cmd.fulfillment());
             sub.setPickupNo(cmd.pickupNo());
             // 自提点名称快照（C6）：页面要显示名字，且自提点改名不该影响历史订单
@@ -484,13 +494,13 @@ public class OrderServiceImpl implements OrderService {
                             l.amount(), l.snapshot.categoryType())).toList(),
                     OrderVO.Amount.of(g.goodsAmount(), g.freight,
                             allocation.discountOf(g.merchantNo), 0L, CURRENCY_CNY),
-                    null, null, null, null, 0L, null, null, List.of(), null)).toList();
+                    null, null, null, null, 0L, null, null, null, List.of(), null)).toList();
 
             return new OrderVO(null, null, OrdOrder.WAIT_PAY, null, null, null,
                     children.stream().flatMap(c -> c.items().stream()).toList(),
                     OrderVO.Amount.of(goodsAmount(), freightAmount(),
                             allocation.totalDiscount(), 0L, CURRENCY_CNY),
-                    null, null, null, null, 0L, null, null, List.of(), children);
+                    null, null, null, null, 0L, null, null, null, List.of(), children);
         }
     }
 
@@ -531,7 +541,7 @@ public class OrderServiceImpl implements OrderService {
     private OrderVO orderView(OrdSubOrder s, OrdOrder order) {
         return new OrderVO(
                 s.getSubOrderNo(), s.getOrderNo(), s.getStatus(), s.getFulfillment(),
-                s.getMerchantNo(), s.getMerchantName(),
+                s.getEntityNo(), s.getEntityName(),
                 itemsOf(s.getSubOrderNo()).stream().map(this::toItemVO).toList(),
                 OrderVO.Amount.of(nz(s.getGoodsAmount()), nz(s.getFreightAmount()),
                         nz(s.getDiscountAmount()),
@@ -541,6 +551,8 @@ public class OrderServiceImpl implements OrderService {
                 order == null ? null : order.getPayDeadlineAt(),
                 millis(s.getCreatedAt()),
                 order == null ? null : order.getPaidAt(),
+                // 买家要靠它查物流；此前库里有这一列而 VO 里没有，发货对买家不可见
+                s.getExpressNo(),
                 s.getTrafficSource(),
                 timelineOf(s.getSubOrderNo()),
                 null);
@@ -559,7 +571,8 @@ public class OrderServiceImpl implements OrderService {
                         order.getCurrency()),
                 null, null, null,
                 order.getPayDeadlineAt(), millis(order.getCreatedAt()), order.getPaidAt(),
-                null, List.of(), children);
+                // 支付视角跨商家，没有单一快递号 —— 它在每个子单上
+                null, null, List.of(), children);
     }
 
     private OrderVO.ItemVO toItemVO(OrdItem i) {

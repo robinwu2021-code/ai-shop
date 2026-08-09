@@ -1,6 +1,7 @@
 package ai.neargo.shop.settle.entity;
 
 import ai.neargo.shop.common.BaseEntity;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Getter;
 import lombok.Setter;
@@ -26,7 +27,7 @@ public class StlBill extends BaseEntity {
     private String settleNo;
     private String subOrderNo;
     private String orderNo;
-    private String merchantNo;
+    private String entityNo;
 
     /** 应结基数 = 用户实付 + **平台补贴的优惠**（平台券的钱最终要给商家）。 */
     private Long grossMinor;
@@ -46,4 +47,40 @@ public class StlBill extends BaseEntity {
     private Long splitAt;
     private Integer retryCount;
     private String lastError;
+    /**
+     * 计提时间（支付成功时）。与 {@code splitAt}（实际分账时间）**分开** ——
+     * 账面与资金是两个时点：支付即计提让商家立刻看到实收，
+     * 而真实资金移动等到售后期结束解冻时才发生。
+     */
+    private Long accruedAt;
+
+
+    /** 支付通道 WECHAT/ALIPAY：分账实现按它路由，对账按它切分。 */
+    private String payChannel;
+
+    /** 下单端，与 payChannel 不是一回事。 */
+    private String payScene;
+
+    /** 该笔实际扣的通道手续费（分）。**以回执为准**，不是按费率算出来的。 */
+    private Long channelFeeMinor;
+
+    /** 通道费率快照（万分比）。 */
+    private Integer channelFeeRate;
+
+    /** STANDARD/PROMO —— 费率来源，差异要能对商家解释。 */
+    private String channelFeeSource;
+
+    /** 通道费由 MERCHANT 还是 PLATFORM 承担。 */
+    private String feeBearer;
+
+    /** 本单的积分服务费（分）：商家发分即扣，结算时从货款扣走进积分池。 */
+    private Long pointsFeeMinor;
+
+    /**
+     * 实际向通道发起分账的金额（分）= 佣金 + 履约服务费 + 积分服务费。
+     *
+     * <p><b>分账指令以它为准，不要在发起时重算</b> —— 算式会变（将来可能加收费项），
+     * 而历史账不能跟着变。与 commissionRate 落快照是同一个道理。
+     */
+    private Long splitAmountMinor;
 }

@@ -1,6 +1,7 @@
 package ai.neargo.shop.marketing.group.entity;
 
 import ai.neargo.shop.common.BaseEntity;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Getter;
 import lombok.Setter;
@@ -13,7 +14,7 @@ public class MktQuote extends BaseEntity {
 
     private String quoteNo;
     private String requestNo;
-    private String merchantNo;
+    private String entityNo;
     private Long unitPriceMinor;
 
     /** 起订量。 */

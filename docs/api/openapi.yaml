@@ -219,7 +219,13 @@ components:
       properties: 
         balance: 
           type: "number"
-          description: "当前可用余额"
+          description: "当前可用余额。**只含能花的分**，待生效的在 pendingBalance"
+        pendingBalance: 
+          type: "number"
+          description: "待生效积分：已发放但未过售后期，**不计入 balance**。\n\n两个数必须分开展示（「可用 400 / 待生效 100」）。合成一个的话， 用户看到「我有 500 分」却只能用 400，没有任何办法解释这个差额。"
+        pendingActivateAt: 
+          type: "number"
+          description: "最近一批待生效积分的可用时间。`pendingBalance=0` 时为空"
         totalEarned: 
           type: "number"
           description: "累计获得（含已用、已过期），只增不减"
@@ -234,10 +240,88 @@ components:
           description: "最近一批积分的过期时间。`expiringSoon=0` 时为空"
       required: 
         - "balance"
+        - "pendingBalance"
         - "totalEarned"
         - "totalUsed"
         - "expiringSoon"
       additionalProperties: false
+      description: "用户积分账户。**单位是积分个数** —— 商家侧是钱，用  {@link  MerchantPointAccount }"
+    MerchantPointsRecord: 
+      type: "object"
+      properties: 
+        settleNo: 
+          type: "string"
+          description: "结算单号"
+        subOrderNo: 
+          type: "string"
+          description: "关联子单，商家据此对到具体订单"
+        points: 
+          type: "number"
+          description: "本单发放的积分数"
+        feeMinor: 
+          type: "number"
+          description: "本单的发分服务费（分）。**这是商家唯一感知到的积分成本**"
+        period: 
+          type: "string"
+          description: "账期 `YYYYMM`"
+        at: 
+          type: "number"
+          description: "计提时间（支付成功时），不是分账时间 —— 两者相差一个售后期"
+      required: 
+        - "settleNo"
+        - "subOrderNo"
+        - "points"
+        - "feeMinor"
+        - "period"
+        - "at"
+      additionalProperties: false
+      description: "商家的一条发分服务费记录：一单一条，来自 `stl_bill.points_fee_minor`"
+    PointsDeductible: 
+      type: "object"
+      properties: 
+        maxPoints: 
+          type: "number"
+          description: "本单最多可抵扣的积分数。已扣掉四级开关与上限，端上直接用"
+        maxAmountMinor: 
+          type: "number"
+          description: "对应金额（分）"
+        balance: 
+          type: "number"
+          description: "用户当前可用余额，用于展示「你有 X 分」"
+        disabledReason: 
+          type: "string"
+          description: "不可用时的原因，直接展示。可用时为空"
+      required: 
+        - "maxPoints"
+        - "maxAmountMinor"
+        - "balance"
+      additionalProperties: false
+      description: "结算页的积分试算结果。**服务端算**，端上只负责显示。\n\n端上自己算的话，下单时服务端会再算一遍 —— 两处算法只要有一点不同 （券后金额口径、运费是否参与、开关判断顺序），用户就会看到 「结算页说能抵 30，下单后只抵了 25」，而这个差额没人解释得清。"
+    MerchantPointAccount: 
+      type: "object"
+      properties: 
+        periodExpenseMinor: 
+          type: "number"
+          description: "本期发分服务费支出（分）。**商家唯一感知到的积分成本**"
+        period: 
+          type: "string"
+          description: "当前账期标识，如 `2026-08`"
+        enabled: 
+          type: "boolean"
+          description: "本店积分是否生效 —— 全局 AND 社区 AND 主体非小微 AND 本店开关"
+        disabledReason: 
+          type: "string"
+          description: "不生效的原因，直接展示给商家。\n\n小微主体要说「升级为个体工商户后可开启」，不能说「本店未开启积分」—— 后者会让商家去开一个他根本开不了的开关。"
+        forced: 
+          type: "boolean"
+          description: "平台按行业强制开，商家不可自行关闭"
+      required: 
+        - "periodExpenseMinor"
+        - "period"
+        - "enabled"
+        - "forced"
+      additionalProperties: false
+      description: "商家的积分成本视图。**单位是钱，不是分**。\n\n商家只感知**一件事**：开了积分，每笔订单要付一笔发分服务费。 他**看不到**用户抵了多少分、平台补了多少、资金池 —— 对他而言订单就是全额， 收到的是「订单金额 − 各项费用」（V34）。\n\n所以这里没有 income/net：商家侧不存在「积分兑付进账」这个概念。"
     MessageType: 
       type: "string"
       enum: 
@@ -318,12 +402,16 @@ components:
         - "WRONG_ITEM"
         - "NOT_ARRIVED"
         - "OTHER"
-    MerchantType: 
+    MerchantSubject: 
       type: "string"
       enum: 
-        - "PLATFORM"
-        - "COMPANY"
+        - "MICRO"
         - "INDIVIDUAL"
+        - "ENTERPRISE"
+      description: "商家主体类型 —— **权威口径取通道侧**（ADR-010）。\n\n主体类型的唯一硬约束来自支付通道：能不能进件、要什么资质、钱打到个人还是对公。 展示名反而可以随便改。让权威贴着约束走，映射就只需要一个方向。\n\n规则（要不要执照、受不受行业白名单限制、结算账户形态）在 `sys_merchant_subject` 表里，随通道调整；**这里只管取值域**。 端上取 `GET /common/master-data`，不要在页面里写死。\n\n<p><b>不叫 `SubjectType`</b>：那个名字在平台端已经是**风控主体** （DEVICE/MERCHANT/USER）。两个不同的概念同名，读代码的人迟早会把 一个当成另一个 —— 类型对齐守卫正是为此存在的。"
+    MerchantType: 
+      "$ref": "#/components/schemas/MerchantSubject"
+      deprecated: "用 {@link MerchantSubject }。旧取值 `PLATFORM/COMPANY/INDIVIDUAL` 已废弃 ——\n其中 `PLATFORM`（平台自营）**不是一种主体类型**：平台自营的主体也是个企业，\n「自营」是归属标记，混进主体枚举里让这一列同时承担了两件事。\n一期没有真实的自营商家，暂不为它单开字段。"
     MerchantBrief: 
       type: "object"
       properties: 
@@ -1859,17 +1947,11 @@ components:
       enum: 
         - "NONE"
         - "APPLYING"
+        - "REVIEWING"
         - "REJECTED"
         - "ACTIVE"
         - "SUSPENDED"
-      description: "商家入驻审核状态。与 C 端 LeaderStatus 无关 —— 团长角色已删除（ADR-004）"
-    MerchantSubject: 
-      type: "string"
-      enum: 
-        - "PERSONAL"
-        - "INDIVIDUAL_BIZ"
-        - "COMPANY"
-      description: "主体类型。个人 → 个体户 → 企业，门槛前低后高（ADR-002 §4）"
+      description: "商家在 B 端的**综合状态**：既要表达「还没入驻成功」，也要表达「已经在经营」。\n\n⚠️ 它是一个**展示用的合并视图**，底下是两条互不相干的生命周期：   · 审核（`MerchantApplyStatus`）—— 商家还不存在时的事，归 `usr_merchant_apply`   · 经营（ACTIVE / SUSPENDED）—— 商家已存在之后的事，归 `usr_merchant.status`\n\nB 端首页要在一个地方回答「我现在能不能做生意」，所以合并； 但**库里绝不能合并** —— 一旦合并，「驳回一份申请」和「封禁一家店」就共用取值， 而这两件事的操作人、审计口径、可逆性全都不同。"
     MerchantTier: 
       type: "string"
       enum: 
@@ -1943,13 +2025,13 @@ components:
         name: 
           type: "string"
           description: "拟用店铺名"
-        type: 
-          "$ref": "#/components/schemas/MerchantApplyType"
-          description: "主体类型"
-        contact: 
+        subject: 
+          "$ref": "#/components/schemas/MerchantSubject"
+          description: "主体类型。个人 → 个体户 → 企业，门槛前低后高"
+        contactName: 
           type: "string"
-          description: "联系人姓名"
-        phone: 
+          description: "联系人姓名。审核要打电话找人，只有号码没有姓名不合适"
+        contactPhone: 
           type: "string"
           description: "联系手机号"
         category: 
@@ -1958,13 +2040,282 @@ components:
         desc: 
           type: "string"
           description: "店铺简介"
+        asPickupPoint: 
+          type: "boolean"
+          description: "承接自提点：小店既是供给方也是取货点（ADR-005 type=STORE）"
+        serviceScope: 
+          type: "string"
+          enum: 
+            - "COMMUNITY"
+            - "CITY"
+            - "PLATFORM"
+          description: "期望经营范围（ADR-009）。申请时可空，<b>审核通过时必须确定</b> —— 否则商家上着架却对谁都不可见，且没有任何报错。"
+        communityNos: 
+          type: "array"
+          items: 
+            type: "string"
+          description: "期望覆盖的社区。scope=COMMUNITY 时审核通过必须非空"
+        licenses: 
+          type: "array"
+          items: 
+            type: "string"
+          description: "资质图片（营业执照/身份证）。**选填** —— 一期 EDI 不强制。\n\n与下面的结算账户一样，属于**分账主体开户**而不是入驻申请本身（ADR-002）： `usr_merchant_payment` 是独立一张表、有自己的 `apply_status`，就是这个道理。 申请时能传就传，通过后在 B 端补也行 —— 逼一个还没通过审核的人先传营业执照， 只会把人挡在门外。"
+        settleAccountType: 
+          type: "string"
+          enum: 
+            - "PERSONAL_OPENID"
+            - "MERCHANT_ID"
+          description: "结算账户类型。真实账号由后端持有，C 端与 B 端都不回显（ADR-002 §5）。**选填**，同上"
+        industry: 
+          type: "string"
+          description: "行业（`sys_industry.industry`）。\n\n**它决定这家店能不能以小微主体进件** —— 微信的小微白名单是按行业给的， 也是 `points_forced` 默认值的来源。\n\n后端一直在收、库里一直有这一列，但契约没登记、端也没传， 于是 `mch_entity.industry` 恒空：进件时才发现主体类型选错了， 而那时商家已经开完店、上完架。"
       required: 
         - "name"
-        - "type"
-        - "contact"
-        - "phone"
+        - "subject"
+        - "contactName"
+        - "contactPhone"
         - "category"
         - "desc"
+      additionalProperties: false
+    MasterData: 
+      type: "object"
+      properties: 
+        industries: 
+          type: "array"
+          items: 
+            "$ref": "#/components/schemas/MasterDataIndustry"
+          description: "可选行业。**决定能不能以小微主体进件**，也是 points_forced 默认值的来源"
+        subjects: 
+          type: "array"
+          items: 
+            "$ref": "#/components/schemas/MasterDataSubject"
+          description: "可选主体类型（法律形态）。决定资质要求与结算账户形态"
+        channels: 
+          type: "array"
+          items: 
+            "$ref": "#/components/schemas/MasterDataChannel"
+          description: "可用支付通道与其能力位"
+      required: 
+        - "industries"
+        - "subjects"
+        - "channels"
+      additionalProperties: false
+      description: "平台主数据快照（`GET /common/master-data`）。\n\n合成一个响应而不是三条接口，是因为它们在**同一屏上被同时用到**： 「选行业 → 据此过滤可选主体 → 主体决定要不要传营业执照」。 分三次请求会出现「行业回来了、主体还没回来」的中间态， 而那个中间态里表单不知道该不该禁用某个选项。"
+    MasterDataIndustry: 
+      type: "object"
+      properties: 
+        industry: 
+          type: "string"
+          description: "行业码（`sys_industry.industry`），提交申请时回传的就是它"
+        name: 
+          type: "string"
+          description: "展示名。**取服务端的**，不要在端上再维护一份翻译"
+        microAllowed: 
+          type: "boolean"
+          description: "该行业能否以小微主体进件。**false 时小微选项要禁用**，不是提交后才报错"
+      required: 
+        - "industry"
+        - "name"
+        - "microAllowed"
+      additionalProperties: false
+    MasterDataSubject: 
+      type: "object"
+      properties: 
+        subjectType: 
+          "$ref": "#/components/schemas/MerchantSubject"
+          description: "主体类型码"
+        name: 
+          type: "string"
+          description: "展示名"
+        needLicense: 
+          type: "boolean"
+          description: "要不要传营业执照"
+        industryGated: 
+          type: "boolean"
+          description: "是否受行业白名单管控（小微受管，其余不受）"
+        settleAccountType: 
+          type: "string"
+          enum: 
+            - "PERSONAL_OPENID"
+            - "MERCHANT_ID"
+          description: "该主体默认的结算账户形态：小微打个人，其余打对公"
+      required: 
+        - "subjectType"
+        - "name"
+        - "needLicense"
+        - "industryGated"
+        - "settleAccountType"
+      additionalProperties: false
+    MasterDataChannel: 
+      type: "object"
+      properties: 
+        payChannel: 
+          type: "string"
+          description: "通道码（`sys_pay_channel.pay_channel`），如 WECHAT"
+        name: 
+          type: "string"
+          description: "展示名"
+        enabled: 
+          type: "boolean"
+          description: "通道是否可用。关掉时下单页不给这个支付方式，而不是点了才失败"
+        payMethods: 
+          type: "array"
+          items: 
+            type: "string"
+          description: "该通道支持的支付方式，如 JSAPI / APP / H5"
+      required: 
+        - "payChannel"
+        - "name"
+        - "enabled"
+        - "payMethods"
+      additionalProperties: false
+    PaymentApplyment: 
+      type: "object"
+      properties: 
+        payChannel: 
+          type: "string"
+          description: "通道码，如 WECHAT"
+        channelName: 
+          type: "string"
+          description: "通道展示名。取服务端的，端上不要再维护一份翻译"
+        applyStatus: 
+          type: "string"
+          enum: 
+            - "NONE"
+            - "APPLYING"
+            - "ACTIVE"
+            - "REJECTED"
+            - "FROZEN"
+          description: "NONE / APPLYING / ACTIVE / REJECTED / FROZEN"
+        canReceiveMoney: 
+          type: "boolean"
+          description: "这个通道现在能不能收钱。\n\n**照着它显示，不要自己去比 applyStatus** —— 比错的表现是 「显示能收钱但收不了」，而这种错要到第一笔订单才暴露。"
+        payMerchantNo: 
+          type: "string"
+          description: "收款商户号业务键，通过后才有。门店挂收款号引用的就是它"
+        subMchidMasked: 
+          type: "string"
+          description: "二级商户号掩码。完整号不回显"
+        settleAccountType: 
+          type: "string"
+          enum: 
+            - "PERSONAL_OPENID"
+            - "MERCHANT_ID"
+          description: "结算账户形态：小微打个人（PERSONAL_OPENID），其余打对公（MERCHANT_ID）"
+        settleAccountMasked: 
+          type: "string"
+          description: "结算账号掩码。**明文永不回显**，包括给商家自己（ADR-002 §5）"
+        rejectReason: 
+          type: "string"
+          description: "驳回原因。驳回时必有 —— 没有原因商家只能反复重提"
+        missing: 
+          type: "array"
+          items: 
+            type: "string"
+          description: "还缺哪些资料（settleAccount / licenses / settleAccountType）。空 = 资料齐了在等通道"
+        appliedAt: 
+          type: "number"
+          description: "提交进件的时间。没提交过为空"
+        activatedAt: 
+          type: "number"
+          description: "通道开户完成的时间 —— 从这一刻起才真的能收钱"
+      required: 
+        - "payChannel"
+        - "channelName"
+        - "applyStatus"
+        - "canReceiveMoney"
+        - "missing"
+      additionalProperties: false
+      description: "收款进件状态（每通道一条）。\n\n<p><b>它与入驻审核是两件事</b>：入驻过了店就能开、货能上架， 但通道没批就收不了钱。合成一个「入驻进度」，商家问「我能收钱了吗」就没法回答。"
+    Store: 
+      type: "object"
+      properties: 
+        storeNo: 
+          type: "string"
+          description: "门店号。一旦生成不再变 —— 换主体只换归属，不换它"
+        name: 
+          type: "string"
+          description: "门店名"
+        address: 
+          type: "string"
+          description: "门店地址。顾客据此找到取货点，也是履约范围的锚点"
+        isDefault: 
+          type: "boolean"
+          description: "是否默认店。一个主体**恰好一家** —— 它是「找不到具体门店时去哪」的答案"
+        status: 
+          type: "string"
+          enum: 
+            - "ACTIVE"
+            - "READONLY"
+          description: "ACTIVE 正常营业 / READONLY 已停用（不再接新单，已有单照常履约）"
+        payMerchantNo: 
+          type: "string"
+          description: "这家店用哪个收款号。**空 = 用主体的默认收款号**，不是\"没配\""
+        payReady: 
+          type: "boolean"
+          description: "这家店现在能不能收钱。照它显示，别自己去比状态串"
+        staffCount: 
+          type: "number"
+          description: "授权到这家店的员工数（不含老板）。0 表示只有老板能管这家店"
+      required: 
+        - "storeNo"
+        - "name"
+        - "isDefault"
+        - "status"
+        - "payReady"
+        - "staffCount"
+      additionalProperties: false
+      description: "门店（商家侧管理用）。\n\n<p><b>门店与主体是关联不是归属</b>：换执照店照开。所以 `storeNo` 一旦生成就不再变 —— 评价、订单、顾客的「我常逛的店」都挂在它上面。"
+    MerchantStaff: 
+      type: "object"
+      properties: 
+        mchAccountNo: 
+          type: "string"
+          description: "商家账号号。**不叫 staffNo** —— 那个名字被平台运营占着，两者是不同的人"
+        loginPhone: 
+          type: "string"
+          description: "登录手机号，**已脱敏**。完整号不回显 —— 那等于一份可导出的通讯录"
+        isOwner: 
+          type: "boolean"
+          description: "老板。**不受门店授权限制**，他的店都归他管"
+        status: 
+          type: "string"
+          enum: 
+            - "ACTIVE"
+            - "DISABLED"
+          description: "ACTIVE / DISABLED"
+        roles: 
+          type: "array"
+          items: 
+            "$ref": "#/components/schemas/StoreRole"
+          description: "他在各门店的角色。老板为空 —— 不是\"没授权\"，是\"不需要授权\""
+      required: 
+        - "mchAccountNo"
+        - "loginPhone"
+        - "isOwner"
+        - "status"
+        - "roles"
+      additionalProperties: false
+      description: "商家员工（B 端账号 + 他在各门店的角色）。\n\n<p>**逐店授权**：A 店店长可以同时是 B 店店员 —— 老店的店长去新店帮忙， 但新店不归他管，这是小连锁的常态。"
+    StoreRole: 
+      type: "object"
+      properties: 
+        storeNo: 
+          type: "string"
+          description: "哪家店"
+        storeName: 
+          type: "string"
+          description: "门店名快照，列表直接显示，省一次查询"
+        role: 
+          type: "string"
+          enum: 
+            - "MANAGER"
+            - "CLERK"
+          description: "MANAGER 店长 / CLERK 店员"
+      required: 
+        - "storeNo"
+        - "storeName"
+        - "role"
       additionalProperties: false
     GoodsStatus: 
       type: "string"
@@ -2402,6 +2753,85 @@ components:
         - "priceUp"
       additionalProperties: false
       description: "一键再来一单的结果（C-ST-03）。**丢了什么必须说清楚**，静默少加是投诉源头"
+    MerchantApplyStatus: 
+      type: "object"
+      properties: 
+        applyNo: 
+          type: "string"
+          description: "申请单号"
+        name: 
+          type: "string"
+          description: "申请时填的店铺名。**存快照** —— 后来改名不该让历史申请跟着变"
+        subject: 
+          "$ref": "#/components/schemas/MerchantSubject"
+          description: "主体类型。决定分账主体形态与所需资质（ADR-002 §4）"
+        status: 
+          type: "string"
+          enum: 
+            - "PENDING"
+            - "REVIEWING"
+            - "APPROVED"
+            - "REJECTED"
+          description: "审核状态。迁移见本类型的注释，APPROVED 为终态"
+        rejectReason: 
+          type: "string"
+          description: "驳回理由。**驳回必须写** —— 不写就等于让人猜着改"
+        merchantNo: 
+          type: "string"
+          description: "通过后生成的商家单号。未通过时为空 —— 商家在通过之前根本不存在"
+        createdAt: 
+          type: "number"
+          description: "提交时间"
+        auditedAt: 
+          type: "number"
+          description: "审核完成时间。PENDING/REVIEWING 期间为空"
+        contactName: 
+          type: "string"
+          description: "联系人姓名"
+        contactPhone: 
+          type: "string"
+          description: "联系手机号。这是申请人自己填的联系号码，**不是登录号**，不脱敏"
+        category: 
+          type: "string"
+          description: "主营类目"
+        desc: 
+          type: "string"
+          description: "店铺简介"
+        serviceScope: 
+          type: "string"
+          enum: 
+            - "COMMUNITY"
+            - "CITY"
+            - "PLATFORM"
+          description: "期望经营范围（ADR-009）"
+        communityNos: 
+          type: "array"
+          items: 
+            type: "string"
+          description: "期望覆盖的社区"
+        licenses: 
+          type: "array"
+          items: 
+            type: "string"
+          description: "已传的资质图"
+        industry: 
+          type: "string"
+          description: "申请时选的行业。驳回回填要用它 —— 换个行业可能连主体类型都得跟着换"
+        asPickupPoint: 
+          type: "boolean"
+          description: "是否愿意承接自提点（ADR-005）。\n\n**只是意愿，不代表点已建立** —— 建点要谈服务费口径，一期由运营在通过后另行处理。 所以商家勾了这一项、通过后却还没看到履约台，是正常的中间状态而不是故障。"
+      required: 
+        - "applyNo"
+        - "name"
+        - "subject"
+        - "status"
+        - "createdAt"
+        - "contactName"
+        - "contactPhone"
+        - "category"
+        - "desc"
+      additionalProperties: false
+      description: "入驻申请状态（C 端查自己的进度 / 平台端审核队列共用）。\n\n状态机：`PENDING → REVIEWING → APPROVED | REJECTED`，`REJECTED → PENDING`（补料重提）。\n**APPROVED 是终态** —— 已经建了商家、发了账号，回退没有意义。\n\n⚠️ 这条是**审核**生命周期，与 `Merchant` 上的**经营**状态（ACTIVE/SUSPENDED）无关： 审核发生在商家还不存在的时候，封禁发生在商家已经存在之后。混成一个枚举会让 「驳回一份申请」和「封禁一家店」共用取值，两件事迟早互相踩。"
     MerchantCustomer: 
       type: "object"
       properties: 
@@ -2903,6 +3333,19 @@ components:
           description: "要标记到货的订单。**批量**：一次到货通常是一整批，逐单调用会把通知发成 N 条"
       required: 
         - "orderNos"
+      additionalProperties: false
+    PointsDeductibleQuery: 
+      type: "object"
+      properties: 
+        merchantNo: 
+          type: "string"
+          description: "试算哪个商家的单 —— 开关是按商家判的，不同店结果不同"
+        payableMinor: 
+          type: "number"
+          description: "券后金额（分）。抵扣上限按它算，**运费不参与**"
+      required: 
+        - "merchantNo"
+        - "payableMinor"
       additionalProperties: false
     Record_Lang_string: 
       type: "object"
@@ -4631,6 +5074,33 @@ paths:
                   - "code"
                   - "msg"
                   - "data"
+  "/common/master-data": 
+    get: 
+      operationId: "masterData"
+      summary: "平台主数据（行业/主体/通道）"
+      tags: 
+        - "master-data"
+      security: []
+      parameters: []
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/MasterData"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
   "/mp/merchant/apply": 
     post: 
       operationId: "merchantApply"
@@ -4654,7 +5124,7 @@ paths:
                   msg: 
                     type: "string"
                   data: 
-                    type: "object"
+                    "$ref": "#/components/schemas/MerchantApplyStatus"
                 required: 
                   - "code"
                   - "msg"
@@ -4665,6 +5135,33 @@ paths:
           "application/json": 
             schema: 
               "$ref": "#/components/schemas/MerchantApplyReq"
+    get: 
+      operationId: "myMerchantApply"
+      summary: "我的入驻申请状态"
+      tags: 
+        - "merchant"
+      security: 
+        - bearerAuth: []
+      parameters: []
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/MerchantApplyStatus"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
   "/mp/review": 
     get: 
       operationId: "reviewList"
@@ -4772,12 +5269,12 @@ paths:
                   - "code"
                   - "msg"
                   - "data"
-  "/mp/point/account": 
+  "/mp/points/account": 
     get: 
       operationId: "pointAccount"
       summary: "积分账户"
       tags: 
-        - "point"
+        - "points"
       security: 
         - bearerAuth: []
       parameters: []
@@ -4800,12 +5297,12 @@ paths:
                   - "code"
                   - "msg"
                   - "data"
-  "/mp/point/records": 
+  "/mp/points/records": 
     get: 
       operationId: "pointRecords"
       summary: "积分流水"
       tags: 
-        - "point"
+        - "points"
       security: 
         - bearerAuth: []
       parameters: []
@@ -4830,12 +5327,12 @@ paths:
                   - "code"
                   - "msg"
                   - "data"
-  "/mp/merchant/point/account": 
+  "/mp/points/deductible": 
     get: 
-      operationId: "merchantPointAccount"
-      summary: "商家积分账户"
+      operationId: "pointsDeductible"
+      summary: "结算页试算：本单最多可抵多少"
       tags: 
-        - "merchant"
+        - "points"
       security: 
         - bearerAuth: []
       parameters: []
@@ -4853,37 +5350,7 @@ paths:
                   msg: 
                     type: "string"
                   data: 
-                    "$ref": "#/components/schemas/PointAccount"
-                required: 
-                  - "code"
-                  - "msg"
-                  - "data"
-  "/mp/merchant/point/records": 
-    get: 
-      operationId: "merchantPointRecords"
-      summary: "商家积分流水"
-      tags: 
-        - "merchant"
-      security: 
-        - bearerAuth: []
-      parameters: []
-      responses: 
-        "200": 
-          description: "OK"
-          content: 
-            "application/json": 
-              schema: 
-                type: "object"
-                properties: 
-                  code: 
-                    type: "integer"
-                    description: "0 表示成功"
-                  msg: 
-                    type: "string"
-                  data: 
-                    type: "array"
-                    items: 
-                      "$ref": "#/components/schemas/PointRecord"
+                    "$ref": "#/components/schemas/PointsDeductible"
                 required: 
                   - "code"
                   - "msg"

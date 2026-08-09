@@ -5,6 +5,7 @@ import ai.neargo.shop.marketing.attribution.AttributionService;
 import ai.neargo.shop.marketing.attribution.dto.AttributionVO;
 import ai.neargo.shop.product.dto.FrequentItemVO;
 import ai.neargo.shop.product.dto.RebuyResultVO;
+import ai.neargo.shop.product.dto.ReorderResultVO;
 import ai.neargo.shop.product.dto.StoreHomeVO;
 import ai.neargo.shop.product.service.StoreService;
 import ai.neargo.shop.user.dto.MerchantVO;
@@ -79,6 +80,15 @@ public class MpStoreController {
     @PostMapping("/mp/store/{merchantNo}/rebuy")
     public RebuyResultVO rebuy(@PathVariable String merchantNo) {
         return storeService.rebuy(merchantNo);
+    }
+
+    /**
+     * 一键再来一单：<b>整单</b>复制到购物车。
+     * 与上面的 rebuy 不是一回事 —— 那个复制「这家店我常买的」，这个复制「这一单买过的」。
+     */
+    @PostMapping("/mp/order/{orderNo}/reorder")
+    public ReorderResultVO reorderFrom(@PathVariable String orderNo) {
+        return storeService.reorderFrom(orderNo);
     }
 
     @PostMapping("/mp/store/{merchantNo}/favorite")

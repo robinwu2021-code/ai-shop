@@ -34,6 +34,14 @@ public record OrderVO(String orderNo,
                       Long payDeadlineAt,
                       long createdAt,
                       Long paidAt,
+                      /**
+                       * 快递单号（EXPRESS 履约）。
+                       *
+                       * <p><b>买家和商家都要看得到</b>：没有单号的「已发货」对买家没有任何用处 ——
+                       * 他既查不到物流，也无法判断该不该继续等；商家这边则无法核对自己填了什么。
+                       * 此前这一列在库里有、在 VO 里没有，于是发货这件事对两边都不可见。
+                       */
+                      String expressNo,
                       String trafficSource,
                       List<TimelineNode> timeline,
                       /** **仅支付视角**：一次支付覆盖的各商家订单 */

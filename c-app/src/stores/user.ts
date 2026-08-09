@@ -2,6 +2,7 @@
 import { defineStore } from "pinia";
 import { api } from "@/api";
 import { STORAGE } from "@shared/utils/constants";
+import { useCommunityStore } from "./community";
 import type { LoginReq, User } from "@shared/types";
 
 export const useUserStore = defineStore("user", {
@@ -25,6 +26,8 @@ export const useUserStore = defineStore("user", {
       this.token = resp.token;
       this.user = resp.user;
       uni.setStorageSync(STORAGE.token, resp.token);
+      // 游客期间选的社区要补同步 —— 否则登录这一步反而把他刚做的选择丢了
+      await useCommunityStore().syncBinding();
       return resp.user;
     },
 

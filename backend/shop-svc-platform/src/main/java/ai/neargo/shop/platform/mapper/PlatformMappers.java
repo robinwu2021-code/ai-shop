@@ -2,8 +2,10 @@ package ai.neargo.shop.platform.mapper;
 
 import ai.neargo.shop.platform.entity.SysAuditLog;
 import ai.neargo.shop.platform.entity.SysChannelCategoryRule;
-import ai.neargo.shop.platform.entity.SysStaff;
-import ai.neargo.shop.platform.entity.UsrMerchantApply;
+import ai.neargo.shop.platform.entity.SysIndustry;
+import ai.neargo.shop.platform.entity.SysPayChannel;
+import ai.neargo.shop.platform.entity.SysOpsStaff;
+import ai.neargo.shop.platform.entity.MchEntityApply;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 
 /** platform 域的 Mapper 集合。 */
@@ -12,17 +14,28 @@ public final class PlatformMappers {
     private PlatformMappers() {
     }
 
-    public interface StaffMapper extends BaseMapper<SysStaff> {
+    public interface StaffMapper extends BaseMapper<SysOpsStaff> {
     }
 
     public interface AuditLogMapper extends BaseMapper<SysAuditLog> {
     }
 
-    public interface MerchantApplyMapper extends BaseMapper<UsrMerchantApply> {
+    public interface MerchantApplyMapper extends BaseMapper<MchEntityApply> {
     }
 
     /** 端 × 品类 可售规则。审核被拒时运营当天改这张表，不用发版。 */
     public interface ChannelCategoryRuleMapper extends BaseMapper<SysChannelCategoryRule> {
+    }
+
+    public interface PayChannelMapper extends BaseMapper<SysPayChannel> {
+    }
+
+    public interface IndustryMapper extends BaseMapper<SysIndustry> {
+    }
+
+    /** 商家主体类型注册表。 */
+    public interface MerchantSubjectMapper
+            extends BaseMapper<ai.neargo.shop.platform.entity.SysLegalForm> {
     }
 
 }

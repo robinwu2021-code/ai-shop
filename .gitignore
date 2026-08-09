@@ -7,3 +7,8 @@ dist
 
 # Maven 构建产物（mvn package 随时可重建；其中 shop-app 的 fat jar 有 50MB+）
 target/
+
+# 文档的 HTML 版（npm run gen:doc-html 从同名 .md 生成）。
+# Markdown 是唯一真源 —— 两份都入库，diff 里就会出现「改了 md 忘了重跑」的半成品状态，
+# 而 review 的人无从判断哪份是对的。要看网页版跑一次 npm run gen:docs 即可。
+docs/**/*.html

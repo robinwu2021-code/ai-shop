@@ -11,13 +11,43 @@ import { useI18n } from "vue-i18n";
 import { useMerchantStore } from "@/stores/merchant";
 import { ROUTES } from "@/shared/nav";
 import { money } from "@shared/utils/money";
-import type { MerchantStats, MerchantTodo } from "@shared/types";
+import { SERVICE_SCOPE } from "@shared/utils/constants";
+import type { MerchantStats, MerchantTodo, PaymentApplyment, StoreProfile } from "@shared/types";
 
 const { t } = useI18n();
 const merchant = useMerchantStore();
 
 const todo = ref<MerchantTodo | null>(null);
 const stats = ref<MerchantStats | null>(null);
+
+/*
+ * 开张之后有**三件互相独立的事**，商家最常问的也正是这三个问题：
+ *   我能开张了吗？ → 主体 ACTIVE
+ *   我能收钱了吗？ → 进件 ACTIVE
+ *   我的店能被看到吗？ → 服务范围非空
+ *
+ * 它们各自可失败、互不阻塞：进件没过照样能上架，范围空着照样能收钱。
+ * 此前这三个状态散在三个页面里，工作台一个都不提示 ——
+ * 于是商家上完架等订单，实际卡在其中一条，而**两者都不报错**。
+ */
+const payments = ref<PaymentApplyment[]>([]);
+const store = ref<StoreProfile | null>(null);
+
+const canReceive = computed(() => payments.value.some((p) => p.canReceiveMoney));
+const visible = computed(() => {
+  const st = store.value;
+  if (!st) return false;
+  // 「仅本社区」却一个都没选 = 对谁都不可见；其余两档天然可见
+  return st.serviceScope !== SERVICE_SCOPE.COMMUNITY || st.serviceCommunityNos.length > 0;
+});
+
+/** 只在「有问题」时出现。全通过还挂一张绿卡，是每天都要划过去的噪音 */
+const blockers = computed(() => {
+  const list: { key: string; route: string }[] = [];
+  if (!canReceive.value) list.push({ key: "payment", route: ROUTES.payment });
+  if (!visible.value) list.push({ key: "scope", route: ROUTES.store });
+  return list;
+});
 
 /** 待办格子。数字为 0 的也留着 —— 位置固定，商家才能形成肌肉记忆 */
 const cells = computed(() => {
@@ -45,7 +75,26 @@ const ownedRate = computed(() =>
 async function load() {
   await merchant.loadProfile().catch(() => null);
   if (!merchant.isActive) return;
-  [todo.value, stats.value] = await Promise.all([api.mTodo(), api.mStats()]);
+  // 门店要先定下来：它决定后面这一屏所有数字属于哪家店
+  await merchant.loadStores();
+  /*
+   * 三段状态与待办一起取：分开取的话「能不能收钱」会晚一拍出现，
+   * 而那一拍里工作台看着是全绿的。
+   * 各自 catch：其中一条挂了不该让整个工作台空掉。
+   */
+  [todo.value, stats.value, payments.value, store.value] = await Promise.all([
+    api.mTodo(),
+    api.mStats(),
+    api.mPayments().catch(() => []),
+    api.mStore().catch(() => null),
+  ]);
+}
+
+async function pickStore(storeNo: string) {
+  if (storeNo === merchant.storeNo) return;
+  merchant.switchStore(storeNo);
+  // 切完立刻重取：不重取的话数字还是上一家店的，而人已经在看新店了
+  await load();
 }
 
 function open(route: string) {
@@ -76,7 +125,36 @@ onShow(load);
     </view>
 
     <template v-else>
+      <!--
+        门店切换器放在工作台**最上面**：这一屏所有数字都属于某一家店，
+        不先说清是哪家，「今天 3 单」这种话就没有意义。
+        只有一家店时不显示 —— 永远只有一个选项的切换器是纯噪音。
+      -->
+      <view v-if="merchant.multiStore" class="stores">
+        <text
+          v-for="s in merchant.stores"
+          :key="s.storeNo"
+          class="sh-chip stores__i"
+          :class="{ 'is-on': s.storeNo === merchant.storeNo }"
+          @tap="pickStore(s.storeNo)"
+        >
+          {{ s.name }}
+        </text>
+      </view>
+
       <text class="sh-h1">{{ $t("home.greeting") }}</text>
+
+      <!--
+        开张之后卡在哪，这里直说。**只在有问题时出现** ——
+        全通过还挂一张绿卡，是每天都要划过去的噪音。
+      -->
+      <view v-for="b in blockers" :key="b.key" class="blocker" @tap="open(b.route)">
+        <view class="blocker__main">
+          <text class="blocker__t">{{ $t(`home.blocker.${b.key}`) }}</text>
+          <text class="blocker__d">{{ $t(`home.blockerHint.${b.key}`) }}</text>
+        </view>
+        <text class="blocker__go">{{ $t("home.blockerGo") }}</text>
+      </view>
 
       <view class="grid">
         <view v-for="c in cells" :key="c.key" class="grid__cell" @tap="open(c.route)">
@@ -126,6 +204,22 @@ onShow(load);
         <text class="sh-muted">{{ $t("home.storeEntryHint") }}</text>
       </view>
 
+      <view class="sh-card entry" @tap="open(ROUTES.stores)">
+        <text class="sh-h2">{{ $t("home.storesEntry") }}</text>
+        <text class="sh-muted">{{ $t("home.storesEntryHint") }}</text>
+      </view>
+
+      <view class="sh-card entry" @tap="open(ROUTES.staff)">
+        <text class="sh-h2">{{ $t("home.staffEntry") }}</text>
+        <text class="sh-muted">{{ $t("home.staffEntryHint") }}</text>
+      </view>
+
+      <!-- 收款设置：与店铺设置并列而不是塞在里面 —— 「店能开」与「钱能收」是两件事 -->
+      <view class="sh-card entry" @tap="open(ROUTES.payment)">
+        <text class="sh-h2">{{ $t("home.paymentEntry") }}</text>
+        <text class="sh-muted">{{ $t("home.paymentEntryHint") }}</text>
+      </view>
+
       <view class="sh-card entry" @tap="open(ROUTES.marketing)">
         <text class="sh-h2">{{ $t("home.marketingEntry") }}</text>
         <text class="sh-muted">{{ $t("home.marketingEntryHint") }}</text>
@@ -151,6 +245,47 @@ onShow(load);
 }
 .go {
   margin-top: 48rpx;
+}
+.stores {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14rpx;
+  margin-bottom: 24rpx;
+}
+.stores__i.is-on {
+  background: var(--sh-primary);
+  color: #fff;
+}
+.blocker {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  margin-top: 24rpx;
+  padding: 24rpx;
+  border-radius: 32rpx;
+  background: var(--sh-warn-tint, var(--sh-faint));
+}
+.blocker__main {
+  flex: 1;
+  min-width: 0;
+}
+.blocker__t {
+  display: block;
+  font-size: 26rpx;
+  font-weight: 600;
+  color: var(--sh-ink);
+}
+.blocker__d {
+  display: block;
+  margin-top: 6rpx;
+  font-size: 24rpx;
+  line-height: 1.5;
+  color: var(--sh-sub);
+}
+.blocker__go {
+  flex-shrink: 0;
+  font-size: 26rpx;
+  color: var(--sh-primary);
 }
 .grid {
   display: flex;

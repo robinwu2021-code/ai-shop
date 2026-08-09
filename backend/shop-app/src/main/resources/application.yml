@@ -65,3 +65,25 @@ shop:
   features:
     # 积分一期关闭：成本模型已定但跨商家清算未定（ADR-006 §2），打开开关即上线
     points: false
+
+  # 支付通道。**密钥一律走环境变量**，不写进这个文件、不进代码库。
+  pay:
+    # 假网关：只在开发期开。默认 false —— 默认开的话，真实现没接上时
+    # 线上会「支付成功」而钱根本没动，且没有任何症状，要到对账日才发现
+    stub: ${SHOP_PAY_STUB:false}
+    wechat:
+      # 显式开关：配了凭据不等于要启用（灰度、演练都可能只配不启）
+      enabled: ${WX_PAY_ENABLED:false}
+      mch-id: ${WX_MCH_ID:}
+      # 商户 API 证书序列号 / 私钥路径 / APIv3 密钥
+      serial-no: ${WX_SERIAL_NO:}
+      private-key-path: ${WX_PRIVATE_KEY_PATH:}
+      api-v3-key: ${WX_API_V3_KEY:}
+    alipay:
+      enabled: ${ALIPAY_PAY_ENABLED:false}
+      app-id: ${ALIPAY_APP_ID:}
+      private-key-path: ${ALIPAY_PRIVATE_KEY_PATH:}
+      public-key-path: ${ALIPAY_PUBLIC_KEY_PATH:}
+      # 平台自己的收款账号：补差时作为出资方（trans_out）。
+      # 不配的话补差会明确失败，而不是静默补 0
+      platform-account: ${ALIPAY_PLATFORM_ACCOUNT:}

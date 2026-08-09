@@ -12,6 +12,8 @@ import type {
   HandleAfterSaleReq,
   MarkArrivedReq,
   MerchantLoginReqBody,
+  PointsRecordQuery,
+  TogglePointsReq,
   OrderListQuery,
   QuoteReq,
   RecognizeGoodsReq,
@@ -22,6 +24,13 @@ import type {
   ShareKitQuery,
   ShipReq,
   SpecTemplatesQuery,
+  StaffLoginReq,
+  SubmitPaymentReq,
+  StoreEditReq,
+  SetActiveReq,
+  SetStorePaymentReq,
+  AddStaffReq,
+  GrantStoreReq,
   ToggleCampaignReq,
   ToggleGoodsReq,
   UploadImageReq,
@@ -33,6 +42,13 @@ import type {
   DeliveryRule,
   Goods,
   MerchantApplyReq,
+  MerchantPointAccount,
+  MerchantPointsRecord,
+  MasterData,
+  MerchantStaff,
+  Store,
+  PaymentApplyment,
+  MerchantApplyStatus,
   MerchantLoginResp,
   MerchantProfile,
   MerchantCustomer,
@@ -60,14 +76,47 @@ import type {
 export const httpApi: MerchantApi = {
   mLogin: (req: LoginReq) =>
     http.post<MerchantLoginResp>(E.mLogin.path, { ...req } satisfies MerchantLoginReqBody),
-  mProfile: () => http.get<MerchantProfile>(E.mProfile.path),
-  mApply: (payload: MerchantApplyReq) => http.post<MerchantProfile>(E.mApply.path, payload),
+  mStaffLogin: (payload) =>
+    http.post<MerchantLoginResp>(E.mStaffLogin.path, payload satisfies StaffLoginReq),
 
-  mApplyDraft: () => http.get<MerchantApplyReq | null>(E.mApplyDraft.path),
+  mProfile: () => http.get<MerchantProfile>(E.mProfile.path),
+
+  mApply: (payload: MerchantApplyReq) => http.post<MerchantProfile>(E.mApply.path, payload),
+  mApplyDraft: () => http.get<MerchantApplyStatus | null>(E.mApplyDraft.path),
+  mMasterData: () => http.get<MasterData>(E.mMasterData.path),
+
+  mPayments: () => http.get<PaymentApplyment[]>(E.mPayments.path),
+  mSubmitPayment: (payload) =>
+    http.post<PaymentApplyment>(E.mSubmitPayment.path, payload satisfies SubmitPaymentReq),
+  mRefreshPayment: (payChannel) =>
+    http.post<PaymentApplyment>(buildPath(E.mRefreshPayment.path, { payChannel })),
 
   mStore: () => http.get<StoreProfile>(E.mStore.path),
   mCommunities: () => http.get<Community[]>(E.mCommunities.path),
   mSaveStore: (payload) => http.post<StoreProfile>(E.mSaveStore.path, payload),
+  mStoreList: () => http.get<Store[]>(E.mStoreList.path),
+  mCreateStore: (payload) =>
+    http.post<Store>(E.mCreateStore.path, payload satisfies StoreEditReq),
+  mRenameStore: (storeNo, payload) =>
+    http.post<Store>(buildPath(E.mRenameStore.path, { storeNo }), payload satisfies StoreEditReq),
+  mSetStoreStatus: (storeNo, active) =>
+    http.post<Store>(buildPath(E.mSetStoreStatus.path, { storeNo }), { active } satisfies SetActiveReq),
+  mSetDefaultStore: (storeNo) =>
+    http.post<Store>(buildPath(E.mSetDefaultStore.path, { storeNo })),
+  mSetStorePayment: (storeNo, payMerchantNo) =>
+    http.post<Store>(buildPath(E.mSetStorePayment.path, { storeNo }),
+      { payMerchantNo } satisfies SetStorePaymentReq),
+
+  mStaffList: () => http.get<MerchantStaff[]>(E.mStaffList.path),
+  mAddStaff: (loginPhone) =>
+    http.post<MerchantStaff>(E.mAddStaff.path, { loginPhone } satisfies AddStaffReq),
+  mSetStaffStatus: (mchAccountNo, active) =>
+    http.post<MerchantStaff>(buildPath(E.mSetStaffStatus.path, { mchAccountNo }),
+      { active } satisfies SetActiveReq),
+  mGrantStore: (mchAccountNo, storeNo, role) =>
+    http.post<MerchantStaff>(buildPath(E.mGrantStore.path, { mchAccountNo }),
+      { storeNo, role } satisfies GrantStoreReq),
+
   mStoreQrcode: () => http.get<StoreQrcode>(E.mStoreQrcode.path),
   mShareKit: (goodsNo) =>
     http.get<ShareKit>(E.mShareKit.path, { goodsNo } satisfies ShareKitQuery),
@@ -161,4 +210,11 @@ export const httpApi: MerchantApi = {
     http.post<Order>(buildPath(E.mReportShortage.path, { orderNo }), {
       ...payload,
     } satisfies ReportShortageReq),
+
+  // ---- 积分
+  mPointsAccount: () => http.get<MerchantPointAccount>(E.mPointsAccount.path),
+  mPointsRecords: (q) =>
+    http.get<MerchantPointsRecord[]>(E.mPointsRecords.path, { ...q } satisfies PointsRecordQuery),
+  mPointsToggle: (req) =>
+    http.post<MerchantPointAccount>(E.mPointsToggle.path, { ...req } satisfies TogglePointsReq),
 };

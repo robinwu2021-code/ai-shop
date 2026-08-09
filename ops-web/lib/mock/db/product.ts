@@ -1,6 +1,6 @@
 // 商品与类目 mock（P-3）。刻意覆盖：三级树、五种模板、缺市场价的待审商品、
 // 缺资质的商家商品、超卖的预售商品 —— 每条规则都要有能验到它的样本。
-import type { Category, Sku } from "@/lib/types";
+import type { GoodsAudit, Category, Sku } from "@/lib/types";
 
 export const categories: Category[] = [
   { categoryNo: "CAT100", name: "食品生鲜", level: 1, template: "FRESH", qualifications: [], i18n: { zh: "食品生鲜", en: "Fresh Food" }, skuCount: 0 },
@@ -72,4 +72,11 @@ export const skus: Sku[] = [
     presaleQuota: 0, soldCount: 0, createdAt: "2026-08-02T02:00:00Z",
     reason: "主图含其它平台水印，请换图后重新提交",
   },
+];
+
+/** 待审商品（mock）。**留一条已驳回的** —— 否则「拒因回显」那段界面走不到 */
+export const goodsAudits: GoodsAudit[] = [
+  { goodsNo: "G9001", title: "现磨豆浆 500ml", subtitle: "当天现磨", type: "FRESH", merchant: { merchantNo: "M901", name: "阿姨家的菜摊" }, status: "AUDITING" },
+  { goodsNo: "G9002", title: "手工辣椒酱", subtitle: "小罐装", type: "NORMAL", merchant: { merchantNo: "M902", name: "老张水果店" }, status: "AUDITING" },
+  { goodsNo: "G9003", title: "代客充值", type: "VIRTUAL", merchant: { merchantNo: "M903", name: "邻家便利" }, status: "REJECTED" },
 ];

@@ -1,6 +1,6 @@
 package ai.neargo.shop.user.dto;
 
-import ai.neargo.shop.user.entity.UsrUser;
+import ai.neargo.shop.user.entity.UsrAccount;
 
 /**
  * C 端「我」。字段与 {@code packages/shared/src/types/index.ts} 的 {@code User} 逐字对齐 ——
@@ -21,18 +21,20 @@ public record UserVO(String userNo,
                      String pickupNo,
                      String merchantNo) {
 
-    public static UserVO of(UsrUser u) {
+    public static UserVO of(UsrAccount u) {
         // C1 过渡期双写：两个字段同值。前端改完 C2 后删 cUserNo，删的时候只动这一行
         return new UserVO(u.getUserNo(), u.getUserNo(),
                 u.getNickname(), u.getAvatar(), maskPhone(u.getPhone()),
-                u.getCommunityNo(), u.getPickupNo(), u.getMerchantNo());
+                u.getCommunityNo(), u.getPickupNo(), u.getEntityNo());
     }
 
-    /** 自己的手机号也脱敏：端上只用来展示「已绑定 138****8000」，没有场景需要完整号。 */
+    /**
+     * 自己的手机号也脱敏：端上只用来展示「已绑定 138****8000」，没有场景需要完整号。
+     *
+     * <p>口径走 {@link ai.neargo.shop.common.Masks} —— 此前这里、AddressVO、进件服务
+     * 各写了一份，三种口径会让人以为其中一处泄了更多。
+     */
     private static String maskPhone(String phone) {
-        if (phone == null || phone.length() < 7) {
-            return phone;
-        }
-        return phone.substring(0, 3) + "****" + phone.substring(phone.length() - 4);
+        return ai.neargo.shop.common.Masks.phone(phone);
     }
 }

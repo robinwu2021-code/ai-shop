@@ -1,7 +1,7 @@
 package ai.neargo.shop.scenario;
 
-import ai.neargo.shop.user.entity.UsrMerchant;
-import ai.neargo.shop.user.mapper.UserMappers.MerchantMapper;
+import ai.neargo.shop.user.merchant.entity.MchEntity;
+import ai.neargo.shop.user.mapper.UserMappers.MchEntityMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -44,7 +44,7 @@ class M6cGroupFlowTest {
     private ai.neargo.shop.user.service.OtpStore otpStore;
 
     @Autowired
-    private MerchantMapper merchantMapper;
+    private MchEntityMapper merchantMapper;
 
     private MockMvc mvc() {
         return MockMvcBuilders.webAppContextSetup(context)
@@ -305,7 +305,7 @@ class M6cGroupFlowTest {
         var g = new ai.neargo.shop.marketing.group.entity.MktGroupBuy();
         g.setGroupNo("GB-" + java.util.UUID.randomUUID().toString().substring(0, 8));
         g.setGoodsNo(goodsNo);
-        g.setMerchantNo(merchantNo);
+        g.setEntityNo(merchantNo);
         g.setTitle("团购商品");
         g.setCover("");
         g.setGroupPriceMinor(price);
@@ -319,8 +319,8 @@ class M6cGroupFlowTest {
     }
 
     private void setBreachCount(String merchantNo, int count) {
-        UsrMerchant m = merchantMapper.selectOne(Wrappers.<UsrMerchant>lambdaQuery()
-                .eq(UsrMerchant::getMerchantNo, merchantNo).last("limit 1"));
+        MchEntity m = merchantMapper.selectOne(Wrappers.<MchEntity>lambdaQuery()
+                .eq(MchEntity::getEntityNo, merchantNo).last("limit 1"));
         m.setBreachCount(count);
         merchantMapper.updateById(m);
     }
@@ -381,9 +381,11 @@ class M6cGroupFlowTest {
         String token = login(phone);
         String body = mvc().perform(get("/mp/user/profile").header("Authorization", "Bearer " + token))
                 .andReturn().getResponse().getContentAsString();
-        UsrMerchant m = merchantMapper.selectOne(Wrappers.<UsrMerchant>lambdaQuery()
-                .eq(UsrMerchant::getMerchantNo, merchantNo).last("limit 1"));
+        MchEntity m = merchantMapper.selectOne(Wrappers.<MchEntity>lambdaQuery()
+                .eq(MchEntity::getEntityNo, merchantNo).last("limit 1"));
         m.setOwnerUserNo(json.readTree(body).get("data").get("userNo").asString());
+        // V44 起 B 端身份来自 mch_account，不再是 owner_user_no —— 两处都要写
+        grantOwner(m.getEntityNo(), json.readTree(body).get("data").get("userNo").asString());
         merchantMapper.updateById(m);
         return login(phone);
     }
@@ -398,4 +400,29 @@ class M6cGroupFlowTest {
                 .andReturn().getResponse().getContentAsString();
         return json.readTree(body).get("data").get("token").asString();
     }
+    /** 授予 B 端身份：写一条 owner 成员行（幂等）。 */
+    private void grantOwner(String merchantNo, String userNo) {
+        var existing = merchantStaffMapper.selectOne(
+                com.baomidou.mybatisplus.core.toolkit.Wrappers
+                        .<ai.neargo.shop.user.merchant.entity.MchAccount>lambdaQuery()
+                        .eq(ai.neargo.shop.user.merchant.entity.MchAccount::getEntityNo, merchantNo)
+                        .last("limit 1"));
+        if (existing != null) {
+            existing.setUserNo(userNo);
+            merchantStaffMapper.updateById(existing);
+            return;
+        }
+        var st = new ai.neargo.shop.user.merchant.entity.MchAccount();
+        st.setMchAccountNo("SF-T-" + merchantNo);
+        st.setEntityNo(merchantNo);
+        st.setUserNo(userNo);
+        st.setIsOwner(true);
+        st.setIsPrimary(true);
+        st.setStatus(ai.neargo.shop.user.merchant.entity.MchAccount.ACTIVE);
+        merchantStaffMapper.insert(st);
+    }
+
+    @Autowired
+    private ai.neargo.shop.user.mapper.UserMappers.MchAccountMapper merchantStaffMapper;
+
 }

@@ -10,7 +10,14 @@ import type {
   CurrencyCode,
   GoodsStatus,
   I18nText,
+  MasterData,
+  MerchantStaff,
+  Store,
+  PaymentApplyment,
   MerchantApplyReq,
+  MerchantApplyStatus,
+  MerchantPointAccount,
+  MerchantPointsRecord,
   MerchantLoginResp,
   MerchantProfile,
   MerchantCustomer,
@@ -97,25 +104,90 @@ export interface GoodsDraft {
   subtitle: I18nText;
   /** 商品形态，决定详情页用哪套字段。**保存后不建议再改** */
   type: Goods["type"];
+  /**
+   * 封面图 URL（来自 `mUploadImage`）。
+   *
+   * <p>此前<b>页面上传了封面却没放进提交体</b> —— 店主选了图、页面上也显示出来了，
+   * 保存后 C 端拿到的却是空封面。而空封面不报错，只是列表里一块留白。
+   */
+  cover?: string;
+  /** 详情轮播图 */
+  images?: string[];
   /** 空数组 = 单规格。非空则 skus 必须是各组选项的笛卡尔积 */
   specGroups: SpecGroupDraft[];
   /** SKU 列表。单规格商品也有且仅有一条 */
   skus: SkuDraft[];
 }
 
+import type { PointsRecordQuery, StaffLoginReq, StoreEditReq, SubmitPaymentReq, TogglePointsReq } from "./requests";
+
 export interface MerchantApi {
   // ---- 账号与入驻（B-11.1）
   mLogin(req: LoginReq): Promise<MerchantLoginResp>;
   mProfile(): Promise<MerchantProfile>;
-  mApply(payload: MerchantApplyReq): Promise<MerchantProfile>;
   /** 上次提交的申请，驳回后回填用 */
-  mApplyDraft(): Promise<MerchantApplyReq | null>;
+  /**
+   * 员工登录：手机号 + 验证码，**不建 C 端账号**。
+   *
+   * 与 {@link mLogin} 是两条路：那条走消费者账号（老板自己），
+   * 这条走商家账号（`mch_account`）。店员多半**没有也不需要**消费者账号 ——
+   * 要求他先注册成消费者才能上班，是把雇佣关系硬塞进一个消费关系里。
+   *
+   * 不是本主体在职员工时后端返回 403，**不是「账号不存在」** ——
+   * 后者会把「谁是这家店的员工」变成一条可枚举的信息。
+   */
+  mStaffLogin(payload: StaffLoginReq): Promise<MerchantLoginResp>;
+
+  mApply(payload: MerchantApplyReq): Promise<MerchantProfile>;
+  /**
+   * 上次申请。返回的是**申请单**而不是请求体 —— 回填要用的是「上次填了什么」，
+   * 而「审到哪一步、为什么被驳回」和它是同一份数据，拆成两条接口只会让两边不同步。
+   */
+  mApplyDraft(): Promise<MerchantApplyStatus | null>;
+  /**
+   * 平台主数据：行业 / 主体类型 / 支付通道。
+   *
+   * 入驻表单需要它才能回答「这个行业能不能选小微」—— 此前主体列表是页面里的常量，
+   * 微信放开某个行业的小微白名单要发版才能生效，而选错主体的后果是进件被拒。
+   */
+  mMasterData(): Promise<MasterData>;
+
+  // ---- 收款进件（ADR-002）—— **与入驻审核是两条独立链路**
+  /** 每通道一条。微信过了、支付宝还没过是正常状态，合并成一个会让人以为都没好 */
+  mPayments(): Promise<PaymentApplyment[]>;
+  /** 结算账号明文只在这一次请求里存在：库里只留掩码，回显也只有掩码 */
+  mSubmitPayment(payload: SubmitPaymentReq): Promise<PaymentApplyment>;
+  /** 主动回查。留这个入口是因为**回调会丢**，丢了商家就永远停在「审核中」 */
+  mRefreshPayment(payChannel: string): Promise<PaymentApplyment>;
 
   // ---- 店铺与获客（B-11.2）—— **一期主获客路径的商家侧**（ADR-004）
   mStore(): Promise<StoreProfile>;
   /** 设经营范围时可勾选的社区。真实环境应只返回该商家已签约自提点所在的社区 */
   mCommunities(): Promise<Community[]>;
   mSaveStore(payload: StoreProfile): Promise<StoreProfile>;
+
+  // ---- 门店管理（M6）—— 与 mStore 的分工：那个管**一家店的门面**，这个管**有几家店**
+  /** 含停用的。停用的也要看得见 —— 看不见的话商家会以为店被删了 */
+  mStoreList(): Promise<Store[]>;
+  /** 新建。**超额直接拒** —— 建出来却打不开的店比拒绝更难解释 */
+  mCreateStore(payload: StoreEditReq): Promise<Store>;
+  mRenameStore(storeNo: string, payload: StoreEditReq): Promise<Store>;
+  /** 停用/启用。**默认店不能停用** —— 停掉之后「这个主体的店在哪」就没答案了 */
+  mSetStoreStatus(storeNo: string, active: boolean): Promise<Store>;
+  /** 转移默认标。显式动作 —— 勾选式会出现两家默认或零家默认的中间态 */
+  mSetDefaultStore(storeNo: string): Promise<Store>;
+  /** 换收款号。只能挑本主体已开通的；传空 = 回到主体默认号（合法操作） */
+  mSetStorePayment(storeNo: string, payMerchantNo?: string): Promise<Store>;
+
+  // ---- 员工与授权（B-11.10）
+  /** 含停用的。手机号已脱敏 */
+  mStaffList(): Promise<MerchantStaff[]>;
+  /** 加员工。**不发密码、不建 C 端账号** —— 他用自己的手机号验证码登录 */
+  mAddStaff(loginPhone: string): Promise<MerchantStaff>;
+  /** 停用/启用。**老板不能被停用** */
+  mSetStaffStatus(mchAccountNo: string, active: boolean): Promise<MerchantStaff>;
+  /** 授权到店。role 传空 = 收回这家店的授权 */
+  mGrantStore(mchAccountNo: string, storeNo: string, role?: "MANAGER" | "CLERK"): Promise<MerchantStaff>;
   mStoreQrcode(): Promise<StoreQrcode>;
   /** 分享素材：整店或单品。文案要带「还差 N 人」这类可直接转发的内容 */
   mShareKit(goodsNo?: string): Promise<ShareKit>;
@@ -227,4 +299,16 @@ export interface MerchantApi {
     orderNo: string,
     payload: { skuNo: string; kind: "SHORTAGE" | "DAMAGE"; note: string },
   ): Promise<Order>;
+
+  // ---- 积分（商家侧只有成本与开关，看不到抵扣与补差）
+  mPointsAccount(): Promise<MerchantPointAccount>;
+  /** 发分服务费明细：一单一条，数据来自 stl_bill.points_fee_minor */
+  mPointsRecords(q?: PointsRecordQuery): Promise<MerchantPointsRecord[]>;
+  /**
+   * 开/关本店积分。
+   *
+   * **关闭只影响将来** —— 已发出的分仍有效、已扣的服务费不退，
+   * 否则关一次开关就是一次资金事故。
+   */
+  mPointsToggle(req: TogglePointsReq): Promise<MerchantPointAccount>;
 }

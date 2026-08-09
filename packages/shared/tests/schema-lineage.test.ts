@@ -1,65 +1,31 @@
 // 对账血缘守卫：资金账与积分账的关联通路必须连得上。
 //
 // 为什么需要它：这条链路**断了不会有任何编译错误，也不会有测试失败**。
-// 把 `pts_redeem_alloc.sub_order_no` 改个名或删掉，代码照样编译、单测照样绿，
+// 把 `pts_user_ledger.sub_order_no` 改个名或删掉，代码照样编译、单测照样绿，
 // 要等到月底对账对不上、或者商家问「我的积分兑付去哪了」才会发现。
 // 而那时数据已经错了一个月。
 //
 // 通路（8 跳，来自 docs/technical/积分域-ER图.md）：
-//   资金账 ord_sub_order → stl_bill → stl_split_log
-//   积分账 ord_sub_order → pts_redeem_alloc → pts_merchant_ledger
-//                        → stl_points_bill → stl_points_pool
-//   勾稽点 ord_sub_order.points_deduct_minor ↔ pts_redeem_alloc.amount_minor
+//   资金账 stl_payment → ord_order/ord_after_sale（收款与退款）
+//         ord_sub_order → stl_bill → stl_split_log（计提与分账）
+//   积分账 ord_sub_order →(points_fee)→ stl_bill →(settle_no)→ stl_points_pool
+//                        stl_payment(SUBSIDY) →(sub_order_no)→ ord_sub_order
+//         商家侧的积分账在 V34 删除：他只感知发分服务费，抵扣与兑付不可见
+//   勾稽点 ord_sub_order.points_deduct_minor ↔ pts_user_ledger.amount_minor
 import { existsSync, readFileSync, readdirSync } from "node:fs";
+// @ts-expect-error -- 生成器是 .mjs，没有类型声明；它是 DDL 解析的唯一真源
+import { readColumnNames } from "../../../scripts/lib/ddl.mjs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const ROOT = join(import.meta.dirname, "../../..");
 const MIGRATION_DIR = join(ROOT, "backend/shop-app/src/main/resources/db/migration");
 
-/**
- * 解析迁移得到「表 → 列集合」。
- *
- * 两处是踩过坑才这么写的，改动前先读：
- *   ① **按版本号数字排序**，不是字典序 —— 字典序把 V15 排在 V2 前面，
- *      于是 ALTER 在建表之前重放，结果全错（gen-test-schema.py 真出过这个 bug）。
- *   ② **必须应用 ALTER** —— 只看 CREATE TABLE 得到的是已被后续迁移改过的旧结构。
- */
+/** 表 → 列集合。解析器只有一份（scripts/lib/ddl.mjs），这里只做视图转换。 */
 function readSchema(): Map<string, Set<string>> {
   const out = new Map<string, Set<string>>();
-  if (!existsSync(MIGRATION_DIR)) return out;
-
-  const sql = readdirSync(MIGRATION_DIR)
-    .filter((f) => f.endsWith(".sql"))
-    .sort((a, b) => (parseInt(a.slice(1), 10) || 0) - (parseInt(b.slice(1), 10) || 0))
-    .map((f) => readFileSync(join(MIGRATION_DIR, f), "utf8"))
-    .join("\n");
-
-  for (const m of sql.matchAll(
-    /CREATE TABLE(?: IF NOT EXISTS)? (\w+)\s*\(([\s\S]*?)\n\)\s*ENGINE/g,
-  )) {
-    const cols = new Set<string>();
-    for (const raw of m[2]!.split("\n")) {
-      const c = raw
-        .trim()
-        .match(/^(\w+)\s+(BIGINT|VARCHAR|INT|TINYINT|SMALLINT|DATETIME|TEXT|JSON|DECIMAL|CHAR)/i);
-      if (c && !/^(KEY|UNIQUE|PRIMARY|INDEX|CONSTRAINT|FULLTEXT)$/i.test(c[1]!)) cols.add(c[1]!);
-    }
-    out.set(m[1]!, cols);
-  }
-
-  for (const m of sql.matchAll(
-    /ALTER TABLE\s+(\w+)\s+(ADD COLUMN|RENAME COLUMN|DROP COLUMN)\s+(\w+)(?:\s+TO\s+(\w+))?/gi,
-  )) {
-    const t = out.get(m[1]!);
-    if (!t) continue;
-    const op = m[2]!.toUpperCase();
-    if (op === "ADD COLUMN") t.add(m[3]!);
-    else if (op === "DROP COLUMN") t.delete(m[3]!);
-    else if (op === "RENAME COLUMN" && m[4]) {
-      t.delete(m[3]!);
-      t.add(m[4]);
-    }
+  for (const [name, def] of readColumnNames(ROOT) as Map<string, { cols: string[] }>) {
+    out.set(name, new Set(def.cols));
   }
   return out;
 }
@@ -74,6 +40,26 @@ interface Hop {
 }
 
 const LINEAGE: Hop[] = [
+  {
+    lane: "资金账",
+    from: "stl_payment",
+    fromCol: "order_no",
+    to: "ord_order",
+    toCol: "order_no",
+    why:
+      "收款流水 → 订单。断了就**对不出账**：与通道账单核对是逐笔对应的，" +
+      "而掉单（用户付了钱、我方没收到回调）只能靠对账发现，没有别的手段",
+  },
+  {
+    lane: "资金账",
+    from: "stl_payment",
+    fromCol: "after_sale_no",
+    to: "ord_after_sale",
+    toCol: "after_sale_no",
+    why:
+      "退款流水 → 售后单。断了退款重试就没有幂等依据 —— 部分退款会有多条，" +
+      "各自一次通道调用，认不出哪条退过就会退两次",
+  },
   {
     lane: "资金账",
     from: "ord_sub_order",
@@ -94,47 +80,47 @@ const LINEAGE: Hop[] = [
     lane: "积分账",
     from: "ord_sub_order",
     fromCol: "sub_order_no",
-    to: "pts_redeem_alloc",
+    to: "pts_user_ledger",
     toCol: "sub_order_no",
-    why: "本单的积分抵扣拆到了哪几个批次；断了就退款时不知道该返还谁的分",
+    why:
+      "本单发了多少分、抵了多少钱。断了就退款时不知道该扣回多少 —— " +
+      "扣回是**按订单**找发放行，不是按发放商家追溯（V28）",
   },
   {
     lane: "积分账",
-    from: "pts_redeem_alloc",
-    fromCol: "alloc_no",
-    to: "pts_merchant_ledger",
-    toCol: "alloc_no",
-    why: "一条兑付产生商家侧收/付两条流水；断了就算不出谁欠谁",
+    from: "ord_sub_order",
+    fromCol: "points_fee_minor",
+    to: "stl_bill",
+    toCol: "points_fee_minor",
+    why:
+      "商家发分的服务费，按单计提到结算单。**这是商家唯一感知到的积分成本** —— " +
+      "抵扣与兑付对他不可见（V34）。断了商家就白发分，平台成本失控",
   },
   {
     lane: "积分账",
-    from: "pts_merchant_ledger",
-    fromCol: "merchant_no",
-    to: "stl_points_bill",
-    toCol: "merchant_no",
-    why: "账期单按商家聚合流水",
-  },
-  {
-    lane: "积分账",
-    from: "pts_merchant_ledger",
-    fromCol: "period",
-    to: "stl_points_bill",
-    toCol: "period",
-    why: "账期单按 (merchant_no, period) 唯一；少了 period 就聚不出期",
-  },
-  {
-    lane: "积分账",
-    from: "stl_points_bill",
-    fromCol: "bill_no",
+    from: "stl_bill",
+    fromCol: "settle_no",
     to: "stl_points_pool",
     toCol: "ref_no",
-    why: "账期结算走平台备付池；断了就对不出池子的钱花在哪",
+    why:
+      "收到的发分服务费进池（MERCHANT_RECEIVE）。断了池子就只出不进，" +
+      "「池子余额 == 流通积分对应资金」这条恒等式立刻失衡",
+  },
+  {
+    lane: "积分账",
+    from: "stl_payment",
+    fromCol: "sub_order_no",
+    to: "ord_sub_order",
+    toCol: "sub_order_no",
+    why:
+      "补差流水 → 子单。断了就不知道这一单补没补上，而**补差失败必须阻断分账**：" +
+      "认不出对应关系，要么漏拦（商家少收），要么全拦（好单也结不了）",
   },
   {
     lane: "勾稽点",
     from: "ord_sub_order",
     fromCol: "points_deduct_minor",
-    to: "pts_redeem_alloc",
+    to: "pts_user_ledger",
     toCol: "amount_minor",
     why: "两本账唯一的连接点：资金账里商家少收的 == 积分账里商家收到的",
   },
@@ -144,15 +130,23 @@ const LINEAGE: Hop[] = [
  * 业务键的**归属登记**：这个 `xxx_no` 是谁的主键、指向哪张表的哪一列。
  *
  * 为什么要显式登记而不是从表名推断：真实的表名与主键列名经常对不上 ——
- * `stl_bill` 的主键叫 `settle_no`、`pts_redeem_alloc` 的叫 `alloc_no`、
+ * `stl_bill` 的主键叫 `settle_no`、
  * `cmt_pickup_point` 的叫 `pickup_no`。用「表名去前缀 + _no」去猜，六个键会猜错。
  *
  * 角色化外键（同一张表被引用多次、列名各不相同）用 `col` 指明真正指向的列，
  * 例如「发放方商家」`issuer_merchant_no` 指向 `usr_merchant.merchant_no`。
  */
 const KEY_OWNERS: Record<string, { table: string; col?: string }> = {
-  merchant_no: { table: "usr_merchant" },
-  user_no: { table: "usr_user" },
+  // 主体（全库重建后 merchant_no → entity_no；merchant 一词只留给支付语境）
+  entity_no: { table: "mch_entity" },
+  // 门店。**与 entity_no 是两级**：钱与信用挂主体，货与人挂门店 —— 按名字
+  // 把 store_no 当成 entity_no 用（或反过来）会在多门店之后连错，且不报错
+  store_no: { table: "mch_store" },
+  // 商家账号（B 端账号池本身，不是"员工附属表"），与平台运营 sys_ops_staff 无关
+  mch_account_no: { table: "mch_account" },
+  // 收款商户号业务键 —— 全库唯一合法的 "merchant" 用法；mch_store 引用它选收款号
+  pay_merchant_no: { table: "mch_payment_merchant" },
+  user_no: { table: "usr_account" },
   order_no: { table: "ord_order" },
   sub_order_no: { table: "ord_sub_order" },
   community_no: { table: "cmt_community" },
@@ -164,13 +158,17 @@ const KEY_OWNERS: Record<string, { table: string; col?: string }> = {
   quote_no: { table: "mkt_quote" },
   group_no: { table: "mkt_group_buy" },
   review_no: { table: "rvw_review" },
-  staff_no: { table: "sys_staff" },
+  staff_no: { table: "sys_ops_staff" },
   settle_no: { table: "stl_bill" },
-  alloc_no: { table: "pts_redeem_alloc" },
+  after_sale_no: { table: "ord_after_sale" },
+  payment_no: { table: "stl_payment" },
+  // 用户的 USE 流水。商家进账挂它 —— 一次使用一条进账，见 LINEAGE 里那一跳
+  use_ledger_no: { table: "pts_user_ledger", col: "ledger_no" },
 
   // 角色化外键：列名带角色前缀，指向的仍是主表的主键
-  inviter_no: { table: "usr_user", col: "user_no" },
-  issuer_merchant_no: { table: "usr_merchant", col: "merchant_no" },
+  inviter_no: { table: "usr_account", col: "user_no" },
+  // ⚠️ 命名欠账：按基准应叫 issuer_entity_no，改它要动积分域 Java 映射，随积分域下次动工时改
+  issuer_merchant_no: { table: "mch_entity", col: "entity_no" },
 };
 
 /**
@@ -184,7 +182,6 @@ const NAME_COLLISIONS: Record<string, string> = {
   request_no:
     "mkt_request 是求团需求单号；stl_split_log 是分账幂等号。" +
     "建表时已发现约束名会撞车并加了 uk_split_request_no 前缀，但列名的撞车还在。",
-  ledger_no: "pts_user_ledger 与 pts_merchant_ledger 各自的主业务键，互不引用。",
   express_no: "ord_sub_order 是发货快递单号；ord_after_sale 是用户退货的快递单号。方向相反。",
   operator_no: "ord_status_log 与 ful_verify_log 各自记录操作人，不是同一张表的外键。",
 };
@@ -254,6 +251,18 @@ describe("对账血缘", () => {
     ).toEqual([]);
   });
 
+  it("与 gen-erd.mjs 的键归属表一致 —— 两份分叉会让 ER 图连错线", async () => {
+    // ER 图生成器要靠同一份归属画关系。两处各存一份必然漂移，
+    // 而漂移的表现是「图上少了一条线」或「连到了错的表」—— 没人会发现。
+    const gen = (await import("../../../scripts/gen-erd.mjs")) as {
+      KEY_OWNERS: Record<string, string>;
+    };
+    const mine = Object.fromEntries(
+      Object.entries(KEY_OWNERS).map(([k, v]) => [k, v.table]),
+    );
+    expect(gen.KEY_OWNERS, "gen-erd.mjs 与本文件的 KEY_OWNERS 不一致").toEqual(mine);
+  });
+
   it("登记的同名冲突仍然存在 —— 解决了要删登记", () => {
     if (!schema.size) return;
     const stale = Object.keys(NAME_COLLISIONS).filter((k) => {
@@ -264,5 +273,26 @@ describe("对账血缘", () => {
       stale,
       `以下列名已不再跨表冲突，请从 NAME_COLLISIONS 删除：${stale.join("、")}`,
     ).toEqual([]);
+  });
+
+  it("python 侧解析出同一套表与列 —— 两种语言的解析器不能分叉", () => {
+    // gen-test-schema.py 用 python 重放同一批迁移，生成 H2 建表脚本。
+    // 语言不同没法共用 scripts/lib/ddl.mjs，只能靠这条断言把它拴住。
+    //
+    // 分叉的后果是**单测跑在一套 schema 上、线上跑在另一套**：
+    // python 侧曾经字典序排文件（V15 在 V2 前），ALTER 整批被丢弃而没有任何报错。
+    const p = join(ROOT, "backend/shop-app/src/test/resources/schema-test.sql");
+    if (!existsSync(p) || !schema.size) return;
+    const h2 = readFileSync(p, "utf8");
+
+    const inH2 = new Set(
+      [...h2.matchAll(/CREATE TABLE(?: IF NOT EXISTS)?\s+(\w+)/gi)].map((m) => m[1]!),
+    );
+    const onlyJs = [...schema.keys()].filter((t) => !inH2.has(t));
+    const onlyPy = [...inH2].filter((t) => !schema.has(t));
+    expect(
+      { onlyJs, onlyPy },
+      "JS 与 python 解析出的表集合不一致 —— 重跑 npm run gen:erd 与 gen-test-schema.py",
+    ).toEqual({ onlyJs: [], onlyPy: [] });
   });
 });

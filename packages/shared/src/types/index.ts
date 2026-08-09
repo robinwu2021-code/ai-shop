@@ -141,9 +141,19 @@ export interface PointRecord {
   balanceAfter: number;
 }
 
+/** 用户积分账户。**单位是积分个数** —— 商家侧是钱，用 {@link MerchantPointAccount} */
 export interface PointAccount {
-  /** 当前可用余额 */
+  /** 当前可用余额。**只含能花的分**，待生效的在 pendingBalance */
   balance: number;
+  /**
+   * 待生效积分：已发放但未过售后期，**不计入 balance**。
+   *
+   * 两个数必须分开展示（「可用 400 / 待生效 100」）。合成一个的话，
+   * 用户看到「我有 500 分」却只能用 400，没有任何办法解释这个差额。
+   */
+  pendingBalance: number;
+  /** 最近一批待生效积分的可用时间。`pendingBalance=0` 时为空 */
+  pendingActivateAt?: number;
   /** 累计获得（含已用、已过期），只增不减 */
   totalEarned: number;
   /** 累计已抵扣 */
@@ -152,6 +162,67 @@ export interface PointAccount {
   expiringSoon: number;
   /** 最近一批积分的过期时间。`expiringSoon=0` 时为空 */
   expiringAt?: number;
+}
+
+/** 商家的一条发分服务费记录：一单一条，来自 `stl_bill.points_fee_minor` */
+export interface MerchantPointsRecord {
+  /** 结算单号 */
+  settleNo: string;
+  /** 关联子单，商家据此对到具体订单 */
+  subOrderNo: string;
+  /** 本单发放的积分数 */
+  points: number;
+  /** 本单的发分服务费（分）。**这是商家唯一感知到的积分成本** */
+  feeMinor: number;
+  /** 账期 `YYYYMM` */
+  period: string;
+  /** 计提时间（支付成功时），不是分账时间 —— 两者相差一个售后期 */
+  at: number;
+}
+
+/**
+ * 结算页的积分试算结果。**服务端算**，端上只负责显示。
+ *
+ * 端上自己算的话，下单时服务端会再算一遍 —— 两处算法只要有一点不同
+ * （券后金额口径、运费是否参与、开关判断顺序），用户就会看到
+ * 「结算页说能抵 30，下单后只抵了 25」，而这个差额没人解释得清。
+ */
+export interface PointsDeductible {
+  /** 本单最多可抵扣的积分数。已扣掉四级开关与上限，端上直接用 */
+  maxPoints: number;
+  /** 对应金额（分） */
+  maxAmountMinor: number;
+  /** 用户当前可用余额，用于展示「你有 X 分」 */
+  balance: number;
+  /** 不可用时的原因，直接展示。可用时为空 */
+  disabledReason?: string;
+}
+
+/**
+ * 商家的积分成本视图。**单位是钱，不是分**。
+ *
+ * 商家只感知**一件事**：开了积分，每笔订单要付一笔发分服务费。
+ * 他**看不到**用户抵了多少分、平台补了多少、资金池 —— 对他而言订单就是全额，
+ * 收到的是「订单金额 − 各项费用」（V34）。
+ *
+ * 所以这里没有 income/net：商家侧不存在「积分兑付进账」这个概念。
+ */
+export interface MerchantPointAccount {
+  /** 本期发分服务费支出（分）。**商家唯一感知到的积分成本** */
+  periodExpenseMinor: number;
+  /** 当前账期标识，如 `2026-08` */
+  period: string;
+  /** 本店积分是否生效 —— 全局 AND 社区 AND 主体非小微 AND 本店开关 */
+  enabled: boolean;
+  /**
+   * 不生效的原因，直接展示给商家。
+   *
+   * 小微主体要说「升级为个体工商户后可开启」，不能说「本店未开启积分」——
+   * 后者会让商家去开一个他根本开不了的开关。
+   */
+  disabledReason?: string;
+  /** 平台按行业强制开，商家不可自行关闭 */
+  forced: boolean;
 }
 
 // ---------------------------------------------------------------- 消息
@@ -218,7 +289,29 @@ export type AfterSaleReason =
 // 一期平台方是唯一入驻方，所有数据都挂在它名下 —— 二期开放第三方入驻是配置变更，不是重构。
 // 形态与拆分时机见 docs/technical/ADR/ADR-001。
 
-export type MerchantType = "PLATFORM" | "COMPANY" | "INDIVIDUAL";
+/**
+ * 商家主体类型 —— **权威口径取通道侧**（ADR-010）。
+ *
+ * 主体类型的唯一硬约束来自支付通道：能不能进件、要什么资质、钱打到个人还是对公。
+ * 展示名反而可以随便改。让权威贴着约束走，映射就只需要一个方向。
+ *
+ * 规则（要不要执照、受不受行业白名单限制、结算账户形态）在
+ * `sys_merchant_subject` 表里，随通道调整；**这里只管取值域**。
+ * 端上取 `GET /common/master-data`，不要在页面里写死。
+ *
+ * <p><b>不叫 `SubjectType`</b>：那个名字在平台端已经是**风控主体**
+ * （DEVICE/MERCHANT/USER）。两个不同的概念同名，读代码的人迟早会把
+ * 一个当成另一个 —— 类型对齐守卫正是为此存在的。
+ */
+export type MerchantSubject = "MICRO" | "INDIVIDUAL" | "ENTERPRISE";
+
+/**
+ * @deprecated 用 {@link MerchantSubject}。旧取值 `PLATFORM/COMPANY/INDIVIDUAL` 已废弃 ——
+ * 其中 `PLATFORM`（平台自营）**不是一种主体类型**：平台自营的主体也是个企业，
+ * 「自营」是归属标记，混进主体枚举里让这一列同时承担了两件事。
+ * 一期没有真实的自营商家，暂不为它单开字段。
+ */
+export type MerchantType = MerchantSubject;
 
 /** 商品卡/详情上挂的商家简要信息 */
 export interface MerchantBrief {
@@ -973,16 +1066,26 @@ export interface LoginResp {
 // 说明：B 端复用 C 端的 Goods / Order / Review / Merchant 等主类型，
 // 只在此追加「经营侧独有」的类型。两端共享同一份定义，避免契约漂移。
 
-/** 商家入驻审核状态。与 C 端 LeaderStatus 无关 —— 团长角色已删除（ADR-004） */
+/**
+ * 商家在 B 端的**综合状态**：既要表达「还没入驻成功」，也要表达「已经在经营」。
+ *
+ * ⚠️ 它是一个**展示用的合并视图**，底下是两条互不相干的生命周期：
+ *   · 审核（`MerchantApplyStatus`）—— 商家还不存在时的事，归 `usr_merchant_apply`
+ *   · 经营（ACTIVE / SUSPENDED）—— 商家已存在之后的事，归 `usr_merchant.status`
+ *
+ * B 端首页要在一个地方回答「我现在能不能做生意」，所以合并；
+ * 但**库里绝不能合并** —— 一旦合并，「驳回一份申请」和「封禁一家店」就共用取值，
+ * 而这两件事的操作人、审计口径、可逆性全都不同。
+ */
 export type MerchantStatus =
   | "NONE" // 未申请
-  | "APPLYING" // 待审核
-  | "REJECTED" // 驳回，可补交
+  | "APPLYING" // 已提交，待审核（对应申请单 PENDING）
+  | "REVIEWING" // 已受理，客服正在看 —— 让商家知道「有人在看」
+  | "REJECTED" // 驳回，可补料重提
   | "ACTIVE" // 正常经营
-  | "SUSPENDED"; // 被封禁
+  | "SUSPENDED"; // 被封禁（经营状态，与审核无关）
 
-/** 主体类型。个人 → 个体户 → 企业，门槛前低后高（ADR-002 §4） */
-export type MerchantSubject = "PERSONAL" | "INDIVIDUAL_BIZ" | "COMPANY";
+
 
 /** 商家分层。为「流量起来后引入大商家」预留，一期只用 SMALL（ADR-004 §7） */
 export type MerchantTier = "SMALL" | "MEDIUM" | "LARGE";
@@ -1025,20 +1128,186 @@ export interface MerchantApplyReq {
   name: string;
   /** 主体类型。个人 → 个体户 → 企业，门槛前低后高 */
   subject: MerchantSubject;
-  /** 联系人姓名 */
-  contact: string;
+  /** 联系人姓名。审核要打电话找人，只有号码没有姓名不合适 */
+  contactName: string;
   /** 联系手机号 */
-  phone: string;
+  contactPhone: string;
   /** 主营类目 */
   category: string;
   /** 店铺简介 */
   desc: string;
   /** 承接自提点：小店既是供给方也是取货点（ADR-005 type=STORE） */
-  asPickupPoint: boolean;
-  /** 资质图片（营业执照/身份证），个人主体可为空 */
-  licenses: string[];
-  /** 结算账户类型。真实账号由后端持有，C 端与 B 端都不回显（ADR-002 §5） */
+  asPickupPoint?: boolean;
+  /**
+   * 期望经营范围（ADR-009）。申请时可空，<b>审核通过时必须确定</b> ——
+   * 否则商家上着架却对谁都不可见，且没有任何报错。
+   */
+  serviceScope?: "COMMUNITY" | "CITY" | "PLATFORM";
+  /** 期望覆盖的社区。scope=COMMUNITY 时审核通过必须非空 */
+  communityNos?: string[];
+  /**
+   * 资质图片（营业执照/身份证）。**选填** —— 一期 EDI 不强制。
+   *
+   * 与下面的结算账户一样，属于**分账主体开户**而不是入驻申请本身（ADR-002）：
+   * `usr_merchant_payment` 是独立一张表、有自己的 `apply_status`，就是这个道理。
+   * 申请时能传就传，通过后在 B 端补也行 —— 逼一个还没通过审核的人先传营业执照，
+   * 只会把人挡在门外。
+   */
+  licenses?: string[];
+  /** 结算账户类型。真实账号由后端持有，C 端与 B 端都不回显（ADR-002 §5）。**选填**，同上 */
+  settleAccountType?: "PERSONAL_OPENID" | "MERCHANT_ID";
+  /**
+   * 行业（`sys_industry.industry`）。
+   *
+   * **它决定这家店能不能以小微主体进件** —— 微信的小微白名单是按行业给的，
+   * 也是 `points_forced` 默认值的来源。
+   *
+   * 后端一直在收、库里一直有这一列，但契约没登记、端也没传，
+   * 于是 `mch_entity.industry` 恒空：进件时才发现主体类型选错了，
+   * 而那时商家已经开完店、上完架。
+   */
+  industry?: string;
+}
+
+/**
+ * 平台主数据快照（`GET /common/master-data`）。
+ *
+ * 合成一个响应而不是三条接口，是因为它们在**同一屏上被同时用到**：
+ * 「选行业 → 据此过滤可选主体 → 主体决定要不要传营业执照」。
+ * 分三次请求会出现「行业回来了、主体还没回来」的中间态，
+ * 而那个中间态里表单不知道该不该禁用某个选项。
+ */
+export interface MasterData {
+  /** 可选行业。**决定能不能以小微主体进件**，也是 points_forced 默认值的来源 */
+  industries: MasterDataIndustry[];
+  /** 可选主体类型（法律形态）。决定资质要求与结算账户形态 */
+  subjects: MasterDataSubject[];
+  /** 可用支付通道与其能力位 */
+  channels: MasterDataChannel[];
+}
+
+export interface MasterDataIndustry {
+  /** 行业码（`sys_industry.industry`），提交申请时回传的就是它 */
+  industry: string;
+  /** 展示名。**取服务端的**，不要在端上再维护一份翻译 */
+  name: string;
+  /** 该行业能否以小微主体进件。**false 时小微选项要禁用**，不是提交后才报错 */
+  microAllowed: boolean;
+}
+
+export interface MasterDataSubject {
+  /** 主体类型码 */
+  subjectType: MerchantSubject;
+  /** 展示名 */
+  name: string;
+  /** 要不要传营业执照 */
+  needLicense: boolean;
+  /** 是否受行业白名单管控（小微受管，其余不受） */
+  industryGated: boolean;
+  /** 该主体默认的结算账户形态：小微打个人，其余打对公 */
   settleAccountType: "PERSONAL_OPENID" | "MERCHANT_ID";
+}
+
+export interface MasterDataChannel {
+  /** 通道码（`sys_pay_channel.pay_channel`），如 WECHAT */
+  payChannel: string;
+  /** 展示名 */
+  name: string;
+  /** 通道是否可用。关掉时下单页不给这个支付方式，而不是点了才失败 */
+  enabled: boolean;
+  /** 该通道支持的支付方式，如 JSAPI / APP / H5 */
+  payMethods: string[];
+}
+
+/**
+ * 收款进件状态（每通道一条）。
+ *
+ * <p><b>它与入驻审核是两件事</b>：入驻过了店就能开、货能上架，
+ * 但通道没批就收不了钱。合成一个「入驻进度」，商家问「我能收钱了吗」就没法回答。
+ */
+export interface PaymentApplyment {
+  /** 通道码，如 WECHAT */
+  payChannel: string;
+  /** 通道展示名。取服务端的，端上不要再维护一份翻译 */
+  channelName: string;
+  /** NONE / APPLYING / ACTIVE / REJECTED / FROZEN */
+  applyStatus: "NONE" | "APPLYING" | "ACTIVE" | "REJECTED" | "FROZEN";
+  /**
+   * 这个通道现在能不能收钱。
+   *
+   * **照着它显示，不要自己去比 applyStatus** —— 比错的表现是
+   * 「显示能收钱但收不了」，而这种错要到第一笔订单才暴露。
+   */
+  canReceiveMoney: boolean;
+  /** 收款商户号业务键，通过后才有。门店挂收款号引用的就是它 */
+  payMerchantNo?: string;
+  /** 二级商户号掩码。完整号不回显 */
+  subMchidMasked?: string;
+  /** 结算账户形态：小微打个人（PERSONAL_OPENID），其余打对公（MERCHANT_ID） */
+  settleAccountType?: "PERSONAL_OPENID" | "MERCHANT_ID";
+  /** 结算账号掩码。**明文永不回显**，包括给商家自己（ADR-002 §5） */
+  settleAccountMasked?: string;
+  /** 驳回原因。驳回时必有 —— 没有原因商家只能反复重提 */
+  rejectReason?: string;
+  /** 还缺哪些资料（settleAccount / licenses / settleAccountType）。空 = 资料齐了在等通道 */
+  missing: string[];
+  /** 提交进件的时间。没提交过为空 */
+  appliedAt?: number;
+  /** 通道开户完成的时间 —— 从这一刻起才真的能收钱 */
+  activatedAt?: number;
+}
+
+/**
+ * 门店（商家侧管理用）。
+ *
+ * <p><b>门店与主体是关联不是归属</b>：换执照店照开。所以 `storeNo` 一旦生成就不再变 ——
+ * 评价、订单、顾客的「我常逛的店」都挂在它上面。
+ */
+export interface Store {
+  /** 门店号。一旦生成不再变 —— 换主体只换归属，不换它 */
+  storeNo: string;
+  /** 门店名 */
+  name: string;
+  /** 门店地址。顾客据此找到取货点，也是履约范围的锚点 */
+  address?: string;
+  /** 是否默认店。一个主体**恰好一家** —— 它是「找不到具体门店时去哪」的答案 */
+  isDefault: boolean;
+  /** ACTIVE 正常营业 / READONLY 已停用（不再接新单，已有单照常履约） */
+  status: "ACTIVE" | "READONLY";
+  /** 这家店用哪个收款号。**空 = 用主体的默认收款号**，不是"没配" */
+  payMerchantNo?: string;
+  /** 这家店现在能不能收钱。照它显示，别自己去比状态串 */
+  payReady: boolean;
+  /** 授权到这家店的员工数（不含老板）。0 表示只有老板能管这家店 */
+  staffCount: number;
+}
+
+/**
+ * 商家员工（B 端账号 + 他在各门店的角色）。
+ *
+ * <p>**逐店授权**：A 店店长可以同时是 B 店店员 —— 老店的店长去新店帮忙，
+ * 但新店不归他管，这是小连锁的常态。
+ */
+export interface MerchantStaff {
+  /** 商家账号号。**不叫 staffNo** —— 那个名字被平台运营占着，两者是不同的人 */
+  mchAccountNo: string;
+  /** 登录手机号，**已脱敏**。完整号不回显 —— 那等于一份可导出的通讯录 */
+  loginPhone: string;
+  /** 老板。**不受门店授权限制**，他的店都归他管 */
+  isOwner: boolean;
+  /** ACTIVE / DISABLED */
+  status: "ACTIVE" | "DISABLED";
+  /** 他在各门店的角色。老板为空 —— 不是"没授权"，是"不需要授权" */
+  roles: StoreRole[];
+}
+
+export interface StoreRole {
+  /** 哪家店 */
+  storeNo: string;
+  /** 门店名快照，列表直接显示，省一次查询 */
+  storeName: string;
+  /** MANAGER 店长 / CLERK 店员 */
+  role: "MANAGER" | "CLERK";
 }
 
 /** 商品在商家侧的状态。C 端只看得到 ON_SALE */
@@ -1289,6 +1558,64 @@ export interface ReorderResult {
   dropped: string[];
   /** 涨价了但仍加入的商品名 */
   priceUp: string[];
+}
+
+/**
+ * 入驻申请状态（C 端查自己的进度 / 平台端审核队列共用）。
+ *
+ * 状态机：`PENDING → REVIEWING → APPROVED | REJECTED`，`REJECTED → PENDING`（补料重提）。
+ * **APPROVED 是终态** —— 已经建了商家、发了账号，回退没有意义。
+ *
+ * ⚠️ 这条是**审核**生命周期，与 `Merchant` 上的**经营**状态（ACTIVE/SUSPENDED）无关：
+ * 审核发生在商家还不存在的时候，封禁发生在商家已经存在之后。混成一个枚举会让
+ * 「驳回一份申请」和「封禁一家店」共用取值，两件事迟早互相踩。
+ */
+export interface MerchantApplyStatus {
+  /** 申请单号 */
+  applyNo: string;
+  /** 申请时填的店铺名。**存快照** —— 后来改名不该让历史申请跟着变 */
+  name: string;
+  /** 主体类型。决定分账主体形态与所需资质（ADR-002 §4） */
+  subject: MerchantSubject;
+  /** 审核状态。迁移见本类型的注释，APPROVED 为终态 */
+  status: "PENDING" | "REVIEWING" | "APPROVED" | "REJECTED";
+  /** 驳回理由。**驳回必须写** —— 不写就等于让人猜着改 */
+  rejectReason?: string;
+  /** 通过后生成的商家单号。未通过时为空 —— 商家在通过之前根本不存在 */
+  merchantNo?: string;
+  /** 提交时间 */
+  createdAt: number;
+  /** 审核完成时间。PENDING/REVIEWING 期间为空 */
+  auditedAt?: number;
+
+  // ── 以下是**申请时填的原样内容**，用于驳回后回填 ──────────────────
+  //
+  // 为什么整份带回来而不是只给状态：驳回往往只缺一张执照，
+  // 让人从头重填一遍是把「补交」变成「重来」—— 而重来的人有相当一部分就不回来了。
+
+  /** 联系人姓名 */
+  contactName: string;
+  /** 联系手机号。这是申请人自己填的联系号码，**不是登录号**，不脱敏 */
+  contactPhone: string;
+  /** 主营类目 */
+  category: string;
+  /** 店铺简介 */
+  desc: string;
+  /** 期望经营范围（ADR-009） */
+  serviceScope?: "COMMUNITY" | "CITY" | "PLATFORM";
+  /** 期望覆盖的社区 */
+  communityNos?: string[];
+  /** 已传的资质图 */
+  licenses?: string[];
+  /** 申请时选的行业。驳回回填要用它 —— 换个行业可能连主体类型都得跟着换 */
+  industry?: string;
+  /**
+   * 是否愿意承接自提点（ADR-005）。
+   *
+   * **只是意愿，不代表点已建立** —— 建点要谈服务费口径，一期由运营在通过后另行处理。
+   * 所以商家勾了这一项、通过后却还没看到履约台，是正常的中间状态而不是故障。
+   */
+  asPickupPoint?: boolean;
 }
 
 // ================================================================ 自提点（ADR-005）

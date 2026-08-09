@@ -137,8 +137,8 @@ public class CouponServiceImpl implements CouponService {
             if (c == null) {
                 continue;
             }
-            long base = c.getMerchantNo() == null || c.getMerchantNo().isBlank()
-                    ? total : byMerchant.getOrDefault(c.getMerchantNo(), 0L);
+            long base = c.getEntityNo() == null || c.getEntityNo().isBlank()
+                    ? total : byMerchant.getOrDefault(c.getEntityNo(), 0L);
 
             String reason = reasonOfUnusable(c, base);
             if (reason != null) {
@@ -204,7 +204,7 @@ public class CouponServiceImpl implements CouponService {
                 : nzi(c.getTotalCount()) - nzi(c.getReceivedCount());
         return new CouponVO(c.getCouponNo(), c.getTitle(), c.getType(), nz(c.getFaceMinor()),
                 nzi(c.getDiscountRate()), nz(c.getThresholdMinor()), nz(c.getMaxDiscountMinor()),
-                c.getFunder(), c.getMerchantNo(), nz(c.getStartAt()), nz(c.getEndAt()),
+                c.getFunder(), c.getEntityNo(), nz(c.getStartAt()), nz(c.getEndAt()),
                 Math.max(remain, 0), received);
     }
 

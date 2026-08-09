@@ -18,6 +18,12 @@ public interface CommunityService {
     /** 社区详情（含其下常驻自提点）。 */
     CommunityVO detail(String communityNo);
 
+    /**
+     * 全部社区。B 端选覆盖范围用（ADR-009）—— 商家选的是「我送得到哪些小区」，
+     * 那是他自己知道的经营半径，与他此刻站在哪儿无关，所以不按定位排序。
+     */
+    List<CommunityVO> all();
+
     /** 自提点详情（C-CM-02）：地址、营业时间、到货时间。 */
     CommunityVO.PickupVO pickupDetail(String pickupNo);
 }

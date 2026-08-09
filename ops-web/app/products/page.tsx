@@ -18,6 +18,7 @@ import { notify } from "@/lib/notify";
 import { MARKETS, type Category, type Market, type Sku } from "@/lib/types";
 import { SkuStatusBadge, useCategoryTemplateMap, useSkuStatusMap } from "@/components/status";
 import { ReadOnlyNotice } from "@/components/read-only-notice";
+import { GoodsAuditTab } from "./goods-audit-tab";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -40,6 +41,7 @@ const TABS = (c: Copy) => [
   { key: "categories", label: c.tabCategories },
   { key: "skus", label: c.tabSkus },
   { key: "stock", label: c.tabStock },
+  { key: "audit", label: c.tabGoodsAudit },
 ];
 
 const MARKET_LABEL = (c: Copy): Record<Market, string> => ({ CN: c.marketCN, SG: c.marketSG });
@@ -292,6 +294,9 @@ function ProductsInner() {
       )}
 
       {/* ── 库存与预售 ─────────────────────────────────────────────────── */}
+      {/* 商品审核：本页唯一接了真后端的一块（类目/库存仍走 mock） */}
+      {tab === "audit" && <GoodsAuditTab c={c} canAudit={canAudit} />}
+
       {tab === "stock" && (
         <>
           <StatRow>

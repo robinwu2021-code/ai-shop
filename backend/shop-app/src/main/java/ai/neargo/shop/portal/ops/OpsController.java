@@ -5,6 +5,7 @@ import ai.neargo.shop.platform.OpsService;
 import ai.neargo.shop.platform.Perms;
 import ai.neargo.shop.platform.dto.OpsVOs.AuditLogVO;
 import ai.neargo.shop.platform.dto.OpsVOs.LoginResultVO;
+import ai.neargo.shop.platform.dto.IndustryVO;
 import ai.neargo.shop.platform.dto.OpsVOs.MerchantApplyVO;
 import ai.neargo.shop.platform.dto.OpsVOs.StaffVO;
 import ai.neargo.shop.product.dto.GoodsVO;
@@ -37,12 +38,18 @@ public class OpsController {
     private final OpsService opsService;
     private final GoodsService goodsService;
     private final PlatformOrderService platformOrderService;
+    private final ai.neargo.shop.product.service.MerchantGoodsService merchantGoodsService;
+    private final ai.neargo.shop.platform.IndustryService industryService;
 
     public OpsController(OpsService opsService, GoodsService goodsService,
-                         PlatformOrderService platformOrderService) {
+                         PlatformOrderService platformOrderService,
+                         ai.neargo.shop.product.service.MerchantGoodsService merchantGoodsService,
+                         ai.neargo.shop.platform.IndustryService industryService) {
+        this.industryService = industryService;
         this.opsService = opsService;
         this.goodsService = goodsService;
         this.platformOrderService = platformOrderService;
+        this.merchantGoodsService = merchantGoodsService;
     }
 
     /** 运营登录。唯一免鉴权的 /ops 端点。 */
@@ -68,23 +75,131 @@ public class OpsController {
         return opsService.auditLogs(target);
     }
 
-    @GetMapping("/ops/merchant/apply-queue")
+    @GetMapping("/ops/merchant/apply")
     @PreAuthorize("@perm.can('" + Perms.MERCHANT_AUDIT + "')")
     public List<MerchantApplyVO> applyQueue() {
         return opsService.applyQueue();
     }
 
+    /**
+     * 受理：告诉商家「有人在看了」。不改变审核结果，也不是通过的必经步骤。
+     */
+    @PostMapping("/ops/merchant/apply/{applyNo}/accept")
+    @PreAuthorize("@perm.can('" + Perms.MERCHANT_AUDIT + "')")
+    public void acceptApply(@PathVariable String applyNo) {
+        opsService.acceptApply(applyNo);
+    }
+
     @PostMapping("/ops/merchant/apply/{applyNo}/audit")
     @PreAuthorize("@perm.can('" + Perms.MERCHANT_AUDIT + "')")
     public void auditApply(@PathVariable String applyNo, @RequestBody AuditReq req) {
-        opsService.auditApply(applyNo, Boolean.TRUE.equals(req.approved()), req.reason());
+        opsService.auditApply(applyNo, Boolean.TRUE.equals(req.approved()), req.reason(),
+                req.serviceScope(), req.communityNos());
+    }
+
+    /**
+     * 入驻申请检索：能翻历史，不只是待办。
+     *
+     * <p>「这家店当初是谁批的、为什么驳回」是最常见的一类追溯 ——
+     * 只留待办队列的话，这些问题只能去翻审计日志。
+     */
+    @GetMapping("/ops/merchant/apply/search")
+    @PreAuthorize("@perm.can('" + Perms.MERCHANT_AUDIT + "')")
+    public PageData<MerchantApplyVO> searchApplies(@RequestParam(required = false) String status,
+                                                   @RequestParam(required = false) String keyword,
+                                                   @RequestParam(defaultValue = "1") long page,
+                                                   @RequestParam(defaultValue = "20") long size) {
+        return opsService.searchApplies(status, keyword, page, size);
+    }
+
+    // ---------------------------------------------------------------- 行业主数据
+
+    /**
+     * 行业列表（含停用的）。<b>带 merchantCount</b> —— 运营在改准入之前要知道
+     * 这一改会影响多少家店；不带的话，「停用某个行业」就是一次盲操作。
+     */
+    @GetMapping("/ops/industries")
+    @PreAuthorize("@perm.can('" + Perms.INDUSTRY_MANAGE + "')")
+    public List<IndustryVO> industries() {
+        return industryService.list();
+    }
+
+    /**
+     * 改小微准入。<b>只有平台能改</b> —— 它反映的是通道规则，不是商家意愿。
+     *
+     * <p>必须写 remark：三个月后再看这条记录时，「为什么餐饮能小微而线上不能」
+     * 只有当时那个人知道。
+     */
+    @PostMapping("/ops/industries/{industry}/micro-allowed")
+    @PreAuthorize("@perm.can('" + Perms.INDUSTRY_MANAGE + "')")
+    public IndustryVO setMicroAllowed(@PathVariable String industry,
+                                      @RequestBody MicroAllowedReq req) {
+        IndustryVO vo = industryService.setMicroAllowed(industry, req.payChannel(),
+                Boolean.TRUE.equals(req.allowed()), req.remark());
+        opsService.audit("INDUSTRY_MICRO", industry,
+                req.payChannel() + "=" + req.allowed() + "；" + req.remark());
+        return vo;
+    }
+
+    /** 启停。<b>只影响新入驻，存量商家不动</b> —— 停用不是撤销资质。 */
+    @PostMapping("/ops/industries/{industry}/enabled")
+    @PreAuthorize("@perm.can('" + Perms.INDUSTRY_MANAGE + "')")
+    public IndustryVO setIndustryEnabled(@PathVariable String industry,
+                                         @RequestBody EnabledReq req) {
+        IndustryVO vo = industryService.setEnabled(industry, Boolean.TRUE.equals(req.enabled()));
+        opsService.audit("INDUSTRY_ENABLED", industry, String.valueOf(req.enabled()));
+        return vo;
+    }
+
+    /**
+     * 设/取消该行业强制开启积分。<b>只改默认值，不回写存量商家</b> ——
+     * 强制开积分要提前 30 天通知 + 费率补偿 + 申诉通道（ADR-006），
+     * 一个开关直接改掉所有存量商家的成本结构是不行的。
+     */
+    @PostMapping("/ops/industries/{industry}/points-forced")
+    @PreAuthorize("@perm.can('" + Perms.INDUSTRY_MANAGE + "')")
+    public IndustryVO setPointsForced(@PathVariable String industry,
+                                      @RequestBody PointsForcedReq req) {
+        IndustryVO vo = industryService.setPointsForced(industry, Boolean.TRUE.equals(req.forced()));
+        opsService.audit("INDUSTRY_POINTS", industry, String.valueOf(req.forced()));
+        return vo;
+    }
+
+    public record MicroAllowedReq(String payChannel, Boolean allowed, String remark) {
+    }
+
+    public record EnabledReq(Boolean enabled) {
+    }
+
+    public record PointsForcedReq(Boolean forced) {
+    }
+
+    /**
+     * 商品审核。此前只有队列没有动作 —— 商品录进来就永远停在 AUDITING，
+     * 而上架要求过审，于是商家录的商品一件都上不了架。
+     */
+    @PostMapping("/ops/goods/{goodsNo}/audit")
+    @PreAuthorize("@perm.can('" + Perms.GOODS_AUDIT + "')")
+    public ai.neargo.shop.product.dto.GoodsVO auditGoods(@PathVariable String goodsNo,
+                                                         @RequestBody AuditReq req) {
+        var vo = merchantGoodsService.audit(goodsNo, Boolean.TRUE.equals(req.approved()), req.reason());
+        opsService.audit("GOODS_AUDIT", goodsNo,
+                (Boolean.TRUE.equals(req.approved()) ? "通过" : "驳回：" + req.reason()));
+        return vo;
     }
 
     @GetMapping("/ops/goods/audit-queue")
     @PreAuthorize("@perm.can('" + Perms.GOODS_AUDIT + "')")
     public PageData<GoodsVO> goodsAuditQueue(@RequestParam(defaultValue = "1") long page,
                                              @RequestParam(defaultValue = "20") long size) {
-        return goodsService.list(new GoodsService.GoodsQuery(null, null, null, null, null, page, size));
+        /*
+         * **只给待审的**。此前这里走的是公共目录查询（`goodsService.list`）且不带任何条件，
+         * 于是「待审队列」返回的是**全部商品** —— 审完一件，队列长度纹丝不动，
+         * 而运营会以为是没保存成功，反复再审一遍。
+         *
+         * merchantNo 传 null = 跨商家查，这正是平台审核要的口径。
+         */
+        return merchantGoodsService.list(null, "AUDITING", page, size);
     }
 
     @GetMapping("/ops/order")
@@ -98,6 +213,15 @@ public class OpsController {
     public record LoginReq(@NotBlank String username, @NotBlank String password) {
     }
 
-    public record AuditReq(Boolean approved, String reason) {
+    /**
+     * @param serviceScope 通过时补/改服务范围。为空则沿用申请单上的值。
+     * @param communityNos 同上。
+     *
+     *                     <p><b>为什么审核时要能改</b>：商家申请时允许留空（ADR-009），
+     *                     但通过时不能空 —— 空的后果是上着架却对谁都不可见，且不报错。
+     *                     此前运营侧没有这个入口，这两项就没有任何地方能填上。
+     */
+    public record AuditReq(Boolean approved, String reason,
+                           String serviceScope, List<String> communityNos) {
     }
 }

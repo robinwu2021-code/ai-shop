@@ -109,13 +109,23 @@ describe("端点前缀：文档与代码不许再对不上", () => {
   const read = (app: string) => readFileSync(join(ROOT, app, "src/api/endpoints.ts"), "utf8");
   const paths = (src: string) => [...src.matchAll(/path:\s*"([^"]+)"/g)].map((m) => m[1]!);
 
-  it("C 端全部 /mp/**，B 端全部 /biz/**", () => {
+  /**
+   * `/common/**` 是**第三类端点**：跨端公共元数据（后端 `CommonMetaController`）。
+   *
+   * 行业/主体类型/支付通道这类主数据 C 端与 B 端要的是同一份，
+   * 给它造一个 `/biz/master-data` 别名只会得到两条路径服务同一件事 ——
+   * 而两条路径迟早返回不一样的东西。所以它显式豁免，不是漏网。
+   */
+  const SHARED_PREFIX = "/common/";
+
+  it("C 端全部 /mp/**，B 端全部 /biz/**（跨端公共元数据 /common/** 除外）", () => {
     const bad: string[] = [];
     for (const [app, prefix] of [
       ["c-app", "/mp/"],
       ["b-app", "/biz/"],
     ] as const) {
       for (const p of paths(read(app))) {
+        if (p.startsWith(SHARED_PREFIX)) continue;
         if (!p.startsWith(prefix)) bad.push(`${app}: ${p}（应以 ${prefix} 开头）`);
       }
     }

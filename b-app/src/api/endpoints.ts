@@ -16,14 +16,37 @@ export interface EndpointDef {
 /** key 与 MerchantApi 的方法名一一对应，缺一个就编译不过 */
 export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
   mLogin: { method: "POST", path: "/biz/auth/login", auth: false, summary: "商家登录" },
+  mStaffLogin: { method: "POST", path: "/biz/auth/staff-login", auth: false, summary: "员工登录" },
   mProfile: { method: "GET", path: "/biz/merchant/profile", auth: true, summary: "商家资料" },
-  mApply: { method: "POST", path: "/biz/merchant/apply", auth: true, summary: "提交入驻申请" },
 
+  mApply: { method: "POST", path: "/biz/merchant/apply", auth: true, summary: "提交入驻申请" },
   mApplyDraft: { method: "GET", path: "/biz/merchant/apply", auth: true, summary: "上次入驻申请" },
+  mMasterData: { method: "GET", path: "/common/master-data", auth: false, summary: "平台主数据（行业/主体/通道）" },
+
+  mPayments: { method: "GET", path: "/biz/merchant/payment", auth: true, summary: "收款进件状态" },
+  mSubmitPayment: { method: "POST", path: "/biz/merchant/payment", auth: true, summary: "补交资料并提交进件" },
+  mRefreshPayment: {
+    method: "POST",
+    path: "/biz/merchant/payment/:payChannel/refresh",
+    auth: true,
+    summary: "回查进件结果",
+  },
 
   mStore: { method: "GET", path: "/biz/store", auth: true, summary: "店铺门面" },
   mCommunities: { method: "GET", path: "/biz/communities", auth: true, summary: "可选社区（设经营范围用）" },
   mSaveStore: { method: "POST", path: "/biz/store", auth: true, summary: "保存店铺门面" },
+
+  mStoreList: { method: "GET", path: "/biz/store/list", auth: true, summary: "我的门店" },
+  mCreateStore: { method: "POST", path: "/biz/store/create", auth: true, summary: "新建门店" },
+  mRenameStore: { method: "POST", path: "/biz/store/:storeNo/rename", auth: true, summary: "改门店名与地址" },
+  mSetStoreStatus: { method: "POST", path: "/biz/store/:storeNo/status", auth: true, summary: "停用/启用门店" },
+  mSetDefaultStore: { method: "POST", path: "/biz/store/:storeNo/default", auth: true, summary: "设为默认店" },
+  mSetStorePayment: { method: "POST", path: "/biz/store/:storeNo/payment", auth: true, summary: "换门店收款号" },
+
+  mStaffList: { method: "GET", path: "/biz/staff", auth: true, summary: "员工列表" },
+  mAddStaff: { method: "POST", path: "/biz/staff", auth: true, summary: "加员工" },
+  mSetStaffStatus: { method: "POST", path: "/biz/staff/:mchAccountNo/status", auth: true, summary: "停用/启用员工" },
+  mGrantStore: { method: "POST", path: "/biz/staff/:mchAccountNo/store", auth: true, summary: "授权到店" },
   mStoreQrcode: { method: "GET", path: "/biz/store/qrcode", auth: true, summary: "店铺码" },
   mShareKit: { method: "GET", path: "/biz/store/share-kit", auth: true, summary: "分享素材" },
 
@@ -82,6 +105,29 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
   mRateCard: { method: "GET", path: "/biz/settle/rate-card", auth: true, summary: "费率卡" },
   mSettleList: { method: "GET", path: "/biz/settle/bills", auth: true, summary: "结算单列表" },
   mReportShortage: { method: "POST", path: "/biz/pickup/:orderNo/report", auth: true, summary: "破损短少上报" },
+
+  // ---------------------------------------------------------------- 积分（B-11.x）
+  //
+  // 商家**不感知积分抵扣**（V34）：他收到的是订单全额减各项费用。
+  // 这里只有他自己发分的成本，以及开关。
+  mPointsAccount: {
+    method: "GET",
+    path: "/biz/points/account",
+    auth: true,
+    summary: "本期发分服务费与开关状态",
+  },
+  mPointsRecords: {
+    method: "GET",
+    path: "/biz/points/records",
+    auth: true,
+    summary: "发分服务费明细（按单）",
+  },
+  mPointsToggle: {
+    method: "POST",
+    path: "/biz/points/toggle",
+    auth: true,
+    summary: "开/关本店积分",
+  },
 };
 
 export function buildPath(path: string, params: Record<string, string | number>): string {

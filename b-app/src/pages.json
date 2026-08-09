@@ -76,6 +76,24 @@
       }
     },
     {
+      "path": "pages/stores/index",
+      "style": {
+        "navigationBarTitleText": "门店管理"
+      }
+    },
+    {
+      "path": "pages/staff/index",
+      "style": {
+        "navigationBarTitleText": "员工与授权"
+      }
+    },
+    {
+      "path": "pages/payment/index",
+      "style": {
+        "navigationBarTitleText": "收款设置"
+      }
+    },
+    {
       "path": "pages/store/index",
       "style": {
         "navigationBarTitleText": "店铺与获客"

@@ -1,12 +1,13 @@
 package ai.neargo.shop.trade.entity;
 
 import ai.neargo.shop.common.BaseEntity;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Getter;
 import lombok.Setter;
 
 /**
- * 子订单：**商家视角**——一个 {@code merchantNo}、一次分账、一条履约链、一条售后链。
+ * 子订单：**商家视角**——一个 {@code entityNo}、一次分账、一条履约链、一条售后链。
  *
  * <p>{@code trafficSource} 在这一层而不是主单：一次下单可能一半商品来自店铺码进店、
  * 一半来自平台首页，费率分档必须按子单算（R16/B10）。
@@ -29,10 +30,18 @@ public class OrdSubOrder extends BaseEntity {
     private String subOrderNo;
     private String orderNo;
     private String userNo;
-    private String merchantNo;
+    private String entityNo;
+
+    /**
+     * 履约门店（M2 双写）。<b>结算仍按 {@link #entityNo}</b> ——
+     * 两个键答两个问题：钱走主体（通道按营业执照发号），货与评价走门店。
+     *
+     * <p>可空：历史订单或主体没有门店行时留空，履约侧按「空 → 默认门店」兜底。
+     */
+    private String storeNo;
 
     /** 下单时快照：商家改名不影响历史订单的展示。 */
-    private String merchantName;
+    private String entityName;
 
     /** STORE_PICKUP / NEIGHBOR_PICKUP / MERCHANT_DELIVERY / EXPRESS */
     private String fulfillment;
@@ -92,4 +101,35 @@ public class OrdSubOrder extends BaseEntity {
 
     /** 是否已评价 —— 一单一评的判据。 */
     private Boolean reviewed;
+    /**
+     * 商家实收（分）= 实付 − 通道手续费 − 平台佣金 − 履约服务费 − 积分费用金。
+     *
+     * <p><b>支付时就算定</b>：四项扣减那一刻全部可知。不算的话，商家从下单到售后期结束
+     * 看到的是一个比实收大的数字，等结算单出来才发现「怎么少了」—— 而这完全可以避免。
+     *
+     * <p>⚠️ 称重差价（{@code weighAdjustMinor}）实称后会改变实付，届时本列要跟着重算。
+     */
+    private Long merchantRecvMinor;
+
+    /** 通道手续费（分）：微信/支付宝扣的，支付时即确定。 */
+    private Long channelFeeMinor;
+
+    /** 平台佣金（分）：费率按 trafficSource 分档，下单时快照。 */
+    private Long commissionMinor;
+
+    /** 履约服务费（分）：自提单给承接方，非自提单为 0。 */
+    private Long serviceFeeMinor;
+
+
+    /** 本单抵扣的积分数。**平台内部字段，不下发商家端** —— 商家按订单全额收款。 */
+    private Integer pointsDeduct;
+
+    /** 本单积分抵扣金额（分）。上限 = 券后金额 30%，运费不参与。平台内部字段。 */
+    private Long pointsDeductMinor;
+
+    /** 发放幂等标记：防重复核销重复发分。 */
+    private Boolean pointsGranted;
+
+    /** 本单发放积分的服务费（分）。发放时算定，结算时从货款扣走进积分池。 */
+    private Long pointsFeeMinor;
 }

@@ -1,5 +1,5 @@
 // 系统配置 mock（P-17.1）。
-import type { AppearanceConfig, FeatureFlag, MarketConfig, RuleTexts } from "@/lib/types";
+import type { Industry, AppearanceConfig, FeatureFlag, MarketConfig, RuleTexts } from "@/lib/types";
 
 export const appearance: AppearanceConfig = {
   // 与 packages/shared/src/design/tokens.ts 的 SKINS 同名同色
@@ -30,4 +30,17 @@ export const featureFlags: FeatureFlag[] = [
   { key: "group_demand", name: "邻里求团", enabled: true, rolloutPercent: 60, updatedAt: "2026-08-03T02:00:00Z" },
   { key: "member_card", name: "付费会员（P1）", enabled: false, rolloutPercent: 0, updatedAt: "2026-07-20T02:00:00Z" },
   { key: "service_category", name: "服务品类", enabled: true, rolloutPercent: 20, updatedAt: "2026-08-05T02:00:00Z" },
+];
+
+/**
+ * 行业（mock）。与后端 V2 种子同口径 ——
+ * **带一个不允许小微的行业**（线上/虚拟），否则「行业决定能否小微」这条联动
+ * 在 mock 下永远看不出效果，而它正是选错主体导致进件被拒的地方。
+ */
+export const industries: Industry[] = [
+  { industry: "CATERING", name: "餐饮", sort: 10, enabled: true, wechatMicroAllowed: true, alipayMicroAllowed: true, pointsForced: false, remark: "微信小微白名单内" },
+  { industry: "RETAIL", name: "线下零售", sort: 20, enabled: true, wechatMicroAllowed: true, alipayMicroAllowed: true, pointsForced: false, remark: "便利店、超市、生鲜果蔬" },
+  { industry: "LIFE_SERVICE", name: "居民生活服务", sort: 30, enabled: true, wechatMicroAllowed: true, alipayMicroAllowed: true, pointsForced: false, remark: "家政、维修、洗衣" },
+  { industry: "ONLINE", name: "线上/虚拟", sort: 60, enabled: true, wechatMicroAllowed: false, alipayMicroAllowed: false, pointsForced: false, remark: "微信明确不支持小微：直播、游戏等" },
+  { industry: "OTHER", name: "其他", sort: 99, enabled: true, wechatMicroAllowed: false, alipayMicroAllowed: false, pointsForced: false, remark: "保守兜底：宁可让商家来问，也不要让他被通道拒" },
 ];

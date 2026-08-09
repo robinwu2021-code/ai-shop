@@ -1,5 +1,7 @@
 package ai.neargo.shop.portal.mp;
 
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.product.dto.CategoryVO;
 import ai.neargo.shop.product.dto.GoodsVO;
@@ -17,6 +19,10 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import ai.neargo.shop.platform.OpsService;
+import ai.neargo.shop.platform.dto.OpsVOs.MerchantApplyVO;
+import ai.neargo.shop.auth.SecurityUtils;
+import java.util.Map;
 import java.util.List;
 
 /**
@@ -109,18 +115,50 @@ public class MpCatalogController {
         return merchantService.visited();
     }
 
-    /** 入驻申请（C-11.x）。提交后进平台审核队列。 */
-    @org.springframework.web.bind.annotation.PostMapping("/mp/merchant/apply")
-    public java.util.Map<String, String> merchantApply(
-            @org.springframework.web.bind.annotation.RequestBody ApplyReq req) {
-        String applyNo = opsService.createApply(
-                ai.neargo.shop.auth.SecurityUtils.currentUserNo(),
-                req.name(), req.type(), req.contactPhone(), req.qualifications());
-        return java.util.Map.of("applyNo", applyNo);
+    /** 推荐商品（运营位）。游客可见 —— 没登录也该看到平台在推什么 */
+    @GetMapping("/mp/goods/promoted")
+    public List<GoodsVO> promotedGoods(@RequestParam(required = false) String communityNo,
+                                       @RequestParam(required = false) Integer size) {
+        return goodsService.promoted(communityNo, size);
     }
 
-    public record ApplyReq(String name, String type, String contactPhone,
-                           List<String> qualifications) {
+    /** 推荐门店（运营位）。用途是新店冷启动，刻意不看历史成绩 */
+    @GetMapping("/mp/merchant/promoted")
+    public List<MerchantVO> promotedMerchants(@RequestParam(required = false) String communityNo,
+                                              @RequestParam(required = false) Integer size) {
+        return merchantService.promoted(communityNo, size);
+    }
+
+    /** 入驻申请（C-11.x）。提交后进平台审核队列。 */
+    @PostMapping("/mp/merchant/apply")
+    public Map<String, String> merchantApply(@RequestBody ApplyReq req) {
+        String applyNo = opsService.createApply(new OpsService.SubmitApplyCommand(
+                SecurityUtils.currentUserNo(), req.name(), req.subject(),
+                req.contactName(), req.contactPhone(), req.category(), req.desc(),
+                req.serviceScope(), req.communityNos(), req.licenses(),
+                false, req.industry()));
+        return Map.of("applyNo", applyNo);
+    }
+
+    /**
+     * 我的入驻申请状态。<b>此前提交完就查不到了</b> ——
+     * 商家不知道审到哪一步，只能打电话问运营。没申请过返回 null，不是错误。
+     */
+    @GetMapping("/mp/merchant/apply")
+    public MerchantApplyVO myMerchantApply() {
+        return opsService.myApply(SecurityUtils.currentUserNo());
+    }
+
+    /**
+     * @param licenses     资质图。**选填** —— 分账主体开户是独立流程（ADR-002），
+     *                     逼一个还没通过审核的人先传营业执照只会把人挡在门外
+     * @param communityNos 期望覆盖的社区。申请时可空，审核通过时由运营确认
+     */
+    public record ApplyReq(String name, String subject, String contactName, String contactPhone,
+                           String category, String desc, String serviceScope,
+                           List<String> communityNos, List<String> licenses,
+                           /** 行业。**决定可选的主体类型** —— 线上业态不能选小微 */
+                           String industry) {
     }
 
     @GetMapping("/mp/merchant/{merchantNo}/score")
@@ -130,9 +168,10 @@ public class MpCatalogController {
 
     @GetMapping("/mp/merchant")
     public PageData<MerchantVO> merchantList(@RequestParam(required = false) String keyword,
+                                             @RequestParam(required = false) String communityNo,
                                              @RequestParam(defaultValue = "1") long page,
                                              @RequestParam(defaultValue = "10") long size) {
-        return merchantService.search(keyword, page, Math.min(size, 50));
+        return merchantService.search(keyword, communityNo, page, Math.min(size, 50));
     }
 
     @GetMapping("/mp/merchant/{merchantNo}")

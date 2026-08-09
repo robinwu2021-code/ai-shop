@@ -1,6 +1,6 @@
 package ai.neargo.shop.user.dto;
 
-import ai.neargo.shop.user.entity.UsrMerchant;
+import ai.neargo.shop.user.merchant.entity.MchEntity;
 
 /** 我买过的商家（对齐 c-app {@code VisitedMerchant}）。 */
 public record VisitedMerchantVO(String merchantNo,
@@ -12,8 +12,8 @@ public record VisitedMerchantVO(String merchantNo,
                                 int orderCount,
                                 long lastOrderAt) {
 
-    public static VisitedMerchantVO of(UsrMerchant m, int orderCount, long lastOrderAt) {
-        return new VisitedMerchantVO(m.getMerchantNo(), m.getName(), m.getLogo(),
+    public static VisitedMerchantVO of(MchEntity m, int orderCount, long lastOrderAt) {
+        return new VisitedMerchantVO(m.getEntityNo(), m.getName(), m.getLogo(),
                 m.getRating() == null ? 0d : m.getRating() / 10d,
                 Boolean.TRUE.equals(m.getVerified()),
                 m.getBreachCount() == null ? 0 : m.getBreachCount(),

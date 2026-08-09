@@ -21,6 +21,13 @@ export type ArchiveQ = ScopedQ & { showArchived?: boolean };
 
 // ——— 域特有形状 ———
 
+/**
+ * 入驻申请：状态 + 关键词（店名/联系人/手机号）。
+ *
+ * **没有归档开关** —— 申请单不归档，它是历史事实；已处理的靠 status 翻。
+ */
+export type ApplyQ = { status?: string; keyword?: string; page?: number; size?: number };
+
 /** 商家：审核状态 + 分层 + 归档开关（P-11.1）。 */
 export type MerchantQ = ArchiveQ & { status?: string; tier?: string };
 

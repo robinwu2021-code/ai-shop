@@ -1,13 +1,13 @@
 package ai.neargo.shop.user.mapper;
 
-import ai.neargo.shop.user.entity.CmtCommunity;
-import ai.neargo.shop.user.entity.UsrMerchantPayment;
-import ai.neargo.shop.user.entity.UsrMerchantCommunity;
-import ai.neargo.shop.user.entity.CmtPickupPoint;
+import ai.neargo.shop.user.community.entity.CmtCommunity;
+import ai.neargo.shop.user.merchant.entity.MchPaymentMerchant;
+import ai.neargo.shop.user.merchant.entity.MchEntityCommunity;
+import ai.neargo.shop.user.community.entity.CmtPickupPoint;
 import ai.neargo.shop.user.entity.UsrAddress;
-import ai.neargo.shop.user.entity.UsrMerchant;
+import ai.neargo.shop.user.merchant.entity.MchEntity;
 import ai.neargo.shop.user.entity.UsrStoreFavorite;
-import ai.neargo.shop.user.entity.UsrUser;
+import ai.neargo.shop.user.entity.UsrAccount;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 
 /**
@@ -20,10 +20,10 @@ public final class UserMappers {
     private UserMappers() {
     }
 
-    public interface UserMapper extends BaseMapper<UsrUser> {
+    public interface UserMapper extends BaseMapper<UsrAccount> {
     }
 
-    public interface MerchantMapper extends BaseMapper<UsrMerchant> {
+    public interface MchEntityMapper extends BaseMapper<MchEntity> {
     }
 
     public interface CommunityMapper extends BaseMapper<CmtCommunity> {
@@ -39,11 +39,23 @@ public final class UserMappers {
     }
 
     /** 商家覆盖的社区：C 端「本社区可见商家」的反查索引所在。 */
-    public interface MerchantCommunityMapper extends BaseMapper<UsrMerchantCommunity> {
+    public interface MchEntityCommunityMapper extends BaseMapper<MchEntityCommunity> {
+    }
+
+    /** 门店（mch_store）。V44 起一主体可有多行。 */
+    public interface MchStoreMapper extends BaseMapper<ai.neargo.shop.user.merchant.entity.MchStore> {
+    }
+
+    /** 商家子账号：账号 ↔ 主体的成员关系。**身份来源**（取代 mch_entity.owner_user_no）。 */
+    public interface MchAccountMapper extends BaseMapper<ai.neargo.shop.user.merchant.entity.MchAccount> {
+    }
+
+    /** 子账号在各门店的角色（每店一个角色）。 */
+    public interface MchStoreRoleMapper extends BaseMapper<ai.neargo.shop.user.merchant.entity.MchStoreRole> {
     }
 
     /** 商家支付进件：每通道一条。分账回调只带 sub_mchid，靠 idx_mp_sub_mchid 反查商家。 */
-    public interface MerchantPaymentMapper extends BaseMapper<UsrMerchantPayment> {
+    public interface MchPaymentMapper extends BaseMapper<MchPaymentMerchant> {
     }
 
 

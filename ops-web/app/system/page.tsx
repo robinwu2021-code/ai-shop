@@ -18,6 +18,7 @@ import { notify } from "@/lib/notify";
 import { C_END_THEMES, type ThemeKey } from "@/lib/stores/theme";
 import { BASE_CURRENCY, type FeatureFlag, type MarketConfig } from "@/lib/types";
 import { ReadOnlyNotice } from "@/components/read-only-notice";
+import { IndustryTab } from "./industry-tab";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -35,6 +36,7 @@ const TABS = (c: Copy) => [
   { key: "appearance", label: c.tabAppearance },
   { key: "market", label: c.tabMarket },
   { key: "flags", label: c.tabFlags },
+  { key: "industry", label: c.tabIndustry },
 ];
 
 export default function SystemPage() {
@@ -265,6 +267,9 @@ function SystemInner() {
           />
         </>
       )}
+
+      {/* 行业主数据：本页唯一接了真后端的一块（其余仍走 mock） */}
+      {tab === "industry" && <IndustryTab c={c} canWrite={canEnv} />}
 
       {tab === "flags" && (
         <>

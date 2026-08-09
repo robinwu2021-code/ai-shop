@@ -95,7 +95,7 @@ class ConsumerBrowseFlowTest {
         long storePrice = priceOf(mvc().perform(get("/mp/goods").param("merchantNo", "M0001"))
                 .andReturn().getResponse().getContentAsString(), "G0001");
 
-        // 价格只挂 (merchant_no, sku_no)，社区池不存价 —— 两条入口读的是同一行，不可能不同
+        // 价格只挂 (entity_no, sku_no)，社区池不存价 —— 两条入口读的是同一行，不可能不同
         assertThat(storePrice).isEqualTo(platformPrice);
     }
 

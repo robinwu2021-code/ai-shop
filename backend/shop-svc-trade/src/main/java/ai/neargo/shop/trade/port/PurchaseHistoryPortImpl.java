@@ -33,7 +33,7 @@ public class PurchaseHistoryPortImpl implements PurchaseHistoryPort {
                 .eq(OrdSubOrder::getUserNo, userNo));
 
         Map<String, List<OrdSubOrder>> byMerchant = subs.stream()
-                .collect(Collectors.groupingBy(OrdSubOrder::getMerchantNo));
+                .collect(Collectors.groupingBy(OrdSubOrder::getEntityNo));
 
         return byMerchant.entrySet().stream()
                 .map(e -> new MerchantPurchase(e.getKey(), e.getValue().size(),

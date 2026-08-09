@@ -18,6 +18,18 @@ import { loginMethods, type LoginMethod } from "@shared/ports/auth";
 const { t } = useI18n();
 const merchant = useMerchantStore();
 
+/**
+ * 两种身份，两条登录路。
+ *
+ * **老板**走消费者账号（入驻是他发起的，那时他本来就是消费者）；
+ * **店员**走商家账号（`mch_account`）—— 他多半没有也不需要消费者账号，
+ * 要求他先注册成消费者才能上班，是把雇佣关系硬塞进一个消费关系里。
+ *
+ * 做成一个切换而不是自动判断：同一个手机号可能两边都有（老板自己也可能被加成员工），
+ * 猜错的表现是「登进去什么都看不到」，而人不会知道自己登错了身份。
+ */
+const asStaff = ref(false);
+
 const methods = loginMethods();
 const phoneMethod = methods.find((m) => m.needsPhone);
 const quickMethods = computed(() => methods.filter((m) => !m.needsPhone));
@@ -71,6 +83,12 @@ async function doLogin(method: LoginMethod) {
   if (submitting.value) return;
   submitting.value = true;
   try {
+    if (asStaff.value) {
+      await merchant.staffLogin(phone.value, code.value);
+      // 店员进的是工作台，不是入驻页 —— 店已经开好了，他只是来上班的
+      uni.switchTab({ url: ROUTES.home });
+      return;
+    }
     const cred = await method.acquire(phone.value, code.value);
     const profile = await merchant.login({ ...cred, agreed: true });
     // 未入驻直接去申请；已入驻回工作台。少一次「登录成功」的空转
@@ -88,7 +106,20 @@ async function doLogin(method: LoginMethod) {
   <sh-scaffold title-key="login.title">
     <view class="head">
       <text class="sh-h1">{{ $t("login.title") }}</text>
-      <text class="sh-muted mt">{{ $t("login.hint") }}</text>
+      <text class="sh-muted mt">{{ asStaff ? $t("login.staffHint") : $t("login.hint") }}</text>
+    </view>
+
+    <!--
+      身份切换放在最上面：它决定后面所有输入的含义。
+      放下面的话人会先填完再发现选错，而选错的表现是「登进去什么都看不到」。
+    -->
+    <view class="who">
+      <text class="who__i" :class="{ 'is-on': !asStaff }" @tap="asStaff = false">
+        {{ $t("login.asOwner") }}
+      </text>
+      <text class="who__i" :class="{ 'is-on': asStaff }" @tap="asStaff = true">
+        {{ $t("login.asStaff") }}
+      </text>
     </view>
 
     <!-- 手机号 OTP：所有端都有，且是商家账号的主标识 -->
@@ -125,8 +156,11 @@ async function doLogin(method: LoginMethod) {
       </view>
     </view>
 
-    <!-- 快捷登录：小程序的微信一键手机号 / App 的微信与 Apple -->
-    <template v-if="quickMethods.length">
+    <!--
+      快捷登录只给老板：微信/Apple 拿到的是**消费者身份**，
+      而员工要的是商家账号那条路 —— 混在一起会让店员点了微信却登成消费者。
+    -->
+    <template v-if="quickMethods.length && !asStaff">
       <view class="divider">
         <text class="sh-muted">{{ $t("login.orQuick") }}</text>
       </view>
@@ -155,6 +189,25 @@ async function doLogin(method: LoginMethod) {
 </template>
 
 <style scoped>
+.who {
+  display: flex;
+  gap: 16rpx;
+  margin: 24rpx 32rpx 0;
+}
+.who__i {
+  flex: 1;
+  padding: 18rpx 0;
+  border-radius: 24rpx;
+  background: var(--sh-faint);
+  font-size: 26rpx;
+  text-align: center;
+  color: var(--sh-sub);
+}
+.who__i.is-on {
+  background: var(--sh-primary-tint);
+  color: var(--sh-primary);
+  font-weight: 600;
+}
 .head {
   padding: 40rpx 8rpx 32rpx;
 }

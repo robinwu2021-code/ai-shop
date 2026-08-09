@@ -7,8 +7,8 @@ import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.user.dto.UserVO;
-import ai.neargo.shop.user.entity.CmtPickupPoint;
-import ai.neargo.shop.user.entity.UsrUser;
+import ai.neargo.shop.user.community.entity.CmtPickupPoint;
+import ai.neargo.shop.user.entity.UsrAccount;
 import ai.neargo.shop.user.mapper.UserMappers.PickupPointMapper;
 import ai.neargo.shop.user.mapper.UserMappers.UserMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -45,7 +45,7 @@ public class UserServiceImpl implements UserService {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
 
-        UsrUser user = currentUser();
+        UsrAccount user = currentUser();
         user.setCommunityNo(communityNo);
         user.setPickupNo(pickupNo);
         userMapper.updateById(user);
@@ -55,7 +55,7 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public UserVO updateProfile(String nickname, String avatar) {
-        UsrUser user = currentUser();
+        UsrAccount user = currentUser();
         // 传 null 表示「不改这个字段」，而不是「清空」——端上只提交改动的那个
         if (nickname != null && !nickname.isBlank()) {
             user.setNickname(nickname);
@@ -76,9 +76,9 @@ public class UserServiceImpl implements UserService {
 
         // 该手机号已属于另一个账号：这是账号合并问题，一期不做自动合并 ——
         // 自动合并要处理两边的订单、余额、优惠券归属，错一步就是资损
-        UsrUser owner = userMapper.selectOne(Wrappers.<UsrUser>lambdaQuery()
-                .eq(UsrUser::getPhone, phone).last("limit 1"));
-        UsrUser user = currentUser();
+        UsrAccount owner = userMapper.selectOne(Wrappers.<UsrAccount>lambdaQuery()
+                .eq(UsrAccount::getPhone, phone).last("limit 1"));
+        UsrAccount user = currentUser();
         if (owner != null && !owner.getUserNo().equals(user.getUserNo())) {
             throw BizException.of(ErrorCode.CONFLICT);
         }
@@ -88,10 +88,10 @@ public class UserServiceImpl implements UserService {
         return UserVO.of(user);
     }
 
-    private UsrUser currentUser() {
+    private UsrAccount currentUser() {
         String userNo = SecurityUtils.currentUserNo();
-        UsrUser user = userMapper.selectOne(Wrappers.<UsrUser>lambdaQuery()
-                .eq(UsrUser::getUserNo, userNo).last("limit 1"));
+        UsrAccount user = userMapper.selectOne(Wrappers.<UsrAccount>lambdaQuery()
+                .eq(UsrAccount::getUserNo, userNo).last("limit 1"));
         if (user == null) {
             // 会话有效但用户没了（被硬删或换库）：当作未登录，让端上清 token 重登
             throw new ai.neargo.shop.common.GlobalExceptionHandler.UnauthorizedException();

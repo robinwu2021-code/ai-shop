@@ -392,7 +392,7 @@ class M6bCouponFlowTest {
         c.setThresholdMinor(threshold);
         c.setMaxDiscountMinor(0L);
         c.setFunder(funder);
-        c.setMerchantNo(merchantNo);
+        c.setEntityNo(merchantNo);
         c.setTotalCount(total);
         c.setReceivedCount(0);
         c.setPerUserLimit(perUser);

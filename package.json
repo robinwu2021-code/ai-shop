@@ -28,7 +28,10 @@
     "gen:api-index": "node scripts/gen-api-index.mjs",
     "gen:api-detail": "node scripts/gen-api-detail.mjs",
     "gen:model-align": "node scripts/gen-model-align.mjs",
-    "gen:docs": "npm run gen:api && npm run gen:api-index && npm run gen:api-detail && npm run gen:model-align"
+    "gen:docs": "npm run gen:api && npm run gen:api-index && npm run gen:api-detail && npm run gen:model-align && npm run gen:erd && npm run gen:doc-html",
+    "gen:erd": "node scripts/gen-erd.mjs",
+    "gen:delivery": "node scripts/gen-delivery-status.mjs",
+    "gen:doc-html": "node scripts/gen-doc-html.mjs docs/technical/*.md docs/technical/ADR/*.md && INDEX=docs/technical node scripts/gen-doc-html.mjs --index"
   },
   "engines": {
     "node": ">=22"

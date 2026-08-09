@@ -1,6 +1,6 @@
 // 商家域 mock 数据（P-11.1）。
 // 覆盖三种主体分层与全部审核状态，让列表页的筛选、徽标、空态在无后端时都能验到。
-import type { Merchant } from "@/lib/types";
+import type { MerchantApply, Merchant } from "@/lib/types";
 
 // 时间用固定字符串而非 Date.now()：mock 数据每次刷新都变的话，截图对不上、测试也不稳。
 export const merchants: Merchant[] = [
@@ -9,7 +9,7 @@ export const merchants: Merchant[] = [
     communityNo: "C001", communityName: "锦绣花园",
     contactName: "王秀兰", contactPhone: "138****2011",
     categoryCodes: ["FRESH_VEG"], qualifications: ["食品经营许可证"], verified: false, breachCount: 0,
-    settleAccountReady: false, createdAt: "2026-07-28T02:10:00Z",
+    settleAccountReady: false, createdAt: "2026-07-28T02:10:00Z", asPickupPoint: true,
   },
   {
     merchantNo: "M902", name: "老张水果店", tier: "INDIVIDUAL", status: "REVIEWING",
@@ -78,5 +78,39 @@ export const violations: import("@/lib/types").Violation[] = [
     type: "BREACH", action: "WARN",
     detail: "上门服务爽约一次，用户投诉 #2026-0630",
     operator: "ops01", at: "2026-06-30T09:20:00Z",
+  },
+];
+
+/**
+ * 入驻申请单（mock）。
+ *
+ * **有意留一条服务范围为空的**（A903）：那正是运营必须在通过时补上的情形，
+ * 恒有值的假数据会把这段界面藏起来，而它是当前链路上最隐蔽的一个断点 ——
+ * 没人补的话，商家通过审核、上完架，却对谁都不可见。
+ */
+export const applies: MerchantApply[] = [
+  {
+    applyNo: "A901", name: "阿姨家的菜摊", subject: "MICRO",
+    contactName: "王秀兰", contactPhone: "138****2011",
+    category: "生鲜", desc: "小区门口卖了十年菜", industry: "FRESH",
+    serviceScope: "COMMUNITY", communityNos: ["C001"],
+    licenses: [], asPickupPoint: true, status: "PENDING",
+    createdAt: Date.parse("2026-07-28T02:10:00Z"),
+  },
+  {
+    applyNo: "A902", name: "老张水果店", subject: "INDIVIDUAL",
+    contactName: "张建国", contactPhone: "139****7788",
+    category: "水果", desc: "连锁两家店", industry: "RETAIL",
+    serviceScope: "COMMUNITY", communityNos: ["C001", "C002"],
+    licenses: ["https://cdn/license-902.jpg"], asPickupPoint: false, status: "REVIEWING",
+    createdAt: Date.parse("2026-07-30T06:20:00Z"),
+  },
+  {
+    applyNo: "A903", name: "巷口烘焙", subject: "INDIVIDUAL",
+    contactName: "李梅", contactPhone: "137****3355",
+    category: "烘焙", desc: "现烤面包", industry: "BAKERY",
+    // ← 服务范围空着：通过时运营必须补，否则这家店对谁都不可见
+    licenses: ["https://cdn/license-903.jpg"], asPickupPoint: false, status: "PENDING",
+    createdAt: Date.parse("2026-08-01T01:00:00Z"),
   },
 ];

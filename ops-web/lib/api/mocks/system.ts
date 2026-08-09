@@ -9,7 +9,35 @@ import { wait } from "./_wait";
 // 只认可下发给 C 端的那几套：business 是运营端专有皮肤，C 端没有
 const SKIN_KEYS = C_END_THEMES.map((t) => t.key) as string[];
 
+function findIndustry(industry: string) {
+  const row = db.industries.find((x) => x.industry === industry);
+  if (!row) notFound("行业", "Industry", industry);
+  return row;
+}
+
 export const systemMock: SystemApi = {
+  listIndustries: async () => wait([...db.industries]),
+
+  setIndustryMicroAllowed: async (industry, payChannel, allowed, remark) => {
+    const row = findIndustry(industry);
+    if (payChannel === "ALIPAY") row.alipayMicroAllowed = allowed;
+    else row.wechatMicroAllowed = allowed;
+    if (remark) row.remark = remark;
+    return wait({ ...row });
+  },
+
+  setIndustryEnabled: async (industry, enabled) => {
+    const row = findIndustry(industry);
+    row.enabled = enabled;
+    return wait({ ...row });
+  },
+
+  setIndustryPointsForced: async (industry, forced) => {
+    const row = findIndustry(industry);
+    row.pointsForced = forced;
+    return wait({ ...row });
+  },
+
   getAppearance: async () => wait(db.appearance),
 
   saveAppearance: async (v) => {

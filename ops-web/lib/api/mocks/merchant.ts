@@ -6,6 +6,12 @@ import type { MerchantApi } from "../contracts/merchant";
 import { fail, notFound } from "@/lib/biz-error";
 import { wait } from "./_wait";
 
+function findApply(applyNo: string) {
+  const a = db.applies.find((x) => x.applyNo === applyNo);
+  if (!a) notFound("入驻申请", "Application", applyNo);
+  return a;
+}
+
 function find(merchantNo: string): Merchant {
   const m = db.merchants.find((x) => x.merchantNo === merchantNo);
   if (!m) notFound("商家", "Merchant", merchantNo);
@@ -16,6 +22,56 @@ function find(merchantNo: string): Merchant {
 // 调用方拿不到一个 rejected promise（`api.x().catch()` 根本来不及挂上），
 // 与真实后端「网络返回错误码」的行为不一致 —— react-query 的 onError 也就不会触发。
 export const merchantMock: MerchantApi = {
+  listApplies: (q = {}) => {
+    // 不给状态时只给待办两档 —— 与真后端同口径，否则切到真实环境列表会突然变长
+    const want = (q.status?.split(",").map((x) => x.trim()).filter(Boolean) ?? [])
+      .length
+      ? q.status!.split(",").map((x) => x.trim()).filter(Boolean)
+      : ["PENDING", "REVIEWING"];
+    return wait(
+      db.paginate(db.applies, q.page, q.size, (a) =>
+        want.includes(a.status) && db.kwHit(q.keyword, a.applyNo, a.name, a.contactName, a.contactPhone),
+      ),
+    );
+  },
+
+  acceptApply: async (applyNo) => {
+    const a = findApply(applyNo);
+    if (a.status !== "PENDING") fail("只有待审的申请可以受理", "Only pending applications can be accepted");
+    a.status = "REVIEWING";
+    await wait(undefined);
+  },
+
+  auditApply: async (applyNo, approved, reason, serviceScope, communityNos) => {
+    const a = findApply(applyNo);
+    if (a.status === "APPROVED" || a.status === "REJECTED") {
+      fail("这份申请已经审过了", "This application has already been decided");
+    }
+    if (!approved && !reason?.trim()) {
+      // 不写理由的驳回等于让对方猜 —— mock 也要拦，否则这段校验在开发期永远走不到
+      fail("驳回必须写理由", "A rejection must carry a reason");
+    }
+    if (approved) {
+      if (serviceScope) a.serviceScope = serviceScope;
+      if (communityNos?.length) a.communityNos = [...communityNos];
+      /*
+       * 「仅本社区」却一个都没选 —— 真后端的 activate 会拒，mock 也拒。
+       * 放过去的话商家通过审核、上完架，却对谁都不可见，而这个故障不报错。
+       */
+      const byCommunity = !a.serviceScope || a.serviceScope === "COMMUNITY";
+      if (byCommunity && !a.communityNos?.length) {
+        fail("按社区经营必须至少选一个小区", "Pick at least one community for community-scoped merchants");
+      }
+      a.status = "APPROVED";
+      a.merchantNo = `M${applyNo.slice(1)}`;
+    } else {
+      a.status = "REJECTED";
+      a.rejectReason = reason;
+    }
+    a.auditedAt = Date.now();
+    await wait(undefined);
+  },
+
   listMerchants: (q = {}) =>
     wait(
       db.paginate(db.merchants, q.page, q.size, (m) =>
@@ -29,11 +85,27 @@ export const merchantMock: MerchantApi = {
 
   getMerchant: async (merchantNo) => wait(find(merchantNo)),
 
-  setMerchantStatus: async (merchantNo, status, remark) => {
+  setMerchantStatus: async (merchantNo, status, remark, communityNos) => {
     const m = find(merchantNo);
     db.assertTransition(MERCHANT_TRANSITIONS, m.status, status, "商家", "Merchant");
+    /*
+     * 通过审核必须同时确定覆盖社区（ADR-009）。
+     *
+     * 不拦的话：商家审核通过 → 登录 B 端 → 上架商品 → **一个订单都不来**，
+     * 因为 service_scope 默认 COMMUNITY 而一个社区都没覆盖 = C 端谁也搜不到。
+     * 这个故障没有任何报错，商家和运营都查不出原因。
+     * 后端已经这么拦了，mock 放行的话页面就不会去写这个必填引导。
+     */
+    if (status === "APPROVED" && !communityNos?.length) {
+      fail("通过审核前必须指定覆盖社区，否则商家对买家不可见",
+        "Pick at least one community before approving — otherwise buyers cannot see this merchant");
+    }
     m.status = status;
     if (remark !== undefined) m.auditRemark = remark;
+    if (communityNos?.length) {
+      m.communityNo = communityNos[0];
+      m.communityName = db.communities.find((x) => x.communityNo === communityNos[0])?.name ?? m.communityName;
+    }
     return wait(m, 400);
   },
 

@@ -1,7 +1,7 @@
 package ai.neargo.shop.user.port;
 
 import ai.neargo.shop.spi.user.UserQueryPort;
-import ai.neargo.shop.user.entity.UsrUser;
+import ai.neargo.shop.user.entity.UsrAccount;
 import ai.neargo.shop.user.mapper.UserMappers.UserMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.stereotype.Component;
@@ -34,8 +34,8 @@ public class UserQueryPortImpl implements UserQueryPort {
         if (userNo == null || userNo.isBlank()) {
             return Optional.empty();
         }
-        UsrUser u = userMapper.selectOne(Wrappers.<UsrUser>lambdaQuery()
-                .eq(UsrUser::getUserNo, userNo).last("limit 1"));
+        UsrAccount u = userMapper.selectOne(Wrappers.<UsrAccount>lambdaQuery()
+                .eq(UsrAccount::getUserNo, userNo).last("limit 1"));
         if (u == null) {
             return Optional.empty();
         }

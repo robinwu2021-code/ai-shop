@@ -1,6 +1,7 @@
 package ai.neargo.shop.marketing.coupon.entity;
 
 import ai.neargo.shop.common.BaseEntity;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Getter;
 import lombok.Setter;
@@ -39,7 +40,7 @@ public class MktCoupon extends BaseEntity {
     private String funder;
 
     /** 商家券限本店；平台券为空。 */
-    private String merchantNo;
+    private String entityNo;
 
     private Integer totalCount;
     private Integer receivedCount;

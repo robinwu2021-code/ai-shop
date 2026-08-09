@@ -45,7 +45,7 @@ public class SettleSourcePortImpl implements SettleSourcePort {
                         Collectors.summingInt(i -> i.getQty() == null ? 0 : i.getQty())));
 
         return subs.stream()
-                .map(s -> new SettleSource(s.getSubOrderNo(), s.getMerchantNo(), s.getTrafficSource(),
+                .map(s -> new SettleSource(s.getSubOrderNo(), s.getEntityNo(), s.getTrafficSource(),
                         nz(s.getPayAmount()), nz(s.getDiscountPlatform()), nz(s.getDiscountMerchant()),
                         s.getPickupNo(), qtyBySub.getOrDefault(s.getSubOrderNo(), 0)))
                 .toList();

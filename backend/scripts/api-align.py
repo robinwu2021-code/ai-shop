@@ -31,8 +31,16 @@ PORTAL_DIR = ROOT / "backend/shop-app/src/main/java/ai/neargo/shop/portal"
 
 
 def norm(path):
-    """统一路径参数写法：`:x` 与 `{x}` 视为同一条。"""
-    return re.sub(r"[:{](\w+)}?", r"{\1}", path.rstrip("/") or "/")
+    """
+    统一路径参数写法：`:x`、`{x}`、`${x}` 视为同一条，且**参数名一律折叠成 {id}**。
+
+    为什么折叠名字：ops-web 的路径是 JS 模板字面量，`${no}` 里的 `no` 是**本地变量名**，
+    不是 API 参数名 —— 拿它去比契约里的 `{auditNo}` 会让每一条带 id 的路径
+    都被算成「契约里没有」，90 条假差异淹掉真差异。
+    路径参数叫什么不是契约的一部分，路径形状才是。
+    """
+    path = re.sub(r"\$\{[^}]*\}", "{id}", path)
+    return re.sub(r"[:{](\w+)}?", "{id}", path.rstrip("/") or "/")
 
 
 # ---------------------------------------------------------------- 三方抽取
@@ -79,6 +87,28 @@ def from_frontend(*files):
     return out
 
 
+def from_ops_frontend():
+    """
+    ops-web 的端点散在 lib/api/https/*.ts 里，形如
+    ``client.get("/ops/x", q)`` / ``client.post(`/ops/x/${id}/y`)``。
+
+    **它以前不在对账范围里**，于是平台端一直显示「前端 0 条」——
+    而 ops-web 默认走 mock，页面全绿，没人会发现后端根本没这些接口。
+    纳进来之后，「哪些调用是真的」才在这份报告里看得见。
+    """
+    out = set()
+    d = ROOT / "ops-web" / "lib" / "api" / "https"
+    if not d.exists():
+        return out
+    # 动词按原样保留：契约里 PUT 就是 PUT。折成 POST 的话，
+    # 「前端 PUT / 契约 PUT」会被当成「前端 POST 调了个契约没有的端点」
+    verb = {"get": "GET", "post": "POST", "put": "PUT", "del": "DELETE"}
+    for f in d.glob("*.ts"):
+        for m in re.finditer(r'client\.(get|post|put|del)\(\s*[`"]([^`"]+)[`"]', f.read_text()):
+            out.add((verb[m.group(1)], norm(m.group(2))))
+    return out
+
+
 def from_backend():
     """@RequestMapping 前缀 + @GetMapping/@PostMapping 后缀。"""
     out = set()
@@ -112,6 +142,8 @@ def from_backend():
 # 按**前缀分域**比对。三个前缀是三套独立契约，混在一起比会得出彻头彻尾的假数字：
 #   /mp  C 端 BFF  → 契约 docs/api/openapi.yaml（由 c-app 生成）· 前端 c-app
 #   /biz B 端      → 契约缺失（b-app 尚未生成 openapi）· 前端 b-app（注意其前缀是 /mb，见下）
+#   /common 跨端   → 公共元数据（行业/主体/通道），C 端与 B 端要的是同一份。
+#                     它不是漏网的 /biz —— 造一个别名只会得到两条路径服务同一件事
 #   /ops 平台端    → 契约 docs/api/openapi-ops.yaml（由 ops-web 生成）· 前端 ops-web
 #                     （前端侧仍未纳入：它是 Next.js，端点散在 lib/api/https/*.ts，
 #                      但契约↔后端这一对已经能比了）
@@ -120,6 +152,7 @@ DOMAINS = [
     ("/mp", "C 端"),
     ("/biz", "B 端"),
     ("/ops", "平台端"),
+    ("/common", "跨端公共"),
 ]
 
 
@@ -130,7 +163,7 @@ def pick(items, prefix):
 def main():
     strict = "--strict" in sys.argv
     contract = from_openapi(OPENAPI, OPENAPI_B, OPENAPI_OPS)
-    frontend = from_frontend(ENDPOINTS_TS, ENDPOINTS_TS_B)
+    frontend = from_frontend(ENDPOINTS_TS, ENDPOINTS_TS_B) | from_ops_frontend()
     backend = from_backend()
 
     print(f"契约 {len(contract)} 条 · 前端 {len(frontend)} 条 · 后端 {len(backend)} 条")

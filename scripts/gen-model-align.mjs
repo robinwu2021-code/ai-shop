@@ -19,63 +19,18 @@
  * 用法：npm run gen:model-align
  */
 import { readFileSync, writeFileSync, readdirSync, existsSync } from "node:fs";
+import { readColumnNames } from "./lib/ddl.mjs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import YAML from "yaml";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
-const MIGRATION_DIR = join(ROOT, "backend/shop-app/src/main/resources/db/migration");
+
 const OUT = join(ROOT, "docs/api/领域模型对齐清单.md");
 
 // ---------------------------------------------------------------- 库
-/** 解析 Flyway 迁移的 DDL。产物是自家写的，形状可控，不引 SQL parser。 */
-function readTables() {
-  const out = new Map();
-  if (!existsSync(MIGRATION_DIR)) return out;
-  // **按版本号数字排序**，不是字典序 —— 字典序会把 V10 排在 V2 前面，
-  // 而 ALTER 是有先后的：先 RENAME 再按旧名找列，结果就全错了。
-  const files = readdirSync(MIGRATION_DIR)
-    .filter((f) => f.endsWith(".sql"))
-    .sort((a, b) => (parseInt(a.slice(1), 10) || 0) - (parseInt(b.slice(1), 10) || 0));
-  const sql = files.map((f) => readFileSync(join(MIGRATION_DIR, f), "utf8")).join("\n");
-
-  for (const m of sql.matchAll(
-    /CREATE TABLE(?: IF NOT EXISTS)? (\w+)\s*\(([\s\S]*?)\n\)\s*ENGINE([^;]*);/g,
-  )) {
-    const [, name, body, tail] = m;
-    const cols = [];
-    for (const raw of body.split("\n")) {
-      const line = raw.trim();
-      const c = line.match(
-        /^(\w+)\s+(BIGINT|VARCHAR|INT|TINYINT|SMALLINT|DATETIME|TIMESTAMP|TEXT|DECIMAL|JSON|CHAR|DOUBLE)/i,
-      );
-      // KEY / UNIQUE KEY / PRIMARY KEY 也能匹配上首个 \w+，排掉
-      if (c && !/^(KEY|UNIQUE|PRIMARY|INDEX|CONSTRAINT|FULLTEXT)$/i.test(c[1])) cols.push(c[1]);
-    }
-    out.set(name, { cols, comment: tail.match(/COMMENT\s*=?\s*'([^']*)'/)?.[1] ?? "" });
-  }
-
-  // ---- ALTER：只看 CREATE TABLE 会得出**已被后续迁移修正过的**旧结构。
-  // 真实踩到过：`ord_sub_order.pickup_code` 在 V6 改名成 `verify_code`，
-  // 而报告照旧说「契约的 verifyCode 与库列 pickup_code 命名不一致」—— 早就一致了。
-  // 反向更危险：漏看 ADD COLUMN 会把已有的列报成缺失，照着补一遍就是重复加列。
-  for (const m of sql.matchAll(
-    /ALTER TABLE\s+(\w+)\s+(ADD COLUMN|RENAME COLUMN|DROP COLUMN)\s+(\w+)(?:\s+TO\s+(\w+))?/gi,
-  )) {
-    const [, table, opRaw, col, newName] = m;
-    const t = out.get(table);
-    if (!t) continue;
-    const op = opRaw.toUpperCase();
-    if (op === "ADD COLUMN") {
-      if (!t.cols.includes(col)) t.cols.push(col);
-    } else if (op === "DROP COLUMN") {
-      t.cols = t.cols.filter((c) => c !== col);
-    } else if (op === "RENAME COLUMN" && newName) {
-      t.cols = t.cols.map((c) => (c === col ? newName : c));
-    }
-  }
-  return out;
-}
+// DDL 解析在 scripts/lib/ddl.mjs —— 这里曾经自己写过一份，于是
+// DROP TABLE 与 MODIFY COLUMN 两个缺陷只在 gen-erd 里修好，本脚本一直错着。
 
 // ---------------------------------------------------------------- 契约
 function readSchemas(file) {
@@ -97,6 +52,10 @@ const snake = (s) => s.replace(/([a-z0-9])([A-Z])/g, "$1_$2").toLowerCase();
  * 而不是在这里悄悄抹平。抹平之后，下一个人会以为两边本来就一致。
  */
 const COLUMN_ALIAS = {
+  // 积分账户：库里省了过去分词（total_earn/total_use），契约用 totalEarned/totalUsed。
+  // 点名而不抹平 —— 抹平之后下一个人会以为两边本来就一致
+  totalEarned: "total_earn",
+  totalUsed: "total_use",
   // 金额：ord_* 用 `xxx_amount`，mkt_*/stl_* 用 `xxx_minor`，契约统一 `xxxMinor`
   goodsMinor: "goods_amount",
   freightMinor: "freight_amount",
@@ -180,6 +139,12 @@ const RELATION = {
  * 落成列就必然有过期的那一刻。
  */
 const DERIVED = {
+  PointAccount: {
+    // 库里是 (user_no, market) 一行的余额缓存；过期与待生效时点都要查批次
+    expiringSoon: "扫 pts_user_ledger 的 EARN 行按 expire_at 算，不落列",
+    expiringAt: "同上，取最近一批的到期时间",
+    pendingActivateAt: "取最近一批未生效 EARN 行的 available_at，不落列",
+  },
   Community: { distance: "按用户当前位置实时算" },
   Pickup: {
     distance: "按用户当前位置实时算",
@@ -286,6 +251,14 @@ const AUDIT_COLS = new Set([
  * `note` 写的是**这条映射为什么不是显然的** —— 一一对应的不用写。
  */
 const ENTITY_MAP = {
+  MerchantApplyStatus: {
+    table: "usr_merchant_apply",
+    note: "入驻**审核**生命周期。与 `usr_merchant.status`（**经营**状态：ACTIVE/SUSPENDED）是两条线 —— 审核发生在商家还不存在时，封禁发生在商家已存在后，混成一个枚举两件事迟早互相踩",
+  },
+  PointAccount: {
+    table: "pts_user_account",
+    note: "用户积分账户。`balance` 只放**能花的**分，未过售后期的在 `pending_balance`（V25）—— 合成一个数的话用户看到 500 却只能用 400，无法解释",
+  },
   // ── 交易
   Order: {
     table: "ord_sub_order",
@@ -343,7 +316,14 @@ const VIEW_TYPES = {
   PickupOverview: "ord_sub_order + ful_verify_log 的计数",
   VerifyBatchResult: "批量核销的返回值，非实体",
   RateCard: "费率配置，当前在 stl_bill.commission_rate 落快照",
-  PointAccount: "积分账户（一期未建表，见下方缺口）",
+  PointsDeductible:
+    "结算页试算的**返回值，非实体**：由 pts_user_account.balance + 抵扣上限 + 四级开关实时算出",
+  MerchantPointsRecord:
+    "stl_bill 中 points_fee_minor > 0 的行的投影。**不是表** —— " +
+    "商家的发分服务费按单计提在结算单上，没有单独的积分账（V34 删了 pts_merchant_ledger）",
+  MerchantPointAccount:
+    "pts_merchant_ledger 按 (merchant_no, period) 聚合 + 四级开关判定。" +
+    "**不是表**：商家侧看的是钱与开关，不是余额（预付费模型，V22/V28）",
   StoreProfile: "usr_merchant 的店主可编辑子集",
   MerchantProfile:
     "B 端登录态，跨四张表：usr_merchant（主体）+ usr_user（手机号，经 owner_user_no）" +
@@ -442,7 +422,7 @@ function assertNoDupKeys(name, src) {
 }
 
 // ---------------------------------------------------------------- 比对
-const tables = readTables();
+const tables = readColumnNames(ROOT);
 const cSchemas = { ...readSchemas("docs/api/openapi.yaml"), ...readSchemas("docs/api/openapi-b.yaml") };
 const opsSchemas = readSchemas("docs/api/openapi-ops.yaml");
 

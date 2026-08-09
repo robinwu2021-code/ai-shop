@@ -97,3 +97,35 @@ export interface Sku {
   /** 驳回/强制下架原因，原样进商家 B 端 */
   reason?: string;
 }
+
+/**
+ * 待审商品（后端 `prd_goods`，**goods 粒度不是 sku 粒度**）。
+ *
+ * <p>与本文件里 `Sku` 的差别：审核判的是「这件商品能不能卖」——
+ * 标题、图、类目、资质都在 goods 上；sku 只是规格与价格。
+ * 拿 sku 粒度去审，同一件商品会被审好几遍。
+ */
+export interface GoodsAudit {
+  /** 商品单号。审核动作打在它上面 */
+  goodsNo: string;
+  /** 标题。审核先看它 —— 违规多半从标题就能看出来 */
+  title: string;
+  /** 副标题/卖点 */
+  subtitle?: string;
+  /** 封面图。图文不符是驳回的主因之一，所以要能看到图 */
+  cover?: string;
+  /** 商品形态 NORMAL/FRESH/SERVICE/VIRTUAL/CARD */
+  type: string;
+  /** 平台类目。**当前恒为空** —— 商品编辑页还没有选类目这一步 */
+  categoryNo?: string;
+  /**
+   * 归属商家（后端下发的是一个 brief 对象，不是裸的 merchantNo）——
+   * 审核时要看得到是谁上的架：同一个商家反复交同类违规品是有信号的。
+   */
+  merchant?: { merchantNo: string; name: string };
+  /**
+   * 商品状态。**字段名是 `status` 不是 `auditStatus`** ——
+   * 后端 `GoodsVO` 里它同时承载审核态与上下架态：AUDITING / ON_SALE / OFF_SALE / REJECTED。
+   */
+  status?: string;
+}

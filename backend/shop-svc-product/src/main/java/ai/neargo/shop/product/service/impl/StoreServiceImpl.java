@@ -12,6 +12,7 @@ import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.product.dto.FrequentItemVO;
 import ai.neargo.shop.product.dto.RebuyResultVO;
+import ai.neargo.shop.product.dto.ReorderResultVO;
 import ai.neargo.shop.product.dto.StoreHomeVO;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -84,6 +85,43 @@ public class StoreServiceImpl implements StoreService {
                     h.lastPrice(), h.buyCount(), h.lastBoughtAt(),
                     snap == null ? 0 : snap.available(), invalid);
         }).toList();
+    }
+
+    @Override
+    @Transactional
+    public ReorderResultVO reorderFrom(String orderNo) {
+        String userNo = SecurityUtils.currentUserNo();
+        // Port 内部已做归属校验：别人的订单号查不出东西（订单号是可枚举的）
+        var bought = historyPort.skusOfOrder(userNo, orderNo);
+        if (bought.isEmpty()) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+
+        var snapshots = goodsPort.snapshot(bought.stream()
+                .map(StoreHistoryPort.PurchasedSku::skuNo).toList());
+
+        int added = 0;
+        List<String> dropped = new ArrayList<>();
+        List<String> priceUp = new ArrayList<>();
+
+        for (var b : bought) {
+            var snap = snapshots.get(b.skuNo());
+            /*
+             * 失效的**显式回报**，不静默丢。
+             * 悄悄少加是最糟的处理：用户以为整单都买到了，到货才发现少东西。
+             */
+            if (snap == null || !snap.onSale() || snap.available() <= 0) {
+                dropped.add(b.title());
+                continue;
+            }
+            // 涨价了仍然加入，但要说 —— 老客对价格敏感，悄悄涨价比涨价本身更伤复购
+            if (snap.price() > b.lastPrice()) {
+                priceUp.add(b.title());
+            }
+            cartPort.add(userNo, b.goodsNo(), b.skuNo(), Math.max(b.buyCount(), 1));
+            added++;
+        }
+        return new ReorderResultVO(added, dropped, priceUp);
     }
 
     @Override

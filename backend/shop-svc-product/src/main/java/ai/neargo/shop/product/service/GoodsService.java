@@ -16,6 +16,15 @@ public interface GoodsService {
 
     GoodsVO detail(String goodsNo);
 
+    /**
+     * 推荐商品（运营位）。<b>运营意图，不是销量事实</b> ——
+     * 社区里 SKU 只有几十个，按销量自动排出来的「热卖」和「全部商品」几乎是同一个列表。
+     *
+     * <p>一期还没有运营后台，用销量兜底；接上配置时只换这里的实现，端上不动。
+     * 刻意与主商品流<b>不同序</b>（主流按距离，这里按销量），否则两处内容会完全重合。
+     */
+    java.util.List<GoodsVO> promoted(String communityNo, Integer size);
+
     /** 规格选中后的实时价格与库存（C-PD-04）。下单前的最后一次校准。 */
     ai.neargo.shop.product.dto.SkuPriceVO skuPrice(String goodsNo, String skuNo);
 

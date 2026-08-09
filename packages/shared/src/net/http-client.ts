@@ -24,6 +24,12 @@ export function request<T>(
   data?: object,
 ): Promise<T> {
   const token = uni.getStorageSync(STORAGE.token) as string;
+  /*
+   * B 端当前门店。**放请求头而不是每个接口加参数** —— 它是整个会话的上下文，
+   * 不是某个查询的条件；加成参数的话每加一个接口都要记得带，漏一个就静默看错门店。
+   * C 端没有这个值，读出来是空字符串，不会带上。
+   */
+  const storeNo = uni.getStorageSync(STORAGE.storeNo) as string;
   return new Promise((resolve, reject) => {
     uni.request({
       url: `${BASE}${path}`,
@@ -32,6 +38,7 @@ export function request<T>(
       header: {
         "Content-Type": "application/json",
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(storeNo ? { "X-Store-No": storeNo } : {}),
       },
       success(res) {
         const body = res.data as Result<T>;

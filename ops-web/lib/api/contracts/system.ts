@@ -1,7 +1,22 @@
 // 覆盖范围：系统配置（P-17.1）。
-import type { AppearanceConfig, FeatureFlag, MarketConfig, RuleTexts } from "@/lib/types";
+import type { AppearanceConfig, FeatureFlag, Industry, MarketConfig, RuleTexts } from "@/lib/types";
 
 export interface SystemApi {
+  // ── 行业主数据（P-17.1 / ADR-010）—— **已接真后端** `/ops/industries/**`
+
+  listIndustries(): Promise<Industry[]>;
+  /**
+   * 改某通道的小微白名单。
+   *
+   * @param remark 为什么改。**建议必填** —— 改白名单会被商家追问，
+   *   而「谁什么时候为什么改的」只有这里记得住
+   */
+  setIndustryMicroAllowed(industry: string, payChannel: string, allowed: boolean, remark?: string): Promise<Industry>;
+  /** 停用后入驻表单里不再出现这个行业；**不影响已入驻的商家** */
+  setIndustryEnabled(industry: string, enabled: boolean): Promise<Industry>;
+  /** 强制开启积分：商家不可自行关闭 */
+  setIndustryPointsForced(industry: string, forced: boolean): Promise<Industry>;
+
   getAppearance(): Promise<AppearanceConfig>;
   /** 皮肤下发（P-17.1.1 / C-TH-05）。取值必须是四套皮肤之一。 */
   saveAppearance(v: Pick<AppearanceConfig, "defaultSkin" | "festivalSkin" | "festivalFrom" | "festivalTo" | "fallbackLang">): Promise<AppearanceConfig>;

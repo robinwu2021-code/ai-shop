@@ -26,8 +26,8 @@ public record AddressVO(String addressId,
 
     /** 履约视角：仅后四位。 */
     public static AddressVO forFulfillment(UsrAddress a) {
-        String p = a.getPhone();
-        return build(a, p == null || p.length() < 4 ? p : "****" + p.substring(p.length() - 4));
+        // 与结算账号同一口径（Masks.tail）：两处不一致会让人以为其中一处泄了更多
+        return build(a, ai.neargo.shop.common.Masks.tail(a.getPhone()));
     }
 
     private static AddressVO build(UsrAddress a, String phone) {

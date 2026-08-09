@@ -1,6 +1,6 @@
 package ai.neargo.shop.user.dto;
 
-import ai.neargo.shop.user.entity.UsrMerchant;
+import ai.neargo.shop.user.merchant.entity.MchEntity;
 
 /**
  * 商家评分与**依据**（C-MC-04/05）。
@@ -17,8 +17,8 @@ public record MerchantScoreVO(String merchantNo,
 
     private static final String BASIS = "综合评分 = 评价均分 ×0.8 + 订单量对数 ×0.2；新商家有 30 天保护期";
 
-    public static MerchantScoreVO of(UsrMerchant m) {
-        return new MerchantScoreVO(m.getMerchantNo(), score(m.getRating()), nz(m.getRatingCount()),
+    public static MerchantScoreVO of(MchEntity m) {
+        return new MerchantScoreVO(m.getEntityNo(), score(m.getRating()), nz(m.getRatingCount()),
                 new MerchantVO.Scores(score(m.getScoreGoods()), score(m.getScoreService()),
                         score(m.getScoreSpeed())),
                 BASIS);

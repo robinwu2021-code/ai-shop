@@ -18,7 +18,7 @@ public final class ReviewMappers {
         /**
          * 商家评分聚合。
          *
-         * <p>{@code usr_merchant} 上的 rating / rating_count / score_* 是**派生值**，
+         * <p>{@code mch_entity} 上的 rating / rating_count / score_* 是**派生值**，
          * 真源是这张表 —— 在此之前它们没有数据来源，只能是写死的假数据。
          * 用一条 SQL 聚合而不是把每次写评价都去 UPDATE 商家行：后者在热门商家上是行锁热点。
          */
@@ -29,7 +29,7 @@ public final class ReviewMappers {
                        ROUND(AVG(score_service), 1)   AS scoreService,
                        ROUND(AVG(score_fulfillment), 1) AS scoreSpeed
                 FROM rvw_review
-                WHERE merchant_no = #{merchantNo} AND status = 'PASSED' AND deleted = 0
+                WHERE entity_no = #{merchantNo} AND status = 'PASSED' AND deleted = 0
                 """)
         java.util.Map<String, Object> aggregateByMerchant(@Param("merchantNo") String merchantNo);
     }

@@ -1,22 +1,16 @@
 <script setup lang="ts">
-// 积分账户。C 端（我的积分）与 B 端（商家的积分资金账）共用这一页，靠 `side` 参数切换。
+// 我的积分。**只有用户侧** —— 商家侧的积分视图随契约迁到了 b-app（ADR-007 §3）。
 //
-// **两侧的账本结构不一样**，只有流水部分共用：
-//   C 端 账户：积分个数（可用 / 待生效 / 累计），流水 EARN / USE / REFUND / EXPIRE
-//   B 端 账户：**一个数** —— 本期发分服务费，外加开关状态
-//
-// 商家只感知「开了积分要付发分服务费」这一件事。用户抵了多少分、平台补了多少、
-// 资金池，对他全部不可见（V34）—— 他收到的是订单全额减各项费用。
+// 页面上要分开显示「可用」与「待生效」：合成一个数的话，用户看到「我有 500 分」
+// 却只能用 400，没有任何办法解释这个差额（V25 拆出 pending_balance 就是为了这个）。
 import { computed, ref } from "vue";
-import { onLoad, onShow } from "@dcloudio/uni-app";
+import { onShow } from "@dcloudio/uni-app";
 import { api } from "@/api";
 import { POINTS } from "@shared/utils/constants";
 import { datetime, isoDate, money } from "@shared/utils/format";
-import type { MerchantPointAccount, PointAccount, PointRecord } from "@shared/types";
+import type { PointAccount, PointRecord } from "@shared/types";
 
-const side = ref<"user" | "merchant">("user");
 const account = ref<PointAccount | null>(null);
-const merchant = ref<MerchantPointAccount | null>(null);
 const records = ref<PointRecord[]>([]);
 
 /** 余额折算成钱，让用户知道这些积分到底值多少 */
@@ -25,31 +19,19 @@ const worthMinor = computed(() =>
 );
 
 async function load() {
-  if (side.value === "merchant") {
-    const [a, r] = await Promise.all([
-      api.merchantPointAccount(),
-      api.merchantPointRecords(),
-    ]);
-    merchant.value = a;
-    records.value = r;
-  } else {
-    const [a, r] = await Promise.all([api.pointAccount(), api.pointRecords()]);
-    account.value = a;
-    records.value = r;
-  }
+  const [a, r] = await Promise.all([api.pointAccount(), api.pointRecords()]);
+  account.value = a;
+  records.value = r;
 }
 
-onLoad((q) => {
-  side.value = q?.side === "merchant" ? "merchant" : "user";
-});
 
 onShow(load);
 </script>
 
 <template>
-  <sh-scaffold :title-key="side === 'merchant' ? 'points.merchantTitle' : 'points.title'">
+  <sh-scaffold :title-key="'points.title'">
     <!-- 用户侧：单位是分 -->
-    <view v-if="side === 'user'" class="sh-card hero">
+    <view class="sh-card hero">
       <text class="hero__label">{{ $t("points.balance") }}</text>
       <text class="hero__v sh-num">{{ account?.balance ?? 0 }}</text>
       <text class="hero__worth sh-num">{{ $t("points.worth", { p: money(worthMinor) }) }}</text>
@@ -74,37 +56,22 @@ onShow(load);
       </view>
     </view>
 
-    <!-- 商家侧：只有一个数 —— 本期发分服务费。抵扣与兑付对他不可见（V34） -->
-    <view v-else class="sh-card hero">
-      <text class="hero__label">
-        {{ $t("points.periodExpense", { p: merchant?.period ?? "" }) }}
-      </text>
-      <text class="hero__v sh-num">{{ money(merchant?.periodExpenseMinor ?? 0) }}</text>
-      <text class="hero__worth">{{ $t("points.expenseHint") }}</text>
-
-      <!-- 关闭时要说清「为什么」：小微是不可开，不是关着 -->
-      <text v-if="merchant && !merchant.enabled" class="hero__off">
-        {{ merchant.disabledReason || $t("points.disabled") }}
-      </text>
-    </view>
-
     <!-- 规则：积分能抵钱，规则必须写在明面上 -->
     <view class="sh-card block rules">
       <text class="rules__title">{{ $t("points.rules") }}</text>
-      <text v-if="side === 'user'" class="rules__t">
+      <text class="rules__t">
         {{ $t("points.ruleRate", { n: POINTS.perMinor * 100 }) }}
       </text>
-      <text v-if="side === 'user'" class="rules__t">
+      <text class="rules__t">
         {{ $t("points.ruleCap", { n: Math.round(POINTS.maxDeductRatio * 100) }) }}
       </text>
-      <text v-if="side === 'user'" class="rules__t">
+      <text class="rules__t">
         {{ $t("points.ruleGrant") }}
       </text>
-      <text v-else class="rules__t">{{ $t("points.ruleMerchant") }}</text>
       <text class="rules__t">
         {{ $t("points.ruleExpire", { n: POINTS.inactiveDays }) }}
       </text>
-      <text v-if="side === 'user' && account?.expiringSoon" class="rules__warn sh-num">
+      <text v-if="account?.expiringSoon" class="rules__warn sh-num">
         {{ $t("points.expiring", {
           n: account.expiringSoon,
           d: account.expiringAt ? isoDate(account.expiringAt) : "",

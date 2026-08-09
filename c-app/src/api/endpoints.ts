@@ -168,7 +168,9 @@ export const ENDPOINTS: Record<keyof ShopApi, EndpointDef> = {
     auth: true,
     summary: "我买过的商家",
   },
+  masterData: { method: "GET", path: "/common/master-data", auth: false, summary: "平台主数据（行业/主体/通道）" },
   merchantApply: { method: "POST", path: "/mp/merchant/apply", auth: true, summary: "商家入驻申请" },
+  myMerchantApply: { method: "GET", path: "/mp/merchant/apply", auth: true, summary: "我的入驻申请状态" },
 
   // ---------------------------------------------------------------- 评价
   reviewList: { method: "GET", path: "/mp/review", auth: false, summary: "评价列表" },
@@ -181,19 +183,17 @@ export const ENDPOINTS: Record<keyof ShopApi, EndpointDef> = {
   },
 
   // ---------------------------------------------------------------- 积分（一期开关关闭）
-  pointAccount: { method: "GET", path: "/mp/point/account", auth: true, summary: "积分账户" },
-  pointRecords: { method: "GET", path: "/mp/point/records", auth: true, summary: "积分流水" },
-  merchantPointAccount: {
+  //
+  // 路径用**复数** `points`：与设计文档、B 端 `/biz/points/**` 一致。
+  // 商家侧的两条已迁到 b-app —— ADR-007 §3「contract 层不共享」，
+  // 它们挂在 C 端是契约写在 b-app 拆分之前留下的。
+  pointAccount: { method: "GET", path: "/mp/points/account", auth: true, summary: "积分账户" },
+  pointRecords: { method: "GET", path: "/mp/points/records", auth: true, summary: "积分流水" },
+  pointsDeductible: {
     method: "GET",
-    path: "/mp/merchant/point/account",
+    path: "/mp/points/deductible",
     auth: true,
-    summary: "商家积分账户",
-  },
-  merchantPointRecords: {
-    method: "GET",
-    path: "/mp/merchant/point/records",
-    auth: true,
-    summary: "商家积分流水",
+    summary: "结算页试算：本单最多可抵多少",
   },
 
   // ---------------------------------------------------------------- 卡包

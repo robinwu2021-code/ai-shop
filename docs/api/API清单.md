@@ -8,13 +8,13 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 288 个接口**：后端已实现 67（23%）· 前端在调 288
+**合计 291 个接口**：后端已实现 94（32%）· 前端在调 291
 
 ---
 
 ## C 端 `/mp/**` · c-app（消费者）
 
-共 **60** 个接口 ｜ 后端已实现 **51**（85%）｜ 前端在调 **60**
+共 **60** 个接口 ｜ 后端已实现 **59**（98%）｜ 前端在调 **60**
 
 ### after-sale（2）
 
@@ -57,7 +57,7 @@
 |---|---|---|---|---|:---:|:---:|:---:|
 | GET | `/mp/goods` | 商品列表 | — | `object` | 🔒 | ✅ | ✅ |
 | GET | `/mp/goods/{goodsNo}` | 商品详情 | — | `Goods` | 🔒 | ✅ | ✅ |
-| GET | `/mp/goods/promoted` | 推荐商品（运营位） | — | `数组` | 🔒 | ⬜ | ✅ |
+| GET | `/mp/goods/promoted` | 推荐商品（运营位） | — | `数组` | 🔒 | ✅ | ✅ |
 
 ### group-buy（8）
 
@@ -83,16 +83,15 @@
 | POST | `/mp/group-request/{requestNo}/confirm` | 二次确认下单 | — | `GroupRequest` | 🔒 | ✅ | ✅ |
 | POST | `/mp/group-request/{requestNo}/interest` | +1 / 取消（意向，非订单） | — | `GroupRequest` | 🔒 | ✅ | ✅ |
 
-### merchant（7）
+### merchant（6）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
 | GET | `/mp/merchant` | 商家列表/搜索 | — | `数组` | 🔒 | ✅ | ✅ |
 | GET | `/mp/merchant/{merchantNo}` | 商家详情 | — | `Merchant` | 🔒 | ✅ | ✅ |
-| POST | `/mp/merchant/apply` | 商家入驻申请 | `MerchantApplyReq` | `object` | 🔒 | ⬜ | ✅ |
-| GET | `/mp/merchant/point/account` | 商家积分账户 | — | `PointAccount` | 🔒 | ⬜ | ✅ |
-| GET | `/mp/merchant/point/records` | 商家积分流水 | — | `数组` | 🔒 | ⬜ | ✅ |
-| GET | `/mp/merchant/promoted` | 推荐门店（运营位） | — | `数组` | 🔒 | ⬜ | ✅ |
+| POST | `/mp/merchant/apply` | 商家入驻申请 | `MerchantApplyReq` | `MerchantApplyStatus` | 🔒 | ✅ | ✅ |
+| GET | `/mp/merchant/apply` | 我的入驻申请状态 | — | `MerchantApplyStatus` | 🔒 | ✅ | ✅ |
+| GET | `/mp/merchant/promoted` | 推荐门店（运营位） | — | `数组` | 🔒 | ✅ | ✅ |
 | GET | `/mp/merchant/visited` | 我买过的商家 | — | `数组` | 🔒 | ✅ | ✅ |
 
 ### message（3）
@@ -113,14 +112,15 @@
 | POST | `/mp/order/{orderNo}/after-sale` | 申请售后 | `AfterSaleReq` | `Order` | 🔒 | ✅ | ✅ |
 | POST | `/mp/order/{orderNo}/cancel` | 取消订单 | — | `Order` | 🔒 | ✅ | ✅ |
 | POST | `/mp/order/{orderNo}/pay` | 支付 | — | `Order` | 🔒 | ✅ | ✅ |
-| POST | `/mp/order/{orderNo}/reorder` | 一键再来一单 | — | `ReorderResult` | 🔒 | ⬜ | ✅ |
+| POST | `/mp/order/{orderNo}/reorder` | 一键再来一单 | — | `ReorderResult` | 🔒 | ✅ | ✅ |
 
-### point（2）
+### points（3）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
-| GET | `/mp/point/account` | 积分账户 | — | `PointAccount` | 🔒 | ⬜ | ✅ |
-| GET | `/mp/point/records` | 积分流水 | — | `数组` | 🔒 | ⬜ | ✅ |
+| GET | `/mp/points/account` | 积分账户 | — | `PointAccount` | 🔒 | ✅ | ✅ |
+| GET | `/mp/points/deductible` | 结算页试算：本单最多可抵多少 | — | `PointsDeductible` | 🔒 | ✅ | ✅ |
+| GET | `/mp/points/records` | 积分流水 | — | `数组` | 🔒 | ✅ | ✅ |
 
 ### review（3）
 
@@ -153,7 +153,7 @@
 
 ## B 端 `/biz/**` · b-app（商家）
 
-共 **50** 个接口 ｜ 后端已实现 **15**（30%）｜ 前端在调 **50**
+共 **53** 个接口 ｜ 后端已实现 **34**（64%）｜ 前端在调 **53**
 
 ### after-sale（4）
 
@@ -168,7 +168,7 @@
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
-| POST | `/biz/auth/login` | 商家登录 | `MerchantLoginReqBody` | `MerchantLoginResp` | 🔒 | ⬜ | ✅ |
+| POST | `/biz/auth/login` | 商家登录 | `MerchantLoginReqBody` | `MerchantLoginResp` | 🔒 | ✅ | ✅ |
 
 ### campaign（3）
 
@@ -182,7 +182,7 @@
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
-| GET | `/biz/communities` | 可选社区（设经营范围用） | — | `数组` | 🔒 | ⬜ | ✅ |
+| GET | `/biz/communities` | 可选社区（设经营范围用） | — | `数组` | 🔒 | ✅ | ✅ |
 
 ### customers（1）
 
@@ -208,12 +208,12 @@
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
-| GET | `/biz/goods` | 商品列表 | — | `object` | 🔒 | ⬜ | ✅ |
-| GET | `/biz/goods/{goodsNo}` | 商品详情 | — | `Goods` | 🔒 | ⬜ | ✅ |
-| POST | `/biz/goods/{goodsNo}/stock` | 改库存 | `SaveStockReq` | `Goods` | 🔒 | ⬜ | ✅ |
-| POST | `/biz/goods/{goodsNo}/toggle` | 上下架 | `ToggleGoodsReq` | `Goods` | 🔒 | ⬜ | ✅ |
-| POST | `/biz/goods/recognize` | 拍照识别商品 | `RecognizeGoodsReq` | `GoodsGuess` | 🔒 | ⬜ | ✅ |
-| POST | `/biz/goods/save` | 新建/编辑商品 | `SaveGoodsReqBody` | `Goods` | 🔒 | ⬜ | ✅ |
+| GET | `/biz/goods` | 商品列表 | — | `object` | 🔒 | ✅ | ✅ |
+| GET | `/biz/goods/{goodsNo}` | 商品详情 | — | `Goods` | 🔒 | ✅ | ✅ |
+| POST | `/biz/goods/{goodsNo}/stock` | 改库存 | `SaveStockReq` | `Goods` | 🔒 | ✅ | ✅ |
+| POST | `/biz/goods/{goodsNo}/toggle` | 上下架 | `ToggleGoodsReq` | `Goods` | 🔒 | ✅ | ✅ |
+| POST | `/biz/goods/recognize` | 拍照识别商品 | `RecognizeGoodsReq` | `GoodsGuess` | 🔒 | ✅ | ✅ |
+| POST | `/biz/goods/save` | 新建/编辑商品 | `SaveGoodsReqBody` | `Goods` | 🔒 | ✅ | ✅ |
 
 ### group-request（2）
 
@@ -233,9 +233,9 @@
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
-| POST | `/biz/merchant/apply` | 提交入驻申请 | `MerchantApplyReqBody` | `MerchantProfile` | 🔒 | ⬜ | ✅ |
-| GET | `/biz/merchant/apply` | 上次入驻申请 | — | `MerchantApplyReq` | 🔒 | ⬜ | ✅ |
-| GET | `/biz/merchant/profile` | 商家资料 | — | `MerchantProfile` | 🔒 | ⬜ | ✅ |
+| POST | `/biz/merchant/apply` | 提交入驻申请 | `MerchantApplyReqBody` | `MerchantProfile` | 🔒 | ✅ | ✅ |
+| GET | `/biz/merchant/apply` | 上次入驻申请 | — | `MerchantApplyReq` | 🔒 | ✅ | ✅ |
+| GET | `/biz/merchant/profile` | 商家资料 | — | `MerchantProfile` | 🔒 | ✅ | ✅ |
 
 ### order（4）
 
@@ -258,6 +258,14 @@
 | POST | `/biz/pickup/verify` | 核销自提码 | `VerifyReq` | `Order` | 🔒 | ✅ | ✅ |
 | POST | `/biz/pickup/verify/batch` | 批量核销 | `VerifyBatchReq` | `VerifyBatchResult` | 🔒 | ✅ | ✅ |
 
+### points（3）
+
+| 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
+|---|---|---|---|---|:---:|:---:|:---:|
+| GET | `/biz/points/account` | 本期发分服务费与开关状态 | — | `MerchantPointAccount` | 🔒 | ✅ | ✅ |
+| GET | `/biz/points/records` | 发分服务费明细（按单） | — | `数组` | 🔒 | ✅ | ✅ |
+| POST | `/biz/points/toggle` | 开/关本店积分 | — | `MerchantPointAccount` | 🔒 | ✅ | ✅ |
+
 ### review（3）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
@@ -277,15 +285,15 @@
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
-| GET | `/biz/spec-templates` | 规格模板 | — | `数组` | 🔒 | ⬜ | ✅ |
-| POST | `/biz/spec-templates` | 存为常用规格 | `SaveSpecTemplateReq` | `SpecTemplate` | 🔒 | ⬜ | ✅ |
+| GET | `/biz/spec-templates` | 规格模板 | — | `数组` | 🔒 | ✅ | ✅ |
+| POST | `/biz/spec-templates` | 存为常用规格 | `SaveSpecTemplateReq` | `SpecTemplate` | 🔒 | ✅ | ✅ |
 
 ### store（4）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
-| GET | `/biz/store` | 店铺门面 | — | `StoreProfile` | 🔒 | ⬜ | ✅ |
-| POST | `/biz/store` | 保存店铺门面 | `SaveStoreReqBody` | `StoreProfile` | 🔒 | ⬜ | ✅ |
+| GET | `/biz/store` | 店铺门面 | — | `StoreProfile` | 🔒 | ✅ | ✅ |
+| POST | `/biz/store` | 保存店铺门面 | `SaveStoreReqBody` | `StoreProfile` | 🔒 | ✅ | ✅ |
 | GET | `/biz/store/qrcode` | 店铺码 | — | `StoreQrcode` | 🔒 | ✅ | ✅ |
 | GET | `/biz/store/share-kit` | 分享素材 | — | `ShareKit` | 🔒 | ⬜ | ✅ |
 
@@ -293,7 +301,7 @@
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
-| POST | `/biz/upload/image` | 上传商品图 | `UploadImageReq` | `object` | 🔒 | ⬜ | ✅ |
+| POST | `/biz/upload/image` | 上传商品图 | `UploadImageReq` | `object` | 🔒 | ✅ | ✅ |
 
 ## 平台端 `/ops/**` · ops-web（运营）
 
@@ -461,7 +469,7 @@
 | GET | `/ops/merchants/{merchantNo}` | getMerchant | — | `Merchant` | — | ⬜ | ✅ |
 | POST | `/ops/merchants/{merchantNo}/archive` | archiveMerchant | — | `Merchant` | — | ⬜ | ✅ |
 | PUT | `/ops/merchants/{merchantNo}/auth-codes` | 改一个商家的类目授权范围 | — | `Merchant` | — | ⬜ | ✅ |
-| POST | `/ops/merchants/{merchantNo}/status` | 审核推进（DRAFT→SUBMITTED→REVIEWING→APPROVED/REJECTED），非法迁移抛错 | — | `Merchant` | — | ⬜ | ✅ |
+| POST | `/ops/merchants/{merchantNo}/status` | 审核推进 | — | `Merchant` | — | ⬜ | ✅ |
 | POST | `/ops/merchants/{merchantNo}/unarchive` | unarchiveMerchant | — | `Merchant` | — | ⬜ | ✅ |
 | POST | `/ops/merchants/{merchantNo}/verified` | 认证标授予/撤销（P-11.1.2） | — | `Merchant` | — | ⬜ | ✅ |
 | POST | `/ops/merchants/{merchantNo}/violations` | 记一条违规并执行处置 | — | `Violation` | — | ⬜ | ✅ |

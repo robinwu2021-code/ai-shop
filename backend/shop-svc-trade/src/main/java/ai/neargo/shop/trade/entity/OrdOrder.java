@@ -51,4 +51,7 @@ public class OrdOrder extends BaseEntity {
     private Long payDeadlineAt;
 
     private String cancelReason;
+
+    /** 下单端 MP_WECHAT/MP_ALIPAY/IOS/ANDROID/H5。**与 payChannel 不是一回事** —— App 两个通道都能走。 */
+    private String payScene;
 }

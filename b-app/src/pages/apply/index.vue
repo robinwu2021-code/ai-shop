@@ -14,32 +14,92 @@ import { ensureDemoOrders } from "@/api/demo-orders";
 import { useMerchantStore } from "@/stores/merchant";
 import { ROUTES } from "@/shared/nav";
 import { pickImages } from "@shared/ports/media";
-import type { MerchantSubject } from "@shared/types";
+import { SERVICE_SCOPE } from "@shared/utils/constants";
+import type { Community, MasterData, MerchantSubject, ServiceScope } from "@shared/types";
 
 const { t } = useI18n();
 const merchant = useMerchantStore();
 
-const SUBJECTS: MerchantSubject[] = ["PERSONAL", "INDIVIDUAL_BIZ", "COMPANY"];
+/*
+ * 主体与行业都**从 /common/master-data 取**，不再是页面里的常量 ——
+ * 微信放开某个行业的小微白名单时不用发版。
+ * 主数据没回来之前用这份兜底：表单不能因为一个 GET 失败就打不开。
+ */
+const SUBJECTS: MerchantSubject[] = ["MICRO", "INDIVIDUAL", "ENTERPRISE"];
+const master = ref<MasterData | null>(null);
+const industries = computed(() => master.value?.industries ?? []);
+const subjectList = computed<MerchantSubject[]>(
+  () => master.value?.subjects.map((s) => s.subjectType) ?? SUBJECTS,
+);
+
+/**
+ * 当前行业允许的主体类型。
+ *
+ * **小微受行业白名单管控**（`industryGated`），其余主体不受。
+ * 不做这个联动的后果不是提示不友好，是**进件被拒** ——
+ * 而那时商家已经开完店、上完架，回头再改主体要重走一遍开户。
+ */
+const subjectAllowed = (s: MerchantSubject) => {
+  const meta = master.value?.subjects.find((x) => x.subjectType === s);
+  if (!meta?.industryGated) return true;
+  const ind = industries.value.find((i) => i.industry === form.value.industry);
+  // 还没选行业时不禁用：先禁再解释，人会以为这个选项坏了
+  return !ind || ind.microAllowed;
+};
+
+const scopes = [SERVICE_SCOPE.COMMUNITY, SERVICE_SCOPE.CITY, SERVICE_SCOPE.PLATFORM] as const;
 
 const form = ref({
   name: "",
-  subject: "PERSONAL" as MerchantSubject,
+  subject: "MICRO" as MerchantSubject,
   contactName: "",
   contactPhone: "",
   category: "",
   desc: "",
+  /** 行业：决定能不能以小微进件，也是 points_forced 的来源。此前根本没有这个字段 */
+  industry: "",
   asPickupPoint: true,
+  /*
+   * 服务范围**必须在申请时就填**。
+   *
+   * 此前这张表没有这两项，提交上去恒空 —— 本该由运营在审核时补，
+   * 而运营侧那条链还没接通，于是没有任何地方能填上它：
+   * 商家通过审核、商品上了架，**对谁都不可见**，而这个故障不报错。
+   */
+  serviceScope: SERVICE_SCOPE.COMMUNITY as ServiceScope,
+  communityNos: [] as string[],
 });
 const submitting = ref(false);
+const communities = ref<Community[]>([]);
+
+function pickScope(v: ServiceScope) {
+  form.value.serviceScope = v;
+}
+
+function toggleCommunity(communityNo: string) {
+  const list = form.value.communityNos;
+  const i = list.indexOf(communityNo);
+  if (i >= 0) list.splice(i, 1);
+  else list.push(communityNo);
+}
 
 const status = computed(() => merchant.profile?.status ?? "NONE");
 /** 个人主体不需要营业执照，也就不需要商户号 */
-const needLicense = computed(() => form.value.subject !== "PERSONAL");
+// 小微免执照 —— 这正是它存在的意义。权威在 sys_merchant_subject.need_license
+const needLicense = computed(() => form.value.subject !== "MICRO");
 const settleType = computed(() =>
   needLicense.value ? "settleMERCHANT_ID" : "settlePERSONAL_OPENID",
 );
+/** 「仅本社区」却一个小区都没选 = 上架后对谁都不可见，所以它也是提交的前置 */
+const scopeReady = computed(
+  () => form.value.serviceScope !== SERVICE_SCOPE.COMMUNITY || form.value.communityNos.length > 0,
+);
 const canSubmit = computed(
-  () => !!form.value.name && !!form.value.contactName && /^\d{11}$/.test(form.value.contactPhone),
+  () =>
+    !!form.value.name &&
+    !!form.value.contactName &&
+    /^\d{11}$/.test(form.value.contactPhone) &&
+    scopeReady.value,
 );
 
 /** 已上传的资质图（个体户/企业必需，个人免） */
@@ -52,6 +112,10 @@ onShow(async () => {
   // 联系号码本来也不一定等于登录号 —— 店主登录，留的是店里座机是常事。
   // 驳回后回填上次填过的内容 —— 驳回往往只是缺一张执照，
   // 让人从头重填一遍是把「补交」变成「重来」
+  // 可选小区与主数据先取：驳回回填时要按它们显示已选中的项与可选主体
+  communities.value = await api.mCommunities().catch(() => []);
+  master.value = await api.mMasterData().catch(() => null);
+
   const draft = await api.mApplyDraft().catch(() => null);
   if (!draft) return;
   form.value = {
@@ -61,9 +125,12 @@ onShow(async () => {
     contactPhone: draft.contactPhone,
     category: draft.category,
     desc: draft.desc,
+    industry: draft.industry ?? "",
     // 契约里这几项是选填（分账主体属于独立开户流程，ADR-002），
     // 但 B 端表单确实收，草稿回显时给默认值
     asPickupPoint: draft.asPickupPoint ?? false,
+    serviceScope: draft.serviceScope ?? SERVICE_SCOPE.COMMUNITY,
+    communityNos: [...(draft.communityNos ?? [])],
   };
   licenses.value = [...(draft.licenses ?? [])];
 });
@@ -91,6 +158,11 @@ async function addLicense() {
 }
 
 async function submit() {
+  if (!scopeReady.value) {
+    // 单独给这条提示：它与「必填项没填」不是一回事，而后果比必填项更严重
+    uni.showToast({ title: t("store.scopeNeedCommunity"), icon: "none" });
+    return;
+  }
   if (!canSubmit.value) {
     uni.showToast({ title: t("apply.required"), icon: "none" });
     return;
@@ -151,19 +223,47 @@ async function submit() {
     </view>
 
     <view class="sh-card">
+      <!--
+        行业排在主体之前：**它决定主体能不能选小微**（微信白名单按行业给）。
+        顺序反了的话，人先挑了小微再选一个不允许小微的行业，
+        要么被无声改掉选择，要么提交后才被拒。
+      -->
+      <view class="field">
+        <text class="field__label">{{ $t("apply.industry") }}</text>
+        <view class="chips">
+          <text
+            v-for="i in industries"
+            :key="i.industry"
+            class="sh-chip"
+            :class="{ 'sh-chip--primary': form.industry === i.industry }"
+            @tap="form.industry = i.industry"
+          >
+            {{ i.name }}
+          </text>
+        </view>
+        <text class="hint">{{ $t("apply.industryHint") }}</text>
+      </view>
+
       <view class="field">
         <text class="field__label">{{ $t("apply.subject") }}</text>
         <view class="chips">
           <text
-            v-for="s in SUBJECTS"
+            v-for="s in subjectList"
             :key="s"
             class="sh-chip"
-            :class="{ 'sh-chip--primary': form.subject === s }"
-            @tap="form.subject = s"
+            :class="{
+              'sh-chip--primary': form.subject === s,
+              'is-blocked': !subjectAllowed(s),
+            }"
+            @tap="subjectAllowed(s) && (form.subject = s)"
           >
             {{ $t(`apply.subject${s}`) }}
           </text>
         </view>
+        <!-- 禁用要给出理由：光变灰会让人以为是 bug，然后去反复点它 -->
+        <text v-if="!subjectAllowed('MICRO')" class="warn">
+          {{ $t("apply.microBlocked") }}
+        </text>
         <text class="hint">{{ $t("apply.subjectHint") }}</text>
       </view>
 
@@ -196,6 +296,49 @@ async function submit() {
       <view class="field">
         <text class="field__label">{{ $t("apply.desc") }}</text>
         <input v-model="form.desc" class="field__input" placeholder="街角三十年老店" />
+      </view>
+    </view>
+
+    <!--
+      服务范围：决定这家店的货在 C 端能被谁看到。
+      不是展示问题 —— 选大了会卖到送不到的地方（下单后提不了货），
+      选小了整片小区都搜不到这家店。所以给后果说明，不只给三个单选。
+    -->
+    <view class="sh-card mt-card">
+      <text class="sh-h2">{{ $t("store.scope") }}</text>
+      <text class="hint">{{ $t("apply.scopeHint") }}</text>
+
+      <view
+        v-for="sc in scopes"
+        :key="sc"
+        class="scope"
+        :class="{ 'is-on': form.serviceScope === sc }"
+        @tap="pickScope(sc)"
+      >
+        <view class="scope__main">
+          <text class="scope__name">{{ $t(`serviceScope.${sc}`) }}</text>
+          <text class="scope__desc">{{ $t(`store.scopeDesc.${sc}`) }}</text>
+        </view>
+        <text class="scope__tick">{{ form.serviceScope === sc ? "✓" : "" }}</text>
+      </view>
+
+      <!-- 只有「仅本社区」才需要选小区，其余两档选了也用不上 -->
+      <view v-if="form.serviceScope === SERVICE_SCOPE.COMMUNITY" class="cms">
+        <text class="field__label">{{ $t("store.scopeCommunities") }}</text>
+        <view class="cms__list">
+          <text
+            v-for="c in communities"
+            :key="c.communityNo"
+            class="sh-chip cms__i"
+            :class="{ 'is-on': form.communityNos.includes(c.communityNo) }"
+            @tap="toggleCommunity(c.communityNo)"
+          >
+            {{ c.name }}
+          </text>
+        </view>
+        <text v-if="!form.communityNos.length" class="warn">
+          {{ $t("store.scopeNeedCommunity") }}
+        </text>
       </view>
     </view>
 
@@ -336,6 +479,65 @@ async function submit() {
 }
 .license {
   margin-top: 28rpx;
+}
+
+.sh-chip.is-blocked {
+  opacity: 0.4;
+}
+
+/* 服务范围选择器：与店铺设置页同一套观感 —— 同一件事在两处长得不一样会让人以为是两件事 */
+.scope {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  padding: 24rpx;
+  margin-top: 16rpx;
+  border-radius: 24rpx;
+  background: var(--sh-faint);
+}
+.scope.is-on {
+  background: var(--sh-primary-tint);
+}
+.scope__main {
+  flex: 1;
+  min-width: 0;
+}
+.scope__name {
+  display: block;
+  font-size: 26rpx;
+  font-weight: 600;
+  color: var(--sh-ink);
+}
+.scope__desc {
+  display: block;
+  margin-top: 6rpx;
+  font-size: 24rpx;
+  line-height: 1.5;
+  color: var(--sh-sub);
+}
+.scope__tick {
+  flex-shrink: 0;
+  font-size: 30rpx;
+  color: var(--sh-primary);
+}
+.cms {
+  margin-top: 28rpx;
+}
+.cms__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14rpx;
+  margin-top: 14rpx;
+}
+.cms__i.is-on {
+  background: var(--sh-primary);
+  color: #fff;
+}
+.warn {
+  display: block;
+  margin-top: 16rpx;
+  font-size: 24rpx;
+  color: var(--sh-danger);
 }
 .submit {
   margin-top: 40rpx;

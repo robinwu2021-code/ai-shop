@@ -38,7 +38,16 @@ public enum ErrorCode {
     SPLIT_EXPIRED(50002, "err.settle.split_expired"),
 
     // ---- 6xxxx 风控 ----
-    RISK_BLOCKED(60001, "err.risk.blocked");
+    RISK_BLOCKED(60001, "err.risk.blocked"),
+
+    // ---- 7xxxx 商家与通道准入 ----
+    /**
+     * 该行业不能用这个主体类型进件（微信小微白名单按行业给，线上业态不支持）。
+     *
+     * <p>单独一个码而不是复用 BAD_REQUEST：端上要据此把「换个主体」这条出路
+     * 直接说出来，而通用的「请求参数有误」什么也没告诉商家。
+     */
+    INDUSTRY_SUBJECT_NOT_ALLOWED(70001, "err.merchant.industry_subject_not_allowed");
 
     private final int code;
     private final String msgKey;

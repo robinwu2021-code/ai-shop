@@ -1,7 +1,7 @@
 package ai.neargo.shop.scenario;
 
-import ai.neargo.shop.user.entity.UsrMerchant;
-import ai.neargo.shop.user.mapper.UserMappers.MerchantMapper;
+import ai.neargo.shop.user.merchant.entity.MchEntity;
+import ai.neargo.shop.user.mapper.UserMappers.MchEntityMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -44,7 +44,7 @@ class M4FulfillmentFlowTest {
     private ai.neargo.shop.user.service.OtpStore otpStore;
 
     @Autowired
-    private MerchantMapper merchantMapper;
+    private MchEntityMapper merchantMapper;
 
     private MockMvc mvc() {
         return MockMvcBuilders.webAppContextSetup(context)
@@ -346,9 +346,11 @@ class M4FulfillmentFlowTest {
     private String loginAsOwnerOf(String merchantNo, String phone) throws Exception {
         String token = login(phone);
         String userNo = userNoOf(token);
-        UsrMerchant m = merchantMapper.selectOne(Wrappers.<UsrMerchant>lambdaQuery()
-                .eq(UsrMerchant::getMerchantNo, merchantNo).last("limit 1"));
+        MchEntity m = merchantMapper.selectOne(Wrappers.<MchEntity>lambdaQuery()
+                .eq(MchEntity::getEntityNo, merchantNo).last("limit 1"));
         m.setOwnerUserNo(userNo);
+        // V44 起 B 端身份来自 mch_account，不再是 owner_user_no —— 两处都要写
+        grantOwner(m.getEntityNo(), userNo);
         merchantMapper.updateById(m);
         // 作用域在登录时解析，改完属主要重新登录一次才生效
         return login(phone);
@@ -370,4 +372,29 @@ class M4FulfillmentFlowTest {
                 .andReturn().getResponse().getContentAsString();
         return json.readTree(body).get("data").get("token").asString();
     }
+    /** 授予 B 端身份：写一条 owner 成员行（幂等）。 */
+    private void grantOwner(String merchantNo, String userNo) {
+        var existing = merchantStaffMapper.selectOne(
+                com.baomidou.mybatisplus.core.toolkit.Wrappers
+                        .<ai.neargo.shop.user.merchant.entity.MchAccount>lambdaQuery()
+                        .eq(ai.neargo.shop.user.merchant.entity.MchAccount::getEntityNo, merchantNo)
+                        .last("limit 1"));
+        if (existing != null) {
+            existing.setUserNo(userNo);
+            merchantStaffMapper.updateById(existing);
+            return;
+        }
+        var st = new ai.neargo.shop.user.merchant.entity.MchAccount();
+        st.setMchAccountNo("SF-T-" + merchantNo);
+        st.setEntityNo(merchantNo);
+        st.setUserNo(userNo);
+        st.setIsOwner(true);
+        st.setIsPrimary(true);
+        st.setStatus(ai.neargo.shop.user.merchant.entity.MchAccount.ACTIVE);
+        merchantStaffMapper.insert(st);
+    }
+
+    @Autowired
+    private ai.neargo.shop.user.mapper.UserMappers.MchAccountMapper merchantStaffMapper;
+
 }

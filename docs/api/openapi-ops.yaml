@@ -116,6 +116,9 @@ components:
         auditRemark: 
           type: "string"
           description: "最近一次审核意见（驳回原因/补交项）"
+        asPickupPoint: 
+          type: "boolean"
+          description: "申请人是否愿意承接自提点（ADR-005）。\n\n**只是意愿，通过审核不会自动建点** —— 自提点的服务费口径是逐点线下谈的， 没有一个默认值能覆盖。放在审核页上是为了让运营**看见有人在等**： 不显示的话，申请人勾了这一项、通过后什么也没发生，而中间没有任何一处会报错。"
       required: 
         - "merchantNo"
         - "name"
@@ -201,6 +204,85 @@ components:
         - "operator"
         - "at"
       additionalProperties: false
+    ApplyStatus: 
+      type: "string"
+      enum: 
+        - "PENDING"
+        - "REVIEWING"
+        - "APPROVED"
+        - "REJECTED"
+      description: "入驻申请状态。\n\n**它不是商家的状态** —— 申请与主体是两个东西：通过之前商家<b>还不存在</b>。 曾经把审核建模成「商家的一个状态」，于是驳回的申请会在商家表里留下一行 从没开过张的「僵尸商家」，出现在每一处按主体聚合的地方（结算、积分、报表）。"
+    MerchantApply: 
+      type: "object"
+      properties: 
+        applyNo: 
+          type: "string"
+          description: "申请单号。审核动作都打在它上面，不是商家号"
+        merchantNo: 
+          type: "string"
+          description: "通过后生成的主体号。**未通过时为空** —— 商家在通过之前根本不存在"
+        name: 
+          type: "string"
+          description: "拟用店铺名。**存快照** —— 后来改名不该让历史申请跟着变"
+        subject: 
+          type: "string"
+          description: "法律形态 MICRO / INDIVIDUAL / ENTERPRISE"
+        contactName: 
+          type: "string"
+          description: "联系人姓名。审核要打电话找人"
+        contactPhone: 
+          type: "string"
+          description: "联系手机号（申请人自己填的，不一定是登录号）。**通过后它就是商家账号的登录号**"
+        category: 
+          type: "string"
+          description: "主营类目"
+        desc: 
+          type: "string"
+          description: "店铺简介。通过后会写进主体档案，C 端门店页读的就是它"
+        industry: 
+          type: "string"
+          description: "行业。**决定这家店能不能以小微进件** —— 审核页要看得到它， 否则运营批了一个行业不允许小微的小微商家，通道那边才会拒。"
+        serviceScope: 
+          type: "string"
+          description: "期望服务范围。**商家可以留空，但通过时必须确定** —— 空的后果是商家上着架却对谁都不可见，且没有任何报错。"
+        communityNos: 
+          type: "array"
+          items: 
+            type: "string"
+          description: "覆盖的小区。scope=COMMUNITY 时**空 = 通过之后对谁都不可见**"
+        licenses: 
+          type: "array"
+          items: 
+            type: "string"
+          description: "已传的资质图。个体户/企业必传，小微免 —— 缺它正是驳回的主因"
+        asPickupPoint: 
+          type: "boolean"
+          description: "是否愿意承接自提点（ADR-005）。**只是意愿，不代表点已建立**"
+        status: 
+          "$ref": "#/definitions/ApplyStatus"
+          description: "审核状态"
+        rejectReason: 
+          type: "string"
+          description: "驳回原因。**驳回必写** —— 不写对方只能猜着改"
+        createdAt: 
+          type: "number"
+          description: "提交时间"
+        auditedAt: 
+          type: "number"
+          description: "审核完成时间。待审期间为空"
+      required: 
+        - "applyNo"
+        - "name"
+        - "subject"
+        - "contactName"
+        - "contactPhone"
+        - "category"
+        - "desc"
+        - "asPickupPoint"
+        - "status"
+        - "createdAt"
+      additionalProperties: false
+      description: "入驻申请单（后端 `mch_entity_apply`）。"
     FulfillType: 
       type: "string"
       enum: 
@@ -2201,6 +2283,48 @@ components:
         SG: 
           type: "number"
       additionalProperties: false
+    GoodsAudit: 
+      type: "object"
+      properties: 
+        goodsNo: 
+          type: "string"
+          description: "商品单号。审核动作打在它上面"
+        title: 
+          type: "string"
+          description: "标题。审核先看它 —— 违规多半从标题就能看出来"
+        subtitle: 
+          type: "string"
+          description: "副标题/卖点"
+        cover: 
+          type: "string"
+          description: "封面图。图文不符是驳回的主因之一，所以要能看到图"
+        type: 
+          type: "string"
+          description: "商品形态 NORMAL/FRESH/SERVICE/VIRTUAL/CARD"
+        categoryNo: 
+          type: "string"
+          description: "平台类目。**当前恒为空** —— 商品编辑页还没有选类目这一步"
+        merchant: 
+          type: "object"
+          properties: 
+            merchantNo: 
+              type: "string"
+            name: 
+              type: "string"
+          required: 
+            - "merchantNo"
+            - "name"
+          additionalProperties: false
+          description: "归属商家（后端下发的是一个 brief 对象，不是裸的 merchantNo）—— 审核时要看得到是谁上的架：同一个商家反复交同类违规品是有信号的。"
+        status: 
+          type: "string"
+          description: "商品状态。**字段名是 `status` 不是 `auditStatus`** —— 后端 `GoodsVO` 里它同时承载审核态与上下架态：AUDITING / ON_SALE / OFF_SALE / REJECTED。"
+      required: 
+        - "goodsNo"
+        - "title"
+        - "type"
+      additionalProperties: false
+      description: "待审商品（后端 `prd_goods`，**goods 粒度不是 sku 粒度**）。\n\n<p>与本文件里 `Sku` 的差别：审核判的是「这件商品能不能卖」—— 标题、图、类目、资质都在 goods 上；sku 只是规格与价格。 拿 sku 粒度去审，同一件商品会被审好几遍。"
     SettleStatus: 
       type: "string"
       enum: 
@@ -3454,6 +3578,43 @@ components:
         - "updatedAt"
       additionalProperties: false
       description: "开关与灰度（P-17.1.5）。"
+    Industry: 
+      type: "object"
+      properties: 
+        industry: 
+          type: "string"
+          description: "行业码，入驻申请回传的就是它"
+        name: 
+          type: "string"
+          description: "展示名。三端都取服务端的，不各自维护翻译"
+        sort: 
+          type: "number"
+          description: "排序"
+        enabled: 
+          type: "boolean"
+          description: "是否启用。关掉后入驻表单里不再出现这个行业"
+        wechatMicroAllowed: 
+          type: "boolean"
+          description: "微信是否允许该行业以小微进件"
+        alipayMicroAllowed: 
+          type: "boolean"
+          description: "支付宝是否允许"
+        pointsForced: 
+          type: "boolean"
+          description: "是否**强制开启积分**（商家不可自行关闭）。 它是 `mch_entity.points_forced` 的来源 —— 高毛利行业平台会要求让利。"
+        remark: 
+          type: "string"
+          description: "备注：为什么这么配。改白名单是会被商家追问的操作"
+      required: 
+        - "industry"
+        - "name"
+        - "sort"
+        - "enabled"
+        - "wechatMicroAllowed"
+        - "alipayMicroAllowed"
+        - "pointsForced"
+      additionalProperties: false
+      description: "行业主数据（后端 `sys_industry`）。**已接真后端。**\n\n<p>它不是一张普通的字典表：**行业决定商家能不能以小微主体进件** —— 微信的小微白名单按行业给，判错一次商家就是进件被拒，而那时他已经开完店、上完架。"
 security: 
   - bearerAuth: []
 paths: 
@@ -7260,6 +7421,126 @@ paths:
             schema: 
               type: "object"
         description: "请求体字段见对应契约方法的入参。"
+  "/ops/merchant/apply/search": 
+    get: 
+      operationId: "listApplies"
+      summary: "入驻申请检索"
+      tags: 
+        - "merchant"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "object"
+                    properties: 
+                      records: 
+                        type: "array"
+                        items: 
+                          "$ref": "#/components/schemas/MerchantApply"
+                      total: 
+                        type: "integer"
+                      page: 
+                        type: "integer"
+                      size: 
+                        type: "integer"
+                    required: 
+                      - "records"
+                      - "total"
+                      - "page"
+                      - "size"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/merchant/apply/{applyNo}/accept": 
+    post: 
+      operationId: "acceptApply"
+      summary: "受理：告诉商家「有人在看了」"
+      tags: 
+        - "merchant"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "object"
+                    nullable: true
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters: 
+        - name: "applyNo"
+          in: "path"
+          required: true
+          schema: 
+          type: "string"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/merchant/apply/{applyNo}/audit": 
+    post: 
+      operationId: "auditApply"
+      summary: "审核"
+      tags: 
+        - "merchant"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "object"
+                    nullable: true
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters: 
+        - name: "applyNo"
+          in: "path"
+          required: true
+          schema: 
+          type: "string"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
   "/ops/merchants": 
     get: 
       operationId: "listMerchants"
@@ -7337,7 +7618,7 @@ paths:
   "/ops/merchants/{merchantNo}/status": 
     post: 
       operationId: "setMerchantStatus"
-      summary: "审核推进（DRAFT→SUBMITTED→REVIEWING→APPROVED/REJECTED），非法迁移抛错"
+      summary: "审核推进"
       tags: 
         - "merchant"
       responses: 
@@ -8607,6 +8888,86 @@ paths:
             schema: 
               type: "object"
         description: "请求体字段见对应契约方法的入参。"
+  "/ops/goods/audit-queue": 
+    get: 
+      operationId: "listGoodsAuditQueue"
+      summary: "待审队列"
+      tags: 
+        - "product"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "object"
+                    properties: 
+                      records: 
+                        type: "array"
+                        items: 
+                          "$ref": "#/components/schemas/GoodsAudit"
+                      total: 
+                        type: "integer"
+                      page: 
+                        type: "integer"
+                      size: 
+                        type: "integer"
+                    required: 
+                      - "records"
+                      - "total"
+                      - "page"
+                      - "size"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/goods/{goodsNo}/audit": 
+    post: 
+      operationId: "auditGoods"
+      summary: "审核商品"
+      tags: 
+        - "product"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/GoodsAudit"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters: 
+        - name: "goodsNo"
+          in: "path"
+          required: true
+          schema: 
+          type: "string"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
   "/ops/categories": 
     get: 
       operationId: "listCategories"
@@ -9650,6 +10011,148 @@ paths:
                   - "data"
       parameters: 
         - name: "templateNo"
+          in: "path"
+          required: true
+          schema: 
+          type: "string"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/industries": 
+    get: 
+      operationId: "listIndustries"
+      summary: "listIndustries"
+      tags: 
+        - "system"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "array"
+                    items: 
+                      "$ref": "#/components/schemas/Industry"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/industries/{industry}/micro-allowed": 
+    post: 
+      operationId: "setIndustryMicroAllowed"
+      summary: "改某通道的小微白名单"
+      tags: 
+        - "system"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/Industry"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters: 
+        - name: "industry"
+          in: "path"
+          required: true
+          schema: 
+          type: "string"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/industries/{industry}/enabled": 
+    post: 
+      operationId: "setIndustryEnabled"
+      summary: "停用后入驻表单里不再出现这个行业"
+      tags: 
+        - "system"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/Industry"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters: 
+        - name: "industry"
+          in: "path"
+          required: true
+          schema: 
+          type: "string"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/industries/{industry}/points-forced": 
+    post: 
+      operationId: "setIndustryPointsForced"
+      summary: "强制开启积分：商家不可自行关闭 */"
+      tags: 
+        - "system"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/Industry"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters: 
+        - name: "industry"
           in: "path"
           required: true
           schema: 

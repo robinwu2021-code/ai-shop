@@ -28,8 +28,8 @@ import java.util.Optional;
  * 无论它怎么写都泄漏不了。
  *
  * <p><b>为什么这里要 {@code executeWithoutScope}</b>：{@code ord_sub_order} 是**一表三维**
- * （user / merchant / pickup）。会话是商家时，数据域拦截器按 {@code merchant_no} 过滤 ——
- * 而自提点要看的恰恰是「**别家商家**的货到我点上」，那些行的 merchant_no 不是他。
+ * （user / merchant / pickup）。会话是商家时，数据域拦截器按 {@code entity_no} 过滤 ——
+ * 而自提点要看的恰恰是「**别家商家**的货到我点上」，那些行的 entity_no 不是他。
  * 拦截器一过滤，核销台就永远查不到别家的单，症状是「扫码提示码不存在」。
  * 因此这里显式豁免行级维度，改由**方法参数里的 {@code pickupNo} + 上层
  * {@code PickupService.requireScope} 的作用域校验**来保证只看得到自己的点。
@@ -130,7 +130,7 @@ public class FulfillmentQueryPortImpl implements FulfillmentQueryPort {
 
         // 核销是自提线走到终态的唯一出口：评价开放、结算解冻计时、通知用户都挂在这条事件上
         eventBus.publish(new OrderEvents.SubOrderCompleted(sub.getSubOrderNo(), sub.getOrderNo(),
-                sub.getMerchantNo(), sub.getUserNo()));
+                sub.getEntityNo(), sub.getUserNo()));
         return true;
     }
 
@@ -143,7 +143,7 @@ public class FulfillmentQueryPortImpl implements FulfillmentQueryPort {
 
         var buyer = userPort.find(s.getUserNo());
         return new PickupOrder(s.getSubOrderNo(), s.getVerifyCode(), s.getStatus(),
-                s.getPickupNo(), s.getMerchantNo(), s.getMerchantName(),
+                s.getPickupNo(), s.getEntityNo(), s.getEntityName(),
                 buyer.map(UserQueryPort.UserBrief::nickname).orElse("邻居"),
                 buyer.map(UserQueryPort.UserBrief::phoneTail).orElse(""),
                 s.getGroupNo(), items);

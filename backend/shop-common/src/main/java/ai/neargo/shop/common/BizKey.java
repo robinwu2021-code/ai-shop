@@ -30,6 +30,9 @@ public final class BizKey {
     public static final String PICKUP_POINT = "PP";
     public static final String GOODS = "G";
     public static final String SKU = "SK";
+    public static final String SPEC_TEMPLATE = "SPT";
+    public static final String STORE = "ST";
+    public static final String MERCHANT_STAFF = "SF";
     public static final String GROUP_BUY = "GB";
     public static final String GROUP_REQUEST = "GR";
     public static final String QUOTE = "Q";
@@ -38,6 +41,8 @@ public final class BizKey {
     public static final String APPEAL = "AP";
     public static final String SETTLE_BILL = "STL";
     public static final String EVENT = "EVT";
+    /** 收款商户号业务键。**不是二级商户号本身** —— 那个由通道给，存在 sub_mchid */
+    public static final String PAY_MERCHANT = "PM";
 
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
     private static final AtomicInteger SEQ = new AtomicInteger(0);

@@ -12,11 +12,15 @@ import type {
   OrderItem,
   ServiceScope,
   MerchantApplyReq,
+  MerchantApplyStatus,
   SpecTemplate,
   PickupPoint,
   DeliveryRule,
   MarketingCampaign,
   MerchantProfile,
+  MerchantStaff,
+  PaymentApplyment,
+  Store,
   StoreProfile,
   Address,
   Message,
@@ -231,7 +235,9 @@ const merchantSeeds: MerchantSeed[] = [
     distanceFromCM001: 0,
     name: t("邻里优选自营", "Neighbourly Select", "نيبرلي المختارة"),
     logo: "🏪",
-    type: "PLATFORM",
+    // 「平台自营」不是主体类型（ADR-010）—— 自营的主体也是个企业。
+  // 一期没有真实自营商家，演示数据按企业处理
+  type: "ENTERPRISE",
     desc: t(
       "平台自营，日用百货与卡券由平台直采直供",
       "Platform-operated. Household goods and cards sourced directly.",
@@ -275,7 +281,7 @@ const merchantSeeds: MerchantSeed[] = [
     breachCount: 1,
     name: t("邻里家政", "Neighbourly Home Care", "خدمات الجوار المنزلية"),
     logo: "🧰",
-    type: "COMPANY",
+    type: "ENTERPRISE",
     desc: t(
       "持证家政团队，家电清洗与保洁上门服务",
       "Certified home-care team. Appliance cleaning and housekeeping.",
@@ -862,7 +868,7 @@ export const db = {
     name: "",
     logo: "🏪",
     status: "NONE",
-    subject: "PERSONAL",
+    subject: "MICRO",
     tier: "SMALL",
     phone: "",
     isPickupPoint: false,
@@ -878,6 +884,49 @@ export const db = {
     serviceScope: "COMMUNITY",
     serviceCommunityNos: ["CM001", "CM002"],
   } as StoreProfile,
+
+  /**
+   * 门店。**默认只有一家**（= FREE 档），与生产默认额度一致 ——
+   * mock 里塞三家的话，「只能开一家」这条最常被触发的限制在开发期永远看不到。
+   */
+  stores: [
+    {
+      storeNo: "ST-MOCK-1",
+      name: "张记粮油",
+      address: "阳光里小区南门 · 张记粮油",
+      isDefault: true,
+      status: "ACTIVE",
+      payReady: true,
+      staffCount: 1,
+    },
+  ] as Store[],
+
+  /** 门店额度。改这个数就能在 mock 下体验 PRO/CHAIN 档 */
+  storeQuota: 1,
+
+  /** 员工。第一条是老板 —— 列表第一眼要能看出谁是老板 */
+  staff: [
+    {
+      mchAccountNo: "SF-MOCK-OWNER",
+      loginPhone: "138****8000",
+      isOwner: true,
+      status: "ACTIVE",
+      roles: [],
+    },
+  ] as MerchantStaff[],
+
+  /**
+   * 收款进件。**默认停在 APPLYING** —— 演示环境也要能看到「店开了但还收不了钱」这个状态，
+   * 它是真实世界里最常见的一种，做成 ACTIVE 就把这段界面藏起来了。
+   */
+  payment: {
+    payChannel: "WECHAT",
+    channelName: "微信支付",
+    applyStatus: "APPLYING",
+    canReceiveMoney: false,
+    missing: ["settleAccount"],
+    appliedAt: 0,
+  } as PaymentApplyment,
 
   /**
    * 规格模板。平台预置的按类目给，商家存的常用模板追加在后面。
@@ -945,10 +994,15 @@ export const db = {
   ] as SpecTemplate[],
 
   /**
-   * 上一次提交的入驻申请。**驳回后要能改了再交** ——
-   * 不存草稿的话，商家被驳回只能从头重填一遍，而驳回往往只是缺一张执照。
+   * 上一次提交的入驻申请（内容 + 审核进度，**一条记录**）。
+   *
+   * <p>曾经拆成「内容」与「状态」两份存。拆开的结果是 B 端草稿回显读一份、
+   * C 端进度查询读另一份，两份各自更新 —— 而后端 `usr_merchant_apply` 只有一行。
+   * 于是同一次提交在两个端上能显示成两件事，mock 也就不再是后端的替身。
+   *
+   * <p>驳回后要能改了再交：整份带回来，因为驳回往往只是缺一张执照。
    */
-  merchantApply: null as MerchantApplyReq | null,
+  merchantApply: null as MerchantApplyStatus | null,
 
   /** 我收藏的店（C-ST-07「常去的店」） */
   favoriteStores: [] as string[],

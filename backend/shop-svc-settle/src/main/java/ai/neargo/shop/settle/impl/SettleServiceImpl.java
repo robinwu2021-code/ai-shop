@@ -124,7 +124,7 @@ public class SettleServiceImpl implements SettleService {
             bill.setSettleNo(BizKey.next(BizKey.SETTLE_BILL));
             bill.setSubOrderNo(src.subOrderNo());
             bill.setOrderNo(orderNo);
-            bill.setMerchantNo(src.merchantNo());
+            bill.setEntityNo(src.merchantNo());
             bill.setGrossMinor(gross);
             bill.setCommissionMinor(commission);
             bill.setServiceFeeMinor(serviceFee);
@@ -215,7 +215,7 @@ public class SettleServiceImpl implements SettleService {
     public List<SettleBillVO> merchantBills(String merchantNo) {
         return DataScopeContext.executeWithoutScope(() ->
                         billMapper.selectList(Wrappers.<StlBill>lambdaQuery()
-                                .eq(StlBill::getMerchantNo, merchantNo)
+                                .eq(StlBill::getEntityNo, merchantNo)
                                 .orderByDesc(StlBill::getId))).stream()
                 .map(this::toVO).toList();
     }
@@ -225,7 +225,7 @@ public class SettleServiceImpl implements SettleService {
         StlBill bill = DataScopeContext.executeWithoutScope(() ->
                 billMapper.selectOne(Wrappers.<StlBill>lambdaQuery()
                         .eq(StlBill::getSettleNo, settleNo)
-                        .eq(StlBill::getMerchantNo, merchantNo)
+                        .eq(StlBill::getEntityNo, merchantNo)
                         .last("limit 1")));
         if (bill == null) {
             // 属主校验写进查询条件：settleNo 可猜，不能先查出来再比对
@@ -311,7 +311,7 @@ public class SettleServiceImpl implements SettleService {
     }
 
     private SettleBillVO toVO(StlBill b) {
-        return new SettleBillVO(b.getSettleNo(), b.getSubOrderNo(), b.getOrderNo(), b.getMerchantNo(),
+        return new SettleBillVO(b.getSettleNo(), b.getSubOrderNo(), b.getOrderNo(), b.getEntityNo(),
                 nz(b.getGrossMinor()), nz(b.getCommissionMinor()), nz(b.getServiceFeeMinor()),
                 nz(b.getNetMinor()), b.getTrafficSource(), nzi(b.getCommissionRate()),
                 b.getStatus(),

@@ -1,6 +1,6 @@
 package ai.neargo.shop.user.dto;
 
-import ai.neargo.shop.user.entity.UsrMerchant;
+import ai.neargo.shop.user.merchant.entity.MchEntity;
 
 import java.util.List;
 
@@ -27,12 +27,16 @@ public record MerchantVO(String merchantNo,
     public record Scores(double goods, double service, double speed) {
     }
 
-    public static MerchantVO of(UsrMerchant m, List<String> tags) {
+    /**
+     * @param address   来自门面表 {@code mch_store}，不是主体表（V42 起主体上没有这两列）
+     * @param openHours 同上
+     */
+    public static MerchantVO of(MchEntity m, List<String> tags, String address, String openHours) {
         return new MerchantVO(
-                m.getMerchantNo(), m.getName(), m.getLogo(),
+                m.getEntityNo(), m.getName(), m.getLogo(),
                 score(m.getRating()), Boolean.TRUE.equals(m.getVerified()), nz(m.getBreachCount()),
-                m.getType(), m.getDescription(), nz(m.getSalesCount()), nz(m.getRatingCount()),
-                nz(m.getGoodsCount()), m.getAddress(), m.getOpenHours(),
+                m.getLegalForm(), m.getDescription(), nz(m.getSalesCount()), nz(m.getRatingCount()),
+                nz(m.getGoodsCount()), address, openHours,
                 m.getJoinedAt() == null ? 0L : m.getJoinedAt(), tags,
                 new Scores(score(m.getScoreGoods()), score(m.getScoreService()), score(m.getScoreSpeed())));
     }
@@ -41,8 +45,8 @@ public record MerchantVO(String merchantNo,
     public record Brief(String merchantNo, String name, String logo,
                         double rating, boolean verified, int breachCount) {
 
-        public static Brief of(UsrMerchant m) {
-            return new Brief(m.getMerchantNo(), m.getName(), m.getLogo(),
+        public static Brief of(MchEntity m) {
+            return new Brief(m.getEntityNo(), m.getName(), m.getLogo(),
                     score(m.getRating()), Boolean.TRUE.equals(m.getVerified()), nz(m.getBreachCount()));
         }
     }

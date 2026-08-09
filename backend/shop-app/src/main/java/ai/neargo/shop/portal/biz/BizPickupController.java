@@ -19,7 +19,7 @@ import java.util.List;
 /**
  * B 端自提点履约台（[API 清单 §3.5]）。
  *
- * <p>作用域是 {@code pickup_no}，与商家域的 {@code merchant_no} **正交**：
+ * <p>作用域是 {@code pickup_no}，与商家域的 {@code entity_no} **正交**：
  * 一家店可以不做自提点，一个自提点也会承接别家的货。因此这里不复用 `/biz/order` 的过滤。
  */
 @RestController

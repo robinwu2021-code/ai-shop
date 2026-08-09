@@ -31,11 +31,36 @@ public class StoreHistoryPortImpl implements StoreHistoryPort {
     }
 
     @Override
+    public List<PurchasedSku> skusOfOrder(String userNo, String orderNo) {
+        List<OrdSubOrder> subs = DataScopeContext.executeWithoutScope(() ->
+                subOrderMapper.selectList(Wrappers.<OrdSubOrder>lambdaQuery()
+                        .eq(OrdSubOrder::getOrderNo, orderNo)
+                        .eq(OrdSubOrder::getUserNo, userNo)));   // ★ 归属校验，别人的单查不到
+        if (subs.isEmpty()) {
+            return List.of();
+        }
+        List<String> subNos = subs.stream().map(OrdSubOrder::getSubOrderNo).toList();
+        long boughtAt = subs.stream().mapToLong(s -> s.getCreatedAt() == null ? 0L
+                : s.getCreatedAt().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli())
+                .max().orElse(0L);
+
+        return DataScopeContext.executeWithoutScope(() ->
+                        itemMapper.selectList(Wrappers.<OrdItem>lambdaQuery()
+                                .in(OrdItem::getSubOrderNo, subNos))).stream()
+                // 赠品由促销规则实时算，加回购物车会变成一件白拿的正价商品
+                .filter(i -> !Boolean.TRUE.equals(i.getIsGift()))
+                .map(i -> new PurchasedSku(i.getGoodsNo(), i.getSkuNo(), i.getTitle(), i.getSpec(),
+                        i.getPrice() == null ? 0L : i.getPrice(),
+                        i.getQty() == null ? 1 : i.getQty(), boughtAt))
+                .toList();
+    }
+
+    @Override
     public List<PurchasedSku> purchasedSkus(String userNo, String merchantNo) {
         List<OrdSubOrder> subs = DataScopeContext.executeWithoutScope(() ->
                 subOrderMapper.selectList(Wrappers.<OrdSubOrder>lambdaQuery()
                         .eq(OrdSubOrder::getUserNo, userNo)
-                        .eq(OrdSubOrder::getMerchantNo, merchantNo)
+                        .eq(OrdSubOrder::getEntityNo, merchantNo)
                         .in(OrdSubOrder::getStatus, PAID_STATES)));
         if (subs.isEmpty()) {
             return List.of();

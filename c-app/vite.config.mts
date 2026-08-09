@@ -32,6 +32,31 @@ export default defineConfig({
   // store 调 `setCurrentCurrency("USD")` 改的是副本，页面读到的还是 CNY，
   // 表现为「切了市场，价格还是 ¥」，而类型检查、单测、构建全都不会报错。
   optimizeDeps: { exclude: ["@ai-shop/ui"] },
-  server: { port: Number(process.env.PORT) || 5173, strictPort: false },
+  server: {
+    port: Number(process.env.PORT) || 5173,
+    strictPort: false,
+    /*
+     * ⚠️ `preserveSymlinks: true`（见上）的副作用：**vite 只 watch 软链本身，
+     * 不 watch 它指向的真实目录**。于是改 `packages/ui` 的组件或样式，
+     * dev server 毫无反应 —— 页面用的还是启动那一刻的旧版本。
+     *
+     * 这个坑咬过两次，且两次都极难判断：改动明明在源码里、类型检查通过、
+     * 构建产物也正确，唯独浏览器里没变化，看起来像"代码没生效"。
+     * 显式把 monorepo 根加进 watch 白名单，改共享包即时热更。
+     */
+    watch: { ignored: ["!**/packages/**"] },
+    fs: { allow: [fileURLToPath(new URL("..", import.meta.url))] },
+    /*
+     * 反代到本地后端（`VITE_USE_MOCK=0` 时生效）。
+     *
+     * 走反代而不是让前端直连 8080：后端**没有任何 CORS 配置** —— 这是对的，
+     * 生产上前后端同域，为本地联调去开一个 `allowedOrigins: *` 只会把一个
+     * 只在开发期存在的口子带进生产配置。反代让浏览器眼里始终是同源。
+     */
+    proxy: {
+      "/mp": { target: "http://localhost:8080", changeOrigin: true },
+      "/biz": { target: "http://localhost:8080", changeOrigin: true },
+    },
+  },
   plugins: [uni(), UnoCSS()],
 });

@@ -2,6 +2,7 @@ package ai.neargo.shop.marketing.attribution.entity;
 
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Getter;
 import lombok.Setter;
@@ -29,7 +30,7 @@ public class MktAttributionLog {
     private Long id;
 
     private String userNo;
-    private String merchantNo;
+    private String entityNo;
     private String inviterNo;
     private String channel;
     private String source;

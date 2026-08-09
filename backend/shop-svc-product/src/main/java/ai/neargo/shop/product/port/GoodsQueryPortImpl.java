@@ -60,7 +60,7 @@ public class GoodsQueryPortImpl implements GoodsQueryPort {
             }
             int available = nz(sku.getStock()) - nz(sku.getLockedStock());
             result.put(sku.getSkuNo(), new SkuSnapshot(
-                    sku.getSkuNo(), sku.getGoodsNo(), sku.getMerchantNo(),
+                    sku.getSkuNo(), sku.getGoodsNo(), sku.getEntityNo(),
                     g.getTitle(), g.getCover(), sku.getSpec(), g.getType(),
                     sku.getPrice() == null ? 0L : sku.getPrice(),
                     Math.max(available, 0),

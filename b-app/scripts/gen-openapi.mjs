@@ -41,7 +41,12 @@ for (const [key, ep] of Object.entries(endpoints)) {
   if (bad && !/^(goods|address)$/.test(bad[1])) {
     throw new Error(`端点 "${key}" 的路径 ${ep.path} 用了复数资源名 "${bad[1]}" 且紧跟 id`);
   }
-  if (!ep.path.startsWith("/biz/")) {
+  /*
+   * `/common/**` 是跨端公共元数据（行业/主体/通道），C 端与 B 端要的是同一份。
+   * 给它造一个 /biz 别名只会得到两条路径服务同一件事，而两条路径迟早返回不一样的东西。
+   * 与 packages/shared/tests/type-alignment.test.ts 的豁免口径一致。
+   */
+  if (!ep.path.startsWith("/biz/") && !ep.path.startsWith("/common/")) {
     throw new Error(`端点 "${key}" 的路径 ${ep.path} 不在 /biz/** 下 —— B 端前缀见 ADR-007`);
   }
 }
@@ -123,9 +128,24 @@ if (Object.keys(renamed).length) {
 /** 契约方法 → 响应类型名 */
 const RESPONSE_TYPES = {
   mLogin: "MerchantLoginResp",
+  mStaffLogin: "MerchantLoginResp",
   mProfile: "MerchantProfile",
   mApply: "MerchantProfile",
   mApplyDraft: "MerchantApplyReq",
+  mMasterData: "MasterData",
+  mPayments: "PaymentApplyment[]",
+  mSubmitPayment: "PaymentApplyment",
+  mRefreshPayment: "PaymentApplyment",
+  mStoreList: "Store[]",
+  mCreateStore: "Store",
+  mRenameStore: "Store",
+  mSetStoreStatus: "Store",
+  mSetDefaultStore: "Store",
+  mSetStorePayment: "Store",
+  mStaffList: "MerchantStaff[]",
+  mAddStaff: "MerchantStaff",
+  mSetStaffStatus: "MerchantStaff",
+  mGrantStore: "MerchantStaff",
   mStore: "StoreProfile",
   mCommunities: "Community[]",
   mSaveStore: "StoreProfile",
@@ -171,13 +191,25 @@ const RESPONSE_TYPES = {
   mCustomers: "MerchantCustomer[]",
   mSettleList: "SettleBill[]",
   mRateCard: "RateCard",
+  mPointsAccount: "MerchantPointAccount",
+  mPointsRecords: "MerchantPointsRecord[]",
+  mPointsToggle: "MerchantPointAccount",
   mReportShortage: "Order",
 };
 
 /** 契约方法 → 入参类型名。GET 的展开成 query 参数，POST 的作为 requestBody */
 const REQUEST_TYPES = {
   mLogin: "MerchantLoginReqBody",
+  mStaffLogin: "StaffLoginReq",
   mApply: "MerchantApplyReqBody",
+  mSubmitPayment: "SubmitPaymentReq",
+  mCreateStore: "StoreEditReq",
+  mRenameStore: "StoreEditReq",
+  mSetStoreStatus: "SetActiveReq",
+  mSetStorePayment: "SetStorePaymentReq",
+  mAddStaff: "AddStaffReq",
+  mSetStaffStatus: "SetActiveReq",
+  mGrantStore: "GrantStoreReq",
   mSaveStore: "SaveStoreReqBody",
   mShareKit: "ShareKitQuery",
   mGoodsList: "GoodsListQuery",

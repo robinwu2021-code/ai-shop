@@ -1,6 +1,7 @@
 package ai.neargo.shop.trade.entity;
 
 import ai.neargo.shop.common.BaseEntity;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Getter;
 import lombok.Setter;
@@ -29,7 +30,7 @@ public class OrdAfterSale extends BaseEntity {
     private String subOrderNo;
     private String orderNo;
     private String userNo;
-    private String merchantNo;
+    private String entityNo;
 
     private String type;
     private String status;
@@ -62,4 +63,15 @@ public class OrdAfterSale extends BaseEntity {
      */
     private String disputeReason;
 
+
+    /**
+     * 退款时积分扣不回来的部分，折成现金从退款里扣（分）。
+     *
+     * <p><b>退款单必须明示</b>：「已使用积分优惠 1.00 元，本次退款 99.00 元」。
+     * 不写清楚，「我退 100 你只退我 99」必然变成客诉。
+     */
+    private Long pointsOffsetMinor;
+
+    /** 对应的退款流水号（stl_payment.payment_no）。退款要重试，重试要幂等，幂等靠它。 */
+    private String refundPaymentNo;
 }

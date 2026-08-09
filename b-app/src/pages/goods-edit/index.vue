@@ -311,6 +311,8 @@ async function save() {
       title: title.value,
       subtitle: subtitle.value,
       type: type.value,
+      // 封面必须带上：上传完只存在 ref 里的话，店主看着图在、保存后 C 端却是空白
+      cover: cover.value,
       specGroups: groups.value
         .filter((g) => g.name.trim() && g.options.some((o) => o.trim()))
         .map((g) => ({

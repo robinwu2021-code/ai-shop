@@ -1,6 +1,7 @@
 package ai.neargo.shop.product.entity;
 
 import ai.neargo.shop.common.BaseEntity;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Getter;
 import lombok.Setter;
@@ -18,7 +19,7 @@ public class PrdCommunityPool extends BaseEntity {
 
     private String communityNo;
     private String goodsNo;
-    private String merchantNo;
+    private String entityNo;
 
     /** 排序权重，运营可置顶。 */
     private Integer sortWeight;

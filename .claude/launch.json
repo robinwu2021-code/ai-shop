@@ -33,6 +33,16 @@
       "cwd": "ops-web",
       "port": 3000,
       "autoPort": true
+    },
+    {
+      "name": "backend",
+      "runtimeExecutable": "/bin/zsh",
+      "runtimeArgs": [
+        "-lc",
+        "JAVA_HOME=/opt/homebrew/Cellar/openjdk@21/21.0.11/libexec/openjdk.jdk/Contents/Home mvn -o -f shop-app/pom.xml spring-boot:run -Dspring-boot.run.arguments=--shop.seed.enabled=true"
+      ],
+      "cwd": "backend",
+      "port": 8080
     }
   ]
 }

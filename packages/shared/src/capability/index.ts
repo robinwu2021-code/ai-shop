@@ -16,7 +16,56 @@ export type Scene = "MP_WECHAT" | "MP_ALIPAY" | "IOS" | "ANDROID" | "H5";
 
 export type PayChannel = "WECHAT" | "ALIPAY";
 
+/**
+ * 通道取值域的**运行时清单**。
+ *
+ * 写成 `satisfies Record<PayChannel, 1>` 而不是手写数组：往联合类型里加一个通道
+ * 却忘了加进这里，**是编译错误**。手写数组的话两者会静默分叉，
+ * 而分叉的表现是「新通道在校验里被当成非法值」——发到线上才知道。
+ *
+ * 能力位（能否补差/分账/打款）不在这里，在 `sys_pay_channel` 表里 ——
+ * **表管能力，类型管取值**：能力会随对方发版而变，取值不会凭空冒出来。
+ */
+export const PAY_CHANNELS = Object.keys({
+  WECHAT: 1,
+  ALIPAY: 1,
+} satisfies Record<PayChannel, 1>) as PayChannel[];
+
 export type PayMethod = "JSAPI" | "APP" | "H5" | "NATIVE";
+
+/**
+ * 行业。**商家的基础属性，与商品类目是两个维度** ——
+ * 行业挂商家（一家一个），类目挂商品（一家可卖多类）。
+ *
+ * 前五个是微信小微准入白名单里明确列出的，`ONLINE` 是明确排除的，
+ * `OTHER` 是保守兜底。**不自己发明分类**：多一个我们自造的行业，
+ * 就多一次「它到底映射到通道的哪一类」的猜测。
+ */
+export type Industry =
+  | "CATERING"
+  | "RETAIL"
+  | "LIFE_SERVICE"
+  | "ENTERTAINMENT"
+  | "TRANSPORT"
+  | "ONLINE"
+  | "OTHER";
+
+/**
+ * 行业取值域的运行时清单。写法与 {@link PAY_CHANNELS} 同 ——
+ * 往联合类型里加一个却忘了加进这里，**是编译错误**。
+ *
+ * 准入能力（能否小微、是否强制开积分）不在这里，在 `sys_industry` 表里：
+ * 白名单是通道的规则，会变；取值域不会凭空冒出来。
+ */
+export const INDUSTRIES = Object.keys({
+  CATERING: 1,
+  RETAIL: 1,
+  LIFE_SERVICE: 1,
+  ENTERTAINMENT: 1,
+  TRANSPORT: 1,
+  ONLINE: 1,
+  OTHER: 1,
+} satisfies Record<Industry, 1>) as Industry[];
 
 export type SubjectType = "MICRO" | "INDIVIDUAL" | "ENTERPRISE";
 
@@ -119,8 +168,20 @@ export function canPoints(ctx: {
   communityOn: boolean;
   merchantOn: boolean;
   subjectType: SubjectType;
+  /**
+   * 本次支付走的通道能否**补差**（`sys_pay_channel.supports_subsidy`）。
+   *
+   * 积分抵扣要求平台在分账前把差额补进二级商户账户，否则商家收到的钱
+   * 与订单金额对不上。通道没有这个能力时**直接不开积分** ——
+   * 不做兜底记账：那意味着一套余额表、冲抵逻辑、打款流程和监控，
+   * 而它服务的是一个尚不存在的通道。
+   */
+  channelSupportsSubsidy: boolean;
 }): Verdict {
   if (!ctx.globalOn) return deny("积分功能未开放");
+  // 通道能力排在社区/商家开关之前：它是**做不到**，不是**没开** ——
+  // 提示语要让用户知道换个端就能用，而不是以为这家店不支持
+  if (!ctx.channelSupportsSubsidy) return deny("当前支付方式不支持积分抵扣");
   if (!ctx.communityOn) return deny("本社区暂未开放积分");
   if (ctx.subjectType === "MICRO") {
     // 积分兑付涉及平台向商家付钱，而小微的税务定性本就模糊，叠加后扣缴风险更高。

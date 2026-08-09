@@ -33,6 +33,14 @@ export interface MerchantLoginReqBody {
   principal: string;
   /** `PHONE_OTP`: 验证码 */
   credential?: string;
+  /**
+   * 是否勾选了用户协议与隐私政策 —— 注册的合规前置，服务端要留痕。
+   *
+   * 登录页一直在发（`{ ...req }` 把 `LoginReq.agreed` 带了出去），
+   * **漏的是这里没声明**，于是生成的 OpenAPI 里没有它，而后端 `LoginReq` 有。
+   * 这类漏声明比漏发更难发现：联调时一切正常，直到有人照着 spec 写另一个客户端。
+   */
+  agreed?: boolean;
 }
 
 /** 入驻申请。字段与共享层的 `MerchantApplyReq` 一致，这里只是给契约一个稳定的 DTO 名 */
@@ -201,4 +209,84 @@ export type SaveCampaignReqBody = CampaignDraft;
 export interface ToggleCampaignReq {
   /** 目标状态：true 启动、false 暂停。暂停不影响已领取的券 */
   running: boolean;
+}
+
+// ---------------------------------------------------------------- 积分
+
+export interface PointsRecordQuery {
+  /** 账期 `YYYYMM`，不传为当期 */
+  period?: string;
+  /** 页码，从 1 起 */
+  page?: number;
+  /** 每页条数 */
+  size?: number;
+}
+
+export interface TogglePointsReq {
+  /** 目标状态。**关闭只影响将来** —— 已发出的分仍有效，已扣的服务费不退 */
+  enabled: boolean;
+}
+
+/**
+ * 提交收款进件。
+ *
+ * @property settleAccount 结算账号**明文**。只在这一次请求里存在 ——
+ *   服务端转给通道后只留掩码，任何回显都是掩码（ADR-002 §5）。
+ *   端上也不要缓存它：表单提交完就清空。
+ */
+export interface SubmitPaymentReq {
+  /** 给哪个通道进件，如 WECHAT */
+  payChannel: string;
+  /** 结算账户形态。不传时后端按法律形态取默认（小微打个人、其余对公） */
+  settleAccountType?: "PERSONAL_OPENID" | "MERCHANT_ID";
+  /** 结算账号明文。见上方说明：**不落库、不进日志、不回显** */
+  settleAccount: string;
+  /** 资质图地址。小微免传，个体户与企业必传 */
+  licenses?: string[];
+  /** 进件联系人。通道核对资料时联系他，不一定等于登录人 */
+  contactName?: string;
+  /** 进件联系电话 */
+  contactPhone?: string;
+}
+
+/** 新建/改名门店。门面其余部分（公告/营业时间/主推）走 SaveStoreReqBody */
+export interface StoreEditReq {
+  /** 门店名 */
+  name: string;
+  /** 门店地址 */
+  address?: string;
+}
+
+/** 停用/启用（门店与员工共用同一个形状） */
+export interface SetActiveReq {
+  /** true 启用 / false 停用 */
+  active: boolean;
+}
+
+/** 换门店收款号。**不传或传空 = 回到主体默认号**，这是合法操作不是清空错误 */
+export interface SetStorePaymentReq {
+  /** 目标收款商户号。只能是本主体已开通的号；空 = 回到主体默认号 */
+  payMerchantNo?: string;
+}
+
+/** 加员工。只要手机号 —— 不发密码、不建 C 端账号 */
+export interface AddStaffReq {
+  /** 员工手机号（11 位）。**它就是登录号** —— 员工用它 + 验证码进 B 端 */
+  loginPhone: string;
+}
+
+/** 授权到店。role 传空 = 收回这家店的授权 */
+export interface GrantStoreReq {
+  /** 授权到哪家店。只能是本主体的门店 */
+  storeNo: string;
+  /** MANAGER 店长 / CLERK 店员；**传空 = 收回这家店的授权** */
+  role?: "MANAGER" | "CLERK";
+}
+
+/** 员工登录。与商家登录同形状，但打的是另一个端点、解析出的是另一套身份 */
+export interface StaffLoginReq {
+  /** 员工的登录手机号（老板在员工管理里加的那个） */
+  phone: string;
+  /** 短信验证码 */
+  code: string;
 }

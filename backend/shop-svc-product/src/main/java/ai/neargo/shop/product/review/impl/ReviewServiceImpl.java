@@ -73,7 +73,7 @@ public class ReviewServiceImpl implements ReviewService {
                 reviewMapper.selectList(Wrappers.<RvwReview>lambdaQuery()
                         .eq(RvwReview::getStatus, VISIBLE)
                         .eq(!isBlank(goodsNo), RvwReview::getGoodsNo, goodsNo)
-                        .eq(!isBlank(merchantNo), RvwReview::getMerchantNo, merchantNo)
+                        .eq(!isBlank(merchantNo), RvwReview::getEntityNo, merchantNo)
                         .orderByDesc(RvwReview::getId)));
 
         Set<String> likedByMe = likedByCurrentUser(rows);
@@ -117,7 +117,7 @@ public class ReviewServiceImpl implements ReviewService {
         r.setOrderNo(cmd.orderNo());
         r.setGoodsNo(cmd.goodsNo());
         r.setSkuNo(item.skuNo());
-        r.setMerchantNo(item.merchantNo());
+        r.setEntityNo(item.merchantNo());
         r.setUserNo(userNo);
         // 昵称与头像存快照：用户改昵称不该让历史评价的署名跟着变
         r.setNickname(userPort.find(userNo).map(UserQueryPort.UserBrief::nickname).orElse("匿名用户"));
@@ -210,7 +210,7 @@ public class ReviewServiceImpl implements ReviewService {
         ReviewVO.Appeal appealVO = appeal == null ? null
                 : new ReviewVO.Appeal(appeal.getAppealNo(), appeal.getReason(),
                 appeal.getStatus(), appeal.getVerdict());
-        return new ReviewVO(r.getReviewNo(), r.getGoodsNo(), r.getMerchantNo(),
+        return new ReviewVO(r.getReviewNo(), r.getGoodsNo(), r.getEntityNo(),
                 r.getNickname(), r.getAvatar(), nz(r.getRating()), r.getContent(),
                 readJson(r.getImages()), r.getSpec(), createdAtMillis(r),
                 nz(r.getLikeCount()), liked, r.getReply(), scores, appealVO);

@@ -1,6 +1,9 @@
 // 唯一契约。页面只依赖这个接口，不感知 mock / 真实后端。
 // 端点对齐后端 C 端 BFF `/mp/**`（见 docs/api）。
 import type {
+  MasterData,
+  MerchantApplyReq,
+  MerchantApplyStatus,
   CartItem,
   Community,
   Coupon,
@@ -20,6 +23,7 @@ import type {
   StoreHome,
   Message,
   PointAccount,
+  PointsDeductible,
   PointRecord,
   Review,
   VisitedMerchant,
@@ -54,6 +58,8 @@ export interface CreateOrderReq {
   /** APPOINTMENT：用户选定的预约开始时间戳 */
   appointmentAt?: number;
 }
+
+import type { PointsDeductibleQuery } from "./requests";
 
 export interface ShopApi {
   // ---- 用户
@@ -204,9 +210,14 @@ export interface ShopApi {
   // ---- 积分（C 端账户）
   pointAccount(): Promise<PointAccount>;
   pointRecords(): Promise<PointRecord[]>;
-  /** 商家侧积分账户：收到的积分与平台兑付情况 */
-  merchantPointAccount(): Promise<PointAccount>;
-  merchantPointRecords(): Promise<PointRecord[]>;
+  /**
+   * 结算页试算：本单最多能抵多少。
+   *
+   * **服务端算而不是端上算**：抵扣上限依赖券后金额、运费拆分与四级开关，
+   * 端上算一遍、服务端下单时再算一遍，两次算法只要有一点不同，
+   * 用户就会看到「结算页说能抵 30，下单后只抵了 25」。
+   */
+  pointsDeductible(q: PointsDeductibleQuery): Promise<PointsDeductible>;
 
   // ---- 卡包（CARD 品类购买后入包）
   myCards(): Promise<UserCard[]>;
@@ -218,12 +229,17 @@ export interface ShopApi {
 
 
   // ---- 商家入驻
-  merchantApply(payload: {
-    name: string;
-    type: "COMPANY" | "INDIVIDUAL";
-    contact: string;
-    phone: string;
-    category: string;
-    desc: string;
-  }): Promise<{ applied: true }>;
+  /**
+   * 平台主数据：行业 / 主体类型 / 支付通道。
+   *
+   * 入驻表单要它才能回答「这个行业能不能选小微」—— 选错主体的后果是进件被拒，
+   * 而那时人已经开完店、上完架。
+   */
+  masterData(): Promise<MasterData>;
+  merchantApply(payload: MerchantApplyReq): Promise<MerchantApplyStatus>;
+  /**
+   * 我的入驻申请状态。**此前提交完就查不到了** ——
+   * 商家不知道审到哪一步，只能打电话问运营。
+   */
+  myMerchantApply(): Promise<MerchantApplyStatus | null>;
 }

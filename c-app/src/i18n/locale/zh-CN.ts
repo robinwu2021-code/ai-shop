@@ -164,6 +164,7 @@ export default {
     addressPrivacy: "成团前只显示到楼栋，付款后才对参团邻居展示完整门牌。",
   },
   me: {
+    myStores: "我的常去店",
     appearance: "外观与语言",
     appearanceValue: "配色 · 明暗 · 语言",
     myCommunity: "我的社区",
@@ -195,7 +196,19 @@ export default {
   },
   market: { CN: "中国 · 人民币", AE: "阿联酋 · 迪拉姆", US: "美国 · 美元", label: "地区与货币" },
   merchant: {
+    applyStatus: {
+      PENDING: "待审核",
+      REVIEWING: "审核中",
+      APPROVED: "已通过",
+      REJECTED: "已驳回，可修改重提",
+    },
+    subject: {
+      MICRO: "小微商户",
+      INDIVIDUAL: "个体工商户",
+      ENTERPRISE: "企业",
+    },
     applySubmitted: "申请已提交，运营会尽快联系你",
+    microBlocked: "该行业不支持小微主体，请选个体户或企业",
     applyFormHint: "填好后运营会联系你核对资质。个体户也可以先入驻，之后再升级。",
     shopName: "店铺名称",
     category: "主营类目（如 生鲜、家政）",
@@ -216,7 +229,8 @@ export default {
     goodsTab: "在售商品 {n}",
     reviewTab: "全部评价 {n}",
     dim: { goods: "商品", service: "服务", speed: "时效" },
-    type: { PLATFORM: "平台自营", COMPANY: "企业商家", INDIVIDUAL: "个体户" },
+    // 与 subject 同一套取值（ADR-010）——「平台自营」不是主体类型，已去掉
+    type: { MICRO: "小微商户", INDIVIDUAL: "个体工商户", ENTERPRISE: "企业商家" },
   },
   review: {
     dimGoods: "商品质量",
@@ -517,6 +531,10 @@ export default {
     invalid: "请填写完整信息，手机号需 11 位",
   },
   points: {
+    pending: "另有 {n} 分待生效，{d} 可用",
+    expenseHint: "开启积分的营销成本，按单计提",
+    periodExpense: "{p} 发分服务费",
+    disabled: "本店未开启积分",
     title: "我的积分",
     entryHint: "{n} 分",
     merchantTitle: "商家积分账户",
@@ -531,9 +549,9 @@ export default {
     rules: "积分规则",
     ruleRate: "{n} 积分抵 1 元",
     ruleCap: "单笔订单最多抵扣订单金额的 {n}%（运费不参与抵扣）",
-    ruleGrant: "积分在订单完成后到账；订单退款会收回已发放的积分并退还已抵扣的积分",
-    ruleMerchant: "用户用积分抵扣的部分，由平台按结算周期兑付给你",
-    ruleExpire: "积分自获得之日起 {n} 天内有效",
+    ruleGrant: "支付成功即发放，售后期结束后可用；订单退款会扣回该单发放的积分，账户不足的部分从退款金额中扣除",
+    ruleMerchant: "发放积分时按比例从货款中扣除费用金；用户在你店里用积分抵扣的部分，由平台按账期兑付给你",
+    ruleExpire: "积分长期有效；连续 {n} 天没有积分变动时，账户积分将清零（到期前 30 天会提醒你）",
     expiring: "有 {n} 积分将于 {d} 过期",
     records: "积分明细",
     after: "余 {n}",

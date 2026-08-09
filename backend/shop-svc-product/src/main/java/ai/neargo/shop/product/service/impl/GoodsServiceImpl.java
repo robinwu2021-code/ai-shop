@@ -62,13 +62,47 @@ public class GoodsServiceImpl implements GoodsService {
     }
 
     @Override
+    public List<GoodsVO> promoted(String communityNo, Integer size) {
+        int limit = size == null || size <= 0 ? 6 : size;
+        LambdaQueryWrapper<PrdGoods> w = Wrappers.<PrdGoods>lambdaQuery()
+                .eq(PrdGoods::getOnSale, true)
+                .eq(PrdGoods::getAuditStatus, "APPROVED");
+
+        // 与 list() 同一条规矩：社区池之外的商品不该出现 —— 用户看到也买不到
+        if (communityNo != null && !communityNo.isBlank()) {
+            List<String> goodsNos = poolMapper.selectList(Wrappers.<PrdCommunityPool>lambdaQuery()
+                            .eq(PrdCommunityPool::getCommunityNo, communityNo)).stream()
+                    .map(PrdCommunityPool::getGoodsNo).toList();
+            if (goodsNos.isEmpty()) {
+                return List.of();
+            }
+            w.in(PrdGoods::getGoodsNo, goodsNos);
+        }
+        /*
+         * 一期无运营后台，按销量兜底。**刻意与主商品流不同序** ——
+         * 主流按距离/上架时间，这里按销量；同序的话推荐位和下面的列表会是同一批货，
+         * 这个位子就白占了。接上运营配置时只换这一段。
+         */
+        w.orderByDesc(PrdGoods::getSales).last("limit " + limit);
+
+        // ★ 公共目录必须显式豁免数据域，与 list() 同一条规矩（见类注释）
+        List<PrdGoods> rows = DataScopeContext.executeWithoutScope(() -> goodsMapper.selectList(w));
+        if (rows.isEmpty()) {
+            return List.of();
+        }
+        // SKU 要一次批量取：逐条查是列表页 N+1 的经典来源
+        Map<String, List<PrdSku>> skus = loadSkus(rows.stream().map(PrdGoods::getGoodsNo).toList());
+        return rows.stream().map(g -> toVO(g, skus.getOrDefault(g.getGoodsNo(), List.of()))).toList();
+    }
+
+    @Override
     public PageData<GoodsVO> list(GoodsQuery q) {
         LambdaQueryWrapper<PrdGoods> w = Wrappers.<PrdGoods>lambdaQuery()
                 .eq(PrdGoods::getOnSale, true)
                 .eq(PrdGoods::getAuditStatus, "APPROVED");
 
         if (q.merchantNo() != null && !q.merchantNo().isBlank()) {
-            w.eq(PrdGoods::getMerchantNo, q.merchantNo());
+            w.eq(PrdGoods::getEntityNo, q.merchantNo());
         } else if (q.communityNo() != null && !q.communityNo().isBlank()) {
             // 社区池是筛选视图：先取该社区可见的 goodsNo，再查商品。
             // 没有池数据 = 该社区还没铺货，返回空列表而不是全量 —— 否则用户会看到根本买不到的东西
@@ -175,9 +209,9 @@ public class GoodsServiceImpl implements GoodsService {
         Long minOrigin = skus.stream().map(PrdSku::getOriginPrice).filter(java.util.Objects::nonNull)
                 .min(Comparator.naturalOrder()).orElse(null);
 
-        var brief = merchantPort.find(g.getMerchantNo())
+        var brief = merchantPort.find(g.getEntityNo())
                 .map(m -> new GoodsVO.MerchantBriefVO(m.merchantNo(), m.merchantName(), "", 0d, false, 0))
-                .orElseGet(() -> new GoodsVO.MerchantBriefVO(g.getMerchantNo(), "", "", 0d, false, 0));
+                .orElseGet(() -> new GoodsVO.MerchantBriefVO(g.getEntityNo(), "", "", 0d, false, 0));
 
         return new GoodsVO(
                 g.getGoodsNo(), g.getTitle(), g.getSubtitle(), g.getCover(),
@@ -188,7 +222,9 @@ public class GoodsServiceImpl implements GoodsService {
                 skus.stream().map(this::toSkuVO).toList(),
                 nz(g.getSales()), g.getCutoffAt(), g.getArrivalDesc(), g.getWeighed(), g.getOrigin(),
                 g.getDurationMin(), g.getStoreName(), nz(g.getLimitPerUser()),
-                Boolean.TRUE.equals(g.getOnSale()));
+                Boolean.TRUE.equals(g.getOnSale()),
+                // 买家侧不下发状态：某件商品是"审核中"还是"被驳回"是店主和平台之间的事
+                null);
     }
 
     private GoodsVO.SkuVO toSkuVO(PrdSku s) {

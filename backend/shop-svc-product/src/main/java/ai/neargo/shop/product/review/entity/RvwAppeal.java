@@ -1,6 +1,7 @@
 package ai.neargo.shop.product.review.entity;
 
 import ai.neargo.shop.common.BaseEntity;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Getter;
 import lombok.Setter;
@@ -29,7 +30,7 @@ public class RvwAppeal extends BaseEntity {
 
     /** 一条评价只能申诉一次：被驳回后再申诉，等于把裁决当抽奖。库里有唯一键。 */
     private String reviewNo;
-    private String merchantNo;
+    private String entityNo;
 
     private String reason;
 

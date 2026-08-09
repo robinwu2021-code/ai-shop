@@ -935,45 +935,69 @@
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `name` | `string` | 是 | 拟用店铺名 |
-| `type` | [`MerchantApplyType`](#merchantapplytype) | 是 | 主体类型 |
-| `contact` | `string` | 是 | 联系人姓名 |
-| `phone` | `string` | 是 | 联系手机号 |
+| `subject` | [`MerchantSubject`](#merchantsubject) | 是 | 主体类型。个人 → 个体户 → 企业，门槛前低后高 |
+| `contactName` | `string` | 是 | 联系人姓名。审核要打电话找人，只有号码没有姓名不合适 |
+| `contactPhone` | `string` | 是 | 联系手机号 |
 | `category` | `string` | 是 | 主营类目 |
 | `desc` | `string` | 是 | 店铺简介 |
+| `asPickupPoint` | `boolean` | 否 | 承接自提点：小店既是供给方也是取货点（ADR-005 type=STORE） |
+| `serviceScope` | `COMMUNITY` \| `CITY` \| `PLATFORM` | 否 | 期望经营范围（ADR-009）。申请时可空，<b>审核通过时必须确定</b> —— 否则商家上着架却对谁都不可见，且没有任何报错。 |
+| `communityNos` | `string`\[\] | 否 | 期望覆盖的社区。scope=COMMUNITY 时审核通过必须非空 |
+| `licenses` | `string`\[\] | 否 | 资质图片（营业执照/身份证）。**选填** —— 一期 EDI 不强制。 与下面的结算账户一样，属于**分账主体开户**而不是入驻申请本身（ADR-002）： `usr_merchant_payment` 是独立一张表、有自己的 `apply_status`，就是这个道理。 申请时能传就传，通过后在 B 端补也行 —— 逼一个还没通过审核的人先传营业执照， 只会把人挡在门外。 |
+| `settleAccountType` | `PERSONAL_OPENID` \| `MERCHANT_ID` | 否 | 结算账户类型。真实账号由后端持有，C 端与 B 端都不回显（ADR-002 §5）。**选填**，同上 |
 
 **出参**（`data`）
 
-类型：`object`
-
-
-#### GET `/mp/merchant/point/account`
-
-商家积分账户　🔒
-
-**入参**：无
-
-**出参**（`data`）
-
-类型：[`PointAccount`](#pointaccount)
+类型：[`MerchantApplyStatus`](#merchantapplystatus)
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `balance` | `number` | 是 | 当前可用余额 |
-| `totalEarned` | `number` | 是 | 累计获得（含已用、已过期），只增不减 |
-| `totalUsed` | `number` | 是 | 累计已抵扣 |
-| `expiringSoon` | `number` | 是 | 30 天内将过期的积分 |
-| `expiringAt` | `number` | 否 | 最近一批积分的过期时间。`expiringSoon=0` 时为空 |
+| `applyNo` | `string` | 是 | 申请单号 |
+| `name` | `string` | 是 | 申请时填的店铺名。**存快照** —— 后来改名不该让历史申请跟着变 |
+| `subject` | [`MerchantSubject`](#merchantsubject) | 是 | 主体类型。决定分账主体形态与所需资质（ADR-002 §4） |
+| `status` | `PENDING` \| `REVIEWING` \| `APPROVED` \| `REJECTED` | 是 | 审核状态。迁移见本类型的注释，APPROVED 为终态 |
+| `rejectReason` | `string` | 否 | 驳回理由。**驳回必须写** —— 不写就等于让人猜着改 |
+| `merchantNo` | `string` | 否 | 通过后生成的商家单号。未通过时为空 —— 商家在通过之前根本不存在 |
+| `createdAt` | `number` | 是 | 提交时间 |
+| `auditedAt` | `number` | 否 | 审核完成时间。PENDING/REVIEWING 期间为空 |
+| `contactName` | `string` | 是 | 联系人姓名 |
+| `contactPhone` | `string` | 是 | 联系手机号。这是申请人自己填的联系号码，**不是登录号**，不脱敏 |
+| `category` | `string` | 是 | 主营类目 |
+| `desc` | `string` | 是 | 店铺简介 |
+| `serviceScope` | `COMMUNITY` \| `CITY` \| `PLATFORM` | 否 | 期望经营范围（ADR-009） |
+| `communityNos` | `string`\[\] | 否 | 期望覆盖的社区 |
+| `licenses` | `string`\[\] | 否 | 已传的资质图 |
+| `asPickupPoint` | `boolean` | 否 | 是否愿意承接自提点（ADR-005）。 **只是意愿，不代表点已建立** —— 建点要谈服务费口径，一期由运营在通过后另行处理。 所以商家勾了这一项、通过后却还没看到履约台，是正常的中间状态而不是故障。 |
 
 
-#### GET `/mp/merchant/point/records`
+#### GET `/mp/merchant/apply`
 
-商家积分流水　🔒
+我的入驻申请状态　🔒
 
 **入参**：无
 
 **出参**（`data`）
 
-类型：[`PointRecord`](#pointrecord)\[\]
+类型：[`MerchantApplyStatus`](#merchantapplystatus)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `applyNo` | `string` | 是 | 申请单号 |
+| `name` | `string` | 是 | 申请时填的店铺名。**存快照** —— 后来改名不该让历史申请跟着变 |
+| `subject` | [`MerchantSubject`](#merchantsubject) | 是 | 主体类型。决定分账主体形态与所需资质（ADR-002 §4） |
+| `status` | `PENDING` \| `REVIEWING` \| `APPROVED` \| `REJECTED` | 是 | 审核状态。迁移见本类型的注释，APPROVED 为终态 |
+| `rejectReason` | `string` | 否 | 驳回理由。**驳回必须写** —— 不写就等于让人猜着改 |
+| `merchantNo` | `string` | 否 | 通过后生成的商家单号。未通过时为空 —— 商家在通过之前根本不存在 |
+| `createdAt` | `number` | 是 | 提交时间 |
+| `auditedAt` | `number` | 否 | 审核完成时间。PENDING/REVIEWING 期间为空 |
+| `contactName` | `string` | 是 | 联系人姓名 |
+| `contactPhone` | `string` | 是 | 联系手机号。这是申请人自己填的联系号码，**不是登录号**，不脱敏 |
+| `category` | `string` | 是 | 主营类目 |
+| `desc` | `string` | 是 | 店铺简介 |
+| `serviceScope` | `COMMUNITY` \| `CITY` \| `PLATFORM` | 否 | 期望经营范围（ADR-009） |
+| `communityNos` | `string`\[\] | 否 | 期望覆盖的社区 |
+| `licenses` | `string`\[\] | 否 | 已传的资质图 |
+| `asPickupPoint` | `boolean` | 否 | 是否愿意承接自提点（ADR-005）。 **只是意愿，不代表点已建立** —— 建点要谈服务费口径，一期由运营在通过后另行处理。 所以商家勾了这一项、通过后却还没看到履约台，是正常的中间状态而不是故障。 |
 
 
 #### GET `/mp/merchant/promoted`
@@ -1327,9 +1351,9 @@
 | `priceUp` | `string`\[\] | 是 | 涨价了但仍加入的商品名 |
 
 
-### point
+### points
 
-#### GET `/mp/point/account`
+#### GET `/mp/points/account`
 
 积分账户　🔒
 
@@ -1341,14 +1365,34 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `balance` | `number` | 是 | 当前可用余额 |
+| `balance` | `number` | 是 | 当前可用余额。**只含能花的分**，待生效的在 pendingBalance |
+| `pendingBalance` | `number` | 是 | 待生效积分：已发放但未过售后期，**不计入 balance**。 两个数必须分开展示（「可用 400 / 待生效 100」）。合成一个的话， 用户看到「我有 500 分」却只能用 400，没有任何办法解释这个差额。 |
+| `pendingActivateAt` | `number` | 否 | 最近一批待生效积分的可用时间。`pendingBalance=0` 时为空 |
 | `totalEarned` | `number` | 是 | 累计获得（含已用、已过期），只增不减 |
 | `totalUsed` | `number` | 是 | 累计已抵扣 |
 | `expiringSoon` | `number` | 是 | 30 天内将过期的积分 |
 | `expiringAt` | `number` | 否 | 最近一批积分的过期时间。`expiringSoon=0` 时为空 |
 
 
-#### GET `/mp/point/records`
+#### GET `/mp/points/deductible`
+
+结算页试算：本单最多可抵多少　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`PointsDeductible`](#pointsdeductible)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `maxPoints` | `number` | 是 | 本单最多可抵扣的积分数。已扣掉四级开关与上限，端上直接用 |
+| `maxAmountMinor` | `number` | 是 | 对应金额（分） |
+| `balance` | `number` | 是 | 用户当前可用余额，用于展示「你有 X 分」 |
+| `disabledReason` | `string` | 否 | 不可用时的原因，直接展示。可用时为空 |
+
+
+#### GET `/mp/points/records`
 
 积分流水　🔒
 
@@ -2129,20 +2173,39 @@
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `name` | `string` | 是 | 拟用店铺名 |
-| `type` | [`MerchantApplyType`](#merchantapplytype) | 是 | 主体类型 |
-| `contact` | `string` | 是 | 联系人姓名 |
-| `phone` | `string` | 是 | 联系手机号 |
+| `subject` | [`MerchantSubject`](#merchantsubject) | 是 | 主体类型。个人 → 个体户 → 企业，门槛前低后高 |
+| `contactName` | `string` | 是 | 联系人姓名。审核要打电话找人，只有号码没有姓名不合适 |
+| `contactPhone` | `string` | 是 | 联系手机号 |
 | `category` | `string` | 是 | 主营类目 |
 | `desc` | `string` | 是 | 店铺简介 |
+| `asPickupPoint` | `boolean` | 否 | 承接自提点：小店既是供给方也是取货点（ADR-005 type=STORE） |
+| `serviceScope` | `COMMUNITY` \| `CITY` \| `PLATFORM` | 否 | 期望经营范围（ADR-009）。申请时可空，<b>审核通过时必须确定</b> —— 否则商家上着架却对谁都不可见，且没有任何报错。 |
+| `communityNos` | `string`\[\] | 否 | 期望覆盖的社区。scope=COMMUNITY 时审核通过必须非空 |
+| `licenses` | `string`\[\] | 否 | 资质图片（营业执照/身份证）。**选填** —— 一期 EDI 不强制。 与下面的结算账户一样，属于**分账主体开户**而不是入驻申请本身（ADR-002）： `usr_merchant_payment` 是独立一张表、有自己的 `apply_status`，就是这个道理。 申请时能传就传，通过后在 B 端补也行 —— 逼一个还没通过审核的人先传营业执照， 只会把人挡在门外。 |
+| `settleAccountType` | `PERSONAL_OPENID` \| `MERCHANT_ID` | 否 | 结算账户类型。真实账号由后端持有，C 端与 B 端都不回显（ADR-002 §5）。**选填**，同上 |
 
-### MerchantApplyType
+### MerchantApplyStatus
 
-入驻申请可选的商家类型。 不用 `Extract<MerchantType, ...>` —— 生成 schema 时它的名字会变成 `Extract<MerchantType,("COMPANY"\|"INDIVIDUAL")>`，不符合 OpenAPI 的组件命名规则。 契约类型要能干净地映射成 DTO 名，所以这里写成直白的联合。
+入驻申请状态（C 端查自己的进度 / 平台端审核队列共用）。 状态机：`PENDING → REVIEWING → APPROVED \| REJECTED`，`REJECTED → PENDING`（补料重提）。 **APPROVED 是终态** —— 已经建了商家、发了账号，回退没有意义。 ⚠️ 这条是**审核**生命周期，与 `Merchant` 上的**经营**状态（ACTIVE/SUSPENDED）无关： 审核发生在商家还不存在的时候，封禁发生在商家已经存在之后。混成一个枚举会让 「驳回一份申请」和「封禁一家店」共用取值，两件事迟早互相踩。
 
-枚举取值：
-
-- `COMPANY`
-- `INDIVIDUAL`
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `applyNo` | `string` | 是 | 申请单号 |
+| `name` | `string` | 是 | 申请时填的店铺名。**存快照** —— 后来改名不该让历史申请跟着变 |
+| `subject` | [`MerchantSubject`](#merchantsubject) | 是 | 主体类型。决定分账主体形态与所需资质（ADR-002 §4） |
+| `status` | `PENDING` \| `REVIEWING` \| `APPROVED` \| `REJECTED` | 是 | 审核状态。迁移见本类型的注释，APPROVED 为终态 |
+| `rejectReason` | `string` | 否 | 驳回理由。**驳回必须写** —— 不写就等于让人猜着改 |
+| `merchantNo` | `string` | 否 | 通过后生成的商家单号。未通过时为空 —— 商家在通过之前根本不存在 |
+| `createdAt` | `number` | 是 | 提交时间 |
+| `auditedAt` | `number` | 否 | 审核完成时间。PENDING/REVIEWING 期间为空 |
+| `contactName` | `string` | 是 | 联系人姓名 |
+| `contactPhone` | `string` | 是 | 联系手机号。这是申请人自己填的联系号码，**不是登录号**，不脱敏 |
+| `category` | `string` | 是 | 主营类目 |
+| `desc` | `string` | 是 | 店铺简介 |
+| `serviceScope` | `COMMUNITY` \| `CITY` \| `PLATFORM` | 否 | 期望经营范围（ADR-009） |
+| `communityNos` | `string`\[\] | 否 | 期望覆盖的社区 |
+| `licenses` | `string`\[\] | 否 | 已传的资质图 |
+| `asPickupPoint` | `boolean` | 否 | 是否愿意承接自提点（ADR-005）。 **只是意愿，不代表点已建立** —— 建点要谈服务费口径，一期由运营在通过后另行处理。 所以商家勾了这一项、通过后却还没看到履约台，是正常的中间状态而不是故障。 |
 
 ### MerchantBrief
 
@@ -2157,13 +2220,19 @@
 | `verified` | `boolean` | 是 | 是否通过资质认证 |
 | `breachCount` | `number` | 是 | 选定报价后不履约的次数。>0 会在报价卡上公示 —— 事后信用替代事前审核 |
 
-### MerchantType
+### MerchantSubject
+
+商家主体类型 —— **权威口径取通道侧**（ADR-010）。 主体类型的唯一硬约束来自支付通道：能不能进件、要什么资质、钱打到个人还是对公。 展示名反而可以随便改。让权威贴着约束走，映射就只需要一个方向。 规则（要不要执照、受不受行业白名单限制、结算账户形态）在 `sys_merchant_subject` 表里，随通道调整；**这里只管取值域**。 端上取 `GET /common/master-data`，不要在页面里写死。 <p><b>不叫 `SubjectType`</b>：那个名字在平台端已经是**风控主体** （DEVICE/MERCHANT/USER）。两个不同的概念同名，读代码的人迟早会把 一个当成另一个 —— 类型对齐守卫正是为此存在的。
 
 枚举取值：
 
-- `PLATFORM`
-- `COMPANY`
+- `MICRO`
 - `INDIVIDUAL`
+- `ENTERPRISE`
+
+### MerchantType
+
+类型：`MerchantSubject`
 
 ### Message
 
@@ -2306,9 +2375,13 @@
 
 ### PointAccount
 
+用户积分账户。**单位是积分个数** —— 商家侧是钱，用  {@link  MerchantPointAccount }
+
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `balance` | `number` | 是 | 当前可用余额 |
+| `balance` | `number` | 是 | 当前可用余额。**只含能花的分**，待生效的在 pendingBalance |
+| `pendingBalance` | `number` | 是 | 待生效积分：已发放但未过售后期，**不计入 balance**。 两个数必须分开展示（「可用 400 / 待生效 100」）。合成一个的话， 用户看到「我有 500 分」却只能用 400，没有任何办法解释这个差额。 |
+| `pendingActivateAt` | `number` | 否 | 最近一批待生效积分的可用时间。`pendingBalance=0` 时为空 |
 | `totalEarned` | `number` | 是 | 累计获得（含已用、已过期），只增不减 |
 | `totalUsed` | `number` | 是 | 累计已抵扣 |
 | `expiringSoon` | `number` | 是 | 30 天内将过期的积分 |
@@ -2336,6 +2409,17 @@
 - `EXPIRE`
 - `RECEIVE`
 - `SETTLE`
+
+### PointsDeductible
+
+结算页的积分试算结果。**服务端算**，端上只负责显示。 端上自己算的话，下单时服务端会再算一遍 —— 两处算法只要有一点不同 （券后金额口径、运费是否参与、开关判断顺序），用户就会看到 「结算页说能抵 30，下单后只抵了 25」，而这个差额没人解释得清。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `maxPoints` | `number` | 是 | 本单最多可抵扣的积分数。已扣掉四级开关与上限，端上直接用 |
+| `maxAmountMinor` | `number` | 是 | 对应金额（分） |
+| `balance` | `number` | 是 | 用户当前可用余额，用于展示「你有 X 分」 |
+| `disabledReason` | `string` | 否 | 不可用时的原因，直接展示。可用时为空 |
 
 ### Promotion
 

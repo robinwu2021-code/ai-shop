@@ -1,8 +1,20 @@
 // 覆盖范围：类目（P-3.1）、商品池（P-3.2）、库存与预售（P-3.3）。
-import type { Category, Page, Sku } from "@/lib/types";
+import type { GoodsAudit, Category, Page, Sku } from "@/lib/types";
 import type { CategoryQ, SkuQ } from "../query";
 
 export interface ProductApi {
+  // ── 商品审核（P-3.2）—— **已接真后端** `/ops/goods/**`，goods 粒度
+
+  /** 待审队列。分页 */
+  listGoodsAuditQueue(q?: { page?: number; size?: number }): Promise<Page<GoodsAudit>>;
+  /**
+   * 审核商品。
+   *
+   * @param reason 驳回**必填** —— 商家拿不到理由就只能反复重提，
+   *   而每一次重提都要占一次审核人力
+   */
+  auditGoods(goodsNo: string, approved: boolean, reason?: string): Promise<GoodsAudit>;
+
   /** 类目树：一次给全量（三级树总量有限，前端自己组树比逐层拉更快）。 */
   listCategories(q?: CategoryQ): Promise<Category[]>;
   saveCategory(v: Pick<Category, "categoryNo" | "name" | "parentNo" | "template" | "qualifications"> & { i18nEn?: string }): Promise<Category>;

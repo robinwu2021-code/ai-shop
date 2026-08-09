@@ -188,6 +188,7 @@
 | `grantType` | [`GrantType`](#granttype) | 是 | 登录方式。**商家池与 C 端用户池是两套账号**，同一手机号登两端是两个身份 |
 | `principal` | `string` | 是 | `WX_MINI`: wx.login code；`PHONE_OTP`: 手机号 |
 | `credential` | `string` | 否 | `PHONE_OTP`: 验证码 |
+| `agreed` | `boolean` | 否 | 是否勾选了用户协议与隐私政策 —— 注册的合规前置，服务端要留痕。 登录页一直在发（`{ ...req }` 把 `LoginReq.agreed` 带了出去）， **漏的是这里没声明**，于是生成的 OpenAPI 里没有它，而后端 `LoginReq` 有。 这类漏声明比漏发更难发现：联调时一切正常，直到有人照着 spec 写另一个客户端。 |
 
 **出参**（`data`）
 
@@ -849,13 +850,15 @@ _无字段_
 |---|---|:---:|---|
 | `name` | `string` | 是 | 拟用店铺名 |
 | `subject` | [`MerchantSubject`](#merchantsubject) | 是 | 主体类型。个人 → 个体户 → 企业，门槛前低后高 |
-| `contact` | `string` | 是 | 联系人姓名 |
-| `phone` | `string` | 是 | 联系手机号 |
+| `contactName` | `string` | 是 | 联系人姓名。审核要打电话找人，只有号码没有姓名不合适 |
+| `contactPhone` | `string` | 是 | 联系手机号 |
 | `category` | `string` | 是 | 主营类目 |
 | `desc` | `string` | 是 | 店铺简介 |
-| `asPickupPoint` | `boolean` | 是 | 承接自提点：小店既是供给方也是取货点（ADR-005 type=STORE） |
-| `licenses` | `string`\[\] | 是 | 资质图片（营业执照/身份证），个人主体可为空 |
-| `settleAccountType` | `PERSONAL_OPENID` \| `MERCHANT_ID` | 是 | 结算账户类型。真实账号由后端持有，C 端与 B 端都不回显（ADR-002 §5） |
+| `asPickupPoint` | `boolean` | 否 | 承接自提点：小店既是供给方也是取货点（ADR-005 type=STORE） |
+| `serviceScope` | `COMMUNITY` \| `CITY` \| `PLATFORM` | 否 | 期望经营范围（ADR-009）。申请时可空，<b>审核通过时必须确定</b> —— 否则商家上着架却对谁都不可见，且没有任何报错。 |
+| `communityNos` | `string`\[\] | 否 | 期望覆盖的社区。scope=COMMUNITY 时审核通过必须非空 |
+| `licenses` | `string`\[\] | 否 | 资质图片（营业执照/身份证）。**选填** —— 一期 EDI 不强制。 与下面的结算账户一样，属于**分账主体开户**而不是入驻申请本身（ADR-002）： `usr_merchant_payment` 是独立一张表、有自己的 `apply_status`，就是这个道理。 申请时能传就传，通过后在 B 端补也行 —— 逼一个还没通过审核的人先传营业执照， 只会把人挡在门外。 |
+| `settleAccountType` | `PERSONAL_OPENID` \| `MERCHANT_ID` | 否 | 结算账户类型。真实账号由后端持有，C 端与 B 端都不回显（ADR-002 §5）。**选填**，同上 |
 
 
 #### GET `/biz/merchant/profile`
@@ -1223,6 +1226,57 @@ _无字段_
 |---|---|:---:|---|
 | `code` | `string` | 是 | — |
 | `reason` | `string` | 是 | — |
+
+
+### points
+
+#### GET `/biz/points/account`
+
+本期发分服务费与开关状态　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`MerchantPointAccount`](#merchantpointaccount)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `periodExpenseMinor` | `number` | 是 | 本期发分服务费支出（分）。**商家唯一感知到的积分成本** |
+| `period` | `string` | 是 | 当前账期标识，如 `2026-08` |
+| `enabled` | `boolean` | 是 | 本店积分是否生效 —— 全局 AND 社区 AND 主体非小微 AND 本店开关 |
+| `disabledReason` | `string` | 否 | 不生效的原因，直接展示给商家。 小微主体要说「升级为个体工商户后可开启」，不能说「本店未开启积分」—— 后者会让商家去开一个他根本开不了的开关。 |
+| `forced` | `boolean` | 是 | 平台按行业强制开，商家不可自行关闭 |
+
+
+#### GET `/biz/points/records`
+
+发分服务费明细（按单）　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`MerchantPointsRecord`](#merchantpointsrecord)\[\]
+
+
+#### POST `/biz/points/toggle`
+
+开/关本店积分　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`MerchantPointAccount`](#merchantpointaccount)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `periodExpenseMinor` | `number` | 是 | 本期发分服务费支出（分）。**商家唯一感知到的积分成本** |
+| `period` | `string` | 是 | 当前账期标识，如 `2026-08` |
+| `enabled` | `boolean` | 是 | 本店积分是否生效 —— 全局 AND 社区 AND 主体非小微 AND 本店开关 |
+| `disabledReason` | `string` | 否 | 不生效的原因，直接展示给商家。 小微主体要说「升级为个体工商户后可开启」，不能说「本店未开启积分」—— 后者会让商家去开一个他根本开不了的开关。 |
+| `forced` | `boolean` | 是 | 平台按行业强制开，商家不可自行关闭 |
 
 
 ### review
@@ -1715,6 +1769,8 @@ _无字段_
 | `title` | [`I18nText`](#i18ntext) | 是 | 商品标题（多语言）。后端按 Accept-Language 下发对应语言给 C 端 |
 | `subtitle` | [`I18nText`](#i18ntext) | 是 | 副标题/卖点（多语言） |
 | `type` | [`CategoryType`](#categorytype) | 是 | 商品形态，决定详情页用哪套字段。**保存后不建议再改** |
+| `cover` | `string` | 否 | 封面图 URL（来自 `mUploadImage`）。 <p>此前<b>页面上传了封面却没放进提交体</b> —— 店主选了图、页面上也显示出来了， 保存后 C 端拿到的却是空封面。而空封面不报错，只是列表里一块留白。 |
+| `images` | `string`\[\] | 否 | 详情轮播图 |
 | `specGroups` | [`SpecGroupDraft`](#specgroupdraft)\[\] | 是 | 空数组 = 单规格。非空则 skus 必须是各组选项的笛卡尔积 |
 | `skus` | [`SkuDraft`](#skudraft)\[\] | 是 | SKU 列表。单规格商品也有且仅有一条 |
 
@@ -1855,13 +1911,15 @@ _无字段_
 |---|---|:---:|---|
 | `name` | `string` | 是 | 拟用店铺名 |
 | `subject` | [`MerchantSubject`](#merchantsubject) | 是 | 主体类型。个人 → 个体户 → 企业，门槛前低后高 |
-| `contact` | `string` | 是 | 联系人姓名 |
-| `phone` | `string` | 是 | 联系手机号 |
+| `contactName` | `string` | 是 | 联系人姓名。审核要打电话找人，只有号码没有姓名不合适 |
+| `contactPhone` | `string` | 是 | 联系手机号 |
 | `category` | `string` | 是 | 主营类目 |
 | `desc` | `string` | 是 | 店铺简介 |
-| `asPickupPoint` | `boolean` | 是 | 承接自提点：小店既是供给方也是取货点（ADR-005 type=STORE） |
-| `licenses` | `string`\[\] | 是 | 资质图片（营业执照/身份证），个人主体可为空 |
-| `settleAccountType` | `PERSONAL_OPENID` \| `MERCHANT_ID` | 是 | 结算账户类型。真实账号由后端持有，C 端与 B 端都不回显（ADR-002 §5） |
+| `asPickupPoint` | `boolean` | 否 | 承接自提点：小店既是供给方也是取货点（ADR-005 type=STORE） |
+| `serviceScope` | `COMMUNITY` \| `CITY` \| `PLATFORM` | 否 | 期望经营范围（ADR-009）。申请时可空，<b>审核通过时必须确定</b> —— 否则商家上着架却对谁都不可见，且没有任何报错。 |
+| `communityNos` | `string`\[\] | 否 | 期望覆盖的社区。scope=COMMUNITY 时审核通过必须非空 |
+| `licenses` | `string`\[\] | 否 | 资质图片（营业执照/身份证）。**选填** —— 一期 EDI 不强制。 与下面的结算账户一样，属于**分账主体开户**而不是入驻申请本身（ADR-002）： `usr_merchant_payment` 是独立一张表、有自己的 `apply_status`，就是这个道理。 申请时能传就传，通过后在 B 端补也行 —— 逼一个还没通过审核的人先传营业执照， 只会把人挡在门外。 |
+| `settleAccountType` | `PERSONAL_OPENID` \| `MERCHANT_ID` | 否 | 结算账户类型。真实账号由后端持有，C 端与 B 端都不回显（ADR-002 §5）。**选填**，同上 |
 
 ### MerchantApplyReqBody
 
@@ -1904,6 +1962,7 @@ _无字段_
 | `grantType` | [`GrantType`](#granttype) | 是 | 登录方式。**商家池与 C 端用户池是两套账号**，同一手机号登两端是两个身份 |
 | `principal` | `string` | 是 | `WX_MINI`: wx.login code；`PHONE_OTP`: 手机号 |
 | `credential` | `string` | 否 | `PHONE_OTP`: 验证码 |
+| `agreed` | `boolean` | 否 | 是否勾选了用户协议与隐私政策 —— 注册的合规前置，服务端要留痕。 登录页一直在发（`{ ...req }` 把 `LoginReq.agreed` 带了出去）， **漏的是这里没声明**，于是生成的 OpenAPI 里没有它，而后端 `LoginReq` 有。 这类漏声明比漏发更难发现：联调时一切正常，直到有人照着 spec 写另一个客户端。 |
 
 ### MerchantLoginResp
 
@@ -1911,6 +1970,31 @@ _无字段_
 |---|---|:---:|---|
 | `token` | `string` | 是 | 访问令牌。**商家池与 C 端用户池是两套账号**，token 不通用 |
 | `merchant` | [`MerchantProfile`](#merchantprofile) | 是 | 商家档案 |
+
+### MerchantPointAccount
+
+商家的积分成本视图。**单位是钱，不是分**。 商家只感知**一件事**：开了积分，每笔订单要付一笔发分服务费。 他**看不到**用户抵了多少分、平台补了多少、资金池 —— 对他而言订单就是全额， 收到的是「订单金额 − 各项费用」（V34）。 所以这里没有 income/net：商家侧不存在「积分兑付进账」这个概念。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `periodExpenseMinor` | `number` | 是 | 本期发分服务费支出（分）。**商家唯一感知到的积分成本** |
+| `period` | `string` | 是 | 当前账期标识，如 `2026-08` |
+| `enabled` | `boolean` | 是 | 本店积分是否生效 —— 全局 AND 社区 AND 主体非小微 AND 本店开关 |
+| `disabledReason` | `string` | 否 | 不生效的原因，直接展示给商家。 小微主体要说「升级为个体工商户后可开启」，不能说「本店未开启积分」—— 后者会让商家去开一个他根本开不了的开关。 |
+| `forced` | `boolean` | 是 | 平台按行业强制开，商家不可自行关闭 |
+
+### MerchantPointsRecord
+
+商家的一条发分服务费记录：一单一条，来自 `stl_bill.points_fee_minor`
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `settleNo` | `string` | 是 | 结算单号 |
+| `subOrderNo` | `string` | 是 | 关联子单，商家据此对到具体订单 |
+| `points` | `number` | 是 | 本单发放的积分数 |
+| `feeMinor` | `number` | 是 | 本单的发分服务费（分）。**这是商家唯一感知到的积分成本** |
+| `period` | `string` | 是 | 账期 `YYYYMM` |
+| `at` | `number` | 是 | 计提时间（支付成功时），不是分账时间 —— 两者相差一个售后期 |
 
 ### MerchantProfile
 
@@ -1945,25 +2029,26 @@ _无字段_
 
 ### MerchantStatus
 
-商家入驻审核状态。与 C 端 LeaderStatus 无关 —— 团长角色已删除（ADR-004）
+商家在 B 端的**综合状态**：既要表达「还没入驻成功」，也要表达「已经在经营」。 ⚠️ 它是一个**展示用的合并视图**，底下是两条互不相干的生命周期：   · 审核（`MerchantApplyStatus`）—— 商家还不存在时的事，归 `usr_merchant_apply`   · 经营（ACTIVE / SUSPENDED）—— 商家已存在之后的事，归 `usr_merchant.status` B 端首页要在一个地方回答「我现在能不能做生意」，所以合并； 但**库里绝不能合并** —— 一旦合并，「驳回一份申请」和「封禁一家店」就共用取值， 而这两件事的操作人、审计口径、可逆性全都不同。
 
 枚举取值：
 
 - `NONE`
 - `APPLYING`
+- `REVIEWING`
 - `REJECTED`
 - `ACTIVE`
 - `SUSPENDED`
 
 ### MerchantSubject
 
-主体类型。个人 → 个体户 → 企业，门槛前低后高（ADR-002 §4）
+商家主体类型 —— **权威口径取通道侧**（ADR-010）。 主体类型的唯一硬约束来自支付通道：能不能进件、要什么资质、钱打到个人还是对公。 展示名反而可以随便改。让权威贴着约束走，映射就只需要一个方向。 规则（要不要执照、受不受行业白名单限制、结算账户形态）在 `sys_merchant_subject` 表里，随通道调整；**这里只管取值域**。 端上取 `GET /common/master-data`，不要在页面里写死。 <p><b>不叫 `SubjectType`</b>：那个名字在平台端已经是**风控主体** （DEVICE/MERCHANT/USER）。两个不同的概念同名，读代码的人迟早会把 一个当成另一个 —— 类型对齐守卫正是为此存在的。
 
 枚举取值：
 
-- `PERSONAL`
-- `INDIVIDUAL_BIZ`
-- `COMPANY`
+- `MICRO`
+- `INDIVIDUAL`
+- `ENTERPRISE`
 
 ### MerchantTier
 

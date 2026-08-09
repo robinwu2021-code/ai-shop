@@ -1,6 +1,7 @@
 package ai.neargo.shop.product.review.entity;
 
 import ai.neargo.shop.common.BaseEntity;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Getter;
 import lombok.Setter;
@@ -17,7 +18,7 @@ import lombok.Setter;
  * 维度分用于评分算法与商家诊断 ——「货好但送得慢」这种问题，只看总分永远看不出来。
  *
  * <p>此前**三端都已实现评价功能而库里没有任何评价表**，
- * 连带 {@code usr_merchant} 的 rating / score_* 聚合列没有数据来源，只能是假数据。
+ * 连带 {@code mch_entity} 的 rating / score_* 聚合列没有数据来源，只能是假数据。
  */
 @Getter
 @Setter
@@ -36,7 +37,7 @@ public class RvwReview extends BaseEntity {
     private String orderNo;
     private String goodsNo;
     private String skuNo;
-    private String merchantNo;
+    private String entityNo;
     private String userNo;
 
     /** 昵称/头像存快照：用户改昵称不该让历史评价跟着变。 */

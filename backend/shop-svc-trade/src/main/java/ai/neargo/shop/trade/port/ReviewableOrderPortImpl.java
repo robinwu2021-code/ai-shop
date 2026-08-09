@@ -52,7 +52,7 @@ public class ReviewableOrderPortImpl implements ReviewableOrderPort {
         }
 
         return Optional.of(new ReviewableItem(
-                sub.getSubOrderNo(), sub.getMerchantNo(), sub.getUserNo(),
+                sub.getSubOrderNo(), sub.getEntityNo(), sub.getUserNo(),
                 item.getSkuNo(), item.getSpec(),
                 "COMPLETED".equals(sub.getStatus())));
     }

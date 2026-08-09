@@ -54,6 +54,14 @@ export interface Merchant extends Archivable {
   createdAt: string;
   /** 最近一次审核意见（驳回原因/补交项） */
   auditRemark?: string;
+  /**
+   * 申请人是否愿意承接自提点（ADR-005）。
+   *
+   * **只是意愿，通过审核不会自动建点** —— 自提点的服务费口径是逐点线下谈的，
+   * 没有一个默认值能覆盖。放在审核页上是为了让运营**看见有人在等**：
+   * 不显示的话，申请人勾了这一项、通过后什么也没发生，而中间没有任何一处会报错。
+   */
+  asPickupPoint?: boolean;
 }
 
 // ── 类目授权 / 信用与处置（P-11.1.3 / 11.1.4 / 11.1.5）────────────────
@@ -104,4 +112,60 @@ export interface Violation {
   operator: string;
   /** 处置时间 */
   at: string;
+}
+
+// ================================================================ 入驻申请
+
+/**
+ * 入驻申请状态。
+ *
+ * **它不是商家的状态** —— 申请与主体是两个东西：通过之前商家<b>还不存在</b>。
+ * 曾经把审核建模成「商家的一个状态」，于是驳回的申请会在商家表里留下一行
+ * 从没开过张的「僵尸商家」，出现在每一处按主体聚合的地方（结算、积分、报表）。
+ */
+export type ApplyStatus = "PENDING" | "REVIEWING" | "APPROVED" | "REJECTED";
+
+/** 入驻申请单（后端 `mch_entity_apply`）。 */
+export interface MerchantApply {
+  /** 申请单号。审核动作都打在它上面，不是商家号 */
+  applyNo: string;
+  /** 通过后生成的主体号。**未通过时为空** —— 商家在通过之前根本不存在 */
+  merchantNo?: string;
+  /** 拟用店铺名 */
+  /** 拟用店铺名。**存快照** —— 后来改名不该让历史申请跟着变 */
+  name: string;
+  /** 法律形态 MICRO / INDIVIDUAL / ENTERPRISE */
+  subject: string;
+  /** 联系人姓名。审核要打电话找人 */
+  contactName: string;
+  /** 联系手机号（申请人自己填的，不一定是登录号）。**通过后它就是商家账号的登录号** */
+  contactPhone: string;
+  /** 主营类目 */
+  category: string;
+  /** 店铺简介。通过后会写进主体档案，C 端门店页读的就是它 */
+  desc: string;
+  /**
+   * 行业。**决定这家店能不能以小微进件** —— 审核页要看得到它，
+   * 否则运营批了一个行业不允许小微的小微商家，通道那边才会拒。
+   */
+  industry?: string;
+  /**
+   * 期望服务范围。**商家可以留空，但通过时必须确定** ——
+   * 空的后果是商家上着架却对谁都不可见，且没有任何报错。
+   */
+  serviceScope?: string;
+  /** 覆盖的小区。scope=COMMUNITY 时**空 = 通过之后对谁都不可见** */
+  communityNos?: string[];
+  /** 已传的资质图。个体户/企业必传，小微免 —— 缺它正是驳回的主因 */
+  licenses?: string[];
+  /** 是否愿意承接自提点（ADR-005）。**只是意愿，不代表点已建立** */
+  asPickupPoint: boolean;
+  /** 审核状态 */
+  status: ApplyStatus;
+  /** 驳回原因。**驳回必写** —— 不写对方只能猜着改 */
+  rejectReason?: string;
+  /** 提交时间 */
+  createdAt: number;
+  /** 审核完成时间。待审期间为空 */
+  auditedAt?: number;
 }

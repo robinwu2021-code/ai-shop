@@ -67,3 +67,31 @@ export interface FeatureFlag {
   /** 最后修改时间 */
   updatedAt: string;
 }
+
+/**
+ * 行业主数据（后端 `sys_industry`）。**已接真后端。**
+ *
+ * <p>它不是一张普通的字典表：**行业决定商家能不能以小微主体进件** ——
+ * 微信的小微白名单按行业给，判错一次商家就是进件被拒，而那时他已经开完店、上完架。
+ */
+export interface Industry {
+  /** 行业码，入驻申请回传的就是它 */
+  industry: string;
+  /** 展示名。三端都取服务端的，不各自维护翻译 */
+  name: string;
+  /** 排序 */
+  sort: number;
+  /** 是否启用。关掉后入驻表单里不再出现这个行业 */
+  enabled: boolean;
+  /** 微信是否允许该行业以小微进件 */
+  wechatMicroAllowed: boolean;
+  /** 支付宝是否允许 */
+  alipayMicroAllowed: boolean;
+  /**
+   * 是否**强制开启积分**（商家不可自行关闭）。
+   * 它是 `mch_entity.points_forced` 的来源 —— 高毛利行业平台会要求让利。
+   */
+  pointsForced: boolean;
+  /** 备注：为什么这么配。改白名单是会被商家追问的操作 */
+  remark?: string;
+}

@@ -1,13 +1,58 @@
 // 覆盖范围：商家治理（P-11.1 入驻审核 / 档案 / 认证标 / 封禁）。
 // ⚠️ 契约禁止 delete*：下架商家用 archiveMerchant，封禁用 setMerchantStatus。
-import type { AuthCode, Merchant, MerchantStatus, Page, Violation, ViolationAction, ViolationType } from "@/lib/types";
-import type { MerchantQ } from "../query";
+import type { AuthCode, Merchant, MerchantApply, MerchantStatus, Page, Violation, ViolationAction, ViolationType } from "@/lib/types";
+import type { ApplyQ, MerchantQ } from "../query";
 
 export interface MerchantApi {
+  // ── 入驻审核（P-11.1.1）────────────────────────────────────────
+  //
+  // **申请单与商家主体是两个资源**：通过之前商家不存在，所以审核动作打在
+  // applyNo 上而不是 merchantNo 上。这一段已接真后端 `/ops/merchant/apply/**`。
+
+  /**
+   * 入驻申请检索。
+   *
+   * @param q.status 逗号分隔；**不传只给待办两档**（PENDING/REVIEWING）——
+   *   运营台默认打开就该是「要我做的事」，已处理的属于历史
+   */
+  listApplies(q?: ApplyQ): Promise<Page<MerchantApply>>;
+
+  /** 受理：告诉商家「有人在看了」。不改变审核结果，也不是通过的必经步骤 */
+  acceptApply(applyNo: string): Promise<void>;
+
+  /**
+   * 审核。
+   *
+   * @param reason       驳回**必填** —— 不写理由等于让对方猜着改
+   * @param serviceScope 通过时补/改服务范围；不传沿用申请单上的值
+   * @param communityNos 同上。**商家没填时运营必须在这里补** ——
+   *   否则商家通过审核、上完架，却对谁都不可见，而这个故障不报错
+   */
+  auditApply(
+    applyNo: string,
+    approved: boolean,
+    reason?: string,
+    serviceScope?: string,
+    communityNos?: string[],
+  ): Promise<void>;
+
   listMerchants(q?: MerchantQ): Promise<Page<Merchant>>;
   getMerchant(merchantNo: string): Promise<Merchant>;
   /** 审核推进（DRAFT→SUBMITTED→REVIEWING→APPROVED/REJECTED），非法迁移抛错。 */
-  setMerchantStatus(merchantNo: string, status: MerchantStatus, remark?: string): Promise<Merchant>;
+  /**
+   * 审核推进。
+   *
+   * @param communityNos 覆盖社区。**status=APPROVED 且商家按社区经营时必填** ——
+   *   不给的话商家审核通过却对谁都不可见（ADR-009：service_scope 默认 COMMUNITY，
+   *   一个社区都没覆盖 = C 端任何人都搜不到），而这个故障没有任何报错，
+   *   商家和运营都查不出原因。后端会直接拒绝这种提交。
+   */
+  setMerchantStatus(
+    merchantNo: string,
+    status: MerchantStatus,
+    remark?: string,
+    communityNos?: string[],
+  ): Promise<Merchant>;
   /** 认证标授予/撤销（P-11.1.2）。 */
   /**
    * 认证标授予/撤销（P-11.1.2）。

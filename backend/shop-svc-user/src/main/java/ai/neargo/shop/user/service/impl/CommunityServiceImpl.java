@@ -3,11 +3,11 @@ package ai.neargo.shop.user.service.impl;
 import ai.neargo.shop.user.service.CommunityService;
 
 import ai.neargo.shop.user.dto.CommunityVO;
-import ai.neargo.shop.user.entity.CmtCommunity;
-import ai.neargo.shop.user.entity.CmtPickupPoint;
-import ai.neargo.shop.user.entity.UsrMerchant;
+import ai.neargo.shop.user.community.entity.CmtCommunity;
+import ai.neargo.shop.user.community.entity.CmtPickupPoint;
+import ai.neargo.shop.user.merchant.entity.MchEntity;
 import ai.neargo.shop.user.mapper.UserMappers.CommunityMapper;
-import ai.neargo.shop.user.mapper.UserMappers.MerchantMapper;
+import ai.neargo.shop.user.mapper.UserMappers.MchEntityMapper;
 import ai.neargo.shop.user.mapper.UserMappers.PickupPointMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.stereotype.Service;
@@ -26,13 +26,20 @@ public class CommunityServiceImpl implements CommunityService {
 
     private final CommunityMapper communityMapper;
     private final PickupPointMapper pickupMapper;
-    private final MerchantMapper merchantMapper;
+    private final MchEntityMapper merchantMapper;
 
     public CommunityServiceImpl(CommunityMapper communityMapper, PickupPointMapper pickupMapper,
-                                MerchantMapper merchantMapper) {
+                                MchEntityMapper merchantMapper) {
         this.communityMapper = communityMapper;
         this.pickupMapper = pickupMapper;
         this.merchantMapper = merchantMapper;
+    }
+
+    @Override
+    public List<CommunityVO> all() {
+        // 复用 nearby 的组装：不传坐标 → distance 恒 0，排序退化为库序。
+        // 单独写一套查询只会让「社区带哪些自提点」在两处各实现一遍
+        return nearby(null, null);
     }
 
     @Override
@@ -50,7 +57,7 @@ public class CommunityServiceImpl implements CommunityService {
                 .eq(CmtPickupPoint::getType, "STORE")
                 .eq(CmtPickupPoint::getStatus, "ACTIVE"));
 
-        Map<String, UsrMerchant> owners = loadOwners(pickups);
+        Map<String, MchEntity> owners = loadOwners(pickups);
         Map<String, List<CmtPickupPoint>> byCommunity = pickups.stream()
                 .collect(Collectors.groupingBy(CmtPickupPoint::getCommunityNo));
 
@@ -81,29 +88,29 @@ public class CommunityServiceImpl implements CommunityService {
         if (p == null) {
             throw ai.neargo.shop.common.BizException.of(ai.neargo.shop.common.ErrorCode.NOT_FOUND);
         }
-        UsrMerchant owner = loadOwners(List.of(p)).get(p.getOwnerRef());
+        MchEntity owner = loadOwners(List.of(p)).get(p.getOwnerRef());
         return new CommunityVO.PickupVO(p.getPickupNo(), p.getName(), p.getAddress(), 0,
                 p.getOwnerRef(), owner == null ? p.getName() : owner.getName(),
                 owner == null ? "" : owner.getLogo(), p.getOpenHours(), p.getArrivalDesc());
     }
 
-    private Map<String, UsrMerchant> loadOwners(List<CmtPickupPoint> pickups) {
+    private Map<String, MchEntity> loadOwners(List<CmtPickupPoint> pickups) {
         List<String> merchantNos = pickups.stream()
                 .map(CmtPickupPoint::getOwnerRef).filter(java.util.Objects::nonNull).distinct().toList();
         if (merchantNos.isEmpty()) {
             return Map.of();
         }
-        return merchantMapper.selectList(Wrappers.<UsrMerchant>lambdaQuery()
-                        .in(UsrMerchant::getMerchantNo, merchantNos)).stream()
-                .collect(Collectors.toMap(UsrMerchant::getMerchantNo, Function.identity(), (a, b) -> a));
+        return merchantMapper.selectList(Wrappers.<MchEntity>lambdaQuery()
+                        .in(MchEntity::getEntityNo, merchantNos)).stream()
+                .collect(Collectors.toMap(MchEntity::getEntityNo, Function.identity(), (a, b) -> a));
     }
 
-    private CommunityVO toVO(CmtCommunity c, List<CmtPickupPoint> pickups, Map<String, UsrMerchant> owners,
+    private CommunityVO toVO(CmtCommunity c, List<CmtPickupPoint> pickups, Map<String, MchEntity> owners,
                              Integer latE6, Integer lngE6) {
         return new CommunityVO(c.getCommunityNo(), c.getName(), c.getAddress(),
                 distance(c.getLatE6(), c.getLngE6(), latE6, lngE6),
                 pickups.stream().map(p -> {
-                    UsrMerchant owner = owners.get(p.getOwnerRef());
+                    MchEntity owner = owners.get(p.getOwnerRef());
                     return new CommunityVO.PickupVO(
                             p.getPickupNo(), p.getName(), p.getAddress(),
                             distance(p.getLatE6(), p.getLngE6(), latE6, lngE6),

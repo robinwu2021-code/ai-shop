@@ -17,6 +17,20 @@ function findSku(no: string): Sku {
 }
 
 export const productMock: ProductApi = {
+  listGoodsAuditQueue: (q = {}) =>
+    // 队列只给待审的：已处理的属于历史，混在待办里会让人重复审
+    wait(db.paginate(db.goodsAudits, q.page, q.size, (g) => g.status === "AUDITING")),
+
+  auditGoods: async (goodsNo, approved, reason) => {
+    const g = db.goodsAudits.find((x) => x.goodsNo === goodsNo);
+    if (!g) notFound("商品", "Goods", goodsNo);
+    // 驳回必须写理由 —— mock 也拦，否则这段校验在开发期永远走不到
+    if (!approved && !reason?.trim()) fail("驳回必须写理由", "A rejection must carry a reason");
+    // 通过后进的是「在架」而不是一个中间态 —— 与后端同口径
+    g.status = approved ? "ON_SALE" : "REJECTED";
+    return wait({ ...g });
+  },
+
   listCategories: async (q = {}) =>
     wait(
       db.categories.filter((c) =>

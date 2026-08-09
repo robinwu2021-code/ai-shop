@@ -237,7 +237,7 @@ public class GroupServiceImpl implements GroupService {
                         .eq(MktQuoteRevision::getRequestNo, requestNo)
                         .orderByAsc(MktQuoteRevision::getId))).stream()
                 .map(rev -> new QuoteRevisionVO(rev.getQuoteNo(),
-                        merchantNameOf(rev.getMerchantNo()),
+                        merchantNameOf(rev.getEntityNo()),
                         nz(rev.getFromPriceMinor()), nz(rev.getToPriceMinor()),
                         Boolean.TRUE.equals(rev.getRaised()), nz(rev.getAt())))
                 .toList();
@@ -264,7 +264,7 @@ public class GroupServiceImpl implements GroupService {
 
         MktQuote existing = scoped(() -> quoteMapper.selectOne(Wrappers.<MktQuote>lambdaQuery()
                 .eq(MktQuote::getRequestNo, requestNo)
-                .eq(MktQuote::getMerchantNo, merchantNo).last("limit 1")));
+                .eq(MktQuote::getEntityNo, merchantNo).last("limit 1")));
         if (existing != null) {
             // 二次报价 = 改价，同样要留痕
             return doRevise(existing, cmd.unitPriceMinor(), cmd);
@@ -273,7 +273,7 @@ public class GroupServiceImpl implements GroupService {
         MktQuote q = new MktQuote();
         q.setQuoteNo(BizKey.next(BizKey.QUOTE));
         q.setRequestNo(requestNo);
-        q.setMerchantNo(merchantNo);
+        q.setEntityNo(merchantNo);
         q.setUnitPriceMinor(cmd.unitPriceMinor());
         q.setMinQty(Math.max(cmd.minQty(), 1));
         q.setNote(cmd.note());
@@ -295,7 +295,7 @@ public class GroupServiceImpl implements GroupService {
     @Transactional
     public QuoteVO revise(String merchantNo, String quoteNo, QuoteCommand cmd) {
         MktQuote q = requireQuote(quoteNo);
-        if (!q.getMerchantNo().equals(merchantNo)) {
+        if (!q.getEntityNo().equals(merchantNo)) {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
         return doRevise(q, cmd.unitPriceMinor(), cmd);
@@ -308,7 +308,7 @@ public class GroupServiceImpl implements GroupService {
             MktQuoteRevision rev = new MktQuoteRevision();
             rev.setQuoteNo(q.getQuoteNo());
             rev.setRequestNo(q.getRequestNo());
-            rev.setMerchantNo(q.getMerchantNo());
+            rev.setEntityNo(q.getEntityNo());
             rev.setFromPriceMinor(oldPrice);
             rev.setToPriceMinor(newPrice);
             rev.setRaised(newPrice > oldPrice);
@@ -359,7 +359,7 @@ public class GroupServiceImpl implements GroupService {
         g.setInitiatorUserNo(userNo);
         g.setGoodsNo(snap.goodsNo());
         g.setSkuNo(snap.skuNo());
-        g.setMerchantNo(snap.merchantNo());
+        g.setEntityNo(snap.merchantNo());
         g.setTitle(snap.title());
         g.setCover(snap.cover());
         g.setGroupPriceMinor(snap.groupPriceMinor());
@@ -504,7 +504,7 @@ public class GroupServiceImpl implements GroupService {
                         np.timeSlot(), np.receivedAt()))
                 .orElse(null);
         return new GroupBuyVO(g.getGroupNo(), g.getGoodsNo(), g.getTitle(), g.getCover(),
-                g.getMerchantNo(), merchantNameOf(g.getMerchantNo()),
+                g.getEntityNo(), merchantNameOf(g.getEntityNo()),
                 nz(g.getGroupPriceMinor()), nz(g.getOriginPriceMinor()),
                 nz(g.getMinCount()), nz(g.getJoinedCount()), g.getStatus(),
                 nz(g.getEndAt()), joined,
@@ -558,8 +558,8 @@ public class GroupServiceImpl implements GroupService {
     }
 
     private QuoteVO toQuoteVO(MktQuote q) {
-        var m = merchantPort.find(q.getMerchantNo());
-        return new QuoteVO(q.getQuoteNo(), q.getRequestNo(), q.getMerchantNo(),
+        var m = merchantPort.find(q.getEntityNo());
+        return new QuoteVO(q.getQuoteNo(), q.getRequestNo(), q.getEntityNo(),
                 m.map(MerchantQueryPort.MerchantBrief::merchantName).orElse(""),
                 m.map(MerchantQueryPort.MerchantBrief::rating).orElse(0d),
                 // ★ 毁约次数直接公示在报价卡上（ADR-003）

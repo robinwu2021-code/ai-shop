@@ -97,7 +97,7 @@ public class AfterSaleServiceImpl implements AfterSaleService {
         as.setSubOrderNo(subOrderNo);
         as.setOrderNo(sub.getOrderNo());
         as.setUserNo(sub.getUserNo());
-        as.setMerchantNo(sub.getMerchantNo());
+        as.setEntityNo(sub.getEntityNo());
         as.setType(cmd.type());
         as.setReason(cmd.reason());
         as.setImages(writeJson(cmd.images()));
@@ -170,7 +170,7 @@ public class AfterSaleServiceImpl implements AfterSaleService {
 
     @Override
     public List<AfterSaleVO> merchantList(String merchantNo, String status) {
-        var w = Wrappers.<OrdAfterSale>lambdaQuery().eq(OrdAfterSale::getMerchantNo, merchantNo);
+        var w = Wrappers.<OrdAfterSale>lambdaQuery().eq(OrdAfterSale::getEntityNo, merchantNo);
         if (status != null && !status.isBlank()) {
             w.eq(OrdAfterSale::getStatus, status);
         }
@@ -285,7 +285,7 @@ public class AfterSaleServiceImpl implements AfterSaleService {
         OrdAfterSale as = DataScopeContext.executeWithoutScope(() ->
                 afterSaleMapper.selectOne(Wrappers.<OrdAfterSale>lambdaQuery()
                         .eq(OrdAfterSale::getAfterSaleNo, afterSaleNo)
-                        .eq(OrdAfterSale::getMerchantNo, merchantNo)
+                        .eq(OrdAfterSale::getEntityNo, merchantNo)
                         .last("limit 1")));
         if (as == null) {
             throw BizException.of(ErrorCode.NOT_FOUND);

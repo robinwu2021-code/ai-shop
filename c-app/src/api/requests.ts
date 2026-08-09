@@ -241,20 +241,15 @@ export interface MerchantListQuery {
   communityNo?: string;
 }
 
-export interface MerchantApplyReq {
-  /** 拟用店铺名 */
-  name: string;
-  /** 主体类型 */
-  type: MerchantApplyType;
-  /** 联系人姓名 */
-  contact: string;
-  /** 联系手机号 */
-  phone: string;
-  /** 主营类目 */
-  category: string;
-  /** 店铺简介 */
-  desc: string;
-}
+/*
+ * 入驻申请的 wire 契约在**共享层**（`@shared/types` 的 `MerchantApplyReq`，9 个字段）。
+ *
+ * 这里曾经另写了一份同名类型（6 个字段），于是 C 端与 B 端提交的是**两种不同的东西** ——
+ * 而两边打的是同一个业务、最终落同一张表。C 端填的资质图与结算账户类型无处安放，
+ * B 端填的又比后端认识的多。这正是「四方口径不一致」的根因。
+ *
+ * 现在统一到共享层那份：一处定义，三端与后端共用。
+ */
 
 export interface ReviewListQuery {
   /** 只看某商品的评价 */
@@ -295,4 +290,13 @@ export interface VerifyPickupReq {
 export interface MarkArrivedReq {
   /** 要标记到货的订单。**批量**：一次到货通常是一整批，逐单调用会把通知发成 N 条 */
   orderNos: string[];
+}
+
+// ---------------------------------------------------------------- 积分
+
+export interface PointsDeductibleQuery {
+  /** 试算哪个商家的单 —— 开关是按商家判的，不同店结果不同 */
+  merchantNo: string;
+  /** 券后金额（分）。抵扣上限按它算，**运费不参与** */
+  payableMinor: number;
 }

@@ -1,6 +1,10 @@
 package ai.neargo.shop.settle.mapper;
 
+import ai.neargo.shop.settle.entity.PtsUserAccount;
+import ai.neargo.shop.settle.entity.PtsUserLedger;
 import ai.neargo.shop.settle.entity.StlBill;
+import ai.neargo.shop.settle.entity.StlPayment;
+import ai.neargo.shop.settle.entity.StlPointsPool;
 import ai.neargo.shop.settle.entity.StlSplitLog;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 
@@ -14,5 +18,17 @@ public final class SettleMappers {
     }
 
     public interface SplitLogMapper extends BaseMapper<StlSplitLog> {
+    }
+
+    public interface PaymentMapper extends BaseMapper<StlPayment> {
+    }
+
+    public interface PointsPoolMapper extends BaseMapper<StlPointsPool> {
+    }
+
+    public interface PointsAccountMapper extends BaseMapper<PtsUserAccount> {
+    }
+
+    public interface PointsLedgerMapper extends BaseMapper<PtsUserLedger> {
     }
 }

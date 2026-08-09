@@ -24,6 +24,7 @@ import { earnPointsFor, pricingFor } from "@shared/strategies/pricing";
 import { fulfillmentFor } from "@shared/strategies/fulfillment";
 import { CATEGORY_TYPE, POINTS, SERVICE_SCOPE, TRADE_RULES } from "@shared/utils/constants";
 import { currentCurrency } from "@shared/utils/money";
+import { pointsExpireAt } from "@shared/utils/datetime";
 import { defaultFulfillment } from "@shared/utils/goods";
 import { buyNGetM, giftQtyFor } from "@shared/utils/promotion";
 import type { CreateOrderReq, GoodsQuery, ShopApi } from "./contract";
@@ -133,14 +134,27 @@ function buildAccount(ledger: typeof db.points) {
   const balance = pointBalance(ledger);
   const totalEarned = ledger.filter((r) => r.points > 0).reduce((s, r) => s + r.points, 0);
   const totalUsed = ledger.filter((r) => r.points < 0).reduce((s, r) => s - r.points, 0);
-  // 有效期从获得时点起算；这里用最早一笔未消耗的 EARN 粗略估算「即将过期」
-  const oldestEarn = [...ledger].reverse().find((r) => r.points > 0);
-  const expiringAt = oldestEarn
-    ? oldestEarn.at + POINTS.validDays * 86400_000
+  // 滚动到期：从**最近一次积分变动**起算，整个账户一个到期日（V30）。
+  // 到期时是全部清零，所以 expiringSoon 要么是全部余额，要么是 0
+  const lastActive = ledger[0]?.at;
+  const expiringAt = lastActive
+    ? pointsExpireAt(lastActive, POINTS.inactiveDays)
     : undefined;
   const soon =
     expiringAt && expiringAt - Date.now() < 30 * 86400_000 ? balance : 0;
-  return { balance, totalEarned, totalUsed, expiringSoon: soon, expiringAt };
+  // 待生效：售后期未满的那部分。mock 里用最近一笔 EARN 模拟，
+  // 让 C 端能看到「可用 / 待生效」两个数分开的样子
+  const latestEarn = ledger.find((r) => r.points > 0);
+  const pending = latestEarn && Date.now() - latestEarn.at < 7 * 86400_000 ? latestEarn.points : 0;
+  return {
+    balance,
+    pendingBalance: pending,
+    pendingActivateAt: pending ? latestEarn!.at + 7 * 86400_000 : undefined,
+    totalEarned,
+    totalUsed,
+    expiringSoon: soon,
+    expiringAt,
+  };
 }
 
 /**
@@ -236,12 +250,16 @@ export const mockApi: ShopApi = {
     return delay([...db.points]);
   },
 
-  async merchantPointAccount() {
-    return delay(buildAccount(db.merchantPoints));
-  },
-
-  async merchantPointRecords() {
-    return delay([...db.merchantPoints]);
+  async pointsDeductible(q) {
+    // 与服务端同一套判据：四级开关 → 上限 → 余额，三者取小
+    const acc = buildAccount(db.points);
+    const cap = Math.floor(q.payableMinor * POINTS.maxDeductRatio) * POINTS.perMinor;
+    const maxPoints = Math.min(acc.balance, cap);
+    return delay({
+      maxPoints,
+      maxAmountMinor: Math.floor(maxPoints / POINTS.perMinor),
+      balance: acc.balance,
+    });
   },
 
   // ---------------------------------------------------------------- 用户
@@ -1159,11 +1177,48 @@ export const mockApi: ShopApi = {
     return delay(review);
   },
 
+  async masterData() {
+    // 带一个不允许小微的行业，否则「行业决定能否选小微」在 mock 下永远看不出效果
+    return delay({
+      industries: [
+        { industry: "FRESH", name: "生鲜果蔬", microAllowed: true },
+        { industry: "GROCERY", name: "粮油日用", microAllowed: true },
+        { industry: "BAKERY", name: "烘焙熟食", microAllowed: true },
+        { industry: "ONLINE_SERVICE", name: "线上服务", microAllowed: false },
+      ],
+      subjects: [
+        { subjectType: "MICRO" as const, name: "小微商户", needLicense: false,
+          industryGated: true, settleAccountType: "PERSONAL_OPENID" as const },
+        { subjectType: "INDIVIDUAL" as const, name: "个体工商户", needLicense: true,
+          industryGated: false, settleAccountType: "MERCHANT_ID" as const },
+        { subjectType: "ENTERPRISE" as const, name: "企业", needLicense: true,
+          industryGated: false, settleAccountType: "MERCHANT_ID" as const },
+      ],
+      channels: [{ payChannel: "WECHAT", name: "微信支付", enabled: true, payMethods: ["JSAPI"] }],
+    });
+  },
+
   async merchantApply(payload) {
-    // 一期只落一条申请记录，审核在运营端。这里不改 db.merchantSeeds ——
-    // 未审核就出现在商家列表里会误导消费者
-    void payload;
-    return delay({ applied: true as const });
+    /*
+     * 一人同时只能有一份进行中的申请 —— 表单页重复点击是常态。
+     * 真实后端靠 uk_apply_active_owner 唯一键挡住（先查后插必然有竞态）。
+     */
+    if (db.merchantApply && ["PENDING", "REVIEWING"].includes(db.merchantApply.status)) {
+      throw new Error("你已有一份进行中的入驻申请");
+    }
+    db.merchantApply = {
+      ...payload,
+      applyNo: nextNo("MA"),
+      status: "PENDING",
+      createdAt: Date.now(),
+    };
+    persist();
+    return delay({ ...db.merchantApply });
+  },
+
+  async myMerchantApply() {
+    // 没申请过返回 null 而不是报错 —— 「没申请过」是正常状态，不是异常
+    return delay(db.merchantApply ? { ...db.merchantApply } : null);
   },
 
   // ---------------------------------------------------------------- 消息

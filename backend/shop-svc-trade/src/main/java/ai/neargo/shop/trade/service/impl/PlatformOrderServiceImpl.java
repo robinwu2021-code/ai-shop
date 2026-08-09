@@ -36,12 +36,13 @@ public class PlatformOrderServiceImpl implements PlatformOrderService {
 
         List<OrderVO> records = p.getRecords().stream()
                 .map(s -> new OrderVO(s.getSubOrderNo(), s.getOrderNo(), s.getStatus(),
-                        s.getFulfillment(), s.getMerchantNo(), s.getMerchantName(),
+                        s.getFulfillment(), s.getEntityNo(), s.getEntityName(),
                         List.of(),
                         OrderVO.Amount.of(nz(s.getGoodsAmount()), nz(s.getFreightAmount()),
                                 nz(s.getDiscountAmount()), nz(s.getPayAmount()), "CNY"),
                         s.getVerifyCode(), s.getPickupNo(), s.getPickupName(),
-                        null, 0L, null, s.getTrafficSource(), List.of(), null))
+                        // 平台侧也要看得到快递单号：客服处理「货到哪了」全靠它
+                        null, 0L, null, s.getExpressNo(), s.getTrafficSource(), List.of(), null))
                 .toList();
         return PageData.of(records, p.getTotal(), p.getCurrent(), p.getSize());
     }

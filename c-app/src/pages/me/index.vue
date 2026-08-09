@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { MerchantApplyStatus, MerchantSubject } from "@shared/types";
+import type { MasterData, MerchantApplyStatus, MerchantSubject } from "@shared/types";
 // 我的：登录入口 + 归属信息 + 外观与语言。
 // 列表项之间用间距分块，不用分隔线（扁平色块风格）。
 import { computed, ref } from "vue";
@@ -60,8 +60,9 @@ function gotoVisited() {
   uni.switchTab({ url: ROUTES.merchants });
 }
 
-function applyMerchant() {
+async function applyMerchant() {
   merchantVisible.value = true;
+  if (!master.value) master.value = await api.masterData().catch(() => null);
 }
 
 const merchantVisible = ref(false);
@@ -69,12 +70,30 @@ const mForm = ref({
   name: "",
   // 主体类型：个人 → 个体户 → 企业，门槛前低后高（ADR-002 §4）。
   // 默认「个人」—— 一期的目标是「入驻容易」，让摆摊的邻居也能开
-  subject: "PERSONAL" as MerchantSubject,
+  subject: "MICRO" as MerchantSubject,
   contactName: "",
   contactPhone: "",
   category: "",
   desc: "",
+  /**
+   * 行业。**决定能不能以小微主体进件**（微信白名单按行业给），
+   * 也是 points_forced 的来源。此前这张表没有这个字段，
+   * 于是所有从 C 端入驻的商家 industry 恒空 —— 进件时才发现主体选错了。
+   */
+  industry: "",
 });
+
+/** 主数据：行业与主体都从服务端取，微信放开白名单时不用发版 */
+const master = ref<MasterData | null>(null);
+const industries = computed(() => master.value?.industries ?? []);
+
+/** 小微受行业白名单管控，其余主体不受。还没选行业时不禁用，免得看着像坏了 */
+function subjectAllowed(sub: MerchantSubject) {
+  const meta = master.value?.subjects.find((x) => x.subjectType === sub);
+  if (!meta?.industryGated) return true;
+  const ind = industries.value.find((i) => i.industry === mForm.value.industry);
+  return !ind || ind.microAllowed;
+}
 const mValid = computed(
   () =>
     mForm.value.name.trim() &&
@@ -209,17 +228,37 @@ onShow(() => {
         <text class="sh-h2">{{ $t("merchant.apply") }}</text>
         <text class="sh-muted sheet__hint">{{ $t("merchant.applyFormHint") }}</text>
 
+        <!-- 行业排在主体之前：它决定主体能不能选小微，顺序反了人会白挑一次 -->
         <view class="types">
           <view
-            v-for="tp in ['PERSONAL', 'INDIVIDUAL_BIZ', 'COMPANY']"
+            v-for="i in industries"
+            :key="i.industry"
+            class="type"
+            :class="{ 'is-on': mForm.industry === i.industry }"
+            @tap="mForm.industry = i.industry"
+          >
+            {{ i.name }}
+          </view>
+        </view>
+
+        <view class="types">
+          <view
+            v-for="tp in ['MICRO', 'INDIVIDUAL', 'ENTERPRISE']"
             :key="tp"
             class="type"
-            :class="{ 'is-on': mForm.subject === tp }"
-            @tap="mForm.subject = tp as MerchantSubject"
+            :class="{
+              'is-on': mForm.subject === tp,
+              'is-blocked': !subjectAllowed(tp as MerchantSubject),
+            }"
+            @tap="subjectAllowed(tp as MerchantSubject) && (mForm.subject = tp as MerchantSubject)"
           >
             {{ $t(`merchant.subject.${tp}`) }}
           </view>
         </view>
+        <!-- 禁用要给理由：光变灰只会让人反复点它 -->
+        <text v-if="!subjectAllowed('MICRO')" class="blocked-tip">
+          {{ $t("merchant.microBlocked") }}
+        </text>
 
         <input v-model="mForm.name" class="field" :placeholder="$t('merchant.shopName')" />
         <input v-model="mForm.category" class="field" :placeholder="$t('merchant.category')" />
@@ -286,6 +325,15 @@ onShow(() => {
   background: var(--sh-faint);
   color: var(--sh-sub);
   font-size: 26rpx;
+}
+.type.is-blocked {
+  opacity: 0.4;
+}
+.blocked-tip {
+  display: block;
+  margin-top: 8rpx;
+  font-size: 24rpx;
+  color: var(--sh-danger);
 }
 .type.is-on {
   background: var(--sh-primary);

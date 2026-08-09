@@ -49,8 +49,8 @@ public class CouponPortImpl implements CouponPort {
 
         // 商家券只对本店商品计门槛、也只减本店的钱
         List<MerchantAmount> applicable = groups.stream()
-                .filter(g -> coupon.getMerchantNo() == null || coupon.getMerchantNo().isBlank()
-                        || coupon.getMerchantNo().equals(g.merchantNo()))
+                .filter(g -> coupon.getEntityNo() == null || coupon.getEntityNo().isBlank()
+                        || coupon.getEntityNo().equals(g.merchantNo()))
                 .toList();
         long base = applicable.stream().mapToLong(MerchantAmount::goodsAmount).sum();
         if (base < nz(coupon.getThresholdMinor())) {

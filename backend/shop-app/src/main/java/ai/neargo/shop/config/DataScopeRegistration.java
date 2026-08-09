@@ -35,7 +35,7 @@ public class DataScopeRegistration implements DataScopeRegistrar {
         // SELF 必须登记，理由见类注释第 2 条。
         registry.register("ord_sub_order", Map.of(
                 ScopeDim.SELF, "user_no",
-                ScopeDim.MERCHANT, "merchant_no",
+                ScopeDim.MERCHANT, "entity_no",
                 ScopeDim.PICKUP, "pickup_no"));
 
         registry.register("ord_order", Map.of(
@@ -43,13 +43,13 @@ public class DataScopeRegistration implements DataScopeRegistrar {
 
         // —— 商品：商家只能改自己的货 ——
         registry.register("prd_goods", Map.of(
-                ScopeDim.MERCHANT, "merchant_no"));
+                ScopeDim.MERCHANT, "entity_no"));
 
         // —— 履约：自提点承接的任务含别家商品，行级过滤之外还要字段级裁剪（第 ④ 道防线）——
         registry.register("ful_pickup_task", Map.of(
                 ScopeDim.SELF, "user_no",
                 ScopeDim.PICKUP, "pickup_no",
-                ScopeDim.MERCHANT, "merchant_no"));
+                ScopeDim.MERCHANT, "entity_no"));
 
         // —— 邻里自提：作用域是单个团，且发起人零报酬（ADR-005）——
         registry.register("ful_group_pickup", Map.of(
@@ -58,6 +58,6 @@ public class DataScopeRegistration implements DataScopeRegistrar {
 
         // —— 结算：钱的可见性最敏感，只有商家自己和平台财务 ——
         registry.register("stl_bill", Map.of(
-                ScopeDim.MERCHANT, "merchant_no"));
+                ScopeDim.MERCHANT, "entity_no"));
     }
 }

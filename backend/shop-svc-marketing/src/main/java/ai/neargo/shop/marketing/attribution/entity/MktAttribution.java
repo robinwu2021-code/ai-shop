@@ -1,6 +1,7 @@
 package ai.neargo.shop.marketing.attribution.entity;
 
 import ai.neargo.shop.common.BaseEntity;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Getter;
 import lombok.Setter;
@@ -21,7 +22,7 @@ public class MktAttribution extends BaseEntity {
     public static final String CHANNEL = "CHANNEL";
 
     private String userNo;
-    private String merchantNo;
+    private String entityNo;
     private String inviterNo;
     private String channel;
     private String source;

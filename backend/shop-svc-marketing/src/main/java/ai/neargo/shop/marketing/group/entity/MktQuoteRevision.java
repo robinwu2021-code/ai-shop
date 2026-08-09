@@ -2,6 +2,7 @@ package ai.neargo.shop.marketing.group.entity;
 
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Getter;
 import lombok.Setter;
@@ -22,7 +23,7 @@ public class MktQuoteRevision {
 
     private String quoteNo;
     private String requestNo;
-    private String merchantNo;
+    private String entityNo;
     private Long fromPriceMinor;
     private Long toPriceMinor;
     private Boolean raised;

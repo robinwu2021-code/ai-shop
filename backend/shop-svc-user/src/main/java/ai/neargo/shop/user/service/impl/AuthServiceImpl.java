@@ -9,7 +9,7 @@ import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.user.dto.UserVO;
-import ai.neargo.shop.user.entity.UsrUser;
+import ai.neargo.shop.user.entity.UsrAccount;
 import ai.neargo.shop.user.mapper.UserMappers.UserMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.slf4j.Logger;
@@ -56,8 +56,8 @@ public class AuthServiceImpl implements AuthService {
     public LoginResult refresh(String currentToken) {
         var session = tokenStore.get(currentToken)
                 .orElseThrow(ai.neargo.shop.common.GlobalExceptionHandler.UnauthorizedException::new);
-        UsrUser user = userMapper.selectOne(Wrappers.<UsrUser>lambdaQuery()
-                .eq(UsrUser::getUserNo, session.user().userNo()).last("limit 1"));
+        UsrAccount user = userMapper.selectOne(Wrappers.<UsrAccount>lambdaQuery()
+                .eq(UsrAccount::getUserNo, session.user().userNo()).last("limit 1"));
         if (user == null) {
             throw new ai.neargo.shop.common.GlobalExceptionHandler.UnauthorizedException();
         }
@@ -76,7 +76,7 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     public LoginResult login(LoginCommand cmd) {
         Identity identity = resolveIdentity(cmd);
-        UsrUser user = findOrCreate(identity, cmd);
+        UsrAccount user = findOrCreate(identity, cmd);
 
         if ("BANNED".equals(user.getStatus())) {
             throw BizException.of(ErrorCode.RISK_BLOCKED);
@@ -92,14 +92,14 @@ public class AuthServiceImpl implements AuthService {
         return switch (cmd.grantType() == null ? "" : cmd.grantType()) {
             case GRANT_WECHAT_MP ->
                 // TODO(S4) 接 code2Session：cmd.principal() 是 wx.login 的 code，换 openid/unionid
-                    new Identity(UsrUser::getOpenid, "openid", cmd.principal());
+                    new Identity(UsrAccount::getOpenid, "openid", cmd.principal());
             case GRANT_PHONE_OTP -> {
                 verifyOtp(cmd.principal(), cmd.credential());
-                yield new Identity(UsrUser::getPhone, "phone", cmd.principal());
+                yield new Identity(UsrAccount::getPhone, "phone", cmd.principal());
             }
             case GRANT_APPLE ->
                 // TODO(S4) 校验 identityToken 签名后取 sub
-                    new Identity(UsrUser::getAppleSub, "apple_sub", cmd.principal());
+                    new Identity(UsrAccount::getAppleSub, "apple_sub", cmd.principal());
             default -> throw BizException.of(ErrorCode.BAD_REQUEST);
         };
     }
@@ -110,25 +110,25 @@ public class AuthServiceImpl implements AuthService {
         }
     }
 
-    private UsrUser findOrCreate(Identity identity, LoginCommand cmd) {
-        UsrUser existing = userMapper.selectOne(Wrappers.<UsrUser>lambdaQuery()
+    private UsrAccount findOrCreate(Identity identity, LoginCommand cmd) {
+        UsrAccount existing = userMapper.selectOne(Wrappers.<UsrAccount>lambdaQuery()
                 .eq(true, identity.column(), identity.value())
                 .last("limit 1"));
         if (existing != null) {
             // 从店铺码进来的老用户：刷新常去店，归因由 marketing 域按优先级裁决（S5）
             if (cmd.merchantNo() != null && !cmd.merchantNo().isBlank()) {
-                existing.setMerchantNo(cmd.merchantNo());
+                existing.setEntityNo(cmd.merchantNo());
                 userMapper.updateById(existing);
             }
             return existing;
         }
 
-        UsrUser user = new UsrUser();
+        UsrAccount user = new UsrAccount();
         user.setUserNo(BizKey.next(BizKey.USER));
         user.setNickname("邻居" + user.getUserNo().substring(user.getUserNo().length() - 4));
         user.setAvatar("");
         user.setStatus("NORMAL");
-        user.setMerchantNo(cmd.merchantNo());
+        user.setEntityNo(cmd.merchantNo());
         switch (identity.field()) {
             case "openid" -> user.setOpenid(identity.value());
             case "phone" -> user.setPhone(identity.value());
@@ -139,7 +139,7 @@ public class AuthServiceImpl implements AuthService {
     }
 
     /** 标识列的三元组：查用的 lambda、写用的字段名、值。 */
-    private record Identity(com.baomidou.mybatisplus.core.toolkit.support.SFunction<UsrUser, ?> column,
+    private record Identity(com.baomidou.mybatisplus.core.toolkit.support.SFunction<UsrAccount, ?> column,
                             String field, String value) {
     }
 }

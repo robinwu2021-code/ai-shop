@@ -8,12 +8,12 @@ import ai.neargo.shop.product.mapper.ProductMappers.CategoryMapper;
 import ai.neargo.shop.product.mapper.ProductMappers.CommunityPoolMapper;
 import ai.neargo.shop.product.mapper.ProductMappers.GoodsMapper;
 import ai.neargo.shop.product.mapper.ProductMappers.SkuMapper;
-import ai.neargo.shop.user.entity.CmtCommunity;
-import ai.neargo.shop.user.entity.CmtPickupPoint;
-import ai.neargo.shop.user.entity.UsrMerchant;
+import ai.neargo.shop.user.community.entity.CmtCommunity;
+import ai.neargo.shop.user.community.entity.CmtPickupPoint;
+import ai.neargo.shop.user.merchant.entity.MchEntity;
 import ai.neargo.shop.user.mapper.UserMappers.CommunityMapper;
-import ai.neargo.shop.user.mapper.UserMappers.MerchantMapper;
-import ai.neargo.shop.platform.entity.SysStaff;
+import ai.neargo.shop.user.mapper.UserMappers.MchEntityMapper;
+import ai.neargo.shop.platform.entity.SysOpsStaff;
 import ai.neargo.shop.platform.mapper.PlatformMappers.StaffMapper;
 import ai.neargo.shop.user.mapper.UserMappers.PickupPointMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -43,9 +43,12 @@ public class DevSeeder {
 
     @Bean
     ApplicationRunner seedRunner(CommunityMapper communityMapper, PickupPointMapper pickupMapper,
-                                 MerchantMapper merchantMapper, GoodsMapper goodsMapper,
+                                 MchEntityMapper merchantMapper, GoodsMapper goodsMapper,
                                  SkuMapper skuMapper, CommunityPoolMapper poolMapper,
-                                 CategoryMapper categoryMapper, StaffMapper staffMapper) {
+                                 CategoryMapper categoryMapper, StaffMapper staffMapper,
+                                 // 平台员工是 staffMapper，商家子账号是 merchantStaffMapper —— 两套人，别混
+                                 ai.neargo.shop.user.mapper.UserMappers.MchAccountMapper merchantStaffMapper,
+                                 ai.neargo.shop.user.mapper.UserMappers.MchStoreMapper storeMapper) {
         return args -> {
             if (communityMapper.selectCount(Wrappers.emptyWrapper()) > 0) {
                 return;   // 幂等：重启不重复灌
@@ -74,23 +77,36 @@ public class DevSeeder {
             merchantMapper.insert(merchant("M0002", "鲜果直供", "U-DEMO-2", false,
                     "产地直发，当日采摘次日到", "[\"产地直发\"]"));
 
+            /*
+             * 演示商家也要有**成员行 + 默认门店** —— V44 起 B 端身份来自
+             * mch_account，而不是 mch_entity.owner_user_no。
+             * 漏掉的话：库里有商家、C 端搜得到，唯独他自己登录 B 端时作用域是空的，
+             * 所有 /biz/** 都 403，而看到的只是「打不开」。
+             */
+            for (var seed : java.util.List.of(
+                    new String[]{"M0001", "U-DEMO-1", "老张粮油店"},
+                    new String[]{"M0002", "U-DEMO-2", "鲜果直供"})) {
+                merchantStaffMapper.insert(ownerStaff(seed[0], seed[1]));
+                storeMapper.insert(defaultStore(seed[0], seed[2]));
+            }
+
             pickupMapper.insert(pickup("PP0001", "C0001", "老张粮油店（自提点）",
                     "阳光花园东门旁", "M0001", "08:00-21:00", "每晚 7 点前到货"));
             pickupMapper.insert(pickup("PP0002", "C0002", "翡翠城便利店",
                     "翡翠城 3 号楼底商", "M0001", "07:00-22:00", "每晚 8 点前到货"));
 
             seedGoods(goodsMapper, skuMapper, poolMapper,
-                    "G0001", "M0001", "NORMAL", "五常大米 10斤装", "东北五常，当季新米",
+                    "G0001", "M0001", "NORMAL", "🍚", "五常大米 10斤装", "东北五常，当季新米",
                     List.of(new SkuSeed("SK0001", "10斤装", 4980L, 5980L, 120),
                             new SkuSeed("SK0002", "20斤装", 9580L, 11800L, 60)));
             seedGoods(goodsMapper, skuMapper, poolMapper,
-                    "G0002", "M0001", "NORMAL", "金龙鱼调和油 5L", "家庭装，煎炒烹炸",
+                    "G0002", "M0001", "NORMAL", "🛢️", "金龙鱼调和油 5L", "家庭装，煎炒烹炸",
                     List.of(new SkuSeed("SK0003", "5L", 6980L, 7980L, 80)));
             seedGoods(goodsMapper, skuMapper, poolMapper,
-                    "G0003", "M0002", "FRESH", "阳山水蜜桃 4枚礼盒", "次日到货，坏果包赔",
+                    "G0003", "M0002", "FRESH", "🍑", "阳山水蜜桃 4枚礼盒", "次日到货，坏果包赔",
                     List.of(new SkuSeed("SK0004", "4枚装", 5800L, 6800L, 40)));
             seedGoods(goodsMapper, skuMapper, poolMapper,
-                    "G0004", "M0002", "FRESH", "云南蓝莓 125g×4盒", "当季头茬",
+                    "G0004", "M0002", "FRESH", "🫐", "云南蓝莓 125g×4盒", "当季头茬",
                     List.of(new SkuSeed("SK0005", "4盒装", 3980L, null, 30)));
         };
     }
@@ -100,7 +116,7 @@ public class DevSeeder {
 
     private void seedStaff(StaffMapper mapper, String username, String realName,
                            String rolesJson, String rawPassword) {
-        var s = new SysStaff();
+        var s = new SysOpsStaff();
         s.setStaffNo("ST-" + username.toUpperCase());
         s.setUsername(username);
         s.setPassword(ai.neargo.shop.platform.impl.OpsServiceImpl.hash(rawPassword));
@@ -150,13 +166,35 @@ public class DevSeeder {
         return p;
     }
 
-    private UsrMerchant merchant(String no, String name, String ownerUserNo, boolean verified,
+    private ai.neargo.shop.user.merchant.entity.MchAccount ownerStaff(String merchantNo, String userNo) {
+        var st = new ai.neargo.shop.user.merchant.entity.MchAccount();
+        st.setMchAccountNo("SF-" + merchantNo);
+        st.setEntityNo(merchantNo);
+        st.setUserNo(userNo);
+        st.setIsOwner(true);
+        st.setIsPrimary(true);
+        st.setStatus(ai.neargo.shop.user.merchant.entity.MchAccount.ACTIVE);
+        return st;
+    }
+
+    private ai.neargo.shop.user.merchant.entity.MchStore defaultStore(String merchantNo, String name) {
+        var s = new ai.neargo.shop.user.merchant.entity.MchStore();
+        s.setStoreNo("ST-" + merchantNo);
+        s.setEntityNo(merchantNo);
+        s.setName(name);
+        s.setIsDefault(true);
+        s.setStatus(ai.neargo.shop.user.merchant.entity.MchStore.ACTIVE);
+        s.setFeatured("[]");
+        return s;
+    }
+
+    private MchEntity merchant(String no, String name, String ownerUserNo, boolean verified,
                                  String desc, String tags) {
-        var m = new UsrMerchant();
-        m.setMerchantNo(no);
+        var m = new MchEntity();
+        m.setEntityNo(no);
         m.setName(name);
         m.setLogo("");
-        m.setType("INDIVIDUAL");
+        m.setLegalForm("INDIVIDUAL");
         m.setDescription(desc);
         m.setOwnerUserNo(ownerUserNo);
         m.setRating(48);
@@ -176,14 +214,18 @@ public class DevSeeder {
     }
 
     private void seedGoods(GoodsMapper goodsMapper, SkuMapper skuMapper, CommunityPoolMapper poolMapper,
-                           String goodsNo, String merchantNo, String type, String title, String subtitle,
+                           String goodsNo, String merchantNo, String type, String cover,
+                           String title, String subtitle,
                            List<SkuSeed> skus) {
         var g = new PrdGoods();
         g.setGoodsNo(goodsNo);
-        g.setMerchantNo(merchantNo);
+        g.setEntityNo(merchantNo);
         g.setTitle(title);
         g.setSubtitle(subtitle);
-        g.setCover("");
+        // 演示封面用 emoji：真实环境这里是图片 URL，但本地联调要的是"一眼能分辨"，
+        // 而不是四条一模一样的占位。空字符串在端上会走 GOODS_COVER_FALLBACK（🛒），
+        // 满屏同一个购物车比没有图还难看
+        g.setCover(cover);
         g.setImages("[]");
         g.setType(type);
         g.setCategoryNo("CAT001");
@@ -201,7 +243,7 @@ public class DevSeeder {
             var sku = new PrdSku();
             sku.setSkuNo(s.skuNo());
             sku.setGoodsNo(goodsNo);
-            sku.setMerchantNo(merchantNo);
+            sku.setEntityNo(merchantNo);
             sku.setMarket("CN");
             sku.setOptionValues("[\"" + s.spec() + "\"]");
             sku.setSpec(s.spec());
@@ -216,7 +258,7 @@ public class DevSeeder {
             var pool = new PrdCommunityPool();
             pool.setCommunityNo(communityNo);
             pool.setGoodsNo(goodsNo);
-            pool.setMerchantNo(merchantNo);
+            pool.setEntityNo(merchantNo);
             pool.setSortWeight(0);
             poolMapper.insert(pool);
         }

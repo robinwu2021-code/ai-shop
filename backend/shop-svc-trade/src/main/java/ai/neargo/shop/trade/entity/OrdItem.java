@@ -41,4 +41,12 @@ public class OrdItem extends BaseEntity {
     /** 赠品行：价格为 0、不参与计价。认不出来的话，按行退款会把赠品也退钱。 */
     private Boolean isGift;
 
+
+    /**
+     * 本行称重差价（分）：正 = 补款，负 = 退款；未称重时为 0。
+     *
+     * <p>差价发生在**行**上（是哪个商品称少了），子单上那列是本子单各行的汇总。
+     * 只有汇总的话，用户问「差价 −3.50 是哪个商品」时客服答不上来。
+     */
+    private Long weighAdjustMinor;
 }

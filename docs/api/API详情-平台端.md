@@ -2741,6 +2741,7 @@ getMerchant
 | `settleAccountReady` | `boolean` | 是 | 分账接收方报备状态（P-12.1.1，ADR-002） |
 | `createdAt` | `string` | 是 | 入驻申请提交时间 |
 | `auditRemark` | `string` | 否 | 最近一次审核意见（驳回原因/补交项） |
+| `asPickupPoint` | `boolean` | 否 | 申请人是否愿意承接自提点（ADR-005）。 **只是意愿，通过审核不会自动建点** —— 自提点的服务费口径是逐点线下谈的， 没有一个默认值能覆盖。放在审核页上是为了让运营**看见有人在等**： 不显示的话，申请人勾了这一项、通过后什么也没发生，而中间没有任何一处会报错。 |
 
 
 #### POST `/ops/merchants/{merchantNo}/archive`
@@ -2777,6 +2778,7 @@ _无字段_
 | `settleAccountReady` | `boolean` | 是 | 分账接收方报备状态（P-12.1.1，ADR-002） |
 | `createdAt` | `string` | 是 | 入驻申请提交时间 |
 | `auditRemark` | `string` | 否 | 最近一次审核意见（驳回原因/补交项） |
+| `asPickupPoint` | `boolean` | 否 | 申请人是否愿意承接自提点（ADR-005）。 **只是意愿，通过审核不会自动建点** —— 自提点的服务费口径是逐点线下谈的， 没有一个默认值能覆盖。放在审核页上是为了让运营**看见有人在等**： 不显示的话，申请人勾了这一项、通过后什么也没发生，而中间没有任何一处会报错。 |
 
 
 #### PUT `/ops/merchants/{merchantNo}/auth-codes`
@@ -2813,11 +2815,12 @@ _无字段_
 | `settleAccountReady` | `boolean` | 是 | 分账接收方报备状态（P-12.1.1，ADR-002） |
 | `createdAt` | `string` | 是 | 入驻申请提交时间 |
 | `auditRemark` | `string` | 否 | 最近一次审核意见（驳回原因/补交项） |
+| `asPickupPoint` | `boolean` | 否 | 申请人是否愿意承接自提点（ADR-005）。 **只是意愿，通过审核不会自动建点** —— 自提点的服务费口径是逐点线下谈的， 没有一个默认值能覆盖。放在审核页上是为了让运营**看见有人在等**： 不显示的话，申请人勾了这一项、通过后什么也没发生，而中间没有任何一处会报错。 |
 
 
 #### POST `/ops/merchants/{merchantNo}/status`
 
-审核推进（DRAFT→SUBMITTED→REVIEWING→APPROVED/REJECTED），非法迁移抛错
+审核推进
 
 **入参**
 
@@ -2849,6 +2852,7 @@ _无字段_
 | `settleAccountReady` | `boolean` | 是 | 分账接收方报备状态（P-12.1.1，ADR-002） |
 | `createdAt` | `string` | 是 | 入驻申请提交时间 |
 | `auditRemark` | `string` | 否 | 最近一次审核意见（驳回原因/补交项） |
+| `asPickupPoint` | `boolean` | 否 | 申请人是否愿意承接自提点（ADR-005）。 **只是意愿，通过审核不会自动建点** —— 自提点的服务费口径是逐点线下谈的， 没有一个默认值能覆盖。放在审核页上是为了让运营**看见有人在等**： 不显示的话，申请人勾了这一项、通过后什么也没发生，而中间没有任何一处会报错。 |
 
 
 #### POST `/ops/merchants/{merchantNo}/unarchive`
@@ -2885,6 +2889,7 @@ _无字段_
 | `settleAccountReady` | `boolean` | 是 | 分账接收方报备状态（P-12.1.1，ADR-002） |
 | `createdAt` | `string` | 是 | 入驻申请提交时间 |
 | `auditRemark` | `string` | 否 | 最近一次审核意见（驳回原因/补交项） |
+| `asPickupPoint` | `boolean` | 否 | 申请人是否愿意承接自提点（ADR-005）。 **只是意愿，通过审核不会自动建点** —— 自提点的服务费口径是逐点线下谈的， 没有一个默认值能覆盖。放在审核页上是为了让运营**看见有人在等**： 不显示的话，申请人勾了这一项、通过后什么也没发生，而中间没有任何一处会报错。 |
 
 
 #### POST `/ops/merchants/{merchantNo}/verified`
@@ -2921,6 +2926,7 @@ _无字段_
 | `settleAccountReady` | `boolean` | 是 | 分账接收方报备状态（P-12.1.1，ADR-002） |
 | `createdAt` | `string` | 是 | 入驻申请提交时间 |
 | `auditRemark` | `string` | 否 | 最近一次审核意见（驳回原因/补交项） |
+| `asPickupPoint` | `boolean` | 否 | 申请人是否愿意承接自提点（ADR-005）。 **只是意愿，通过审核不会自动建点** —— 自提点的服务费口径是逐点线下谈的， 没有一个默认值能覆盖。放在审核页上是为了让运营**看见有人在等**： 不显示的话，申请人勾了这一项、通过后什么也没发生，而中间没有任何一处会报错。 |
 
 
 #### POST `/ops/merchants/{merchantNo}/violations`
@@ -5014,6 +5020,7 @@ KPI 卡（金额为最小货币单位整数）。
 | `settleAccountReady` | `boolean` | 是 | 分账接收方报备状态（P-12.1.1，ADR-002） |
 | `createdAt` | `string` | 是 | 入驻申请提交时间 |
 | `auditRemark` | `string` | 否 | 最近一次审核意见（驳回原因/补交项） |
+| `asPickupPoint` | `boolean` | 否 | 申请人是否愿意承接自提点（ADR-005）。 **只是意愿，通过审核不会自动建点** —— 自提点的服务费口径是逐点线下谈的， 没有一个默认值能覆盖。放在审核页上是为了让运营**看见有人在等**： 不显示的话，申请人勾了这一项、通过后什么也没发生，而中间没有任何一处会报错。 |
 
 ### MsgTemplate
 

@@ -24,9 +24,38 @@ import {
   toCommunity,
 } from "@shared/mock/db";
 import { currentCurrency, money } from "@shared/utils/money";
-import { CATEGORY_TYPE, SETTLE, REVIEW_RULES } from "@shared/utils/constants";
+import { CATEGORY_TYPE, POINTS, SETTLE, REVIEW_RULES } from "@shared/utils/constants";
 import { ensureDemoOrders } from "./demo-orders";
 import type { GoodsDraft, MerchantApi } from "./contract";
+
+/** 本店积分开关。mock 内存态，真实实现在 usr_merchant.points_enabled */
+let pointsEnabled = true;
+
+/**
+ * 发分服务费明细：一单一条，真实数据来自 `stl_bill.points_fee_minor`。
+ * mock 里按已有订单折算，让 B 端能看到「一单一条」的形状。
+ */
+function pointsFeeRecords() {
+  return db.orders.slice(0, 8).map((o) => ({
+    settleNo: `ST${o.orderNo.slice(-8)}`,
+    subOrderNo: o.orderNo,
+    points: Math.round((o.amount?.payableMinor ?? 0) * POINTS.defaultEarnRatio),
+    feeMinor: Math.round((o.amount?.payableMinor ?? 0) * POINTS.defaultEarnRatio / POINTS.perMinor),
+    period: "202608",
+    at: o.createdAt,
+  }));
+}
+
+function pointsAccount() {
+  const expense = pointsFeeRecords().reduce((s, r) => s + r.feeMinor, 0);
+  return {
+    periodExpenseMinor: expense,
+    period: "2026-08",
+    enabled: pointsEnabled,
+    disabledReason: pointsEnabled ? undefined : "本店未开启积分",
+    forced: false,
+  };
+}
 import type {
   CurrencyCode,
   Goods,
@@ -133,6 +162,23 @@ function takePendingAfterSale(afterSaleNo: string): Order {
   return o;
 }
 
+function requireStore(storeNo: string) {
+  const s = db.stores.find((x) => x.storeNo === storeNo);
+  if (!s) throw new Error("门店不存在");
+  return s;
+}
+
+function requireStaff(mchAccountNo: string) {
+  const s = db.staff.find((x) => x.mchAccountNo === mchAccountNo);
+  if (!s) throw new Error("员工不存在");
+  return s;
+}
+
+/** 与服务端同一套脱敏：两处不一致会让人以为其中一处泄了 */
+function maskPhone(phone: string) {
+  return phone.length < 7 ? phone : `${phone.slice(0, 3)}****${phone.slice(-4)}`;
+}
+
 export const mockApi: MerchantApi = {
   // ---------------------------------------------------------------- 账号与入驻
   async mLogin(req) {
@@ -149,58 +195,43 @@ export const mockApi: MerchantApi = {
     return delay({ token: `mock-b-token-${Date.now()}`, merchant: { ...db.merchant } });
   },
 
+  async mStaffLogin(payload) {
+    /*
+     * mock 也照「非在职员工返回 403」来：恒成功的话，
+     * 「输错号码时该显示什么」这段永远走不到，而它是员工登录最常见的一次失败。
+     */
+    const staff = db.staff.find(
+      (x) => x.status === "ACTIVE" && x.loginPhone === maskPhone(payload.phone),
+    );
+    if (!staff) throw new Error("该手机号不是本店员工");
+    return delay({ token: "demo-staff-token", merchant: { ...db.merchant } });
+  },
+
   async mProfile() {
     return delay({ ...db.merchant });
   },
 
   async mApply(payload) {
-    // 草稿先存：**驳回后要能改了再交**，不存的话商家只能从头重填，
-    // 而驳回往往只是缺一张执照
-    db.merchantApply = { ...payload };
-
-    /**
-     * 审核规则（mock 侧只实现最硬的那一条）：
-     * **个体户与企业必须有营业执照，个人主体免资质**（ADR-002 §4 的三段式路径）。
-     * 这是真实审核里最常见的驳回原因，不是为了演示造出来的规则 ——
-     * 所以驳回态是**用户正常操作就能走到**的，不是靠开关模拟。
-     *
-     * 其余项（类目资质、结算账户报备）由平台端人工审核，mock 不臆造判定。
-     */
-    if (payload.subject !== "PERSONAL" && !payload.licenses.length) {
-      db.merchant = {
-        ...db.merchant,
-        name: payload.name || db.merchant.name,
-        status: "REJECTED",
-        subject: payload.subject,
-        phone: payload.phone,
-        rejectReason: "个体户 / 企业主体需上传营业执照，个人主体可免资质",
-      };
-      persist();
-      return delay({ ...db.merchant });
-    }
-
-    // 一期演示：通过即绑定到一个已有的商家种子上，这样商品/订单/评价立刻有真实数据可管。
-    // 真实流程是运营在平台端审核通过后才建号（P-11.1.1）。
-    const seed = db.merchantSeeds[1] ?? db.merchantSeeds[0]!;
-    db.merchant = {
-      merchantNo: seed.merchantNo,
-      name: payload.name || db.merchant.name,
-      logo: seed.logo,
-      status: "ACTIVE",
-      subject: payload.subject,
-      tier: "SMALL",
-      phone: payload.phone,
-      isPickupPoint: payload.asPickupPoint,
-      pickupNo: payload.asPickupPoint ? db.communitySeeds[0]?.pickups[0]?.pickupNo : undefined,
-      rejectReason: undefined,
+    // 一份记录同时承载内容与进度 —— 后端 usr_merchant_apply 就是一行
+    db.merchantApply = {
+      ...payload,
+      applyNo: db.merchantApply?.applyNo || nextNo("MA"),
+      status: "PENDING",
+      createdAt: Date.now(),
     };
-    // 入驻完成才知道是哪家店，此时补演示单，订单/核销台/分拣单三个页面才有东西可看
-    ensureDemoOrders();
+    db.merchant = {
+      ...db.merchant,
+      // 提交后是 APPLYING（已交，等着）而不是 REVIEWING（有人在看）——
+      // 此刻还没有任何人受理，报 REVIEWING 是替运营做了一个没发生的承诺
+      merchantNo: db.merchant.merchantNo || nextNo("M"),
+      name: payload.name,
+      subject: payload.subject,
+      status: "APPLYING",
+    };
     persist();
     return delay({ ...db.merchant });
   },
 
-  /** 上次提交的申请，用于驳回后回填 —— 让商家只改缺的那一项，而不是重填一遍 */
   async mApplyDraft() {
     return delay(db.merchantApply ? { ...db.merchantApply } : null);
   },
@@ -208,6 +239,167 @@ export const mockApi: MerchantApi = {
   // ---------------------------------------------------------------- 店铺与获客
   async mStore() {
     return delay({ ...db.store });
+  },
+
+  async mMasterData() {
+    /*
+     * mock 的行业白名单要**带一个不允许小微的行业**（线上服务），
+     * 否则「行业决定能不能选小微」这条联动在 mock 下永远看不出效果，
+     * 而它正是选错主体导致进件被拒的地方。
+     */
+    return delay({
+      industries: [
+        { industry: "FRESH", name: "生鲜果蔬", microAllowed: true },
+        { industry: "GROCERY", name: "粮油日用", microAllowed: true },
+        { industry: "BAKERY", name: "烘焙熟食", microAllowed: true },
+        { industry: "ONLINE_SERVICE", name: "线上服务", microAllowed: false },
+      ],
+      subjects: [
+        { subjectType: "MICRO" as const, name: "小微商户", needLicense: false,
+          industryGated: true, settleAccountType: "PERSONAL_OPENID" as const },
+        { subjectType: "INDIVIDUAL" as const, name: "个体工商户", needLicense: true,
+          industryGated: false, settleAccountType: "MERCHANT_ID" as const },
+        { subjectType: "ENTERPRISE" as const, name: "企业", needLicense: true,
+          industryGated: false, settleAccountType: "MERCHANT_ID" as const },
+      ],
+      channels: [{ payChannel: "WECHAT", name: "微信支付", enabled: true, payMethods: ["JSAPI"] }],
+    });
+  },
+
+  async mPayments() {
+    return delay([{ ...db.payment }]);
+  },
+
+  async mSubmitPayment(payload) {
+    /*
+     * mock 也走「资料齐了才通过」这条规则：恒成功的 mock 会让端上
+     * 「缺什么就说缺什么」那段界面永远走不到，而它正是商家最需要的一段。
+     */
+    if (!payload.settleAccount) {
+      throw new Error("还差结算账户");
+    }
+    const tail = payload.settleAccount.slice(-4);
+    db.payment = {
+      ...db.payment,
+      applyStatus: "ACTIVE",
+      canReceiveMoney: true,
+      payMerchantNo: "PM-MOCK-0001",
+      settleAccountType: payload.settleAccountType ?? "MERCHANT_ID",
+      // 明文不进本地库 —— mock 也照这条来，免得端上养成读明文的习惯
+      settleAccountMasked: `****${tail}`,
+      missing: [],
+      activatedAt: Date.now(),
+    };
+    persist();
+    return delay({ ...db.payment });
+  },
+
+  async mRefreshPayment() {
+    return delay({ ...db.payment });
+  },
+
+  async mStoreList() {
+    return delay(db.stores.map((s) => ({ ...s })));
+  },
+
+  async mCreateStore(payload) {
+    /*
+     * mock 也照额度拒。恒成功的 mock 会让「超额」那段界面永远走不到，
+     * 而它是多门店里最常被触发的一条路径 —— FREE 档只能有一家店。
+     */
+    if (db.stores.length >= db.storeQuota) {
+      throw new Error(`当前套餐最多 ${db.storeQuota} 家门店`);
+    }
+    const store = {
+      storeNo: `ST-MOCK-${db.stores.length + 1}`,
+      name: payload.name,
+      address: payload.address ?? "",
+      isDefault: db.stores.length === 0,
+      status: "ACTIVE" as const,
+      payReady: true,
+      staffCount: 0,
+    };
+    db.stores.push(store);
+    persist();
+    return delay({ ...store });
+  },
+
+  async mRenameStore(storeNo, payload) {
+    const s = requireStore(storeNo);
+    s.name = payload.name || s.name;
+    if (payload.address !== undefined) s.address = payload.address;
+    persist();
+    return delay({ ...s });
+  },
+
+  async mSetStoreStatus(storeNo, active) {
+    const s = requireStore(storeNo);
+    // 默认店不能停用 —— 停掉之后「这个主体的店在哪」就没有答案了
+    if (!active && s.isDefault) throw new Error("默认店不能停用，请先把默认标转给别家");
+    s.status = active ? "ACTIVE" : "READONLY";
+    persist();
+    return delay({ ...s });
+  },
+
+  async mSetDefaultStore(storeNo) {
+    const s = requireStore(storeNo);
+    if (s.status !== "ACTIVE") throw new Error("已停用的店不能设为默认");
+    db.stores.forEach((x) => { x.isDefault = x.storeNo === storeNo; });
+    persist();
+    return delay({ ...s });
+  },
+
+  async mSetStorePayment(storeNo, payMerchantNo) {
+    const s = requireStore(storeNo);
+    // 传空 = 回到主体默认号，是合法操作不是清空错误
+    s.payMerchantNo = payMerchantNo || undefined;
+    persist();
+    return delay({ ...s });
+  },
+
+  async mStaffList() {
+    return delay(db.staff.map((x) => ({ ...x })));
+  },
+
+  async mAddStaff(loginPhone) {
+    if (!/^\d{11}$/.test(loginPhone)) throw new Error("请填 11 位手机号");
+    const existing = db.staff.find((x) => x.loginPhone === maskPhone(loginPhone));
+    if (existing) {
+      // 离职再回来是常事：重新启用而不是报「已存在」
+      existing.status = "ACTIVE";
+      persist();
+      return delay({ ...existing });
+    }
+    const staff = {
+      mchAccountNo: `SF-MOCK-${db.staff.length + 1}`,
+      // 明文不进本地库 —— mock 也照这条来，免得端上养成读明文的习惯
+      loginPhone: maskPhone(loginPhone),
+      isOwner: false,
+      status: "ACTIVE" as const,
+      roles: [],
+    };
+    db.staff.push(staff);
+    persist();
+    return delay({ ...staff });
+  },
+
+  async mSetStaffStatus(mchAccountNo, active) {
+    const st = requireStaff(mchAccountNo);
+    // 老板不能被停用 —— 那是个能把自己锁在门外的按钮
+    if (st.isOwner && !active) throw new Error("老板不能被停用");
+    st.status = active ? "ACTIVE" : "DISABLED";
+    persist();
+    return delay({ ...st });
+  },
+
+  async mGrantStore(mchAccountNo, storeNo, role) {
+    const st = requireStaff(mchAccountNo);
+    const store = requireStore(storeNo);
+    st.roles = st.roles.filter((r) => r.storeNo !== storeNo);
+    // role 传空 = 收回这家店的授权
+    if (role) st.roles.push({ storeNo, storeName: store.name, role });
+    persist();
+    return delay({ ...st });
   },
 
   async mCommunities() {
@@ -995,7 +1187,19 @@ export const mockApi: MerchantApi = {
     }
     return delay({ successCount, failed });
   },
-};
 
-// 品类枚举在页面上要按顺序展示，这里导出一份供 goods-edit 用，避免页面写死字符串
-export const GOODS_TYPES = Object.values(CATEGORY_TYPE);
+  // ---- 积分：商家只感知发分服务费与开关（V34）。
+  // 抵扣、补差、资金池对他全部不可见 —— 他收到的是订单全额减各项费用。
+  async mPointsAccount() {
+    return delay(pointsAccount());
+  },
+
+  async mPointsRecords() {
+    return delay(pointsFeeRecords());
+  },
+
+  async mPointsToggle(req) {
+    pointsEnabled = req.enabled;
+    return delay(pointsAccount());
+  },
+};

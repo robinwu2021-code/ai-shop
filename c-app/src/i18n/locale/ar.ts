@@ -142,6 +142,7 @@ export default {
     addressPrivacy: "يظهر المبنى فقط قبل اكتمال العدد، ويظهر العنوان الكامل للأعضاء بعد الدفع.",
   },
   me: {
+    myStores: "متاجري",
     appearance: "المظهر واللغة",
     appearanceValue: "الألوان · السمة · اللغة",
     myCommunity: "حيّي",
@@ -173,7 +174,19 @@ export default {
   },
   market: { CN: "الصين · يوان", AE: "الإمارات · درهم", US: "أمريكا · دولار", label: "المنطقة والعملة" },
   merchant: {
+    applyStatus: {
+      PENDING: "قيد الانتظار",
+      REVIEWING: "قيد المراجعة",
+      APPROVED: "تمت الموافقة",
+      REJECTED: "مرفوض — يمكنك إعادة التقديم",
+    },
+    subject: {
+      MICRO: "تاجر صغير",
+      INDIVIDUAL: "تاجر فردي",
+      ENTERPRISE: "شركة",
+    },
     applySubmitted: "أُرسل الطلب — سنتواصل معك",
+    microBlocked: "هذا المجال لا يسمح بالتاجر الصغير — اختر مؤسسة فردية أو شركة",
     applyFormHint: "سنتواصل للتحقق من البيانات. يمكن للأفراد الانضمام الآن والترقية لاحقًا.",
     shopName: "اسم المتجر",
     category: "التصنيف الرئيسي (مثل: طازج، خدمات منزلية)",
@@ -194,7 +207,7 @@ export default {
     goodsTab: "المنتجات {n}",
     reviewTab: "التقييمات {n}",
     dim: { goods: "المنتج", service: "الخدمة", speed: "السرعة" },
-    type: { PLATFORM: "المنصة", COMPANY: "شركة", INDIVIDUAL: "تاجر فردي" },
+    type: { MICRO: "تاجر صغير", INDIVIDUAL: "تاجر فردي", ENTERPRISE: "شركة" },
   },
   review: {
     dimGoods: "جودة المنتج", dimFulfill: "سرعة التسليم", dimService: "الخدمة",
@@ -493,6 +506,10 @@ export default {
     invalid: "أكمل كل الحقول، ورقم الجوال ١١ رقمًا",
   },
   points: {
+    pending: "و{n} نقطة قيد التفعيل، متاحة في {d}",
+    expenseHint: "تكلفة تشغيل النقاط، تُحتسب لكل طلب",
+    periodExpense: "رسوم النقاط لفترة {p}",
+    disabled: "النقاط غير مفعّلة لهذا المتجر",
     title: "نقاطي",
     entryHint: "{n} نقطة",
     merchantTitle: "حساب نقاط المتجر",
@@ -509,7 +526,7 @@ export default {
     ruleCap: "يمكن دفع حتى {n}% من الطلب بالنقاط (لا يشمل التوصيل)",
     ruleGrant: "تُضاف النقاط بعد اكتمال الطلب؛ والاسترجاع يسحب الممنوح ويعيد المستخدم",
     ruleMerchant: "تُسوّي المنصة النقاط المستخدمة لدى متجرك ضمن دورة الدفع المعتادة",
-    ruleExpire: "تنتهي صلاحية النقاط بعد {n} يومًا من اكتسابها",
+    ruleExpire: "تظل النقاط صالحة ما دمت نشطًا. بعد {n} يومًا دون أي حركة نقاط، يُصفَّر الرصيد. سننبهك قبل 30 يومًا.",
     expiring: "{n} نقطة تنتهي في {d}",
     records: "السجل",
     after: "الرصيد {n}",

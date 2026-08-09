@@ -1,6 +1,7 @@
 package ai.neargo.shop.marketing.campaign.entity;
 
 import ai.neargo.shop.common.BaseEntity;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Getter;
 import lombok.Setter;
@@ -37,7 +38,7 @@ public class MktCampaign extends BaseEntity {
     private String campaignNo;
 
     /** 活动是店铺级的，不跨店。 */
-    private String merchantNo;
+    private String entityNo;
 
     /** 决定下面哪几个可空字段有意义。**创建后不可改** —— 改类型等于换一套优惠语义，应当新建。 */
     private String type;

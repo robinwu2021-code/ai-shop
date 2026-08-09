@@ -16,12 +16,14 @@ import type { Merchant, MerchantStatus } from "@/lib/types";
 import { MerchantStatusBadge, VerifiedBadge, useMerchantStatusMap, useMerchantTierLabel } from "@/components/status";
 import { ReadOnlyNotice } from "@/components/read-only-notice";
 // 授权/认证标与信用/处置各自成块 —— 与审核那两个 tab 只共用文案表
+import { ApplyTab } from "./apply-tab";
 import { CategoryTab, VerifyTab } from "./authorize-tab";
 import { BanTab, CreditTab } from "./credit-tab";
 import { ArchiveActions, ShowArchivedToggle, archiveConfirm, archivedRowClass, unarchiveConfirm } from "@/components/archive";
 import { Button } from "@/components/ui/button";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { Drawer, Field, FieldGrid } from "@/components/ui/drawer";
+import { MultiSelect } from "@/components/ui/multi-select";
 import { FilterSelect } from "@/components/ui/filter-select";
 import { Pagination } from "@/components/ui/misc";
 import { Textarea } from "@/components/ui/textarea";
@@ -71,6 +73,8 @@ function MerchantsInner() {
   const { page, setPage, size, setSize } = usePaging();
   const [current, setCurrent] = useState<Merchant | null>(null);
   const [remark, setRemark] = useState("");
+  /** 通过审核时要指定的覆盖社区（ADR-009）。不给的话商家对买家不可见 */
+  const [communityNos, setCommunityNos] = useState<string[]>([]);
 
   const canAudit = allow("merchant:apply:audit");
   const canVerify = allow("merchant:verify:grant");
@@ -90,9 +94,15 @@ function MerchantsInner() {
   // 写操作统一走这里：失败的 toast 由 Providers 的 mutationCache 兜住，不用逐处 catch。
   const invalidate = () => qc.invalidateQueries({ queryKey: ["merchants"] });
 
+  // 社区目录：审核时要从这里挑。只取启用中的，归档的小区不该还能被指派
+  const communities = useQuery({
+    queryKey: ["communities", "for-audit"],
+    queryFn: () => api.listCommunities({ page: 1, size: 200 }),
+  });
+
   const setStatusMut = useMutation({
-    mutationFn: (v: { merchantNo: string; status: MerchantStatus; remark?: string }) =>
-      api.setMerchantStatus(v.merchantNo, v.status, v.remark),
+    mutationFn: (v: { merchantNo: string; status: MerchantStatus; remark?: string; communityNos?: string[] }) =>
+      api.setMerchantStatus(v.merchantNo, v.status, v.remark, v.communityNos),
     onSuccess: (m) => {
       invalidate();
       setCurrent(m);
@@ -146,7 +156,7 @@ function MerchantsInner() {
             await confirm(unarchiveConfirm(c.entity, m.name, () => archiveMut.mutateAsync({ merchantNo: m.merchantNo, restore: true })));
           }}
           actions={
-            <Button size="sm" variant="outline" onClick={() => { setCurrent(m); setRemark(m.auditRemark ?? ""); }}>
+            <Button size="sm" variant="outline" onClick={() => { setCurrent(m); setRemark(m.auditRemark ?? ""); setCommunityNos(m.communityNo ? [m.communityNo] : []); }}>
               {c.actionView}
             </Button>
           }
@@ -159,8 +169,17 @@ function MerchantsInner() {
     <div>
       <TabHeader tabs={tabs} value={tab} onChange={setTab} />
 
-      {tab === "audit" && !canAudit && (
-        <ReadOnlyNotice what={c.readOnlyWhat} perm="merchant:apply:audit" note={c.readOnlyNote} className="mb-3" />
+      {tab === "audit" && (
+        <>
+          {!canAudit && (
+            <ReadOnlyNotice what={c.readOnlyWhat} perm="merchant:apply:audit" note={c.readOnlyNote} className="mb-3" />
+          )}
+          {/*
+            审核走「申请单」模型（已接真后端）；下面的 list tab 仍是商家档案。
+            两者不是同一个资源：通过之前商家不存在，所以审核动作打在 applyNo 上。
+          */}
+          <ApplyTab c={c} canAudit={canAudit} />
+        </>
       )}
 
       {tab === "categories" && (
@@ -186,7 +205,7 @@ function MerchantsInner() {
         </>
       )}
 
-      {(tab === "audit" || tab === "list") && (
+      {tab === "list" && (
       <>
       <Toolbar
         search={keyword}
@@ -235,7 +254,15 @@ function MerchantsInner() {
                   >
                     {c.btnReject}
                   </Button>
-                  <Button onClick={() => setStatusMut.mutate({ merchantNo: current.merchantNo, status: "APPROVED", remark: "" })}>
+                  <Button
+                  disabled={!communityNos.length}
+                  onClick={() => setStatusMut.mutate({
+                    merchantNo: current.merchantNo,
+                    status: "APPROVED",
+                    remark: "",
+                    communityNos,
+                  })}
+                >
                     {c.btnApprove}
                   </Button>
                 </>
@@ -257,12 +284,39 @@ function MerchantsInner() {
             <FieldGrid>
               <Field className="mb-3" label={c.fieldAuditStatus}><MerchantStatusBadge value={current.status} /></Field>
               <Field className="mb-3" label={c.fieldTier}>{tierLabel(current.tier)}</Field>
-              <Field className="mb-3" label={c.colCommunity}>{current.communityName}</Field>
+              <Field className="mb-3" label={c.colCommunity}>
+                {canAudit && current.status === "REVIEWING" ? (
+                  /*
+                   * 通过审核必须先选社区（ADR-009）。做成审核动作的一部分而不是
+                   * 事后再配 —— 分两步做永远有人忘，而忘了的后果是商家上着架
+                   * 却一个订单都不来，且没有任何报错。
+                   */
+                  <div>
+                    <MultiSelect
+                      value={communityNos}
+                      options={(communities.data?.records ?? []).map((cm) => ({
+                        value: cm.communityNo,
+                        label: cm.name,
+                      }))}
+                      onChange={setCommunityNos}
+                      invalid={!communityNos.length}
+                    />
+                    {!communityNos.length && (
+                      <p className="mt-1 text-xs text-danger">{c.communityRequired}</p>
+                    )}
+                  </div>
+                ) : (
+                  current.communityName || "-"
+                )}
+              </Field>
               <Field className="mb-3" label={c.colContact}>{current.contactName}</Field>
               {/* 手机号在平台端也只展示掩码：完整号码属于越权边界（矩阵 §2.3 / M11） */}
               <Field className="mb-3" label={c.fieldPhone}>{current.contactPhone}</Field>
               <Field className="mb-3" label={c.fieldBreach}>{current.breachCount}</Field>
               <Field className="mb-3" label={c.colSettleAccount}>{current.settleAccountReady ? c.settleReady : c.settleNotReady}</Field>
+              <Field className="mb-3" label={c.fieldPickupIntent}>
+                {current.asPickupPoint ? c.pickupWanted : c.pickupNo}
+              </Field>
               <Field className="mb-3" label={c.colCreatedAt}>{fmtTime(current.createdAt)}</Field>
             </FieldGrid>
             <Field label={c.fieldCategories}>{current.categoryCodes.join("、") || "-"}</Field>

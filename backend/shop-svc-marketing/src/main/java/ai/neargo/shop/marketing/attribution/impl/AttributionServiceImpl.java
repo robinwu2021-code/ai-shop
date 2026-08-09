@@ -64,7 +64,7 @@ public class AttributionServiceImpl implements AttributionService {
         row.setUserNo(userNo);
         row.setSource(source);
         // 只写命中来源对应的字段，其余留空 —— 混着写会让「到底按哪个算的」变成猜谜
-        row.setMerchantNo(MktAttribution.STORE_CODE.equals(source) ? clue.merchantNo() : null);
+        row.setEntityNo(MktAttribution.STORE_CODE.equals(source) ? clue.merchantNo() : null);
         row.setInviterNo(MktAttribution.INVITER.equals(source) ? clue.inviterNo() : null);
         row.setChannel(MktAttribution.CHANNEL.equals(source) ? clue.channel() : null);
         row.setExpireAt(now + Duration.ofDays(windowDays).toMillis());
@@ -107,13 +107,13 @@ public class AttributionServiceImpl implements AttributionService {
                      MktAttribution prev, String reason) {
         MktAttributionLog entry = new MktAttributionLog();
         entry.setUserNo(userNo);
-        entry.setMerchantNo(clue.merchantNo());
+        entry.setEntityNo(clue.merchantNo());
         entry.setInviterNo(clue.inviterNo());
         entry.setChannel(clue.channel());
         entry.setSource(source);
         entry.setDecision(decision);
         entry.setPrevSource(prev == null ? null : prev.getSource());
-        entry.setPrevRef(prev == null ? null : firstNonBlank(prev.getMerchantNo(),
+        entry.setPrevRef(prev == null ? null : firstNonBlank(prev.getEntityNo(),
                 prev.getInviterNo(), prev.getChannel()));
         entry.setReason(reason);
         entry.setAt(System.currentTimeMillis());
@@ -126,7 +126,7 @@ public class AttributionServiceImpl implements AttributionService {
         // 只有店铺码归因算商家自带客流（ADR-004 §6）
         String traffic = MktAttribution.STORE_CODE.equals(row.getSource())
                 ? AttributionPort.MERCHANT_OWNED : AttributionPort.PLATFORM;
-        return new AttributionVO(row.getMerchantNo(), row.getInviterNo(), row.getChannel(),
+        return new AttributionVO(row.getEntityNo(), row.getInviterNo(), row.getChannel(),
                 row.getSource(), traffic, row.getExpireAt() == null ? 0L : row.getExpireAt());
     }
 
