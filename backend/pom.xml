@@ -23,10 +23,8 @@
 
     <!-- 模块数 = 未来可能的部署单元数；域数 = 包数（TDD-backend §4.1） -->
     <modules>
-        <!-- 横切基础设施，零业务依赖 -->
-        <module>shop-common</module>
-        <!-- 只有接口：Port + DTO + Event，谁都能依赖 -->
-        <module>shop-spi</module>
+        <!-- 地基：横切基础设施 + 跨域契约。零业务依赖，谁都能依赖 -->
+        <module>shop-base</module>
         <!-- 领域服务实现（jar，不可独立启动） -->
         <!-- 核心域合并为一个工程：模块数 = 未来可能的部署单元数，域数 = 包数 -->
         <module>shop-core</module>

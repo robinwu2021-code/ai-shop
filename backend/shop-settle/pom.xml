@@ -18,13 +18,7 @@
     <dependencies>
         <dependency>
             <groupId>ai.neargo.shop</groupId>
-            <artifactId>shop-common</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <!-- 跨域协作只经 shop-spi 的 Port/Event；依赖别的 svc 会被 ArchUnit 拦下 -->
-        <dependency>
-            <groupId>ai.neargo.shop</groupId>
-            <artifactId>shop-spi</artifactId>
+            <artifactId>shop-base</artifactId>
             <version>${project.version}</version>
         </dependency>
     </dependencies>

@@ -11,10 +11,22 @@
         <relativePath>../pom.xml</relativePath>
     </parent>
 
-    <artifactId>shop-common</artifactId>
+    <artifactId>shop-base</artifactId>
     <packaging>jar</packaging>
-    <description>横切基础设施：契约包 · 认证双池 · 数据域 · Outbox · 幂等 · 异常 · i18n。零业务依赖。</description>
+    <description>地基：横切基础设施（common · auth · event · idem）+ 跨域契约（spi 的 Port/DTO/Event）</description>
 
+    <!--
+      由 shop-common 与 shop-spi 合并而来（模块优化实施步骤 S6）。
+
+      合并前担心的是「spi 是纯接口、零依赖，合进来会让契约能引用基础设施类型」——
+      核对后发现 **shop-spi 本来就依赖 shop-common**（Port 的事件契约直接 import
+      ai.neargo.shop.event.DomainEvent）。那条编译期保证从来不存在，
+      合并因此不损失任何东西，只少一个 pom。
+
+      包结构保持不变：common / auth / event / idem 是基础设施，spi 是跨域契约，
+      两者的边界仍由 ArchitectureTest 的 commonMustNotDependOnDomains 与
+      portInterfacesOnlyInSpi 看着。
+    -->
     <dependencies>
         <!-- neargo L1 纯库（IdGenerator/ErrorCode 等），不含 autoconfig -->
         <dependency>

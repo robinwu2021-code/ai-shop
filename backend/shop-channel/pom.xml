@@ -28,12 +28,7 @@
     <dependencies>
         <dependency>
             <groupId>ai.neargo.shop</groupId>
-            <artifactId>shop-common</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>ai.neargo.shop</groupId>
-            <artifactId>shop-spi</artifactId>
+            <artifactId>shop-base</artifactId>
             <version>${project.version}</version>
         </dependency>
     </dependencies>
