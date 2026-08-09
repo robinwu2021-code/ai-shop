@@ -18,6 +18,19 @@ public interface MerchantQueryPort {
     Optional<MerchantBrief> find(String merchantNo);
 
     /**
+     * 批量查 —— 列表页专用（收藏列表、自提点的归属商家、商品卡上的店铺信息）。
+     *
+     * <p>为什么单独开一个方法而不是让调用方循环 {@link #find(String)}：
+     * 这三处都是**一屏一批**的场景，循环即 N+1。而调用方一旦发现单查慢，
+     * 下一步就是绕过 Port 直接注入 Mapper 自己批量捞 —— 那正是这次要拆掉的东西。
+     * 边界要好用，否则它只会被绕过。
+     *
+     * @param merchantNos 商家业务键；空集合返回空 Map
+     * @return 按 merchantNo 索引；查不到的键**不出现在结果里**（不是 null 值）
+     */
+    java.util.Map<String, MerchantBrief> findAll(java.util.Collection<String> merchantNos);
+
+    /**
      * 这家店的货<b>能出现在哪些社区</b>（ADR-009，已按 {@code service_scope} 展开）。
      *
      * <p>product 域上架商品时要按这个范围写社区池。放在 Port 上而不是让 product

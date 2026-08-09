@@ -35,7 +35,7 @@ class M9bBizGoodsFlowTest {
     private ObjectMapper json;
 
     @Autowired
-    private ai.neargo.shop.user.service.OtpStore otpStore;
+    private ai.neargo.shop.common.OtpStore otpStore;
 
     private MockMvc mvc() {
         return MockMvcBuilders.webAppContextSetup(context)
@@ -238,9 +238,9 @@ class M9bBizGoodsFlowTest {
                 .get("data").get("merchantNo").asString();
         var store = storeMapper.selectOne(
                 com.baomidou.mybatisplus.core.toolkit.Wrappers
-                        .<ai.neargo.shop.user.merchant.entity.MchStore>lambdaQuery()
-                        .eq(ai.neargo.shop.user.merchant.entity.MchStore::getEntityNo, merchantNo)
-                        .eq(ai.neargo.shop.user.merchant.entity.MchStore::getIsDefault, true));
+                        .<ai.neargo.shop.merchant.entity.MchStore>lambdaQuery()
+                        .eq(ai.neargo.shop.merchant.entity.MchStore::getEntityNo, merchantNo)
+                        .eq(ai.neargo.shop.merchant.entity.MchStore::getIsDefault, true));
         assertThat(store).as("入驻通过必须建出默认门店").isNotNull();
 
         String buyer = login("12600127012");
@@ -381,7 +381,7 @@ class M9bBizGoodsFlowTest {
     }
 
     @Autowired
-    private ai.neargo.shop.user.mapper.UserMappers.MchStoreMapper storeMapper;
+    private ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper storeMapper;
 
     @Autowired
     private ai.neargo.shop.trade.mapper.TradeMappers.SubOrderMapper subOrderMapper;

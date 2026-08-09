@@ -10,9 +10,9 @@ import ai.neargo.shop.product.mapper.ProductMappers.GoodsMapper;
 import ai.neargo.shop.product.mapper.ProductMappers.SkuMapper;
 import ai.neargo.shop.user.community.entity.CmtCommunity;
 import ai.neargo.shop.user.community.entity.CmtPickupPoint;
-import ai.neargo.shop.user.merchant.entity.MchEntity;
+import ai.neargo.shop.merchant.entity.MchEntity;
 import ai.neargo.shop.user.mapper.UserMappers.CommunityMapper;
-import ai.neargo.shop.user.mapper.UserMappers.MchEntityMapper;
+import ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper;
 import ai.neargo.shop.platform.entity.SysOpsStaff;
 import ai.neargo.shop.platform.mapper.PlatformMappers.StaffMapper;
 import ai.neargo.shop.user.mapper.UserMappers.PickupPointMapper;
@@ -47,8 +47,8 @@ public class DevSeeder {
                                  SkuMapper skuMapper, CommunityPoolMapper poolMapper,
                                  CategoryMapper categoryMapper, StaffMapper staffMapper,
                                  // 平台员工是 staffMapper，商家子账号是 merchantStaffMapper —— 两套人，别混
-                                 ai.neargo.shop.user.mapper.UserMappers.MchAccountMapper merchantStaffMapper,
-                                 ai.neargo.shop.user.mapper.UserMappers.MchStoreMapper storeMapper) {
+                                 ai.neargo.shop.merchant.mapper.MerchantMappers.MchAccountMapper merchantStaffMapper,
+                                 ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper storeMapper) {
         return args -> {
             if (communityMapper.selectCount(Wrappers.emptyWrapper()) > 0) {
                 return;   // 幂等：重启不重复灌
@@ -166,24 +166,24 @@ public class DevSeeder {
         return p;
     }
 
-    private ai.neargo.shop.user.merchant.entity.MchAccount ownerStaff(String merchantNo, String userNo) {
-        var st = new ai.neargo.shop.user.merchant.entity.MchAccount();
+    private ai.neargo.shop.merchant.entity.MchAccount ownerStaff(String merchantNo, String userNo) {
+        var st = new ai.neargo.shop.merchant.entity.MchAccount();
         st.setMchAccountNo("SF-" + merchantNo);
         st.setEntityNo(merchantNo);
         st.setUserNo(userNo);
         st.setIsOwner(true);
         st.setIsPrimary(true);
-        st.setStatus(ai.neargo.shop.user.merchant.entity.MchAccount.ACTIVE);
+        st.setStatus(ai.neargo.shop.merchant.entity.MchAccount.ACTIVE);
         return st;
     }
 
-    private ai.neargo.shop.user.merchant.entity.MchStore defaultStore(String merchantNo, String name) {
-        var s = new ai.neargo.shop.user.merchant.entity.MchStore();
+    private ai.neargo.shop.merchant.entity.MchStore defaultStore(String merchantNo, String name) {
+        var s = new ai.neargo.shop.merchant.entity.MchStore();
         s.setStoreNo("ST-" + merchantNo);
         s.setEntityNo(merchantNo);
         s.setName(name);
         s.setIsDefault(true);
-        s.setStatus(ai.neargo.shop.user.merchant.entity.MchStore.ACTIVE);
+        s.setStatus(ai.neargo.shop.merchant.entity.MchStore.ACTIVE);
         s.setFeatured("[]");
         return s;
     }

@@ -26,12 +26,12 @@ import java.util.List;
 public class BizPickupController {
 
     private final PickupService pickupService;
-    private final ai.neargo.shop.user.service.StoreFavoriteService storeFavoriteService;
+    private final ai.neargo.shop.merchant.service.StoreCodeService storeCodeService;
 
     public BizPickupController(PickupService pickupService,
-                               ai.neargo.shop.user.service.StoreFavoriteService storeFavoriteService) {
+                               ai.neargo.shop.merchant.service.StoreCodeService storeCodeService) {
         this.pickupService = pickupService;
-        this.storeFavoriteService = storeFavoriteService;
+        this.storeCodeService = storeCodeService;
     }
 
     /** 当前用户在经营侧的三个作用域。前端据此决定展示哪些入口。 */
@@ -80,7 +80,7 @@ public class BizPickupController {
     @GetMapping("/biz/store/qrcode")
     public StoreQrcode qrcode() {
         String merchantNo = BizContext.requireMerchantNo();
-        String code = storeFavoriteService.ensureStoreCode(merchantNo);
+        String code = storeCodeService.ensureFor(merchantNo);
         return new StoreQrcode(merchantNo, code, "https://shop.example.com/s/" + code,
                 "建议印成 3×3cm 贴纸，贴在包装袋封口处");
     }

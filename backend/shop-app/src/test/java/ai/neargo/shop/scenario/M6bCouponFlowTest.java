@@ -42,7 +42,7 @@ class M6bCouponFlowTest {
     private ObjectMapper json;
 
     @Autowired
-    private ai.neargo.shop.user.service.OtpStore otpStore;
+    private ai.neargo.shop.common.OtpStore otpStore;
 
     @Autowired
     private CouponMapper couponMapper;

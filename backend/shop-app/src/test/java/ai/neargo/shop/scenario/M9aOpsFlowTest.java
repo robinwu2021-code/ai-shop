@@ -38,7 +38,7 @@ class M9aOpsFlowTest {
     private ObjectMapper json;
 
     @Autowired
-    private ai.neargo.shop.user.service.OtpStore otpStore;
+    private ai.neargo.shop.common.OtpStore otpStore;
 
     private MockMvc mvc() {
         return MockMvcBuilders.webAppContextSetup(context)
@@ -791,14 +791,14 @@ class M9aOpsFlowTest {
 
         // 一个**从没注册过 C 端账号**的手机号，直接建成员工
         String staffPhone = "13100999001";
-        var staff = new ai.neargo.shop.user.merchant.entity.MchAccount();
+        var staff = new ai.neargo.shop.merchant.entity.MchAccount();
         staff.setMchAccountNo("SF-TEST-1");
         staff.setEntityNo(merchantNo);
         staff.setLoginPhone(staffPhone);
         staff.setUserNo(null);          // ← 关键：没有 C 端账号
         staff.setIsOwner(false);
         staff.setIsPrimary(true);
-        staff.setStatus(ai.neargo.shop.user.merchant.entity.MchAccount.ACTIVE);
+        staff.setStatus(ai.neargo.shop.merchant.entity.MchAccount.ACTIVE);
         merchantStaffMapper.insert(staff);
 
         mvc().perform(post("/mp/user/otp/send").contentType(MediaType.APPLICATION_JSON)
@@ -834,7 +834,7 @@ class M9aOpsFlowTest {
     }
 
     @Autowired
-    private ai.neargo.shop.user.mapper.UserMappers.MchAccountMapper merchantStaffMapper;
+    private ai.neargo.shop.merchant.mapper.MerchantMappers.MchAccountMapper merchantStaffMapper;
 
     /** 走完入驻并通过，返回 merchantNo。 */
     private String approvedMerchantNo(String phone, String name) throws Exception {

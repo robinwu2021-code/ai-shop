@@ -31,12 +31,12 @@ public class BizAuthController {
     private final AuthService authService;
     private final CommunityService communityService;
     private final BizMerchantController merchantController;
-    private final ai.neargo.shop.user.service.MerchantStaffService merchantStaffService;
+    private final ai.neargo.shop.merchant.service.MerchantStaffService merchantStaffService;
     private final ai.neargo.shop.auth.TokenStore tokenStore;
 
     public BizAuthController(AuthService authService, CommunityService communityService,
                              BizMerchantController merchantController,
-                             ai.neargo.shop.user.service.MerchantStaffService merchantStaffService,
+                             ai.neargo.shop.merchant.service.MerchantStaffService merchantStaffService,
                              ai.neargo.shop.auth.TokenStore tokenStore) {
         this.merchantStaffService = merchantStaffService;
         this.tokenStore = tokenStore;

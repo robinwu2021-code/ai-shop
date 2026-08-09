@@ -37,7 +37,7 @@ class BizOrderFulfillFlowTest {
     private ObjectMapper json;
 
     @Autowired
-    private ai.neargo.shop.user.service.OtpStore otpStore;
+    private ai.neargo.shop.common.OtpStore otpStore;
 
     /** 与 M9aOpsFlowTest 同一个：stub 回调的签名，配在 application-test.yml */
     private static final String STUB_SECRET = "stub-secret";

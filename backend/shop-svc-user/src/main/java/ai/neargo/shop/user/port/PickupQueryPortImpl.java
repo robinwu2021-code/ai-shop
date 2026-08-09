@@ -28,6 +28,16 @@ public class PickupQueryPortImpl implements PickupQueryPort {
     }
 
     @Override
+    public java.util.List<String> activeStorePickupNos(String merchantNo) {
+        return ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() ->
+                        pickupMapper.selectList(Wrappers.<CmtPickupPoint>lambdaQuery()
+                                .eq(CmtPickupPoint::getOwnerRef, merchantNo)
+                                .eq(CmtPickupPoint::getType, "STORE")
+                                .eq(CmtPickupPoint::getStatus, "ACTIVE")))
+                .stream().map(CmtPickupPoint::getPickupNo).toList();
+    }
+
+    @Override
     public Optional<PickupBrief> find(String pickupNo) {
         if (pickupNo == null || pickupNo.isBlank()) {
             return Optional.empty();

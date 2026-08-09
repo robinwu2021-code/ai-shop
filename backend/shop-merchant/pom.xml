@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>ai.neargo.shop</groupId>
+        <artifactId>shop-parent</artifactId>
+        <version>0.1.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>shop-merchant</artifactId>
+    <packaging>jar</packaging>
+    <description>商家主体 · 进件 · 门店 · 子账号与角色 · 门店码（模块优化实施步骤 S3 从 shop-svc-user 抽出）</description>
+
+    <!--
+      为什么商家要从用户里分出来：两者的**变更节奏与受众完全不同**。
+      用户域跟着 C 端登录方式走（小程序/App/Apple/手机号），商家域跟着经营主体走
+      （进件、门店、子账号、收款报备）。挤在一个模块里，改一次登录要重跑整个商家的测试。
+
+      更重要的是将来：商家域是最可能第一个独立成微服务的——它有清晰的外部依赖
+      （收付通进件）、独立的运维诉求（审核后台），且与交易主链路是异步关系。
+    -->
+    <dependencies>
+        <dependency>
+            <groupId>ai.neargo.shop</groupId>
+            <artifactId>shop-common</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <!-- 跨域协作只经 shop-spi 的 Port/Event；依赖别的 svc 会被 ArchUnit 拦下 -->
+        <dependency>
+            <groupId>ai.neargo.shop</groupId>
+            <artifactId>shop-spi</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+    </dependencies>
+
+</project>

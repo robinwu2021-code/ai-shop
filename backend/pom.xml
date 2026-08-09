@@ -29,6 +29,7 @@
         <module>shop-spi</module>
         <!-- 领域服务实现（jar，不可独立启动） -->
         <module>shop-svc-user</module>
+        <module>shop-merchant</module>
         <module>shop-svc-product</module>
         <module>shop-svc-trade</module>
         <module>shop-svc-fulfillment</module>

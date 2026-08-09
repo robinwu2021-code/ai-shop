@@ -37,7 +37,7 @@ class MerchantPaymentFlowTest {
     private ObjectMapper json;
 
     @Autowired
-    private ai.neargo.shop.user.service.OtpStore otpStore;
+    private ai.neargo.shop.common.OtpStore otpStore;
 
     private MockMvc mvc() {
         return MockMvcBuilders.webAppContextSetup(context)

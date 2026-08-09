@@ -5,9 +5,9 @@ import ai.neargo.shop.user.service.CommunityService;
 import ai.neargo.shop.user.dto.CommunityVO;
 import ai.neargo.shop.user.community.entity.CmtCommunity;
 import ai.neargo.shop.user.community.entity.CmtPickupPoint;
-import ai.neargo.shop.user.merchant.entity.MchEntity;
+import ai.neargo.shop.spi.user.MerchantQueryPort;
+import ai.neargo.shop.spi.user.MerchantQueryPort.MerchantBrief;
 import ai.neargo.shop.user.mapper.UserMappers.CommunityMapper;
-import ai.neargo.shop.user.mapper.UserMappers.MchEntityMapper;
 import ai.neargo.shop.user.mapper.UserMappers.PickupPointMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.stereotype.Service;
@@ -15,7 +15,6 @@ import org.springframework.stereotype.Service;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
@@ -26,13 +25,19 @@ public class CommunityServiceImpl implements CommunityService {
 
     private final CommunityMapper communityMapper;
     private final PickupPointMapper pickupMapper;
-    private final MchEntityMapper merchantMapper;
+    /*
+     * 自提点要显示「归属商家的名字与 logo」，而商家表属于 merchant 域。
+     * 原先这里直接注入 MchEntityMapper —— 社区域能读写整张 mch_entity，
+     * 商家域改一个列，社区列表跟着炸，且没有任何编译期提示。
+     * 改走 Port 之后，社区只拿到它真正需要的两个字段。
+     */
+    private final MerchantQueryPort merchantQueryPort;
 
     public CommunityServiceImpl(CommunityMapper communityMapper, PickupPointMapper pickupMapper,
-                                MchEntityMapper merchantMapper) {
+                                MerchantQueryPort merchantQueryPort) {
         this.communityMapper = communityMapper;
         this.pickupMapper = pickupMapper;
-        this.merchantMapper = merchantMapper;
+        this.merchantQueryPort = merchantQueryPort;
     }
 
     @Override
@@ -57,7 +62,7 @@ public class CommunityServiceImpl implements CommunityService {
                 .eq(CmtPickupPoint::getType, "STORE")
                 .eq(CmtPickupPoint::getStatus, "ACTIVE"));
 
-        Map<String, MchEntity> owners = loadOwners(pickups);
+        Map<String, MerchantBrief> owners = loadOwners(pickups);
         Map<String, List<CmtPickupPoint>> byCommunity = pickups.stream()
                 .collect(Collectors.groupingBy(CmtPickupPoint::getCommunityNo));
 
@@ -88,35 +93,30 @@ public class CommunityServiceImpl implements CommunityService {
         if (p == null) {
             throw ai.neargo.shop.common.BizException.of(ai.neargo.shop.common.ErrorCode.NOT_FOUND);
         }
-        MchEntity owner = loadOwners(List.of(p)).get(p.getOwnerRef());
+        MerchantBrief owner = loadOwners(List.of(p)).get(p.getOwnerRef());
         return new CommunityVO.PickupVO(p.getPickupNo(), p.getName(), p.getAddress(), 0,
-                p.getOwnerRef(), owner == null ? p.getName() : owner.getName(),
-                owner == null ? "" : owner.getLogo(), p.getOpenHours(), p.getArrivalDesc());
+                p.getOwnerRef(), owner == null ? p.getName() : owner.merchantName(),
+                owner == null ? "" : owner.logo(), p.getOpenHours(), p.getArrivalDesc());
     }
 
-    private Map<String, MchEntity> loadOwners(List<CmtPickupPoint> pickups) {
+    private Map<String, MerchantBrief> loadOwners(List<CmtPickupPoint> pickups) {
         List<String> merchantNos = pickups.stream()
                 .map(CmtPickupPoint::getOwnerRef).filter(java.util.Objects::nonNull).distinct().toList();
-        if (merchantNos.isEmpty()) {
-            return Map.of();
-        }
-        return merchantMapper.selectList(Wrappers.<MchEntity>lambdaQuery()
-                        .in(MchEntity::getEntityNo, merchantNos)).stream()
-                .collect(Collectors.toMap(MchEntity::getEntityNo, Function.identity(), (a, b) -> a));
+        return merchantQueryPort.findAll(merchantNos);
     }
 
-    private CommunityVO toVO(CmtCommunity c, List<CmtPickupPoint> pickups, Map<String, MchEntity> owners,
+    private CommunityVO toVO(CmtCommunity c, List<CmtPickupPoint> pickups, Map<String, MerchantBrief> owners,
                              Integer latE6, Integer lngE6) {
         return new CommunityVO(c.getCommunityNo(), c.getName(), c.getAddress(),
                 distance(c.getLatE6(), c.getLngE6(), latE6, lngE6),
                 pickups.stream().map(p -> {
-                    MchEntity owner = owners.get(p.getOwnerRef());
+                    MerchantBrief owner = owners.get(p.getOwnerRef());
                     return new CommunityVO.PickupVO(
                             p.getPickupNo(), p.getName(), p.getAddress(),
                             distance(p.getLatE6(), p.getLngE6(), latE6, lngE6),
                             p.getOwnerRef(),
-                            owner == null ? p.getName() : owner.getName(),
-                            owner == null ? "" : owner.getLogo(),
+                            owner == null ? p.getName() : owner.merchantName(),
+                            owner == null ? "" : owner.logo(),
                             p.getOpenHours(), p.getArrivalDesc());
                 }).toList());
     }

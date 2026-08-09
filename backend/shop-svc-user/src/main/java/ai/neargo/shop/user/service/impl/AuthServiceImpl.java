@@ -1,7 +1,7 @@
 package ai.neargo.shop.user.service.impl;
 
 import ai.neargo.shop.user.service.AuthService;
-import ai.neargo.shop.user.service.OtpStore;
+import ai.neargo.shop.common.OtpStore;
 
 import ai.neargo.shop.auth.LoginUser;
 import ai.neargo.shop.auth.TokenStore;

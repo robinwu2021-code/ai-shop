@@ -23,6 +23,18 @@ public interface PickupQueryPort {
      * @param serviceFeePerItemMinor feeMode=PER_ITEM 时的按件服务费（分）
      * @param serviceFeeRate         feeMode=RATE 时的费率（万分比）
      */
+    /**
+     * 这家商家<b>承接了哪些常驻自提点</b>（{@code type=STORE} 且 {@code status=ACTIVE}）。
+     *
+     * <p>B 端登录时要把它写进 {@code BizContext}——店员扫码核销，能核的就是这批点。
+     * 放在 Port 上而不是让商家域直接查 {@code cmt_pickup_point}：
+     * 「常驻」这个筛选条件（类型 + 状态两个字段）属于社区域，
+     * 商家域自己拼一遍，将来加一档状态就会漏。
+     *
+     * @return 无自提点返回空列表
+     */
+    java.util.List<String> activeStorePickupNos(String merchantNo);
+
     record PickupBrief(String pickupNo, String name, String address, String type,
                        String communityNo, String feeMode,
                        long serviceFeePerItemMinor, int serviceFeeRate) {

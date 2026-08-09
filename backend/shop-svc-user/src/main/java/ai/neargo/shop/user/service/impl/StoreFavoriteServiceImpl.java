@@ -2,47 +2,39 @@ package ai.neargo.shop.user.service.impl;
 
 import ai.neargo.shop.user.service.StoreFavoriteService;
 
-import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.spi.marketing.AttributionPort;
+import ai.neargo.shop.spi.user.MerchantQueryPort;
+import ai.neargo.shop.spi.user.MerchantQueryPort.MerchantBrief;
 import ai.neargo.shop.auth.SecurityUtils;
-import ai.neargo.shop.common.BizException;
-import ai.neargo.shop.common.ErrorCode;
-import ai.neargo.shop.user.dto.MerchantVO;
-import ai.neargo.shop.user.merchant.entity.MchEntity;
+import ai.neargo.shop.user.dto.StoreBriefVO;
 import ai.neargo.shop.user.entity.UsrStoreFavorite;
-import ai.neargo.shop.user.mapper.UserMappers.MchEntityMapper;
 import ai.neargo.shop.user.mapper.UserMappers.StoreFavoriteMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 @Service
 public class StoreFavoriteServiceImpl implements StoreFavoriteService {
 
-    /** 店铺码字符集：**去掉 0/O/1/I/L**，印在纸上让人手输时不会认错。 */
-    private static final String ALPHABET = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
-    private static final int CODE_LEN = 6;
-    private static final SecureRandom RANDOM = new SecureRandom();
-
     private final StoreFavoriteMapper favoriteMapper;
-    private final MchEntityMapper merchantMapper;
+    private final MerchantQueryPort merchantQueryPort;
     private final AttributionPort attributionPort;
 
-    public StoreFavoriteServiceImpl(StoreFavoriteMapper favoriteMapper, MchEntityMapper merchantMapper,
+    public StoreFavoriteServiceImpl(StoreFavoriteMapper favoriteMapper, MerchantQueryPort merchantQueryPort,
                                     AttributionPort attributionPort) {
         this.favoriteMapper = favoriteMapper;
-        this.merchantMapper = merchantMapper;
+        this.merchantQueryPort = merchantQueryPort;
         this.attributionPort = attributionPort;
     }
 
     @Override
-    public List<MerchantVO.Brief> myStores() {
+    public List<StoreBriefVO> myStores() {
         String userNo = SecurityUtils.currentUserNoOrNull();
         if (userNo == null) {
             return List.of();
@@ -63,7 +55,7 @@ public class StoreFavoriteServiceImpl implements StoreFavoriteService {
 
     @Override
     @Transactional
-    public List<MerchantVO.Brief> toggle(String merchantNo) {
+    public List<StoreBriefVO> toggle(String merchantNo) {
         String userNo = SecurityUtils.currentUserNo();
         UsrStoreFavorite existing = findFavorite(userNo, merchantNo);
         if (existing != null) {
@@ -90,44 +82,6 @@ public class StoreFavoriteServiceImpl implements StoreFavoriteService {
         return userNo != null && findFavorite(userNo, merchantNo) != null;
     }
 
-    @Override
-    public String resolveStoreCode(String storeCode) {
-        MchEntity m = DataScopeContext.executeWithoutScope(() ->
-                merchantMapper.selectOne(Wrappers.<MchEntity>lambdaQuery()
-                        .eq(MchEntity::getStoreCode, storeCode).last("limit 1")));
-        if (m == null) {
-            // 码不存在就 404，**不静默回退到首页** —— 静默回退会让「码印错了」
-            // 这种事永远没人发现，店主一直以为在带客
-            throw BizException.of(ErrorCode.NOT_FOUND);
-        }
-        return m.getEntityNo();
-    }
-
-    @Override
-    @Transactional
-    public String ensureStoreCode(String merchantNo) {
-        MchEntity m = DataScopeContext.executeWithoutScope(() ->
-                merchantMapper.selectOne(Wrappers.<MchEntity>lambdaQuery()
-                        .eq(MchEntity::getEntityNo, merchantNo).last("limit 1")));
-        if (m == null) {
-            throw BizException.of(ErrorCode.NOT_FOUND);
-        }
-        if (m.getStoreCode() != null && !m.getStoreCode().isBlank()) {
-            return m.getStoreCode();
-        }
-        m.setStoreCode(newCode());
-        DataScopeContext.executeWithoutScope(() -> merchantMapper.updateById(m));
-        return m.getStoreCode();
-    }
-
-    /** 撞码由 {@code uk_store_code} 兜底：插入失败重试一次比预先查重更简单也更可靠。 */
-    private String newCode() {
-        StringBuilder sb = new StringBuilder(CODE_LEN);
-        for (int i = 0; i < CODE_LEN; i++) {
-            sb.append(ALPHABET.charAt(RANDOM.nextInt(ALPHABET.length())));
-        }
-        return sb.toString();
-    }
 
     private UsrStoreFavorite findFavorite(String userNo, String merchantNo) {
         return favoriteMapper.selectOne(Wrappers.<UsrStoreFavorite>lambdaQuery()
@@ -136,18 +90,15 @@ public class StoreFavoriteServiceImpl implements StoreFavoriteService {
                 .last("limit 1"));
     }
 
-    private List<MerchantVO.Brief> briefsOf(Set<String> merchantNos) {
-        if (merchantNos.isEmpty()) {
-            return List.of();
-        }
-        List<MchEntity> merchants = DataScopeContext.executeWithoutScope(() ->
-                merchantMapper.selectList(Wrappers.<MchEntity>lambdaQuery()
-                        .in(MchEntity::getEntityNo, merchantNos)));
-        // 按传入顺序输出，而不是 DB 顺序
-        List<MerchantVO.Brief> out = new ArrayList<>();
+    private List<StoreBriefVO> briefsOf(Set<String> merchantNos) {
+        Map<String, MerchantBrief> briefs = merchantQueryPort.findAll(merchantNos);
+        // 按传入顺序输出，而不是 DB 顺序 —— 归因命中的那家要排最前
+        List<StoreBriefVO> out = new ArrayList<>();
         for (String no : merchantNos) {
-            merchants.stream().filter(m -> m.getEntityNo().equals(no)).findFirst()
-                    .map(MerchantVO.Brief::of).ifPresent(out::add);
+            MerchantBrief b = briefs.get(no);
+            if (b != null) {
+                out.add(StoreBriefVO.of(b));
+            }
         }
         return out;
     }

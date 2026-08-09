@@ -37,7 +37,7 @@ class ConsumerBrowseFlowTest {
 
     /** 读回刚发出去的验证码：走真实发码-校验链路，不给生产代码开万能码后门。 */
     @Autowired
-    private ai.neargo.shop.user.service.OtpStore otpStore;
+    private ai.neargo.shop.common.OtpStore otpStore;
 
     private MockMvc mvc() {
         return MockMvcBuilders.webAppContextSetup(context)

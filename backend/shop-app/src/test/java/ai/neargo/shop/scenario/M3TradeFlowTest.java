@@ -45,7 +45,7 @@ class M3TradeFlowTest {
     private ObjectMapper json;
 
     @Autowired
-    private ai.neargo.shop.user.service.OtpStore otpStore;
+    private ai.neargo.shop.common.OtpStore otpStore;
 
     @Autowired
     private ai.neargo.shop.trade.service.OrderService orderService;

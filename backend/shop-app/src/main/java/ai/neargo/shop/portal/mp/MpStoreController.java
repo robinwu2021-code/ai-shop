@@ -8,7 +8,8 @@ import ai.neargo.shop.product.dto.RebuyResultVO;
 import ai.neargo.shop.product.dto.ReorderResultVO;
 import ai.neargo.shop.product.dto.StoreHomeVO;
 import ai.neargo.shop.product.service.StoreService;
-import ai.neargo.shop.user.dto.MerchantVO;
+import ai.neargo.shop.merchant.service.StoreCodeService;
+import ai.neargo.shop.user.dto.StoreBriefVO;
 import ai.neargo.shop.user.service.StoreFavoriteService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -30,23 +31,26 @@ public class MpStoreController {
 
     private final StoreService storeService;
     private final StoreFavoriteService favoriteService;
+    private final StoreCodeService storeCodeService;
     private final AttributionService attributionService;
 
     public MpStoreController(StoreService storeService, StoreFavoriteService favoriteService,
+                             StoreCodeService storeCodeService,
                              AttributionService attributionService) {
         this.storeService = storeService;
         this.favoriteService = favoriteService;
+        this.storeCodeService = storeCodeService;
         this.attributionService = attributionService;
     }
 
     @GetMapping("/mp/store/mine")
-    public List<MerchantVO.Brief> myStores() {
+    public List<StoreBriefVO> myStores() {
         return favoriteService.myStores();
     }
 
     @GetMapping("/mp/store/by-code")
     public StoreHomeVO byCode(@RequestParam String storeCode) {
-        String merchantNo = favoriteService.resolveStoreCode(storeCode);
+        String merchantNo = storeCodeService.resolve(storeCode);
         return storeService.home(merchantNo, SecurityUtils.currentUserNoOrNull(),
                 favoriteService.isFavorited(merchantNo));
     }
@@ -92,7 +96,7 @@ public class MpStoreController {
     }
 
     @PostMapping("/mp/store/{merchantNo}/favorite")
-    public List<MerchantVO.Brief> toggleFavorite(@PathVariable String merchantNo) {
+    public List<StoreBriefVO> toggleFavorite(@PathVariable String merchantNo) {
         return favoriteService.toggle(merchantNo);
     }
 
