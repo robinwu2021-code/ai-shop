@@ -7,9 +7,8 @@ import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.user.dto.UserVO;
-import ai.neargo.shop.user.community.entity.CmtPickupPoint;
 import ai.neargo.shop.user.entity.UsrAccount;
-import ai.neargo.shop.user.mapper.UserMappers.PickupPointMapper;
+import ai.neargo.shop.spi.user.PickupQueryPort;
 import ai.neargo.shop.user.mapper.UserMappers.UserMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.stereotype.Service;
@@ -19,12 +18,12 @@ import org.springframework.transaction.annotation.Transactional;
 public class UserServiceImpl implements UserService {
 
     private final UserMapper userMapper;
-    private final PickupPointMapper pickupMapper;
+    private final PickupQueryPort pickupQueryPort;
     private final OtpStore otpStore;
 
-    public UserServiceImpl(UserMapper userMapper, PickupPointMapper pickupMapper, OtpStore otpStore) {
+    public UserServiceImpl(UserMapper userMapper, PickupQueryPort pickupQueryPort, OtpStore otpStore) {
         this.userMapper = userMapper;
-        this.pickupMapper = pickupMapper;
+        this.pickupQueryPort = pickupQueryPort;
         this.otpStore = otpStore;
     }
 
@@ -36,12 +35,10 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public UserVO bindCommunity(String communityNo, String pickupNo) {
-        CmtPickupPoint pickup = pickupMapper.selectOne(Wrappers.<CmtPickupPoint>lambdaQuery()
-                .eq(CmtPickupPoint::getPickupNo, pickupNo)
-                .last("limit 1"));
         // 校验「自提点属于该社区」而不是只查存在性：端上可以随便传两个不相干的号，
         // 存进去之后商品池按社区取、履约按自提点走，用户会看到一个永远到不了货的组合
-        if (pickup == null || !pickup.getCommunityNo().equals(communityNo)) {
+        if (pickupQueryPort.find(pickupNo)
+                .filter(p -> communityNo.equals(p.communityNo())).isEmpty()) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
 

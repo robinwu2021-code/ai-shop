@@ -1,8 +1,8 @@
 package ai.neargo.shop.portal.biz;
 
-import ai.neargo.shop.user.dto.CommunityVO;
+import ai.neargo.shop.community.dto.CommunityVO;
 import ai.neargo.shop.user.service.AuthService;
-import ai.neargo.shop.user.service.CommunityService;
+import ai.neargo.shop.community.service.CommunityService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;

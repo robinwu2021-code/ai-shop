@@ -1,14 +1,14 @@
-package ai.neargo.shop.user.service.impl;
+package ai.neargo.shop.community.service.impl;
 
-import ai.neargo.shop.user.service.CommunityService;
+import ai.neargo.shop.community.service.CommunityService;
 
-import ai.neargo.shop.user.dto.CommunityVO;
-import ai.neargo.shop.user.community.entity.CmtCommunity;
-import ai.neargo.shop.user.community.entity.CmtPickupPoint;
+import ai.neargo.shop.community.dto.CommunityVO;
+import ai.neargo.shop.community.entity.CmtCommunity;
+import ai.neargo.shop.community.entity.CmtPickupPoint;
 import ai.neargo.shop.spi.user.MerchantQueryPort;
 import ai.neargo.shop.spi.user.MerchantQueryPort.MerchantBrief;
-import ai.neargo.shop.user.mapper.UserMappers.CommunityMapper;
-import ai.neargo.shop.user.mapper.UserMappers.PickupPointMapper;
+import ai.neargo.shop.community.mapper.CommunityMappers.CommunityMapper;
+import ai.neargo.shop.community.mapper.CommunityMappers.PickupPointMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.stereotype.Service;
 

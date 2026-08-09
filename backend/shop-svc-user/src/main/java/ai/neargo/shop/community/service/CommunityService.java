@@ -1,6 +1,6 @@
-package ai.neargo.shop.user.service;
+package ai.neargo.shop.community.service;
 
-import ai.neargo.shop.user.dto.CommunityVO;
+import ai.neargo.shop.community.dto.CommunityVO;
 
 import java.util.List;
 

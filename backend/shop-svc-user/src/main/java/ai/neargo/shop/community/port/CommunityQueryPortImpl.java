@@ -1,9 +1,9 @@
-package ai.neargo.shop.user.port;
+package ai.neargo.shop.community.port;
 
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.spi.user.CommunityQueryPort;
-import ai.neargo.shop.user.community.entity.CmtCommunity;
-import ai.neargo.shop.user.mapper.UserMappers.CommunityMapper;
+import ai.neargo.shop.community.entity.CmtCommunity;
+import ai.neargo.shop.community.mapper.CommunityMappers.CommunityMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.stereotype.Component;
 

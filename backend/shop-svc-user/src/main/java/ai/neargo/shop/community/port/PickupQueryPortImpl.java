@@ -1,8 +1,8 @@
-package ai.neargo.shop.user.port;
+package ai.neargo.shop.community.port;
 
 import ai.neargo.shop.spi.user.PickupQueryPort;
-import ai.neargo.shop.user.community.entity.CmtPickupPoint;
-import ai.neargo.shop.user.mapper.UserMappers.PickupPointMapper;
+import ai.neargo.shop.community.entity.CmtPickupPoint;
+import ai.neargo.shop.community.mapper.CommunityMappers.PickupPointMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.stereotype.Component;
 

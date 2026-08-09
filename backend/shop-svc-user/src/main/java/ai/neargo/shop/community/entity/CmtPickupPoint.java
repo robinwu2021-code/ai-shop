@@ -1,4 +1,4 @@
-package ai.neargo.shop.user.community.entity;
+package ai.neargo.shop.community.entity;
 
 import ai.neargo.shop.common.BaseEntity;
 import com.baomidou.mybatisplus.annotation.TableName;

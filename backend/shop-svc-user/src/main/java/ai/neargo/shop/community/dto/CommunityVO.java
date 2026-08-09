@@ -1,4 +1,4 @@
-package ai.neargo.shop.user.dto;
+package ai.neargo.shop.community.dto;
 
 import java.util.List;
 
