@@ -2,6 +2,7 @@ package ai.neargo.shop.user.mapper;
 
 import ai.neargo.shop.user.entity.UsrAccount;
 import ai.neargo.shop.user.entity.UsrAddress;
+import ai.neargo.shop.user.entity.UsrIdentity;
 import ai.neargo.shop.user.entity.UsrStoreFavorite;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 
@@ -19,6 +20,10 @@ public final class UserMappers {
     }
 
     public interface UserMapper extends BaseMapper<UsrAccount> {
+    }
+
+    /** 登录凭证。一个人多条，唯一键 (identity_type, identity_value)。 */
+    public interface IdentityMapper extends BaseMapper<UsrIdentity> {
     }
 
     public interface AddressMapper extends BaseMapper<UsrAddress> {

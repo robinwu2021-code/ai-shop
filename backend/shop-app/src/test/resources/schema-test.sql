@@ -1416,6 +1416,27 @@ CREATE TABLE IF NOT EXISTS usr_account
     CONSTRAINT uk_apple_sub UNIQUE (apple_sub)
 );
 
+-- 账号与凭证分离（V3__usr_identity.sql 的 H2 对应版）。
+-- 一个人多条凭证：新增登录来源只是多一行，不再需要给 usr_account 加列。
+CREATE TABLE IF NOT EXISTS usr_identity
+(
+    id BIGINT AUTO_INCREMENT,
+    user_no VARCHAR(64) NOT NULL,
+    identity_type VARCHAR(32) NOT NULL,
+    identity_value VARCHAR(191) NOT NULL,
+    channel VARCHAR(16) DEFAULT NULL,
+    verified_at TIMESTAMP DEFAULT NULL,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at TIMESTAMP NOT NULL,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at TIMESTAMP NOT NULL,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_identity UNIQUE (identity_type, identity_value)
+);
+
 -- 种子数据
 INSERT INTO sys_industry VALUES
 (1,'CATERING','餐饮',10,1,1,0,0,'微信小微白名单内','MAIN','2026-08-09 12:49:36','SYSTEM','2026-08-09 12:49:36',NULL,0,0),
