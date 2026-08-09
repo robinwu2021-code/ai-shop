@@ -1,4 +1,4 @@
-package ai.neargo.shop.settle.gateway;
+package ai.neargo.shop.channel.pay;
 
 /**
  * 支付通道网关：一个通道一个实现（微信收付通 / 支付宝直付通）。

@@ -248,6 +248,17 @@ class ArchitectureTest {
                 .check(classes);
     }
 
+    @Test
+    @DisplayName("领域层不得直接依赖通道实现（只认 shop-spi 的网关接口）")
+    void domainsMustNotTouchChannel() {
+        noClasses().that().resideInAnyPackage(domainPackages())
+                .should().dependOnClassesThat().resideInAPackage("ai.neargo.shop.channel..")
+                .allowEmptyShould(true)
+                .because("微信/支付宝的报文格式与「这笔钱怎么分」无关。领域层一旦 import 具体网关，"
+                        + "换通道就要改业务代码，而 ops 部署（不含支付通道）会连编译都过不去")
+                .check(classes);
+    }
+
     /**
      * 顶层包白名单 —— 堵的是 {@link #DOMAINS} 名单本身的漏洞。
      *
@@ -263,7 +274,10 @@ class ArchitectureTest {
     @DisplayName("顶层包必须登记：新开一个域，要同时登记进 DOMAINS 名单")
     void topLevelPackagesMustBeRegistered() {
         // 非业务域的顶层包：横切基础设施与装配层，各有专门规则管，不进 DOMAINS
-        List<String> infra = List.of("common", "spi", "auth", "event", "idem", "portal", "config", "arch");
+        List<String> infra = List.of("common", "spi", "auth", "event", "idem", "portal", "config", "arch",
+                // channel：外部通道适配（支付/进件/登录凭证/推送）。不是业务域——
+                // 它没有自己的表，只把外部协议翻译成 spi 的接口。见 domainsMustNotTouchChannel。
+                "channel");
         List<String> known = new ArrayList<>(infra);
         known.addAll(List.of(DOMAINS));
 

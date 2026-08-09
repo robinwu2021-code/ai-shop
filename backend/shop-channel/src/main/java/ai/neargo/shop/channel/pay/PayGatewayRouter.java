@@ -1,4 +1,4 @@
-package ai.neargo.shop.settle.gateway;
+package ai.neargo.shop.channel.pay;
 
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;

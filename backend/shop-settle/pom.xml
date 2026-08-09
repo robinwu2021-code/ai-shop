@@ -11,7 +11,7 @@
         <relativePath>../pom.xml</relativePath>
     </parent>
 
-    <artifactId>shop-svc-settle</artifactId>
+    <artifactId>shop-settle</artifactId>
     <packaging>jar</packaging>
     <description>分账 · 结算单 · 费率 · 提现 · 履约服务费</description>
 

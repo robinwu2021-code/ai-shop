@@ -32,7 +32,9 @@
         <module>shop-core</module>
         <!-- 独立成工程的两个域：变更节奏与外部依赖都与核心域不同，最可能先拆微服务 -->
         <module>shop-merchant</module>
-        <module>shop-svc-settle</module>
+        <module>shop-settle</module>
+        <!-- 外部通道适配：只装适配器，不装业务判断 -->
+        <module>shop-channel</module>
         <!-- 启动模块：portal(三端 Controller) + config + 装配 -->
         <module>shop-app</module>
     </modules>

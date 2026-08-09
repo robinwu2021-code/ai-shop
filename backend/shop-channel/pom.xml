@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>ai.neargo.shop</groupId>
+        <artifactId>shop-parent</artifactId>
+        <version>0.1.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>shop-channel</artifactId>
+    <packaging>jar</packaging>
+    <description>外部通道适配：支付 · 进件 · （后续）登录凭证 · 推送 · 上传</description>
+
+    <!--
+      为什么支付通道要从 settle 里分出来：**它不是结算逻辑，是外部适配**。
+      微信、支付宝各自的报文格式、签名方式、回调协议，与「一笔钱怎么分」没有关系。
+
+      部署上这个区分是硬需求（见 diagrams/deploy-topology.svg）：ops 部署只需要
+      channel 的素材上传，不需要支付通道；混在 settle 里就没法按需装配。
+
+      这里只装外部适配器，**不装业务判断** —— 一旦这里出现「这单该不该分账」，
+      就说明有业务逻辑跟着报文格式跑了，换个通道要重写一遍。
+    -->
+    <dependencies>
+        <dependency>
+            <groupId>ai.neargo.shop</groupId>
+            <artifactId>shop-common</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>ai.neargo.shop</groupId>
+            <artifactId>shop-spi</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+    </dependencies>
+
+</project>

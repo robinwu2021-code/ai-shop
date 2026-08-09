@@ -1,6 +1,6 @@
-package ai.neargo.shop.settle.gateway;
+package ai.neargo.shop.channel.pay;
 
-import ai.neargo.shop.settle.gateway.ChannelClient.ChannelException;
+import ai.neargo.shop.channel.pay.ChannelClient.ChannelException;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;

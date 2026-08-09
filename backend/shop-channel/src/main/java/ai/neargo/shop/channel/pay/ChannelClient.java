@@ -1,4 +1,4 @@
-package ai.neargo.shop.settle.gateway;
+package ai.neargo.shop.channel.pay;
 
 import java.util.Map;
 
