@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>ai.neargo.shop</groupId>
+        <artifactId>shop-parent</artifactId>
+        <version>0.1.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>shop-core</artifactId>
+    <packaging>jar</packaging>
+    <description>核心业务域：user · community · product · trade · fulfillment · marketing · message · platform</description>
+
+    <!--
+      由七个 shop-svc-* 合并而来（模块优化实施步骤 S5）。
+
+      **为什么能合**：包名本就是 ai.neargo.shop.<域>，不带模块名，所以合并是
+      移动目录 + 删 pom，包名不变、import 一行没改。七个 pom 的依赖完全相同
+      （都只有 common + spi），也没有资源文件要归并。
+
+      **代价说清楚**：合并前，域之间不能互相依赖是 Maven 强制的——依赖不在 pom 里，
+      编译期就过不去。现在这道屏障没了，边界只剩 ArchitectureTest 的 11 条规则。
+      规则已在合并前补齐并逐条做过反向验证（各造一个违规类确认变红），
+      其中「顶层包必须登记」专门堵这个新处境：新开一个域不再需要建 Maven 模块，
+      就是新建一个目录，没有任何一步会提醒作者他在开新域。
+
+      **模块数 = 未来可能的部署单元数**（TDD-backend §4.1）。这七个域没有任何一个
+      需要单独部署，分成七个工程买到的不是隔离，只是七份重复的 pom。
+      真正需要独立演进的是 merchant 与 settle，它们仍是独立工程。
+    -->
+    <dependencies>
+        <dependency>
+            <groupId>ai.neargo.shop</groupId>
+            <artifactId>shop-common</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <!-- 跨域协作只经 shop-spi 的 Port/Event；域之间直接依赖会被 ArchUnit 拦下 -->
+        <dependency>
+            <groupId>ai.neargo.shop</groupId>
+            <artifactId>shop-spi</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+    </dependencies>
+
+</project>

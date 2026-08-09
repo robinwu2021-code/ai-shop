@@ -30,7 +30,7 @@
         <!-- ★ 这段依赖列表就是「形态」：单体聚合全部 svc；将来出 shop-app-trade 只留 trade 那几个 -->
         <dependency>
             <groupId>ai.neargo.shop</groupId>
-            <artifactId>shop-svc-user</artifactId>
+            <artifactId>shop-core</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
@@ -40,37 +40,7 @@
         </dependency>
         <dependency>
             <groupId>ai.neargo.shop</groupId>
-            <artifactId>shop-svc-product</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>ai.neargo.shop</groupId>
-            <artifactId>shop-svc-trade</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>ai.neargo.shop</groupId>
-            <artifactId>shop-svc-fulfillment</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>ai.neargo.shop</groupId>
-            <artifactId>shop-svc-marketing</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>ai.neargo.shop</groupId>
             <artifactId>shop-svc-settle</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>ai.neargo.shop</groupId>
-            <artifactId>shop-svc-message</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>ai.neargo.shop</groupId>
-            <artifactId>shop-svc-platform</artifactId>
             <version>${project.version}</version>
         </dependency>
 

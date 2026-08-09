@@ -28,15 +28,11 @@
         <!-- 只有接口：Port + DTO + Event，谁都能依赖 -->
         <module>shop-spi</module>
         <!-- 领域服务实现（jar，不可独立启动） -->
-        <module>shop-svc-user</module>
+        <!-- 核心域合并为一个工程：模块数 = 未来可能的部署单元数，域数 = 包数 -->
+        <module>shop-core</module>
+        <!-- 独立成工程的两个域：变更节奏与外部依赖都与核心域不同，最可能先拆微服务 -->
         <module>shop-merchant</module>
-        <module>shop-svc-product</module>
-        <module>shop-svc-trade</module>
-        <module>shop-svc-fulfillment</module>
-        <module>shop-svc-marketing</module>
         <module>shop-svc-settle</module>
-        <module>shop-svc-message</module>
-        <module>shop-svc-platform</module>
         <!-- 启动模块：portal(三端 Controller) + config + 装配 -->
         <module>shop-app</module>
     </modules>
