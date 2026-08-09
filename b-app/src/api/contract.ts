@@ -136,6 +136,17 @@ export interface MerchantApi {
    * 不是本主体在职员工时后端返回 403，**不是「账号不存在」** ——
    * 后者会把「谁是这家店的员工」变成一条可枚举的信息。
    */
+  /**
+   * 发送短信验证码。
+   *
+   * **它此前不在端点表里** —— B 端登录页的「发送验证码」按钮只是把 1234 填进输入框：
+   * mock 下直接把 1234 填进输入框，于是这条缺失一直被盖住，
+   * 而真实环境里没有人收得到验证码，登录整条路走不通。
+   *
+   * 返回体不含验证码（后端刻意如此）—— 这条别为了联调方便破例。
+   */
+  mSendOtp(phone: string): Promise<void>;
+
   mStaffLogin(payload: StaffLoginReq): Promise<MerchantLoginResp>;
 
   mApply(payload: MerchantApplyReq): Promise<MerchantProfile>;

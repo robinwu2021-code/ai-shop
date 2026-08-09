@@ -22,7 +22,12 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 模块边界与分层规则（TDD-backend §4.2 / §3.1）。**违反即构建失败**。
  *
  * <p>这些规则不是风格偏好：powerbank 的经验是，模块边界一旦靠自觉维护，
- * 三个月后就会出现「拆不动的单体」——每个 svc 都直接 import 了别的 svc 的实体。
+ * 三个月后就会出现「拆不动的单体」——每个域都直接 import 了别的域的实体。
+ *
+ * <p><b>2026-08 模块合并之后，这些规则判的是「包」不是「Maven 模块」</b>：
+ * 13 个模块并成了 6 个（{@code shop-base/core/merchant/settle/channel/app}），
+ * 但包名一个没动 —— 于是「域之间不得互相依赖」照样成立，一条规则都不用改。
+ * 这也正是当初按包写规则、而不是按模块写的原因。
  */
 class ArchitectureTest {
 
@@ -56,7 +61,7 @@ class ArchitectureTest {
     }
 
     @Test
-    @DisplayName("svc 模块之间不得互相依赖，跨域只走 shop-spi 的 Port/Event")
+    @DisplayName("业务域之间不得互相依赖，跨域只走 spi 包的 Port/Event")
     void svcModulesMustNotDependOnEachOther() {
         String[] domains = DOMAINS;
         for (String from : domains) {
@@ -67,7 +72,7 @@ class ArchitectureTest {
                 ArchRule rule = noClasses().that().resideInAPackage("ai.neargo.shop." + from + "..")
                         .should().dependOnClassesThat().resideInAPackage("ai.neargo.shop." + to + "..")
                         .allowEmptyShould(true)
-                        .because("svc-" + from + " 依赖 svc-" + to + " 会让模块无法独立拆分；改用 shop-spi 的 Port 或 Event");
+                        .because(from + " 域依赖 " + to + " 域会让它们无法独立拆分；改用 spi 包的 Port 或 Event");
                 rule.check(classes);
             }
         }
@@ -124,17 +129,38 @@ class ArchitectureTest {
         noClasses().that().resideInAPackage("ai.neargo.shop.common..")
                 .or().resideInAPackage("ai.neargo.shop.auth..")
                 .should().dependOnClassesThat().resideInAnyPackage(forbidden)
-                .because("common 是横切基础设施；依赖业务域会让每个 svc 被迫依赖 app")
+                .because("common 是横切基础设施；依赖业务域会让每个域被迫依赖 app")
                 .check(classes);
     }
 
+    /**
+     * Controller 的两个合法落点（S7 垂直切片后）。
+     *
+     * <p>原规则是「只能住在 shop-app/portal」，理由写的是「Controller 散进业务域会让域
+     * 绑死 web 层，拆分时无法只搬领域逻辑」。这条理由恰恰是反的：把某个域的 API 面
+     * 留在 app 里，拆微服务时才要**同时**搬两个工程，而且得先从 23 个 Controller 里
+     * 认出哪几个属于这个域。域绑 web 层的真正风险是**领域逻辑读 request**，
+     * 那由 {@link #domainsMustNotTouchWebRuntime()} 挡着，与 Controller 放哪无关。
+     *
+     * <p>两个落点各有明确职责：
+     * <ul>
+     *   <li>{@code ..<域>.api..} —— 只用到<b>本域</b>服务的 API 面。跟着域走，一起搬</li>
+     *   <li>{@code shop.portal..} —— <b>跨域组合</b>的 API 面（BFF）。它按定义就属于
+     *       装配层：一个接口要同时用商家和商品，这个组合关系不属于其中任何一个域</li>
+     * </ul>
+     *
+     * <p>「shop-app 里 Controller 数量为 0」曾被写进 S7 的验收标准，那条是错的：
+     * 23 个里有 5 个真正跨域（{@code MpCatalogController} 触及 4 个域），
+     * 把它们塞进任一个域都会立刻违反域间依赖规则。跨域组合必须有地方待，
+     * app 层就是那个地方。
+     */
     @Test
-    @DisplayName("Controller 只能住在 shop-app/portal 下")
-    void controllersOnlyInPortal() {
+    @DisplayName("Controller 只能住在域的 api 包或 app 的 portal 包")
+    void controllersInDomainApiOrPortal() {
         classes().that().haveSimpleNameEndingWith("Controller")
-                .should().resideInAPackage("ai.neargo.shop.portal..")
+                .should().resideInAnyPackage("ai.neargo.shop.portal..", "..api..")
                 .allowEmptyShould(true)
-                .because("Controller 散进 svc 会让 svc 绑死 web 层，微服务拆分时无法只搬领域逻辑")
+                .because("单域 API 面跟着域走（拆微服务时一起搬）；跨域组合留在 app 层")
                 .check(classes);
     }
 
@@ -161,7 +187,7 @@ class ArchitectureTest {
          *
          * **两个落点不是不一致，是两种东西**：
          *   .impl —— Service 的实现。接口就在隔壁包，靠子包把两者分开
-         *   .port —— Port 的实现。接口在 shop-spi **另一个 Maven 模块**里，
+         *   .port —— Port 的实现。接口在 spi 包里（合并后与 common 同在 shop-base），
          *            分离度本就高于 .impl；这里的包名标的是「这是给别的域用的出口」，
          *            而不是「这是某个本地接口的实现」。
          * 混在一起（Port 实现塞进 service/impl）会让人以为它是本域 Service 的一部分，
@@ -203,12 +229,13 @@ class ArchitectureTest {
     }
 
     // ───────────────────────────────────────────────────────────────────────
-    // 以下四条为模块合并前补齐（模块优化实施步骤 S1）。
+    // 以下四条为模块合并前补齐（模块优化实施步骤 S1），**现在是唯一的边界**。
     //
-    // 补齐的时机不是随意的：现在域之间不能互相依赖，是 **Maven 强制**的——
-    // 依赖不在 pom 里，编译期就过不去。等 8 个 svc 合并进 shop-core，那道屏障消失，
-    // 边界就只剩这个测试。所以规则必须**先在 11 模块状态下跑绿**，再动结构；
-    // 顺序反过来的话，中间会有一段时间边界无人看管。
+    // 合并之前，域之间不能互相依赖是 **Maven 强制**的：依赖不在 pom 里，编译期就过不去。
+    // 2026-08 七个域合并进 shop-core 之后，**那道屏障已经消失** ——
+    // 现在 core 内部任意两个域之间 import 一下就能编过，拦住它的只剩这几条规则。
+    //
+    // 当时坚持「先补规则、再动结构」，就是为了不留下一段边界无人看管的空窗期。
     // ───────────────────────────────────────────────────────────────────────
 
     @Test
@@ -238,7 +265,7 @@ class ArchitectureTest {
     }
 
     @Test
-    @DisplayName("Port 接口只能定义在 shop-spi")
+    @DisplayName("Port 接口只能定义在 spi 包")
     void portInterfacesOnlyInSpi() {
         classes().that().haveSimpleNameEndingWith("Port").and().areInterfaces()
                 .should().resideInAPackage("ai.neargo.shop.spi..")
@@ -249,7 +276,7 @@ class ArchitectureTest {
     }
 
     @Test
-    @DisplayName("领域层不得直接依赖通道实现（只认 shop-spi 的网关接口）")
+    @DisplayName("领域层不得直接依赖通道实现（只认 spi 包的网关接口）")
     void domainsMustNotTouchChannel() {
         noClasses().that().resideInAnyPackage(domainPackages())
                 .should().dependOnClassesThat().resideInAPackage("ai.neargo.shop.channel..")

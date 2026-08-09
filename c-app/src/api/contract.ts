@@ -63,6 +63,16 @@ import type { PointsDeductibleQuery } from "./requests";
 
 export interface ShopApi {
   // ---- 用户
+  /**
+   * 发送短信验证码。
+   *
+   * **它此前不在端点表里** —— 登录页有验证码输入框，却没有任何地方去发码：
+   * mock 下直接把 1234 填进输入框，于是这条缺失一直被盖住，
+   * 而真实环境里没有人收得到验证码，登录整条路走不通。
+   *
+   * 返回体不含验证码（后端刻意如此）—— 这条别为了联调方便破例。
+   */
+  sendOtp(phone: string): Promise<void>;
   login(req: LoginReq): Promise<LoginResp>;
   profile(): Promise<User>;
   bindCommunity(communityNo: string, pickupNo: string): Promise<User>;

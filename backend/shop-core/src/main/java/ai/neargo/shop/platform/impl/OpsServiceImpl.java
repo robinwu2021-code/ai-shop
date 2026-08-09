@@ -1,7 +1,7 @@
 package ai.neargo.shop.platform.impl;
 
 import ai.neargo.shop.platform.OpsService;
-import ai.neargo.shop.platform.Perms;
+import ai.neargo.shop.auth.Perms;
 
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.spi.user.MerchantAdminPort;

@@ -195,6 +195,11 @@ export const mockApi: MerchantApi = {
     return delay({ token: `mock-b-token-${Date.now()}`, merchant: { ...db.merchant } });
   },
 
+  async mSendOtp(phone: string) {
+    if (!/^\d{11}$/.test(phone)) throw new Error("手机号格式不对");
+    await delay(undefined);
+  },
+
   async mStaffLogin(payload) {
     /*
      * mock 也照「非在职员工返回 403」来：恒成功的话，

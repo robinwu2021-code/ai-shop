@@ -11,6 +11,7 @@
 // 绑死在某个 openid 上反而麻烦 —— 第三方登录之后仍要补绑手机号。
 import { computed, onUnmounted, ref } from "vue";
 import { useI18n } from "vue-i18n";
+import { api } from "@/api";
 import { useMerchantStore } from "@/stores/merchant";
 import { ROUTES } from "@/shared/nav";
 import { loginMethods, type LoginMethod } from "@shared/ports/auth";
@@ -38,6 +39,7 @@ const phone = ref("");
 const code = ref("");
 const agreed = ref(false);
 const submitting = ref(false);
+const sending = ref(false);
 
 /** 验证码倒计时。没有它用户会连点，短信费与频控两头出事 */
 const left = ref(0);
@@ -53,20 +55,31 @@ function requireAgree(): boolean {
   return false;
 }
 
-function sendCode() {
+/*
+ * 发验证码。**此前这里只是把 1234 填进输入框** —— 从不调用后端，
+ * 于是「端上没有发码这条链」被 mock 完全盖住：真实环境里没人收得到码。
+ */
+async function sendCode() {
   if (!phoneOk.value) {
     uni.showToast({ title: t("login.phoneInvalid"), icon: "none" });
     return;
   }
-  if (left.value > 0) return;
-  left.value = 60;
-  timer = setInterval(() => {
-    left.value -= 1;
-    if (left.value <= 0) clearInterval(timer);
-  }, 1000);
-  // mock：验证码固定 1234。真实环境走短信服务，并有按手机号/IP/设备的频控
-  code.value = "1234";
-  uni.showToast({ title: t("login.mockCode"), icon: "none" });
+  // 倒计时里不许再点：连点会在短信费与频控两头出事
+  if (left.value > 0 || sending.value) return;
+  sending.value = true;
+  try {
+    await api.mSendOtp(phone.value);
+    left.value = 60;
+    timer = setInterval(() => {
+      left.value -= 1;
+      if (left.value <= 0) clearInterval(timer);
+    }, 1000);
+    uni.showToast({ title: t("login.otpSent"), icon: "none" });
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: "none" });
+  } finally {
+    sending.value = false;
+  }
 }
 
 function showAgreement() {

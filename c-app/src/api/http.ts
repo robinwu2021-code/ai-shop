@@ -77,6 +77,7 @@ function call<T>(
 
 export const httpApi: ShopApi = {
   // ---- 用户
+  sendOtp: (phone: string) => call<void>("sendOtp", undefined, { phone }),
   login: (req: LoginReq) => call<LoginResp>("login", undefined, { ...req } satisfies LoginReqBody),
   profile: () => call<User>("profile"),
   bindCommunity: (communityNo, pickupNo) =>

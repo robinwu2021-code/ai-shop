@@ -1,6 +1,10 @@
-# Java 实体清单（58 实体 · 8 个服务模块）
+# Java 实体清单（58 实体 · 6 个 Maven 模块）
 
 > 2026-08-09 · 按业务模块整理后的实体基准。与[数据库表清单](./数据库表清单.md)一一对应，由 `entity-alignment` 守卫强制保持同步。
+>
+> ⚠️ **2026-08 模块合并后已更新**：13 个 Maven 模块并成 6 个，但 **Java 包名一个没动** ——
+> 所以下表里「包」这一列与合并前完全一致，变的只是它们住在哪个 Maven 模块里。
+> 结构见[重构后现状梳理](./重构后现状梳理.md)。
 > 命名依据见[全域命名基准](./全域命名基准.md)。
 
 ---
@@ -56,18 +60,21 @@ Mapper 内部接口同步（`MerchantMapper`→`MchEntityMapper` 等 6 个）—
 先改实体，再按 javac 报出的「符号 + 受体类型」精确定位。
 盲替会把 VO 上的同名 `getMerchantNo()` 一起改掉 —— 那才是真正的回归。
 
-### 2.3 包重组
+### 2.3 包重组（两轮）
+
+**第一轮（实体整理时）**：把商家域与社区域从扁平的 `user` 包里分出来。
+
+**第二轮（模块合并 S3/S4）**：这两个域直接提到了顶层 ——
 
 ```
-ai.neargo.shop.user
-├── entity/            消费者域：UsrAccount · UsrAddress · UsrStoreFavorite
-├── merchant/entity/   商家经营域：MchEntity · MchStore · MchAccount ·
-│                                  MchStoreRole · MchPaymentMerchant · MchEntityCommunity
-└── community/entity/  社区域：CmtCommunity · CmtPickupPoint
+ai.neargo.shop
+├── user/entity/        消费者域：UsrAccount · UsrAddress · UsrStoreFavorite
+├── merchant/entity/    商家经营域（→ 独立模块 shop-merchant）
+└── community/entity/   社区域（→ 提到顶层，不再挂在 user 下）
 ```
 
-沿用 `marketing.{group,coupon,campaign,attribution}` 与 `product.review` 已有的子域分包惯例。
-`shop-svc-user` 这个 maven 模块名现在偏窄（它装着三个域），**模块拆分是另一件事**，见 §五。
+> 社区域提到顶层的理由：它服务于所有域（订单要自提点、商家要覆盖社区），
+> 挂在 `user` 下面会让人以为它是消费者的附属。
 
 ### 2.4 补齐缺失实体
 
@@ -78,63 +85,86 @@ ai.neargo.shop.user
 
 ## 三、实体清单（按模块）
 
-### shop-svc-user（11）
+### 模块分布总览
+
+| Maven 模块 | 实体数 | 内容 |
+|---|---|---|
+| `shop-base` | 2 | `SysIdempotent` · `SysOutbox`（纯基础设施，不属于任何业务域） |
+| `shop-core` | 44 | 七个域：platform 7 · trade 6 · product 6+3 · marketing 11 · user 3 · message 3 · fulfillment 3 · community 2 |
+| `shop-merchant` | 6 | 商家域全部 |
+| `shop-settle` | 6 | 结算 4 + 积分 2 |
+| `shop-channel` / `shop-app` | 0 | 通道实现与组装层不持有实体 |
+
+### shop-merchant（6）· 商家经营域
+
+| 实体 | 表 | 包 |
+|---|---|---|
+| `MchEntity` | `mch_entity` | `merchant.entity` |
+| `MchStore` | `mch_store` | `merchant.entity` |
+| `MchAccount` | `mch_account` | `merchant.entity` |
+| `MchStoreRole` | `mch_store_role` | `merchant.entity` |
+| `MchPaymentMerchant` | `mch_payment_merchant` | `merchant.entity` |
+| `MchEntityCommunity` | `mch_entity_community` | `merchant.entity` |
+
+> 商家域在 S3 被抽成独立模块 —— 它是唯一一个**没有并进 core** 的业务域，
+> 因为它被所有别的域引用（订单挂主体、商品挂主体、结算挂主体），
+> 留在 core 里会让 core 永远拆不开。
+
+### shop-core · 消费者与社区（5）
 
 | 实体 | 表 | 包 |
 |---|---|---|
 | `UsrAccount` | `usr_account` | `user.entity` |
 | `UsrAddress` | `usr_address` | `user.entity` |
 | `UsrStoreFavorite` | `usr_store_favorite` | `user.entity` |
-| `MchEntity` | `mch_entity` | `user.merchant.entity` |
-| `MchStore` | `mch_store` | `user.merchant.entity` |
-| `MchAccount` | `mch_account` | `user.merchant.entity` |
-| `MchStoreRole` | `mch_store_role` | `user.merchant.entity` |
-| `MchPaymentMerchant` | `mch_payment_merchant` | `user.merchant.entity` |
-| `MchEntityCommunity` | `mch_entity_community` | `user.merchant.entity` |
-| `CmtCommunity` | `cmt_community` | `user.community.entity` |
-| `CmtPickupPoint` | `cmt_pickup_point` | `user.community.entity` |
+| `CmtCommunity` | `cmt_community` | `community.entity` |
+| `CmtPickupPoint` | `cmt_pickup_point` | `community.entity` |
 
-### shop-svc-trade（6）
+> 社区域在 S4 从 `user` 包提到了顶层 —— 它服务于所有域（订单要自提点、商家要覆盖社区），
+> 挂在 user 下面会让人以为它是消费者的附属。
+
+### shop-core · 交易（6）
 `OrdOrder` · `OrdSubOrder` · `OrdItem` · `OrdAfterSale` · `OrdStatusLog` · `TrdCartItem` —— 全部 `trade.entity`
 
-### shop-svc-product（9）
+### shop-core · 商品与评价（9）
 `PrdCategory` · `PrdGoods` · `PrdSku` · `PrdSpecTemplate` · `PrdStockLock` · `PrdCommunityPool`（`product.entity`）
 `RvwReview` · `RvwReviewLike` · `RvwAppeal`（`product.review.entity`）
 
-### shop-svc-marketing（11）
+### shop-core · 营销（11）
 `MktCampaign`（campaign）· `MktCoupon` · `MktUserCoupon`（coupon）
 `MktGroupBuy` · `MktGroupMember` · `MktRequest` · `MktRequestInterest` · `MktQuote` · `MktQuoteRevision`（group）
 `MktAttribution` · `MktAttributionLog`（attribution）
 
-### shop-svc-settle（6）
+### shop-settle（6）
 `StlBill` · `StlPayment` · `StlPointsPool` · `StlSplitLog` · `PtsUserAccount` · `PtsUserLedger`
 
-> 积分（`pts_*`）挂在 settle 模块下 —— 它与结算共用资金链路（ADR-006 的积分负债），拆开会把一条事务切成两半。
+> 积分（`pts_*`）与结算同模块 —— 它们共用资金链路（ADR-006 的积分负债），拆开会把一条事务切成两半。
 
-### shop-svc-platform（7）
+### shop-core · 平台（7）
 `SysIndustry` · `SysLegalForm` · `SysPayChannel` · `SysChannelCategoryRule` · `SysOpsStaff` · `SysAuditLog` · **`MchEntityApply`**
 
-> `MchEntityApply` 放在 platform 而不是 user：入驻申请的主语是**平台审核**，不是商家自己。
+> `MchEntityApply` 放在 platform 而不是 merchant：入驻申请的主语是**平台审核**，不是商家自己 —— 通过之前商家还不存在。
 
-### shop-svc-fulfillment（3）
+### shop-core · 履约（3）
 `FulBatch`（本轮新增）· `FulGroupPickup` · `FulVerifyLog`
 
-### shop-svc-message（3）
+### shop-core · 消息（3）
 `MsgMessage` · `MsgSubscribe` · `MsgTicket`
 
-> `sys_idempotent` / `sys_outbox` 由 `shop-common` 的基础设施直接访问，不配业务实体（守卫已豁免）。
+> `sys_idempotent` / `sys_outbox` 的实体在 **`shop-base`** —— 它们是基础设施，不属于任何业务域。
 
 ---
 
 ## 四、验证
 
-| 项 | 结果 |
+| 项 | 结果（2026-08 模块合并后重跑） |
 |---|---|
-| 全量编译 | ✅ 8 个模块 BUILD SUCCESS |
-| 后端测试 | ✅ 213/213 |
-| shared 守卫 | ✅ 142/142（含实体↔库对齐、键归属、血缘） |
-| 真库启动 | ✅ MariaDB 12.2 新链 2 个迁移、59 表，种子就位 |
-| 真库端到端 | ✅ OTP 登录 → 商品列表 → 门店主页 → 下单；`ord_sub_order` 双键落库 `entity_no=M0001` / `store_no=ST-M0001` |
+| 全量编译 | ✅ **6 个模块** BUILD SUCCESS |
+| 快测（单元 + 集成） | ✅ **246** |
+| E2E（真 MariaDB + 真 HTTP） | ✅ **4 条旅程** |
+| shared 守卫 | ✅ 142（含实体↔库对齐、键归属、血缘） |
+| ops-web | ✅ 559 |
+| 三端契约对齐 | ✅ 无阻塞差异 |
 
 **全库仅剩 1 处 `@TableField` 显式映射**：`MchPaymentMerchant.payChannel → pay_channel`
 （字段名是模块内部的事，改它要动一片调用点；且不加这个映射整个 Spring 上下文起不来，
@@ -146,7 +176,7 @@ ai.neargo.shop.user
 
 | # | 项 | 说明 |
 |---|---|---|
-| 1 | `MerchantPortImpl.activate` 幂等按人判重 | 🔴 申请第二张执照通过时会**改掉第一个主体**，静默无报错。修法：按 `mch_entity_apply.entity_no` 非空判幂等 |
-| 2 | `shop-svc-user` 模块名偏窄 | 它装着消费者/商家/社区三个域。拆 `shop-svc-merchant` 要连 service/port/pom 一起动，是独立一期 |
-| 3 | Service 类名仍用旧词 | `MerchantServiceImpl` / `MerchantStaffServiceImpl` / `MerchantStoreServiceImpl`。本轮只整理实体层，服务层随 §2 的模块拆分一起改 |
-| 4 | 三端契约词汇 | `OrderVO.merchantNo`、shared `MerchantSubject` 等仍是旧词，边界在 VO 装配处。契约改名期统一处理 |
+| ~~1~~ ✅ | `activate` 幂等按人判重 | 已修：改为按 `mch_entity_apply.entity_no` 判，回归用例 `secondLicenseCreatesSecondEntity` + E2E J3 第 7 步 |
+| ~~2~~ ✅ | 模块名偏窄 | 已解决：商家域抽成 `shop-merchant`（S3）、社区域提到顶层（S4） |
+| 3 | Service 类名仍用旧词 | `MerchantServiceImpl` / `MerchantStaffServiceImpl` / `MerchantStoreServiceImpl` —— 类名里的 "Merchant" 现在指主体，与「收款商户号」同词不同义。随契约改名期一起改 |
+| 4 | 三端契约词汇 | `OrderVO.merchantNo`、shared `MerchantSubject` 等仍是旧词，边界在 VO 装配处 |

@@ -29,6 +29,7 @@ export interface EndpointDef {
 /** 键必须与 ShopApi 的方法名一一对应，漏一个会编译报错 */
 export const ENDPOINTS: Record<keyof ShopApi, EndpointDef> = {
   // ---------------------------------------------------------------- 用户
+  sendOtp: { method: "POST", path: "/mp/user/otp/send", auth: false, summary: "发送验证码" },
   login: { method: "POST", path: "/mp/user/login", auth: false, summary: "登录建户" },
   profile: { method: "GET", path: "/mp/user/profile", auth: true, summary: "我的资料" },
   bindCommunity: {

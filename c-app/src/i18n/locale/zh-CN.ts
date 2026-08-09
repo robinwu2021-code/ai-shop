@@ -175,6 +175,10 @@ export default {
     unset: "未选择",
   },
   login: {
+    sendOtp: "获取验证码",
+    otpSent: "验证码已发送",
+    phoneInvalid: "请填 11 位手机号",
+    resend: "{s} 秒后重发",
     title: "登录后即可下单",
     sub: "小程序为微信一键登录，App / H5 用手机号验证码",
     phone: "手机号",

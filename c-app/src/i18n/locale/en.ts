@@ -153,6 +153,10 @@ export default {
     unset: "Not set",
   },
   login: {
+    sendOtp: "Get code",
+    otpSent: "Code sent",
+    phoneInvalid: "Enter an 11-digit number",
+    resend: "Resend in {s}s",
     title: "Sign in to start ordering",
     sub: "One tap on WeChat Mini Program; phone code on app and web",
     phone: "Phone number",

@@ -17,6 +17,7 @@ export default {
   market: { CN: "China · CNY", AE: "UAE · AED", US: "US · USD", label: "Region & currency" },
 
   login: {
+    otpSent: "Code sent",
     title: "Merchant sign-in",
     asOwner: "I own the shop",
     asStaff: "I work here",

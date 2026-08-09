@@ -48,6 +48,7 @@ export default {
   market: { CN: "中国 · 人民币", AE: "阿联酋 · 迪拉姆", US: "美国 · 美元", label: "地区与货币" },
 
   login: {
+    otpSent: "验证码已发送",
     title: "商家登录",
     asOwner: "我是老板",
     asStaff: "我是店员",

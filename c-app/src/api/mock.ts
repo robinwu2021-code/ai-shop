@@ -263,6 +263,12 @@ export const mockApi: ShopApi = {
   },
 
   // ---------------------------------------------------------------- 用户
+  async sendOtp(phone: string) {
+    // mock 不真的发短信；验证码固定 1234（登录页也照这条口径提示）
+    if (!/^\d{11}$/.test(phone)) throw new Error("手机号格式不对");
+    await delay(undefined);
+  },
+
   async login(req) {
     // 进店归因：从店铺码/店铺分享进来时带 merchantNo，写入「常去的店」。
     // 它同时决定订单的 trafficSource 与费率档（ADR-004 §5.4 / §6）

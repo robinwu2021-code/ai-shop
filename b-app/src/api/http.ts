@@ -74,6 +74,7 @@ import type {
 } from "@shared/types";
 
 export const httpApi: MerchantApi = {
+  mSendOtp: (phone) => http.post<void>(E.mSendOtp.path, { phone }),
   mLogin: (req: LoginReq) =>
     http.post<MerchantLoginResp>(E.mLogin.path, { ...req } satisfies MerchantLoginReqBody),
   mStaffLogin: (payload) =>
