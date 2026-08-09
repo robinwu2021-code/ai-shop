@@ -26,6 +26,26 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class ArchitectureTest {
 
+    /**
+     * 业务域清单 —— 这份名单是下面多条规则的**共同依据**，必须只有一份。
+     *
+     * <p>此前它被抄写了三遍（域间依赖、common 反向依赖、Service 接口化各一份），
+     * 三份已经开始漂：加一个域要记得改三处，漏掉哪处，哪条规则就对新域失效，
+     * 而且**不会有任何报错**——规则只是悄悄地少管一个域。
+     *
+     * <p>{@code merchant} 与 {@code community} 现在还嵌在 {@code shop.user} 下（见
+     * 模块优化实施步骤 S3/S4），此刻匹配不到任何类。**提前登记是有意的**：
+     * 等它们迁出来的那一刻，边界规则立即生效，不需要谁记得回来补名单。
+     */
+    private static final String[] DOMAINS = {
+            "user", "merchant", "community", "product", "trade",
+            "fulfillment", "marketing", "settle", "message", "platform"};
+
+    /** {@link #DOMAINS} 的 ArchUnit 包表达式形式（{@code ai.neargo.shop.x..}）。 */
+    private static String[] domainPackages() {
+        return java.util.Arrays.stream(DOMAINS).map(d -> "ai.neargo.shop." + d + "..").toArray(String[]::new);
+    }
+
     private static JavaClasses classes;
 
     @BeforeAll
@@ -38,7 +58,7 @@ class ArchitectureTest {
     @Test
     @DisplayName("svc 模块之间不得互相依赖，跨域只走 shop-spi 的 Port/Event")
     void svcModulesMustNotDependOnEachOther() {
-        String[] domains = {"user", "product", "trade", "fulfillment", "marketing", "settle", "message", "platform"};
+        String[] domains = DOMAINS;
         for (String from : domains) {
             for (String to : domains) {
                 if (from.equals(to)) {
@@ -98,12 +118,12 @@ class ArchitectureTest {
     @Test
     @DisplayName("common 不得依赖任何业务域")
     void commonMustNotDependOnDomains() {
+        String[] forbidden = java.util.stream.Stream
+                .concat(java.util.Arrays.stream(domainPackages()), java.util.stream.Stream.of("ai.neargo.shop.portal.."))
+                .toArray(String[]::new);
         noClasses().that().resideInAPackage("ai.neargo.shop.common..")
                 .or().resideInAPackage("ai.neargo.shop.auth..")
-                .should().dependOnClassesThat().resideInAnyPackage(
-                        "ai.neargo.shop.user..", "ai.neargo.shop.product..", "ai.neargo.shop.trade..",
-                        "ai.neargo.shop.fulfillment..", "ai.neargo.shop.marketing..", "ai.neargo.shop.settle..",
-                        "ai.neargo.shop.message..", "ai.neargo.shop.platform..", "ai.neargo.shop.portal..")
+                .should().dependOnClassesThat().resideInAnyPackage(forbidden)
                 .because("common 是横切基础设施；依赖业务域会让每个 svc 被迫依赖 app")
                 .check(classes);
     }
@@ -123,10 +143,7 @@ class ArchitectureTest {
     void serviceMustBeInterface() {
         // 只约束业务域：common 里的横切服务（IdempotencyService 等）没有多实现的可能，
         // 强行拆接口只会多一层无意义的间接
-        classes().that().resideInAnyPackage(
-                        "ai.neargo.shop.user..", "ai.neargo.shop.product..", "ai.neargo.shop.trade..",
-                        "ai.neargo.shop.fulfillment..", "ai.neargo.shop.marketing..", "ai.neargo.shop.settle..",
-                        "ai.neargo.shop.message..", "ai.neargo.shop.platform..")
+        classes().that().resideInAnyPackage(domainPackages())
                 .and().haveSimpleNameEndingWith("Service").and().areNotInterfaces()
                 .should().haveSimpleNameEndingWith("ServiceImpl")
                 .allowEmptyShould(true)
@@ -183,5 +200,85 @@ class ArchitectureTest {
                 .allowEmptyShould(true)
                 .because("Controller 直连 Mapper 等于把业务写进 web 层，数据域与状态机都会被绕过")
                 .check(classes);
+    }
+
+    // ───────────────────────────────────────────────────────────────────────
+    // 以下四条为模块合并前补齐（模块优化实施步骤 S1）。
+    //
+    // 补齐的时机不是随意的：现在域之间不能互相依赖，是 **Maven 强制**的——
+    // 依赖不在 pom 里，编译期就过不去。等 8 个 svc 合并进 shop-core，那道屏障消失，
+    // 边界就只剩这个测试。所以规则必须**先在 11 模块状态下跑绿**，再动结构；
+    // 顺序反过来的话，中间会有一段时间边界无人看管。
+    // ───────────────────────────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("领域层不得依赖 app 层（portal / config）")
+    void domainsMustNotDependOnAppLayer() {
+        noClasses().that().resideInAnyPackage(domainPackages())
+                .should().dependOnClassesThat().resideInAnyPackage(
+                        "ai.neargo.shop.portal..", "ai.neargo.shop.config..")
+                .allowEmptyShould(true)
+                .because("依赖方向必须单向朝下：app 装配领域，领域不认识 app。"
+                        + "反向依赖会让领域代码搬不走——微服务拆分时它会把整个启动模块一起拖过去")
+                .check(classes);
+    }
+
+    @Test
+    @DisplayName("领域层不得出现 Web 运行时类型（HttpServletRequest 等）")
+    void domainsMustNotTouchWebRuntime() {
+        noClasses().that().resideInAnyPackage(domainPackages())
+                .should().dependOnClassesThat().resideInAnyPackage(
+                        "jakarta.servlet..", "org.springframework.web.context..",
+                        "org.springframework.web.servlet..")
+                .allowEmptyShould(true)
+                .because("领域逻辑一旦读 request，就只能在 HTTP 线程里跑——"
+                        + "定时任务（worker profile）和事件消费都调不动它。"
+                        + "S7 把 Controller 搬进业务工程后，这条是防止 web 语义渗进领域的唯一屏障")
+                .check(classes);
+    }
+
+    @Test
+    @DisplayName("Port 接口只能定义在 shop-spi")
+    void portInterfacesOnlyInSpi() {
+        classes().that().haveSimpleNameEndingWith("Port").and().areInterfaces()
+                .should().resideInAPackage("ai.neargo.shop.spi..")
+                .allowEmptyShould(true)
+                .because("Port 是跨域契约。定义在某个域里，等于让调用方 import 那个域——"
+                        + "本来要解耦，结果反而建立了依赖")
+                .check(classes);
+    }
+
+    /**
+     * 顶层包白名单 —— 堵的是 {@link #DOMAINS} 名单本身的漏洞。
+     *
+     * <p>域间依赖规则是**按名单**两两检查的，这意味着：不在名单里的顶层包
+     * **不受任何约束**。有人建一个 {@code ai.neargo.shop.coupon}，它可以随意
+     * import trade 的实体、被 product 反向依赖，而所有规则**全绿**。
+     *
+     * <p>合并成 shop-core 之后这个漏洞会变得容易触发——新建一个包不再需要
+     * 建 Maven 模块、不需要改根 pom，就是新建一个目录而已，没有任何一步会
+     * 提醒作者「你在开一个新域」。这条规则就是那个提醒。
+     */
+    @Test
+    @DisplayName("顶层包必须登记：新开一个域，要同时登记进 DOMAINS 名单")
+    void topLevelPackagesMustBeRegistered() {
+        // 非业务域的顶层包：横切基础设施与装配层，各有专门规则管，不进 DOMAINS
+        List<String> infra = List.of("common", "spi", "auth", "event", "idem", "portal", "config", "arch");
+        List<String> known = new ArrayList<>(infra);
+        known.addAll(List.of(DOMAINS));
+
+        List<String> unregistered = classes.stream()
+                .map(c -> c.getPackageName())
+                .filter(p -> p.startsWith("ai.neargo.shop."))
+                .map(p -> p.substring("ai.neargo.shop.".length()).split("\\.")[0])
+                .distinct()
+                .filter(top -> !known.contains(top))
+                .sorted()
+                .toList();
+
+        assertThat(unregistered)
+                .as("这些顶层包没在 DOMAINS 或基础设施名单里，因此**不受域间依赖规则约束**。"
+                        + "若是新业务域，加进 DOMAINS；若是基础设施，加进本测试的 infra 名单")
+                .isEmpty();
     }
 }
