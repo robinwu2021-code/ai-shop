@@ -47,4 +47,19 @@ public class UserQueryPortImpl implements UserQueryPort {
         return phone == null || phone.length() < TAIL ? ""
                 : phone.substring(phone.length() - TAIL);
     }
+
+    @Override
+    public java.util.Optional<String> communityOf(String userNo) {
+        if (userNo == null || userNo.isBlank()) {
+            return java.util.Optional.empty();
+        }
+        return java.util.Optional.ofNullable(
+                        ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() ->
+                                userMapper.selectOne(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                                        .<ai.neargo.shop.user.entity.UsrAccount>lambdaQuery()
+                                        .eq(ai.neargo.shop.user.entity.UsrAccount::getUserNo, userNo)
+                                        .last("limit 1"))))
+                .map(ai.neargo.shop.user.entity.UsrAccount::getCommunityNo)
+                .filter(c -> c != null && !c.isBlank());
+    }
 }

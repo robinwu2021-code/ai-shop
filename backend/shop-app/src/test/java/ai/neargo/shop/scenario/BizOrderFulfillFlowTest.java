@@ -1,5 +1,6 @@
 package ai.neargo.shop.scenario;
 
+import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -180,6 +181,14 @@ class BizOrderFulfillFlowTest {
                 .contentType(MediaType.APPLICATION_JSON).content("{\"onSale\":true}"));
 
         String buyer = login(buyerPhone);
+        /*
+         * 买家先绑社区：下单时社区会固化到主单上，而**运营按社区做数据域隔离**。
+         * 不绑的话订单没有社区，平台端按社区筛出来永远是空的 ——
+         * 而列表本身是好的，看起来只是「这个社区没单」。
+         */
+        mvc().perform(post("/mp/user/community").header("Authorization", "Bearer " + buyer)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"communityNo\":\"C0001\",\"pickupNo\":\"PP0001\"}"));
         String skuNo = json.readTree(mvc().perform(get("/mp/goods/" + goodsNo))
                 .andReturn().getResponse().getContentAsString())
                 .get("data").get("skus").get(0).get("skuNo").asString();
@@ -267,5 +276,107 @@ class BizOrderFulfillFlowTest {
         mvc().perform(get("/biz/order").header("Authorization", "Bearer " + c.merchantToken())
                         .param("status", "PAID"))
                 .andExpect(jsonPath("$.data.total").value(0));
+    }
+
+    // ---------------------------------------------------------------- 平台端订单（P-4.1）
+
+    @Test
+    @DisplayName("★ 平台侧订单列表是跨商家的 —— 不解除数据域的话运营看到的恒为空")
+    void opsListSeesAcrossMerchants() throws Exception {
+        Ctx a = prepare("13400135001", "平台订单·甲店", "13410135001");
+        prepare("13400135002", "平台订单·乙店", "13410135002");
+        String ops = opsLogin("support", "support123");
+
+        String body = mvc().perform(get("/ops/orders").header("Authorization", "Bearer " + ops))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        JsonNode data = json.readTree(body).get("data");
+        assertThat(data.get("total").asInt()).isGreaterThanOrEqualTo(2);
+
+        // 详情与兄弟单
+        mvc().perform(get("/ops/orders/" + a.subOrderNo()).header("Authorization", "Bearer " + ops))
+                .andExpect(jsonPath("$.data.orderNo").value(a.subOrderNo()))
+                // 社区在主单上，子单没有 —— 平台侧要 join 出来，否则运营按社区筛不了
+                .andExpect(jsonPath("$.data.communityNo").exists());
+    }
+
+    @Test
+    @DisplayName("★ 干预必须写原因 —— 没有原因的改状态事后无法复盘")
+    void interveneNeedsRemark() throws Exception {
+        Ctx c = prepare("13400135010", "平台订单·干预", "13410135010");
+        String ops = opsLogin("support", "support123");
+
+        mvc().perform(post("/ops/orders/" + c.subOrderNo() + "/intervene")
+                        .header("Authorization", "Bearer " + ops)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"to\":\"COMPLETED\",\"remark\":\"  \"}"))
+                .andExpect(jsonPath("$.code").value(10400));
+    }
+
+    @Test
+    @DisplayName("★ 迁移由后端状态机判定，端上那份迁移表不是权威")
+    void backendStateMachineIsTheAuthority() throws Exception {
+        Ctx c = prepare("13400135020", "平台订单·非法迁移", "13410135020");
+        String ops = opsLogin("support", "support123");
+
+        // 刚付款的单直接改成「已发货」在库里是 WAIT_FULFILL → FULFILLING，允许；
+        // 但改回 WAIT_PAY 是倒流，状态机必须拒
+        mvc().perform(post("/ops/orders/" + c.subOrderNo() + "/intervene")
+                        .header("Authorization", "Bearer " + ops)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"to\":\"WAIT_PAY\",\"remark\":\"想退回去\"}"))
+                .andExpect(jsonPath("$.code").value(20004));
+    }
+
+    @Test
+    @DisplayName("干预留痕能查回来，且带着「从哪到哪、谁干的」")
+    void interventionIsRecorded() throws Exception {
+        Ctx c = prepare("13400135030", "平台订单·留痕", "13410135030");
+        String ops = opsLogin("support", "support123");
+
+        mvc().perform(post("/ops/orders/" + c.subOrderNo() + "/intervene")
+                        .header("Authorization", "Bearer " + ops)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"to\":\"COMPLETED\",\"remark\":\"用户已确认收到\"}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.status").value("COMPLETED"));
+
+        String body = mvc().perform(get("/ops/orders/" + c.subOrderNo() + "/interventions")
+                        .header("Authorization", "Bearer " + ops))
+                .andReturn().getResponse().getContentAsString();
+        JsonNode rows = json.readTree(body).get("data");
+        assertThat(rows).isNotEmpty();
+        assertThat(rows.get(0).get("remark").asString()).contains("用户已确认收到");
+    }
+
+    @Test
+    @DisplayName("★ 异常队列是实时视图 —— 单子一推进就不在里面了")
+    void exceptionQueueIsALiveView() throws Exception {
+        String ops = opsLogin("support", "support123");
+        // 终态的单永远不该进队列（「已完成」没有「卡住」这回事）
+        String body = mvc().perform(get("/ops/orders/exceptions").header("Authorization", "Bearer " + ops))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        for (JsonNode e : json.readTree(body).get("data")) {
+            assertThat(e.get("order").get("status").asString())
+                    .isNotIn("COMPLETED", "CANCELLED", "REFUNDED");
+            // 界面要能说明「为什么它算异常」，所以阈值必须一起下发
+            assertThat(e.get("thresholdMinutes").asLong()).isPositive();
+        }
+    }
+
+    @Test
+    @DisplayName("看单与改单是两件事：没有 order:intervene 的角色改不了状态")
+    void viewingIsNotIntervening() throws Exception {
+        Ctx c = prepare("13400135040", "平台订单·权限", "13410135040");
+        String bd = opsLogin("bd", "bd123");
+
+        mvc().perform(get("/ops/orders").header("Authorization", "Bearer " + bd))
+                .andExpect(jsonPath("$.code").value(0));
+        mvc().perform(post("/ops/orders/" + c.subOrderNo() + "/intervene")
+                        .header("Authorization", "Bearer " + bd)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"to\":\"COMPLETED\",\"remark\":\"我来改\"}"))
+                .andExpect(jsonPath("$.code").value(10403));
     }
 }

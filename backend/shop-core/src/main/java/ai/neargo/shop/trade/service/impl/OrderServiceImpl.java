@@ -70,6 +70,8 @@ public class OrderServiceImpl implements OrderService {
     private final SettlePort settlePort;
     private final StatusLogMapper statusLogMapper;
     private final PickupQueryPort pickupPort;
+    /** 取买家绑定的社区，下单时固化到主单 —— 运营按社区做数据域隔离 */
+    private final ai.neargo.shop.spi.user.UserQueryPort userPort;
     private final IdempotencyService idempotency;
     private final OutboxEventBus eventBus;
 
@@ -79,6 +81,7 @@ public class OrderServiceImpl implements OrderService {
                             CouponPort couponPort, SettlePort settlePort,
                             StatusLogMapper statusLogMapper,
                             PickupQueryPort pickupPort,
+                            ai.neargo.shop.spi.user.UserQueryPort userPort,
                             IdempotencyService idempotency, OutboxEventBus eventBus) {
         this.orderMapper = orderMapper;
         this.subOrderMapper = subOrderMapper;
@@ -92,6 +95,7 @@ public class OrderServiceImpl implements OrderService {
         this.settlePort = settlePort;
         this.statusLogMapper = statusLogMapper;
         this.pickupPort = pickupPort;
+        this.userPort = userPort;
         this.idempotency = idempotency;
         this.eventBus = eventBus;
     }
@@ -161,6 +165,14 @@ public class OrderServiceImpl implements OrderService {
         order.setDiscountAmount(allocation.totalDiscount());
         order.setCurrency(CURRENCY_CNY);
         order.setStatus(OrdOrder.WAIT_PAY);
+        /*
+         * 社区固化到主单上。**运营按社区做数据域隔离** —— 不写的话，
+         * 平台端按社区筛订单永远是空的，而列表本身是好的，看起来只是「这个社区没单」。
+         *
+         * 固化而不是每次现查用户当前绑定：用户搬家换社区后，历史订单仍属于当时那个社区，
+         * 否则昨天的单会跳到新社区的报表里。
+         */
+        userPort.communityOf(userNo).ifPresent(order::setCommunityNo);
         order.setPayDeadlineAt(now + PAY_TTL.toMillis());
         orderMapper.insert(order);
 

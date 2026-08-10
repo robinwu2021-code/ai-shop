@@ -45,11 +45,20 @@ public final class Perms {
      */
     public static final String REVIEW_GOVERN = "review:govern";
 
+    /**
+     * 人工干预订单状态（含代客取消）。
+     *
+     * <p>与 {@link #ORDER_VIEW} 分开：看单和改单是两件事 —— 前者客服天天做，
+     * 后者是把系统的判断覆盖掉。给客服看单的权限时顺手给了改单，
+     * 等于每个客服都能把任意订单改成已完成。
+     */
+    public static final String ORDER_INTERVENE = "order:intervene";
+
     private static final Map<String, List<String>> ROLE_PERMS = Map.of(
             "SUPER_ADMIN", List.of("*"),
             "BD", List.of(MERCHANT_AUDIT, ORDER_VIEW),
             "GOODS_OPS", List.of(GOODS_AUDIT, CATEGORY_MANAGE, ORDER_VIEW),
-            "SUPPORT", List.of(ORDER_VIEW, REVIEW_GOVERN));
+            "SUPPORT", List.of(ORDER_VIEW, REVIEW_GOVERN, ORDER_INTERVENE));
 
     private Perms() {
     }

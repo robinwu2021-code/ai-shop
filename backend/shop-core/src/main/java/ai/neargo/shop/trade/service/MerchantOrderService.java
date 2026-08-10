@@ -109,4 +109,68 @@ public interface MerchantOrderService {
                            int orderCount, long totalSpentMinor, long lastOrderAt,
                            int daysSinceLast, boolean silent, String source) {
     }
+
+    // ---------------------------------------------------------------- 平台端（P-4.1）
+
+    /**
+     * 平台侧订单列表。**跨商家**，客服处理任何问题的第一站。
+     *
+     * @param keyword 订单号 / 买家昵称，模糊匹配
+     */
+    ai.neargo.shop.common.PageData<OpsOrderVO> opsList(String status, String merchantNo,
+                                                       String keyword, long page, long size);
+
+    /** 平台侧订单详情。 */
+    OpsOrderVO opsDetail(String subOrderNo);
+
+    /** 同一次结算拆出的兄弟单 —— 客服要知道「他这一单还买了别家什么」。 */
+    java.util.List<OpsOrderVO> siblings(String parentNo);
+
+    /**
+     * 异常单队列。<b>实时算出来的视图，不落表</b>。
+     *
+     * <p>落成记录就会过期：订单已经推进了，异常记录还挂在那里，
+     * 运营会去处理一个不存在的问题。
+     *
+     * <p>阈值**按状态分别给**：待支付 15 分钟就该关单，而「已到自提点待取」
+     * 放一天很正常 —— 一刀切会把正常单刷进异常队列，队列一旦变噪音就没人看了。
+     */
+    java.util.List<OrderExceptionVO> exceptions();
+
+    /** 某单的人工干预留痕。 */
+    java.util.List<InterventionVO> interventions(String subOrderNo);
+
+    /**
+     * 人工干预订单状态。<b>必须写原因</b> —— 改状态这件事事后要说得清是谁、为什么。
+     *
+     * <p>迁移由后端状态机判定，不采信端上那份 {@code ORDER_TRANSITIONS}：
+     * 那份表只是让界面提前灰掉不可能的选项。
+     */
+    OpsOrderVO intervene(String subOrderNo, String to, String remark, String operatorNo);
+
+    /**
+     * @param communityNo 社区在**主单**上（{@code ord_order.community_no}），子单没有 ——
+     *                    运营按社区做数据域隔离，所以要 join 出来
+     * @param statusAt    进入当前状态的时刻。异常单「卡了多久」从这里算，不是从下单时间算
+     */
+    record OpsOrderVO(String orderNo, String parentNo, String status, String merchantNo,
+                      String merchantName, String communityNo, String pickupNo,
+                      String fulfillType, String trafficSource, String buyerNickname,
+                      java.util.List<ItemVO> items, long payAmount,
+                      long createdAt, Long paidAt, long statusAt) {
+
+        public record ItemVO(String skuNo, String title, int qty, long price) {
+        }
+    }
+
+    /**
+     * @param kind             STUCK（卡在某状态超时）/ PAY_TIMEOUT（待支付超时未关单）
+     * @param thresholdMinutes 该状态允许卡多久 —— 界面要能说明「为什么它算异常」
+     */
+    record OrderExceptionVO(OpsOrderVO order, String kind, long stuckMinutes, long thresholdMinutes) {
+    }
+
+    record InterventionVO(String orderNo, String from, String to, String remark,
+                          String operator, long at) {
+    }
 }

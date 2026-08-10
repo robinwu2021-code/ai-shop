@@ -20,4 +20,17 @@ public interface UserQueryPort {
      */
     record UserBrief(String userNo, String nickname, String phoneTail, String avatar) {
     }
+
+    /**
+     * 用户绑定的社区。
+     *
+     * <p>下单时把它固化到主单上 —— <b>运营按社区做数据域隔离</b>，
+     * 而订单上没有社区的话，平台端按社区筛出来永远是空的。
+     *
+     * <p>固化而不是每次现查用户当前绑定：用户搬家换社区之后，
+     * 历史订单仍然属于当时那个社区，否则昨天的单会跳到新社区的报表里。
+     *
+     * @return 没绑过社区时为空
+     */
+    java.util.Optional<String> communityOf(String userNo);
 }

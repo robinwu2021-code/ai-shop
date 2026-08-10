@@ -29,14 +29,18 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
     private final SubOrderMapper subOrderMapper;
     private final OrderItemMapper itemMapper;
     private final StatusLogMapper statusLogMapper;
+    /** 社区在**主单**上，子单没有 —— 运营按社区做数据域隔离，所以平台侧要 join 出来 */
+    private final ai.neargo.shop.trade.mapper.TradeMappers.OrderMapper orderMapper;
     /** 顾客列表要昵称与头像；**完整手机号不出这个 Port**（B12） */
     private final UserQueryPort userPort;
 
     public MerchantOrderServiceImpl(SubOrderMapper subOrderMapper, OrderItemMapper itemMapper,
+                                    ai.neargo.shop.trade.mapper.TradeMappers.OrderMapper orderMapper,
                                     StatusLogMapper statusLogMapper, UserQueryPort userPort) {
         this.subOrderMapper = subOrderMapper;
         this.itemMapper = itemMapper;
         this.statusLogMapper = statusLogMapper;
+        this.orderMapper = orderMapper;
         this.userPort = userPort;
     }
 
@@ -389,5 +393,198 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
         out.sort(java.util.Comparator.comparing(CustomerSummary::silent).reversed()
                 .thenComparing(java.util.Comparator.comparingLong(CustomerSummary::lastOrderAt).reversed()));
         return out;
+    }
+
+    // ---------------------------------------------------------------- 平台端（P-4.1）
+
+    /**
+     * 各状态允许卡多久（分钟）。**按状态分别给，不是一刀切**：
+     * 待支付 15 分钟就该关单，而「已到自提点待取」放一天很正常 ——
+     * 一刀切会把正常单刷进异常队列，而队列一旦变成噪音就没人看了。
+     * 终态（COMPLETED / CANCELLED / REFUNDED）不设时限。
+     */
+    private static final java.util.Map<String, Long> STUCK_MINUTES = java.util.Map.of(
+            OrderStatusView.WAIT_PAY, 15L,
+            OrderStatusView.PAID, 120L,
+            OrderStatusView.SHIPPED, 240L,
+            OrderStatusView.ARRIVED, 1440L);
+
+    @Override
+    public PageData<OpsOrderVO> opsList(String status, String merchantNo, String keyword,
+                                        long page, long size) {
+        var w = Wrappers.<OrdSubOrder>lambdaQuery();
+        List<String> stored = OrderStatusView.toStored(status);
+        if (!stored.isEmpty()) {
+            w.in(OrdSubOrder::getStatus, stored);
+            Boolean pickupOnly = OrderStatusView.pickupOnly(status);
+            if (Boolean.TRUE.equals(pickupOnly)) {
+                w.in(OrdSubOrder::getFulfillment, PICKUP_FULFILLMENTS);
+            } else if (Boolean.FALSE.equals(pickupOnly)) {
+                w.and(x -> x.notIn(OrdSubOrder::getFulfillment, PICKUP_FULFILLMENTS)
+                        .or().isNull(OrdSubOrder::getFulfillment));
+            }
+        }
+        if (merchantNo != null && !merchantNo.isBlank()) {
+            w.eq(OrdSubOrder::getEntityNo, merchantNo);
+        }
+        if (keyword != null && !keyword.isBlank()) {
+            w.and(x -> x.like(OrdSubOrder::getSubOrderNo, keyword)
+                    .or().like(OrdSubOrder::getOrderNo, keyword));
+        }
+        w.orderByDesc(OrdSubOrder::getId);
+
+        /*
+         * 平台侧是**跨商家**查询，必须解除数据域 —— 运营的会话没有 entity 维度，
+         * 不解除的话这里会按运营自己的 user_no 过滤，结果恒为空。
+         */
+        Page<OrdSubOrder> p = DataScopeContext.executeWithoutScope(() ->
+                subOrderMapper.selectPage(Page.of(page, size), w));
+        List<OpsOrderVO> rows = p.getRecords().stream().map(this::toOpsVO).toList();
+        return PageData.of(rows, p.getTotal(), page, size);
+    }
+
+    @Override
+    public OpsOrderVO opsDetail(String subOrderNo) {
+        return toOpsVO(requireAny(subOrderNo));
+    }
+
+    @Override
+    public List<OpsOrderVO> siblings(String parentNo) {
+        return DataScopeContext.executeWithoutScope(() ->
+                        subOrderMapper.selectList(Wrappers.<OrdSubOrder>lambdaQuery()
+                                .eq(OrdSubOrder::getOrderNo, parentNo)
+                                .orderByAsc(OrdSubOrder::getId)))
+                .stream().map(this::toOpsVO).toList();
+    }
+
+    @Override
+    public List<OrderExceptionVO> exceptions() {
+        long now = System.currentTimeMillis();
+        /*
+         * 只扫非终态的单。异常队列是**实时算出来的视图**，不落表 ——
+         * 落表就会过期：订单已经推进了，异常记录还挂在那里，
+         * 运营会去处理一个不存在的问题。
+         */
+        List<OrdSubOrder> live = DataScopeContext.executeWithoutScope(() ->
+                subOrderMapper.selectList(Wrappers.<OrdSubOrder>lambdaQuery()
+                        .in(OrdSubOrder::getStatus, OrdSubOrder.WAIT_PAY,
+                                OrdSubOrder.WAIT_FULFILL, OrdSubOrder.FULFILLING)));
+
+        List<OrderExceptionVO> out = new java.util.ArrayList<>();
+        for (OrdSubOrder o : live) {
+            OpsOrderVO vo = toOpsVO(o);
+            Long threshold = STUCK_MINUTES.get(vo.status());
+            if (threshold == null) {
+                continue;
+            }
+            long stuck = (now - vo.statusAt()) / 60_000L;
+            if (stuck <= threshold) {
+                continue;
+            }
+            // 待支付超时是关单任务本身出了问题，与「卡在某个环节」不是一回事
+            String kind = OrderStatusView.WAIT_PAY.equals(vo.status()) ? "PAY_TIMEOUT" : "STUCK";
+            out.add(new OrderExceptionVO(vo, kind, stuck, threshold));
+        }
+        out.sort((a, b) -> Long.compare(b.stuckMinutes(), a.stuckMinutes()));
+        return out;
+    }
+
+    @Override
+    public List<InterventionVO> interventions(String subOrderNo) {
+        return DataScopeContext.executeWithoutScope(() ->
+                        statusLogMapper.selectList(Wrappers.<OrdStatusLog>lambdaQuery()
+                                .eq(OrdStatusLog::getSubOrderNo, subOrderNo)
+                                .eq(OrdStatusLog::getOperatorType, OrdStatusLog.BY_PLATFORM)
+                                .orderByDesc(OrdStatusLog::getId)))
+                .stream()
+                .map(l -> new InterventionVO(subOrderNo, null, l.getStatus(), l.getLabel(),
+                        l.getOperatorNo(), l.getAt() == null ? 0L : l.getAt()))
+                .toList();
+    }
+
+    @Override
+    @Transactional
+    public OpsOrderVO intervene(String subOrderNo, String to, String remark, String operatorNo) {
+        if (remark == null || remark.isBlank()) {
+            // 改状态这件事事后要说得清是谁、为什么 —— 没有原因的干预无法复盘
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        OrdSubOrder sub = requireAny(subOrderNo);
+        List<String> target = OrderStatusView.toStored(to);
+        if (target.isEmpty()) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        String stored = target.get(0);
+        /*
+         * 迁移由**后端状态机**判定，不采信端上那份 ORDER_TRANSITIONS ——
+         * 那份表只是让界面提前把不可能的选项灰掉。两份表都存在时，
+         * 必须有一份是权威，否则迟早出现「界面允许、后端拒绝」或更糟的反过来。
+         */
+        OrderStateMachine.assertSubOrderTransit(sub.getStatus(), stored);
+        String from = OrderStatusView.of(sub.getStatus(), sub.getFulfillment());
+
+        sub.setStatus(stored);
+        DataScopeContext.executeWithoutScope(() -> subOrderMapper.updateById(sub));
+
+        OrdStatusLog log = new OrdStatusLog();
+        log.setSubOrderNo(subOrderNo);
+        log.setStatus(stored);
+        log.setLabel("人工干预（" + from + " → " + to + "）：" + remark.trim());
+        log.setOperatorType(OrdStatusLog.BY_PLATFORM);
+        log.setOperatorNo(operatorNo);
+        log.setAt(System.currentTimeMillis());
+        log.setTenantNo("MAIN");
+        log.setCreatedAt(java.time.LocalDateTime.now());
+        statusLogMapper.insert(log);
+        return toOpsVO(sub);
+    }
+
+    /** 平台侧取单：不限商家，但仍要解除数据域（运营会话没有 entity 维度）。 */
+    private OrdSubOrder requireAny(String subOrderNo) {
+        OrdSubOrder sub = DataScopeContext.executeWithoutScope(() ->
+                subOrderMapper.selectOne(Wrappers.<OrdSubOrder>lambdaQuery()
+                        .eq(OrdSubOrder::getSubOrderNo, subOrderNo).last("limit 1")));
+        if (sub == null) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        return sub;
+    }
+
+    private OpsOrderVO toOpsVO(OrdSubOrder s) {
+        List<OrdItem> items = DataScopeContext.executeWithoutScope(() ->
+                itemMapper.selectList(Wrappers.<OrdItem>lambdaQuery()
+                        .eq(OrdItem::getSubOrderNo, s.getSubOrderNo())));
+        // 社区在主单上，子单没有
+        var main = DataScopeContext.executeWithoutScope(() ->
+                orderMapper.selectOne(Wrappers.<ai.neargo.shop.trade.entity.OrdOrder>lambdaQuery()
+                        .eq(ai.neargo.shop.trade.entity.OrdOrder::getOrderNo, s.getOrderNo())
+                        .last("limit 1")));
+
+        long created = s.getCreatedAt() == null ? 0L
+                : s.getCreatedAt().atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli();
+        /*
+         * statusAt 取最后一条状态日志的时间；没有日志就退回 updatedAt。
+         * **不能用 createdAt** —— 异常单的「卡了多久」是从进入当前状态算起的，
+         * 用下单时间算，一条正常流转了三天的单会被当成卡了三天。
+         */
+        OrdStatusLog last = DataScopeContext.executeWithoutScope(() ->
+                statusLogMapper.selectOne(Wrappers.<OrdStatusLog>lambdaQuery()
+                        .eq(OrdStatusLog::getSubOrderNo, s.getSubOrderNo())
+                        .orderByDesc(OrdStatusLog::getId).last("limit 1")));
+        long statusAt = last != null && last.getAt() != null ? last.getAt()
+                : (s.getUpdatedAt() == null ? created
+                : s.getUpdatedAt().atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli());
+
+        return new OpsOrderVO(s.getSubOrderNo(), s.getOrderNo(),
+                OrderStatusView.of(s.getStatus(), s.getFulfillment()),
+                s.getEntityNo(), s.getEntityName(),
+                main == null ? null : main.getCommunityNo(),
+                s.getPickupNo(), s.getFulfillment(), s.getTrafficSource(),
+                s.getPickupName(),
+                items.stream().map(i -> new OpsOrderVO.ItemVO(i.getSkuNo(), i.getTitle(),
+                        i.getQty() == null ? 0 : i.getQty(),
+                        i.getPrice() == null ? 0L : i.getPrice())).toList(),
+                s.getPayAmount() == null ? 0L : s.getPayAmount(),
+                created, null, statusAt);
     }
 }
