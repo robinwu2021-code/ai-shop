@@ -335,4 +335,109 @@ public class ReviewServiceImpl implements ReviewService {
                 appealMapper.selectOne(Wrappers.<RvwAppeal>lambdaQuery()
                         .eq(RvwAppeal::getReviewNo, reviewNo).last("limit 1")));
     }
+
+    // ---------------------------------------------------------------- 平台治理（P-13.1）
+
+    private static final String REJECTED = "REJECTED";
+    private static final String PENDING = "PENDING";
+    private static final String UPHELD = "UPHELD";
+    private static final String DISMISSED = "DISMISSED";
+
+    @Override
+    public List<OpsReviewVO> opsList(String status, String merchantNo, String keyword) {
+        List<RvwReview> rows = DataScopeContext.executeWithoutScope(() ->
+                reviewMapper.selectList(Wrappers.<RvwReview>lambdaQuery()
+                        .eq(!isBlank(status), RvwReview::getStatus, status)
+                        .eq(!isBlank(merchantNo), RvwReview::getEntityNo, merchantNo)
+                        .like(!isBlank(keyword), RvwReview::getContent, keyword)
+                        .orderByDesc(RvwReview::getId)));
+        return rows.stream().map(this::toOpsVO).toList();
+    }
+
+    @Override
+    @Transactional
+    public OpsReviewVO decide(String reviewNo, boolean pass, String reason, String operatorNo) {
+        if (!pass && isBlank(reason)) {
+            // 与门店审核同一条规矩：驳回不写理由，被驳的人无从改起，只会反复提交同一份
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        RvwReview r = DataScopeContext.executeWithoutScope(() ->
+                reviewMapper.selectOne(Wrappers.<RvwReview>lambdaQuery()
+                        .eq(RvwReview::getReviewNo, reviewNo).last("limit 1")));
+        if (r == null) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        r.setStatus(pass ? VISIBLE : REJECTED);
+        r.setRejectReason(pass ? null : reason.trim());
+        DataScopeContext.executeWithoutScope(() -> reviewMapper.updateById(r));
+        return toOpsVO(r);
+    }
+
+    @Override
+    public List<OpsAppealVO> appeals(String status) {
+        List<RvwAppeal> rows = DataScopeContext.executeWithoutScope(() ->
+                appealMapper.selectList(Wrappers.<RvwAppeal>lambdaQuery()
+                        .eq(!isBlank(status), RvwAppeal::getStatus, status)
+                        .orderByDesc(RvwAppeal::getId)));
+        return rows.stream().map(this::toAppealVO).toList();
+    }
+
+    @Override
+    @Transactional
+    public OpsAppealVO decideAppeal(String appealNo, boolean uphold, String verdict, String operatorNo) {
+        if (isBlank(verdict)) {
+            // 无论支持还是驳回都必须写：商家会看到它，「已读不处理」不是一种结果
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        RvwAppeal a = DataScopeContext.executeWithoutScope(() ->
+                appealMapper.selectOne(Wrappers.<RvwAppeal>lambdaQuery()
+                        .eq(RvwAppeal::getAppealNo, appealNo).last("limit 1")));
+        if (a == null) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        // 裁完就是终态：再裁一次意味着同一条差评有两个结论，商家看到哪个取决于他什么时候刷新
+        if (!PENDING.equals(a.getStatus())) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+
+        a.setStatus(uphold ? UPHELD : DISMISSED);
+        a.setVerdict(verdict.trim());
+        a.setDecidedAt(System.currentTimeMillis());
+        a.setDecidedBy(operatorNo);
+        DataScopeContext.executeWithoutScope(() -> appealMapper.updateById(a));
+
+        if (uphold) {
+            /*
+             * 支持商家 = 差评从 C 端消失。**改的是评价的状态，不是删除它** ——
+             * 删了的话，同一个买家可以再评一条一模一样的，而平台看不出这是被裁过的。
+             */
+            RvwReview r = DataScopeContext.executeWithoutScope(() ->
+                    reviewMapper.selectOne(Wrappers.<RvwReview>lambdaQuery()
+                            .eq(RvwReview::getReviewNo, a.getReviewNo()).last("limit 1")));
+            if (r != null) {
+                r.setStatus(REJECTED);
+                r.setRejectReason("申诉成立：" + verdict.trim());
+                DataScopeContext.executeWithoutScope(() -> reviewMapper.updateById(r));
+            }
+        }
+        return toAppealVO(a);
+    }
+
+    private OpsReviewVO toOpsVO(RvwReview r) {
+        return new OpsReviewVO(r.getReviewNo(), r.getSubOrderNo(), r.getEntityNo(),
+                // 商家名不在评价表上；平台列表按 merchantNo 展示，前端再去商家域取名
+                r.getEntityNo(),
+                r.getNickname(), nz(r.getRating()), nz(r.getScoreGoods()),
+                nz(r.getScoreFulfillment()), nz(r.getScoreService()), r.getContent(),
+                readJson(r.getImages()).size(), r.getStatus(), readJson(r.getRiskFlags()),
+                r.getCreatedAt() == null ? 0L
+                        : r.getCreatedAt().atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli(),
+                r.getRejectReason());
+    }
+
+    private OpsAppealVO toAppealVO(RvwAppeal a) {
+        return new OpsAppealVO(a.getAppealNo(), a.getReviewNo(), a.getEntityNo(), a.getEntityNo(),
+                a.getReason(), readJson(a.getImages()).size(), a.getStatus(),
+                a.getSubmittedAt() == null ? 0L : a.getSubmittedAt(), a.getVerdict());
+    }
 }

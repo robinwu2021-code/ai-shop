@@ -37,11 +37,19 @@ public final class Perms {
      */
     public static final String CATEGORY_MANAGE = "category:manage";
 
+    /**
+     * 评价治理与差评裁决。给客服 —— 裁决要看聊天记录与订单，那是客服每天在做的事。
+     *
+     * <p>不给商品运营：他审的是商品能不能上架，而裁决差评影响的是**一家店的公开评分**，
+     * 两件事出错的后果完全不同（一个是少卖一件货，一个是一家店的口碑）。
+     */
+    public static final String REVIEW_GOVERN = "review:govern";
+
     private static final Map<String, List<String>> ROLE_PERMS = Map.of(
             "SUPER_ADMIN", List.of("*"),
             "BD", List.of(MERCHANT_AUDIT, ORDER_VIEW),
             "GOODS_OPS", List.of(GOODS_AUDIT, CATEGORY_MANAGE, ORDER_VIEW),
-            "SUPPORT", List.of(ORDER_VIEW));
+            "SUPPORT", List.of(ORDER_VIEW, REVIEW_GOVERN));
 
     private Perms() {
     }

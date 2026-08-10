@@ -1506,3 +1506,20 @@ CREATE TABLE IF NOT EXISTS sys_auth_code
     PRIMARY KEY (id),
     CONSTRAINT uk_sys_auth_code UNIQUE (code)
 );
+
+CREATE TABLE IF NOT EXISTS sys_setting
+(
+    id BIGINT(20) NOT NULL AUTO_INCREMENT,
+    setting_key VARCHAR(64) NOT NULL,
+    setting_value TEXT NOT NULL,
+    remark VARCHAR(255) DEFAULT NULL,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT(20) NOT NULL DEFAULT 0,
+    deleted TINYINT(4) NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_sys_setting_key UNIQUE (setting_key)
+);

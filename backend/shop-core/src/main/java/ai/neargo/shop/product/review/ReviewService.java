@@ -47,4 +47,45 @@ public interface ReviewService {
      * 先查后插必然有竞态，而重复申诉会在裁决台上变成两条互相矛盾的待办。
      */
     ReviewVO appeal(String merchantNo, String reviewNo, String reason, List<String> images);
+
+    // ---------------------------------------------------------------- 平台治理（P-13.1）
+
+    /** 平台侧评价列表。{@code status} 为空时给全部（含已驳回的 —— 治理要看得到自己驳过什么）。 */
+    List<OpsReviewVO> opsList(String status, String merchantNo, String keyword);
+
+    /**
+     * 评价审核。{@code pass=false} 时**必须写理由** —— 与门店审核同一条规矩：
+     * 驳回不写理由，被驳的人无从改起，只会反复提交同一份。
+     */
+    OpsReviewVO decide(String reviewNo, boolean pass, String reason, String operatorNo);
+
+    /** 待裁决的差评申诉。 */
+    List<OpsAppealVO> appeals(String status);
+
+    /**
+     * 裁决申诉。<b>无论支持还是驳回都必须写裁决说明</b> —— 商家会看到它。
+     *
+     * <p>{@code uphold=true} 支持商家：把评价置为 REJECTED，它从 C 端消失；
+     * {@code false} 驳回申诉：评价保留。两种结果都是终态，不能再裁一次。
+     */
+    OpsAppealVO decideAppeal(String appealNo, boolean uphold, String verdict, String operatorNo);
+
+    /**
+     * @param riskFlags 刷评线索。**是线索不是结论** —— 命中不等于判定，给人审用
+     * @param imageCount 配图数量。列表页不下发图本身，点进详情才取
+     */
+    record OpsReviewVO(String reviewNo, String orderNo, String merchantNo, String merchantName,
+                       String authorNickname, int score, int scoreProduct, int scoreFulfill,
+                       int scoreService, String content, int imageCount, String status,
+                       List<String> riskFlags, long createdAt, String reason) {
+    }
+
+    /**
+     * @param status        PENDING / UPHELD（支持商家，差评下架）/ DISMISSED（驳回申诉，差评保留）
+     * @param evidenceCount 举证材料数量
+     */
+    record OpsAppealVO(String appealNo, String reviewNo, String merchantNo, String merchantName,
+                       String reason, int evidenceCount, String status, long submittedAt,
+                       String verdict) {
+    }
 }

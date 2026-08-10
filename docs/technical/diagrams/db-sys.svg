@@ -1,35 +1,38 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="680" height="332" viewBox="0 0 680 332" role="img" font-family="system-ui,-apple-system,'PingFang SC',sans-serif">
-<title>系统 表关系</title><desc>9 张表，箭头由引用方指向被引用方。</desc>
+<svg xmlns="http://www.w3.org/2000/svg" width="680" height="448" viewBox="0 0 680 448" role="img" font-family="system-ui,-apple-system,'PingFang SC',sans-serif">
+<title>系统 表关系</title><desc>10 张表，箭头由引用方指向被引用方。</desc>
 <defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
 <path d="M2 1L8 5L2 9" fill="none" stroke="#8A94A2" stroke-width="1.4" stroke-linecap="round"/></marker>
 <style>.n{font-weight:500;fill:#161A21}.s{font-size:11px;fill:#5A6472}
 .l{font-size:10.5px;fill:#5A6472;paint-order:stroke;stroke:#F7F9FB;stroke-width:3.5;stroke-linejoin:round}.b{font-size:11px;fill:#5A6472;letter-spacing:.1em}
-.ar{stroke:#8A94A2;stroke-width:1.3;fill:none}</style></defs><path class="ar" d="M340 262 L340 208 L420 208 L420 193" marker-end="url(#a)"/>
-<rect x="31" y="30" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="100" y="50" text-anchor="middle" font-size="9.5">sys_channel_category_rule</text>
-<text class="s" x="100" y="65" text-anchor="middle">端 × 品类 可售规则（iO…</text>
-<rect x="191" y="30" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="260" y="50" text-anchor="middle" font-size="13">sys_idempotent</text>
-<text class="s" x="260" y="65" text-anchor="middle">幂等记录：下单/支付/退…</text>
-<rect x="351" y="30" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="420" y="50" text-anchor="middle" font-size="13">sys_industry</text>
-<text class="s" x="420" y="65" text-anchor="middle">行业注册表：商家的基础…</text>
-<rect x="511" y="30" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="580" y="50" text-anchor="middle" font-size="13">sys_legal_form</text>
-<text class="s" x="580" y="65" text-anchor="middle">法律形态注册表（小微/…</text>
-<rect x="31" y="146" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="100" y="166" text-anchor="middle" font-size="13">sys_outbox</text>
-<text class="s" x="100" y="181" text-anchor="middle">事务性发件箱：业务与事…</text>
-<rect x="191" y="146" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="260" y="166" text-anchor="middle" font-size="13">sys_pay_channel</text>
-<text class="s" x="260" y="181" text-anchor="middle">支付通道注册表：取值域…</text>
-<rect x="351" y="146" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="420" y="166" text-anchor="middle" font-size="13">sys_ops_staff</text>
-<text class="s" x="420" y="181" text-anchor="middle">平台运营账号（与商家账…</text>
-<rect x="511" y="146" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="580" y="166" text-anchor="middle" font-size="13">sys_auth_code</text>
-<text class="s" x="580" y="181" text-anchor="middle">类目授权码：按码授权，…</text>
+.ar{stroke:#8A94A2;stroke-width:1.3;fill:none}</style></defs><path class="ar" d="M340 378 L340 324 L148 324 L148 309" marker-end="url(#a)"/>
+<rect x="63" y="30" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
+<text class="n" x="148" y="50" text-anchor="middle" font-size="11">sys_channel_category_rule</text>
+<text class="s" x="148" y="65" text-anchor="middle">端 × 品类 可售规则（iOS IAP…</text>
+<rect x="255" y="30" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
+<text class="n" x="340" y="50" text-anchor="middle" font-size="13">sys_idempotent</text>
+<text class="s" x="340" y="65" text-anchor="middle">幂等记录：下单/支付/退款/核…</text>
+<rect x="447" y="30" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
+<text class="n" x="532" y="50" text-anchor="middle" font-size="13">sys_industry</text>
+<text class="s" x="532" y="65" text-anchor="middle">行业注册表：商家的基础属性，…</text>
+<rect x="63" y="146" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
+<text class="n" x="148" y="166" text-anchor="middle" font-size="13">sys_legal_form</text>
+<text class="s" x="148" y="181" text-anchor="middle">法律形态注册表（小微/个体户/…</text>
+<rect x="255" y="146" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
+<text class="n" x="340" y="166" text-anchor="middle" font-size="13">sys_outbox</text>
+<text class="s" x="340" y="181" text-anchor="middle">事务性发件箱：业务与事件同事…</text>
+<rect x="447" y="146" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
+<text class="n" x="532" y="166" text-anchor="middle" font-size="13">sys_pay_channel</text>
+<text class="s" x="532" y="181" text-anchor="middle">支付通道注册表：取值域与能力…</text>
+<rect x="63" y="262" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
+<text class="n" x="148" y="282" text-anchor="middle" font-size="13">sys_ops_staff</text>
+<text class="s" x="148" y="297" text-anchor="middle">平台运营账号（与商家账号 mch…</text>
 <rect x="255" y="262" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="340" y="282" text-anchor="middle" font-size="13">sys_audit_log</text>
-<text class="s" x="340" y="297" text-anchor="middle">操作审计（append-only）</text>
-<text class="l" x="380" y="204" text-anchor="middle">staff_no</text></svg>
+<text class="n" x="340" y="282" text-anchor="middle" font-size="13">sys_auth_code</text>
+<text class="s" x="340" y="297" text-anchor="middle">类目授权码：按码授权，不按类…</text>
+<rect x="447" y="262" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
+<text class="n" x="532" y="282" text-anchor="middle" font-size="13">sys_setting</text>
+<text class="s" x="532" y="297" text-anchor="middle">平台可调参数：一行一组，值为…</text>
+<rect x="255" y="378" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
+<text class="n" x="340" y="398" text-anchor="middle" font-size="13">sys_audit_log</text>
+<text class="s" x="340" y="413" text-anchor="middle">操作审计（append-only）</text>
+<text class="l" x="244" y="320" text-anchor="middle">staff_no</text></svg>

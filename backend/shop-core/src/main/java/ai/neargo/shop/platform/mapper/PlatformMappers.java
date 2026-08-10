@@ -38,4 +38,8 @@ public final class PlatformMappers {
             extends BaseMapper<ai.neargo.shop.platform.entity.SysLegalForm> {
     }
 
+
+    /** 平台可调参数（评分权重、快速退款阈值…）。 */
+    public interface SettingMapper extends BaseMapper<ai.neargo.shop.platform.entity.SysSetting> {
+    }
 }

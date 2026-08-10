@@ -5,7 +5,7 @@
 
 ## 一、总览
 
-全库 **60** 张表、**109** 条引用关系，分 **12** 个域。
+全库 **61** 张表、**109** 条引用关系，分 **12** 个域。
 按「被引用次数」分三条带 —— **不是有向无环图**：域之间存在环
 （`cmt → mkt → usr → cmt`），强行分层会画错。
 
@@ -24,7 +24,7 @@
 | 结算 | `stl_*` | 4 | 0 |
 | 评价 | `rvw_*` | 3 | 0 |
 | 消息与客服 | `msg_*` | 3 | 0 |
-| 系统 | `sys_*` | 9 | 0 |
+| 系统 | `sys_*` | 10 | 0 |
 
 > `usr` 被 10 个域引用 —— 它是全库的锚点。改它的主键或语义，影响面是全局的。
 
@@ -173,7 +173,7 @@
 
 **跨域引用**：`msg_message.user_no` → `usr_account`、`msg_subscribe.user_no` → `usr_account`、`msg_ticket.user_no` → `usr_account`、`msg_ticket.order_no` → `ord_order`
 
-### 系统 `sys_*`（9 张）
+### 系统 `sys_*`（10 张）
 
 ![系统表关系](./diagrams/db-sys.svg)
 
@@ -188,6 +188,7 @@
 | `sys_pay_channel` | 支付通道注册表：取值域与能力位。积分抵扣是否可用由 supports_subsidy 决定 |
 | `sys_ops_staff` | 平台运营账号（与商家账号 mch_account 是两套人，键 staff_no 从此只有一个含义） |
 | `sys_auth_code` | 类目授权码：按码授权，不按类目节点 |
+| `sys_setting` | 平台可调参数：一行一组，值为 JSON |
 
 **跨域引用**：`sys_idempotent.user_no` → `usr_account`
 

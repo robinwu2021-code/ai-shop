@@ -363,6 +363,149 @@ class BizDashboardAndReviewFlowTest {
         assertThat(json.readTree(single).get("data").get("posterUrl").asString()).contains("g=G-XYZ");
     }
 
+    // ---------------------------------------------------------------- 平台裁决台（P-13.1）
+
+    @Test
+    @DisplayName("★ 申诉的另一半：商家申诉 → 平台支持 → 差评从 C 端消失")
+    void appealUpheldRemovesTheReview() throws Exception {
+        var seeded = seedReview("12600146001", "裁决测试·支持", 1);
+        String goodsNo = goodsOf(seeded.token);
+
+        // 差评此刻对买家可见
+        assertThat(publicReviewCount(goodsNo)).isEqualTo(1);
+
+        String appealNo = json.readTree(mvc().perform(post("/biz/review/" + seeded.reviewNo + "/appeal")
+                                .header("Authorization", "Bearer " + seeded.token)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"reason\":\"买家未按说明冷藏，有聊天记录\"}"))
+                        .andReturn().getResponse().getContentAsString())
+                .get("data").get("appeal").get("appealNo").asString();
+
+        String support = opsLogin("support", "support123");
+        mvc().perform(post("/ops/review-appeals/" + appealNo + "/decide")
+                        .header("Authorization", "Bearer " + support)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"uphold\":true,\"verdict\":\"证据充分，差评下架\"}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.status").value("UPHELD"));
+
+        // ★ 这一步是整条链路的意义：支持之后，差评真的不再出现在 C 端
+        assertThat(publicReviewCount(goodsNo)).isZero();
+    }
+
+    @Test
+    @DisplayName("驳回申诉时差评保留 —— 驳回不是「什么都没发生」")
+    void appealDismissedKeepsTheReview() throws Exception {
+        var seeded = seedReview("12600146002", "裁决测试·驳回", 1);
+        String goodsNo = goodsOf(seeded.token);
+        String appealNo = json.readTree(mvc().perform(post("/biz/review/" + seeded.reviewNo + "/appeal")
+                                .header("Authorization", "Bearer " + seeded.token)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"reason\":\"我觉得不公平\"}"))
+                        .andReturn().getResponse().getContentAsString())
+                .get("data").get("appeal").get("appealNo").asString();
+
+        String support = opsLogin("support", "support123");
+        mvc().perform(post("/ops/review-appeals/" + appealNo + "/decide")
+                        .header("Authorization", "Bearer " + support)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"uphold\":false,\"verdict\":\"未提供有效证据\"}"))
+                .andExpect(jsonPath("$.data.status").value("DISMISSED"));
+
+        assertThat(publicReviewCount(goodsNo)).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("★ 裁决必须写说明，且裁完就是终态（同一条差评不能有两个结论）")
+    void appealDecisionNeedsVerdictAndIsFinal() throws Exception {
+        var seeded = seedReview("12600146003", "裁决测试·终态", 1);
+        String appealNo = json.readTree(mvc().perform(post("/biz/review/" + seeded.reviewNo + "/appeal")
+                                .header("Authorization", "Bearer " + seeded.token)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"reason\":\"申诉理由\"}"))
+                        .andReturn().getResponse().getContentAsString())
+                .get("data").get("appeal").get("appealNo").asString();
+        String support = opsLogin("support", "support123");
+
+        mvc().perform(post("/ops/review-appeals/" + appealNo + "/decide")
+                        .header("Authorization", "Bearer " + support)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"uphold\":true,\"verdict\":\"  \"}"))
+                .andExpect(jsonPath("$.code").value(10400));
+
+        mvc().perform(post("/ops/review-appeals/" + appealNo + "/decide")
+                        .header("Authorization", "Bearer " + support)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"uphold\":false,\"verdict\":\"驳回\"}"))
+                .andExpect(jsonPath("$.code").value(0));
+        mvc().perform(post("/ops/review-appeals/" + appealNo + "/decide")
+                        .header("Authorization", "Bearer " + support)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"uphold\":true,\"verdict\":\"改主意了\"}"))
+                .andExpect(jsonPath("$.code").value(10409));
+    }
+
+    @Test
+    @DisplayName("评价驳回必须写理由；待裁决列表按状态筛得出来")
+    void reviewDecideAndAppealQueue() throws Exception {
+        var seeded = seedReview("12600146004", "裁决测试·队列", 2);
+        String support = opsLogin("support", "support123");
+
+        mvc().perform(post("/ops/reviews/" + seeded.reviewNo + "/decide")
+                        .header("Authorization", "Bearer " + support)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"pass\":false}"))
+                .andExpect(jsonPath("$.code").value(10400));
+
+        mvc().perform(post("/biz/review/" + seeded.reviewNo + "/appeal")
+                .header("Authorization", "Bearer " + seeded.token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"reason\":\"排队用\"}"));
+
+        String body = mvc().perform(get("/ops/review-appeals").param("status", "PENDING")
+                        .header("Authorization", "Bearer " + support))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        assertThat(json.readTree(body).get("data")).isNotEmpty();
+    }
+
+    @Test
+    @DisplayName("★ 三维权重之和不是 100 会整体拉高/压低全平台评分，被拒")
+    void scoreWeightsMustSumTo100() throws Exception {
+        String support = opsLogin("support", "support123");
+
+        mvc().perform(get("/ops/review-score-config").header("Authorization", "Bearer " + support))
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.weightProduct").value(50));
+
+        mvc().perform(post("/ops/review-score-config").header("Authorization", "Bearer " + support)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"weightProduct\":50,\"weightFulfill\":30,\"weightService\":30,"
+                                + "\"newMerchantProtectDays\":30,\"decayHalfLifeDays\":180}"))
+                .andExpect(jsonPath("$.code").value(10400));
+
+        mvc().perform(post("/ops/review-score-config").header("Authorization", "Bearer " + support)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"weightProduct\":60,\"weightFulfill\":25,\"weightService\":15,"
+                                + "\"newMerchantProtectDays\":14,\"decayHalfLifeDays\":90}"))
+                .andExpect(jsonPath("$.code").value(0));
+        mvc().perform(get("/ops/review-score-config").header("Authorization", "Bearer " + support))
+                .andExpect(jsonPath("$.data.weightProduct").value(60));
+    }
+
+    /** C 端能看到这件商品的几条评价 —— 裁决的效果最终要在这里体现 */
+    private int publicReviewCount(String goodsNo) throws Exception {
+        String body = mvc().perform(get("/mp/review").param("goodsNo", goodsNo))
+                .andReturn().getResponse().getContentAsString();
+        return json.readTree(body).get("data").size();
+    }
+
+    private String goodsOf(String merchantToken) throws Exception {
+        String body = mvc().perform(get("/biz/goods").header("Authorization", "Bearer " + merchantToken))
+                .andReturn().getResponse().getContentAsString();
+        return json.readTree(body).get("data").get("records").get(0).get("goodsNo").asString();
+    }
+
     // ---------------------------------------------------------------- helpers
 
     private int todoField(String token, String field) throws Exception {
