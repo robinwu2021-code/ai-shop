@@ -38,6 +38,7 @@ import type {
   VerifyReq,
 } from "./requests";
 import type {
+  Category,
   Community,
   DeliveryRule,
   Goods,
@@ -137,6 +138,8 @@ export const httpApi: MerchantApi = {
     http.post<{ url: string }>(E.mUploadImage.path, { tempPath } satisfies UploadImageReq),
   mRecognizeGoods: (imageUrl) =>
     http.post<GoodsGuess>(E.mRecognizeGoods.path, { imageUrl } satisfies RecognizeGoodsReq),
+
+  mCategoryTree: () => http.get<Category[]>(E.mCategoryTree.path),
 
   mSpecTemplates: (categoryType) =>
     http.get<SpecTemplate[]>(E.mSpecTemplates.path, { categoryType } satisfies SpecTemplatesQuery),

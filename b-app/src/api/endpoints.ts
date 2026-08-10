@@ -63,6 +63,8 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
   mUploadImage: { method: "POST", path: "/biz/upload/image", auth: true, summary: "上传商品图" },
   mRecognizeGoods: { method: "POST", path: "/biz/goods/recognize", auth: true, summary: "拍照识别商品" },
 
+  mCategoryTree: { method: "GET", path: "/biz/category/tree", auth: true, summary: "类目树（选类目）" },
+
   mSpecTemplates: { method: "GET", path: "/biz/spec-templates", auth: true, summary: "规格模板" },
   mSaveSpecTemplate: { method: "POST", path: "/biz/spec-templates", auth: true, summary: "存为常用规格" },
 

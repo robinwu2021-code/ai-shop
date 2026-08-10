@@ -592,10 +592,13 @@ CREATE TABLE IF NOT EXISTS prd_category
     parent_no VARCHAR(64) DEFAULT NULL,
     level INT(11) NOT NULL DEFAULT 1,
     name VARCHAR(64) NOT NULL,
+    name_en VARCHAR(64) DEFAULT NULL,
     icon VARCHAR(512) DEFAULT NULL,
     sort INT(11) NOT NULL DEFAULT 0,
+    template VARCHAR(16) NOT NULL DEFAULT 'STANDARD',
     attr_template TEXT DEFAULT NULL,
     qualification_required VARCHAR(512) DEFAULT NULL,
+    required_code VARCHAR(32) DEFAULT NULL,
     status VARCHAR(16) NOT NULL DEFAULT 'ACTIVE',
     tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
     created_at DATETIME NOT NULL,
@@ -1220,6 +1223,7 @@ CREATE TABLE IF NOT EXISTS mch_entity
     points_enabled TINYINT(4) NOT NULL DEFAULT 0,
     points_forced TINYINT(4) NOT NULL DEFAULT 0,
     industry VARCHAR(24) DEFAULT NULL,
+    category_codes VARCHAR(512) DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_entity_no UNIQUE (entity_no),
     CONSTRAINT uk_store_code UNIQUE (store_code)
@@ -1479,3 +1483,22 @@ INSERT INTO sys_channel_category_rule VALUES
 (23,'H5','SERVICE',1,NULL,NULL,'MAIN','2026-08-09 12:49:31','SYSTEM','2026-08-09 12:49:31',0,0),
 (24,'H5','VIRTUAL',1,NULL,NULL,'MAIN','2026-08-09 12:49:31','SYSTEM','2026-08-09 12:49:31',0,0),
 (25,'H5','CARD',1,NULL,NULL,'MAIN','2026-08-09 12:49:31','SYSTEM','2026-08-09 12:49:31',0,0);
+
+CREATE TABLE IF NOT EXISTS sys_auth_code
+(
+    id BIGINT(20) NOT NULL AUTO_INCREMENT,
+    code VARCHAR(32) NOT NULL,
+    name VARCHAR(64) NOT NULL,
+    required_qualification VARCHAR(64) DEFAULT NULL,
+    sort INT(11) NOT NULL DEFAULT 0,
+    enabled TINYINT(4) NOT NULL DEFAULT 1,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT(20) NOT NULL DEFAULT 0,
+    deleted TINYINT(4) NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_sys_auth_code UNIQUE (code)
+);

@@ -95,4 +95,13 @@ public class MchEntity extends BaseEntity {
      * 它决定商家<b>可选的主体类型</b> —— 线上业态不能选小微。
      */
     private String industry;
+
+    /**
+     * 已获授权的经营类目编码，JSON 数组如 {@code ["FRESH_VEG","FOOD"]}。入驻时申请、平台审核时授权。
+     *
+     * <p>与 {@code prd_category.required_code} 比对，决定这家店能不能把商品**上架**到某个类目下。
+     * <b>空 = 没有任何特许类目</b>，只能上架无门槛的类目 —— 而不是「不限制」。
+     * 默认放开的话，卖烧烤的第二天就能上架生鲜，出事才发现平台从没校验过。
+     */
+    private String categoryCodes;
 }

@@ -1,5 +1,5 @@
 export default {
-  common: { confirm: "OK", cancel: "Cancel", done: "Done", save: "Save", loading: "Loading…", empty: "Nothing here yet", retry: "Retry", saved: "Saved", all: "All" },
+  common: { back: "Back", confirm: "OK", cancel: "Cancel", done: "Done", save: "Save", loading: "Loading…", empty: "Nothing here yet", retry: "Retry", saved: "Saved", all: "All" },
   tab: { home: "Dashboard", orders: "Orders", goods: "Products", me: "Me" },
   theme: {
     skinPure: "White background · accent & text only",
@@ -99,6 +99,10 @@ export default {
   },
 
   goods: {
+    category: "Category",
+    categoryPh: "Pick a category (optional)",
+    categoryTip: "The category decides where the item is filed and whether a licence is required — separate from Type above",
+    categoryLeaf: "This is the most specific level",
     title: "Products", add: "New product",
     statusON_SALE: "On sale", statusOFF_SALE: "Off sale", statusAUDITING: "In review", statusREJECTED: "Rejected",
     stock: "Stock", onSale: "List", offSale: "Delist", edit: "Edit", empty: "No products yet — add one",

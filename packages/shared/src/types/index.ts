@@ -494,15 +494,30 @@ export interface ReviewAppeal {
 
 // ---------------------------------------------------------------- 商品
 
+/**
+ * 类目树节点（对齐后端 `CategoryVO`）。
+ *
+ * <p>⚠️ **不要把它和 `CategoryType` 搞混** —— 那是五品类枚举
+ * （NORMAL/FRESH/SERVICE/VIRTUAL/CARD），挂在商品上、由平台硬编码，决定履约与合规
+ * （冷链、不发货、iOS 可售规则）。这里的类目树是运营可维护的数据，决定归类与经营准入。
+ * 两个维度正交，见 `docs/technical/类目树补齐方案.md`。
+ *
+ * <p>这个类型此前声明了一个后端根本不返回的 `type` 字段，并写着「仅两级」——
+ * 而后端一直是三级。没人用它，所以错了很久也没暴露。
+ */
 export interface Category {
   /** 类目单号 */
   categoryNo: string;
+  /** 上级类目单号。一级类目为空 */
+  parentNo?: string | null;
+  /** 1–3。**三级封顶** */
+  level: number;
   /** 类目名（后端按 Accept-Language 下发已本地化文案） */
   name: string;
-  /** 类目形态。决定商品用哪套字段（生鲜有截单时间、服务有预约时段…） */
-  type: CategoryType;
-  /** 子类目。仅两级，不再往下 */
-  children?: Category[];
+  icon?: string;
+  sort: number;
+  /** 子类目。叶子是空数组而不是 undefined —— 端上少一次判空 */
+  children: Category[];
 }
 
 /** 规格维度，例：{ name: "重量", options: ["约5斤", "约10斤"] } */

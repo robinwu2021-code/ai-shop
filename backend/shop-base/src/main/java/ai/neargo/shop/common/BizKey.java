@@ -41,6 +41,12 @@ public final class BizKey {
     public static final String APPEAL = "AP";
     public static final String SETTLE_BILL = "STL";
     public static final String EVENT = "EVT";
+    /**
+     * 类目。运营新建的类目走这个前缀；种子里那批（CAT100…CAT400）是手写的主数据，
+     * 编号与 ops-web 的 mock 对齐，联调时不用在两套编号之间换算。
+     */
+    public static final String CATEGORY = "CAT";
+
     /** 收款商户号业务键。**不是二级商户号本身** —— 那个由通道给，存在 sub_mchid */
     public static final String PAY_MERCHANT = "PM";
 

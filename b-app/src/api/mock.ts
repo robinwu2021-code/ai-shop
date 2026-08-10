@@ -607,6 +607,12 @@ export const mockApi: MerchantApi = {
     return delay({ ...g, confidence: 0.72 }, 700);
   },
 
+  // ---------------------------------------------------------------- 类目
+  async mCategoryTree() {
+    // 直接给整棵树：类目就几十条且极少变，分层拉取只会让选择器多两次等待
+    return delay(db.categories.map((c) => ({ ...c })));
+  },
+
   // ---------------------------------------------------------------- 规格模板
   async mSpecTemplates(categoryType) {
     const merchantNo = db.merchant.merchantNo;

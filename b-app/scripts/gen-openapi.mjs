@@ -161,6 +161,7 @@ const RESPONSE_TYPES = {
   mSaveStock: "Goods",
   mUploadImage: "object",
   mRecognizeGoods: "GoodsGuess",
+  mCategoryTree: "Category[]",
   mSpecTemplates: "SpecTemplate[]",
   mSaveSpecTemplate: "SpecTemplate",
   mOrderList: "PageResult<Order>",

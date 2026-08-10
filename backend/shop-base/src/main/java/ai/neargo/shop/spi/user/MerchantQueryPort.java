@@ -80,6 +80,18 @@ public interface MerchantQueryPort {
     boolean isPointsForced(String merchantNo);
 
     /**
+     * 这家店<b>获批经营哪些类目</b>（{@code mch_entity.category_codes}）。
+     *
+     * <p>product 域上架商品时，拿它与 {@code prd_category.required_code} 比对。
+     * 走 Port 而不是让 product 直接读 {@code mch_entity}：那是跨业务域的直连，
+     * ArchUnit 第 1 条就会拦下来 —— 而规则拦的正是这种「为了一个字段捅穿一层边界」。
+     *
+     * <p><b>空集合表示没有任何特许类目</b>，只能上架无门槛的类目 —— 不是「不限制」。
+     * 反过来默认放开的话，卖烧烤的第二天就能上架生鲜，而平台从没校验过。
+     */
+    java.util.Set<String> authorizedCategoryCodes(String merchantNo);
+
+    /**
      * 某行业下有多少商家。
      *
      * <p>运营改行业准入前要知道影响面 —— 把一个有 300 家店的行业停掉，

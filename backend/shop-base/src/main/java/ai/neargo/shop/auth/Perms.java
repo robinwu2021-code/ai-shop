@@ -28,10 +28,19 @@ public final class Perms {
      */
     public static final String INDUSTRY_MANAGE = "industry:manage";
 
+    /**
+     * 类目树维护。给商品运营 —— 它改的是「商家上架时能归到哪」，与审商品是同一件事的两面。
+     *
+     * <p>与 {@link #GOODS_AUDIT} 分开而不是复用：类目上挂着
+     * {@code required_code}（经营准入的判据），改它等于放宽或收紧一整类商品的准入门槛，
+     * 影响面比审单件商品大一个量级，值得能单独收回。
+     */
+    public static final String CATEGORY_MANAGE = "category:manage";
+
     private static final Map<String, List<String>> ROLE_PERMS = Map.of(
             "SUPER_ADMIN", List.of("*"),
             "BD", List.of(MERCHANT_AUDIT, ORDER_VIEW),
-            "GOODS_OPS", List.of(GOODS_AUDIT, ORDER_VIEW),
+            "GOODS_OPS", List.of(GOODS_AUDIT, CATEGORY_MANAGE, ORDER_VIEW),
             "SUPPORT", List.of(ORDER_VIEW));
 
     private Perms() {

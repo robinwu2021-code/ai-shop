@@ -46,6 +46,7 @@ public class DevSeeder {
                                  MchEntityMapper merchantMapper, GoodsMapper goodsMapper,
                                  SkuMapper skuMapper, CommunityPoolMapper poolMapper,
                                  CategoryMapper categoryMapper, StaffMapper staffMapper,
+                                 ai.neargo.shop.merchant.mapper.MerchantMappers.SysAuthCodeMapper authCodeMapper,
                                  // 平台员工是 staffMapper，商家子账号是 merchantStaffMapper —— 两套人，别混
                                  ai.neargo.shop.merchant.mapper.MerchantMappers.MchAccountMapper merchantStaffMapper,
                                  ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper storeMapper) {
@@ -53,6 +54,12 @@ public class DevSeeder {
             if (communityMapper.selectCount(Wrappers.emptyWrapper()) > 0) {
                 return;   // 幂等：重启不重复灌
             }
+            /*
+             * ⚠️ 这道总闸只看社区表，**兜不住「灌到一半失败」**：
+             * 中途抛异常后库里留着前半截，下次启动社区仍是空的 → 守卫放行 → 前半截主键冲突。
+             * 报出来的是一个跟真实原因毫无关系的错（上一次是「E2E 种子重放失败」）。
+             * 所以下面每个 seedXxx 各自再判一次存在性 —— 总闸只是省掉正常路径的那几次查询。
+             */
             log.warn("[DEV-ONLY] seeding demo data (shop.seed.enabled=true) —— 生产环境不应看到这条日志");
 
             // 运营账号：**按岗位分角色**，没有「运营」这种什么都能干的大角色 ——
@@ -62,12 +69,37 @@ public class DevSeeder {
             seedStaff(staffMapper, "goods", "商品运营", "[\"GOODS_OPS\"]", "goods123");
             seedStaff(staffMapper, "support", "客服", "[\"SUPPORT\"]", "support123");
 
-            // 类目：一级「日用百货」下挂二级，商品挂在二级 CAT001 上
-            categoryMapper.insert(category("CAT-ROOT-1", null, 1, "日用百货", 1));
-            categoryMapper.insert(category("CAT001", "CAT-ROOT-1", 2, "米面粮油", 1));
-            categoryMapper.insert(category("CAT002", "CAT-ROOT-1", 2, "生鲜果蔬", 2));
-            categoryMapper.insert(category("CAT-ROOT-2", null, 1, "生活服务", 2));
-            categoryMapper.insert(category("CAT003", "CAT-ROOT-2", 2, "家政保洁", 1));
+            /*
+             * 类目树。**编号必须与 V4__category_tree.sql 和 ops-web 的 mock 完全一致** ——
+             * 这里曾经是第三套编号（CAT-ROOT-1 / CAT001…），于是真库一棵树、H2 一棵树、
+             * 前端 mock 又一棵树。症状是「mock 上跑得通，连真库就找不到类目」，
+             * 而三处都各自自洽，谁也不报错。
+             *
+             * 真库由 V4 灌，这里只服务于**不跑 Flyway 的 H2 测试**；
+             * 下面的 count 守卫保证真库上不会重复插。
+             */
+            seedCategory(categoryMapper, "CAT100", null, 1, "食品生鲜", "FRESH", null, 10);
+            seedCategory(categoryMapper, "CAT110", "CAT100", 2, "蔬菜", "FRESH", null, 10);
+            seedCategory(categoryMapper, "CAT111", "CAT110", 3, "叶菜", "FRESH", "FRESH_VEG", 10);
+            seedCategory(categoryMapper, "CAT112", "CAT110", 3, "根茎菜", "FRESH", "FRESH_VEG", 20);
+            seedCategory(categoryMapper, "CAT120", "CAT100", 2, "水果", "FRESH", null, 20);
+            seedCategory(categoryMapper, "CAT121", "CAT120", 3, "浆果", "FRESH", "FRESH_FRUIT", 10);
+            seedCategory(categoryMapper, "CAT200", null, 1, "日用百货", "STANDARD", null, 20);
+            seedCategory(categoryMapper, "CAT210", "CAT200", 2, "纸品清洁", "STANDARD", null, 10);
+            seedCategory(categoryMapper, "CAT300", null, 1, "生活服务", "SERVICE", "SERVICE_REPAIR", 30);
+            seedCategory(categoryMapper, "CAT400", null, 1, "卡券", "VOUCHER", null, 40);
+
+            /*
+             * 类目授权码。真库由 V5 灌，这里只服务于**不跑 Flyway 的 H2 测试**。
+             * 少了它，挂了 required_code 的类目在测试里永远无法被授权 ——
+             * 而准入用例会「通过」，因为它测的正是拒绝那一半。
+             */
+            seedAuthCode(authCodeMapper, "FRESH_VEG", "蔬菜", "食品经营许可证", 10);
+            seedAuthCode(authCodeMapper, "FRESH_FRUIT", "水果", "食品经营许可证", 20);
+            seedAuthCode(authCodeMapper, "FRESH_DAIRY", "乳制品", "食品经营许可证", 30);
+            seedAuthCode(authCodeMapper, "FOOD", "熟食加工", "食品经营许可证", 40);
+            seedAuthCode(authCodeMapper, "DAILY", "日用百货", null, 50);
+            seedAuthCode(authCodeMapper, "SERVICE_REPAIR", "维修服务", "家电维修资质", 60);
 
             communityMapper.insert(community("C0001", "阳光花园", "杭州市西湖区文一西路 100 号", 30280000, 120100000));
             communityMapper.insert(community("C0002", "翡翠城", "杭州市西湖区文二西路 200 号", 30285000, 120105000));
@@ -123,10 +155,30 @@ public class DevSeeder {
         s.setRealName(realName);
         s.setRoles(rolesJson);
         s.setStatus("ACTIVE");
-        mapper.insert(s);
+        if (mapper.selectCount(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                .<SysOpsStaff>lambdaQuery().eq(SysOpsStaff::getUsername, username)) == 0) {
+            mapper.insert(s);
+        }
     }
 
-    private PrdCategory category(String no, String parentNo, int level, String name, int sort) {
+    private void seedAuthCode(ai.neargo.shop.merchant.mapper.MerchantMappers.SysAuthCodeMapper mapper,
+                              String code, String name, String requiredQualification, int sort) {
+        var c = new ai.neargo.shop.merchant.entity.SysAuthCode();
+        c.setCode(code);
+        c.setName(name);
+        c.setRequiredQualification(requiredQualification);
+        c.setSort(sort);
+        c.setEnabled(true);
+        // 同上：真库由 V5 灌，这里只补 H2
+        if (mapper.selectCount(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                .<ai.neargo.shop.merchant.entity.SysAuthCode>lambdaQuery()
+                .eq(ai.neargo.shop.merchant.entity.SysAuthCode::getCode, code)) == 0) {
+            mapper.insert(c);
+        }
+    }
+
+    private void seedCategory(CategoryMapper mapper, String no, String parentNo, int level,
+                              String name, String template, String requiredCode, int sort) {
         var c = new PrdCategory();
         c.setCategoryNo(no);
         c.setParentNo(parentNo);
@@ -134,8 +186,20 @@ public class DevSeeder {
         c.setName(name);
         c.setIcon("");
         c.setSort(sort);
+        c.setTemplate(template);
+        // 空 = 无门槛。挂了码的类目，商家没拿到对应授权就上不了架
+        c.setRequiredCode(requiredCode);
+        c.setQualificationRequired(requiredCode == null ? null : "[\"食品经营许可证\"]");
         c.setStatus("ACTIVE");
-        return c;
+        /*
+         * **幂等**：真库由 V4 灌同一批类目，这里只补 H2。
+         * 无脑 insert 的结果是真库上主键冲突 —— 而它发生在种子重放阶段，
+         * 报出来的是「E2E 种子重放失败」，看不出跟类目有任何关系。
+         */
+        if (mapper.selectCount(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                .<PrdCategory>lambdaQuery().eq(PrdCategory::getCategoryNo, no)) == 0) {
+            mapper.insert(c);
+        }
     }
 
     private CmtCommunity community(String no, String name, String address, int latE6, int lngE6) {
@@ -228,7 +292,7 @@ public class DevSeeder {
         g.setCover(cover);
         g.setImages("[]");
         g.setType(type);
-        g.setCategoryNo("CAT001");
+        g.setCategoryNo("CAT210");   // 纸品清洁：无资质门槛，演示商品不该卡在准入上
         g.setFulfillments("[\"STORE_PICKUP\"]");
         g.setSpecGroups("[{\"name\":\"规格\",\"options\":" + optionsJson(skus) + "}]");
         g.setRating(48);

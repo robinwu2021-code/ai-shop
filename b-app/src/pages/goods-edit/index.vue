@@ -17,7 +17,7 @@ import { api } from "@/api";
 import { CATEGORY_TYPE, MARKETS } from "@shared/utils/constants";
 import { pickImages } from "@shared/ports/media";
 import { toMajor, toMinor } from "@shared/utils/money";
-import type { CategoryType, CurrencyCode, I18nText, SpecTemplate } from "@shared/types";
+import type { Category, CategoryType, CurrencyCode, I18nText, SpecTemplate } from "@shared/types";
 
 const { t } = useI18n();
 
@@ -63,6 +63,54 @@ const untranslated = computed(() =>
   LANGS.filter((l) => l.id !== "zh-CN" && !title.value[l.id].trim()).map((l) => l.key),
 );
 const type = ref<CategoryType>(CATEGORY_TYPE.GOODS as CategoryType);
+
+/**
+ * 类目（三级树）。
+ *
+ * ⚠️ 与上面的 `type`（五品类）**不是一回事**，页面上要分开两个控件：
+ * `type` 决定履约与合规（生鲜要截单时间、服务不发货），平台硬编码；
+ * 类目决定归类与经营准入，运营可维护。合成一个控件的话，
+ * 商家改一次类目会连带改掉履约方式 —— 而他只是想把货归得更准一点。
+ */
+const categoryTree = ref<Category[]>([]);
+const categoryNo = ref("");
+/** 三级选择的当前路径，[一级, 二级, 三级]；只走到二级也允许 */
+const catPath = ref<Category[]>([]);
+const showCategory = ref(false);
+
+/** 面包屑：「食品生鲜 / 蔬菜 / 叶菜」。没选时给占位，不留空白 */
+const categoryLabel = computed(() =>
+  catPath.value.length ? catPath.value.map((c) => c.name).join(" / ") : "",
+);
+
+/** 当前层可选项：还没选就是一级，选了就是最后一级的子节点 */
+const catOptions = computed<Category[]>(() =>
+  catPath.value.length ? (catPath.value[catPath.value.length - 1]?.children ?? []) : categoryTree.value,
+);
+
+function pickCategory(c: Category) {
+  catPath.value = [...catPath.value, c];
+  categoryNo.value = c.categoryNo;
+  // 叶子节点即选定；还有下级就留在弹层里继续选
+  if (!c.children?.length) showCategory.value = false;
+}
+
+/** 回退一级。整棵重选比逐级点返回更烦 —— 商家改类目通常只是改最后一级 */
+function popCategory() {
+  catPath.value = catPath.value.slice(0, -1);
+  categoryNo.value = catPath.value[catPath.value.length - 1]?.categoryNo ?? "";
+}
+
+/** 按 categoryNo 还原选择路径（回显已有商品时用） */
+function findPath(nodes: Category[], target: string, trail: Category[] = []): Category[] {
+  for (const n of nodes) {
+    const next = [...trail, n];
+    if (n.categoryNo === target) return next;
+    const hit = findPath(n.children ?? [], target, next);
+    if (hit.length) return hit;
+  }
+  return [];
+}
 /** 规格组。空 = 单规格商品 */
 const groups = ref<{ name: string; options: string[]; codes?: (string | undefined)[]; templateNo?: string }[]>([]);
 /** 可用模板：平台按类目预置 + 本商家存的常用 */
@@ -224,6 +272,11 @@ async function saveAsTemplate(gi: number) {
   }
 }
 
+async function loadCategories() {
+  // 取不到不该挡住整个编辑页：类目是选填的，拿不到就退化成「不归类」
+  categoryTree.value = await api.mCategoryTree().catch(() => []);
+}
+
 async function loadTemplates() {
   templates.value = await api.mSpecTemplates(type.value).catch(() => []);
 }
@@ -278,7 +331,7 @@ function applyBulk() {
 }
 
 onLoad(async (q) => {
-  await loadTemplates();
+  await Promise.all([loadTemplates(), loadCategories()]);
   if (!q?.goodsNo) return;
   goodsNo.value = q.goodsNo;
   const g = await api.mGoodsDetail(q.goodsNo);
@@ -287,6 +340,8 @@ onLoad(async (q) => {
   title.value = { ...title.value, [lang.value]: g.title };
   subtitle.value = { ...subtitle.value, [lang.value]: g.subtitle };
   type.value = g.type;
+  categoryNo.value = g.categoryNo ?? "";
+  catPath.value = categoryNo.value ? findPath(categoryTree.value, categoryNo.value) : [];
   groups.value = g.specGroups.map((sg) => ({
     name: sg.name,
     options: [...sg.options],
@@ -311,6 +366,8 @@ async function save() {
       title: title.value,
       subtitle: subtitle.value,
       type: type.value,
+      // 空串要转成 undefined：后端拿到空串会当成「归到一个叫空的类目」，而不是「没归类」
+      categoryNo: categoryNo.value || undefined,
       // 封面必须带上：上传完只存在 ref 里的话，店主看着图在、保存后 C 端却是空白
       cover: cover.value,
       specGroups: groups.value
@@ -411,6 +468,40 @@ async function save() {
           >
             {{ ty }}
           </text>
+        </view>
+      </view>
+
+      <!-- 类目：与上面的「形态」分开两个控件（见 script 里 categoryTree 的注释） -->
+      <view class="field">
+        <text class="field__label">{{ $t("goods.category") }}</text>
+        <view class="cat-pick" @tap="showCategory = true">
+          <text v-if="categoryLabel" class="cat-pick__val">{{ categoryLabel }}</text>
+          <text v-else class="cat-pick__ph">{{ $t("goods.categoryPh") }}</text>
+          <text class="cat-pick__arrow">›</text>
+        </view>
+        <text class="sh-muted hint">{{ $t("goods.categoryTip") }}</text>
+      </view>
+    </view>
+
+    <!-- 类目选择弹层：一次只显示一层，选到叶子自动收起 -->
+    <view v-if="showCategory" class="cat-mask" @tap="showCategory = false">
+      <view class="cat-sheet" @tap.stop>
+        <view class="cat-sheet__bar">
+          <text v-if="catPath.length" class="cat-sheet__back" @tap="popCategory">‹ {{ $t("common.back") }}</text>
+          <text class="cat-sheet__title">{{ categoryLabel || $t("goods.category") }}</text>
+          <text class="cat-sheet__close" @tap="showCategory = false">×</text>
+        </view>
+        <view v-if="!catOptions.length" class="cat-sheet__empty">
+          <text class="sh-muted">{{ $t("goods.categoryLeaf") }}</text>
+        </view>
+        <view
+          v-for="c in catOptions"
+          :key="c.categoryNo"
+          class="cat-sheet__row"
+          @tap="pickCategory(c)"
+        >
+          <text>{{ c.name }}</text>
+          <text v-if="c.children?.length" class="cat-pick__arrow">›</text>
         </view>
       </view>
     </view>
@@ -749,6 +840,57 @@ async function save() {
   font-size: 34rpx;
   font-weight: 600;
   color: var(--sh-primary);
+}
+.cat-pick {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20rpx 24rpx;
+  border: 2rpx solid var(--sh-line);
+  border-radius: var(--sh-radius);
+}
+.cat-pick__ph {
+  color: var(--sh-sub);
+}
+.cat-pick__arrow {
+  color: var(--sh-sub);
+}
+.cat-mask {
+  position: fixed;
+  inset: 0;
+  background: var(--sh-scrim);
+  z-index: 20;
+}
+.cat-sheet {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  max-height: 70vh;
+  overflow-y: auto;
+  background: var(--sh-surface);
+  border-radius: var(--sh-radius) var(--sh-radius) 0 0;
+}
+.cat-sheet__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24rpx;
+  border-bottom: 2rpx solid var(--sh-line);
+}
+.cat-sheet__title {
+  font-weight: 600;
+}
+.cat-sheet__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 28rpx 24rpx;
+  border-bottom: 2rpx solid var(--sh-line);
+}
+.cat-sheet__empty {
+  padding: 40rpx 24rpx;
+  text-align: center;
 }
 .save {
   margin-top: 32rpx;

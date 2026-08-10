@@ -2,6 +2,7 @@
 // 同一笔订单两端说法不同，强行共用一套词条只会互相将就。
 export default {
   common: {
+    back: "返回",
     confirm: "确定",
     cancel: "取消",
     done: "完成",
@@ -159,6 +160,10 @@ export default {
   },
 
   goods: {
+    category: "类目",
+    categoryPh: "选择类目（选填）",
+    categoryTip: "类目决定商品归到哪、以及要不要经营资质；与上面的「品类」是两回事",
+    categoryLeaf: "已经是最细一级了",
     title: "商品",
     add: "新建商品",
     statusON_SALE: "在售",

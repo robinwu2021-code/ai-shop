@@ -1,5 +1,5 @@
 export default {
-  common: { confirm: "تأكيد", cancel: "إلغاء", done: "تم", save: "حفظ", loading: "جارٍ التحميل…", empty: "لا يوجد محتوى بعد", retry: "إعادة", saved: "تم الحفظ", all: "الكل" },
+  common: { back: "رجوع", confirm: "تأكيد", cancel: "إلغاء", done: "تم", save: "حفظ", loading: "جارٍ التحميل…", empty: "لا يوجد محتوى بعد", retry: "إعادة", saved: "تم الحفظ", all: "الكل" },
   tab: { home: "لوحة العمل", orders: "الطلبات", goods: "المنتجات", me: "حسابي" },
   theme: {
     skinPure: "خلفية بيضاء · اللون والنص فقط",
@@ -99,6 +99,10 @@ export default {
   },
 
   goods: {
+    category: "الفئة",
+    categoryPh: "اختر فئة (اختياري)",
+    categoryTip: "تحدد الفئة مكان تصنيف المنتج وما إذا كان يتطلب ترخيصًا — وهي منفصلة عن النوع أعلاه",
+    categoryLeaf: "هذا هو أدق مستوى",
     title: "المنتجات", add: "منتج جديد",
     statusON_SALE: "معروض", statusOFF_SALE: "موقوف", statusAUDITING: "قيد المراجعة", statusREJECTED: "مرفوض",
     stock: "المخزون", onSale: "عرض", offSale: "إيقاف", edit: "تعديل", empty: "لا منتجات بعد — أضف واحدًا",

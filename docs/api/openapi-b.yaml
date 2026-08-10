@@ -838,22 +838,34 @@ components:
         categoryNo: 
           type: "string"
           description: "类目单号"
+        parentNo: 
+          type: 
+            - "string"
+            - "null"
+          description: "上级类目单号。一级类目为空"
+        level: 
+          type: "number"
+          description: "1–3。**三级封顶**"
         name: 
           type: "string"
           description: "类目名（后端按 Accept-Language 下发已本地化文案）"
-        type: 
-          "$ref": "#/components/schemas/CategoryType"
-          description: "类目形态。决定商品用哪套字段（生鲜有截单时间、服务有预约时段…）"
+        icon: 
+          type: "string"
+        sort: 
+          type: "number"
         children: 
           type: "array"
           items: 
             "$ref": "#/components/schemas/Category"
-          description: "子类目。仅两级，不再往下"
+          description: "子类目。叶子是空数组而不是 undefined —— 端上少一次判空"
       required: 
         - "categoryNo"
+        - "level"
         - "name"
-        - "type"
+        - "sort"
+        - "children"
       additionalProperties: false
+      description: "类目树节点（对齐后端 `CategoryVO`）。\n\n<p>⚠️ **不要把它和 `CategoryType` 搞混** —— 那是五品类枚举 （NORMAL/FRESH/SERVICE/VIRTUAL/CARD），挂在商品上、由平台硬编码，决定履约与合规 （冷链、不发货、iOS 可售规则）。这里的类目树是运营可维护的数据，决定归类与经营准入。 两个维度正交，见 `docs/technical/类目树补齐方案.md`。\n\n<p>这个类型此前声明了一个后端根本不返回的 `type` 字段，并写着「仅两级」—— 而后端一直是三级。没人用它，所以错了很久也没暴露。"
     SpecGroup: 
       type: "object"
       properties: 
@@ -2979,6 +2991,9 @@ components:
         type: 
           "$ref": "#/components/schemas/CategoryType"
           description: "商品形态，决定详情页用哪套字段。**保存后不建议再改**"
+        categoryNo: 
+          type: "string"
+          description: "类目单号（三级树的任意一级，通常是叶子）。选填。\n\n⚠️ 与上面的 `type` 是两个维度：`type` 决定履约与合规、平台硬编码； 类目决定归类与经营准入、运营可维护。\n\n<p>**保存草稿时不校验资质，上架时才校验** —— 商家可能正准备去申请那张证， 保存这一步就拦住他，等于逼他先把商品归到一个错误的类目下。"
         cover: 
           type: "string"
           description: "封面图 URL（来自 `mUploadImage`）。\n\n<p>此前<b>页面上传了封面却没放进提交体</b> —— 店主选了图、页面上也显示出来了， 保存后 C 端拿到的却是空封面。而空封面不报错，只是列表里一块留白。"
@@ -4564,6 +4579,36 @@ paths:
           "application/json": 
             schema: 
               "$ref": "#/components/schemas/RecognizeGoodsReq"
+  "/biz/category/tree": 
+    get: 
+      operationId: "mCategoryTree"
+      summary: "类目树（选类目）"
+      tags: 
+        - "category"
+      security: 
+        - bearerAuth: []
+      parameters: []
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "array"
+                    items: 
+                      "$ref": "#/components/schemas/Category"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
   "/biz/spec-templates": 
     get: 
       operationId: "mSpecTemplates"

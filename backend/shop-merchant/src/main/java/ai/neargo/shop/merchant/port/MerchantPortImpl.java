@@ -45,6 +45,7 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort {
     private final ai.neargo.shop.spi.platform.MasterDataPort masterDataPort;
     private final ai.neargo.shop.merchant.mapper.MerchantMappers.MchAccountMapper staffMapper;
     private final ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper storeMapper;
+    private final tools.jackson.databind.ObjectMapper json;
 
     public MerchantPortImpl(MchEntityMapper merchantMapper, MchEntityCommunityMapper merchantCommunityMapper,
                             MchPaymentMapper merchantPaymentMapper,
@@ -52,7 +53,9 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort {
                             ai.neargo.shop.spi.user.CommunityQueryPort communityQueryPort,
                             ai.neargo.shop.spi.platform.MasterDataPort masterDataPort,
                             ai.neargo.shop.merchant.mapper.MerchantMappers.MchAccountMapper staffMapper,
-                            ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper storeMapper) {
+                            ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper storeMapper,
+                            tools.jackson.databind.ObjectMapper json) {
+        this.json = json;
         this.staffMapper = staffMapper;
         this.storeMapper = storeMapper;
         this.masterDataPort = masterDataPort;
@@ -391,6 +394,28 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort {
         MchEntity m = merchantMapper.selectOne(
                 Wrappers.<MchEntity>lambdaQuery().eq(MchEntity::getEntityNo, merchantNo).last("LIMIT 1"));
         return m != null && Boolean.TRUE.equals(m.getPointsForced());
+    }
+
+    @Override
+    public java.util.Set<String> authorizedCategoryCodes(String merchantNo) {
+        MchEntity m = merchantMapper.selectOne(
+                Wrappers.<MchEntity>lambdaQuery().eq(MchEntity::getEntityNo, merchantNo).last("LIMIT 1"));
+        if (m == null || m.getCategoryCodes() == null || m.getCategoryCodes().isBlank()) {
+            // 空 = 没有任何特许类目，只能上架无门槛的类目。**不是「不限制」**
+            return java.util.Set.of();
+        }
+        try {
+            return new java.util.HashSet<>(json.readValue(m.getCategoryCodes(),
+                    new tools.jackson.core.type.TypeReference<java.util.List<String>>() {
+                    }));
+        } catch (RuntimeException e) {
+            /*
+             * 脏数据一律按「没有授权」处理，而不是按「不限制」放行 ——
+             * 解析失败时放行，等于一行坏 JSON 就能绕过整套准入校验，
+             * 且没有任何症状。宁可让商家看到「没有资质」去申诉。
+             */
+            return java.util.Set.of();
+        }
     }
 
     @Override

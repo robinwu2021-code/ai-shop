@@ -69,9 +69,13 @@ public interface MerchantGoodsService {
      * @param specGroups   空表示单规格
      * @param skus         单规格商品也有且仅有一条
      */
+    /**
+     * @param type       五品类，决定履约与合规。平台硬编码
+     * @param categoryNo 三级类目树的节点。选填，决定归类与经营准入 —— <b>两个正交维度</b>
+     */
     record SaveCommand(String goodsNo, String title, String subtitle,
                        Map<String, String> titleI18n, Map<String, String> subtitleI18n,
-                       String type, String cover, List<String> images,
+                       String type, String categoryNo, String cover, List<String> images,
                        List<SpecGroup> specGroups, List<Sku> skus) {
     }
 

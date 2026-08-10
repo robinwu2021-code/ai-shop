@@ -8,7 +8,7 @@
 <text class="b" x="36" y="40">基础 · 被引用最多</text>
 <rect x="105" y="50" width="150" height="46" rx="6" fill="#EDEFF2" stroke="#B3B9C2"/>
 <text class="n" x="180" y="70" text-anchor="middle" font-size="13">用户与商家</text>
-<text class="s" x="180" y="85" text-anchor="middle">usr_* · 3 表</text>
+<text class="s" x="180" y="85" text-anchor="middle">usr_* · 4 表</text>
 <rect x="265" y="50" width="150" height="46" rx="6" fill="#EDEFF2" stroke="#B3B9C2"/>
 <text class="n" x="340" y="70" text-anchor="middle" font-size="13">社区与自提点</text>
 <text class="s" x="340" y="85" text-anchor="middle">cmt_* · 2 表</text>
@@ -49,4 +49,4 @@
 <text class="s" x="516" y="281" text-anchor="middle">msg_* · 3…</text>
 <rect x="565" y="246" width="78" height="46" rx="6" fill="#E6F2F0" stroke="#8FC2BA"/>
 <text class="n" x="604" y="266" text-anchor="middle" font-size="13">系统</text>
-<text class="s" x="604" y="281" text-anchor="middle">sys_* · 8…</text></svg>
+<text class="s" x="604" y="281" text-anchor="middle">sys_* · 9…</text></svg>

@@ -69,7 +69,7 @@ class M2CatalogFlowTest {
     @Test
     @DisplayName("按类目筛选商品")
     void filterGoodsByCategory() throws Exception {
-        mvc().perform(get("/mp/goods").param("categoryNo", "CAT001"))
+        mvc().perform(get("/mp/goods").param("categoryNo", "CAT210"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.total").value(org.hamcrest.Matchers.greaterThan(0)));
 

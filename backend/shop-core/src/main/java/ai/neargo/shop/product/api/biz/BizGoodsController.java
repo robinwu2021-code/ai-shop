@@ -28,9 +28,25 @@ import java.util.Map;
 public class BizGoodsController {
 
     private final MerchantGoodsService goodsService;
+    private final ai.neargo.shop.product.service.CategoryService categoryService;
 
-    public BizGoodsController(MerchantGoodsService goodsService) {
+    public BizGoodsController(MerchantGoodsService goodsService,
+                              ai.neargo.shop.product.service.CategoryService categoryService) {
         this.goodsService = goodsService;
+        this.categoryService = categoryService;
+    }
+
+    /**
+     * 类目树 —— 商家编辑商品时选类目用。
+     *
+     * <p>与 C 端的 {@code GET /mp/category/tree} 是**同一份数据的两个入口**，
+     * 而不是让 B 端去调 {@code /mp/**}：端上有前缀守卫（C 端只调 /mp、B 端只调 /biz），
+     * 它挡的正是「两个端混用同一条路径」——那样将来给 C 端加个社区过滤，
+     * 会连带改掉商家的类目选择器，而没有任何测试会发现。
+     */
+    @GetMapping("/biz/category/tree")
+    public List<ai.neargo.shop.product.dto.CategoryVO> categoryTree() {
+        return categoryService.tree();
     }
 
     /**
@@ -56,7 +72,7 @@ public class BizGoodsController {
     public GoodsVO save(@RequestBody SaveGoodsReq req) {
         return goodsService.save(BizContext.requireMerchantNo(), new MerchantGoodsService.SaveCommand(
                 req.goodsNo(), req.title(), req.subtitle(),
-                req.titleI18n(), req.subtitleI18n(), req.type(),
+                req.titleI18n(), req.subtitleI18n(), req.type(), req.categoryNo(),
                 req.cover(), req.images(),
                 req.specGroups() == null ? List.of() : req.specGroups().stream()
                         .map(g -> new MerchantGoodsService.SpecGroup(
@@ -113,7 +129,7 @@ public class BizGoodsController {
 
     public record SaveGoodsReq(String goodsNo, String title, String subtitle,
                                Map<String, String> titleI18n, Map<String, String> subtitleI18n,
-                               String type, String cover, List<String> images,
+                               String type, String categoryNo, String cover, List<String> images,
                                List<SpecGroupReq> specGroups, List<SkuReq> skus) {
     }
 

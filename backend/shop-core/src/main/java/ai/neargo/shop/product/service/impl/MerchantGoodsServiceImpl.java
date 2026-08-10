@@ -47,11 +47,15 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
     private final ai.neargo.shop.spi.user.MerchantQueryPort merchantPort;
     private final ObjectMapper json;
 
+    private final ai.neargo.shop.product.service.CategoryService categoryService;
+
     public MerchantGoodsServiceImpl(GoodsMapper goodsMapper, SkuMapper skuMapper,
                                     SpecTemplateMapper templateMapper,
                                     GoodsService goodsService, CommunityPoolMapper poolMapper,
                                     ai.neargo.shop.spi.user.MerchantQueryPort merchantPort,
+                                    ai.neargo.shop.product.service.CategoryService categoryService,
                                     ObjectMapper json) {
+        this.categoryService = categoryService;
         this.poolMapper = poolMapper;
         this.merchantPort = merchantPort;
         this.goodsMapper = goodsMapper;
@@ -106,6 +110,16 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         g.setTitleI18n(writeMap(cmd.titleI18n()));
         g.setSubtitleI18n(writeMap(cmd.subtitleI18n()));
         g.setType(cmd.type() == null ? "NORMAL" : cmd.type());
+        /*
+         * 类目：**空串按「不归类」处理，不是「归到一个叫空的类目」**。
+         * 不做这层转换的话，库里会出现 category_no='' 的商品 ——
+         * 它既不出现在任何类目筛选里，也不为空，查起来看不出哪里不对。
+         *
+         * 这里不校验经营资质：那是上架时的事（见 requireCategoryAuthorized 的注释）。
+         */
+        if (cmd.categoryNo() != null) {
+            g.setCategoryNo(cmd.categoryNo().isBlank() ? null : cmd.categoryNo());
+        }
         g.setCover(cmd.cover() == null ? "" : cmd.cover());
         g.setImages(writeJson(cmd.images()));
         g.setSpecGroups(writeSpecGroups(cmd.specGroups()));
@@ -200,10 +214,37 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         if (onSale && !APPROVED.equals(g.getAuditStatus())) {
             throw BizException.of(ErrorCode.ORDER_STATE_ILLEGAL);
         }
+        if (onSale) {
+            requireCategoryAuthorized(merchantNo, g.getCategoryNo());
+        }
         g.setOnSale(onSale);
         DataScopeContext.executeWithoutScope(() -> goodsMapper.updateById(g));
         syncPool(g, onSale);
         return toVO(g);
+    }
+
+    /**
+     * 类目经营准入：这家店有没有获批经营这个类目。
+     *
+     * <p><b>校验点选在「上架」而不是「保存商品」</b>：商家把草稿归到一个自己还没资质的
+     * 类目下不该被拦 —— 他可能正准备去申请。真正不能发生的是这件商品**对消费者可见**。
+     *
+     * <p>类目没挂 {@code requiredCode} 即无门槛，直接放行；挂了但商家没有，
+     * 报一个专用错误码，让端上能把「缺哪张资质、去哪申请」说出来 ——
+     * 通用的「请求参数有误」会让商家反复改商品信息，而问题根本不在商品上。
+     */
+    private void requireCategoryAuthorized(String merchantNo, String categoryNo) {
+        if (categoryNo == null || categoryNo.isBlank()) {
+            // 没归类的商品不卡在这里：归类是否必填是另一个决定，不该由准入校验顺手做掉
+            return;
+        }
+        String required = categoryService.requiredCodeOf(categoryNo);
+        if (required == null || required.isBlank()) {
+            return;
+        }
+        if (!merchantPort.authorizedCategoryCodes(merchantNo).contains(required)) {
+            throw BizException.of(ErrorCode.CATEGORY_NOT_AUTHORIZED);
+        }
     }
 
     /**

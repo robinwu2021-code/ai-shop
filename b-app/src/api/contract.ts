@@ -4,6 +4,7 @@
 // 类型全部来自 @shared/types —— **不在这里重复定义**。同一笔订单两端看到的是同一个
 // Order 结构，只是可见字段与可执行动作不同；各定义一份必然漂移。
 import type {
+  Category,
   Community,
   DeliveryRule,
   Goods,
@@ -104,6 +105,16 @@ export interface GoodsDraft {
   subtitle: I18nText;
   /** 商品形态，决定详情页用哪套字段。**保存后不建议再改** */
   type: Goods["type"];
+  /**
+   * 类目单号（三级树的任意一级，通常是叶子）。选填。
+   *
+   * ⚠️ 与上面的 `type` 是两个维度：`type` 决定履约与合规、平台硬编码；
+   * 类目决定归类与经营准入、运营可维护。
+   *
+   * <p>**保存草稿时不校验资质，上架时才校验** —— 商家可能正准备去申请那张证，
+   * 保存这一步就拦住他，等于逼他先把商品归到一个错误的类目下。
+   */
+  categoryNo?: string;
   /**
    * 封面图 URL（来自 `mUploadImage`）。
    *
@@ -222,6 +233,16 @@ export interface MerchantApi {
    * ⚠️ 绝不做「一拍就自动上架」—— 识别错了价格也错，货会以错价卖出去。
    */
   mRecognizeGoods(imageUrl: string): Promise<GoodsGuess>;
+
+  // ---- 类目（B-11.3.1）
+  /**
+   * 三级类目树 —— 编辑商品时选类目用。
+   *
+   * ⚠️ 与 `Goods["type"]`（五品类）**不是一回事**：type 决定履约与合规，平台硬编码；
+   * 类目决定归类与经营准入，运营可维护。挂了资质门槛的类目，
+   * 没拿到授权的商家**上架时**会被拒（保存草稿不拦）。
+   */
+  mCategoryTree(): Promise<Category[]>;
 
   // ---- 规格模板（B-11.3.2）
   /** 按类目取可用模板：平台预置 + 本商家存的常用 */

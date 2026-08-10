@@ -929,6 +929,43 @@ export const db = {
   } as PaymentApplyment,
 
   /**
+   * 类目树。**编号与后端 V4__category_tree.sql、ops-web 的 mock 完全一致** ——
+   * 三处对不上时的症状是「mock 上跑得通、连真库就找不到类目」，而三处各自都自洽，
+   * 谁也不报错。
+   *
+   * ⚠️ 与 `CATEGORY_TYPE`（五品类）是两个正交维度：那个决定履约与合规、平台硬编码；
+   * 这棵树决定归类与经营准入、运营可维护。
+   */
+  categories: [
+    {
+      categoryNo: "CAT100", parentNo: null, level: 1, name: "食品生鲜", icon: "", sort: 10,
+      children: [
+        {
+          categoryNo: "CAT110", parentNo: "CAT100", level: 2, name: "蔬菜", icon: "", sort: 10,
+          children: [
+            { categoryNo: "CAT111", parentNo: "CAT110", level: 3, name: "叶菜", icon: "", sort: 10, children: [] },
+            { categoryNo: "CAT112", parentNo: "CAT110", level: 3, name: "根茎菜", icon: "", sort: 20, children: [] },
+          ],
+        },
+        {
+          categoryNo: "CAT120", parentNo: "CAT100", level: 2, name: "水果", icon: "", sort: 20,
+          children: [
+            { categoryNo: "CAT121", parentNo: "CAT120", level: 3, name: "浆果", icon: "", sort: 10, children: [] },
+          ],
+        },
+      ],
+    },
+    {
+      categoryNo: "CAT200", parentNo: null, level: 1, name: "日用百货", icon: "", sort: 20,
+      children: [
+        { categoryNo: "CAT210", parentNo: "CAT200", level: 2, name: "纸品清洁", icon: "", sort: 10, children: [] },
+      ],
+    },
+    { categoryNo: "CAT300", parentNo: null, level: 1, name: "生活服务", icon: "", sort: 30, children: [] },
+    { categoryNo: "CAT400", parentNo: null, level: 1, name: "卡券", icon: "", sort: 40, children: [] },
+  ],
+
+  /**
    * 规格模板。平台预置的按类目给，商家存的常用模板追加在后面。
    * 平台模板的 code 是**跨商家统一**的 —— 这正是它能做聚合而自由输入不能的原因。
    */

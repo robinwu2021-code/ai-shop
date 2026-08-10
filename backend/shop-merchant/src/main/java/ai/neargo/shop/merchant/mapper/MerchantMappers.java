@@ -44,4 +44,8 @@ public final class MerchantMappers {
     /** 商家支付进件：每通道一条。分账回调只带 sub_mchid，靠 idx_mp_sub_mchid 反查商家。 */
     public interface MchPaymentMapper extends BaseMapper<MchPaymentMerchant> {
     }
+
+    /** 类目授权码主数据。 */
+    public interface SysAuthCodeMapper extends BaseMapper<ai.neargo.shop.merchant.entity.SysAuthCode> {
+    }
 }
