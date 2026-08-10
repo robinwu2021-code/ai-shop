@@ -58,4 +58,24 @@ class ApiContractTest {
         mockMvc().perform(get("/ops/order"))
                 .andExpect(status().isUnauthorized());
     }
+
+    @org.junit.jupiter.api.Test
+    @org.junit.jupiter.api.DisplayName("★ 登录前的三个端点必须免登录 —— 发验证码曾漏在白名单外")
+    void preLoginEndpointsArePublic() throws Exception {
+        /*
+         * `/biz/auth/otp/send` 此前不在白名单里，于是商家点「获取验证码」拿到 401：
+         * **要先登录才能拿到登录用的验证码**，谁也进不来。
+         *
+         * 后端测试没发现，是因为测试里发码走的是 C 端的 /mp/user/otp/send；
+         * 只有真的从 B 端登录页点一次才会走到这条路径。
+         */
+        for (String path : new String[]{"/biz/auth/otp/send", "/biz/auth/login", "/biz/auth/staff-login"}) {
+            mockMvc().perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                            .post(path)
+                            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                            .content("{\"phone\":\"13000000000\"}"))
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                            .status().is(org.hamcrest.Matchers.not(401)));
+        }
+    }
 }

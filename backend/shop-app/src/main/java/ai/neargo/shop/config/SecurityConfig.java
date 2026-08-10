@@ -94,7 +94,14 @@ public class SecurityConfig {
                         // 登录接口本身当然不能要求已登录 —— 两条都是登录入口，写在最前面。
                         // staff-login 是**员工独立登录**（App 路径）：他可能根本没有 C 端账号，
                         // 要求先登录才能登录是个死循环
-                        .requestMatchers("/biz/auth/login", "/biz/auth/staff-login").permitAll()
+                        /*
+                         * 登录前的三个动作都必须放行。**发验证码也在其中** ——
+                         * 它此前漏在白名单外，于是商家点「获取验证码」拿到 401：
+                         * 要先登录才能拿到登录用的验证码，谁也进不来。
+                         * 而这条路径只有真的从登录页点一次才会走到。
+                         */
+                        .requestMatchers("/biz/auth/login", "/biz/auth/staff-login",
+                                "/biz/auth/otp/send").permitAll()
                         // /biz/** 其余一律必须登录；具体作用域由 BizContext + DataScope 裁剪
                         .requestMatchers("/biz/**").authenticated()
                         // /mp/** 一律放行到业务层：游客能逛商品，但下单接口自己 requireUser()
