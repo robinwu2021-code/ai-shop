@@ -658,6 +658,8 @@ export const mockApi: ShopApi = {
      */
     o.afterSale = {
       afterSaleNo: nextNo("AS"),
+      // mock 里 Order 就是子订单，两个号取同一个值
+      subOrderNo: o.orderNo,
       orderNo: o.orderNo,
       type,
       status: "APPLIED",

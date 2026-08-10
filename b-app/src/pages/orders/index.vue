@@ -42,7 +42,8 @@ async function load() {
   try {
     if (tab.value === "afterSale") {
       const afterSales = await api.mAfterSaleList();
-      const nos = new Set(afterSales.map((a) => a.orderNo));
+      // 用 subOrderNo：列表一行是一张子订单，售后单的 orderNo 是主单号
+      const nos = new Set(afterSales.map((a) => a.subOrderNo));
       const res = await api.mOrderList({ size: 50 });
       list.value = res.records.filter((o) => nos.has(o.orderNo));
     } else {

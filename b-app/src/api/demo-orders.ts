@@ -142,6 +142,7 @@ export function ensureDemoOrders(): void {
     const withAfterSale = build("COMPLETED", FULFILLMENT.PICKUP, "赵大爷", [b], 220, "MERCHANT_OWNED");
     withAfterSale.afterSale = {
       afterSaleNo: nextNo("AS"),
+      subOrderNo: withAfterSale.orderNo,
       orderNo: withAfterSale.orderNo,
       type: "REFUND_ONLY",
       status: "APPLIED",

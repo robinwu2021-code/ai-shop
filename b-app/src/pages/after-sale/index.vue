@@ -47,7 +47,7 @@ async function load() {
     api.mOrderList({ size: 50 }),
   ]);
   const byNo = new Map(orders.records.map((o) => [o.orderNo, o]));
-  list.value = afterSales.map((as) => ({ as, order: byNo.get(as.orderNo) }));
+  list.value = afterSales.map((as) => ({ as, order: byNo.get(as.subOrderNo) }));
 }
 
 async function agree(r: Row) {
@@ -116,7 +116,7 @@ onShow(load);
       </view>
       <view class="item__tags">
         <text class="sh-chip">{{ $t(`afterSale.type${asType(r)}`) }}</text>
-        <text class="sh-muted sh-num item__no">{{ r.as.orderNo }}</text>
+        <text class="sh-muted sh-num item__no">{{ r.as.subOrderNo }}</text>
       </view>
       <text v-if="r.as.reason" class="sh-muted reason">
         {{ $t("afterSale.buyerReason") }}{{ r.as.reason }}

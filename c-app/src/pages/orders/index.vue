@@ -27,7 +27,11 @@ const TABS: { key: string; statuses: OrderStatus[] | null }[] = [
 
 const tab = ref("all");
 const orders = ref<Order[]>([]);
-/** 有售后单的订单号。「售后」页签靠它筛，而不是靠订单状态 */
+/**
+ * 有售后单的**子订单**号。「售后」页签靠它筛，而不是靠订单状态。
+ * ⚠️ 用 subOrderNo 不是 orderNo —— 列表一行是一张子订单，
+ * 而售后单上的 orderNo 是主单号，两个字段同名不同物（见 AfterSale 的注释）
+ */
 const afterSaleOrderNos = ref<Set<string>>(new Set());
 const loaded = ref(false);
 
@@ -47,7 +51,7 @@ async function load() {
     api.afterSaleList().catch(() => []),
   ]);
   orders.value = res.records;
-  afterSaleOrderNos.value = new Set(afterSales.map((a) => a.orderNo));
+  afterSaleOrderNos.value = new Set(afterSales.map((a) => a.subOrderNo));
   loaded.value = true;
 }
 
@@ -158,9 +162,6 @@ onShow(load);
 .card__status.is-CANCELLED,
 .card__status.is-REFUNDED {
   color: var(--sh-sub);
-}
-.card__status.is-REFUNDING {
-  color: var(--sh-danger);
 }
 .row__right {
   text-align: end;
