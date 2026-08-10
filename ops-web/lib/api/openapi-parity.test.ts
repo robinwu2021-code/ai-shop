@@ -19,7 +19,9 @@ function implementedEndpoints(): Set<string> {
   const names = new Set<string>();
   for (const f of readdirSync(dir).filter((x) => x.endsWith(".ts"))) {
     const src = readFileSync(join(dir, f), "utf8");
-    const re = /(\w+):\s*\([^)]*\)\s*=>\s*(?:\n\s*)?client\.(get|post|put)\(/g;
+    // 与 gen-openapi.mjs 逐字同一条 —— 两边不一致的话，生成器漏掉的端点这里也发现不了。
+    // 认 async + 块体：需要做响应映射的端点（login）写成块体，只认单表达式会把它整条漏掉
+    const re = /(\w+):\s*(?:async\s*)?\([^)]*\)\s*=>\s*(?:\{[\s\S]{0,400}?)?(?:await\s+)?client\.(get|post|put)(?:<[^>]*>)?\(/g;
     let m;
     while ((m = re.exec(src))) names.add(m[1]);
   }

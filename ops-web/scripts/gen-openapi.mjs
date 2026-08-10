@@ -39,7 +39,12 @@ for (const file of fs.readdirSync(httpsDir).filter((f) => f.endsWith(".ts"))) {
   const domain = file.replace(/\.ts$/, "");
   // 形如：  listMerchants: (q) => client.get("/ops/merchants", q),
   //        setStatus: (no, s) =>\n    client.post(`/ops/merchants/${no}/status`, {...}),
-  const re = /(\w+):\s*\([^)]*\)\s*=>\s*(?:\n\s*)?client\.(get|post|put)\(\s*([`"])([^`"]+)\3/g;
+  //
+  // **也要认 async + 块体**：
+  //        login: async (u, p) => {\n  const raw = await client.post("/ops/auth/login", …)
+  // 只认单表达式箭头函数的话，需要在 http 层做响应映射的端点会**整条从契约里消失** ——
+  // 而那正是最需要被记进契约的一类（形状两端不同才要映射）。login 就这么漏过一次。
+  const re = /(\w+):\s*(?:async\s*)?\([^)]*\)\s*=>\s*(?:\{[\s\S]{0,400}?)?(?:await\s+)?client\.(get|post|put)(?:<[^>]*>)?\(\s*([`"])([^`"]+)\3/g;
   let m;
   while ((m = re.exec(src))) {
     const [, name, httpMethod, , rawPath] = m;

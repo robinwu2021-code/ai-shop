@@ -195,7 +195,13 @@ describe("枚举登记表", () => {
    * <p>降到新低时**要把基线跟着调低**，否则棘轮就松了。这一步是刻意的手工动作：
    * 它逼着改的人确认「这批真的复核完了」，而不是顺手让测试变绿。
    */
-  const UNREVIEWED_BASELINE = 54;
+  /*
+ * 2026-08-11：54 → 0，全部复核完。
+ *
+ * 基线保持 0 意味着**新增枚举必须当场复核**，不能再留给以后 ——
+ * 而这正是这张表当初要解决的问题：「新增一个枚举」的成本曾经是零。
+ */
+const UNREVIEWED_BASELINE = 0;
 
   it(`未复核条目只许减少（当前基线 ${UNREVIEWED_BASELINE} 条）`, () => {
     const n = ENUM_REGISTRY.filter((e) => e.verdict === "UNREVIEWED").length;
