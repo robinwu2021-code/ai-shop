@@ -829,7 +829,7 @@ function histOrder(
   return {
     orderNo,
     status: "COMPLETED",
-    fulfillment: "PICKUP",
+    fulfillment: "STORE_PICKUP",
     items,
     amount: {
       goodsMinor,

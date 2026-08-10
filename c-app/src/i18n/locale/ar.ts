@@ -77,7 +77,7 @@ export default {
   },
   fulfillment: {
     NEIGHBOR_PICKUP: "استلام من الجوار",
-    PICKUP: "الاستلام من النقطة",
+    STORE_PICKUP: "الاستلام من النقطة",
     DELIVERY: "توصيل للمنزل",
     EXPRESS: "توصيل بالبريد",
     STORE_VERIFY: "الاستخدام في المتجر",
@@ -170,7 +170,7 @@ export default {
   fulfillmentDesc: {
     NEIGHBOR_PICKUP: "يُوصَّل إلى منزل المنظّم، ويُستلم في الوقت المتفق عليه",
     DELIVERY: "يُوصَّل من نقطة الاستلام؛ مجاني فوق الحد",
-    PICKUP: "الاستلام من النقطة برمز الاستلام",
+    STORE_PICKUP: "الاستلام من النقطة برمز الاستلام",
     EXPRESS: "يُشحن خلال ٤٨ ساعة من الدفع",
     STORE_VERIFY: "أظهر الرمز في المتجر",
     APPOINTMENT: "في الموعد المحجوز، بالمتجر أو بالمنزل",

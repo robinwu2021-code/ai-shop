@@ -31,9 +31,8 @@ const KNOWN_SHARED: Record<string, string> = {
     "MEDIUM/LARGE 是分层费率的预留档，后端目前只产出 SMALL —— 分层上线时后端补齐",
   FULFILLMENT:
     "DELIVERY/STORE_VERIFY/APPOINTMENT/INSTANT 四种履约后端还没实现（库里只有 " +
-    "STORE_PICKUP/NEIGHBOR_PICKUP/MERCHANT_DELIVERY/EXPRESS）。" +
-    "⚠️ 端上的 PICKUP 与后端的 STORE_PICKUP 还是**同物异名**，工具因为词各自存在而抓不到 —— " +
-    "下单链路正在用，改名要连着订单历史一起迁，单独排一次",
+    "STORE_PICKUP/NEIGHBOR_PICKUP/MERCHANT_DELIVERY/EXPRESS）—— 接的时候一起定名。" +
+    "（PICKUP 与 STORE_PICKUP 的同物异名已修：常量的值改成了 STORE_PICKUP）",
   PROMOTION_TYPE:
     "BUY_N_GET_M 是端上给营销活动预留的展示类型，后端 mkt_campaign 用 BUY_GIFT。" +
     "两边都还没接这类活动的下单逻辑，接的时候一起定名",

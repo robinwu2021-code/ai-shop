@@ -77,7 +77,7 @@ export default {
   },
   fulfillment: {
     NEIGHBOR_PICKUP: "邻里自提",
-    PICKUP: "自提点自提",
+    STORE_PICKUP: "自提点自提",
     DELIVERY: "送货上门",
     EXPRESS: "快递配送",
     STORE_VERIFY: "到店核销",
@@ -191,7 +191,7 @@ export default {
   },
   fulfillmentDesc: {
     DELIVERY: "从自提点送到家，满额免配送费",
-    PICKUP: "到店自提，凭取货码核销",
+    STORE_PICKUP: "到店自提，凭取货码核销",
     NEIGHBOR_PICKUP: "送到团发起人家，按约定时段上门取",
     EXPRESS: "快递配送，付款后 48 小时内发出",
     STORE_VERIFY: "到店出示核销码使用",

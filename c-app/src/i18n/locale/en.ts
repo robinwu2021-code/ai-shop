@@ -77,7 +77,7 @@ export default {
   },
   fulfillment: {
     NEIGHBOR_PICKUP: "Neighbour pickup",
-    PICKUP: "Collect at pickup point",
+    STORE_PICKUP: "Collect at pickup point",
     DELIVERY: "Home delivery",
     EXPRESS: "Courier delivery",
     STORE_VERIFY: "Redeem in store",
@@ -169,7 +169,7 @@ export default {
   },
   fulfillmentDesc: {
     DELIVERY: "Delivered from the pickup point; free over the threshold",
-    PICKUP: "Collect at your pickup point with the code",
+    STORE_PICKUP: "Collect at your pickup point with the code",
     NEIGHBOR_PICKUP: "Delivered to the organiser's home; collect in the agreed window",
     EXPRESS: "Ships within 48 hours of payment",
     STORE_VERIFY: "Show the code in store",

@@ -135,8 +135,15 @@ export const SERVICE_SCOPE = {
 } as const;
 
 export const FULFILLMENT = {
-  /** 到店自提：商家门店（PickupPoint.type=STORE） */
-  PICKUP: "PICKUP",
+  /**
+   * 到店自提：商家门店（PickupPoint.type=STORE）。**库里存 STORE_PICKUP**。
+   *
+   * ⚠️ 键叫 PICKUP 而值是 "STORE_PICKUP"：后端 ord_sub_order.fulfillment 存的是后者。
+   * 这里此前值也写成 "PICKUP"，后果在确认订单页直接可见 ——
+   * 履约方式那一栏显示的是 `fulfillment.STORE_PICKUP`（i18n 键原样打出来），
+   * 因为词条按 PICKUP 建、而后端下发 STORE_PICKUP，查不到就回退成键名。
+   */
+  PICKUP: "STORE_PICKUP",
   /** 邻里自提：送到团发起人家里（PickupPoint.type=NEIGHBOR，ADR-005）
    *  ⚠️ 承接方是用户不是商家，**零报酬**，且只能是自己发起的团 */
   NEIGHBOR_PICKUP: "NEIGHBOR_PICKUP",

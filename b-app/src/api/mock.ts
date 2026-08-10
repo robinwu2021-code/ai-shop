@@ -446,7 +446,7 @@ export const mockApi: MerchantApi = {
     const mine = merchantNo ? db.orders.filter((o) => belongsToMerchant(o, merchantNo)) : [];
     const pickupNo = db.merchant.pickupNo;
     const atMyPoint = db.merchant.isPickupPoint
-      ? db.orders.filter((o) => o.fulfillment === "PICKUP" && (!pickupNo || o.pickupNo === pickupNo))
+      ? db.orders.filter((o) => o.fulfillment === "STORE_PICKUP" && (!pickupNo || o.pickupNo === pickupNo))
       : [];
     return delay({
       toShip: mine.filter((o) => o.fulfillment === "EXPRESS" && o.status === "PAID").length,
@@ -707,7 +707,7 @@ export const mockApi: MerchantApi = {
   async mPickupOverview() {
     const pickupNo = db.merchant.pickupNo;
     const mine = db.orders.filter(
-      (o) => o.fulfillment === "PICKUP" && (!pickupNo || o.pickupNo === pickupNo),
+      (o) => o.fulfillment === "STORE_PICKUP" && (!pickupNo || o.pickupNo === pickupNo),
     );
     const startOfDay = new Date().setHours(0, 0, 0, 0);
     const itemCount = mine
@@ -729,7 +729,7 @@ export const mockApi: MerchantApi = {
     const pickupNo = db.merchant.pickupNo;
     return delay(
       db.orders.filter(
-        (o) => o.fulfillment === "PICKUP" && (!pickupNo || o.pickupNo === pickupNo),
+        (o) => o.fulfillment === "STORE_PICKUP" && (!pickupNo || o.pickupNo === pickupNo),
       ),
     );
   },
@@ -738,7 +738,7 @@ export const mockApi: MerchantApi = {
     const pickupNo = db.merchant.pickupNo;
     const map = new Map<string, PickingRow>();
     for (const o of db.orders) {
-      if (o.fulfillment !== "PICKUP") continue;
+      if (o.fulfillment !== "STORE_PICKUP") continue;
       if (pickupNo && o.pickupNo !== pickupNo) continue;
       if (!["PAID", "ARRIVED"].includes(o.status)) continue;
       const buyer = o.buyerNickname ?? db.user.nickname;
@@ -1120,7 +1120,7 @@ export const mockApi: MerchantApi = {
         // 自提点履约服务费：按件。这笔是**供货方付、承接方收**，
         // 本店既供货又承接时两边抵消，但账上要分别列出来（口径待定 B9）
         const fulfillFee = list
-          .filter((o) => o.status === "COMPLETED" && o.fulfillment === "PICKUP")
+          .filter((o) => o.status === "COMPLETED" && o.fulfillment === "STORE_PICKUP")
           .reduce(
             (s, o) =>
               s + o.items.reduce((n, it) => n + it.qty, 0) * SETTLE.fulfillFeePerItemMinor,
