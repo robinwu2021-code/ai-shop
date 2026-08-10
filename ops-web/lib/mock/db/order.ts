@@ -11,7 +11,7 @@ export const orders: Order[] = [
     payAmount: 1780, createdAt: "2026-08-05T00:12:00Z", paidAt: "2026-08-05T00:13:20Z",
   },
   {
-    orderNo: "SO2026080502", parentNo: "PO20260805A", status: "PREPARING",
+    orderNo: "SO2026080502", parentNo: "PO20260805A", status: "PAID",
     merchantNo: "M902", merchantName: "老张水果店",
     communityNo: "C001", communityName: "锦绣花园", pickupNo: "P001",
     fulfillType: "STORE_PICKUP", trafficSource: "MERCHANT_OWNED",
@@ -19,7 +19,7 @@ export const orders: Order[] = [
     payAmount: 3980, createdAt: "2026-08-05T00:12:00Z", paidAt: "2026-08-05T00:13:20Z",
   },
   {
-    orderNo: "SO2026080503", parentNo: "PO20260805B", status: "PENDING_PAY",
+    orderNo: "SO2026080503", parentNo: "PO20260805B", status: "WAIT_PAY",
     merchantNo: "M901", merchantName: "阿姨家的菜摊",
     communityNo: "C001", communityName: "锦绣花园", pickupNo: "P001",
     fulfillType: "NEIGHBOR_PICKUP", trafficSource: "PLATFORM",
@@ -27,7 +27,7 @@ export const orders: Order[] = [
     payAmount: 1860, createdAt: "2026-08-05T01:40:00Z", paidAt: null,
   },
   {
-    orderNo: "SO2026080504", parentNo: "PO20260805C", status: "DELIVERING",
+    orderNo: "SO2026080504", parentNo: "PO20260805C", status: "SHIPPED",
     merchantNo: "M903", merchantName: "邻家便利",
     communityNo: "C002", communityName: "阳光里",
     fulfillType: "MERCHANT_DELIVERY", trafficSource: "INVITE",
@@ -46,7 +46,7 @@ export const orders: Order[] = [
     payAmount: 12800, createdAt: "2026-08-03T02:00:00Z", paidAt: "2026-08-03T02:01:00Z",
   },
   {
-    orderNo: "SO2026080506", parentNo: "PO20260803E", status: "AFTER_SALE",
+    orderNo: "SO2026080506", parentNo: "PO20260803E", status: "REFUNDED",
     merchantNo: "M902", merchantName: "老张水果店",
     communityNo: "C001", communityName: "锦绣花园", pickupNo: "P001",
     fulfillType: "STORE_PICKUP", trafficSource: "MERCHANT_OWNED",
@@ -64,10 +64,10 @@ export const orders: Order[] = [
  */
 const STATUS_AGE_MINUTES: Record<string, number> = {
   SO2026080501: 2000, // ARRIVED 超过 1440 → 异常
-  SO2026080502: 30,   // PREPARING 未超 120 → 正常
-  SO2026080503: 45,   // PENDING_PAY 超过 15 → 关单任务没跑
-  SO2026080504: 600,  // DELIVERING 超过 240 → 异常
-  SO2026080506: 100,  // AFTER_SALE 未超 2880 → 正常
+  SO2026080502: 30,   // PAID 未超 120 → 正常
+  SO2026080503: 45,   // WAIT_PAY 超过 15 → 关单任务没跑
+  SO2026080504: 600,  // SHIPPED 超过 240 → 异常
+  SO2026080506: 100,  // REFUNDED 未超 2880 → 正常
 };
 
 for (const o of orders) {

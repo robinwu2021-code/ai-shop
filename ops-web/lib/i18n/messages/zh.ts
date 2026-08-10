@@ -139,14 +139,13 @@ export const zh = {
   },
   merchantTier: { PERSONAL: "个人", INDIVIDUAL: "个体户", COMPANY: "企业" },
   orderStatus: {
-    PENDING_PAY: "待支付",
-    PAID: "已支付",
-    PREPARING: "备货中",
-    DELIVERING: "配送中",
+    WAIT_PAY: "待支付",
+    PAID: "待发货",
+    SHIPPED: "已发货",
     ARRIVED: "待核销",
     COMPLETED: "已完成",
     CANCELLED: "已取消",
-    AFTER_SALE: "售后中",
+    REFUNDED: "已退款",
   },
   fulfillType: {
     STORE_PICKUP: "门店自提",

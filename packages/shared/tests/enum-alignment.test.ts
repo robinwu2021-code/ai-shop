@@ -38,7 +38,7 @@ const KNOWN_SHARED: Record<string, string> = {
  * 但在那之前，不该再新增一个「后端永远不会给的值」。
  * 这个数字每降一点，就是一块真正对齐了的地方。
  */
-const OPS_WEB_BASELINE = 37;
+const OPS_WEB_BASELINE = 36;
 
 describe("枚举对账", () => {
   const gaps: Gap[] = findGaps();

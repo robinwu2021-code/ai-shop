@@ -41,14 +41,13 @@ export function MerchantStatusBadge({ value }: { value: MerchantStatus }) {
 export function useOrderStatusMap(): StatusMap<OrderStatus> {
   const { t } = useI18n();
   return {
-    PENDING_PAY: { label: t("orderStatus.PENDING_PAY"), tone: "warning" },
+    WAIT_PAY: { label: t("orderStatus.WAIT_PAY"), tone: "warning" },
     PAID: { label: t("orderStatus.PAID"), tone: "info" },
-    PREPARING: { label: t("orderStatus.PREPARING"), tone: "info" },
-    DELIVERING: { label: t("orderStatus.DELIVERING"), tone: "info" },
+    SHIPPED: { label: t("orderStatus.SHIPPED"), tone: "info" },
     ARRIVED: { label: t("orderStatus.ARRIVED"), tone: "warning" },
     COMPLETED: { label: t("orderStatus.COMPLETED"), tone: "success" },
     CANCELLED: { label: t("orderStatus.CANCELLED"), tone: "muted" },
-    AFTER_SALE: { label: t("orderStatus.AFTER_SALE"), tone: "danger" },
+    REFUNDED: { label: t("orderStatus.REFUNDED"), tone: "danger" },
   };
 }
 

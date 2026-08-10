@@ -25,7 +25,7 @@ function toException(o: Order): OrderException | null {
   const stuckMinutes = Math.floor((Date.now() - new Date(since).getTime()) / 60_000);
   if (stuckMinutes <= thresholdMinutes) return null;
   // 待支付超时还没关单 = 关单任务本身出了问题，与"卡住"不是一回事，处置也不同
-  const kind: ExceptionKind = o.status === "PENDING_PAY" ? "PAY_TIMEOUT" : "STUCK";
+  const kind: ExceptionKind = o.status === "WAIT_PAY" ? "PAY_TIMEOUT" : "STUCK";
   return { order: o, kind, stuckMinutes, thresholdMinutes };
 }
 
@@ -123,7 +123,7 @@ export const orderMock: OrderApi = {
     const order: Order = {
       orderNo: `SO${now.slice(0, 10).replace(/-/g, "")}P${seq}`,
       parentNo: `PO${now.slice(0, 10).replace(/-/g, "")}P${seq}`,
-      status: "PENDING_PAY", // 代客下单**不代付款**：钱必须由用户自己付
+      status: "WAIT_PAY", // 代客下单**不代付款**：钱必须由用户自己付
       merchantNo, merchantName: merchant.name,
       communityNo, communityName: community.name,
       fulfillType, trafficSource: "PLATFORM",
@@ -134,7 +134,7 @@ export const orderMock: OrderApi = {
     };
     db.orders.unshift(order);
     db.orderInterventions.unshift({
-      orderNo: order.orderNo, from: "PENDING_PAY", to: "PENDING_PAY",
+      orderNo: order.orderNo, from: "WAIT_PAY", to: "WAIT_PAY",
       remark: `代客下单：${reason.trim()}`, operator: "admin", at: now,
     });
     return wait(order, 400);

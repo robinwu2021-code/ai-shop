@@ -70,12 +70,12 @@ export const MAX_UNPAID_CLOSE_MINUTES = 1440;
  * 终态（COMPLETED / CANCELLED）不设时限。
  */
 export const STUCK_MINUTES: Record<string, number> = {
-  PENDING_PAY: 15,
-  PAID: 30,
-  PREPARING: 120,
-  DELIVERING: 240,
+  WAIT_PAY: 15,
+  // 已付款待发货：备货本身要时间，30 分钟一刀切会把正常单刷进异常队列
+  PAID: 120,
+  SHIPPED: 240,
   ARRIVED: 1440,
-  AFTER_SALE: 2880,
+  REFUNDED: 2880,
 };
 
 /** 运费模板首重下限（克）。首重 0 克意味着"拿起来就收首重费"，是配置错误而不是策略。 */

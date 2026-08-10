@@ -146,14 +146,13 @@ export const en: Messages = {
   },
   merchantTier: { PERSONAL: "Individual", INDIVIDUAL: "Sole trader", COMPANY: "Company" },
   orderStatus: {
-    PENDING_PAY: "Awaiting payment",
-    PAID: "Paid",
-    PREPARING: "Preparing",
-    DELIVERING: "Out for delivery",
+    WAIT_PAY: "Awaiting payment",
+    PAID: "Awaiting shipment",
+    SHIPPED: "Shipped",
     ARRIVED: "Awaiting pickup",
     COMPLETED: "Completed",
     CANCELLED: "Cancelled",
-    AFTER_SALE: "In after-sales",
+    REFUNDED: "Refunded",
   },
   fulfillType: {
     STORE_PICKUP: "Store pickup",

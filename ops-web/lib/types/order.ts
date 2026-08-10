@@ -14,25 +14,41 @@ export type FulfillType = "STORE_PICKUP" | "NEIGHBOR_PICKUP" | "MERCHANT_DELIVER
 /** 流量来源（矩阵 P-12.1.7 按 trafficSource 分档计费）。 */
 export type TrafficSource = "MERCHANT_OWNED" | "PLATFORM" | "INVITE" | "CHANNEL";
 
+/**
+ * 订单状态。**取值与后端下发的展示状态一致**（`OrderStatusView`）。
+ *
+ * ⚠️ 这里曾经是另一套：`PENDING_PAY` / `PREPARING` / `DELIVERING` / `AFTER_SALE`。
+ * 同一条订单，运营端叫一个名字、C/B 端叫另一个、库里又是第三个 ——
+ * 而 ops-web 只跑 mock，所以三套并存了很久没人发现。
+ *
+ * 后端的口径：库里存 WAIT_FULFILL / FULFILLING（粗，三种履约一视同仁），
+ * 下发时按履约方式展开成下面这些词。运营端按它筛、按它判断可迁移。
+ */
 export type OrderStatus =
-  | "PENDING_PAY"
+  | "WAIT_PAY"
   | "PAID"
-  | "PREPARING"
-  | "DELIVERING"
+  | "SHIPPED"
   | "ARRIVED"
   | "COMPLETED"
   | "CANCELLED"
-  | "AFTER_SALE";
+  | "REFUNDED";
 
+/**
+ * 允许的人工干预迁移。与后端 `OrderStateMachine` 的子单图同源 ——
+ * 运营能改到哪，最终由后端说了算；这份表只是让界面**提前**把不可能的选项灰掉，
+ * 而不是让人点下去再吃一个报错。
+ *
+ * 没有「售后中」这个态：售后是挂在订单上的**另一张单**，不是订单本身的状态。
+ * 把它做成状态，订单就会在「售后中」和真实状态之间二选一，而两者其实并存。
+ */
 export const ORDER_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
-  PENDING_PAY: ["PAID", "CANCELLED"],
-  PAID: ["PREPARING", "CANCELLED", "AFTER_SALE"],
-  PREPARING: ["DELIVERING", "ARRIVED", "AFTER_SALE"],
-  DELIVERING: ["ARRIVED", "AFTER_SALE"],
-  ARRIVED: ["COMPLETED", "AFTER_SALE"],
-  COMPLETED: ["AFTER_SALE"],
+  WAIT_PAY: ["PAID", "CANCELLED"],
+  PAID: ["SHIPPED", "ARRIVED", "COMPLETED", "REFUNDED", "CANCELLED"],
+  SHIPPED: ["COMPLETED", "REFUNDED"],
+  ARRIVED: ["COMPLETED", "REFUNDED"],
+  COMPLETED: ["REFUNDED"],
   CANCELLED: [],
-  AFTER_SALE: ["COMPLETED"],
+  REFUNDED: [],
 };
 
 export interface OrderItem {
