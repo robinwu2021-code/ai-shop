@@ -85,6 +85,38 @@ public class CampaignPortImpl implements CampaignPort {
         return out;
     }
 
+    @Override
+    public java.util.Map<String, GiftRule> giftRules(java.util.Collection<String> goodsNos) {
+        if (goodsNos == null || goodsNos.isEmpty()) {
+            return java.util.Map.of();
+        }
+        long now = System.currentTimeMillis();
+        List<MktCampaign> running = DataScopeContext.executeWithoutScope(() ->
+                campaignMapper.selectList(Wrappers.<MktCampaign>lambdaQuery()
+                        .eq(MktCampaign::getType, MktCampaign.BUY_GIFT)
+                        .eq(MktCampaign::getStatus, MktCampaign.RUNNING)
+                        .le(MktCampaign::getStartAt, now)
+                        .ge(MktCampaign::getEndAt, now)));
+        java.util.Map<String, GiftRule> out = new java.util.HashMap<>();
+        for (MktCampaign c : running) {
+            Integer buyN = c.getBuyN();
+            Integer giftM = c.getGiftM();
+            if (buyN == null || giftM == null || buyN <= 0 || giftM <= 0) {
+                continue;
+            }
+            GiftRule rule = new GiftRule(buyN, giftM);
+            for (String goodsNo : CampaignJson.readStringList(json, c.getGoodsNos())) {
+                if (!goodsNos.contains(goodsNo)) {
+                    continue;
+                }
+                // 命中多个时取「买同样多送得更多」的：按买 1 件能送几件比较
+                out.merge(goodsNo, rule, (a, b) ->
+                        b.giftQty(b.buyN()) * a.buyN() > a.giftQty(a.buyN()) * b.buyN() ? b : a);
+            }
+        }
+        return out;
+    }
+
     /**
      * 单个商家的满减额。
      *

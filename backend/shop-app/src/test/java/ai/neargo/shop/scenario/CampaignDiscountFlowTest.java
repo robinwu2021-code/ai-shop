@@ -159,6 +159,54 @@ class CampaignDiscountFlowTest {
         assertThat(discountPlatformOf(payOrderNo)).isZero();
     }
 
+    // ---------------------------------------------------------------- 买赠
+
+    @Test
+    @DisplayName("★ 买 2 送 1：订单里多一条赠品行，价格 0，不参与计价")
+    void buyGiftAddsFreeLine() throws Exception {
+        String token = login("13000170001");
+        buyGift("M0001", 2, 1, "G0001");
+        addToCart(token, "G0001", "SK0001", 2);
+
+        String orderNo = createOrder(token, null, "buygift-1");
+        var items = itemsOf(orderNo);
+        assertThat(items).hasSize(2);
+
+        var paid = items.stream().filter(i -> !Boolean.TRUE.equals(i.getIsGift())).findFirst().orElseThrow();
+        var gift = items.stream().filter(i -> Boolean.TRUE.equals(i.getIsGift())).findFirst().orElseThrow();
+        assertThat(paid.getQty()).isEqualTo(2);
+        assertThat(gift.getQty()).isEqualTo(1);
+        // 赠品不参与计价：价格与金额都是 0，实付仍是 2 件的钱
+        assertThat(gift.getPrice()).isZero();
+        assertThat(gift.getAmount()).isZero();
+        assertThat(payAmountOf(orderNo)).isEqualTo(9960L);
+    }
+
+    @Test
+    @DisplayName("买 4 件送 2 件 —— 口径是「付 N 件的钱收到 N+M 件」，不是「每 N+M 件里 M 件免费」")
+    void giftScalesByWholeGroups() throws Exception {
+        String token = login("13000170002");
+        buyGift("M0001", 2, 1, "G0001");
+        addToCart(token, "G0001", "SK0001", 4);
+
+        String orderNo = createOrder(token, null, "buygift-2");
+        var gift = itemsOf(orderNo).stream()
+                .filter(i -> Boolean.TRUE.equals(i.getIsGift())).findFirst().orElseThrow();
+        // 另一种口径会算成 1 件（4 件里凑出 1 组 3 件）—— 与商家说的「买二送一」不符
+        assertThat(gift.getQty()).isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("不满 N 件不送 —— 也不会产生一条 qty=0 的空赠品行")
+    void belowThresholdNoGift() throws Exception {
+        String token = login("13000170003");
+        buyGift("M0001", 3, 1, "G0001");
+        addToCart(token, "G0001", "SK0001", 2);
+
+        String orderNo = createOrder(token, null, "buygift-3");
+        assertThat(itemsOf(orderNo)).hasSize(1);
+    }
+
     // ---------------------------------------------------------------- 限时特价
 
     @Test
@@ -297,6 +345,42 @@ class CampaignDiscountFlowTest {
         long now = System.currentTimeMillis();
         campaign(entityNo, MktCampaign.FULL_CUT, MktCampaign.RUNNING, threshold, off,
                 now - 1000L, now + Duration.ofDays(7).toMillis());
+    }
+
+    private void buyGift(String entityNo, int buyN, int giftM, String goodsNo) {
+        long now = System.currentTimeMillis();
+        MktCampaign c = new MktCampaign();
+        c.setCampaignNo("CP" + System.nanoTime());
+        c.setEntityNo(entityNo);
+        c.setType(MktCampaign.BUY_GIFT);
+        c.setName(TEST_CAMPAIGN);
+        c.setStatus(MktCampaign.RUNNING);
+        c.setBuyN(buyN);
+        c.setGiftM(giftM);
+        c.setGoodsNos("[\"" + goodsNo + "\"]");
+        c.setStartAt(now - 1000L);
+        c.setEndAt(now + Duration.ofDays(7).toMillis());
+        campaignMapper.insert(c);
+    }
+
+    @Autowired
+    private ai.neargo.shop.trade.mapper.TradeMappers.OrderItemMapper itemMapper;
+
+    @Autowired
+    private ai.neargo.shop.trade.mapper.TradeMappers.OrderMapper orderMapper;
+
+    private java.util.List<ai.neargo.shop.trade.entity.OrdItem> itemsOf(String orderNo) {
+        return ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() ->
+                itemMapper.selectList(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                        .<ai.neargo.shop.trade.entity.OrdItem>lambdaQuery()
+                        .eq(ai.neargo.shop.trade.entity.OrdItem::getOrderNo, orderNo)));
+    }
+
+    private long payAmountOf(String orderNo) {
+        return ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() ->
+                orderMapper.selectOne(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                        .<ai.neargo.shop.trade.entity.OrdOrder>lambdaQuery()
+                        .eq(ai.neargo.shop.trade.entity.OrdOrder::getOrderNo, orderNo))).getPayAmount();
     }
 
     private void flash(String entityNo, long price, String goodsNo) {

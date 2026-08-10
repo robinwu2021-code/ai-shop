@@ -39,6 +39,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.security.SecureRandom;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -112,6 +113,33 @@ public class OrderServiceImpl implements OrderService {
         // 预览不落库、不锁库存：用户可能在结算页反复改地址与履约方式。
         // 但**优惠要按下单时同一套规则算**，否则结算页显示的金额和实付对不上
         return split.toVO(discountsOf(cmd, split));
+    }
+
+    /**
+     * 每个 SKU 该送几件赠品。
+     *
+     * <p>按 goodsNo 查规则、按行的购买数算件数。同一商品分散在多行（不同规格）时
+     * **各行分别算** —— 合并算会让「买 2 件 A 规格 + 2 件 B 规格」凑出一份赠品，
+     * 而商家的「买 2 送 1」说的是同一规格。
+     */
+    private Map<String, Integer> giftQtyOf(Split split) {
+        if (split.items.isEmpty()) {
+            return new HashMap<>();
+        }
+        Map<String, CampaignPort.GiftRule> rules = campaignPort.giftRules(
+                split.items.stream().map(i -> i.snapshot.goodsNo()).distinct().toList());
+        Map<String, Integer> out = new HashMap<>();
+        for (Line line : split.items) {
+            CampaignPort.GiftRule rule = rules.get(line.snapshot.goodsNo());
+            if (rule == null) {
+                continue;
+            }
+            int n = rule.giftQty(line.qty);
+            if (n > 0) {
+                out.merge(line.snapshot.skuNo(), n, Integer::sum);
+            }
+        }
+        return out;
     }
 
     /**
@@ -196,13 +224,37 @@ public class OrderServiceImpl implements OrderService {
         String orderNo = BizKey.next(BizKey.ORDER);
         long now = System.currentTimeMillis();
 
+        /*
+         * 买赠：算出每行该送几件。
+         *
+         * **赠品不阻断下单**：库存不够就少送，而不是让整单失败 ——
+         * 为了一件免费的赠品把一笔真实成交挡掉，代价与收益完全不成比例。
+         * 少送几件在订单里看得见（赠品行的 qty），商家侧也能对上。
+         */
+        Map<String, Integer> gifts = giftQtyOf(split);
+
         // ⑤ 锁库存 —— 放在落库之前：库存不足就整单失败，不留半张订单
         try {
-            stockPort.lock(orderNo, split.items.stream()
-                    .map(i -> new StockPort.SkuQty(i.skuNo(), i.qty()))
-                    .toList());
+            List<StockPort.SkuQty> lock = new ArrayList<>();
+            for (Line i : split.items) {
+                // 赠品与付费件是同一个 SKU（活动表里没有「赠哪件」），合并成一次锁
+                lock.add(new StockPort.SkuQty(i.skuNo(), i.qty() + gifts.getOrDefault(i.skuNo(), 0)));
+            }
+            stockPort.lock(orderNo, lock);
         } catch (RuntimeException e) {
-            throw BizException.of(ErrorCode.STOCK_NOT_ENOUGH);
+            /*
+             * 连赠品一起锁失败时**退回只锁付费件**再试一次：
+             * 这一步就是「库存不够少送」的落地 —— 不重试的话，
+             * 赠品缺货会表现成「这单买不了」，而用户根本没要那个赠品。
+             */
+            gifts.clear();
+            try {
+                stockPort.lock(orderNo, split.items.stream()
+                        .map(i -> new StockPort.SkuQty(i.skuNo(), i.qty()))
+                        .toList());
+            } catch (RuntimeException retry) {
+                throw BizException.of(ErrorCode.STOCK_NOT_ENOUGH);
+            }
         }
 
         // 优惠：与预览同一套规则（discountsOf 是唯一实现）
@@ -284,6 +336,29 @@ public class OrderServiceImpl implements OrderService {
                 item.setAmount(line.amount());
                 item.setCategoryType(line.snapshot.categoryType());
                 itemMapper.insert(item);
+
+                int giftQty = gifts.getOrDefault(line.snapshot.skuNo(), 0);
+                if (giftQty > 0) {
+                    /*
+                     * 赠品作为**独立的一行**，价格 0、amount 0、is_gift=1。
+                     * 不合并进付费行（把 qty 加上去）—— 那样订单里就分不清
+                     * 「买了 3 件」还是「买 2 件送 1 件」，而这两者的售后与分账都不同。
+                     */
+                    OrdItem gift = new OrdItem();
+                    gift.setSubOrderNo(subOrderNo);
+                    gift.setOrderNo(orderNo);
+                    gift.setGoodsNo(line.snapshot.goodsNo());
+                    gift.setSkuNo(line.snapshot.skuNo());
+                    gift.setTitle(line.snapshot.title());
+                    gift.setCover(line.snapshot.cover());
+                    gift.setSpec(line.snapshot.spec());
+                    gift.setPrice(0L);
+                    gift.setQty(giftQty);
+                    gift.setAmount(0L);
+                    gift.setCategoryType(line.snapshot.categoryType());
+                    gift.setIsGift(true);
+                    itemMapper.insert(gift);
+                }
             }
         }
 
@@ -570,7 +645,7 @@ public class OrderServiceImpl implements OrderService {
                     g.lines.stream().map(l -> new OrderVO.ItemVO(
                             l.snapshot.goodsNo(), g.merchantNo, l.snapshot.skuNo(), l.snapshot.title(),
                             l.snapshot.cover(), l.snapshot.spec(), l.snapshot.price(), l.qty,
-                            l.amount(), l.snapshot.categoryType())).toList(),
+                            l.amount(), l.snapshot.categoryType(), false)).toList(),
                     OrderVO.Amount.of(g.goodsAmount(), g.freight,
                             discounts.of(g.merchantNo), 0L, CURRENCY_CNY),
                     null, null, null, null, 0L, null, null, null, List.of(), null)).toList();
@@ -659,7 +734,7 @@ public class OrderServiceImpl implements OrderService {
     private OrderVO.ItemVO toItemVO(OrdItem i) {
         return new OrderVO.ItemVO(i.getGoodsNo(), null, i.getSkuNo(), i.getTitle(), i.getCover(),
                 i.getSpec(), nz(i.getPrice()), i.getQty() == null ? 0 : i.getQty(),
-                nz(i.getAmount()), i.getCategoryType());
+                nz(i.getAmount()), i.getCategoryType(), Boolean.TRUE.equals(i.getIsGift()));
     }
 
     private List<OrderVO.TimelineNode> timelineOf(String subOrderNo) {

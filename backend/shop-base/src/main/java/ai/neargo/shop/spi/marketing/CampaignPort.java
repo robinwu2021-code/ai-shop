@@ -46,6 +46,38 @@ public interface CampaignPort {
      */
     java.util.Map<String, Long> flashPrices(java.util.Collection<String> goodsNos);
 
+    /**
+     * 买赠规则：这些商品此刻的「买 N 送 M」。
+     *
+     * <p>只含命中活动的商品。同一商品命中多个时取**送得最多**的那个 ——
+     * 与满减「取最优」、特价「取最低价」同一口径：都往对用户有利的一侧走，
+     * 商家不会因为多建一个活动而少送。
+     *
+     * <p>⚠️ <b>赠品只能是同款</b>：{@code mkt_campaign} 里只有 buyN / giftM，
+     * 没有「赠哪件」的字段。端上的 `Promotion` 类型有 giftGoodsNo（买米送油），
+     * 后端表达不了 —— 又一处**同一件事两处建模且不一致**，已记入待确认。
+     */
+    java.util.Map<String, GiftRule> giftRules(java.util.Collection<String> goodsNos);
+
+    /**
+     * 买 N 送 M。
+     *
+     * <p>口径：**付 N 件的钱，收到 N+M 件**（买 2 送 1，买 4 件送 2 件）。
+     * 另一种常见口径是「每 N+M 件里有 M 件免费」（买 3 付 2），买 4 件只送 1 件。
+     * 取前者是因为它与商家口头说的「买二送一」一致，用户不会算错
+     * （与端上 `shared/utils/promotion.ts` 同一口径，两边必须一致，
+     * 否则页面显示送 2 件而实际发 1 件）。
+     */
+    record GiftRule(int buyN, int giftM) {
+
+        public int giftQty(int bought) {
+            if (buyN <= 0 || giftM <= 0 || bought < buyN) {
+                return 0;
+            }
+            return bought / buyN * giftM;
+        }
+    }
+
     record MerchantAmount(String merchantNo, long goodsAmount) {
     }
 

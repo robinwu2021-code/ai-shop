@@ -76,7 +76,15 @@ public record OrderVO(String orderNo,
                          long price,
                          int qty,
                          long amount,
-                         String type) {
+                         String type,
+                         /**
+                          * 赠品行（买赠活动送的），价格为 0。
+                          *
+                          * <p>端上的 `OrderItem.isGift` 一直有这个字段，后端此前不下发 ——
+                          * 于是买赠订单里会出现一条「¥0.00 ×4」的行，而 C 端认不出它是赠品，
+                          * 既显示不了「赠」标，也无法与「商家把价格填成 0」区分开。
+                          */
+                         boolean isGift) {
     }
 
     public record TimelineNode(String status, String label, long at) {

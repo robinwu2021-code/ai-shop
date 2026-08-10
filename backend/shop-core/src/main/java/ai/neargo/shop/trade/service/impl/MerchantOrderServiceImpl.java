@@ -203,7 +203,8 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
                         i.getTitle(), i.getCover(), i.getSpec(),
                         i.getPrice() == null ? 0L : i.getPrice(),
                         i.getQty() == null ? 0 : i.getQty(),
-                        i.getAmount() == null ? 0L : i.getAmount(), i.getCategoryType()))
+                        i.getAmount() == null ? 0L : i.getAmount(), i.getCategoryType(),
+                        Boolean.TRUE.equals(i.getIsGift())))
                 .toList();
 
         return new OrderVO(s.getSubOrderNo(), s.getOrderNo(),
