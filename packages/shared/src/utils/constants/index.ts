@@ -88,9 +88,21 @@ export const MARKETS = [
 export const DEFAULT_MARKET = "CN";
 
 /** 品类类型 —— 驱动计价/履约策略分发 */
+/**
+ * 五品类。**取值必须与 `prd_goods.type` 一致** —— 它是商品品类的权威字段。
+ *
+ * ⚠️ 键叫 GOODS 而值是 "NORMAL"：库里存的就是 NORMAL，键名只是代码里的叫法。
+ * 这里此前值也写成 "GOODS"，于是 C 端「日用百货」标签页筛 type=GOODS，
+ * 而库里 32 条商品全是 NORMAL —— **一条也筛不出来**，页面却写着
+ * 「你的社区还没有这类商家」，把 bug 伪装成了业务事实。
+ *
+ * 混淆的来源：后端另有一张 `sys_channel_category_rule.category_type`
+ * 用的是 GOODS（端上当年跟的是它）。同一个「五品类」在后端有两套名字，
+ * 而商品筛选走的是前者。
+ */
 export const CATEGORY_TYPE = {
-  /** 日用品（标品） */
-  GOODS: "GOODS",
+  /** 日用品（标品）。库里存 NORMAL */
+  GOODS: "NORMAL",
   /** 生鲜水果（预售 · 约重） */
   FRESH: "FRESH",
   /** 服务（到店核销 / 预约上门） */

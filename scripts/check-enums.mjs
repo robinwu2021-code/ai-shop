@@ -33,6 +33,25 @@ const CLIENT_ONLY = new Map([
   ["MaterialKind", "分享物料的形态由端上决定用哪种渲染，后端只给文案与链接"],
 ]);
 
+/**
+ * 取常量对象里的取值：`export const X = { A: "A", B: "B" } as const;`
+ *
+ * <p>为什么必须一起扫：**这类常量对象也是 wire 契约**。
+ * 漏掉它的代价这一轮实测过 —— `CATEGORY_TYPE.GOODS = "GOODS"` 而后端存的是
+ * `NORMAL`，C 端「日用百货」标签页因此永远是空的，而页面写着
+ * 「你的社区还没有这类商家」，把 bug 完美伪装成业务事实。
+ * 工具只扫联合类型时，这条一直是绿的。
+ */
+function constEnums(text) {
+  const out = new Map();
+  const re = /export const ([A-Z][A-Z0-9_]*) = \{([^}]*)\} as const;/g;
+  for (const m of text.matchAll(re)) {
+    const values = [...m[2].matchAll(/:\s*"([^"]+)"/g)].map((x) => x[1]);
+    if (values.length) out.set(m[1], values);
+  }
+  return out;
+}
+
 /** 取一个文件里所有字面量联合类型：`export type X = "A" | "B";` */
 function unionTypes(text) {
   const out = new Map();
@@ -77,6 +96,13 @@ export function clientEnums() {
   const shared = join(ROOT, "packages/shared/src/types/index.ts");
   for (const [name, values] of unionTypes(readFileSync(shared, "utf8"))) {
     out.push({ client: "shared", name, values });
+  }
+  // 常量对象同样是 wire 契约 —— 见 constEnums 的注释
+  const consts = join(ROOT, "packages/shared/src/utils/constants/index.ts");
+  if (existsSync(consts)) {
+    for (const [name, values] of constEnums(readFileSync(consts, "utf8"))) {
+      out.push({ client: "shared", name, values });
+    }
   }
   for (const f of walk(join(ROOT, "ops-web/lib/types"), ".ts")) {
     if (f.endsWith(".test.ts")) continue;
