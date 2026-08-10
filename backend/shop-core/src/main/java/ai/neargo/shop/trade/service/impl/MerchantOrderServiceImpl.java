@@ -12,6 +12,7 @@ import ai.neargo.shop.trade.entity.OrdStatusLog;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
 import ai.neargo.shop.trade.mapper.TradeMappers.StatusLogMapper;
 import ai.neargo.shop.trade.service.OrderStateMachine;
+import ai.neargo.shop.trade.service.OrderStatusView;
 import org.springframework.transaction.annotation.Transactional;
 import ai.neargo.shop.trade.mapper.TradeMappers.OrderItemMapper;
 import ai.neargo.shop.trade.mapper.TradeMappers.SubOrderMapper;
@@ -150,8 +151,23 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
             }
             w.in(OrdSubOrder::getStoreNo, storeNos);
         }
-        if (status != null && !status.isBlank()) {
-            w.eq(OrdSubOrder::getStatus, status);
+        /*
+         * 按**展示状态**筛。端上传来的是 PAID / SHIPPED / ARRIVED 这类词
+         * （b-app 的三个标签页就是它们），而库里存的是 WAIT_FULFILL / FULFILLING ——
+         * 此前直接拿去比库状态，一条也匹配不上：商家的「待发货」永远是空的，
+         * 而「全部」是好的，所以看起来只是几个页签没数据。
+         */
+        List<String> stored = OrderStatusView.toStored(status);
+        if (!stored.isEmpty()) {
+            w.in(OrdSubOrder::getStatus, stored);
+            // 发货与到货在库里是同一个状态，靠履约方式区分
+            Boolean pickupOnly = OrderStatusView.pickupOnly(status);
+            if (Boolean.TRUE.equals(pickupOnly)) {
+                w.in(OrdSubOrder::getFulfillment, PICKUP_FULFILLMENTS);
+            } else if (Boolean.FALSE.equals(pickupOnly)) {
+                w.and(x -> x.notIn(OrdSubOrder::getFulfillment, PICKUP_FULFILLMENTS)
+                        .or().isNull(OrdSubOrder::getFulfillment));
+            }
         }
         w.orderByDesc(OrdSubOrder::getId);
 
@@ -186,7 +202,9 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
                         i.getAmount() == null ? 0L : i.getAmount(), i.getCategoryType()))
                 .toList();
 
-        return new OrderVO(s.getSubOrderNo(), s.getOrderNo(), s.getStatus(), s.getFulfillment(),
+        return new OrderVO(s.getSubOrderNo(), s.getOrderNo(),
+                // 同 C 端：下发展示状态。b-app 的「待发货/已发货/待核销」三个标签页靠它区分
+                OrderStatusView.of(s.getStatus(), s.getFulfillment()), s.getFulfillment(),
                 s.getEntityNo(), s.getEntityName(), items,
                 OrderVO.Amount.of(nz(s.getGoodsAmount()), nz(s.getFreightAmount()),
                         nz(s.getDiscountAmount()), nz(s.getPayAmount()), "CNY"),
@@ -210,6 +228,9 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
     private static final String MERCHANT_DELIVERY = "MERCHANT_DELIVERY";
     private static final java.util.Set<String> PICKUP =
             java.util.Set.of("STORE_PICKUP", "NEIGHBOR_PICKUP");
+    /** 同 PICKUP，给 SQL 的 in/notIn 用（Wrapper 要 Collection） */
+    private static final List<String> PICKUP_FULFILLMENTS =
+            List.of("STORE_PICKUP", "NEIGHBOR_PICKUP");
 
     @Override
     public TodoCounts todo(String merchantNo, java.util.Collection<String> storeNos) {

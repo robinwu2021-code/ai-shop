@@ -60,11 +60,11 @@ class BizOrderFulfillFlowTest {
                         .content("{\"expressNo\":\"SF1234567890\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(0))
-                .andExpect(jsonPath("$.data.status").value("FULFILLING"));
+                .andExpect(jsonPath("$.data.status").value("SHIPPED"));
 
         mvc().perform(get("/biz/order/" + c.subOrderNo)
                         .header("Authorization", "Bearer " + c.merchantToken))
-                .andExpect(jsonPath("$.data.status").value("FULFILLING"));
+                .andExpect(jsonPath("$.data.status").value("SHIPPED"));
     }
 
     @Test
@@ -92,7 +92,7 @@ class BizOrderFulfillFlowTest {
          * 换单号：**允许**。填错单号必须能改，拒了商家只能打客服。
          * 但它会改掉买家看到的物流号，所以要留痕 —— 见时间线里那条「商家改快递单号」。
          */
-        ship(c, "YT123").andExpect(jsonPath("$.data.status").value("FULFILLING"));
+        ship(c, "YT123").andExpect(jsonPath("$.data.status").value("SHIPPED"));
 
         String detail = mvc().perform(get("/biz/order/" + c.subOrderNo)
                         .header("Authorization", "Bearer " + c.merchantToken))
@@ -230,5 +230,42 @@ class BizOrderFulfillFlowTest {
                         .content("{\"username\":\"" + username + "\",\"password\":\"" + password + "\"}"))
                 .andReturn().getResponse().getContentAsString();
         return json.readTree(body).get("data").get("token").asString();
+    }
+
+    // ---------------------------------------------------------------- 端上标签页（展示状态）
+
+    /*
+     * 这两条守的是一个**用户直接可见**的故障：
+     * b-app 的标签页把 PAID / SHIPPED / ARRIVED 当查询参数发过来，
+     * 而库里存的是 WAIT_FULFILL / FULFILLING —— 曾经直接拿去比库状态，
+     * 于是「待发货」「已发货」「待核销」三个页签**永远是空的**，
+     * 而「全部」是好的，所以看起来只是几个页签没数据，没人往契约上想。
+     */
+
+    @Test
+    @DisplayName("★ b-app「待发货」标签页筛得出刚付款的单")
+    void toShipTabFindsPaidOrders() throws Exception {
+        Ctx c = prepare("13400134201", "页签测试·待发货", "13410134201");
+
+        mvc().perform(get("/biz/order").header("Authorization", "Bearer " + c.merchantToken())
+                        .param("status", "PAID"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.total")
+                        .value(org.hamcrest.Matchers.greaterThan(0)));
+    }
+
+    @Test
+    @DisplayName("★ 发货后「已发货」筛得出、「待发货」筛不出 —— 页签之间不能重叠")
+    void shippedTabMovesTheOrder() throws Exception {
+        Ctx c = prepare("13400134202", "页签测试·已发货", "13410134202");
+        ship(c, "SF-TAB-1");
+
+        mvc().perform(get("/biz/order").header("Authorization", "Bearer " + c.merchantToken())
+                        .param("status", "SHIPPED"))
+                .andExpect(jsonPath("$.data.total")
+                        .value(org.hamcrest.Matchers.greaterThan(0)));
+        mvc().perform(get("/biz/order").header("Authorization", "Bearer " + c.merchantToken())
+                        .param("status", "PAID"))
+                .andExpect(jsonPath("$.data.total").value(0));
     }
 }

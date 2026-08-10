@@ -92,7 +92,8 @@ class ConsumerOrderFlowTest {
 
         mvc().perform(get("/mp/order/" + orderNo + "/pay-result").header("Authorization", "Bearer " + token))
                 .andExpect(jsonPath("$.data.status").value("PAID"))
-                .andExpect(jsonPath("$.data.subOrders[0].status").value("WAIT_FULFILL"))
+                // 端上看到的是**展示状态**：库里的 WAIT_FULFILL 对买家就是「已付款、等发货」
+                .andExpect(jsonPath("$.data.subOrders[0].status").value("PAID"))
                 .andExpect(jsonPath("$.data.subOrders[0].verifyCode").isNotEmpty())
                 // 归因在下单时固化（S2 恒为 PLATFORM，S4 接店铺码后才有 MERCHANT_OWNED）
                 .andExpect(jsonPath("$.data.subOrders[0].trafficSource").value("PLATFORM"));

@@ -319,7 +319,7 @@ class M4FulfillmentFlowTest {
     // ---------------------------------------------------------------- 到货登记与异常上报（D8/D9）
 
     @Test
-    @DisplayName("★ 标记到货：单子进 FULFILLING，重复点静默跳过（不报错也不重复计数）")
+    @DisplayName("★ 标记到货：买家侧变「已到自提点」，重复点静默跳过（不报错也不重复计数）")
     void markArrivedIsIdempotent() throws Exception {
         Ordered o = placeAndPay("13300134001", "G0002", "SK0003");
         String biz = loginAsOwnerOf("M0001", "13300134002");
@@ -333,7 +333,8 @@ class M4FulfillmentFlowTest {
         assertThat(json.readTree(body).get("data")).hasSize(1);
 
         mvc().perform(get("/mp/order/" + o.subOrderNo).header("Authorization", "Bearer " + o.userToken))
-                .andExpect(jsonPath("$.data.status").value("FULFILLING"));
+                // 自提单到货后，买家看到的是 ARRIVED（去取货），不是 SHIPPED（在路上）
+                .andExpect(jsonPath("$.data.status").value("ARRIVED"));
 
         /*
          * 再点一次：到货登记在自提点是高频且容易重复点的动作。
@@ -365,7 +366,7 @@ class M4FulfillmentFlowTest {
                         .header("Authorization", "Bearer " + o.userToken))
                 .andReturn().getResponse().getContentAsString();
         JsonNode order = json.readTree(body).get("data");
-        assertThat(order.get("status").asString()).isEqualTo("WAIT_FULFILL");
+        assertThat(order.get("status").asString()).isEqualTo("PAID");
         // 买家在时间线上看得见，才有机会自己走售后
         assertThat(order.toString()).contains("少了两袋");
     }

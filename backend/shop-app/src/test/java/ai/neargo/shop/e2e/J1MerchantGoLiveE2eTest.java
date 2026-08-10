@@ -160,7 +160,8 @@ class J1MerchantGoLiveE2eTest extends E2eBase {
         JsonNode shipped = post("/biz/order/" + subOrderNo + "/ship", merchantToken, defaultStore,
                 Map.of("expressNo", expressNo));
         step(13, "发货", shipped.get("status").asString() + " / " + shipped.get("expressNo").asString());
-        assertThat(shipped.get("status").asString()).isEqualTo("FULFILLING");
+        // 买家侧看到的是展示状态：快递履约的 FULFILLING 就是「已发货」
+        assertThat(shipped.get("status").asString()).isEqualTo("SHIPPED");
         /*
          * ★ 这一条是 D2 交付的意义所在：没有单号的「已发货」对买家没有任何用处。
          * 此前 OrderVO 里根本没有 expressNo —— 库里有、契约里有，而后端没带出来。

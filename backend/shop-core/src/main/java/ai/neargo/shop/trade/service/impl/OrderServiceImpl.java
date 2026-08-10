@@ -3,6 +3,7 @@ package ai.neargo.shop.trade.service.impl;
 import ai.neargo.shop.spi.user.PickupQueryPort;
 import ai.neargo.shop.trade.service.OrderService;
 import ai.neargo.shop.trade.service.OrderStateMachine;
+import ai.neargo.shop.trade.service.OrderStatusView;
 
 import ai.neargo.shop.spi.marketing.AttributionPort;
 import ai.neargo.shop.spi.marketing.CouponPort;
@@ -315,13 +316,26 @@ public class OrderServiceImpl implements OrderService {
         return payView(order, subOrders(orderNo));
     }
 
+    /** 自提类履约，给展示状态的反向过滤用（SHIPPED 与 ARRIVED 在库里是同一个状态）。 */
+    private static final List<String> PICKUP_FULFILLMENTS =
+            List.of("STORE_PICKUP", "NEIGHBOR_PICKUP");
+
     @Override
     public PageData<OrderVO> list(String status, long page, long size) {
         // Q6：列表是子单粒度
         var w = Wrappers.<OrdSubOrder>lambdaQuery()
                 .eq(OrdSubOrder::getUserNo, SecurityUtils.currentUserNo());
-        if (status != null && !status.isBlank()) {
-            w.eq(OrdSubOrder::getStatus, status);
+        // 同 B 端：端上传的是展示状态（PAID / SHIPPED / ARRIVED），库里存的是 WAIT_FULFILL / FULFILLING
+        List<String> stored = OrderStatusView.toStored(status);
+        if (!stored.isEmpty()) {
+            w.in(OrdSubOrder::getStatus, stored);
+            Boolean pickupOnly = OrderStatusView.pickupOnly(status);
+            if (Boolean.TRUE.equals(pickupOnly)) {
+                w.in(OrdSubOrder::getFulfillment, PICKUP_FULFILLMENTS);
+            } else if (Boolean.FALSE.equals(pickupOnly)) {
+                w.and(x -> x.notIn(OrdSubOrder::getFulfillment, PICKUP_FULFILLMENTS)
+                        .or().isNull(OrdSubOrder::getFulfillment));
+            }
         }
         w.orderByDesc(OrdSubOrder::getId);
 
@@ -540,7 +554,9 @@ public class OrderServiceImpl implements OrderService {
     /** 订单视角（Q6）：单商家，有履约方式、核销码与时间线。 */
     private OrderVO orderView(OrdSubOrder s, OrdOrder order) {
         return new OrderVO(
-                s.getSubOrderNo(), s.getOrderNo(), s.getStatus(), s.getFulfillment(),
+                // 下发**展示状态**而不是库状态：端上的标签页按前者筛（见 OrderStatusView 的注释）
+                s.getSubOrderNo(), s.getOrderNo(),
+                OrderStatusView.of(s.getStatus(), s.getFulfillment()), s.getFulfillment(),
                 s.getEntityNo(), s.getEntityName(),
                 itemsOf(s.getSubOrderNo()).stream().map(this::toItemVO).toList(),
                 OrderVO.Amount.of(nz(s.getGoodsAmount()), nz(s.getFreightAmount()),
