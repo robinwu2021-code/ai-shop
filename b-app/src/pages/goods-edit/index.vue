@@ -62,7 +62,7 @@ const subtitle = ref<I18nText>({ "zh-CN": "", en: "", ar: "" });
 const untranslated = computed(() =>
   LANGS.filter((l) => l.id !== "zh-CN" && !title.value[l.id].trim()).map((l) => l.key),
 );
-const type = ref<CategoryType>(CATEGORY_TYPE.GOODS as CategoryType);
+const type = ref<CategoryType>(CATEGORY_TYPE.NORMAL as CategoryType);
 
 /**
  * 类目（三级树）。

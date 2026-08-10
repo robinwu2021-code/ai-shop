@@ -599,9 +599,9 @@ export const mockApi: MerchantApi = {
     // 只为把「识别 → 预填 → 店主改 → 保存」这条交互链路跑通。
     // 真实实现在服务端（小程序不能跑本地模型），置信度由模型给。
     const guesses: { title: string; type: Goods["type"] }[] = [
-      { title: "东北五常大米", type: CATEGORY_TYPE.GOODS },
+      { title: "东北五常大米", type: CATEGORY_TYPE.NORMAL },
       { title: "本地土鸡蛋", type: CATEGORY_TYPE.FRESH },
-      { title: "洗衣液 大容量装", type: CATEGORY_TYPE.GOODS },
+      { title: "洗衣液 大容量装", type: CATEGORY_TYPE.NORMAL },
     ];
     const g = guesses[db.seq % guesses.length]!;
     return delay({ ...g, confidence: 0.72 }, 700);

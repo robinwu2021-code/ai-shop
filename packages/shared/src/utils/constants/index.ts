@@ -101,8 +101,15 @@ export const DEFAULT_MARKET = "CN";
  * 而商品筛选走的是前者。
  */
 export const CATEGORY_TYPE = {
-  /** 日用品（标品）。库里存 NORMAL */
-  GOODS: "NORMAL",
+  /**
+   * 日用品（标品）。
+   *
+   * ⚠️ 这个键此前叫 `GOODS` 而值是 `"NORMAL"` —— 名实不符。
+   * 能跑，但下一个人读到 `CATEGORY_TYPE.NORMAL` 会以为 wire 上是 `GOODS`，
+   * 而这**正是它当初写错的原因**（值也曾写成 "GOODS"，C 端「日用百货」
+   * 标签页因此永远是空的）。键改成与值一致，把这个歧义源掐掉。
+   */
+  NORMAL: "NORMAL",
   /** 生鲜水果（预售 · 约重） */
   FRESH: "FRESH",
   /** 服务（到店核销 / 预约上门） */

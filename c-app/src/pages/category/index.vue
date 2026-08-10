@@ -17,7 +17,7 @@ const list = ref<Goods[]>([]);
 
 const tabs = [
   { type: CATEGORY_TYPE.FRESH, key: "fresh" },
-  { type: CATEGORY_TYPE.GOODS, key: "goods" },
+  { type: CATEGORY_TYPE.NORMAL, key: "goods" },
   { type: CATEGORY_TYPE.SERVICE, key: "service" },
 ];
 /*

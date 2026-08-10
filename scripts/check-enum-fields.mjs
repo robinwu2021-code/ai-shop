@@ -121,7 +121,10 @@ const FIELDS = [
     concept: "自提点类型",
     field: "cmt_pickup_point.type",
     backend: { ddl: ["cmt_pickup_point", "type"] },
-    clients: [{ file: "ops-web/lib/types/community.ts", type: "PickupType" }],
+    clients: [
+      { file: SHARED_TYPES, type: "PickupPointType" },
+      { file: "ops-web/lib/types/community.ts", type: "PickupType" },
+    ],
   },
 ];
 

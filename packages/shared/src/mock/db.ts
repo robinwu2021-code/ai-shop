@@ -449,7 +449,7 @@ const goodsSeeds: GoodsSeed[] = [
     subtitle: t("低泡易漂 · 两种香型", "Low suds · two scents", "رغوة قليلة · رائحتان"),
     cover: "🧴",
     images: ["🧴"],
-    type: CATEGORY_TYPE.GOODS,
+    type: CATEGORY_TYPE.NORMAL,
     categoryNo: "C_CLEAN",
     price: 2990,
     originPrice: 3990,
@@ -479,7 +479,7 @@ const goodsSeeds: GoodsSeed[] = [
     subtitle: t("整箱 24 包 · 家庭装", "Case of 24 · family pack", "كرتون ٢٤ · عبوة عائلية"),
     cover: "🧻",
     images: ["🧻"],
-    type: CATEGORY_TYPE.GOODS,
+    type: CATEGORY_TYPE.NORMAL,
     categoryNo: "C_PAPER",
     price: 3990,
     originPrice: 5990,
@@ -997,7 +997,7 @@ export const db = {
     {
       templateNo: "ST_GOODS_PACK",
       scope: "PLATFORM" as const,
-      categoryType: CATEGORY_TYPE.GOODS,
+      categoryType: CATEGORY_TYPE.NORMAL,
       name: "包装",
       options: [
         { code: "P_BAG", label: "袋装" },
@@ -1009,7 +1009,7 @@ export const db = {
     {
       templateNo: "ST_GOODS_SCENT",
       scope: "PLATFORM" as const,
-      categoryType: CATEGORY_TYPE.GOODS,
+      categoryType: CATEGORY_TYPE.NORMAL,
       name: "香型",
       options: [
         { code: "S_LAV", label: "薰衣草" },

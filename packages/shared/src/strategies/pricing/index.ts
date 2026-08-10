@@ -9,7 +9,7 @@ import { fixedPricing } from "./fixed";
 import { weighedPricing } from "./weighed";
 
 const REGISTRY: Record<CategoryType, PricingStrategy> = {
-  [CATEGORY_TYPE.GOODS]: fixedPricing,
+  [CATEGORY_TYPE.NORMAL]: fixedPricing,
   [CATEGORY_TYPE.FRESH]: weighedPricing,
   // 服务 / 虚拟 / 卡券：按次固定价，无运费、无履约后差价
   [CATEGORY_TYPE.SERVICE]: noFreightPricing,

@@ -1122,7 +1122,16 @@ export type MerchantStatus =
   | "REVIEWING" // 已受理，客服正在看 —— 让商家知道「有人在看」
   | "REJECTED" // 驳回，可补料重提
   | "ACTIVE" // 正常经营
-  | "SUSPENDED"; // 被封禁（经营状态，与审核无关）
+  | "SUSPENDED"; // 被封禁或被冻结 —— 见下方「为什么没有 FROZEN」
+
+/*
+ * **为什么这里没有 FROZEN**（库里 mch_entity.status 是 ACTIVE/SUSPENDED/FROZEN）：
+ * 后端在下发这一层就把 FROZEN 折叠进了 SUSPENDED（BizMerchantController.bizStatus），
+ * 因为冻结与封禁对「我现在能不能干活」的答案一样。
+ *
+ * 补一个 FROZEN 进来是错的 —— 它永远不会被下发，只会变成一个筛不出东西的死分支。
+ * 映射有测试：backend/.../portal/biz/MerchantStatusMappingTest.java
+ */
 
 
 
@@ -1665,6 +1674,19 @@ export interface MerchantApplyStatus {
  * 取代了原先的 `Merchant.isPickupPoint` 布尔字段 —— 那个表达不了「承接方是用户」：
  * 邻里自提是送到**团发起人家里**，承接的是邻居本人，不是商家。
  */
+/**
+ * 自提点类型。对应 `cmt_pickup_point.type`。
+ *
+ * ⚠️ 此前只以裸字面量的形式内联在 `PickupPoint.type` 里 —— 值是对的，
+ * 但**没有单一声明处**：对账工具扫不到它，各处写的是裸字符串。
+ * `CATEGORY_TYPE` 出事前正是这个状态（见 docs/technical/枚举统一方案.md §2「C 无主」）：
+ * 今天没 bug，但下一个人在别处再写一次时，没有任何东西会拦住他写错。
+ */
+export type PickupPointType =
+  | "STORE" // 商家自有门店，不收费
+  | "NEIGHBOR" // 邻居家。**承接方是用户不是商家，零报酬**（ADR-005）
+  | "PLATFORM"; // 平台提供，线下协商
+
 export interface PickupPoint {
   /** 自提点单号 */
   pickupNo: string;
@@ -1674,7 +1696,7 @@ export interface PickupPoint {
    *   · NEIGHBOR 团发起人家里 —— **零报酬**（ADR-005），有报酬就是团长招募换个名字
    *   · PLATFORM 平台提供的点 —— 收履约服务费，**费率线下逐点协商，由运营平台录入**
    */
-  type: "STORE" | "NEIGHBOR" | "PLATFORM";
+  type: PickupPointType;
   /** 承接方所属账号池 */
   ownerType: "MERCHANT" | "USER" | "PLATFORM";
   /** 承接方单号，按 ownerType 落在 merchantNo 或 cUserNo 上 */

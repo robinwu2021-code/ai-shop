@@ -330,7 +330,7 @@ public class BizMerchantController {
     }
 
     /** 申请单状态 → B 端口径。PENDING 在端上叫 APPLYING（「已提交，等着」）。 */
-    private static String applyStatus(MerchantApplyVO apply) {
+    static String applyStatus(MerchantApplyVO apply) {
         if (apply == null) {
             return "NONE";
         }
@@ -346,7 +346,18 @@ public class BizMerchantController {
     }
 
     /** 商家主体状态 → B 端口径。BANNED 与 SUSPENDED 在端上不区分：都是「不能干活」。 */
-    private static String bizStatus(String status) {
+    /**
+     * 经营状态 → B 端口径。
+     *
+     * <p><b>FROZEN 被折叠进 SUSPENDED</b>，这是有意的：B 端要回答的只有
+     * 「我现在能不能干活」，冻结与封禁对这个问题的答案一样。
+     * 所以 shared 的 {@code MerchantStatus} 里**不该有 FROZEN** ——
+     * 它永远不会被下发，写进端上契约只会变成一个筛不出东西的死分支。
+     *
+     * <p>兜底方向是 SUSPENDED 而不是 ACTIVE：将来库里多出一个没人认识的状态时，
+     * 宁可误挡也不能误放 —— 放错了是让一家本该停业的店继续卖货。
+     */
+    static String bizStatus(String status) {
         return "ACTIVE".equals(status) ? "ACTIVE" : "SUSPENDED";
     }
 
