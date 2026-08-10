@@ -48,4 +48,26 @@ public interface FulfillmentQueryPort {
         public record Item(String goodsNo, String title, String spec, int qty) {
         }
     }
+
+    /**
+     * 标记到货：把待履约的自提单推进到「已到货、等买家来取」。
+     *
+     * <p>放在 Port 上而不是让 fulfillment 域直接改 {@code ord_sub_order}：
+     * <b>状态机在 trade 侧</b>，两处各推一次状态迟早会出现「自提点说到货了、
+     * 订单状态却还停在待履约」——而那种不一致没有任何报错。
+     *
+     * @return 真正被推进的子单号；已经到货或已核销的**不在其中**（幂等：重复点不出错也不重复计数）
+     */
+    List<String> markArrived(List<String> subOrderNos, String pickupNo, String operatorNo);
+
+    /**
+     * 记一条异常留痕，并通知买家。<b>不退款、不改状态</b>。
+     *
+     * <p>为什么只留痕：短少 / 破损的责任在供货方还是承接方**尚未定**（矩阵 M4），
+     * 自动退款等于默认平台兜底。买家收到通知后可以自己走售后，
+     * 那条路上有明确的责任认定。
+     *
+     * @param label 展示给买家的一句话，如「自提点上报短少：少了两袋」
+     */
+    void reportException(String subOrderNo, String operatorNo, String label);
 }

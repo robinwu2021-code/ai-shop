@@ -4,12 +4,13 @@ import ai.neargo.shop.auth.BizContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.fulfillment.dto.PickingRowVO;
-import ai.neargo.shop.fulfillment.dto.PickupOrderVO;
 import ai.neargo.shop.fulfillment.dto.PickupOverviewVO;
 import ai.neargo.shop.fulfillment.dto.VerifyResultVO;
 import ai.neargo.shop.fulfillment.service.PickupService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import ai.neargo.shop.fulfillment.dto.PickupOrderVO;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.context.annotation.Profile;
@@ -94,5 +95,32 @@ public class BizPickupController {
     }
 
     public record VerifyBatchReq(List<String> verifyCodes) {
+    }
+
+    /**
+     * 标记到货。端上传的是一批子单号（自提点通常一次点完一车货）。
+     *
+     * <p>对已到货/已核销的重复点击静默跳过 —— 到货登记是高频且容易重复点的动作，
+     * 每次都报错只会让人学会忽略报错。
+     */
+    @PostMapping("/biz/pickup/arrived")
+    public List<PickupOrderVO> markArrived(
+            @RequestBody ArrivedReq req) {
+        return pickupService.markArrived(null, req.orderNos());
+    }
+
+    /** 短少 / 破损上报。**只留痕并通知买家，不退款**（责任未定，见 Service 注释）。 */
+    @PostMapping("/biz/pickup/{orderNo}/report")
+    public PickupOrderVO reportShortage(
+            @PathVariable String orderNo, @RequestBody ReportReq req) {
+        return pickupService.reportShortage(null, orderNo, req.kind(), req.skuNo(), req.note());
+    }
+
+    /** @param orderNos 一批子单号 */
+    public record ArrivedReq(List<String> orderNos) {
+    }
+
+    /** @param kind SHORTAGE（短少）/ DAMAGE（破损） */
+    public record ReportReq(String skuNo, String kind, String note) {
     }
 }

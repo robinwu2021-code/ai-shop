@@ -316,6 +316,88 @@ class M4FulfillmentFlowTest {
 
     // ---------------------------------------------------------------- helpers
 
+    // ---------------------------------------------------------------- 到货登记与异常上报（D8/D9）
+
+    @Test
+    @DisplayName("★ 标记到货：单子进 FULFILLING，重复点静默跳过（不报错也不重复计数）")
+    void markArrivedIsIdempotent() throws Exception {
+        Ordered o = placeAndPay("13300134001", "G0002", "SK0003");
+        String biz = loginAsOwnerOf("M0001", "13300134002");
+
+        String body = mvc().perform(post("/biz/pickup/arrived").header("Authorization", "Bearer " + biz)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"orderNos\":[\"" + o.subOrderNo + "\"]}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        assertThat(json.readTree(body).get("data")).hasSize(1);
+
+        mvc().perform(get("/mp/order/" + o.subOrderNo).header("Authorization", "Bearer " + o.userToken))
+                .andExpect(jsonPath("$.data.status").value("FULFILLING"));
+
+        /*
+         * 再点一次：到货登记在自提点是高频且容易重复点的动作。
+         * 返回空列表而不是报错 —— 每次都报错只会让人学会忽略报错。
+         */
+        String again = mvc().perform(post("/biz/pickup/arrived").header("Authorization", "Bearer " + biz)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"orderNos\":[\"" + o.subOrderNo + "\"]}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        assertThat(json.readTree(again).get("data")).isEmpty();
+    }
+
+    @Test
+    @DisplayName("★ 短少上报只留痕，不退款也不改状态（责任未定，自动退等于平台兜底）")
+    void reportShortageOnlyLeavesATrace() throws Exception {
+        Ordered o = placeAndPay("13300134010", "G0002", "SK0003");
+        String biz = loginAsOwnerOf("M0001", "13300134011");
+
+        mvc().perform(post("/biz/pickup/" + o.subOrderNo + "/report")
+                        .header("Authorization", "Bearer " + biz)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"skuNo\":\"SK0003\",\"kind\":\"SHORTAGE\",\"note\":\"少了两袋\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0));
+
+        // 状态不动：仍然可以正常核销 —— 上报不是终止履约
+        String body = mvc().perform(get("/mp/order/" + o.subOrderNo)
+                        .header("Authorization", "Bearer " + o.userToken))
+                .andReturn().getResponse().getContentAsString();
+        JsonNode order = json.readTree(body).get("data");
+        assertThat(order.get("status").asString()).isEqualTo("WAIT_FULFILL");
+        // 买家在时间线上看得见，才有机会自己走售后
+        assertThat(order.toString()).contains("少了两袋");
+    }
+
+    @Test
+    @DisplayName("★ 已核销的单不能再报短少 —— 那时是售后问题，责任认定路径不同")
+    void cannotReportAfterVerified() throws Exception {
+        Ordered o = placeAndPay("13300134020", "G0002", "SK0003");
+        String biz = loginAsOwnerOf("M0001", "13300134021");
+
+        mvc().perform(post("/biz/pickup/verify").header("Authorization", "Bearer " + biz)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"verifyCode\":\"" + o.verifyCode + "\"}"))
+                .andExpect(jsonPath("$.data.success").value(true));
+
+        mvc().perform(post("/biz/pickup/" + o.subOrderNo + "/report")
+                        .header("Authorization", "Bearer " + biz)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"skuNo\":\"SK0003\",\"kind\":\"DAMAGE\",\"note\":\"压坏了\"}"))
+                .andExpect(jsonPath("$.code").value(20004));
+    }
+
+    @Test
+    @DisplayName("不承接自提点的人做不了到货登记（403）")
+    void nonPickupOperatorCannotMarkArrived() throws Exception {
+        String plain = login("13300134030");
+        mvc().perform(post("/biz/pickup/arrived").header("Authorization", "Bearer " + plain)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"orderNos\":[\"SUB-NOPE\"]}"))
+                .andExpect(jsonPath("$.code").value(10403));
+    }
+
     private record Ordered(String userToken, String subOrderNo, String verifyCode) {
     }
 

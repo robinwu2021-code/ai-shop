@@ -13,6 +13,8 @@ import ai.neargo.shop.trade.mapper.TradeMappers.StatusLogMapper;
 import ai.neargo.shop.trade.mapper.TradeMappers.SubOrderMapper;
 import ai.neargo.shop.spi.user.UserQueryPort;
 import ai.neargo.common.data.scope.DataScopeContext;
+import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.ErrorCode;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -147,5 +149,74 @@ public class FulfillmentQueryPortImpl implements FulfillmentQueryPort {
                 buyer.map(UserQueryPort.UserBrief::nickname).orElse("邻居"),
                 buyer.map(UserQueryPort.UserBrief::phoneTail).orElse(""),
                 s.getGroupNo(), items);
+    }
+
+    @Override
+    @org.springframework.transaction.annotation.Transactional
+    public List<String> markArrived(List<String> subOrderNos, String pickupNo, String operatorNo) {
+        if (subOrderNos == null || subOrderNos.isEmpty()) {
+            return List.of();
+        }
+        List<OrdSubOrder> rows = DataScopeContext.executeWithoutScope(() ->
+                subOrderMapper.selectList(Wrappers.<OrdSubOrder>lambdaQuery()
+                        .in(OrdSubOrder::getSubOrderNo, subOrderNos)));
+
+        List<String> moved = new java.util.ArrayList<>();
+        for (OrdSubOrder sub : rows) {
+            /*
+             * 只认**本自提点**的单。不校验的话，一个自提点能把别家点的货标成到货，
+             * 而那边的买家会收到「可以来取了」，白跑一趟。
+             */
+            if (pickupNo != null && !pickupNo.equals(sub.getPickupNo())) {
+                continue;
+            }
+            // 幂等：已到货（FULFILLING）或已核销（COMPLETED）的重复点击是常态，静默跳过
+            if (!OrdSubOrder.WAIT_FULFILL.equals(sub.getStatus())) {
+                continue;
+            }
+            sub.setStatus(OrdSubOrder.FULFILLING);
+            DataScopeContext.executeWithoutScope(() -> subOrderMapper.updateById(sub));
+            appendLog(sub.getSubOrderNo(), OrdSubOrder.FULFILLING, "已到自提点，可来取货", operatorNo);
+            moved.add(sub.getSubOrderNo());
+        }
+        return moved;
+    }
+
+    @Override
+    @org.springframework.transaction.annotation.Transactional
+    public void reportException(String subOrderNo, String operatorNo, String label) {
+        OrdSubOrder sub = DataScopeContext.executeWithoutScope(() ->
+                subOrderMapper.selectOne(Wrappers.<OrdSubOrder>lambdaQuery()
+                        .eq(OrdSubOrder::getSubOrderNo, subOrderNo).last("limit 1")));
+        if (sub == null) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        /*
+         * 已核销的单不能再报异常：货已经交到买家手上，此时的短少/破损是售后问题，
+         * 走售后有明确的责任认定，而这里只是自提点的留痕，两条路的处置完全不同。
+         */
+        if (OrdSubOrder.COMPLETED.equals(sub.getStatus())) {
+            throw BizException.of(ErrorCode.ORDER_STATE_ILLEGAL);
+        }
+        /*
+         * **只留痕，状态不动、钱不动。**
+         * 短少/破损的责任在供货方还是承接方尚未定（矩阵 M4），自动退款等于默认平台兜底。
+         * 买家在订单时间线上看得到这条，可以自己走售后。
+         */
+        appendLog(subOrderNo, sub.getStatus(), label, operatorNo);
+    }
+
+    /** 时间线留痕。状态原样传入 —— 留痕不等于状态迁移。 */
+    private void appendLog(String subOrderNo, String status, String label, String operatorNo) {
+        OrdStatusLog log = new OrdStatusLog();
+        log.setSubOrderNo(subOrderNo);
+        log.setStatus(status);
+        log.setLabel(label);
+        log.setOperatorType(operatorNo == null ? OrdStatusLog.BY_SYSTEM : OrdStatusLog.BY_MERCHANT);
+        log.setOperatorNo(operatorNo);
+        log.setAt(System.currentTimeMillis());
+        log.setTenantNo("MAIN");
+        log.setCreatedAt(java.time.LocalDateTime.now());
+        statusLogMapper.insert(log);
     }
 }

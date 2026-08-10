@@ -150,6 +150,59 @@ public class PickupServiceImpl implements PickupService {
      * 作用域校验：不传就用当前身份的第一个点；传了必须在自己的点里。
      * <b>403 而不是空列表</b> —— 空列表会让店主以为「今天没单」，而不是「你查错点了」。
      */
+    @Override
+    @Transactional
+    public List<PickupOrderVO> markArrived(String pickupNo, List<String> subOrderNos) {
+        String scope = requireScope(pickupNo);
+        if (subOrderNos == null || subOrderNos.isEmpty()) {
+            // 空批次不是错误：端上「全选」时可能一单都没有，报错会挡住一次正常操作
+            return List.of();
+        }
+        List<String> moved = orderPort.markArrived(subOrderNos, scope, SecurityUtils.currentUserNo());
+        if (moved.isEmpty()) {
+            return List.of();
+        }
+        // 返回推进后的最新状态：端上直接拿它刷新列表，不用再拉一次
+        return orderPort.ordersOfPickup(scope, null).stream()
+                .filter(o -> moved.contains(o.subOrderNo()))
+                .map(this::mask)
+                .toList();
+    }
+
+    @Override
+    @Transactional
+    public PickupOrderVO reportShortage(String pickupNo, String subOrderNo, String kind,
+                                        String skuNo, String note) {
+        String scope = requireScope(pickupNo);
+        PickupOrder target = ofThisPickup(scope, subOrderNo, null);
+        if (target == null) {
+            /*
+             * 不在「还没取走」那批里，再按已核销找一次 —— 只为了报一个说得清的错。
+             *
+             * `ordersOfPickup(_, null)` 默认只给未取走的单（核销台关心待办不关心历史），
+             * 所以已核销的单在这里表现为「找不到」。直接 404 的话，店主看到的是
+             * 「这单不存在」，而它明明就在本点刚核销过 —— 他会以为系统丢单。
+             */
+            if (ofThisPickup(scope, subOrderNo, "COMPLETED") != null) {
+                throw BizException.of(ErrorCode.ORDER_STATE_ILLEGAL);
+            }
+            // 真不在本点：404。区分「不存在」与「不是本点的」等于一个订单归属探测器
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+
+        String label = ("DAMAGE".equals(kind) ? "自提点上报破损：" : "自提点上报短少：")
+                + (note == null || note.isBlank() ? "无说明" : note.trim());
+        orderPort.reportException(subOrderNo, SecurityUtils.currentUserNo(), label);
+        return mask(target);
+    }
+
+    /** 在本点的某个状态里找这一单；找不到返回 null。 */
+    private PickupOrder ofThisPickup(String pickupNo, String subOrderNo, String status) {
+        return orderPort.ordersOfPickup(pickupNo, status).stream()
+                .filter(o -> o.subOrderNo().equals(subOrderNo))
+                .findFirst().orElse(null);
+    }
+
     private String requireScope(String pickupNo) {
         BizContext ctx = BizContext.current();
         if (ctx.pickupNos().isEmpty()) {
