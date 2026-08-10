@@ -39,7 +39,8 @@ public class UserQueryPortImpl implements UserQueryPort {
         if (u == null) {
             return Optional.empty();
         }
-        return Optional.of(new UserBrief(u.getUserNo(), u.getNickname(), phoneTail(u.getPhone())));
+        return Optional.of(new UserBrief(u.getUserNo(), u.getNickname(),
+                phoneTail(u.getPhone()), u.getAvatar()));
     }
 
     private static String phoneTail(String phone) {

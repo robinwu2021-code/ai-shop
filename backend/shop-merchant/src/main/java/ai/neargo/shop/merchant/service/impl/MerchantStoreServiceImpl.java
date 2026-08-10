@@ -24,6 +24,9 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
 
     private static final String COMMUNITY = "COMMUNITY";
 
+    /** 配送半径默认 3km：「先跑起来再说」，而不是 0（那等于谁都送不到）。 */
+    private static final int DEFAULT_RADIUS_M = 3000;
+
     private final MchStoreMapper storeMapper;
     private final MchEntityMapper merchantMapper;
     private final MchEntityCommunityMapper merchantCommunityMapper;
@@ -132,6 +135,60 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
                 merchantCommunityMapper.selectList(Wrappers.<MchEntityCommunity>lambdaQuery()
                         .eq(MchEntityCommunity::getEntityNo, merchantNo))).stream()
                 .map(MchEntityCommunity::getCommunityNo).toList();
+    }
+
+    @Override
+    public DeliveryRuleVO deliveryRule(String merchantNo, String storeNo) {
+        MchStore st = storeOf(merchantNo, storeNo);
+        // 没配过时返回**默认值**：端上拿 null 会渲染出四个空框，店主以为功能坏了
+        if (st == null) {
+            return new DeliveryRuleVO(DEFAULT_RADIUS_M, 0L, 0L, 0L);
+        }
+        return new DeliveryRuleVO(
+                st.getDeliveryRadiusM() == null ? DEFAULT_RADIUS_M : st.getDeliveryRadiusM(),
+                nz(st.getDeliveryMinOrderMinor()), nz(st.getDeliveryFeeMinor()),
+                nz(st.getDeliveryFreeThresholdMinor()));
+    }
+
+    @Override
+    @org.springframework.transaction.annotation.Transactional
+    public DeliveryRuleVO saveDeliveryRule(String merchantNo, String storeNo, DeliveryRuleVO rule) {
+        if (rule == null || rule.radius() <= 0
+                || rule.minOrderMinor() < 0 || rule.feeMinor() < 0 || rule.freeThresholdMinor() < 0) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        /*
+         * 免配送费门槛低于起送价是**无意义配置**：起送价 30、满 20 免运费，
+         * 意味着每一单都免运费 —— 店主以为自己设了门槛，实际等于把配送费关了。
+         * 门槛为 0（不免）不在此列。
+         */
+        if (rule.freeThresholdMinor() > 0 && rule.freeThresholdMinor() < rule.minOrderMinor()) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+
+        MchStore st = storeOf(merchantNo, storeNo);
+        if (st == null) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        st.setDeliveryRadiusM(rule.radius());
+        st.setDeliveryMinOrderMinor(rule.minOrderMinor());
+        st.setDeliveryFeeMinor(rule.feeMinor());
+        st.setDeliveryFreeThresholdMinor(rule.freeThresholdMinor());
+        DataScopeContext.executeWithoutScope(() -> storeMapper.updateById(st));
+        return rule;
+    }
+
+    /** 指定门店；storeNo 为空时落到主体的任意一家（单店商家的常态）。 */
+    private MchStore storeOf(String merchantNo, String storeNo) {
+        return DataScopeContext.executeWithoutScope(() ->
+                storeMapper.selectOne(Wrappers.<MchStore>lambdaQuery()
+                        .eq(MchStore::getEntityNo, merchantNo)
+                        .eq(storeNo != null && !storeNo.isBlank(), MchStore::getStoreNo, storeNo)
+                        .last("limit 1")));
+    }
+
+    private static long nz(Long v) {
+        return v == null ? 0L : v;
     }
 
     private MchStore row(String merchantNo) {

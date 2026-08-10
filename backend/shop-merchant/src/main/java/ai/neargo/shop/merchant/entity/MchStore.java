@@ -54,4 +54,22 @@ public class MchStore extends BaseEntity {
 
     /** JSON 数组：主推商品 goods_no，<b>有序</b>。顺序是门面的编排，不是商品自身属性。 */
     private String featured;
+
+    /**
+     * 配送半径（米）。默认 3km。
+     *
+     * <p>挂门店不挂主体：半径是从**这家店门口**量出去的。挂主体的话，
+     * 第二家店一开，两边的覆盖范围就都是错的 —— 而错法是「明明送得到却下不了单」，
+     * 用户不会来反馈，只会换一家。
+     */
+    private Integer deliveryRadiusM;
+
+    /** 起送价（分）。0 = 不设门槛。 */
+    private Long deliveryMinOrderMinor;
+
+    /** 配送费（分）。0 = 免费送。 */
+    private Long deliveryFeeMinor;
+
+    /** 免配送费门槛（分）。0 = 不免。 */
+    private Long deliveryFreeThresholdMinor;
 }

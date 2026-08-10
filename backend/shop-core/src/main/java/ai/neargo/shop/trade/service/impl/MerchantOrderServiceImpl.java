@@ -1,6 +1,7 @@
 package ai.neargo.shop.trade.service.impl;
 
 import ai.neargo.shop.trade.service.MerchantOrderService;
+import ai.neargo.shop.spi.user.UserQueryPort;
 
 import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.trade.dto.OrderVO;
@@ -27,12 +28,15 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
     private final SubOrderMapper subOrderMapper;
     private final OrderItemMapper itemMapper;
     private final StatusLogMapper statusLogMapper;
+    /** 顾客列表要昵称与头像；**完整手机号不出这个 Port**（B12） */
+    private final UserQueryPort userPort;
 
     public MerchantOrderServiceImpl(SubOrderMapper subOrderMapper, OrderItemMapper itemMapper,
-                                    StatusLogMapper statusLogMapper) {
+                                    StatusLogMapper statusLogMapper, UserQueryPort userPort) {
         this.subOrderMapper = subOrderMapper;
         this.itemMapper = itemMapper;
         this.statusLogMapper = statusLogMapper;
+        this.userPort = userPort;
     }
 
     @Override
@@ -311,5 +315,58 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
         }
         extra.accept(w);
         return DataScopeContext.executeWithoutScope(() -> subOrderMapper.selectList(w));
+    }
+
+    // ---------------------------------------------------------------- 顾客（B-11.10）
+
+    /** 沉默的判定：来过两次以上、却已经 30 天没来。只来过一次的不算沉默，那是没留住 */
+    private static final int SILENT_MIN_ORDERS = 2;
+    private static final int SILENT_DAYS = 30;
+
+    @Override
+    public List<CustomerSummary> customers(String merchantNo, java.util.Collection<String> storeNos) {
+        if (storeNos != null && storeNos.isEmpty()) {
+            return List.of();
+        }
+        List<OrdSubOrder> rows = scan(merchantNo, storeNos,
+                w -> w.ne(OrdSubOrder::getStatus, OrdSubOrder.WAIT_PAY));
+
+        // 按买家聚合。一个人在本店下过几单、花了多少、最后一次是什么时候
+        java.util.Map<String, java.util.List<OrdSubOrder>> byUser = rows.stream()
+                .filter(o -> o.getUserNo() != null)
+                .collect(java.util.stream.Collectors.groupingBy(OrdSubOrder::getUserNo));
+
+        long now = System.currentTimeMillis();
+        List<CustomerSummary> out = new java.util.ArrayList<>();
+        for (var e : byUser.entrySet()) {
+            var orders = e.getValue();
+            long spent = orders.stream().mapToLong(o -> o.getPayAmount() == null ? 0 : o.getPayAmount()).sum();
+            long last = orders.stream()
+                    .map(OrdSubOrder::getCreatedAt)
+                    .filter(java.util.Objects::nonNull)
+                    .mapToLong(t -> t.atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli())
+                    .max().orElse(0L);
+            int days = last == 0 ? 0 : (int) java.time.Duration.ofMillis(now - last).toDays();
+            boolean silent = orders.size() >= SILENT_MIN_ORDERS && days >= SILENT_DAYS;
+            /*
+             * 来源取**最早一单**的归因：这个人当初是谁带来的，不会因为他后来从
+             * 平台首页再进来一次就变成平台客流。费率档按自带客流算，口径必须稳定。
+             */
+            String source = orders.stream()
+                    .min(java.util.Comparator.comparing(OrdSubOrder::getId))
+                    .map(OrdSubOrder::getTrafficSource)
+                    .filter(x -> x != null && !x.isBlank())
+                    .orElse("PLATFORM");
+
+            var brief = userPort.find(e.getKey());
+            out.add(new CustomerSummary(e.getKey(),
+                    brief.map(p -> p.nickname()).orElse("邻居"),
+                    brief.map(p -> p.avatar()).orElse(""),
+                    orders.size(), spent, last, days, silent, source));
+        }
+        // 沉默客户排前面 —— 那是店主唯一能立刻行动的一批
+        out.sort(java.util.Comparator.comparing(CustomerSummary::silent).reversed()
+                .thenComparing(java.util.Comparator.comparingLong(CustomerSummary::lastOrderAt).reversed()));
+        return out;
     }
 }

@@ -33,8 +33,17 @@ class SchemaDriftTest {
     private static final Set<String> NOT_COLUMNS = Set.of("UNIQUE", "KEY", "CONSTRAINT", "PRIMARY", "INDEX");
     private static final Pattern RENAME = Pattern.compile(
             "ALTER TABLE\\s+(\\w+)\\s+RENAME COLUMN\\s+(\\w+)\\s+TO\\s+(\\w+)", Pattern.CASE_INSENSITIVE);
-    private static final Pattern ADD_COLUMN = Pattern.compile(
-            "ALTER TABLE\\s+(\\w+)\\s+ADD COLUMN\\s+(\\w+)", Pattern.CASE_INSENSITIVE);
+    /**
+     * 一条 ALTER 可以带**多个** ADD COLUMN，所以先抓整条语句，再逐个抽列。
+     *
+     * <p>此前这里只抓「ALTER TABLE x ADD COLUMN y」，一条语句里的第二列起全被漏掉 ——
+     * 而漏掉的表现是「迁移与 schema-test.sql 不一致」，让人去查 schema-test.sql，
+     * 真因却在解析器里。**一个会静默少读的校验器，比没有校验器更危险。**
+     */
+    private static final Pattern ALTER_STMT = Pattern.compile(
+            "ALTER TABLE\\s+(\\w+)\\s+((?:.|\\n)*?);", Pattern.CASE_INSENSITIVE);
+    private static final Pattern ADD_COLUMN_NAME = Pattern.compile(
+            "ADD COLUMN\\s+(\\w+)", Pattern.CASE_INSENSITIVE);
     private static final Pattern VERSION = Pattern.compile("^V(\\d+)__");
     /** 表改名。不认它的话，后续针对新表名的 ALTER 全部报「该表尚未建立」，而真因在几十行之前。 */
     private static final Pattern RENAME_TABLE = Pattern.compile(
@@ -141,15 +150,18 @@ class SchemaDriftTest {
                 cols.remove(m.group(2));
             }
         }
-        for (Matcher m = ADD_COLUMN.matcher(sql); m.find(); ) {
-            Set<String> cols = tables.get(m.group(1));
-            // 静默跳过是上一版的病根：顺序错了也照样跑完，只是少几列。**宁可炸**。
-            if (cols == null) {
-                throw new IllegalStateException(
-                        "ALTER TABLE " + m.group(1) + " ADD COLUMN " + m.group(2)
-                                + " —— 该表尚未建立。迁移重放顺序错了，或迁移本身有问题");
+        for (Matcher stmt = ALTER_STMT.matcher(sql); stmt.find(); ) {
+            String table = stmt.group(1);
+            for (Matcher m = ADD_COLUMN_NAME.matcher(stmt.group(2)); m.find(); ) {
+                Set<String> cols = tables.get(table);
+                // 静默跳过是上一版的病根：顺序错了也照样跑完，只是少几列。**宁可炸**。
+                if (cols == null) {
+                    throw new IllegalStateException(
+                            "ALTER TABLE " + table + " ADD COLUMN " + m.group(1)
+                                    + " —— 该表尚未建立。迁移重放顺序错了，或迁移本身有问题");
+                }
+                cols.add(m.group(1));
             }
-            cols.add(m.group(2));
         }
     }
 

@@ -30,6 +30,24 @@ public interface MerchantStoreService {
      */
     void syncCommunities(String merchantNo, List<String> communityNos);
 
+    /**
+     * 当前门店的配送规则。**没配过时返回默认值而不是空** ——
+     * 端上拿到 null 会渲染出四个空输入框，店主以为功能坏了。
+     */
+    DeliveryRuleVO deliveryRule(String merchantNo, String storeNo);
+
+    /** 保存配送规则。免配送费门槛低于起送价是无意义配置，直接拒。 */
+    DeliveryRuleVO saveDeliveryRule(String merchantNo, String storeNo, DeliveryRuleVO rule);
+
+    /**
+     * @param radius             配送半径（米）
+     * @param minOrderMinor      起送价（分），0 = 不设门槛
+     * @param feeMinor           配送费（分），0 = 免费送
+     * @param freeThresholdMinor 免配送费门槛（分），0 = 不免
+     */
+    record DeliveryRuleVO(int radius, long minOrderMinor, long feeMinor, long freeThresholdMinor) {
+    }
+
     record SaveCommand(String announcement, String openHours, String address,
                        List<String> featured, String serviceScope,
                        List<String> serviceCommunityNos, String serviceCityCode) {

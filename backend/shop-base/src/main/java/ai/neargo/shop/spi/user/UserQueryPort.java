@@ -13,6 +13,11 @@ public interface UserQueryPort {
 
     Optional<UserBrief> find(String userNo);
 
-    record UserBrief(String userNo, String nickname, String phoneTail) {
+    /**
+     * @param phoneTail 手机号后四位。**完整号码永远不出这个 Port**（B12）——
+     *                  商家侧的顾客列表、履约台都只需要「认得出是谁」，不需要能打过去
+     * @param avatar    头像 URL。顾客列表要用；它不是敏感信息，但也只在这里出现一次
+     */
+    record UserBrief(String userNo, String nickname, String phoneTail, String avatar) {
     }
 }

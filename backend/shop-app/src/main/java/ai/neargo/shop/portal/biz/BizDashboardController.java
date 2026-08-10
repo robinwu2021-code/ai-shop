@@ -5,10 +5,17 @@ import ai.neargo.shop.marketing.group.GroupService;
 import ai.neargo.shop.product.review.ReviewService;
 import ai.neargo.shop.spi.user.MerchantQueryPort;
 import ai.neargo.shop.trade.service.AfterSaleService;
+import ai.neargo.shop.merchant.service.MerchantStoreService;
+import ai.neargo.shop.merchant.service.StoreCodeService;
 import ai.neargo.shop.trade.service.MerchantOrderService;
 import org.springframework.context.annotation.Profile;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
 
 /**
  * 商家工作台（B-11.1）：待办与经营数据。
@@ -29,10 +36,15 @@ public class BizDashboardController {
     private final ReviewService reviewService;
     private final GroupService groupService;
     private final MerchantQueryPort merchantPort;
+    private final MerchantStoreService storeService;
+    private final StoreCodeService storeCodeService;
 
     public BizDashboardController(MerchantOrderService orderService, AfterSaleService afterSaleService,
                                   ReviewService reviewService, GroupService groupService,
-                                  MerchantQueryPort merchantPort) {
+                                  MerchantQueryPort merchantPort, MerchantStoreService storeService,
+                                  StoreCodeService storeCodeService) {
+        this.storeService = storeService;
+        this.storeCodeService = storeCodeService;
         this.orderService = orderService;
         this.afterSaleService = afterSaleService;
         this.reviewService = reviewService;
@@ -72,6 +84,63 @@ public class BizDashboardController {
         double rating = brief.map(MerchantQueryPort.MerchantBrief::rating).orElse(0d);
         return new StatsVO(s.todayOrders(), s.todayGmvMinor(), s.monthOrders(), s.monthGmvMinor(),
                 "CNY", rating, reviewService.list(null, merchantNo).size(), s.ownedTrafficRate());
+    }
+
+    // ---------------------------------------------------------------- 顾客与门店配置
+
+    /**
+     * 顾客列表（B-11.10）。<b>不下发完整手机号</b>（B12）。
+     *
+     * <p>沉默客户排在最前 —— 那是店主唯一能立刻行动的一批：
+     * 一份「谁快流失了」的名单，比一份按字母排序的通讯录有用得多。
+     */
+    @GetMapping("/biz/customers")
+    public List<MerchantOrderService.CustomerSummary> customers() {
+        BizContext ctx = BizContext.current();
+        return orderService.customers(BizContext.requireMerchantNo(), ctx.allowedStoresOrAll());
+    }
+
+    /** 当前门店的配送规则。没配过时返回默认值，不是空。 */
+    @GetMapping("/biz/delivery/rule")
+    public MerchantStoreService.DeliveryRuleVO deliveryRule() {
+        return storeService.deliveryRule(BizContext.requireMerchantNo(),
+                BizContext.current().currentStoreNo());
+    }
+
+    @PostMapping("/biz/delivery/rule")
+    public MerchantStoreService.DeliveryRuleVO saveDeliveryRule(@RequestBody DeliveryRuleReq req) {
+        return storeService.saveDeliveryRule(BizContext.requireMerchantNo(),
+                BizContext.current().currentStoreNo(),
+                new MerchantStoreService.DeliveryRuleVO(req.radius(), req.minOrderMinor(),
+                        req.feeMinor(), req.freeThresholdMinor()));
+    }
+
+    /**
+     * 分享物料（B-11.11）：一句可以直接粘进群里的文案 + 一张海报。
+     *
+     * <p>带 {@code goodsNo} 就分享单品，不带就分享整店。文案在后端拼而不是端上拼：
+     * 三端（微信/支付宝/H5）和三种语言各拼一遍，迟早出现「店名对、链接错」的版本。
+     */
+    @GetMapping("/biz/store/share-kit")
+    public ShareKitVO shareKit(@RequestParam(required = false) String goodsNo) {
+        String merchantNo = BizContext.requireMerchantNo();
+        String code = storeCodeService.ensureFor(merchantNo);
+        String shopName = merchantPort.find(merchantNo)
+                .map(MerchantQueryPort.MerchantBrief::merchantName).orElse("我的小店");
+        String url = "https://shop.example.com/s/" + code
+                + (goodsNo == null || goodsNo.isBlank() ? "" : "?g=" + goodsNo);
+        String text = goodsNo == null || goodsNo.isBlank()
+                ? shopName + "：街坊邻居下单，楼下自提，" + url
+                : shopName + " 上新了，点进来看看：" + url;
+        return new ShareKitVO(text, url);
+    }
+
+    public record DeliveryRuleReq(int radius, long minOrderMinor, long feeMinor,
+                                  long freeThresholdMinor) {
+    }
+
+    /** @param posterUrl 海报图。一期直接用落地页地址，海报渲染服务未接 */
+    public record ShareKitVO(String text, String posterUrl) {
     }
 
     /**

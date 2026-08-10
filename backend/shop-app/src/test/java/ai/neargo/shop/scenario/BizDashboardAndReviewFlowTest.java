@@ -287,6 +287,82 @@ class BizDashboardAndReviewFlowTest {
         throw new AssertionError("活动不在列表里：" + campaignNo);
     }
 
+    // ---------------------------------------------------------------- 顾客与门店配置（D12）
+
+    @Test
+    @DisplayName("★ 顾客列表不下发完整手机号（B12）")
+    void customerListNeverLeaksPhone() throws Exception {
+        var seeded = seedReview("12600145001", "顾客测试·脱敏", 5);
+
+        String body = mvc().perform(get("/biz/customers").header("Authorization", "Bearer " + seeded.token))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        JsonNode list = json.readTree(body).get("data");
+        assertThat(list).isNotEmpty();
+        // 买家手机号是 1370…（见 seedReview），整串都不该出现在响应里
+        assertThat(body).doesNotContain("13700145001");
+        assertThat(list.get(0).get("orderCount").asInt()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("新店的顾客列表是空数组，不是报错")
+    void customerListStartsEmpty() throws Exception {
+        String token = merchant("12600145002", "顾客测试·空");
+        mvc().perform(get("/biz/customers").header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.length()").value(0));
+    }
+
+    @Test
+    @DisplayName("★ 没配过配送规则时返回默认值，不是空 —— 空会让店主以为功能坏了")
+    void deliveryRuleHasDefaults() throws Exception {
+        String token = merchant("12600145010", "配送测试·默认值");
+        mvc().perform(get("/biz/delivery/rule").header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.radius").value(3000))
+                .andExpect(jsonPath("$.data.minOrderMinor").value(0));
+    }
+
+    @Test
+    @DisplayName("★ 免运费门槛低于起送价被拒 —— 那等于每单都免运费，店主却以为设了门槛")
+    void freeThresholdBelowMinOrderIsRejected() throws Exception {
+        String token = merchant("12600145011", "配送测试·门槛");
+
+        mvc().perform(post("/biz/delivery/rule").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"radius\":2000,\"minOrderMinor\":3000,\"feeMinor\":300,"
+                                + "\"freeThresholdMinor\":2000}"))
+                .andExpect(jsonPath("$.code").value(10400));
+
+        // 合理配置存得下，并且读得回来
+        mvc().perform(post("/biz/delivery/rule").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"radius\":2000,\"minOrderMinor\":2000,\"feeMinor\":300,"
+                                + "\"freeThresholdMinor\":5000}"))
+                .andExpect(jsonPath("$.code").value(0));
+        mvc().perform(get("/biz/delivery/rule").header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.data.radius").value(2000))
+                .andExpect(jsonPath("$.data.freeThresholdMinor").value(5000));
+    }
+
+    @Test
+    @DisplayName("分享物料带得出店名与可点的链接；带 goodsNo 时指向单品")
+    void shareKitCarriesShopNameAndLink() throws Exception {
+        String token = merchant("12600145020", "分享测试·小店");
+
+        String body = mvc().perform(get("/biz/store/share-kit").header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        JsonNode kit = json.readTree(body).get("data");
+        assertThat(kit.get("text").asString()).contains("分享测试·小店").contains("http");
+
+        String single = mvc().perform(get("/biz/store/share-kit")
+                        .param("goodsNo", "G-XYZ")
+                        .header("Authorization", "Bearer " + token))
+                .andReturn().getResponse().getContentAsString();
+        assertThat(json.readTree(single).get("data").get("posterUrl").asString()).contains("g=G-XYZ");
+    }
+
     // ---------------------------------------------------------------- helpers
 
     private int todoField(String token, String field) throws Exception {

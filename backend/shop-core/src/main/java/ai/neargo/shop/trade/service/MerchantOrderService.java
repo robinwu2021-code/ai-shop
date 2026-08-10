@@ -3,6 +3,8 @@ package ai.neargo.shop.trade.service;
 import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.trade.dto.OrderVO;
 
+import java.util.List;
+
 /**
  * B 端商家订单（[API 清单 §3.4]）。
  *
@@ -88,5 +90,23 @@ public interface MerchantOrderService {
      */
     record StatsSummary(int todayOrders, long todayGmvMinor, int monthOrders, long monthGmvMinor,
                         double ownedTrafficRate) {
+    }
+
+    /**
+     * 顾客列表（B-11.10）：按买家聚合本店的订单。
+     *
+     * <p><b>不下发完整手机号</b>（B12）—— 商家需要的是「认得出是谁、他多久没来了」，
+     * 不是能直接打过去。完整号码一旦下发，导出一次就永久离开了平台。
+     */
+    List<CustomerSummary> customers(String merchantNo, java.util.Collection<String> storeNos);
+
+    /**
+     * @param silent          沉默客户：曾经常来、最近没来。**店主唯一能立刻行动的信号**
+     * @param source          客流来源：他是商家自己带来的，还是平台分配的
+     * @param daysSinceLast   距上次下单天数
+     */
+    record CustomerSummary(String userNo, String nickname, String avatar,
+                           int orderCount, long totalSpentMinor, long lastOrderAt,
+                           int daysSinceLast, boolean silent, String source) {
     }
 }
