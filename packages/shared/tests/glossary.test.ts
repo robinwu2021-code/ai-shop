@@ -32,9 +32,20 @@ function constKeys(name: string): string[] {
   return [...m[1]!.matchAll(/^\s*(\w+):/gm)].map((x) => x[1]!);
 }
 
-/** 词典里所有反引号包起来的标识符 */
+/**
+ * 词典里所有反引号包起来的标识符 —— **不含 §11 状态词表**。
+ *
+ * <p>下面那一检的前提是「词典描述现状，所以词典里的标识符代码里必须有」。
+ * 这个前提对 §11 不成立：那张表是**规定**，不是记录 ——
+ * `PROCESSING` 是「该用但还没用到」，`DENIED` 是「明确不要用」。
+ * 把规定性的内容拿去和现状对账，只会逼着规范去追代码，
+ * 而这正是词典改为规定性要终结的那个方向（见词典头部）。
+ */
+const PRESCRIPTIVE = /## 11\. Status words[\s\S]*?\n(?=## 12\.)/;
 const quoted = new Set(
-  [...GLOSSARY.matchAll(/`([^`]+)`/g)].flatMap((m) => m[1]!.split(/[\s/|]+/)),
+  [...GLOSSARY.replace(PRESCRIPTIVE, "").matchAll(/`([^`]+)`/g)].flatMap((m) =>
+    m[1]!.split(/[\s/|]+/),
+  ),
 );
 
 describe("项目词典", () => {
