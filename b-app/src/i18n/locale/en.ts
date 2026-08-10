@@ -352,6 +352,8 @@ export default {
     ownedHint: "Share of orders arriving via your QR code or shares. The higher it is, the less commission you pay.",
   },
   marketing: {
+    store: "Applies to",
+    allStores: "All stores",
     title: "Promotions", create: "+ New", empty: "No promotions yet. Try a simple \"spend 30, save 5\".",
     type: "Type", typeCOUPON: "Shop coupon", typeFULL_CUT: "Spend & save", typeFLASH: "Flash price", typeBUY_GIFT: "Buy & gift",
     descCOUPON: "Customers claim it, then it applies at checkout. A total issue count is required — without a cap you are handing out money.",

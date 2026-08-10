@@ -26,5 +26,10 @@ public record CampaignVO(String campaignNo,
                          List<String> goodsNos,
                          Integer totalCount,
                          Integer takenCount,
-                         int usedCount) {
+                         int usedCount,
+                         /**
+                          * 只对这家门店生效；<b>空 = 全主体</b>。
+                          * 多门店商家必须看得见 —— 否则两条同名的「开业满减」分不清是哪家店的。
+                          */
+                         String storeNo) {
 }

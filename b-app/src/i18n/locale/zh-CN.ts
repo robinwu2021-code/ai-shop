@@ -542,6 +542,8 @@ export default {
     ownedHint: "从你的店铺码或分享进来的订单占比。这个数越高，你付的佣金越少。",
   },
   marketing: {
+    store: "适用门店",
+    allStores: "全部门店",
     title: "营销活动",
     create: "+ 新建活动",
     empty: "还没有活动。先来一个「满 30 减 5」试试水。",

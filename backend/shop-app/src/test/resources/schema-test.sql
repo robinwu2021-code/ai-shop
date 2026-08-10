@@ -182,6 +182,7 @@ CREATE TABLE IF NOT EXISTS mkt_campaign
     updated_by VARCHAR(64) DEFAULT NULL,
     version BIGINT(20) NOT NULL DEFAULT 0,
     deleted TINYINT(4) NOT NULL DEFAULT 0,
+    store_no VARCHAR(64) DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_campaign_no UNIQUE (campaign_no)
 );

@@ -25,6 +25,10 @@ public interface CampaignPort {
      * 「这张券帮我省了多少」应该是在已有优惠基础上的增量，否则同一张券在不同订单里
      * 显示的减免额会对不上他自己的心算。
      *
+     * <p><b>门店级活动</b>（{@code mkt_campaign.store_no} 有值）只对
+     * {@code MerchantAmount.storeNo} 那家店生效；全主体活动（store_no 为空）对谁都生效。
+     * 两者同时命中时按「取最优」合并 —— 与同类活动之间同一口径。
+     *
      * @param groups 按商家分组的商品额（拆单之后、任何优惠之前）
      * @return 每个商家的活动优惠额；没有生效活动时返回空分摊
      */
@@ -78,7 +82,13 @@ public interface CampaignPort {
         }
     }
 
-    record MerchantAmount(String merchantNo, long goodsAmount) {
+    /**
+     * @param storeNo 这笔货<b>从哪家门店出</b>（下单时按自提点解析出来的）。
+     *                门店级活动只对它生效；为空表示还没有门店上下文，
+     *                此时只有全主体活动生效 —— <b>不是「所有门店活动都生效」</b>，
+     *                那会让一家店的开业满减减到别家店的单上
+     */
+    record MerchantAmount(String merchantNo, long goodsAmount, String storeNo) {
     }
 
     /**

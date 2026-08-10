@@ -1003,6 +1003,15 @@ export const mockApi: MerchantApi = {
     if (payload.type === "FLASH" && !payload.goodsNos.length) {
       throw new Error("限时特价必须选择参与商品");
     }
+    /*
+     * 只有满减能限定门店（后端 70005）。判据是活动在哪一刻生效：
+     * 满减在算价时生效，那时顾客已选好自提点；限时特价与买赠改的是商品页的展示，
+     * 而浏览商品时自提点还没选 —— 会出现「页面 ¥9.90、下单 ¥12.80」。
+     * mock 也要拒，否则开发期建得成、连真后端才被打回。
+     */
+    if (payload.storeNo && payload.type !== "FULL_CUT") {
+      throw new Error("只有满减能限定门店");
+    }
     if (payload.type === "COUPON" && !payload.totalCount) {
       // 不设上限的券等于开着口子发钱，预算穿了才发现就晚了
       throw new Error("店铺券必须设置发放总量");

@@ -143,6 +143,40 @@ public class OrderServiceImpl implements OrderService {
     }
 
     /**
+     * 每家商家这单从**哪家门店**出货。
+     *
+     * <p>顾客选的自提点属于哪家店，货就从哪家店出（V16 起自提点归属到门店）。
+     * 此前恒取默认门店 —— 多门店时的表现是「扣了 A 店的库存，顾客却到 B 店去取货」，
+     * 自提场景下这是一次直接的履约事故：人到了，货不在。
+     *
+     * <p><b>只认属于本主体的自提点</b>：顾客可以在邻居家（NEIGHBOR）或平台点取货，
+     * 那两类的 ownerStoreNo 为空，此时回落默认门店 ——
+     * 「去哪儿取」与「从哪儿发」本来就是两件事。
+     *
+     * <p><b>抽成一个方法是必须的</b>：算价（门店级满减）、锁库存、写子单三处都要用它，
+     * 而三处各算一次的话，迟早出现「按 A 店的活动减了钱、扣了 A 店的库存、
+     * 订单却记在 B 店」—— 那种错不报错，只会在对账时表现成三本账互相对不上。
+     */
+    private Map<String, String> storesOf(CreateOrderCommand cmd, Split split) {
+        Map<String, String> out = new HashMap<>();
+        String pickupStoreNo = pickupPort.find(cmd.pickupNo())
+                .map(ai.neargo.shop.spi.user.PickupQueryPort.PickupBrief::ownerStoreNo)
+                .filter(no -> no != null && !no.isBlank())
+                .orElse(null);
+        for (Group g : split.groups) {
+            // 一次订单可以拆给多家商家，自提点只可能属于其中一家（或谁都不属于）
+            boolean mine = pickupStoreNo != null
+                    && merchantPort.storeNos(g.merchantNo).contains(pickupStoreNo);
+            if (mine) {
+                out.put(g.merchantNo, pickupStoreNo);
+            } else {
+                merchantPort.defaultStoreNo(g.merchantNo).ifPresent(no -> out.put(g.merchantNo, no));
+            }
+        }
+        return out;
+    }
+
+    /**
      * 优惠合计：**先活动、后券**。预览与下单共用 —— 两处各算一次必然算出两个数。
      *
      * <p>顺序不是随便定的。满减是自动生效的（用户没得选），券是用户挑的；
@@ -157,8 +191,12 @@ public class OrderServiceImpl implements OrderService {
         if (split.groups.isEmpty()) {
             return Discounts.none();
         }
+        // 门店级满减只对这单出货的那家店生效 —— 预览与下单走同一个解析，
+        // 否则会出现「确认页减了 8 块、提交后没减」
+        Map<String, String> stores = storesOf(cmd, split);
         CampaignPort.Discount auto = campaignPort.autoDiscount(split.groups.stream()
-                .map(g -> new CampaignPort.MerchantAmount(g.merchantNo, g.goodsAmount()))
+                .map(g -> new CampaignPort.MerchantAmount(
+                        g.merchantNo, g.goodsAmount(), stores.get(g.merchantNo)))
                 .toList());
         if (cmd.couponNo() == null || cmd.couponNo().isBlank()) {
             return new Discounts(auto, CouponPort.Allocation.none());
@@ -239,33 +277,7 @@ public class OrderServiceImpl implements OrderService {
          * 两处各算一次的话，迟早会出现「扣了 A 店的库存、订单却记在 B 店」——
          * 那种错不会报错，只会在盘点时表现成两家店的账都对不上。
          */
-        Map<String, String> storeOfMerchant = new HashMap<>();
-        /*
-         * 顾客选的自提点属于哪家店，货就从哪家店出（V16 起自提点归属到门店）。
-         *
-         * 此前这里恒取默认门店 —— 多门店时的表现是「扣了 A 店的库存，
-         * 顾客却到 B 店去取货」，而自提场景下这就是一次直接的履约事故：
-         * 人到了，货不在。
-         *
-         * **只认属于本主体的自提点**：顾客可以在邻居家（NEIGHBOR）或平台点取货，
-         * 那两类的 ownerStoreNo 为空，此时仍回落默认门店 —— 那是「这家店从哪儿发货」，
-         * 与「去哪儿取」本来就是两件事。
-         */
-        String pickupStoreNo = pickupPort.find(cmd.pickupNo())
-                .map(ai.neargo.shop.spi.user.PickupQueryPort.PickupBrief::ownerStoreNo)
-                .filter(no -> no != null && !no.isBlank())
-                .orElse(null);
-        for (Group g : split.groups) {
-            // 这个自提点是不是这家主体自己的店 —— 一次订单可以拆给多家商家，
-            // 自提点只可能属于其中一家（或谁都不属于）
-            boolean pickupBelongsToThisMerchant = pickupStoreNo != null
-                    && merchantPort.storeNos(g.merchantNo).contains(pickupStoreNo);
-            if (pickupBelongsToThisMerchant) {
-                storeOfMerchant.put(g.merchantNo, pickupStoreNo);
-            } else {
-                merchantPort.defaultStoreNo(g.merchantNo).ifPresent(no -> storeOfMerchant.put(g.merchantNo, no));
-            }
-        }
+        Map<String, String> storeOfMerchant = storesOf(cmd, split);
 
         // ⑤ 锁库存 —— 放在落库之前：库存不足就整单失败，不留半张订单
         try {

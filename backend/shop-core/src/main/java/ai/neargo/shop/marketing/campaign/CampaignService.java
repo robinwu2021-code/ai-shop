@@ -30,8 +30,15 @@ public interface CampaignService {
      * @param goodsNos   空 = 全店
      * @param totalCount COUPON 的发放总量，null = 不限量
      */
+    /**
+     * @param storeNo 只对这家门店生效；<b>为空 = 全主体</b>。
+     *                只有 {@code FULL_CUT} 接受它 —— 另外三种要么改商品页展示
+     *                （顾客那时还没选自提点，页面价与下单价会打架），
+     *                要么走券的核销链路（门店限定该在券侧做）
+     */
     record SaveCommand(String campaignNo, String type, String name, long startAt, long endAt,
                        Long thresholdMinor, Long discountMinor, Long flashPriceMinor,
-                       Integer buyN, Integer giftM, List<String> goodsNos, Integer totalCount) {
+                       Integer buyN, Integer giftM, List<String> goodsNos, Integer totalCount,
+                       String storeNo) {
     }
 }

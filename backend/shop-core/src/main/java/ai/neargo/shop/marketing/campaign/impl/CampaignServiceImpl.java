@@ -74,6 +74,7 @@ public class CampaignServiceImpl implements CampaignService {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
         assertFlashSingleSku(cmd);
+        assertStoreScopeAllowed(cmd);
 
         boolean isNew = cmd.campaignNo() == null || cmd.campaignNo().isBlank();
         MktCampaign c;
@@ -110,6 +111,8 @@ public class CampaignServiceImpl implements CampaignService {
         c.setGiftM(cmd.giftM());
         c.setGoodsNos(writeJson(cmd.goodsNos()));
         c.setTotalCount(cmd.totalCount());
+        // 空串归一成 null：库里「全主体」只有一种表示，读侧才不用判两种「空」
+        c.setStoreNo(cmd.storeNo() == null || cmd.storeNo().isBlank() ? null : cmd.storeNo());
 
         DataScopeContext.executeWithoutScope(() -> {
             if (isNew) {
@@ -121,6 +124,25 @@ public class CampaignServiceImpl implements CampaignService {
         });
         syncCoupon(c);
         return toVO(c);
+    }
+
+    /**
+     * 只有满减能限定门店。
+     *
+     * <p>判据是「这个活动在哪一刻生效」：满减在**算价**时生效，
+     * 那一刻顾客已经选好自提点，货从哪家店出是确定的（V16 起下单按自提点选店）。
+     * 限时特价与买赠改的是**商品页的展示**，而浏览商品时自提点还没选 ——
+     * 页面无从知道该按哪家店的活动算，于是页面价与下单价会打架。
+     *
+     * <p>店铺券走的是券的核销链路，门店限定该在券侧做，这里一并挡住。
+     */
+    private void assertStoreScopeAllowed(SaveCommand cmd) {
+        if (cmd.storeNo() == null || cmd.storeNo().isBlank()) {
+            return;
+        }
+        if (!MktCampaign.FULL_CUT.equals(cmd.type())) {
+            throw BizException.of(ErrorCode.CAMPAIGN_STORE_UNSUPPORTED);
+        }
     }
 
     /**
@@ -243,7 +265,8 @@ public class CampaignServiceImpl implements CampaignService {
                 c.getThresholdMinor(), c.getDiscountMinor(), c.getFlashPriceMinor(),
                 c.getBuyN(), c.getGiftM(), readList(c.getGoodsNos()),
                 c.getTotalCount(), c.getTakenCount(),
-                c.getUsedCount() == null ? 0 : c.getUsedCount());
+                c.getUsedCount() == null ? 0 : c.getUsedCount(),
+                c.getStoreNo());
     }
 
     /**

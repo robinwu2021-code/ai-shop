@@ -46,7 +46,7 @@ public class CampaignPortImpl implements CampaignPort {
         List<MerchantDiscount> shares = new ArrayList<>();
         long total = 0L;
         for (MerchantAmount g : groups) {
-            long off = fullCutOf(g.merchantNo(), g.goodsAmount(), now);
+            long off = fullCutOf(g.merchantNo(), g.storeNo(), g.goodsAmount(), now);
             if (off > 0) {
                 shares.add(new MerchantDiscount(g.merchantNo(), off));
                 total += off;
@@ -120,13 +120,13 @@ public class CampaignPortImpl implements CampaignPort {
     /**
      * 单个商家的满减额。
      *
-     * <p><b>同店多个满减活动只取最优的一个，不叠加。</b> 叠加会让商家自己算不清成本 ——
+     * <p><b>同店多个满减活动只取最优的一个，不叠加</b>（含门店级与全主体级同时命中）。 叠加会让商家自己算不清成本 ——
      * 建两个「满100减10」就变成满100减20，而界面上每个活动都只显示自己那一条。
      *
      * <p>下单查的是**下单那一刻**的活动：活动的起止时间与状态都在这里判，
      * 不信任端上传来的任何优惠额。端上算的那份只用于展示。
      */
-    private long fullCutOf(String merchantNo, long goodsAmount, long now) {
+    private long fullCutOf(String merchantNo, String storeNo, long goodsAmount, long now) {
         List<MktCampaign> running = DataScopeContext.executeWithoutScope(() ->
                 campaignMapper.selectList(Wrappers.<MktCampaign>lambdaQuery()
                         .eq(MktCampaign::getEntityNo, merchantNo)
@@ -136,6 +136,17 @@ public class CampaignPortImpl implements CampaignPort {
                         .ge(MktCampaign::getEndAt, now)));
         long best = 0L;
         for (MktCampaign c : running) {
+            /*
+             * 门店级活动只对**这单出货的那家店**生效。
+             *
+             * 没有门店上下文时（storeNo 为空）只认全主体活动 —— 不是「全都认」：
+             * 那会让「河坊街店开业满减」减到总店的单上，而商家为一家店做的让利
+             * 被全主体吃掉，他要到对账时才发现。
+             */
+            String only = c.getStoreNo();
+            if (only != null && !only.isBlank() && !only.equals(storeNo)) {
+                continue;
+            }
             long threshold = c.getThresholdMinor() == null ? 0L : c.getThresholdMinor();
             long off = c.getDiscountMinor() == null ? 0L : c.getDiscountMinor();
             if (goodsAmount < threshold || off <= 0) {

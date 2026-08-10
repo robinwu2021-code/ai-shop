@@ -15,9 +15,11 @@ import { useI18n } from "vue-i18n";
 import { api } from "@/api";
 import { money, toMinor } from "@shared/utils/money";
 import { monthDay } from "@shared/utils/datetime";
+import { useMerchantStore } from "@/stores/merchant";
 import type { CampaignType, Goods, MarketingCampaign } from "@shared/types";
 
 const { t } = useI18n();
+const merchant = useMerchantStore();
 
 const TYPES: CampaignType[] = ["COUPON", "FULL_CUT", "FLASH", "BUY_GIFT"];
 const DAY = 86400_000;
@@ -39,6 +41,8 @@ const form = ref({
   giftM: "1",
   totalCount: "100",
   goodsNos: [] as string[],
+  /** 空 = 全主体。只有满减能限定门店 —— 见 need.store 的说明 */
+  storeNo: "",
 });
 
 /** 每类活动只显示自己用得上的字段 —— 一个表单塞满 8 个输入框没人填得完 */
@@ -49,7 +53,33 @@ const need = computed(() => ({
   buyGift: form.value.type === "BUY_GIFT",
   total: form.value.type === "COUPON",
   goods: form.value.type === "FLASH" || form.value.type === "BUY_GIFT",
+  /*
+   * 限定门店**只对满减开放**，且只在真的有多家店时才显示。
+   *
+   * 判据是活动在哪一刻生效：满减在算价时生效，那时顾客已经选好自提点，
+   * 货从哪家店出是确定的。限时特价与买赠改的是**商品页的展示**（活动价、赠品标），
+   * 而顾客浏览商品时还没选自提点 —— 允许限定门店就会出现
+   * 「页面显示 ¥9.90、下单变 ¥12.80」。
+   */
+  store: form.value.type === "FULL_CUT" && merchant.multiStore,
 }));
+
+/** 门店号 → 门店名。查不到就原样显示号，空白比一个号更难查 */
+function storeName(storeNo?: string) {
+  if (!storeNo) return t("marketing.allStores");
+  return merchant.stores.find((s) => s.storeNo === storeNo)?.name ?? storeNo;
+}
+
+/** 选门店。第一项是「全部门店」= 不限定 */
+function pickStore() {
+  const usable = merchant.stores.filter((x) => x.status === "ACTIVE");
+  uni.showActionSheet({
+    itemList: [String(t("marketing.allStores")), ...usable.map((x) => x.name || x.storeNo)],
+    success: ({ tapIndex }) => {
+      form.value.storeNo = tapIndex === 0 ? "" : (usable[tapIndex - 1]?.storeNo ?? "");
+    },
+  });
+}
 
 async function load() {
   const [cs, gs] = await Promise.all([api.mCampaignList(), api.mGoodsList({ size: 100 })]);
@@ -71,6 +101,7 @@ function startNew() {
     giftM: "1",
     totalCount: "100",
     goodsNos: [],
+    storeNo: "",
   };
 }
 
@@ -102,6 +133,9 @@ async function save() {
       giftM: need.value.buyGift ? Number(form.value.giftM) : undefined,
       totalCount: need.value.total ? Number(form.value.totalCount) : undefined,
       goodsNos: form.value.goodsNos,
+      // 切成别的类型后残留的门店选择要清掉 —— 否则后端会以 70005 拒掉，
+      // 而商家看到的是一个他早已改过的选项在报错
+      storeNo: need.value.store && form.value.storeNo ? form.value.storeNo : undefined,
     });
     editing.value = false;
     uni.showToast({ title: t("common.saved"), icon: "none" });
@@ -180,6 +214,15 @@ onShow(load);
         <input v-model="form.days" class="field__input sh-num" type="number" />
       </view>
 
+      <!--
+        限定门店。只有满减 + 多门店时出现 —— 单店商家看到「适用门店」只会疑惑，
+        而另外三种类型限定门店会让页面价与下单价打架（后端也会拒）。
+      -->
+      <view v-if="need.store" class="field" @tap="pickStore">
+        <text class="field__label">{{ $t("marketing.store") }}</text>
+        <text class="field__input">{{ storeName(form.storeNo) }} ›</text>
+      </view>
+
       <view v-if="need.threshold" class="field">
         <text class="field__label">{{ $t("marketing.threshold") }}</text>
         <input v-model="form.threshold" class="field__input sh-num" type="digit" />
@@ -244,6 +287,10 @@ onShow(load);
         </text>
       </view>
       <text class="sh-muted item__sum">{{ summary(c) }}</text>
+      <!-- 多店商家必须看得见这条活动是哪家店的 —— 否则两条同名的「开业满减」分不清 -->
+      <text v-if="merchant.multiStore" class="sh-muted item__sum">
+        {{ $t("marketing.store") }}：{{ storeName(c.storeNo) }}
+      </text>
       <view class="item__meta">
         <text class="sh-muted sh-num">{{ monthDay(c.startAt) }} – {{ monthDay(c.endAt) }}</text>
         <text v-if="c.type === 'COUPON'" class="sh-muted sh-num">

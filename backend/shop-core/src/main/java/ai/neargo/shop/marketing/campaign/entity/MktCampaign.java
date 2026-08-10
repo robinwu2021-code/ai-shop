@@ -40,6 +40,18 @@ public class MktCampaign extends BaseEntity {
     /** 活动是店铺级的，不跨店。 */
     private String entityNo;
 
+    /**
+     * 只对这家门店生效；<b>null = 全主体生效</b>（存量活动都是它）。
+     *
+     * <p><b>只有 FULL_CUT 允许有值。</b> FLASH 与 BUY_GIFT 改的是<b>商品页的展示</b>
+     * （活动价、赠品标），而顾客浏览商品时还没选自提点 —— 也就无从知道这单会从
+     * 哪家店出。允许它们限定门店，就会出现「页面显示 ¥9.90、下单变 ¥12.80」，
+     * 而这正是回归清单里「金额一致」那条要防的。
+     *
+     * <p>COUPON 派生出的券有自己的核销链路，门店限定要在券侧做，暂不支持。
+     */
+    private String storeNo;
+
     /** 决定下面哪几个可空字段有意义。**创建后不可改** —— 改类型等于换一套优惠语义，应当新建。 */
     private String type;
 

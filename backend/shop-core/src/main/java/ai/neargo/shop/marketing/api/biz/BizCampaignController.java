@@ -45,7 +45,7 @@ public class BizCampaignController {
         return campaignService.save(BizContext.requireMerchantNo(), new CampaignService.SaveCommand(
                 req.campaignNo(), req.type(), req.name(), req.startAt(), req.endAt(),
                 req.thresholdMinor(), req.discountMinor(), req.flashPriceMinor(),
-                req.buyN(), req.giftM(), req.goodsNos(), req.totalCount()));
+                req.buyN(), req.giftM(), req.goodsNos(), req.totalCount(), req.storeNo()));
     }
 
     /** 启停。只允许 RUNNING ↔ PAUSED —— 已结束的活动不可复活。 */
@@ -71,7 +71,9 @@ public class BizCampaignController {
     /** @param campaignNo 空 = 新建 */
     public record SaveReq(String campaignNo, String type, String name, long startAt, long endAt,
                           Long thresholdMinor, Long discountMinor, Long flashPriceMinor,
-                          Integer buyN, Integer giftM, List<String> goodsNos, Integer totalCount) {
+                          Integer buyN, Integer giftM, List<String> goodsNos, Integer totalCount,
+                          /** 只对这家门店生效；为空 = 全主体。**只有满减接受它** */
+                          String storeNo) {
     }
 
     public record ToggleReq(Boolean running) {
