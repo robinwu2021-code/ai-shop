@@ -37,7 +37,14 @@ export interface Review {
   reason?: string;
 }
 
-export type AppealStatus = "PENDING" | "UPHELD" | "DISMISSED";
+/**
+  * 评价申诉的裁决结果。
+  *
+  * ⚠️ 不成立用 `REJECTED` 不用 `DISMISSED` —— 同一个业务动作在 shared 的
+  * `ReviewAppealStatus` 里一直是 `REJECTED`，两个词指一件事。
+  * 词典 §11 已把「拒绝/驳回/申诉不成立」统一到 `REJECTED`。
+  */
+export type AppealStatus = "PENDING" | "UPHELD" | "REJECTED";
 
 /** 恶意差评申诉（P-13.1.3）。UPHELD = 支持商家（差评下架），DISMISSED = 驳回申诉（差评保留）。 */
 export interface ReviewAppeal {

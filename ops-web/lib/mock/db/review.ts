@@ -52,7 +52,7 @@ export const reviewAppeals: ReviewAppeal[] = [
   {
     appealNo: "AP9002", reviewNo: "RV9006", merchantNo: "M901", merchantName: "阿姨家的菜摊",
     reason: "这条评价我们已经处理过了，希望恢复显示以便其他顾客看到我们的回复。",
-    evidenceCount: 0, status: "DISMISSED", submittedAt: "2026-08-03T02:00:00Z",
+    evidenceCount: 0, status: "REJECTED", submittedAt: "2026-08-03T02:00:00Z",
     verdict: "原评价因含站外交易引导被下架，与商家服务质量无关，不予恢复。",
   },
 ];

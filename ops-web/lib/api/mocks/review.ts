@@ -36,7 +36,7 @@ export const reviewMock: ReviewApi = {
     if (a.status !== "PENDING") fail("该申诉已裁决，请刷新列表", "This appeal has already been ruled on — refresh the list");
     // 支持与驳回都要写理由：商家会看到，"已读不处理"不是一种结果
     if (!verdict?.trim()) fail("裁决说明必填，商家会原样看到", "A ruling note is required — the merchant sees it verbatim");
-    a.status = uphold ? "UPHELD" : "DISMISSED";
+    a.status = uphold ? "UPHELD" : "REJECTED";
     a.verdict = verdict.trim();
     // 支持商家 = 差评下架：申诉裁决要真的作用到评价上，否则页面在骗人
     if (uphold) {

@@ -156,7 +156,7 @@ function GroupsInner() {
     {
       header: c.colActions,
       cell: (g) =>
-        g.status === "PENDING_AUDIT" && canAudit ? (
+        g.status === "PENDING" && canAudit ? (
           <Button size="sm" variant="outline" onClick={() => { setAuditing(g); setRejectReason(""); }}>{c.actionAudit}</Button>
         ) : <span className="text-muted-foreground">—</span>,
     },

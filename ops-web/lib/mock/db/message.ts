@@ -23,7 +23,7 @@ export const notifyQuota: NotifyQuota = {
 };
 
 export const tickets: Ticket[] = [
-  { ticketNo: "TK9001", title: "取货码显示已核销但没拿到货", userNickname: "海棠", orderNo: "SO2026080506", status: "OPEN", proxyActions: [], createdAt: "2026-08-06T01:10:00Z" },
+  { ticketNo: "TK9001", title: "取货码显示已核销但没拿到货", userNickname: "海棠", orderNo: "SO2026080506", status: "PENDING", proxyActions: [], createdAt: "2026-08-06T01:10:00Z" },
   { ticketNo: "TK9002", title: "想改配送地址", userNickname: "阿May", orderNo: "SO2026080504", status: "ASSIGNED", assignee: "cs02", proxyActions: ["cs02 代客修改收货地址：阳光里 6-2 → 阳光里 8-1"], createdAt: "2026-08-05T10:00:00Z" },
   { ticketNo: "TK9003", title: "咨询自提点营业时间", userNickname: "小满", status: "RESOLVED", assignee: "cs02", proxyActions: [], createdAt: "2026-08-04T03:00:00Z" },
   { ticketNo: "TK9004", title: "重复扣款", userNickname: "老周", orderNo: "SO2026080503", status: "CLOSED", assignee: "cs02", proxyActions: ["cs02 代客发起退款：¥18.60"], createdAt: "2026-08-02T06:00:00Z" },

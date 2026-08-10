@@ -103,7 +103,7 @@ function RiskInner() {
     mutationFn: (v: { blackNo: string; accept: boolean }) => api.decideBlacklistAppeal(v.blackNo, v.accept, appealVerdict),
     onSuccess: (b) => {
       invalidate(); setAppeal(null); setAppealVerdict("");
-      notify.success(b.appealStatus === "ACCEPTED" ? c.toastAppealAccepted : c.toastAppealRejected);
+      notify.success(b.appealStatus === "UPHELD" ? c.toastAppealAccepted : c.toastAppealRejected);
     },
   });
   const saveRule = useMutation({
@@ -140,7 +140,7 @@ function RiskInner() {
       header: c.colActions,
       cell: (e) => (
         <Button size="sm" variant="outline" onClick={() => { setCurrent(e); setVerdict(e.verdict ?? ""); }}>
-          {e.status === "OPEN" && canBlacklist ? c.actionHandle : c.actionView}
+          {e.status === "PENDING" && canBlacklist ? c.actionHandle : c.actionView}
         </Button>
       ),
     },
@@ -166,7 +166,7 @@ function RiskInner() {
   ];
 
   const rows = events.data?.records ?? [];
-  const openCount = rows.filter((e) => e.status === "OPEN").length;
+  const openCount = rows.filter((e) => e.status === "PENDING").length;
 
   return (
     <div>
@@ -279,7 +279,7 @@ function RiskInner() {
         desc={current ? subjectLabel[current.subjectType] : undefined}
         width="w-[520px]"
         footer={
-          current?.status === "OPEN" && canBlacklist ? (
+          current?.status === "PENDING" && canBlacklist ? (
             <>
               <Button variant="outline" onClick={() => decide.mutate({ eventNo: current.eventNo, confirmed: false })}>{c.btnDismiss}</Button>
               <Button onClick={() => decide.mutate({ eventNo: current.eventNo, confirmed: true })}>{c.btnConfirmRisk}</Button>
@@ -313,7 +313,7 @@ function RiskInner() {
               ) : c.none}
             </Field>
             <Field label={c.fieldVerdict}>
-              {current.status === "OPEN" && canBlacklist ? (
+              {current.status === "PENDING" && canBlacklist ? (
                 <Textarea value={verdict} onChange={setVerdict}
                   placeholder={c.verdictPlaceholder} />
               ) : (

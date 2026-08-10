@@ -228,7 +228,7 @@ export function useAppealStatusMap(): StatusMap<AppealStatus> {
   return {
     PENDING: { label: t("appealStatus.PENDING"), tone: "warning" },
     UPHELD: { label: t("appealStatus.UPHELD"), tone: "info" },
-    DISMISSED: { label: t("appealStatus.DISMISSED"), tone: "muted" },
+    REJECTED: { label: t("appealStatus.REJECTED"), tone: "muted" },
   };
 }
 export function AppealStatusBadge({ value }: { value: AppealStatus }) {
@@ -282,7 +282,7 @@ export function AfterSaleStatusBadge({ value }: { value: AfterSaleStatus }) {
 export function useGroupStatusMap(): StatusMap<GroupStatus> {
   const { t } = useI18n();
   return {
-    PENDING_AUDIT: { label: t("groupStatus.PENDING_AUDIT"), tone: "warning" },
+    PENDING: { label: t("groupStatus.PENDING"), tone: "warning" },
     RUNNING: { label: t("groupStatus.RUNNING"), tone: "info" },
     SUCCESS: { label: t("groupStatus.SUCCESS"), tone: "success" },
     FAILED: { label: t("groupStatus.FAILED"), tone: "muted" },
@@ -373,11 +373,11 @@ export function useRiskTypeMap(): StatusMap<RiskType> {
   };
 }
 
-/** OPEN 用 warning：它表示"还没人看"，不是"已确认有问题"。 */
+/** PENDING 用 warning：它表示"还没人看"，不是"已确认有问题"。 */
 export function useRiskStatusMap(): StatusMap<RiskStatus> {
   const { t } = useI18n();
   return {
-    OPEN: { label: t("riskStatus.OPEN"), tone: "warning" },
+    PENDING: { label: t("riskStatus.PENDING"), tone: "warning" },
     CONFIRMED: { label: t("riskStatus.CONFIRMED"), tone: "danger" },
     DISMISSED: { label: t("riskStatus.DISMISSED"), tone: "muted" },
   };
@@ -391,7 +391,7 @@ export function useBlacklistAppealMap(): StatusMap<BlacklistAppealStatus> {
   return {
     NONE: { label: t("blacklistAppeal.NONE"), tone: "muted" },
     PENDING: { label: t("blacklistAppeal.PENDING"), tone: "warning" },
-    ACCEPTED: { label: t("blacklistAppeal.ACCEPTED"), tone: "success" },
+    UPHELD: { label: t("blacklistAppeal.UPHELD"), tone: "success" },
     REJECTED: { label: t("blacklistAppeal.REJECTED"), tone: "muted" },
   };
 }
@@ -407,11 +407,11 @@ export function usePushStatusMap(): StatusMap<PushStatus> {
   };
 }
 
-/** OPEN 用 warning：未分派的工单是"有人在等"，不是中性状态。 */
+/** PENDING 用 warning：未分派的工单是"有人在等"，不是中性状态。 */
 export function useTicketStatusMap(): StatusMap<TicketStatus> {
   const { t } = useI18n();
   return {
-    OPEN: { label: t("ticketStatus.OPEN"), tone: "warning" },
+    PENDING: { label: t("ticketStatus.PENDING"), tone: "warning" },
     ASSIGNED: { label: t("ticketStatus.ASSIGNED"), tone: "info" },
     RESOLVED: { label: t("ticketStatus.RESOLVED"), tone: "success" },
     CLOSED: { label: t("ticketStatus.CLOSED"), tone: "muted" },

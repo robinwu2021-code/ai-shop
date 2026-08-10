@@ -2,7 +2,7 @@
 // 拆三张表会让"这个用户同时命中几类"看不出来 —— 而那恰恰最该优先处理。
 
 export type RiskType = "FAKE_ORDER" | "ABNORMAL_FISSION" | "MALICIOUS_REFUND";
-export type RiskStatus = "OPEN" | "CONFIRMED" | "DISMISSED";
+export type RiskStatus = "PENDING" | "CONFIRMED" | "DISMISSED";
 
 export interface RiskEvent {
   /** 风险事件单号 */
@@ -36,7 +36,7 @@ export type SubjectType = "USER" | "MERCHANT" | "DEVICE";
  * 两者是完全不同的东西（一个是商家申诉差评，一个是被拉黑者申诉解禁）。
  * 同名会在 `lib/types` 的总出口上直接冲突，也会让读代码的人以为它们是一回事。
  */
-export type BlacklistAppealStatus = "NONE" | "PENDING" | "ACCEPTED" | "REJECTED";
+export type BlacklistAppealStatus = "NONE" | "PENDING" | "UPHELD" | "REJECTED";
 
 export interface BlacklistEntry {
   /** 黑名单单号 */

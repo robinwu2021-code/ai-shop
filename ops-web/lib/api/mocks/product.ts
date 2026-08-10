@@ -19,7 +19,7 @@ function findSku(no: string): Sku {
 export const productMock: ProductApi = {
   listGoodsAuditQueue: (q = {}) =>
     // 队列只给待审的：已处理的属于历史，混在待办里会让人重复审
-    wait(db.paginate(db.goodsAudits, q.page, q.size, (g) => g.status === "AUDITING")),
+    wait(db.paginate(db.goodsAudits, q.page, q.size, (g) => g.status === "PENDING")),
 
   auditGoods: async (goodsNo, approved, reason) => {
     const g = db.goodsAudits.find((x) => x.goodsNo === goodsNo);

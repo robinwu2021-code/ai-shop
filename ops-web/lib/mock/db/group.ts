@@ -5,7 +5,7 @@ import type { DemandOrder, GroupCampaign, Quote } from "@/lib/types";
 export const groupCampaigns: GroupCampaign[] = [
   { groupNo: "GB9001", merchantNo: "M902", merchantName: "老张水果店", skuTitle: "阳光玫瑰 2 斤装", originPrice: 3_980, groupPrice: 3_280, minCount: 10, joined: 7, status: "RUNNING", endAt: "2026-08-07T16:00:00Z", createdAt: "2026-08-04T02:00:00Z" },
   { groupNo: "GB9002", merchantNo: "M903", merchantName: "邻家便利", skuTitle: "抽纸 3 层 12 包", originPrice: 2_990, groupPrice: 2_390, minCount: 20, joined: 24, status: "SUCCESS", endAt: "2026-08-05T16:00:00Z", createdAt: "2026-08-02T02:00:00Z" },
-  { groupNo: "GB9003", merchantNo: "M901", merchantName: "阿姨家的菜摊", skuTitle: "现摘毛豆 1kg", originPrice: 620, groupPrice: 520, minCount: 15, joined: 3, status: "PENDING_AUDIT", endAt: "2026-08-09T16:00:00Z", createdAt: "2026-08-06T00:30:00Z" },
+  { groupNo: "GB9003", merchantNo: "M901", merchantName: "阿姨家的菜摊", skuTitle: "现摘毛豆 1kg", originPrice: 620, groupPrice: 520, minCount: 15, joined: 3, status: "PENDING", endAt: "2026-08-09T16:00:00Z", createdAt: "2026-08-06T00:30:00Z" },
   { groupNo: "GB9004", merchantNo: "M905", merchantName: "快修家电服务", skuTitle: "空调清洗（2 台起）", originPrice: 12_800, groupPrice: 9_900, minCount: 5, joined: 1, status: "FAILED", endAt: "2026-08-03T16:00:00Z", createdAt: "2026-07-30T02:00:00Z" },
 ];
 

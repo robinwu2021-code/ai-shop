@@ -53,10 +53,10 @@ export interface NotifyQuota {
   updatedBy: string;
 }
 
-export type TicketStatus = "OPEN" | "ASSIGNED" | "RESOLVED" | "CLOSED";
+export type TicketStatus = "PENDING" | "ASSIGNED" | "RESOLVED" | "CLOSED";
 
 export const TICKET_TRANSITIONS: Record<TicketStatus, TicketStatus[]> = {
-  OPEN: ["ASSIGNED", "CLOSED"],
+  PENDING: ["ASSIGNED", "CLOSED"],
   ASSIGNED: ["RESOLVED", "CLOSED"],
   RESOLVED: ["CLOSED", "ASSIGNED"],
   CLOSED: [],

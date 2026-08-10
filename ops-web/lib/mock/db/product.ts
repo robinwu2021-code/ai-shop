@@ -76,7 +76,7 @@ export const skus: Sku[] = [
 
 /** 待审商品（mock）。**留一条已驳回的** —— 否则「拒因回显」那段界面走不到 */
 export const goodsAudits: GoodsAudit[] = [
-  { goodsNo: "G9001", title: "现磨豆浆 500ml", subtitle: "当天现磨", type: "FRESH", merchant: { merchantNo: "M901", name: "阿姨家的菜摊" }, status: "AUDITING" },
-  { goodsNo: "G9002", title: "手工辣椒酱", subtitle: "小罐装", type: "NORMAL", merchant: { merchantNo: "M902", name: "老张水果店" }, status: "AUDITING" },
+  { goodsNo: "G9001", title: "现磨豆浆 500ml", subtitle: "当天现磨", type: "FRESH", merchant: { merchantNo: "M901", name: "阿姨家的菜摊" }, status: "PENDING" },
+  { goodsNo: "G9002", title: "手工辣椒酱", subtitle: "小罐装", type: "NORMAL", merchant: { merchantNo: "M902", name: "老张水果店" }, status: "PENDING" },
   { goodsNo: "G9003", title: "代客充值", type: "VIRTUAL", merchant: { merchantNo: "M903", name: "邻家便利" }, status: "REJECTED" },
 ];

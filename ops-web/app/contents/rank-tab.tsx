@@ -42,7 +42,7 @@ interface RankForm {
 const useQStatusMap = (c: ContentsCopy): StatusMap<QuestionStatus> => ({
   PENDING: { label: c.qsPending, tone: "warning" },
   ANSWERED: { label: c.qsAnswered, tone: "success" },
-  HIDDEN: { label: c.qsHidden, tone: "muted" },
+  OFFLINE: { label: c.qsHidden, tone: "muted" },
 });
 
 export function RankTab({ c, canEdit }: { c: ContentsCopy; canEdit: boolean }) {

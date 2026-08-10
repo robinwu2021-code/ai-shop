@@ -28,7 +28,7 @@ export const groupMock: GroupApi = {
 
   auditGroupCampaign: async (groupNo, pass, reason) => {
     const g = findGroup(groupNo);
-    if (g.status !== "PENDING_AUDIT") fail("该团已审核，请刷新列表", "This group buy has already been reviewed — refresh the list");
+    if (g.status !== "PENDING") fail("该团已审核，请刷新列表", "This group buy has already been reviewed — refresh the list");
     if (pass) {
       // 1 个人不叫团；团购价不低于原价的话"团购"就是假的 —— 这两条不能只做 UI 提示
       if (g.minCount < 2) fail("起团人数至少为 2", "A group buy needs at least 2 people");

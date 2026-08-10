@@ -5,17 +5,17 @@ export const riskEvents: RiskEvent[] = [
   {
     eventNo: "RK9001", type: "ABNORMAL_FISSION", subject: "用户8820", subjectType: "USER",
     signals: ["同设备注册 5 个账号", "24 小时内互相邀请", "无真实下单"],
-    refs: ["AT9005", "AT9006"], status: "OPEN", createdAt: "2026-08-05T14:30:00Z",
+    refs: ["AT9005", "AT9006"], status: "PENDING", createdAt: "2026-08-05T14:30:00Z",
   },
   {
     eventNo: "RK9002", type: "FAKE_ORDER", subject: "老张水果店", subjectType: "MERCHANT",
     signals: ["同一买家 24 小时内下单 12 笔", "全部秒核销", "收货人手机号相同"],
-    refs: ["SO2026080502"], status: "OPEN", createdAt: "2026-08-05T09:00:00Z",
+    refs: ["SO2026080502"], status: "PENDING", createdAt: "2026-08-05T09:00:00Z",
   },
   {
     eventNo: "RK9003", type: "MALICIOUS_REFUND", subject: "海棠", subjectType: "USER",
     signals: ["30 天内退款 7 次", "均为仅退款", "凭证图片重复"],
-    refs: ["AS9001"], status: "OPEN", createdAt: "2026-08-05T15:00:00Z",
+    refs: ["AS9001"], status: "PENDING", createdAt: "2026-08-05T15:00:00Z",
   },
   {
     eventNo: "RK9004", type: "ABNORMAL_FISSION", subject: "d8f2a1c9（设备）", subjectType: "DEVICE",
@@ -47,7 +47,7 @@ export const blacklists: BlacklistEntry[] = [
   {
     blackNo: "BL9003", subjectType: "USER", subject: "旧账号3311",
     reason: "恶意退款画像命中",
-    until: "2026-08-01T00:00:00Z", appealStatus: "ACCEPTED",
+    until: "2026-08-01T00:00:00Z", appealStatus: "UPHELD",
     appealReason: "退款均因商家漏发，有聊天记录。",
     appealVerdict: "核实属实，商家侧问题，解除拉黑并向商家发起履约质量提醒",
     active: false, createdAt: "2026-07-02T02:00:00Z",

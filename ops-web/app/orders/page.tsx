@@ -57,7 +57,7 @@ const useDiffTypeMap = (c: Copy): StatusMap<ReconDiffType> => ({
 });
 
 const useReconStatusMap = (c: Copy): StatusMap<ReconStatus> => ({
-  OPEN: { label: c.reconOpen, tone: "warning" },
+  PENDING: { label: c.reconOpen, tone: "warning" },
   RESOLVED: { label: c.reconResolved, tone: "success" },
   IGNORED: { label: c.reconIgnored, tone: "muted" },
 });
@@ -102,7 +102,7 @@ function OrdersInner() {
   const reconQ = {
     keyword, page, size,
     type: tab === "repair" ? "CHANNEL_ONLY" : diffType,
-    status: tab === "repair" ? "OPEN" : reconStatus,
+    status: tab === "repair" ? "PENDING" : reconStatus,
   };
   const recon = useQuery({
     queryKey: ["recon", reconQ],
@@ -163,7 +163,7 @@ function OrdersInner() {
     {
       header: c.colActions,
       cell: (d) =>
-        d.status === "OPEN" && canPay ? (
+        d.status === "PENDING" && canPay ? (
           <Button size="sm" variant="outline" onClick={() => { setResolving(d); setResolveForm({ action: "", resolution: "" }); }}>
             {c.actionResolve}
           </Button>

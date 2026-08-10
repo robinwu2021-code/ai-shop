@@ -112,7 +112,7 @@ export interface Ranking {
   updatedBy: string;
 }
 
-export type QuestionStatus = "PENDING" | "ANSWERED" | "HIDDEN";
+export type QuestionStatus = "PENDING" | "ANSWERED" | "OFFLINE";
 
 export interface Question {
   /** 提问单号 */

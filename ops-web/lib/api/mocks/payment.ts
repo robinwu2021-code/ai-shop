@@ -17,7 +17,7 @@ function find(diffNo: string): ReconDiff {
 
 /** 已经处置过的不许再动：重复处置会二次补单或二次退款，那是真金白银。 */
 function assertOpen(d: ReconDiff) {
-  if (d.status !== "OPEN") fail(`${d.diffNo} 已处置（${d.status}），不能重复处置`, `${d.diffNo} is already resolved (${d.status}) — handling it twice means refunding or re-creating twice`);
+  if (d.status !== "PENDING") fail(`${d.diffNo} 已处置（${d.status}），不能重复处置`, `${d.diffNo} is already resolved (${d.status}) — handling it twice means refunding or re-creating twice`);
 }
 
 export const paymentMock: PaymentApi = {

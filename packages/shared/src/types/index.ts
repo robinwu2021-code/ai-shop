@@ -1359,7 +1359,13 @@ export interface StoreRole {
 }
 
 /** 商品在商家侧的状态。C 端只看得到 ON_SALE */
-export type GoodsStatus = "ON_SALE" | "OFF_SALE" | "AUDITING" | "REJECTED";
+/**
+ * 商品状态。
+ *
+ * ⚠️ 待审用 `PENDING` 不用 `AUDITING` —— ops-web 的 `SkuStatus` 一直用
+ * `PENDING`，同一件事两个词。词典 §11 的通用状态词表规定「已提交待处理」= `PENDING`。
+ */
+export type GoodsStatus = "ON_SALE" | "OFF_SALE" | "PENDING" | "REJECTED";
 
 /** 商家自送规则（ADR-005 §5：不做骑手系统，只有范围与门槛） */
 export interface DeliveryRule {

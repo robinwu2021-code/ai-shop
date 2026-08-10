@@ -2,10 +2,10 @@
 // 用户能发起求团，但没人能指派商家报价，功能是断的。
 // 报价规则遵循 ADR-003：**不做事前审核**，用锁价 + 改价公示 + 信用约束。
 
-export type GroupStatus = "PENDING_AUDIT" | "RUNNING" | "SUCCESS" | "FAILED";
+export type GroupStatus = "PENDING" | "RUNNING" | "SUCCESS" | "FAILED";
 
 export const GROUP_TRANSITIONS: Record<GroupStatus, GroupStatus[]> = {
-  PENDING_AUDIT: ["RUNNING", "FAILED"],
+  PENDING: ["RUNNING", "FAILED"],
   RUNNING: ["SUCCESS", "FAILED"],
   SUCCESS: [],
   FAILED: [],
