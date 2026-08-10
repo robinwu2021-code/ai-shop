@@ -171,6 +171,122 @@ class BizDashboardAndReviewFlowTest {
         assertThat(todoField(seeded.token, "toReply")).isZero();
     }
 
+    // ---------------------------------------------------------------- 营销活动（D10）
+
+    @Test
+    @DisplayName("★ 结束早于开始的活动被拒 —— 它会「永远不生效」而状态看着正常")
+    void campaignTimeWindowMustBeValid() throws Exception {
+        String token = merchant("12600143001", "营销测试·时段");
+        long now = System.currentTimeMillis();
+
+        mvc().perform(post("/biz/campaign").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"type\":\"FULL_CUT\",\"name\":\"倒着来\",\"startAt\":" + now
+                                + ",\"endAt\":" + (now - 1000) + ",\"goodsNos\":[]}"))
+                .andExpect(jsonPath("$.code").value(10400));
+    }
+
+    @Test
+    @DisplayName("★ 活动类型创建后不可改 —— 改类型等于换一套优惠语义，应当新建")
+    void campaignTypeIsImmutable() throws Exception {
+        String token = merchant("12600143002", "营销测试·改类型");
+        String no = createCampaign(token, "FULL_CUT", "满 50 减 5");
+
+        mvc().perform(post("/biz/campaign").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"campaignNo\":\"" + no + "\",\"type\":\"FLASH\",\"name\":\"改成秒杀\","
+                                + "\"startAt\":1,\"endAt\":99999999999,\"goodsNos\":[]}"))
+                .andExpect(jsonPath("$.code").value(10409));
+    }
+
+    @Test
+    @DisplayName("新建是 DRAFT，启停在 RUNNING ↔ PAUSED 之间")
+    void campaignToggleFlow() throws Exception {
+        String token = merchant("12600143003", "营销测试·启停");
+        String no = createCampaign(token, "COUPON", "新客券");
+
+        assertThat(campaignStatus(token, no)).isEqualTo("DRAFT");
+        mvc().perform(post("/biz/campaign/" + no + "/toggle").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"running\":true}"))
+                .andExpect(jsonPath("$.data.status").value("RUNNING"));
+        mvc().perform(post("/biz/campaign/" + no + "/toggle").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"running\":false}"))
+                .andExpect(jsonPath("$.data.status").value("PAUSED"));
+    }
+
+    @Test
+    @DisplayName("★ 动不了别家的活动（不区分「不存在」与「不是你的」）")
+    void cannotTouchAnotherMerchantsCampaign() throws Exception {
+        String mine = merchant("12600143004", "营销测试·本店");
+        String no = createCampaign(mine, "FULL_CUT", "本店活动");
+        String other = merchant("12600143005", "营销测试·别家");
+
+        mvc().perform(post("/biz/campaign/" + no + "/toggle").header("Authorization", "Bearer " + other)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"running\":true}"))
+                .andExpect(jsonPath("$.code").value(10404));
+    }
+
+    // ---------------------------------------------------------------- 商家团（D11）
+
+    @Test
+    @DisplayName("★ 没配拼团价的商品开不了团 —— 开团这一步不能临时定价")
+    void cannotOpenGroupWithoutGroupPrice() throws Exception {
+        String token = merchant("12600144001", "开团测试·无拼团价");
+        String goodsNo = saveGoods(token, "普通商品");
+        approveGoods(goodsNo);
+        mvc().perform(post("/biz/goods/" + goodsNo + "/toggle").header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON).content("{\"onSale\":true}"));
+
+        mvc().perform(post("/biz/groups").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"goodsNo\":\"" + goodsNo + "\"}"))
+                .andExpect(jsonPath("$.code").value(20004));
+    }
+
+    @Test
+    @DisplayName("★ 开不了别家商品的团 —— 否则谁都能拿别人的货把单收进自己店")
+    void cannotOpenGroupOnAnotherMerchantsGoods() throws Exception {
+        String mine = merchant("12600144002", "开团测试·货主");
+        String goodsNo = saveGoods(mine, "别家的货");
+        String other = merchant("12600144003", "开团测试·外人");
+
+        mvc().perform(post("/biz/groups").header("Authorization", "Bearer " + other)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"goodsNo\":\"" + goodsNo + "\"}"))
+                .andExpect(jsonPath("$.code").value(10404));
+    }
+
+    @Test
+    @DisplayName("商家团列表默认为空，不是报错")
+    void merchantGroupsStartEmpty() throws Exception {
+        String token = merchant("12600144004", "开团测试·空列表");
+        mvc().perform(get("/biz/groups").header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.length()").value(0));
+    }
+
+    private String createCampaign(String token, String type, String name) throws Exception {
+        long now = System.currentTimeMillis();
+        String body = mvc().perform(post("/biz/campaign").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"type\":\"" + type + "\",\"name\":\"" + name + "\",\"startAt\":" + now
+                                + ",\"endAt\":" + (now + 86400000L) + ",\"goodsNos\":[]}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        return json.readTree(body).get("data").get("campaignNo").asString();
+    }
+
+    private String campaignStatus(String token, String campaignNo) throws Exception {
+        String body = mvc().perform(get("/biz/campaign").header("Authorization", "Bearer " + token))
+                .andReturn().getResponse().getContentAsString();
+        for (JsonNode c : json.readTree(body).get("data")) {
+            if (campaignNo.equals(c.get("campaignNo").asString())) {
+                return c.get("status").asString();
+            }
+        }
+        throw new AssertionError("活动不在列表里：" + campaignNo);
+    }
+
     // ---------------------------------------------------------------- helpers
 
     private int todoField(String token, String field) throws Exception {

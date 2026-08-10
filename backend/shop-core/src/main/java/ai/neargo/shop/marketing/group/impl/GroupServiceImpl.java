@@ -340,7 +340,11 @@ public class GroupServiceImpl implements GroupService {
     public GroupBuyVO createGroupBuy(CreateGroupBuyCommand cmd) {
         String userNo = SecurityUtils.currentUserNo();
 
-        var snap = goodsPort.snapshot(List.of(cmd.goodsNo())).values().stream().findFirst()
+        /*
+         * 按**商品**取快照。此前这里把 goodsNo 传进 snapshot(skuNos)，
+         * 而那个方法查的是 SKU —— 于是永远查不到，C 端开团一律「商品不存在」。
+         */
+        var snap = goodsPort.snapshotOfGoods(cmd.goodsNo())
                 .orElseThrow(() -> BizException.of(ErrorCode.NOT_FOUND));
         if (!snap.onSale()) {
             throw BizException.of(ErrorCode.NOT_FOUND);
@@ -665,5 +669,59 @@ public class GroupServiceImpl implements GroupService {
                         Wrappers.<MktQuote>lambdaQuery().eq(MktQuote::getEntityNo, merchantNo)))
                 .stream().map(MktQuote::getRequestNo).collect(java.util.stream.Collectors.toSet());
         return (int) open.stream().filter(r -> !quoted.contains(r.getRequestNo())).count();
+    }
+
+    // ---------------------------------------------------------------- 商家侧（B-11.9）
+
+    @Override
+    public List<GroupBuyVO> merchantGroups(String merchantNo) {
+        return scoped(() -> groupBuyMapper.selectList(Wrappers.<MktGroupBuy>lambdaQuery()
+                        .eq(MktGroupBuy::getEntityNo, merchantNo)
+                        .orderByDesc(MktGroupBuy::getId)))
+                .stream().map(g -> toGroupBuyVO(g, false)).toList();
+    }
+
+    @Override
+    @Transactional
+    public GroupBuyVO createMerchantGroup(String merchantNo, String goodsNo) {
+        var snap = goodsPort.snapshotOfGoods(goodsNo)
+                .orElseThrow(() -> BizException.of(ErrorCode.NOT_FOUND));
+        // 只能给自己的货开团 —— 不校验的话，任何商家都能拿别人的货开团并把单收进自己店
+        if (!merchantNo.equals(snap.merchantNo())) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        if (!snap.onSale()) {
+            // 没上架的货开了团，用户点进去是一个买不了的页面
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        /*
+         * 团购价来自**商品上已配好的拼团设置**，开团这一步不能临时定价 ——
+         * 否则同一件货会有两个价，而 C 端已经看到过旧的那个。
+         */
+        if (snap.groupPriceMinor() == null || snap.groupPriceMinor() <= 0) {
+            throw BizException.of(ErrorCode.ORDER_STATE_ILLEGAL);
+        }
+
+        MktGroupBuy g = new MktGroupBuy();
+        g.setGroupNo(BizKey.next(BizKey.GROUP_BUY));
+        /*
+         * initiatorUserNo 留空 = **这是商家开的团**。
+         * 填上店主的 userNo 会让它同时出现在店主的「我发起的团」里，
+         * 而那一页的签收与核销是按个人发起人设计的（货送到他家），语义完全不同。
+         */
+        g.setInitiatorUserNo(null);
+        g.setGoodsNo(snap.goodsNo());
+        g.setSkuNo(snap.skuNo());
+        g.setEntityNo(merchantNo);
+        g.setTitle(snap.title());
+        g.setCover(snap.cover());
+        g.setGroupPriceMinor(snap.groupPriceMinor());
+        g.setOriginPriceMinor(snap.price());
+        g.setMinCount(snap.groupMinCount() == null || snap.groupMinCount() < 2 ? 2 : snap.groupMinCount());
+        g.setJoinedCount(0);
+        g.setStatus(MktGroupBuy.OPEN);
+        g.setEndAt(System.currentTimeMillis() + java.time.Duration.ofDays(7).toMillis());
+        scoped(() -> groupBuyMapper.insert(g));
+        return toGroupBuyVO(g, false);
     }
 }

@@ -26,6 +26,21 @@ public interface GroupService {
     /** 我发起的团。发起人要在这里看待取订单、做签收与核销 */
     List<GroupBuyVO> myHostedGroups();
 
+    /**
+     * <b>商家</b>开的团（B-11.9）。
+     *
+     * <p>与 {@link #myHostedGroups()} 是两回事：那个按发起人（C 端用户）查，
+     * 这个按主体查。库上用 {@code initiator_user_no} 是否为空区分两者 ——
+     * 商家开的团没有个人发起人，成团后的取货由门店承接，不是某个邻居家。
+     */
+    List<GroupBuyVO> merchantGroups(String merchantNo);
+
+    /**
+     * 商家开团。团购价与起团人数都来自**商品上已配好的拼团设置** ——
+     * 商家不能在开团这一步临时定价，否则同一件货会有两个价，而 C 端已经看到过旧的那个。
+     */
+    GroupBuyVO createMerchantGroup(String merchantNo, String goodsNo);
+
     /** 本团待取订单。<b>作用域限本团</b>，且只有发起人能看 */
     List<GroupPickupOrderVO> groupPickupOrders(String groupNo);
 

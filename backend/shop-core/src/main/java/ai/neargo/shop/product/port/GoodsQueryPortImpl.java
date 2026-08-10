@@ -36,6 +36,24 @@ public class GoodsQueryPortImpl implements GoodsQueryPort {
     }
 
     @Override
+    public java.util.Optional<SkuSnapshot> snapshotOfGoods(String goodsNo) {
+        if (goodsNo == null || goodsNo.isBlank()) {
+            return java.util.Optional.empty();
+        }
+        // 取首个 SKU：开团、分享这类「以商品为单位」的动作只需要一份代表性的价与库存
+        PrdSku sku = DataScopeContext.executeWithoutScope(() ->
+                skuMapper.selectOne(Wrappers.<PrdSku>lambdaQuery()
+                        .eq(PrdSku::getGoodsNo, goodsNo)
+                        .eq(PrdSku::getMarket, MARKET_CN)
+                        .orderByAsc(PrdSku::getId)
+                        .last("limit 1")));
+        if (sku == null) {
+            return java.util.Optional.empty();
+        }
+        return java.util.Optional.ofNullable(snapshot(List.of(sku.getSkuNo())).get(sku.getSkuNo()));
+    }
+
+    @Override
     public Map<String, SkuSnapshot> snapshot(List<String> skuNos) {
         if (skuNos == null || skuNos.isEmpty()) {
             return Map.of();

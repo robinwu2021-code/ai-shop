@@ -19,6 +19,18 @@ public interface GoodsQueryPort {
     Map<String, SkuSnapshot> snapshot(List<String> skuNos);
 
     /**
+     * 按**商品**取一份快照（取它的首个 SKU）。
+     *
+     * <p>为什么需要它：开团给的是 goodsNo（用户是在商品页点「开团」的），
+     * 而 {@link #snapshot(List)} 收的是 skuNo。此前开团直接把 goodsNo 传进 snapshot，
+     * 于是**永远查不到**，所有开团请求一律返回「商品不存在」——
+     * 而那个报错看起来像商品下架了，没人会怀疑是参数传错了一层。
+     *
+     * @return 商品不存在、或它一个 SKU 都没有时为空
+     */
+    java.util.Optional<SkuSnapshot> snapshotOfGoods(String goodsNo);
+
+    /**
      * @param price        **当前**售价（分）。购物车不存价，每次都读实时价，
      *                     否则用户会看到「加购时 8 块、结算时 10 块」的跳变而没有任何提示
      * @param available    可售 = 总库存 - 已锁定

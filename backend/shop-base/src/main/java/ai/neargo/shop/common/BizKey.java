@@ -37,6 +37,8 @@ public final class BizKey {
     public static final String GROUP_REQUEST = "GR";
     public static final String QUOTE = "Q";
     public static final String COUPON = "CP";
+    /** 营销活动。与 COUPON 分开：一个活动可以发出成千上万张券，两者不是一回事 */
+    public static final String CAMPAIGN = "CM";
     public static final String REVIEW = "RV";
     public static final String APPEAL = "AP";
     public static final String SETTLE_BILL = "STL";
