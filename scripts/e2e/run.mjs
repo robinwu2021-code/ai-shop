@@ -18,6 +18,7 @@ import { ping, shapeIssues, E2eError } from "./client.mjs";
 const JOURNEYS = [
   await import("./journeys/j1-merchant-go-live.mjs"),
   await import("./journeys/j5-ops-and-category.mjs"),
+  await import("./journeys/j6-onboarding-three-ends.mjs"),
 ];
 
 const t0 = Date.now();
