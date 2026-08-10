@@ -97,6 +97,19 @@ public class BizGoodsController {
                 req.skuNo(), req.stock() == null ? 0 : req.stock());
     }
 
+    /**
+     * 设置**当前门店**的库存（多门店）。门店取请求头 {@code X-Store-No}，不传用默认店。
+     *
+     * <p>⚠️ 第一次对某个 SKU 调用它，就把这个 SKU 整体切换成「按店管理」——
+     * 此后没设过库存的门店卖不出这件商品。界面上要把这句话说清楚。
+     */
+    @PostMapping("/biz/goods/{goodsNo}/store-stock")
+    public GoodsVO storeStock(@PathVariable String goodsNo, @RequestBody StockReq req) {
+        var ctx = BizContext.current();
+        return goodsService.saveStoreStock(ctx.requireMerchantNo(), ctx.currentStoreNo(), goodsNo,
+                req.skuNo(), req.stock() == null ? 0 : req.stock());
+    }
+
     @GetMapping("/biz/spec-templates")
     public List<SpecTemplateVO> specTemplates(@RequestParam(required = false) String categoryType) {
         return goodsService.specTemplates(BizContext.requireMerchantNo(), categoryType);

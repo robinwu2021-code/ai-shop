@@ -718,11 +718,32 @@ CREATE TABLE IF NOT EXISTS prd_spec_template
     CONSTRAINT uk_template_no UNIQUE (template_no)
 );
 
+-- 门店级库存（V13）。有行则按店算，一条都没有则回退主体总量
+CREATE TABLE IF NOT EXISTS prd_store_stock
+(
+    id BIGINT(20) NOT NULL AUTO_INCREMENT,
+    store_no VARCHAR(64) NOT NULL,
+    sku_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    stock INT(11) NOT NULL DEFAULT 0,
+    locked_stock INT(11) NOT NULL DEFAULT 0,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT(20) NOT NULL DEFAULT 0,
+    deleted TINYINT(4) NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_store_sku (store_no,sku_no)
+);
+
 CREATE TABLE IF NOT EXISTS prd_stock_lock
 (
     id BIGINT(20) NOT NULL AUTO_INCREMENT,
     lock_no VARCHAR(64) NOT NULL,
     sku_no VARCHAR(64) NOT NULL,
+    store_no VARCHAR(64) DEFAULT NULL,
     qty INT(11) NOT NULL,
     status VARCHAR(16) NOT NULL DEFAULT 'LOCKED',
     locked_at DATETIME NOT NULL,

@@ -233,12 +233,27 @@ public class OrderServiceImpl implements OrderService {
          */
         Map<String, Integer> gifts = giftQtyOf(split);
 
+        /*
+         * 履约门店：**在锁库存之前算好，并与写进子单的那个值同一个来源**。
+         *
+         * 两处各算一次的话，迟早会出现「扣了 A 店的库存、订单却记在 B 店」——
+         * 那种错不会报错，只会在盘点时表现成两家店的账都对不上。
+         */
+        Map<String, String> storeOfMerchant = new HashMap<>();
+        for (Group g : split.groups) {
+            merchantPort.defaultStoreNo(g.merchantNo).ifPresent(no -> storeOfMerchant.put(g.merchantNo, no));
+        }
+
         // ⑤ 锁库存 —— 放在落库之前：库存不足就整单失败，不留半张订单
         try {
             List<StockPort.SkuQty> lock = new ArrayList<>();
-            for (Line i : split.items) {
-                // 赠品与付费件是同一个 SKU（活动表里没有「赠哪件」），合并成一次锁
-                lock.add(new StockPort.SkuQty(i.skuNo(), i.qty() + gifts.getOrDefault(i.skuNo(), 0)));
+            for (Group g : split.groups) {
+                String storeNo = storeOfMerchant.get(g.merchantNo);
+                for (Line i : g.lines) {
+                    // 赠品与付费件是同一个 SKU（活动表里没有「赠哪件」），合并成一次锁
+                    lock.add(new StockPort.SkuQty(
+                            i.skuNo(), i.qty() + gifts.getOrDefault(i.skuNo(), 0), storeNo));
+                }
             }
             stockPort.lock(orderNo, lock);
         } catch (RuntimeException e) {
@@ -249,9 +264,14 @@ public class OrderServiceImpl implements OrderService {
              */
             gifts.clear();
             try {
-                stockPort.lock(orderNo, split.items.stream()
-                        .map(i -> new StockPort.SkuQty(i.skuNo(), i.qty()))
-                        .toList());
+                List<StockPort.SkuQty> paidOnly = new ArrayList<>();
+                for (Group g : split.groups) {
+                    String storeNo = storeOfMerchant.get(g.merchantNo);
+                    for (Line i : g.lines) {
+                        paidOnly.add(new StockPort.SkuQty(i.skuNo(), i.qty(), storeNo));
+                    }
+                }
+                stockPort.lock(orderNo, paidOnly);
             } catch (RuntimeException retry) {
                 throw BizException.of(ErrorCode.STOCK_NOT_ENOUGH);
             }
@@ -299,7 +319,8 @@ public class OrderServiceImpl implements OrderService {
              * 取不到门店不让下单失败：订单照常创建，履约侧按「空 → 默认门店」兜底。
              * 为了一个统计维度把下单挡住，代价和收益完全不成比例。
              */
-            sub.setStoreNo(merchantPort.defaultStoreNo(g.merchantNo).orElse(null));
+            // 与上面锁库存用的是同一个 map —— 两处各算一次会让「扣了 A 店、单记在 B 店」
+            sub.setStoreNo(storeOfMerchant.get(g.merchantNo));
             sub.setEntityName(g.merchantName);
             sub.setFulfillment(cmd.fulfillment());
             sub.setPickupNo(cmd.pickupNo());

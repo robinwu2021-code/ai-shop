@@ -10,6 +10,7 @@ import ai.neargo.shop.product.dto.SpecTemplateVO;
 import ai.neargo.shop.product.entity.PrdCommunityPool;
 import ai.neargo.shop.product.entity.PrdGoods;
 import ai.neargo.shop.product.entity.PrdSku;
+import ai.neargo.shop.product.entity.PrdStoreStock;
 import ai.neargo.shop.product.entity.PrdSpecTemplate;
 import ai.neargo.shop.product.mapper.ProductMappers.CommunityPoolMapper;
 import ai.neargo.shop.product.mapper.ProductMappers.GoodsMapper;
@@ -48,13 +49,17 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
     private final ObjectMapper json;
 
     private final ai.neargo.shop.product.service.CategoryService categoryService;
+    /** 门店级库存。**只有商家显式设置过才有行** —— 见 saveStoreStock 的说明 */
+    private final ai.neargo.shop.product.mapper.ProductMappers.StoreStockMapper storeStockMapper;
 
     public MerchantGoodsServiceImpl(GoodsMapper goodsMapper, SkuMapper skuMapper,
                                     SpecTemplateMapper templateMapper,
                                     GoodsService goodsService, CommunityPoolMapper poolMapper,
                                     ai.neargo.shop.spi.user.MerchantQueryPort merchantPort,
                                     ai.neargo.shop.product.service.CategoryService categoryService,
+                                    ai.neargo.shop.product.mapper.ProductMappers.StoreStockMapper storeStockMapper,
                                     ObjectMapper json) {
+        this.storeStockMapper = storeStockMapper;
         this.categoryService = categoryService;
         this.poolMapper = poolMapper;
         this.merchantPort = merchantPort;
@@ -313,6 +318,41 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
             DataScopeContext.executeWithoutScope(() -> skuMapper.updateById(row));
         }
         // 补货**不触发重审**：这是每天都在做的事，走完整保存等于每次补货都要重新过审
+        return toVO(g);
+    }
+
+    @Override
+    @Transactional
+    public GoodsVO saveStoreStock(String merchantNo, String storeNo, String goodsNo,
+                                  String skuNo, int stock) {
+        PrdGoods g = mine(merchantNo, goodsNo);
+        if (stock < 0 || storeNo == null || storeNo.isBlank()) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        boolean exists = DataScopeContext.executeWithoutScope(() ->
+                skuMapper.selectCount(Wrappers.<PrdSku>lambdaQuery()
+                        .eq(PrdSku::getGoodsNo, goodsNo).eq(PrdSku::getSkuNo, skuNo))) > 0;
+        if (!exists) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        PrdStoreStock row = DataScopeContext.executeWithoutScope(() ->
+                storeStockMapper.selectOne(Wrappers.<PrdStoreStock>lambdaQuery()
+                        .eq(PrdStoreStock::getStoreNo, storeNo)
+                        .eq(PrdStoreStock::getSkuNo, skuNo)));
+        if (row == null) {
+            row = new PrdStoreStock();
+            row.setStoreNo(storeNo);
+            row.setSkuNo(skuNo);
+            row.setEntityNo(merchantNo);
+            row.setLockedStock(0);
+            row.setStock(stock);
+            PrdStoreStock toInsert = row;
+            DataScopeContext.executeWithoutScope(() -> storeStockMapper.insert(toInsert));
+        } else {
+            row.setStock(stock);
+            PrdStoreStock toUpdate = row;
+            DataScopeContext.executeWithoutScope(() -> storeStockMapper.updateById(toUpdate));
+        }
         return toVO(g);
     }
 

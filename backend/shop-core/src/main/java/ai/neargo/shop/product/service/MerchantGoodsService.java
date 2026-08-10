@@ -48,6 +48,18 @@ public interface MerchantGoodsService {
     GoodsVO saveStock(String merchantNo, String goodsNo, String skuNo, int stock);
 
     /**
+     * 设置**某家门店**的库存。
+     *
+     * <p>⚠️ 第一次为某个 SKU 调用它，就把这个 SKU 整体切换成了「按店管理」——
+     * 此后**没有设过库存的门店卖不出这件商品**（视为 0，不是回退到主体总量）。
+     * 回退到总量会让没设的店变成无限供应，比不分店更危险；
+     * 少卖是可恢复的，超卖不是。
+     *
+     * <p>所以这个动作在界面上要说清楚，不能像补货那样一按了事。
+     */
+    GoodsVO saveStoreStock(String merchantNo, String storeNo, String goodsNo, String skuNo, int stock);
+
+    /**
      * 平台审核商品（P-3.2.2）。<b>不带 merchantNo</b> —— 运营审的是全平台的商品。
      *
      * <p>此前只有审核<b>队列</b>没有审核<b>动作</b>：商品录进来就永远停在 AUDITING，

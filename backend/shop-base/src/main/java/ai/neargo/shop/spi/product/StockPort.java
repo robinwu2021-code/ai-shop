@@ -26,6 +26,22 @@ public interface StockPort {
     /** 确认扣减（支付成功）。锁定转实扣，此后不再释放。 */
     void confirm(String lockNo);
 
-    record SkuQty(String skuNo, int qty) {
+    /**
+     * @param storeNo 这一行在**哪家店**履约，决定扣谁的库存。可空。
+     *
+     * <p><b>门店放在行上而不是整次调用上</b>：一笔跨商家的订单会拆成多个子单，
+     * 各自的履约门店不同，一个参数表达不了。而按商家分成 N 次调用，
+     * 会让「一次把所有库存不足的 SKU 都收集齐」这个约定失效 ——
+     * 第一个商家不足就抛了，用户改完再提交才发现第二个商家也不足。
+     *
+     * <p>空值的含义是「这一行按主体总量扣」，与单店时代逐字相同。
+     * 真正决定走哪条路的是 SKU 有没有启用分店库存，见 StockPortImpl。
+     */
+    record SkuQty(String skuNo, int qty, String storeNo) {
+
+        /** 主体级扣减。存量调用方与单店场景用这个 */
+        public SkuQty(String skuNo, int qty) {
+            this(skuNo, qty, null);
+        }
     }
 }

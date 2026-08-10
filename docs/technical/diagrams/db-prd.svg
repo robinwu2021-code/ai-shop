@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="680" height="448" viewBox="0 0 680 448" role="img" font-family="system-ui,-apple-system,'PingFang SC',sans-serif">
-<title>商品与类目 表关系</title><desc>6 张表，箭头由引用方指向被引用方。</desc>
+<title>商品与类目 表关系</title><desc>7 张表，箭头由引用方指向被引用方。</desc>
 <defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
 <path d="M2 1L8 5L2 9" fill="none" stroke="#8A94A2" stroke-width="1.4" stroke-linecap="round"/></marker>
 <style>.n{font-weight:500;fill:#161A21}.s{font-size:11px;fill:#5A6472}
@@ -7,7 +7,8 @@
 .ar{stroke:#8A94A2;stroke-width:1.3;fill:none}</style></defs><path class="ar" d="M244 262 L244 208 L340 208 L340 193" marker-end="url(#a)"/>
 <path class="ar" d="M340 146 L340 92 L244 92 L244 77" marker-end="url(#a)"/>
 <path class="ar" d="M436 262 L436 220 L340 220 L340 193" marker-end="url(#a)"/>
-<path class="ar" d="M340 378 L340 324 L436 324 L436 309" marker-end="url(#a)"/>
+<path class="ar" d="M244 378 L244 324 L436 324 L436 309" marker-end="url(#a)"/>
+<path class="ar" d="M436 378 L436 336 L436 336 L436 309" marker-end="url(#a)"/>
 <rect x="159" y="30" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
 <text class="n" x="244" y="50" text-anchor="middle" font-size="13">prd_category</text>
 <text class="s" x="244" y="65" text-anchor="middle">三级类目树</text>
@@ -23,10 +24,14 @@
 <rect x="351" y="262" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
 <text class="n" x="436" y="282" text-anchor="middle" font-size="13">prd_sku</text>
 <text class="s" x="436" y="297" text-anchor="middle">SKU 与价格</text>
-<rect x="255" y="378" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="340" y="398" text-anchor="middle" font-size="13">prd_stock_lock</text>
-<text class="s" x="340" y="413" text-anchor="middle">库存锁定明细：释放与确认据此…</text>
+<rect x="159" y="378" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
+<text class="n" x="244" y="398" text-anchor="middle" font-size="13">prd_stock_lock</text>
+<text class="s" x="244" y="413" text-anchor="middle">库存锁定明细：释放与确认据此…</text>
+<rect x="351" y="378" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
+<text class="n" x="436" y="398" text-anchor="middle" font-size="13">prd_store_stock</text>
+<text class="s" x="436" y="413" text-anchor="middle">门店级库存：有行则按店算，一…</text>
 <text class="l" x="292" y="204" text-anchor="middle">goods_no</text>
 <text class="l" x="292" y="88" text-anchor="middle">category_no</text>
 <text class="l" x="388" y="216" text-anchor="middle">goods_no</text>
-<text class="l" x="388" y="320" text-anchor="middle">sku_no</text></svg>
+<text class="l" x="340" y="320" text-anchor="middle">sku_no</text>
+<text class="l" x="436" y="332" text-anchor="middle">sku_no</text></svg>

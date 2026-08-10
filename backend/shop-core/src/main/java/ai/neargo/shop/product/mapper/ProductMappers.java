@@ -6,6 +6,7 @@ import ai.neargo.shop.product.entity.PrdGoods;
 import ai.neargo.shop.product.entity.PrdSku;
 import ai.neargo.shop.product.entity.PrdSpecTemplate;
 import ai.neargo.shop.product.entity.PrdStockLock;
+import ai.neargo.shop.product.entity.PrdStoreStock;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Update;
@@ -50,6 +51,42 @@ public final class ProductMappers {
                 WHERE sku_no = #{skuNo} AND deleted = 0 AND locked_stock >= #{qty} AND stock >= #{qty}
                 """)
         int confirmStock(@Param("skuNo") String skuNo, @Param("qty") int qty);
+    }
+
+    /**
+     * 门店级库存。三条 SQL 与 {@link SkuMapper} 的那三条**逐字同构** ——
+     * 同一套「条件写在 WHERE 里、靠影响行数判断」的原子扣减手法，
+     * 只是换了张表加了个 store_no。
+     *
+     * <p>刻意写成两套而不是抽象成一套：库存扣减是这个系统里最不该「聪明」的地方，
+     * 一个泛化的 updateStock(table, key...) 读起来永远要先想「这次走的是哪张表」。
+     */
+    public interface StoreStockMapper extends BaseMapper<PrdStoreStock> {
+
+        @Update("""
+                UPDATE prd_store_stock SET locked_stock = locked_stock + #{qty}, version = version + 1
+                WHERE store_no = #{storeNo} AND sku_no = #{skuNo} AND deleted = 0
+                  AND stock - locked_stock >= #{qty}
+                """)
+        int lockStock(@Param("storeNo") String storeNo, @Param("skuNo") String skuNo,
+                      @Param("qty") int qty);
+
+        @Update("""
+                UPDATE prd_store_stock SET locked_stock = locked_stock - #{qty}, version = version + 1
+                WHERE store_no = #{storeNo} AND sku_no = #{skuNo} AND deleted = 0
+                  AND locked_stock >= #{qty}
+                """)
+        int releaseStock(@Param("storeNo") String storeNo, @Param("skuNo") String skuNo,
+                         @Param("qty") int qty);
+
+        @Update("""
+                UPDATE prd_store_stock SET stock = stock - #{qty}, locked_stock = locked_stock - #{qty},
+                                           version = version + 1
+                WHERE store_no = #{storeNo} AND sku_no = #{skuNo} AND deleted = 0
+                  AND locked_stock >= #{qty} AND stock >= #{qty}
+                """)
+        int confirmStock(@Param("storeNo") String storeNo, @Param("skuNo") String skuNo,
+                         @Param("qty") int qty);
     }
 
     public interface CommunityPoolMapper extends BaseMapper<PrdCommunityPool> {

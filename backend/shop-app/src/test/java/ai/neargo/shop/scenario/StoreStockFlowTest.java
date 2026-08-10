@@ -1,0 +1,225 @@
+package ai.neargo.shop.scenario;
+
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.web.context.WebApplicationContext;
+import tools.jackson.databind.ObjectMapper;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+/**
+ * 门店级库存。
+ *
+ * <p>此前 `prd_sku` 的唯一键是 (entity_no, sku_no, market)，**没有门店维度** ——
+ * 一家主体开第二家店之后，A 店卖光了 B 店也显示无货；顾客在 A 店下单却从
+ * 「全公司总量」扣，而货其实在 B 店。**自提场景下这是直接的履约事故**。
+ *
+ * <p>这个文件守三件事，按重要性排：
+ * <ol>
+ *   <li><b>单店行为逐字不变</b> —— 现在所有真实商家都是单店，
+ *       任何一次多门店改造让单店行为变了，都是拿全量用户给一个还没人用的功能试错
+ *   <li>启用分店库存后，两家店的数真的分得开
+ *   <li><b>没设过库存的店卖不出去</b>（视为 0，不是回退到主体总量）——
+ *       回退会让没设的店变成无限供应，比不分店更危险
+ * </ol>
+ */
+@SpringBootTest
+@ActiveProfiles("test")
+class StoreStockFlowTest {
+
+    @Autowired
+    private WebApplicationContext context;
+
+    @Autowired
+    private ObjectMapper json;
+
+    @Autowired
+    private ai.neargo.shop.common.OtpStore otpStore;
+
+    private MockMvc mvc() {
+        return MockMvcBuilders.webAppContextSetup(context)
+                .apply(org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity())
+                .build();
+    }
+
+    @Test
+    @DisplayName("★ 单店商家：一条门店库存行都没有 → 走主体总量，行为与改造前逐字相同")
+    void singleStoreBehaviourUnchanged() throws Exception {
+        String biz = merchant("12600190001", "单店库存店");
+        String goodsNo = listedGoods(biz, 3);
+        String skuNo = firstSku(goodsNo);
+
+        // 买 2 件成功，剩 1 件
+        assertThat(buy("13000190001", goodsNo, skuNo, 2, "ss-1")).isEqualTo(0);
+        // 再买 2 件 → 库存不足
+        assertThat(buy("13000190002", goodsNo, skuNo, 2, "ss-2")).isNotEqualTo(0);
+        // 买 1 件仍然可以
+        assertThat(buy("13000190003", goodsNo, skuNo, 1, "ss-3")).isEqualTo(0);
+    }
+
+    @Test
+    @DisplayName("★ 启用分店库存后，A 店卖光不影响 B 店的数")
+    void storesHaveIndependentStock() throws Exception {
+        String biz = merchant("12600190010", "双店库存·总店");
+        String goodsNo = listedGoods(biz, 100);
+        String skuNo = firstSku(goodsNo);
+        String storeA = defaultStoreNo(biz);
+        String storeB = createStore(biz, "双店库存·分店");
+
+        // 两家店各设 1 件。**一旦设了，这个 SKU 就整体转为按店管理**
+        setStoreStock(biz, storeA, goodsNo, skuNo, 1);
+        setStoreStock(biz, storeB, goodsNo, skuNo, 1);
+
+        // 默认店（A）买 1 件成功，再买就没了
+        assertThat(buy("13000190011", goodsNo, skuNo, 1, "ss-a1")).isEqualTo(0);
+        assertThat(buy("13000190012", goodsNo, skuNo, 1, "ss-a2")).isNotEqualTo(0);
+
+        /*
+         * B 店的 1 件还在 —— 主体总量是 100，若还按总量扣，上一步不会失败。
+         * 上一步失败本身就证明了「扣的是 A 店的数」。
+         */
+        assertThat(storeStock(biz, storeB, skuNo)).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("★ 没设过库存的门店卖不出去 —— 视为 0，不是回退到主体总量")
+    void storeWithoutStockRowSellsNothing() throws Exception {
+        String biz = merchant("12600190020", "只给一家店设库存");
+        String goodsNo = listedGoods(biz, 100);
+        String skuNo = firstSku(goodsNo);
+        String storeA = defaultStoreNo(biz);
+        createStore(biz, "没设库存的分店");
+
+        // 只给默认店设 2 件；分店一条行都没有
+        setStoreStock(biz, storeA, goodsNo, skuNo, 2);
+
+        // 默认店照常卖
+        assertThat(buy("13000190021", goodsNo, skuNo, 2, "ss-b1")).isEqualTo(0);
+        /*
+         * 再买就没了 —— 关键在这里：主体总量还有 100，
+         * 若实现写成「这家店没有行就回退总量」，这一步会成功，
+         * 而那意味着**没设库存的店等于无限供应**。
+         */
+        assertThat(buy("13000190022", goodsNo, skuNo, 1, "ss-b2")).isNotEqualTo(0);
+    }
+
+    // ---------------------------------------------------------------- 装配
+
+    @Autowired
+    private ai.neargo.shop.product.mapper.ProductMappers.StoreStockMapper storeStockMapper;
+
+    private int storeStock(String bizToken, String storeNo, String skuNo) {
+        var row = ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() ->
+                storeStockMapper.selectOne(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                        .<ai.neargo.shop.product.entity.PrdStoreStock>lambdaQuery()
+                        .eq(ai.neargo.shop.product.entity.PrdStoreStock::getStoreNo, storeNo)
+                        .eq(ai.neargo.shop.product.entity.PrdStoreStock::getSkuNo, skuNo)));
+        return row == null ? -1 : row.getStock();
+    }
+
+    private void setStoreStock(String token, String storeNo, String goodsNo, String skuNo, int stock)
+            throws Exception {
+        mvc().perform(post("/biz/goods/" + goodsNo + "/store-stock")
+                        .header("Authorization", "Bearer " + token)
+                        .header("X-Store-No", storeNo)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"skuNo\":\"" + skuNo + "\",\"stock\":" + stock + "}"))
+                .andExpect(jsonPath("$.code").value(0));
+    }
+
+    /** @return 下单响应的 code，0 = 成功 */
+    private int buy(String phone, String goodsNo, String skuNo, int qty, String idem) throws Exception {
+        String buyer = login(phone);
+        mvc().perform(post("/mp/cart/add").header("Authorization", "Bearer " + buyer)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"goodsNo\":\"" + goodsNo + "\",\"skuNo\":\"" + skuNo + "\",\"qty\":" + qty + "}"));
+        String body = mvc().perform(post("/mp/order").header("Authorization", "Bearer " + buyer)
+                        .header("Idempotency-Key", idem)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"fulfillment\":\"STORE_PICKUP\",\"pickupNo\":\"PP0001\"}"))
+                .andReturn().getResponse().getContentAsString();
+        return json.readTree(body).get("code").asInt();
+    }
+
+    private String listedGoods(String token, int stock) throws Exception {
+        String body = mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"门店库存测试品\",\"type\":\"NORMAL\","
+                                + "\"skus\":[{\"optionValues\":[],\"price\":1000,\"stock\":" + stock + "}]}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        String goodsNo = json.readTree(body).get("data").get("goodsNo").asString();
+        mvc().perform(post("/ops/goods/" + goodsNo + "/audit")
+                .header("Authorization", "Bearer " + opsLogin())
+                .contentType(MediaType.APPLICATION_JSON).content("{\"approved\":true}"));
+        mvc().perform(post("/biz/goods/" + goodsNo + "/toggle").header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON).content("{\"onSale\":true}"));
+        return goodsNo;
+    }
+
+    private String firstSku(String goodsNo) throws Exception {
+        String body = mvc().perform(get("/mp/goods/" + goodsNo)).andReturn().getResponse().getContentAsString();
+        return json.readTree(body).get("data").get("skus").get(0).get("skuNo").asString();
+    }
+
+    private String defaultStoreNo(String token) throws Exception {
+        String body = mvc().perform(get("/biz/store/list").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        return json.readTree(body).get("data").get(0).get("storeNo").asString();
+    }
+
+    private String createStore(String token, String name) throws Exception {
+        String body = mvc().perform(post("/biz/store/create").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"" + name + "\",\"address\":\"某某路 3 号\"}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        return json.readTree(body).get("data").get("storeNo").asString();
+    }
+
+    private String merchant(String phone, String name) throws Exception {
+        String user = login(phone);
+        String body = mvc().perform(post("/mp/merchant/apply").header("Authorization", "Bearer " + user)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"" + name + "\",\"subject\":\"INDIVIDUAL_BIZ\","
+                                + "\"contactName\":\"张三\",\"contactPhone\":\"13900000000\","
+                                + "\"category\":\"食品\",\"serviceScope\":\"COMMUNITY\","
+                                + "\"communityNos\":[\"CM001\"]}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        String applyNo = json.readTree(body).get("data").get("applyNo").asString();
+        mvc().perform(post("/ops/merchant/apply/" + applyNo + "/audit")
+                .header("Authorization", "Bearer " + opsLogin())
+                .contentType(MediaType.APPLICATION_JSON).content("{\"approved\":true}"));
+        return login(phone);
+    }
+
+    private String opsLogin() throws Exception {
+        String body = mvc().perform(post("/ops/auth/login").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"admin\",\"password\":\"admin123\"}"))
+                .andReturn().getResponse().getContentAsString();
+        return json.readTree(body).get("data").get("token").asString();
+    }
+
+    private String login(String phone) throws Exception {
+        mvc().perform(post("/mp/user/otp/send").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"phone\":\"" + phone + "\"}"));
+        String code = otpStore.peek(phone).orElseThrow();
+        String body = mvc().perform(post("/mp/user/login").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"grantType\":\"PHONE_OTP\",\"principal\":\"" + phone
+                                + "\",\"credential\":\"" + code + "\",\"agreed\":true}"))
+                .andReturn().getResponse().getContentAsString();
+        return json.readTree(body).get("data").get("token").asString();
+    }
+}

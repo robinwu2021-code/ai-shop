@@ -29,6 +29,12 @@ public class PrdStockLock extends BaseEntity {
     private String skuNo;
     private Integer qty;
 
+    /**
+     * 锁的是哪家店的库存。**空 = 主体级**（存量锁定行，或该 SKU 还没启用分店库存）。
+     * 释放与确认要靠它决定把数减回哪张表 —— 减错表的后果是库存凭空多出或少掉一批。
+     */
+    private String storeNo;
+
     /** LOCKED / RELEASED / CONFIRMED */
     private String status;
 

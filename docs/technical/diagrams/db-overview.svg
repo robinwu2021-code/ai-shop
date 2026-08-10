@@ -21,7 +21,7 @@
 <text class="b" x="36" y="138">主数据与交易</text>
 <rect x="185" y="148" width="150" height="46" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
 <text class="n" x="260" y="168" text-anchor="middle" font-size="13">商品与类目</text>
-<text class="s" x="260" y="183" text-anchor="middle">prd_* · 6 表</text>
+<text class="s" x="260" y="183" text-anchor="middle">prd_* · 7 表</text>
 <rect x="345" y="148" width="150" height="46" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
 <text class="n" x="420" y="168" text-anchor="middle" font-size="13">营销与团购</text>
 <text class="s" x="420" y="183" text-anchor="middle">mkt_* · 11 表</text>
