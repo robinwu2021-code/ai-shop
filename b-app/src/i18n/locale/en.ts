@@ -99,6 +99,8 @@ export default {
   },
 
   goods: {
+    storeStockHint: "Stock is per store",
+    switchStore: "Switch store ›",
     categoryType: {
       NORMAL: "Everyday goods",
       FRESH: "Fresh produce",

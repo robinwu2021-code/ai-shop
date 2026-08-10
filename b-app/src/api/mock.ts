@@ -585,6 +585,15 @@ export const mockApi: MerchantApi = {
     return delay(toGoods(seed));
   },
 
+  async mSaveStoreStock(goodsNo, skuNo, stock) {
+    /*
+     * mock 里没有门店维度的库存表 —— 单店是 mock 的默认形态，
+     * 而门店级库存要在真后端上才谈得上。这里与 mSaveStock 同行为：
+     * 让端上的交互能跑通，真实语义（没设库存的店视为 0）由后端用例守。
+     */
+    return this.mSaveStock(goodsNo, skuNo, stock);
+  },
+
   // ---------------------------------------------------------------- 图片与识别
   async mUploadImage(tempPath) {
     // mock 直接把端上的临时路径当 URL 用 —— H5 下 blob: 路径能直接显示。

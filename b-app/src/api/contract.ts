@@ -225,6 +225,14 @@ export interface MerchantApi {
   mSaveGoods(payload: GoodsDraft): Promise<Goods>;
   mToggleGoods(goodsNo: string, onSale: boolean): Promise<Goods>;
   mSaveStock(goodsNo: string, skuNo: string, stock: number): Promise<Goods>;
+  /**
+   * 改**当前门店**的库存（多门店）。门店走 `X-Store-No` 头，http-client 自动带。
+   *
+   * ⚠️ 第一次对某个 SKU 调用它，这个 SKU 就整体转为按店管理 ——
+   * 此后没设过库存的门店卖不出这件商品（视为 0，不是回退主体总量）。
+   * 所以只在商家**确实有多家店**时才用它，单店仍走 mSaveStock。
+   */
+  mSaveStoreStock(goodsNo: string, skuNo: string, stock: number): Promise<Goods>;
 
   // ---- 商品图片与拍照建品（B-11.3.7 / E9）
   /** 上传一张图，返回可访问 URL。小程序侧走 uploadFile，域名需在白名单 */

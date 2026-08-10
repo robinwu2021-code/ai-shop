@@ -14,14 +14,14 @@
     },
     {
       "name": "b-app-h5",
-      "runtimeExecutable": "npm",
+      "runtimeExecutable": "/bin/zsh",
       "runtimeArgs": [
-        "run",
-        "dev:h5"
+        "-lc",
+        "PORT=5174 npm run dev:h5"
       ],
       "cwd": "b-app",
-      "port": 5273,
-      "autoPort": true
+      "port": 5174,
+      "autoPort": false
     },
     {
       "name": "ops-web",

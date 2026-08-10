@@ -160,6 +160,8 @@ export default {
   },
 
   goods: {
+    storeStockHint: "库存按门店算",
+    switchStore: "切换门店 ›",
     /**
      * 五品类的展示名。**此前页面直接渲染枚举码**（NORMAL / FRESH / …），
      * 商家看到的是一串英文常量 —— 与「i18n 键原样打给用户」是一枚硬币的两面：

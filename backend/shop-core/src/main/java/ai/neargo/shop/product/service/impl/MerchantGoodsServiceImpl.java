@@ -478,10 +478,53 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         return new GoodsVO(base.goodsNo(), base.title(), base.subtitle(), base.cover(),
                 base.images(), base.type(), base.categoryNo(), base.merchant(),
                 base.rating(), base.ratingCount(), base.price(), base.originPrice(),
-                base.fulfillments(), base.specGroups(), base.skus(), base.sales(),
+                base.fulfillments(), base.specGroups(), storeSkus(base.skus()), base.sales(),
                 base.cutoffAt(), base.arrivalDesc(), base.weighed(), base.origin(),
                 base.durationMin(), base.storeName(), base.limitPerUser(), base.onSale(),
                 statusOf(g));
+    }
+
+    /**
+     * 把 SKU 的库存换成**当前门店**的。
+     *
+     * <p>商家给某家店设了 1 件之后，商品页却显示主体总量 91 —— 他会以为还有货。
+     * 库存分店（V13）只解决了「扣谁的数」，没解决「商家看到的是谁的数」，
+     * 而后者才是他每天盯着的那个数字。
+     *
+     * <p>没启用分店库存的 SKU 原样返回，单店商家因此看不出任何变化。
+     */
+    private List<GoodsVO.SkuVO> storeSkus(List<GoodsVO.SkuVO> skus) {
+        String storeNo = ai.neargo.shop.auth.BizContext.current().currentStoreNo();
+        if (storeNo == null || storeNo.isBlank() || skus == null || skus.isEmpty()) {
+            return skus;
+        }
+        List<String> skuNos = skus.stream().map(GoodsVO.SkuVO::skuNo).toList();
+        Map<String, PrdStoreStock> byStore = DataScopeContext.executeWithoutScope(() ->
+                        storeStockMapper.selectList(Wrappers.<PrdStoreStock>lambdaQuery()
+                                .in(PrdStoreStock::getSkuNo, skuNos)))
+                .stream().collect(java.util.stream.Collectors.toMap(
+                        r -> r.getSkuNo() + "@" + r.getStoreNo(), r -> r, (a, b) -> a));
+        // 这些 SKU 里有没有任何一个启用了分店库存 —— 判据与 StockPortImpl 保持一致
+        java.util.Set<String> perStore = byStore.values().stream()
+                .map(PrdStoreStock::getSkuNo).collect(java.util.stream.Collectors.toSet());
+        if (perStore.isEmpty()) {
+            return skus;
+        }
+        return skus.stream().map(sku -> {
+            if (!perStore.contains(sku.skuNo())) {
+                return sku;
+            }
+            PrdStoreStock row = byStore.get(sku.skuNo() + "@" + storeNo);
+            /*
+             * 这家店没有行 = 0，不是回退总量 —— 与下单侧同一口径。
+             * 两处口径不一致的话，会出现「页面显示有货、下单说库存不足」。
+             */
+            int stock = row == null || row.getStock() == null ? 0 : row.getStock();
+            int locked = row == null || row.getLockedStock() == null ? 0 : row.getLockedStock();
+            int available = Math.max(stock - locked, 0);
+            return new GoodsVO.SkuVO(sku.skuNo(), sku.optionValues(), sku.spec(),
+                    sku.price(), sku.originPrice(), available, sku.nominalGram());
+        }).toList();
     }
 
     private SpecTemplateVO toVO(PrdSpecTemplate t) {

@@ -19,6 +19,21 @@ const TABS: { key: GoodsStatus | ""; labelKey: string }[] = [
   { key: "OFF_SALE", labelKey: "goods.statusOFF_SALE" },
 ];
 
+/** 切门店。库存是按店的，切完要重新拉 —— 不重拉会显示上一家店的数 */
+function pickStore() {
+  const usable = merchant.stores.filter((x) => x.status === "ACTIVE");
+  if (usable.length < 2) return;
+  uni.showActionSheet({
+    itemList: usable.map((x) => x.name || x.storeNo),
+    success: ({ tapIndex }) => {
+      const target = usable[tapIndex];
+      if (!target || target.storeNo === merchant.storeNo) return;
+      merchant.switchStore(target.storeNo);
+      void load();
+    },
+  });
+}
+
 const tab = ref<GoodsStatus | "">("");
 const list = ref<Goods[]>([]);
 const loading = ref(false);
@@ -82,7 +97,16 @@ async function editStock(g: Goods) {
   }
 
   try {
-    await api.mSaveStock(g.goodsNo, sku.skuNo, Math.floor(n));
+    /*
+     * 多店走门店库存，单店走主体库存。
+     * 不分的话，多店商家改完发现页面数字没变 —— 他改的是主体总量，
+     * 而页面显示的是当前门店的数（后端按店取），两个数各走各的。
+     */
+    if (merchant.multiStore) {
+      await api.mSaveStoreStock(g.goodsNo, sku.skuNo, Math.floor(n));
+    } else {
+      await api.mSaveStock(g.goodsNo, sku.skuNo, Math.floor(n));
+    }
     uni.showToast({ title: t("common.saved"), icon: "none" });
     await load();
   } catch (e) {
@@ -113,6 +137,17 @@ onShow(load);
       <text class="add" @tap="edit()">＋ {{ $t("goods.add") }}</text>
     </view>
 
+    <!--
+      当前门店。**多店才显示** —— 单店商家看到「当前门店」只会疑惑还有别的店。
+      不显示的代价是实测出来的：商家给某家店设了 1 件库存，商品页却显示主体总量 91，
+      他会以为还有货。
+    -->
+    <view v-if="merchant.multiStore" class="store" @tap="pickStore">
+      <text class="store__name">{{ merchant.currentStore?.name || "—" }}</text>
+      <text class="store__hint">{{ $t("goods.storeStockHint") }}</text>
+      <text class="store__switch">{{ $t("goods.switchStore") }}</text>
+    </view>
+
     <sh-empty v-if="empty" :text='$t("goods.empty")'></sh-empty>
 
     <view v-for="g in list" :key="g.goodsNo" class="sh-card row">
@@ -141,6 +176,28 @@ onShow(load);
 </template>
 
 <style scoped>
+.store {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  padding: 16rpx 24rpx;
+  margin-bottom: 16rpx;
+  background: var(--sh-faint);
+  border-radius: 16rpx;
+}
+.store__name {
+  font-size: 26rpx;
+  color: var(--sh-ink);
+}
+.store__hint {
+  flex: 1;
+  font-size: 24rpx;
+  color: var(--sh-sub);
+}
+.store__switch {
+  font-size: 24rpx;
+  color: var(--sh-primary);
+}
 .bar {
   display: flex;
   align-items: center;

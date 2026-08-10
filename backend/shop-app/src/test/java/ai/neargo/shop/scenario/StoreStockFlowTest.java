@@ -113,7 +113,60 @@ class StoreStockFlowTest {
         assertThat(buy("13000190022", goodsNo, skuNo, 1, "ss-b2")).isNotEqualTo(0);
     }
 
+    @Test
+    @DisplayName("★ 商家看到的库存 = 当前门店的数，不是主体总量")
+    void merchantSeesCurrentStoreStock() throws Exception {
+        String biz = merchant("12600190030", "看得见分店库存");
+        String goodsNo = listedGoods(biz, 100);
+        String skuNo = firstSku(goodsNo);
+        String storeA = defaultStoreNo(biz);
+        String storeB = createStore(biz, "看得见·分店");
+
+        setStoreStock(biz, storeA, goodsNo, skuNo, 7);
+        setStoreStock(biz, storeB, goodsNo, skuNo, 3);
+
+        /*
+         * 主体总量是 100。若商品页仍显示 100，商家会以为还有货 ——
+         * 而下单时按门店扣，第 8 单就会失败。
+         * **「商家看到的数」与「下单扣的数」必须同一个口径**，
+         * 两处不一致的症状是「页面显示有货、下单说库存不足」，最难查的那类。
+         */
+        assertThat(shownStock(biz, storeA, goodsNo, skuNo)).isEqualTo(7);
+        assertThat(shownStock(biz, storeB, goodsNo, skuNo)).isEqualTo(3);
+    }
+
+    @Test
+    @DisplayName("没设过库存的门店显示 0 —— 与下单侧同一口径，不回退主体总量")
+    void storeWithoutRowShowsZero() throws Exception {
+        String biz = merchant("12600190040", "只设一家店");
+        String goodsNo = listedGoods(biz, 100);
+        String skuNo = firstSku(goodsNo);
+        String storeA = defaultStoreNo(biz);
+        String storeB = createStore(biz, "没设的那家");
+
+        setStoreStock(biz, storeA, goodsNo, skuNo, 5);
+
+        assertThat(shownStock(biz, storeA, goodsNo, skuNo)).isEqualTo(5);
+        // 不是 100 —— 显示总量会让商家以为这家店有货，而下单必然失败
+        assertThat(shownStock(biz, storeB, goodsNo, skuNo)).isZero();
+    }
+
     // ---------------------------------------------------------------- 装配
+
+    /** B 端商品详情里这个 SKU 显示的可售量 */
+    private int shownStock(String token, String storeNo, String goodsNo, String skuNo) throws Exception {
+        String body = mvc().perform(get("/biz/goods/" + goodsNo)
+                        .header("Authorization", "Bearer " + token)
+                        .header("X-Store-No", storeNo))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        for (var sku : json.readTree(body).get("data").get("skus")) {
+            if (skuNo.equals(sku.get("skuNo").asString())) {
+                return sku.get("stock").asInt();
+            }
+        }
+        return -1;
+    }
 
     @Autowired
     private ai.neargo.shop.product.mapper.ProductMappers.StoreStockMapper storeStockMapper;

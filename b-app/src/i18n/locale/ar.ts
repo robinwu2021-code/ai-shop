@@ -99,6 +99,8 @@ export default {
   },
 
   goods: {
+    storeStockHint: "المخزون لكل فرع",
+    switchStore: "تبديل الفرع ›",
     categoryType: {
       NORMAL: "سلع يومية",
       FRESH: "طازج",

@@ -153,6 +153,8 @@ export const httpApi: MerchantApi = {
     http.post<Goods>(buildPath(E.mToggleGoods.path, { goodsNo }), { onSale } satisfies ToggleGoodsReq),
   mSaveStock: (goodsNo, skuNo, stock) =>
     http.post<Goods>(buildPath(E.mSaveStock.path, { goodsNo }), { skuNo, stock } satisfies SaveStockReq),
+  mSaveStoreStock: (goodsNo, skuNo, stock) =>
+    http.post<Goods>(buildPath(E.mSaveStoreStock.path, { goodsNo }), { skuNo, stock } satisfies SaveStockReq),
 
   mUploadImage: (tempPath) =>
     http.post<{ url: string }>(E.mUploadImage.path, { tempPath } satisfies UploadImageReq),

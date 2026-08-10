@@ -59,6 +59,7 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
   mSaveGoods: { method: "POST", path: "/biz/goods/save", auth: true, summary: "新建/编辑商品" },
   mToggleGoods: { method: "POST", path: "/biz/goods/:goodsNo/toggle", auth: true, summary: "上下架" },
   mSaveStock: { method: "POST", path: "/biz/goods/:goodsNo/stock", auth: true, summary: "改库存" },
+  mSaveStoreStock: { method: "POST", path: "/biz/goods/:goodsNo/store-stock", auth: true, summary: "改当前门店库存" },
 
   mUploadImage: { method: "POST", path: "/biz/upload/image", auth: true, summary: "上传商品图" },
   mRecognizeGoods: { method: "POST", path: "/biz/goods/recognize", auth: true, summary: "拍照识别商品" },
