@@ -51,6 +51,8 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
     private final ai.neargo.shop.product.service.CategoryService categoryService;
     /** 门店级库存。**只有商家显式设置过才有行** —— 见 saveStoreStock 的说明 */
     private final ai.neargo.shop.product.mapper.ProductMappers.StoreStockMapper storeStockMapper;
+    /** 门店级上架关系。与库存同一套「有行按店算、无行回退主体」的语义 */
+    private final ai.neargo.shop.product.mapper.ProductMappers.StoreGoodsMapper storeGoodsMapper;
 
     public MerchantGoodsServiceImpl(GoodsMapper goodsMapper, SkuMapper skuMapper,
                                     SpecTemplateMapper templateMapper,
@@ -58,8 +60,10 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                                     ai.neargo.shop.spi.user.MerchantQueryPort merchantPort,
                                     ai.neargo.shop.product.service.CategoryService categoryService,
                                     ai.neargo.shop.product.mapper.ProductMappers.StoreStockMapper storeStockMapper,
+                                    ai.neargo.shop.product.mapper.ProductMappers.StoreGoodsMapper storeGoodsMapper,
                                     ObjectMapper json) {
         this.storeStockMapper = storeStockMapper;
+        this.storeGoodsMapper = storeGoodsMapper;
         this.categoryService = categoryService;
         this.poolMapper = poolMapper;
         this.merchantPort = merchantPort;
@@ -224,10 +228,104 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         if (onSale) {
             requireCategoryAuthorized(merchantNo, g.getCategoryNo());
         }
+        String storeNo = ai.neargo.shop.auth.BizContext.current().currentStoreNo();
+        /*
+         * 多门店商家的上下架落在**门店行**上，不动主体的 on_sale。
+         *
+         * 不分的话，A 店店长点一下「下架」，B 店的货跟着一起没了 —— 而他做的
+         * 只是「今天我这儿不卖了」。这与库存那处是同一条理由：钱与货的作用域
+         * 必须与操作人能管的范围对齐。
+         *
+         * 单店（或没有门店上下文）仍改主体级，行为与改造前逐字相同。
+         */
+        if (perStore(merchantNo, storeNo, goodsNo)) {
+            setStoreOnSale(g, storeNo, onSale);
+            // 主体级 on_sale 是「这件货整体还卖不卖」的总闸：任一门店在售就得是开的，
+            // 否则 storeOnSale 的 && 会把店级的 true 一起吞掉
+            boolean anyOn = onSale || storeGoodsRows(goodsNo).stream()
+                    .anyMatch(r -> Boolean.TRUE.equals(r.getOnSale()));
+            g.setOnSale(anyOn);
+            DataScopeContext.executeWithoutScope(() -> goodsMapper.updateById(g));
+            syncPool(g, anyOn);
+            return toVO(g);
+        }
+
         g.setOnSale(onSale);
         DataScopeContext.executeWithoutScope(() -> goodsMapper.updateById(g));
         syncPool(g, onSale);
         return toVO(g);
+    }
+
+    /**
+     * 这次上下架该落在门店行上，还是主体的 {@code on_sale} 上。
+     *
+     * <p>判据就是「这个主体有几家店」——<b>多门店时每一次上下架都落成门店行，
+     * 包括在默认门店做的那次</b>。
+     *
+     * <p>这里原先写的是「操作发生在非默认门店」，被测试当场抓住：
+     * 老板在默认店 A 上架（走主体级，不写行），再去 B 店上架（写了行），
+     * 此时 A 店因为「有行了但没有 A 的行」而变成未上架 —— 他什么都没对 A 做过。
+     *
+     * <p>单店商家恒为 false，行为与改造前逐字相同。
+     */
+    private boolean perStore(String merchantNo, String storeNo, String goodsNo) {
+        if (storeNo == null || storeNo.isBlank()) {
+            return false;
+        }
+        return merchantPort.storeNos(merchantNo).size() > 1 || !storeGoodsRows(goodsNo).isEmpty();
+    }
+
+    /**
+     * 写一条门店上架行（有则更新）。**只在多门店时被调用**。
+     *
+     * <p><b>第一次转成店级管理时，先把其他门店的现状固化下来</b>。
+     *
+     * <p>不这么做的后果是实测撞到的：两家店都在卖，商家在 A 店点「下架」——
+     * 只写了 A 的行，B 因为「有行了但没有自己的行」而一起变成未上架。
+     * 他做的只是「A 店今天不卖」，B 店的货却跟着没了，而且没有任何提示。
+     *
+     * <p>测试当时没抓到，是因为用例先把两家店都显式上架过一遍 ——
+     * 正好绕开了转换那一刻。这类「迁移瞬间」的缺陷，写用例时最容易被跳过。
+     */
+    private void setStoreOnSale(PrdGoods g, String storeNo, boolean onSale) {
+        if (storeGoodsRows(g.getGoodsNo()).isEmpty()) {
+            boolean current = Boolean.TRUE.equals(g.getOnSale());
+            for (String other : merchantPort.storeNos(g.getEntityNo())) {
+                if (other.equals(storeNo)) {
+                    continue;
+                }
+                ai.neargo.shop.product.entity.PrdStoreGoods seed =
+                        new ai.neargo.shop.product.entity.PrdStoreGoods();
+                seed.setStoreNo(other);
+                seed.setGoodsNo(g.getGoodsNo());
+                seed.setEntityNo(g.getEntityNo());
+                seed.setOnSale(current);
+                DataScopeContext.executeWithoutScope(() -> storeGoodsMapper.insert(seed));
+            }
+        }
+        writeStoreOnSale(g, storeNo, onSale);
+    }
+
+    private void writeStoreOnSale(PrdGoods g, String storeNo, boolean onSale) {
+        ai.neargo.shop.product.entity.PrdStoreGoods row =
+                DataScopeContext.executeWithoutScope(() -> storeGoodsMapper.selectOne(
+                        Wrappers.<ai.neargo.shop.product.entity.PrdStoreGoods>lambdaQuery()
+                                .eq(ai.neargo.shop.product.entity.PrdStoreGoods::getStoreNo, storeNo)
+                                .eq(ai.neargo.shop.product.entity.PrdStoreGoods::getGoodsNo, g.getGoodsNo())
+                                .last("limit 1")));
+        if (row == null) {
+            row = new ai.neargo.shop.product.entity.PrdStoreGoods();
+            row.setStoreNo(storeNo);
+            row.setGoodsNo(g.getGoodsNo());
+            row.setEntityNo(g.getEntityNo());
+            row.setOnSale(onSale);
+            ai.neargo.shop.product.entity.PrdStoreGoods toInsert = row;
+            DataScopeContext.executeWithoutScope(() -> storeGoodsMapper.insert(toInsert));
+            return;
+        }
+        row.setOnSale(onSale);
+        ai.neargo.shop.product.entity.PrdStoreGoods toUpdate = row;
+        DataScopeContext.executeWithoutScope(() -> storeGoodsMapper.updateById(toUpdate));
     }
 
     /**
@@ -287,6 +385,15 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         }
         for (String communityNo : want) {
             if (have.contains(communityNo)) {
+                continue;
+            }
+            /*
+             * 先试着复活被逻辑删的行。**下架是逻辑删，而唯一键不含 deleted** ——
+             * 直接 insert 会撞 uk_community_goods，表现为上架接口 500，
+             * 而商家看到的是「系统开小差」，与商品本身毫无关系。
+             */
+            if (DataScopeContext.executeWithoutScope(() ->
+                    poolMapper.revive(communityNo, g.getGoodsNo())) > 0) {
                 continue;
             }
             PrdCommunityPool row = new PrdCommunityPool();
@@ -461,15 +568,59 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         }
     }
 
-    /** 商家侧状态：审核结果优先于上下架 —— 没过审时"已下架"这个说法会让人以为点一下就能卖。 */
-    private static String statusOf(PrdGoods g) {
+    /**
+     * 商家侧状态：审核结果优先于上下架 —— 没过审时"已下架"这个说法会让人以为点一下就能卖。
+     *
+     * <p>不再是 static：在售与否现在要看**当前门店**，那需要读库。
+     */
+    private String statusOf(PrdGoods g) {
         if (AUDITING.equals(g.getAuditStatus())) {
             return "AUDITING";
         }
         if (REJECTED.equals(g.getAuditStatus())) {
             return "REJECTED";
         }
-        return Boolean.TRUE.equals(g.getOnSale()) ? "ON_SALE" : "OFF_SALE";
+        return storeOnSale(g) ? "ON_SALE" : "OFF_SALE";
+    }
+
+    /**
+     * 这件商品在**当前门店**上不上架。
+     *
+     * <p>语义与门店库存（V13）逐字同款：
+     * <ul>
+     *   <li>一条店级行都没有 → 走 {@code prd_goods.on_sale}，单店行为完全不变
+     *   <li>有了任意一条 → 该商品整体转为店级管理，<b>没有行的店视为未上架</b>
+     * </ul>
+     *
+     * <p>最后半句不能改成「没有行就回退主体级」：那样商家给 A 店单独上架之后，
+     * B 店会跟着一起上架 —— 而他刚做的恰恰是「只在 A 店卖」。
+     */
+    private boolean storeOnSale(PrdGoods g) {
+        boolean entityOn = Boolean.TRUE.equals(g.getOnSale());
+        String storeNo = ai.neargo.shop.auth.BizContext.current().currentStoreNo();
+        List<ai.neargo.shop.product.entity.PrdStoreGoods> rows = storeGoodsRows(g.getGoodsNo());
+        if (rows.isEmpty()) {
+            return entityOn;
+        }
+        /*
+         * storeNo 在 B 端不会为空 —— 不传 X-Store-No 时 BizContext 取默认店，
+         * 「主体视角」这个东西在 B 端并不存在。
+         * 这里原先有一个 storeNo == null 的分支（「任一门店在售就算在售」），
+         * 是我凭空造的语义，测试当场证伪：不带头访问看到的就是默认店的答案。
+         * 留成死代码的话，下一个人会照着它推理出一个不存在的视角。
+         */
+        if (storeNo == null || storeNo.isBlank()) {
+            return entityOn;
+        }
+        return entityOn && rows.stream()
+                .filter(r -> storeNo.equals(r.getStoreNo()))
+                .anyMatch(r -> Boolean.TRUE.equals(r.getOnSale()));
+    }
+
+    private List<ai.neargo.shop.product.entity.PrdStoreGoods> storeGoodsRows(String goodsNo) {
+        return DataScopeContext.executeWithoutScope(() ->
+                storeGoodsMapper.selectList(Wrappers.<ai.neargo.shop.product.entity.PrdStoreGoods>lambdaQuery()
+                        .eq(ai.neargo.shop.product.entity.PrdStoreGoods::getGoodsNo, goodsNo)));
     }
 
     private GoodsVO toVO(PrdGoods g) {

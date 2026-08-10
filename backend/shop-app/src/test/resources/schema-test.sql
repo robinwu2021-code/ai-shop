@@ -719,6 +719,24 @@ CREATE TABLE IF NOT EXISTS prd_spec_template
 );
 
 -- 门店级库存（V13）。有行则按店算，一条都没有则回退主体总量
+CREATE TABLE IF NOT EXISTS prd_store_goods
+(
+    id BIGINT(20) NOT NULL AUTO_INCREMENT,
+    store_no VARCHAR(64) NOT NULL,
+    goods_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    on_sale TINYINT(4) NOT NULL DEFAULT 0,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT(20) NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted TINYINT(4) NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_store_goods UNIQUE (store_no,goods_no)
+);
+
 CREATE TABLE IF NOT EXISTS prd_store_stock
 (
     id BIGINT(20) NOT NULL AUTO_INCREMENT,

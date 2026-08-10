@@ -103,6 +103,18 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort {
     }
 
     @Override
+    public java.util.List<String> storeNos(String merchantNo) {
+        if (merchantNo == null || merchantNo.isBlank()) {
+            return java.util.List.of();
+        }
+        return DataScopeContext.executeWithoutScope(() ->
+                        storeMapper.selectList(Wrappers.<ai.neargo.shop.merchant.entity.MchStore>lambdaQuery()
+                                .eq(ai.neargo.shop.merchant.entity.MchStore::getEntityNo, merchantNo)
+                                .orderByAsc(ai.neargo.shop.merchant.entity.MchStore::getId)))
+                .stream().map(ai.neargo.shop.merchant.entity.MchStore::getStoreNo).toList();
+    }
+
+    @Override
     public Optional<String> payMerchantNoOf(String merchantNo, String storeNo) {
         if (merchantNo == null || merchantNo.isBlank()) {
             return Optional.empty();

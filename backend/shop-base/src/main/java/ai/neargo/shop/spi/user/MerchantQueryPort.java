@@ -74,6 +74,23 @@ public interface MerchantQueryPort {
     java.util.Optional<String> payMerchantNoOf(String merchantNo, String storeNo);
 
     /**
+     * 这个主体名下的全部门店号（含停用的）。
+     *
+     * <p>两个用途，都在「主体级 → 门店级」这条转换路径上：
+     * <ol>
+     *   <li><b>判断要不要按门店做</b>：多门店时每一次上下架都要落成门店行，
+     *       包括在默认门店做的那次。用「是不是默认店」代替这个判断会漏掉
+     *       默认店自己那次操作，于是分店一写行，默认店就静悄悄变成未上架</li>
+     *   <li><b>转换时把其他门店的现状固化下来</b>：只给被操作的店写行的话，
+     *       其余门店因为「有行了但没有自己的行」而一起变成未上架 ——
+     *       商家做的只是「A 店今天不卖」，B 店的货却跟着没了。<b>实测撞到过</b></li>
+     * </ol>
+     *
+     * <p>含停用门店是刻意的：停用的店重新启用时，它的上架设置该还在。
+     */
+    java.util.List<String> storeNos(String merchantNo);
+
+    /**
      * @param merchantNo   商家业务键
      * @param merchantName 展示名（下单快照用，商家改名不影响历史订单）
      * @param canSell      是否可上架售卖（审核通过且未封禁）

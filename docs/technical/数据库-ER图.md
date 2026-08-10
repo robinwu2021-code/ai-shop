@@ -5,7 +5,7 @@
 
 ## 一、总览
 
-全库 **64** 张表、**118** 条引用关系，分 **12** 个域。
+全库 **65** 张表、**121** 条引用关系，分 **12** 个域。
 按「被引用次数」分三条带 —— **不是有向无环图**：域之间存在环
 （`cmt → mkt → usr → cmt`），强行分层会画错。
 
@@ -15,7 +15,7 @@
 |---|---|---:|---:|
 | 用户与商家 | `usr_*` | 4 | 10 |
 | 社区与自提点 | `cmt_*` | 2 | 6 |
-| 商品与类目 | `prd_*` | 7 | 4 |
+| 商品与类目 | `prd_*` | 8 | 4 |
 | 购物车 | `trd_*` | 1 | 0 |
 | 交易 | `ord_*` | 5 | 6 |
 | 履约 | `ful_*` | 3 | 0 |
@@ -54,7 +54,7 @@
 
 **跨域引用**：`cmt_pickup_point.group_no` → `mkt_group_buy`
 
-### 商品与类目 `prd_*`（7 张）
+### 商品与类目 `prd_*`（8 张）
 
 ![商品与类目表关系](./diagrams/db-prd.svg)
 
@@ -67,8 +67,9 @@
 | `prd_spec_template` | 规格模板（平台维护 + 商家自存） |
 | `prd_stock_lock` | 库存锁定明细：释放与确认据此幂等 |
 | `prd_store_stock` | 门店级库存：有行则按店算，一条都没有则回退主体总量 |
+| `prd_store_goods` | 门店级上架关系：有行则按店算，一条都没有则回退主体级 on_sale |
 
-**跨域引用**：`prd_community_pool.community_no` → `cmt_community`、`prd_community_pool.entity_no` → `mch_entity`、`prd_goods.entity_no` → `mch_entity`、`prd_sku.entity_no` → `mch_entity`、`prd_spec_template.entity_no` → `mch_entity`、`prd_stock_lock.store_no` → `mch_store`、`prd_store_stock.store_no` → `mch_store`、`prd_store_stock.entity_no` → `mch_entity`
+**跨域引用**：`prd_community_pool.community_no` → `cmt_community`、`prd_community_pool.entity_no` → `mch_entity`、`prd_goods.entity_no` → `mch_entity`、`prd_sku.entity_no` → `mch_entity`、`prd_spec_template.entity_no` → `mch_entity`、`prd_stock_lock.store_no` → `mch_store`、`prd_store_stock.store_no` → `mch_store`、`prd_store_stock.entity_no` → `mch_entity`、`prd_store_goods.store_no` → `mch_store`、`prd_store_goods.entity_no` → `mch_entity`
 
 ### 购物车 `trd_*`（1 张）
 

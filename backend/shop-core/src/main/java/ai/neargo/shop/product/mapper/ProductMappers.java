@@ -89,7 +89,27 @@ public final class ProductMappers {
                          @Param("qty") int qty);
     }
 
+    /** 门店级上架关系。只有增删改查，没有原子扣减那套 —— 它不是并发争抢的资源 */
+    public interface StoreGoodsMapper extends BaseMapper<ai.neargo.shop.product.entity.PrdStoreGoods> {
+    }
+
     public interface CommunityPoolMapper extends BaseMapper<PrdCommunityPool> {
+
+        /**
+         * 复活一条被逻辑删的池行。
+         *
+         * <p><b>下架是逻辑删，而 {@code uk_community_goods} 不含 deleted 列</b> ——
+         * 所以「下架再上架」时直接 insert 必然撞唯一键，表现为上架接口 500。
+         * 这个坑在商家社区表上踩过一次，池表这里换了个入口又踩了一次：
+         * 差集增删只解决了「不要先全删再全插」，没解决「删过的行还占着键」。
+         *
+         * @return 影响行数；0 表示压根没有这一对（该走 insert）
+         */
+        @Update("""
+                UPDATE prd_community_pool SET deleted = 0, version = version + 1
+                WHERE community_no = #{communityNo} AND goods_no = #{goodsNo} AND deleted = 1
+                """)
+        int revive(@Param("communityNo") String communityNo, @Param("goodsNo") String goodsNo);
     }
 
     public interface StockLockMapper extends BaseMapper<PrdStockLock> {
