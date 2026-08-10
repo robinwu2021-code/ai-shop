@@ -2,7 +2,20 @@
 import type { Archivable } from "./common";
 
 /** 商家分层（矩阵 P-11.1.6，为引入大商家预留）。 */
-export type MerchantTier = "PERSONAL" | "INDIVIDUAL" | "COMPANY";
+/**
+ * 商家**分层**（规模）。对应 `mch_entity.tier`，与 shared 的 `MerchantTier` 同名同值。
+ *
+ * ⚠️ 这里此前是 `PERSONAL | INDIVIDUAL | COMPANY` —— 那是**主体类型**的旧取值
+ * （权威码见 shared 的 `MerchantSubject`：MICRO / INDIVIDUAL / ENTERPRISE）。
+ * 名字对得上后端字段，取值却来自另一个概念，于是这一列**永远显示不出东西**：
+ * 后端下发的 tier 要么是 null（一期没启用分层），要么是 SMALL，
+ * 而 SMALL 不在这个联合类型里，i18n 也查不到词条。
+ *
+ * <p>如果运营界面真正想看的是**主体类型**（小微/个体户/企业），那要后端在
+ * ops 商家 VO 里补一个字段 —— `mch_entity` 上没有 subject 列，
+ * 它在申请单与进件表上。这是另一件事，不能靠改端上的类型变出来。
+ */
+export type MerchantTier = "SMALL" | "MEDIUM" | "LARGE";
 
 /**
  * 商家的**经营状态**。取值与后端 `mch_entity.status` 一致。

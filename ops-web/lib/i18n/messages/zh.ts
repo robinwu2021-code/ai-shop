@@ -134,7 +134,7 @@ export const zh = {
     SUSPENDED: "已封禁",
     FROZEN: "已冻结",
   },
-  merchantTier: { PERSONAL: "个人", INDIVIDUAL: "个体户", COMPANY: "企业" },
+  merchantTier: { SMALL: "小商家", MEDIUM: "中等商家", LARGE: "大商家" },
   orderStatus: {
     WAIT_PAY: "待支付",
     PAID: "待发货",

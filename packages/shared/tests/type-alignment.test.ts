@@ -50,10 +50,6 @@ const KNOWN_DRIFT: Record<string, string> = {
     "shared: NONE/APPLYING/REJECTED/ACTIVE/SUSPENDED（商家自己看到的）；" +
     "ops: DRAFT/SUBMITTED/REVIEWING/APPROVED/REJECTED（审核流水线）。" +
     "APPROVED 与 ACTIVE 是同一件事的两个名字 —— 接后端前必须并成一个。",
-  MerchantTier:
-    "**名字撞了、意思不同**：shared 的 tier 是规模（SMALL/MEDIUM/LARGE，为引入大商家预留）；" +
-    "ops 的 tier 装的是主体类型（PERSONAL/INDIVIDUAL/COMPANY），那在 shared 里叫 MerchantSubject。" +
-    "ops 侧应改名为 MerchantSubject，把 tier 让出来。",
   CampaignType:
     "两端各自的活动类型集合（shared 是商家活动，ops 是平台活动）。" +
     "接后端时要么合并成一张表，要么显式分成 MerchantCampaignType / PlatformCampaignType。",

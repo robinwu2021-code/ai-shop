@@ -51,7 +51,14 @@ const KNOWN_SHARED: Record<string, string> = {
  * 但在那之前，不该再新增一个「后端永远不会给的值」。
  * 这个数字每降一点，就是一块真正对齐了的地方。
  */
-const OPS_WEB_BASELINE = 33;
+/*
+ * 34 而不是 33：MerchantTier 的取值从「主体类型旧取值」改成了「分层」
+ * （SMALL/MEDIUM/LARGE），而**分层一期没启用**，后端 mch_entity.tier 恒为 null。
+ * 所以它现在是一条诚实的「端上声明了、后端还没实现」—— 比此前那条
+ * 「取值来自另一个概念、这一列永远显示不出东西」好，但确实多了一条差异。
+ * 基线只能往下走，这次是有理由的例外，理由记在这里。
+ */
+const OPS_WEB_BASELINE = 34;
 
 describe("枚举对账", () => {
   const gaps: Gap[] = findGaps();

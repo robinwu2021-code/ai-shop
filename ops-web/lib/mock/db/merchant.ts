@@ -5,28 +5,28 @@ import type { MerchantApply, Merchant } from "@/lib/types";
 // 时间用固定字符串而非 Date.now()：mock 数据每次刷新都变的话，截图对不上、测试也不稳。
 export const merchants: Merchant[] = [
   {
-    merchantNo: "M901", name: "阿姨家的菜摊", tier: "PERSONAL", status: "ACTIVE",
+    merchantNo: "M901", name: "阿姨家的菜摊", tier: "SMALL", status: "ACTIVE",
     communityNos: ["C001"],
     contactName: "王秀兰", contactPhone: "138****2011",
     categoryCodes: ["FRESH_VEG"], qualifications: ["食品经营许可证"], verified: false, breachCount: 0,
     settleAccountReady: false, createdAt: "2026-07-28T02:10:00Z", asPickupPoint: true,
   },
   {
-    merchantNo: "M902", name: "老张水果店", tier: "INDIVIDUAL", status: "ACTIVE",
+    merchantNo: "M902", name: "老张水果店", tier: "SMALL", status: "ACTIVE",
     communityNos: ["C001"],
     contactName: "张建国", contactPhone: "139****7788",
     categoryCodes: ["FRESH_FRUIT"], qualifications: ["食品经营许可证"], verified: false, breachCount: 0,
     settleAccountReady: true, createdAt: "2026-07-30T06:20:00Z",
   },
   {
-    merchantNo: "M903", name: "邻家便利", tier: "COMPANY", status: "ACTIVE",
+    merchantNo: "M903", name: "邻家便利", tier: "MEDIUM", status: "ACTIVE",
     communityNos: ["C002"],
     contactName: "李慧", contactPhone: "137****3355",
     categoryCodes: ["DAILY", "FRESH_VEG"], qualifications: ["食品经营许可证"], verified: true, breachCount: 0,
     settleAccountReady: true, createdAt: "2026-06-12T01:00:00Z",
   },
   {
-    merchantNo: "M904", name: "社区鲜奶站", tier: "INDIVIDUAL", status: "ACTIVE",
+    merchantNo: "M904", name: "社区鲜奶站", tier: "SMALL", status: "ACTIVE",
     communityNos: ["C002"],
     contactName: "赵明", contactPhone: "136****9021",
     categoryCodes: ["FRESH_DAIRY"], qualifications: [], verified: false, breachCount: 0,
@@ -34,14 +34,14 @@ export const merchants: Merchant[] = [
     auditRemark: "食品经营许可证照片不清晰，请补交",
   },
   {
-    merchantNo: "M905", name: "快修家电服务", tier: "COMPANY", status: "ACTIVE",
+    merchantNo: "M905", name: "快修家电服务", tier: "MEDIUM", status: "ACTIVE",
     communityNos: ["C003"],
     contactName: "陈伟", contactPhone: "135****4412",
     categoryCodes: ["SERVICE_REPAIR"], qualifications: ["家电维修资质"], verified: true, breachCount: 1,
     settleAccountReady: true, createdAt: "2026-05-20T03:30:00Z",
   },
   {
-    merchantNo: "M906", name: "夜市烧烤（停业整改）", tier: "PERSONAL", status: "SUSPENDED",
+    merchantNo: "M906", name: "夜市烧烤（停业整改）", tier: "SMALL", status: "SUSPENDED",
     communityNos: ["C003"],
     contactName: "刘洋", contactPhone: "133****6677",
     categoryCodes: ["FOOD"], qualifications: [], verified: false, breachCount: 3,

@@ -28,7 +28,12 @@ import type {
  * `Extract<MerchantType,("COMPANY"|"INDIVIDUAL")>`，不符合 OpenAPI 的组件命名规则。
  * 契约类型要能干净地映射成 DTO 名，所以这里写成直白的联合。
  */
-export type MerchantApplyType = "COMPANY" | "INDIVIDUAL";
+/*
+ * 这里曾有一个 `MerchantApplyType = "COMPANY" | "INDIVIDUAL"` ——
+ * 商家主体类型的**第四套说法**（权威码是 shared 的 MerchantSubject：
+ * MICRO / INDIVIDUAL / ENTERPRISE，且 COMPANY 是已废弃的旧值）。
+ * 一个概念此前有五处声明三套取值，见 docs/technical/枚举领域清单.md §2.3。
+ */
 
 // ---------------------------------------------------------------- 用户
 

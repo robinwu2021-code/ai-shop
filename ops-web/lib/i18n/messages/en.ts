@@ -141,7 +141,7 @@ export const en: Messages = {
     SUSPENDED: "Suspended",
     FROZEN: "Frozen",
   },
-  merchantTier: { PERSONAL: "Individual", INDIVIDUAL: "Sole trader", COMPANY: "Company" },
+  merchantTier: { SMALL: "Small", MEDIUM: "Medium", LARGE: "Large" },
   orderStatus: {
     WAIT_PAY: "Awaiting payment",
     PAID: "Awaiting shipment",
