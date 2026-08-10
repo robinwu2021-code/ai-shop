@@ -785,6 +785,15 @@ export type OrderStatus =
   | "CANCELLED"
   | "REFUNDED";
 
+/**
+ * 订单预览的返回。**后端返的是完整 OrderVO，这里只声明端上要用的那部分** ——
+ * 预览页只关心金额与行，声明全套会让每次后端加字段都得改端上类型。
+ */
+export interface OrderPreview {
+  amount: OrderAmount;
+  items: OrderItem[];
+}
+
 export interface OrderItem {
   /** 商品单号 */
   goodsNo: string;

@@ -2,6 +2,7 @@
 // 端点对齐后端 C 端 BFF `/mp/**`（见 docs/api）。
 import type {
   AfterSale,
+  OrderPreview,
   AfterSaleReason,
   MasterData,
   MerchantApplyReq,
@@ -63,6 +64,9 @@ export interface CreateOrderReq {
 
 import type { PointsDeductibleQuery } from "./requests";
 
+/** 预览的入参 = 下单入参**去掉幂等键** —— 预览不创建任何东西，不需要它 */
+export type PreviewOrderReq = Omit<CreateOrderReq, "idempotencyKey">;
+
 export interface ShopApi {
   // ---- 用户
   /**
@@ -117,6 +121,19 @@ export interface ShopApi {
   promotedMerchants(q?: { communityNo?: string; size?: number }): Promise<Merchant[]>;
   orderDetail(orderNo: string): Promise<Order>;
   cancelOrder(orderNo: string): Promise<Order>;
+  /**
+   * 订单预览：**金额以后端算的为准**。
+   *
+   * <p>此前确认订单页在客户端自己算（`pricingFor(type).estimate(...)`），
+   * 而这个端点后端一直有、端上从没声明过。代价在接通店铺满减那天暴露：
+   * 页面显示 ¥298.80、提交后实付 ¥290.80 —— **同一笔单两个金额**。
+   *
+   * <p>页面里那段注释本来就写着「页面自己算一份、后端算一份，两边迟早对不上」，
+   * 担心的正是这个；共享的 pricing 策略解决的是「C 端与 B 端公式一致」，
+   * 解决不了「端上不知道服务端有什么优惠」—— 活动、券、积分规则都在服务端，
+   * 端上永远只能算出一个乐观的近似值。
+   */
+  orderPreview(req: PreviewOrderReq): Promise<OrderPreview>;
 
   // ---- 售后
   /** 申请售后。**仅退款与退货退款流程不同** —— 后者必须先收到货再退款 */

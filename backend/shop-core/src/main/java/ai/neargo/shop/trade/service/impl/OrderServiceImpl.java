@@ -6,6 +6,7 @@ import ai.neargo.shop.trade.service.OrderStateMachine;
 import ai.neargo.shop.trade.service.OrderStatusView;
 
 import ai.neargo.shop.spi.marketing.AttributionPort;
+import ai.neargo.shop.spi.marketing.CampaignPort;
 import ai.neargo.shop.spi.marketing.CouponPort;
 import ai.neargo.shop.spi.product.GoodsQueryPort;
 import ai.neargo.shop.spi.product.StockPort;
@@ -67,6 +68,8 @@ public class OrderServiceImpl implements OrderService {
     private final MerchantQueryPort merchantPort;
     private final AttributionPort attributionPort;
     private final CouponPort couponPort;
+    /** 店铺活动的自动优惠（满减）。此前 mkt_campaign 没有任何消费方 */
+    private final CampaignPort campaignPort;
     private final SettlePort settlePort;
     private final StatusLogMapper statusLogMapper;
     private final PickupQueryPort pickupPort;
@@ -78,7 +81,7 @@ public class OrderServiceImpl implements OrderService {
     public OrderServiceImpl(OrderMapper orderMapper, SubOrderMapper subOrderMapper, OrderItemMapper itemMapper,
                             CartItemMapper cartMapper, GoodsQueryPort goodsPort, StockPort stockPort,
                             MerchantQueryPort merchantPort, AttributionPort attributionPort,
-                            CouponPort couponPort, SettlePort settlePort,
+                            CouponPort couponPort, CampaignPort campaignPort, SettlePort settlePort,
                             StatusLogMapper statusLogMapper,
                             PickupQueryPort pickupPort,
                             ai.neargo.shop.spi.user.UserQueryPort userPort,
@@ -92,6 +95,7 @@ public class OrderServiceImpl implements OrderService {
         this.merchantPort = merchantPort;
         this.attributionPort = attributionPort;
         this.couponPort = couponPort;
+        this.campaignPort = campaignPort;
         this.settlePort = settlePort;
         this.statusLogMapper = statusLogMapper;
         this.pickupPort = pickupPort;
@@ -107,18 +111,67 @@ public class OrderServiceImpl implements OrderService {
         Split split = split(cmd);
         // 预览不落库、不锁库存：用户可能在结算页反复改地址与履约方式。
         // 但**优惠要按下单时同一套规则算**，否则结算页显示的金额和实付对不上
-        return split.toVO(allocateCoupon(cmd, split));
+        return split.toVO(discountsOf(cmd, split));
     }
 
-    /** 券分摊。预览与下单共用 —— 两处各算一次必然算出两个数。 */
-    private CouponPort.Allocation allocateCoupon(CreateOrderCommand cmd, Split split) {
-        if (cmd.couponNo() == null || cmd.couponNo().isBlank() || split.groups.isEmpty()) {
-            return CouponPort.Allocation.none();
+    /**
+     * 优惠合计：**先活动、后券**。预览与下单共用 —— 两处各算一次必然算出两个数。
+     *
+     * <p>顺序不是随便定的。满减是自动生效的（用户没得选），券是用户挑的；
+     * 券作用在满减**之后**的金额上，「这张券帮我省了多少」才是他心里那个增量。
+     * 反过来（先券后满减）会让同一张券在不同订单里显示的减免额对不上用户的心算。
+     *
+     * <p>门槛判定也随之落在活动后金额上 —— 这是保守的一侧：
+     * 满 100 减 10 之后剩 95，再要用「满 100 可用」的券就不行了。
+     * 宽松的一侧（按原价判门槛）会让商家承担两次优惠而事先算不出来。
+     */
+    private Discounts discountsOf(CreateOrderCommand cmd, Split split) {
+        if (split.groups.isEmpty()) {
+            return Discounts.none();
         }
-        return couponPort.allocate(SecurityUtils.currentUserNo(), cmd.couponNo(),
+        CampaignPort.Discount auto = campaignPort.autoDiscount(split.groups.stream()
+                .map(g -> new CampaignPort.MerchantAmount(g.merchantNo, g.goodsAmount()))
+                .toList());
+        if (cmd.couponNo() == null || cmd.couponNo().isBlank()) {
+            return new Discounts(auto, CouponPort.Allocation.none());
+        }
+        CouponPort.Allocation coupon = couponPort.allocate(SecurityUtils.currentUserNo(), cmd.couponNo(),
                 split.groups.stream()
-                        .map(g -> new CouponPort.MerchantAmount(g.merchantNo, g.goodsAmount()))
+                        .map(g -> new CouponPort.MerchantAmount(
+                                g.merchantNo, g.goodsAmount() - auto.of(g.merchantNo)))
                         .toList());
+        return new Discounts(auto, coupon);
+    }
+
+    /**
+     * 一笔订单上的全部优惠。
+     *
+     * <p>把两种优惠合成一个对象，而不是让下面的落库代码分别问两次 ——
+     * 分别问的话，每加一种优惠就要在主单、子单、VO 三处各改一遍，
+     * 而漏改一处的症状是「金额对不上」，最难查的那种。
+     */
+    private record Discounts(CampaignPort.Discount auto, CouponPort.Allocation coupon) {
+
+        static Discounts none() {
+            return new Discounts(CampaignPort.Discount.none(), CouponPort.Allocation.none());
+        }
+
+        long total() {
+            return auto.total() + coupon.totalDiscount();
+        }
+
+        long of(String merchantNo) {
+            return auto.of(merchantNo) + coupon.discountOf(merchantNo);
+        }
+
+        /** 商家出资部分。活动**恒为商家出资**（店铺级活动平台不掏这个钱） */
+        long merchantFunded(String merchantNo) {
+            return auto.of(merchantNo) + (coupon.byMerchant() ? coupon.discountOf(merchantNo) : 0L);
+        }
+
+        long platformFunded(String merchantNo) {
+            return coupon.byMerchant() ? 0L : coupon.discountOf(merchantNo);
+        }
     }
 
     @Override
@@ -152,17 +205,17 @@ public class OrderServiceImpl implements OrderService {
             throw BizException.of(ErrorCode.STOCK_NOT_ENOUGH);
         }
 
-        // 券分摊：与预览同一套规则（allocateCoupon 是唯一实现）
-        CouponPort.Allocation allocation = allocateCoupon(cmd, split);
+        // 优惠：与预览同一套规则（discountsOf 是唯一实现）
+        Discounts discounts = discountsOf(cmd, split);
 
         // ⑥ 落库：主单 + 子单 + 行，同一事务
         OrdOrder order = new OrdOrder();
         order.setOrderNo(orderNo);
         order.setUserNo(userNo);
-        order.setPayAmount(split.payAmount() - allocation.totalDiscount());
+        order.setPayAmount(split.payAmount() - discounts.total());
         order.setGoodsAmount(split.goodsAmount());
         order.setFreightAmount(split.freightAmount());
-        order.setDiscountAmount(allocation.totalDiscount());
+        order.setDiscountAmount(discounts.total());
         order.setCurrency(CURRENCY_CNY);
         order.setStatus(OrdOrder.WAIT_PAY);
         /*
@@ -205,11 +258,11 @@ public class OrderServiceImpl implements OrderService {
             sub.setTrafficSource(attributionPort.resolveTrafficSource(userNo, g.merchantNo));
             sub.setGoodsAmount(g.goodsAmount());
             sub.setFreightAmount(g.freight);
-            long discount = allocation.discountOf(g.merchantNo);
+            long discount = discounts.of(g.merchantNo);
             sub.setDiscountAmount(discount);
             // 出资方分列（Q9）：合成一列的话 M7 分账无法判断该扣谁的钱
-            sub.setDiscountPlatform(allocation.byMerchant() ? 0L : discount);
-            sub.setDiscountMerchant(allocation.byMerchant() ? discount : 0L);
+            sub.setDiscountPlatform(discounts.platformFunded(g.merchantNo));
+            sub.setDiscountMerchant(discounts.merchantFunded(g.merchantNo));
             sub.setPayAmount(g.goodsAmount() + g.freight - discount);
             sub.setStatus(OrdSubOrder.WAIT_PAY);
             sub.setRemark(cmd.remark());
@@ -511,7 +564,7 @@ public class OrderServiceImpl implements OrderService {
         }
 
         /** 预览走**支付视角**：结算页要看的是合计金额与按商家的分组。 */
-        OrderVO toVO(CouponPort.Allocation allocation) {
+        OrderVO toVO(Discounts discounts) {
             List<OrderVO> children = groups.stream().map(g -> new OrderVO(
                     null, null, OrdOrder.WAIT_PAY, null, g.merchantNo, g.merchantName,
                     g.lines.stream().map(l -> new OrderVO.ItemVO(
@@ -519,13 +572,13 @@ public class OrderServiceImpl implements OrderService {
                             l.snapshot.cover(), l.snapshot.spec(), l.snapshot.price(), l.qty,
                             l.amount(), l.snapshot.categoryType())).toList(),
                     OrderVO.Amount.of(g.goodsAmount(), g.freight,
-                            allocation.discountOf(g.merchantNo), 0L, CURRENCY_CNY),
+                            discounts.of(g.merchantNo), 0L, CURRENCY_CNY),
                     null, null, null, null, 0L, null, null, null, List.of(), null)).toList();
 
             return new OrderVO(null, null, OrdOrder.WAIT_PAY, null, null, null,
                     children.stream().flatMap(c -> c.items().stream()).toList(),
                     OrderVO.Amount.of(goodsAmount(), freightAmount(),
-                            allocation.totalDiscount(), 0L, CURRENCY_CNY),
+                            discounts.total(), 0L, CURRENCY_CNY),
                     null, null, null, null, 0L, null, null, null, List.of(), children);
         }
     }

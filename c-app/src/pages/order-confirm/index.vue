@@ -9,7 +9,7 @@
 //   APPOINTMENT  → 无收货，展示已选预约时段
 //   INSTANT      → 无收货，发码到订单
 // 差异只在这一块，金额与提交是共用的 —— 与 strategies 的分层保持一致。
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { onLoad } from "@dcloudio/uni-app";
 import { api, idempotencyKey } from "@/api";
@@ -19,7 +19,7 @@ import { FEATURES, FULFILLMENT, POINTS, ROUTES } from "@shared/utils/constants";
 import { datetime, money } from "@shared/utils/format";
 import { earnPointsFor, pricingFor } from "@shared/strategies/pricing";
 import { currentCurrency } from "@shared/utils/money";
-import type { Address, CartItem, Coupon, FulfillmentType, OrderItem } from "@shared/types";
+import type { Address, CartItem, Coupon, FulfillmentType, OrderItem, OrderAmount } from "@shared/types";
 
 const { t } = useI18n();
 const cart = useCartStore();
@@ -79,10 +79,23 @@ const orderItems = computed(
 const gifts = computed(() => items.value.filter((it) => (it.giftQty ?? 0) > 0));
 
 /**
- * 金额用**和下单同一套策略**算，不在页面里另写一份公式 ——
- * 页面自己算一份、后端算一份，两边迟早对不上（「价格不符」类问题的经典来源）。
+ * 金额**以后端预览为准**，端上不自己算。
+ *
+ * ⚠️ 这里此前调的是共享定价策略 `pricingFor(type).estimate(...)`，
+ * 注释写着「不在页面里另写一份公式，两边迟早对不上」——
+ * 共享策略确实解决了「C 端与 B 端公式不一致」，但解决不了另一件事：
+ * **端上不知道服务端有什么优惠**。活动（店铺满减）、券的可用性、积分规则
+ * 全在服务端，端上只能算出一个乐观的近似值。
+ *
+ * 接通店铺满减那天这个差就现形了：页面显示 ¥298.80，提交后实付 ¥290.80 ——
+ * 同一笔单两个金额。所以改成调 `/mp/order/preview`（后端一直有，端上从没接过）。
+ *
+ * 本地估算保留为**首屏兜底**：预览回来之前先给个数，否则会闪一下空白；
+ * 但一旦服务端的数到了就以它为准。
  */
-const amount = computed(() => {
+const serverAmount = ref<OrderAmount | null>(null);
+
+const localEstimate = computed(() => {
   const first = items.value[0];
   if (!first) return null;
   return pricingFor(first.type).estimate(orderItems.value, {
@@ -93,6 +106,37 @@ const amount = computed(() => {
     earnPoints: FEATURES.points ? earnPointsFor(orderItems.value) : 0,
   });
 });
+
+const amount = computed(() => serverAmount.value ?? localEstimate.value);
+
+/** 影响金额的任何一项变了就重新问后端 —— 少问一次就会显示上一次的价 */
+async function refreshAmount() {
+  if (!items.value.length) {
+    serverAmount.value = null;
+    return;
+  }
+  try {
+    const p = await api.orderPreview({
+      items: items.value.map((it) => ({ goodsNo: it.goodsNo, skuNo: it.skuNo, qty: it.qty })),
+      fulfillment: fulfillment.value,
+      pickupNo: needPickup.value ? community.pickup?.pickupNo : undefined,
+      addressId: needAddress.value ? addressId.value : undefined,
+      couponNo: couponNo.value || undefined,
+      usePoints: FEATURES.points && usePoints.value ? pointBalance.value : 0,
+      appointmentAt: appointmentAt.value,
+    });
+    serverAmount.value = p.amount;
+  } catch {
+    // 预览失败不挡下单：兜底显示本地估算，真实金额在提交时由后端定
+    serverAmount.value = null;
+  }
+}
+
+watch(
+  () => [items.value.length, fulfillment.value, couponNo.value, usePoints.value, addressId.value, appointmentAt.value],
+  () => void refreshAmount(),
+  { immediate: true },
+);
 
 const canSubmit = computed(
   () => !!items.value.length && !submitting.value && (!needAddress.value || !!address.value),

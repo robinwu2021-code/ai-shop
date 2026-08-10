@@ -687,6 +687,36 @@ export const mockApi: ShopApi = {
     ]);
   },
 
+  async orderPreview(req) {
+    /*
+     * mock 里没有服务端活动，沿用与下单同一套定价策略 —— 两者算出同一个数才是 mock 的价值。
+     * **不扣库存**：预览是只读的，用户会在结算页反复改地址与履约方式。
+     */
+    const items: OrderItem[] = req.items.map((it) => {
+      const g = toGoods(findGoodsSeed(it.goodsNo));
+      const sku = g.skus.find((s) => s.skuNo === it.skuNo);
+      if (!sku) throw new Error("规格不存在");
+      return {
+        goodsNo: g.goodsNo, merchantNo: g.merchant.merchantNo, skuNo: sku.skuNo,
+        title: g.title, cover: g.cover, spec: sku.spec, price: sku.price, qty: it.qty,
+        type: g.type, nominalGram: sku.nominalGram, weighed: g.weighed, points: g.points,
+      };
+    });
+    if (!items.length) throw new Error("订单商品为空");
+    const couponSeed = db.couponSeeds.find((c) => c.couponNo === req.couponNo);
+    const coupon: Coupon | undefined = couponSeed
+      ? { ...couponSeed, name: pick(couponSeed.name), scopeDesc: pick(couponSeed.scopeDesc) }
+      : undefined;
+    const amount = pricingFor(items[0]!.type).estimate(items, {
+      fulfillment: req.fulfillment,
+      currency: currentCurrency(),
+      coupon,
+      usePoints: Math.max(0, Math.min(pointBalance(db.points), req.usePoints ?? 0)),
+      earnPoints: 0,
+    });
+    return delay({ amount, items });
+  },
+
   async afterSaleList() {
     // 售后是独立资源：从订单上摘出来，而不是拿订单状态冒充
     return delay(db.orders.filter((o) => o.afterSale).map((o) => o.afterSale!));

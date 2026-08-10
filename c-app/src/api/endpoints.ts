@@ -81,6 +81,7 @@ export const ENDPOINTS: Record<keyof ShopApi, EndpointDef> = {
   promotedMerchants: { method: "GET", path: "/mp/merchant/promoted", auth: false, summary: "推荐门店（运营位）" },
   orderDetail: { method: "GET", path: "/mp/order/:orderNo", auth: true, summary: "订单详情" },
   cancelOrder: { method: "POST", path: "/mp/order/:orderNo/cancel", auth: true, summary: "取消订单" },
+  orderPreview: { method: "POST", path: "/mp/order/preview", auth: true, summary: "订单预览（金额以后端为准）" },
   applyAfterSale: {
     method: "POST",
     path: "/mp/order/:orderNo/after-sale",

@@ -36,6 +36,7 @@ import type {
 } from "./requests";
 import type {
   AfterSale,
+  OrderPreview,
   AfterSaleReason,
   Address,
   CartItem,
@@ -123,6 +124,7 @@ export const httpApi: ShopApi = {
 
   afterSaleReasons: () => call<AfterSaleReason[]>("afterSaleReasons"),
   afterSaleList: () => call<AfterSale[]>("afterSaleList"),
+  orderPreview: (req) => http.post<OrderPreview>(ENDPOINTS.orderPreview.path, req),
 
   // ---- 营销
   fillReturnExpress: (afterSaleNo, expressNo) =>
