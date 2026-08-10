@@ -228,7 +228,6 @@ export default {
   order: {
     statusWAIT_PAY: "待付款",
     statusPAID: "待发货",
-    statusPREPARING: "备货中",
     statusSHIPPED: "已发货",
     statusARRIVED: "待核销",
     statusCOMPLETED: "已完成",

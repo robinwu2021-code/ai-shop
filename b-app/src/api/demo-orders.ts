@@ -106,7 +106,7 @@ export function ensureDemoOrders(): void {
   // 判据是「本店有没有**待办**单」，不是「db 里有没有单」——
   // 共享种子里本来就带着几条 C 端的已完成单，用 `db.orders.length` 当判据会被它们挡住，
   // 结果工作台六个待办数字全是 0，看着像没有生意（这正是 B 端「打开像空壳」的第二层原因）
-  const PENDING = ["PAID", "PREPARING", "ARRIVED", "SHIPPED", "REFUNDING"];
+  const PENDING = ["PAID", "ARRIVED", "SHIPPED", "REFUNDING"];
   const hasPending = db.orders.some(
     (o) => o.merchantNo === db.merchant.merchantNo && PENDING.includes(o.status),
   );
@@ -128,7 +128,7 @@ export function ensureDemoOrders(): void {
 
   // 覆盖三条履约线各自的待办态，让工作台的数字不是全 0
   if (a) rows.push(build("ARRIVED", FULFILLMENT.PICKUP, "邻居小张", [a], 180, "MERCHANT_OWNED"));
-  if (b) rows.push(build("PREPARING", FULFILLMENT.PICKUP, "李阿姨", [b], 120, "MERCHANT_OWNED"));
+  if (b) rows.push(build("PAID", FULFILLMENT.PICKUP, "李阿姨", [b], 120, "MERCHANT_OWNED"));
   if (c) rows.push(build("PAID", FULFILLMENT.DELIVERY, "王先生", [c], 60, "PLATFORM"));
   if (a) rows.push(build("PAID", FULFILLMENT.EXPRESS, "陈小姐", [a], 40, "PLATFORM"));
   // 一条待处理售后，否则售后页永远是空的，同意/驳回两条分支都验证不了

@@ -413,7 +413,6 @@ export default {
   orderStatus: {
     WAIT_PAY: "بانتظار الدفع",
     PAID: "مدفوع",
-    PREPARING: "قيد التجهيز",
     ARRIVED: "في نقطة الاستلام",
     SHIPPED: "تم الشحن",
     COMPLETED: "مكتمل",

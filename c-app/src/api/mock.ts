@@ -599,8 +599,9 @@ export const mockApi: ShopApi = {
         continue;
       }
 
-      assertTransition(o.status, "PREPARING");
-      o.status = "PREPARING";
+      // 没有独立的备货态：付款后就是 PAID（待发货），与后端一致
+      assertTransition(o.status, "PAID");
+      o.status = "PAID";
       o.verifyCode = strategy.issueCode();
       pushTimeline(o, "商家备货中");
     }
@@ -804,7 +805,7 @@ export const mockApi: ShopApi = {
     // 之后个别缺损照常走售后 —— 签收不等于放弃售后权利
     const changed: Order[] = [];
     for (const o of db.orders) {
-      if (o.groupNo !== groupNo || o.status !== "PREPARING") continue;
+      if (o.groupNo !== groupNo || o.status !== "PAID") continue;
       assertTransition(o.status, "ARRIVED");
       o.status = "ARRIVED";
       pushTimeline(o, "已送到发起人家，请按约定时段取货");
@@ -829,7 +830,7 @@ export const mockApi: ShopApi = {
     // 拿到别人的码也核不掉 —— 这跟商家履约台是两套权限
     if (o.groupNo !== groupNo) throw new Error("这单不属于本团");
     if (o.status === "COMPLETED") throw new Error("该订单已核销");
-    if (o.status === "PREPARING") {
+    if (o.status === "PAID") {
       o.status = "ARRIVED";
       pushTimeline(o, "已送到发起人家");
     }

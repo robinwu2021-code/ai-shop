@@ -138,7 +138,6 @@ export default {
   order: {
     statusWAIT_PAY: "Unpaid",
     statusPAID: "To ship",
-    statusPREPARING: "Preparing",
     statusSHIPPED: "Shipped",
     statusARRIVED: "To collect",
     statusCOMPLETED: "Done",

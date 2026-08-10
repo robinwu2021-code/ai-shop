@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // 订单列表（B-11.4.1）。
 //
-// tab 按「我要做什么」分，不按订单状态字典分 —— 商家不关心 PAID/PREPARING 的区别，
+// tab 按「我要做什么」分，不按订单状态字典分 —— 商家不关心状态字典的细分，
 // 只关心「这单要不要我发货」。
 import { computed, ref } from "vue";
 import { onShow } from "@dcloudio/uni-app";
@@ -17,7 +17,7 @@ const merchant = useMerchantStore();
 /** 状态色：要动手的用主色、售后用警示色、终态保持中性 —— 一眼能挑出「该我做的」 */
 function statusChip(status: OrderStatus): string {
   if (status === "REFUNDING") return "sh-chip--warning";
-  if (status === "PAID" || status === "PREPARING" || status === "ARRIVED") return "sh-chip--primary";
+  if (status === "PAID" || status === "ARRIVED") return "sh-chip--primary";
   return "";
 }
 

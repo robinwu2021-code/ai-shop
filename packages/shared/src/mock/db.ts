@@ -1536,8 +1536,8 @@ export function pointBalance(ledger: PointRecord[]): number {
 /** 订单状态机 —— 非法迁移直接抛错 */
 const TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   WAIT_PAY: ["PAID", "CANCELLED"],
-  PAID: ["PREPARING", "COMPLETED", "REFUNDING", "CANCELLED"],
-  PREPARING: ["ARRIVED", "SHIPPED", "REFUNDING"],
+  // 没有独立的「备货中」：后端从付款直接到 PAID（待发货），mock 与它保持一致
+  PAID: ["ARRIVED", "SHIPPED", "COMPLETED", "REFUNDING", "CANCELLED"],
   ARRIVED: ["COMPLETED", "REFUNDING"],
   SHIPPED: ["COMPLETED", "REFUNDING"],
   COMPLETED: ["REFUNDING"],

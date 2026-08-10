@@ -20,7 +20,7 @@ const canCancel = computed(
 const canAfterSale = computed(
   () =>
     !!order.value &&
-    ["PAID", "PREPARING", "ARRIVED", "SHIPPED", "COMPLETED"].includes(order.value.status),
+    ["PAID", "ARRIVED", "SHIPPED", "COMPLETED"].includes(order.value.status),
 );
 const canReview = computed(
   () => order.value?.status === "COMPLETED" && !order.value?.reviewed,

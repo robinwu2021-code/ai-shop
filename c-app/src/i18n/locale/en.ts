@@ -413,7 +413,6 @@ export default {
   orderStatus: {
     WAIT_PAY: "Awaiting payment",
     PAID: "Paid",
-    PREPARING: "Preparing",
     ARRIVED: "At pickup point",
     SHIPPED: "Shipped",
     COMPLETED: "Completed",

@@ -31,7 +31,7 @@ const byBuyer = computed(() => {
 
 const totalQty = computed(() => rows.value.reduce((s, r) => s + r.totalQty, 0));
 /** 备货中的单 = 还没标到货的，标记后用户才收到到货通知 */
-const preparing = computed(() => orders.value.filter((o) => o.status === "PREPARING"));
+const preparing = computed(() => orders.value.filter((o) => o.status === "PAID"));
 
 async function load() {
   [rows.value, orders.value] = await Promise.all([api.mPickingList(), api.mPickupOrders()]);

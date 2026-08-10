@@ -30,7 +30,7 @@ const busy = ref(false);
 const hosting = computed(() => groups.value.filter((g) => g.neighborPickup));
 const current = computed(() => hosting.value.find((g) => g.groupNo === active.value));
 const waiting = computed(() => orders.value.filter((o) => o.status === "ARRIVED"));
-const preparing = computed(() => orders.value.filter((o) => o.status === "PREPARING"));
+const preparing = computed(() => orders.value.filter((o) => o.status === "PAID"));
 
 async function load() {
   error.value = "";

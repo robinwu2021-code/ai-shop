@@ -138,7 +138,6 @@ export default {
   order: {
     statusWAIT_PAY: "غير مدفوع",
     statusPAID: "بانتظار الشحن",
-    statusPREPARING: "قيد التجهيز",
     statusSHIPPED: "تم الشحن",
     statusARRIVED: "بانتظار الاستلام",
     statusCOMPLETED: "مكتمل",

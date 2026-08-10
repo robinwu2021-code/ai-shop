@@ -452,7 +452,7 @@ export const mockApi: MerchantApi = {
       toShip: mine.filter((o) => o.fulfillment === "EXPRESS" && o.status === "PAID").length,
       toDeliver: mine.filter((o) => o.fulfillment === "DELIVERY" && o.status === "PAID").length,
       toVerify: atMyPoint.filter((o) => o.status === "ARRIVED").length,
-      toPick: atMyPoint.filter((o) => ["PAID", "PREPARING"].includes(o.status)).length,
+      toPick: atMyPoint.filter((o) => o.status === "PAID").length,
       afterSale: mine.filter((o) => o.status === "REFUNDING").length,
       toReply: db.reviews.filter((r) => r.merchantNo === merchantNo && !r.reply).length,
       quotable: 0, // 求团报价在 M3 批次交付
@@ -718,7 +718,7 @@ export const mockApi: MerchantApi = {
       pickupName: db.merchant.name || "",
       pendingVerify: mine.filter((o) => o.status === "ARRIVED").length,
       // 「批次」= 今天标记过到货的单，按到货动作聚合
-      arrivedBatches: mine.filter((o) => o.status !== "PREPARING" && o.createdAt >= startOfDay)
+      arrivedBatches: mine.filter((o) => o.status !== "PAID" && o.createdAt >= startOfDay)
         .length,
       // 服务费按**已完成**的件数算：货还没交到人手上，这笔钱不该先算进来
       serviceFeeMinor: itemCount * SETTLE.fulfillFeePerItemMinor,
@@ -740,7 +740,7 @@ export const mockApi: MerchantApi = {
     for (const o of db.orders) {
       if (o.fulfillment !== "PICKUP") continue;
       if (pickupNo && o.pickupNo !== pickupNo) continue;
-      if (!["PAID", "PREPARING", "ARRIVED"].includes(o.status)) continue;
+      if (!["PAID", "ARRIVED"].includes(o.status)) continue;
       const buyer = o.buyerNickname ?? db.user.nickname;
       for (const it of o.items) {
         const cur = map.get(it.skuNo) ?? {
@@ -764,7 +764,7 @@ export const mockApi: MerchantApi = {
     const changed: Order[] = [];
     for (const no of orderNos) {
       const o = db.orders.find((x) => x.orderNo === no);
-      if (!o || o.status !== "PREPARING") continue;
+      if (!o || o.status !== "PAID") continue;
       assertTransition(o.status, "ARRIVED");
       o.status = "ARRIVED";
       pushTimeline(o, "已到自提点，请及时取货");
@@ -1169,7 +1169,7 @@ export const mockApi: MerchantApi = {
     if (o.status === "COMPLETED") throw new Error("该订单已核销");
     const pickupNo = db.merchant.pickupNo;
     if (pickupNo && o.pickupNo && o.pickupNo !== pickupNo) throw new Error("这单不在本自提点");
-    if (o.status === "PREPARING") {
+    if (o.status === "PAID") {
       o.status = "ARRIVED";
       pushTimeline(o, "已到自提点");
     }

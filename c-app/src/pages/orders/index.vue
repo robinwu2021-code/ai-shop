@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // 订单列表。tab 是「用户视角的下一步动作」，不是订单状态枚举 ——
-// 用户关心的是「我要去付钱 / 我要去取货」，不是 PREPARING 和 ARRIVED 的区别。
+// 用户关心的是「我要去付钱 / 我要去取货」，不是 PAID 和 ARRIVED 的区别。
 import { computed, ref } from "vue";
 import { onShow } from "@dcloudio/uni-app";
 import { api } from "@/api";
@@ -12,7 +12,7 @@ import type { Order, OrderStatus } from "@shared/types";
 const TABS: { key: string; statuses: OrderStatus[] | null }[] = [
   { key: "all", statuses: null },
   { key: "toPay", statuses: ["WAIT_PAY"] },
-  { key: "toPick", statuses: ["PAID", "PREPARING", "ARRIVED", "SHIPPED"] },
+  { key: "toPick", statuses: ["PAID", "ARRIVED", "SHIPPED"] },
   { key: "done", statuses: ["COMPLETED"] },
   { key: "afterSale", statuses: ["REFUNDING", "REFUNDED"] },
 ];

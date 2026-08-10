@@ -33,7 +33,8 @@
     "gen:delivery": "node scripts/gen-delivery-status.mjs",
     "e2e": "node scripts/e2e/run.mjs",
     "gen:doc-html": "node scripts/gen-doc-html.mjs docs/technical/*.md docs/technical/ADR/*.md && INDEX=docs/technical node scripts/gen-doc-html.mjs --index",
-    "e2e:full": "npm run test && npm run check:p && node scripts/e2e/run.mjs"
+    "e2e:full": "npm run test && npm run check:p && node scripts/e2e/run.mjs",
+    "check:enums": "node scripts/check-enums.mjs"
   },
   "engines": {
     "node": ">=22"
