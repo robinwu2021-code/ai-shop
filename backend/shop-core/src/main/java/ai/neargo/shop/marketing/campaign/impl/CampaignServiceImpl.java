@@ -145,7 +145,9 @@ public class CampaignServiceImpl implements CampaignService {
         Map<String, Integer> counts = goodsPort.skuCounts(cmd.goodsNos());
         boolean multi = cmd.goodsNos().stream().anyMatch(no -> counts.getOrDefault(no, 1) > 1);
         if (multi) {
-            throw BizException.of(ErrorCode.BAD_REQUEST);
+            // 专用码：通用的「请求参数有误」会让商家反复改价格与时间，
+            // 而问题在于「这件商品有两个规格，而活动价只有一个」
+            throw BizException.of(ErrorCode.FLASH_MULTI_SKU_UNSUPPORTED);
         }
     }
 

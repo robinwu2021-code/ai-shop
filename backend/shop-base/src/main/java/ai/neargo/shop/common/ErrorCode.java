@@ -58,6 +58,28 @@ public enum ErrorCode {
      */
     CATEGORY_NOT_AUTHORIZED(70002, "err.merchant.category_not_authorized"),
 
+    /**
+     * 商品未过审就想上架。
+     *
+     * <p>此前这里复用的是 {@link #ORDER_STATE_ILLEGAL}（「订单状态不允许该操作」）——
+     * **交易域的码用在商品规则上**。商家点「上架」看到「订单状态不允许该操作」，
+     * 他手上一张订单都没有，无从知道自己该等审核。
+     *
+     * <p>讽刺的是紧挨着的 {@link #CATEGORY_NOT_AUTHORIZED} 注释里正好写着这个道理：
+     * 「通用的错误会让商家反复改商品信息，而问题根本不在商品上」——
+     * 道理想明白了、用在了类目那处，漏了上一处。
+     */
+    GOODS_NOT_APPROVED(70003, "err.goods.not_approved"),
+
+    /**
+     * 多规格商品不支持商品级限时特价。
+     *
+     * <p>此前返回通用的 BAD_REQUEST（「请求参数有误」），商家只会反复改价格与时间，
+     * 而问题在于「这件商品有两个规格，而活动价只有一个」。
+     * 单独一个码，端上才能把这句话说出来。
+     */
+    FLASH_MULTI_SKU_UNSUPPORTED(70004, "err.goods.flash_multi_sku"),
+
     // ---- 8xxxx 类目维护 ----
     /** 类目最多三级 —— 再深一层 C 端的类目导航就没法展示，也没有第四层的产品定义。 */
     CATEGORY_TOO_DEEP(80001, "err.category.too_deep"),

@@ -466,7 +466,7 @@ async function save() {
             :class="{ 'sh-chip--primary': type === ty }"
             @tap="type = ty"
           >
-            {{ ty }}
+            {{ $t(`goods.categoryType.${ty}`) }}
           </text>
         </view>
       </view>

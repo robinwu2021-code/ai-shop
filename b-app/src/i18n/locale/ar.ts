@@ -99,6 +99,13 @@ export default {
   },
 
   goods: {
+    categoryType: {
+      NORMAL: "سلع يومية",
+      FRESH: "طازج",
+      SERVICE: "خدمة",
+      VIRTUAL: "منتج رقمي",
+      CARD: "قسيمة",
+    },
     category: "الفئة",
     categoryPh: "اختر فئة (اختياري)",
     categoryTip: "تحدد الفئة مكان تصنيف المنتج وما إذا كان يتطلب ترخيصًا — وهي منفصلة عن النوع أعلاه",

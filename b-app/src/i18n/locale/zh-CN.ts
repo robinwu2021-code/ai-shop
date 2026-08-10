@@ -160,6 +160,18 @@ export default {
   },
 
   goods: {
+    /**
+     * 五品类的展示名。**此前页面直接渲染枚举码**（NORMAL / FRESH / …），
+     * 商家看到的是一串英文常量 —— 与「i18n 键原样打给用户」是一枚硬币的两面：
+     * 那个是有词条没对上，这个是压根没建词条。
+     */
+    categoryType: {
+      NORMAL: "日用百货",
+      FRESH: "生鲜",
+      SERVICE: "服务",
+      VIRTUAL: "虚拟商品",
+      CARD: "卡券",
+    },
     category: "类目",
     categoryPh: "选择类目（选填）",
     categoryTip: "类目决定商品归到哪、以及要不要经营资质；与上面的「品类」是两回事",

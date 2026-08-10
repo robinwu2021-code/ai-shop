@@ -12,6 +12,7 @@
 // 结果是商家通过审核、上完架，却对谁都不可见，且没有任何报错。
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useCodeLabel } from "@/lib/api/master-data";
 import { api } from "@/lib/api";
 import { notify } from "@/lib/notify";
 import { fmtTime } from "@/lib/utils";
@@ -37,8 +38,17 @@ const STATUS_MAP: StatusMap<ApplyStatus> = {
   REJECTED: { label: "已驳回", tone: "danger" },
 };
 
+/** 服务范围的展示名。此前这一列直接显示 `COMMUNITY` —— 与行业/主体那两列同一个毛病 */
+function scopeLabel(c: MerchantsCopy, scope?: string | null): string {
+  if (scope === "CITY") return c.applyScopeCity;
+  if (scope === "PLATFORM") return c.applyScopePlatform;
+  return c.applyScopeCommunity;
+}
+
 export function ApplyTab({ c, canAudit }: { c: MerchantsCopy; canAudit: boolean }) {
   const qc = useQueryClient();
+  // 行业/主体的展示名来自后端主数据，不在这里再维护一份翻译
+  const label = useCodeLabel();
   const [keyword, setKeyword] = useState("");
   const [status, setStatus] = useState("");
   const [page, setPage] = useState(1);
@@ -96,15 +106,17 @@ export function ApplyTab({ c, canAudit }: { c: MerchantsCopy; canAudit: boolean 
   const columns: Column<MerchantApply>[] = [
     { header: c.colNo, cell: (a) => a.applyNo, numeric: true, align: "start" },
     { header: c.colName, cell: (a) => a.name },
-    { header: c.applyColIndustry, cell: (a) => a.industry || "—" },
-    { header: c.applyColSubject, cell: (a) => a.subject },
+    { header: c.applyColIndustry, cell: (a) => label.industry(a.industry) },
+    { header: c.applyColSubject, cell: (a) => label.subject(a.subject) },
     { header: c.colContact, cell: (a) => `${a.contactName} ${a.contactPhone}` },
     {
       // 服务范围空着的要一眼看出来 —— 它是「通过之后没人看得见」的唯一预警
       header: c.applyColScope,
       cell: (a) =>
         a.communityNos?.length ? (
-          `${a.serviceScope ?? "COMMUNITY"} · ${a.communityNos.length}`
+          // 服务范围是 ADR-009 定的**固定三档**，不是运营可维护的字典 ——
+          // 所以用文案表而不是 master-data。判据：取值域会不会被运营改
+          `${scopeLabel(c, a.serviceScope)} · ${a.communityNos.length}`
         ) : (
           <span className="text-[var(--warning)]">{c.applyScopeEmpty}</span>
         ),
@@ -168,8 +180,8 @@ export function ApplyTab({ c, canAudit }: { c: MerchantsCopy; canAudit: boolean 
             <DrawerSection title={c.applySectionInfo}>
               <FieldGrid>
                 <Field label={c.colNo}>{current.applyNo}</Field>
-                <Field label={c.applyColSubject}>{current.subject}</Field>
-                <Field label={c.applyColIndustry}>{current.industry || "—"}</Field>
+                <Field label={c.applyColSubject}>{label.subject(current.subject)}</Field>
+                <Field label={c.applyColIndustry}>{label.industry(current.industry)}</Field>
                 <Field label={c.colContact}>{`${current.contactName} ${current.contactPhone}`}</Field>
                 <Field label={c.applyColCategory}>{current.category}</Field>
                 <Field label={c.colStatus}>

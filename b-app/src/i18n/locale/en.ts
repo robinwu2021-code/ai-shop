@@ -99,6 +99,13 @@ export default {
   },
 
   goods: {
+    categoryType: {
+      NORMAL: "Everyday goods",
+      FRESH: "Fresh produce",
+      SERVICE: "Service",
+      VIRTUAL: "Virtual goods",
+      CARD: "Voucher",
+    },
     category: "Category",
     categoryPh: "Pick a category (optional)",
     categoryTip: "The category decides where the item is filed and whether a licence is required — separate from Type above",

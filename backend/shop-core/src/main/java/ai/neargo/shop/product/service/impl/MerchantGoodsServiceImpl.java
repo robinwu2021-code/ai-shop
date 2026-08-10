@@ -212,7 +212,9 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         PrdGoods g = mine(merchantNo, goodsNo);
         // 未过审不能上架：上架是商家自己能按的按钮，能把 AUDITING 推到 C 端的话审核就形同虚设
         if (onSale && !APPROVED.equals(g.getAuditStatus())) {
-            throw BizException.of(ErrorCode.ORDER_STATE_ILLEGAL);
+            // 专用码：此前用的是 ORDER_STATE_ILLEGAL，商家看到「订单状态不允许该操作」
+            // 而他手上一张订单都没有
+            throw BizException.of(ErrorCode.GOODS_NOT_APPROVED);
         }
         if (onSale) {
             requireCategoryAuthorized(merchantNo, g.getCategoryNo());

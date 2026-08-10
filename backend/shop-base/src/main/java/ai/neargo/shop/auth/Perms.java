@@ -54,11 +54,27 @@ public final class Perms {
      */
     public static final String ORDER_INTERVENE = "order:intervene";
 
+    /**
+     * **读**社区列表。与 {@link #INDUSTRY_MANAGE} 分开，因为它们是两件事：
+     * 维护主数据（改规则）不该给 BD，但**入驻审核必须先选覆盖社区**，
+     * 而选之前得先能读到列表。
+     *
+     * <p>合在一起的代价是实测出来的：BD 打开审核抽屉，「覆盖小区」下一个选项都没有，
+     * 而通过前又强制要求选一个 —— **招商的日常流程被自己的权限卡死**，
+     * 页面上也看不出是权限问题（列表就是空的，没有任何提示）。
+     *
+     * <p>读写分开是这类问题的通解：一个权限码同时管「能看」和「能改」时，
+     * 只要有任何一个角色需要看而不需要改，它就会被迫多拿一份不该有的写权限，
+     * 或者像这次一样，干脆做不了自己的本职工作。
+     */
+    public static final String COMMUNITY_VIEW = "community:view";
+
     private static final Map<String, List<String>> ROLE_PERMS = Map.of(
             "SUPER_ADMIN", List.of("*"),
-            "BD", List.of(MERCHANT_AUDIT, ORDER_VIEW),
-            "GOODS_OPS", List.of(GOODS_AUDIT, CATEGORY_MANAGE, ORDER_VIEW),
-            "SUPPORT", List.of(ORDER_VIEW, REVIEW_GOVERN, ORDER_INTERVENE));
+            // BD 要读社区才能审核（选覆盖小区），但不该改社区主数据
+            "BD", List.of(MERCHANT_AUDIT, ORDER_VIEW, COMMUNITY_VIEW),
+            "GOODS_OPS", List.of(GOODS_AUDIT, CATEGORY_MANAGE, ORDER_VIEW, COMMUNITY_VIEW),
+            "SUPPORT", List.of(ORDER_VIEW, REVIEW_GOVERN, ORDER_INTERVENE, COMMUNITY_VIEW));
 
     private Perms() {
     }

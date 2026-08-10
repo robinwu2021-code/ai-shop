@@ -35,8 +35,12 @@ public class OpsCommunityController {
         this.auditLogPort = auditLogPort;
     }
 
+    /**
+     * 社区列表。**读权限，不是主数据维护权限** ——
+     * 入驻审核要选覆盖小区，那是 BD 的活；而改社区是运营主数据的活。
+     */
     @GetMapping("/ops/communities")
-    @PreAuthorize("@perm.can('" + Perms.INDUSTRY_MANAGE + "')")
+    @PreAuthorize("@perm.can('" + Perms.COMMUNITY_VIEW + "')")
     public ai.neargo.shop.common.PageData<CommunityAdminService.CommunityVO> communities(
             @RequestParam(required = false) String keyword,
             @RequestParam(defaultValue = "false") boolean showClosed,

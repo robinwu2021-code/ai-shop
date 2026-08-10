@@ -280,7 +280,7 @@ class CampaignDiscountFlowTest {
     }
 
     @Test
-    @DisplayName("★ 建多规格商品的限时特价被拒 —— 在建那一刻就告诉商家，别让他以为在跑")
+    @DisplayName("★ 建多规格商品的限时特价被拒，且给的是**专用错误码** —— 通用的「参数有误」会让商家反复改价格")
     void creatingFlashOnMultiSkuGoodsIsRejected() throws Exception {
         String bizToken = merchant("12600160901", "特价·多规格");
         long now = System.currentTimeMillis();
@@ -289,7 +289,9 @@ class CampaignDiscountFlowTest {
                         .content("{\"type\":\"FLASH\",\"name\":\"多规格特价\",\"startAt\":" + (now - 1000)
                                 + ",\"endAt\":" + (now + Duration.ofDays(1).toMillis())
                                 + ",\"flashPriceMinor\":3000,\"goodsNos\":[\"G0001\"]}"))
-                .andExpect(jsonPath("$.code").value(10400));
+                // 70004 = FLASH_MULTI_SKU_UNSUPPORTED。此前是通用的 10400「请求参数有误」，
+                // 商家看不出问题在「这件商品有两个规格，而活动价只有一个」
+                .andExpect(jsonPath("$.code").value(70004));
     }
 
     // ---------------------------------------------------------------- 店铺券桥接
