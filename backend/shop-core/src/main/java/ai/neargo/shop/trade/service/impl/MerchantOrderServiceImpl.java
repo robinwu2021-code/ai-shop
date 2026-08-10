@@ -198,4 +198,118 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
     private static long nz(Long v) {
         return v == null ? 0L : v;
     }
+
+    // ---------------------------------------------------------------- 工作台（B-11.1）
+
+    /** 履约方式。取值域见 {@link OrdSubOrder#getFulfillment()} 的注释。 */
+    private static final String EXPRESS = "EXPRESS";
+    private static final String MERCHANT_DELIVERY = "MERCHANT_DELIVERY";
+    private static final java.util.Set<String> PICKUP =
+            java.util.Set.of("STORE_PICKUP", "NEIGHBOR_PICKUP");
+
+    @Override
+    public TodoCounts todo(String merchantNo, java.util.Collection<String> storeNos) {
+        // 空集合 = 一家门店都没被授权 → 四个 0，而不是「不过滤」看到全主体
+        if (storeNos != null && storeNos.isEmpty()) {
+            return new TodoCounts(0, 0, 0, 0);
+        }
+        /*
+         * 一次把待履约的单捞出来在内存里分类，而不是发四条 count：
+         * 这四个数来自同一批单（WAIT_FULFILL / FULFILLING），
+         * 四条 count 是四次全表扫，而工作台是每天打开最频繁的一屏。
+         */
+        List<OrdSubOrder> rows = scan(merchantNo, storeNos,
+                w -> w.in(OrdSubOrder::getStatus, OrdSubOrder.WAIT_FULFILL, OrdSubOrder.FULFILLING));
+
+        int toShip = 0;
+        int toDeliver = 0;
+        int toVerify = 0;
+        int toPick = 0;
+        for (OrdSubOrder o : rows) {
+            String f = o.getFulfillment() == null ? EXPRESS : o.getFulfillment();
+            boolean waiting = OrdSubOrder.WAIT_FULFILL.equals(o.getStatus());
+            if (EXPRESS.equals(f)) {
+                // 已发货（FULFILLING）不再是待办 —— 剩下的是买家收货，商家没事可做
+                if (waiting) {
+                    toShip += 1;
+                }
+            } else if (MERCHANT_DELIVERY.equals(f)) {
+                if (waiting) {
+                    toDeliver += 1;
+                }
+            } else if (PICKUP.contains(f)) {
+                /*
+                 * 自提两段：**到货前是分拣，到货后才是核销**。
+                 * 合成一个数的话，商家看到「待核销 12」却在自提点找不到货 ——
+                 * 因为那 12 单根本还没到店。
+                 */
+                if (waiting) {
+                    toPick += 1;
+                } else {
+                    toVerify += 1;
+                }
+            }
+        }
+        return new TodoCounts(toShip, toDeliver, toVerify, toPick);
+    }
+
+    @Override
+    public StatsSummary stats(String merchantNo, java.util.Collection<String> storeNos) {
+        if (storeNos != null && storeNos.isEmpty()) {
+            return new StatsSummary(0, 0, 0, 0, 0d);
+        }
+        /*
+         * 只统计**已付款**的单：WAIT_PAY 还不是生意，把它算进 GMV
+         * 会让商家看到一个自己收不到的数字，而且刷新一下就变小。
+         * 已退款（REFUNDED）保留在内：那笔钱确实成交过，退款在结算侧另算。
+         */
+        java.time.LocalDate today = java.time.LocalDate.now();
+        java.time.LocalDateTime monthStart = today.withDayOfMonth(1).atStartOfDay();
+        List<OrdSubOrder> rows = scan(merchantNo, storeNos,
+                w -> w.ne(OrdSubOrder::getStatus, OrdSubOrder.WAIT_PAY)
+                        .ge(OrdSubOrder::getCreatedAt, monthStart));
+
+        int todayOrders = 0;
+        long todayGmv = 0;
+        long monthGmv = 0;
+        int owned = 0;
+        int attributed = 0;
+        for (OrdSubOrder o : rows) {
+            monthGmv += o.getPayAmount() == null ? 0 : o.getPayAmount();
+            if (o.getCreatedAt() != null && o.getCreatedAt().toLocalDate().isEqual(today)) {
+                todayOrders += 1;
+                todayGmv += o.getPayAmount() == null ? 0 : o.getPayAmount();
+            }
+            if (o.getTrafficSource() != null && !o.getTrafficSource().isBlank()) {
+                attributed += 1;
+                if ("MERCHANT_OWNED".equals(o.getTrafficSource())) {
+                    owned += 1;
+                }
+            }
+        }
+        /*
+         * 分母是**有归因的单**，不是全部单 —— 归因上线之前的历史单 traffic_source 为空，
+         * 算进分母会把商家的自带客流比例凭空冲低，而那个比例决定他的费率档。
+         */
+        double rate = attributed == 0 ? 0d : owned / (double) attributed;
+        return new StatsSummary(todayOrders, todayGmv, rows.size(), monthGmv, rate);
+    }
+
+    /**
+     * 按主体 + 门店范围捞子单。
+     *
+     * <p>豁免数据域的理由与 {@link #list} 完全一致：商家用的是消费者令牌，
+     * 数据域 SELF 在 {@code ord_sub_order} 上锚的是 {@code user_no}（买家），
+     * 不豁免的话商家只看得到**他自己买过的单**，卖出去的一单都不算 ——
+     * 而工作台不会报错，只是永远显示 0。
+     */
+    private List<OrdSubOrder> scan(String merchantNo, java.util.Collection<String> storeNos,
+                                   java.util.function.Consumer<com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<OrdSubOrder>> extra) {
+        var w = Wrappers.<OrdSubOrder>lambdaQuery().eq(OrdSubOrder::getEntityNo, merchantNo);
+        if (storeNos != null) {
+            w.in(OrdSubOrder::getStoreNo, storeNos);
+        }
+        extra.accept(w);
+        return DataScopeContext.executeWithoutScope(() -> subOrderMapper.selectList(w));
+    }
 }

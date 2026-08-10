@@ -56,4 +56,37 @@ public interface MerchantOrderService {
      * 但责任方不同 —— 纠纷时要能分清是谁点的，所以走各自的入口并各自留痕。
      */
     OrderVO delivered(String merchantNo, String storeNo, String subOrderNo);
+
+    /**
+     * 工作台待办计数（B-11.1 首屏）。
+     *
+     * <p>与 {@link #list} 同一套门店口径：{@code null} = 不过滤（属主的「全部门店」），
+     * <b>空集合 = 一家都看不到</b>。把空集合当成不过滤，正是「没被授权的员工反而看到全部」
+     * 这类越权最常见的写法。
+     *
+     * <p><b>一次查询算完四个数</b>，不是发四条 count：工作台是商家每天开的第一屏，
+     * 而这四个数天然来自同一批待履约的单。
+     */
+    TodoCounts todo(String merchantNo, java.util.Collection<String> storeNos);
+
+    /** 经营数据（B-11.1）。无单时返回 0，**不是报错** —— 新店第一天打开工作台是正常场景。 */
+    StatsSummary stats(String merchantNo, java.util.Collection<String> storeNos);
+
+    /**
+     * @param toShip    待发货（快递履约）
+     * @param toDeliver 待自送（商家自送履约）
+     * @param toVerify  待核销（自提已到货，买家还没来取）
+     * @param toPick    待分拣（自提单已付款，还没到货点数）
+     */
+    record TodoCounts(int toShip, int toDeliver, int toVerify, int toPick) {
+    }
+
+    /**
+     * @param ownedTrafficRate 自带客流占比 0–1（{@code traffic_source=MERCHANT_OWNED}）。
+     *                         它决定费率档（ADR-004 §6），所以分母是**全部有归因的单**，
+     *                         不是全部单 —— 早于归因上线的历史单不该把商家的比例冲低
+     */
+    record StatsSummary(int todayOrders, long todayGmvMinor, int monthOrders, long monthGmvMinor,
+                        double ownedTrafficRate) {
+    }
 }
