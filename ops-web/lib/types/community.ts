@@ -27,7 +27,12 @@ export interface Community extends Archivable {
  * - STORE    常驻点：入驻商家承接，**收履约服务费**，承接本点全部订单（含别家商家的商品）
  * - NEIGHBOR 临时点：团发起人家里，**零报酬**，作用域只有单个 group_no，脱敏要求更严
  */
-export type PickupType = "STORE" | "NEIGHBOR" | "PLATFORM";
+/**
+ * 自提点类型。**与 shared 的 `PickupPointType` 同名同值** ——
+ * 此前这里叫 `PickupType`，是同一个概念的第二个名字。
+ * 一个领域概念只能有一个词（见 docs/requirements/项目词典.md）。
+ */
+export type PickupPointType = "STORE" | "NEIGHBOR" | "PLATFORM";
 
 /**
  * 计费口径。**目前只有 PLATFORM 点有值** —— STORE 与 NEIGHBOR 恒为 NONE。
@@ -61,7 +66,7 @@ export interface PickupPoint extends Archivable {
    * 线下协商费率）—— 少一类的后果是平台点在列表里渲染成 undefined 或被当成常驻点，
    * 而它的费率规则与常驻点完全不同。
    */
-  type: PickupType;
+  type: PickupPointType;
   /** 计费口径。目前只有 PLATFORM 有值，见 `PickupFeeMode` 的说明 */
   feeMode: PickupFeeMode;
   /** 自提点状态。`MIGRATING` = 不再接新单，存量单仍在本点核销完 */

@@ -12,7 +12,7 @@
 // 而那个 bug 的真实后果是确认订单页把 i18n 键原样打给用户。
 import { describe, expect, it } from "vitest";
 // @ts-expect-error —— 脚本是 .mjs，没有类型声明；这里只用它的返回值
-import { audit } from "../../../scripts/check-enum-fields.mjs";
+import { audit, FIELDS } from "../../../scripts/check-enum-fields.mjs";
 
 /**
  * 允许暂时存在的差异。**每条都要写清楚在等什么** ——
@@ -68,6 +68,44 @@ describe("枚举对账 · 按字段", () => {
   it("PENDING 里的条目要真的还在差异中 —— 修好了就从名单里删掉", () => {
     const stale = [...PENDING.keys()].filter((c) => !problems.some((p) => p.concept === c));
     expect(stale, `以下已经对齐了，请从 PENDING 删除：${stale.join(", ")}`).toEqual([]);
+  });
+
+  /**
+   * 登记表自身的完整性。
+   *
+   * <p>这条守卫是踩了自己的坑换来的：`FIELDS` 里履约字段只登记了 shared，
+   * **漏登了 ops-web** —— 于是 ops-web 的 `FulfillType` 多出一个后端没有的
+   * `SERVICE`，字段级对账一路绿灯，最后是人工按领域逐个盘点才发现的。
+   *
+   * <p>教训是通用的：**一张手写的登记表，它自己的完整性也需要守卫**，
+   * 否则「表里没有」和「代码里没问题」看起来一模一样。
+   */
+  it("同一个 wire 字段，各端的声明都要登记全（漏登会让对账假绿）", () => {
+    const KNOWN_PAIRS: [string, string[]][] = [
+      ["履约方式", ["shared", "ops-web"]],
+      ["订单状态（下发口径）", ["shared", "ops-web"]],
+      ["售后单状态", ["shared", "ops-web"]],
+      ["自提点类型", ["shared", "ops-web"]],
+    ];
+    const registered = new Map<string, Set<string>>();
+    for (const f of FIELDS as { concept: string; clients: { file: string }[] }[]) {
+      registered.set(
+        f.concept,
+        new Set(f.clients.map((c) => (c.file.startsWith("ops-web") ? "ops-web" : "shared"))),
+      );
+    }
+    const gaps: string[] = [];
+    for (const [concept, ends] of KNOWN_PAIRS) {
+      const got = registered.get(concept);
+      if (!got) { gaps.push(`${concept}：整条没登记`); continue; }
+      const missing = ends.filter((e) => !got.has(e));
+      if (missing.length) gaps.push(`${concept}：漏登 ${missing.join("、")}`);
+    }
+    expect(
+      gaps,
+      "对账登记表不完整：\n  " + gaps.join("\n  ") +
+        "\n\n漏登的那一端不会被对账 —— 工具照常全绿，而那一端的取值可能与后端对不上。",
+    ).toEqual([]);
   });
 
   it("显式豁免的每一条都要有理由", () => {

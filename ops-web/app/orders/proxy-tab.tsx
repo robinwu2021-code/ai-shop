@@ -13,8 +13,8 @@ import { api } from "@/lib/api";
 import { notify } from "@/lib/notify";
 import { fill } from "@/lib/use-copy";
 import { money } from "@/lib/utils";
-import type { FulfillType, Order } from "@/lib/types";
-import { OrderStatusBadge, useFulfillTypeMap } from "@/components/status";
+import type { FulfillmentType, Order } from "@/lib/types";
+import { OrderStatusBadge, useFulfillmentTypeMap } from "@/components/status";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { Drawer, DrawerSection, Field, FieldGrid } from "@/components/ui/drawer";
 import { Pagination } from "@/components/ui/misc";
@@ -32,7 +32,7 @@ interface Line { skuNo: string; qty: string }
 
 export function ProxyTab({ c, canProxy }: { c: OrdersCopy; canProxy: boolean }) {
   const qc = useQueryClient();
-  const fulfillMap = useFulfillTypeMap();
+  const fulfillMap = useFulfillmentTypeMap();
   const [keyword, setKeyword] = useState("");
   const [page, setPage] = useState(1);
   const [size, setSize] = useState(10);
@@ -41,7 +41,7 @@ export function ProxyTab({ c, canProxy }: { c: OrdersCopy; canProxy: boolean }) 
 
   const [form, setForm] = useState({
     buyerNickname: "", communityNo: "", merchantNo: "",
-    fulfillType: "STORE_PICKUP" as FulfillType, reason: "",
+    fulfillType: "STORE_PICKUP" as FulfillmentType, reason: "",
   });
   const [lines, setLines] = useState<Line[]>([{ skuNo: "", qty: "1" }]);
 
@@ -140,7 +140,7 @@ export function ProxyTab({ c, canProxy }: { c: OrdersCopy; canProxy: boolean }) 
             <div className="space-y-1">
               <Label htmlFor="px-fulfill" required>{c.fieldFulfill}</Label>
               <Select id="px-fulfill" className="w-full" disabled={!canProxy} value={form.fulfillType}
-                onChange={(e) => setForm((p) => ({ ...p, fulfillType: e.target.value as FulfillType }))}>
+                onChange={(e) => setForm((p) => ({ ...p, fulfillType: e.target.value as FulfillmentType }))}>
                 {Object.entries(fulfillMap).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
               </Select>
             </div>

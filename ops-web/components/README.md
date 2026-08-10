@@ -61,7 +61,7 @@
 | 组件 | 文件 | 说明 |
 |---|---|---|
 | `MerchantStatusBadge` / `OrderStatusBadge` / `VerifiedBadge` | `status.tsx` | 域内固定枚举的徽标，文案走 i18n |
-| `useFulfillTypeMap` / `useTrafficSourceMap` | `status.tsx` | 履约方式 / 流量来源的映射表（同时喂 `StatusBadge` 与 `FilterSelect`） |
+| `useFulfillmentTypeMap` / `useTrafficSourceMap` | `status.tsx` | 履约方式 / 流量来源的映射表（同时喂 `StatusBadge` 与 `FilterSelect`） |
 | `useMerchantTierLabel` | `status.tsx` | 商家主体分层文案 |
 | `ReadOnlyNotice` | `read-only-notice.tsx` | 权限降级提示，句式统一 |
 | `ShowArchivedToggle` / `ArchiveActions` / `ArchivedAt` / `archivedRowClass` / `archiveConfirm` | `archive.tsx` | G1 软删除的页面侧统一件 |

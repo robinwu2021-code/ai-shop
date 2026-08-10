@@ -6,8 +6,8 @@
 // 只有「全站通用、映射固定」的枚举放这里；某一页专有的状态映射表留在那一页
 // （见 components/README.md「状态映射表放哪」）。
 import type {
-  MerchantStatus, MerchantTier, OrderStatus, FulfillType, TrafficSource,
-  PickupType, PickupStatus, BatchStatus, StoreAuditStatus,
+  MerchantStatus, MerchantTier, OrderStatus, FulfillmentType, TrafficSource,
+  PickupPointType, PickupStatus, BatchStatus, StoreAuditStatus,
   CouponType, CouponStatus, CampaignType, CampaignStatus, SlotKind,
   ReviewStatus, AppealStatus, RiskFlag,
   AfterSaleType, AfterSaleStatus, GroupStatus, DemandStatus,
@@ -53,14 +53,14 @@ export function OrderStatusBadge({ value }: { value: OrderStatus }) {
 }
 
 /** 履约方式：不是状态而是分类，用中性徽标，不参与"好/坏"的颜色语义。 */
-export function useFulfillTypeMap(): StatusMap<FulfillType> {
+export function useFulfillmentTypeMap(): StatusMap<FulfillmentType> {
   const { t } = useI18n();
   return {
-    STORE_PICKUP: { label: t("fulfillType.STORE_PICKUP"), tone: "muted" },
-    NEIGHBOR_PICKUP: { label: t("fulfillType.NEIGHBOR_PICKUP"), tone: "muted" },
-    MERCHANT_DELIVERY: { label: t("fulfillType.MERCHANT_DELIVERY"), tone: "muted" },
-    EXPRESS: { label: t("fulfillType.EXPRESS"), tone: "muted" },
-    SERVICE: { label: t("fulfillType.SERVICE"), tone: "muted" },
+    STORE_PICKUP: { label: t("fulfillmentType.STORE_PICKUP"), tone: "muted" },
+    NEIGHBOR_PICKUP: { label: t("fulfillmentType.NEIGHBOR_PICKUP"), tone: "muted" },
+    MERCHANT_DELIVERY: { label: t("fulfillmentType.MERCHANT_DELIVERY"), tone: "muted" },
+    EXPRESS: { label: t("fulfillmentType.EXPRESS"), tone: "muted" },
+    STORE_VERIFY: { label: t("fulfillmentType.STORE_VERIFY"), tone: "muted" },
   };
 }
 
@@ -102,16 +102,16 @@ export function VerifiedBadge({ verified }: { verified: boolean }) {
  * 自提点类型（ADR-005）。两类点的规则完全不同，列表里必须一眼分得出来：
  * STORE 收服务费、承接全部订单；NEIGHBOR 零报酬、只服务单个团。
  */
-export function usePickupTypeMap(): StatusMap<PickupType> {
+export function usePickupPointTypeMap(): StatusMap<PickupPointType> {
   const { t } = useI18n();
   return {
-    STORE: { label: t("pickupType.STORE"), tone: "info" },
-    PLATFORM: { label: t("pickupType.PLATFORM"), tone: "warning" },
-    NEIGHBOR: { label: t("pickupType.NEIGHBOR"), tone: "outline" },
+    STORE: { label: t("pickupPointType.STORE"), tone: "info" },
+    PLATFORM: { label: t("pickupPointType.PLATFORM"), tone: "warning" },
+    NEIGHBOR: { label: t("pickupPointType.NEIGHBOR"), tone: "outline" },
   };
 }
-export function PickupTypeBadge({ value }: { value: PickupType }) {
-  return <StatusBadge map={usePickupTypeMap()} value={value} />;
+export function PickupPointTypeBadge({ value }: { value: PickupPointType }) {
+  return <StatusBadge map={usePickupPointTypeMap()} value={value} />;
 }
 
 export function usePickupStatusMap(): StatusMap<PickupStatus> {

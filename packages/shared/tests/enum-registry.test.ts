@@ -42,7 +42,16 @@ function declaredEnums(): { decl: string; values: string[] }[] {
   const out: { decl: string; values: string[] }[] = [];
   const scan = (files: string[], tag: string) => {
     for (const f of files) {
-      const src = readFileSync(f, "utf8");
+      /*
+       * 先剥掉块注释再扫。
+       *
+       * 不剥的话，成员之间夹了 JSDoc 的多行联合类型（每个取值上面挂一段说明 ——
+       * 这个仓库很常见）会整条匹配不上，扫描**静默漏掉**它。
+       * 这个盲区是被本文件第二检（登记表里不能有代码中不存在的条目）抓到的：
+       * 改名后登记表里的新名字扫不出来，于是被报成「已不存在」。
+       * 单向的守卫会漏，双向的不会 —— 这正是那一检存在的理由。
+       */
+      const src = readFileSync(f, "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
       for (const m of src.matchAll(
         /export type (\w+)\s*=\s*((?:\s*\|?\s*"[^"]+"\s*(?:\/\/[^\n]*)?\n?)+);/g,
       )) {

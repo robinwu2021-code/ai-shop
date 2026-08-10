@@ -17,7 +17,7 @@ import { fmtTime } from "@/lib/utils";
 import { useCan } from "@/lib/use-can";
 import { notify } from "@/lib/notify";
 import type { Community, PickupPoint, PickupStatus } from "@/lib/types";
-import { PickupStatusBadge, PickupTypeBadge, usePickupStatusMap, usePickupTypeMap } from "@/components/status";
+import { PickupStatusBadge, PickupPointTypeBadge, usePickupStatusMap, usePickupPointTypeMap } from "@/components/status";
 import { ReadOnlyNotice } from "@/components/read-only-notice";
 import { ArchiveActions, ShowArchivedToggle, archiveConfirm, archivedRowClass, unarchiveConfirm } from "@/components/archive";
 import { Badge } from "@/components/ui/badge";
@@ -72,7 +72,7 @@ function CommunitiesInner() {
   const canEditCommunity = allow("community:community:update");
   const canEditPickup = allow("community:pickup:update");
 
-  const typeMap = usePickupTypeMap();
+  const typeMap = usePickupPointTypeMap();
   const statusMap = usePickupStatusMap();
 
   const communityQ = { keyword, opened, showArchived, page, size };
@@ -170,7 +170,7 @@ function CommunitiesInner() {
   const pickupColumns: Column<PickupPoint>[] = [
     { header: cp.colPickupNo, cell: (p) => p.pickupNo, numeric: true, align: "start" },
     { header: cp.colName, cell: (p) => p.name },
-    { header: cp.colType, cell: (p) => <PickupTypeBadge value={p.type} /> },
+    { header: cp.colType, cell: (p) => <PickupPointTypeBadge value={p.type} /> },
     { header: cp.colCommunity, cell: (p) => p.communityName },
     { header: cp.colCarrier, cell: (p) => p.merchantName ?? "—" },
     { header: cp.colTimes, cell: (p) => `${p.arriveTime} / ${p.openHours}` },

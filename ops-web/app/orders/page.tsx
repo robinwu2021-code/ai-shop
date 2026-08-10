@@ -17,7 +17,7 @@ import { MAX_UNPAID_CLOSE_MINUTES, MIN_UNPAID_CLOSE_MINUTES, MINOR_UNIT } from "
 import { fmtTime, money } from "@/lib/utils";
 import { exportCsv } from "@/lib/export-csv";
 import type { Order, ReconDiff, ReconDiffType, ReconStatus, RecoverAction } from "@/lib/types";
-import { OrderStatusBadge, useFulfillTypeMap, useOrderStatusMap, useTrafficSourceMap } from "@/components/status";
+import { OrderStatusBadge, useFulfillmentTypeMap, useOrderStatusMap, useTrafficSourceMap } from "@/components/status";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { Drawer, DrawerSection, Field, FieldGrid } from "@/components/ui/drawer";
 import { FilterSelect } from "@/components/ui/filter-select";
@@ -76,7 +76,7 @@ function OrdersInner() {
   const reconStatusMap = useReconStatusMap(c);
   const [tab, setTab] = usePageTab(tabs, () => { setPage(1); setKeyword(""); setStatus(""); });
   const statusMap = useOrderStatusMap();
-  const fulfillMap = useFulfillTypeMap();
+  const fulfillMap = useFulfillmentTypeMap();
   const trafficMap = useTrafficSourceMap();
 
   const [keyword, setKeyword] = useState("");

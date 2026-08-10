@@ -53,7 +53,7 @@ const SHARED_CONST = "packages/shared/src/utils/constants/index.ts";
  * clients 里 `planned` 指向一个白名单常量：后端还没实现的值列在那里，
  * 不当作缺陷报。**同物异名与「后端未实现」危害完全不同**，混在一起就没法自动判定。
  */
-const FIELDS = [
+export const FIELDS = [
   {
     concept: "订单状态（下发口径）",
     field: "ord_sub_order.status → OrderStatusView",
@@ -83,7 +83,11 @@ const FIELDS = [
       javaConst: "shop-core/src/main/java/ai/neargo/shop/trade/entity/OrdSubOrder.java",
       only: ["STORE_PICKUP", "NEIGHBOR_PICKUP", "MERCHANT_DELIVERY", "EXPRESS"],
     },
-    clients: [{ file: SHARED_CONST, const: "FULFILLMENT", planned: "PLANNED_FULFILLMENTS" }],
+    clients: [
+      { file: SHARED_CONST, const: "FULFILLMENT", planned: "PLANNED_FULFILLMENTS" },
+      // 漏登过一次：ops-web 因此多了一个后端没有的 SERVICE，而对账一路绿灯
+      { file: "ops-web/lib/types/order.ts", type: "FulfillmentType", plannedValues: ["STORE_VERIFY"] },
+    ],
   },
   {
     concept: "五品类（商品形态）",
@@ -123,7 +127,7 @@ const FIELDS = [
     backend: { ddl: ["cmt_pickup_point", "type"] },
     clients: [
       { file: SHARED_TYPES, type: "PickupPointType" },
-      { file: "ops-web/lib/types/community.ts", type: "PickupType" },
+      { file: "ops-web/lib/types/community.ts", type: "PickupPointType" },
     ],
   },
 ];
@@ -256,7 +260,7 @@ export function audit() {
         });
         continue;
       }
-      const planned = c.planned ? plannedValues(src, c.planned, c.const) : [];
+      const planned = c.plannedValues ?? (c.planned ? plannedValues(src, c.planned, c.const) : []);
       const b = new Set(backend);
       const d = new Set(declared);
       const clientOnly = declared.filter((v) => !b.has(v) && !planned.includes(v));

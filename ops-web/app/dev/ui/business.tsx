@@ -7,12 +7,12 @@ import * as React from "react";
 import { Section, Row, Cell, Hint } from "./kit";
 import {
   MerchantStatusBadge, OrderStatusBadge, VerifiedBadge,
-  useFulfillTypeMap, useTrafficSourceMap,
+  useFulfillmentTypeMap, useTrafficSourceMap,
 } from "@/components/status";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { ShowArchivedToggle, ArchivedAt, ArchiveActions } from "@/components/archive";
 import { ReadOnlyNotice } from "@/components/read-only-notice";
-import type { MerchantStatus, OrderStatus, FulfillType, TrafficSource } from "@/lib/types";
+import type { MerchantStatus, OrderStatus, FulfillmentType, TrafficSource } from "@/lib/types";
 
 // 顺序 = 状态机推进顺序（与 lib/types 里的迁移表同序），不是字母序。
 // 经营状态只有三个（审核状态在申请单上，不在这里）
@@ -20,14 +20,14 @@ const MERCHANT_STATES: MerchantStatus[] = ["ACTIVE", "SUSPENDED", "FROZEN"];
 const ORDER_STATES: OrderStatus[] = [
   "WAIT_PAY", "PAID", "PAID", "SHIPPED", "ARRIVED", "COMPLETED", "CANCELLED", "REFUNDED",
 ];
-const FULFILL_TYPES: FulfillType[] = [
-  "STORE_PICKUP", "NEIGHBOR_PICKUP", "MERCHANT_DELIVERY", "EXPRESS", "SERVICE",
+const FULFILL_TYPES: FulfillmentType[] = [
+  "STORE_PICKUP", "NEIGHBOR_PICKUP", "MERCHANT_DELIVERY", "EXPRESS", "STORE_VERIFY",
 ];
 const TRAFFIC_SOURCES: TrafficSource[] = ["MERCHANT_OWNED", "PLATFORM", "INVITE", "CHANNEL"];
 
 export function BusinessSections() {
   const [showArchived, setShowArchived] = React.useState(false);
-  const fulfillMap = useFulfillTypeMap();
+  const fulfillMap = useFulfillmentTypeMap();
   const trafficMap = useTrafficSourceMap();
 
   return (

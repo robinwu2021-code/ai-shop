@@ -1,5 +1,5 @@
 // 覆盖范围：订单管理（P-4.1）。
-import type { FulfillType, Order, OrderException, OrderIntervention, OrderStatus, Page } from "@/lib/types";
+import type { FulfillmentType, Order, OrderException, OrderIntervention, OrderStatus, Page } from "@/lib/types";
 import type { OrderQ, PageQ } from "../query";
 
 export type ExceptionQ = PageQ & { kind?: string };
@@ -50,7 +50,7 @@ export interface OrderApi {
     buyerNickname: string;
     communityNo: string;
     merchantNo: string;
-    fulfillType: FulfillType;
+    fulfillType: FulfillmentType;
     items: { skuNo: string; qty: number }[];
     reason: string;
   }): Promise<Order>;

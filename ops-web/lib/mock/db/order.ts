@@ -41,7 +41,7 @@ export const orders: Order[] = [
     orderNo: "SO2026080505", parentNo: "PO20260804D", status: "COMPLETED",
     merchantNo: "M905", merchantName: "快修家电服务",
     communityNo: "C003", communityName: "梧桐苑",
-    fulfillType: "SERVICE", trafficSource: "CHANNEL",
+    fulfillType: "STORE_VERIFY", trafficSource: "CHANNEL",
     buyerNickname: "梧桐苑 12-3", items: [{ skuNo: "SKU9001", title: "空调深度清洗（1 台）", qty: 1, price: 12800 }],
     payAmount: 12800, createdAt: "2026-08-03T02:00:00Z", paidAt: "2026-08-03T02:01:00Z",
   },

@@ -10,6 +10,7 @@
 // 两侧跑同一套逻辑；服务端在下单时**重跑一遍**，不信任端上的裁剪。
 //
 // 设计依据：docs/technical/多端多通道-详细设计.md §二
+import type { MerchantSubject } from "@shared/types";
 
 /** 端。注意是「端」不是「支付通道」—— 同一个通道在不同端受的约束不同 */
 export type Scene = "MP_WECHAT" | "MP_ALIPAY" | "IOS" | "ANDROID" | "H5";
@@ -67,7 +68,14 @@ export const INDUSTRIES = Object.keys({
   OTHER: 1,
 } satisfies Record<Industry, 1>) as Industry[];
 
-export type SubjectType = "MICRO" | "INDIVIDUAL" | "ENTERPRISE";
+/*
+ * 这里曾有一份 `SubjectType = "MICRO" | "INDIVIDUAL" | "ENTERPRISE"` ——
+ * 与 types 里的 {@link MerchantSubject} **取值逐字相同**，而后者的注释白纸黑字写着
+ * 「不叫 SubjectType：那个名字在平台端已经是风控主体（USER/MERCHANT/DEVICE）」。
+ *
+ * 同一个包内，规则写下来了仍然被违反 —— 这正是 G1 覆盖守卫存在的理由：
+ * 光有注释和文档拦不住，得有一条会让 CI 变红的检查。
+ */
 
 export type ApplyStatus = "NONE" | "APPLYING" | "ACTIVE" | "REJECTED" | "FROZEN";
 
@@ -103,7 +111,7 @@ export interface ChannelCategoryRule {
 
 export interface MerchantPayment {
   channel: PayChannel;
-  subjectType: SubjectType;
+  subjectType: MerchantSubject;
   applyStatus: ApplyStatus;
   payMethods: PayMethod[];
   invoiceCapable: boolean;
@@ -167,7 +175,7 @@ export function canPoints(ctx: {
   globalOn: boolean;
   communityOn: boolean;
   merchantOn: boolean;
-  subjectType: SubjectType;
+  subjectType: MerchantSubject;
   /**
    * 本次支付走的通道能否**补差**（`sys_pay_channel.supports_subsidy`）。
    *

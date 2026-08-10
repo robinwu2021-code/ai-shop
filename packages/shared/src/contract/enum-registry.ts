@@ -59,13 +59,11 @@ export interface EnumEntry {
 }
 
 export const ENUM_REGISTRY: EnumEntry[] = [
-  { decl: "shared:Scene", dom: "core", shape: "CLASS", verdict: "OK" },
-  { decl: "shared:PayChannel", dom: "core", shape: "CLASS", verdict: "OK" },
-  { decl: "shared:PayMethod", dom: "core", shape: "CLASS", verdict: "OK" },
-  { decl: "shared:Industry", dom: "core", shape: "CLASS", verdict: "TO_DICT",
+  { decl: "shared:Scene", dom: "payment", shape: "CLASS", verdict: "OK" },
+  { decl: "shared:PayChannel", dom: "payment", shape: "CLASS", verdict: "OK" },
+  { decl: "shared:PayMethod", dom: "payment", shape: "CLASS", verdict: "OK" },
+  { decl: "shared:Industry", dom: "payment", shape: "CLASS", verdict: "TO_DICT",
     note: "sys_industry 是字典表，配 4 个 ops 接口。待确认行业会不会新增" },
-  { decl: "shared:SubjectType", dom: "core", shape: "CLASS", verdict: "DELETE",
-    note: "与同包的 MerchantSubject 取值逐字相同。MerchantSubject 的注释本身就写着「不叫 SubjectType，那个名字在平台端已经是风控主体」—— 规则写下来了仍被违反，这正是 G1 存在的理由" },
   { decl: "shared:ApplyStatus", dom: "core", shape: "STATUS", verdict: "RENAME",
     note: "→ PaymentApplyStatus。它是**支付进件**状态（MerchantPayment.applyStatus），与入驻审核无关 —— ACTIVE/FROZEN 两个值就是证据，审核不会有这两个态",
     words: ["NONE", "APPLYING"] },
@@ -111,8 +109,7 @@ export const ENUM_REGISTRY: EnumEntry[] = [
   { decl: "ops-web:AfterSaleStatus", dom: "aftersale", shape: "STATUS", verdict: "OK",
     words: ["APPLIED", "REFUNDING", "ARBITRATING", "REFUNDED"] },
   { decl: "ops-web:Liability", dom: "aftersale", shape: "CLASS", verdict: "OK" },
-  { decl: "ops-web:PickupType", dom: "community", shape: "CLASS", verdict: "RENAME",
-    note: "→ PickupPointType，与 shared 同值异名" },
+  { decl: "ops-web:PickupPointType", dom: "community", shape: "CLASS", verdict: "OK" },
   { decl: "ops-web:PickupFeeMode", dom: "community", shape: "CLASS", verdict: "OK" },
   { decl: "ops-web:PickupStatus", dom: "community", shape: "STATUS", verdict: "OK",
     words: ["MIGRATING"] },
@@ -175,8 +172,8 @@ export const ENUM_REGISTRY: EnumEntry[] = [
   { decl: "ops-web:TicketStatus", dom: "message", shape: "STATUS", verdict: "RENAME",
     note: "OPEN 与 PENDING 语义重合，待判定是否合并",
     words: ["OPEN", "ASSIGNED", "RESOLVED"] },
-  { decl: "ops-web:FulfillType", dom: "order", shape: "CLASS", verdict: "RENAME",
-    note: "→ FulfillmentType（与 shared 的 FULFILLMENT 同义异名）；且多一个后端没有的 SERVICE —— **按它筛必然是空**" },
+  { decl: "ops-web:FulfillmentType", dom: "order", shape: "CLASS", verdict: "PLANNED",
+    note: "STORE_VERIFY 后端未实现（与 shared 的 FULFILLMENT.STORE_VERIFY 同值）。此前叫 FulfillType 且那个值叫 SERVICE —— 名字与取值都是同一概念的第二套说法" },
   { decl: "ops-web:TrafficSource", dom: "order", shape: "CLASS", verdict: "MERGE",
     note: "与 growth 的 AttrSource 同义：STORE_CODE↔MERCHANT_OWNED、INVITER↔INVITE" },
   { decl: "ops-web:OrderStatus", dom: "order", shape: "STATUS", verdict: "OK",
@@ -213,4 +210,22 @@ export const ENUM_REGISTRY: EnumEntry[] = [
   { decl: "c-app:HttpMethod", dom: "infra", shape: "CLASS", verdict: "OK" },
   { decl: "c-app:MerchantApplyType", dom: "infra", shape: "CLASS", verdict: "OK" },
   { decl: "b-app:HttpMethod", dom: "infra", shape: "CLASS", verdict: "OK" },
+
+  /*
+   * 以下四条是**修好扫描盲区之后才浮现的**。
+   *
+   * 此前的扫描正则遇到「成员之间夹 JSDoc 的多行联合类型」会整条匹配不上 ——
+   * 而这个仓库里给每个取值挂一段说明是常见写法。也就是说：注释写得越认真的枚举，
+   * 越容易从雷达上消失。全量清点报的 97 个因此是**低估**，真实是 101 个。
+   *
+   * 这个盲区不是被 G1 抓到的（G1 也用那个正则），是被「登记表里不能有代码中
+   * 不存在的条目」那一检抓到的 —— 改名后新名字扫不出来，被报成已删除。
+   * **单向的守卫会漏，双向的不会。**
+   */
+  { decl: "shared:PointRecordType", dom: "growth", shape: "CLASS", verdict: "OK" },
+  { decl: "shared:GroupRequestStatus", dom: "group", shape: "STATUS", verdict: "RENAME",
+    note: "OPEN 与 PENDING 语义重合，随 P3 的 OPEN 判定一起处理",
+    words: ["OPEN", "QUOTING", "MATCHED", "EXPIRED"] },
+  { decl: "ops-web:ViolationType", dom: "merchant", shape: "CLASS", verdict: "OK" },
+  { decl: "ops-web:ExceptionKind", dom: "order", shape: "CLASS", verdict: "OK" },
 ];

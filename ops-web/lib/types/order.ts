@@ -9,7 +9,17 @@
  * ⚠️ 这里曾经写成 `PICKUP_STORE` / `PICKUP_NEIGHBOR` —— 同一个概念、词序反了，
  * 于是按它筛后端一条也匹配不上。ops-web 只跑 mock，所以从没被真实响应打脸过。
  */
-export type FulfillType = "STORE_PICKUP" | "NEIGHBOR_PICKUP" | "MERCHANT_DELIVERY" | "EXPRESS" | "SERVICE";
+export type FulfillmentType =
+  | "STORE_PICKUP"
+  | "NEIGHBOR_PICKUP"
+  | "MERCHANT_DELIVERY"
+  | "EXPRESS"
+  /**
+   * 到店核销（SERVICE 商品）。**后端未实现** ——
+   * 与 shared 的 `FULFILLMENT.STORE_VERIFY` 是同一个值，
+   * 此前这里叫 `SERVICE`：同一个概念的第二个名字，且后端两个都不下发。
+   */
+  | "STORE_VERIFY";
 
 /** 流量来源（矩阵 P-12.1.7 按 trafficSource 分档计费）。 */
 export type TrafficSource = "MERCHANT_OWNED" | "PLATFORM" | "INVITE" | "CHANNEL";
@@ -80,7 +90,7 @@ export interface Order {
   /** 自提点编号；配送/快递单为空 */
   pickupNo?: string;
   /** 履约方式 */
-  fulfillType: FulfillType;
+  fulfillType: FulfillmentType;
   /** 流量来源。**决定平台费率档**（P-12.1.7） */
   trafficSource: TrafficSource;
   /** 买家昵称 */
