@@ -64,7 +64,7 @@ function settleRefund(o: Order, label: string) {
   assertTransition(o.status, "REFUNDED");
   o.status = "REFUNDED";
   if (o.afterSale) {
-    o.afterSale.status = "DONE";
+    o.afterSale.status = "REFUNDED";
     o.afterSale.updatedAt = Date.now();
   }
   pushTimeline(o, label);
@@ -651,12 +651,16 @@ export const mockApi: ShopApi = {
   // ---------------------------------------------------------------- 售后
   async applyAfterSale(orderNo, reason, images, type = "REFUND_ONLY") {
     const o = findOrder(orderNo);
-    assertTransition(o.status, "REFUNDING");
-    o.status = "REFUNDING";
+    /*
+     * **订单状态不动。** 售后是挂在订单上的另一张单，两者并存 ——
+     * 一个「已完成」的订单照样能申请售后，把它改成「退款中」就丢失了
+     * 「货其实已经收到了」这个事实，也让订单列表的其它页签少一条。
+     */
     o.afterSale = {
       afterSaleNo: nextNo("AS"),
+      orderNo: o.orderNo,
       type,
-      status: "PENDING",
+      status: "APPLIED",
       reason,
       images,
       updatedAt: Date.now(),
@@ -681,15 +685,21 @@ export const mockApi: ShopApi = {
     ]);
   },
 
+  async afterSaleList() {
+    // 售后是独立资源：从订单上摘出来，而不是拿订单状态冒充
+    return delay(db.orders.filter((o) => o.afterSale).map((o) => o.afterSale!));
+  },
+
   async fillReturnExpress(afterSaleNo, expressNo) {
     const o = findOrderByAfterSale(afterSaleNo);
     const as = o.afterSale!;
     if (as.type !== "RETURN_REFUND") throw new Error("该售后单不是退货退款");
-    // 只有商家同意之后才谈得上寄回 —— 没同意就寄，货可能被拒收
-    if (as.status !== "AGREED") throw new Error("商家同意后才能填写退货单号");
+    // 只有商家同意之后才谈得上寄回 —— 没同意就寄，货可能被拒收。
+    // 后端同意即进 REFUNDING，没有独立的「等寄回」「已收货」两态：
+    // 退货物流走 expressNo 字段，不是状态（见 AfterSaleStatus 的说明）
+    if (as.status !== "REFUNDING") throw new Error("商家同意后才能填写退货单号");
     if (!expressNo.trim()) throw new Error("请填写退货运单号");
     as.returnExpressNo = expressNo.trim();
-    as.status = "RETURNING";
     as.updatedAt = Date.now();
     pushTimeline(o, `已寄回，运单号 ${as.returnExpressNo}`);
     persist();
@@ -701,7 +711,7 @@ export const mockApi: ShopApi = {
     const as = o.afterSale!;
     // **只有被驳回才谈得上申诉** —— 商家还没处理就上升，等于跳过协商
     if (as.status !== "REJECTED") throw new Error("商家驳回后才能申请平台介入");
-    as.status = "DISPUTED";
+    as.status = "ARBITRATING";
     as.disputeReason = reason;
     as.updatedAt = Date.now();
     pushTimeline(o, "已申请平台介入");

@@ -87,7 +87,7 @@ function settleRefund(o: Order, label: string) {
   assertTransition(o.status, "REFUNDED");
   o.status = "REFUNDED";
   if (o.afterSale) {
-    o.afterSale.status = "DONE";
+    o.afterSale.status = "REFUNDED";
     o.afterSale.updatedAt = Date.now();
   }
   pushTimeline(o, label);
@@ -157,8 +157,8 @@ function findOrderByAfterSale(afterSaleNo: string): Order {
 /** 取「待处理」的售后单 —— 同意与驳回的前置校验完全相同，抽出来免得两处各写一遍 */
 function takePendingAfterSale(afterSaleNo: string): Order {
   const o = findOrderByAfterSale(afterSaleNo);
-  if (o.status !== "REFUNDING") throw new Error("该订单没有待处理的售后");
-  if (o.afterSale!.status !== "PENDING") throw new Error("该售后已处理过");
+  // 判据是**售后单**的状态，不是订单的 —— 订单在售后期间保持原状态
+  if (o.afterSale!.status !== "APPLIED") throw new Error("该售后已处理过");
   return o;
 }
 
@@ -450,10 +450,10 @@ export const mockApi: MerchantApi = {
       : [];
     return delay({
       toShip: mine.filter((o) => o.fulfillment === "EXPRESS" && o.status === "PAID").length,
-      toDeliver: mine.filter((o) => o.fulfillment === "DELIVERY" && o.status === "PAID").length,
+      toDeliver: mine.filter((o) => o.fulfillment === "MERCHANT_DELIVERY" && o.status === "PAID").length,
       toVerify: atMyPoint.filter((o) => o.status === "ARRIVED").length,
       toPick: atMyPoint.filter((o) => o.status === "PAID").length,
-      afterSale: mine.filter((o) => o.status === "REFUNDING").length,
+      afterSale: mine.filter((o) => o.afterSale?.status === "APPLIED").length,
       toReply: db.reviews.filter((r) => r.merchantNo === merchantNo && !r.reply).length,
       quotable: 0, // 求团报价在 M3 批次交付
     });
@@ -783,8 +783,16 @@ export const mockApi: MerchantApi = {
   // ---------------------------------------------------------------- 售后
   async mAfterSaleList() {
     const merchantNo = db.merchant.merchantNo;
+    /*
+     * 返回**售后单**，不是订单。后端 /biz/after-sale 给的就是 List<AfterSaleVO>，
+     * 而这里此前返回的是订单、且按 `o.status === "REFUNDING"` 筛 ——
+     * 两个错误叠在一起：订单永远不会是这个状态（那是售后单的状态），
+     * 于是商家端「售后」页签恒为空；就算筛出来了，形状也和后端对不上。
+     */
     return delay(
-      db.orders.filter((o) => o.status === "REFUNDING" && belongsToMerchant(o, merchantNo)),
+      db.orders
+        .filter((o) => o.afterSale && belongsToMerchant(o, merchantNo))
+        .map((o) => o.afterSale!),
     );
   },
 
@@ -801,7 +809,7 @@ export const mockApi: MerchantApi = {
      * 两者合成一条路的后果是「退款了货没回来」。
      */
     if (as.type === "RETURN_REFUND") {
-      as.status = "AGREED";
+      as.status = "REFUNDING";
       pushTimeline(o, "商家已同意退货，等待寄回");
       pushMessage(
         "TRADE",
@@ -842,8 +850,10 @@ export const mockApi: MerchantApi = {
     const as = o.afterSale!;
     if (as.type !== "RETURN_REFUND") throw new Error("该售后单不是退货退款");
     // 用户还没寄（没填运单号）就点确认收货，多半是误操作
-    if (as.status !== "RETURNING") throw new Error("用户还未寄回，或该售后已处理");
-    as.status = "RECEIVED";
+    // 后端没有独立的「等寄回 / 已收货」两态：同意即 REFUNDING，
+    // 是否已寄回看 returnExpressNo 有没有值
+    if (as.status !== "REFUNDING") throw new Error("该售后已处理或状态不对");
+    if (!as.returnExpressNo) throw new Error("用户还未填写退货运单号");
     as.updatedAt = Date.now();
     pushTimeline(o, "商家已确认收到退货");
     // 确认收货与退款是同一个动作的两半，中间不留悬空态

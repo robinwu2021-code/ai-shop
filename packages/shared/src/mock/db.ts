@@ -1533,15 +1533,21 @@ export function pointBalance(ledger: PointRecord[]): number {
   return ledger.reduce((s, r) => s + r.points, 0);
 }
 
-/** 订单状态机 —— 非法迁移直接抛错 */
+/**
+ * 订单状态机 —— 非法迁移直接抛错。
+ *
+ * 没有 `REFUNDING`：那是**售后单**的状态，不是订单的。
+ * 订单在售后期间保持它原本的状态（已完成的单照样能申请售后），
+ * 退款真正到账才迁到 `REFUNDED`。
+ * 做成订单状态就会强迫「已完成」和「退款中」二选一，而两者本就并存。
+ */
 const TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   WAIT_PAY: ["PAID", "CANCELLED"],
   // 没有独立的「备货中」：后端从付款直接到 PAID（待发货），mock 与它保持一致
-  PAID: ["ARRIVED", "SHIPPED", "COMPLETED", "REFUNDING", "CANCELLED"],
-  ARRIVED: ["COMPLETED", "REFUNDING"],
-  SHIPPED: ["COMPLETED", "REFUNDING"],
-  COMPLETED: ["REFUNDING"],
-  REFUNDING: ["REFUNDED", "COMPLETED"],
+  PAID: ["ARRIVED", "SHIPPED", "COMPLETED", "REFUNDED", "CANCELLED"],
+  ARRIVED: ["COMPLETED", "REFUNDED"],
+  SHIPPED: ["COMPLETED", "REFUNDED"],
+  COMPLETED: ["REFUNDED"],
   REFUNDED: [],
   CANCELLED: [],
 };

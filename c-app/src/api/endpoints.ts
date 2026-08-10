@@ -90,6 +90,7 @@ export const ENDPOINTS: Record<keyof ShopApi, EndpointDef> = {
 
   // ---------------------------------------------------------------- 营销
   afterSaleReasons: { method: "GET", path: "/mp/after-sale/reasons", auth: false, summary: "售后原因清单" },
+  afterSaleList: { method: "GET", path: "/mp/after-sale", auth: true, summary: "我的售后单" },
   fillReturnExpress: { method: "POST", path: "/mp/after-sale/:afterSaleNo/ship", auth: true, summary: "填退货运单号" },
   raiseDispute: { method: "POST", path: "/mp/after-sale/:afterSaleNo/escalate", auth: true, summary: "上升平台裁决" },
 

@@ -16,7 +16,6 @@ const merchant = useMerchantStore();
 
 /** 状态色：要动手的用主色、售后用警示色、终态保持中性 —— 一眼能挑出「该我做的」 */
 function statusChip(status: OrderStatus): string {
-  if (status === "REFUNDING") return "sh-chip--warning";
   if (status === "PAID" || status === "ARRIVED") return "sh-chip--primary";
   return "";
 }
@@ -27,7 +26,8 @@ const TABS: { key: string; status?: OrderStatus; labelKey: string }[] = [
   { key: "shipped", status: "SHIPPED", labelKey: "order.tabShipped" },
   { key: "toVerify", status: "ARRIVED", labelKey: "order.tabToVerify" },
   { key: "done", status: "COMPLETED", labelKey: "order.tabDone" },
-  { key: "afterSale", status: "REFUNDING", labelKey: "order.tabAfterSale" },
+  // 售后不按订单状态筛 —— 它是另一张单，走 /biz/after-sale（见 load()）
+  { key: "afterSale", labelKey: "order.tabAfterSale" },
 ];
 
 const tab = ref("all");
@@ -40,9 +40,16 @@ async function load() {
   if (!merchant.isActive) return;
   loading.value = true;
   try {
-    const status = TABS.find((t) => t.key === tab.value)?.status;
-    const res = await api.mOrderList({ status, size: 50 });
-    list.value = res.records;
+    if (tab.value === "afterSale") {
+      const afterSales = await api.mAfterSaleList();
+      const nos = new Set(afterSales.map((a) => a.orderNo));
+      const res = await api.mOrderList({ size: 50 });
+      list.value = res.records.filter((o) => nos.has(o.orderNo));
+    } else {
+      const status = TABS.find((t) => t.key === tab.value)?.status;
+      const res = await api.mOrderList({ status, size: 50 });
+      list.value = res.records;
+    }
   } finally {
     loading.value = false;
   }

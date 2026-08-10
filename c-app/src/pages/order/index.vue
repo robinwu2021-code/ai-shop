@@ -249,8 +249,11 @@ onShow(load);
       </view>
     </view>
 
-    <!-- 售后进行中：把「下一步该我做什么」直接摆出来，别让用户自己找入口 -->
-    <view v-if="order.afterSale && order.status === 'REFUNDING'" class="sh-card as">
+    <!-- 售后进行中：把「下一步该我做什么」直接摆出来，别让用户自己找入口。
+         判据是**售后单存在**，不是订单状态 —— 订单在售后期间保持原状态
+         （已完成的单照样能申请售后），此前 gate 在 order.status==='REFUNDING'
+         上，而后端从不下发这个订单状态，整张卡片因此永远不显示 -->
+    <view v-if="order.afterSale" class="sh-card as">
       <text class="as__title">
         {{ $t(`afterSale.status.${order.afterSale.status}`) }}
       </text>
@@ -258,7 +261,11 @@ onShow(load);
         {{ $t("afterSale.merchantReply") }}{{ order.afterSale.merchantReply }}
       </text>
       <text class="as__hint">{{ $t(`afterSale.statusHint.${order.afterSale.status}`) }}</text>
-      <view v-if="order.afterSale.status === 'AGREED'" class="sh-btn as__btn" @tap="fillExpress">
+      <view
+        v-if="order.afterSale.status === 'REFUNDING' && order.afterSale.type === 'RETURN_REFUND' && !order.afterSale.returnExpressNo"
+        class="sh-btn as__btn"
+        @tap="fillExpress"
+      >
         {{ $t("afterSale.fillExpress") }}
       </view>
       <view
@@ -369,9 +376,6 @@ onShow(load);
 .status.is-CANCELLED,
 .status.is-REFUNDED {
   color: var(--sh-sub);
-}
-.status.is-REFUNDING {
-  color: var(--sh-danger);
 }
 .timeline {
   margin-top: 28rpx;

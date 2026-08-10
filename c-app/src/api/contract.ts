@@ -1,6 +1,7 @@
 // 唯一契约。页面只依赖这个接口，不感知 mock / 真实后端。
 // 端点对齐后端 C 端 BFF `/mp/**`（见 docs/api）。
 import type {
+  AfterSale,
   AfterSaleReason,
   MasterData,
   MerchantApplyReq,
@@ -134,6 +135,14 @@ export interface ShopApi {
    * 而运营改的是后端那份。下发的是**码**，文案由端上按当前语言翻译。
    */
   afterSaleReasons(): Promise<AfterSaleReason[]>;
+  /**
+   * 我的售后单列表。
+   *
+   * <p>订单列表的「售后」页签靠它 —— 此前那个页签按
+   * `order.status ∈ {REFUNDING, REFUNDED}` 筛，而 `REFUNDING` 是售后单的状态、
+   * 订单从来不会是这个值，于是页签只剩「已退款」一种，处理中的一条也看不到。
+   */
+  afterSaleList(): Promise<AfterSale[]>;
   fillReturnExpress(afterSaleNo: string, expressNo: string): Promise<Order>;
   /** 商家驳回后上升平台裁决（B-7.4）—— 驳回不能是终点，否则用户没有退路 */
   raiseDispute(afterSaleNo: string, reason: string): Promise<Order>;

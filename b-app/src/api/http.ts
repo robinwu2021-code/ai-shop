@@ -39,6 +39,7 @@ import type {
   VerifyReq,
 } from "./requests";
 import type {
+  AfterSale,
   Category,
   Community,
   DeliveryRule,
@@ -183,7 +184,7 @@ export const httpApi: MerchantApi = {
   mVerifyBatch: (codes) =>
     http.post<VerifyBatchResult>(E.mVerifyBatch.path, { verifyCodes: codes } satisfies VerifyBatchReq),
 
-  mAfterSaleList: () => http.get<Order[]>(E.mAfterSaleList.path),
+  mAfterSaleList: () => http.get<AfterSale[]>(E.mAfterSaleList.path),
   mApproveAfterSale: (afterSaleNo, reply) =>
     http.post<Order>(buildPath(E.mApproveAfterSale.path, { afterSaleNo }), {
       remark: reply,

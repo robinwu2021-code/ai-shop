@@ -707,6 +707,15 @@ export interface CartItem {
  * ⚠️ 曾经这里还有一个 `PREPARING`（备货中）—— 那是 mock 里多出来的一步，
  * 后端从付款直接到 `PAID`（待发货），没有独立的备货态。
  * 端上按一个后端永远不会给的值去筛，筛出来的就是空列表，而且不报错。
+ *
+ * ⚠️ 也曾有一个 `REFUNDING` —— 那是**售后单**的状态（{@link AfterSaleStatus}），
+ * 不是订单的。订单只会到 `REFUNDED`。这个混淆的代价是两端的「售后」页签：
+ * 它们按 `order.status === "REFUNDING"` 筛，而后端从不下发，
+ * **b 端「售后中」页签与工作台售后待办数因此恒为空 / 恒为 0**。
+ *
+ * 一个订单可以「已完成」的同时挂着一张处理中的售后单 —— 两者并存，
+ * 做成互斥的状态就必须二选一，而那是表达不了的。售后要从 `/mp/after-sale`
+ * 与 `/biz/after-sale` 单独查。
  */
 export type OrderStatus =
   | "WAIT_PAY"
@@ -715,7 +724,6 @@ export type OrderStatus =
   | "SHIPPED"
   | "COMPLETED"
   | "CANCELLED"
-  | "REFUNDING"
   | "REFUNDED";
 
 export interface OrderItem {
@@ -1774,14 +1782,26 @@ export interface SpecTemplate {
  */
 export type AfterSaleType = "REFUND_ONLY" | "RETURN_REFUND";
 
+/**
+ * 售后单状态。**这是后端 `OrdAfterSale` 真实存的取值。**
+ *
+ * ⚠️ 这里此前是完全另一套：`PENDING`/`AGREED`/`RETURNING`/`RECEIVED`/`DONE`/`DISPUTED`，
+ * 与后端**只有 `REJECTED` 一个词重合**。c/b 两端按它判断、按它建 i18n 词条，
+ * 于是售后详情页的状态永远落进兜底分支，「填退货单号」按钮永远不出现
+ * （它 gate 在一个后端永远不会下发的 `AGREED` 上）。
+ *
+ * 那一套描述的是**想象中更细的流程**：同意 → 寄回 → 收货 → 退款四步。
+ * 后端没有把「寄回中」「已收货」做成独立状态 —— 商家一同意就进 `REFUNDING`，
+ * 退货物流走 `expressNo` 字段而不是状态。粒度差异是真实的设计选择，
+ * 端上不能自己补一套更细的词然后假装后端会给。
+ */
 export type AfterSaleStatus =
-  | "PENDING" // 待商家处理
-  | "AGREED" // 商家已同意，等用户寄回（仅 RETURN_REFUND）
-  | "RETURNING" // 用户已填退货单号，货在路上
-  | "RECEIVED" // 商家已确认收货 → 随即退款
-  | "DONE" // 退款完成
+  | "APPLIED" // 待商家处理
+  | "REFUNDING" // 商家已同意，退款处理中；退货退款时这一段也含「等买家寄回」
+  | "REFUNDED" // 退款完成
   | "REJECTED" // 商家驳回
-  | "DISPUTED"; // 用户不服，已上升平台裁决
+  | "ARBITRATING" // 用户不服，已上升平台裁决
+  | "CLOSED"; // 用户撤销，或超时关闭
 
 export interface AfterSale {
   /**
@@ -1791,6 +1811,12 @@ export interface AfterSale {
    * 后端一开始就是这么建的（/mp/after-sale/{afterSaleNo}/**），这里向它对齐。
    */
   afterSaleNo: string;
+  /**
+   * 所属订单号。后端 `AfterSaleVO` 一直有，端上此前没声明 ——
+   * 因为售后只当作订单的内嵌字段用，从来没有从售后侧反查过订单。
+   * 「售后」列表页签需要它把单子关联回订单卡片。
+   */
+  orderNo: string;
   /** 售后类型：仅退款 / 退货退款 */
   type: AfterSaleType;
   /** 售后单状态，独立于订单状态流转 */

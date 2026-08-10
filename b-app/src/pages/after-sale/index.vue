@@ -12,11 +12,21 @@ import { useI18n } from "vue-i18n";
 import { api } from "@/api";
 import { money } from "@shared/utils/money";
 import { datetime } from "@shared/utils/datetime";
-import type { Order } from "@shared/types";
+import type { AfterSale, Order } from "@shared/types";
 
 const { t } = useI18n();
 
-const list = ref<Order[]>([]);
+/**
+ * 一行 = 一张售后单 + 它所属的订单。
+ *
+ * **两者必须分开取**：`/biz/after-sale` 返回的是售后单（后端 AfterSaleVO），
+ * 而这一页要展示的买家、商品、金额都在订单上。此前这里把售后列表直接
+ * 当成 `Order[]` 用 —— 类型对不上，且列表本身还是按一个不存在的订单状态
+ * (`REFUNDING`) 筛的，所以真实环境下这一页恒为空。
+ */
+type Row = { as: AfterSale; order?: Order };
+
+const list = ref<Row[]>([]);
 /** 正在驳回的单号 —— 展开理由输入框 */
 const rejecting = ref("");
 const reason = ref("");
@@ -26,20 +36,25 @@ const busy = ref(false);
  * 老数据（以及后端补字段之前的数据）可能没有 `afterSale`。
  * 缺就按「待处理的仅退款」看待 —— 宁可多给商家一次处理机会，也不能让单子卡在页面上没有任何按钮。
  */
-const asStatus = (o: Order) => o.afterSale?.status ?? "PENDING";
-const asType = (o: Order) => o.afterSale?.type ?? "REFUND_ONLY";
+const asStatus = (r: Row) => r.as.status;
+const asType = (r: Row) => r.as.type;
 
 async function load() {
   rejecting.value = "";
   reason.value = "";
-  list.value = await api.mAfterSaleList();
+  const [afterSales, orders] = await Promise.all([
+    api.mAfterSaleList(),
+    api.mOrderList({ size: 50 }),
+  ]);
+  const byNo = new Map(orders.records.map((o) => [o.orderNo, o]));
+  list.value = afterSales.map((as) => ({ as, order: byNo.get(as.orderNo) }));
 }
 
-async function agree(o: Order) {
+async function agree(r: Row) {
   if (busy.value) return;
   busy.value = true;
   try {
-    await api.mApproveAfterSale(o.afterSale!.afterSaleNo, "");
+    await api.mApproveAfterSale(r.as.afterSaleNo, "");
     uni.showToast({ title: t("afterSale.agreed"), icon: "none" });
     await load();
   } catch (e) {
@@ -53,11 +68,11 @@ async function agree(o: Order) {
  * 确认收到退货 → 随即退款（B-7.3）。
  * 只对「已寄回」的退货单出现 —— 用户还没寄就点确认，多半是误操作。
  */
-async function confirmReturn(o: Order) {
+async function confirmReturn(r: Row) {
   if (busy.value) return;
   busy.value = true;
   try {
-    await api.mConfirmReturn(o.afterSale!.afterSaleNo);
+    await api.mConfirmReturn(r.as.afterSaleNo);
     uni.showToast({ title: t("afterSale.refunded"), icon: "none" });
     await load();
   } catch (e) {
@@ -67,7 +82,7 @@ async function confirmReturn(o: Order) {
   }
 }
 
-async function reject(o: Order) {
+async function reject(r: Row) {
   if (!reason.value.trim()) {
     uni.showToast({ title: t("afterSale.needReason"), icon: "none" });
     return;
@@ -75,7 +90,7 @@ async function reject(o: Order) {
   if (busy.value) return;
   busy.value = true;
   try {
-    await api.mRejectAfterSale(o.afterSale!.afterSaleNo, reason.value.trim());
+    await api.mRejectAfterSale(r.as.afterSaleNo, reason.value.trim());
     uni.showToast({ title: t("afterSale.rejected"), icon: "none" });
     await load();
   } catch (e) {
@@ -94,31 +109,33 @@ onShow(load);
 
     <sh-empty v-if="!list.length" :text='$t("afterSale.empty")'></sh-empty>
 
-    <view v-for="o in list" :key="o.orderNo" class="sh-card item">
+    <view v-for="r in list" :key="r.as.afterSaleNo" class="sh-card item">
       <view class="item__head">
-        <text class="item__buyer">{{ o.buyerNickname || "—" }}</text>
-        <text class="sh-muted">{{ datetime(o.createdAt) }}</text>
+        <text class="item__buyer">{{ r.order?.buyerNickname || "—" }}</text>
+        <text class="sh-muted">{{ datetime(r.as.updatedAt) }}</text>
       </view>
       <view class="item__tags">
-        <text class="sh-chip">{{ $t(`afterSale.type${asType(o)}`) }}</text>
-        <text class="sh-muted sh-num item__no">{{ o.orderNo }}</text>
+        <text class="sh-chip">{{ $t(`afterSale.type${asType(r)}`) }}</text>
+        <text class="sh-muted sh-num item__no">{{ r.as.orderNo }}</text>
       </view>
-      <text v-if="o.afterSale?.reason" class="sh-muted reason">
-        {{ $t("afterSale.buyerReason") }}{{ o.afterSale.reason }}
+      <text v-if="r.as.reason" class="sh-muted reason">
+        {{ $t("afterSale.buyerReason") }}{{ r.as.reason }}
       </text>
 
       <view class="goods">
-        <text v-for="it in o.items" :key="it.skuNo" class="sh-chip">
+        <text v-for="it in r.order?.items || []" :key="it.skuNo" class="sh-chip">
           {{ it.title }} ×{{ it.qty }}
         </text>
       </view>
 
-      <view class="item__amount">
+      <view v-if="r.order" class="item__amount">
         <text class="sh-muted">{{ $t("afterSale.refundAmount") }}</text>
-        <text class="sh-num amount">{{ money(o.amount.payableMinor, o.amount.currency) }}</text>
+        <text class="sh-num amount">
+          {{ money(r.order.amount.payableMinor, r.order.amount.currency) }}
+        </text>
       </view>
 
-      <template v-if="rejecting === o.orderNo">
+      <template v-if="rejecting === r.as.afterSaleNo">
         <textarea
           v-model="reason"
           class="field__area"
@@ -127,35 +144,44 @@ onShow(load);
         />
         <view class="btns">
           <text class="btn btn--ghost" @tap="rejecting = ''">{{ $t("common.cancel") }}</text>
-          <text class="btn btn--danger" @tap="reject(o)">{{ $t("afterSale.confirmReject") }}</text>
+          <text class="btn btn--danger" @tap="reject(r)">{{ $t("afterSale.confirmReject") }}</text>
         </view>
       </template>
 
-      <!-- 按售后状态给动作：待处理才谈同意/驳回，已寄回才谈确认收货 -->
-      <view v-else-if="asStatus(o) === 'PENDING'" class="btns">
-        <text class="btn btn--ghost" @tap="rejecting = o.orderNo">{{ $t("afterSale.reject") }}</text>
-        <text class="btn" @tap="agree(o)">
-          {{ asType(o) === "RETURN_REFUND" ? $t("afterSale.agreeReturn") : $t("afterSale.agree") }}
+      <!-- 按售后状态给动作。后端没有独立的「等寄回 / 已收货」两态：
+           同意即 REFUNDING，是否已寄回看 returnExpressNo 有没有值 -->
+      <view v-else-if="asStatus(r) === 'APPLIED'" class="btns">
+        <text class="btn btn--ghost" @tap="rejecting = r.as.afterSaleNo">
+          {{ $t("afterSale.reject") }}
+        </text>
+        <text class="btn" @tap="agree(r)">
+          {{ asType(r) === "RETURN_REFUND" ? $t("afterSale.agreeReturn") : $t("afterSale.agree") }}
         </text>
       </view>
 
-      <view v-else-if="asStatus(o) === 'AGREED'" class="waiting">
+      <view
+        v-else-if="asStatus(r) === 'REFUNDING' && asType(r) === 'RETURN_REFUND' && !r.as.returnExpressNo"
+        class="waiting"
+      >
         <text class="sh-muted">{{ $t("afterSale.waitReturn") }}</text>
       </view>
 
-      <view v-else-if="asStatus(o) === 'RETURNING'" class="btns">
+      <view
+        v-else-if="asStatus(r) === 'REFUNDING' && asType(r) === 'RETURN_REFUND'"
+        class="btns"
+      >
         <view class="express">
           <text class="sh-muted">{{ $t("afterSale.returnExpress") }}</text>
-          <text class="sh-num">{{ o.afterSale?.returnExpressNo }}</text>
+          <text class="sh-num">{{ r.as.returnExpressNo }}</text>
         </view>
-        <text class="btn" @tap="confirmReturn(o)">{{ $t("afterSale.confirmReceived") }}</text>
+        <text class="btn" @tap="confirmReturn(r)">{{ $t("afterSale.confirmReceived") }}</text>
       </view>
 
-      <view v-else-if="asStatus(o) === 'REJECTED'" class="waiting">
+      <view v-else-if="asStatus(r) === 'REJECTED'" class="waiting">
         <text class="sh-muted">{{ $t("afterSale.rejectedHint") }}</text>
       </view>
 
-      <view v-else-if="asStatus(o) === 'DISPUTED'" class="waiting">
+      <view v-else-if="asStatus(r) === 'ARBITRATING'" class="waiting">
         <text class="sh-chip sh-chip--warning">{{ $t("afterSale.disputed") }}</text>
         <text class="sh-muted mt">{{ $t("afterSale.disputedHint") }}</text>
       </view>

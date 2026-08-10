@@ -8,28 +8,46 @@ import { ROUTES } from "@shared/utils/constants";
 import { datetime, money } from "@shared/utils/format";
 import type { Order, OrderStatus } from "@shared/types";
 
-/** 每个 tab 对应一组订单状态 */
+/**
+ * 每个 tab 对应一组订单状态。
+ *
+ * ⚠️「售后」是**唯一不按订单状态筛的页签** —— `statuses: null` 且单独取数。
+ * 售后是挂在订单上的另一张单，与订单状态并存：一个「已完成」的订单
+ * 照样可以有一张处理中的售后单。此前这个页签筛
+ * `["REFUNDING","REFUNDED"]`，而 `REFUNDING` 从来只是售后单的状态、
+ * 订单不会是这个值，于是处理中的售后一条也进不来。
+ */
 const TABS: { key: string; statuses: OrderStatus[] | null }[] = [
   { key: "all", statuses: null },
   { key: "toPay", statuses: ["WAIT_PAY"] },
   { key: "toPick", statuses: ["PAID", "ARRIVED", "SHIPPED"] },
   { key: "done", statuses: ["COMPLETED"] },
-  { key: "afterSale", statuses: ["REFUNDING", "REFUNDED"] },
+  { key: "afterSale", statuses: null },
 ];
 
 const tab = ref("all");
 const orders = ref<Order[]>([]);
+/** 有售后单的订单号。「售后」页签靠它筛，而不是靠订单状态 */
+const afterSaleOrderNos = ref<Set<string>>(new Set());
 const loaded = ref(false);
 
 const shown = computed(() => {
+  if (tab.value === "afterSale") {
+    return orders.value.filter((o) => afterSaleOrderNos.value.has(o.orderNo));
+  }
   const def = TABS.find((x) => x.key === tab.value);
   if (!def?.statuses) return orders.value;
   return orders.value.filter((o) => def.statuses!.includes(o.status));
 });
 
 async function load() {
-  const res = await api.orderList({ size: 100 });
+  const [res, afterSales] = await Promise.all([
+    api.orderList({ size: 100 }),
+    // 售后单独取。失败不该拖垮整个订单列表 —— 主列表是这一页的正事
+    api.afterSaleList().catch(() => []),
+  ]);
   orders.value = res.records;
+  afterSaleOrderNos.value = new Set(afterSales.map((a) => a.orderNo));
   loaded.value = true;
 }
 

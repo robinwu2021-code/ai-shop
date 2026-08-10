@@ -106,9 +106,11 @@ export function ensureDemoOrders(): void {
   // 判据是「本店有没有**待办**单」，不是「db 里有没有单」——
   // 共享种子里本来就带着几条 C 端的已完成单，用 `db.orders.length` 当判据会被它们挡住，
   // 结果工作台六个待办数字全是 0，看着像没有生意（这正是 B 端「打开像空壳」的第二层原因）
-  const PENDING = ["PAID", "ARRIVED", "SHIPPED", "REFUNDING"];
+  const PENDING = ["PAID", "ARRIVED", "SHIPPED"];
   const hasPending = db.orders.some(
-    (o) => o.merchantNo === db.merchant.merchantNo && PENDING.includes(o.status),
+    (o) =>
+      o.merchantNo === db.merchant.merchantNo &&
+      (PENDING.includes(o.status) || o.afterSale),
   );
   if (hasPending) return;
   // 未入驻时不补：此时还不知道是哪家店，补出来的单会挂在别人名下，入驻后订单列表反而是空的
@@ -131,8 +133,24 @@ export function ensureDemoOrders(): void {
   if (b) rows.push(build("PAID", FULFILLMENT.PICKUP, "李阿姨", [b], 120, "MERCHANT_OWNED"));
   if (c) rows.push(build("PAID", FULFILLMENT.DELIVERY, "王先生", [c], 60, "PLATFORM"));
   if (a) rows.push(build("PAID", FULFILLMENT.EXPRESS, "陈小姐", [a], 40, "PLATFORM"));
-  // 一条待处理售后，否则售后页永远是空的，同意/驳回两条分支都验证不了
-  if (b) rows.push(build("REFUNDING", FULFILLMENT.PICKUP, "赵大爷", [b], 220, "MERCHANT_OWNED"));
+  /*
+   * 一条待处理售后，否则售后页永远是空的，同意/驳回两条分支都验证不了。
+   * **订单状态是 COMPLETED**：售后挂在订单上，两者并存 ——
+   * 此前这里造的是 status="REFUNDING" 的单，那个订单状态后端根本不存在。
+   */
+  if (b) {
+    const withAfterSale = build("COMPLETED", FULFILLMENT.PICKUP, "赵大爷", [b], 220, "MERCHANT_OWNED");
+    withAfterSale.afterSale = {
+      afterSaleNo: nextNo("AS"),
+      orderNo: withAfterSale.orderNo,
+      type: "REFUND_ONLY",
+      status: "APPLIED",
+      reason: "QUALITY",
+      images: [],
+      updatedAt: Date.now(),
+    };
+    rows.push(withAfterSale);
+  }
 
   // 历史单。**没有这几条，「我的客户」页就是废的** ——
   // 全是今天的单会让复购率恒等于 0、沉默客户恒等于 0，

@@ -4,6 +4,7 @@
 // 类型全部来自 @shared/types —— **不在这里重复定义**。同一笔订单两端看到的是同一个
 // Order 结构，只是可见字段与可执行动作不同；各定义一份必然漂移。
 import type {
+  AfterSale,
   Category,
   Community,
   DeliveryRule,
@@ -278,7 +279,11 @@ export interface MerchantApi {
   mVerifyBatch(codes: string[]): Promise<VerifyBatchResult>;
 
   // ---- 售后（B-11.5）
-  mAfterSaleList(): Promise<Order[]>;
+  /**
+   * 待处理售后。**返回售后单，不是订单** —— 后端 /biz/after-sale 给的是
+   * List<AfterSaleVO>，端上此前把它类型成 Order[]，形状根本对不上。
+   */
+  mAfterSaleList(): Promise<AfterSale[]>;
   /** 同意：仅退款直接退；退货退款要等收货后才退（见 mConfirmReturn） */
   mApproveAfterSale(afterSaleNo: string, reply: string): Promise<Order>;
   /** 驳回**必须给理由** —— 用户据此决定要不要上升平台，没理由就是把路堵死 */

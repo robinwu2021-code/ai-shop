@@ -134,30 +134,61 @@ export const SERVICE_SCOPE = {
   PLATFORM: "PLATFORM",
 } as const;
 
+/**
+ * 履约方式。**键名是代码里的叫法，值是 wire 契约 —— 值必须逐字等于
+ * `ord_sub_order.fulfillment` 库里存的东西**（见 docs/technical/枚举统一方案.md §3）。
+ *
+ * 这条规则是两次同形状故障换来的：`PICKUP` 与 `DELIVERY` 都曾把端上的叫法
+ * 当成了 wire 值（"PICKUP" / "DELIVERY"），而库里存的是 "STORE_PICKUP" /
+ * "MERCHANT_DELIVERY"。后果在确认订单页直接可见 —— 履约方式那一栏显示
+ * `fulfillment.MERCHANT_DELIVERY`，**i18n 键原样打给用户**：
+ * 词条按端上的叫法建，后端下发库里的值，查不到就回退成键名。
+ *
+ * 下面分两组。分组不是文档，是**给对账工具看的**：
+ * `IMPLEMENTED` 里的值后端此刻就会下发，必须与库严格一致；
+ * `PLANNED` 里的后端还没有，对账时不该报「端上编了个不存在的词」。
+ */
 export const FULFILLMENT = {
-  /**
-   * 到店自提：商家门店（PickupPoint.type=STORE）。**库里存 STORE_PICKUP**。
-   *
-   * ⚠️ 键叫 PICKUP 而值是 "STORE_PICKUP"：后端 ord_sub_order.fulfillment 存的是后者。
-   * 这里此前值也写成 "PICKUP"，后果在确认订单页直接可见 ——
-   * 履约方式那一栏显示的是 `fulfillment.STORE_PICKUP`（i18n 键原样打出来），
-   * 因为词条按 PICKUP 建、而后端下发 STORE_PICKUP，查不到就回退成键名。
-   */
+  /** 到店自提：商家门店（PickupPoint.type=STORE） */
   PICKUP: "STORE_PICKUP",
   /** 邻里自提：送到团发起人家里（PickupPoint.type=NEIGHBOR，ADR-005）
    *  ⚠️ 承接方是用户不是商家，**零报酬**，且只能是自己发起的团 */
   NEIGHBOR_PICKUP: "NEIGHBOR_PICKUP",
-  /** 送货上门（从自提点二次配送到家） */
-  DELIVERY: "DELIVERY",
+  /** 送货上门（从自提点二次配送到家）。**库里存 MERCHANT_DELIVERY** */
+  DELIVERY: "MERCHANT_DELIVERY",
   /** 快递配送 */
   EXPRESS: "EXPRESS",
-  /** 到店核销 */
+
+  // ── 以下后端未实现（见 PLANNED_FULFILLMENTS） ──
+  /** 到店核销（SERVICE 商品） */
   STORE_VERIFY: "STORE_VERIFY",
-  /** 预约（到店或上门，需选时段） */
+  /** 预约到店或上门，需选时段（SERVICE 商品） */
   APPOINTMENT: "APPOINTMENT",
-  /** 即时发放（虚拟商品发码 / 卡券入卡包） */
+  /** 即时发放：虚拟商品发码 / 卡券入卡包（VIRTUAL / CARD 商品） */
   INSTANT: "INSTANT",
 } as const;
+
+/**
+ * 后端**尚未实现**的履约方式。
+ *
+ * <p>为什么保留而不是删掉：它们不是端上臆想出来的词，而是
+ * `prd_goods.type` 里已经存在的 SERVICE / VIRTUAL / CARD 三种形态的
+ * 必然对应物，端上有完整的 strategy 实现（`strategies/fulfillment/`）。
+ *
+ * <p>为什么必须显式列出来：这三个与 `MERCHANT_DELIVERY` 那类错误
+ * **形状完全不同，危害也不同**，混在一起就没法自动判定：
+ * <ul>
+ *   <li>同物异名（DELIVERY）—— 端上主动发出去筛选/展示，**现在就在坏**
+ *   <li>后端未实现（本组）—— 由后端下发，后端不发只是让 strategy 暂时不跑，
+ *       不产生错误行为
+ * </ul>
+ * 对账工具据此区别对待：前者必须报，后者是待办不是缺陷。
+ */
+export const PLANNED_FULFILLMENTS: readonly string[] = [
+  FULFILLMENT.STORE_VERIFY,
+  FULFILLMENT.APPOINTMENT,
+  FULFILLMENT.INSTANT,
+];
 
 /** 交易规则（一期） */
 export const TRADE_RULES = {

@@ -41,13 +41,6 @@ function enums(dir: string): Record<string, Set<string>> {
  * 否则这里就变成了「把问题登记一下然后忘掉」的清单。
  */
 const KNOWN_DRIFT: Record<string, string> = {
-  OrderStatus:
-    "同一状态两套拼法（WAIT_PAY↔PENDING_PAY / SHIPPED↔DELIVERING / REFUNDING↔AFTER_SALE）。" +
-    "权威取 shared（状态机与 assertTransition 在这里）。ops-web 侧待改名。",
-  AfterSaleStatus:
-    "shared 是**售后单自身**的状态机（PENDING→AGREED→RETURNING→RECEIVED→DONE）；" +
-    "ops 的 APPLIED/MERCHANT_HANDLING/PLATFORM_INTERVENE 是**平台视角的处理阶段**。" +
-    "两者语义不同名字也该不同：ops 那套应更名为 AfterSaleStage。",
   AfterSaleType: "ops 多一个 EXCHANGE（换货）—— 一期不做换货，用「退货重下」代替（C-AS-01）。",
   MerchantStatus:
     "shared: NONE/APPLYING/REJECTED/ACTIVE/SUSPENDED（商家自己看到的）；" +
