@@ -18,6 +18,7 @@ import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 @Service
@@ -38,11 +39,15 @@ public class CampaignServiceImpl implements CampaignService {
 
     private final CampaignMapper campaignMapper;
     private final CouponMapper couponMapper;
+    /** 限时特价的多规格校验要知道商品有几个 SKU。marketing → product 走 Port */
+    private final ai.neargo.shop.spi.product.GoodsQueryPort goodsPort;
     private final ObjectMapper json;
 
-    public CampaignServiceImpl(CampaignMapper campaignMapper, CouponMapper couponMapper, ObjectMapper json) {
+    public CampaignServiceImpl(CampaignMapper campaignMapper, CouponMapper couponMapper,
+                               ai.neargo.shop.spi.product.GoodsQueryPort goodsPort, ObjectMapper json) {
         this.campaignMapper = campaignMapper;
         this.couponMapper = couponMapper;
+        this.goodsPort = goodsPort;
         this.json = json;
     }
 
@@ -68,6 +73,7 @@ public class CampaignServiceImpl implements CampaignService {
         if (cmd.endAt() <= cmd.startAt()) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
+        assertFlashSingleSku(cmd);
 
         boolean isNew = cmd.campaignNo() == null || cmd.campaignNo().isBlank();
         MktCampaign c;
@@ -115,6 +121,32 @@ public class CampaignServiceImpl implements CampaignService {
         });
         syncCoupon(c);
         return toVO(c);
+    }
+
+    /**
+     * 限时特价**暂不支持多规格商品**。
+     *
+     * <p>`mkt_campaign` 的模型是「几个商品 + 一个活动价」，没有 SKU 维度。
+     * 对多规格商品套用会把所有规格拉到同一个价 —— 实测 10 斤装（¥49.80）与
+     * 20 斤装（¥95.80）会一起变成 ¥30.00，**每卖一件大规格就亏一次**。
+     *
+     * <p>为什么选择在创建时拒绝，而不是「只对某个规格生效」：
+     * 商家选的是「这个商品」，他心里想的是哪个规格没人知道，
+     * 系统替他猜一个，猜错了是拿他的钱试错。拒绝至少让他立刻知道 ——
+     * 而「悄悄不生效」和「悄悄按错价卖」都是他事后才会发现的。
+     *
+     * <p>正式解法是给活动加 SKU 维度（改表 + 改 B 端表单），需要业务先定
+     * 「商品级特价」对多规格到底是什么语义。见 docs/technical/营销枚举对账报告.md §5。
+     */
+    private void assertFlashSingleSku(SaveCommand cmd) {
+        if (!MktCampaign.FLASH.equals(cmd.type()) || cmd.goodsNos() == null || cmd.goodsNos().isEmpty()) {
+            return;
+        }
+        Map<String, Integer> counts = goodsPort.skuCounts(cmd.goodsNos());
+        boolean multi = cmd.goodsNos().stream().anyMatch(no -> counts.getOrDefault(no, 1) > 1);
+        if (multi) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
     }
 
     /**

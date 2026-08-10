@@ -85,7 +85,16 @@ public class GoodsQueryPortImpl implements GoodsQueryPort {
          * <p>下单时**重新查一次**而不是信端上传来的价：活动可能在用户
          * 加购之后、提交之前结束。以下单那一刻为准是唯一说得清的口径。
          */
-        Map<String, Long> flash = campaignPort.flashPrices(goodsNos);
+        /*
+         * 多规格商品**不套用**商品级特价：活动价只有一个，套上去会把
+         * 20 斤装拉到 10 斤装的价。这是防御历史数据 —— 新建活动已经在
+         * CampaignService 里拦住了，但库里可能已经有这种活动。
+         *
+         * 宁可「特价不生效」也不能「按错的价卖」：前者商家会来问，后者没人会发现。
+         */
+        Map<String, Integer> counts = skuCounts(goodsNos);
+        Map<String, Long> flash = new HashMap<>(campaignPort.flashPrices(goodsNos));
+        flash.keySet().removeIf(no -> counts.getOrDefault(no, 1) > 1);
 
         Map<String, SkuSnapshot> result = new HashMap<>();
         for (PrdSku sku : skus) {
@@ -104,6 +113,22 @@ public class GoodsQueryPortImpl implements GoodsQueryPort {
                     g.getGroupPriceMinor(), g.getGroupMinCount()));
         }
         return result;
+    }
+
+    @Override
+    public Map<String, Integer> skuCounts(java.util.Collection<String> goodsNos) {
+        if (goodsNos == null || goodsNos.isEmpty()) {
+            return Map.of();
+        }
+        List<PrdSku> all = DataScopeContext.executeWithoutScope(() ->
+                skuMapper.selectList(Wrappers.<PrdSku>lambdaQuery()
+                        .in(PrdSku::getGoodsNo, goodsNos)
+                        .eq(PrdSku::getMarket, MARKET_CN)));
+        Map<String, Integer> out = new HashMap<>();
+        for (PrdSku s : all) {
+            out.merge(s.getGoodsNo(), 1, Integer::sum);
+        }
+        return out;
     }
 
     private List<String> readList(String jsonArray) {

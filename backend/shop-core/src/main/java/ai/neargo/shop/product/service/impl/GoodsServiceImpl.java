@@ -215,7 +215,12 @@ public class GoodsServiceImpl implements GoodsService {
     /**
      * @param flashPrice 限时特价；null 表示这件商品此刻没有特价活动
      */
-    private GoodsVO toVO(PrdGoods g, List<PrdSku> skus, Long flashPrice) {
+    private GoodsVO toVO(PrdGoods g, List<PrdSku> skus, Long flashPriceRaw) {
+        /*
+         * 多规格商品不套用商品级特价 —— 与 GoodsQueryPortImpl 同一条规则。
+         * 两处都要判：一处管展示、一处管钱，只改一处会让「页面特价、下单原价」。
+         */
+        Long flashPrice = skus.size() > 1 ? null : flashPriceRaw;
         // 展示价取最低 SKU 价（端上「¥x 起」）。无 SKU 的商品不该上架，这里兜底为 0 而不是抛错，
         // 否则一条脏数据会让整个列表页 500
         long listPrice = skus.stream().mapToLong(s -> s.getPrice() == null ? 0L : s.getPrice()).min().orElse(0L);

@@ -31,6 +31,16 @@ public interface GoodsQueryPort {
     java.util.Optional<SkuSnapshot> snapshotOfGoods(String goodsNo);
 
     /**
+     * 每个商品有几个 SKU。
+     *
+     * <p>给限时特价的创建校验用：`mkt_campaign` 的活动价是**商品级**的
+     * （goods_nos + flash_price_minor 一个价），多规格商品会被拉成同一个价 ——
+     * 实测 10 斤装（¥49.80）与 20 斤装（¥95.80）会一起变成 ¥30.00，**直接亏钱**。
+     * 在建活动那一刻拦住，比事后对账发现强得多。
+     */
+    Map<String, Integer> skuCounts(java.util.Collection<String> goodsNos);
+
+    /**
      * @param price        **当前**售价（分）。购物车不存价，每次都读实时价，
      *                     否则用户会看到「加购时 8 块、结算时 10 块」的跳变而没有任何提示
      * @param available    可售 = 总库存 - 已锁定

@@ -213,17 +213,18 @@ class CampaignDiscountFlowTest {
     @DisplayName("★ 限时特价：商品页与下单价一起变，不是只改一处")
     void flashPriceAppliesToBothDisplayAndOrder() throws Exception {
         String token = login("13000160001");
-        flash("M0001", 3000L, "G0001"); // 原价 4980 → 特价 3000
-        addToCart(token, "G0001", "SK0001", 2);
+        // G0002 是**单规格**（SK0003，¥69.80）—— 多规格商品不套用商品级特价，见下方用例
+        flash("M0001", 3000L, "G0002");
+        addToCart(token, "G0002", "SK0003", 2);
 
         // ① 下单价（钱那条路）
         assertThat(preview(token, null).get("amount").get("goodsMinor").asLong()).isEqualTo(6000L);
 
-        // ② 商品详情页（展示那条路）—— 只改一处的话，用户会看到「页面 49.80、结账 30.00」
-        JsonNode g = goodsDetail(token, "G0001");
+        // ② 商品详情页（展示那条路）—— 只改一处的话，用户会看到「页面 69.80、结账 30.00」
+        JsonNode g = goodsDetail(token, "G0002");
         assertThat(g.get("price").asLong()).isEqualTo(3000L);
         // 原价挪到划线价：只降价不给划线价，用户感知不到优惠也判断不了值不值
-        assertThat(g.get("originPrice").asLong()).isEqualTo(4980L);
+        assertThat(g.get("originPrice").asLong()).isEqualTo(6980L);
     }
 
     @Test
@@ -232,21 +233,21 @@ class CampaignDiscountFlowTest {
         String token = login("13000160002");
         long now = System.currentTimeMillis();
         // 已结束的特价活动
-        flashWindow("M0001", 3000L, "G0001",
+        flashWindow("M0001", 3000L, "G0002",
                 now - Duration.ofDays(2).toMillis(), now - Duration.ofDays(1).toMillis());
-        addToCart(token, "G0001", "SK0001", 2);
+        addToCart(token, "G0002", "SK0003", 2);
 
         // 不是 6000 —— 活动已经结束，端上就算还缓存着特价也不作数
-        assertThat(preview(token, null).get("amount").get("goodsMinor").asLong()).isEqualTo(9960L);
+        assertThat(preview(token, null).get("amount").get("goodsMinor").asLong()).isEqualTo(13960L);
     }
 
     @Test
     @DisplayName("同一商品命中多个特价取最低价 —— 对用户有利的一侧")
     void lowestFlashPriceWins() throws Exception {
         String token = login("13000160003");
-        flash("M0001", 3000L, "G0001");
-        flash("M0001", 2500L, "G0001");
-        addToCart(token, "G0001", "SK0001", 1);
+        flash("M0001", 3000L, "G0002");
+        flash("M0001", 2500L, "G0002");
+        addToCart(token, "G0002", "SK0003", 1);
 
         assertThat(preview(token, null).get("amount").get("goodsMinor").asLong()).isEqualTo(2500L);
     }
@@ -255,14 +256,40 @@ class CampaignDiscountFlowTest {
     @DisplayName("特价与满减叠加：满减按**特价后**的金额判门槛")
     void flashThenFullCut() throws Exception {
         String token = login("13000160004");
-        flash("M0001", 3000L, "G0001");
+        flash("M0001", 3000L, "G0002");
         fullCut("M0001", "满50减8", 5000L, 800L);
-        addToCart(token, "G0001", "SK0001", 2); // 特价后 6000 ≥ 5000
+        addToCart(token, "G0002", "SK0003", 2); // 特价后 6000 ≥ 5000
 
         JsonNode a = preview(token, null).get("amount");
         assertThat(a.get("goodsMinor").asLong()).isEqualTo(6000L);
         assertThat(a.get("discountMinor").asLong()).isEqualTo(800L);
         assertThat(a.get("payableMinor").asLong()).isEqualTo(5200L);
+    }
+
+    @Test
+    @DisplayName("★ 多规格商品不套用商品级特价 —— 否则 20 斤装会被拉到 10 斤装的价")
+    void multiSkuGoodsIsNotDiscounted() throws Exception {
+        String token = login("13000160005");
+        flash("M0001", 3000L, "G0001"); // G0001 有 10 斤装与 20 斤装两个规格
+        addToCart(token, "G0001", "SK0001", 1);
+
+        // 不生效：宁可「特价没生效」也不能「按错的价卖」——
+        // 前者商家会来问，后者没人会发现
+        assertThat(preview(token, null).get("amount").get("goodsMinor").asLong()).isEqualTo(4980L);
+        assertThat(goodsDetail(token, "G0001").get("price").asLong()).isEqualTo(4980L);
+    }
+
+    @Test
+    @DisplayName("★ 建多规格商品的限时特价被拒 —— 在建那一刻就告诉商家，别让他以为在跑")
+    void creatingFlashOnMultiSkuGoodsIsRejected() throws Exception {
+        String bizToken = merchant("12600160901", "特价·多规格");
+        long now = System.currentTimeMillis();
+        mvc().perform(post("/biz/campaign").header("Authorization", "Bearer " + bizToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"type\":\"FLASH\",\"name\":\"多规格特价\",\"startAt\":" + (now - 1000)
+                                + ",\"endAt\":" + (now + Duration.ofDays(1).toMillis())
+                                + ",\"flashPriceMinor\":3000,\"goodsNos\":[\"G0001\"]}"))
+                .andExpect(jsonPath("$.code").value(10400));
     }
 
     // ---------------------------------------------------------------- 店铺券桥接
