@@ -137,7 +137,7 @@ function MerchantsInner() {
       ),
     },
     { header: c.colTier, cell: (m) => tierLabel(m.tier) },
-    { header: c.colCommunity, cell: (m) => m.communityName },
+    { header: c.colCommunity, cell: (m) => m.communityNos.join("、") },
     { header: c.colContact, cell: (m) => `${m.contactName} ${m.contactPhone}` },
     { header: c.colStatus, cell: (m) => <MerchantStatusBadge value={m.status} /> },
     // 分账接收方未报备 = 结算走不通（ADR-002），列表就要能看出来，别等到打款那天
@@ -156,7 +156,7 @@ function MerchantsInner() {
             await confirm(unarchiveConfirm(c.entity, m.name, () => archiveMut.mutateAsync({ merchantNo: m.merchantNo, restore: true })));
           }}
           actions={
-            <Button size="sm" variant="outline" onClick={() => { setCurrent(m); setRemark(m.auditRemark ?? ""); setCommunityNos(m.communityNo ? [m.communityNo] : []); }}>
+            <Button size="sm" variant="outline" onClick={() => { setCurrent(m); setRemark(m.auditRemark ?? ""); setCommunityNos(m.communityNos ?? []); }}>
               {c.actionView}
             </Button>
           }
@@ -239,35 +239,15 @@ function MerchantsInner() {
         footer={
           current && canAudit ? (
             <>
-              {/* 按钮只出**当前状态允许的迁移**（合法迁移表见 lib/types/merchant.ts）——
-                  出一个点了必报错的按钮，比不出更糟。 */}
-              {current.status === "SUBMITTED" && (
-                <Button onClick={() => setStatusMut.mutate({ merchantNo: current.merchantNo, status: "REVIEWING" })}>
-                  {c.btnStartReview}
-                </Button>
-              )}
-              {current.status === "REVIEWING" && (
-                <>
-                  <Button
-                    variant="outline"
-                    onClick={() => setStatusMut.mutate({ merchantNo: current.merchantNo, status: "REJECTED", remark })}
-                  >
-                    {c.btnReject}
-                  </Button>
-                  <Button
-                  disabled={!communityNos.length}
-                  onClick={() => setStatusMut.mutate({
-                    merchantNo: current.merchantNo,
-                    status: "APPROVED",
-                    remark: "",
-                    communityNos,
-                  })}
-                >
-                    {c.btnApprove}
-                  </Button>
-                </>
-              )}
-              {current.status === "APPROVED" && canVerify && (
+              {/*
+                受理 / 通过 / 驳回这三个动作属于申请单，不属于商家档案。
+                它们曾经建在 `merchant.status` 上 —— 而那个字段是经营状态
+                （能不能做生意），不是审核状态（这次申请审到哪了）。
+                后端刻意分成两张表：一家已在正常经营、又提交了第二张执照的商家，
+                在合成一个字段的模型里 status 该填什么无解，而「一人多主体」是常见情形。
+                审核动作请到「入驻申请」页操作（/ops/merchant/apply/{no}/audit）。
+              */}
+              {current.status === "ACTIVE" && canVerify && (
                 <Button
                   variant="outline"
                   onClick={() => verifyMut.mutate({ merchantNo: current.merchantNo, verified: !current.verified })}
@@ -282,32 +262,15 @@ function MerchantsInner() {
         {current && (
           <div>
             <FieldGrid>
-              <Field className="mb-3" label={c.fieldAuditStatus}><MerchantStatusBadge value={current.status} /></Field>
+              <Field className="mb-3" label={c.colStatus}><MerchantStatusBadge value={current.status} /></Field>
               <Field className="mb-3" label={c.fieldTier}>{tierLabel(current.tier)}</Field>
               <Field className="mb-3" label={c.colCommunity}>
-                {canAudit && current.status === "REVIEWING" ? (
-                  /*
-                   * 通过审核必须先选社区（ADR-009）。做成审核动作的一部分而不是
-                   * 事后再配 —— 分两步做永远有人忘，而忘了的后果是商家上着架
-                   * 却一个订单都不来，且没有任何报错。
-                   */
-                  <div>
-                    <MultiSelect
-                      value={communityNos}
-                      options={(communities.data?.records ?? []).map((cm) => ({
-                        value: cm.communityNo,
-                        label: cm.name,
-                      }))}
-                      onChange={setCommunityNos}
-                      invalid={!communityNos.length}
-                    />
-                    {!communityNos.length && (
-                      <p className="mt-1 text-xs text-danger">{c.communityRequired}</p>
-                    )}
-                  </div>
-                ) : (
-                  current.communityName || "-"
-                )}
+                {/*
+                  只读：选社区是审核动作的一部分（通过审核必须先选社区，ADR-009），
+                  而审核已经归到申请单那边。在商家档案上再放一个可编辑的社区选择器，
+                  等于给同一件事开两个入口，两边写的还不一定一致。
+                */}
+                {current.communityNos.join("、") || "-"}
               </Field>
               <Field className="mb-3" label={c.colContact}>{current.contactName}</Field>
               {/* 手机号在平台端也只展示掩码：完整号码属于越权边界（矩阵 §2.3 / M11） */}
@@ -321,15 +284,7 @@ function MerchantsInner() {
             </FieldGrid>
             <Field label={c.fieldCategories}>{current.categoryCodes.join("、") || "-"}</Field>
             <Field label={c.fieldRemark}>
-              {canAudit && current.status === "REVIEWING" ? (
-                <Textarea
-                  value={remark}
-                  onChange={setRemark}
-                  placeholder={c.remarkPlaceholder}
-                />
-              ) : (
-                current.auditRemark || "-"
-              )}
+              {current.auditRemark || "-"}
             </Field>
           </div>
         )}

@@ -89,22 +89,21 @@ export const merchantMock: MerchantApi = {
     const m = find(merchantNo);
     db.assertTransition(MERCHANT_TRANSITIONS, m.status, status, "商家", "Merchant");
     /*
-     * 通过审核必须同时确定覆盖社区（ADR-009）。
+     * 这里只改**经营状态**（ACTIVE / SUSPENDED / FROZEN）。
      *
-     * 不拦的话：商家审核通过 → 登录 B 端 → 上架商品 → **一个订单都不来**，
-     * 因为 service_scope 默认 COMMUNITY 而一个社区都没覆盖 = C 端谁也搜不到。
-     * 这个故障没有任何报错，商家和运营都查不出原因。
-     * 后端已经这么拦了，mock 放行的话页面就不会去写这个必填引导。
+     * 审核（受理 / 通过 / 驳回）不在这条路上 —— 它属于申请单，
+     * 走 `/ops/merchant/apply/{applyNo}/audit`。两者曾经合成一个字段，
+     * 于是「已在经营、又提交了第二张执照」的商家 status 该填什么无解。
+     *
+     * 「通过审核必须同时指定覆盖社区」那条规则也跟着搬到了审核那边：
+     * 不拦的话商家审核通过 → 上架 → 一个订单都不来（service_scope 默认
+     * COMMUNITY 而一个社区都没覆盖 = C 端谁也搜不到），且没有任何报错。
      */
-    if (status === "APPROVED" && !communityNos?.length) {
-      fail("通过审核前必须指定覆盖社区，否则商家对买家不可见",
-        "Pick at least one community before approving — otherwise buyers cannot see this merchant");
-    }
+    db.assertTransition(MERCHANT_TRANSITIONS, m.status, status, "商家", "Merchant");
     m.status = status;
     if (remark !== undefined) m.auditRemark = remark;
     if (communityNos?.length) {
-      m.communityNo = communityNos[0];
-      m.communityName = db.communities.find((x) => x.communityNo === communityNos[0])?.name ?? m.communityName;
+      m.communityNos = [...communityNos];
     }
     return wait(m, 400);
   },
@@ -113,7 +112,7 @@ export const merchantMock: MerchantApi = {
     const m = find(merchantNo);
     // 认证标只授予审核通过的商家 —— 这条规则在后端也存在，mock 放行的话
     // 页面就不会去写「先通过再授标」的引导。
-    if (verified && m.status !== "APPROVED") fail("仅已通过审核的商家可授予认证标", "Only approved merchants can hold the verified badge");
+    if (verified && m.status !== "ACTIVE") fail("仅正常经营中的商家可授予认证标", "Only merchants in good standing can hold the verified badge");
     // 认证标是平台的背书，挂在正在毁约的商家身上，赔的是平台的信用
     if (verified && m.breachCount >= MAX_MERCHANT_BREACH) {
       fail(`毁约次数已达 ${m.breachCount} 次（上限 ${MAX_MERCHANT_BREACH}），不能授予认证标`, `${m.breachCount} breaches on record (limit ${MAX_MERCHANT_BREACH}) — the verified badge cannot be granted`);
@@ -131,7 +130,7 @@ export const merchantMock: MerchantApi = {
     const m = find(merchantNo);
     if (!reason.trim()) fail("改授权范围必须写原因 —— 它决定商家能上架什么", "Changing the granted scope needs a reason — it decides what they may list");
     // 没过审就授权等于提前放行
-    if (m.status !== "APPROVED") fail("仅已通过审核的商家可配置类目授权", "Category permissions are open to approved merchants only");
+    if (m.status !== "ACTIVE") fail("仅正常经营中的商家可配置类目授权", "Category permissions are open to merchants in good standing only");
     // 撤空之后商家会静默失去上架能力：要停就走封禁或归档，那是明示的动作
     if (!codes.length) fail("不能把授权撤空 —— 要停止经营请走封禁或归档", "You cannot clear every permission — to stop them trading, ban or archive them");
 

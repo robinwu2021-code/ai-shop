@@ -15,9 +15,8 @@ import { ReadOnlyNotice } from "@/components/read-only-notice";
 import type { MerchantStatus, OrderStatus, FulfillType, TrafficSource } from "@/lib/types";
 
 // 顺序 = 状态机推进顺序（与 lib/types 里的迁移表同序），不是字母序。
-const MERCHANT_STATES: MerchantStatus[] = [
-  "DRAFT", "SUBMITTED", "REVIEWING", "APPROVED", "REJECTED", "SUSPENDED",
-];
+// 经营状态只有三个（审核状态在申请单上，不在这里）
+const MERCHANT_STATES: MerchantStatus[] = ["ACTIVE", "SUSPENDED", "FROZEN"];
 const ORDER_STATES: OrderStatus[] = [
   "WAIT_PAY", "PAID", "PAID", "SHIPPED", "ARRIVED", "COMPLETED", "CANCELLED", "REFUNDED",
 ];

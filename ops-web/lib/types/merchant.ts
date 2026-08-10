@@ -4,23 +4,29 @@ import type { Archivable } from "./common";
 /** 商家分层（矩阵 P-11.1.6，为引入大商家预留）。 */
 export type MerchantTier = "PERSONAL" | "INDIVIDUAL" | "COMPANY";
 
-/** 入驻审核状态机：提交 → 审核中 →（通过 / 驳回补交）；封禁独立于审核。 */
-export type MerchantStatus =
-  | "DRAFT"
-  | "SUBMITTED"
-  | "REVIEWING"
-  | "APPROVED"
-  | "REJECTED"
-  | "SUSPENDED";
+/**
+ * 商家的**经营状态**。取值与后端 `mch_entity.status` 一致。
+ *
+ * ⚠️ 它**不是入驻审核状态** —— 审核状态在申请单上（{@link ApplyStatus}，
+ * PENDING/REVIEWING/APPROVED/REJECTED），后端刻意分成两张表：
+ * `mch_entity_apply` 记「这次申请审到哪了」，`mch_entity` 记「这家店现在能不能做生意」。
+ *
+ * 这里曾经把两者揉成一个字段（DRAFT/SUBMITTED/REVIEWING/APPROVED/REJECTED/SUSPENDED），
+ * 于是一家已经在正常经营、又提交了第二张执照的商家，status 该填什么无解 ——
+ * 而这正是「一人多主体」的常见情形。
+ */
+export type MerchantStatus = "ACTIVE" | "SUSPENDED" | "FROZEN";
 
-/** 合法迁移（mock 层强制，非法迁移抛错）。 */
+/**
+ * 经营状态的合法迁移。
+ *
+ * <p>封禁（SUSPENDED）与冻结（FROZEN）的区别：封禁是**处罚**，可以解除；
+ * 冻结是**风控**，要等风险排除。两者都不可逆地回到 ACTIVE 之外的态。
+ */
 export const MERCHANT_TRANSITIONS: Record<MerchantStatus, MerchantStatus[]> = {
-  DRAFT: ["SUBMITTED"],
-  SUBMITTED: ["REVIEWING"],
-  REVIEWING: ["APPROVED", "REJECTED"],
-  REJECTED: ["SUBMITTED"],
-  APPROVED: ["SUSPENDED"],
-  SUSPENDED: ["APPROVED"],
+  ACTIVE: ["SUSPENDED", "FROZEN"],
+  SUSPENDED: ["ACTIVE"],
+  FROZEN: ["ACTIVE"],
 };
 
 export interface Merchant extends Archivable {
@@ -30,12 +36,14 @@ export interface Merchant extends Archivable {
   name: string;
   /** 商家分层，为引入大商家预留 */
   tier: MerchantTier;
-  /** 入驻审核状态。合法迁移见 `MERCHANT_TRANSITIONS`，非法迁移抛错 */
+  /** **经营状态**（不是审核状态 —— 审核在申请单上）。合法迁移见 `MERCHANT_TRANSITIONS` */
   status: MerchantStatus;
-  /** 归属社区（数据域裁剪键之一） */
-  communityNo: string;
-  /** 社区名快照 */
-  communityName: string;
+  /**
+   * 服务的社区。**是列表不是单个** —— 一家店可以服务多个社区
+   * （后端 `mch_entity_community`，服务范围三档见 ADR-009）。
+   * 此前这里是单个 `communityNo`，多社区商家只会显示其中一个。
+   */
+  communityNos: string[];
   /** 联系人姓名 */
   contactName: string;
   /** 展示一律脱敏（中间四位掩码），完整号码不下发前端 */

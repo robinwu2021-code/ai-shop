@@ -22,7 +22,7 @@ describe("认证标（P-11.1.2）", () => {
   it("**毁约达上限的商家不能授标** —— 认证标是平台的背书，赔的是平台的信用", async () => {
     const bad = merchants.find((m) => m.breachCount >= MAX_MERCHANT_BREACH)!;
     // 先让它处于可授标的审核状态，确保这次拒绝是毁约次数导致的，而不是状态
-    bad.status = "APPROVED";
+    bad.status = "ACTIVE";
     await expect(merchantMock.setMerchantVerified(bad.merchantNo, true)).rejects.toThrow(/毁约次数/);
   });
 
@@ -35,13 +35,16 @@ describe("认证标（P-11.1.2）", () => {
 });
 
 describe("类目授权（P-11.1.3）", () => {
-  const approved = () => merchants.find((m) => m.status === "APPROVED" && m.qualifications.length)!;
+  // 「可授权」的前提是**正常经营**（ACTIVE），不是「审核通过」——
+  // 审核状态在申请单上，商家档案上只有经营状态
+  const approved = () => merchants.find((m) => m.status === "ACTIVE" && m.qualifications.length)!;
 
-  it("未过审的商家不能配授权 —— 没过审就授权等于提前放行", async () => {
-    const pending = merchants.find((m) => m.status === "SUBMITTED")!;
+  it("非正常经营的商家不能配授权 —— 封禁中还给他放新类目没有道理", async () => {
+    const banned = merchants.find((m) => m.status !== "ACTIVE")
+      ?? (await merchantMock.setMerchantStatus(merchants[0]!.merchantNo, "SUSPENDED", "测试封禁"));
     await expect(
-      merchantMock.setMerchantAuthCodes({ merchantNo: pending.merchantNo, codes: ["DAILY"], reason: "先配上" }),
-    ).rejects.toThrow(/仅已通过审核/);
+      merchantMock.setMerchantAuthCodes({ merchantNo: banned.merchantNo, codes: ["DAILY"], reason: "先配上" }),
+    ).rejects.toThrow(/正常经营/);
   });
 
   it("缺资质的类目授不了", async () => {

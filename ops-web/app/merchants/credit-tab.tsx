@@ -61,7 +61,7 @@ export function CreditTab({ c }: { c: MerchantsCopy }) {
   const columns: Column<Merchant>[] = [
     { header: c.colNo, cell: (m) => m.merchantNo, numeric: true, align: "start" },
     { header: c.colName, cell: (m) => m.name },
-    { header: c.colCommunity, cell: (m) => m.communityName },
+    { header: c.colCommunity, cell: (m) => m.communityNos.join("、") },
     {
       header: c.colBreach,
       cell: (m) =>
@@ -159,7 +159,8 @@ export function BanTab({ c, canBan }: { c: MerchantsCopy; canBan: boolean }) {
   });
 
   const unban = useMutation({
-    mutationFn: (m: Merchant) => api.setMerchantStatus(m.merchantNo, "APPROVED", c.unbanRemark),
+    mutationFn: (m: Merchant) => // 解封 = 回到可经营（ACTIVE），不是「审核通过」
+      api.setMerchantStatus(m.merchantNo, "ACTIVE", c.unbanRemark),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["merchants"] });
       notify.success(c.toastUnbanned);

@@ -57,7 +57,7 @@ export function CategoryTab({ c, canGrant }: { c: MerchantsCopy; canGrant: boole
   const columns: Column<Merchant>[] = [
     { header: c.colNo, cell: (m) => m.merchantNo, numeric: true, align: "start" },
     { header: c.colName, cell: (m) => m.name },
-    { header: c.colCommunity, cell: (m) => m.communityName },
+    { header: c.colCommunity, cell: (m) => m.communityNos.join("、") },
     {
       header: c.colAuthCodes,
       cell: (m) => (
@@ -169,7 +169,7 @@ export function VerifyTab({ c, canGrant }: { c: MerchantsCopy; canGrant: boolean
   const columns: Column<Merchant>[] = [
     { header: c.colNo, cell: (m) => m.merchantNo, numeric: true, align: "start" },
     { header: c.colName, cell: (m) => m.name },
-    { header: c.colCommunity, cell: (m) => m.communityName },
+    { header: c.colCommunity, cell: (m) => m.communityNos.join("、") },
     {
       header: c.colVerified,
       cell: (m) => (m.verified ? <Badge tone="success">{c.badgeVerified}</Badge> : <span className="text-muted-foreground">{c.badgeUnverified}</span>),
@@ -226,7 +226,7 @@ export function MerchantBrief({ c, m }: { c: MerchantsCopy; m: Merchant }) {
   return (
     <FieldGrid>
       <Field className="mb-3" label={c.colNo}>{m.merchantNo}</Field>
-      <Field className="mb-3" label={c.colCommunity}>{m.communityName}</Field>
+      <Field className="mb-3" label={c.colCommunity}>{m.communityNos.join("、")}</Field>
       <Field className="mb-3" label={c.colVerified}>{m.verified ? c.badgeVerified : c.badgeUnverified}</Field>
       <Field className="mb-3" label={c.colBreach}>{fill(c.breachTimes, { n: m.breachCount })}</Field>
     </FieldGrid>

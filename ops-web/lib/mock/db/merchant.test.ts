@@ -27,7 +27,8 @@ describe("列表查询", () => {
   it("数据域收敛：带 communityNo 只剩该社区（矩阵 §2.3）", async () => {
     const page = await merchantMock.listMerchants({ size: 100, communityNo: "C001" });
     expect(page.records.length).toBeGreaterThan(0);
-    expect(page.records.every((m) => m.communityNo === "C001")).toBe(true);
+    // 一家店可以服务多个社区 —— 筛选命中的是「包含该社区」
+    expect(page.records.every((m) => m.communityNos.includes("C001"))).toBe(true);
   });
 
   it("关键词命中编号 / 名称 / 联系人", async () => {
@@ -43,24 +44,35 @@ describe("列表查询", () => {
   });
 });
 
-describe("审核状态机", () => {
-  it("合法迁移落库（重新查能读回）", async () => {
-    await merchantMock.setMerchantStatus("M901", "REVIEWING");
-    expect((await merchantMock.getMerchant("M901")).status).toBe("REVIEWING");
+describe("经营状态机（不是审核状态机）", () => {
+  /*
+   * 商家档案上的 status 是**经营状态**：ACTIVE / SUSPENDED / FROZEN。
+   * 审核状态（PENDING/REVIEWING/APPROVED/REJECTED）在**申请单**上。
+   *
+   * 这一组用例此前测的是审核迁移（SUBMITTED→REVIEWING→APPROVED），
+   * 建在一个把两件事揉进一个字段的模型上 —— 而「已在经营、又提交了第二张
+   * 执照」的商家在那个模型里 status 无解，那正是「一人多主体」的常见情形。
+   */
+  it("封禁与解封是一对：ACTIVE ⇄ SUSPENDED", async () => {
+    await merchantMock.setMerchantStatus("M901", "SUSPENDED", "售假处罚");
+    expect((await merchantMock.getMerchant("M901")).status).toBe("SUSPENDED");
+    await merchantMock.setMerchantStatus("M901", "ACTIVE", "整改完成");
+    expect((await merchantMock.getMerchant("M901")).status).toBe("ACTIVE");
   });
 
-  it("非法迁移抛错（SUBMITTED 不能直接 APPROVED）", async () => {
-    await expect(merchantMock.setMerchantStatus("M901", "APPROVED")).rejects.toThrow(/不允许/);
+  it("非法迁移抛错（封禁中不能直接冻结 —— 两者是不同性质的处置）", async () => {
+    await merchantMock.setMerchantStatus("M901", "SUSPENDED", "售假处罚");
+    await expect(merchantMock.setMerchantStatus("M901", "FROZEN")).rejects.toThrow(/不允许/);
   });
 
-  it("驳回意见落库，商家在 B 端看到的就是这段话", async () => {
-    await merchantMock.setMerchantStatus("M901", "REVIEWING");
-    await merchantMock.setMerchantStatus("M901", "REJECTED", "营业执照缺页");
+  it("处置意见落库，商家在 B 端看到的就是这段话", async () => {
+    await merchantMock.setMerchantStatus("M901", "SUSPENDED", "营业执照缺页");
     expect((await merchantMock.getMerchant("M901")).auditRemark).toBe("营业执照缺页");
   });
 
-  it("认证标只给已通过审核的商家", async () => {
-    await expect(merchantMock.setMerchantVerified("M901", true)).rejects.toThrow(/审核/);
+  it("认证标只给正常经营中的商家 —— 封禁中的店挂着平台背书，赔的是平台信用", async () => {
+    await merchantMock.setMerchantStatus("M901", "SUSPENDED", "售假处罚");
+    await expect(merchantMock.setMerchantVerified("M901", true)).rejects.toThrow(/正常经营/);
     await merchantMock.setMerchantVerified("M903", true);
     expect((await merchantMock.getMerchant("M903")).verified).toBe(true);
   });

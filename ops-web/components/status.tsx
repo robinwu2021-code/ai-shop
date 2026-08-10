@@ -25,12 +25,9 @@ import { useI18n } from "@/lib/i18n";
 export function useMerchantStatusMap(): StatusMap<MerchantStatus> {
   const { t } = useI18n();
   return {
-    DRAFT: { label: t("merchantStatus.DRAFT"), tone: "muted" },
-    SUBMITTED: { label: t("merchantStatus.SUBMITTED"), tone: "warning" },
-    REVIEWING: { label: t("merchantStatus.REVIEWING"), tone: "info" },
-    APPROVED: { label: t("merchantStatus.APPROVED"), tone: "success" },
-    REJECTED: { label: t("merchantStatus.REJECTED"), tone: "danger" },
+    ACTIVE: { label: t("merchantStatus.ACTIVE"), tone: "success" },
     SUSPENDED: { label: t("merchantStatus.SUSPENDED"), tone: "danger" },
+    FROZEN: { label: t("merchantStatus.FROZEN"), tone: "warning" },
   };
 }
 
