@@ -86,6 +86,25 @@ public class OpsCommunityController {
         return ai.neargo.shop.common.PageData.ofAll(adminService.pickups(communityNo, type, status), page, size);
     }
 
+    /**
+     * 建自提点。
+     *
+     * <p><b>此前全平台没有任何创建路径</b>：运营端只有列表/停启/费率，商家不能申请、
+     * 邻居不能报名 —— 社区自提这条核心履约方式，生产环境根本无法录入一个点，
+     * 能跑通只因为开发种子建了两个。
+     */
+    @PostMapping("/ops/pickups")
+    @PreAuthorize("@perm.can('" + Perms.INDUSTRY_MANAGE + "')")
+    public CommunityAdminService.PickupVO createPickup(@RequestBody CreatePickupReq req) {
+        var vo = adminService.createPickup(new CommunityAdminService.CreatePickupCommand(
+                req.communityNo(), req.name(), req.type(), req.ownerRef(), req.address(),
+                req.openHours(), req.arrivalDesc(), req.serviceFeeRate(), req.serviceFeePerItemMinor()),
+                SecurityUtils.currentUserNo());
+        // 新增一个承接方是主数据变更，且它决定钱与货的去向 —— 必须留痕
+        auditLogPort.record("PICKUP_CREATE", vo.pickupNo(), req.type() + " @ " + req.communityNo());
+        return vo;
+    }
+
     /** 状态。MIGRATING = 不再接新单，存量单仍在本点核销完。 */
     @PostMapping("/ops/pickups/{pickupNo}/status")
     @PreAuthorize("@perm.can('" + Perms.INDUSTRY_MANAGE + "')")
@@ -129,6 +148,15 @@ public class OpsCommunityController {
 
     /** @param fenceRadius 覆盖围栏半径（米）。必须大于 0 —— 0 等于这个社区谁也覆盖不到 */
     public record FenceReq(Integer fenceRadius) {
+    }
+
+    /**
+     * @param ownerRef STORE 传**门店号**、NEIGHBOR 传用户号、PLATFORM 传空 ——
+     *                 这一列是多态的，传错会让「这个点属于谁」永久错位
+     */
+    public record CreatePickupReq(String communityNo, String name, String type, String ownerRef,
+                                  String address, String openHours, String arrivalDesc,
+                                  Integer serviceFeeRate, Long serviceFeePerItemMinor) {
     }
 
     public record PickupStatusReq(String status) {

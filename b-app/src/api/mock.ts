@@ -769,7 +769,7 @@ export const mockApi: MerchantApi = {
     return delay([...map.values()].sort((a, b) => b.totalQty - a.totalQty));
   },
 
-  async mMarkArrived(orderNos) {
+  async mMarkArrived(orderNos, _pickupNo) {
     const changed: Order[] = [];
     for (const no of orderNos) {
       const o = db.orders.find((x) => x.orderNo === no);

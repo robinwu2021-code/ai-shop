@@ -38,6 +38,11 @@ import java.util.List;
 @Service
 public class AfterSaleServiceImpl implements AfterSaleService {
 
+    /** 三种售后类型。与 {@link OrdAfterSale} 的常量同源，不在这里另写字符串 */
+    private static final java.util.Set<String> AFTER_SALE_TYPES = java.util.Set.of(
+            OrdAfterSale.REFUND_ONLY, OrdAfterSale.RETURN_REFUND, OrdAfterSale.EXCHANGE);
+
+
     /** 极速退阈值：≤ 该金额自动通过。真实阈值由 P-6.1.2 运营配置，这里是缺省。 */
     @Value("${shop.after-sale.instant-threshold-minor:10000}")
     private long instantThresholdMinor;
@@ -81,6 +86,22 @@ public class AfterSaleServiceImpl implements AfterSaleService {
     @Transactional
     public AfterSaleVO apply(String subOrderNo, ApplyCommand cmd) {
         OrdSubOrder sub = ownSubOrder(subOrderNo);
+
+        /*
+         * 售后类型与原因都是**必填**，在入口就挡住。
+         *
+         * 不挡的后果是实测出来的：type 为空时一路走到 insert，
+         * 库上 `type VARCHAR(16) NOT NULL` 抛「Field 'type' doesn't have a default value」，
+         * 被包成通用 500「系统开小差了」—— 而真正的问题是少传了一个字段。
+         * 与「未过审商品上架报订单状态错误」同一形状：**报错与实际问题无关**，
+         * 排查的人会去看服务器日志，而答案本该在响应里。
+         *
+         * H2 上这条不会红（测试库对 NOT NULL 的空串处理不同），所以四层测试全绿。
+         */
+        if (cmd == null || cmd.reason() == null || cmd.reason().isBlank()
+                || cmd.type() == null || !AFTER_SALE_TYPES.contains(cmd.type())) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
 
         // 未支付的单没有可退的钱 —— 直接取消订单即可，不该走售后
         if (OrdSubOrder.WAIT_PAY.equals(sub.getStatus()) || OrdSubOrder.CANCELLED.equals(sub.getStatus())) {

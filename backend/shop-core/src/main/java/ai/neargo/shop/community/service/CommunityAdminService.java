@@ -26,6 +26,18 @@ public interface CommunityAdminService {
     List<PickupVO> pickups(String communityNo, String type, String status);
 
     /**
+     * 建自提点。
+     *
+     * <p><b>此前全平台没有任何创建路径</b>：运营端只有列表/停启/费率，商家不能申请、
+     * 邻居不能报名 —— 社区自提这条核心履约方式，生产环境根本无法录入一个点，
+     * 能跑通只因为开发种子建了两个。与本轮反复撞到的「有能力没有消费方」正好相反：
+     * <b>有消费方没有录入</b>。
+     *
+     * <p>三类的必填项完全不同，见 {@link CreatePickupCommand}。
+     */
+    PickupVO createPickup(CreatePickupCommand cmd, String operatorNo);
+
+    /**
      * 自提点状态。ACTIVE ⇄ SUSPENDED，ACTIVE → MIGRATING → SUSPENDED。
      *
      * <p>{@code MIGRATING}（迁移中）= <b>不再接新单，存量单仍在本点核销完</b>。
@@ -64,6 +76,19 @@ public interface CommunityAdminService {
      * @param storeNo     承接<b>门店</b>（V16 起 owner_ref 存 store_no，此前是 entity_no）；
      *                    只在 STORE 类型下有值 —— 这一列本来就是多态的
      */
+    /**
+     * @param type     STORE / NEIGHBOR / PLATFORM
+     * @param ownerRef STORE 传<b>门店号</b>（V16 起）、NEIGHBOR 传用户号、PLATFORM 传空。
+     *                 这一列是多态的，传错的后果是「这个点属于谁」永久错位，
+     *                 而它决定核销权限与履约服务费给谁
+     * @param serviceFeeRate 履约服务费费率，万分比。<b>NEIGHBOR 必须为 0</b> ——
+     *                 给了报酬他就变成团长了（ADR-005 §4）
+     */
+    record CreatePickupCommand(String communityNo, String name, String type, String ownerRef,
+                               String address, String openHours, String arrivalDesc,
+                               Integer serviceFeeRate, Long serviceFeePerItemMinor) {
+    }
+
     record PickupVO(String pickupNo, String name, String type, String status, String communityNo,
                     String communityName, String storeNo, String address, String openHours,
                     String arriveTime, int serviceFeeRate, long serviceFeePerItemMinor,

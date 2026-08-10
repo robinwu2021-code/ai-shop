@@ -54,6 +54,31 @@ export const PICKUP_TRANSITIONS: Record<PickupStatus, PickupStatus[]> = {
   MIGRATING: ["SUSPENDED"],
 };
 
+/** 新建自提点的入参。三类的必填项完全不同 —— 见各字段说明 */
+export interface PickupDraft {
+  /** 归属社区。必须真的存在，否则这个点对谁都不可见而列表看着正常 */
+  communityNo: string;
+  /** 自提点名称 */
+  name: string;
+  /** 三类的报酬与归属规则完全不同 */
+  type: PickupPointType;
+  /**
+   * 承接方。**多态**：STORE 传门店号、NEIGHBOR 传用户号、PLATFORM 传空。
+   * 传错会让「这个点属于谁」永久错位，而它决定核销权限与出货门店。
+   */
+  ownerRef?: string;
+  /** 自提点地址 */
+  address: string;
+  /** 可取货时段 */
+  openHours?: string;
+  /** 到货说明（运营排车依据） */
+  arrivalDesc?: string;
+  /** 履约服务费费率，万分比。**NEIGHBOR 必须为 0** */
+  serviceFeeRate?: number;
+  /** 按件履约服务费（分）。**NEIGHBOR 必须为 0** */
+  serviceFeePerItemMinor?: number;
+}
+
 export interface PickupPoint extends Archivable {
   /** 自提点单号 */
   pickupNo: string;

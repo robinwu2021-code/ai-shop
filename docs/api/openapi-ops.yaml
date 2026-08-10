@@ -45,20 +45,17 @@ components:
     MerchantTier: 
       type: "string"
       enum: 
-        - "PERSONAL"
-        - "INDIVIDUAL"
-        - "COMPANY"
-      description: "商家分层（矩阵 P-11.1.6，为引入大商家预留）。"
+        - "SMALL"
+        - "MEDIUM"
+        - "LARGE"
+      description: "商家**分层**（规模）。对应 `mch_entity.tier`，与 shared 的 `MerchantTier` 同名同值。\n\n⚠️ 这里此前是 `PERSONAL | INDIVIDUAL | COMPANY` —— 那是**主体类型**的旧取值 （权威码见 shared 的 `MerchantSubject`：MICRO / INDIVIDUAL / ENTERPRISE）。 名字对得上后端字段，取值却来自另一个概念，于是这一列**永远显示不出东西**： 后端下发的 tier 要么是 null（一期没启用分层），要么是 SMALL， 而 SMALL 不在这个联合类型里，i18n 也查不到词条。\n\n<p>如果运营界面真正想看的是**主体类型**（小微/个体户/企业），那要后端在 ops 商家 VO 里补一个字段 —— `mch_entity` 上没有 subject 列， 它在申请单与进件表上。这是另一件事，不能靠改端上的类型变出来。"
     MerchantStatus: 
       type: "string"
       enum: 
-        - "DRAFT"
-        - "SUBMITTED"
-        - "REVIEWING"
-        - "APPROVED"
-        - "REJECTED"
+        - "ACTIVE"
         - "SUSPENDED"
-      description: "入驻审核状态机：提交 → 审核中 →（通过 / 驳回补交）；封禁独立于审核。"
+        - "FROZEN"
+      description: "商家的**经营状态**。取值与后端 `mch_entity.status` 一致。\n\n⚠️ 它**不是入驻审核状态** —— 审核状态在申请单上（ {@link  ApplyStatus } ， PENDING/REVIEWING/APPROVED/REJECTED），后端刻意分成两张表： `mch_entity_apply` 记「这次申请审到哪了」，`mch_entity` 记「这家店现在能不能做生意」。\n\n这里曾经把两者揉成一个字段（DRAFT/SUBMITTED/REVIEWING/APPROVED/REJECTED/SUSPENDED）， 于是一家已经在正常经营、又提交了第二张执照的商家，status 该填什么无解 —— 而这正是「一人多主体」的常见情形。"
     Merchant: 
       type: "object"
       properties: 
@@ -78,13 +75,12 @@ components:
           description: "商家分层，为引入大商家预留"
         status: 
           "$ref": "#/definitions/MerchantStatus"
-          description: "入驻审核状态。合法迁移见 `MERCHANT_TRANSITIONS`，非法迁移抛错"
-        communityNo: 
-          type: "string"
-          description: "归属社区（数据域裁剪键之一）"
-        communityName: 
-          type: "string"
-          description: "社区名快照"
+          description: "**经营状态**（不是审核状态 —— 审核在申请单上）。合法迁移见 `MERCHANT_TRANSITIONS`"
+        communityNos: 
+          type: "array"
+          items: 
+            type: "string"
+          description: "服务的社区。**是列表不是单个** —— 一家店可以服务多个社区 （后端 `mch_entity_community`，服务范围三档见 ADR-009）。 此前这里是单个 `communityNo`，多社区商家只会显示其中一个。"
         contactName: 
           type: "string"
           description: "联系人姓名"
@@ -124,8 +120,7 @@ components:
         - "name"
         - "tier"
         - "status"
-        - "communityNo"
-        - "communityName"
+        - "communityNos"
         - "contactName"
         - "contactPhone"
         - "categoryCodes"
@@ -283,15 +278,15 @@ components:
         - "createdAt"
       additionalProperties: false
       description: "入驻申请单（后端 `mch_entity_apply`）。"
-    FulfillType: 
+    FulfillmentType: 
       type: "string"
       enum: 
-        - "PICKUP_STORE"
-        - "PICKUP_NEIGHBOR"
+        - "STORE_PICKUP"
+        - "NEIGHBOR_PICKUP"
         - "MERCHANT_DELIVERY"
         - "EXPRESS"
-        - "SERVICE"
-      description: "履约方式（ADR-005：自提点分 STORE / NEIGHBOR 两类）。"
+        - "STORE_VERIFY"
+      description: "履约方式。**取值与后端 `ord_sub_order.fulfillment` 一致**。\n\n⚠️ 这里曾经写成 `PICKUP_STORE` / `PICKUP_NEIGHBOR` —— 同一个概念、词序反了， 于是按它筛后端一条也匹配不上。ops-web 只跑 mock，所以从没被真实响应打脸过。"
     TrafficSource: 
       type: "string"
       enum: 
@@ -303,14 +298,14 @@ components:
     OrderStatus: 
       type: "string"
       enum: 
-        - "PENDING_PAY"
+        - "WAIT_PAY"
         - "PAID"
-        - "PREPARING"
-        - "DELIVERING"
+        - "SHIPPED"
         - "ARRIVED"
         - "COMPLETED"
         - "CANCELLED"
-        - "AFTER_SALE"
+        - "REFUNDED"
+      description: "订单状态。**取值与后端下发的展示状态一致**（`OrderStatusView`）。\n\n⚠️ 这里曾经是另一套：`PENDING_PAY` / `PREPARING` / `DELIVERING` / `AFTER_SALE`。 同一条订单，运营端叫一个名字、C/B 端叫另一个、库里又是第三个 —— 而 ops-web 只跑 mock，所以三套并存了很久没人发现。\n\n后端的口径：库里存 WAIT_FULFILL / FULFILLING（粗，三种履约一视同仁）， 下发时按履约方式展开成下面这些词。运营端按它筛、按它判断可迁移。"
     OrderItem: 
       type: "object"
       properties: 
@@ -360,7 +355,7 @@ components:
           type: "string"
           description: "自提点编号；配送/快递单为空"
         fulfillType: 
-          "$ref": "#/definitions/FulfillType"
+          "$ref": "#/definitions/FulfillmentType"
           description: "履约方式"
         trafficSource: 
           "$ref": "#/definitions/TrafficSource"
@@ -476,7 +471,7 @@ components:
     ReconStatus: 
       type: "string"
       enum: 
-        - "OPEN"
+        - "PENDING"
         - "RESOLVED"
         - "IGNORED"
     ReconDiff: 
@@ -578,6 +573,14 @@ components:
         - "updatedBy"
       additionalProperties: false
       description: "关单策略（P-4.2.3）。\n\n⚠️ 这份配置与掉单**直接因果**：关单时限设得越短，\"用户正在付款、订单已被关掉\" 的窗口就越大，而那正是 CHANNEL_ONLY 差异的主要来源。所以两者放同一页。"
+    FunnelStep: 
+      type: "string"
+      enum: 
+        - "SCAN"
+        - "ENTER_STORE"
+        - "REGISTER"
+        - "FIRST_ORDER"
+      description: "增长漏斗的四段。扫码 → 进店 → 注册 → 首单"
     LoginResp: 
       type: "object"
       properties: 
@@ -662,16 +665,11 @@ components:
         - "gmv"
         - "orderCount"
       additionalProperties: false
-    FunnelStep: 
+    FunnelRow: 
       type: "object"
       properties: 
         step: 
-          type: "string"
-          enum: 
-            - "SCAN"
-            - "ENTER_STORE"
-            - "REGISTER"
-            - "FIRST_ORDER"
+          "$ref": "#/definitions/FunnelStep"
           description: "漏斗环节：扫码 → 进店 → 注册 → 首单"
         count: 
           type: "number"
@@ -680,7 +678,7 @@ components:
         - "step"
         - "count"
       additionalProperties: false
-      description: "获客漏斗（P-16.1.4 扫码→进店→注册→首单）。"
+      description: "获客漏斗的一行（P-16.1.4 扫码→进店→注册→首单）。 ⚠️ 此前 interface 与环节枚举撞名叫 FunnelStep，字段写成 `step: FunnelStep` —— 自我引用"
     Community: 
       type: "object"
       properties: 
@@ -723,12 +721,20 @@ components:
         - "pickupCount"
         - "createdAt"
       additionalProperties: false
-    PickupType: 
+    PickupPointType: 
       type: "string"
       enum: 
         - "STORE"
         - "NEIGHBOR"
-      description: "自提点类型（ADR-005）：\n- STORE    常驻点：入驻商家承接，**收履约服务费**，承接本点全部订单（含别家商家的商品）\n- NEIGHBOR 临时点：团发起人家里，**零报酬**，作用域只有单个 group_no，脱敏要求更严"
+        - "PLATFORM"
+      description: "自提点类型。**与 shared 的 `PickupPointType` 同名同值** —— 此前这里叫 `PickupType`，是同一个概念的第二个名字。 一个领域概念只能有一个词（见 docs/requirements/项目词典.md）。"
+    PickupFeeMode: 
+      type: "string"
+      enum: 
+        - "NONE"
+        - "PER_ITEM"
+        - "RATE"
+      description: "计费口径。**目前只有 PLATFORM 点有值** —— STORE 与 NEIGHBOR 恒为 NONE。\n\n⚠️ 这与需求矩阵里「常驻点收履约服务费」看起来矛盾，其实是同一件未决事情的两个阶段：\n**B9（履约服务费口径：按单/按件/保底）在待完成清单里明确标着「未定」**， 所以 STORE 的费率还没开启；PLATFORM 点是线下逐点协商的，先落了字段。 B9 定了之后，STORE 才会有 PER_ITEM 或 RATE。"
     PickupStatus: 
       type: "string"
       enum: 
@@ -736,6 +742,43 @@ components:
         - "SUSPENDED"
         - "MIGRATING"
       description: "MIGRATING = 迁移中（P-2.2.2）：不再接新单，存量单仍在本点核销完。"
+    PickupDraft: 
+      type: "object"
+      properties: 
+        communityNo: 
+          type: "string"
+          description: "归属社区。必须真的存在，否则这个点对谁都不可见而列表看着正常"
+        name: 
+          type: "string"
+          description: "自提点名称"
+        type: 
+          "$ref": "#/definitions/PickupPointType"
+          description: "三类的报酬与归属规则完全不同"
+        ownerRef: 
+          type: "string"
+          description: "承接方。**多态**：STORE 传门店号、NEIGHBOR 传用户号、PLATFORM 传空。 传错会让「这个点属于谁」永久错位，而它决定核销权限与出货门店。"
+        address: 
+          type: "string"
+          description: "自提点地址"
+        openHours: 
+          type: "string"
+          description: "可取货时段"
+        arrivalDesc: 
+          type: "string"
+          description: "到货说明（运营排车依据）"
+        serviceFeeRate: 
+          type: "number"
+          description: "履约服务费费率，万分比。**NEIGHBOR 必须为 0**"
+        serviceFeePerItemMinor: 
+          type: "number"
+          description: "按件履约服务费（分）。**NEIGHBOR 必须为 0**"
+      required: 
+        - "communityNo"
+        - "name"
+        - "type"
+        - "address"
+      additionalProperties: false
+      description: "新建自提点的入参。三类的必填项完全不同 —— 见各字段说明"
     PickupPoint: 
       type: "object"
       properties: 
@@ -751,8 +794,11 @@ components:
           type: "string"
           description: "自提点名称"
         type: 
-          "$ref": "#/definitions/PickupType"
-          description: "自提点类型。**STORE 与 NEIGHBOR 的报酬、脱敏、作用域规则完全不同**（ADR-005）"
+          "$ref": "#/definitions/PickupPointType"
+          description: "自提点类型（ADR-005）。三类的报酬、脱敏、作用域规则完全不同。\n\n⚠️ 这里此前只有 STORE|NEIGHBOR 两类，而后端还有 **PLATFORM**（平台提供、 线下协商费率）—— 少一类的后果是平台点在列表里渲染成 undefined 或被当成常驻点， 而它的费率规则与常驻点完全不同。"
+        feeMode: 
+          "$ref": "#/definitions/PickupFeeMode"
+          description: "计费口径。目前只有 PLATFORM 有值，见 `PickupFeeMode` 的说明"
         status: 
           "$ref": "#/definitions/PickupStatus"
           description: "自提点状态。`MIGRATING` = 不再接新单，存量单仍在本点核销完"
@@ -762,12 +808,12 @@ components:
         communityName: 
           type: "string"
           description: "社区名快照"
-        merchantNo: 
+        storeNo: 
           type: "string"
-          description: "承接商家；NEIGHBOR 点为空（承接方是 C 端用户，不是商家）"
+          description: "承接**门店**；NEIGHBOR 点为空（承接方是 C 端用户，不是商家）。\n\n此前叫 `merchantNo` 且装的是主体号。自提点归属改到门店之后（后端 V16）， 名字与内容就对不上了 —— 一并改名，而不是让下一个人以为它还是主体号。"
         merchantName: 
           type: "string"
-          description: "承接商家名快照；NEIGHBOR 点为空"
+          description: "承接商家名快照；NEIGHBOR 点为空。名字仍挂在主体上，不是门店名"
         address: 
           type: "string"
           description: "自提点地址。NEIGHBOR 点**成团前只到楼栋**，付款后才给完整门牌"
@@ -779,7 +825,10 @@ components:
           description: "到货时间（运营排车依据）"
         serviceFeeRate: 
           type: "number"
-          description: "履约服务费费率，万分比（P-2.2.4）。**仅 STORE 有意义**，NEIGHBOR 恒为 0。 存费率不存金额：R15 口径（按单/按件/保底）未定，等定了只改结算不改主数据。"
+          description: "履约服务费费率，万分比（P-2.2.4）。**NEIGHBOR 恒为 0**（库上有 CHECK 约束兜底）。\n\n目前有值的只有 PLATFORM 点（线下逐点协商）；STORE 要等 B9 定口径。 存费率不存金额：口径（按单/按件/保底）未定，等定了只改结算不改主数据。"
+        serviceFeePerItemMinor: 
+          type: "number"
+          description: "按件履约服务费（分）。与 serviceFeeRate 二选一，由 feeMode 决定用哪个"
         acceptCount30d: 
           type: "number"
           description: "近 30 天承接次数（P-2.2.5 职业化风控依据）"
@@ -790,6 +839,7 @@ components:
         - "pickupNo"
         - "name"
         - "type"
+        - "feeMode"
         - "status"
         - "communityNo"
         - "communityName"
@@ -797,6 +847,7 @@ components:
         - "openHours"
         - "arriveTime"
         - "serviceFeeRate"
+        - "serviceFeePerItemMinor"
         - "acceptCount30d"
         - "createdAt"
       additionalProperties: false
@@ -1168,6 +1219,13 @@ components:
         - "PENDING"
         - "PASSED"
         - "REJECTED"
+    SectionLayout: 
+      type: "string"
+      enum: 
+        - "GRID"
+        - "LIST"
+        - "FEATURE"
+      description: "店铺装修区块的排布方式"
     StorePageAudit: 
       type: "object"
       properties: 
@@ -1315,11 +1373,7 @@ components:
           type: "string"
           description: "模板名"
         layout: 
-          type: "string"
-          enum: 
-            - "GRID"
-            - "LIST"
-            - "FEATURE"
+          "$ref": "#/definitions/SectionLayout"
           description: "商品区排布"
         sections: 
           type: "array"
@@ -1479,7 +1533,7 @@ components:
         - "operator"
         - "createdAt"
       additionalProperties: false
-    CampaignType: 
+    PlatformSlotType: 
       type: "string"
       enum: 
         - "FLASH"
@@ -1487,7 +1541,8 @@ components:
         - "FULL_REDUCE"
         - "GIFT"
         - "NEWCOMER"
-    CampaignStatus: 
+      description: "平台营销场次的类型。\n\n<p>此前叫 `CampaignType`，与 shared 的 `CampaignType`（店铺级活动）**同名不同义**。 当时的处理是写一段注释说明「别对齐」—— 那不够：读代码的人没有义务先知道 自己在哪一层。规范定的是「一个词只能指一个领域概念」，由更窄的一方加限定词， 所以这里改名为 `PlatformSlotType`（见 docs/requirements/项目词典.md §D2）。\n\n⚠️ 它与后端的 `mkt_campaign` 是两个不同的领域对象：   · 后端 / b-app 的 `Campaign` 是**店铺级活动**（`entity_no NOT NULL`，不跨店），     取值 COUPON / FULL_CUT / FLASH / BUY_GIFT，由商家自己建   · 这里的 `Campaign` 是**平台投放的营销场次**（带 `position`，秒杀场按位置分组做     重叠校验），由运营建，后端还没有这个对象\n\n枚举对账工具会报这几个值「后端没有」——那是对的，但结论不是「改名对齐」， 而是「这块后端还没实现」。真按后端那套改，等于把两个概念合并成一个。"
+    PlatformSlotStatus: 
       type: "string"
       enum: 
         - "DRAFT"
@@ -1509,10 +1564,10 @@ components:
           type: "string"
           description: "活动名"
         type: 
-          "$ref": "#/definitions/CampaignType"
+          "$ref": "#/definitions/PlatformSlotType"
           description: "活动类型"
         status: 
-          "$ref": "#/definitions/CampaignStatus"
+          "$ref": "#/definitions/PlatformSlotStatus"
           description: "活动状态"
         startAt: 
           type: "string"
@@ -1761,7 +1816,8 @@ components:
       enum: 
         - "PENDING"
         - "UPHELD"
-        - "DISMISSED"
+        - "REJECTED"
+      description: "评价申诉的裁决结果。\n\n⚠️ 不成立用 `REJECTED` 不用 `DISMISSED` —— 同一个业务动作在 shared 的 `ReviewAppealStatus` 里一直是 `REJECTED`，两个词指一件事。 词典 §11 已把「拒绝/驳回/申诉不成立」统一到 `REJECTED`。"
     ReviewAppeal: 
       type: "object"
       properties: 
@@ -1847,9 +1903,8 @@ components:
       type: "string"
       enum: 
         - "APPLIED"
-        - "MERCHANT_HANDLING"
-        - "PLATFORM_INTERVENE"
-        - "AGREED"
+        - "REFUNDING"
+        - "ARBITRATING"
         - "REJECTED"
         - "REFUNDED"
         - "CLOSED"
@@ -1974,7 +2029,7 @@ components:
     GroupStatus: 
       type: "string"
       enum: 
-        - "PENDING_AUDIT"
+        - "PENDING"
         - "RUNNING"
         - "SUCCESS"
         - "FAILED"
@@ -2897,7 +2952,7 @@ components:
     RiskStatus: 
       type: "string"
       enum: 
-        - "OPEN"
+        - "PENDING"
         - "CONFIRMED"
         - "DISMISSED"
     RiskEvent: 
@@ -2913,11 +2968,7 @@ components:
           type: "string"
           description: "主体：用户昵称 / 商家名 / 设备号"
         subjectType: 
-          type: "string"
-          enum: 
-            - "USER"
-            - "MERCHANT"
-            - "DEVICE"
+          "$ref": "#/definitions/SubjectType"
           description: "主体类型，决定 `subject` 是昵称、店名还是设备号"
         signals: 
           type: "array"
@@ -2959,7 +3010,7 @@ components:
       enum: 
         - "NONE"
         - "PENDING"
-        - "ACCEPTED"
+        - "UPHELD"
         - "REJECTED"
       description: "黑名单申诉状态。 ⚠️ 刻意不叫 `AppealStatus` —— 评价域（P-13.1.3 恶意差评申诉）已经有一个同名类型， 两者是完全不同的东西（一个是商家申诉差评，一个是被拉黑者申诉解禁）。 同名会在 `lib/types` 的总出口上直接冲突，也会让读代码的人以为它们是一回事。"
     BlacklistEntry: 
@@ -3132,7 +3183,7 @@ components:
     TicketStatus: 
       type: "string"
       enum: 
-        - "OPEN"
+        - "PENDING"
         - "ASSIGNED"
         - "RESOLVED"
         - "CLOSED"
@@ -3403,7 +3454,7 @@ components:
       enum: 
         - "PENDING"
         - "ANSWERED"
-        - "HIDDEN"
+        - "OFFLINE"
     Question: 
       type: "object"
       properties: 
@@ -4029,6 +4080,37 @@ paths:
                   - "msg"
                   - "data"
       description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+    post: 
+      operationId: "createPickup"
+      summary: "建自提点"
+      tags: 
+        - "community"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/PickupPoint"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
   "/ops/pickups/{no}/status": 
     post: 
       operationId: "setPickupStatus"
@@ -4666,7 +4748,7 @@ paths:
   "/ops/auth/login": 
     post: 
       operationId: "login"
-      summary: "登录换后端 token"
+      summary: "登录"
       tags: 
         - "dashboard"
       responses: 
@@ -4771,7 +4853,7 @@ paths:
                   data: 
                     type: "array"
                     items: 
-                      "$ref": "#/components/schemas/FunnelStep"
+                      "$ref": "#/components/schemas/FunnelRow"
                 required: 
                   - "code"
                   - "msg"

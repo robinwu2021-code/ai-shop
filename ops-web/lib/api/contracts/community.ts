@@ -1,5 +1,6 @@
 // 覆盖范围：社区网格（P-2.1）与自提点主数据（P-2.2）。
 import type { Community, Page, PickupPoint, PickupStatus } from "@/lib/types";
+import type { PickupDraft } from "@/lib/types";
 import type { CommunityQ, PickupQ } from "../query";
 
 export interface CommunityApi {
@@ -12,6 +13,15 @@ export interface CommunityApi {
   unarchiveCommunity(communityNo: string): Promise<Community>;
 
   listPickups(q?: PickupQ): Promise<Page<PickupPoint>>;
+  /**
+   * 建自提点。
+   *
+   * **此前全平台没有任何创建路径** —— 运营端只有列表/停启/费率，商家不能申请、
+   * 邻居不能报名。社区自提是平台的核心履约方式，却无法录入一个点。
+   *
+   * `ownerRef` 是多态的：STORE 传门店号、NEIGHBOR 传用户号、PLATFORM 传空。
+   */
+  createPickup(draft: PickupDraft): Promise<PickupPoint>;
   /** 启停与迁移（P-2.2.2），非法迁移抛错。 */
   setPickupStatus(pickupNo: string, status: PickupStatus): Promise<PickupPoint>;
   /** 履约服务费费率，万分比（P-2.2.4）。⚠️ 仅 STORE 可配，NEIGHBOR 零报酬（ADR-005 §4）。 */

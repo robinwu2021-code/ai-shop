@@ -106,7 +106,9 @@ public class BizPickupController {
     @PostMapping("/biz/pickup/arrived")
     public List<PickupOrderVO> markArrived(
             @RequestBody ArrivedReq req) {
-        return pickupService.markArrived(null, req.orderNos());
+        // 其余几个接口都能指定 pickupNo，唯独这里不能 —— 多点商家只能给「默认那个点」登记。
+        // 默认值本身已经改成「当前门店的点」，这里再让端上能显式指定
+        return pickupService.markArrived(req.pickupNo(), req.orderNos());
     }
 
     /** 短少 / 破损上报。**只留痕并通知买家，不退款**（责任未定，见 Service 注释）。 */
@@ -116,8 +118,11 @@ public class BizPickupController {
         return pickupService.reportShortage(null, orderNo, req.kind(), req.skuNo(), req.note());
     }
 
-    /** @param orderNos 一批子单号 */
-    public record ArrivedReq(List<String> orderNos) {
+    /**
+     * @param orderNos 一批子单号
+     * @param pickupNo 给哪个自提点登记；**不传 = 当前门店的那个点**
+     */
+    public record ArrivedReq(List<String> orderNos, String pickupNo) {
     }
 
     /** @param kind SHORTAGE（短少）/ DAMAGE（破损） */

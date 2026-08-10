@@ -312,6 +312,34 @@ class M5AfterSaleFlowTest {
     }
 
     @Test
+    @DisplayName("★ 必填项缺失当场拒，不是让库抛「Field 'type' doesn't have a default value」")
+    void missingRequiredFieldsAreRejectedUpFront() throws Exception {
+        Ordered o = placeAndPay("13200132031", 6980L);
+
+        // 不传 type：库上 type NOT NULL，落到 insert 会被包成通用 500「系统开小差了」，
+        // 而真正的问题是少传了一个字段 —— 报错与实际问题无关，排查的人只能去翻服务器日志
+        mvc().perform(post("/mp/order/" + o.subOrderNo + "/after-sale")
+                        .header("Authorization", "Bearer " + o.userToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reason\":\"包装破了\"}"))
+                .andExpect(jsonPath("$.code").value(10400));
+
+        // 不认识的 type 同样拒：写进去之后，处理流程会按一个不存在的分支走
+        mvc().perform(post("/mp/order/" + o.subOrderNo + "/after-sale")
+                        .header("Authorization", "Bearer " + o.userToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"type\":\"WHATEVER\",\"reason\":\"包装破了\"}"))
+                .andExpect(jsonPath("$.code").value(10400));
+
+        // 原因为空：商家收到一张没写原因的售后单，只能打电话问
+        mvc().perform(post("/mp/order/" + o.subOrderNo + "/after-sale")
+                        .header("Authorization", "Bearer " + o.userToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"type\":\"REFUND_ONLY\",\"reason\":\"  \"}"))
+                .andExpect(jsonPath("$.code").value(10400));
+    }
+
+    @Test
     @DisplayName("退款金额不能超过子单实付")
     void refundCannotExceedPaid() throws Exception {
         Ordered o = placeAndPay("13200132021", 6980L);

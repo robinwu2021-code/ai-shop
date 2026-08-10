@@ -179,8 +179,8 @@ export const httpApi: MerchantApi = {
   mPickupOverview: () => http.get<PickupOverview>(E.mPickupOverview.path),
   mPickupOrders: () => http.get<Order[]>(E.mPickupOrders.path),
   mPickingList: () => http.get<PickingRow[]>(E.mPickingList.path),
-  mMarkArrived: (orderNos) =>
-    http.post<Order[]>(E.mMarkArrived.path, { orderNos } satisfies MarkArrivedReq),
+  mMarkArrived: (orderNos, pickupNo) =>
+    http.post<Order[]>(E.mMarkArrived.path, { orderNos, pickupNo } satisfies MarkArrivedReq),
   mVerify: (code) =>
     http.post<Order>(E.mVerify.path, { verifyCode: code } satisfies VerifyReq),
   mVerifyBatch: (codes) =>

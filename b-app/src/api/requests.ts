@@ -168,6 +168,13 @@ export type SaveDeliveryRuleReqBody = DeliveryRule;
 export interface MarkArrivedReq {
   /** 批量：一次到货通常是一整批，逐单调用会让通知发成 N 条 */
   orderNos: string[];
+  /**
+   * 给哪个自提点登记；**不传 = 当前门店的那个点**。
+   *
+   * 一个商家两家店两个点是常态（自提点归属到门店之后）。不传且当前门店没有点时
+   * 后端会拒 —— 而不是悄悄登记到另一个点上。
+   */
+  pickupNo?: string;
 }
 
 export interface VerifyReq {

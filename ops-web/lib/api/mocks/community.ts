@@ -58,6 +58,44 @@ export const communityMock: CommunityApi = {
       ),
     ),
 
+  createPickup: async (draft) => {
+    if (!draft.communityNo || !draft.name?.trim() || !draft.address?.trim()) {
+      fail("社区、名称、地址都必填", "Community, name and address are all required");
+    }
+    if (!db.communities.some((c) => c.communityNo === draft.communityNo)) {
+      // 挂在不存在的社区上，这个点对谁都不可见，而列表看着是正常的
+      fail("社区不存在", "No such community");
+    }
+    // owner_ref 是多态的：STORE 门店号 / NEIGHBOR 用户号 / PLATFORM 空
+    if ((draft.type === "STORE" || draft.type === "NEIGHBOR") && !draft.ownerRef?.trim()) {
+      fail("这类自提点必须指定承接方", "This pickup type requires an owner");
+    }
+    // ADR-005 §4：给了报酬，承接的邻居就变成团长
+    if (draft.type === "NEIGHBOR" && (draft.serviceFeeRate || draft.serviceFeePerItemMinor)) {
+      fail("邻里自提点为零报酬", "Neighbour pickup points are unpaid");
+    }
+    const created: PickupPoint = {
+      pickupNo: `P${String(db.pickups.length + 900).padStart(3, "0")}`,
+      name: draft.name.trim(),
+      type: draft.type,
+      status: "ACTIVE",
+      communityNo: draft.communityNo,
+      communityName:
+        db.communities.find((c) => c.communityNo === draft.communityNo)?.name ?? draft.communityNo,
+      storeNo: draft.type === "STORE" ? draft.ownerRef : undefined,
+      address: draft.address.trim(),
+      openHours: draft.openHours ?? "",
+      arriveTime: draft.arrivalDesc ?? "",
+      serviceFeeRate: draft.serviceFeeRate ?? 0,
+      feeMode: "NONE",
+      serviceFeePerItemMinor: draft.serviceFeePerItemMinor ?? 0,
+      acceptCount30d: 0,
+      createdAt: new Date().toISOString(),
+    };
+    db.pickups.unshift(created);
+    return wait(created, 400);
+  },
+
   setPickupStatus: async (pickupNo, status) => {
     const p = findPickup(pickupNo);
     db.assertTransition(PICKUP_TRANSITIONS, p.status, status, "自提点", "Pickup point");

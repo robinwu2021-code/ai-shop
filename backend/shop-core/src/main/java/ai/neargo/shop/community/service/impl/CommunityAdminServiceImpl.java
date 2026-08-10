@@ -3,6 +3,7 @@ package ai.neargo.shop.community.service.impl;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.community.entity.CmtCommunity;
 import ai.neargo.shop.community.entity.CmtPickupPoint;
 import ai.neargo.shop.community.mapper.CommunityMappers.CommunityMapper;
@@ -23,7 +24,11 @@ public class CommunityAdminServiceImpl implements CommunityAdminService {
     private static final String OPEN = "OPEN";
     private static final String CLOSED = "CLOSED";
 
+    private static final String STORE = "STORE";
     private static final String NEIGHBOR = "NEIGHBOR";
+    private static final String PLATFORM = "PLATFORM";
+    /** 三类自提点。**PLATFORM 不能漏** —— 它的费率规则与另外两类完全不同 */
+    private static final Set<String> PICKUP_TYPES = Set.of(STORE, NEIGHBOR, PLATFORM);
     private static final String ACTIVE = "ACTIVE";
     private static final String SUSPENDED = "SUSPENDED";
     private static final String MIGRATING = "MIGRATING";
@@ -107,6 +112,70 @@ public class CommunityAdminServiceImpl implements CommunityAdminService {
         w.orderByDesc(CmtPickupPoint::getId);
         return DataScopeContext.executeWithoutScope(() -> pickupMapper.selectList(w))
                 .stream().map(this::toVO).toList();
+    }
+
+    @Override
+    @Transactional
+    public PickupVO createPickup(CreatePickupCommand cmd, String operatorNo) {
+        if (cmd == null || blank(cmd.communityNo()) || blank(cmd.name()) || blank(cmd.address())
+                || cmd.type() == null || !PICKUP_TYPES.contains(cmd.type())) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        // 社区必须真的存在：挂在一个不存在的社区上，这个点对谁都不可见，
+        // 而运营看列表时它是「正常的」
+        boolean communityOk = DataScopeContext.executeWithoutScope(() ->
+                communityMapper.exists(Wrappers.<CmtCommunity>lambdaQuery()
+                        .eq(CmtCommunity::getCommunityNo, cmd.communityNo())));
+        if (!communityOk) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+
+        /*
+         * owner_ref 是**多态列**，三类的必填项完全不同：
+         *   STORE    → 门店号（V16 起）。没有它，「这个点属于哪家店」表达不了，
+         *              核销权限与出货门店都无从判断
+         *   NEIGHBOR → 用户号，且**报酬必须为 0** —— 给了报酬他就变成团长了
+         *   PLATFORM → 空。平台自己的点没有承接方
+         * 传错的后果是永久错位，且不会报错 —— 所以在入口处就分开判。
+         */
+        String owner = blank(cmd.ownerRef()) ? null : cmd.ownerRef().trim();
+        int feeRate = cmd.serviceFeeRate() == null ? 0 : cmd.serviceFeeRate();
+        long feePerItem = cmd.serviceFeePerItemMinor() == null ? 0L : cmd.serviceFeePerItemMinor();
+        if (feeRate < 0 || feePerItem < 0) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        switch (cmd.type()) {
+            case STORE, NEIGHBOR -> {
+                if (owner == null) {
+                    throw BizException.of(ErrorCode.BAD_REQUEST);
+                }
+            }
+            default -> owner = null;
+        }
+        if (NEIGHBOR.equals(cmd.type()) && (feeRate != 0 || feePerItem != 0)) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+
+        CmtPickupPoint p = new CmtPickupPoint();
+        p.setPickupNo(BizKey.next(BizKey.PICKUP_POINT));
+        p.setCommunityNo(cmd.communityNo());
+        p.setName(cmd.name().trim());
+        p.setType(cmd.type());
+        // 常驻点。GROUP_INSTANCE（一团一销）后端还没实现，不在这里放开
+        p.setScope("PERMANENT");
+        p.setOwnerRef(owner);
+        p.setAddress(cmd.address().trim());
+        p.setOpenHours(blank(cmd.openHours()) ? null : cmd.openHours().trim());
+        p.setArrivalDesc(blank(cmd.arrivalDesc()) ? null : cmd.arrivalDesc().trim());
+        p.setServiceFeeRate(feeRate);
+        p.setServiceFeePerItemMinor(feePerItem);
+        p.setStatus(ACTIVE);
+        DataScopeContext.executeWithoutScope(() -> pickupMapper.insert(p));
+        return toVO(p);
+    }
+
+    private static boolean blank(String s) {
+        return s == null || s.isBlank();
     }
 
     @Override

@@ -277,7 +277,13 @@ export interface MerchantApi {
   mPickupOverview(): Promise<PickupOverview>;
   mPickupOrders(): Promise<Order[]>;
   mPickingList(): Promise<PickingRow[]>;
-  mMarkArrived(orderNos: string[]): Promise<Order[]>;
+  /**
+   * 到货登记。
+   *
+   * @param pickupNo 给哪个自提点登记；不传 = 当前门店的那个点。
+   *                 多点商家必须能指定 —— 否则另一个点的货永远登记不上
+   */
+  mMarkArrived(orderNos: string[], pickupNo?: string): Promise<Order[]>;
   /** 核销自提码。核销成功 → C 端该订单立刻变已完成 */
   mVerify(code: string): Promise<Order>;
   /**

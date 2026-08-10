@@ -203,18 +203,43 @@ public class PickupServiceImpl implements PickupService {
                 .findFirst().orElse(null);
     }
 
+    /**
+     * 这次操作作用在哪个自提点。
+     *
+     * <p><b>不传时取「当前门店的点」，不是集合里的第一个。</b>
+     *
+     * <p>原先取 {@code pickupNos().iterator().next()}，在一个商家只有一个点时没问题；
+     * 自提点归属到门店（V16）之后「两家店两个点」成了常态，那句话的后果是：
+     * 另一家店的货**永远登记不上**、待核销列表**永远是空的** ——
+     * 而到货登记对「不在本点的单」是静默跳过的，商家看到的只是一个空列表，
+     * 没有任何提示说「你在给另一个点操作」。
+     *
+     * <p>当前门店没有自提点时**直接拒绝**，不回落到别的点：
+     * 回落的表现是「以为在给 A 点登记，其实登记到了 B 点」——
+     * 数字都是真的，只是不是他要的那个点的。
+     */
     private String requireScope(String pickupNo) {
         BizContext ctx = BizContext.current();
         if (ctx.pickupNos().isEmpty()) {
             throw BizException.of(ErrorCode.FORBIDDEN);
         }
-        if (pickupNo == null || pickupNo.isBlank()) {
+        if (pickupNo != null && !pickupNo.isBlank()) {
+            if (!ctx.pickupNos().contains(pickupNo)) {
+                throw BizException.of(ErrorCode.FORBIDDEN);
+            }
+            return pickupNo;
+        }
+        String storeNo = ctx.currentStoreNo();
+        if (storeNo == null || storeNo.isBlank()) {
+            // 没有门店上下文（存量单店）：行为与改造前逐字相同
             return ctx.pickupNos().iterator().next();
         }
-        if (!ctx.pickupNos().contains(pickupNo)) {
-            throw BizException.of(ErrorCode.FORBIDDEN);
-        }
-        return pickupNo;
+        return ctx.pickupNos().stream()
+                .filter(no -> storeNo.equals(pickupPort.find(no)
+                        .map(ai.neargo.shop.spi.user.PickupQueryPort.PickupBrief::ownerStoreNo)
+                        .orElse(null)))
+                .findFirst()
+                .orElseThrow(() -> BizException.of(ErrorCode.FORBIDDEN));
     }
 
     /** Port 已经裁剪过一次，这里再映射成对外 VO —— 两层都不含金额与完整手机号。 */
