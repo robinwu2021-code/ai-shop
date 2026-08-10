@@ -64,8 +64,7 @@ export const ENUM_REGISTRY: EnumEntry[] = [
   { decl: "shared:PayMethod", dom: "payment", shape: "CLASS", verdict: "OK" },
   { decl: "shared:Industry", dom: "payment", shape: "CLASS", verdict: "TO_DICT",
     note: "sys_industry 是字典表，配 4 个 ops 接口。待确认行业会不会新增" },
-  { decl: "shared:ApplyStatus", dom: "core", shape: "STATUS", verdict: "RENAME",
-    note: "→ PaymentApplyStatus。它是**支付进件**状态（MerchantPayment.applyStatus），与入驻审核无关 —— ACTIVE/FROZEN 两个值就是证据，审核不会有这两个态",
+  { decl: "shared:PaymentApplyStatus", dom: "payment", shape: "STATUS", verdict: "OK",
     words: ["NONE", "APPLYING"] },
   { decl: "shared:SkinId", dom: "ui", shape: "CLASS", verdict: "OK" },
   { decl: "shared:ModeId", dom: "ui", shape: "CLASS", verdict: "OK" },
@@ -218,4 +217,39 @@ export const ENUM_REGISTRY: EnumEntry[] = [
     words: ["OPEN", "QUOTING", "MATCHED", "EXPIRED"] },
   { decl: "ops-web:ViolationType", dom: "merchant", shape: "CLASS", verdict: "OK" },
   { decl: "ops-web:ExceptionKind", dom: "order", shape: "CLASS", verdict: "OK" },
+
+  /*
+   * 以下 15 条来自 P1.2「内联无主具名化」—— 它们此前内联在 interface 的字面量里，
+   * **对所有工具不可见**：登记表登记不到、对账工具比对不到、改名时必漏一处。
+   *
+   * 具名化的过程本身就挖出四个问题（内联时一个都看不见）：
+   *   · shared 的 feeMode 与 ops-web 的 PickupFeeMode 同值 —— 异名同义
+   *   · 风控的 subjectType 与 ops-web 已有的 SubjectType 同值 —— 重复声明
+   *   · c-app 的 type: "REFUND_ONLY" | "RETURN_REFUND" 就是已有的 AfterSaleType
+   *   · ops-web 有一个 `interface FunnelStep { step: FunnelStep }` —— **自我引用**，
+   *     字段类型指向了它自己所在的 interface。编译器不报错，因为它是合法的递归引用。
+   */
+  { decl: "shared:SettleAccountType", dom: "settle", shape: "CLASS", verdict: "OK" },
+  { decl: "shared:PaymentApplyStatus", dom: "payment", shape: "STATUS", verdict: "OK",
+    words: ["NONE", "APPLYING"] },
+  { decl: "shared:StoreStatus", dom: "merchant", shape: "STATUS", verdict: "OK",
+    words: ["READONLY"] },
+  { decl: "shared:StaffStatus", dom: "merchant", shape: "STATUS", verdict: "OK",
+    words: ["DISABLED"] },
+  { decl: "shared:StaffRole", dom: "merchant", shape: "CLASS", verdict: "OK" },
+  { decl: "shared:SettleBillStatus", dom: "settle", shape: "STATUS", verdict: "RENAME",
+    note: "与后端 StlBill 是两套词：后端 PENDING/SPLITTING/SPLIT/FAILED/FROZEN_BACK（ops-web 的 SettleStatus 与之一致），这份是 PENDING/PARTIAL/DONE/EXPIRED。内联时对所有工具不可见，具名化才暴露。改动涉及金额口径，按 finance 惯例先只读对账",
+    words: ["PARTIAL", "DONE", "EXPIRED"] },
+  { decl: "shared:MerchantApplyReviewStatus", dom: "merchant", shape: "STATUS", verdict: "OK",
+    words: ["REVIEWING"] },
+  { decl: "shared:PickupOwnerType", dom: "community", shape: "CLASS", verdict: "OK" },
+  { decl: "shared:PickupScope", dom: "community", shape: "CLASS", verdict: "OK" },
+  { decl: "shared:PickupFeeMode", dom: "community", shape: "CLASS", verdict: "MERGE",
+    note: "与 ops-web 的 PickupFeeMode 同名同值 —— 两处声明，取值必须一起改。内联时看不见，具名化才暴露出来" },
+  { decl: "shared:SpecTemplateScope", dom: "product", shape: "CLASS", verdict: "OK" },
+  { decl: "shared:TrafficSource", dom: "growth", shape: "CLASS", verdict: "MERGE",
+    note: "与 ops-web 的 TrafficSource 同名，那边多 INVITE/CHANNEL 两个值；且与 growth 的 AttrSource 也是同义" },
+  { decl: "shared:ArrivalIssueKind", dom: "fulfillment", shape: "CLASS", verdict: "OK" },
+  { decl: "ops-web:FunnelStep", dom: "dashboard", shape: "CLASS", verdict: "OK" },
+  { decl: "ops-web:SectionLayout", dom: "store", shape: "CLASS", verdict: "OK" },
 ];

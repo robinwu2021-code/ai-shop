@@ -4,6 +4,9 @@
 export type StoreAuditKind = "BANNER" | "NOTICE";
 export type StoreAuditStatus = "PENDING" | "PASSED" | "REJECTED";
 
+/** 店铺装修区块的排布方式 */
+export type SectionLayout = "GRID" | "LIST" | "FEATURE";
+
 export interface StorePageAudit {
   /** 审核单号 */
   auditNo: string;
@@ -95,7 +98,7 @@ export interface StoreTemplate {
   /** 模板名 */
   name: string;
   /** 商品区排布 */
-  layout: "GRID" | "LIST" | "FEATURE";
+  layout: SectionLayout;
   /** 板块开关列表 */
   sections: TemplateSection[];
   /** 是否可选用。**停用前要看 `usedByCount`** —— 正在被使用的模板停不得 */

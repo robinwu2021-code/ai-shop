@@ -24,6 +24,15 @@ interface Gap {
  * 否则这份名单会退化成「报错了就加一行」，而守卫就此失效。
  */
 const KNOWN_SHARED: Record<string, string> = {
+  SettleBillStatus:
+    "⚠️ **与后端是两套词**：后端 StlBill 存 PENDING/SPLITTING/SPLIT/FAILED/FROZEN_BACK" +
+    "（ops-web 的 SettleStatus 与之一致），shared 这份是 PENDING/PARTIAL/DONE/EXPIRED。" +
+    "此前它内联在 interface 里，对所有工具不可见，具名化才暴露出来。" +
+    "要改成后端口径，但结算涉及金额，按 finance 的惯例先只读对账 —— 已在登记表标 RENAME",
+  PickupScope:
+    "GROUP_INSTANCE（团粒度自提点，一团一销）后端未实现。ADR-005 里有，链路还没接",
+  ArrivalIssueKind:
+    "SHORTAGE/DAMAGE 到货异常上报，后端未实现（B 端 D9 只做了端上）",
   GrantType:
     "WX_MINI/WX_PHONE/WX_OPEN 是端上按微信三种登录场景拆的，后端只有一个 WECHAT_MP。" +
     "微信登录本身还没接（code2Session 是 TODO），接的时候两边一起定名",

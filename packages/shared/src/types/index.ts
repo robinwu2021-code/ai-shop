@@ -701,6 +701,65 @@ export interface CartItem {
 
 // ---------------------------------------------------------------- 订单
 
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * 以下这些类型此前都是**内联在 interface 里的字面量联合** —— 值是对的，
+ * 但没有单一声明处：对账工具扫不到、别处要用只能再抄一遍、改名时必漏。
+ * `CATEGORY_TYPE` 出事前正是这个状态。
+ *
+ * 具名化的过程本身就暴露了三对**异名同义**（都是内联时看不见的）：
+ *   · `feeMode` 与 ops-web 的 `PickupFeeMode` 同值
+ *   · `subjectType`（风控）与 ops-web 的 `SubjectType` 同值
+ *   · `type: "REFUND_ONLY" | "RETURN_REFUND"` 就是已有的 `AfterSaleType`
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+/** 结算账户形态。个人 openid 收款 / 对公商户号收款（ADR-002 §5） */
+export type SettleAccountType = "PERSONAL_OPENID" | "MERCHANT_ID";
+
+/**
+ * 支付**进件**状态（`MerchantPayment.applyStatus`）。
+ *
+ * ⚠️ 此前叫 `ApplyStatus`，与入驻审核的 `ApplyStatus` 同名不同义 ——
+ * `ACTIVE`/`FROZEN` 两个值就是证据：审核不会有这两个态。
+ */
+export type PaymentApplyStatus = "NONE" | "APPLYING" | "ACTIVE" | "REJECTED" | "FROZEN";
+
+/** 门店状态。READONLY = 已停用（不再接新单，已有单照常履约） */
+export type StoreStatus = "ACTIVE" | "READONLY";
+
+/** 员工账号状态 */
+export type StaffStatus = "ACTIVE" | "DISABLED";
+
+/** 员工角色。店长不受门店授权限制 */
+export type StaffRole = "MANAGER" | "CLERK";
+
+/** 结算单状态：待结算 / 部分已结 / 已结清 / 已过期 */
+export type SettleBillStatus = "PENDING" | "PARTIAL" | "DONE" | "EXPIRED";
+
+/**
+ * 入驻申请的审核状态。与库 `mch_entity_apply.status` 逐字一致。
+ * ⚠️ 与 {@link MerchantStatus}（B 端「我能不能干活」的合并视图）不是一回事。
+ */
+export type MerchantApplyReviewStatus = "PENDING" | "REVIEWING" | "APPROVED" | "REJECTED";
+
+/** 自提点承接方类型。与 {@link PickupPointType} 不同：那个说「是什么点」，这个说「谁在承接」 */
+export type PickupOwnerType = "MERCHANT" | "USER" | "PLATFORM";
+
+/** 自提点作用域：常驻 / 团粒度（一团一销） */
+export type PickupScope = "PERMANENT" | "GROUP_INSTANCE";
+
+/** 自提点计费方式。**与 ops-web 的 `PickupFeeMode` 同值** —— 费率线下逐点协商，故两种都留 */
+export type PickupFeeMode = "NONE" | "PER_ITEM" | "RATE";
+
+/** 到货异常类型：缺件 / 破损。B 端到货登记时上报（ADR-005 履约链路） */
+export type ArrivalIssueKind = "SHORTAGE" | "DAMAGE";
+
+/** 规格模板归属：平台统一维护 / 商家自存 */
+export type SpecTemplateScope = "PLATFORM" | "MERCHANT";
+
+/** 流量来源。**与 ops-web 的 `TrafficSource` 同名** —— 那边多 INVITE/CHANNEL 两个值（已标 MERGE） */
+export type TrafficSource = "MERCHANT_OWNED" | "PLATFORM";
+
 /**
  * 订单状态。**这是后端真实下发的取值**，不是端上想象的流程。
  *
@@ -819,7 +878,7 @@ export interface Order {
    * 客流来源。**决定平台费率档**：商家自带客流建议零佣金 —— 他带来的客户
    * 在别家的消费才是平台的收益（ADR-004 §6）。从店铺码/店铺分享进入即为 MERCHANT_OWNED。
    */
-  trafficSource?: "MERCHANT_OWNED" | "PLATFORM";
+  trafficSource?: TrafficSource;
   /** 参与的团。邻里自提的核销作用域就靠它裁剪（E16） */
   groupNo?: string;
   /** 售后单。订单状态只有粗粒度的 REFUNDING/REFUNDED，细节在这里 */
@@ -1190,7 +1249,7 @@ export interface MerchantApplyReq {
    * 期望经营范围（ADR-009）。申请时可空，<b>审核通过时必须确定</b> ——
    * 否则商家上着架却对谁都不可见，且没有任何报错。
    */
-  serviceScope?: "COMMUNITY" | "CITY" | "PLATFORM";
+  serviceScope?: ServiceScope;
   /** 期望覆盖的社区。scope=COMMUNITY 时审核通过必须非空 */
   communityNos?: string[];
   /**
@@ -1203,7 +1262,7 @@ export interface MerchantApplyReq {
    */
   licenses?: string[];
   /** 结算账户类型。真实账号由后端持有，C 端与 B 端都不回显（ADR-002 §5）。**选填**，同上 */
-  settleAccountType?: "PERSONAL_OPENID" | "MERCHANT_ID";
+  settleAccountType?: SettleAccountType;
   /**
    * 行业（`sys_industry.industry`）。
    *
@@ -1253,7 +1312,7 @@ export interface MasterDataSubject {
   /** 是否受行业白名单管控（小微受管，其余不受） */
   industryGated: boolean;
   /** 该主体默认的结算账户形态：小微打个人，其余打对公 */
-  settleAccountType: "PERSONAL_OPENID" | "MERCHANT_ID";
+  settleAccountType: SettleAccountType;
 }
 
 export interface MasterDataChannel {
@@ -1279,7 +1338,7 @@ export interface PaymentApplyment {
   /** 通道展示名。取服务端的，端上不要再维护一份翻译 */
   channelName: string;
   /** NONE / APPLYING / ACTIVE / REJECTED / FROZEN */
-  applyStatus: "NONE" | "APPLYING" | "ACTIVE" | "REJECTED" | "FROZEN";
+  applyStatus: PaymentApplyStatus;
   /**
    * 这个通道现在能不能收钱。
    *
@@ -1292,7 +1351,7 @@ export interface PaymentApplyment {
   /** 二级商户号掩码。完整号不回显 */
   subMchidMasked?: string;
   /** 结算账户形态：小微打个人（PERSONAL_OPENID），其余打对公（MERCHANT_ID） */
-  settleAccountType?: "PERSONAL_OPENID" | "MERCHANT_ID";
+  settleAccountType?: SettleAccountType;
   /** 结算账号掩码。**明文永不回显**，包括给商家自己（ADR-002 §5） */
   settleAccountMasked?: string;
   /** 驳回原因。驳回时必有 —— 没有原因商家只能反复重提 */
@@ -1321,7 +1380,7 @@ export interface Store {
   /** 是否默认店。一个主体**恰好一家** —— 它是「找不到具体门店时去哪」的答案 */
   isDefault: boolean;
   /** ACTIVE 正常营业 / READONLY 已停用（不再接新单，已有单照常履约） */
-  status: "ACTIVE" | "READONLY";
+  status: StoreStatus;
   /** 这家店用哪个收款号。**空 = 用主体的默认收款号**，不是"没配" */
   payMerchantNo?: string;
   /** 这家店现在能不能收钱。照它显示，别自己去比状态串 */
@@ -1344,7 +1403,7 @@ export interface MerchantStaff {
   /** 老板。**不受门店授权限制**，他的店都归他管 */
   isOwner: boolean;
   /** ACTIVE / DISABLED */
-  status: "ACTIVE" | "DISABLED";
+  status: StaffStatus;
   /** 他在各门店的角色。老板为空 —— 不是"没授权"，是"不需要授权" */
   roles: StoreRole[];
 }
@@ -1355,7 +1414,7 @@ export interface StoreRole {
   /** 门店名快照，列表直接显示，省一次查询 */
   storeName: string;
   /** MANAGER 店长 / CLERK 店员 */
-  role: "MANAGER" | "CLERK";
+  role: StaffRole;
 }
 
 /** 商品在商家侧的状态。C 端只看得到 ON_SALE */
@@ -1396,7 +1455,7 @@ export interface SettleBill {
   /** 自提点履约服务费（承接方收，供货方付；口径待定 B9） */
   fulfillFeeMinor: number;
   /** 结算状态：待结算 / 部分已结 / 已结清 / 已过期 */
-  status: "PENDING" | "PARTIAL" | "DONE" | "EXPIRED";
+  status: SettleBillStatus;
   /** 结算币种 */
   currency: CurrencyCode;
   /** 本期订单笔数 */
@@ -1632,7 +1691,7 @@ export interface MerchantApplyStatus {
   /** 主体类型。决定分账主体形态与所需资质（ADR-002 §4） */
   subject: MerchantSubject;
   /** 审核状态。迁移见本类型的注释，APPROVED 为终态 */
-  status: "PENDING" | "REVIEWING" | "APPROVED" | "REJECTED";
+  status: MerchantApplyReviewStatus;
   /** 驳回理由。**驳回必须写** —— 不写就等于让人猜着改 */
   rejectReason?: string;
   /** 通过后生成的商家单号。未通过时为空 —— 商家在通过之前根本不存在 */
@@ -1656,7 +1715,7 @@ export interface MerchantApplyStatus {
   /** 店铺简介 */
   desc: string;
   /** 期望经营范围（ADR-009） */
-  serviceScope?: "COMMUNITY" | "CITY" | "PLATFORM";
+  serviceScope?: ServiceScope;
   /** 期望覆盖的社区 */
   communityNos?: string[];
   /** 已传的资质图 */
@@ -1704,11 +1763,11 @@ export interface PickupPoint {
    */
   type: PickupPointType;
   /** 承接方所属账号池 */
-  ownerType: "MERCHANT" | "USER" | "PLATFORM";
+  ownerType: PickupOwnerType;
   /** 承接方单号，按 ownerType 落在 merchantNo 或 cUserNo 上 */
   ownerNo: string;
   /** 常驻 | 团粒度（一团一销） */
-  scope: "PERMANENT" | "GROUP_INSTANCE";
+  scope: PickupScope;
   /** type=NEIGHBOR 时必填：这个点只服务这一个团 */
   groupNo?: string;
   /** 自提点名称 */
@@ -1726,7 +1785,7 @@ export interface PickupPoint {
    * 之所以两种都留：费率是**线下逐点协商**的，有的点谈成按件、有的谈成按成交额抽成，
    * 硬统一成一种会让运营在谈判里没有筹码。
    */
-  feeMode: "NONE" | "PER_ITEM" | "RATE";
+  feeMode: PickupFeeMode;
   /** feeMode=PER_ITEM 时的按件服务费。STORE 与 NEIGHBOR 恒为 0 */
   serviceFeePerItemMinor: number;
   /** feeMode=RATE 时的费率（万分比）。STORE 与 NEIGHBOR 恒为 0 */
@@ -1756,7 +1815,7 @@ export interface MerchantCustomer {
   /** 沉默客户：曾经常来、最近没来。**这是店主唯一能立刻行动的信号** */
   silent: boolean;
   /** 客流来源：他是你自己带来的，还是平台分配的 */
-  source: "MERCHANT_OWNED" | "PLATFORM";
+  source: TrafficSource;
 }
 
 // ================================================================ 规格模板
@@ -1790,7 +1849,7 @@ export interface SpecTemplate {
   /** 模板单号 */
   templateNo: string;
   /** 模板归属：平台统一维护 or 商家自存。商家只能改自己的 */
-  scope: "PLATFORM" | "MERCHANT";
+  scope: SpecTemplateScope;
   /** 平台模板按类目推荐；商家模板不限类目 */
   categoryType?: CategoryType;
   /** 规格维度名，如「重量」「香型」 */

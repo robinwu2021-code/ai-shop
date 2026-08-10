@@ -41,6 +41,10 @@ function enums(dir: string): Record<string, Set<string>> {
  * 否则这里就变成了「把问题登记一下然后忘掉」的清单。
  */
 const KNOWN_DRIFT: Record<string, string> = {
+  TrafficSource:
+    "shared 只有 MERCHANT_OWNED/PLATFORM（订单上的归因快照），ops 多 INVITE/CHANNEL" +
+    "（运营看的是全部来源）。且 growth 的 AttrSource 是第三套说法（STORE_CODE↔MERCHANT_OWNED、" +
+    "INVITER↔INVITE）。三者要并成一套 —— 已在登记表标 MERGE",
   AfterSaleType: "ops 多一个 EXCHANGE（换货）—— 一期不做换货，用「退货重下」代替（C-AS-01）。",
   MerchantStatus:
     "shared: NONE/APPLYING/REJECTED/ACTIVE/SUSPENDED（商家自己看到的）；" +

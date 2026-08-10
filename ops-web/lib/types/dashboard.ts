@@ -1,6 +1,9 @@
 // 看板域（矩阵 P-16.1 数据看板）。
 import type { Role } from "../auth";
 
+/** 增长漏斗的四段。扫码 → 进店 → 注册 → 首单 */
+export type FunnelStep = "SCAN" | "ENTER_STORE" | "REGISTER" | "FIRST_ORDER";
+
 export interface LoginResp {
   /** 登录名 */
   username: string;
@@ -39,10 +42,11 @@ export interface TrendPoint {
   orderCount: number;
 }
 
-/** 获客漏斗（P-16.1.4 扫码→进店→注册→首单）。 */
-export interface FunnelStep {
+/** 获客漏斗的一行（P-16.1.4 扫码→进店→注册→首单）。
+ *  ⚠️ 此前 interface 与环节枚举撞名叫 FunnelStep，字段写成 `step: FunnelStep` —— 自我引用 */
+export interface FunnelRow {
   /** 漏斗环节：扫码 → 进店 → 注册 → 首单 */
-  step: "SCAN" | "ENTER_STORE" | "REGISTER" | "FIRST_ORDER";
+  step: FunnelStep;
   /** 该环节人数 */
   count: number;
 }

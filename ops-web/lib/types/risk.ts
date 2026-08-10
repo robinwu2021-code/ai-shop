@@ -12,7 +12,7 @@ export interface RiskEvent {
   /** 主体：用户昵称 / 商家名 / 设备号 */
   subject: string;
   /** 主体类型，决定 `subject` 是昵称、店名还是设备号 */
-  subjectType: "USER" | "MERCHANT" | "DEVICE";
+  subjectType: SubjectType;
   /**
    * 命中的信号。**不给分值** —— 分值口径要等有真实样本后由风控定，
    * 现在编一个看起来很准的分数，只会让人照着它做决定。

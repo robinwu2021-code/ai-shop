@@ -10,7 +10,7 @@
 // 两侧跑同一套逻辑；服务端在下单时**重跑一遍**，不信任端上的裁剪。
 //
 // 设计依据：docs/technical/多端多通道-详细设计.md §二
-import type { MerchantSubject } from "@shared/types";
+import type { MerchantSubject, PaymentApplyStatus } from "@shared/types";
 
 /** 端。注意是「端」不是「支付通道」—— 同一个通道在不同端受的约束不同 */
 export type Scene = "MP_WECHAT" | "MP_ALIPAY" | "IOS" | "ANDROID" | "H5";
@@ -77,7 +77,6 @@ export const INDUSTRIES = Object.keys({
  * 光有注释和文档拦不住，得有一条会让 CI 变红的检查。
  */
 
-export type ApplyStatus = "NONE" | "APPLYING" | "ACTIVE" | "REJECTED" | "FROZEN";
 
 /**
  * 判断结果。
@@ -112,7 +111,7 @@ export interface ChannelCategoryRule {
 export interface MerchantPayment {
   channel: PayChannel;
   subjectType: MerchantSubject;
-  applyStatus: ApplyStatus;
+  applyStatus: PaymentApplyStatus;
   payMethods: PayMethod[];
   invoiceCapable: boolean;
 }

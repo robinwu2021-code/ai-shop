@@ -144,6 +144,47 @@ describe("枚举登记表", () => {
     ).toEqual([]);
   });
 
+  /**
+   * 规范 §D 第 5 条：禁止在 interface 里内联字面量联合。
+   *
+   * <p>内联的枚举**对所有工具不可见** —— 登记表登记不到、对账工具比对不到、
+   * 改名时必漏一处。这不是洁癖：具名化这 24 处的过程本身就暴露了三对异名同义
+   * （`feeMode` ↔ ops 的 `PickupFeeMode`、风控 `subjectType` ↔ ops 的 `SubjectType`、
+   * `type: "REFUND_ONLY" | "RETURN_REFUND"` ↔ 已有的 `AfterSaleType`），
+   * 还挖出一处 `interface FunnelStep { step: FunnelStep }` 的自我引用。
+   * 它们内联时一个都看不见。
+   */
+  it("规范 §D5 · 不允许在 interface 里内联字面量联合类型", () => {
+    const offenders: string[] = [];
+    const scan = (files: string[], tag: string) => {
+      for (const f of files) {
+        // 登记表自身的 shape 字段是元数据，不是业务枚举
+        if (f.endsWith("contract/enum-registry.ts")) continue;
+        readFileSync(f, "utf8")
+          .split("\n")
+          .forEach((line, i) => {
+            const m = line.match(/^\s+(\w+)\??:\s*(?:"[A-Z][A-Z0-9_]*"\s*\|\s*)+"[A-Z][A-Z0-9_]*"\s*;/);
+            if (m) offenders.push(`${tag} ${f.split("/").slice(-2).join("/")}:${i + 1}  ${m[1]}`);
+          });
+      }
+    };
+    scan(walk(join(ROOT, "packages/shared/src"), ".ts").filter((f) => !f.includes("/mock/")), "shared");
+    scan(
+      walk(join(ROOT, "ops-web/lib"), ".ts").filter(
+        (f) => !f.endsWith(".test.ts") && !f.includes("/mock/"),
+      ),
+      "ops-web",
+    );
+    scan(walk(join(ROOT, "c-app/src/api"), ".ts"), "c-app");
+    scan(walk(join(ROOT, "b-app/src/api"), ".ts"), "b-app");
+    expect(
+      offenders,
+      "这些字段内联了字面量联合，要提取成具名类型：\n  " +
+        offenders.join("\n  ") +
+        "\n\n内联的枚举对所有工具不可见 —— 登记不到、对账不到、改名必漏。",
+    ).toEqual([]);
+  });
+
   it("verdict 不是 OK 的条目必须写明在等什么", () => {
     const bare = ENUM_REGISTRY.filter((e) => e.verdict !== "OK" && !e.note?.trim()).map(
       (e) => e.decl,

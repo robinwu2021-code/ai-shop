@@ -1,5 +1,5 @@
 // 看板域 mock 数据（P-16.1）。金额均为最小货币单位（分）。
-import type { DashboardKpi, FunnelStep, TrendPoint } from "@/lib/types";
+import type { DashboardKpi, FunnelRow, TrendPoint } from "@/lib/types";
 
 export const kpi: DashboardKpi = {
   gmv: 128_640_00,
@@ -21,7 +21,7 @@ export const trend: TrendPoint[] = [
 ];
 
 // 获客漏斗（P-16.1.4）：扫码 → 进店 → 注册 → 首单
-export const funnel: FunnelStep[] = [
+export const funnel: FunnelRow[] = [
   { step: "SCAN", count: 4210 },
   { step: "ENTER_STORE", count: 2860 },
   { step: "REGISTER", count: 1180 },

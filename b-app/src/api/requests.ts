@@ -14,7 +14,10 @@
 //   ADR-007 §3 的边界：contract 层不共享。B 端有自己的 `/biz/**` 入参，
 //   放一起会诱导两端互相复用不该复用的东西。
 import type {
+  ArrivalIssueKind,
   CampaignDraft,
+  SettleAccountType,
+  StaffRole,
   DeliveryRule,
   GoodsStatus,
   GrantType,
@@ -180,7 +183,7 @@ export interface ReportShortageReq {
   /** 出问题的 SKU */
   skuNo: string;
   /** 问题类型：少件 / 破损。两者的售后责任判定不同 */
-  kind: "SHORTAGE" | "DAMAGE";
+  kind: ArrivalIssueKind;
   /** 情况说明。承接方填，供货方与平台据此定责 */
   note: string;
 }
@@ -269,7 +272,7 @@ export interface SubmitPaymentReq {
   /** 给哪个通道进件，如 WECHAT */
   payChannel: string;
   /** 结算账户形态。不传时后端按法律形态取默认（小微打个人、其余对公） */
-  settleAccountType?: "PERSONAL_OPENID" | "MERCHANT_ID";
+  settleAccountType?: SettleAccountType;
   /** 结算账号明文。见上方说明：**不落库、不进日志、不回显** */
   settleAccount: string;
   /** 资质图地址。小微免传，个体户与企业必传 */
@@ -311,7 +314,7 @@ export interface GrantStoreReq {
   /** 授权到哪家店。只能是本主体的门店 */
   storeNo: string;
   /** MANAGER 店长 / CLERK 店员；**传空 = 收回这家店的授权** */
-  role?: "MANAGER" | "CLERK";
+  role?: StaffRole;
 }
 
 /** 员工登录。与商家登录同形状，但打的是另一个端点、解析出的是另一套身份 */

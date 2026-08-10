@@ -14,6 +14,7 @@
 //   按 ADR-007 §3 的边界，contract 层不共享 —— B 端有自己的 `/mb/**` 入参，
 //   放一起会诱导两端互相复用不该复用的东西。
 import type {
+  AfterSaleType,
   ReviewScores,
   AfterSaleReason,
   CategoryType,
@@ -177,7 +178,7 @@ export interface OrderListQuery {
 
 export interface AfterSaleReq {
   /** 仅退款 / 退货退款 —— 两者流程根本不同，不能合成一个 */
-  type?: "REFUND_ONLY" | "RETURN_REFUND";
+  type?: AfterSaleType;
   /** 已拼好的原因文案（前端把 reason 枚举与补充说明合并后提交） */
   reason: string;
   /** 举证图。破损/少件类售后没有图基本判不了 */
