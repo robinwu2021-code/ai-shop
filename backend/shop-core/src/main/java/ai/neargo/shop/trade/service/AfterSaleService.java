@@ -34,4 +34,13 @@ public interface AfterSaleService {
 
     record ApplyCommand(String type, String reason, List<String> images, Long refundMinor) {
     }
+
+    /**
+     * 待商家处理的售后单数（工作台待办）。
+     *
+     * <p>只数 {@code APPLIED} —— 那是**球在商家手里**的唯一状态。
+     * 把 REFUNDING（等买家寄回）也算进去的话，待办数会一直挂着一个商家做不了什么的数字，
+     * 而挂久了整块待办就没人看了。
+     */
+    int merchantPendingCount(String merchantNo);
 }

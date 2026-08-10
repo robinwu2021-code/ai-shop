@@ -74,4 +74,13 @@ public interface GroupService {
 
     record QuoteCommand(long unitPriceMinor, int minQty, String note, int validDays) {
     }
+
+    /**
+     * 这家店<b>还能报价</b>的求团需求数（工作台待办）。
+     *
+     * <p>「还能」有两层：需求本身仍在收集/已有报价（{@code COLLECTING}/{@code QUOTED}），
+     * 且**这家店还没报过**。不排掉自己已报的，商家会看到一个永远降不下去的待办 ——
+     * 他每报一单，那个数字纹丝不动。
+     */
+    int quotableCount(String merchantNo);
 }

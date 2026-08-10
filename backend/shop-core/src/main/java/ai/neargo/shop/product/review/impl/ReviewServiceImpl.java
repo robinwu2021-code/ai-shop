@@ -249,4 +249,90 @@ public class ReviewServiceImpl implements ReviewService {
     private static int nz(Integer v) {
         return v == null ? 0 : v;
     }
+
+    // ---------------------------------------------------------------- 商家侧（B-11.7）
+
+    /** 低于这个分数才算差评，才允许申诉。三星是「一般」，不是差评。 */
+    private static final int APPEALABLE_BELOW = 3;
+
+    @Override
+    public int pendingReplyCount(String merchantNo) {
+        Long n = DataScopeContext.executeWithoutScope(() ->
+                reviewMapper.selectCount(Wrappers.<RvwReview>lambdaQuery()
+                        .eq(RvwReview::getEntityNo, merchantNo)
+                        .eq(RvwReview::getStatus, VISIBLE)
+                        .isNull(RvwReview::getReply)));
+        return n == null ? 0 : n.intValue();
+    }
+
+    @Override
+    @Transactional
+    public ReviewVO reply(String merchantNo, String reviewNo, String reply) {
+        if (isBlank(reply)) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        RvwReview r = ofMerchant(merchantNo, reviewNo);
+        // 一条评价只能回一次：回复是公开表态，反复改会变成评论区里来回改口
+        if (!isBlank(r.getReply())) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+        r.setReply(reply.trim());
+        r.setRepliedAt(System.currentTimeMillis());
+        DataScopeContext.executeWithoutScope(() -> reviewMapper.updateById(r));
+        return toVO(r, false, appealOf(reviewNo));
+    }
+
+    @Override
+    @Transactional
+    public ReviewVO appeal(String merchantNo, String reviewNo, String reason, List<String> images) {
+        if (isBlank(reason)) {
+            // 没有理由的申诉在裁决台上无法处理，只会变成一条永远待办的单
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        RvwReview r = ofMerchant(merchantNo, reviewNo);
+        if (r.getRating() >= APPEALABLE_BELOW) {
+            /*
+             * 只有差评可申诉。放开的话「凡是不满意的评价都申诉一遍」，
+             * 平台裁决台会被淹掉 —— 淹掉之后真正的恶意差评也没人看了。
+             */
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        if (appealOf(reviewNo) != null) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+
+        RvwAppeal a = new RvwAppeal();
+        a.setAppealNo(BizKey.next(BizKey.APPEAL));
+        a.setReviewNo(reviewNo);
+        a.setEntityNo(merchantNo);
+        a.setReason(reason.trim());
+        a.setImages(writeJson(images));
+        a.setStatus("PENDING");
+        a.setSubmittedAt(System.currentTimeMillis());
+        /*
+         * 「一条评价只能申诉一次」的唯一键在库上（uk_review）——
+         * 先查后插必然有竞态，而重复申诉在裁决台上是两条互相矛盾的待办。
+         * 上面那次 appealOf 只是为了给出人话报错，不是防线。
+         */
+        DataScopeContext.executeWithoutScope(() -> appealMapper.insert(a));
+        return toVO(r, false, a);
+    }
+
+    /** 取这条评价，并确认它属于这家店 —— 否则商家能回别家的评价。 */
+    private RvwReview ofMerchant(String merchantNo, String reviewNo) {
+        RvwReview r = DataScopeContext.executeWithoutScope(() ->
+                reviewMapper.selectOne(Wrappers.<RvwReview>lambdaQuery()
+                        .eq(RvwReview::getReviewNo, reviewNo).last("limit 1")));
+        if (r == null || !merchantNo.equals(r.getEntityNo())) {
+            // 不区分「不存在」与「不是你的」：区分了就等于一个评价归属探测器
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        return r;
+    }
+
+    private RvwAppeal appealOf(String reviewNo) {
+        return DataScopeContext.executeWithoutScope(() ->
+                appealMapper.selectOne(Wrappers.<RvwAppeal>lambdaQuery()
+                        .eq(RvwAppeal::getReviewNo, reviewNo).last("limit 1")));
+    }
 }

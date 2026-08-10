@@ -25,4 +25,26 @@ public interface ReviewService {
 
     record Scores(Integer goods, Integer fulfillment, Integer service) {
     }
+
+    // ---------------------------------------------------------------- 商家侧（B-11.7）
+
+    /** 待商家回复的评价数（工作台待办）。 */
+    int pendingReplyCount(String merchantNo);
+
+    /**
+     * 回复评价。<b>一条评价只能回一次</b> —— 回复是公开的对外表态，
+     * 允许反复改会变成商家和买家在评论区来回改口。要补充说明走客服。
+     */
+    ReviewVO reply(String merchantNo, String reviewNo, String reply);
+
+    /**
+     * 申诉差评（B-9.4）。
+     *
+     * <p><b>只有低分评价可申诉</b> —— 四星五星去申诉没有意义，开放了只会变成
+     * 「凡是不满意的评价都申诉一遍」，把平台裁决台淹掉。
+     *
+     * <p>一条评价只能申诉一次，由 {@code uk_review} 在库上兜底 ——
+     * 先查后插必然有竞态，而重复申诉会在裁决台上变成两条互相矛盾的待办。
+     */
+    ReviewVO appeal(String merchantNo, String reviewNo, String reason, List<String> images);
 }

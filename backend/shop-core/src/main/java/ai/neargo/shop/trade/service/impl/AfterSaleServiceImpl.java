@@ -385,4 +385,13 @@ public class AfterSaleServiceImpl implements AfterSaleService {
     private static long millis(LocalDateTime t) {
         return t == null ? 0L : t.atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli();
     }
+
+    @Override
+    public int merchantPendingCount(String merchantNo) {
+        Long n = DataScopeContext.executeWithoutScope(() ->
+                afterSaleMapper.selectCount(Wrappers.<OrdAfterSale>lambdaQuery()
+                        .eq(OrdAfterSale::getEntityNo, merchantNo)
+                        .eq(OrdAfterSale::getStatus, OrdAfterSale.APPLIED)));
+        return n == null ? 0 : n.intValue();
+    }
 }

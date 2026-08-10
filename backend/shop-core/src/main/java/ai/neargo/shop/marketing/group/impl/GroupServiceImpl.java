@@ -651,4 +651,19 @@ public class GroupServiceImpl implements GroupService {
     private static int nz(Integer v) {
         return v == null ? 0 : v;
     }
+
+    @Override
+    public int quotableCount(String merchantNo) {
+        List<MktRequest> open = scoped(() -> requestMapper.selectList(
+                Wrappers.<MktRequest>lambdaQuery()
+                        .in(MktRequest::getStatus, MktRequest.COLLECTING, MktRequest.QUOTED)));
+        if (open.isEmpty()) {
+            return 0;
+        }
+        // 排掉自己已经报过的：不排的话商家每报一单，待办数字纹丝不动
+        java.util.Set<String> quoted = scoped(() -> quoteMapper.selectList(
+                        Wrappers.<MktQuote>lambdaQuery().eq(MktQuote::getEntityNo, merchantNo)))
+                .stream().map(MktQuote::getRequestNo).collect(java.util.stream.Collectors.toSet());
+        return (int) open.stream().filter(r -> !quoted.contains(r.getRequestNo())).count();
+    }
 }
