@@ -48,15 +48,32 @@ public interface MerchantPaymentService {
      * 只信回调的系统在通道重推历史消息时会把已开好的户改回「审核中」。
      * 所以回调进来也调这个方法，而不是直接拿回调体写库。
      */
-    PaymentApplymentVO refresh(String merchantNo, String payChannel);
+    PaymentApplymentVO refresh(String merchantNo, String payChannel, String storeNo);
+
+    /**
+     * 为某家门店<b>新开一次进件</b>，拿一个独立的收款号。
+     *
+     * <p>这是「分开结算」的入口。微信侧一个商户号只能绑一个结算账户 ——
+     * 要两家店各收各的钱，只能进件两次。
+     *
+     * <p>不新开就是合并结算：门店不配号，走主体默认号。<b>两种模式都是配置的结果，
+     * 没有开关</b> —— 存一个 settleMode 枚举会立刻与实际配置打架
+     * （配置说分、开关说合，听谁的都错）。
+     *
+     * @return 新建的占位记录（APPLYING）；商家补完资料后走 {@link #submit} 推进
+     * @throws ai.neargo.shop.common.BizException 门店不属于本主体，或该店已经有进件记录
+     */
+    PaymentApplymentVO openForStore(String merchantNo, String storeNo, String payChannel);
 
     /**
      * @param payChannel        目标通道，如 WECHAT
      * @param settleAccountType PERSONAL_OPENID / MERCHANT_ID；为空时按法律形态取默认
      * @param settleAccount     结算账号明文，**不落库**
      * @param licenses          资质图地址
+     * @param storeNo           为哪家门店进件；<b>为空 = 主体级默认号</b>（单店永远走这条）
      */
     record SubmitCommand(String payChannel, String settleAccountType, String settleAccount,
-                         List<String> licenses, String contactName, String contactPhone) {
+                         List<String> licenses, String contactName, String contactPhone,
+                         String storeNo) {
     }
 }

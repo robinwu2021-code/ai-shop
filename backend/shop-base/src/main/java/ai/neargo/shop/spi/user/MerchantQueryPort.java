@@ -54,6 +54,26 @@ public interface MerchantQueryPort {
     java.util.Optional<String> defaultStoreNo(String merchantNo);
 
     /**
+     * 这笔钱该打给<b>哪个收款商户号</b>：门店配的号 ?? 主体的默认号。
+     *
+     * <p><b>只有这一处实现。</b> 两处各写一遍的后果是可预测的：一处按新规则、
+     * 一处按老规则，症状是「钱打错账户」—— 而这类错误不会报错，
+     * 只会在对账时被发现，还得人工追回。
+     *
+     * <p>放在 user 域是因为「门店 → 收款号」的归属关系属于商家资料，
+     * settle 域不该知道 {@code mch_store} 与 {@code mch_payment_merchant} 长什么样。
+     *
+     * <p>结算模式不是一个开关，是这个方法的返回值决定的：
+     * 两家店解析出同一个号 = 合并结算，解析出不同号 = 分开结算。
+     *
+     * @param merchantNo 主体业务键
+     * @param storeNo    门店业务键；<b>为空按主体默认号解析</b>（存量子单没有门店）
+     * @return 空表示这个主体一个可用收款号都没有 —— 进件还没走完，
+     *         此时结算单照常生成（钱是欠着的，不是不存在），但不能发起打款
+     */
+    java.util.Optional<String> payMerchantNoOf(String merchantNo, String storeNo);
+
+    /**
      * @param merchantNo   商家业务键
      * @param merchantName 展示名（下单快照用，商家改名不影响历史订单）
      * @param canSell      是否可上架售卖（审核通过且未封禁）

@@ -335,10 +335,13 @@ export default {
   settle: {
     rateTitle: "Fee rates",
 
-    title: "Settlement", empty: "Nothing to settle yet", payable: "Payable this period",
-    orderCount: "Orders", commission: "Platform commission", fulfillFee: "Pickup fulfilment fee",
-    settled: "Settled", statusPENDING: "In progress", statusDONE: "Done",
-    statusPARTIAL: "Partial", statusEXPIRED: "Expired",
+    title: "Settlement", empty: "Nothing to settle yet",
+    net: "Net", gross: "Settlement base",
+    commission: "Platform commission", fulfillFee: "Pickup fulfilment fee",
+    store: "Store", payTo: "Paid to",
+    scopeCurrent: "This store", scopeAll: "All stores",
+    statusPENDING: "Pending", statusSPLITTING: "Splitting", statusSPLIT: "Split",
+    statusRETRYING: "Retrying", statusMANUAL: "Manual review", statusREVERSED: "Reversed",
     rateHint: "Orders from your own customers carry a lower — often zero — commission. You brought them in.",
     pendingHint: "⚠️ Commission and fulfilment fee rates are placeholders pending publication (B9 / B10). Refunded orders are already deducted.",
   },

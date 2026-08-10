@@ -21,11 +21,14 @@ package ai.neargo.shop.merchant.dto;
  * @param missing        还缺哪些资料（如 settleAccount / licenses）。空表示资料齐了在等通道
  * @param appliedAt      提交时间
  * @param activatedAt    开户完成时间
+ * @param storeNo        这条进件是<b>为哪家门店</b>做的；<b>空 = 主体级默认号</b>。
+ *                       必须给出去：多门店商家看到两条「微信 · 已开通」而分不清哪条是哪家店，
+ *                       等于让他猜自己的钱打进了哪张卡
  */
 public record PaymentApplymentVO(String payChannel, String channelName, String applyStatus,
                                  boolean canReceiveMoney, String payMerchantNo,
                                  String subMchidMasked, String settleAccountType,
                                  String settleAccountMasked, String rejectReason,
                                  java.util.List<String> missing,
-                                 Long appliedAt, Long activatedAt) {
+                                 Long appliedAt, Long activatedAt, String storeNo) {
 }

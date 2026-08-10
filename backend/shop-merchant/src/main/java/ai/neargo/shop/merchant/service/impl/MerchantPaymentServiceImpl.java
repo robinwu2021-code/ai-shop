@@ -12,6 +12,7 @@ import ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchPaymentMapper;
 import ai.neargo.shop.merchant.entity.MchEntity;
 import ai.neargo.shop.merchant.entity.MchPaymentMerchant;
+import ai.neargo.shop.merchant.entity.MchStore;
 import ai.neargo.shop.merchant.service.MerchantPaymentService;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.stereotype.Service;
@@ -39,13 +40,17 @@ public class MerchantPaymentServiceImpl implements MerchantPaymentService {
     private final MasterDataPort masterDataPort;
     /** 每通道一个实现；开发期是 STUB 一个顶俩 */
     private final Map<String, PayApplymentGateway> gateways;
+    /** 为门店开进件时校验归属 —— 不是本主体的店一律 404 */
+    private final ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper storeMapper;
 
     public MerchantPaymentServiceImpl(MchPaymentMapper paymentMapper, MchEntityMapper merchantMapper,
                                       MasterDataPort masterDataPort,
+                                      ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper storeMapper,
                                       List<PayApplymentGateway> gatewayList) {
         this.paymentMapper = paymentMapper;
         this.merchantMapper = merchantMapper;
         this.masterDataPort = masterDataPort;
+        this.storeMapper = storeMapper;
         this.gateways = gatewayList.stream()
                 .collect(Collectors.toMap(PayApplymentGateway::payChannel, Function.identity()));
     }
@@ -58,7 +63,7 @@ public class MerchantPaymentServiceImpl implements MerchantPaymentService {
     @Override
     @Transactional
     public PaymentApplymentVO submit(String merchantNo, SubmitCommand cmd) {
-        MchPaymentMerchant row = require(merchantNo, cmd.payChannel());
+        MchPaymentMerchant row = require(merchantNo, cmd.payChannel(), cmd.storeNo());
 
         /*
          * 已经开好的户不许重复提交。
@@ -107,13 +112,57 @@ public class MerchantPaymentServiceImpl implements MerchantPaymentService {
         DataScopeContext.executeWithoutScope(() -> paymentMapper.updateById(row));
 
         // 提交完立刻回查一次：stub 与部分通道是同步出结果的，让商家少等一轮
-        return refresh(merchantNo, cmd.payChannel());
+        return refresh(merchantNo, cmd.payChannel(), cmd.storeNo());
     }
 
     @Override
     @Transactional
-    public PaymentApplymentVO refresh(String merchantNo, String payChannel) {
-        MchPaymentMerchant row = require(merchantNo, payChannel);
+    public PaymentApplymentVO openForStore(String merchantNo, String storeNo, String payChannel) {
+        if (storeNo == null || storeNo.isBlank()) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        // 越权保护：不是本主体的门店一律 404，与门店接口同一条口径 ——
+        // 403 等于确认这个门店号存在
+        MchStore store = DataScopeContext.executeWithoutScope(() ->
+                storeMapper.selectOne(Wrappers.<MchStore>lambdaQuery()
+                        .eq(MchStore::getEntityNo, merchantNo)
+                        .eq(MchStore::getStoreNo, storeNo)
+                        .last("limit 1")));
+        if (store == null) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        String channel = payChannel == null || payChannel.isBlank()
+                ? MchPaymentMerchant.WECHAT : payChannel;
+        boolean exists = rows(merchantNo).stream()
+                .anyMatch(r -> channel.equals(r.getPayChannel())
+                        && storeNo.equals(r.getStoreNo()));
+        if (exists) {
+            // 重复开户在通道侧会得到一个新的二级商户号，而历史订单的分账仍指向旧号
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+
+        // 法律形态与结算账户形态跟主体走 —— 分店不是独立法人，
+        // 执照仍是主体那张。分开的只是收款账户，不是合规主体
+        MchPaymentMerchant base = rows(merchantNo).stream()
+                .filter(r -> channel.equals(r.getPayChannel()))
+                .findFirst().orElseThrow(() -> BizException.of(ErrorCode.NOT_FOUND));
+
+        MchPaymentMerchant p = new MchPaymentMerchant();
+        p.setEntityNo(merchantNo);
+        p.setStoreNo(storeNo);
+        p.setPayChannel(channel);
+        p.setLegalForm(base.getLegalForm());
+        p.setSettleAccountType(base.getSettleAccountType());
+        p.setApplyStatus(MchPaymentMerchant.APPLYING);
+        p.setAppliedAt(System.currentTimeMillis());
+        DataScopeContext.executeWithoutScope(() -> paymentMapper.insert(p));
+        return toVO(p);
+    }
+
+    @Override
+    @Transactional
+    public PaymentApplymentVO refresh(String merchantNo, String payChannel, String storeNo) {
+        MchPaymentMerchant row = require(merchantNo, payChannel, storeNo);
         if (row.getChannelApplyNo() == null || row.getChannelApplyNo().isBlank()) {
             // 还没提交过，没什么可查的 —— 不要去问通道一个不存在的单号
             return toVO(row);
@@ -149,9 +198,19 @@ public class MerchantPaymentServiceImpl implements MerchantPaymentService {
                         .eq(MchPaymentMerchant::getEntityNo, merchantNo)));
     }
 
-    private MchPaymentMerchant require(String merchantNo, String payChannel) {
+    /**
+     * 定位一条进件记录。
+     *
+     * <p>门店维度用<b>空串</b>表示主体级，与库里的 {@code DEFAULT ''} 一致。
+     * 这里刻意<b>不做「找不到就落回主体级」</b>：那样商家为 B 店提交的资料
+     * 会被写进主体默认号，症状是「给分店进件，改的却是总店的账户」——
+     * 而这不会报错，只会在第一次打款时把钱打错地方。
+     */
+    private MchPaymentMerchant require(String merchantNo, String payChannel, String storeNo) {
+        String key = storeNo == null ? "" : storeNo;
         return rows(merchantNo).stream()
                 .filter(r -> r.getPayChannel().equals(payChannel))
+                .filter(r -> key.equals(r.getStoreNo() == null ? "" : r.getStoreNo()))
                 .findFirst()
                 .orElseThrow(() -> BizException.of(ErrorCode.NOT_FOUND));
     }
@@ -201,7 +260,9 @@ public class MerchantPaymentServiceImpl implements MerchantPaymentService {
                 row.getRejectReason(),
                 missing,
                 row.getAppliedAt(),
-                row.getActivatedAt());
+                row.getActivatedAt(),
+                // 空串是库里的表示，端上用 null 更直白：「没有门店」而不是「门店叫空字符串」
+                row.getStoreNo() == null || row.getStoreNo().isBlank() ? null : row.getStoreNo());
     }
 
     /** 只留尾四位。口径与手机号/地址共用 {@link Masks} —— 三份实现就是三种口径。 */

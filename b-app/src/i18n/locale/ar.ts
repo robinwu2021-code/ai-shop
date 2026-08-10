@@ -335,10 +335,13 @@ export default {
   settle: {
     rateTitle: "الرسوم",
 
-    title: "كشف التسوية", empty: "لا يوجد ما يُسوّى بعد", payable: "المستحق لهذه الفترة",
-    orderCount: "عدد الطلبات", commission: "عمولة المنصة", fulfillFee: "رسوم تنفيذ نقطة الاستلام",
-    settled: "تمت التسوية", statusPENDING: "قيد التسوية", statusDONE: "مكتملة",
-    statusPARTIAL: "جزئية", statusEXPIRED: "منتهية",
+    title: "كشف التسوية", empty: "لا يوجد ما يُسوّى بعد",
+    net: "الصافي", gross: "أساس التسوية",
+    commission: "عمولة المنصة", fulfillFee: "رسوم تنفيذ نقطة الاستلام",
+    store: "الفرع", payTo: "يُحوَّل إلى",
+    scopeCurrent: "هذا الفرع", scopeAll: "كل الفروع",
+    statusPENDING: "بانتظار التقسيم", statusSPLITTING: "جارٍ التقسيم", statusSPLIT: "تم التقسيم",
+    statusRETRYING: "إعادة المحاولة", statusMANUAL: "مراجعة يدوية", statusREVERSED: "تم الاسترجاع",
     rateHint: "طلبات عملائك الخاصين بعمولة أقل أو بلا عمولة — أنت من جلبهم.",
     pendingHint: "⚠️ نسب العمولة ورسوم التنفيذ قيم مؤقتة بانتظار الإعلان (B9 / B10). الطلبات المستردة مخصومة بالفعل.",
   },

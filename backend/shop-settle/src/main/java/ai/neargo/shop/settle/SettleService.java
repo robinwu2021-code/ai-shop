@@ -25,7 +25,11 @@ public interface SettleService {
     /** 原路退款。返回退款单号 */
     String refund(String subOrderNo, long amountMinor, String reason);
 
-    List<SettleBillVO> merchantBills(String merchantNo);
+    /**
+     * @param storeNos 门店作用域。<b>空集合不等于不过滤</b> —— 与订单侧同一个越权陷阱；
+     *                 单店主体一律不收窄（存量流水没有 store_no，一筛就全没了）
+     */
+    List<SettleBillVO> merchantBills(String merchantNo, java.util.Collection<String> storeNos);
 
     SettleBillVO merchantBill(String merchantNo, String settleNo);
 

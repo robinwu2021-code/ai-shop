@@ -57,15 +57,19 @@ public class SettleServiceImpl implements SettleService {
     private final SplitGateway gateway;
     /** 算履约服务费要知道该自提点谈定的口径（ADR-009） */
     private final PickupQueryPort pickupPort;
+    /** 解析「这笔钱打给哪个收款号」—— 门店配的号 ?? 主体默认号，口径只有那一处 */
+    private final ai.neargo.shop.spi.user.MerchantQueryPort merchantQueryPort;
 
     public SettleServiceImpl(BillMapper billMapper, SplitLogMapper splitLogMapper,
                              SettleSourcePort sourcePort, SplitGateway gateway,
-                             PickupQueryPort pickupPort) {
+                             PickupQueryPort pickupPort,
+                             ai.neargo.shop.spi.user.MerchantQueryPort merchantQueryPort) {
         this.billMapper = billMapper;
         this.splitLogMapper = splitLogMapper;
         this.sourcePort = sourcePort;
         this.gateway = gateway;
         this.pickupPort = pickupPort;
+        this.merchantQueryPort = merchantQueryPort;
     }
 
     // ---------------------------------------------------------------- 生成
@@ -131,6 +135,19 @@ public class SettleServiceImpl implements SettleService {
             bill.setNetMinor(gross - commission - serviceFee);
             bill.setTrafficSource(src.trafficSource());
             bill.setCommissionRate(rate);
+            /*
+             * 两个快照，与 commissionRate 同一个理由：配置会变，历史账不能跟着变。
+             *   storeNo       —— 这笔钱是哪家店挣的（统计维度）
+             *   payMerchantNo —— 这笔钱打给哪个账户（结算维度）
+             * 二者不互相决定：两家店可以共用一个收款号（那就是合并结算），
+             * 也可以各配各的（分开结算）。所以要各存各的，不能从一个推另一个。
+             *
+             * 解析不出收款号（进件还没走完）时留空：**账单照常生成** ——
+             * 钱是欠着的，不是不存在。发起打款那一步会再解析一次并挡下来。
+             */
+            bill.setStoreNo(src.storeNo());
+            bill.setPayMerchantNo(
+                    merchantQueryPort.payMerchantNoOf(src.merchantNo(), src.storeNo()).orElse(null));
             bill.setStatus(StlBill.PENDING);
             bill.setRetryCount(0);
             DataScopeContext.executeWithoutScope(() -> billMapper.insert(bill));
@@ -212,10 +229,26 @@ public class SettleServiceImpl implements SettleService {
     // ---------------------------------------------------------------- 查询
 
     @Override
-    public List<SettleBillVO> merchantBills(String merchantNo) {
+    public List<SettleBillVO> merchantBills(String merchantNo, java.util.Collection<String> storeNos) {
+        /*
+         * 收窄的同时**必须放行没有门店归属的行**（store_no 为空 = V14 之前的存量流水）。
+         *
+         * 只按 IN 筛的代价是实测出来的：一家已经开了两家店的商家，历史流水全是
+         * 主体级的，结算页一下子变成空的 —— 而「一条都没有」与「没有结算单」
+         * 长得一模一样，商家会以为钱没了。**钱的页面不能让人产生这种误会。**
+         *
+         * 代价是这些无归属的行在每家店的视角下都会出现一次。两害相权：
+         * 重复显示看得见、能解释；凭空消失看不见、只会引出一通电话。
+         *
+         * 空集合在这里**不等于不过滤**：那是越权陷阱，与订单侧同一个判断。
+         */
+        boolean scoped = storeNos != null && !storeNos.isEmpty()
+                && storeNos.stream().anyMatch(x -> x != null && !x.isBlank());
         return DataScopeContext.executeWithoutScope(() ->
                         billMapper.selectList(Wrappers.<StlBill>lambdaQuery()
                                 .eq(StlBill::getEntityNo, merchantNo)
+                                .and(scoped, w -> w.in(StlBill::getStoreNo, storeNos)
+                                        .or().isNull(StlBill::getStoreNo))
                                 .orderByDesc(StlBill::getId))).stream()
                 .map(this::toVO).toList();
     }
@@ -268,9 +301,20 @@ public class SettleServiceImpl implements SettleService {
         }
 
         long amount = nz(bill.getNetMinor());
+        /*
+         * 收款号取**账单上的快照**，不是「这家店现在用哪个号」。
+         * 商家改号之后还没打的历史流水，仍要打进当初收款的那个账户 ——
+         * 退款尤其：从新账户扣，两个账户各错一笔且方向相反。
+         *
+         * 存量账单没有快照（V14 之前的行），落回主体默认号 —— 与它们生成时的行为一致。
+         */
+        String payTo = bill.getPayMerchantNo();
+        if (payTo == null || payTo.isBlank()) {
+            payTo = merchantQueryPort.payMerchantNoOf(bill.getEntityNo(), bill.getStoreNo()).orElse(null);
+        }
         SplitGateway.Result result = StlSplitLog.REVERSE.equals(action)
-                ? gateway.reverse(bill.getSubOrderNo(), amount, requestNo)
-                : gateway.split(bill.getSubOrderNo(), amount, requestNo);
+                ? gateway.reverse(bill.getSubOrderNo(), payTo, amount, requestNo)
+                : gateway.split(bill.getSubOrderNo(), payTo, amount, requestNo);
 
         StlSplitLog entry = new StlSplitLog();
         entry.setSettleNo(bill.getSettleNo());
@@ -317,7 +361,7 @@ public class SettleServiceImpl implements SettleService {
                 b.getStatus(),
                 b.getCreatedAt() == null ? 0L
                         : b.getCreatedAt().atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli(),
-                b.getSplitAt());
+                b.getSplitAt(), b.getStoreNo(), b.getPayMerchantNo());
     }
 
     private static long nz(Long v) {

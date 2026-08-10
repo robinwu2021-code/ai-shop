@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.context.annotation.Profile;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -203,7 +204,20 @@ public class BizMerchantController {
         return paymentService.submit(BizContext.requireMerchantNo(),
                 new MerchantPaymentService.SubmitCommand(
                         req.payChannel(), req.settleAccountType(), req.settleAccount(),
-                        req.licenses(), req.contactName(), req.contactPhone()));
+                        req.licenses(), req.contactName(), req.contactPhone(), req.storeNo()));
+    }
+
+    /**
+     * 为某家门店<b>单独进件</b>，拿一个独立的收款号 —— 这是「分开结算」的入口。
+     *
+     * <p>不调它就是合并结算：门店不配号，走主体默认号。
+     * 两种模式都是配置的结果，<b>没有开关</b>。
+     */
+    @PostMapping("/biz/merchant/payment/store/{storeNo}")
+    public PaymentApplymentVO openStorePayment(@PathVariable String storeNo,
+                                               @RequestBody(required = false) PaymentReq req) {
+        return paymentService.openForStore(BizContext.requireMerchantNo(), storeNo,
+                req == null ? null : req.payChannel());
     }
 
     /**
@@ -213,15 +227,18 @@ public class BizMerchantController {
      * 只能打电话给运营 —— 而运营也没有别的办法。
      */
     @PostMapping("/biz/merchant/payment/{payChannel}/refresh")
-    public PaymentApplymentVO refreshPayment(@PathVariable String payChannel) {
-        return paymentService.refresh(BizContext.requireMerchantNo(), payChannel);
+    public PaymentApplymentVO refreshPayment(@PathVariable String payChannel,
+                                             @RequestParam(required = false) String storeNo) {
+        return paymentService.refresh(BizContext.requireMerchantNo(), payChannel, storeNo);
     }
 
     /**
      * @param settleAccount 结算账号明文。**不落库、不进日志**
+     * @param storeNo       为哪家门店进件；**为空 = 主体级默认号**（单店永远走这条）
      */
     public record PaymentReq(String payChannel, String settleAccountType, String settleAccount,
-                             List<String> licenses, String contactName, String contactPhone) {
+                             List<String> licenses, String contactName, String contactPhone,
+                             String storeNo) {
     }
 
     // ---------------------------------------------------------------- 门店管理（M6）

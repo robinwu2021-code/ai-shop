@@ -393,7 +393,7 @@ class M5AfterSaleFlowTest {
 
     /** 先把结算单推到已分账，回退才有意义（没分过账的单不会向通道发回退指令）。 */
     private void prepareSplit(String subOrderNo) {
-        settleService.merchantBills("M0001").stream()
+        settleService.merchantBills("M0001", java.util.List.of()).stream()
                 .filter(b -> b.subOrderNo().equals(subOrderNo))
                 .findFirst()
                 .ifPresent(b -> settleService.executeSplit(b.settleNo()));

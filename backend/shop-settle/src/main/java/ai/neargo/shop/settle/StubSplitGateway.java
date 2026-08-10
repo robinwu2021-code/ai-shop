@@ -23,20 +23,21 @@ public class StubSplitGateway implements SplitGateway {
     private final Set<String> failing = ConcurrentHashMap.newKeySet();
 
     @Override
-    public Result split(String subOrderNo, long amountMinor, String requestNo) {
+    public Result split(String subOrderNo, String payMerchantNo, long amountMinor, String requestNo) {
         if (failing.remove(subOrderNo)) {
             return Result.fail("[STUB] split failed");
         }
-        log.info("[STUB] split {} amount={} req={}", subOrderNo, amountMinor, requestNo);
+        // 收款号打进日志：接真通道之前，这是唯一能验证「钱打给谁」路由对不对的地方
+        log.info("[STUB] split {} to={} amount={} req={}", subOrderNo, payMerchantNo, amountMinor, requestNo);
         return Result.ok("STUB-" + requestNo);
     }
 
     @Override
-    public Result reverse(String subOrderNo, long amountMinor, String requestNo) {
+    public Result reverse(String subOrderNo, String payMerchantNo, long amountMinor, String requestNo) {
         if (failing.remove(subOrderNo)) {
             return Result.fail("[STUB] reverse failed");
         }
-        log.info("[STUB] reverse {} amount={} req={}", subOrderNo, amountMinor, requestNo);
+        log.info("[STUB] reverse {} from={} amount={} req={}", subOrderNo, payMerchantNo, amountMinor, requestNo);
         return Result.ok("STUB-" + requestNo);
     }
 

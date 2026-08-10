@@ -733,8 +733,24 @@ export type StaffStatus = "ACTIVE" | "DISABLED";
 /** 员工角色。店长不受门店授权限制 */
 export type StaffRole = "MANAGER" | "CLERK";
 
-/** 结算单状态：待结算 / 部分已结 / 已结清 / 已过期 */
-export type SettleBillStatus = "PENDING" | "PARTIAL" | "DONE" | "EXPIRED";
+/**
+ * 结算流水状态。**与后端 `StlBill` 逐字一致**。
+ *
+ * > 2026-08-11 收敛：这里此前是 `PENDING/PARTIAL/DONE/EXPIRED` —— 一套后端从来没有过的词，
+ * > 描述的是「周期账单」而不是「按子单的分账流水」。内联时对所有工具不可见，
+ * > 具名化之后才暴露出来（见 enum-registry 里这条的 note）。
+ *
+ * - `PENDING` 待分账 · `SPLITTING` 分账中 · `SPLIT` 已分账
+ * - `RETRYING` 失败重试中 · `MANUAL` 转人工（重试用尽，**不会自动再动钱**）
+ * - `REVERSED` 已回退（退款前必须先回退分账）
+ */
+export type SettleBillStatus =
+  | "PENDING"
+  | "SPLITTING"
+  | "SPLIT"
+  | "RETRYING"
+  | "MANUAL"
+  | "REVERSED";
 
 /**
  * 入驻申请的审核状态。与库 `mch_entity_apply.status` 逐字一致。
@@ -1371,6 +1387,13 @@ export interface PaymentApplyment {
   appliedAt?: number;
   /** 通道开户完成的时间 —— 从这一刻起才真的能收钱 */
   activatedAt?: number;
+  /**
+   * 这条进件是**为哪家门店**做的；空 = 主体级默认号。
+   *
+   * 多门店商家会有多条「微信 · 已开通」，不显示门店就分不清哪条是哪家店 ——
+   * 等于让他猜自己的钱打进了哪张卡。
+   */
+  storeNo?: string;
 }
 
 /**
@@ -1447,28 +1470,50 @@ export interface DeliveryRule {
   freeThresholdMinor: number;
 }
 
-/** 结算单。分账以子订单为单位（ADR-002 §5） */
+/**
+ * 结算流水。**一个子订单一行**（ADR-002 §5），不是周期账单。
+ *
+ * > 2026-08-11 更正：这个类型此前描述的是一套「周期账单」（`billNo` / `periodStart`
+ * > / `orderCount` / `settledMinor`），而后端 `/biz/settle/bills` 从来返回的都是
+ * > 按子单一行的分账流水。**字段一个都对不上**，页面靠 mock 才看起来是好的 ——
+ * > 连真后端会整片 undefined。与本轮反复撞到的「单看任一端都完整，断在两端之间」同形状。
+ */
 export interface SettleBill {
   /** 结算单号 */
-  billNo: string;
-  /** 结算周期起（含） */
-  periodStart: number;
-  /** 结算周期止（含） */
-  periodEnd: number;
-  /** 应分金额 */
-  payableMinor: number;
-  /** 已分账金额 */
-  settledMinor: number;
-  /** 平台佣金 */
+  settleNo: string;
+  /** 对应的子订单号 —— 分账以它为单位 */
+  subOrderNo: string;
+  /** 所属主单号 */
+  orderNo: string;
+  /** 主体号 */
+  merchantNo: string;
+  /** 结算基数（分）= 用户实付 + 平台补贴。**平台出资的优惠要补回给商家** */
+  grossMinor: number;
+  /** 平台佣金（分） */
   commissionMinor: number;
-  /** 自提点履约服务费（承接方收，供货方付；口径待定 B9） */
-  fulfillFeeMinor: number;
-  /** 结算状态：待结算 / 部分已结 / 已结清 / 已过期 */
+  /** 自提点履约服务费（分）。供货方付、承接方收，两个角色都是自己时账面抵消 */
+  serviceFeeMinor: number;
+  /** 商家实得（分）= 基数 − 佣金 − 服务费 */
+  netMinor: number;
+  /** 客流来源：MERCHANT_OWNED 自带客流（零佣金）/ PLATFORM */
+  trafficSource?: string;
+  /** 佣金费率快照（万分比）。费率会变，历史账不跟着变 */
+  commissionRate: number;
+  /** PENDING / SPLIT / RETRYING / MANUAL / REVERSED */
   status: SettleBillStatus;
-  /** 结算币种 */
-  currency: CurrencyCode;
-  /** 本期订单笔数 */
-  orderCount: number;
+  /** 生成时间 */
+  createdAt: number;
+  /** 分账完成时间；没分完为空 */
+  splitAt?: number;
+  /**
+   * 这笔钱是**哪家店**挣的（统计维度）。空 = 存量主体级流水。
+   *
+   * 它**不决定钱打给谁** —— 打给谁看 `payMerchantNo`。
+   * 两家店可以共用一个收款号（合并结算），也可以各配各的（分开结算）。
+   */
+  storeNo?: string;
+  /** 这笔钱打给**哪个收款号**（结算维度，生成时快照）。空 = 当时进件还没走完 */
+  payMerchantNo?: string;
 }
 
 /** 工作台待办。**数字即入口** —— 商家打开 App 只想知道「有几件事要我做」 */

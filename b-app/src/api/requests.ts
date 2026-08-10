@@ -292,6 +292,13 @@ export interface SubmitPaymentReq {
   contactName?: string;
   /** 进件联系电话 */
   contactPhone?: string;
+  /**
+   * 为**哪家门店**进件；不传 = 主体级默认号（单店永远走这条）。
+   *
+   * 传它就是在走「分开结算」：微信侧一个商户号只能绑一个结算账户，
+   * 两家店各收各的钱，就得进件两次拿两个号。
+   */
+  storeNo?: string;
 }
 
 /** 新建/改名门店。门面其余部分（公告/营业时间/主推）走 SaveStoreReqBody */

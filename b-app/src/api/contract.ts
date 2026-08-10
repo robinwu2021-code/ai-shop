@@ -334,7 +334,13 @@ export interface MerchantApi {
   mCustomers(): Promise<MerchantCustomer[]>;
 
   // ---- 结算（B-11.9）
-  mSettleList(): Promise<SettleBill[]>;
+  /**
+   * 结算流水。**一笔子订单一行**，不是周期账单。
+   *
+   * @param allStores 是否看全部门店。默认（false）只看当前门店 ——
+   *                  与订单页同一套惯例；「全部」对老板和店员不是一回事，后端按授权收窄
+   */
+  mSettleList(allStores?: boolean): Promise<SettleBill[]>;
   /** 费率卡（后端已实现）。把费率讲清楚是「自带客流零佣金」能起作用的前提 */
   mRateCard(): Promise<RateCard>;
 

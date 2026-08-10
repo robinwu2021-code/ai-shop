@@ -923,6 +923,8 @@ CREATE TABLE IF NOT EXISTS stl_bill
     points_fee_minor BIGINT(20) NOT NULL DEFAULT 0,
     accrued_at BIGINT(20) DEFAULT NULL,
     split_amount_minor BIGINT(20) NOT NULL DEFAULT 0,
+    store_no VARCHAR(64) DEFAULT NULL,
+    pay_merchant_no VARCHAR(64) DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_settle_no UNIQUE (settle_no),
     CONSTRAINT uk_sub_order UNIQUE (sub_order_no)
@@ -1329,8 +1331,9 @@ CREATE TABLE IF NOT EXISTS mch_payment_merchant
     deleted TINYINT(4) NOT NULL DEFAULT 0,
     split_reversible TINYINT(4) NOT NULL DEFAULT 0,
     split_reversible_at BIGINT(20) DEFAULT NULL,
+    store_no VARCHAR(64) NOT NULL DEFAULT '',
     PRIMARY KEY (id),
-    CONSTRAINT uk_mp_entity_channel UNIQUE (entity_no,pay_channel),
+    CONSTRAINT uk_mp_entity_channel_store UNIQUE (entity_no,pay_channel,store_no),
     CONSTRAINT uk_mp_pay_merchant_no UNIQUE (pay_merchant_no)
 );
 

@@ -1096,73 +1096,53 @@ export const mockApi: MerchantApi = {
     });
   },
 
-  async mSettleList() {
+  async mSettleList(allStores) {
     const merchantNo = db.merchant.merchantNo;
-    // 只有真正收到钱的单才进结算：已完成计入，退款的扣回（分账要先回退再退款，ADR-002）
+    /*
+     * **一个子订单一行**，与后端 stl_bill 同形 —— 这里此前造的是一套「按周聚合的账单」
+     * （billNo / periodStart / orderCount），后端从来没有过那个模型。
+     * 页面照着 mock 写，于是连真后端时字段整片 undefined，而 mock 下一直是绿的。
+     */
     const settled = db.orders.filter(
       (o) => belongsToMerchant(o, merchantNo) && ["COMPLETED", "REFUNDED"].includes(o.status),
     );
+    const home = db.stores.find((s) => s.isDefault) ?? db.stores[0];
+    const scope = allStores ? null : home?.storeNo;
 
-    const periodMs = SETTLE.periodDays * 86400_000;
-    const now = Date.now();
-    const groups = new Map<number, Order[]>();
-    for (const o of settled) {
-      // 按自然周分桶：第 0 桶是本周，第 1 桶是上周
-      const bucket = Math.floor((now - o.createdAt) / periodMs);
-      groups.set(bucket, [...(groups.get(bucket) ?? []), o]);
-    }
-
-    const bills = [...groups.entries()]
-      .sort((a, b) => a[0] - b[0])
-      .map(([bucket, list]) => {
-        const gross = list
-          .filter((o) => o.status === "COMPLETED")
-          .reduce((s, o) => s + o.amount.payableMinor, 0);
-        // 退款要从应分里扣回，否则商家拿到的是「退过款还照结」的钱
-        const refunded = list
-          .filter((o) => o.status === "REFUNDED")
-          .reduce((s, o) => s + o.amount.payableMinor, 0);
-
-        // 佣金按客流来源分档：自带客流建议零佣金（ADR-004 §6，费率待定 B10）
-        const commission = list
-          .filter((o) => o.status === "COMPLETED")
-          .reduce(
-            (s, o) =>
-              s +
-              Math.round(
-                o.amount.payableMinor *
-                  SETTLE.commissionRate[o.trafficSource ?? "PLATFORM"],
-              ),
-            0,
-          );
-
-        // 自提点履约服务费：按件。这笔是**供货方付、承接方收**，
-        // 本店既供货又承接时两边抵消，但账上要分别列出来（口径待定 B9）
-        const fulfillFee = list
-          .filter((o) => o.status === "COMPLETED" && o.fulfillment === "STORE_PICKUP")
-          .reduce(
-            (s, o) =>
-              s + o.items.reduce((n, it) => n + it.qty, 0) * SETTLE.fulfillFeePerItemMinor,
-            0,
-          );
-
-        const payable = gross - refunded - commission - fulfillFee;
-        return {
-          billNo: `SB${bucket}`,
-          periodStart: now - (bucket + 1) * periodMs,
-          periodEnd: now - bucket * periodMs,
-          payableMinor: payable,
-          // 本周仍在结算周期内，尚未分账；往期视为已分账完成
-          settledMinor: bucket === 0 ? 0 : payable,
-          commissionMinor: commission,
-          fulfillFeeMinor: fulfillFee,
-          status: bucket === 0 ? ("PENDING" as const) : ("DONE" as const),
-          currency: currentCurrency(),
-          orderCount: list.length,
-        };
-      });
-
-    return delay(bills);
+    return delay(
+      settled
+        .filter(() => !scope || Boolean(home))
+        .map((o) => {
+          const gross = o.amount.payableMinor;
+          // 佣金按客流来源分档：自带客流零佣金（ADR-004 §6）
+          const rate = SETTLE.commissionRate[o.trafficSource ?? "PLATFORM"];
+          const commission = Math.round(gross * rate);
+          // 自提点履约服务费按件。供货方付、承接方收，两个角色都是自己时账面抵消
+          const serviceFee =
+            o.fulfillment === "STORE_PICKUP"
+              ? o.items.reduce((n, it) => n + it.qty, 0) * SETTLE.fulfillFeePerItemMinor
+              : 0;
+          return {
+            settleNo: `SB${o.orderNo}`,
+            subOrderNo: o.orderNo,
+            orderNo: o.orderNo,
+            merchantNo,
+            grossMinor: gross,
+            commissionMinor: commission,
+            serviceFeeMinor: serviceFee,
+            netMinor: gross - commission - serviceFee,
+            trafficSource: o.trafficSource ?? "PLATFORM",
+            commissionRate: Math.round(rate * 10000),
+            // 退过款的走回退态：账面上不能出现「退过款还照结」的钱（ADR-002 §3）
+            status: o.status === "REFUNDED" ? ("REVERSED" as const) : ("SPLIT" as const),
+            createdAt: o.createdAt,
+            splitAt: o.status === "REFUNDED" ? undefined : o.createdAt,
+            storeNo: home?.storeNo,
+            // 门店没单独配号就走主体默认号 —— 那就是合并结算
+            payMerchantNo: home?.payMerchantNo ?? "PM-MOCK-ENTITY",
+          };
+        }),
+    );
   },
 
   // ---------------------------------------------------------------- 到货异常

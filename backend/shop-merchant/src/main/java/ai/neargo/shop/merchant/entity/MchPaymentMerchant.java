@@ -39,6 +39,20 @@ public class MchPaymentMerchant extends BaseEntity {
     private String entityNo;
 
     /**
+     * 这次进件是为<b>哪家门店</b>做的。<b>空串 = 主体级默认号</b>（单店与存量都是它）。
+     *
+     * <p>为什么进件要有门店维度：微信侧一个商户号只能绑一个结算账户，
+     * 要两家店各收各的钱，就得进件两次拿两个特约商户号。
+     * 此前唯一键是 (entity_no, pay_channel)，一个主体每通道只能有一个号 ——
+     * 于是 {@code mch_store.pay_merchant_no} 只有一个候选值可选，
+     * 「门店能配收款号」是个只有一个选项的选择题。
+     *
+     * <p>用空串不用 {@code null}：MySQL 的唯一索引不约束 NULL，
+     * 用 NULL 的话同一主体能插进无数条主体级记录，而那正是这个键要挡的。
+     */
+    private String storeNo;
+
+    /**
      * 收款商户号业务键（V1 基准新增）。{@code mch_store.pay_merchant_no} 引用它 ——
      * 旧库里门店引用的是一张没有业务键的表，重建时补上。进件成功时生成。
      */

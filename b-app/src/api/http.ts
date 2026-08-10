@@ -230,7 +230,8 @@ export const httpApi: MerchantApi = {
 
   mCustomers: () => http.get<MerchantCustomer[]>(E.mCustomers.path),
 
-  mSettleList: () => http.get<SettleBill[]>(E.mSettleList.path),
+  mSettleList: (allStores) =>
+    http.get<SettleBill[]>(E.mSettleList.path, allStores ? { allStores: true } : undefined),
   mRateCard: () => http.get<RateCard>(E.mRateCard.path),
   mReportShortage: (orderNo, payload) =>
     http.post<Order>(buildPath(E.mReportShortage.path, { orderNo }), {

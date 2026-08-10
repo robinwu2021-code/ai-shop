@@ -83,4 +83,24 @@ public class StlBill extends BaseEntity {
      * 而历史账不能跟着变。与 commissionRate 落快照是同一个道理。
      */
     private Long splitAmountMinor;
+
+    /**
+     * 这笔钱是<b>哪家店</b>挣的（{@code ord_sub_order.store_no} 快照）。
+     *
+     * <p>纯统计维度：门店经营报表按它聚合。<b>它不决定钱打给谁</b> ——
+     * 打给谁看 {@link #payMerchantNo}。空 = 存量主体级流水。
+     */
+    private String storeNo;
+
+    /**
+     * 这笔钱打给<b>哪个收款商户号</b>（生成时快照）。
+     *
+     * <p>快照而非实时解析：商家随时可以改门店的收款号，实时解析会把还没打的
+     * 历史流水一起挪到新账户 —— 钱已经进了旧账户，账却说打给新账户。
+     * 退款更严重：从新账户扣，两个账户各错一笔且方向相反。
+     *
+     * <p>空 = 生成时进件还没走完（账单照常生成，钱是欠着的），
+     * 或是 V14 之前的存量行 —— 两种都在发起打款时再解析一次。
+     */
+    private String payMerchantNo;
 }
