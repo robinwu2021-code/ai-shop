@@ -97,7 +97,7 @@ describe("代客取消（P-4.1.5）", () => {
 describe("代客下单（P-4.1.5）", () => {
   const base = {
     buyerNickname: "小满", communityNo: "C001", merchantNo: "M903",
-    fulfillType: "PICKUP_STORE" as const, reason: "用户电话下单，不会用小程序",
+    fulfillType: "STORE_PICKUP" as const, reason: "用户电话下单，不会用小程序",
   };
 
   it("落到待支付而不是已支付 —— **代客下单不代付款**", async () => {

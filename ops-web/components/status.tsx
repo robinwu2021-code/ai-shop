@@ -60,8 +60,8 @@ export function OrderStatusBadge({ value }: { value: OrderStatus }) {
 export function useFulfillTypeMap(): StatusMap<FulfillType> {
   const { t } = useI18n();
   return {
-    PICKUP_STORE: { label: t("fulfillType.PICKUP_STORE"), tone: "muted" },
-    PICKUP_NEIGHBOR: { label: t("fulfillType.PICKUP_NEIGHBOR"), tone: "muted" },
+    STORE_PICKUP: { label: t("fulfillType.STORE_PICKUP"), tone: "muted" },
+    NEIGHBOR_PICKUP: { label: t("fulfillType.NEIGHBOR_PICKUP"), tone: "muted" },
     MERCHANT_DELIVERY: { label: t("fulfillType.MERCHANT_DELIVERY"), tone: "muted" },
     EXPRESS: { label: t("fulfillType.EXPRESS"), tone: "muted" },
     SERVICE: { label: t("fulfillType.SERVICE"), tone: "muted" },

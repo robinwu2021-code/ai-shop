@@ -35,6 +35,7 @@ import type {
   PointsDeductibleQuery,
 } from "./requests";
 import type {
+  AfterSaleReason,
   Address,
   CartItem,
   Community,
@@ -118,6 +119,8 @@ export const httpApi: ShopApi = {
   cancelOrder: (orderNo) => call<Order>("cancelOrder", { orderNo }),
   applyAfterSale: (orderNo, reason, images, type) =>
     call<Order>("applyAfterSale", { orderNo }, { reason, images, type } satisfies AfterSaleReq),
+
+  afterSaleReasons: () => call<AfterSaleReason[]>("afterSaleReasons"),
 
   // ---- 营销
   fillReturnExpress: (afterSaleNo, expressNo) =>

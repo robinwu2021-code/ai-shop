@@ -42,8 +42,15 @@ public class AfterSaleServiceImpl implements AfterSaleService {
     @Value("${shop.after-sale.instant-threshold-minor:10000}")
     private long instantThresholdMinor;
 
+    /**
+     * 售后原因。**下发的是码，不是文案** —— 这是个三语 App（zh/en/ar），
+     * 下发中文文案等于把翻译这件事从端上剥夺掉，英文用户会看到一串中文。
+     *
+     * <p>此前这里是中文字面量，而 c-app 压根没调这个接口、自己硬编码了另一份**六个码**的清单 ——
+     * 两份清单各自漂移，运营改后端这份，端上纹丝不动。
+     */
     private static final List<String> REASONS = List.of(
-            "不想要了", "商品破损", "少发/漏发", "与描述不符", "质量问题", "临期或过期", "其他");
+            "NOT_WANTED", "DAMAGED", "MISSING", "WRONG_ITEM", "QUALITY", "EXPIRED", "OTHER");
 
     private final AfterSaleMapper afterSaleMapper;
     private final SubOrderMapper subOrderMapper;

@@ -149,8 +149,8 @@ export const zh = {
     AFTER_SALE: "售后中",
   },
   fulfillType: {
-    PICKUP_STORE: "门店自提",
-    PICKUP_NEIGHBOR: "邻里自提",
+    STORE_PICKUP: "门店自提",
+    NEIGHBOR_PICKUP: "邻里自提",
     MERCHANT_DELIVERY: "商家自送",
     EXPRESS: "快递",
     SERVICE: "到店服务",

@@ -275,12 +275,20 @@ export interface Address {
 
 // ---------------------------------------------------------------- 售后
 
+/**
+ * 售后原因。**取值与后端 `/mp/after-sale/reasons` 下发的一致** ——
+ * 端上不再自己硬编码一份清单（此前那份少两个、多一个，两边各自漂移，
+ * 运营改后端那份端上纹丝不动）。
+ *
+ * 后端下发的是**码**不是文案：这是三语 App，翻译得留在端上。
+ */
 export type AfterSaleReason =
-  | "MISSING"
+  | "NOT_WANTED"
   | "DAMAGED"
-  | "QUALITY"
+  | "MISSING"
   | "WRONG_ITEM"
-  | "NOT_ARRIVED"
+  | "QUALITY"
+  | "EXPIRED"
   | "OTHER";
 
 // ---------------------------------------------------------------- 商家

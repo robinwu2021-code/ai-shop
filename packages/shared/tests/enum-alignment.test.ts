@@ -24,9 +24,6 @@ interface Gap {
  * 否则这份名单会退化成「报错了就加一行」，而守卫就此失效。
  */
 const KNOWN_SHARED: Record<string, string> = {
-  AfterSaleReason:
-    "端上硬编码了一份枚举码，而后端 /mp/after-sale/reasons 下发的是中文文案（且是另一份清单）。" +
-    "两份清单会各自漂移 —— 待 c-app 改为调那个接口后删除本条",
   GrantType:
     "WX_MINI/WX_PHONE/WX_OPEN 是端上按微信三种登录场景拆的，后端只有一个 WECHAT_MP。" +
     "微信登录本身还没接（code2Session 是 TODO），接的时候两边一起定名",
@@ -41,7 +38,7 @@ const KNOWN_SHARED: Record<string, string> = {
  * 但在那之前，不该再新增一个「后端永远不会给的值」。
  * 这个数字每降一点，就是一块真正对齐了的地方。
  */
-const OPS_WEB_BASELINE = 38;
+const OPS_WEB_BASELINE = 37;
 
 describe("枚举对账", () => {
   const gaps: Gap[] = findGaps();

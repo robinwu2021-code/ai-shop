@@ -156,8 +156,8 @@ export const en: Messages = {
     AFTER_SALE: "In after-sales",
   },
   fulfillType: {
-    PICKUP_STORE: "Store pickup",
-    PICKUP_NEIGHBOR: "Neighbor pickup",
+    STORE_PICKUP: "Store pickup",
+    NEIGHBOR_PICKUP: "Neighbor pickup",
     MERCHANT_DELIVERY: "Merchant delivery",
     EXPRESS: "Courier",
     SERVICE: "In-store service",

@@ -41,7 +41,7 @@ export function ProxyTab({ c, canProxy }: { c: OrdersCopy; canProxy: boolean }) 
 
   const [form, setForm] = useState({
     buyerNickname: "", communityNo: "", merchantNo: "",
-    fulfillType: "PICKUP_STORE" as FulfillType, reason: "",
+    fulfillType: "STORE_PICKUP" as FulfillType, reason: "",
   });
   const [lines, setLines] = useState<Line[]>([{ skuNo: "", qty: "1" }]);
 
@@ -60,7 +60,7 @@ export function ProxyTab({ c, canProxy }: { c: OrdersCopy; canProxy: boolean }) 
   });
 
   const reset = () => {
-    setForm({ buyerNickname: "", communityNo: "", merchantNo: "", fulfillType: "PICKUP_STORE", reason: "" });
+    setForm({ buyerNickname: "", communityNo: "", merchantNo: "", fulfillType: "STORE_PICKUP", reason: "" });
     setLines([{ skuNo: "", qty: "1" }]);
   };
 

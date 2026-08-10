@@ -12,14 +12,15 @@ import type { AfterSaleReason, AfterSaleType, Order } from "@shared/types";
 
 const { t } = useI18n();
 
-const REASONS: AfterSaleReason[] = [
-  "MISSING",
-  "DAMAGED",
-  "QUALITY",
-  "WRONG_ITEM",
-  "NOT_ARRIVED",
-  "OTHER",
-];
+/**
+ * 售后原因**取自后端**（`/mp/after-sale/reasons`），不再在端上硬编码。
+ *
+ * 此前这里写死了一份六个码的清单，而后端那份是七条且内容不同 ——
+ * 两份各自漂移，运营改后端的，端上纹丝不动。
+ * 拿不到时退回一份最小清单：售后入口不该因为一个列表接口挂掉而打不开。
+ */
+const FALLBACK: AfterSaleReason[] = ["DAMAGED", "MISSING", "QUALITY", "OTHER"];
+const REASONS = ref<AfterSaleReason[]>(FALLBACK);
 
 const order = ref<Order | null>(null);
 /**
@@ -86,6 +87,10 @@ function gotoOrder() {
 }
 
 onLoad((q) => {
+  // 原因清单由后端给；失败不挡住页面（FALLBACK 兜底）
+  api.afterSaleReasons().then((r) => {
+    if (r?.length) REASONS.value = r;
+  }).catch(() => undefined);
   const no = (q?.orderNo as string) || "";
   if (no) load(no);
 });

@@ -1,6 +1,7 @@
 // 唯一契约。页面只依赖这个接口，不感知 mock / 真实后端。
 // 端点对齐后端 C 端 BFF `/mp/**`（见 docs/api）。
 import type {
+  AfterSaleReason,
   MasterData,
   MerchantApplyReq,
   MerchantApplyStatus,
@@ -128,6 +129,11 @@ export interface ShopApi {
    * 退货退款：用户寄回后填运单号，商家据此收货。
    * **按售后单号寻址，不是订单号** —— 售后是独立资源（见 AfterSale.afterSaleNo）。
    */
+  /**
+   * 售后原因清单。**由后端给，端上不硬编码** —— 两份清单会各自漂移，
+   * 而运营改的是后端那份。下发的是**码**，文案由端上按当前语言翻译。
+   */
+  afterSaleReasons(): Promise<AfterSaleReason[]>;
   fillReturnExpress(afterSaleNo: string, expressNo: string): Promise<Order>;
   /** 商家驳回后上升平台裁决（B-7.4）—— 驳回不能是终点，否则用户没有退路 */
   raiseDispute(afterSaleNo: string, reason: string): Promise<Order>;

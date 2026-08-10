@@ -29,6 +29,7 @@ import { defaultFulfillment } from "@shared/utils/goods";
 import { buyNGetM, giftQtyFor } from "@shared/utils/promotion";
 import type { CreateOrderReq, GoodsQuery, ShopApi } from "./contract";
 import type {
+  AfterSaleReason,
   Coupon,
   FrequentItem,
   Order,
@@ -671,6 +672,13 @@ export const mockApi: ShopApi = {
     }
     persist();
     return delay(o);
+  },
+
+  async afterSaleReasons() {
+    // 与后端 AfterSaleServiceImpl.REASONS 同一份清单（码，不是文案）
+    return delay<AfterSaleReason[]>([
+      "NOT_WANTED", "DAMAGED", "MISSING", "WRONG_ITEM", "QUALITY", "EXPIRED", "OTHER",
+    ]);
   },
 
   async fillReturnExpress(afterSaleNo, expressNo) {

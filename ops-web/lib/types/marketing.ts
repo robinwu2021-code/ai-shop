@@ -70,6 +70,18 @@ export interface CouponIssue {
   createdAt: string;
 }
 
+/**
+ * 平台营销场次的类型。
+ *
+ * ⚠️ **不要把它和后端的 `mkt_campaign` 对齐** —— 那是两个不同的领域对象，只是重名：
+ *   · 后端 / b-app 的 `Campaign` 是**店铺级活动**（`entity_no NOT NULL`，不跨店），
+ *     取值 COUPON / FULL_CUT / FLASH / BUY_GIFT，由商家自己建
+ *   · 这里的 `Campaign` 是**平台投放的营销场次**（带 `position`，秒杀场按位置分组做
+ *     重叠校验），由运营建，后端还没有这个对象
+ *
+ * 枚举对账工具会报这几个值「后端没有」——那是对的，但结论不是「改名对齐」，
+ * 而是「这块后端还没实现」。真按后端那套改，等于把两个概念合并成一个。
+ */
 export type CampaignType = "FLASH" | "SECKILL" | "FULL_REDUCE" | "GIFT" | "NEWCOMER";
 export type CampaignStatus = "DRAFT" | "SCHEDULED" | "RUNNING" | "ENDED";
 

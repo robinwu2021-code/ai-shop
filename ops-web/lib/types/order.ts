@@ -3,7 +3,13 @@
 //    分账、售后、结算全部以子订单为单位。列表展示的就是子订单。
 
 /** 履约方式（ADR-005：自提点分 STORE / NEIGHBOR 两类）。 */
-export type FulfillType = "PICKUP_STORE" | "PICKUP_NEIGHBOR" | "MERCHANT_DELIVERY" | "EXPRESS" | "SERVICE";
+/**
+ * 履约方式。**取值与后端 `ord_sub_order.fulfillment` 一致**。
+ *
+ * ⚠️ 这里曾经写成 `PICKUP_STORE` / `PICKUP_NEIGHBOR` —— 同一个概念、词序反了，
+ * 于是按它筛后端一条也匹配不上。ops-web 只跑 mock，所以从没被真实响应打脸过。
+ */
+export type FulfillType = "STORE_PICKUP" | "NEIGHBOR_PICKUP" | "MERCHANT_DELIVERY" | "EXPRESS" | "SERVICE";
 
 /** 流量来源（矩阵 P-12.1.7 按 trafficSource 分档计费）。 */
 export type TrafficSource = "MERCHANT_OWNED" | "PLATFORM" | "INVITE" | "CHANNEL";
