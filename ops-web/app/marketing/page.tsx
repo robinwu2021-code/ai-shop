@@ -16,7 +16,7 @@ import { useCan } from "@/lib/use-can";
 import { notify } from "@/lib/notify";
 import type { Campaign, ContentSlot, Coupon, CouponIssue, CouponStatus, IssueTarget } from "@/lib/types";
 import {
-  CampaignStatusBadge, CouponStatusBadge, useCampaignStatusMap, useCampaignTypeMap,
+  PlatformSlotStatusBadge, CouponStatusBadge, usePlatformSlotStatusMap, usePlatformSlotTypeMap,
   useCouponStatusMap, useCouponTypeMap, useSlotKindMap,
 } from "@/components/status";
 import { ReadOnlyNotice } from "@/components/read-only-notice";
@@ -95,8 +95,8 @@ function MarketingInner() {
 
   const couponTypeMap = useCouponTypeMap();
   const couponStatusMap = useCouponStatusMap();
-  const campaignTypeMap = useCampaignTypeMap();
-  const campaignStatusMap = useCampaignStatusMap();
+  const campaignTypeMap = usePlatformSlotTypeMap();
+  const campaignStatusMap = usePlatformSlotStatusMap();
   const slotKindMap = useSlotKindMap();
 
   const couponQ = { keyword, type, status, showArchived, page, size };
@@ -216,7 +216,7 @@ function MarketingInner() {
     { header: c.colPosition, cell: (x) => x.position },
     { header: c.colRange, cell: (x) => `${fmtTime(x.startAt)} ~ ${fmtTime(x.endAt)}` },
     { header: c.colSkuCount, cell: (x) => x.skuCount, numeric: true },
-    { header: c.colStatus, cell: (x) => <CampaignStatusBadge value={x.status} /> },
+    { header: c.colStatus, cell: (x) => <PlatformSlotStatusBadge value={x.status} /> },
     {
       header: c.colActions,
       cell: (x) => (

@@ -185,10 +185,51 @@ describe("枚举登记表", () => {
     ).toEqual([]);
   });
 
+  /**
+   * 未复核条目的**棘轮**：只许降不许升。
+   *
+   * <p>为什么不设成「必须为 0」：54 条不可能一次做完，而设成 0 会让人
+   * 把它改成 `OK` 了事 —— 那就退回到本表建起来时的状态
+   * （96 条 OK 里只有 4 条真的有人看过）。棘轮让进度单向前进且可度量。
+   *
+   * <p>降到新低时**要把基线跟着调低**，否则棘轮就松了。这一步是刻意的手工动作：
+   * 它逼着改的人确认「这批真的复核完了」，而不是顺手让测试变绿。
+   */
+  const UNREVIEWED_BASELINE = 54;
+
+  it(`未复核条目只许减少（当前基线 ${UNREVIEWED_BASELINE} 条）`, () => {
+    const n = ENUM_REGISTRY.filter((e) => e.verdict === "UNREVIEWED").length;
+    expect(
+      n,
+      n > UNREVIEWED_BASELINE
+        ? `未复核条目从 ${UNREVIEWED_BASELINE} 涨到了 ${n} —— 新增枚举请直接复核后登记，别留给以后`
+        : `未复核已降到 ${n} 条，把 UNREVIEWED_BASELINE 改成这个数（这一步是手工的：` +
+            "它逼你确认这批真的复核完了)",
+    ).toBe(Math.min(n, UNREVIEWED_BASELINE));
+  });
+
+  it("复核过的条目（OK）不该再有 UNREVIEWED 的兄弟同名 —— 同一个概念要么都看了要么都没看", () => {
+    const byName = new Map<string, Set<string>>();
+    for (const e of ENUM_REGISTRY) {
+      const name = e.decl.split(":")[1]!;
+      if (!byName.has(name)) byName.set(name, new Set());
+      byName.get(name)!.add(e.verdict);
+    }
+    const mixed = [...byName]
+      .filter(([, v]) => v.has("OK") && v.has("UNREVIEWED"))
+      .map(([n]) => n);
+    expect(
+      mixed,
+      `以下同名枚举一端看过、另一端没看：${mixed.join(", ")}\n` +
+        "跨端同名正是缺陷高发处（8 组同名不同义都是这么来的），只看一端等于没看。",
+    ).toEqual([]);
+  });
+
   it("verdict 不是 OK 的条目必须写明在等什么", () => {
-    const bare = ENUM_REGISTRY.filter((e) => e.verdict !== "OK" && !e.note?.trim()).map(
-      (e) => e.decl,
-    );
+    // UNREVIEWED 不需要理由 —— 它的含义本身就是「还没人看过」
+    const bare = ENUM_REGISTRY.filter(
+      (e) => e.verdict !== "OK" && e.verdict !== "UNREVIEWED" && !e.note?.trim(),
+    ).map((e) => e.decl);
     expect(
       bare,
       `以下条目标了待办但没写理由：${bare.join(", ")}\n` +

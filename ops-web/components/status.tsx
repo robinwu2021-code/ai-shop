@@ -8,7 +8,7 @@
 import type {
   MerchantStatus, MerchantTier, OrderStatus, FulfillmentType, TrafficSource,
   PickupPointType, PickupStatus, BatchStatus, StoreAuditStatus,
-  CouponType, CouponStatus, CampaignType, CampaignStatus, SlotKind,
+  CouponType, CouponStatus, PlatformSlotType, PlatformSlotStatus, SlotKind,
   ReviewStatus, AppealStatus, RiskFlag,
   AfterSaleType, AfterSaleStatus, GroupStatus, DemandStatus,
   CategoryTemplate, SkuStatus, SettleStatus, AttrSource, RiskType, RiskStatus, BlacklistAppealStatus,
@@ -177,28 +177,28 @@ export function CouponStatusBadge({ value }: { value: CouponStatus }) {
   return <StatusBadge map={useCouponStatusMap()} value={value} />;
 }
 
-export function useCampaignTypeMap(): StatusMap<CampaignType> {
+export function usePlatformSlotTypeMap(): StatusMap<PlatformSlotType> {
   const { t } = useI18n();
   return {
-    SECKILL: { label: t("campaignType.SECKILL"), tone: "danger" },
-    FLASH: { label: t("campaignType.FLASH"), tone: "warning" },
-    FULL_REDUCE: { label: t("campaignType.FULL_REDUCE"), tone: "muted" },
-    GIFT: { label: t("campaignType.GIFT"), tone: "muted" },
-    NEWCOMER: { label: t("campaignType.NEWCOMER"), tone: "info" },
+    SECKILL: { label: t("platformSlotType.SECKILL"), tone: "danger" },
+    FLASH: { label: t("platformSlotType.FLASH"), tone: "warning" },
+    FULL_REDUCE: { label: t("platformSlotType.FULL_REDUCE"), tone: "muted" },
+    GIFT: { label: t("platformSlotType.GIFT"), tone: "muted" },
+    NEWCOMER: { label: t("platformSlotType.NEWCOMER"), tone: "info" },
   };
 }
 
-export function useCampaignStatusMap(): StatusMap<CampaignStatus> {
+export function usePlatformSlotStatusMap(): StatusMap<PlatformSlotStatus> {
   const { t } = useI18n();
   return {
-    DRAFT: { label: t("campaignStatus.DRAFT"), tone: "muted" },
-    SCHEDULED: { label: t("campaignStatus.SCHEDULED"), tone: "info" },
-    RUNNING: { label: t("campaignStatus.RUNNING"), tone: "success" },
-    ENDED: { label: t("campaignStatus.ENDED"), tone: "muted" },
+    DRAFT: { label: t("platformSlotStatus.DRAFT"), tone: "muted" },
+    SCHEDULED: { label: t("platformSlotStatus.SCHEDULED"), tone: "info" },
+    RUNNING: { label: t("platformSlotStatus.RUNNING"), tone: "success" },
+    ENDED: { label: t("platformSlotStatus.ENDED"), tone: "muted" },
   };
 }
-export function CampaignStatusBadge({ value }: { value: CampaignStatus }) {
-  return <StatusBadge map={useCampaignStatusMap()} value={value} />;
+export function PlatformSlotStatusBadge({ value }: { value: PlatformSlotStatus }) {
+  return <StatusBadge map={usePlatformSlotStatusMap()} value={value} />;
 }
 
 export function useSlotKindMap(): StatusMap<SlotKind> {

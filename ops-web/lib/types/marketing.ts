@@ -73,7 +73,12 @@ export interface CouponIssue {
 /**
  * 平台营销场次的类型。
  *
- * ⚠️ **不要把它和后端的 `mkt_campaign` 对齐** —— 那是两个不同的领域对象，只是重名：
+ * <p>此前叫 `CampaignType`，与 shared 的 `CampaignType`（店铺级活动）**同名不同义**。
+ * 当时的处理是写一段注释说明「别对齐」—— 那不够：读代码的人没有义务先知道
+ * 自己在哪一层。规范定的是「一个词只能指一个领域概念」，由更窄的一方加限定词，
+ * 所以这里改名为 `PlatformSlotType`（见 docs/requirements/项目词典.md §D2）。
+ *
+ * ⚠️ 它与后端的 `mkt_campaign` 是两个不同的领域对象：
  *   · 后端 / b-app 的 `Campaign` 是**店铺级活动**（`entity_no NOT NULL`，不跨店），
  *     取值 COUPON / FULL_CUT / FLASH / BUY_GIFT，由商家自己建
  *   · 这里的 `Campaign` 是**平台投放的营销场次**（带 `position`，秒杀场按位置分组做
@@ -82,8 +87,8 @@ export interface CouponIssue {
  * 枚举对账工具会报这几个值「后端没有」——那是对的，但结论不是「改名对齐」，
  * 而是「这块后端还没实现」。真按后端那套改，等于把两个概念合并成一个。
  */
-export type CampaignType = "FLASH" | "SECKILL" | "FULL_REDUCE" | "GIFT" | "NEWCOMER";
-export type CampaignStatus = "DRAFT" | "SCHEDULED" | "RUNNING" | "ENDED";
+export type PlatformSlotType = "FLASH" | "SECKILL" | "FULL_REDUCE" | "GIFT" | "NEWCOMER";
+export type PlatformSlotStatus = "DRAFT" | "SCHEDULED" | "RUNNING" | "ENDED";
 
 export interface Campaign extends Archivable {
   /** 活动单号 */
@@ -91,9 +96,9 @@ export interface Campaign extends Archivable {
   /** 活动名 */
   name: string;
   /** 活动类型 */
-  type: CampaignType;
+  type: PlatformSlotType;
   /** 活动状态 */
-  status: CampaignStatus;
+  status: PlatformSlotStatus;
   /** 开始时间 */
   startAt: string;
   /** 结束时间。须晚于 startAt */
