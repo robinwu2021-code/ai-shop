@@ -10,7 +10,15 @@
 //   它连库都不碰，因为端也不碰库。
 import { ping, shapeIssues, E2eError } from "./client.mjs";
 
-const JOURNEYS = [await import("./journeys/j1-merchant-go-live.mjs")];
+/*
+ * 顺序有意义：J1 先把「一家店从零到能做生意」跑通，
+ * J5 才在此之上验运营侧的维护动作。反过来的话，J5 挂了分不清是
+ * 「运营端坏了」还是「商家根本没建起来」。
+ */
+const JOURNEYS = [
+  await import("./journeys/j1-merchant-go-live.mjs"),
+  await import("./journeys/j5-ops-and-category.mjs"),
+];
 
 const t0 = Date.now();
 

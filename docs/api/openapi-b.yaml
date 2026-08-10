@@ -851,8 +851,10 @@ components:
           description: "类目名（后端按 Accept-Language 下发已本地化文案）"
         icon: 
           type: "string"
+          description: "类目图标 URL。运营没配就是空串，端上按占位渲染"
         sort: 
           type: "number"
+          description: "同级内的展示顺序，小的在前。运营在后台拖动排序改的就是它"
         children: 
           type: "array"
           items: 
@@ -2975,28 +2977,32 @@ components:
           description: "按商品状态过滤。B 端能看到全部状态，C 端只看得到 ON_SALE"
       additionalProperties: false
     SaveGoodsReqBody: 
-      "$ref": "#/components/schemas/GoodsDraft"
-    GoodsDraft: 
       type: "object"
       properties: 
         goodsNo: 
           type: "string"
           description: "商品单号。新建时不传，编辑时必传"
         title: 
-          "$ref": "#/components/schemas/I18nText"
-          description: "商品标题（多语言）。后端按 Accept-Language 下发对应语言给 C 端"
+          type: "string"
+          description: "基准语言（zh-CN）的标题。后端按 Accept-Language 下发时的兜底"
         subtitle: 
-          "$ref": "#/components/schemas/I18nText"
-          description: "副标题/卖点（多语言）"
+          type: "string"
+          description: "基准语言（zh-CN）的副标题/卖点"
+        titleI18n: 
+          "$ref": "#/components/schemas/Record_string_string"
+          description: "标题的三语原文，键是 Lang。缺译的语言按 R9 回落展示中文"
+        subtitleI18n: 
+          "$ref": "#/components/schemas/Record_string_string"
+          description: "副标题的三语原文，同上"
         type: 
           "$ref": "#/components/schemas/CategoryType"
-          description: "商品形态，决定详情页用哪套字段。**保存后不建议再改**"
+          description: "商品形态，决定履约与合规（生鲜要截单、服务不发货、iOS 可售规则）"
         categoryNo: 
           type: "string"
-          description: "类目单号（三级树的任意一级，通常是叶子）。选填。\n\n⚠️ 与上面的 `type` 是两个维度：`type` 决定履约与合规、平台硬编码； 类目决定归类与经营准入、运营可维护。\n\n<p>**保存草稿时不校验资质，上架时才校验** —— 商家可能正准备去申请那张证， 保存这一步就拦住他，等于逼他先把商品归到一个错误的类目下。"
+          description: "类目单号。选填，决定归类与经营准入 —— 与 `type` 是两个正交维度"
         cover: 
           type: "string"
-          description: "封面图 URL（来自 `mUploadImage`）。\n\n<p>此前<b>页面上传了封面却没放进提交体</b> —— 店主选了图、页面上也显示出来了， 保存后 C 端拿到的却是空封面。而空封面不报错，只是列表里一块留白。"
+          description: "封面图 URL（来自 mUploadImage）。漏传的话 C 端列表里是一块留白，且不报错"
         images: 
           type: "array"
           items: 
@@ -3015,11 +3021,13 @@ components:
       required: 
         - "title"
         - "subtitle"
+        - "titleI18n"
+        - "subtitleI18n"
         - "type"
         - "specGroups"
         - "skus"
       additionalProperties: false
-      description: "商家侧商品草稿。单规格 = 一个规格组一个选项，与多规格同一套结构。\n\n标题与副标题是**三语**：三语是一期范围（C端清单 §五之二）， 但此前商品文案只有一份，中文抄进三语 —— 切到英文看到的还是中文。\n**只有中文必填**，其余留空时由服务端回落中文并标注未翻译（不做机翻，见 §M8-2）。"
+      description: "保存商品的**线上格式**，与页面用的  {@link  GoodsDraft }  不同形状。\n\n<p>后端要的是「基准语言的那一份 + 三语 map」两个字段，而不是一个三语对象。 此前这里直接 `= GoodsDraft`，于是端上把 `title` 当对象发过去， 后端反序列化直接抛 —— **b-app 保存商品在真实后端上一次都没成功过**， 而 mock 上完全正常，所以没人发现。拍平在 `http.ts` 里做，页面不受影响。"
     SpecGroupDraft: 
       type: "object"
       properties: 
@@ -3424,6 +3432,10 @@ components:
         - "en"
         - "ar"
       additionalProperties: false
+    Record_string_string: 
+      type: "object"
+      additionalProperties: 
+        type: "string"
     Partial_Record_CurrencyCode_number: 
       type: "object"
       properties: 

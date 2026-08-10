@@ -7,6 +7,7 @@ import type { GoodsDraft, GoodsGuess, MerchantApi } from "./contract";
 // 字段写错、少传、多传都编译不过，而不是等联调才发现（与 C 端同一套做法）
 import type {
   AppealReviewReq,
+  SaveGoodsReqBody,
   CreateGroupReq,
   GoodsListQuery,
   HandleAfterSaleReq,
@@ -128,7 +129,25 @@ export const httpApi: MerchantApi = {
 
   mGoodsList: (q) => http.get<PageResult<Goods>>(E.mGoodsList.path, { ...q } satisfies GoodsListQuery),
   mGoodsDetail: (goodsNo) => http.get<Goods>(buildPath(E.mGoodsDetail.path, { goodsNo })),
-  mSaveGoods: (payload: GoodsDraft) => http.post<Goods>(E.mSaveGoods.path, payload),
+  /*
+   * 拍平三语：页面拿 I18nText（一个对象）编辑，后端要的是
+   * 「基准语言那一份 + 三语 map」。这层转换放在这里而不是页面里 ——
+   * 页面不该知道线上格式，而后端也不该被迫接受两种形状。
+   */
+  mSaveGoods: (payload: GoodsDraft) =>
+    http.post<Goods>(E.mSaveGoods.path, {
+      goodsNo: payload.goodsNo,
+      title: payload.title["zh-CN"] ?? "",
+      subtitle: payload.subtitle["zh-CN"] ?? "",
+      titleI18n: { ...payload.title },
+      subtitleI18n: { ...payload.subtitle },
+      type: payload.type,
+      categoryNo: payload.categoryNo,
+      cover: payload.cover,
+      images: payload.images,
+      specGroups: payload.specGroups,
+      skus: payload.skus,
+    } satisfies SaveGoodsReqBody),
   mToggleGoods: (goodsNo, onSale) =>
     http.post<Goods>(buildPath(E.mToggleGoods.path, { goodsNo }), { onSale } satisfies ToggleGoodsReq),
   mSaveStock: (goodsNo, skuNo, stock) =>

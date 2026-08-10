@@ -43,6 +43,32 @@ function controllerFiles(portal: string): string[] {
 }
 
 /** 后端：路径 → 请求体字段集合 */
+/**
+ * 按逗号切 record 形参，但**跳过泛型里的逗号**。
+ *
+ * 朴素的 `split(",")` 会把 `Map<String, String> titleI18n` 切成两半，
+ * 于是抽出来的字段名是 `Map<String`。它不会让测试变绿或变红得有道理 ——
+ * 它会报「前端没发 Map<String」，把一个解析 bug 伪装成一处契约错配，
+ * 而人会去改前端。
+ */
+function splitParams(raw: string): string[] {
+  const out: string[] = [];
+  let depth = 0;
+  let cur = "";
+  for (const ch of raw) {
+    if (ch === "<") depth += 1;
+    else if (ch === ">") depth -= 1;
+    if (ch === "," && depth === 0) {
+      out.push(cur);
+      cur = "";
+    } else {
+      cur += ch;
+    }
+  }
+  if (cur.trim()) out.push(cur);
+  return out;
+}
+
 function backendBodies(portal: string): Map<string, { type: string; fields: string[] }> {
   const out = new Map<string, { type: string; fields: string[] }>();
   for (const file of controllerFiles(portal)) {
@@ -51,8 +77,7 @@ function backendBodies(portal: string): Map<string, { type: string; fields: stri
     // 同一个文件里的 `record XxxReq(String a, Boolean b) {}` —— Java record 的形参就是 JSON 字段
     const records = new Map<string, string[]>();
     for (const m of src.matchAll(/record\s+(\w+)\s*\(([^)]*)\)/g)) {
-      const fields = m[2]!
-        .split(",")
+      const fields = splitParams(m[2]!)
         .map((p) => p.trim().split(/\s+/).pop())
         .filter((x): x is string => !!x);
       records.set(m[1]!, fields);

@@ -109,6 +109,55 @@ export async function call(app, key, opts = {}) {
   return envelope.data;
 }
 
+/**
+ * 运营端调用。
+ *
+ * <p>为什么不像 C/B 端那样走端点表：ops-web 的端点声明在
+ * `ops-web/lib/api/https/*.ts` 里，是 `client.get("/ops/…")` 这种调用式写法，
+ * 不是一张可以直接读的表。**所以这里是全篇唯一硬编码路径的地方** ——
+ * 它是已知的短板，不是随手写的：ops-web 改了路径，这里不会自动跟着红。
+ *
+ * @param opts { token, body, query, expectFail }
+ */
+export async function opsCall(method, path, opts = {}) {
+  const { token, body, query, expectFail = false } = opts;
+  let url = BASE + path;
+  if (query && Object.keys(query).length) {
+    url += "?" + new URLSearchParams(query).toString();
+  }
+  const res = await fetch(url, {
+    method,
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: method === "GET" ? undefined : JSON.stringify(body ?? {}),
+  });
+  const text = await res.text();
+  let envelope;
+  try {
+    envelope = JSON.parse(text);
+  } catch {
+    throw new E2eError(`${method} ${path} 返回的不是 JSON（HTTP ${res.status}）`, { text });
+  }
+  if (expectFail) {
+    if (envelope.code === 0) {
+      throw new E2eError(`${method} ${path} 本该被拒，却成功了`, { text });
+    }
+    return { code: envelope.code, msg: envelope.msg };
+  }
+  if (envelope.code !== 0) {
+    throw new E2eError(`${method} ${path} 失败：${envelope.msg}`, { text });
+  }
+  return envelope.data;
+}
+
+/** 运营登录，返回令牌 */
+export async function opsLogin(username = "admin", password = "admin123") {
+  const data = await opsCall("POST", "/ops/auth/login", { body: { username, password } });
+  return data.token;
+}
+
 /** 支付回调：面向通道，**不走统一信封**，所以不能用 call() */
 export async function payCallback(payOrderNo) {
   const res = await fetch(`${BASE}/callback/pay/stub`, {

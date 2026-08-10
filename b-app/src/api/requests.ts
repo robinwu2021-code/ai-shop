@@ -66,7 +66,38 @@ export interface GoodsListQuery {
   status?: GoodsStatus;
 }
 
-export type SaveGoodsReqBody = GoodsDraft;
+/**
+ * 保存商品的**线上格式**，与页面用的 {@link GoodsDraft} 不同形状。
+ *
+ * <p>后端要的是「基准语言的那一份 + 三语 map」两个字段，而不是一个三语对象。
+ * 此前这里直接 `= GoodsDraft`，于是端上把 `title` 当对象发过去，
+ * 后端反序列化直接抛 —— **b-app 保存商品在真实后端上一次都没成功过**，
+ * 而 mock 上完全正常，所以没人发现。拍平在 `http.ts` 里做，页面不受影响。
+ */
+export interface SaveGoodsReqBody {
+  /** 商品单号。新建时不传，编辑时必传 */
+  goodsNo?: string;
+  /** 基准语言（zh-CN）的标题。后端按 Accept-Language 下发时的兜底 */
+  title: string;
+  /** 基准语言（zh-CN）的副标题/卖点 */
+  subtitle: string;
+  /** 标题的三语原文，键是 Lang。缺译的语言按 R9 回落展示中文 */
+  titleI18n: Record<string, string>;
+  /** 副标题的三语原文，同上 */
+  subtitleI18n: Record<string, string>;
+  /** 商品形态，决定履约与合规（生鲜要截单、服务不发货、iOS 可售规则） */
+  type: GoodsDraft["type"];
+  /** 类目单号。选填，决定归类与经营准入 —— 与 `type` 是两个正交维度 */
+  categoryNo?: string;
+  /** 封面图 URL（来自 mUploadImage）。漏传的话 C 端列表里是一块留白，且不报错 */
+  cover?: string;
+  /** 详情轮播图 */
+  images?: string[];
+  /** 空数组 = 单规格。非空则 skus 必须是各组选项的笛卡尔积 */
+  specGroups: GoodsDraft["specGroups"];
+  /** SKU 列表。单规格商品也有且仅有一条 */
+  skus: GoodsDraft["skus"];
+}
 
 export interface ToggleGoodsReq {
   /** 目标状态：true 上架、false 下架。下架后详情页仍可访问但不可下单 */

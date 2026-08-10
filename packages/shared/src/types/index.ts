@@ -514,7 +514,9 @@ export interface Category {
   level: number;
   /** 类目名（后端按 Accept-Language 下发已本地化文案） */
   name: string;
+  /** 类目图标 URL。运营没配就是空串，端上按占位渲染 */
   icon?: string;
+  /** 同级内的展示顺序，小的在前。运营在后台拖动排序改的就是它 */
   sort: number;
   /** 子类目。叶子是空数组而不是 undefined —— 端上少一次判空 */
   children: Category[];

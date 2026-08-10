@@ -852,8 +852,10 @@ components:
           description: "类目名（后端按 Accept-Language 下发已本地化文案）"
         icon: 
           type: "string"
+          description: "类目图标 URL。运营没配就是空串，端上按占位渲染"
         sort: 
           type: "number"
+          description: "同级内的展示顺序，小的在前。运营在后台拖动排序改的就是它"
         children: 
           type: "array"
           items: 
