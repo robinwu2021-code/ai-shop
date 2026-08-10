@@ -154,7 +154,7 @@ export const zh = {
     EXPRESS: "快递",
     SERVICE: "到店服务",
   },
-  pickupType: { STORE: "常驻点", NEIGHBOR: "邻里自提" },
+  pickupType: { PLATFORM: "平台点", STORE: "常驻点", NEIGHBOR: "邻里自提" },
   pickupStatus: { ACTIVE: "启用中", MIGRATING: "迁移中", SUSPENDED: "已停用" },
   batchStatus: { PLANNED: "计划中", DISPATCHED: "已发车", ARRIVED: "已到货", SIGNED: "已签收" },
   storeAuditStatus: { PENDING: "待审核", PASSED: "已通过", REJECTED: "已驳回" },

@@ -31,4 +31,15 @@ public class CmtCommunity extends BaseEntity {
 
     /** 本社区是否开放积分。四级串联的第二级 —— 上层关，下层一定关。 */
     private Boolean pointsEnabled;
+
+    /** 网格：城市与社区之间的运营划分单位，BD 按网格分片包干。 */
+    private String grid;
+
+    /**
+     * 覆盖围栏半径（米）。C 端按它判断地址是否落在本社区内。
+     *
+     * <p>默认 1000 而不是 0：0 意味着「这个社区覆盖不到任何地址」，
+     * 而它看起来像「还没配」—— 一个默认值就能让整个社区静默失效。
+     */
+    private Integer fenceRadius;
 }

@@ -99,6 +99,7 @@ export function usePickupTypeMap(): StatusMap<PickupType> {
   const { t } = useI18n();
   return {
     STORE: { label: t("pickupType.STORE"), tone: "info" },
+    PLATFORM: { label: t("pickupType.PLATFORM"), tone: "warning" },
     NEIGHBOR: { label: t("pickupType.NEIGHBOR"), tone: "outline" },
   };
 }

@@ -161,7 +161,7 @@ export const en: Messages = {
     EXPRESS: "Courier",
     SERVICE: "In-store service",
   },
-  pickupType: { STORE: "Fixed point", NEIGHBOR: "Neighbor point" },
+  pickupType: { PLATFORM: "Platform point", STORE: "Fixed point", NEIGHBOR: "Neighbor point" },
   pickupStatus: { ACTIVE: "Active", MIGRATING: "Migrating", SUSPENDED: "Suspended" },
   batchStatus: { PLANNED: "Planned", DISPATCHED: "Dispatched", ARRIVED: "Arrived", SIGNED: "Signed off" },
   storeAuditStatus: { PENDING: "Pending review", PASSED: "Approved", REJECTED: "Rejected" },

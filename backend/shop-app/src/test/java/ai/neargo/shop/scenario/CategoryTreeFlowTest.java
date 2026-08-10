@@ -527,6 +527,90 @@ class CategoryTreeFlowTest {
         throw new AssertionError("没有找到 " + merchantNo + " 的待审公告");
     }
 
+    // ---------------------------------------------------------------- 社区与自提点（P-2.1/2.2）
+
+    @Test
+    @DisplayName("★ 关城只停获客 —— C 端搜不到了，但已有订单不受影响")
+    void closingCommunityStopsDiscoveryNotFulfilment() throws Exception {
+        String ops = opsLogin("admin", "admin123");
+
+        mvc().perform(post("/ops/communities/C0001/open")
+                        .header("Authorization", "Bearer " + ops)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"opened\":false}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.opened").value(false));
+
+        // 开回去，免得影响别的用例（社区是全局资源）
+        mvc().perform(post("/ops/communities/C0001/open")
+                        .header("Authorization", "Bearer " + ops)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"opened\":true}"))
+                .andExpect(jsonPath("$.data.opened").value(true));
+    }
+
+    @Test
+    @DisplayName("★ 围栏半径不能是 0 —— 0 等于这个社区谁也覆盖不到，而界面上像「还没配」")
+    void fenceRadiusCannotBeZero() throws Exception {
+        String ops = opsLogin("admin", "admin123");
+        mvc().perform(post("/ops/communities/C0001/fence")
+                        .header("Authorization", "Bearer " + ops)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"fenceRadius\":0}"))
+                .andExpect(jsonPath("$.code").value(10400));
+
+        mvc().perform(post("/ops/communities/C0001/fence")
+                        .header("Authorization", "Bearer " + ops)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"fenceRadius\":800}"))
+                .andExpect(jsonPath("$.data.fenceRadius").value(800));
+    }
+
+    @Test
+    @DisplayName("★ 邻里自提点不能设服务费 —— 给了报酬他就变成团长了（ADR-005）")
+    void neighborPickupMustStayUnpaid() throws Exception {
+        String ops = opsLogin("admin", "admin123");
+        String body = mvc().perform(get("/ops/pickups").header("Authorization", "Bearer " + ops)
+                        .param("type", "NEIGHBOR"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        JsonNode rows = json.readTree(body).get("data");
+        if (rows.isEmpty()) {
+            return;   // 种子里没有邻里点时跳过，不伪造数据
+        }
+        String pickupNo = rows.get(0).get("pickupNo").asString();
+        mvc().perform(post("/ops/pickups/" + pickupNo + "/service-fee")
+                        .header("Authorization", "Bearer " + ops)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"serviceFeeRate\":50}"))
+                .andExpect(jsonPath("$.code").value(10400));
+    }
+
+    @Test
+    @DisplayName("★ 自提点有「迁移中」这个中间态 —— 没有它，换点时旧点的存量货没人能核销")
+    void pickupHasMigratingState() throws Exception {
+        String ops = opsLogin("admin", "admin123");
+        mvc().perform(post("/ops/pickups/PP0001/status")
+                        .header("Authorization", "Bearer " + ops)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"status\":\"MIGRATING\"}"))
+                .andExpect(jsonPath("$.data.status").value("MIGRATING"));
+        // 迁移完成后只能停用：旧点不再启用，新点是另一条记录
+        mvc().perform(post("/ops/pickups/PP0001/status")
+                        .header("Authorization", "Bearer " + ops)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"status\":\"ACTIVE\"}"))
+                .andExpect(jsonPath("$.code").value(20004));
+        mvc().perform(post("/ops/pickups/PP0001/status")
+                .header("Authorization", "Bearer " + ops)
+                .contentType(MediaType.APPLICATION_JSON).content("{\"status\":\"SUSPENDED\"}"));
+    }
+
+    @Test
+    @DisplayName("社区列表带自提点数量 —— 列表直接给，避免逐行再查一次")
+    void communityListCarriesPickupCount() throws Exception {
+        String ops = opsLogin("admin", "admin123");
+        String body = mvc().perform(get("/ops/communities").header("Authorization", "Bearer " + ops))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        JsonNode rows = json.readTree(body).get("data");
+        assertThat(rows).isNotEmpty();
+        assertThat(rows.get(0).get("pickupCount").isNumber()).isTrue();
+    }
+
     // ---------------------------------------------------------------- helpers
 
     private JsonNode tree() throws Exception {

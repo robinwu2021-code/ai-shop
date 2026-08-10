@@ -20,6 +20,8 @@ CREATE TABLE IF NOT EXISTS cmt_community
     version BIGINT(20) NOT NULL DEFAULT 0,
     deleted TINYINT(4) NOT NULL DEFAULT 0,
     city_code VARCHAR(32) DEFAULT NULL,
+    grid VARCHAR(64) DEFAULT NULL,
+    fence_radius INT(11) NOT NULL DEFAULT 1000,
     points_enabled TINYINT(4) NOT NULL DEFAULT 0,
     PRIMARY KEY (id),
     CONSTRAINT uk_community_no UNIQUE (community_no)
