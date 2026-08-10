@@ -20,10 +20,13 @@ export const trend: TrendPoint[] = [
   { date: "08-05", gmv: 19_790_00, orderCount: 208 },
 ];
 
-// 获客漏斗（P-16.1.4）：扫码 → 进店 → 注册 → 首单
+// 获客漏斗（P-16.1.4）。设计上是「扫码 → 进店 → 注册 → 首单」四环，
+// **这里只给后两环** —— 与后端同形。
+//
+// 前两环需要埋点，而平台没有任何扫码/进店的事件表。mock 里编四环的代价是实测过的：
+// 开发期看到的是一个完整漂亮的漏斗，连真后端才发现只有两环 ——
+// 「mock 比后端好看」正是这个仓库反复出问题的形状。
 export const funnel: FunnelRow[] = [
-  { step: "SCAN", count: 4210 },
-  { step: "ENTER_STORE", count: 2860 },
   { step: "REGISTER", count: 1180 },
   { step: "FIRST_ORDER", count: 640 },
 ];
