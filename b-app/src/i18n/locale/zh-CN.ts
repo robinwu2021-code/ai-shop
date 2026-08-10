@@ -238,6 +238,10 @@ export default {
   },
 
   order: {
+    scopeAll: "全部门店",
+    scopeCurrent: "当前门店",
+    scopeToAll: "看全部门店 ›",
+    scopeToCurrent: "只看当前门店 ›",
     statusWAIT_PAY: "待付款",
     statusPAID: "待发货",
     statusSHIPPED: "已发货",

@@ -143,6 +143,10 @@ export default {
   },
 
   order: {
+    scopeAll: "All stores",
+    scopeCurrent: "Current store",
+    scopeToAll: "View all stores ›",
+    scopeToCurrent: "Current store only ›",
     statusWAIT_PAY: "Unpaid",
     statusPAID: "To ship",
     statusSHIPPED: "Shipped",

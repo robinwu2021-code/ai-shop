@@ -254,7 +254,7 @@ export interface MerchantApi {
   // ---- 订单与配送（B-11.4）
   /** `status` 用 `OrderStatus` 而不是 `string` —— 松成 string 后，前端传个 "toShip"
    *  这种 tab key 上去也编译得过，而服务端只认状态枚举（由 requests.ts 的 satisfies 抓出） */
-  mOrderList(q: PageQuery & { status?: OrderStatus }): Promise<PageResult<Order>>;
+  mOrderList(q: PageQuery & { status?: OrderStatus; allStores?: boolean }): Promise<PageResult<Order>>;
   mOrderDetail(orderNo: string): Promise<Order>;
   /** 快递发货：回填运单号 */
   mShip(orderNo: string, expressNo: string): Promise<Order>;

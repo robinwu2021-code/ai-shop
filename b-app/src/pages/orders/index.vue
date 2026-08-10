@@ -34,21 +34,34 @@ const tab = ref("all");
 const list = ref<Order[]>([]);
 const loading = ref(false);
 
+/**
+ * 看全部门店还是只看当前门店。
+ *
+ * ⚠️ 后端一直支持 `allStores`，端上从没传过 —— 于是这一页恒等于「当前门店」，
+ * 而界面上既不显示是哪家店、也没有切换入口。单店时看不出区别，
+ * 多店老板会以为自己看到的是全部流水。
+ *
+ * 只在**真的有多家店**时显示这个开关：单店商家看到一个「全部门店 / 当前门店」
+ * 的切换，只会疑惑自己是不是漏配了什么。
+ */
+const allStores = ref(false);
+
 const empty = computed(() => !loading.value && !list.value.length);
 
 async function load() {
   if (!merchant.isActive) return;
   loading.value = true;
   try {
+    const scope = { size: 50, allStores: allStores.value || undefined };
     if (tab.value === "afterSale") {
       const afterSales = await api.mAfterSaleList();
       // 用 subOrderNo：列表一行是一张子订单，售后单的 orderNo 是主单号
       const nos = new Set(afterSales.map((a) => a.subOrderNo));
-      const res = await api.mOrderList({ size: 50 });
+      const res = await api.mOrderList(scope);
       list.value = res.records.filter((o) => nos.has(o.orderNo));
     } else {
       const status = TABS.find((t) => t.key === tab.value)?.status;
-      const res = await api.mOrderList({ status, size: 50 });
+      const res = await api.mOrderList({ ...scope, status });
       list.value = res.records;
     }
   } finally {
@@ -58,6 +71,11 @@ async function load() {
 
 function switchTab(key: string) {
   tab.value = key;
+  void load();
+}
+
+function toggleScope() {
+  allStores.value = !allStores.value;
   void load();
 }
 
@@ -75,6 +93,16 @@ onShow(load);
       :active="tab"
       @change="switchTab"
     ></sh-tabs>
+
+    <!-- 门店范围。只有多店才出现 —— 单店商家看到这个切换只会疑惑 -->
+    <view v-if="merchant.multiStore" class="scope" @tap="toggleScope">
+      <text class="scope__cur">
+        {{ allStores ? $t("order.scopeAll") : merchant.currentStore?.name || $t("order.scopeCurrent") }}
+      </text>
+      <text class="scope__switch">
+        {{ allStores ? $t("order.scopeToCurrent") : $t("order.scopeToAll") }}
+      </text>
+    </view>
 
     <sh-empty v-if="empty" :text='$t("order.empty")'></sh-empty>
 
@@ -106,6 +134,23 @@ onShow(load);
 </template>
 
 <style scoped>
+.scope {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16rpx 24rpx;
+  margin-bottom: 16rpx;
+  background: var(--sh-faint);
+  border-radius: 16rpx;
+}
+.scope__cur {
+  font-size: 26rpx;
+  color: var(--sh-ink);
+}
+.scope__switch {
+  font-size: 24rpx;
+  color: var(--sh-primary);
+}
 /* 列表密度对齐 C 端（平台版式约定）：卡片之间只留一条缝、正文行高 1.35。
    商家一天要扫几十次这类列表，行距每多 10rpx，一屏就少一行。 */
 .row {

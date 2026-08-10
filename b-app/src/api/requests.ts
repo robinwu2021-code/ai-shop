@@ -145,6 +145,17 @@ export interface OrderListQuery {
   size?: number;
   /** 按订单状态过滤，不传为全部 */
   status?: OrderStatus;
+  /**
+   * 看全部门店的单，不传/false 只看**当前门店**。
+   *
+   * ⚠️ 后端一直支持这个参数，端上从没传过 —— 于是订单页恒等于「当前门店」，
+   * 而界面上既没有门店名也没有切换入口，多门店老板会以为自己看到的是全部。
+   *
+   * 「全部」对老板和店员**不是一回事**：老板的全部是主体名下所有店，
+   * 店员的全部只是他被授权的那几家。这个区分在后端（allowedStoresOrAll），
+   * 端上只管传不传。
+   */
+  allStores?: boolean;
 }
 
 export interface ShipReq {
