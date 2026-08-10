@@ -52,10 +52,12 @@ public class OpsReviewController {
 
     @GetMapping("/ops/reviews")
     @PreAuthorize("@perm.can('" + Perms.REVIEW_GOVERN + "')")
-    public List<ReviewService.OpsReviewVO> reviews(@RequestParam(required = false) String status,
-                                                   @RequestParam(required = false) String merchantNo,
-                                                   @RequestParam(required = false) String keyword) {
-        return reviewService.opsList(status, merchantNo, keyword);
+    public ai.neargo.shop.common.PageData<ReviewService.OpsReviewVO> reviews(@RequestParam(required = false) String status,
+                                                    @RequestParam(required = false) String merchantNo,
+                                                    @RequestParam(required = false) String keyword,
+                                                    @RequestParam(defaultValue = "1") long page,
+                                                    @RequestParam(defaultValue = "20") long size) {
+        return ai.neargo.shop.common.PageData.ofAll(reviewService.opsList(status, merchantNo, keyword), page, size);
     }
 
     /** 评价审核。驳回必须写理由。 */
@@ -71,8 +73,10 @@ public class OpsReviewController {
 
     @GetMapping("/ops/review-appeals")
     @PreAuthorize("@perm.can('" + Perms.REVIEW_GOVERN + "')")
-    public List<ReviewService.OpsAppealVO> appeals(@RequestParam(required = false) String status) {
-        return reviewService.appeals(status);
+    public ai.neargo.shop.common.PageData<ReviewService.OpsAppealVO> appeals(@RequestParam(required = false) String status,
+                                                    @RequestParam(defaultValue = "1") long page,
+                                                    @RequestParam(defaultValue = "20") long size) {
+        return ai.neargo.shop.common.PageData.ofAll(reviewService.appeals(status), page, size);
     }
 
     /**

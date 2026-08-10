@@ -223,7 +223,10 @@ public class CategoryServiceImpl implements CategoryService {
 
     private OpsCategoryVO toOpsVO(PrdCategory c, int skuCount) {
         return new OpsCategoryVO(
-                c.getCategoryNo(), c.getName(), c.getParentNo(), nz(c.getLevel()),
+                c.getCategoryNo(), c.getName(),
+                // 一级类目下发空串而不是 null：端上用 `parentNo ? ... : ...` 判顶层，
+                // null 与 undefined 在严格相等下不是一回事，曾让整棵树一个根都建不出来
+                blankToNull(c.getParentNo()), nz(c.getLevel()),
                 c.getTemplate() == null ? "STANDARD" : c.getTemplate(),
                 readList(c.getQualificationRequired()),
                 c.getRequiredCode(),

@@ -79,9 +79,16 @@ export function useTrafficSourceMap(): StatusMap<TrafficSource> {
   };
 }
 
-export function useMerchantTierLabel(): (tier: MerchantTier) => string {
+/**
+ * 商家分层的展示名。
+ *
+ * <p>分层（P-11.1.6）是**预留字段，后端目前一条都不写** —— 拿不到值时给一个短横，
+ * 而不是把 `merchantTier.null` 这样的 i18n 键原样打到表格里。
+ * 键名漏到界面上，看起来像系统坏了，实际只是这个字段还没启用。
+ */
+export function useMerchantTierLabel(): (tier?: MerchantTier | null) => string {
   const { t } = useI18n();
-  return (tier) => t(`merchantTier.${tier}`);
+  return (tier) => (tier ? t(`merchantTier.${tier}`) : "-");
 }
 
 /** 认证标（P-11.1.2）。未认证不出徽标 —— 满屏"未认证"是噪音，认证才是信息。 */

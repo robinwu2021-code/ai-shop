@@ -65,11 +65,13 @@ public class OpsMerchantAuthController {
 
     @GetMapping("/ops/merchants")
     @PreAuthorize("@perm.can('" + Perms.MERCHANT_AUDIT + "')")
-    public List<MerchantGovernService.MerchantProfileVO> merchants(
+    public ai.neargo.shop.common.PageData<MerchantGovernService.MerchantProfileVO> merchants(
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String communityNo,
-            @RequestParam(required = false) String keyword) {
-        return governService.list(status, communityNo, keyword);
+            @RequestParam(required = false) String keyword,
+            @RequestParam(defaultValue = "1") long page,
+            @RequestParam(defaultValue = "20") long size) {
+        return governService.list(status, communityNo, keyword, page, Math.min(size, 100));
     }
 
     @GetMapping("/ops/merchants/{merchantNo}")
@@ -107,9 +109,12 @@ public class OpsMerchantAuthController {
 
     @GetMapping("/ops/merchants/violations")
     @PreAuthorize("@perm.can('" + Perms.MERCHANT_AUDIT + "')")
-    public List<MerchantGovernService.ViolationVO> violations(
-            @RequestParam(required = false) String merchantNo) {
-        return governService.violations(merchantNo);
+    public ai.neargo.shop.common.PageData<MerchantGovernService.ViolationVO> violations(
+            @RequestParam(required = false) String merchantNo,
+            @RequestParam(defaultValue = "1") long page,
+            @RequestParam(defaultValue = "20") long size) {
+        // 运营端列表页按 {records,total} 渲染 —— 返回裸数组会被当成空页
+        return ai.neargo.shop.common.PageData.ofAll(governService.violations(merchantNo), page, size);
     }
 
     /**
@@ -151,9 +156,12 @@ public class OpsMerchantAuthController {
      */
     @GetMapping("/ops/stores/audits")
     @PreAuthorize("@perm.can('" + Perms.MERCHANT_AUDIT + "')")
-    public List<MerchantGovernService.StoreAuditVO> storeAudits(
-            @RequestParam(required = false) String status) {
-        return governService.storeAudits(status);
+    public ai.neargo.shop.common.PageData<MerchantGovernService.StoreAuditVO> storeAudits(
+            @RequestParam(required = false) String status,
+            @RequestParam(defaultValue = "1") long page,
+            @RequestParam(defaultValue = "20") long size) {
+        // 运营端列表页按 {records,total} 渲染 —— 返回裸数组会被当成空页
+        return ai.neargo.shop.common.PageData.ofAll(governService.storeAudits(status), page, size);
     }
 
     /** 裁决。通过 → 内容这时才生效；驳回 → 必须写原因，它原样出现在商家 B 端。 */

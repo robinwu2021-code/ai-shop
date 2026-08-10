@@ -3,7 +3,8 @@ import { client } from "../http-client";
 import type { DashboardApi } from "../contracts/dashboard";
 
 export const dashboardHttp: DashboardApi = {
-  login: (username, role, scope) => client.post("/ops/auth/login", { username, role, ...scope }),
+  // 后端只认凭据，角色由它自己从 STAFF 账号上取 —— 前端传角色等于自己给自己授权
+  login: (username, password) => client.post("/ops/auth/login", { username, password }),
   getDashboardKpi: () => client.get("/ops/dashboard/kpi"),
   getDashboardTrend: () => client.get("/ops/dashboard/trend"),
   getAcquisitionFunnel: () => client.get("/ops/dashboard/funnel"),

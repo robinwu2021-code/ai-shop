@@ -53,7 +53,7 @@ export const en: Messages = {
     lockedDesc: "“{feature}” ships in {phase}; the system is currently on {current}.",
     backHome: "Back to dashboard",
   },
-  login: {
+  login: { password: "Password",
     subtitle: "Community commerce · operations console",
     username: "Username",
     role: "Role",
@@ -137,12 +137,9 @@ export const en: Messages = {
     checkFields: "Fix the errors in the form first",
   },
   merchantStatus: {
-    DRAFT: "Draft",
-    SUBMITTED: "Pending review",
-    REVIEWING: "In review",
-    APPROVED: "Approved",
-    REJECTED: "Rejected",
+    ACTIVE: "Active",
     SUSPENDED: "Suspended",
+    FROZEN: "Frozen",
   },
   merchantTier: { PERSONAL: "Individual", INDIVIDUAL: "Sole trader", COMPANY: "Company" },
   orderStatus: {

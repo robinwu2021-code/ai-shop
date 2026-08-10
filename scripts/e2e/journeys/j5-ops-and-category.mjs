@@ -30,7 +30,8 @@ export async function run(step) {
   step("类目树有数据", `${tree.length} 个一级类目`);
 
   // ── 3. 平台端能列出类目，且带着**校验依据**而不只是展示文案 ────────
-  const rows = await opsCall("GET", "/ops/categories", { token: ops });
+  // 运营端列表端点一律是分页壳 {records,total} —— 行在 records 里
+  const rows = (await opsCall("GET", "/ops/categories", { token: ops })).records;
   const leafy = rows.find((c) => c.categoryNo === "CAT111");
   if (!leafy) {
     throw new Error("平台端类目列表里没有 CAT111");

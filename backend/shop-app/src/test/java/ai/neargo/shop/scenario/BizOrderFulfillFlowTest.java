@@ -357,7 +357,7 @@ class BizOrderFulfillFlowTest {
         String body = mvc().perform(get("/ops/orders/exceptions").header("Authorization", "Bearer " + ops))
                 .andExpect(jsonPath("$.code").value(0))
                 .andReturn().getResponse().getContentAsString();
-        for (JsonNode e : json.readTree(body).get("data")) {
+        for (JsonNode e : json.readTree(body).get("data").get("records")) {
             assertThat(e.get("order").get("status").asString())
                     .isNotIn("COMPLETED", "CANCELLED", "REFUNDED");
             // 界面要能说明「为什么它算异常」，所以阈值必须一起下发

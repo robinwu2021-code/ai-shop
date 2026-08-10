@@ -41,10 +41,13 @@ public class OpsCategoryController {
 
     @GetMapping("/ops/categories")
     @PreAuthorize("@perm.can('" + Perms.CATEGORY_MANAGE + "')")
-    public List<OpsCategoryVO> list(@RequestParam(required = false) String keyword,
-                                    @RequestParam(required = false) String template,
-                                    @RequestParam(defaultValue = "false") boolean showArchived) {
-        return categoryService.list(keyword, template, showArchived);
+    public ai.neargo.shop.common.PageData<OpsCategoryVO> list(@RequestParam(required = false) String keyword,
+                                     @RequestParam(required = false) String template,
+                                     @RequestParam(defaultValue = "false") boolean showArchived,
+                                     @RequestParam(defaultValue = "1") long page,
+                                     @RequestParam(defaultValue = "50") long size) {
+        // 运营端列表页按 {records,total} 渲染 —— 返回裸数组会被当成空页
+        return ai.neargo.shop.common.PageData.ofAll(categoryService.list(keyword, template, showArchived), page, size);
     }
 
     /** 新建或更新（{@code categoryNo} 为空即新建）。 */

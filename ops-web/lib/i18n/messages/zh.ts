@@ -44,7 +44,7 @@ export const zh = {
     lockedDesc: "「{feature}」将于 {phase} 开放，系统当前处于 {current}。",
     backHome: "返回工作台",
   },
-  login: {
+  login: { password: "密码",
     subtitle: "社区电商平台 · 运营管理后台",
     username: "用户名",
     role: "角色",
@@ -130,12 +130,9 @@ export const zh = {
   },
   // 业务枚举文案（components/status.tsx 消费）
   merchantStatus: {
-    DRAFT: "草稿",
-    SUBMITTED: "待审核",
-    REVIEWING: "审核中",
-    APPROVED: "已通过",
-    REJECTED: "已驳回",
+    ACTIVE: "正常经营",
     SUSPENDED: "已封禁",
+    FROZEN: "已冻结",
   },
   merchantTier: { PERSONAL: "个人", INDIVIDUAL: "个体户", COMPANY: "企业" },
   orderStatus: {

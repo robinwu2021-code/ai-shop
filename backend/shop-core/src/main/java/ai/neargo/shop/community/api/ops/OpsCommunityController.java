@@ -37,10 +37,13 @@ public class OpsCommunityController {
 
     @GetMapping("/ops/communities")
     @PreAuthorize("@perm.can('" + Perms.INDUSTRY_MANAGE + "')")
-    public List<CommunityAdminService.CommunityVO> communities(
+    public ai.neargo.shop.common.PageData<CommunityAdminService.CommunityVO> communities(
             @RequestParam(required = false) String keyword,
-            @RequestParam(defaultValue = "false") boolean showClosed) {
-        return adminService.communities(keyword, showClosed);
+            @RequestParam(defaultValue = "false") boolean showClosed,
+            @RequestParam(defaultValue = "1") long page,
+            @RequestParam(defaultValue = "20") long size) {
+        // 运营端列表页按 {records,total} 渲染 —— 返回裸数组会被当成空页
+        return ai.neargo.shop.common.PageData.ofAll(adminService.communities(keyword, showClosed), page, size);
     }
 
     /** 开城开关。关掉只停获客 —— **已有订单不受影响**。 */
@@ -69,11 +72,14 @@ public class OpsCommunityController {
 
     @GetMapping("/ops/pickups")
     @PreAuthorize("@perm.can('" + Perms.INDUSTRY_MANAGE + "')")
-    public List<CommunityAdminService.PickupVO> pickups(
+    public ai.neargo.shop.common.PageData<CommunityAdminService.PickupVO> pickups(
             @RequestParam(required = false) String communityNo,
             @RequestParam(required = false) String type,
-            @RequestParam(required = false) String status) {
-        return adminService.pickups(communityNo, type, status);
+            @RequestParam(required = false) String status,
+            @RequestParam(defaultValue = "1") long page,
+            @RequestParam(defaultValue = "20") long size) {
+        // 运营端列表页按 {records,total} 渲染 —— 返回裸数组会被当成空页
+        return ai.neargo.shop.common.PageData.ofAll(adminService.pickups(communityNo, type, status), page, size);
     }
 
     /** 状态。MIGRATING = 不再接新单，存量单仍在本点核销完。 */
@@ -106,9 +112,12 @@ public class OpsCommunityController {
      */
     @GetMapping("/ops/pickups/risky")
     @PreAuthorize("@perm.can('" + Perms.INDUSTRY_MANAGE + "')")
-    public List<CommunityAdminService.PickupVO> risky(
-            @RequestParam(defaultValue = "30") int minAcceptCount) {
-        return adminService.riskyNeighborPickups(minAcceptCount);
+    public ai.neargo.shop.common.PageData<CommunityAdminService.PickupVO> risky(
+            @RequestParam(defaultValue = "30") int minAcceptCount,
+            @RequestParam(defaultValue = "1") long page,
+            @RequestParam(defaultValue = "20") long size) {
+        // 运营端列表页按 {records,total} 渲染 —— 返回裸数组会被当成空页
+        return ai.neargo.shop.common.PageData.ofAll(adminService.riskyNeighborPickups(minAcceptCount), page, size);
     }
 
     public record OpenReq(Boolean opened) {

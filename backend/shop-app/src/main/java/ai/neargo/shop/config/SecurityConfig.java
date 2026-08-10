@@ -32,6 +32,47 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     /**
+     * 允许跨源的来源。<b>本地开发的三个端口 + 生产同源</b>。
+     *
+     * <p>为什么必须有它：三个前端都是独立起的（uni-app dev / next dev），
+     * 与后端天然跨源。此前后端**一条 CORS 头都没有** —— 预检因为 Spring Security
+     * 放行 OPTIONS 而返回 200，真实请求却被浏览器拦掉，前端看到的只是「网络异常」。
+     *
+     * <p>而这件事**只有真的用浏览器打才会暴露**：E2E-2 是 Node 脚本，
+     * 不受同源策略约束，一路绿灯。
+     *
+     * <p>不写 {@code *}：带 Authorization 头的请求在 {@code allowCredentials} 下
+     * 本来就不允许通配，而且通配等于把内网运营端的接口对任意站点开放。
+     */
+    private static final java.util.List<String> ALLOWED_ORIGINS = java.util.List.of(
+            "http://localhost:3100", "http://127.0.0.1:3100",   // ops-web
+            "http://localhost:5173", "http://127.0.0.1:5173",   // c-app dev
+            "http://localhost:5174", "http://127.0.0.1:5174");  // b-app dev
+
+    @Bean
+    org.springframework.web.cors.CorsConfigurationSource corsSource() {
+        var cfg = new org.springframework.web.cors.CorsConfiguration();
+        cfg.setAllowedOrigins(ALLOWED_ORIGINS);
+        cfg.setAllowedMethods(java.util.List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        /*
+         * 请求头放开为 `*`。
+         *
+         * 本来只列了业务要用的四个（Authorization / X-Store-No / Accept-Language /
+         * Idempotency-Key），但真的用浏览器打的时候被拦了 —— 拦在一个
+         * **源码里根本搜不到**的 `x-user-id` 上：那是浏览器扩展注入的。
+         * 白名单挡不住这类头，而它们对后端无害（后端只读自己认识的那几个）。
+         *
+         * 响应头没有跟着放开：允许对方**发**什么，和允许它**读**什么，是两件事。
+         */
+        cfg.setAllowedHeaders(java.util.List.of("*"));
+        cfg.setAllowCredentials(true);
+        cfg.setMaxAge(3600L);
+        var src = new org.springframework.web.cors.UrlBasedCorsConfigurationSource();
+        src.registerCorsConfiguration("/**", cfg);
+        return src;
+    }
+
+    /**
      * C 端与 B 端：登录可选（游客可逛），属主鉴权在 Service 层。
      *
      * <p>{@code @Profile("api")}（S8）：ops 部署不装这条链。但真正的隔离不靠它——
@@ -46,6 +87,7 @@ public class SecurityConfig {
                                       ObjectProvider<BizIdentityResolver> resolver) throws Exception {
         return http
                 .securityMatcher("/mp/**", "/biz/**")
+                .cors(c -> c.configurationSource(corsSource()))
                 .csrf(csrf -> csrf.disable())          // 无 cookie 会话，CSRF 不适用
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(reg -> reg
@@ -73,6 +115,7 @@ public class SecurityConfig {
     SecurityFilterChain operatorChain(HttpSecurity http, TokenStore tokenStore) throws Exception {
         return http
                 .securityMatcher("/ops/**")
+                .cors(c -> c.configurationSource(corsSource()))
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(reg -> reg
@@ -93,6 +136,7 @@ public class SecurityConfig {
                 // /uploads/** 是商品图：**游客必须能看**，否则未登录逛首页全是裂图。
                 // 图本身不是秘密（它就是要给买家看的），访问控制在"能不能传"那一侧
                 .securityMatcher("/common/**", "/callback/**", "/actuator/**", "/uploads/**")
+                .cors(c -> c.configurationSource(corsSource()))
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(reg -> reg.anyRequest().permitAll())

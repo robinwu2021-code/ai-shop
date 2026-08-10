@@ -89,7 +89,7 @@ class CategoryTreeFlowTest {
                 .andExpect(jsonPath("$.code").value(0))
                 .andReturn().getResponse().getContentAsString();
 
-        JsonNode rows = json.readTree(body).get("data");
+        JsonNode rows = json.readTree(body).get("data").get("records");
         assertThat(rows).isNotEmpty();
 
         JsonNode leafy = findFlat(rows, "CAT111");
@@ -448,7 +448,7 @@ class CategoryTreeFlowTest {
                         .param("status", "PENDING"))
                 .andExpect(jsonPath("$.code").value(0))
                 .andReturn().getResponse().getContentAsString();
-        JsonNode rows = json.readTree(body).get("data");
+        JsonNode rows = json.readTree(body).get("data").get("records");
         JsonNode mine = null;
         for (JsonNode r : rows) {
             if (merchantNo.equals(r.get("merchantNo").asString())) {
@@ -519,7 +519,7 @@ class CategoryTreeFlowTest {
         String body = mvc().perform(get("/ops/stores/audits")
                         .header("Authorization", "Bearer " + opsToken).param("status", "PENDING"))
                 .andReturn().getResponse().getContentAsString();
-        for (JsonNode r : json.readTree(body).get("data")) {
+        for (JsonNode r : json.readTree(body).get("data").get("records")) {
             if (merchantNo.equals(r.get("merchantNo").asString())) {
                 return r.get("auditNo").asString();
             }
@@ -570,7 +570,7 @@ class CategoryTreeFlowTest {
                         .param("type", "NEIGHBOR"))
                 .andExpect(jsonPath("$.code").value(0))
                 .andReturn().getResponse().getContentAsString();
-        JsonNode rows = json.readTree(body).get("data");
+        JsonNode rows = json.readTree(body).get("data").get("records");
         if (rows.isEmpty()) {
             return;   // 种子里没有邻里点时跳过，不伪造数据
         }
@@ -606,7 +606,7 @@ class CategoryTreeFlowTest {
         String body = mvc().perform(get("/ops/communities").header("Authorization", "Bearer " + ops))
                 .andExpect(jsonPath("$.code").value(0))
                 .andReturn().getResponse().getContentAsString();
-        JsonNode rows = json.readTree(body).get("data");
+        JsonNode rows = json.readTree(body).get("data").get("records");
         assertThat(rows).isNotEmpty();
         assertThat(rows.get(0).get("pickupCount").isNumber()).isTrue();
     }
@@ -624,7 +624,8 @@ class CategoryTreeFlowTest {
                         .param("showArchived", String.valueOf(showArchived))
                         .header("Authorization", "Bearer " + token))
                 .andReturn().getResponse().getContentAsString();
-        return json.readTree(body).get("data");
+        // 分页端点：真正的行在 records 里
+        return json.readTree(body).get("data").get("records");
     }
 
     /** 树里递归找 */

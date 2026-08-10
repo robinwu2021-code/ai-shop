@@ -121,9 +121,15 @@ function ProductsInner() {
    */
   const tree: TreeNode[] = useMemo(() => {
     const all = cats.data ?? [];
+    /*
+     * 顶层用「没有父」判定，而不是 `=== undefined`：
+     * 后端下发的一级类目 parentNo 是 **null**，而这里传的是 undefined ——
+     * 两者严格不等，于是一个根节点都匹配不到，页面显示「还没有类目」，
+     * 而接口明明返回了 10 条、状态码 200。
+     */
     const build = (parentNo?: string): TreeNode[] =>
       all
-        .filter((cat) => cat.parentNo === parentNo)
+        .filter((cat) => (parentNo ? cat.parentNo === parentNo : !cat.parentNo))
         .map((cat) => ({
           key: cat.categoryNo,
           label: `${cat.name}${cat.skuCount ? fill(c.catOnSale, { n: cat.skuCount }) : ""}`,

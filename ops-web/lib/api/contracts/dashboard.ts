@@ -6,7 +6,11 @@ export type { LoginResp };
 
 export interface DashboardApi {
   /** 登录换后端 token。**后端据 token 里的角色鉴权，不认客户端传的角色头。** */
-  login(username: string, role: Role, scope?: { merchantNo?: string; communityNo?: string }): Promise<LoginResp>;
+  /**
+   * 登录。**角色在返回值里，不在入参里** —— 让调用方指定自己的角色，
+   * 等于把权限交给被鉴权的一方。
+   */
+  login(username: string, password: string): Promise<LoginResp>;
   getDashboardKpi(): Promise<DashboardKpi>;
   getDashboardTrend(): Promise<TrendPoint[]>;
   getAcquisitionFunnel(): Promise<FunnelStep[]>;

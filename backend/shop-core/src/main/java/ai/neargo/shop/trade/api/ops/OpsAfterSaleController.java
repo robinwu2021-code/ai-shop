@@ -53,9 +53,12 @@ public class OpsAfterSaleController {
 
     @GetMapping("/ops/after-sales")
     @PreAuthorize("@perm.can('" + Perms.ORDER_VIEW + "')")
-    public List<AfterSaleVO> list(@RequestParam(required = false) String status,
-                                  @RequestParam(required = false) String merchantNo) {
-        return afterSaleService.opsList(status, merchantNo);
+    public ai.neargo.shop.common.PageData<AfterSaleVO> list(@RequestParam(required = false) String status,
+                                @RequestParam(required = false) String merchantNo,
+                                @RequestParam(defaultValue = "1") long page,
+                                @RequestParam(defaultValue = "20") long size) {
+        // 运营端列表页按 {records,total} 渲染 —— 返回裸数组会被当成空页
+        return ai.neargo.shop.common.PageData.ofAll(afterSaleService.opsList(status, merchantNo), page, size);
     }
 
     /**

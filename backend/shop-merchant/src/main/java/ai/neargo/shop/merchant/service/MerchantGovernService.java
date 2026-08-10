@@ -11,8 +11,14 @@ import java.util.List;
  */
 public interface MerchantGovernService {
 
-    /** 平台侧商家列表。跨商家，按社区/状态/关键词筛。 */
-    List<MerchantProfileVO> list(String status, String communityNo, String keyword);
+    /**
+     * 平台侧商家列表。跨商家，按社区/状态/关键词筛。
+     *
+     * <p><b>返回分页对象而不是裸数组</b>：运营端所有列表页都按 {@code {records,total}} 渲染，
+     * 给一个数组的话页面会当成「空页」—— 接口 200、数据 38 条、页面显示「暂无数据」。
+     */
+    ai.neargo.shop.common.PageData<MerchantProfileVO> list(String status, String communityNo,
+                                                           String keyword, long page, long size);
 
     MerchantProfileVO detail(String merchantNo);
 

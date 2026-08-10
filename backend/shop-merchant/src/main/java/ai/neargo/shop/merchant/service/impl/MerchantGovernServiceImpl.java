@@ -72,7 +72,8 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
     }
 
     @Override
-    public List<MerchantProfileVO> list(String status, String communityNo, String keyword) {
+    public ai.neargo.shop.common.PageData<MerchantProfileVO> list(String status, String communityNo,
+                                                                  String keyword, long page, long size) {
         var w = Wrappers.<MchEntity>lambdaQuery();
         if (status != null && !status.isBlank()) {
             w.eq(MchEntity::getStatus, status);
@@ -83,13 +84,18 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
         w.orderByDesc(MchEntity::getId);
 
         List<MchEntity> rows = DataScopeContext.executeWithoutScope(() -> merchantMapper.selectList(w));
-        return rows.stream()
+        List<MerchantProfileVO> all = rows.stream()
                 .map(this::toVO)
                 // 社区筛在内存里做：一家店服务多个社区，SQL 侧要 join 一张多对多表，
                 // 而商家总数是几百这个量级 —— 为此写一条 join 不划算
                 .filter(v -> communityNo == null || communityNo.isBlank()
                         || v.communityNos().contains(communityNo))
                 .toList();
+        // 社区筛在内存里做，分页也只能跟着在内存里切 —— 否则页码会跳
+        long from = Math.max(0, (page - 1) * size);
+        List<MerchantProfileVO> pageRows = from >= all.size() ? List.of()
+                : all.subList((int) from, (int) Math.min(all.size(), from + size));
+        return ai.neargo.shop.common.PageData.of(pageRows, all.size(), page, size);
     }
 
     @Override

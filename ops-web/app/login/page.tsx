@@ -24,13 +24,20 @@ const DEMO_SCOPE: Partial<Record<Role, { merchantNo?: string; communityNo?: stri
   COMMUNITY_OPS: { communityNo: "C001" },
 };
 
-// MVP 登录（mock）：选角色 + 用户名即可进入。接后端后换真实凭据（STAFF 池 Bearer + RBAC）。
+/*
+ * 登录：用户名 + 密码，**角色由后端返回**。
+ *
+ * 这里此前是「选角色即进入」的 mock 登录 —— 在 mock 上没问题，但一旦指向真实后端
+ * 就是两件错事：一是后端要的是 {username, password}，收到 {username, role} 直接拒；
+ * 二是**让用户自己挑角色**，那是把权限交给被鉴权的一方。
+ * 真实后端只认凭据，角色来自 STAFF 账号自身。
+ */
 export default function LoginPage() {
   const router = useRouter();
   const login = useAuth((s) => s.login);
   const { t } = useI18n();
   const [username, setUsername] = useState("admin");
-  const [role, setRole] = useState<Role>("SUPER_ADMIN");
+  const [password, setPassword] = useState("");
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -39,8 +46,8 @@ export default function LoginPage() {
     setBusy(true);
     setErr("");
     try {
-      // 换后端 token（mock 模式返回 mock token）；**后端据 token 里的角色鉴权**
-      const r = await api.login(username, role, DEMO_SCOPE[role]);
+      // 后端据 token 里的角色鉴权；前端只负责把凭据递过去
+      const r = await api.login(username, password);
       login({
         username: r.username,
         role: r.role,
@@ -73,10 +80,13 @@ export default function LoginPage() {
               <Input value={username} onChange={(e) => setUsername(e.target.value)} placeholder={t("login.username")} />
             </div>
             <div className="space-y-1">
-              <label className="text-sm text-muted-foreground">{t("login.role")}</label>
-              <Select className="w-full" value={role} onChange={(e) => setRole(e.target.value as Role)}>
-                {ROLES.map((r) => <option key={r} value={r}>{t(`role.${r}`)}</option>)}
-              </Select>
+              <label className="text-sm text-muted-foreground">{t("login.password")}</label>
+              <Input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder={t("login.password")}
+              />
             </div>
             {err && <div className="rounded-field bg-destructive/10 px-3.5 py-2 text-sm text-destructive">{err}</div>}
             <Button className="w-full" type="submit" disabled={busy}>
