@@ -300,6 +300,115 @@ class CategoryTreeFlowTest {
         assertThat(hasFreshVeg).isTrue();
     }
 
+    // ---------------------------------------------------------------- 商家治理（P-11.1）
+
+    @Test
+    @DisplayName("★ 违规处置的两个副作用是处置的一部分：BREACH 累加毁约、SUSPEND 真的封店")
+    void violationHasRealConsequences() throws Exception {
+        String token = merchant("12600151001", "治理测试·违规");
+        String merchantNo = merchantNoOf(token);
+        String bd = opsLogin("bd", "bd123");
+
+        mvc().perform(post("/ops/merchants/" + merchantNo + "/violations")
+                        .header("Authorization", "Bearer " + bd)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"type\":\"BREACH\",\"action\":\"SUSPEND\","
+                                + "\"detail\":\"成团后跑单，订单 SO123，聊天记录已存档\"}"))
+                .andExpect(jsonPath("$.code").value(0));
+
+        String body = mvc().perform(get("/ops/merchants/" + merchantNo)
+                        .header("Authorization", "Bearer " + bd))
+                .andReturn().getResponse().getContentAsString();
+        JsonNode m = json.readTree(body).get("data");
+        // 只记录不执行的处置等于没处置 —— 商家那边什么都不会发生
+        assertThat(m.get("breachCount").asInt()).isEqualTo(1);
+        assertThat(m.get("status").asString()).isEqualTo("SUSPENDED");
+    }
+
+    @Test
+    @DisplayName("★ 处置必须写事实 —— 没有事实的处置在申诉时站不住")
+    void violationNeedsFacts() throws Exception {
+        String token = merchant("12600151002", "治理测试·无事实");
+        String merchantNo = merchantNoOf(token);
+        String bd = opsLogin("bd", "bd123");
+
+        mvc().perform(post("/ops/merchants/" + merchantNo + "/violations")
+                        .header("Authorization", "Bearer " + bd)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"type\":\"SERVICE\",\"action\":\"WARN\",\"detail\":\"  \"}"))
+                .andExpect(jsonPath("$.code").value(10400));
+    }
+
+    @Test
+    @DisplayName("★ 认证标不给停业中的商家 —— 平台背书挂在封禁的店上，赔的是平台信用")
+    void verifiedBadgeNeedsGoodStanding() throws Exception {
+        String token = merchant("12600151003", "治理测试·认证标");
+        String merchantNo = merchantNoOf(token);
+        String bd = opsLogin("bd", "bd123");
+
+        // 正常经营时可以授标
+        mvc().perform(post("/ops/merchants/" + merchantNo + "/verified")
+                        .header("Authorization", "Bearer " + bd)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"verified\":true}"))
+                .andExpect(jsonPath("$.data.verified").value(true));
+
+        mvc().perform(post("/ops/merchants/" + merchantNo + "/status")
+                        .header("Authorization", "Bearer " + bd)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"SUSPENDED\",\"remark\":\"售假处罚\"}"))
+                .andExpect(jsonPath("$.code").value(0));
+
+        mvc().perform(post("/ops/merchants/" + merchantNo + "/verified")
+                        .header("Authorization", "Bearer " + bd)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"verified\":true}"))
+                .andExpect(jsonPath("$.code").value(10409));
+    }
+
+    @Test
+    @DisplayName("★ 封禁必须写说明 —— 不写的话商家只看到「店没了」")
+    void suspendNeedsRemark() throws Exception {
+        String token = merchant("12600151004", "治理测试·封禁说明");
+        String merchantNo = merchantNoOf(token);
+        String bd = opsLogin("bd", "bd123");
+
+        mvc().perform(post("/ops/merchants/" + merchantNo + "/status")
+                        .header("Authorization", "Bearer " + bd)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"SUSPENDED\",\"remark\":\"\"}"))
+                .andExpect(jsonPath("$.code").value(10400));
+    }
+
+    @Test
+    @DisplayName("经营状态机：封禁中不能直接冻结（两者是不同性质的处置）")
+    void operatingStateMachine() throws Exception {
+        String token = merchant("12600151005", "治理测试·状态机");
+        String merchantNo = merchantNoOf(token);
+        String bd = opsLogin("bd", "bd123");
+
+        mvc().perform(post("/ops/merchants/" + merchantNo + "/status")
+                .header("Authorization", "Bearer " + bd)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"status\":\"SUSPENDED\",\"remark\":\"售假\"}"));
+        mvc().perform(post("/ops/merchants/" + merchantNo + "/status")
+                        .header("Authorization", "Bearer " + bd)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"FROZEN\",\"remark\":\"再冻一下\"}"))
+                .andExpect(jsonPath("$.code").value(20004));
+    }
+
+    @Test
+    @DisplayName("商家档案下发的是脱敏手机号 —— 完整号码属于越权边界")
+    void profilePhoneIsMasked() throws Exception {
+        String token = merchant("12600151006", "治理测试·脱敏");
+        String merchantNo = merchantNoOf(token);
+        String bd = opsLogin("bd", "bd123");
+
+        String body = mvc().perform(get("/ops/merchants/" + merchantNo)
+                        .header("Authorization", "Bearer " + bd))
+                .andReturn().getResponse().getContentAsString();
+        assertThat(body).doesNotContain("13900000000").contains("139****0000");
+    }
+
     // ---------------------------------------------------------------- helpers
 
     private JsonNode tree() throws Exception {

@@ -48,4 +48,8 @@ public final class MerchantMappers {
     /** 类目授权码主数据。 */
     public interface SysAuthCodeMapper extends BaseMapper<ai.neargo.shop.merchant.entity.SysAuthCode> {
     }
+
+    /** 违规与处置记录。 */
+    public interface ViolationMapper extends BaseMapper<ai.neargo.shop.merchant.entity.MchViolation> {
+    }
 }

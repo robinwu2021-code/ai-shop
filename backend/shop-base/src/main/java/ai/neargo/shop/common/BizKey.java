@@ -48,6 +48,8 @@ public final class BizKey {
      * 编号与 ops-web 的 mock 对齐，联调时不用在两套编号之间换算。
      */
     public static final String CATEGORY = "CAT";
+    /** 违规处置记录 */
+    public static final String VIOLATION = "VL";
 
     /** 收款商户号业务键。**不是二级商户号本身** —— 那个由通道给，存在 sub_mchid */
     public static final String PAY_MERCHANT = "PM";
