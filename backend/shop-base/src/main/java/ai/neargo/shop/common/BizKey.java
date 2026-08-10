@@ -50,6 +50,8 @@ public final class BizKey {
     public static final String CATEGORY = "CAT";
     /** 违规处置记录 */
     public static final String VIOLATION = "VL";
+    /** 店招/公告人审单 */
+    public static final String STORE_AUDIT = "SA";
 
     /** 收款商户号业务键。**不是二级商户号本身** —— 那个由通道给，存在 sub_mchid */
     public static final String PAY_MERCHANT = "PM";

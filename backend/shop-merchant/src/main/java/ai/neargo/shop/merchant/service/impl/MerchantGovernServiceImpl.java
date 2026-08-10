@@ -49,12 +49,17 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
     private final ViolationMapper violationMapper;
     private final MerchantApplyQueryPort applyPort;
     private final ObjectMapper json;
+    private final ai.neargo.shop.merchant.mapper.MerchantMappers.StoreAuditMapper storeAuditMapper;
+    /** 通过审核时要把内容写回门面表 */
+    private final ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper storeProfileMapper;
 
     public MerchantGovernServiceImpl(MchEntityMapper merchantMapper,
                                      MchEntityCommunityMapper communityMapper,
                                      MchPaymentMapper paymentMapper,
                                      ViolationMapper violationMapper,
                                      MerchantApplyQueryPort applyPort,
+                                     ai.neargo.shop.merchant.mapper.MerchantMappers.StoreAuditMapper storeAuditMapper,
+                                     ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper storeProfileMapper,
                                      ObjectMapper json) {
         this.merchantMapper = merchantMapper;
         this.communityMapper = communityMapper;
@@ -62,6 +67,8 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
         this.violationMapper = violationMapper;
         this.applyPort = applyPort;
         this.json = json;
+        this.storeAuditMapper = storeAuditMapper;
+        this.storeProfileMapper = storeProfileMapper;
     }
 
     @Override
@@ -237,5 +244,69 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
 
     private static int nz(Integer v) {
         return v == null ? 0 : v;
+    }
+
+    // ---------------------------------------------------------------- 门面内容审核（P-10.1）
+
+    @Override
+    public List<StoreAuditVO> storeAudits(String status) {
+        var w = Wrappers.<ai.neargo.shop.merchant.entity.MchStoreAudit>lambdaQuery();
+        if (status != null && !status.isBlank()) {
+            w.eq(ai.neargo.shop.merchant.entity.MchStoreAudit::getStatus, status);
+        }
+        w.orderByDesc(ai.neargo.shop.merchant.entity.MchStoreAudit::getId);
+        return DataScopeContext.executeWithoutScope(() -> storeAuditMapper.selectList(w))
+                .stream().map(this::toAuditVO).toList();
+    }
+
+    @Override
+    @Transactional
+    public StoreAuditVO decideStoreAudit(String auditNo, boolean pass, String reason, String operatorNo) {
+        if (!pass && (reason == null || reason.isBlank())) {
+            // 驳回原因原样出现在商家 B 端 —— 不写的话商家不知道该改什么，只会原样再提一次
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        var a = DataScopeContext.executeWithoutScope(() ->
+                storeAuditMapper.selectOne(Wrappers.<ai.neargo.shop.merchant.entity.MchStoreAudit>lambdaQuery()
+                        .eq(ai.neargo.shop.merchant.entity.MchStoreAudit::getAuditNo, auditNo)
+                        .last("limit 1")));
+        if (a == null) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        // 裁完就是终态：再裁一次意味着同一条公告有两个结论
+        if (!ai.neargo.shop.merchant.entity.MchStoreAudit.PENDING.equals(a.getStatus())) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+
+        a.setStatus(pass ? ai.neargo.shop.merchant.entity.MchStoreAudit.PASSED
+                : ai.neargo.shop.merchant.entity.MchStoreAudit.REJECTED);
+        a.setReason(pass ? null : reason.trim());
+        a.setDecidedAt(System.currentTimeMillis());
+        a.setDecidedBy(operatorNo);
+        DataScopeContext.executeWithoutScope(() -> storeAuditMapper.updateById(a));
+
+        if (pass && ai.neargo.shop.merchant.entity.MchStoreAudit.NOTICE.equals(a.getKind())) {
+            /*
+             * 通过之后内容**这时才真正生效**。
+             * 提交时不写门面表是有意的：命中期间店铺页保留旧公告 ——
+             * 清空的话页面会突然变白，店主以为自己改坏了，只会反复再改一遍。
+             */
+            var store = storeProfileMapper.selectOne(
+                    Wrappers.<ai.neargo.shop.merchant.entity.MchStore>lambdaQuery()
+                            .eq(ai.neargo.shop.merchant.entity.MchStore::getEntityNo, a.getEntityNo())
+                            .last("limit 1"));
+            if (store != null) {
+                store.setAnnouncement(a.getContent());
+                var toSave = store;
+                DataScopeContext.executeWithoutScope(() -> storeProfileMapper.updateById(toSave));
+            }
+        }
+        return toAuditVO(a);
+    }
+
+    private StoreAuditVO toAuditVO(ai.neargo.shop.merchant.entity.MchStoreAudit a) {
+        return new StoreAuditVO(a.getAuditNo(), a.getEntityNo(), nameOf(a.getEntityNo()),
+                a.getKind(), a.getContent(), a.getStatus(), readList(a.getHits()),
+                a.getSubmittedAt() == null ? 0L : a.getSubmittedAt(), a.getReason());
     }
 }

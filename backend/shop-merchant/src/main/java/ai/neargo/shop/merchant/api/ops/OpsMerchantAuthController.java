@@ -140,4 +140,35 @@ public class OpsMerchantAuthController {
      */
     public record ViolationReq(String type, String action, String detail) {
     }
+
+    // ---------------------------------------------------------------- 门面内容审核（P-10.1）
+
+    /**
+     * 待人审的店招 / 公告。
+     *
+     * <p>队列里只有**机审命中**的内容 —— 没命中的直接生效了，不进这里。
+     * 全部先审后发的话，「今日到货」这类时效内容要等几小时，等于功能没用。
+     */
+    @GetMapping("/ops/stores/audits")
+    @PreAuthorize("@perm.can('" + Perms.MERCHANT_AUDIT + "')")
+    public List<MerchantGovernService.StoreAuditVO> storeAudits(
+            @RequestParam(required = false) String status) {
+        return governService.storeAudits(status);
+    }
+
+    /** 裁决。通过 → 内容这时才生效；驳回 → 必须写原因，它原样出现在商家 B 端。 */
+    @PostMapping("/ops/stores/audits/{auditNo}/decide")
+    @PreAuthorize("@perm.can('" + Perms.MERCHANT_AUDIT + "')")
+    public MerchantGovernService.StoreAuditVO decideStoreAudit(@PathVariable String auditNo,
+                                                               @RequestBody StoreAuditDecideReq req) {
+        boolean pass = Boolean.TRUE.equals(req.pass());
+        var vo = governService.decideStoreAudit(auditNo, pass, req.reason(),
+                SecurityUtils.currentUserNo());
+        auditLogPort.record("STORE_CONTENT_DECIDE", auditNo,
+                (pass ? "通过" : "驳回：" + req.reason()));
+        return vo;
+    }
+
+    public record StoreAuditDecideReq(Boolean pass, String reason) {
+    }
 }

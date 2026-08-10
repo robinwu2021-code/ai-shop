@@ -409,6 +409,124 @@ class CategoryTreeFlowTest {
         assertThat(body).doesNotContain("13900000000").contains("139****0000");
     }
 
+    // ---------------------------------------------------------------- 门面内容审核（P-10.1）
+
+    @Test
+    @DisplayName("★ 干净的公告立刻生效 —— 不进审核队列（时效内容等不起人审）")
+    void cleanNoticeTakesEffectImmediately() throws Exception {
+        String token = merchant("12600161001", "门面测试·干净公告");
+
+        mvc().perform(post("/biz/store").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"announcement\":\"今日到货：本地小番茄\",\"openHours\":\"08:00-20:00\","
+                                + "\"address\":\"文一西路 1 号\",\"featured\":[],"
+                                + "\"serviceScope\":\"COMMUNITY\",\"serviceCommunityNos\":[\"CM001\"]}"))
+                .andExpect(jsonPath("$.code").value(0));
+
+        mvc().perform(get("/biz/store").header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.data.announcement").value("今日到货：本地小番茄"));
+    }
+
+    @Test
+    @DisplayName("★ 命中敏感词转人审：内容不生效，但**保留旧公告**（清空会让店主以为改坏了）")
+    void flaggedNoticeGoesToReviewAndKeepsOldText() throws Exception {
+        String token = merchant("12600161002", "门面测试·命中");
+        String merchantNo = merchantNoOf(token);
+
+        // 先存一条干净的
+        saveNotice(token, "今日到货：土鸡蛋");
+        // 再存一条命中的
+        saveNotice(token, "全网第一低价，最低价保证");
+
+        // 店铺页仍是旧公告 —— 不是空白
+        mvc().perform(get("/biz/store").header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.data.announcement").value("今日到货：土鸡蛋"));
+
+        String bd = opsLogin("bd", "bd123");
+        String body = mvc().perform(get("/ops/stores/audits")
+                        .header("Authorization", "Bearer " + bd)
+                        .param("status", "PENDING"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        JsonNode rows = json.readTree(body).get("data");
+        JsonNode mine = null;
+        for (JsonNode r : rows) {
+            if (merchantNo.equals(r.get("merchantNo").asString())) {
+                mine = r;
+            }
+        }
+        assertThat(mine).as("命中的公告必须进人审队列").isNotNull();
+        // 人审要看到「机器为什么标它」，否则只能凭感觉判
+        assertThat(mine.get("hits").toString()).contains("最低价");
+    }
+
+    @Test
+    @DisplayName("★ 审核通过之后，内容这时才真正生效")
+    void passedNoticeTakesEffect() throws Exception {
+        String token = merchant("12600161003", "门面测试·通过");
+        String merchantNo = merchantNoOf(token);
+        saveNotice(token, "老板说这是最低价");
+
+        String bd = opsLogin("bd", "bd123");
+        String auditNo = pendingAuditOf(bd, merchantNo);
+        mvc().perform(post("/ops/stores/audits/" + auditNo + "/decide")
+                        .header("Authorization", "Bearer " + bd)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"pass\":true}"))
+                .andExpect(jsonPath("$.code").value(0));
+
+        mvc().perform(get("/biz/store").header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.data.announcement").value("老板说这是最低价"));
+    }
+
+    @Test
+    @DisplayName("★ 驳回必须写原因 —— 它原样出现在商家 B 端，不写商家不知道改什么")
+    void rejectNeedsReason() throws Exception {
+        String token = merchant("12600161004", "门面测试·驳回");
+        String merchantNo = merchantNoOf(token);
+        saveNotice(token, "全网第一");
+
+        String bd = opsLogin("bd", "bd123");
+        String auditNo = pendingAuditOf(bd, merchantNo);
+        mvc().perform(post("/ops/stores/audits/" + auditNo + "/decide")
+                        .header("Authorization", "Bearer " + bd)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"pass\":false,\"reason\":\"  \"}"))
+                .andExpect(jsonPath("$.code").value(10400));
+
+        // 裁完是终态，不能再裁一次（同一条公告不该有两个结论）
+        mvc().perform(post("/ops/stores/audits/" + auditNo + "/decide")
+                        .header("Authorization", "Bearer " + bd)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"pass\":false,\"reason\":\"违反广告法极限词\"}"))
+                .andExpect(jsonPath("$.code").value(0));
+        mvc().perform(post("/ops/stores/audits/" + auditNo + "/decide")
+                        .header("Authorization", "Bearer " + bd)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"pass\":true}"))
+                .andExpect(jsonPath("$.code").value(10409));
+    }
+
+    private void saveNotice(String token, String text) throws Exception {
+        mvc().perform(post("/biz/store").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"announcement\":\"" + text + "\",\"openHours\":\"08:00-20:00\","
+                                + "\"address\":\"文一西路 1 号\",\"featured\":[],"
+                                + "\"serviceScope\":\"COMMUNITY\",\"serviceCommunityNos\":[\"CM001\"]}"))
+                .andExpect(jsonPath("$.code").value(0));
+    }
+
+    private String pendingAuditOf(String opsToken, String merchantNo) throws Exception {
+        String body = mvc().perform(get("/ops/stores/audits")
+                        .header("Authorization", "Bearer " + opsToken).param("status", "PENDING"))
+                .andReturn().getResponse().getContentAsString();
+        for (JsonNode r : json.readTree(body).get("data")) {
+            if (merchantNo.equals(r.get("merchantNo").asString())) {
+                return r.get("auditNo").asString();
+            }
+        }
+        throw new AssertionError("没有找到 " + merchantNo + " 的待审公告");
+    }
+
     // ---------------------------------------------------------------- helpers
 
     private JsonNode tree() throws Exception {

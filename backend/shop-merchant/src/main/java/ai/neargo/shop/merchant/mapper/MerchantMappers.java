@@ -52,4 +52,8 @@ public final class MerchantMappers {
     /** 违规与处置记录。 */
     public interface ViolationMapper extends BaseMapper<ai.neargo.shop.merchant.entity.MchViolation> {
     }
+
+    /** 店招与公告的人审队列。 */
+    public interface StoreAuditMapper extends BaseMapper<ai.neargo.shop.merchant.entity.MchStoreAudit> {
+    }
 }

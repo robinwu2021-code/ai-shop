@@ -2,11 +2,13 @@ package ai.neargo.shop.merchant.service.impl;
 
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.merchant.dto.StoreProfileVO;
 import ai.neargo.shop.merchant.entity.MchEntity;
 import ai.neargo.shop.merchant.entity.MchEntityCommunity;
 import ai.neargo.shop.merchant.entity.MchStore;
+import ai.neargo.shop.merchant.entity.MchStoreAudit;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityCommunityMapper;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper;
@@ -31,14 +33,21 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
     private final MchEntityMapper merchantMapper;
     private final MchEntityCommunityMapper merchantCommunityMapper;
     private final ObjectMapper json;
+    private final ai.neargo.shop.merchant.mapper.MerchantMappers.StoreAuditMapper storeAuditMapper;
+    /** 敏感词表从平台参数取 —— 运营加词不该等发版 */
+    private final ai.neargo.shop.spi.platform.SettingPort settingPort;
 
     public MerchantStoreServiceImpl(MchStoreMapper storeMapper, MchEntityMapper merchantMapper,
                                     MchEntityCommunityMapper merchantCommunityMapper,
-                                    ObjectMapper json) {
+                                    ObjectMapper json,
+                                    ai.neargo.shop.merchant.mapper.MerchantMappers.StoreAuditMapper storeAuditMapper,
+                                    ai.neargo.shop.spi.platform.SettingPort settingPort) {
         this.storeMapper = storeMapper;
         this.merchantMapper = merchantMapper;
         this.merchantCommunityMapper = merchantCommunityMapper;
         this.json = json;
+        this.storeAuditMapper = storeAuditMapper;
+        this.settingPort = settingPort;
     }
 
     @Override
@@ -75,7 +84,21 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
             store = new MchStore();
             store.setEntityNo(merchantNo);
         }
-        store.setAnnouncement(cmd.announcement());
+        /*
+         * 公告过机审。**命中不是拒绝，是转人审** —— 词表总会误伤
+         * （「最低价」可能出现在「不是最低价也保证新鲜」里），人审是纠偏的那一层。
+         *
+         * 没命中就直接生效：公告是店主自发的时效内容（「今日到货」），
+         * 全部先审后发要等几小时，那等于这个功能没用。
+         */
+        List<String> hits = screen(cmd.announcement());
+        if (!hits.isEmpty()) {
+            submitForAudit(merchantNo, MchStoreAudit.NOTICE, cmd.announcement(), hits);
+            // 命中期间**保留旧公告**：把它清空的话，店铺页会突然变白，
+            // 而店主以为自己"改坏了"，只会反复再改一遍
+        } else {
+            store.setAnnouncement(cmd.announcement());
+        }
         store.setOpenHours(cmd.openHours());
         store.setAddress(cmd.address());
         store.setFeatured(writeJson(cmd.featured()));
@@ -225,5 +248,44 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
 
     private static String nz(String s) {
         return s == null ? "" : s;
+    }
+
+    // ---------------------------------------------------------------- 门面内容机审
+
+    /** 敏感词表键。放在 sys_setting 里 —— 运营加词不该等发版。 */
+    private static final String WORDS_KEY = "store.sensitive-words";
+    private static final String WORDS_DEFAULT = "[]";
+
+    /** @return 命中的词；空表示放行 */
+    private List<String> screen(String text) {
+        if (text == null || text.isBlank()) {
+            return List.of();
+        }
+        List<String> words;
+        try {
+            words = json.readValue(settingPort.get(WORDS_KEY, WORDS_DEFAULT),
+                    new tools.jackson.core.type.TypeReference<List<String>>() {
+                    });
+        } catch (RuntimeException e) {
+            /*
+             * 词表坏了就**放行**，不是拦下。
+             * 拦下的话一行坏 JSON 会让全平台的公告都发不出去，而症状是「保存没反应」；
+             * 放行的最坏情况是漏审几条，那由人审与举报兜底。
+             */
+            return List.of();
+        }
+        return words.stream().filter(w -> w != null && !w.isBlank() && text.contains(w)).toList();
+    }
+
+    private void submitForAudit(String merchantNo, String kind, String content, List<String> hits) {
+        MchStoreAudit a = new MchStoreAudit();
+        a.setAuditNo(BizKey.next(BizKey.STORE_AUDIT));
+        a.setEntityNo(merchantNo);
+        a.setKind(kind);
+        a.setContent(content);
+        a.setStatus(MchStoreAudit.PENDING);
+        a.setHits(json.writeValueAsString(hits));
+        a.setSubmittedAt(System.currentTimeMillis());
+        DataScopeContext.executeWithoutScope(() -> storeAuditMapper.insert(a));
     }
 }

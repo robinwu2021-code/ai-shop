@@ -59,4 +59,30 @@ public interface MerchantGovernService {
     record ViolationVO(String violationNo, String merchantNo, String merchantName, String type,
                        String action, String detail, String operator, long at) {
     }
+
+    // ---------------------------------------------------------------- 门面内容审核（P-10.1）
+
+    /**
+     * 待人审的店招 / 公告。
+     *
+     * <p>队列里只有**机审命中**的内容 —— 没命中的直接生效了，不进这里。
+     */
+    List<StoreAuditVO> storeAudits(String status);
+
+    /**
+     * 裁决。
+     *
+     * <p>通过 → 内容**这时才真正生效**（写进门面表）；
+     * 驳回 → 必须写原因，它原样出现在商家 B 端，商家据此改。
+     */
+    StoreAuditVO decideStoreAudit(String auditNo, boolean pass, String reason, String operatorNo);
+
+    /**
+     * @param hits 机审命中的词。人审要看到「机器为什么标它」——
+     *             否则只能凭感觉判，同一类内容两个人两个结论
+     */
+    record StoreAuditVO(String auditNo, String merchantNo, String merchantName, String kind,
+                        String content, String status, List<String> hits, long submittedAt,
+                        String reason) {
+    }
 }

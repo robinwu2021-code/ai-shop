@@ -47,6 +47,7 @@ public class DevSeeder {
                                  SkuMapper skuMapper, CommunityPoolMapper poolMapper,
                                  CategoryMapper categoryMapper, StaffMapper staffMapper,
                                  ai.neargo.shop.merchant.mapper.MerchantMappers.SysAuthCodeMapper authCodeMapper,
+                                 ai.neargo.shop.platform.mapper.PlatformMappers.SettingMapper settingMapper,
                                  // 平台员工是 staffMapper，商家子账号是 merchantStaffMapper —— 两套人，别混
                                  ai.neargo.shop.merchant.mapper.MerchantMappers.MchAccountMapper merchantStaffMapper,
                                  ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper storeMapper) {
@@ -100,6 +101,17 @@ public class DevSeeder {
             seedAuthCode(authCodeMapper, "FOOD", "熟食加工", "食品经营许可证", 40);
             seedAuthCode(authCodeMapper, "DAILY", "日用百货", null, 50);
             seedAuthCode(authCodeMapper, "SERVICE_REPAIR", "维修服务", "家电维修资质", 60);
+
+            /*
+             * 平台可调参数。真库由各自的迁移灌，这里只服务于**不跑 Flyway 的 H2 测试**。
+             * 少了它，机审词表为空 = 全放行，而「命中转人审」那组用例会绿着通过 ——
+             * 测试绿而功能没生效，是最坏的一种绿。
+             */
+            seedSetting(settingMapper, "store.sensitive-words",
+                    "[\"最低价\",\"全网第一\",\"国家级\",\"绝对\",\"包治\",\"微信\",\"加V\",\"私聊\"]");
+            seedSetting(settingMapper, "review.score-config",
+                    "{\"weightProduct\":50,\"weightFulfill\":30,\"weightService\":20,"
+                            + "\"newMerchantProtectDays\":30,\"decayHalfLifeDays\":180}");
 
             communityMapper.insert(community("C0001", "阳光花园", "杭州市西湖区文一西路 100 号", 30280000, 120100000));
             communityMapper.insert(community("C0002", "翡翠城", "杭州市西湖区文二西路 200 号", 30285000, 120105000));
@@ -159,6 +171,19 @@ public class DevSeeder {
                 .<SysOpsStaff>lambdaQuery().eq(SysOpsStaff::getUsername, username)) == 0) {
             mapper.insert(s);
         }
+    }
+
+    private void seedSetting(ai.neargo.shop.platform.mapper.PlatformMappers.SettingMapper mapper,
+                             String key, String value) {
+        if (mapper.selectCount(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                .<ai.neargo.shop.platform.entity.SysSetting>lambdaQuery()
+                .eq(ai.neargo.shop.platform.entity.SysSetting::getSettingKey, key)) > 0) {
+            return;
+        }
+        var row = new ai.neargo.shop.platform.entity.SysSetting();
+        row.setSettingKey(key);
+        row.setSettingValue(value);
+        mapper.insert(row);
     }
 
     private void seedAuthCode(ai.neargo.shop.merchant.mapper.MerchantMappers.SysAuthCodeMapper mapper,
