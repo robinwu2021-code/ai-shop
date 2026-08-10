@@ -1,11 +1,13 @@
 package ai.neargo.shop.marketing.port;
 
 import ai.neargo.common.data.scope.DataScopeContext;
+import ai.neargo.shop.marketing.campaign.CampaignJson;
 import ai.neargo.shop.marketing.campaign.entity.MktCampaign;
 import ai.neargo.shop.marketing.campaign.mapper.CampaignMappers.CampaignMapper;
 import ai.neargo.shop.spi.marketing.CampaignPort;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.stereotype.Component;
+import tools.jackson.databind.ObjectMapper;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -28,9 +30,11 @@ import java.util.List;
 public class CampaignPortImpl implements CampaignPort {
 
     private final CampaignMapper campaignMapper;
+    private final ObjectMapper json;
 
-    public CampaignPortImpl(CampaignMapper campaignMapper) {
+    public CampaignPortImpl(CampaignMapper campaignMapper, ObjectMapper json) {
         this.campaignMapper = campaignMapper;
+        this.json = json;
     }
 
     @Override
@@ -49,6 +53,36 @@ public class CampaignPortImpl implements CampaignPort {
             }
         }
         return shares.isEmpty() ? Discount.none() : new Discount(total, shares);
+    }
+
+    @Override
+    public java.util.Map<String, Long> flashPrices(java.util.Collection<String> goodsNos) {
+        if (goodsNos == null || goodsNos.isEmpty()) {
+            return java.util.Map.of();
+        }
+        long now = System.currentTimeMillis();
+        List<MktCampaign> running = DataScopeContext.executeWithoutScope(() ->
+                campaignMapper.selectList(Wrappers.<MktCampaign>lambdaQuery()
+                        .eq(MktCampaign::getType, MktCampaign.FLASH)
+                        .eq(MktCampaign::getStatus, MktCampaign.RUNNING)
+                        .le(MktCampaign::getStartAt, now)
+                        .ge(MktCampaign::getEndAt, now)));
+        java.util.Map<String, Long> out = new java.util.HashMap<>();
+        for (MktCampaign c : running) {
+            Long price = c.getFlashPriceMinor();
+            if (price == null || price <= 0) {
+                continue;
+            }
+            for (String goodsNo : CampaignJson.readStringList(json, c.getGoodsNos())) {
+                if (!goodsNos.contains(goodsNo)) {
+                    continue;
+                }
+                // 同一商品命中多个特价活动时取**最低价**：对用户有利的一侧，
+                // 且与满减「取最优」同一口径，商家不会因为多建一个活动而卖得更贵
+                out.merge(goodsNo, price, Math::min);
+            }
+        }
+        return out;
     }
 
     /**

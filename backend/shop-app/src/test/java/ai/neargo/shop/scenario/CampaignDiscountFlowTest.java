@@ -159,6 +159,64 @@ class CampaignDiscountFlowTest {
         assertThat(discountPlatformOf(payOrderNo)).isZero();
     }
 
+    // ---------------------------------------------------------------- 限时特价
+
+    @Test
+    @DisplayName("★ 限时特价：商品页与下单价一起变，不是只改一处")
+    void flashPriceAppliesToBothDisplayAndOrder() throws Exception {
+        String token = login("13000160001");
+        flash("M0001", 3000L, "G0001"); // 原价 4980 → 特价 3000
+        addToCart(token, "G0001", "SK0001", 2);
+
+        // ① 下单价（钱那条路）
+        assertThat(preview(token, null).get("amount").get("goodsMinor").asLong()).isEqualTo(6000L);
+
+        // ② 商品详情页（展示那条路）—— 只改一处的话，用户会看到「页面 49.80、结账 30.00」
+        JsonNode g = goodsDetail(token, "G0001");
+        assertThat(g.get("price").asLong()).isEqualTo(3000L);
+        // 原价挪到划线价：只降价不给划线价，用户感知不到优惠也判断不了值不值
+        assertThat(g.get("originPrice").asLong()).isEqualTo(4980L);
+    }
+
+    @Test
+    @DisplayName("★ 加购时是特价、下单时已结束 → 按原价算（以下单那一刻为准）")
+    void expiredFlashFallsBackToListPrice() throws Exception {
+        String token = login("13000160002");
+        long now = System.currentTimeMillis();
+        // 已结束的特价活动
+        flashWindow("M0001", 3000L, "G0001",
+                now - Duration.ofDays(2).toMillis(), now - Duration.ofDays(1).toMillis());
+        addToCart(token, "G0001", "SK0001", 2);
+
+        // 不是 6000 —— 活动已经结束，端上就算还缓存着特价也不作数
+        assertThat(preview(token, null).get("amount").get("goodsMinor").asLong()).isEqualTo(9960L);
+    }
+
+    @Test
+    @DisplayName("同一商品命中多个特价取最低价 —— 对用户有利的一侧")
+    void lowestFlashPriceWins() throws Exception {
+        String token = login("13000160003");
+        flash("M0001", 3000L, "G0001");
+        flash("M0001", 2500L, "G0001");
+        addToCart(token, "G0001", "SK0001", 1);
+
+        assertThat(preview(token, null).get("amount").get("goodsMinor").asLong()).isEqualTo(2500L);
+    }
+
+    @Test
+    @DisplayName("特价与满减叠加：满减按**特价后**的金额判门槛")
+    void flashThenFullCut() throws Exception {
+        String token = login("13000160004");
+        flash("M0001", 3000L, "G0001");
+        fullCut("M0001", "满50减8", 5000L, 800L);
+        addToCart(token, "G0001", "SK0001", 2); // 特价后 6000 ≥ 5000
+
+        JsonNode a = preview(token, null).get("amount");
+        assertThat(a.get("goodsMinor").asLong()).isEqualTo(6000L);
+        assertThat(a.get("discountMinor").asLong()).isEqualTo(800L);
+        assertThat(a.get("payableMinor").asLong()).isEqualTo(5200L);
+    }
+
     // ---------------------------------------------------------------- 店铺券桥接
 
     @Test
@@ -239,6 +297,33 @@ class CampaignDiscountFlowTest {
         long now = System.currentTimeMillis();
         campaign(entityNo, MktCampaign.FULL_CUT, MktCampaign.RUNNING, threshold, off,
                 now - 1000L, now + Duration.ofDays(7).toMillis());
+    }
+
+    private void flash(String entityNo, long price, String goodsNo) {
+        long now = System.currentTimeMillis();
+        flashWindow(entityNo, price, goodsNo, now - 1000L, now + Duration.ofDays(7).toMillis());
+    }
+
+    private void flashWindow(String entityNo, long price, String goodsNo, long startAt, long endAt) {
+        MktCampaign c = new MktCampaign();
+        c.setCampaignNo("CP" + System.nanoTime());
+        c.setEntityNo(entityNo);
+        c.setType(MktCampaign.FLASH);
+        c.setName(TEST_CAMPAIGN);
+        c.setStatus(MktCampaign.RUNNING);
+        c.setFlashPriceMinor(price);
+        c.setGoodsNos("[\"" + goodsNo + "\"]");
+        c.setStartAt(startAt);
+        c.setEndAt(endAt);
+        campaignMapper.insert(c);
+    }
+
+    private JsonNode goodsDetail(String token, String goodsNo) throws Exception {
+        String body = mvc().perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .get("/mp/goods/" + goodsNo).header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        return json.readTree(body).get("data");
     }
 
     private void campaign(String entityNo, String type, String status,

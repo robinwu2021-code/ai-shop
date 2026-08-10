@@ -5,6 +5,7 @@ import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.marketing.campaign.CampaignService;
 import ai.neargo.shop.marketing.campaign.dto.CampaignVO;
+import ai.neargo.shop.marketing.campaign.CampaignJson;
 import ai.neargo.shop.marketing.campaign.entity.MktCampaign;
 import ai.neargo.shop.marketing.coupon.entity.MktCoupon;
 import ai.neargo.shop.marketing.coupon.mapper.CouponMappers.CouponMapper;
@@ -211,17 +212,13 @@ public class CampaignServiceImpl implements CampaignService {
                 c.getUsedCount() == null ? 0 : c.getUsedCount());
     }
 
+    /**
+     * 读参与商品。走 {@link CampaignJson} 而不是直接 readValue ——
+     * H2 会把整个 JSON 数组再包一层字符串，直接解析会静默得到空列表，
+     * 于是「参与商品」在测试环境永远是空的（本类此前就是这样）。
+     */
     private List<String> readList(String raw) {
-        if (raw == null || raw.isBlank()) {
-            return List.of();
-        }
-        try {
-            return json.readValue(raw, new TypeReference<List<String>>() {
-            });
-        } catch (RuntimeException e) {
-            // 脏数据按「全店」处理会**扩大**优惠范围，所以反过来：按空列表之外的安全侧走
-            return List.of();
-        }
+        return CampaignJson.readStringList(json, raw);
     }
 
     private String writeJson(List<String> v) {

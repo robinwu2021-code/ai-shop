@@ -51,14 +51,18 @@ public class GoodsServiceImpl implements GoodsService {
     private final CommunityPoolMapper poolMapper;
     private final MerchantQueryPort merchantPort;
     private final ObjectMapper json;
+    /** 限时特价覆盖展示价。product → marketing 走 Port（ArchUnit 守着不许直连） */
+    private final ai.neargo.shop.spi.marketing.CampaignPort campaignPort;
 
     public GoodsServiceImpl(GoodsMapper goodsMapper, SkuMapper skuMapper, CommunityPoolMapper poolMapper,
-                            MerchantQueryPort merchantPort, ObjectMapper json) {
+                            MerchantQueryPort merchantPort, ObjectMapper json,
+                            ai.neargo.shop.spi.marketing.CampaignPort campaignPort) {
         this.goodsMapper = goodsMapper;
         this.skuMapper = skuMapper;
         this.poolMapper = poolMapper;
         this.merchantPort = merchantPort;
         this.json = json;
+        this.campaignPort = campaignPort;
     }
 
     @Override
@@ -92,7 +96,10 @@ public class GoodsServiceImpl implements GoodsService {
         }
         // SKU 要一次批量取：逐条查是列表页 N+1 的经典来源
         Map<String, List<PrdSku>> skus = loadSkus(rows.stream().map(PrdGoods::getGoodsNo).toList());
-        return rows.stream().map(g -> toVO(g, skus.getOrDefault(g.getGoodsNo(), List.of()))).toList();
+        var flash = campaignPort.flashPrices(rows.stream().map(PrdGoods::getGoodsNo).toList());
+        return rows.stream()
+                .map(g -> toVO(g, skus.getOrDefault(g.getGoodsNo(), List.of()), flash.get(g.getGoodsNo())))
+                .toList();
     }
 
     @Override
@@ -136,7 +143,8 @@ public class GoodsServiceImpl implements GoodsService {
 
         Map<String, List<PrdSku>> skus = loadSkus(page.getRecords().stream().map(PrdGoods::getGoodsNo).toList());
         List<GoodsVO> records = page.getRecords().stream()
-                .map(g -> toVO(g, skus.getOrDefault(g.getGoodsNo(), List.of())))
+                .map(g -> toVO(g, skus.getOrDefault(g.getGoodsNo(), List.of()),
+                        campaignPort.flashPrices(List.of(g.getGoodsNo())).get(g.getGoodsNo())))
                 .toList();
         return PageData.of(records, page.getTotal(), page.getCurrent(), page.getSize());
     }
@@ -148,7 +156,8 @@ public class GoodsServiceImpl implements GoodsService {
         if (g == null) {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
-        return toVO(g, loadSkus(List.of(goodsNo)).getOrDefault(goodsNo, List.of()));
+        return toVO(g, loadSkus(List.of(goodsNo)).getOrDefault(goodsNo, List.of()),
+                campaignPort.flashPrices(List.of(goodsNo)).get(goodsNo));
     }
 
     @Override
@@ -161,7 +170,8 @@ public class GoodsServiceImpl implements GoodsService {
         if (sku == null) {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
-        var vo = toSkuVO(sku);
+        // 单 SKU 询价也要吃特价 —— 否则规格切换时价格会跳回原价
+        var vo = toSkuVO(sku, campaignPort.flashPrices(List.of(goodsNo)).get(goodsNo));
         return new ai.neargo.shop.product.dto.SkuPriceVO(
                 vo.skuNo(), vo.spec(), vo.price(), vo.originPrice(), vo.stock());
     }
@@ -202,12 +212,31 @@ public class GoodsServiceImpl implements GoodsService {
                 .collect(Collectors.groupingBy(PrdSku::getGoodsNo));
     }
 
-    private GoodsVO toVO(PrdGoods g, List<PrdSku> skus) {
+    /**
+     * @param flashPrice 限时特价；null 表示这件商品此刻没有特价活动
+     */
+    private GoodsVO toVO(PrdGoods g, List<PrdSku> skus, Long flashPrice) {
         // 展示价取最低 SKU 价（端上「¥x 起」）。无 SKU 的商品不该上架，这里兜底为 0 而不是抛错，
         // 否则一条脏数据会让整个列表页 500
-        long minPrice = skus.stream().mapToLong(s -> s.getPrice() == null ? 0L : s.getPrice()).min().orElse(0L);
-        Long minOrigin = skus.stream().map(PrdSku::getOriginPrice).filter(java.util.Objects::nonNull)
-                .min(Comparator.naturalOrder()).orElse(null);
+        long listPrice = skus.stream().mapToLong(s -> s.getPrice() == null ? 0L : s.getPrice()).min().orElse(0L);
+        /*
+         * 特价生效时，**原价挪到划线价**上 —— 只改售价不给划线价，用户看到的是
+         * 一个孤零零的低价，既感知不到优惠，也无法判断值不值。
+         * 没有特价时保留 SKU 自己的划线价（商家手填的那个）。
+         */
+        long minPrice = flashPrice != null ? flashPrice : listPrice;
+        /*
+         * ⚠️ 这里**不能写成三元表达式**：一支是 long、另一支是可空的 Long，
+         * 三元会把整体拆箱成 long，于是没有划线价的商品（orElse(null)）直接 NPE ——
+         * 而它的症状是保存商品返回 500，跟价格看着毫无关系。
+         */
+        Long minOrigin;
+        if (flashPrice != null) {
+            minOrigin = listPrice;
+        } else {
+            minOrigin = skus.stream().map(PrdSku::getOriginPrice).filter(java.util.Objects::nonNull)
+                    .min(Comparator.naturalOrder()).orElse(null);
+        }
 
         var brief = merchantPort.find(g.getEntityNo())
                 .map(m -> new GoodsVO.MerchantBriefVO(m.merchantNo(), m.merchantName(), "", 0d, false, 0))
@@ -219,7 +248,7 @@ public class GoodsServiceImpl implements GoodsService {
                 g.getRating() == null ? 0d : g.getRating() / 10d,
                 nz(g.getRatingCount()), minPrice, minOrigin,
                 readList(g.getFulfillments()), readSpecGroups(g.getSpecGroups()),
-                skus.stream().map(this::toSkuVO).toList(),
+                skus.stream().map(s -> toSkuVO(s, flashPrice)).toList(),
                 nz(g.getSales()), g.getCutoffAt(), g.getArrivalDesc(), g.getWeighed(), g.getOrigin(),
                 g.getDurationMin(), g.getStoreName(), nz(g.getLimitPerUser()),
                 Boolean.TRUE.equals(g.getOnSale()),
@@ -227,12 +256,20 @@ public class GoodsServiceImpl implements GoodsService {
                 null);
     }
 
-    private GoodsVO.SkuVO toSkuVO(PrdSku s) {
+    private GoodsVO.SkuVO toSkuVO(PrdSku s, Long flashPrice) {
         // 可售 = 总库存 - 已锁定：把锁定量直接从展示库存里扣掉，端上就不会出现
         // 「显示有货但下单提示库存不足」
         int available = nz(s.getStock()) - nz(s.getLockedStock());
+        long own = s.getPrice() == null ? 0L : s.getPrice();
+        // 同 toVO：划线价那一支不能用三元 —— long 与可空 Long 混在一起会被拆箱成 long
+        Long origin;
+        if (flashPrice != null) {
+            origin = own;
+        } else {
+            origin = s.getOriginPrice();
+        }
         return new GoodsVO.SkuVO(s.getSkuNo(), readList(s.getOptionValues()), s.getSpec(),
-                s.getPrice() == null ? 0L : s.getPrice(), s.getOriginPrice(),
+                flashPrice != null ? flashPrice : own, origin,
                 Math.max(available, 0), s.getNominalGram());
     }
 

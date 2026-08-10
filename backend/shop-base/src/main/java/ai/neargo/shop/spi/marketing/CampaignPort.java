@@ -30,6 +30,22 @@ public interface CampaignPort {
      */
     Discount autoDiscount(List<MerchantAmount> groups);
 
+    /**
+     * 限时特价：这些商品此刻的活动价。
+     *
+     * <p>返回的 Map 只含**命中活动**的商品，没命中的键不出现 —— 调用方按
+     * 「有就覆盖、没有就用原价」处理，不必判断 0 与 null 的差别。
+     *
+     * <p><b>为什么是 goodsNo 而不是 skuNo</b>：`mkt_campaign` 的模型就是
+     * 「这几个商品 + 一个活动价」（{@code goods_nos} + {@code flash_price_minor}），
+     * 一个商品的所有 SKU 共用这个价。
+     * ⚠️ 多规格商品（10 斤装 / 5 斤装）因此会被拉成同一个价 —— 这是**模型的限制**
+     * 而不是实现取舍，要改得先给活动加 SKU 维度。已在方案里记为待确认。
+     *
+     * @param goodsNos 要查的商品；空集合直接返回空 Map，不打库
+     */
+    java.util.Map<String, Long> flashPrices(java.util.Collection<String> goodsNos);
+
     record MerchantAmount(String merchantNo, long goodsAmount) {
     }
 

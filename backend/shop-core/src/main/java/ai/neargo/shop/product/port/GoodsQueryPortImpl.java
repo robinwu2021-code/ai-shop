@@ -3,6 +3,7 @@ package ai.neargo.shop.product.port;
 import ai.neargo.shop.product.service.impl.GoodsServiceImpl;
 
 import ai.neargo.common.data.scope.DataScopeContext;
+import ai.neargo.shop.spi.marketing.CampaignPort;
 import ai.neargo.shop.spi.product.GoodsQueryPort;
 import ai.neargo.shop.product.entity.PrdGoods;
 import ai.neargo.shop.product.entity.PrdSku;
@@ -28,11 +29,15 @@ public class GoodsQueryPortImpl implements GoodsQueryPort {
     private final SkuMapper skuMapper;
     private final GoodsMapper goodsMapper;
     private final ObjectMapper json;
+    /** 限时特价要覆盖售价。product → marketing 走 Port，不直连（ArchUnit 守着） */
+    private final CampaignPort campaignPort;
 
-    public GoodsQueryPortImpl(SkuMapper skuMapper, GoodsMapper goodsMapper, ObjectMapper json) {
+    public GoodsQueryPortImpl(SkuMapper skuMapper, GoodsMapper goodsMapper, ObjectMapper json,
+                              CampaignPort campaignPort) {
         this.skuMapper = skuMapper;
         this.goodsMapper = goodsMapper;
         this.json = json;
+        this.campaignPort = campaignPort;
     }
 
     @Override
@@ -70,6 +75,18 @@ public class GoodsQueryPortImpl implements GoodsQueryPort {
                         goodsMapper.selectList(Wrappers.<PrdGoods>lambdaQuery().in(PrdGoods::getGoodsNo, goodsNos)))
                 .stream().collect(Collectors.toMap(PrdGoods::getGoodsNo, Function.identity(), (a, b) -> a));
 
+        /*
+         * 限时特价：**在这里覆盖价格，而不是在调用方**。
+         *
+         * <p>snapshot() 是下单、预览、购物车三条路共用的唯一价格入口 ——
+         * 放在这里，三条路自动一致；放在调用方就要改三处，而漏掉一处的症状是
+         * 「购物车显示特价、下单按原价扣钱」，最难查的那类。
+         *
+         * <p>下单时**重新查一次**而不是信端上传来的价：活动可能在用户
+         * 加购之后、提交之前结束。以下单那一刻为准是唯一说得清的口径。
+         */
+        Map<String, Long> flash = campaignPort.flashPrices(goodsNos);
+
         Map<String, SkuSnapshot> result = new HashMap<>();
         for (PrdSku sku : skus) {
             PrdGoods g = goodsMap.get(sku.getGoodsNo());
@@ -80,7 +97,7 @@ public class GoodsQueryPortImpl implements GoodsQueryPort {
             result.put(sku.getSkuNo(), new SkuSnapshot(
                     sku.getSkuNo(), sku.getGoodsNo(), sku.getEntityNo(),
                     g.getTitle(), g.getCover(), sku.getSpec(), g.getType(),
-                    sku.getPrice() == null ? 0L : sku.getPrice(),
+                    flash.getOrDefault(sku.getGoodsNo(), sku.getPrice() == null ? 0L : sku.getPrice()),
                     Math.max(available, 0),
                     Boolean.TRUE.equals(g.getOnSale()) && "APPROVED".equals(g.getAuditStatus()),
                     readList(g.getFulfillments()),
