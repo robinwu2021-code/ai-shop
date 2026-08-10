@@ -2,21 +2,31 @@
 export type AfterSaleType = "REFUND_ONLY" | "RETURN_REFUND" | "EXCHANGE";
 
 export type AfterSaleStatus =
-  | "APPLIED"             // 用户已申请，等商家处理
-  | "MERCHANT_HANDLING"   // 商家处理中
-  | "PLATFORM_INTERVENE"  // 争议上升，平台介入
-  | "AGREED"              // 同意，待打款
-  | "REJECTED"            // 商家驳回（用户仍可上升平台）
-  | "REFUNDED"            // 已退款（终态）
-  | "CLOSED";             // 关闭（终态）
+  | "APPLIED"      // 用户已申请，等商家处理
+  | "REFUNDING"    // 已同意，退款处理中（退货退款时是「等买家寄回」）
+  | "ARBITRATING"  // 争议上升，平台介入
+  | "REJECTED"     // 商家驳回（用户仍可上升平台）
+  | "REFUNDED"     // 已退款（终态）
+  | "CLOSED";      // 关闭（终态）
 
+/*
+ * ⚠️ 这份枚举与 `ord_after_sale.status`、C 端、B 端**同名同义**。
+ *
+ * 它曾经是另一套名字（MERCHANT_HANDLING / PLATFORM_INTERVENE / AGREED），
+ * 与后端的 REFUNDING / ARBITRATING 对不上 —— 而 ops-web 一直只跑 mock，
+ * 所以这套名字从来没被真实响应打脸过。接后端时如果加一层静默映射，
+ * 后果是运营端的流转表与后端状态机各说各话：界面会给出一个后端根本不接受的按钮，
+ * 点下去报「状态不允许」，而运营看不出为什么。
+ *
+ * 删掉的 MERCHANT_HANDLING 没有任何生产者：后端同意售后是 APPLIED → REFUNDING，
+ * 中间没有「商家处理中」这一档。
+ */
 export const AFTERSALE_TRANSITIONS: Record<AfterSaleStatus, AfterSaleStatus[]> = {
-  APPLIED: ["MERCHANT_HANDLING", "AGREED", "REJECTED", "PLATFORM_INTERVENE"],
-  MERCHANT_HANDLING: ["AGREED", "REJECTED", "PLATFORM_INTERVENE"],
-  // 驳回不是终点：用户可以把争议上升到平台，这是"平台介入"存在的理由
-  REJECTED: ["PLATFORM_INTERVENE", "CLOSED"],
-  PLATFORM_INTERVENE: ["AGREED", "CLOSED"],
-  AGREED: ["REFUNDED"],
+  APPLIED: ["REFUNDING", "REFUNDED", "REJECTED", "CLOSED"],
+  REFUNDING: ["REFUNDED", "CLOSED"],
+  // 驳回不是终点：用户可以把争议上升到平台，这是「平台介入」存在的理由
+  REJECTED: ["ARBITRATING", "CLOSED"],
+  ARBITRATING: ["REFUNDING", "REFUNDED", "CLOSED"],
   REFUNDED: [],
   CLOSED: [],
 };

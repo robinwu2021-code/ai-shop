@@ -170,8 +170,8 @@ export const zh = {
   riskFlag: { SAME_DEVICE: "同设备", SAME_IP: "同 IP", TEXT_DUP: "文案雷同", BURST: "短时集中" },
   afterSaleType: { REFUND_ONLY: "仅退款", RETURN_REFUND: "退货退款", EXCHANGE: "换货" },
   afterSaleStatus: {
-    APPLIED: "待商家处理", MERCHANT_HANDLING: "商家处理中", PLATFORM_INTERVENE: "平台介入",
-    AGREED: "已同意待退款", REJECTED: "商家已驳回", REFUNDED: "已退款", CLOSED: "已关闭",
+    APPLIED: "待商家处理", REFUNDING: "已同意待退款", ARBITRATING: "平台介入",
+    REJECTED: "商家已驳回", REFUNDED: "已退款", CLOSED: "已关闭",
   },
   groupStatus: { PENDING_AUDIT: "待审核", RUNNING: "进行中", SUCCESS: "已成团", FAILED: "未成团" },
   demandStatus: { OPEN: "征集中", QUOTING: "报价中", CHOSEN: "已选定", CLOSED: "已关闭" },

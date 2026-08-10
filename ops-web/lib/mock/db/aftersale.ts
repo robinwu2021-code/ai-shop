@@ -5,7 +5,7 @@ import type { AfterSale, FastRefundRule } from "@/lib/types";
 export const afterSales: AfterSale[] = [
   {
     asNo: "AS9001", orderNo: "SO2026080506", merchantNo: "M902", merchantName: "老张水果店",
-    buyerNickname: "海棠", type: "REFUND_ONLY", status: "PLATFORM_INTERVENE",
+    buyerNickname: "海棠", type: "REFUND_ONLY", status: "ARBITRATING",
     amount: 2_290, reason: "5 斤苹果里有 2 个坏的，商家只肯退 5 元", evidenceCount: 3,
     createdAt: "2026-08-05T14:00:00Z",
   },
@@ -17,7 +17,7 @@ export const afterSales: AfterSale[] = [
   },
   {
     asNo: "AS9003", orderNo: "SO2026080504", merchantNo: "M903", merchantName: "邻家便利",
-    buyerNickname: "阿May", type: "RETURN_REFUND", status: "MERCHANT_HANDLING",
+    buyerNickname: "阿May", type: "RETURN_REFUND", status: "REFUNDING",
     amount: 3_560, reason: "洗衣液漏液，包装破损", evidenceCount: 2,
     createdAt: "2026-08-05T09:10:00Z",
   },

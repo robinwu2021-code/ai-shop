@@ -171,14 +171,14 @@ function AfterSalesInner() {
       header: c.colActions,
       cell: (a) => (
         <Button size="sm" variant="outline" onClick={() => openDecide(a)}>
-          {a.status === "PLATFORM_INTERVENE" && canHandle ? c.actionDecide : c.actionView}
+          {a.status === "ARBITRATING" && canHandle ? c.actionDecide : c.actionView}
         </Button>
       ),
     },
   ];
 
   const rows = list.data?.records ?? [];
-  const interveneCount = rows.filter((a) => a.status === "PLATFORM_INTERVENE").length;
+  const interveneCount = rows.filter((a) => a.status === "ARBITRATING").length;
   const pendingAmount = rows.filter((a) => a.status !== "REFUNDED" && a.status !== "CLOSED").reduce((n, a) => n + a.amount, 0);
 
   return (
@@ -269,7 +269,7 @@ function AfterSalesInner() {
         desc={current ? fill(c.drawerOrder, { no: current.orderNo }) : undefined}
         width="w-[560px]"
         footer={
-          current?.status === "PLATFORM_INTERVENE" && canHandle ? (
+          current?.status === "ARBITRATING" && canHandle ? (
             <Button loading={decide.isPending} onClick={() => decide.mutate()}>{c.btnConfirmDecide}</Button>
           ) : null
         }
@@ -286,7 +286,7 @@ function AfterSalesInner() {
             <Field className="mb-0" label={c.fieldReason}><p className="whitespace-pre-wrap">{current.reason}</p></Field>
             </DrawerSection>
 
-            {current.status === "PLATFORM_INTERVENE" && canHandle ? (
+            {current.status === "ARBITRATING" && canHandle ? (
               <DrawerSection title={c.secDecide} desc={c.secDecideDesc}>
                 <div className="mb-4 space-y-1">
                   <Label htmlFor="as-amount" required>{c.fieldRefundAmount}</Label>

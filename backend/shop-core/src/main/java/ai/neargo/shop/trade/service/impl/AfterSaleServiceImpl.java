@@ -394,4 +394,61 @@ public class AfterSaleServiceImpl implements AfterSaleService {
                         .eq(OrdAfterSale::getStatus, OrdAfterSale.APPLIED)));
         return n == null ? 0 : n.intValue();
     }
+
+    // ---------------------------------------------------------------- 平台仲裁（P-6.1）
+
+    @Override
+    public List<AfterSaleVO> opsList(String status, String merchantNo) {
+        var w = Wrappers.<OrdAfterSale>lambdaQuery();
+        if (status != null && !status.isBlank()) {
+            w.eq(OrdAfterSale::getStatus, status);
+        }
+        if (merchantNo != null && !merchantNo.isBlank()) {
+            w.eq(OrdAfterSale::getEntityNo, merchantNo);
+        }
+        w.orderByDesc(OrdAfterSale::getId);
+        return DataScopeContext.executeWithoutScope(() -> afterSaleMapper.selectList(w))
+                .stream().map(this::detailOf).toList();
+    }
+
+    @Override
+    @Transactional
+    public AfterSaleVO arbitrate(String afterSaleNo, boolean refund, String liability,
+                                 String verdict, String operatorNo) {
+        if (verdict == null || verdict.isBlank()) {
+            // 用户与商家都会看到它。没有说明的裁决，对双方都等于「平台随便判了一下」
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        if (liability == null || !LIABILITIES.contains(liability)) {
+            /*
+             * **裁决必须落责任方**。赔付出资比例的口径未定（M4），但责任本身要记下来 ——
+             * 不记的话，等口径定了要回头补，而那时已经没人说得清当初是怎么判的。
+             */
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        OrdAfterSale as = DataScopeContext.executeWithoutScope(() ->
+                afterSaleMapper.selectOne(Wrappers.<OrdAfterSale>lambdaQuery()
+                        .eq(OrdAfterSale::getAfterSaleNo, afterSaleNo).last("limit 1")));
+        if (as == null) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        // 只能裁「已上升到平台」的单：还没上升就裁，等于替商家做了他还没做的决定
+        if (!OrdAfterSale.ARBITRATING.equals(as.getStatus())) {
+            throw BizException.of(ErrorCode.ORDER_STATE_ILLEGAL);
+        }
+
+        String target = refund ? OrdAfterSale.REFUNDING : OrdAfterSale.CLOSED;
+        OrderStateMachine.assertAfterSaleTransit(as.getStatus(), target);
+        as.setStatus(target);
+        as.setLiability(liability);
+        DataScopeContext.executeWithoutScope(() -> afterSaleMapper.updateById(as));
+        appendLog(as.getSubOrderNo(), target,
+                (refund ? "平台裁决：支持退款。" : "平台裁决：维持商家决定。") + verdict.trim(),
+                OrdStatusLog.BY_PLATFORM, operatorNo);
+        return detailOf(as);
+    }
+
+    /** 责任方取值域，与 {@code ord_after_sale.liability} 的注释一致。 */
+    private static final java.util.Set<String> LIABILITIES =
+            java.util.Set.of("PLATFORM", "MERCHANT", "PICKUP");
 }

@@ -256,16 +256,15 @@ export function useAfterSaleTypeMap(): StatusMap<AfterSaleType> {
 }
 
 /**
- * 键序 = 处理流程顺序。PLATFORM_INTERVENE 用 danger **不是因为它更糟**，
+ * 键序 = 处理流程顺序。ARBITRATING 用 danger **不是因为它更糟**，
  * 而是它意味着「用户和商家谈崩了、有人在等平台表态」——列表里必须最先被看到。
  */
 export function useAfterSaleStatusMap(): StatusMap<AfterSaleStatus> {
   const { t } = useI18n();
   return {
     APPLIED: { label: t("afterSaleStatus.APPLIED"), tone: "warning" },
-    MERCHANT_HANDLING: { label: t("afterSaleStatus.MERCHANT_HANDLING"), tone: "info" },
-    PLATFORM_INTERVENE: { label: t("afterSaleStatus.PLATFORM_INTERVENE"), tone: "danger" },
-    AGREED: { label: t("afterSaleStatus.AGREED"), tone: "info" },
+    REFUNDING: { label: t("afterSaleStatus.REFUNDING"), tone: "info" },
+    ARBITRATING: { label: t("afterSaleStatus.ARBITRATING"), tone: "danger" },
     REJECTED: { label: t("afterSaleStatus.REJECTED"), tone: "muted" },
     REFUNDED: { label: t("afterSaleStatus.REFUNDED"), tone: "success" },
     CLOSED: { label: t("afterSaleStatus.CLOSED"), tone: "muted" },

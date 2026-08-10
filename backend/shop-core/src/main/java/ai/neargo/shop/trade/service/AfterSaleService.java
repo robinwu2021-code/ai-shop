@@ -43,4 +43,23 @@ public interface AfterSaleService {
      * 而挂久了整块待办就没人看了。
      */
     int merchantPendingCount(String merchantNo);
+
+    // ---------------------------------------------------------------- 平台仲裁（P-6.1）
+
+    /** 平台侧售后列表。{@code status} 为空给全部。 */
+    List<AfterSaleVO> opsList(String status, String merchantNo);
+
+    /**
+     * 平台裁决（{@code ARBITRATING} 的出口）。
+     *
+     * <p>此前只有入口没有出口：用户能把争议上升到平台（{@code escalate}），
+     * 而平台没有任何接口能裁 —— 单子停在 ARBITRATING，用户和商家都在等一个不会来的结果。
+     *
+     * @param refund    true = 支持用户（推进到退款），false = 维持商家决定（关闭）
+     * @param liability 责任方 MERCHANT / USER / PLATFORM。**裁决必须落责任**，
+     *                  否则赔付出资比例无从算起（M4 口径未定，但责任本身要记）
+     * @param verdict   裁决说明，<b>必填</b> —— 用户与商家都会看到
+     */
+    AfterSaleVO arbitrate(String afterSaleNo, boolean refund, String liability, String verdict,
+                          String operatorNo);
 }

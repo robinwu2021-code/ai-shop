@@ -22,7 +22,7 @@ export const afterSaleMock: AfterSaleApi = {
         db.eqHit(q.type, a.type) &&
         db.eqHit(q.status, a.status) &&
         // intervene=1 只看平台介入队列：客服的主视图是这一条，不是全量
-        (q.intervene !== "1" || a.status === "PLATFORM_INTERVENE") &&
+        (q.intervene !== "1" || a.status === "ARBITRATING") &&
         db.kwHit(q.keyword, a.asNo, a.orderNo, a.merchantName, a.buyerNickname, a.reason),
       ),
     ),
@@ -52,7 +52,7 @@ export const afterSaleMock: AfterSaleApi = {
     a.share = share;
     a.verdict = verdict.trim();
     a.amount = amount;
-    a.status = "AGREED";
+    a.status = "REFUNDING";
     // E4 退款回退分账依赖资金域（P-12），未接。留标记而不是假装已完成。
     a.refundSplitPending = true;
     return wait(a, 400);

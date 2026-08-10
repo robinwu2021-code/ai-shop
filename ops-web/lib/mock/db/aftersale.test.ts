@@ -46,7 +46,7 @@ describe("平台介入裁决（P-6.1.3 / 6.1.4）", () => {
       asNo: "AS9001", liability: "MERCHANT", share: share100,
       verdict: "坏果 2 个属实，按商品单价全额退", amount: 2_290,
     });
-    expect(a.status).toBe("AGREED");
+    expect(a.status).toBe("REFUNDING");
     expect(a.liability).toBe("MERCHANT");
     expect(a.share).toEqual(share100);
     // E4 未接：必须留标记而不是假装已完成
@@ -62,12 +62,19 @@ describe("平台介入裁决（P-6.1.3 / 6.1.4）", () => {
 
 describe("状态机", () => {
   it("驳回不是终点 —— 用户可把争议上升到平台", async () => {
-    const a = await afterSaleMock.setAfterSaleStatus("AS9004", "PLATFORM_INTERVENE");
-    expect(a.status).toBe("PLATFORM_INTERVENE");
+    const a = await afterSaleMock.setAfterSaleStatus("AS9004", "ARBITRATING");
+    expect(a.status).toBe("ARBITRATING");
   });
 
-  it("不能从申请直接跳到已退款", async () => {
-    await expect(afterSaleMock.setAfterSaleStatus("AS9002", "REFUNDED")).rejects.toThrow(/不允许/);
+  /*
+   * ⚠️ 这条用例原本断言「申请不能直接跳到已退款」，而后端**刻意允许**这一跳 ——
+   * 极速退命中阈值时自动通过，商家只可见不可拒（AfterSaleVO.instant）。
+   * 旧断言编码的是 ops-web 自己那套 mock 模型，从没被真实状态机检验过。
+   *
+   * 换成一条真正不允许的：终态不可复活。
+   */
+  it("已退款是终态，不能再改回处理中", async () => {
+    await expect(afterSaleMock.setAfterSaleStatus("AS9005", "REFUNDING")).rejects.toThrow(/不允许/);
   });
 });
 
@@ -75,7 +82,7 @@ describe("平台介入队列与极速退阈值", () => {
   it("intervene=1 只出平台介入的单", async () => {
     const page = await afterSaleMock.listAfterSales({ intervene: "1", size: 100 });
     expect(page.records.length).toBeGreaterThan(0);
-    expect(page.records.every((a) => a.status === "PLATFORM_INTERVENE")).toBe(true);
+    expect(page.records.every((a) => a.status === "ARBITRATING")).toBe(true);
   });
 
   it("金额上限必须大于 0", async () => {

@@ -153,6 +153,116 @@ class M5AfterSaleFlowTest {
                 .andExpect(jsonPath("$.data.status").value("ARBITRATING"));
     }
 
+    // ---------------------------------------------------------------- 平台仲裁（P-6.1）
+
+    @Test
+    @DisplayName("★ ARBITRATING 的出口：平台支持用户 → 单子推进到退款")
+    void platformArbitratesForUser() throws Exception {
+        String asNo = escalated("13200133001", "13200133002");
+        String support = opsLogin("support", "support123");
+
+        mvc().perform(post("/ops/after-sales/" + asNo + "/decide")
+                        .header("Authorization", "Bearer " + support)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"refund\":true,\"liability\":\"MERCHANT\",\"verdict\":\"照片可见破损，商家承担\"}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.status").value("REFUNDING"))
+                .andExpect(jsonPath("$.data.liability").value("MERCHANT"));
+    }
+
+    @Test
+    @DisplayName("维持商家决定时单子关闭 —— 驳回不是「什么都没发生」")
+    void platformUpholdsMerchant() throws Exception {
+        String asNo = escalated("13200133010", "13200133011");
+        String support = opsLogin("support", "support123");
+
+        mvc().perform(post("/ops/after-sales/" + asNo + "/decide")
+                        .header("Authorization", "Bearer " + support)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"refund\":false,\"liability\":\"USER\",\"verdict\":\"未提供有效证据\"}"))
+                // USER 不在责任方取值域里（PLATFORM/MERCHANT/PICKUP）——先验它被拒
+                .andExpect(jsonPath("$.code").value(10400));
+
+        mvc().perform(post("/ops/after-sales/" + asNo + "/decide")
+                        .header("Authorization", "Bearer " + support)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"refund\":false,\"liability\":\"PLATFORM\",\"verdict\":\"规则如此，维持原判\"}"))
+                .andExpect(jsonPath("$.data.status").value("CLOSED"));
+    }
+
+    @Test
+    @DisplayName("★ 裁决必须写说明并落责任方 —— 口径未定不等于可以不记")
+    void arbitrationNeedsVerdictAndLiability() throws Exception {
+        String asNo = escalated("13200133020", "13200133021");
+        String support = opsLogin("support", "support123");
+
+        mvc().perform(post("/ops/after-sales/" + asNo + "/decide")
+                        .header("Authorization", "Bearer " + support)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"refund\":true,\"liability\":\"MERCHANT\",\"verdict\":\"  \"}"))
+                .andExpect(jsonPath("$.code").value(10400));
+        mvc().perform(post("/ops/after-sales/" + asNo + "/decide")
+                        .header("Authorization", "Bearer " + support)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"refund\":true,\"verdict\":\"没写责任方\"}"))
+                .andExpect(jsonPath("$.code").value(10400));
+    }
+
+    @Test
+    @DisplayName("★ 没上升到平台的单不能裁 —— 那等于替商家做了他还没做的决定")
+    void cannotArbitrateBeforeEscalation() throws Exception {
+        Ordered o = placeAndPay("13200133030", 6980L);
+        String asNo = applyAfterSale(o, "REFUND_ONLY", "不想要了");
+        String support = opsLogin("support", "support123");
+
+        mvc().perform(post("/ops/after-sales/" + asNo + "/decide")
+                        .header("Authorization", "Bearer " + support)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"refund\":true,\"liability\":\"MERCHANT\",\"verdict\":\"抢着裁\"}"))
+                .andExpect(jsonPath("$.code").value(20004));
+    }
+
+    @Test
+    @DisplayName("极速退阈值：0 小时等于关掉功能却看着是开的，被拒")
+    void fastRefundRuleGuards() throws Exception {
+        String support = opsLogin("support", "support123");
+
+        mvc().perform(get("/ops/after-sales/fast-refund-rule")
+                        .header("Authorization", "Bearer " + support))
+                .andExpect(jsonPath("$.code").value(0))
+                // 默认关闭：自动退款的开关默认开着是件危险的事
+                .andExpect(jsonPath("$.data.enabled").value(false));
+
+        mvc().perform(post("/ops/after-sales/fast-refund-rule")
+                        .header("Authorization", "Bearer " + support)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"enabled\":true,\"maxAmount\":2000,\"withinHours\":0,\"categories\":[]}"))
+                .andExpect(jsonPath("$.code").value(10400));
+
+        mvc().perform(post("/ops/after-sales/fast-refund-rule")
+                        .header("Authorization", "Bearer " + support)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"enabled\":true,\"maxAmount\":5000,\"withinHours\":48,\"categories\":[]}"))
+                .andExpect(jsonPath("$.code").value(0));
+        mvc().perform(get("/ops/after-sales/fast-refund-rule")
+                        .header("Authorization", "Bearer " + support))
+                .andExpect(jsonPath("$.data.maxAmount").value(5000));
+    }
+
+    /** 走到 ARBITRATING：下单 → 申请售后 → 商家驳回 → 用户上升平台 */
+    private String escalated(String buyerPhone, String ownerPhone) throws Exception {
+        Ordered o = placeAndPay(buyerPhone, 6980L);
+        String asNo = applyAfterSale(o, "RETURN_REFUND", "质量问题");
+        String biz = loginAsOwnerOf("M0001", ownerPhone);
+        mvc().perform(post("/biz/after-sale/" + asNo + "/reject").header("Authorization", "Bearer " + biz)
+                .contentType(MediaType.APPLICATION_JSON).content("{\"remark\":\"商品无质量问题\"}"));
+        mvc().perform(post("/mp/after-sale/" + asNo + "/escalate")
+                        .header("Authorization", "Bearer " + o.userToken)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"appeal\":\"有照片为证\"}"))
+                .andExpect(jsonPath("$.data.status").value("ARBITRATING"));
+        return asNo;
+    }
+
     @Test
     @DisplayName("退货退款：回填物流 → 商家确认收货 → 退款")
     void returnRefundFlow() throws Exception {
@@ -287,6 +397,14 @@ class M5AfterSaleFlowTest {
                 .filter(b -> b.subOrderNo().equals(subOrderNo))
                 .findFirst()
                 .ifPresent(b -> settleService.executeSplit(b.settleNo()));
+    }
+
+    private String opsLogin(String username, String password) throws Exception {
+        String body = mvc().perform(post("/ops/auth/login").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"" + username + "\",\"password\":\"" + password + "\"}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        return json.readTree(body).get("data").get("token").asString();
     }
 
     private String detail(String token, String afterSaleNo) throws Exception {

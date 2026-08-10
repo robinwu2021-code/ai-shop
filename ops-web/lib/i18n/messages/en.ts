@@ -177,8 +177,8 @@ export const en: Messages = {
   riskFlag: { SAME_DEVICE: "Same device", SAME_IP: "Same IP", TEXT_DUP: "Duplicate text", BURST: "Burst in time" },
   afterSaleType: { REFUND_ONLY: "Refund only", RETURN_REFUND: "Return & refund", EXCHANGE: "Exchange" },
   afterSaleStatus: {
-    APPLIED: "Awaiting merchant", MERCHANT_HANDLING: "Merchant handling", PLATFORM_INTERVENE: "Platform review",
-    AGREED: "Approved, refund pending", REJECTED: "Merchant rejected", REFUNDED: "Refunded", CLOSED: "Closed",
+    APPLIED: "Awaiting merchant", REFUNDING: "Approved, refund pending", ARBITRATING: "Platform review",
+    REJECTED: "Merchant rejected", REFUNDED: "Refunded", CLOSED: "Closed",
   },
   groupStatus: { PENDING_AUDIT: "Pending review", RUNNING: "Running", SUCCESS: "Group formed", FAILED: "Group failed" },
   demandStatus: { OPEN: "Collecting", QUOTING: "Quoting", CHOSEN: "Supplier chosen", CLOSED: "Closed" },
