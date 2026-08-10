@@ -6,6 +6,8 @@ import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.marketing.campaign.CampaignService;
 import ai.neargo.shop.marketing.campaign.dto.CampaignVO;
 import ai.neargo.shop.marketing.campaign.entity.MktCampaign;
+import ai.neargo.shop.marketing.coupon.entity.MktCoupon;
+import ai.neargo.shop.marketing.coupon.mapper.CouponMappers.CouponMapper;
 import ai.neargo.shop.marketing.campaign.mapper.CampaignMappers.CampaignMapper;
 import ai.neargo.common.data.scope.DataScopeContext;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -27,11 +29,19 @@ public class CampaignServiceImpl implements CampaignService {
 
     private static final Set<String> TYPES = Set.of("COUPON", "FULL_CUT", "FLASH", "BUY_GIFT");
 
+    /**
+     * 由活动号推导券号的前缀。`@` 保证它不会与 BizKey 生成的券号撞上，
+     * 也让「这张券是从哪个活动来的」一眼可读。
+     */
+    private static final String COUPON_PREFIX = "CU@";
+
     private final CampaignMapper campaignMapper;
+    private final CouponMapper couponMapper;
     private final ObjectMapper json;
 
-    public CampaignServiceImpl(CampaignMapper campaignMapper, ObjectMapper json) {
+    public CampaignServiceImpl(CampaignMapper campaignMapper, CouponMapper couponMapper, ObjectMapper json) {
         this.campaignMapper = campaignMapper;
+        this.couponMapper = couponMapper;
         this.json = json;
     }
 
@@ -102,7 +112,65 @@ public class CampaignServiceImpl implements CampaignService {
             }
             return null;
         });
+        syncCoupon(c);
         return toVO(c);
+    }
+
+    /**
+     * COUPON 型活动 → 往 {@code mkt_coupon} 落一张**商家券**。
+     *
+     * <p><b>这是此前断掉的那半段</b>：商家在 B 端建「店铺券」活动，
+     * `mkt_campaign` 存下来了，而领券中心读的是 `mkt_coupon` ——
+     * 两张表之间没有任何桥接，于是**建了不会生成任何一张券，用户永远领不到**。
+     * `MktCoupon` 本身早就支持商家券（有 {@code entityNo} 与 {@code funder=MERCHANT}），
+     * 缺的只是这一次写入。
+     *
+     * <p><b>券号由活动号推导</b>（{@code CU@} + campaignNo）而不是新生成：
+     * 重复保存要更新同一张券，不能每存一次就多发一张。库里没有
+     * campaign→coupon 的外键列，用可推导的券号是不加迁移就能拿到幂等的做法；
+     * 前缀里的 {@code @} 保证它不会与 {@link BizKey} 生成的券号撞上。
+     *
+     * <p>只处理 COUPON 型：满减走 {@code CampaignPort} 在下单时算，
+     * 限时特价与买赠还没接（见 CampaignPortImpl 的说明）。
+     */
+    private void syncCoupon(MktCampaign c) {
+        if (!MktCampaign.COUPON.equals(c.getType())) {
+            return;
+        }
+        String couponNo = COUPON_PREFIX + c.getCampaignNo();
+        DataScopeContext.executeWithoutScope(() -> {
+            MktCoupon exist = couponMapper.selectOne(Wrappers.<MktCoupon>lambdaQuery()
+                    .eq(MktCoupon::getCouponNo, couponNo));
+            MktCoupon coupon = exist == null ? new MktCoupon() : exist;
+            coupon.setCouponNo(couponNo);
+            coupon.setTitle(c.getName());
+            coupon.setType(MktCoupon.FULL_CUT);
+            coupon.setFaceMinor(c.getDiscountMinor());
+            coupon.setThresholdMinor(c.getThresholdMinor());
+            // 商家自己建的券，钱由商家出 —— 这个字段决定 M7 分账扣谁
+            coupon.setFunder(MktCoupon.BY_MERCHANT);
+            coupon.setEntityNo(c.getEntityNo());
+            coupon.setTotalCount(c.getTotalCount());
+            if (exist == null) {
+                coupon.setReceivedCount(0);
+            }
+            // 每人限领 1 张：商家侧还没有这个配置项，先给一个不会被滥用的默认值
+            coupon.setPerUserLimit(1);
+            coupon.setStartAt(c.getStartAt());
+            coupon.setEndAt(c.getEndAt());
+            /*
+             * 活动状态 → 券状态。只有 RUNNING 的活动，券才在领券中心可见
+             * （center() 筛 status=ACTIVE）。商家暂停活动，券立刻停发，
+             * 但**已领的券不受影响** —— 那是用户已经拿到手的东西。
+             */
+            coupon.setStatus(MktCampaign.RUNNING.equals(c.getStatus()) ? "ACTIVE" : "PAUSED");
+            if (exist == null) {
+                couponMapper.insert(coupon);
+            } else {
+                couponMapper.updateById(coupon);
+            }
+            return null;
+        });
     }
 
     @Override
@@ -118,6 +186,8 @@ public class CampaignServiceImpl implements CampaignService {
         }
         c.setStatus(running ? RUNNING : PAUSED);
         DataScopeContext.executeWithoutScope(() -> campaignMapper.updateById(c));
+        // 券要跟着停发：商家点了暂停，领券中心就不该再发；已领的不受影响
+        syncCoupon(c);
         return toVO(c);
     }
 

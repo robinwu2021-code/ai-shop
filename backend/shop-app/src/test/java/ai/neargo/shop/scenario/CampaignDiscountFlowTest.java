@@ -159,6 +159,80 @@ class CampaignDiscountFlowTest {
         assertThat(discountPlatformOf(payOrderNo)).isZero();
     }
 
+    // ---------------------------------------------------------------- 店铺券桥接
+
+    @Test
+    @DisplayName("★ 商家建的店铺券活动 → 领券中心真的能领到")
+    void merchantCouponCampaignBecomesReceivableCoupon() throws Exception {
+        String bizToken = merchant("12600150901", "券桥接·可领");
+        String campaignNo = saveCouponCampaign(bizToken, "店庆券 满50减5", 5000L, 500L);
+        toggleCampaign(bizToken, campaignNo, true);
+
+        String token = login("13000150001");
+        JsonNode center = centerCoupons(token);
+        JsonNode mine = findCoupon(center, "店庆券 满50减5");
+        assertThat(mine).as("建了店铺券活动，领券中心却看不到 —— 这正是此前断掉的那半段").isNotNull();
+
+        // 领得到（此前这一步无从谈起：根本没有券）
+        String userCouponNo = receive(token, mine.get("couponNo").asString());
+        assertThat(userCouponNo).isNotBlank();
+
+        /*
+         * 顺带锁住一条**正确但容易被当成 bug** 的行为：商家券只作用于本店。
+         * 这条断言最初是写错的 —— 我拿新商家的券去抵扣 M0001 的商品，
+         * 期望它减 500，结果被拒（40002）。被拒才是对的：
+         * 商家自己出资的券去抵别家的货，等于让 A 商家替 B 商家掏钱。
+         */
+        addToCart(token, "G0001", "SK0001", 2); // G0001 属于 M0001，不是这张券的店
+        mvc().perform(post("/mp/order/preview").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"fulfillment\":\"STORE_PICKUP\",\"pickupNo\":\"PP0001\",\"couponNo\":\""
+                                + userCouponNo + "\"}"))
+                .andExpect(jsonPath("$.code").value(40002));
+    }
+
+    @Test
+    @DisplayName("重复保存同一个活动只对应一张券 —— 不能存一次多发一张")
+    void savingTwiceDoesNotDuplicateCoupon() throws Exception {
+        String bizToken = merchant("12600150902", "券桥接·不重复");
+        String campaignNo = saveCouponCampaign(bizToken, "只发一张", 5000L, 300L);
+        toggleCampaign(bizToken, campaignNo, true);
+        // 改个名再存一次
+        saveCouponCampaign(bizToken, "只发一张", 5000L, 300L, campaignNo);
+
+        String token = login("13000150002");
+        long n = 0;
+        for (JsonNode c : centerCoupons(token)) {
+            if ("只发一张".equals(c.get("title").asString())) n++;
+        }
+        assertThat(n).isEqualTo(1L);
+    }
+
+    @Test
+    @DisplayName("暂停活动，券停止发放 —— 但已领的不受影响")
+    void pausingCampaignStopsIssuing() throws Exception {
+        String bizToken = merchant("12600150903", "券桥接·暂停");
+        String campaignNo = saveCouponCampaign(bizToken, "会被暂停的券", 5000L, 400L);
+        toggleCampaign(bizToken, campaignNo, true);
+
+        String token = login("13000150003");
+        String couponNo = findCoupon(centerCoupons(token), "会被暂停的券").get("couponNo").asString();
+        String userCouponNo = receive(token, couponNo);
+
+        toggleCampaign(bizToken, campaignNo, false);
+
+        // 领券中心不再出现
+        String other = login("13000150004");
+        assertThat(findCoupon(centerCoupons(other), "会被暂停的券")).isNull();
+        // 但已领的那张还在用户券包里 —— 那是他已经拿到手的东西，停发不等于收回
+        assertThat(userCouponNo).isNotBlank();
+        String bag = mvc().perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .get("/mp/coupon/mine").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(bag).contains(userCouponNo);
+    }
+
     // ---------------------------------------------------------------- 装配
 
     private void fullCut(String entityNo, String name, long threshold, long off) {
@@ -261,6 +335,79 @@ class CampaignDiscountFlowTest {
 
     private static long nz(Long v) {
         return v == null ? 0L : v;
+    }
+
+    /** 商家会话：走完整入驻 + 运营审核，与 BizDashboardAndReviewFlowTest 同一套 */
+    private String merchant(String phone, String name) throws Exception {
+        String user = login(phone);
+        String body = mvc().perform(post("/mp/merchant/apply").header("Authorization", "Bearer " + user)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"" + name + "\",\"subject\":\"INDIVIDUAL_BIZ\","
+                                + "\"contactName\":\"张三\",\"contactPhone\":\"13900000000\","
+                                + "\"category\":\"食品\",\"serviceScope\":\"COMMUNITY\","
+                                + "\"communityNos\":[\"CM001\"]}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        String applyNo = json.readTree(body).get("data").get("applyNo").asString();
+
+        String bd = opsLogin();
+        mvc().perform(post("/ops/merchant/apply/" + applyNo + "/audit")
+                        .header("Authorization", "Bearer " + bd)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"approved\":true}"))
+                .andExpect(jsonPath("$.code").value(0));
+        return login(phone);
+    }
+
+    private String opsLogin() throws Exception {
+        String body = mvc().perform(post("/ops/auth/login").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"bd\",\"password\":\"bd123\"}"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        return json.readTree(body).get("data").get("token").asString();
+    }
+
+    private String saveCouponCampaign(String token, String name, long threshold, long off)
+            throws Exception {
+        return saveCouponCampaign(token, name, threshold, off, null);
+    }
+
+    private String saveCouponCampaign(String token, String name, long threshold, long off,
+                                      String campaignNo) throws Exception {
+        long now = System.currentTimeMillis();
+        String no = campaignNo == null ? "" : ",\"campaignNo\":\"" + campaignNo + "\"";
+        String body = mvc().perform(post("/biz/campaign").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"type\":\"COUPON\",\"name\":\"" + name + "\",\"startAt\":"
+                                + (now - 1000L) + ",\"endAt\":" + (now + Duration.ofDays(7).toMillis())
+                                + ",\"thresholdMinor\":" + threshold + ",\"discountMinor\":" + off
+                                + ",\"goodsNos\":[]" + no + "}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        return json.readTree(body).get("data").get("campaignNo").asString();
+    }
+
+    private void toggleCampaign(String token, String campaignNo, boolean running) throws Exception {
+        mvc().perform(post("/biz/campaign/" + campaignNo + "/toggle")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"running\":" + running + "}"))
+                .andExpect(status().isOk());
+    }
+
+    private JsonNode centerCoupons(String token) throws Exception {
+        String body = mvc().perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .get("/mp/coupon").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        return json.readTree(body).get("data");
+    }
+
+    private JsonNode findCoupon(JsonNode list, String title) {
+        for (JsonNode c : list) {
+            if (title.equals(c.get("title").asString())) return c;
+        }
+        return null;
     }
 
     private String login(String phone) throws Exception {
