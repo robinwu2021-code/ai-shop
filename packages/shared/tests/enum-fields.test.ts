@@ -19,14 +19,11 @@ import { audit } from "../../../scripts/check-enum-fields.mjs";
  * 「先加一行让它绿」是这套守卫失效的唯一方式，上一轮已经付过一次代价：
  * FULFILLMENT 整个进了豁免名单，于是它名下**新出现**的 DELIVERY 差异也被静音了。
  */
-const PENDING = new Map([
-  [
-    "营销活动类型",
-    "三端三套词，同一个「买赠」库里叫 BUY_GIFT、ops-web 叫 GIFT、shared 叫 BUY_N_GET_M。" +
-      "**等业务确认后再动**：SECKILL 与 FLASH 是不是同一件事、NEWCOMER 是活动类型还是券的" +
-      "适用条件 —— 这两个问题的答案会改变金额口径，改错了影响的是钱。" +
-      "见 docs/technical/枚举统一方案.md §4 阶段一 1.4。",
-  ],
+const PENDING = new Map<string, string>([
+  // 空 = 当前没有已知未解决的字段级差异。
+  // 曾经这里有一条「营销活动类型」，查清后发现那是我把三个不同的概念
+  // （店铺级活动 / 商品级买赠 / 平台投放场次）当成了一个字段来比对 ——
+  // 不是命名问题。见 docs/technical/营销枚举对账报告.md
 ]);
 
 describe("枚举对账 · 按字段", () => {

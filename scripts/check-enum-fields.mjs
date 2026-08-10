@@ -108,10 +108,13 @@ const FIELDS = [
   {
     concept: "营销活动类型",
     field: "mkt_campaign.type",
-    backend: { ddl: ["mkt_campaign", "type"] },
+    backend: {
+      javaConst: "shop-core/src/main/java/ai/neargo/shop/marketing/campaign/entity/MktCampaign.java",
+      only: ["COUPON", "FULL_CUT", "FLASH", "BUY_GIFT"],
+    },
     clients: [
+      { file: SHARED_TYPES, type: "CampaignType" },
       { file: "ops-web/lib/types/marketing.ts", type: "CampaignType" },
-      { file: SHARED_CONST, const: "PROMOTION_TYPE" },
     ],
   },
   {
@@ -128,6 +131,14 @@ const FIELDS = [
  * 见 docs/technical/枚举统一方案.md §0）。
  */
 const INTENTIONAL = new Map([
+  [
+    "ops-web:CampaignType",
+    "**重名但不是同一个东西**：ops-web 的 Campaign 是平台投放场次（带 position，" +
+      "秒杀场按投放位置分组做重叠校验），由运营建；mkt_campaign 是店铺级活动" +
+      "（entity_no NOT NULL，不跨店），由商家建。后端确无对应表。" +
+      "按 mkt_campaign 那套改名等于把两个概念合并成一个 —— 见 " +
+      "ops-web/lib/types/marketing.ts 的注释与 docs/technical/营销枚举对账报告.md §1③。",
+  ],
   [
     "shared:MerchantStatus",
     "B 端的合并视图：库里坚持把经营(mch_entity.status)与审核(mch_entity_apply.status)" +

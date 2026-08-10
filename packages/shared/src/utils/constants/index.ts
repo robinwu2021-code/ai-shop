@@ -233,13 +233,18 @@ export const GROUP_BUY = {
   fallbackShipAtBasePrice: true,
 } as const;
 
-/**
- * 促销类型。买 N 送 M：付 N 件的钱，收到 N+M 件。
- * 赠品默认同款，也可指定别的商品（如买米送油）。
+/*
+ * 这里曾有一个 `PROMOTION_TYPE = { BUY_N_GET_M: "BUY_N_GET_M" }`。
+ * 删掉的原因：**全仓零引用**（所有地方都直接写字面量），而它是
+ * `Promotion.type` 的重复声明 —— 一个概念一个声明处，见
+ * docs/technical/枚举统一方案.md §3。
+ *
+ * 它还在主动误导对账工具：让工具以为 shared 用 BUY_N_GET_M 表达
+ * **营销活动**类型，从而报出一条并不存在的差异。真正对应
+ * `mkt_campaign.type` 的是 types 里的 `CampaignType`，那个逐字对齐。
+ * 商品级买赠（Promotion）与店铺级买赠活动（Campaign BUY_GIFT）是
+ * 同一件业务事建了两次模，详见 docs/technical/营销枚举对账报告.md §1②。
  */
-export const PROMOTION_TYPE = {
-  BUY_N_GET_M: "BUY_N_GET_M",
-} as const;
 
 /** 裂变与归因（窗口期待业务最终确认，见 TDD §7） */
 export const ATTRIBUTION = {
