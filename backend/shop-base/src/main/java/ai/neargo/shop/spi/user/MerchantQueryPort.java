@@ -91,6 +91,17 @@ public interface MerchantQueryPort {
     java.util.List<String> storeNos(String merchantNo);
 
     /**
+     * 门店 → 它属于哪个主体。批量，列表页专用。
+     *
+     * <p>自提点归属改到门店（V16）之后，community 域拿着 {@code store_no} 却要显示
+     * 「这个自提点是哪家店承接的」—— 商家名与 logo 仍在主体上。
+     *
+     * @param storeNos 门店业务键；空集合返回空 Map
+     * @return 按 storeNo 索引；查不到的键<b>不出现在结果里</b>（不是 null 值）
+     */
+    java.util.Map<String, String> entityOfStores(java.util.Collection<String> storeNos);
+
+    /**
      * @param merchantNo   商家业务键
      * @param merchantName 展示名（下单快照用，商家改名不影响历史订单）
      * @param canSell      是否可上架售卖（审核通过且未封禁）

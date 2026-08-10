@@ -61,9 +61,11 @@ public interface CommunityAdminService {
      * @param type        STORE / NEIGHBOR / <b>PLATFORM</b> —— 三类的报酬与脱敏规则完全不同
      * @param feeMode     NONE / PER_ITEM / RATE。目前只有 PLATFORM 有值（B9 口径未定）
      * @param address     NEIGHBOR 点成团前只到楼栋，付款后才给完整门牌
+     * @param storeNo     承接<b>门店</b>（V16 起 owner_ref 存 store_no，此前是 entity_no）；
+     *                    只在 STORE 类型下有值 —— 这一列本来就是多态的
      */
     record PickupVO(String pickupNo, String name, String type, String status, String communityNo,
-                    String communityName, String merchantNo, String address, String openHours,
+                    String communityName, String storeNo, String address, String openHours,
                     String arriveTime, int serviceFeeRate, long serviceFeePerItemMinor,
                     String feeMode, int acceptCount30d, long createdAt) {
     }

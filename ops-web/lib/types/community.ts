@@ -75,9 +75,14 @@ export interface PickupPoint extends Archivable {
   communityNo: string;
   /** 社区名快照 */
   communityName: string;
-  /** 承接商家；NEIGHBOR 点为空（承接方是 C 端用户，不是商家） */
-  merchantNo?: string;
-  /** 承接商家名快照；NEIGHBOR 点为空 */
+  /**
+   * 承接**门店**；NEIGHBOR 点为空（承接方是 C 端用户，不是商家）。
+   *
+   * 此前叫 `merchantNo` 且装的是主体号。自提点归属改到门店之后（后端 V16），
+   * 名字与内容就对不上了 —— 一并改名，而不是让下一个人以为它还是主体号。
+   */
+  storeNo?: string;
+  /** 承接商家名快照；NEIGHBOR 点为空。名字仍挂在主体上，不是门店名 */
   merchantName?: string;
   /** 自提点地址。NEIGHBOR 点**成团前只到楼栋**，付款后才给完整门牌 */
   address: string;

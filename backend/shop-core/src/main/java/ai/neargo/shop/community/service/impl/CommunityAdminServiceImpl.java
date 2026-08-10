@@ -195,7 +195,8 @@ public class CommunityAdminServiceImpl implements CommunityAdminService {
     private PickupVO toVO(CmtPickupPoint p) {
         return new PickupVO(p.getPickupNo(), p.getName(), p.getType(), p.getStatus(),
                 p.getCommunityNo(), null,
-                // STORE 点的承接方是商家，NEIGHBOR 是 C 端用户 —— 同一列两种含义，所以只在 STORE 时下发
+                // STORE 点的承接方是**门店**（V16 起），NEIGHBOR 是 C 端用户 ——
+                // 同一列两种含义，所以只在 STORE 时下发
                 "STORE".equals(p.getType()) ? p.getOwnerRef() : null,
                 p.getAddress(), p.getOpenHours(), p.getArrivalDesc(),
                 p.getServiceFeeRate() == null ? 0 : p.getServiceFeeRate(),

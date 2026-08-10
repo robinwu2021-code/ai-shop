@@ -28,10 +28,14 @@ public class PickupQueryPortImpl implements PickupQueryPort {
     }
 
     @Override
-    public java.util.List<String> activeStorePickupNos(String merchantNo) {
+    public java.util.List<String> activeStorePickupNos(java.util.Collection<String> storeNos) {
+        // 空集合返回空，不是「不过滤」—— 后者会把全平台的自提点交给一个店员
+        if (storeNos == null || storeNos.isEmpty()) {
+            return java.util.List.of();
+        }
         return ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() ->
                         pickupMapper.selectList(Wrappers.<CmtPickupPoint>lambdaQuery()
-                                .eq(CmtPickupPoint::getOwnerRef, merchantNo)
+                                .in(CmtPickupPoint::getOwnerRef, storeNos)
                                 .eq(CmtPickupPoint::getType, "STORE")
                                 .eq(CmtPickupPoint::getStatus, "ACTIVE")))
                 .stream().map(CmtPickupPoint::getPickupNo).toList();
@@ -49,7 +53,9 @@ public class PickupQueryPortImpl implements PickupQueryPort {
         }
         return Optional.of(new PickupBrief(p.getPickupNo(), p.getName(), p.getAddress(),
                 p.getType(), p.getCommunityNo(),
-                feeModeOf(p), nz(p.getServiceFeePerItemMinor()), nzi(p.getServiceFeeRate())));
+                feeModeOf(p), nz(p.getServiceFeePerItemMinor()), nzi(p.getServiceFeeRate()),
+                // owner_ref 是多态列：只有 STORE 那一支存的是门店号
+                "STORE".equals(p.getType()) ? p.getOwnerRef() : null));
     }
 
     /**

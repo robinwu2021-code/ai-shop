@@ -86,9 +86,6 @@ public class BizIdentityResolverImpl implements BizIdentityResolver {
             return BizContext.NONE;
         }
 
-        Set<String> pickupNos = pickupQueryPort.activeStorePickupNos(merchant.getEntityNo()).stream()
-                .collect(Collectors.toSet());
-
         /*
          * 我有权限的门店。**老板与店员不是同一套口径**：
          *   老板（is_owner）→ 主体下**全部**门店，包括他明天新建的那家；
@@ -118,6 +115,28 @@ public class BizIdentityResolverImpl implements BizIdentityResolver {
                 .filter(storeNos::contains)
                 .findFirst()
                 .orElse(storeNos.stream().sorted().findFirst().orElse(null));
+
+        /*
+         * 能核销哪些自提点：**按我能管的门店算**，不是按主体（V16 起自提点归属到门店）。
+         *
+         * 按主体算的话，A 店店员能核销 B 店门口那个自提点的货 —— 而门店授权
+         * (mch_store_role) 明明已经把范围划出来了。这与订单作用域是同一条原则：
+         * 越权不会报错，只会安静地多做一些事。
+         */
+        /*
+         * 用 LinkedHashSet 保住顺序。
+         *
+         * 不是洁癖：PickupServiceImpl 拿 `pickupNos().iterator().next()` 当
+         * 「默认自提点」。而 Set.copyOf 的迭代顺序**每次 JVM 启动都不一样**
+         * （JDK 的不可变集合按启动时的随机盐排布），于是「默认点」会在
+         * PP0001 和 PP0002 之间随机漂移 —— 测试里表现为偶发失败，
+         * 线上表现为「今天进来看到的是另一家点的单」。
+         *
+         * 真正的修法是让那处显式挑一个（比如默认门店的点），但那是履约域的决定；
+         * 在此之前，至少不要让顺序本身变成随机数。
+         */
+        Set<String> pickupNos =
+                new java.util.LinkedHashSet<>(pickupQueryPort.activeStorePickupNos(storeNos));
 
         return new BizContext(merchant.getEntityNo(), pickupNos, Set.of(), storeNos, defaultStore,
                 Boolean.TRUE.equals(membership.getIsOwner()));

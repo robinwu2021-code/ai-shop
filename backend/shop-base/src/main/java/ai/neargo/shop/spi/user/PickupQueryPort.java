@@ -31,12 +31,25 @@ public interface PickupQueryPort {
      * 「常驻」这个筛选条件（类型 + 状态两个字段）属于社区域，
      * 商家域自己拼一遍，将来加一档状态就会漏。
      *
+     * <p><b>参数是门店号而不是主体号（V16 起）</b>：自提点归属改到了门店。
+     * 传主体号的话，多门店商家的店员会拿到别家店的自提点 ——
+     * 而核销权限恰恰是按店给的。
+     *
+     * @param storeNos 要查的门店；空集合返回空列表（<b>不是「不过滤」</b>）
      * @return 无自提点返回空列表
      */
-    java.util.List<String> activeStorePickupNos(String merchantNo);
+    java.util.List<String> activeStorePickupNos(java.util.Collection<String> storeNos);
 
+    /**
+     * @param ownerStoreNo 这个自提点<b>属于哪家门店</b>；只有 {@code type=STORE} 时有值
+     *                     （NEIGHBOR 承接方是 C 端用户、PLATFORM 是平台）。
+     *                     下单按它决定「货从哪家店出」—— 顾客到哪个点取货，
+     *                     货就该是那家店的。此前恒取默认门店，多门店时会
+     *                     「扣了 A 店的库存，顾客却去 B 店取货」
+     */
     record PickupBrief(String pickupNo, String name, String address, String type,
                        String communityNo, String feeMode,
-                       long serviceFeePerItemMinor, int serviceFeeRate) {
+                       long serviceFeePerItemMinor, int serviceFeeRate,
+                       String ownerStoreNo) {
     }
 }

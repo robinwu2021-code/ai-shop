@@ -99,10 +99,34 @@ public class CommunityServiceImpl implements CommunityService {
                 owner == null ? "" : owner.logo(), p.getOpenHours(), p.getArrivalDesc());
     }
 
+    /**
+     * 自提点承接方的展示信息（商家名 + logo）。
+     *
+     * <p><b>owner_ref 在 STORE 类型下存的是 store_no（V16 起）</b>，而名字与 logo
+     * 仍挂在主体上 —— 所以要先门店 → 主体再查。
+     * 返回的 Map <b>仍按 owner_ref（门店号）索引</b>，调用方不必知道这一层。
+     *
+     * <p>不把「门店名」拿来当展示名：顾客认的是「张记杂货」，
+     * 不是「张记杂货·河坊街店」—— 自提点自己已经有名字和地址了，
+     * 这里要回答的是「这是谁家的点」。
+     */
     private Map<String, MerchantBrief> loadOwners(List<CmtPickupPoint> pickups) {
-        List<String> merchantNos = pickups.stream()
+        List<String> storeNos = pickups.stream()
                 .map(CmtPickupPoint::getOwnerRef).filter(java.util.Objects::nonNull).distinct().toList();
-        return merchantQueryPort.findAll(merchantNos);
+        if (storeNos.isEmpty()) {
+            return Map.of();
+        }
+        Map<String, String> entityOfStore = merchantQueryPort.entityOfStores(storeNos);
+        Map<String, MerchantBrief> byEntity =
+                merchantQueryPort.findAll(entityOfStore.values().stream().distinct().toList());
+        Map<String, MerchantBrief> out = new java.util.HashMap<>();
+        for (String storeNo : storeNos) {
+            MerchantBrief brief = byEntity.get(entityOfStore.get(storeNo));
+            if (brief != null) {
+                out.put(storeNo, brief);
+            }
+        }
+        return out;
     }
 
     private CommunityVO toVO(CmtCommunity c, List<CmtPickupPoint> pickups, Map<String, MerchantBrief> owners,

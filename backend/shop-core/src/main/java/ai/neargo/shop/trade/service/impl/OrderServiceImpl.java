@@ -240,8 +240,31 @@ public class OrderServiceImpl implements OrderService {
          * 那种错不会报错，只会在盘点时表现成两家店的账都对不上。
          */
         Map<String, String> storeOfMerchant = new HashMap<>();
+        /*
+         * 顾客选的自提点属于哪家店，货就从哪家店出（V16 起自提点归属到门店）。
+         *
+         * 此前这里恒取默认门店 —— 多门店时的表现是「扣了 A 店的库存，
+         * 顾客却到 B 店去取货」，而自提场景下这就是一次直接的履约事故：
+         * 人到了，货不在。
+         *
+         * **只认属于本主体的自提点**：顾客可以在邻居家（NEIGHBOR）或平台点取货，
+         * 那两类的 ownerStoreNo 为空，此时仍回落默认门店 —— 那是「这家店从哪儿发货」，
+         * 与「去哪儿取」本来就是两件事。
+         */
+        String pickupStoreNo = pickupPort.find(cmd.pickupNo())
+                .map(ai.neargo.shop.spi.user.PickupQueryPort.PickupBrief::ownerStoreNo)
+                .filter(no -> no != null && !no.isBlank())
+                .orElse(null);
         for (Group g : split.groups) {
-            merchantPort.defaultStoreNo(g.merchantNo).ifPresent(no -> storeOfMerchant.put(g.merchantNo, no));
+            // 这个自提点是不是这家主体自己的店 —— 一次订单可以拆给多家商家，
+            // 自提点只可能属于其中一家（或谁都不属于）
+            boolean pickupBelongsToThisMerchant = pickupStoreNo != null
+                    && merchantPort.storeNos(g.merchantNo).contains(pickupStoreNo);
+            if (pickupBelongsToThisMerchant) {
+                storeOfMerchant.put(g.merchantNo, pickupStoreNo);
+            } else {
+                merchantPort.defaultStoreNo(g.merchantNo).ifPresent(no -> storeOfMerchant.put(g.merchantNo, no));
+            }
         }
 
         // ⑤ 锁库存 —— 放在落库之前：库存不足就整单失败，不留半张订单

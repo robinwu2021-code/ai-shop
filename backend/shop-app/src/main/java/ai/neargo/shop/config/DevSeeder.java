@@ -135,9 +135,9 @@ public class DevSeeder {
             }
 
             pickupMapper.insert(pickup("PP0001", "C0001", "老张粮油店（自提点）",
-                    "阳光花园东门旁", "M0001", "08:00-21:00", "每晚 7 点前到货"));
+                    "阳光花园东门旁", "ST-M0001", "08:00-21:00", "每晚 7 点前到货"));
             pickupMapper.insert(pickup("PP0002", "C0002", "翡翠城便利店",
-                    "翡翠城 3 号楼底商", "M0001", "07:00-22:00", "每晚 8 点前到货"));
+                    "翡翠城 3 号楼底商", "ST-M0001", "07:00-22:00", "每晚 8 点前到货"));
 
             seedGoods(goodsMapper, skuMapper, poolMapper,
                     "G0001", "M0001", "NORMAL", "🍚", "五常大米 10斤装", "东北五常，当季新米",
@@ -239,7 +239,7 @@ public class DevSeeder {
     }
 
     private CmtPickupPoint pickup(String no, String communityNo, String name, String address,
-                                  String merchantNo, String openHours, String arrivalDesc) {
+                                  String storeNo, String openHours, String arrivalDesc) {
         var p = new CmtPickupPoint();
         p.setPickupNo(no);
         p.setCommunityNo(communityNo);
@@ -247,7 +247,8 @@ public class DevSeeder {
         p.setAddress(address);
         p.setType("STORE");
         p.setScope("PERMANENT");
-        p.setOwnerRef(merchantNo);
+        // STORE 类型的 owner_ref 存的是**门店号**（V16 起）
+        p.setOwnerRef(storeNo);
         p.setOpenHours(openHours);
         p.setArrivalDesc(arrivalDesc);
         p.setServiceFeeRate(0);
