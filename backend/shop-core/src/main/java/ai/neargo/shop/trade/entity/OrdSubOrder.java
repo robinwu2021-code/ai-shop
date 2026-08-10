@@ -27,6 +27,22 @@ public class OrdSubOrder extends BaseEntity {
     public static final String CANCELLED = "CANCELLED";
     public static final String REFUNDED = "REFUNDED";
 
+    /**
+     * {@code fulfillment} 列的取值域。
+     *
+     * <p>此前这四个值只以字面量形式散在各处（{@code MERCHANT_DELIVERY} 全后端仅一处），
+     * 建表语句上也没有注释 —— 也就是说**没有任何地方声明过这一列合法值是哪些**。
+     * 代价：端上写了 {@code "DELIVERY"}，两边各自都「有那个词」，
+     * 全局词汇表比对照样通过，而确认订单页把 i18n 键原样打给了用户。
+     *
+     * <p>集中在这里是为了给 {@code scripts/check-enums.mjs} 一个可靠的真源 ——
+     * 它按**字段**比对取值域，而不是在全部大写字面量里碰运气。
+     */
+    public static final String STORE_PICKUP = "STORE_PICKUP";
+    public static final String NEIGHBOR_PICKUP = "NEIGHBOR_PICKUP";
+    public static final String MERCHANT_DELIVERY = "MERCHANT_DELIVERY";
+    public static final String EXPRESS = "EXPRESS";
+
     private String subOrderNo;
     private String orderNo;
     private String userNo;
