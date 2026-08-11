@@ -56,11 +56,12 @@ onShow(() => {
       改成组内密排（同 C 端「我的」）：**分组表达归属，间距只在组与组之间**。
     -->
     <view class="cells">
-      <view class="cell" @tap="go(ROUTES.settle)">
+      <!-- 结算与经营数据按 perms 裁剪：店员看不到「钱」，也看不到客户资产 -->
+      <view v-if="merchant.can('biz:finance')" class="cell" @tap="go(ROUTES.settle)">
         <text class="cell__label">{{ $t("me.settle") }}</text>
         <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
       </view>
-      <view class="cell" @tap="go(ROUTES.stats)">
+      <view v-if="merchant.can('biz:customer')" class="cell" @tap="go(ROUTES.stats)">
         <text class="cell__label">{{ $t("me.stats") }}</text>
         <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
       </view>

@@ -190,8 +190,16 @@ onShow(load);
         <text class="sh-muted">{{ $t("home.ownedTrafficHint") }}</text>
       </view>
 
+      <!--
+        入口按 perms 裁剪。**后端拒绝是安全边界，这里只是体验** ——
+        两者都要有：只做后端，员工会看到一堆点了报 70006 的入口；
+        只做这里，那不是安全。
+
+        判权一律用 merchant.can()，不要按角色名自己推 ——
+        两处各推一次迟早分岔，而分岔的表现是「看得见但点了报错」。
+      -->
       <view
-        v-if="merchant.isPickupPoint"
+        v-if="merchant.isPickupPoint && merchant.can('biz:verify')"
         class="sh-card entry"
         @tap="open(ROUTES.verify)"
       >
@@ -199,38 +207,38 @@ onShow(load);
         <text class="sh-muted">{{ $t("home.fulfillEntryHint") }}</text>
       </view>
 
-      <view class="sh-card entry" @tap="open(ROUTES.store)">
+      <view v-if="merchant.can('biz:store')" class="sh-card entry" @tap="open(ROUTES.store)">
         <text class="sh-h2">{{ $t("home.storeEntry") }}</text>
         <text class="sh-muted">{{ $t("home.storeEntryHint") }}</text>
       </view>
 
-      <view class="sh-card entry" @tap="open(ROUTES.stores)">
+      <view v-if="merchant.can('biz:store:admin')" class="sh-card entry" @tap="open(ROUTES.stores)">
         <text class="sh-h2">{{ $t("home.storesEntry") }}</text>
         <text class="sh-muted">{{ $t("home.storesEntryHint") }}</text>
       </view>
 
-      <view class="sh-card entry" @tap="open(ROUTES.staff)">
+      <view v-if="merchant.can('biz:store:admin')" class="sh-card entry" @tap="open(ROUTES.staff)">
         <text class="sh-h2">{{ $t("home.staffEntry") }}</text>
         <text class="sh-muted">{{ $t("home.staffEntryHint") }}</text>
       </view>
 
       <!-- 收款设置：与店铺设置并列而不是塞在里面 —— 「店能开」与「钱能收」是两件事 -->
-      <view class="sh-card entry" @tap="open(ROUTES.payment)">
+      <view v-if="merchant.can('biz:finance')" class="sh-card entry" @tap="open(ROUTES.payment)">
         <text class="sh-h2">{{ $t("home.paymentEntry") }}</text>
         <text class="sh-muted">{{ $t("home.paymentEntryHint") }}</text>
       </view>
 
-      <view class="sh-card entry" @tap="open(ROUTES.marketing)">
+      <view v-if="merchant.can('biz:campaign')" class="sh-card entry" @tap="open(ROUTES.marketing)">
         <text class="sh-h2">{{ $t("home.marketingEntry") }}</text>
         <text class="sh-muted">{{ $t("home.marketingEntryHint") }}</text>
       </view>
 
-      <view class="sh-card entry" @tap="open(ROUTES.groups)">
+      <view v-if="merchant.can('biz:campaign')" class="sh-card entry" @tap="open(ROUTES.groups)">
         <text class="sh-h2">{{ $t("home.groupEntry") }}</text>
         <text class="sh-muted">{{ $t("home.groupEntryHint") }}</text>
       </view>
 
-      <view class="sh-card entry" @tap="open(ROUTES.quotes)">
+      <view v-if="merchant.can('biz:campaign')" class="sh-card entry" @tap="open(ROUTES.quotes)">
         <text class="sh-h2">{{ $t("home.quoteEntry") }}</text>
         <text class="sh-muted">{{ $t("home.quoteEntryHint") }}</text>
       </view>

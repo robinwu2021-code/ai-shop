@@ -10,7 +10,7 @@ import { computed, ref } from "vue";
 import { onShow } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
 import { api } from "@/api";
-import type { MerchantStaff, Store } from "@shared/types";
+import type { MerchantStaff, StaffRole, Store } from "@shared/types";
 
 const { t } = useI18n();
 
@@ -23,7 +23,15 @@ const phone = ref("");
 /** 展开授权面板的员工 —— 一次只展开一个，免得整页变成一张巨大的矩阵 */
 const editing = ref<string | null>(null);
 
-const ROLES = ["MANAGER", "CLERK"] as const;
+/**
+ * 可授予的角色。**默认只显示前三个** —— 三个角色的选择题谁都会做，
+ * 六个并排摆出来就成了需要读说明的题，而店主不会读。
+ * 理货员与配送员、客服收在「更多角色」里，夫妻店永远看不到它们。
+ */
+const COMMON_ROLES = ["MANAGER", "CLERK"] as const;
+const MORE_ROLES = ["PICKER", "COURIER", "CS"] as const;
+/** 展开了「更多角色」的员工 */
+const expanded = ref<string | null>(null);
 
 onShow(load);
 
@@ -61,14 +69,23 @@ function toggleStatus(s: MerchantStaff) {
   run(() => api.mSetStaffStatus(s.mchAccountNo, s.status !== "ACTIVE"));
 }
 
-/** 点当前角色 = 取消授权（传空），点别的角色 = 改成那个角色 */
-function grant(s: MerchantStaff, storeNo: string, role: (typeof ROLES)[number]) {
-  const current = s.roles.find((r) => r.storeNo === storeNo)?.role;
-  run(() => api.mGrantStore(s.mchAccountNo, storeNo, current === role ? undefined : role));
+/**
+ * 点一下加一个角色，再点一下去掉 —— **一人一店可多角色**，权限取并集。
+ *
+ * 小店的常态是一人多岗：站收银台的顺手把货送了（店员 + 配送员）。
+ * 此前是单选（点别的角色 = 覆盖），老板想「再加一个」会把原来的冲掉。
+ */
+function grant(s: MerchantStaff, storeNo: string, role: StaffRole) {
+  const had = hasRole(s, storeNo, role);
+  run(() => api.mGrantStore(s.mchAccountNo, storeNo, role, !had));
 }
 
-const roleOf = (s: MerchantStaff, storeNo: string) =>
-  s.roles.find((r) => r.storeNo === storeNo)?.role;
+const hasRole = (s: MerchantStaff, storeNo: string, role: string) =>
+  s.roles.some((r) => r.storeNo === storeNo && r.role === role);
+
+/** 这家店上他持有的全部角色，用于摘要展示 */
+const rolesAt = (s: MerchantStaff, storeNo: string) =>
+  s.roles.filter((r) => r.storeNo === storeNo).map((r) => r.role);
 </script>
 
 <template>
@@ -111,14 +128,31 @@ const roleOf = (s: MerchantStaff, storeNo: string) =>
             <text class="row__name">{{ st.name }}</text>
             <view class="row__roles">
               <text
-                v-for="r in ROLES"
+                v-for="r in COMMON_ROLES"
                 :key="r"
                 class="sh-chip"
-                :class="{ 'sh-chip--primary': roleOf(s, st.storeNo) === r }"
+                :class="{ 'sh-chip--primary': hasRole(s, st.storeNo, r) }"
                 @tap="grant(s, st.storeNo, r)"
               >
                 {{ $t(`staff.role.${r}`) }}
               </text>
+              <!-- 更多角色：理货员/配送员/客服。夫妻店不用看见它们 -->
+              <template v-if="expanded === s.mchAccountNo">
+                <text
+                  v-for="r in MORE_ROLES"
+                  :key="r"
+                  class="sh-chip"
+                  :class="{ 'sh-chip--primary': hasRole(s, st.storeNo, r) }"
+                  @tap="grant(s, st.storeNo, r)"
+                >
+                  {{ $t(`staff.role.${r}`) }}
+                </text>
+              </template>
+              <text
+                v-else
+                class="sh-chip more"
+                @tap="expanded = s.mchAccountNo"
+              >{{ $t("staff.moreRoles") }}</text>
             </view>
           </view>
           <text class="hint">{{ $t("staff.grantHint") }}</text>

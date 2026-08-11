@@ -134,7 +134,8 @@ onShow(load);
         :active="tab"
         @change="switchTab"
       ></sh-tabs>
-      <text class="add" @tap="edit()">＋ {{ $t("goods.add") }}</text>
+      <!-- 建商品/改价属于 biz:goods；店员只有 biz:stock（改库存），不显示这个入口 -->
+      <text v-if="merchant.can('biz:goods')" class="add" @tap="edit()">＋ {{ $t("goods.add") }}</text>
     </view>
 
     <!--
@@ -164,11 +165,17 @@ onShow(load);
           {{ g.onSale ? $t("goods.statusON_SALE") : $t("goods.statusOFF_SALE") }}
         </text>
         <view class="row__btns">
-          <text class="mini" @tap="edit(g)">{{ $t("goods.edit") }}</text>
-          <text class="mini" @tap="toggle(g)">
+          <!-- 编辑与上下架都会改价/改可见性 → biz:goods；改库存只是数量 → biz:stock。
+               这条缝就是店员的权限边界：卖完了能马上改数，但改不了价 -->
+          <text v-if="merchant.can('biz:goods')" class="mini" @tap="edit(g)">
+            {{ $t("goods.edit") }}
+          </text>
+          <text v-if="merchant.can('biz:goods')" class="mini" @tap="toggle(g)">
             {{ g.onSale ? $t("goods.offSale") : $t("goods.onSale") }}
           </text>
-          <text class="mini" @tap="editStock(g)">{{ $t("goods.editStock") }}</text>
+          <text v-if="merchant.can('biz:stock')" class="mini" @tap="editStock(g)">
+            {{ $t("goods.editStock") }}
+          </text>
         </view>
       </view>
     </view>

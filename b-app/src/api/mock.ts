@@ -397,6 +397,22 @@ export const mockApi: MerchantApi = {
     return delay({ ...st });
   },
 
+  async mBizScope() {
+    const home = db.stores.find((s) => s.isDefault) ?? db.stores[0];
+    // mock 里的演示会话恒为老板 —— 要体验受限角色请连真后端用员工账号登录。
+    // 这里不编一个「假的店员」：那会让开发期看到的裁剪结果与真实的不一样
+    return delay({
+      merchantNo: db.merchant.merchantNo,
+      currentStoreNo: home?.storeNo ?? "",
+      owner: true,
+      storeNos: db.stores.map((s) => s.storeNo),
+      pickupNos: db.merchant.isPickupPoint ? ["PP-MOCK-1"] : [],
+      groupNos: [],
+      staffRoles: ["OWNER"],
+      perms: ["*"],
+    });
+  },
+
   async mGrantStore(mchAccountNo, storeNo, role, granted) {
     const st = requireStaff(mchAccountNo);
     const store = requireStore(storeNo);

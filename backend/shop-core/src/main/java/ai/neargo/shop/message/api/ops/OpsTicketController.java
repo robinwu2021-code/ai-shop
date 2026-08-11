@@ -43,11 +43,25 @@ public class OpsTicketController {
         this.auditLogPort = auditLogPort;
     }
 
-    /** @param status 为空给全部；传 {@code OPEN} 就是待处理队列 */
+    /**
+     * 工单队列。
+     *
+     * <p><b>返回 PageData 而不是裸数组</b>：ops-web 的契约是
+     * {@code listTickets(): Promise<Page<Ticket>>}，按 {records,total} 渲染。
+     * 返回裸数组的后果不是报错 —— 是<b>接口 200、数据几十条、页面显示「暂无数据」</b>，
+     * 而控制台一条错误都没有。
+     *
+     * <p>工单量级小，全量算完再包一层就够，不必下推到 SQL。
+     *
+     * @param status 为空给全部；传 {@code OPEN} 就是待处理队列
+     */
     @GetMapping("/ops/tickets")
     @PreAuthorize("@perm.can('" + Perms.TICKET_HANDLE + "')")
-    public List<TicketVO> list(@RequestParam(required = false) String status) {
-        return messageService.opsTickets(status);
+    public ai.neargo.shop.common.PageData<TicketVO> list(
+            @RequestParam(required = false) String status,
+            @RequestParam(defaultValue = "1") long page,
+            @RequestParam(defaultValue = "20") long size) {
+        return ai.neargo.shop.common.PageData.ofAll(messageService.opsTickets(status), page, size);
     }
 
     /**

@@ -39,15 +39,40 @@ public class BizPickupController {
         this.storeCodeService = storeCodeService;
     }
 
-    /** 当前用户在经营侧的三个作用域。前端据此决定展示哪些入口。 */
+    /**
+     * 当前用户在经营侧的作用域与权限。<b>前端据此决定展示哪些入口</b>。
+     *
+     * <p>不直接返回 {@link BizContext} 那个 record：它内部有 {@code rolesByStore}
+     * （每家店的角色映射），整个发出去既冗余又暴露了端上用不着的结构。
+     * 这里只给<b>当前门店</b>的角色与算好的权限码。
+     *
+     * <p><b>切门店后要重新调它</b> —— 角色跟着门店走，同一个人可能在
+     * A 店是店长、B 店是店员，权限跟着变。
+     */
     @GetMapping("/biz/context")
-    public BizContext context() {
+    public BizContextVO context() {
         BizContext ctx = BizContext.current();
         if (ctx.merchantNo() == null || ctx.merchantNo().isBlank()) {
             // 不是商家：403 而不是空对象 —— 空对象会让前端渲染出一个点不动的经营台
             throw BizException.of(ErrorCode.FORBIDDEN);
         }
-        return ctx;
+        return new BizContextVO(ctx.merchantNo(), ctx.currentStoreNo(), ctx.owner(),
+                List.copyOf(ctx.storeNos()), List.copyOf(ctx.pickupNos()),
+                List.copyOf(ctx.groupNos()), List.copyOf(ctx.staffRoles()),
+                List.copyOf(ai.neargo.shop.auth.BizPerms.of(ctx.staffRoles())));
+    }
+
+    /**
+     * @param groupNos   我发起了哪些团（第三个作用域，与门店/自提点正交）
+     * @param staffRoles 我在<b>当前门店</b>持有的角色（可多个）。老板恒为 [OWNER]
+     * @param perms      这些角色合起来的权限码，<b>已取并集</b>。老板是 ["*"]。
+     *                   端上照它裁剪入口 —— 不要自己按角色再推一遍，
+     *                   两处各推一次迟早分岔，而分岔的表现是「看得见但点了报错」
+     */
+    public record BizContextVO(String merchantNo, String currentStoreNo, boolean owner,
+                               List<String> storeNos, List<String> pickupNos,
+                               List<String> groupNos,
+                               List<String> staffRoles, List<String> perms) {
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.VERIFY + "')")

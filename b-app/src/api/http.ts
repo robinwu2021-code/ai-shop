@@ -6,6 +6,7 @@ import type { GoodsDraft, GoodsGuess, MerchantApi } from "./contract";
 // 入参的 wire 契约。`satisfies` 让「实际发出去的 body」在编译期受检 ——
 // 字段写错、少传、多传都编译不过，而不是等联调才发现（与 C 端同一套做法）
 import type {
+  BizScope,
   AppealReviewReq,
   SaveGoodsReqBody,
   CreateGroupReq,
@@ -117,6 +118,7 @@ export const httpApi: MerchantApi = {
   mSetStaffStatus: (mchAccountNo, active) =>
     http.post<MerchantStaff>(buildPath(E.mSetStaffStatus.path, { mchAccountNo }),
       { active } satisfies SetActiveReq),
+  mBizScope: () => http.get<BizScope>(E.mBizScope.path),
   mGrantStore: (mchAccountNo, storeNo, role, granted) =>
     http.post<MerchantStaff>(buildPath(E.mGrantStore.path, { mchAccountNo }),
       { storeNo, role, granted } satisfies GrantStoreReq),

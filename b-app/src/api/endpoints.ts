@@ -47,6 +47,7 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
   mStaffList: { method: "GET", path: "/biz/staff", auth: true, summary: "员工列表" },
   mAddStaff: { method: "POST", path: "/biz/staff", auth: true, summary: "加员工" },
   mSetStaffStatus: { method: "POST", path: "/biz/staff/:mchAccountNo/status", auth: true, summary: "停用/启用员工" },
+  mBizScope: { method: "GET", path: "/biz/context", auth: true, summary: "我的作用域与权限" },
   mGrantStore: { method: "POST", path: "/biz/staff/:mchAccountNo/store", auth: true, summary: "授权到店" },
   mStoreQrcode: { method: "GET", path: "/biz/store/qrcode", auth: true, summary: "店铺码" },
   mShareKit: { method: "GET", path: "/biz/store/share-kit", auth: true, summary: "分享素材" },

@@ -4,6 +4,7 @@
 // 类型全部来自 @shared/types —— **不在这里重复定义**。同一笔订单两端看到的是同一个
 // Order 结构，只是可见字段与可执行动作不同；各定义一份必然漂移。
 import type {
+  BizScope,
   AfterSale,
   Category,
   Community,
@@ -215,6 +216,14 @@ export interface MerchantApi {
    *
    * @param granted 不传 = 授予；传 false = 撤销这一个角色
    */
+  /**
+   * 我在当前门店的作用域与权限。**登录后与切门店后都要调**。
+   *
+   * 页面按返回的 `perms` 裁剪入口 —— 后端拒绝是安全边界，前端隐藏是体验，
+   * 两者都要有：只做后端，员工会看到一堆点了报错的入口；只做前端，那不是安全。
+   */
+  mBizScope(): Promise<BizScope>;
+
   mGrantStore(mchAccountNo: string, storeNo: string, role: StaffRole,
               granted?: boolean): Promise<MerchantStaff>;
   mStoreQrcode(): Promise<StoreQrcode>;

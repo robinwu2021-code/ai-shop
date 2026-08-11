@@ -1219,7 +1219,10 @@ components:
       enum: 
         - "MANAGER"
         - "CLERK"
-      description: "员工角色。店长不受门店授权限制"
+        - "PICKER"
+        - "COURIER"
+        - "CS"
+      description: "门店角色（B 端）。**一人一店可持有多个**，权限取并集。\n\n分界线画在「出错的后果」上，而不是功能重要性 —— 履约被拆成三种活，因为它们面对的对象不同：分拣对货、核销对顾客、发货对收件人。 拆开之后理货员与配送员才装得下。判断依据见 `docs/requirements/三端角色权限功能对齐清单.md` §4。\n\n⚠️ `CS` 与运营端的 `Role.CS` **同名不同义**：这个是商家自己雇的客服（只管自己店）， 那个是平台客服（跨商家、能仲裁）。\n\n老板不在这里 —— 他是 `isOwner`，不需要逐店授权。"
     SettleBillStatus: 
       type: "string"
       enum: 
@@ -1292,10 +1295,12 @@ components:
       properties: 
         amount: 
           "$ref": "#/components/schemas/OrderAmount"
+          description: "试算出来的金额。**页面显示的应付必须等于这里的 payableMinor** —— 端上不要自己再算一遍：优惠叠加顺序（先活动后券）在后端， 两处各算一次必然算出两个数，而用户看到的是「确认页 46.40、付款 51.40」。"
         items: 
           type: "array"
           items: 
             "$ref": "#/components/schemas/OrderItem"
+          description: "试算出来的订单行，含赠品行（价格 0）。数量与下单后落库的一致"
       required: 
         - "amount"
         - "items"

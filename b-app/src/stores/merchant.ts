@@ -17,6 +17,16 @@ export const useMerchantStore = defineStore("merchant", {
      */
     storeNo: "" as string,
     stores: [] as Store[],
+    /**
+     * 我在**当前门店**的权限码（后端算好的并集）。老板是 `["*"]`。
+     *
+     * **切门店后必须重拉** —— 角色跟着门店走，同一个人可能在 A 店是店长、
+     * B 店是店员。不重拉的表现是「切到分店后还能看见只有店长才有的入口，
+     * 点了报 70006」。
+     */
+    perms: [] as string[],
+    /** 我在当前门店持有的角色，只用于展示（「你是这家店的店员」）。判权一律看 perms */
+    staffRoles: [] as string[],
   }),
 
   getters: {
@@ -28,6 +38,14 @@ export const useMerchantStore = defineStore("merchant", {
     isActive: (s) => s.profile?.status === "ACTIVE",
     /** 是否承接自提点 → 决定工作台是否出现「履约台」入口（ADR-005） */
     isPickupPoint: (s) => !!s.profile?.isPickupPoint,
+    /**
+     * 我能不能做这件事。**页面一律用它裁剪入口**，不要自己按角色推 ——
+     * 两处各推一次迟早分岔，而分岔的表现是「看得见但点了报错」。
+     *
+     * 权限还没拉到时返回 false（fail-closed）：宁可少显示一个入口，
+     * 也不要先亮出来再消失 —— 后者看着像界面在抽风。
+     */
+    can: (s) => (code: string) => s.perms.includes("*") || s.perms.includes(code),
   },
 
   actions: {
@@ -87,6 +105,32 @@ export const useMerchantStore = defineStore("merchant", {
       this.storeNo = storeNo;
       if (storeNo) uni.setStorageSync(STORAGE.storeNo, storeNo);
       else uni.removeStorageSync(STORAGE.storeNo);
+      // 角色跟着门店走 —— 换了店就要重新问「我在这家店能做什么」
+      void this.loadScope();
+    },
+
+    /**
+     * 拉当前门店的作用域与权限。
+     *
+     * 失败时**清空权限**而不是保留上一次的：保留会让一个已被收回授权的人
+     * 继续看到入口（虽然点了会被后端拒），而清空至少与后端一致。
+     */
+    async loadScope() {
+      if (!this.token) {
+        this.perms = [];
+        this.staffRoles = [];
+        return null;
+      }
+      try {
+        const scope = await api.mBizScope();
+        this.perms = scope.perms ?? [];
+        this.staffRoles = scope.staffRoles ?? [];
+        return scope;
+      } catch {
+        this.perms = [];
+        this.staffRoles = [];
+        return null;
+      }
     },
 
     async loadProfile() {
@@ -100,6 +144,8 @@ export const useMerchantStore = defineStore("merchant", {
       this.profile = null;
       // 门店也要清：换个人登录还留着上一位的门店号，是最难查的一类"数据不对"
       this.stores = [];
+      this.perms = [];
+      this.staffRoles = [];
       this.switchStore("");
       uni.removeStorageSync(STORAGE.token);
     },

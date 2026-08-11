@@ -246,6 +246,7 @@ export default {
     needName: "Enter a store name first",
   },
   staff: {
+    moreRoles: "More roles",
     title: "Staff & access",
     hint: "Staff sign in with their own phone and a code — no passwords to hand out",
     owner: "Owner",

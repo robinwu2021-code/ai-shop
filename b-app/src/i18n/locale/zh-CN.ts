@@ -381,6 +381,7 @@ export default {
     needName: "请先填门店名",
   },
   staff: {
+    moreRoles: "更多角色",
     title: "员工与授权",
     hint: "员工用自己的手机号 + 验证码登录，不用设密码",
     owner: "老板",
