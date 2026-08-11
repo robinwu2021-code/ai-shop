@@ -14,6 +14,7 @@ import ai.neargo.shop.settle.dto.SettleBillVO;
 import ai.neargo.shop.settle.entity.StlBill;
 import ai.neargo.shop.settle.entity.StlPurchaseInvoice;
 import ai.neargo.shop.settle.dto.PurchaseInvoiceVO;
+import ai.neargo.shop.settle.dto.StatementVO;
 import ai.neargo.shop.spi.user.MerchantQueryPort;
 import ai.neargo.shop.settle.entity.StlSplitLog;
 import ai.neargo.shop.settle.mapper.SettleMappers.BillMapper;
@@ -673,6 +674,71 @@ public class SettleServiceImpl implements SettleService {
             out.put(m.group(1), m.group(2));
         }
         return out;
+    }
+
+
+    // ---------------------------------------------------------------- 对账单（P0-12）
+
+    @Override
+    public StatementVO statement(String merchantNo, String period) {
+        List<StlBill> bills = DataScopeContext.executeWithoutScope(() ->
+                billMapper.selectList(Wrappers.<StlBill>lambdaQuery()
+                        .eq(StlBill::getEntityNo, merchantNo)
+                        .orderByAsc(StlBill::getId))).stream()
+                .filter(b -> period == null || period.isBlank() || period.equals(periodOf(b)))
+                .toList();
+
+        List<StatementVO.Line> lines = new java.util.ArrayList<>();
+        List<String> vouchers = new java.util.ArrayList<>();
+        long gross = 0;
+        long commission = 0;
+        long serviceFee = 0;
+        long net = 0;
+        String mode = null;
+        for (StlBill b : bills) {
+            String voucher = voucherOf(b);
+            if (voucher != null && !voucher.isBlank()) {
+                vouchers.add(voucher);
+            }
+            lines.add(new StatementVO.Line(b.getSettleNo(), b.getOrderNo(), b.getSubOrderNo(),
+                    nz(b.getGrossMinor()), nz(b.getCommissionMinor()), nz(b.getServiceFeeMinor()),
+                    nz(b.getNetMinor()), nzi(b.getCommissionRate()),
+                    b.getStatus(), b.getInvoiceStatus(),
+                    b.getPaidAt() != null ? b.getPaidAt() : b.getSplitAt(), voucher));
+            gross += nz(b.getGrossMinor());
+            commission += nz(b.getCommissionMinor());
+            serviceFee += nz(b.getServiceFeeMinor());
+            net += nz(b.getNetMinor());
+            mode = b.getBusinessMode();
+        }
+        return new StatementVO(period, merchantNo, mode, gross, commission, serviceFee, net,
+                bills.size(), vouchers, lines);
+    }
+
+    /**
+     * 该行的凭证号：自营取付款凭证（网银流水），第三方取分账回执（{@code provider_no}）。
+     *
+     * <p>两者语义不同但**作用相同**——都是与外部账单勾对的锚点，所以对账单上合成一列。
+     * 分开两列的话，商家要先知道自己是哪种模式才知道该看哪一列，
+     * 而那正是他不需要关心的事。
+     */
+    private String voucherOf(StlBill b) {
+        if (b.getPaymentRef() != null && !b.getPaymentRef().isBlank()) {
+            return b.getPaymentRef();
+        }
+        return DataScopeContext.executeWithoutScope(() ->
+                        splitLogMapper.selectList(Wrappers.<StlSplitLog>lambdaQuery()
+                                .eq(StlSplitLog::getSettleNo, b.getSettleNo())
+                                .eq(StlSplitLog::getResult, "SUCCESS")
+                                .orderByDesc(StlSplitLog::getId))).stream()
+                .map(StlSplitLog::getProviderNo).filter(x -> x != null && !x.isBlank())
+                .findFirst().orElse(null);
+    }
+
+    /** 结算单的周期按创建月算 —— 与应付账款的出账周期一致 */
+    private String periodOf(StlBill b) {
+        return b.getCreatedAt() == null ? "" : b.getCreatedAt().toLocalDate().withDayOfMonth(1)
+                .format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM"));
     }
 
 

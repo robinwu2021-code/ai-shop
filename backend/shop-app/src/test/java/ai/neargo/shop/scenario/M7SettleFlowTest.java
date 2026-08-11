@@ -757,4 +757,64 @@ class M7SettleFlowTest {
                         + "\",\"amountMinor\":" + amountMinor + "}"));
     }
 
+
+    // ---------------------------------------------------------------- 对账单（P0-12）
+
+    @Test
+    @DisplayName("★ 对账单逐行给费率与凭证号 —— 商家要能自己把差额算清楚")
+    void statementIsAuditable() throws Exception {
+        String ops = opsLogin();
+        String settleNo = aSelfOperatedBill("p0-stmt", "13100131110");
+        confirmPayable(ops, settleNo);
+        mvc().perform(post("/ops/payables/" + settleNo + "/no-invoice")
+                .header("Authorization", "Bearer " + ops)
+                .contentType(MediaType.APPLICATION_JSON).content("{\"reason\":\"无票供应商\"}"));
+        mvc().perform(post("/ops/payables/" + settleNo + "/paid")
+                .header("Authorization", "Bearer " + ops)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"paymentRef\":\"BANK-STMT-001\"}"));
+
+        String biz = loginAsOwnerOf("M0001", "13100131111");
+        JsonNode st = json.readTree(mvc().perform(get("/biz/settle/statement")
+                        .header("Authorization", "Bearer " + biz))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString()).get("data");
+
+        assertThat(st.get("billCount").asInt()).isPositive();
+        // 合计要能对上明细 —— 对不上的对账单没有任何用
+        long lineSum = 0;
+        JsonNode target = null;
+        for (JsonNode line : st.get("lines")) {
+            lineSum += line.get("netMinor").asLong();
+            if (settleNo.equals(line.get("settleNo").asString())) {
+                target = line;
+            }
+        }
+        assertThat(lineSum).as("明细合计必须等于表头合计").isEqualTo(st.get("netMinor").asLong());
+
+        assertThat(target).as("刚结算的那张单必须在对账单里").isNotNull();
+        assertThat(target.get("voucherNo").asString())
+                .as("**凭证号是对账单的核心** —— 商家靠它与银行/微信账单勾对")
+                .isEqualTo("BANK-STMT-001");
+        assertThat(target.get("commissionRate").asInt())
+                .as("费率要逐行给：只给合计的话，商家每次都要来问客服差额哪来的")
+                .isGreaterThanOrEqualTo(0);
+        assertThat(st.get("voucherNos").toString()).contains("BANK-STMT-001");
+    }
+
+    @Test
+    @DisplayName("对账单只给自己的账 —— 不能看到别家供应商")
+    void statementIsScopedToSelf() throws Exception {
+        aSelfOperatedBill("p0-stmt-scope", "13100131112");
+        String biz = loginAsOwnerOf("M0002", "13100131113");
+        JsonNode st = json.readTree(mvc().perform(get("/biz/settle/statement")
+                        .header("Authorization", "Bearer " + biz))
+                .andReturn().getResponse().getContentAsString()).get("data");
+        for (JsonNode line : st.get("lines")) {
+            assertThat(billMapper.selectList(Wrappers.<StlBill>lambdaQuery()
+                    .eq(StlBill::getSettleNo, line.get("settleNo").asString()))
+                    .getFirst().getEntityNo()).isEqualTo("M0002");
+        }
+    }
+
 }

@@ -1,6 +1,7 @@
 package ai.neargo.shop.settle;
 
 import ai.neargo.shop.settle.dto.PurchaseInvoiceVO;
+import ai.neargo.shop.settle.dto.StatementVO;
 import ai.neargo.shop.settle.dto.RateCardVO;
 import ai.neargo.shop.settle.dto.SettleBillVO;
 
@@ -140,5 +141,14 @@ public interface SettleService {
     /** 保存平台开票信息（运营端）。公司全称与税号必填——缺了这两项供应商开不出票。 */
     java.util.Map<String, String> savePlatformInvoiceTitle(java.util.Map<String, String> fields,
                                                            String operatorNo);
+
+    // ---------------------------------------------------------------- 对账单（P0-12）
+
+    /**
+     * 商家对账单。**凭证需求不是报表需求**——必须逐行可与外部账单勾对。
+     *
+     * @param period 结算周期 {@code YYYY-MM}；为空给全部
+     */
+    StatementVO statement(String merchantNo, String period);
 
 }

@@ -5,10 +5,12 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import ai.neargo.shop.auth.BizContext;
 import ai.neargo.shop.settle.SettleService;
 import ai.neargo.shop.settle.dto.PurchaseInvoiceVO;
+import ai.neargo.shop.settle.dto.StatementVO;
 import ai.neargo.shop.settle.dto.RateCardVO;
 import ai.neargo.shop.settle.dto.SettleBillVO;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.context.annotation.Profile;
@@ -46,7 +48,7 @@ public class BizSettleController {
     @PreAuthorize("@perm.canBiz('" + BizPerms.FINANCE + "')")
     @GetMapping("/biz/settle/bills")
     public List<SettleBillVO> bills(
-            @org.springframework.web.bind.annotation.RequestParam(required = false) Boolean allStores) {
+            @RequestParam(required = false) Boolean allStores) {
         var ctx = BizContext.current();
         java.util.Collection<String> scope = Boolean.TRUE.equals(allStores)
                 ? ctx.allowedStoresOrAll()
@@ -98,6 +100,24 @@ public class BizSettleController {
     @GetMapping("/biz/settle/invoices")
     public List<PurchaseInvoiceVO> myInvoices() {
         return settleService.myInvoices(BizContext.requireMerchantNo());
+    }
+
+    /**
+     * 对账单。**这是凭证不是报表**——小微没有发票、没有对公流水，
+     * 这份对账单是他唯一能说明「这笔钱怎么来的」的东西。
+     *
+     * <p>返回结构化数据、由端上导出成文件：格式（CSV/Excel）是展示层的事，
+     * 而内容的权威性来自后端数据，不来自文件格式。
+     *
+     * <p>⚠️ 若将来需要「平台盖章」级别的凭证（PDF + 签名），那是另一件事，
+     * 不是给这个接口加个参数能解决的。
+     *
+     * @param period {@code YYYY-MM}；为空给全部
+     */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.FINANCE + "')")
+    @GetMapping("/biz/settle/statement")
+    public StatementVO statement(@RequestParam(required = false) String period) {
+        return settleService.statement(BizContext.requireMerchantNo(), period);
     }
 
     /**
