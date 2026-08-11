@@ -107,7 +107,7 @@ class Phase1MasterDataTest {
 
         String body = saveStore(token, "ABC");
         // 值域是代码的事实，运营在后台放开档位也不该顺带获得「写入任意字符串」的能力
-        assertThat(json.readTree(body).get("code").asInt()).isEqualTo(70007);
+        assertThat(json.readTree(body).get("code").asInt()).isEqualTo(ai.neargo.shop.common.ErrorCode.SERVICE_SCOPE_NOT_ALLOWED.code());
     }
 
     @Test
@@ -117,7 +117,7 @@ class Phase1MasterDataTest {
 
         // PLATFORM 是合法值，但一期没有任何商品形态支撑它
         //（无虚拟商品、无卡券、无平台自营快递品）
-        assertThat(json.readTree(saveStore(token, "PLATFORM")).get("code").asInt()).isEqualTo(70007);
+        assertThat(json.readTree(saveStore(token, "PLATFORM")).get("code").asInt()).isEqualTo(ai.neargo.shop.common.ErrorCode.SERVICE_SCOPE_NOT_ALLOWED.code());
         assertThat(json.readTree(saveStore(token, "COMMUNITY")).get("code").asInt()).isZero();
     }
 
@@ -306,7 +306,7 @@ class Phase1MasterDataTest {
         String token = merchant("12600171005", "范围测试·后台放开");
         String ops = opsLogin("admin", "admin123");
 
-        assertThat(json.readTree(saveStore(token, "PLATFORM")).get("code").asInt()).isEqualTo(70007);
+        assertThat(json.readTree(saveStore(token, "PLATFORM")).get("code").asInt()).isEqualTo(ai.neargo.shop.common.ErrorCode.SERVICE_SCOPE_NOT_ALLOWED.code());
 
         mvc().perform(post("/ops/service-scopes/PLATFORM/enabled")
                         .header("Authorization", "Bearer " + ops)

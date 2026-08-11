@@ -66,9 +66,23 @@ public class CommunityServiceImpl implements CommunityService {
         Map<String, List<CmtPickupPoint>> byCommunity = pickups.stream()
                 .collect(Collectors.groupingBy(CmtPickupPoint::getCommunityNo));
 
+        /*
+         * **算不出距离的排最后，不是最前。**
+         *
+         * 没配经纬度的社区距离恒为 0（见 distance 的兜底），而升序排序会把 0 顶到第一位 ——
+         * 用户打开选点页，最上面那个正是**离他最远、甚至在别的城市**的那一个。
+         * 不报错、不空白，只是排序完全错了，而这条路径是 C 端的第一屏。
+         *
+         * 没配坐标的社区会一直有：商家提报审过之后建出来的那些只有名字与区划（ADR-013 阶段三），
+         * 坐标要运营后补。所以这不是「补完数据就没事」的临时状况，得在排序里认。
+         *
+         * 不带定位时（all()）全部为 0，此时保持库序 —— 那种场景本来就没有「近」可言。
+         */
+        boolean located = latE6 != null && lngE6 != null;
         return communities.stream()
                 .map(c -> toVO(c, byCommunity.getOrDefault(c.getCommunityNo(), List.of()), owners, latE6, lngE6))
-                .sorted(Comparator.comparingInt(CommunityVO::distance))
+                .sorted(Comparator.comparingInt(
+                        v -> located && v.distance() == 0 ? Integer.MAX_VALUE : v.distance()))
                 .toList();
     }
 

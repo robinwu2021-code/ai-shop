@@ -49,6 +49,45 @@ class M8MessageFlowTest {
     @Autowired
     private ai.neargo.shop.event.OutboxDispatcher dispatcher;
 
+    @Autowired
+    private ai.neargo.shop.product.mapper.ProductMappers.SkuMapper skuMapper;
+
+    /**
+     * 把本类要买的 SKU 库存补满。
+     *
+     * <p>种子给 SK0003 的库存是 80，全套测试跑下来前面的交易用例会把它买到见底。
+     * 于是这里的 {@code buyAndPay} 静默失败（下单被 20001 拒），一条支付事件都没产生，
+     * 而断言报的是「支付成功消息应有 1 条、实际 0 条」—— 看起来像**消息模块坏了**，
+     * 真正的原因在两百个用例之前。这类假红比真 bug 更贵。
+     */
+    /**
+     * 把队列排空再开始。
+     *
+     * <p>{@code dispatchPending()} 一批只取 200 条（按 id 升序）。跑全套时，
+     * 前面两百多个用例会在 outbox 里堆下几百条没人投递的事件，于是本类刚产生的那条
+     * 排在队尾 —— 一次 dispatch 根本轮不到它，断言看到的是「支付成功消息 0 条」，
+     * 像是<b>消息模块坏了</b>，而实际上它连投递都没轮上。
+     *
+     * <p>循环到排空而不是调一次：待投条数没有上界，调一次仍可能剩下。
+     */
+    @org.junit.jupiter.api.BeforeEach
+    void drainOutbox() {
+        for (int i = 0; i < 50 && dispatcher.pendingCount() > 0; i++) {
+            dispatcher.dispatchPending();
+        }
+    }
+
+    @org.junit.jupiter.api.BeforeEach
+    void refillStock() {
+        var sku = skuMapper.selectOne(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                .<ai.neargo.shop.product.entity.PrdSku>lambdaQuery()
+                .eq(ai.neargo.shop.product.entity.PrdSku::getSkuNo, "SK0003").last("limit 1"));
+        if (sku != null && sku.getStock() < 50) {
+            sku.setStock(500);
+            skuMapper.updateById(sku);
+        }
+    }
+
     private MockMvc mvc() {
         return MockMvcBuilders.webAppContextSetup(context)
                 .apply(org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity())

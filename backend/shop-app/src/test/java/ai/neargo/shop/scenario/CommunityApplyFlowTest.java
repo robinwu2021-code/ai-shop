@@ -69,6 +69,26 @@ class CommunityApplyFlowTest {
     }
 
     @Test
+    @DisplayName("★★ 新建出来的社区没坐标，不能因此挤到选点页第一个 —— 那是离用户最远的那个")
+    void newCommunityWithoutCoordsSortsLast() {
+        String m = merchant();
+        var vo = adminService.submitApply(m, "没坐标的小区", null, null, null);
+        adminService.decideApply(vo.applyNo(), true, null, null, "OPS1");
+
+        // 带定位查：算不出距离的（distance=0）必须排在算得出的后面
+        var list = communityService.nearby(30_290_000, 120_110_000);
+        int idx = -1;
+        for (int i = 0; i < list.size(); i++) {
+            if (list.get(i).communityNo().equals(
+                    adminService.appliesOf(m).get(0).communityNo())) {
+                idx = i;
+            }
+        }
+        assertThat(idx).as("新社区应排在有坐标的社区之后").isGreaterThan(0);
+        assertThat(list.get(0).distance()).isGreaterThan(0);
+    }
+
+    @Test
     @DisplayName("★ 挂到不存在的区划要拦 —— 挂错不报错，只会让这个社区在按区覆盖里永远出不来")
     void approveRejectsUnknownRegion() {
         String m = merchant();

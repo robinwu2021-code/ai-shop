@@ -114,11 +114,11 @@ public enum ErrorCode {
      * <p>不复用 CONFLICT 的理由与 GOODS_NOT_APPROVED 一样：财务看到「操作冲突」
      * 完全不知道该去做什么，而看到「发票未核验」就知道要先去催票或核验。
      */
-    INVOICE_REQUIRED(70004, "err.settle.invoice_required"),
+    INVOICE_REQUIRED(70015, "err.settle.invoice_required"),
     /** 发票金额与应付合计不符。多半是周期选错或漏了几单 */
-    INVOICE_AMOUNT_MISMATCH(70005, "err.settle.invoice_amount_mismatch"),
+    INVOICE_AMOUNT_MISMATCH(70016, "err.settle.invoice_amount_mismatch"),
     /** 开票方名称与供应商主体名不一致 —— 三流不一致会被认定虚开风险 */
-    INVOICE_TITLE_MISMATCH(70006, "err.settle.invoice_title_mismatch"),
+    INVOICE_TITLE_MISMATCH(70017, "err.settle.invoice_title_mismatch"),
 
     /**
      * 多规格商品不支持商品级限时特价。
@@ -164,7 +164,7 @@ public enum ErrorCode {
      * 通用的「请求参数有误」会让他去改地址、改营业时间，而问题在那个下拉框上。
      * 端上据此把「当前只开放本社区与全市」直接说出来。
      */
-    SERVICE_SCOPE_NOT_ALLOWED(70007, "err.merchant.service_scope_not_allowed"),
+    SERVICE_SCOPE_NOT_ALLOWED(70018, "err.merchant.service_scope_not_allowed"),
 
     // ---- 8xxxx 类目维护 ----
     /** 类目最多三级 —— 再深一层 C 端的类目导航就没法展示，也没有第四层的产品定义。 */

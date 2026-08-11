@@ -502,7 +502,7 @@ class M7SettleFlowTest {
                         .header("Authorization", "Bearer " + ops)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"paymentRef\":\"BANK-001\"}"))
-                .andExpect(jsonPath("$.code").value(70004));
+                .andExpect(jsonPath("$.code").value(ai.neargo.shop.common.ErrorCode.INVOICE_REQUIRED.code()));
     }
 
     @Test
@@ -640,7 +640,7 @@ class M7SettleFlowTest {
         mvc().perform(post("/ops/payables/" + settleNo + "/paid")
                         .header("Authorization", "Bearer " + ops)
                         .contentType(MediaType.APPLICATION_JSON).content("{\"paymentRef\":\"B1\"}"))
-                .andExpect(jsonPath("$.code").value(70004));
+                .andExpect(jsonPath("$.code").value(ai.neargo.shop.common.ErrorCode.INVOICE_REQUIRED.code()));
 
         // ④ 核验通过后才能付
         mvc().perform(post("/ops/purchase-invoices/" + invoiceNo + "/verify")
@@ -664,7 +664,7 @@ class M7SettleFlowTest {
         String biz = loginAsOwnerOf("M0001", "13100131103");
 
         submitInvoice(biz, payableAwaitingInvoice("M0001") + 1, merchantName("M0001"))
-                .andExpect(jsonPath("$.code").value(70005));
+                .andExpect(jsonPath("$.code").value(ai.neargo.shop.common.ErrorCode.INVOICE_AMOUNT_MISMATCH.code()));
     }
 
     @Test
@@ -682,7 +682,7 @@ class M7SettleFlowTest {
 
         mvc().perform(post("/ops/purchase-invoices/" + invoiceNo + "/verify")
                         .header("Authorization", "Bearer " + ops))
-                .andExpect(jsonPath("$.code").value(70006));
+                .andExpect(jsonPath("$.code").value(ai.neargo.shop.common.ErrorCode.INVOICE_TITLE_MISMATCH.code()));
     }
 
     @Test
@@ -732,7 +732,7 @@ class M7SettleFlowTest {
      * 该供应商**全部已对账待开票**单的应付合计。
      *
      * <p>不是单张单的金额：一张票覆盖该周期全部待开票的单，
-     * 所以校验的基准也是合计。用单张金额去开票会被 70005 拒收 ——
+     * 所以校验的基准也是合计。用单张金额去开票会被 70016 拒收 ——
      * 这正是那条校验要防的「漏了几单」。
      */
     private long payableAwaitingInvoice(String merchantNo) {

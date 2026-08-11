@@ -48,6 +48,32 @@ class M6aStoreAttributionFlowTest {
     @Autowired
     private MchEntityMapper merchantMapper;
 
+    @Autowired
+    private ai.neargo.shop.product.mapper.ProductMappers.SkuMapper skuMapper;
+
+    /**
+     * 把本类要买的 SKU 库存补满。
+     *
+     * <p><b>不是为了「多买几件」，是为了不依赖别人剩下多少。</b> 种子给 SK0003 的库存是 80，
+     * 全套测试跑下来，前面的交易用例会把它买到见底 —— 于是本类在**单跑时全绿、
+     * 全量时报 20001（库存不足）**，而失败信息指向归因逻辑，与真正的原因毫无关系。
+     *
+     * <p>这类假红比真 bug 更贵：它让人怀疑一个其实没坏的模块，
+     * 而下一次真的坏了，也会被当成"又是那个老毛病"。
+     */
+    @org.junit.jupiter.api.BeforeEach
+    void refillStock() {
+        for (String skuNo : java.util.List.of("SK0001", "SK0003", "SK0004", "SK0005")) {
+            var sku = skuMapper.selectOne(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                    .<ai.neargo.shop.product.entity.PrdSku>lambdaQuery()
+                    .eq(ai.neargo.shop.product.entity.PrdSku::getSkuNo, skuNo).last("limit 1"));
+            if (sku != null && sku.getStock() < 50) {
+                sku.setStock(500);
+                skuMapper.updateById(sku);
+            }
+        }
+    }
+
     private MockMvc mvc() {
         return MockMvcBuilders.webAppContextSetup(context)
                 .apply(org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity())
