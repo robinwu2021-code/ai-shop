@@ -4,6 +4,14 @@
 import type { Archivable } from "./common";
 
 /**
+ * 提报单的状态。
+ *
+ * 与覆盖项的 PENDING **同名不同物**：那个说「这一条覆盖算不算数」，
+ * 这个说「这张提报单走到哪了」—— `APPROVED` 意味着平台已经建出了社区。
+ */
+export type CommunityApplyStatus = "PENDING" | "APPROVED" | "REJECTED";
+
+/**
  * 商家提报的新社区（ADR-013 阶段三）。
  *
  * **它不是社区**：审过之后平台才建出来，`communityNo` 这时才有值。
@@ -25,8 +33,7 @@ export interface CommunityApply {
   regionPath?: string;
   /** 商家的补充说明：为什么要开这个点 */
   note?: string;
-  /** PENDING 待审 / APPROVED 已建社区 / REJECTED 驳回 */
-  status: "PENDING" | "APPROVED" | "REJECTED";
+  status: CommunityApplyStatus;
   /** 通过后建出来的社区号；待审与驳回时为空 */
   communityNo?: string;
   /** 驳回原因。**原样出现在商家 B 端**，所以驳回必须填 */
