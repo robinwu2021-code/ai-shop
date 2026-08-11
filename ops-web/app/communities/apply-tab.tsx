@@ -24,8 +24,8 @@ import { Pagination } from "@/components/ui/misc";
 import { StatusBadge, type StatusMap } from "@/components/ui/status-badge";
 import { Toolbar } from "@/components/ui/toolbar";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { RegionChooser } from "./region-chooser";
 import type { COMMUNITIES_COPY } from "./copy";
 
 type Copy = (typeof COMMUNITIES_COPY)["zh"];
@@ -145,9 +145,9 @@ export function ApplyTab({ c, canDecide }: { c: Copy; canDecide: boolean }) {
             {current.status === "PENDING" && (
               <>
                 <DrawerSection title={c.secApplyRegion}>
-                  <Field className="mb-0" label={c.fieldApplyRegion}>
-                    <Input value={regionCode} onChange={(e) => setRegionCode(e.target.value)} placeholder={c.applyRegionPlaceholder} />
-                  </Field>
+                  {/* 逐级选而不是手敲国标码：330106003 与 330106004 只差一位，
+                      而填错的后果是这个社区在任何「按区覆盖」里都出不来。联调时我自己就填错过一次 */}
+                  <RegionChooser c={c} value={current.regionCode} onChange={(r) => setRegionCode(r?.regionCode ?? "")} />
                   {/* 不挂区划，这个新社区在任何「按区覆盖」里都出不来，而界面上它看起来完全正常 */}
                   <p className="mt-1 txt-caption text-muted-foreground">{c.applyRegionHint}</p>
                 </DrawerSection>
