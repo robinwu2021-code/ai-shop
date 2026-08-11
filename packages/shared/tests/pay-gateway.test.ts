@@ -128,7 +128,7 @@ describe("支付通道接入", () => {
     // 我们目前**没有行业字段**（M2），所以这条先守住方案文档里的原则：
     // 将来建 sys_industry 时，wechat_micro_allowed 的缺省必须是 0。
     const plan = read(
-      join(ROOT, "docs/technical/通道约束落地-完善清单.md"),
+      join(ROOT, "docs/technical/archive/通道约束落地-完善清单.md"),
     );
     if (!plan) return;
     expect(plan, "完善清单里没写清默认值取向").toMatch(/默认允许\s*=\s*默认让商家撞墙/);

@@ -1,8 +1,8 @@
 # TDD-ops-web（平台运营端脚手架）
 
 > 状态：**已实现（脚手架部分）** · 创建 2026-08-05
-> 关联需求：[需求矩阵-三端 §六 平台端矩阵](../requirements/需求矩阵-三端.md)（P-1.1 ~ P-17.1，17 个业务域）
-> 关联架构：[architecture.md §4](./architecture.md)（`ops-web/` 目录位已预留）
+> 关联需求：[需求矩阵-三端 §六 平台端矩阵](../../../requirements/需求矩阵-三端.md)（P-1.1 ~ P-17.1，17 个业务域）
+> 关联架构：[architecture.md §4](../../reference/architecture.md)（`ops-web/` 目录位已预留）
 > 参考工程：`~/work/ai/powerbank/ops-web`（Next.js 16 + React 19 + Tailwind 4 + TanStack Query，已实机验证）
 > 回答待确认项：需求矩阵 §九 **M2「平台端从零建还是复用现有 ops-web」→ 复用 powerbank 地基**
 

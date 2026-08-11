@@ -132,7 +132,7 @@ describe("端点前缀：文档与代码不许再对不上", () => {
       "docs/requirements/B端功能清单.md",
       "docs/requirements/C端功能清单.md",
       "docs/requirements/平台端功能清单.md",
-      "docs/technical/TDD-b-app.md",
+      "docs/technical/design/TDD-b-app.md",
     ];
     const HISTORICAL = /原定|已废弃|历史|曾经|~~/;
     const bad: string[] = [];

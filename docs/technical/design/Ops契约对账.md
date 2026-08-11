@@ -1,7 +1,7 @@
 # Ops 端契约对账：ops-web 调什么 · 后端有什么
 
 > 2026-08-09 · 逐条比对 `ops-web/lib/api/https/*.ts` 与 `OpsController`。
-> 上游：[入驻进件建店-需求与四层对齐](../requirements/入驻进件建店-需求与四层对齐.md) §八
+> 上游：[入驻进件建店-需求与四层对齐](../../requirements/入驻进件建店-需求与四层对齐.md) §八
 
 ---
 

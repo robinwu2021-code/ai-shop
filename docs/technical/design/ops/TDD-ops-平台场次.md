@@ -1,7 +1,7 @@
 # TDD-ops-平台场次（`POST /ops/campaigns`）
 
 > 状态：**待确认** · 创建 2026-08-11
-> 关联需求：[平台端功能清单](../requirements/平台端功能清单.md) `P-7.2` 活动（秒杀/满减/买赠）· 平台级活动
+> 关联需求：[平台端功能清单](../../../requirements/平台端功能清单.md) `P-7.2` 活动（秒杀/满减/买赠）· 平台级活动
 > 关联代码：`MktCampaign` · `OpsMarketingController` · `CampaignService`
 > 缺口登记：`packages/shared/tests/ops-endpoint-exists.test.ts` → `POST /ops/campaigns`
 

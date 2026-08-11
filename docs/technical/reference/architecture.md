@@ -1,7 +1,7 @@
 # ai-shop 整体架构与技术栈
 
 > 状态：草稿（**待确认**）· 创建 2026-08-05
-> 关联需求：[../requirements/C端功能清单.md](../requirements/C端功能清单.md)
+> 关联需求：[../requirements/C端功能清单.md](../../requirements/C端功能清单.md)
 > 参考工程：`powerbank`（ShareHub）—— C 端载体、请求层、ports 抽象、后端分层直接沿用其已验证地基。
 
 ---
@@ -58,7 +58,7 @@
 | App 壳 | **Capacitor 6** | `dist/build/h5` 作为 webDir，出 Android/iOS |
 | 类型检查 | `vue-tsc --noEmit` | CI 拦截 |
 
-**具体版本锁定见 [TDD-c-app.md §3.1](./TDD-c-app.md#31-技术栈与版本锁定--2026-08-05-实测-npm-registry)。**
+**具体版本锁定见 [TDD-c-app.md §3.1](../design/TDD-c-app.md#31-技术栈与版本锁定--2026-08-05-实测-npm-registry)。**
 三条不能盲目取 latest 的硬约束：**Vite 必须精确 5.2.8**（uni-app 插件 peer 钉死）、**TypeScript 取 5.9.3 不取 7.x**（工具链未验证）、**uni-app 取稳定通道不取 alpha**（且 `latest` 标签指向 Vue2 线，会装错）。
 
 ### 为什么不是别的方案
@@ -233,8 +233,8 @@ pages/
 
 ### 建议模块边界
 
-> ⚠️ **本节已被 [TDD-backend](./TDD-backend.md) 取代**，那里有 Maven 模块划分、依赖规则、三层契约与越权防线；下表只保留域级概览。
-> 变更点：`svc-leader` 已按 [ADR-004](./ADR/ADR-004-增长模型从孵化团长转向商家自带客流.md) 废止（团长角色不存在），其履约职责并入 `svc-fulfillment`。
+> ⚠️ **本节已被 [TDD-backend](../design/TDD-backend.md) 取代**，那里有 Maven 模块划分、依赖规则、三层契约与越权防线；下表只保留域级概览。
+> 变更点：`svc-leader` 已按 [ADR-004](../ADR/ADR-004-增长模型从孵化团长转向商家自带客流.md) 废止（团长角色不存在），其履约职责并入 `svc-fulfillment`。
 
 | 模块 | 职责 |
 |------|------|

@@ -14,7 +14,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const DOC = path.join(ROOT, "docs/technical/三端全栈对齐清单.md");
+const DOC = path.join(ROOT, "docs/technical/archive/三端全栈对齐清单.md");
 const BEGIN = "<!-- AUTO:BEGIN 由 npm run gen:delivery 生成，勿手改 -->";
 const END = "<!-- AUTO:END -->";
 

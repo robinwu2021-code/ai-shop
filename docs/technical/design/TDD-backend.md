@@ -1,7 +1,7 @@
 # 服务端架构（ai-shop backend）
 
 > 状态：草稿（**待确认**）· 创建 2026-08-05
-> 上游：[需求矩阵-三端](../requirements/需求矩阵-三端.md) → [API 清单](./API清单.md)（437 条端点）→ **本文**（这些端点由什么承载）
+> 上游：[需求矩阵-三端](../../requirements/需求矩阵-三端.md) → [API 清单](../reference/API清单.md)（437 条端点）→ **本文**（这些端点由什么承载）
 > 参考工程：`powerbank`（ShareHub）—— 其 `backend/` 的模块划分、三层契约、双池认证、DataScope 横切、Outbox 已在生产路径上验证，**直接继承，不重新论证**。
 > 定位：本文回答「后端怎么分模块、怎么分层、越权怎么防、几条关键链路怎么走、按什么顺序落地」。
 > 不含：字段级 DDL（另出 `db-design.md`）、每个 Service 的方法签名（另出各域 TDD）。
@@ -13,16 +13,16 @@
 | # | 约束 | 来源 | 对架构的影响 |
 |---|------|------|-------------|
 | 1 | 一份后端同时服务 C 端小程序/App、B 端商家专区、平台端 ops-web | architecture.md §2 | **三组 portal，一套领域层**；不做 BFF 拆分（一期） |
-| 2 | B 端一期内嵌 C 端小程序，二期拆独立小程序 | [ADR-001](./ADR/ADR-001-商家端形态与拆分时机.md) | `/biz/**` 与 `/mp/**` **共用令牌池、分开前缀**，拆端时后端零改动 |
-| 3 | 按商家拆子订单，钱走微信支付分账 | [ADR-002](./ADR/ADR-002-结算走微信支付分账.md) | **订单必须主单/子订单两级**，分账以子订单为单位；退款先回退分账 |
-| 4 | 无团长角色，履约由自提点商家 + 团发起人承担 | [ADR-004](./ADR/ADR-004-增长模型从孵化团长转向商家自带客流.md) [ADR-005](./ADR/ADR-005-履约方式与自提点模型.md) | **三个正交数据域键** `merchant_no` / `pickup_no` / `group_no`，不能合并成一个「身份」 |
+| 2 | B 端一期内嵌 C 端小程序，二期拆独立小程序 | [ADR-001](../ADR/ADR-001-商家端形态与拆分时机.md) | `/biz/**` 与 `/mp/**` **共用令牌池、分开前缀**，拆端时后端零改动 |
+| 3 | 按商家拆子订单，钱走微信支付分账 | [ADR-002](../ADR/ADR-002-结算走微信支付分账.md) | **订单必须主单/子订单两级**，分账以子订单为单位；退款先回退分账 |
+| 4 | 无团长角色，履约由自提点商家 + 团发起人承担 | [ADR-004](../ADR/ADR-004-增长模型从孵化团长转向商家自带客流.md) [ADR-005](../ADR/ADR-005-履约方式与自提点模型.md) | **三个正交数据域键** `merchant_no` / `pickup_no` / `group_no`，不能合并成一个「身份」 |
 | 5 | 自提点会看到别家商家的货 | 矩阵 §2.2 | 越权防线必须做到**响应字段级裁剪**，不止行级过滤 |
-| 6 | 报价不事前审核，靠锁价 + 公示 | [ADR-003](./ADR/ADR-003-报价不审核而用锁价公示信用防加价.md) | 报价与改价**全量留痕**，审计表是业务表不是日志 |
+| 6 | 报价不事前审核，靠锁价 + 公示 | [ADR-003](../ADR/ADR-003-报价不审核而用锁价公示信用防加价.md) | 报价与改价**全量留痕**，审计表是业务表不是日志 |
 | 7 | 多市场 / 多货币 / 三语 | 矩阵 C-17 | 金额带 `currency`，文案与价格分别按 market 维度存 |
 | 8 | 一期规模小（单城市、几百商家） | 业务现状 | **模块化单体起步**，不上微服务；但模块边界按可裂解画 |
 
 > ⚠️ 第 8 条是本架构最重要的取舍：**现在不拆微服务，但边界现在就要画对**。
-> powerbank 的做法（[ADR-017 单体与微服务双形态](../../../powerbank/docs/technical/ADR/ADR-017-单体与微服务双形态部署.md)）是同一份 `svc-*` jar，
+> powerbank 的做法（[ADR-017 单体与微服务双形态](../../../../powerbank/docs/technical/ADR/ADR-017-单体与微服务双形态部署.md)）是同一份 `svc-*` jar，
 > 单体启动模块依赖全部、微服务启动模块只依赖一个 —— 拆分是**改依赖列表**，不是重构代码。ai-shop 沿用。
 
 ---
@@ -75,7 +75,7 @@ powerbank 的 `scripts/` 是这套架构能长期不腐化的原因，ai-shop �
 |------|------|-----------|
 | `arch-guard.py` | 分层与依赖体检 | 与 ArchUnit 互补，CI 拦截 |
 | `module-graph.py` | 模块依赖图 + 基础设施表标记 | 判断「能不能拆」的唯一客观依据 |
-| `api-extract.py` / `api-align.py` | 从代码抽端点、与 API 清单比对 | **[API 清单](./API清单.md) 437 条不能靠人肉维护**，必须能机器对账 |
+| `api-extract.py` / `api-align.py` | 从代码抽端点、与 API 清单比对 | **[API 清单](../reference/API清单.md) 437 条不能靠人肉维护**，必须能机器对账 |
 | `entity-column-diff.py` | 实体与 DDL 字段差异 | 改表漏改实体是高频事故 |
 | `gen-api-doc.py` / `gen-db-doc.py` | 文档生成 | 文档跟着代码走，不反过来 |
 | `split-readiness.py` | 微服务拆分就绪度 | 二期拆端前的体检 |
@@ -195,7 +195,7 @@ backend/
 
 ### 4.1 与 API 清单里 `svc-*` 标注的映射
 
-[API 清单](./API清单.md) 按**业务域**标注模块，本文按**构建单元**划分，两者不是一一对应：
+[API 清单](../reference/API清单.md) 按**业务域**标注模块，本文按**构建单元**划分，两者不是一一对应：
 
 | API 清单里的标注 | 落在哪个 Maven 模块 | 为什么合并 |
 |---|---|---|
@@ -408,7 +408,7 @@ CAS 更新 ful_pickup_task（乐观锁）→ 子单 COMPLETED
 
 ---
 
-## 十一、落地顺序（对齐 [API 清单](./API清单.md) §6 的 M1-1~M1-6）
+## 十一、落地顺序（对齐 [API 清单](../reference/API清单.md) §6 的 M1-1~M1-6）
 
 | 阶段 | 内容 | 完成标志 |
 |:---:|------|---------|
@@ -443,14 +443,14 @@ CAS 更新 ful_pickup_task（乐观锁）→ 子单 COMPLETED
 
 ## 十三、关联文档
 
-- 端点全集：[API 清单](./API清单.md) · 需求来源：[需求矩阵-三端](../requirements/需求矩阵-三端.md)
-- 总体架构与 C 端：[architecture.md](./architecture.md)（§9 后端部分以本文为准，其中 `svc-leader` 已按 ADR-004 废止）· [TDD-c-app](./TDD-c-app.md)
-- 决策：[ADR-001](./ADR/ADR-001-商家端形态与拆分时机.md) · [ADR-002](./ADR/ADR-002-结算走微信支付分账.md) · [ADR-003](./ADR/ADR-003-报价不审核而用锁价公示信用防加价.md) · [ADR-004](./ADR/ADR-004-增长模型从孵化团长转向商家自带客流.md) · [ADR-005](./ADR/ADR-005-履约方式与自提点模型.md) · [ADR-006](./ADR/ADR-006-积分方案.md)
+- 端点全集：[API 清单](../reference/API清单.md) · 需求来源：[需求矩阵-三端](../../requirements/需求矩阵-三端.md)
+- 总体架构与 C 端：[architecture.md](../reference/architecture.md)（§9 后端部分以本文为准，其中 `svc-leader` 已按 ADR-004 废止）· [TDD-c-app](./TDD-c-app.md)
+- 决策：[ADR-001](../ADR/ADR-001-商家端形态与拆分时机.md) · [ADR-002](../ADR/ADR-002-结算走微信支付分账.md) · [ADR-003](../ADR/ADR-003-报价不审核而用锁价公示信用防加价.md) · [ADR-004](../ADR/ADR-004-增长模型从孵化团长转向商家自带客流.md) · [ADR-005](../ADR/ADR-005-履约方式与自提点模型.md) · [ADR-006](../ADR/ADR-006-积分方案.md)
 - **参考工程 `powerbank/backend`**（技术栈与架构的直接来源，实施时对照抄）：
   - 模块骨架与依赖：`backend/pom.xml` · `backend/sharehub-app/pom.xml`（依赖清单与四个坑的注释）
   - 运行配置：`backend/sharehub-app/src/main/resources/application.yml`（autoconfigure exclude / Flyway / MP 配置）
-  - 分层口径：[后端三层架构梳理](../../../powerbank/docs/technical/后端三层架构梳理.md) · [TDD-backend-layered-design](../../../powerbank/docs/technical/TDD-backend-layered-design.md) · [代码结构](../../../powerbank/docs/technical/代码结构.md)
-  - 决策：[ADR-017 单体与微服务双形态](../../../powerbank/docs/technical/ADR/ADR-017-单体与微服务双形态部署.md) · [ADR-006 复用 neargo 基础框架](../../../powerbank/docs/technical/ADR/ADR-006-复用neargo基础框架与依赖方式.md) · [ADR-015 权限模块化](../../../powerbank/docs/technical/ADR/ADR-015-权限模块化与打包方式.md)
+  - 分层口径：[后端三层架构梳理](../../../../powerbank/docs/technical/后端三层架构梳理.md) · [TDD-backend-layered-design](../../../../powerbank/docs/technical/TDD-backend-layered-design.md) · [代码结构](../../../../powerbank/docs/technical/代码结构.md)
+  - 决策：[ADR-017 单体与微服务双形态](../../../../powerbank/docs/technical/ADR/ADR-017-单体与微服务双形态部署.md) · [ADR-006 复用 neargo 基础框架](../../../../powerbank/docs/technical/ADR/ADR-006-复用neargo基础框架与依赖方式.md) · [ADR-015 权限模块化](../../../../powerbank/docs/technical/ADR/ADR-015-权限模块化与打包方式.md)
   - 横切实现：`sharehub-common/auth/**`（双池 filter/context/TokenStore）· `common/event/**`（Outbox）· `common/crud/**`
 
 ---

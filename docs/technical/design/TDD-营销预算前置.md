@@ -1,7 +1,7 @@
 # TDD-营销预算前置（把预算从运行时的闸改成建券时的规划）
 
 > 状态：**待确认** · 创建 2026-08-11
-> 关联需求：[平台端功能清单](../requirements/平台端功能清单.md) `P-7.1` 券模板 / 发放记录
+> 关联需求：[平台端功能清单](../../requirements/平台端功能清单.md) `P-7.1` 券模板 / 发放记录
 > 关联代码：`MktCoupon` · `CouponMappers.tryReceive` · `MktCoupon.discountFor`
 
 ---

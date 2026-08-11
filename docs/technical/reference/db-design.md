@@ -1,7 +1,7 @@
 # A3 · 数据库设计
 
 > 状态：草稿（**待确认**）· 创建 2026-08-06
-> 任务：[后端实施任务清单 A3](./后端实施任务清单.md) · 上游：[domain-model](./domain-model.md)（A2）· [openapi.yaml](../api/openapi.yaml)（A1）
+> 任务：[后端实施任务清单 A3](../archive/后端实施任务清单.md) · 上游：[domain-model](./domain-model.md)（A2）· [openapi.yaml](../../api/openapi.yaml)（A1）
 > 定位：表、列、索引、约束、归属键。**每张表可追回 A2 的某个聚合**，每个索引可追回一种真实查询。
 > 落地：本文是设计，迁移脚本见 `backend/shop-app/src/main/resources/db/migration/`。
 
@@ -66,7 +66,7 @@
 
 一期（P0）合计约 **34 张表**，已建 14 张。
 积分域（T-1）另加 **7 张表 + 6 处 ALTER**，迁移 `V17__points_t1.sql`，
-设计见 [积分域-需求与数据库设计](./积分域-需求与数据库设计.md)。
+设计见 [积分域-需求与数据库设计](../design/积分域-需求与数据库设计.md)。
 
 ---
 

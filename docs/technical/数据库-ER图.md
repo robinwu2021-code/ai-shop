@@ -9,7 +9,7 @@
 按「被引用次数」分三条带 —— **不是有向无环图**：域之间存在环
 （`cmt → mkt → usr → cmt`），强行分层会画错。
 
-![数据库域总览](../diagrams/db-overview.svg)
+![数据库域总览](./diagrams/db-overview.svg)
 
 | 域 | 前缀 | 表数 | 被几个域引用 |
 |---|---|---:|---:|
@@ -32,7 +32,7 @@
 
 ### 用户与商家 `usr_*`（4 张）
 
-![用户与商家表关系](../diagrams/db-usr.svg)
+![用户与商家表关系](./diagrams/db-usr.svg)
 
 | 表 | 说明 |
 |---|---|
@@ -45,7 +45,7 @@
 
 ### 社区与自提点 `cmt_*`（3 张）
 
-![社区与自提点表关系](../diagrams/db-cmt.svg)
+![社区与自提点表关系](./diagrams/db-cmt.svg)
 
 | 表 | 说明 |
 |---|---|
@@ -57,7 +57,7 @@
 
 ### 商品与类目 `prd_*`（8 张）
 
-![商品与类目表关系](../diagrams/db-prd.svg)
+![商品与类目表关系](./diagrams/db-prd.svg)
 
 | 表 | 说明 |
 |---|---|
@@ -74,7 +74,7 @@
 
 ### 购物车 `trd_*`（1 张）
 
-![购物车表关系](../diagrams/db-trd.svg)
+![购物车表关系](./diagrams/db-trd.svg)
 
 | 表 | 说明 |
 |---|---|
@@ -84,7 +84,7 @@
 
 ### 交易 `ord_*`（5 张）
 
-![交易表关系](../diagrams/db-ord.svg)
+![交易表关系](./diagrams/db-ord.svg)
 
 | 表 | 说明 |
 |---|---|
@@ -98,7 +98,7 @@
 
 ### 履约 `ful_*`（3 张）
 
-![履约表关系](../diagrams/db-ful.svg)
+![履约表关系](./diagrams/db-ful.svg)
 
 | 表 | 说明 |
 |---|---|
@@ -110,7 +110,7 @@
 
 ### 营销与团购 `mkt_*`（12 张）
 
-![营销与团购表关系](../diagrams/db-mkt.svg)
+![营销与团购表关系](./diagrams/db-mkt.svg)
 
 | 表 | 说明 |
 |---|---|
@@ -131,7 +131,7 @@
 
 ### 积分 `pts_*`（2 张）
 
-![积分表关系](../diagrams/db-pts.svg)
+![积分表关系](./diagrams/db-pts.svg)
 
 | 表 | 说明 |
 |---|---|
@@ -142,7 +142,7 @@
 
 ### 结算 `stl_*`（6 张）
 
-![结算表关系](../diagrams/db-stl.svg)
+![结算表关系](./diagrams/db-stl.svg)
 
 | 表 | 说明 |
 |---|---|
@@ -157,7 +157,7 @@
 
 ### 评价 `rvw_*`（3 张）
 
-![评价表关系](../diagrams/db-rvw.svg)
+![评价表关系](./diagrams/db-rvw.svg)
 
 | 表 | 说明 |
 |---|---|
@@ -169,7 +169,7 @@
 
 ### 消息与客服 `msg_*`（4 张）
 
-![消息与客服表关系](../diagrams/db-msg.svg)
+![消息与客服表关系](./diagrams/db-msg.svg)
 
 | 表 | 说明 |
 |---|---|
@@ -182,7 +182,7 @@
 
 ### 系统 `sys_*`（11 张）
 
-![系统表关系](../diagrams/db-sys.svg)
+![系统表关系](./diagrams/db-sys.svg)
 
 | 表 | 说明 |
 |---|---|
