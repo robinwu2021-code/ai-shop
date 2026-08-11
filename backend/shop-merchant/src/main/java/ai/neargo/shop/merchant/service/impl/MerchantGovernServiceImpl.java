@@ -5,6 +5,8 @@ import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.merchant.entity.MchEntity;
+import ai.neargo.shop.merchant.entity.MchPaymentMerchant;
+import ai.neargo.shop.merchant.entity.MchStore;
 import ai.neargo.shop.merchant.entity.MchQualification;
 import ai.neargo.shop.merchant.entity.MchEntityCommunity;
 import ai.neargo.shop.merchant.entity.MchViolation;
@@ -254,6 +256,76 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
 
     private static int nz(Integer v) {
         return v == null ? 0 : v;
+    }
+
+    // ---------------------------------------------------------------- 门店经营模式（F-6 后续）
+
+    @Override
+    @org.springframework.transaction.annotation.Transactional
+    public StoreModeVO setBusinessMode(String storeNo, String mode, String operatorNo) {
+        if (!MchStore.SELF_OPERATED.equals(mode) && !MchStore.THIRD_PARTY.equals(mode)) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        MchStore store = storeProfileMapper.selectOne(Wrappers.<MchStore>lambdaQuery()
+                .eq(MchStore::getStoreNo, storeNo).last("LIMIT 1"));
+        if (store == null) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+
+        String payMerchantNo = activePayMerchantNo(store);
+        /*
+         * 第三方模式的硬前提：钱直接进商家账户，那个账户得存在。
+         *
+         * 不校验的后果不是报错，而是**静默欠款**：订单照常成交、账单照常生成，
+         * 只是 payMerchantNo 为空，钱卡在平台侧下不去。等发现时已经积了一批单。
+         * 自营不需要这一条 —— 自营的钱本来就先进平台。
+         */
+        if (MchStore.THIRD_PARTY.equals(mode) && payMerchantNo == null) {
+            throw BizException.of(ErrorCode.PAY_MERCHANT_REQUIRED);
+        }
+
+        store.setBusinessMode(mode);
+        store.setUpdatedBy(operatorNo);
+        storeProfileMapper.updateById(store);
+
+        // 不回改历史账单，也不需要：stl_bill.business_mode 在生成时已落快照。
+        // 审计留痕在 controller 记（与本域其它运营动作一致）——「这家店什么时候
+        // 从自营切成第三方的」是日后对账争议里第一个会被问到的问题。
+        return new StoreModeVO(store.getStoreNo(), store.getName(), store.getEntityNo(),
+                mode, payMerchantNo);
+    }
+
+    @Override
+    public List<StoreModeVO> storeModes(String merchantNo) {
+        return storeProfileMapper.selectList(Wrappers.<MchStore>lambdaQuery()
+                        .eq(MchStore::getEntityNo, merchantNo))
+                .stream()
+                .map(st -> new StoreModeVO(st.getStoreNo(), st.getName(), st.getEntityNo(),
+                        st.getBusinessMode(), activePayMerchantNo(st)))
+                .toList();
+    }
+
+    /**
+     * 该店实际可用的收款号：优先本店专属号，回落到主体默认号。
+     *
+     * <p>回落这一步不能省 —— 不配店号就是「合并结算，走主体号」，
+     * 那是正常形态而不是缺失（见 {@code MerchantPaymentService.openForStore}）。
+     * 只查店号会把所有合并结算的门店误判成「没有收款账户」。
+     */
+    private String activePayMerchantNo(MchStore store) {
+        var own = paymentMapper.selectOne(Wrappers.<MchPaymentMerchant>lambdaQuery()
+                .eq(MchPaymentMerchant::getStoreNo, store.getStoreNo())
+                .eq(MchPaymentMerchant::getApplyStatus, MchPaymentMerchant.ACTIVE)
+                .last("LIMIT 1"));
+        if (own != null) {
+            return own.getPayMerchantNo();
+        }
+        var fallback = paymentMapper.selectOne(Wrappers.<MchPaymentMerchant>lambdaQuery()
+                .eq(MchPaymentMerchant::getEntityNo, store.getEntityNo())
+                .eq(MchPaymentMerchant::getStoreNo, MchPaymentMerchant.ENTITY_LEVEL)
+                .eq(MchPaymentMerchant::getApplyStatus, MchPaymentMerchant.ACTIVE)
+                .last("LIMIT 1"));
+        return fallback == null ? null : fallback.getPayMerchantNo();
     }
 
     // ---------------------------------------------------------------- 门面内容审核（P-10.1）

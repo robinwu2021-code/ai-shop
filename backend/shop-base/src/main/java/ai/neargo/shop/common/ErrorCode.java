@@ -89,6 +89,12 @@ public enum ErrorCode {
     CATEGORY_BANNED(70009, "err.merchant.category_banned"),
     ORDER_LIMIT_EXCEEDED(70010, "err.merchant.order_limit_exceeded"),
     DAILY_LIMIT_EXCEEDED(70011, "err.merchant.daily_limit_exceeded"),
+    /*
+     * 切第三方模式但这家店没有可用收款号。单独一个码：不校验的后果不是报错而是
+     * **静默欠款** —— 订单照常成交、账单照常生成，只是钱卡在平台侧下不去，
+     * 等发现时已经积了一批单。通用的「请求参数有误」说不出这件事。
+     */
+    PAY_MERCHANT_REQUIRED(70012, "err.merchant.pay_merchant_required"),
 
     /**
      * 进项票未核验通过，不允许登记付款（**票到付款**）。

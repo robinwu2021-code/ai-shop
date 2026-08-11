@@ -110,6 +110,37 @@ public interface MerchantGovernService {
      *
      * <p>队列里只有**机审命中**的内容 —— 没命中的直接生效了，不进这里。
      */
+    /**
+     * 设置门店经营模式（自营 / 第三方）。
+     *
+     * <p><b>这是补一个「下游已在依赖、上游无人能写」的缺口</b>：
+     * {@code mch_store.business_mode} 早已存在，{@code SettleServiceImpl} 每单都读它
+     * 决定走哪条结算状态机与开票状态——但在此之前<b>全仓库没有任何一处能写它</b>，
+     * 换一家店的经营模式只能手改数据库。
+     *
+     * <p><b>只开在运营端，不开给商家。</b>自营意味着平台是法律上的销售主体、
+     * 承担全部产品责任，这个身份不能由商家自己勾选。
+     *
+     * <p><b>只对新单生效。</b>{@code stl_bill.business_mode} 在生成时已落快照，
+     * 所以历史账单不会被改动——这不是要额外实现的东西，而是要在这里说明的事实，
+     * 否则运营会以为改了模式能一并修正历史。
+     *
+     * @param mode {@link ai.neargo.shop.merchant.entity.MchStore#SELF_OPERATED}
+     *             / {@link ai.neargo.shop.merchant.entity.MchStore#THIRD_PARTY}
+     */
+    StoreModeVO setBusinessMode(String storeNo, String mode, String operatorNo);
+
+    /** 门店经营模式一览，运营要能一眼看出哪些店是自营。 */
+    List<StoreModeVO> storeModes(String merchantNo);
+
+    /**
+     * @param payMerchantNo 该店的收款号；<b>为空是第三方模式的硬阻塞</b>——
+     *                      钱直接进商家账户的前提是那个账户存在
+     */
+    record StoreModeVO(String storeNo, String storeName, String merchantNo,
+                       String businessMode, String payMerchantNo) {
+    }
+
     List<StoreAuditVO> storeAudits(String status);
 
     /**

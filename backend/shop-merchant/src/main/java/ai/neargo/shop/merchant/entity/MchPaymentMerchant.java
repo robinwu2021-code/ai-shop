@@ -53,6 +53,15 @@ public class MchPaymentMerchant extends BaseEntity {
     private String storeNo;
 
     /**
+     * 主体级默认号的 {@link #storeNo} 取值：<b>空串，不是 {@code null}</b>。
+     *
+     * <p>抽成常量是因为「空串还是 null」这件事只写在上面的注释里，
+     * 而查询侧写 {@code isNull(storeNo)} 一样能编译过、一样查不到任何东西——
+     * 症状是「所有合并结算的门店都被判成没有收款账户」，不是报错。
+     */
+    public static final String ENTITY_LEVEL = "";
+
+    /**
      * 收款商户号业务键（V1 基准新增）。{@code mch_store.pay_merchant_no} 引用它 ——
      * 旧库里门店引用的是一张没有业务键的表，重建时补上。进件成功时生成。
      */
