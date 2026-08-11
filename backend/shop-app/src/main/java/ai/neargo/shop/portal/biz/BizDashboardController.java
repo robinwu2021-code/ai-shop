@@ -59,8 +59,15 @@ public class BizDashboardController {
      *
      * <p>无单时是一串 0，<b>不是错误</b> —— 新店第一天打开工作台是最正常的场景，
      * 而一个报错的首屏会让店主以为账号没开通。
+     *
+     * <p><b>门禁是「任一」而不是 {@code order:view}</b>：这 7 个数字分属 5 个权限，
+     * 用其中一个盖住全部，等于「除了店员和店长，谁都看不到自己今天有多少活」。
+     * 理货员被挡在外面尤其说不通 —— 待分拣就是他的本职。
+     * 哪些格子画出来由端上按 {@code perms} 决定，见 {@code @perm.canAnyBiz} 的说明。
      */
-    @PreAuthorize("@perm.canBiz('" + BizPerms.ORDER_VIEW + "')")
+    @PreAuthorize("@perm.canAnyBiz('" + BizPerms.ORDER_VIEW + "','" + BizPerms.RECEIVE
+            + "','" + BizPerms.VERIFY + "','" + BizPerms.SHIP + "','" + BizPerms.AFTERSALE
+            + "','" + BizPerms.REVIEW + "','" + BizPerms.CAMPAIGN + "')")
     @GetMapping("/biz/dashboard/todo")
     public TodoVO todo() {
         BizContext ctx = BizContext.current();

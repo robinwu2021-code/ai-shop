@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { useMerchantStore } from "@/stores/merchant";
+
+const merchant = useMerchantStore();
 // 店铺装修（B-11.2.5）+ 店铺码（B-11.2.6）+ 分享素材（B-11.2.7）。
 //
 // **一期主获客路径的商家侧**（ADR-004 决策 3）：店主把店铺码印在包装袋、把文案发进
@@ -88,7 +91,7 @@ onShow(load);
 </script>
 
 <template>
-  <sh-scaffold title-key="store.title">
+  <sh-scaffold title-key="store.title" :denied="!merchant.can('biz:store')">
     <text class="sh-h1">{{ $t("store.title") }}</text>
 
     <!--

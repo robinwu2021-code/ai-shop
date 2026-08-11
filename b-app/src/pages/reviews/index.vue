@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { useMerchantStore } from "@/stores/merchant";
+
+const merchant = useMerchantStore();
 // 评价与回复（B-11.7）。
 //
 // 排序：**未回复的排前面**。商家进来是为了「把该回的回掉」，不是为了翻阅历史 ——
@@ -83,7 +86,7 @@ onShow(load);
 </script>
 
 <template>
-  <sh-scaffold title-key="reviews.title">
+  <sh-scaffold title-key="reviews.title" :denied="!merchant.can('biz:review')">
     <view class="head">
       <text class="sh-h1">{{ $t("reviews.title") }}</text>
       <text v-if="pending" class="sh-chip sh-chip--warning">

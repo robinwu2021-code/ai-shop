@@ -1,5 +1,7 @@
 export default {
-  common: { back: "Back", confirm: "OK", cancel: "Cancel", done: "Done", save: "Save", loading: "Loading…", empty: "Nothing here yet", retry: "Retry", saved: "Saved", all: "All" },
+  common: { back: "Back", confirm: "OK", cancel: "Cancel", done: "Done", save: "Save", loading: "Loading…", empty: "Nothing here yet", retry: "Retry", saved: "Saved", all: "All",
+    noPermTitle: "Not your page",
+    noPermHint: "Your role at this store cannot open it. Ask the owner to grant you a role." },
   tab: { home: "Dashboard", orders: "Orders", goods: "Products", me: "Me" },
   theme: {
     skinPure: "White background · accent & text only",

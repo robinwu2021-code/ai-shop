@@ -1,5 +1,7 @@
 export default {
-  common: { back: "رجوع", confirm: "تأكيد", cancel: "إلغاء", done: "تم", save: "حفظ", loading: "جارٍ التحميل…", empty: "لا يوجد محتوى بعد", retry: "إعادة", saved: "تم الحفظ", all: "الكل" },
+  common: { back: "رجوع", confirm: "تأكيد", cancel: "إلغاء", done: "تم", save: "حفظ", loading: "جارٍ التحميل…", empty: "لا يوجد محتوى بعد", retry: "إعادة", saved: "تم الحفظ", all: "الكل",
+    noPermTitle: "هذه الصفحة ليست لك",
+    noPermHint: "دورك في هذا المتجر لا يسمح بفتحها. اطلب من المالك منحك دورًا." },
   tab: { home: "لوحة العمل", orders: "الطلبات", goods: "المنتجات", me: "حسابي" },
   theme: {
     skinPure: "خلفية بيضاء · اللون والنص فقط",

@@ -16,9 +16,21 @@
 -- 授权是低频操作，但它错一次的代价不该用会丢更新的写法去换。
 --
 -- 存量数据天然兼容：放宽约束不影响已有的一人一店一行。
-ALTER TABLE mch_store_role DROP INDEX uk_store_role;
-ALTER TABLE mch_store_role ADD UNIQUE KEY uk_store_role (mch_account_no,store_no,role);
+--
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 为什么写成幂等的
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 这个文件的第一版在真库上跑到第三句才失败（COMMENT 写成了两个相邻字符串，
+-- Java 的拼接习惯，SQL 不认）。而**前两句已经生效了** ——
+-- flyway 只记「这个版本失败了」，不会回滚已执行的 DDL。
+--
+-- 于是修好语法重跑时，DROP INDEX 会因为索引已经是新的而再次失败，
+-- 变成一个要人手工进库才能解开的死结。**一次失败的迁移不该需要人工介入才能重试。**
+-- MariaDB 的 IF EXISTS / IF NOT EXISTS 让这三句可以重复执行。
+-- 不用存储过程 + DELIMITER：那是 mysql 客户端指令，flyway 默认解析不了它，
+-- 为了幂等引入一个新的失败点，不划算。
+ALTER TABLE mch_store_role DROP INDEX IF EXISTS uk_store_role;
+ALTER TABLE mch_store_role ADD UNIQUE KEY IF NOT EXISTS uk_store_role (mch_account_no,store_no,role);
 
 ALTER TABLE mch_store_role MODIFY COLUMN role VARCHAR(16) NOT NULL
-    COMMENT 'MANAGER 店长 / CLERK 店员 / PICKER 理货员 / COURIER 配送员 / CS 线上客服。'
-            'OWNER 不在这里 —— 他不需要逐店授权。**一人一店可多行**，权限取并集';
+    COMMENT 'MANAGER 店长 / CLERK 店员 / PICKER 理货员 / COURIER 配送员 / CS 线上客服。OWNER 不在这里，他不需要逐店授权。一人一店可多行，权限取并集';

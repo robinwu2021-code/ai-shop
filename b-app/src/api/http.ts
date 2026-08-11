@@ -6,7 +6,6 @@ import type { GoodsDraft, GoodsGuess, MerchantApi } from "./contract";
 // 入参的 wire 契约。`satisfies` 让「实际发出去的 body」在编译期受检 ——
 // 字段写错、少传、多传都编译不过，而不是等联调才发现（与 C 端同一套做法）
 import type {
-  BizScope,
   AppealReviewReq,
   SaveGoodsReqBody,
   CreateGroupReq,
@@ -40,6 +39,7 @@ import type {
   VerifyReq,
 } from "./requests";
 import type {
+  BizScope,
   AfterSale,
   Category,
   Community,

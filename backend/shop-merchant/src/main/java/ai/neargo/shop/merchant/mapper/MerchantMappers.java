@@ -7,6 +7,8 @@ import ai.neargo.shop.merchant.entity.MchPaymentMerchant;
 import ai.neargo.shop.merchant.entity.MchStore;
 import ai.neargo.shop.merchant.entity.MchStoreRole;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Update;
 
 /**
  * merchant 域的 Mapper 集合（嵌套接口，沿用 powerbank 的写法）。
@@ -39,6 +41,27 @@ public final class MerchantMappers {
 
     /** 子账号在各门店的角色（每店一个角色）。 */
     public interface MchStoreRoleMapper extends BaseMapper<MchStoreRole> {
+
+        /**
+         * 复活一条被逻辑删的授权。
+         *
+         * <p><b>撤销授权是逻辑删，而 {@code uk_store_role} 不含 deleted 列</b> ——
+         * 所以「撤销再授予同一个角色」时直接 insert 必然撞唯一键，
+         * 表现为授权接口 500，而老板看到的只是「系统开小差」。
+         *
+         * <p>这个坑在商家社区表、商品社区池上各踩过一次，这是第三次 ——
+         * <b>凡是「逻辑删 + 业务唯一键」的组合都有它</b>，
+         * 而它只在「删了再加回来」这条路径上出现，日常测试很难走到。
+         *
+         * @return 影响行数；0 表示压根没有这一行（该走 insert）
+         */
+        @Update("""
+                UPDATE mch_store_role SET deleted = 0, version = version + 1
+                WHERE mch_account_no = #{accountNo} AND store_no = #{storeNo}
+                  AND role = #{role} AND deleted = 1
+                """)
+        int revive(@Param("accountNo") String accountNo, @Param("storeNo") String storeNo,
+                   @Param("role") String role);
     }
 
     /** 商家支付进件：每通道一条。分账回调只带 sub_mchid，靠 idx_mp_sub_mchid 反查商家。 */

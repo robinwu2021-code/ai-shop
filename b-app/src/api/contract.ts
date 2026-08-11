@@ -5,6 +5,7 @@
 // Order 结构，只是可见字段与可执行动作不同；各定义一份必然漂移。
 import type {
   BizScope,
+  StaffRole,
   AfterSale,
   Category,
   Community,

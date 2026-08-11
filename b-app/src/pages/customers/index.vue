@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { useMerchantStore } from "@/stores/merchant";
+
+const merchant = useMerchantStore();
 // 我的客户（B-11.2.8）。
 //
 // 平台电商给商家看的是「流量、转化率、UV」；小店老板要的是另一种东西：
@@ -45,7 +48,7 @@ onShow(load);
 </script>
 
 <template>
-  <sh-scaffold title-key="customers.title">
+  <sh-scaffold title-key="customers.title" :denied="!merchant.can('biz:customer')">
     <text class="sh-h1">{{ $t("customers.title") }}</text>
 
     <view class="sh-card sum">

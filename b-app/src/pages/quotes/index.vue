@@ -71,7 +71,7 @@ onShow(load);
 </script>
 
 <template>
-  <sh-scaffold title-key="quotes.title">
+  <sh-scaffold title-key="quotes.title" :denied="!merchant.can('biz:campaign')">
     <text class="sh-h1">{{ $t("quotes.title") }}</text>
     <text class="sh-muted intro">{{ $t("quotes.intro") }}</text>
 

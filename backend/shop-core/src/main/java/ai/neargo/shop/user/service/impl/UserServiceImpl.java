@@ -39,6 +39,17 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    public UserVO profileOrNull() {
+        String userNo = SecurityUtils.currentUserNoOrNull();
+        if (userNo == null || userNo.isBlank()) {
+            return null;
+        }
+        UsrAccount user = userMapper.selectOne(Wrappers.<UsrAccount>lambdaQuery()
+                .eq(UsrAccount::getUserNo, userNo).last("limit 1"));
+        return user == null ? null : UserVO.of(user);
+    }
+
+    @Override
     @Transactional
     public UserVO bindCommunity(String communityNo, String pickupNo) {
         // 校验「自提点属于该社区」而不是只查存在性：端上可以随便传两个不相干的号，

@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { useMerchantStore } from "@/stores/merchant";
+
+const merchant = useMerchantStore();
 // 商家自送（B-11.4.6 / 4.7）。
 //
 // ⚠️ **不做骑手系统**（ADR-005 §5）：小店老板骑电动车送两条街，他要的是「点一下已送达」，
@@ -68,7 +71,7 @@ onShow(load);
 </script>
 
 <template>
-  <sh-scaffold title-key="delivery.title">
+  <sh-scaffold title-key="delivery.title" :denied="!merchant.can('biz:ship')">
     <text class="sh-h1">{{ $t("delivery.title") }}</text>
 
     <view class="sh-card mt">

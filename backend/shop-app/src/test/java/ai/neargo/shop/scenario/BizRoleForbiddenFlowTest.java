@@ -135,6 +135,63 @@ class BizRoleForbiddenFlowTest {
     }
 
     @Test
+    @DisplayName("★★★ 员工刷新页面后档案还在 —— 他没有 C 端账号，那不是「登录失效」")
+    void staffKeepsProfileAfterRefresh() throws Exception {
+        Staff s = staffWithRoles("12600250080", "刷新掉线店", "12600250081", "CLERK");
+
+        /*
+         * 浏览器实测出来的：登录接口自己组装档案，所以登录那一刻一切正常，
+         * 但 GET /biz/merchant/profile 无条件查 usr_account，查不到就抛 10401。
+         * 员工走手机号登录，**根本没有 C 端账号** —— 于是刷新一次，
+         * b-app 拿不到 profile，整个工作台退化成「还没有开店 · 去入驻」。
+         *
+         * 这个缺陷四层测试一个都抓不到：后端测试没人用员工 token 打 profile，
+         * b-app 的 mock 永远返回一个像样的档案。
+         */
+        String body = mvc().perform(get("/biz/merchant/profile")
+                        .header("Authorization", "Bearer " + s.token()))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        // 拿到的必须是他所在主体的档案，不是一张空表单
+        assertThat(json.readTree(body).get("data").get("merchantNo").asString()).isNotBlank();
+        assertThat(json.readTree(body).get("data").get("status").asString()).isEqualTo("ACTIVE");
+    }
+
+    @Test
+    @DisplayName("★★★ 店员看得到门店列表，且只看得到授权给他的那几家")
+    void staffSeesOnlyHisStores() throws Exception {
+        String owner = merchant("12600250090", "两家店");
+        String a = firstStore(owner);
+        String b = json.readTree(mvc().perform(post("/biz/store/create")
+                        .header("Authorization", "Bearer " + owner)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"分店\",\"address\":\"x\"}"))
+                .andReturn().getResponse().getContentAsString())
+                .get("data").get("storeNo").asString();
+
+        String staffNo = json.readTree(mvc().perform(post("/biz/staff")
+                        .header("Authorization", "Bearer " + owner)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"loginPhone\":\"12600250091\"}"))
+                .andReturn().getResponse().getContentAsString())
+                .get("data").get("mchAccountNo").asString();
+        mvc().perform(post("/biz/staff/" + staffNo + "/store")
+                .header("Authorization", "Bearer " + owner)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"storeNo\":\"" + a + "\",\"role\":\"CLERK\"}"));
+
+        // 门店切换器靠它。要 biz:store 的话店员一家都切不了 ——
+        // 而「A 店店长 + B 店店员」正是多门店授权的主要用途
+        String body = mvc().perform(get("/biz/store/list")
+                        .header("Authorization", "Bearer " + staffLogin("12600250091")))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        assertThat(body).contains(a);
+        // 放开权限而不裁剪的话，他会看到一家自己进不去的店
+        assertThat(body).doesNotContain(b);
+    }
+
+    @Test
     @DisplayName("★ 老板不受任何限制 —— 对照组，证明拒绝不是因为链路本身坏了")
     void ownerPassesEverything() throws Exception {
         String owner = merchant("12600250070", "老板对照店");
@@ -173,10 +230,7 @@ class BizRoleForbiddenFlowTest {
     private Staff staffWithRoles(String ownerPhone, String shopName, String staffPhone,
                                  String... roles) throws Exception {
         String owner = merchant(ownerPhone, shopName);
-        String store = json.readTree(mvc().perform(get("/biz/store/list")
-                        .header("Authorization", "Bearer " + owner))
-                .andReturn().getResponse().getContentAsString())
-                .get("data").get(0).get("storeNo").asString();
+        String store = firstStore(owner);
 
         String staffNo = json.readTree(mvc().perform(post("/biz/staff")
                         .header("Authorization", "Bearer " + owner)
@@ -194,6 +248,13 @@ class BizRoleForbiddenFlowTest {
                     .andExpect(jsonPath("$.code").value(0));
         }
         return new Staff(staffLogin(staffPhone));
+    }
+
+    private String firstStore(String ownerToken) throws Exception {
+        return json.readTree(mvc().perform(get("/biz/store/list")
+                        .header("Authorization", "Bearer " + ownerToken))
+                .andReturn().getResponse().getContentAsString())
+                .get("data").get(0).get("storeNo").asString();
     }
 
     /** 员工独立登录（App 路径）—— 与老板的 C 端账号登录是两条路 */

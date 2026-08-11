@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { useMerchantStore } from "@/stores/merchant";
+
+const merchant = useMerchantStore();
 // 售后处理（B-11.5）。
 //
 // 设计要点：**驳回必须填理由**。同意是一键的，驳回不是 —— 用户拿不到理由就只能
@@ -104,7 +107,7 @@ onShow(load);
 </script>
 
 <template>
-  <sh-scaffold title-key="afterSale.title">
+  <sh-scaffold title-key="afterSale.title" :denied="!merchant.can('biz:aftersale')">
     <text class="sh-h1">{{ $t("afterSale.title") }}</text>
 
     <sh-empty v-if="!list.length" :text='$t("afterSale.empty")'></sh-empty>

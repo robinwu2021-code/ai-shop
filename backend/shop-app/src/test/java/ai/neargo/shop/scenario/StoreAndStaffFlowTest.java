@@ -308,6 +308,26 @@ class StoreAndStaffFlowTest {
     }
 
     @Test
+    @DisplayName("★★ 撤销再授予同一个角色不能 500 —— 逻辑删的行还占着唯一键")
+    void revokeThenGrantAgainWorks() throws Exception {
+        String biz = merchant("12600240040", "撤了再加店");
+        String store = defaultStoreNo(biz);
+        String staff = addStaff(biz, "12600240041");
+
+        grant(biz, staff, store, "COURIER");
+        revoke(biz, staff, store, "COURIER");
+        // 撤销是逻辑删，而 uk_store_role 不含 deleted —— 直接 insert 会撞唯一键
+        grant(biz, staff, store, "COURIER");
+
+        assertThat(rolesOf(biz, staff, store)).containsExactly("COURIER");
+
+        // 再来一轮，确认复活是幂等的而不是只能救一次
+        revoke(biz, staff, store, "COURIER");
+        grant(biz, staff, store, "COURIER");
+        assertThat(rolesOf(biz, staff, store)).containsExactly("COURIER");
+    }
+
+    @Test
     @DisplayName("★ 重复授予同一个角色是幂等的 —— 不该长出两行")
     void grantingSameRoleTwiceIsIdempotent() throws Exception {
         String biz = merchant("12600240030", "幂等店");

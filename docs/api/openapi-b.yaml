@@ -4245,6 +4245,34 @@ paths:
           "application/json": 
             schema: 
               "$ref": "#/components/schemas/SetActiveReq"
+  "/biz/context": 
+    get: 
+      operationId: "mBizScope"
+      summary: "我的作用域与权限"
+      tags: 
+        - "context"
+      security: 
+        - bearerAuth: []
+      parameters: []
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/BizScope"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
   "/biz/staff/{mchAccountNo}/store": 
     post: 
       operationId: "mGrantStore"

@@ -751,6 +751,32 @@ export type StaffRole =
   | "CS"; // 线上客服：回评价、处理售后、看单。不碰货、不碰钱
 
 /**
+ * 我在**当前门店**能做什么（`GET /biz/context`）。B 端每次会话恢复与切门店后都要重取。
+ *
+ * @property merchantNo 我所属的主体
+ * @property currentStoreNo 当前门店。切门店由 `X-Store-No` 决定，不是本地推的
+ * @property owner 是否主体属主。属主的 `perms` 是 `["*"]`
+ * @property storeNos 我能碰数据的门店。老板是主体全部，员工只有被授权的那几家
+ * @property pickupNos 我能核销的自提点，按门店算出来
+ * @property groupNos 我发起的团
+ * @property staffRoles 我在当前门店持有的角色，**只用于展示**。判权一律看 perms。
+ *   比 {@link StaffRole} 多一个 `OWNER`：那个类型是「可以授予的角色」（授权面板用），
+ *   而属主的身份不来自逐店授权，是 `mch_account.is_owner`。同名不同集合，
+ *   混用的表现是授权面板里冒出一个点了会报错的「老板」选项
+ * @property perms 当前门店上的权限码并集。空数组 = 这家店没给我任何角色 = 零权限
+ */
+export interface BizScope {
+  merchantNo: string;
+  currentStoreNo: string;
+  owner: boolean;
+  storeNos: string[];
+  pickupNos: string[];
+  groupNos: string[];
+  staffRoles: (StaffRole | "OWNER")[];
+  perms: string[];
+}
+
+/**
  * 结算流水状态。**与后端 `StlBill` 逐字一致**。
  *
  * > 2026-08-11 收敛：这里此前是 `PENDING/PARTIAL/DONE/EXPIRED` —— 一套后端从来没有过的词，

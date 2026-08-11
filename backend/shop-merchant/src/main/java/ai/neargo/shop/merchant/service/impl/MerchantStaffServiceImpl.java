@@ -72,6 +72,23 @@ public class MerchantStaffServiceImpl implements MerchantStaffService {
                 LoginUser.consumer(staff.getMchAccountNo(), "")));
     }
 
+    @Override
+    public String loginPhoneOf(String principal) {
+        if (principal == null || principal.isBlank()) {
+            return "";
+        }
+        // 绕过数据域：这是「我自己是谁」的自查，而数据域本身就要靠身份才算得出来
+        MchAccount staff = DataScopeContext.executeWithoutScope(() ->
+                staffMapper.selectOne(Wrappers.<MchAccount>lambdaQuery()
+                        .and(q -> q.eq(MchAccount::getUserNo, principal)
+                                .or().eq(MchAccount::getMchAccountNo, principal))
+                        .eq(MchAccount::getStatus, MchAccount.ACTIVE)
+                        .orderByDesc(MchAccount::getIsPrimary)
+                        .orderByAsc(MchAccount::getId)
+                        .last("limit 1")));
+        return staff == null || staff.getLoginPhone() == null ? "" : staff.getLoginPhone();
+    }
+
     // ---------------------------------------------------------------- 员工管理
 
     @Override
@@ -166,11 +183,26 @@ public class MerchantStaffServiceImpl implements MerchantStaffService {
         }
         // 已经有了就什么都不做 —— 重复授予是幂等的，不该长出两行
         if (row == null) {
-            MchStoreRole fresh = new MchStoreRole();
-            fresh.setMchAccountNo(mchAccountNo);
-            fresh.setStoreNo(storeNo);
-            fresh.setRole(role);
-            DataScopeContext.executeWithoutScope(() -> roleMapper.insert(fresh));
+            /*
+             * **先试着复活被逻辑删的那一行**。
+             *
+             * 撤销授权是逻辑删，而 uk_store_role 不含 deleted 列 ——
+             * 「撤销再授予同一个角色」时直接 insert 必然撞唯一键，接口 500，
+             * 而老板看到的只是「系统开小差」，与他刚做的操作毫无关系。
+             *
+             * 这个坑在商家社区表、商品社区池上各踩过一次，这是第三次：
+             * 凡是「逻辑删 + 业务唯一键」的组合都有它，而它只在
+             * 「删了再加回来」这条路径上出现 —— 日常测试很难走到。
+             */
+            boolean revived = DataScopeContext.executeWithoutScope(() ->
+                    roleMapper.revive(mchAccountNo, storeNo, role)) > 0;
+            if (!revived) {
+                MchStoreRole fresh = new MchStoreRole();
+                fresh.setMchAccountNo(mchAccountNo);
+                fresh.setStoreNo(storeNo);
+                fresh.setRole(role);
+                DataScopeContext.executeWithoutScope(() -> roleMapper.insert(fresh));
+            }
         }
         return single(merchantNo, a);
     }

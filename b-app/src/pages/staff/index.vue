@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { useMerchantStore } from "@/stores/merchant";
+
+const merchant = useMerchantStore();
 // 员工与授权（B-11.10）。
 //
 // 两件事在一页：**谁是我的人**（账号）与**他能管哪家店**（逐店角色）。
@@ -89,7 +92,7 @@ const rolesAt = (s: MerchantStaff, storeNo: string) =>
 </script>
 
 <template>
-  <sh-scaffold title-key="staff.title">
+  <sh-scaffold title-key="staff.title" :denied="!merchant.can('biz:store:admin')">
     <view class="head">
       <text class="sh-h1">{{ $t("staff.title") }}</text>
       <text class="sh-muted mt">{{ $t("staff.hint") }}</text>

@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { useMerchantStore } from "@/stores/merchant";
+
+const merchant = useMerchantStore();
 // 收款进件（ADR-002）。
 //
 // 这一页回答商家的一个具体问题：**「我能收钱了吗？卡在哪？」**
@@ -111,7 +114,7 @@ async function refresh() {
 </script>
 
 <template>
-  <sh-scaffold title-key="payment.title">
+  <sh-scaffold title-key="payment.title" :denied="!merchant.can('biz:finance')">
     <view class="head">
       <text class="sh-h1">{{ $t("payment.title") }}</text>
       <text class="sh-muted mt">{{ $t("payment.hint") }}</text>

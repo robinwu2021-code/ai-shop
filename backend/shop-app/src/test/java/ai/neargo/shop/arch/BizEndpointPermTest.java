@@ -39,6 +39,9 @@ class BizEndpointPermTest {
             "/biz/merchant/apply", "/biz/merchant/profile",
             // 自查作用域：端上据此决定展示哪些入口，本身不含业务数据
             "/biz/context",
+            // 「我能进哪几家店」——门店切换器要用，结果按 storeNos 裁剪。
+            // 要 biz:store 的话店员一家都切不了，而多门店授权正是为他准备的
+            "/biz/store/list",
             // 主数据与上传：登录后人人可用，不含任何一家店的数据
             "/biz/category/tree", "/biz/communities", "/biz/spec-templates", "/biz/upload/image");
 
@@ -64,7 +67,6 @@ class BizEndpointPermTest {
         // ---- 订单与经营数据 ----
         put("/biz/order", BizPerms.ORDER_VIEW);
         put("/biz/order/{subOrderNo}", BizPerms.ORDER_VIEW);
-        put("/biz/dashboard/todo", BizPerms.ORDER_VIEW);
         put("/biz/dashboard/stats", BizPerms.CUSTOMER);
         put("/biz/customers", BizPerms.CUSTOMER);
 
@@ -98,7 +100,6 @@ class BizEndpointPermTest {
         put("/biz/store", BizPerms.STORE);
         put("/biz/store/qrcode", BizPerms.STORE);
         put("/biz/store/share-kit", BizPerms.STORE);
-        put("/biz/store/list", BizPerms.STORE);
         put("/biz/delivery/rule", BizPerms.STORE);
 
         // ---- 门店结构：改的是主体 ----
@@ -123,6 +124,15 @@ class BizEndpointPermTest {
         put("/biz/points/toggle", BizPerms.FINANCE);
     }};
 
+    /**
+     * 汇总型端点：一次返回好几件互不相干的事，<b>任一权限即可进</b>，
+     * 粒度由端上按 {@code perms} 裁。
+     *
+     * <p>单独列一张表而不是丢进 {@link #PUBLIC}：它们仍然要求「在这家店有角色」，
+     * 空角色的人一样进不来。混进 PUBLIC 会让人以为这类端点谁都能调。
+     */
+    private static final Set<String> ANY_OF = Set.of("/biz/dashboard/todo");
+
     private static final Pattern MAPPING = Pattern.compile(
             "@(?:Get|Post|Put|Delete)Mapping\\(\\s*(?:value\\s*=\\s*)?\"([^\"]*)\"");
     private static final Pattern CLASS_BASE = Pattern.compile(
@@ -136,6 +146,7 @@ class BizEndpointPermTest {
 
         Set<String> undecided = new TreeSet<>(endpoints);
         undecided.removeAll(REQUIRED.keySet());
+        undecided.removeAll(ANY_OF);
         undecided.removeAll(PUBLIC);
         assertThat(undecided)
                 .as("这些 /biz 端点还没决定权限 —— 每一个都是潜在的越权口子。\n"
@@ -172,6 +183,7 @@ class BizEndpointPermTest {
     void decisionsAreActuallyEnforced() throws IOException {
         Set<String> guarded = scanGuardedEndpoints();
         Set<String> missing = new TreeSet<>(REQUIRED.keySet());
+        missing.addAll(ANY_OF);   // 「任一」也是决定，同样必须落到注解上
         missing.removeAll(guarded);
         assertThat(missing)
                 .as("这些端点在表里定了权限，但代码里没有 @PreAuthorize —— "
@@ -181,7 +193,7 @@ class BizEndpointPermTest {
                 .isEmpty();
     }
 
-    /** 扫出真的带 @PreAuthorize("@perm.canBiz(...)") 的端点 */
+    /** 扫出真的带 @PreAuthorize("@perm.canBiz(...)" / "canAnyBiz(...)") 的端点 */
     private static Set<String> scanGuardedEndpoints() throws IOException {
         Path root = Path.of("..").toRealPath();
         Set<String> out = new TreeSet<>();
@@ -189,7 +201,7 @@ class BizEndpointPermTest {
             for (Path p : files.filter(f -> f.toString().endsWith(".java"))
                     .filter(f -> !f.toString().contains("/test/")).toList()) {
                 String src = Files.readString(p);
-                if (!src.contains("canBiz")) {
+                if (!src.contains("canBiz") && !src.contains("canAnyBiz")) {
                     continue;
                 }
                 Matcher base = CLASS_BASE.matcher(src);
@@ -203,7 +215,7 @@ class BizEndpointPermTest {
                     // 注解块：往上找 3 行内有没有 canBiz
                     boolean has = false;
                     for (int k = Math.max(0, i - 3); k < i; k++) {
-                        if (lines[k].contains("canBiz")) {
+                        if (lines[k].contains("canBiz") || lines[k].contains("canAnyBiz")) {
                             has = true;
                         }
                     }

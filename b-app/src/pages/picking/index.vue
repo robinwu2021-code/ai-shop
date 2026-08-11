@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { useMerchantStore } from "@/stores/merchant";
+
+const merchant = useMerchantStore();
 // 分拣单（B-10.3）。到货当日的高频页面。
 //
 // 两个视图不是花哨：**按商品**是分货时用的（一箱苹果拆成 12 份，按商品走一遍最快），
@@ -83,7 +86,7 @@ onShow(load);
 </script>
 
 <template>
-  <sh-scaffold title-key="picking.title">
+  <sh-scaffold title-key="picking.title" :denied="!merchant.can('biz:receive')">
     <view class="head">
       <text class="sh-h1">{{ $t("picking.title") }}</text>
       <text class="sh-muted">{{ $t("picking.total", { n: totalQty }) }}</text>

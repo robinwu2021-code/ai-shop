@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { useMerchantStore } from "@/stores/merchant";
+
+const merchant = useMerchantStore();
 // 门店管理（M6）。
 //
 // 与「店铺设置」的分工：那一页管**一家店的门面**（公告/营业时间/地址/主推），
@@ -73,7 +76,7 @@ function pickPayment(s: Store, payMerchantNo?: string) {
 </script>
 
 <template>
-  <sh-scaffold title-key="stores.title">
+  <sh-scaffold title-key="stores.title" :denied="!merchant.can('biz:store:admin')">
     <view class="head">
       <text class="sh-h1">{{ $t("stores.title") }}</text>
       <text class="sh-muted mt">{{ $t("stores.hint") }}</text>

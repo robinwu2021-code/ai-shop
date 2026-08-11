@@ -180,7 +180,7 @@ onShow(load);
 </script>
 
 <template>
-  <sh-scaffold title-key="marketing.title">
+  <sh-scaffold title-key="marketing.title" :denied="!merchant.can('biz:campaign')">
     <view class="head">
       <text class="sh-h1">{{ $t("marketing.title") }}</text>
       <text v-if="!editing" class="link" @tap="startNew">{{ $t("marketing.create") }}</text>

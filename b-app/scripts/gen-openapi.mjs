@@ -195,6 +195,7 @@ const RESPONSE_TYPES = {
   mToggleCampaign: "MarketingCampaign",
   mCustomers: "MerchantCustomer[]",
   mSettleList: "SettleBill[]",
+  mBizScope: "BizScope",
   mRateCard: "RateCard",
   mPointsAccount: "MerchantPointAccount",
   mPointsRecords: "MerchantPointsRecord[]",

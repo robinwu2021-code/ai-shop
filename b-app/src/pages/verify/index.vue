@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { useMerchantStore } from "@/stores/merchant";
+
+const merchant = useMerchantStore();
 // 核销台（B-10.2）。**自提履约的必要条件** —— 没有它，货到自提点没人能核销，
 // 订单永远卡在「已到点」，评价也做不了（评价要求订单已完成）。
 //
@@ -103,7 +106,7 @@ onShow(load);
 </script>
 
 <template>
-  <sh-scaffold title-key="verify.title">
+  <sh-scaffold title-key="verify.title" :denied="!merchant.can('biz:verify')">
     <text class="sh-h1">{{ $t("verify.title") }}</text>
 
     <!-- 承接方一进来最关心的三个数：还有几单没人取、今天到了几批、这些活挣了多少。

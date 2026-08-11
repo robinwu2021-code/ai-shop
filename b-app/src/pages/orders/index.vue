@@ -87,7 +87,7 @@ onShow(load);
 </script>
 
 <template>
-  <sh-scaffold title-key="order.title" tab="orders">
+  <sh-scaffold title-key="order.title" tab="orders" :denied="!merchant.can('biz:order:view')">
     <sh-tabs
       :items="TABS.map((t) => ({ key: t.key, label: String($t(t.labelKey)) }))"
       :active="tab"

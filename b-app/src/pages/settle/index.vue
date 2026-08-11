@@ -55,7 +55,7 @@ onShow(load);
 </script>
 
 <template>
-  <sh-scaffold title-key="settle.title">
+  <sh-scaffold title-key="settle.title" :denied="!merchant.can('biz:finance')">
     <text class="sh-h1">{{ $t("settle.title") }}</text>
 
     <!-- 费率卡放在账单**之前**：先说清楚怎么算，再看算出来多少。

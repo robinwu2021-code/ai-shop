@@ -24,6 +24,13 @@ onLaunch(() => {
   useAppStore().init(); // 语言 + RTL
   const merchant = useMerchantStore();
   merchant.restore(); // 商家登录态
+  /*
+   * 权限跟着登录态一起恢复。**必须在这里，不能靠页面自己调** ——
+   * 它原先只挂在首页的 loadStores 上，于是刷新在商品页时 perms 是空的，
+   * 而空 perms 下 can() 全 false：老板的新建/编辑/上下架/改库存一起消失。
+   * 判权的默认值是拒绝，所以「判权状态没加载」会把界面自己锁死。
+   */
+  void merchant.ensureScope();
   // 演示态：先有店、再有会话、最后补单 —— 顺序反了的话补单时还不知道是哪家店
   if (USE_MOCK) {
     ensureDemoMerchant();

@@ -27,6 +27,8 @@ export const useMerchantStore = defineStore("merchant", {
     perms: [] as string[],
     /** 我在当前门店持有的角色，只用于展示（「你是这家店的店员」）。判权一律看 perms */
     staffRoles: [] as string[],
+    /** 进行中的 scope 请求，供 ensureScope 去重。不持久化 */
+    scopeLoading: null as Promise<unknown> | null,
   }),
 
   getters: {
@@ -107,6 +109,27 @@ export const useMerchantStore = defineStore("merchant", {
       else uni.removeStorageSync(STORAGE.storeNo);
       // 角色跟着门店走 —— 换了店就要重新问「我在这家店能做什么」
       void this.loadScope();
+    },
+
+    /**
+     * 保证权限已经拉过一次。**幂等，且并发安全**。
+     *
+     * 为什么需要它：`loadScope` 原先只挂在 `switchStore` 上，而 `switchStore`
+     * 只有首页的 `loadStores` 会走。于是**只要不是从首页点进来的**（刷新、
+     * tabBar 直接切、深链），`perms` 恒为空 —— 而空 perms 下 `can()` 全是 false，
+     * 页面上所有按权限渲染的东西一起消失。
+     *
+     * 实测形态：老板刷新商品页，新建、编辑、上下架、改库存四个按钮全没了。
+     * **判权的默认值是「拒绝」，所以判权状态没加载 = 整个界面被自己锁死。**
+     * 这就是为什么它必须挂在所有页面共同的外壳上，而不是靠每个页面自己记得调。
+     */
+    async ensureScope() {
+      if (this.perms.length) return;
+      // 多个页面同时挂载时复用同一次请求，不打 N 遍
+      this.scopeLoading ??= this.loadScope().finally(() => {
+        this.scopeLoading = null;
+      });
+      await this.scopeLoading;
     },
 
     /**

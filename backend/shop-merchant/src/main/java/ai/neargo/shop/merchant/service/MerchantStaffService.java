@@ -24,6 +24,15 @@ public interface MerchantStaffService {
      */
     String loginByPhone(String phone, String code);
 
+    /**
+     * 这个 principal 的员工登录手机号；不是员工就返回空串。
+     *
+     * <p>{@code principal} 两条路径都认（{@code user_no} 或 {@code mch_account_no}），
+     * 与 {@code BizIdentityResolver} 同一口径 —— 两处分岔的话，
+     * 会出现「作用域解析得到、档案查不到」这种自相矛盾的响应。
+     */
+    String loginPhoneOf(String principal);
+
     // ---------------------------------------------------------------- 员工管理（B-11.10）
 
     /** 本主体的员工列表（含已停用的）。停用的也要看得见 —— 看不见的话没人能把他重新启用。 */

@@ -80,9 +80,27 @@ public class BizMerchantController {
     @GetMapping("/biz/merchant/profile")
     public MerchantProfileVO profile() {
         // 常规请求走 BizContext：过滤器已经按本次 token 解析过，不必再查一次库
-        var me = userService.profile();
-        return build(SecurityUtils.currentUserNo(), BizContext.current(),
-                me == null ? "" : nz(me.phone()));
+        String principal = SecurityUtils.currentUserNo();
+        return build(principal, BizContext.current(), phoneOf(principal));
+    }
+
+    /**
+     * 展示用手机号 —— 取<b>你登录时用的那个身份</b>的号。
+     *
+     * <p>原先无条件走 {@code userService.profile()}，而那个方法查不到 {@code usr_account}
+     * 就抛 401。员工走 {@code /biz/auth/staff-login} 登录，principal 是
+     * {@code mch_account_no}，<b>他可能根本没有 C 端账号</b> —— 于是：
+     * 登录接口自己组装档案（{@link #profileOf}）时一切正常，
+     * 但只要刷新一次页面，这个端点就报「登录已失效」，
+     * b-app 拿不到 profile 便退回「还没有开店 · 去入驻」。
+     * 店员看到的是自己被踢出了一家其实在正常营业的店。
+     */
+    private String phoneOf(String principal) {
+        var me = userService.profileOrNull();
+        if (me != null && !nz(me.phone()).isBlank()) {
+            return nz(me.phone());
+        }
+        return nz(staffService.loginPhoneOf(principal));
     }
 
     /**
@@ -251,11 +269,23 @@ public class BizMerchantController {
 
     // ---------------------------------------------------------------- 门店管理（M6）
 
-    /** 我的门店（含停用的）。停用的也要看得见 —— 看不见的话商家会以为店被删了。 */
-    @PreAuthorize("@perm.canBiz('" + BizPerms.STORE + "')")
+    /**
+     * 我的门店（含停用的）。停用的也要看得见 —— 看不见的话商家会以为店被删了。
+     *
+     * <p><b>这是「我能进哪几家店」的自查，不是门店管理</b>，所以不要 {@code biz:store}：
+     * 端上的门店切换器就靠它。要了管理权限的后果是店员一家店都切不了 ——
+     * 而「A 店店长 + B 店店员」这种人恰恰是多门店授权的主要用途。
+     *
+     * <p>范围由 {@link BizContext#storeNos()} 划定，与其余 {@code /biz/**} 同一口径：
+     * 老板拿到主体全部门店，店员只拿到被授权的那几家。
+     * <b>放开权限的同时必须裁剪</b>，否则店员会看到他进不去的店。
+     */
     @GetMapping("/biz/store/list")
     public List<StoreVO> storeList() {
-        return storeAdminService.list(BizContext.requireMerchantNo());
+        BizContext ctx = BizContext.current();
+        return storeAdminService.list(BizContext.requireMerchantNo()).stream()
+                .filter(s -> ctx.owner() || ctx.storeNos().contains(s.storeNo()))
+                .toList();
     }
 
     /**

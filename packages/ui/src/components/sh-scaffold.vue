@@ -14,8 +14,23 @@ const props = withDefaults(
     titleKey?: string;
     /** 传入即渲染自定义底部菜单，值为当前高亮的 tab key */
     tab?: string;
+    /**
+     * 无权访问：整页替换成一句说明，**不渲染 slot**。
+     *
+     * 为什么在外壳上而不是各页面自己判：受限页面的失败形状高度一致 ——
+     * 接口被拒 → catch 成空数据 → 页面画出一个正常的空态。
+     * 实测过的样子是店员打开结算页看到「还没有可结算的订单」，
+     * 他会以为店里没生意，而不是「这页不该我看」。
+     * **把「不给看」渲染成「没有」，比报错更糟**：它不像故障，像事实。
+     *
+     * 判断本身留在各端（外壳是 C/B 共用的，不认识 B 端的角色），
+     * 这里只负责把话说清楚。
+     */
+    denied?: boolean;
+    /** 无权时显示的话。留空用通用文案 */
+    deniedText?: string;
   }>(),
-  { padded: true, titleKey: "", tab: "" },
+  { padded: true, titleKey: "", tab: "", denied: false, deniedText: "" },
 );
 
 const { t } = useI18n();
@@ -42,7 +57,11 @@ watch(() => app.lang, applyTitle);
 <template>
   <view class="sh-root sh-frame" :class="rootClass">
     <view class="sh-scaffold" :class="{ 'is-padded': padded, 'has-tabbar': !!tab }">
-      <slot />
+      <view v-if="denied" class="sh-denied">
+        <text class="sh-denied__t">{{ deniedText || $t("common.noPermTitle") }}</text>
+        <text class="sh-denied__d">{{ $t("common.noPermHint") }}</text>
+      </view>
+      <slot v-else />
     </view>
     <sh-tabbar v-if="tab" :active="tab"></sh-tabbar>
     <app-overlay></app-overlay>
@@ -116,5 +135,24 @@ watch(() => app.lang, applyTitle);
 /* 自定义 tabBar 是 fixed 的，内容区要留出等高的底部空间 */
 .sh-scaffold.has-tabbar {
   padding-bottom: calc(var(--sh-tabbar-h) + 40rpx + env(safe-area-inset-bottom));
+}
+/* 无权态：整屏只讲一件事，与「还没开店」那一屏同一套版式 */
+.sh-denied {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 160rpx 48rpx 0;
+  text-align: center;
+}
+.sh-denied__t {
+  font-size: 34rpx;
+  font-weight: 600;
+  color: var(--sh-ink);
+}
+.sh-denied__d {
+  margin-top: 16rpx;
+  font-size: 26rpx;
+  color: var(--sh-sub);
+  line-height: 1.6;
 }
 </style>

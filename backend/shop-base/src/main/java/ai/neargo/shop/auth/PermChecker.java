@@ -76,4 +76,33 @@ public class PermChecker {
         throw ai.neargo.shop.common.BizException.of(
                 ai.neargo.shop.common.ErrorCode.BIZ_ROLE_FORBIDDEN);
     }
+
+    /**
+     * 任一权限即可（{@link #canBiz} 的或版本）。
+     *
+     * <p>给<b>汇总型端点</b>用，它们一次返回好几件互不相干的事。
+     * 工作台待办就是这样：7 个数字分属 5 个权限（待分拣→{@code receive}、
+     * 待核销→{@code verify}、待发货→{@code ship}…）。用其中任意一个当门禁都是错的 ——
+     * 挂 {@code order:view} 的后果是理货员看不到「待分拣 3」，
+     * 而那正是他今天要干的活。
+     *
+     * <p><b>粒度控制交给展示层</b>：端上按自己的 {@code perms} 只画有权的格子。
+     * 这里放行的代价是理货员在响应体里能看到「待售后 2」这个计数 ——
+     * 一个不含金额、不含顾客、不含订单号的数。真正的数据仍锁在各自的端点上，
+     * 他点进售后页照样 70006。**安全边界没有下移，只是汇总口不再一刀切。**
+     */
+    public boolean canAnyBiz(String... codes) {
+        BizContext ctx = BizContext.current();
+        if (ctx.merchantNo() == null || ctx.merchantNo().isBlank()) {
+            return false;
+        }
+        for (String code : codes) {
+            if (ctx.can(code)) {
+                return true;
+            }
+        }
+        // 一个都没有 = 这家店没给他任何角色，与 canBiz 同一个码
+        throw ai.neargo.shop.common.BizException.of(
+                ai.neargo.shop.common.ErrorCode.BIZ_ROLE_FORBIDDEN);
+    }
 }

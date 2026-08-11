@@ -41,31 +41,50 @@ const visible = computed(() => {
   return st.serviceScope !== SERVICE_SCOPE.COMMUNITY || st.serviceCommunityNos.length > 0;
 });
 
-/** 只在「有问题」时出现。全通过还挂一张绿卡，是每天都要划过去的噪音 */
+/**
+ * 只在「有问题」时出现。全通过还挂一张绿卡，是每天都要划过去的噪音。
+ *
+ * <b>只给能处理它的人看</b>。这两张卡的数据来自 `/biz/merchant/payment` 与 `/biz/store`，
+ * 而店员对这两个端点必被 70006 拒 —— 拒绝会 catch 成空值，空值又恰好长得像
+ * 「没进件」「没选社区」。于是店员的工作台上永远挂着两条他既看不懂也点不开的红字，
+ * 点「去处理」进去还是 70006。
+ *
+ * **把权限不足渲染成业务待办是最坏的一种失败**：它不像故障，像是店里真出了事。
+ */
 const blockers = computed(() => {
   const list: { key: string; route: string }[] = [];
-  if (!canReceive.value) list.push({ key: "payment", route: ROUTES.payment });
-  if (!visible.value) list.push({ key: "scope", route: ROUTES.store });
+  if (merchant.can("biz:finance") && !canReceive.value) {
+    list.push({ key: "payment", route: ROUTES.payment });
+  }
+  if (merchant.can("biz:store") && !visible.value) {
+    list.push({ key: "scope", route: ROUTES.store });
+  }
   return list;
 });
 
-/** 待办格子。数字为 0 的也留着 —— 位置固定，商家才能形成肌肉记忆 */
+/**
+ * 待办格子。数字为 0 的也留着 —— 位置固定，商家才能形成肌肉记忆。
+ *
+ * <b>每个格子跟着它自己的权限走</b>，不是整块一起给。这 7 个数分属 5 个权限，
+ * 而点进去的页面各有各的判权：画一个点进去报 70006 的格子，
+ * 比不画它更糟 —— 它每天都在那儿，每天都点不开。
+ */
 const cells = computed(() => {
   const t = todo.value;
   if (!t) return [];
   // 显式标注：否则 TS 会把 route 收窄成 base 里那几个字面量，splice 进来的核销/分拣路由报错
-  const base: { key: string; n: number; route: string }[] = [
-    { key: "toShip", n: t.toShip, route: ROUTES.orders },
-    { key: "toDeliver", n: t.toDeliver, route: ROUTES.delivery },
-    { key: "afterSale", n: t.afterSale, route: ROUTES.afterSale },
-    { key: "toReply", n: t.toReply, route: ROUTES.reviews },
+  const base: { key: string; n: number; route: string; perm: string }[] = [
+    { key: "toShip", n: t.toShip, route: ROUTES.orders, perm: "biz:ship" },
+    { key: "toDeliver", n: t.toDeliver, route: ROUTES.delivery, perm: "biz:ship" },
+    { key: "afterSale", n: t.afterSale, route: ROUTES.afterSale, perm: "biz:aftersale" },
+    { key: "toReply", n: t.toReply, route: ROUTES.reviews, perm: "biz:review" },
   ];
   // 不承接自提点的商家不该看到核销/分拣 —— 那是自提点承接方的活（ADR-005）
   if (merchant.isPickupPoint) {
-    base.splice(2, 0, { key: "toVerify", n: t.toVerify, route: ROUTES.verify });
-    base.splice(3, 0, { key: "toPick", n: t.toPick, route: ROUTES.picking });
+    base.splice(2, 0, { key: "toVerify", n: t.toVerify, route: ROUTES.verify, perm: "biz:verify" });
+    base.splice(3, 0, { key: "toPick", n: t.toPick, route: ROUTES.picking, perm: "biz:receive" });
   }
-  return base;
+  return base.filter((c) => merchant.can(c.perm));
 });
 
 const ownedRate = computed(() =>
@@ -80,11 +99,18 @@ async function load() {
   /*
    * 三段状态与待办一起取：分开取的话「能不能收钱」会晚一拍出现，
    * 而那一拍里工作台看着是全绿的。
-   * 各自 catch：其中一条挂了不该让整个工作台空掉。
+   *
+   * **四条都要各自 catch**。前两条原先没有，而它们各需要一个权限
+   * （待办要 biz:order:view、经营数据要 biz:customer）——
+   * 于是理货员一进工作台，mTodo 被 70006 拒，Promise.all 整体 reject，
+   * 四个值一个都赋不上，**整屏空白**。没有报错，也没有入口，
+   * 看起来就像这家店什么都没有。
+   *
+   * 拿不到就是拿不到：下面每一块都自己判空，少一块比整屏没了强得多。
    */
   [todo.value, stats.value, payments.value, store.value] = await Promise.all([
-    api.mTodo(),
-    api.mStats(),
+    api.mTodo().catch(() => null),
+    api.mStats().catch(() => null),
     api.mPayments().catch(() => []),
     api.mStore().catch(() => null),
   ]);
@@ -198,10 +224,16 @@ onShow(load);
         判权一律用 merchant.can()，不要按角色名自己推 ——
         两处各推一次迟早分岔，而分岔的表现是「看得见但点了报错」。
       -->
+      <!--
+        履约台把核销、分拣、到货确认放在一起，而这三件事是**三个权限**。
+        入口只判 biz:verify 的话，理货员（只有 biz:receive）一个入口都看不到 ——
+        而分拣正是他今天唯一要干的活。有权限没有入口，和没权限一样。
+        落地页也要跟着挑：他打不开核销页。
+      -->
       <view
-        v-if="merchant.isPickupPoint && merchant.can('biz:verify')"
+        v-if="merchant.isPickupPoint && (merchant.can('biz:verify') || merchant.can('biz:receive'))"
         class="sh-card entry"
-        @tap="open(ROUTES.verify)"
+        @tap="open(merchant.can('biz:verify') ? ROUTES.verify : ROUTES.picking)"
       >
         <text class="sh-h2">{{ $t("home.fulfillEntry") }}</text>
         <text class="sh-muted">{{ $t("home.fulfillEntryHint") }}</text>

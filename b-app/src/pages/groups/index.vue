@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { useMerchantStore } from "@/stores/merchant";
+
+const merchant = useMerchantStore();
 // 商家团（B-11.6.1 / 6.2）。
 //
 // 一期的团**绝大多数应该由商家和运营铺出来**，不是等用户自发（ADR-004 §3.3）——
@@ -56,7 +59,7 @@ onShow(load);
 </script>
 
 <template>
-  <sh-scaffold title-key="groups.title">
+  <sh-scaffold title-key="groups.title" :denied="!merchant.can('biz:campaign')">
     <text class="sh-h1">{{ $t("groups.title") }}</text>
     <text class="sh-muted intro">{{ $t("groups.intro") }}</text>
 
