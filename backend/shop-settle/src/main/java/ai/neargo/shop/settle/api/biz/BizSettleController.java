@@ -71,6 +71,7 @@ public class BizSettleController {
      * 平台的开票信息。供应商照着它开票——**开错抬头要退回重开，一来一回半个月**，
      * 所以不能靠口头传递，要在页面上能一键复制。
      */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.FINANCE + "')")
     @GetMapping("/biz/settle/invoice-title")
     public java.util.Map<String, String> invoiceTitle() {
         return settleService.platformInvoiceTitle();
@@ -80,24 +81,36 @@ public class BizSettleController {
      * 提交进项票。一张票覆盖该周期**全部已对账待开票**的单，
      * 金额必须等于这批单的应付合计。
      */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.FINANCE + "')")
     @PostMapping("/biz/settle/invoices")
     public PurchaseInvoiceVO submitInvoice(@RequestBody SubmitInvoiceReq req) {
         return settleService.submitInvoice(BizContext.requireMerchantNo(),
                 new SettleService.SubmitInvoiceCommand(req.period(), req.invoiceCode(),
                         req.invoiceNumber(), req.invoiceType(), req.titleName(), req.titleTaxNo(),
-                        req.amountMinor(), req.taxAmountMinor(), req.taxRate(),
+                        req.amountMinor() == null ? 0L : req.amountMinor(),
+                        req.taxAmountMinor() == null ? 0L : req.taxAmountMinor(),
+                        req.taxRate() == null ? 0 : req.taxRate(),
                         req.invoiceDate(), req.imageUrl()));
     }
 
     /** 我提交过的票，含驳回原因 —— 被驳回时供应商要知道该改什么。 */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.FINANCE + "')")
     @GetMapping("/biz/settle/invoices")
     public List<PurchaseInvoiceVO> myInvoices() {
         return settleService.myInvoices(BizContext.requireMerchantNo());
     }
 
+    /**
+     * 入参一律用**包装类型**，不用 long/int。
+     *
+     * <p>原始类型在端上漏传该字段时会让 Jackson 直接抛
+     * 「Cannot map null into type long」——返回的是 10500「系统开小差」，
+     * 而真正的原因是「税额没填」。用包装类型 + 显式默认，
+     * 错误就能落在业务校验里，商家看到的是「请填写金额」而不是系统故障。
+     */
     public record SubmitInvoiceReq(String period, String invoiceCode, String invoiceNumber,
                                    String invoiceType, String titleName, String titleTaxNo,
-                                   long amountMinor, long taxAmountMinor, int taxRate,
+                                   Long amountMinor, Long taxAmountMinor, Integer taxRate,
                                    Long invoiceDate, String imageUrl) {
     }
 

@@ -609,4 +609,152 @@ class M7SettleFlowTest {
         return json.readTree(body).get("data").get("token").asString();
     }
 
+
+    // ---------------------------------------------------------------- 进项票全链路（P0-8/10/11）
+
+    @Test
+    @DisplayName("★ 全链路：配开票信息 → 对账 → 供应商开票 → 核验 → 才能付款")
+    void purchaseInvoiceHappyPath() throws Exception {
+        String ops = opsLogin();
+        // ① 平台先配开票信息 —— 缺公司全称或税号供应商根本开不出票
+        mvc().perform(post("/ops/finance/invoice-title").header("Authorization", "Bearer " + ops)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"companyName\":\"邻高科技有限公司\",\"taxNo\":\"91310000MA1K00000X\"}"))
+                .andExpect(jsonPath("$.data.companyName").value("邻高科技有限公司"));
+
+        String settleNo = aSelfOperatedBill("p0-inv-happy", "13100131100");
+        confirmPayable(ops, settleNo).andExpect(jsonPath("$.code").value(0));
+
+        String biz = loginAsOwnerOf("M0001", "13100131101");
+        // ② 供应商能看到平台抬头（照着它开票，避免开错要退回重开）
+        mvc().perform(get("/biz/settle/invoice-title").header("Authorization", "Bearer " + biz))
+                .andExpect(jsonPath("$.data.companyName").value("邻高科技有限公司"));
+
+        long payable = payableAwaitingInvoice("M0001");
+        String invoiceNo = submitInvoice(biz, payable, merchantName("M0001"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        invoiceNo = json.readTree(invoiceNo).get("data").get("invoiceNo").asString();
+
+        // ③ 核验前付不了款（票到付款）
+        mvc().perform(post("/ops/payables/" + settleNo + "/paid")
+                        .header("Authorization", "Bearer " + ops)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"paymentRef\":\"B1\"}"))
+                .andExpect(jsonPath("$.code").value(70004));
+
+        // ④ 核验通过后才能付
+        mvc().perform(post("/ops/purchase-invoices/" + invoiceNo + "/verify")
+                        .header("Authorization", "Bearer " + ops))
+                .andExpect(jsonPath("$.data.status").value("VERIFIED"))
+                .andExpect(jsonPath("$.data.titleMatched").value(true));
+
+        mvc().perform(post("/ops/payables/" + settleNo + "/paid")
+                        .header("Authorization", "Bearer " + ops)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"paymentRef\":\"BANK-INV-001\"}"))
+                .andExpect(jsonPath("$.data.status").value("PAID"));
+    }
+
+    @Test
+    @DisplayName("★ 金额对不上直接拒收：多半是周期选错或漏了几单")
+    void invoiceAmountMustMatchPayable() throws Exception {
+        String ops = opsLogin();
+        String settleNo = aSelfOperatedBill("p0-inv-amount", "13100131102");
+        confirmPayable(ops, settleNo);
+        String biz = loginAsOwnerOf("M0001", "13100131103");
+
+        submitInvoice(biz, payableAwaitingInvoice("M0001") + 1, merchantName("M0001"))
+                .andExpect(jsonPath("$.code").value(70005));
+    }
+
+    @Test
+    @DisplayName("★ 三流不一致被拦：开票方名称必须等于供应商主体名")
+    void titleMismatchBlocksVerify() throws Exception {
+        String ops = opsLogin();
+        String settleNo = aSelfOperatedBill("p0-inv-title", "13100131104");
+        confirmPayable(ops, settleNo);
+        String biz = loginAsOwnerOf("M0001", "13100131105");
+
+        // 用法人个人名义开票 —— 真实世界最常见的三流不一致，肉眼很容易放过
+        String body = submitInvoice(biz, payableAwaitingInvoice("M0001"), "张某某")
+                .andReturn().getResponse().getContentAsString();
+        String invoiceNo = json.readTree(body).get("data").get("invoiceNo").asString();
+
+        mvc().perform(post("/ops/purchase-invoices/" + invoiceNo + "/verify")
+                        .header("Authorization", "Bearer " + ops))
+                .andExpect(jsonPath("$.code").value(70006));
+    }
+
+    @Test
+    @DisplayName("驳回要写原因，且单子退回待开票可重传")
+    void rejectReturnsBillToPending() throws Exception {
+        String ops = opsLogin();
+        String settleNo = aSelfOperatedBill("p0-inv-reject", "13100131106");
+        confirmPayable(ops, settleNo);
+        String biz = loginAsOwnerOf("M0001", "13100131107");
+        String body = submitInvoice(biz, payableAwaitingInvoice("M0001"), merchantName("M0001"))
+                .andReturn().getResponse().getContentAsString();
+        String invoiceNo = json.readTree(body).get("data").get("invoiceNo").asString();
+
+        mvc().perform(post("/ops/purchase-invoices/" + invoiceNo + "/reject")
+                        .header("Authorization", "Bearer " + ops)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"reason\":\"  \"}"))
+                .andExpect(jsonPath("$.code").value(10400));
+
+        mvc().perform(post("/ops/purchase-invoices/" + invoiceNo + "/reject")
+                        .header("Authorization", "Bearer " + ops)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reason\":\"票面影像看不清，请重拍\"}"))
+                .andExpect(jsonPath("$.data.status").value("REJECTED"));
+
+        // 单子退回待开票，供应商能重开重传 —— 驳回不该把流程卡死
+        assertThat(billMapper.selectList(Wrappers.<StlBill>lambdaQuery()
+                .eq(StlBill::getSettleNo, settleNo)).getFirst().getInvoiceStatus())
+                .isEqualTo(StlBill.INV_PENDING);
+        // 驳回原因要能被供应商看到，否则他只能反复试
+        String mine = mvc().perform(get("/biz/settle/invoices").header("Authorization", "Bearer " + biz))
+                .andReturn().getResponse().getContentAsString();
+        assertThat(mine).contains("票面影像看不清");
+    }
+
+    @Test
+    @DisplayName("平台开票信息：公司全称与税号必填")
+    void invoiceTitleRequiresCompanyAndTaxNo() throws Exception {
+        mvc().perform(post("/ops/finance/invoice-title").header("Authorization", "Bearer " + opsLogin())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"companyName\":\"只有名字\"}"))
+                .andExpect(jsonPath("$.code").value(10400));
+    }
+
+    // ---- helpers
+
+    /**
+     * 该供应商**全部已对账待开票**单的应付合计。
+     *
+     * <p>不是单张单的金额：一张票覆盖该周期全部待开票的单，
+     * 所以校验的基准也是合计。用单张金额去开票会被 70005 拒收 ——
+     * 这正是那条校验要防的「漏了几单」。
+     */
+    private long payableAwaitingInvoice(String merchantNo) {
+        return billMapper.selectList(Wrappers.<StlBill>lambdaQuery()
+                .eq(StlBill::getEntityNo, merchantNo)
+                .eq(StlBill::getStatus, StlBill.CONFIRMED)
+                .eq(StlBill::getInvoiceStatus, StlBill.INV_PENDING))
+                .stream().mapToLong(StlBill::getNetMinor).sum();
+    }
+
+    private String merchantName(String merchantNo) {
+        return merchantMapper.selectList(Wrappers.<MchEntity>lambdaQuery()
+                .eq(MchEntity::getEntityNo, merchantNo)).getFirst().getName();
+    }
+
+    private org.springframework.test.web.servlet.ResultActions submitInvoice(
+            String biz, long amountMinor, String titleName) throws Exception {
+        return mvc().perform(post("/biz/settle/invoices").header("Authorization", "Bearer " + biz)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"period\":\"2026-08\",\"invoiceNumber\":\"" + System.nanoTime()
+                        + "\",\"invoiceType\":\"GENERAL\",\"titleName\":\"" + titleName
+                        + "\",\"amountMinor\":" + amountMinor + "}"));
+    }
+
 }
