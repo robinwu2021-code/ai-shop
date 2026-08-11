@@ -17,6 +17,7 @@ import ai.neargo.shop.merchant.service.MerchantStaffService;
 import ai.neargo.shop.merchant.service.StoreAdminService;
 import ai.neargo.shop.merchant.service.MerchantStoreService;
 import ai.neargo.shop.merchant.service.MerchantService;
+import ai.neargo.shop.community.service.CommunityAdminService;
 import ai.neargo.shop.user.service.UserService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -52,13 +53,17 @@ public class BizMerchantController {
     private final MerchantPaymentService paymentService;
     private final StoreAdminService storeAdminService;
     private final MerchantStaffService staffService;
+    /** 提报新社区（ADR-013 阶段三）：社区是 community 域的主数据，商家只是提报方 */
+    private final ai.neargo.shop.community.service.CommunityAdminService communityAdminService;
 
     public BizMerchantController(MerchantService merchantService, OpsService opsService,
                                  UserService userService, BizIdentityResolver identityResolver,
                                  MerchantStoreService storeService,
                                  MerchantPaymentService paymentService,
                                  StoreAdminService storeAdminService,
-                                 MerchantStaffService staffService) {
+                                 MerchantStaffService staffService,
+                                 ai.neargo.shop.community.service.CommunityAdminService communityAdminService) {
+        this.communityAdminService = communityAdminService;
         this.storeService = storeService;
         this.paymentService = paymentService;
         this.storeAdminService = storeAdminService;
@@ -200,6 +205,40 @@ public class BizMerchantController {
                         req.announcement(), req.openHours(), req.address(), req.featured(),
                         req.serviceScope(), req.serviceCommunityNos(), req.serviceCityCode(),
                         req.fulfillmentReach(), req.serviceAreas()));
+    }
+
+    // ---------------------------------------------------------------- 提报新社区（ADR-013 阶段三）
+
+    /**
+     * 提报一个平台还没有的小区。
+     *
+     * <p>在这之前商家<b>无路可走</b>：覆盖项只能从已有社区里勾，而「让平台加一个小区」
+     * 没有入口 —— 只能找 BD 口头说，说完没人知道进展。
+     *
+     * <p>要 {@code biz:store} 权限：它与设经营范围是同一件事的两半 ——
+     * 能决定「我做哪儿」的人，才该能提「这儿还没开」。
+     */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.STORE + "')")
+    @PostMapping("/biz/communities/apply")
+    public CommunityAdminService.ApplyVO applyCommunity(@RequestBody CommunityApplyReq req) {
+        return communityAdminService.submitApply(BizContext.requireMerchantNo(),
+                req.name(), req.address(), req.regionCode(), req.note());
+    }
+
+    /**
+     * 我提报过的。
+     *
+     * <p>没有这个列表，提报出去等于石沉大海：商家不知道批没批、被驳回的理由是什么，
+     * 只会隔几天再提一次同样的 —— 而那正是运营队列里出现重复条目的来源。
+     */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.STORE + "')")
+    @GetMapping("/biz/communities/applies")
+    public List<CommunityAdminService.ApplyVO> myCommunityApplies() {
+        return communityAdminService.appliesOf(BizContext.requireMerchantNo());
+    }
+
+    /** @param regionCode 商家选的区划，**只是建议** —— 最终以运营裁决时填的为准 */
+    public record CommunityApplyReq(String name, String address, String regionCode, String note) {
     }
 
     // ---------------------------------------------------------------- 收款进件

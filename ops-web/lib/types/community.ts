@@ -3,6 +3,38 @@
 // 的报酬、脱敏、作用域规则完全不同，混成一种类型后面每条规则都要写 if。
 import type { Archivable } from "./common";
 
+/**
+ * 商家提报的新社区（ADR-013 阶段三）。
+ *
+ * **它不是社区**：审过之后平台才建出来，`communityNo` 这时才有值。
+ * 待审的小区不在任何选点列表里 —— 进了主表就会出现在用户面前，而点进去什么都没有。
+ */
+export interface CommunityApply {
+  applyNo: string;
+  /** 提报的商家 */
+  merchantNo: string;
+  /** 商家名。运营看着一串 M20260811… 判断不了任何事 */
+  merchantName: string;
+  /** 小区名，商家填 */
+  name: string;
+  /** 地址。运营靠它判断这是不是已有社区的另一个叫法 —— 同一个小区两条记录，商家会分不清该勾哪个 */
+  address?: string;
+  /** 商家选的区划，**只是建议**：最终以裁决时填的为准 */
+  regionCode?: string;
+  /** 区划整条路径名。「北山街道」全国有好几个，光末级判断不了是不是同一个地方 */
+  regionPath?: string;
+  /** 商家的补充说明：为什么要开这个点 */
+  note?: string;
+  /** PENDING 待审 / APPROVED 已建社区 / REJECTED 驳回 */
+  status: "PENDING" | "APPROVED" | "REJECTED";
+  /** 通过后建出来的社区号；待审与驳回时为空 */
+  communityNo?: string;
+  /** 驳回原因。**原样出现在商家 B 端**，所以驳回必须填 */
+  reason?: string;
+  /** 提报时间 */
+  submittedAt: number;
+}
+
 export interface Community extends Archivable {
   /** 社区单号。平台端数据域裁剪的主键之一 */
   communityNo: string;

@@ -35,6 +35,49 @@ public interface CommunityAdminService {
      */
     CommunityVO setRegion(String communityNo, String regionCode, String operatorNo);
 
+    // ------------------------------------------------------------ 商家提报新社区（ADR-013 阶段三）
+
+    /**
+     * 商家提报一个平台还没有的小区。
+     *
+     * <p>在此之前商家<b>无路可走</b>：覆盖项只能从已有社区里勾，而「让平台加一个小区」
+     * 没有入口 —— 只能找 BD 口头说，说完没人知道进展。
+     *
+     * @throws ai.neargo.shop.common.BizException 同一家店对同一个名字已有待审提报 ——
+     *         重复提报不会让它更快通过，只会让运营的队列里出现两条一样的
+     */
+    ApplyVO submitApply(String merchantNo, String name, String address,
+                        String regionCode, String note);
+
+    /** 某商家自己的提报记录。B 端要看到进展与驳回理由，否则提报出去等于石沉大海 */
+    List<ApplyVO> appliesOf(String merchantNo);
+
+    /** 待审队列（运营）。status 为空给全部 */
+    List<ApplyVO> applies(String status);
+
+    /**
+     * 裁决提报。
+     *
+     * <p><b>通过时才建社区行</b>：待审的社区进主表的话，每一处读社区的地方都要记得
+     * 过滤它，漏一处就有一个还没批的小区出现在用户的选点列表里。
+     *
+     * @param regionCode 运营最终认定的区划，空则沿用商家填的。
+     *                   <b>建议挂到街道级</b> —— 不挂的话这个新社区在任何「按区覆盖」里都出不来
+     * @param reason     驳回原因，驳回时必填 —— 它原样出现在商家 B 端
+     */
+    ApplyVO decideApply(String applyNo, boolean pass, String regionCode,
+                        String reason, String operatorNo);
+
+    /**
+     * @param communityNo 通过后建出来的社区号；待审与驳回时为空
+     * @param regionPath  区划的整条路径名。运营与商家都靠它判断「是不是同一个地方」——
+     *                    光一个「北山街道」，全国有好几个
+     */
+    record ApplyVO(String applyNo, String merchantNo, String merchantName, String name,
+                   String address, String regionCode, String regionPath, String note,
+                   String status, String communityNo, String reason, long submittedAt) {
+    }
+
     List<PickupVO> pickups(String communityNo, String type, String status);
 
     /**

@@ -17,6 +17,7 @@ import {
   buildGroupBuy,
   nextNo,
   paginate,
+  pick,
   toGroupRequest,
   persist,
   pushMessage,
@@ -444,6 +445,33 @@ export const mockApi: MerchantApi = {
     return delay(
       db.regionSeeds.filter((r) => r.enabled && (parent ? r.parentCode === parent : !r.parentCode)),
     );
+  },
+
+  async mApplyCommunity(payload) {
+    const merchantNo = requireMerchant();
+    if (db.communityApplies.some((a) => a.name === payload.name && a.status === "PENDING")) {
+      // 与后端同口径：重复提报不会让它更快通过，只会让运营的队列里多一条一样的
+      throw new Error("这个小区你已经提报过，正在等运营处理");
+    }
+    const apply = {
+      applyNo: `CA${Date.now()}`,
+      merchantNo,
+      merchantName: (() => {
+        const n = db.merchantSeeds.find((m) => m.merchantNo === merchantNo)?.name;
+        return n ? pick(n) : merchantNo;
+      })(),
+      ...payload,
+      status: "PENDING" as const,
+      submittedAt: Date.now(),
+    };
+    db.communityApplies.unshift(apply);
+    persist();
+    return delay({ ...apply });
+  },
+
+  async mMyCommunityApplies() {
+    const merchantNo = requireMerchant();
+    return delay(db.communityApplies.filter((a) => a.merchantNo === merchantNo));
   },
 
   async mSaveStore(payload) {

@@ -126,6 +126,8 @@ export const ENUM_REGISTRY: EnumEntry[] = [
     note: "履约**能力**（这家店有什么送法，落在主体上），与 FULFILLMENT（某一单怎么送，落在订单上）是两个轴 —— 同名相近但不可合并。它与 SERVICE_SCOPE 的关系是取代：ADR-013 把三档拆成「能力 × 覆盖」，SERVICE_SCOPE 冻结为回滚锚点" },
   { decl: "shared:AREA_STATUS", dom: "core", shape: "STATUS", verdict: "OK",
     note: "覆盖项的生效状态。与 MchStoreAudit 的审核单状态是两回事：这个是「这一条覆盖算不算数」，那个是「这张审核单走到哪了」" },
+  { decl: "shared:COMMUNITY_APPLY_STATUS", dom: "core", shape: "STATUS", verdict: "OK",
+    note: "商家提报新社区的单据状态。与 AREA_STATUS 的 PENDING 同名不同物：那个是「这条覆盖算不算数」，这个是「这张提报单走到哪了」——  APPROVED 意味着平台已经建出了社区" },
   { decl: "shared:AREA_LEVEL", dom: "core", shape: "CLASS", verdict: "OK",
     note: "覆盖项粒度。取值与 sys_region.level 同源（COMMUNITY 除外——那是社区不是区划），后端不写字面量，值从库里带出来" },
   { decl: "ops-web:Role", dom: "auth", shape: "CLASS", verdict: "OK",

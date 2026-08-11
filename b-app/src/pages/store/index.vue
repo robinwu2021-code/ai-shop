@@ -16,6 +16,7 @@ import { api } from "@/api";
 import { FULFILLMENT_REACH, SERVICE_SCOPE } from "@shared/utils/constants";
 import type {
   Community,
+  CommunityApply,
   FulfillmentReach,
   MasterData,
   Region,
@@ -102,6 +103,42 @@ function toggleCommunity(c: Community) {
   else form.value.serviceAreas = [...areas.value, { level: "COMMUNITY", refCode: c.communityNo, name: c.name }];
 }
 
+// ---------------------------------------------------------------- 提报新社区（阶段三）
+/**
+ * 商家开在一个平台还没开的小区里，此前**无路可走** —— 只能找 BD 口头说，
+ * 说完没人知道进展。入口放在小区清单正下方：那是他发现「怎么没有我这儿」的那一刻。
+ */
+const applies = ref<CommunityApply[]>([]);
+const applyOpen = ref(false);
+const applyForm = ref({ name: "", address: "", note: "" });
+
+/** 待审的提报也要显示 —— 不显示的话商家会以为没提交成功，隔天再提一次 */
+const pendingApplies = computed(() => applies.value.filter((a) => a.status === "PENDING"));
+/** 驳回的要把理由显眼地摆出来：不给理由，他只会原样再提一次 */
+const rejectedApplies = computed(() => applies.value.filter((a) => a.status === "REJECTED"));
+
+async function submitApply() {
+  const name = applyForm.value.name.trim();
+  if (!name) {
+    uni.showToast({ title: t("store.applyNeedName"), icon: "none" });
+    return;
+  }
+  try {
+    const a = await api.mApplyCommunity({
+      name,
+      address: applyForm.value.address.trim() || undefined,
+      note: applyForm.value.note.trim() || undefined,
+    });
+    applies.value = [a, ...applies.value];
+    applyForm.value = { name: "", address: "", note: "" };
+    applyOpen.value = false;
+    uni.showToast({ title: t("store.applySubmitted"), icon: "none" });
+  } catch (e) {
+    // 重复提报会被后端拦（同名待审只能有一条）—— 原样把话说给商家
+    uni.showToast({ title: (e as Error)?.message || t("store.applyFailed"), icon: "none" });
+  }
+}
+
 // ---------------------------------------------------------------- 区划选择器
 /**
  * 逐级往下点，一次只拉一级。
@@ -180,12 +217,13 @@ async function load() {
    * 而他照着上面的内容点保存，就把默认值覆盖到真实数据上去了。
    * 一个请求失败不该有这种后果。
    */
-  const [s, q, k, cs, md] = await Promise.allSettled([
+  const [s, q, k, cs, md, ap] = await Promise.allSettled([
     api.mStore(),
     api.mStoreQrcode(),
     api.mShareKit(),
     api.mCommunities(),
     api.mMasterData(),
+    api.mMyCommunityApplies(),
   ]);
   if (s.status === "fulfilled") {
     form.value = normalize(s.value);
@@ -200,6 +238,7 @@ async function load() {
   kit.value = k.status === "fulfilled" ? k.value : null;
   // 取不到主数据不阻断编辑，档位退到上面那个保守默认
   master.value = md.status === "fulfilled" ? md.value : null;
+  applies.value = ap.status === "fulfilled" ? ap.value : [];
 }
 
 /**
@@ -331,6 +370,29 @@ onShow(load);
         </text>
         <text v-else-if="!communities.length" class="warn">
           {{ $t("store.communitiesEmpty") }}
+        </text>
+
+        <!-- 提报入口紧挨小区清单：这里正是他发现「怎么没有我这儿」的那一刻 -->
+        <view v-if="!applyOpen" class="mini apply__open" @tap="applyOpen = true">
+          {{ $t("store.applyEntry") }}
+        </view>
+        <view v-else class="rg">
+          <text class="hint">{{ $t("store.applyHint") }}</text>
+          <input v-model="applyForm.name" class="field__input" :placeholder="$t('store.applyNamePh')" />
+          <input v-model="applyForm.address" class="field__input" :placeholder="$t('store.applyAddressPh')" />
+          <input v-model="applyForm.note" class="field__input" :placeholder="$t('store.applyNotePh')" />
+          <view class="btns">
+            <text class="sh-btn sh-btn--soft apply__go" @tap="submitApply">{{ $t("common.submit") }}</text>
+            <text class="mini" @tap="applyOpen = false">{{ $t("common.cancel") }}</text>
+          </view>
+        </view>
+
+        <!-- 提报进展。不显示的话商家会以为没提交成功，隔天再提一次同样的 -->
+        <text v-for="a in pendingApplies" :key="a.applyNo" class="hint">
+          {{ a.name }} · {{ $t("store.applyPending") }}
+        </text>
+        <text v-for="a in rejectedApplies" :key="a.applyNo" class="warn">
+          {{ a.name }} · {{ $t("store.applyRejected") }}{{ a.reason ? `：${a.reason}` : "" }}
         </text>
 
         <!-- 区划：逐级点。整个区/街道也能直接选，否则框一个区要点开十几个街道 -->
@@ -509,6 +571,13 @@ onShow(load);
 .rg__close {
   display: inline-block;
   margin-top: 16rpx;
+}
+.apply__open {
+  display: inline-block;
+  margin-top: 20rpx;
+}
+.apply__go {
+  flex: 1;
 }
 .pend {
   font-size: 24rpx;

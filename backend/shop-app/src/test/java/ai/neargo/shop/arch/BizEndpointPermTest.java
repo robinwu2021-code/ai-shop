@@ -101,6 +101,10 @@ class BizEndpointPermTest {
 
         // ---- 门店经营面 ----
         put("/biz/store", BizPerms.STORE);
+        // 提报新社区与设经营范围是同一件事的两半：能决定「我做哪儿」的人，
+        // 才该能提「这儿还没开」
+        put("/biz/communities/apply", BizPerms.STORE);
+        put("/biz/communities/applies", BizPerms.STORE);
         put("/biz/store/qrcode", BizPerms.STORE);
         put("/biz/store/share-kit", BizPerms.STORE);
         put("/biz/delivery/rule", BizPerms.STORE);

@@ -22,6 +22,11 @@ import java.util.stream.Collectors;
 public class CommunityAdminServiceImpl implements CommunityAdminService {
 
     private static final String OPEN = "OPEN";
+    /**
+     * 新建社区的默认围栏（米）。与建表默认值一致 —— 两处不一致的话，
+     * 提报建出来的社区和运营建出来的会有不同的覆盖半径，而没人会想到去比。
+     */
+    private static final int DEFAULT_FENCE_RADIUS = 1000;
     private static final String CLOSED = "CLOSED";
 
     private static final String STORE = "STORE";
@@ -51,11 +56,148 @@ public class CommunityAdminServiceImpl implements CommunityAdminService {
      */
     private final ai.neargo.shop.spi.platform.MasterDataPort masterDataPort;
 
+    /** 提报单（ADR-013 阶段三） */
+    private final ai.neargo.shop.community.mapper.CommunityMappers.CommunityApplyMapper applyMapper;
+    /** 只为把提报队列里的商家号显示成店名 —— 运营看着一串 M20260811… 判断不了任何事 */
+    private final ai.neargo.shop.spi.user.MerchantQueryPort merchantQueryPort;
+
     public CommunityAdminServiceImpl(CommunityMapper communityMapper, PickupPointMapper pickupMapper,
-                                     ai.neargo.shop.spi.platform.MasterDataPort masterDataPort) {
+                                     ai.neargo.shop.spi.platform.MasterDataPort masterDataPort,
+                                     ai.neargo.shop.community.mapper.CommunityMappers
+                                             .CommunityApplyMapper applyMapper,
+                                     ai.neargo.shop.spi.user.MerchantQueryPort merchantQueryPort) {
         this.masterDataPort = masterDataPort;
         this.communityMapper = communityMapper;
         this.pickupMapper = pickupMapper;
+        this.applyMapper = applyMapper;
+        this.merchantQueryPort = merchantQueryPort;
+    }
+
+    // ------------------------------------------------------------ 商家提报新社区（阶段三）
+
+    @Override
+    @org.springframework.transaction.annotation.Transactional
+    public ApplyVO submitApply(String merchantNo, String name, String address,
+                               String regionCode, String note) {
+        String n = name == null ? "" : name.trim();
+        if (n.isEmpty()) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        /*
+         * 同一家店对同一个名字只能有一条待审。
+         *
+         * 重复提报不会让它更快通过，只会让运营的队列里出现两条一模一样的 ——
+         * 而两个人各裁一条的结果是**建出两个同名社区**，商家勾选时分不清该勾哪个。
+         */
+        boolean dup = DataScopeContext.executeWithoutScope(() -> applyMapper.exists(
+                com.baomidou.mybatisplus.core.toolkit.Wrappers
+                        .<ai.neargo.shop.community.entity.CmtCommunityApply>lambdaQuery()
+                        .eq(ai.neargo.shop.community.entity.CmtCommunityApply::getEntityNo, merchantNo)
+                        .eq(ai.neargo.shop.community.entity.CmtCommunityApply::getName, n)
+                        .eq(ai.neargo.shop.community.entity.CmtCommunityApply::getStatus,
+                                ai.neargo.shop.community.entity.CmtCommunityApply.PENDING)));
+        if (dup) {
+            throw new BizException(ErrorCode.CONFLICT, "这个小区你已经提报过，正在等运营处理");
+        }
+        var a = new ai.neargo.shop.community.entity.CmtCommunityApply();
+        a.setApplyNo(ai.neargo.shop.common.BizKey.next(ai.neargo.shop.common.BizKey.COMMUNITY_APPLY));
+        a.setEntityNo(merchantNo);
+        a.setName(n);
+        a.setAddress(address == null ? null : address.trim());
+        a.setRegionCode(regionCode == null || regionCode.isBlank() ? null : regionCode.trim());
+        a.setNote(note);
+        a.setStatus(ai.neargo.shop.community.entity.CmtCommunityApply.PENDING);
+        a.setSubmittedAt(System.currentTimeMillis());
+        DataScopeContext.executeWithoutScope(() -> applyMapper.insert(a));
+        return toApplyVO(a);
+    }
+
+    @Override
+    public List<ApplyVO> appliesOf(String merchantNo) {
+        return DataScopeContext.executeWithoutScope(() -> applyMapper.selectList(
+                        com.baomidou.mybatisplus.core.toolkit.Wrappers
+                                .<ai.neargo.shop.community.entity.CmtCommunityApply>lambdaQuery()
+                                .eq(ai.neargo.shop.community.entity.CmtCommunityApply::getEntityNo, merchantNo)
+                                .orderByDesc(ai.neargo.shop.community.entity.CmtCommunityApply::getId)))
+                .stream().map(this::toApplyVO).toList();
+    }
+
+    @Override
+    public List<ApplyVO> applies(String status) {
+        var w = com.baomidou.mybatisplus.core.toolkit.Wrappers
+                .<ai.neargo.shop.community.entity.CmtCommunityApply>lambdaQuery();
+        if (status != null && !status.isBlank()) {
+            w.eq(ai.neargo.shop.community.entity.CmtCommunityApply::getStatus, status);
+        }
+        w.orderByDesc(ai.neargo.shop.community.entity.CmtCommunityApply::getId);
+        return DataScopeContext.executeWithoutScope(() -> applyMapper.selectList(w))
+                .stream().map(this::toApplyVO).toList();
+    }
+
+    @Override
+    @org.springframework.transaction.annotation.Transactional
+    public ApplyVO decideApply(String applyNo, boolean pass, String regionCode,
+                               String reason, String operatorNo) {
+        if (!pass && (reason == null || reason.isBlank())) {
+            // 驳回理由原样出现在商家 B 端 —— 不写的话他不知道该改什么，只会原样再提一次
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        var a = DataScopeContext.executeWithoutScope(() -> applyMapper.selectOne(
+                com.baomidou.mybatisplus.core.toolkit.Wrappers
+                        .<ai.neargo.shop.community.entity.CmtCommunityApply>lambdaQuery()
+                        .eq(ai.neargo.shop.community.entity.CmtCommunityApply::getApplyNo, applyNo)
+                        .last("limit 1")));
+        if (a == null) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        // 裁完就是终态：再裁一次意味着同一条提报有两个结论，而通过那次已经建了社区
+        if (!ai.neargo.shop.community.entity.CmtCommunityApply.PENDING.equals(a.getStatus())) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+
+        if (pass) {
+            String code = regionCode == null || regionCode.isBlank()
+                    ? a.getRegionCode() : regionCode.trim();
+            /*
+             * 区划挂错比不挂更糟，所以这里与 setRegion 用同一道校验：
+             * 挂到一个不存在的码上不报错，只会让这个新社区在任何「按区覆盖」里都出不来 ——
+             * 而运营看着界面上明明填着值。
+             */
+            if (code != null && code.equals(masterDataPort.regionPathName(code))) {
+                throw new BizException(ErrorCode.NOT_FOUND, "区划不存在：" + code);
+            }
+            var c = new CmtCommunity();
+            c.setCommunityNo(ai.neargo.shop.common.BizKey.next(ai.neargo.shop.common.BizKey.COMMUNITY));
+            c.setName(a.getName());
+            c.setAddress(a.getAddress());
+            c.setRegionCode(code);
+            // 审过即开城：运营随时能关，而默认关掉的话商家提报通过了却依然看不到它
+            c.setStatus(OPEN);
+            // 0 意味着这个社区覆盖不到任何地址，而界面上看起来只是「还没配」
+            c.setFenceRadius(DEFAULT_FENCE_RADIUS);
+            c.setCreatedBy(operatorNo);
+            DataScopeContext.executeWithoutScope(() -> communityMapper.insert(c));
+            a.setCommunityNo(c.getCommunityNo());
+            a.setRegionCode(code);
+        }
+        a.setStatus(pass ? ai.neargo.shop.community.entity.CmtCommunityApply.APPROVED
+                : ai.neargo.shop.community.entity.CmtCommunityApply.REJECTED);
+        a.setReason(pass ? null : reason.trim());
+        a.setDecidedAt(System.currentTimeMillis());
+        a.setDecidedBy(operatorNo);
+        DataScopeContext.executeWithoutScope(() -> applyMapper.updateById(a));
+        return toApplyVO(a);
+    }
+
+    private ApplyVO toApplyVO(ai.neargo.shop.community.entity.CmtCommunityApply a) {
+        return new ApplyVO(a.getApplyNo(), a.getEntityNo(),
+                merchantQueryPort.find(a.getEntityNo())
+                        .map(ai.neargo.shop.spi.user.MerchantQueryPort.MerchantBrief::merchantName)
+                        .orElse(a.getEntityNo()),
+                a.getName(), a.getAddress(), a.getRegionCode(),
+                a.getRegionCode() == null ? null : masterDataPort.regionPathName(a.getRegionCode()),
+                a.getNote(), a.getStatus(), a.getCommunityNo(), a.getReason(),
+                a.getSubmittedAt() == null ? 0L : a.getSubmittedAt());
     }
 
     @Override

@@ -43,6 +43,8 @@ import type {
   AfterSale,
   Category,
   Community,
+  CommunityApply,
+  CommunityApplyReq,
   Region,
   DeliveryRule,
   Goods,
@@ -101,6 +103,9 @@ export const httpApi: MerchantApi = {
   mCommunities: () => http.get<Community[]>(E.mCommunities.path),
   mRegions: (parent) =>
     http.get<Region[]>(E.mRegions.path, parent ? { parent } : undefined),
+  mApplyCommunity: (payload) =>
+    http.post<CommunityApply>(E.mApplyCommunity.path, payload satisfies CommunityApplyReq),
+  mMyCommunityApplies: () => http.get<CommunityApply[]>(E.mMyCommunityApplies.path),
   mSaveStore: (payload) => http.post<StoreProfile>(E.mSaveStore.path, payload),
   mStoreList: () => http.get<Store[]>(E.mStoreList.path),
   mCreateStore: (payload) =>

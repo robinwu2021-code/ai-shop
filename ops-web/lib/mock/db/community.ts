@@ -1,7 +1,20 @@
 // 社区与网点 mock（P-2.1 / P-2.2）。
 // 自提点刻意覆盖 STORE/NEIGHBOR 两类与三种状态，且留了一个「30 天承接 4 次」的
 // 临时点 —— 职业化风控（P-2.2.5）没有样本数据就永远验不到。
-import type { Community, PickupPoint, Region } from "@/lib/types";
+import type { Community, CommunityApply, PickupPoint, Region } from "@/lib/types";
+
+/**
+ * 商家提报的新社区（ADR-013 阶段三）。
+ *
+ * 三条样本对应运营真的会遇到的三种判断：**平台确实没有**（该批）、
+ * **已有社区的另一个叫法**（该驳，而这正是地址字段存在的理由）、
+ * 以及一条已经批过的（通过之后长什么样，不留样本就永远没人验）。
+ */
+export const communityApplies: CommunityApply[] = [
+  { applyNo: "CA9001", merchantNo: "M901", merchantName: "阿姨家的菜摊", name: "钱塘湾花苑", address: "杭州市西湖区文一西路 1218 号", regionCode: "330106003", regionPath: "浙江省 / 杭州市 / 西湖区 / 西溪街道", note: "我的摊子就在小区南门口，这边住户一直问能不能送", status: "PENDING", submittedAt: 1786100000000 },
+  { applyNo: "CA9002", merchantNo: "M903", merchantName: "邻家便利", name: "阳光里小区", address: "杭州市西湖区北山街道", note: "", status: "PENDING", submittedAt: 1786050000000 },
+  { applyNo: "CA9003", merchantNo: "M902", merchantName: "老张水果店", name: "翡翠城", address: "杭州市拱墅区莫干山路 300 号", status: "APPROVED", communityNo: "C005", submittedAt: 1785900000000 },
+];
 
 export const communities: Community[] = [
   // **有意留两条未归属的**（C003/C004）：那正是运营要去补的情形，

@@ -10,6 +10,8 @@ import type {
   AfterSale,
   Category,
   Community,
+  CommunityApply,
+  CommunityApplyReq,
   DeliveryRule,
   Goods,
   CurrencyCode,
@@ -208,6 +210,15 @@ export interface MerchantApi {
    * 而商家真正要点开的只有其中一条路径。
    */
   mRegions(parent?: string): Promise<Region[]>;
+  /**
+   * 提报一个平台还没有的小区（ADR-013 阶段三）。
+   *
+   * 在这之前商家**无路可走**：覆盖项只能从已有社区里勾，而「让平台加一个小区」
+   * 没有入口 —— 只能找 BD 口头说，说完没人知道进展。
+   */
+  mApplyCommunity(payload: CommunityApplyReq): Promise<CommunityApply>;
+  /** 我提报过的。没有它，提报出去等于石沉大海，商家只会隔几天再提一次同样的 */
+  mMyCommunityApplies(): Promise<CommunityApply[]>;
   mSaveStore(payload: StoreProfile): Promise<StoreProfile>;
 
   // ---- 门店管理（M6）—— 与 mStore 的分工：那个管**一家店的门面**，这个管**有几家店**

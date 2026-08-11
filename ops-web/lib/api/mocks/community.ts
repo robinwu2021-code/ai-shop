@@ -60,6 +60,38 @@ export const communityMock: CommunityApi = {
     return wait(c, 400);
   },
 
+  listCommunityApplies: (q = {}) =>
+    wait(db.paginate(db.communityApplies, q.page, q.size,
+      (a) => (q.status && q.status !== "ALL" ? a.status === q.status : true))),
+
+  decideCommunityApply: async (applyNo, pass, opts) => {
+    const a = db.communityApplies.find((x) => x.applyNo === applyNo);
+    if (!a) notFound("提报单", "Community request", applyNo);
+    // 裁完就是终态：再裁一次意味着同一条提报有两个结论，而通过那次已经建了社区
+    if (a.status !== "PENDING") fail("这条提报已经裁决过了", "This request was already decided");
+    if (!pass && !opts?.reason?.trim()) {
+      // 理由原样回给商家 —— 不写的话他不知道该改什么，只会原样再提一次
+      fail("驳回必须写原因", "A reason is required to reject");
+    }
+    if (pass) {
+      const code = opts?.regionCode?.trim() || a.regionCode;
+      const communityNo = `C${900 + db.communities.length}`;
+      db.communities.unshift({
+        communityNo, name: a.name, city: "杭州", grid: "", opened: true,
+        fenceRadius: 1000, pickupCount: 0, createdAt: new Date().toISOString(),
+        regionCode: code,
+        regionPath: code ? db.regions.find((r) => r.regionCode === code)?.name : undefined,
+      });
+      a.communityNo = communityNo;
+      a.regionCode = code;
+      a.status = "APPROVED";
+    } else {
+      a.status = "REJECTED";
+      a.reason = opts?.reason?.trim();
+    }
+    return wait(a, 400);
+  },
+
   setCommunityRegion: async (communityNo, regionCode) => {
     const c = findCommunity(communityNo);
     const code = regionCode?.trim();

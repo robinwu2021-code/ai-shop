@@ -28,6 +28,10 @@ public final class BizKey {
     public static final String MERCHANT_APPLY = "MA";
     public static final String STAFF = "ST";
     public static final String PICKUP_POINT = "PP";
+    /** 社区（小区/网格）。运营开的点，或商家提报审过之后建出来的 */
+    public static final String COMMUNITY = "C";
+    /** 商家提报的新社区（ADR-013 阶段三） */
+    public static final String COMMUNITY_APPLY = "CA";
     public static final String GOODS = "G";
     public static final String SKU = "SK";
     public static final String SPEC_TEMPLATE = "SPT";

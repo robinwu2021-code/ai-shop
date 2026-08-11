@@ -30,6 +30,7 @@ import { Pagination } from "@/components/ui/misc";
 import { Switch } from "@/components/ui/switch";
 import { RegionPicker } from "./region-picker";
 import { TabHeader } from "@/components/ui/tab-header";
+import { ApplyTab } from "./apply-tab";
 import { Toolbar } from "@/components/ui/toolbar";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 
@@ -38,6 +39,7 @@ const TABS = (c: Copy) => [
   { key: "grid", label: c.tabGrid },
   { key: "pickups", label: c.tabPickups },
   { key: "neighbor", label: c.tabNeighbor },
+  { key: "applies", label: c.tabApplies },
 ];
 
 const OPEN_OPTIONS = (c: Copy) => [
@@ -285,6 +287,12 @@ function CommunitiesInner() {
     <div>
       <TabHeader tabs={tabs} value={tab} onChange={setTab} />
 
+      {/* 提报审核自带筛选与分页，与其余三个 tab 的工具条无关 —— 所以整块拆出去 */}
+      {tab === "applies" && <ApplyTab c={cp} canDecide={canEditCommunity} />}
+
+      {tab === "applies" && !canEditCommunity && (
+        <ReadOnlyNotice what={cp.readOnlyApplyWhat} perm="community:community:update" note={cp.readOnlyApplyNote} className="mb-3" />
+      )}
       {tab === "grid" && !canEditCommunity && (
         <ReadOnlyNotice what={cp.readOnlyCommunityWhat} perm="community:community:update" note={cp.readOnlyCommunityNote} className="mb-3" />
       )}
@@ -298,7 +306,7 @@ function CommunitiesInner() {
         </Notice>
       )}
 
-      {tab !== "neighbor" && (
+      {tab !== "neighbor" && tab !== "applies" && (
         <Toolbar
           search={keyword}
           onSearch={(v) => { setKeyword(v); setPage(1); }}
@@ -353,7 +361,10 @@ function CommunitiesInner() {
         />
       )}
 
-      <Pagination page={page} size={size} onSize={setSize} total={activeList.data?.total ?? 0} onPage={setPage} />
+      {/* 提报 tab 自带分页 —— 这里再摆一个的话，一屏两个分页条，点哪个都不对 */}
+      {tab !== "applies" && (
+        <Pagination page={page} size={size} onSize={setSize} total={activeList.data?.total ?? 0} onPage={setPage} />
+      )}
 
       {dialog}
 

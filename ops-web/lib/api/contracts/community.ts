@@ -1,7 +1,7 @@
 // 覆盖范围：社区网格（P-2.1）与自提点主数据（P-2.2）。
-import type { Community, Page, PickupPoint, PickupStatus, Region } from "@/lib/types";
+import type { Community, CommunityApply, Page, PickupPoint, PickupStatus, Region } from "@/lib/types";
 import type { PickupDraft } from "@/lib/types";
-import type { CommunityQ, PickupQ } from "../query";
+import type { CommunityApplyQ, CommunityQ, PickupQ } from "../query";
 
 export interface CommunityApi {
   listCommunities(q?: CommunityQ): Promise<Page<Community>>;
@@ -16,6 +16,24 @@ export interface CommunityApi {
    * @param regionCode 传空表示清空归属
    */
   setCommunityRegion(communityNo: string, regionCode: string): Promise<Community>;
+
+  // ── 商家提报的新社区（ADR-013 阶段三）──────────────────────────
+
+  /**
+   * 提报队列。默认只看待审 —— 这是个队列，历史是次要视图。
+   *
+   * 它补的是一条死路：商家开在平台还没开的小区里，覆盖项只能从已有社区里勾，
+   * 而「让平台加一个小区」此前没有任何入口。
+   */
+  listCommunityApplies(q?: CommunityApplyQ): Promise<Page<CommunityApply>>;
+  /**
+   * 裁决。**通过就当场建出这个社区**，驳回必须写原因（原样回给商家）。
+   *
+   * @param regionCode 运营最终认定的区划，空则沿用商家填的。
+   *                   不挂的话这个新社区在任何「按区覆盖」里都出不来
+   */
+  decideCommunityApply(applyNo: string, pass: boolean,
+                       opts?: { regionCode?: string; reason?: string }): Promise<CommunityApply>;
 
   // ── 行政区划（ADR-013）─────────────────────────────────────────
 

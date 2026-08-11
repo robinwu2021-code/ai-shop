@@ -29,6 +29,7 @@ import type {
   AppointmentSlot,
   CartItem,
   Community,
+  CommunityApply,
   Coupon,
   CurrencyCode,
   Goods,
@@ -1102,6 +1103,22 @@ export const db = {
   merchantSeeds,
   communitySeeds,
   regionSeeds,
+  /**
+   * 提报单。**一条已驳回的样本**：只有待审的话，B 端「被驳回长什么样」
+   * 在开发期永远看不到 —— 而那正是最需要设计的一屏（理由要显眼、要能改了再提）。
+   */
+  communityApplies: [
+    {
+      applyNo: "CA20260810001",
+      merchantNo: "M002",
+      merchantName: "阿明果蔬合作社",
+      name: "锦绣花园",
+      address: "文三路 200 号",
+      status: "REJECTED",
+      reason: "这个小区已经在平台上，叫「翠苑一区」，直接勾选即可",
+      submittedAt: 1786000000000,
+    },
+  ] as CommunityApply[],
   couponSeeds,
   reviews: reviewSeeds,
 

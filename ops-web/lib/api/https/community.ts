@@ -7,6 +7,10 @@ export const communityHttp: CommunityApi = {
   setCommunityOpen: (no, opened) => client.post(`/ops/communities/${no}/open`, { opened }),
   setCommunityFence: (no, fenceRadius) => client.post(`/ops/communities/${no}/fence`, { fenceRadius }),
   setCommunityRegion: (no, regionCode) => client.post(`/ops/communities/${no}/region`, { regionCode }),
+  listCommunityApplies: (q) => client.get("/ops/communities/applies", q),
+  decideCommunityApply: (applyNo, pass, opts) =>
+    client.post(`/ops/communities/applies/${applyNo}/decide`,
+      { pass, regionCode: opts?.regionCode, reason: opts?.reason }),
   listRegions: (parent, enabledOnly) => client.get("/ops/regions", { parent, enabledOnly }),
   regionPath: (code) => client.get("/ops/regions/path", { code }),
   archiveCommunity: (no) => client.post(`/ops/communities/${no}/archive`),

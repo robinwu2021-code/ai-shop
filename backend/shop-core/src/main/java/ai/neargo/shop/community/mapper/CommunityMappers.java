@@ -20,4 +20,8 @@ public final class CommunityMappers {
 
     public interface PickupPointMapper extends BaseMapper<CmtPickupPoint> {
     }
+
+    public interface CommunityApplyMapper
+            extends BaseMapper<ai.neargo.shop.community.entity.CmtCommunityApply> {
+    }
 }

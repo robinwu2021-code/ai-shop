@@ -194,6 +194,9 @@ const NAME_COLLISIONS: Record<string, string> = {
     "mkt_request 是求团需求单号；stl_split_log 是分账幂等号。" +
     "建表时已发现约束名会撞车并加了 uk_split_request_no 前缀，但列名的撞车还在。",
   express_no: "ord_sub_order 是发货快递单号；ord_after_sale 是用户退货的快递单号。方向相反。",
+  apply_no:
+    "mch_entity_apply 是商家入驻申请单；cmt_community_apply 是商家提报新社区的单子。\n" +
+    "  两者都是「某人申请某事」，但申请的对象完全不同 —— 按名字 join 会把入驻单连到社区提报上。",
   ref_no:
     "stl_points_pool 是积分池指向的业务单据；mch_store_audit 是审核单指向的业务记录" +
     "（kind=SERVICE_AREA 时是 mch_service_area.area_no）。\n" +

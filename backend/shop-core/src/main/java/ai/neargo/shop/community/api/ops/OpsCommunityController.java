@@ -77,6 +77,46 @@ public class OpsCommunityController {
         return ai.neargo.shop.common.PageData.ofAll(adminService.communities(keyword, showClosed), page, size);
     }
 
+    // ---------------------------------------------------------------- 商家提报的新社区（ADR-013 阶段三）
+
+    /**
+     * 提报队列。默认只看待审 —— 这是个队列，历史记录是次要视图。
+     *
+     * <p>用 {@code COMMUNITY_VIEW}：看队列是读。裁决那个端点才是写。
+     */
+    @GetMapping("/ops/communities/applies")
+    @PreAuthorize("@perm.can('" + Perms.COMMUNITY_VIEW + "')")
+    public ai.neargo.shop.common.PageData<CommunityAdminService.ApplyVO> applies(
+            @RequestParam(required = false, defaultValue = "PENDING") String status,
+            @RequestParam(defaultValue = "1") long page,
+            @RequestParam(defaultValue = "20") long size) {
+        String s = "ALL".equalsIgnoreCase(status) ? null : status;
+        return ai.neargo.shop.common.PageData.ofAll(adminService.applies(s), page, size);
+    }
+
+    /**
+     * 裁决提报：通过就<b>当场建出这个社区</b>，驳回必须写原因（原样回给商家）。
+     *
+     * <p>用 {@code INDUSTRY_MANAGE} 而不是 {@code COMMUNITY_VIEW}：它建的是一条主数据，
+     * 与开城、改归属同一量级 —— 而看队列的人（BD、客服）不该有这个权。
+     */
+    @PostMapping("/ops/communities/applies/{applyNo}/decide")
+    @PreAuthorize("@perm.can('" + Perms.INDUSTRY_MANAGE + "')")
+    public CommunityAdminService.ApplyVO decideApply(@PathVariable String applyNo,
+                                                     @RequestBody ApplyDecideReq req) {
+        boolean pass = Boolean.TRUE.equals(req.pass());
+        var vo = adminService.decideApply(applyNo, pass, req.regionCode(), req.reason(),
+                SecurityUtils.currentUserNo());
+        // 通过 = 平台多了一个运营单元，必须能追到是谁批的
+        auditLogPort.record("COMMUNITY_APPLY_DECIDE", applyNo,
+                pass ? "通过，建社区 " + vo.communityNo() : "驳回：" + req.reason());
+        return vo;
+    }
+
+    /** @param regionCode 运营最终认定的区划；空则沿用商家填的 */
+    public record ApplyDecideReq(Boolean pass, String regionCode, String reason) {
+    }
+
     /** 开城开关。关掉只停获客 —— **已有订单不受影响**。 */
     @PostMapping("/ops/communities/{communityNo}/open")
     @PreAuthorize("@perm.can('" + Perms.INDUSTRY_MANAGE + "')")

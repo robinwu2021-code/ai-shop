@@ -5,6 +5,7 @@
 import type {
   AREA_LEVEL,
   AREA_STATUS,
+  COMMUNITY_APPLY_STATUS,
   CATEGORY_TYPE,
   CURRENCIES,
   FULFILLMENT,
@@ -23,6 +24,8 @@ export type ServiceScope = (typeof SERVICE_SCOPE)[keyof typeof SERVICE_SCOPE];
 export type FulfillmentReach = (typeof FULFILLMENT_REACH)[keyof typeof FULFILLMENT_REACH];
 export type AreaLevel = (typeof AREA_LEVEL)[keyof typeof AREA_LEVEL];
 export type AreaStatus = (typeof AREA_STATUS)[keyof typeof AREA_STATUS];
+export type CommunityApplyStatus =
+  (typeof COMMUNITY_APPLY_STATUS)[keyof typeof COMMUNITY_APPLY_STATUS];
 
 /** 多语言文案（mock 内部用；对外契约由后端按 Accept-Language 返回已本地化的 string） */
 export type I18nText = Record<Lang, string>;
@@ -1685,6 +1688,40 @@ export interface ServiceArea {
    * 而这是他自己永远查不出来的那类故障。
    */
   status?: AreaStatus;
+}
+
+/**
+ * 商家提报的新社区（ADR-013 阶段三）。
+ *
+ * 提报**不等于**社区已存在：审过之后平台才建出来，`communityNo` 这时才有值。
+ * 端上别拿它去当社区用 —— 待审的小区不在任何选点列表里。
+ */
+export interface CommunityApply {
+  applyNo: string;
+  merchantNo: string;
+  merchantName: string;
+  /** 小区名，商家填 */
+  name: string;
+  address?: string;
+  /** 商家选的区划，**只是建议** —— 最终以运营裁决时填的为准 */
+  regionCode?: string;
+  /** 区划整条路径名。「北山街道」全国有好几个，光末级判断不了是不是同一个地方 */
+  regionPath?: string;
+  /** 补充说明：为什么要开这个点 */
+  note?: string;
+  status: CommunityApplyStatus;
+  /** 通过后建出来的社区号；待审与驳回时为空 */
+  communityNo?: string;
+  /** 驳回原因，**原样展示给商家** —— 不给理由他只会原样再提一次 */
+  reason?: string;
+  submittedAt: number;
+}
+
+export interface CommunityApplyReq {
+  name: string;
+  address?: string;
+  regionCode?: string;
+  note?: string;
 }
 
 /** 行政区划的一级（`/biz/regions`）。国家统计局统计用区划代码，省 2 / 市 4 / 区 6 / 街道 9 位 */

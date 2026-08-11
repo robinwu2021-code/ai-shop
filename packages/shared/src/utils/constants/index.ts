@@ -173,6 +173,20 @@ export const AREA_STATUS = {
 } as const;
 
 /**
+ * 商家提报新社区的单据状态（ADR-013 阶段三）。
+ *
+ * 与 {@link AREA_STATUS} 不是一回事：那个说「这一条覆盖算不算数」，
+ * 这个说「这张提报单走到哪了」—— APPROVED 意味着平台**已经建出了社区**。
+ */
+export const COMMUNITY_APPLY_STATUS = {
+  PENDING: "PENDING",
+  /** 已通过，社区建出来了（单据上的 communityNo 这时才有值） */
+  APPROVED: "APPROVED",
+  /** 驳回。理由必须原样回给商家，否则他只会再提一次同样的 */
+  REJECTED: "REJECTED",
+} as const;
+
+/**
  * 覆盖项的粒度。可跨粒度组合 —— 「三个小区 + 一个区」是两条 COMMUNITY 加一条 DISTRICT。
  */
 export const AREA_LEVEL = {
