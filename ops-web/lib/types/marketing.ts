@@ -27,23 +27,29 @@ export interface Coupon extends Archivable {
   value: number;
   /** 使用门槛，0 表示无门槛 */
   threshold: number;
-  /** 生效开始时间 */
-  validFrom: string;
-  /** 生效结束时间 */
-  validTo: string;
+  /** 生效开始时间（毫秒时间戳，后端全域口径） */
+  validFrom: number;
+  /** 生效结束时间（毫秒时间戳） */
+  validTo: number;
   /**
    * 预算（分）。**已发放金额不得超过它** —— 这是唯一挡住"发着发着超支"的地方，
    * 且必须在服务端校验：客服也持有发券权限（矩阵 §2.3 补偿券）。
+   *
+   * `0` = 不限。存量券全是这样：加预算列的迁移不改变已在跑的券的行为。
+   *
+   * 服务端的校验在领券那条 UPDATE 里与张数一起判（原子），
+   * 见 `CouponMappers.tryReceive`。⚠️ 折扣券挡不住 —— 它的实际支出
+   * 取决于用券那一单的金额，发放时算不出来。
    */
   budget: number;
-  /** 已发放金额（分） */
+  /** 已发放金额（分）= 已领张数 × 面额。折扣券算不出来，恒为 0 */
   issuedAmount: number;
   /** 已发放张数 */
   issued: number;
   /** 已核销张数（P-7.1.4 效果） */
   redeemed: number;
-  /** 创建时间 */
-  createdAt: string;
+  /** 创建时间（毫秒时间戳） */
+  createdAt: number;
 }
 
 /** 发放对象类型（P-7.1.2 发放留痕）。 */

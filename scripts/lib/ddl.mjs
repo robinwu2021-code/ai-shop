@@ -148,8 +148,14 @@ export function readSchema(root) {
   // 真实踩到过：`ord_sub_order.pickup_code` 在 V6 改名成 `verify_code`，
   // 而报告照旧说「契约的 verifyCode 与库列 pickup_code 不一致」—— 早就一致了。
   // 反向更危险：漏看 ADD COLUMN 会把已有的列报成缺失，照着补一遍就是重复加列。
+  //
+  // `IF NOT EXISTS` / `IF EXISTS` 必须跳过：不跳的话 `(\w+)` 会把 **IF 当成列名**，
+  // 于是解析出一列叫 `if`，而真正那一列不见了 —— SchemaDriftTest 报「列不一致」，
+  // 差异里却看不出所以然（踩过一次）。
+  // 幂等迁移不是可选风格：一次失败的迁移不该需要人手工进库才能重试（见 V18 的说明），
+  // 所以解析器要认它，而不是逼人把 IF NOT EXISTS 去掉。
   for (const m of sql.matchAll(
-    /ALTER TABLE\s+(\w+)\s+(ADD COLUMN|RENAME COLUMN|DROP COLUMN|MODIFY COLUMN)\s+(\w+)(?:\s+([\w()]+))?([^;]*)/gi,
+    /ALTER TABLE\s+(\w+)\s+(ADD COLUMN|RENAME COLUMN|DROP COLUMN|MODIFY COLUMN)\s+(?:IF\s+(?:NOT\s+)?EXISTS\s+)?(\w+)(?:\s+([\w()]+))?([^;]*)/gi,
   )) {
     const [, table, opRaw, col, rest, tail] = m;
     const t = tables.get(table);

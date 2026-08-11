@@ -38,7 +38,15 @@ public interface CouponService {
      *
      * @param status 为空给全部
      */
-    List<CouponVO> opsCoupons(String status);
+    /**
+     * 券模板治理列表（运营端）。
+     *
+     * <p>返回 {@link ai.neargo.shop.marketing.coupon.dto.OpsCouponVO} 而不是
+     * {@link CouponVO} —— 后者是 C 端领券中心的视图（「我领没领」「还剩几张」），
+     * 运营要的是「发了多少、核销多少、花了多少、还剩多少预算」。
+     * 复用一个 VO 的代价见 OpsCouponVO 的类注释。
+     */
+    List<ai.neargo.shop.marketing.coupon.dto.OpsCouponVO> opsCoupons(String status);
 
     /**
      * 平台改券状态：{@code ACTIVE} ⇄ {@code PAUSED}，或置 {@code ENDED}。

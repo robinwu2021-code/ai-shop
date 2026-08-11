@@ -225,14 +225,36 @@ public class CouponServiceImpl implements CouponService {
     // ---------------------------------------------------------------- 平台侧（P-7.1）
 
     @Override
-    public List<CouponVO> opsCoupons(String status) {
+    public List<ai.neargo.shop.marketing.coupon.dto.OpsCouponVO> opsCoupons(String status) {
         // executeWithoutScope：平台视角要跨商家。不解除数据域的话，
         // 运营看到的永远是空列表 —— 而且不报错
         return DataScopeContext.executeWithoutScope(() ->
                 couponMapper.selectList(Wrappers.<MktCoupon>lambdaQuery()
                         .eq(status != null && !status.isBlank(), MktCoupon::getStatus, status)
                         .orderByDesc(MktCoupon::getId))).stream()
-                .map(c -> toVO(c, false)).toList();
+                .map(this::toOpsVO).toList();
+    }
+
+    private ai.neargo.shop.marketing.coupon.dto.OpsCouponVO toOpsVO(MktCoupon c) {
+        int issued = nzi(c.getReceivedCount());
+        long face = nz(c.getFaceMinor());
+        /*
+         * 已发放金额 = 已领张数 × 面额。折扣券的面额是 0（它用 discount_rate），
+         * 于是这里返回 0 —— **宁可显示 0，也不要按订单均价估一个看着像真的数**。
+         * 运营会拿这个数去和预算比。
+         */
+        long issuedAmount = issued * face;
+        return new ai.neargo.shop.marketing.coupon.dto.OpsCouponVO(
+                c.getCouponNo(), c.getTitle(), c.getType(), c.getStatus(),
+                // DISCOUNT 券的 value 是折扣万分比，其余是面额 —— 与 ops-web 的 Coupon.value 同口径
+                "DISCOUNT".equals(c.getType()) ? nzi(c.getDiscountRate()) : face,
+                nz(c.getThresholdMinor()), c.getFunder(), c.getEntityNo(),
+                nz(c.getStartAt()), nz(c.getEndAt()),
+                nz(c.getBudgetMinor()), issuedAmount, issued,
+                DataScopeContext.executeWithoutScope(() -> couponMapper.redeemedCount(c.getCouponNo())),
+                c.getCreatedAt() == null ? 0
+                        : c.getCreatedAt().atZone(java.time.ZoneId.systemDefault())
+                                .toInstant().toEpochMilli());
     }
 
     @Override

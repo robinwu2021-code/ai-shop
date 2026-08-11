@@ -1,6 +1,7 @@
 package ai.neargo.shop.marketing.api.ops;
 
 import ai.neargo.shop.common.PageData;
+import ai.neargo.shop.marketing.coupon.dto.OpsCouponVO;
 import ai.neargo.shop.auth.Perms;
 import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.marketing.campaign.CampaignService;
@@ -59,7 +60,7 @@ public class OpsMarketingController {
     /** @param status 为空给全部；{@code ACTIVE} / {@code PAUSED} / {@code ENDED} */
     @GetMapping("/ops/coupons")
     @PreAuthorize("@perm.can('" + Perms.MARKETING_GOVERN + "')")
-    public PageData<CouponVO> coupons(@RequestParam(required = false) String status,
+    public PageData<OpsCouponVO> coupons(@RequestParam(required = false) String status,
                                       @RequestParam(defaultValue = "1") long page,
                                       @RequestParam(defaultValue = "50") long size) {
         // 运营端列表页按 {records,total} 渲染 —— 返回裸数组会被当成空页

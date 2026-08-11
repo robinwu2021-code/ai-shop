@@ -5,29 +5,29 @@ import type { Campaign, ContentSlot, Coupon, CouponIssue } from "@/lib/types";
 export const coupons: Coupon[] = [
   {
     couponNo: "CP9001", name: "新人首单立减 5 元", type: "NEWCOMER", status: "ACTIVE",
-    value: 500, threshold: 1900, validFrom: "2026-08-01T00:00:00Z", validTo: "2026-08-31T16:00:00Z",
-    budget: 500_000, issuedAmount: 214_000, issued: 428, redeemed: 301, createdAt: "2026-07-28T02:00:00Z",
+    value: 500, threshold: 1900, validFrom: Date.parse("2026-08-01T00:00:00Z"), validTo: Date.parse("2026-08-31T16:00:00Z"),
+    budget: 500_000, issuedAmount: 214_000, issued: 428, redeemed: 301, createdAt: Date.parse("2026-07-28T02:00:00Z"),
   },
   {
     couponNo: "CP9002", name: "满 39 减 8（生鲜）", type: "FULL_CUT", status: "ACTIVE",
-    value: 800, threshold: 3900, validFrom: "2026-08-04T00:00:00Z", validTo: "2026-08-10T16:00:00Z",
+    value: 800, threshold: 3900, validFrom: Date.parse("2026-08-04T00:00:00Z"), validTo: Date.parse("2026-08-10T16:00:00Z"),
     // 预算快用完：用来验「超预算发券被拒」
-    budget: 120_000, issuedAmount: 116_800, issued: 146, redeemed: 88, createdAt: "2026-08-03T06:00:00Z",
+    budget: 120_000, issuedAmount: 116_800, issued: 146, redeemed: 88, createdAt: Date.parse("2026-08-03T06:00:00Z"),
   },
   {
     couponNo: "CP9003", name: "邻家便利 85 折（店铺定向）", type: "DISCOUNT", status: "PAUSED",
-    value: 8500, threshold: 0, validFrom: "2026-07-20T00:00:00Z", validTo: "2026-08-20T16:00:00Z",
-    budget: 200_000, issuedAmount: 63_500, issued: 127, redeemed: 61, createdAt: "2026-07-19T03:00:00Z",
+    value: 8500, threshold: 0, validFrom: Date.parse("2026-07-20T00:00:00Z"), validTo: Date.parse("2026-08-20T16:00:00Z"),
+    budget: 200_000, issuedAmount: 63_500, issued: 127, redeemed: 61, createdAt: Date.parse("2026-07-19T03:00:00Z"),
   },
   {
     couponNo: "CP9004", name: "老客回归 10 元券", type: "TARGETED", status: "DRAFT",
-    value: 1000, threshold: 4900, validFrom: "2026-08-10T00:00:00Z", validTo: "2026-09-10T16:00:00Z",
-    budget: 300_000, issuedAmount: 0, issued: 0, redeemed: 0, createdAt: "2026-08-05T08:00:00Z",
+    value: 1000, threshold: 4900, validFrom: Date.parse("2026-08-10T00:00:00Z"), validTo: Date.parse("2026-09-10T16:00:00Z"),
+    budget: 300_000, issuedAmount: 0, issued: 0, redeemed: 0, createdAt: Date.parse("2026-08-05T08:00:00Z"),
   },
   {
     couponNo: "CP9005", name: "七月满 50 减 12（已结束）", type: "FULL_CUT", status: "ENDED",
-    value: 1200, threshold: 5000, validFrom: "2026-07-01T00:00:00Z", validTo: "2026-07-31T16:00:00Z",
-    budget: 400_000, issuedAmount: 386_400, issued: 322, redeemed: 258, createdAt: "2026-06-28T02:00:00Z",
+    value: 1200, threshold: 5000, validFrom: Date.parse("2026-07-01T00:00:00Z"), validTo: Date.parse("2026-07-31T16:00:00Z"),
+    budget: 400_000, issuedAmount: 386_400, issued: 322, redeemed: 258, createdAt: Date.parse("2026-06-28T02:00:00Z"),
   },
 ];
 

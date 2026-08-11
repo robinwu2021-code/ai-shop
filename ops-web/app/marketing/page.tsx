@@ -158,12 +158,16 @@ function MarketingInner() {
     {
       header: c.colBudget,
       width: "14rem",
-      // 预算是唯一挡住"发着发着超支"的地方，所以给进度条而不是两个数字
-      cell: (c) => (
+      // 预算是唯一挡住"发着发着超支"的地方，所以给进度条而不是两个数字。
+      // budget=0 是「不限」而不是「零元」—— 画成 ¥5.00 / ¥0.00 会读成已经超支，
+      // 而它恰恰是「这张券没人在管支出」，两个意思相反
+      cell: (r) => (
         <div className="flex items-center gap-2">
-          <Progress value={c.issuedAmount} total={c.budget} warnAt={90} showText={false} className="w-20" />
+          {r.budget > 0 && (
+            <Progress value={r.issuedAmount} total={r.budget} warnAt={90} showText={false} className="w-20" />
+          )}
           <span className="tabular-nums text-muted-foreground">
-            {money(c.issuedAmount)} / {money(c.budget)}
+            {money(r.issuedAmount)} / {r.budget > 0 ? money(r.budget) : c.budgetUnlimited}
           </span>
         </div>
       ),

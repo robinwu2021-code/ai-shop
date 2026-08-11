@@ -491,6 +491,78 @@ class M6bCouponFlowTest {
                 .andExpect(jsonPath("$.code").value(10403));
     }
 
+    @Test
+    @DisplayName("★★★ 超预算的领取被拒 —— 此前界面承诺了这道闸门，而它根本不存在")
+    void budgetStopsIssuing() throws Exception {
+        /*
+         * ops-web 券模板页上写着「预算是唯一挡住『发着发着超支』的地方：
+         * 超预算的发放会被直接拒绝」—— 而后端连 budget 这一列都没有。
+         * **界面承诺了一个不存在的保护，比没有承诺更坏**：
+         * 运营以为有人兜底，于是不再自己盯着发放量。
+         *
+         * 预算 1200 分、面额 500 分 → 只够发 2 张（第 3 张会到 1500 > 1200）。
+         */
+        String couponNo = budgetedCoupon("预算 12 元", 500L, 1200L);
+
+        receiveOk(couponNo, "13600360001");
+        receiveOk(couponNo, "13600360002");
+
+        mvc().perform(post("/mp/coupon/" + couponNo + "/receive")
+                        .header("Authorization", "Bearer " + login("13600360003")))
+                .andExpect(jsonPath("$.code").value(ai.neargo.shop.common.ErrorCode.COUPON_SOLD_OUT.code()));
+    }
+
+    @Test
+    @DisplayName("★★ 预算 0 = 不限 —— 存量券一张都没配过，迁移不该改变它们的行为")
+    void zeroBudgetMeansUnlimited() throws Exception {
+        // 张数上限 100，预算不设 —— 与加这一列之前完全一致
+        String couponNo = platformCoupon("不限预算", 5000L, 0L);
+        receiveOk(couponNo, "13600360010");
+        receiveOk(couponNo, "13600360011");
+    }
+
+    @Test
+    @DisplayName("★★ 运营列表给的是治理视图：预算、已发、已核销，而不是「我领没领」")
+    void opsListCarriesGovernanceFields() throws Exception {
+        String couponNo = budgetedCoupon("治理视图", 500L, 100_000L);
+        receiveOk(couponNo, "13600360020");
+
+        String body = mvc().perform(get("/ops/coupons")
+                        .header("Authorization", "Bearer " + opsLogin("goods", "goods123")))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        var row = java.util.stream.StreamSupport
+                .stream(json.readTree(body).get("data").get("records").spliterator(), false)
+                .filter(n -> couponNo.equals(n.get("couponNo").asString()))
+                .findFirst().orElseThrow();
+
+        // 字段名对齐 ops-web 的 Coupon —— 对不上的表现是页面渲染出 undefined
+        assertThat(row.get("name").asString()).isEqualTo("治理视图");
+        assertThat(row.get("budget").asLong()).isEqualTo(100_000L);
+        assertThat(row.get("issued").asInt()).isEqualTo(1);
+        assertThat(row.get("issuedAmount").asLong()).isEqualTo(500L);
+        assertThat(row.get("redeemed").asInt()).isZero();
+        // C 端那两个字段不该出现在治理视图里 —— 「我领没领」对运营没有意义
+        assertThat(row.has("received")).isFalse();
+        assertThat(row.has("remain")).isFalse();
+    }
+
+    private void receiveOk(String couponNo, String phone) throws Exception {
+        mvc().perform(post("/mp/coupon/" + couponNo + "/receive")
+                        .header("Authorization", "Bearer " + login(phone)))
+                .andExpect(jsonPath("$.code").value(0));
+    }
+
+    /** 带预算的平台券。张数给足，确保被拒时拒的是预算而不是张数 */
+    private String budgetedCoupon(String title, long face, long budget) {
+        String couponNo = insertCoupon(title, face, 0L, "PLATFORM", null, 9999, 1, false);
+        MktCoupon c = couponMapper.selectOne(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                .<MktCoupon>lambdaQuery().eq(MktCoupon::getCouponNo, couponNo).last("limit 1"));
+        c.setBudgetMinor(budget);
+        couponMapper.updateById(c);
+        return couponNo;
+    }
+
     private String couponCenter(String token) throws Exception {
         return mvc().perform(get("/mp/coupon").header("Authorization", "Bearer " + token))
                 .andReturn().getResponse().getContentAsString();

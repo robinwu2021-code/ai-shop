@@ -22,9 +22,16 @@ export function money(minorAmount: number, currency = DEFAULT_CURRENCY) {
   return new Intl.NumberFormat(localeTag(), { style: "currency", currency }).format((minorAmount ?? 0) / MINOR_UNIT);
 }
 
-/** 时间展示（UTC → 按 locale 简写）。 */
-export function fmtTime(iso?: string | null) {
-  if (!iso) return "-";
-  const d = new Date(iso);
+/**
+ * 时间展示（UTC → 按 locale 简写）。
+ *
+ * **同时收 ISO 串与毫秒时间戳**：后端的时间字段一律是 `long`（毫秒），
+ * 而这里此前只声明 `string` —— 运行时 `new Date(number)` 照样能用，
+ * 所以这个谎言一直没被发现，代价是类型层说不出真话。
+ * 放宽签名而不是改后端：毫秒是后端全域的一致口径。
+ */
+export function fmtTime(at?: string | number | null) {
+  if (at === null || at === undefined || at === "") return "-";
+  const d = new Date(at);
   return Number.isNaN(d.getTime()) ? "-" : d.toLocaleString(localeTag());
 }

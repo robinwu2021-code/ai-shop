@@ -42,8 +42,17 @@ class SchemaDriftTest {
      */
     private static final Pattern ALTER_STMT = Pattern.compile(
             "ALTER TABLE\\s+(\\w+)\\s+((?:.|\\n)*?);", Pattern.CASE_INSENSITIVE);
+    /*
+     * `IF NOT EXISTS` 要跳过，否则 `(\w+)` 把 **IF 抓成列名** ——
+     * 解析出一列叫 `IF`，真正那一列不见了，于是报「列不一致」，
+     * 而差异里两边看着都对（踩过）。这与上面那条注释是同一个教训：
+     * 一个会静默读错的校验器，比没有校验器更危险。
+     *
+     * 幂等迁移不是可选风格（见 V18 的说明：一次失败的迁移不该需要人手工进库
+     * 才能重试），所以解析器要认它。
+     */
     private static final Pattern ADD_COLUMN_NAME = Pattern.compile(
-            "ADD COLUMN\\s+(\\w+)", Pattern.CASE_INSENSITIVE);
+            "ADD COLUMN\\s+(?:IF\\s+NOT\\s+EXISTS\\s+)?(\\w+)", Pattern.CASE_INSENSITIVE);
     private static final Pattern VERSION = Pattern.compile("^V(\\d+)__");
     /** 表改名。不认它的话，后续针对新表名的 ALTER 全部报「该表尚未建立」，而真因在几十行之前。 */
     private static final Pattern RENAME_TABLE = Pattern.compile(
@@ -51,7 +60,8 @@ class SchemaDriftTest {
     private static final Pattern DROP_TABLE = Pattern.compile(
             "DROP TABLE\\s+(?:IF EXISTS\\s+)?(\\w+)", Pattern.CASE_INSENSITIVE);
     private static final Pattern DROP_COLUMN = Pattern.compile(
-            "ALTER TABLE\\s+(\\w+)\\s+DROP COLUMN\\s+(\\w+)", Pattern.CASE_INSENSITIVE);
+            "ALTER TABLE\\s+(\\w+)\\s+DROP COLUMN\\s+(?:IF\\s+EXISTS\\s+)?(\\w+)",
+            Pattern.CASE_INSENSITIVE);
 
     /**
      * <b>版本号不能撞。</b>Flyway 遇到两个同号迁移是<b>启动即失败</b>（"Found more than one

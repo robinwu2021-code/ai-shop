@@ -76,6 +76,8 @@ const zh = {
   colThreshold: "门槛",
   noThreshold: "无",
   colBudget: "预算使用",
+  // 0 = 不限。显示成「¥5.00 / ¥0.00」会让人以为已经超支了
+  budgetUnlimited: "不限",
   colIssuedRedeemed: "已发 / 已核销",
   colValidRange: "有效期",
   colStatus: "状态",
@@ -228,6 +230,7 @@ const en: typeof zh = {
   colThreshold: "Minimum spend",
   noThreshold: "None",
   colBudget: "Budget used",
+  budgetUnlimited: "No cap",
   colIssuedRedeemed: "Issued / redeemed",
   colValidRange: "Valid",
   colStatus: "Status",

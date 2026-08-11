@@ -61,6 +61,15 @@ public class MktCoupon extends BaseEntity {
     private Integer receivedCount;
     private Integer perUserLimit;
 
+    /**
+     * 预算上限（分）。<b>0 = 不限</b>。
+     *
+     * <p>与 {@code totalCount}（发行张数）是两把不同的闸：张数管「发几张」，
+     * 预算管「最多赔多少钱」。只有张数时，把面额从 5 元改成 50 元
+     * 就能让同样的 1000 张变成十倍支出，而没有任何一处会拦。
+     */
+    private Long budgetMinor;
+
     private Long startAt;
     private Long endAt;
     private String status;

@@ -213,6 +213,7 @@ CREATE TABLE IF NOT EXISTS mkt_coupon
     version BIGINT(20) NOT NULL DEFAULT 0,
     deleted TINYINT(4) NOT NULL DEFAULT 0,
     scope_desc VARCHAR(255) DEFAULT NULL,
+    budget_minor BIGINT(20) NOT NULL DEFAULT 0,
     PRIMARY KEY (id),
     CONSTRAINT uk_coupon_no UNIQUE (coupon_no)
 );
