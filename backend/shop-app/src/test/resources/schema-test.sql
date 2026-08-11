@@ -1157,6 +1157,10 @@ CREATE TABLE IF NOT EXISTS sys_ops_staff
     updated_by VARCHAR(64) DEFAULT NULL,
     version BIGINT(20) NOT NULL DEFAULT 0,
     deleted TINYINT(4) NOT NULL DEFAULT 0,
+    merchant_no VARCHAR(64) DEFAULT NULL,
+    community_no VARCHAR(64) DEFAULT NULL,
+    pickup_no VARCHAR(64) DEFAULT NULL,
+    last_login_at BIGINT(20) DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_ops_staff_no UNIQUE (staff_no),
     CONSTRAINT uk_ops_staff_username UNIQUE (username)
@@ -1327,6 +1331,9 @@ CREATE TABLE IF NOT EXISTS mch_payment_merchant
     split_reversible TINYINT(4) NOT NULL DEFAULT 0,
     split_reversible_at BIGINT(20) DEFAULT NULL,
     store_no VARCHAR(64) NOT NULL DEFAULT '',
+    quota_limit_minor BIGINT(20) NOT NULL DEFAULT 0,
+    quota_used_minor BIGINT(20) NOT NULL DEFAULT 0,
+    quota_period VARCHAR(16) DEFAULT NULL,
     CONSTRAINT uk_mp_entity_channel_store UNIQUE (entity_no,pay_channel,store_no),
     PRIMARY KEY (id),
     CONSTRAINT uk_mp_pay_merchant_no UNIQUE (pay_merchant_no)

@@ -8,9 +8,16 @@ public final class OpsVOs {
     private OpsVOs() {
     }
 
-    /** {@code perms} **只用于前端控制展示**；真正的拦截在后端 @PreAuthorize。 */
+    /**
+     * {@code perms} <b>只用于前端控制展示</b>；真正的拦截在后端 @PreAuthorize。
+     *
+     * <p>数据域三个字段<b>空 = 不限定（全量）</b>。
+     * ⚠️ 它们目前<b>只存不用</b> —— 各域查询还没按它裁剪，UI 上标明了尚未生效。
+     */
     public record StaffVO(String staffNo, String username, String realName,
-                          List<String> roles, List<String> perms, String status) {
+                          List<String> roles, List<String> perms, String status,
+                          String merchantNo, String communityNo, String pickupNo,
+                          Long lastLoginAt) {
     }
 
     public record LoginResultVO(String token, StaffVO staff) {

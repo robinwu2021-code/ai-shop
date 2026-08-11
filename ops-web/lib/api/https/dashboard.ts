@@ -10,6 +10,15 @@ interface BackendStaff {
   roles?: string[];
   perms?: string[];
   status?: string;
+  /**
+   * 数据域（2026-08-11 后端补上）。空 = 不限定。
+   *
+   * ⚠️ **裁剪尚未生效** —— 后端各域查询还没按它过滤。
+   * 前端照常带着它走（`scopeOf()` 一直在做），但别把它当成一道保护。
+   */
+  merchantNo?: string;
+  communityNo?: string;
+  pickupNo?: string;
 }
 
 interface BackendLogin {
@@ -72,6 +81,9 @@ export const dashboardHttp: DashboardApi = {
        * 「前端显示的权限与后端实际允许的没有任何关系」。
        */
       perms: staff?.perms ?? [],
+      merchantNo: staff?.merchantNo,
+      communityNo: staff?.communityNo,
+      pickupNo: staff?.pickupNo,
     };
   },
   me: async () => {
@@ -82,6 +94,9 @@ export const dashboardHttp: DashboardApi = {
       // me 不换发 token —— 调用方保留手里那张
       token: "",
       perms: staff?.perms ?? [],
+      merchantNo: staff?.merchantNo,
+      communityNo: staff?.communityNo,
+      pickupNo: staff?.pickupNo,
     };
   },
   getDashboardKpi: () => client.get("/ops/dashboard/kpi"),

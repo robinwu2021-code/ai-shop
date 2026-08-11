@@ -28,4 +28,20 @@ public class SysOpsStaff extends BaseEntity {
     private String roles;
 
     private String status;
+
+    /**
+     * 数据域：<b>空 = 不限定（全量）</b>，不是「还没配」。
+     *
+     * <p>⚠️ <b>当前只存不用</b> —— 各域的查询还没有按它裁剪。
+     * 配了以为限定住了而实际没有，比不配更危险，所以 UI 上标明了尚未生效。
+     * 真正的裁剪是单独一批（要动几十处查询，漏一处就是越权）。
+     */
+    private String merchantNo;
+
+    private String communityNo;
+
+    private String pickupNo;
+
+    /** 最近登录时刻（毫秒）。停用一个长期没登录的账号之前要知道这个。 */
+    private Long lastLoginAt;
 }

@@ -33,6 +33,24 @@ public class MemoryTokenStore implements TokenStore {
     }
 
     @Override
+    public int revokeUser(String userNo) {
+        if (userNo == null || userNo.isBlank()) {
+            return 0;
+        }
+        // 全表扫。会话量是「在线运营人数」量级，几十条 —— 为它建二级索引
+        // 反而多一份要维护一致的状态
+        int[] n = {0};
+        store.entrySet().removeIf(e -> {
+            boolean hit = userNo.equals(e.getValue().data().user().userNo());
+            if (hit) {
+                n[0]++;
+            }
+            return hit;
+        });
+        return n[0];
+    }
+
+    @Override
     public Optional<SessionData> get(String token) {
         Entry e = store.get(token);
         if (e == null) {

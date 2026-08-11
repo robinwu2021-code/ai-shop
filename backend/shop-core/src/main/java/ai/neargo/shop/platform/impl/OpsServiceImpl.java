@@ -380,7 +380,106 @@ public class OpsServiceImpl implements OpsService {
 
     private StaffVO toVO(SysOpsStaff s, List<String> roles, List<String> perms) {
         return new StaffVO(s.getStaffNo(), s.getUsername(), s.getRealName(),
-                roles, perms, s.getStatus());
+                roles, perms, s.getStatus(),
+                s.getMerchantNo(), s.getCommunityNo(), s.getPickupNo(), s.getLastLoginAt());
+    }
+
+    // ---------------------------------------------------------------- 员工写侧
+
+    /** 拥有通配权限的角色不受数据域约束 —— 给他们配数据域是配置错误。 */
+    private static boolean isFullAccess(List<String> roles) {
+        return Perms.of(roles).contains("*");
+    }
+
+    @Override
+    @Transactional
+    public StaffVO setStaffEnabled(String staffNo, boolean enabled) {
+        SysOpsStaff staff = requireStaff(staffNo);
+        /*
+         * 不能停用自己。超管把自己停了就没人能改回来 ——
+         * 只能去库里手改，而那时通常是深夜。
+         * 这类「把自己锁在门外」的操作，拦住的成本远低于事后恢复。
+         */
+        if (staffNo.equals(SecurityUtils.currentUserNo())) {
+            throw BizException.of(ErrorCode.STAFF_SELF_OPERATION);
+        }
+        staff.setStatus(enabled ? "ACTIVE" : "DISABLED");
+        staffMapper.updateById(staff);
+        /*
+         * 停用要**踢掉在线会话**：只改状态的话，已经登录的人在 token 过期之前
+         * 照常操作 —— 而停用他的那个人以为立刻生效了。
+         */
+        if (!enabled) {
+            tokenStore.revokeUser(staffNo);
+        }
+        audit("STAFF_ENABLED", staffNo, enabled ? "启用" : "停用");
+        List<String> roles = readList(staff.getRoles());
+        return toVO(staff, roles, Perms.of(roles));
+    }
+
+    @Override
+    @Transactional
+    public StaffVO setStaffRole(String staffNo, String role) {
+        if (role == null || role.isBlank()) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        /*
+         * **角色码必须真实存在**。写进一个后端没配过的角色（比如前端的
+         * CAMPAIGN_OPS 在后端补配置之前），这个账号的 perms 会是空集 ——
+         * 他能登录、导航一片空白、页面上看不出任何原因。
+         * 那种「界面正常、就是什么都没有」的故障最难查。
+         */
+        if (Perms.of(List.of(role)).isEmpty()) {
+            throw BizException.of(ErrorCode.STAFF_ROLE_UNKNOWN, role);
+        }
+        SysOpsStaff staff = requireStaff(staffNo);
+        // 不能改自己的角色：与不能停用自己同一个理由（超管把自己降成客服就回不去了）
+        if (staffNo.equals(SecurityUtils.currentUserNo())) {
+            throw BizException.of(ErrorCode.STAFF_SELF_OPERATION);
+        }
+        String before = staff.getRoles();
+        staff.setRoles("[\"" + role + "\"]");
+        staffMapper.updateById(staff);
+        // 换角色即刻生效：旧会话里带的是旧 perms
+        tokenStore.revokeUser(staffNo);
+        audit("STAFF_ROLE", staffNo, before + " → " + role);
+        List<String> roles = List.of(role);
+        return toVO(staff, roles, Perms.of(roles));
+    }
+
+    @Override
+    @Transactional
+    public StaffVO setStaffScope(String staffNo, String merchantNo, String communityNo,
+                                 String pickupNo) {
+        SysOpsStaff staff = requireStaff(staffNo);
+        List<String> roles = readList(staff.getRoles());
+        boolean anyScope = notBlank(merchantNo) || notBlank(communityNo) || notBlank(pickupNo);
+        /*
+         * 给全量角色配数据域**直接拒绝**，而不是存下来。
+         * 存下来的后果是：配置页显示「已限定到某商家」，而这个人照样看到全量 ——
+         * 一个看着生效、实际没有的限制，比没有限制更危险。
+         */
+        if (anyScope && isFullAccess(roles)) {
+            throw BizException.of(ErrorCode.STAFF_SCOPE_ON_FULL_ACCESS);
+        }
+        staff.setMerchantNo(blankToNull(merchantNo));
+        staff.setCommunityNo(blankToNull(communityNo));
+        staff.setPickupNo(blankToNull(pickupNo));
+        staffMapper.updateById(staff);
+        // 数据域进 token，改了要重登才生效
+        tokenStore.revokeUser(staffNo);
+        audit("STAFF_SCOPE", staffNo, "merchant=" + merchantNo + "｜community=" + communityNo
+                + "｜pickup=" + pickupNo);
+        return toVO(staff, roles, Perms.of(roles));
+    }
+
+    private static boolean notBlank(String v) {
+        return v != null && !v.isBlank();
+    }
+
+    /** 空字符串归一成 null：**空 = 不限定**，两种「空」在库里要长一样 */
+    private static String blankToNull(String v) {
+        return notBlank(v) ? v : null;
     }
 
     private MerchantApplyVO toVO(MchEntityApply a) {

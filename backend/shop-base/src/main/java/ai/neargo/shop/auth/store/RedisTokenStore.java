@@ -5,6 +5,7 @@ import tools.jackson.databind.ObjectMapper;
 import org.springframework.data.redis.core.StringRedisTemplate;
 
 import java.time.Duration;
+import java.util.Set;
 import java.util.Optional;
 
 /**
@@ -14,6 +15,9 @@ import java.util.Optional;
 public class RedisTokenStore implements TokenStore {
 
     private static final String KEY_PREFIX = "shop:session:";
+
+    /** userNo → token 集合。停用账号要能 O(1) 找到他的全部会话 */
+    private static final String USER_INDEX_PREFIX = "shop:session:user:";
 
     private final StringRedisTemplate redis;
     private final ObjectMapper mapper;
@@ -29,6 +33,11 @@ public class RedisTokenStore implements TokenStore {
     public String issue(SessionData data) {
         String token = TokenStore.newToken(data.user().realm());
         write(token, data);
+        // 反向索引与会话同生命周期：不设过期的话，索引会无限增长，
+        // 且里面全是早已失效的 token
+        String idx = USER_INDEX_PREFIX + data.user().userNo();
+        redis.opsForSet().add(idx, token);
+        redis.expire(idx, ttl);
         return token;
     }
 
@@ -50,6 +59,27 @@ public class RedisTokenStore implements TokenStore {
     @Override
     public void refresh(String token, SessionData data) {
         write(token, data);
+    }
+
+    @Override
+    public int revokeUser(String userNo) {
+        if (userNo == null || userNo.isBlank()) {
+            return 0;
+        }
+        /*
+         * 反向索引：userNo → 它的 token 集合。
+         *
+         * 不用 SCAN 遍历 shop:session:*：那在生产上会随会话量线性变慢，
+         * 而停用账号恰恰是出事时最需要立刻见效的操作。
+         */
+        String idx = USER_INDEX_PREFIX + userNo;
+        Set<String> tokens = redis.opsForSet().members(idx);
+        if (tokens == null || tokens.isEmpty()) {
+            return 0;
+        }
+        redis.delete(tokens.stream().map(t -> KEY_PREFIX + t).toList());
+        redis.delete(idx);
+        return tokens.size();
     }
 
     @Override

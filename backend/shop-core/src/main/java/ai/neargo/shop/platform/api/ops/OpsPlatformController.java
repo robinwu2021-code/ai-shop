@@ -78,6 +78,42 @@ public class OpsPlatformController {
         return PageData.ofAll(opsService.staffList(), page, size);
     }
 
+    /**
+     * 启停员工。停用会**立刻踢掉在线会话** —— 只改库里的状态，
+     * 已经登录的人在 token 过期前照常操作，而按下停用的那个人以为生效了。
+     */
+    @PostMapping("/ops/staffs/{staffNo}/enabled")
+    @PreAuthorize("@perm.can('" + Perms.STAFF_MANAGE + "')")
+    public StaffVO setStaffEnabled(@PathVariable String staffNo, @RequestBody EnabledReq req) {
+        return opsService.setStaffEnabled(staffNo, Boolean.TRUE.equals(req.enabled()));
+    }
+
+    /** 改角色。角色码必须在 {@code Perms.ROLE_PERMS} 里真实存在，否则拒绝。 */
+    @PostMapping("/ops/staffs/{staffNo}/role")
+    @PreAuthorize("@perm.can('" + Perms.STAFF_MANAGE + "')")
+    public StaffVO setStaffRole(@PathVariable String staffNo, @RequestBody RoleReq req) {
+        return opsService.setStaffRole(staffNo, req.role());
+    }
+
+    /**
+     * 配数据域。空 = 不限定。
+     *
+     * <p>⚠️ <b>当前只存不用</b>：各域查询还没按它裁剪（{@code LoginUser.operator}
+     * 目前一律签发 {@code DataScopeSpec.ALL}）。运营端已就此标注，
+     * 免得有人以为限定住了而实际没有。
+     */
+    @PostMapping("/ops/staffs/{staffNo}/scope")
+    @PreAuthorize("@perm.can('" + Perms.STAFF_MANAGE + "')")
+    public StaffVO setStaffScope(@PathVariable String staffNo, @RequestBody ScopeReq req) {
+        return opsService.setStaffScope(staffNo, req.merchantNo(), req.communityNo(), req.pickupNo());
+    }
+
+    public record RoleReq(String role) {
+    }
+
+    public record ScopeReq(String merchantNo, String communityNo, String pickupNo) {
+    }
+
     @GetMapping("/ops/audit-log")
     @PreAuthorize("@perm.can('" + Perms.AUDIT_LOG_VIEW + "')")
     public List<AuditLogVO> auditLogs(@RequestParam(required = false) String target) {

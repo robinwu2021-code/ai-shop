@@ -163,7 +163,18 @@ export function readSchema(root) {
   // 差异里却看不出所以然（踩过一次）。
   // 幂等迁移不是可选风格：一次失败的迁移不该需要人手工进库才能重试（见 V18 的说明），
   // 所以解析器要认它，而不是逼人把 IF NOT EXISTS 去掉。
-  for (const m of sql.matchAll(
+  // 一条 ALTER 里可以有多个子句（`ADD COLUMN a …, ADD COLUMN b …`），
+  // 而下面那条正则每条语句只认**第一个** —— 其余的会被 `([^;]*)` 当成尾巴吃掉。
+  // 症状是「实体多出 communityNo、pickupNo」这类漂移报告，
+  // 而那几列明明写在同一条 ALTER 里（V60 就是这么被报出来的）。
+  // 先把多子句拆成多条单子句语句，正则那边就不用动。
+  const flatSql = sql.replace(/ALTER TABLE\s+(\w+)\s+([\s\S]*?);/gi, (full, table, body) => {
+    const parts = splitTopLevel(body);
+    return parts.length <= 1 ? full
+      : parts.map((c) => `ALTER TABLE ${table} ${c.trim()};`).join("\n");
+  });
+
+  for (const m of flatSql.matchAll(
     /ALTER TABLE\s+(\w+)\s+(ADD COLUMN|RENAME COLUMN|DROP COLUMN|MODIFY COLUMN)\s+(?:IF\s+(?:NOT\s+)?EXISTS\s+)?(\w+)(?:\s+([\w()]+))?([^;]*)/gi,
   )) {
     const [, table, opRaw, col, rest, tail] = m;
@@ -217,4 +228,40 @@ export function readColumnNames(root) {
     out.set(name, { cols: def.cols.map((c) => c.name), comment: def.comment });
   }
   return out;
+}
+
+/**
+ * 按**顶层逗号**切分 ALTER 的多个子句。
+ *
+ * <p>括号内（`UNIQUE KEY uk_x (a, b)`）与单引号内（`COMMENT '甲, 乙'`）的逗号
+ * 不是分隔符。用正则前瞻切会在注释里带逗号时切错，而切错的产物是一条
+ * 语法上说得通、语义上错的列定义 —— 那种错要到建表时才炸，且报错指向别处。
+ *
+ * <p>与 `backend/scripts/gen-test-schema.py` 的 `_split_actions` 同一套判据。
+ * 两个解析器分叉过一次（多子句 ALTER：python 认得、JS 不认），
+ * 症状是漂移报告说实体「多出」几列，而那几列就写在同一条 ALTER 里。
+ */
+function splitTopLevel(body) {
+  const parts = [];
+  let buf = "";
+  let depth = 0;
+  let quoted = false;
+  for (const ch of body) {
+    if (quoted) {
+      buf += ch;
+      if (ch === "'") quoted = false;
+      continue;
+    }
+    if (ch === "'") quoted = true;
+    else if (ch === "(") depth++;
+    else if (ch === ")") depth--;
+    if (ch === "," && depth === 0) {
+      parts.push(buf.trim());
+      buf = "";
+      continue;
+    }
+    buf += ch;
+  }
+  if (buf.trim()) parts.push(buf.trim());
+  return parts;
 }

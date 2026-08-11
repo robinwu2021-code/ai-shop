@@ -18,6 +18,33 @@ public interface OpsService {
 
     List<StaffVO> staffList();
 
+    /**
+     * 启停员工。<b>软删除语义</b> —— 账号留着，审计要能追溯到人。
+     *
+     * <p>不能停用自己：超管把自己停了就没人能改回来，
+     * 而拦住的成本远低于事后从库里恢复。
+     */
+    StaffVO setStaffEnabled(String staffNo, boolean enabled);
+
+    /**
+     * 改角色。
+     *
+     * <p><b>必须校验角色码真实存在于 {@code Perms.ROLE_PERMS}</b>：
+     * 写进一个不存在的角色，这个账号的 perms 会是空集 ——
+     * 他能登录、导航全空、页面上看不出任何原因。
+     */
+    StaffVO setStaffRole(String staffNo, String role);
+
+    /**
+     * 配数据域。空字符串 / null = 不限定。
+     *
+     * <p><b>给全量角色（超管等）配数据域直接拒绝</b> ——
+     * 存下来会让人以为它被限制了，而实际没有。
+     *
+     * <p>⚠️ 本批<b>只存不用</b>：各域查询还没按它裁剪。
+     */
+    StaffVO setStaffScope(String staffNo, String merchantNo, String communityNo, String pickupNo);
+
     List<MerchantApplyVO> applyQueue();
 
     /**
