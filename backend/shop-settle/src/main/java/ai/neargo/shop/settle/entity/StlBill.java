@@ -94,6 +94,19 @@ public class StlBill extends BaseEntity {
     private Long pointsFeeMinor;
 
     /**
+     * 积分抵扣补差额（分）：平台补进二级商户，让<b>商家按全额收款</b>。
+     *
+     * <p>不补的话，买家用积分抵掉的那部分就从商家的货款里出了 ——
+     * 而 {@code ord_sub_order.points_deduct} 的注释明确写着那是平台内部字段、
+     * 商家按订单全额收款。落快照是因为积分规则会变，
+     * 而「这单当初补了多少」必须能原样查回来。
+     */
+    private Long subsidyMinor;
+
+    /** 补差成功时刻；空 = 未补或无需补。 */
+    private Long subsidyAt;
+
+    /**
      * 实际向通道发起分账的金额（分）= 佣金 + 履约服务费 + 积分服务费。
      *
      * <p><b>分账指令以它为准，不要在发起时重算</b> —— 算式会变（将来可能加收费项），

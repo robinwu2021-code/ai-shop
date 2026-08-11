@@ -146,8 +146,20 @@ public class SettleServiceImpl implements SettleService {
             String mode = merchantQueryPort.businessModeOf(src.merchantNo(), src.storeNo());
             int rate = rates.getOrDefault(mode + "|" + normalizedSource(src.trafficSource()), 0);
 
-            // ★ 平台补贴要补回给商家；商家自己让的利不补
-            long gross = src.payAmount() + src.discountPlatform();
+            /*
+             * ★ 结算基数 = 实付 + 平台补贴 + **积分抵扣**。
+             *
+             * 前两项原本就在。第三项是补上的一个正在发生的错：payAmount 已经把积分
+             * 抵扣扣掉了，而 ord_sub_order.points_deduct 的注释写着
+             * 「平台内部字段，不下发商家端 —— 商家按订单全额收款」。
+             * 不加回来的话，买家用积分抵掉的那部分**从商家的货款里出**。
+             *
+             * 加回来之后钱还得真的到账：见下面的 subsidyMinor 与 executeSplit 里的补差。
+             * 只改基数不补差，等于把商家的账做大而钱没打 —— 那比现在更糟。
+             *
+             * 商家自己让的利（discountMerchant）不补：那本来就是他出的。
+             */
+            long gross = src.payAmount() + src.discountPlatform() + src.pointsDeductMinor();
             long commission = gross * rate / 10000;
             long serviceFee = serviceFeeOf(src, gross);
 
@@ -162,6 +174,8 @@ public class SettleServiceImpl implements SettleService {
             bill.setNetMinor(gross - commission - serviceFee);
             bill.setTrafficSource(src.trafficSource());
             bill.setCommissionRate(rate);
+            // 补差额落快照：积分规则会变，而「这单当初补了多少」必须能原样查回来
+            bill.setSubsidyMinor(src.pointsDeductMinor());
             /*
              * 两个快照，与 commissionRate 同一个理由：配置会变，历史账不能跟着变。
              *   storeNo       —— 这笔钱是哪家店挣的（统计维度）
@@ -219,6 +233,29 @@ public class SettleServiceImpl implements SettleService {
         bill.setStatus(StlBill.SPLITTING);
         update(bill);
 
+        /*
+         * **先补差，再分账**。顺序不能反：
+         * 分账是从二级商户账户里往外拿钱，而补差是往里放钱 ——
+         * 先分后补的话，账户余额可能不够扣，分账被通道拒绝，
+         * 而那时订单已经付过款了。
+         *
+         * 补差失败就不分账，整单转重试：只改了结算基数而钱没补进去，
+         * 等于把商家的账做大而钱没打，比不改更糟。
+         */
+        long subsidy = nz(bill.getSubsidyMinor());
+        if (subsidy > 0 && bill.getSubsidyAt() == null) {
+            boolean subsidized = callProvider(StlSplitLog.SUBSIDY, bill, "SUB-" + settleNo);
+            if (!subsidized) {
+                bill.setStatus(StlBill.RETRYING);
+                bill.setRetryCount(nzi(bill.getRetryCount()) + 1);
+                bill.setLastError("积分补差失败，未分账");
+                update(bill);
+                return;
+            }
+            bill.setSubsidyAt(System.currentTimeMillis());
+            update(bill);
+        }
+
         String requestNo = "SPL-" + settleNo;
         boolean ok = callProvider(StlSplitLog.SPLIT, bill, requestNo);
         if (!ok) {
@@ -260,6 +297,23 @@ public class SettleServiceImpl implements SettleService {
             update(bill);
             return false;   // ★ 返回 false，调用方（售后）必须据此**停止退款**
         }
+        /*
+         * 分账回退成功后再退补差：钱先回到二级商户账户，再从账户里把补贴拿回平台。
+         * 反过来做的话，账户里可能还没有那笔钱。
+         *
+         * 补差回退失败不阻断退款：买家的钱必须能退。这笔补贴留在商家账上是平台的损失，
+         * 但它是**可追的**（subsidy_at 有值而单已 REVERSED），
+         * 而卡住买家退款是不可接受的。
+         */
+        if (nz(bill.getSubsidyMinor()) > 0 && bill.getSubsidyAt() != null) {
+            if (callProvider(StlSplitLog.SUBSIDY_RETURN, bill, "SUBR-" + bill.getSettleNo())) {
+                bill.setSubsidyAt(null);
+            } else {
+                log.warn("补差回退失败，需人工追回 settleNo={} subsidy={}",
+                        bill.getSettleNo(), bill.getSubsidyMinor());
+            }
+        }
+
         bill.setStatus(StlBill.REVERSED);
         update(bill);
         return true;
@@ -352,7 +406,17 @@ public class SettleServiceImpl implements SettleService {
             return true;
         }
 
-        long amount = nz(bill.getNetMinor());
+        /*
+         * 补差走的是**补差额**，不是净额。
+         *
+         * 三个动作的金额口径本来就不同：分账/回退动的是平台应收（netMinor 的对侧），
+         * 补差动的是买家用积分抵掉的那部分。用同一个 amount 会把补差金额记成净额，
+         * 而两者相差正好是一整笔货款 —— 这种错在日志里也看不出来，
+         * 因为两个数都是「一个合理的金额」。
+         */
+        boolean isSubsidy = StlSplitLog.SUBSIDY.equals(action)
+                || StlSplitLog.SUBSIDY_RETURN.equals(action);
+        long amount = isSubsidy ? nz(bill.getSubsidyMinor()) : nz(bill.getNetMinor());
         /*
          * 收款号取**账单上的快照**，不是「这家店现在用哪个号」。
          * 商家改号之后还没打的历史流水，仍要打进当初收款的那个账户 ——
@@ -364,9 +428,13 @@ public class SettleServiceImpl implements SettleService {
         if (payTo == null || payTo.isBlank()) {
             payTo = merchantQueryPort.payMerchantNoOf(bill.getEntityNo(), bill.getStoreNo()).orElse(null);
         }
-        SplitGateway.Result result = StlSplitLog.REVERSE.equals(action)
-                ? gateway.reverse(bill.getSubOrderNo(), payTo, amount, requestNo)
-                : gateway.split(bill.getSubOrderNo(), payTo, amount, requestNo);
+        SplitGateway.Result result = switch (action) {
+            case StlSplitLog.REVERSE -> gateway.reverse(bill.getSubOrderNo(), payTo, amount, requestNo);
+            case StlSplitLog.SUBSIDY -> gateway.subsidy(bill.getSubOrderNo(), payTo, amount, requestNo);
+            case StlSplitLog.SUBSIDY_RETURN ->
+                    gateway.subsidyReturn(bill.getSubOrderNo(), payTo, amount, requestNo);
+            default -> gateway.split(bill.getSubOrderNo(), payTo, amount, requestNo);
+        };
 
         StlSplitLog entry = new StlSplitLog();
         entry.setSettleNo(bill.getSettleNo());

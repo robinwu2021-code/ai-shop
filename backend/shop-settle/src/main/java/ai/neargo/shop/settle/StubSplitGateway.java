@@ -45,4 +45,24 @@ public class StubSplitGateway implements SplitGateway {
     public void failNext(String subOrderNo) {
         failing.add(subOrderNo);
     }
+
+    @Override
+    public Result subsidy(String subOrderNo, String payMerchantNo, long amountMinor, String requestNo) {
+        if (failing.remove(subOrderNo)) {
+            return Result.fail("[STUB] subsidy failed");
+        }
+        log.info("[STUB] subsidy {} to={} amount={} req={}", subOrderNo, payMerchantNo, amountMinor, requestNo);
+        return Result.ok("STUB-" + requestNo);
+    }
+
+    @Override
+    public Result subsidyReturn(String subOrderNo, String payMerchantNo, long amountMinor,
+                                String requestNo) {
+        if (failing.remove(subOrderNo)) {
+            return Result.fail("[STUB] subsidyReturn failed");
+        }
+        log.info("[STUB] subsidyReturn {} from={} amount={} req={}",
+                subOrderNo, payMerchantNo, amountMinor, requestNo);
+        return Result.ok("STUB-" + requestNo);
+    }
 }

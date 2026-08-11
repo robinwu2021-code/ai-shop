@@ -30,6 +30,21 @@ public interface SplitGateway {
      */
     Result reverse(String subOrderNo, String payMerchantNo, long amountMinor, String requestNo);
 
+    /**
+     * 积分补差：平台把买家用积分抵掉的那部分<b>补进</b>二级商户账户。
+     *
+     * <p>方向与 {@link #split} 相反 —— split 是从二级商户账户往外拿平台应收，
+     * 补差是往里放钱。所以顺序上必须先补后分：先分的话账户余额可能不够扣，
+     * 分账被通道拒绝，而那时订单已经付过款了。
+     *
+     * <p>通道侧本来就有这一步（微信 {@code /v3/ecommerce/subsidies}），
+     * {@code PayGateway.subsidy} 与两个通道实现也一直都在 —— 缺的只是调用方。
+     */
+    Result subsidy(String subOrderNo, String payMerchantNo, long amountMinor, String requestNo);
+
+    /** 补差回退：退款时把补贴部分收回平台。 */
+    Result subsidyReturn(String subOrderNo, String payMerchantNo, long amountMinor, String requestNo);
+
     record Result(boolean success, String providerNo, String message) {
 
         public static Result ok(String providerNo) {

@@ -21,6 +21,10 @@ public class StlSplitLog {
 
     public static final String SPLIT = "SPLIT";
     public static final String REVERSE = "REVERSE";
+    /** 积分补差：平台把买家用积分抵掉的那部分补进二级商户，让商家按全额收款。 */
+    public static final String SUBSIDY = "SUBSIDY";
+    /** 补差回退：退款时把补贴部分收回平台。 */
+    public static final String SUBSIDY_RETURN = "SUBSIDY_RETURN";
 
     @TableId(type = IdType.AUTO)
     private Long id;

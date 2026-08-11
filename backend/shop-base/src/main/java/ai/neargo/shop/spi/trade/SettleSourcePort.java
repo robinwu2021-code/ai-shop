@@ -27,8 +27,15 @@ public interface SettleSourcePort {
      *                  「按店统计」和「按账户打款」互相绑架，而它们本来互不相干。
      *                  为空表示存量主体级子单
      */
+    /**
+     * @param pointsDeductMinor 买家用积分抵掉的金额（分）。
+     *                          <b>payAmount 已经把它扣掉了</b>，而商家按订单全额收款 ——
+     *                          所以结算基数要把它加回来，并由平台补差进二级商户。
+     *                          不加回来的话，积分的成本就从商家的货款里出了。
+     */
     record SettleSource(String subOrderNo, String merchantNo, String trafficSource,
                         long payAmount, long discountPlatform, long discountMerchant,
-                        String pickupNo, int itemCount, String storeNo) {
+                        String pickupNo, int itemCount, String storeNo,
+                        long pointsDeductMinor) {
     }
 }

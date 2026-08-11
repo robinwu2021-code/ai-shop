@@ -918,6 +918,8 @@ CREATE TABLE IF NOT EXISTS stl_bill
     paid_at BIGINT(20) DEFAULT NULL,
     purchase_invoice_no VARCHAR(64) DEFAULT NULL,
     invoice_status VARCHAR(16) NOT NULL DEFAULT 'PENDING_INVOICE',
+    subsidy_minor BIGINT(20) NOT NULL DEFAULT 0,
+    subsidy_at BIGINT(20) DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_settle_no UNIQUE (settle_no),
     CONSTRAINT uk_sub_order UNIQUE (sub_order_no)

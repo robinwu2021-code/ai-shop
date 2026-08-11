@@ -125,7 +125,7 @@ public enum ErrorCode {
      * 不拦的话它会在付款那一刻表现为通道侧的「支付失败」——
      * 那时候平台既解释不清，也补救不了。
      */
-    MERCHANT_QUOTA_EXHAUSTED(70015, "err.trade.merchant_quota_exhausted"),
+    MERCHANT_QUOTA_EXHAUSTED(70019, "err.trade.merchant_quota_exhausted"),
 
     /**
      * 进项票未核验通过，不允许登记付款（**票到付款**）。
