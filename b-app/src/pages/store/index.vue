@@ -13,8 +13,17 @@ import { computed, ref } from "vue";
 import { onShow } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
 import { api } from "@/api";
-import { SERVICE_SCOPE } from "@shared/utils/constants";
-import type { Community, MasterData, ServiceScope, ShareKit, StoreProfile, StoreQrcode } from "@shared/types";
+import { FULFILLMENT_REACH, SERVICE_SCOPE } from "@shared/utils/constants";
+import type {
+  Community,
+  FulfillmentReach,
+  MasterData,
+  Region,
+  ServiceArea,
+  ShareKit,
+  StoreProfile,
+  StoreQrcode,
+} from "@shared/types";
 
 const { t } = useI18n();
 
@@ -25,6 +34,8 @@ const form = ref<StoreProfile>({
   featured: [],
   serviceScope: SERVICE_SCOPE.COMMUNITY,
   serviceCommunityNos: [],
+  fulfillmentReach: FULFILLMENT_REACH.PICKUP,
+  serviceAreas: [],
 });
 /** 可选社区。真实环境按商家已签约的自提点给，一期先给全量 */
 const communities = ref<Community[]>([]);
@@ -34,36 +45,118 @@ const communities = ref<Community[]>([]);
  * 这两件事在界面上长得一模一样 —— 都是一片空白 —— 而后果完全不同：
  * 前者是页面坏了、刷新可能就好；后者是平台还没开小区，等也没用。
  * 不分开的话，店主对着空白只会一直点「保存」，而保存永远过不去
- * （选了「仅本社区」却一个小区都没勾）。
+ * （靠自提点履约却一个小区都没勾）。
  */
 const communitiesFailed = ref(false);
 
-/**
- * 这一期开放的档位，**从主数据取**而不是写死三档。
- *
- * 写死的后果不是「多一个选项」：一期自营模式关掉了 PLATFORM，而这里照样把
- * 「全平台发货」摆出来，店主点保存得到的是「当前不支持这个经营范围」——
- * 一个必被拒的选项，而他无从知道该选什么。2026-08-11 端到端实测撞到过。
- *
- * 取不到时退到「仅本社区」一档：它是启用白名单里永远不会空的那一档
- * （后台不允许全关），也是一期主力形态。退到三档才危险 —— 那等于在加载失败时
- * 把已知会被拒的选项重新摆回去。
- */
+/** 主数据。这一版只用来兜底老三档的读，档位本身已由履约能力取代 */
 const master = ref<MasterData | null>(null);
-const scopes = computed<readonly ServiceScope[]>(
-  () => master.value?.serviceScopes ?? [SERVICE_SCOPE.COMMUNITY],
+
+/**
+ * 履约能力三选一（ADR-013 阶段二）。**只回答「怎么送到你手上」**，
+ * 送得到哪儿由下面的覆盖项列表单独说。
+ *
+ * 为什么不再用老三档：三档把两件事压进一个字段，于是「三个小区 + 整个西湖区」
+ * 这种再普通不过的诉求没有字段可写 —— 店主只能选「全市」（卖到送不到的地方）
+ * 或「仅本社区」（丢掉那个区）。
+ */
+const reaches = [
+  FULFILLMENT_REACH.PICKUP,
+  FULFILLMENT_REACH.ONSITE,
+  FULFILLMENT_REACH.SHIPPING,
+] as const;
+
+const reach = computed<FulfillmentReach>(
+  () => form.value.fulfillmentReach ?? FULFILLMENT_REACH.PICKUP,
 );
+const areas = computed<ServiceArea[]>(() => form.value.serviceAreas ?? []);
 
-function pickScope(v: ServiceScope) {
-  form.value.serviceScope = v;
+/**
+ * 覆盖项为空的含义**由履约能力决定** —— 同一个空列表两种意思：
+ * 自提是「谁也看不到」（拦），上门/快递是「不限」（正常）。
+ * 这是新模型最容易被端上写错的一处，所以判断只留这一个出口。
+ */
+const emptyIsBlocking = computed(() => reach.value === FULFILLMENT_REACH.PICKUP && !areas.value.length);
+
+function pickReach(v: FulfillmentReach) {
+  form.value.fulfillmentReach = v;
 }
 
-function toggleCommunity(communityNo: string) {
-  const list = form.value.serviceCommunityNos;
-  const i = list.indexOf(communityNo);
-  if (i >= 0) list.splice(i, 1);
-  else list.push(communityNo);
+function hasArea(level: string, refCode: string) {
+  return areas.value.some((a) => a.level === level && a.refCode === refCode);
 }
+
+function removeArea(level: string, refCode: string) {
+  form.value.serviceAreas = areas.value.filter((a) => !(a.level === level && a.refCode === refCode));
+}
+
+function toggleCommunity(c: Community) {
+  if (hasArea("COMMUNITY", c.communityNo)) removeArea("COMMUNITY", c.communityNo);
+  else form.value.serviceAreas = [...areas.value, { level: "COMMUNITY", refCode: c.communityNo, name: c.name }];
+}
+
+// ---------------------------------------------------------------- 区划选择器
+/**
+ * 逐级往下点，一次只拉一级。
+ *
+ * 不一次拉整棵树是因为全国到街道是 4.4 万行 —— 端上要等好几秒，
+ * 而店主真正会点开的只有其中一条路径。
+ */
+const regionOpen = ref(false);
+/** 面包屑。空 = 停在省级。**可回退**：点中间任意一级都跳回去 */
+const trail = ref<Region[]>([]);
+const regionList = ref<Region[]>([]);
+const regionLoading = ref(false);
+
+async function openRegions() {
+  regionOpen.value = true;
+  trail.value = [];
+  await loadRegions(undefined);
+}
+
+async function loadRegions(parent?: string) {
+  regionLoading.value = true;
+  try {
+    regionList.value = await api.mRegions(parent);
+  } catch {
+    regionList.value = [];
+    uni.showToast({ title: t("store.regionFailed"), icon: "none" });
+  } finally {
+    regionLoading.value = false;
+  }
+}
+
+/** 点一级：有下级就钻进去，到叶子就直接加成覆盖项 */
+async function tapRegion(r: Region) {
+  if (r.hasChild) {
+    trail.value = [...trail.value, r];
+    await loadRegions(r.regionCode);
+  } else {
+    addRegion(r);
+  }
+}
+
+/** 回退到面包屑的第 i 级；i = -1 回省级 */
+async function backTo(i: number) {
+  trail.value = trail.value.slice(0, i + 1);
+  await loadRegions(trail.value[i]?.regionCode);
+}
+
+/**
+ * 把当前这一级整个加进来 —— 「整个西湖区」而不是把西湖区下的街道逐个点一遍。
+ * 中间层级也要能选，否则店主为了框一个区得点开十几个街道。
+ */
+function addRegion(r: Region) {
+  if (hasArea(r.level, r.regionCode)) {
+    uni.showToast({ title: t("store.areaDup"), icon: "none" });
+    return;
+  }
+  // 名字拼整条路径：光一个「西湖区」全国有好几个，两条同名的商家分不出删哪条
+  const name = [...trail.value.map((x) => x.name), r.name].join(" / ");
+  form.value.serviceAreas = [...areas.value, { level: r.level as ServiceArea["level"], refCode: r.regionCode, name }];
+  regionOpen.value = false;
+}
+
 const qrcode = ref<StoreQrcode | null>(null);
 const kit = ref<ShareKit | null>(null);
 
@@ -88,7 +181,7 @@ async function load() {
     api.mMasterData(),
   ]);
   if (s.status === "fulfilled") {
-    form.value = s.value;
+    form.value = normalize(s.value);
   } else {
     // 这一项失败 = 整页没有真实数据可编辑，必须说出来，不能让人在默认值上编辑
     uni.showToast({ title: t("store.loadFailed"), icon: "none" });
@@ -102,17 +195,44 @@ async function load() {
   master.value = md.status === "fulfilled" ? md.value : null;
 }
 
+/**
+ * 存量店铺可能只有老三档（后端 V33 回填过，但 mock 与老缓存里还有裸数据）。
+ * 在**读的这一刻**补齐成新模型，页面里就只剩一套字段要照顾 ——
+ * 两套字段在模板里并存，迟早有一个分支忘了改。
+ */
+function normalize(p: StoreProfile): StoreProfile {
+  if (p.fulfillmentReach && p.serviceAreas) return p;
+  const byScope: Record<string, FulfillmentReach> = {
+    COMMUNITY: FULFILLMENT_REACH.PICKUP,
+    CITY: FULFILLMENT_REACH.ONSITE,
+    PLATFORM: FULFILLMENT_REACH.SHIPPING,
+  };
+  return {
+    ...p,
+    fulfillmentReach: p.fulfillmentReach ?? byScope[p.serviceScope] ?? FULFILLMENT_REACH.PICKUP,
+    serviceAreas:
+      p.serviceAreas
+      ?? (p.serviceCommunityNos ?? []).map((no) => ({
+        level: "COMMUNITY" as const,
+        refCode: no,
+        name: communities.value.find((c) => c.communityNo === no)?.name ?? no,
+      })),
+  };
+}
+
 async function save() {
   /*
-   * 选了「仅本社区」却一个小区都没勾 —— **必须拦住**。
+   * 靠自提点履约却一个覆盖项都没有 —— **必须拦住**。
    * 存下去的话这家店在 C 端对谁都不可见：店主看着自己的商品好好地上着架，
    * 一个订单也不来，还完全不知道为什么。这是那种自己永远查不出来的故障。
+   *
+   * 上门/快递空着**不拦** —— 那是「不限」，是个合法选择。
    */
-  if (form.value.serviceScope === SERVICE_SCOPE.COMMUNITY && !form.value.serviceCommunityNos.length) {
-    uni.showToast({ title: t("store.scopeNeedCommunity"), icon: "none" });
+  if (emptyIsBlocking.value) {
+    uni.showToast({ title: t("store.areaNeeded"), icon: "none" });
     return;
   }
-  form.value = await api.mSaveStore(form.value);
+  form.value = normalize(await api.mSaveStore(form.value));
   uni.showToast({ title: t("common.saved"), icon: "none" });
 }
 
@@ -142,36 +262,54 @@ onShow(load);
     <!--
       经营范围。放在装修**之前** —— 公告写不写只影响好看，范围选错直接决定有没有生意：
       选大了卖到送不到的地方（下单后提不了货 → 退款），选小了整片小区搜不到这家店。
-      所以每一项都写清楚后果，不做成三个干巴巴的单选。
+
+      两段式（ADR-013）：先说**怎么送**，再说**送到哪儿**。
+      合成一个三档单选是上一版的做法，代价是「三个小区 + 一个区」根本填不出来。
     -->
     <view class="sh-card mt">
       <text class="sh-h2">{{ $t("store.scope") }}</text>
       <text class="hint">{{ $t("store.scopeHint") }}</text>
 
+      <text class="field__label sec">{{ $t("store.reach") }}</text>
       <view
-        v-for="sc in scopes"
-        :key="sc"
+        v-for="r in reaches"
+        :key="r"
         class="scope"
-        :class="{ 'is-on': form.serviceScope === sc }"
-        @tap="pickScope(sc)"
+        :class="{ 'is-on': reach === r }"
+        @tap="pickReach(r)"
       >
         <view class="scope__main">
-          <text class="scope__name">{{ $t(`serviceScope.${sc}`) }}</text>
-          <text class="scope__desc">{{ $t(`store.scopeDesc.${sc}`) }}</text>
+          <text class="scope__name">{{ $t(`fulfillmentReach.${r}`) }}</text>
+          <text class="scope__desc">{{ $t(`store.reachDesc.${r}`) }}</text>
         </view>
-        <text class="scope__tick">{{ form.serviceScope === sc ? "✓" : "" }}</text>
+        <text class="scope__tick">{{ reach === r ? "✓" : "" }}</text>
       </view>
 
-      <!-- 只有「仅本社区」才需要选小区，其余两档选了也用不上 -->
-      <view v-if="form.serviceScope === SERVICE_SCOPE.COMMUNITY" class="cms">
-        <text class="field__label">{{ $t("store.scopeCommunities") }}</text>
+      <!-- 覆盖项：小区与区划混在一张清单里，因为它们对店主是同一件事 —— 「我做哪儿」 -->
+      <view class="cms">
+        <text class="field__label">{{ $t("store.areas") }}</text>
+        <view v-if="areas.length" class="cms__list">
+          <text
+            v-for="a in areas"
+            :key="`${a.level}:${a.refCode}`"
+            class="sh-chip cms__i is-on"
+            @tap="removeArea(a.level, a.refCode)"
+          >
+            {{ a.name }} ×
+          </text>
+        </view>
+        <!-- 空列表的含义两分：自提是故障，上门/快递是「不限」。绝不能显示同一句话 -->
+        <text v-else-if="emptyIsBlocking" class="warn">{{ $t("store.areaNeeded") }}</text>
+        <text v-else class="hint">{{ $t("store.areaUnlimited") }}</text>
+
+        <text class="field__label sec">{{ $t("store.scopeCommunities") }}</text>
         <view class="cms__list">
           <text
             v-for="c in communities"
             :key="c.communityNo"
             class="sh-chip cms__i"
-            :class="{ 'is-on': form.serviceCommunityNos.includes(c.communityNo) }"
-            @tap="toggleCommunity(c.communityNo)"
+            :class="{ 'is-on': hasArea('COMMUNITY', c.communityNo) }"
+            @tap="toggleCommunity(c)"
           >
             {{ c.name }}
           </text>
@@ -183,9 +321,30 @@ onShow(load);
         <text v-else-if="!communities.length" class="warn">
           {{ $t("store.communitiesEmpty") }}
         </text>
-        <text v-else-if="!form.serviceCommunityNos.length" class="warn">
-          {{ $t("store.scopeNeedCommunity") }}
-        </text>
+
+        <!-- 区划：逐级点。整个区/街道也能直接选，否则框一个区要点开十几个街道 -->
+        <view v-if="!regionOpen" class="sh-btn sh-btn--soft addr" @tap="openRegions">
+          {{ $t("store.addRegion") }}
+        </view>
+        <view v-else class="rg">
+          <view class="rg__crumb">
+            <text class="rg__c" @tap="backTo(-1)">{{ $t("store.regionRoot") }}</text>
+            <text v-for="(x, i) in trail" :key="x.regionCode" class="rg__c" @tap="backTo(i)">
+              / {{ x.name }}
+            </text>
+          </view>
+          <text v-if="regionLoading" class="hint">{{ $t("common.loading") }}</text>
+          <view v-else class="rg__list">
+            <view v-for="r in regionList" :key="r.regionCode" class="rg__i">
+              <text class="rg__n" @tap="tapRegion(r)">
+                {{ r.name }}<text v-if="r.hasChild" class="rg__more"> ›</text>
+              </text>
+              <!-- 有下级的也要能整个选中：「整个西湖区」是最常见的诉求 -->
+              <text class="rg__pick" @tap="addRegion(r)">{{ $t("store.pickThis") }}</text>
+            </view>
+          </view>
+          <text class="mini rg__close" @tap="regionOpen = false">{{ $t("common.cancel") }}</text>
+        </view>
       </view>
 
       <view class="sh-btn sh-btn--soft save" @tap="save">{{ $t("common.save") }}</view>
@@ -292,6 +451,53 @@ onShow(load);
 .cms__i.is-on {
   background: var(--sh-primary);
   color: #fff;
+}
+.sec {
+  display: block;
+  margin-top: 28rpx;
+}
+.addr {
+  margin-top: 20rpx;
+}
+.rg {
+  margin-top: 20rpx;
+  padding: 20rpx;
+  border-radius: 24rpx;
+  background: var(--sh-faint);
+}
+.rg__crumb {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8rpx;
+  font-size: 24rpx;
+  color: var(--sh-primary);
+}
+.rg__list {
+  margin-top: 12rpx;
+}
+.rg__i {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16rpx 0;
+  border-top: 2rpx solid var(--sh-line);
+}
+.rg__n {
+  flex: 1;
+  font-size: 26rpx;
+  color: var(--sh-ink);
+}
+.rg__more {
+  color: var(--sh-sub);
+}
+.rg__pick {
+  flex-shrink: 0;
+  font-size: 24rpx;
+  color: var(--sh-primary);
+}
+.rg__close {
+  display: inline-block;
+  margin-top: 16rpx;
 }
 .warn {
   display: block;

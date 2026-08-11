@@ -33,6 +33,10 @@ const KNOWN_SHARED: Record<string, string> = {
     "微信登录本身还没接（code2Session 是 TODO），接的时候两边一起定名",
   MerchantTier:
     "MEDIUM/LARGE 是分层费率的预留档，后端目前只产出 SMALL —— 分层上线时后端补齐",
+  AREA_LEVEL:
+    "STREET/DISTRICT 后端**会下发**，只是不以字面量出现在 Java 源码里 —— " +
+    "覆盖项的 level 直接取自 sys_region.level（V31 灌的国标数据），扫描器看不见库里的值。" +
+    "COMMUNITY/CITY 之所以没报，是因为它们恰好与 SERVICE_SCOPE 的取值同名",
   FULFILLMENT:
     "DELIVERY/STORE_VERIFY/APPOINTMENT/INSTANT 四种履约后端还没实现（库里只有 " +
     "STORE_PICKUP/NEIGHBOR_PICKUP/MERCHANT_DELIVERY/EXPRESS）—— 接的时候一起定名。" +

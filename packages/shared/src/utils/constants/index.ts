@@ -142,6 +142,36 @@ export const SERVICE_SCOPE = {
 } as const;
 
 /**
+ * 履约**能力**（ADR-013 阶段二）。回答的是「怎么送到你手上」这一件事 ——
+ * 不再顺带回答「送得到哪儿」，后者由 {@link ServiceArea} 列表单独说。
+ *
+ * 为什么要跟 {@link SERVICE_SCOPE} 拆开：三档枚举把两件事压进一个字段，
+ * 于是「三个小区 + 整个西湖区」这种再普通不过的诉求**没有字段可写** ——
+ * 商家只能选 CITY（卖到全市，送不到）或 COMMUNITY（丢掉那个区）。
+ *
+ * ⚠️ 它与 `FULFILLMENT` 不是一回事：那个是**某一单**怎么送（落在订单上），
+ * 这个是**这家店**有什么送法（落在主体上）。
+ */
+export const FULFILLMENT_REACH = {
+  /** 靠自提点：出了配了的点就送不到。菜摊、理发店 */
+  PICKUP: "PICKUP",
+  /** 上门或同城配送：能到的范围按区/市框 */
+  ONSITE: "ONSITE",
+  /** 快递：没有履约半径 */
+  SHIPPING: "SHIPPING",
+} as const;
+
+/**
+ * 覆盖项的粒度。可跨粒度组合 —— 「三个小区 + 一个区」是两条 COMMUNITY 加一条 DISTRICT。
+ */
+export const AREA_LEVEL = {
+  COMMUNITY: "COMMUNITY",
+  STREET: "STREET",
+  DISTRICT: "DISTRICT",
+  CITY: "CITY",
+} as const;
+
+/**
  * 履约方式。**键名是代码里的叫法，值是 wire 契约 —— 值必须逐字等于
  * `ord_sub_order.fulfillment` 库里存的东西**（见 docs/technical/枚举统一方案.md §3）。
  *

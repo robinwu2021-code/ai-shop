@@ -35,6 +35,7 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
 
   mStore: { method: "GET", path: "/biz/store", auth: true, summary: "店铺门面" },
   mCommunities: { method: "GET", path: "/biz/communities", auth: true, summary: "可选社区（设经营范围用）" },
+  mRegions: { method: "GET", path: "/biz/regions", auth: true, summary: "行政区划下一级（框覆盖范围用）" },
   mSaveStore: { method: "POST", path: "/biz/store", auth: true, summary: "保存店铺门面" },
 
   mStoreList: { method: "GET", path: "/biz/store/list", auth: true, summary: "我的门店" },

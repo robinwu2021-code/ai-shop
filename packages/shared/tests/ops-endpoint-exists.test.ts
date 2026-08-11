@@ -33,7 +33,7 @@ const UNBUILT_DOMAINS = new Set([
   "faqs", "materials", "rule-texts", "appearance", "feature-flags",
   // 财务与清结算（finance 已开始实现，移到 KNOWN_GAPS 逐条登记）
   "payments", "settlements", "split-records", "refund-split-backs",
-  "fee-rule", "markets",
+  "markets",
   // 履约与物流
   "fulfillment", "shipments", "freight-templates",
   // 商品中心（现有的是 goods，skus 是另一套更细的视图）
@@ -41,8 +41,9 @@ const UNBUILT_DOMAINS = new Set([
   // 营销的后期部分
   "marketing", "content-slots", "fission-campaigns",
   "push-tasks", "demands", "attribution-rule", "attribution-traces",
-  // 组织与权限（ops 自己的 RBAC 管理界面）
-  "staffs", "roles",
+  // 组织与权限：staffs 已经活了（GET /ops/staffs），
+  // 剩下的三条写接口与 roles 整块登记在 KNOWN_GAPS / UNBUILT
+  "roles",
 ]);
 
 /**
@@ -61,6 +62,14 @@ const KNOWN_GAPS: Record<string, string> = {
   // 补一个永远点不到的端点没有意义。
   "POST /ops/communities/{x}/archive": "刻意不做：按钮本就禁用，前置校验在前端且正确",
   "POST /ops/communities/{x}/unarchive": "同上",
+
+  // ── 员工：域刚活（GET /ops/staffs 从单数改成复数，与 /ops/merchants 一致）──
+  // 改名之前前端调的复数路径一直 404，而列表页看着是好的：
+  // 拿不到数据渲染成空列表，与「一个员工都没有」长得一模一样。
+  // 三条写接口后端还没有 —— 页面上的开关和角色下拉是真的按不动。
+  "POST /ops/staffs/{x}/enabled": "启用/停用员工",
+  "POST /ops/staffs/{x}/role": "改员工角色",
+  "POST /ops/staffs/{x}/scope": "改员工数据范围（区域/社区）",
 
   // ── 财务：域已经活了（自营应付账款那批端点落地），剩下这几条还没有 ──
   // 这正是守卫要盯的那个时刻：域一活，页面就看着能用，而漏掉的会变成死按钮。

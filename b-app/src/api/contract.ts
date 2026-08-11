@@ -5,6 +5,7 @@
 // Order 结构，只是可见字段与可执行动作不同；各定义一份必然漂移。
 import type {
   BizScope,
+  Region,
   StaffRole,
   AfterSale,
   Category,
@@ -200,6 +201,13 @@ export interface MerchantApi {
   mStore(): Promise<StoreProfile>;
   /** 设经营范围时可勾选的社区。真实环境应只返回该商家已签约自提点所在的社区 */
   mCommunities(): Promise<Community[]>;
+  /**
+   * 区划的**直接下级**，逐级往下点。`parent` 空取省级。
+   *
+   * 一次只给一级而不是整棵树：全国到街道是 4.4 万行，一次拉下来端上要等好几秒，
+   * 而商家真正要点开的只有其中一条路径。
+   */
+  mRegions(parent?: string): Promise<Region[]>;
   mSaveStore(payload: StoreProfile): Promise<StoreProfile>;
 
   // ---- 门店管理（M6）—— 与 mStore 的分工：那个管**一家店的门面**，这个管**有几家店**

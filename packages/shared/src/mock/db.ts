@@ -10,6 +10,7 @@ import { currentCurrency } from "@shared/utils/money";
 import { isoDate, todayAtLocal } from "@shared/utils/datetime";
 import type {
   OrderItem,
+  Region,
   ServiceScope,
   MerchantApplyReq,
   MerchantApplyStatus,
@@ -639,6 +640,23 @@ interface CommunitySeed {
   pickups: PickupSeed[];
 }
 
+/**
+ * 区划树。**只给一条路径挖到底**（浙江 → 杭州 → 西湖/上城 → 街道），
+ * 其余省份只到市级 —— mock 要证明的是「逐级能点下去、到叶子会停」，
+ * 不是复刻 4.4 万行国标数据。真实数据在 sys_region（V31 灌的）。
+ */
+const regionSeeds: Region[] = [
+  { regionCode: "33", level: "PROVINCE", name: "浙江省", enabled: true, hasChild: true },
+  { regionCode: "31", level: "PROVINCE", name: "上海市", enabled: true, hasChild: true },
+  { regionCode: "3301", parentCode: "33", level: "CITY", name: "杭州市", enabled: true, hasChild: true },
+  { regionCode: "3302", parentCode: "33", level: "CITY", name: "宁波市", enabled: true, hasChild: false },
+  { regionCode: "3101", parentCode: "31", level: "CITY", name: "上海市市辖区", enabled: true, hasChild: false },
+  { regionCode: "330106", parentCode: "3301", level: "DISTRICT", name: "西湖区", enabled: true, hasChild: true },
+  { regionCode: "330102", parentCode: "3301", level: "DISTRICT", name: "上城区", enabled: true, hasChild: false },
+  { regionCode: "330106001", parentCode: "330106", level: "STREET", name: "北山街道", enabled: true, hasChild: false },
+  { regionCode: "330106002", parentCode: "330106", level: "STREET", name: "西溪街道", enabled: true, hasChild: false },
+];
+
 const communitySeeds: CommunitySeed[] = [
   {
     communityNo: "CM001",
@@ -883,6 +901,14 @@ export const db = {
     // 演示商家是社区生鲜：靠自提点履约，只做谈下来的两个小区
     serviceScope: "COMMUNITY",
     serviceCommunityNos: ["CM001", "CM002"],
+    // 新模型（ADR-013）：同一件事的新写法 —— 两个小区，加上整个西湖区试水上门单。
+    // 刻意配成**跨粒度**，因为这正是老三档表达不了、也最容易在端上写错的形状
+    fulfillmentReach: "PICKUP",
+    serviceAreas: [
+      { level: "COMMUNITY", refCode: "CM001", name: "阳光里小区" },
+      { level: "COMMUNITY", refCode: "CM002", name: "翠苑一区" },
+      { level: "DISTRICT", refCode: "330106", name: "浙江省 / 杭州市 / 西湖区" },
+    ],
   } as StoreProfile,
 
   /**
@@ -1075,6 +1101,7 @@ export const db = {
   goodsSeeds,
   merchantSeeds,
   communitySeeds,
+  regionSeeds,
   couponSeeds,
   reviews: reviewSeeds,
 

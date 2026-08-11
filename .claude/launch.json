@@ -44,6 +44,18 @@
       ],
       "cwd": "backend",
       "port": 8080
+    },
+    {
+      "_comment": "mock 数据跑 B 端 —— 验证页面行为用，不依赖后端起没起。真机联调用 b-app-h5（连 8081）",
+      "name": "b-app-mock",
+      "runtimeExecutable": "/bin/zsh",
+      "runtimeArgs": [
+        "-lc",
+        "PORT=5175 VITE_USE_MOCK=1 VITE_API_BASE= npm run dev:h5"
+      ],
+      "cwd": "b-app",
+      "port": 5175,
+      "autoPort": false
     }
   ]
 }

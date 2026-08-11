@@ -439,6 +439,13 @@ export const mockApi: MerchantApi = {
     return delay(db.communitySeeds.map(toCommunity));
   },
 
+  async mRegions(parent) {
+    // 恒定只给启用的 —— 与后端 /biz/regions 同口径（停用的是运营的维护对象）
+    return delay(
+      db.regionSeeds.filter((r) => r.enabled && (parent ? r.parentCode === parent : !r.parentCode)),
+    );
+  },
+
   async mSaveStore(payload) {
     db.store = { ...payload };
     persist();

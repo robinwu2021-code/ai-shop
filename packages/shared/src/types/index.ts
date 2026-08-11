@@ -3,9 +3,11 @@
 // 金额：一律「最小货币单位」整数（人民币分 / 美分 / 菲尔），展示时按市场货币格式化
 
 import type {
+  AREA_LEVEL,
   CATEGORY_TYPE,
   CURRENCIES,
   FULFILLMENT,
+  FULFILLMENT_REACH,
   LANGS,
   MARKETS,
   SERVICE_SCOPE,
@@ -17,6 +19,8 @@ export type Lang = (typeof LANGS)[number]["id"];
 export type CurrencyCode = keyof typeof CURRENCIES;
 export type MarketId = (typeof MARKETS)[number]["id"];
 export type ServiceScope = (typeof SERVICE_SCOPE)[keyof typeof SERVICE_SCOPE];
+export type FulfillmentReach = (typeof FULFILLMENT_REACH)[keyof typeof FULFILLMENT_REACH];
+export type AreaLevel = (typeof AREA_LEVEL)[keyof typeof AREA_LEVEL];
 
 /** 多语言文案（mock 内部用；对外契约由后端按 Accept-Language 返回已本地化的 string） */
 export type I18nText = Record<Lang, string>;
@@ -1646,6 +1650,42 @@ export interface StoreProfile {
   serviceCommunityNos: string[];
   /** scope=CITY 时覆盖的城市 */
   serviceCityCode?: string;
+  /**
+   * 履约能力（ADR-013 阶段二）。**只说「怎么送到你手上」**，送得到哪儿看 {@link serviceAreas}。
+   *
+   * 与上面两个 `@deprecated` 字段的关系：新旧两套并存期间，端上**只传一套** ——
+   * 传了 `serviceAreas` 就走新模型，后端不再看 `serviceScope`。
+   */
+  fulfillmentReach?: FulfillmentReach;
+  /**
+   * 地理覆盖项，可跨粒度组合（三个小区 + 一个区）。
+   *
+   * **空的含义由 `fulfillmentReach` 决定**，这是这个字段最容易踩的地方：
+   * PICKUP 空 = 谁也看不到（没配自提点就没法履约）；
+   * ONSITE / SHIPPING 空 = 不限。同一个空数组两种意思，所以别拿它判「有没有设置过」。
+   */
+  serviceAreas?: ServiceArea[];
+}
+
+/** 一条地理覆盖项。名字由后端拼好下发 —— 端上只拿到 330106 的话，要么显示一串数字，要么自己再查一次 */
+export interface ServiceArea {
+  level: AreaLevel;
+  /** level=COMMUNITY 时是社区号，否则是区划码 */
+  refCode: string;
+  /** 展示名。区级以上是「浙江省 / 杭州市 / 西湖区」整条路径 —— 光一个「西湖区」全国有好几个，商家分不出删哪条 */
+  name: string;
+}
+
+/** 行政区划的一级（`/biz/regions`）。国家统计局统计用区划代码，省 2 / 市 4 / 区 6 / 街道 9 位 */
+export interface Region {
+  regionCode: string;
+  parentCode?: string;
+  /** PROVINCE / CITY / DISTRICT / STREET */
+  level: string;
+  name: string;
+  enabled: boolean;
+  /** 下面还有没有下级。端上据此决定「还要不要再往下选一层」，而不是点进去才发现是空的 */
+  hasChild: boolean;
 }
 
 /** 店铺码（C-ST-08 扫码进店的商家侧） */
