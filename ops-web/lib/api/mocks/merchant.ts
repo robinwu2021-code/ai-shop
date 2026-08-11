@@ -91,6 +91,13 @@ export const merchantMock: MerchantApi = {
     const list = (db.depositTxns[merchantNo] ??= []);
     const paid = list.filter((t) => t.txnType !== "FREEZE" && t.txnType !== "UNFREEZE")
       .reduce((n, t) => n + t.amountMinor, 0);
+    // 符号方向必须与类型一致：缴纳只能是正，退还与扣划只能是负。
+    // 不校验的后果不是报错而是账反了 —— 「退还」把余额加上去，两侧都不报错
+    const shouldBeNegative = txnType === "REFUND" || txnType === "DEDUCT";
+    if (txnType !== "FREEZE" && txnType !== "UNFREEZE"
+      && (amountMinor === 0 || (shouldBeNegative ? amountMinor > 0 : amountMinor < 0))) {
+      fail("金额方向与变动类型不符", "The sign of the amount does not match the entry type");
+    }
     const after = txnType === "FREEZE" || txnType === "UNFREEZE" ? paid : paid + amountMinor;
     // 扣成负数意味着平台已经垫付，那是另一笔账，不该混在这张表里
     if (after < 0) fail("保证金余额不足，无法扣划", "Deposit balance is not enough for this deduction");

@@ -1,5 +1,6 @@
 package ai.neargo.shop.trade.service.impl;
 
+import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.spi.user.PickupQueryPort;
 import ai.neargo.shop.trade.service.OrderService;
 import ai.neargo.shop.trade.service.OrderStateMachine;
@@ -831,12 +832,23 @@ public class OrderServiceImpl implements OrderService {
      */
     private long paidAmountToday(String merchantNo) {
         java.time.LocalDateTime dayStart = java.time.LocalDate.now().atStartOfDay();
-        List<OrdSubOrder> rows = subOrderMapper.selectList(
+        /*
+         * **必须绕过数据域拦截器**，否则这个限额根本不是它看起来的意思。
+         *
+         * ord_sub_order 注册了 ScopeDim.SELF → user_no，而本方法是在下单请求里、
+         * 以**买家身份**执行的 —— 不绕过的话 SQL 会被追加 user_no = 当前买家，
+         * 于是「该商家当日成交额」变成「该买家在这家店的当日成交额」，
+         * 日累计上限实际成了「每买家一份」：100 个买家各下 500，
+         * 商家当天成交 5 万而限额一次都不触发。
+         *
+         * 这里要的是**平台对这个商家的当日敞口**，与谁在买无关。
+         */
+        List<OrdSubOrder> rows = DataScopeContext.executeWithoutScope(() -> subOrderMapper.selectList(
                 com.baomidou.mybatisplus.core.toolkit.Wrappers.<OrdSubOrder>lambdaQuery()
                         .eq(OrdSubOrder::getEntityNo, merchantNo)
                         .ge(OrdSubOrder::getCreatedAt, dayStart)
                         .notIn(OrdSubOrder::getStatus,
-                                OrdSubOrder.WAIT_PAY, OrdSubOrder.CANCELLED, OrdSubOrder.REFUNDED));
+                                OrdSubOrder.WAIT_PAY, OrdSubOrder.CANCELLED, OrdSubOrder.REFUNDED)));
         return rows.stream().mapToLong(r -> r.getPayAmount() == null ? 0L : r.getPayAmount()).sum();
     }
 

@@ -111,6 +111,19 @@ public class AdmissionServiceImpl implements AdmissionService {
             }
             d.setFrozenMinor(frozen);
         } else {
+            /*
+             * 符号方向必须与类型一致。
+             *
+             * 缴纳只能是正、退还与扣划只能是负 —— 不校验的后果不是报错而是**账反了**：
+             * 运营选「退还 2000」，端上若发成正数，实缴从 2000 涨到 4000，
+             * 流水上还写着「退还」。两侧都不报错，只有对账时才会发现。
+             * 这一条已经真实发生过一次（ops-web 只对 DEDUCT 取了负）。
+             */
+            boolean shouldBeNegative = MchDepositTxn.REFUND.equals(txnType)
+                    || MchDepositTxn.DEDUCT.equals(txnType);
+            if (amountMinor == 0 || (shouldBeNegative ? amountMinor > 0 : amountMinor < 0)) {
+                throw BizException.of(ErrorCode.BAD_REQUEST);
+            }
             long paid = orZero(d.getPaidMinor()) + amountMinor;
             if (paid < 0) {
                 // 保证金扣成负数意味着平台已经垫付，那是另一笔账，不该混在这张表里

@@ -361,22 +361,25 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
      * 通用的「请求参数有误」会让商家反复改商品信息，而问题根本不在商品上。
      */
     private void requireCategoryAuthorized(String merchantNo, String categoryNo) {
-        if (categoryNo == null || categoryNo.isBlank()) {
-            // 没归类的商品不卡在这里：归类是否必填是另一个决定，不该由准入校验顺手做掉
-            return;
-        }
-        String required = categoryService.requiredCodeOf(categoryNo);
+        boolean categorized = categoryNo != null && !categoryNo.isBlank();
+        String required = categorized ? categoryService.requiredCodeOf(categoryNo) : null;
         boolean needsQualification = required != null && !required.isBlank();
 
         /*
          * 弱主体准入（保证金 / 限品类）。
          *
-         * 放在 requiredCode 判定之后、资质码判定之前，是因为它<b>对无门槛类目同样生效</b>——
-         * 小微卖不需要证的商品照样要有保证金兜底。若跟着下面那个 early return 一起走，
-         * 无门槛类目就完全绕过了这道闸，而那恰好是弱主体最容易上的一批货。
+         * <b>放在所有 early return 之前</b>，因为保证金与类目无关：小微卖什么都要有钱兜底。
+         * 上一版放在「没归类就 return」之后，于是**不填类目的商品完全绕过这道闸**——
+         * 而 categoryNo 是选填的，绕过它只需要少填一个字段。
+         * 「无门槛类目」（requiredCode 为空）与「无类目」（categoryNo 为空）是两件事，
+         * 上一版的注释只覆盖了前者，测试也只传了前者，所以两边都没发现。
          */
         admissionPort.requireListingAllowed(merchantNo, categoryNo, needsQualification);
 
+        if (!categorized) {
+            // 没归类的商品不卡在资质这一关：归类是否必填是另一个决定，不该由准入校验顺手做掉
+            return;
+        }
         if (!needsQualification) {
             return;
         }

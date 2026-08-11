@@ -175,6 +175,33 @@ class S3AdmissionFlowTest {
     }
 
     @Test
+    @DisplayName("★★ 退还必须是负数 —— 「退还」把余额加上去，两侧都不会报错")
+    void refundMustBeNegative() {
+        String micro = aMerchantOf(MICRO);
+        admissionService.recordTxn(micro, MchDepositTxn.PAY, REQUIRED_DEPOSIT, "缴纳", "OPS");
+
+        /*
+         * 这一条是真实发生过的：ops-web 只对 DEDUCT 取了负，于是运营选「退还 2000」
+         * 发出去是 +2000，实缴从 2000 涨到 4000，而流水上写着「退还」。
+         * 两侧都不报错，只有对账时才会发现 —— 所以守卫要在服务端。
+         */
+        assertThatThrownBy(() ->
+                admissionService.recordTxn(micro, MchDepositTxn.REFUND, 100_000L, "方向反了", "OPS"))
+                .isInstanceOf(BizException.class)
+                .hasMessage(ErrorCode.BAD_REQUEST.name());
+
+        admissionService.recordTxn(micro, MchDepositTxn.REFUND, -100_000L, "正常退还", "OPS");
+        assertThat(admissionService.deposit(micro).paidMinor())
+                .as("退还之后余额必须变少")
+                .isEqualTo(REQUIRED_DEPOSIT - 100_000L);
+
+        // 缴纳反过来也不行：方向由类型决定，两个方向都要堵
+        assertThatThrownBy(() ->
+                admissionService.recordTxn(micro, MchDepositTxn.PAY, -1L, "负的缴纳", "OPS"))
+                .isInstanceOf(BizException.class);
+    }
+
+    @Test
     @DisplayName("★ 冻结动的是 frozen 不是 paid —— 可用余额减少，实缴不变")
     void freezeDoesNotEraseWhatWasPaid() {
         String micro = aMerchantOf(MICRO);

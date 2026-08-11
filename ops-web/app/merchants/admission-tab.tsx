@@ -69,9 +69,17 @@ export function AdmissionTab({ c }: { c: Copy }) {
       api.addDepositTxn({
         merchantNo: queried,
         txnType,
-        // 扣划为负：不存绝对值再靠 txnType 推方向 —— 那等于把方向重复表达两遍，
-        // 两处一旦不一致就没法判定谁对
-        amountMinor: txnType === "DEDUCT" ? -Math.abs(Number(amount)) : Math.abs(Number(amount)),
+        /*
+         * 方向由类型决定，**退还与扣划都是负的**。
+         *
+         * 上一版只对 DEDUCT 取负，于是「退还 2000」发出去是 +2000，
+         * 后端 paid = paid + amountMinor 照单全收：实缴从 2000 涨到 4000，
+         * 而流水上写着「退还」。两侧都不报错，只有对账时才会发现。
+         * 后端现在也按类型校验符号，这里是第一道。
+         */
+        amountMinor: txnType === "DEDUCT" || txnType === "REFUND"
+          ? -Math.abs(Number(amount))
+          : Math.abs(Number(amount)),
         reason: reason || undefined,
       }),
     onSuccess: () => {
