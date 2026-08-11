@@ -41,7 +41,10 @@ export const marketingMock: MarketingApi = {
       ),
     ),
 
-  setCouponStatus: async (couponNo, status) => {
+  setCouponStatus: async (couponNo, status, reason) => {
+    // **mock 必须和后端一样严**：后端 reason 空就 10400。
+    // 此前 mock 没有这条，于是「运营点暂停必然失败」在演示里完全看不出来
+    if (!reason?.trim()) fail("请说明原因", "A reason is required");
     const c = findCoupon(couponNo);
     db.assertTransition(COUPON_TRANSITIONS, c.status, status, "券模板", "Coupon template");
     c.status = status;
@@ -97,7 +100,7 @@ export const marketingMock: MarketingApi = {
     ),
 
   toggleCampaign: async (no, running, reason) => {
-    if (!reason.trim()) fail("请填写理由", "A reason is required");
+    if (!reason?.trim()) fail("请说明原因", "A reason is required");
     const row = db.merchantCampaigns.find((c) => c.campaignNo === no);
     if (!row) fail("活动不存在", "Campaign not found");
     // 平台只改「还跑不跑」，不动活动内容 —— 那是商家自己的经营决定

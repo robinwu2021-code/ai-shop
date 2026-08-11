@@ -118,8 +118,16 @@ function MarketingInner() {
   };
 
   const statusMut = useMutation({
-    mutationFn: (v: { couponNo: string; status: CouponStatus }) => api.setCouponStatus(v.couponNo, v.status),
+    // 理由必填：后端把它写进审计，空理由 10400。此前这里不传 reason，
+    // 于是**运营在真后端下点「暂停」必然失败** —— mock 没有这条校验所以演示一切正常
+    mutationFn: (v: { couponNo: string; status: CouponStatus; reason: string }) =>
+      api.setCouponStatus(v.couponNo, v.status, v.reason),
     onSuccess: () => { invalidate(); notify.success(c.toastCouponStatus); },
+  });
+  const campaignToggleMut = useMutation({
+    mutationFn: (v: { campaignNo: string; running: boolean; reason: string }) =>
+      api.toggleCampaign(v.campaignNo, v.running, v.reason),
+    onSuccess: () => { invalidate(); notify.success(c.toastCampaignToggled); },
   });
   const budgetMut = useMutation({
     mutationFn: (v: { couponNo: string; budget: number }) => api.setCouponBudget(v.couponNo, v.budget),
@@ -150,6 +158,19 @@ function MarketingInner() {
           : (v.restore ? api.unarchiveSlot(v.no) : api.archiveSlot(v.no)),
     onSuccess: invalidate,
   });
+
+  /**
+   * 停 / 启一张券。**走确认框收理由** —— 后端要求它，且它会写进审计给商家看。
+   * 不做成「点了就改」：这是改别人家的券，一次误点在领券中心是立刻可见的。
+   */
+  const askCouponStatus = (x: Coupon, status: CouponStatus) =>
+    confirm({
+      title: status === "PAUSED" ? c.pauseCouponTitle : c.resumeCouponTitle,
+      desc: `${x.name}（${x.couponNo}）`,
+      danger: status === "PAUSED",
+      requireReason: true,
+      action: (reason) => statusMut.mutateAsync({ couponNo: x.couponNo, status, reason }),
+    });
 
   const couponColumns: Column<Coupon>[] = [
     { header: c.colCouponNo, cell: (x) => x.couponNo, numeric: true, align: "start" },
@@ -192,11 +213,15 @@ function MarketingInner() {
           actions={
             // 只出当前状态允许的那一个动作（合法迁移表见 lib/types/marketing.ts）
             x.status === "DRAFT" ? (
-              <Button size="sm" variant="outline" onClick={() => statusMut.mutate({ couponNo: x.couponNo, status: "ACTIVE" })}>{c.btnActivate}</Button>
+              <Button size="sm" variant="outline" onClick={() => askCouponStatus(x, "ACTIVE")}>{c.btnActivate}</Button>
             ) : x.status === "ACTIVE" ? (
-              <Button size="sm" onClick={() => { setIssuing(x); setIssueForm({ target: "ALL", targetDesc: "", count: "100" }); }}>{c.btnIssue}</Button>
+              <>
+                <Button size="sm" onClick={() => { setIssuing(x); setIssueForm({ target: "ALL", targetDesc: "", count: "100" }); }}>{c.btnIssue}</Button>
+                {/* 出事时的止损手段：券从领券中心消失、领取被拒，已领到手的不动 */}
+                <Button size="sm" variant="outline" onClick={() => askCouponStatus(x, "PAUSED")}>{c.btnPause}</Button>
+              </>
             ) : x.status === "PAUSED" ? (
-              <Button size="sm" variant="outline" onClick={() => statusMut.mutate({ couponNo: x.couponNo, status: "ACTIVE" })}>{c.btnResume}</Button>
+              <Button size="sm" variant="outline" onClick={() => askCouponStatus(x, "ACTIVE")}>{c.btnResume}</Button>
             ) : null
           }
         />
@@ -220,6 +245,16 @@ function MarketingInner() {
    * 于是没有「位置」列 —— 那是场次专属的；商品数取 goodsNos 的长度，
    * 后端 CampaignVO 里一直有这个字段，此前因为类型对不上而恒为空。
    */
+  /** 停 / 启商家活动。与停券同一套：理由必填，写进审计 */
+  const askCampaignToggle = (x: MerchantCampaign, running: boolean) =>
+    confirm({
+      title: running ? c.resumeCampaignTitle : c.pauseCampaignTitle,
+      desc: `${x.name}（${x.merchantNo}）`,
+      danger: !running,
+      requireReason: true,
+      action: (reason) => campaignToggleMut.mutateAsync({ campaignNo: x.campaignNo, running, reason }),
+    });
+
   const campaignColumns: Column<MerchantCampaign>[] = [
     { header: c.colCampaignNo, cell: (x) => x.campaignNo, numeric: true, align: "start" },
     { header: c.colName, cell: (x) => x.name },
@@ -240,6 +275,18 @@ function MarketingInner() {
           onUnarchive={async () => {
             await confirm(unarchiveConfirm(c.entityCampaign, x.name, () => archiveMut.mutateAsync({ kind: "campaign", no: x.campaignNo, restore: true })));
           }}
+          actions={
+            /*
+             * 平台对商家活动的**全部**能力就是这一个开关：看得见、能停。
+             * 不能建也不能改内容 —— 那是商家自己的经营决定。
+             * ENDED 的不给按钮：已经结束的活动没有「停」这回事。
+             */
+            x.status === "RUNNING" ? (
+              <Button size="sm" variant="outline" onClick={() => askCampaignToggle(x, false)}>{c.btnPause}</Button>
+            ) : x.status === "PAUSED" ? (
+              <Button size="sm" variant="outline" onClick={() => askCampaignToggle(x, true)}>{c.btnResume}</Button>
+            ) : null
+          }
         />
       ),
     },

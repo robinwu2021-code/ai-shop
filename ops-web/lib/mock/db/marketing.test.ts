@@ -57,7 +57,7 @@ describe("券预算（P-7.1.3）", () => {
   });
 
   it("状态机：结束是终态", async () => {
-    await expect(marketingMock.setCouponStatus("CP9005", "ACTIVE")).rejects.toThrow(/不允许/);
+    await expect(marketingMock.setCouponStatus("CP9005", "ACTIVE", "试图复活已结束的券")).rejects.toThrow(/不允许/);
   });
 });
 

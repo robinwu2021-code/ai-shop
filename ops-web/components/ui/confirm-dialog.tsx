@@ -32,7 +32,18 @@ export interface ConfirmOptions {
    * 这段时间界面上没有任何"正在处理"的痕迹，用户会再点一次那个按钮。
    * 归档/封禁/退款这类**不可轻易撤销**的动作应当传 action。
    */
-  action?: () => Promise<unknown>;
+  action?: (reason: string) => Promise<unknown>;
+  /**
+   * 要求填一句**理由**，并把它交给 {@link ConfirmOptions.action}。
+   *
+   * 与 {@link ConfirmOptions.requireText} 不是一回事：那个是「照抄这串字确认你看清了」，
+   * 这个是**要留档的一句话**，后端把它写进审计（停券、停活动、平台改价都要求它，
+   * 空理由直接 10400）。
+   *
+   * 为什么要在弹窗里而不是各页自己做一个输入框：这类操作有 4 处，
+   * 各写一遍的结果是「活动能填理由、券不能」——而后端对两者的要求一模一样。
+   */
+  requireReason?: boolean;
 }
 
 interface Pending extends ConfirmOptions {
@@ -43,6 +54,7 @@ export function useConfirm() {
   const { t } = useI18n();
   const [pending, setPending] = React.useState<Pending | null>(null);
   const [typed, setTyped] = React.useState("");
+  const [reason, setReason] = React.useState("");
   const [running, setRunning] = React.useState(false);
 
   // resolve 存 ref：state updater 必须是纯函数（StrictMode 下会执行两次），
@@ -51,6 +63,7 @@ export function useConfirm() {
 
   const confirm = React.useCallback((opts: ConfirmOptions) => {
     setTyped("");
+    setReason("");
     return new Promise<boolean>((resolve) => {
       resolveRef.current = resolve;
       setPending({ ...opts, resolve });
@@ -62,6 +75,7 @@ export function useConfirm() {
     resolveRef.current = null;
     setPending(null);
     setTyped("");
+    setReason("");
     setRunning(false);
     resolve?.(ok);
   }, []);
@@ -72,16 +86,19 @@ export function useConfirm() {
     if (!act) { close(true); return; }
     setRunning(true);
     try {
-      await act();
+      await act(reason.trim());
       close(true);
     } catch {
       // 失败不关：把弹窗留在原地，用户能看到页面上的错误提示，也能再试一次
       setRunning(false);
     }
-  }, [pending, close]);
+  }, [pending, close, reason]);
 
   // requireText 存在时必须完全一致（不 trim、不忽略大小写）
-  const locked = !!pending?.requireText && typed !== pending.requireText;
+  // requireReason 时理由不能是空白 —— 后端那条校验一样是 trim 之后判空
+  const locked =
+    (!!pending?.requireText && typed !== pending.requireText) ||
+    (!!pending?.requireReason && !reason.trim());
 
   const dialog = (
     <Dialog.Root
@@ -99,6 +116,19 @@ export function useConfirm() {
             <Dialog.Title className="txt-heading">{pending?.title ?? ""}</Dialog.Title>
             {pending?.desc && (
               <Dialog.Description className="mt-1.5 txt-body text-muted-foreground">{pending.desc}</Dialog.Description>
+            )}
+            {pending?.requireReason && (
+              <div className="mt-4">
+                <div className="mb-1.5 txt-caption text-muted-foreground">
+                  {t("confirm.reasonHint")}
+                </div>
+                <Input
+                  autoFocus
+                  value={reason}
+                  placeholder={t("confirm.reasonPlaceholder")}
+                  onChange={(e) => setReason(e.target.value)}
+                />
+              </div>
             )}
             {pending?.requireText && (
               <div className="mt-4">

@@ -5,7 +5,14 @@ import type { CampaignQ, CouponQ, PageQ, SlotQ } from "../query";
 export interface MarketingApi {
   listCoupons(q?: CouponQ): Promise<Page<Coupon>>;
   /** 状态推进（草稿→启用⇄暂停→结束），非法迁移抛错。 */
-  setCouponStatus(couponNo: string, status: CouponStatus): Promise<Coupon>;
+  /**
+   * 改券状态（暂停 / 恢复 / 结束）。**理由必填** —— 停别人的券要说得出为什么，
+   * 后端把它写进审计，空理由返回 10400。
+   *
+   * 此前这里没有 reason 参数，于是**运营在真后端下点「暂停」必然失败**；
+   * mock 没有这条校验，所以演示一切正常。
+   */
+  setCouponStatus(couponNo: string, status: CouponStatus, reason: string): Promise<Coupon>;
   /** 调预算（P-7.1.3）。**不得小于已发放金额** —— 否则账面直接超支。 */
   setCouponBudget(couponNo: string, budget: number): Promise<Coupon>;
   /**
@@ -27,13 +34,6 @@ export interface MarketingApi {
    * 停用 / 启用商家活动（矩阵 §2.3）。**理由必填** —— 停别人的活动要说得出为什么，
    * 后端把它写进审计。这是平台对商家活动的**全部**能力：看得见、能停，
    * 不能建也不能改内容，那是商家自己的经营决定。
-   *
-   * ⚠️ **页面还没有接这个按钮**。接它要先解决一件更大的事：
-   * `setCouponStatus` 同样是「停别人的东西」，而它**不传 reason**，
-   * 后端那条 reason 必填的校验会让它在真后端下必然 10400 ——
-   * mock 里没有这条校验，所以一直没暴露。
-   * 两处要一起补一个「说明理由」的输入，见
-   * `docs/technical/运营端营销列表契约错配.md` §5。
    */
   toggleCampaign(campaignNo: string, running: boolean, reason: string): Promise<MerchantCampaign>;
   /**

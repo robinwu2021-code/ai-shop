@@ -109,6 +109,8 @@ export const en: Messages = {
     ok: "Confirm",
     cancel: "Cancel",
     requireHint: "Type {text} to confirm this action",
+    reasonHint: "Say why (goes into the audit log; the merchant can see it)",
+    reasonPlaceholder: "e.g. wrong face value, pausing to investigate",
   },
   export: {
     label: "Export",

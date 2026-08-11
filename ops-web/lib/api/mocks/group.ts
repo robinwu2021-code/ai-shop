@@ -97,7 +97,10 @@ export const groupMock: GroupApi = {
     return wait(rec, 400);
   },
 
-  changeQuotePrice: async (quoteNo, price) => {
+  changeQuotePrice: async (quoteNo, price, reason) => {
+    // 与后端同严：平台改的是商家对买家的报价，改价历史公示给用户看，
+    // 一笔没有说明的平台改价解释不了
+    if (!reason?.trim()) fail("请说明改价原因", "A reason is required");
     const q = findQuote(quoteNo);
     if (price <= 0) fail("单价必须为正数", "The unit price must be positive");
     // ADR-003：不禁止改价，但每次留痕；改太多次本身就是信号，超阈即锁

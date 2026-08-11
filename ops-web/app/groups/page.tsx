@@ -70,7 +70,9 @@ function GroupsInner() {
   });
 
   const [assignForm, setAssignForm] = useState({ merchantNo: "M903", price: "", minQty: "10", validTo: "2026-08-20T16:00:00Z" });
-  const [priceEdit, setPriceEdit] = useState<{ quoteNo: string; value: string } | null>(null);
+  // reason 与新价一起收：后端要求它（平台改的是商家对买家的报价，
+  // 改价历史公示给用户看，一笔没有说明的平台改价解释不了），空理由 10400
+  const [priceEdit, setPriceEdit] = useState<{ quoteNo: string; value: string; reason: string } | null>(null);
 
   const canAudit = allow("group:campaign:audit");
   const canAssign = allow("group:demand:assign");
@@ -111,7 +113,8 @@ function GroupsInner() {
   });
 
   const changePrice = useMutation({
-    mutationFn: (v: { quoteNo: string; price: number }) => api.changeQuotePrice(v.quoteNo, v.price),
+    mutationFn: (v: { quoteNo: string; price: number; reason: string }) =>
+      api.changeQuotePrice(v.quoteNo, v.price, v.reason),
     onSuccess: (q) => {
       invalidate(); setPriceEdit(null);
       notify.success(fill(c.toastPriceChanged, { n: q.priceChanges }));
@@ -193,9 +196,20 @@ function GroupsInner() {
       cell: (q) =>
         priceEdit?.quoteNo === q.quoteNo ? (
           <span className="flex items-center justify-end gap-1">
-            <Input className="w-24" value={priceEdit.value} aria-label={c.ariaNewPrice}
-              onChange={(e) => setPriceEdit({ quoteNo: q.quoteNo, value: e.target.value })} />
-            <Button size="sm" onClick={() => changePrice.mutate({ quoteNo: q.quoteNo, price: Math.round(Number(priceEdit.value) * 100) })}>{c.save}</Button>
+            <Input className="w-20" value={priceEdit.value} aria-label={c.ariaNewPrice}
+              onChange={(e) => setPriceEdit({ ...priceEdit, value: e.target.value })} />
+            <Input className="w-32" value={priceEdit.reason} aria-label={c.ariaPriceReason}
+              placeholder={c.priceReasonPlaceholder}
+              onChange={(e) => setPriceEdit({ ...priceEdit, reason: e.target.value })} />
+            <Button
+              size="sm"
+              disabled={!priceEdit.reason.trim()}
+              onClick={() => changePrice.mutate({
+                quoteNo: q.quoteNo,
+                price: Math.round(Number(priceEdit.value) * 100),
+                reason: priceEdit.reason.trim(),
+              })}
+            >{c.save}</Button>
             <Button size="sm" variant="ghost" onClick={() => setPriceEdit(null)}>{c.cancel}</Button>
           </span>
         ) : (
@@ -203,7 +217,7 @@ function GroupsInner() {
             type="button"
             disabled={!canAssign}
             className="rounded-field px-1 tabular-nums transition-colors hover:bg-accent disabled:cursor-default disabled:hover:bg-transparent"
-            onClick={() => setPriceEdit({ quoteNo: q.quoteNo, value: (q.price / 100).toFixed(2) })}
+            onClick={() => setPriceEdit({ quoteNo: q.quoteNo, value: (q.price / 100).toFixed(2), reason: "" })}
           >
             {money(q.price)}
           </button>

@@ -100,6 +100,9 @@ export const zh = {
     ok: "确认",
     cancel: "取消",
     requireHint: "请输入 {text} 以确认此操作",
+    // 理由要留档：后端把它写进审计，空理由直接 10400
+    reasonHint: "请说明原因（会记入审计，商家能看到）",
+    reasonPlaceholder: "例如：面额配置有误，暂停排查",
   },
   export: {
     label: "导出",

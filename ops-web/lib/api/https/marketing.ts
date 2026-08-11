@@ -4,7 +4,8 @@ import type { MarketingApi } from "../contracts/marketing";
 
 export const marketingHttp: MarketingApi = {
   listCoupons: (q) => client.get("/ops/coupons", q),
-  setCouponStatus: (no, status) => client.post(`/ops/coupons/${no}/status`, { status }),
+  setCouponStatus: (no, status, reason) =>
+    client.post(`/ops/coupons/${no}/status`, { status, reason }),
   setCouponBudget: (no, budget) => client.post(`/ops/coupons/${no}/budget`, { budget }),
   issueCoupon: (v) => client.post(`/ops/coupons/${v.couponNo}/issue`, v),
   listCouponIssues: (q) => client.get("/ops/coupon-issues", q),
