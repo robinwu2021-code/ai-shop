@@ -31,6 +31,12 @@ HEADER = """-- 【自动生成，勿手改】由 backend/scripts/gen-test-schema
 
 
 def main():
+    # 可选的输出路径：**先生成到别处比对、确认无误再覆盖**。
+    # 这个口子是有来由的：这份产物一度与生成器分叉了很久（生成器根本跑不通，
+    # 文件其实在手工维护），而发现分叉的唯一办法就是先生成一份出来 diff ——
+    # 直接覆盖的话，分叉会被自己的产物盖掉，再也看不出差在哪。
+    out_path = pathlib.Path(sys.argv[1]).resolve() if len(sys.argv) > 1 else OUT
+
     tables = {}   # name -> list[str] 列/约束定义，保持顺序
     order = []
     seeds = []    # INSERT 种子数据，原样保留
@@ -49,8 +55,12 @@ def main():
                    + ",\n".join(tables[name]) + "\n);\n")
     if seeds:
         out.append("-- 种子数据\n" + "\n".join(seeds) + "\n")
-    OUT.write_text("\n".join(out))
-    print(f"wrote {OUT.relative_to(ROOT)}: {len(order)} tables, {len(seeds)} seeds")
+    out_path.write_text("\n".join(out))
+    try:
+        shown = out_path.relative_to(ROOT)
+    except ValueError:
+        shown = out_path
+    print(f"wrote {shown}: {len(order)} tables, {len(seeds)} seeds")
     return 0
 
 
@@ -69,9 +79,25 @@ def replay(sql, tables, order, seeds):
             create_unique_index(stmt, tables)
         elif low.startswith("drop table"):
             drop_table(stmt, tables, order)
-        elif low.startswith("update "):
-            # 数据修正语句：作用于生产存量数据，H2 测试库是空的，重放没有意义
-            pass
+        elif low.startswith("update ") or low.startswith("delete from"):
+            # UPDATE / DELETE 有**两种**，处理方式相反，判据是「有没有 JOIN / SELECT」：
+            #
+            # 1. **改种子行的**（单表、常量条件）—— 必须重放。
+            #    这里原先一律 `pass`，理由是「作用于生产存量数据，H2 测试库是空的」。
+            #    那个理由对业务数据成立，对**主数据**不成立：V22 用 UPDATE 停用行业与
+            #    授权码，改的正是 V2/V5 用 INSERT 灌进来的种子行，而那些种子就在
+            #    这份产物里。跳过的后果是 H2 上七个行业全启用而真库只剩两个 ——
+            #    「一期只能选两个行业」那条用例永远失败，且看起来像校验没写对。
+            #
+            # 2. **回填存量业务数据的**（带 JOIN 或子查询）—— 不能重放，
+            #    与 INSERT ... SELECT 同一个理由，外加一条更硬的：它们是 MySQL 方言。
+            #    V16 那条 `UPDATE cmt_pickup_point p JOIN mch_store s ...` 在 H2 上
+            #    直接语法错（H2 的 UPDATE 不接 JOIN），整个 schema 加载失败。
+            #    而它要搬的是存量自提点的归属，H2 测试库里一行都没有 —— 搬无可搬。
+            if re.search(r"\b(join|select)\b", low):
+                pass
+            else:
+                seeds.append(stmt + ";")
         elif low.startswith("insert into"):
             # 用正则而不是 `" select " in low`：回填语句里 SELECT 常常另起一行，
             # 而 low 是原样文本 —— 子串判断会漏掉带换行的写法，然后把回填当种子抄进测试库
@@ -201,12 +227,22 @@ def alter_table(stmt, tables, order):
             raise SystemExit(f"✗ DROP COLUMN {table}.{col}：这一列本来就不存在")
         return
 
-    add = re.match(r"ADD COLUMN\s+(.*)", action, re.I | re.S)
+    add = re.match(r"ADD COLUMN\s+(?:IF NOT EXISTS\s+)?(.*)", action, re.I | re.S)
     if add:
+        # ↑ `IF NOT EXISTS` 要在这里吃掉。不吃的话它会当成**列名**落进建表语句
+        #   （`IF NOT EXISTS archived_at DATETIME ...`），H2 建表即语法错。
         col = re.sub(r"\s+COMMENT\s+'[^']*'", "", add.group(1).strip())
-        # 插在最后一个业务列之后（约束行都在末尾）
+        # `AFTER x` / `FIRST` 是 MySQL 的列序语法，**H2 不认**，而且这里也不需要它 ——
+        # 我们在重建 CREATE TABLE，列序由下面的插入位置决定。
+        # 不剥的话它原样落进建表语句（`grid VARCHAR(64) DEFAULT NULL AFTER city_code`），
+        # H2 在建表那一刻就报错，整个 Spring 上下文起不来 ——
+        # 而错误信息指向的是一个毫不相干的 Controller，很难看出根因在生成器上。
+        col = re.sub(r"\s+(AFTER\s+\w+|FIRST)\s*$", "", col, flags=re.I).strip()
+        # 插在最后一个业务列之后。**PRIMARY KEY 也算约束行** ——
+        # 只认 CONSTRAINT 的话，新列会插到 `PRIMARY KEY (id)` 后面，
+        # 建表语句里出现「主键声明之后又冒出一列」，同样建不起来。
         idx = next((i for i, c in enumerate(cols)
-                    if re.match(r"^\s*CONSTRAINT\s", c, re.I)), len(cols))
+                    if re.match(r"^\s*(CONSTRAINT|PRIMARY\s+KEY|UNIQUE)\b", c, re.I)), len(cols))
         cols.insert(idx, "    " + col)
 
 

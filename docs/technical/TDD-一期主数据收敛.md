@@ -277,25 +277,48 @@ MerchantQueryPort → MerchantPortImpl → MerchantStoreService` —— 一个�
 
 ## 8. 实现中发现的问题（阶段一之外）
 
-### 8.1 ⚠️ `gen-test-schema.py` 已经跑不出可用的 schema
+### 8.1 `gen-test-schema.py` 已修好，但**产物还没重新生成**
 
-`schema-test.sql` 抬头写着「自动生成，勿手改」，但那个生成器**现在跑不通**，且强行跑出来的产物与仓库里这份差了 240 行：
+`schema-test.sql` 抬头写着「自动生成，勿手改」，而那个生成器一度**根本跑不通** ——
+也就是说这份文件实际上已经在手工维护，抬头还宣称它是生成的。
+这正是 [文档规范](../文档规范.md) §六「生成物不手改」要防的反面。
+
+修掉的四个 bug（2026-08-11）：
 
 | 症状 | 后果 |
 |---|---|
-| 不认 `DELETE FROM`（V6 就有） | 直接 `SystemExit` |
+| 不认 `DELETE FROM`（V6 就有） | 直接 `SystemExit`，生成器完全跑不动 |
 | `ADD COLUMN ... AFTER x` 没剥掉 `AFTER` | 落进 `CREATE TABLE`，H2 建表即语法错，**整个 Spring 上下文起不来**，而报错指向一个毫不相干的 Controller |
 | 新列插到 `PRIMARY KEY (id)` 之后 | 同上 |
-| `ADD COLUMN IF NOT EXISTS` 未处理 | `IF NOT EXISTS` 变成列名 |
-| 丢了 `msg_template` / `prd_store_goods` / `prd_store_stock` 三张表 | 产出的 schema 缺表 |
+| `ADD COLUMN IF NOT EXISTS` 未处理 | `IF NOT EXISTS` 被当成列名 |
 
-也就是说这份文件**实际上已经在手工维护**，而抬头还宣称它是生成的——这正是 [文档规范](../文档规范.md) §六「生成物不手改」要防的反面。
+外加一条口径修正：生成器原先把 `UPDATE` 一律当「作用于生产存量数据，H2 是空的」跳过。
+那对业务数据成立，**对主数据不成立** —— `V22` 正是用 `UPDATE` 停用行业与授权码，
+改的是 `V2`/`V5` 用 `INSERT` 灌进来的种子行，而那些种子就在这份产物里。
 
-由此带来的第二个问题：生成器把 `UPDATE` 一律当作「作用于生产存量数据，H2 是空的，重放没有意义」跳过。这对业务数据成立，**对主数据不成立**——`V22` 正是用 `UPDATE` 停用行业与授权码，改的是 `V2`/`V5` 用 `INSERT` 灌进来的种子行。本次只能在 `DevSeeder` 里补一段 `disableIndustry` 绕过去，是权宜。
+现在按**有没有 `JOIN` / 子查询**区分：单表常量条件的重放（改种子），带 JOIN 的跳过（回填存量）。
+后者不只是「没意义」，`V16` 那条 `UPDATE ... JOIN` 是 MySQL 方言，**H2 直接语法错**。
 
-建议单独排一个任务修生成器（或明确改为手工维护并去掉「勿手改」抬头）。
+验证方式：生成到临时文件后用 H2 的 `RunScript` 实跑一遍 ——
 
-### 8.0 ⚠️ `gen:api` 会产出**非法 YAML**（`anyOf` 里的数组）
+```bash
+python3 backend/scripts/gen-test-schema.py /tmp/gen.sql   # 新增：可指定输出路径，先比对再覆盖
+java -cp ~/.m2/.../h2-2.4.240.jar org.h2.tools.RunScript \
+  -url "jdbc:h2:mem:x;MODE=MySQL" -user sa -script /tmp/gen.sql
+```
+
+当前产出：69 张表全部建起来，**与在用的 `schema-test.sql` 表集合、逐表列集合完全一致**。
+
+> ⚠️ **`schema-test.sql` 本身还没重新生成**。原因是另一个会话正在手工往里补表
+> （V25 的 `mkt_coupon_issue`），而重新生成会带来约 478 行的列顺序变动 —— 两边必然撞车。
+> 等工作区安定下来再跑一次覆盖即可。
+
+覆盖之后还有两件收尾：
+1. `DevSeeder` 里那段 `disableIndustry` 可以删掉 —— 它是绕开「UPDATE 不重放」的权宜，
+   根因修好后就多余了（留着不会错，只是两处都在做同一件事）
+2. 值得加一条守卫：生成器产出与仓库里的文件必须一致。否则这份文件迟早再次悄悄变成手工维护
+
+### 8.2 ⚠️ `gen:api` 会产出**非法 YAML**（`anyOf` 里的数组）
 
 `npm run gen:api` 生成的 `openapi-ops.yaml` 解析不了：`Map keys must be unique; "type" is repeated`。
 出问题的是 `MerchantCampaign.goodsNos`（`string[] | null`）：
@@ -316,7 +339,7 @@ MerchantQueryPort → MerchantPortImpl → MerchantStoreService` —— 一个�
 已把三份 spec 退回 HEAD（它们是生成物，且这次重跑还混进了并行会话的在途改动）。
 **修生成器之前不要再跑 `npm run gen:api`。**
 
-### 8.2 生成的 OpenAPI 规格在仓库里是过期的
+### 8.3 生成的 OpenAPI 规格在仓库里是过期的
 
 `api-align.py` 一度报「✗ 存在 1 条阻塞差异」，**跑一次 `npm run gen:api` 就绿了** ——
 也就是说 `docs/api/openapi*.yaml` 与契约源已经漂了一段时间，只是没人重跑。
