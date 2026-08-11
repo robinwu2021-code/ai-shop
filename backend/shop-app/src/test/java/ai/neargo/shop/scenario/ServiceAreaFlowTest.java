@@ -285,6 +285,29 @@ class ServiceAreaFlowTest {
     }
 
     @Test
+    @DisplayName("★ 待审状态必须回显给端上 —— 不然商家看着它在清单里，却一个订单也不来")
+    void pendingStatusIsReturnedToClient() {
+        String m = merchant("ONSITE");
+        store(m);
+        String c = community("330106002");
+        var profile = storeService.save(m, new ai.neargo.shop.merchant.service.MerchantStoreService.SaveCommand(
+                "营业中", "08:00-20:00", "文一西路 1 号", java.util.List.of(),
+                null, null, null, "ONSITE",
+                java.util.List.of(
+                        new ai.neargo.shop.merchant.service.MerchantStoreService.AreaCommand("COMMUNITY", c),
+                        new ai.neargo.shop.merchant.service.MerchantStoreService.AreaCommand("DISTRICT", "330106"))));
+
+        // 不下发 status 的后果不是少个标签：待审的覆盖项不参与展开，
+        // 而端上无从知道 —— 那是商家自己永远查不出来的一类故障
+        assertThat(profile.serviceAreas())
+                .filteredOn(a -> "COMMUNITY".equals(a.level()))
+                .allSatisfy(a -> assertThat(a.status()).isEqualTo("ACTIVE"));
+        assertThat(profile.serviceAreas())
+                .filteredOn(a -> "DISTRICT".equals(a.level()))
+                .allSatisfy(a -> assertThat(a.status()).isEqualTo("PENDING"));
+    }
+
+    @Test
     @DisplayName("★ 覆盖项传 null = 这次不改（老版本 b-app 不传），传空列表才是清空")
     void nullAreasMeansUnchanged() {
         String m = merchant("ONSITE");

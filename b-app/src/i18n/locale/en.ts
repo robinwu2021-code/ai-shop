@@ -283,6 +283,8 @@ export default {
     areas: "Where you serve",
     areaNeeded: "With pickup points you must pick at least one community, or no buyer can see you",
     areaUnlimited: "Nothing set = no limit; buyers everywhere can see your goods",
+    areaPending: "under review",
+    areaPendingHint: "District and street coverage takes effect only after ops approves it",
     areaDup: "Already on the list",
     addRegion: "+ Add by district / street",
     regionRoot: "Nationwide",

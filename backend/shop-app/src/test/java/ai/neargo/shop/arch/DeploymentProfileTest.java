@@ -52,7 +52,7 @@ class DeploymentProfileTest {
     @Test
     @DisplayName("/ops/** 的路由在（登录入口可达）")
     void operatorRoutesPresent() throws Exception {
-        int status = mvc().perform(get("/ops/staff")).andReturn().getResponse().getStatus();
+        int status = mvc().perform(get("/ops/staffs")).andReturn().getResponse().getStatus();
         assertThat(status).as("ops 部署必须有 /ops 路由，否则这个部署没有意义").isNotEqualTo(404);
     }
 }

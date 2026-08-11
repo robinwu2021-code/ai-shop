@@ -231,7 +231,7 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
                                 .eq(MchServiceArea::getEntityNo, merchantNo)))
                 .stream()
                 .map(a -> new StoreProfileVO.ServiceAreaVO(
-                        a.getLevel(), a.getRefCode(), areaNameOf(a)))
+                        a.getLevel(), a.getRefCode(), areaNameOf(a), a.getStatus()))
                 .toList();
     }
 

@@ -421,6 +421,8 @@ export default {
     areas: "你做哪些地方",
     areaNeeded: "靠自提点就至少要选一个小区，否则买家一个也看不到你",
     areaUnlimited: "没框范围 = 不限，全平台的买家都能看到你的货",
+    areaPending: "待审核",
+    areaPendingHint: "区、街道级要运营审过才生效 —— 审之前这一条不算数",
     areaDup: "这一条已经在清单里了",
     addRegion: "＋ 按区 / 街道添加",
     regionRoot: "全国",

@@ -31,7 +31,11 @@ public record StoreProfileVO(String announcement, String openHours, String addre
      * @param refCode level=COMMUNITY 时是社区号，否则是区划码
      * @param name    展示名。<b>后端拼好给</b> —— 端上只拿到 330106 的话，
      *                要么显示一串数字，要么自己再查一次
+     * @param status  {@code ACTIVE} 已生效 / {@code PENDING} 待运营审核。
+     *                <b>必须下发</b>：区、街道级的覆盖要审（ADR-013 §4.2），待审的不参与展开 ——
+     *                不告诉端上的话，商家保存完看见它好端端在清单里，
+     *                却一个订单也不来，而这是他自己永远查不出来的
      */
-    public record ServiceAreaVO(String level, String refCode, String name) {
+    public record ServiceAreaVO(String level, String refCode, String name, String status) {
     }
 }

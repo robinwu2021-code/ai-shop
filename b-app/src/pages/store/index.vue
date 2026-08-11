@@ -76,7 +76,14 @@ const areas = computed<ServiceArea[]>(() => form.value.serviceAreas ?? []);
  * 自提是「谁也看不到」（拦），上门/快递是「不限」（正常）。
  * 这是新模型最容易被端上写错的一处，所以判断只留这一个出口。
  */
-const emptyIsBlocking = computed(() => reach.value === FULFILLMENT_REACH.PICKUP && !areas.value.length);
+const activeAreas = computed(() => areas.value.filter((a) => a.status !== "PENDING"));
+/**
+ * 判的是**生效中的**覆盖项，不是清单长度：区、街道级要运营审，待审的不参与展开。
+ * 按长度判的话，商家勾了一个待审的区就以为万事大吉 —— 而 C 端仍然谁也看不到他。
+ */
+const emptyIsBlocking = computed(
+  () => reach.value === FULFILLMENT_REACH.PICKUP && !activeAreas.value.length,
+);
 
 function pickReach(v: FulfillmentReach) {
   form.value.fulfillmentReach = v;
@@ -295,12 +302,16 @@ onShow(load);
             class="sh-chip cms__i is-on"
             @tap="removeArea(a.level, a.refCode)"
           >
-            {{ a.name }} ×
+            {{ a.name }}<text v-if="a.status === 'PENDING'" class="pend"> · {{ $t("store.areaPending") }}</text> ×
           </text>
         </view>
         <!-- 空列表的含义两分：自提是故障，上门/快递是「不限」。绝不能显示同一句话 -->
-        <text v-else-if="emptyIsBlocking" class="warn">{{ $t("store.areaNeeded") }}</text>
-        <text v-else class="hint">{{ $t("store.areaUnlimited") }}</text>
+        <text v-if="emptyIsBlocking" class="warn">{{ $t("store.areaNeeded") }}</text>
+        <text v-else-if="!areas.length" class="hint">{{ $t("store.areaUnlimited") }}</text>
+        <!-- 有待审项就说清楚它现在不算数，否则商家以为已经铺开了 -->
+        <text v-if="areas.length > activeAreas.length" class="hint">
+          {{ $t("store.areaPendingHint") }}
+        </text>
 
         <text class="field__label sec">{{ $t("store.scopeCommunities") }}</text>
         <view class="cms__list">
@@ -498,6 +509,10 @@ onShow(load);
 .rg__close {
   display: inline-block;
   margin-top: 16rpx;
+}
+.pend {
+  font-size: 22rpx;
+  opacity: 0.85;
 }
 .warn {
   display: block;

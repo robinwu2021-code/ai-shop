@@ -52,7 +52,7 @@ class M9aOpsFlowTest {
     @DisplayName("★ C 端 token 打 /ops/** 一律 401（池前缀不符，不用查库就能判）")
     void consumerTokenCannotAccessOps() throws Exception {
         String consumerToken = login("12600126001");
-        mvc().perform(get("/ops/staff").header("Authorization", "Bearer " + consumerToken))
+        mvc().perform(get("/ops/staffs").header("Authorization", "Bearer " + consumerToken))
                 .andExpect(status().isUnauthorized());
         mvc().perform(get("/ops/order").header("Authorization", "Bearer " + consumerToken))
                 .andExpect(status().isUnauthorized());
@@ -69,7 +69,7 @@ class M9aOpsFlowTest {
     @Test
     @DisplayName("未登录访问 /ops/** 401")
     void opsRequiresLogin() throws Exception {
-        mvc().perform(get("/ops/staff")).andExpect(status().isUnauthorized());
+        mvc().perform(get("/ops/staffs")).andExpect(status().isUnauthorized());
     }
 
     @Test
@@ -111,7 +111,7 @@ class M9aOpsFlowTest {
                 .andExpect(status().isOk());
         // 但不能碰员工与角色。@PreAuthorize 抛 AccessDeniedException，
         // 由 GlobalExceptionHandler 转成契约包（HTTP 200 + code 10403）
-        mvc().perform(get("/ops/staff").header("Authorization", "Bearer " + support))
+        mvc().perform(get("/ops/staffs").header("Authorization", "Bearer " + support))
                 .andExpect(jsonPath("$.code").value(10403));
     }
 
@@ -119,9 +119,12 @@ class M9aOpsFlowTest {
     @DisplayName("超管可以管理员工")
     void adminCanManageStaff() throws Exception {
         String admin = opsLogin("admin", "admin123");
-        mvc().perform(get("/ops/staff").header("Authorization", "Bearer " + admin))
+        mvc().perform(get("/ops/staffs").header("Authorization", "Bearer " + admin))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.length()").value(org.hamcrest.Matchers.greaterThan(0)));
+                // 分页包：前端读 records，断言也跟着读它 ——
+                // 在 PageData 上断言 $.data.length() 等于数字段数，恒真
+                .andExpect(jsonPath("$.data.records.length()")
+                        .value(org.hamcrest.Matchers.greaterThan(0)));
     }
 
     // ---------------------------------------------------------------- 入驻：R-3 的回归
