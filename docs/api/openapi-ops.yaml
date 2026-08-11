@@ -593,6 +593,11 @@ components:
         token: 
           type: "string"
           description: "访问令牌。STAFF 池，与 C 端、B 端账号不通用"
+        perms: 
+          type: "array"
+          items: 
+            type: "string"
+          description: "**后端下发的权限码**（`staff.perms`）。判权以它为准。\n\n`[\"*\"]` = 超管通配。前端的 UI 码要先经 `UI_PERM_MAP` 翻译成后端码 再来这里查 —— 两边的粒度不同（前端 45 个、后端 14 个）， 直接比会全判 false。"
         merchantNo: 
           type: "string"
           description: "商家运营（BD）等受限角色的数据域；平台全量角色为空"
@@ -603,6 +608,7 @@ components:
         - "username"
         - "role"
         - "token"
+        - "perms"
       additionalProperties: false
     Role: 
       type: "string"
@@ -1449,17 +1455,17 @@ components:
           type: "number"
           description: "使用门槛，0 表示无门槛"
         validFrom: 
-          type: "string"
-          description: "生效开始时间"
+          type: "number"
+          description: "生效开始时间（毫秒时间戳，后端全域口径）"
         validTo: 
-          type: "string"
-          description: "生效结束时间"
+          type: "number"
+          description: "生效结束时间（毫秒时间戳）"
         budget: 
           type: "number"
-          description: "预算（分）。**已发放金额不得超过它** —— 这是唯一挡住\"发着发着超支\"的地方， 且必须在服务端校验：客服也持有发券权限（矩阵 §2.3 补偿券）。"
+          description: "预算（分）。**已发放金额不得超过它** —— 这是唯一挡住\"发着发着超支\"的地方， 且必须在服务端校验：客服也持有发券权限（矩阵 §2.3 补偿券）。\n\n`0` = 不限。存量券全是这样：加预算列的迁移不改变已在跑的券的行为。\n\n服务端的校验在领券那条 UPDATE 里与张数一起判（原子）， 见 `CouponMappers.tryReceive`。⚠️ 折扣券挡不住 —— 它的实际支出 取决于用券那一单的金额，发放时算不出来。"
         issuedAmount: 
           type: "number"
-          description: "已发放金额（分）"
+          description: "已发放金额（分）= 已领张数 × 面额。折扣券算不出来，恒为 0"
         issued: 
           type: "number"
           description: "已发放张数"
@@ -1467,8 +1473,8 @@ components:
           type: "number"
           description: "已核销张数（P-7.1.4 效果）"
         createdAt: 
-          type: "string"
-          description: "创建时间"
+          type: "number"
+          description: "创建时间（毫秒时间戳）"
       required: 
         - "couponNo"
         - "name"
@@ -1549,7 +1555,7 @@ components:
         - "SCHEDULED"
         - "RUNNING"
         - "ENDED"
-    Campaign: 
+    PlatformSlot: 
       type: "object"
       properties: 
         archivedAt: 
@@ -1595,6 +1601,59 @@ components:
         - "skuCount"
         - "createdAt"
       additionalProperties: false
+      description: "平台投放的营销场次。\n\n⚠️ **后端还没有这个对象，当前没有任何页面在用它**。 它连同  {@link  PlatformSlotType }  /  {@link  PlatformSlotStatus }  一起留在这里， 是因为这块 UI 已经设计完了（位置、场次重叠校验），等产品决定要不要建后端对象。\n\n「营销活动 · 活动」那个 tab 现在渲染的是  {@link  MerchantCampaign }  —— 商家自建的店铺活动，那是 `/ops/campaigns` 真正返回的东西。 两者曾经共用这一个类型，表现是**类型列一半中文一半原始枚举码**： `FLASH` 恰好两套都有所以译得出来，`FULL_CUT`/`COUPON`/`BUY_GIFT` 译不出来。"
+    MerchantCampaign: 
+      type: "object"
+      properties: 
+        archivedAt: 
+          type: 
+            - "string"
+            - "null"
+          description: "归档时间。**软删除标记** —— 有值即视为已删除，列表默认不返回。 契约禁止 `delete*`，一律 `archive*` / `unarchive*`（工程约定 §10.6）。"
+        campaignNo: 
+          type: "string"
+        merchantNo: 
+          type: "string"
+          description: "所属商家（主体号）。平台视角要按它归堆"
+        name: 
+          type: "string"
+        type: 
+          "$ref": "#/definitions/MerchantCampaignType"
+          description: "COUPON / FULL_CUT / FLASH / BUY_GIFT —— 商家能建的四种"
+        status: 
+          type: "string"
+          description: "RUNNING / ENDED / PAUSED"
+        startAt: 
+          type: "number"
+          description: "开始时间（毫秒时间戳）"
+        endAt: 
+          type: "number"
+          description: "结束时间（毫秒时间戳）"
+        goodsNos: 
+          anyOf: 
+            - type: "array"
+              items: 
+                type: "string"
+            - type: "null"
+          description: "参与的商品号。**列表上只显示条数**，明细进详情看"
+      required: 
+        - "campaignNo"
+        - "merchantNo"
+        - "name"
+        - "type"
+        - "status"
+        - "startAt"
+        - "endAt"
+      additionalProperties: false
+      description: "**商家自建的店铺活动**（`GET /ops/campaigns` 真正返回的东西）。\n\n<p>平台对它只有治理权：看得见、能停、能归档，**不能建也不能改内容** —— 那是商家自己的经营决定（矩阵 §2.3「平台停券与停活动」）。\n\n<p>字段对齐后端 `CampaignVO`。与  {@link  PlatformSlot }  是两个领域对象， 曾经被一根 HTTP 路径连着，见 `docs/technical/运营端营销列表契约错配.md`。"
+    MerchantCampaignType: 
+      type: "string"
+      enum: 
+        - "COUPON"
+        - "FULL_CUT"
+        - "FLASH"
+        - "BUY_GIFT"
+      description: "商家能建的活动类型。与 shared 的 `CampaignType` 同源（b-app 建的就是它）"
     SlotKind: 
       type: "string"
       enum: 
@@ -2064,11 +2123,11 @@ components:
           "$ref": "#/definitions/GroupStatus"
           description: "团状态。允许的流转见 `GROUP_TRANSITIONS`"
         endAt: 
-          type: "string"
-          description: "成团截止时间"
+          type: "number"
+          description: "成团截止时间（毫秒时间戳）"
         createdAt: 
-          type: "string"
-          description: "开团时间"
+          type: "number"
+          description: "开团时间（毫秒时间戳）"
       required: 
         - "groupNo"
         - "merchantNo"
@@ -2157,8 +2216,8 @@ components:
           type: "number"
           description: "起订量"
         validTo: 
-          type: "string"
-          description: "报价有效期。过期不可被选定 —— 报价不能无限期挂着"
+          type: "number"
+          description: "报价有效期（毫秒时间戳）。过期不可被选定 —— 报价不能无限期挂着"
         priceChanges: 
           type: "number"
           description: "改价次数（P-8.2.4 改价留痕）。ADR-003：不禁止改价，但**每次都公示**， 超过阈值禁止再改 —— 频繁改价本身就是信号。"
@@ -2166,8 +2225,8 @@ components:
           type: "boolean"
           description: "是否毁约（P-8.2.5）。毁约累计影响商家信用档案（P-11.1.5）"
         createdAt: 
-          type: "string"
-          description: "报价时间"
+          type: "number"
+          description: "报价时间（毫秒时间戳）"
       required: 
         - "quoteNo"
         - "demandNo"
@@ -3675,6 +3734,55 @@ components:
         - "pointsForced"
       additionalProperties: false
       description: "行业主数据（后端 `sys_industry`）。**已接真后端。**\n\n<p>它不是一张普通的字典表：**行业决定商家能不能以小微主体进件** —— 微信的小微白名单按行业给，判错一次商家就是进件被拒，而那时他已经开完店、上完架。"
+    AuthCodeAdmin: 
+      type: "object"
+      properties: 
+        code: 
+          type: "string"
+          description: "授权码，如 `FRESH_VEG`。**建成之后不可改** —— 改它等于换一张证"
+        name: 
+          type: "string"
+          description: "展示名，运营给商家发证时看到的就是它"
+        requiredQualification: 
+          type: "string"
+          description: "需要的资质证件名。空 = 无证件要求（不是「漏填」）"
+        sort: 
+          type: "number"
+        enabled: 
+          type: "boolean"
+          description: "是否可发放。停用**不撤销**存量商家已持有的授权"
+        merchantCount: 
+          type: "number"
+          description: "持有该码的商家数 —— 停之前要知道影响面"
+        categoryCount: 
+          type: "number"
+          description: "引用该码的在用类目数。> 0 时停用会被拒（那些类目会变成永远拒绝所有人）"
+      required: 
+        - "code"
+        - "name"
+        - "sort"
+        - "enabled"
+        - "merchantCount"
+        - "categoryCount"
+      additionalProperties: false
+      description: "授权码字典（运营视图）。\n\n⚠️ 与 `AuthCode`（给商家发证时的可选项，见 types/merchant.ts）**是两个口径**： 那个只给启用的，这个含停用的并带影响面计数。合并的话，停用过的码就再也 恢复不了 —— 页面上根本看不见它。"
+    ServiceScopeConfig: 
+      type: "object"
+      properties: 
+        scope: 
+          type: "string"
+          description: "COMMUNITY / CITY / PLATFORM"
+        enabled: 
+          type: "boolean"
+        merchantCount: 
+          type: "number"
+          description: "当前在用的商家数。不带计数的开关是盲操作"
+      required: 
+        - "scope"
+        - "enabled"
+        - "merchantCount"
+      additionalProperties: false
+      description: "经营范围档位的启用状态（ADR-009 三档）。\n\n档位本身是枚举，永远是那三个；这里配的是**这一期开放哪几档**。 一期自营模式关掉了 PLATFORM —— 没有虚拟商品/卡券/自营快递品支撑它。"
 security: 
   - bearerAuth: []
 paths: 
@@ -3750,7 +3858,7 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -3788,7 +3896,7 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -3925,7 +4033,7 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -3963,7 +4071,7 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -4001,7 +4109,7 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -4039,7 +4147,7 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -4150,7 +4258,7 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -4188,7 +4296,7 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -4268,7 +4376,7 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -4306,7 +4414,7 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -4417,7 +4525,7 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -4497,7 +4605,7 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -4628,7 +4736,7 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -4708,7 +4816,7 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -4746,7 +4854,7 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -4786,6 +4894,32 @@ paths:
             schema: 
               type: "object"
         description: "请求体字段见对应契约方法的入参。"
+  "/ops/auth/me": 
+    get: 
+      operationId: "me"
+      summary: "拿当前登录人的最新身份（`GET /ops/auth/me`）"
+      tags: 
+        - "dashboard"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/LoginResp"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
   "/ops/dashboard/kpi": 
     get: 
       operationId: "getDashboardKpi"
@@ -4940,7 +5074,7 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -4978,7 +5112,7 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -5086,7 +5220,7 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -5223,7 +5357,7 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -5303,7 +5437,7 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -5341,7 +5475,7 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -5478,7 +5612,7 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -5671,7 +5805,7 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -5768,7 +5902,7 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -5806,7 +5940,7 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -5872,7 +6006,7 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -5910,7 +6044,7 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -5990,7 +6124,7 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -6028,7 +6162,7 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -6150,7 +6284,7 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -6188,7 +6322,7 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -6226,7 +6360,7 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -6436,7 +6570,7 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -6516,7 +6650,7 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -6554,7 +6688,7 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -6592,7 +6726,7 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -6658,7 +6792,7 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -6753,7 +6887,7 @@ paths:
   "/ops/coupons/{no}/status": 
     post: 
       operationId: "setCouponStatus"
-      summary: "状态推进（草稿→启用⇄暂停→结束），非法迁移抛错"
+      summary: "改券状态（暂停 / 恢复 / 结束）"
       tags: 
         - "marketing"
       responses: 
@@ -6780,7 +6914,7 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -6818,7 +6952,7 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -6829,7 +6963,7 @@ paths:
   "/ops/coupons/{couponNo}/issue": 
     post: 
       operationId: "issueCoupon"
-      summary: "发券（P-7.1.2）"
+      summary: "主动发券（P-7.1.2）"
       tags: 
         - "marketing"
       responses: 
@@ -6856,7 +6990,7 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -6936,7 +7070,7 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -6974,7 +7108,7 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -6985,7 +7119,7 @@ paths:
   "/ops/campaigns": 
     get: 
       operationId: "listCampaigns"
-      summary: "listCampaigns"
+      summary: "**商家自建的店铺活动**（平台治理视角）"
       tags: 
         - "marketing"
       responses: 
@@ -7007,7 +7141,7 @@ paths:
                       records: 
                         type: "array"
                         items: 
-                          "$ref": "#/components/schemas/Campaign"
+                          "$ref": "#/components/schemas/MerchantCampaign"
                       total: 
                         type: "integer"
                       page: 
@@ -7026,7 +7160,7 @@ paths:
       description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
     post: 
       operationId: "saveCampaign"
-      summary: "保存活动（P-7.2）"
+      summary: "保存平台投放场次（P-7.2）"
       tags: 
         - "marketing"
       responses: 
@@ -7043,11 +7177,49 @@ paths:
                   msg: 
                     type: "string"
                   data: 
-                    "$ref": "#/components/schemas/Campaign"
+                    "$ref": "#/components/schemas/PlatformSlot"
                 required: 
                   - "code"
                   - "msg"
                   - "data"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/campaigns/{no}/toggle": 
+    post: 
+      operationId: "toggleCampaign"
+      summary: "停用 / 启用商家活动（矩阵 §2.3）"
+      tags: 
+        - "marketing"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/MerchantCampaign"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters: 
+        - name: "no"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -7075,7 +7247,7 @@ paths:
                   msg: 
                     type: "string"
                   data: 
-                    "$ref": "#/components/schemas/Campaign"
+                    "$ref": "#/components/schemas/MerchantCampaign"
                 required: 
                   - "code"
                   - "msg"
@@ -7085,7 +7257,7 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -7113,7 +7285,7 @@ paths:
                   msg: 
                     type: "string"
                   data: 
-                    "$ref": "#/components/schemas/Campaign"
+                    "$ref": "#/components/schemas/MerchantCampaign"
                 required: 
                   - "code"
                   - "msg"
@@ -7123,7 +7295,7 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -7203,7 +7375,7 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -7241,7 +7413,7 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -7279,7 +7451,7 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -7317,7 +7489,7 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -7428,7 +7600,7 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -7466,7 +7638,7 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -7504,7 +7676,7 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -7585,7 +7757,7 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -7624,7 +7796,7 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -7704,7 +7876,7 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
       description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
   "/ops/merchants/{merchantNo}/status": 
     post: 
@@ -7736,7 +7908,7 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -7774,7 +7946,7 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -7812,7 +7984,7 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -7850,7 +8022,7 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -7916,7 +8088,7 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -7982,7 +8154,7 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -8062,7 +8234,7 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -8142,7 +8314,7 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -8180,7 +8352,7 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -8317,7 +8489,7 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -8355,7 +8527,7 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -8393,7 +8565,7 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -8431,7 +8603,7 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -8542,7 +8714,7 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -8622,7 +8794,7 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
       description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
   "/ops/orders/parent/{parentNo}": 
     get: 
@@ -8656,7 +8828,7 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
       description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
   "/ops/orders/exceptions": 
     get: 
@@ -8730,7 +8902,7 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -8770,7 +8942,7 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
       description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
   "/ops/orders/{orderNo}/proxy-cancel": 
     post: 
@@ -8802,7 +8974,7 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -8914,7 +9086,7 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -8952,7 +9124,7 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -9089,7 +9261,7 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -9186,7 +9358,7 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -9224,7 +9396,7 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -9304,7 +9476,7 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -9342,7 +9514,7 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -9380,7 +9552,7 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -9488,7 +9660,7 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -9568,7 +9740,7 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -9705,7 +9877,7 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -9816,7 +9988,7 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -9882,7 +10054,7 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -9962,7 +10134,7 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -10143,7 +10315,7 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -10209,7 +10381,7 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -10247,7 +10419,7 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -10285,7 +10457,172 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/auth-codes": 
+    get: 
+      operationId: "listAuthCodeDict"
+      summary: "<b>全量，含停用</b>，带商家数与类目引用数"
+      tags: 
+        - "system"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "array"
+                    items: 
+                      "$ref": "#/components/schemas/AuthCodeAdmin"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+    post: 
+      operationId: "saveAuthCodeDict"
+      summary: "新建或更新"
+      tags: 
+        - "system"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/AuthCodeAdmin"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/auth-codes/{code}/enabled": 
+    post: 
+      operationId: "setAuthCodeDictEnabled"
+      summary: "启停"
+      tags: 
+        - "system"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/AuthCodeAdmin"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters: 
+        - name: "code"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/service-scopes": 
+    get: 
+      operationId: "listServiceScopes"
+      summary: "listServiceScopes"
+      tags: 
+        - "system"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "array"
+                    items: 
+                      "$ref": "#/components/schemas/ServiceScopeConfig"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/service-scopes/{scope}/enabled": 
+    post: 
+      operationId: "setServiceScopeEnabled"
+      summary: "开关某一档，返回最新的三档全量"
+      tags: 
+        - "system"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "array"
+                    items: 
+                      "$ref": "#/components/schemas/ServiceScopeConfig"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters: 
+        - name: "scope"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -10408,7 +10745,7 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -10531,7 +10868,7 @@ paths:
           in: "path"
           required: true
           schema: 
-          type: "string"
+            type: "string"
       requestBody: 
         required: true
         content: 

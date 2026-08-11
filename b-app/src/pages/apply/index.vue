@@ -71,6 +71,14 @@ const form = ref({
 });
 const submitting = ref(false);
 const communities = ref<Community[]>([]);
+/**
+ * 小区列表**没加载出来**（区别于「加载成功但一个都没有」）。
+ *
+ * 两者在界面上都是一片空白，后果却相反：前者刷新可能就好，后者等也没用。
+ * 不分开的话，申请人对着空白只会反复点提交 —— 而「仅本社区」必须选一个小区，
+ * 提交永远过不去，他也永远不知道为什么。
+ */
+const communitiesFailed = ref(false);
 
 function pickScope(v: ServiceScope) {
   form.value.serviceScope = v;
@@ -113,7 +121,10 @@ onShow(async () => {
   // 驳回后回填上次填过的内容 —— 驳回往往只是缺一张执照，
   // 让人从头重填一遍是把「补交」变成「重来」
   // 可选小区与主数据先取：驳回回填时要按它们显示已选中的项与可选主体
-  communities.value = await api.mCommunities().catch(() => []);
+  communities.value = await api.mCommunities().catch(() => {
+    communitiesFailed.value = true;
+    return [];
+  });
   master.value = await api.mMasterData().catch(() => null);
 
   const draft = await api.mApplyDraft().catch(() => null);
@@ -336,7 +347,14 @@ async function submit() {
             {{ c.name }}
           </text>
         </view>
-        <text v-if="!form.communityNos.length" class="warn">
+        <!-- 加载失败与「真的一个小区都没有」要分开说 -->
+        <text v-if="communitiesFailed" class="warn">
+          {{ $t("store.communitiesFailed") }}
+        </text>
+        <text v-else-if="!communities.length" class="warn">
+          {{ $t("store.communitiesEmpty") }}
+        </text>
+        <text v-else-if="!form.communityNos.length" class="warn">
           {{ $t("store.scopeNeedCommunity") }}
         </text>
       </view>

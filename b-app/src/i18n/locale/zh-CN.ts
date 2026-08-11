@@ -408,6 +408,9 @@ export default {
     scopeHint: "决定你的商品在买家端能被谁看到 —— 选错直接影响有没有生意",
     scopeCommunities: "覆盖哪些小区",
     scopeNeedCommunity: "至少选一个小区，否则买家一个也看不到你",
+    communitiesFailed: "小区列表没加载出来，下拉刷新重试 —— 不是平台没有小区",
+    communitiesEmpty: "平台还没在你这边开小区，联系运营开通后再来设",
+    loadFailed: "店铺信息没加载出来，别在这个页面上保存，先刷新",
     scopeDesc: {
       COMMUNITY: "靠自提点送货，只做谈下来的小区。楼下的菜摊、理发店选这个",
       CITY: "上门服务或有同城配送能力。进不了自提点，只能上门或配送",

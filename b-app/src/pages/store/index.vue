@@ -28,6 +28,15 @@ const form = ref<StoreProfile>({
 });
 /** 可选社区。真实环境按商家已签约的自提点给，一期先给全量 */
 const communities = ref<Community[]>([]);
+/**
+ * 小区列表**没加载出来**（区别于「加载成功但一个都没有」）。
+ *
+ * 这两件事在界面上长得一模一样 —— 都是一片空白 —— 而后果完全不同：
+ * 前者是页面坏了、刷新可能就好；后者是平台还没开小区，等也没用。
+ * 不分开的话，店主对着空白只会一直点「保存」，而保存永远过不去
+ * （选了「仅本社区」却一个小区都没勾）。
+ */
+const communitiesFailed = ref(false);
 
 const scopes = [SERVICE_SCOPE.COMMUNITY, SERVICE_SCOPE.CITY, SERVICE_SCOPE.PLATFORM] as const;
 
@@ -45,16 +54,35 @@ const qrcode = ref<StoreQrcode | null>(null);
 const kit = ref<ShareKit | null>(null);
 
 async function load() {
-  const [s, q, k, cs] = await Promise.all([
+  /*
+   * **allSettled 而不是 all。**
+   *
+   * http-client 在 `code !== 0` 时 reject，而 Promise.all 是全有全无：
+   * 四个请求里任何一个失败（店铺码还没生成、分享素材接口抖一下），
+   * 后面四个赋值一个都不会执行 —— 页面于是静默退回 form 的初始值：
+   * 经营范围显示「仅本社区」、覆盖小区空、公告空。
+   *
+   * 店主看到的是一个**看起来正常、其实什么都没加载**的页面，
+   * 而他照着上面的内容点保存，就把默认值覆盖到真实数据上去了。
+   * 一个请求失败不该有这种后果。
+   */
+  const [s, q, k, cs] = await Promise.allSettled([
     api.mStore(),
     api.mStoreQrcode(),
     api.mShareKit(),
-    api.mCommunities().catch(() => []),
+    api.mCommunities(),
   ]);
-  form.value = s;
-  communities.value = cs;
-  qrcode.value = q;
-  kit.value = k;
+  if (s.status === "fulfilled") {
+    form.value = s.value;
+  } else {
+    // 这一项失败 = 整页没有真实数据可编辑，必须说出来，不能让人在默认值上编辑
+    uni.showToast({ title: t("store.loadFailed"), icon: "none" });
+  }
+  communitiesFailed.value = cs.status === "rejected";
+  communities.value = cs.status === "fulfilled" ? cs.value : [];
+  // 店铺码与分享素材缺了只是少两块展示，不影响编辑，静默降级即可
+  qrcode.value = q.status === "fulfilled" ? q.value : null;
+  kit.value = k.status === "fulfilled" ? k.value : null;
 }
 
 async function save() {
@@ -131,7 +159,14 @@ onShow(load);
             {{ c.name }}
           </text>
         </view>
-        <text v-if="!form.serviceCommunityNos.length" class="warn">
+        <!-- 加载失败与「真的一个小区都没有」要分开说：前者刷新可能就好，后者等也没用 -->
+        <text v-if="communitiesFailed" class="warn">
+          {{ $t("store.communitiesFailed") }}
+        </text>
+        <text v-else-if="!communities.length" class="warn">
+          {{ $t("store.communitiesEmpty") }}
+        </text>
+        <text v-else-if="!form.serviceCommunityNos.length" class="warn">
           {{ $t("store.scopeNeedCommunity") }}
         </text>
       </view>

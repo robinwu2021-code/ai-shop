@@ -44,7 +44,7 @@ for (const file of fs.readdirSync(httpsDir).filter((f) => f.endsWith(".ts"))) {
   //        login: async (u, p) => {\n  const raw = await client.post("/ops/auth/login", …)
   // 只认单表达式箭头函数的话，需要在 http 层做响应映射的端点会**整条从契约里消失** ——
   // 而那正是最需要被记进契约的一类（形状两端不同才要映射）。login 就这么漏过一次。
-  const re = /(\w+):\s*(?:async\s*)?\([^)]*\)\s*=>\s*(?:\{[\s\S]{0,400}?)?(?:await\s+)?client\.(get|post|put)(?:<[^>]*>)?\(\s*([`"])([^`"]+)\3/g;
+  const re = /(\w+):\s*(?:async\s*)?\([^)]*\)\s*=>\s*(?:\{[\s\S]{0,400}?)?(?:await\s+)?client\.(get|post|put)(?:<[^;(\n]*>)?\(\s*([`"])([^`"]+)\3/g;
   let m;
   while ((m = re.exec(src))) {
     const [, name, httpMethod, , rawPath] = m;
@@ -291,7 +291,24 @@ function toYaml(v, indent = 0) {
         const keys = Object.keys(x);
         if (!keys.length) return `${pad}- {}`;
         const lines = keys.map((k, i) => {
-          const body = toYaml(x[k], indent + 1);
+          /*
+           * **indent + 2，不是 +1。**
+           *
+           * 数组项的键因为 `- ` 前缀已经比 pad 多缩进了一级，所以它的子值要再深一级
+           * 才算挂在它下面。写 +1 的话子值与键本身同列 —— 于是
+           *
+           *     - type: "array"
+           *       items:
+           *       type: "string"     ← 本该在 items 下，实际成了 items 的兄弟
+           *
+           * 产出的是**非法 YAML**（`type` 在同一层出现两次）。
+           * 而后果不是「文件难看」：`spec-completeness.test.ts` 要 parse 这三份 spec，
+           * 撞上重复键时 yaml 不是快速失败而是卡死 —— 症状是「shared 测试跑不完」，
+           * 跟契约生成看不出任何关系。2026-08-11 为此排查了很久。
+           *
+           * 只有嵌套数组（`string[] | null` 这种 anyOf）会触发，所以它藏了很久。
+           */
+          const body = toYaml(x[k], indent + 2);
           const prefix = i === 0 ? `${pad}- ` : `${pad}  `;
           return `${prefix}${yamlKey(k)}: ${body}`;
         });

@@ -270,6 +270,9 @@ export default {
     scopeHint: "Decides who can see your goods — get it wrong and you get no orders",
     scopeCommunities: "Which communities",
     scopeNeedCommunity: "Pick at least one, or no buyer can see you",
+    communitiesFailed: "The community list failed to load — pull to refresh. This is not the same as there being none",
+    communitiesEmpty: "No community is open to you yet; ask ops to open one first",
+    loadFailed: "Your shop details did not load — refresh before saving anything here",
     scopeDesc: {
       COMMUNITY: "Fulfilled via pickup points in the communities you signed up. For the greengrocer or barber downstairs",
       CITY: "On-site service or same-city delivery. Cannot use pickup points",
