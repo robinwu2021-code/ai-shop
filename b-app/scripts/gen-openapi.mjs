@@ -127,6 +127,9 @@ if (Object.keys(renamed).length) {
 
 /** 契约方法 → 响应类型名 */
 const RESPONSE_TYPES = {
+  // 漏配一条就整份 spec 不生成（守卫是对的）：/biz/goods/{no}/store-stock 因此
+  // 长期不在契约里，而后端实现了 —— 按契约算的覆盖率会凭空少一条。
+  mSaveStoreStock: "Goods",
   mSendOtp: "void",
   mLogin: "MerchantLoginResp",
   mStaffLogin: "MerchantLoginResp",

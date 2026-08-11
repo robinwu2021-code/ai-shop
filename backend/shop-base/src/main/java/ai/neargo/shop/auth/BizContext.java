@@ -32,21 +32,61 @@ import java.util.Set;
  *                       没有它的话，能建三家店但所有页面仍按主体取数，订单混在一起。
  */
 public record BizContext(String merchantNo, Set<String> pickupNos, Set<String> groupNos,
-                         Set<String> storeNos, String currentStoreNo, boolean owner) {
+                         Set<String> storeNos, String currentStoreNo, boolean owner,
+                         java.util.Map<String, Set<String>> rolesByStore) {
 
     private static final ThreadLocal<BizContext> HOLDER = new ThreadLocal<>();
 
     public static final BizContext NONE =
-            new BizContext(null, Set.of(), Set.of(), Set.of(), null, false);
+            new BizContext(null, Set.of(), Set.of(), Set.of(), null, false, java.util.Map.of());
 
     /** 兼容三段式构造：门店维度未接入的调用点照旧可用。 */
     public BizContext(String merchantNo, Set<String> pickupNos, Set<String> groupNos) {
-        this(merchantNo, pickupNos, groupNos, Set.of(), null, false);
+        this(merchantNo, pickupNos, groupNos, Set.of(), null, false, java.util.Map.of());
+    }
+
+    /** 兼容六段式构造：多角色接入前的调用点照旧可用。 */
+    public BizContext(String merchantNo, Set<String> pickupNos, Set<String> groupNos,
+                      Set<String> storeNos, String currentStoreNo, boolean owner) {
+        this(merchantNo, pickupNos, groupNos, storeNos, currentStoreNo, owner, java.util.Map.of());
     }
 
     /** 换一家当前门店（Filter 解析 X-Store-No 之后调）。 */
     public BizContext withStore(String storeNo) {
-        return new BizContext(merchantNo, pickupNos, groupNos, storeNos, storeNo, owner);
+        return new BizContext(merchantNo, pickupNos, groupNos, storeNos, storeNo, owner,
+                rolesByStore);
+    }
+
+    /**
+     * 我在<b>当前门店</b>持有的角色。
+     *
+     * <p>角色跟着门店走，不跟着人走 —— {@code mch_store_role} 是
+     * {@code (账号, 门店, 角色)} 三元组，同一个人可能在文三路店是店长、
+     * 古墩路店是店员。所以这里按 {@link #currentStoreNo()} 查，
+     * 而 {@code rolesByStore} 在登录时一次解析好，切店不用重查库。
+     *
+     * <p><b>老板恒为 OWNER</b>，他不在 {@code mch_store_role} 里。
+     *
+     * @return 空集合表示在这家店没有任何授权 —— <b>零权限，不是默认店员</b>
+     */
+    public Set<String> staffRoles() {
+        if (owner) {
+            return Set.of(BizPerms.OWNER);
+        }
+        if (currentStoreNo == null || currentStoreNo.isBlank()) {
+            return Set.of();
+        }
+        return rolesByStore.getOrDefault(currentStoreNo, Set.of());
+    }
+
+    /**
+     * 当前门店的角色合起来有没有这个权限（取并集）。
+     *
+     * <p><b>授权只在 Controller 层判</b>，与运营端同一条原则 ——
+     * 散进 Service 的话，同一个业务方法被两个入口调用时就会漏掉一处。
+     */
+    public boolean can(String code) {
+        return BizPerms.can(staffRoles(), code);
     }
 
     /**

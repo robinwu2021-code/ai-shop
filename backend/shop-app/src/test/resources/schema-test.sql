@@ -1393,7 +1393,7 @@ CREATE TABLE IF NOT EXISTS mch_store_role
     version BIGINT(20) NOT NULL DEFAULT 0,
     deleted TINYINT(4) NOT NULL DEFAULT 0,
     PRIMARY KEY (id),
-    CONSTRAINT uk_store_role UNIQUE (mch_account_no,store_no)
+    CONSTRAINT uk_store_role UNIQUE (mch_account_no,store_no,role)
 );
 
 CREATE TABLE IF NOT EXISTS mch_store

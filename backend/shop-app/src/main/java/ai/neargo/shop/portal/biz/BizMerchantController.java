@@ -323,21 +323,25 @@ public class BizMerchantController {
     }
 
     /**
-     * 授权到店：给这个员工在某家门店一个角色（MANAGER / CLERK）。
+     * 授予或撤销这个员工在某家门店的**一个**角色。
      *
      * <p><b>逐店授权</b> —— A 店店长可以同时是 B 店店员，这是小连锁的常态。
-     * {@code role} 传空表示收回这家店的授权。
+     * <b>一人一店还可以有多个角色</b>（V18）：站收银台的顺手把货送了，
+     * 就是「店员 + 配送员」。
+     *
+     * <p>{@code granted=false} 撤销这一个角色；撤到一个不剩 = 从这家店移除他。
+     * 不传 granted 视为授予 —— 老接口只有「给」这一个语义，保持兼容。
      */
     @PostMapping("/biz/staff/{mchAccountNo}/store")
     public StaffVO grantStore(@PathVariable String mchAccountNo, @RequestBody GrantReq req) {
         return staffService.grantStore(BizContext.requireMerchantNo(), mchAccountNo,
-                req.storeNo(), req.role());
+                req.storeNo(), req.role(), req.granted() == null || req.granted());
     }
 
     public record StaffReq(String loginPhone) {
     }
 
-    public record GrantReq(String storeNo, String role) {
+    public record GrantReq(String storeNo, String role, Boolean granted) {
     }
 
     /** 对齐 shared {@code StoreProfile}。 */

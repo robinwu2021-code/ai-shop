@@ -8,20 +8,22 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 318 个接口**：后端已实现 169（53%）· 前端在调 317
+**合计 322 个接口**：后端已实现 173（54%）· 前端在调 321
 
 ---
 
 ## C 端 `/mp/**` · c-app（消费者）
 
-共 **61** 个接口 ｜ 后端已实现 **60**（98%）｜ 前端在调 **61**
+共 **64** 个接口 ｜ 后端已实现 **63**（98%）｜ 前端在调 **64**
 
-### after-sale（2）
+### after-sale（4）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
+| GET | `/mp/after-sale` | 我的售后单 | — | `数组` | 🔒 | ✅ | ✅ |
 | POST | `/mp/after-sale/{afterSaleNo}/escalate` | 上升平台裁决 | — | `Order` | 🔒 | ✅ | ✅ |
 | POST | `/mp/after-sale/{afterSaleNo}/ship` | 填退货运单号 | — | `Order` | 🔒 | ✅ | ✅ |
+| GET | `/mp/after-sale/reasons` | 售后原因清单 | — | `数组` | 🔒 | ✅ | ✅ |
 
 ### card（1）
 
@@ -102,7 +104,7 @@
 | POST | `/mp/message/{messageNo}/read` | 标记已读 | — | `数组` | 🔒 | ✅ | ✅ |
 | POST | `/mp/message/read-all` | 全部已读 | — | `数组` | 🔒 | ✅ | ✅ |
 
-### order（7）
+### order（8）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -113,6 +115,7 @@
 | POST | `/mp/order/{orderNo}/cancel` | 取消订单 | — | `Order` | 🔒 | ✅ | ✅ |
 | POST | `/mp/order/{orderNo}/pay` | 支付 | — | `Order` | 🔒 | ✅ | ✅ |
 | POST | `/mp/order/{orderNo}/reorder` | 一键再来一单 | — | `ReorderResult` | 🔒 | ✅ | ✅ |
+| POST | `/mp/order/preview` | 订单预览（金额以后端为准） | — | `OrderPreview` | 🔒 | ✅ | ✅ |
 
 ### points（3）
 
@@ -154,7 +157,7 @@
 
 ## B 端 `/biz/**` · b-app（商家）
 
-共 **69** 个接口 ｜ 后端已实现 **66**（96%）｜ 前端在调 **69**
+共 **70** 个接口 ｜ 后端已实现 **67**（96%）｜ 前端在调 **70**
 
 ### after-sale（4）
 
@@ -213,13 +216,14 @@
 | GET | `/biz/delivery/rule` | 自送规则 | — | `DeliveryRule` | 🔒 | ✅ | ✅ |
 | POST | `/biz/delivery/rule` | 保存自送规则 | `SaveDeliveryRuleReqBody` | `DeliveryRule` | 🔒 | ✅ | ✅ |
 
-### goods（6）
+### goods（7）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
 | GET | `/biz/goods` | 商品列表 | — | `object` | 🔒 | ✅ | ✅ |
 | GET | `/biz/goods/{goodsNo}` | 商品详情 | — | `Goods` | 🔒 | ✅ | ✅ |
 | POST | `/biz/goods/{goodsNo}/stock` | 改库存 | `SaveStockReq` | `Goods` | 🔒 | ✅ | ✅ |
+| POST | `/biz/goods/{goodsNo}/store-stock` | 改当前门店库存 | — | `Goods` | 🔒 | ✅ | ✅ |
 | POST | `/biz/goods/{goodsNo}/toggle` | 上下架 | `ToggleGoodsReq` | `Goods` | 🔒 | ✅ | ✅ |
 | POST | `/biz/goods/recognize` | 拍照识别商品 | `RecognizeGoodsReq` | `GoodsGuess` | 🔒 | ✅ | ✅ |
 | POST | `/biz/goods/save` | 新建/编辑商品 | `SaveGoodsReqBody` | `Goods` | 🔒 | ✅ | ✅ |

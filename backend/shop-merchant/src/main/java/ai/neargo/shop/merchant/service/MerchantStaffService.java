@@ -59,5 +59,14 @@ public interface MerchantStaffService {
      *
      * <p>{@code role} 传空表示<b>收回这家店的授权</b>。
      */
-    StaffVO grantStore(String merchantNo, String mchAccountNo, String storeNo, String role);
+    /**
+     * 授予或撤销**一个**门店角色（V18 起一人一店可多角色）。
+     *
+     * <p><b>增量式，不是覆盖式</b>：这一次只动 {@code role} 这一个角色，不碰别的。
+     * 覆盖式在多角色下是错的 —— 老板想「再加一个配送员」，结果把「店员」冲掉了。
+     *
+     * @param granted true 授予、false 撤销。撤到一个不剩 = 从这家店移除他
+     */
+    StaffVO grantStore(String merchantNo, String mchAccountNo, String storeNo,
+                       String role, boolean granted);
 }

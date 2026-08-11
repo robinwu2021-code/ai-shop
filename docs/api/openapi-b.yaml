@@ -18,7 +18,7 @@ components:
     CategoryType: 
       type: "string"
       enum: 
-        - "GOODS"
+        - "NORMAL"
         - "FRESH"
         - "SERVICE"
         - "VIRTUAL"
@@ -26,9 +26,9 @@ components:
     FulfillmentType: 
       type: "string"
       enum: 
-        - "PICKUP"
+        - "STORE_PICKUP"
         - "NEIGHBOR_PICKUP"
-        - "DELIVERY"
+        - "MERCHANT_DELIVERY"
         - "EXPRESS"
         - "STORE_VERIFY"
         - "APPOINTMENT"
@@ -395,12 +395,14 @@ components:
     AfterSaleReason: 
       type: "string"
       enum: 
-        - "MISSING"
+        - "NOT_WANTED"
         - "DAMAGED"
-        - "QUALITY"
+        - "MISSING"
         - "WRONG_ITEM"
-        - "NOT_ARRIVED"
+        - "QUALITY"
+        - "EXPIRED"
         - "OTHER"
+      description: "售后原因。**取值与后端 `/mp/after-sale/reasons` 下发的一致** —— 端上不再自己硬编码一份清单（此前那份少两个、多一个，两边各自漂移， 运营改后端那份端上纹丝不动）。\n\n后端下发的是**码**不是文案：这是三语 App，翻译得留在端上。"
     MerchantSubject: 
       type: "string"
       enum: 
@@ -1184,18 +1186,164 @@ components:
         - "type"
         - "fulfillment"
       additionalProperties: false
+    SettleAccountType: 
+      type: "string"
+      enum: 
+        - "PERSONAL_OPENID"
+        - "MERCHANT_ID"
+      description: "结算账户形态。个人 openid 收款 / 对公商户号收款（ADR-002 §5）"
+    PaymentApplyStatus: 
+      type: "string"
+      enum: 
+        - "NONE"
+        - "APPLYING"
+        - "ACTIVE"
+        - "REJECTED"
+        - "FROZEN"
+      description: "支付**进件**状态（`MerchantPayment.applyStatus`）。\n\n⚠️ 此前叫 `ApplyStatus`，与入驻审核的 `ApplyStatus` 同名不同义 —— `ACTIVE`/`FROZEN` 两个值就是证据：审核不会有这两个态。"
+    StoreStatus: 
+      type: "string"
+      enum: 
+        - "ACTIVE"
+        - "READONLY"
+      description: "门店状态。READONLY = 已停用（不再接新单，已有单照常履约）"
+    StaffStatus: 
+      type: "string"
+      enum: 
+        - "ACTIVE"
+        - "DISABLED"
+      description: "员工账号状态"
+    StaffRole: 
+      type: "string"
+      enum: 
+        - "MANAGER"
+        - "CLERK"
+      description: "员工角色。店长不受门店授权限制"
+    SettleBillStatus: 
+      type: "string"
+      enum: 
+        - "PENDING"
+        - "SPLITTING"
+        - "SPLIT"
+        - "RETRYING"
+        - "MANUAL"
+        - "REVERSED"
+      description: "结算流水状态。**与后端 `StlBill` 逐字一致**。\n\n> 2026-08-11 收敛：这里此前是 `PENDING/PARTIAL/DONE/EXPIRED` —— 一套后端从来没有过的词， > 描述的是「周期账单」而不是「按子单的分账流水」。内联时对所有工具不可见， > 具名化之后才暴露出来（见 enum-registry 里这条的 note）。\n\n- `PENDING` 待分账 · `SPLITTING` 分账中 · `SPLIT` 已分账\n- `RETRYING` 失败重试中 · `MANUAL` 转人工（重试用尽，**不会自动再动钱**）\n- `REVERSED` 已回退（退款前必须先回退分账）"
+    MerchantApplyReviewStatus: 
+      type: "string"
+      enum: 
+        - "PENDING"
+        - "REVIEWING"
+        - "APPROVED"
+        - "REJECTED"
+      description: "入驻申请的审核状态。与库 `mch_entity_apply.status` 逐字一致。 ⚠️ 与  {@link  MerchantStatus } （B 端「我能不能干活」的合并视图）不是一回事。"
+    PickupOwnerType: 
+      type: "string"
+      enum: 
+        - "MERCHANT"
+        - "USER"
+        - "PLATFORM"
+      description: "自提点承接方类型。与  {@link  PickupPointType }  不同：那个说「是什么点」，这个说「谁在承接」"
+    PickupScope: 
+      type: "string"
+      enum: 
+        - "PERMANENT"
+        - "GROUP_INSTANCE"
+      description: "自提点作用域：常驻 / 团粒度（一团一销）"
+    PickupFeeMode: 
+      type: "string"
+      enum: 
+        - "NONE"
+        - "PER_ITEM"
+        - "RATE"
+      description: "自提点计费方式。**与 ops-web 的 `PickupFeeMode` 同值** —— 费率线下逐点协商，故两种都留"
+    ArrivalIssueKind: 
+      type: "string"
+      enum: 
+        - "SHORTAGE"
+        - "DAMAGE"
+      description: "到货异常类型：缺件 / 破损。B 端到货登记时上报（ADR-005 履约链路）"
+    SpecTemplateScope: 
+      type: "string"
+      enum: 
+        - "PLATFORM"
+        - "MERCHANT"
+      description: "规格模板归属：平台统一维护 / 商家自存"
+    TrafficSource: 
+      type: "string"
+      enum: 
+        - "MERCHANT_OWNED"
+        - "PLATFORM"
+      description: "流量来源。**与 ops-web 的 `TrafficSource` 同名** —— 那边多 INVITE/CHANNEL 两个值（已标 MERGE）"
     OrderStatus: 
       type: "string"
       enum: 
         - "WAIT_PAY"
         - "PAID"
-        - "PREPARING"
         - "ARRIVED"
         - "SHIPPED"
         - "COMPLETED"
         - "CANCELLED"
-        - "REFUNDING"
         - "REFUNDED"
+      description: "订单状态。**这是后端真实下发的取值**，不是端上想象的流程。\n\n⚠️ 曾经这里还有一个 `PREPARING`（备货中）—— 那是 mock 里多出来的一步， 后端从付款直接到 `PAID`（待发货），没有独立的备货态。 端上按一个后端永远不会给的值去筛，筛出来的就是空列表，而且不报错。\n\n⚠️ 也曾有一个 `REFUNDING` —— 那是**售后单**的状态（ {@link  AfterSaleStatus } ）， 不是订单的。订单只会到 `REFUNDED`。这个混淆的代价是两端的「售后」页签： 它们按 `order.status === \"REFUNDING\"` 筛，而后端从不下发，\n**b 端「售后中」页签与工作台售后待办数因此恒为空 / 恒为 0**。\n\n一个订单可以「已完成」的同时挂着一张处理中的售后单 —— 两者并存， 做成互斥的状态就必须二选一，而那是表达不了的。售后要从 `/mp/after-sale` 与 `/biz/after-sale` 单独查。"
+    OrderPreview: 
+      type: "object"
+      properties: 
+        amount: 
+          "$ref": "#/components/schemas/OrderAmount"
+        items: 
+          type: "array"
+          items: 
+            "$ref": "#/components/schemas/OrderItem"
+      required: 
+        - "amount"
+        - "items"
+      additionalProperties: false
+      description: "订单预览的返回。**后端返的是完整 OrderVO，这里只声明端上要用的那部分** —— 预览页只关心金额与行，声明全套会让每次后端加字段都得改端上类型。"
+    OrderAmount: 
+      type: "object"
+      properties: 
+        goodsMinor: 
+          type: "number"
+          description: "商品小计（最小货币单位），不含运费与优惠"
+        freightMinor: 
+          type: "number"
+          description: "运费"
+        discountMinor: 
+          type: "number"
+          description: "优惠合计（券 + 活动），正数表示减掉多少"
+        payableMinor: 
+          type: "number"
+          description: "应付：`goodsMinor + freightMinor - discountMinor - pointsDeductMinor`"
+        paidMinor: 
+          type: "number"
+          description: "实付。未支付时为 0；称重差价补退后与 payableMinor 可能不等"
+        weighAdjustMinor: 
+          type: "number"
+          description: "称重差价（正=补款 负=退款），仅 FRESH"
+        pointsDeductMinor: 
+          type: "number"
+          description: "积分抵扣的金额"
+        pointsUsed: 
+          type: "number"
+          description: "本单使用的积分数"
+        pointsEarn: 
+          type: "number"
+          description: "本单可获得的积分（订单完成时才真正入账）"
+        currency: 
+          "$ref": "#/components/schemas/CurrencyCode"
+          description: "下单时的货币，订单一经创建即锁定，不随用户切市场变化"
+      required: 
+        - "goodsMinor"
+        - "freightMinor"
+        - "discountMinor"
+        - "payableMinor"
+        - "paidMinor"
+        - "pointsDeductMinor"
+        - "pointsUsed"
+        - "pointsEarn"
+        - "currency"
+      additionalProperties: false
     OrderItem: 
       type: "object"
       properties: 
@@ -1248,50 +1396,6 @@ components:
         - "price"
         - "qty"
         - "type"
-      additionalProperties: false
-    OrderAmount: 
-      type: "object"
-      properties: 
-        goodsMinor: 
-          type: "number"
-          description: "商品小计（最小货币单位），不含运费与优惠"
-        freightMinor: 
-          type: "number"
-          description: "运费"
-        discountMinor: 
-          type: "number"
-          description: "优惠合计（券 + 活动），正数表示减掉多少"
-        payableMinor: 
-          type: "number"
-          description: "应付：`goodsMinor + freightMinor - discountMinor - pointsDeductMinor`"
-        paidMinor: 
-          type: "number"
-          description: "实付。未支付时为 0；称重差价补退后与 payableMinor 可能不等"
-        weighAdjustMinor: 
-          type: "number"
-          description: "称重差价（正=补款 负=退款），仅 FRESH"
-        pointsDeductMinor: 
-          type: "number"
-          description: "积分抵扣的金额"
-        pointsUsed: 
-          type: "number"
-          description: "本单使用的积分数"
-        pointsEarn: 
-          type: "number"
-          description: "本单可获得的积分（订单完成时才真正入账）"
-        currency: 
-          "$ref": "#/components/schemas/CurrencyCode"
-          description: "下单时的货币，订单一经创建即锁定，不随用户切市场变化"
-      required: 
-        - "goodsMinor"
-        - "freightMinor"
-        - "discountMinor"
-        - "payableMinor"
-        - "paidMinor"
-        - "pointsDeductMinor"
-        - "pointsUsed"
-        - "pointsEarn"
-        - "currency"
       additionalProperties: false
     Order: 
       type: "object"
@@ -1355,10 +1459,7 @@ components:
           type: "boolean"
           description: "积分是否已发放（幂等标记，防止重复核销重复发分）"
         trafficSource: 
-          type: "string"
-          enum: 
-            - "MERCHANT_OWNED"
-            - "PLATFORM"
+          "$ref": "#/components/schemas/TrafficSource"
           description: "客流来源。**决定平台费率档**：商家自带客流建议零佣金 —— 他带来的客户 在别家的消费才是平台的收益（ADR-004 §6）。从店铺码/店铺分享进入即为 MERCHANT_OWNED。"
         groupNo: 
           type: "string"
@@ -1407,6 +1508,12 @@ components:
         afterSaleNo: 
           type: "string"
           description: "售后单号。**售后是独立资源，不是订单上的一个字段** —— 它有自己的生命周期（申请→同意/驳回→寄回→收货→退款），能被取消、能上升平台， 一个订单还可能先后发起多次。挂在订单下用 orderNo 寻址，第二次申请就没法表达了。 后端一开始就是这么建的（/mp/after-sale/{afterSaleNo}/**），这里向它对齐。"
+        subOrderNo: 
+          type: "string"
+          description: "所属**子订单**号（`SUB…`）。\n\n⚠️ **要关联回订单卡片用的是这个，不是下面的 `orderNo`。** C/B 两端列表里的一行是一张子订单，而 `Order.orderNo` 字段里装的就是子订单号 （后端 `OrderVO.orderNo` = `SUB…`）；售后单上的 `orderNo` 却是**主单号**（`SO…`）。 两个字段同名不同物 —— 按 `orderNo` 去 join 一条也匹配不上， 而症状是「售后页签空着」，与它本来要修的 bug 一模一样。"
+        orderNo: 
+          type: "string"
+          description: "所属**主订单**号（`SO…`）。跨商家下单会拆成多笔子订单，它们共用这一个主单号。 展示「同一次下单」时用它，关联单张订单卡片请用  {@link  subOrderNo } 。"
         type: 
           "$ref": "#/components/schemas/AfterSaleType"
           description: "售后类型：仅退款 / 退货退款"
@@ -1435,6 +1542,8 @@ components:
           description: "最后一次状态变更时间。超时自动同意等时效规则以它为基准"
       required: 
         - "afterSaleNo"
+        - "subOrderNo"
+        - "orderNo"
         - "type"
         - "status"
         - "reason"
@@ -1450,13 +1559,13 @@ components:
     AfterSaleStatus: 
       type: "string"
       enum: 
-        - "PENDING"
-        - "AGREED"
-        - "RETURNING"
-        - "RECEIVED"
-        - "DONE"
+        - "APPLIED"
+        - "REFUNDING"
+        - "REFUNDED"
         - "REJECTED"
-        - "DISPUTED"
+        - "ARBITRATING"
+        - "CLOSED"
+      description: "售后单状态。**这是后端 `OrdAfterSale` 真实存的取值。**\n\n⚠️ 这里此前是完全另一套：`PENDING`/`AGREED`/`RETURNING`/`RECEIVED`/`DONE`/`DISPUTED`， 与后端**只有 `REJECTED` 一个词重合**。c/b 两端按它判断、按它建 i18n 词条， 于是售后详情页的状态永远落进兜底分支，「填退货单号」按钮永远不出现 （它 gate 在一个后端永远不会下发的 `AGREED` 上）。\n\n那一套描述的是**想象中更细的流程**：同意 → 寄回 → 收货 → 退款四步。 后端没有把「寄回中」「已收货」做成独立状态 —— 商家一同意就进 `REFUNDING`， 退货物流走 `expressNo` 字段而不是状态。粒度差异是真实的设计选择， 端上不能自己补一套更细的词然后假装后端会给。"
     UserCard: 
       type: "object"
       properties: 
@@ -1800,27 +1909,16 @@ components:
           type: "string"
           description: "自提点单号"
         type: 
-          type: "string"
-          enum: 
-            - "STORE"
-            - "NEIGHBOR"
-            - "PLATFORM"
+          "$ref": "#/components/schemas/PickupPointType"
           description: "自提点由谁承接。**三档，各自的费用规则完全不同**（2026-08-06 定）：   · STORE    商家自己的门店 —— 商家自行解决，平台不收履约服务费   · NEIGHBOR 团发起人家里 —— **零报酬**（ADR-005），有报酬就是团长招募换个名字   · PLATFORM 平台提供的点 —— 收履约服务费，**费率线下逐点协商，由运营平台录入**"
         ownerType: 
-          type: "string"
-          enum: 
-            - "MERCHANT"
-            - "USER"
-            - "PLATFORM"
+          "$ref": "#/components/schemas/PickupOwnerType"
           description: "承接方所属账号池"
         ownerNo: 
           type: "string"
           description: "承接方单号，按 ownerType 落在 merchantNo 或 cUserNo 上"
         scope: 
-          type: "string"
-          enum: 
-            - "PERMANENT"
-            - "GROUP_INSTANCE"
+          "$ref": "#/components/schemas/PickupScope"
           description: "常驻 | 团粒度（一团一销）"
         groupNo: 
           type: "string"
@@ -1835,11 +1933,7 @@ components:
           type: "string"
           description: "约定取货时段。邻居家不能一直堆着货（B15）"
         feeMode: 
-          type: "string"
-          enum: 
-            - "NONE"
-            - "PER_ITEM"
-            - "RATE"
+          "$ref": "#/components/schemas/PickupFeeMode"
           description: "计费口径。**必须显式标出用哪一种** —— 库里按件与按率两列长期并存， 没有判别列的话结算侧只能猜，猜错就是给自提点少付或多付钱。 之所以两种都留：费率是**线下逐点协商**的，有的点谈成按件、有的谈成按成交额抽成， 硬统一成一种会让运营在谈判里没有筹码。"
         serviceFeePerItemMinor: 
           type: "number"
@@ -1859,7 +1953,13 @@ components:
         - "serviceFeePerItemMinor"
         - "serviceFeeRate"
       additionalProperties: false
-      description: "自提点实体。\n\n取代了原先的 `Merchant.isPickupPoint` 布尔字段 —— 那个表达不了「承接方是用户」： 邻里自提是送到**团发起人家里**，承接的是邻居本人，不是商家。"
+    PickupPointType: 
+      type: "string"
+      enum: 
+        - "STORE"
+        - "NEIGHBOR"
+        - "PLATFORM"
+      description: "自提点类型。对应 `cmt_pickup_point.type`。\n\n⚠️ 此前只以裸字面量的形式内联在 `PickupPoint.type` 里 —— 值是对的， 但**没有单一声明处**：对账工具扫不到它，各处写的是裸字符串。 `CATEGORY_TYPE` 出事前正是这个状态（见 docs/technical/枚举统一方案.md §2「C 无主」）： 今天没 bug，但下一个人在别处再写一次时，没有任何东西会拦住他写错。"
     PickingRow: 
       type: "object"
       properties: 
@@ -2057,11 +2157,7 @@ components:
           type: "boolean"
           description: "承接自提点：小店既是供给方也是取货点（ADR-005 type=STORE）"
         serviceScope: 
-          type: "string"
-          enum: 
-            - "COMMUNITY"
-            - "CITY"
-            - "PLATFORM"
+          "$ref": "#/components/schemas/ServiceScope"
           description: "期望经营范围（ADR-009）。申请时可空，<b>审核通过时必须确定</b> —— 否则商家上着架却对谁都不可见，且没有任何报错。"
         communityNos: 
           type: "array"
@@ -2074,10 +2170,7 @@ components:
             type: "string"
           description: "资质图片（营业执照/身份证）。**选填** —— 一期 EDI 不强制。\n\n与下面的结算账户一样，属于**分账主体开户**而不是入驻申请本身（ADR-002）： `usr_merchant_payment` 是独立一张表、有自己的 `apply_status`，就是这个道理。 申请时能传就传，通过后在 B 端补也行 —— 逼一个还没通过审核的人先传营业执照， 只会把人挡在门外。"
         settleAccountType: 
-          type: "string"
-          enum: 
-            - "PERSONAL_OPENID"
-            - "MERCHANT_ID"
+          "$ref": "#/components/schemas/SettleAccountType"
           description: "结算账户类型。真实账号由后端持有，C 端与 B 端都不回显（ADR-002 §5）。**选填**，同上"
         industry: 
           type: "string"
@@ -2147,10 +2240,7 @@ components:
           type: "boolean"
           description: "是否受行业白名单管控（小微受管，其余不受）"
         settleAccountType: 
-          type: "string"
-          enum: 
-            - "PERSONAL_OPENID"
-            - "MERCHANT_ID"
+          "$ref": "#/components/schemas/SettleAccountType"
           description: "该主体默认的结算账户形态：小微打个人，其余打对公"
       required: 
         - "subjectType"
@@ -2192,13 +2282,7 @@ components:
           type: "string"
           description: "通道展示名。取服务端的，端上不要再维护一份翻译"
         applyStatus: 
-          type: "string"
-          enum: 
-            - "NONE"
-            - "APPLYING"
-            - "ACTIVE"
-            - "REJECTED"
-            - "FROZEN"
+          "$ref": "#/components/schemas/PaymentApplyStatus"
           description: "NONE / APPLYING / ACTIVE / REJECTED / FROZEN"
         canReceiveMoney: 
           type: "boolean"
@@ -2210,10 +2294,7 @@ components:
           type: "string"
           description: "二级商户号掩码。完整号不回显"
         settleAccountType: 
-          type: "string"
-          enum: 
-            - "PERSONAL_OPENID"
-            - "MERCHANT_ID"
+          "$ref": "#/components/schemas/SettleAccountType"
           description: "结算账户形态：小微打个人（PERSONAL_OPENID），其余打对公（MERCHANT_ID）"
         settleAccountMasked: 
           type: "string"
@@ -2232,6 +2313,9 @@ components:
         activatedAt: 
           type: "number"
           description: "通道开户完成的时间 —— 从这一刻起才真的能收钱"
+        storeNo: 
+          type: "string"
+          description: "这条进件是**为哪家门店**做的；空 = 主体级默认号。\n\n多门店商家会有多条「微信 · 已开通」，不显示门店就分不清哪条是哪家店 —— 等于让他猜自己的钱打进了哪张卡。"
       required: 
         - "payChannel"
         - "channelName"
@@ -2256,10 +2340,7 @@ components:
           type: "boolean"
           description: "是否默认店。一个主体**恰好一家** —— 它是「找不到具体门店时去哪」的答案"
         status: 
-          type: "string"
-          enum: 
-            - "ACTIVE"
-            - "READONLY"
+          "$ref": "#/components/schemas/StoreStatus"
           description: "ACTIVE 正常营业 / READONLY 已停用（不再接新单，已有单照常履约）"
         payMerchantNo: 
           type: "string"
@@ -2292,10 +2373,7 @@ components:
           type: "boolean"
           description: "老板。**不受门店授权限制**，他的店都归他管"
         status: 
-          type: "string"
-          enum: 
-            - "ACTIVE"
-            - "DISABLED"
+          "$ref": "#/components/schemas/StaffStatus"
           description: "ACTIVE / DISABLED"
         roles: 
           type: "array"
@@ -2320,10 +2398,7 @@ components:
           type: "string"
           description: "门店名快照，列表直接显示，省一次查询"
         role: 
-          type: "string"
-          enum: 
-            - "MANAGER"
-            - "CLERK"
+          "$ref": "#/components/schemas/StaffRole"
           description: "MANAGER 店长 / CLERK 店员"
       required: 
         - "storeNo"
@@ -2335,9 +2410,9 @@ components:
       enum: 
         - "ON_SALE"
         - "OFF_SALE"
-        - "AUDITING"
+        - "PENDING"
         - "REJECTED"
-      description: "商品在商家侧的状态。C 端只看得到 ON_SALE"
+      description: "商品状态。\n\n⚠️ 待审用 `PENDING` 不用 `AUDITING` —— ops-web 的 `SkuStatus` 一直用 `PENDING`，同一件事两个词。词典 §11 的通用状态词表规定「已提交待处理」= `PENDING`。"
     DeliveryRule: 
       type: "object"
       properties: 
@@ -2363,54 +2438,65 @@ components:
     SettleBill: 
       type: "object"
       properties: 
-        billNo: 
+        settleNo: 
           type: "string"
           description: "结算单号"
-        periodStart: 
+        subOrderNo: 
+          type: "string"
+          description: "对应的子订单号 —— 分账以它为单位"
+        orderNo: 
+          type: "string"
+          description: "所属主单号"
+        merchantNo: 
+          type: "string"
+          description: "主体号"
+        grossMinor: 
           type: "number"
-          description: "结算周期起（含）"
-        periodEnd: 
-          type: "number"
-          description: "结算周期止（含）"
-        payableMinor: 
-          type: "number"
-          description: "应分金额"
-        settledMinor: 
-          type: "number"
-          description: "已分账金额"
+          description: "结算基数（分）= 用户实付 + 平台补贴。**平台出资的优惠要补回给商家**"
         commissionMinor: 
           type: "number"
-          description: "平台佣金"
-        fulfillFeeMinor: 
+          description: "平台佣金（分）"
+        serviceFeeMinor: 
           type: "number"
-          description: "自提点履约服务费（承接方收，供货方付；口径待定 B9）"
-        status: 
+          description: "自提点履约服务费（分）。供货方付、承接方收，两个角色都是自己时账面抵消"
+        netMinor: 
+          type: "number"
+          description: "商家实得（分）= 基数 − 佣金 − 服务费"
+        trafficSource: 
           type: "string"
-          enum: 
-            - "PENDING"
-            - "PARTIAL"
-            - "DONE"
-            - "EXPIRED"
-          description: "结算状态：待结算 / 部分已结 / 已结清 / 已过期"
-        currency: 
-          "$ref": "#/components/schemas/CurrencyCode"
-          description: "结算币种"
-        orderCount: 
+          description: "客流来源：MERCHANT_OWNED 自带客流（零佣金）/ PLATFORM"
+        commissionRate: 
           type: "number"
-          description: "本期订单笔数"
+          description: "佣金费率快照（万分比）。费率会变，历史账不跟着变"
+        status: 
+          "$ref": "#/components/schemas/SettleBillStatus"
+          description: "PENDING / SPLIT / RETRYING / MANUAL / REVERSED"
+        createdAt: 
+          type: "number"
+          description: "生成时间"
+        splitAt: 
+          type: "number"
+          description: "分账完成时间；没分完为空"
+        storeNo: 
+          type: "string"
+          description: "这笔钱是**哪家店**挣的（统计维度）。空 = 存量主体级流水。\n\n它**不决定钱打给谁** —— 打给谁看 `payMerchantNo`。 两家店可以共用一个收款号（合并结算），也可以各配各的（分开结算）。"
+        payMerchantNo: 
+          type: "string"
+          description: "这笔钱打给**哪个收款号**（结算维度，生成时快照）。空 = 当时进件还没走完"
       required: 
-        - "billNo"
-        - "periodStart"
-        - "periodEnd"
-        - "payableMinor"
-        - "settledMinor"
+        - "settleNo"
+        - "subOrderNo"
+        - "orderNo"
+        - "merchantNo"
+        - "grossMinor"
         - "commissionMinor"
-        - "fulfillFeeMinor"
+        - "serviceFeeMinor"
+        - "netMinor"
+        - "commissionRate"
         - "status"
-        - "currency"
-        - "orderCount"
+        - "createdAt"
       additionalProperties: false
-      description: "结算单。分账以子订单为单位（ADR-002 §5）"
+      description: "结算流水。**一个子订单一行**（ADR-002 §5），不是周期账单。\n\n> 2026-08-11 更正：这个类型此前描述的是一套「周期账单」（`billNo` / `periodStart` > / `orderCount` / `settledMinor`），而后端 `/biz/settle/bills` 从来返回的都是 > 按子单一行的分账流水。**字段一个都对不上**，页面靠 mock 才看起来是好的 —— > 连真后端会整片 undefined。与本轮反复撞到的「单看任一端都完整，断在两端之间」同形状。"
     MerchantTodo: 
       type: "object"
       properties: 
@@ -2615,6 +2701,9 @@ components:
         usedCount: 
           type: "number"
           description: "已核销/已使用次数，衡量效果"
+        storeNo: 
+          type: "string"
+          description: "只对这家门店生效；**空 = 全主体**（存量活动都是它）。\n\n多门店商家必须看得见 —— 否则两条同名的「开业满减」分不清是哪家店的。"
       required: 
         - "campaignNo"
         - "merchantNo"
@@ -2667,6 +2756,9 @@ components:
         totalCount: 
           type: "number"
           description: "发放总量。COUPON 用，不传表示不限量"
+        storeNo: 
+          type: "string"
+          description: "只对这家门店生效；不传 = 全主体。\n\n**只有 FULL_CUT 接受它**（后端会拒 70005）。判据是活动在哪一刻生效： 满减在算价时生效，那时顾客已选好自提点；限时特价与买赠改的是商品页的展示， 而浏览商品时自提点还没选 —— 允许限定门店会让页面价与下单价打架。"
       required: 
         - "type"
         - "name"
@@ -2779,12 +2871,7 @@ components:
           "$ref": "#/components/schemas/MerchantSubject"
           description: "主体类型。决定分账主体形态与所需资质（ADR-002 §4）"
         status: 
-          type: "string"
-          enum: 
-            - "PENDING"
-            - "REVIEWING"
-            - "APPROVED"
-            - "REJECTED"
+          "$ref": "#/components/schemas/MerchantApplyReviewStatus"
           description: "审核状态。迁移见本类型的注释，APPROVED 为终态"
         rejectReason: 
           type: "string"
@@ -2811,11 +2898,7 @@ components:
           type: "string"
           description: "店铺简介"
         serviceScope: 
-          type: "string"
-          enum: 
-            - "COMMUNITY"
-            - "CITY"
-            - "PLATFORM"
+          "$ref": "#/components/schemas/ServiceScope"
           description: "期望经营范围（ADR-009）"
         communityNos: 
           type: "array"
@@ -2870,10 +2953,7 @@ components:
           type: "boolean"
           description: "沉默客户：曾经常来、最近没来。**这是店主唯一能立刻行动的信号**"
         source: 
-          type: "string"
-          enum: 
-            - "MERCHANT_OWNED"
-            - "PLATFORM"
+          "$ref": "#/components/schemas/TrafficSource"
           description: "客流来源：他是你自己带来的，还是平台分配的"
       required: 
         - "nickname"
@@ -2906,10 +2986,7 @@ components:
           type: "string"
           description: "模板单号"
         scope: 
-          type: "string"
-          enum: 
-            - "PLATFORM"
-            - "MERCHANT"
+          "$ref": "#/components/schemas/SpecTemplateScope"
           description: "模板归属：平台统一维护 or 商家自存。商家只能改自己的"
         categoryType: 
           "$ref": "#/components/schemas/CategoryType"
@@ -3154,6 +3231,9 @@ components:
         status: 
           "$ref": "#/components/schemas/OrderStatus"
           description: "按订单状态过滤，不传为全部"
+        allStores: 
+          type: "boolean"
+          description: "看全部门店的单，不传/false 只看**当前门店**。\n\n⚠️ 后端一直支持这个参数，端上从没传过 —— 于是订单页恒等于「当前门店」， 而界面上既没有门店名也没有切换入口，多门店老板会以为自己看到的是全部。\n\n「全部」对老板和店员**不是一回事**：老板的全部是主体名下所有店， 店员的全部只是他被授权的那几家。这个区分在后端（allowedStoresOrAll）， 端上只管传不传。"
       additionalProperties: false
     ShipReq: 
       type: "object"
@@ -3174,6 +3254,9 @@ components:
           items: 
             type: "string"
           description: "批量：一次到货通常是一整批，逐单调用会让通知发成 N 条"
+        pickupNo: 
+          type: "string"
+          description: "给哪个自提点登记；**不传 = 当前门店的那个点**。\n\n一个商家两家店两个点是常态（自提点归属到门店之后）。不传且当前门店没有点时 后端会拒 —— 而不是悄悄登记到另一个点上。"
       required: 
         - "orderNos"
       additionalProperties: false
@@ -3208,10 +3291,7 @@ components:
           type: "string"
           description: "出问题的 SKU"
         kind: 
-          type: "string"
-          enum: 
-            - "SHORTAGE"
-            - "DAMAGE"
+          "$ref": "#/components/schemas/ArrivalIssueKind"
           description: "问题类型：少件 / 破损。两者的售后责任判定不同"
         note: 
           type: "string"
@@ -3323,10 +3403,7 @@ components:
           type: "string"
           description: "给哪个通道进件，如 WECHAT"
         settleAccountType: 
-          type: "string"
-          enum: 
-            - "PERSONAL_OPENID"
-            - "MERCHANT_ID"
+          "$ref": "#/components/schemas/SettleAccountType"
           description: "结算账户形态。不传时后端按法律形态取默认（小微打个人、其余对公）"
         settleAccount: 
           type: "string"
@@ -3342,6 +3419,9 @@ components:
         contactPhone: 
           type: "string"
           description: "进件联系电话"
+        storeNo: 
+          type: "string"
+          description: "为**哪家门店**进件；不传 = 主体级默认号（单店永远走这条）。\n\n传它就是在走「分开结算」：微信侧一个商户号只能绑一个结算账户， 两家店各收各的钱，就得进件两次拿两个号。"
       required: 
         - "payChannel"
         - "settleAccount"
@@ -3395,10 +3475,7 @@ components:
           type: "string"
           description: "授权到哪家店。只能是本主体的门店"
         role: 
-          type: "string"
-          enum: 
-            - "MANAGER"
-            - "CLERK"
+          "$ref": "#/components/schemas/StaffRole"
           description: "MANAGER 店长 / CLERK 店员；**传空 = 收回这家店的授权**"
       required: 
         - "storeNo"
@@ -4523,6 +4600,39 @@ paths:
           "application/json": 
             schema: 
               "$ref": "#/components/schemas/SaveStockReq"
+  "/biz/goods/{goodsNo}/store-stock": 
+    post: 
+      operationId: "mSaveStoreStock"
+      summary: "改当前门店库存"
+      tags: 
+        - "goods"
+      security: 
+        - bearerAuth: []
+      parameters: 
+        - name: "goodsNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/Goods"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
   "/biz/upload/image": 
     post: 
       operationId: "mUploadImage"
@@ -4717,6 +4827,12 @@ paths:
           schema: 
             "$ref": "#/components/schemas/OrderStatus"
             description: "按订单状态过滤，不传为全部"
+        - name: "allStores"
+          in: "query"
+          required: false
+          schema: 
+            type: "boolean"
+            description: "看全部门店的单，不传/false 只看**当前门店**。\n\n⚠️ 后端一直支持这个参数，端上从没传过 —— 于是订单页恒等于「当前门店」， 而界面上既没有门店名也没有切换入口，多门店老板会以为自己看到的是全部。\n\n「全部」对老板和店员**不是一回事**：老板的全部是主体名下所有店， 店员的全部只是他被授权的那几家。这个区分在后端（allowedStoresOrAll）， 端上只管传不传。"
       responses: 
         "200": 
           description: "OK"

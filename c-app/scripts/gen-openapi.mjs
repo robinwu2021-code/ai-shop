@@ -143,6 +143,12 @@ const RESPONSE_TYPES = {
   // boolean 没有对应 schema，用 object 兜底并在此说明，避免下次又有人以为是漏配
   toggleFavoriteStore: "object",
   verifyGroupPickup: "Order",
+  // 这三条曾长期缺席：端点表里有、契约方法也有返回类型，但漏配了这张表，
+  // 生成器于是拒绝输出（见下方 missingResp 守卫）。结果是**契约里没有它们**，
+  // 而后端明明实现了 —— 所有按契约算的覆盖率都因此低估后端。
+  orderPreview: "OrderPreview",
+  afterSaleReasons: "AfterSaleReason[]",
+  afterSaleList: "AfterSale[]",
   sendOtp: "void",
   login: "LoginResp",
   profile: "User",

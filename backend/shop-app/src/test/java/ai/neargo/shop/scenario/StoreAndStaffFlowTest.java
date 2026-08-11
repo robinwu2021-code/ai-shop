@@ -216,9 +216,14 @@ class StoreAndStaffFlowTest {
         var roles = json.readTree(body).get("data").get("roles");
         assertThat(roles.size()).isEqualTo(2);
 
-        // 收回一家店的授权：传空 role
-        body = grant(token, staff, storeA, null);
-        assertThat(json.readTree(body).get("data").get("roles").size()).isEqualTo(1);
+        /*
+         * 收回一家店的授权。**V18 起要说清楚收回哪个角色** ——
+         * 一人一店可多角色之后，「传空 = 收回这家店的全部」是个危险的默认：
+         * 老板想去掉「配送员」，手一滑把这家店的授权全清了。
+         */
+        revoke(token, staff, storeA, "MANAGER");
+        assertThat(rolesOf(token, staff, storeA)).isEmpty();
+        assertThat(rolesOf(token, staff, storeB)).containsExactly("CLERK");
     }
 
     @Test
@@ -313,6 +318,11 @@ class StoreAndStaffFlowTest {
         grant(biz, staff, store, "PICKER");
 
         assertThat(rolesOf(biz, staff, store)).containsExactly("PICKER");
+    }
+
+    /** 默认门店号 —— 新商家恰好一家 */
+    private String defaultStoreNo(String token) throws Exception {
+        return json.readTree(list(token)).get("data").get(0).get("storeNo").asString();
     }
 
     /** 这个员工在这家店持有的全部角色 */

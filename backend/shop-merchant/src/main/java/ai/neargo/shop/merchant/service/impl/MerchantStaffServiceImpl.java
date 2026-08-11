@@ -133,38 +133,44 @@ public class MerchantStaffServiceImpl implements MerchantStaffService {
 
     @Override
     @Transactional
-    public StaffVO grantStore(String merchantNo, String mchAccountNo, String storeNo, String role) {
+    public StaffVO grantStore(String merchantNo, String mchAccountNo, String storeNo,
+                              String role, boolean granted) {
         MchAccount a = require(merchantNo, mchAccountNo);
         // 只能授权本主体的门店 —— 否则就是把别人的店交给自己的员工
         if (!storeNames(merchantNo).containsKey(storeNo)) {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
+        if (role == null || role.isBlank() || !MchStoreRole.GRANTABLE.contains(role)) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
 
+        /*
+         * **增量式：这一次只动这一个角色**（V18 起一人一店可多角色）。
+         *
+         * 原先是覆盖式（查出这家店那一行、改它的 role）。多角色下那是错的 ——
+         * 老板想「再加一个配送员」，结果把「店员」冲掉了，而且不报错。
+         * 撤销同理：只删这一个角色的那一行，不碰别的。
+         */
         MchStoreRole row = DataScopeContext.executeWithoutScope(() ->
                 roleMapper.selectOne(Wrappers.<MchStoreRole>lambdaQuery()
                         .eq(MchStoreRole::getMchAccountNo, mchAccountNo)
-                        .eq(MchStoreRole::getStoreNo, storeNo).last("limit 1")));
+                        .eq(MchStoreRole::getStoreNo, storeNo)
+                        .eq(MchStoreRole::getRole, role).last("limit 1")));
 
-        if (role == null || role.isBlank()) {
-            // 传空 = 收回这家店的授权
+        if (!granted) {
+            // 撤销。**撤到一个不剩 = 从这家店移除他** —— 不留空壳行
             if (row != null) {
                 DataScopeContext.executeWithoutScope(() -> roleMapper.deleteById(row.getId()));
             }
             return single(merchantNo, a);
         }
-        if (!MchStoreRole.MANAGER.equals(role) && !MchStoreRole.CLERK.equals(role)) {
-            throw BizException.of(ErrorCode.BAD_REQUEST);
-        }
+        // 已经有了就什么都不做 —— 重复授予是幂等的，不该长出两行
         if (row == null) {
             MchStoreRole fresh = new MchStoreRole();
             fresh.setMchAccountNo(mchAccountNo);
             fresh.setStoreNo(storeNo);
             fresh.setRole(role);
             DataScopeContext.executeWithoutScope(() -> roleMapper.insert(fresh));
-        } else {
-            // 每店一个角色：改角色是覆盖，不是再加一行（库上有唯一键兜底）
-            row.setRole(role);
-            DataScopeContext.executeWithoutScope(() -> roleMapper.updateById(row));
         }
         return single(merchantNo, a);
     }
