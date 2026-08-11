@@ -1,5 +1,6 @@
 package ai.neargo.shop.settle;
 
+import ai.neargo.shop.settle.dto.PurchaseInvoiceVO;
 import ai.neargo.shop.settle.dto.RateCardVO;
 import ai.neargo.shop.settle.dto.SettleBillVO;
 
@@ -81,5 +82,63 @@ public interface SettleService {
      * @param reason 必填，写进审计。无票是要付出税务代价的，得说得出为什么
      */
     SettleBillVO markNoInvoice(String settleNo, String reason, String operatorNo);
+
+    // ---------------------------------------------------------------- 进项票（P0-8/10）
+
+    /**
+     * 供应商提交进项票（B 端）。一张票覆盖该周期**全部已对账待开票**的单。
+     *
+     * <p><b>金额必须等于这批单的应付合计</b>——这是最实际的一条防错：
+     * 开票金额与应付对不上，多半是周期选错或漏了几单，
+     * 而这种错到报税时才发现就晚了。
+     */
+    PurchaseInvoiceVO submitInvoice(String merchantNo, SubmitInvoiceCommand cmd);
+
+    /** 供应商看自己提交过的票（B 端），含驳回原因。 */
+    List<PurchaseInvoiceVO> myInvoices(String merchantNo);
+
+    /** 平台待核验队列。{@code status} 为空给全部。 */
+    List<PurchaseInvoiceVO> opsInvoices(String status);
+
+    /**
+     * 核验通过。
+     *
+     * <p><b>会做三流一致的机器比对</b>：开票方名称必须等于供应商主体名。
+     * 不一致会被认定为虚开风险，后果远大于少抵一点税，而「个体户用法人个人名义开票」
+     * 这类不一致肉眼很容易放过。
+     *
+     * <p>⚠️ 资金流那一环（结算账户户名）**机器比对不了**——库里只存了账户掩码，
+     * 没存户名。这一项仍需人工核对，接口不假装它已经查过。
+     */
+    PurchaseInvoiceVO verifyInvoice(String invoiceNo, String operatorNo);
+
+    /** 驳回。{@code reason} 必填——供应商得知道是抬头错了、金额不符还是影像看不清。 */
+    PurchaseInvoiceVO rejectInvoice(String invoiceNo, String reason, String operatorNo);
+
+    /**
+     * @param period        结算周期，如 {@code 2026-08}
+     * @param invoiceType   {@code GENERAL} 普票 / {@code SPECIAL} 专票
+     * @param titleName     开票方名称。三流比对用
+     * @param amountMinor   价税合计（分）
+     */
+    record SubmitInvoiceCommand(String period, String invoiceCode, String invoiceNumber,
+                                String invoiceType, String titleName, String titleTaxNo,
+                                long amountMinor, long taxAmountMinor, int taxRate,
+                                Long invoiceDate, String imageUrl) {
+    }
+
+    // ---------------------------------------------------------------- 平台开票信息（P0-11）
+
+    /**
+     * 平台的开票抬头。供应商照着它开票。
+     *
+     * <p>落 {@code sys_setting} 而不是建表：它是**一组参数**不是一批记录，
+     * 与费率、频控、售后极速退阈值同类。
+     */
+    java.util.Map<String, String> platformInvoiceTitle();
+
+    /** 保存平台开票信息（运营端）。公司全称与税号必填——缺了这两项供应商开不出票。 */
+    java.util.Map<String, String> savePlatformInvoiceTitle(java.util.Map<String, String> fields,
+                                                           String operatorNo);
 
 }

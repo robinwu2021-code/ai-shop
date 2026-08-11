@@ -12,6 +12,8 @@ import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.settle.dto.RateCardVO;
 import ai.neargo.shop.settle.dto.SettleBillVO;
 import ai.neargo.shop.settle.entity.StlBill;
+import ai.neargo.shop.settle.entity.StlPurchaseInvoice;
+import ai.neargo.shop.settle.dto.PurchaseInvoiceVO;
 import ai.neargo.shop.spi.user.MerchantQueryPort;
 import ai.neargo.shop.settle.entity.StlSplitLog;
 import ai.neargo.shop.settle.mapper.SettleMappers.BillMapper;
@@ -60,11 +62,17 @@ public class SettleServiceImpl implements SettleService {
     private final PickupQueryPort pickupPort;
     /** 解析「这笔钱打给哪个收款号」—— 门店配的号 ?? 主体默认号，口径只有那一处 */
     private final ai.neargo.shop.spi.user.MerchantQueryPort merchantQueryPort;
+    private final ai.neargo.shop.settle.mapper.SettleMappers.PurchaseInvoiceMapper purchaseInvoiceMapper;
+    private final ai.neargo.shop.spi.platform.SettingPort settingPort;
 
     public SettleServiceImpl(BillMapper billMapper, SplitLogMapper splitLogMapper,
                              SettleSourcePort sourcePort, SplitGateway gateway,
                              PickupQueryPort pickupPort,
-                             ai.neargo.shop.spi.user.MerchantQueryPort merchantQueryPort) {
+                             ai.neargo.shop.spi.user.MerchantQueryPort merchantQueryPort,
+                             ai.neargo.shop.settle.mapper.SettleMappers.PurchaseInvoiceMapper purchaseInvoiceMapper,
+                             ai.neargo.shop.spi.platform.SettingPort settingPort) {
+        this.settingPort = settingPort;
+        this.purchaseInvoiceMapper = purchaseInvoiceMapper;
         this.billMapper = billMapper;
         this.splitLogMapper = splitLogMapper;
         this.sourcePort = sourcePort;
@@ -459,6 +467,212 @@ public class SettleServiceImpl implements SettleService {
             throw BizException.of(ErrorCode.CONFLICT);
         }
         return b;
+    }
+
+
+    // ---------------------------------------------------------------- 进项票（P0-8/10）
+
+    @Override
+    @Transactional
+    public PurchaseInvoiceVO submitInvoice(String merchantNo, SubmitInvoiceCommand cmd) {
+        if (cmd.invoiceNumber() == null || cmd.invoiceNumber().isBlank()
+                || cmd.titleName() == null || cmd.titleName().isBlank()
+                || cmd.period() == null || cmd.period().isBlank()) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        List<StlBill> bills = billsAwaitingInvoice(merchantNo);
+        if (bills.isEmpty()) {
+            // 没有待开票的单还提交发票，多半是周期选错了
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        long payable = bills.stream().mapToLong(b -> nz(b.getNetMinor())).sum();
+        if (payable != cmd.amountMinor()) {
+            /*
+             * 金额对不上就拒收。这是最实际的一条防错：多半是周期选错或漏了几单，
+             * 而这种错拖到报税时才发现，票已经开出来了、退回重开要走红字流程。
+             */
+            throw BizException.of(ErrorCode.INVOICE_AMOUNT_MISMATCH);
+        }
+
+        StlPurchaseInvoice inv = new StlPurchaseInvoice();
+        inv.setInvoiceNo(BizKey.next(BizKey.SETTLE_BILL) + "I");
+        inv.setEntityNo(merchantNo);
+        inv.setPeriod(cmd.period());
+        inv.setInvoiceCode(cmd.invoiceCode());
+        inv.setInvoiceNumber(cmd.invoiceNumber());
+        inv.setInvoiceType(cmd.invoiceType() == null ? StlPurchaseInvoice.GENERAL : cmd.invoiceType());
+        inv.setTitleName(cmd.titleName());
+        inv.setTitleTaxNo(cmd.titleTaxNo());
+        inv.setAmountMinor(cmd.amountMinor());
+        inv.setTaxAmountMinor(cmd.taxAmountMinor());
+        inv.setTaxRate(cmd.taxRate());
+        inv.setInvoiceDate(cmd.invoiceDate());
+        inv.setImageUrl(cmd.imageUrl());
+        inv.setStatus(StlPurchaseInvoice.SUBMITTED);
+        DataScopeContext.executeWithoutScope(() -> purchaseInvoiceMapper.insert(inv));
+
+        for (StlBill b : bills) {
+            b.setPurchaseInvoiceNo(inv.getInvoiceNo());
+            b.setInvoiceStatus(StlBill.INV_SUBMITTED);
+            DataScopeContext.executeWithoutScope(() -> billMapper.updateById(b));
+        }
+        return toVO(inv);
+    }
+
+    @Override
+    public List<PurchaseInvoiceVO> myInvoices(String merchantNo) {
+        return DataScopeContext.executeWithoutScope(() ->
+                        purchaseInvoiceMapper.selectList(Wrappers.<StlPurchaseInvoice>lambdaQuery()
+                                .eq(StlPurchaseInvoice::getEntityNo, merchantNo)
+                                .orderByDesc(StlPurchaseInvoice::getId)))
+                .stream().map(this::toVO).toList();
+    }
+
+    @Override
+    public List<PurchaseInvoiceVO> opsInvoices(String status) {
+        return DataScopeContext.executeWithoutScope(() ->
+                        purchaseInvoiceMapper.selectList(Wrappers.<StlPurchaseInvoice>lambdaQuery()
+                                .eq(status != null && !status.isBlank(),
+                                        StlPurchaseInvoice::getStatus, status)
+                                .orderByDesc(StlPurchaseInvoice::getId)))
+                .stream().map(this::toVO).toList();
+    }
+
+    @Override
+    @Transactional
+    public PurchaseInvoiceVO verifyInvoice(String invoiceNo, String operatorNo) {
+        StlPurchaseInvoice inv = requireInvoice(invoiceNo);
+        if (StlPurchaseInvoice.VERIFIED.equals(inv.getStatus())) {
+            return toVO(inv);   // 幂等
+        }
+        /*
+         * 三流一致的**机器可判部分**：开票方名称必须等于供应商主体名。
+         * 不一致会被认定虚开风险，而「个体户用法人个人名义开票」这类肉眼很容易放过。
+         *
+         * ⚠️ 资金流那一环（结算账户户名）比对不了——库里只存账户掩码没存户名。
+         * 这里不假装查过它，人工核对仍是必要的一步。
+         */
+        if (!titleMatched(inv)) {
+            throw BizException.of(ErrorCode.INVOICE_TITLE_MISMATCH);
+        }
+        inv.setStatus(StlPurchaseInvoice.VERIFIED);
+        inv.setVerifiedBy(operatorNo);
+        inv.setVerifiedAt(System.currentTimeMillis());
+        DataScopeContext.executeWithoutScope(() -> purchaseInvoiceMapper.updateById(inv));
+        updateBillsInvoiceStatus(invoiceNo, StlBill.INV_VERIFIED);
+        return toVO(inv);
+    }
+
+    @Override
+    @Transactional
+    public PurchaseInvoiceVO rejectInvoice(String invoiceNo, String reason, String operatorNo) {
+        if (reason == null || reason.isBlank()) {
+            // 供应商得知道是抬头错了、金额不符还是影像看不清，否则只能反复试
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        StlPurchaseInvoice inv = requireInvoice(invoiceNo);
+        inv.setStatus(StlPurchaseInvoice.REJECTED);
+        inv.setRejectReason(reason);
+        inv.setVerifiedBy(operatorNo);
+        inv.setVerifiedAt(System.currentTimeMillis());
+        DataScopeContext.executeWithoutScope(() -> purchaseInvoiceMapper.updateById(inv));
+        // 单子退回待开票，供应商可以重开重传
+        updateBillsInvoiceStatus(invoiceNo, StlBill.INV_PENDING);
+        return toVO(inv);
+    }
+
+    /** 已对账确认、且还没开票的单 —— 一张票覆盖它们全部 */
+    private List<StlBill> billsAwaitingInvoice(String merchantNo) {
+        return DataScopeContext.executeWithoutScope(() ->
+                billMapper.selectList(Wrappers.<StlBill>lambdaQuery()
+                        .eq(StlBill::getEntityNo, merchantNo)
+                        .eq(StlBill::getBusinessMode, MerchantQueryPort.MODE_SELF_OPERATED)
+                        .eq(StlBill::getStatus, StlBill.CONFIRMED)
+                        .eq(StlBill::getInvoiceStatus, StlBill.INV_PENDING)));
+    }
+
+    private void updateBillsInvoiceStatus(String invoiceNo, String invoiceStatus) {
+        for (StlBill b : DataScopeContext.executeWithoutScope(() ->
+                billMapper.selectList(Wrappers.<StlBill>lambdaQuery()
+                        .eq(StlBill::getPurchaseInvoiceNo, invoiceNo)))) {
+            b.setInvoiceStatus(invoiceStatus);
+            if (StlBill.INV_PENDING.equals(invoiceStatus)) {
+                b.setPurchaseInvoiceNo(null);   // 驳回后解绑，下次重新关联
+            }
+            DataScopeContext.executeWithoutScope(() -> billMapper.updateById(b));
+        }
+    }
+
+    private boolean titleMatched(StlPurchaseInvoice inv) {
+        return merchantQueryPort.find(inv.getEntityNo())
+                .map(m -> m.merchantName() != null
+                        && m.merchantName().trim().equals(inv.getTitleName().trim()))
+                .orElse(false);
+    }
+
+    private StlPurchaseInvoice requireInvoice(String invoiceNo) {
+        StlPurchaseInvoice inv = DataScopeContext.executeWithoutScope(() ->
+                purchaseInvoiceMapper.selectOne(Wrappers.<StlPurchaseInvoice>lambdaQuery()
+                        .eq(StlPurchaseInvoice::getInvoiceNo, invoiceNo).last("limit 1")));
+        if (inv == null) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        return inv;
+    }
+
+    private PurchaseInvoiceVO toVO(StlPurchaseInvoice i) {
+        List<String> settleNos = DataScopeContext.executeWithoutScope(() ->
+                        billMapper.selectList(Wrappers.<StlBill>lambdaQuery()
+                                .eq(StlBill::getPurchaseInvoiceNo, i.getInvoiceNo())))
+                .stream().map(StlBill::getSettleNo).toList();
+        return new PurchaseInvoiceVO(i.getInvoiceNo(), i.getEntityNo(), i.getPeriod(),
+                i.getInvoiceCode(), i.getInvoiceNumber(), i.getInvoiceType(),
+                i.getTitleName(), i.getTitleTaxNo(), nz(i.getAmountMinor()),
+                nz(i.getTaxAmountMinor()), nzi(i.getTaxRate()), i.getInvoiceDate(),
+                i.getImageUrl(), i.getStatus(), i.getRejectReason(),
+                titleMatched(i), settleNos);
+    }
+
+
+    // ---------------------------------------------------------------- 平台开票信息（P0-11）
+
+    private static final String TITLE_KEY = "finance.invoice-title";
+    /** 五项都空的默认值：**不编假数据** —— 空着能让人立刻发现「还没配」 */
+    private static final String TITLE_DEFAULT =
+            "{\"companyName\":\"\",\"taxNo\":\"\",\"address\":\"\",\"phone\":\"\",\"bankAccount\":\"\"}";
+
+    @Override
+    public java.util.Map<String, String> platformInvoiceTitle() {
+        return parseFlatJson(settingPort.get(TITLE_KEY, TITLE_DEFAULT));
+    }
+
+    @Override
+    public java.util.Map<String, String> savePlatformInvoiceTitle(
+            java.util.Map<String, String> fields, String operatorNo) {
+        String company = fields == null ? null : fields.get("companyName");
+        String taxNo = fields == null ? null : fields.get("taxNo");
+        if (company == null || company.isBlank() || taxNo == null || taxNo.isBlank()) {
+            // 缺这两项供应商根本开不出票，存下去只会让人以为已经配好了
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        StringBuilder sb = new StringBuilder("{");
+        for (String k : List.of("companyName", "taxNo", "address", "phone", "bankAccount")) {
+            String v = fields.getOrDefault(k, "");
+            sb.append(sb.length() > 1 ? "," : "").append('"').append(k).append("\":\"")
+                    .append(v == null ? "" : v.replace("\"", "")).append('"');
+        }
+        settingPort.put(TITLE_KEY, sb.append("}").toString(), operatorNo);
+        return platformInvoiceTitle();
+    }
+
+    /** 只有五个字符串字段，手解比引 JSON 依赖轻；解析失败给空 Map 而不是抛异常 */
+    private static java.util.Map<String, String> parseFlatJson(String jsonText) {
+        java.util.Map<String, String> out = new java.util.LinkedHashMap<>();
+        var m = java.util.regex.Pattern.compile("\"(\\w+)\"\\s*:\\s*\"([^\"]*)\"").matcher(jsonText);
+        while (m.find()) {
+            out.put(m.group(1), m.group(2));
+        }
+        return out;
     }
 
 

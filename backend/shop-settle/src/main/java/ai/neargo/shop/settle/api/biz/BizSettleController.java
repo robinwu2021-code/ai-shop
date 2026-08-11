@@ -4,9 +4,12 @@ import ai.neargo.shop.auth.BizPerms;
 import org.springframework.security.access.prepost.PreAuthorize;
 import ai.neargo.shop.auth.BizContext;
 import ai.neargo.shop.settle.SettleService;
+import ai.neargo.shop.settle.dto.PurchaseInvoiceVO;
 import ai.neargo.shop.settle.dto.RateCardVO;
 import ai.neargo.shop.settle.dto.SettleBillVO;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.context.annotation.Profile;
 import org.springframework.web.bind.annotation.RestController;
@@ -62,4 +65,40 @@ public class BizSettleController {
     public RateCardVO rateCard() {
         return settleService.rateCard();
     }
+    // ---------------------------------------------------------------- 进项票（自营，P0-10）
+
+    /**
+     * 平台的开票信息。供应商照着它开票——**开错抬头要退回重开，一来一回半个月**，
+     * 所以不能靠口头传递，要在页面上能一键复制。
+     */
+    @GetMapping("/biz/settle/invoice-title")
+    public java.util.Map<String, String> invoiceTitle() {
+        return settleService.platformInvoiceTitle();
+    }
+
+    /**
+     * 提交进项票。一张票覆盖该周期**全部已对账待开票**的单，
+     * 金额必须等于这批单的应付合计。
+     */
+    @PostMapping("/biz/settle/invoices")
+    public PurchaseInvoiceVO submitInvoice(@RequestBody SubmitInvoiceReq req) {
+        return settleService.submitInvoice(BizContext.requireMerchantNo(),
+                new SettleService.SubmitInvoiceCommand(req.period(), req.invoiceCode(),
+                        req.invoiceNumber(), req.invoiceType(), req.titleName(), req.titleTaxNo(),
+                        req.amountMinor(), req.taxAmountMinor(), req.taxRate(),
+                        req.invoiceDate(), req.imageUrl()));
+    }
+
+    /** 我提交过的票，含驳回原因 —— 被驳回时供应商要知道该改什么。 */
+    @GetMapping("/biz/settle/invoices")
+    public List<PurchaseInvoiceVO> myInvoices() {
+        return settleService.myInvoices(BizContext.requireMerchantNo());
+    }
+
+    public record SubmitInvoiceReq(String period, String invoiceCode, String invoiceNumber,
+                                   String invoiceType, String titleName, String titleTaxNo,
+                                   long amountMinor, long taxAmountMinor, int taxRate,
+                                   Long invoiceDate, String imageUrl) {
+    }
+
 }

@@ -78,6 +78,10 @@ public enum ErrorCode {
      * 完全不知道该去做什么，而看到「发票未核验」就知道要先去催票或核验。
      */
     INVOICE_REQUIRED(70004, "err.settle.invoice_required"),
+    /** 发票金额与应付合计不符。多半是周期选错或漏了几单 */
+    INVOICE_AMOUNT_MISMATCH(70005, "err.settle.invoice_amount_mismatch"),
+    /** 开票方名称与供应商主体名不一致 —— 三流不一致会被认定虚开风险 */
+    INVOICE_TITLE_MISMATCH(70006, "err.settle.invoice_title_mismatch"),
 
     /**
      * 多规格商品不支持商品级限时特价。

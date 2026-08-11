@@ -3,6 +3,7 @@ package ai.neargo.shop.settle.api.ops;
 import ai.neargo.shop.auth.Perms;
 import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.settle.SettleService;
+import ai.neargo.shop.settle.dto.PurchaseInvoiceVO;
 import ai.neargo.shop.settle.dto.SettleBillVO;
 import ai.neargo.shop.spi.platform.AuditLogPort;
 import org.springframework.context.annotation.Profile;
@@ -93,6 +94,62 @@ public class OpsPayableController {
         SettleBillVO vo = settleService.markNoInvoice(settleNo, req.reason(), operator);
         auditLogPort.record("PAYABLE_NO_INVOICE", settleNo, req.reason());
         return vo;
+    }
+
+    // ---------------------------------------------------------------- 进项票核验（P0-8）
+
+    /** @param status 为空给全部；{@code SUBMITTED} 就是待核验队列 */
+    @GetMapping("/ops/purchase-invoices")
+    @PreAuthorize("@perm.can('" + Perms.SETTLE_MANAGE + "')")
+    public List<PurchaseInvoiceVO> invoices(@RequestParam(required = false) String status) {
+        return settleService.opsInvoices(status);
+    }
+
+    /**
+     * 核验通过。**会比对开票方名称与供应商主体名**（三流一致的机器可判部分）。
+     *
+     * <p>⚠️ 资金流那一环（结算账户户名）比对不了——库里只存账户掩码没存户名，
+     * 仍需人工核对。接口不假装它已经查过。
+     */
+    @PostMapping("/ops/purchase-invoices/{invoiceNo}/verify")
+    @PreAuthorize("@perm.can('" + Perms.SETTLE_MANAGE + "')")
+    public PurchaseInvoiceVO verify(@PathVariable String invoiceNo) {
+        String operator = SecurityUtils.currentUserNo();
+        PurchaseInvoiceVO vo = settleService.verifyInvoice(invoiceNo, operator);
+        auditLogPort.record("INVOICE_VERIFY", invoiceNo,
+                "核验通过｜" + vo.titleName() + "｜" + vo.amountMinor() + " 分");
+        return vo;
+    }
+
+    /** 驳回。原因必填——供应商得知道是抬头错了、金额不符还是影像看不清。 */
+    @PostMapping("/ops/purchase-invoices/{invoiceNo}/reject")
+    @PreAuthorize("@perm.can('" + Perms.SETTLE_MANAGE + "')")
+    public PurchaseInvoiceVO reject(@PathVariable String invoiceNo, @RequestBody RejectReq req) {
+        String operator = SecurityUtils.currentUserNo();
+        PurchaseInvoiceVO vo = settleService.rejectInvoice(invoiceNo, req.reason(), operator);
+        auditLogPort.record("INVOICE_REJECT", invoiceNo, req.reason());
+        return vo;
+    }
+
+    // ---------------------------------------------------------------- 平台开票信息（P0-11）
+
+    @GetMapping("/ops/finance/invoice-title")
+    @PreAuthorize("@perm.can('" + Perms.SETTLE_MANAGE + "')")
+    public java.util.Map<String, String> invoiceTitle() {
+        return settleService.platformInvoiceTitle();
+    }
+
+    /** 公司全称与税号必填——缺了这两项供应商开不出票，存下去只会让人以为已经配好了。 */
+    @PostMapping("/ops/finance/invoice-title")
+    @PreAuthorize("@perm.can('" + Perms.SETTLE_MANAGE + "')")
+    public java.util.Map<String, String> saveInvoiceTitle(
+            @RequestBody java.util.Map<String, String> fields) {
+        var saved = settleService.savePlatformInvoiceTitle(fields, SecurityUtils.currentUserNo());
+        auditLogPort.record("INVOICE_TITLE", "finance.invoice-title", saved.get("companyName"));
+        return saved;
+    }
+
+    public record RejectReq(String reason) {
     }
 
     public record PaidReq(String paymentRef) {
