@@ -255,6 +255,93 @@ class StoreAndStaffFlowTest {
         return json.readTree(body).get("data").get("storeNo").asString();
     }
 
+    @Test
+    @DisplayName("★★ 加一个角色不能冲掉已有的 —— 一人一店可多角色")
+    void grantingOneRoleKeepsTheOthers() throws Exception {
+        String biz = merchant("12600240001", "多角色店");
+        String store = defaultStoreNo(biz);
+        String staff = addStaff(biz, "12600240002");
+
+        grant(biz, staff, store, "CLERK");
+        grant(biz, staff, store, "COURIER");
+
+        /*
+         * 小店的常态是一人多岗：站收银台的顺手把货送了。
+         * 覆盖式授权在这里是错的 —— 老板想「再加一个配送」，
+         * 结果把「店员」冲掉了，而且不报错。
+         */
+        assertThat(rolesOf(biz, staff, store))
+                .as("加配送员之后，店员这个角色不该消失")
+                .containsExactlyInAnyOrder("CLERK", "COURIER");
+    }
+
+    @Test
+    @DisplayName("★ 撤销一个角色只掉那一个，剩下的还在")
+    void revokingOneRoleKeepsTheOthers() throws Exception {
+        String biz = merchant("12600240010", "撤角色店");
+        String store = defaultStoreNo(biz);
+        String staff = addStaff(biz, "12600240011");
+
+        grant(biz, staff, store, "CLERK");
+        grant(biz, staff, store, "COURIER");
+        revoke(biz, staff, store, "COURIER");
+
+        assertThat(rolesOf(biz, staff, store)).containsExactly("CLERK");
+    }
+
+    @Test
+    @DisplayName("★ 撤到一个不剩 = 从这家店移除他")
+    void revokingLastRoleRemovesHimFromStore() throws Exception {
+        String biz = merchant("12600240020", "移除店");
+        String store = defaultStoreNo(biz);
+        String staff = addStaff(biz, "12600240021");
+
+        grant(biz, staff, store, "CLERK");
+        revoke(biz, staff, store, "CLERK");
+
+        assertThat(rolesOf(biz, staff, store)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("★ 重复授予同一个角色是幂等的 —— 不该长出两行")
+    void grantingSameRoleTwiceIsIdempotent() throws Exception {
+        String biz = merchant("12600240030", "幂等店");
+        String store = defaultStoreNo(biz);
+        String staff = addStaff(biz, "12600240031");
+
+        grant(biz, staff, store, "PICKER");
+        grant(biz, staff, store, "PICKER");
+
+        assertThat(rolesOf(biz, staff, store)).containsExactly("PICKER");
+    }
+
+    /** 这个员工在这家店持有的全部角色 */
+    private java.util.List<String> rolesOf(String token, String staffNo, String storeNo) throws Exception {
+        String body = mvc().perform(get("/biz/staff").header("Authorization", "Bearer " + token))
+                .andReturn().getResponse().getContentAsString();
+        java.util.List<String> out = new java.util.ArrayList<>();
+        for (var s : json.readTree(body).get("data")) {
+            if (!staffNo.equals(s.get("mchAccountNo").asString())) {
+                continue;
+            }
+            for (var r : s.get("roles")) {
+                if (storeNo.equals(r.get("storeNo").asString())) {
+                    out.add(r.get("role").asString());
+                }
+            }
+        }
+        return out;
+    }
+
+    private void revoke(String token, String staffNo, String storeNo, String role) throws Exception {
+        mvc().perform(post("/biz/staff/" + staffNo + "/store")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"storeNo\":\"" + storeNo + "\",\"role\":\"" + role
+                                + "\",\"granted\":false}"))
+                .andExpect(jsonPath("$.code").value(0));
+    }
+
     private String addStaff(String token, String phone) throws Exception {
         String body = mvc().perform(post("/biz/staff").header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
