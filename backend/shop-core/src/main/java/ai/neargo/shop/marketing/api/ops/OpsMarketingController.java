@@ -67,6 +67,21 @@ public class OpsMarketingController {
         return PageData.ofAll(couponService.opsCoupons(status), page, size);
     }
 
+    /**
+     * 改券预算。0 = 不限；不能改到低于已发放金额。
+     *
+     * <p>补这条端点之前，V21 的预算列、领券那条 UPDATE 里的闸门、页面上的预算进度条
+     * <b>三样都在，唯独运营改不了它</b> —— 预算恒为 0，闸门永远不生效。
+     */
+    @PostMapping("/ops/coupons/{couponNo}/budget")
+    @PreAuthorize("@perm.can('" + Perms.MARKETING_GOVERN + "')")
+    public OpsCouponVO setCouponBudget(@PathVariable String couponNo, @RequestBody BudgetReq req) {
+        OpsCouponVO vo = couponService.setBudget(couponNo, req.budget() == null ? 0 : req.budget(),
+                SecurityUtils.currentUserNo());
+        auditLogPort.record("COUPON_BUDGET", couponNo, "预算改为 " + vo.budget() + " 分");
+        return vo;
+    }
+
     /** 改券状态。暂停即刻生效：券从领券中心消失，领取被拒。 */
     @PostMapping("/ops/coupons/{couponNo}/status")
     @PreAuthorize("@perm.can('" + Perms.MARKETING_GOVERN + "')")
@@ -96,6 +111,10 @@ public class OpsMarketingController {
         auditLogPort.record("CAMPAIGN_TOGGLE", campaignNo,
                 (Boolean.TRUE.equals(req.running()) ? "启用" : "停用") + "｜" + req.reason());
         return vo;
+    }
+
+    /** 预算（分）。0 = 不限 */
+    public record BudgetReq(Long budget) {
     }
 
     public record StatusReq(String status, String reason) {

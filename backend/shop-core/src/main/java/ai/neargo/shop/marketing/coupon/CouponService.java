@@ -59,4 +59,19 @@ public interface CouponService {
      * @param reason 必填，写进审计。停别人的券要说得出为什么
      */
     CouponVO setCouponStatus(String couponNo, String status, String reason, String operatorNo);
+
+    /**
+     * 改券预算（分）。<b>0 = 不限</b>。
+     *
+     * <p>**不能改到低于已发放金额** —— 那等于「已经超支了」这个状态被人为造出来，
+     * 而超支之后没有任何补救动作可做（券已经在用户手里了）。
+     * ops-web 的券模板页上写着这条，此前它和预算列本身一样是**不存在的**。
+     *
+     * <p>此前 V21 已经加了 {@code budget_minor} 列、领券那条 UPDATE 也装了闸门、
+     * 页面上也显示了预算 —— <b>唯独没有这个端点</b>，于是运营改不了它，
+     * 预算恒为 0（不限），闸门永远不生效。功能做完了但没有入口，
+     * 与「入口做完了但功能没有」一样白做。
+     */
+    ai.neargo.shop.marketing.coupon.dto.OpsCouponVO setBudget(String couponNo, long budgetMinor,
+                                                              String operatorNo);
 }

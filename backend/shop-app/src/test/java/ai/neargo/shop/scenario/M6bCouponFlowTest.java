@@ -547,6 +547,46 @@ class M6bCouponFlowTest {
         assertThat(row.has("remain")).isFalse();
     }
 
+    @Test
+    @DisplayName("★★★ 运营改得了预算 —— 此前列、闸门、进度条都有，唯独没有这个端点")
+    void opsCanSetBudget() throws Exception {
+        String couponNo = budgetedCoupon("可改预算", 500L, 0L);
+        String ops = opsLogin("goods", "goods123");
+
+        mvc().perform(post("/ops/coupons/" + couponNo + "/budget")
+                        .header("Authorization", "Bearer " + ops)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"budget\":100000}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.budget").value(100000));
+
+        // 改完立刻生效：闸门读的是同一列
+        receiveOk(couponNo, "13600360030");
+    }
+
+    @Test
+    @DisplayName("★★ 预算改不到已发放金额以下 —— 那是人为造出一个「已超支」")
+    void budgetCannotGoBelowIssued() throws Exception {
+        String couponNo = budgetedCoupon("已发出去了", 500L, 100_000L);
+        receiveOk(couponNo, "13600360040");
+        receiveOk(couponNo, "13600360041");   // 已发 1000 分
+
+        String ops = opsLogin("goods", "goods123");
+        mvc().perform(post("/ops/coupons/" + couponNo + "/budget")
+                        .header("Authorization", "Bearer " + ops)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"budget\":500}"))
+                .andExpect(jsonPath("$.code").value(ai.neargo.shop.common.ErrorCode.CONFLICT.code()));
+
+        /*
+         * 0 是显式的「不限」，不受这条约束 —— 把闸门整个撤掉是合法操作，
+         * 而「撤掉闸门」与「把闸门设到已经越过的位置」是两回事：
+         * 前者是决定不管了，后者是造出一个没有任何补救动作的状态。
+         */
+        mvc().perform(post("/ops/coupons/" + couponNo + "/budget")
+                        .header("Authorization", "Bearer " + ops)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"budget\":0}"))
+                .andExpect(jsonPath("$.code").value(0));
+    }
+
     private void receiveOk(String couponNo, String phone) throws Exception {
         mvc().perform(post("/mp/coupon/" + couponNo + "/receive")
                         .header("Authorization", "Bearer " + login(phone)))

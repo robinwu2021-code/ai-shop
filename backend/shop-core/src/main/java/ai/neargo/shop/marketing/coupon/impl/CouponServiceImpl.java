@@ -235,6 +235,35 @@ public class CouponServiceImpl implements CouponService {
                 .map(this::toOpsVO).toList();
     }
 
+    @Override
+    @Transactional
+    public ai.neargo.shop.marketing.coupon.dto.OpsCouponVO setBudget(String couponNo,
+                                                                     long budgetMinor,
+                                                                     String operatorNo) {
+        if (budgetMinor < 0) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        MktCoupon c = DataScopeContext.executeWithoutScope(() ->
+                couponMapper.selectOne(Wrappers.<MktCoupon>lambdaQuery()
+                        .eq(MktCoupon::getCouponNo, couponNo).last("limit 1")));
+        if (c == null) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        /*
+         * **不能改到低于已发放金额**：那等于人为造出一个「已经超支」的状态，
+         * 而超支之后没有任何补救动作可做 —— 券已经在用户手里了，收不回来。
+         *
+         * 0 是显式的「不限」，不受这条约束（把闸门整个撤掉是合法操作）。
+         */
+        long issuedAmount = nzi(c.getReceivedCount()) * nz(c.getFaceMinor());
+        if (budgetMinor > 0 && budgetMinor < issuedAmount) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+        c.setBudgetMinor(budgetMinor);
+        DataScopeContext.executeWithoutScope(() -> couponMapper.updateById(c));
+        return toOpsVO(c);
+    }
+
     private ai.neargo.shop.marketing.coupon.dto.OpsCouponVO toOpsVO(MktCoupon c) {
         int issued = nzi(c.getReceivedCount());
         long face = nz(c.getFaceMinor());

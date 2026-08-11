@@ -184,15 +184,24 @@ function MarketingInner() {
       // 预算是唯一挡住"发着发着超支"的地方，所以给进度条而不是两个数字。
       // budget=0 是「不限」而不是「零元」—— 画成 ¥5.00 / ¥0.00 会读成已经超支，
       // 而它恰恰是「这张券没人在管支出」，两个意思相反
+      // 整格可点 = 改预算的入口。此前抽屉、输入框、保存按钮、mutation 四样都在，
+      // **唯独没有任何地方打开那个抽屉** —— 加上后端那条缺失的端点，
+      // 这条链上五环齐全就差最后一个按钮，而预算因此永远是 0
       cell: (r) => (
-        <div className="flex items-center gap-2">
+        <button
+          type="button"
+          disabled={!canIssue}
+          title={c.budgetTitle}
+          className="flex w-full items-center gap-2 rounded-field px-1 transition-colors hover:bg-accent disabled:cursor-default disabled:hover:bg-transparent"
+          onClick={() => setBudgetEdit({ couponNo: r.couponNo, value: (r.budget / 100).toFixed(2) })}
+        >
           {r.budget > 0 && (
             <Progress value={r.issuedAmount} total={r.budget} warnAt={90} showText={false} className="w-20" />
           )}
           <span className="tabular-nums text-muted-foreground">
             {money(r.issuedAmount)} / {r.budget > 0 ? money(r.budget) : c.budgetUnlimited}
           </span>
-        </div>
+        </button>
       ),
     },
     { header: c.colIssuedRedeemed, cell: (x) => `${x.issued} / ${x.redeemed}`, numeric: true },
