@@ -22,6 +22,10 @@ public final class SettleMappers {
     public interface PurchaseInvoiceMapper extends BaseMapper<StlPurchaseInvoice> {
     }
 
+    public interface FeeRuleMapper
+            extends BaseMapper<ai.neargo.shop.settle.entity.StlFeeRule> {
+    }
+
     public interface SplitLogMapper extends BaseMapper<StlSplitLog> {
     }
 

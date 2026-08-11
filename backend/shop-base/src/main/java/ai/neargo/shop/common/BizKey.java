@@ -42,6 +42,8 @@ public final class BizKey {
     public static final String REVIEW = "RV";
     public static final String APPEAL = "AP";
     public static final String SETTLE_BILL = "STL";
+    /** 费率规则版本 */
+    public static final String FEE_RULE = "FR";
     public static final String EVENT = "EVT";
     /**
      * 类目。运营新建的类目走这个前缀；种子里那批（CAT100…CAT400）是手写的主数据，

@@ -12,6 +12,7 @@ import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.settle.dto.RateCardVO;
 import ai.neargo.shop.settle.dto.SettleBillVO;
 import ai.neargo.shop.settle.entity.StlBill;
+import ai.neargo.shop.settle.entity.StlFeeRule;
 import ai.neargo.shop.settle.entity.StlPurchaseInvoice;
 import ai.neargo.shop.settle.dto.PurchaseInvoiceVO;
 import ai.neargo.shop.settle.dto.StatementVO;
@@ -47,13 +48,14 @@ public class SettleServiceImpl implements SettleService {
 
     private static final Logger log = LoggerFactory.getLogger(SettleServiceImpl.class);
 
-    /** 自带客流费率（万分比）。R16 建议一期零佣金 —— 他带来的客户在别家消费才是平台收益。 */
-    @Value("${shop.settle.merchant-owned-rate:0}")
-    private int merchantOwnedRate;
-
-    /** 平台客流费率（万分比）。默认 5%。 */
-    @Value("${shop.settle.platform-rate:500}")
-    private int platformRate;
+    /*
+     * 费率来自 stl_fee_rule，不再来自 application.yml（P1-4）。
+     *
+     * 原先是两个 @Value，改一次费率要改配置文件加重启；而费率是最会被反复调的
+     * 东西之一。快照那一半原本就做对了 —— stl_bill.commission_rate 逐单落快照，
+     * 历史账不跟着变 —— 这次只换取数来源，不动快照。
+     */
+    private final ai.neargo.shop.settle.service.FeeRuleService feeRuleService;
 
     private final BillMapper billMapper;
     private final SplitLogMapper splitLogMapper;
@@ -71,8 +73,10 @@ public class SettleServiceImpl implements SettleService {
                              PickupQueryPort pickupPort,
                              ai.neargo.shop.spi.user.MerchantQueryPort merchantQueryPort,
                              ai.neargo.shop.settle.mapper.SettleMappers.PurchaseInvoiceMapper purchaseInvoiceMapper,
-                             ai.neargo.shop.spi.platform.SettingPort settingPort) {
+                             ai.neargo.shop.spi.platform.SettingPort settingPort,
+                             ai.neargo.shop.settle.service.FeeRuleService feeRuleService) {
         this.settingPort = settingPort;
+        this.feeRuleService = feeRuleService;
         this.purchaseInvoiceMapper = purchaseInvoiceMapper;
         this.billMapper = billMapper;
         this.splitLogMapper = splitLogMapper;
@@ -122,13 +126,27 @@ public class SettleServiceImpl implements SettleService {
     @Transactional
     public int generateForOrder(String orderNo) {
         int created = 0;
+        /*
+         * 费率一次取齐，不逐子单查库：一张订单跨 N 个商家就是 N 张结算单，
+         * 而规则表天然很小（四格 × 调整次数）。同一订单内用同一份快照，
+         * 也顺带保证了「同一单里不会因为跨过某个生效时刻而两个商家算出不同费率」。
+         */
+        long at = System.currentTimeMillis();
+        var rates = feeRuleService.effectiveRates(at);
+
         for (SettleSourcePort.SettleSource src : sourcePort.settleSourcesOf(orderNo)) {
             // 一个子单只能有一张结算单：重复生成 = 重复分账 = 给商家多打钱。
             // 靠先查再插 + DB 唯一索引双保险（事件重投时两条路径都可能撞上）
             if (findBySubOrder(src.subOrderNo()) != null) {
                 continue;
             }
-            int rate = rateOf(src.trafficSource());
+            /*
+             * 经营模式要在算费率之前拿到 —— 费率是「经营模式 × 流量来源」二维的。
+             * 它同时还决定这张单走哪条状态机（见下方快照那段）。
+             */
+            String mode = merchantQueryPort.businessModeOf(src.merchantNo(), src.storeNo());
+            int rate = rates.getOrDefault(mode + "|" + normalizedSource(src.trafficSource()), 0);
+
             // ★ 平台补贴要补回给商家；商家自己让的利不补
             long gross = src.payAmount() + src.discountPlatform();
             long commission = gross * rate / 10000;
@@ -165,7 +183,6 @@ public class SettleServiceImpl implements SettleService {
              * 不快照的话，门店改一次模式会把未结的历史流水一起改口径 ——
              * 自营的单要收进项票、第三方的不用，走错分支就是凭证对不上账。
              */
-            String mode = merchantQueryPort.businessModeOf(src.merchantNo(), src.storeNo());
             bill.setBusinessMode(mode);
             boolean selfOperated = MerchantQueryPort.MODE_SELF_OPERATED.equals(mode);
             bill.setStatus(selfOperated ? StlBill.PENDING_RECON : StlBill.PENDING);
@@ -177,8 +194,17 @@ public class SettleServiceImpl implements SettleService {
         return created;
     }
 
-    private int rateOf(String trafficSource) {
-        return "MERCHANT_OWNED".equals(trafficSource) ? merchantOwnedRate : platformRate;
+    /**
+     * 流量来源为空时按平台客流算。
+     *
+     * <p>倒向「收费」而不是「免费」，与 {@code FeeRuleService.rateOf} 查不到时返回 0
+     * 方向相反，且都是有意的：这里判的是**归因缺失**（没记到是谁带来的），
+     * 默认按平台带来的算；那里判的是**规则缺失**（运营没配），
+     * 凭空按最高档收会真的多扣商家钱。
+     */
+    private String normalizedSource(String trafficSource) {
+        return StlFeeRule.MERCHANT_OWNED.equals(trafficSource)
+                ? StlFeeRule.MERCHANT_OWNED : StlFeeRule.PLATFORM;
     }
 
     // ---------------------------------------------------------------- 分账
@@ -290,9 +316,15 @@ public class SettleServiceImpl implements SettleService {
 
     @Override
     public RateCardVO rateCard() {
-        return new RateCardVO(merchantOwnedRate, platformRate,
+        // 商家看到的是第三方那一行 —— 自营的单商家不参与分账，给他看自营费率只会造成误解
+        var rates = feeRuleService.effectiveRates(System.currentTimeMillis());
+        int owned = rates.getOrDefault(
+                MerchantQueryPort.MODE_THIRD_PARTY + "|" + StlFeeRule.MERCHANT_OWNED, 0);
+        int platform = rates.getOrDefault(
+                MerchantQueryPort.MODE_THIRD_PARTY + "|" + StlFeeRule.PLATFORM, 0);
+        return new RateCardVO(owned, platform,
                 "自带客流（扫店铺码进店）零佣金；平台客流按 "
-                        + (platformRate / 100.0) + "% 收取。费率以下单时快照为准，调整不影响历史订单。");
+                        + (platform / 100.0) + "% 收取。费率以下单时快照为准，调整不影响历史订单。");
     }
 
     @Override
