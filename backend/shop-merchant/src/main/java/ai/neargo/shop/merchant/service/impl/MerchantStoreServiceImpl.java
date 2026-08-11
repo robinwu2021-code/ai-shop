@@ -159,6 +159,17 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
                             .eq(MchEntityCommunity::getCommunityNo, gone)));
         }
         for (String added : communityNos.stream().filter(c -> !current.contains(c)).toList()) {
+            /*
+             * **先复活、再插入。** 差集只挡得住「同一次保存里重复加」，挡不住
+             * 「先移除、之后又加回同一个社区」—— 那一行被逻辑删掉了（deleted=1）
+             * 但仍占着 uk_entity_community 的索引位，直接 insert 必撞唯一键，
+             * 而商家看到的是「系统开小差了」，他做的只是把经营范围改回去。
+             */
+            int revived = DataScopeContext.executeWithoutScope(() ->
+                    merchantCommunityMapper.revive(merchantNo, added));
+            if (revived > 0) {
+                continue;
+            }
             MchEntityCommunity row = new MchEntityCommunity();
             row.setEntityNo(merchantNo);
             row.setCommunityNo(added);

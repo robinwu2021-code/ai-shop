@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="430" viewBox="0 0 720 430" role="img" font-family="system-ui,-apple-system,'PingFang SC',sans-serif">
+<title>经营范围：从三档枚举到多级地理覆盖</title>
+<desc>左边是现状：商家的 service_scope 是 COMMUNITY / CITY / PLATFORM 三选一，三档里同时混着「履约能力」和「地理粒度」两件事，地理只能精确到「所有已配社区」或「整座城市」，中间没有档位。右边是提议：拆成两个正交的东西——履约能力（靠自提点 / 上门或同城配送 / 快递无半径）与地理覆盖（一组条目，每条可以是社区、区县或城市）。两者都汇入同一个出口 reachableCommunities：快递能力直接展开成全部开放社区，其余按覆盖条目逐条展开，区县和城市各自展开成其下的开放社区，再去重。调用方只认这个出口，所以模型换了而上架、可见性、履约都不用改。</desc>
+<defs>
+<marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+<path d="M2 1L8 5L2 9" fill="none" stroke="#8A94A2" stroke-width="1.4" stroke-linecap="round"/></marker>
+<style>
+.n{font-size:12px;font-weight:500;fill:#161A21}
+.s{font-size:10.5px;fill:#5A6472}
+.h{font-size:13px;font-weight:600;fill:#161A21}
+.g{font-size:10.5px;fill:#7A8492;letter-spacing:.08em}
+.a{stroke:#8A94A2;stroke-width:1.3;fill:none}
+</style></defs>
+
+<rect x="0" y="0" width="720" height="430" fill="#FCFDFE"/>
+
+<text class="h" x="20" y="26">现状（ADR-009）</text>
+<text class="s" x="20" y="44">一个字段三选一，履约能力与地理粒度混在一起</text>
+
+<rect x="16" y="58" width="300" height="128" rx="8" fill="#FFFFFF" stroke="#D9C9A8"/>
+<text class="g" x="32" y="80">mch_entity.service_scope</text>
+<rect x="32" y="90" width="268" height="26" rx="4" fill="#F4F6F8" stroke="#C9D4DE"/>
+<text class="n" x="42" y="107">COMMUNITY　靠自提点 ＋ 已配的那几个社区</text>
+<rect x="32" y="120" width="268" height="26" rx="4" fill="#F4F6F8" stroke="#C9D4DE"/>
+<text class="n" x="42" y="137">CITY　　　　上门/同城 ＋ 整座城市</text>
+<rect x="32" y="150" width="268" height="26" rx="4" fill="#F4F6F8" stroke="#C9D4DE"/>
+<text class="n" x="42" y="167">PLATFORM　　快递 ＋ 无半径</text>
+
+<text class="s" x="20" y="208">中间没有档位：「本区」「相邻三个小区外加一个区」都表达不了</text>
+
+<text class="h" x="392" y="26">提议（ADR-013）</text>
+<text class="s" x="392" y="44">拆成两个正交的东西，各自可独立演进</text>
+
+<rect x="388" y="58" width="316" height="62" rx="8" fill="#E6F2F0" stroke="#8FC2BA"/>
+<text class="g" x="404" y="78">履约能力　fulfillment_reach</text>
+<text class="n" x="404" y="98">PICKUP 靠自提点　ONSITE 上门/同城　SHIPPING 快递</text>
+<text class="s" x="404" y="113">「怎么送到你手上」—— 与地理无关</text>
+
+<rect x="388" y="130" width="316" height="96" rx="8" fill="#EAF1F6" stroke="#8FB3C9"/>
+<text class="g" x="404" y="150">地理覆盖　mch_service_area（多行）</text>
+<rect x="404" y="158" width="90" height="24" rx="4" fill="#FFFFFF" stroke="#8FB3C9"/>
+<text class="n" x="449" y="175" text-anchor="middle">社区</text>
+<rect x="502" y="158" width="90" height="24" rx="4" fill="#FFFFFF" stroke="#8FB3C9"/>
+<text class="n" x="547" y="175" text-anchor="middle">区/县</text>
+<rect x="600" y="158" width="90" height="24" rx="4" fill="#FFFFFF" stroke="#8FB3C9"/>
+<text class="n" x="645" y="175" text-anchor="middle">城市</text>
+<text class="s" x="404" y="200">「能不能卖给你」—— 一家店可以同时勾三个小区加一个区</text>
+<text class="s" x="404" y="216">平台维护基础数据；商家勾选，缺的可提报待审</text>
+
+<path class="a" d="M166 186L166 268" marker-end="url(#ar)"/>
+<path class="a" d="M546 226L546 268" marker-end="url(#ar)"/>
+
+<rect x="16" y="268" width="688" height="66" rx="8" fill="#FDF3E3" stroke="#D9B87C"/>
+<text class="h" x="36" y="292">唯一出口　MerchantQueryPort.reachableCommunities(merchantNo)</text>
+<text class="s" x="36" y="312">SHIPPING → 全部开放社区；否则逐条展开：社区直接取，区/市展开成其下的开放社区，再去重</text>
+<text class="s" x="36" y="327">两种模型都汇到这里 —— 这是换模型能改得动的全部原因</text>
+
+<path class="a" d="M360 334L360 362" marker-end="url(#ar)"/>
+
+<rect x="16" y="362" width="688" height="52" rx="8" fill="#F4F6F8" stroke="#C9D4DE"/>
+<text class="n" x="36" y="384">调用方：上架写社区池（MerchantGoodsServiceImpl）· 商家详情可达性 · 履约与自提点</text>
+<text class="s" x="36" y="402">它们只认这个出口，**一行都不用改** —— 改错的症状会是「商品谁也搜不到」且不报错，所以出口必须只有一个</text>
+</svg>

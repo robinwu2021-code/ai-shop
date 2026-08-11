@@ -508,6 +508,43 @@ class CategoryTreeFlowTest {
                 .andExpect(jsonPath("$.code").value(10409));
     }
 
+    @Test
+    @DisplayName("★ 覆盖社区移除后再加回来不能撞唯一键 —— 逻辑删的行还占着索引位")
+    void removedCommunityCanBeAddedBack() throws Exception {
+        String token = merchant("12600161005", "门面测试·社区来回改");
+
+        // ① 仅本社区，覆盖 CM001
+        assertThat(json.readTree(saveScope(token, "COMMUNITY", "[\"CM001\"]"))
+                .get("code").asInt()).isZero();
+        // ② 改成全市：CM001 被逻辑删除（deleted=1），但它仍占着 uk_entity_community 的索引位
+        assertThat(json.readTree(saveScope(token, "CITY", "[]")).get("code").asInt()).isZero();
+        /*
+         * ③ 再改回仅本社区、还是 CM001。
+         *
+         * 修复前这里是 DuplicateKeyException → 10500「系统开小差了」，
+         * 而商家做的只是把经营范围改回去。差集比对挡得住「同一次保存里重复加」，
+         * 挡不住「先移除、之后又加回来」—— 那一行 selectList 查不到（被逻辑删过滤掉），
+         * 于是被当成新增去 insert，直接撞唯一键。
+         *
+         * 同一个坑在门店角色、商品社区池上都修过（各有一个 revive），
+         * 商家社区表是漏掉的第三处 —— 2026-08-11 的 E2E 把它撞了出来。
+         */
+        String again = saveScope(token, "COMMUNITY", "[\"CM001\"]");
+        assertThat(json.readTree(again).get("code").asInt()).isZero();
+        assertThat(json.readTree(again).get("data").get("serviceCommunityNos").toString())
+                .as("复活之后覆盖关系要真的回来，不能只是没报错").contains("CM001");
+    }
+
+    private String saveScope(String token, String scope, String communityNosJson) throws Exception {
+        return mvc().perform(post("/biz/store").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"announcement\":\"营业中\",\"openHours\":\"08:00-20:00\","
+                                + "\"address\":\"文一西路 1 号\",\"featured\":[],"
+                                + "\"serviceScope\":\"" + scope + "\","
+                                + "\"serviceCommunityNos\":" + communityNosJson + "}"))
+                .andReturn().getResponse().getContentAsString();
+    }
+
     private void saveNotice(String token, String text) throws Exception {
         mvc().perform(post("/biz/store").header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)

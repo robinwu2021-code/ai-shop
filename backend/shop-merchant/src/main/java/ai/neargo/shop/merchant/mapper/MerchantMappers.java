@@ -30,9 +30,42 @@ public final class MerchantMappers {
 
     /** 商家覆盖的社区：C 端「本社区可见商家」的反查索引所在。 */
     public interface MchEntityCommunityMapper extends BaseMapper<MchEntityCommunity> {
+
+        /**
+         * 复活一条被逻辑删掉的覆盖关系。
+         *
+         * <p>与 {@code MchStoreRoleMapper.revive} 是同一个坑的同一种解法 ——
+         * 那边的注释里就写着「这个坑在<b>商家社区表</b>、商品社区池上各踩过一次」，
+         * 而商家社区表这一处一直没修。2026-08-11 的 E2E 把它撞出来了：
+         * 商家把经营范围从「仅本社区（阳光花园）」改成「全市」再改回来，
+         * 保存直接 500 —— {@code uk_entity_community(entity_no, community_no)}
+         * <b>不含 deleted</b>，逻辑删掉的那行还占着索引位，insert 撞唯一键。
+         *
+         * <p>商家看到的是「系统开小差了，请稍后再试」，而他做的只是把范围改回去。
+         *
+         * <p>必须手写 SQL：MyBatis-Plus 的 {@code @TableLogic} 会给所有查询与更新
+         * 自动追加 {@code deleted = 0}，用 Wrapper 根本够不到这一行。
+         *
+         * @return 影响行数；0 表示压根没有这一行（该走 insert）
+         */
+        @Update("""
+                UPDATE mch_entity_community SET deleted = 0, version = version + 1
+                WHERE entity_no = #{entityNo} AND community_no = #{communityNo} AND deleted = 1
+                """)
+        int revive(@Param("entityNo") String entityNo, @Param("communityNo") String communityNo);
     }
 
     /** 商家资质。按 expire_at 扫到期，所以那一列有索引。 */
+    public interface AdmissionPolicyMapper
+            extends BaseMapper<ai.neargo.shop.merchant.entity.MchAdmissionPolicy> {
+    }
+
+    public interface DepositMapper extends BaseMapper<ai.neargo.shop.merchant.entity.MchDeposit> {
+    }
+
+    public interface DepositTxnMapper extends BaseMapper<ai.neargo.shop.merchant.entity.MchDepositTxn> {
+    }
+
     public interface QualificationMapper extends BaseMapper<MchQualification> {
     }
 
