@@ -112,6 +112,26 @@ public class FulfillmentQueryPortImpl implements FulfillmentQueryPort {
                 sub.getStatus(), OrdSubOrder.COMPLETED)) {
             return false;
         }
+        /*
+         * 降级单：**核销不等于完成**（F-4）。
+         *
+         * 供货方就是自提点运营者时，核销那个「独立第三方」并不独立 ——
+         * 自己发货、自己核销、自己证明送到了。这一单只剩买家能证明货到了手上，
+         * 所以核销只把它推进到「配送中」，由买家的确认收货收口。
+         *
+         * 返回 false 而不是抛异常：核销台点了没反应会让店主反复点，
+         * 而这不是错误、是这一单本来就该这么走。上层据此提示「已登记，待买家确认」。
+         */
+        if (sub.getRequireBuyerConfirm() != null && sub.getRequireBuyerConfirm() == 1) {
+            if (!OrdSubOrder.FULFILLING.equals(sub.getStatus())) {
+                sub.setStatus(OrdSubOrder.FULFILLING);
+                DataScopeContext.executeWithoutScope(() -> subOrderMapper.updateById(sub));
+                appendLog(subOrderNo, OrdSubOrder.FULFILLING,
+                        "已核销，等待买家确认收货", operatorNo);
+            }
+            return false;
+        }
+
         // ⚠️ **写路径同样要豁免**：核销是「商家把买家的单推进到已完成」，天然跨属主。
         // 不豁免的话，UPDATE 会被拼上当前会话的 user_no（店主自己），影响行数 0 ——
         // 而 updateById 返回 0 不会抛异常：核销接口返回成功、订单状态纹丝不动，

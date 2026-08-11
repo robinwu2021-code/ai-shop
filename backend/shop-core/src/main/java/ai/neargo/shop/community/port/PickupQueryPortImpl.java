@@ -55,7 +55,9 @@ public class PickupQueryPortImpl implements PickupQueryPort {
                 p.getType(), p.getCommunityNo(),
                 feeModeOf(p), nz(p.getServiceFeePerItemMinor()), nzi(p.getServiceFeeRate()),
                 // owner_ref 是多态列：只有 STORE 那一支存的是门店号
-                "STORE".equals(p.getType()) ? p.getOwnerRef() : null));
+                "STORE".equals(p.getType()) ? p.getOwnerRef() : null,
+                // 原样再给一份：准入降级判定要看 NEIGHBOR 那一支存的用户号
+                p.getOwnerRef()));
     }
 
     /**

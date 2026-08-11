@@ -174,6 +174,15 @@ public interface MerchantQueryPort {
     boolean hasExpiredQualification(String merchantNo);
 
     /**
+     * 这家商户的<b>所有人是哪个 C 端用户</b>。
+     *
+     * <p>准入矩阵的降级判定要用它：邻居自提点的 {@code owner_ref} 存的是用户号，
+     * 要判「供货方就是自提点运营者」，只能在用户号这一层比 ——
+     * 商户号与用户号不是一个命名空间，比不了。
+     */
+    java.util.Optional<String> ownerUserNoOf(String merchantNo);
+
+    /**
      * 某行业下有多少商家。
      *
      * <p>运营改行业准入前要知道影响面 —— 把一个有 300 家店的行业停掉，

@@ -348,10 +348,18 @@ public class OrderServiceImpl implements OrderService {
          * 放在 insert 之前：虽然事务回滚也能收拾，但先落库再抛会让
          * 订单号消耗掉、日志里留下一条永远查不到的单。
          */
+        Map<String, Boolean> needsConfirm = new java.util.HashMap<>();
         for (Group g : split.groups) {
             long merchantPay = g.goodsAmount() + g.freight - discounts.of(g.merchantNo);
             admissionPort.requireOrderAllowed(g.merchantNo, merchantPay,
                     () -> paidAmountToday(g.merchantNo));
+            /*
+             * 准入矩阵（§7.7）：这个主体能不能用这种履约方式。
+             * 结论在下单这一刻定死并落进子单 —— 商家事后换自提点运营者，
+             * 历史单的判定不该跟着变。
+             */
+            needsConfirm.put(g.merchantNo, admissionPort.requireFulfillmentAllowed(
+                    g.merchantNo, cmd.fulfillment(), cmd.pickupNo()));
         }
 
         orderMapper.insert(order);
@@ -392,6 +400,8 @@ public class OrderServiceImpl implements OrderService {
             sub.setDiscountPlatform(discounts.platformFunded(g.merchantNo));
             sub.setDiscountMerchant(discounts.merchantFunded(g.merchantNo));
             sub.setPayAmount(g.goodsAmount() + g.freight - discount);
+            sub.setRequireBuyerConfirm(
+                    Boolean.TRUE.equals(needsConfirm.get(g.merchantNo)) ? 1 : 0);
             sub.setStatus(OrdSubOrder.WAIT_PAY);
             sub.setRemark(cmd.remark());
             subOrderMapper.insert(sub);

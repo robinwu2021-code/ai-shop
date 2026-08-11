@@ -552,7 +552,15 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort {
         return m != null && Boolean.TRUE.equals(m.getPointsForced());
     }
 
-    @Override
+        @Override
+    public java.util.Optional<String> ownerUserNoOf(String merchantNo) {
+        MchEntity m = merchantMapper.selectOne(
+                Wrappers.<MchEntity>lambdaQuery().eq(MchEntity::getEntityNo, merchantNo).last("LIMIT 1"));
+        return m == null ? java.util.Optional.empty()
+                : java.util.Optional.ofNullable(m.getOwnerUserNo());
+    }
+
+@Override
     public boolean hasExpiredQualification(String merchantNo) {
         return governService.hasExpiredQualification(merchantNo);
     }

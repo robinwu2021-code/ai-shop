@@ -112,6 +112,17 @@ public class OrdSubOrder extends BaseEntity {
     /** EXPRESS 履约：快递单号，发货后才有。 */
     private String expressNo;
 
+    /**
+     * 1 = <b>核销不等于完成</b>，必须买家确认收货（准入矩阵降级单，F-4）。
+     *
+     * <p>供货方就是自提点运营者时，「独立第三方核销」这道其实不存在 ——
+     * 自己发货、自己核销、自己证明送到了。此时只剩买家能证明货到了手上。
+     *
+     * <p>在下单那一刻算好落库，不在核销时现算：现算的话商家事后把自提点换个人，
+     * 历史单的判定就跟着变了。与 {@code business_mode} 快照同一个道理。
+     */
+    private Integer requireBuyerConfirm;
+
     /** 下单人昵称快照：团长视角（分拣单/核销台）要看得见是谁的单。 */
     private String buyerNickname;
 

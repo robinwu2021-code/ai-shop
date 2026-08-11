@@ -41,4 +41,21 @@ public interface AdmissionPort {
      *                       「本档位不限日累计」的绝大多数商户<b>根本不触发那次聚合查询</b>。
      */
     void requireOrderAllowed(String merchantNo, long amountMinor, LongSupplier todayPaidMinor);
+
+    /**
+     * 下单时按<b>准入矩阵</b>判「这个主体能不能用这种履约方式」（方案 §7.7）。
+     *
+     * <p>矩阵的两个轴都不是新数据：S 由 {@code legal_form} 推出，
+     * T 由履约方式推出。核心命题是<b>平台责任 = 供货方风险 × 交付留痕缺失</b> ——
+     * 平台无仓、不碰货，资质越弱就越依赖交付环节有独立第三方留痕。
+     *
+     * <p><b>降级规则</b>：当供货方就是自提点运营者时，那道「独立核销」实际不存在
+     * （自己发货、自己核销），T 降一级后重查同一张矩阵。
+     * 一条规则替代一族枚举值 —— 往后再出现「供货商同时是配送员」这类组合，矩阵不用改。
+     *
+     * @param pickupNo 自提单的自提点；非自提传 {@code null}
+     * @return 是否<b>必须由买家确认收货</b>。降级之后落进「⚠️」格的单要走这一步：
+     *         核销那个第三方已经不独立了，只剩买家能证明货真的到了手上
+     */
+    boolean requireFulfillmentAllowed(String merchantNo, String fulfillment, String pickupNo);
 }

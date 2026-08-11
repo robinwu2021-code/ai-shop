@@ -100,6 +100,13 @@ public enum ErrorCode {
      * 说出来 —— 通用的「请求参数有误」会让用户反复重试同一个动作。
      */
     FULFILLMENT_NOT_SUPPORTED(70013, "err.trade.fulfillment_not_supported"),
+    /*
+     * 准入矩阵拒绝了这个 (主体档位 × 履约方式) 组合。与 70013 分开：
+     * 那个是「这件商品不支持这种送法」（换一种即可），
+     * 这个是「这家店不允许用这种送法」（换商品也没用）——
+     * 合成一个码，商家会一直换商品试。
+     */
+    FULFILLMENT_TIER_DENIED(70014, "err.trade.fulfillment_tier_denied"),
 
     /**
      * 进项票未核验通过，不允许登记付款（**票到付款**）。

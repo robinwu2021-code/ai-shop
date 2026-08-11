@@ -47,9 +47,15 @@ public interface PickupQueryPort {
      *                     货就该是那家店的。此前恒取默认门店，多门店时会
      *                     「扣了 A 店的库存，顾客却去 B 店取货」
      */
+    /**
+     * @param ownerRef 承接方标识，<b>含义随 {@code type} 变</b>：
+     *                 {@code STORE} 是门店号、{@code NEIGHBOR} 是用户号、{@code PLATFORM} 为空。
+     *                 准入矩阵的降级判定要用它 —— 「供货方就是自提点运营者」时，
+     *                 那道「独立第三方核销」实际不存在，风险等级要降一级（方案 §7.8）。
+     */
     record PickupBrief(String pickupNo, String name, String address, String type,
                        String communityNo, String feeMode,
                        long serviceFeePerItemMinor, int serviceFeeRate,
-                       String ownerStoreNo) {
+                       String ownerStoreNo, String ownerRef) {
     }
 }
