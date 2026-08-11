@@ -66,19 +66,36 @@ public interface MerchantOrderService {
      * <b>空集合 = 一家都看不到</b>。把空集合当成不过滤，正是「没被授权的员工反而看到全部」
      * 这类越权最常见的写法。
      *
-     * <p><b>一次查询算完四个数</b>，不是发四条 count：工作台是商家每天开的第一屏，
-     * 而这四个数天然来自同一批待履约的单。
+     * <p><b>这四个数分属两个维度，必须传两个作用域</b>：
+     * <ul>
+     *   <li>{@code toShip} / {@code toDeliver} —— <b>商家视角</b>，按门店。
+     *       「我这家店还有多少货要发」</li>
+     *   <li>{@code toVerify} / {@code toPick} —— <b>自提点承接方视角</b>，按自提点，
+     *       <b>且不限商家</b>。「我这个点上还有多少货要分、要核」——
+     *       一个自提点承接多家商家的货（ADR-005），别家的货也是我要分的</li>
+     * </ul>
+     *
+     * <p>合成一个维度算过（按门店算全部四个数），表现是<b>工作台说「待分拣 1」，
+     * 点进去分拣单「共 0 件」</b>：那一单的买家选了别家的自提点，
+     * 按门店算它属于我，按自提点算它不在我的点上。
+     * 商家看到的是「有活，但找不到」。
+     *
+     * <p><b>一次查询算完</b>，不是发四条 count：工作台是商家每天开的第一屏。
+     *
+     * @param storeNos  我能碰的门店，空集合 = 一家都没授权 → 前两个数为 0
+     * @param pickupNos 我承接的自提点，空 = 不做自提点 → 后两个数为 0（端上本来也不显示这两格）
      */
-    TodoCounts todo(String merchantNo, java.util.Collection<String> storeNos);
+    TodoCounts todo(String merchantNo, java.util.Collection<String> storeNos,
+                    java.util.Collection<String> pickupNos);
 
     /** 经营数据（B-11.1）。无单时返回 0，**不是报错** —— 新店第一天打开工作台是正常场景。 */
     StatsSummary stats(String merchantNo, java.util.Collection<String> storeNos);
 
     /**
-     * @param toShip    待发货（快递履约）
-     * @param toDeliver 待自送（商家自送履约）
-     * @param toVerify  待核销（自提已到货，买家还没来取）
-     * @param toPick    待分拣（自提单已付款，还没到货点数）
+     * @param toShip    待发货（快递履约）—— 按门店
+     * @param toDeliver 待自送（商家自送履约）—— 按门店
+     * @param toVerify  待核销（自提已到货，买家还没来取）—— 按自提点，含别家商家的货
+     * @param toPick    待分拣（自提单已付款，还没到货点数）—— 按自提点，含别家商家的货
      */
     record TodoCounts(int toShip, int toDeliver, int toVerify, int toPick) {
     }

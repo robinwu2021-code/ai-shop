@@ -238,42 +238,54 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
             List.of("STORE_PICKUP", "NEIGHBOR_PICKUP");
 
     @Override
-    public TodoCounts todo(String merchantNo, java.util.Collection<String> storeNos) {
-        // 空集合 = 一家门店都没被授权 → 四个 0，而不是「不过滤」看到全主体
-        if (storeNos != null && storeNos.isEmpty()) {
-            return new TodoCounts(0, 0, 0, 0);
-        }
+    public TodoCounts todo(String merchantNo, java.util.Collection<String> storeNos,
+                           java.util.Collection<String> pickupNos) {
         /*
-         * 一次把待履约的单捞出来在内存里分类，而不是发四条 count：
-         * 这四个数来自同一批单（WAIT_FULFILL / FULFILLING），
-         * 四条 count 是四次全表扫，而工作台是每天打开最频繁的一屏。
+         * 发货两个数：**商家视角，按门店**。
+         * 空集合 = 一家门店都没被授权 → 0，而不是「不过滤」看到全主体。
          */
-        List<OrdSubOrder> rows = scan(merchantNo, storeNos,
-                w -> w.in(OrdSubOrder::getStatus, OrdSubOrder.WAIT_FULFILL, OrdSubOrder.FULFILLING));
-
         int toShip = 0;
         int toDeliver = 0;
-        int toVerify = 0;
-        int toPick = 0;
-        for (OrdSubOrder o : rows) {
-            String f = o.getFulfillment() == null ? EXPRESS : o.getFulfillment();
-            boolean waiting = OrdSubOrder.WAIT_FULFILL.equals(o.getStatus());
-            if (EXPRESS.equals(f)) {
+        if (storeNos == null || !storeNos.isEmpty()) {
+            for (OrdSubOrder o : scan(merchantNo, storeNos,
+                    w -> w.eq(OrdSubOrder::getStatus, OrdSubOrder.WAIT_FULFILL)
+                            .notIn(OrdSubOrder::getFulfillment, PICKUP_FULFILLMENTS))) {
                 // 已发货（FULFILLING）不再是待办 —— 剩下的是买家收货，商家没事可做
-                if (waiting) {
+                if (MERCHANT_DELIVERY.equals(o.getFulfillment())) {
+                    toDeliver += 1;
+                } else {
+                    // fulfillment 为空按快递算，与下单侧的默认一致
                     toShip += 1;
                 }
-            } else if (MERCHANT_DELIVERY.equals(f)) {
-                if (waiting) {
-                    toDeliver += 1;
-                }
-            } else if (PICKUP.contains(f)) {
+            }
+        }
+
+        /*
+         * 自提两个数：**自提点承接方视角，按自提点，且不限商家**。
+         *
+         * 与 `PickupService.picking` / `orders` 同一口径 —— 它们也是按点取、不按商家过滤，
+         * 因为一个自提点承接多家商家的货（ADR-005），别家的货同样要我分、我核。
+         *
+         * 这里曾经与上面合用一次「按门店」的扫描，于是买家选了别家点的那些单
+         * 被算进了我的「待分拣」：**工作台显示 1，点进去分拣单 0 件**。
+         * 商家看到的是「有活，但找不到」，而两边的代码各自都说得通。
+         */
+        int toVerify = 0;
+        int toPick = 0;
+        if (pickupNos != null && !pickupNos.isEmpty()) {
+            List<OrdSubOrder> atMyPickups = DataScopeContext.executeWithoutScope(() ->
+                    subOrderMapper.selectList(Wrappers.<OrdSubOrder>lambdaQuery()
+                            .in(OrdSubOrder::getPickupNo, pickupNos)
+                            .in(OrdSubOrder::getFulfillment, PICKUP_FULFILLMENTS)
+                            .in(OrdSubOrder::getStatus,
+                                    OrdSubOrder.WAIT_FULFILL, OrdSubOrder.FULFILLING)));
+            for (OrdSubOrder o : atMyPickups) {
                 /*
                  * 自提两段：**到货前是分拣，到货后才是核销**。
                  * 合成一个数的话，商家看到「待核销 12」却在自提点找不到货 ——
                  * 因为那 12 单根本还没到店。
                  */
-                if (waiting) {
+                if (OrdSubOrder.WAIT_FULFILL.equals(o.getStatus())) {
                     toPick += 1;
                 } else {
                     toVerify += 1;

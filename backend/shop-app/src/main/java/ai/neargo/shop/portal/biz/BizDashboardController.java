@@ -72,7 +72,8 @@ public class BizDashboardController {
     public TodoVO todo() {
         BizContext ctx = BizContext.current();
         String merchantNo = BizContext.requireMerchantNo();
-        var counts = orderService.todo(merchantNo, ctx.allowedStoresOrAll());
+        // 两个作用域：发货按门店，分拣与核销按自提点 —— 见 MerchantOrderService.todo
+        var counts = orderService.todo(merchantNo, ctx.allowedStoresOrAll(), ctx.pickupNos());
         return new TodoVO(counts.toShip(), counts.toDeliver(), counts.toVerify(), counts.toPick(),
                 afterSaleService.merchantPendingCount(merchantNo),
                 reviewService.pendingReplyCount(merchantNo),
