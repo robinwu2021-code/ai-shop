@@ -94,10 +94,15 @@ public interface MerchantOrderService {
     /**
      * @param toShip    待发货（快递履约）—— 按门店
      * @param toDeliver 待自送（商家自送履约）—— 按门店
+     * @param toStock   待备货（自提单已付款，货还没送到自提点）—— <b>按门店</b>。
+     *                  这是<b>供货方</b>的活：把货备好送到买家选的那个自提点去。
+     *                  与 {@code toPick} 是同一批单的两头 ——
+     *                  一个是「我要送出去」，一个是「我要在点上分」，
+     *                  而买家常常选的是<b>别家</b>的点，两个数因此不相等
      * @param toVerify  待核销（自提已到货，买家还没来取）—— 按自提点，含别家商家的货
      * @param toPick    待分拣（自提单已付款，还没到货点数）—— 按自提点，含别家商家的货
      */
-    record TodoCounts(int toShip, int toDeliver, int toVerify, int toPick) {
+    record TodoCounts(int toShip, int toDeliver, int toStock, int toVerify, int toPick) {
     }
 
     /**

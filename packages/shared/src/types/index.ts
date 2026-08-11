@@ -1571,6 +1571,14 @@ export interface MerchantTodo {
   toShip: number;
   /** 待自送单数（商家自送履约） */
   toDeliver: number;
+  /**
+   * 待备货单数（自提单已付款，货还没送到自提点）。**按门店算**，这是供货方的活。
+   *
+   * 与 {@link toPick} 是同一批单的两头，**两个数不相等**：
+   * 买家常常选别家的自提点。`toPick` 按自提点算（我要在点上分多少），
+   * 这一个按门店算（我要送出去多少）。
+   */
+  toStock: number;
   /** 待核销单数（自提到货、买家还没来取） */
   toVerify: number;
   /** 待分拣单数（到货后按商品汇总点数） */

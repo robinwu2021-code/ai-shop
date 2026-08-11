@@ -77,7 +77,7 @@ export default {
   home: {
     greeting: "مهام اليوم", notMerchant: "لا يوجد متجر بعد", notMerchantHint: "استمارة واحدة للبدء، وبلا تراخيص للأفراد",
     goApply: "تقديم الطلب", auditing: "قيد المراجعة، وبعد الموافقة يمكنك عرض المنتجات",
-    todo: "المهام", toShip: "بانتظار الشحن", toDeliver: "بانتظار التوصيل", toVerify: "بانتظار الاستلام", toPick: "بانتظار الفرز", afterSale: "ما بعد البيع", toReply: "بانتظار الرد", quotable: "بانتظار التسعير",
+    todo: "المهام", toShip: "بانتظار الشحن", toDeliver: "بانتظار التوصيل", toStock: "قيد التجهيز", toVerify: "بانتظار الاستلام", toPick: "بانتظار الفرز", afterSale: "ما بعد البيع", toReply: "بانتظار الرد", quotable: "بانتظار التسعير",
     today: "اليوم", orders: "الطلبات", gmv: "المبيعات", rating: "التقييم",
     ownedTraffic: "عملاؤك", ownedTrafficHint: "طلبات عملائك الخاصين برسوم أقل",
     fulfillEntry: "منصة نقطة الاستلام", fulfillEntryHint: "استلام · فرز · وصول",

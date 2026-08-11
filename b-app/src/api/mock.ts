@@ -473,6 +473,9 @@ export const mockApi: MerchantApi = {
     return delay({
       toShip: mine.filter((o) => o.fulfillment === "EXPRESS" && o.status === "PAID").length,
       toDeliver: mine.filter((o) => o.fulfillment === "MERCHANT_DELIVERY" && o.status === "PAID").length,
+      // 待备货按**我的单**算（mine），不是按我的自提点（atMyPoint）——
+      // 买家常常选别家的点，两个数因此不相等。后端也是这个口径
+      toStock: mine.filter((o) => o.fulfillment === "STORE_PICKUP" && o.status === "PAID").length,
       toVerify: atMyPoint.filter((o) => o.status === "ARRIVED").length,
       toPick: atMyPoint.filter((o) => o.status === "PAID").length,
       afterSale: mine.filter((o) => o.afterSale?.status === "APPLIED").length,

@@ -103,6 +103,29 @@ class TodoPickupScopeFlowTest {
     }
 
     @Test
+    @DisplayName("★★★ 待备货与待分拣是同一批单的两头 —— 买家选别家的点时两个数不相等")
+    void toStockCountsSupplierSideOfTheSameOrders() throws Exception {
+        /*
+         * 供货商把货送到**别家**的自提点：
+         *   他要备货（toStock=1）——「我有货要送出去」
+         *   但他的分拣单是空的（toPick=0）——「那单不在我的点上」
+         *
+         * 把 toPick 改成按自提点算之后，这件事一度在工作台上**完全消失**：
+         * 有活、没数字、也没入口。这一格补的就是它。
+         */
+        String supplier = merchant("12600260030", "只供货不设点");
+        String goodsNo = onSaleGoods(supplier, "冬笋");
+        placeAndPayPickup("12600260031", goodsNo, "PP0001");
+
+        assertThat(todo(supplier, "toStock"))
+                .as("他有一单自提货要备 —— 无论买家选的是谁家的点")
+                .isEqualTo(1);
+        assertThat(todo(supplier, "toPick"))
+                .as("但那单不在他的点上，他分不了")
+                .isZero();
+    }
+
+    @Test
     @DisplayName("★★ 发货那两个数仍按门店 —— 它们是商家的活，与自提点无关")
     void shippingCountsStayOnStoreScope() throws Exception {
         String supplier = merchant("12600260020", "发快递的店");

@@ -76,6 +76,13 @@ const cells = computed(() => {
   const base: { key: string; n: number; route: string; perm: string }[] = [
     { key: "toShip", n: t.toShip, route: ROUTES.orders, perm: "biz:ship" },
     { key: "toDeliver", n: t.toDeliver, route: ROUTES.delivery, perm: "biz:ship" },
+    /*
+     * 待备货：把货送到买家选的那个自提点去。**与「待分拣」是两码事** ——
+     * 分拣是在自己的点上分货，备货是把货送出门，而买家常常选别家的点。
+     * 之前把 toPick 改成按自提点算之后，这件事在工作台上完全消失了：
+     * 有活、没数字、也没入口。
+     */
+    { key: "toStock", n: t.toStock, route: ROUTES.orders, perm: "biz:ship" },
     { key: "afterSale", n: t.afterSale, route: ROUTES.afterSale, perm: "biz:aftersale" },
     { key: "toReply", n: t.toReply, route: ROUTES.reviews, perm: "biz:review" },
   ];

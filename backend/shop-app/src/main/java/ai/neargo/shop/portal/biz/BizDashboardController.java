@@ -74,7 +74,8 @@ public class BizDashboardController {
         String merchantNo = BizContext.requireMerchantNo();
         // 两个作用域：发货按门店，分拣与核销按自提点 —— 见 MerchantOrderService.todo
         var counts = orderService.todo(merchantNo, ctx.allowedStoresOrAll(), ctx.pickupNos());
-        return new TodoVO(counts.toShip(), counts.toDeliver(), counts.toVerify(), counts.toPick(),
+        return new TodoVO(counts.toShip(), counts.toDeliver(), counts.toStock(),
+                counts.toVerify(), counts.toPick(),
                 afterSaleService.merchantPendingCount(merchantNo),
                 reviewService.pendingReplyCount(merchantNo),
                 groupService.quotableCount(merchantNo));
@@ -163,7 +164,10 @@ public class BizDashboardController {
      * @param toReply  待回复的评价数
      * @param quotable 可报价的求团需求数
      */
-    public record TodoVO(int toShip, int toDeliver, int toVerify, int toPick,
+    public record TodoVO(int toShip, int toDeliver,
+                         /** 待备货：自提单已付款，货还没送到自提点。**按门店**，这是供货方的活 */
+                         int toStock,
+                         int toVerify, int toPick,
                          int afterSale, int toReply, int quotable) {
     }
 

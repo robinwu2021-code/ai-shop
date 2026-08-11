@@ -246,12 +246,23 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
          */
         int toShip = 0;
         int toDeliver = 0;
+        int toStock = 0;
         if (storeNos == null || !storeNos.isEmpty()) {
             for (OrdSubOrder o : scan(merchantNo, storeNos,
-                    w -> w.eq(OrdSubOrder::getStatus, OrdSubOrder.WAIT_FULFILL)
-                            .notIn(OrdSubOrder::getFulfillment, PICKUP_FULFILLMENTS))) {
+                    w -> w.eq(OrdSubOrder::getStatus, OrdSubOrder.WAIT_FULFILL))) {
                 // 已发货（FULFILLING）不再是待办 —— 剩下的是买家收货，商家没事可做
-                if (MERCHANT_DELIVERY.equals(o.getFulfillment())) {
+                String f = o.getFulfillment();
+                if (PICKUP_FULFILLMENTS.contains(f)) {
+                    /*
+                     * **待备货**：把货备好送到买家选的那个自提点去，这是供货方的活。
+                     *
+                     * 与下面的 toPick 是同一批单的两头，但**两个数不相等**：
+                     * 买家常常选别家的点。把 toPick 改成按自提点算之后，
+                     * 「我有货要送出去」这件事一度**在工作台上完全消失了** ——
+                     * 有活、没数字、也没入口。这一格补的就是它。
+                     */
+                    toStock += 1;
+                } else if (MERCHANT_DELIVERY.equals(f)) {
                     toDeliver += 1;
                 } else {
                     // fulfillment 为空按快递算，与下单侧的默认一致
@@ -292,7 +303,7 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
                 }
             }
         }
-        return new TodoCounts(toShip, toDeliver, toVerify, toPick);
+        return new TodoCounts(toShip, toDeliver, toStock, toVerify, toPick);
     }
 
     @Override

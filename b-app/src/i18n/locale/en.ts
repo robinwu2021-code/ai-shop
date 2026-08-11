@@ -77,7 +77,7 @@ export default {
   home: {
     greeting: "What needs doing today", notMerchant: "No shop yet", notMerchantHint: "One form to open. No licence needed for individuals.",
     goApply: "Apply", auditing: "Under review. You can list products once approved.",
-    todo: "To do", toShip: "To ship", toDeliver: "To deliver", toVerify: "To redeem", toPick: "To pick", afterSale: "After-sales", toReply: "To reply", quotable: "To quote",
+    todo: "To do", toShip: "To ship", toDeliver: "To deliver", toStock: "To prep", toVerify: "To redeem", toPick: "To pick", afterSale: "After-sales", toReply: "To reply", quotable: "To quote",
     today: "Today", orders: "Orders", gmv: "GMV", rating: "Rating",
     ownedTraffic: "Own customers", ownedTrafficHint: "Orders from your own customers carry a lower fee",
     fulfillEntry: "Pickup fulfilment", fulfillEntryHint: "Redeem · Pick · Arrival",

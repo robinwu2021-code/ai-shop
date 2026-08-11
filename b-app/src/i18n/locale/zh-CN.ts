@@ -127,6 +127,7 @@ export default {
     todo: "待办",
     toShip: "待发货",
     toDeliver: "待自送",
+    toStock: "待备货",
     toVerify: "待核销",
     toPick: "待分拣",
     afterSale: "待售后",
