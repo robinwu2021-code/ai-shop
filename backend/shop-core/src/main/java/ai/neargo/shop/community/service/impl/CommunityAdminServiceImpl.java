@@ -41,8 +41,12 @@ public class CommunityAdminServiceImpl implements CommunityAdminService {
 
     private final CommunityMapper communityMapper;
     private final PickupPointMapper pickupMapper;
+    /** 只用来把 region_code 拼成人能读的路径 —— 区划本身归 platform 域 */
+    private final ai.neargo.shop.platform.RegionService regionService;
 
-    public CommunityAdminServiceImpl(CommunityMapper communityMapper, PickupPointMapper pickupMapper) {
+    public CommunityAdminServiceImpl(CommunityMapper communityMapper, PickupPointMapper pickupMapper,
+                                     ai.neargo.shop.platform.RegionService regionService) {
+        this.regionService = regionService;
         this.communityMapper = communityMapper;
         this.pickupMapper = pickupMapper;
     }
@@ -93,6 +97,28 @@ public class CommunityAdminServiceImpl implements CommunityAdminService {
         }
         CmtCommunity c = requireCommunity(communityNo);
         c.setFenceRadius(fenceRadius);
+        DataScopeContext.executeWithoutScope(() -> communityMapper.updateById(c));
+        return toVO(c, pickupCountOf(communityNo));
+    }
+
+    @Override
+    @Transactional
+    public CommunityVO setRegion(String communityNo, String regionCode, String operatorNo) {
+        CmtCommunity c = requireCommunity(communityNo);
+        String code = regionCode == null || regionCode.isBlank() ? null : regionCode.trim();
+        /*
+         * **挂之前先确认这个码存在。**
+         *
+         * 挂到一个不存在的码上不会报错，只会让这个社区在任何「按区覆盖」里都出不来 ——
+         * 而运营看着界面上明明填着值，商家看着自己的货就是没人搜得到。
+         * 这正是本仓库反复记录的那类无报错故障，只能在写入口拦。
+         */
+        if (code != null && regionService.path(code).isEmpty()) {
+            throw new ai.neargo.shop.common.BizException(
+                    ai.neargo.shop.common.ErrorCode.NOT_FOUND, "区划不存在：" + code);
+        }
+        c.setRegionCode(code);
+        c.setUpdatedBy(operatorNo);
         DataScopeContext.executeWithoutScope(() -> communityMapper.updateById(c));
         return toVO(c, pickupCountOf(communityNo));
     }
@@ -258,7 +284,27 @@ public class CommunityAdminServiceImpl implements CommunityAdminService {
                 OPEN.equals(c.getStatus()),
                 c.getFenceRadius() == null ? 0 : c.getFenceRadius(), pickupCount,
                 c.getCreatedAt() == null ? 0L
-                        : c.getCreatedAt().atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli());
+                        : c.getCreatedAt().atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli(),
+                c.getRegionCode(), regionPathOf(c.getRegionCode()));
+    }
+
+    /**
+     * 「浙江省 / 杭州市 / 西湖区 / 北山街道」。
+     *
+     * <p>拼在后端而不是丢给端上：端上只拿到 330106001 的话，要么显示一串数字，
+     * 要么自己按码长切片再逐级查 —— 而国标的编码规则不是端该知道的事。
+     *
+     * <p>区划码查不到时返回码本身：那多半是已撤并的旧码（区划每年调整，
+     * 而这份数据停在 2023）。显示成空白会让人以为「没归属」，而它其实归属过。
+     */
+    private String regionPathOf(String regionCode) {
+        if (regionCode == null || regionCode.isBlank()) {
+            return null;
+        }
+        var path = regionService.path(regionCode);
+        return path.isEmpty() ? regionCode
+                : path.stream().map(ai.neargo.shop.platform.RegionService.RegionVO::name)
+                        .collect(java.util.stream.Collectors.joining(" / "));
     }
 
     private PickupVO toVO(CmtPickupPoint p) {

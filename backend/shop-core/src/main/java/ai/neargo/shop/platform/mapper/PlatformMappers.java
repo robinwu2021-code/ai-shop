@@ -40,6 +40,10 @@ public final class PlatformMappers {
 
 
     /** 平台可调参数（评分权重、快速退款阈值…）。 */
+    /** 行政区划四级（44703 行，由 V31 灌入）。按 parent_code 逐级查，不整棵树捞。 */
+    public interface RegionMapper extends BaseMapper<ai.neargo.shop.platform.entity.SysRegion> {
+    }
+
     public interface SettingMapper extends BaseMapper<ai.neargo.shop.platform.entity.SysSetting> {
     }
 }

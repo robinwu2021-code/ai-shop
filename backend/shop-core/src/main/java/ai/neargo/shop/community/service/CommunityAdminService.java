@@ -23,6 +23,18 @@ public interface CommunityAdminService {
      */
     CommunityVO setFence(String communityNo, int fenceRadius, String operatorNo);
 
+    /**
+     * 把社区挂到某个行政区划下（ADR-013 阶段一）。
+     *
+     * <p>挂了之后「按区/按街道覆盖」才能命中它。**建议挂到街道级** ——
+     * 挂区县也能用，但那样「按街道覆盖」就退化成了「按区覆盖」。
+     *
+     * @param regionCode {@code sys_region.region_code}；传空表示清空归属
+     * @throws ai.neargo.shop.common.BizException 区划码不存在 —— 挂到一个不存在的码上，
+     *         症状是这个社区在任何按区的覆盖里都出不来，而界面上它明明填着值
+     */
+    CommunityVO setRegion(String communityNo, String regionCode, String operatorNo);
+
     List<PickupVO> pickups(String communityNo, String type, String status);
 
     /**
@@ -65,8 +77,15 @@ public interface CommunityAdminService {
      * @param opened       开城开关。关掉后 C 端不再展示，已有订单不受影响
      * @param pickupCount  本社区的自提点数量。列表直接给，避免逐行再查一次
      */
+    /**
+     * @param regionCode 所属区划码，空 = 尚未归属
+     * @param regionPath 从省到自身的中文路径（如「浙江省 / 杭州市 / 西湖区 / 北山街道」）。
+     *                   **后端拼好给端上**：光给一个 330106001 的话，端上要么显示一串数字，
+     *                   要么自己按码长切片再逐级查 —— 那等于把国标编码规则复制到端上
+     */
     record CommunityVO(String communityNo, String name, String city, String grid, boolean opened,
-                       int fenceRadius, int pickupCount, long createdAt) {
+                       int fenceRadius, int pickupCount, long createdAt,
+                       String regionCode, String regionPath) {
     }
 
     /**

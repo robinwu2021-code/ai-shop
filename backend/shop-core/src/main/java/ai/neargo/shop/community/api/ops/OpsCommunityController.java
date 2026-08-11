@@ -89,6 +89,27 @@ public class OpsCommunityController {
         return vo;
     }
 
+    /**
+     * 把社区挂到某个行政区划下（ADR-013 阶段一）。
+     *
+     * <p>挂了之后「按区/按街道覆盖」才能命中它。用 {@code INDUSTRY_MANAGE} 而不是
+     * {@code COMMUNITY_VIEW}：改归属会改变这个社区出现在谁的经营范围里，
+     * 与开城、围栏是同一量级的主数据操作。
+     */
+    @PostMapping("/ops/communities/{communityNo}/region")
+    @PreAuthorize("@perm.can('" + Perms.INDUSTRY_MANAGE + "')")
+    public CommunityAdminService.CommunityVO setRegion(@PathVariable String communityNo,
+                                                       @RequestBody RegionReq req) {
+        var vo = adminService.setRegion(communityNo, req.regionCode(), SecurityUtils.currentUserNo());
+        // 改归属会让这个社区进出别人的覆盖范围，必须能追到是谁在什么时候动的
+        auditLogPort.record("COMMUNITY_REGION", communityNo,
+                vo.regionPath() == null ? "清空归属" : vo.regionPath());
+        return vo;
+    }
+
+    public record RegionReq(String regionCode) {
+    }
+
     @PostMapping("/ops/communities/{communityNo}/fence")
     @PreAuthorize("@perm.can('" + Perms.INDUSTRY_MANAGE + "')")
     public CommunityAdminService.CommunityVO setFence(@PathVariable String communityNo,

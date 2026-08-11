@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS cmt_community
     points_enabled TINYINT(4) NOT NULL DEFAULT 0,
     grid VARCHAR(64) DEFAULT NULL,
     fence_radius INT(11) NOT NULL DEFAULT 1000,
+    region_code VARCHAR(12) DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_community_no UNIQUE (community_no)
 );
