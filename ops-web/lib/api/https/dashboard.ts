@@ -54,6 +54,12 @@ export const dashboardHttp: DashboardApi = {
       username: staff?.username ?? username,
       role: toOpsRole(staff?.roles?.[0]),
       token: raw?.token ?? "",
+      /*
+       * perms 一直在响应里，而此前**这一行不存在** —— 拿到手就丢了，
+       * 判权全靠前端本地的 ROLE_PERMS。两套各自演化的结果是
+       * 「前端显示的权限与后端实际允许的没有任何关系」。
+       */
+      perms: staff?.perms ?? [],
     };
   },
   getDashboardKpi: () => client.get("/ops/dashboard/kpi"),

@@ -3,7 +3,8 @@
 // —— nav.test.ts 断言矩阵里每个 P-x.y 模块都被至少一个叶子覆盖。
 //
 // - L1 可见性 = canModule(section.module)；权限码模块前缀见 lib/permissions.ts
-// - L3 可见性 = leaf.perm ? can(role, perm) : 跟随 section
+// - L3 可见性 = leaf.perm ? can(perms, perm) : 跟随 section
+//   判权入参是**后端下发的 perms**，不是 role —— role 只用于展示与分组
 // - soon = 待建：灰显不可点，不产生 404 入口（脚手架阶段绝大多数叶子都是 soon）
 // - phase = 产品分期徽章（1=矩阵 P0 一期 / 2=P1 二期 / 3=P2 增强）
 // - ready = 就绪度门禁，与 phase 分开：见 NavLeaf.ready
@@ -307,13 +308,13 @@ export function leafParts(href: string): { path: string; tab: string | null; vie
  * —— 那是上游项目的场景，提取时已删（见 components/README.md 的去留判据）。
  * 本项目的受限视角由**数据域**表达（矩阵 §2.3），不是由另一套菜单表达。
  */
-export function visibleSections(role: Role | undefined): NavSection[] {
-  return NAV.filter((s) => canModule(role, s.module));
+export function visibleSections(perms: string[] | undefined): NavSection[] {
+  return NAV.filter((s) => canModule(perms, s.module));
 }
 
 /** L3 可见性 = leaf.perm ? can() : 跟随 section。phase-locked 叶子保留（灰显）。 */
-export function visibleLeaves(section: NavSection, role: Role | undefined): NavLeaf[] {
-  return (section.children ?? []).filter((l) => (l.perm ? can(role, l.perm) : true));
+export function visibleLeaves(section: NavSection, perms: string[] | undefined): NavLeaf[] {
+  return (section.children ?? []).filter((l) => (l.perm ? can(perms, l.perm) : true));
 }
 
 /**
@@ -337,9 +338,9 @@ export function isLeafLocked(leaf: NavLeaf): boolean {
 }
 
 /** section 是否被产品分期屏蔽（整 section phase 或所有叶子均被锁）。 */
-export function isSectionLocked(section: NavSection, role: Role | undefined): boolean {
+export function isSectionLocked(section: NavSection, perms: string[] | undefined): boolean {
   if (isPhaseLocked(section.phase)) return true;
-  const leaves = visibleLeaves(section, role);
+  const leaves = visibleLeaves(section, perms);
   return leaves.length > 0 && leaves.every((l) => isLeafLocked(l));
 }
 
@@ -352,9 +353,9 @@ function sectionMatchPrefixes(section: NavSection): string[] {
  * 由 pathname 反推当前 section：最长前缀匹配；"/" 仅精确匹配。
  * 不做 RBAC 过滤——URL 已到达即需正确归属（页面自身有权限兜底）。
  */
-export function findActiveSection(pathname: string, role?: Role): NavSection | undefined {
+export function findActiveSection(pathname: string, perms?: string[]): NavSection | undefined {
   const p = normPath(pathname);
-  const pool = role ? visibleSections(role) : NAV;
+  const pool = perms?.length ? visibleSections(perms) : NAV;
   let best: { section: NavSection; len: number } | undefined;
   for (const section of pool) {
     for (const prefix of sectionMatchPrefixes(section)) {
@@ -389,8 +390,8 @@ export function activeLeafIndex(
 }
 
 /** section 的默认落地地址：首个可点叶子（排除 soon 和 phase-locked），无则 section 首页。 */
-export function sectionDefaultHref(section: NavSection, role: Role | undefined): string {
-  const leaf = visibleLeaves(section, role).find((l) => !l.soon && !isLeafLocked(l));
+export function sectionDefaultHref(section: NavSection, perms: string[] | undefined): string {
+  const leaf = visibleLeaves(section, perms).find((l) => !l.soon && !isLeafLocked(l));
   return leaf?.href ?? section.href;
 }
 
@@ -404,13 +405,13 @@ export function isLeafDisabled(leaf: NavLeaf): boolean {
  * 返回锁定它的 Phase，未锁定返回 undefined。
  */
 export function routeLockedPhase(
-  pathname: string, tab: string | null, view: string | null, role: Role | undefined,
+  pathname: string, tab: string | null, view: string | null, perms: string[] | undefined,
 ): Phase | undefined {
-  const section = findActiveSection(pathname, role);
+  const section = findActiveSection(pathname, perms);
   if (!section) return undefined;
   if (isPhaseLocked(section.phase)) return section.phase;
   const p = normPath(pathname);
-  const leaves = visibleLeaves(section, role);
+  const leaves = visibleLeaves(section, perms);
   let leaf = leaves.find((l) => {
     const parts = leafParts(l.href);
     if (parts.path !== p) return false;
@@ -429,12 +430,12 @@ export function routeLockedPhase(
  * 分组是视觉聚类不是可导航节点，仅作不可点的中间项；叶子无 group 时退化为两级。
  */
 export function breadcrumb(
-  pathname: string, tab: string | null, view: string | null, role: Role | undefined,
+  pathname: string, tab: string | null, view: string | null, perms: string[] | undefined,
 ): string[] {
-  const section = findActiveSection(pathname, role);
+  const section = findActiveSection(pathname, perms);
   if (!section) return [];
   const crumbs = [section.label];
-  const leaves = visibleLeaves(section, role);
+  const leaves = visibleLeaves(section, perms);
   const idx = activeLeafIndex(leaves, pathname, tab, view);
   if (idx >= 0) {
     const leaf = leaves[idx];

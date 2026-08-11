@@ -1,3 +1,4 @@
+import { backendPermsOf } from "@/lib/permissions";
 // 覆盖范围：认证登录 + 工作台（P-16.1）。
 import * as db from "@/lib/mock/db";
 import type { DashboardApi } from "../contracts/dashboard";
@@ -22,7 +23,7 @@ export const dashboardMock: DashboardApi = {
   login: (username, password) => {
     if (!password) fail("请输入密码", "Enter your password");
     const role = MOCK_ROLE_OF[username] ?? "SUPER_ADMIN";
-    return wait({ username, role, token: `mock-${role}` }, 350);
+    return wait({ username, role, token: `mock-${role}`, perms: backendPermsOf(role) }, 350);
   },
   getDashboardKpi: () => wait(db.kpi),
   getDashboardTrend: () => wait(db.trend),

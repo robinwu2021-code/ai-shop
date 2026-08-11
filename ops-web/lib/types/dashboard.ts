@@ -11,6 +11,14 @@ export interface LoginResp {
   role: Role;
   /** 访问令牌。STAFF 池，与 C 端、B 端账号不通用 */
   token: string;
+  /**
+   * **后端下发的权限码**（`staff.perms`）。判权以它为准。
+   *
+   * `["*"]` = 超管通配。前端的 UI 码要先经 `UI_PERM_MAP` 翻译成后端码
+   * 再来这里查 —— 两边的粒度不同（前端 45 个、后端 14 个），
+   * 直接比会全判 false。
+   */
+  perms: string[];
   /** 商家运营（BD）等受限角色的数据域；平台全量角色为空 */
   merchantNo?: string;
   /** 受限角色的社区数据域 */

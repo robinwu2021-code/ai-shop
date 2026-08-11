@@ -9,7 +9,7 @@
 // 单测（lib/permissions.test.ts）锁住了关键几条，这一页负责让人**一眼扫完全局**。
 import * as React from "react";
 import { NAV } from "@/lib/nav";
-import { CRITICAL_PERMS, ROLE_LABEL, can, canModule } from "@/lib/permissions";
+import { CRITICAL_PERMS, ROLE_LABEL, roleHas, roleHasModule } from "@/lib/permissions";
 import type { Role } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -40,7 +40,7 @@ export default function PermMatrixPage() {
 
   return (
     <div>
-      <PageTitle title="角色 × 权限对照" desc="dev-only · 数据源 lib/permissions.ts 与 lib/nav.ts" />
+      <PageTitle title="角色 × 权限对照" desc="dev-only · 这张表是「前端本地角色表」，不是判权依据 —— 判权读后端下发的 perms（lib/perm-map.ts）" />
 
       <div className="mb-4 rounded-card bg-muted/50 p-4 txt-body">
         <div className="mb-2 txt-strong">高危权限（矩阵 §2.3「高危权限」列）</div>
@@ -48,7 +48,7 @@ export default function PermMatrixPage() {
           {CRITICAL_PERMS.map((c) => (
             <div key={c} className="flex flex-wrap items-center gap-2">
               <code className="txt-caption">{c}</code>
-              {ROLES.filter((r) => can(r, c)).map((r) => (
+              {ROLES.filter((r) => roleHas(r, c)).map((r) => (
                 <Badge key={r} tone="danger">{ROLE_LABEL[r]}</Badge>
               ))}
             </div>
@@ -77,7 +77,7 @@ export default function PermMatrixPage() {
                   {ROLES.map((r) => (
                     <TD key={r} className="text-center">
                       {/* 模块行看的是「这个菜单他能不能看见」（canModule），与叶子的细粒度码是两回事 */}
-                      <Mark on={canModule(r, g.module)} />
+                      <Mark on={roleHasModule(r, g.module)} />
                     </TD>
                   ))}
                 </TR>
@@ -86,7 +86,7 @@ export default function PermMatrixPage() {
                     <TD className="ps-6"><code className="txt-caption text-muted-foreground">{p}</code></TD>
                     {ROLES.map((r) => (
                       <TD key={r} className="text-center">
-                        <Mark on={can(r, p)} critical={(CRITICAL_PERMS as readonly string[]).includes(p)} />
+                        <Mark on={roleHas(r, p)} critical={(CRITICAL_PERMS as readonly string[]).includes(p)} />
                       </TD>
                     ))}
                   </TR>

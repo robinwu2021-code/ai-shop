@@ -77,12 +77,12 @@ function RailItem({
 
 export function Rail() {
   const pathname = normPath(usePathname());
-  const role = useAuth((s) => s.role);
+  const perms = useAuth((s) => s.perms);
   const { railExpanded, toggleRail } = useNavPrefs();
   const { t } = useI18n();
 
-  const sections = visibleSections(role);
-  const activeKey = findActiveSection(pathname, role)?.key;
+  const sections = visibleSections(perms);
+  const activeKey = findActiveSection(pathname, perms)?.key;
   const top = sections.filter((s) => !s.pinBottom);
   const bottom = sections.filter((s) => s.pinBottom);
 
@@ -92,7 +92,7 @@ export function Rail() {
       section={s}
       active={s.key === activeKey}
       soon={!!s.soon}
-      href={sectionDefaultHref(s, role)}
+      href={sectionDefaultHref(s, perms)}
       expanded={railExpanded}
     />
   );

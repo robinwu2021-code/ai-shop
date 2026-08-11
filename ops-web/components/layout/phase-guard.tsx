@@ -13,10 +13,10 @@ import { useI18n } from "@/lib/i18n";
 export function PhaseGuard({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const sp = useSearchParams();
-  const role = useAuth((s) => s.role);
+  const perms = useAuth((s) => s.perms);
   const { t } = useI18n();
 
-  const locked = routeLockedPhase(pathname, sp.get("tab"), sp.get("view"), role);
+  const locked = routeLockedPhase(pathname, sp.get("tab"), sp.get("view"), perms);
   if (!locked) return <>{children}</>;
 
   return (

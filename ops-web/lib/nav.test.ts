@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { tNav } from "./i18n/nav-labels";
+import { BACKEND_ROLE_PERMS, backendPermsOf } from "./permissions";
 import { NAV, activeLeafIndex, breadcrumb, findActiveSection, groupedLeaves, leafParts, normPath, sectionDefaultHref, visibleLeaves, visibleSections } from "./nav";
 import { permsOf, ROLE_LABEL } from "./permissions";
 
@@ -46,19 +47,55 @@ describe("导航结构", () => {
 });
 
 describe("导航 × 权限", () => {
+  /**
+   * 整域后端未实现 —— 这些 section 对**所有人**都不可见，而那是对的：
+   * 实测它们打开即 404（docs/technical/运营端死按钮实测清单.md）。
+   *
+   * 单列成清单而不是放宽断言：后端把某一块做出来之后，
+   * 这里要能提醒人把它移走 —— 否则菜单会一直藏着一个已经能用的功能。
+   */
+  const UNBUILT_SECTIONS = ["store", "fulfillment", "risk", "content", "growth", "system"];
+
+  /**
+   * 域已经活了，但**这几个叶子**后端还没有 —— 它们对所有人不可见，也是对的。
+   * 与 UNBUILT_SECTIONS 分开列：整域没做和零星缺一两个，
+   * 后者才是「域活了、漏了几条」那种最容易变成死按钮的情况
+   * （见 packages/shared/tests/ops-endpoint-exists.test.ts 的同名判断）。
+   */
+  const UNBUILT_LEAVES = [
+    "message:faq:update",   // 帮助中心维护
+    "iam:role:grant",       // 角色与 RBAC：后端只有 /ops/staff，没有授权写接口
+    // 财务域已经活了（settle 有），而这三块还没有 —— 正是「域活了、漏了几条」
+    "finance:rate:update",
+    "finance:withdraw:approve",
+    "finance:invoice:read",
+  ];
+
   it("每个 section 的 module 至少被一个角色持有（否则这个菜单谁都看不见）", () => {
     for (const s of NAV) {
-      const someone = ALL_ROLES.some((r) => visibleSections(r).some((x) => x.key === s.key));
+      if (UNBUILT_SECTIONS.includes(s.key)) continue;
+      const someone = ALL_ROLES.some((r) => visibleSections(backendPermsOf(r)).some((x) => x.key === s.key));
       expect(someone, `${s.key}(${s.module}) 对所有角色都不可见`).toBe(true);
     }
+  });
+
+  it("★★ 整域未实现的 section 一旦后端做出来，要从清单里移走", () => {
+    const nowVisible = UNBUILT_SECTIONS.filter((key) =>
+      ALL_ROLES.some((r) => visibleSections(backendPermsOf(r)).some((x) => x.key === key)));
+    expect(
+      nowVisible,
+      "这些 section 已经有人能看见了 —— 从 UNBUILT_SECTIONS 删掉。\n" +
+        "  留着的害处：它是「这块还没做」的证据，而它已经做出来了",
+    ).toEqual([]);
   });
 
   it("每个叶子的 perm 至少被一个角色持有（否则是死入口）", () => {
     const orphans: string[] = [];
     for (const s of NAV) {
+      if (UNBUILT_SECTIONS.includes(s.key)) continue;
       for (const l of s.children ?? []) {
-        if (!l.perm) continue;
-        const someone = ALL_ROLES.some((r) => visibleLeaves(s, r).some((x) => x.href === l.href && x.label === l.label));
+        if (!l.perm || UNBUILT_LEAVES.includes(l.perm)) continue;
+        const someone = ALL_ROLES.some((r) => visibleLeaves(s, backendPermsOf(r)).some((x) => x.href === l.href && x.label === l.label));
         if (!someone) orphans.push(`${s.key} › ${l.label}(${l.perm})`);
       }
     }
@@ -68,8 +105,9 @@ describe("导航 × 权限", () => {
   it("叶子的 perm 前缀必须等于所属 section 的 module（跨 section 深链除外）", () => {
     const sectionOf = new Map(NAV.map((s) => [leafParts(s.href).path, s.module]));
     for (const s of NAV) {
+      if (UNBUILT_SECTIONS.includes(s.key)) continue;
       for (const l of s.children ?? []) {
-        if (!l.perm) continue;
+        if (!l.perm || UNBUILT_LEAVES.includes(l.perm)) continue;
         // 跨 section 深链（href 指向别的 section）用目标 section 的模块码
         const expected = sectionOf.get(leafParts(l.href).path) ?? s.module;
         expect(l.perm.split(":")[0], `${l.label} 的权限码模块与 section 不一致`).toBe(expected);
@@ -81,11 +119,31 @@ describe("导航 × 权限", () => {
     expect(visibleSections(undefined)).toEqual([]);
   });
 
-  it("角色都至少能进一个 section —— 登录后落到空导航是致命体验", () => {
-    for (const r of ALL_ROLES) {
-      expect(visibleSections(r).length, `${r} 登录后没有任何菜单`).toBeGreaterThan(0);
-      expect(permsOf(r).length).toBeGreaterThan(0);
+  it("★★★ 后端配了权限的角色，登录后至少能进一个 section", () => {
+    for (const r of Object.keys(BACKEND_ROLE_PERMS)) {
+      expect(visibleSections(backendPermsOf(r as Role)).length,
+        `${r} 登录后没有任何菜单`).toBeGreaterThan(0);
     }
+  });
+
+  it("★★★ 后端没配权限的角色 —— 这是缺口，不是特性", () => {
+    /*
+     * ops-web 定义了 11 个角色（矩阵 §2.3 的岗位），后端 Perms.ROLE_PERMS 只配了 4 个。
+     * 剩下 7 个登录后拿到的 perms 是**空的**。
+     *
+     * 改造之前这件事看不出来：前端用自己的 ROLE_PERMS 判权，
+     * CAMPAIGN_OPS 能看到满满一屏菜单 —— 而后端一个权限都没给他，
+     * **点什么都是 403**。前端放行、后端拒绝，正是这次改造要消灭的那类错。
+     *
+     * 现在他看到的是空导航。**空导航是诚实的**，但它不是终点：
+     * 要么后端补上这 7 个角色的权限配置，要么承认这些岗位一期不上、
+     * 从 ops-web 的角色表里删掉。这条断言把差集钉成清单，防止它悄悄变长。
+     */
+    const missing = ALL_ROLES.filter((r) => !(r in BACKEND_ROLE_PERMS)).sort();
+    expect(missing).toEqual([
+      "ANALYST", "AUDITOR", "CAMPAIGN_OPS", "COMMUNITY_OPS",
+      "FINANCE", "RISK", "TECH_OPS",
+    ]);
   });
 });
 
@@ -140,20 +198,20 @@ describe("路由归属与面包屑", () => {
   });
 
   it('"/" 只精确匹配看板，不被别的 section 前缀吃掉', () => {
-    expect(findActiveSection("/", "SUPER_ADMIN")?.key).toBe("dashboard");
+    expect(findActiveSection("/", backendPermsOf("SUPER_ADMIN"))?.key).toBe("dashboard");
   });
 
   it("最长前缀匹配（子路径归属父 section）", () => {
-    expect(findActiveSection("/merchants/detail", "SUPER_ADMIN")?.key).toBe("merchant");
+    expect(findActiveSection("/merchants/detail", backendPermsOf("SUPER_ADMIN"))?.key).toBe("merchant");
   });
 
   it("面包屑 = L1 › 分组 › 子功能", () => {
-    expect(breadcrumb("/merchants", null, null, "SUPER_ADMIN")).toEqual(["商家治理", "入驻与资质", "入驻审核"]);
+    expect(breadcrumb("/merchants", null, null, backendPermsOf("SUPER_ADMIN"))).toEqual(["商家治理", "入驻与资质", "入驻审核"]);
   });
 
   it("section 首页默认高亮首个可点叶子", () => {
     const s = NAV.find((x) => x.key === "merchant")!;
-    const leaves = visibleLeaves(s, "SUPER_ADMIN");
+    const leaves = visibleLeaves(s, backendPermsOf("SUPER_ADMIN"));
     expect(activeLeafIndex(leaves, "/merchants", null, null)).toBe(0);
   });
 
@@ -163,8 +221,8 @@ describe("路由归属与面包屑", () => {
     for (const s of NAV) {
       if (s.soon) continue; // 整域待建：Rail 上本就不可点
       for (const r of ALL_ROLES) {
-        const href = sectionDefaultHref(s, r);
-        const leaves = visibleLeaves(s, r);
+        const href = sectionDefaultHref(s, backendPermsOf(r));
+        const leaves = visibleLeaves(s, backendPermsOf(r));
         const hit = leaves.find((l) => l.href === href);
         if (hit) expect(hit.soon, `${s.key} 的默认落地是待建叶 ${hit.label}`).toBeFalsy();
         else expect(href, `${s.key} 的默认落地既不是可点叶也不是 section 首页`).toBe(s.href);

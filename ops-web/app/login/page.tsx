@@ -52,6 +52,9 @@ export default function LoginPage() {
         username: r.username,
         role: r.role,
         token: r.token,
+        // 判权靠它。漏传的话 perms 是空数组 = 零权限 = 登录后一片空白，
+        // 而且不报错 —— 这一处在改造时漏了，靠浏览器实测才发现
+        perms: r.perms,
         merchantNo: r.merchantNo,
         communityNo: r.communityNo,
       });

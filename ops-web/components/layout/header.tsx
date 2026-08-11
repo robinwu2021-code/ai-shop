@@ -17,9 +17,9 @@ import { ChevronRight, LogOut } from "lucide-react";
 function Breadcrumb() {
   const pathname = usePathname();
   const sp = useSearchParams();
-  const role = useAuth((s) => s.role);
+  const perms = useAuth((s) => s.perms);
   const { tNav } = useI18n();
-  const crumbs = breadcrumb(pathname, sp.get("tab"), sp.get("view"), role);
+  const crumbs = breadcrumb(pathname, sp.get("tab"), sp.get("view"), perms);
   if (!crumbs.length) return null;
   return (
     <nav aria-label="breadcrumb" className="flex items-center gap-1 txt-body text-muted-foreground">

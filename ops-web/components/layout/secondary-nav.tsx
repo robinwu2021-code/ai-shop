@@ -69,11 +69,11 @@ export function SecondaryNav() {
   const sp = useSearchParams();
   const tab = sp.get("tab");
   const view = sp.get("view");
-  const role = useAuth((s) => s.role);
+  const perms = useAuth((s) => s.perms);
   const { tNav } = useI18n();
 
-  const section = findActiveSection(pathname, role);
-  const leaves = section ? visibleLeaves(section, role) : [];
+  const section = findActiveSection(pathname, perms);
+  const leaves = section ? visibleLeaves(section, perms) : [];
   const activeIdx = section ? activeLeafIndex(leaves, pathname, tab, view) : -1;
   const segments = groupedLeaves(leaves);
 
