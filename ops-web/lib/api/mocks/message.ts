@@ -73,6 +73,18 @@ export const messageMock: MessageApi = {
     return wait(t, 400);
   },
 
+  replyTicket: async (ticketNo, reply) => {
+    const t = findTicket(ticketNo);
+    // 空回复会把单子推出待处理队列而用户什么也没收到 —— 比不回更糟
+    if (!reply?.trim()) fail("回复内容必填", "The reply cannot be empty");
+    db.assertTransition(TICKET_TRANSITIONS, t.status, "RESOLVED", "工单", "Ticket");
+    t.reply = reply.trim();
+    t.repliedAt = new Date().toISOString();
+    t.repliedBy = t.assignee ?? "cs01";
+    t.status = "RESOLVED";
+    return wait(t, 400);
+  },
+
   addProxyAction: async (ticketNo, action) => {
     const t = findTicket(ticketNo);
     // 代客操作是替用户改数据/退款，没有留痕就查不出是谁做的（矩阵 P-14.2.3）

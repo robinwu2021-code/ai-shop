@@ -69,12 +69,25 @@ public final class Perms {
      */
     public static final String COMMUNITY_VIEW = "community:view";
 
+    /**
+     * 处理客服工单：回复、分派、关闭。
+     *
+     * <p>与 {@link #ORDER_VIEW} 分开的理由和订单那对一样：**看单和回话是两件事**。
+     * 工单的回复内容会**直接发给用户**，署的是平台的名——写错一句和看错一单，
+     * 代价不在一个量级。
+     *
+     * <p>给客服（SUPPORT）。BD 与商品运营不给：他们看不到用户的完整上下文，
+     * 回出来的话大概率要再被客服纠正一次。
+     */
+    public static final String TICKET_HANDLE = "ticket:handle";
+
     private static final Map<String, List<String>> ROLE_PERMS = Map.of(
             "SUPER_ADMIN", List.of("*"),
             // BD 要读社区才能审核（选覆盖小区），但不该改社区主数据
             "BD", List.of(MERCHANT_AUDIT, ORDER_VIEW, COMMUNITY_VIEW),
             "GOODS_OPS", List.of(GOODS_AUDIT, CATEGORY_MANAGE, ORDER_VIEW, COMMUNITY_VIEW),
-            "SUPPORT", List.of(ORDER_VIEW, REVIEW_GOVERN, ORDER_INTERVENE, COMMUNITY_VIEW));
+            "SUPPORT", List.of(ORDER_VIEW, REVIEW_GOVERN, ORDER_INTERVENE, COMMUNITY_VIEW,
+                    TICKET_HANDLE));
 
     private Perms() {
     }

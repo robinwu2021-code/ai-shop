@@ -80,6 +80,19 @@ export interface Ticket {
   proxyActions: string[];
   /** 提单时间 */
   createdAt: string;
+  /**
+   * 客服回复正文。**用户在 C 端工单详情页看的就是这个字段**。
+   *
+   * 此前它在三层上各缺一处：后端 `msg_ticket` 建表就留了 `reply`/`replied_at`/`replied_by`
+   * 且注释写明「代客操作要能追到人」，但没有任何代码写过它们；
+   * 契约里也从没定义过「回复」这个动作（只有分派、关闭、代客留痕）。
+   * 于是用户提单后反复点开详情，看到的永远是空的，而且不报任何错。
+   */
+  reply?: string;
+  /** 回复时间；未回复为空 */
+  repliedAt?: string;
+  /** 回复人（员工登录名）。回复署的是平台的名，必须能追到人 */
+  repliedBy?: string;
 }
 
 /** 帮助中心条目（P-14.2.4）。 */

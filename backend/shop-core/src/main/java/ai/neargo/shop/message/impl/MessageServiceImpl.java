@@ -170,6 +170,68 @@ public class MessageServiceImpl implements MessageService {
         return FAQ;
     }
 
+    // ---------------------------------------------------------------- 平台侧（P-14.2）
+
+    @Override
+    public List<TicketVO> opsTickets(String status) {
+        /*
+         * 不按 userNo 过滤 —— 这是平台视角，要看到所有人的单。
+         * C 端的 myTickets() 才带 userNo 条件，两者的区别就在这一行。
+         */
+        return ticketMapper.selectList(Wrappers.<MsgTicket>lambdaQuery()
+                        .eq(status != null && !status.isBlank(), MsgTicket::getStatus, status)
+                        // 未处理的排前面，同状态内新单在前：客服要先看没人管过的
+                        .orderByAsc(MsgTicket::getStatus)
+                        .orderByDesc(MsgTicket::getId)).stream()
+                .map(this::toVO).toList();
+    }
+
+    @Override
+    @Transactional
+    public TicketVO replyTicket(String ticketNo, String reply, String operatorNo) {
+        if (reply == null || reply.isBlank()) {
+            // 空回复会让工单变成 REPLIED 而用户什么也没收到 —— 比不回更糟，
+            // 因为它把单子从待处理队列里移走了
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        MsgTicket t = requireTicket(ticketNo);
+        if (MsgTicket.CLOSED.equals(t.getStatus())) {
+            // 用 CONFLICT 而不是 ORDER_STATE_ILLEGAL：后者的名字里带 ORDER，
+            // 出现在工单的错误链路上会让排查的人先去翻订单状态机
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+        t.setReply(reply);
+        t.setRepliedAt(System.currentTimeMillis());
+        t.setRepliedBy(operatorNo);
+        t.setStatus(MsgTicket.REPLIED);
+        ticketMapper.updateById(t);
+        return toVO(t);
+    }
+
+    @Override
+    @Transactional
+    public TicketVO closeTicket(String ticketNo, String operatorNo) {
+        MsgTicket t = requireTicket(ticketNo);
+        if (MsgTicket.CLOSED.equals(t.getStatus())) {
+            return toVO(t);   // 幂等：重复关闭不报错
+        }
+        t.setStatus(MsgTicket.CLOSED);
+        // 关单也记处理人：没回复直接关的单，事后要能查是谁关的
+        t.setRepliedBy(operatorNo);
+        ticketMapper.updateById(t);
+        return toVO(t);
+    }
+
+    /** 平台侧按单号取单，**不带 userNo 条件** —— 客服要处理的是别人的单 */
+    private MsgTicket requireTicket(String ticketNo) {
+        MsgTicket t = ticketMapper.selectOne(Wrappers.<MsgTicket>lambdaQuery()
+                .eq(MsgTicket::getTicketNo, ticketNo).last("limit 1"));
+        if (t == null) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        return t;
+    }
+
     private List<MsgMessage> rows() {
         return messageMapper.selectList(Wrappers.<MsgMessage>lambdaQuery()
                 .eq(MsgMessage::getUserNo, SecurityUtils.currentUserNo())

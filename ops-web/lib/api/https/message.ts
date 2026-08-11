@@ -12,6 +12,7 @@ export const messageHttp: MessageApi = {
   saveNotifyQuota: (v) => client.post("/ops/notify-quota", v),
   listTickets: (q) => client.get("/ops/tickets", q),
   assignTicket: (no, assignee) => client.post(`/ops/tickets/${no}/assign`, { assignee }),
+  replyTicket: (no, reply) => client.post(`/ops/tickets/${no}/reply`, { reply }),
   addProxyAction: (no, action) => client.post(`/ops/tickets/${no}/proxy-actions`, { action }),
   closeTicket: (no) => client.post(`/ops/tickets/${no}/close`),
   listFaqs: (q) => client.get("/ops/faqs", q),

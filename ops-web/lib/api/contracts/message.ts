@@ -18,6 +18,13 @@ export interface MessageApi {
   listTickets(q?: TicketQ): Promise<Page<Ticket>>;
   /** 分派工单（P-14.2.1）。必须指定处理人；已关闭工单不能再分派。 */
   assignTicket(ticketNo: string, assignee: string): Promise<Ticket>;
+  /**
+   * 客服回复（P-14.2.2）。回复正文**直接发给用户**，不能为空。
+   *
+   * 这个功能点此前**在契约里根本不存在** —— 分派、关闭、代客留痕都有，唯独没有回复。
+   * 漏实现是排期问题，漏定义是没人发现这件事需要做。
+   */
+  replyTicket(ticketNo: string, reply: string): Promise<Ticket>;
   /** 记录代客操作（P-14.2.3）：谁、对什么、做了什么。 */
   addProxyAction(ticketNo: string, action: string): Promise<Ticket>;
   closeTicket(ticketNo: string): Promise<Ticket>;
