@@ -162,6 +162,17 @@ export const FULFILLMENT_REACH = {
 } as const;
 
 /**
+ * 覆盖项的生效状态。勾已有社区自助生效；勾区、街道要运营审 ——
+ * 一家菜摊声称覆盖整个西湖区，影响面差一个量级（ADR-013 §4.2）。
+ */
+export const AREA_STATUS = {
+  /** 已生效，参与展开 */
+  ACTIVE: "ACTIVE",
+  /** 待运营审核。**不参与展开** —— 端上必须标出来，否则商家看着它在清单里却没有订单 */
+  PENDING: "PENDING",
+} as const;
+
+/**
  * 覆盖项的粒度。可跨粒度组合 —— 「三个小区 + 一个区」是两条 COMMUNITY 加一条 DISTRICT。
  */
 export const AREA_LEVEL = {

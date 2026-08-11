@@ -511,7 +511,7 @@ onShow(load);
   margin-top: 16rpx;
 }
 .pend {
-  font-size: 22rpx;
+  font-size: 24rpx;
   opacity: 0.85;
 }
 .warn {

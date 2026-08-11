@@ -4,6 +4,7 @@
 
 import type {
   AREA_LEVEL,
+  AREA_STATUS,
   CATEGORY_TYPE,
   CURRENCIES,
   FULFILLMENT,
@@ -21,6 +22,7 @@ export type MarketId = (typeof MARKETS)[number]["id"];
 export type ServiceScope = (typeof SERVICE_SCOPE)[keyof typeof SERVICE_SCOPE];
 export type FulfillmentReach = (typeof FULFILLMENT_REACH)[keyof typeof FULFILLMENT_REACH];
 export type AreaLevel = (typeof AREA_LEVEL)[keyof typeof AREA_LEVEL];
+export type AreaStatus = (typeof AREA_STATUS)[keyof typeof AREA_STATUS];
 
 /** 多语言文案（mock 内部用；对外契约由后端按 Accept-Language 返回已本地化的 string） */
 export type I18nText = Record<Lang, string>;
@@ -1682,7 +1684,7 @@ export interface ServiceArea {
    * 待审的不参与展开，商家看着它在清单里却一个订单也不来，
    * 而这是他自己永远查不出来的那类故障。
    */
-  status?: "ACTIVE" | "PENDING";
+  status?: AreaStatus;
 }
 
 /** 行政区划的一级（`/biz/regions`）。国家统计局统计用区划代码，省 2 / 市 4 / 区 6 / 街道 9 位 */
