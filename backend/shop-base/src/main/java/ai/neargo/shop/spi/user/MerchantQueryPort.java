@@ -162,6 +162,18 @@ public interface MerchantQueryPort {
     java.util.Set<String> authorizedCategoryCodes(String merchantNo);
 
     /**
+     * 该商家是否存在**已过期**的资质。
+     *
+     * <p>上架时当场拦一道。与定时扫描是两道防线，针对不同时机：
+     * 定时任务覆盖「已经在架的」，这条覆盖「正要上架的」——
+     * 任务有间隔，而上架随时发生。
+     *
+     * <p><b>没有资质记录时返回 false</b>（不拦）：存量商家都还没补录，
+     * 一律拦会把他们全部挡死。补录是运营任务，不该由这条校验代劳。
+     */
+    boolean hasExpiredQualification(String merchantNo);
+
+    /**
      * 某行业下有多少商家。
      *
      * <p>运营改行业准入前要知道影响面 —— 把一个有 300 家店的行业停掉，

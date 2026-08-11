@@ -350,6 +350,20 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         if (!merchantPort.authorizedCategoryCodes(merchantNo).contains(required)) {
             throw BizException.of(ErrorCode.CATEGORY_NOT_AUTHORIZED);
         }
+        /*
+         * 资质过期也不能上架。
+         *
+         * **这一道与 category_codes 那道判的不是同一件事**：后者判「当初批没批过」，
+         * 是审核时写死的一串编码，证过期了它不会变；这一道判「现在还有效吗」。
+         * 只有前者的话，商家的食品经营许可证到期后什么都不用做，
+         * 商品继续在架、继续能上新，而平台收不到任何信号。
+         *
+         * 与定时扫描是两道防线，针对不同时机：任务覆盖「已经在架的」，
+         * 这里覆盖「正要上架的」—— 任务有间隔，上架随时发生。
+         */
+        if (merchantPort.hasExpiredQualification(merchantNo)) {
+            throw BizException.of(ErrorCode.QUALIFICATION_EXPIRED);
+        }
     }
 
     /**

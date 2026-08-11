@@ -4,6 +4,7 @@ import ai.neargo.shop.merchant.entity.MchAccount;
 import ai.neargo.shop.merchant.entity.MchEntity;
 import ai.neargo.shop.merchant.entity.MchEntityCommunity;
 import ai.neargo.shop.merchant.entity.MchPaymentMerchant;
+import ai.neargo.shop.merchant.entity.MchQualification;
 import ai.neargo.shop.merchant.entity.MchStore;
 import ai.neargo.shop.merchant.entity.MchStoreRole;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
@@ -29,6 +30,10 @@ public final class MerchantMappers {
 
     /** 商家覆盖的社区：C 端「本社区可见商家」的反查索引所在。 */
     public interface MchEntityCommunityMapper extends BaseMapper<MchEntityCommunity> {
+    }
+
+    /** 商家资质。按 expire_at 扫到期，所以那一列有索引。 */
+    public interface QualificationMapper extends BaseMapper<MchQualification> {
     }
 
     /** 门店（mch_store）。V44 起一主体可有多行。 */

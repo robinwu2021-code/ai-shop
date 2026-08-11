@@ -5,6 +5,7 @@ import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.merchant.entity.MchEntity;
+import ai.neargo.shop.merchant.entity.MchQualification;
 import ai.neargo.shop.merchant.entity.MchEntityCommunity;
 import ai.neargo.shop.merchant.entity.MchViolation;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityCommunityMapper;
@@ -44,6 +45,7 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
             FROZEN, Set.of(ACTIVE));
 
     private final MchEntityMapper merchantMapper;
+    private final ai.neargo.shop.merchant.mapper.MerchantMappers.QualificationMapper qualificationMapper;
     private final MchEntityCommunityMapper communityMapper;
     private final MchPaymentMapper paymentMapper;
     private final ViolationMapper violationMapper;
@@ -60,7 +62,9 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
                                      MerchantApplyQueryPort applyPort,
                                      ai.neargo.shop.merchant.mapper.MerchantMappers.StoreAuditMapper storeAuditMapper,
                                      ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper storeProfileMapper,
-                                     ObjectMapper json) {
+                                     ObjectMapper json,
+            ai.neargo.shop.merchant.mapper.MerchantMappers.QualificationMapper qualificationMapper) {
+        this.qualificationMapper = qualificationMapper;
         this.merchantMapper = merchantMapper;
         this.communityMapper = communityMapper;
         this.paymentMapper = paymentMapper;
@@ -315,4 +319,103 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
                 a.getKind(), a.getContent(), a.getStatus(), readList(a.getHits()),
                 a.getSubmittedAt() == null ? 0L : a.getSubmittedAt(), a.getReason());
     }
+    // ---------------------------------------------------------------- 资质（P1-7）
+
+    @Override
+    public List<QualificationVO> qualifications(String merchantNo) {
+        return DataScopeContext.executeWithoutScope(() -> qualificationMapper.selectList(
+                        Wrappers.<MchQualification>lambdaQuery()
+                                .eq(MchQualification::getEntityNo, merchantNo)
+                                .orderByAsc(MchQualification::getExpireAt)))
+                .stream().map(this::toQualVO).toList();
+    }
+
+    @Override
+    @Transactional
+    public QualificationVO saveQualification(String merchantNo, SaveQualificationCommand cmd,
+                                             String operatorNo) {
+        if (cmd.qualType() == null || cmd.qualType().isBlank()
+                || cmd.qualName() == null || cmd.qualName().isBlank()) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        MchQualification q;
+        if (cmd.qualNo() == null || cmd.qualNo().isBlank()) {
+            q = new MchQualification();
+            q.setQualNo(BizKey.next(BizKey.MERCHANT) + "Q");
+            q.setEntityNo(merchantNo);
+        } else {
+            q = DataScopeContext.executeWithoutScope(() -> qualificationMapper.selectOne(Wrappers.<MchQualification>lambdaQuery()
+                    .eq(MchQualification::getQualNo, cmd.qualNo()).last("limit 1")));
+            if (q == null) {
+                throw BizException.of(ErrorCode.NOT_FOUND);
+            }
+        }
+        q.setQualType(cmd.qualType());
+        q.setQualName(cmd.qualName());
+        q.setQualNumber(cmd.qualNumber());
+        q.setImageUrl(cmd.imageUrl());
+        q.setExpireAt(cmd.expireAt());
+        /*
+         * 重新登记（比如商家续了证传了新的）时状态回到 VALID —— 否则续证之后
+         * 记录还挂着 EXPIRED，上架依然被拦，商家会以为「传了也没用」。
+         */
+        q.setStatus(cmd.expireAt() != null && cmd.expireAt() < System.currentTimeMillis()
+                ? MchQualification.EXPIRED : MchQualification.VALID);
+        if (q.getId() == null) {
+            DataScopeContext.executeWithoutScope(() -> qualificationMapper.insert(q));
+        } else {
+            DataScopeContext.executeWithoutScope(() -> qualificationMapper.updateById(q));
+        }
+        return toQualVO(q);
+    }
+
+    @Override
+    @Transactional
+    public QualificationVO revokeQualification(String qualNo, String operatorNo) {
+        MchQualification q = DataScopeContext.executeWithoutScope(() -> qualificationMapper.selectOne(
+                Wrappers.<MchQualification>lambdaQuery()
+                        .eq(MchQualification::getQualNo, qualNo).last("limit 1")));
+        if (q == null) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        // 不物理删：撤销本身是要留痕的事实，删掉之后没人说得清「当初有没有这张证」
+        q.setStatus(MchQualification.REVOKED);
+        DataScopeContext.executeWithoutScope(() -> qualificationMapper.updateById(q));
+        return toQualVO(q);
+    }
+
+    @Override
+    @Transactional
+    public java.util.Set<String> expireOverdueQualifications() {
+        long now = System.currentTimeMillis();
+        java.util.Set<String> affected = new java.util.LinkedHashSet<>();
+        for (MchQualification q : DataScopeContext.executeWithoutScope(() -> qualificationMapper.selectList(
+                Wrappers.<MchQualification>lambdaQuery()
+                        .eq(MchQualification::getStatus, MchQualification.VALID)
+                        // expire_at 为空 = 长期有效，**不能扫进来** ——
+                        // 把「没填」当成「已过期」会把持长期执照的商家全部误伤
+                        .isNotNull(MchQualification::getExpireAt)
+                        .lt(MchQualification::getExpireAt, now)))) {
+            q.setStatus(MchQualification.EXPIRED);
+            DataScopeContext.executeWithoutScope(() -> qualificationMapper.updateById(q));
+            affected.add(q.getEntityNo());
+        }
+        return affected;
+    }
+
+    @Override
+    public boolean hasExpiredQualification(String merchantNo) {
+        Long n = DataScopeContext.executeWithoutScope(() -> qualificationMapper.selectCount(
+                Wrappers.<MchQualification>lambdaQuery()
+                        .eq(MchQualification::getEntityNo, merchantNo)
+                        .eq(MchQualification::getStatus, MchQualification.EXPIRED)));
+        return n != null && n > 0;
+    }
+
+    private QualificationVO toQualVO(MchQualification q) {
+        return new QualificationVO(q.getQualNo(), q.getEntityNo(), q.getQualType(),
+                q.getQualName(), q.getQualNumber(), q.getImageUrl(), q.getExpireAt(), q.getStatus());
+    }
+
+
 }

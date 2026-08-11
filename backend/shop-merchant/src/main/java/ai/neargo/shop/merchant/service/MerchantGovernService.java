@@ -55,6 +55,43 @@ public interface MerchantGovernService {
      * @param communityNos 服务的社区。一家店可以服务多个
      * @param contactPhone 已脱敏。完整号码属于越权边界（矩阵 §2.3 / M11）
      */
+    // ---------------------------------------------------------------- 资质（P1-7）
+
+    /** 某商家的全部资质。 */
+    List<QualificationVO> qualifications(String merchantNo);
+
+    /** 新增或更新一条资质。{@code qualNo} 为空 = 新增。 */
+    QualificationVO saveQualification(String merchantNo, SaveQualificationCommand cmd, String operatorNo);
+
+    /** 撤销一条资质（如证件作废）。不物理删——撤销本身是要留痕的事实。 */
+    QualificationVO revokeQualification(String qualNo, String operatorNo);
+
+    /**
+     * 扫描到期资质：把已过期的置 {@code EXPIRED}，并返回受影响的商家。
+     *
+     * <p><b>由定时任务调用，不是运营手动点。</b>这是关键——靠人记得去点，
+     * 等于回到「没人知道谁过期了」的状态。
+     *
+     * @return 本次新判定为过期的商家编号（去重）
+     */
+    java.util.Set<String> expireOverdueQualifications();
+
+    /**
+     * 该商家是否存在**已过期**的资质。
+     *
+     * <p>上架校验用它当场拦一道——定时任务有间隔，而上架是随时发生的。
+     * 两道防线针对的是不同时机：定时扫覆盖「已经在架的」，这条覆盖「正要上架的」。
+     */
+    boolean hasExpiredQualification(String merchantNo);
+
+    record QualificationVO(String qualNo, String entityNo, String qualType, String qualName,
+                           String qualNumber, String imageUrl, Long expireAt, String status) {
+    }
+
+    record SaveQualificationCommand(String qualNo, String qualType, String qualName,
+                                    String qualNumber, String imageUrl, Long expireAt) {
+    }
+
     record MerchantProfileVO(String merchantNo, String name, String tier, String status,
                              List<String> communityNos, String contactName, String contactPhone,
                              List<String> categoryCodes, boolean verified, int breachCount,

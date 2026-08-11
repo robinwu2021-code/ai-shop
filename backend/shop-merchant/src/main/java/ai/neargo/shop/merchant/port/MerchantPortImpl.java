@@ -39,6 +39,7 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort {
     private static final int RATING_INIT = 50;
 
     private final MchEntityMapper merchantMapper;
+    private final ai.neargo.shop.merchant.service.MerchantGovernService governService;
     private final MchEntityCommunityMapper merchantCommunityMapper;
     private final MchPaymentMapper merchantPaymentMapper;
     private final ai.neargo.shop.merchant.service.MerchantStoreService merchantStoreService;
@@ -55,7 +56,9 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort {
                             ai.neargo.shop.spi.platform.MasterDataPort masterDataPort,
                             ai.neargo.shop.merchant.mapper.MerchantMappers.MchAccountMapper staffMapper,
                             ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper storeMapper,
-                            tools.jackson.databind.ObjectMapper json) {
+                            tools.jackson.databind.ObjectMapper json,
+                            ai.neargo.shop.merchant.service.MerchantGovernService governService) {
+        this.governService = governService;
         this.json = json;
         this.staffMapper = staffMapper;
         this.storeMapper = storeMapper;
@@ -501,6 +504,11 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort {
         MchEntity m = merchantMapper.selectOne(
                 Wrappers.<MchEntity>lambdaQuery().eq(MchEntity::getEntityNo, merchantNo).last("LIMIT 1"));
         return m != null && Boolean.TRUE.equals(m.getPointsForced());
+    }
+
+    @Override
+    public boolean hasExpiredQualification(String merchantNo) {
+        return governService.hasExpiredQualification(merchantNo);
     }
 
     @Override
