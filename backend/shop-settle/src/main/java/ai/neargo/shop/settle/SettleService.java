@@ -50,6 +50,33 @@ public interface SettleService {
     List<SettleBillVO> opsPayables(String status, String entityNo);
 
     /**
+     * 平台端 · 全部结算单（P2-9）。
+     *
+     * <p>与 {@link #opsPayables} 的差别是<b>范围</b>：那个只看自营（第三方的钱走分账，
+     * 不存在「应付账款」这件事），这个两条轨道都看 —— 运营要的是「这家店的钱到哪一步了」，
+     * 而那不该因为经营模式不同就分成两个入口去查。
+     */
+    List<SettleBillVO> opsBills(String status, String entityNo, String businessMode);
+
+    /**
+     * 平台端 · 分账指令流水（P2-9）。
+     *
+     * <p>结算单说的是「该给多少」，流水说的是「发了几条指令、成没成、失败在哪」——
+     * 出问题时要看的是后者。此前它只存在于库里，运营端**没有任何入口**。
+     */
+    List<SplitLogVO> opsSplitLogs(String settleNo, String action);
+
+    /**
+     * @param amountMinor 该指令的金额。<b>补差与分账口径不同</b>：
+     *                    分账动的是平台应收，补差动的是买家用积分抵掉的那部分
+     * @param result      SUCCESS / FAIL
+     */
+    record SplitLogVO(String settleNo, String subOrderNo, String splitAction,
+                      long amountMinor, String result, String requestNo,
+                      String providerNo, String message, long createdAt) {
+    }
+
+    /**
      * 对账确认：{@code PENDING_RECON → CONFIRMED}。
      *
      * <p>确认的含义是「双方认这个数」，之后金额不该再变。

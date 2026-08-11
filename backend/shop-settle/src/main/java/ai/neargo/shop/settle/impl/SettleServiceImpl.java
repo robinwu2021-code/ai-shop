@@ -489,6 +489,46 @@ public class SettleServiceImpl implements SettleService {
     }
 
     @Override
+    public List<SettleBillVO> opsBills(String status, String entityNo, String businessMode) {
+        /*
+         * 两条轨道都看。运营要回答的是「这家店的钱到哪一步了」，
+         * 而那不该因为经营模式不同就分成两个入口去查 —— 分开的直接后果是
+         * 一家同时有自营店和第三方店的商家，运营得在两个页面之间对照才拼得出全貌。
+         */
+        return DataScopeContext.executeWithoutScope(() ->
+                        billMapper.selectList(Wrappers.<StlBill>lambdaQuery()
+                                .eq(status != null && !status.isBlank(), StlBill::getStatus, status)
+                                .eq(entityNo != null && !entityNo.isBlank(), StlBill::getEntityNo, entityNo)
+                                .eq(businessMode != null && !businessMode.isBlank(),
+                                        StlBill::getBusinessMode, businessMode)
+                                .orderByDesc(StlBill::getId)))
+                .stream().map(this::toVO).toList();
+    }
+
+    @Override
+    public List<SplitLogVO> opsSplitLogs(String settleNo, String action) {
+        /*
+         * 失败的指令**也要给**：出问题时要看的恰恰是它们。
+         * 只给成功的等于把「为什么这单没分成」这个问题的答案藏起来。
+         */
+        return DataScopeContext.executeWithoutScope(() ->
+                        splitLogMapper.selectList(Wrappers.<StlSplitLog>lambdaQuery()
+                                .eq(settleNo != null && !settleNo.isBlank(),
+                                        StlSplitLog::getSettleNo, settleNo)
+                                .eq(action != null && !action.isBlank(),
+                                        StlSplitLog::getSplitAction, action)
+                                .orderByDesc(StlSplitLog::getId)))
+                .stream()
+                .map(l -> new SplitLogVO(l.getSettleNo(), l.getSubOrderNo(), l.getSplitAction(),
+                        nz(l.getAmountMinor()), l.getResult(), l.getRequestNo(),
+                        l.getProviderNo(), l.getMessage(),
+                        l.getCreatedAt() == null ? 0L
+                                : l.getCreatedAt().atZone(java.time.ZoneId.systemDefault())
+                                        .toInstant().toEpochMilli()))
+                .toList();
+    }
+
+    @Override
     @Transactional
     public SettleBillVO confirmRecon(String settleNo, String operatorNo) {
         StlBill b = requireSelfOperated(settleNo);
