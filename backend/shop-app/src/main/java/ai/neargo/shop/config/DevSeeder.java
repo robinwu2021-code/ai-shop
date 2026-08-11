@@ -52,6 +52,18 @@ public class DevSeeder {
                                  ai.neargo.shop.merchant.mapper.MerchantMappers.MchAccountMapper merchantStaffMapper,
                                  ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper storeMapper) {
         return args -> {
+            /*
+             * 运营账号在总闸**之前**灌。
+             *
+             * 总闸只看社区表：库里已经有数据的开发机上，它一 return，
+             * 后面所有 seedXxx 都不执行 —— 于是「新加了一个种子账号」这件事
+             * 在所有已存在的开发库上**永远不会生效**，只有删库重灌才看得到。
+             * 实测就是这么发现的：七个新角色配好了权限，登录全是「登录已失效」。
+             *
+             * seedStaff 自己按 username 判存在性，重复调用是安全的。
+             */
+            seedStaffs(staffMapper);
+
             if (communityMapper.selectCount(Wrappers.emptyWrapper()) > 0) {
                 return;   // 幂等：重启不重复灌
             }
@@ -63,12 +75,6 @@ public class DevSeeder {
              */
             log.warn("[DEV-ONLY] seeding demo data (shop.seed.enabled=true) —— 生产环境不应看到这条日志");
 
-            // 运营账号：**按岗位分角色**，没有「运营」这种什么都能干的大角色 ——
-            // 一个能审商家又能改价又能退款的角色，出事时无法定位是谁的职责
-            seedStaff(staffMapper, "admin", "超级管理员", "[\"SUPER_ADMIN\"]", "admin123");
-            seedStaff(staffMapper, "bd", "商家运营", "[\"BD\"]", "bd123");
-            seedStaff(staffMapper, "goods", "商品运营", "[\"GOODS_OPS\"]", "goods123");
-            seedStaff(staffMapper, "support", "客服", "[\"SUPPORT\"]", "support123");
 
 
             /*
@@ -178,6 +184,29 @@ public class DevSeeder {
     }
 
     private record SkuSeed(String skuNo, String spec, long price, Long originPrice, int stock) {
+    }
+
+    /** 运营种子账号。**按岗位分角色**，没有「运营」这种什么都能干的大角色 ——
+     *  一个能审商家又能改价又能退款的角色，出事时无法定位是谁的职责。 */
+    private void seedStaffs(StaffMapper staffMapper) {
+            seedStaff(staffMapper, "admin", "超级管理员", "[\"SUPER_ADMIN\"]", "admin123");
+            seedStaff(staffMapper, "bd", "商家运营", "[\"BD\"]", "bd123");
+            seedStaff(staffMapper, "goods", "商品运营", "[\"GOODS_OPS\"]", "goods123");
+            seedStaff(staffMapper, "support", "客服", "[\"SUPPORT\"]", "support123");
+            /*
+             * 矩阵 §2.3 另外七个岗位（后端 2026-08-11 补齐权限配置）。
+             *
+             * **配了权限却没有账号，等于没配** —— 那七个角色此前在后端一行配置都没有，
+             * 而这件事之所以能一直存在，正是因为没人能登进去看一眼。
+             * 有账号才验得了「这个岗位登录后到底看得见什么」。
+             */
+            seedStaff(staffMapper, "campaign", "活动运营", "[\"CAMPAIGN_OPS\"]", "campaign123");
+            seedStaff(staffMapper, "community", "社区运营", "[\"COMMUNITY_OPS\"]", "community123");
+            seedStaff(staffMapper, "auditor", "审核员", "[\"AUDITOR\"]", "auditor123");
+            seedStaff(staffMapper, "finance", "财务", "[\"FINANCE\"]", "finance123");
+            seedStaff(staffMapper, "risk", "风控", "[\"RISK\"]", "risk123");
+            seedStaff(staffMapper, "analyst", "数据分析", "[\"ANALYST\"]", "analyst123");
+            seedStaff(staffMapper, "techops", "技术运维", "[\"TECH_OPS\"]", "techops123");
     }
 
     private void seedStaff(StaffMapper mapper, String username, String realName,
