@@ -93,9 +93,18 @@ function readSpec(file) {
 
 // ---------------------------------------------------------------- 后端
 function backendRoutes() {
-  const dir = join(ROOT, "backend/shop-app/src/main/java/ai/neargo/shop/portal");
+  /*
+   * Controller 不只在 shop-app/portal：2026-08 的 S7 垂直切片之后，
+   * 单域 API 面跟着域走进了各自模块的 `api` 包（`shop.trade.api.mp` 等）。
+   * 只扫 portal 会让「后端已实现」从 200+ 掉到 90 上下 —— 而报告照常输出，
+   * 看起来像后端退化了一半，实际是这个扫描器瞎了。
+   * gen-delivery-status.mjs 与 api-align.py 用的是同一套目录清单，三者必须一致。
+   */
+  const dirs = ["shop-app", "shop-core", "shop-merchant", "shop-settle", "shop-channel"]
+    .map((m) => join(ROOT, "backend", m, "src/main/java/ai/neargo/shop"))
+    .filter((d) => existsSync(d));
   const out = new Set();
-  if (!existsSync(dir)) return out;
+  if (!dirs.length) return out;
   const walk = (d) => {
     for (const f of readdirSync(d)) {
       const p = join(d, f);
@@ -117,7 +126,7 @@ function backendRoutes() {
       }
     }
   };
-  walk(dir);
+  dirs.forEach(walk);
   return out;
 }
 

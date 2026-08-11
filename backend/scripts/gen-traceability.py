@@ -81,10 +81,15 @@ def load_pages():
 
 def load_backend():
     out = set()
-    portal = ROOT / "backend/shop-app/src/main/java/ai/neargo/shop/portal"
-    if not portal.exists():
+    # Controller 不只在 shop-app/portal：S7 垂直切片后单域 API 面跟着域走进了
+    # 各自模块的 api 包。只扫 portal 会让「后端已实现」少算一大半，而报告照常输出
+    # —— 追溯矩阵会凭空多出上百条「未实现」。与 gen-delivery-status.mjs 同一套目录清单。
+    dirs = [ROOT / "backend" / m / "src/main/java/ai/neargo/shop"
+            for m in ("shop-app", "shop-core", "shop-merchant", "shop-settle", "shop-channel")]
+    dirs = [d for d in dirs if d.exists()]
+    if not dirs:
         return out
-    for f in portal.rglob("*.java"):
+    for f in [f for d in dirs for f in d.rglob("*Controller.java")]:
         text = f.read_text()
         base = ""
         m = re.search(r'@RequestMapping\("([^"]+)"\)', text)
