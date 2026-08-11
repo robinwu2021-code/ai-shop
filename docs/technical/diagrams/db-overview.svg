@@ -11,7 +11,7 @@
 <text class="s" x="180" y="85" text-anchor="middle">usr_* · 4 表</text>
 <rect x="265" y="50" width="150" height="46" rx="6" fill="#EDEFF2" stroke="#B3B9C2"/>
 <text class="n" x="340" y="70" text-anchor="middle" font-size="13">社区与自提点</text>
-<text class="s" x="340" y="85" text-anchor="middle">cmt_* · 2 表</text>
+<text class="s" x="340" y="85" text-anchor="middle">cmt_* · 3 表</text>
 <rect x="425" y="50" width="150" height="46" rx="6" fill="#EDEFF2" stroke="#B3B9C2"/>
 <text class="n" x="500" y="70" text-anchor="middle" font-size="13">交易</text>
 <text class="s" x="500" y="85" text-anchor="middle">ord_* · 5 表</text>
@@ -24,7 +24,7 @@
 <text class="s" x="260" y="183" text-anchor="middle">prd_* · 8 表</text>
 <rect x="345" y="148" width="150" height="46" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
 <text class="n" x="420" y="168" text-anchor="middle" font-size="13">营销与团购</text>
-<text class="s" x="420" y="183" text-anchor="middle">mkt_* · 11 表</text>
+<text class="s" x="420" y="183" text-anchor="middle">mkt_* · 12 表</text>
 <line class="ar" x1="340" y1="222" x2="340" y2="202" marker-end="url(#a)"/>
 <text class="l" x="348" y="216">依赖</text>
 <line x1="36" y1="222" x2="644" y2="222" stroke="#D8DEE6"/>
@@ -40,13 +40,13 @@
 <text class="s" x="252" y="281" text-anchor="middle">pts_* · 2…</text>
 <rect x="301" y="246" width="78" height="46" rx="6" fill="#E6F2F0" stroke="#8FC2BA"/>
 <text class="n" x="340" y="266" text-anchor="middle" font-size="13">结算</text>
-<text class="s" x="340" y="281" text-anchor="middle">stl_* · 4…</text>
+<text class="s" x="340" y="281" text-anchor="middle">stl_* · 6…</text>
 <rect x="389" y="246" width="78" height="46" rx="6" fill="#E6F2F0" stroke="#8FC2BA"/>
 <text class="n" x="428" y="266" text-anchor="middle" font-size="13">评价</text>
 <text class="s" x="428" y="281" text-anchor="middle">rvw_* · 3…</text>
 <rect x="477" y="246" width="78" height="46" rx="6" fill="#E6F2F0" stroke="#8FC2BA"/>
 <text class="n" x="516" y="266" text-anchor="middle" font-size="11">消息与客服</text>
-<text class="s" x="516" y="281" text-anchor="middle">msg_* · 3…</text>
+<text class="s" x="516" y="281" text-anchor="middle">msg_* · 4…</text>
 <rect x="565" y="246" width="78" height="46" rx="6" fill="#E6F2F0" stroke="#8FC2BA"/>
 <text class="n" x="604" y="266" text-anchor="middle" font-size="13">系统</text>
 <text class="s" x="604" y="281" text-anchor="middle">sys_* · 1…</text></svg>
