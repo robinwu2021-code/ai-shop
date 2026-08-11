@@ -111,6 +111,16 @@ public final class Perms {
     public static final String SETTLE_MANAGE = "settle:manage";
 
     /**
+     * 平台自身的配置：皮肤下发、功能开关与灰度、规则文案、市场与汇率。
+     *
+     * <p><b>与 {@link #INDUSTRY_MANAGE} 分开</b>：那个管的是「哪些行业能开小微」，
+     * 影响面是新入驻的商家；而这一个改的是<b>全平台的行为</b> ——
+     * 汇率错一位、灰度开关拨错一档，是所有人立刻受影响。
+     * 共用一把钥匙意味着「能维护行业主数据」的人顺手就能改汇率。
+     */
+    public static final String PLATFORM_CONFIG = "platform:config";
+
+    /**
      * 角色 → 权限码。**对着矩阵 §2.3 的十一个岗位逐条配**。
      *
      * <p>此前只有四个，而 ops-web 的角色下拉有十一个 —— 差的那七个不是前端多造的，
@@ -182,10 +192,10 @@ public final class Perms {
 
             /*
              * 技术运维：矩阵给的是配置、灰度、日志、环境切换。
-             * 后端目前只有审计日志这一条对得上；灰度与环境切换没有端点
-             * （ops-web 里 system:env:switch 等已标 UNIMPLEMENTED，两侧说的是同一件事）。
+             * 矩阵那一行（配置、灰度、日志）现在对上了两条：审计日志与平台配置。
+             * 环境切换仍然没有端点（ops-web 里 system:env:switch 还标着 UNIMPLEMENTED）。
              */
-            Map.entry("TECH_OPS", List.of(AUDIT_LOG_VIEW)));
+            Map.entry("TECH_OPS", List.of(AUDIT_LOG_VIEW, PLATFORM_CONFIG)));
 
     private Perms() {
     }

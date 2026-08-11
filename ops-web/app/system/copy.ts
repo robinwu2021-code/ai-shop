@@ -145,7 +145,7 @@ const zh = {
 
   flagsReadOnlyWhat: "开关与灰度",
   flagsReadOnlyNote: "不能开关功能或调整灰度比例",
-  flagsNotice: "灰度比例 0–100。新功能建议先开小比例观察 —— 关掉开关比回滚代码快得多。",
+  flagsNotice: "⚠️ 开关会保存，但**目前还没有代码读它** —— 拨了不等于功能真的开/关了。让某个开关控制一段逻辑，要在那段逻辑里接上。\n\n灰度比例 0–100。新功能建议先开小比例观察 —— 关掉开关比回滚代码快得多。",
   flagsEmpty: "还没有功能开关。开关用于灰度放量，没有它新功能只能全量上线。",
 };
 
@@ -292,7 +292,7 @@ const en: typeof zh = {
 
   flagsReadOnlyWhat: "flags & rollout",
   flagsReadOnlyNote: "cannot toggle features or change rollout percentages",
-  flagsNotice: "Rollout is 0–100. Start a new feature small and watch it — flipping a flag off is far faster than rolling back code.",
+  flagsNotice: "⚠️ Flags are saved, but **no code reads them yet** — flipping one does not actually turn a feature on or off. Wiring a flag into a code path happens in that code path.\n\nRollout is 0–100. Start a new feature small and watch it — flipping a flag off is far faster than rolling back code.",
   flagsEmpty: "No feature flags yet. Flags are how features roll out gradually; without one a new feature can only ship to everybody at once.",
 };
 

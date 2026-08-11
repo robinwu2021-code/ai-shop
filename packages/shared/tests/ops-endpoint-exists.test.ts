@@ -30,10 +30,9 @@ const ROOT = join(import.meta.dirname, "../../..");
 const UNBUILT_DOMAINS = new Set([
   // 平台治理的后期功能，UI 先行
   "contents", "risk-events", "risk-rules", "blacklists", "audit-logs",
-  "faqs", "materials", "rule-texts", "appearance", "feature-flags",
+  "faqs", "materials",
   // 财务与清结算（finance 已开始实现，移到 KNOWN_GAPS 逐条登记）
-  "payments", "settlements", "split-records", "refund-split-backs",
-  "markets",
+  "payments", "refund-split-backs",
   // 履约与物流
   "fulfillment", "shipments", "freight-templates",
   // 商品中心（现有的是 goods，skus 是另一套更细的视图）
@@ -66,6 +65,17 @@ const KNOWN_GAPS: Record<string, string> = {
   // 员工那三条写接口**已接通**（2026-08-11），按棘轮规矩从这里删掉。
   // 留一句在这里是因为它容易被误当成缺口再补一遍：
   // /scope 存得下但**还没生效** —— 各域查询按数据域裁剪是单独一批。
+
+  // ── 系统与配置：四类已接通（2026-08-11），域从 UNBUILT 移出 ──
+  // 剩下这两条是同一页面上的、后端确实还没有的能力。
+  "GET /ops/env": "环境切换（ops-web 的 system:env:switch 仍标 UNIMPLEMENTED）",
+  "GET /ops/params": "平台参数总览页（四类配置各有自己的端点，这个总览还没有）",
+
+  // ── 结算：域刚活（settlements / split-records 的读端点落地）──
+  // 这两条写接口还没有。**不是我们这批的活**，登记在这里是因为
+  // 域一从 UNBUILT 移出，漏掉的就会变成死按钮 —— 谁接通谁负责删。
+  "POST /ops/settlements/{x}/freeze-back": "结算单解冻回滚",
+  "POST /ops/settlements/{x}/split": "手动触发分账",
 
   // ── 财务：域已经活了（自营应付账款那批端点落地），剩下这几条还没有 ──
   // 这正是守卫要盯的那个时刻：域一活，页面就看着能用，而漏掉的会变成死按钮。

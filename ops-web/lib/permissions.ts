@@ -213,8 +213,8 @@ export const BACKEND_ROLE_PERMS: Record<string, string[]> = {
   RISK: ["order:view"],
   // 矩阵写明「只读脱敏」，所以**故意不给 order:view**（那是完整订单）
   ANALYST: ["community:view"],
-  // 灰度与环境切换没有端点，只有审计日志对得上
-  TECH_OPS: ["audit:view"],
+  // 矩阵那一行（配置、灰度、日志）现在对上两条；环境切换仍无端点
+  TECH_OPS: ["audit:view", "platform:config"],
 };
 
 /** 这个角色实际拿到的后端权限码。没有登录态时用它推算 */

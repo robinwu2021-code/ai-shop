@@ -285,7 +285,7 @@ export const NAV: NavSection[] = [
       // 皮肤/回落语言/规则文案都是"下发给 C 端的东西"，放同一页；市场与开关各自成 tab
       { href: "/system", label: "外观与规则文案", perm: "system:theme:update", group: "外观与语言", matrix: "P-17.1", ready: true },
       { href: "/system?tab=market", label: "市场/货币/汇率", perm: "system:param:read", group: "外观与语言", matrix: "P-17.1", ready: true },
-      { href: "/system?tab=flags", label: "开关与灰度", perm: "system:env:switch", group: "运行配置", matrix: "P-17.1", ready: true },
+      { href: "/system?tab=flags", label: "开关与灰度", perm: "system:param:read", group: "运行配置", matrix: "P-17.1", ready: true },
     ],
   },
 ];

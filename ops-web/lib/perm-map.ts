@@ -119,10 +119,13 @@ export const UI_PERM_MAP: Record<string, string | typeof UNIMPLEMENTED> = {
   "store:page:audit": UNIMPLEMENTED,
   "store:qrcode:export": UNIMPLEMENTED,
 
-  // 平台自身配置
+  // 平台自身配置。**皮肤/开关/文案/汇率四类已接通**（2026-08-11），
+  // 后端新加了 platform:config —— 它与 industry:manage 分开，
+  // 因为改的是全平台行为（汇率错一位是所有人立刻受影响）
+  "system:theme:update": "platform:config",
+  "system:param:read": "platform:config",
+  // 环境切换后端仍然没有端点
   "system:env:switch": UNIMPLEMENTED,
-  "system:param:read": UNIMPLEMENTED,
-  "system:theme:update": UNIMPLEMENTED,
 
   // IAM 写操作：后端只有 GET /ops/staffs（读），角色授权页一个能通的写接口都没有
   "iam:role:grant": UNIMPLEMENTED,
