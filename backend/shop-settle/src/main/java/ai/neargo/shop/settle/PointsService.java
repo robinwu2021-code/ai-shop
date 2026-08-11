@@ -52,4 +52,74 @@ public interface PointsService {
 
     /** 平台总览：流通中的积分与池子余额摆在一起 —— 恒等式 2 的两边。 */
     PointsOverviewVO overview(String market);
+
+    // ---------------------------------------------------------------- 写侧
+    //
+    // 这三个方法之前**一个都没有** —— 整个积分域只有 select，
+    // 于是余额恒为 0、C 端的抵扣开关点了等于没点。
+    // 详见 docs/technical/积分抵扣接入下单-对齐清单.md
+
+    /**
+     * 下单时扣分，落一条 {@code USE} 流水（{@code status=PENDING}）。
+     *
+     * <p><b>判据顺序与 {@link #deductible} 完全一致</b>：商家开关 → 抵扣上限 → 账户余额。
+     * 两处算不出同一个数，用户就会看到「结算页说能抵 30，下单只抵了 25」——
+     * 所以上限那段算术收在 {@link PointsConfig#maxUsablePoints} 一处，两边都调它。
+     *
+     * <p><b>PENDING 表示预占</b>：池子还没付钱给收单方，因为订单还可能取消或退款。
+     * 兑付成立（{@code CONFIRMED} + 出池）在售后期结束时做，<b>本批不实现</b> ——
+     * 所以账面上会积累一批挂着的 PENDING，这是已知边界，不是遗漏。
+     *
+     * @param wantPoints 用户意愿值，服务端截断
+     * @return 实际扣减的分数与金额；抵不了返回零值，<b>不抛异常</b>
+     */
+    DeductResult deductOnPlace(String userNo, long wantPoints, List<DeductTarget> targets);
+
+    /**
+     * 退回积分：把 USE 流水置 {@code REVERSED}，余额加回去。
+     *
+     * <p><b>幂等</b>：只有 {@code PENDING} 的流水会被处理，退两次只退一次。
+     * 找不到流水时静默返回 —— 没用过积分的单没什么可退。
+     */
+    void reverse(String subOrderNo, String reason);
+
+    /**
+     * 支付成功后发分，进 {@code pending_balance}。
+     *
+     * @param baseMinor 计分基数：实付金额，不含运费与积分抵扣部分
+     * @return 实际发放的分数；商家未开启或基数太小时为 0
+     */
+    long grantOnPay(String userNo, String merchantNo, long baseMinor, String subOrderNo);
+
+    /**
+     * 一个子单的抵扣目标。
+     *
+     * @param payableMinor 该子单的<b>券后金额</b>，不含运费
+     */
+    record DeductTarget(String merchantNo, long payableMinor, String subOrderNo) {
+    }
+
+    /**
+     * @param amountMinor 总抵扣金额（分）
+     * @param shares      各子单分到的金额。与 {@code ord_sub_order.points_deduct_minor} 勾稽
+     */
+    record DeductResult(long points, long amountMinor, List<Share> shares) {
+
+        public static DeductResult none() {
+            return new DeductResult(0L, 0L, List.of());
+        }
+
+        public long amountOf(String subOrderNo) {
+            return shares.stream().filter(x -> x.subOrderNo().equals(subOrderNo))
+                    .mapToLong(Share::amountMinor).sum();
+        }
+
+        public long pointsOf(String subOrderNo) {
+            return shares.stream().filter(x -> x.subOrderNo().equals(subOrderNo))
+                    .mapToLong(Share::points).sum();
+        }
+    }
+
+    record Share(String subOrderNo, String merchantNo, long points, long amountMinor) {
+    }
 }

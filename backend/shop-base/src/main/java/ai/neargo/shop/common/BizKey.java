@@ -65,6 +65,8 @@ public final class BizKey {
     public static final String PAY_MERCHANT = "PM";
     /** 保证金流水 */
     public static final String DEPOSIT_TXN = "DP";
+    /** 积分流水 */
+    public static final String POINTS_LEDGER = "PL";
 
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
     private static final AtomicInteger SEQ = new AtomicInteger(0);

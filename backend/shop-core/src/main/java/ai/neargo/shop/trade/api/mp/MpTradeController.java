@@ -172,8 +172,13 @@ public class MpTradeController {
     public record CancelReq(String reason) {
     }
 
+    /**
+     * @param usePoints 想用多少积分。<b>c-app 一直在传这个字段，而这里此前没有它</b> ——
+     *                  Jackson 直接丢掉，不报错：用户勾了积分抵扣，然后照原价付款。
+     *                  没人撞上是因为 C 端的 {@code FEATURES.points} 关着
+     */
     public record CreateOrderReq(List<Item> items, String fulfillment, String pickupNo, String addressId,
-                                 String couponNo, String remark, String idempotencyKey) {
+                                 String couponNo, Long usePoints, String remark, String idempotencyKey) {
 
         public record Item(String goodsNo, String skuNo, int qty) {
         }
@@ -183,7 +188,7 @@ public class MpTradeController {
                     items == null ? List.of() : items.stream()
                             .map(i -> new OrderService.CreateOrderCommand.Item(i.goodsNo(), i.skuNo(), i.qty()))
                             .toList(),
-                    fulfillment, pickupNo, addressId, couponNo, remark);
+                    fulfillment, pickupNo, addressId, couponNo, usePoints, remark);
         }
     }
 }

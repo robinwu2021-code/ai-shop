@@ -9,6 +9,7 @@ import ai.neargo.shop.trade.service.OrderStatusView;
 import ai.neargo.shop.spi.marketing.AttributionPort;
 import ai.neargo.shop.spi.marketing.CampaignPort;
 import ai.neargo.shop.spi.marketing.CouponPort;
+import ai.neargo.shop.spi.settle.PointsPort;
 import ai.neargo.shop.spi.product.GoodsQueryPort;
 import ai.neargo.shop.spi.product.StockPort;
 import ai.neargo.shop.spi.settle.SettlePort;
@@ -73,6 +74,7 @@ public class OrderServiceImpl implements OrderService {
     private final CouponPort couponPort;
     /** 店铺活动的自动优惠（满减）。此前 mkt_campaign 没有任何消费方 */
     private final CampaignPort campaignPort;
+    private final PointsPort pointsPort;
     private final SettlePort settlePort;
     private final StatusLogMapper statusLogMapper;
     private final PickupQueryPort pickupPort;
@@ -84,7 +86,8 @@ public class OrderServiceImpl implements OrderService {
     public OrderServiceImpl(OrderMapper orderMapper, SubOrderMapper subOrderMapper, OrderItemMapper itemMapper,
                             CartItemMapper cartMapper, GoodsQueryPort goodsPort, StockPort stockPort,
                             MerchantQueryPort merchantPort, AttributionPort attributionPort,
-                            CouponPort couponPort, CampaignPort campaignPort, SettlePort settlePort,
+                            CouponPort couponPort, CampaignPort campaignPort, PointsPort pointsPort,
+                            SettlePort settlePort,
                             StatusLogMapper statusLogMapper,
                             PickupQueryPort pickupPort,
                             ai.neargo.shop.spi.user.UserQueryPort userPort,
@@ -100,6 +103,7 @@ public class OrderServiceImpl implements OrderService {
         this.merchantPort = merchantPort;
         this.attributionPort = attributionPort;
         this.couponPort = couponPort;
+        this.pointsPort = pointsPort;
         this.campaignPort = campaignPort;
         this.settlePort = settlePort;
         this.statusLogMapper = statusLogMapper;
@@ -320,11 +324,41 @@ public class OrderServiceImpl implements OrderService {
         // 优惠：与预览同一套规则（discountsOf 是唯一实现）
         Discounts discounts = discountsOf(cmd, split);
 
+        /*
+         * 子单号**提前生成**：积分抵扣要落到各个子单上（三家里退了一家时才退得准），
+         * 而扣减必须在落库之前完成 —— 余额不足要能降级成不抵扣，不能让订单先落库再回滚。
+         */
+        Map<String, String> subOrderNoOf = new LinkedHashMap<>();
+        for (Group g : split.groups) {
+            subOrderNoOf.put(g.merchantNo, BizKey.next(BizKey.SUB_ORDER));
+        }
+
+        /*
+         * 积分抵扣。**券之后、运费之外**：
+         *
+         * · 券先抵 —— 反过来的话积分把金额压低，券的满减门槛就达不到了，
+         *   用户会发现「用了积分反而更贵」
+         * · 运费不参与 —— 含运费的话一单全靠积分抵掉，商家一分收不到
+         *
+         * 端上传的 usePoints 只是意愿值，积分域按四道闸截断。
+         * 抵不了就是不抵（返回零值），**不抛异常** —— 为了抵扣失败把一笔真实成交挡掉，
+         * 代价与收益完全不成比例，与买赠缺货少送是同一条原则。
+         */
+        PointsPort.Deduction points = cmd.usePoints() == null || cmd.usePoints() <= 0
+                ? PointsPort.Deduction.none()
+                : pointsPort.deduct(userNo, cmd.usePoints(), split.groups.stream()
+                        .map(g -> new PointsPort.Target(g.merchantNo,
+                                g.goodsAmount() - discounts.of(g.merchantNo),
+                                subOrderNoOf.get(g.merchantNo)))
+                        .toList());
+
         // ⑥ 落库：主单 + 子单 + 行，同一事务
         OrdOrder order = new OrdOrder();
         order.setOrderNo(orderNo);
         order.setUserNo(userNo);
-        order.setPayAmount(split.payAmount() - discounts.total());
+        // 积分抵扣计入实付，但**不计入 discountAmount** —— 那一列是营销优惠，
+        // 混进去会让「这单让了多少利」算错，而分账要按它拆出资方
+        order.setPayAmount(split.payAmount() - discounts.total() - points.amountMinor());
         order.setGoodsAmount(split.goodsAmount());
         order.setFreightAmount(split.freightAmount());
         order.setDiscountAmount(discounts.total());
@@ -366,7 +400,7 @@ public class OrderServiceImpl implements OrderService {
 
         List<String> subOrderNos = new ArrayList<>();
         for (Group g : split.groups) {
-            String subOrderNo = BizKey.next(BizKey.SUB_ORDER);
+            String subOrderNo = subOrderNoOf.get(g.merchantNo);
             subOrderNos.add(subOrderNo);
 
             OrdSubOrder sub = new OrdSubOrder();
@@ -399,7 +433,11 @@ public class OrderServiceImpl implements OrderService {
             // 出资方分列（Q9）：合成一列的话 M7 分账无法判断该扣谁的钱
             sub.setDiscountPlatform(discounts.platformFunded(g.merchantNo));
             sub.setDiscountMerchant(discounts.merchantFunded(g.merchantNo));
-            sub.setPayAmount(g.goodsAmount() + g.freight - discount);
+            // 积分快照：结算与售后直接读这两列，不用回查积分流水
+            long pointsAmount = points.amountOf(subOrderNo);
+            sub.setPointsDeduct((int) points.pointsOf(subOrderNo));
+            sub.setPointsDeductMinor(pointsAmount);
+            sub.setPayAmount(g.goodsAmount() + g.freight - discount - pointsAmount);
             sub.setRequireBuyerConfirm(
                     Boolean.TRUE.equals(needsConfirm.get(g.merchantNo)) ? 1 : 0);
             sub.setStatus(OrdSubOrder.WAIT_PAY);
@@ -515,6 +553,28 @@ public class OrderServiceImpl implements OrderService {
             subOrderMapper.updateById(sub);
             appendStatusLog(sub.getSubOrderNo(), OrdSubOrder.WAIT_FULFILL, "支付成功，待备货",
                     OrdStatusLog.BY_SYSTEM, null);
+
+            /*
+             * 发分。**基数是实付金额**（已扣券与积分），不含运费 ——
+             * 拿运费也计分的话，一单加一次运费就能多赚一笔分。
+             *
+             * 进的是 pending_balance（待生效）而不是 balance：售后期内退款要把分收回，
+             * 而已经花出去的分收不回来。转正任务本批不做。
+             *
+             * points_granted 是幂等标记：支付回调会重发，这个方法开头的
+             * 「已 PAID 直接返回」挡掉大部分，但并发回调仍可能同时进来，
+             * 所以这里再挡一层 —— 重复发分是**凭空印钱**，比重复扣库存严重。
+             */
+            if (!Boolean.TRUE.equals(sub.getPointsGranted())) {
+                long base = sub.getPayAmount() == null ? 0L
+                        : sub.getPayAmount() - (sub.getFreightAmount() == null ? 0L : sub.getFreightAmount());
+                long granted = pointsPort.grant(order.getUserNo(), sub.getEntityNo(),
+                        base, sub.getSubOrderNo());
+                if (granted > 0) {
+                    sub.setPointsGranted(true);
+                    subOrderMapper.updateById(sub);
+                }
+            }
         }
 
         // 结算单与支付状态同事务生成（理由见 SettlePort#generateForOrder）
@@ -600,6 +660,11 @@ public class OrderServiceImpl implements OrderService {
         }
         stockPort.release(order.getOrderNo());
         couponPort.release(order.getOrderNo());
+        // 积分按子单退。券是整单一张、积分是每个子单一条 ——
+        // 所以这里逐个子单退，而不是像券那样传 orderNo
+        for (OrdSubOrder sub : subOrders(order.getOrderNo())) {
+            pointsPort.reverse(sub.getSubOrderNo(), "订单已取消");
+        }
         return detail(order.getOrderNo());
     }
 
@@ -628,6 +693,10 @@ public class OrderServiceImpl implements OrderService {
             // 幂等：release 只作用于 LOCKED 的锁定行，重复跑不会把库存加两遍
             stockPort.release(order.getOrderNo());
             couponPort.release(order.getOrderNo());
+            // 同上，积分逐子单退。reverse 只认 PENDING 的 USE 流水，重复跑不会退两次
+            for (OrdSubOrder sub : subOrders(order.getOrderNo())) {
+                pointsPort.reverse(sub.getSubOrderNo(), "支付超时，订单关闭");
+            }
         }
         return expired.size();
     }
@@ -788,6 +857,10 @@ public class OrderServiceImpl implements OrderService {
                 OrderVO.Amount.of(nz(s.getGoodsAmount()), nz(s.getFreightAmount()),
                         nz(s.getDiscountAmount()),
                         order != null && order.getPaidAt() != null ? nz(s.getPayAmount()) : 0L,
+                        // 积分快照从子单读 —— 此前这里传的是老工厂，
+                        // 三个积分字段被写死成 0，端上永远看不到抵扣
+                        nz(s.getPointsDeductMinor()),
+                        s.getPointsDeduct() == null ? 0 : s.getPointsDeduct(),
                         order == null ? CURRENCY_CNY : order.getCurrency()),
                 s.getVerifyCode(), s.getPickupNo(), s.getPickupName(),
                 order == null ? null : order.getPayDeadlineAt(),
@@ -810,6 +883,10 @@ public class OrderServiceImpl implements OrderService {
                 OrderVO.Amount.of(nz(order.getGoodsAmount()), nz(order.getFreightAmount()),
                         nz(order.getDiscountAmount()),
                         order.getPaidAt() == null ? 0L : nz(order.getPayAmount()),
+                        // 积分**汇总子单**：主单没有这两列，而收银台读的就是这一层 ——
+                        // 不汇总的话支付页显示的是未抵扣的价格，用户以为多扣了钱
+                        subs.stream().mapToLong(x -> nz(x.getPointsDeductMinor())).sum(),
+                        subs.stream().mapToInt(x -> x.getPointsDeduct() == null ? 0 : x.getPointsDeduct()).sum(),
                         order.getCurrency()),
                 null, null, null,
                 order.getPayDeadlineAt(), millis(order.getCreatedAt()), order.getPaidAt(),

@@ -61,9 +61,28 @@ public record OrderVO(String orderNo,
                          int pointsEarn,
                          String currency) {
 
+        /**
+         * 不带积分的老工厂。<b>它把积分三个字段写死成 0</b> ——
+         * 于是「库里有 points_deduct_minor、VO 里有 pointsDeductMinor」的同时，
+         * 端上拿到的永远是 0，而两侧代码单独看都对。
+         *
+         * <p>保留它是因为大量调用方确实没有积分（预览、子单视图），
+         * 但**有积分的路径必须用下面那个** —— 少传一次就是一次「金额对不上」。
+         */
         public static Amount of(long goods, long freight, long discount, long paid, String currency) {
-            return new Amount(goods, freight, discount, goods + freight - discount, paid,
-                    0L, 0, 0, currency);
+            return of(goods, freight, discount, paid, 0L, 0, currency);
+        }
+
+        /**
+         * @param pointsDeduct 积分抵扣金额（分）。**payable 要把它减掉** ——
+         *                     不减的话结算页显示的应付比实际扣款高，用户会以为多扣了钱
+         * @param pointsUsed   用掉的积分数
+         */
+        public static Amount of(long goods, long freight, long discount, long paid,
+                                long pointsDeduct, int pointsUsed, String currency) {
+            return new Amount(goods, freight, discount,
+                    goods + freight - discount - pointsDeduct, paid,
+                    pointsDeduct, pointsUsed, 0, currency);
         }
     }
 

@@ -56,9 +56,12 @@ public interface OrderService {
     /**
      * @param items       下单行；为空时取购物车勾选行
      * @param fulfillment 履约方式：STORE_PICKUP / NEIGHBOR_PICKUP / MERCHANT_DELIVERY / EXPRESS
+     * @param usePoints   想用多少积分。<b>只是意愿值</b> —— 服务端按
+     *                    「商家开关 → 抵扣上限 → 账户余额 → 并发」四道闸截断，
+     *                    传多少都不会超。null / 0 = 不用积分
      */
     record CreateOrderCommand(List<Item> items, String fulfillment, String pickupNo,
-                              String addressId, String couponNo, String remark) {
+                              String addressId, String couponNo, Long usePoints, String remark) {
 
         public record Item(String goodsNo, String skuNo, int qty) {
         }
