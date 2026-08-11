@@ -39,9 +39,17 @@ const TABS = (c: Copy) => [
   { key: "effect", label: c.tabEffect },
 ];
 
+/** 三种待审内容的标签。写成函数是因为它在列表、详情标题两处都要用 —— 两处各写一遍必然分岔 */
+function kindLabel(kind: string, c: Copy) {
+  if (kind === "BANNER") return c.kindBanner;
+  if (kind === "SERVICE_AREA") return c.kindArea;
+  return c.kindNotice;
+}
+
 const KIND_OPTIONS = (c: Copy) => [
   { value: "BANNER", label: c.kindBanner },
   { value: "NOTICE", label: c.kindNotice },
+  { value: "SERVICE_AREA", label: c.kindArea },
 ];
 
 export default function StoresPage() {
@@ -103,11 +111,11 @@ function StoresInner() {
   const auditColumns: Column<StorePageAudit>[] = [
     { header: c.colAuditNo, cell: (a) => a.auditNo, numeric: true, align: "start" },
     { header: c.colMerchant, cell: (a) => a.merchantName },
-    { header: c.colKind, cell: (a) => (a.kind === "BANNER" ? c.kindBanner : c.kindNotice) },
+    { header: c.colKind, cell: (a) => kindLabel(a.kind, c) },
     {
       header: c.colContent,
       width: "22rem",
-      cell: (a) => <span className="line-clamp-1 text-muted-foreground">{a.content}</span>,
+      cell: (a) => <span className="line-clamp-1 text-muted-foreground">{a.display ?? a.content}</span>,
     },
     {
       header: c.colHits,
@@ -258,7 +266,7 @@ function StoresInner() {
       <Drawer
         open={!!current}
         onOpenChange={(o) => !o && setCurrent(null)}
-        title={current ? `${current.merchantName} · ${current.kind === "BANNER" ? c.kindBanner : c.kindNotice}` : ""}
+        title={current ? `${current.merchantName} · ${kindLabel(current.kind, c)}` : ""}
         desc={current?.auditNo}
         footer={
           current?.status === "PENDING" && canAudit ? (
@@ -277,7 +285,14 @@ function StoresInner() {
         {current && (
           <div>
             <Field label={c.fieldPending}>
-              {current.kind === "BANNER" ? (
+              {current.kind === "SERVICE_AREA" ? (
+                /* 覆盖项审的是「这家店能不能做这一片」，所以给的是地名 + 判据提示，
+                   而不是像公告那样把原文摆出来 —— 原文是 DISTRICT:330106，看不出任何东西 */
+                <div className="space-y-2">
+                  <p className="font-medium">{current.display ?? current.content}</p>
+                  <p className="txt-caption text-muted-foreground">{c.areaHint}</p>
+                </div>
+              ) : current.kind === "BANNER" ? (
                 // 图片走 CDN，本地 mock 里是假的 URL：显示地址本身而不是加载失败的破图
                 <code className="break-all txt-caption text-muted-foreground">{current.content}</code>
               ) : (

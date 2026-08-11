@@ -56,6 +56,11 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
     private final ai.neargo.shop.merchant.mapper.MerchantMappers.StoreAuditMapper storeAuditMapper;
     /** 通过审核时要把内容写回门面表 */
     private final ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper storeProfileMapper;
+    /** 覆盖项审核：裁决要落到这张表上（ADR-013 阶段三） */
+    private final ai.neargo.shop.merchant.mapper.MerchantMappers.ServiceAreaMapper serviceAreaMapper;
+    /** 待审覆盖项的展示名 —— 让运营对着「DISTRICT:330106」裁决等于让他去别处查一次 */
+    private final ai.neargo.shop.spi.user.CommunityQueryPort communityNamePort;
+    private final ai.neargo.shop.spi.platform.MasterDataPort masterDataPort;
 
     public MerchantGovernServiceImpl(MchEntityMapper merchantMapper,
                                      MchEntityCommunityMapper communityMapper,
@@ -65,7 +70,13 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
                                      ai.neargo.shop.merchant.mapper.MerchantMappers.StoreAuditMapper storeAuditMapper,
                                      ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper storeProfileMapper,
                                      ObjectMapper json,
-            ai.neargo.shop.merchant.mapper.MerchantMappers.QualificationMapper qualificationMapper) {
+            ai.neargo.shop.merchant.mapper.MerchantMappers.QualificationMapper qualificationMapper,
+            ai.neargo.shop.merchant.mapper.MerchantMappers.ServiceAreaMapper serviceAreaMapper,
+            ai.neargo.shop.spi.user.CommunityQueryPort communityNamePort,
+            ai.neargo.shop.spi.platform.MasterDataPort masterDataPort) {
+        this.serviceAreaMapper = serviceAreaMapper;
+        this.communityNamePort = communityNamePort;
+        this.masterDataPort = masterDataPort;
         this.qualificationMapper = qualificationMapper;
         this.merchantMapper = merchantMapper;
         this.communityMapper = communityMapper;
@@ -367,6 +378,9 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
         a.setDecidedBy(operatorNo);
         DataScopeContext.executeWithoutScope(() -> storeAuditMapper.updateById(a));
 
+        if (ai.neargo.shop.merchant.entity.MchStoreAudit.SERVICE_AREA.equals(a.getKind())) {
+            decideServiceArea(a.getRefNo(), pass);
+        }
         if (pass && ai.neargo.shop.merchant.entity.MchStoreAudit.NOTICE.equals(a.getKind())) {
             /*
              * 通过之后内容**这时才真正生效**。
@@ -386,10 +400,58 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
         return toAuditVO(a);
     }
 
+    /**
+     * 裁决落到覆盖项本身。
+     *
+     * <p><b>驳回是物理删除，不留 REJECTED 墓碑。</b> 这张表的唯一键在
+     * (entity, level, ref) 上且**不含 deleted** —— 留墓碑的话，商家补齐材料
+     * 重新勾同一个区就直接撞键，而他看到的是「系统开小差了」。
+     * 本仓库已经为这个组合打过五个 revive 补丁，这里不打第六个。
+     * 驳回理由留在审核单上，商家照样查得到。
+     */
+    private void decideServiceArea(String areaNo, boolean pass) {
+        if (areaNo == null || areaNo.isBlank()) {
+            return;
+        }
+        var row = DataScopeContext.executeWithoutScope(() -> serviceAreaMapper.selectOne(
+                Wrappers.<ai.neargo.shop.merchant.entity.MchServiceArea>lambdaQuery()
+                        .eq(ai.neargo.shop.merchant.entity.MchServiceArea::getAreaNo, areaNo)
+                        .last("limit 1")));
+        if (row == null) {
+            // 商家自己已经把这条删了 —— 单据照常裁完，没有可落的行
+            return;
+        }
+        if (pass) {
+            row.setStatus(ai.neargo.shop.merchant.entity.MchServiceArea.ACTIVE);
+            DataScopeContext.executeWithoutScope(() -> serviceAreaMapper.updateById(row));
+        } else {
+            DataScopeContext.executeWithoutScope(() -> serviceAreaMapper.hardDelete(
+                    row.getEntityNo(), row.getLevel(), row.getRefCode()));
+        }
+    }
+
     private StoreAuditVO toAuditVO(ai.neargo.shop.merchant.entity.MchStoreAudit a) {
         return new StoreAuditVO(a.getAuditNo(), a.getEntityNo(), nameOf(a.getEntityNo()),
                 a.getKind(), a.getContent(), a.getStatus(), readList(a.getHits()),
-                a.getSubmittedAt() == null ? 0L : a.getSubmittedAt(), a.getReason());
+                a.getSubmittedAt() == null ? 0L : a.getSubmittedAt(), a.getReason(),
+                displayOf(a));
+    }
+
+    /**
+     * 覆盖项的 content 是「DISTRICT:330106」这样的机器串，运营看不出那是哪儿。
+     *
+     * <p>「一家菜摊能不能覆盖整个西湖区」这个判断，靠的就是这个名字 ——
+     * 让运营对着一串数字裁决，等于让他去别处查一次再回来。
+     */
+    private String displayOf(ai.neargo.shop.merchant.entity.MchStoreAudit a) {
+        if (!ai.neargo.shop.merchant.entity.MchStoreAudit.SERVICE_AREA.equals(a.getKind())
+                || a.getContent() == null || !a.getContent().contains(":")) {
+            return a.getContent();
+        }
+        String[] parts = a.getContent().split(":", 2);
+        return "COMMUNITY".equals(parts[0])
+                ? communityNamePort.communityName(parts[1])
+                : masterDataPort.regionPathName(parts[1]);
     }
     // ---------------------------------------------------------------- 资质（P1-7）
 

@@ -50,6 +50,8 @@ const zh = {
 
   kindBanner: "店招图",
   kindNotice: "店铺公告",
+  kindArea: "经营覆盖",
+  areaHint: "商家自己框的区 / 街道。通过之后他的货才会在这一片露出 —— 一家菜摊声称覆盖整个西湖区，得有履约能力佐证",
 
   toastPassed: "已通过，商家主页即时生效",
   toastRejected: "已驳回，原因已发给商家",
@@ -153,6 +155,8 @@ const en: typeof zh = {
 
   kindBanner: "Storefront banner",
   kindNotice: "Store notice",
+  kindArea: "Service coverage",
+  areaHint: "A district or street the merchant claims. Only after approval do their goods appear there — a produce stall claiming all of West Lake needs the delivery capacity to back it",
 
   toastPassed: "Approved — the merchant's storefront updates immediately",
   toastRejected: "Rejected — the reason has been sent to the merchant",

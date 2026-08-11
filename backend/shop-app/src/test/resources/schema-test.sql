@@ -1542,6 +1542,7 @@ CREATE TABLE IF NOT EXISTS mch_store_audit
     updated_by VARCHAR(64) DEFAULT NULL,
     version BIGINT(20) NOT NULL DEFAULT 0,
     deleted TINYINT(4) NOT NULL DEFAULT 0,
+    ref_no VARCHAR(64) NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_store_audit_no UNIQUE (audit_no)
 );
@@ -1797,6 +1798,8 @@ CREATE TABLE IF NOT EXISTS mch_service_area
     updated_by VARCHAR(64) DEFAULT NULL,
     version BIGINT(20) NOT NULL DEFAULT 0,
     deleted TINYINT(4) NOT NULL DEFAULT 0,
+    area_no VARCHAR(64) NOT NULL,
+    CONSTRAINT uk_service_area_no UNIQUE (area_no),
     PRIMARY KEY (id),
     CONSTRAINT uk_service_area UNIQUE (entity_no,level,ref_code)
 );
@@ -1998,3 +2001,4 @@ UPDATE mch_entity SET fulfillment_reach = CASE service_scope
     WHEN 'PLATFORM' THEN 'SHIPPING'
     ELSE 'PICKUP'
 END;
+UPDATE mch_service_area SET area_no = CONCAT('SVA', LPAD(id, 12, '0')) WHERE area_no IS NULL;

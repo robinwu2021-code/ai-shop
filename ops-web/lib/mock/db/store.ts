@@ -7,6 +7,8 @@ export const storeAudits: StorePageAudit[] = [
   { auditNo: "SA9002", merchantNo: "M901", merchantName: "阿姨家的菜摊", kind: "NOTICE", content: "全网最低价！假一赔十，绝对正宗有机蔬菜。", status: "PENDING", hits: ["全网最低", "假一赔十", "绝对"], submittedAt: "2026-08-05T14:22:00Z" },
   { auditNo: "SA9003", merchantNo: "M902", merchantName: "老张水果店", kind: "BANNER", content: "https://cdn.example.com/store/M902/banner-0805.jpg", status: "PENDING", hits: ["图片含二维码"], submittedAt: "2026-08-04T09:05:00Z" },
   { auditNo: "SA9004", merchantNo: "M905", merchantName: "快修家电服务", kind: "NOTICE", content: "空调清洗预约请提前一天下单。", status: "PASSED", hits: [], submittedAt: "2026-08-02T02:00:00Z" },
+  // 覆盖项待审（ADR-013 阶段三）：content 是机器串，display 是运营真正读的东西
+  { auditNo: "SA9006", merchantNo: "M901", merchantName: "阿姨家的菜摊", kind: "SERVICE_AREA", content: "DISTRICT:330106", display: "浙江省 / 杭州市 / 西湖区", status: "PENDING", hits: [], submittedAt: "2026-08-06T01:15:00Z" },
   { auditNo: "SA9005", merchantNo: "M906", merchantName: "夜市烧烤", kind: "BANNER", content: "https://cdn.example.com/store/M906/banner-0730.jpg", status: "REJECTED", hits: ["含联系方式"], submittedAt: "2026-07-30T11:40:00Z", reason: "店招图里印了店主微信号，属于站外引流，请去掉后重新提交" },
 ];
 

@@ -36,6 +36,12 @@ class ServiceAreaFlowTest {
     @Autowired
     private ai.neargo.shop.community.mapper.CommunityMappers.CommunityMapper communityMapper;
 
+    @Autowired
+    private ai.neargo.shop.merchant.service.MerchantGovernService governService;
+
+    @Autowired
+    private ai.neargo.shop.merchant.mapper.MerchantMappers.StoreAuditMapper auditMapper;
+
     /** 社区号自增：BizKey 没有社区这一档，测试里自己造就够 */
     private static int seq = 9000;
 
@@ -52,6 +58,7 @@ class ServiceAreaFlowTest {
 
     private void area(String entityNo, String level, String refCode) {
         var a = new ai.neargo.shop.merchant.entity.MchServiceArea();
+        a.setAreaNo(ai.neargo.shop.common.BizKey.next(ai.neargo.shop.common.BizKey.SERVICE_AREA));
         a.setEntityNo(entityNo);
         a.setLevel(level);
         a.setRefCode(refCode);
@@ -175,6 +182,7 @@ class ServiceAreaFlowTest {
         String m = merchant("PICKUP");
         String c = community("330106002");
         var a = new ai.neargo.shop.merchant.entity.MchServiceArea();
+        a.setAreaNo(ai.neargo.shop.common.BizKey.next(ai.neargo.shop.common.BizKey.SERVICE_AREA));
         a.setEntityNo(m);
         a.setLevel("COMMUNITY");
         a.setRefCode(c);
@@ -282,6 +290,84 @@ class ServiceAreaFlowTest {
                 assertThat(r.getStatus()).isEqualTo("PENDING");
             }
         });
+    }
+
+    @Test
+    @DisplayName("★ 审过的覆盖不会因为商家改了句公告就打回待审")
+    void approvedAreaSurvivesLaterSave() {
+        String m = merchant("ONSITE");
+        store(m);
+        var cmd = new ai.neargo.shop.merchant.service.MerchantStoreService.SaveCommand(
+                "营业中", "08:00-20:00", "文一西路 1 号", java.util.List.of(),
+                null, null, null, "ONSITE",
+                java.util.List.of(new ai.neargo.shop.merchant.service.MerchantStoreService
+                        .AreaCommand("DISTRICT", "330106")));
+        storeService.save(m, cmd);
+        // 运营审过了
+        var row = areaMapper.selectOne(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                .<ai.neargo.shop.merchant.entity.MchServiceArea>lambdaQuery()
+                .eq(ai.neargo.shop.merchant.entity.MchServiceArea::getEntityNo, m).last("limit 1"));
+        governService.decideStoreAudit(auditNoOf(row.getAreaNo()), true, null, "OPS1");
+
+        // 商家回来只改了一句公告，覆盖项原样再传一遍
+        storeService.save(m, cmd);
+
+        var after = areaMapper.selectList(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                .<ai.neargo.shop.merchant.entity.MchServiceArea>lambdaQuery()
+                .eq(ai.neargo.shop.merchant.entity.MchServiceArea::getEntityNo, m));
+        // 打回待审的话，他早已审过的覆盖当场失效，而页面上什么都不会提示
+        assertThat(after).singleElement()
+                .satisfies(r -> assertThat(r.getStatus()).isEqualTo("ACTIVE"));
+    }
+
+    @Test
+    @DisplayName("★ 运营通过 → 覆盖项生效；驳回 → 行删掉（不留墓碑，否则重提撞唯一键）")
+    void opsDecisionLandsOnTheArea() {
+        String m = merchant("ONSITE");
+        store(m);
+        var cmd = new ai.neargo.shop.merchant.service.MerchantStoreService.SaveCommand(
+                "营业中", "08:00-20:00", "文一西路 1 号", java.util.List.of(),
+                null, null, null, "ONSITE",
+                java.util.List.of(new ai.neargo.shop.merchant.service.MerchantStoreService
+                        .AreaCommand("DISTRICT", "330106")));
+        storeService.save(m, cmd);
+        var row = areaMapper.selectOne(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                .<ai.neargo.shop.merchant.entity.MchServiceArea>lambdaQuery()
+                .eq(ai.neargo.shop.merchant.entity.MchServiceArea::getEntityNo, m).last("limit 1"));
+        String auditNo = auditNoOf(row.getAreaNo());
+
+        // 队列里看得到，且显示的是人话不是「DISTRICT:330106」
+        assertThat(governService.storeAudits("PENDING"))
+                .filteredOn(a -> auditNo.equals(a.auditNo()))
+                .singleElement()
+                .satisfies(a -> assertThat(a.display()).doesNotContain("DISTRICT:"));
+
+        governService.decideStoreAudit(auditNo, false, "没有同城配送能力", "OPS1");
+        assertThat(areaMapper.selectList(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                .<ai.neargo.shop.merchant.entity.MchServiceArea>lambdaQuery()
+                .eq(ai.neargo.shop.merchant.entity.MchServiceArea::getEntityNo, m))).isEmpty();
+
+        // 补齐材料后重提同一个区 —— 留墓碑的话这里撞唯一键，商家看到「系统开小差了」
+        storeService.save(m, cmd);
+        assertThat(areaMapper.selectList(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                .<ai.neargo.shop.merchant.entity.MchServiceArea>lambdaQuery()
+                .eq(ai.neargo.shop.merchant.entity.MchServiceArea::getEntityNo, m)))
+                .singleElement().satisfies(r -> assertThat(r.getStatus()).isEqualTo("PENDING"));
+    }
+
+    /** 覆盖项 → 它的审核单号。一条覆盖只该有一张待审单 */
+    private String auditNoOf(String areaNo) {
+        return governService.storeAudits("PENDING").stream()
+                .filter(a -> "SERVICE_AREA".equals(a.kind()))
+                .filter(a -> auditRefIs(a.auditNo(), areaNo))
+                .findFirst().orElseThrow().auditNo();
+    }
+
+    private boolean auditRefIs(String auditNo, String areaNo) {
+        var a = auditMapper.selectOne(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                .<ai.neargo.shop.merchant.entity.MchStoreAudit>lambdaQuery()
+                .eq(ai.neargo.shop.merchant.entity.MchStoreAudit::getAuditNo, auditNo).last("limit 1"));
+        return a != null && areaNo.equals(a.getRefNo());
     }
 
     @Test

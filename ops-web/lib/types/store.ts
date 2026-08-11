@@ -1,7 +1,14 @@
 // 门店主页治理域（矩阵 P-10.1）。一期的**主获客路径**：店主分享店铺码 → 用户进店 → 首单。
 // 平台侧管三件事：合规审核、店铺码供给、效果度量。
 
-export type StoreAuditKind = "BANNER" | "NOTICE";
+/**
+ * 待审内容的种类。
+ *
+ * 前两种审的是**单据自己带的 content**（店招图 / 公告文本）；
+ * `SERVICE_AREA` 审的是**另一张表里的一行** —— 商家框的区、街道覆盖（ADR-013 阶段三）。
+ * 它进同一个队列是有意的：运营的工作台上不该有两个长得一样、入口不同的待审列表。
+ */
+export type StoreAuditKind = "BANNER" | "NOTICE" | "SERVICE_AREA";
 export type StoreAuditStatus = "PENDING" | "PASSED" | "REJECTED";
 
 /** 店铺装修区块的排布方式 */
@@ -16,8 +23,15 @@ export interface StorePageAudit {
   merchantName: string;
   /** 待审内容类型：店招图 / 公告文本 */
   kind: StoreAuditKind;
-  /** 待审内容：店招图 URL 或公告文本 */
+  /** 待审内容：店招图 URL、公告文本，或 `DISTRICT:330106` 这样的覆盖项定位串 */
   content: string;
+  /**
+   * 人话版的 content。`SERVICE_AREA` 时是「浙江省 / 杭州市 / 西湖区」，其余与 content 相同。
+   *
+   * **列表与详情一律显示它**：让运营对着 `DISTRICT:330106` 判断
+   * 「这家菜摊该不该覆盖整个西湖区」，等于让他去别处查一次再回来。
+   */
+  display?: string;
   /** 审核状态 */
   status: StoreAuditStatus;
   /**

@@ -85,14 +85,20 @@ describe("UI 权限码映射表", () => {
     if (!existsSync(PERMS_JAVA)) return;
     const src = readFileSync(PERMS_JAVA, "utf8");
     // 后端角色码 → ops-web 角色码（toOpsRole 翻译过一次，这里反向对上）
+    // 只有这三个是异名同义（历史遗留）；后来补的七个两边同名，不再起别名
     const ROLE_ALIAS: Record<string, string> = {
-      SUPER_ADMIN: "SUPER_ADMIN", BD: "MERCHANT_BD", GOODS_OPS: "PRODUCT_OPS", SUPPORT: "CS",
+      BD: "MERCHANT_BD", GOODS_OPS: "PRODUCT_OPS", SUPPORT: "CS",
     };
-    const block = src.slice(src.indexOf("ROLE_PERMS = Map.of("));
+    const at = src.indexOf("ROLE_PERMS = Map.");
+    // 找不到就等于这条守卫静默失效：slice(-1) 扫不出任何角色，drift 恒为空。
+    // 后端把 Map.of 换成 Map.ofEntries 时就差点这样过去了
+    expect(at, "在 Perms.java 里找不到 ROLE_PERMS —— 写法变了，这条守卫已经查不到东西").toBeGreaterThan(0);
+    const block = src.slice(at);
     const drift: string[] = [];
     for (const m of block.matchAll(/"([A-Z_]+)",\s*List\.of\(([^)]*)\)/g)) {
-      const ui = ROLE_ALIAS[m[1]!];
-      if (!ui) continue;
+      // 认不出的角色**按同名处理**，而不是跳过 ——
+      // 跳过意味着后端新加的角色永远不被比对，而那正是最需要比对的时候
+      const ui = ROLE_ALIAS[m[1]!] ?? m[1]!;
       // List.of 里既有字面量也有常量引用，都归一成码本身
       const codes = new Set<string>();
       // `*`（超管通配）不符合 [a-z] 开头那条，单独认 —— 漏了它会报一条永远修不掉的漂移
@@ -116,6 +122,27 @@ describe("UI 权限码映射表", () => {
         "  这份镜像只在没有登录态的地方用（mock 登录、导航守卫的断言），\n" +
         "  漂了的后果是**假警报**：守卫说某个菜单谁都看不见，而实际上有人能看见 ——\n" +
         "  照着它去删功能就删错了。",
+    ).toEqual([]);
+  });
+
+  it("★★ 后端配了的角色，前端必须都认得 —— 认不出会静默落到最小权限", () => {
+    if (!existsSync(PERMS_JAVA)) return;
+    const src = readFileSync(PERMS_JAVA, "utf8");
+    const at = src.indexOf("ROLE_PERMS = Map.");
+    const backendRoles = [...src.slice(at).matchAll(/"([A-Z_]+)",\s*List\.of\(/g)].map((m) => m[1]!);
+    expect(backendRoles.length, "一个后端角色都没抽到").toBeGreaterThan(3);
+    const ALIAS: Record<string, string> = { BD: "MERCHANT_BD", GOODS_OPS: "PRODUCT_OPS", SUPPORT: "CS" };
+    const unknown = backendRoles
+      .map((r) => ALIAS[r] ?? r)
+      .filter((r) => !(r in BACKEND_ROLE_PERMS))
+      .sort();
+    expect(
+      unknown,
+      "后端有这些角色，ops-web 的 BACKEND_ROLE_PERMS 里没有。\n" +
+        "  后果是**静默降级**：这个角色的人登录后 toOpsRole 认不出他，\n" +
+        "  落到最小权限 ANALYST —— 他看到的是一个几乎空的后台，\n" +
+        "  而登录成功了、没有任何报错。同时要在 https/dashboard.ts 的\n" +
+        "  BACKEND_ROLE 里加上翻译，两处缺一不可。",
     ).toEqual([]);
   });
 });

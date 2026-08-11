@@ -104,20 +104,88 @@ public final class Perms {
     /**
      * 结算与应付账款：对账确认、登记付款、标记无票。
      *
-     * <p><b>只给超管。</b>这三个动作直接对应真金白银出账——登记付款虽然不划转资金，
+     * <p><b>只给超管与财务岗。</b>这三个动作直接对应真金白银出账——登记付款虽然不划转资金，
      * 但它是财务在网银付款的依据；标记无票则意味着接受「这笔支出不能税前列支」。
      * 与 {@link #ORDER_VIEW} 这类查看权限不同，它没有「顺手给一下」的空间。
      */
     public static final String SETTLE_MANAGE = "settle:manage";
 
-    private static final Map<String, List<String>> ROLE_PERMS = Map.of(
-            "SUPER_ADMIN", List.of("*"),
+    /**
+     * 角色 → 权限码。**对着矩阵 §2.3 的十一个岗位逐条配**。
+     *
+     * <p>此前只有四个，而 ops-web 的角色下拉有十一个 —— 差的那七个不是前端多造的，
+     * 是后端少做的：矩阵里一个不多一个不少，砍前端等于砍需求。
+     *
+     * <p><b>只配后端真有的码</b>。风控的「拦截/黑名单」、技术运维的「灰度/环境切换」、
+     * 数据分析的「脱敏读」在后端都还没有对应能力 —— 那几个角色因此拿到的是
+     * 一份很短的清单，并在下面逐条写明少的是什么。<b>凭空映射到一个语义相近的现有码，
+     * 会让「这个角色能干什么」在权限表上看着是满的，而实际上什么都点不动</b>；
+     * 更坏的是可能顺手给出远超职责的权限（风控要封禁，就把 merchant:audit 给它，
+     * 于是风控还能批入驻）。
+     *
+     * <p>后端角色码与 ops-web 一致，新加的七个不再起别名 —— 已有的三个
+     * （BD / GOODS_OPS / SUPPORT）是历史遗留，在 ops-web 的 http 层翻译。
+     */
+    private static final Map<String, List<String>> ROLE_PERMS = Map.ofEntries(
+            Map.entry("SUPER_ADMIN", List.of("*")),
             // BD 要读社区才能审核（选覆盖小区），但不该改社区主数据
-            "BD", List.of(MERCHANT_AUDIT, ORDER_VIEW, COMMUNITY_VIEW, QUOTE_GOVERN),
-            "GOODS_OPS", List.of(GOODS_AUDIT, CATEGORY_MANAGE, ORDER_VIEW, COMMUNITY_VIEW,
-                    MARKETING_GOVERN),
-            "SUPPORT", List.of(ORDER_VIEW, REVIEW_GOVERN, ORDER_INTERVENE, COMMUNITY_VIEW,
-                    TICKET_HANDLE));
+            Map.entry("BD", List.of(MERCHANT_AUDIT, ORDER_VIEW, COMMUNITY_VIEW, QUOTE_GOVERN)),
+            Map.entry("GOODS_OPS", List.of(GOODS_AUDIT, CATEGORY_MANAGE, ORDER_VIEW, COMMUNITY_VIEW,
+                    MARKETING_GOVERN)),
+            Map.entry("SUPPORT", List.of(ORDER_VIEW, REVIEW_GOVERN, ORDER_INTERVENE, COMMUNITY_VIEW,
+                    TICKET_HANDLE)),
+
+            // ── 以下七个是这次补的（矩阵 §2.3 有、后端此前没有）──
+
+            /*
+             * 活动运营：券、满减、限时、拼团。要看单 —— 判断一个活动对不对，
+             * 得看它实际产生了什么订单，只看活动配置看不出「一分钱买走一百件」。
+             * 不给 CATEGORY_MANAGE：活动挂在商品上，改类目树是商品运营的事。
+             */
+            Map.entry("CAMPAIGN_OPS", List.of(MARKETING_GOVERN, ORDER_VIEW, COMMUNITY_VIEW)),
+
+            /*
+             * 社区运营：社区网格、自提点建档与启停 —— 那些端点用的都是 INDUSTRY_MANAGE。
+             * 履约调度要看单，所以带 ORDER_VIEW。
+             */
+            Map.entry("COMMUNITY_OPS", List.of(INDUSTRY_MANAGE, COMMUNITY_VIEW, ORDER_VIEW)),
+
+            /*
+             * 审核员：商品、评价、内容、凭证。**不给 MERCHANT_AUDIT** ——
+             * 商家资质与入驻审核在矩阵里归 BD，那条线要承担后续的商家关系，
+             * 与「这张图能不能过」不是一回事。
+             */
+            Map.entry("AUDITOR", List.of(GOODS_AUDIT, REVIEW_GOVERN, COMMUNITY_VIEW)),
+
+            /*
+             * 财务/结算：矩阵里它的高危权限就是打款与分账。
+             * SETTLE_MANAGE 的注释此前写着「只给超管」—— 那是四个角色时代的写法，
+             * 财务岗一旦存在，它本来就该是这个码的主人（见该常量的说明）。
+             */
+            Map.entry("FINANCE", List.of(SETTLE_MANAGE, ORDER_VIEW)),
+
+            /*
+             * 风控：矩阵给的是「刷单、异常裂变、恶意退款、黑名单」+ 拦截封禁。
+             * 后端**一个风控端点都没有**（无黑名单、无规则、无拦截），
+             * 所以这里只能给「看单」——它是排查刷单的最低限度。
+             * 补齐风控域时，新码加在这里，而不是把 merchant:audit 挪过来充数。
+             */
+            Map.entry("RISK", List.of(ORDER_VIEW)),
+
+            /*
+             * 数据分析：矩阵写明**只读脱敏**。
+             * **故意不给 ORDER_VIEW** —— 那个码返回的是完整订单（金额、联系人），
+             * 与「脱敏」正相反。看板类端点本来就不受权限约束，分析岗照常能用；
+             * 真要做明细分析，缺的是一个脱敏读的码，不是把全量读权限发出去。
+             */
+            Map.entry("ANALYST", List.of(COMMUNITY_VIEW)),
+
+            /*
+             * 技术运维：矩阵给的是配置、灰度、日志、环境切换。
+             * 后端目前只有审计日志这一条对得上；灰度与环境切换没有端点
+             * （ops-web 里 system:env:switch 等已标 UNIMPLEMENTED，两侧说的是同一件事）。
+             */
+            Map.entry("TECH_OPS", List.of(AUDIT_LOG_VIEW)));
 
     private Perms() {
     }

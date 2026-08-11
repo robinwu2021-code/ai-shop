@@ -54,6 +54,8 @@ public final class BizKey {
     public static final String VIOLATION = "VL";
     /** 店招/公告人审单 */
     public static final String STORE_AUDIT = "SA";
+    /** 商家的一条地理覆盖项（ADR-013） */
+    public static final String SERVICE_AREA = "SVA";
 
     /** 收款商户号业务键。**不是二级商户号本身** —— 那个由通道给，存在 sub_mchid */
     public static final String PAY_MERCHANT = "PM";

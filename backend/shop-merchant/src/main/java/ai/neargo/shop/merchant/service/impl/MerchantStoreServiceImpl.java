@@ -201,6 +201,16 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
                 serviceAreaMapper.selectList(Wrappers.<MchServiceArea>lambdaQuery()
                         .eq(MchServiceArea::getEntityNo, merchantNo)
                         .eq(onlyLevel != null, MchServiceArea::getLevel, onlyLevel)));
+        /*
+         * **保住已经审过的状态。**
+         *
+         * 这里是全量删重插（唯一键在 entity+level+ref 上，改动最少的写法）。
+         * 不记住旧状态的话，商家下次进来只改一句公告，他早已审过的「整个西湖区」
+         * 会被重建成 PENDING —— 覆盖当场失效，而页面上什么都没提示。
+         * 一条审过的覆盖只该因为**他自己删掉它**而消失。
+         */
+        java.util.Map<String, String> wasStatus = current.stream().collect(java.util.stream.Collectors
+                .toMap(a -> a.getLevel() + ":" + a.getRefCode(), MchServiceArea::getStatus, (a, b) -> a));
         for (MchServiceArea old : current) {
             DataScopeContext.executeWithoutScope(() ->
                     serviceAreaMapper.hardDelete(merchantNo, old.getLevel(), old.getRefCode()));
@@ -210,6 +220,7 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
                 continue;
             }
             MchServiceArea row = new MchServiceArea();
+            row.setAreaNo(BizKey.next(BizKey.SERVICE_AREA));
             row.setEntityNo(merchantNo);
             row.setLevel(a.level());
             row.setRefCode(a.refCode());
@@ -219,9 +230,41 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
              * 得有履约能力佐证，影响面差一个量级（ADR-013 §4.2）。
              * 待审的覆盖项不参与展开，所以商家勾了也不会当场铺开。
              */
-            row.setStatus(AREA_COMMUNITY.equals(a.level()) ? "ACTIVE" : "PENDING");
+            String prior = wasStatus.get(a.level() + ":" + a.refCode());
+            String status = AREA_COMMUNITY.equals(a.level()) ? MchServiceArea.ACTIVE
+                    : prior != null ? prior : MchServiceArea.PENDING;
+            row.setStatus(status);
             DataScopeContext.executeWithoutScope(() -> serviceAreaMapper.insert(row));
+            /*
+             * 只给**这次新出现的**待审项建单：沿用旧 PENDING 的不再建，
+             * 否则商家每保存一次公告，运营的队列里就多一条一模一样的待审。
+             */
+            if (MchServiceArea.PENDING.equals(status) && prior == null) {
+                submitAreaForAudit(merchantNo, row);
+            }
         }
+    }
+
+    /**
+     * 覆盖项进人审队列（ADR-013 阶段三）。
+     *
+     * <p>复用门面审核的那张表，而不是另造一套：运营的工作台上不该有两个
+     * 长得一样、入口不同的「待审列表」。差别只在 {@code refNo} ——
+     * 那两种审的是单据自带的 content，这一种审的是另一张表里的一行。
+     *
+     * <p>content 只写「层级:码」，展示名读的时候再拼：区划改名之后，
+     * 单据要显示当前的名字，而不是提交那天的。
+     */
+    private void submitAreaForAudit(String merchantNo, MchServiceArea row) {
+        MchStoreAudit a = new MchStoreAudit();
+        a.setAuditNo(BizKey.next(BizKey.STORE_AUDIT));
+        a.setEntityNo(merchantNo);
+        a.setKind(MchStoreAudit.SERVICE_AREA);
+        a.setRefNo(row.getAreaNo());
+        a.setContent(row.getLevel() + ":" + row.getRefCode());
+        a.setStatus(MchStoreAudit.PENDING);
+        a.setSubmittedAt(System.currentTimeMillis());
+        DataScopeContext.executeWithoutScope(() -> storeAuditMapper.insert(a));
     }
 
     /** 回显覆盖项，名字由后端补 —— 端上只拿到 330106 的话要么显示数字要么再查一次 */

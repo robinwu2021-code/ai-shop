@@ -200,6 +200,21 @@ export const BACKEND_ROLE_PERMS: Record<string, string[]> = {
   PRODUCT_OPS: ["goods:audit", "category:manage", "order:view", "community:view", "marketing:govern"],
   // ops-web 叫 CS，后端叫 SUPPORT（toOpsRole 翻译过一次）
   CS: ["order:view", "review:govern", "order:intervene", "community:view", "ticket:handle"],
+
+  // ── 后端 2026-08-11 补齐的七个（此前 ops-web 有角色、后端没配置）──
+  // 短得反常的那几个不是漏配：风控/技术运维/数据分析的核心能力后端还没有端点，
+  // 详见 Perms.java 里逐条的说明。**凭空映射一个语义相近的码会让权限表看着是满的，
+  // 而实际上什么都点不动** —— 或者顺手给出远超职责的权限。
+  CAMPAIGN_OPS: ["marketing:govern", "order:view", "community:view"],
+  COMMUNITY_OPS: ["industry:manage", "community:view", "order:view"],
+  AUDITOR: ["goods:audit", "review:govern", "community:view"],
+  FINANCE: ["settle:manage", "order:view"],
+  // 风控域后端零端点，只能给「看单」——排查刷单的最低限度
+  RISK: ["order:view"],
+  // 矩阵写明「只读脱敏」，所以**故意不给 order:view**（那是完整订单）
+  ANALYST: ["community:view"],
+  // 灰度与环境切换没有端点，只有审计日志对得上
+  TECH_OPS: ["audit:view"],
 };
 
 /** 这个角色实际拿到的后端权限码。没有登录态时用它推算 */

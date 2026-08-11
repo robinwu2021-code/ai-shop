@@ -23,10 +23,21 @@ public class MchStoreAudit extends BaseEntity {
     /** 公告文本。一期只审它 —— 店招图要接图片识别，未落地 */
     public static final String NOTICE = "NOTICE";
     public static final String BANNER = "BANNER";
+    /**
+     * 地理覆盖项（ADR-013 阶段三）。
+     *
+     * <p>与上面两种的差别：那两种审的是<b>单据自己带的 content</b>，
+     * 这一种审的是<b>另一张表里的一行</b> —— 所以它必须填 {@link #refNo}，
+     * 裁决时按它把 {@code mch_service_area} 置为生效或删掉。
+     */
+    public static final String SERVICE_AREA = "SERVICE_AREA";
 
     private String auditNo;
     private String entityNo;
     private String kind;
+
+    /** 指向的业务记录（kind=SERVICE_AREA 时是 {@code mch_service_area.area_no}）。NOTICE/BANNER 为空 */
+    private String refNo;
 
     /** 待审内容：公告原文或店招图 URL。 */
     private String content;

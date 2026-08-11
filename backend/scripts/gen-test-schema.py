@@ -182,6 +182,44 @@ def alter_table(stmt, tables, order):
         # 而产出的 schema 看上去完全正常。宁可炸。
         raise SystemExit(f"✗ ALTER 的目标表 {table} 还不存在 —— 迁移重放顺序错了？\n  {stmt[:80]}")
 
+    # **一条 ALTER 里可以有多个动作**（MySQL 允许 `MODIFY ..., ADD UNIQUE KEY ...`）。
+    # 不切分的话整段当成一个动作，而 MODIFY 的正则是贪婪的 —— 它会把
+    # 「, ADD UNIQUE KEY uk_x (c)」一起吞进列定义，产出
+    # 「area_no VARCHAR(64) NOT NULL, ADD UNIQUE KEY ...」这样的列行，H2 建表即语法错。
+    # 而报错指向的是一个毫不相干的 Controller（上下文起不来），根因在这里。
+    for one in _split_actions(action):
+        _apply_action(table, one, cols)
+
+
+def _split_actions(action):
+    """按顶层逗号切多动作 ALTER —— 括号内（如 UNIQUE KEY 的列清单）与
+    单引号内（COMMENT 文本）的逗号不算分隔符。"""
+    parts, buf, depth, quoted = [], [], 0, False
+    for ch in action:
+        if quoted:
+            buf.append(ch)
+            if ch == "'":
+                quoted = False
+            continue
+        if ch == "'":
+            quoted = True
+        elif ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth -= 1
+        if ch == "," and depth == 0:
+            parts.append("".join(buf).strip())
+            buf = []
+            continue
+        buf.append(ch)
+    tail = "".join(buf).strip().rstrip(";")
+    if tail:
+        parts.append(tail)
+    return [p for p in parts if p]
+
+
+def _apply_action(table, action, cols):
+
     rename = re.match(r"RENAME COLUMN\s+(\w+)\s+TO\s+(\w+)", action, re.I)
     if rename:
         old, new = rename.group(1), rename.group(2)

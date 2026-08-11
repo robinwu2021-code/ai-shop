@@ -20,15 +20,25 @@ interface BackendLogin {
 /**
  * 后端角色码 → ops-web 角色码。
  *
- * 后端目前只有四个（Perms.ROLE_PERMS），ops-web 的联合类型有十一个 ——
- * 多出来的七个后端还没有，登录时不可能出现。认不出来的一律落到最小权限，
+ * 后端 Perms.ROLE_PERMS 与 ops-web 的联合类型都是十一个岗位（矩阵 §2.3）——
+ * 十一个都配齐了（2026-08-11）。认不出来的一律落到最小权限，
  * **不是落到 SUPER_ADMIN**：认不出角色时给全权，是这类映射最坏的失败方式。
  */
 const BACKEND_ROLE: Record<string, Role> = {
   SUPER_ADMIN: "SUPER_ADMIN",
+  // 这三个是异名同义的历史遗留
   BD: "MERCHANT_BD",
   GOODS_OPS: "PRODUCT_OPS",
   SUPPORT: "CS",
+  // 后端 2026-08-11 补的七个，两边同名 —— 列出来而不是靠「认不出就原样返回」，
+  // 因为那样一来拼错的角色码也会被当成合法角色放进联合类型
+  CAMPAIGN_OPS: "CAMPAIGN_OPS",
+  COMMUNITY_OPS: "COMMUNITY_OPS",
+  AUDITOR: "AUDITOR",
+  FINANCE: "FINANCE",
+  RISK: "RISK",
+  ANALYST: "ANALYST",
+  TECH_OPS: "TECH_OPS",
 };
 
 function toOpsRole(backendRole?: string): Role {

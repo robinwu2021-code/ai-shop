@@ -21,6 +21,9 @@ import lombok.Setter;
 @TableName("mch_service_area")
 public class MchServiceArea extends BaseEntity {
 
+    /** 业务键。审核单靠它指回本行 —— 自增 id 不对外，重建库就变 */
+    private String areaNo;
+
     private String entityNo;
 
     /** COMMUNITY / STREET / DISTRICT / CITY */
@@ -34,4 +37,7 @@ public class MchServiceArea extends BaseEntity {
 
     /** ACTIVE 已生效 / PENDING 待审（勾区、市要审 —— 影响面差一个量级） */
     private String status;
+
+    public static final String ACTIVE = "ACTIVE";
+    public static final String PENDING = "PENDING";
 }
