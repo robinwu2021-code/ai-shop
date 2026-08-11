@@ -37,7 +37,21 @@ export const useUserStore = defineStore("user", {
       return this.user;
     },
 
-    logout() {
+    /**
+     * 登出。**先调后端作废会话，再清本地**——顺序不能反。
+     *
+     * 此前这里只清本地，服务端的令牌一直有效到自然过期：
+     * 用户以为退出了，实际拿到过这个令牌的人还能继续用。
+     *
+     * 接口失败也要清本地：让用户「退不出去」是更糟的体验，
+     * 而且失败多半是网络问题，令牌会随过期自然失效。
+     */
+    async logout() {
+      try {
+        await api.logout();
+      } catch {
+        // 吞掉：本地必须清干净，理由见上
+      }
       this.token = "";
       this.user = null;
       uni.removeStorageSync(STORAGE.token);

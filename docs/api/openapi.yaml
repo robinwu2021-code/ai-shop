@@ -3533,6 +3533,34 @@ paths:
                   - "code"
                   - "msg"
                   - "data"
+  "/mp/user/logout": 
+    post: 
+      operationId: "logout"
+      summary: "登出（作废服务端会话）"
+      tags: 
+        - "user"
+      security: 
+        - bearerAuth: []
+      parameters: []
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/void"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
   "/mp/user/community": 
     post: 
       operationId: "bindCommunity"

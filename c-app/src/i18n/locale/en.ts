@@ -148,6 +148,8 @@ export default {
     myCommunity: "My neighbourhood",
     help: "Help centre",
     helpValue: "Refunds · Pickup · Weight adjustments",
+    logout: "Sign out",
+    logoutConfirm: "You'll need to sign in again to view orders and coupons.",
     login: "Sign in",
     loginHint: "Sign in to order and track deliveries",
     unset: "Not set",

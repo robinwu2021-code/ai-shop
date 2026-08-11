@@ -20,6 +20,26 @@ const unread = ref(0);
 function gotoLogin() {
   uni.navigateTo({ url: ROUTES.login });
 }
+/**
+ * 退出登录。二次确认是必要的 —— 这一格紧挨着「帮助」，误触代价是重新走一遍登录。
+ * 真正作废服务端会话在 store 里做（见 stores/user.ts 的说明）。
+ */
+async function onLogout() {
+  // 用 callback 包 Promise，与本文件其他确认弹窗一致 —— uni 的 showModal
+  // 在各端上并非都返回 Promise，直接 await 在小程序里拿不到 confirm
+  const ok = await new Promise<boolean>((resolve) => {
+    uni.showModal({
+      title: String(t("me.logout")),
+      content: String(t("me.logoutConfirm")),
+      success: (r) => resolve(!!r.confirm),
+      fail: () => resolve(false),
+    });
+  });
+  if (!ok) return;
+  await user.logout();
+  uni.reLaunch({ url: "/pages/home/index" });
+}
+
 function gotoCommunity() {
   uni.navigateTo({ url: ROUTES.community });
 }
@@ -215,6 +235,11 @@ onShow(() => {
       <view class="cell">
         <text class="cell__label">{{ $t("me.help") }}</text>
         <text class="cell__value">{{ $t("me.helpValue") }}</text>
+      </view>
+      <!-- 此前**整个 c-app 没有退出登录入口** —— store 里的 logout() 是死代码。
+           没有入口意味着共用设备上无法结束会话，而令牌在服务端一直有效 -->
+      <view v-if="user.isLogin" class="cell" @tap="onLogout">
+        <text class="cell__label">{{ $t("me.logout") }}</text>
       </view>
     </view>
 

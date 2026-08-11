@@ -32,6 +32,7 @@ export const ENDPOINTS: Record<keyof ShopApi, EndpointDef> = {
   sendOtp: { method: "POST", path: "/mp/user/otp/send", auth: false, summary: "发送验证码" },
   login: { method: "POST", path: "/mp/user/login", auth: false, summary: "登录建户" },
   profile: { method: "GET", path: "/mp/user/profile", auth: true, summary: "我的资料" },
+  logout: { method: "POST", path: "/mp/user/logout", auth: true, summary: "登出（作废服务端会话）" },
   bindCommunity: {
     method: "POST",
     path: "/mp/user/community",

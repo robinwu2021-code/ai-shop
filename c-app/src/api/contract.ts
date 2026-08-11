@@ -81,6 +81,17 @@ export interface ShopApi {
   sendOtp(phone: string): Promise<void>;
   login(req: LoginReq): Promise<LoginResp>;
   profile(): Promise<User>;
+
+  /**
+   * 登出：**必须调后端**，不能只清本地 token。
+   *
+   * <p>此前 store 里的 logout() 只做三件事——清 token 字段、清 user、删本地存储，
+   * 而后端的 /mp/user/logout 会 tokenStore.revoke。不调它的后果是：
+   * 用户点了「退出登录」，令牌在服务端**仍然有效**直到自然过期，
+   * 拿到过它的人（共用设备、日志、抓包）可以继续用。
+   * 社区电商大量是家庭共用手机的场景，这不是理论风险。
+   */
+  logout(): Promise<void>;
   bindCommunity(communityNo: string, pickupNo: string): Promise<User>;
 
   // ---- 地址簿（送货上门 / 快递的前置）

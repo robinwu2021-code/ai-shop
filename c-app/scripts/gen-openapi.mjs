@@ -149,6 +149,7 @@ const RESPONSE_TYPES = {
   orderPreview: "OrderPreview",
   afterSaleReasons: "AfterSaleReason[]",
   afterSaleList: "AfterSale[]",
+  logout: "void",
   sendOtp: "void",
   login: "LoginResp",
   profile: "User",

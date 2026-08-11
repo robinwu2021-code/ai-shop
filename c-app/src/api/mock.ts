@@ -281,6 +281,11 @@ export const mockApi: ShopApi = {
     return delay({ ...db.user });
   },
 
+  /** mock 下没有服务端会话可作废，直接放行。真实环境由后端 revoke 令牌 */
+  async logout() {
+    return delay(undefined as void);
+  },
+
   async bindCommunity(communityNo, pickupNo) {
     const seed = db.communitySeeds.find((c) => c.communityNo === communityNo);
     if (!seed) throw new Error("社区不存在");

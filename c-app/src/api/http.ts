@@ -83,6 +83,7 @@ export const httpApi: ShopApi = {
   sendOtp: (phone: string) => call<void>("sendOtp", undefined, { phone }),
   login: (req: LoginReq) => call<LoginResp>("login", undefined, { ...req } satisfies LoginReqBody),
   profile: () => call<User>("profile"),
+  logout: () => call<void>("logout"),
   bindCommunity: (communityNo, pickupNo) =>
     call<User>("bindCommunity", undefined, { communityNo, pickupNo } satisfies BindCommunityReq),
 
