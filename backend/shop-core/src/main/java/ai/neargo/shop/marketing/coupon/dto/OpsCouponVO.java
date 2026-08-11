@@ -17,7 +17,9 @@ package ai.neargo.shop.marketing.coupon.dto;
  * <p>字段名<b>对齐 ops-web 的 {@code Coupon} 类型</b>，不是对齐 C 端 ——
  * 这个 VO 只有一个消费方，跟着它走。
  *
- * @param value        面额（分）；DISCOUNT 券是折扣万分比（8500 = 85 折）
+ * @param value        面额（分）；DISCOUNT 券是折扣**万分比**（8500 = 八五折）。
+ *                     算折扣只在 {@link ai.neargo.shop.marketing.coupon.entity.MktCoupon#discountFor}
+ *                     一处 —— 此前实现按百分数算，而这里与 ops-web 都写着万分比
  * @param threshold    使用门槛（分），0 = 无门槛
  * @param budget       预算上限（分），<b>0 = 不限</b>
  * @param issuedAmount 已发放金额（分）= 已领张数 × 面额。

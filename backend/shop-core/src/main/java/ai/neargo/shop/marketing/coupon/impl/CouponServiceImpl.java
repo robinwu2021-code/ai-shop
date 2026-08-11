@@ -154,7 +154,9 @@ public class CouponServiceImpl implements CouponService {
             }
             usable.add(toVO(uc, c, true));
 
-            long discount = Math.min(nz(c.getFaceMinor()), base);
+            // 与下单算价同一套算法 —— 各算一次的后果是折扣券在这里恒为 0，
+            // 「最优券」永远不推荐它
+            long discount = c.discountFor(base);
             if (discount > bestDiscount) {
                 bestDiscount = discount;
                 bestNo = uc.getUserCouponNo();

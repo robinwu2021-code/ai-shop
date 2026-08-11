@@ -119,15 +119,13 @@ public class CouponPortImpl implements CouponPort {
         }
     }
 
-    /** 券面额计算：满减直接给面额，折扣按比例并受封顶约束。 */
+    /**
+     * 券面额计算。**实现挪到了 {@link MktCoupon#discountFor} 上** ——
+     * 最优券试算此前另有一份只认 faceMinor 的算法，折扣券在那边恒为 0。
+     * 一个概念两处实现，分岔只是时间问题（而它已经分岔了）。
+     */
     private long discountOf(MktCoupon coupon, long base) {
-        if (MktCoupon.DISCOUNT.equals(coupon.getType())) {
-            long off = base * (100 - nz(coupon.getDiscountRate())) / 100;
-            long cap = nz(coupon.getMaxDiscountMinor());
-            return cap > 0 ? Math.min(off, cap) : off;
-        }
-        // 满减不能减成负数：券面额大于商品额时按商品额封顶
-        return Math.min(nz(coupon.getFaceMinor()), base);
+        return coupon.discountFor(base);
     }
 
     private void assertUsable(MktUserCoupon uc, MktCoupon coupon) {

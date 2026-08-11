@@ -688,6 +688,55 @@ class M6bCouponFlowTest {
         return json.readTree(body).get("data").get("userNo").asString();
     }
 
+    @Test
+    @DisplayName("★★★ 折扣券真的打折 —— 而且最优券选得出它")
+    void discountCouponActuallyDiscounts() throws Exception {
+        String token = login("13600360200");
+        // 8500 = 八五折（**万分比**，与 ops-web 展示口径一致）
+        String couponNo = discountCoupon("八五折", 8500, 0L);
+        receive(token, couponNo);
+        addToCart(token, "G0002", "SK0003", 1);
+
+        /*
+         * 两件事一起验：
+         *   ① 折扣真的算出来了 —— 此前 best() 只看 faceMinor，
+         *      而折扣券的面额是 0，于是**最优券永远不推荐折扣券**
+         *   ② 口径是万分比 —— 按百分数算的话 (100-8500) 是负数，优惠为负等于加价
+         */
+        String body = mvc().perform(post("/mp/coupon/best")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"items\":[{\"goodsNo\":\"G0002\",\"skuNo\":\"SK0003\",\"qty\":1}]}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        long best = json.readTree(body).get("data").get("discountMinor").asLong();
+        assertThat(best)
+                .as("八五折必须减出正数，且不能是 0（0 = 根本没认出这是折扣券）")
+                .isPositive();
+    }
+
+    /** 折扣券。rate 是**万分比**：8500 = 八五折 */
+    private String discountCoupon(String title, int rate, long cap) {
+        long now = System.currentTimeMillis();
+        MktCoupon c = new MktCoupon();
+        c.setCouponNo("CP-D-" + java.util.UUID.randomUUID().toString().substring(0, 8));
+        c.setTitle(title);
+        c.setType(MktCoupon.DISCOUNT);
+        c.setFaceMinor(0L);
+        c.setDiscountRate(rate);
+        c.setThresholdMinor(0L);
+        c.setMaxDiscountMinor(cap);
+        c.setFunder("PLATFORM");
+        c.setTotalCount(100);
+        c.setReceivedCount(0);
+        c.setPerUserLimit(1);
+        c.setStartAt(now - 86_400_000L);
+        c.setEndAt(now + 86_400_000L);
+        c.setStatus("ACTIVE");
+        couponMapper.insert(c);
+        return c.getCouponNo();
+    }
+
     private void receiveOk(String couponNo, String phone) throws Exception {
         mvc().perform(post("/mp/coupon/" + couponNo + "/receive")
                         .header("Authorization", "Bearer " + login(phone)))
