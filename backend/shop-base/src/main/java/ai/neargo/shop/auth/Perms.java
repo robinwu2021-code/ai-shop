@@ -101,6 +101,15 @@ public final class Perms {
      */
     public static final String MARKETING_GOVERN = "marketing:govern";
 
+    /**
+     * 结算与应付账款：对账确认、登记付款、标记无票。
+     *
+     * <p><b>只给超管。</b>这三个动作直接对应真金白银出账——登记付款虽然不划转资金，
+     * 但它是财务在网银付款的依据；标记无票则意味着接受「这笔支出不能税前列支」。
+     * 与 {@link #ORDER_VIEW} 这类查看权限不同，它没有「顺手给一下」的空间。
+     */
+    public static final String SETTLE_MANAGE = "settle:manage";
+
     private static final Map<String, List<String>> ROLE_PERMS = Map.of(
             "SUPER_ADMIN", List.of("*"),
             // BD 要读社区才能审核（选覆盖小区），但不该改社区主数据

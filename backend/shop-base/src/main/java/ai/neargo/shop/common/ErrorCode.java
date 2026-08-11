@@ -72,6 +72,14 @@ public enum ErrorCode {
     GOODS_NOT_APPROVED(70003, "err.goods.not_approved"),
 
     /**
+     * 进项票未核验通过，不允许登记付款（**票到付款**）。
+     *
+     * <p>不复用 CONFLICT 的理由与 GOODS_NOT_APPROVED 一样：财务看到「操作冲突」
+     * 完全不知道该去做什么，而看到「发票未核验」就知道要先去催票或核验。
+     */
+    INVOICE_REQUIRED(70004, "err.settle.invoice_required"),
+
+    /**
      * 多规格商品不支持商品级限时特价。
      *
      * <p>此前返回通用的 BAD_REQUEST（「请求参数有误」），商家只会反复改价格与时间，
@@ -106,6 +114,16 @@ public enum ErrorCode {
      * </ol>
      */
     BIZ_ROLE_FORBIDDEN(70006, "err.biz.role_forbidden"),
+
+    /**
+     * 经营范围不是合法取值，或这一期没开放这一档（{@code sys_setting} 的
+     * {@code merchant.service-scope-enabled}）。
+     *
+     * <p>单独一个码而不是复用 BAD_REQUEST：这两种情况商家都无从自己发现 ——
+     * 通用的「请求参数有误」会让他去改地址、改营业时间，而问题在那个下拉框上。
+     * 端上据此把「当前只开放本社区与全市」直接说出来。
+     */
+    SERVICE_SCOPE_NOT_ALLOWED(70007, "err.merchant.service_scope_not_allowed"),
 
     // ---- 8xxxx 类目维护 ----
     /** 类目最多三级 —— 再深一层 C 端的类目导航就没法展示，也没有第四层的产品定义。 */

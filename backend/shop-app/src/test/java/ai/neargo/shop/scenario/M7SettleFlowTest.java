@@ -486,4 +486,127 @@ class M7SettleFlowTest {
         }
     }
 
+
+    // ---------------------------------------------------------------- 自营应付账款（P0-7/9）
+
+    @Test
+    @DisplayName("★ 票到付款：进项票未核验，登记付款被拒")
+    void payRequiresVerifiedInvoice() throws Exception {
+        String settleNo = aSelfOperatedBill("p0-pay-guard", "13100131090");
+        String ops = opsLogin();
+
+        confirmPayable(ops, settleNo).andExpect(jsonPath("$.code").value(0));
+
+        // 此时 invoice_status 还是 PENDING_INVOICE
+        mvc().perform(post("/ops/payables/" + settleNo + "/paid")
+                        .header("Authorization", "Bearer " + ops)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"paymentRef\":\"BANK-001\"}"))
+                .andExpect(jsonPath("$.code").value(70004));
+    }
+
+    @Test
+    @DisplayName("标记无票后可付款，且付款要留凭证号")
+    void noInvoiceThenPay() throws Exception {
+        String settleNo = aSelfOperatedBill("p0-no-invoice", "13100131091");
+        String ops = opsLogin();
+        confirmPayable(ops, settleNo);
+
+        // 理由必填 —— 无票要付出税务代价，得说得出为什么
+        mvc().perform(post("/ops/payables/" + settleNo + "/no-invoice")
+                        .header("Authorization", "Bearer " + ops)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"reason\":\"  \"}"))
+                .andExpect(jsonPath("$.code").value(10400));
+
+        mvc().perform(post("/ops/payables/" + settleNo + "/no-invoice")
+                        .header("Authorization", "Bearer " + ops)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reason\":\"供应商为无照个体，暂无法开票\"}"))
+                .andExpect(jsonPath("$.data.invoiceStatus").value("NO_INVOICE"));
+
+        // 凭证号必填 —— 没有凭证号的「已付」事后对不上银行流水
+        mvc().perform(post("/ops/payables/" + settleNo + "/paid")
+                        .header("Authorization", "Bearer " + ops)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"paymentRef\":\"\"}"))
+                .andExpect(jsonPath("$.code").value(10400));
+
+        mvc().perform(post("/ops/payables/" + settleNo + "/paid")
+                        .header("Authorization", "Bearer " + ops)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"paymentRef\":\"BANK-20260811-001\"}"))
+                .andExpect(jsonPath("$.data.status").value("PAID"))
+                .andExpect(jsonPath("$.data.paymentRef").value("BANK-20260811-001"));
+    }
+
+    @Test
+    @DisplayName("未对账不能付款：付了一个双方还没认的数")
+    void payBeforeReconRejected() throws Exception {
+        String settleNo = aSelfOperatedBill("p0-pay-before-recon", "13100131092");
+        String ops = opsLogin();
+        mvc().perform(post("/ops/payables/" + settleNo + "/no-invoice")
+                .header("Authorization", "Bearer " + ops)
+                .contentType(MediaType.APPLICATION_JSON).content("{\"reason\":\"无票\"}"));
+
+        mvc().perform(post("/ops/payables/" + settleNo + "/paid")
+                        .header("Authorization", "Bearer " + ops)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"paymentRef\":\"BANK-002\"}"))
+                .andExpect(jsonPath("$.code").value(10409));
+    }
+
+    @Test
+    @DisplayName("第三方的单没有「对账/付款」这两步")
+    void thirdPartyBillRejectsPayableOps() throws Exception {
+        var store = storeMapper.selectList(Wrappers.<MchStore>lambdaQuery()
+                .eq(MchStore::getEntityNo, "M0001")).stream().findFirst().orElseThrow();
+        String origin = store.getBusinessMode();
+        store.setBusinessMode(MchStore.THIRD_PARTY);
+        storeMapper.updateById(store);
+        try {
+            String settleNo = aSelfOperatedBill("p0-third-party-reject", "13100131093");
+            mvc().perform(post("/ops/payables/" + settleNo + "/confirm")
+                            .header("Authorization", "Bearer " + opsLogin()))
+                    .andExpect(jsonPath("$.code").value(10409));
+        } finally {
+            store.setBusinessMode(origin);
+            storeMapper.updateById(store);
+        }
+    }
+
+    @Test
+    @DisplayName("没有 settle:manage 的角色碰不了应付账款（客服不管钱）")
+    void supportCannotTouchPayables() throws Exception {
+        String settleNo = aSelfOperatedBill("p0-perm", "13100131094");
+        String support = mvc().perform(post("/ops/auth/login").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"support\",\"password\":\"support123\"}"))
+                .andReturn().getResponse().getContentAsString();
+        mvc().perform(post("/ops/payables/" + settleNo + "/confirm")
+                        .header("Authorization", "Bearer "
+                                + json.readTree(support).get("data").get("token").asString()))
+                .andExpect(jsonPath("$.code").value(10403));
+    }
+
+    // ---- helpers
+
+    /** 下一单并返回它的结算单号（种子门店默认自营） */
+    private String aSelfOperatedBill(String idemKey, String phone) throws Exception {
+        buyAndPay(login(phone), "G0002", "SK0003", null, idemKey);
+        return billMapper.selectList(Wrappers.<StlBill>lambdaQuery()
+                .orderByDesc(StlBill::getId)).stream().findFirst().orElseThrow().getSettleNo();
+    }
+
+    private org.springframework.test.web.servlet.ResultActions confirmPayable(String ops, String settleNo)
+            throws Exception {
+        return mvc().perform(post("/ops/payables/" + settleNo + "/confirm")
+                .header("Authorization", "Bearer " + ops));
+    }
+
+    private String opsLogin() throws Exception {
+        String body = mvc().perform(post("/ops/auth/login").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"admin\",\"password\":\"admin123\"}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        return json.readTree(body).get("data").get("token").asString();
+    }
+
 }

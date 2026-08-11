@@ -39,4 +39,15 @@ public interface MasterDataPort {
      *         也不要显示一个空白的支付方式
      */
     String channelName(String payChannel);
+
+    /**
+     * 校验经营范围：先值域（ADR-009 三档），后启用白名单（{@code sys_setting}）。
+     *
+     * <p>放在这里而不是让各域自己判：写经营范围的入口有两个（商家改门店、运营审入驻），
+     * 各写一份的话，一期收敛时必然只改到其中一个 —— 而漏掉的那个正是商家自己能走的路径。
+     *
+     * @param scope 为空表示不改这个字段，直接放行
+     * @throws ai.neargo.shop.common.BizException 值域非法或这一期未开放
+     */
+    void assertServiceScopeAllowed(String scope);
 }

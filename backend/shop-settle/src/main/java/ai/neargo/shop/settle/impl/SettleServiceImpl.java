@@ -366,6 +366,102 @@ public class SettleServiceImpl implements SettleService {
         DataScopeContext.executeWithoutScope(() -> billMapper.updateById(bill));
     }
 
+    // ---------------------------------------------------------------- 自营应付账款（P0-7）
+
+    @Override
+    public List<SettleBillVO> opsPayables(String status, String entityNo) {
+        return DataScopeContext.executeWithoutScope(() ->
+                        billMapper.selectList(Wrappers.<StlBill>lambdaQuery()
+                                // 只看自营：第三方的钱走分账，不存在「应付账款」这件事
+                                .eq(StlBill::getBusinessMode, MerchantQueryPort.MODE_SELF_OPERATED)
+                                .eq(status != null && !status.isBlank(), StlBill::getStatus, status)
+                                .eq(entityNo != null && !entityNo.isBlank(), StlBill::getEntityNo, entityNo)
+                                .orderByDesc(StlBill::getId)))
+                .stream().map(this::toVO).toList();
+    }
+
+    @Override
+    @Transactional
+    public SettleBillVO confirmRecon(String settleNo, String operatorNo) {
+        StlBill b = requireSelfOperated(settleNo);
+        if (StlBill.CONFIRMED.equals(b.getStatus()) || StlBill.PAID.equals(b.getStatus())) {
+            return toVO(b);   // 幂等：重复确认不报错
+        }
+        if (!StlBill.PENDING_RECON.equals(b.getStatus())) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+        b.setStatus(StlBill.CONFIRMED);
+        DataScopeContext.executeWithoutScope(() -> billMapper.updateById(b));
+        return toVO(b);
+    }
+
+    @Override
+    @Transactional
+    public SettleBillVO markPaid(String settleNo, String paymentRef, String operatorNo) {
+        if (paymentRef == null || paymentRef.isBlank()) {
+            // 没有凭证号的「已付」等于没记：事后对不上银行流水，也说不清是谁付的
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        StlBill b = requireSelfOperated(settleNo);
+        if (StlBill.PAID.equals(b.getStatus())) {
+            return toVO(b);   // 幂等
+        }
+        if (!StlBill.CONFIRMED.equals(b.getStatus())) {
+            // 未对账就付款 = 付了一个双方还没认的数
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+        /*
+         * **票到付款**。放行两种：票已核验，或已被显式标记为无票供应商。
+         *
+         * 不放行「待开票 / 已提交待核验 / 已驳回」——先款后票的代价很具体：
+         * 钱付完了，供应商开票的动力就没了，而平台没有发票无法列支，
+         * 等于付了钱还多缴税。追票的成本远高于账期上让一步。
+         */
+        String inv = b.getInvoiceStatus();
+        if (!StlBill.INV_VERIFIED.equals(inv) && !StlBill.INV_NONE.equals(inv)) {
+            throw BizException.of(ErrorCode.INVOICE_REQUIRED);
+        }
+        b.setStatus(StlBill.PAID);
+        b.setPaymentRef(paymentRef);
+        b.setPaidAt(System.currentTimeMillis());
+        DataScopeContext.executeWithoutScope(() -> billMapper.updateById(b));
+        return toVO(b);
+    }
+
+    @Override
+    @Transactional
+    public SettleBillVO markNoInvoice(String settleNo, String reason, String operatorNo) {
+        if (reason == null || reason.isBlank()) {
+            // 无票是要付出税务代价的（这笔支出不能列支），得说得出为什么
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        StlBill b = requireSelfOperated(settleNo);
+        if (StlBill.INV_VERIFIED.equals(b.getInvoiceStatus())) {
+            // 票都核验过了还标无票，多半是点错了
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+        b.setInvoiceStatus(StlBill.INV_NONE);
+        DataScopeContext.executeWithoutScope(() -> billMapper.updateById(b));
+        return toVO(b);
+    }
+
+    /** 自营专用操作的公共前置：单子存在，且确实是自营的 */
+    private StlBill requireSelfOperated(String settleNo) {
+        StlBill b = DataScopeContext.executeWithoutScope(() ->
+                billMapper.selectOne(Wrappers.<StlBill>lambdaQuery()
+                        .eq(StlBill::getSettleNo, settleNo).last("limit 1")));
+        if (b == null) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        if (!MerchantQueryPort.MODE_SELF_OPERATED.equals(b.getBusinessMode())) {
+            // 第三方的单走分账，没有「对账/付款」这两步。用 CONFLICT 而不是 NOT_FOUND：
+            // 单子是存在的，只是这个操作对它没有意义
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+        return b;
+    }
+
+
     private SettleBillVO toVO(StlBill b) {
         return new SettleBillVO(b.getSettleNo(), b.getSubOrderNo(), b.getOrderNo(), b.getEntityNo(),
                 nz(b.getGrossMinor()), nz(b.getCommissionMinor()), nz(b.getServiceFeeMinor()),
@@ -373,7 +469,8 @@ public class SettleServiceImpl implements SettleService {
                 b.getStatus(),
                 b.getCreatedAt() == null ? 0L
                         : b.getCreatedAt().atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli(),
-                b.getSplitAt(), b.getStoreNo(), b.getPayMerchantNo());
+                b.getSplitAt(), b.getStoreNo(), b.getPayMerchantNo(),
+                b.getBusinessMode(), b.getInvoiceStatus(), b.getPaymentRef());
     }
 
     private static long nz(Long v) {

@@ -23,5 +23,11 @@ public record SettleBillVO(String settleNo,
                            /** 哪家店挣的（统计维度）。空 = 存量主体级流水 */
                            String storeNo,
                            /** 打给哪个收款号（结算维度）。空 = 生成时进件还没走完 */
-                           String payMerchantNo) {
+                           String payMerchantNo,
+                           /** SELF_OPERATED / THIRD_PARTY。决定这张单该看哪些字段 */
+                           String businessMode,
+                           /** 自营：进项票状态。第三方恒为 NO_INVOICE */
+                           String invoiceStatus,
+                           /** 自营：付款凭证号（网银流水）。空 = 尚未付款 */
+                           String paymentRef) {
 }
