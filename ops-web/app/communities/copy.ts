@@ -18,6 +18,20 @@ const zh = {
   colCommunityNo: "社区编号",
   colCommunity: "社区",
   colCityGrid: "城市 / 网格",
+  colRegion: "所属区划",
+  regionUnset: "未归属",
+  regionUnsetNote: "没挂区划的社区，商家按「整个西湖区」这样勾范围时命中不到它 —— 它只能被逐个点名。平台不按名字猜归属：猜错不会报错，只会让它悄悄出现在别人的经营范围里。",
+  regionConfigure: "归属",
+  regionSectionNow: "当前归属",
+  regionSectionPick: "重新选择",
+  regionRoot: "全国",
+  regionLeafReached: "已经到街道，不用再往下选了。",
+  regionNoChild: "这一级下面没有数据",
+  regionDisabled: "已停用",
+  regionSave: "保存归属",
+  regionClear: "清空归属",
+  regionSaveHint: "建议挂到街道级：挂到区县也能用，但那样「按街道覆盖」就退化成了「按区覆盖」。",
+  regionSaved: "归属已更新",
   colOpened: "开城",
   ariaOpenSwitch: "{name} 开城开关",
   colRadius: "覆盖半径",
@@ -86,6 +100,20 @@ const en: typeof zh = {
   colCommunityNo: "Community no.",
   colCommunity: "Community",
   colCityGrid: "City / grid",
+  colRegion: "Division",
+  regionUnset: "Unassigned",
+  regionUnsetNote: "A community with no division cannot be matched when a merchant selects a whole district — it can only be named one by one. The platform will not guess by name: a wrong guess raises no error, it just quietly puts this community inside someone else\u2019s service area.",
+  regionConfigure: "Division",
+  regionSectionNow: "Current",
+  regionSectionPick: "Choose again",
+  regionRoot: "China",
+  regionLeafReached: "You have reached street level; nothing further to pick.",
+  regionNoChild: "Nothing under this level",
+  regionDisabled: "Disabled",
+  regionSave: "Save",
+  regionClear: "Clear",
+  regionSaveHint: "Prefer street level: a district works too, but then \u201ccover by street\u201d degrades into \u201ccover by district\u201d.",
+  regionSaved: "Division updated",
   colOpened: "Launched",
   ariaOpenSwitch: "Launch toggle for {name}",
   colRadius: "Geofence radius",
@@ -138,3 +166,6 @@ const en: typeof zh = {
 };
 
 export const COMMUNITIES_COPY: PageCopy<typeof zh> = { zh, en };
+
+/** 拆出去的子组件靠它接文案（与 system / stores 那两页同一个写法）。 */
+export type CommunityCopy = typeof zh;

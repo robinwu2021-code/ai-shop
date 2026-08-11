@@ -1,5 +1,5 @@
 // 覆盖范围：社区网格（P-2.1）与自提点主数据（P-2.2）。
-import type { Community, Page, PickupPoint, PickupStatus } from "@/lib/types";
+import type { Community, Page, PickupPoint, PickupStatus, Region } from "@/lib/types";
 import type { PickupDraft } from "@/lib/types";
 import type { CommunityQ, PickupQ } from "../query";
 
@@ -9,6 +9,26 @@ export interface CommunityApi {
   setCommunityOpen(communityNo: string, opened: boolean): Promise<Community>;
   /** 覆盖围栏半径，米（P-2.1.3）。 */
   setCommunityFence(communityNo: string, fenceRadius: number): Promise<Community>;
+  /**
+   * 把社区挂到行政区划下（ADR-013）。**建议挂到街道级** ——
+   * 挂区县也能用，但那样「按街道覆盖」就退化成了「按区覆盖」。
+   *
+   * @param regionCode 传空表示清空归属
+   */
+  setCommunityRegion(communityNo: string, regionCode: string): Promise<Community>;
+
+  // ── 行政区划（ADR-013）─────────────────────────────────────────
+
+  /**
+   * 某区划的直接下级。`parent` 为空取省级。
+   *
+   * **逐级查，不给整棵树**：四级共 44703 行、1.6 MB。挑一个街道只需沿
+   * 「省 → 市 → 区 → 街道」走四次、每次几十条；给整棵树的话每开一次页面
+   * 都要传一遍全国，而其中 99.9% 用不到。
+   */
+  listRegions(parent?: string, enabledOnly?: boolean): Promise<Region[]>;
+  /** 从省到自身的整条链路。给选择器回显用 —— 端上不该自己按码长切片 */
+  regionPath(code: string): Promise<Region[]>;
   archiveCommunity(communityNo: string): Promise<Community>;
   unarchiveCommunity(communityNo: string): Promise<Community>;
 

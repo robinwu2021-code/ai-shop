@@ -28,6 +28,7 @@ import { Input } from "@/components/ui/input";
 import { Notice } from "@/components/ui/notice";
 import { Pagination } from "@/components/ui/misc";
 import { Switch } from "@/components/ui/switch";
+import { RegionPicker } from "./region-picker";
 import { TabHeader } from "@/components/ui/tab-header";
 import { Toolbar } from "@/components/ui/toolbar";
 import { useConfirm } from "@/components/ui/confirm-dialog";
@@ -128,10 +129,24 @@ function CommunitiesInner() {
   });
 
   // ── 社区网格 ──────────────────────────────────────────────────────────
+  // 正在编辑归属的社区。null = 抽屉关着
+  const [regionOf, setRegionOf] = useState<Community | null>(null);
+
   const communityColumns: Column<Community>[] = [
     { header: cp.colCommunityNo, cell: (c) => c.communityNo, numeric: true, align: "start" },
     { header: cp.colCommunity, cell: (c) => c.name },
     { header: cp.colCityGrid, cell: (c) => `${c.city} · ${c.grid}` },
+    {
+      // 未归属显示成灰字而不是空白：空白读起来像「这一列没数据」，
+      // 而它其实是一个待办 —— 没挂区划的社区，按区覆盖时谁也命中不了它
+      header: cp.colRegion,
+      cell: (c) =>
+        c.regionPath ? (
+          <span className="txt-caption">{c.regionPath}</span>
+        ) : (
+          <span className="txt-caption text-muted-foreground">{cp.regionUnset}</span>
+        ),
+    },
     {
       header: cp.colOpened,
       cell: (c) => (
@@ -149,6 +164,10 @@ function CommunitiesInner() {
     {
       header: cp.colActions,
       cell: (c) => (
+        <>
+        <Button size="sm" variant="outline" className="mr-2" onClick={() => setRegionOf(c)}>
+          {cp.regionConfigure}
+        </Button>
         <ArchiveActions
           archived={!!c.archivedAt}
           canWrite={canEditCommunity}
@@ -162,6 +181,7 @@ function CommunitiesInner() {
             await confirm(unarchiveConfirm(cp.entityCommunity, c.name, () => archiveCommunityMut.mutateAsync({ no: c.communityNo, restore: true })));
           }}
         />
+        </>
       ),
     },
   ];
@@ -336,6 +356,13 @@ function CommunitiesInner() {
       <Pagination page={page} size={size} onSize={setSize} total={activeList.data?.total ?? 0} onPage={setPage} />
 
       {dialog}
+
+      <RegionPicker
+        c={cp}
+        community={regionOf}
+        canWrite={canEditCommunity}
+        onClose={() => setRegionOf(null)}
+      />
     </div>
   );
 }

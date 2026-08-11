@@ -20,6 +20,35 @@ export interface Community extends Archivable {
   pickupCount: number;
   /** 建档时间 */
   createdAt: string;
+  /**
+   * 所属行政区划码（`sys_region.region_code`），空 = 尚未归属。
+   *
+   * 挂上之后「按区/按街道覆盖」才能命中这个社区（ADR-013）。
+   * **空着不代表配错了** —— 平台不按名字猜归属：猜错不报错，只会让这个社区
+   * 悄悄出现在别人的经营范围里。
+   */
+  regionCode?: string;
+  /**
+   * 从省到自身的中文路径，如「浙江省 / 杭州市 / 西湖区 / 北山街道」。
+   *
+   * **后端拼好给的**：只给一个 330106002 的话，端上要么显示一串数字，
+   * 要么自己按码长切片再逐级查 —— 而国标编码规则不是端该知道的事。
+   */
+  regionPath?: string;
+}
+
+/** 行政区划节点（ADR-013）。四级：省 / 市 / 区县 / 街道。 */
+export interface Region {
+  /** 统计用区划代码：省 2 位 / 市 4 位 / 区县 6 位 / 街道 9 位 */
+  regionCode: string;
+  parentCode?: string;
+  /** PROVINCE / CITY / DISTRICT / STREET */
+  level: string;
+  name: string;
+  /** 开城开关：停用只影响新的选择，存量商家不动 */
+  enabled: boolean;
+  /** 下面还有没有下级。**据此决定还要不要再选一层**，而不是点进去才发现是空的 */
+  hasChild: boolean;
 }
 
 /**

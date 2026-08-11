@@ -4,6 +4,22 @@ import { NEIGHBOR_RISK_ACCEPT_COUNT } from "@/lib/constants";
 import { PICKUP_TRANSITIONS, type Community, type PickupPoint } from "@/lib/types";
 import type { CommunityApi } from "../contracts/community";
 import { fail, notFound } from "@/lib/biz-error";
+
+/**
+ * 从省到自身。查不到时返回**已经走到的部分**，不抛也不返空 ——
+ * 区划每年调整，存量里会有撤并的旧码；抛异常会让一个社区弄挂整个列表页。
+ */
+function pathOf(code: string) {
+  const chain: import("@/lib/types").Region[] = [];
+  let cur: string | undefined = code;
+  for (let i = 0; i < 8 && cur; i++) {
+    const row = db.regions.find((r) => r.regionCode === cur);
+    if (!row) break;
+    chain.unshift(row);
+    cur = row.parentCode;
+  }
+  return chain;
+}
 import { wait } from "./_wait";
 
 function findCommunity(no: string): Community {
@@ -43,6 +59,32 @@ export const communityMock: CommunityApi = {
     c.fenceRadius = fenceRadius;
     return wait(c, 400);
   },
+
+  setCommunityRegion: async (communityNo, regionCode) => {
+    const c = findCommunity(communityNo);
+    const code = regionCode?.trim();
+    if (!code) {
+      // 清空是允许的：挂错了要能改回来
+      delete c.regionCode;
+      delete c.regionPath;
+      return wait(c, 400);
+    }
+    /*
+     * 挂之前先确认这个码存在。挂到不存在的码上不会报错，只会让这个社区在
+     * 任何「按区覆盖」里都出不来 —— 而运营看着界面上明明填着值。
+     */
+    const path = pathOf(code);
+    if (!path.length) notFound("区划", "Region", code);
+    c.regionCode = code;
+    c.regionPath = path.map((r) => r.name).join(" / ");
+    return wait(c, 400);
+  },
+
+  listRegions: async (parent, enabledOnly) =>
+    wait(db.regions.filter((r) =>
+      (parent ? r.parentCode === parent : !r.parentCode) && (!enabledOnly || r.enabled))),
+
+  regionPath: async (code) => wait(pathOf(code)),
 
   archiveCommunity: async (no) => wait(db.archiveRow(db.communities, "communityNo", no), 400),
   unarchiveCommunity: async (no) => wait(db.unarchiveRow(db.communities, "communityNo", no), 400),
