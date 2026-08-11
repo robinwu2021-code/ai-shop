@@ -425,4 +425,145 @@ class M6cGroupFlowTest {
     @Autowired
     private ai.neargo.shop.merchant.mapper.MerchantMappers.MchAccountMapper merchantStaffMapper;
 
+
+    // ---------------------------------------------------------------- 平台报价治理（P-8.2）
+
+    @Test
+    @DisplayName("★ 平台判毁约：报价置 BREACH，且毁约次数公示到报价卡上")
+    void breachMarksQuoteAndMerchantCredit() throws Exception {
+        String owner = login("13700137101");
+        String requestNo = createRequest(owner, "毁约测试");
+        String biz = loginAsOwnerOf("M0001", "13700137102");
+        String quoteNo = quote(biz, requestNo, 15000L, 3, 7);
+
+        int before = quoteCard(requestNo, quoteNo).get("breachCount").asInt();
+
+        String bd = opsLogin("bd", "bd123");
+        mvc().perform(post("/ops/quotes/" + quoteNo + "/breach")
+                        .header("Authorization", "Bearer " + bd)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"detail\":\"接单后拒不发货，聊天记录见工单 TK1\"}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.status").value("BREACH"));
+
+        // 毁约的报价从用户的报价列表里消失 —— 它按 status=ACTIVE 取，
+        // 一条已判毁约的报价不该还挂在那里等人选
+        assertThat(quoteNos(requestNo)).doesNotContain(quoteNo);
+
+        /*
+         * 毁约次数公示在**该商家后续的报价卡**上（ADR-003）。
+         * 判定必须真的影响到用户看得见的东西，否则这个功能只是改了一个没人看的状态字段。
+         */
+        String requestNo2 = createRequest(owner, "毁约后的下一单");
+        String quoteNo2 = quote(biz, requestNo2, 16000L, 3, 7);
+        assertThat(quoteCard(requestNo2, quoteNo2).get("breachCount").asInt())
+                .as("判毁约必须计入 breach_count，并出现在这家店后面的报价上")
+                .isEqualTo(before + 1);
+    }
+
+    @Test
+    @DisplayName("重复判毁约不叠加违规记录（幂等）")
+    void breachIsIdempotent() throws Exception {
+        String owner = login("13700137103");
+        String requestNo = createRequest(owner, "幂等毁约");
+        String biz = loginAsOwnerOf("M0002", "13700137104");
+        String quoteNo = quote(biz, requestNo, 12000L, 2, 7);
+        String bd = opsLogin("bd", "bd123");
+
+        for (int i = 0; i < 2; i++) {
+            mvc().perform(post("/ops/quotes/" + quoteNo + "/breach")
+                            .header("Authorization", "Bearer " + bd)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"detail\":\"重复判定\"}"))
+                    .andExpect(jsonPath("$.code").value(0));
+        }
+        String requestNo2 = createRequest(owner, "幂等毁约后的下一单");
+        String quoteNo2 = quote(biz, requestNo2, 12500L, 2, 7);
+        assertThat(quoteCard(requestNo2, quoteNo2).get("breachCount").asInt())
+                .as("判两次只该算一次 —— 否则运营手抖点两下，商家白背一次违规").isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("毁约理由必填：没有事实的处置在申诉时站不住")
+    void breachNeedsDetail() throws Exception {
+        String owner = login("13700137105");
+        String requestNo = createRequest(owner, "空理由");
+        String biz = loginAsOwnerOf("M0001", "13700137106");
+        String quoteNo = quote(biz, requestNo, 9900L, 1, 7);
+        String bd = opsLogin("bd", "bd123");
+
+        mvc().perform(post("/ops/quotes/" + quoteNo + "/breach")
+                        .header("Authorization", "Bearer " + bd)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"detail\":\"   \"}"))
+                .andExpect(jsonPath("$.code").value(10400));
+    }
+
+    @Test
+    @DisplayName("平台改价与商家改价进同一份价格历史")
+    void opsPriceGoesToSameHistory() throws Exception {
+        String owner = login("13700137107");
+        String requestNo = createRequest(owner, "平台改价");
+        String biz = loginAsOwnerOf("M0001", "13700137108");
+        String quoteNo = quote(biz, requestNo, 10000L, 1, 7);
+        revise(biz, quoteNo, 11000L);           // 商家自己改一次
+
+        String bd = opsLogin("bd", "bd123");
+        mvc().perform(post("/ops/quotes/" + quoteNo + "/price")
+                        .header("Authorization", "Bearer " + bd)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"unitPriceMinor\":10500,\"reason\":\"商家把 105 打成 1050\"}"))
+                .andExpect(jsonPath("$.code").value(0));
+
+        // 用户看到的是同一份历史：平台改的那一笔不该长得不一样，也不该看不见
+        assertThat(json.readTree(mvc().perform(get("/mp/group-request/" + requestNo + "/price-history"))
+                .andReturn().getResponse().getContentAsString()).get("data").size())
+                .as("商家改一次 + 平台改一次 = 两条历史").isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("没有 quote:govern 的角色判不了毁约（客服不是招商）")
+    void supportCannotMarkBreach() throws Exception {
+        String owner = login("13700137109");
+        String requestNo = createRequest(owner, "越权毁约");
+        String biz = loginAsOwnerOf("M0001", "13700137110");
+        String quoteNo = quote(biz, requestNo, 8800L, 1, 7);
+
+        mvc().perform(post("/ops/quotes/" + quoteNo + "/breach")
+                        .header("Authorization", "Bearer " + opsLogin("support", "support123"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"detail\":\"我不该能判\"}"))
+                .andExpect(jsonPath("$.code").value(10403));
+    }
+
+    /** C 端报价列表里的单号（只含 ACTIVE） */
+    private java.util.List<String> quoteNos(String requestNo) throws Exception {
+        String body = mvc().perform(get("/mp/group-request/" + requestNo + "/quotes"))
+                .andReturn().getResponse().getContentAsString();
+        java.util.List<String> out = new java.util.ArrayList<>();
+        json.readTree(body).get("data").forEach(n -> out.add(n.get("quoteNo").asString()));
+        return out;
+    }
+
+    /** 报价卡：C 端看到的那份（含公示的毁约次数） */
+    private tools.jackson.databind.JsonNode quoteCard(String requestNo, String quoteNo)
+            throws Exception {
+        String body = mvc().perform(get("/mp/group-request/" + requestNo + "/quotes"))
+                .andReturn().getResponse().getContentAsString();
+        for (var n : json.readTree(body).get("data")) {
+            if (quoteNo.equals(n.get("quoteNo").asString())) {
+                return n;
+            }
+        }
+        throw new AssertionError("报价卡上找不到 " + quoteNo);
+    }
+
+    private String opsLogin(String username, String password) throws Exception {
+        String body = mvc().perform(post("/ops/auth/login").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"" + username + "\",\"password\":\"" + password + "\"}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        return json.readTree(body).get("data").get("token").asString();
+    }
+
 }

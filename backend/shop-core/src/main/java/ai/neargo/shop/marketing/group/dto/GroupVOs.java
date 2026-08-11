@@ -65,7 +65,9 @@ public final class GroupVOs {
     public record QuoteVO(String quoteNo, String requestNo, String merchantNo, String merchantName,
                           double merchantRating, int breachCount,
                           long unitPriceMinor, int minQty, String note,
-                          long validUntil, int revisionCount, boolean chosen, long createdAt) {
+                          long validUntil, int revisionCount, boolean chosen, long createdAt,
+                          /** ACTIVE / WITHDRAWN / BREACH。平台列表要靠它筛出毁约单 */
+                          String status) {
     }
 
     /** 改价记录（C 端公示）。 */

@@ -63,6 +63,7 @@ public class GroupServiceImpl implements GroupService {
     private final QuoteRevisionMapper revisionMapper;
     private final MerchantQueryPort merchantPort;
     private final UserQueryPort userPort;
+    private final ai.neargo.shop.spi.user.MerchantGovernPort governPort;
     private final ObjectMapper json;
 
     private final GroupPickupPort groupPickupPort;
@@ -73,7 +74,9 @@ public class GroupServiceImpl implements GroupService {
                             QuoteMapper quoteMapper, QuoteRevisionMapper revisionMapper,
                             MerchantQueryPort merchantPort, UserQueryPort userPort,
                             ObjectMapper json,
-                            GroupPickupPort groupPickupPort, FulfillmentQueryPort fulfillmentPort, GoodsQueryPort goodsPort) {
+                            GroupPickupPort groupPickupPort, FulfillmentQueryPort fulfillmentPort, GoodsQueryPort goodsPort,
+                            ai.neargo.shop.spi.user.MerchantGovernPort governPort) {
+        this.governPort = governPort;
         this.groupPickupPort = groupPickupPort;
         this.fulfillmentPort = fulfillmentPort;
         this.goodsPort = goodsPort;
@@ -558,7 +561,56 @@ public class GroupServiceImpl implements GroupService {
         return new QuoteVO(vo.quoteNo(), vo.requestNo(), vo.merchantNo(), vo.merchantName(),
                 vo.merchantRating(), vo.breachCount(),
                 nz(r.getLockedPrice()),
-                vo.minQty(), vo.note(), vo.validUntil(), vo.revisionCount(), true, vo.createdAt());
+                vo.minQty(), vo.note(), vo.validUntil(), vo.revisionCount(), true, vo.createdAt(),
+                vo.status());
+    }
+
+    // ---------------------------------------------------------------- 平台侧（P-8.2）
+
+    @Override
+    public List<QuoteVO> opsQuotes(String status) {
+        return scoped(() -> quoteMapper.selectList(Wrappers.<MktQuote>lambdaQuery()
+                .eq(status != null && !status.isBlank(), MktQuote::getStatus, status)
+                .orderByDesc(MktQuote::getId))).stream().map(this::toQuoteVO).toList();
+    }
+
+    @Override
+    @Transactional
+    public QuoteVO opsRevisePrice(String quoteNo, long unitPriceMinor, String reason, String operatorNo) {
+        if (unitPriceMinor <= 0) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        MktQuote q = requireQuote(quoteNo);
+        if (MktQuote.BREACH.equals(q.getStatus())) {
+            // 已判毁约的报价不再改价：改了也没人会按它成交，只会让价格历史更难读
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+        // 走与商家改价同一条留痕路径 —— 公示给用户的是同一份价格历史，
+        // 平台改的那一笔不该长得不一样
+        return doRevise(q, unitPriceMinor,
+                new QuoteCommand(unitPriceMinor, nz(q.getMinQty()), q.getNote(), 0));
+    }
+
+    @Override
+    @Transactional
+    public QuoteVO markBreach(String quoteNo, String detail, String operatorNo) {
+        if (detail == null || detail.isBlank()) {
+            // 没有事实的处置在申诉时站不住 —— 与 mch_violation.detail 的必填是同一条规矩
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        MktQuote q = requireQuote(quoteNo);
+        if (MktQuote.BREACH.equals(q.getStatus())) {
+            return toQuoteVO(q);   // 幂等：重复判定不叠加违规记录
+        }
+        q.setStatus(MktQuote.BREACH);
+        scoped(() -> quoteMapper.updateById(q));
+        /*
+         * 经 Port 写商家违规，而不是直接碰 mch_violation：营销域依赖商家域会被 ArchUnit 拦下，
+         * 而且违规的分级规则、对信用分的影响将来只该在商家域里改。
+         * type=BREACH 是唯一计入 breach_count 的类型，那个数字公示在报价卡上（ADR-003）。
+         */
+        governPort.record(q.getEntityNo(), "BREACH", "WARN", detail, operatorNo);
+        return toQuoteVO(q);
     }
 
     private QuoteVO toQuoteVO(MktQuote q) {
@@ -572,7 +624,8 @@ public class GroupServiceImpl implements GroupService {
                 nz(q.getValidUntil()), nz(q.getRevisionCount()),
                 Boolean.TRUE.equals(q.getChosen()),
                 q.getCreatedAt() == null ? 0L
-                        : q.getCreatedAt().atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli());
+                        : q.getCreatedAt().atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli(),
+                q.getStatus() == null ? MktQuote.ACTIVE : q.getStatus());
     }
 
     private String merchantNameOf(String merchantNo) {

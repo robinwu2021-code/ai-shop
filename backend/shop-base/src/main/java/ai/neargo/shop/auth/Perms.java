@@ -81,10 +81,19 @@ public final class Perms {
      */
     public static final String TICKET_HANDLE = "ticket:handle";
 
+    /**
+     * 报价治理：平台改价与判定毁约（P-8.2.4 / P-8.2.5）。
+     *
+     * <p>给 BD —— 报价发生在招商拉来的商家与用户之间，纠纷也由他们跟进。
+     * <b>不给客服</b>：判毁约会写进商家信用档案、影响后续准入，
+     * 那是招商侧要承担后果的判断，不是接一通电话就能下的结论。
+     */
+    public static final String QUOTE_GOVERN = "quote:govern";
+
     private static final Map<String, List<String>> ROLE_PERMS = Map.of(
             "SUPER_ADMIN", List.of("*"),
             // BD 要读社区才能审核（选覆盖小区），但不该改社区主数据
-            "BD", List.of(MERCHANT_AUDIT, ORDER_VIEW, COMMUNITY_VIEW),
+            "BD", List.of(MERCHANT_AUDIT, ORDER_VIEW, COMMUNITY_VIEW, QUOTE_GOVERN),
             "GOODS_OPS", List.of(GOODS_AUDIT, CATEGORY_MANAGE, ORDER_VIEW, COMMUNITY_VIEW),
             "SUPPORT", List.of(ORDER_VIEW, REVIEW_GOVERN, ORDER_INTERVENE, COMMUNITY_VIEW,
                     TICKET_HANDLE));

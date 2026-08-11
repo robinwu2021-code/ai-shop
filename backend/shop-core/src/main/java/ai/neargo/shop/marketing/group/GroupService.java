@@ -83,6 +83,32 @@ public interface GroupService {
 
     QuoteVO revise(String merchantNo, String quoteNo, QuoteCommand cmd);
 
+    // ---------------------------------------------------------------- 平台侧（P-8.2）
+
+    /**
+     * 平台报价列表。**不按 merchantNo 过滤**——平台要看到所有商家的报价。
+     *
+     * @param status 为空给全部；传 {@code BREACH} 就是毁约档
+     */
+    List<QuoteVO> opsQuotes(String status);
+
+    /**
+     * 平台改价（P-8.2.4）。留痕走与商家改价同一条路径，公示的是同一份价格历史。
+     *
+     * <p>为什么平台要能改价：报价写错一位数（12.00 打成 1.20）而商家联系不上时，
+     * 用户已经按错价下了单。撤回整条报价会让已下单的人莫名其妙，改价+留痕才说得清。
+     */
+    QuoteVO opsRevisePrice(String quoteNo, long unitPriceMinor, String reason, String operatorNo);
+
+    /**
+     * 判定毁约（P-8.2.5）。报价置 {@code BREACH}，<b>同时写一条商家违规</b>，
+     * 计入 {@code breach_count} —— 那个数字直接公示在报价卡上（ADR-003）。
+     *
+     * <p>不可撤销：毁约判定影响商家准入，要撤只能走申诉流程另开一条记录，
+     * 而不是把这条抹掉。抹得掉的处置等于没有处置。
+     */
+    QuoteVO markBreach(String quoteNo, String detail, String operatorNo);
+
     record CreateRequestCommand(String title, String description, List<String> images,
                                 int expectCount, int days) {
     }
