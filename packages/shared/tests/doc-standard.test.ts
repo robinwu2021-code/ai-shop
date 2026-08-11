@@ -74,8 +74,13 @@ describe("文档规范", () => {
       const head = readFileSync(f, "utf8").slice(0, 400);
       if (!head.includes("勿手改")) continue;
       // 两种写法都算数：npm 脚本名，或直接写脚本路径（部分生成器是 python，没进 package.json）
+      //
+      // 路径那条要容忍 `node xxx.mjs` / `python3 xxx.py` 这种**带解释器前缀**的写法 ——
+      // 原先的字符类不含空格，于是「由 `node scripts/gen-tri-end-matrix.mjs` 生成」
+      // 匹配不上，守卫报「没有生成脚本」，而脚本一直好好地在那儿。
+      // **守卫误报比不报更坏**：它会让人去删一句正确的抬头。
       const viaNpm = head.match(/由\s*`npm run ([\w:-]+)`/);
-      const viaPath = head.match(/由\s*`([\w./-]+\.(?:mjs|py|ts))`/);
+      const viaPath = head.match(/由\s*`(?:node |python3? |npx tsx )?([\w./-]+\.(?:mjs|py|ts))`/);
       const ok =
         (viaNpm && scripts.includes(viaNpm[1])) ||
         (viaPath && existsSync(join(ROOT, viaPath[1])));

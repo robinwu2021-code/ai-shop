@@ -1,5 +1,7 @@
 package ai.neargo.shop.marketing.api.biz;
 
+import ai.neargo.shop.auth.BizPerms;
+import org.springframework.security.access.prepost.PreAuthorize;
 import ai.neargo.shop.auth.BizContext;
 import ai.neargo.shop.marketing.campaign.CampaignService;
 import ai.neargo.shop.marketing.campaign.dto.CampaignVO;
@@ -34,12 +36,14 @@ public class BizCampaignController {
         this.groupService = groupService;
     }
 
+    @PreAuthorize("@perm.canBiz('" + BizPerms.CAMPAIGN + "')")
     @GetMapping("/biz/campaign")
     public List<CampaignVO> list() {
         return campaignService.list(BizContext.requireMerchantNo());
     }
 
     /** 新建或编辑（{@code campaignNo} 为空即新建）。类型创建后不可改，时间区间必须成立。 */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.CAMPAIGN + "')")
     @PostMapping("/biz/campaign")
     public CampaignVO save(@RequestBody SaveReq req) {
         return campaignService.save(BizContext.requireMerchantNo(), new CampaignService.SaveCommand(
@@ -49,6 +53,7 @@ public class BizCampaignController {
     }
 
     /** 启停。只允许 RUNNING ↔ PAUSED —— 已结束的活动不可复活。 */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.CAMPAIGN + "')")
     @PostMapping("/biz/campaign/{campaignNo}/toggle")
     public CampaignVO toggle(@PathVariable String campaignNo, @RequestBody ToggleReq req) {
         return campaignService.toggle(BizContext.requireMerchantNo(), campaignNo,
@@ -57,12 +62,14 @@ public class BizCampaignController {
 
     // ---------------------------------------------------------------- 商家团
 
+    @PreAuthorize("@perm.canBiz('" + BizPerms.CAMPAIGN + "')")
     @GetMapping("/biz/groups")
     public List<GroupBuyVO> groups() {
         return groupService.merchantGroups(BizContext.requireMerchantNo());
     }
 
     /** 开团。团购价与起团人数取自商品上已配好的拼团设置，这一步不能临时定价。 */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.CAMPAIGN + "')")
     @PostMapping("/biz/groups")
     public GroupBuyVO createGroup(@RequestBody CreateGroupReq req) {
         return groupService.createMerchantGroup(BizContext.requireMerchantNo(), req.goodsNo());

@@ -210,7 +210,13 @@ export interface MerchantApi {
   /** 停用/启用。**老板不能被停用** */
   mSetStaffStatus(mchAccountNo: string, active: boolean): Promise<MerchantStaff>;
   /** 授权到店。role 传空 = 收回这家店的授权 */
-  mGrantStore(mchAccountNo: string, storeNo: string, role?: "MANAGER" | "CLERK"): Promise<MerchantStaff>;
+  /**
+   * 授予或撤销**一个**门店角色（一人一店可多角色，权限取并集）。
+   *
+   * @param granted 不传 = 授予；传 false = 撤销这一个角色
+   */
+  mGrantStore(mchAccountNo: string, storeNo: string, role: StaffRole,
+              granted?: boolean): Promise<MerchantStaff>;
   mStoreQrcode(): Promise<StoreQrcode>;
   /** 分享素材：整店或单品。文案要带「还差 N 人」这类可直接转发的内容 */
   mShareKit(goodsNo?: string): Promise<ShareKit>;

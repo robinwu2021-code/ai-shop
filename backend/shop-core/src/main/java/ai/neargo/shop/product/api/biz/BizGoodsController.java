@@ -1,5 +1,7 @@
 package ai.neargo.shop.product.api.biz;
 
+import ai.neargo.shop.auth.BizPerms;
+import org.springframework.security.access.prepost.PreAuthorize;
 import ai.neargo.shop.auth.BizContext;
 import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.product.dto.GoodsVO;
@@ -55,6 +57,7 @@ public class BizGoodsController {
      * @param status ON_SALE / OFF_SALE / AUDITING / REJECTED；空表示全部。
      *               <b>包含下架与被驳回的</b> —— 看不到被驳回的商品，店主就不知道要改什么
      */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
     @GetMapping("/biz/goods")
     public PageData<GoodsVO> list(@RequestParam(required = false) String status,
                                   @RequestParam(defaultValue = "1") long page,
@@ -62,12 +65,14 @@ public class BizGoodsController {
         return goodsService.list(BizContext.requireMerchantNo(), status, page, Math.min(size, 50));
     }
 
+    @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
     @GetMapping("/biz/goods/{goodsNo}")
     public GoodsVO detail(@PathVariable String goodsNo) {
         return goodsService.detail(BizContext.requireMerchantNo(), goodsNo);
     }
 
     /** 新建 / 编辑。<b>保存后回到待审核并强制下架</b> —— 否则「改成别的东西再卖」能绕开审核。 */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.GOODS + "')")
     @PostMapping("/biz/goods/save")
     public GoodsVO save(@RequestBody SaveGoodsReq req) {
         return goodsService.save(BizContext.requireMerchantNo(), new MerchantGoodsService.SaveCommand(
@@ -84,6 +89,7 @@ public class BizGoodsController {
                         .toList()));
     }
 
+    @PreAuthorize("@perm.canBiz('" + BizPerms.GOODS + "')")
     @PostMapping("/biz/goods/{goodsNo}/toggle")
     public GoodsVO toggle(@PathVariable String goodsNo, @RequestBody ToggleReq req) {
         return goodsService.toggle(BizContext.requireMerchantNo(), goodsNo,
@@ -91,6 +97,7 @@ public class BizGoodsController {
     }
 
     /** 改库存。<b>不触发重审</b> —— 补货是每天都在做的事。 */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
     @PostMapping("/biz/goods/{goodsNo}/stock")
     public GoodsVO stock(@PathVariable String goodsNo, @RequestBody StockReq req) {
         return goodsService.saveStock(BizContext.requireMerchantNo(), goodsNo,
@@ -103,6 +110,7 @@ public class BizGoodsController {
      * <p>⚠️ 第一次对某个 SKU 调用它，就把这个 SKU 整体切换成「按店管理」——
      * 此后没设过库存的门店卖不出这件商品。界面上要把这句话说清楚。
      */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
     @PostMapping("/biz/goods/{goodsNo}/store-stock")
     public GoodsVO storeStock(@PathVariable String goodsNo, @RequestBody StockReq req) {
         var ctx = BizContext.current();
@@ -135,6 +143,7 @@ public class BizGoodsController {
      *
      * <p>接上模型时只改这一个方法。在那之前，这里不该假装认出了什么。
      */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.GOODS + "')")
     @PostMapping("/biz/goods/recognize")
     public GoodsGuessVO recognize(@RequestBody RecognizeReq req) {
         return new GoodsGuessVO("", "NORMAL", 0d);

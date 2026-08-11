@@ -1,5 +1,7 @@
 package ai.neargo.shop.marketing.api.biz;
 
+import ai.neargo.shop.auth.BizPerms;
+import org.springframework.security.access.prepost.PreAuthorize;
 import ai.neargo.shop.auth.BizContext;
 import ai.neargo.shop.marketing.group.GroupService;
 import ai.neargo.shop.marketing.group.dto.GroupVOs.QuoteVO;
@@ -29,17 +31,20 @@ public class BizQuoteController {
         this.groupService = groupService;
     }
 
+    @PreAuthorize("@perm.canBiz('" + BizPerms.CAMPAIGN + "')")
     @GetMapping("/biz/group-request/pool")
     public List<RequestVO> pool() {
         BizContext.requireMerchantNo();
         return groupService.pool();
     }
 
+    @PreAuthorize("@perm.canBiz('" + BizPerms.CAMPAIGN + "')")
     @PostMapping("/biz/group-request/{requestNo}/quote")
     public QuoteVO quote(@PathVariable String requestNo, @RequestBody QuoteReq req) {
         return groupService.quote(BizContext.requireMerchantNo(), requestNo, req.toCommand());
     }
 
+    @PreAuthorize("@perm.canBiz('" + BizPerms.CAMPAIGN + "')")
     @PostMapping("/biz/quote/{quoteNo}/revise")
     public QuoteVO revise(@PathVariable String quoteNo, @RequestBody QuoteReq req) {
         return groupService.revise(BizContext.requireMerchantNo(), quoteNo, req.toCommand());

@@ -334,12 +334,19 @@ export interface AddStaffReq {
   loginPhone: string;
 }
 
-/** 授权到店。role 传空 = 收回这家店的授权 */
+/**
+ * 授予或撤销**一个**门店角色。
+ *
+ * **增量式，不是覆盖式**：这一次只动 `role` 这一个角色，不碰他在这家店的其他角色。
+ * 覆盖式在多角色下是错的 —— 老板想「再加一个配送员」，结果把「店员」冲掉了。
+ */
 export interface GrantStoreReq {
   /** 授权到哪家店。只能是本主体的门店 */
   storeNo: string;
-  /** MANAGER 店长 / CLERK 店员；**传空 = 收回这家店的授权** */
-  role?: StaffRole;
+  /** 要授予/撤销的那一个角色 */
+  role: StaffRole;
+  /** true 授予（默认）、false 撤销。撤到一个不剩 = 从这家店移除他 */
+  granted?: boolean;
 }
 
 /** 员工登录。与商家登录同形状，但打的是另一个端点、解析出的是另一套身份 */

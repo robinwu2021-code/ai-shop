@@ -1,5 +1,7 @@
 package ai.neargo.shop.portal.biz;
 
+import ai.neargo.shop.auth.BizPerms;
+import org.springframework.security.access.prepost.PreAuthorize;
 import ai.neargo.shop.auth.BizContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
@@ -48,38 +50,45 @@ public class BizPickupController {
         return ctx;
     }
 
+    @PreAuthorize("@perm.canBiz('" + BizPerms.VERIFY + "')")
     @GetMapping("/biz/pickup/overview")
     public PickupOverviewVO overview(@RequestParam(required = false) String pickupNo) {
         return pickupService.overview(pickupNo);
     }
 
+    @PreAuthorize("@perm.canBiz('" + BizPerms.VERIFY + "')")
     @PostMapping("/biz/pickup/verify")
     public VerifyResultVO verify(@RequestBody VerifyReq req) {
         return pickupService.verify(req.verifyCode(), Boolean.TRUE.equals(req.onBehalf()));
     }
 
+    @PreAuthorize("@perm.canBiz('" + BizPerms.VERIFY + "')")
     @PostMapping("/biz/pickup/verify/batch")
     public PickupService.BatchResult verifyBatch(@RequestBody VerifyBatchReq req) {
         return pickupService.verifyBatch(req.verifyCodes());
     }
 
+    @PreAuthorize("@perm.canBiz('" + BizPerms.VERIFY + "')")
     @GetMapping("/biz/pickup/verify/search")
     public List<PickupOrderVO> search(@RequestParam String keyword) {
         return pickupService.searchByCode(keyword);
     }
 
+    @PreAuthorize("@perm.canBiz('" + BizPerms.VERIFY + "')")
     @GetMapping("/biz/pickup/orders")
     public List<PickupOrderVO> orders(@RequestParam(required = false) String pickupNo,
                                       @RequestParam(required = false) String status) {
         return pickupService.orders(pickupNo, status);
     }
 
+    @PreAuthorize("@perm.canBiz('" + BizPerms.RECEIVE + "')")
     @GetMapping("/biz/pickup/picking")
     public List<PickingRowVO> picking(@RequestParam(required = false) String pickupNo) {
         return pickupService.picking(pickupNo);
     }
 
     /** 我的店铺码（B-11.2.6）。可打印，印在包装袋/贴纸上。 */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.STORE + "')")
     @GetMapping("/biz/store/qrcode")
     public StoreQrcode qrcode() {
         String merchantNo = BizContext.requireMerchantNo();
@@ -103,6 +112,7 @@ public class BizPickupController {
      * <p>对已到货/已核销的重复点击静默跳过 —— 到货登记是高频且容易重复点的动作，
      * 每次都报错只会让人学会忽略报错。
      */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.RECEIVE + "')")
     @PostMapping("/biz/pickup/arrived")
     public List<PickupOrderVO> markArrived(
             @RequestBody ArrivedReq req) {
@@ -112,6 +122,7 @@ public class BizPickupController {
     }
 
     /** 短少 / 破损上报。**只留痕并通知买家，不退款**（责任未定，见 Service 注释）。 */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.RECEIVE + "')")
     @PostMapping("/biz/pickup/{orderNo}/report")
     public PickupOrderVO reportShortage(
             @PathVariable String orderNo, @RequestBody ReportReq req) {

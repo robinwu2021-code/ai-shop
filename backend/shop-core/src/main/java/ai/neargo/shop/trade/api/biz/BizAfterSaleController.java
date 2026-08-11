@@ -1,5 +1,7 @@
 package ai.neargo.shop.trade.api.biz;
 
+import ai.neargo.shop.auth.BizPerms;
+import org.springframework.security.access.prepost.PreAuthorize;
 import ai.neargo.shop.auth.BizContext;
 import ai.neargo.shop.trade.dto.AfterSaleVO;
 import ai.neargo.shop.trade.service.AfterSaleService;
@@ -32,21 +34,25 @@ public class BizAfterSaleController {
         this.afterSaleService = afterSaleService;
     }
 
+    @PreAuthorize("@perm.canBiz('" + BizPerms.AFTERSALE + "')")
     @GetMapping("/biz/after-sale")
     public List<AfterSaleVO> list(@RequestParam(required = false) String status) {
         return afterSaleService.merchantList(BizContext.requireMerchantNo(), status);
     }
 
+    @PreAuthorize("@perm.canBiz('" + BizPerms.AFTERSALE + "')")
     @PostMapping("/biz/after-sale/{afterSaleNo}/approve")
     public AfterSaleVO approve(@PathVariable String afterSaleNo) {
         return afterSaleService.approve(BizContext.requireMerchantNo(), afterSaleNo);
     }
 
+    @PreAuthorize("@perm.canBiz('" + BizPerms.AFTERSALE + "')")
     @PostMapping("/biz/after-sale/{afterSaleNo}/reject")
     public AfterSaleVO reject(@PathVariable String afterSaleNo, @RequestBody RejectReq req) {
         return afterSaleService.reject(BizContext.requireMerchantNo(), afterSaleNo, req.remark());
     }
 
+    @PreAuthorize("@perm.canBiz('" + BizPerms.AFTERSALE + "')")
     @PostMapping("/biz/after-sale/{afterSaleNo}/receive")
     public AfterSaleVO confirmReturn(@PathVariable String afterSaleNo) {
         return afterSaleService.confirmReturn(BizContext.requireMerchantNo(), afterSaleNo);

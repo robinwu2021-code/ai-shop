@@ -1,5 +1,7 @@
 package ai.neargo.shop.settle.api.biz;
 
+import ai.neargo.shop.auth.BizPerms;
+import org.springframework.security.access.prepost.PreAuthorize;
 import ai.neargo.shop.auth.BizContext;
 import ai.neargo.shop.settle.SettleService;
 import ai.neargo.shop.settle.dto.RateCardVO;
@@ -38,6 +40,7 @@ public class BizSettleController {
      * <p>存量流水没有 {@code store_no}，按当前门店筛会把它们全部滤掉 ——
      * 所以只在<b>真的有多家店</b>时才收窄，单店商家永远看到全部（与今天逐字一致）。
      */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.FINANCE + "')")
     @GetMapping("/biz/settle/bills")
     public List<SettleBillVO> bills(
             @org.springframework.web.bind.annotation.RequestParam(required = false) Boolean allStores) {
@@ -48,11 +51,13 @@ public class BizSettleController {
         return settleService.merchantBills(BizContext.requireMerchantNo(), scope);
     }
 
+    @PreAuthorize("@perm.canBiz('" + BizPerms.FINANCE + "')")
     @GetMapping("/biz/settle/bills/{settleNo}")
     public SettleBillVO bill(@PathVariable String settleNo) {
         return settleService.merchantBill(BizContext.requireMerchantNo(), settleNo);
     }
 
+    @PreAuthorize("@perm.canBiz('" + BizPerms.FINANCE + "')")
     @GetMapping("/biz/settle/rate-card")
     public RateCardVO rateCard() {
         return settleService.rateCard();

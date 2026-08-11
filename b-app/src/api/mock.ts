@@ -397,12 +397,18 @@ export const mockApi: MerchantApi = {
     return delay({ ...st });
   },
 
-  async mGrantStore(mchAccountNo, storeNo, role) {
+  async mGrantStore(mchAccountNo, storeNo, role, granted) {
     const st = requireStaff(mchAccountNo);
     const store = requireStore(storeNo);
-    st.roles = st.roles.filter((r) => r.storeNo !== storeNo);
-    // role 传空 = 收回这家店的授权
-    if (role) st.roles.push({ storeNo, storeName: store.name, role });
+    /*
+     * **增量式：只动这一个角色**（一人一店可多角色）。
+     *
+     * 原先是先把这家店的角色全 filter 掉再 push 一个 —— 那是覆盖式，
+     * 老板想「再加一个配送员」会把「店员」冲掉，而且不报错。
+     * mock 与后端必须同一套语义，否则开发期看到的是另一个产品。
+     */
+    st.roles = st.roles.filter((r) => !(r.storeNo === storeNo && r.role === role));
+    if (granted !== false) st.roles.push({ storeNo, storeName: store.name, role });
     persist();
     return delay({ ...st });
   },

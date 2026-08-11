@@ -1,5 +1,7 @@
 package ai.neargo.shop.trade.api.biz;
 
+import ai.neargo.shop.auth.BizPerms;
+import org.springframework.security.access.prepost.PreAuthorize;
 import ai.neargo.shop.auth.BizContext;
 import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.trade.dto.OrderVO;
@@ -28,6 +30,7 @@ public class BizOrderController {
         this.merchantOrderService = merchantOrderService;
     }
 
+    @PreAuthorize("@perm.canBiz('" + BizPerms.ORDER_VIEW + "')")
     @GetMapping("/biz/order")
     public PageData<OrderVO> orders(@RequestParam(required = false) String status,
                                     @RequestParam(required = false) Boolean allStores,
@@ -56,6 +59,7 @@ public class BizOrderController {
      * <p>作用域是**当前门店**：多门店之后店员只被授权到某几家，
      * 只按主体判的话 A 店店员能翻出 B 店的单。
      */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.ORDER_VIEW + "')")
     @GetMapping("/biz/order/{subOrderNo}")
     public OrderVO detail(@PathVariable String subOrderNo) {
         var ctx = BizContext.current();
@@ -63,6 +67,7 @@ public class BizOrderController {
     }
 
     /** 发货：快递单号必填 —— 没有单号的「已发货」对买家没有任何用处。 */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.SHIP + "')")
     @PostMapping("/biz/order/{subOrderNo}/ship")
     public OrderVO ship(@PathVariable String subOrderNo, @RequestBody ShipReq req) {
         var ctx = BizContext.current();
@@ -74,6 +79,7 @@ public class BizOrderController {
      * 标记送达。**不是「确认收货」** —— 那是买家的动作，
      * 两者都推到 COMPLETED 但责任方不同，所以各走各的入口、各自留痕。
      */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.SHIP + "')")
     @PostMapping("/biz/order/{subOrderNo}/delivered")
     public OrderVO delivered(@PathVariable String subOrderNo) {
         var ctx = BizContext.current();

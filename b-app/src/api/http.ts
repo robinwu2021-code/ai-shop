@@ -117,9 +117,9 @@ export const httpApi: MerchantApi = {
   mSetStaffStatus: (mchAccountNo, active) =>
     http.post<MerchantStaff>(buildPath(E.mSetStaffStatus.path, { mchAccountNo }),
       { active } satisfies SetActiveReq),
-  mGrantStore: (mchAccountNo, storeNo, role) =>
+  mGrantStore: (mchAccountNo, storeNo, role, granted) =>
     http.post<MerchantStaff>(buildPath(E.mGrantStore.path, { mchAccountNo }),
-      { storeNo, role } satisfies GrantStoreReq),
+      { storeNo, role, granted } satisfies GrantStoreReq),
 
   mStoreQrcode: () => http.get<StoreQrcode>(E.mStoreQrcode.path),
   mShareKit: (goodsNo) =>

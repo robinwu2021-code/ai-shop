@@ -1,5 +1,7 @@
 package ai.neargo.shop.portal.biz;
 
+import ai.neargo.shop.auth.BizPerms;
+import org.springframework.security.access.prepost.PreAuthorize;
 import ai.neargo.shop.auth.BizContext;
 import ai.neargo.shop.auth.BizIdentityResolver;
 import ai.neargo.shop.auth.SecurityUtils;
@@ -160,6 +162,7 @@ public class BizMerchantController {
     /**
      * 店铺资料。从没保存过时返回空表单而不是 404 —— 新店打开设置页看到的应当是待填的表单。
      */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.STORE + "')")
     @GetMapping("/biz/store")
     public StoreProfileVO store() {
         return storeService.profile(BizContext.requireMerchantNo());
@@ -171,6 +174,7 @@ public class BizMerchantController {
      * <p><b>「仅本社区」却一个社区都没选时会被拒</b>（ADR-009）：那等于把自己的货
      * 对所有人隐藏，而商家看到的只会是「保存成功、商品在架、订单为零」。
      */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.STORE + "')")
     @PostMapping("/biz/store")
     public StoreProfileVO saveStore(@RequestBody StoreReq req) {
         return storeService.save(BizContext.requireMerchantNo(),
@@ -188,6 +192,7 @@ public class BizMerchantController {
      * 入驻过了店就能开、货能上架，但通道没批就收不了钱，
      * 而这个状态此前在 B 端完全看不到。
      */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.FINANCE + "')")
     @GetMapping("/biz/merchant/payment")
     public List<PaymentApplymentVO> payments() {
         return paymentService.list(BizContext.requireMerchantNo());
@@ -199,6 +204,7 @@ public class BizMerchantController {
      * <p>结算账号<b>明文只在这一次请求里存在</b>：转给通道，库里只留掩码，
      * 回显给任何端的也只有掩码 —— 包括商家自己（ADR-002 §5）。
      */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.FINANCE + "')")
     @PostMapping("/biz/merchant/payment")
     public PaymentApplymentVO submitPayment(@RequestBody PaymentReq req) {
         return paymentService.submit(BizContext.requireMerchantNo(),
@@ -213,6 +219,7 @@ public class BizMerchantController {
      * <p>不调它就是合并结算：门店不配号，走主体默认号。
      * 两种模式都是配置的结果，<b>没有开关</b>。
      */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.FINANCE + "')")
     @PostMapping("/biz/merchant/payment/store/{storeNo}")
     public PaymentApplymentVO openStorePayment(@PathVariable String storeNo,
                                                @RequestBody(required = false) PaymentReq req) {
@@ -226,6 +233,7 @@ public class BizMerchantController {
      * <p>留这个入口是因为<b>回调会丢</b>。没有它的话，回调丢了商家就永远停在「审核中」，
      * 只能打电话给运营 —— 而运营也没有别的办法。
      */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.FINANCE + "')")
     @PostMapping("/biz/merchant/payment/{payChannel}/refresh")
     public PaymentApplymentVO refreshPayment(@PathVariable String payChannel,
                                              @RequestParam(required = false) String storeNo) {
@@ -244,6 +252,7 @@ public class BizMerchantController {
     // ---------------------------------------------------------------- 门店管理（M6）
 
     /** 我的门店（含停用的）。停用的也要看得见 —— 看不见的话商家会以为店被删了。 */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.STORE + "')")
     @GetMapping("/biz/store/list")
     public List<StoreVO> storeList() {
         return storeAdminService.list(BizContext.requireMerchantNo());
@@ -253,12 +262,14 @@ public class BizMerchantController {
      * 新建门店。**超出额度直接拒** —— 建出来却打不开的店比拒绝更难解释。
      * 额度现在来自配置（默认 1，与单店时代一致），M4 Plan 落地后由订阅档位决定。
      */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.STORE_ADMIN + "')")
     @PostMapping("/biz/store/create")
     public StoreVO createStore(@RequestBody StoreCreateReq req) {
         return storeAdminService.create(BizContext.requireMerchantNo(), req.name(), req.address());
     }
 
     /** 改门店名与地址。门面其余部分（公告/营业时间/主推）走 {@code POST /biz/store}。 */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.STORE_ADMIN + "')")
     @PostMapping("/biz/store/{storeNo}/rename")
     public StoreVO renameStore(@PathVariable String storeNo, @RequestBody StoreCreateReq req) {
         return storeAdminService.rename(BizContext.requireMerchantNo(), storeNo,
@@ -266,6 +277,7 @@ public class BizMerchantController {
     }
 
     /** 停用 / 启用。**默认店不能停用** —— 停掉之后「这个主体的店在哪」就没有答案了。 */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.STORE_ADMIN + "')")
     @PostMapping("/biz/store/{storeNo}/status")
     public StoreVO setStoreStatus(@PathVariable String storeNo, @RequestBody StatusReq req) {
         return storeAdminService.setStatus(BizContext.requireMerchantNo(), storeNo,
@@ -273,6 +285,7 @@ public class BizMerchantController {
     }
 
     /** 转移默认店。显式动作 —— 「新店可勾选默认」会出现两家默认或零家默认的中间态。 */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.STORE_ADMIN + "')")
     @PostMapping("/biz/store/{storeNo}/default")
     public StoreVO setDefaultStore(@PathVariable String storeNo) {
         return storeAdminService.setDefault(BizContext.requireMerchantNo(), storeNo);
@@ -283,6 +296,7 @@ public class BizMerchantController {
      *
      * <p>只能挑本主体已开通的号；传空 = 回到主体默认号（合法操作，不是清空错误）。
      */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.STORE_ADMIN + "')")
     @PostMapping("/biz/store/{storeNo}/payment")
     public StoreVO setStorePayment(@PathVariable String storeNo, @RequestBody StorePaymentReq req) {
         return storeAdminService.setPayment(BizContext.requireMerchantNo(), storeNo,
@@ -301,6 +315,7 @@ public class BizMerchantController {
     // ---------------------------------------------------------------- 员工与授权（B-11.10）
 
     /** 员工列表（含停用的）。手机号脱敏 —— 完整号回显等于给店长一份可导出的通讯录。 */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.STORE_ADMIN + "')")
     @GetMapping("/biz/staff")
     public List<StaffVO> staffList() {
         return staffService.list(BizContext.requireMerchantNo());
@@ -310,12 +325,14 @@ public class BizMerchantController {
      * 加员工。**不发密码、不建 C 端账号** —— 他用自己的手机号 + 验证码登录。
      * 已存在（含已停用）时重新启用，而不是报「已存在」：离职再回来是常事。
      */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.STORE_ADMIN + "')")
     @PostMapping("/biz/staff")
     public StaffVO addStaff(@RequestBody StaffReq req) {
         return staffService.add(BizContext.requireMerchantNo(), req.loginPhone());
     }
 
     /** 停用 / 启用。**老板不能被停用** —— 那是个能把自己锁在门外的按钮。 */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.STORE_ADMIN + "')")
     @PostMapping("/biz/staff/{mchAccountNo}/status")
     public StaffVO setStaffStatus(@PathVariable String mchAccountNo, @RequestBody StatusReq req) {
         return staffService.setStatus(BizContext.requireMerchantNo(), mchAccountNo,
@@ -332,6 +349,7 @@ public class BizMerchantController {
      * <p>{@code granted=false} 撤销这一个角色；撤到一个不剩 = 从这家店移除他。
      * 不传 granted 视为授予 —— 老接口只有「给」这一个语义，保持兼容。
      */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.STORE_ADMIN + "')")
     @PostMapping("/biz/staff/{mchAccountNo}/store")
     public StaffVO grantStore(@PathVariable String mchAccountNo, @RequestBody GrantReq req) {
         return staffService.grantStore(BizContext.requireMerchantNo(), mchAccountNo,

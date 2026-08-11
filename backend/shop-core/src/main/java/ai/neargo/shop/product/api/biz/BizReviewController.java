@@ -1,5 +1,7 @@
 package ai.neargo.shop.product.api.biz;
 
+import ai.neargo.shop.auth.BizPerms;
+import org.springframework.security.access.prepost.PreAuthorize;
 import ai.neargo.shop.auth.BizContext;
 import ai.neargo.shop.product.review.ReviewService;
 import ai.neargo.shop.product.review.dto.ReviewVO;
@@ -37,17 +39,20 @@ public class BizReviewController {
      * 而门店维度的评价归属还没有数据来源（{@code rvw_review} 上没有 store_no）。
      * 按门店切会切出一堆空列表，那比不切更让人困惑。
      */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.REVIEW + "')")
     @GetMapping("/biz/review")
     public List<ReviewVO> list() {
         return reviewService.list(null, BizContext.requireMerchantNo());
     }
 
+    @PreAuthorize("@perm.canBiz('" + BizPerms.REVIEW + "')")
     @PostMapping("/biz/review/{reviewNo}/reply")
     public ReviewVO reply(@PathVariable String reviewNo, @RequestBody ReplyReq req) {
         return reviewService.reply(BizContext.requireMerchantNo(), reviewNo, req.reply());
     }
 
     /** 申诉差评。只有低分可申诉，且一条只能申诉一次 —— 校验在 Service。 */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.REVIEW + "')")
     @PostMapping("/biz/review/{reviewNo}/appeal")
     public ReviewVO appeal(@PathVariable String reviewNo, @RequestBody AppealReq req) {
         return reviewService.appeal(BizContext.requireMerchantNo(), reviewNo,

@@ -1,5 +1,7 @@
 package ai.neargo.shop.portal.biz;
 
+import ai.neargo.shop.auth.BizPerms;
+import org.springframework.security.access.prepost.PreAuthorize;
 import ai.neargo.shop.auth.BizContext;
 import ai.neargo.shop.marketing.group.GroupService;
 import ai.neargo.shop.product.review.ReviewService;
@@ -58,6 +60,7 @@ public class BizDashboardController {
      * <p>无单时是一串 0，<b>不是错误</b> —— 新店第一天打开工作台是最正常的场景，
      * 而一个报错的首屏会让店主以为账号没开通。
      */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.ORDER_VIEW + "')")
     @GetMapping("/biz/dashboard/todo")
     public TodoVO todo() {
         BizContext ctx = BizContext.current();
@@ -70,6 +73,7 @@ public class BizDashboardController {
     }
 
     /** 经营数据。同上：无单返回 0。 */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.CUSTOMER + "')")
     @GetMapping("/biz/dashboard/stats")
     public StatsVO stats() {
         BizContext ctx = BizContext.current();
@@ -94,6 +98,7 @@ public class BizDashboardController {
      * <p>沉默客户排在最前 —— 那是店主唯一能立刻行动的一批：
      * 一份「谁快流失了」的名单，比一份按字母排序的通讯录有用得多。
      */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.CUSTOMER + "')")
     @GetMapping("/biz/customers")
     public List<MerchantOrderService.CustomerSummary> customers() {
         BizContext ctx = BizContext.current();
@@ -101,12 +106,14 @@ public class BizDashboardController {
     }
 
     /** 当前门店的配送规则。没配过时返回默认值，不是空。 */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.STORE + "')")
     @GetMapping("/biz/delivery/rule")
     public MerchantStoreService.DeliveryRuleVO deliveryRule() {
         return storeService.deliveryRule(BizContext.requireMerchantNo(),
                 BizContext.current().currentStoreNo());
     }
 
+    @PreAuthorize("@perm.canBiz('" + BizPerms.STORE + "')")
     @PostMapping("/biz/delivery/rule")
     public MerchantStoreService.DeliveryRuleVO saveDeliveryRule(@RequestBody DeliveryRuleReq req) {
         return storeService.saveDeliveryRule(BizContext.requireMerchantNo(),
@@ -121,6 +128,7 @@ public class BizDashboardController {
      * <p>带 {@code goodsNo} 就分享单品，不带就分享整店。文案在后端拼而不是端上拼：
      * 三端（微信/支付宝/H5）和三种语言各拼一遍，迟早出现「店名对、链接错」的版本。
      */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.STORE + "')")
     @GetMapping("/biz/store/share-kit")
     public ShareKitVO shareKit(@RequestParam(required = false) String goodsNo) {
         String merchantNo = BizContext.requireMerchantNo();
