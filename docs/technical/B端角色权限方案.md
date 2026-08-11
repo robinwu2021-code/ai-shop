@@ -162,16 +162,34 @@ POST /biz/goods/save               改价格与全部  → 店员不行
 
 ## 四、实施
 
-### S1 · `BizContext` 带上当前角色
+### S0 · 放宽唯一键，支持一人一店多角色
 
-```java
-// 解析顺序：老板优先，其余按**当前门店**取
-String staffRole = isOwner ? "OWNER"
-        : roleOfStore(mchAccountNo, currentStoreNo);   // MANAGER / CLERK / null
+```sql
+ALTER TABLE mch_store_role DROP INDEX uk_store_role;
+ALTER TABLE mch_store_role ADD UNIQUE KEY uk_store_role (mch_account_no,store_no,role);
 ```
 
-`null`（在当前门店没有授权）**当作零权限**，不是当作店员 ——
+存量数据天然兼容 —— 放宽约束不影响已有的一人一店一行。
+
+同时改 `grantStore` 的语义：现在是「覆盖这家店的角色」（先查后更），
+要改成「**授予/撤销某一个角色**」——
+接口从 `(accountNo, storeNo, role)` 覆盖式，变成带一个 `granted: boolean`，
+或者干脆拆成 `grant` / `revoke` 两个动作。
+
+> 覆盖式在多角色下是错的：老板想加一个「配送员」，结果把「店员」冲掉了。
+
+### S1 · `BizContext` 带上当前角色**集合**
+
+```java
+// 解析顺序：老板优先，其余按**当前门店**取全部角色
+Set<String> staffRoles = isOwner ? Set.of("OWNER")
+        : rolesOfStore(mchAccountNo, currentStoreNo);   // 可能多个，也可能空
+```
+
+**空集合**（在当前门店没有授权）当作**零权限**，不是当作店员 ——
 认不出角色时给权限，是这类解析最坏的失败方式（运营端那个映射刚踩过）。
+
+权限判定取**并集**：`roles.anyMatch(r -> BizPerms.of(r).contains(code))`。
 
 ### S2 · 一个 `BizPerms` 类，与 `Perms` 同构
 
@@ -199,8 +217,11 @@ String staffRole = isOwner ? "OWNER"
 后端拒绝是安全边界，前端隐藏是体验。两者都要有 ——
 只做后端，店员会看到一堆点了报错的入口；只做前端，那不是安全。
 
-`merchant` store 里存 `staffRole`，页面按它裁剪。
-**切换门店时要重新解析** —— 同一个人在两家店可能是不同角色。
+`merchant` store 里存 `staffRoles`（数组）与算好的 `perms`，页面按 `perms` 裁剪。
+**切换门店时要重新解析** —— 同一个人在两家店可能是不同角色组合。
+
+员工授权面板从「单选 chip」改成**多选**：点一下加一个角色，再点一下去掉。
+全部去掉 = 从这家店移除他。
 
 ### S6 · 守卫
 
@@ -217,7 +238,8 @@ String staffRole = isOwner ? "OWNER"
 
 | 步骤 | 量 | 风险 |
 |---|---|---|
-| S1 BizContext 带角色 | 小 | 低（新增字段） |
+| S0 唯一键 + grant 语义 | 小 | **中**：覆盖式改成增量式，改错会静默冲掉已有角色 —— 必须有测试 |
+| S1 BizContext 带角色集合 | 小 | 低（新增字段） |
 | S2 BizPerms | 小 | 无 |
 | S3 Controller 判断（约 40 处） | **中** | 中：漏一处是越权，多一处是挡住正常使用 |
 | S4 错误码与文案 | 小 | 无 |
