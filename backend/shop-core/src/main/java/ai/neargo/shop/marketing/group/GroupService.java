@@ -90,7 +90,7 @@ public interface GroupService {
      *
      * @param status 为空给全部；传 {@code BREACH} 就是毁约档
      */
-    List<QuoteVO> opsQuotes(String status);
+    List<ai.neargo.shop.marketing.group.dto.OpsGroupVOs.OpsQuoteVO> opsQuotes(String status);
 
     /**
      * 平台改价（P-8.2.4）。留痕走与商家改价同一条路径，公示的是同一份价格历史。
@@ -114,7 +114,7 @@ public interface GroupService {
      *
      * @param status 为空给全部
      */
-    List<GroupBuyVO> opsGroups(String status);
+    List<ai.neargo.shop.marketing.group.dto.OpsGroupVOs.OpsGroupVO> opsGroups(String status);
 
     /**
      * 平台中止拼团（P-8.1.2）。团置 {@code FAILED}，参团的人按流团处理。

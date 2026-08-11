@@ -257,6 +257,59 @@ class BizDashboardAndReviewFlowTest {
     }
 
     @Test
+    @DisplayName("★★★ 团购价不低于原价就开不了团 —— 否则「团购」是假的")
+    void groupPriceMustBeatOriginPrice() throws Exception {
+        /*
+         * ops-web 的类型注释上写着「必须低于原价，否则『团购』是假的」，
+         * 而后端两条开团路径都只校验 > 0 —— 又一处「注释承诺了一个不存在的校验」。
+         *
+         * 它是在补运营端 VO 时被一条手工造的数据撞出来的：
+         * groupPrice 1500 / originPrice 990 一路存进库、发到接口、渲染上页面，
+         * 没有任何一层拦。C 端看到的会是「团购价 ¥15.00 / 原价 ¥9.90」，
+         * 而凑齐人数的买家实际上多付了钱。
+         */
+        String token = merchant("12600144010", "开团测试·价格倒挂");
+        // saveGoods 的原价是 500 分
+        String goodsNo = saveGoods(token, "倒挂商品");
+        approveGoods(goodsNo);
+        mvc().perform(post("/biz/goods/" + goodsNo + "/toggle").header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON).content("{\"onSale\":true}"));
+
+        setGroupPrice(goodsNo, 900L);   // 比原价贵
+        mvc().perform(post("/biz/groups").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"goodsNo\":\"" + goodsNo + "\"}"))
+                .andExpect(jsonPath("$.code").value(20004));
+
+        // 相等也拒：一个不省钱的团没有存在的理由，而它会占掉一个开团位
+        setGroupPrice(goodsNo, 500L);
+        mvc().perform(post("/biz/groups").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"goodsNo\":\"" + goodsNo + "\"}"))
+                .andExpect(jsonPath("$.code").value(20004));
+
+        // 真便宜了才放行 —— 两条一起才说明判断是对的，而不是把开团整个挡死了
+        setGroupPrice(goodsNo, 400L);
+        mvc().perform(post("/biz/groups").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"goodsNo\":\"" + goodsNo + "\"}"))
+                .andExpect(jsonPath("$.code").value(0));
+    }
+
+    @Autowired
+    private ai.neargo.shop.product.mapper.ProductMappers.GoodsMapper goodsMapperForGroup;
+
+    /** 拼团价配在商品上（开团这一步不能临时定价），这里直接落库 */
+    private void setGroupPrice(String goodsNo, long groupPriceMinor) {
+        var g = goodsMapperForGroup.selectOne(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                .<ai.neargo.shop.product.entity.PrdGoods>lambdaQuery()
+                .eq(ai.neargo.shop.product.entity.PrdGoods::getGoodsNo, goodsNo).last("limit 1"));
+        g.setGroupPriceMinor(groupPriceMinor);
+        g.setGroupMinCount(3);
+        goodsMapperForGroup.updateById(g);
+    }
+
+    @Test
     @DisplayName("商家团列表默认为空，不是报错")
     void merchantGroupsStartEmpty() throws Exception {
         String token = merchant("12600144004", "开团测试·空列表");

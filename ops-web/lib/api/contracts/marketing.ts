@@ -1,5 +1,5 @@
 // 覆盖范围：优惠券（P-7.1）、活动（P-7.2）、内容位（P-7.3）、会员卡（P-7.4）。
-import type { Campaign, ContentSlot, Coupon, CouponIssue, CouponStatus, IssueTarget, MemberCard, MemberCardStatus, Page } from "@/lib/types";
+import type { MerchantCampaign, PlatformSlot, ContentSlot, Coupon, CouponIssue, CouponStatus, IssueTarget, MemberCard, MemberCardStatus, Page } from "@/lib/types";
 import type { CampaignQ, CouponQ, PageQ, SlotQ } from "../query";
 
 export interface MarketingApi {
@@ -17,11 +17,33 @@ export interface MarketingApi {
   archiveCoupon(couponNo: string): Promise<Coupon>;
   unarchiveCoupon(couponNo: string): Promise<Coupon>;
 
-  listCampaigns(q?: CampaignQ): Promise<Page<Campaign>>;
-  /** 保存活动（P-7.2）。结束必须晚于开始；同一位置的秒杀场次不可重叠。 */
-  saveCampaign(v: Pick<Campaign, "campaignNo" | "name" | "type" | "position" | "startAt" | "endAt">): Promise<Campaign>;
-  archiveCampaign(campaignNo: string): Promise<Campaign>;
-  unarchiveCampaign(campaignNo: string): Promise<Campaign>;
+  /**
+   * **商家自建的店铺活动**（平台治理视角）。
+   *
+   * 不是平台投放场次 —— 那个对象后端还没有，见 `PlatformSlot` 的说明。
+   */
+  listCampaigns(q?: CampaignQ): Promise<Page<MerchantCampaign>>;
+  /**
+   * 停用 / 启用商家活动（矩阵 §2.3）。**理由必填** —— 停别人的活动要说得出为什么，
+   * 后端把它写进审计。这是平台对商家活动的**全部**能力：看得见、能停，
+   * 不能建也不能改内容，那是商家自己的经营决定。
+   *
+   * ⚠️ **页面还没有接这个按钮**。接它要先解决一件更大的事：
+   * `setCouponStatus` 同样是「停别人的东西」，而它**不传 reason**，
+   * 后端那条 reason 必填的校验会让它在真后端下必然 10400 ——
+   * mock 里没有这条校验，所以一直没暴露。
+   * 两处要一起补一个「说明理由」的输入，见
+   * `docs/technical/运营端营销列表契约错配.md` §5。
+   */
+  toggleCampaign(campaignNo: string, running: boolean, reason: string): Promise<MerchantCampaign>;
+  /**
+   * 保存平台投放场次（P-7.2）。结束必须晚于开始；同一位置的秒杀场次不可重叠。
+   *
+   * ⚠️ **后端尚未实现这个对象**，只有 mock 能跑通。
+   */
+  saveCampaign(v: Pick<PlatformSlot, "campaignNo" | "name" | "type" | "position" | "startAt" | "endAt">): Promise<PlatformSlot>;
+  archiveCampaign(campaignNo: string): Promise<MerchantCampaign>;
+  unarchiveCampaign(campaignNo: string): Promise<MerchantCampaign>;
 
   listContentSlots(q?: SlotQ): Promise<Page<ContentSlot>>;
   /** 上下线开关（P-7.3.5）。 */

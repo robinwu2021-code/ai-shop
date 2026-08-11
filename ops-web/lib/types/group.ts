@@ -31,10 +31,16 @@ export interface GroupCampaign {
   joined: number;
   /** 团状态。允许的流转见 `GROUP_TRANSITIONS` */
   status: GroupStatus;
-  /** 成团截止时间 */
-  endAt: string;
-  /** 开团时间 */
-  createdAt: string;
+  /** 成团截止时间（毫秒时间戳） */
+  endAt: number;
+  /**
+   * 已参团**人数**。
+   *
+   * ⚠️ 后端 C 端 VO 里有个同名字段 `joined`，是 `boolean`「我参没参团」——
+   * 同名不同义还不同类型。运营端走独立的 `OpsGroupVO`，不会拿到那个。
+   */
+  /** 开团时间（毫秒时间戳） */
+  createdAt: number;
 }
 
 export type DemandStatus = "OPEN" | "QUOTING" | "CHOSEN" | "CLOSED";
@@ -77,8 +83,8 @@ export interface Quote {
   price: number;
   /** 起订量 */
   minQty: number;
-  /** 报价有效期。过期不可被选定 —— 报价不能无限期挂着 */
-  validTo: string;
+  /** 报价有效期（毫秒时间戳）。过期不可被选定 —— 报价不能无限期挂着 */
+  validTo: number;
   /**
    * 改价次数（P-8.2.4 改价留痕）。ADR-003：不禁止改价，但**每次都公示**，
    * 超过阈值禁止再改 —— 频繁改价本身就是信号。
@@ -86,6 +92,6 @@ export interface Quote {
   priceChanges: number;
   /** 是否毁约（P-8.2.5）。毁约累计影响商家信用档案（P-11.1.5） */
   breached: boolean;
-  /** 报价时间 */
-  createdAt: string;
+  /** 报价时间（毫秒时间戳） */
+  createdAt: number;
 }

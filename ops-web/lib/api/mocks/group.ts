@@ -85,8 +85,11 @@ export const groupMock: GroupApi = {
       quoteNo: db.nextNo("QT", db.quotes, 9000, "quoteNo"),
       demandNo, demandTitle: demand.title,
       merchantNo, merchantName: merchant?.name ?? merchantNo,
-      price, minQty, validTo, priceChanges: 0, breached: false,
-      createdAt: "2026-08-06T00:00:00Z",
+      price, minQty,
+      // 表单里的 validTo 是日期串（date input 给的就是串），存下来的是毫秒 ——
+      // 与后端同口径，页面上才不用为 mock 和真后端各写一套格式化
+      validTo: Date.parse(validTo), priceChanges: 0, breached: false,
+      createdAt: Date.parse("2026-08-06T00:00:00Z"),
     };
     db.quotes.unshift(rec);
     demand.quoteCount += 1;

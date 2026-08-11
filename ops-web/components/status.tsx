@@ -8,7 +8,7 @@
 import type {
   MerchantStatus, MerchantTier, OrderStatus, FulfillmentType, TrafficSource,
   PickupPointType, PickupStatus, BatchStatus, StoreAuditStatus,
-  CouponType, CouponStatus, PlatformSlotType, PlatformSlotStatus, SlotKind,
+  CouponType, CouponStatus, MerchantCampaignType, PlatformSlotType, PlatformSlotStatus, SlotKind,
   ReviewStatus, AppealStatus, RiskFlag,
   AfterSaleType, AfterSaleStatus, GroupStatus, DemandStatus,
   CategoryTemplate, SkuStatus, SettleStatus, AttrSource, RiskType, RiskStatus, BlacklistAppealStatus,
@@ -175,6 +175,33 @@ export function useCouponStatusMap(): StatusMap<CouponStatus> {
 }
 export function CouponStatusBadge({ value }: { value: CouponStatus }) {
   return <StatusBadge map={useCouponStatusMap()} value={value} />;
+}
+
+/**
+ * **商家自建活动**的类型（`/ops/campaigns` 真正返回的取值）。
+ *
+ * 与 {@link usePlatformSlotTypeMap} 是两套 —— 后者是平台投放场次，后端还没有那个对象。
+ * 曾经共用一套的表现是：`FLASH` 恰好两边都有所以译得出来，
+ * `FULL_CUT` / `COUPON` / `BUY_GIFT` 译不出来，**原始枚举码直接打给用户**。
+ */
+export function useMerchantCampaignTypeMap(): StatusMap<MerchantCampaignType> {
+  const { t } = useI18n();
+  return {
+    COUPON: { label: t("merchantCampaignType.COUPON"), tone: "info" },
+    FULL_CUT: { label: t("merchantCampaignType.FULL_CUT"), tone: "muted" },
+    FLASH: { label: t("merchantCampaignType.FLASH"), tone: "warning" },
+    BUY_GIFT: { label: t("merchantCampaignType.BUY_GIFT"), tone: "muted" },
+  };
+}
+
+/** 商家活动状态。停用是平台唯一能改的那一个 */
+export function useMerchantCampaignStatusMap(): StatusMap<string> {
+  const { t } = useI18n();
+  return {
+    RUNNING: { label: t("merchantCampaignStatus.RUNNING"), tone: "success" },
+    PAUSED: { label: t("merchantCampaignStatus.PAUSED"), tone: "danger" },
+    ENDED: { label: t("merchantCampaignStatus.ENDED"), tone: "muted" },
+  };
 }
 
 export function usePlatformSlotTypeMap(): StatusMap<PlatformSlotType> {

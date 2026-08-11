@@ -96,7 +96,19 @@ export interface CouponIssue {
 export type PlatformSlotType = "FLASH" | "SECKILL" | "FULL_REDUCE" | "GIFT" | "NEWCOMER";
 export type PlatformSlotStatus = "DRAFT" | "SCHEDULED" | "RUNNING" | "ENDED";
 
-export interface Campaign extends Archivable {
+/**
+ * 平台投放的营销场次。
+ *
+ * ⚠️ **后端还没有这个对象，当前没有任何页面在用它**。
+ * 它连同 {@link PlatformSlotType} / {@link PlatformSlotStatus} 一起留在这里，
+ * 是因为这块 UI 已经设计完了（位置、场次重叠校验），等产品决定要不要建后端对象。
+ *
+ * 「营销活动 · 活动」那个 tab 现在渲染的是 {@link MerchantCampaign} ——
+ * 商家自建的店铺活动，那是 `/ops/campaigns` 真正返回的东西。
+ * 两者曾经共用这一个类型，表现是**类型列一半中文一半原始枚举码**：
+ * `FLASH` 恰好两套都有所以译得出来，`FULL_CUT`/`COUPON`/`BUY_GIFT` 译不出来。
+ */
+export interface PlatformSlot extends Archivable {
   /** 活动单号 */
   campaignNo: string;
   /** 活动名 */
@@ -116,6 +128,35 @@ export interface Campaign extends Archivable {
   /** 创建时间 */
   createdAt: string;
 }
+
+/**
+ * **商家自建的店铺活动**（`GET /ops/campaigns` 真正返回的东西）。
+ *
+ * <p>平台对它只有治理权：看得见、能停、能归档，**不能建也不能改内容** ——
+ * 那是商家自己的经营决定（矩阵 §2.3「平台停券与停活动」）。
+ *
+ * <p>字段对齐后端 `CampaignVO`。与 {@link PlatformSlot} 是两个领域对象，
+ * 曾经被一根 HTTP 路径连着，见 `docs/technical/运营端营销列表契约错配.md`。
+ */
+export interface MerchantCampaign extends Archivable {
+  campaignNo: string;
+  /** 所属商家（主体号）。平台视角要按它归堆 */
+  merchantNo: string;
+  name: string;
+  /** COUPON / FULL_CUT / FLASH / BUY_GIFT —— 商家能建的四种 */
+  type: MerchantCampaignType;
+  /** RUNNING / ENDED / PAUSED */
+  status: string;
+  /** 开始时间（毫秒时间戳） */
+  startAt: number;
+  /** 结束时间（毫秒时间戳） */
+  endAt: number;
+  /** 参与的商品号。**列表上只显示条数**，明细进详情看 */
+  goodsNos?: string[] | null;
+}
+
+/** 商家能建的活动类型。与 shared 的 `CampaignType` 同源（b-app 建的就是它） */
+export type MerchantCampaignType = "COUPON" | "FULL_CUT" | "FLASH" | "BUY_GIFT";
 
 export type SlotKind = "HOME_FLOOR" | "BANNER" | "CHANNEL";
 

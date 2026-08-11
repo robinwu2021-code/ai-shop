@@ -164,6 +164,8 @@ export const en: Messages = {
   storeAuditStatus: { PENDING: "Pending review", PASSED: "Approved", REJECTED: "Rejected" },
   couponType: { FULL_CUT: "Spend & save", DISCOUNT: "Percent off", NEWCOMER: "New customer", TARGETED: "Targeted" },
   couponStatus: { DRAFT: "Draft", ACTIVE: "Active", PAUSED: "Paused", ENDED: "Ended" },
+  merchantCampaignType: { COUPON: "Coupon", FULL_CUT: "Spend & save", FLASH: "Flash price", BUY_GIFT: "Buy & gift" },
+  merchantCampaignStatus: { RUNNING: "Running", PAUSED: "Paused", ENDED: "Ended" },
   platformSlotType: { SECKILL: "Flash sale", FLASH: "Limited-time price", FULL_REDUCE: "Spend & save", GIFT: "Buy & get", NEWCOMER: "New-customer bundle" },
   platformSlotStatus: { DRAFT: "Draft", SCHEDULED: "Scheduled", RUNNING: "Running", ENDED: "Ended" },
   slotKind: { HOME_FLOOR: "Home floor", BANNER: "Banner", CHANNEL: "Channel slot" },

@@ -22,6 +22,7 @@ import ai.neargo.shop.marketing.group.entity.MktGroupBuy;
 import ai.neargo.shop.marketing.group.entity.MktGroupMember;
 import ai.neargo.shop.marketing.group.entity.MktQuote;
 import ai.neargo.shop.marketing.group.entity.MktQuoteRevision;
+import ai.neargo.shop.marketing.group.dto.OpsGroupVOs;
 import ai.neargo.shop.marketing.group.entity.MktRequest;
 import ai.neargo.shop.marketing.group.entity.MktRequestInterest;
 import ai.neargo.shop.marketing.group.mapper.GroupMappers.GroupBuyMapper;
@@ -360,6 +361,7 @@ public class GroupServiceImpl implements GroupService {
         if (snap.groupPriceMinor() == null || snap.groupPriceMinor() <= 0) {
             throw BizException.of(ErrorCode.ORDER_STATE_ILLEGAL);
         }
+        requireCheaperThanOrigin(snap);
 
         MktGroupBuy g = new MktGroupBuy();
         g.setGroupNo(BizKey.next(BizKey.GROUP_BUY));
@@ -568,10 +570,67 @@ public class GroupServiceImpl implements GroupService {
     // ---------------------------------------------------------------- 平台侧（P-8.2）
 
     @Override
-    public List<QuoteVO> opsQuotes(String status) {
-        return scoped(() -> quoteMapper.selectList(Wrappers.<MktQuote>lambdaQuery()
+    public List<OpsGroupVOs.OpsQuoteVO> opsQuotes(String status) {
+        var rows = scoped(() -> quoteMapper.selectList(Wrappers.<MktQuote>lambdaQuery()
                 .eq(status != null && !status.isBlank(), MktQuote::getStatus, status)
-                .orderByDesc(MktQuote::getId))).stream().map(this::toQuoteVO).toList();
+                .orderByDesc(MktQuote::getId)));
+        /*
+         * 需求标题一次批量取，不在循环里逐条查 —— 报价列表按需求聚集，
+         * 逐条查会对同一个 request_no 查很多遍。
+         */
+        var titles = requestTitles(rows.stream().map(MktQuote::getRequestNo).toList());
+        return rows.stream().map(q -> toOpsQuoteVO(q, titles)).toList();
+    }
+
+    /** 需求单号 → 标题。取不到的不放进 map，让调用方落到空串 */
+    private java.util.Map<String, String> requestTitles(java.util.List<String> requestNos) {
+        var ids = requestNos.stream().filter(java.util.Objects::nonNull).distinct().toList();
+        if (ids.isEmpty()) {
+            return java.util.Map.of();
+        }
+        return scoped(() -> requestMapper.selectList(Wrappers.<MktRequest>lambdaQuery()
+                        .in(MktRequest::getRequestNo, ids))).stream()
+                .filter(r -> r.getTitle() != null)
+                .collect(java.util.stream.Collectors.toMap(
+                        MktRequest::getRequestNo, MktRequest::getTitle, (a, b) -> a));
+    }
+
+    private OpsGroupVOs.OpsQuoteVO toOpsQuoteVO(MktQuote q, java.util.Map<String, String> titles) {
+        return new OpsGroupVOs.OpsQuoteVO(
+                q.getQuoteNo(), q.getRequestNo(),
+                // 取不到给空串而不是编一个 —— 运营在这一列上认单
+                titles.getOrDefault(q.getRequestNo(), ""),
+                q.getEntityNo(), merchantNameOf(q.getEntityNo()),
+                nz(q.getUnitPriceMinor()), nz(q.getMinQty()), nz(q.getValidUntil()),
+                nz(q.getRevisionCount()),
+                // 由状态推出，不让端上再判一次 —— 两处各判一次迟早分岔
+                MktQuote.BREACH.equals(q.getStatus()),
+                q.getStatus() == null ? MktQuote.ACTIVE : q.getStatus(),
+                millis(q.getCreatedAt()));
+    }
+
+    /**
+     * <b>团购价必须低于原价</b>，否则「团购」是假的：C 端会看到
+     * 「团购价 ¥15.00 / 原价 ¥9.90」这种自己打自己脸的价签，
+     * 而凑齐人数的买家实际上多付了钱。
+     *
+     * <p>此前两条开团路径都只校验 {@code > 0}。ops-web 的类型注释上明明写着这条约束
+     * （「必须低于原价，否则『团购』是假的」）—— <b>又一处「注释承诺了一个不存在的校验」</b>。
+     * 它是在补运营端 VO 时被一条手工造的数据撞出来的：`groupPrice 1500 / originPrice 990`
+     * 一路存进库、发到接口、渲染上页面，没有任何一层拦。
+     *
+     * <p>相等也拒：一个不省钱的团没有存在的理由，而它会占掉一个开团位。
+     */
+    private static void requireCheaperThanOrigin(
+            ai.neargo.shop.spi.product.GoodsQueryPort.SkuSnapshot snap) {
+        if (snap.groupPriceMinor() >= snap.price()) {
+            throw BizException.of(ErrorCode.ORDER_STATE_ILLEGAL);
+        }
+    }
+
+    private static long millis(java.time.LocalDateTime t) {
+        return t == null ? 0L
+                : t.atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli();
     }
 
     @Override
@@ -614,11 +673,19 @@ public class GroupServiceImpl implements GroupService {
     }
 
     @Override
-    public List<GroupBuyVO> opsGroups(String status) {
+    public List<OpsGroupVOs.OpsGroupVO> opsGroups(String status) {
         return scoped(() -> groupBuyMapper.selectList(Wrappers.<MktGroupBuy>lambdaQuery()
                 .eq(status != null && !status.isBlank(), MktGroupBuy::getStatus, status)
                 .orderByDesc(MktGroupBuy::getId))).stream()
-                .map(g -> toGroupBuyVO(g, false)).toList();
+                .map(g -> new OpsGroupVOs.OpsGroupVO(
+                        g.getGroupNo(), g.getEntityNo(), merchantNameOf(g.getEntityNo()),
+                        g.getTitle(), nz(g.getOriginPriceMinor()), nz(g.getGroupPriceMinor()),
+                        nz(g.getMinCount()),
+                        // ★ 已参团**人数**。C 端 VO 的同名字段是 boolean「我参没参团」，
+                        //   发过去 false 当人数用，页面上就是一个不报错的错数字
+                        nz(g.getJoinedCount()),
+                        g.getStatus(), nz(g.getEndAt()), millis(g.getCreatedAt())))
+                .toList();
     }
 
     @Override
@@ -790,6 +857,7 @@ public class GroupServiceImpl implements GroupService {
         if (snap.groupPriceMinor() == null || snap.groupPriceMinor() <= 0) {
             throw BizException.of(ErrorCode.ORDER_STATE_ILLEGAL);
         }
+        requireCheaperThanOrigin(snap);
 
         MktGroupBuy g = new MktGroupBuy();
         g.setGroupNo(BizKey.next(BizKey.GROUP_BUY));

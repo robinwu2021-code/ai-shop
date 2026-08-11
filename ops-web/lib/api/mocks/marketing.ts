@@ -2,7 +2,7 @@
 import * as db from "@/lib/mock/db";
 import { MIN_MEMBER_DISCOUNT } from "@/lib/constants";
 import { MEMBER_CARD_TRANSITIONS } from "@/lib/types";
-import { COUPON_TRANSITIONS, type Campaign, type ContentSlot, type Coupon } from "@/lib/types";
+import { COUPON_TRANSITIONS, type ContentSlot, type Coupon, type PlatformSlot } from "@/lib/types";
 import type { MarketingApi } from "../contracts/marketing";
 import { fail, notFound } from "@/lib/biz-error";
 import { wait } from "./_wait";
@@ -87,20 +87,37 @@ export const marketingMock: MarketingApi = {
 
   listCampaigns: (q = {}) =>
     wait(
-      db.paginate(db.campaigns, q.page, q.size, (c) =>
+      db.paginate(db.merchantCampaigns, q.page, q.size, (c) =>
         db.liveHit(c, q.showArchived) &&
         db.eqHit(q.type, c.type) &&
         db.eqHit(q.status, c.status) &&
-        db.kwHit(q.keyword, c.campaignNo, c.name, c.position),
+        // 按商家号也能搜到 —— 平台治理时最常见的问法是「这家店在跑什么活动」
+        db.kwHit(q.keyword, c.campaignNo, c.name, c.merchantNo),
       ),
     ),
 
+  toggleCampaign: async (no, running, reason) => {
+    if (!reason.trim()) fail("请填写理由", "A reason is required");
+    const row = db.merchantCampaigns.find((c) => c.campaignNo === no);
+    if (!row) fail("活动不存在", "Campaign not found");
+    // 平台只改「还跑不跑」，不动活动内容 —— 那是商家自己的经营决定
+    row!.status = running ? "RUNNING" : "PAUSED";
+    return wait(row!, 400);
+  },
+
+  /**
+   * 保存平台投放场次。**后端还没有这个对象**，只有 mock 能跑 ——
+   * 保留它是为了那块 UI 在 mock 模式下仍能演示，以及把重叠规则记在测试里。
+   *
+   * 写进独立的 platformSlots 数组，**不碰 merchantCampaigns**：
+   * 两个领域对象混在一个数组里，正是「类型列一半中文一半枚举码」的来源。
+   */
   saveCampaign: async (v) => {
     if (new Date(v.endAt) <= new Date(v.startAt)) fail("结束时间必须晚于开始时间", "It has to end after it starts");
     // 秒杀「场次」的意义就在不重叠：同一位置同时跑两场，用户看到的是哪一场取决于查询顺序。
     // 跨位置重叠是合法的（首页与频道页可以同时跑）。
     if (v.type === "SECKILL") {
-      const clash = db.campaigns.find(
+      const clash = db.platformSlots.find(
         (c) =>
           c.campaignNo !== v.campaignNo &&
           c.type === "SECKILL" &&
@@ -108,19 +125,19 @@ export const marketingMock: MarketingApi = {
           !c.archivedAt &&
           overlaps(v.startAt, v.endAt, c.startAt, c.endAt),
       );
-      if (clash) fail(`与「${clash.name}」场次时间重叠（同一位置：${v.position}）`, `Overlaps with “${clash.name}” in the same slot (${v.position})`);
+      if (clash) fail(`与「${clash.name}」场次时间重叠（同一位置：${v.position}）`, `Overlaps with \u201c${clash.name}\u201d in the same slot (${v.position})`);
     }
-    const saved = db.upsert<Campaign>(
-      db.campaigns,
+    const saved = db.upsert<PlatformSlot>(
+      db.platformSlots,
       { ...v, status: "SCHEDULED", skuCount: 0, createdAt: "2026-08-06T00:00:00Z" },
       "campaignNo",
-      () => db.nextNo("AC", db.campaigns, 9000, "campaignNo"),
+      () => db.nextNo("AC", db.platformSlots, 9000, "campaignNo"),
     );
     return wait(saved, 400);
   },
 
-  archiveCampaign: async (no) => wait(db.archiveRow(db.campaigns, "campaignNo", no), 400),
-  unarchiveCampaign: async (no) => wait(db.unarchiveRow(db.campaigns, "campaignNo", no), 400),
+  archiveCampaign: async (no) => wait(db.archiveRow(db.merchantCampaigns, "campaignNo", no), 400),
+  unarchiveCampaign: async (no) => wait(db.unarchiveRow(db.merchantCampaigns, "campaignNo", no), 400),
 
   listContentSlots: (q = {}) =>
     wait(

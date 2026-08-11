@@ -14,10 +14,11 @@ import { usePageTab } from "@/lib/use-page-tab";
 import { fmtTime, money } from "@/lib/utils";
 import { useCan } from "@/lib/use-can";
 import { notify } from "@/lib/notify";
-import type { Campaign, ContentSlot, Coupon, CouponIssue, CouponStatus, IssueTarget } from "@/lib/types";
+import type { MerchantCampaign, ContentSlot, Coupon, CouponIssue, CouponStatus, IssueTarget } from "@/lib/types";
 import {
   PlatformSlotStatusBadge, CouponStatusBadge, usePlatformSlotStatusMap, usePlatformSlotTypeMap,
   useCouponStatusMap, useCouponTypeMap, useSlotKindMap,
+  useMerchantCampaignTypeMap, useMerchantCampaignStatusMap,
 } from "@/components/status";
 import { ReadOnlyNotice } from "@/components/read-only-notice";
 // 会员卡自成一块 —— 与券/活动/内容位三个 tab 只共用文案表
@@ -95,8 +96,9 @@ function MarketingInner() {
 
   const couponTypeMap = useCouponTypeMap();
   const couponStatusMap = useCouponStatusMap();
-  const campaignTypeMap = usePlatformSlotTypeMap();
-  const campaignStatusMap = usePlatformSlotStatusMap();
+  // 商家活动，不是平台场次 —— 两套枚举不能混用
+  const campaignTypeMap = useMerchantCampaignTypeMap();
+  const campaignStatusMap = useMerchantCampaignStatusMap();
   const slotKindMap = useSlotKindMap();
 
   const couponQ = { keyword, type, status, showArchived, page, size };
@@ -213,14 +215,19 @@ function MarketingInner() {
     { header: c.colTime, cell: (r) => fmtTime(r.createdAt) },
   ];
 
-  const campaignColumns: Column<Campaign>[] = [
+  /*
+   * 这一列表是**商家自建的店铺活动**，不是平台投放场次（后端还没有那个对象）。
+   * 于是没有「位置」列 —— 那是场次专属的；商品数取 goodsNos 的长度，
+   * 后端 CampaignVO 里一直有这个字段，此前因为类型对不上而恒为空。
+   */
+  const campaignColumns: Column<MerchantCampaign>[] = [
     { header: c.colCampaignNo, cell: (x) => x.campaignNo, numeric: true, align: "start" },
     { header: c.colName, cell: (x) => x.name },
+    { header: c.colMerchant, cell: (x) => x.merchantNo },
     { header: c.colType, cell: (x) => <StatusBadge map={campaignTypeMap} value={x.type} /> },
-    { header: c.colPosition, cell: (x) => x.position },
     { header: c.colRange, cell: (x) => `${fmtTime(x.startAt)} ~ ${fmtTime(x.endAt)}` },
-    { header: c.colSkuCount, cell: (x) => x.skuCount, numeric: true },
-    { header: c.colStatus, cell: (x) => <PlatformSlotStatusBadge value={x.status} /> },
+    { header: c.colSkuCount, cell: (x) => x.goodsNos?.length ?? 0, numeric: true },
+    { header: c.colStatus, cell: (x) => <StatusBadge map={campaignStatusMap} value={x.status} /> },
     {
       header: c.colActions,
       cell: (x) => (

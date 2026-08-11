@@ -1,16 +1,16 @@
 // 营销域规则测试（P-7）。锁的是**花钱的边界**与**场次不重叠**这两条。
 import { beforeEach, describe, expect, it } from "vitest";
 import { marketingMock } from "@/lib/api/mocks/marketing";
-import { campaigns, contentSlots, couponIssues, coupons } from "./marketing";
+import { platformSlots, contentSlots, couponIssues, coupons } from "./marketing";
 
 const C0 = JSON.parse(JSON.stringify(coupons)) as typeof coupons;
 const I0 = JSON.parse(JSON.stringify(couponIssues)) as typeof couponIssues;
-const A0 = JSON.parse(JSON.stringify(campaigns)) as typeof campaigns;
+const A0 = JSON.parse(JSON.stringify(platformSlots)) as typeof platformSlots;
 const S0 = JSON.parse(JSON.stringify(contentSlots)) as typeof contentSlots;
 beforeEach(() => {
   coupons.length = 0; coupons.push(...(JSON.parse(JSON.stringify(C0)) as typeof coupons));
   couponIssues.length = 0; couponIssues.push(...(JSON.parse(JSON.stringify(I0)) as typeof couponIssues));
-  campaigns.length = 0; campaigns.push(...(JSON.parse(JSON.stringify(A0)) as typeof campaigns));
+  platformSlots.length = 0; platformSlots.push(...(JSON.parse(JSON.stringify(A0)) as typeof platformSlots));
   contentSlots.length = 0; contentSlots.push(...(JSON.parse(JSON.stringify(S0)) as typeof contentSlots));
 });
 
@@ -61,7 +61,10 @@ describe("券预算（P-7.1.3）", () => {
   });
 });
 
-describe("活动时间（P-7.2）", () => {
+// 这一组测的是**平台投放场次**的规则。后端还没有这个对象，所以它们守的是
+// mock 与那块 UI —— 以及把「首尾相接不算重叠」「跨位置可并行」这两条产品规则
+// 记下来，等建后端对象时照着做。
+describe("平台场次时间（P-7.2，后端未实现）", () => {
   it("结束必须晚于开始", async () => {
     await expect(
       marketingMock.saveCampaign({

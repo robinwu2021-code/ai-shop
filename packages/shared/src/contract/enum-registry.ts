@@ -194,6 +194,10 @@ export const ENUM_REGISTRY: EnumEntry[] = [
     note: "同 CouponType，平台券未实现。ACTIVE 与 shared:CampaignStatus 的 RUNNING 同义，实现时二选一" },
   { decl: "ops-web:IssueTarget", dom: "marketing", shape: "CLASS", verdict: "PLANNED",
     note: "券的发放对象（全员/新客/指定人群），后端无人群圈选能力" },
+  { decl: "ops-web:MerchantCampaignType", dom: "marketing", shape: "CLASS", verdict: "OK",
+    note: "商家自建活动的四种，与后端 mkt_campaign.type 逐字一致（/ops/campaigns 真正返回的取值）。"
+      + "与 PlatformSlotType 刻意分成两套：共用一套时 FLASH 恰好两边都有所以译得出来，"
+      + "FULL_CUT/COUPON/BUY_GIFT 译不出来，原始枚举码直接打给用户" },
   { decl: "ops-web:PlatformSlotType", dom: "marketing", shape: "CLASS", verdict: "PLANNED",
     note: "平台投放场次，后端尚无对应表。与店铺级 mkt_campaign 是两个领域对象，已按规范加限定词改名（原名 CampaignType 与 shared 同名不同义）" },
   { decl: "ops-web:PlatformSlotStatus", dom: "marketing", shape: "STATUS", verdict: "PLANNED",

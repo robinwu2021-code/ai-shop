@@ -11,7 +11,7 @@ export { kpi, trend, funnel } from "./dashboard";
 export { communities, pickups } from "./community";
 export { batches, sorting, redeemStats, overdueRule } from "./fulfillment";
 export { storeAudits, storeQrcodes, storeAcquisition, storeTemplates } from "./store";
-export { coupons, couponIssues, campaigns, contentSlots, memberCards } from "./marketing";
+export { coupons, couponIssues, merchantCampaigns, platformSlots, contentSlots, memberCards } from "./marketing";
 export { reviews, reviewAppeals, scoreConfig } from "./review";
 export { afterSales, fastRefundRule } from "./aftersale";
 export { groupCampaigns, demandOrders, quotes } from "./group";

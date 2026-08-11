@@ -12,6 +12,8 @@ export const marketingHttp: MarketingApi = {
   unarchiveCoupon: (no) => client.post(`/ops/coupons/${no}/unarchive`),
 
   listCampaigns: (q) => client.get("/ops/campaigns", q),
+  toggleCampaign: (no, running, reason) =>
+    client.post(`/ops/campaigns/${no}/toggle`, { running, reason }),
   saveCampaign: (v) => client.post("/ops/campaigns", v),
   archiveCampaign: (no) => client.post(`/ops/campaigns/${no}/archive`),
   unarchiveCampaign: (no) => client.post(`/ops/campaigns/${no}/unarchive`),

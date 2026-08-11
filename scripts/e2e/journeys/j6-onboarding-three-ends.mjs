@@ -94,12 +94,22 @@ export async function run(step) {
   }
   step("B 端作用域", `${ctx.merchantNo} @ ${ctx.currentStoreNo}`);
 
-  // ── 6. B 端：工作台打得开且是一串 0 ─────────────────────────────
+  // ── 6. B 端：工作台打得开，且这家店自己的活是 0 ──────────────────
   const todo = await opsCall("GET", "/biz/dashboard/todo", { token: biz.token });
-  if (Object.values(todo).some((v) => v !== 0)) {
-    throw new Error(`新店的待办应当全是 0，实际 ${JSON.stringify(todo)}`);
+  /*
+   * **quotable 不在这里数**：它是「全平台还有多少条求团需求等着报价」，
+   * 是摆在新店面前的**机会**，不是他欠下的活。库里只要有一条开着的需求，
+   * 新店看到的就该是 1。
+   *
+   * 原先断言「全是 0」，只是因为跑的库里恰好没有存量需求 ——
+   * 一条在真实数据上不成立的断言，早晚会以「回归失败」的样子炸给别人看，
+   * 而真因是它从一开始就把全平台的池子当成了这家店的待办。
+   */
+  const { quotable, ...ownWork } = todo;
+  if (Object.values(ownWork).some((v) => v !== 0)) {
+    throw new Error(`新店自己的待办应当全是 0，实际 ${JSON.stringify(ownWork)}`);
   }
-  step("B 端工作台", "全 0（新店的正常首屏）");
+  step("B 端工作台", `自己的活全 0（求团池另有 ${quotable} 条，那是机会不是活）`);
 
   // ── 7. B 端：进件从「不能收钱」到「能收钱」───────────────────────
   const before = await opsCall("GET", "/biz/merchant/payment", { token: biz.token });
