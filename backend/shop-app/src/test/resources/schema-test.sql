@@ -1242,6 +1242,7 @@ CREATE TABLE IF NOT EXISTS mch_entity
     industry VARCHAR(24) DEFAULT NULL,
     category_codes VARCHAR(512) DEFAULT NULL,
     archived_at DATETIME DEFAULT NULL,
+    fulfillment_reach VARCHAR(16) NOT NULL DEFAULT 'PICKUP',
     PRIMARY KEY (id),
     CONSTRAINT uk_entity_no UNIQUE (entity_no),
     CONSTRAINT uk_store_code UNIQUE (store_code)
@@ -1780,6 +1781,25 @@ CREATE TABLE IF NOT EXISTS sys_region
     CONSTRAINT uk_sys_region_code UNIQUE (region_code)
 );
 
+CREATE TABLE IF NOT EXISTS mch_service_area
+(
+    id BIGINT(20) NOT NULL AUTO_INCREMENT,
+    entity_no VARCHAR(64) NOT NULL,
+    level VARCHAR(16) NOT NULL,
+    ref_code VARCHAR(64) NOT NULL,
+    source VARCHAR(16) NOT NULL DEFAULT 'SELF',
+    status VARCHAR(16) NOT NULL DEFAULT 'ACTIVE',
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT(20) NOT NULL DEFAULT 0,
+    deleted TINYINT(4) NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_service_area UNIQUE (entity_no,level,ref_code)
+);
+
 -- 种子数据
 INSERT INTO sys_industry VALUES
 (1,'CATERING','餐饮',10,1,1,0,0,'微信小微白名单内','MAIN','2026-08-09 12:49:36','SYSTEM','2026-08-09 12:49:36',NULL,0,0),
@@ -1972,3 +1992,8 @@ SET fulfillments = '["STORE_PICKUP","NEIGHBOR_PICKUP","MERCHANT_DELIVERY","EXPRE
 WHERE fulfillments IS NULL
    OR fulfillments = ''
    OR fulfillments = '["STORE_PICKUP"]';
+UPDATE mch_entity SET fulfillment_reach = CASE service_scope
+    WHEN 'CITY' THEN 'ONSITE'
+    WHEN 'PLATFORM' THEN 'SHIPPING'
+    ELSE 'PICKUP'
+END;

@@ -9,6 +9,7 @@ import ai.neargo.shop.merchant.entity.MchStore;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.merchant.entity.MchEntityCommunity;
+import ai.neargo.shop.merchant.entity.MchServiceArea;
 import ai.neargo.shop.merchant.entity.MchPaymentMerchant;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityCommunityMapper;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchPaymentMapper;
@@ -34,6 +35,11 @@ import java.util.Optional;
 public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort {
 
     private static final String ACTIVE = "ACTIVE";
+    /** 履约能力（ADR-013）。值域与 mch_entity.fulfillment_reach 一致 */
+    private static final String PICKUP = "PICKUP";
+    private static final String SHIPPING = "SHIPPING";
+    private static final String AREA_ACTIVE = "ACTIVE";
+    private static final String AREA_COMMUNITY = "COMMUNITY";
     /** 评分存整数（50 = 5.0 分），避免浮点入库 */
     private static final int RATING_SCALE = 10;
     private static final int RATING_INIT = 50;
@@ -41,6 +47,7 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort {
     private final MchEntityMapper merchantMapper;
     private final ai.neargo.shop.merchant.service.MerchantGovernService governService;
     private final MchEntityCommunityMapper merchantCommunityMapper;
+    private final ai.neargo.shop.merchant.mapper.MerchantMappers.ServiceAreaMapper serviceAreaMapper;
     private final MchPaymentMapper merchantPaymentMapper;
     private final ai.neargo.shop.merchant.service.MerchantStoreService merchantStoreService;
     private final ai.neargo.shop.spi.user.CommunityQueryPort communityQueryPort;
@@ -57,7 +64,8 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort {
                             ai.neargo.shop.merchant.mapper.MerchantMappers.MchAccountMapper staffMapper,
                             ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper storeMapper,
                             tools.jackson.databind.ObjectMapper json,
-                            ai.neargo.shop.merchant.service.MerchantGovernService governService) {
+                            ai.neargo.shop.merchant.service.MerchantGovernService governService,
+                            ai.neargo.shop.merchant.mapper.MerchantMappers.ServiceAreaMapper serviceAreaMapper) {
         this.governService = governService;
         this.json = json;
         this.staffMapper = staffMapper;
@@ -65,6 +73,7 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort {
         this.masterDataPort = masterDataPort;
         this.communityQueryPort = communityQueryPort;
         this.merchantCommunityMapper = merchantCommunityMapper;
+        this.serviceAreaMapper = serviceAreaMapper;
         this.merchantPaymentMapper = merchantPaymentMapper;
         this.merchantMapper = merchantMapper;
         this.merchantStoreService = merchantStoreService;
@@ -78,19 +87,56 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort {
         if (m == null) {
             return List.of();
         }
-        String scope = m.getServiceScope() == null ? "COMMUNITY" : m.getServiceScope();
-        if (!"COMMUNITY".equals(scope)) {
-            /*
-             * CITY / PLATFORM：覆盖全部社区。一期只有一个城市，所以两档暂时同解 ——
-             * 与 MerchantServiceImpl.applyReachable 同一口径（那边也是把 CITY 与 PLATFORM
-             * 一起放行）。两处口径不同的后果是「商家页搜得到这家店、商品页搜不到它的货」。
-             */
+        /*
+         * ADR-013 阶段二：履约能力 × 地理覆盖，两者正交。
+         *
+         * **这个方法是可见性的唯一出口** —— 上架写社区池、商家详情可达性、履约都只认它。
+         * 正因为当初收敛到了这一处，换模型才只用改这里，调用方一行不动。
+         */
+        String reach = m.getFulfillmentReach() == null ? PICKUP : m.getFulfillmentReach();
+
+        // 快递没有履约半径，不该被要求逐个勾社区 —— 那既是无谓劳动，
+        // 也会在新开城时漏掉（新社区不会自动出现在别人手工勾的清单里）
+        if (SHIPPING.equals(reach)) {
             return communityQueryPort.openCommunityNos();
         }
-        return DataScopeContext.executeWithoutScope(() ->
-                merchantCommunityMapper.selectList(Wrappers.<MchEntityCommunity>lambdaQuery()
-                        .eq(MchEntityCommunity::getEntityNo, merchantNo)))
-                .stream().map(MchEntityCommunity::getCommunityNo).toList();
+
+        List<MchServiceArea> areas = DataScopeContext.executeWithoutScope(() ->
+                serviceAreaMapper.selectList(Wrappers.<MchServiceArea>lambdaQuery()
+                        .eq(MchServiceArea::getEntityNo, merchantNo)
+                        .eq(MchServiceArea::getStatus, AREA_ACTIVE)));
+
+        if (areas.isEmpty()) {
+            /*
+             * **「没框范围」的含义由履约能力决定**（ADR-013 §6.2）——
+             * 这是从三档枚举迁过来时保持行为不变的关键一格：
+             *
+             *   PICKUP  自提必须有落点，没框就是没有落点 → 谁也看不到
+             *           （原 scope=COMMUNITY 却没配社区就是这个结果，写入口也一直拦着）
+             *   ONSITE  上门没有落点约束，没框 = 不限 → 全部开放社区
+             *           （原 scope=CITY 就是这个结果）
+             *
+             * 两者反过来都会出事：把 PICKUP 的空当成「不限」，一家没配社区的菜摊
+             * 会突然铺满全平台；把 ONSITE 的空当成「谁也看不到」，存量的上门商家
+             * 在迁移当天集体从 C 端消失 —— 而且都不报错。
+             */
+            return PICKUP.equals(reach) ? List.of() : communityQueryPort.openCommunityNos();
+        }
+
+        java.util.LinkedHashSet<String> out = new java.util.LinkedHashSet<>();
+        for (MchServiceArea a : areas) {
+            if (AREA_COMMUNITY.equals(a.getLevel())) {
+                out.add(a.getRefCode());
+            } else {
+                /*
+                 * 街道 / 区县 / 城市都走前缀展开：国标码是层级的，
+                 * 330106 命中 330106（挂到区）与 330106002（挂到街道）两种归属。
+                 * 这正是当初坚持用国标码而不自造的回报。
+                 */
+                out.addAll(communityQueryPort.openCommunityNosUnderRegion(a.getRefCode()));
+            }
+        }
+        return List.copyOf(out);
     }
 
     @Override

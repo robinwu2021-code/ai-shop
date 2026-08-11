@@ -78,6 +78,16 @@ public class MchEntity extends BaseEntity {
      */
     private String serviceScope;
 
+    /**
+     * 履约能力：{@code PICKUP} 靠自提点 / {@code ONSITE} 上门或同城配送 /
+     * {@code SHIPPING} 快递无半径（ADR-013 阶段二）。
+     *
+     * <p><b>与地理覆盖正交</b>：这一列只说「怎么送到你手上」，能卖给谁看
+     * {@code mch_service_area}。词典里「Scope ≠ Fulfilment」那条规矩，
+     * 到这一版才第一次真正成立。
+     */
+    private String fulfillmentReach;
+
     /** 仅 scope=CITY 时有意义。覆盖的社区是多对多，见 mch_entity_community。 */
     private String serviceCityCode;
 

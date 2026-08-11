@@ -45,4 +45,19 @@ public class CommunityQueryPortImpl implements CommunityQueryPort {
                                 .in(CmtCommunity::getCommunityNo, communityNos)))
                 .stream().anyMatch(c -> !Boolean.FALSE.equals(c.getPointsEnabled()));
     }
+
+    @Override
+    public java.util.List<String> openCommunityNosUnderRegion(String regionPrefix) {
+        if (regionPrefix == null || regionPrefix.isBlank()) {
+            // 空前缀会匹配一切 —— 那意味着「框了个空区划」的商家突然覆盖全平台
+            return java.util.List.of();
+        }
+        return DataScopeContext.executeWithoutScope(() ->
+                        communityMapper.selectList(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                                .<ai.neargo.shop.community.entity.CmtCommunity>lambdaQuery()
+                                .eq(ai.neargo.shop.community.entity.CmtCommunity::getStatus, "OPEN")
+                                .likeRight(ai.neargo.shop.community.entity.CmtCommunity::getRegionCode,
+                                        regionPrefix)))
+                .stream().map(ai.neargo.shop.community.entity.CmtCommunity::getCommunityNo).toList();
+    }
 }

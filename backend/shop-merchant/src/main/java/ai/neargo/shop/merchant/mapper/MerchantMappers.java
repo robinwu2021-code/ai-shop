@@ -55,6 +55,27 @@ public final class MerchantMappers {
         int revive(@Param("entityNo") String entityNo, @Param("communityNo") String communityNo);
     }
 
+    /**
+     * 商家地理覆盖项（ADR-013）。**物理删除**，不走 MyBatis-Plus 的逻辑删除 ——
+     * 见 {@link ai.neargo.shop.merchant.entity.MchServiceArea} 的说明。
+     */
+    public interface ServiceAreaMapper extends BaseMapper<ai.neargo.shop.merchant.entity.MchServiceArea> {
+
+        /**
+         * 物理删掉一条覆盖项。
+         *
+         * <p>必须手写：{@code @TableLogic} 会把 {@code delete()} 变成
+         * {@code UPDATE ... SET deleted = 1}，而那正是本仓库踩过四次的坑 ——
+         * 墓碑行占着 {@code uk_service_area}，「移除之后又加回同一条」直接撞键。
+         */
+        @org.apache.ibatis.annotations.Delete("""
+                DELETE FROM mch_service_area
+                WHERE entity_no = #{entityNo} AND level = #{level} AND ref_code = #{refCode}
+                """)
+        int hardDelete(@Param("entityNo") String entityNo, @Param("level") String level,
+                       @Param("refCode") String refCode);
+    }
+
     /** 商家资质。按 expire_at 扫到期，所以那一列有索引。 */
     public interface AdmissionPolicyMapper
             extends BaseMapper<ai.neargo.shop.merchant.entity.MchAdmissionPolicy> {

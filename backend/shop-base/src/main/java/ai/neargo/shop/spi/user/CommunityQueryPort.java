@@ -25,4 +25,20 @@ public interface CommunityQueryPort {
      * @param communityNos 空集合返回 {@code false}
      */
     boolean anyPointsEnabled(Collection<String> communityNos);
+
+    /**
+     * 某个区划下的**开放**社区（ADR-013 阶段二，展开商家覆盖范围用）。
+     *
+     * <p>靠国标编码的层级性做<b>前缀匹配</b>：区县 {@code 330106} 命中
+     * {@code 330106}（挂到区）与 {@code 330106002}（挂到街道）两种归属；
+     * 城市 {@code 3301} 命中杭州下的所有区与街道。
+     * 这正是当初坚持用国标码而不自造的回报 —— 自造码没有这个性质，
+     * 展开就得先把整棵树查出来再逐层求并。
+     *
+     * <p><b>只给开放的</b>：关城的社区不该因为「商家框了这个区」而重新可见。
+     *
+     * @param regionPrefix 区划码前缀；空返回空集合（**不返回全部**，
+     *                     空前缀匹配一切是最危险的默认值）
+     */
+    java.util.List<String> openCommunityNosUnderRegion(String regionPrefix);
 }
