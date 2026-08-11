@@ -16,6 +16,14 @@ public enum ErrorCode {
     NOT_FOUND(10404, "err.not_found"),
     CONFLICT(10409, "err.conflict"),
     TOO_MANY_REQUESTS(10429, "err.too_many_requests"),
+    /**
+     * 这条路**还没通**，不是参数错了。
+     *
+     * <p>与 10400 分开的理由：10400 让人去检查自己传了什么，而这里怎么改参数都没用。
+     * 典型场景是入口先于能力落地 —— 界面上摆着四个选项，后端只实现了一个，
+     * 剩下三个必须说「还没做」而不是「你填错了」。
+     */
+    NOT_IMPLEMENTED(10501, "err.not_implemented"),
     INTERNAL_ERROR(10500, "err.internal"),
 
     // ---- 2xxxx 交易 ----
@@ -70,6 +78,8 @@ public enum ErrorCode {
      * 道理想明白了、用在了类目那处，漏了上一处。
      */
     GOODS_NOT_APPROVED(70003, "err.goods.not_approved"),
+    /** 资质已过期，不能上架需要资质的类目。与「未获批类目」是两回事 */
+    QUALIFICATION_EXPIRED(70007, "err.merchant.qualification_expired"),
 
     /**
      * 进项票未核验通过，不允许登记付款（**票到付款**）。

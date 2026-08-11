@@ -11,6 +11,7 @@ import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.marketing.coupon.dto.CouponVO;
 import ai.neargo.shop.marketing.coupon.dto.UserCouponVO;
 import ai.neargo.shop.marketing.coupon.entity.MktCoupon;
+import ai.neargo.shop.marketing.coupon.entity.MktCouponIssue;
 import ai.neargo.shop.marketing.coupon.entity.MktUserCoupon;
 import ai.neargo.shop.marketing.coupon.mapper.CouponMappers.CouponMapper;
 import ai.neargo.shop.marketing.coupon.mapper.CouponMappers.UserCouponMapper;
@@ -29,12 +30,18 @@ public class CouponServiceImpl implements CouponService {
     private final CouponMapper couponMapper;
     private final UserCouponMapper userCouponMapper;
     private final GoodsQueryPort goodsPort;
+    private final ai.neargo.shop.marketing.coupon.mapper.CouponMappers.CouponIssueMapper issueMapper;
+    private final ai.neargo.shop.spi.user.UserQueryPort userPort;
 
     public CouponServiceImpl(CouponMapper couponMapper, UserCouponMapper userCouponMapper,
-                             GoodsQueryPort goodsPort) {
+                             GoodsQueryPort goodsPort,
+                             ai.neargo.shop.marketing.coupon.mapper.CouponMappers.CouponIssueMapper issueMapper,
+                             ai.neargo.shop.spi.user.UserQueryPort userPort) {
         this.couponMapper = couponMapper;
         this.userCouponMapper = userCouponMapper;
         this.goodsPort = goodsPort;
+        this.issueMapper = issueMapper;
+        this.userPort = userPort;
     }
 
     @Override
@@ -265,6 +272,113 @@ public class CouponServiceImpl implements CouponService {
         c.setBudgetMinor(budgetMinor);
         DataScopeContext.executeWithoutScope(() -> couponMapper.updateById(c));
         return toOpsVO(c);
+    }
+
+    @Override
+    @Transactional
+    public ai.neargo.shop.marketing.coupon.dto.CouponIssueVO issue(String couponNo, String target,
+                                                                    String targetDesc, String userKey,
+                                                                    int count, String operatorNo) {
+        if (count <= 0) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        MktCoupon c = DataScopeContext.executeWithoutScope(() ->
+                couponMapper.selectOne(Wrappers.<MktCoupon>lambdaQuery()
+                        .eq(MktCoupon::getCouponNo, couponNo).last("limit 1")));
+        if (c == null) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        /*
+         * **只有 SINGLE_USER 能真发**。不是后端偷懒 —— 另外三种的收件人
+         * 在入口处就不存在：ops-web 的「定向说明」是自由文本（「锦绣花园」），
+         * 它给不出社区号也给不出 userNo。
+         *
+         * 按名字模糊匹配去猜收券人，猜错就是把钱发给了别人。
+         * 与其那样，不如明说这条路还没通。
+         */
+        if (!MktCouponIssue.SINGLE_USER.equals(target)) {
+            throw BizException.of(ErrorCode.NOT_IMPLEMENTED);
+        }
+        if (userKey == null || userKey.isBlank()) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        var user = userPort.find(userKey);
+        if (user.isEmpty()) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+
+        /*
+         * **限领规则不能被主动发放绕开**：客服连发五张「限领一张」的券，
+         * 与用户自己领五张是同一件事，只是路径不同。
+         */
+        long mine = myCoupons(userKey).stream()
+                .filter(uc -> uc.getCouponNo().equals(couponNo)).count();
+        if (mine + count > Math.max(nzi(c.getPerUserLimit()), 1)) {
+            throw BizException.of(ErrorCode.COUPON_SOLD_OUT);
+        }
+
+        /*
+         * **预算是硬闸门，整批拒绝，不部分发放** —— 页面上那句
+         * 「超出剩余预算会被拒绝，不会部分发放」说的就是这件事，它必须是真的。
+         * 部分发放更坏：运营以为发了 100 张，实际发了 37 张，而没有任何提示。
+         */
+        long face = nz(c.getFaceMinor());
+        long amount = face * count;
+        long already = nzi(c.getReceivedCount()) * face;
+        long budget = nz(c.getBudgetMinor());
+        if (budget > 0 && already + amount > budget) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+
+        long now = System.currentTimeMillis();
+        for (int i = 0; i < count; i++) {
+            // 走与用户自领同一条原子扣减：张数上限与预算都在那条 UPDATE 里判
+            int affected = DataScopeContext.executeWithoutScope(() -> couponMapper.tryReceive(couponNo));
+            if (affected == 0) {
+                // 扣不动 = 张数发完或预算到顶。已插的那几张随事务一起回滚
+                throw BizException.of(ErrorCode.COUPON_SOLD_OUT);
+            }
+            MktUserCoupon uc = new MktUserCoupon();
+            uc.setUserCouponNo(BizKey.next(BizKey.COUPON));
+            uc.setCouponNo(couponNo);
+            uc.setUserNo(userKey);
+            uc.setStatus(MktUserCoupon.UNUSED);
+            uc.setReceivedAt(now);
+            DataScopeContext.executeWithoutScope(() -> userCouponMapper.insert(uc));
+        }
+
+        MktCouponIssue rec = new MktCouponIssue();
+        rec.setIssueNo(BizKey.next(BizKey.COUPON) + "-I");
+        rec.setCouponNo(couponNo);
+        rec.setCouponName(c.getTitle());
+        rec.setTarget(target);
+        rec.setTargetDesc(targetDesc);
+        rec.setUserNo(userKey);
+        rec.setIssuedCount(count);
+        rec.setAmountMinor(amount);
+        rec.setOperatorNo(operatorNo);
+        DataScopeContext.executeWithoutScope(() -> issueMapper.insert(rec));
+        return toIssueVO(rec);
+    }
+
+    @Override
+    public java.util.List<ai.neargo.shop.marketing.coupon.dto.CouponIssueVO> issues(String couponNo) {
+        return DataScopeContext.executeWithoutScope(() ->
+                issueMapper.selectList(Wrappers.<MktCouponIssue>lambdaQuery()
+                        .eq(couponNo != null && !couponNo.isBlank(),
+                                MktCouponIssue::getCouponNo, couponNo)
+                        .orderByDesc(MktCouponIssue::getId))).stream()
+                .map(this::toIssueVO).toList();
+    }
+
+    private ai.neargo.shop.marketing.coupon.dto.CouponIssueVO toIssueVO(MktCouponIssue r) {
+        return new ai.neargo.shop.marketing.coupon.dto.CouponIssueVO(
+                r.getIssueNo(), r.getCouponNo(), r.getCouponName(), r.getTarget(),
+                r.getTargetDesc(), nzi(r.getIssuedCount()), nz(r.getAmountMinor()),
+                r.getOperatorNo(),
+                r.getCreatedAt() == null ? 0
+                        : r.getCreatedAt().atZone(java.time.ZoneId.systemDefault())
+                                .toInstant().toEpochMilli());
     }
 
     private ai.neargo.shop.marketing.coupon.dto.OpsCouponVO toOpsVO(MktCoupon c) {

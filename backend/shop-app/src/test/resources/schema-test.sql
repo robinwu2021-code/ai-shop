@@ -372,6 +372,30 @@ CREATE TABLE IF NOT EXISTS mkt_user_coupon
     PRIMARY KEY (id),
     CONSTRAINT uk_user_coupon_no UNIQUE (user_coupon_no)
 );
+CREATE TABLE IF NOT EXISTS mkt_coupon_issue
+(
+    id BIGINT(20) NOT NULL AUTO_INCREMENT,
+    issue_no VARCHAR(64) NOT NULL,
+    coupon_no VARCHAR(64) NOT NULL,
+    coupon_name VARCHAR(128) NOT NULL,
+    target VARCHAR(16) NOT NULL,
+    target_desc VARCHAR(255) DEFAULT NULL,
+    user_no VARCHAR(64) DEFAULT NULL,
+    issued_count INT(11) NOT NULL DEFAULT 0,
+    amount_minor BIGINT(20) NOT NULL DEFAULT 0,
+    operator_no VARCHAR(64) DEFAULT NULL,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT(20) NOT NULL DEFAULT 0,
+    deleted TINYINT(4) NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_coupon_issue_no UNIQUE (issue_no),
+    KEY idx_issue_coupon (coupon_no)
+);
+
 
 CREATE TABLE IF NOT EXISTS msg_message
 (
@@ -1440,6 +1464,28 @@ CREATE TABLE IF NOT EXISTS mch_account
     CONSTRAINT uk_mch_account_no UNIQUE (mch_account_no),
     CONSTRAINT uk_mch_account_entity_user UNIQUE (entity_no,user_no),
     CONSTRAINT uk_mch_account_entity_phone UNIQUE (entity_no,login_phone)
+);
+
+CREATE TABLE IF NOT EXISTS mch_qualification
+(
+    id BIGINT(20) NOT NULL AUTO_INCREMENT,
+    qual_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    qual_type VARCHAR(32) NOT NULL,
+    qual_name VARCHAR(128) NOT NULL,
+    qual_number VARCHAR(64) DEFAULT NULL,
+    image_url VARCHAR(512) DEFAULT NULL,
+    expire_at BIGINT(20) DEFAULT NULL,
+    status VARCHAR(16) NOT NULL DEFAULT 'VALID',
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT(20) NOT NULL DEFAULT 0,
+    deleted TINYINT(4) NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_mch_qual_no UNIQUE (qual_no)
 );
 
 CREATE TABLE IF NOT EXISTS mch_store_role

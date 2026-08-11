@@ -153,6 +153,10 @@ const zh = {
   /** `{value}` 是单张面额 */
   perCoupon: "（单张 {value}）",
   fieldTarget: "发放对象",
+  fieldUserNo: "收券人 userNo",
+  userNoPlaceholder: "如：U202608...",
+  // 只有这一种能真发：其余三种的收件人在入口处就给不出来
+  userNoHint: "从工单或订单详情里复制。目前只有「指定用户」这一种能真正发出去。",
   fieldTargetDesc: "定向说明",
   targetDescPlaceholder: "如：锦绣花园 / 海棠（售后补偿）",
   fieldCount: "发放张数",
@@ -306,6 +310,9 @@ const en: typeof zh = {
   fieldRemainBudget: "Remaining budget",
   perCoupon: " ({value} each)",
   fieldTarget: "Issue to",
+  fieldUserNo: "Recipient userNo",
+  userNoPlaceholder: "e.g. U202608...",
+  userNoHint: "Copy it from the ticket or order detail. Only \"single user\" actually sends today.",
   fieldTargetDesc: "Targeting note",
   targetDescPlaceholder: "e.g. Jinxiu Garden / Haitang (after-sales goodwill)",
   fieldCount: "Number of coupons",

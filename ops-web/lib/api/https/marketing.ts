@@ -7,7 +7,10 @@ export const marketingHttp: MarketingApi = {
   setCouponStatus: (no, status, reason) =>
     client.post(`/ops/coupons/${no}/status`, { status, reason }),
   setCouponBudget: (no, budget) => client.post(`/ops/coupons/${no}/budget`, { budget }),
-  issueCoupon: (v) => client.post(`/ops/coupons/${v.couponNo}/issue`, v),
+  issueCoupon: (v) =>
+    client.post(`/ops/coupons/${v.couponNo}/issue`, {
+      target: v.target, targetDesc: v.targetDesc, userNo: v.userNo, count: v.count,
+    }),
   listCouponIssues: (q) => client.get("/ops/coupon-issues", q),
   archiveCoupon: (no) => client.post(`/ops/coupons/${no}/archive`),
   unarchiveCoupon: (no) => client.post(`/ops/coupons/${no}/unarchive`),

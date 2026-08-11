@@ -587,6 +587,107 @@ class M6bCouponFlowTest {
                 .andExpect(jsonPath("$.code").value(0));
     }
 
+    @Test
+    @DisplayName("★★★ 客服发补偿券：真发到人手里，且留痕")
+    void issueToSingleUser() throws Exception {
+        String couponNo = budgetedCoupon("补偿券", 500L, 100_000L);
+        String userToken = login("13600360100");
+        String userNo = userNoOf(userToken);
+        String ops = opsLogin("goods", "goods123");
+
+        String body = mvc().perform(post("/ops/coupons/" + couponNo + "/issue")
+                        .header("Authorization", "Bearer " + ops)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"target\":\"SINGLE_USER\",\"targetDesc\":\"海棠（售后补偿）\","
+                                + "\"userNo\":\"" + userNo + "\",\"count\":1}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.count").value(1))
+                .andExpect(jsonPath("$.data.amount").value(500))
+                .andReturn().getResponse().getContentAsString();
+        // 操作人必须留痕 —— 客服也持有发券权限，没有它「谁发的」查不出来
+        assertThat(json.readTree(body).get("data").get("operator").asString()).isNotBlank();
+
+        // 真发到手里：用户自己的券包里看得到
+        String mine = mvc().perform(get("/mp/coupon/mine").header("Authorization", "Bearer " + userToken))
+                .andReturn().getResponse().getContentAsString();
+        assertThat(mine).contains(couponNo);
+
+        // 发放记录列表要读得到 —— 没有消费方的留痕等于没留
+        String issues = mvc().perform(get("/ops/coupon-issues")
+                        .header("Authorization", "Bearer " + ops).param("couponNo", couponNo))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        assertThat(issues).contains("海棠（售后补偿）");
+    }
+
+    @Test
+    @DisplayName("★★★ 超预算整批拒绝，不部分发放 —— 页面上那句话必须是真的")
+    void issueRejectedWholeBatchOnBudget() throws Exception {
+        // 预算 1200 分、面额 500 → 只够 2 张
+        String couponNo = budgetedCoupon("预算 12 元", 500L, 1200L, 99);
+        String userNo = userNoOf(login("13600360110"));
+        String ops = opsLogin("goods", "goods123");
+
+        /*
+         * 一次要 3 张。**部分发放比整批拒绝坏得多**：
+         * 运营以为发了 3 张，实际 2 张，而没有任何提示。
+         */
+        mvc().perform(post("/ops/coupons/" + couponNo + "/issue")
+                        .header("Authorization", "Bearer " + ops)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"target\":\"SINGLE_USER\",\"targetDesc\":\"批量\","
+                                + "\"userNo\":\"" + userNo + "\",\"count\":3}"))
+                .andExpect(jsonPath("$.code").value(ai.neargo.shop.common.ErrorCode.CONFLICT.code()));
+
+        // 一张都不该发出去
+        String issues = mvc().perform(get("/ops/coupon-issues")
+                        .header("Authorization", "Bearer " + ops).param("couponNo", couponNo))
+                .andReturn().getResponse().getContentAsString();
+        assertThat(json.readTree(issues).get("data").get("total").asInt()).isZero();
+    }
+
+    @Test
+    @DisplayName("★★ 另外三种目标返回「还没做完」而不是「参数有误」")
+    void batchTargetsSayNotImplemented() throws Exception {
+        String couponNo = budgetedCoupon("批量发", 500L, 0L);
+        String ops = opsLogin("goods", "goods123");
+
+        /*
+         * 10501 而不是 10400：怎么改参数都没用，问题在于这条路还没通。
+         * 报 10400 会让运营一直去检查自己填了什么。
+         */
+        for (String t : new String[]{"ALL", "NEW_USER", "COMMUNITY"}) {
+            mvc().perform(post("/ops/coupons/" + couponNo + "/issue")
+                            .header("Authorization", "Bearer " + ops)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"target\":\"" + t + "\",\"targetDesc\":\"锦绣花园\",\"count\":10}"))
+                    .andExpect(jsonPath("$.code")
+                            .value(ai.neargo.shop.common.ErrorCode.NOT_IMPLEMENTED.code()));
+        }
+    }
+
+    @Test
+    @DisplayName("★★ 主动发放绕不开限领 —— 客服连发五张「限领一张」的券应当被拒")
+    void issueRespectsPerUserLimit() throws Exception {
+        String couponNo = budgetedCoupon("限领一张", 500L, 0L);
+        String userNo = userNoOf(login("13600360120"));
+        String ops = opsLogin("goods", "goods123");
+
+        mvc().perform(post("/ops/coupons/" + couponNo + "/issue")
+                        .header("Authorization", "Bearer " + ops)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"target\":\"SINGLE_USER\",\"targetDesc\":\"x\","
+                                + "\"userNo\":\"" + userNo + "\",\"count\":5}"))
+                .andExpect(jsonPath("$.code")
+                        .value(ai.neargo.shop.common.ErrorCode.COUPON_SOLD_OUT.code()));
+    }
+
+    private String userNoOf(String token) throws Exception {
+        String body = mvc().perform(get("/mp/user/profile").header("Authorization", "Bearer " + token))
+                .andReturn().getResponse().getContentAsString();
+        return json.readTree(body).get("data").get("userNo").asString();
+    }
+
     private void receiveOk(String couponNo, String phone) throws Exception {
         mvc().perform(post("/mp/coupon/" + couponNo + "/receive")
                         .header("Authorization", "Bearer " + login(phone)))
@@ -595,7 +696,15 @@ class M6bCouponFlowTest {
 
     /** 带预算的平台券。张数给足，确保被拒时拒的是预算而不是张数 */
     private String budgetedCoupon(String title, long face, long budget) {
-        String couponNo = insertCoupon(title, face, 0L, "PLATFORM", null, 9999, 1, false);
+        return budgetedCoupon(title, face, budget, 1);
+    }
+
+    /**
+     * @param perUser 每人限领。**要测预算就得把它放开** —— 否则先撞上限领，
+     *                两者共用 40001，测试会绿得莫名其妙（我第一版就是这样）
+     */
+    private String budgetedCoupon(String title, long face, long budget, int perUser) {
+        String couponNo = insertCoupon(title, face, 0L, "PLATFORM", null, 9999, perUser, false);
         MktCoupon c = couponMapper.selectOne(com.baomidou.mybatisplus.core.toolkit.Wrappers
                 .<MktCoupon>lambdaQuery().eq(MktCoupon::getCouponNo, couponNo).last("limit 1"));
         c.setBudgetMinor(budget);

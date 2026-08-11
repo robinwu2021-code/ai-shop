@@ -19,7 +19,14 @@ export interface MarketingApi {
    * 发券（P-7.1.2）。超预算直接拒绝，不是"先发了再说"。
    * ⚠️ 客服也持有该权限（补偿券），所以校验必须在服务端。
    */
-  issueCoupon(v: { couponNo: string; target: IssueTarget; targetDesc: string; count: number }): Promise<CouponIssue>;
+  /**
+   * 主动发券（P-7.1.2）。客服的补偿券走同一条，**操作人由后端从会话取并留痕**。
+   *
+   * ⚠️ 目前**只有 `SINGLE_USER` 能真发**，其余三种后端返回 10501「还没做完」：
+   * 「定向说明」是自由文本，给不出社区号也给不出 userNo，后端无从知道发给谁。
+   * 按名字模糊匹配去猜收券人，猜错就是把钱发给了别人。
+   */
+  issueCoupon(v: { couponNo: string; target: IssueTarget; targetDesc: string; userNo?: string; count: number }): Promise<CouponIssue>;
   listCouponIssues(q?: PageQ): Promise<Page<CouponIssue>>;
   archiveCoupon(couponNo: string): Promise<Coupon>;
   unarchiveCoupon(couponNo: string): Promise<Coupon>;

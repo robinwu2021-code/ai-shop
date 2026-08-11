@@ -84,8 +84,9 @@ function MarketingInner() {
   const [showArchived, setShowArchived] = useState(false);
 
   const [issuing, setIssuing] = useState<Coupon | null>(null);
-  const [issueForm, setIssueForm] = useState<{ target: IssueTarget; targetDesc: string; count: string }>({
-    target: "ALL", targetDesc: "", count: "100",
+  const [issueForm, setIssueForm] = useState<{ target: IssueTarget; targetDesc: string; userNo: string; count: string }>({
+    // 默认「指定用户」：它是唯一后端能真发的，也是最高频的场景（客服补偿券）
+    target: "SINGLE_USER", targetDesc: "", userNo: "", count: "1",
   });
   const [budgetEdit, setBudgetEdit] = useState<{ couponNo: string; value: string } | null>(null);
 
@@ -139,6 +140,7 @@ function MarketingInner() {
         couponNo: issuing!.couponNo,
         target: issueForm.target,
         targetDesc: issueForm.targetDesc || targetOptions.find((o) => o.value === issueForm.target)!.label,
+        userNo: issueForm.userNo.trim() || undefined,
         count: Number(issueForm.count),
       }),
     onSuccess: (r) => { invalidate(); setIssuing(null); notify.success(fill(c.toastIssued, { n: r.count, amount: money(r.amount) })); },
@@ -225,7 +227,7 @@ function MarketingInner() {
               <Button size="sm" variant="outline" onClick={() => askCouponStatus(x, "ACTIVE")}>{c.btnActivate}</Button>
             ) : x.status === "ACTIVE" ? (
               <>
-                <Button size="sm" onClick={() => { setIssuing(x); setIssueForm({ target: "ALL", targetDesc: "", count: "100" }); }}>{c.btnIssue}</Button>
+                <Button size="sm" onClick={() => { setIssuing(x); setIssueForm({ target: "SINGLE_USER", targetDesc: "", userNo: "", count: "1" }); }}>{c.btnIssue}</Button>
                 {/* 出事时的止损手段：券从领券中心消失、领取被拒，已领到手的不动 */}
                 <Button size="sm" variant="outline" onClick={() => askCouponStatus(x, "PAUSED")}>{c.btnPause}</Button>
               </>
@@ -444,7 +446,11 @@ function MarketingInner() {
         desc={issuing?.couponNo}
         footer={
           issuing ? (
-            <Button loading={issueMut.isPending} onClick={() => issueMut.mutate()}>{c.btnConfirmIssue}</Button>
+            <Button
+              loading={issueMut.isPending}
+              disabled={issueForm.target === "SINGLE_USER" && !issueForm.userNo.trim()}
+              onClick={() => issueMut.mutate()}
+            >{c.btnConfirmIssue}</Button>
           ) : null
         }
       >
@@ -463,6 +469,23 @@ function MarketingInner() {
                 {targetOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
               </Select>
             </div>
+            {/*
+              收券人。只在 SINGLE_USER 时出现，因为只有这一种后端能真发 ——
+              其余三种的收件人在入口处就不存在（「定向说明」是自由文本，
+              给不出社区号也给不出 userNo），后端会返回 10501「还没做完」。
+              不做成隐藏后仍可提交：那等于让运营点一次才知道这条路不通。
+            */}
+            {issueForm.target === "SINGLE_USER" && (
+              <div className="space-y-1">
+                <Label htmlFor="iss-user" required>{c.fieldUserNo}</Label>
+                <Input
+                  id="iss-user" className="w-full" value={issueForm.userNo}
+                  placeholder={c.userNoPlaceholder}
+                  onChange={(e) => setIssueForm({ ...issueForm, userNo: e.target.value })}
+                />
+                <p className="txt-caption text-muted-foreground">{c.userNoHint}</p>
+              </div>
+            )}
             <div className="space-y-1">
               <Label htmlFor="iss-desc">{c.fieldTargetDesc}</Label>
               <Input

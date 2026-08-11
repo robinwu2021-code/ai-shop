@@ -39,7 +39,7 @@ const UNBUILT_DOMAINS = new Set([
   // 商品中心（现有的是 goods，skus 是另一套更细的视图）
   "skus",
   // 营销的后期部分
-  "marketing", "content-slots", "fission-campaigns", "coupon-issues",
+  "marketing", "content-slots", "fission-campaigns",
   "push-tasks", "demands", "attribution-rule", "attribution-traces",
   // 组织与权限（ops 自己的 RBAC 管理界面）
   "staffs", "roles",
@@ -61,12 +61,6 @@ const KNOWN_GAPS: Record<string, string> = {
   // 补一个永远点不到的端点没有意义。
   "POST /ops/communities/{x}/archive": "刻意不做：按钮本就禁用，前置校验在前端且正确",
   "POST /ops/communities/{x}/unarchive": "同上",
-
-  // ── 券：发券 ──
-  // （改预算 /budget 已补齐 —— 它曾是这张表里最坏的一条：V21 的列、领券那条
-  //   UPDATE 里的闸门、页面上的进度条三样都在，唯独运营改不了它，
-  //   于是预算恒为 0，闸门永远不生效。「功能做完了但没有入口」的典型。）
-  "POST /ops/coupons/{x}/issue": "手动发券（客服补偿券走同一条）",
 
   // ── 财务：域已经活了（自营应付账款那批端点落地），剩下这几条还没有 ──
   // 这正是守卫要盯的那个时刻：域一活，页面就看着能用，而漏掉的会变成死按钮。

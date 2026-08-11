@@ -52,4 +52,8 @@ public final class CouponMappers {
 
     public interface UserCouponMapper extends BaseMapper<MktUserCoupon> {
     }
+
+    public interface CouponIssueMapper
+            extends BaseMapper<ai.neargo.shop.marketing.coupon.entity.MktCouponIssue> {
+    }
 }

@@ -2,6 +2,7 @@ package ai.neargo.shop.marketing.api.ops;
 
 import ai.neargo.shop.archive.ArchiveService;
 import ai.neargo.shop.common.PageData;
+import ai.neargo.shop.marketing.coupon.dto.CouponIssueVO;
 import ai.neargo.shop.marketing.coupon.dto.OpsCouponVO;
 import ai.neargo.shop.auth.Perms;
 import ai.neargo.shop.auth.SecurityUtils;
@@ -118,6 +119,36 @@ public class OpsMarketingController {
         return vo;
     }
 
+    /**
+     * 主动发券（P-7.1.2）。客服的补偿券走同一条，所以**操作人必须留痕**（矩阵 §2.3）。
+     *
+     * <p>只有 {@code SINGLE_USER} 能真发 —— 其余三种在入口处就给不出收件人，
+     * 返回 10501「还没做完」而不是 10400，理由见 {@code CouponService.issue}。
+     */
+    @PostMapping("/ops/coupons/{couponNo}/issue")
+    @PreAuthorize("@perm.can('" + Perms.MARKETING_GOVERN + "')")
+    public CouponIssueVO issueCoupon(@PathVariable String couponNo, @RequestBody IssueReq req) {
+        String operator = SecurityUtils.currentUserNo();
+        CouponIssueVO vo = couponService.issue(couponNo, req.target(), req.targetDesc(),
+                req.userNo(), req.count() == null ? 0 : req.count(), operator);
+        auditLogPort.record("COUPON_ISSUE", couponNo,
+                "发放 " + vo.count() + " 张｜" + req.target() + "｜" + nz(req.targetDesc()));
+        return vo;
+    }
+
+    /** 发放记录。留痕的**消费方** —— 没有它，记了也没人看得到 */
+    @GetMapping("/ops/coupon-issues")
+    @PreAuthorize("@perm.can('" + Perms.MARKETING_GOVERN + "')")
+    public PageData<CouponIssueVO> couponIssues(@RequestParam(required = false) String couponNo,
+                                                @RequestParam(defaultValue = "1") long page,
+                                                @RequestParam(defaultValue = "50") long size) {
+        return PageData.ofAll(couponService.issues(couponNo), page, size);
+    }
+
+    private static String nz(String s) {
+        return s == null ? "" : s;
+    }
+
     /*
      * 归档 = **软删除**，不是停用：停用的券还在列表里等着被恢复，
      * 归档的从默认列表消失。两者正交，一张券可以「已暂停 + 已归档」。
@@ -152,6 +183,13 @@ public class OpsMarketingController {
     public java.util.Map<String, Object> unarchiveCampaign(@PathVariable String campaignNo) {
         archiveService.unarchive(ArchiveService.Kind.CAMPAIGN, campaignNo, SecurityUtils.currentUserNo());
         return java.util.Map.of("campaignNo", campaignNo);
+    }
+
+    /**
+     * @param userNo SINGLE_USER 时的收券人。**其余目标类型给不出它** ——
+     *               ops-web 的「定向说明」是自由文本，所以那三种当场拒绝
+     */
+    public record IssueReq(String target, String targetDesc, String userNo, Integer count) {
     }
 
     /** 预算（分）。0 = 不限 */

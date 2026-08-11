@@ -75,4 +75,29 @@ public interface CouponService {
      */
     ai.neargo.shop.marketing.coupon.dto.OpsCouponVO setBudget(String couponNo, long budgetMinor,
                                                               String operatorNo);
+
+    /**
+     * 主动发券（P-7.1.2）。<b>客服补偿券走的就是这条</b>（矩阵 §2.3）。
+     *
+     * <p><b>只有 {@code SINGLE_USER} 能真发到人手里</b>，其余三种当场拒绝。
+     * 原因不在后端而在入口：ops-web 的「定向说明」是<b>自由文本</b>
+     * （「锦绣花园」「海棠（售后补偿）」），它给不出社区号也给不出 userNo ——
+     * 后端无从知道该发给谁。
+     *
+     * <p>与其按名字模糊匹配去猜收券人（猜错就是把钱发给了别人），
+     * 不如明说这条路还没通。批量定向投放要先有一个能选到人的入口。
+     *
+     * <p><b>预算是硬闸门</b>：本次金额 + 已发放 &gt; 预算时整批拒绝，
+     * <b>不部分发放</b> —— 页面上那句「超出剩余预算会被拒绝，不会部分发放」
+     * 说的就是这件事，它必须是真的。
+     *
+     * @param userKey SINGLE_USER 时的收券人：手机号或 userNo
+     * @return 发放记录
+     */
+    ai.neargo.shop.marketing.coupon.dto.CouponIssueVO issue(String couponNo, String target,
+                                                            String targetDesc, String userKey,
+                                                            int count, String operatorNo);
+
+    /** 发放记录列表（{@code GET /ops/coupon-issues}）。留痕的消费方 —— 没有它，记了也没人看得到 */
+    java.util.List<ai.neargo.shop.marketing.coupon.dto.CouponIssueVO> issues(String couponNo);
 }
