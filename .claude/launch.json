@@ -24,15 +24,16 @@
       "autoPort": false
     },
     {
+      "_comment": "端口必须是 3100 —— 后端 SecurityConfig 的 CORS 白名单只认它。照默认的 3000 起，页面上每个列表都是「网络异常」，而控制台里只有一条被浏览器拦掉的预检。autoPort 同理要关：换了端口就跨不过去。",
       "name": "ops-web",
-      "runtimeExecutable": "npm",
+      "runtimeExecutable": "/bin/zsh",
       "runtimeArgs": [
-        "run",
-        "dev"
+        "-lc",
+        "PORT=3100 npm run dev"
       ],
       "cwd": "ops-web",
-      "port": 3000,
-      "autoPort": true
+      "port": 3100,
+      "autoPort": false
     },
     {
       "name": "backend",
