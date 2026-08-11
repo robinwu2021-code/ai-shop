@@ -184,6 +184,13 @@ const NAME_COLLISIONS: Record<string, string> = {
     "建表时已发现约束名会撞车并加了 uk_split_request_no 前缀，但列名的撞车还在。",
   express_no: "ord_sub_order 是发货快递单号；ord_after_sale 是用户退货的快递单号。方向相反。",
   operator_no: "ord_status_log 与 ful_verify_log 各自记录操作人，不是同一张表的外键。",
+  template_no:
+    "**同一个列名下其实是两族**：msg_template 是消息模板，msg_message.template_no 引用它；" +
+    "prd_spec_template.template_no 是商品规格模板（颜色/尺码那套），与消息毫无关系。\n" +
+    "  按名字 join 会把「发过哪条推送」连到「用了哪个规格模板」上 —— 两边都有值，不报错。\n" +
+    "  没改名是因为两族在各自的域里都叫得通；登记在这里，是为了让下一个人先看到这句话。\n" +
+    "  注意 msg_message → msg_template 这一跳**没有守卫** —— LINEAGE 只管资金账与积分账，" +
+    "触达链路断了的后果（推送发不出去）不在这个文件的职责里。",
 };
 
 describe("对账血缘", () => {

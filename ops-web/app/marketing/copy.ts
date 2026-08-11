@@ -114,7 +114,12 @@ const zh = {
   readOnlyNote: "不能发券、启停或归档",
   couponNotice:
     "预算是唯一挡住「发着发着超支」的地方：超预算的发放会被直接拒绝，改预算也不能改到低于已发放金额。客服的补偿券走同一套校验（矩阵 §2.3）。",
-  campaignNotice: "同一位置的「秒杀场次不可重叠」—— 场次的意义就在这里；跨位置并行是允许的（首页与频道页可同时跑）。",
+  // 这里列的**不是平台场次**：后端 /ops/campaigns 返回的是店铺级活动（商家自己建的），
+  // 而这一页的位置/场次重叠那套对应的后端对象还没有。不说清楚的话，
+  // 运营会把商家的活动当成自己投放的 —— 而「误以为是自己建的」比看不到更危险。
+  // 见 docs/technical/运营端营销列表契约错配.md
+  campaignNotice:
+    "⚠️ 当前列出的是**商家自建的店铺活动**（只读）。平台投放的营销场次（位置、秒杀场次重叠校验）后端尚未实现，本页的位置与商品数两列因此为空。",
   searchCoupons: "搜索券编号 / 名称",
   searchIssues: "搜索发放单号 / 券名 / 操作人",
   searchCampaigns: "搜索活动编号 / 名称 / 位置",
@@ -261,7 +266,7 @@ const en: typeof zh = {
   couponNotice:
     "The budget is the only thing standing between you and quietly overspending: an issue that exceeds it is rejected outright, and the budget itself cannot be lowered below what has already been issued. Support's goodwill coupons go through the same checks (matrix §2.3).",
   campaignNotice:
-    "Flash-sale slots at the same placement cannot overlap — that is the whole point of a slot. Running in parallel across different placements is fine (home page and a channel page can both run).",
+    "⚠️ This list currently shows **merchant-owned store campaigns** (read-only). Platform-placed marketing slots (placements, overlap checks) are not implemented on the backend yet, which is why the placement and item-count columns are empty.",
   searchCoupons: "Search coupon no. / name",
   searchIssues: "Search issue no. / coupon name / operator",
   searchCampaigns: "Search campaign no. / name / placement",

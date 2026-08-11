@@ -1,5 +1,6 @@
 package ai.neargo.shop.marketing.api.ops;
 
+import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.auth.Perms;
 import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.marketing.group.GroupService;
@@ -41,8 +42,11 @@ public class OpsQuoteController {
     /** @param status 为空给全部；传 {@code BREACH} 就是毁约档 */
     @GetMapping("/ops/quotes")
     @PreAuthorize("@perm.can('" + Perms.QUOTE_GOVERN + "')")
-    public List<QuoteVO> list(@RequestParam(required = false) String status) {
-        return groupService.opsQuotes(status);
+    public PageData<QuoteVO> list(@RequestParam(required = false) String status,
+                                  @RequestParam(defaultValue = "1") long page,
+                                  @RequestParam(defaultValue = "50") long size) {
+        // 运营端列表页按 {records,total} 渲染 —— 返回裸数组会被当成空页
+        return PageData.ofAll(groupService.opsQuotes(status), page, size);
     }
 
     /** 平台改价（P-8.2.4）。留痕与商家改价同一条路径，公示同一份价格历史。 */

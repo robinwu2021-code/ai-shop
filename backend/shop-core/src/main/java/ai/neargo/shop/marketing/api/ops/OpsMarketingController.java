@@ -1,5 +1,6 @@
 package ai.neargo.shop.marketing.api.ops;
 
+import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.auth.Perms;
 import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.marketing.campaign.CampaignService;
@@ -58,8 +59,11 @@ public class OpsMarketingController {
     /** @param status 为空给全部；{@code ACTIVE} / {@code PAUSED} / {@code ENDED} */
     @GetMapping("/ops/coupons")
     @PreAuthorize("@perm.can('" + Perms.MARKETING_GOVERN + "')")
-    public List<CouponVO> coupons(@RequestParam(required = false) String status) {
-        return couponService.opsCoupons(status);
+    public PageData<CouponVO> coupons(@RequestParam(required = false) String status,
+                                      @RequestParam(defaultValue = "1") long page,
+                                      @RequestParam(defaultValue = "50") long size) {
+        // 运营端列表页按 {records,total} 渲染 —— 返回裸数组会被当成空页
+        return PageData.ofAll(couponService.opsCoupons(status), page, size);
     }
 
     /** 改券状态。暂停即刻生效：券从领券中心消失，领取被拒。 */
@@ -74,8 +78,11 @@ public class OpsMarketingController {
 
     @GetMapping("/ops/campaigns")
     @PreAuthorize("@perm.can('" + Perms.MARKETING_GOVERN + "')")
-    public List<CampaignVO> campaigns(@RequestParam(required = false) String status) {
-        return campaignService.opsCampaigns(status);
+    public PageData<CampaignVO> campaigns(@RequestParam(required = false) String status,
+                                          @RequestParam(defaultValue = "1") long page,
+                                          @RequestParam(defaultValue = "50") long size) {
+        // 运营端列表页按 {records,total} 渲染 —— 返回裸数组会被当成空页
+        return PageData.ofAll(campaignService.opsCampaigns(status), page, size);
     }
 
     /** 停/启商家活动。与商家自己的开关走同一个状态字段，但不校验归属。 */

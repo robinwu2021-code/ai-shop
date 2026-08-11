@@ -1,5 +1,6 @@
 package ai.neargo.shop.message.api.ops;
 
+import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.auth.Perms;
 import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.message.MessageService;
@@ -9,6 +10,7 @@ import ai.neargo.shop.spi.platform.AuditLogPort;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -42,8 +44,10 @@ public class OpsNotifyController {
 
     @GetMapping("/ops/msg-templates")
     @PreAuthorize("@perm.can('" + Perms.TICKET_HANDLE + "')")
-    public List<TemplateVO> templates() {
-        return messageService.opsTemplates();
+    public PageData<TemplateVO> templates(@RequestParam(defaultValue = "1") long page,
+                                          @RequestParam(defaultValue = "50") long size) {
+        // 运营端列表页按 {records,total} 渲染 —— 返回裸数组会被当成空页
+        return PageData.ofAll(messageService.opsTemplates(), page, size);
     }
 
     /** 停用即刻生效：引用这个模板的推送发不出去。 */
