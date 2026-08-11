@@ -80,6 +80,15 @@ public enum ErrorCode {
     GOODS_NOT_APPROVED(70003, "err.goods.not_approved"),
     /** 资质已过期，不能上架需要资质的类目。与「未获批类目」是两回事 */
     QUALIFICATION_EXPIRED(70007, "err.merchant.qualification_expired"),
+    /*
+     * 以下四个是弱主体（S3）的准入闸门。分成四个码而不是共用一个「准入不通过」：
+     * 商家看到「被拦了」却不知道拦在哪一条，就只能猜着改，而这四条的解法完全不同 ——
+     * 补钱 / 换品类 / 拆单 / 等明天。
+     */
+    DEPOSIT_INSUFFICIENT(70008, "err.merchant.deposit_insufficient"),
+    CATEGORY_BANNED(70009, "err.merchant.category_banned"),
+    ORDER_LIMIT_EXCEEDED(70010, "err.merchant.order_limit_exceeded"),
+    DAILY_LIMIT_EXCEEDED(70011, "err.merchant.daily_limit_exceeded"),
 
     /**
      * 进项票未核验通过，不允许登记付款（**票到付款**）。

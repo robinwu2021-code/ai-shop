@@ -62,6 +62,7 @@ public class OrderServiceImpl implements OrderService {
 
     private final OrderMapper orderMapper;
     private final SubOrderMapper subOrderMapper;
+    private final ai.neargo.shop.spi.user.AdmissionPort admissionPort;
     private final OrderItemMapper itemMapper;
     private final CartItemMapper cartMapper;
     private final GoodsQueryPort goodsPort;
@@ -86,9 +87,11 @@ public class OrderServiceImpl implements OrderService {
                             StatusLogMapper statusLogMapper,
                             PickupQueryPort pickupPort,
                             ai.neargo.shop.spi.user.UserQueryPort userPort,
-                            IdempotencyService idempotency, OutboxEventBus eventBus) {
+                            IdempotencyService idempotency, OutboxEventBus eventBus,
+                            ai.neargo.shop.spi.user.AdmissionPort admissionPort) {
         this.orderMapper = orderMapper;
         this.subOrderMapper = subOrderMapper;
+        this.admissionPort = admissionPort;
         this.itemMapper = itemMapper;
         this.cartMapper = cartMapper;
         this.goodsPort = goodsPort;
@@ -334,6 +337,21 @@ public class OrderServiceImpl implements OrderService {
          */
         userPort.communityOf(userNo).ifPresent(order::setCommunityNo);
         order.setPayDeadlineAt(now + PAY_TTL.toMillis());
+
+        /*
+         * 弱主体限额（F-6）。**按拆单后的每个商家分别判**，不是按整单总额：
+         * 限额是平台对单个商家的敞口上限，跨商家合单再按总额判，
+         * 会因为同车买了别家的东西而误拦这一家。
+         *
+         * 放在 insert 之前：虽然事务回滚也能收拾，但先落库再抛会让
+         * 订单号消耗掉、日志里留下一条永远查不到的单。
+         */
+        for (Group g : split.groups) {
+            long merchantPay = g.goodsAmount() + g.freight - discounts.of(g.merchantNo);
+            admissionPort.requireOrderAllowed(g.merchantNo, merchantPay,
+                    () -> paidAmountToday(g.merchantNo));
+        }
+
         orderMapper.insert(order);
 
         List<String> subOrderNos = new ArrayList<>();
@@ -799,6 +817,26 @@ public class OrderServiceImpl implements OrderService {
                         .orderByAsc(OrdStatusLog::getAt).orderByAsc(OrdStatusLog::getId)).stream()
                 .map(l -> new OrderVO.TimelineNode(l.getStatus(), l.getLabel(), nz(l.getAt())))
                 .toList();
+    }
+
+    /**
+     * 该商家<b>当日已成交额</b>（分）。
+     *
+     * <p>只统计已付款的单：未付款订单不构成平台的敞口，
+     * 把它们算进去会让一批「下单不付」把正常商家的额度占满。
+     * 同理排除已取消与已退款——钱退回去了，敞口也就没了。
+     *
+     * <p>只有本档位配了日累计限额时才会走到这里（见 {@code AdmissionPort} 的 supplier 说明）。
+     */
+    private long paidAmountToday(String merchantNo) {
+        java.time.LocalDateTime dayStart = java.time.LocalDate.now().atStartOfDay();
+        List<OrdSubOrder> rows = subOrderMapper.selectList(
+                com.baomidou.mybatisplus.core.toolkit.Wrappers.<OrdSubOrder>lambdaQuery()
+                        .eq(OrdSubOrder::getEntityNo, merchantNo)
+                        .ge(OrdSubOrder::getCreatedAt, dayStart)
+                        .notIn(OrdSubOrder::getStatus,
+                                OrdSubOrder.WAIT_PAY, OrdSubOrder.CANCELLED, OrdSubOrder.REFUNDED));
+        return rows.stream().mapToLong(r -> r.getPayAmount() == null ? 0L : r.getPayAmount()).sum();
     }
 
     private void appendStatusLog(String subOrderNo, String status, String label,

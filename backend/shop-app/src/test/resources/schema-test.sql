@@ -20,9 +20,9 @@ CREATE TABLE IF NOT EXISTS cmt_community
     version BIGINT(20) NOT NULL DEFAULT 0,
     deleted TINYINT(4) NOT NULL DEFAULT 0,
     city_code VARCHAR(32) DEFAULT NULL,
+    points_enabled TINYINT(4) NOT NULL DEFAULT 0,
     grid VARCHAR(64) DEFAULT NULL,
     fence_radius INT(11) NOT NULL DEFAULT 1000,
-    points_enabled TINYINT(4) NOT NULL DEFAULT 0,
     PRIMARY KEY (id),
     CONSTRAINT uk_community_no UNIQUE (community_no)
 );
@@ -372,30 +372,6 @@ CREATE TABLE IF NOT EXISTS mkt_user_coupon
     PRIMARY KEY (id),
     CONSTRAINT uk_user_coupon_no UNIQUE (user_coupon_no)
 );
-CREATE TABLE IF NOT EXISTS mkt_coupon_issue
-(
-    id BIGINT(20) NOT NULL AUTO_INCREMENT,
-    issue_no VARCHAR(64) NOT NULL,
-    coupon_no VARCHAR(64) NOT NULL,
-    coupon_name VARCHAR(128) NOT NULL,
-    target VARCHAR(16) NOT NULL,
-    target_desc VARCHAR(255) DEFAULT NULL,
-    user_no VARCHAR(64) DEFAULT NULL,
-    issued_count INT(11) NOT NULL DEFAULT 0,
-    amount_minor BIGINT(20) NOT NULL DEFAULT 0,
-    operator_no VARCHAR(64) DEFAULT NULL,
-    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
-    created_at DATETIME NOT NULL,
-    created_by VARCHAR(64) DEFAULT NULL,
-    updated_at DATETIME NOT NULL,
-    updated_by VARCHAR(64) DEFAULT NULL,
-    version BIGINT(20) NOT NULL DEFAULT 0,
-    deleted TINYINT(4) NOT NULL DEFAULT 0,
-    PRIMARY KEY (id),
-    CONSTRAINT uk_coupon_issue_no UNIQUE (issue_no),
-    KEY idx_issue_coupon (coupon_no)
-);
-
 
 CREATE TABLE IF NOT EXISTS msg_message
 (
@@ -408,7 +384,6 @@ CREATE TABLE IF NOT EXISTS msg_message
     link VARCHAR(255) DEFAULT NULL,
     is_read TINYINT(4) NOT NULL DEFAULT 0,
     dedup_key VARCHAR(128) DEFAULT NULL,
-    template_no VARCHAR(64) DEFAULT NULL,
     at BIGINT(20) NOT NULL,
     tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
     created_at DATETIME NOT NULL,
@@ -417,29 +392,10 @@ CREATE TABLE IF NOT EXISTS msg_message
     updated_by VARCHAR(64) DEFAULT NULL,
     version BIGINT(20) NOT NULL DEFAULT 0,
     deleted TINYINT(4) NOT NULL DEFAULT 0,
+    template_no VARCHAR(64) DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_message_no UNIQUE (message_no),
     CONSTRAINT uk_msg_dedup UNIQUE (dedup_key)
-);
-
-CREATE TABLE IF NOT EXISTS msg_template
-(
-    id BIGINT(20) NOT NULL AUTO_INCREMENT,
-    template_no VARCHAR(64) NOT NULL,
-    name VARCHAR(128) NOT NULL,
-    channel VARCHAR(16) NOT NULL,
-    content VARCHAR(1024) NOT NULL,
-    provider_template_id VARCHAR(64) DEFAULT NULL,
-    enabled TINYINT(4) NOT NULL DEFAULT 1,
-    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
-    created_at DATETIME NOT NULL,
-    created_by VARCHAR(64) DEFAULT NULL,
-    updated_at DATETIME NOT NULL,
-    updated_by VARCHAR(64) DEFAULT NULL,
-    version BIGINT(20) NOT NULL DEFAULT 0,
-    deleted TINYINT(4) NOT NULL DEFAULT 0,
-    PRIMARY KEY (id),
-    CONSTRAINT uk_msg_template_no UNIQUE (template_no)
 );
 
 CREATE TABLE IF NOT EXISTS msg_subscribe
@@ -644,13 +600,10 @@ CREATE TABLE IF NOT EXISTS prd_category
     parent_no VARCHAR(64) DEFAULT NULL,
     level INT(11) NOT NULL DEFAULT 1,
     name VARCHAR(64) NOT NULL,
-    name_en VARCHAR(64) DEFAULT NULL,
     icon VARCHAR(512) DEFAULT NULL,
     sort INT(11) NOT NULL DEFAULT 0,
-    template VARCHAR(16) NOT NULL DEFAULT 'STANDARD',
     attr_template TEXT DEFAULT NULL,
     qualification_required VARCHAR(512) DEFAULT NULL,
-    required_code VARCHAR(32) DEFAULT NULL,
     status VARCHAR(16) NOT NULL DEFAULT 'ACTIVE',
     tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
     created_at DATETIME NOT NULL,
@@ -659,6 +612,9 @@ CREATE TABLE IF NOT EXISTS prd_category
     updated_by VARCHAR(64) DEFAULT NULL,
     version BIGINT(20) NOT NULL DEFAULT 0,
     deleted TINYINT(4) NOT NULL DEFAULT 0,
+    template VARCHAR(16) NOT NULL DEFAULT 'STANDARD',
+    required_code VARCHAR(32) DEFAULT NULL,
+    name_en VARCHAR(64) DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_category_no UNIQUE (category_no)
 );
@@ -768,50 +724,11 @@ CREATE TABLE IF NOT EXISTS prd_spec_template
     CONSTRAINT uk_template_no UNIQUE (template_no)
 );
 
--- 门店级库存（V13）。有行则按店算，一条都没有则回退主体总量
-CREATE TABLE IF NOT EXISTS prd_store_goods
-(
-    id BIGINT(20) NOT NULL AUTO_INCREMENT,
-    store_no VARCHAR(64) NOT NULL,
-    goods_no VARCHAR(64) NOT NULL,
-    entity_no VARCHAR(64) NOT NULL,
-    on_sale TINYINT(4) NOT NULL DEFAULT 0,
-    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
-    created_by VARCHAR(64) DEFAULT NULL,
-    updated_by VARCHAR(64) DEFAULT NULL,
-    version BIGINT(20) NOT NULL DEFAULT 0,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    deleted TINYINT(4) NOT NULL DEFAULT 0,
-    PRIMARY KEY (id),
-    CONSTRAINT uk_store_goods UNIQUE (store_no,goods_no)
-);
-
-CREATE TABLE IF NOT EXISTS prd_store_stock
-(
-    id BIGINT(20) NOT NULL AUTO_INCREMENT,
-    store_no VARCHAR(64) NOT NULL,
-    sku_no VARCHAR(64) NOT NULL,
-    entity_no VARCHAR(64) NOT NULL,
-    stock INT(11) NOT NULL DEFAULT 0,
-    locked_stock INT(11) NOT NULL DEFAULT 0,
-    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
-    created_at DATETIME NOT NULL,
-    created_by VARCHAR(64) DEFAULT NULL,
-    updated_at DATETIME NOT NULL,
-    updated_by VARCHAR(64) DEFAULT NULL,
-    version BIGINT(20) NOT NULL DEFAULT 0,
-    deleted TINYINT(4) NOT NULL DEFAULT 0,
-    PRIMARY KEY (id),
-    UNIQUE KEY uk_store_sku (store_no,sku_no)
-);
-
 CREATE TABLE IF NOT EXISTS prd_stock_lock
 (
     id BIGINT(20) NOT NULL AUTO_INCREMENT,
     lock_no VARCHAR(64) NOT NULL,
     sku_no VARCHAR(64) NOT NULL,
-    store_no VARCHAR(64) DEFAULT NULL,
     qty INT(11) NOT NULL,
     status VARCHAR(16) NOT NULL DEFAULT 'LOCKED',
     locked_at DATETIME NOT NULL,
@@ -823,6 +740,7 @@ CREATE TABLE IF NOT EXISTS prd_stock_lock
     updated_by VARCHAR(64) DEFAULT NULL,
     version BIGINT(20) NOT NULL DEFAULT 0,
     deleted TINYINT(4) NOT NULL DEFAULT 0,
+    store_no VARCHAR(64) DEFAULT NULL,
     PRIMARY KEY (id)
 );
 
@@ -975,11 +893,6 @@ CREATE TABLE IF NOT EXISTS stl_bill
     split_at BIGINT(20) DEFAULT NULL,
     retry_count INT(11) NOT NULL DEFAULT 0,
     last_error VARCHAR(512) DEFAULT NULL,
-    business_mode VARCHAR(16) NOT NULL DEFAULT 'SELF_OPERATED',
-    payment_ref VARCHAR(64) DEFAULT NULL,
-    paid_at BIGINT(20) DEFAULT NULL,
-    purchase_invoice_no VARCHAR(64) DEFAULT NULL,
-    invoice_status VARCHAR(16) NOT NULL DEFAULT 'PENDING_INVOICE',
     tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
     created_at DATETIME NOT NULL,
     created_by VARCHAR(64) DEFAULT NULL,
@@ -998,6 +911,11 @@ CREATE TABLE IF NOT EXISTS stl_bill
     split_amount_minor BIGINT(20) NOT NULL DEFAULT 0,
     store_no VARCHAR(64) DEFAULT NULL,
     pay_merchant_no VARCHAR(64) DEFAULT NULL,
+    business_mode VARCHAR(16) NOT NULL DEFAULT 'SELF_OPERATED',
+    payment_ref VARCHAR(64) DEFAULT NULL,
+    paid_at BIGINT(20) DEFAULT NULL,
+    purchase_invoice_no VARCHAR(64) DEFAULT NULL,
+    invoice_status VARCHAR(16) NOT NULL DEFAULT 'PENDING_INVOICE',
     PRIMARY KEY (id),
     CONSTRAINT uk_settle_no UNIQUE (settle_no),
     CONSTRAINT uk_sub_order UNIQUE (sub_order_no)
@@ -1065,38 +983,6 @@ CREATE TABLE IF NOT EXISTS stl_points_pool
     pay_channel VARCHAR(16) NOT NULL DEFAULT 'WECHAT',
     PRIMARY KEY (id),
     CONSTRAINT uk_pts_pool_flow_no UNIQUE (flow_no)
-);
-
-CREATE TABLE IF NOT EXISTS stl_purchase_invoice
-(
-    id BIGINT(20) NOT NULL AUTO_INCREMENT,
-    invoice_no VARCHAR(64) NOT NULL,
-    entity_no VARCHAR(64) NOT NULL,
-    period VARCHAR(16) NOT NULL,
-    invoice_code VARCHAR(32) DEFAULT NULL,
-    invoice_number VARCHAR(32) NOT NULL,
-    invoice_type VARCHAR(16) NOT NULL DEFAULT 'GENERAL',
-    title_name VARCHAR(128) NOT NULL,
-    title_tax_no VARCHAR(32) DEFAULT NULL,
-    amount_minor BIGINT(20) NOT NULL,
-    tax_amount_minor BIGINT(20) NOT NULL DEFAULT 0,
-    tax_rate INT(11) NOT NULL DEFAULT 0,
-    invoice_date BIGINT(20) DEFAULT NULL,
-    image_url VARCHAR(512) DEFAULT NULL,
-    status VARCHAR(16) NOT NULL DEFAULT 'SUBMITTED',
-    verified_by VARCHAR(64) DEFAULT NULL,
-    verified_at BIGINT(20) DEFAULT NULL,
-    reject_reason VARCHAR(512) DEFAULT NULL,
-    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
-    created_at DATETIME NOT NULL,
-    created_by VARCHAR(64) DEFAULT NULL,
-    updated_at DATETIME NOT NULL,
-    updated_by VARCHAR(64) DEFAULT NULL,
-    version BIGINT(20) NOT NULL DEFAULT 0,
-    deleted TINYINT(4) NOT NULL DEFAULT 0,
-    PRIMARY KEY (id),
-    CONSTRAINT uk_purchase_invoice_no UNIQUE (invoice_no),
-    CONSTRAINT uk_purchase_invoice_number UNIQUE (invoice_code, invoice_number)
 );
 
 CREATE TABLE IF NOT EXISTS stl_split_log
@@ -1439,7 +1325,7 @@ CREATE TABLE IF NOT EXISTS mch_payment_merchant
     split_reversible_at BIGINT(20) DEFAULT NULL,
     store_no VARCHAR(64) NOT NULL DEFAULT '',
     PRIMARY KEY (id),
-    CONSTRAINT uk_mp_entity_channel_store UNIQUE (entity_no,pay_channel,store_no),
+    CONSTRAINT uk_mp_entity_channel UNIQUE (entity_no,pay_channel),
     CONSTRAINT uk_mp_pay_merchant_no UNIQUE (pay_merchant_no)
 );
 
@@ -1466,28 +1352,6 @@ CREATE TABLE IF NOT EXISTS mch_account
     CONSTRAINT uk_mch_account_entity_phone UNIQUE (entity_no,login_phone)
 );
 
-CREATE TABLE IF NOT EXISTS mch_qualification
-(
-    id BIGINT(20) NOT NULL AUTO_INCREMENT,
-    qual_no VARCHAR(64) NOT NULL,
-    entity_no VARCHAR(64) NOT NULL,
-    qual_type VARCHAR(32) NOT NULL,
-    qual_name VARCHAR(128) NOT NULL,
-    qual_number VARCHAR(64) DEFAULT NULL,
-    image_url VARCHAR(512) DEFAULT NULL,
-    expire_at BIGINT(20) DEFAULT NULL,
-    status VARCHAR(16) NOT NULL DEFAULT 'VALID',
-    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
-    created_at DATETIME NOT NULL,
-    created_by VARCHAR(64) DEFAULT NULL,
-    updated_at DATETIME NOT NULL,
-    updated_by VARCHAR(64) DEFAULT NULL,
-    version BIGINT(20) NOT NULL DEFAULT 0,
-    deleted TINYINT(4) NOT NULL DEFAULT 0,
-    PRIMARY KEY (id),
-    CONSTRAINT uk_mch_qual_no UNIQUE (qual_no)
-);
-
 CREATE TABLE IF NOT EXISTS mch_store_role
 (
     id BIGINT(20) NOT NULL AUTO_INCREMENT,
@@ -1502,21 +1366,16 @@ CREATE TABLE IF NOT EXISTS mch_store_role
     version BIGINT(20) NOT NULL DEFAULT 0,
     deleted TINYINT(4) NOT NULL DEFAULT 0,
     PRIMARY KEY (id),
-    CONSTRAINT uk_store_role UNIQUE (mch_account_no,store_no,role)
+    CONSTRAINT uk_store_role UNIQUE (mch_account_no,store_no)
 );
 
 CREATE TABLE IF NOT EXISTS mch_store
 (
     id BIGINT(20) NOT NULL AUTO_INCREMENT,
     entity_no VARCHAR(64) NOT NULL,
-    business_mode VARCHAR(16) NOT NULL DEFAULT 'SELF_OPERATED',
     announcement VARCHAR(255) DEFAULT NULL,
     open_hours VARCHAR(64) DEFAULT NULL,
     address VARCHAR(255) DEFAULT NULL,
-    delivery_radius_m INT(11) NOT NULL DEFAULT 3000,
-    delivery_min_order_minor BIGINT(20) NOT NULL DEFAULT 0,
-    delivery_fee_minor BIGINT(20) NOT NULL DEFAULT 0,
-    delivery_free_threshold_minor BIGINT(20) NOT NULL DEFAULT 0,
     featured TEXT DEFAULT NULL,
     tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
     created_at DATETIME NOT NULL,
@@ -1531,6 +1390,11 @@ CREATE TABLE IF NOT EXISTS mch_store
     status VARCHAR(16) NOT NULL DEFAULT 'ACTIVE',
     pay_merchant_no VARCHAR(64) DEFAULT NULL,
     payment_changed_at BIGINT(20) DEFAULT NULL,
+    delivery_radius_m INT(11) NOT NULL DEFAULT 3000,
+    delivery_min_order_minor BIGINT(20) NOT NULL DEFAULT 0,
+    delivery_fee_minor BIGINT(20) NOT NULL DEFAULT 0,
+    delivery_free_threshold_minor BIGINT(20) NOT NULL DEFAULT 0,
+    business_mode VARCHAR(16) NOT NULL DEFAULT 'SELF_OPERATED',
     PRIMARY KEY (id),
     CONSTRAINT uk_store_no UNIQUE (store_no)
 );
@@ -1579,69 +1443,24 @@ CREATE TABLE IF NOT EXISTS usr_account
     CONSTRAINT uk_apple_sub UNIQUE (apple_sub)
 );
 
--- 账号与凭证分离（V3__usr_identity.sql 的 H2 对应版）。
--- 一个人多条凭证：新增登录来源只是多一行，不再需要给 usr_account 加列。
 CREATE TABLE IF NOT EXISTS usr_identity
 (
-    id BIGINT AUTO_INCREMENT,
+    id BIGINT(20) NOT NULL AUTO_INCREMENT,
     user_no VARCHAR(64) NOT NULL,
     identity_type VARCHAR(32) NOT NULL,
     identity_value VARCHAR(191) NOT NULL,
     channel VARCHAR(16) DEFAULT NULL,
-    verified_at TIMESTAMP DEFAULT NULL,
+    verified_at DATETIME DEFAULT NULL,
     tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
-    created_at TIMESTAMP NOT NULL,
+    created_at DATETIME NOT NULL,
     created_by VARCHAR(64) DEFAULT NULL,
-    updated_at TIMESTAMP NOT NULL,
+    updated_at DATETIME NOT NULL,
     updated_by VARCHAR(64) DEFAULT NULL,
-    version BIGINT NOT NULL DEFAULT 0,
-    deleted TINYINT NOT NULL DEFAULT 0,
+    version BIGINT(20) NOT NULL DEFAULT 0,
+    deleted TINYINT(4) NOT NULL DEFAULT 0,
     PRIMARY KEY (id),
     CONSTRAINT uk_identity UNIQUE (identity_type, identity_value)
 );
-
--- 种子数据
-INSERT INTO sys_industry VALUES
-(1,'CATERING','餐饮',10,1,1,0,0,'微信小微白名单内','MAIN','2026-08-09 12:49:36','SYSTEM','2026-08-09 12:49:36',NULL,0,0),
-(2,'RETAIL','线下零售',20,1,1,0,0,'微信小微白名单内。便利店、超市、生鲜果蔬都归这一类','MAIN','2026-08-09 12:49:36','SYSTEM','2026-08-09 12:49:36',NULL,0,0),
-(3,'LIFE_SERVICE','居民生活服务',30,1,1,0,0,'微信小微白名单内。家政、维修、洗衣等','MAIN','2026-08-09 12:49:36','SYSTEM','2026-08-09 12:49:36',NULL,0,0),
-(4,'ENTERTAINMENT','休闲娱乐',40,1,1,0,0,'微信小微白名单内','MAIN','2026-08-09 12:49:36','SYSTEM','2026-08-09 12:49:36',NULL,0,0),
-(5,'TRANSPORT','交通出行',50,1,1,0,0,'微信小微白名单内','MAIN','2026-08-09 12:49:36','SYSTEM','2026-08-09 12:49:36',NULL,0,0),
-(6,'ONLINE','线上/虚拟',60,1,0,0,0,'微信**明确不支持**小微：直播、游戏等线上业态','MAIN','2026-08-09 12:49:36','SYSTEM','2026-08-09 12:49:36',NULL,0,0),
-(7,'OTHER','其他',99,1,0,0,0,'保守兜底：没归到上面任何一类时选它，**不可小微** —— 宁可让商家来问，也不要让他被通道拒','MAIN','2026-08-09 12:49:36','SYSTEM','2026-08-09 12:49:36',NULL,0,0);
-INSERT INTO sys_legal_form VALUES
-(1,'MICRO','小微商户',10,1,'PERSONAL','MICRO',NULL,0,'PERSONAL_OPENID',1,'免营业执照，钱打到个人。受行业白名单限制 —— 线上业态不收。支付宝侧尚未确认，故 alipay_code 留空','MAIN','2026-08-09 12:49:36','SYSTEM','2026-08-09 12:49:36',NULL,0,0),
-(2,'INDIVIDUAL','个体工商户',20,1,'INDIVIDUAL_BIZ','SMALL','INDIVIDUAL',1,'MERCHANT_ID',0,'需营业执照，不受行业白名单限制','MAIN','2026-08-09 12:49:36','SYSTEM','2026-08-09 12:49:36',NULL,0,0),
-(3,'ENTERPRISE','企业',30,1,'COMPANY','ENTERPRISE','ENTERPRISE',1,'MERCHANT_ID',0,'需营业执照与对公账户','MAIN','2026-08-09 12:49:36','SYSTEM','2026-08-09 12:49:36',NULL,0,0);
-INSERT INTO sys_pay_channel VALUES
-(1,'WECHAT','微信支付',1,1,1,1,'[\"JSAPI\",\"APP\",\"H5\",\"NATIVE\"]','[\"CN\"]',NULL,'MAIN','2026-08-09 12:49:35','SYSTEM','2026-08-09 12:49:35',NULL,0,0,50,60,10000),
-(2,'ALIPAY','支付宝',1,1,1,1,'[\"JSAPI\",\"APP\",\"H5\"]','[\"CN\"]',NULL,'MAIN','2026-08-09 12:49:35','SYSTEM','2026-08-09 12:49:35',NULL,0,0,0,0,3000);
-INSERT INTO sys_channel_category_rule VALUES
-(1,'MP_WECHAT','GOODS',1,NULL,NULL,'MAIN','2026-08-09 12:49:31','SYSTEM','2026-08-09 12:49:31',0,0),
-(2,'MP_WECHAT','FRESH',1,NULL,NULL,'MAIN','2026-08-09 12:49:31','SYSTEM','2026-08-09 12:49:31',0,0),
-(3,'MP_WECHAT','SERVICE',1,NULL,NULL,'MAIN','2026-08-09 12:49:31','SYSTEM','2026-08-09 12:49:31',0,0),
-(4,'MP_WECHAT','VIRTUAL',1,NULL,NULL,'MAIN','2026-08-09 12:49:31','SYSTEM','2026-08-09 12:49:31',0,0),
-(5,'MP_WECHAT','CARD',1,NULL,NULL,'MAIN','2026-08-09 12:49:31','SYSTEM','2026-08-09 12:49:31',0,0),
-(6,'MP_ALIPAY','GOODS',1,NULL,NULL,'MAIN','2026-08-09 12:49:31','SYSTEM','2026-08-09 12:49:31',0,0),
-(7,'MP_ALIPAY','FRESH',1,NULL,NULL,'MAIN','2026-08-09 12:49:31','SYSTEM','2026-08-09 12:49:31',0,0),
-(8,'MP_ALIPAY','SERVICE',1,NULL,NULL,'MAIN','2026-08-09 12:49:31','SYSTEM','2026-08-09 12:49:31',0,0),
-(9,'MP_ALIPAY','VIRTUAL',1,NULL,NULL,'MAIN','2026-08-09 12:49:31','SYSTEM','2026-08-09 12:49:31',0,0),
-(10,'MP_ALIPAY','CARD',1,NULL,NULL,'MAIN','2026-08-09 12:49:31','SYSTEM','2026-08-09 12:49:31',0,0),
-(11,'ANDROID','GOODS',1,NULL,NULL,'MAIN','2026-08-09 12:49:31','SYSTEM','2026-08-09 12:49:31',0,0),
-(12,'ANDROID','FRESH',1,NULL,NULL,'MAIN','2026-08-09 12:49:31','SYSTEM','2026-08-09 12:49:31',0,0),
-(13,'ANDROID','SERVICE',1,NULL,NULL,'MAIN','2026-08-09 12:49:31','SYSTEM','2026-08-09 12:49:31',0,0),
-(14,'ANDROID','VIRTUAL',1,NULL,NULL,'MAIN','2026-08-09 12:49:31','SYSTEM','2026-08-09 12:49:31',0,0),
-(15,'ANDROID','CARD',1,NULL,NULL,'MAIN','2026-08-09 12:49:31','SYSTEM','2026-08-09 12:49:31',0,0),
-(16,'IOS','GOODS',1,NULL,NULL,'MAIN','2026-08-09 12:49:31','SYSTEM','2026-08-09 12:49:31',0,0),
-(17,'IOS','FRESH',1,NULL,NULL,'MAIN','2026-08-09 12:49:31','SYSTEM','2026-08-09 12:49:31',0,0),
-(18,'IOS','SERVICE',1,NULL,NULL,'MAIN','2026-08-09 12:49:31','SYSTEM','2026-08-09 12:49:31',0,0),
-(19,'IOS','VIRTUAL',0,'iOS 平台规则限制，请在小程序端购买',NULL,'MAIN','2026-08-09 12:49:31','SYSTEM','2026-08-09 12:49:31',0,0),
-(20,'IOS','CARD',1,NULL,NULL,'MAIN','2026-08-09 12:49:31','SYSTEM','2026-08-09 12:49:31',0,0),
-(21,'H5','GOODS',1,NULL,NULL,'MAIN','2026-08-09 12:49:31','SYSTEM','2026-08-09 12:49:31',0,0),
-(22,'H5','FRESH',1,NULL,NULL,'MAIN','2026-08-09 12:49:31','SYSTEM','2026-08-09 12:49:31',0,0),
-(23,'H5','SERVICE',1,NULL,NULL,'MAIN','2026-08-09 12:49:31','SYSTEM','2026-08-09 12:49:31',0,0),
-(24,'H5','VIRTUAL',1,NULL,NULL,'MAIN','2026-08-09 12:49:31','SYSTEM','2026-08-09 12:49:31',0,0),
-(25,'H5','CARD',1,NULL,NULL,'MAIN','2026-08-09 12:49:31','SYSTEM','2026-08-09 12:49:31',0,0);
 
 CREATE TABLE IF NOT EXISTS sys_auth_code
 (
@@ -1723,3 +1542,369 @@ CREATE TABLE IF NOT EXISTS mch_store_audit
     PRIMARY KEY (id),
     CONSTRAINT uk_store_audit_no UNIQUE (audit_no)
 );
+
+CREATE TABLE IF NOT EXISTS prd_store_stock
+(
+    id BIGINT(20) NOT NULL AUTO_INCREMENT,
+    store_no VARCHAR(64) NOT NULL,
+    sku_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    stock INT(11) NOT NULL DEFAULT 0,
+    locked_stock INT(11) NOT NULL DEFAULT 0,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT(20) NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted TINYINT(4) NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_store_sku UNIQUE (store_no,sku_no)
+);
+
+CREATE TABLE IF NOT EXISTS prd_store_goods
+(
+    id BIGINT(20) NOT NULL AUTO_INCREMENT,
+    store_no VARCHAR(64) NOT NULL,
+    goods_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    on_sale TINYINT(4) NOT NULL DEFAULT 0,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT(20) NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted TINYINT(4) NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_store_goods UNIQUE (store_no,goods_no)
+);
+
+CREATE TABLE IF NOT EXISTS msg_template
+(
+    id BIGINT(20) NOT NULL AUTO_INCREMENT,
+    template_no VARCHAR(64) NOT NULL,
+    name VARCHAR(128) NOT NULL,
+    channel VARCHAR(16) NOT NULL,
+    content VARCHAR(1024) NOT NULL,
+    provider_template_id VARCHAR(64) DEFAULT NULL,
+    enabled TINYINT(4) NOT NULL DEFAULT 1,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT(20) NOT NULL DEFAULT 0,
+    deleted TINYINT(4) NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_msg_template_no UNIQUE (template_no)
+);
+
+CREATE TABLE IF NOT EXISTS stl_purchase_invoice
+(
+    id BIGINT(20) NOT NULL AUTO_INCREMENT,
+    invoice_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    period VARCHAR(16) NOT NULL,
+    invoice_code VARCHAR(32) DEFAULT NULL,
+    invoice_number VARCHAR(32) NOT NULL,
+    invoice_type VARCHAR(16) NOT NULL DEFAULT 'GENERAL',
+    title_name VARCHAR(128) NOT NULL,
+    title_tax_no VARCHAR(32) DEFAULT NULL,
+    amount_minor BIGINT(20) NOT NULL,
+    tax_amount_minor BIGINT(20) NOT NULL DEFAULT 0,
+    tax_rate INT(11) NOT NULL DEFAULT 0,
+    invoice_date BIGINT(20) DEFAULT NULL,
+    image_url VARCHAR(512) DEFAULT NULL,
+    status VARCHAR(16) NOT NULL DEFAULT 'SUBMITTED',
+    verified_by VARCHAR(64) DEFAULT NULL,
+    verified_at BIGINT(20) DEFAULT NULL,
+    reject_reason VARCHAR(512) DEFAULT NULL,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT(20) NOT NULL DEFAULT 0,
+    deleted TINYINT(4) NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_purchase_invoice_no UNIQUE (invoice_no),
+    CONSTRAINT uk_invoice_number UNIQUE (invoice_code, invoice_number)
+);
+
+CREATE TABLE IF NOT EXISTS mkt_coupon_issue
+(
+    id BIGINT(20) NOT NULL AUTO_INCREMENT,
+    issue_no VARCHAR(64) NOT NULL,
+    coupon_no VARCHAR(64) NOT NULL,
+    coupon_name VARCHAR(128) NOT NULL,
+    target VARCHAR(16) NOT NULL,
+    target_desc VARCHAR(255) DEFAULT NULL,
+    user_no VARCHAR(64) DEFAULT NULL,
+    issued_count INT(11) NOT NULL DEFAULT 0,
+    amount_minor BIGINT(20) NOT NULL DEFAULT 0,
+    operator_no VARCHAR(64) DEFAULT NULL,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT(20) NOT NULL DEFAULT 0,
+    deleted TINYINT(4) NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_coupon_issue_no UNIQUE (issue_no)
+);
+
+CREATE TABLE IF NOT EXISTS mch_qualification
+(
+    id BIGINT(20) NOT NULL AUTO_INCREMENT,
+    qual_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    qual_type VARCHAR(32) NOT NULL,
+    qual_name VARCHAR(128) NOT NULL,
+    qual_number VARCHAR(64) DEFAULT NULL,
+    image_url VARCHAR(512) DEFAULT NULL,
+    expire_at BIGINT(20) DEFAULT NULL,
+    status VARCHAR(16) NOT NULL DEFAULT 'VALID',
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT(20) NOT NULL DEFAULT 0,
+    deleted TINYINT(4) NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_mch_qual_no UNIQUE (qual_no)
+);
+
+CREATE TABLE IF NOT EXISTS mch_admission_policy
+(
+    id BIGINT(20) NOT NULL AUTO_INCREMENT,
+    legal_form VARCHAR(24) NOT NULL,
+    required_deposit_minor BIGINT(20) NOT NULL DEFAULT 0,
+    single_order_limit_minor BIGINT(20) NOT NULL DEFAULT 0,
+    daily_amount_limit_minor BIGINT(20) NOT NULL DEFAULT 0,
+    ban_qualified_category TINYINT(4) NOT NULL DEFAULT 0,
+    banned_category_codes VARCHAR(1024) DEFAULT NULL,
+    enabled TINYINT(4) NOT NULL DEFAULT 1,
+    remark VARCHAR(255) DEFAULT NULL,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT(20) NOT NULL DEFAULT 0,
+    deleted TINYINT(4) NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_admission_legal_form UNIQUE (legal_form, tenant_no)
+);
+
+CREATE TABLE IF NOT EXISTS mch_deposit
+(
+    id BIGINT(20) NOT NULL AUTO_INCREMENT,
+    merchant_no VARCHAR(64) NOT NULL,
+    paid_minor BIGINT(20) NOT NULL DEFAULT 0,
+    frozen_minor BIGINT(20) NOT NULL DEFAULT 0,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT(20) NOT NULL DEFAULT 0,
+    deleted TINYINT(4) NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_mch_deposit_merchant UNIQUE (merchant_no, tenant_no)
+);
+
+CREATE TABLE IF NOT EXISTS mch_deposit_txn
+(
+    id BIGINT(20) NOT NULL AUTO_INCREMENT,
+    txn_no VARCHAR(64) NOT NULL,
+    merchant_no VARCHAR(64) NOT NULL,
+    txn_type VARCHAR(16) NOT NULL,
+    amount_minor BIGINT(20) NOT NULL,
+    balance_after_minor BIGINT(20) NOT NULL,
+    reason VARCHAR(255) DEFAULT NULL,
+    operator VARCHAR(64) DEFAULT NULL,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT(20) NOT NULL DEFAULT 0,
+    deleted TINYINT(4) NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_mch_deposit_txn_no UNIQUE (txn_no, tenant_no)
+);
+
+-- 种子数据
+INSERT INTO sys_industry VALUES
+(1,'CATERING','餐饮',10,1,1,0,0,'微信小微白名单内','MAIN','2026-08-09 12:49:36','SYSTEM','2026-08-09 12:49:36',NULL,0,0),
+(2,'RETAIL','线下零售',20,1,1,0,0,'微信小微白名单内。便利店、超市、生鲜果蔬都归这一类','MAIN','2026-08-09 12:49:36','SYSTEM','2026-08-09 12:49:36',NULL,0,0),
+(3,'LIFE_SERVICE','居民生活服务',30,1,1,0,0,'微信小微白名单内。家政、维修、洗衣等','MAIN','2026-08-09 12:49:36','SYSTEM','2026-08-09 12:49:36',NULL,0,0),
+(4,'ENTERTAINMENT','休闲娱乐',40,1,1,0,0,'微信小微白名单内','MAIN','2026-08-09 12:49:36','SYSTEM','2026-08-09 12:49:36',NULL,0,0),
+(5,'TRANSPORT','交通出行',50,1,1,0,0,'微信小微白名单内','MAIN','2026-08-09 12:49:36','SYSTEM','2026-08-09 12:49:36',NULL,0,0),
+(6,'ONLINE','线上/虚拟',60,1,0,0,0,'微信**明确不支持**小微：直播、游戏等线上业态','MAIN','2026-08-09 12:49:36','SYSTEM','2026-08-09 12:49:36',NULL,0,0),
+(7,'OTHER','其他',99,1,0,0,0,'保守兜底：没归到上面任何一类时选它，**不可小微** —— 宁可让商家来问，也不要让他被通道拒','MAIN','2026-08-09 12:49:36','SYSTEM','2026-08-09 12:49:36',NULL,0,0);
+INSERT INTO sys_legal_form VALUES
+(1,'MICRO','小微商户',10,1,'PERSONAL','MICRO',NULL,0,'PERSONAL_OPENID',1,'免营业执照，钱打到个人。受行业白名单限制 —— 线上业态不收。支付宝侧尚未确认，故 alipay_code 留空','MAIN','2026-08-09 12:49:36','SYSTEM','2026-08-09 12:49:36',NULL,0,0),
+(2,'INDIVIDUAL','个体工商户',20,1,'INDIVIDUAL_BIZ','SMALL','INDIVIDUAL',1,'MERCHANT_ID',0,'需营业执照，不受行业白名单限制','MAIN','2026-08-09 12:49:36','SYSTEM','2026-08-09 12:49:36',NULL,0,0),
+(3,'ENTERPRISE','企业',30,1,'COMPANY','ENTERPRISE','ENTERPRISE',1,'MERCHANT_ID',0,'需营业执照与对公账户','MAIN','2026-08-09 12:49:36','SYSTEM','2026-08-09 12:49:36',NULL,0,0);
+INSERT INTO sys_pay_channel VALUES
+(1,'WECHAT','微信支付',1,1,1,1,'[\"JSAPI\",\"APP\",\"H5\",\"NATIVE\"]','[\"CN\"]',NULL,'MAIN','2026-08-09 12:49:35','SYSTEM','2026-08-09 12:49:35',NULL,0,0,50,60,10000),
+(2,'ALIPAY','支付宝',1,1,1,1,'[\"JSAPI\",\"APP\",\"H5\"]','[\"CN\"]',NULL,'MAIN','2026-08-09 12:49:35','SYSTEM','2026-08-09 12:49:35',NULL,0,0,0,0,3000);
+INSERT INTO sys_channel_category_rule VALUES
+(1,'MP_WECHAT','GOODS',1,NULL,NULL,'MAIN','2026-08-09 12:49:31','SYSTEM','2026-08-09 12:49:31',0,0),
+(2,'MP_WECHAT','FRESH',1,NULL,NULL,'MAIN','2026-08-09 12:49:31','SYSTEM','2026-08-09 12:49:31',0,0),
+(3,'MP_WECHAT','SERVICE',1,NULL,NULL,'MAIN','2026-08-09 12:49:31','SYSTEM','2026-08-09 12:49:31',0,0),
+(4,'MP_WECHAT','VIRTUAL',1,NULL,NULL,'MAIN','2026-08-09 12:49:31','SYSTEM','2026-08-09 12:49:31',0,0),
+(5,'MP_WECHAT','CARD',1,NULL,NULL,'MAIN','2026-08-09 12:49:31','SYSTEM','2026-08-09 12:49:31',0,0),
+(6,'MP_ALIPAY','GOODS',1,NULL,NULL,'MAIN','2026-08-09 12:49:31','SYSTEM','2026-08-09 12:49:31',0,0),
+(7,'MP_ALIPAY','FRESH',1,NULL,NULL,'MAIN','2026-08-09 12:49:31','SYSTEM','2026-08-09 12:49:31',0,0),
+(8,'MP_ALIPAY','SERVICE',1,NULL,NULL,'MAIN','2026-08-09 12:49:31','SYSTEM','2026-08-09 12:49:31',0,0),
+(9,'MP_ALIPAY','VIRTUAL',1,NULL,NULL,'MAIN','2026-08-09 12:49:31','SYSTEM','2026-08-09 12:49:31',0,0),
+(10,'MP_ALIPAY','CARD',1,NULL,NULL,'MAIN','2026-08-09 12:49:31','SYSTEM','2026-08-09 12:49:31',0,0),
+(11,'ANDROID','GOODS',1,NULL,NULL,'MAIN','2026-08-09 12:49:31','SYSTEM','2026-08-09 12:49:31',0,0),
+(12,'ANDROID','FRESH',1,NULL,NULL,'MAIN','2026-08-09 12:49:31','SYSTEM','2026-08-09 12:49:31',0,0),
+(13,'ANDROID','SERVICE',1,NULL,NULL,'MAIN','2026-08-09 12:49:31','SYSTEM','2026-08-09 12:49:31',0,0),
+(14,'ANDROID','VIRTUAL',1,NULL,NULL,'MAIN','2026-08-09 12:49:31','SYSTEM','2026-08-09 12:49:31',0,0),
+(15,'ANDROID','CARD',1,NULL,NULL,'MAIN','2026-08-09 12:49:31','SYSTEM','2026-08-09 12:49:31',0,0),
+(16,'IOS','GOODS',1,NULL,NULL,'MAIN','2026-08-09 12:49:31','SYSTEM','2026-08-09 12:49:31',0,0),
+(17,'IOS','FRESH',1,NULL,NULL,'MAIN','2026-08-09 12:49:31','SYSTEM','2026-08-09 12:49:31',0,0),
+(18,'IOS','SERVICE',1,NULL,NULL,'MAIN','2026-08-09 12:49:31','SYSTEM','2026-08-09 12:49:31',0,0),
+(19,'IOS','VIRTUAL',0,'iOS 平台规则限制，请在小程序端购买',NULL,'MAIN','2026-08-09 12:49:31','SYSTEM','2026-08-09 12:49:31',0,0),
+(20,'IOS','CARD',1,NULL,NULL,'MAIN','2026-08-09 12:49:31','SYSTEM','2026-08-09 12:49:31',0,0),
+(21,'H5','GOODS',1,NULL,NULL,'MAIN','2026-08-09 12:49:31','SYSTEM','2026-08-09 12:49:31',0,0),
+(22,'H5','FRESH',1,NULL,NULL,'MAIN','2026-08-09 12:49:31','SYSTEM','2026-08-09 12:49:31',0,0),
+(23,'H5','SERVICE',1,NULL,NULL,'MAIN','2026-08-09 12:49:31','SYSTEM','2026-08-09 12:49:31',0,0),
+(24,'H5','VIRTUAL',1,NULL,NULL,'MAIN','2026-08-09 12:49:31','SYSTEM','2026-08-09 12:49:31',0,0),
+(25,'H5','CARD',1,NULL,NULL,'MAIN','2026-08-09 12:49:31','SYSTEM','2026-08-09 12:49:31',0,0);
+INSERT INTO prd_category
+(category_no, parent_no, level, name, name_en, icon, sort, template,
+ attr_template, qualification_required, required_code, status,
+ tenant_no, created_at, created_by, updated_at, updated_by, version, deleted)
+VALUES
+
+('CAT100', NULL,     1, '食品生鲜', 'Fresh Food', NULL, 10, 'FRESH',    NULL, NULL, NULL, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('CAT200', NULL,     1, '日用百货', 'Household',  NULL, 20, 'STANDARD', NULL, NULL, NULL, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('CAT300', NULL,     1, '生活服务', 'Services',   NULL, 30, 'SERVICE',  NULL, '["家电维修资质"]', 'SERVICE_REPAIR', 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('CAT400', NULL,     1, '卡券',     'Vouchers',   NULL, 40, 'VOUCHER',  NULL, NULL, NULL, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+
+('CAT110', 'CAT100', 2, '蔬菜', 'Vegetables',     NULL, 10, 'FRESH',    NULL, NULL, NULL, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('CAT120', 'CAT100', 2, '水果', 'Fruits',         NULL, 20, 'FRESH',    NULL, NULL, NULL, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('CAT210', 'CAT200', 2, '纸品清洁', 'Cleaning',   NULL, 10, 'STANDARD', NULL, NULL, NULL, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+
+('CAT111', 'CAT110', 3, '叶菜',   'Leafy Greens', NULL, 10, 'FRESH', NULL, '["食品经营许可证"]', 'FRESH_VEG',   'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('CAT112', 'CAT110', 3, '根茎菜', 'Root Veg',     NULL, 20, 'FRESH', NULL, '["食品经营许可证"]', 'FRESH_VEG',   'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('CAT121', 'CAT120', 3, '浆果',   'Berries',      NULL, 10, 'FRESH', NULL, '["食品经营许可证"]', 'FRESH_FRUIT', 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0);
+INSERT INTO sys_auth_code
+(code, name, required_qualification, sort, enabled, tenant_no, created_at, created_by, updated_at, updated_by, version, deleted)
+VALUES
+('FRESH_VEG',      '蔬菜',     '食品经营许可证', 10, 1, 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('FRESH_FRUIT',    '水果',     '食品经营许可证', 20, 1, 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('FRESH_DAIRY',    '乳制品',   '食品经营许可证', 30, 1, 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('FOOD',           '熟食加工', '食品经营许可证', 40, 1, 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('DAILY',          '日用百货', NULL,             50, 1, 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('SERVICE_REPAIR', '维修服务', '家电维修资质',   60, 1, 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0);
+UPDATE prd_goods SET category_no = 'CAT210' WHERE category_no IN ('CAT001', 'CAT002');
+UPDATE prd_goods SET category_no = 'CAT300' WHERE category_no = 'CAT003';
+DELETE FROM prd_category
+WHERE category_no IN ('CAT-ROOT-1', 'CAT-ROOT-2', 'CAT001', 'CAT002', 'CAT003');
+INSERT INTO sys_setting
+(setting_key, setting_value, remark, tenant_no, created_at, created_by, updated_at, updated_by, version, deleted)
+VALUES
+('review.score-config',
+ '{"weightProduct":50,"weightFulfill":30,"weightService":20,"newMerchantProtectDays":30,"decayHalfLifeDays":180}',
+ '评价三维权重与保护期。改它会改变历史评价的呈现（时效衰减是实时算的）',
+ 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0);
+INSERT INTO sys_setting
+(setting_key, setting_value, remark, tenant_no, created_at, created_by, updated_at, updated_by, version, deleted)
+VALUES
+('store.sensitive-words',
+ '["最低价","全网第一","国家级","绝对","包治","微信","加V","私聊"]',
+ '店招与公告的机审词表。命中即转人审（不是直接拒）—— 词表总会误伤，人审是纠偏的那一层',
+ 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0);
+UPDATE sys_channel_category_rule SET category_type = 'NORMAL' WHERE category_type = 'GOODS';
+INSERT INTO sys_auth_code
+(code, name, required_qualification, sort, enabled, tenant_no, created_at, created_by, updated_at, updated_by, version, deleted)
+VALUES
+('PACKAGED_FOOD', '预包装食品', '仅销售预包装食品备案', 25, 1, 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+
+
+('HOUSEKEEPING',  '家政服务', NULL,                     65, 1, 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0);
+INSERT INTO prd_category
+(category_no, parent_no, level, name, name_en, icon, sort, template,
+ attr_template, qualification_required, required_code, status,
+ tenant_no, created_at, created_by, updated_at, updated_by, version, deleted)
+VALUES
+
+('CAT122', 'CAT120', 3, '常温水果', 'Fruits (Ambient)', NULL, 20, 'FRESH', NULL,
+ '["营业执照（食用农产品）"]', 'FRESH_FRUIT', 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+
+
+('CAT130', 'CAT100', 2, '预包装食品', 'Packaged Food', NULL, 30, 'STANDARD', NULL,
+ NULL, NULL, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('CAT131', 'CAT130', 3, '粮油调味', 'Grain & Oil',    NULL, 10, 'STANDARD', NULL,
+ '["仅销售预包装食品备案"]', 'PACKAGED_FOOD', 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('CAT132', 'CAT130', 3, '休闲零食', 'Snacks',         NULL, 20, 'STANDARD', NULL,
+ '["仅销售预包装食品备案"]', 'PACKAGED_FOOD', 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('CAT133', 'CAT130', 3, '茶叶',     'Tea',            NULL, 30, 'STANDARD', NULL,
+ '["仅销售预包装食品备案"]', 'PACKAGED_FOOD', 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+
+
+('CAT220', 'CAT200', 2, '家居用品', 'Home',      NULL, 20, 'STANDARD', NULL,
+ NULL, NULL, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('CAT230', 'CAT200', 2, '个护化妆', 'Personal Care', NULL, 30, 'STANDARD', NULL,
+ NULL, NULL, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+
+
+
+
+('CAT310', 'CAT300', 2, '家政保洁', 'Housekeeping', NULL, 10, 'SERVICE', NULL,
+ NULL, 'HOUSEKEEPING', 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0);
+UPDATE prd_goods SET category_no = 'CAT310' WHERE category_no = 'CAT300';
+UPDATE prd_category
+SET required_code = NULL, qualification_required = NULL
+WHERE category_no = 'CAT300';
+UPDATE prd_category SET status = 'ARCHIVED' WHERE category_no = 'CAT400';
+UPDATE sys_auth_code SET required_qualification = '营业执照（食用农产品）'
+WHERE code IN ('FRESH_VEG', 'FRESH_FRUIT');
+UPDATE prd_category SET qualification_required = '["营业执照（食用农产品）"]'
+WHERE required_code IN ('FRESH_VEG', 'FRESH_FRUIT');
+UPDATE sys_auth_code SET enabled = 0 WHERE code IN ('FRESH_DAIRY', 'FOOD', 'SERVICE_REPAIR');
+UPDATE sys_industry SET enabled = 0,
+    remark = '一期停用：平台执照无餐饮服务与热食制售（自营模式下平台是销售者）。拿到相应许可后可放开'
+WHERE industry = 'CATERING';
+UPDATE sys_industry SET enabled = 0,
+    remark = '一期停用：平台执照无相关经营项'
+WHERE industry IN ('ENTERTAINMENT', 'TRANSPORT');
+UPDATE sys_industry SET enabled = 0,
+    remark = '一期停用：不上虚拟商品与卡券（iOS 小程序虚拟支付受限）'
+WHERE industry = 'ONLINE';
+UPDATE sys_industry SET enabled = 0,
+    remark = '一期停用：自营模式下「其他」等于平台不清楚自己在销售什么，无法对应执照经营范围'
+WHERE industry = 'OTHER';
+UPDATE sys_industry SET
+    remark = '一期启用：执照含日用品、水果、蔬菜、预包装食品、茶叶 批发与零售'
+WHERE industry = 'RETAIL';
+UPDATE sys_industry SET
+    remark = '一期启用，但仅家政：执照含「家政服务」，无维修/洗衣。细分品类由类目树限制'
+WHERE industry = 'LIFE_SERVICE';
+INSERT INTO sys_setting
+(setting_key, setting_value, remark, tenant_no, created_at, created_by, updated_at, updated_by, version, deleted)
+VALUES
+('merchant.service-scope-enabled', '["COMMUNITY","CITY"]',
+ '一期自营模式：PLATFORM 档没有商品形态支撑（无虚拟商品、无卡券、无平台自营快递品）。切平台模式后放开',
+ 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0);
+INSERT INTO mch_admission_policy
+    (legal_form, required_deposit_minor, single_order_limit_minor, daily_amount_limit_minor,
+     ban_qualified_category, banned_category_codes, enabled, remark,
+     tenant_no, created_at, created_by, updated_at, updated_by, version, deleted)
+VALUES
+    ('ENTERPRISE', 0, 0, 0, 0, NULL, 1, 'S1：出事能追到有偿付能力的主体，不设限',
+     'MAIN', NOW(), 'SYSTEM', NOW(), NULL, 0, 0),
+    ('INDIVIDUAL', 0, 0, 0, 0, NULL, 1, 'S2：能追到人、赔付能力弱；先不设限，观察后再调',
+     'MAIN', NOW(), 'SYSTEM', NOW(), NULL, 0, 0),
+    ('MICRO', 200000, 50000, 500000, 1, NULL, 1,
+     'S3：几乎追不到人，平台是唯一被追的一方；保证金+限额+限品类三样同时生效',
+     'MAIN', NOW(), 'SYSTEM', NOW(), NULL, 0, 0);

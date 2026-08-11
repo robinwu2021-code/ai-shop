@@ -126,6 +126,10 @@ class BizEndpointPermTest {
         put("/biz/points/account", BizPerms.FINANCE);
         put("/biz/points/records", BizPerms.FINANCE);
         put("/biz/points/toggle", BizPerms.FINANCE);
+        // 保证金与额度是钱的事，与结算同权限；不放宽到「登录即可」——
+        // 余额和流水会暴露平台对这家店的风险判断
+        put("/biz/deposit", BizPerms.FINANCE);
+        put("/biz/deposit/txns", BizPerms.FINANCE);
     }};
 
     /**

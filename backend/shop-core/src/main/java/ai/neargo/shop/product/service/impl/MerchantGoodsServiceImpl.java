@@ -46,6 +46,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
     private final GoodsService goodsService;
     private final CommunityPoolMapper poolMapper;
     private final ai.neargo.shop.spi.user.MerchantQueryPort merchantPort;
+    private final ai.neargo.shop.spi.user.AdmissionPort admissionPort;
     private final ObjectMapper json;
 
     private final ai.neargo.shop.product.service.CategoryService categoryService;
@@ -58,6 +59,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                                     SpecTemplateMapper templateMapper,
                                     GoodsService goodsService, CommunityPoolMapper poolMapper,
                                     ai.neargo.shop.spi.user.MerchantQueryPort merchantPort,
+                                    ai.neargo.shop.spi.user.AdmissionPort admissionPort,
                                     ai.neargo.shop.product.service.CategoryService categoryService,
                                     ai.neargo.shop.product.mapper.ProductMappers.StoreStockMapper storeStockMapper,
                                     ai.neargo.shop.product.mapper.ProductMappers.StoreGoodsMapper storeGoodsMapper,
@@ -67,6 +69,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         this.categoryService = categoryService;
         this.poolMapper = poolMapper;
         this.merchantPort = merchantPort;
+        this.admissionPort = admissionPort;
         this.goodsMapper = goodsMapper;
         this.skuMapper = skuMapper;
         this.templateMapper = templateMapper;
@@ -344,7 +347,18 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
             return;
         }
         String required = categoryService.requiredCodeOf(categoryNo);
-        if (required == null || required.isBlank()) {
+        boolean needsQualification = required != null && !required.isBlank();
+
+        /*
+         * 弱主体准入（保证金 / 限品类）。
+         *
+         * 放在 requiredCode 判定之后、资质码判定之前，是因为它<b>对无门槛类目同样生效</b>——
+         * 小微卖不需要证的商品照样要有保证金兜底。若跟着下面那个 early return 一起走，
+         * 无门槛类目就完全绕过了这道闸，而那恰好是弱主体最容易上的一批货。
+         */
+        admissionPort.requireListingAllowed(merchantNo, categoryNo, needsQualification);
+
+        if (!needsQualification) {
             return;
         }
         if (!merchantPort.authorizedCategoryCodes(merchantNo).contains(required)) {
