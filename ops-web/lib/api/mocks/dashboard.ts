@@ -4,7 +4,7 @@ import * as db from "@/lib/mock/db";
 import type { DashboardApi } from "../contracts/dashboard";
 import { fail } from "@/lib/biz-error";
 import { wait } from "./_wait";
-import type { Role } from "@/lib/auth";
+import { currentAuth, type Role } from "@/lib/auth";
 
 /** 与后端 DevSeeder 的四个运营账号一一对应 */
 const MOCK_ROLE_OF: Record<string, Role> = {
@@ -24,6 +24,15 @@ export const dashboardMock: DashboardApi = {
     if (!password) fail("请输入密码", "Enter your password");
     const role = MOCK_ROLE_OF[username] ?? "SUPER_ADMIN";
     return wait({ username, role, token: `mock-${role}`, perms: backendPermsOf(role) }, 350);
+  },
+  /*
+   * mock 的 me 从当前登录态回读角色 —— 不能凭空返回超管，
+   * 那会让「刷新后权限被放大」在 mock 下永远看不出来。
+   */
+  me: () => {
+    const a = currentAuth();
+    if (!a?.token) fail("未登录", "Not signed in");
+    return wait({ username: a.username, role: a.role, token: "", perms: backendPermsOf(a.role) }, 120);
   },
   getDashboardKpi: () => wait(db.kpi),
   getDashboardTrend: () => wait(db.trend),

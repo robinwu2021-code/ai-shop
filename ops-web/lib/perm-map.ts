@@ -124,7 +124,7 @@ export const UI_PERM_MAP: Record<string, string | typeof UNIMPLEMENTED> = {
   "system:param:read": UNIMPLEMENTED,
   "system:theme:update": UNIMPLEMENTED,
 
-  // IAM 写操作：后端只有一个 /ops/staff（单数），角色授权页一个能通的写接口都没有
+  // IAM 写操作：后端只有 GET /ops/staffs（读），角色授权页一个能通的写接口都没有
   "iam:role:grant": UNIMPLEMENTED,
 
   // ══════════════════════════════════════════════════════════════════

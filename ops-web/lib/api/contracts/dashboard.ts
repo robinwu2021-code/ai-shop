@@ -11,6 +11,16 @@ export interface DashboardApi {
    * 等于把权限交给被鉴权的一方。
    */
   login(username: string, password: string): Promise<LoginResp>;
+  /**
+   * 拿当前登录人的最新身份（`GET /ops/auth/me`）。
+   *
+   * **为什么不能只在登录时拿一次**：perms 存在 localStorage 里，
+   * 管理员改了某人的角色，那个人要重新登录才生效 —— 而他不会知道要重新登录，
+   * 他看到的是「我明明有这个权限，按钮却不见了」（或者反过来，点了报 403）。
+   * 更硬的一种：换了版本后本地存的是旧结构（没有 perms 字段），
+   * 于是导航整个空掉，而 token 还是有效的 —— 用户卡在一个看不出原因的空壳里。
+   */
+  me(): Promise<LoginResp>;
   getDashboardKpi(): Promise<DashboardKpi>;
   getDashboardTrend(): Promise<TrendPoint[]>;
   getAcquisitionFunnel(): Promise<FunnelRow[]>;

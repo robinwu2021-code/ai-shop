@@ -110,6 +110,7 @@ export interface AuthCodeAdmin {
   name: string;
   /** 需要的资质证件名。空 = 无证件要求（不是「漏填」） */
   requiredQualification?: string;
+  /** 列表里的排序权重，小的在前。同值按 code 兜底，保证顺序稳定 */
   sort: number;
   /** 是否可发放。停用**不撤销**存量商家已持有的授权 */
   enabled: boolean;
@@ -128,6 +129,7 @@ export interface AuthCodeAdmin {
 export interface ServiceScopeConfig {
   /** COMMUNITY / CITY / PLATFORM */
   scope: string;
+  /** 这一期是否开放这一档。关掉**不影响已经是这一档的存量商家**，只是不能再选 */
   enabled: boolean;
   /** 当前在用的商家数。不带计数的开关是盲操作 */
   merchantCount: number;

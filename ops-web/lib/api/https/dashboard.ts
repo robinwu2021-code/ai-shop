@@ -3,16 +3,18 @@ import { client } from "../http-client";
 import type { Role } from "@/lib/auth";
 
 /** 后端 `/ops/auth/login` 的原样响应。**与 ops-web 的 LoginResp 不同形** */
+interface BackendStaff {
+  staffNo: string;
+  username: string;
+  realName: string;
+  roles?: string[];
+  perms?: string[];
+  status?: string;
+}
+
 interface BackendLogin {
   token: string;
-  staff?: {
-    staffNo: string;
-    username: string;
-    realName: string;
-    roles?: string[];
-    perms?: string[];
-    status?: string;
-  };
+  staff?: BackendStaff;
 }
 
 /**
@@ -59,6 +61,16 @@ export const dashboardHttp: DashboardApi = {
        * 判权全靠前端本地的 ROLE_PERMS。两套各自演化的结果是
        * 「前端显示的权限与后端实际允许的没有任何关系」。
        */
+      perms: staff?.perms ?? [],
+    };
+  },
+  me: async () => {
+    const staff = await client.get<BackendStaff>("/ops/auth/me");
+    return {
+      username: staff?.username ?? "",
+      role: toOpsRole(staff?.roles?.[0]),
+      // me 不换发 token —— 调用方保留手里那张
+      token: "",
       perms: staff?.perms ?? [],
     };
   },

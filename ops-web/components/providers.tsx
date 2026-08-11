@@ -6,6 +6,37 @@ import { useTheme, applyTheme } from "@/lib/stores/theme";
 import { useLocaleStore, applyLocale } from "@/lib/stores/locale";
 import { notify } from "@/lib/notify";
 import { Toaster } from "@/components/ui/toaster";
+import { useAuth } from "@/lib/auth";
+import { api } from "@/lib/api";
+
+/**
+ * 启动时把 perms 拉一次最新的。
+ *
+ * **为什么必须有**：perms 此前只在登录那一刻拿，之后冻在 localStorage 里。
+ * 管理员改了某人的角色，那个人下次打开看到的还是旧权限 —— 而他不会想到
+ * 「要重新登录」，他看到的是按钮该在的地方没有，或者点下去报 403。
+ *
+ * 失败**不清登录态**：网络抖一下就把人踢到登录页，比权限晚几分钟生效坏得多。
+ * 真的失效了（401）由 http 层统一处理。
+ */
+function useRefreshPerms() {
+  const token = useAuth((s) => s.token);
+  useEffect(() => {
+    if (!token) return;
+    let alive = true;
+    api
+      .me()
+      .then((r) => {
+        // 组件已卸载 / 期间退出登录：这时写回去等于把已登出的人的权限塞回来
+        if (!alive || !useAuth.getState().token) return;
+        useAuth.setState({ role: r.role, perms: r.perms ?? [] });
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [token]);
+}
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [qc] = useState(
@@ -23,6 +54,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
   const locale = useLocaleStore((s) => s.locale);
   useEffect(() => applyTheme(themeKey), [themeKey]);
   useEffect(() => applyLocale(locale), [locale]);
+  useRefreshPerms();
 
   return (
     <QueryClientProvider client={qc}>

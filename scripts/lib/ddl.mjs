@@ -55,7 +55,16 @@ export function readSchema(root) {
   const sql = concatMigrations(dir);
 
   for (const m of sql.matchAll(
-    /CREATE TABLE(?: IF NOT EXISTS)? (\w+)\s*\(([\s\S]*?)\n\)\s*ENGINE([^;]*);/g,
+    // 收尾只认「行首的 `)` 一直到 `;`」——**表选项一律不作要求**。
+    // 此前写死了 `\)\s*ENGINE`，于是合法的 `) COMMENT='…';`（不写 ENGINE，
+    // MySQL 默认就是 InnoDB）整张表匹配不上，而且会一路吃到下一个文件，
+    // 把别人的列算到它头上。V27 那三张表就是这么消失的。
+    // 建表的收尾写法不该由解析器来规定 —— 它的职责是读，不是立规矩。
+    //
+    // 表选项限定**不跨行**（`[^;\n]*`）。写成 `[^;]*` 会让匹配失败时
+    // 一路回溯扫到文件末尾：几十个迁移拼起来是 O(n²)，实测跑到分钟级不出结果 ——
+    // 而那不是「慢」，是看着像卡死。
+    /CREATE TABLE(?: IF NOT EXISTS)? (\w+)\s*\(([\s\S]*?)\n\)([^;\n]*);/g,
   )) {
     const [, name, body, tail] = m;
     const cols = [];

@@ -64,7 +64,7 @@ describe("导航 × 权限", () => {
    */
   const UNBUILT_LEAVES = [
     "message:faq:update",   // 帮助中心维护
-    "iam:role:grant",       // 角色与 RBAC：后端只有 /ops/staff，没有授权写接口
+    "iam:role:grant",       // 角色与 RBAC：后端只有 GET /ops/staffs，没有授权写接口
     // 财务域已经活了（settle 有），而这三块还没有 —— 正是「域活了、漏了几条」
     "finance:rate:update",
     "finance:withdraw:approve",

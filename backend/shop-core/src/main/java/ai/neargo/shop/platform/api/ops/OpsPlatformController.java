@@ -59,10 +59,23 @@ public class OpsPlatformController {
         return opsService.me();
     }
 
-    @GetMapping("/ops/staff")
+    /**
+     * 运营员工列表。
+     *
+     * <p><b>路径是复数</b>：此前后端写 {@code /ops/staff}、ops-web 调 {@code /ops/staffs}，
+     * 两边从来没通过。而失败的样子不是报错 —— 列表页拿不到数据渲染成空表，
+     * 与「一个员工都没有」长得一模一样。与 {@code /ops/merchants}、
+     * {@code /ops/pickups} 统一到复数。
+     *
+     * <p>包 {@link PageData} 而不是返回裸 {@code List}：前端按分页渲染，
+     * 裸数组会让它读不到 {@code records} —— 又是一次「接口 200、页面空白」。
+     * 员工是几十条量级的主数据，全量算完再切页即可。
+     */
+    @GetMapping("/ops/staffs")
     @PreAuthorize("@perm.can('" + Perms.STAFF_MANAGE + "')")
-    public List<StaffVO> staff() {
-        return opsService.staffList();
+    public PageData<StaffVO> staff(@RequestParam(defaultValue = "1") long page,
+                                   @RequestParam(defaultValue = "20") long size) {
+        return PageData.ofAll(opsService.staffList(), page, size);
     }
 
     @GetMapping("/ops/audit-log")
