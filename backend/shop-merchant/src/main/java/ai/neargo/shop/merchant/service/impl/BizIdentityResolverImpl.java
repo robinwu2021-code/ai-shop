@@ -95,6 +95,19 @@ public class BizIdentityResolverImpl implements BizIdentityResolver {
          * 而「A 店店员能看到 B 店订单」这种越权不会报错，只会安静地多看到一些东西。
          */
         var membership = memberships.get(0);
+        /*
+         * 每家店上我持有的**全部**角色（V18 起一人一店可多角色）。
+         *
+         * 一次解析好放进 BizContext，切门店（X-Store-No）时不用重查库 ——
+         * 而角色必须跟着门店走：同一个人可能在文三路店是店长、古墩路店是店员。
+         */
+        java.util.Map<String, Set<String>> rolesByStore = roleMapper.selectList(
+                        Wrappers.<MchStoreRole>lambdaQuery()
+                                .eq(MchStoreRole::getMchAccountNo, membership.getMchAccountNo()))
+                .stream()
+                .collect(Collectors.groupingBy(MchStoreRole::getStoreNo,
+                        Collectors.mapping(MchStoreRole::getRole, Collectors.toUnmodifiableSet())));
+
         Set<String> storeNos = Boolean.TRUE.equals(membership.getIsOwner())
                 ? storeMapper.selectList(Wrappers.<MchStore>lambdaQuery()
                         .eq(MchStore::getEntityNo, merchant.getEntityNo())
@@ -139,6 +152,6 @@ public class BizIdentityResolverImpl implements BizIdentityResolver {
                 new java.util.LinkedHashSet<>(pickupQueryPort.activeStorePickupNos(storeNos));
 
         return new BizContext(merchant.getEntityNo(), pickupNos, Set.of(), storeNos, defaultStore,
-                Boolean.TRUE.equals(membership.getIsOwner()));
+                Boolean.TRUE.equals(membership.getIsOwner()), rolesByStore);
     }
 }
