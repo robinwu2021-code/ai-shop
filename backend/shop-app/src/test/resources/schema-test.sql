@@ -1324,8 +1324,8 @@ CREATE TABLE IF NOT EXISTS mch_payment_merchant
     split_reversible TINYINT(4) NOT NULL DEFAULT 0,
     split_reversible_at BIGINT(20) DEFAULT NULL,
     store_no VARCHAR(64) NOT NULL DEFAULT '',
+    CONSTRAINT uk_mp_entity_channel_store UNIQUE (entity_no,pay_channel,store_no),
     PRIMARY KEY (id),
-    CONSTRAINT uk_mp_entity_channel UNIQUE (entity_no,pay_channel),
     CONSTRAINT uk_mp_pay_merchant_no UNIQUE (pay_merchant_no)
 );
 
@@ -1365,8 +1365,8 @@ CREATE TABLE IF NOT EXISTS mch_store_role
     updated_by VARCHAR(64) DEFAULT NULL,
     version BIGINT(20) NOT NULL DEFAULT 0,
     deleted TINYINT(4) NOT NULL DEFAULT 0,
-    PRIMARY KEY (id),
-    CONSTRAINT uk_store_role UNIQUE (mch_account_no,store_no)
+    CONSTRAINT uk_store_role UNIQUE (mch_account_no,store_no,role),
+    PRIMARY KEY (id)
 );
 
 CREATE TABLE IF NOT EXISTS mch_store

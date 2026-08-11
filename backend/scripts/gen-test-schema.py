@@ -244,6 +244,44 @@ def alter_table(stmt, tables, order):
         idx = next((i for i, c in enumerate(cols)
                     if re.match(r"^\s*(CONSTRAINT|PRIMARY\s+KEY|UNIQUE)\b", c, re.I)), len(cols))
         cols.insert(idx, "    " + col)
+        return
+
+    # ALTER 里的唯一键增删。**必须实现，不能靠「反正 H2 用不上索引」糊过去** ——
+    # 唯一键不是索引，它是约束：漏掉一次 DROP + ADD，测试库就停在旧的键上，
+    # 于是 V14 把 uk_mp_entity_channel 从 (entity_no,pay_channel) 换成
+    # (entity_no,pay_channel,store_no) 之后，H2 里仍是两列版，
+    # 「一个主体给两家店各进一次件」在测试里必然 DuplicateKey，而生产是好的。
+    # 这类漂移最难查：报错指向业务代码，根因在这个脚本里。
+    drop_idx = re.match(r"DROP\s+(?:INDEX|KEY)\s+(?:IF\s+EXISTS\s+)?(\w+)", action, re.I)
+    if drop_idx:
+        name = drop_idx.group(1)
+        before = len(cols)
+        cols[:] = [c for c in cols
+                   if not re.match(rf"^\s*CONSTRAINT\s+{name}\b", c, re.I)]
+        if len(cols) == before:
+            # 普通索引没被写进建表语句，删不到是正常的；唯一键删不到才是问题，
+            # 但这里分不出来，所以只提示不中断
+            print(f"  · DROP {name} on {table}: 建表语句里没有同名约束（普通索引则正常）")
+        return
+
+    add_uk = re.match(
+        r"ADD\s+(?:CONSTRAINT\s+\w+\s+)?UNIQUE(?:\s+(?:KEY|INDEX))?\s*"
+        r"(?:IF\s+NOT\s+EXISTS\s+)?(\w+)?\s*\(([^)]+)\)", action, re.I)
+    if add_uk:
+        name, uk_cols = add_uk.group(1), add_uk.group(2)
+        name = name or f"uk_{table}_{re.sub(r'[^a-z0-9]+', '_', uk_cols.lower())}"
+        idx = next((i for i, c in enumerate(cols)
+                    if re.match(r"^\s*(CONSTRAINT|PRIMARY\s+KEY|UNIQUE)\b", c, re.I)), len(cols))
+        cols.insert(idx, f"    CONSTRAINT {name} UNIQUE ({uk_cols.strip()})")
+        return
+
+    if re.match(r"ADD\s+(?:INDEX|KEY)\s+(?:IF\s+NOT\s+EXISTS\s+)?\w*\s*\(", action, re.I):
+        # 普通索引：H2 测试库用不上，与 CREATE INDEX 同样跳过
+        return
+
+    # **兜底必须炸。** 这个分支此前是隐式的 `pass` —— 与本脚本开头写的
+    # 「不认识的语句必须炸，不能静默跳过」自相矛盾，而唯一键漂移正是它放过去的。
+    raise SystemExit(f"✗ 不认识的 ALTER 动作，请在本脚本里实现：\n  {table}: {action[:100]}")
 
 
 def drop_table(stmt, tables, order):
