@@ -1,7 +1,11 @@
 package ai.neargo.shop.platform.impl;
 
 import ai.neargo.common.data.scope.DataScopeContext;
+import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.common.ServiceScopes;
 import ai.neargo.shop.platform.MasterDataService;
+import ai.neargo.shop.platform.ServiceScopeService;
 import ai.neargo.shop.platform.dto.MasterDataVO;
 import ai.neargo.shop.platform.entity.SysIndustry;
 import ai.neargo.shop.platform.entity.SysLegalForm;
@@ -24,13 +28,17 @@ public class MasterDataServiceImpl implements MasterDataService {
     private final MerchantSubjectMapper subjectMapper;
     private final PayChannelMapper channelMapper;
     private final ObjectMapper json;
+    /** 经营范围的启用白名单归它管 —— 一期开哪几档是运营的决定，不该发版 */
+    private final ServiceScopeService serviceScopeService;
 
     public MasterDataServiceImpl(IndustryMapper industryMapper, MerchantSubjectMapper subjectMapper,
-                                 PayChannelMapper channelMapper, ObjectMapper json) {
+                                 PayChannelMapper channelMapper, ObjectMapper json,
+                                 ServiceScopeService serviceScopeService) {
         this.industryMapper = industryMapper;
         this.subjectMapper = subjectMapper;
         this.channelMapper = channelMapper;
         this.json = json;
+        this.serviceScopeService = serviceScopeService;
     }
 
     @Override
@@ -92,6 +100,26 @@ public class MasterDataServiceImpl implements MasterDataService {
     @Override
     public List<String> enabledSubjects() {
         return enabledSubjectRows().stream().map(SysLegalForm::getLegalForm).toList();
+    }
+
+    @Override
+    public void assertServiceScopeAllowed(String scope) {
+        if (scope == null || scope.isBlank()) {
+            // 空 = 调用方不改这个字段。默认值由各调用方自己定，不在这里替他决定
+            return;
+        }
+        // 第一层：值域。代码的事实，运营改不了
+        if (!ServiceScopes.ALL.contains(scope)) {
+            throw BizException.of(ErrorCode.SERVICE_SCOPE_NOT_ALLOWED);
+        }
+        /*
+         * 第二层：这一期开放哪几档。运营的决定，读的是 ServiceScopeService 那一份 ——
+         * 在这里自己再解析一遍 sys_setting 的话，两处的键名与兜底迟早分岔，
+         * 而分岔的症状是「运营在后台开了，商家还是选不了」，两边各自看起来都对。
+         */
+        if (!serviceScopeService.enabledScopes().contains(scope)) {
+            throw BizException.of(ErrorCode.SERVICE_SCOPE_NOT_ALLOWED);
+        }
     }
 
     private List<SysLegalForm> enabledSubjectRows() {

@@ -57,12 +57,14 @@ export const merchants: Merchant[] = [
  * 类目树会重构，而"能不能卖菜"这件事不会。
  */
 export const authCodes: import("@/lib/types").AuthCode[] = [
-  { code: "FRESH_VEG", name: "蔬菜", requiredQualification: "食品经营许可证" },
-  { code: "FRESH_FRUIT", name: "水果", requiredQualification: "食品经营许可证" },
-  { code: "FRESH_DAIRY", name: "乳制品", requiredQualification: "食品经营许可证" },
-  { code: "FOOD", name: "熟食加工", requiredQualification: "食品经营许可证" },
+  // 一期口径（V22）：果蔬走**初级农产品**，执照就够，不需要食品经营许可证。
+  // 乳制品 / 熟食加工 / 维修 已停用（执照覆盖不到），故不在可授权列表里 ——
+  // 这个列表服务的是「给商家授权时的可选项」，本来就只该给启用的
+  { code: "FRESH_VEG", name: "蔬菜", requiredQualification: "营业执照（食用农产品）" },
+  { code: "FRESH_FRUIT", name: "水果", requiredQualification: "营业执照（食用农产品）" },
+  { code: "PACKAGED_FOOD", name: "预包装食品", requiredQualification: "仅销售预包装食品备案" },
   { code: "DAILY", name: "日用百货" },
-  { code: "SERVICE_REPAIR", name: "维修服务", requiredQualification: "家电维修资质" },
+  { code: "HOUSEKEEPING", name: "家政服务" },
 ];
 
 /** 违规记录（P-11.1.4）。样本里的两条正对应 M905 与 M906 的 breachCount。 */

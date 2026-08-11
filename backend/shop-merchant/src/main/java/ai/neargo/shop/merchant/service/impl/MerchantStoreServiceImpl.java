@@ -24,7 +24,8 @@ import java.util.List;
 @Service
 public class MerchantStoreServiceImpl implements MerchantStoreService {
 
-    private static final String COMMUNITY = "COMMUNITY";
+    /** 值域见 {@link ai.neargo.shop.common.ServiceScopes} —— 这里只是本类默认值的别名 */
+    private static final String COMMUNITY = ai.neargo.shop.common.ServiceScopes.COMMUNITY;
 
     /** 配送半径默认 3km：「先跑起来再说」，而不是 0（那等于谁都送不到）。 */
     private static final int DEFAULT_RADIUS_M = 3000;
@@ -36,18 +37,22 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
     private final ai.neargo.shop.merchant.mapper.MerchantMappers.StoreAuditMapper storeAuditMapper;
     /** 敏感词表从平台参数取 —— 运营加词不该等发版 */
     private final ai.neargo.shop.spi.platform.SettingPort settingPort;
+    /** 经营范围的值域与启用白名单归 platform 管，本域只问「这个值能不能用」 */
+    private final ai.neargo.shop.spi.platform.MasterDataPort masterDataPort;
 
     public MerchantStoreServiceImpl(MchStoreMapper storeMapper, MchEntityMapper merchantMapper,
                                     MchEntityCommunityMapper merchantCommunityMapper,
                                     ObjectMapper json,
                                     ai.neargo.shop.merchant.mapper.MerchantMappers.StoreAuditMapper storeAuditMapper,
-                                    ai.neargo.shop.spi.platform.SettingPort settingPort) {
+                                    ai.neargo.shop.spi.platform.SettingPort settingPort,
+                                    ai.neargo.shop.spi.platform.MasterDataPort masterDataPort) {
         this.storeMapper = storeMapper;
         this.merchantMapper = merchantMapper;
         this.merchantCommunityMapper = merchantCommunityMapper;
         this.json = json;
         this.storeAuditMapper = storeAuditMapper;
         this.settingPort = settingPort;
+        this.masterDataPort = masterDataPort;
     }
 
     @Override
@@ -68,6 +73,14 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
     @Override
     @Transactional
     public StoreProfileVO save(String merchantNo, SaveCommand cmd) {
+        /*
+         * 先过值域与一期启用白名单，再谈默认值。
+         *
+         * 此前这里是「为空给默认、非空原样存」—— 传 "ABC" 能写进库，
+         * 之后按范围查商品会静默漏掉这家店：商家看到的是保存成功、商品在架、订单为零。
+         * 与下面那条社区必填校验同一个形状的故障，只是那条已经拦了，这条没有。
+         */
+        masterDataPort.assertServiceScopeAllowed(cmd.serviceScope());
         String scope = cmd.serviceScope() == null ? COMMUNITY : cmd.serviceScope();
         /*
          * ADR-009 的硬规则，与入驻审核那边同一条：范围选「仅本社区」却一个社区都没覆盖，

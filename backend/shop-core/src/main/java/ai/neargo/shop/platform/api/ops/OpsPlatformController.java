@@ -39,10 +39,13 @@ public class OpsPlatformController {
 
     private final OpsService opsService;
     private final IndustryService industryService;
+    private final ai.neargo.shop.platform.ServiceScopeAdminService serviceScopeAdminService;
 
-    public OpsPlatformController(OpsService opsService, IndustryService industryService) {
+    public OpsPlatformController(OpsService opsService, IndustryService industryService,
+                                 ai.neargo.shop.platform.ServiceScopeAdminService serviceScopeAdminService) {
         this.opsService = opsService;
         this.industryService = industryService;
+        this.serviceScopeAdminService = serviceScopeAdminService;
     }
 
     /** 运营登录。唯一免鉴权的 /ops 端点。 */
@@ -158,7 +161,41 @@ public class OpsPlatformController {
         return vo;
     }
 
+    // ---------------------------------------------------------------- 经营范围（ADR-009）
+
+    /**
+     * 三档全量，带启用状态与在用商家数。
+     *
+     * <p>与行业列表同一个标准：<b>带影响面计数</b>。关掉一档而不知道有多少家店在用，
+     * 是一次盲操作 —— 关 CITY 和关一个没人用的档，界面上看起来完全一样。
+     */
+    @GetMapping("/ops/service-scopes")
+    @PreAuthorize("@perm.can('" + Perms.INDUSTRY_MANAGE + "')")
+    public List<ai.neargo.shop.platform.ServiceScopeAdminService.ServiceScopeVO> serviceScopes() {
+        return serviceScopeAdminService.list();
+    }
+
+    /**
+     * 开关某一档。<b>只影响新的写入</b>，存量商家已选的档不动 ——
+     * 与行业停用同一口径：停用不是撤销。
+     *
+     * <p>一期自营模式关掉了 PLATFORM（没有虚拟商品/卡券/自营快递品支撑它）。
+     * 拿到 EDI 切平台模式时在这里打开，不用改代码、不用发版 —— 这正是这个开关存在的理由。
+     */
+    @PostMapping("/ops/service-scopes/{scope}/enabled")
+    @PreAuthorize("@perm.can('" + Perms.INDUSTRY_MANAGE + "')")
+    public List<ai.neargo.shop.platform.ServiceScopeAdminService.ServiceScopeVO> setServiceScopeEnabled(
+            @PathVariable String scope, @RequestBody ScopeEnabledReq req) {
+        var vos = serviceScopeAdminService.setEnabled(scope, Boolean.TRUE.equals(req.enabled()), req.reason());
+        opsService.audit("SERVICE_SCOPE_ENABLED", scope, req.enabled() + "｜原因：" + req.reason());
+        return vos;
+    }
+
     public record MicroAllowedReq(String payChannel, Boolean allowed, String remark) {
+    }
+
+    /** @param reason 必填 —— 关掉一档等于把一类商家挡在门外 */
+    public record ScopeEnabledReq(Boolean enabled, String reason) {
     }
 
     public record EnabledReq(Boolean enabled) {

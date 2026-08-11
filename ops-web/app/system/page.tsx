@@ -19,6 +19,8 @@ import { C_END_THEMES, type ThemeKey } from "@/lib/stores/theme";
 import { BASE_CURRENCY, type FeatureFlag, type MarketConfig } from "@/lib/types";
 import { ReadOnlyNotice } from "@/components/read-only-notice";
 import { IndustryTab } from "./industry-tab";
+import { AuthCodeTab } from "./auth-code-tab";
+import { ServiceScopeTab } from "./service-scope-tab";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -37,6 +39,8 @@ const TABS = (c: Copy) => [
   { key: "market", label: c.tabMarket },
   { key: "flags", label: c.tabFlags },
   { key: "industry", label: c.tabIndustry },
+  { key: "authCode", label: c.tabAuthCode },
+  { key: "scope", label: c.tabScope },
 ];
 
 export default function SystemPage() {
@@ -268,8 +272,11 @@ function SystemInner() {
         </>
       )}
 
-      {/* 行业主数据：本页唯一接了真后端的一块（其余仍走 mock） */}
+      {/* 主数据三块都接了真后端（其余 tab 仍走 mock） */}
       {tab === "industry" && <IndustryTab c={c} canWrite={canEnv} />}
+      {/* 授权码字典改的是「一共有哪些门槛」，与类目树同权限（category:manage） */}
+      {tab === "authCode" && <AuthCodeTab c={c} canWrite={allow("category:manage")} />}
+      {tab === "scope" && <ServiceScopeTab c={c} canWrite={canEnv} />}
 
       {tab === "flags" && (
         <>

@@ -95,3 +95,40 @@ export interface Industry {
   /** 备注：为什么这么配。改白名单是会被商家追问的操作 */
   remark?: string;
 }
+
+/**
+ * 授权码字典（运营视图）。
+ *
+ * ⚠️ 与 `AuthCode`（给商家发证时的可选项，见 types/merchant.ts）**是两个口径**：
+ * 那个只给启用的，这个含停用的并带影响面计数。合并的话，停用过的码就再也
+ * 恢复不了 —— 页面上根本看不见它。
+ */
+export interface AuthCodeAdmin {
+  /** 授权码，如 `FRESH_VEG`。**建成之后不可改** —— 改它等于换一张证 */
+  code: string;
+  /** 展示名，运营给商家发证时看到的就是它 */
+  name: string;
+  /** 需要的资质证件名。空 = 无证件要求（不是「漏填」） */
+  requiredQualification?: string;
+  sort: number;
+  /** 是否可发放。停用**不撤销**存量商家已持有的授权 */
+  enabled: boolean;
+  /** 持有该码的商家数 —— 停之前要知道影响面 */
+  merchantCount: number;
+  /** 引用该码的在用类目数。> 0 时停用会被拒（那些类目会变成永远拒绝所有人） */
+  categoryCount: number;
+}
+
+/**
+ * 经营范围档位的启用状态（ADR-009 三档）。
+ *
+ * 档位本身是枚举，永远是那三个；这里配的是**这一期开放哪几档**。
+ * 一期自营模式关掉了 PLATFORM —— 没有虚拟商品/卡券/自营快递品支撑它。
+ */
+export interface ServiceScopeConfig {
+  /** COMMUNITY / CITY / PLATFORM */
+  scope: string;
+  enabled: boolean;
+  /** 当前在用的商家数。不带计数的开关是盲操作 */
+  merchantCount: number;
+}

@@ -48,6 +48,7 @@ public class DevSeeder {
                                  CategoryMapper categoryMapper, StaffMapper staffMapper,
                                  ai.neargo.shop.merchant.mapper.MerchantMappers.SysAuthCodeMapper authCodeMapper,
                                  ai.neargo.shop.platform.mapper.PlatformMappers.SettingMapper settingMapper,
+                                 ai.neargo.shop.platform.mapper.PlatformMappers.IndustryMapper industryMapper,
                                  // 平台员工是 staffMapper，商家子账号是 merchantStaffMapper —— 两套人，别混
                                  ai.neargo.shop.merchant.mapper.MerchantMappers.MchAccountMapper merchantStaffMapper,
                                  ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper storeMapper) {
@@ -71,6 +72,25 @@ public class DevSeeder {
             seedStaff(staffMapper, "support", "客服", "[\"SUPPORT\"]", "support123");
 
             /*
+             * 一期的行业收敛（V22）。
+             *
+             * **为什么这里要重来一遍**：行业的种子行来自 V2，而 H2 侧那批种子是
+             * schema-test.sql 带进来的（由 gen-test-schema.py 从迁移重放生成）——
+             * 那个生成器把 UPDATE 一律当成「作用于生产存量数据」跳过，
+             * 于是 V22 的停用在 H2 上没有发生：真库只剩两个行业可选，H2 还是七个全开。
+             * 不补的话，「入驻只能选执照覆盖的行业」这条用例在测试里永远失败，
+             * 而失败的样子看起来像校验没写对。
+             */
+            disableIndustry(industryMapper, "CATERING",
+                    "一期停用：平台执照无餐饮服务与热食制售（自营模式下平台是销售者）。拿到相应许可后可放开");
+            disableIndustry(industryMapper, "ENTERTAINMENT", "一期停用：平台执照无相关经营项");
+            disableIndustry(industryMapper, "TRANSPORT", "一期停用：平台执照无相关经营项");
+            disableIndustry(industryMapper, "ONLINE",
+                    "一期停用：不上虚拟商品与卡券（iOS 小程序虚拟支付受限）");
+            disableIndustry(industryMapper, "OTHER",
+                    "一期停用：自营模式下「其他」等于平台不清楚自己在销售什么，无法对应执照经营范围");
+
+            /*
              * 类目树。**编号必须与 V4__category_tree.sql 和 ops-web 的 mock 完全一致** ——
              * 这里曾经是第三套编号（CAT-ROOT-1 / CAT001…），于是真库一棵树、H2 一棵树、
              * 前端 mock 又一棵树。症状是「mock 上跑得通，连真库就找不到类目」，
@@ -79,28 +99,43 @@ public class DevSeeder {
              * 真库由 V4 灌，这里只服务于**不跑 Flyway 的 H2 测试**；
              * 下面的 count 守卫保证真库上不会重复插。
              */
-            seedCategory(categoryMapper, "CAT100", null, 1, "食品生鲜", "FRESH", null, 10);
-            seedCategory(categoryMapper, "CAT110", "CAT100", 2, "蔬菜", "FRESH", null, 10);
-            seedCategory(categoryMapper, "CAT111", "CAT110", 3, "叶菜", "FRESH", "FRESH_VEG", 10);
-            seedCategory(categoryMapper, "CAT112", "CAT110", 3, "根茎菜", "FRESH", "FRESH_VEG", 20);
-            seedCategory(categoryMapper, "CAT120", "CAT100", 2, "水果", "FRESH", null, 20);
-            seedCategory(categoryMapper, "CAT121", "CAT120", 3, "浆果", "FRESH", "FRESH_FRUIT", 10);
-            seedCategory(categoryMapper, "CAT200", null, 1, "日用百货", "STANDARD", null, 20);
-            seedCategory(categoryMapper, "CAT210", "CAT200", 2, "纸品清洁", "STANDARD", null, 10);
-            seedCategory(categoryMapper, "CAT300", null, 1, "生活服务", "SERVICE", "SERVICE_REPAIR", 30);
-            seedCategory(categoryMapper, "CAT400", null, 1, "卡券", "VOUCHER", null, 40);
+            seedCategory(categoryMapper, "CAT100", null, 1, "食品生鲜", "FRESH", null, 10, ACTIVE);
+            seedCategory(categoryMapper, "CAT110", "CAT100", 2, "蔬菜", "FRESH", null, 10, ACTIVE);
+            seedCategory(categoryMapper, "CAT111", "CAT110", 3, "叶菜", "FRESH", "FRESH_VEG", 10, ACTIVE);
+            seedCategory(categoryMapper, "CAT112", "CAT110", 3, "根茎菜", "FRESH", "FRESH_VEG", 20, ACTIVE);
+            seedCategory(categoryMapper, "CAT120", "CAT100", 2, "水果", "FRESH", null, 20, ACTIVE);
+            seedCategory(categoryMapper, "CAT121", "CAT120", 3, "浆果", "FRESH", "FRESH_FRUIT", 10, ACTIVE);
+            seedCategory(categoryMapper, "CAT122", "CAT120", 3, "常温水果", "FRESH", "FRESH_FRUIT", 20, ACTIVE);
+            seedCategory(categoryMapper, "CAT130", "CAT100", 2, "预包装食品", "STANDARD", null, 30, ACTIVE);
+            seedCategory(categoryMapper, "CAT131", "CAT130", 3, "粮油调味", "STANDARD", "PACKAGED_FOOD", 10, ACTIVE);
+            seedCategory(categoryMapper, "CAT132", "CAT130", 3, "休闲零食", "STANDARD", "PACKAGED_FOOD", 20, ACTIVE);
+            seedCategory(categoryMapper, "CAT133", "CAT130", 3, "茶叶", "STANDARD", "PACKAGED_FOOD", 30, ACTIVE);
+            seedCategory(categoryMapper, "CAT200", null, 1, "日用百货", "STANDARD", null, 20, ACTIVE);
+            seedCategory(categoryMapper, "CAT210", "CAT200", 2, "纸品清洁", "STANDARD", null, 10, ACTIVE);
+            seedCategory(categoryMapper, "CAT220", "CAT200", 2, "家居用品", "STANDARD", null, 20, ACTIVE);
+            seedCategory(categoryMapper, "CAT230", "CAT200", 2, "个护化妆", "STANDARD", null, 30, ACTIVE);
+            // 一级不挂 required_code（V22 修的 D2）—— 挂在这里的话，家政会被维修资质卡住
+            seedCategory(categoryMapper, "CAT300", null, 1, "生活服务", "SERVICE", null, 30, ACTIVE);
+            seedCategory(categoryMapper, "CAT310", "CAT300", 2, "家政保洁", "SERVICE", "HOUSEKEEPING", 10, ACTIVE);
+            // 一期停用：执照无预付卡相关项
+            seedCategory(categoryMapper, "CAT400", null, 1, "卡券", "VOUCHER", null, 40, ARCHIVED);
 
             /*
-             * 类目授权码。真库由 V5 灌，这里只服务于**不跑 Flyway 的 H2 测试**。
+             * 类目授权码。真库由 V5 + V22 灌，这里只服务于**不跑 Flyway 的 H2 测试**。
              * 少了它，挂了 required_code 的类目在测试里永远无法被授权 ——
              * 而准入用例会「通过」，因为它测的正是拒绝那一半。
+             *
+             * 停用的三个（乳制品/熟食/维修）也要灌：一期收敛后它们仍在库里，
+             * 只是 enabled=0。不灌的话「停用码不出现在可授权列表」这条测不出来。
              */
-            seedAuthCode(authCodeMapper, "FRESH_VEG", "蔬菜", "食品经营许可证", 10);
-            seedAuthCode(authCodeMapper, "FRESH_FRUIT", "水果", "食品经营许可证", 20);
-            seedAuthCode(authCodeMapper, "FRESH_DAIRY", "乳制品", "食品经营许可证", 30);
-            seedAuthCode(authCodeMapper, "FOOD", "熟食加工", "食品经营许可证", 40);
-            seedAuthCode(authCodeMapper, "DAILY", "日用百货", null, 50);
-            seedAuthCode(authCodeMapper, "SERVICE_REPAIR", "维修服务", "家电维修资质", 60);
+            seedAuthCode(authCodeMapper, "FRESH_VEG", "蔬菜", 10, true);
+            seedAuthCode(authCodeMapper, "FRESH_FRUIT", "水果", 20, true);
+            seedAuthCode(authCodeMapper, "PACKAGED_FOOD", "预包装食品", 25, true);
+            seedAuthCode(authCodeMapper, "FRESH_DAIRY", "乳制品", 30, false);
+            seedAuthCode(authCodeMapper, "FOOD", "熟食加工", 40, false);
+            seedAuthCode(authCodeMapper, "DAILY", "日用百货", 50, true);
+            seedAuthCode(authCodeMapper, "SERVICE_REPAIR", "维修服务", 60, false);
+            seedAuthCode(authCodeMapper, "HOUSEKEEPING", "家政服务", 65, true);
 
             /*
              * 平台可调参数。真库由各自的迁移灌，这里只服务于**不跑 Flyway 的 H2 测试**。
@@ -112,6 +147,12 @@ public class DevSeeder {
             seedSetting(settingMapper, "review.score-config",
                     "{\"weightProduct\":50,\"weightFulfill\":30,\"weightService\":20,"
                             + "\"newMerchantProtectDays\":30,\"decayHalfLifeDays\":180}");
+            /*
+             * 一期开放的经营范围（V22）。不灌的话 MasterDataService 会走「没配过 = 全开」
+             * 的兜底，于是「选 PLATFORM 被拒」那条用例在 H2 上永远失败 ——
+             * 而失败的原因看起来会是校验没生效，其实是种子少了一行。
+             */
+            seedSetting(settingMapper, "merchant.service-scope-enabled", "[\"COMMUNITY\",\"CITY\"]");
 
             communityMapper.insert(community("C0001", "阳光花园", "杭州市西湖区文一西路 100 号", 30280000, 120100000));
             communityMapper.insert(community("C0002", "翡翠城", "杭州市西湖区文二西路 200 号", 30285000, 120105000));
@@ -187,13 +228,13 @@ public class DevSeeder {
     }
 
     private void seedAuthCode(ai.neargo.shop.merchant.mapper.MerchantMappers.SysAuthCodeMapper mapper,
-                              String code, String name, String requiredQualification, int sort) {
+                              String code, String name, int sort, boolean enabled) {
         var c = new ai.neargo.shop.merchant.entity.SysAuthCode();
         c.setCode(code);
         c.setName(name);
-        c.setRequiredQualification(requiredQualification);
+        c.setRequiredQualification(AUTH_QUALIFICATION.get(code));
         c.setSort(sort);
-        c.setEnabled(true);
+        c.setEnabled(enabled);
         // 同上：真库由 V5 灌，这里只补 H2
         if (mapper.selectCount(com.baomidou.mybatisplus.core.toolkit.Wrappers
                 .<ai.neargo.shop.merchant.entity.SysAuthCode>lambdaQuery()
@@ -202,8 +243,51 @@ public class DevSeeder {
         }
     }
 
+    private static final String ACTIVE = "ACTIVE";
+    private static final String ARCHIVED = "ARCHIVED";
+
+    /**
+     * 停用一个行业并写下理由。**停用不是删除**：行留在库里、仍对运营可见，
+     * 存量商家不受影响（停用只影响新入驻的可选项）。拿到 EDI 切平台模式时
+     * 在运营端逐条打开即可，不用改代码也不用再来一次迁移。
+     */
+    private void disableIndustry(ai.neargo.shop.platform.mapper.PlatformMappers.IndustryMapper mapper,
+                                 String industry, String remark) {
+        var row = mapper.selectOne(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                .<ai.neargo.shop.platform.entity.SysIndustry>lambdaQuery()
+                .eq(ai.neargo.shop.platform.entity.SysIndustry::getIndustry, industry)
+                .last("limit 1"));
+        if (row == null) {
+            return;   // 真库由 V22 处理；这里只补 H2，查不到就是没轮到它
+        }
+        row.setEnabled(false);
+        // remark 是给运营看的「为什么这个行业是这个准入结论」——
+        // 三个月后要放开时，看这一行就知道当初卡在哪
+        row.setRemark(remark);
+        mapper.updateById(row);
+    }
+
+    /**
+     * 授权码 → 所需资质文案。**这是 H2 侧唯一的一份**，类目的 {@code qualification_required}
+     * 由它派生。
+     *
+     * <p>此前 {@code seedCategory} 把「食品经营许可证」直接写死在方法体里，对所有挂码的类目
+     * 一律用同一句。一期把果蔬改成初级农产品口径（V22）之后，真库是「营业执照（食用农产品）」
+     * 而 H2 还是旧文案 —— 同一个类目在两个环境显示两张不同的证，而两边各自自洽、都不报错。
+     *
+     * <p>不在这张表里的码 = 无证件要求（{@code get} 返回 null），不是「漏填」。
+     */
+    private static final java.util.Map<String, String> AUTH_QUALIFICATION = java.util.Map.of(
+            "FRESH_VEG", "营业执照（食用农产品）",
+            "FRESH_FRUIT", "营业执照（食用农产品）",
+            "PACKAGED_FOOD", "仅销售预包装食品备案",
+            "FRESH_DAIRY", "食品经营许可证",
+            "FOOD", "食品经营许可证",
+            "SERVICE_REPAIR", "家电维修资质");
+
     private void seedCategory(CategoryMapper mapper, String no, String parentNo, int level,
-                              String name, String template, String requiredCode, int sort) {
+                              String name, String template, String requiredCode, int sort,
+                              String status) {
         var c = new PrdCategory();
         c.setCategoryNo(no);
         c.setParentNo(parentNo);
@@ -214,8 +298,9 @@ public class DevSeeder {
         c.setTemplate(template);
         // 空 = 无门槛。挂了码的类目，商家没拿到对应授权就上不了架
         c.setRequiredCode(requiredCode);
-        c.setQualificationRequired(requiredCode == null ? null : "[\"食品经营许可证\"]");
-        c.setStatus("ACTIVE");
+        String qualification = requiredCode == null ? null : AUTH_QUALIFICATION.get(requiredCode);
+        c.setQualificationRequired(qualification == null ? null : "[\"" + qualification + "\"]");
+        c.setStatus(status);
         /*
          * **幂等**：真库由 V4 灌同一批类目，这里只补 H2。
          * 无脑 insert 的结果是真库上主键冲突 —— 而它发生在种子重放阶段，

@@ -54,4 +54,24 @@ public interface MasterDataService {
 
     /** 启用中的主体类型码。 */
     List<String> enabledSubjects();
+
+    /**
+     * 校验经营范围（ADR-009 三档）。分两层，<b>顺序不能反</b>：
+     *
+     * <ol>
+     *   <li><b>值域</b> —— 是不是 {@code ServiceScopes.ALL} 里的取值。这是代码的事实，
+     *       运营改不了。此前两个写入口都是「为空给默认、非空原样存」，
+     *       传 {@code "ABC"} 能写进库，之后按范围查商品会静默漏掉这家店。</li>
+     *   <li><b>启用白名单</b> —— 这一期开放哪几档，存 {@code sys_setting} 的
+     *       {@code merchant.service-scope-enabled}，运营可在后台改。
+     *       一期自营模式只开 COMMUNITY/CITY：PLATFORM 档没有商品形态支撑。</li>
+     * </ol>
+     *
+     * <p>两层分开的原因见 {@code ServiceScopes} 的类注释：合成一件事的话，
+     * 运营在后台放开某一档时会顺手获得「写入任意字符串」的能力。
+     *
+     * @param scope 为空表示调用方不改这个字段，直接放行 —— 由调用方各自决定默认值
+     * @throws ai.neargo.shop.common.BizException 值域非法或未启用
+     */
+    void assertServiceScopeAllowed(String scope);
 }

@@ -22,4 +22,4 @@ export { attributionRule, attributionTraces, fissionCampaigns } from "./growth";
 export { riskEvents, blacklists, riskRules } from "./risk";
 export { msgTemplates, pushTasks, notifyQuota, tickets, faqs } from "./message";
 export { materials } from "./content";
-export { appearance, markets, ruleTexts, featureFlags, industries } from "./system";
+export { appearance, markets, ruleTexts, featureFlags, industries, authCodeAdmins, serviceScopes } from "./system";

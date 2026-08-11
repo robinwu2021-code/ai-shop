@@ -37,6 +37,11 @@ public class MasterDataPortImpl implements MasterDataPort {
     }
 
     @Override
+    public void assertServiceScopeAllowed(String scope) {
+        masterDataService.assertServiceScopeAllowed(scope);
+    }
+
+    @Override
     public String channelName(String payChannel) {
         return masterDataService.channelName(payChannel);
     }

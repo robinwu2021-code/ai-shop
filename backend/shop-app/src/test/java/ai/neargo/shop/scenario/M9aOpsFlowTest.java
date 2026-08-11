@@ -715,10 +715,17 @@ class M9aOpsFlowTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(0))
                 // 端上据此禁用「小微」选项，而不是让人填完再被后端拒
-                .andExpect(jsonPath("$.data.industries[?(@.industry=='ONLINE')].microAllowed")
-                        .value(org.hamcrest.Matchers.contains(false)))
                 .andExpect(jsonPath("$.data.industries[?(@.industry=='RETAIL')].microAllowed")
                         .value(org.hamcrest.Matchers.contains(true)))
+                /*
+                 * 停用的行业**不出现在这里**。此前这条断言查的是 ONLINE 的 microAllowed，
+                 * 而一期收敛（V22）把 ONLINE 停用了 —— 它不再出现在端上的可选集里。
+                 * 改成断言「停用的确实拿不到」，测的是同一层（snapshot 只给启用的），
+                 * 而且这才是收敛能生效的前提。全量含停用的视图在 /ops/industries，
+                 * 由 Phase1MasterDataTest 守。
+                 */
+                .andExpect(jsonPath("$.data.industries[?(@.industry=='ONLINE')]")
+                        .value(org.hamcrest.Matchers.empty()))
                 // 小微免执照、受行业限制；个体户要执照、不受限 —— 这些判断此前三端各写一遍
                 .andExpect(jsonPath("$.data.subjects[?(@.subjectType=='MICRO')].needLicense")
                         .value(org.hamcrest.Matchers.contains(false)))

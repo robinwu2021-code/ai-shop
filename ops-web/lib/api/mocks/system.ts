@@ -18,6 +18,55 @@ function findIndustry(industry: string) {
 export const systemMock: SystemApi = {
   listIndustries: async () => wait([...db.industries]),
 
+  listAuthCodeDict: async () => wait(db.authCodeAdmins.map((c) => ({ ...c }))),
+
+  saveAuthCodeDict: async (v) => {
+    if (!v.code?.trim() || !v.name?.trim()) fail("授权码与名称都不能为空", "Code and name are required");
+    const row = db.authCodeAdmins.find((x) => x.code === v.code);
+    if (row) {
+      row.name = v.name;
+      row.requiredQualification = v.requiredQualification || undefined;
+      row.sort = v.sort;
+      return wait({ ...row });
+    }
+    // 新码默认**启用**：建完再点一次启用是纯粹的多余步骤，而漏点的后果是「建了但发不了」
+    const created = { ...v, requiredQualification: v.requiredQualification || undefined, enabled: true, merchantCount: 0, categoryCount: 0 };
+    db.authCodeAdmins.push(created);
+    return wait({ ...created });
+  },
+
+  setAuthCodeDictEnabled: async (code, enabled, reason) => {
+    if (!reason?.trim()) fail("请填写原因", "A reason is required");
+    const row = db.authCodeAdmins.find((x) => x.code === code);
+    if (!row) notFound("授权码", "Auth code", code);
+    /*
+     * 还有在用的类目引用它就不许停：停掉之后那些类目会要求一个已停用的码 ——
+     * 也就是永远拒绝所有人，而商家看到的只是「你还没有资质授权」。
+     */
+    if (!enabled && row.categoryCount > 0) {
+      fail("还有类目要求这个授权码，先把它们改到别的码上或归档，再停用",
+        "Categories still require this code — reassign or archive them first");
+    }
+    row.enabled = enabled;
+    return wait({ ...row });
+  },
+
+  listServiceScopes: async () => wait(db.serviceScopes.map((s) => ({ ...s }))),
+
+  setServiceScopeEnabled: async (scope, enabled, reason) => {
+    if (!reason?.trim()) fail("请填写原因", "A reason is required");
+    const row = db.serviceScopes.find((s) => s.scope === scope);
+    if (!row) notFound("经营范围", "Service scope", scope);
+    // 不许全关：白名单空掉之后所有商家保存门店都会被拒，而错误信息说的是
+    // 「当前不支持这个经营范围」—— 商家会以为是自己选错了，逐档试一遍，每次都被拒
+    if (!enabled && db.serviceScopes.filter((s) => s.enabled).length <= 1) {
+      fail("至少要开放一档经营范围 —— 全关等于所有商家都保存不了门店",
+        "At least one service scope must stay open");
+    }
+    row.enabled = enabled;
+    return wait(db.serviceScopes.map((s) => ({ ...s })));
+  },
+
   setIndustryMicroAllowed: async (industry, payChannel, allowed, remark) => {
     const row = findIndustry(industry);
     if (payChannel === "ALIPAY") row.alipayMicroAllowed = allowed;

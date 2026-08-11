@@ -1,7 +1,33 @@
 // 覆盖范围：系统配置（P-17.1）。
-import type { AppearanceConfig, FeatureFlag, Industry, MarketConfig, RuleTexts } from "@/lib/types";
+import type {
+  AppearanceConfig, AuthCodeAdmin, FeatureFlag, Industry, MarketConfig, RuleTexts, ServiceScopeConfig,
+} from "@/lib/types";
 
 export interface SystemApi {
+  // ── 授权码字典（TDD-一期主数据收敛 阶段二）—— **已接真后端** `/ops/auth-codes/**`
+
+  /**
+   * <b>全量，含停用</b>，带商家数与类目引用数。
+   *
+   * 与 `merchantApi.listAuthCodeDict()`（发证时的可选项，只给启用的）是两个口径，
+   * 不能合并：停用过的码在那边看不见，也就再也恢复不了。
+   */
+  listAuthCodeDict(): Promise<AuthCodeAdmin[]>;
+  /** 新建或更新。`code` 建成之后不可改 —— 改它等于换一张证 */
+  saveAuthCodeDict(v: Pick<AuthCodeAdmin, "code" | "name" | "requiredQualification" | "sort">): Promise<AuthCodeAdmin>;
+  /**
+   * 启停。**停用不撤销存量商家已持有的授权**，只是不再发放。
+   *
+   * @param reason 必填 —— 它决定一批商家还能不能上新品
+   */
+  setAuthCodeDictEnabled(code: string, enabled: boolean, reason: string): Promise<AuthCodeAdmin>;
+
+  // ── 经营范围开关（ADR-009）—— **已接真后端** `/ops/service-scopes/**`
+
+  listServiceScopes(): Promise<ServiceScopeConfig[]>;
+  /** 开关某一档，返回最新的三档全量。**至少要留一档** —— 全关等于所有商家保存不了门店 */
+  setServiceScopeEnabled(scope: string, enabled: boolean, reason: string): Promise<ServiceScopeConfig[]>;
+
   // ── 行业主数据（P-17.1 / ADR-010）—— **已接真后端** `/ops/industries/**`
 
   listIndustries(): Promise<Industry[]>;

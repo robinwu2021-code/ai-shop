@@ -172,6 +172,9 @@ public class OpsServiceImpl implements OpsService {
          */
         if (approved) {
             if (serviceScope != null && !serviceScope.isBlank()) {
+                // 值域 + 一期启用白名单。运营这条路径同样要校验 ——
+                // 只校验商家侧的话，运营在审核时补一个未开放的范围照样能写进去
+                masterDataService.assertServiceScopeAllowed(serviceScope);
                 apply.setServiceScope(serviceScope);
             }
             if (communityNos != null && !communityNos.isEmpty()) {
@@ -244,7 +247,9 @@ public class OpsServiceImpl implements OpsService {
         apply.setContactPhone(cmd.contactPhone());
         apply.setCategory(cmd.category());
         apply.setDescription(cmd.description());
-        apply.setServiceScope(cmd.serviceScope() == null ? "COMMUNITY" : cmd.serviceScope());
+        masterDataService.assertServiceScopeAllowed(cmd.serviceScope());
+        apply.setServiceScope(cmd.serviceScope() == null
+                ? ai.neargo.shop.common.ServiceScopes.COMMUNITY : cmd.serviceScope());
         apply.setCommunityNos(writeJson(cmd.communityNos()));
         apply.setQualifications(writeJson(cmd.qualifications()));
         apply.setAsPickupPoint(cmd.asPickupPoint());

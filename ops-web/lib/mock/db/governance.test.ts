@@ -49,9 +49,15 @@ describe("类目授权（P-11.1.3）", () => {
 
   it("缺资质的类目授不了", async () => {
     const m = approved();
-    const missing = m.qualifications.includes("家电维修资质") ? "FRESH_VEG" : "SERVICE_REPAIR";
+    /*
+     * 挑 PACKAGED_FOOD：它要「仅销售预包装食品备案」，而样本里**没有任何商家**有这张。
+     *
+     * 此前这里是「有家电维修资质就试 FRESH_VEG，否则试 SERVICE_REPAIR」——
+     * 断言的成立依赖于恰好选中哪个商家。一期收敛（V22）停用 SERVICE_REPAIR 之后，
+     * 它撞的是「授权码不存在」而不是「资质尚未上传」，测的已经不是这条规则了。
+     */
     await expect(
-      merchantMock.setMerchantAuthCodes({ merchantNo: m.merchantNo, codes: [missing], reason: "扩类目" }),
+      merchantMock.setMerchantAuthCodes({ merchantNo: m.merchantNo, codes: ["PACKAGED_FOOD"], reason: "扩类目" }),
     ).rejects.toThrow(/尚未上传/);
   });
 

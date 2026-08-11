@@ -12,6 +12,15 @@ export const systemHttp: SystemApi = {
   setIndustryPointsForced: (industry, forced) =>
     client.post(`/ops/industries/${industry}/points-forced`, { forced }),
 
+  // 授权码字典与经营范围开关同样接了真后端（阶段二）
+  listAuthCodeDict: () => client.get("/ops/auth-codes"),
+  saveAuthCodeDict: (v) => client.post("/ops/auth-codes", v),
+  setAuthCodeDictEnabled: (code, enabled, reason) =>
+    client.post(`/ops/auth-codes/${code}/enabled`, { enabled, reason }),
+  listServiceScopes: () => client.get("/ops/service-scopes"),
+  setServiceScopeEnabled: (scope, enabled, reason) =>
+    client.post(`/ops/service-scopes/${scope}/enabled`, { enabled, reason }),
+
   getAppearance: () => client.get("/ops/appearance"),
   saveAppearance: (v) => client.post("/ops/appearance", v),
   listMarkets: () => client.get("/ops/markets"),

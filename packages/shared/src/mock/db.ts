@@ -951,6 +951,15 @@ export const db = {
           categoryNo: "CAT120", parentNo: "CAT100", level: 2, name: "水果", icon: "", sort: 20,
           children: [
             { categoryNo: "CAT121", parentNo: "CAT120", level: 3, name: "浆果", icon: "", sort: 10, children: [] },
+            { categoryNo: "CAT122", parentNo: "CAT120", level: 3, name: "常温水果", icon: "", sort: 20, children: [] },
+          ],
+        },
+        {
+          categoryNo: "CAT130", parentNo: "CAT100", level: 2, name: "预包装食品", icon: "", sort: 30,
+          children: [
+            { categoryNo: "CAT131", parentNo: "CAT130", level: 3, name: "粮油调味", icon: "", sort: 10, children: [] },
+            { categoryNo: "CAT132", parentNo: "CAT130", level: 3, name: "休闲零食", icon: "", sort: 20, children: [] },
+            { categoryNo: "CAT133", parentNo: "CAT130", level: 3, name: "茶叶", icon: "", sort: 30, children: [] },
           ],
         },
       ],
@@ -959,10 +968,18 @@ export const db = {
       categoryNo: "CAT200", parentNo: null, level: 1, name: "日用百货", icon: "", sort: 20,
       children: [
         { categoryNo: "CAT210", parentNo: "CAT200", level: 2, name: "纸品清洁", icon: "", sort: 10, children: [] },
+        { categoryNo: "CAT220", parentNo: "CAT200", level: 2, name: "家居用品", icon: "", sort: 20, children: [] },
+        { categoryNo: "CAT230", parentNo: "CAT200", level: 2, name: "个护化妆", icon: "", sort: 30, children: [] },
       ],
     },
-    { categoryNo: "CAT300", parentNo: null, level: 1, name: "生活服务", icon: "", sort: 30, children: [] },
-    { categoryNo: "CAT400", parentNo: null, level: 1, name: "卡券", icon: "", sort: 40, children: [] },
+    {
+      categoryNo: "CAT300", parentNo: null, level: 1, name: "生活服务", icon: "", sort: 30,
+      children: [
+        { categoryNo: "CAT310", parentNo: "CAT300", level: 2, name: "家政保洁", icon: "", sort: 10, children: [] },
+      ],
+    },
+    // CAT400 卡券一期停用（V22）：端上的树只给启用的，所以这里不再出现。
+    // 库里那一行还在，切平台模式后在运营端恢复即可
   ],
 
   /**

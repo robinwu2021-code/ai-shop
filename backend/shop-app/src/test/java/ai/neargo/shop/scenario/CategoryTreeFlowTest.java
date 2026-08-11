@@ -294,7 +294,9 @@ class CategoryTreeFlowTest {
         for (JsonNode c : codes) {
             if ("FRESH_VEG".equals(c.get("code").asString())) {
                 hasFreshVeg = true;
-                assertThat(c.get("requiredQualification").asString()).isEqualTo("食品经营许可证");
+                // 一期果蔬走**初级农产品**口径（V22）：执照就够，不需要食品经营许可证。
+                // 留着旧文案的代价是运营授权时去要一张不需要的证
+                assertThat(c.get("requiredQualification").asString()).isEqualTo("营业执照（食用农产品）");
             }
         }
         assertThat(hasFreshVeg).isTrue();
