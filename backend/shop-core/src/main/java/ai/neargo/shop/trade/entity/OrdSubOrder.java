@@ -38,10 +38,10 @@ public class OrdSubOrder extends BaseEntity {
      * <p>集中在这里是为了给 {@code scripts/check-enums.mjs} 一个可靠的真源 ——
      * 它按**字段**比对取值域，而不是在全部大写字面量里碰运气。
      */
-    public static final String STORE_PICKUP = "STORE_PICKUP";
-    public static final String NEIGHBOR_PICKUP = "NEIGHBOR_PICKUP";
-    public static final String MERCHANT_DELIVERY = "MERCHANT_DELIVERY";
-    public static final String EXPRESS = "EXPRESS";
+    public static final String STORE_PICKUP = ai.neargo.shop.common.Fulfillments.STORE_PICKUP;
+    public static final String NEIGHBOR_PICKUP = ai.neargo.shop.common.Fulfillments.NEIGHBOR_PICKUP;
+    public static final String MERCHANT_DELIVERY = ai.neargo.shop.common.Fulfillments.MERCHANT_DELIVERY;
+    public static final String EXPRESS = ai.neargo.shop.common.Fulfillments.EXPRESS;
 
     private String subOrderNo;
     private String orderNo;

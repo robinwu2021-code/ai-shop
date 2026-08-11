@@ -85,10 +85,17 @@ public interface MerchantGoodsService {
      * @param type       五品类，决定履约与合规。平台硬编码
      * @param categoryNo 三级类目树的节点。选填，决定归类与经营准入 —— <b>两个正交维度</b>
      */
+    /**
+     * @param fulfillments 该商品支持的履约方式，取值见
+     *                     {@link ai.neargo.shop.common.Fulfillments}。
+     *                     <b>留空 = 不改</b>（新建时默认到店自提）——
+     *                     传空数组与不传要分开：前者是「一种都不支持」，那件商品谁也买不了
+     */
     record SaveCommand(String goodsNo, String title, String subtitle,
                        Map<String, String> titleI18n, Map<String, String> subtitleI18n,
                        String type, String categoryNo, String cover, List<String> images,
-                       List<SpecGroup> specGroups, List<Sku> skus) {
+                       List<SpecGroup> specGroups, List<Sku> skus,
+                       List<String> fulfillments) {
     }
 
     record SpecGroup(String name, List<String> options, List<String> optionCodes,

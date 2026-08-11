@@ -261,6 +261,7 @@ public class OrderServiceImpl implements OrderService {
         if (split.items.isEmpty()) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
+        requireFulfillmentSupported(cmd.fulfillment(), split);
 
         String orderNo = BizKey.next(BizKey.ORDER);
         long now = System.currentTimeMillis();
@@ -837,6 +838,35 @@ public class OrderServiceImpl implements OrderService {
                         .notIn(OrdSubOrder::getStatus,
                                 OrdSubOrder.WAIT_PAY, OrdSubOrder.CANCELLED, OrdSubOrder.REFUNDED));
         return rows.stream().mapToLong(r -> r.getPayAmount() == null ? 0L : r.getPayAmount()).sum();
+    }
+
+    /**
+     * 用户选的履约方式，购物车里<b>每一件</b>商品都得支持。
+     *
+     * <p>{@code GoodsQueryPort.SkuSnapshot#fulfillments} 的注释里早就写着
+     * 「决定拆单后每个子单能选什么」——<b>但这个校验从来没写过</b>。
+     * 于是一件只支持到店自提的商品可以被下成快递单，
+     * 而它会一路走到商家的待发货列表里，直到商家打电话来问。
+     *
+     * <p>按「每一件都支持」而不是「有一件支持」判：履约方式是整单一个，
+     * 只要有一件不支持，那一件就没法按用户选的方式送到。
+     *
+     * <p>快照里履约方式为空的商品放行——那是存量数据，
+     * 不能因为补了这道校验就把一批老商品变成不可下单。
+     */
+    private void requireFulfillmentSupported(String fulfillment, Split split) {
+        if (fulfillment == null || fulfillment.isBlank()) {
+            return;
+        }
+        for (Line line : split.items) {
+            List<String> supported = line.snapshot.fulfillments();
+            if (supported == null || supported.isEmpty()) {
+                continue;
+            }
+            if (!supported.contains(fulfillment)) {
+                throw BizException.of(ErrorCode.FULFILLMENT_NOT_SUPPORTED);
+            }
+        }
     }
 
     private void appendStatusLog(String subOrderNo, String status, String label,

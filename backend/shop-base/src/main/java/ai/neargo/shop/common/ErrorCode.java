@@ -95,6 +95,11 @@ public enum ErrorCode {
      * 等发现时已经积了一批单。通用的「请求参数有误」说不出这件事。
      */
     PAY_MERCHANT_REQUIRED(70012, "err.merchant.pay_merchant_required"),
+    /*
+     * 用户选的履约方式该商品不支持。单独一个码：端上要能把「这件商品只支持到店自提」
+     * 说出来 —— 通用的「请求参数有误」会让用户反复重试同一个动作。
+     */
+    FULFILLMENT_NOT_SUPPORTED(70013, "err.trade.fulfillment_not_supported"),
 
     /**
      * 进项票未核验通过，不允许登记付款（**票到付款**）。

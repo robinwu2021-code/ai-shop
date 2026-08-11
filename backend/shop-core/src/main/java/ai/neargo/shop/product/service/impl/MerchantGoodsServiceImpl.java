@@ -3,6 +3,7 @@ package ai.neargo.shop.product.service.impl;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
+import ai.neargo.shop.common.Fulfillments;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.product.dto.GoodsVO;
@@ -129,6 +130,24 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
          *
          * 这里不校验经营资质：那是上架时的事（见 requireCategoryAuthorized 的注释）。
          */
+        if (cmd.fulfillments() != null) {
+            /*
+             * 履约方式此前是「有字段没入口」：建商品时写死 ["STORE_PICKUP"]，商家改不了，
+             * 于是「这件商品支持怎么送」在商品侧从未被真正表达过。
+             *
+             * 空数组要拒掉而不是当成「不改」：一件一种履约都不支持的商品谁也买不了，
+             * 而它在列表里看起来与正常商品毫无区别。不传（null）才是「不改」。
+             */
+            if (cmd.fulfillments().isEmpty()) {
+                throw BizException.of(ErrorCode.BAD_REQUEST);
+            }
+            for (String f : cmd.fulfillments()) {
+                if (!Fulfillments.isValid(f)) {
+                    throw BizException.of(ErrorCode.BAD_REQUEST);
+                }
+            }
+            g.setFulfillments(writeJson(cmd.fulfillments()));
+        }
         if (cmd.categoryNo() != null) {
             g.setCategoryNo(cmd.categoryNo().isBlank() ? null : cmd.categoryNo());
         }
@@ -562,7 +581,17 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         g.setRatingCount(0);
         g.setSales(0);
         g.setLimitPerUser(0);
-        g.setFulfillments("[\"STORE_PICKUP\"]");
+        /*
+         * 新建默认**四种全支持**，由商家去收窄。
+         *
+         * 此前默认是 ["STORE_PICKUP"] 且商家改不了 —— 那个值从来不表示
+         * 「只支持到店自提」，只是个占位，而这些商品一直在被下成快递单。
+         * F-1 给下单加了「必须支持」的校验之后，照原样留着会让新商品一建出来
+         * 就只能自提。默认放宽、由商家收窄，是唯一不会凭空拦单的方向。
+         */
+        g.setFulfillments(writeJson(new java.util.ArrayList<>(
+                java.util.List.of(Fulfillments.STORE_PICKUP, Fulfillments.NEIGHBOR_PICKUP,
+                        Fulfillments.MERCHANT_DELIVERY, Fulfillments.EXPRESS))));
         return g;
     }
 

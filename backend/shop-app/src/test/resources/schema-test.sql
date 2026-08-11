@@ -1946,3 +1946,8 @@ VALUES
     ('FR-INIT-SO-PLAT', 'SELF_OPERATED', 'PLATFORM', 500, 0, 1,
      '自营·平台客流：先与第三方取齐，等自营有量后再单独定',
      'MAIN', NOW(), 'SYSTEM', NOW(), NULL, 0, 0);
+UPDATE prd_goods
+SET fulfillments = '["STORE_PICKUP","NEIGHBOR_PICKUP","MERCHANT_DELIVERY","EXPRESS"]'
+WHERE fulfillments IS NULL
+   OR fulfillments = ''
+   OR fulfillments = '["STORE_PICKUP"]';

@@ -86,7 +86,8 @@ public class BizGoodsController {
                 req.skus() == null ? List.of() : req.skus().stream()
                         .map(s -> new MerchantGoodsService.Sku(
                                 s.skuNo(), s.optionValues(), s.price(), s.priceByMarket(), s.stock()))
-                        .toList()));
+                        .toList(),
+                req.fulfillments()));
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.GOODS + "')")
@@ -152,7 +153,8 @@ public class BizGoodsController {
     public record SaveGoodsReq(String goodsNo, String title, String subtitle,
                                Map<String, String> titleI18n, Map<String, String> subtitleI18n,
                                String type, String categoryNo, String cover, List<String> images,
-                               List<SpecGroupReq> specGroups, List<SkuReq> skus) {
+                               List<SpecGroupReq> specGroups, List<SkuReq> skus,
+                               List<String> fulfillments) {
     }
 
     public record SpecGroupReq(String name, List<String> options, List<String> optionCodes,
