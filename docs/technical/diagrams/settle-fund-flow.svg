@@ -1,0 +1,100 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="980" height="620" viewBox="0 0 980 620" role="img" font-family="system-ui,-apple-system,'PingFang SC',sans-serif">
+<title>资金流转流程：三种形态并排</title>
+<desc>自营、第三方延迟分账、第三方直连分账三条泳道。每一步标出由谁执行——微信、财务、还是系统；系统只在生成单据与登记环节参与，从不划转资金。</desc>
+<defs>
+<marker id="fm" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+<path d="M2 1L8 5L2 9" fill="none" stroke="#8A94A2" stroke-width="1.4" stroke-linecap="round"/></marker>
+<style>
+.n{font-size:12px;font-weight:600;fill:#161A21}
+.t{font-size:10px;fill:#5A6472}
+.b{font-size:11px;fill:#8A94A2;letter-spacing:.12em}
+.l{font-size:9.5px;fill:#5A6472;paint-order:stroke;stroke:#fff;stroke-width:3.5;stroke-linejoin:round}
+.box{fill:#fff;stroke:#D8DEE6;stroke-width:1.2}
+.wx{fill:#F2F8F4;stroke:#7FB894;stroke-width:1.4}
+.fin{fill:#FDF6EC;stroke:#E0B27A;stroke-width:1.4}
+.sys{fill:#F5F6F8;stroke:#B9C2CE;stroke-width:1.4}
+.ar{stroke:#8A94A2;stroke-width:1.3;fill:none}
+.lane{fill:none;stroke:#DDE2E9;stroke-width:1.2;stroke-dasharray:5 4}
+.zt{font-size:10.5px;fill:#8A94A2;letter-spacing:.08em}
+</style></defs>
+
+<rect class="box wx" x="24" y="18" width="86" height="24" rx="5"/><text class="t" x="34" y="34">微信执行</text>
+<rect class="box fin" x="122" y="18" width="86" height="24" rx="5"/><text class="t" x="132" y="34">财务执行</text>
+<rect class="box sys" x="220" y="18" width="98" height="24" rx="5"/><text class="t" x="230" y="34">系统只记账</text>
+<text class="t" x="336" y="34">系统从不划转资金 —— 它只生成单据、登记结果、守住规则</text>
+
+<rect class="lane" x="14" y="58" width="952" height="150" rx="10"/>
+<text class="zt" x="26" y="78">自营（当前阶段 · 不需要 EDI 与收付通）</text>
+
+<rect class="box wx" x="30" y="92" width="132" height="46" rx="7"/>
+<text class="n" x="42" y="112">用户付款</text><text class="t" x="42" y="128">进平台商户号</text>
+
+<rect class="box sys" x="202" y="92" width="150" height="46" rx="7"/>
+<text class="n" x="214" y="112">生成应付账款单</text><text class="t" x="214" y="128">stl_bill · 按周期汇总</text>
+
+<rect class="box sys" x="392" y="92" width="150" height="46" rx="7"/>
+<text class="n" x="404" y="112">对账 + 收进项票</text><text class="t" x="404" y="128">三流一致比对</text>
+
+<rect class="box fin" x="582" y="92" width="148" height="46" rx="7"/>
+<text class="n" x="594" y="112">提现到对公</text><text class="t" x="594" y="128">合法：平台自己的收入</text>
+
+<rect class="box fin" x="770" y="92" width="170" height="46" rx="7"/>
+<text class="n" x="782" y="112">网银付款给供应商</text><text class="t" x="782" y="128">系统只登记凭证号</text>
+
+<path class="ar" marker-end="url(#fm)" d="M162 115 L198 115"/>
+<path class="ar" marker-end="url(#fm)" d="M352 115 L388 115"/>
+<path class="ar" marker-end="url(#fm)" d="M542 115 L578 115"/>
+<path class="ar" marker-end="url(#fm)" d="M730 115 L766 115"/>
+<text class="t" x="30" y="166">积分抵扣：平台自己少收，**无资金动作**。退款：平台商户号原路退，与供应商无关。</text>
+<text class="t" x="30" y="186">⚠️ 无进项票 = 这笔支出不能税前列支。所以「能否开票」是供应商准入条件（§5.16）。</text>
+
+<rect class="lane" x="14" y="224" width="952" height="164" rx="10"/>
+<text class="zt" x="26" y="244">第三方 · 延迟分账（原 PLATFORM_HOLD，建议改名 DELAYED_SPLIT）</text>
+
+<rect class="box wx" x="30" y="258" width="150" height="46" rx="7"/>
+<text class="n" x="42" y="278">用户付款</text><text class="t" x="42" y="294">进商家二级商户 · 冻结</text>
+
+<rect class="box sys" x="220" y="258" width="150" height="46" rx="7"/>
+<text class="n" x="232" y="278">积分补差</text><text class="t" x="232" y="294">补足到订单全额</text>
+
+<rect class="box sys" x="410" y="258" width="160" height="46" rx="7"/>
+<text class="n" x="422" y="278">冻结期满</text><text class="t" x="422" y="294">worker 扫 splittable_at</text>
+
+<rect class="box wx" x="610" y="258" width="150" height="46" rx="7"/>
+<text class="n" x="622" y="278">下发分账</text><text class="t" x="622" y="294">平台分走佣金</text>
+
+<rect class="box wx" x="800" y="258" width="140" height="46" rx="7"/>
+<text class="n" x="812" y="278">解冻</text><text class="t" x="812" y="294">商家自行提现</text>
+
+<path class="ar" marker-end="url(#fm)" d="M180 281 L216 281"/>
+<path class="ar" marker-end="url(#fm)" d="M370 281 L406 281"/>
+<path class="ar" marker-end="url(#fm)" d="M570 281 L606 281"/>
+<path class="ar" marker-end="url(#fm)" d="M760 281 L796 281"/>
+<text class="t" x="30" y="332">钱**一开始就在商家名下**，平台控制的是「什么时候解冻」，不是「什么时候给他」（§5.15）。</text>
+<text class="t" x="30" y="352">退款：未分账则原路退；已分账走回退分账。冻结期建议与售后期挂钩 —— 过长会像资金池。</text>
+<text class="t" x="30" y="372">平台不需要向商家索取发票：这笔钱从未构成平台成本（§5.14）。</text>
+
+<rect class="lane" x="14" y="404" width="952" height="130" rx="10"/>
+<text class="zt" x="26" y="424">第三方 · 直连分账（成熟店 / 即时零售）</text>
+
+<rect class="box wx" x="30" y="438" width="170" height="46" rx="7"/>
+<text class="n" x="42" y="458">用户付款 · 合单</text><text class="t" x="42" y="474">支付即按比例拆开</text>
+
+<rect class="box sys" x="240" y="438" width="150" height="46" rx="7"/>
+<text class="n" x="252" y="458">积分补差</text><text class="t" x="252" y="474">同上，商家仍收全额</text>
+
+<rect class="box wx" x="430" y="438" width="170" height="46" rx="7"/>
+<text class="n" x="442" y="458">商家实时到账</text><text class="t" x="442" y="474">现金流最好</text>
+
+<rect class="box wx" x="640" y="438" width="150" height="46" rx="7"/>
+<text class="n" x="652" y="458">平台佣金同时入账</text>
+
+<path class="ar" marker-end="url(#fm)" d="M200 461 L236 461"/>
+<path class="ar" marker-end="url(#fm)" d="M390 461 L426 461"/>
+<path class="ar" marker-end="url(#fm)" d="M600 461 L636 461"/>
+<text class="t" x="30" y="512">退款必须回退分账，**商家余额不足会失败** —— 这是直连模式最现实的运营负担，需要待回退队列兜底。</text>
+
+<text class="b" x="24" y="566">三条泳道的差别只在「什么时候分账」，不在「钱去哪」</text>
+<text class="t" x="24" y="588">平台净收 = 订单金额 × 抽成率 − 营销成本 —— 三种形态算出同一个数（§二之二 已验算）。</text>
+<text class="t" x="24" y="608">形态差别只是资金动作的编排，不是经济实质的不同。这个恒等式适合写成测试，比逐笔对账便宜得多。</text>
+</svg>
