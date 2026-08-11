@@ -131,6 +131,17 @@ export interface GoodsDraft {
   specGroups: SpecGroupDraft[];
   /** SKU 列表。单规格商品也有且仅有一条 */
   skus: SkuDraft[];
+  /**
+   * 该商品支持的履约方式：`STORE_PICKUP` / `NEIGHBOR_PICKUP` /
+   * `MERCHANT_DELIVERY` / `EXPRESS`。
+   *
+   * <p><b>留空 = 不改</b>（新建时后端默认四种全支持，由商家收窄）。
+   * 传空数组是另一件事 —— 一种履约都不支持的商品谁也买不了，后端会拒。
+   *
+   * <p>下单时会校验「用户选的方式该商品必须支持」，所以收窄之后
+   * C 端就选不到被去掉的那几种了。
+   */
+  fulfillments?: string[];
 }
 
 import type { PointsRecordQuery, StaffLoginReq, StoreEditReq, SubmitPaymentReq, TogglePointsReq } from "./requests";

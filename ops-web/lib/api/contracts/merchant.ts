@@ -1,9 +1,33 @@
 // 覆盖范围：商家治理（P-11.1 入驻审核 / 档案 / 认证标 / 封禁）。
 // ⚠️ 契约禁止 delete*：下架商家用 archiveMerchant，封禁用 setMerchantStatus。
-import type { AuthCode, Merchant, MerchantApply, MerchantStatus, Page, Violation, ViolationAction, ViolationType } from "@/lib/types";
+import type { AdmissionPolicy, AuthCode, LegalForm, DepositTxn, DepositTxnType, Merchant, MerchantApply, MerchantDeposit, MerchantStatus, Page, StoreMode, Violation, ViolationAction, ViolationType } from "@/lib/types";
 import type { ApplyQ, MerchantQ } from "../query";
 
 export interface MerchantApi {
+  // ── 门店经营模式与弱主体准入 ─────────────────────────────────
+
+  storeModes(merchantNo: string): Promise<StoreMode[]>;
+
+  /**
+   * 改门店经营模式。
+   *
+   * **只对新单生效** —— 结算单在生成时就快照了 businessMode，历史账不受影响。
+   * 页面必须把这句话显示出来，否则运营会以为改了模式能一并修正历史。
+   *
+   * 切第三方要求该店有可用收款号；没有会被后端拒（70012）——
+   * 不拦的后果不是报错而是**静默欠款**：单照常成交，钱卡在平台侧下不去。
+   */
+  setStoreBusinessMode(v: { storeNo: string; businessMode: StoreMode["businessMode"] }): Promise<StoreMode>;
+
+  /** 三档准入策略。 */
+  admissionPolicies(): Promise<AdmissionPolicy[]>;
+  updateAdmissionPolicy(v: { legalForm: LegalForm } & Partial<AdmissionPolicy>): Promise<void>;
+
+  merchantDeposit(merchantNo: string): Promise<MerchantDeposit>;
+  depositTxns(merchantNo: string): Promise<DepositTxn[]>;
+  /** @param amountMinor 有符号：缴纳为正、扣划为负 */
+  addDepositTxn(v: { merchantNo: string; txnType: DepositTxnType; amountMinor: number; reason?: string }): Promise<void>;
+
   // ── 入驻审核（P-11.1.1）────────────────────────────────────────
   //
   // **申请单与商家主体是两个资源**：通过之前商家不存在，所以审核动作打在

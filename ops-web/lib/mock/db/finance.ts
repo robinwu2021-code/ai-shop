@@ -1,6 +1,6 @@
 // 结算与资金 mock（P-12）。覆盖五种状态与两类失败（可重试 / 已超时），
 // 否则「重试上限」与「超时兜底」两条规则在页面上验不到。
-import type { FeeRule, Settlement, SplitRecord } from "@/lib/types";
+import type { FeeRuleVersion, Settlement, SplitRecord } from "@/lib/types";
 
 export const settlements: Settlement[] = [
   {
@@ -43,16 +43,27 @@ export const splitRecords: SplitRecord[] = [
   { splitNo: "SP9005", settleNo: "ST9003", orderNo: "SO2026080505", merchantName: "快修家电服务", trafficSource: "CHANNEL", grossAmount: 12_800, feeRate: 500, platformFee: 640, serviceFee: 0, netAmount: 12_160 },
 ];
 
-export const feeRule: FeeRule = {
-  byTrafficSource: {
-    // R16 建议：自带客流零佣金 —— 抽了商家就会把客人带去别处成交
-    MERCHANT_OWNED: 0,
-    PLATFORM: 500,
-    INVITE: 300,
-    CHANNEL: 500,
-  },
-  pickupServiceFeeRate: 150,
-  freezeDays: 15,
-  updatedAt: "2026-07-25T02:00:00Z",
-  updatedBy: "finance01",
-};
+/**
+ * 费率版本（后端 stl_fee_rule）。**只增不改**：调费率是插新版本，旧版本永久保留。
+ * effectiveFrom = 0 的四条是初始版本，等价于上线前 application.yml 里的两个默认值。
+ */
+/**
+ * 分账超时兜底天数：冻结超过它仍未分账成功，解冻回平台。
+ *
+ * **不放进费率表**：它不是费率，是结算策略；而且后端至今没有这个配置项。
+ * 此前它挂在旧的 `FeeRule` 上，让人以为是可配的 —— 页面上能改，改了没有任何效果。
+ * 摆成常量至少诚实：它现在只驱动 mock 里的解冻校验。
+ */
+export const SETTLE_FREEZE_DAYS = 15;
+
+export const feeRules: FeeRuleVersion[] = [
+  { ruleNo: "FR-INIT-TP-OWNED", businessMode: "THIRD_PARTY", trafficSource: "MERCHANT_OWNED",
+    rateBp: 0, effectiveFrom: 0, enabled: 1,
+    remark: "自带客流零佣金：他带来的客户在别家消费才是平台收益（R16）" },
+  { ruleNo: "FR-INIT-TP-PLAT", businessMode: "THIRD_PARTY", trafficSource: "PLATFORM",
+    rateBp: 500, effectiveFrom: 0, enabled: 1, remark: "平台客流 5%" },
+  { ruleNo: "FR-INIT-SO-OWNED", businessMode: "SELF_OPERATED", trafficSource: "MERCHANT_OWNED",
+    rateBp: 0, effectiveFrom: 0, enabled: 1, remark: "自营先与第三方取齐" },
+  { ruleNo: "FR-INIT-SO-PLAT", businessMode: "SELF_OPERATED", trafficSource: "PLATFORM",
+    rateBp: 500, effectiveFrom: 0, enabled: 1, remark: "自营先与第三方取齐" },
+];

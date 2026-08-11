@@ -150,6 +150,7 @@ export const httpApi: MerchantApi = {
       images: payload.images,
       specGroups: payload.specGroups,
       skus: payload.skus,
+      fulfillments: payload.fulfillments,
     } satisfies SaveGoodsReqBody),
   mToggleGoods: (goodsNo, onSale) =>
     http.post<Goods>(buildPath(E.mToggleGoods.path, { goodsNo }), { onSale } satisfies ToggleGoodsReq),

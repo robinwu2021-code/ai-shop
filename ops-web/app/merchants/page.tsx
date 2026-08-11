@@ -19,6 +19,8 @@ import { ReadOnlyNotice } from "@/components/read-only-notice";
 import { ApplyTab } from "./apply-tab";
 import { CategoryTab, VerifyTab } from "./authorize-tab";
 import { BanTab, CreditTab } from "./credit-tab";
+// 准入与保证金单独成块：它是「让不让他卖」那组决定，与档案/处置不同
+import { AdmissionTab } from "./admission-tab";
 import { ArchiveActions, ShowArchivedToggle, archiveConfirm, archivedRowClass, unarchiveConfirm } from "@/components/archive";
 import { Button } from "@/components/ui/button";
 import { DataTable, type Column } from "@/components/ui/data-table";
@@ -44,6 +46,7 @@ const TABS = (c: Copy) => [
   { key: "categories", label: c.tabCategories },
   { key: "verify", label: c.tabVerify },
   { key: "credit", label: c.tabCredit },
+  { key: "admission", label: c.tabAdmission },
   { key: "ban", label: c.tabBan },
 ];
 
@@ -197,6 +200,8 @@ function MerchantsInner() {
       )}
 
       {tab === "credit" && <CreditTab c={c} />}
+
+      {tab === "admission" && <AdmissionTab c={c} />}
 
       {tab === "ban" && (
         <>

@@ -98,6 +98,8 @@ export interface SaveGoodsReqBody {
   images?: string[];
   /** 空数组 = 单规格。非空则 skus 必须是各组选项的笛卡尔积 */
   specGroups: GoodsDraft["specGroups"];
+  /** 支持的履约方式；不传 = 不改（新建默认四种全支持） */
+  fulfillments?: string[];
   /** SKU 列表。单规格商品也有且仅有一条 */
   skus: GoodsDraft["skus"];
 }

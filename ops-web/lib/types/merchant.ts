@@ -190,3 +190,77 @@ export interface MerchantApply {
   /** 审核完成时间。待审期间为空 */
   auditedAt?: number;
 }
+
+
+// ── 弱主体准入与门店经营模式（后端 mch_admission_policy / mch_deposit / mch_store）──
+
+import type { BusinessMode } from "./finance";
+
+/**
+ * 门店经营模式。
+ *
+ * 自营 = 平台是法律上的销售主体，承担全部产品责任。
+ * **这个身份不能由商家自己勾选**，所以只有运营端能改。
+ */
+export interface StoreMode {
+  storeNo: string;
+  storeName: string;
+  merchantNo: string;
+  businessMode: BusinessMode | null;
+  /** 该店实际可用的收款号（本店专属号优先，回落到主体默认号）。**空 = 不能切第三方** */
+  payMerchantNo: string | null;
+}
+
+/**
+ * 准入策略：按 `legalForm` 档位配置，**不按商户配置**。
+ *
+ * 挂档位是三档三行，改规则改一行；挂商户要逐个配、改一次规则要批量刷数据。
+ * 三档就是 MICRO / INDIVIDUAL / ENTERPRISE，**不再增删**。
+ */
+/**
+ * 主体档位 —— 与后端 `mch_entity.legal_form` 同一套取值。
+ *
+ * **三档锁定，不再增删**：S1/S2/S3 是对这三个值的读法，不是新枚举。
+ */
+export type LegalForm = "MICRO" | "INDIVIDUAL" | "ENTERPRISE";
+
+export interface AdmissionPolicy {
+  legalForm: LegalForm;
+  /** 应缴保证金（分）；0 = 免缴 */
+  requiredDepositMinor: number;
+  /** 单笔限额（分）；0 = 不限 */
+  singleOrderLimitMinor: number;
+  /** 日累计限额（分）；0 = 不限 */
+  dailyAmountLimitMinor: number;
+  /** 1 = 禁止经营任何「需资质」品类 */
+  banQualifiedCategory: number;
+  bannedCategoryCodes?: string | null;
+  enabled: number;
+  remark?: string | null;
+}
+
+/** 商家保证金账户。**可用余额 = 实缴 − 冻结**，判「够不够」用可用而非实缴。 */
+export interface MerchantDeposit {
+  merchantNo: string;
+  paidMinor: number;
+  frozenMinor: number;
+  availableMinor: number;
+  requiredMinor: number;
+  sufficient: boolean;
+  singleOrderLimitMinor: number;
+  dailyAmountLimitMinor: number;
+}
+
+export type DepositTxnType = "PAY" | "REFUND" | "FREEZE" | "UNFREEZE" | "DEDUCT";
+
+/** 保证金流水。**只有余额字段的账户是不可审计的** —— 说不清这笔钱什么时候少的、谁扣的。 */
+export interface DepositTxn {
+  txnNo: string;
+  txnType: DepositTxnType;
+  /** 有符号：扣划为负 */
+  amountMinor: number;
+  balanceAfterMinor: number;
+  reason?: string | null;
+  operator?: string | null;
+  createdAt?: string | null;
+}

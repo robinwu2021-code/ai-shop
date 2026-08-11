@@ -58,8 +58,8 @@ export const financeMock: FinanceApi = {
     const s = find(settleNo);
     db.assertTransition(SETTLE_TRANSITIONS, s.status, "FROZEN_BACK", "结算单", "Settlement");
     const days = Math.floor((Date.parse("2026-08-06T00:00:00Z") - Date.parse(s.frozenAt)) / 86_400_000);
-    if (days < db.feeRule.freezeDays) {
-      fail(`冻结仅 ${days} 天，未达兜底阈值 ${db.feeRule.freezeDays} 天，不能解冻回平台`, `Frozen for only ${days} days, short of the ${db.feeRule.freezeDays}-day fallback threshold — it cannot be released back yet`);
+    if (days < db.SETTLE_FREEZE_DAYS) {
+      fail(`冻结仅 ${days} 天，未达兜底阈值 ${db.SETTLE_FREEZE_DAYS} 天，不能解冻回平台`, `Frozen for only ${days} days, short of the ${db.SETTLE_FREEZE_DAYS}-day fallback threshold — it cannot be released back yet`);
     }
     s.status = "FROZEN_BACK";
     return wait(s, 400);
@@ -87,17 +87,42 @@ export const financeMock: FinanceApi = {
     return wait(a, 400);
   },
 
-  getFeeRule: async () => wait(db.feeRule),
+  listFeeRules: async () =>
+    wait([...db.feeRules].sort((a, b) => b.effectiveFrom - a.effectiveFrom)),
 
-  saveFeeRule: async (v) => {
-    for (const [k, rate] of Object.entries(v.byTrafficSource)) {
-      if (rate < 0 || rate > 10_000) fail(`${k} 的费率必须在 0–10000 万分比之间`, `The ${k} rate must be between 0 and 10000 basis points`);
+  /**
+   * 停用的版本要**参与覆盖再被移除**，不能直接跳过 —— 与后端同一套语义。
+   * 「停用最新版本」的意图是回退到上一版；直接跳过会让最新版形同没存在过，
+   * 于是命中的是更早的某一版：只调过一次时看不出区别，调过三次时结果完全不同。
+   */
+  effectiveFeeRates: async (at = Date.now()) => {
+    const out: Record<string, number> = {};
+    for (const r of [...db.feeRules].filter((r) => r.effectiveFrom <= at)
+      .sort((a, b) => a.effectiveFrom - b.effectiveFrom)) {
+      const key = `${r.businessMode}|${r.trafficSource}`;
+      if (r.enabled !== 1) delete out[key];
+      else out[key] = r.rateBp;
     }
-    if (v.pickupServiceFeeRate < 0) fail("履约服务费费率不能为负", "The fulfilment service fee rate cannot be negative");
-    // 兜底天数太短会把还在正常重试的单提前解冻回平台
-    if (v.freezeDays < SETTLE_FREEZE_MIN_DAYS) fail(`超时兜底天数至少 ${SETTLE_FREEZE_MIN_DAYS} 天`, `The fallback window must be at least ${SETTLE_FREEZE_MIN_DAYS} days`);
-    Object.assign(db.feeRule, v, { updatedAt: "2026-08-06T00:00:00Z", updatedBy: "admin" });
-    return wait(db.feeRule, 400);
+    return wait(out);
+  },
+
+  addFeeRule: async (v) => {
+    // 少一个零和多一个零是同一次手滑：5000（50%）打成 50000 就是 500%，
+    // 净额会变成大额负数并一路走到分账
+    if (v.rateBp < 0 || v.rateBp > 10_000) {
+      fail("费率必须在 0–10000 万分比之间", "The rate must be between 0 and 10000 basis points");
+    }
+    const rule = {
+      ruleNo: `FR-${db.feeRules.length + 1}`,
+      businessMode: v.businessMode,
+      trafficSource: v.trafficSource,
+      rateBp: v.rateBp,
+      effectiveFrom: v.effectiveFrom ?? Date.now(),
+      enabled: 1,
+      remark: v.remark ?? null,
+    };
+    db.feeRules.push(rule);
+    return wait(rule, 400);
   },
 
   listWithdrawals: (q = {}) =>

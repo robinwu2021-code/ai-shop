@@ -1,6 +1,7 @@
 // 商家域 mock 数据（P-11.1）。
 // 覆盖三种主体分层与全部审核状态，让列表页的筛选、徽标、空态在无后端时都能验到。
 import type { MerchantApply, Merchant } from "@/lib/types";
+import type { AdmissionPolicy, DepositTxn, StoreMode } from "@/lib/types";
 
 // 时间用固定字符串而非 Date.now()：mock 数据每次刷新都变的话，截图对不上、测试也不稳。
 export const merchants: Merchant[] = [
@@ -115,4 +116,40 @@ export const applies: MerchantApply[] = [
     licenses: ["https://cdn/license-903.jpg"], asPickupPoint: false, status: "PENDING",
     createdAt: Date.parse("2026-08-01T01:00:00Z"),
   },
+];
+
+
+// ── 弱主体准入（后端 mch_admission_policy / mch_deposit）────────
+
+/**
+ * 三档准入策略。**S1/S2 三项全 0 是有意的** ——
+ * 一个默认就生效的准入闸门，比没有闸门更危险。只有 MICRO 一档带限制。
+ */
+export const admissionPolicies: AdmissionPolicy[] = [
+  { legalForm: "ENTERPRISE", requiredDepositMinor: 0, singleOrderLimitMinor: 0,
+    dailyAmountLimitMinor: 0, banQualifiedCategory: 0, enabled: 1,
+    remark: "S1：出事能追到有偿付能力的主体，不设限" },
+  { legalForm: "INDIVIDUAL", requiredDepositMinor: 0, singleOrderLimitMinor: 0,
+    dailyAmountLimitMinor: 0, banQualifiedCategory: 0, enabled: 1,
+    remark: "S2：能追到人、赔付能力弱；先不设限，观察后再调" },
+  { legalForm: "MICRO", requiredDepositMinor: 200_000, singleOrderLimitMinor: 50_000,
+    dailyAmountLimitMinor: 500_000, banQualifiedCategory: 1, enabled: 1,
+    remark: "S3：几乎追不到人，平台是唯一被追的一方；三样同时生效" },
+];
+
+export const depositTxns: Record<string, DepositTxn[]> = {
+  M901: [
+    { txnNo: "DP-1", txnType: "PAY", amountMinor: 200_000, balanceAfterMinor: 200_000,
+      reason: "入驻缴纳保证金", operator: "admin", createdAt: "2026-07-01T02:00:00Z" },
+    { txnNo: "DP-2", txnType: "FREEZE", amountMinor: 50_000, balanceAfterMinor: 200_000,
+      reason: "食品变质投诉，理赔冻结", operator: "admin", createdAt: "2026-08-02T06:00:00Z" },
+  ],
+};
+
+/** 门店经营模式。**payMerchantNo 为空的店不能切第三方** —— 钱没处去。 */
+export const storeModes: StoreMode[] = [
+  { storeNo: "ST001", storeName: "张记粮油·文三路店", merchantNo: "M901",
+    businessMode: "SELF_OPERATED", payMerchantNo: null },
+  { storeNo: "ST002", storeName: "张记粮油·古荡店", merchantNo: "M901",
+    businessMode: "THIRD_PARTY", payMerchantNo: "PM_M901_DEFAULT" },
 ];

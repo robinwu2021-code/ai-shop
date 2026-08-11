@@ -81,23 +81,53 @@ export interface SplitRecord {
   netAmount: number;
 }
 
-/** 费率配置（P-12.1.7 / 12.1.8 / 12.1.4）。全部万分比。 */
-export interface FeeRule {
-  /**
-   * 按流量来源分档的平台佣金费率（R16）。
-   * ⚠️ `MERCHANT_OWNED`（商家自带客流）**建议 0** —— 商家自己把客人带来的单还抽佣，
-   * 商家就会把客人带去别处成交（ADR-004 的增长模型立不住）。口径未定，故可配。
-   */
-  byTrafficSource: Record<TrafficSource, number>;
-  /** 自提点履约服务费默认费率（R15）；自提点自己配了就用它自己的 */
-  pickupServiceFeeRate: number;
-  /** 超时兜底天数（12.1.4）：冻结超过它仍未分账成功，解冻回平台 */
-  freezeDays: number;
-  /** 最后修改时间。**改费率不影响已生成的结算单** */
-  updatedAt: string;
-  /** 最后修改人（STAFF 账号） */
-  updatedBy: string;
+/**
+ * 经营模式。与 {@link FeeRuleVersion} 一起构成费率的第一个维度。
+ *
+ * 自营：平台是销售主体，这个费率是**进销差价（毛利）**。
+ * 第三方：平台是撮合方，这个费率是**服务收入（佣金）**。
+ * 算法一样，记账口径不同 —— 口径由结算单上的 `businessMode` 快照决定。
+ */
+export type BusinessMode = "SELF_OPERATED" | "THIRD_PARTY";
+
+/**
+ * 费率适用的流量来源。
+ *
+ * **只有两档**，比订单上的 `TrafficSource`（还有 INVITE / CHANNEL）窄 ——
+ * 后端的费率表只认这两个。写成独立类型而不是在接口里内联字面量联合，
+ * 是因为内联的枚举不会被登记表扫到，等于绕过了枚举雷达（规范 §D5）。
+ */
+export type FeeTrafficSource = "MERCHANT_OWNED" | "PLATFORM";
+
+/**
+ * 费率的一个版本（后端 `stl_fee_rule`）。
+ *
+ * ⚠️ 这里与旧的 `FeeRule` 形状完全不同，是有意的。旧那个是一维（只按流量来源）、
+ * 单值、原地改；**后端从未实现过它**（守卫清单里 `fee-rule` 一直挂在「整域未开工」）。
+ * 真正落地的是二维 + 版本化：
+ *
+ * - **二维**：经营模式 × 流量来源。两者正交 —— 只按经营模式分档，
+ *   等哪天想给自营也区分客流就要改表结构，而费率表最不该改结构（历史行要一直可读）。
+ * - **版本化**：调费率是**插新版本**，旧版本永久保留。原地改只能回答「现在是多少」，
+ *   而真正会被问到的是「上个月那批单当时按什么费率算的」。
+ */
+export interface FeeRuleVersion {
+  ruleNo: string;
+  businessMode: BusinessMode;
+  trafficSource: FeeTrafficSource;
+  /** 万分比。500 = 5% */
+  rateBp: number;
+  /** 生效时刻（毫秒）。**填未来时刻 = 预约生效** */
+  effectiveFrom: number;
+  enabled: number;
+  /** 为什么调这一次 —— 回查时这句话比数字更有用 */
+  remark?: string | null;
+  createdAt?: string;
+  createdBy?: string;
 }
+
+/** 某时刻实际生效的费率表，键为 `${businessMode}|${trafficSource}`。 */
+export type EffectiveFeeRates = Record<string, number>;
 
 // ── 提现审批（P-12.2.1）───────────────────────────────────────────
 

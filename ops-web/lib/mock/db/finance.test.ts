@@ -4,19 +4,20 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { financeMock } from "@/lib/api/mocks/finance";
 import { afterSaleMock } from "@/lib/api/mocks/aftersale";
 import { MAX_SPLIT_RETRY, SETTLE_FREEZE_MIN_DAYS } from "@/lib/constants";
-import { feeRule, settlements } from "./finance";
+import { feeRules, settlements } from "./finance";
 import { afterSales } from "./aftersale";
 import { merchants } from "./merchant";
 
 const S0 = JSON.parse(JSON.stringify(settlements)) as typeof settlements;
 const A0 = JSON.parse(JSON.stringify(afterSales)) as typeof afterSales;
 const M0 = JSON.parse(JSON.stringify(merchants)) as typeof merchants;
-const R0 = { ...feeRule, byTrafficSource: { ...feeRule.byTrafficSource } };
+const R0 = JSON.parse(JSON.stringify(feeRules)) as typeof feeRules;
 beforeEach(() => {
   settlements.length = 0; settlements.push(...(JSON.parse(JSON.stringify(S0)) as typeof settlements));
   afterSales.length = 0; afterSales.push(...(JSON.parse(JSON.stringify(A0)) as typeof afterSales));
   merchants.length = 0; merchants.push(...(JSON.parse(JSON.stringify(M0)) as typeof merchants));
-  Object.assign(feeRule, JSON.parse(JSON.stringify(R0)));
+  // 费率是**只增**的，用例之间会互相污染 —— 每个用例前整表还原
+  feeRules.length = 0; feeRules.push(...(JSON.parse(JSON.stringify(R0)) as typeof feeRules));
 });
 
 describe("分账执行（P-12.1.3）", () => {
@@ -95,34 +96,36 @@ describe("退款回退分账（P-12.1.5 / E4）—— 跨域收口", () => {
   });
 });
 
-describe("费率配置（P-12.1.7 / 12.1.8）", () => {
+describe("费率版本（只增不改）", () => {
   it("费率必须在 0–10000 万分比之间", async () => {
     await expect(
-      financeMock.saveFeeRule({
-        byTrafficSource: { MERCHANT_OWNED: 0, PLATFORM: 20_000, INVITE: 300, CHANNEL: 500 },
-        pickupServiceFeeRate: 150, freezeDays: 15,
-      }),
+      financeMock.addFeeRule({ businessMode: "THIRD_PARTY", trafficSource: "PLATFORM", rateBp: 20_000 }),
     ).rejects.toThrow(/0–10000/);
   });
 
-  it(`超时兜底天数至少 ${SETTLE_FREEZE_MIN_DAYS} 天（太短会把还在重试的单提前收走）`, async () => {
-    await expect(
-      financeMock.saveFeeRule({
-        byTrafficSource: { MERCHANT_OWNED: 0, PLATFORM: 500, INVITE: 300, CHANNEL: 500 },
-        pickupServiceFeeRate: 150, freezeDays: 1,
-      }),
-    ).rejects.toThrow(new RegExp(String(SETTLE_FREEZE_MIN_DAYS)));
+  it("★ 时点回查：调价之后，问「调价之前」仍拿到旧费率", async () => {
+    const before = Date.now();
+    await financeMock.addFeeRule({
+      businessMode: "THIRD_PARTY", trafficSource: "PLATFORM", rateBp: 800,
+      effectiveFrom: before + 1000,
+    });
+
+    // 这正是「原地改一个数」做不到、才要做成版本的理由
+    expect((await financeMock.effectiveFeeRates(before))["THIRD_PARTY|PLATFORM"]).toBe(500);
+    expect((await financeMock.effectiveFeeRates(before + 2000))["THIRD_PARTY|PLATFORM"]).toBe(800);
   });
 
-  it("合法配置落库", async () => {
-    await financeMock.saveFeeRule({
-      byTrafficSource: { MERCHANT_OWNED: 0, PLATFORM: 400, INVITE: 200, CHANNEL: 400 },
-      pickupServiceFeeRate: 120, freezeDays: 20,
+  it("★ 预约生效：填未来时刻，当下不受影响", async () => {
+    const now = Date.now();
+    await financeMock.addFeeRule({
+      businessMode: "SELF_OPERATED", trafficSource: "MERCHANT_OWNED", rateBp: 300,
+      effectiveFrom: now + 86_400_000,
     });
-    const r = await financeMock.getFeeRule();
-    expect(r.byTrafficSource.PLATFORM).toBe(400);
-    expect(r.freezeDays).toBe(20);
-    // R16 建议：自带客流零佣金
-    expect(r.byTrafficSource.MERCHANT_OWNED).toBe(0);
+
+    expect((await financeMock.effectiveFeeRates(now))["SELF_OPERATED|MERCHANT_OWNED"]).toBe(0);
+  });
+
+  it("R16 建议：自带客流零佣金", async () => {
+    expect((await financeMock.effectiveFeeRates(1))["THIRD_PARTY|MERCHANT_OWNED"]).toBe(0);
   });
 });

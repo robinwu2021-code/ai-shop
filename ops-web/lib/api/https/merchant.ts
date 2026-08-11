@@ -3,6 +3,14 @@ import { client } from "../http-client";
 import type { MerchantApi } from "../contracts/merchant";
 
 export const merchantHttp: MerchantApi = {
+  storeModes: (merchantNo) => client.get(`/ops/merchants/${merchantNo}/store-modes`),
+  setStoreBusinessMode: (v) => client.put(`/ops/stores/${v.storeNo}/business-mode`, v),
+  admissionPolicies: () => client.get("/ops/admission/policies"),
+  updateAdmissionPolicy: (v) => client.put(`/ops/admission/policies/${v.legalForm}`, v),
+  merchantDeposit: (merchantNo) => client.get(`/ops/admission/deposits/${merchantNo}`),
+  depositTxns: (merchantNo) => client.get(`/ops/admission/deposits/${merchantNo}/txns`),
+  addDepositTxn: (v) => client.post(`/ops/admission/deposits/${v.merchantNo}/txns`, v),
+
   /*
    * 入驻审核这三条是**真后端**（其余仍未实现，见 docs/technical/Ops契约对账.md）。
    * 路径用单数 `/ops/merchant/apply` —— 与 ADR-007 的资源单数规矩一致，

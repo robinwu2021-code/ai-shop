@@ -80,7 +80,10 @@ export const FIELDS = [
     concept: "履约方式",
     field: "ord_sub_order.fulfillment",
     backend: {
-      javaConst: "shop-core/src/main/java/ai/neargo/shop/trade/entity/OrdSubOrder.java",
+      // 取值域搬到了 base：商品域与交易域都要用它，而商品域不能依赖交易域。
+      // OrdSubOrder 那四个常量现在只是引用（= Fulfillments.X），
+      // 继续指着它会**提不出任何字面量** —— 那正是这条 fatal 断言拦下来的情况。
+      javaConst: "shop-base/src/main/java/ai/neargo/shop/common/Fulfillments.java",
       only: ["STORE_PICKUP", "NEIGHBOR_PICKUP", "MERCHANT_DELIVERY", "EXPRESS"],
     },
     clients: [

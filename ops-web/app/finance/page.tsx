@@ -17,12 +17,14 @@ import { money } from "@/lib/utils";
 import { useCan } from "@/lib/use-can";
 import { useEditableConfig } from "@/lib/use-editable-config";
 import { notify } from "@/lib/notify";
-import type { AfterSale, FeeRule, Settlement, SplitRecord, TrafficSource } from "@/lib/types";
+import type { AfterSale, Settlement, SplitRecord, TrafficSource } from "@/lib/types";
 import { SettleStatusBadge, useSettleStatusMap, useTrafficSourceMap } from "@/components/status";
 import { ReadOnlyNotice } from "@/components/read-only-notice";
 // 提现与发票各自成块 —— 与结算那四个 tab 只共用文案表
 import { WithdrawTab } from "./withdraw-tab";
 import { InvoiceTab } from "./invoice-tab";
+// 费率单独成块：它与结算那几个 tab 只共用文案表，且形状是版本化的、与配置卡完全不同
+import { FeeRuleTab } from "./fee-rule-tab";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DataTable, type Column } from "@/components/ui/data-table";
@@ -87,7 +89,6 @@ function FinanceInner() {
   const splitQ = { keyword, page, size };
   const splits = useQuery({ queryKey: ["splits", splitQ], queryFn: () => api.listSplitRecords(splitQ), enabled: tab === "splits" });
   const backs = useQuery({ queryKey: ["refund-backs"], queryFn: () => api.listRefundSplitBacks(), enabled: tab === "refund-back" });
-  const rule = useQuery({ queryKey: ["fee-rule"], queryFn: () => api.getFeeRule(), enabled: tab === "rates" });
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ["settlements"] });
@@ -106,24 +107,6 @@ function FinanceInner() {
   const execBack = useMutation({
     mutationFn: (asNo: string) => api.executeRefundSplitBack(asNo),
     onSuccess: () => { invalidate(); notify.success(c.toastRefundBack); },
-  });
-
-  const cfg: FeeRule | undefined = rule.data;
-  const { form: editing, patch, set: setField, reset: resetForm } = useEditableConfig(cfg, (d) => ({
-    rates: Object.fromEntries(Object.entries(d.byTrafficSource).map(([k, v]) => [k, String(v)])) as Record<string, string>,
-    pickup: String(d.pickupServiceFeeRate),
-    freeze: String(d.freezeDays),
-  }));
-  const saveRule = useMutation({
-    mutationFn: () =>
-      api.saveFeeRule({
-        byTrafficSource: Object.fromEntries(
-          Object.entries(editing!.rates).map(([k, v]) => [k, Number(v)]),
-        ) as Record<TrafficSource, number>,
-        pickupServiceFeeRate: Number(editing!.pickup),
-        freezeDays: Number(editing!.freeze),
-      }),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["fee-rule"] }); resetForm(); notify.success(c.toastRateSaved); },
   });
 
   const settleColumns: Column<Settlement>[] = [
@@ -301,58 +284,7 @@ function FinanceInner() {
 
       {tab === "invoice" && <InvoiceTab c={c} canEdit={canInvoice} />}
 
-      {tab === "rates" && (
-        <ConfigCard
-          title={c.rateTitle}
-          readOnly={!canEditRate && (
-              <ReadOnlyNotice what={c.rateReadOnlyWhat} perm="finance:rate:update" note={c.rateReadOnlyNote} className="mb-3" />
-            )}
-          notice={
-            c.rateNotice
-          }
-          onSave={() => saveRule.mutate()}
-          saving={saveRule.isPending}
-          canSave={canEditRate}
-          updatedAt={cfg?.updatedAt}
-          updatedBy={cfg?.updatedBy}
-        >
-          {editing && (
-            <>
-                <div>
-                  <div className="mb-2 txt-strong">{c.rateTierTitle}</div>
-                  <div className="grid grid-cols-2 gap-3">
-                    {(Object.keys(editing.rates) as TrafficSource[]).map((k) => (
-                      <div key={k} className="space-y-1">
-                        <Label htmlFor={`rate-${k}`}>{fill(c.rateFieldBp, { label: trafficLabel[k] })}</Label>
-                        <Input
-                          id={`rate-${k}`} disabled={!canEditRate} value={editing.rates[k]}
-                          onChange={(e) => patch((p) => ({ ...p, rates: { ...p.rates, [k]: e.target.value } }))}
-                        />
-                        <p className="txt-caption text-muted-foreground">= {pct(Number(editing.rates[k]) || 0)}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                <div className="space-y-1">
-                  <Label htmlFor="pickup-rate">{c.fieldPickupRate}</Label>
-                  <Input id="pickup-rate" className="w-full" disabled={!canEditRate} value={editing.pickup}
-                    onChange={(e) => setField("pickup", e.target.value)} />
-                  <p className="txt-caption text-muted-foreground">
-                    {fill(c.pickupRateHint, { pct: pct(Number(editing.pickup) || 0) })}
-                  </p>
-                </div>
-                <div className="space-y-1">
-                  <Label htmlFor="freeze-days" required>{c.fieldFreezeDays}</Label>
-                  <Input id="freeze-days" className="w-full" disabled={!canEditRate} value={editing.freeze}
-                    onChange={(e) => setField("freeze", e.target.value)} />
-                  <p className="txt-caption text-muted-foreground">
-                    {fill(c.freezeHint, { n: SETTLE_FREEZE_MIN_DAYS })}
-                  </p>
-                </div>
-            </>
-          )}
-        </ConfigCard>
-      )}
+      {tab === "rates" && <FeeRuleTab c={c} canEdit={canEditRate} />}
 
       {dialog}
     </div>

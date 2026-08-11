@@ -1,5 +1,5 @@
 // 覆盖范围：分账结算（P-12.1）与提现·发票·个税（P-12.2）。
-import type { AfterSale, FeeRule, InvoiceRequest, Page, Settlement, SplitRecord, TaxRule, Withdrawal } from "@/lib/types";
+import type { AfterSale, BusinessMode, EffectiveFeeRates, FeeRuleVersion, FeeTrafficSource, InvoiceRequest, Page, Settlement, SplitRecord, TaxRule, Withdrawal } from "@/lib/types";
 import type { PageQ, SettlementQ } from "../query";
 
 export interface FinanceApi {
@@ -19,9 +19,33 @@ export interface FinanceApi {
   /** 执行退款回退分账，**执行后清除该售后单的标记**，否则队列永远消不掉。 */
   executeRefundSplitBack(asNo: string): Promise<AfterSale>;
 
-  getFeeRule(): Promise<FeeRule>;
-  /** 费率配置（P-12.1.7 / 12.1.8 / 12.1.4）。 */
-  saveFeeRule(v: Pick<FeeRule, "byTrafficSource" | "pickupServiceFeeRate" | "freezeDays">): Promise<FeeRule>;
+  // ── 费率（后端 stl_fee_rule）────────────────────────────────
+
+  /**
+   * 全部费率版本，含历史。
+   *
+   * <b>不提供「改」和「删」</b>：调费率是插一个新版本，旧版本永久保留。
+   * 原地改只能回答「现在是多少」，而真正会被问到的是
+   * 「上个月那批单当时按什么费率算的」。
+   */
+  listFeeRules(): Promise<FeeRuleVersion[]>;
+
+  /**
+   * 某时刻实际生效的四格费率。
+   *
+   * 单独一个接口而不是让页面从版本列表里自己推：
+   * 「哪一版此刻在生效」牵涉停用回退的语义，前端推错了不会报错，只会显示错。
+   */
+  effectiveFeeRates(at?: number): Promise<EffectiveFeeRates>;
+
+  /** 新增一个费率版本。`effectiveFrom` 留空 = 立即生效，填未来时刻 = 预约生效。 */
+  addFeeRule(v: {
+    businessMode: BusinessMode;
+    trafficSource: FeeTrafficSource;
+    rateBp: number;
+    effectiveFrom?: number;
+    remark?: string;
+  }): Promise<FeeRuleVersion>;
 
   // ── 提现审批（P-12.2.1）──────────────────────────────────────
 

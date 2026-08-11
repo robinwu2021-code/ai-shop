@@ -3,6 +3,7 @@ import * as db from "@/lib/mock/db";
 import { MERCHANT_TRANSITIONS, type Merchant } from "@/lib/types";
 import { MAX_MERCHANT_BREACH } from "@/lib/constants";
 import type { MerchantApi } from "../contracts/merchant";
+import type { LegalForm } from "@/lib/types";
 import { fail, notFound } from "@/lib/biz-error";
 import { wait } from "./_wait";
 
@@ -21,7 +22,86 @@ function find(merchantNo: string): Merchant {
 // ⚠️ 会抛错的方法一律写成 **async**：非 async 的箭头函数里 `throw` 是**同步抛出**，
 // 调用方拿不到一个 rejected promise（`api.x().catch()` 根本来不及挂上），
 // 与真实后端「网络返回错误码」的行为不一致 —— react-query 的 onError 也就不会触发。
+/** mock 侧的主体类型映射，见 merchantDeposit 里的说明。 */
+const MOCK_LEGAL_FORM: Record<string, LegalForm> = {
+  M901: "MICRO",
+};
+
 export const merchantMock: MerchantApi = {
+  // ── 门店经营模式与弱主体准入 ─────────────────────────────────
+
+  storeModes: async (merchantNo) => wait(db.storeModes.filter((s) => s.merchantNo === merchantNo)),
+
+  setStoreBusinessMode: async ({ storeNo, businessMode }) => {
+    const s = db.storeModes.find((x) => x.storeNo === storeNo);
+    if (!s) fail("门店不存在", "Store not found");
+    /*
+     * 切第三方要求该店有可用收款号。不拦的后果不是报错，而是**静默欠款**：
+     * 订单照常成交、账单照常生成，只是钱卡在平台侧下不去，
+     * 等发现时已经积了一批单。自营不需要这一条 —— 自营的钱本来就先进平台。
+     */
+    if (businessMode === "THIRD_PARTY" && !s!.payMerchantNo) {
+      fail("该门店尚无可用收款账户，无法切换为第三方经营模式",
+        "This store has no active payment account; cannot switch to third-party mode");
+    }
+    s!.businessMode = businessMode;
+    return wait(s!, 400);
+  },
+
+  admissionPolicies: async () => wait([...db.admissionPolicies]),
+
+  updateAdmissionPolicy: async ({ legalForm, ...patch }) => {
+    const p = db.admissionPolicies.find((x) => x.legalForm === legalForm);
+    // 三档已锁定，凭空多出一档只可能是笔误 —— 静默新建会让笔误变成一条永不生效的策略
+    if (!p) fail("主体档位不存在", "Unknown legal form");
+    Object.assign(p!, patch);
+    return wait(undefined, 400);
+  },
+
+  merchantDeposit: async (merchantNo) => {
+    const txns = db.depositTxns[merchantNo] ?? [];
+    const paid = txns.filter((t) => t.txnType !== "FREEZE" && t.txnType !== "UNFREEZE")
+      .reduce((n, t) => n + t.amountMinor, 0);
+    const frozen = txns.reduce(
+      (n, t) => n + (t.txnType === "FREEZE" ? t.amountMinor : t.txnType === "UNFREEZE" ? -t.amountMinor : 0), 0);
+    /*
+     * ⚠️ **运营端的商家档案里没有主体类型**（Merchant 上没有 legalForm，
+     * 后端 /ops/merchants 也不返回），而准入档位完全由它决定。
+     * 真实后端是在服务端算好 requiredMinor / 两个限额再下发的，页面用不到它；
+     * 只有 mock 得自己推，所以这里用一张本地映射兜着。
+     * 这个缺口值得单独补 —— 运营看不到「这家是小微」，就理解不了它为什么被限额。
+     */
+    const form = MOCK_LEGAL_FORM[merchantNo] ?? "ENTERPRISE";
+    const policy = db.admissionPolicies.find((x) => x.legalForm === form);
+    // 判「够不够」用**可用**而非实缴：冻结中的钱不能同时用来撑准入，
+    // 否则同一笔保证金被两处重复计数
+    const available = paid - frozen;
+    return wait({
+      merchantNo, paidMinor: paid, frozenMinor: frozen, availableMinor: available,
+      requiredMinor: policy?.requiredDepositMinor ?? 0,
+      sufficient: available >= (policy?.requiredDepositMinor ?? 0),
+      singleOrderLimitMinor: policy?.singleOrderLimitMinor ?? 0,
+      dailyAmountLimitMinor: policy?.dailyAmountLimitMinor ?? 0,
+    });
+  },
+
+  depositTxns: async (merchantNo) => wait([...(db.depositTxns[merchantNo] ?? [])].reverse()),
+
+  addDepositTxn: async ({ merchantNo, txnType, amountMinor, reason }) => {
+    const list = (db.depositTxns[merchantNo] ??= []);
+    const paid = list.filter((t) => t.txnType !== "FREEZE" && t.txnType !== "UNFREEZE")
+      .reduce((n, t) => n + t.amountMinor, 0);
+    const after = txnType === "FREEZE" || txnType === "UNFREEZE" ? paid : paid + amountMinor;
+    // 扣成负数意味着平台已经垫付，那是另一笔账，不该混在这张表里
+    if (after < 0) fail("保证金余额不足，无法扣划", "Deposit balance is not enough for this deduction");
+    list.push({
+      txnNo: `DP-${list.length + 1}`, txnType, amountMinor,
+      balanceAfterMinor: after, reason: reason ?? null, operator: "admin",
+      createdAt: new Date().toISOString(),
+    });
+    return wait(undefined, 400);
+  },
+
   listApplies: (q = {}) => {
     // 不给状态时只给待办两档 —— 与真后端同口径，否则切到真实环境列表会突然变长
     const want = (q.status?.split(",").map((x) => x.trim()).filter(Boolean) ?? [])

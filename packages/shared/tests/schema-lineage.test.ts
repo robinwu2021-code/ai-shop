@@ -169,6 +169,17 @@ const KEY_OWNERS: Record<string, { table: string; col?: string }> = {
   inviter_no: { table: "usr_account", col: "user_no" },
   // ⚠️ 命名欠账：按基准应叫 issuer_entity_no，改它要动积分域 Java 映射，随积分域下次动工时改
   issuer_merchant_no: { table: "mch_entity", col: "entity_no" },
+
+  /*
+   * 保证金账户与流水都按商家挂，指向的是商家主体。
+   *
+   * ⚠️ 与上面 issuer_merchant_no 同一笔命名欠账：按基准该叫 entity_no。
+   * 建表时沿用了 merchant_no，因为准入这条链上（AdmissionPort、
+   * AdmissionService、两个 VO）从头到尾都叫 merchantNo，
+   * 只在两张表上改名会让读代码的人以为是两个东西。
+   * 要改就连着这条链一起改，单独动表名是净亏。
+   */
+  merchant_no: { table: "mch_entity", col: "entity_no" },
 };
 
 /**

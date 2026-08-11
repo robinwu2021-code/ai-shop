@@ -1,7 +1,7 @@
 // mock 数据集出口。**写操作必须真改这里的数组**（重开页面能读回），
 // 伪实现（只返回不落库）会让页面在接后端前一直骗人（架构 §10.5）。
 export * from "./helpers";
-export { merchants, applies, authCodes, violations } from "./merchant";
+export { merchants, applies, authCodes, violations , admissionPolicies, depositTxns, storeModes } from "./merchant";
 export { orders, orderInterventions } from "./order";
 export { reconDiffs, closeRule } from "./payment";
 export { shipments, freightTemplates, carriers } from "./logistics";
@@ -16,7 +16,7 @@ export { reviews, reviewAppeals, scoreConfig } from "./review";
 export { afterSales, fastRefundRule } from "./aftersale";
 export { groupCampaigns, demandOrders, quotes } from "./group";
 export { categories, skus, goodsAudits } from "./product";
-export { settlements, splitRecords, feeRule } from "./finance";
+export { settlements, splitRecords, feeRules, SETTLE_FREEZE_DAYS } from "./finance";
 export { staffs, roleDefs, auditLogs } from "./iam";
 export { attributionRule, attributionTraces, fissionCampaigns } from "./growth";
 export { riskEvents, blacklists, riskRules } from "./risk";

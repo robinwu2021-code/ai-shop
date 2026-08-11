@@ -73,6 +73,8 @@ export const KEY_OWNERS = {
   use_ledger_no: "pts_user_ledger",
   inviter_no: "usr_account",
   issuer_merchant_no: "mch_entity",
+  // 保证金账户/流水按商家挂；命名欠账见 schema-lineage.test.ts 里的说明
+  merchant_no: "mch_entity",
 };
 
 /**
