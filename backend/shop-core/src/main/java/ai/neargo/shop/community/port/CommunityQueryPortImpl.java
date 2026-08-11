@@ -60,4 +60,17 @@ public class CommunityQueryPortImpl implements CommunityQueryPort {
                                         regionPrefix)))
                 .stream().map(ai.neargo.shop.community.entity.CmtCommunity::getCommunityNo).toList();
     }
+
+    @Override
+    public String communityName(String communityNo) {
+        if (communityNo == null || communityNo.isBlank()) {
+            return communityNo;
+        }
+        var row = DataScopeContext.executeWithoutScope(() ->
+                communityMapper.selectOne(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                        .<ai.neargo.shop.community.entity.CmtCommunity>lambdaQuery()
+                        .eq(ai.neargo.shop.community.entity.CmtCommunity::getCommunityNo, communityNo)
+                        .last("LIMIT 1")));
+        return row == null || row.getName() == null ? communityNo : row.getName();
+    }
 }

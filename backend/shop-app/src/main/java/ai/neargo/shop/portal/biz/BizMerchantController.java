@@ -198,7 +198,8 @@ public class BizMerchantController {
         return storeService.save(BizContext.requireMerchantNo(),
                 new MerchantStoreService.SaveCommand(
                         req.announcement(), req.openHours(), req.address(), req.featured(),
-                        req.serviceScope(), req.serviceCommunityNos(), req.serviceCityCode()));
+                        req.serviceScope(), req.serviceCommunityNos(), req.serviceCityCode(),
+                        req.fulfillmentReach(), req.serviceAreas()));
     }
 
     // ---------------------------------------------------------------- 收款进件
@@ -395,7 +396,9 @@ public class BizMerchantController {
     /** 对齐 shared {@code StoreProfile}。 */
     public record StoreReq(String announcement, String openHours, String address,
                            List<String> featured, String serviceScope,
-                           List<String> serviceCommunityNos, String serviceCityCode) {
+                           List<String> serviceCommunityNos, String serviceCityCode,
+                           String fulfillmentReach,
+                           List<MerchantStoreService.AreaCommand> serviceAreas) {
     }
 
     /** 申请单状态 → B 端口径。PENDING 在端上叫 APPLYING（「已提交，等着」）。 */

@@ -50,4 +50,14 @@ public interface MasterDataPort {
      * @throws ai.neargo.shop.common.BizException 值域非法或这一期未开放
      */
     void assertServiceScopeAllowed(String scope);
+
+    /**
+     * 区划码 → 「浙江省 / 杭州市 / 西湖区」这样的整条路径名（ADR-013）。
+     *
+     * <p>给整条而不只给末级：光一个「西湖区」，全国有好几个同名的 ——
+     * 商家在自己的覆盖清单里看到两条都叫「西湖区」，分不出删哪条。
+     *
+     * @return 查不到时返回码本身，不返回空 —— 空白的覆盖项会被当成坏数据删掉
+     */
+    String regionPathName(String regionCode);
 }

@@ -8,6 +8,7 @@ import ai.neargo.shop.merchant.dto.StoreProfileVO;
 import ai.neargo.shop.merchant.entity.MchEntity;
 import ai.neargo.shop.merchant.entity.MchEntityCommunity;
 import ai.neargo.shop.merchant.entity.MchStore;
+import ai.neargo.shop.merchant.entity.MchServiceArea;
 import ai.neargo.shop.merchant.entity.MchStoreAudit;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityCommunityMapper;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper;
@@ -39,13 +40,20 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
     private final ai.neargo.shop.spi.platform.SettingPort settingPort;
     /** 经营范围的值域与启用白名单归 platform 管，本域只问「这个值能不能用」 */
     private final ai.neargo.shop.spi.platform.MasterDataPort masterDataPort;
+    /** 覆盖项要显示成人能读的名字 —— 端上只拿到 330106 的话要么显示数字要么再查一次 */
+    private final ai.neargo.shop.spi.user.CommunityQueryPort communityNamePort;
+    private final ai.neargo.shop.merchant.mapper.MerchantMappers.ServiceAreaMapper serviceAreaMapper;
 
     public MerchantStoreServiceImpl(MchStoreMapper storeMapper, MchEntityMapper merchantMapper,
                                     MchEntityCommunityMapper merchantCommunityMapper,
                                     ObjectMapper json,
                                     ai.neargo.shop.merchant.mapper.MerchantMappers.StoreAuditMapper storeAuditMapper,
                                     ai.neargo.shop.spi.platform.SettingPort settingPort,
-                                    ai.neargo.shop.spi.platform.MasterDataPort masterDataPort) {
+                                    ai.neargo.shop.spi.platform.MasterDataPort masterDataPort,
+                                    ai.neargo.shop.spi.user.CommunityQueryPort communityNamePort,
+                                    ai.neargo.shop.merchant.mapper.MerchantMappers.ServiceAreaMapper serviceAreaMapper) {
+        this.communityNamePort = communityNamePort;
+        this.serviceAreaMapper = serviceAreaMapper;
         this.storeMapper = storeMapper;
         this.merchantMapper = merchantMapper;
         this.merchantCommunityMapper = merchantCommunityMapper;
@@ -67,7 +75,10 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
                 merchant == null || merchant.getServiceScope() == null
                         ? COMMUNITY : merchant.getServiceScope(),
                 communitiesOf(merchantNo),
-                merchant == null ? null : merchant.getServiceCityCode());
+                merchant == null ? null : merchant.getServiceCityCode(),
+                merchant == null || merchant.getFulfillmentReach() == null
+                        ? PICKUP : merchant.getFulfillmentReach(),
+                areasOf(merchantNo));
     }
 
     @Override
@@ -81,14 +92,27 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
          * 与下面那条社区必填校验同一个形状的故障，只是那条已经拦了，这条没有。
          */
         masterDataPort.assertServiceScopeAllowed(cmd.serviceScope());
-        String scope = cmd.serviceScope() == null ? COMMUNITY : cmd.serviceScope();
+        String reach = cmd.fulfillmentReach() == null || cmd.fulfillmentReach().isBlank()
+                ? PICKUP : cmd.fulfillmentReach();
         /*
-         * ADR-009 的硬规则，与入驻审核那边同一条：范围选「仅本社区」却一个社区都没覆盖，
-         * 等于这家店对谁都不可见 —— 而商家看到的是保存成功、商品在架、订单为零。
-         * 这个故障没有任何报错，所以只能在写入口拦。
+         * 「这家店对谁都不可见」这条硬规则要在**写入口**拦 —— 它没有任何报错，
+         * 商家看到的是保存成功、商品在架、订单为零，自己永远查不出来。
+         *
+         * 新旧两个入口的表达方式不同，但拦的是同一件事：
+         *   新（传了 serviceAreas）：PICKUP 且把覆盖项清空 —— 自提没有落点
+         *   旧（只传 serviceScope）：scope=COMMUNITY 却一个社区都没配
+         *
+         * serviceAreas 为 null 表示「这次不改覆盖项」（老版本 b-app 不传这个字段），
+         * 那就走旧校验；传了空列表才是明确的「清空」。
          */
-        if (COMMUNITY.equals(scope)
+        if (cmd.serviceAreas() != null) {
+            if (PICKUP.equals(reach) && cmd.serviceAreas().isEmpty()) {
+                throw BizException.of(ErrorCode.BAD_REQUEST);
+            }
+        } else if (cmd.serviceScope() != null && COMMUNITY.equals(cmd.serviceScope())
                 && (cmd.serviceCommunityNos() == null || cmd.serviceCommunityNos().isEmpty())) {
+            // 只有**老入口明确传了 scope** 才走这条。两个字段都没传 = 这次不改覆盖范围，
+            // 没什么可校验的 —— 拿默认值去拦，会让「只改一句公告」的保存被拒
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
 
@@ -121,8 +145,19 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
 
         MchEntity merchant = merchant(merchantNo);
         if (merchant != null) {
-            merchant.setServiceScope(scope);
+            /*
+             * **service_scope 只在老入口写。**
+             *
+             * ADR-013 阶段二之后它是冻结的回滚锚点（迁移当时的快照），不做双写 ——
+             * 双写在本仓库有前科：「少一个入口、少一条分支」，漏了之后
+             * 「设置里改了、详情页还是老的」，且不报错。
+             * 代价是回滚会丢掉切换之后的编辑，但不会产生错误的可见性 —— 这个方向是对的。
+             */
+            if (cmd.serviceScope() != null && !cmd.serviceScope().isBlank()) {
+                merchant.setServiceScope(cmd.serviceScope());
+            }
             merchant.setServiceCityCode(cmd.serviceCityCode());
+            merchant.setFulfillmentReach(reach);
             /*
              * **不再往主体表回写地址与营业时间**（V42 已删那两列）。
              * 之前的双写是在给「两张表都有」这处重复打补丁 —— 而双写永远有漏的一天
@@ -132,7 +167,80 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
             DataScopeContext.executeWithoutScope(() -> merchantMapper.updateById(merchant));
         }
         syncCommunities(merchantNo, cmd.serviceCommunityNos());
+        syncAreas(merchantNo, cmd.serviceAreas());
         return profile(merchantNo);
+    }
+
+    private static final String PICKUP = "PICKUP";
+    private static final String AREA_COMMUNITY = "COMMUNITY";
+
+    /**
+     * 覆盖项：**全量替换**，勾选面板上的就是最终结果。
+     *
+     * <p>与 {@link #syncCommunities} 不同，这里可以放心「先删再插」——
+     * {@code mch_service_area} 走<b>物理删除</b>，没有墓碑行占着唯一索引位
+     * （ADR-013 阶段二特意这么设计的，见 {@code MchServiceArea} 的说明）。
+     * 那正是本仓库在另外四张表上打了四个 revive 补丁的那个坑。
+     *
+     * <p>{@code null} 表示端上这次不改覆盖项（老版本 b-app 就不会传）——
+     * 与空列表要分开：空列表是「清空」，而清空对 PICKUP 商家意味着从 C 端消失。
+     */
+    private void syncAreas(String merchantNo, List<AreaCommand> areas) {
+        if (areas == null) {
+            return;
+        }
+        replaceAreas(merchantNo, areas, null);
+    }
+
+    /**
+     * 替换覆盖项。{@code onlyLevel} 非空时**只替换那一层** ——
+     * 老入口（只管社区）不该顺手把商家在新界面上勾的「西湖区」抹掉。
+     */
+    private void replaceAreas(String merchantNo, List<AreaCommand> areas, String onlyLevel) {
+        List<MchServiceArea> current = DataScopeContext.executeWithoutScope(() ->
+                serviceAreaMapper.selectList(Wrappers.<MchServiceArea>lambdaQuery()
+                        .eq(MchServiceArea::getEntityNo, merchantNo)
+                        .eq(onlyLevel != null, MchServiceArea::getLevel, onlyLevel)));
+        for (MchServiceArea old : current) {
+            DataScopeContext.executeWithoutScope(() ->
+                    serviceAreaMapper.hardDelete(merchantNo, old.getLevel(), old.getRefCode()));
+        }
+        for (AreaCommand a : areas) {
+            if (a == null || a.level() == null || a.refCode() == null || a.refCode().isBlank()) {
+                continue;
+            }
+            MchServiceArea row = new MchServiceArea();
+            row.setEntityNo(merchantNo);
+            row.setLevel(a.level());
+            row.setRefCode(a.refCode());
+            row.setSource("SELF");
+            /*
+             * 勾**已有社区**自助生效；勾**区/市**要审 —— 一家菜摊声称覆盖整个西湖区，
+             * 得有履约能力佐证，影响面差一个量级（ADR-013 §4.2）。
+             * 待审的覆盖项不参与展开，所以商家勾了也不会当场铺开。
+             */
+            row.setStatus(AREA_COMMUNITY.equals(a.level()) ? "ACTIVE" : "PENDING");
+            DataScopeContext.executeWithoutScope(() -> serviceAreaMapper.insert(row));
+        }
+    }
+
+    /** 回显覆盖项，名字由后端补 —— 端上只拿到 330106 的话要么显示数字要么再查一次 */
+    private List<StoreProfileVO.ServiceAreaVO> areasOf(String merchantNo) {
+        return DataScopeContext.executeWithoutScope(() ->
+                        serviceAreaMapper.selectList(Wrappers.<MchServiceArea>lambdaQuery()
+                                .eq(MchServiceArea::getEntityNo, merchantNo)))
+                .stream()
+                .map(a -> new StoreProfileVO.ServiceAreaVO(
+                        a.getLevel(), a.getRefCode(), areaNameOf(a)))
+                .toList();
+    }
+
+    private String areaNameOf(MchServiceArea a) {
+        if (AREA_COMMUNITY.equals(a.getLevel())) {
+            return communityNamePort.communityName(a.getRefCode());
+        }
+        // 区划给整条路径：「浙江省 / 杭州市 / 西湖区」比光一个「西湖区」更不容易选错
+        return masterDataPort.regionPathName(a.getRefCode());
     }
 
     /**
@@ -175,6 +283,25 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
             row.setCommunityNo(added);
             DataScopeContext.executeWithoutScope(() -> merchantCommunityMapper.insert(row));
         }
+        /*
+         * **老写入口必须喂新读出口。**
+         *
+         * ADR-013 阶段二把可见性的读侧换到了 mch_service_area，而入驻审核这条老路径
+         * 只写 mch_entity_community。V33 回填了存量，但此后新建的商家在新表里没有行 ——
+         * 于是 PICKUP + 无覆盖项 = 谁也看不到，商家上完架一个订单都不来，且不报错。
+         *
+         * 这不是「为回滚而双写」（那个已经明确不做），是**过渡期里老写入口的必要延伸**：
+         * 镜像只在这一个方法里做，没有「少一个入口、少一条分支」的余地。
+         * mch_entity_community 退役时这一段跟着删。
+         */
+        mirrorCommunitiesToAreas(merchantNo, communityNos);
+    }
+
+    /** 把社区列表镜像成 COMMUNITY 层的覆盖项。**只动这一层**，不碰商家勾的区/市 */
+    private void mirrorCommunitiesToAreas(String merchantNo, List<String> communityNos) {
+        replaceAreas(merchantNo,
+                communityNos.stream().map(c -> new AreaCommand(AREA_COMMUNITY, c)).toList(),
+                AREA_COMMUNITY);
     }
 
     private List<String> communitiesOf(String merchantNo) {

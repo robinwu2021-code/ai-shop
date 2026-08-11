@@ -41,12 +41,19 @@ public class CommunityAdminServiceImpl implements CommunityAdminService {
 
     private final CommunityMapper communityMapper;
     private final PickupPointMapper pickupMapper;
-    /** 只用来把 region_code 拼成人能读的路径 —— 区划本身归 platform 域 */
-    private final ai.neargo.shop.platform.RegionService regionService;
+    /**
+     * 只用来把 region_code 拼成人能读的路径。
+     *
+     * <p>走 {@code spi} 的 Port 而不是直接注 {@code platform.RegionService} ——
+     * 后者是跨业务域直连，ArchUnit 第 1 条就会拦下来。规则拦的正是这种
+     * 「为了一个显示名捅穿一层边界」：捅一次之后，下一个人会顺手用上 RegionService
+     * 的别的方法，两个域就再也拆不开了。
+     */
+    private final ai.neargo.shop.spi.platform.MasterDataPort masterDataPort;
 
     public CommunityAdminServiceImpl(CommunityMapper communityMapper, PickupPointMapper pickupMapper,
-                                     ai.neargo.shop.platform.RegionService regionService) {
-        this.regionService = regionService;
+                                     ai.neargo.shop.spi.platform.MasterDataPort masterDataPort) {
+        this.masterDataPort = masterDataPort;
         this.communityMapper = communityMapper;
         this.pickupMapper = pickupMapper;
     }
@@ -113,7 +120,9 @@ public class CommunityAdminServiceImpl implements CommunityAdminService {
          * 而运营看着界面上明明填着值，商家看着自己的货就是没人搜得到。
          * 这正是本仓库反复记录的那类无报错故障，只能在写入口拦。
          */
-        if (code != null && regionService.path(code).isEmpty()) {
+        // 码不存在时 regionPathName 原样返回码本身 —— 拿它与入参比对即可判断存在性，
+        // 不必为此在 Port 上再开一个方法
+        if (code != null && code.equals(masterDataPort.regionPathName(code))) {
             throw new ai.neargo.shop.common.BizException(
                     ai.neargo.shop.common.ErrorCode.NOT_FOUND, "区划不存在：" + code);
         }
@@ -301,10 +310,7 @@ public class CommunityAdminServiceImpl implements CommunityAdminService {
         if (regionCode == null || regionCode.isBlank()) {
             return null;
         }
-        var path = regionService.path(regionCode);
-        return path.isEmpty() ? regionCode
-                : path.stream().map(ai.neargo.shop.platform.RegionService.RegionVO::name)
-                        .collect(java.util.stream.Collectors.joining(" / "));
+        return masterDataPort.regionPathName(regionCode);
     }
 
     private PickupVO toVO(CmtPickupPoint p) {

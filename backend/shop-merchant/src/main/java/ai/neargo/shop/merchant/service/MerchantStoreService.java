@@ -48,8 +48,19 @@ public interface MerchantStoreService {
     record DeliveryRuleVO(int radius, long minOrderMinor, long feeMinor, long freeThresholdMinor) {
     }
 
+    /**
+     * @param serviceScope        @deprecated 旧三档。端上改用 fulfillmentReach + serviceAreas 之后
+     *                            这两个字段留空即可 —— 传了也只在 areas 为空时兜底
+     * @param fulfillmentReach    履约能力（ADR-013）。为空按 PICKUP
+     * @param serviceAreas        地理覆盖项，**全量替换**：勾选面板上的就是最终结果
+     */
     record SaveCommand(String announcement, String openHours, String address,
                        List<String> featured, String serviceScope,
-                       List<String> serviceCommunityNos, String serviceCityCode) {
+                       List<String> serviceCommunityNos, String serviceCityCode,
+                       String fulfillmentReach, List<AreaCommand> serviceAreas) {
+    }
+
+    /** 一条覆盖项的入参。名字由后端补，端上不用传 */
+    record AreaCommand(String level, String refCode) {
     }
 }

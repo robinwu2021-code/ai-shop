@@ -41,4 +41,11 @@ public interface CommunityQueryPort {
      *                     空前缀匹配一切是最危险的默认值）
      */
     java.util.List<String> openCommunityNosUnderRegion(String regionPrefix);
+
+    /**
+     * 社区展示名。查不到时<b>返回社区号本身</b>，不返回空 ——
+     * 页面上宁可显示 C0001，也不要显示一个空白的覆盖项：
+     * 空白会让商家以为「这一条坏了」而去删掉它。
+     */
+    String communityName(String communityNo);
 }

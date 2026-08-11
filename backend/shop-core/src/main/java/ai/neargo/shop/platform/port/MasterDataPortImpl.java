@@ -16,9 +16,12 @@ import org.springframework.stereotype.Component;
 public class MasterDataPortImpl implements MasterDataPort {
 
     private final MasterDataService masterDataService;
+    private final ai.neargo.shop.platform.RegionService regionService;
 
-    public MasterDataPortImpl(MasterDataService masterDataService) {
+    public MasterDataPortImpl(MasterDataService masterDataService,
+                              ai.neargo.shop.platform.RegionService regionService) {
         this.masterDataService = masterDataService;
+        this.regionService = regionService;
     }
 
     @Override
@@ -39,6 +42,14 @@ public class MasterDataPortImpl implements MasterDataPort {
     @Override
     public void assertServiceScopeAllowed(String scope) {
         masterDataService.assertServiceScopeAllowed(scope);
+    }
+
+    @Override
+    public String regionPathName(String regionCode) {
+        var path = regionService.path(regionCode);
+        return path.isEmpty() ? regionCode
+                : path.stream().map(ai.neargo.shop.platform.RegionService.RegionVO::name)
+                        .collect(java.util.stream.Collectors.joining(" / "));
     }
 
     @Override

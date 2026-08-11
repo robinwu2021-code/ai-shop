@@ -589,6 +589,7 @@ CREATE TABLE IF NOT EXISTS ord_sub_order
     commission_minor BIGINT(20) NOT NULL DEFAULT 0,
     service_fee_minor BIGINT(20) NOT NULL DEFAULT 0,
     store_no VARCHAR(64) DEFAULT NULL,
+    require_buyer_confirm TINYINT(4) NOT NULL DEFAULT 0,
     PRIMARY KEY (id),
     CONSTRAINT uk_sub_order_no UNIQUE (sub_order_no),
     CONSTRAINT uk_verify_code UNIQUE (verify_code)

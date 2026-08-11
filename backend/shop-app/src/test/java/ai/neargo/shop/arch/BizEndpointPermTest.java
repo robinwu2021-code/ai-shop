@@ -43,7 +43,10 @@ class BizEndpointPermTest {
             // 要 biz:store 的话店员一家都切不了，而多门店授权正是为他准备的
             "/biz/store/list",
             // 主数据与上传：登录后人人可用，不含任何一家店的数据
-            "/biz/category/tree", "/biz/communities", "/biz/spec-templates", "/biz/upload/image");
+            // 行政区划与 /biz/communities 同性质：主数据，不含任何一家店的数据。
+            // 要 biz:store 的话，还没建店的申请人就挑不了经营范围
+            "/biz/category/tree", "/biz/communities", "/biz/regions",
+            "/biz/spec-templates", "/biz/upload/image");
 
     /**
      * 端点 → 需要的权限码。
