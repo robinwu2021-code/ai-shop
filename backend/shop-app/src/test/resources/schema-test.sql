@@ -948,6 +948,11 @@ CREATE TABLE IF NOT EXISTS stl_bill
     split_at BIGINT(20) DEFAULT NULL,
     retry_count INT(11) NOT NULL DEFAULT 0,
     last_error VARCHAR(512) DEFAULT NULL,
+    business_mode VARCHAR(16) NOT NULL DEFAULT 'SELF_OPERATED',
+    payment_ref VARCHAR(64) DEFAULT NULL,
+    paid_at BIGINT(20) DEFAULT NULL,
+    purchase_invoice_no VARCHAR(64) DEFAULT NULL,
+    invoice_status VARCHAR(16) NOT NULL DEFAULT 'PENDING_INVOICE',
     tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
     created_at DATETIME NOT NULL,
     created_by VARCHAR(64) DEFAULT NULL,
@@ -1033,6 +1038,38 @@ CREATE TABLE IF NOT EXISTS stl_points_pool
     pay_channel VARCHAR(16) NOT NULL DEFAULT 'WECHAT',
     PRIMARY KEY (id),
     CONSTRAINT uk_pts_pool_flow_no UNIQUE (flow_no)
+);
+
+CREATE TABLE IF NOT EXISTS stl_purchase_invoice
+(
+    id BIGINT(20) NOT NULL AUTO_INCREMENT,
+    invoice_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    period VARCHAR(16) NOT NULL,
+    invoice_code VARCHAR(32) DEFAULT NULL,
+    invoice_number VARCHAR(32) NOT NULL,
+    invoice_type VARCHAR(16) NOT NULL DEFAULT 'GENERAL',
+    title_name VARCHAR(128) NOT NULL,
+    title_tax_no VARCHAR(32) DEFAULT NULL,
+    amount_minor BIGINT(20) NOT NULL,
+    tax_amount_minor BIGINT(20) NOT NULL DEFAULT 0,
+    tax_rate INT(11) NOT NULL DEFAULT 0,
+    invoice_date BIGINT(20) DEFAULT NULL,
+    image_url VARCHAR(512) DEFAULT NULL,
+    status VARCHAR(16) NOT NULL DEFAULT 'SUBMITTED',
+    verified_by VARCHAR(64) DEFAULT NULL,
+    verified_at BIGINT(20) DEFAULT NULL,
+    reject_reason VARCHAR(512) DEFAULT NULL,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT(20) NOT NULL DEFAULT 0,
+    deleted TINYINT(4) NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_purchase_invoice_no UNIQUE (invoice_no),
+    CONSTRAINT uk_purchase_invoice_number UNIQUE (invoice_code, invoice_number)
 );
 
 CREATE TABLE IF NOT EXISTS stl_split_log
@@ -1422,6 +1459,7 @@ CREATE TABLE IF NOT EXISTS mch_store
 (
     id BIGINT(20) NOT NULL AUTO_INCREMENT,
     entity_no VARCHAR(64) NOT NULL,
+    business_mode VARCHAR(16) NOT NULL DEFAULT 'SELF_OPERATED',
     announcement VARCHAR(255) DEFAULT NULL,
     open_hours VARCHAR(64) DEFAULT NULL,
     address VARCHAR(255) DEFAULT NULL,

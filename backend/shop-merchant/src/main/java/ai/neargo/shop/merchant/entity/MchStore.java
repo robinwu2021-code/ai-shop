@@ -18,11 +18,33 @@ import lombok.Setter;
 @TableName("mch_store")
 public class MchStore extends BaseEntity {
 
+    /**
+     * 自营：平台是销售主体。没有 EDI 时只能自营，故为默认值。
+     *
+     * <p>取值域的**唯一定义处**在 {@code MerchantQueryPort}——跨域调用方
+     * （如 settle 生成结算单时）不能依赖商家域，所以放在契约上。这里只是转引用，
+     * 不重新写一份字面量：两处各写一份，改一处就会静默分岔。
+     */
+    public static final String SELF_OPERATED = ai.neargo.shop.spi.user.MerchantQueryPort.MODE_SELF_OPERATED;
+    /** 第三方：商家是销售主体，平台收佣金。需要 EDI 与收付通。 */
+    public static final String THIRD_PARTY = ai.neargo.shop.spi.user.MerchantQueryPort.MODE_THIRD_PARTY;
+
     /** ACTIVE / SUSPENDED / READONLY（Plan 降级：不接新单，但未完成的单照常核销）。 */
     public static final String ACTIVE = "ACTIVE";
     public static final String READONLY = "READONLY";
 
     private String entityNo;
+
+    /**
+     * 经营模式：{@link #SELF_OPERATED} / {@link #THIRD_PARTY}。
+     *
+     * <p>挂在门店而不是主体上：同一主体下旗舰店做自营、加盟店做第三方是常见形态，
+     * 而选择依据（品类、供货方资质、履约控制）本来就是按店不同的。
+     *
+     * <p><b>与「分账时机」是两个正交的轴</b>，不要合并成一个枚举——
+     * 合并之后「自营 + 直连分账」这种非法组合在类型上就是可表达的。
+     */
+    private String businessMode;
 
     /** 门店业务键。 */
     private String storeNo;

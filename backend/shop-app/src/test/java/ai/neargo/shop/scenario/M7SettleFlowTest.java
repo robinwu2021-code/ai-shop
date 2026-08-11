@@ -4,6 +4,8 @@ import ai.neargo.shop.marketing.coupon.entity.MktCoupon;
 import ai.neargo.shop.marketing.coupon.mapper.CouponMappers.CouponMapper;
 import ai.neargo.shop.merchant.entity.MchEntity;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper;
+import ai.neargo.shop.merchant.entity.MchStore;
+import ai.neargo.shop.settle.entity.StlBill;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -50,6 +52,12 @@ class M7SettleFlowTest {
 
     @Autowired
     private MchEntityMapper merchantMapper;
+
+    @Autowired
+    private ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper storeMapper;
+
+    @Autowired
+    private ai.neargo.shop.settle.mapper.SettleMappers.BillMapper billMapper;
 
     @Autowired
     private CouponMapper couponMapper;
@@ -427,5 +435,55 @@ class M7SettleFlowTest {
 
     @Autowired
     private ai.neargo.shop.merchant.mapper.MerchantMappers.MchAccountMapper merchantStaffMapper;
+
+
+    // ---------------------------------------------------------------- 经营模式快照（P0-1/2）
+
+    @Test
+    @DisplayName("★ 自营门店的结算单落自营状态机，且要求进项票")
+    void selfOperatedBillUsesSelfOperatedStateMachine() throws Exception {
+        // 种子门店默认就是自营（没有 EDI 时只能自营，故 business_mode 默认 SELF_OPERATED）
+        String user = login("13100131080");
+        buyAndPay(user, "G0002", "SK0003", null, "p0-self-operated");
+
+        var bill = billMapper.selectList(Wrappers.<StlBill>lambdaQuery()
+                .orderByDesc(StlBill::getId)).stream().findFirst().orElseThrow();
+
+        assertThat(bill.getBusinessMode())
+                .as("经营模式必须落快照 —— 门店改模式不能改历史账的口径")
+                .isEqualTo("SELF_OPERATED");
+        assertThat(bill.getStatus())
+                .as("自营走 PENDING_RECON（对账），不是第三方的 PENDING（待分账）")
+                .isEqualTo(StlBill.PENDING_RECON);
+        assertThat(bill.getInvoiceStatus())
+                .as("自营必须收进项票，否则这笔支出不能税前列支")
+                .isEqualTo(StlBill.INV_PENDING);
+    }
+
+    @Test
+    @DisplayName("第三方门店的结算单走分账状态机，且不要求进项票")
+    void thirdPartyBillUsesSplitStateMachine() throws Exception {
+        // 把门店切成第三方后再下单 —— 只影响新单，历史单按各自快照走
+        var store = storeMapper.selectList(Wrappers.<MchStore>lambdaQuery()
+                .eq(MchStore::getEntityNo, "M0001")).stream().findFirst().orElseThrow();
+        String origin = store.getBusinessMode();
+        store.setBusinessMode(MchStore.THIRD_PARTY);
+        storeMapper.updateById(store);
+        try {
+            String user = login("13100131081");
+            buyAndPay(user, "G0002", "SK0003", null, "p0-third-party");
+
+            var bill = billMapper.selectList(Wrappers.<StlBill>lambdaQuery()
+                    .orderByDesc(StlBill::getId)).stream().findFirst().orElseThrow();
+            assertThat(bill.getBusinessMode()).isEqualTo("THIRD_PARTY");
+            assertThat(bill.getStatus()).isEqualTo(StlBill.PENDING);
+            assertThat(bill.getInvoiceStatus())
+                    .as("第三方不需要进项票：那笔钱从未构成平台的成本")
+                    .isEqualTo(StlBill.INV_NONE);
+        } finally {
+            store.setBusinessMode(origin);
+            storeMapper.updateById(store);
+        }
+    }
 
 }

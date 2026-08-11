@@ -12,6 +12,7 @@ import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.settle.dto.RateCardVO;
 import ai.neargo.shop.settle.dto.SettleBillVO;
 import ai.neargo.shop.settle.entity.StlBill;
+import ai.neargo.shop.spi.user.MerchantQueryPort;
 import ai.neargo.shop.settle.entity.StlSplitLog;
 import ai.neargo.shop.settle.mapper.SettleMappers.BillMapper;
 import ai.neargo.shop.settle.mapper.SettleMappers.SplitLogMapper;
@@ -148,7 +149,18 @@ public class SettleServiceImpl implements SettleService {
             bill.setStoreNo(src.storeNo());
             bill.setPayMerchantNo(
                     merchantQueryPort.payMerchantNoOf(src.merchantNo(), src.storeNo()).orElse(null));
-            bill.setStatus(StlBill.PENDING);
+            /*
+             * 经营模式快照。它决定这张单走哪条状态机：
+             *   自营   PENDING_RECON → CONFIRMED → PAID（对账 → 确认 → 财务付款）
+             *   第三方 PENDING → SPLITTABLE → SPLIT
+             * 不快照的话，门店改一次模式会把未结的历史流水一起改口径 ——
+             * 自营的单要收进项票、第三方的不用，走错分支就是凭证对不上账。
+             */
+            String mode = merchantQueryPort.businessModeOf(src.merchantNo(), src.storeNo());
+            bill.setBusinessMode(mode);
+            boolean selfOperated = MerchantQueryPort.MODE_SELF_OPERATED.equals(mode);
+            bill.setStatus(selfOperated ? StlBill.PENDING_RECON : StlBill.PENDING);
+            bill.setInvoiceStatus(selfOperated ? StlBill.INV_PENDING : StlBill.INV_NONE);
             bill.setRetryCount(0);
             DataScopeContext.executeWithoutScope(() -> billMapper.insert(bill));
             created++;

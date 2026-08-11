@@ -88,6 +88,28 @@ public interface MerchantQueryPort {
      *
      * <p>含停用门店是刻意的：停用的店重新启用时，它的上架设置该还在。
      */
+    /**
+     * 门店的<b>经营模式</b>：{@code SELF_OPERATED} / {@code THIRD_PARTY}。
+     *
+     * <p>settle 域生成结算单时要把它<b>快照</b>进单据——它决定这张单走哪条状态机
+     * （自营：对账→确认→付款；第三方：待分账→可分账→已分账）。
+     *
+     * <p>放 Port 而不是让 settle 直接读 {@code mch_store}：那是商家域的表，
+     * 直连会被 ArchUnit 拦下，而且模式的默认值规则（门店空则回落主体、
+     * 主体空则回落平台默认）属于商家域，两处各写一遍迟早分岔。
+     *
+     * @param storeNo 空 = 用主体的默认门店
+     * @return 解析不出时返回 {@code SELF_OPERATED} —— <b>保守回落</b>：
+     *         自营的单会要求收进项票，误判为自营只是多要一张票；
+     *         误判为第三方则会去下发分账，而对方根本没有二级商户号
+     */
+    String businessModeOf(String merchantNo, String storeNo);
+
+    /** 自营：平台是销售主体。取值域与 Port 同处——调用方不必依赖商家域就能判断。 */
+    String MODE_SELF_OPERATED = "SELF_OPERATED";
+    /** 第三方：商家是销售主体，平台收佣金。 */
+    String MODE_THIRD_PARTY = "THIRD_PARTY";
+
     java.util.List<String> storeNos(String merchantNo);
 
     /**
@@ -146,4 +168,20 @@ public interface MerchantQueryPort {
      * 和停一个空行业，是两件事。
      */
     long countByIndustry(String industry);
+
+    /**
+     * 某个经营范围档下有多少商家（ADR-009 三档）。
+     *
+     * <p>与 {@link #countByIndustry} 同一个用途：运营在后台关掉某一档之前要知道影响面。
+     * 不带计数的开关是**盲操作** —— 关掉 CITY 和关掉一个没人用的档，看起来完全一样。
+     */
+    long countByServiceScope(String serviceScope);
+
+    /**
+     * 有多少商家持有某个类目授权码。
+     *
+     * <p>停用一个码不会撤销存量商家的授权（与行业同一口径），但运营要知道
+     * 这一停会让多少家店从此上不了新品。
+     */
+    long countByAuthCode(String code);
 }

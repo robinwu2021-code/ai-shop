@@ -5,6 +5,7 @@ import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.spi.user.MerchantAdminPort;
 import ai.neargo.shop.spi.user.MerchantQueryPort;
 import ai.neargo.shop.merchant.entity.MchEntity;
+import ai.neargo.shop.merchant.entity.MchStore;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.merchant.entity.MchEntityCommunity;
@@ -128,6 +129,32 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort {
                         ai.neargo.shop.merchant.entity.MchStore::getStoreNo,
                         ai.neargo.shop.merchant.entity.MchStore::getEntityNo,
                         (a, b) -> a));
+    }
+
+    @Override
+    public String businessModeOf(String merchantNo, String storeNo) {
+        MchStore store = null;
+        if (storeNo != null && !storeNo.isBlank()) {
+            store = DataScopeContext.executeWithoutScope(() ->
+                    storeMapper.selectOne(Wrappers.<MchStore>lambdaQuery()
+                            .eq(MchStore::getStoreNo, storeNo).last("limit 1")));
+        }
+        if (store == null && merchantNo != null && !merchantNo.isBlank()) {
+            // 没传门店（或门店查不到）时回落主体的默认门店 —— 与 defaultStoreNo 同一口径
+            store = DataScopeContext.executeWithoutScope(() ->
+                    storeMapper.selectOne(Wrappers.<MchStore>lambdaQuery()
+                            .eq(MchStore::getEntityNo, merchantNo)
+                            .eq(MchStore::getIsDefault, true).last("limit 1")));
+        }
+        /*
+         * 解析不出一律回落自营。**保守方向是有讲究的**：
+         * 误判为自营，后果是多要一张进项票（可补）；
+         * 误判为第三方，后果是去下发分账而对方根本没有二级商户号 —— 那是脏数据。
+         */
+        if (store == null || store.getBusinessMode() == null || store.getBusinessMode().isBlank()) {
+            return MchStore.SELF_OPERATED;
+        }
+        return store.getBusinessMode();
     }
 
     @Override
@@ -514,5 +541,23 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort {
     public long countByIndustry(String industry) {
         return merchantMapper.selectCount(
                 Wrappers.<MchEntity>lambdaQuery().eq(MchEntity::getIndustry, industry));
+    }
+
+    @Override
+    public long countByServiceScope(String serviceScope) {
+        return merchantMapper.selectCount(
+                Wrappers.<MchEntity>lambdaQuery().eq(MchEntity::getServiceScope, serviceScope));
+    }
+
+    @Override
+    public long countByAuthCode(String code) {
+        /*
+         * category_codes 是 JSON 数组存在 VARCHAR 里（V4 的取舍：H2 的 JSON 类型会
+         * 多包一层引号，反序列化直接失败）。这里用 LIKE 匹配带引号的码，
+         * 而不是裸的 code —— 裸匹配会让 FRESH_VEG 命中 FRESH_VEGETABLE 那种前缀重合的码，
+         * 统计出来的影响面偏大，而偏大的影响面会让运营不敢动本该停用的码。
+         */
+        return merchantMapper.selectCount(Wrappers.<MchEntity>lambdaQuery()
+                .like(MchEntity::getCategoryCodes, "\"" + code + "\""));
     }
 }

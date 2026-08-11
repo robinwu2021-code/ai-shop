@@ -17,6 +17,23 @@ import lombok.Setter;
 @TableName("stl_bill")
 public class StlBill extends BaseEntity {
 
+    // ── 自营链路状态（business_mode = SELF_OPERATED）
+    /** 待对账：应付账款已生成，等供应商核对。 */
+    public static final String PENDING_RECON = "PENDING_RECON";
+    /** 已确认：双方对账一致，等收票与付款。 */
+    public static final String CONFIRMED = "CONFIRMED";
+    /** 已付款：财务在网银付了，系统登记凭证号。 */
+    public static final String PAID = "PAID";
+
+    // ── 进项票状态
+    public static final String INV_PENDING = "PENDING_INVOICE";
+    public static final String INV_SUBMITTED = "SUBMITTED";
+    public static final String INV_VERIFIED = "VERIFIED";
+    public static final String INV_REJECTED = "REJECTED";
+    /** 无票供应商：**不进发票流程，但要在应付列表上标出来** ——
+     *  让财务在付款前就看见「这笔付出去是不能列支的」，而不是月末报税才发现。 */
+    public static final String INV_NONE = "NO_INVOICE";
+
     public static final String PENDING = "PENDING";
     public static final String SPLITTING = "SPLITTING";
     public static final String SPLIT = "SPLIT";
@@ -103,4 +120,25 @@ public class StlBill extends BaseEntity {
      * 或是 V14 之前的存量行 —— 两种都在发起打款时再解析一次。
      */
     private String payMerchantNo;
+    /**
+     * 下单时的经营模式快照。<b>决定这张单走哪条状态机</b>。
+     *
+     * <p>快照而不是回查门店：门店的经营模式改了，未结的历史流水不能跟着改口径——
+     * 自营的单要收进项票、第三方的单不用，走错分支的结果是凭证对不上账。
+     */
+    private String businessMode;
+
+    /** 付款凭证号（网银流水号）。自营专用；空 = 尚未付款。 */
+    private String paymentRef;
+
+    /** 财务登记的付款时间。与 {@code splitAt} 分开——那是分账时间，两条轨道不共用。 */
+    private Long paidAt;
+
+    /** 所属进项票；空 = 尚未开票或无票供应商。 */
+    private String purchaseInvoiceNo;
+
+    /** 见 {@link #INV_PENDING} 等。冗余一列是因为应付列表要按它筛。 */
+    private String invoiceStatus;
+
+
 }
