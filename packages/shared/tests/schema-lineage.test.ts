@@ -194,6 +194,11 @@ const NAME_COLLISIONS: Record<string, string> = {
     "mkt_request 是求团需求单号；stl_split_log 是分账幂等号。" +
     "建表时已发现约束名会撞车并加了 uk_split_request_no 前缀，但列名的撞车还在。",
   express_no: "ord_sub_order 是发货快递单号；ord_after_sale 是用户退货的快递单号。方向相反。",
+  ref_no:
+    "stl_points_pool 是积分池指向的业务单据；mch_store_audit 是审核单指向的业务记录" +
+    "（kind=SERVICE_AREA 时是 mch_service_area.area_no）。\n" +
+    "  两者都是「指针列」，但**指向的表由同行的另一列决定**（前者看 pool 类型，后者看 kind）——" +
+    "所以谁都不能登记成外键，按名字 join 必然连错，且不报错。",
   operator_no: "ord_status_log 与 ful_verify_log 各自记录操作人，不是同一张表的外键。",
   template_no:
     "**同一个列名下其实是两族**：msg_template 是消息模板，msg_message.template_no 引用它；" +
