@@ -419,4 +419,89 @@ class M6bCouponFlowTest {
                 .andReturn().getResponse().getContentAsString();
         return json.readTree(body).get("data").get("token").asString();
     }
+
+    // ---------------------------------------------------------------- 平台营销治理（P-7.1）
+
+    @Test
+    @DisplayName("★ 平台暂停券：从领券中心消失，且领取被拒")
+    void opsPauseStopsCoupon() throws Exception {
+        String couponNo = platformCoupon("面额写错的券", 100000L, 100L);
+        String user = login("13500135090");
+
+        // 停之前：能看到、能领
+        assertThat(couponCenter(user)).contains(couponNo);
+
+        String goods = opsLogin("goods", "goods123");
+        mvc().perform(post("/ops/coupons/" + couponNo + "/status")
+                        .header("Authorization", "Bearer " + goods)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"PAUSED\",\"reason\":\"面额 1000 元超过商品价，疑似录错\"}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.status").value("PAUSED"));
+
+        // 停之后：领券中心看不到，硬领也领不到 —— 只改一个没人看的字段不算止损
+        assertThat(couponCenter(user)).doesNotContain(couponNo);
+        mvc().perform(post("/mp/coupon/" + couponNo + "/receive")
+                        .header("Authorization", "Bearer " + user))
+                .andExpect(jsonPath("$.code").value(40001));   // COUPON_SOLD_OUT
+    }
+
+    @Test
+    @DisplayName("暂停不影响已领到手的券 —— 那是用户已有的权益")
+    void pauseDoesNotRevokeIssued() throws Exception {
+        String couponNo = platformCoupon("先领后停", 1000L, 5000L);
+        String user = login("13500135091");
+        receive(user, couponNo);
+
+        mvc().perform(post("/ops/coupons/" + couponNo + "/status")
+                        .header("Authorization", "Bearer " + opsLogin("goods", "goods123"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"PAUSED\",\"reason\":\"停发\"}"))
+                .andExpect(jsonPath("$.code").value(0));
+
+        String mine = mvc().perform(get("/mp/coupon/mine").header("Authorization", "Bearer " + user))
+                .andReturn().getResponse().getContentAsString();
+        assertThat(mine)
+                .as("平台单方面作废已发的券会引发比「多发几张」严重得多的纠纷")
+                .contains(couponNo);
+    }
+
+    @Test
+    @DisplayName("理由必填；非法状态被拒；无 marketing:govern 停不了")
+    void statusGuards() throws Exception {
+        String couponNo = platformCoupon("守卫测试", 500L, 1000L);
+        String goods = opsLogin("goods", "goods123");
+
+        mvc().perform(post("/ops/coupons/" + couponNo + "/status")
+                        .header("Authorization", "Bearer " + goods)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"PAUSED\",\"reason\":\"  \"}"))
+                .andExpect(jsonPath("$.code").value(10400));
+
+        mvc().perform(post("/ops/coupons/" + couponNo + "/status")
+                        .header("Authorization", "Bearer " + goods)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"DELETED\",\"reason\":\"乱传状态\"}"))
+                .andExpect(jsonPath("$.code").value(10400));
+
+        mvc().perform(post("/ops/coupons/" + couponNo + "/status")
+                        .header("Authorization", "Bearer " + opsLogin("bd", "bd123"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"PAUSED\",\"reason\":\"我不该能停\"}"))
+                .andExpect(jsonPath("$.code").value(10403));
+    }
+
+    private String couponCenter(String token) throws Exception {
+        return mvc().perform(get("/mp/coupon").header("Authorization", "Bearer " + token))
+                .andReturn().getResponse().getContentAsString();
+    }
+
+    private String opsLogin(String username, String password) throws Exception {
+        String body = mvc().perform(post("/ops/auth/login").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"" + username + "\",\"password\":\"" + password + "\"}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        return json.readTree(body).get("data").get("token").asString();
+    }
+
 }

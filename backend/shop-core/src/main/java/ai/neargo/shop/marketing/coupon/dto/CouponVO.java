@@ -14,5 +14,7 @@ public record CouponVO(String couponNo,
                        long startAt,
                        long endAt,
                        int remain,
-                       boolean received) {
+                       boolean received,
+                       /** ACTIVE / PAUSED / ENDED。平台列表要靠它筛出被停的券 */
+                       String status) {
 }

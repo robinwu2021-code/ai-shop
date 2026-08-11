@@ -285,4 +285,35 @@ public class CampaignServiceImpl implements CampaignService {
     private static long nz(Long v) {
         return v == null ? 0L : v;
     }
+    // ---------------------------------------------------------------- 平台侧（P-7.2）
+
+    @Override
+    public List<CampaignVO> opsCampaigns(String status) {
+        return DataScopeContext.executeWithoutScope(() ->
+                campaignMapper.selectList(Wrappers.<MktCampaign>lambdaQuery()
+                        .eq(status != null && !status.isBlank(), MktCampaign::getStatus, status)
+                        .orderByDesc(MktCampaign::getId))).stream()
+                .map(this::toVO).toList();
+    }
+
+    @Override
+    @Transactional
+    public CampaignVO opsToggle(String campaignNo, boolean running, String reason, String operatorNo) {
+        if (reason == null || reason.isBlank()) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        MktCampaign c = DataScopeContext.executeWithoutScope(() ->
+                campaignMapper.selectOne(Wrappers.<MktCampaign>lambdaQuery()
+                        .eq(MktCampaign::getCampaignNo, campaignNo).last("limit 1")));
+        if (c == null) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        if ("ENDED".equals(c.getStatus())) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+        c.setStatus(running ? "RUNNING" : "PAUSED");
+        DataScopeContext.executeWithoutScope(() -> campaignMapper.updateById(c));
+        return toVO(c);
+    }
+
 }

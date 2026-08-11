@@ -205,7 +205,8 @@ public class CouponServiceImpl implements CouponService {
         return new CouponVO(c.getCouponNo(), c.getTitle(), c.getType(), nz(c.getFaceMinor()),
                 nzi(c.getDiscountRate()), nz(c.getThresholdMinor()), nz(c.getMaxDiscountMinor()),
                 c.getFunder(), c.getEntityNo(), nz(c.getStartAt()), nz(c.getEndAt()),
-                Math.max(remain, 0), received);
+                Math.max(remain, 0), received,
+                c.getStatus() == null ? MktCoupon.ACTIVE : c.getStatus());
     }
 
     private UserCouponVO toVO(MktUserCoupon uc, MktCoupon c, boolean usableNow) {
@@ -221,4 +222,43 @@ public class CouponServiceImpl implements CouponService {
     private static int nzi(Integer v) {
         return v == null ? 0 : v;
     }
+    // ---------------------------------------------------------------- 平台侧（P-7.1）
+
+    @Override
+    public List<CouponVO> opsCoupons(String status) {
+        // executeWithoutScope：平台视角要跨商家。不解除数据域的话，
+        // 运营看到的永远是空列表 —— 而且不报错
+        return DataScopeContext.executeWithoutScope(() ->
+                couponMapper.selectList(Wrappers.<MktCoupon>lambdaQuery()
+                        .eq(status != null && !status.isBlank(), MktCoupon::getStatus, status)
+                        .orderByDesc(MktCoupon::getId))).stream()
+                .map(c -> toVO(c, false)).toList();
+    }
+
+    @Override
+    @Transactional
+    public CouponVO setCouponStatus(String couponNo, String status, String reason, String operatorNo) {
+        if (reason == null || reason.isBlank()) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        if (!MktCoupon.ACTIVE.equals(status) && !MktCoupon.PAUSED.equals(status)
+                && !MktCoupon.ENDED.equals(status)) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        MktCoupon c = DataScopeContext.executeWithoutScope(() ->
+                couponMapper.selectOne(Wrappers.<MktCoupon>lambdaQuery()
+                        .eq(MktCoupon::getCouponNo, couponNo).last("limit 1")));
+        if (c == null) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        if (MktCoupon.ENDED.equals(c.getStatus())) {
+            // 已结束不可恢复：把它改回 ACTIVE 等于让一批过期券重新可领，
+            // 而发行量与预算的账早就按「结束」结过了
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+        c.setStatus(status);
+        DataScopeContext.executeWithoutScope(() -> couponMapper.updateById(c));
+        return toVO(c, false);
+    }
+
 }
