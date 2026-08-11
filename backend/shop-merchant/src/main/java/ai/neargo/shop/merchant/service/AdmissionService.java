@@ -38,6 +38,14 @@ public interface AdmissionService {
                      long singleOrderLimitMinor, long dailyAmountLimitMinor) {
     }
 
+    /**
+     * 设置收款额度上限（分）；{@code 0 = 未设置，不拦}。
+     *
+     * <p>只设上限，<b>不动已用量</b>：用量是支付累加出来的事实，
+     * 让运营能改它等于让人可以把账做平。
+     */
+    void setPayQuotaLimit(String merchantNo, String storeNo, long quotaLimitMinor, String operator);
+
     record TxnVO(String txnNo, String txnType, long amountMinor, long balanceAfterMinor,
                  String reason, String operator, String createdAt) {
     }

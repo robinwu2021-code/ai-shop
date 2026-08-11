@@ -1,0 +1,35 @@
+package ai.neargo.shop.trade.dto;
+
+import java.util.List;
+
+/**
+ * 结算页的<b>能力提示</b>：这一车货能不能开票、能用哪些支付方式、额度还够不够。
+ *
+ * <p>为什么单独一个接口而不是塞进 {@code OrderVO}：这三件事回答的是
+ * 「<b>付款前你要先知道什么</b>」，与订单金额不是同一类信息；
+ * 而且它们在下单之后就不再变化，塞进订单详情只会让每次查订单都多三次查询。
+ *
+ * <p>三件事一起给，是因为它们的共同后果都是<b>付款那一刻才炸</b>：
+ * 小微没有 H5/App 支付方式，混合购物车整单支付失败；小微不能开票，
+ * 买完才发现开不了；额度用尽，通道直接拒收。
+ * 每一条单独看都像偶发故障，放在一起看才是同一件事 ——
+ * 平台放小微进来了，而结算页还没告诉买家这意味着什么。
+ *
+ * @param usablePayMethods 整单可用的支付方式 = <b>各商家支持集合的交集</b>。
+ *                         交集而非并集：一笔支付覆盖整单，有一家不支持就用不了。
+ *                         <b>空集合意味着这一车货没有任何支付方式能付</b>，端上要拦在结算页
+ * @param merchants        逐商家的能力，端上据此在对应的商家分组上打标
+ */
+public record CheckoutCapabilityVO(List<String> usablePayMethods,
+                                   boolean anyNotInvoiceCapable,
+                                   List<MerchantCapability> merchants) {
+
+    /**
+     * @param quotaExhausted   本期额度已用尽 —— 这家的货现在下不了单
+     * @param quotaWouldExceed 加上本车这些货会超 —— 还没用尽，但这一单过不去
+     */
+    public record MerchantCapability(String merchantNo, String merchantName,
+                                     boolean invoiceCapable, List<String> payMethods,
+                                     boolean quotaExhausted, boolean quotaWouldExceed) {
+    }
+}

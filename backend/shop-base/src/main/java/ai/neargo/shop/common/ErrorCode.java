@@ -24,6 +24,18 @@ public enum ErrorCode {
      * 剩下三个必须说「还没做」而不是「你填错了」。
      */
     NOT_IMPLEMENTED(10501, "err.not_implemented"),
+
+    /*
+     * 员工管理的三条闸。分成三个码而不是共用 10400：
+     * 「参数不对」与「你不能对自己做这件事」是完全不同的两回事，
+     * 而运营看到的提示决定他下一步怎么办。
+     */
+    /** 不能停用/降级自己 —— 把自己锁在门外之后只能去库里手改 */
+    STAFF_SELF_OPERATION(10420, "err.staff.self_operation"),
+    /** 角色码在 Perms.ROLE_PERMS 里没有配置：写进去会造出一个 perms 为空的账号 */
+    STAFF_ROLE_UNKNOWN(10421, "err.staff.role_unknown"),
+    /** 给全量角色配数据域：存下来会让人以为限制生效了，而实际没有 */
+    STAFF_SCOPE_ON_FULL_ACCESS(10422, "err.staff.scope_on_full_access"),
     INTERNAL_ERROR(10500, "err.internal"),
 
     // ---- 2xxxx 交易 ----
@@ -107,6 +119,13 @@ public enum ErrorCode {
      * 合成一个码，商家会一直换商品试。
      */
     FULFILLMENT_TIER_DENIED(70014, "err.trade.fulfillment_tier_denied"),
+    /*
+     * 该商家的收款额度已用尽。单独一个码，因为它对三方的解法都不同：
+     * 买家该换一家买、商家该去升主体、运营该去核对额度口径。
+     * 不拦的话它会在付款那一刻表现为通道侧的「支付失败」——
+     * 那时候平台既解释不清，也补救不了。
+     */
+    MERCHANT_QUOTA_EXHAUSTED(70015, "err.trade.merchant_quota_exhausted"),
 
     /**
      * 进项票未核验通过，不允许登记付款（**票到付款**）。

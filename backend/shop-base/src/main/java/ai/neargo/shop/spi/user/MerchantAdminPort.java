@@ -65,4 +65,18 @@ public interface MerchantAdminPort {
      * 否则关一次开关就是一次资金事故。
      */
     void setPointsEnabled(String merchantNo, boolean enabled);
+
+    /**
+     * 支付成功后累加该店的<b>收款额度用量</b>。
+     *
+     * <p>微信对小微商户的收款有累计额度，超了之后收款直接失败。
+     * 不累加的话系统永远不知道用掉了多少 —— 它只会在某个买家付款的那一刻
+     * 表现为「支付失败」，而那时候平台既解释不清也补救不了。
+     *
+     * <p><b>周期翻篇时清零重算</b>：周期标识由实现按当前时间算，
+     * 调用方不传 —— 传进来的话，补发的历史回调会把用量记进当前周期。
+     *
+     * <p>没有收款记录时静默跳过：进件还没走完的商家没有额度可记。
+     */
+    void accruePayQuota(String merchantNo, String storeNo, long amountMinor);
 }

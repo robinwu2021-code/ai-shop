@@ -70,6 +70,7 @@ public class OrderServiceImpl implements OrderService {
     private final GoodsQueryPort goodsPort;
     private final StockPort stockPort;
     private final MerchantQueryPort merchantPort;
+    private final ai.neargo.shop.spi.user.MerchantAdminPort merchantAdminPort;
     private final AttributionPort attributionPort;
     private final CouponPort couponPort;
     /** 店铺活动的自动优惠（满减）。此前 mkt_campaign 没有任何消费方 */
@@ -85,7 +86,9 @@ public class OrderServiceImpl implements OrderService {
 
     public OrderServiceImpl(OrderMapper orderMapper, SubOrderMapper subOrderMapper, OrderItemMapper itemMapper,
                             CartItemMapper cartMapper, GoodsQueryPort goodsPort, StockPort stockPort,
-                            MerchantQueryPort merchantPort, AttributionPort attributionPort,
+                            MerchantQueryPort merchantPort,
+                            ai.neargo.shop.spi.user.MerchantAdminPort merchantAdminPort,
+                            AttributionPort attributionPort,
                             CouponPort couponPort, CampaignPort campaignPort, PointsPort pointsPort,
                             SettlePort settlePort,
                             StatusLogMapper statusLogMapper,
@@ -101,6 +104,7 @@ public class OrderServiceImpl implements OrderService {
         this.goodsPort = goodsPort;
         this.stockPort = stockPort;
         this.merchantPort = merchantPort;
+        this.merchantAdminPort = merchantAdminPort;
         this.attributionPort = attributionPort;
         this.couponPort = couponPort;
         this.pointsPort = pointsPort;
@@ -114,6 +118,51 @@ public class OrderServiceImpl implements OrderService {
     }
 
     // ---------------------------------------------------------------- 预览与下单
+
+    @Override
+    public ai.neargo.shop.trade.dto.CheckoutCapabilityVO capability(CreateOrderCommand cmd) {
+        Split split = split(cmd);
+        Map<String, String> stores = storesOf(cmd, split);
+
+        List<ai.neargo.shop.trade.dto.CheckoutCapabilityVO.MerchantCapability> rows =
+                new ArrayList<>();
+        java.util.Set<String> usable = null;
+        boolean anyNoInvoice = false;
+
+        for (Group g : split.groups) {
+            var cap = merchantPort.payCapabilityOf(g.merchantNo, stores.get(g.merchantNo));
+            long amount = g.goodsAmount() + g.freight;
+            boolean noInvoice = !cap.invoiceCapable();
+            anyNoInvoice = anyNoInvoice || noInvoice;
+
+            rows.add(new ai.neargo.shop.trade.dto.CheckoutCapabilityVO.MerchantCapability(
+                    g.merchantNo, g.merchantName, cap.invoiceCapable(),
+                    new ArrayList<>(cap.payMethods()),
+                    cap.quotaExhausted(), cap.wouldExceed(amount)));
+
+            /*
+             * 交集而非并集：一笔支付覆盖整单，有一家不支持这种方式就用不了。
+             *
+             * 空的支付方式集合当作「未配置」跳过，而不是当作「一种都不支持」——
+             * 进件还没走完的商家会是空集，用它求交集会把整单的可用方式清空，
+             * 而那家店的货其实是能买的（钱先欠着）。
+             */
+            if (!cap.payMethods().isEmpty()) {
+                usable = usable == null ? new java.util.LinkedHashSet<>(cap.payMethods())
+                        : intersect(usable, cap.payMethods());
+            }
+        }
+
+        return new ai.neargo.shop.trade.dto.CheckoutCapabilityVO(
+                usable == null ? List.of() : new ArrayList<>(usable), anyNoInvoice, rows);
+    }
+
+    private static java.util.Set<String> intersect(java.util.Set<String> a,
+                                                   java.util.Set<String> b) {
+        java.util.Set<String> out = new java.util.LinkedHashSet<>(a);
+        out.retainAll(b);
+        return out;
+    }
 
     @Override
     public OrderVO preview(CreateOrderCommand cmd) {
@@ -394,6 +443,19 @@ public class OrderServiceImpl implements OrderService {
              */
             needsConfirm.put(g.merchantNo, admissionPort.requireFulfillmentAllowed(
                     g.merchantNo, cmd.fulfillment(), cmd.pickupNo()));
+
+            /*
+             * 收款额度（P2-3）。**在下单这一步拦，而不是等付款时通道拒绝**：
+             * 通道拒绝表现为「支付失败」四个字，买家不知道该换一家买，
+             * 商家不知道该去升主体，运营不知道该去核对额度口径 —— 三方都卡住。
+             *
+             * 用 wouldExceed 而不是 quotaExhausted：正好卡在额度边缘的那一单，
+             * 放过去仍然会在通道侧失败。
+             */
+            var cap = merchantPort.payCapabilityOf(g.merchantNo, storeOfMerchant.get(g.merchantNo));
+            if (cap.wouldExceed(merchantPay)) {
+                throw BizException.of(ErrorCode.MERCHANT_QUOTA_EXHAUSTED);
+            }
         }
 
         orderMapper.insert(order);
@@ -565,6 +627,16 @@ public class OrderServiceImpl implements OrderService {
              * 「已 PAID 直接返回」挡掉大部分，但并发回调仍可能同时进来，
              * 所以这里再挡一层 —— 重复发分是**凭空印钱**，比重复扣库存严重。
              */
+            /*
+             * 累加收款额度用量（P2-3）。
+             *
+             * 放在这个循环里而不是主单上：额度是**按商家**算的，
+             * 跨商家合单时一笔支付要分别记到各家头上。
+             * 方法开头「已 PAID 直接返回」保证了不会重复累加。
+             */
+            merchantAdminPort.accruePayQuota(sub.getEntityNo(), sub.getStoreNo(),
+                    sub.getPayAmount() == null ? 0L : sub.getPayAmount());
+
             if (!Boolean.TRUE.equals(sub.getPointsGranted())) {
                 long base = sub.getPayAmount() == null ? 0L
                         : sub.getPayAmount() - (sub.getFreightAmount() == null ? 0L : sub.getFreightAmount());

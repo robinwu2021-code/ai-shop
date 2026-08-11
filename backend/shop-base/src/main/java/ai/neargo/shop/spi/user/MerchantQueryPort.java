@@ -183,6 +183,39 @@ public interface MerchantQueryPort {
     java.util.Optional<String> ownerUserNoOf(String merchantNo);
 
     /**
+     * 这家店的<b>收款能力</b>：支持哪些支付方式、能不能开票、额度还剩多少。
+     *
+     * <p>三件事合在一个查询里，因为它们来自同一行（{@code mch_payment_merchant}），
+     * 而调用方（结算页、下单）每次也是三件一起要。分成三个方法只会让同一行被查三遍。
+     *
+     * <p>解析不到收款记录时返回一个<b>全放行</b>的对象而不是空：
+     * 进件还没走完的商家不该因此不能下单 —— 钱是欠着的，不是不能成交。
+     */
+    PayCapability payCapabilityOf(String merchantNo, String storeNo);
+
+    /**
+     * @param payMethods   该商家可用的支付方式（JSAPI/H5/APP/NATIVE）。
+     *                     <b>小微通常没有 H5 与 APP</b>，混合购物车里有一件小微的货，
+     *                     整单就只能走交集里剩下的那几种
+     * @param invoiceCapable 能否开票。小微免登记、无票，<b>这件事必须在付款前告诉用户</b>——
+     *                     买完才发现开不了票，平台补救不了
+     * @param quotaLimitMinor 收款额度上限；<b>0 = 未设置</b>（不是"额度为零"）
+     */
+    record PayCapability(java.util.Set<String> payMethods, boolean invoiceCapable,
+                         long quotaLimitMinor, long quotaUsedMinor) {
+
+        /** 额度已用尽。未设置额度（0）时恒为 false —— 没核对过的阈值不能拿来拦单。 */
+        public boolean quotaExhausted() {
+            return quotaLimitMinor > 0 && quotaUsedMinor >= quotaLimitMinor;
+        }
+
+        /** 再来 {@code amountMinor} 会不会超。 */
+        public boolean wouldExceed(long amountMinor) {
+            return quotaLimitMinor > 0 && quotaUsedMinor + amountMinor > quotaLimitMinor;
+        }
+    }
+
+    /**
      * 某行业下有多少商家。
      *
      * <p>运营改行业准入前要知道影响面 —— 把一个有 300 家店的行业停掉，

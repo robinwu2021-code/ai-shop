@@ -73,4 +73,13 @@ public interface OrderService {
      */
     record PayResult(String orderNo, String payChannel, java.util.Map<String, String> payParams) {
     }
+
+    /**
+     * 结算页能力提示：能不能开票、能用哪些支付方式、额度够不够。
+     *
+     * <p>与 {@link #preview} 分开而不是合并：preview 回答「多少钱」，
+     * 这个回答「付得了吗、票拿得到吗」。合并的话每次查订单详情都会多带三次查询，
+     * 而那三件事在下单之后就不再变化。
+     */
+    ai.neargo.shop.trade.dto.CheckoutCapabilityVO capability(CreateOrderCommand cmd);
 }

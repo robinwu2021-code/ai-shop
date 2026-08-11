@@ -69,6 +69,18 @@ public class MpTradeController {
     }
 
     /**
+     * 结算页能力提示：能不能开票、能用哪些支付方式、额度够不够。
+     *
+     * <p>与 preview 分开是有意的：这三件事的共同后果都是<b>付款那一刻才炸</b>，
+     * 而买家在结算页就该知道 —— 小微没有 H5/App 支付方式（混合购物车整单付不了）、
+     * 小微不能开票（买完才发现补救不了）、额度用尽（通道直接拒收）。
+     */
+    @PostMapping("/mp/order/capability")
+    public ai.neargo.shop.trade.dto.CheckoutCapabilityVO capability(@RequestBody CreateOrderReq req) {
+        return orderService.capability(req.toCommand());
+    }
+
+    /**
      * 下单。{@code Idempotency-Key} 走请求头而不是请求体 ——
      * 它是传输层语义（重试同一个请求），放进业务体会诱使有人为了「重新下单」而换 key。
      */

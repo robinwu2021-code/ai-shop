@@ -105,6 +105,21 @@ public class MchPaymentMerchant extends BaseEntity {
      */
     private Boolean invoiceCapable;
 
+    /**
+     * 收款额度上限（分）；<b>0 = 未设置，不是「额度为零」</b>。
+     *
+     * <p>微信对小微商户的收款有累计额度，超了之后收款直接失败。
+     * 具体数值与统计周期<b>要由服务商确认</b> —— 写一个猜的数比不写更危险，
+     * 它会让人以为这件事已经核对过了。
+     */
+    private Long quotaLimitMinor;
+
+    /** 本周期已用额度（分），支付成功时累加。 */
+    private Long quotaUsedMinor;
+
+    /** 当前统计周期标识（如 {@code 2026} 或 {@code 2026-08}）；换周期时清零重算。 */
+    private String quotaPeriod;
+
     /** PERSONAL_BANK / CORPORATE_BANK。真实账号由通道持有，这里只存类型。 */
     private String settleAccountType;
     private String settleAccountMasked;

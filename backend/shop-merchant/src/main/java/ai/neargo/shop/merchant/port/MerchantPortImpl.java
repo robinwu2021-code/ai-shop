@@ -553,6 +553,95 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort {
     }
 
         @Override
+    public PayCapability payCapabilityOf(String merchantNo, String storeNo) {
+        MchPaymentMerchant pm = resolvePayment(merchantNo, storeNo);
+        if (pm == null) {
+            /*
+             * 进件还没走完的商家：全放行。
+             *
+             * 拦下来的话，一个还在审核中的商家会表现为「他的货谁都买不了」，
+             * 而真实情况是钱先欠着、进件完成后再打 —— 那是结算的事，不是成交的事。
+             */
+            return new PayCapability(java.util.Set.of(), true, 0L, 0L);
+        }
+        return new PayCapability(
+                readList(pm.getPayMethods()),
+                !Boolean.FALSE.equals(pm.getInvoiceCapable()),
+                pm.getQuotaLimitMinor() == null ? 0L : pm.getQuotaLimitMinor(),
+                pm.getQuotaUsedMinor() == null ? 0L : pm.getQuotaUsedMinor());
+    }
+
+    @Override
+    @Transactional
+    public void accruePayQuota(String merchantNo, String storeNo, long amountMinor) {
+        if (amountMinor <= 0) {
+            return;
+        }
+        MchPaymentMerchant pm = resolvePayment(merchantNo, storeNo);
+        if (pm == null) {
+            // 进件还没走完：没有额度可记，也不该因此让支付回调失败
+            return;
+        }
+        String period = currentQuotaPeriod();
+        if (!period.equals(pm.getQuotaPeriod())) {
+            /*
+             * 周期翻篇：清零重算。
+             *
+             * 周期由这里按当前时间算而不是让调用方传 —— 传进来的话，
+             * 补发的历史回调会把去年的钱记进今年的额度里。
+             */
+            pm.setQuotaPeriod(period);
+            pm.setQuotaUsedMinor(0L);
+        }
+        pm.setQuotaUsedMinor((pm.getQuotaUsedMinor() == null ? 0L : pm.getQuotaUsedMinor()) + amountMinor);
+        merchantPaymentMapper.updateById(pm);
+    }
+
+    /**
+     * 当前额度统计周期。
+     *
+     * <p><b>按自然年</b>——微信对小微的额度口径是年累计。
+     * 这个口径要由服务商确认；改口径只改这一个方法，
+     * 而已落库的 {@code quota_period} 会让翻篇自动发生。
+     */
+    private String currentQuotaPeriod() {
+        return String.valueOf(java.time.LocalDate.now().getYear());
+    }
+
+    /** 本店专属收款记录优先，回落到主体默认号 —— 不配店号就是「合并结算，走主体号」。 */
+    private MchPaymentMerchant resolvePayment(String merchantNo, String storeNo) {
+        if (storeNo != null && !storeNo.isBlank()) {
+            MchPaymentMerchant own = merchantPaymentMapper.selectOne(
+                    Wrappers.<MchPaymentMerchant>lambdaQuery()
+                            .eq(MchPaymentMerchant::getEntityNo, merchantNo)
+                            .eq(MchPaymentMerchant::getStoreNo, storeNo)
+                            .last("LIMIT 1"));
+            if (own != null) {
+                return own;
+            }
+        }
+        return merchantPaymentMapper.selectOne(Wrappers.<MchPaymentMerchant>lambdaQuery()
+                .eq(MchPaymentMerchant::getEntityNo, merchantNo)
+                .eq(MchPaymentMerchant::getStoreNo, MchPaymentMerchant.ENTITY_LEVEL)
+                .last("LIMIT 1"));
+    }
+
+    private java.util.Set<String> readList(String rawJson) {
+        if (rawJson == null || rawJson.isBlank()) {
+            return java.util.Set.of();
+        }
+        try {
+            return new java.util.HashSet<>(json.readValue(rawJson,
+                    new tools.jackson.core.type.TypeReference<java.util.List<String>>() {
+                    }));
+        } catch (RuntimeException e) {
+            // 与 authorizedCategoryCodes 同向：坏 JSON 按「什么都不支持」处理，
+            // 让调用方看见空集合并提示，而不是当成「全都支持」放过去
+            return java.util.Set.of();
+        }
+    }
+
+    @Override
     public java.util.Optional<String> ownerUserNoOf(String merchantNo) {
         MchEntity m = merchantMapper.selectOne(
                 Wrappers.<MchEntity>lambdaQuery().eq(MchEntity::getEntityNo, merchantNo).last("LIMIT 1"));

@@ -77,7 +77,27 @@ public class OpsAdmissionController {
         auditLogPort.record("DEPOSIT_TXN", merchantNo + ":" + req.txnType(), operator);
     }
 
+    /**
+     * 设置某店的收款额度上限。
+     *
+     * <p><b>阈值必须由服务商确认后再填</b>：系统默认 0（未设置，不拦），
+     * 因为写一个猜的数比不写更危险 —— 它会让人以为这件事已经核对过了。
+     * 填错方向的后果不对称：填大了等于没设，填小了会把正常商家的货全拦下来。
+     */
+    @PutMapping("/ops/admission/pay-quota/{merchantNo}")
+    @PreAuthorize("@perm.can('" + Perms.SETTLE_MANAGE + "')")
+    public void setPayQuota(@PathVariable String merchantNo, @RequestBody QuotaReq req) {
+        String operator = SecurityUtils.currentUserNo();
+        admissionService.setPayQuotaLimit(merchantNo, req.storeNo(),
+                req.quotaLimitMinor() == null ? 0L : req.quotaLimitMinor(), operator);
+        auditLogPort.record("PAY_QUOTA_SET", merchantNo + "=" + req.quotaLimitMinor(), operator);
+    }
+
     /** 包装类型而非 long：{@code null} 要能被当成参数缺失报出来，而不是被 Jackson 当成 0 静默通过。 */
     public record TxnReq(String txnType, Long amountMinor, String reason) {
+    }
+
+    /** @param storeNo 为空 = 主体级默认收款号 */
+    public record QuotaReq(String storeNo, Long quotaLimitMinor) {
     }
 }
