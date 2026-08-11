@@ -278,6 +278,149 @@ components:
         - "createdAt"
       additionalProperties: false
       description: "入驻申请单（后端 `mch_entity_apply`）。"
+    StoreMode: 
+      type: "object"
+      properties: 
+        storeNo: 
+          type: "string"
+        storeName: 
+          type: "string"
+        merchantNo: 
+          type: "string"
+        businessMode: 
+          anyOf: 
+            - "$ref": "#/definitions/BusinessMode"
+            - type: "null"
+        payMerchantNo: 
+          type: 
+            - "string"
+            - "null"
+          description: "该店实际可用的收款号（本店专属号优先，回落到主体默认号）。**空 = 不能切第三方**"
+      required: 
+        - "storeNo"
+        - "storeName"
+        - "merchantNo"
+        - "businessMode"
+        - "payMerchantNo"
+      additionalProperties: false
+      description: "门店经营模式。\n\n自营 = 平台是法律上的销售主体，承担全部产品责任。\n**这个身份不能由商家自己勾选**，所以只有运营端能改。"
+    BusinessMode: 
+      type: "string"
+      enum: 
+        - "SELF_OPERATED"
+        - "THIRD_PARTY"
+      description: "经营模式。与  {@link  FeeRuleVersion }  一起构成费率的第一个维度。\n\n自营：平台是销售主体，这个费率是**进销差价（毛利）**。 第三方：平台是撮合方，这个费率是**服务收入（佣金）**。 算法一样，记账口径不同 —— 口径由结算单上的 `businessMode` 快照决定。"
+    LegalForm: 
+      type: "string"
+      enum: 
+        - "MICRO"
+        - "INDIVIDUAL"
+        - "ENTERPRISE"
+      description: "主体档位 —— 与后端 `mch_entity.legal_form` 同一套取值。\n\n**三档锁定，不再增删**：S1/S2/S3 是对这三个值的读法，不是新枚举。"
+    AdmissionPolicy: 
+      type: "object"
+      properties: 
+        legalForm: 
+          "$ref": "#/definitions/LegalForm"
+        requiredDepositMinor: 
+          type: "number"
+          description: "应缴保证金（分）；0 = 免缴"
+        singleOrderLimitMinor: 
+          type: "number"
+          description: "单笔限额（分）；0 = 不限"
+        dailyAmountLimitMinor: 
+          type: "number"
+          description: "日累计限额（分）；0 = 不限"
+        banQualifiedCategory: 
+          type: "number"
+          description: "1 = 禁止经营任何「需资质」品类"
+        bannedCategoryCodes: 
+          type: 
+            - "string"
+            - "null"
+        enabled: 
+          type: "number"
+        remark: 
+          type: 
+            - "string"
+            - "null"
+      required: 
+        - "legalForm"
+        - "requiredDepositMinor"
+        - "singleOrderLimitMinor"
+        - "dailyAmountLimitMinor"
+        - "banQualifiedCategory"
+        - "enabled"
+      additionalProperties: false
+    MerchantDeposit: 
+      type: "object"
+      properties: 
+        merchantNo: 
+          type: "string"
+        paidMinor: 
+          type: "number"
+        frozenMinor: 
+          type: "number"
+        availableMinor: 
+          type: "number"
+        requiredMinor: 
+          type: "number"
+        sufficient: 
+          type: "boolean"
+        singleOrderLimitMinor: 
+          type: "number"
+        dailyAmountLimitMinor: 
+          type: "number"
+      required: 
+        - "merchantNo"
+        - "paidMinor"
+        - "frozenMinor"
+        - "availableMinor"
+        - "requiredMinor"
+        - "sufficient"
+        - "singleOrderLimitMinor"
+        - "dailyAmountLimitMinor"
+      additionalProperties: false
+      description: "商家保证金账户。**可用余额 = 实缴 − 冻结**，判「够不够」用可用而非实缴。"
+    DepositTxnType: 
+      type: "string"
+      enum: 
+        - "PAY"
+        - "REFUND"
+        - "FREEZE"
+        - "UNFREEZE"
+        - "DEDUCT"
+    DepositTxn: 
+      type: "object"
+      properties: 
+        txnNo: 
+          type: "string"
+        txnType: 
+          "$ref": "#/definitions/DepositTxnType"
+        amountMinor: 
+          type: "number"
+          description: "有符号：扣划为负"
+        balanceAfterMinor: 
+          type: "number"
+        reason: 
+          type: 
+            - "string"
+            - "null"
+        operator: 
+          type: 
+            - "string"
+            - "null"
+        createdAt: 
+          type: 
+            - "string"
+            - "null"
+      required: 
+        - "txnNo"
+        - "txnType"
+        - "amountMinor"
+        - "balanceAfterMinor"
+      additionalProperties: false
+      description: "保证金流水。**只有余额字段的账户是不可审计的** —— 说不清这笔钱什么时候少的、谁扣的。"
     FulfillmentType: 
       type: "string"
       enum: 
@@ -685,6 +828,57 @@ components:
         - "count"
       additionalProperties: false
       description: "获客漏斗的一行（P-16.1.4 扫码→进店→注册→首单）。 ⚠️ 此前 interface 与环节枚举撞名叫 FunnelStep，字段写成 `step: FunnelStep` —— 自我引用"
+    CommunityApply: 
+      type: "object"
+      properties: 
+        applyNo: 
+          type: "string"
+        merchantNo: 
+          type: "string"
+          description: "提报的商家"
+        merchantName: 
+          type: "string"
+          description: "商家名。运营看着一串 M20260811… 判断不了任何事"
+        name: 
+          type: "string"
+          description: "小区名，商家填"
+        address: 
+          type: "string"
+          description: "地址。运营靠它判断这是不是已有社区的另一个叫法 —— 同一个小区两条记录，商家会分不清该勾哪个"
+        regionCode: 
+          type: "string"
+          description: "商家选的区划，**只是建议**：最终以裁决时填的为准"
+        regionPath: 
+          type: "string"
+          description: "区划整条路径名。「北山街道」全国有好几个，光末级判断不了是不是同一个地方"
+        note: 
+          type: "string"
+          description: "商家的补充说明：为什么要开这个点"
+        status: 
+          type: "string"
+          enum: 
+            - "PENDING"
+            - "APPROVED"
+            - "REJECTED"
+          description: "PENDING 待审 / APPROVED 已建社区 / REJECTED 驳回"
+        communityNo: 
+          type: "string"
+          description: "通过后建出来的社区号；待审与驳回时为空"
+        reason: 
+          type: "string"
+          description: "驳回原因。**原样出现在商家 B 端**，所以驳回必须填"
+        submittedAt: 
+          type: "number"
+          description: "提报时间"
+      required: 
+        - "applyNo"
+        - "merchantNo"
+        - "merchantName"
+        - "name"
+        - "status"
+        - "submittedAt"
+      additionalProperties: false
+      description: "商家提报的新社区（ADR-013 阶段三）。\n\n**它不是社区**：审过之后平台才建出来，`communityNo` 这时才有值。 待审的小区不在任何选点列表里 —— 进了主表就会出现在用户面前，而点进去什么都没有。"
     Community: 
       type: "object"
       properties: 
@@ -717,6 +911,12 @@ components:
         createdAt: 
           type: "string"
           description: "建档时间"
+        regionCode: 
+          type: "string"
+          description: "所属行政区划码（`sys_region.region_code`），空 = 尚未归属。\n\n挂上之后「按区/按街道覆盖」才能命中这个社区（ADR-013）。\n**空着不代表配错了** —— 平台不按名字猜归属：猜错不报错，只会让这个社区 悄悄出现在别人的经营范围里。"
+        regionPath: 
+          type: "string"
+          description: "从省到自身的中文路径，如「浙江省 / 杭州市 / 西湖区 / 北山街道」。\n\n**后端拼好给的**：只给一个 330106002 的话，端上要么显示一串数字， 要么自己按码长切片再逐级查 —— 而国标编码规则不是端该知道的事。"
       required: 
         - "communityNo"
         - "name"
@@ -727,6 +927,33 @@ components:
         - "pickupCount"
         - "createdAt"
       additionalProperties: false
+    Region: 
+      type: "object"
+      properties: 
+        regionCode: 
+          type: "string"
+          description: "统计用区划代码：省 2 位 / 市 4 位 / 区县 6 位 / 街道 9 位"
+        parentCode: 
+          type: "string"
+        level: 
+          type: "string"
+          description: "PROVINCE / CITY / DISTRICT / STREET"
+        name: 
+          type: "string"
+        enabled: 
+          type: "boolean"
+          description: "开城开关：停用只影响新的选择，存量商家不动"
+        hasChild: 
+          type: "boolean"
+          description: "下面还有没有下级。**据此决定还要不要再选一层**，而不是点进去才发现是空的"
+      required: 
+        - "regionCode"
+        - "level"
+        - "name"
+        - "enabled"
+        - "hasChild"
+      additionalProperties: false
+      description: "行政区划节点（ADR-013）。四级：省 / 市 / 区县 / 街道。"
     PickupPointType: 
       type: "string"
       enum: 
@@ -1219,6 +1446,8 @@ components:
       enum: 
         - "BANNER"
         - "NOTICE"
+        - "SERVICE_AREA"
+      description: "待审内容的种类。\n\n前两种审的是**单据自己带的 content**（店招图 / 公告文本）； `SERVICE_AREA` 审的是**另一张表里的一行** —— 商家框的区、街道覆盖（ADR-013 阶段三）。 它进同一个队列是有意的：运营的工作台上不该有两个长得一样、入口不同的待审列表。"
     StoreAuditStatus: 
       type: "string"
       enum: 
@@ -1249,7 +1478,10 @@ components:
           description: "待审内容类型：店招图 / 公告文本"
         content: 
           type: "string"
-          description: "待审内容：店招图 URL 或公告文本"
+          description: "待审内容：店招图 URL、公告文本，或 `DISTRICT:330106` 这样的覆盖项定位串"
+        display: 
+          type: "string"
+          description: "人话版的 content。`SERVICE_AREA` 时是「浙江省 / 杭州市 / 西湖区」，其余与 content 相同。\n\n**列表与详情一律显示它**：让运营对着 `DISTRICT:330106` 判断 「这家菜摊该不该覆盖整个西湖区」，等于让他去别处查一次再回来。"
         status: 
           "$ref": "#/definitions/StoreAuditStatus"
           description: "审核状态"
@@ -1612,11 +1844,13 @@ components:
           description: "归档时间。**软删除标记** —— 有值即视为已删除，列表默认不返回。 契约禁止 `delete*`，一律 `archive*` / `unarchive*`（工程约定 §10.6）。"
         campaignNo: 
           type: "string"
+          description: "活动号。跨端唯一，平台治理与商家自己看到的是同一个"
         merchantNo: 
           type: "string"
           description: "所属商家（主体号）。平台视角要按它归堆"
         name: 
           type: "string"
+          description: "活动名，商家自己填的。C 端会原样展示，平台治理时也按它认人"
         type: 
           "$ref": "#/definitions/MerchantCampaignType"
           description: "COUPON / FULL_CUT / FLASH / BUY_GIFT —— 商家能建的四种"
@@ -2557,49 +2791,54 @@ components:
         - "netAmount"
       additionalProperties: false
       description: "分账明细：一条 = 一个子订单。费率按 trafficSource 分档（R16）。"
-    FeeRule: 
-      type: "object"
-      properties: 
-        byTrafficSource: 
-          "$ref": "#/definitions/Record%3CTrafficSource%2Cnumber%3E"
-          description: "按流量来源分档的平台佣金费率（R16）。 ⚠️ `MERCHANT_OWNED`（商家自带客流）**建议 0** —— 商家自己把客人带来的单还抽佣， 商家就会把客人带去别处成交（ADR-004 的增长模型立不住）。口径未定，故可配。"
-        pickupServiceFeeRate: 
-          type: "number"
-          description: "自提点履约服务费默认费率（R15）；自提点自己配了就用它自己的"
-        freezeDays: 
-          type: "number"
-          description: "超时兜底天数（12.1.4）：冻结超过它仍未分账成功，解冻回平台"
-        updatedAt: 
-          type: "string"
-          description: "最后修改时间。**改费率不影响已生成的结算单**"
-        updatedBy: 
-          type: "string"
-          description: "最后修改人（STAFF 账号）"
-      required: 
-        - "byTrafficSource"
-        - "pickupServiceFeeRate"
-        - "freezeDays"
-        - "updatedAt"
-        - "updatedBy"
-      additionalProperties: false
-      description: "费率配置（P-12.1.7 / 12.1.8 / 12.1.4）。全部万分比。"
-    "Record<TrafficSource,number>": 
-      type: "object"
-      properties: 
-        MERCHANT_OWNED: 
-          type: "number"
-        PLATFORM: 
-          type: "number"
-        INVITE: 
-          type: "number"
-        CHANNEL: 
-          type: "number"
-      required: 
+    FeeTrafficSource: 
+      type: "string"
+      enum: 
         - "MERCHANT_OWNED"
         - "PLATFORM"
-        - "INVITE"
-        - "CHANNEL"
+      description: "费率适用的流量来源。\n\n**只有两档**，比订单上的 `TrafficSource`（还有 INVITE / CHANNEL）窄 —— 后端的费率表只认这两个。写成独立类型而不是在接口里内联字面量联合， 是因为内联的枚举不会被登记表扫到，等于绕过了枚举雷达（规范 §D5）。"
+    FeeRuleVersion: 
+      type: "object"
+      properties: 
+        ruleNo: 
+          type: "string"
+        businessMode: 
+          "$ref": "#/definitions/BusinessMode"
+        trafficSource: 
+          "$ref": "#/definitions/FeeTrafficSource"
+        rateBp: 
+          type: "number"
+          description: "万分比。500 = 5%"
+        effectiveFrom: 
+          type: "number"
+          description: "生效时刻（毫秒）。**填未来时刻 = 预约生效**"
+        enabled: 
+          type: "number"
+        remark: 
+          type: 
+            - "string"
+            - "null"
+          description: "为什么调这一次 —— 回查时这句话比数字更有用"
+        createdAt: 
+          type: "string"
+        createdBy: 
+          type: "string"
+      required: 
+        - "ruleNo"
+        - "businessMode"
+        - "trafficSource"
+        - "rateBp"
+        - "effectiveFrom"
+        - "enabled"
       additionalProperties: false
+      description: "费率的一个版本（后端 `stl_fee_rule`）。\n\n⚠️ 这里与旧的 `FeeRule` 形状完全不同，是有意的。旧那个是一维（只按流量来源）、 单值、原地改；**后端从未实现过它**（守卫清单里 `fee-rule` 一直挂在「整域未开工」）。 真正落地的是二维 + 版本化：\n\n- **二维**：经营模式 × 流量来源。两者正交 —— 只按经营模式分档，   等哪天想给自营也区分客流就要改表结构，而费率表最不该改结构（历史行要一直可读）。\n- **版本化**：调费率是**插新版本**，旧版本永久保留。原地改只能回答「现在是多少」，   而真正会被问到的是「上个月那批单当时按什么费率算的」。"
+    EffectiveFeeRates: 
+      "$ref": "#/definitions/Record%3Cstring%2Cnumber%3E"
+      description: "某时刻实际生效的费率表，键为 `${businessMode}|${trafficSource}`。"
+    "Record<string,number>": 
+      type: "object"
+      additionalProperties: 
+        type: "number"
     WithdrawStatus: 
       type: "string"
       enum: 
@@ -3748,6 +3987,7 @@ components:
           description: "需要的资质证件名。空 = 无证件要求（不是「漏填」）"
         sort: 
           type: "number"
+          description: "列表里的排序权重，小的在前。同值按 code 兜底，保证顺序稳定"
         enabled: 
           type: "boolean"
           description: "是否可发放。停用**不撤销**存量商家已持有的授权"
@@ -3774,6 +4014,7 @@ components:
           description: "COMMUNITY / CITY / PLATFORM"
         enabled: 
           type: "boolean"
+          description: "这一期是否开放这一档。关掉**不影响已经是这一档的存量商家**，只是不能再选"
         merchantCount: 
           type: "number"
           description: "当前在用的商家数。不带计数的开关是盲操作"
@@ -4079,6 +4320,180 @@ paths:
             schema: 
               type: "object"
         description: "请求体字段见对应契约方法的入参。"
+  "/ops/communities/{no}/region": 
+    post: 
+      operationId: "setCommunityRegion"
+      summary: "把社区挂到行政区划下（ADR-013）"
+      tags: 
+        - "community"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/Community"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters: 
+        - name: "no"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/communities/applies": 
+    get: 
+      operationId: "listCommunityApplies"
+      summary: "提报队列"
+      tags: 
+        - "community"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "object"
+                    properties: 
+                      records: 
+                        type: "array"
+                        items: 
+                          "$ref": "#/components/schemas/CommunityApply"
+                      total: 
+                        type: "integer"
+                      page: 
+                        type: "integer"
+                      size: 
+                        type: "integer"
+                    required: 
+                      - "records"
+                      - "total"
+                      - "page"
+                      - "size"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/communities/applies/{applyNo}/decide": 
+    post: 
+      operationId: "decideCommunityApply"
+      summary: "裁决"
+      tags: 
+        - "community"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/CommunityApply"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters: 
+        - name: "applyNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/regions": 
+    get: 
+      operationId: "listRegions"
+      summary: "某区划的直接下级"
+      tags: 
+        - "community"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "array"
+                    items: 
+                      "$ref": "#/components/schemas/Region"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/regions/path": 
+    get: 
+      operationId: "regionPath"
+      summary: "从省到自身的整条链路"
+      tags: 
+        - "community"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "array"
+                    items: 
+                      "$ref": "#/components/schemas/Region"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
   "/ops/communities/{no}/archive": 
     post: 
       operationId: "archiveCommunity"
@@ -5228,10 +5643,10 @@ paths:
             schema: 
               type: "object"
         description: "请求体字段见对应契约方法的入参。"
-  "/ops/fee-rule": 
+  "/ops/settle/fee-rules": 
     get: 
-      operationId: "getFeeRule"
-      summary: "getFeeRule"
+      operationId: "listFeeRules"
+      summary: "全部费率版本，含历史"
       tags: 
         - "finance"
       responses: 
@@ -5248,15 +5663,17 @@ paths:
                   msg: 
                     type: "string"
                   data: 
-                    "$ref": "#/components/schemas/FeeRule"
+                    type: "array"
+                    items: 
+                      "$ref": "#/components/schemas/FeeRuleVersion"
                 required: 
                   - "code"
                   - "msg"
                   - "data"
       description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
     post: 
-      operationId: "saveFeeRule"
-      summary: "费率配置（P-12.1.7 / 12.1.8 / 12.1.4）"
+      operationId: "addFeeRule"
+      summary: "新增一个费率版本"
       tags: 
         - "finance"
       responses: 
@@ -5273,7 +5690,7 @@ paths:
                   msg: 
                     type: "string"
                   data: 
-                    "$ref": "#/components/schemas/FeeRule"
+                    "$ref": "#/components/schemas/FeeRuleVersion"
                 required: 
                   - "code"
                   - "msg"
@@ -5285,6 +5702,32 @@ paths:
             schema: 
               type: "object"
         description: "请求体字段见对应契约方法的入参。"
+  "/ops/settle/fee-rules/effective": 
+    get: 
+      operationId: "effectiveFeeRates"
+      summary: "某时刻实际生效的四格费率"
+      tags: 
+        - "finance"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/EffectiveFeeRates"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
   "/ops/finance/withdrawals": 
     get: 
       operationId: "listWithdrawals"
@@ -7673,6 +8116,249 @@ paths:
                   - "data"
       parameters: 
         - name: "cardNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/merchants/{merchantNo}/store-modes": 
+    get: 
+      operationId: "storeModes"
+      summary: "storeModes"
+      tags: 
+        - "merchant"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "array"
+                    items: 
+                      "$ref": "#/components/schemas/StoreMode"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters: 
+        - name: "merchantNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/stores/{storeNo}/business-mode": 
+    put: 
+      operationId: "setStoreBusinessMode"
+      summary: "改门店经营模式"
+      tags: 
+        - "merchant"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/StoreMode"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters: 
+        - name: "storeNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/admission/policies": 
+    get: 
+      operationId: "admissionPolicies"
+      summary: "三档准入策略"
+      tags: 
+        - "merchant"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "array"
+                    items: 
+                      "$ref": "#/components/schemas/AdmissionPolicy"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/admission/policies/{legalForm}": 
+    put: 
+      operationId: "updateAdmissionPolicy"
+      summary: "updateAdmissionPolicy"
+      tags: 
+        - "merchant"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "object"
+                    nullable: true
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters: 
+        - name: "legalForm"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/admission/deposits/{merchantNo}": 
+    get: 
+      operationId: "merchantDeposit"
+      summary: "merchantDeposit"
+      tags: 
+        - "merchant"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/MerchantDeposit"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters: 
+        - name: "merchantNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/admission/deposits/{merchantNo}/txns": 
+    get: 
+      operationId: "depositTxns"
+      summary: "depositTxns"
+      tags: 
+        - "merchant"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "array"
+                    items: 
+                      "$ref": "#/components/schemas/DepositTxn"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters: 
+        - name: "merchantNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+    post: 
+      operationId: "addDepositTxn"
+      summary: "addDepositTxn"
+      tags: 
+        - "merchant"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "object"
+                    nullable: true
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters: 
+        - name: "merchantNo"
           in: "path"
           required: true
           schema: 
