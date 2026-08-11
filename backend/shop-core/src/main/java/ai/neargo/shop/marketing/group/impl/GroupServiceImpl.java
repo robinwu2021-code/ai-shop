@@ -613,6 +613,42 @@ public class GroupServiceImpl implements GroupService {
         return toQuoteVO(q);
     }
 
+    @Override
+    public List<GroupBuyVO> opsGroups(String status) {
+        return scoped(() -> groupBuyMapper.selectList(Wrappers.<MktGroupBuy>lambdaQuery()
+                .eq(status != null && !status.isBlank(), MktGroupBuy::getStatus, status)
+                .orderByDesc(MktGroupBuy::getId))).stream()
+                .map(g -> toGroupBuyVO(g, false)).toList();
+    }
+
+    @Override
+    @Transactional
+    public GroupBuyVO abortGroup(String groupNo, String reason, String operatorNo) {
+        if (reason == null || reason.isBlank()) {
+            // 团没了总得给参团的人一个说法。空理由的中止在客服那里是解释不了的
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        MktGroupBuy g = scoped(() -> groupBuyMapper.selectOne(Wrappers.<MktGroupBuy>lambdaQuery()
+                .eq(MktGroupBuy::getGroupNo, groupNo).last("limit 1")));
+        if (g == null) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        if (MktGroupBuy.FORMED.equals(g.getStatus())) {
+            /*
+             * 已成团的不许中止：那一刻起用户已经付了钱、商家已经在备货。
+             * 要退只能走售后（有退款与责任判定），不能靠把状态改回去 ——
+             * 改状态不会把钱退给任何人，只会让订单和团的状态对不上。
+             */
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+        if (MktGroupBuy.FAILED.equals(g.getStatus())) {
+            return toGroupBuyVO(g, false);   // 幂等
+        }
+        g.setStatus(MktGroupBuy.FAILED);
+        scoped(() -> groupBuyMapper.updateById(g));
+        return toGroupBuyVO(g, false);
+    }
+
     private QuoteVO toQuoteVO(MktQuote q) {
         var m = merchantPort.find(q.getEntityNo());
         return new QuoteVO(q.getQuoteNo(), q.getRequestNo(), q.getEntityNo(),

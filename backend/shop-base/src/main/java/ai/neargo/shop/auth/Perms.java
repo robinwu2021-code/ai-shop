@@ -90,11 +90,23 @@ public final class Perms {
      */
     public static final String QUOTE_GOVERN = "quote:govern";
 
+    /**
+     * 营销治理：中止违规拼团、停发问题优惠券（P-8.1）。
+     *
+     * <p>给商品运营 —— 判断「这个团/这张券对不对」要看的是商品与价格，
+     * 那是他每天在看的东西。
+     *
+     * <p>这类「平台兜底干预」的权限容易被排在后面，因为正常流程不需要它。
+     * 但它恰恰是**出事时唯一的手段**，而出事是迟早的。
+     */
+    public static final String MARKETING_GOVERN = "marketing:govern";
+
     private static final Map<String, List<String>> ROLE_PERMS = Map.of(
             "SUPER_ADMIN", List.of("*"),
             // BD 要读社区才能审核（选覆盖小区），但不该改社区主数据
             "BD", List.of(MERCHANT_AUDIT, ORDER_VIEW, COMMUNITY_VIEW, QUOTE_GOVERN),
-            "GOODS_OPS", List.of(GOODS_AUDIT, CATEGORY_MANAGE, ORDER_VIEW, COMMUNITY_VIEW),
+            "GOODS_OPS", List.of(GOODS_AUDIT, CATEGORY_MANAGE, ORDER_VIEW, COMMUNITY_VIEW,
+                    MARKETING_GOVERN),
             "SUPPORT", List.of(ORDER_VIEW, REVIEW_GOVERN, ORDER_INTERVENE, COMMUNITY_VIEW,
                     TICKET_HANDLE));
 

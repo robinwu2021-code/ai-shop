@@ -109,6 +109,26 @@ public interface GroupService {
      */
     QuoteVO markBreach(String quoteNo, String detail, String operatorNo);
 
+    /**
+     * 平台拼团列表。**不按商家过滤**——平台要看到所有团。
+     *
+     * @param status 为空给全部
+     */
+    List<GroupBuyVO> opsGroups(String status);
+
+    /**
+     * 平台中止拼团（P-8.1.2）。团置 {@code FAILED}，参团的人按流团处理。
+     *
+     * <p>此前平台对拼团**没有任何干预手段**：商家开了个违规团、或者标错了原价
+     * 把「团购价」做成比原价还高，运营只能去改数据库。
+     *
+     * <p>只给「中止」不给「强制成团」：中止是止损，成团是替商家做生意决定——
+     * 后者一旦出错（商家备不出货），承担后果的是不知情的用户。
+     *
+     * @param reason 中止理由，**必填且会展示给参团用户** —— 团没了总得给个说法
+     */
+    GroupBuyVO abortGroup(String groupNo, String reason, String operatorNo);
+
     record CreateRequestCommand(String title, String description, List<String> images,
                                 int expectCount, int days) {
     }

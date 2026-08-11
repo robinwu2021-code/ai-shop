@@ -566,4 +566,64 @@ class M6cGroupFlowTest {
         return json.readTree(body).get("data").get("token").asString();
     }
 
+
+    // ---------------------------------------------------------------- 平台拼团治理（P-8.1）
+
+    @Test
+    @DisplayName("★ 平台中止违规团：团置 FAILED，且从 C 端在售列表消失")
+    void opsAbortsGroup() throws Exception {
+        String groupNo = openGroupBuy("M0001", "G0001", 4500L, 3);
+        String a = login("12900129090");
+        mvc().perform(post("/mp/group-buy/" + groupNo + "/join").header("Authorization", "Bearer " + a));
+
+        String goods = opsLogin("goods", "goods123");
+        mvc().perform(post("/ops/groups/" + groupNo + "/abort")
+                        .header("Authorization", "Bearer " + goods)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reason\":\"团购价高于原价，涉嫌虚假优惠\"}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.status").value("FAILED"));
+
+        // 中止必须影响用户看得见的东西 —— 只改一个没人看的状态字段不算干预
+        String list = mvc().perform(get("/mp/group-buy")).andReturn().getResponse().getContentAsString();
+        assertThat(list).as("中止后的团不该还挂在 C 端等人参加").doesNotContain(groupNo);
+    }
+
+    @Test
+    @DisplayName("已成团的不许中止：那一刻用户已付钱、商家已备货，要退得走售后")
+    void formedGroupCannotBeAborted() throws Exception {
+        String groupNo = openGroupBuy("M0001", "G0001", 4500L, 2);
+        mvc().perform(post("/mp/group-buy/" + groupNo + "/join")
+                .header("Authorization", "Bearer " + login("12900129091")));
+        mvc().perform(post("/mp/group-buy/" + groupNo + "/join")
+                        .header("Authorization", "Bearer " + login("12900129092")))
+                .andExpect(jsonPath("$.data.status").value("FORMED"));
+
+        mvc().perform(post("/ops/groups/" + groupNo + "/abort")
+                        .header("Authorization", "Bearer " + opsLogin("goods", "goods123"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reason\":\"想中止已成团的\"}"))
+                .andExpect(jsonPath("$.code").value(10409));
+    }
+
+    @Test
+    @DisplayName("中止理由必填；无 marketing:govern 的角色中止不了")
+    void abortNeedsReasonAndPermission() throws Exception {
+        String groupNo = openGroupBuy("M0001", "G0001", 4500L, 3);
+        String goods = opsLogin("goods", "goods123");
+
+        mvc().perform(post("/ops/groups/" + groupNo + "/abort")
+                        .header("Authorization", "Bearer " + goods)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reason\":\"  \"}"))
+                .andExpect(jsonPath("$.code").value(10400));
+
+        // BD 管招商不管商品价格，中止团不是他的活
+        mvc().perform(post("/ops/groups/" + groupNo + "/abort")
+                        .header("Authorization", "Bearer " + opsLogin("bd", "bd123"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reason\":\"我不该能中止\"}"))
+                .andExpect(jsonPath("$.code").value(10403));
+    }
+
 }
