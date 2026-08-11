@@ -31,5 +31,14 @@ public class MsgMessage extends BaseEntity {
     private String link;
     private Boolean isRead;
     private String dedupKey;
+
+    /**
+     * 所用模板；系统消息可为空。
+     *
+     * <p><b>不是为了统计好看，是频控的执行前提</b>：触达频控里有一条
+     * 「同一模板对同一用户的最小间隔」（P-14.1.4），不知道每条消息用的哪个模板，
+     * 那条规则根本无法执行——配了也只是个摆设。
+     */
+    private String templateNo;
     private Long at;
 }

@@ -9,12 +9,16 @@ import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.message.dto.MessageVOs.FaqVO;
 import ai.neargo.shop.message.dto.MessageVOs.MessageVO;
+import ai.neargo.shop.message.dto.MessageVOs.NotifyQuotaVO;
+import ai.neargo.shop.message.dto.MessageVOs.TemplateVO;
 import ai.neargo.shop.message.dto.MessageVOs.TicketVO;
 import ai.neargo.shop.message.entity.MsgMessage;
 import ai.neargo.shop.message.entity.MsgSubscribe;
+import ai.neargo.shop.message.entity.MsgTemplate;
 import ai.neargo.shop.message.entity.MsgTicket;
 import ai.neargo.shop.message.mapper.MessageMappers.MessageMapper;
 import ai.neargo.shop.message.mapper.MessageMappers.SubscribeMapper;
+import ai.neargo.shop.message.mapper.MessageMappers.TemplateMapper;
 import ai.neargo.shop.message.mapper.MessageMappers.TicketMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.slf4j.Logger;
@@ -38,10 +42,16 @@ public class MessageServiceImpl implements MessageService {
 
     private final MessageMapper messageMapper;
     private final TicketMapper ticketMapper;
+    private final TemplateMapper templateMapper;
+    private final ai.neargo.shop.spi.platform.SettingPort settingPort;
     private final SubscribeMapper subscribeMapper;
 
     public MessageServiceImpl(MessageMapper messageMapper, TicketMapper ticketMapper,
-                              SubscribeMapper subscribeMapper) {
+                              SubscribeMapper subscribeMapper,
+                              TemplateMapper templateMapper,
+                              ai.neargo.shop.spi.platform.SettingPort settingPort) {
+        this.templateMapper = templateMapper;
+        this.settingPort = settingPort;
         this.messageMapper = messageMapper;
         this.ticketMapper = ticketMapper;
         this.subscribeMapper = subscribeMapper;
@@ -250,4 +260,68 @@ public class MessageServiceImpl implements MessageService {
                         : t.getCreatedAt().atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli(),
                 t.getRepliedAt());
     }
+    // ---------------------------------------------------------------- 平台侧 · 触达（P-14.1）
+
+    /** 频控参数键与默认值。默认**保守**：没配过不等于不限 */
+    private static final String QUOTA_KEY = "notify.quota";
+    private static final String QUOTA_DEFAULT = "{\"dailyPerUser\":5,\"minIntervalHours\":24}";
+
+    @Override
+    public List<TemplateVO> opsTemplates() {
+        long since = System.currentTimeMillis() - 30L * 24 * 3600 * 1000;
+        return templateMapper.selectList(Wrappers.<MsgTemplate>lambdaQuery()
+                        .orderByDesc(MsgTemplate::getId)).stream()
+                .map(t -> new TemplateVO(t.getTemplateNo(), t.getName(), t.getChannel(),
+                        t.getContent(), t.getProviderTemplateId(),
+                        !Boolean.FALSE.equals(t.getEnabled()),
+                        // 近 30 天发送量按 msg_message 真算，不写死 —— 编一个数比留空更糟
+                        messageMapper.selectCount(Wrappers.<MsgMessage>lambdaQuery()
+                                .eq(MsgMessage::getTemplateNo, t.getTemplateNo())
+                                .ge(MsgMessage::getAt, since))))
+                .toList();
+    }
+
+    @Override
+    @Transactional
+    public TemplateVO setTemplateEnabled(String templateNo, boolean enabled, String operatorNo) {
+        MsgTemplate t = templateMapper.selectOne(Wrappers.<MsgTemplate>lambdaQuery()
+                .eq(MsgTemplate::getTemplateNo, templateNo).last("limit 1"));
+        if (t == null) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        t.setEnabled(enabled);
+        templateMapper.updateById(t);
+        return opsTemplates().stream()
+                .filter(v -> v.templateNo().equals(templateNo)).findFirst()
+                .orElseThrow(() -> BizException.of(ErrorCode.NOT_FOUND));
+    }
+
+    @Override
+    public NotifyQuotaVO notifyQuota() {
+        return parseQuota(settingPort.get(QUOTA_KEY, QUOTA_DEFAULT));
+    }
+
+    @Override
+    public NotifyQuotaVO saveNotifyQuota(int dailyPerUser, int minIntervalHours, String operatorNo) {
+        if (dailyPerUser <= 0 || minIntervalHours <= 0) {
+            // 0 等于没有频控，但界面上看着像配了 —— 比不配更危险
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        settingPort.put(QUOTA_KEY,
+                "{\"dailyPerUser\":%d,\"minIntervalHours\":%d}".formatted(dailyPerUser, minIntervalHours),
+                operatorNo);
+        return new NotifyQuotaVO(dailyPerUser, minIntervalHours);
+    }
+
+    /** 只有两个整数，手解比引 JSON 依赖轻；解析失败回落默认值而不是抛异常 —— 频控读不出来不该让页面打不开 */
+    private NotifyQuotaVO parseQuota(String jsonText) {
+        return new NotifyQuotaVO(intField(jsonText, "dailyPerUser", 5),
+                intField(jsonText, "minIntervalHours", 24));
+    }
+
+    private static int intField(String jsonText, String key, int fallback) {
+        var m = java.util.regex.Pattern.compile("\"" + key + "\"\\s*:\\s*(\\d+)").matcher(jsonText);
+        return m.find() ? Integer.parseInt(m.group(1)) : fallback;
+    }
+
 }

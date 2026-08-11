@@ -2,6 +2,7 @@ package ai.neargo.shop.message.mapper;
 
 import ai.neargo.shop.message.entity.MsgMessage;
 import ai.neargo.shop.message.entity.MsgSubscribe;
+import ai.neargo.shop.message.entity.MsgTemplate;
 import ai.neargo.shop.message.entity.MsgTicket;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 
@@ -19,4 +20,8 @@ public final class MessageMappers {
 
     public interface SubscribeMapper extends BaseMapper<MsgSubscribe> {
     }
+    /** 消息模板。停用即刻生效，引用它的推送发不出去。 */
+    public interface TemplateMapper extends BaseMapper<MsgTemplate> {
+    }
+
 }

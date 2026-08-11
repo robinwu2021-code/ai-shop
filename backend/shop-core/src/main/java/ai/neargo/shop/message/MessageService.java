@@ -2,6 +2,8 @@ package ai.neargo.shop.message;
 
 import ai.neargo.shop.message.dto.MessageVOs.FaqVO;
 import ai.neargo.shop.message.dto.MessageVOs.MessageVO;
+import ai.neargo.shop.message.dto.MessageVOs.NotifyQuotaVO;
+import ai.neargo.shop.message.dto.MessageVOs.TemplateVO;
 import ai.neargo.shop.message.dto.MessageVOs.TicketVO;
 
 import java.util.List;
@@ -70,4 +72,24 @@ public interface MessageService {
      * 那比直接关掉更糟：用户会收到一条没有信息量的回复。
      */
     TicketVO closeTicket(String ticketNo, String operatorNo);
+
+    // ---------------------------------------------------------------- 平台侧 · 触达（P-14.1）
+
+    /** 模板列表。{@code sentCount} 取近 30 天。 */
+    List<TemplateVO> opsTemplates();
+
+    /** 停用/启用模板。停用即刻生效，引用它的推送发不出去。 */
+    TemplateVO setTemplateEnabled(String templateNo, boolean enabled, String operatorNo);
+
+    /** 当前触达频控。没配过时给一份保守默认值，而不是「不限」。 */
+    NotifyQuotaVO notifyQuota();
+
+    /**
+     * 保存触达频控。
+     *
+     * <p>两个上限都必须 &gt; 0：**0 等于没有频控，但界面上看着像配了**，
+     * 比不配更危险——运营以为用户受着保护，实际一条都没拦。
+     */
+    NotifyQuotaVO saveNotifyQuota(int dailyPerUser, int minIntervalHours, String operatorNo);
+
 }

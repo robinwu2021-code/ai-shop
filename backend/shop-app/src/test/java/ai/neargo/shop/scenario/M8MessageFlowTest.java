@@ -345,4 +345,69 @@ class M8MessageFlowTest {
     @Autowired
     private ai.neargo.shop.merchant.mapper.MerchantMappers.MchAccountMapper merchantStaffMapper;
 
+
+    // ---------------------------------------------------------------- 平台触达治理（P-14.1）
+
+    @Test
+    @DisplayName("★ 频控：没配过给保守默认值，而不是「不限」")
+    void quotaDefaultsAreConservative() throws Exception {
+        String body = mvc().perform(get("/ops/notify-quota")
+                        .header("Authorization", "Bearer " + opsLogin()))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        var data = json.readTree(body).get("data");
+        assertThat(data.get("dailyPerUser").asInt())
+                .as("没配过不等于不限 —— 默认必须是个真实的上限").isPositive();
+        assertThat(data.get("minIntervalHours").asInt()).isPositive();
+    }
+
+    @Test
+    @DisplayName("★ 频控上限为 0 被拒：0 等于没有频控，但界面上看着像配了")
+    void zeroQuotaRejected() throws Exception {
+        String ops = opsLogin();
+        for (String bad : new String[]{
+                "{\"dailyPerUser\":0,\"minIntervalHours\":24}",
+                "{\"dailyPerUser\":5,\"minIntervalHours\":0}"}) {
+            mvc().perform(post("/ops/notify-quota").header("Authorization", "Bearer " + ops)
+                            .contentType(MediaType.APPLICATION_JSON).content(bad))
+                    .andExpect(jsonPath("$.code").value(10400));
+        }
+    }
+
+    @Test
+    @DisplayName("频控保存后读得回来（走 sys_setting，不建新表）")
+    void quotaRoundTrips() throws Exception {
+        String ops = opsLogin();
+        mvc().perform(post("/ops/notify-quota").header("Authorization", "Bearer " + ops)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"dailyPerUser\":3,\"minIntervalHours\":12}"))
+                .andExpect(jsonPath("$.data.dailyPerUser").value(3));
+
+        mvc().perform(get("/ops/notify-quota").header("Authorization", "Bearer " + ops))
+                .andExpect(jsonPath("$.data.dailyPerUser").value(3))
+                .andExpect(jsonPath("$.data.minIntervalHours").value(12));
+    }
+
+    @Test
+    @DisplayName("模板列表可读；无 ticket:handle 的角色读不了")
+    void templatesReadableWithPermission() throws Exception {
+        mvc().perform(get("/ops/msg-templates").header("Authorization", "Bearer " + opsLogin()))
+                .andExpect(jsonPath("$.code").value(0));
+
+        String bd = mvc().perform(post("/ops/auth/login").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"bd\",\"password\":\"bd123\"}"))
+                .andReturn().getResponse().getContentAsString();
+        mvc().perform(get("/ops/msg-templates")
+                        .header("Authorization", "Bearer " + json.readTree(bd).get("data").get("token").asString()))
+                .andExpect(jsonPath("$.code").value(10403));
+    }
+
+    private String opsLogin() throws Exception {
+        String body = mvc().perform(post("/ops/auth/login").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"support\",\"password\":\"support123\"}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        return json.readTree(body).get("data").get("token").asString();
+    }
+
 }

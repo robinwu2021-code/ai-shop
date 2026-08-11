@@ -380,6 +380,7 @@ CREATE TABLE IF NOT EXISTS msg_message
     link VARCHAR(255) DEFAULT NULL,
     is_read TINYINT(4) NOT NULL DEFAULT 0,
     dedup_key VARCHAR(128) DEFAULT NULL,
+    template_no VARCHAR(64) DEFAULT NULL,
     at BIGINT(20) NOT NULL,
     tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
     created_at DATETIME NOT NULL,
@@ -391,6 +392,26 @@ CREATE TABLE IF NOT EXISTS msg_message
     PRIMARY KEY (id),
     CONSTRAINT uk_message_no UNIQUE (message_no),
     CONSTRAINT uk_msg_dedup UNIQUE (dedup_key)
+);
+
+CREATE TABLE IF NOT EXISTS msg_template
+(
+    id BIGINT(20) NOT NULL AUTO_INCREMENT,
+    template_no VARCHAR(64) NOT NULL,
+    name VARCHAR(128) NOT NULL,
+    channel VARCHAR(16) NOT NULL,
+    content VARCHAR(1024) NOT NULL,
+    provider_template_id VARCHAR(64) DEFAULT NULL,
+    enabled TINYINT(4) NOT NULL DEFAULT 1,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT(20) NOT NULL DEFAULT 0,
+    deleted TINYINT(4) NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_msg_template_no UNIQUE (template_no)
 );
 
 CREATE TABLE IF NOT EXISTS msg_subscribe
