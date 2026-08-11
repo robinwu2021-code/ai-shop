@@ -48,7 +48,6 @@ public class DevSeeder {
                                  CategoryMapper categoryMapper, StaffMapper staffMapper,
                                  ai.neargo.shop.merchant.mapper.MerchantMappers.SysAuthCodeMapper authCodeMapper,
                                  ai.neargo.shop.platform.mapper.PlatformMappers.SettingMapper settingMapper,
-                                 ai.neargo.shop.platform.mapper.PlatformMappers.IndustryMapper industryMapper,
                                  // 平台员工是 staffMapper，商家子账号是 merchantStaffMapper —— 两套人，别混
                                  ai.neargo.shop.merchant.mapper.MerchantMappers.MchAccountMapper merchantStaffMapper,
                                  ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper storeMapper) {
@@ -71,24 +70,6 @@ public class DevSeeder {
             seedStaff(staffMapper, "goods", "商品运营", "[\"GOODS_OPS\"]", "goods123");
             seedStaff(staffMapper, "support", "客服", "[\"SUPPORT\"]", "support123");
 
-            /*
-             * 一期的行业收敛（V22）。
-             *
-             * **为什么这里要重来一遍**：行业的种子行来自 V2，而 H2 侧那批种子是
-             * schema-test.sql 带进来的（由 gen-test-schema.py 从迁移重放生成）——
-             * 那个生成器把 UPDATE 一律当成「作用于生产存量数据」跳过，
-             * 于是 V22 的停用在 H2 上没有发生：真库只剩两个行业可选，H2 还是七个全开。
-             * 不补的话，「入驻只能选执照覆盖的行业」这条用例在测试里永远失败，
-             * 而失败的样子看起来像校验没写对。
-             */
-            disableIndustry(industryMapper, "CATERING",
-                    "一期停用：平台执照无餐饮服务与热食制售（自营模式下平台是销售者）。拿到相应许可后可放开");
-            disableIndustry(industryMapper, "ENTERTAINMENT", "一期停用：平台执照无相关经营项");
-            disableIndustry(industryMapper, "TRANSPORT", "一期停用：平台执照无相关经营项");
-            disableIndustry(industryMapper, "ONLINE",
-                    "一期停用：不上虚拟商品与卡券（iOS 小程序虚拟支付受限）");
-            disableIndustry(industryMapper, "OTHER",
-                    "一期停用：自营模式下「其他」等于平台不清楚自己在销售什么，无法对应执照经营范围");
 
             /*
              * 类目树。**编号必须与 V4__category_tree.sql 和 ops-web 的 mock 完全一致** ——
@@ -246,26 +227,6 @@ public class DevSeeder {
     private static final String ACTIVE = "ACTIVE";
     private static final String ARCHIVED = "ARCHIVED";
 
-    /**
-     * 停用一个行业并写下理由。**停用不是删除**：行留在库里、仍对运营可见，
-     * 存量商家不受影响（停用只影响新入驻的可选项）。拿到 EDI 切平台模式时
-     * 在运营端逐条打开即可，不用改代码也不用再来一次迁移。
-     */
-    private void disableIndustry(ai.neargo.shop.platform.mapper.PlatformMappers.IndustryMapper mapper,
-                                 String industry, String remark) {
-        var row = mapper.selectOne(com.baomidou.mybatisplus.core.toolkit.Wrappers
-                .<ai.neargo.shop.platform.entity.SysIndustry>lambdaQuery()
-                .eq(ai.neargo.shop.platform.entity.SysIndustry::getIndustry, industry)
-                .last("limit 1"));
-        if (row == null) {
-            return;   // 真库由 V22 处理；这里只补 H2，查不到就是没轮到它
-        }
-        row.setEnabled(false);
-        // remark 是给运营看的「为什么这个行业是这个准入结论」——
-        // 三个月后要放开时，看这一行就知道当初卡在哪
-        row.setRemark(remark);
-        mapper.updateById(row);
-    }
 
     /**
      * 授权码 → 所需资质文案。**这是 H2 侧唯一的一份**，类目的 {@code qualification_required}

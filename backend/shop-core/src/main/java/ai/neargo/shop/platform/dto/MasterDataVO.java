@@ -15,10 +15,17 @@ import java.util.List;
  * @param subjects  商家主体类型。带 {@code needLicense} / {@code industryGated}，
  *                  端上据此决定表单往下走哪一步 —— 这些判断此前在三端各写了一遍
  * @param channels  支付渠道。只给端上需要知道的：叫什么、开没开、支持哪些支付方式
+ * @param serviceScopes <b>这一期开放的经营范围档位</b>（ADR-009 三档的启用子集）。
+ *                      端上照它渲染选项 —— 这一项不下发的话，端只能把三档写死，
+ *                      于是商家能选到一个<b>必被后端拒</b>的档位：一期自营模式关掉了
+ *                      PLATFORM，而 B 端照样把「全平台发货」摆在那里，
+ *                      点下去得到的是「当前不支持这个经营范围」。
+ *                      实测撞到过（2026-08-11 E2E）。
  */
 public record MasterDataVO(List<Industry> industries,
                            List<Subject> subjects,
-                           List<Channel> channels) {
+                           List<Channel> channels,
+                           List<String> serviceScopes) {
 
     /**
      * @param microAllowed 该行业能否以小微主体进件。<b>端上据此禁用「小微」这个选项</b>，

@@ -1737,6 +1737,28 @@ CREATE TABLE IF NOT EXISTS mch_deposit_txn
     CONSTRAINT uk_mch_deposit_txn_no UNIQUE (txn_no, tenant_no)
 );
 
+CREATE TABLE IF NOT EXISTS stl_fee_rule
+(
+    id BIGINT(20) NOT NULL AUTO_INCREMENT,
+    rule_no VARCHAR(64) NOT NULL,
+    business_mode VARCHAR(24) NOT NULL,
+    traffic_source VARCHAR(24) NOT NULL,
+    rate_bp INT(11) NOT NULL DEFAULT 0,
+    effective_from BIGINT(20) NOT NULL,
+    enabled TINYINT(4) NOT NULL DEFAULT 1,
+    remark VARCHAR(255) DEFAULT NULL,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT(20) NOT NULL DEFAULT 0,
+    deleted TINYINT(4) NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_fee_rule_no UNIQUE (rule_no, tenant_no),
+    CONSTRAINT uk_fee_rule_slot UNIQUE (business_mode, traffic_source, effective_from, tenant_no)
+);
+
 -- 种子数据
 INSERT INTO sys_industry VALUES
 (1,'CATERING','餐饮',10,1,1,0,0,'微信小微白名单内','MAIN','2026-08-09 12:49:36','SYSTEM','2026-08-09 12:49:36',NULL,0,0),
@@ -1907,4 +1929,20 @@ VALUES
      'MAIN', NOW(), 'SYSTEM', NOW(), NULL, 0, 0),
     ('MICRO', 200000, 50000, 500000, 1, NULL, 1,
      'S3：几乎追不到人，平台是唯一被追的一方；保证金+限额+限品类三样同时生效',
+     'MAIN', NOW(), 'SYSTEM', NOW(), NULL, 0, 0);
+INSERT INTO stl_fee_rule
+    (rule_no, business_mode, traffic_source, rate_bp, effective_from, enabled, remark,
+     tenant_no, created_at, created_by, updated_at, updated_by, version, deleted)
+VALUES
+    ('FR-INIT-TP-OWNED', 'THIRD_PARTY', 'MERCHANT_OWNED', 0, 0, 1,
+     '自带客流零佣金：他带来的客户在别家消费才是平台收益（R16）',
+     'MAIN', NOW(), 'SYSTEM', NOW(), NULL, 0, 0),
+    ('FR-INIT-TP-PLAT', 'THIRD_PARTY', 'PLATFORM', 500, 0, 1,
+     '平台客流 5%，沿用上线前 shop.settle.platform-rate 的默认值',
+     'MAIN', NOW(), 'SYSTEM', NOW(), NULL, 0, 0),
+    ('FR-INIT-SO-OWNED', 'SELF_OPERATED', 'MERCHANT_OWNED', 0, 0, 1,
+     '自营·自带客流：先与第三方取齐，等自营有量后再单独定',
+     'MAIN', NOW(), 'SYSTEM', NOW(), NULL, 0, 0),
+    ('FR-INIT-SO-PLAT', 'SELF_OPERATED', 'PLATFORM', 500, 0, 1,
+     '自营·平台客流：先与第三方取齐，等自营有量后再单独定',
      'MAIN', NOW(), 'SYSTEM', NOW(), NULL, 0, 0);

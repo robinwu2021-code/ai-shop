@@ -65,7 +65,14 @@ public class MasterDataServiceImpl implements MasterDataService {
                         s.getSettleAccountType())).toList(),
                 channels.stream().map(c -> new MasterDataVO.Channel(
                         c.getPayChannel(), c.getName(), Boolean.TRUE.equals(c.getEnabled()),
-                        readList(c.getPayMethods()))).toList());
+                        readList(c.getPayMethods()))).toList(),
+                /*
+                 * 按 ServiceScopeServiceImpl.ORDER 的顺序输出启用的那几档 ——
+                 * 顺序是产品定义（按履约半径从小到大，与 ADR-009 的叙述一致），
+                 * 不该取决于运营点开关的先后。用 enabledScopes() 的集合序输出的话，
+                 * 端上的档位会随后台操作历史变来变去。
+                 */
+                enabledScopesInOrder());
     }
 
     @Override
@@ -100,6 +107,11 @@ public class MasterDataServiceImpl implements MasterDataService {
     @Override
     public List<String> enabledSubjects() {
         return enabledSubjectRows().stream().map(SysLegalForm::getLegalForm).toList();
+    }
+
+    private List<String> enabledScopesInOrder() {
+        var enabled = serviceScopeService.enabledScopes();
+        return ServiceScopeServiceImpl.ORDER.stream().filter(enabled::contains).toList();
     }
 
     @Override

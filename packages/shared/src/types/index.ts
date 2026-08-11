@@ -1365,6 +1365,18 @@ export interface MasterData {
   subjects: MasterDataSubject[];
   /** 可用支付通道与其能力位 */
   channels: MasterDataChannel[];
+  /**
+   * **这一期开放的经营范围档位**（`SERVICE_SCOPE` 的启用子集，运营在后台配）。
+   *
+   * 端上要照它渲染选项，**不要把三档写死**。写死的后果不是「多了个选项」：
+   * 一期自营模式关掉了 `PLATFORM`，而 B 端照样把「全平台发货」摆在那里，
+   * 商家点下去得到的是「当前不支持这个经营范围」—— 一个必被拒的选项，
+   * 而他无从知道自己该选什么。2026-08-11 的端到端实测撞到过。
+   *
+   * 拿到 EDI 切平台模式时运营在后台放开，端上不发版就跟着变 ——
+   * 这正是它下发而不是写死的理由。
+   */
+  serviceScopes: ServiceScope[];
 }
 
 export interface MasterDataIndustry {

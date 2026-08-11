@@ -47,7 +47,20 @@ const subjectAllowed = (s: MerchantSubject) => {
   return !ind || ind.microAllowed;
 };
 
-const scopes = [SERVICE_SCOPE.COMMUNITY, SERVICE_SCOPE.CITY, SERVICE_SCOPE.PLATFORM] as const;
+/*
+ * 档位**从主数据取**，与上面的行业、主体同一个理由 —— 这一行原先是写死的三档。
+ *
+ * 写死的后果不是「多一个选项」：一期自营模式关掉了 PLATFORM，而这里照样把
+ * 「全平台发货」摆出来，商家点下去得到「当前不支持这个经营范围」——
+ * 一个必被拒的选项，而他无从知道自己该选什么。2026-08-11 端到端实测撞到过。
+ *
+ * 主数据没取到时退到「仅本社区」一档：它是启用白名单里永远不会空的那一档
+ * （后台不允许全关），也是一期的主力形态。退到三档才是危险的 —— 那等于
+ * 在加载失败时把已知拒绝的选项重新摆回去。
+ */
+const scopes = computed<readonly ServiceScope[]>(
+  () => master.value?.serviceScopes ?? [SERVICE_SCOPE.COMMUNITY],
+);
 
 const form = ref({
   name: "",

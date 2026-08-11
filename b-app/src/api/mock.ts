@@ -268,6 +268,12 @@ export const mockApi: MerchantApi = {
           industryGated: false, settleAccountType: "MERCHANT_ID" as const },
       ],
       channels: [{ payChannel: "WECHAT", name: "微信支付", enabled: true, payMethods: ["JSAPI"] }],
+      /*
+       * **只给两档，与一期真实配置一致**（自营模式下 PLATFORM 没开）。
+       * mock 里把三档全给上的话，「端上照下发的档位渲染」这件事就演示不出来 ——
+       * 界面看着和写死三档完全一样，而真环境里第三档点下去会被拒。
+       */
+      serviceScopes: ["COMMUNITY", "CITY"] as const,
     });
   },
 

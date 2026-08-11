@@ -9,12 +9,12 @@ const merchant = useMerchantStore();
 //
 // 设计约束：**极简，店主是在手机上弄的**。不做拖拽布局、不做多模块编排 ——
 // 一个公告 + 营业时间 + 地址就够了，多一个字段就多一个店主填不完的理由。
-import { ref } from "vue";
+import { computed, ref } from "vue";
 import { onShow } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
 import { api } from "@/api";
 import { SERVICE_SCOPE } from "@shared/utils/constants";
-import type { Community, ServiceScope, ShareKit, StoreProfile, StoreQrcode } from "@shared/types";
+import type { Community, MasterData, ServiceScope, ShareKit, StoreProfile, StoreQrcode } from "@shared/types";
 
 const { t } = useI18n();
 
@@ -38,7 +38,21 @@ const communities = ref<Community[]>([]);
  */
 const communitiesFailed = ref(false);
 
-const scopes = [SERVICE_SCOPE.COMMUNITY, SERVICE_SCOPE.CITY, SERVICE_SCOPE.PLATFORM] as const;
+/**
+ * 这一期开放的档位，**从主数据取**而不是写死三档。
+ *
+ * 写死的后果不是「多一个选项」：一期自营模式关掉了 PLATFORM，而这里照样把
+ * 「全平台发货」摆出来，店主点保存得到的是「当前不支持这个经营范围」——
+ * 一个必被拒的选项，而他无从知道该选什么。2026-08-11 端到端实测撞到过。
+ *
+ * 取不到时退到「仅本社区」一档：它是启用白名单里永远不会空的那一档
+ * （后台不允许全关），也是一期主力形态。退到三档才危险 —— 那等于在加载失败时
+ * 把已知会被拒的选项重新摆回去。
+ */
+const master = ref<MasterData | null>(null);
+const scopes = computed<readonly ServiceScope[]>(
+  () => master.value?.serviceScopes ?? [SERVICE_SCOPE.COMMUNITY],
+);
 
 function pickScope(v: ServiceScope) {
   form.value.serviceScope = v;
@@ -66,11 +80,12 @@ async function load() {
    * 而他照着上面的内容点保存，就把默认值覆盖到真实数据上去了。
    * 一个请求失败不该有这种后果。
    */
-  const [s, q, k, cs] = await Promise.allSettled([
+  const [s, q, k, cs, md] = await Promise.allSettled([
     api.mStore(),
     api.mStoreQrcode(),
     api.mShareKit(),
     api.mCommunities(),
+    api.mMasterData(),
   ]);
   if (s.status === "fulfilled") {
     form.value = s.value;
@@ -83,6 +98,8 @@ async function load() {
   // 店铺码与分享素材缺了只是少两块展示，不影响编辑，静默降级即可
   qrcode.value = q.status === "fulfilled" ? q.value : null;
   kit.value = k.status === "fulfilled" ? k.value : null;
+  // 取不到主数据不阻断编辑，档位退到上面那个保守默认
+  master.value = md.status === "fulfilled" ? md.value : null;
 }
 
 async function save() {
