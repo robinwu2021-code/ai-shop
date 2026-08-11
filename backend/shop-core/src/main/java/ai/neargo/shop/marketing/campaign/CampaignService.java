@@ -39,7 +39,7 @@ public interface CampaignService {
     // ---------------------------------------------------------------- 平台侧（P-7.2）
 
     /** 平台活动列表。**跨商家**。{@code status} 为空给全部。 */
-    List<CampaignVO> opsCampaigns(String status);
+    List<CampaignVO> opsCampaigns(String status, boolean showArchived);
 
     /**
      * 平台停/启商家活动。

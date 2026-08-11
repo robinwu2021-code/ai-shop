@@ -30,9 +30,36 @@ public class OpsCommunityController {
     private final CommunityAdminService adminService;
     private final AuditLogPort auditLogPort;
 
-    public OpsCommunityController(CommunityAdminService adminService, AuditLogPort auditLogPort) {
+    public OpsCommunityController(CommunityAdminService adminService, AuditLogPort auditLogPort,
+                                  ai.neargo.shop.archive.ArchiveService archiveService) {
         this.adminService = adminService;
         this.auditLogPort = auditLogPort;
+        this.archiveService = archiveService;
+    }
+
+    private final ai.neargo.shop.archive.ArchiveService archiveService;
+
+    /*
+     * 自提点归档 = 软删除，与「停用」正交：停用的点还在列表里（今天不接单，
+     * 明天可能恢复），归档的从默认列表消失。
+     *
+     * 社区没有归档端点是**刻意的** —— 页面上那个按钮本来就禁用着，
+     * 并带了解释「该社区下仍有自提点，请先迁移或停用」。前置校验做在了正确的位置。
+     */
+    @PostMapping("/ops/pickups/{pickupNo}/archive")
+    @PreAuthorize("@perm.can('" + Perms.INDUSTRY_MANAGE + "')")
+    public java.util.Map<String, Object> archivePickup(@PathVariable String pickupNo) {
+        long at = archiveService.archive(ai.neargo.shop.archive.ArchiveService.Kind.PICKUP,
+                pickupNo, ai.neargo.shop.auth.SecurityUtils.currentUserNo());
+        return java.util.Map.of("pickupNo", pickupNo, "archivedAt", at);
+    }
+
+    @PostMapping("/ops/pickups/{pickupNo}/unarchive")
+    @PreAuthorize("@perm.can('" + Perms.INDUSTRY_MANAGE + "')")
+    public java.util.Map<String, Object> unarchivePickup(@PathVariable String pickupNo) {
+        archiveService.unarchive(ai.neargo.shop.archive.ArchiveService.Kind.PICKUP,
+                pickupNo, ai.neargo.shop.auth.SecurityUtils.currentUserNo());
+        return java.util.Map.of("pickupNo", pickupNo);
     }
 
     /**

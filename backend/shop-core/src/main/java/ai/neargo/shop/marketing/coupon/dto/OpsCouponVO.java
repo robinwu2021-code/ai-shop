@@ -40,5 +40,7 @@ public record OpsCouponVO(String couponNo,
                           long issuedAmount,
                           int issued,
                           int redeemed,
-                          long createdAt) {
+                          long createdAt,
+                          /** 归档时间（毫秒），null = 未归档。端上据此画灰行 */
+                          Long archivedAt) {
 }

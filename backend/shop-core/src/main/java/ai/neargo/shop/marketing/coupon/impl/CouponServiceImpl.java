@@ -225,12 +225,15 @@ public class CouponServiceImpl implements CouponService {
     // ---------------------------------------------------------------- 平台侧（P-7.1）
 
     @Override
-    public List<ai.neargo.shop.marketing.coupon.dto.OpsCouponVO> opsCoupons(String status) {
+    public List<ai.neargo.shop.marketing.coupon.dto.OpsCouponVO> opsCoupons(String status,
+                                                                            boolean showArchived) {
         // executeWithoutScope：平台视角要跨商家。不解除数据域的话，
         // 运营看到的永远是空列表 —— 而且不报错
         return DataScopeContext.executeWithoutScope(() ->
                 couponMapper.selectList(Wrappers.<MktCoupon>lambdaQuery()
                         .eq(status != null && !status.isBlank(), MktCoupon::getStatus, status)
+                        // 已归档的默认不出现 —— 否则「归档」这个动作在页面上看不出效果
+                        .isNull(!showArchived, MktCoupon::getArchivedAt)
                         .orderByDesc(MktCoupon::getId))).stream()
                 .map(this::toOpsVO).toList();
     }
@@ -283,6 +286,9 @@ public class CouponServiceImpl implements CouponService {
                 DataScopeContext.executeWithoutScope(() -> couponMapper.redeemedCount(c.getCouponNo())),
                 c.getCreatedAt() == null ? 0
                         : c.getCreatedAt().atZone(java.time.ZoneId.systemDefault())
+                                .toInstant().toEpochMilli(),
+                c.getArchivedAt() == null ? null
+                        : c.getArchivedAt().atZone(java.time.ZoneId.systemDefault())
                                 .toInstant().toEpochMilli());
     }
 

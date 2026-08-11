@@ -46,7 +46,8 @@ public interface CouponService {
      * 运营要的是「发了多少、核销多少、花了多少、还剩多少预算」。
      * 复用一个 VO 的代价见 OpsCouponVO 的类注释。
      */
-    List<ai.neargo.shop.marketing.coupon.dto.OpsCouponVO> opsCoupons(String status);
+    List<ai.neargo.shop.marketing.coupon.dto.OpsCouponVO> opsCoupons(String status,
+                                                                    boolean showArchived);
 
     /**
      * 平台改券状态：{@code ACTIVE} ⇄ {@code PAUSED}，或置 {@code ENDED}。

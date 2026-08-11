@@ -104,4 +104,12 @@ public class MchEntity extends BaseEntity {
      * 默认放开的话，卖烧烤的第二天就能上架生鲜，出事才发现平台从没校验过。
      */
     private String categoryCodes;
+
+    /**
+     * 归档时间。<b>软删除标记</b> —— 有值即从运营端默认列表消失，业务数据全保留。
+     *
+     * <p>与 {@code status} <b>正交</b>：暂停的还在列表里等着被恢复，
+     * 归档的从列表消失。挤进同一列的话，「暂停后归档」会丢掉其中一个状态。
+     */
+    private java.time.LocalDateTime archivedAt;
 }

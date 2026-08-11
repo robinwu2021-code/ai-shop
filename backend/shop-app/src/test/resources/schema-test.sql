@@ -54,6 +54,7 @@ CREATE TABLE IF NOT EXISTS cmt_pickup_point
     time_slot VARCHAR(64) DEFAULT NULL,
     service_fee_per_item_minor BIGINT(20) NOT NULL DEFAULT 0,
     fee_mode VARCHAR(16) NOT NULL DEFAULT 'NONE',
+    archived_at DATETIME DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_pickup_no UNIQUE (pickup_no),
     CONSTRAINT ck_neighbor_zero_fee CHECK (type <> 'NEIGHBOR' or service_fee_rate = 0)
@@ -183,6 +184,7 @@ CREATE TABLE IF NOT EXISTS mkt_campaign
     version BIGINT(20) NOT NULL DEFAULT 0,
     deleted TINYINT(4) NOT NULL DEFAULT 0,
     store_no VARCHAR(64) DEFAULT NULL,
+    archived_at DATETIME DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_campaign_no UNIQUE (campaign_no)
 );
@@ -214,6 +216,7 @@ CREATE TABLE IF NOT EXISTS mkt_coupon
     deleted TINYINT(4) NOT NULL DEFAULT 0,
     scope_desc VARCHAR(255) DEFAULT NULL,
     budget_minor BIGINT(20) NOT NULL DEFAULT 0,
+    archived_at DATETIME DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_coupon_no UNIQUE (coupon_no)
 );
@@ -1327,6 +1330,7 @@ CREATE TABLE IF NOT EXISTS mch_entity
     points_forced TINYINT(4) NOT NULL DEFAULT 0,
     industry VARCHAR(24) DEFAULT NULL,
     category_codes VARCHAR(512) DEFAULT NULL,
+    archived_at DATETIME DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_entity_no UNIQUE (entity_no),
     CONSTRAINT uk_store_code UNIQUE (store_code)

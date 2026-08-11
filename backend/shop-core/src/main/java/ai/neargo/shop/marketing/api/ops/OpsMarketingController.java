@@ -1,5 +1,6 @@
 package ai.neargo.shop.marketing.api.ops;
 
+import ai.neargo.shop.archive.ArchiveService;
 import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.marketing.coupon.dto.OpsCouponVO;
 import ai.neargo.shop.auth.Perms;
@@ -49,22 +50,25 @@ public class OpsMarketingController {
     private final CouponService couponService;
     private final CampaignService campaignService;
     private final AuditLogPort auditLogPort;
+    private final ArchiveService archiveService;
 
     public OpsMarketingController(CouponService couponService, CampaignService campaignService,
-                                  AuditLogPort auditLogPort) {
+                                  AuditLogPort auditLogPort, ArchiveService archiveService) {
         this.couponService = couponService;
         this.campaignService = campaignService;
         this.auditLogPort = auditLogPort;
+        this.archiveService = archiveService;
     }
 
     /** @param status 为空给全部；{@code ACTIVE} / {@code PAUSED} / {@code ENDED} */
     @GetMapping("/ops/coupons")
     @PreAuthorize("@perm.can('" + Perms.MARKETING_GOVERN + "')")
     public PageData<OpsCouponVO> coupons(@RequestParam(required = false) String status,
+                                      @RequestParam(defaultValue = "false") boolean showArchived,
                                       @RequestParam(defaultValue = "1") long page,
                                       @RequestParam(defaultValue = "50") long size) {
         // 运营端列表页按 {records,total} 渲染 —— 返回裸数组会被当成空页
-        return PageData.ofAll(couponService.opsCoupons(status), page, size);
+        return PageData.ofAll(couponService.opsCoupons(status, showArchived), page, size);
     }
 
     /**
@@ -95,10 +99,11 @@ public class OpsMarketingController {
     @GetMapping("/ops/campaigns")
     @PreAuthorize("@perm.can('" + Perms.MARKETING_GOVERN + "')")
     public PageData<CampaignVO> campaigns(@RequestParam(required = false) String status,
+                                          @RequestParam(defaultValue = "false") boolean showArchived,
                                           @RequestParam(defaultValue = "1") long page,
                                           @RequestParam(defaultValue = "50") long size) {
         // 运营端列表页按 {records,total} 渲染 —— 返回裸数组会被当成空页
-        return PageData.ofAll(campaignService.opsCampaigns(status), page, size);
+        return PageData.ofAll(campaignService.opsCampaigns(status, showArchived), page, size);
     }
 
     /** 停/启商家活动。与商家自己的开关走同一个状态字段，但不校验归属。 */
@@ -111,6 +116,42 @@ public class OpsMarketingController {
         auditLogPort.record("CAMPAIGN_TOGGLE", campaignNo,
                 (Boolean.TRUE.equals(req.running()) ? "启用" : "停用") + "｜" + req.reason());
         return vo;
+    }
+
+    /*
+     * 归档 = **软删除**，不是停用：停用的券还在列表里等着被恢复，
+     * 归档的从默认列表消失。两者正交，一张券可以「已暂停 + 已归档」。
+     * 业务数据与关联记录一条不动 —— 契约里禁止 delete*（工程约定 §10.6），
+     * 因为运营端的「删」几乎总是「不想看见了」，而不是「这条数据错了」。
+     */
+    @PostMapping("/ops/coupons/{couponNo}/archive")
+    @PreAuthorize("@perm.can('" + Perms.MARKETING_GOVERN + "')")
+    public java.util.Map<String, Object> archiveCoupon(@PathVariable String couponNo) {
+        long at = archiveService.archive(ArchiveService.Kind.COUPON, couponNo,
+                SecurityUtils.currentUserNo());
+        return java.util.Map.of("couponNo", couponNo, "archivedAt", at);
+    }
+
+    @PostMapping("/ops/coupons/{couponNo}/unarchive")
+    @PreAuthorize("@perm.can('" + Perms.MARKETING_GOVERN + "')")
+    public java.util.Map<String, Object> unarchiveCoupon(@PathVariable String couponNo) {
+        archiveService.unarchive(ArchiveService.Kind.COUPON, couponNo, SecurityUtils.currentUserNo());
+        return java.util.Map.of("couponNo", couponNo);
+    }
+
+    @PostMapping("/ops/campaigns/{campaignNo}/archive")
+    @PreAuthorize("@perm.can('" + Perms.MARKETING_GOVERN + "')")
+    public java.util.Map<String, Object> archiveCampaign(@PathVariable String campaignNo) {
+        long at = archiveService.archive(ArchiveService.Kind.CAMPAIGN, campaignNo,
+                SecurityUtils.currentUserNo());
+        return java.util.Map.of("campaignNo", campaignNo, "archivedAt", at);
+    }
+
+    @PostMapping("/ops/campaigns/{campaignNo}/unarchive")
+    @PreAuthorize("@perm.can('" + Perms.MARKETING_GOVERN + "')")
+    public java.util.Map<String, Object> unarchiveCampaign(@PathVariable String campaignNo) {
+        archiveService.unarchive(ArchiveService.Kind.CAMPAIGN, campaignNo, SecurityUtils.currentUserNo());
+        return java.util.Map.of("campaignNo", campaignNo);
     }
 
     /** 预算（分）。0 = 不限 */

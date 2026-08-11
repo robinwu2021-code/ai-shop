@@ -288,10 +288,12 @@ public class CampaignServiceImpl implements CampaignService {
     // ---------------------------------------------------------------- 平台侧（P-7.2）
 
     @Override
-    public List<CampaignVO> opsCampaigns(String status) {
+    public List<CampaignVO> opsCampaigns(String status, boolean showArchived) {
         return DataScopeContext.executeWithoutScope(() ->
                 campaignMapper.selectList(Wrappers.<MktCampaign>lambdaQuery()
                         .eq(status != null && !status.isBlank(), MktCampaign::getStatus, status)
+                        // 已归档的默认不出现 —— 否则「归档」这个动作在页面上看不出效果
+                        .isNull(!showArchived, MktCampaign::getArchivedAt)
                         .orderByDesc(MktCampaign::getId))).stream()
                 .map(this::toVO).toList();
     }

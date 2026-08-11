@@ -75,4 +75,12 @@ public class CmtPickupPoint extends BaseEntity {
      */
     private String feeMode;
 
+    /**
+     * 归档时间。<b>软删除标记</b> —— 有值即从运营端默认列表消失，业务数据全保留。
+     *
+     * <p>与 {@code status} <b>正交</b>：暂停的还在列表里等着被恢复，
+     * 归档的从列表消失。挤进同一列的话，「暂停后归档」会丢掉其中一个状态。
+     */
+    private java.time.LocalDateTime archivedAt;
+
 }

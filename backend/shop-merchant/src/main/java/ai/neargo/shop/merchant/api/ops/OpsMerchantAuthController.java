@@ -36,10 +36,35 @@ public class OpsMerchantAuthController {
 
     public OpsMerchantAuthController(MerchantAuthCodeService authCodeService,
                                      MerchantGovernService governService,
-                                     AuditLogPort auditLogPort) {
+                                     AuditLogPort auditLogPort,
+                                     ai.neargo.shop.archive.ArchiveService archiveService) {
         this.authCodeService = authCodeService;
         this.governService = governService;
         this.auditLogPort = auditLogPort;
+        this.archiveService = archiveService;
+    }
+
+    private final ai.neargo.shop.archive.ArchiveService archiveService;
+
+    /*
+     * 商家归档 = 从运营端默认列表移走，**与封禁完全是两回事**：
+     * 封禁改 status，商家立刻停业；归档只改可见性，他照常营业。
+     * 挤进同一列的话，「已停业的商家想从列表里收起来」就没法表达。
+     */
+    @PostMapping("/ops/merchants/{merchantNo}/archive")
+    @PreAuthorize("@perm.can('" + Perms.MERCHANT_AUDIT + "')")
+    public java.util.Map<String, Object> archiveMerchant(@PathVariable String merchantNo) {
+        long at = archiveService.archive(ai.neargo.shop.archive.ArchiveService.Kind.MERCHANT,
+                merchantNo, ai.neargo.shop.auth.SecurityUtils.currentUserNo());
+        return java.util.Map.of("merchantNo", merchantNo, "archivedAt", at);
+    }
+
+    @PostMapping("/ops/merchants/{merchantNo}/unarchive")
+    @PreAuthorize("@perm.can('" + Perms.MERCHANT_AUDIT + "')")
+    public java.util.Map<String, Object> unarchiveMerchant(@PathVariable String merchantNo) {
+        archiveService.unarchive(ai.neargo.shop.archive.ArchiveService.Kind.MERCHANT,
+                merchantNo, ai.neargo.shop.auth.SecurityUtils.currentUserNo());
+        return java.util.Map.of("merchantNo", merchantNo);
     }
 
     @GetMapping("/ops/merchants/auth-codes")

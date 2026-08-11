@@ -23,6 +23,19 @@ import java.util.List;
 @Configuration
 @MapperScan(basePackages = "ai.neargo.shop",
         markerInterface = com.baomidou.mybatisplus.core.mapper.BaseMapper.class)
+/*
+ * 第二个 @MapperScan：**不继承 BaseMapper 的 Mapper**。
+ *
+ * 上面那个用 markerInterface 限定只扫 BaseMapper 的子接口 —— 这是对的，
+ * 它挡住了把随便一个接口当 Mapper 注册。但归档那种**不绑单一实体**的
+ * Mapper（ai.neargo.shop.archive.ArchiveMapper，表名由调用方给）没法继承 BaseMapper，
+ * 于是会被漏掉，表现是启动时 NoSuchBeanDefinitionException —— 编译期一点征兆都没有。
+ *
+ * 按 @Mapper 注解扫，范围收在 archive 包内：不放开到全局，
+ * 免得又把「谁都能当 Mapper」这条口子开回来。
+ */
+@MapperScan(basePackages = "ai.neargo.shop.archive",
+        annotationClass = org.apache.ibatis.annotations.Mapper.class)
 public class MybatisPlusConfig {
 
     @Bean

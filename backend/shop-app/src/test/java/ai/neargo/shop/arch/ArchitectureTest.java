@@ -304,7 +304,12 @@ class ArchitectureTest {
         List<String> infra = List.of("common", "spi", "auth", "event", "idem", "portal", "config", "arch",
                 // channel：外部通道适配（支付/进件/登录凭证/推送）。不是业务域——
                 // 它没有自己的表，只把外部协议翻译成 spi 的接口。见 domainsMustNotTouchChannel。
-                "channel");
+                "channel",
+                // archive：运营端归档（软删除）。**同样不是业务域** ——
+                // 它没有自己的表，只往别人的表上盖一个 archived_at，
+                // 表名由调用方的枚举给。四个域的这段逻辑逐字相同，
+                // 各写一遍必然漂移，而漂移的表现是「某个域归档了但列表还显示」。
+                "archive");
         List<String> known = new ArrayList<>(infra);
         known.addAll(List.of(DOMAINS));
 

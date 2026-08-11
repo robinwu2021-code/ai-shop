@@ -31,8 +31,8 @@ const UNBUILT_DOMAINS = new Set([
   // 平台治理的后期功能，UI 先行
   "contents", "risk-events", "risk-rules", "blacklists", "audit-logs",
   "faqs", "materials", "rule-texts", "appearance", "feature-flags",
-  // 财务与清结算
-  "finance", "payments", "settlements", "split-records", "refund-split-backs",
+  // 财务与清结算（finance 已开始实现，移到 KNOWN_GAPS 逐条登记）
+  "payments", "settlements", "split-records", "refund-split-backs",
   "fee-rule", "markets",
   // 履约与物流
   "fulfillment", "shipments", "freight-templates",
@@ -50,25 +50,34 @@ const UNBUILT_DOMAINS = new Set([
  * 点下去 404。每一条都要有个说法，不能只是列在这里。
  */
 const KNOWN_GAPS: Record<string, string> = {
-  // ── 归档：ops-web 每个列表页都有归档按钮，后端只做了 categories 一个域 ──
-  // 18 打 2。运营确实需要「下架但不删」（列表越积越长，删除不可接受），
-  // 要么后端补齐 9 个实体的 archived_at + 端点，要么把按钮按实体隐藏。
-  "POST /ops/coupons/{x}/archive": "归档未实现（全局，只有 categories 有）",
-  "POST /ops/coupons/{x}/unarchive": "同上",
-  "POST /ops/campaigns/{x}/archive": "同上",
-  "POST /ops/campaigns/{x}/unarchive": "同上",
-  "POST /ops/communities/{x}/archive": "同上",
+  // ── 归档 ──
+  // V24 已补齐**四个实体**（券/商家/自提点/活动），见 ai.neargo.shop.archive。
+  // 缩到四个而不是原先估的九个，是逐个点过之后的结论
+  // （docs/technical/运营端死按钮实测清单.md）：其余的要么按钮本来就禁用，
+  // 要么挂在整域未开工的页面上。
+  //
+  // 社区是**刻意不做**：页面上那个按钮本来就禁用着，还带了正确的解释
+  // 「该社区下仍有自提点，请先迁移或停用」—— 前置校验做在了正确的位置，
+  // 补一个永远点不到的端点没有意义。
+  "POST /ops/communities/{x}/archive": "刻意不做：按钮本就禁用，前置校验在前端且正确",
   "POST /ops/communities/{x}/unarchive": "同上",
-  "POST /ops/merchants/{x}/archive": "同上",
-  "POST /ops/merchants/{x}/unarchive": "同上",
-  "POST /ops/pickups/{x}/archive": "同上",
-  "POST /ops/pickups/{x}/unarchive": "同上",
 
   // ── 券：发券 ──
   // （改预算 /budget 已补齐 —— 它曾是这张表里最坏的一条：V21 的列、领券那条
   //   UPDATE 里的闸门、页面上的进度条三样都在，唯独运营改不了它，
   //   于是预算恒为 0，闸门永远不生效。「功能做完了但没有入口」的典型。）
   "POST /ops/coupons/{x}/issue": "手动发券（客服补偿券走同一条）",
+
+  // ── 财务：域已经活了（自营应付账款那批端点落地），剩下这几条还没有 ──
+  // 这正是守卫要盯的那个时刻：域一活，页面就看着能用，而漏掉的会变成死按钮。
+  // 后端目前只有 invoice-title 两条（平台开票抬头）。
+  "GET /ops/finance/invoices": "进项票列表",
+  "POST /ops/finance/invoices/{x}/issue": "开票",
+  "POST /ops/finance/invoices/{x}/reject": "驳回开票",
+  "GET /ops/finance/withdrawals": "提现列表",
+  "POST /ops/finance/withdrawals/{x}/decide": "提现审批",
+  "GET /ops/finance/tax-rule": "税率规则",
+  "PUT /ops/finance/tax-rule": "改税率规则",
 
   // ── 平台投放场次：后端没有这个领域对象，见 运营端营销列表契约错配.md §3 ──
   "POST /ops/campaigns": "建平台场次 —— 后端无此对象，待产品决定",
