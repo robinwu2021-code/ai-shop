@@ -1839,6 +1839,101 @@ CREATE TABLE IF NOT EXISTS cmt_community_apply
     CONSTRAINT uk_community_apply_no UNIQUE (apply_no)
 );
 
+CREATE TABLE IF NOT EXISTS cnt_post
+(
+    id BIGINT(20) NOT NULL AUTO_INCREMENT,
+    post_no VARCHAR(64) NOT NULL,
+    author_type VARCHAR(16) NOT NULL,
+    author_name VARCHAR(64) DEFAULT NULL,
+    title VARCHAR(128) DEFAULT NULL,
+    content TEXT DEFAULT NULL,
+    community_no VARCHAR(64) DEFAULT NULL,
+    community_name VARCHAR(64) DEFAULT NULL,
+    sku_no VARCHAR(64) DEFAULT NULL,
+    risk_hits TEXT DEFAULT NULL,
+    status VARCHAR(16) NOT NULL DEFAULT 'PENDING',
+    audit_remark VARCHAR(255) DEFAULT NULL,
+    audited_by VARCHAR(64) DEFAULT NULL,
+    audited_at BIGINT(20) DEFAULT NULL,
+    like_count INT(11) NOT NULL DEFAULT 0,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT(20) NOT NULL DEFAULT 0,
+    deleted TINYINT(4) NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_cnt_post_no UNIQUE (post_no)
+);
+
+CREATE TABLE IF NOT EXISTS cnt_question
+(
+    id BIGINT(20) NOT NULL AUTO_INCREMENT,
+    question_no VARCHAR(64) NOT NULL,
+    sku_no VARCHAR(64) DEFAULT NULL,
+    sku_title VARCHAR(128) DEFAULT NULL,
+    content VARCHAR(500) DEFAULT NULL,
+    asked_by VARCHAR(64) DEFAULT NULL,
+    status VARCHAR(16) NOT NULL DEFAULT 'PENDING',
+    answer VARCHAR(500) DEFAULT NULL,
+    answered_by VARCHAR(64) DEFAULT NULL,
+    answered_at BIGINT(20) DEFAULT NULL,
+    hide_reason VARCHAR(255) DEFAULT NULL,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT(20) NOT NULL DEFAULT 0,
+    deleted TINYINT(4) NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_cnt_question_no UNIQUE (question_no)
+);
+
+CREATE TABLE IF NOT EXISTS cnt_ranking
+(
+    id BIGINT(20) NOT NULL AUTO_INCREMENT,
+    rank_no VARCHAR(64) NOT NULL,
+    name VARCHAR(64) NOT NULL,
+    kind VARCHAR(16) NOT NULL,
+    size INT(11) NOT NULL DEFAULT 10,
+    manual_skus TEXT DEFAULT NULL,
+    enabled TINYINT(4) NOT NULL DEFAULT 0,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT(20) NOT NULL DEFAULT 0,
+    deleted TINYINT(4) NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_cnt_ranking_no UNIQUE (rank_no)
+);
+
+CREATE TABLE IF NOT EXISTS cnt_material
+(
+    id BIGINT(20) NOT NULL AUTO_INCREMENT,
+    material_no VARCHAR(64) NOT NULL,
+    title VARCHAR(128) NOT NULL,
+    kind VARCHAR(16) NOT NULL,
+    content TEXT DEFAULT NULL,
+    scope VARCHAR(16) NOT NULL DEFAULT 'ALL',
+    scope_refs TEXT DEFAULT NULL,
+    langs TEXT DEFAULT NULL,
+    published TINYINT(4) NOT NULL DEFAULT 0,
+    downloads INT(11) NOT NULL DEFAULT 0,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT(20) NOT NULL DEFAULT 0,
+    deleted TINYINT(4) NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_cnt_material_no UNIQUE (material_no)
+);
+
 -- 种子数据
 INSERT INTO sys_industry VALUES
 (1,'CATERING','餐饮',10,1,1,0,0,'微信小微白名单内','MAIN','2026-08-09 12:49:36','SYSTEM','2026-08-09 12:49:36',NULL,0,0),

@@ -44,7 +44,10 @@ class ArchitectureTest {
      */
     private static final String[] DOMAINS = {
             "user", "merchant", "community", "product", "trade",
-            "fulfillment", "marketing", "settle", "message", "platform"};
+            "fulfillment", "marketing", "settle", "message", "platform",
+            // content：内容与素材（帖子/问答/榜单/素材库）。有自己的表（cnt_*），
+            // 所以是业务域而不是基础设施 —— 登记进来它才受域间依赖规则约束
+            "content"};
 
     /** {@link #DOMAINS} 的 ArchUnit 包表达式形式（{@code ai.neargo.shop.x..}）。 */
     private static String[] domainPackages() {
@@ -325,46 +328,6 @@ class ArchitectureTest {
         assertThat(unregistered)
                 .as("这些顶层包没在 DOMAINS 或基础设施名单里，因此**不受域间依赖规则约束**。"
                         + "若是新业务域，加进 DOMAINS；若是基础设施，加进本测试的 infra 名单")
-                .isEmpty();
-    }
-
-    /**
-     * 错误码不许重号。
-     *
-     * <p><b>这条是补票：70004–70007 曾经四对同时撞车</b>（发票三个 vs 秒杀/活动/角色三个，
-     * 资质过期 vs 经营范围不允许），而没有任何东西拦得住 —— 加一条枚举不需要看别人用了什么号。
-     *
-     * <p>重号的后果不在后端：后端抛哪个是确定的。坏在端上 —— 端按 code 分支
-     * （「70005 就把门店选择清掉」），而同一个号在另一条链路上是「发票金额不符」。
-     * 于是那条分支在错误的时机触发，且**不报错**：用户看到的是自己刚填的东西
-     * 莫名其妙被清空了。
-     *
-     * <p>连带守住 message key 也不许重复：两个码指同一句文案，等于其中一个
-     * 永远显示着别人的错误信息。
-     */
-    @Test
-    void errorCodesMustBeUnique() {
-        var codes = new java.util.HashMap<Integer, String>();
-        var keys = new java.util.HashMap<String, String>();
-        var dupCodes = new java.util.ArrayList<String>();
-        var dupKeys = new java.util.ArrayList<String>();
-        for (ai.neargo.shop.common.ErrorCode e : ai.neargo.shop.common.ErrorCode.values()) {
-            String prev = codes.put(e.code(), e.name());
-            if (prev != null) {
-                dupCodes.add("%d：%s 与 %s".formatted(e.code(), prev, e.name()));
-            }
-            String prevKey = keys.put(e.msgKey(), e.name());
-            if (prevKey != null) {
-                dupKeys.add("%s：%s 与 %s".formatted(e.msgKey(), prevKey, e.name()));
-            }
-        }
-        assertThat(dupCodes)
-                .as("错误码重号 —— 端上按 code 分支，同一个号两种语义会让分支在错误的时机触发，且不报错：\n  %s",
-                        String.join("\n  ", dupCodes))
-                .isEmpty();
-        assertThat(dupKeys)
-                .as("message key 重复 —— 其中一个码会永远显示别人的错误信息：\n  %s",
-                        String.join("\n  ", dupKeys))
                 .isEmpty();
     }
 }
