@@ -149,9 +149,25 @@ export const useMerchantStore = defineStore("merchant", {
         this.perms = scope.perms ?? [];
         this.staffRoles = scope.staffRoles ?? [];
         return scope;
-      } catch {
+      } catch (e) {
         this.perms = [];
         this.staffRoles = [];
+        /*
+         * **401 要当成「登录过期」，不能当成「没权限」**。
+         *
+         * 这里原先一律吞掉，于是 token 过期（重启后端、换了签名密钥、放一夜）之后
+         * 每一页都渲染成「这页不归你管 —— 让店主给你加个角色」。
+         * 店主看着自己的店被告知「你没角色」，而真相只是要重新登录一次 ——
+         * 他会去找店主（他自己），不会去点退出重登。
+         *
+         * http-client 那层已经把 token 从存储里删了，但内存里的登录态还在，
+         * 所以这里要显式 logout：两处不一致的话「我的」页仍显示已登录。
+         */
+        if ((e as { code?: number }).code === 401) {
+          this.logout();
+          uni.showToast({ title: (e as Error).message, icon: "none" });
+          uni.navigateTo({ url: "/pages/login/index" });
+        }
         return null;
       }
     },
