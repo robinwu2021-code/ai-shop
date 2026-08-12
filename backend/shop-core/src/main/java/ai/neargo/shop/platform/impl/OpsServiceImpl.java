@@ -3,6 +3,8 @@ package ai.neargo.shop.platform.impl;
 import ai.neargo.shop.platform.OpsService;
 import ai.neargo.shop.auth.Perms;
 import ai.neargo.shop.auth.ScopeDim;
+import ai.neargo.shop.platform.perm.entity.SysRoleMember;
+import ai.neargo.shop.platform.perm.mapper.PermMappers.RoleMemberMapper;
 
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.spi.user.MerchantAdminPort;
@@ -40,6 +42,7 @@ public class OpsServiceImpl implements OpsService {
 
 
     private final StaffMapper staffMapper;
+    private final RoleMemberMapper roleMemberMapper;
     private final AuditLogMapper auditLogMapper;
     private final MerchantApplyMapper applyMapper;
     private final MerchantAdminPort merchantAdminPort;
@@ -49,7 +52,8 @@ public class OpsServiceImpl implements OpsService {
     private final ai.neargo.shop.platform.IndustryService industryService;
     private final ai.neargo.shop.platform.MasterDataService masterDataService;
 
-    public OpsServiceImpl(StaffMapper staffMapper, AuditLogMapper auditLogMapper,
+    public OpsServiceImpl(StaffMapper staffMapper, RoleMemberMapper roleMemberMapper,
+                          AuditLogMapper auditLogMapper,
                           MerchantApplyMapper applyMapper, MerchantAdminPort merchantAdminPort,
                           TokenStore tokenStore, ObjectMapper json, ObjectMapper objectMapper,
                           ai.neargo.shop.platform.IndustryService industryService,
@@ -58,6 +62,7 @@ public class OpsServiceImpl implements OpsService {
         this.industryService = industryService;
         this.objectMapper = objectMapper;
         this.staffMapper = staffMapper;
+        this.roleMemberMapper = roleMemberMapper;
         this.auditLogMapper = auditLogMapper;
         this.applyMapper = applyMapper;
         this.merchantAdminPort = merchantAdminPort;
@@ -484,6 +489,19 @@ public class OpsServiceImpl implements OpsService {
         String before = staff.getRoles();
         staff.setRoles("[\"" + role + "\"]");
         staffMapper.updateById(staff);
+        /*
+         * **同步 sys_role_member**。
+         *
+         * 判权读 sys_ops_staff.roles，而动态菜单读 sys_role_member ——
+         * 只写一处的后果是「改完角色，他的权限变了、菜单没变」：
+         * 新角色该看的菜单不出现，旧角色的还在，而两边的数据各自都说得通。
+         *
+         * 这正是 DevSeeder 那里刚写过的「员工与他的角色是同一件事，
+         * 分两处写必然漏一处」—— 而我在写接口这一侧漏了。
+         * 两张表并存是迁移期的过渡（roles 列保留但停写），
+         * 过渡期内**每一处改角色的地方都要同时写两边**。
+         */
+        syncRoleMember(staffNo, role);
         // 换角色即刻生效：旧会话里带的是旧 perms
         tokenStore.revokeUser(staffNo);
         audit("STAFF_ROLE", staffNo, before + " → " + role);
@@ -515,6 +533,25 @@ public class OpsServiceImpl implements OpsService {
         audit("STAFF_SCOPE", staffNo, "merchant=" + merchantNo + "｜community=" + communityNo
                 + "｜pickup=" + pickupNo);
         return toVO(staff, roles, Perms.of(roles));
+    }
+
+    /**
+     * 把这个人的角色成员行重写成「只有 role 这一个」。
+     *
+     * <p>先删后插而不是增量比对：运营端一个人只有一个角色（下拉单选），
+     * 增量比对是为多选设计的复杂度，这里用不上。
+     */
+    private void syncRoleMember(String staffNo, String role) {
+        roleMemberMapper.delete(Wrappers.<SysRoleMember>lambdaQuery()
+                .eq(SysRoleMember::getEndCode, "OPS")
+                .eq(SysRoleMember::getSubjectNo, staffNo));
+        SysRoleMember m = new SysRoleMember();
+        m.setEndCode("OPS");
+        m.setSubjectNo(staffNo);
+        m.setRoleCode(role);
+        m.setGrantedBy(SecurityUtils.currentUserNo());
+        m.setGrantedAt(System.currentTimeMillis());
+        roleMemberMapper.insert(m);
     }
 
     private static boolean notBlank(String v) {

@@ -134,6 +134,32 @@ class OpsPermConfigFlowTest {
     }
 
     @Test
+    @DisplayName("★★★ 改完角色，菜单要跟着变 —— 判权与菜单读两张表，只写一处就会分叉")
+    void changingRoleUpdatesMenu() throws Exception {
+        String admin = opsLogin("admin", "admin123");
+        String staffNo = staffNoOf(admin, "goods");
+
+        Set<String> before = menuFunctions(opsLogin("goods", "goods123"));
+        mvc().perform(post("/ops/staffs/" + staffNo + "/role")
+                        .header("Authorization", "Bearer " + admin)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"role\":\"FINANCE\"}"))
+                .andExpect(jsonPath("$.code").value(0));
+        Set<String> after = menuFunctions(opsLogin("goods", "goods123"));
+
+        assertThat(after)
+                .as("改成财务之后应当看得到结算分区 —— 看不到说明 sys_role_member 没同步，"
+                        + "而 sys_ops_staff.roles 变了：权限变了、菜单没变")
+                .contains("OPS_FINANCE");
+        assertThat(after).isNotEqualTo(before);
+
+        // 还原：整套跑在同一份 H2 上，不还原会污染后面用 goods 账号的用例
+        mvc().perform(post("/ops/staffs/" + staffNo + "/role")
+                        .header("Authorization", "Bearer " + admin)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"role\":\"GOODS_OPS\"}"))
+                .andExpect(jsonPath("$.code").value(0));
+    }
+
+    @Test
     @DisplayName("零角色 = 空菜单，不是「默认给点什么」")
     void noRoleMeansEmptyMenu() throws Exception {
         // 用一个没有 sys_role_member 行的账号：种子里 support 有角色，
@@ -187,6 +213,17 @@ class OpsPermConfigFlowTest {
             n += f.get("points").size();
         }
         return n;
+    }
+
+    private String staffNoOf(String adminToken, String username) throws Exception {
+        String body = mvc().perform(get("/ops/staffs").header("Authorization", "Bearer " + adminToken))
+                .andReturn().getResponse().getContentAsString();
+        for (JsonNode s : json.readTree(body).get("data").get("records")) {
+            if (username.equals(s.get("username").asString())) {
+                return s.get("staffNo").asString();
+            }
+        }
+        throw new IllegalStateException("种子里没有 " + username);
     }
 
     private String opsLogin(String username, String password) throws Exception {
