@@ -27,7 +27,7 @@
 
 | 端 | ① 身份 | ② 功能权限 | ③ 数据域 |
 |---|:--:|:--:|:--:|
-| 运营端 `/ops` | ✅ OPERATOR 池 | ✅ `Perms` 15 码 × 11 角色 | ⚠️ **有基础设施、未生效**（见 §5） |
+| 运营端 `/ops` | ✅ OPERATOR 池 | ✅ 15 码 × 11 角色，**已落库**（`Perms` 为回落） | ⚠️ **有基础设施、未生效**（见 §5.1） |
 | B 端 `/biz` | ✅ 商家账号 + 门店上下文 | ✅ `BizPerms` 13 码 × 6 角色 | ✅ `storeNos` 裁剪 |
 | C 端 `/mp` | ✅ CONSUMER 池 | ❌ **没有 RBAC**（只有属主鉴权） | ✅ `SELF` 维度 |
 
@@ -52,7 +52,7 @@ HTTP 请求
   ├─③ @PreAuthorize("@perm.can('merchant:audit')")  [各 Controller]
   │    └→ PermChecker.can(code)                   [shop-base/auth]
   │         user.perms().contains("*") || contains(code)
-  │         ↑ perms 是**签发那一刻的快照**，来自 Perms.of(roles)
+  │         ↑ perms 是**签发那一刻的快照**，来自 RolePermResolver.of(roles)（读库）
   │
   ├─④ Service 业务逻辑
   │
@@ -71,7 +71,7 @@ HTTP 请求
 ```java
 // OpsServiceImpl.login
 List<String> roles = readList(staff.getRoles());        // JSON 列 → 角色码
-List<String> perms = Perms.of(roles);                   // 角色 → 权限码（硬编码表）
+List<String> perms = rolePermResolver.of(roles);        // 角色 → 权限码（**读库**，Perms 为回落）
 tokenStore.issue(SessionData.of(
     LoginUser.operator(staffNo, realName, roles, perms,
                        scopeOf(staff, perms))));        // 数据域 → DataScopeSpec
@@ -117,7 +117,8 @@ HTTP 请求（带 X-Store-No）
 | `auth/BizContext.java` + `Filter` + `Resolver` | 门店上下文 | B 端的角色跟着门店走 |
 | `auth/OperatorTokenAuthFilter` | 运营端认证 + 数据域入栈 | `DataScopeContext.set` 在这里 |
 | `auth/TokenStore` (+ memory/redis) | 会话存储 | `revokeUser` 按人踢 —— 停用要立刻生效 |
-| `platform/perm/**` | **配置落库**（本批新增） | 五张表；菜单由库驱动 |
+| `platform/perm/**` | **配置落库** | 五张表；菜单与**判权**都由库驱动 |
+| `platform/perm/RolePermResolver` | 角色 → 权限码（读库 + 整表缓存） | 通配看 `sys_role.wildcard`，不从点集合反推 |
 | `config/DataScopeRegistration` | 表 × 数据域维度登记 | 6 张表已登记 |
 
 ---
@@ -156,12 +157,10 @@ HTTP 请求（带 X-Store-No）
 判权要的是「他有没有全部权限」这个事实本身，所以在
 `sys_role.wildcard` 上显式标出来，而不是从点集合反推。
 
-**两者由一致性守卫钉着相等**（`OpsPermConfigFlowTest`：库里的角色→权限码
-必须与 `Perms.ROLE_PERMS` 逐条相同）。所以现在**不会**出现「菜单能看、
-接口 403」，但这依赖守卫而不是依赖结构。
-
-真正的「配置改了就生效」要把 `Perms.of` 换成从库加载 —— 那是下一步，
-且因为守卫在，换的时候有可验证的判据。
+**一致性守卫仍然要留**（`OpsPermConfigFlowTest`：库里的角色→权限码必须与
+`Perms.ROLE_PERMS` 逐条相同）：换源之后它从「保证两条路一致」变成
+「保证回落路径与主路径一致」—— 回落什么时候被触发不由我们决定，
+所以它必须一直是对的。
 
 > ⚠️ **过渡期有两张表存同一件事**：`sys_ops_staff.roles`（判权读它）
 > 与 `sys_role_member`（菜单读它）。本轮已经在此栽过一次：
@@ -176,7 +175,8 @@ HTTP 请求（带 X-Store-No）
 按顺序，漏一处的症状写在后面：
 
 1. `Perms.java` 加常量 → 不加则 `@PreAuthorize` 里写字符串，拼错静默 false
-2. `ROLE_PERMS` 里配给角色 → 不配则谁都没有，包括本该有的岗位
+2. `ROLE_PERMS` 里配给角色 → 它现在是**回落表**，但仍要配 ——
+   一致性守卫比对的就是它，且库里没有时靠它兜底
 3. Controller 上 `@PreAuthorize` → 不加则**端点裸奔**
 4. `ops-web/lib/perm-map.ts` 登记 UI 码 → 不登记则**按钮神秘消失**（守卫会拦）
 5. `ops-web/lib/permissions.ts` 的 `BACKEND_ROLE_PERMS` 镜像 → 不同步则守卫报假警报
