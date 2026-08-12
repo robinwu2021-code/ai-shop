@@ -22,7 +22,8 @@ const stores = ref<Store[]>([]);
 const logs = ref<StaffLog[]>([]);
 const busy = ref(false);
 
-const nameOf = (s: MerchantStaff) => s.displayName || s.loginPhone;
+/** 老板的 login_phone 是空的（他走 C 端账号登录）—— 别把标题渲染成空白 */
+const nameOf = (s: MerchantStaff) => s.displayName || s.loginPhone || t("staff.owner");
 
 /** 可授予的角色：**OWNER 不在其中** —— 授出去等于凭空造第二个老板 */
 const grantable = computed(() => roles.value.filter((r) => r.roleCode !== "OWNER"));
@@ -86,8 +87,12 @@ onShow(load);
           <text v-if="staff.isOwner" class="tag tag--primary">{{ $t("staff.owner") }}</text>
           <text v-else-if="staff.status !== 'ACTIVE'" class="tag">{{ $t("staff.disabled") }}</text>
         </view>
-        <text class="sh-muted phone sh-num">{{ staff.loginPhone }}</text>
-        <text class="sh-muted note">{{ $t("staff.loginHint") }}</text>
+        <template v-if="staff.loginPhone">
+          <text class="sh-muted phone sh-num">{{ staff.loginPhone }}</text>
+          <text class="sh-muted note">{{ $t("staff.loginHint") }}</text>
+        </template>
+        <!-- 老板没有员工手机号：他用 C 端账号登录，这里不该留一行空白 -->
+        <text v-else class="sh-muted note">{{ $t("staff.ownerLogin") }}</text>
       </view>
 
       <!-- ② 门店 × 角色：矩阵搬到这里，一屏放得下就不折叠。

@@ -147,6 +147,28 @@ public record BizContext(String merchantNo, Set<String> pickupNos, Set<String> g
     }
 
     /**
+     * 当前门店上他<b>实际拥有的权限码</b> —— 下发给端上裁剪入口用。
+     *
+     * <p>与 {@link #can(String)} <b>必须是同一个来源</b>。此前 {@code /biz/context}
+     * 自己按 {@code BizPerms.of(staffRoles())} 又算了一遍，那张表只认预置角色 ——
+     * 于是一个只被授了自定义角色的人：后端放行，界面却什么入口都不显示。
+     * <b>与「界面显示了、后端拒」是同一个病的两个方向</b>，而这个方向更隐蔽：
+     * 没有任何报错，看起来就像「这个功能还没做」。
+     *
+     * @return 老板恒为 {@code ["*"]}；查不到当前门店的权限时回落预置角色的并集
+     *         （六段式构造与单元测试走这条）
+     */
+    public Set<String> effectivePerms() {
+        if (owner) {
+            return Set.of("*");
+        }
+        // get(null) 在不可变 Map 上抛 NPE，不是返回 null —— 与 can() 同一条防线
+        Set<String> perms = permsByStore == null || currentStoreNo == null || currentStoreNo.isBlank()
+                ? null : permsByStore.get(currentStoreNo);
+        return perms != null ? perms : BizPerms.of(staffRoles());
+    }
+
+    /**
      * 当前门店上，他的订单视图要不要裁到配送员那一档。
      *
      * <p>判权回答「能不能调这个接口」，这一条回答「同一个接口该给他看多少」——

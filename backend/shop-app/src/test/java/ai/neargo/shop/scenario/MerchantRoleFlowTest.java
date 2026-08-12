@@ -234,6 +234,45 @@ class MerchantRoleFlowTest {
                 .doesNotContain("的 " + roleCode);
     }
 
+    @Test
+    @DisplayName("★★★ /biz/context 要下发自定义角色的权限 —— 否则后端放行、界面什么都不显示")
+    void contextCarriesCustomRolePerms() throws Exception {
+        String owner = merchant("12700270009", "作用域下发店");
+        String store = firstStore(owner);
+        // 预置角色里**没有**这个组合：营销 + 看订单
+        String roleCode = createRole(owner, "夜班店员", "\"biz:campaign\",\"biz:order:view\"");
+
+        String phone = "12700270091";
+        mvc().perform(post("/biz/staff").header("Authorization", "Bearer " + owner)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"loginPhone\":\"" + phone + "\"}"));
+        String accountNo = json.readTree(mvc().perform(get("/biz/staff")
+                        .header("Authorization", "Bearer " + owner))
+                .andReturn().getResponse().getContentAsString())
+                .get("data").get(1).get("mchAccountNo").asString();
+        mvc().perform(post("/biz/staff/" + accountNo + "/store")
+                .header("Authorization", "Bearer " + owner)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"storeNo\":\"" + store + "\",\"role\":\"" + roleCode + "\"}"));
+
+        String staff = staffLogin(phone);
+        String scope = mvc().perform(get("/biz/context").header("Authorization", "Bearer " + staff))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+
+        /*
+         * 判权用 permsByStore，而这个端点曾经自己按 BizPerms.of(staffRoles) 又算一遍 ——
+         * 那张表只认预置角色，于是自定义角色的权限**一个都不下发**。
+         * 表现不是报错，是「这个功能看起来还没做」：后端放行，界面不画入口。
+         */
+        assertThat(scope).as("端上照它裁剪入口").contains("biz:campaign").contains("biz:order:view");
+        // 反面：没授的码不能凭空出现
+        assertThat(scope).doesNotContain("biz:store:admin");
+        // 而且它确实能调 —— 判权与下发是同一个来源
+        mvc().perform(get("/biz/campaign").header("Authorization", "Bearer " + staff))
+                .andExpect(jsonPath("$.code").value(0));
+    }
+
     // ---------------------------------------------------------------- 装配
 
     private String createRole(String owner, String name, String permsJson) throws Exception {

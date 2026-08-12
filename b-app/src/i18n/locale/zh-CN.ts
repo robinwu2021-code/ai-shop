@@ -412,6 +412,7 @@ export default {
     empty: "还没有员工",
     name: "姓名",
     namePh: "如「小张」—— 一列号码谁也分不清",
+    ownerLogin: "他用自己的消费者账号登录，不占员工手机号",
     loginHint: "这个手机号就是他的登录用户名 —— 手机号 + 验证码，不用设密码",
     grants: "门店与角色",
     dangerTitle: "停用",

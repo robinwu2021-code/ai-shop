@@ -269,6 +269,7 @@ export default {
     detailTitle: "Staff detail", roleDetailTitle: "Role",
     search: "Name or phone", activeOnly: "Active only", empty: "No staff yet",
     name: "Name", namePh: "e.g. Xiao Zhang — a column of numbers tells you nothing",
+    ownerLogin: "The owner signs in with their consumer account — no staff phone",
     loginHint: "This phone number is their username — number + SMS code, no password",
     grants: "Stores and roles",
     dangerTitle: "Disable",

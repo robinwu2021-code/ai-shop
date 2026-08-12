@@ -37,8 +37,14 @@ const activeOnly = ref(true);
 const adding = ref(false);
 const form = ref({ phone: "", name: "" });
 
-/** 认人优先用姓名 —— 一列号码谁也分不清；没填姓名就只能拿号码顶上 */
-const nameOf = (s: MerchantStaff) => s.displayName || s.loginPhone;
+/**
+ * 认人优先用姓名 —— 一列号码谁也分不清；没填姓名就拿号码顶上。
+ *
+ * **老板两样都可能没有**：他的 `mch_account.login_phone` 是空的
+ * （入驻时建的号，他走 C 端账号登录），于是这一行会渲染成一片空白 ——
+ * 唯一那个不可能被停用、权限最大的人，在列表里反而没有标识。
+ */
+const nameOf = (s: MerchantStaff) => s.displayName || s.loginPhone || t("staff.owner");
 
 /** 他在各店的角色，一句话摘要。列表要的是「他大概管什么」，不是完整矩阵 */
 function summary(s: MerchantStaff) {
@@ -134,8 +140,13 @@ onShow(load);
           <view class="row__top">
             <text class="row__name">{{ nameOf(s) }}</text>
             <!-- 号码就是他的登录用户名：搜到人之后老板下一眼看的就是这个 -->
-            <text v-if="s.displayName" class="row__phone sh-num sh-muted">{{ s.loginPhone }}</text>
-            <text v-if="s.isOwner" class="tag tag--primary">{{ $t("staff.owner") }}</text>
+            <text v-if="s.displayName && s.loginPhone" class="row__phone sh-num sh-muted">
+              {{ s.loginPhone }}
+            </text>
+            <!-- 名字已经回落成「老板」时不再挂同名标签，两个「老板」并排是噪声 -->
+            <text v-if="s.isOwner && nameOf(s) !== $t('staff.owner')" class="tag tag--primary">
+              {{ $t("staff.owner") }}
+            </text>
             <text v-else-if="s.status !== 'ACTIVE'" class="tag">{{ $t("staff.disabled") }}</text>
           </view>
           <text class="row__sub sh-muted">{{ summary(s) }}</text>

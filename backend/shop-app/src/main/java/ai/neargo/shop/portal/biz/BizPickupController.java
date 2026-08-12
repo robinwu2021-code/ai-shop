@@ -59,7 +59,9 @@ public class BizPickupController {
         return new BizContextVO(ctx.merchantNo(), ctx.currentStoreNo(), ctx.owner(),
                 List.copyOf(ctx.storeNos()), List.copyOf(ctx.pickupNos()),
                 List.copyOf(ctx.groupNos()), List.copyOf(ctx.staffRoles()),
-                List.copyOf(ai.neargo.shop.auth.BizPerms.of(ctx.staffRoles())));
+                // **与判权同一个来源**（含自定义角色）：这里另算一遍的话，
+                // 只有自定义角色的人会看到一个什么入口都没有的经营台
+                List.copyOf(ctx.effectivePerms()));
     }
 
     /**
