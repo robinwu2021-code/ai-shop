@@ -1,5 +1,11 @@
 # B 端功能矩阵 · 按角色
 
+> ⚠️ **本文当前是脚本一次性产出的，还没有生成器 —— 改了权限它不会自己更新。**
+> 三份来源都在代码里（见下），下一步应固化成 `scripts/gen-biz-role-matrix.mjs`，
+> 与 `gen-tri-end-matrix.mjs` 同类。在那之前，**改 `BizPerms` 或
+> `BizEndpointPermTest.REQUIRED` 之后要回来对一遍这份文档**，
+> 否则它会变成一份长得像权威、实际已过期的东西 —— 而这正是本项目反复踩过的坑。
+
 > **生成依据**：权限点取自 `BizPerms`，角色→权限取自 `BizPerms.ROLE_PERMS`，
 > 端点→权限取自 `BizEndpointPermTest.REQUIRED`（那是唯一一份**被守卫强制对过账**的清单：
 > 每个 `/biz` 端点都必须在里面有个说法，漏登记就红）。

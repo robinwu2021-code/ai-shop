@@ -58,6 +58,7 @@
 | [db-design](./reference/db-design.md) | 草稿（待确认） |
 | [domain-model](./reference/domain-model.md) | 草稿（待确认） |
 | [三端功能点矩阵](./reference/三端功能点矩阵.md) | — |
+| [B端功能矩阵-按角色](./reference/B端功能矩阵-按角色.md) | B 端 6 角色 × 13 权限点 × 62 端点；**尚无生成器，改权限要回来对** |
 | [产品架构与实体关系](./reference/产品架构与实体关系.md) | — |
 | [全域命名基准](./reference/全域命名基准.md) | — |
 | [全域对象关系-App与小程序](./reference/全域对象关系-App与小程序.md) | — |
