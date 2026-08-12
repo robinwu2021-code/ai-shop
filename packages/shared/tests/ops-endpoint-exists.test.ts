@@ -95,7 +95,12 @@ const KNOWN_GAPS: Record<string, string> = {
   "PUT /ops/finance/tax-rule": "改税率规则",
 
   // ── 平台投放场次：后端没有这个领域对象，见 运营端营销列表契约错配.md §3 ──
-  "POST /ops/campaigns": "建平台场次 —— 后端无此对象，待产品决定",
+  // 平台场次：**一期刻意不做**（2026-08-12 决定）。
+  // 平台自己出资、跨商家的活动与 mkt_campaign（店铺级、商家出资）不是一回事，
+  // 混表会让分账重撞一次 MktCoupon.funder 踩过的墙；真做它是一个完整业务域
+  // （新表 + 审批状态机 + 算价接入 + 分账），不是补一个端点。
+  // ops-web 侧的契约/mock/http 三层已随之删除 —— 它本来就零个调用方。
+  "POST /ops/campaigns": "刻意不做：一期平台不自出资做场次，见 TDD-ops-平台场次",
 
   // ── 门店经营支持 ──
   "GET /ops/stores/qrcodes": "门店码管理",

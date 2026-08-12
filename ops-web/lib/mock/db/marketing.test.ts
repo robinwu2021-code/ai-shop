@@ -65,39 +65,9 @@ describe("券预算（P-7.1.3）", () => {
 // mock 与那块 UI —— 以及把「首尾相接不算重叠」「跨位置可并行」这两条产品规则
 // 记下来，等建后端对象时照着做。
 describe("平台场次时间（P-7.2，后端未实现）", () => {
-  it("结束必须晚于开始", async () => {
-    await expect(
-      marketingMock.saveCampaign({
-        campaignNo: "", name: "反向时间", type: "FLASH", position: "首页秒杀位",
-        startAt: "2026-08-09T02:00:00Z", endAt: "2026-08-09T01:00:00Z",
-      }),
-    ).rejects.toThrow(/晚于开始/);
-  });
 
-  it("同一位置的秒杀场次不可重叠", async () => {
-    await expect(
-      marketingMock.saveCampaign({
-        campaignNo: "", name: "插队场", type: "SECKILL", position: "首页秒杀位",
-        startAt: "2026-08-07T10:30:00Z", endAt: "2026-08-07T11:30:00Z",
-      }),
-    ).rejects.toThrow(/重叠/);
-  });
 
-  it("首尾相接不算重叠（07-08 与 08-09 可连排）", async () => {
-    const saved = await marketingMock.saveCampaign({
-      campaignNo: "", name: "紧接场", type: "SECKILL", position: "首页秒杀位",
-      startAt: "2026-08-07T11:00:00Z", endAt: "2026-08-07T12:00:00Z",
-    });
-    expect(saved.campaignNo).toMatch(/^AC/);
-  });
 
-  it("跨位置重叠是合法的（首页与频道页可同时跑）", async () => {
-    const saved = await marketingMock.saveCampaign({
-      campaignNo: "", name: "频道秒杀", type: "SECKILL", position: "生鲜频道",
-      startAt: "2026-08-07T10:00:00Z", endAt: "2026-08-07T11:00:00Z",
-    });
-    expect(saved.position).toBe("生鲜频道");
-  });
 });
 
 describe("内容位（P-7.3）", () => {

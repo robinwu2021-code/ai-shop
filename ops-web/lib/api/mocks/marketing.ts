@@ -108,37 +108,17 @@ export const marketingMock: MarketingApi = {
     return wait(row!, 400);
   },
 
-  /**
-   * 保存平台投放场次。**后端还没有这个对象**，只有 mock 能跑 ——
-   * 保留它是为了那块 UI 在 mock 模式下仍能演示，以及把重叠规则记在测试里。
+  /*
+   * 这里曾有 saveCampaign（平台投放场次）。**2026-08-12 随契约一起删**：
+   * 后端不做这个对象，而页面上从来没有调用方 —— 三层都写着、零个消费方。
    *
-   * 写进独立的 platformSlots 数组，**不碰 merchantCampaigns**：
-   * 两个领域对象混在一个数组里，正是「类型列一半中文一半枚举码」的来源。
+   * **它定过的两条规则记在这里**，将来真做时不用重新想：
+   *   ① 结束必须晚于开始；
+   *   ② 秒杀场次**同一位置不可重叠** —— 场次的意义就在不重叠，
+   *      同一位置同时跑两场，用户看到哪一场取决于查询顺序；
+   *      跨位置重叠是合法的（首页与频道页可以同时跑）。
+   * 完整设计见 docs/technical/design/TDD-ops-平台场次.md。
    */
-  saveCampaign: async (v) => {
-    if (new Date(v.endAt) <= new Date(v.startAt)) fail("结束时间必须晚于开始时间", "It has to end after it starts");
-    // 秒杀「场次」的意义就在不重叠：同一位置同时跑两场，用户看到的是哪一场取决于查询顺序。
-    // 跨位置重叠是合法的（首页与频道页可以同时跑）。
-    if (v.type === "SECKILL") {
-      const clash = db.platformSlots.find(
-        (c) =>
-          c.campaignNo !== v.campaignNo &&
-          c.type === "SECKILL" &&
-          c.position === v.position &&
-          !c.archivedAt &&
-          overlaps(v.startAt, v.endAt, c.startAt, c.endAt),
-      );
-      if (clash) fail(`与「${clash.name}」场次时间重叠（同一位置：${v.position}）`, `Overlaps with \u201c${clash.name}\u201d in the same slot (${v.position})`);
-    }
-    const saved = db.upsert<PlatformSlot>(
-      db.platformSlots,
-      { ...v, status: "SCHEDULED", skuCount: 0, createdAt: "2026-08-06T00:00:00Z" },
-      "campaignNo",
-      () => db.nextNo("AC", db.platformSlots, 9000, "campaignNo"),
-    );
-    return wait(saved, 400);
-  },
-
   archiveCampaign: async (no) => wait(db.archiveRow(db.merchantCampaigns, "campaignNo", no), 400),
   unarchiveCampaign: async (no) => wait(db.unarchiveRow(db.merchantCampaigns, "campaignNo", no), 400),
 

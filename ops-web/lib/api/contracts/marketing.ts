@@ -43,12 +43,18 @@ export interface MarketingApi {
    * 不能建也不能改内容，那是商家自己的经营决定。
    */
   toggleCampaign(campaignNo: string, running: boolean, reason: string): Promise<MerchantCampaign>;
-  /**
-   * 保存平台投放场次（P-7.2）。结束必须晚于开始；同一位置的秒杀场次不可重叠。
+  /*
+   * 这里曾有 saveCampaign（保存平台投放场次 P-7.2）。**2026-08-12 删除**：
    *
-   * ⚠️ **后端尚未实现这个对象**，只有 mock 能跑通。
+   * · 后端没有这个对象，也不打算补 —— 平台场次是平台**自己出资、跨商家**的活动，
+   *   与 mkt_campaign（店铺级、商家出资）不是一回事，混表会让分账重撞一次
+   *   MktCoupon.funder 踩过的墙。真做它要新表 + 审批状态机 + 算价接入 + 分账，
+   *   是一个完整业务域（见 TDD-ops-平台场次），不是补一个端点。
+   * · 而且**页面上从来没有调用方** —— 契约、mock、http 三层都写着，
+   *   零个消费方。这正是本仓库反复出现的「有能力没有消费方」。
+   *
+   * 一期不做就把它删掉，而不是留在契约里等人以为能用。
    */
-  saveCampaign(v: Pick<PlatformSlot, "campaignNo" | "name" | "type" | "position" | "startAt" | "endAt">): Promise<PlatformSlot>;
   archiveCampaign(campaignNo: string): Promise<MerchantCampaign>;
   unarchiveCampaign(campaignNo: string): Promise<MerchantCampaign>;
 

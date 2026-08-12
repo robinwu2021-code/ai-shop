@@ -7603,37 +7603,6 @@ paths:
                   - "msg"
                   - "data"
       description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
-    post: 
-      operationId: "saveCampaign"
-      summary: "保存平台投放场次（P-7.2）"
-      tags: 
-        - "marketing"
-      responses: 
-        "200": 
-          description: "成功"
-          content: 
-            "application/json": 
-              schema: 
-                type: "object"
-                properties: 
-                  code: 
-                    type: "integer"
-                    description: "0 表示成功"
-                  msg: 
-                    type: "string"
-                  data: 
-                    "$ref": "#/components/schemas/PlatformSlot"
-                required: 
-                  - "code"
-                  - "msg"
-                  - "data"
-      requestBody: 
-        required: true
-        content: 
-          "application/json": 
-            schema: 
-              type: "object"
-        description: "请求体字段见对应契约方法的入参。"
   "/ops/campaigns/{no}/toggle": 
     post: 
       operationId: "toggleCampaign"
