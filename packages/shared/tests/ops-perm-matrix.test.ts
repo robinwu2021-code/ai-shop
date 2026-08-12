@@ -14,6 +14,8 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 // @ts-expect-error 生成器是 .mjs，没有类型声明；这里只用它的三个纯函数
 import { buildMatrix, scanEndpoints, PUBLIC } from "../../../scripts/gen-perm-endpoint-matrix.mjs";
+// @ts-expect-error 同上
+import { codeOf, RULES } from "../../../scripts/perm-endpoint-map.mjs";
 
 const ROOT = join(import.meta.dirname, "../../..");
 const BASELINE = join(ROOT, "packages/shared/tests/fixtures/ops-role-endpoint-matrix.json");
@@ -49,6 +51,34 @@ describe("运营端角色×端点矩阵", () => {
       unexpected,
       "这些 /ops 端点对**任何登录的运营账号**开放，且没有说明为什么。\n" +
         "  要么加 @PreAuthorize，要么在 gen-perm-endpoint-matrix.mjs 的 PUBLIC 里写清理由。",
+    ).toEqual([]);
+  });
+
+  it("★★ 每个端点在细化登记表里都要有归属 —— 漏一条就是拆码时被落下的那条", () => {
+    const unmapped = scanEndpoints(ROOT)
+      .map((e: { method: string; path: string }) => `${e.method} ${e.path}`)
+      .filter((k: string) => !PUBLIC.has(k))
+      .filter((k: string) => !codeOf(k.split(" ")[0], k.slice(k.indexOf(" ") + 1)));
+    expect(
+      unmapped,
+      "这些端点在 scripts/perm-endpoint-map.mjs 里匹配不到任何规则。\n" +
+        "  权限码细化改造会逐个换注解，**没归属的那条只能保持粗码** ——\n" +
+        "  于是它会悄悄成为「还留在大钥匙上」的一条，而没人知道。",
+    ).toEqual([]);
+  });
+
+  it("★ 登记表里不能有死规则 —— 一条都匹配不到的规则说明路径已经变了", () => {
+    const eps = scanEndpoints(ROOT)
+      .map((e: { method: string; path: string }) => e)
+      .filter((e: { method: string; path: string }) => !PUBLIC.has(`${e.method} ${e.path}`));
+    const dead = RULES.filter(
+      ([m, re]: [string, RegExp]) =>
+        !eps.some((e: { method: string; path: string }) => (m === "*" || m === e.method) && re.test(e.path)),
+    ).map(([m, re, code]: [string, RegExp, string]) => `${m} ${re} → ${code}`);
+    expect(
+      dead,
+      "这些规则匹配不到任何端点。要么路径改了、要么规则被前面更宽的一条盖住了 ——\n" +
+        "  两种都会让它下面写的那句理由变成谎话。",
     ).toEqual([]);
   });
 

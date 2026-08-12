@@ -17,6 +17,7 @@
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { execSync } from "node:child_process";
 import { join, dirname } from "node:path";
+import { codeOf } from "./perm-endpoint-map.mjs";
 import { fileURLToPath } from "node:url";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -150,7 +151,28 @@ function main() {
     L.push("```");
     L.push("");
   }
-  L.push("## 三、角色 → 权限码");
+  // ── 细化目标：登记表算出来的「拆完应该是什么样」──
+  const target = new Map();
+  for (const e of eps) {
+    const k = `${e.method} ${e.path}`;
+    if (PUBLIC.has(k)) continue;
+    const c = codeOf(e.method, e.path) ?? "（未归属）";
+    if (!target.has(c)) target.set(c, []);
+    target.get(c).push(k);
+  }
+  L.push("## 三、细化目标：拆完之后的码 → 端点");
+  L.push("");
+  L.push("来自 `scripts/perm-endpoint-map.mjs` 这份登记表。**阶段 A 照着它改注解。**");
+  L.push(`拆完是 **${target.size}** 个码（现在 ${byCode.size - 1} 个），最大的一个盖 ` +
+    `**${Math.max(...[...target.values()].map((v) => v.length))}** 条（现在 ${Math.max(...[...byCode.values()].map((v) => v.length))} 条）。`);
+  L.push("");
+  L.push("| 码 | 端点数 | 端点 |");
+  L.push("|---|--:|---|");
+  for (const [code, list] of [...target].sort()) {
+    L.push(`| \`${code}\` | ${list.length} | ${list.map((e) => `\`${e}\``).join("<br>")} |`);
+  }
+  L.push("");
+  L.push("## 四、角色 → 权限码");
   L.push("");
   L.push("| 角色 | 权限码 |");
   L.push("|---|---|");
