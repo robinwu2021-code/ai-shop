@@ -21,6 +21,8 @@ import { fileURLToPath } from "node:url";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const OUT = join(ROOT, "docs/technical/reference/数据库-ER图.md");
+// 图放在 technical/diagrams/，而文档在 technical/reference/ —— md 里因此是 ../diagrams/。
+// 写死 ./diagrams/ 的话生成出来就是断链，而 md 预览里图只是不显示，不报错。
 const DIAG = join(ROOT, "docs/technical/diagrams");
 const OUT_HTML = join(ROOT, "docs/technical/reference/数据库-ER图.html");
 
@@ -217,7 +219,7 @@ const md = [
   "按「被引用次数」分三条带 —— **不是有向无环图**：域之间存在环",
   "（`cmt → mkt → usr → cmt`），强行分层会画错。",
   "",
-  "![数据库域总览](./diagrams/db-overview.svg)",
+  "![数据库域总览](../diagrams/db-overview.svg)",
   "",
   "| 域 | 前缀 | 表数 | 被几个域引用 |",
   "|---|---|---:|---:|",
@@ -244,7 +246,7 @@ for (const d of domainList) {
   md.push(
     `### ${d.label} \`${d.prefix}_*\`（${d.count} 张）`,
     "",
-    `![${d.label}表关系](./diagrams/db-${d.prefix}.svg)`,
+    `![${d.label}表关系](../diagrams/db-${d.prefix}.svg)`,
     "",
     "| 表 | 说明 |",
     "|---|---|",
