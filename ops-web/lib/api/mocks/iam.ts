@@ -126,6 +126,16 @@ export const iamMock: IamApi = {
    * 后端没有的码标 NOT_IMPLEMENTED，**与真接口同一口径**：
    * mock 比后端好看，页面就会在 mock 下看着正常、连上真后端才发现是空的。
    */
+  /*
+   * 调序在 mock 下**只等待、不改数据**。
+   *
+   * 真要在 mock 里实现，就得给 NAV 派生出来的那份加一层可变 sort ——
+   * 而 mock 的功能点是每次从 NAV 现算的，改了也留不住，
+   * 做成"点了有反应但刷新就回去"比不做更误导。
+   * 排序是库驱动的能力，验证它必须连真后端。
+   */
+  movePermFunction: async () => wait(undefined as unknown as void),
+  movePermPoint: async () => wait(undefined as unknown as void),
   listPermFunctions: async () =>
     wait(NAV.map((sec, si) => ({
       functionCode: `OPS_${sec.key.toUpperCase()}`,

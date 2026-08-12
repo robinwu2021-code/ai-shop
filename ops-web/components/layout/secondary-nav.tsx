@@ -12,7 +12,8 @@ import {
   visibleLeaves, findActiveSection, activeLeafIndex, normPath, isLeafLocked, groupedLeaves,
 } from "@/lib/nav";
 import { useAuth } from "@/lib/auth";
-import { useServerMenu, isPointUnimplemented } from "@/lib/stores/server-menu";
+import { useNavPrefs } from "@/lib/stores/nav-prefs";
+import { useServerMenu, isPointUnimplemented, useNavTree } from "@/lib/stores/server-menu";
 import { useI18n } from "@/lib/i18n";
 import { PHASE_KEY, isPhaseLocked, type Phase } from "@/lib/phase";
 import { cn } from "@/lib/utils";
@@ -95,9 +96,11 @@ export function SecondaryNav() {
   const view = sp.get("view");
   const perms = useAuth((s) => s.perms);
   const { tNav } = useI18n();
+  const panelCollapsed = useNavPrefs((s) => s.panelCollapsed);
 
   const serverHrefs = useServerMenu((s) => s.hrefSet);
-  const section = findActiveSection(pathname, perms, serverHrefs);
+  const nav = useNavTree();
+  const section = findActiveSection(pathname, perms, serverHrefs, nav);
   const leaves = section ? visibleLeaves(section, perms, serverHrefs) : [];
   const activeIdx = section ? activeLeafIndex(leaves, pathname, tab, view) : -1;
   const segments = groupedLeaves(leaves);
@@ -107,6 +110,9 @@ export function SecondaryNav() {
   const segBase = segments.map((s) => { const b = acc; acc += s.leaves.length; return b; });
 
   if (!section || !leaves.length) return null; // 无子功能的 section（经营看板）全宽（AC5）
+  // 用户收起面板 → 让出 176px 给内容区。找功能改走 ⌘K（顶栏有入口与提示），
+  // 不是把导航拿走不给替代品；展开按钮常驻顶栏，收起态也能一键回来。
+  if (panelCollapsed) return null;
 
   return (
     <aside className="hidden shrink-0 flex-col bg-sidebar/60 md:flex" style={{ width: PANEL_WIDTH }}>

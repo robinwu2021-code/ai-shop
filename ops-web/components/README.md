@@ -68,7 +68,8 @@
 | `Providers` | `providers.tsx` | React Query / 主题 / toast 的挂载点 |
 | `AppShell` | `layout/app-shell.tsx` | 外壳：Rail + 顶栏 + 内容区 |
 | `Rail` | `layout/rail.tsx` | L1 图标栏（18 个业务域） |
-| `SecondaryNav` | `layout/secondary-nav.tsx` | L2 分组 + L3 子功能（含待建灰显与分期徽章） |
+| `SecondaryNav` | `layout/secondary-nav.tsx` | L2 分组 + L3 子功能（含待建灰显与分期徽章）；可由顶栏开关收起 |
+| `CommandPalette` / `useCommandPalette` | `layout/command-palette.tsx` | ⌘K 搜索并跳转功能 —— SecondaryNav 可收起的前提 |
 | `PhaseGuard` | `layout/phase-guard.tsx` | 分期门禁：直达未开放功能时的兜底页 |
 | `ThemeSwitcher` | `layout/theme-switcher.tsx` | 顶栏皮肤切换（五套） |
 | `LangSwitcher` | `layout/lang-switcher.tsx` | 顶栏**中 / EN** 语言切换 |

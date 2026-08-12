@@ -89,7 +89,12 @@ export const en: Messages = {
     /* 后端未实现：**渲染但禁用** —— 藏起来运营不知道平台规划了这个功能，可点则是死按钮 */
     notImplemented: "Planned",
     notImplementedHint: "The backend for this is not built yet — it is listed so you know it is planned, but it cannot be opened",
-    expand: "Expand navigation", collapse: "Collapse navigation" },
+    expand: "Expand navigation", collapse: "Collapse navigation",
+    expandPanel: "Show sub-navigation panel", collapsePanel: "Hide sub-navigation panel",
+    search: "Search features",
+    searchPlaceholder: "Search features, e.g. “Merchant profiles”",
+    searchEmpty: "No matching feature",
+    searchHint: "Search" },
   theme: { label: "Theme", mode: "Appearance", light: "Light", dark: "Dark", switch: "Switch theme",
     fullSchemeHint: "“Business blue” is a full palette (background included); the other four only change the accent colour.",
     mono: "Monochrome", business: "Business blue", fresh: "Fresh green", promo: "Promo orange", blue: "Vivid blue" },

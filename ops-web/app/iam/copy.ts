@@ -2,9 +2,6 @@
 import type { PageCopy } from "@/lib/use-copy";
 
 const zh = {
-  tabStaffs: "员工账号",
-  tabRoles: "角色与权限",
-  tabAudit: "操作审计",
 
   enabledOn: "启用中",
   enabledOff: "已停用",
@@ -15,6 +12,9 @@ const zh = {
   toastScopeChanged: "已调整数据域",
   toastPermsSaved: "已保存角色权限",
   critical: "高危",
+  moveUp: "上移",
+  moveDown: "下移",
+  reorderHint: "调整菜单顺序（所有人可见）",
 
   colName: "姓名",
   colUsername: "登录名",
@@ -163,9 +163,6 @@ const zh = {
 };
 
 const en: typeof zh = {
-  tabStaffs: "Staff accounts",
-  tabRoles: "Roles & permissions",
-  tabAudit: "Audit log",
 
   enabledOn: "Active",
   enabledOff: "Disabled",
@@ -176,6 +173,9 @@ const en: typeof zh = {
   toastScopeChanged: "Data scope updated",
   toastPermsSaved: "Role permissions saved",
   critical: "High risk",
+  moveUp: "Move up",
+  moveDown: "Move down",
+  reorderHint: "Reorder menu (affects everyone)",
 
   colName: "Name",
   colUsername: "Username",

@@ -6,13 +6,14 @@
 // 授予高危权限时要求手输确认，与资金域的分账下发同一套做法。
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import { api } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth";
 import { fill, useCopy } from "@/lib/use-copy";
 import { IAM_COPY } from "./copy";
 import { usePaging } from "@/lib/use-paging";
-import { usePageTab } from "@/lib/use-page-tab";
+import { usePageTab, useNavTabs } from "@/lib/use-page-tab";
 import { fmtTime } from "@/lib/utils";
 import { useCan } from "@/lib/use-can";
 import { notify } from "@/lib/notify";
@@ -37,11 +38,7 @@ import { Tree, type TreeNode } from "@/components/ui/tree";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 
 type Copy = (typeof IAM_COPY)["zh"];
-const TABS = (c: Copy) => [
-  { key: "staffs", label: c.tabStaffs },
-  { key: "roles", label: c.tabRoles },
-  { key: "audit", label: c.tabAudit },
-];
+const TAB_KEYS = ["staffs", "roles", "audit"] as const;
 
 const ROLES = Object.keys(ROLE_LABEL) as Role[];
 
@@ -93,7 +90,7 @@ function IamInner() {
   // 那份是给非 React 处用的，页面上直接渲染它会在英文界面漏出中文。
   const roleLabel = (r: Role) => t(`role.${r}`);
   const roleOptions = ROLES.map((r) => ({ value: r, label: roleLabel(r) }));
-  const tabs = TABS(c);
+  const tabs = useNavTabs("/iam", TAB_KEYS);
   const enabledOptions = ENABLED_OPTIONS(c);
   const criticalOptions = CRITICAL_OPTIONS(c);
   const qc = useQueryClient();
@@ -250,13 +247,52 @@ function IamInner() {
    *
    * 现在：勾什么 = 库里存什么 = 那个人登录后菜单长什么样。
    */
+  /*
+   * 菜单调序。**改的是所有人看到的顺序**，不是个人偏好 —— 所以挂 iam:role:grant，
+   * 与"能配权限的人才能动菜单结构"一致。
+   *
+   * 成功后 invalidate perm-functions：这一页要立刻看到新顺序。
+   * 侧边菜单不用管 —— providers 里 60 秒一次的重拉会带上（改完想立刻看，切走再切回来即可）。
+   */
+  const move = useMutation({
+    mutationFn: ({ kind, code, dir }: { kind: "fn" | "pt"; code: string; dir: "UP" | "DOWN" }) =>
+      kind === "fn" ? api.movePermFunction(code, dir) : api.movePermPoint(code, dir),
+    onSuccess: () => { void qc.invalidateQueries({ queryKey: ["perm-functions"] }); },
+  });
+
+  /** ↑/↓ 一对。无 iam:role:grant 时整个不渲染 —— 看得见点不动比看不见更让人费解 */
+  const MoveBtns = ({ kind, code }: { kind: "fn" | "pt"; code: string }) =>
+    !canGrant ? null : (
+      <span className="ms-auto flex shrink-0 items-center gap-0.5" title={c.reorderHint}>
+        {(["UP", "DOWN"] as const).map((dir) => (
+          <button
+            key={dir}
+            type="button"
+            aria-label={dir === "UP" ? c.moveUp : c.moveDown}
+            title={dir === "UP" ? c.moveUp : c.moveDown}
+            disabled={move.isPending}
+            // 阻止冒泡：这两个按钮长在树节点的 label 里，不拦的话点一下会连带勾选/展开
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); move.mutate({ kind, code, dir }); }}
+            className="rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-40"
+          >
+            {dir === "UP" ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
+          </button>
+        ))}
+      </span>
+    );
+
   const permTree: TreeNode[] = useMemo(
     () =>
       (permFns.data ?? [])
         .filter((f) => f.points.some((p) => p.pointType === "MENU" || p.pointType === "ACTION"))
         .map((f) => ({
           key: `f:${f.functionCode}`,
-          label: f.name,
+          label: (
+            <span className="flex w-full items-center gap-2">
+              {f.name}
+              <MoveBtns kind="fn" code={f.functionCode} />
+            </span>
+          ),
           children: f.points.map((p) => {
             const unbuilt = p.backendStatus === "NOT_IMPLEMENTED";
             return {
@@ -271,6 +307,8 @@ function IamInner() {
                   {p.uiPermCode && <code className="txt-caption text-muted-foreground">{p.uiPermCode}</code>}
                   {unbuilt && <Badge tone="muted">{c.notImplemented}</Badge>}
                   {p.uiPermCode && CRITICAL.includes(p.uiPermCode) && <Badge tone="danger">{c.critical}</Badge>}
+                  {/* 只有菜单项参与排序：ACTION 是页面内的按钮级授权，它没有"顺序"可言 */}
+                  {p.pointType === "MENU" && <MoveBtns kind="pt" code={p.pointCode} />}
                 </span>
               ),
             };

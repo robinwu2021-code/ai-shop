@@ -404,11 +404,31 @@ body {
    --dur/--ease（= C 端按钮的实测缓动），比插件默认值更贴近 C 端手感。 */
 @keyframes pb-fade-in { from { opacity: 0 } to { opacity: 1 } }
 @keyframes pb-slide-in-end { from { transform: translateX(100%) } to { transform: translateX(0) } }
-@keyframes pb-zoom-in { from { opacity: 0; transform: translate(-50%, -50%) scale(0.96) } to { opacity: 1; transform: translate(-50%, -50%) scale(1) } }
+/* 居中弹层（confirm-dialog / drawer 的确认框…）：**只做缩放，不碰位移**。
+   居中交给元素自己的 `-translate-x-1/2 -translate-y-1/2`。
+
+   这里原本把 translate(-50%,-50%) 焊进了关键帧，而 Tailwind 4 的
+   `-translate-*` 编译出的是**独立的 `translate` 属性**，不是 `transform` ——
+   两者叠加（translate 先于 transform 生效），于是偏移被减了两次。
+   .animate-in 是 fill-mode:both，动画结束后也还不回来。
+   实测：一个 400×200 的弹窗本该落在 (271.5, 330.5)，实际在 (79.5, 234.5)。
+   与下面 pb-zoom-in-top 是同一个根因，那个是 2026-08-12 做命令面板时先发现的。 */
+@keyframes pb-zoom-in { from { opacity: 0; transform: scale(0.96) } to { opacity: 1; transform: scale(1) } }
+/* 顶部锚定的弹层（命令面板）专用：**只做缩放，不碰位移**。
+   居中交给元素自己的 `-translate-x-1/2`。
+
+   为什么不能复用 .zoom-in：它把居中的 translate(-50%,-50%) 焊进了关键帧，而
+   Tailwind 4 的 `-translate-x-1/2` 编译出的是**独立的 `translate` 属性**，不是
+   `transform`。两者是**叠加**关系（translate 先于 transform 生效），于是 X 被减了两次
+   —— 实测 left:471.5px 的弹层落在 x=-48.5（471.5 − 260 − 260）。
+   .animate-in 是 fill-mode:both，动画结束后这个偏移不会还回来。
+   减少动态效果下 .animate-in 被整个关掉，位移全由 translate 属性负责，依然居中。 */
+@keyframes pb-zoom-in-top { from { opacity: 0; transform: scale(0.96) } to { opacity: 1; transform: scale(1) } }
 
 .animate-in { animation-duration: var(--dur); animation-timing-function: var(--ease); animation-fill-mode: both; }
 .fade-in { animation-name: pb-fade-in; }
 .zoom-in { animation-name: pb-zoom-in; }
+.zoom-in-top { animation-name: pb-zoom-in-top; }
 /* 抽屉从**行末方向**滑入：LTR 是右、RTL 是左。写死 right 会让阿语界面从错误的一侧飞进来。 */
 .slide-in-from-right { animation-name: pb-slide-in-end; }
 [dir="rtl"] .slide-in-from-right { animation-name: pb-slide-in-end; transform-origin: left; }

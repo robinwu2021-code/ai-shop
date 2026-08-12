@@ -39,6 +39,15 @@ export interface IamApi {
   listRoles(): Promise<RoleDef[]>;
   /** 功能与功能点全集 —— 权限树的数据源。与 `menu()` 的差别：这个不按人切片。 */
   listPermFunctions(): Promise<MenuFunction[]>;
+  /**
+   * 菜单调序：同级内上移/下移。
+   *
+   * 顺序存在库里（`sys_function_point.sort`），改完所有人的菜单与页面 tab 都跟着变
+   * —— 它不是个人偏好，所以挂在 `iam:role:grant` 上。
+   * 边界（首项上移/末项下移）是 no-op，不报错。
+   */
+  movePermFunction(functionCode: string, direction: "UP" | "DOWN"): Promise<void>;
+  movePermPoint(pointCode: string, direction: "UP" | "DOWN"): Promise<void>;
   /** 某个角色已勾的功能点码。 */
   getRolePoints(roleCode: string): Promise<string[]>;
   /**

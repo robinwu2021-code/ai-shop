@@ -82,6 +82,10 @@ export const iamHttp: IamApi = {
   // 后端从来没有过 /ops/roles，这一整块此前点下去 404
   listRoles: () => client.get("/ops/perm/roles", { end: "OPS" }),
   listPermFunctions: () => client.get("/ops/perm/functions", { end: "OPS" }),
+  movePermFunction: (functionCode: string, direction: "UP" | "DOWN") =>
+    client.post(`/ops/perm/functions/${encodeURIComponent(functionCode)}/move`, { direction }),
+  movePermPoint: (pointCode: string, direction: "UP" | "DOWN") =>
+    client.post(`/ops/perm/points/${encodeURIComponent(pointCode)}/move`, { direction }),
   getRolePoints: (roleCode) => client.get(`/ops/perm/roles/${roleCode}/points`),
   setRolePoints: (roleCode, pointCodes) =>
     client.post(`/ops/perm/roles/${roleCode}/points`, { pointCodes }),
