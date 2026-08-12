@@ -5,11 +5,8 @@
 import type { PageCopy } from "@/lib/use-copy";
 
 const zh = {
-  tabSearch: "订单检索",
   exceptionReadOnlyWhat: "异常单队列",
   proxyReadOnlyWhat: "代客下单与取消",
-  tabException: "异常单处理",
-  tabProxy: "代客下单/取消",
   exceptionNotice: "这是订单卡在某个状态超时的队列，实时算出来的 —— 单子一推进它就自己消失，不需要「标记已处理」。阈值按状态分别给：待支付 15 分钟就该关单，而「已送达待自提」放一天很正常。",
   searchException: "搜子订单号 / 商家 / 下单人",
   filterKind: "按成因筛选",
@@ -68,9 +65,6 @@ const zh = {
   toastCloseSaved: "关单策略已保存",
   secDecide: "处置",
   actionPick: "请选择处置方式",
-  tabPay: "支付流水核对",
-  tabRepair: "掉单补偿",
-  tabClose: "关单策略",
 
   payReadOnlyWhat: "支付对账与掉单处置",
   payReadOnlyNote: "不能处置差异或改关单策略",
@@ -167,11 +161,8 @@ const zh = {
 };
 
 const en: typeof zh = {
-  tabSearch: "Order search",
   exceptionReadOnlyWhat: "the exception queue",
   proxyReadOnlyWhat: "proxy ordering and cancellation",
-  tabException: "Exception orders",
-  tabProxy: "Order on behalf",
   exceptionNotice: "This queue holds orders stuck in a state past its limit. It is computed live — an order leaves the moment it moves on, so there is no “mark as handled”. Limits are per state: an unpaid order should close after 15 minutes, while “arrived, awaiting pickup” sitting for a day is normal.",
   searchException: "Search sub-order no. / merchant / customer",
   filterKind: "Filter by cause",
@@ -230,9 +221,6 @@ const en: typeof zh = {
   toastCloseSaved: "Auto-close rules saved",
   secDecide: "Resolution",
   actionPick: "Choose how to handle it",
-  tabPay: "Payment reconciliation",
-  tabRepair: "Dropped-order recovery",
-  tabClose: "Auto-close rules",
 
   payReadOnlyWhat: "payment reconciliation & dropped-order handling",
   payReadOnlyNote: "cannot resolve differences or change the auto-close rules",

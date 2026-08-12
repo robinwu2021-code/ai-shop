@@ -2,8 +2,6 @@
 import type { PageCopy } from "@/lib/use-copy";
 
 const zh = {
-  tabAudit: "合规审核",
-  tabTemplate: "主页模板配置",
   templateNotice: "模板改一次会同时作用在一批店铺页上，所以每一行都摆着「多少家店在用」—— 那是决定要不要动它的唯一依据。至少要启用 {n} 个板块：只剩店招的店铺页等于一张裸列表。",
   colTemplateName: "模板名称",
   colLayout: "商品区排布",
@@ -45,8 +43,6 @@ const zh = {
   confirmDisableTitle: "停用这个模板？",
   confirmDisableDesc: "停用后「{name}」不再出现在商家可选列表里；已经在用它的店铺不受影响。",
   templateReadOnlyWhat: "主页模板配置",
-  tabQrcode: "店铺码",
-  tabEffect: "获客效果",
 
   kindBanner: "店招图",
   kindNotice: "店铺公告",
@@ -107,8 +103,6 @@ const zh = {
 };
 
 const en: typeof zh = {
-  tabAudit: "Compliance review",
-  tabTemplate: "Storefront templates",
   templateNotice: "One template edit lands on a batch of storefronts at once, which is why every row shows how many stores use it — that is the only basis for deciding whether to touch it. At least {n} blocks must stay on: a storefront with nothing but its header is a bare list.",
   colTemplateName: "Template",
   colLayout: "Product layout",
@@ -150,8 +144,6 @@ const en: typeof zh = {
   confirmDisableTitle: "Turn this template off?",
   confirmDisableDesc: "“{name}” stops appearing in the merchant’s choices; stores already on it are unaffected.",
   templateReadOnlyWhat: "homepage template configuration",
-  tabQrcode: "Store codes",
-  tabEffect: "Acquisition results",
 
   kindBanner: "Storefront banner",
   kindNotice: "Store notice",

@@ -2,7 +2,6 @@
 import type { PageCopy } from "@/lib/use-copy";
 
 const zh = {
-  tabAudit: "入驻审核",
   // ── 入驻审核（申请单模型，已接真后端）──
   applyColIndustry: "行业",
   applyColSubject: "主体类型",
@@ -30,9 +29,6 @@ const zh = {
   toastAccepted: "已受理，商家能看到有人在跟进了",
   toastApproved: "已通过，商家主体已创建",
   toastRejected: "已驳回，理由已发给商家",
-  tabList: "商家档案",
-  tabCategories: "类目授权",
-  tabVerify: "认证标管理",
   adNotice:
     "平台**无仓、不碰货**，「自营」只是资质代持的外壳 —— 最弱一档（小微）没有「入平台仓让平台验货」这条出路。平台在法律上是销售主体、承担全部产品责任却没有货物控制手段，这个缺口只能用准入和钱去补：**保证金 / 限品类 / 限额三样必须同时生效**，任何一样调成 0，另外两样都会失效。",
   adPolicyTitle: "准入策略（按主体档位）",
@@ -90,14 +86,11 @@ const zh = {
   adSwitchSelfOperated: "切自营",
   adSwitchThirdParty: "切第三方",
   adToastModeChanged: "经营模式已更新（仅对新单生效）",
-  tabAdmission: "准入与保证金",
   colLegalForm: "主体档位",
   formMicro: "小微",
   formIndividual: "个体户",
   formEnterprise: "企业",
   formUnknown: "未知",
-  tabCredit: "信用档案",
-  tabBan: "违规处置与封禁",
 
   colAuthCodes: "已授类目",
   colQualifications: "已上传资质",
@@ -236,7 +229,6 @@ const zh = {
 };
 
 const en: typeof zh = {
-  tabAudit: "Onboarding review",
   applyColIndustry: "Industry",
   applyColSubject: "Legal form",
   applyColCategory: "Category",
@@ -263,9 +255,6 @@ const en: typeof zh = {
   toastAccepted: "Accepted — the merchant can see someone is on it",
   toastApproved: "Approved — the merchant entity has been created",
   toastRejected: "Rejected — the reason has been sent to the merchant",
-  tabList: "Merchant profiles",
-  tabCategories: "Category permits",
-  tabVerify: "Verification badges",
   adNotice:
     "The platform has no warehouse and never handles the goods, so \"self-operated\" is only a licensing shell. The weakest tier has no \"send it through our warehouse\" escape hatch, because that warehouse does not exist. The platform is the legal seller and carries full product liability without any control over the goods, so the gap can only be closed with admission rules and money: deposit, category limits and amount caps must all be in force — set any one to zero and the other two stop working.",
   adPolicyTitle: "Admission policy (by entity tier)",
@@ -323,14 +312,11 @@ const en: typeof zh = {
   adSwitchSelfOperated: "Set self-operated",
   adSwitchThirdParty: "Set third-party",
   adToastModeChanged: "Business mode updated (new orders only)",
-  tabAdmission: "Admission & deposit",
   colLegalForm: "Entity tier",
   formMicro: "Micro",
   formIndividual: "Sole proprietor",
   formEnterprise: "Company",
   formUnknown: "Unknown",
-  tabCredit: "Credit records",
-  tabBan: "Penalties & suspensions",
 
   colAuthCodes: "Granted categories",
   colQualifications: "Uploaded credentials",

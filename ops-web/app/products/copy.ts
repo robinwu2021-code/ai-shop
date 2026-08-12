@@ -2,10 +2,6 @@
 import type { PageCopy } from "@/lib/use-copy";
 
 const zh = {
-  tabCategories: "类目树",
-  tabSkus: "商品池",
-  tabStock: "库存与预售",
-  tabGoodsAudit: "商品审核（真后端）",
   gaReadOnly: "当前角色只能查看，不能审核商品。",
   gaColNo: "商品号",
   gaColTitle: "标题",
@@ -137,10 +133,6 @@ const zh = {
 };
 
 const en: typeof zh = {
-  tabCategories: "Category tree",
-  tabSkus: "Product pool",
-  tabStock: "Stock & presale",
-  tabGoodsAudit: "Goods review (live)",
   gaReadOnly: "Your role can view goods but not review them.",
   gaColNo: "Goods no.",
   gaColTitle: "Title",

@@ -12,7 +12,7 @@ import { api } from "@/lib/api";
 import { fill, useCopy } from "@/lib/use-copy";
 import { CONTENTS_COPY } from "./copy";
 import { usePaging } from "@/lib/use-paging";
-import { usePageTab } from "@/lib/use-page-tab";
+import { usePageTab, useNavTabs } from "@/lib/use-page-tab";
 import { fmtTime } from "@/lib/utils";
 import { useCan } from "@/lib/use-can";
 import { notify } from "@/lib/notify";
@@ -37,11 +37,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Toolbar } from "@/components/ui/toolbar";
 
 type Copy = (typeof CONTENTS_COPY)["zh"];
-const TABS = (c: Copy) => [
-  { key: "materials", label: c.tabMaterials },
-  { key: "audit", label: c.tabAudit },
-  { key: "rank", label: c.tabRank },
-];
+const TAB_KEYS = ["materials", "audit", "rank"] as const;
 
 const KIND_OPTIONS = (c: Copy): { value: MaterialKind; label: string }[] => [
   { value: "COPY", label: c.kindCopy },
@@ -62,7 +58,7 @@ export default function ContentsPage() {
 
 function ContentsInner() {
   const c = useCopy(CONTENTS_COPY);
-  const tabs = TABS(c);
+  const tabs = useNavTabs("/contents", TAB_KEYS);
   const kindOptions = KIND_OPTIONS(c);
   const scopeOptions = SCOPE_OPTIONS(c);
   const qc = useQueryClient();

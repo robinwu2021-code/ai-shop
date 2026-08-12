@@ -2,10 +2,6 @@
 import type { PageCopy } from "@/lib/use-copy";
 
 const zh = {
-  tabGrid: "社区网格",
-  tabPickups: "自提点",
-  tabNeighbor: "临时点监控",
-  tabApplies: "商家提报",
   applyNoValue: "—",
   colApplyName: "小区名",
   colApplyMerchant: "提报商家",
@@ -118,10 +114,6 @@ const zh = {
 };
 
 const en: typeof zh = {
-  tabGrid: "Community grids",
-  tabPickups: "Pickup points",
-  tabNeighbor: "Temporary points",
-  tabApplies: "Merchant requests",
   applyNoValue: "—",
   colApplyName: "Community",
   colApplyMerchant: "Requested by",

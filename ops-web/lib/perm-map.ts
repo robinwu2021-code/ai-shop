@@ -85,6 +85,14 @@ export const UI_PERM_MAP: Record<string, string | typeof UNIMPLEMENTED> = {
   "system:env:switch": UNIMPLEMENTED,
   "iam:role:grant": "iam:role:grant",
   "merchant:merchant:read": "merchant:merchant:read",
+  /*
+   * 准入与保证金。**后端早就有**（OpsAdmissionController 5 个端点，
+   * Perms.ROLE_PERMS 里 FINANCE 也持有这两个码），漏的只是这张映射表 ——
+   * 而 can() 是先查映射后判通配的，未登记一律判无权限，
+   * 于是财务在界面上根本看不到自己有权做的事，且没有任何报错。
+   */
+  "merchant:admission:read": "merchant:admission:read",
+  "merchant:admission:update": "merchant:admission:update",
   "order:order:read": "order:order:read",
   "order:pay:read": "order:order:read",
   "product:sku:read": "product:sku:read",

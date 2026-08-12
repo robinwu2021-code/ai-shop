@@ -2,12 +2,6 @@
 import type { PageCopy } from "@/lib/use-copy";
 
 const zh = {
-  tabSettlements: "结算单",
-  tabSplits: "分账明细",
-  tabRefundBack: "退款回退",
-  tabRates: "费率配置",
-  tabWithdraw: "提现审批",
-  tabInvoice: "发票与个税",
 
   withdrawNotice: "这是运营端唯一会把钱打出去的动作。通过后落「已通过」而不是「已打款」—— 打款结果来自渠道回执，界面上不提供「标记已打款」，那样等于允许在钱没到账时把单子做平。超过 {n} 元必须写复核说明。",
   searchWithdraw: "搜提现单号 / 商家",
@@ -226,12 +220,6 @@ const zh = {
 };
 
 const en: typeof zh = {
-  tabSettlements: "Settlements",
-  tabSplits: "Split details",
-  tabRefundBack: "Refund reversal",
-  tabRates: "Rates",
-  tabWithdraw: "Withdrawal approval",
-  tabInvoice: "Invoices & withholding",
 
   withdrawNotice: "This is the only action in the console that sends money out. Approving marks it “approved, awaiting payout”, never “paid” — the payout result comes from the channel receipt, and there is no “mark as paid” button, because that would let a case be closed while the money has not landed. Above ¥{n} a review note is required.",
   searchWithdraw: "Search withdrawal no. / merchant",

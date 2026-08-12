@@ -6,7 +6,7 @@
 import { Suspense, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import { usePageTab } from "@/lib/use-page-tab";
+import { usePageTab, useNavTabs } from "@/lib/use-page-tab";
 import { usePaging } from "@/lib/use-paging";
 import { useCan } from "@/lib/use-can";
 import { useEditableConfig } from "@/lib/use-editable-config";
@@ -40,14 +40,7 @@ import { ExceptionTab } from "./exception-tab";
 import { ProxyTab } from "./proxy-tab";
 
 type Copy = ReturnType<typeof useCopy<(typeof ORDERS_COPY)["zh"]>>;
-const TABS = (c: Copy) => [
-  { key: "search", label: c.tabSearch },
-  { key: "exception", label: c.tabException },
-  { key: "proxy", label: c.tabProxy },
-  { key: "pay", label: c.tabPay },
-  { key: "repair", label: c.tabRepair },
-  { key: "close", label: c.tabClose },
-];
+const TAB_KEYS = ["search", "exception", "proxy", "pay", "repair", "close"] as const;
 
 /** 差异类型 → 徽标。三类的处置方式不同，颜色也要能一眼分开。 */
 const useDiffTypeMap = (c: Copy): StatusMap<ReconDiffType> => ({
@@ -68,7 +61,7 @@ export default function OrdersPage() {
 
 function OrdersInner() {
   const c = useCopy(ORDERS_COPY);
-  const tabs = TABS(c);
+  const tabs = useNavTabs("/orders", TAB_KEYS);
   const qc = useQueryClient();
   const allow = useCan();
   const { confirm, dialog } = useConfirm();

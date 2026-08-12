@@ -2,10 +2,7 @@
 import type { PageCopy } from "@/lib/use-copy";
 
 const zh = {
-  tabBatches: "到货批次",
   none: "—",
-  tabExpress: "快递与轨迹",
-  tabCarrier: "第三方运力配置",
   carrierNotice: "这一页配错的后果不是显示不对，而是订单发不出去：没配密钥的启用后下单会当场失败、还有在途单的停用会让轨迹拉不回来、全停之后快递单无处可下。所以不能点的按钮旁边直接写了原因，不用点一次才知道。",
   colPriority: "优先级",
   colCarrierName: "运力",
@@ -40,7 +37,6 @@ const zh = {
   toastCarrierOn: "已启用该运力",
   toastCarrierOff: "已停用该运力",
   carrierReadOnlyWhat: "第三方运力配置",
-  tabFreight: "运费模板与超区",
   expressNotice: "轨迹来自承运商，平台不编 —— 页面上没有「手工加一条轨迹」，那样写出来的轨迹一旦与承运商记录不一致，纠纷时反而站不住。运营在这里能做的只有换运单号。",
   searchShipment: "搜快递单号 / 订单号 / 运单号 / 收件人",
   filterCarrier: "按承运商筛选",
@@ -116,9 +112,6 @@ const zh = {
   confirmDeleteDesc: "「{name}」归档后，正在使用它的商家会回落到默认模板；历史订单的运费依据不受影响。",
   expressReadOnlyWhat: "运单号修改",
   freightReadOnlyWhat: "运费模板与超区规则",
-  tabSorting: "分拣汇总",
-  tabRedeem: "核销监控",
-  tabOverdue: "逾期规则",
 
   nextDispatched: "标记发车",
   nextArrived: "标记到货",
@@ -183,10 +176,7 @@ const zh = {
 };
 
 const en: typeof zh = {
-  tabBatches: "Arrival batches",
   none: "—",
-  tabExpress: "Courier & tracking",
-  tabCarrier: "Carrier integrations",
   carrierNotice: "Get this page wrong and orders stop shipping, not just displaying wrong: enabling a carrier with no key makes every booking fail on the spot, disabling one with parcels in transit strands their tracking, and disabling them all leaves nowhere to book. So the reason a button is unavailable sits right next to it — you never have to click to find out.",
   colPriority: "Priority",
   colCarrierName: "Carrier",
@@ -221,7 +211,6 @@ const en: typeof zh = {
   toastCarrierOn: "Carrier enabled",
   toastCarrierOff: "Carrier disabled",
   carrierReadOnlyWhat: "carrier integrations",
-  tabFreight: "Freight templates & out-of-range",
   expressNotice: "Tracking comes from the carrier; the platform does not write it — there is no “add a tracking entry by hand”, because an entry that disagrees with the carrier’s record works against you in a dispute. The one thing ops can change here is the waybill number.",
   searchShipment: "Search shipment / order / waybill no. / recipient",
   filterCarrier: "Filter by carrier",
@@ -297,9 +286,6 @@ const en: typeof zh = {
   confirmDeleteDesc: "Merchants using “{name}” fall back to the default template; past orders keep their freight basis.",
   expressReadOnlyWhat: "changing waybill numbers",
   freightReadOnlyWhat: "freight templates and out-of-range rules",
-  tabSorting: "Sorting summary",
-  tabRedeem: "Redemption monitor",
-  tabOverdue: "Overdue rules",
 
   nextDispatched: "Mark dispatched",
   nextArrived: "Mark arrived",

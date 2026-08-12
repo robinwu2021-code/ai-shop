@@ -11,7 +11,7 @@ import { api } from "@/lib/api";
 import { fill, useCopy } from "@/lib/use-copy";
 import { PRODUCTS_COPY } from "./copy";
 import { usePaging } from "@/lib/use-paging";
-import { usePageTab } from "@/lib/use-page-tab";
+import { usePageTab, useNavTabs } from "@/lib/use-page-tab";
 import { fmtTime, money } from "@/lib/utils";
 import { useCan } from "@/lib/use-can";
 import { notify } from "@/lib/notify";
@@ -37,12 +37,7 @@ import { Tree, type TreeNode } from "@/components/ui/tree";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 
 type Copy = (typeof PRODUCTS_COPY)["zh"];
-const TABS = (c: Copy) => [
-  { key: "categories", label: c.tabCategories },
-  { key: "skus", label: c.tabSkus },
-  { key: "stock", label: c.tabStock },
-  { key: "audit", label: c.tabGoodsAudit },
-];
+const TAB_KEYS = ["categories", "skus", "audit", "stock"] as const;   // 顺序与 lib/nav.ts 的叶子一致
 
 const MARKET_LABEL = (c: Copy): Record<Market, string> => ({ CN: c.marketCN, SG: c.marketSG });
 
@@ -52,7 +47,7 @@ export default function ProductsPage() {
 
 function ProductsInner() {
   const c = useCopy(PRODUCTS_COPY);
-  const tabs = TABS(c);
+  const tabs = useNavTabs("/products", TAB_KEYS);
   const marketLabel = MARKET_LABEL(c);
   const qc = useQueryClient();
   const allow = useCan();

@@ -8,7 +8,7 @@ import { api } from "@/lib/api";
 import { fill, useCopy } from "@/lib/use-copy";
 import { GROWTH_COPY } from "./copy";
 import { usePaging } from "@/lib/use-paging";
-import { usePageTab } from "@/lib/use-page-tab";
+import { usePageTab, useNavTabs } from "@/lib/use-page-tab";
 import { fmtTime } from "@/lib/utils";
 import { useCan } from "@/lib/use-can";
 import { notify } from "@/lib/notify";
@@ -35,11 +35,7 @@ import { TabHeader } from "@/components/ui/tab-header";
 import { Toolbar } from "@/components/ui/toolbar";
 
 type Copy = (typeof GROWTH_COPY)["zh"];
-const TABS = (c: Copy) => [
-  { key: "rule", label: c.tabRule },
-  { key: "traces", label: c.tabTraces },
-  { key: "fission", label: c.tabFission },
-];
+const TAB_KEYS = ["rule", "traces", "fission"] as const;
 
 const SOURCE_LABEL = (c: Copy): Record<AttrSource, string> => ({
   STORE_CODE: c.srcStoreCode,
@@ -65,7 +61,7 @@ export default function GrowthPage() {
 
 function GrowthInner() {
   const c = useCopy(GROWTH_COPY);
-  const tabs = TABS(c);
+  const tabs = useNavTabs("/growth", TAB_KEYS);
   const sourceLabel = SOURCE_LABEL(c);
   const policies = POLICIES(c);
   const factors = FACTORS(c);

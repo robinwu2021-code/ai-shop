@@ -9,7 +9,7 @@ import { api } from "@/lib/api";
 import { useCopy } from "@/lib/use-copy";
 import { STORES_COPY } from "./copy";
 import { usePaging } from "@/lib/use-paging";
-import { usePageTab } from "@/lib/use-page-tab";
+import { usePageTab, useNavTabs } from "@/lib/use-page-tab";
 import { fmtTime } from "@/lib/utils";
 import { exportCsv } from "@/lib/export-csv";
 import { useCan } from "@/lib/use-can";
@@ -32,12 +32,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Toolbar } from "@/components/ui/toolbar";
 
 type Copy = (typeof STORES_COPY)["zh"];
-const TABS = (c: Copy) => [
-  { key: "audit", label: c.tabAudit },
-  { key: "template", label: c.tabTemplate },
-  { key: "qrcode", label: c.tabQrcode },
-  { key: "effect", label: c.tabEffect },
-];
+const TAB_KEYS = ["audit", "template", "qrcode", "effect"] as const;
 
 /** 三种待审内容的标签。写成函数是因为它在列表、详情标题两处都要用 —— 两处各写一遍必然分岔 */
 function kindLabel(kind: string, c: Copy) {
@@ -58,7 +53,7 @@ export default function StoresPage() {
 
 function StoresInner() {
   const c = useCopy(STORES_COPY);
-  const tabs = TABS(c);
+  const tabs = useNavTabs("/stores", TAB_KEYS);
   const kindOptions = KIND_OPTIONS(c);
   const qc = useQueryClient();
   const allow = useCan();

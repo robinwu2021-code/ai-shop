@@ -2,9 +2,6 @@
 import type { PageCopy } from "@/lib/use-copy";
 
 const zh = {
-  tabMaterials: "素材库",
-  tabAudit: "种草内容审核",
-  tabRank: "榜单与问答",
 
   auditNotice: "命中风险词的内容不进批量通过 —— 批量 + 风险内容 = 事故，那几条必须逐条看，所以界面上根本不给它们勾选框。驳回与下架都要写原因，作者看到的就是那段话。",
   searchPost: "搜内容编号 / 标题 / 作者",
@@ -165,9 +162,6 @@ const zh = {
 };
 
 const en: typeof zh = {
-  tabMaterials: "Material library",
-  tabAudit: "Post moderation",
-  tabRank: "Rankings & Q&A",
 
   auditNotice: "Posts that hit a risk term stay out of bulk approval — bulk plus risky content is how incidents happen, so those rows get no checkbox at all and have to be read one by one. Rejections and takedowns both need a reason; the author sees exactly that text.",
   searchPost: "Search post no. / title / author",

@@ -80,6 +80,12 @@ export const NAV: NavSection[] = [
       { href: "/merchants", label: "入驻审核", perm: "merchant:apply:audit", group: "入驻与资质", matrix: "P-11.1", ready: true },
       { href: "/merchants?tab=list", label: "商家档案", perm: "merchant:merchant:read", group: "入驻与资质", matrix: "P-11.1", ready: true },
       { href: "/merchants?tab=categories", label: "类目授权", perm: "merchant:category:grant", group: "入驻与资质", matrix: "P-11.1" },
+      // 准入与保证金：页面早就有这个 tab，菜单里一直漏登记 —— 于是它只能靠手改 URL 进去。
+      // 放在本组末尾而不是 verify 后面：同 group 的叶子必须相邻（nav.test.ts 锁这条）
+      // 用专属的 admission 码而不是 merchant:merchant:read：Perms.ROLE_PERMS 把这两个码
+      // 给了**财务**，用商家读权限的话正好反过来 —— 财务看不到，商家运营却看得到。
+      // （该码 2026-08-12 才补进 UI_PERM_MAP；此前未登记，can() 会判所有人无权限）
+      { href: "/merchants?tab=admission", label: "准入与保证金", perm: "merchant:admission:read", group: "入驻与资质", matrix: "P-11.1" },
       { href: "/merchants?tab=verify", label: "认证标管理", perm: "merchant:verify:grant", group: "信用与处置", matrix: "P-11.1" },
       { href: "/merchants?tab=credit", label: "信用档案", perm: "merchant:merchant:read", group: "信用与处置", matrix: "P-11.1" },
       { href: "/merchants?tab=ban", label: "违规处置与封禁", perm: "merchant:merchant:ban", group: "信用与处置", matrix: "P-11.1" },
@@ -107,6 +113,9 @@ export const NAV: NavSection[] = [
       // 商品审核（3.2.2）= 商品池按「待审核」筛；多语言文案审核（3.2.5）与多市场定价（3.2.6）
       // 都在商品抽屉里 —— 审文案时看不到商品本身是没法审的。
       { href: "/products?tab=skus", label: "商品池与审核", perm: "product:sku:read", group: "商品", matrix: "P-3.2", ready: true },
+      // 待审队列单独成 tab（页面早有，菜单漏登记）。与「商品池与审核」的区别是
+      // 那边是全量池按状态筛，这边只有待审队列 —— 审核员日常只用这一个
+      { href: "/products?tab=audit", label: "商品审核队列", perm: "product:sku:audit", group: "商品", matrix: "P-3.2", ready: true },
       { href: "/products?tab=stock", label: "预售额度与超卖", perm: "product:stock:update", group: "库存与预售", matrix: "P-3.3", ready: true },
     ],
   },
@@ -161,7 +170,7 @@ export const NAV: NavSection[] = [
       // 拆三个菜单会让运营为了看一张券的效果在三页之间跳。四类活动同表（见页面注释）。
       { href: "/marketing", label: "券模板", perm: "marketing:coupon:read", group: "优惠券", matrix: "P-7.1", ready: true },
       { href: "/marketing?tab=issues", label: "发放记录", perm: "marketing:coupon:read", group: "优惠券", matrix: "P-7.1", ready: true },
-      { href: "/marketing?tab=campaigns", label: "活动（秒杀/满减/买赠）", perm: "marketing:campaign:update", group: "活动", matrix: "P-7.2", ready: true },
+      { href: "/marketing?tab=campaigns", label: "活动", perm: "marketing:campaign:update", group: "活动", matrix: "P-7.2", ready: true },
       { href: "/marketing?tab=slots", label: "首页楼层与 Banner", perm: "marketing:slot:update", group: "内容位", matrix: "P-7.3", ready: true },
       { href: "/marketing?tab=member", label: "会员卡与权益", perm: "marketing:member:update", group: "会员", matrix: "P-7.4", phase: 2, ready: true },
     ],
@@ -172,7 +181,7 @@ export const NAV: NavSection[] = [
     key: "group", label: "团购与求团", icon: "Users", module: "group", href: "/groups",
     children: [
       // 团模板审核与团监控是同一张列表的两种看法（筛状态即可），合并为一个叶子
-      { href: "/groups", label: "商家团（审核与监控）", perm: "group:campaign:audit", group: "商家团", matrix: "P-8.1", ready: true },
+      { href: "/groups", label: "商家团", perm: "group:campaign:audit", group: "商家团", matrix: "P-8.1", ready: true },
       { href: "/groups?tab=demands", label: "需求单池与指派", perm: "group:demand:read", group: "求团撮合", matrix: "P-8.2", ready: true },
       { href: "/groups?tab=quotes", label: "改价留痕与毁约", perm: "group:demand:read", group: "求团撮合", matrix: "P-8.2", ready: true },
     ],
@@ -238,6 +247,8 @@ export const NAV: NavSection[] = [
     // 需求没有丢：它们落在列表列与行内操作上，matrix 编号仍由下面三个叶子承载。
     children: [
       { href: "/communities", label: "社区网格", perm: "community:community:read", group: "社区网格", matrix: "P-2.1", ready: true },
+      // 商家提报的社区：页面早有这个 tab，菜单里一直漏登记
+      { href: "/communities?tab=applies", label: "商家提报", perm: "community:community:read", group: "社区网格", matrix: "P-2.1", ready: true },
       { href: "/communities?tab=pickups", label: "自提点", perm: "community:pickup:read", group: "自提点", matrix: "P-2.2", ready: true },
       { href: "/communities?tab=neighbor", label: "临时点监控", perm: "community:pickup:read", group: "自提点", matrix: "P-2.2", ready: true },
     ],
@@ -260,7 +271,7 @@ export const NAV: NavSection[] = [
     children: [
       // 三类识别（刷单/异常裂变/恶意退款）同表用 type 筛：拆三个菜单会让
       // 「这个用户同时命中几类」看不出来，而那恰恰最该优先处理。
-      { href: "/risk", label: "风险事件（三类）", perm: "risk:rule:read", group: "识别", matrix: "P-16.2", ready: true },
+      { href: "/risk", label: "风险事件", perm: "risk:rule:read", group: "识别", matrix: "P-16.2", ready: true },
       { href: "/risk?tab=blacklist", label: "黑名单与申诉", perm: "risk:blacklist:update", group: "处置", matrix: "P-16.2", ready: true },
       { href: "/risk?tab=rules", label: "拦截规则配置", perm: "risk:rule:update", group: "处置", matrix: "P-16.2", ready: true },
     ],
@@ -273,7 +284,7 @@ export const NAV: NavSection[] = [
       // 数据域授权（1.1.3）是员工行上的动作，二次校验（1.1.5）是动作上的一层 ——
       // 两者都不单独成页：拆出去就会出现"改完角色忘了配数据域"的空档。
       { href: "/iam", label: "员工账号与数据域", perm: "iam:staff:read", group: "账号", matrix: "P-1.1", ready: true },
-      { href: "/iam?tab=roles", label: "角色与 RBAC", perm: "iam:role:grant", group: "账号", matrix: "P-1.1", ready: true },
+      { href: "/iam?tab=roles", label: "角色与权限", perm: "iam:role:grant", group: "账号", matrix: "P-1.1", ready: true },
       { href: "/iam?tab=audit", label: "操作审计日志", perm: "iam:audit:read", group: "审计", matrix: "P-1.1", ready: true },
     ],
   },
@@ -286,6 +297,13 @@ export const NAV: NavSection[] = [
       { href: "/system", label: "外观与规则文案", perm: "system:theme:update", group: "外观与语言", matrix: "P-17.1", ready: true },
       { href: "/system?tab=market", label: "市场/货币/汇率", perm: "system:param:read", group: "外观与语言", matrix: "P-17.1", ready: true },
       { href: "/system?tab=flags", label: "开关与灰度", perm: "system:param:read", group: "运行配置", matrix: "P-17.1", ready: true },
+      // 下面三个页面早有 tab、菜单一直漏登记 —— 都是「平台一共允许经营什么」这组配置。
+      // perm 用 read 码而不是各自的写码（env:switch / category:manage）：
+      // 叶子的 perm 决定**能不能看见这个入口**，写权限由页面内部各自判。
+      // 用写码的话，有权查看配置但无权改的人在菜单里根本找不到这一页。
+      { href: "/system?tab=industry", label: "行业与小微白名单", perm: "system:param:read", group: "经营范围", matrix: "P-17.1", ready: true },
+      { href: "/system?tab=authCode", label: "经营授权码", perm: "system:param:read", group: "经营范围", matrix: "P-17.1", ready: true },
+      { href: "/system?tab=scope", label: "经营范围开关", perm: "system:param:read", group: "经营范围", matrix: "P-17.1", ready: true },
     ],
   },
 ];
@@ -309,7 +327,8 @@ export function leafParts(href: string): { path: string; tab: string | null; vie
  * 本项目的受限视角由**数据域**表达（矩阵 §2.3），不是由另一套菜单表达。
  */
 export function visibleSections(perms: string[] | undefined,
-                                serverHrefs?: Set<string>): NavSection[] {
+                                serverHrefs?: Set<string>,
+                                nav: NavSection[] = NAV): NavSection[] {
   /*
    * **服务端菜单一旦到手就以它为准**（它是按 sys_role_point 算出来的），
    * 而且它**包含后端未实现的项** —— 那些项要渲染成灰显、不可点。
@@ -318,10 +337,10 @@ export function visibleSections(perms: string[] | undefined,
    * 第一次接前端时就是这么漏的：分支写好了，而上游先把数据筛没了。
    */
   if (serverHrefs?.size) {
-    return NAV.filter((s) => !(s.children?.length)
+    return nav.filter((s) => !(s.children?.length)
         || s.children.some((l) => serverHrefs.has(l.href)));
   }
-  return NAV.filter((s) => canModule(perms, s.module));
+  return nav.filter((s) => canModule(perms, s.module));
 }
 
 /** L3 可见性 = leaf.perm ? can() : 跟随 section。phase-locked 叶子保留（灰显）。 */
@@ -370,7 +389,8 @@ function sectionMatchPrefixes(section: NavSection): string[] {
  * 不做 RBAC 过滤——URL 已到达即需正确归属（页面自身有权限兜底）。
  */
 export function findActiveSection(pathname: string, perms?: string[],
-                                  serverHrefs?: Set<string>): NavSection | undefined {
+                                  serverHrefs?: Set<string>,
+                                  nav: NavSection[] = NAV): NavSection | undefined {
   const p = normPath(pathname);
   /*
    * **同样要吃服务端菜单**：这里漏传的话，二级导航拿不到 section，
@@ -378,8 +398,8 @@ export function findActiveSection(pathname: string, perms?: string[],
    * 症状是「点进去左边空了一栏」，实测撞到过：可见性判断散在三个函数里，
    * 补了两个漏了第三个。
    */
-  const pool = serverHrefs?.size ? visibleSections(perms, serverHrefs)
-      : (perms?.length ? visibleSections(perms) : NAV);
+  const pool = serverHrefs?.size ? visibleSections(perms, serverHrefs, nav)
+      : (perms?.length ? visibleSections(perms, undefined, nav) : nav);
   let best: { section: NavSection; len: number } | undefined;
   for (const section of pool) {
     for (const prefix of sectionMatchPrefixes(section)) {
@@ -452,11 +472,18 @@ export function routeLockedPhase(
 /**
  * 面包屑：L1 › 分组 › 子功能。
  * 分组是视觉聚类不是可导航节点，仅作不可点的中间项；叶子无 group 时退化为两级。
+ *
+ * **整条不可点**（2026-08-12 评审结论）：三级信息在壳里都已有更强的呈现 ——
+ * L1 = Rail 高亮项（带图标），L2 = SecondaryNav 的分组小标题（当前叶子就高亮在其下），
+ * L3 = TabHeader 的 h1（那个 h1 还能点开切 tab）。面包屑给链接只是把同一个跳转
+ * 开第二个入口，且 L1 点了落在与点 Rail 完全相同的页面 —— 看着能点却什么也没多做，
+ * 是误导。这里只做「你在哪儿」的指示器，不做导航。
  */
 export function breadcrumb(
   pathname: string, tab: string | null, view: string | null, perms: string[] | undefined,
+  serverHrefs?: Set<string>, nav: NavSection[] = NAV,
 ): string[] {
-  const section = findActiveSection(pathname, perms);
+  const section = findActiveSection(pathname, perms, serverHrefs, nav);
   if (!section) return [];
   const crumbs = [section.label];
   const leaves = visibleLeaves(section, perms);
@@ -467,4 +494,211 @@ export function breadcrumb(
     if (leaf.label !== section.label) crumbs.push(leaf.label);
   }
   return crumbs;
+}
+
+/**
+ * 服务端菜单对静态 nav 的**文案覆盖层**。key = href（section 用 section.href）。
+ *
+ * 只覆盖「展示信息」：名字、分组、图标、排序。**不覆盖结构** ——
+ * 有哪些 section、叶子挂在谁下面、权限码是什么，仍由 nav.ts 决定。
+ */
+export interface NavOverlayEntry {
+  name?: string;
+  group?: string;
+  icon?: string;
+  sort?: number;
+}
+/**
+ * **section 与 leaf 分两张表**，不能合成一张按 href 索引的扁平表。
+ *
+ * 因为 section 的 href 与它默认叶子的 href **是同一个串**（`/merchants` 既是
+ * 商家治理这个分区，也是「入驻审核」这个叶子）。合成一张表时后写的那条会盖掉前一条，
+ * 表现是分区名变成了它第一个叶子的名字 —— Rail 上「商家治理」显示成「入驻审核」。
+ */
+export interface NavOverlay {
+  sections?: Record<string, NavOverlayEntry>;
+  leaves?: Record<string, NavOverlayEntry>;
+}
+
+/**
+ * 用服务端菜单覆盖静态 nav 的文案与顺序。**纯函数，可单测。**
+ *
+ * <h3>为什么是「覆盖」而不是「换源」</h3>
+ * 库里（`sys_function` / `sys_function_point`）已经存着菜单与 tab 的全部展示信息，
+ * 而且是 `gen-perm-seed.mjs` 从这份 nav.ts 生成的 —— 两边同源。
+ * 让服务端全权接管的代价是：静态导出的 SPA 首屏要等接口回来才有菜单（会闪），
+ * 且面包屑/命令面板/分期门禁/sectionDefaultHref 这些纯函数全要改成异步数据驱动。
+ *
+ * <p>所以取中间：**拿到就用库里的，没拿到就用本地的**。运营在配置页改了菜单名，
+ * 前端下一次拉 `/ops/menu` 就变；接口挂了则退回本地文案，菜单不会突然变空
+ * —— 后者用户读作「系统坏了」，比文案旧一会儿坏得多。
+ *
+ * @param nav     静态菜单树（默认 {@link NAV}）
+ * @param overlay href → 覆盖项；`undefined` 或空表示原样返回**同一个引用**
+ *                （让 useMemo 的下游不必要地重渲染是这里最容易犯的错）
+ */
+export function overlayNav(nav: NavSection[], overlay: NavOverlay | undefined): NavSection[] {
+  const secOv = overlay?.sections ?? {};
+  const leafOv = overlay?.leaves ?? {};
+  if (Object.keys(secOv).length === 0 && Object.keys(leafOv).length === 0) return nav;
+  const sorted = <T>(items: T[], table: Record<string, NavOverlayEntry>, keyOf: (t: T) => string) => {
+    const withSort = items.map((it, i) => ({ it, i, s: table[keyOf(it)]?.sort }));
+    // 只有**全部**都有服务端 sort 才按它排；部分有的话混排出来的顺序两头都不像
+    if (withSort.some((x) => x.s === undefined)) return items;
+    return withSort.sort((a, b) => (a.s! - b.s!) || (a.i - b.i)).map((x) => x.it);
+  };
+  const out = nav.map((s) => {
+    const ov = secOv[s.href];
+    const children = s.children?.map((l) => {
+      const lv = leafOv[l.href];
+      return lv ? { ...l, label: lv.name ?? l.label, group: lv.group ?? l.group } : l;
+    });
+    return {
+      ...s,
+      label: ov?.name ?? s.label,
+      icon: ov?.icon ?? s.icon,
+      children: children && sorted(children, leafOv, (l) => l.href),
+    };
+  });
+  return sorted(out, secOv, (s) => s.href);
+}
+
+/**
+ * 页面 tab 的标签源 —— **nav.ts 是 tab 名的 SSOT**。
+ *
+ * <p>此前页面在自己的 copy.ts 里另写一份 tab 文案，与菜单叶子各说各的：
+ * 菜单写「店招公告审核」，页面标题写「合规审核」，同一个东西在同一屏上两个名字
+ * （2026-08-12 全量核查：38 处不一致）。而两处都"看着对"，没人会发现。
+ *
+ * 现在页面只声明**有哪些 tab、什么顺序**，名字一律回 nav.ts 取。
+ *
+ * <p>对齐规则与 {@link activeLeafIndex} 一致：**第一个 key 对应不带 `?tab=` 的那条叶子**
+ * （section 首页即默认 tab）。找不到对应叶子返回 `undefined`，由调用方决定怎么办
+ * —— 不在这里编一个兜底名字，那只会把「漏登记」变成一个看不出来的问题。
+ *
+ * @param path 页面路径（不含 query），如 `/stores`
+ * @param keys 页面的 tab key，顺序即展示顺序
+ */
+export function navTabs(
+  path: string, keys: readonly string[], nav: NavSection[] = NAV,
+): { key: string; label: string | undefined }[] {
+  return keys.map((key, i) => ({ key, label: leafForTab(nav, path, key, i)?.label }));
+}
+
+/**
+ * (path, tabKey) → 对应的菜单叶子。**第一个 key 对应不带 `?tab=` 的那条**
+ * （section 首页即默认 tab），与 {@link activeLeafIndex} 同一条对齐规则。
+ *
+ * 抽出来是因为 {@link navTabs}（取名字）与 {@link visibleTabKeys}（判权限）
+ * 必须用**同一套对齐**：两处各写一遍的话，某个 tab 会出现「名字取到了、权限判错了」
+ * 这种只在特定角色下才显形的错。
+ */
+function leafForTab(
+  nav: NavSection[], path: string, key: string, index: number,
+): NavLeaf | undefined {
+  const p = normPath(path);
+  return nav.flatMap((s) => s.children ?? []).find((l) => {
+    const parts = leafParts(l.href);
+    if (parts.path !== p) return false;
+    return parts.tab === key || (index === 0 && parts.tab === null && parts.view === null);
+  });
+}
+
+/**
+ * 本页有哪些 tab 是**当前这个人有权限看**的。
+ *
+ * <h3>与菜单同一口径 —— 而且是同一个函数</h3>
+ * 判定直接调 {@link visibleLeaves}，不另写一套 `can()`。
+ * 另写一套的结果一定是两边分岔：菜单藏了、tab 还在（2026-08-12 实测就是这样，
+ * `/system` 菜单 3 条而 tab 6 条），而**没有权限的人照样点得动那个 tab**，
+ * 只靠接口 403 兜底。
+ *
+ * <h3>两条 fail-open</h3>
+ * 1. **判不了就不判**：`perms` 与 `serverHrefs` 都为空时（还没登录完 / 接口没回来），
+ *    原样返回。`can(undefined, x)` 恒 false，不特判的话整条 tab 会凭空消失，
+ *    而用户读作「功能坏了」。
+ * 2. **一个都不剩时只留默认那一个**：这说明这人本就不该进这个页面，菜单已经拦住了。
+ *    给白页不如让页面正常渲染、由接口去拒绝（至少有错误码可查）；
+ *    但**不能原样返回全部** —— 那等于把他无权的功能名字一条条摊给他看。
+ */
+export function visibleTabKeys(
+  path: string, keys: readonly string[],
+  perms: string[] | undefined, serverHrefs?: Set<string>, nav: NavSection[] = NAV,
+): string[] {
+  if (!serverHrefs?.size && !perms?.length) return [...keys];
+  const p = normPath(path);
+  const section = nav.find((s) => leafParts(s.href).path === p);
+  if (!section) return [...keys];
+  const visible = new Set(visibleLeaves(section, perms, serverHrefs).map((l) => l.href));
+  const order = new Map((section.children ?? []).map((l, i) => [l.href, i]));
+  const kept = keys
+    .map((key, i) => ({ key, leaf: leafForTab(nav, path, key, i) }))
+    // 菜单里查无此条：交给守卫去红，不在运行时把它藏掉
+    .filter(({ leaf }) => (leaf ? visible.has(leaf.href) : true))
+    /*
+     * **按菜单顺序出，不按页面 TAB_KEYS 的顺序**。
+     *
+     * 顺序的真源是库（sys_function_point.sort），运营在配置页调完序，
+     * 菜单与 tab 条要一起变。跟着页面里写死的数组走的话，调完序两边就不一致了
+     * —— 而那正是这一整轮在收口的那类问题。
+     * 查不到叶子的 key 排在最后：它本来就不该存在，别让它插在中间。
+     */
+    .sort((a, b) => (order.get(a.leaf?.href ?? "") ?? Number.MAX_SAFE_INTEGER)
+                  - (order.get(b.leaf?.href ?? "") ?? Number.MAX_SAFE_INTEGER))
+    .map(({ key }) => key);
+  return kept.length ? kept : keys.slice(0, 1);
+}
+
+/** 命令面板的一条候选。label/section/group 都是 nav.ts 的**中文源串**，渲染前过 tNav。 */
+export interface NavSearchEntry {
+  href: string;
+  label: string;
+  section: string; // 所属 L1 的 label（= label 本身时表示这条就是 L1）
+  group?: string; // L2 分组
+  isSection: boolean;
+}
+
+/**
+ * 命令面板（⌘K）的候选集：可见的 L1 + 可见且**可点**的 L3。
+ *
+ * 与 SecondaryNav 的取舍不同：那里待建/锁定项要渲染成灰显（藏起来运营就不知道
+ * 平台规划了这个功能）；这里**直接排除**它们 —— 面板是「去某处」的工具，
+ * 列出一条去不了的结果只是让人多按一次方向键。功能的可发现性由常驻面板负责，
+ * 两者分工不同，不要为了"一致"把灰条塞进搜索结果。
+ *
+ * 权限与后端实现状态全部沿用 visibleSections/visibleLeaves（含 serverHrefs 口径），
+ * 不在这里另写一套判断 —— 另写一套的结果一定是两边迟早不一致。
+ */
+export function navSearchEntries(
+  perms: string[] | undefined, serverHrefs?: Set<string>, nav: NavSection[] = NAV,
+): NavSearchEntry[] {
+  const out: NavSearchEntry[] = [];
+  for (const section of visibleSections(perms, serverHrefs, nav)) {
+    if (section.soon || isPhaseLocked(section.phase)) continue;
+    const leaves = visibleLeaves(section, perms, serverHrefs).filter((l) => !isLeafDisabled(l));
+    // L1 自己也可搜：落地页与点 Rail 一致（无子功能的 section 用 section.href）
+    out.push({
+      href: leaves[0]?.href ?? section.href,
+      label: section.label, section: section.label, isSection: true,
+    });
+    for (const leaf of leaves) {
+      if (leaf.label === section.label) continue; // 与 L1 那条重复
+      out.push({ href: leaf.href, label: leaf.label, section: section.label, group: leaf.group, isSection: false });
+    }
+  }
+  return out;
+}
+
+/**
+ * 面板的匹配规则：查询按空白分词，**每个词**都要在候选串里出现（大小写不敏感）。
+ *
+ * 分词而非整串包含，是为了让「商家 档案」「merchant profile」这种
+ * 跨层级的输入也能命中 —— 候选串由调用方拼成「L1 分组 叶子」，
+ * 词序不该决定成败。
+ */
+export function matchesQuery(haystack: string, query: string): boolean {
+  const tokens = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  if (!tokens.length) return true;
+  const hay = haystack.toLowerCase();
+  return tokens.every((tk) => hay.includes(tk));
 }

@@ -10,7 +10,7 @@ import { api } from "@/lib/api";
 import { fill, useCopy } from "@/lib/use-copy";
 import { FULFILLMENT_COPY } from "./copy";
 import { usePaging } from "@/lib/use-paging";
-import { usePageTab } from "@/lib/use-page-tab";
+import { usePageTab, useNavTabs } from "@/lib/use-page-tab";
 import { MIN_OVERDUE_GRACE_HOURS } from "@/lib/constants";
 import { fmtTime } from "@/lib/utils";
 import { useCan } from "@/lib/use-can";
@@ -37,15 +37,7 @@ import { TabHeader } from "@/components/ui/tab-header";
 import { Toolbar } from "@/components/ui/toolbar";
 
 type Copy = (typeof FULFILLMENT_COPY)["zh"];
-const TABS = (c: Copy) => [
-  { key: "batches", label: c.tabBatches },
-  { key: "sorting", label: c.tabSorting },
-  { key: "redeem", label: c.tabRedeem },
-  { key: "express", label: c.tabExpress },
-  { key: "freight", label: c.tabFreight },
-  { key: "carrier", label: c.tabCarrier },
-  { key: "overdue", label: c.tabOverdue },
-];
+const TAB_KEYS = ["batches", "sorting", "redeem", "express", "freight", "carrier", "overdue"] as const;
 
 /** 批次的下一步：状态机只允许一条路（见 lib/types/fulfillment.ts）。 */
 const NEXT_STATUS: Partial<Record<BatchStatus, { to: BatchStatus; labelKey: keyof Copy }>> = {
@@ -65,7 +57,7 @@ export default function FulfillmentPage() {
 
 function FulfillmentInner() {
   const c = useCopy(FULFILLMENT_COPY);
-  const tabs = TABS(c);
+  const tabs = useNavTabs("/fulfillment", TAB_KEYS);
   const qc = useQueryClient();
   const allow = useCan();
 

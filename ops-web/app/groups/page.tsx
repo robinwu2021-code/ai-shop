@@ -11,7 +11,7 @@ import { api } from "@/lib/api";
 import { fill, useCopy } from "@/lib/use-copy";
 import { GROUPS_COPY } from "./copy";
 import { usePaging } from "@/lib/use-paging";
-import { usePageTab } from "@/lib/use-page-tab";
+import { usePageTab, useNavTabs } from "@/lib/use-page-tab";
 import { MAX_MERCHANT_BREACH, MAX_QUOTE_PRICE_CHANGES } from "@/lib/constants";
 import { fmtTime, money } from "@/lib/utils";
 import { useCan } from "@/lib/use-can";
@@ -35,11 +35,7 @@ import { Toolbar } from "@/components/ui/toolbar";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 
 type Copy = (typeof GROUPS_COPY)["zh"];
-const TABS = (c: Copy) => [
-  { key: "campaigns", label: c.tabCampaigns },
-  { key: "demands", label: c.tabDemands },
-  { key: "quotes", label: c.tabQuotes },
-];
+const TAB_KEYS = ["campaigns", "demands", "quotes"] as const;
 
 export default function GroupsPage() {
   return <Suspense fallback={null}><GroupsInner /></Suspense>;
@@ -47,7 +43,7 @@ export default function GroupsPage() {
 
 function GroupsInner() {
   const c = useCopy(GROUPS_COPY);
-  const tabs = TABS(c);
+  const tabs = useNavTabs("/groups", TAB_KEYS);
   const qc = useQueryClient();
   const allow = useCan();
   const { confirm, dialog } = useConfirm();

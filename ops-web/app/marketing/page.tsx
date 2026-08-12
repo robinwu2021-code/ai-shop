@@ -10,7 +10,7 @@ import { api } from "@/lib/api";
 import { fill, useCopy } from "@/lib/use-copy";
 import { MARKETING_COPY } from "./copy";
 import { usePaging } from "@/lib/use-paging";
-import { usePageTab } from "@/lib/use-page-tab";
+import { usePageTab, useNavTabs } from "@/lib/use-page-tab";
 import { fmtTime, money } from "@/lib/utils";
 import { useCan } from "@/lib/use-can";
 import { notify } from "@/lib/notify";
@@ -41,13 +41,7 @@ import { useConfirm } from "@/components/ui/confirm-dialog";
 import { useI18n } from "@/lib/i18n";
 
 type Copy = (typeof MARKETING_COPY)["zh"];
-const TABS = (c: Copy) => [
-  { key: "coupons", label: c.tabCoupons },
-  { key: "issues", label: c.tabIssues },
-  { key: "campaigns", label: c.tabCampaigns },
-  { key: "slots", label: c.tabSlots },
-  { key: "member", label: c.tabMember },
-];
+const TAB_KEYS = ["coupons", "issues", "campaigns", "slots", "member"] as const;
 
 const TARGET_OPTIONS = (c: Copy): { value: IssueTarget; label: string }[] => [
   { value: "ALL", label: c.targetAll },
@@ -67,7 +61,7 @@ export default function MarketingPage() {
 
 function MarketingInner() {
   const c = useCopy(MARKETING_COPY);
-  const tabs = TABS(c);
+  const tabs = useNavTabs("/marketing", TAB_KEYS);
   const targetOptions = TARGET_OPTIONS(c);
   const qc = useQueryClient();
   const allow = useCan();

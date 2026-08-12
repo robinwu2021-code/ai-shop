@@ -10,7 +10,7 @@ import { api } from "@/lib/api";
 import { fill, useCopy } from "@/lib/use-copy";
 import { REVIEWS_COPY } from "./copy";
 import { usePaging } from "@/lib/use-paging";
-import { usePageTab } from "@/lib/use-page-tab";
+import { usePageTab, useNavTabs } from "@/lib/use-page-tab";
 import { SCORE_WEIGHT_TOTAL } from "@/lib/constants";
 import { fmtTime } from "@/lib/utils";
 import { useCan } from "@/lib/use-can";
@@ -33,11 +33,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Toolbar } from "@/components/ui/toolbar";
 
 type Copy = (typeof REVIEWS_COPY)["zh"];
-const TABS = (c: Copy) => [
-  { key: "audit", label: c.tabAudit },
-  { key: "appeals", label: c.tabAppeals },
-  { key: "score", label: c.tabScore },
-];
+const TAB_KEYS = ["audit", "appeals", "score"] as const;
 
 const RISKY_OPTIONS = (c: Copy) => [{ value: "1", label: c.riskyOnly }];
 
@@ -50,7 +46,7 @@ export default function ReviewsPage() {
 
 function ReviewsInner() {
   const c = useCopy(REVIEWS_COPY);
-  const tabs = TABS(c);
+  const tabs = useNavTabs("/reviews", TAB_KEYS);
   const riskyOptions = RISKY_OPTIONS(c);
   const qc = useQueryClient();
   const allow = useCan();

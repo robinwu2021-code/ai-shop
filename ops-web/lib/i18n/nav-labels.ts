@@ -14,6 +14,7 @@ const OVERLAY: Record<string, Record<string, string>> = {
   经营看板: { en: "Dashboard" },
 
   商家治理: { en: "Merchants" },
+  准入与保证金: { en: "Admission & deposit" },
   入驻审核: { en: "Onboarding review" },
   商家档案: { en: "Merchant profiles" },
   类目授权: { en: "Category permits" },
@@ -28,6 +29,7 @@ const OVERLAY: Record<string, Record<string, string>> = {
   获客效果看板: { en: "Acquisition dashboard" },
 
   商品与类目: { en: "Catalog" },
+  商品审核队列: { en: "Product review queue" },
   三级类目树: { en: "Category tree" },
   商品池与审核: { en: "Product pool & review" },
   预售额度与超卖: { en: "Presale quota & oversell" },
@@ -58,12 +60,12 @@ const OVERLAY: Record<string, Record<string, string>> = {
   营销活动: { en: "Marketing" },
   券模板: { en: "Coupon templates" },
   发放记录: { en: "Issue records" },
-  "活动（秒杀/满减/买赠）": { en: "Campaigns" },
+  活动: { en: "Campaigns" },
   "首页楼层与 Banner": { en: "Home floors & banners" },
   会员卡与权益: { en: "Membership & benefits" },
 
   团购与求团: { en: "Group buying" },
-  "商家团（审核与监控）": { en: "Merchant groups" },
+  商家团: { en: "Merchant groups" },
   需求单池与指派: { en: "Demand pool" },
   改价留痕与毁约: { en: "Price changes & breaches" },
 
@@ -91,6 +93,7 @@ const OVERLAY: Record<string, Record<string, string>> = {
 
   社区与网点: { en: "Communities & points" },
   社区网格: { en: "Community grids" },
+  商家提报: { en: "Merchant submissions" },
   自提点: { en: "Pickup points" },
   临时点监控: { en: "Temporary points" },
 
@@ -100,16 +103,20 @@ const OVERLAY: Record<string, Record<string, string>> = {
   榜单与问答: { en: "Rankings & Q&A" },
 
   风控: { en: "Risk" },
-  "风险事件（三类）": { en: "Risk events" },
+  风险事件: { en: "Risk events" },
   黑名单与申诉: { en: "Blacklist & appeals" },
   拦截规则配置: { en: "Interception rules" },
 
   员工与权限: { en: "Staff & access" },
   员工账号与数据域: { en: "Accounts & data scope" },
-  "角色与 RBAC": { en: "Roles & RBAC" },
+  角色与权限: { en: "Roles & permissions" },
   操作审计日志: { en: "Audit log" },
 
   系统配置: { en: "System" },
+  经营范围: { en: "Business scope" },
+  行业与小微白名单: { en: "Industries & micro-merchant allowlist" },
+  经营授权码: { en: "Business authorisation codes" },
+  经营范围开关: { en: "Business scope switches" },
   外观与规则文案: { en: "Appearance & policy copy" },
   "市场/货币/汇率": { en: "Markets & currency" },
   开关与灰度: { en: "Flags & rollout" },
@@ -130,10 +137,10 @@ const OVERLAY: Record<string, Record<string, string>> = {
   处置: { en: "Adjudication" },
   规则: { en: "Rules" },
   优惠券: { en: "Coupons" },
-  活动: { en: "Campaigns" },
+  // 活动 / 商家团 两个分组名与同名叶子重了（2026-08-12 精简掉括号后缀之后）。
+  // OVERLAY 是一张**扁平表**，同一个中文串只能有一条 —— 它们登记在上面的叶子区。
   内容位: { en: "Content slots" },
   会员: { en: "Membership" },
-  商家团: { en: "Merchant groups" },
   求团撮合: { en: "Demand matching" },
   归因引擎: { en: "Attribution engine" },
   裂变活动: { en: "Referral campaigns" },

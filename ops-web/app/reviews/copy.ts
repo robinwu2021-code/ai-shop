@@ -2,9 +2,6 @@
 import type { PageCopy } from "@/lib/use-copy";
 
 const zh = {
-  tabAudit: "评价审核",
-  tabAppeals: "申诉裁决",
-  tabScore: "评分参数",
 
   riskyOnly: "仅看命中刷评信号",
 
@@ -93,9 +90,6 @@ const zh = {
 };
 
 const en: typeof zh = {
-  tabAudit: "Review moderation",
-  tabAppeals: "Appeals",
-  tabScore: "Rating parameters",
 
   riskyOnly: "Flagged reviews only",
 

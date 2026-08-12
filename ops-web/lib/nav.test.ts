@@ -1,12 +1,14 @@
 // 导航结构单测。这里锁的是**结构约束**，不是文案：
 // 文案会随产品走，结构一破（分组不相邻、href 重复、模块与权限码对不上）界面就会出错。
 import { describe, expect, it } from "vitest";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { execFileSync } from "node:child_process";
 import { join } from "node:path";
 import { tNav } from "./i18n/nav-labels";
 import { BACKEND_ROLE_PERMS, backendPermsOf } from "./permissions";
-import { NAV, activeLeafIndex, breadcrumb, findActiveSection, groupedLeaves, isLeafDisabled, leafParts, matchesQuery, navSearchEntries, normPath, sectionDefaultHref, visibleLeaves, visibleSections } from "./nav";
+import { NAV, activeLeafIndex, breadcrumb, findActiveSection, groupedLeaves, isLeafDisabled, leafParts, matchesQuery, navSearchEntries, navTabs, normPath, overlayNav, visibleTabKeys, sectionDefaultHref, visibleLeaves, visibleSections } from "./nav";
 import { permsOf, ROLE_LABEL } from "./permissions";
+import { UI_PERM_MAP } from "./perm-map";
 
 const ROOT = new URL("..", import.meta.url).pathname;
 import type { Role } from "./auth";
@@ -223,6 +225,237 @@ describe("路由归属与面包屑", () => {
 
   it("最长前缀匹配（子路径归属父 section）", () => {
     expect(findActiveSection("/merchants/detail", backendPermsOf("SUPER_ADMIN"))?.key).toBe("merchant");
+  });
+
+  it("★★★ 生成器造得出 Perms.ROLE_PERMS 用到的**每一个**后端码 —— 造不出的授权会静默蒸发", () => {
+    /*
+     * 2026-08-12 实测的回归：权限码从 16 细化到 68 之后，Perms.java 长出了 22 个
+     * UI_PERM_MAP 映射不出来的后端码。角色→功能点是靠 perm_code 对上的 ——
+     * 一个后端码没有任何功能点带它，那条授权就**无处安放**，重新生成种子时直接消失。
+     * FINANCE 一个角色丢了 9/16，而没有任何报错：表现只是那个角色调某个接口 403。
+     *
+     * **真的跑一遍生成器再比对**，不查字符串。
+     * 第一版这条是 `seed.includes("roleBackendCodes")` —— 把兜底那段的变量名
+     * 改成 `XroleBackendCodes` 它照样绿（子串还在）。一条验不出问题的守卫比没有更坏。
+     */
+    const sql = execFileSync("node", ["scripts/gen-perm-seed.mjs"],
+      { cwd: ROOT, encoding: "utf8", maxBuffer: 8 << 20 });
+
+    // point_code → perm_code（第 7 个字段；NULL 表示不受权限约束）
+    const permOfPoint = new Map<string, string | null>();
+    for (const m of sql.matchAll(
+      /INSERT INTO sys_function_point \([^)]*\) VALUES \('([^']+)',(?:\s*(?:'(?:[^']|'')*'|NULL),){5}\s*(?:'([^']*)'|NULL)/g)) {
+      permOfPoint.set(m[1], m[2] ?? null);
+    }
+    const granted = new Map<string, Set<string>>();
+    for (const m of sql.matchAll(/INSERT INTO sys_role_point \([^)]*\) VALUES \('([^']+)', '([^']+)'/g)) {
+      const perm = permOfPoint.get(m[2]);
+      if (perm) (granted.get(m[1]) ?? granted.set(m[1], new Set()).get(m[1])!).add(perm);
+    }
+
+    const permsJava = readFileSync(
+      join(ROOT, "../backend/shop-base/src/main/java/ai/neargo/shop/auth/Perms.java"), "utf8");
+    const consts: Record<string, string> = {};
+    for (const m of permsJava.matchAll(/String\s+([A-Z_]+)\s*=\s*"([^"]+)"/g)) consts[m[1]] = m[2];
+    const block = permsJava.slice(permsJava.indexOf("ROLE_PERMS = Map."));
+
+    const problems: string[] = [];
+    for (const m of block.matchAll(/Map\.entry\("([A-Z_]+)",\s*List\.of\(([\s\S]*?)\)\)/g)) {
+      const want = new Set<string>();
+      for (const l of m[2].matchAll(/"(\*|[a-z][a-z:_-]*)"|\b([A-Z][A-Z_]+)\b/g)) {
+        if (l[1]) want.add(l[1]);
+        else if (l[2] && consts[l[2]]) want.add(consts[l[2]]);
+      }
+      if (want.has("*")) continue;   // 通配角色另有短路，不逐码展开
+      const got = granted.get(m[1]) ?? new Set<string>();
+      const missing = [...want].filter((c) => !got.has(c));
+      if (missing.length) problems.push(`${m[1]} 少了 ${missing.length} 个码：${missing.join(", ")}`);
+    }
+    expect(problems,
+      "生成器造不出这些角色的部分权限码 —— 重新生成种子时这些授权会静默消失：\n"
+      + problems.join("\n")
+      + "\n补 gen-perm-seed.mjs 末段「按后端码兜底」那一块。").toEqual([]);
+  });
+
+  it("★★★ 每个叶子的 perm 必须登记进 UI_PERM_MAP —— 没登记的码 can() 判无权限，连超管都看不见", () => {
+    /*
+     * 2026-08-12 实测踩过：把「准入与保证金」的 perm 改成看着更贴切的
+     * merchant:admission:read，而那个码没登记进 UI_PERM_MAP。
+     * can() 是**先查映射再判通配**的（permissions.ts 里解释了为什么），
+     * 所以未登记 = 一律无权限，超管也不例外 —— 那个叶子直接从菜单里消失，
+     * 而**没有任何报错**，看起来就像「这个功能没做」。
+     */
+    const missing: string[] = [];
+    for (const s of NAV) {
+      for (const l of s.children ?? []) {
+        if (l.perm && !(l.perm in UI_PERM_MAP)) missing.push(`${s.key} › ${l.label}(${l.perm})`);
+      }
+    }
+    expect(missing, "这些叶子的 perm 没登记进 lib/perm-map.ts 的 UI_PERM_MAP，"
+      + "它们对**所有人**（含超管）都不可见：\n" + missing.join("\n")).toEqual([]);
+  });
+
+  it("★★★ 每个页面 tab 都能在 nav.ts 找到叶子 —— 找不到 = 这个功能在菜单里进不去", () => {
+    /*
+     * 2026-08-12 全量核查装的守卫。此前页面在自己的 copy.ts 里另写一份 tab 文案，
+     * 与菜单各说各的：38 处文案不一致（菜单「店招公告审核」vs 页面「合规审核」），
+     * 外加 6 个页面 tab **压根没在菜单里登记** —— 那几个功能只能靠手改 URL 进去。
+     *
+     * 文案分岔现在从根上没有了（页面只声明 key，名字回 nav.ts 取），
+     * 这条守的是剩下那一半：**新加 tab 时别忘了在菜单里也加一条**。
+     */
+    const dirs = readdirSync(join(ROOT, "app"), { withFileTypes: true })
+      .filter((d) => d.isDirectory()).map((d) => d.name);
+    const missing: string[] = [];
+    for (const d of dirs) {
+      const pageFile = join(ROOT, "app", d, "page.tsx");
+      if (!existsSync(pageFile)) continue;
+      const m = readFileSync(pageFile, "utf8").match(/const TAB_KEYS = \[([^\]]*)\] as const;/);
+      if (!m) continue;
+      const keys = [...m[1].matchAll(/"([^"]+)"/g)].map((x) => x[1]);
+      for (const t of navTabs(`/${d}`, keys)) {
+        if (!t.label) missing.push(`/${d} 的 tab "${t.key}"`);
+      }
+    }
+    expect(missing, "这些页面 tab 在 lib/nav.ts 里没有叶子 —— 补一条，否则菜单里进不去：\n"
+      + missing.join("\n")).toEqual([]);
+  });
+
+  describe("服务端菜单覆盖（overlayNav）", () => {
+    it("空 overlay 原样返回**同一个引用** —— 否则每次渲染都是新数组，下游全量重渲染", () => {
+      expect(overlayNav(NAV, undefined)).toBe(NAV);
+      expect(overlayNav(NAV, {})).toBe(NAV);
+      expect(overlayNav(NAV, { sections: {}, leaves: {} })).toBe(NAV);
+    });
+
+    it("★★★ 库里的名字盖过本地：section 名、叶子名、分组名都跟着变", () => {
+      const out = overlayNav(NAV, {
+        sections: { "/merchants": { name: "商户中心", icon: "Building" } },
+        leaves: { "/merchants?tab=list": { name: "商户名册", group: "档案" } },
+      });
+      const s = out.find((x) => x.key === "merchant")!;
+      expect(s.label).toBe("商户中心");
+      expect(s.icon).toBe("Building");
+      const leaf = s.children!.find((l) => l.href === "/merchants?tab=list")!;
+      expect(leaf.label).toBe("商户名册");
+      expect(leaf.group).toBe("档案");
+    });
+
+    it("★★★ section 与它的默认叶子 href 相同，两者不能互相盖 —— 扁平表会让分区名变成叶子名", () => {
+      // `/merchants` 既是分区首页，也是「入驻审核」这个叶子的 href
+      const out = overlayNav(NAV, {
+        sections: { "/merchants": { name: "商户中心" } },
+        leaves: { "/merchants": { name: "新店审核" } },
+      });
+      const s = out.find((x) => x.key === "merchant")!;
+      expect(s.label).toBe("商户中心");
+      expect(s.children!.find((l) => l.href === "/merchants")!.label).toBe("新店审核");
+    });
+
+    it("★★ 不覆盖结构 —— href / perm 这些不能被服务端文案改掉", () => {
+      const out = overlayNav(NAV, { leaves: { "/merchants?tab=ban": { name: "改个名" } } });
+      const leaf = out.find((x) => x.key === "merchant")!
+        .children!.find((l) => l.href === "/merchants?tab=ban")!;
+      expect(leaf.href).toBe("/merchants?tab=ban");
+      expect(leaf.perm).toBe("merchant:merchant:ban");
+    });
+
+    it("★★ sort 只在**全部**兄弟都有时才生效 —— 部分有的话混排两头都不像", () => {
+      const s = NAV.find((x) => x.key === "store")!;
+      const hrefs = s.children!.map((l) => l.href);
+      const partial = overlayNav(NAV, { leaves: { [hrefs[1]]: { sort: 1 } } })
+        .find((x) => x.key === "store")!.children!.map((l) => l.href);
+      expect(partial).toEqual(hrefs);
+      const all: Record<string, { sort: number }> = {};
+      hrefs.forEach((h, i) => { all[h] = { sort: hrefs.length - i }; });
+      const sorted = overlayNav(NAV, { leaves: all })
+        .find((x) => x.key === "store")!.children!.map((l) => l.href);
+      expect(sorted).toEqual([...hrefs].reverse());
+    });
+
+    it("★★ 覆盖后的树能被 breadcrumb / navTabs 读到 —— 换源没换到位就会在这里露馅", () => {
+      // 用一个**所有角色都可见**的叶子：store 的几个 tab 后端未实现，
+      // visibleLeaves 会把它们滤掉，拿它做断言只会验到「看不见」
+      const nav = overlayNav(NAV, { leaves: { "/merchants?tab=list": { name: "商户名册" } } });
+      expect(navTabs("/merchants", ["audit", "list"], nav).map((t) => t.label))
+        .toEqual(["入驻审核", "商户名册"]);
+      expect(breadcrumb("/merchants", "list", null, backendPermsOf("SUPER_ADMIN"), undefined, nav))
+        .toContain("商户名册");
+    });
+  });
+
+  describe("tab 判权（visibleTabKeys）", () => {
+    const KEYS = ["audit", "list", "categories", "admission", "verify", "credit", "ban"];
+
+    it("★★★ 与菜单同一口径 —— 服务端菜单里没有的 tab 也看不到", () => {
+      // 只授权了两条：tab 也只该剩这两条
+      const hrefs = new Set(["/merchants", "/merchants?tab=list"]);
+      expect(visibleTabKeys("/merchants", KEYS, ["*"], hrefs)).toEqual(["audit", "list"]);
+    });
+
+    it("★★★ 全站遍历：tab 集合永远 ⊆ 菜单可见集合，且确实发生过收窄", () => {
+      /*
+       * 不手挑角色举例 —— 挑错了会写出假测试：第一版拿 MERCHANT_BD 当「没有封禁权」
+       * 的反例，而商家运营**本来就有** merchant:merchant:ban。
+       * 遍历全站则不依赖任何一条人工判断。
+       */
+      let narrowed = 0;
+      for (const sec of NAV) {
+        const leaves = sec.children ?? [];
+        if (!leaves.length) continue;
+        const path = leafParts(sec.href).path;
+        // 只取**落在本 section 路径上**的叶子：nav 允许跨 section 深链
+        // （售后域里挂着 /finance?tab=refund-back），那种不是本页的 tab
+        const own = leaves.filter((l) => leafParts(l.href).path === path);
+        const keys = own.map((l, i) => (i === 0 ? "__first" : leafParts(l.href).tab)).filter(Boolean) as string[];
+        if (keys.length < 2) continue;
+        for (const r of ALL_ROLES) {
+          const perms = backendPermsOf(r);
+          const visible = new Set(visibleLeaves(sec, perms)
+            .filter((l) => leafParts(l.href).path === path).map((l) => l.href));
+          if (visible.size === 0) continue;   // 走「只留默认 tab」兜底，另一条测试管
+          for (const k of visibleTabKeys(path, keys, perms, undefined)) {
+            const href = k === "__first" ? sec.href : `${path}?tab=${k}`;
+            expect(visible.has(href), `${r} 在 ${sec.key}：tab「${k}」菜单里不可见却出现在 tab 条`).toBe(true);
+          }
+          if (visible.size < keys.length) narrowed++;
+        }
+      }
+      expect(narrowed, "全站没有任何一处发生收窄 —— 过滤根本没生效").toBeGreaterThan(0);
+    });
+
+    it("★★ 判不了就不判 —— perms 与 serverHrefs 都为空时原样返回", () => {
+      // can(undefined, x) 恒 false，不特判的话整条 tab 会凭空消失
+      expect(visibleTabKeys("/merchants", KEYS, undefined, undefined)).toEqual(KEYS);
+      expect(visibleTabKeys("/merchants", KEYS, [], new Set())).toEqual(KEYS);
+    });
+
+    it("★★★ 一个都不剩时只留默认那一个 —— 不给白页，也不把无权的功能名摊出来", () => {
+      // 授权集合与本页毫不相干 → 全部落空
+      expect(visibleTabKeys("/merchants", KEYS, ["*"], new Set(["/orders"]))).toEqual(["audit"]);
+      // 零 merchant 权限的角色直连 URL 进来，同样只看到默认 tab
+      const cs = backendPermsOf("CS");
+      expect(visibleTabKeys("/merchants", KEYS, cs, undefined).length).toBeLessThanOrEqual(1);
+    });
+
+    it("★★ 超管看得到全部 tab —— 收紧不能误伤有权的人", () => {
+      const admin = backendPermsOf("SUPER_ADMIN");
+      expect(visibleTabKeys("/merchants", KEYS, admin, undefined)).toEqual(KEYS);
+    });
+
+    it("★★ 与 visibleLeaves 结果一致 —— 两边分岔就是这条守卫存在的理由", () => {
+      const s = NAV.find((x) => x.key === "merchant")!;
+      for (const r of ALL_ROLES) {
+        const perms = backendPermsOf(r);
+        const leafHrefs = new Set(visibleLeaves(s, perms).map((l) => l.href));
+        // 一条都看不见的角色走的是「只留默认 tab」那条兜底，不在本条断言范围内
+        if (leafHrefs.size === 0) continue;
+        for (const k of visibleTabKeys("/merchants", KEYS, perms, undefined)) {
+          const href = k === "audit" ? "/merchants" : `/merchants?tab=${k}`;
+          expect(leafHrefs.has(href), `${r} 的 tab ${k} 在菜单里不可见，却出现在 tab 条`).toBe(true);
+        }
+      }
+    });
   });
 
   it("面包屑 = L1 › 分组 › 子功能", () => {

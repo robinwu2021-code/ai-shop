@@ -2,9 +2,6 @@
 import type { PageCopy } from "@/lib/use-copy";
 
 const zh = {
-  tabCampaigns: "商家团",
-  tabDemands: "求团需求",
-  tabQuotes: "报价与信用",
 
   toastAuditPassed: "已通过，团已开始",
   toastAuditRejected: "已驳回，原因已发给商家",
@@ -92,9 +89,6 @@ const zh = {
 };
 
 const en: typeof zh = {
-  tabCampaigns: "Merchant group buys",
-  tabDemands: "Group requests",
-  tabQuotes: "Quotes & credit",
 
   toastAuditPassed: "Approved — the group buy is live",
   toastAuditRejected: "Rejected — the reason has been sent to the merchant",

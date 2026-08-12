@@ -2,9 +2,6 @@
 import type { PageCopy } from "@/lib/use-copy";
 
 const zh = {
-  tabPush: "消息模板与推送",
-  tabTickets: "客服工单",
-  tabFaq: "帮助中心",
 
   channelSubscribe: "订阅消息",
   channelPush: "App 推送",
@@ -105,9 +102,6 @@ const zh = {
 };
 
 const en: typeof zh = {
-  tabPush: "Templates & push",
-  tabTickets: "Support tickets",
-  tabFaq: "Help center",
 
   channelSubscribe: "Subscription message",
   channelPush: "App push",

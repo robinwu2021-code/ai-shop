@@ -10,7 +10,7 @@ import { api } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
 import { fill, useCopy } from "@/lib/use-copy";
 import { SYSTEM_COPY } from "./copy";
-import { usePageTab } from "@/lib/use-page-tab";
+import { usePageTab, useNavTabs } from "@/lib/use-page-tab";
 import { fmtTime } from "@/lib/utils";
 import { useCan } from "@/lib/use-can";
 import { useEditableConfig } from "@/lib/use-editable-config";
@@ -34,14 +34,7 @@ import { TabHeader } from "@/components/ui/tab-header";
 import { Textarea } from "@/components/ui/textarea";
 
 type Copy = (typeof SYSTEM_COPY)["zh"];
-const TABS = (c: Copy) => [
-  { key: "appearance", label: c.tabAppearance },
-  { key: "market", label: c.tabMarket },
-  { key: "flags", label: c.tabFlags },
-  { key: "industry", label: c.tabIndustry },
-  { key: "authCode", label: c.tabAuthCode },
-  { key: "scope", label: c.tabScope },
-];
+const TAB_KEYS = ["appearance", "market", "flags", "industry", "authCode", "scope"] as const;
 
 export default function SystemPage() {
   return <Suspense fallback={null}><SystemInner /></Suspense>;
@@ -50,7 +43,7 @@ export default function SystemPage() {
 function SystemInner() {
   const { t } = useI18n();
   const c = useCopy(SYSTEM_COPY);
-  const tabs = TABS(c);
+  const tabs = useNavTabs("/system", TAB_KEYS);
   const qc = useQueryClient();
   const allow = useCan();
 

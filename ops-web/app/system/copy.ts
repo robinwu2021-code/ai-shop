@@ -2,12 +2,6 @@
 import type { PageCopy } from "@/lib/use-copy";
 
 const zh = {
-  tabAppearance: "外观与语言",
-  tabMarket: "市场与货币",
-  tabFlags: "开关与灰度",
-  tabIndustry: "行业与小微白名单",
-  tabAuthCode: "经营授权码",
-  tabScope: "经营范围开关",
 
   acNotice: "这里定义的是「一共有哪些经营门槛、各要什么证」；给具体商家发证在「商家 · 类目授权」。两件事分开，是因为改这里影响的是全平台，而发证只影响一家店。",
   acColCode: "授权码",
@@ -150,12 +144,6 @@ const zh = {
 };
 
 const en: typeof zh = {
-  tabAppearance: "Appearance & language",
-  tabMarket: "Markets & currency",
-  tabFlags: "Flags & rollout",
-  tabIndustry: "Industries & micro allowlist",
-  tabAuthCode: "Auth codes",
-  tabScope: "Service scopes",
 
   acNotice: "This defines what trading permissions exist and which licence each one needs. Granting them to a specific merchant lives under Merchants \u00b7 Category authorisation. They are separate because a change here affects every merchant, while granting affects one shop.",
   acColCode: "Code",

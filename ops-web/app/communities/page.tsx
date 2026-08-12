@@ -11,7 +11,7 @@ import { api } from "@/lib/api";
 import { fill, useCopy } from "@/lib/use-copy";
 import { COMMUNITIES_COPY } from "./copy";
 import { usePaging } from "@/lib/use-paging";
-import { usePageTab } from "@/lib/use-page-tab";
+import { usePageTab, useNavTabs } from "@/lib/use-page-tab";
 import { NEIGHBOR_RISK_ACCEPT_COUNT } from "@/lib/constants";
 import { fmtTime } from "@/lib/utils";
 import { useCan } from "@/lib/use-can";
@@ -35,12 +35,7 @@ import { Toolbar } from "@/components/ui/toolbar";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 
 type Copy = (typeof COMMUNITIES_COPY)["zh"];
-const TABS = (c: Copy) => [
-  { key: "grid", label: c.tabGrid },
-  { key: "pickups", label: c.tabPickups },
-  { key: "neighbor", label: c.tabNeighbor },
-  { key: "applies", label: c.tabApplies },
-];
+const TAB_KEYS = ["grid", "pickups", "neighbor", "applies"] as const;
 
 const OPEN_OPTIONS = (c: Copy) => [
   { value: "1", label: c.openedYes },
@@ -56,7 +51,7 @@ export default function CommunitiesPage() {
 
 function CommunitiesInner() {
   const cp = useCopy(COMMUNITIES_COPY);
-  const tabs = TABS(cp);
+  const tabs = useNavTabs("/communities", TAB_KEYS);
   const openOptions = OPEN_OPTIONS(cp);
   const qc = useQueryClient();
   const allow = useCan();

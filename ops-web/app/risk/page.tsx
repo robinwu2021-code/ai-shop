@@ -10,7 +10,7 @@ import { api } from "@/lib/api";
 import { fill, useCopy } from "@/lib/use-copy";
 import { RISK_COPY } from "./copy";
 import { usePaging } from "@/lib/use-paging";
-import { usePageTab } from "@/lib/use-page-tab";
+import { usePageTab, useNavTabs } from "@/lib/use-page-tab";
 import { fmtTime } from "@/lib/utils";
 import { useCan } from "@/lib/use-can";
 import { notify } from "@/lib/notify";
@@ -34,11 +34,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Toolbar } from "@/components/ui/toolbar";
 
 type Copy = (typeof RISK_COPY)["zh"];
-const TABS = (c: Copy) => [
-  { key: "events", label: c.tabEvents },
-  { key: "blacklist", label: c.tabBlacklist },
-  { key: "rules", label: c.tabRules },
-];
+const TAB_KEYS = ["events", "blacklist", "rules"] as const;
 
 const SUBJECT_LABEL = (c: Copy): Record<SubjectType, string> => ({ USER: c.subjectUser, MERCHANT: c.subjectMerchant, DEVICE: c.subjectDevice });
 const SUBJECT_OPTIONS = (c: Copy) => (Object.keys(SUBJECT_LABEL(c)) as SubjectType[]).map((v) => ({ value: v, label: SUBJECT_LABEL(c)[v] }));
@@ -49,7 +45,7 @@ export default function RiskPage() {
 
 function RiskInner() {
   const c = useCopy(RISK_COPY);
-  const tabs = TABS(c);
+  const tabs = useNavTabs("/risk", TAB_KEYS);
   const subjectLabel = SUBJECT_LABEL(c);
   const subjectOptions = SUBJECT_OPTIONS(c);
   const qc = useQueryClient();

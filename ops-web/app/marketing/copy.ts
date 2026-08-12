@@ -2,11 +2,6 @@
 import type { PageCopy } from "@/lib/use-copy";
 
 const zh = {
-  tabCoupons: "券模板",
-  tabIssues: "发放记录",
-  tabCampaigns: "活动",
-  tabSlots: "内容位",
-  tabMember: "会员卡与权益",
   memberNotice: "会员卡卖出去的是承诺，不是配置：只要有人持卡，权益与月费就锁死 —— 要调整请新建一张卡并把这张停售，让在售的那张始终与用户当初买的一致。会员折扣不得低于 {zhe} 折，月费远补不回被打穿的毛利。",
   searchCard: "搜会员卡号 / 名称",
   filterCardStatus: "按会员卡状态筛选",
@@ -169,11 +164,6 @@ const zh = {
 };
 
 const en: typeof zh = {
-  tabCoupons: "Coupon templates",
-  tabIssues: "Issue records",
-  tabCampaigns: "Campaigns",
-  tabSlots: "Content slots",
-  tabMember: "Membership & benefits",
   memberNotice: "A membership sold is a promise, not a setting: once anyone holds the card, its benefits and monthly fee lock. To change them, create a new card and retire this one, so what is on sale always matches what people bought. Member discounts cannot go below {off}% off — the monthly fee never covers the margin that deep a cut burns.",
   searchCard: "Search card no. / name",
   filterCardStatus: "Filter by card state",

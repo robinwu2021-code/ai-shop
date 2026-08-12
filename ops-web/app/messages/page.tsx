@@ -10,7 +10,7 @@ import { api } from "@/lib/api";
 import { fill, useCopy } from "@/lib/use-copy";
 import { MESSAGES_COPY } from "./copy";
 import { usePaging } from "@/lib/use-paging";
-import { usePageTab } from "@/lib/use-page-tab";
+import { usePageTab, useNavTabs } from "@/lib/use-page-tab";
 import { fmtTime } from "@/lib/utils";
 import { useCan } from "@/lib/use-can";
 import { notify } from "@/lib/notify";
@@ -34,11 +34,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Toolbar } from "@/components/ui/toolbar";
 
 type Copy = (typeof MESSAGES_COPY)["zh"];
-const TABS = (c: Copy) => [
-  { key: "push", label: c.tabPush },
-  { key: "tickets", label: c.tabTickets },
-  { key: "faq", label: c.tabFaq },
-];
+const TAB_KEYS = ["push", "tickets", "faq"] as const;
 
 export default function MessagesPage() {
   return <Suspense fallback={null}><MessagesInner /></Suspense>;
@@ -46,7 +42,7 @@ export default function MessagesPage() {
 
 function MessagesInner() {
   const c = useCopy(MESSAGES_COPY);
-  const tabs = TABS(c);
+  const tabs = useNavTabs("/messages", TAB_KEYS);
   const qc = useQueryClient();
   const allow = useCan();
 
