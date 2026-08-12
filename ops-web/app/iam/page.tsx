@@ -76,6 +76,7 @@ function IamInner() {
   const [scopeForm, setScopeForm] = useState({ merchantNo: "", communityNo: "", pickupNo: "" });
   // 自定义角色不在 Role 联合类型里 —— 用 string
   const [pickedRole, setPickedRole] = useState<string | null>(null);
+  const [newRole, setNewRole] = useState<{ roleCode: string; name: string } | null>(null);
   const [checked, setChecked] = useState<string[]>([]);
 
   const canGrant = allow("iam:role:grant");
@@ -111,6 +112,16 @@ function IamInner() {
   const setScopeMut = useMutation({
     mutationFn: () => api.setStaffScope(editing!.staffNo, scopeForm),
     onSuccess: () => { invalidate(); setEditing(null); notify.success(c.toastScopeChanged); },
+  });
+  const createRoleMut = useMutation({
+    mutationFn: () => api.createRole(newRole!.roleCode.trim(), newRole!.name.trim()),
+    onSuccess: (r) => {
+      invalidate();
+      setNewRole(null);
+      // 建完直接选中它 —— 否则用户要在 11 行里找自己刚建的那个
+      setPickedRole(r.roleCode);
+      notify.success(c.toastRoleCreated);
+    },
   });
   const setPermsMut = useMutation({
     mutationFn: (v: { roleCode: string; points: string[] }) => api.setRolePoints(v.roleCode, v.points),
@@ -267,12 +278,19 @@ function IamInner() {
     },
     {
       header: c.colActions,
+      /*
+       * **预置角色也要有按钮**，只是进去之后是只读的。
+       * 第一版这里只渲染一行「内置不可改」—— 而 11 个角色全是预置的，
+       * 于是权限树永远打不开：功能做完了但没有入口，浏览器点一下才发现。
+       */
       cell: (r) =>
-        r.builtin
-          ? <span className="text-muted-foreground">{c.roleBuiltIn}</span>
-          : canGrant
-            ? <Button size="sm" variant="outline" onClick={() => openRole(r)}>{c.actionPerms}</Button>
-            : <span className="text-muted-foreground">—</span>,
+        canGrant || r.builtin
+          ? (
+            <Button size="sm" variant="outline" onClick={() => openRole(r)}>
+              {r.builtin ? c.actionView : c.actionPerms}
+            </Button>
+          )
+          : <span className="text-muted-foreground">—</span>,
     },
   ];
 
@@ -294,9 +312,16 @@ function IamInner() {
       )}
 
       {tab === "roles" && (
-        <Notice className="mb-3">
-          {c.notice}
-        </Notice>
+        <>
+          <Notice className="mb-3">{c.notice}</Notice>
+          {canGrant && (
+            <div className="mb-3">
+              <Button size="sm" onClick={() => setNewRole({ roleCode: "", name: "" })}>
+                {c.actionNewRole}
+              </Button>
+            </div>
+          )}
+        </>
       )}
 
       {tab !== "roles" && (
@@ -413,6 +438,40 @@ function IamInner() {
           )}
         </>
       )}
+
+      {/* 新建自定义角色 */}
+      <Drawer
+        open={!!newRole}
+        onOpenChange={(o) => !o && setNewRole(null)}
+        title={c.newRoleTitle}
+        desc={c.newRoleDesc}
+        footer={newRole ? (
+          <Button
+            loading={createRoleMut.isPending}
+            disabled={!newRole.roleCode.trim() || !newRole.name.trim()}
+            onClick={() => createRoleMut.mutate()}
+          >
+            {c.save}
+          </Button>
+        ) : null}
+      >
+        {newRole && (
+          <div className="space-y-4">
+            <div className="space-y-1">
+              <Label htmlFor="nr-code">{c.fieldRoleCode}</Label>
+              <Input id="nr-code" className="w-full" placeholder={c.phRoleCode}
+                value={newRole.roleCode}
+                onChange={(e) => setNewRole({ ...newRole, roleCode: e.target.value.toUpperCase() })} />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="nr-name">{c.fieldRoleName}</Label>
+              <Input id="nr-name" className="w-full" placeholder={c.phRoleName}
+                value={newRole.name}
+                onChange={(e) => setNewRole({ ...newRole, name: e.target.value })} />
+            </div>
+          </div>
+        )}
+      </Drawer>
 
       {/* 数据域授权 */}
       <Drawer

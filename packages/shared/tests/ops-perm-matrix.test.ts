@@ -15,7 +15,7 @@ import { describe, expect, it } from "vitest";
 // @ts-expect-error 生成器是 .mjs，没有类型声明；这里只用它的三个纯函数
 import { buildMatrix, scanEndpoints, PUBLIC } from "../../../scripts/gen-perm-endpoint-matrix.mjs";
 // @ts-expect-error 同上
-import { codeOf, RULES } from "../../../scripts/perm-endpoint-map.mjs";
+import { codeOf, RULES, NEAREST_CODE } from "../../../scripts/perm-endpoint-map.mjs";
 
 const ROOT = join(import.meta.dirname, "../../..");
 const BASELINE = join(ROOT, "packages/shared/tests/fixtures/ops-role-endpoint-matrix.json");
@@ -80,6 +80,24 @@ describe("运营端角色×端点矩阵", () => {
       "这些规则匹配不到任何端点。要么路径改了、要么规则被前面更宽的一条盖住了 ——\n" +
         "  两种都会让它下面写的那句理由变成谎话。",
     ).toEqual([]);
+  });
+
+  it("★★ 近似映射两边必须一致 —— perm-map.ts 的非恒等项 = NEAREST_CODE", () => {
+    /*
+     * 「界面功能没有独立端点」的那几条，两个地方都要用：
+     *   · 迁移里决定库中该功能点的 perm_code（菜单灰不灰）
+     *   · perm-map.ts 决定 can() 判不判得过（按钮显不显示）
+     *
+     * **两边各写一套的代价当场见到过**：第一版只有 perm-map 写了，
+     * 迁移按「不在细码里就 NULL」处理，于是「支付流水核对」菜单上灰着、
+     * 而 can() 判它可用 —— 浏览器点开权限树第一屏就看见了。
+     */
+    const src = readFileSync(join(ROOT, "ops-web/lib/perm-map.ts"), "utf8");
+    const nonIdentity: Record<string, string> = {};
+    for (const m of src.matchAll(/"([a-z][a-z:_-]*)":\s*"([a-z][a-z:_-]*)"/g)) {
+      if (m[1] !== m[2]) nonIdentity[m[1]] = m[2];
+    }
+    expect(nonIdentity).toEqual(NEAREST_CODE);
   });
 
   it("★ PUBLIC 里不能有已经不存在的端点 —— 名单本身也会过期", () => {

@@ -178,6 +178,27 @@ export const NO_UI_PREFIXES = [
   "/ops/merchants/{merchantNo}/store-modes",
 ];
 
+/**
+ * **界面功能没有独立端点时，映到覆盖它的那个码。**
+ *
+ * 这张表必须与 `ops-web/lib/perm-map.ts` 里的非恒等项逐条相同 ——
+ * 它决定两件事：库里那个功能点的 `perm_code`（菜单灰不灰）、
+ * 以及 `can()` 判不判得过（按钮显不显示）。
+ *
+ * **两边各写一套的代价当场见到过**：第一版只有 perm-map 写了，
+ * 迁移按「ui 码不在 68 个细码里 → NULL + NOT_IMPLEMENTED」处理，
+ * 于是「支付流水核对」在菜单上灰着、而 `can()` 判它可用 ——
+ * 浏览器点开权限树的第一屏就看见了。
+ *
+ * 守卫：`packages/shared/tests/ops-perm-matrix.test.ts` 逐条比对。
+ */
+export const NEAREST_CODE = {
+  "order:pay:read": "order:order:read",          // 支付流水核对：读的就是订单
+  "order:pay:repair": "order:order:modify",      // 掉单补偿 / 关单策略：走订单干预
+  "product:stock:update": "product:sku:audit",   // 预售额度与超卖：改的是商品
+  "category:manage": "product:category:update",  // 历史遗留的 ACTION 码
+};
+
 /** 端点 → 码；命中不了返回 null（守卫会把它报出来） */
 export function codeOf(method, path) {
   for (const [m, re, code] of RULES) {
