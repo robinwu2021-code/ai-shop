@@ -4,7 +4,7 @@
 手工维护追溯矩阵是没有意义的 —— 它一定会过期，而一份过期的追溯矩阵比没有更糟：
 它会让人以为「查过了，都覆盖了」。所以这里全部从各自的真源现算：
 
-  功能点/优先级  ← docs/technical/API清单.md 的矩阵 ID 列
+  功能点/优先级  ← docs/technical/reference/API清单.md 的矩阵 ID 列
   端点          ← docs/api/openapi.yaml（A1 契约）
   页面          ← c-app/src/api/endpoints.ts + pages/**（哪个页面调哪个契约方法）
   后端实现      ← backend/**/portal/**/*.java 的映射注解
@@ -23,7 +23,7 @@ import sys
 from collections import defaultdict
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
-OUT = ROOT / "docs/technical/追溯矩阵.md"
+OUT = ROOT / "docs/technical/reference/追溯矩阵.md"
 
 
 def norm(p):
@@ -35,7 +35,7 @@ def norm(p):
 def load_contract():
     """从 API 清单直接取，因为矩阵 ID 与优先级在那里最完整。"""
     rows = {}
-    for line in (ROOT / "docs/technical/API清单.md").read_text().splitlines():
+    for line in (ROOT / "docs/technical/reference/API清单.md").read_text().splitlines():
         if not line.startswith("|"):
             continue
         cells = [c.strip() for c in line.strip("|").split("|")]

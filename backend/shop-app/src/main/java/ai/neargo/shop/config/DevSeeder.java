@@ -14,6 +14,8 @@ import ai.neargo.shop.merchant.entity.MchEntity;
 import ai.neargo.shop.community.mapper.CommunityMappers.CommunityMapper;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper;
 import ai.neargo.shop.platform.entity.SysOpsStaff;
+import ai.neargo.shop.platform.perm.entity.SysRoleMember;
+import ai.neargo.shop.platform.perm.mapper.PermMappers.RoleMemberMapper;
 import ai.neargo.shop.platform.mapper.PlatformMappers.StaffMapper;
 import ai.neargo.shop.community.mapper.CommunityMappers.PickupPointMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -46,6 +48,7 @@ public class DevSeeder {
                                  MchEntityMapper merchantMapper, GoodsMapper goodsMapper,
                                  SkuMapper skuMapper, CommunityPoolMapper poolMapper,
                                  CategoryMapper categoryMapper, StaffMapper staffMapper,
+                                 RoleMemberMapper roleMemberMapper,
                                  ai.neargo.shop.merchant.mapper.MerchantMappers.SysAuthCodeMapper authCodeMapper,
                                  ai.neargo.shop.platform.mapper.PlatformMappers.SettingMapper settingMapper,
                                  // 平台员工是 staffMapper，商家子账号是 merchantStaffMapper —— 两套人，别混
@@ -62,7 +65,7 @@ public class DevSeeder {
              *
              * seedStaff 自己按 username 判存在性，重复调用是安全的。
              */
-            seedStaffs(staffMapper);
+            seedStaffs(staffMapper, roleMemberMapper);
 
             if (communityMapper.selectCount(Wrappers.emptyWrapper()) > 0) {
                 return;   // 幂等：重启不重复灌
@@ -188,11 +191,11 @@ public class DevSeeder {
 
     /** 运营种子账号。**按岗位分角色**，没有「运营」这种什么都能干的大角色 ——
      *  一个能审商家又能改价又能退款的角色，出事时无法定位是谁的职责。 */
-    private void seedStaffs(StaffMapper staffMapper) {
-            seedStaff(staffMapper, "admin", "超级管理员", "[\"SUPER_ADMIN\"]", "admin123");
-            seedStaff(staffMapper, "bd", "商家运营", "[\"BD\"]", "bd123");
-            seedStaff(staffMapper, "goods", "商品运营", "[\"GOODS_OPS\"]", "goods123");
-            seedStaff(staffMapper, "support", "客服", "[\"SUPPORT\"]", "support123");
+    private void seedStaffs(StaffMapper staffMapper, RoleMemberMapper roleMemberMapper) {
+            seedStaff(staffMapper, roleMemberMapper, "admin", "超级管理员", "[\"SUPER_ADMIN\"]", "admin123");
+            seedStaff(staffMapper, roleMemberMapper, "bd", "商家运营", "[\"BD\"]", "bd123");
+            seedStaff(staffMapper, roleMemberMapper, "goods", "商品运营", "[\"GOODS_OPS\"]", "goods123");
+            seedStaff(staffMapper, roleMemberMapper, "support", "客服", "[\"SUPPORT\"]", "support123");
             /*
              * 矩阵 §2.3 另外七个岗位（后端 2026-08-11 补齐权限配置）。
              *
@@ -200,19 +203,21 @@ public class DevSeeder {
              * 而这件事之所以能一直存在，正是因为没人能登进去看一眼。
              * 有账号才验得了「这个岗位登录后到底看得见什么」。
              */
-            seedStaff(staffMapper, "campaign", "活动运营", "[\"CAMPAIGN_OPS\"]", "campaign123");
-            seedStaff(staffMapper, "community", "社区运营", "[\"COMMUNITY_OPS\"]", "community123");
-            seedStaff(staffMapper, "auditor", "审核员", "[\"AUDITOR\"]", "auditor123");
-            seedStaff(staffMapper, "finance", "财务", "[\"FINANCE\"]", "finance123");
-            seedStaff(staffMapper, "risk", "风控", "[\"RISK\"]", "risk123");
-            seedStaff(staffMapper, "analyst", "数据分析", "[\"ANALYST\"]", "analyst123");
-            seedStaff(staffMapper, "techops", "技术运维", "[\"TECH_OPS\"]", "techops123");
+            seedStaff(staffMapper, roleMemberMapper, "campaign", "活动运营", "[\"CAMPAIGN_OPS\"]", "campaign123");
+            seedStaff(staffMapper, roleMemberMapper, "community", "社区运营", "[\"COMMUNITY_OPS\"]", "community123");
+            seedStaff(staffMapper, roleMemberMapper, "auditor", "审核员", "[\"AUDITOR\"]", "auditor123");
+            seedStaff(staffMapper, roleMemberMapper, "finance", "财务", "[\"FINANCE\"]", "finance123");
+            seedStaff(staffMapper, roleMemberMapper, "risk", "风控", "[\"RISK\"]", "risk123");
+            seedStaff(staffMapper, roleMemberMapper, "analyst", "数据分析", "[\"ANALYST\"]", "analyst123");
+            seedStaff(staffMapper, roleMemberMapper, "techops", "技术运维", "[\"TECH_OPS\"]", "techops123");
     }
 
-    private void seedStaff(StaffMapper mapper, String username, String realName,
+    private void seedStaff(StaffMapper mapper, RoleMemberMapper roleMemberMapper,
+                           String username, String realName,
                            String rolesJson, String rawPassword) {
         var s = new SysOpsStaff();
-        s.setStaffNo("ST-" + username.toUpperCase());
+        String staffNo = "ST-" + username.toUpperCase();
+        s.setStaffNo(staffNo);
         s.setUsername(username);
         s.setPassword(ai.neargo.shop.platform.impl.OpsServiceImpl.hash(rawPassword));
         s.setRealName(realName);
@@ -222,6 +227,38 @@ public class DevSeeder {
                 .<SysOpsStaff>lambdaQuery().eq(SysOpsStaff::getUsername, username)) == 0) {
             mapper.insert(s);
         }
+        /*
+         * 同步写 sys_role_member。
+         *
+         * **员工与他的角色是同一件事，分两处写必然漏一处** ——
+         * V62 里那条 `INSERT ... SELECT FROM sys_ops_staff` 在迁移时跑，
+         * 而员工是应用启动后由本类写的：迁移执行时表还是空的，一行都插不出来。
+         * 那一版的症状是「BD 登录后菜单全空」，而库里角色配置看着完全正常。
+         */
+        for (String role : rolesJson.replace("[", "").replace("]", "")
+                .replace("\"", "").split(",")) {
+            String r = role.trim();
+            if (!r.isEmpty()) {
+                seedRoleMember(roleMemberMapper, staffNo, r);
+            }
+        }
+    }
+
+    private void seedRoleMember(RoleMemberMapper roleMemberMapper, String staffNo,
+                                String roleCode) {
+        var w = com.baomidou.mybatisplus.core.toolkit.Wrappers.<SysRoleMember>lambdaQuery()
+                .eq(SysRoleMember::getEndCode, "OPS")
+                .eq(SysRoleMember::getSubjectNo, staffNo)
+                .eq(SysRoleMember::getRoleCode, roleCode);
+        if (roleMemberMapper.selectCount(w) > 0) {
+            return;
+        }
+        var m = new SysRoleMember();
+        m.setEndCode("OPS");
+        m.setSubjectNo(staffNo);
+        m.setRoleCode(roleCode);
+        m.setGrantedAt(System.currentTimeMillis());
+        roleMemberMapper.insert(m);
     }
 
     private void seedSetting(ai.neargo.shop.platform.mapper.PlatformMappers.SettingMapper mapper,

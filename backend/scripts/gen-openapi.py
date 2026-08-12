@@ -17,7 +17,7 @@ import pathlib
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
-API_LIST = ROOT / "docs/technical/API清单.md"
+API_LIST = ROOT / "docs/technical/reference/API清单.md"
 OUT = ROOT / "docs/api/openapi.yaml"
 
 # ---------------------------------------------------------------- 端点抽取
@@ -720,7 +720,7 @@ def build():
             "title": "ai-shop 服务端 API",
             "version": "0.1.0",
             "description": (
-                "由 docs/technical/API清单.md 生成（backend/scripts/gen-openapi.py）。\n"
+                "由 docs/technical/reference/API清单.md 生成（backend/scripts/gen-openapi.py）。\n"
                 "响应包统一 {code,msg,data}，分页 {records,total,page,size}。\n"
                 f"端点 {len(endpoints)} 条，其中字段级 schema 已定义 {len(endpoints)-todo} 条、"
                 f"待定义 {todo} 条（随各模块「契约冻结」步骤补齐）。"),

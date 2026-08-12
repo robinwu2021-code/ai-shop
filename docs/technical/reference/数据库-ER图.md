@@ -5,17 +5,17 @@
 
 ## 一、总览
 
-全库 **76** 张表、**134** 条引用关系，分 **12** 个域。
+全库 **85** 张表、**139** 条引用关系，分 **12** 个域。
 按「被引用次数」分三条带 —— **不是有向无环图**：域之间存在环
 （`cmt → mkt → usr → cmt`），强行分层会画错。
 
-![数据库域总览](../diagrams/db-overview.svg)
+![数据库域总览](./diagrams/db-overview.svg)
 
 | 域 | 前缀 | 表数 | 被几个域引用 |
 |---|---|---:|---:|
 | 用户与商家 | `usr_*` | 4 | 10 |
-| 社区与自提点 | `cmt_*` | 3 | 7 |
-| 商品与类目 | `prd_*` | 8 | 4 |
+| 社区与自提点 | `cmt_*` | 3 | 8 |
+| 商品与类目 | `prd_*` | 8 | 5 |
 | 购物车 | `trd_*` | 1 | 0 |
 | 交易 | `ord_*` | 5 | 6 |
 | 履约 | `ful_*` | 3 | 0 |
@@ -24,7 +24,7 @@
 | 结算 | `stl_*` | 6 | 0 |
 | 评价 | `rvw_*` | 3 | 0 |
 | 消息与客服 | `msg_*` | 4 | 0 |
-| 系统 | `sys_*` | 11 | 0 |
+| 系统 | `sys_*` | 16 | 0 |
 
 > `usr` 被 10 个域引用 —— 它是全库的锚点。改它的主键或语义，影响面是全局的。
 
@@ -32,7 +32,7 @@
 
 ### 用户与商家 `usr_*`（4 张）
 
-![用户与商家表关系](../diagrams/db-usr.svg)
+![用户与商家表关系](./diagrams/db-usr.svg)
 
 | 表 | 说明 |
 |---|---|
@@ -45,7 +45,7 @@
 
 ### 社区与自提点 `cmt_*`（3 张）
 
-![社区与自提点表关系](../diagrams/db-cmt.svg)
+![社区与自提点表关系](./diagrams/db-cmt.svg)
 
 | 表 | 说明 |
 |---|---|
@@ -57,7 +57,7 @@
 
 ### 商品与类目 `prd_*`（8 张）
 
-![商品与类目表关系](../diagrams/db-prd.svg)
+![商品与类目表关系](./diagrams/db-prd.svg)
 
 | 表 | 说明 |
 |---|---|
@@ -74,7 +74,7 @@
 
 ### 购物车 `trd_*`（1 张）
 
-![购物车表关系](../diagrams/db-trd.svg)
+![购物车表关系](./diagrams/db-trd.svg)
 
 | 表 | 说明 |
 |---|---|
@@ -84,7 +84,7 @@
 
 ### 交易 `ord_*`（5 张）
 
-![交易表关系](../diagrams/db-ord.svg)
+![交易表关系](./diagrams/db-ord.svg)
 
 | 表 | 说明 |
 |---|---|
@@ -98,7 +98,7 @@
 
 ### 履约 `ful_*`（3 张）
 
-![履约表关系](../diagrams/db-ful.svg)
+![履约表关系](./diagrams/db-ful.svg)
 
 | 表 | 说明 |
 |---|---|
@@ -110,7 +110,7 @@
 
 ### 营销与团购 `mkt_*`（12 张）
 
-![营销与团购表关系](../diagrams/db-mkt.svg)
+![营销与团购表关系](./diagrams/db-mkt.svg)
 
 | 表 | 说明 |
 |---|---|
@@ -131,7 +131,7 @@
 
 ### 积分 `pts_*`（2 张）
 
-![积分表关系](../diagrams/db-pts.svg)
+![积分表关系](./diagrams/db-pts.svg)
 
 | 表 | 说明 |
 |---|---|
@@ -142,7 +142,7 @@
 
 ### 结算 `stl_*`（6 张）
 
-![结算表关系](../diagrams/db-stl.svg)
+![结算表关系](./diagrams/db-stl.svg)
 
 | 表 | 说明 |
 |---|---|
@@ -157,7 +157,7 @@
 
 ### 评价 `rvw_*`（3 张）
 
-![评价表关系](../diagrams/db-rvw.svg)
+![评价表关系](./diagrams/db-rvw.svg)
 
 | 表 | 说明 |
 |---|---|
@@ -169,7 +169,7 @@
 
 ### 消息与客服 `msg_*`（4 张）
 
-![消息与客服表关系](../diagrams/db-msg.svg)
+![消息与客服表关系](./diagrams/db-msg.svg)
 
 | 表 | 说明 |
 |---|---|
@@ -180,9 +180,9 @@
 
 **跨域引用**：`msg_message.user_no` → `usr_account`、`msg_subscribe.user_no` → `usr_account`、`msg_ticket.user_no` → `usr_account`、`msg_ticket.order_no` → `ord_order`
 
-### 系统 `sys_*`（11 张）
+### 系统 `sys_*`（16 张）
 
-![系统表关系](../diagrams/db-sys.svg)
+![系统表关系](./diagrams/db-sys.svg)
 
 | 表 | 说明 |
 |---|---|
@@ -197,8 +197,13 @@
 | `sys_auth_code` | 类目授权码：按码授权，不按类目节点 |
 | `sys_setting` | 平台可调参数：一行一组，值为 JSON |
 | `sys_region` | 行政区划：省/市/区县/街道四级，国家统计局口径 |
+| `sys_function` | 功能（菜单分区） |
+| `sys_function_point` | 功能点（菜单叶子 / 可授权的最小动作） |
+| `sys_role` | 角色 |
+| `sys_role_point` | 角色 × 功能点。**后端未实现的功能点照样建关联** —— 补齐那天翻个状态就能用，不用重配角色 |
+| `sys_role_member` | 人员 × 角色。**唯一键含 role_code —— 这就是「一人多角色」的落点**。B 端真源仍是 mch_store_role（V18 已为多角色放宽唯一键），这里只装运营端 |
 
-**跨域引用**：`sys_idempotent.user_no` → `usr_account`、`sys_ops_staff.merchant_no` → `mch_entity`、`sys_ops_staff.community_no` → `cmt_community`、`sys_ops_staff.pickup_no` → `cmt_pickup_point`
+**跨域引用**：`sys_idempotent.user_no` → `usr_account`、`sys_ops_staff.merchant_no` → `mch_entity`、`sys_ops_staff.community_no` → `cmt_community`、`sys_ops_staff.pickup_no` → `cmt_pickup_point`、`sys_role.entity_no` → `mch_entity`、`sys_role_point.entity_no` → `mch_entity`
 
 ## 三、逐表详情
 
