@@ -195,6 +195,140 @@ class OpsPermConfigFlowTest {
         }
     }
 
+    // ---------------------------------------------------------------- 菜单排序
+
+    /** 某个 function 下的菜单点顺序（按 sort）。 */
+    private List<String> pointOrder(String functionCode) {
+        return jdbc.queryForList("""
+                SELECT point_code FROM sys_function_point
+                 WHERE function_code = ? AND point_type = 'MENU' ORDER BY sort, id""",
+                String.class, functionCode);
+    }
+
+    @Test
+    @DisplayName("★★★ 下移/上移只与相邻项换位，且**只影响同级** —— 别的分区顺序一动不动")
+    void movePointSwapsWithNeighbourOnly() throws Exception {
+        String admin = opsLogin("admin", "admin123");
+        List<String> before = pointOrder("OPS_MERCHANT");
+        assertThat(before.size()).as("前置条件：商家域应当有多个菜单点").isGreaterThan(2);
+        List<String> otherBefore = pointOrder("OPS_ORDER");
+
+        mvc().perform(post("/ops/perm/points/" + before.get(0) + "/move")
+                        .header("Authorization", "Bearer " + admin)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"direction\":\"DOWN\"}"))
+                .andExpect(jsonPath("$.code").value(0));
+
+        List<String> after = pointOrder("OPS_MERCHANT");
+        List<String> expected = new java.util.ArrayList<>(before);
+        java.util.Collections.swap(expected, 0, 1);
+        assertThat(after).as("首项下移之后应当与第二项互换，其余不动").isEqualTo(expected);
+        assertThat(pointOrder("OPS_ORDER")).as("别的分区不该被牵动").isEqualTo(otherBefore);
+
+        // 还原：整套共享一份库，不还原会让后面依赖顺序的用例莫名其妙
+        mvc().perform(post("/ops/perm/points/" + before.get(0) + "/move")
+                .header("Authorization", "Bearer " + admin)
+                .contentType(MediaType.APPLICATION_JSON).content("{\"direction\":\"UP\"}"));
+        assertThat(pointOrder("OPS_MERCHANT")).isEqualTo(before);
+    }
+
+    @Test
+    @DisplayName("★★ 首项上移 / 末项下移是 no-op —— 不报错，也不打乱顺序")
+    void moveAtBoundaryIsNoop() throws Exception {
+        String admin = opsLogin("admin", "admin123");
+        List<String> before = pointOrder("OPS_MERCHANT");
+
+        for (String[] c : new String[][]{{before.get(0), "UP"},
+                                         {before.get(before.size() - 1), "DOWN"}}) {
+            mvc().perform(post("/ops/perm/points/" + c[0] + "/move")
+                            .header("Authorization", "Bearer " + admin)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"direction\":\"%s\"}".formatted(c[1])))
+                    // 「已经到头了」不是错误：做成报错只会让人以为自己点坏了什么
+                    .andExpect(jsonPath("$.code").value(0));
+        }
+        assertThat(pointOrder("OPS_MERCHANT")).as("边界操作不该改变任何顺序").isEqualTo(before);
+    }
+
+    @Test
+    @DisplayName("★★★ 调完序 /ops/menu 立刻是新顺序 —— 不用重启、不用重登")
+    void reorderTakesEffectImmediately() throws Exception {
+        String admin = opsLogin("admin", "admin123");
+        List<String> before = pointOrder("OPS_MERCHANT");
+        try {
+            mvc().perform(post("/ops/perm/points/" + before.get(0) + "/move")
+                    .header("Authorization", "Bearer " + admin)
+                    .contentType(MediaType.APPLICATION_JSON).content("{\"direction\":\"DOWN\"}"));
+
+            String body = mvc().perform(get("/ops/menu").header("Authorization", "Bearer " + admin))
+                    .andReturn().getResponse().getContentAsString();
+            var merchant = json.readTree(body).path("data").valueStream()
+                    .filter(f -> "OPS_MERCHANT".equals(f.path("functionCode").asString()))
+                    .findFirst().orElseThrow();
+            List<String> fromApi = merchant.path("points").valueStream()
+                    .map(x -> x.path("pointCode").asString()).toList();
+            assertThat(fromApi.indexOf(before.get(1)))
+                    .as("换到前面的那一项，接口返回里也应当排在前面 —— "
+                            + "不然就是菜单还在读某个缓存")
+                    .isLessThan(fromApi.indexOf(before.get(0)));
+        } finally {
+            mvc().perform(post("/ops/perm/points/" + before.get(0) + "/move")
+                    .header("Authorization", "Bearer " + admin)
+                    .contentType(MediaType.APPLICATION_JSON).content("{\"direction\":\"UP\"}"));
+        }
+        assertThat(pointOrder("OPS_MERCHANT")).isEqualTo(before);
+    }
+
+    @Test
+    @DisplayName("★★★ 改权限**不用重登**就生效 —— 同一个 token，改配置前后判权结果不同")
+    void permChangeTakesEffectWithoutRelogin() throws Exception {
+        /*
+         * 这条守的是 2026-08-12 那次改造：判权从「会话里的 perms 快照」改成
+         * 由 LivePermResolver 现算。
+         *
+         * **为什么必须不重登**：动态菜单（GET /ops/menu）是每次现查库的。
+         * 判权若仍停在登录那一刻的快照上，两者就不同源 ——
+         * 菜单刷新之后会出现「菜单里有，点进去 403」，
+         * 而那比看不见那一项更糟：用户以为功能坏了，不是以为自己没权限。
+         *
+         * 上面 permsComeFromDb 那条**证明不了**这件事：它每次都重新登录，
+         * 因此登录时重算快照也能让它绿。差别就在这一个 token 上。
+         */
+        String bd = opsLogin("bd", "bd123");   // ← 全程只登录这一次
+
+        // 判权拒绝走统一响应包：HTTP 恒 200，码是 10403。断言状态码会永远绿（见 riskCannotDecideAfterSale）
+        assertThat(breachCode(bd)).as("前置条件：BD 本应能进这个端点").isNotEqualTo(10403);
+
+        jdbc.update("""
+                DELETE FROM sys_role_point WHERE role_code = 'BD' AND point_code IN
+                  (SELECT point_code FROM sys_function_point WHERE perm_code = 'group:demand:assign')""");
+        resolver.invalidate();
+        try {
+            assertThat(breachCode(bd))
+                    .as("同一个 token、没重登，判权就该按新配置拒绝 —— "
+                            + "仍能进说明判权还在读登录那一刻的会话快照")
+                    .isEqualTo(10403);
+        } finally {
+            jdbc.update("""
+                    INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+                    SELECT 'BD', point_code, 'OPS', NOW(), NOW() FROM sys_function_point
+                     WHERE perm_code = 'group:demand:assign'""");
+            resolver.invalidate();
+        }
+
+        // 加回来之后同一个 token 又能进 —— **放宽也要即时生效**，不只是收紧。
+        // 只验收紧的话，一个「拒绝一切」的实现也能让这条测试绿。
+        assertThat(breachCode(bd)).as("恢复授权后同一个 token 应当又能进").isNotEqualTo(10403);
+    }
+
+    /** 打一个需要 group:demand:assign 的端点，返回统一响应包里的业务码。 */
+    private int breachCode(String token) throws Exception {
+        String body = mvc().perform(post("/ops/quotes/NOPE/breach")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"detail\":\"x\"}"))
+                .andReturn().getResponse().getContentAsString();
+        return json.readTree(body).path("code").asInt();
+    }
+
     @Test
     @DisplayName("★★★ 风控不能裁决售后 —— 阶段 B 收紧的那条，用 403 钉住而不是靠矩阵纸面")
     void riskCannotDecideAfterSale() throws Exception {

@@ -292,6 +292,97 @@ public class PermConfigServiceImpl implements PermConfigService {
                 objectMapper.writeValueAsString(Map.of("name", r.getName(), "roleCode", roleCode)), null);
     }
 
+    // ---------------------------------------------------------------- 菜单排序
+
+    /**
+     * 同级内与相邻项**交换 sort**。
+     *
+     * <p>交换而不是「重排整段」：只写两行，并发下最坏结果是两次交换互相抵消，
+     * 不会把整段顺序搅乱。运营端并发调菜单顺序的概率极低，为它引乐观锁不值。
+     *
+     * @param siblings 同级全部项，**已按当前 sort 排好**
+     * @param idxOf    取某项的 sort
+     * @param setOf    写回 sort
+     * @return 是否真的换了位（边界上返回 false）
+     */
+    private static <T> boolean swapAdjacent(List<T> siblings, T self, MoveDirection dir,
+                                            java.util.function.ToIntFunction<T> idxOf,
+                                            java.util.function.ObjIntConsumer<T> setOf) {
+        int i = siblings.indexOf(self);
+        int j = dir == MoveDirection.UP ? i - 1 : i + 1;
+        if (i < 0 || j < 0 || j >= siblings.size()) {
+            // 已经到头了。**不抛错** —— 把「到顶了」做成错误提示，只会让人以为点坏了什么
+            return false;
+        }
+        T other = siblings.get(j);
+        int a = idxOf.applyAsInt(self);
+        int b = idxOf.applyAsInt(other);
+        /*
+         * 两项 sort 相同时（老数据、或人为改库）交换等于没换，会表现成「按钮点了没反应」。
+         * 用「插到对方另一侧」来兜底：给自己一个必然落在对方另一边的值。
+         */
+        if (a == b) {
+            a = dir == MoveDirection.UP ? b - 1 : b + 1;
+        }
+        setOf.accept(self, b);
+        setOf.accept(other, a);
+        return true;
+    }
+
+    @Override
+    @Transactional
+    public void moveFunction(String functionCode, MoveDirection direction, String operatorNo) {
+        List<SysFunction> siblings = functionMapper.selectList(Wrappers.<SysFunction>lambdaQuery()
+                .eq(SysFunction::getEndCode, OPS).orderByAsc(SysFunction::getSort));
+        SysFunction self = siblings.stream().filter(f -> functionCode.equals(f.getFunctionCode()))
+                .findFirst().orElseThrow(() -> BizException.of(ErrorCode.NOT_FOUND));
+        if (!swapAdjacent(siblings, self, direction, SysFunction::getSort, SysFunction::setSort)) {
+            return;
+        }
+        int j = siblings.indexOf(self) + (direction == MoveDirection.UP ? -1 : 1);
+        functionMapper.updateById(self);
+        functionMapper.updateById(siblings.get(j));
+        afterReorder("PERM_FUNCTION_MOVE", functionCode, self.getName(), direction);
+    }
+
+    @Override
+    @Transactional
+    public void movePoint(String pointCode, MoveDirection direction, String operatorNo) {
+        SysFunctionPoint me = pointMapper.selectOne(Wrappers.<SysFunctionPoint>lambdaQuery()
+                .eq(SysFunctionPoint::getPointCode, pointCode).last("LIMIT 1"));
+        if (me == null) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        // 同级 = 同一个 function 下、且同为菜单项。ACTION 是页面内按钮，不参与菜单排序
+        List<SysFunctionPoint> siblings = pointMapper.selectList(
+                Wrappers.<SysFunctionPoint>lambdaQuery()
+                        .eq(SysFunctionPoint::getFunctionCode, me.getFunctionCode())
+                        .eq(SysFunctionPoint::getPointType, me.getPointType())
+                        .orderByAsc(SysFunctionPoint::getSort));
+        SysFunctionPoint self = siblings.stream()
+                .filter(x -> pointCode.equals(x.getPointCode())).findFirst().orElseThrow();
+        if (!swapAdjacent(siblings, self, direction,
+                SysFunctionPoint::getSort, SysFunctionPoint::setSort)) {
+            return;
+        }
+        int j = siblings.indexOf(self) + (direction == MoveDirection.UP ? -1 : 1);
+        pointMapper.updateById(self);
+        pointMapper.updateById(siblings.get(j));
+        afterReorder("PERM_POINT_MOVE", pointCode, self.getName(), direction);
+    }
+
+    /**
+     * 调序之后要做的两件事。
+     *
+     * <p><b>清缓存但不踢会话</b>：顺序变了，「谁能干什么」一点没变 ——
+     * 踢会话会把一次纯展示改动变成全员重新登录（与 renameRole 同一条判断）。
+     * 端上下一次拉 /ops/menu（最多 60 秒）就看到新顺序。
+     */
+    private void afterReorder(String action, String code, String name, MoveDirection dir) {
+        resolver.invalidate();
+        auditLogPort.record(action, code, "%s %s".formatted(name, dir == MoveDirection.UP ? "上移" : "下移"));
+    }
+
     private SysRole find(String roleCode) {
         return roleMapper.selectOne(Wrappers.<SysRole>lambdaQuery()
                 .eq(SysRole::getEndCode, OPS).eq(SysRole::getRoleCode, roleCode).last("LIMIT 1"));

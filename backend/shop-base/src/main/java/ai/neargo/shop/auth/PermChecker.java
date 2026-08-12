@@ -1,19 +1,20 @@
 package ai.neargo.shop.auth;
 
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Component;
 
 /**
  * 权限判定门面，供 {@code @PreAuthorize} 使用。<b>两端两个方法，刻意不合并</b>：
  *
  * <ul>
- *   <li>{@link #can(String)} —— 运营端（{@code /ops}）。看会话里的权限码快照</li>
+ *   <li>{@link #can(String)} —— 运营端（{@code /ops}）。按会话里的角色**现算**权限码</li>
  *   <li>{@link #canBiz(String)} —— B 端（{@code /biz}）。看<b>当前门店</b>上的角色</li>
  * </ul>
  *
  * <p>C 端没有 RBAC（只有属主鉴权），不该调用这里。
  *
  * <p>为什么不合成一个 {@code can}：两端的判定<b>数据源不同</b> ——
- * 运营端读 token 里的权限码，B 端读 {@code BizContext} 里按门店解析的角色。
+ * 运营端读 {@link LivePermResolver}（库里的角色→功能点），B 端读 {@code BizContext} 里按门店解析的角色。
  * 合成一个方法就得在里面按 realm 分岔，而那意味着「传错了码」只会静默返回 false，
  * 表现为按钮神秘消失。分成两个，传错了是编译期或一眼可见的错误。
  */
@@ -23,18 +24,47 @@ public class PermChecker {
     /** 超管通配：一个码顶所有。生产要谨慎发放。 */
     private static final String WILDCARD = "*";
 
-    /** 运营端权限码（{@link Perms}）。 */
+    private final ObjectProvider<LivePermResolver> liveResolver;
+
+    public PermChecker(ObjectProvider<LivePermResolver> liveResolver) {
+        this.liveResolver = liveResolver;
+    }
+
+    /**
+     * 运营端权限码（{@link Perms}）。
+     *
+     * <p><b>权限码现算，不读会话快照</b> —— 改了角色配置，下一个请求就是新权限，
+     * 不必等这个人重新登录。理由与回落策略见 {@link LivePermResolver}。
+     */
     public boolean can(String code) {
         LoginUser user = SecurityUtils.currentUser().orElse(null);
         if (user == null || user.realm() != Realm.OPERATOR) {
             // 非运营会话一律拒绝：C 端 token 不该因为「碰巧没有这个权限码」而落到这里
             return false;
         }
-        var perms = user.perms();
+        var perms = livePerms(user);
         if (perms == null || perms.isEmpty()) {
             return false;
         }
         return perms.contains(WILDCARD) || perms.contains(code);
+    }
+
+    /**
+     * 现算权限码；解析不出就用会话里的快照。
+     *
+     * <p>回落而不是拒绝：解析器没装上（单测、裁剪部署）时应当退回旧行为，
+     * 而不是让所有运营的后台一起变空 —— 后者看起来像「系统坏了」，
+     * 且**没有任何报错**能指向真正的原因。
+     */
+    private java.util.List<String> livePerms(LoginUser user) {
+        var roles = user.roles();
+        if (roles != null && !roles.isEmpty()) {
+            var live = liveResolver.getIfAvailable(() -> LivePermResolver.NONE).resolve(roles);
+            if (live != null) {
+                return live;
+            }
+        }
+        return user.perms();
     }
 
     /**

@@ -35,16 +35,24 @@ import java.util.concurrent.atomic.AtomicReference;
  * 换数据源之后行为不变是<b>可验证的</b>，而不是靠人读代码确认。
  */
 @Component
-public class RolePermResolver {
+public class RolePermResolver implements ai.neargo.shop.auth.LivePermResolver {
 
     /**
      * 整表快照，一次读完。
      *
-     * <p>数据量是「角色数 × 功能点数」几百行，且**每次登录都要用** ——
-     * 逐次查库会让登录多两次往返。缓存整表而不是按角色缓存：
+     * <p>数据量是「角色数 × 功能点数」几百行，且**每个请求判权都要用**
+     * （2026-08-12 判权从会话快照改成现算之后）—— 逐次查库等于每次 @PreAuthorize
+     * 都打一趟数据库。缓存整表而不是按角色缓存：
      * 按角色缓存要处理「这个角色查过没有」，而整表只有「有没有加载过」。
+     *
+     * <p><b>通配角色一起缓存</b>：此前 {@code isWildcard} 每个角色查一次 {@code sys_role}，
+     * 在「每次登录」的口径下只是多两次往返，改成现算之后就是**每个请求每个角色一次查库**
+     * —— 缓存整表却在旁边留一条逐次查询，等于没缓存。
      */
-    private final AtomicReference<Map<String, Set<String>>> cache = new AtomicReference<>();
+    private record Snapshot(Map<String, Set<String>> byRole, Set<String> wildcardRoles) {
+    }
+
+    private final AtomicReference<Snapshot> cache = new AtomicReference<>();
 
     private final RolePointMapper rolePointMapper;
     private final FunctionPointMapper pointMapper;
@@ -62,15 +70,15 @@ public class RolePermResolver {
         if (roles == null || roles.isEmpty()) {
             return List.of();
         }
+        Snapshot snap = snapshot();
         // 通配角色直接短路：它的语义是「全部」，展开成一组具体码会漏掉将来新加的码
-        if (roles.stream().anyMatch(this::isWildcard)) {
+        if (roles.stream().anyMatch(snap.wildcardRoles()::contains)) {
             return List.of("*");
         }
-        Map<String, Set<String>> map = snapshot();
         Set<String> out = new LinkedHashSet<>();
         boolean anyFromDb = false;
         for (String r : roles) {
-            Set<String> codes = map.get(r);
+            Set<String> codes = snap.byRole().get(r);
             if (codes != null && !codes.isEmpty()) {
                 out.addAll(codes);
                 anyFromDb = true;
@@ -81,27 +89,38 @@ public class RolePermResolver {
     }
 
     /**
+     * {@link LivePermResolver} 实现：判权时现算权限码。
+     *
+     * <p>与 {@link #of} 同一份实现，只是签名上属于 shop-base 的 SPI。
+     * 这里**不返回 null** —— {@code of()} 自带「库里没有就回落 Perms.of」的兜底，
+     * 已经比会话快照更新，没有必要再让调用方退回更旧的那一份。
+     */
+    @Override
+    public List<String> resolve(List<String> roles) {
+        return of(roles);
+    }
+
+    /**
      * 配置变更后清缓存。
      *
-     * <p>改角色的功能点、增删角色时调它。**目前没有写接口**，
-     * 所以它只在测试与将来的配置页用得上 —— 先留出口，
-     * 免得那天临时去想「缓存怎么失效」。
+     * <p>改角色的功能点、增删角色时调它（{@code PermConfigServiceImpl} 两处写接口都在调）。
+     *
+     * <p>判权改成现算之后，这一步**就是「实时生效」本身** ——
+     * 清完缓存，下一个请求判权拿到的就是新配置，不必等谁重新登录。
      */
     public void invalidate() {
         cache.set(null);
     }
 
-    private boolean isWildcard(String role) {
-        SysRole r = roleMapper.selectOne(Wrappers.<SysRole>lambdaQuery()
-                .eq(SysRole::getRoleCode, role).eq(SysRole::getEndCode, "OPS").last("LIMIT 1"));
-        return r != null && Boolean.TRUE.equals(r.getWildcard());
-    }
-
-    private Map<String, Set<String>> snapshot() {
-        Map<String, Set<String>> cached = cache.get();
+    private Snapshot snapshot() {
+        Snapshot cached = cache.get();
         if (cached != null) {
             return cached;
         }
+        Set<String> wildcards = roleMapper.selectList(Wrappers.<SysRole>lambdaQuery()
+                        .eq(SysRole::getEndCode, "OPS"))
+                .stream().filter(r -> Boolean.TRUE.equals(r.getWildcard()))
+                .map(SysRole::getRoleCode).collect(java.util.stream.Collectors.toSet());
         // point_code → perm_code（null 的点不进：它们是「不受权限约束」或「后端未实现」，
         // 两种都不该变成一个权限码）
         Map<String, String> permOfPoint = new HashMap<>();
@@ -118,7 +137,8 @@ public class RolePermResolver {
                 byRole.computeIfAbsent(rp.getRoleCode(), k -> new LinkedHashSet<>()).add(perm);
             }
         }
-        cache.set(byRole);
-        return byRole;
+        Snapshot snap = new Snapshot(byRole, wildcards);
+        cache.set(snap);
+        return snap;
     }
 }

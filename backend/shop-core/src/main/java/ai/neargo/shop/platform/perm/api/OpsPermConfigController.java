@@ -83,6 +83,30 @@ public class OpsPermConfigController {
                 SecurityUtils.currentUserNo());
     }
 
+    // ---------------------------------------------------------------- 菜单排序
+
+    /**
+     * 菜单分区上移 / 下移。
+     *
+     * <p>挂 {@code IAM_ROLE_GRANT}：能配权限的人才该动菜单结构。
+     * 排序影响**所有人**看到的菜单，不是个人偏好。
+     */
+    @PostMapping("/ops/perm/functions/{functionCode}/move")
+    @PreAuthorize("@perm.can('" + Perms.IAM_ROLE_GRANT + "')")
+    public void moveFunction(@PathVariable String functionCode, @RequestBody MoveReq req) {
+        permConfigService.moveFunction(functionCode, req.direction(), SecurityUtils.currentUserNo());
+    }
+
+    /** 功能点（菜单叶子 / 页面 tab）上移 / 下移。 */
+    @PostMapping("/ops/perm/points/{pointCode}/move")
+    @PreAuthorize("@perm.can('" + Perms.IAM_ROLE_GRANT + "')")
+    public void movePoint(@PathVariable String pointCode, @RequestBody MoveReq req) {
+        permConfigService.movePoint(pointCode, req.direction(), SecurityUtils.currentUserNo());
+    }
+
+    public record MoveReq(PermConfigService.MoveDirection direction) {
+    }
+
     /** 设置角色的功能点（整体替换）。**预置角色拒绝修改**。 */
     @PostMapping("/ops/perm/roles/{roleCode}/points")
     @PreAuthorize("@perm.can('" + Perms.IAM_ROLE_GRANT + "')")

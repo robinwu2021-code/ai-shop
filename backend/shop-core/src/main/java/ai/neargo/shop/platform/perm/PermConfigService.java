@@ -77,6 +77,24 @@ public interface PermConfigService {
      */
     void deleteRole(String roleCode, String operatorNo);
 
+    /** 上移 / 下移的方向。只在**同级内换位**，不跨组。 */
+    enum MoveDirection { UP, DOWN }
+
+    /**
+     * 调整菜单分区（L1）的顺序。
+     *
+     * <p><b>只在同级内与相邻项换位</b>，不允许跨组移动 —— 跨组等于改 function_code /
+     * group_name，那是**改菜单结构**，应当走 nav.ts → 生成器 → 迁移这条链路，
+     * 而不是在配置页上点两下就改掉。
+     *
+     * <p>已在边界（首项上移 / 末项下移）时是 no-op，不报错：把「已经到头了」
+     * 做成错误提示，只会让人以为自己点坏了什么。
+     */
+    void moveFunction(String functionCode, MoveDirection direction, String operatorNo);
+
+    /** 调整功能点（菜单叶子 / tab）的顺序。同 {@link #moveFunction}，范围是同一个 function 内。 */
+    void movePoint(String pointCode, MoveDirection direction, String operatorNo);
+
     record MenuFunctionVO(String functionCode, String name, String icon, String href,
                           int sort, List<MenuPointVO> points) {
     }
