@@ -36,14 +36,16 @@
       "autoPort": false
     },
     {
+      "_comment": "端口必须是 8081：c-app / b-app / ops-web 三端的 .env 里 API_BASE 都指着它，起在 8080 的话三端一个都连不上（而它们不走 vite 代理，直连）。必须带 --spring.profiles.active=api：/mp/** 与 /biz/** 的控制器都标了 @Profile（S8 部署隔离，一个 jar 三种起法）。不带 profile 起出来的实例**一个业务控制器都不注册**，而症状极难判断 —— 任意路径（包括不存在的）都返回 401 而不是 404，看不出是「没登录」还是「没这个端点」。要跑运营端就把 api 换成 ops。",
       "name": "backend",
       "runtimeExecutable": "/bin/zsh",
       "runtimeArgs": [
         "-lc",
-        "JAVA_HOME=/opt/homebrew/Cellar/openjdk@21/21.0.11/libexec/openjdk.jdk/Contents/Home mvn -o -f shop-app/pom.xml spring-boot:run -Dspring-boot.run.arguments=--shop.seed.enabled=true"
+        "JAVA_HOME=/opt/homebrew/Cellar/openjdk@21/21.0.11/libexec/openjdk.jdk/Contents/Home mvn -o -f shop-app/pom.xml spring-boot:run -Dspring-boot.run.arguments='--server.port=8081 --spring.profiles.active=api --shop.seed.enabled=true'"
       ],
       "cwd": "backend",
-      "port": 8080
+      "port": 8081,
+      "autoPort": false
     },
     {
       "_comment": "mock 数据跑 B 端 —— 验证页面行为用，不依赖后端起没起。真机联调用 b-app-h5（连 8081）",
