@@ -88,10 +88,16 @@ const zh = {
   confirmArchiveDesc: "归档后该类目不再出现在 C 端类目树；若它还有子类目或在售商品，服务端会拒绝。",
   confirmArchiveOk: "归档",
   btnArchiveCat: "归档该类目",
+  /** 从类目详情跳到商品池，并带上这个类目当筛选条件 */
+  btnViewCatGoods: "查看该类目商品",
 
   searchSku: "搜索商品编码 / 标题 / 商家",
   filterStatus: "按状态筛选",
   filterStatusAll: "全部状态",
+  filterMerchant: "按商家筛选",
+  filterMerchantAll: "全部商家",
+  filterCategory: "按类目筛选",
+  filterCategoryAll: "全部类目",
   emptySku: "没有符合条件的商品。商家在 B 端建好商品提审后会出现在这里。",
 
   kpiPresale: "预售中商品",
@@ -207,10 +213,15 @@ const en: typeof zh = {
     "Once archived the category disappears from the C-end tree; if it still has child categories or products on sale, the server rejects it.",
   confirmArchiveOk: "Archive",
   btnArchiveCat: "Archive this category",
+  btnViewCatGoods: "View products in this category",
 
   searchSku: "Search SKU code / title / merchant",
   filterStatus: "Filter by status",
   filterStatusAll: "All statuses",
+  filterMerchant: "Filter by merchant",
+  filterMerchantAll: "All merchants",
+  filterCategory: "Filter by category",
+  filterCategoryAll: "All categories",
   emptySku: "No products match these filters. They appear here once merchants create and submit them in the B-end app.",
 
   kpiPresale: "Products on presale",

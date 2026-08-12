@@ -58,11 +58,16 @@ function ProductsInner() {
   const allow = useCan();
   const { confirm, dialog } = useConfirm();
 
-  const [tab, setTab] = usePageTab(tabs, () => { setPage(1); setKeyword(""); setStatus(""); });
+  const [tab, setTab] = usePageTab(tabs, () => {
+    setPage(1); setKeyword(""); setStatus(""); setMerchantFilter(""); setCategoryFilter("");
+  });
 
   const { page, setPage, size, setSize } = usePaging();
   const [keyword, setKeyword] = useState("");
   const [status, setStatus] = useState("");
+  /** 商品池按商家/类目筛选（P-3.2）。两个维度都是 mock 早就支持的过滤条件，此前只是没接 UI。 */
+  const [merchantFilter, setMerchantFilter] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("");
   const [current, setCurrent] = useState<Sku | null>(null);
   const [reason, setReason] = useState("");
   const [presale, setPresale] = useState<{ skuNo: string; quota: string; cutoffAt: string } | null>(null);
@@ -74,8 +79,14 @@ function ProductsInner() {
   const templateMap = useCategoryTemplateMap();
   const statusMap = useSkuStatusMap();
 
-  const cats = useQuery({ queryKey: ["categories"], queryFn: () => api.listCategories(), enabled: tab === "categories" });
-  const skuQ = { keyword, status, page, size };
+  // 商品池的商家/类目筛选也要用到这两份列表，不再只在「类目」tab 下拉取
+  const cats = useQuery({ queryKey: ["categories"], queryFn: () => api.listCategories(), enabled: tab === "categories" || tab === "skus" });
+  const merchantsForFilter = useQuery({
+    queryKey: ["merchants", "lite"],
+    queryFn: () => api.listMerchants({ size: 200 }),
+    enabled: tab === "skus",
+  });
+  const skuQ = { keyword, status, merchantNo: merchantFilter, categoryNo: categoryFilter, page, size };
   const skus = useQuery({ queryKey: ["skus", skuQ], queryFn: () => api.listSkus(skuQ), enabled: tab === "skus" });
   const oversell = useQuery({ queryKey: ["oversell"], queryFn: () => api.listOversellSkus(), enabled: tab === "stock" });
   const presaleList = useQuery({
@@ -145,6 +156,20 @@ function ProductsInner() {
   }, [cats.data, selectedCat]);
 
   const pickedCat: Category | undefined = (cats.data ?? []).find((c) => c.categoryNo === selectedCat);
+
+  const merchantOptions = (merchantsForFilter.data?.records ?? []).map((m) => ({ value: m.merchantNo, label: m.name }));
+  /**
+   * 类目筛选项拍平成一层，带父类目面包屑——三级树摊平成下拉选不了「选中任意一层」，
+   * 而运营真正想筛的往往是叶子类目（如"叶菜"），面包屑让人不用记编号也能认出是哪条枝。
+   */
+  const categoryOptions = useMemo(() => {
+    const all = (cats.data ?? []).filter((cat) => !cat.archivedAt);
+    const nameOf = (no?: string) => all.find((x) => x.categoryNo === no)?.name;
+    return all.map((cat) => ({
+      value: cat.categoryNo,
+      label: cat.parentNo ? `${nameOf(cat.parentNo)} / ${cat.name}` : cat.name,
+    }));
+  }, [cats.data]);
 
   const skuColumns: Column<Sku>[] = [
     { header: c.colSkuNo, cell: (s) => s.skuNo, numeric: true, align: "start" },
@@ -261,21 +286,40 @@ function ProductsInner() {
                     en：{pickedCat.i18n.en ?? <span className="text-[var(--warning)]">{c.i18nFallback}</span>}
                   </Field>
                   <Field label={c.fieldSkuCount}>{pickedCat.skuCount}</Field>
-                  {canEditCategory && (
+                  <div className="flex gap-2">
                     <Button
                       size="sm" variant="outline"
-                      onClick={async () => {
-                        const ok = await confirm({
-                          title: fill(c.confirmArchiveTitle, { name: pickedCat.name }),
-                          desc: c.confirmArchiveDesc,
-                          danger: true, confirmText: c.confirmArchiveOk,
-                        });
-                        if (ok) archiveCat.mutate(pickedCat.categoryNo);
+                      onClick={() => {
+                        /*
+                         * 带着这个类目跳到商品池，而不是让人手动去下拉里再选一遍。
+                         * **顺序不能反**：`setTab` 自带的 `onSwitch` 会把 categoryFilter
+                         * 清空（切 tab 的通用规则，见 usePageTab），必须等它切完、
+                         * 再在下一行把筛选值设回来，否则这两个 setState 在同一批里，
+                         * 后设的 "" 会盖掉先设的 categoryNo。
+                         */
+                        setTab("skus");
+                        setCategoryFilter(pickedCat.categoryNo);
+                        setPage(1);
                       }}
                     >
-                      {c.btnArchiveCat}
+                      {c.btnViewCatGoods}
                     </Button>
-                  )}
+                    {canEditCategory && (
+                      <Button
+                        size="sm" variant="outline"
+                        onClick={async () => {
+                          const ok = await confirm({
+                            title: fill(c.confirmArchiveTitle, { name: pickedCat.name }),
+                            desc: c.confirmArchiveDesc,
+                            danger: true, confirmText: c.confirmArchiveOk,
+                          });
+                          if (ok) archiveCat.mutate(pickedCat.categoryNo);
+                        }}
+                      >
+                        {c.btnArchiveCat}
+                      </Button>
+                    )}
+                  </div>
                 </div>
               )}
             </CardContent>
@@ -287,6 +331,8 @@ function ProductsInner() {
       {tab === "skus" && (
         <>
           <Toolbar search={keyword} onSearch={(v) => { setKeyword(v); setPage(1); }} searchPlaceholder={c.searchSku}>
+            <FilterSelect aria-label={c.filterMerchant} value={merchantFilter} onChange={(v) => { setMerchantFilter(v); setPage(1); }} options={merchantOptions} allLabel={c.filterMerchantAll} />
+            <FilterSelect aria-label={c.filterCategory} value={categoryFilter} onChange={(v) => { setCategoryFilter(v); setPage(1); }} options={categoryOptions} allLabel={c.filterCategoryAll} />
             <FilterSelect aria-label={c.filterStatus} value={status} onChange={(v) => { setStatus(v); setPage(1); }} options={statusMap} allLabel={c.filterStatusAll} />
           </Toolbar>
           <DataTable
