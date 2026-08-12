@@ -42,10 +42,16 @@ public class OpsSettleController {
      */
     @GetMapping("/ops/settlements")
     @PreAuthorize("@perm.can('" + Perms.SETTLE_MANAGE + "')")
-    public List<SettleBillVO> settlements(@RequestParam(required = false) String status,
-                                          @RequestParam(required = false) String merchantNo,
-                                          @RequestParam(required = false) String businessMode) {
-        return settleService.opsBills(status, merchantNo, businessMode);
+    public ai.neargo.shop.common.PageData<SettleBillVO> settlements(
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String merchantNo,
+            @RequestParam(required = false) String businessMode,
+            @RequestParam(defaultValue = "1") long page,
+            @RequestParam(defaultValue = "20") long size) {
+        // 运营端列表页按 {records,total} 渲染 —— 返回裸数组的话它取不到 records，
+        // 页面显示「暂无数据」，而接口是 200、控制台一条错误都没有
+        return ai.neargo.shop.common.PageData.ofAll(
+                settleService.opsBills(status, merchantNo, businessMode), page, size);
     }
 
     /**
@@ -54,8 +60,12 @@ public class OpsSettleController {
      */
     @GetMapping("/ops/split-records")
     @PreAuthorize("@perm.can('" + Perms.SETTLE_MANAGE + "')")
-    public List<SplitLogVO> splitRecords(@RequestParam(required = false) String settleNo,
-                                         @RequestParam(required = false) String action) {
-        return settleService.opsSplitLogs(settleNo, action);
+    public ai.neargo.shop.common.PageData<SplitLogVO> splitRecords(
+            @RequestParam(required = false) String settleNo,
+            @RequestParam(required = false) String action,
+            @RequestParam(defaultValue = "1") long page,
+            @RequestParam(defaultValue = "20") long size) {
+        return ai.neargo.shop.common.PageData.ofAll(
+                settleService.opsSplitLogs(settleNo, action), page, size);
     }
 }

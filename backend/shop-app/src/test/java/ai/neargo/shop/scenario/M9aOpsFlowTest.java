@@ -127,6 +127,26 @@ class M9aOpsFlowTest {
                         .value(org.hamcrest.Matchers.greaterThan(0)));
     }
 
+    @Test
+    @DisplayName("★ 结算与分账列表是分页包 —— 返回裸数组的话页面会显示「暂无数据」，而接口是 200")
+    void settleListsReturnPageData() throws Exception {
+        String admin = opsLogin("admin", "admin123");
+        /*
+         * 断言 records 这个**键存在**，不是断言它有几条：库里有没有结算单取决于
+         * 有没有成交，而契约与数据量无关。
+         *
+         * 这一条防的是那类最难查的故障：ops-web 按 {records,total} 渲染，
+         * 后端返回裸数组时它取不到 records —— 页面显示「暂无数据」，
+         * 接口 200，控制台一条错误都没有，看起来就像「本周期确实没有单」。
+         */
+        for (String url : java.util.List.of("/ops/settlements", "/ops/split-records")) {
+            mvc().perform(get(url).header("Authorization", "Bearer " + admin))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.records").exists())
+                    .andExpect(jsonPath("$.data.total").exists());
+        }
+    }
+
     // ---------------------------------------------------------------- 入驻：R-3 的回归
 
     /**
