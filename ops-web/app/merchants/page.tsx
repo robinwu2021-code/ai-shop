@@ -5,7 +5,7 @@
 import { Suspense, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import { usePageTab } from "@/lib/use-page-tab";
+import { usePageTab, useNavTabs } from "@/lib/use-page-tab";
 import { usePaging } from "@/lib/use-paging";
 import { useCopy } from "@/lib/use-copy";
 import { MERCHANTS_COPY } from "./copy";
@@ -42,15 +42,7 @@ const TIER_OPTIONS = (c: Copy) => [
   { value: "COMPANY", label: c.tierCompany },
 ];
 
-const TABS = (c: Copy) => [
-  { key: "audit", label: c.tabAudit },
-  { key: "list", label: c.tabList },
-  { key: "categories", label: c.tabCategories },
-  { key: "verify", label: c.tabVerify },
-  { key: "credit", label: c.tabCredit },
-  { key: "admission", label: c.tabAdmission },
-  { key: "ban", label: c.tabBan },
-];
+const TAB_KEYS = ["audit", "list", "categories", "verify", "credit", "admission", "ban"] as const;
 
 /** 入驻审核视图只看**还没走完审核**的那几档 —— 已通过/已封禁的属于档案，不该混在待办里。 */
 const AUDIT_STATUSES = ["SUBMITTED", "REVIEWING"];
@@ -61,7 +53,7 @@ export default function MerchantsPage() {
 
 function MerchantsInner() {
   const c = useCopy(MERCHANTS_COPY);
-  const tabs = TABS(c);
+  const tabs = useNavTabs("/merchants", TAB_KEYS);
   const tierOptions = TIER_OPTIONS(c);
   const qc = useQueryClient();
   const allow = useCan();
@@ -162,7 +154,12 @@ function MerchantsInner() {
     },
     { header: c.colTier, cell: (m) => tierLabel(m.tier) },
     { header: c.colCommunity, cell: (m) => m.communityNos.join("、") },
-    { header: c.colContact, cell: (m) => `${m.contactName} ${m.contactPhone}` },
+    {
+      header: c.colContact,
+      // 两个字段都可能为空（老数据、或入驻时没填）——
+      // 模板字符串会把 null 原样拼进去，列表里就出现一行「null null」
+      cell: (m) => [m.contactName, m.contactPhone].filter(Boolean).join(" ") || "-",
+    },
     { header: c.colStatus, cell: (m) => <MerchantStatusBadge value={m.status} /> },
     // 分账接收方未报备 = 结算走不通（ADR-002），列表就要能看出来，别等到打款那天
     { header: c.colSettleAccount, cell: (m) => (m.settleAccountReady ? c.settleReady : <span className="text-[var(--warning)]">{c.settleNotReady}</span>) },
