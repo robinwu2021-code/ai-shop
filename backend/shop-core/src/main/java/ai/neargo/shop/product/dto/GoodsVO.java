@@ -44,7 +44,21 @@ public record GoodsVO(String goodsNo,
                        * {@code onSale} 都是 false，而店主对这两者要做的动作完全不同
                        * （一个是点上架，一个是等/改）。
                        */
-                      String status) {
+                      String status,
+                      /**
+                       * 三语标题原文（{@code prd_goods.title_i18n}）。
+                       *
+                       * <p><b>只在 B 端下发</b>：C 端拿到的 {@code title} 已经按当前语言拍平，
+                       * 给它整份译文没有用处。
+                       *
+                       * <p>为什么必须下发：编辑页按语言一格一格填，它拿不到原文就只能
+                       * 回填当前那一格 —— 而保存是**整份覆盖**。于是
+                       * <b>用中文编辑一次，英文和阿语的标题就没了</b>，
+                       * 且没有任何报错：C 端回落中文，看起来一切正常。
+                       */
+                      java.util.Map<String, String> titleI18n,
+                      /** 三语副标题原文，同 {@link #titleI18n} */
+                      java.util.Map<String, String> subtitleI18n) {
 
     public record MerchantBriefVO(String merchantNo, String name, String logo,
                                   double rating, boolean verified, int breachCount) {

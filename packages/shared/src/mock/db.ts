@@ -170,6 +170,13 @@ export function toGoods(seed: GoodsSeed): Goods {
     merchant: merchantBrief(seed.merchantNo),
     title: pick(seed.title),
     subtitle: pick(seed.subtitle),
+    /*
+     * 三语原文照发 —— **mock 也要给**：编辑页拿不到它就只能回填当前语言那一格，
+     * 而保存是整份覆盖，于是「用中文改一次，英文与阿语就没了」。
+     * mock 里不给的话，这个故障只会在连真后端时出现。
+     */
+    titleI18n: { ...seed.title },
+    subtitleI18n: { ...seed.subtitle },
     price: priceIn(seed.priceByMarket, seed.price)!,
     // 划线价是**派生展示值**（用来标折扣），不是定价，跟着实售价按汇率走即可
     originPrice: seed.originPrice ? Math.round(seed.originPrice * FX[currentCurrency()]) : undefined,

@@ -166,7 +166,13 @@ export const useMerchantStore = defineStore("merchant", {
         if ((e as { code?: number }).code === 401) {
           this.logout();
           uni.showToast({ title: (e as Error).message, icon: "none" });
-          uni.navigateTo({ url: "/pages/login/index" });
+          /*
+           * **reLaunch 而不是 navigateTo**：登录态没了，栈里剩下的页面
+           * 每一张都会渲染成「这页不归你管」。navigateTo 在 app 启动那一刻
+           * （页面还没就绪）会被直接忽略 —— 实测：token 被清了、
+           * 人还留在商品页看那句「让店主给你加个角色」。
+           */
+          uni.reLaunch({ url: "/pages/login/index" });
         }
         return null;
       }

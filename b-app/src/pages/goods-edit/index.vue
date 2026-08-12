@@ -337,16 +337,26 @@ onLoad(async (q) => {
   if (!q?.goodsNo) return;
   goodsNo.value = q.goodsNo;
   const g = await api.mGoodsDetail(q.goodsNo);
-  // 详情接口按当前语言拍平，回显时只能填回当前语言那一格；
-  // 真实后端应返回三语原文（这里 mock 的局限，不装作能拿到全部）
   /*
    * **主图要回显**。保存时无条件带 `cover: cover.value`，而这里不回填的话
    * 它是空串 —— 于是「编辑一次商品，主图就没了」，且页面上那个 📷 占位
    * 看起来就像这个商品本来就没图，谁也不会把两件事联系起来。
    */
   cover.value = g.cover ?? "";
-  title.value = { ...title.value, [lang.value]: g.title };
-  subtitle.value = { ...subtitle.value, [lang.value]: g.subtitle };
+  /*
+   * **三语要整份回显**。保存时发的是整个 `title` 三格，
+   * 只回填当前那一格的话，用中文改一次就把英文与阿语清空了 ——
+   * 而这个故障不报错：C 端缺译文时回落中文，看起来一切正常。
+   *
+   * 后端给不出 `titleI18n` 的老数据（或 C 端拍平的那份）才回落到
+   * 「只填当前语言」，那是能拿到的全部信息。
+   */
+  title.value = g.titleI18n
+    ? { ...title.value, ...g.titleI18n }
+    : { ...title.value, [lang.value]: g.title };
+  subtitle.value = g.subtitleI18n
+    ? { ...subtitle.value, ...g.subtitleI18n }
+    : { ...subtitle.value, [lang.value]: g.subtitle };
   type.value = g.type;
   categoryNo.value = g.categoryNo ?? "";
   catPath.value = categoryNo.value ? findPath(categoryTree.value, categoryNo.value) : [];

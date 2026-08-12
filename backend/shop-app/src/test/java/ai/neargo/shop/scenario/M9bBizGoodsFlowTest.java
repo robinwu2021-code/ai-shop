@@ -404,6 +404,37 @@ class M9bBizGoodsFlowTest {
 
     // ---------------------------------------------------------------- helpers
 
+    @Test
+    @DisplayName("★★★ 详情要带回三语原文 —— 否则用中文编辑一次，英文与阿语就被清空了")
+    void detailCarriesI18nSoEditingKeepsTranslations() throws Exception {
+        String token = merchant("13500135090", "三语店");
+        String body = "{\"title\":\"叶菜\",\"subtitle\":\"当季\",\"type\":\"NORMAL\","
+                + "\"titleI18n\":{\"en\":\"Leafy Greens\",\"ar\":\"خضار ورقية\"},"
+                + "\"subtitleI18n\":{\"en\":\"In season\"},"
+                + "\"cover\":\"🥬\",\"images\":[],\"specGroups\":[],"
+                + "\"skus\":[{\"optionValues\":[],\"price\":550,\"stock\":40}]}";
+        String goodsNo = json.readTree(mvc().perform(post("/biz/goods/save")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString())
+                .get("data").get("goodsNo").asString();
+
+        /*
+         * 编辑页按语言逐格填，保存是**整份覆盖**。详情不带原文的话，
+         * 页面只能回填当前那一格，另外两格是空的 —— 保存即清空。
+         * 而这个故障不报错：C 端缺译文时回落中文，看起来一切正常。
+         */
+        mvc().perform(get("/biz/goods/" + goodsNo).header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.data.titleI18n.en").value("Leafy Greens"))
+                .andExpect(jsonPath("$.data.titleI18n.ar").value("خضار ورقية"))
+                .andExpect(jsonPath("$.data.subtitleI18n.en").value("In season"));
+
+        // C 端不下发：那边的 title 已经按语言拍平，整份译文没有用处
+        mvc().perform(get("/mp/goods/" + goodsNo))
+                .andExpect(jsonPath("$.data.titleI18n").doesNotExist());
+    }
+
     private String goodsBody(String goodsNo, String title, long price, int stock) {
         return "{" + (goodsNo == null ? "" : "\"goodsNo\":\"" + goodsNo + "\",")
                 + "\"title\":\"" + title + "\",\"subtitle\":\"测试\",\"type\":\"NORMAL\","

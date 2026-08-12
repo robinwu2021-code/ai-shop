@@ -805,7 +805,13 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                 base.fulfillments(), base.specGroups(), storeSkus(base.skus()), base.sales(),
                 base.cutoffAt(), base.arrivalDesc(), base.weighed(), base.origin(),
                 base.durationMin(), base.storeName(), base.limitPerUser(), base.onSale(),
-                statusOf(g));
+                statusOf(g),
+                /*
+                 * **译文原文只在这一侧下发**。编辑页按语言逐格填、保存是整份覆盖 ——
+                 * 拿不到原文它就只能回填当前那一格，于是用中文改一次，
+                 * 英文与阿语的标题被清空，而且不报错（C 端回落中文，看起来一切正常）。
+                 */
+                readMap(g.getTitleI18n()), readMap(g.getSubtitleI18n()));
     }
 
     /**
