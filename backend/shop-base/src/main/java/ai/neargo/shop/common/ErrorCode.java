@@ -58,6 +58,11 @@ public enum ErrorCode {
     CONTENT_RANKING_MANUAL_ONLY(10436, "err.content.ranking_manual_only"),
     /** 限定投放范围却没有投放对象：保存成功却谁都看不到 */
     CONTENT_SCOPE_REFS_REQUIRED(10437, "err.content.scope_refs_required"),
+
+    /** 预置角色是 Perms.java 的镜像，改了会与回落表分叉 */
+    PERM_BUILTIN_ROLE_READONLY(10440, "err.perm.builtin_role_readonly"),
+    /** 还有人在用的角色不能删：删了他们能登录但什么都点不动，且看不出原因 */
+    PERM_ROLE_IN_USE(10441, "err.perm.role_in_use"),
     INTERNAL_ERROR(10500, "err.internal"),
 
     // ---- 2xxxx 交易 ----

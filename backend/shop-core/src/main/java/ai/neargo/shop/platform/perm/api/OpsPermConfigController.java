@@ -8,7 +8,10 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
+import ai.neargo.shop.auth.SecurityUtils;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -63,5 +66,41 @@ public class OpsPermConfigController {
     @PreAuthorize("@perm.can('" + Perms.STAFF_MANAGE + "')")
     public List<String> rolePoints(@PathVariable String roleCode) {
         return permConfigService.rolePoints(roleCode);
+    }
+
+    // ---------------------------------------------------------------- 写侧
+
+    /**
+     * 新建自定义角色。
+     *
+     * <p>判权已改成读库，所以新建角色 + 勾功能点是**真的生效**的 ——
+     * 在换源之前它只能改菜单，而「菜单能看、接口 403」是最坏的一种。
+     */
+    @PostMapping("/ops/perm/roles")
+    @PreAuthorize("@perm.can('" + Perms.STAFF_MANAGE + "')")
+    public RoleVO createRole(@RequestBody CreateRoleReq req) {
+        return permConfigService.createRole(req.roleCode(), req.name(),
+                SecurityUtils.currentUserNo());
+    }
+
+    /** 设置角色的功能点（整体替换）。**预置角色拒绝修改**。 */
+    @PostMapping("/ops/perm/roles/{roleCode}/points")
+    @PreAuthorize("@perm.can('" + Perms.STAFF_MANAGE + "')")
+    public RoleVO setRolePoints(@PathVariable String roleCode, @RequestBody PointsReq req) {
+        return permConfigService.setRolePoints(roleCode, req.pointCodes(),
+                SecurityUtils.currentUserNo());
+    }
+
+    /** 删除自定义角色。预置角色、以及**还有人在用的**都拒绝。 */
+    @PostMapping("/ops/perm/roles/{roleCode}/delete")
+    @PreAuthorize("@perm.can('" + Perms.STAFF_MANAGE + "')")
+    public void deleteRole(@PathVariable String roleCode) {
+        permConfigService.deleteRole(roleCode, SecurityUtils.currentUserNo());
+    }
+
+    public record CreateRoleReq(String roleCode, String name) {
+    }
+
+    public record PointsReq(List<String> pointCodes) {
     }
 }

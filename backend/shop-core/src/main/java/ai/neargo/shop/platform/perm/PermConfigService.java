@@ -33,6 +33,39 @@ public interface PermConfigService {
     /** 某个角色被授予的功能点码。 */
     List<String> rolePoints(String roleCode);
 
+    // ---------------------------------------------------------------- 写侧
+
+    /**
+     * 新建自定义角色。
+     *
+     * <p><b>换源之后自定义角色才真的有意义</b>：判权已改成读
+     * {@code sys_role_point}，所以新建一个角色、勾上功能点，
+     * 那个人登录后就真的拿到对应权限 —— 在这之前它只能改菜单，
+     * 而菜单能看、接口 403 是最坏的一种。
+     *
+     * <p><b>不能建通配角色</b>：{@code wildcard} 一律为 0 ——
+     * 否则任何有 staff:manage 的人都能造一个超管出来。
+     */
+    RoleVO createRole(String roleCode, String name, String operatorNo);
+
+    /**
+     * 设置角色的功能点（整体替换）。
+     *
+     * <p><b>预置角色（builtin）拒绝修改</b>：它们是 {@code Perms.java} 的镜像，
+     * 改了会与回落表分叉 —— 而回落什么时候被触发不由我们决定。
+     * 要调整预置角色请改代码并重跑生成器。
+     */
+    RoleVO setRolePoints(String roleCode, List<String> pointCodes, String operatorNo);
+
+    /**
+     * 删除自定义角色。
+     *
+     * <p>预置角色不可删；<b>还有人在用的角色也不可删</b> ——
+     * 删了之后那些人的 perms 会变成空集，他们能登录但什么都点不动，
+     * 而界面上看不出是「角色被删了」。
+     */
+    void deleteRole(String roleCode, String operatorNo);
+
     record MenuFunctionVO(String functionCode, String name, String icon, String href,
                           int sort, List<MenuPointVO> points) {
     }

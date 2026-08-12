@@ -194,6 +194,80 @@ class OpsPermConfigFlowTest {
         }
     }
 
+    // ---------------------------------------------------------------- 角色配置写侧
+
+    @Test
+    @DisplayName("★★★ 自定义角色真的生效：建角色 → 勾功能点 → 授予某人 → 他登录后就有那个权限")
+    void customRoleTakesEffect() throws Exception {
+        String admin = opsLogin("admin", "admin123");
+        String code = "TEST_ROLE_" + System.currentTimeMillis() % 100000;
+        try {
+            call("/ops/perm/roles", admin,
+                    "{\"roleCode\":\"" + code + "\",\"name\":\"临时角色\"}", 0);
+            // 勾一个带 order:view 的功能点
+            String pc = pointWithPerm(admin, "order:view");
+            call("/ops/perm/roles/" + code + "/points", admin,
+                    "{\"pointCodes\":[\"" + pc + "\"]}", 0);
+
+            // 授予 techops（他本来没有 order:view）
+            String staffNo = staffNoOf(admin, "techops");
+            assertThat(permsOf(opsLogin("techops", "techops123"))).doesNotContain("order:view");
+            mvc().perform(post("/ops/staffs/" + staffNo + "/role")
+                            .header("Authorization", "Bearer " + admin)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"role\":\"" + code + "\"}"))
+                    .andExpect(jsonPath("$.code").value(0));
+
+            assertThat(permsOf(opsLogin("techops", "techops123")))
+                    .as("**这是换源带来的新能力**：在判权读硬编码的时候，"
+                            + "自定义角色只能改菜单，而菜单能看、接口 403 是最坏的一种")
+                    .contains("order:view");
+        } finally {
+            String staffNo = staffNoOf(admin, "techops");
+            mvc().perform(post("/ops/staffs/" + staffNo + "/role")
+                    .header("Authorization", "Bearer " + admin)
+                    .contentType(MediaType.APPLICATION_JSON).content("{\"role\":\"TECH_OPS\"}"));
+            call("/ops/perm/roles/" + code + "/delete", admin, "{}", 0);
+        }
+    }
+
+    @Test
+    @DisplayName("★★★ 预置角色拒绝修改 —— 它是 Perms.java 的镜像，改了会与回落表分叉")
+    void builtinRoleIsReadOnly() throws Exception {
+        String admin = opsLogin("admin", "admin123");
+        /*
+         * 用后端角色码 BD 而不是前端的 MERCHANT_BD ——
+         * 库里存的是 Perms.ROLE_PERMS 的键（历史遗留的三个异名同义之一），
+         * ops-web 那侧才翻译成 MERCHANT_BD。第一次写这条断言时用错了，得到 10404。
+         */
+        call("/ops/perm/roles/BD/points", admin, "{\"pointCodes\":[]}", 10440);
+        call("/ops/perm/roles/BD/delete", admin, "{}", 10440);
+    }
+
+    @Test
+    @DisplayName("★★ 还有人在用的角色不能删 —— 删了他们能登录但什么都点不动，且看不出原因")
+    void roleInUseCannotBeDeleted() throws Exception {
+        String admin = opsLogin("admin", "admin123");
+        String code = "TEST_INUSE_" + System.currentTimeMillis() % 100000;
+        String staffNo = staffNoOf(admin, "techops");
+        try {
+            call("/ops/perm/roles", admin,
+                    "{\"roleCode\":\"" + code + "\",\"name\":\"占用中\"}", 0);
+            String pc = pointWithPerm(admin, "order:view");
+            call("/ops/perm/roles/" + code + "/points", admin,
+                    "{\"pointCodes\":[\"" + pc + "\"]}", 0);
+            mvc().perform(post("/ops/staffs/" + staffNo + "/role")
+                    .header("Authorization", "Bearer " + admin)
+                    .contentType(MediaType.APPLICATION_JSON).content("{\"role\":\"" + code + "\"}"));
+            call("/ops/perm/roles/" + code + "/delete", admin, "{}", 10441);
+        } finally {
+            mvc().perform(post("/ops/staffs/" + staffNo + "/role")
+                    .header("Authorization", "Bearer " + admin)
+                    .contentType(MediaType.APPLICATION_JSON).content("{\"role\":\"TECH_OPS\"}"));
+            call("/ops/perm/roles/" + code + "/delete", admin, "{}", 0);
+        }
+    }
+
     @Test
     @DisplayName("零角色 = 空菜单，不是「默认给点什么」")
     void noRoleMeansEmptyMenu() throws Exception {
@@ -248,6 +322,27 @@ class OpsPermConfigFlowTest {
             n += f.get("points").size();
         }
         return n;
+    }
+
+    /** 找一个 perm_code 是给定值的功能点 */
+    private String pointWithPerm(String adminToken, String perm) throws Exception {
+        String fns = mvc().perform(get("/ops/perm/functions")
+                        .header("Authorization", "Bearer " + adminToken))
+                .andReturn().getResponse().getContentAsString();
+        for (JsonNode f : json.readTree(fns).get("data")) {
+            for (JsonNode p : f.get("points")) {
+                if (!p.get("permCode").isNull() && perm.equals(p.get("permCode").asString())) {
+                    return p.get("pointCode").asString();
+                }
+            }
+        }
+        throw new IllegalStateException("库里没有带 " + perm + " 的功能点");
+    }
+
+    private void call(String path, String token, String body, int expectCode) throws Exception {
+        mvc().perform(post(path).header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(jsonPath("$.code").value(expectCode));
     }
 
     /** 这个人登录后拿到的权限码（会话快照） */

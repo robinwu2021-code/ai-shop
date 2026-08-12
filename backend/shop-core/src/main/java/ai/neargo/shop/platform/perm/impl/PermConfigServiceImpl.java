@@ -1,6 +1,10 @@
 package ai.neargo.shop.platform.perm.impl;
 
 import ai.neargo.shop.auth.SecurityUtils;
+import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.platform.perm.RolePermResolver;
+import ai.neargo.shop.spi.platform.AuditLogPort;
 import ai.neargo.shop.platform.perm.PermConfigService;
 import ai.neargo.shop.platform.perm.entity.SysFunction;
 import ai.neargo.shop.platform.perm.entity.SysFunctionPoint;
@@ -14,6 +18,7 @@ import ai.neargo.shop.platform.perm.mapper.PermMappers.RoleMemberMapper;
 import ai.neargo.shop.platform.perm.mapper.PermMappers.RolePointMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -33,15 +38,20 @@ public class PermConfigServiceImpl implements PermConfigService {
     private final RoleMapper roleMapper;
     private final RolePointMapper rolePointMapper;
     private final RoleMemberMapper memberMapper;
+    private final RolePermResolver resolver;
+    private final AuditLogPort auditLogPort;
 
     public PermConfigServiceImpl(FunctionMapper functionMapper, FunctionPointMapper pointMapper,
                                  RoleMapper roleMapper, RolePointMapper rolePointMapper,
-                                 RoleMemberMapper memberMapper) {
+                                 RoleMemberMapper memberMapper, RolePermResolver resolver,
+                                 AuditLogPort auditLogPort) {
         this.functionMapper = functionMapper;
         this.pointMapper = pointMapper;
         this.roleMapper = roleMapper;
         this.rolePointMapper = rolePointMapper;
         this.memberMapper = memberMapper;
+        this.resolver = resolver;
+        this.auditLogPort = auditLogPort;
     }
 
     @Override
@@ -124,6 +134,103 @@ public class PermConfigServiceImpl implements PermConfigService {
                         !Boolean.FALSE.equals(r.getBuiltin()),
                         counts.getOrDefault(r.getRoleCode(), 0L).intValue()))
                 .toList();
+    }
+
+    // ---------------------------------------------------------------- 写侧
+
+    @Override
+    @Transactional
+    public RoleVO createRole(String roleCode, String name, String operatorNo) {
+        if (roleCode == null || roleCode.isBlank() || name == null || name.isBlank()) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        if (find(roleCode) != null) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+        SysRole r = new SysRole();
+        r.setRoleCode(roleCode);
+        r.setName(name);
+        r.setEndCode(OPS);
+        r.setBuiltin(false);
+        // **不能建通配角色** —— 否则有 staff:manage 的人都能造一个超管
+        r.setWildcard(false);
+        r.setSort(900);
+        roleMapper.insert(r);
+        auditLogPort.record("PERM_ROLE_CREATE", roleCode, name);
+        return new RoleVO(roleCode, name, OPS, false, 0);
+    }
+
+    @Override
+    @Transactional
+    public RoleVO setRolePoints(String roleCode, List<String> pointCodes, String operatorNo) {
+        SysRole r = requireRole(roleCode);
+        /*
+         * **预置角色拒绝修改**：它们是 Perms.java 的镜像。
+         * 改了库而代码不动，一致性守卫会红 —— 而守卫红不是重点，
+         * 重点是**回落路径会与主路径分叉**：库里查不到时用的是代码那份，
+         * 什么时候回落不由我们决定。
+         */
+        if (!Boolean.FALSE.equals(r.getBuiltin())) {
+            throw BizException.of(ErrorCode.PERM_BUILTIN_ROLE_READONLY, roleCode);
+        }
+        List<String> codes = pointCodes == null ? List.of() : pointCodes;
+        // 功能点必须存在 —— 写进一个不存在的码，那条授权永远不生效且查不出来
+        for (String pc : codes) {
+            if (pointMapper.selectCount(Wrappers.<SysFunctionPoint>lambdaQuery()
+                    .eq(SysFunctionPoint::getPointCode, pc)) == 0) {
+                throw BizException.of(ErrorCode.NOT_FOUND);
+            }
+        }
+        rolePointMapper.delete(Wrappers.<SysRolePoint>lambdaQuery()
+                .eq(SysRolePoint::getRoleCode, roleCode).eq(SysRolePoint::getEndCode, OPS));
+        for (String pc : codes) {
+            SysRolePoint rp = new SysRolePoint();
+            rp.setRoleCode(roleCode);
+            rp.setPointCode(pc);
+            rp.setEndCode(OPS);
+            rolePointMapper.insert(rp);
+        }
+        // 判权读的是缓存过的整表快照，不清就要等重启
+        resolver.invalidate();
+        auditLogPort.record("PERM_ROLE_POINTS", roleCode, codes.size() + " 个功能点");
+        return new RoleVO(roleCode, r.getName(), OPS, false, codes.size());
+    }
+
+    @Override
+    @Transactional
+    public void deleteRole(String roleCode, String operatorNo) {
+        SysRole r = requireRole(roleCode);
+        if (!Boolean.FALSE.equals(r.getBuiltin())) {
+            throw BizException.of(ErrorCode.PERM_BUILTIN_ROLE_READONLY, roleCode);
+        }
+        /*
+         * **还有人在用就不让删**。删了之后那些人的 perms 变成空集 ——
+         * 他们能登录、界面一片空白，而看不出是「角色被删了」。
+         * 与「不能停用自己」同一类：拦住的成本远低于事后查明。
+         */
+        long inUse = memberMapper.selectCount(Wrappers.<SysRoleMember>lambdaQuery()
+                .eq(SysRoleMember::getRoleCode, roleCode));
+        if (inUse > 0) {
+            throw BizException.of(ErrorCode.PERM_ROLE_IN_USE, roleCode, inUse);
+        }
+        rolePointMapper.delete(Wrappers.<SysRolePoint>lambdaQuery()
+                .eq(SysRolePoint::getRoleCode, roleCode));
+        roleMapper.deleteById(r.getId());
+        resolver.invalidate();
+        auditLogPort.record("PERM_ROLE_DELETE", roleCode, r.getName());
+    }
+
+    private SysRole find(String roleCode) {
+        return roleMapper.selectOne(Wrappers.<SysRole>lambdaQuery()
+                .eq(SysRole::getEndCode, OPS).eq(SysRole::getRoleCode, roleCode).last("LIMIT 1"));
+    }
+
+    private SysRole requireRole(String roleCode) {
+        SysRole r = find(roleCode);
+        if (r == null) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        return r;
     }
 
     @Override
