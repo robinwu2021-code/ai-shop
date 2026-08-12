@@ -152,5 +152,12 @@ public interface OpsService {
     /** 写审计。高危操作必须调用。 */
     void audit(String action, String target, String detail);
 
-    List<AuditLogVO> auditLogs(String target);
+    /**
+     * 带 critical 标记与结构化前后对比的版本。IP / 操作端由实现内部从当前请求自动抓取，
+     * 调用方不用传——这样只有员工与权限这类真的需要结构化对比的调用点才需要改动。
+     */
+    void audit(String action, String target, String detail, boolean critical,
+               String beforeJson, String afterJson);
+
+    PageData<AuditLogVO> auditLogs(String target, String keyword, Boolean critical, long page, long size);
 }

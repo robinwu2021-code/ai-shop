@@ -28,8 +28,14 @@ public final class OpsVOs {
     public record LoginResultVO(String token, StaffVO staff) {
     }
 
-    public record AuditLogVO(String staffNo, String staffName, String action,
-                             String target, String detail, long at) {
+    /**
+     * @param before 变更前结构化快照（原样透传的 JSON 字符串），没有则 null —— 前端不伪造
+     * @param after  变更后结构化快照，同上
+     */
+    public record AuditLogVO(long logNo, String staffNo, String staffName, String action,
+                             String target, String detail, long at,
+                             String ip, String clientType, boolean critical,
+                             String before, String after) {
     }
 
     /**

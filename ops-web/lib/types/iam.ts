@@ -88,6 +88,14 @@ export interface AuditLog {
   detail: string;
   /** 是否涉及高危权限（矩阵 §2.3 的那批码） */
   critical: boolean;
+  /** 操作者 IP。后端拿不到（非请求线程）时为空，不是所有旧数据都有 */
+  ip?: string;
+  /** 操作端，如 WEB_OPS。同上，可能没有 */
+  clientType?: string;
+  /** 变更前结构化快照（JSON 字符串）。只有员工与权限域的部分动作有，其余为空——不伪造 */
+  before?: string;
+  /** 变更后结构化快照，同上 */
+  after?: string;
 }
 
 /** 需要数据域的角色。其余角色配了 scope 属于配置错误。 */

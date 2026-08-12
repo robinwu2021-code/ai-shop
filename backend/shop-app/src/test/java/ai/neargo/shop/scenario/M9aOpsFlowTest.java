@@ -393,7 +393,7 @@ class M9aOpsFlowTest {
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
 
-        JsonNode logs = json.readTree(body).get("data");
+        JsonNode logs = json.readTree(body).get("data").get("records");
         assertThat(logs).isNotEmpty();
         // 审核是能改变别人生意的操作 —— 出问题时必须能回答「谁批的」
         assertThat(logs.get(0).get("staffName").asString()).isNotBlank();

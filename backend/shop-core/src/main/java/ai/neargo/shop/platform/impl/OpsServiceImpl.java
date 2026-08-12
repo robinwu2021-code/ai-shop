@@ -27,6 +27,7 @@ import ai.neargo.shop.platform.entity.MchEntityApply;
 import ai.neargo.shop.platform.mapper.PlatformMappers.AuditLogMapper;
 import ai.neargo.shop.platform.mapper.PlatformMappers.MerchantApplyMapper;
 import ai.neargo.shop.platform.mapper.PlatformMappers.StaffMapper;
+import ai.neargo.shop.auth.RequestMetaContext;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import org.springframework.stereotype.Service;
@@ -37,6 +38,7 @@ import tools.jackson.databind.ObjectMapper;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.Set;
 import java.util.LinkedHashSet;
@@ -360,6 +362,12 @@ public class OpsServiceImpl implements OpsService {
 
     @Override
     public void audit(String action, String target, String detail) {
+        audit(action, target, detail, false, null, null);
+    }
+
+    @Override
+    public void audit(String action, String target, String detail, boolean critical,
+                       String beforeJson, String afterJson) {
         LoginUser operator = SecurityUtils.currentUser().orElse(null);
         SysAuditLog log = new SysAuditLog();
         log.setStaffNo(operator == null ? "SYSTEM" : operator.userNo());
@@ -370,20 +378,47 @@ public class OpsServiceImpl implements OpsService {
         log.setAt(System.currentTimeMillis());
         log.setTenantNo("MAIN");
         log.setCreatedAt(LocalDateTime.now());
+        log.setCritical(critical);
+        log.setBeforeJson(beforeJson);
+        log.setAfterJson(afterJson);
+        /*
+         * IP/操作端不直接碰 HttpServletRequest —— platform 是领域代码，
+         * 不能依赖 web 运行时（ArchitectureTest.domainsMustNotTouchWebRuntime）。
+         * 认证过滤器把这两样塞进 RequestMetaContext，这里只读；非请求线程
+         * （SYSTEM 触发、后台任务）取不到就是 null，不是 bug。
+         */
+        RequestMetaContext.Meta meta = RequestMetaContext.current();
+        log.setIp(meta == null ? null : meta.ip());
+        log.setClientType(meta == null ? null : meta.clientType());
         DataScopeContext.executeWithoutScope(() -> auditLogMapper.insert(log));
     }
 
     @Override
-    public List<AuditLogVO> auditLogs(String target) {
+    public PageData<AuditLogVO> auditLogs(String target, String keyword, Boolean critical, long page, long size) {
         var w = Wrappers.<SysAuditLog>lambdaQuery();
         if (target != null && !target.isBlank()) {
             w.eq(SysAuditLog::getTarget, target);
         }
-        w.orderByDesc(SysAuditLog::getId).last("limit 200");
-        return DataScopeContext.executeWithoutScope(() -> auditLogMapper.selectList(w)).stream()
-                .map(l -> new AuditLogVO(l.getStaffNo(), l.getStaffName(), l.getOpAction(),
-                        l.getTarget(), l.getDetail(), l.getAt() == null ? 0L : l.getAt()))
+        if (critical != null) {
+            w.eq(SysAuditLog::getCritical, critical);
+        }
+        if (keyword != null && !keyword.isBlank()) {
+            w.and(x -> x.like(SysAuditLog::getStaffNo, keyword)
+                    .or().like(SysAuditLog::getStaffName, keyword)
+                    .or().like(SysAuditLog::getOpAction, keyword)
+                    .or().like(SysAuditLog::getTarget, keyword)
+                    .or().like(SysAuditLog::getDetail, keyword));
+        }
+        w.orderByDesc(SysAuditLog::getId);
+        Page<SysAuditLog> p = DataScopeContext.executeWithoutScope(
+                () -> auditLogMapper.selectPage(Page.of(page, size), w));
+        List<AuditLogVO> records = p.getRecords().stream()
+                .map(l -> new AuditLogVO(l.getId(), l.getStaffNo(), l.getStaffName(), l.getOpAction(),
+                        l.getTarget(), l.getDetail(), l.getAt() == null ? 0L : l.getAt(),
+                        l.getIp(), l.getClientType(), Boolean.TRUE.equals(l.getCritical()),
+                        l.getBeforeJson(), l.getAfterJson()))
                 .toList();
+        return PageData.of(records, p.getTotal(), p.getCurrent(), p.getSize());
     }
 
     // ---------------------------------------------------------------- 内部
@@ -476,7 +511,9 @@ public class OpsServiceImpl implements OpsService {
         if (!enabled) {
             tokenStore.revokeUser(staffNo);
         }
-        audit("STAFF_ENABLED", staffNo, enabled ? "启用" : "停用");
+        audit("STAFF_ENABLED", staffNo, enabled ? "启用" : "停用", true,
+                objectMapper.writeValueAsString(Map.of("status", enabled ? "DISABLED" : "ACTIVE")),
+                objectMapper.writeValueAsString(Map.of("status", enabled ? "ACTIVE" : "DISABLED")));
         List<String> roles = readList(staff.getRoles());
         return toVO(staff, roles, rolePermResolver.of(roles));
     }
@@ -602,7 +639,9 @@ public class OpsServiceImpl implements OpsService {
         syncRoleMember(staffNo, want);
         // 换角色即刻生效：旧会话里带的是旧 perms
         tokenStore.revokeUser(staffNo);
-        audit("STAFF_ROLES", staffNo, before + " → " + writeList(want));
+        audit("STAFF_ROLES", staffNo, before + " → " + writeList(want), true,
+                objectMapper.writeValueAsString(Map.of("roles", readList(before))),
+                objectMapper.writeValueAsString(Map.of("roles", want)));
         return toVO(staff, want, rolePermResolver.of(want));
     }
 
@@ -624,7 +663,7 @@ public class OpsServiceImpl implements OpsService {
          * 不踢的话拿着旧 token 的人照样在线，改密等于没改。
          */
         tokenStore.revokeUser(staff.getStaffNo());
-        audit("STAFF_PASSWORD", staff.getStaffNo(), "自助改密");
+        audit("STAFF_PASSWORD", staff.getStaffNo(), "自助改密", true, null, null);
     }
 
     /** 去空白、去重、保序 —— 「配了两遍同一个角色」不该变成两行成员关系 */

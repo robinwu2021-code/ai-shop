@@ -53,11 +53,13 @@ public class PermConfigServiceImpl implements PermConfigService {
     private final RolePermResolver resolver;
     private final AuditLogPort auditLogPort;
     private final TokenStore tokenStore;
+    private final tools.jackson.databind.ObjectMapper objectMapper;
 
     public PermConfigServiceImpl(FunctionMapper functionMapper, FunctionPointMapper pointMapper,
                                  RoleMapper roleMapper, RolePointMapper rolePointMapper,
                                  RoleMemberMapper memberMapper, RolePermResolver resolver,
-                                 AuditLogPort auditLogPort, TokenStore tokenStore) {
+                                 AuditLogPort auditLogPort, TokenStore tokenStore,
+                                 tools.jackson.databind.ObjectMapper objectMapper) {
         this.functionMapper = functionMapper;
         this.pointMapper = pointMapper;
         this.roleMapper = roleMapper;
@@ -66,6 +68,7 @@ public class PermConfigServiceImpl implements PermConfigService {
         this.resolver = resolver;
         this.auditLogPort = auditLogPort;
         this.tokenStore = tokenStore;
+        this.objectMapper = objectMapper;
     }
 
     @Override
@@ -203,6 +206,9 @@ public class PermConfigServiceImpl implements PermConfigService {
                 throw BizException.of(ErrorCode.NOT_FOUND);
             }
         }
+        List<String> before = rolePointMapper.selectList(Wrappers.<SysRolePoint>lambdaQuery()
+                        .eq(SysRolePoint::getRoleCode, roleCode).eq(SysRolePoint::getEndCode, OPS))
+                .stream().map(SysRolePoint::getPointCode).toList();
         rolePointMapper.delete(Wrappers.<SysRolePoint>lambdaQuery()
                 .eq(SysRolePoint::getRoleCode, roleCode).eq(SysRolePoint::getEndCode, OPS));
         for (String pc : codes) {
@@ -228,7 +234,9 @@ public class PermConfigServiceImpl implements PermConfigService {
             kicked += tokenStore.revokeUser(m.getSubjectNo());
         }
         auditLogPort.record("PERM_ROLE_POINTS", roleCode,
-                codes.size() + " 个功能点，踢下线 " + kicked + " 个会话");
+                codes.size() + " 个功能点，踢下线 " + kicked + " 个会话", true,
+                objectMapper.writeValueAsString(Map.of("pointCodes", before)),
+                objectMapper.writeValueAsString(Map.of("pointCodes", codes)));
         return new RoleVO(roleCode, r.getName(), OPS, false, codes.size(),
                 memberMapper.selectCount(Wrappers.<SysRoleMember>lambdaQuery()
                         .eq(SysRoleMember::getEndCode, OPS)
@@ -252,7 +260,9 @@ public class PermConfigServiceImpl implements PermConfigService {
          * **不清缓存、不踢会话**：改的是展示名，谁能干什么一点没变。
          * 顺手 invalidate 看着更安全，实际是把一次纯展示改动变成全员重新登录。
          */
-        auditLogPort.record("PERM_ROLE_RENAME", roleCode, before + " → " + r.getName());
+        auditLogPort.record("PERM_ROLE_RENAME", roleCode, before + " → " + r.getName(), false,
+                objectMapper.writeValueAsString(Map.of("name", before)),
+                objectMapper.writeValueAsString(Map.of("name", r.getName())));
         return roles(OPS).stream().filter(v -> v.roleCode().equals(roleCode)).findFirst()
                 .orElseThrow(() -> BizException.of(ErrorCode.NOT_FOUND));
     }
@@ -278,7 +288,8 @@ public class PermConfigServiceImpl implements PermConfigService {
                 .eq(SysRolePoint::getRoleCode, roleCode));
         roleMapper.deleteById(r.getId());
         resolver.invalidate();
-        auditLogPort.record("PERM_ROLE_DELETE", roleCode, r.getName());
+        auditLogPort.record("PERM_ROLE_DELETE", roleCode, r.getName(), true,
+                objectMapper.writeValueAsString(Map.of("name", r.getName(), "roleCode", roleCode)), null);
     }
 
     private SysRole find(String roleCode) {

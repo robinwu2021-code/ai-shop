@@ -46,6 +46,7 @@ const TABS = (c: Copy) => [
 const ROLES = Object.keys(ROLE_LABEL) as Role[];
 
 const ENABLED_OPTIONS = (c: Copy) => [{ value: "1", label: c.enabledOn }, { value: "0", label: c.enabledOff }];
+const CRITICAL_OPTIONS = (c: Copy) => [{ value: "1", label: c.filterCriticalOnly }];
 const CRITICAL = CRITICAL_PERMS as readonly string[];
 /**
  * 新建员工的登录名必须是邮箱——与后端 `OpsServiceImpl.EMAIL` 同一条正则
@@ -64,6 +65,23 @@ function suggestRoleCode(name: string): string {
   return ascii;
 }
 
+/**
+ * 把 before/after 两份 JSON 快照渲染成「字段: 旧值 → 新值」。
+ * 两者有一个缺失就说明这条记录没有结构化对比（多数域仍只有 detail 文本）——
+ * 显示 "—"，不拿 detail 拼一份假的结构化数据出来。
+ */
+function formatAuditChange(before?: string, after?: string): string {
+  if (!before || !after) return "—";
+  try {
+    const b = JSON.parse(before) as Record<string, unknown>;
+    const a = JSON.parse(after) as Record<string, unknown>;
+    const keys = new Set([...Object.keys(b), ...Object.keys(a)]);
+    return [...keys].map((k) => `${k}: ${JSON.stringify(b[k])} → ${JSON.stringify(a[k])}`).join("；");
+  } catch {
+    return "—";
+  }
+}
+
 export default function IamPage() {
   return <Suspense fallback={null}><IamInner /></Suspense>;
 }
@@ -77,6 +95,7 @@ function IamInner() {
   const roleOptions = ROLES.map((r) => ({ value: r, label: roleLabel(r) }));
   const tabs = TABS(c);
   const enabledOptions = ENABLED_OPTIONS(c);
+  const criticalOptions = CRITICAL_OPTIONS(c);
   const qc = useQueryClient();
   const allow = useCan();
   const { confirm, dialog } = useConfirm();
@@ -93,7 +112,7 @@ function IamInner() {
    * 初始密码抽屉**不关**：它是「只能看这一次」的展示，切 tab 不该把它冲掉。
    */
   const [tab, setTab] = usePageTab(tabs, () => {
-    setPage(1); setKeyword("");
+    setPage(1); setKeyword(""); setCritical("");
     setEditing(null); setPickedRole(null); setNewRole(null); setNewStaff(null);
   });
 
@@ -101,6 +120,7 @@ function IamInner() {
   const [keyword, setKeyword] = useState("");
   const [role, setRole] = useState("");
   const [enabled, setEnabled] = useState("");
+  const [critical, setCritical] = useState("");
   const [editing, setEditing] = useState<Staff | null>(null);
   const [scopeForm, setScopeForm] = useState({ merchantNo: "", communityNo: "", pickupNo: "" });
   // 自定义角色不在 Role 联合类型里 —— 用 string
@@ -140,7 +160,7 @@ function IamInner() {
     queryFn: () => api.getRolePoints(pickedRole!),
     enabled: tab === "roles" && !!pickedRole,
   });
-  const auditQ = { keyword, page, size };
+  const auditQ = { keyword, critical, page, size };
   const logs = useQuery({ queryKey: ["audit-logs", auditQ], queryFn: () => api.listAuditLogs(auditQ), enabled: tab === "audit" });
 
   const invalidate = () => {
@@ -424,8 +444,11 @@ function IamInner() {
     { header: c.colAction, cell: (l) => l.action },
     { header: c.colTarget, cell: (l) => l.target },
     { header: c.colDetail, cell: (l) => l.detail, className: "whitespace-normal", width: "22rem" },
-    // 高危列同理藏起来：l.critical 现在恒为 false，显示这一列会让人读成
-    // "这些操作都不算高危"，而事实是"这件事现在无法判断"——两者不是一回事
+    { header: c.colCritical, cell: (l) => l.critical ? <Badge tone="danger">{c.critical}</Badge> : null },
+    { header: c.colIp, cell: (l) => l.ip ?? "—" },
+    { header: c.colClientType, cell: (l) => l.clientType ?? "—" },
+    // before/after 只有员工与权限域少数动作有，其余为空——空就显示「—」，不拿 detail 凑数
+    { header: c.colChange, cell: (l) => formatAuditChange(l.before, l.after), className: "whitespace-normal", width: "18rem" },
   ];
 
   return (
@@ -471,12 +494,9 @@ function IamInner() {
               <FilterSelect aria-label={c.filterStatus} value={enabled} onChange={(v) => { setEnabled(v); setPage(1); }} options={enabledOptions} allLabel={c.filterStatusAll} />
             </>
           )}
-          {/*
-            "只看高危"筛选先藏起来：后端 sys_audit_log 根本没有存 critical 这个信息，
-            前端现在恒填 false。显示这个筛选项会让人以为"勾了就能看到高危操作"，
-            实际上勾了永远是空列表——那比不做这个功能更糟，是「有筛选框但摁不动」。
-            完整支持见登记的后续任务（补 critical 列 + 写入时机判断）。
-          */}
+          {tab === "audit" && (
+            <FilterSelect aria-label={c.filterCritical} value={critical} onChange={(v) => { setCritical(v); setPage(1); }} options={criticalOptions} allLabel={c.filterCriticalAll} />
+          )}
         </Toolbar>
       )}
 

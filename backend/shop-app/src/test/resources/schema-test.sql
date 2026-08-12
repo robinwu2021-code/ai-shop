@@ -1021,6 +1021,11 @@ CREATE TABLE IF NOT EXISTS sys_audit_log
     at BIGINT(20) NOT NULL,
     tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
     created_at DATETIME NOT NULL,
+    ip VARCHAR(64) DEFAULT NULL,
+    client_type VARCHAR(16) DEFAULT NULL,
+    critical TINYINT(1) NOT NULL DEFAULT 0,
+    before_json TEXT DEFAULT NULL,
+    after_json TEXT DEFAULT NULL,
     PRIMARY KEY (id)
 );
 

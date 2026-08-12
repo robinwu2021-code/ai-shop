@@ -185,8 +185,12 @@ public class OpsPlatformController {
 
     @GetMapping("/ops/audit-log")
     @PreAuthorize("@perm.can('" + Perms.IAM_AUDIT_READ + "')")
-    public List<AuditLogVO> auditLogs(@RequestParam(required = false) String target) {
-        return opsService.auditLogs(target);
+    public PageData<AuditLogVO> auditLogs(@RequestParam(required = false) String target,
+                                           @RequestParam(required = false) String keyword,
+                                           @RequestParam(required = false) Boolean critical,
+                                           @RequestParam(defaultValue = "1") long page,
+                                           @RequestParam(defaultValue = "20") long size) {
+        return opsService.auditLogs(target, keyword, critical, page, size);
     }
 
     @GetMapping("/ops/merchant/apply")

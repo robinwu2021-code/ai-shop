@@ -23,4 +23,15 @@ public class AuditLogPortImpl implements AuditLogPort {
     public void record(String action, String target, String detail) {
         opsService.audit(action, target, detail);
     }
+
+    @Override
+    public void record(String action, String target, String detail, boolean critical) {
+        opsService.audit(action, target, detail, critical, null, null);
+    }
+
+    @Override
+    public void record(String action, String target, String detail, boolean critical,
+                        String beforeJson, String afterJson) {
+        opsService.audit(action, target, detail, critical, beforeJson, afterJson);
+    }
 }

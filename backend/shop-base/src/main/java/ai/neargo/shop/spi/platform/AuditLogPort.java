@@ -18,4 +18,21 @@ public interface AuditLogPort {
      * @param detail 人能读的说明（直接展示在运营的审计列表里）
      */
     void record(String action, String target, String detail);
+
+    /**
+     * 标记这条操作是否高危，用于运营审计列表的筛选。默认走 {@link #record(String, String, String)}
+     * 即非高危 —— 大多数调用点不用改，只有涉及资金/权限/不可逆状态的少数几处需要显式传 true。
+     */
+    default void record(String action, String target, String detail, boolean critical) {
+        record(action, target, detail);
+    }
+
+    /**
+     * 带结构化前后对比的版本。{@code beforeJson}/{@code afterJson} 是调用方自己序列化好的 JSON 字符串，
+     * 没有旧值可比的调用点不要为了凑参数瞎编——直接用不带这两个参数的重载。
+     */
+    default void record(String action, String target, String detail, boolean critical,
+                         String beforeJson, String afterJson) {
+        record(action, target, detail, critical);
+    }
 }

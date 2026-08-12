@@ -31,4 +31,10 @@ public class SysAuditLog {
     private Long at;
     private String tenantNo;
     private LocalDateTime createdAt;
+
+    private String ip;
+    private String clientType;
+    private Boolean critical;
+    private String beforeJson;
+    private String afterJson;
 }
