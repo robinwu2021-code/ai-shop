@@ -129,8 +129,18 @@ export const UI_PERM_MAP: Record<string, string | typeof UNIMPLEMENTED> = {
   // 环境切换后端仍然没有端点
   "system:env:switch": UNIMPLEMENTED,
 
-  // IAM 写操作：后端只有 GET /ops/staffs（读），角色授权页一个能通的写接口都没有
-  "iam:role:grant": UNIMPLEMENTED,
+  /*
+   * IAM 写操作。**已接通**（2026-08-11）：/ops/staffs/{no}/enabled · /role · /scope。
+   *
+   * 这条码此前标着 UNIMPLEMENTED，而 UNIMPLEMENTED 对超管也判 false ——
+   * 于是三个端点做完之后，**超管打开 IAM 页仍然一个按钮都点不到**，
+   * 页面顶部还写着「当前角色无账号与权限管理权限」。
+   * 功能做完了但没有入口，是这个项目反复出现的形状；这次是自己造的。
+   *
+   * ⚠️ 角色权限**配置**（改某个角色有哪些码）后端仍然没有 —— 那要 M9b 接 DB。
+   * 页面上那一块另外标注，不靠这个码遮住整页。
+   */
+  "iam:role:grant": "staff:manage",
 
   // ══════════════════════════════════════════════════════════════════
   // 导航叶子的 `:read` 码（lib/nav.ts 的 leaf.perm）。

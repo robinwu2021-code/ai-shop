@@ -82,6 +82,13 @@ public class OpsServiceImpl implements OpsService {
         List<String> perms = Perms.of(roles);
         String token = tokenStore.issue(TokenStore.SessionData.of(
                 LoginUser.operator(staff.getStaffNo(), staff.getRealName(), roles, perms)));
+        /*
+         * 记最近登录。加了这一列却没人写的话，员工列表那一列永远是「-」——
+         * 而运营停用一个长期没登录的账号之前，看的就是它。
+         * 又一个「有列没人填」，只是这次在自己的批次里。
+         */
+        staff.setLastLoginAt(System.currentTimeMillis());
+        staffMapper.updateById(staff);
         return new LoginResultVO(token, toVO(staff, roles, perms));
     }
 

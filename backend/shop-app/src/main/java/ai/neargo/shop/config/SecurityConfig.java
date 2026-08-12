@@ -46,6 +46,9 @@ public class SecurityConfig {
      */
     private static final java.util.List<String> ALLOWED_ORIGINS = java.util.List.of(
             "http://localhost:3100", "http://127.0.0.1:3100",   // ops-web
+            // 第二个 ops-web 开发端口：**并行开发时两个会话各起一份**，
+            // 共用 3100 的结果是后起的那个静默失败（端口被占，页面连的还是别人的后端）
+            "http://localhost:3101", "http://127.0.0.1:3101",
             "http://localhost:5173", "http://127.0.0.1:5173",   // c-app dev
             "http://localhost:5174", "http://127.0.0.1:5174");  // b-app dev
 

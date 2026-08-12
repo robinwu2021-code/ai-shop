@@ -50,7 +50,12 @@ const BACKEND_ROLE: Record<string, Role> = {
   TECH_OPS: "TECH_OPS",
 };
 
-function toOpsRole(backendRole?: string): Role {
+/**
+ * 导出给 `https/iam.ts` 用：员工列表也要把后端角色码翻成 ops-web 的。
+ * **只能有一份** —— 两处各写一份翻译表，改一个角色名就会漏掉另一处，
+ * 而漏掉的表现是那一列显示 `role.undefined`（实测过）。
+ */
+export function toOpsRole(backendRole?: string): Role {
   // 认不出来就当分析员（只读），而不是超管
   return (backendRole && BACKEND_ROLE[backendRole]) || "ANALYST";
 }
