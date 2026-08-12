@@ -5,6 +5,8 @@ import type { DashboardApi } from "../contracts/dashboard";
 import { fail } from "@/lib/biz-error";
 import { wait } from "./_wait";
 import { currentAuth, type Role } from "@/lib/auth";
+import { NAV } from "@/lib/nav";
+import { can } from "@/lib/permissions";
 
 /** 与后端 DevSeeder 的四个运营账号一一对应 */
 const MOCK_ROLE_OF: Record<string, Role> = {
@@ -33,6 +35,26 @@ export const dashboardMock: DashboardApi = {
     const a = currentAuth();
     if (!a?.token) fail("未登录", "Not signed in");
     return wait({ username: a.username, role: a.role, token: "", perms: backendPermsOf(a.role) }, 120);
+  },
+  /*
+   * mock 的菜单从静态 NAV 造 —— 与真后端返回同形状。
+   * 不造的话 mock 模式下菜单会整个空掉，而那与「权限配错」长得一样。
+   */
+  menu: () => {
+    const a = currentAuth();
+    const fns = NAV.map((s, i) => ({
+      functionCode: `OPS_${s.key.toUpperCase()}`,
+      name: s.label, icon: s.icon, href: s.href, sort: (i + 1) * 10,
+      points: (s.children ?? [])
+        .filter((l) => !l.perm || can(a?.perms, l.perm))
+        .map((l, j) => ({
+          pointCode: `OPS_${s.key.toUpperCase()}_${j}`, name: l.label,
+          groupName: l.group ?? null, href: l.href, uiPermCode: l.perm ?? null,
+          permCode: null, backendStatus: "IMPLEMENTED", uiReady: l.ready !== false,
+          matrixCode: l.matrix ?? null, pointType: "MENU", sort: (j + 1) * 10,
+        })),
+    })).filter((f) => f.points.length > 0 || f.functionCode === "OPS_DASHBOARD");
+    return wait(fns, 120);
   },
   getDashboardKpi: () => wait(db.kpi),
   getDashboardTrend: () => wait(db.trend),

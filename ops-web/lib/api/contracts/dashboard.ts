@@ -1,5 +1,5 @@
 // 覆盖范围：认证登录 + 工作台（P-16.1）。
-import type { DashboardKpi, FunnelRow, LoginResp, TrendPoint } from "@/lib/types";
+import type { DashboardKpi, FunnelRow, LoginResp, MenuFunction, TrendPoint } from "@/lib/types";
 import type { Role } from "@/lib/auth";
 
 export type { LoginResp };
@@ -21,6 +21,18 @@ export interface DashboardApi {
    * 于是导航整个空掉，而 token 还是有效的 —— 用户卡在一个看不出原因的空壳里。
    */
   me(): Promise<LoginResp>;
+
+  /**
+   * 当前登录人的**动态菜单**（`GET /ops/menu`）。
+   *
+   * 由后端按 `sys_role_member → sys_role_point → sys_function_point` 算出，
+   * 而不是前端按写死的 nav 过滤 —— 加一个角色不再需要发一次前端版。
+   *
+   * **未实现的功能点也会返回**（`backendStatus: "NOT_IMPLEMENTED"`），
+   * 端上灰显 + 「待建」、不可点：藏起来运营不知道平台规划了这个功能，
+   * 可点则是死按钮。
+   */
+  menu(): Promise<MenuFunction[]>;
   getDashboardKpi(): Promise<DashboardKpi>;
   getDashboardTrend(): Promise<TrendPoint[]>;
   getAcquisitionFunnel(): Promise<FunnelRow[]>;

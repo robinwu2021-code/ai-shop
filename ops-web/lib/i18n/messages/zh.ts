@@ -76,7 +76,11 @@ export const zh = {
     unconfirmTitle: "恢复{entity} {name}",
     unconfirmDesc: "恢复后该{entity}重新出现在默认列表，可正常编辑与使用。",
   },
-  nav: { expand: "展开导航", collapse: "收起导航" },
+  nav: {
+    /* 后端未实现：**渲染但禁用** —— 藏起来运营不知道平台规划了这个功能，可点则是死按钮 */
+    notImplemented: "待建",
+    "notImplemented.hint": "该功能后端尚未实现 —— 显示出来是为了让你知道平台规划了它，但现在点不动",
+    expand: "展开导航", collapse: "收起导航" },
   theme: { label: "主题色", mode: "明暗", light: "浅色", dark: "深色", switch: "切换主题色",
     fullSchemeHint: "「商务蓝」是整套配色（含背景），其余四套只换主色。",
     mono: "黑白灰", business: "商务蓝", fresh: "生鲜绿", promo: "促销橙", blue: "时尚蓝" },

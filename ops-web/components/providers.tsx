@@ -7,6 +7,7 @@ import { useLocaleStore, applyLocale } from "@/lib/stores/locale";
 import { notify } from "@/lib/notify";
 import { Toaster } from "@/components/ui/toaster";
 import { useAuth } from "@/lib/auth";
+import { useServerMenu } from "@/lib/stores/server-menu";
 import { api } from "@/lib/api";
 
 /**
@@ -30,6 +31,8 @@ function useRefreshPerms() {
         // 组件已卸载 / 期间退出登录：这时写回去等于把已登出的人的权限塞回来
         if (!alive || !useAuth.getState().token) return;
         useAuth.setState({ role: r.role, perms: r.perms ?? [] });
+        // perms 到手之后再拉菜单 —— 菜单是后端按人算的，早拉一次拿到的是旧身份的
+        void useServerMenu.getState().load();
       })
       .catch(() => {});
     return () => {

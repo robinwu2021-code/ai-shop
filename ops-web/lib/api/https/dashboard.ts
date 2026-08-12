@@ -104,6 +104,7 @@ export const dashboardHttp: DashboardApi = {
       pickupNo: staff?.pickupNo,
     };
   },
+  menu: () => client.get("/ops/menu"),
   getDashboardKpi: () => client.get("/ops/dashboard/kpi"),
   getDashboardTrend: () => client.get("/ops/dashboard/trend"),
   getAcquisitionFunnel: () => client.get("/ops/dashboard/funnel"),

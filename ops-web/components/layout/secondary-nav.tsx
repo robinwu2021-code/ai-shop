@@ -12,6 +12,7 @@ import {
   visibleLeaves, findActiveSection, activeLeafIndex, normPath, isLeafLocked, groupedLeaves,
 } from "@/lib/nav";
 import { useAuth } from "@/lib/auth";
+import { useServerMenu, isPointUnimplemented } from "@/lib/stores/server-menu";
 import { useI18n } from "@/lib/i18n";
 import { PHASE_KEY, isPhaseLocked, type Phase } from "@/lib/phase";
 import { cn } from "@/lib/utils";
@@ -33,7 +34,30 @@ function PhaseBadge({ phase }: { phase: Phase }) {
 
 function LeafRow({ leaf, active }: { leaf: NavLeaf; active: boolean }) {
   const { t, tNav } = useI18n();
+  const byHref = useServerMenu((s) => s.byHref);
   const locked = isLeafLocked(leaf);
+  /*
+   * **后端未实现：渲染但禁用**。
+   *
+   * 藏起来的话运营不知道平台规划了这个功能；让它可点就是死按钮
+   * （看着能点、点了 404）。禁用项从一开始就说明了自己不能用 —— 第三条路。
+   *
+   * 状态来自服务端菜单（sys_function_point.backend_status），不是前端写死的。
+   */
+  const unimplemented = isPointUnimplemented(byHref, leaf.href);
+  if (unimplemented) {
+    return (
+      <span
+        className="flex items-center rounded-field px-2.5 py-1.5 text-[13px] text-muted-foreground/50"
+        title={t("nav.notImplemented.hint")}
+      >
+        <span className="truncate">{tNav(leaf.label)}</span>
+        <span className="ms-1.5 rounded-chip border border-border px-1.5 text-[10px] leading-4 text-muted-foreground/70">
+          {t("nav.notImplemented")}
+        </span>
+      </span>
+    );
+  }
   if (leaf.soon || locked) {
     return (
       <span

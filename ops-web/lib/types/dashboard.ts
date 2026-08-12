@@ -58,3 +58,32 @@ export interface FunnelRow {
   /** 该环节人数 */
   count: number;
 }
+
+
+/** 服务端下发的菜单分区（`GET /ops/menu`）。 */
+export interface MenuFunction {
+  functionCode: string;
+  name: string;
+  icon?: string | null;
+  href?: string | null;
+  sort: number;
+  points: MenuPoint[];
+}
+
+export interface MenuPoint {
+  pointCode: string;
+  name: string;
+  groupName?: string | null;
+  href?: string | null;
+  uiPermCode?: string | null;
+  /** 后端权限码。**null = 不受权限约束** —— 与 NOT_IMPLEMENTED 是两回事 */
+  permCode?: string | null;
+  /** IMPLEMENTED / NOT_IMPLEMENTED / UNMAPPED */
+  backendStatus: string;
+  /** 后端通了但前端页面还没做完 */
+  uiReady: boolean;
+  matrixCode?: string | null;
+  /** MENU 菜单项 / ACTION 页面内按钮级授权（菜单不渲染 ACTION） */
+  pointType: string;
+  sort: number;
+}
