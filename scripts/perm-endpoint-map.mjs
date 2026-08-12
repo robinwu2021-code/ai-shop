@@ -28,10 +28,21 @@ export const RULES = [
   // 封禁 / 归档 / 记违规 = 处置。**与只读档案分开是这次改造最主要的目的之一**
   ["POST", /^\/ops\/merchants\/[^/]+\/(status|archive|unarchive|violations)$/, "merchant:merchant:ban"],
   ["POST", /^\/ops\/merchants\/[^/]+\/verified$/, "merchant:verify:grant"],
-  // 资质与资质码：类目上挂着 required_code，授资质等于放行一整类商品的准入。
-  // 读单独一个码 —— 商家档案页要显示「这家店有哪些资质」，看不代表能授
-  ["GET", /^\/ops\/(merchants\/[^/]+\/)?(qualifications|auth-codes)/, "merchant:category:read"],
-  ["*", /^\/ops\/(merchants\/[^/]+\/)?(qualifications|auth-codes)/, "merchant:category:grant"],
+  // 资质授予：类目上挂着 required_code，授资质等于放行一整类商品的准入。
+  // 读单独一个码 —— 商家档案页要显示「这家店有哪些资质」，看不代表能授。
+  //
+  // **注意与 `/ops/auth-codes`（资质码字典）分开**：那是「世界上有哪些资质码」，
+  // 归类目维护面；这里是「给这家店授哪几个」，归商家治理。
+  // 第一版把两者归成同一个码，自检发现它**横跨 category:manage 与 merchant:audit
+  // 两个粗码** —— 机械展开时会让只有其中一个粗码的角色白拿另一半，
+  // 那正是这次改造要防的静默放宽。
+  ["GET", /^\/ops\/(merchants\/[^/]+\/)?qualifications/, "merchant:category:read"],
+  ["GET", /^\/ops\/merchants\/[^/]+\/auth-codes/, "merchant:category:read"],
+  ["*", /^\/ops\/(merchants\/[^/]+\/)?qualifications/, "merchant:category:grant"],
+  ["*", /^\/ops\/merchants\/[^/]+\/auth-codes/, "merchant:category:grant"],
+  // 资质码字典本身，与类目树同一个维护面（类目上挂 required_code，改哪个都影响准入）
+  ["GET", /^\/ops\/auth-codes/, "product:category:read"],
+  ["*", /^\/ops\/auth-codes/, "product:category:update"],
   ["POST", /^\/ops\/qualifications\/[^/]+\/revoke$/, "merchant:category:grant"],
   ["GET", /^\/ops\/merchants\/[^/]+\/store-modes$/, "merchant:mode:read"],
   ["PUT", /^\/ops\/stores\/[^/]+\/business-mode$/, "merchant:mode:update",
