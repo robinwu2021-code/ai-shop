@@ -82,6 +82,14 @@
       }
     },
     {
+      "path": "pages/staff-detail/index",
+      "style": { "navigationBarTitleText": "员工详情" }
+    },
+    {
+      "path": "pages/role-detail/index",
+      "style": { "navigationBarTitleText": "角色" }
+    },
+    {
       "path": "pages/staff/index",
       "style": {
         "navigationBarTitleText": "员工与授权"

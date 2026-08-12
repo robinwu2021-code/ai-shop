@@ -21,6 +21,7 @@ import type {
   MerchantProfile,
   MerchantStaff,
   StaffLog,
+  MerchantRole,
   PaymentApplyment,
   Store,
   StoreProfile,
@@ -944,7 +945,8 @@ export const db = {
   staff: [
     {
       mchAccountNo: "SF-MOCK-OWNER",
-      loginPhone: "138****8000",
+      displayName: "张老板",
+      loginPhone: "13800008000",
       isOwner: true,
       status: "ACTIVE",
       roles: [],
@@ -957,6 +959,59 @@ export const db = {
    * 演示数据和真实产生的记录长得一模一样。
    */
   staffLogs: [] as StaffLogRow[],
+
+  /**
+   * 角色（V71）：6 个预置 + 商家自定义。
+   *
+   * **预置这份与后端 V71 的 seed 逐条相同** —— 编一份不一样的，
+   * 开发期看到的角色能力就与真实的不同，而这正是最不该分岔的地方。
+   */
+  roles: [
+    { roleCode: "OWNER", name: "老板", builtin: true, perms: ["*"], permLabels: ["全部"], usedBy: 0 },
+    {
+      roleCode: "MANAGER", name: "店长", builtin: true,
+      perms: ["biz:receive", "biz:verify", "biz:ship", "biz:order:view", "biz:stock",
+        "biz:goods", "biz:campaign", "biz:review", "biz:aftersale", "biz:customer", "biz:store"],
+      permLabels: [], usedBy: 0,
+    },
+    {
+      roleCode: "CLERK", name: "店员", builtin: true,
+      perms: ["biz:receive", "biz:verify", "biz:ship", "biz:order:view", "biz:stock"],
+      permLabels: [], usedBy: 0,
+    },
+    {
+      roleCode: "PICKER", name: "理货员", builtin: true,
+      perms: ["biz:receive", "biz:stock"], permLabels: [], usedBy: 0,
+    },
+    {
+      roleCode: "COURIER", name: "配送员", builtin: true,
+      perms: ["biz:ship", "biz:order:view"], permLabels: [], usedBy: 0,
+    },
+    {
+      roleCode: "CS", name: "客服", builtin: true,
+      perms: ["biz:review", "biz:aftersale", "biz:order:view"], permLabels: [], usedBy: 0,
+    },
+  ] as MerchantRole[],
+
+  /**
+   * 权限码 → 中文。**真实环境由后端随角色列表下发**（BizPerms.LABELS），
+   * mock 里放一份是为了让 `permLabels` 有值 —— 页面一个字都不抄。
+   */
+  permLabels: {
+    "biz:receive": "到货登记与分拣",
+    "biz:verify": "核销取货",
+    "biz:ship": "发货与标记送达",
+    "biz:order:view": "看订单与金额",
+    "biz:stock": "改库存",
+    "biz:goods": "建商品、改价、上下架",
+    "biz:campaign": "营销活动与报价",
+    "biz:review": "回评价、差评申诉",
+    "biz:aftersale": "处理售后",
+    "biz:customer": "顾客列表与经营数据",
+    "biz:store": "店铺装修与配送规则",
+    "biz:store:admin": "建店、停用、挂收款号、管员工",
+    "biz:finance": "结算账单与收款进件",
+  } as Record<string, string>,
 
   /**
    * 收款进件。**默认停在 APPLYING** —— 演示环境也要能看到「店开了但还收不了钱」这个状态，

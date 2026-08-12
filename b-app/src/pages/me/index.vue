@@ -61,6 +61,13 @@ onShow(() => {
         <text class="cell__label">{{ $t("me.settle") }}</text>
         <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
       </view>
+      <!--
+        员工与授权。**唯一入口原先在工作台第二屏**，用户实际反馈是「没看到添加员工的功能」。
+        放这里而不是往工作台上提：工作台按「今天要干的活」排，加员工不是每天干的事。
+      -->
+      <view v-if="merchant.can('biz:store:admin')" class="cell" @tap="go(ROUTES.staff)">
+        <text class="cell__label">{{ $t("me.staff") }}</text>
+      </view>
       <view v-if="merchant.can('biz:customer')" class="cell" @tap="go(ROUTES.stats)">
         <text class="cell__label">{{ $t("me.stats") }}</text>
         <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>

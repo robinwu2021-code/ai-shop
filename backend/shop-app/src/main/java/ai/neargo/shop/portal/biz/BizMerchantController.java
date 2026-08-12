@@ -53,6 +53,7 @@ public class BizMerchantController {
     private final MerchantPaymentService paymentService;
     private final StoreAdminService storeAdminService;
     private final MerchantStaffService staffService;
+    private final ai.neargo.shop.merchant.service.MerchantRoleService roleService;
     /** 提报新社区（ADR-013 阶段三）：社区是 community 域的主数据，商家只是提报方 */
     private final ai.neargo.shop.community.service.CommunityAdminService communityAdminService;
 
@@ -62,8 +63,10 @@ public class BizMerchantController {
                                  MerchantPaymentService paymentService,
                                  StoreAdminService storeAdminService,
                                  MerchantStaffService staffService,
+                                 ai.neargo.shop.merchant.service.MerchantRoleService roleService,
                                  ai.neargo.shop.community.service.CommunityAdminService communityAdminService) {
         this.communityAdminService = communityAdminService;
+        this.roleService = roleService;
         this.storeService = storeService;
         this.paymentService = paymentService;
         this.storeAdminService = storeAdminService;
@@ -398,7 +401,7 @@ public class BizMerchantController {
     @PreAuthorize("@perm.canBiz('" + BizPerms.STORE_ADMIN + "')")
     @PostMapping("/biz/staff")
     public StaffVO addStaff(@RequestBody StaffReq req) {
-        return staffService.add(BizContext.requireMerchantNo(), req.loginPhone());
+        return staffService.add(BizContext.requireMerchantNo(), req.loginPhone(), req.displayName());
     }
 
     /** 停用 / 启用。**老板不能被停用** —— 那是个能把自己锁在门外的按钮。 */
@@ -439,7 +442,77 @@ public class BizMerchantController {
         return staffService.logs(BizContext.requireMerchantNo(), mchAccountNo);
     }
 
-    public record StaffReq(String loginPhone) {
+    // ---------------------------------------------------------------- 角色（V71 自定义角色）
+
+    /**
+     * 本主体可用的角色：6 个平台预置（只读）+ 自定义，各带权限码、中文说明与「几个人在用」。
+     *
+     * <p>与员工管理同一档权限 —— 能改角色 = 能改所有持有者的能力。
+     */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.STORE_ADMIN + "')")
+    @GetMapping("/biz/roles")
+    public List<ai.neargo.shop.merchant.dto.RoleVO> roles() {
+        return roleService.list(BizContext.requireMerchantNo());
+    }
+
+    /**
+     * 自定义角色<b>可以勾的权限点</b>，带中文说明。
+     *
+     * <p>为什么不让端上「把 6 个预置角色的权限并起来」当选项：那个并集<b>少一条</b> ——
+     * {@code biz:finance}（结算账单与收款进件）只有老板有，而老板那行是 {@code *}。
+     * 于是后端明明收这个码，界面上却根本勾不到，看起来像功能没做。
+     *
+     * <p>{@code biz:store:admin} 不在返回里（{@link BizPerms#assignableCodes()}）——
+     * 与 {@link #createRole} 的拒绝是同一份定义，不是两处各写一遍。
+     */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.STORE_ADMIN + "')")
+    @GetMapping("/biz/role-perms")
+    public List<PermOption> rolePerms() {
+        return BizPerms.assignableCodes().stream()
+                .sorted()
+                .map(c -> new PermOption(c, BizPerms.LABELS.get(c)))
+                .toList();
+    }
+
+    /** @param label 中文短说明。端上有自己的中/英/阿三份文案，这份是兜底 */
+    public record PermOption(String code, String label) {
+    }
+
+    /**
+     * 建自定义角色。
+     *
+     * <p><b>{@code biz:store:admin} 会被拒</b>（{@code MerchantRoleServiceImpl.requirePerms}）——
+     * 界面上它根本不出现，这里再挡一次：端点是公开的，绕过界面直接发一个带它的请求
+     * 是最容易想到的事。
+     */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.STORE_ADMIN + "')")
+    @PostMapping("/biz/roles")
+    public ai.neargo.shop.merchant.dto.RoleVO createRole(@RequestBody RoleReq req) {
+        return roleService.create(BizContext.requireMerchantNo(), req.name(), req.perms());
+    }
+
+    /** 改名 / 改权限码。**预置角色拒** —— 要改先「复制为自定义角色」 */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.STORE_ADMIN + "')")
+    @PostMapping("/biz/role/{roleCode}")
+    public ai.neargo.shop.merchant.dto.RoleVO updateRole(@PathVariable String roleCode,
+                                                        @RequestBody RoleReq req) {
+        return roleService.update(BizContext.requireMerchantNo(), roleCode,
+                req.name(), req.perms());
+    }
+
+    /** 删除。**还有人持有时拒** —— 删掉等于那些人的权限凭空消失，而他们看不到任何解释 */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.STORE_ADMIN + "')")
+    @PostMapping("/biz/role/{roleCode}/delete")
+    public void deleteRole(@PathVariable String roleCode) {
+        roleService.delete(BizContext.requireMerchantNo(), roleCode);
+    }
+
+    /** @param perms 权限码。不含 {@code biz:store:admin} —— 见 {@link #createRole} */
+    public record RoleReq(String name, List<String> perms) {
+    }
+
+    /** @param displayName 备注名。为空时端上回落脱敏号 —— 不强制，但强烈建议填 */
+    public record StaffReq(String loginPhone, String displayName) {
     }
 
     public record GrantReq(String storeNo, String role, Boolean granted) {

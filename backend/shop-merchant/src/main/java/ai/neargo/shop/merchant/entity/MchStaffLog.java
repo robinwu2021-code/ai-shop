@@ -32,6 +32,17 @@ public class MchStaffLog extends BaseEntity {
     /** 撤销某店某角色。撤到一个不剩 = 从这家店移除他 */
     public static final String ROLE_REVOKE = "ROLE_REVOKE";
 
+    /*
+     * 下面三个是**角色定义本身**的变更（V71 自定义角色）。
+     *
+     * 它们比「给某个人授权」影响更大：改一次角色的权限码，
+     * **所有持有这个角色的人同时变**，而且下一个请求就生效。
+     * 所以它同样要留痕，且 targetAccountNo 为空 —— 这类记录没有具体的「被操作的人」。
+     */
+    public static final String ROLE_CREATE = "ROLE_CREATE";
+    public static final String ROLE_UPDATE = "ROLE_UPDATE";
+    public static final String ROLE_DELETE = "ROLE_DELETE";
+
     private String logNo;
     private String entityNo;
 

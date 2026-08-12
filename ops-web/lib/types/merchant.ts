@@ -294,3 +294,27 @@ export interface DepositTxn {
   /** 发生时间 */
   createdAt?: string | null;
 }
+
+/**
+ * 商家的一个员工，以及他在各门店的角色（**运营端只读**）。
+ *
+ * 为什么运营要看得到：客服接到「我们店的配送员看不到订单」时，
+ * 在此之前只能让老板自己截图 —— 而问题往往正是「他以为授了、其实没授」，
+ * 截图里看不出这一点。
+ *
+ * 平台**不能改**这些授权：谁能进这家店是商家的雇佣关系。
+ */
+export interface MerchantStaffRow {
+  /** 商家账号号 */
+  mchAccountNo: string;
+  /** 姓名（老板自己写的）。认人靠它；可能为空 */
+  displayName?: string | null;
+  /** 登录手机号。**它就是这个员工的登录用户名**（手机号 + 验证码，没有密码） */
+  loginPhone: string;
+  /** 老板。**不受门店授权限制**，所以 roles 为空不代表他没权限 */
+  isOwner: boolean;
+  /** ACTIVE / DISABLED */
+  status: string;
+  /** 他在各门店的角色。一人一店可多角色，权限取并集 */
+  roles: { storeNo: string; storeName: string; role: string }[];
+}

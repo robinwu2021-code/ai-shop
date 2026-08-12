@@ -48,7 +48,7 @@ public interface MerchantStaffService {
      * 重复添加时**把已停用的那条重新启用**，而不是报「已存在」——
      * 店员离职再回来是常事，报错只会让店长去建一个带后缀的假号码。
      */
-    StaffVO add(String merchantNo, String loginPhone);
+    StaffVO add(String merchantNo, String loginPhone, String displayName);
 
     /**
      * 停用 / 启用员工。

@@ -46,9 +46,18 @@ public class MchStoreRole extends BaseEntity {
      */
     public static final String CS = "CS";
 
-    /** 全部可授予的门店角色。**OWNER 不在其中** —— 他不需要逐店授权 */
+    /**
+     * 预置的可授予角色。
+     *
+     * <p>⚠️ <b>V71 起它不再是「可授予角色的全集」</b> —— 商家可以自定义角色，
+     * 能不能授由 {@code mch_role} 里有没有这一行决定（见 {@code grantStore}）。
+     * 这个常量现在只用于种子与测试里指代那五个预置角色。
+     */
     public static final java.util.Set<String> GRANTABLE =
             java.util.Set.of(MANAGER, CLERK, PICKER, COURIER, CS);
+
+    /** 老板不在这张表里 —— 把它当角色授给别人等于凭空造一个第二老板 */
+    public static final String OWNER_CODE = "OWNER";
 
     private String mchAccountNo;
     private String storeNo;

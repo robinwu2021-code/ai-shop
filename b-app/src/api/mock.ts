@@ -57,6 +57,7 @@ function pointsAccount() {
     forced: false,
   };
 }
+import type { StaffLogRow } from "@shared/mock/db";
 import type {
   CurrencyCode,
   Goods,
@@ -193,8 +194,9 @@ function logStaff(
   const owner = db.staff.find((x) => x.isOwner);
   db.staffLogs.unshift({
     targetAccountNo: target.mchAccountNo,
-    actor: owner?.loginPhone,
-    targetName: target.loginPhone,
+    // 认人用姓名 —— 审计里一列号码，三个月后谁也想不起那是谁
+    actor: owner?.displayName || owner?.loginPhone,
+    targetName: target.displayName || target.loginPhone,
     action,
     storeName,
     role,
@@ -203,7 +205,55 @@ function logStaff(
   });
 }
 
-/** 与服务端同一套脱敏：两处不一致会让人以为其中一处泄了 */
+/** 有几个人持有这个角色 —— 删除按钮的依据 */
+function usersOfRole(roleCode: string) {
+  return db.staff.filter((s) => s.roles.some((r) => r.role === roleCode)).length;
+}
+
+/** 权限码 → 中文。**取自 db.permLabels（后端下发的那份）**，不在页面里再抄一遍 */
+/** 角色码 → 显示名。审计那行字是给老板看的，他没见过 `MANAGER`，更没见过 `R-MOCK-1` */
+function roleName(code: string) {
+  return db.roles.find((r) => r.roleCode === code)?.name ?? code;
+}
+
+function permLabel(code: string) {
+  return db.permLabels[code] ?? code;
+}
+
+/**
+ * 自定义角色不能带 `biz:store:admin` —— 与后端同一条边界。
+ *
+ * mock 也要拦：只有后端拦的话，开发期能建出一个「副老板」角色，
+ * 连上真后端才发现建不了，而那时界面已经按「能建」画好了。
+ */
+function assertAssignable(perms: string[]) {
+  const bad = perms.filter((p) => p === "biz:store:admin" || p === "*");
+  if (bad.length) throw new Error("管员工的权限不能授给自定义角色");
+  if (!perms.length) throw new Error("至少勾一项权限");
+  return [...perms];
+}
+
+function logStaffRole(action: string, roleCode: string, detail: string) {
+  // role 在类型上是 StaffRole（预置码的联合），而自定义角色码是运行期生成的业务键。
+  // 审计里存的是「哪个角色」而不是「哪个预置角色」—— 这里显式放宽，
+  // 与后端一致（那边 mch_staff_log.role 也只是一列字符串）
+  const owner = db.staff.find((x) => x.isOwner);
+  db.staffLogs.unshift({
+    targetAccountNo: "",
+    actor: owner?.displayName || owner?.loginPhone,
+    action,
+    role: roleCode as StaffLogRow["role"],
+    detail,
+    at: Date.now(),
+  });
+}
+
+/**
+ * 脱敏 —— **只用在审计文案里**（与后端同一处口径）。
+ *
+ * 员工档案上的号码不脱敏：它就是登录用户名，老板要能核对、能改。
+ * 但日志是长期留存、可能被导出的文本，那里不需要一个完整号码。
+ */
 function maskPhone(phone: string) {
   return phone.length < 7 ? phone : `${phone.slice(0, 3)}****${phone.slice(-4)}`;
 }
@@ -235,7 +285,7 @@ export const mockApi: MerchantApi = {
      * 「输错号码时该显示什么」这段永远走不到，而它是员工登录最常见的一次失败。
      */
     const staff = db.staff.find(
-      (x) => x.status === "ACTIVE" && x.loginPhone === maskPhone(payload.phone),
+      (x) => x.status === "ACTIVE" && x.loginPhone === payload.phone,
     );
     if (!staff) throw new Error("该手机号不是本店员工");
     return delay({ token: "demo-staff-token", merchant: { ...db.merchant } });
@@ -401,28 +451,30 @@ export const mockApi: MerchantApi = {
     return delay(db.staff.map((x) => ({ ...x })));
   },
 
-  async mAddStaff(loginPhone) {
+  async mAddStaff(loginPhone, displayName) {
     if (!/^\d{11}$/.test(loginPhone)) throw new Error("请填 11 位手机号");
-    const existing = db.staff.find((x) => x.loginPhone === maskPhone(loginPhone));
+    const existing = db.staff.find((x) => x.loginPhone === loginPhone);
     if (existing) {
       // 离职再回来是常事：重新启用而不是报「已存在」
       existing.status = "ACTIVE";
       // 对老板来说这就是「把人加回来」，所以记 STAFF_ADD 而不是 ENABLE ——
       // 审计要还原他做了什么，不是还原代码走了哪个分支
-      logStaff(existing, "STAFF_ADD", undefined, undefined, "重新启用已存在的员工");
+      logStaff(existing, "STAFF_ADD", undefined, undefined,
+        `重新启用已存在的员工 ${maskPhone(loginPhone)}`);
       persist();
       return delay({ ...existing });
     }
     const staff = {
       mchAccountNo: `SF-MOCK-${db.staff.length + 1}`,
-      // 明文不进本地库 —— mock 也照这条来，免得端上养成读明文的习惯
-      loginPhone: maskPhone(loginPhone),
+      displayName: displayName?.trim() || undefined,
+      // 号码就是登录用户名，完整存 —— 与后端同口径
+      loginPhone,
       isOwner: false,
       status: "ACTIVE" as const,
       roles: [],
     };
     db.staff.push(staff);
-    logStaff(staff, "STAFF_ADD", undefined, undefined, "新增员工");
+    logStaff(staff, "STAFF_ADD", undefined, undefined, `新增员工 ${maskPhone(loginPhone)}`);
     persist();
     return delay({ ...staff });
   },
@@ -470,9 +522,9 @@ export const mockApi: MerchantApi = {
     // 撤销一个他本来就没有的角色是空操作，不留痕 —— 与后端同口径，
     // 否则日志里会出现一串「撤销了店长」而他从来不是店长
     if (granted !== false) {
-      logStaff(st, "ROLE_GRANT", store.name, role, `授予 ${store.name} 的 ${role}`);
+      logStaff(st, "ROLE_GRANT", store.name, role, `授予 ${store.name} 的 ${roleName(role)}`);
     } else if (had) {
-      logStaff(st, "ROLE_REVOKE", store.name, role, `撤销 ${store.name} 的 ${role}`);
+      logStaff(st, "ROLE_REVOKE", store.name, role, `撤销 ${store.name} 的 ${roleName(role)}`);
     }
     persist();
     return delay({ ...st });
@@ -481,6 +533,72 @@ export const mockApi: MerchantApi = {
   /**
    * 员工与授权的变更记录（B-11.10.3）。倒序 —— 最近做的那一件最可能是要查的。
    */
+  /**
+   * 角色列表：6 个预置（只读）+ 自定义。
+   *
+   * 预置那份**与后端 V71 的 seed 同一套语义** —— mock 里编一份不一样的，
+   * 开发期看到的角色能力就与真实的不同，而这正是最不该分岔的地方。
+   */
+  async mRoles() {
+    return delay(db.roles.map((r) => ({ ...r, usedBy: usersOfRole(r.roleCode) })));
+  },
+
+  /**
+   * 可勾的权限点：**db.permLabels 全表减掉 `biz:store:admin`** ——
+   * 与后端 `BizPerms.assignableCodes()` 同一条口径（那边也是全表减一条）。
+   */
+  async mRolePerms() {
+    return delay(
+      Object.entries(db.permLabels)
+        .filter(([code]) => code !== "biz:store:admin")
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([code, label]) => ({ code, label })),
+    );
+  },
+
+  async mCreateRole(payload) {
+    const perms = assertAssignable(payload.perms);
+    const role = {
+      roleCode: `R-MOCK-${db.roles.length + 1}`,
+      name: payload.name.trim(),
+      builtin: false,
+      perms,
+      permLabels: perms.map(permLabel),
+      usedBy: 0,
+    };
+    db.roles.push(role);
+    logStaffRole("ROLE_CREATE", role.roleCode, `新建角色「${role.name}」`);
+    persist();
+    return delay({ ...role });
+  },
+
+  async mUpdateRole(roleCode, payload) {
+    const role = db.roles.find((r) => r.roleCode === roleCode);
+    if (!role) throw new Error("角色不存在");
+    // 预置只读：与后端同口径，要改先复制一份
+    if (role.builtin) throw new Error("平台预置角色不可修改，请复制为自定义角色");
+    const perms = assertAssignable(payload.perms);
+    role.name = payload.name.trim();
+    role.perms = perms;
+    role.permLabels = perms.map(permLabel);
+    logStaffRole("ROLE_UPDATE", roleCode, `角色「${role.name}」权限已更新`);
+    persist();
+    return delay({ ...role, usedBy: usersOfRole(roleCode) });
+  },
+
+  async mDeleteRole(roleCode) {
+    const role = db.roles.find((r) => r.roleCode === roleCode);
+    if (!role) throw new Error("角色不存在");
+    if (role.builtin) throw new Error("平台预置角色不可删除");
+    const used = usersOfRole(roleCode);
+    // 还有人在用就不许删 —— 删了那些人的权限凭空消失，而他们看不到任何解释
+    if (used > 0) throw new Error(`还有 ${used} 人在用这个角色，先把他们撤下来`);
+    db.roles = db.roles.filter((r) => r.roleCode !== roleCode);
+    logStaffRole("ROLE_DELETE", roleCode, `删除角色「${role.name}」`);
+    persist();
+    return delay(undefined as unknown as void);
+  },
+
   async mStaffLogs(mchAccountNo) {
     const all = db.staffLogs ?? [];
     return delay(

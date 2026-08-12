@@ -131,7 +131,8 @@
 
 | 文档 | 状态 |
 |---|---|
-| [TDD-B端权限对接整改](./design/TDD-B端权限对接整改.md) | 已确认 · 16 项任务的方案与三处选型拍板 |
+| [TDD-B端员工与授权改版](./design/TDD-B端员工与授权改版.md) | 待确认 · 自定义角色 + 员工管理 + 审计三段式 |
+| [TDD-B端权限对接整改](./design/TDD-B端权限对接整改.md) | 已实现 · 20 项任务，四层对齐 |
 | [TDD-b-app](./design/TDD-b-app.md) | M0–M5 全部已实现（2026-08-05） |
 | [TDD-backend](./design/TDD-backend.md) | 草稿（待确认） |
 | [TDD-c-app](./design/TDD-c-app.md) | 已确认（2026-08-05） |

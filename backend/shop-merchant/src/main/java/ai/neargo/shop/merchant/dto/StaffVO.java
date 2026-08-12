@@ -5,17 +5,18 @@ import java.util.List;
 /**
  * 商家员工（B 端账号 + 他在各门店的角色）。
  *
+ * @param displayName  姓名（老板自己写的）。<b>认人靠它</b> —— 一列号码谁也分不清
  * @param mchAccountNo 商家账号号。**不叫 staffNo** —— 那个名字被平台运营占着，
  *                     而两者是完全不同的人（运营 vs 店员）
- * @param loginPhone   登录手机号，**脱敏**。完整号不回显给端：
- *                     能看到这张列表的人（**只有老板**，端点要 {@code biz:store:admin}）
- *                     一次就拿到全体员工的手机号，那等于一份可导出的通讯录。
- *                     脱敏的理由与「谁看得到」无关 —— 收窄了可见范围不等于该把号发出去
+ * @param loginPhone   登录手机号，<b>完整、不脱敏</b>（2026-08-12 拍板）。
+ *                     它<b>就是这个员工的登录用户名</b> —— 老板要核对「他用哪个号登录」、
+ *                     人换号时要改，脱敏之后这两件事都做不了；而号码本来就是老板填进去的。
+ *                     能看到这张列表的只有老板（端点要 {@code biz:store:admin}）
  * @param isOwner      老板。**老板不受门店授权限制**，他的店都归他管
  * @param status       ACTIVE / DISABLED
  * @param roles        他在各门店的角色。老板为空 —— 不是"没授权"，是"不需要授权"
  */
-public record StaffVO(String mchAccountNo, String loginPhone, boolean isOwner,
+public record StaffVO(String mchAccountNo, String displayName, String loginPhone, boolean isOwner,
                       String status, List<StoreRoleVO> roles) {
 
     /**

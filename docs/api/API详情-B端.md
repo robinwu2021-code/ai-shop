@@ -73,9 +73,10 @@
 | `timeline` | [`OrderTimelineNode`](#ordertimelinenode)\[\] | 是 | 状态流转轨迹，按时间正序。订单详情的进度条据此渲染 |
 | `idempotencyKey` | `string` | 否 | 下单幂等 key。端上生成，重复提交返回同一笔订单而不是新建 |
 | `buyerNickname` | `string` | 否 | 下单人昵称。团长视角（分拣单/核销台）要看得见是谁的单 |
+| `receiver` | [`OrderReceiver`](#orderreceiver) | 否 | 收件人（下单时的**快照**，自提单没有）。 快照而不是现查地址：买家下完单把地址改成新家，商家看到的就跟着变了， 而货已经按旧地址在路上。 ⚠️ **`phone` 的脱敏程度由后端按履约方式决定**：商家自送给完整号 （送到楼下找不到人就得打电话），其余履约方式给 `****1234`。 端上**不要自己判**要不要打码 —— 两处规则迟早分叉。 |
 | `reviewed` | `boolean` | 否 | 已评价 |
 | `pointsGranted` | `boolean` | 否 | 积分是否已发放（幂等标记，防止重复核销重复发分） |
-| `trafficSource` | `MERCHANT_OWNED` \| `PLATFORM` | 否 | 客流来源。**决定平台费率档**：商家自带客流建议零佣金 —— 他带来的客户 在别家的消费才是平台的收益（ADR-004 §6）。从店铺码/店铺分享进入即为 MERCHANT_OWNED。 |
+| `trafficSource` | [`TrafficSource`](#trafficsource) | 否 | 客流来源。**决定平台费率档**：商家自带客流建议零佣金 —— 他带来的客户 在别家的消费才是平台的收益（ADR-004 §6）。从店铺码/店铺分享进入即为 MERCHANT_OWNED。 |
 | `groupNo` | `string` | 否 | 参与的团。邻里自提的核销作用域就靠它裁剪（E16） |
 | `afterSale` | [`AfterSale`](#aftersale) | 否 | 售后单。订单状态只有粗粒度的 REFUNDING/REFUNDED，细节在这里 |
 | `merchantNo` | `string` | 否 | 本单归属的商家。**一单只属于一个商家** —— 购物车跨商家时拆成多笔子订单（E3）。 不拆的话分账无从谈起：一笔钱要分给几家、各分多少，没有承载的单据。 |
@@ -115,9 +116,10 @@
 | `timeline` | [`OrderTimelineNode`](#ordertimelinenode)\[\] | 是 | 状态流转轨迹，按时间正序。订单详情的进度条据此渲染 |
 | `idempotencyKey` | `string` | 否 | 下单幂等 key。端上生成，重复提交返回同一笔订单而不是新建 |
 | `buyerNickname` | `string` | 否 | 下单人昵称。团长视角（分拣单/核销台）要看得见是谁的单 |
+| `receiver` | [`OrderReceiver`](#orderreceiver) | 否 | 收件人（下单时的**快照**，自提单没有）。 快照而不是现查地址：买家下完单把地址改成新家，商家看到的就跟着变了， 而货已经按旧地址在路上。 ⚠️ **`phone` 的脱敏程度由后端按履约方式决定**：商家自送给完整号 （送到楼下找不到人就得打电话），其余履约方式给 `****1234`。 端上**不要自己判**要不要打码 —— 两处规则迟早分叉。 |
 | `reviewed` | `boolean` | 否 | 已评价 |
 | `pointsGranted` | `boolean` | 否 | 积分是否已发放（幂等标记，防止重复核销重复发分） |
-| `trafficSource` | `MERCHANT_OWNED` \| `PLATFORM` | 否 | 客流来源。**决定平台费率档**：商家自带客流建议零佣金 —— 他带来的客户 在别家的消费才是平台的收益（ADR-004 §6）。从店铺码/店铺分享进入即为 MERCHANT_OWNED。 |
+| `trafficSource` | [`TrafficSource`](#trafficsource) | 否 | 客流来源。**决定平台费率档**：商家自带客流建议零佣金 —— 他带来的客户 在别家的消费才是平台的收益（ADR-004 §6）。从店铺码/店铺分享进入即为 MERCHANT_OWNED。 |
 | `groupNo` | `string` | 否 | 参与的团。邻里自提的核销作用域就靠它裁剪（E16） |
 | `afterSale` | [`AfterSale`](#aftersale) | 否 | 售后单。订单状态只有粗粒度的 REFUNDING/REFUNDED，细节在这里 |
 | `merchantNo` | `string` | 否 | 本单归属的商家。**一单只属于一个商家** —— 购物车跨商家时拆成多笔子订单（E3）。 不拆的话分账无从谈起：一笔钱要分给几家、各分多少，没有承载的单据。 |
@@ -163,9 +165,10 @@
 | `timeline` | [`OrderTimelineNode`](#ordertimelinenode)\[\] | 是 | 状态流转轨迹，按时间正序。订单详情的进度条据此渲染 |
 | `idempotencyKey` | `string` | 否 | 下单幂等 key。端上生成，重复提交返回同一笔订单而不是新建 |
 | `buyerNickname` | `string` | 否 | 下单人昵称。团长视角（分拣单/核销台）要看得见是谁的单 |
+| `receiver` | [`OrderReceiver`](#orderreceiver) | 否 | 收件人（下单时的**快照**，自提单没有）。 快照而不是现查地址：买家下完单把地址改成新家，商家看到的就跟着变了， 而货已经按旧地址在路上。 ⚠️ **`phone` 的脱敏程度由后端按履约方式决定**：商家自送给完整号 （送到楼下找不到人就得打电话），其余履约方式给 `****1234`。 端上**不要自己判**要不要打码 —— 两处规则迟早分叉。 |
 | `reviewed` | `boolean` | 否 | 已评价 |
 | `pointsGranted` | `boolean` | 否 | 积分是否已发放（幂等标记，防止重复核销重复发分） |
-| `trafficSource` | `MERCHANT_OWNED` \| `PLATFORM` | 否 | 客流来源。**决定平台费率档**：商家自带客流建议零佣金 —— 他带来的客户 在别家的消费才是平台的收益（ADR-004 §6）。从店铺码/店铺分享进入即为 MERCHANT_OWNED。 |
+| `trafficSource` | [`TrafficSource`](#trafficsource) | 否 | 客流来源。**决定平台费率档**：商家自带客流建议零佣金 —— 他带来的客户 在别家的消费才是平台的收益（ADR-004 §6）。从店铺码/店铺分享进入即为 MERCHANT_OWNED。 |
 | `groupNo` | `string` | 否 | 参与的团。邻里自提的核销作用域就靠它裁剪（E16） |
 | `afterSale` | [`AfterSale`](#aftersale) | 否 | 售后单。订单状态只有粗粒度的 REFUNDING/REFUNDED，细节在这里 |
 | `merchantNo` | `string` | 否 | 本单归属的商家。**一单只属于一个商家** —— 购物车跨商家时拆成多笔子订单（E3）。 不拆的话分账无从谈起：一笔钱要分给几家、各分多少，没有承载的单据。 |
@@ -189,6 +192,40 @@
 | `principal` | `string` | 是 | `WX_MINI`: wx.login code；`PHONE_OTP`: 手机号 |
 | `credential` | `string` | 否 | `PHONE_OTP`: 验证码 |
 | `agreed` | `boolean` | 否 | 是否勾选了用户协议与隐私政策 —— 注册的合规前置，服务端要留痕。 登录页一直在发（`{ ...req }` 把 `LoginReq.agreed` 带了出去）， **漏的是这里没声明**，于是生成的 OpenAPI 里没有它，而后端 `LoginReq` 有。 这类漏声明比漏发更难发现：联调时一切正常，直到有人照着 spec 写另一个客户端。 |
+
+**出参**（`data`）
+
+类型：[`MerchantLoginResp`](#merchantloginresp)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `token` | `string` | 是 | 访问令牌。**商家池与 C 端用户池是两套账号**，token 不通用 |
+| `merchant` | [`MerchantProfile`](#merchantprofile) | 是 | 商家档案 |
+
+
+#### POST `/biz/auth/otp/send`
+
+发送验证码　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`void`](#void)
+
+
+#### POST `/biz/auth/staff-login`
+
+员工登录　🔒
+
+**入参**
+
+请求体：[`StaffLoginReq`](#staffloginreq)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `phone` | `string` | 是 | 员工的登录手机号（老板在员工管理里加的那个） |
+| `code` | `string` | 是 | 短信验证码 |
 
 **出参**（`data`）
 
@@ -245,6 +282,7 @@ _无字段_
 | `totalCount` | `number` | 否 | COUPON：发放总量。**预算上限，防止发穿** |
 | `takenCount` | `number` | 否 | COUPON：已被领取的数量 |
 | `usedCount` | `number` | 是 | 已核销/已使用次数，衡量效果 |
+| `storeNo` | `string` | 否 | 只对这家门店生效；**空 = 全主体**（存量活动都是它）。 多门店商家必须看得见 —— 否则两条同名的「开业满减」分不清是哪家店的。 |
 
 
 #### POST `/biz/campaign/{campaignNo}/toggle`
@@ -285,6 +323,20 @@ _无字段_
 | `totalCount` | `number` | 否 | COUPON：发放总量。**预算上限，防止发穿** |
 | `takenCount` | `number` | 否 | COUPON：已被领取的数量 |
 | `usedCount` | `number` | 是 | 已核销/已使用次数，衡量效果 |
+| `storeNo` | `string` | 否 | 只对这家门店生效；**空 = 全主体**（存量活动都是它）。 多门店商家必须看得见 —— 否则两条同名的「开业满减」分不清是哪家店的。 |
+
+
+### category
+
+#### GET `/biz/category/tree`
+
+类目树（选类目）　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`Category`](#category)\[\]
 
 
 ### communities
@@ -298,6 +350,67 @@ _无字段_
 **出参**（`data`）
 
 类型：[`Community`](#community)\[\]
+
+
+#### GET `/biz/communities/applies`
+
+我提报过的小区　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`CommunityApply`](#communityapply)\[\]
+
+
+#### POST `/biz/communities/apply`
+
+提报平台还没有的小区　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`CommunityApply`](#communityapply)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `applyNo` | `string` | 是 | 提报单业务键 |
+| `merchantNo` | `string` | 是 | 提报的商家 |
+| `merchantName` | `string` | 是 | 商家名。运营看着一串 M20260811… 判断不了任何事 |
+| `name` | `string` | 是 | 小区名，商家填 |
+| `address` | `string` | 否 | 地址。运营靠它判断这是不是已有社区的另一个叫法 —— 批重了商家会分不清该勾哪个 |
+| `regionCode` | `string` | 否 | 商家选的区划，**只是建议** —— 最终以运营裁决时填的为准 |
+| `regionPath` | `string` | 否 | 区划整条路径名。「北山街道」全国有好几个，光末级判断不了是不是同一个地方 |
+| `note` | `string` | 否 | 补充说明：为什么要开这个点 |
+| `status` | [`CommunityApplyStatus`](#communityapplystatus) | 是 | 待审 / 已建社区 / 已驳回。裁完即终态 |
+| `communityNo` | `string` | 否 | 通过后建出来的社区号；待审与驳回时为空 |
+| `reason` | `string` | 否 | 驳回原因，**原样展示给商家** —— 不给理由他只会原样再提一次 |
+| `submittedAt` | `number` | 是 | 提报时间（毫秒时间戳） |
+
+
+### context
+
+#### GET `/biz/context`
+
+我的作用域与权限　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`BizScope`](#bizscope)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `merchantNo` | `string` | 是 | 当前用户所属的商家主体 |
+| `currentStoreNo` | `string` | 是 | 当前选中的门店。 **切门店后要重新拉这个接口** —— 角色跟着门店走：同一个人可能在 A 店是店长、 B 店是店员，权限跟着变。不重拉的话，界面按上一家店的权限渲染。 |
+| `owner` | `boolean` | 是 | 是不是老板（主体所有者）。老板不受门店角色限制 |
+| `storeNos` | `string`\[\] | 是 | 我能管哪些门店。空 = 只能看当前这家 |
+| `pickupNos` | `string`\[\] | 是 | 我能核销哪些自提点 |
+| `groupNos` | `string`\[\] | 是 | 我发起了哪些团。**第三个作用域**，与门店 / 自提点正交 |
+| `staffRoles` | [`StaffRole`](#staffrole) \| `string`\[\] | 是 | 我在**当前门店**持有的角色（可多个）。老板恒为 `["OWNER"]` |
+| `perms` | `string`\[\] | 是 | 这些角色合起来的权限码，**已取并集**（老板是 `["*"]`）。 端上照它裁剪入口，**不要自己按角色再推一遍** —— 两处各推一次迟早分岔， 而分岔的表现是「看得见但点了报错」。 |
 
 
 ### customers
@@ -351,6 +464,7 @@ _无字段_
 |---|---|:---:|---|
 | `toShip` | `number` | 是 | 待发货单数（EXPRESS 履约） |
 | `toDeliver` | `number` | 是 | 待自送单数（商家自送履约） |
+| `toStock` | `number` | 是 | 待备货单数（自提单已付款，货还没送到自提点）。**按门店算**，这是供货方的活。 与  {@link  toPick }  是同一批单的两头，**两个数不相等**： 买家常常选别家的自提点。`toPick` 按自提点算（我要在点上分多少）， 这一个按门店算（我要送出去多少）。 |
 | `toVerify` | `number` | 是 | 待核销单数（自提到货、买家还没来取） |
 | `toPick` | `number` | 是 | 待分拣单数（到货后按商品汇总点数） |
 | `afterSale` | `number` | 是 | 待处理售后单数 |
@@ -543,6 +657,61 @@ _无字段_
 | `price` | `number` | 是 | — |
 
 
+#### POST `/biz/goods/{goodsNo}/store-stock`
+
+改当前门店库存　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `goodsNo` | path | `string` | 是 | 商品单号 |
+
+**出参**（`data`）
+
+类型：[`Goods`](#goods)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `goodsNo` | `string` | 是 | 商品单号 |
+| `title` | `string` | 是 | 商品标题 |
+| `subtitle` | `string` | 是 | 副标题/卖点一句话 |
+| `cover` | `string` | 是 | 封面图 URL。列表页用这一张 |
+| `images` | `string`\[\] | 是 | 详情轮播图 URL 列表 |
+| `type` | [`CategoryType`](#categorytype) | 是 | 商品形态，与所属类目的 type 一致。决定详情页用哪套字段 |
+| `categoryNo` | `string` | 是 | 所属类目 |
+| `merchant` | [`MerchantBrief`](#merchantbrief) | 是 | 所属商家 —— 商品与服务都要展示商家信息 |
+| `rating` | `number` | 否 | 本商品的评分与评价数（区别于商家整体评分） |
+| `ratingCount` | `number` | 否 | 本商品的评价条数 |
+| `price` | `number` | 是 | 展示价（最小货币单位），取各 SKU 最低价 |
+| `originPrice` | `number` | 否 | 划线价（最小货币单位） |
+| `fulfillments` | [`FulfillmentType`](#fulfillmenttype)\[\] | 是 | 支持的履约方式。**数组**：同一商品可以既自提又快递，下单时由用户选 |
+| `specGroups` | [`SpecGroup`](#specgroup)\[\] | 是 | 规格维度定义；单规格商品也有一组 |
+| `skus` | [`Sku`](#sku)\[\] | 是 | SKU 列表。单规格商品也有且仅有一条 |
+| `sales` | `number` | 是 | 累计销量，展示用 |
+| `cutoffAt` | `number` | 否 | FRESH：预售截单时间戳 |
+| `arrivalDesc` | `string` | 否 | FRESH：预计到货描述 |
+| `weighed` | `boolean` | 否 | FRESH：是否按实称多退少补 |
+| `origin` | `string` | 否 | FRESH：产地 |
+| `durationMin` | `number` | 否 | SERVICE：服务时长（分钟） |
+| `storeName` | `string` | 否 | SERVICE：可核销门店 |
+| `slots` | [`AppointmentSlot`](#appointmentslot)\[\] | 否 | SERVICE + APPOINTMENT：可预约时段 |
+| `card` | [`CardSpec`](#cardspec) | 否 | CARD |
+| `virtual` | [`VirtualSpec`](#virtualspec) | 否 | VIRTUAL |
+| `promotions` | [`Promotion`](#promotion)\[\] | 否 | 促销（一期只有买 N 送 M） |
+| `groupBuy` | `object`（见下） | 否 | 商家为本商品开放的拼团档：够 minCount 人享 price。不配则本商品不能发起团 |
+| `points` | `number` | 否 | 本商品每件赠送的积分。不同商品可以给不同积分，不配则按成交额比例默认发放 |
+| `limitPerUser` | `number` | 是 | 每人限购，0 = 不限 |
+| `onSale` | `boolean` | 是 | 是否在售。下架后详情页仍可访问（历史订单要点得进去），但不可下单 |
+
+`groupBuy` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `minCount` | `number` | 是 | — |
+| `price` | `number` | 是 | — |
+
+
 #### POST `/biz/goods/{goodsNo}/toggle`
 
 上下架　🔒
@@ -629,7 +798,20 @@ _无字段_
 
 请求体：[`SaveGoodsReqBody`](#savegoodsreqbody)
 
-_无字段_
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `goodsNo` | `string` | 否 | 商品单号。新建时不传，编辑时必传 |
+| `title` | `string` | 是 | 基准语言（zh-CN）的标题。后端按 Accept-Language 下发时的兜底 |
+| `subtitle` | `string` | 是 | 基准语言（zh-CN）的副标题/卖点 |
+| `titleI18n` | [`Record_string_string`](#record_string_string) | 是 | 标题的三语原文，键是 Lang。缺译的语言按 R9 回落展示中文 |
+| `subtitleI18n` | [`Record_string_string`](#record_string_string) | 是 | 副标题的三语原文，同上 |
+| `type` | [`CategoryType`](#categorytype) | 是 | 商品形态，决定履约与合规（生鲜要截单、服务不发货、iOS 可售规则） |
+| `categoryNo` | `string` | 否 | 类目单号。选填，决定归类与经营准入 —— 与 `type` 是两个正交维度 |
+| `cover` | `string` | 否 | 封面图 URL（来自 mUploadImage）。漏传的话 C 端列表里是一块留白，且不报错 |
+| `images` | `string`\[\] | 否 | 详情轮播图 |
+| `specGroups` | [`SpecGroupDraft`](#specgroupdraft)\[\] | 是 | 空数组 = 单规格。非空则 skus 必须是各组选项的笛卡尔积 |
+| `fulfillments` | `string`\[\] | 否 | 支持的履约方式；不传 = 不改（新建默认四种全支持） |
+| `skus` | [`SkuDraft`](#skudraft)\[\] | 是 | SKU 列表。单规格商品也有且仅有一条 |
 
 **出参**（`data`）
 
@@ -805,6 +987,26 @@ _无字段_
 | `qty` | `number` | 是 | — |
 
 
+### master-data
+
+#### GET `/common/master-data`
+
+平台主数据（行业/主体/通道）　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`MasterData`](#masterdata)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `industries` | [`MasterDataIndustry`](#masterdataindustry)\[\] | 是 | 可选行业。**决定能不能以小微主体进件**，也是 points_forced 默认值的来源 |
+| `subjects` | [`MasterDataSubject`](#masterdatasubject)\[\] | 是 | 可选主体类型（法律形态）。决定资质要求与结算账户形态 |
+| `channels` | [`MasterDataChannel`](#masterdatachannel)\[\] | 是 | 可用支付通道与其能力位 |
+| `serviceScopes` | [`ServiceScope`](#servicescope)\[\] | 是 | **这一期开放的经营范围档位**（`SERVICE_SCOPE` 的启用子集，运营在后台配）。 端上要照它渲染选项，**不要把三档写死**。写死的后果不是「多了个选项」： 一期自营模式关掉了 `PLATFORM`，而 B 端照样把「全平台发货」摆在那里， 商家点下去得到的是「当前不支持这个经营范围」—— 一个必被拒的选项， 而他无从知道自己该选什么。2026-08-11 的端到端实测撞到过。 拿到 EDI 切平台模式时运营在后台放开，端上不发版就跟着变 —— 这正是它下发而不是写死的理由。 |
+
+
 ### merchant
 
 #### POST `/biz/merchant/apply`
@@ -855,10 +1057,92 @@ _无字段_
 | `category` | `string` | 是 | 主营类目 |
 | `desc` | `string` | 是 | 店铺简介 |
 | `asPickupPoint` | `boolean` | 否 | 承接自提点：小店既是供给方也是取货点（ADR-005 type=STORE） |
-| `serviceScope` | `COMMUNITY` \| `CITY` \| `PLATFORM` | 否 | 期望经营范围（ADR-009）。申请时可空，<b>审核通过时必须确定</b> —— 否则商家上着架却对谁都不可见，且没有任何报错。 |
+| `serviceScope` | [`ServiceScope`](#servicescope) | 否 | 期望经营范围（ADR-009）。申请时可空，<b>审核通过时必须确定</b> —— 否则商家上着架却对谁都不可见，且没有任何报错。 |
 | `communityNos` | `string`\[\] | 否 | 期望覆盖的社区。scope=COMMUNITY 时审核通过必须非空 |
 | `licenses` | `string`\[\] | 否 | 资质图片（营业执照/身份证）。**选填** —— 一期 EDI 不强制。 与下面的结算账户一样，属于**分账主体开户**而不是入驻申请本身（ADR-002）： `usr_merchant_payment` 是独立一张表、有自己的 `apply_status`，就是这个道理。 申请时能传就传，通过后在 B 端补也行 —— 逼一个还没通过审核的人先传营业执照， 只会把人挡在门外。 |
-| `settleAccountType` | `PERSONAL_OPENID` \| `MERCHANT_ID` | 否 | 结算账户类型。真实账号由后端持有，C 端与 B 端都不回显（ADR-002 §5）。**选填**，同上 |
+| `settleAccountType` | [`SettleAccountType`](#settleaccounttype) | 否 | 结算账户类型。真实账号由后端持有，C 端与 B 端都不回显（ADR-002 §5）。**选填**，同上 |
+| `industry` | `string` | 否 | 行业（`sys_industry.industry`）。 **它决定这家店能不能以小微主体进件** —— 微信的小微白名单是按行业给的， 也是 `points_forced` 默认值的来源。 后端一直在收、库里一直有这一列，但契约没登记、端也没传， 于是 `mch_entity.industry` 恒空：进件时才发现主体类型选错了， 而那时商家已经开完店、上完架。 |
+
+
+#### GET `/biz/merchant/payment`
+
+收款进件状态　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`PaymentApplyment`](#paymentapplyment)\[\]
+
+
+#### POST `/biz/merchant/payment`
+
+补交资料并提交进件　🔒
+
+**入参**
+
+请求体：[`SubmitPaymentReq`](#submitpaymentreq)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `payChannel` | `string` | 是 | 给哪个通道进件，如 WECHAT |
+| `settleAccountType` | [`SettleAccountType`](#settleaccounttype) | 否 | 结算账户形态。不传时后端按法律形态取默认（小微打个人、其余对公） |
+| `settleAccount` | `string` | 是 | 结算账号明文。见上方说明：**不落库、不进日志、不回显** |
+| `licenses` | `string`\[\] | 否 | 资质图地址。小微免传，个体户与企业必传 |
+| `contactName` | `string` | 否 | 进件联系人。通道核对资料时联系他，不一定等于登录人 |
+| `contactPhone` | `string` | 否 | 进件联系电话 |
+| `storeNo` | `string` | 否 | 为**哪家门店**进件；不传 = 主体级默认号（单店永远走这条）。 传它就是在走「分开结算」：微信侧一个商户号只能绑一个结算账户， 两家店各收各的钱，就得进件两次拿两个号。 |
+
+**出参**（`data`）
+
+类型：[`PaymentApplyment`](#paymentapplyment)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `payChannel` | `string` | 是 | 通道码，如 WECHAT |
+| `channelName` | `string` | 是 | 通道展示名。取服务端的，端上不要再维护一份翻译 |
+| `applyStatus` | [`PaymentApplyStatus`](#paymentapplystatus) | 是 | NONE / APPLYING / ACTIVE / REJECTED / FROZEN |
+| `canReceiveMoney` | `boolean` | 是 | 这个通道现在能不能收钱。 **照着它显示，不要自己去比 applyStatus** —— 比错的表现是 「显示能收钱但收不了」，而这种错要到第一笔订单才暴露。 |
+| `payMerchantNo` | `string` | 否 | 收款商户号业务键，通过后才有。门店挂收款号引用的就是它 |
+| `subMchidMasked` | `string` | 否 | 二级商户号掩码。完整号不回显 |
+| `settleAccountType` | [`SettleAccountType`](#settleaccounttype) | 否 | 结算账户形态：小微打个人（PERSONAL_OPENID），其余打对公（MERCHANT_ID） |
+| `settleAccountMasked` | `string` | 否 | 结算账号掩码。**明文永不回显**，包括给商家自己（ADR-002 §5） |
+| `rejectReason` | `string` | 否 | 驳回原因。驳回时必有 —— 没有原因商家只能反复重提 |
+| `missing` | `string`\[\] | 是 | 还缺哪些资料（settleAccount / licenses / settleAccountType）。空 = 资料齐了在等通道 |
+| `appliedAt` | `number` | 否 | 提交进件的时间。没提交过为空 |
+| `activatedAt` | `number` | 否 | 通道开户完成的时间 —— 从这一刻起才真的能收钱 |
+| `storeNo` | `string` | 否 | 这条进件是**为哪家门店**做的；空 = 主体级默认号。 多门店商家会有多条「微信 · 已开通」，不显示门店就分不清哪条是哪家店 —— 等于让他猜自己的钱打进了哪张卡。 |
+
+
+#### POST `/biz/merchant/payment/{payChannel}/refresh`
+
+回查进件结果　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `payChannel` | path | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`PaymentApplyment`](#paymentapplyment)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `payChannel` | `string` | 是 | 通道码，如 WECHAT |
+| `channelName` | `string` | 是 | 通道展示名。取服务端的，端上不要再维护一份翻译 |
+| `applyStatus` | [`PaymentApplyStatus`](#paymentapplystatus) | 是 | NONE / APPLYING / ACTIVE / REJECTED / FROZEN |
+| `canReceiveMoney` | `boolean` | 是 | 这个通道现在能不能收钱。 **照着它显示，不要自己去比 applyStatus** —— 比错的表现是 「显示能收钱但收不了」，而这种错要到第一笔订单才暴露。 |
+| `payMerchantNo` | `string` | 否 | 收款商户号业务键，通过后才有。门店挂收款号引用的就是它 |
+| `subMchidMasked` | `string` | 否 | 二级商户号掩码。完整号不回显 |
+| `settleAccountType` | [`SettleAccountType`](#settleaccounttype) | 否 | 结算账户形态：小微打个人（PERSONAL_OPENID），其余打对公（MERCHANT_ID） |
+| `settleAccountMasked` | `string` | 否 | 结算账号掩码。**明文永不回显**，包括给商家自己（ADR-002 §5） |
+| `rejectReason` | `string` | 否 | 驳回原因。驳回时必有 —— 没有原因商家只能反复重提 |
+| `missing` | `string`\[\] | 是 | 还缺哪些资料（settleAccount / licenses / settleAccountType）。空 = 资料齐了在等通道 |
+| `appliedAt` | `number` | 否 | 提交进件的时间。没提交过为空 |
+| `activatedAt` | `number` | 否 | 通道开户完成的时间 —— 从这一刻起才真的能收钱 |
+| `storeNo` | `string` | 否 | 这条进件是**为哪家门店**做的；空 = 主体级默认号。 多门店商家会有多条「微信 · 已开通」，不显示门店就分不清哪条是哪家店 —— 等于让他猜自己的钱打进了哪张卡。 |
 
 
 #### GET `/biz/merchant/profile`
@@ -899,6 +1183,7 @@ _无字段_
 | `page` | query | `number` | 否 | 页码，从 1 起 |
 | `size` | query | `number` | 否 | 每页条数 |
 | `status` | query | [`OrderStatus`](#orderstatus) | 否 | 状态筛选，取值见对应枚举 |
+| `allStores` | query | `boolean` | 否 | — |
 
 **出参**（`data`）
 
@@ -944,9 +1229,10 @@ _无字段_
 | `timeline` | [`OrderTimelineNode`](#ordertimelinenode)\[\] | 是 | 状态流转轨迹，按时间正序。订单详情的进度条据此渲染 |
 | `idempotencyKey` | `string` | 否 | 下单幂等 key。端上生成，重复提交返回同一笔订单而不是新建 |
 | `buyerNickname` | `string` | 否 | 下单人昵称。团长视角（分拣单/核销台）要看得见是谁的单 |
+| `receiver` | [`OrderReceiver`](#orderreceiver) | 否 | 收件人（下单时的**快照**，自提单没有）。 快照而不是现查地址：买家下完单把地址改成新家，商家看到的就跟着变了， 而货已经按旧地址在路上。 ⚠️ **`phone` 的脱敏程度由后端按履约方式决定**：商家自送给完整号 （送到楼下找不到人就得打电话），其余履约方式给 `****1234`。 端上**不要自己判**要不要打码 —— 两处规则迟早分叉。 |
 | `reviewed` | `boolean` | 否 | 已评价 |
 | `pointsGranted` | `boolean` | 否 | 积分是否已发放（幂等标记，防止重复核销重复发分） |
-| `trafficSource` | `MERCHANT_OWNED` \| `PLATFORM` | 否 | 客流来源。**决定平台费率档**：商家自带客流建议零佣金 —— 他带来的客户 在别家的消费才是平台的收益（ADR-004 §6）。从店铺码/店铺分享进入即为 MERCHANT_OWNED。 |
+| `trafficSource` | [`TrafficSource`](#trafficsource) | 否 | 客流来源。**决定平台费率档**：商家自带客流建议零佣金 —— 他带来的客户 在别家的消费才是平台的收益（ADR-004 §6）。从店铺码/店铺分享进入即为 MERCHANT_OWNED。 |
 | `groupNo` | `string` | 否 | 参与的团。邻里自提的核销作用域就靠它裁剪（E16） |
 | `afterSale` | [`AfterSale`](#aftersale) | 否 | 售后单。订单状态只有粗粒度的 REFUNDING/REFUNDED，细节在这里 |
 | `merchantNo` | `string` | 否 | 本单归属的商家。**一单只属于一个商家** —— 购物车跨商家时拆成多笔子订单（E3）。 不拆的话分账无从谈起：一笔钱要分给几家、各分多少，没有承载的单据。 |
@@ -986,9 +1272,10 @@ _无字段_
 | `timeline` | [`OrderTimelineNode`](#ordertimelinenode)\[\] | 是 | 状态流转轨迹，按时间正序。订单详情的进度条据此渲染 |
 | `idempotencyKey` | `string` | 否 | 下单幂等 key。端上生成，重复提交返回同一笔订单而不是新建 |
 | `buyerNickname` | `string` | 否 | 下单人昵称。团长视角（分拣单/核销台）要看得见是谁的单 |
+| `receiver` | [`OrderReceiver`](#orderreceiver) | 否 | 收件人（下单时的**快照**，自提单没有）。 快照而不是现查地址：买家下完单把地址改成新家，商家看到的就跟着变了， 而货已经按旧地址在路上。 ⚠️ **`phone` 的脱敏程度由后端按履约方式决定**：商家自送给完整号 （送到楼下找不到人就得打电话），其余履约方式给 `****1234`。 端上**不要自己判**要不要打码 —— 两处规则迟早分叉。 |
 | `reviewed` | `boolean` | 否 | 已评价 |
 | `pointsGranted` | `boolean` | 否 | 积分是否已发放（幂等标记，防止重复核销重复发分） |
-| `trafficSource` | `MERCHANT_OWNED` \| `PLATFORM` | 否 | 客流来源。**决定平台费率档**：商家自带客流建议零佣金 —— 他带来的客户 在别家的消费才是平台的收益（ADR-004 §6）。从店铺码/店铺分享进入即为 MERCHANT_OWNED。 |
+| `trafficSource` | [`TrafficSource`](#trafficsource) | 否 | 客流来源。**决定平台费率档**：商家自带客流建议零佣金 —— 他带来的客户 在别家的消费才是平台的收益（ADR-004 §6）。从店铺码/店铺分享进入即为 MERCHANT_OWNED。 |
 | `groupNo` | `string` | 否 | 参与的团。邻里自提的核销作用域就靠它裁剪（E16） |
 | `afterSale` | [`AfterSale`](#aftersale) | 否 | 售后单。订单状态只有粗粒度的 REFUNDING/REFUNDED，细节在这里 |
 | `merchantNo` | `string` | 否 | 本单归属的商家。**一单只属于一个商家** —— 购物车跨商家时拆成多笔子订单（E3）。 不拆的话分账无从谈起：一笔钱要分给几家、各分多少，没有承载的单据。 |
@@ -1034,9 +1321,10 @@ _无字段_
 | `timeline` | [`OrderTimelineNode`](#ordertimelinenode)\[\] | 是 | 状态流转轨迹，按时间正序。订单详情的进度条据此渲染 |
 | `idempotencyKey` | `string` | 否 | 下单幂等 key。端上生成，重复提交返回同一笔订单而不是新建 |
 | `buyerNickname` | `string` | 否 | 下单人昵称。团长视角（分拣单/核销台）要看得见是谁的单 |
+| `receiver` | [`OrderReceiver`](#orderreceiver) | 否 | 收件人（下单时的**快照**，自提单没有）。 快照而不是现查地址：买家下完单把地址改成新家，商家看到的就跟着变了， 而货已经按旧地址在路上。 ⚠️ **`phone` 的脱敏程度由后端按履约方式决定**：商家自送给完整号 （送到楼下找不到人就得打电话），其余履约方式给 `****1234`。 端上**不要自己判**要不要打码 —— 两处规则迟早分叉。 |
 | `reviewed` | `boolean` | 否 | 已评价 |
 | `pointsGranted` | `boolean` | 否 | 积分是否已发放（幂等标记，防止重复核销重复发分） |
-| `trafficSource` | `MERCHANT_OWNED` \| `PLATFORM` | 否 | 客流来源。**决定平台费率档**：商家自带客流建议零佣金 —— 他带来的客户 在别家的消费才是平台的收益（ADR-004 §6）。从店铺码/店铺分享进入即为 MERCHANT_OWNED。 |
+| `trafficSource` | [`TrafficSource`](#trafficsource) | 否 | 客流来源。**决定平台费率档**：商家自带客流建议零佣金 —— 他带来的客户 在别家的消费才是平台的收益（ADR-004 §6）。从店铺码/店铺分享进入即为 MERCHANT_OWNED。 |
 | `groupNo` | `string` | 否 | 参与的团。邻里自提的核销作用域就靠它裁剪（E16） |
 | `afterSale` | [`AfterSale`](#aftersale) | 否 | 售后单。订单状态只有粗粒度的 REFUNDING/REFUNDED，细节在这里 |
 | `merchantNo` | `string` | 否 | 本单归属的商家。**一单只属于一个商家** —— 购物车跨商家时拆成多笔子订单（E3）。 不拆的话分账无从谈起：一笔钱要分给几家、各分多少，没有承载的单据。 |
@@ -1061,7 +1349,7 @@ _无字段_
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `skuNo` | `string` | 是 | 出问题的 SKU |
-| `kind` | `SHORTAGE` \| `DAMAGE` | 是 | 问题类型：少件 / 破损。两者的售后责任判定不同 |
+| `kind` | [`ArrivalIssueKind`](#arrivalissuekind) | 是 | 问题类型：少件 / 破损。两者的售后责任判定不同 |
 | `note` | `string` | 是 | 情况说明。承接方填，供货方与平台据此定责 |
 
 **出参**（`data`）
@@ -1086,9 +1374,10 @@ _无字段_
 | `timeline` | [`OrderTimelineNode`](#ordertimelinenode)\[\] | 是 | 状态流转轨迹，按时间正序。订单详情的进度条据此渲染 |
 | `idempotencyKey` | `string` | 否 | 下单幂等 key。端上生成，重复提交返回同一笔订单而不是新建 |
 | `buyerNickname` | `string` | 否 | 下单人昵称。团长视角（分拣单/核销台）要看得见是谁的单 |
+| `receiver` | [`OrderReceiver`](#orderreceiver) | 否 | 收件人（下单时的**快照**，自提单没有）。 快照而不是现查地址：买家下完单把地址改成新家，商家看到的就跟着变了， 而货已经按旧地址在路上。 ⚠️ **`phone` 的脱敏程度由后端按履约方式决定**：商家自送给完整号 （送到楼下找不到人就得打电话），其余履约方式给 `****1234`。 端上**不要自己判**要不要打码 —— 两处规则迟早分叉。 |
 | `reviewed` | `boolean` | 否 | 已评价 |
 | `pointsGranted` | `boolean` | 否 | 积分是否已发放（幂等标记，防止重复核销重复发分） |
-| `trafficSource` | `MERCHANT_OWNED` \| `PLATFORM` | 否 | 客流来源。**决定平台费率档**：商家自带客流建议零佣金 —— 他带来的客户 在别家的消费才是平台的收益（ADR-004 §6）。从店铺码/店铺分享进入即为 MERCHANT_OWNED。 |
+| `trafficSource` | [`TrafficSource`](#trafficsource) | 否 | 客流来源。**决定平台费率档**：商家自带客流建议零佣金 —— 他带来的客户 在别家的消费才是平台的收益（ADR-004 §6）。从店铺码/店铺分享进入即为 MERCHANT_OWNED。 |
 | `groupNo` | `string` | 否 | 参与的团。邻里自提的核销作用域就靠它裁剪（E16） |
 | `afterSale` | [`AfterSale`](#aftersale) | 否 | 售后单。订单状态只有粗粒度的 REFUNDING/REFUNDED，细节在这里 |
 | `merchantNo` | `string` | 否 | 本单归属的商家。**一单只属于一个商家** —— 购物车跨商家时拆成多笔子订单（E3）。 不拆的话分账无从谈起：一笔钱要分给几家、各分多少，没有承载的单据。 |
@@ -1107,6 +1396,7 @@ _无字段_
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `orderNos` | `string`\[\] | 是 | 批量：一次到货通常是一整批，逐单调用会让通知发成 N 条 |
+| `pickupNo` | `string` | 否 | 给哪个自提点登记；**不传 = 当前门店的那个点**。 一个商家两家店两个点是常态（自提点归属到门店之后）。不传且当前门店没有点时 后端会拒 —— 而不是悄悄登记到另一个点上。 |
 
 **出参**（`data`）
 
@@ -1189,9 +1479,10 @@ _无字段_
 | `timeline` | [`OrderTimelineNode`](#ordertimelinenode)\[\] | 是 | 状态流转轨迹，按时间正序。订单详情的进度条据此渲染 |
 | `idempotencyKey` | `string` | 否 | 下单幂等 key。端上生成，重复提交返回同一笔订单而不是新建 |
 | `buyerNickname` | `string` | 否 | 下单人昵称。团长视角（分拣单/核销台）要看得见是谁的单 |
+| `receiver` | [`OrderReceiver`](#orderreceiver) | 否 | 收件人（下单时的**快照**，自提单没有）。 快照而不是现查地址：买家下完单把地址改成新家，商家看到的就跟着变了， 而货已经按旧地址在路上。 ⚠️ **`phone` 的脱敏程度由后端按履约方式决定**：商家自送给完整号 （送到楼下找不到人就得打电话），其余履约方式给 `****1234`。 端上**不要自己判**要不要打码 —— 两处规则迟早分叉。 |
 | `reviewed` | `boolean` | 否 | 已评价 |
 | `pointsGranted` | `boolean` | 否 | 积分是否已发放（幂等标记，防止重复核销重复发分） |
-| `trafficSource` | `MERCHANT_OWNED` \| `PLATFORM` | 否 | 客流来源。**决定平台费率档**：商家自带客流建议零佣金 —— 他带来的客户 在别家的消费才是平台的收益（ADR-004 §6）。从店铺码/店铺分享进入即为 MERCHANT_OWNED。 |
+| `trafficSource` | [`TrafficSource`](#trafficsource) | 否 | 客流来源。**决定平台费率档**：商家自带客流建议零佣金 —— 他带来的客户 在别家的消费才是平台的收益（ADR-004 §6）。从店铺码/店铺分享进入即为 MERCHANT_OWNED。 |
 | `groupNo` | `string` | 否 | 参与的团。邻里自提的核销作用域就靠它裁剪（E16） |
 | `afterSale` | [`AfterSale`](#aftersale) | 否 | 售后单。订单状态只有粗粒度的 REFUNDING/REFUNDED，细节在这里 |
 | `merchantNo` | `string` | 否 | 本单归属的商家。**一单只属于一个商家** —— 购物车跨商家时拆成多笔子订单（E3）。 不拆的话分账无从谈起：一笔钱要分给几家、各分多少，没有承载的单据。 |
@@ -1226,6 +1517,17 @@ _无字段_
 |---|---|:---:|---|
 | `code` | `string` | 是 | — |
 | `reason` | `string` | 是 | — |
+
+
+#### GET `/biz/pickup/verify/search`
+
+按取货码片段搜单　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`Order`](#order)\[\]
 
 
 ### points
@@ -1277,6 +1579,19 @@ _无字段_
 | `enabled` | `boolean` | 是 | 本店积分是否生效 —— 全局 AND 社区 AND 主体非小微 AND 本店开关 |
 | `disabledReason` | `string` | 否 | 不生效的原因，直接展示给商家。 小微主体要说「升级为个体工商户后可开启」，不能说「本店未开启积分」—— 后者会让商家去开一个他根本开不了的开关。 |
 | `forced` | `boolean` | 是 | 平台按行业强制开，商家不可自行关闭 |
+
+
+### regions
+
+#### GET `/biz/regions`
+
+行政区划下一级（框覆盖范围用）　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`Region`](#region)\[\]
 
 
 ### review
@@ -1371,6 +1686,93 @@ _无字段_
 | `appeal` | [`ReviewAppeal`](#reviewappeal) | 否 | 商家申诉（B-9.4）。裁决在平台端 P-13.1 |
 
 
+### role
+
+#### POST `/biz/role/{roleCode}`
+
+改角色　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `roleCode` | path | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`MerchantRole`](#merchantrole)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `roleCode` | `string` | 是 | 角色码。预置是 `OWNER`/`MANAGER`… ，自定义是生成的业务键 —— **别拿它给店主看** |
+| `name` | `string` | 是 | 显示名。预置角色也有 —— 别拿 `MANAGER` 直接给店主看 |
+| `builtin` | `boolean` | 是 | 平台预置：**只读**，要改先「复制为自定义角色」 |
+| `perms` | `string`\[\] | 是 | 这个角色带的权限码。老板那行是 `["*"]`（全部），别按长度当权限数 |
+| `permLabels` | `string`\[\] | 是 | 与 `perms` 一一对应的中文短说明 |
+| `usedBy` | `number` | 是 | 几个人在用。删除按钮据此禁用，并且要显示出来 |
+
+
+#### POST `/biz/role/{roleCode}/delete`
+
+删除自定义角色　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `roleCode` | path | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`void`](#void)
+
+
+### role-perms
+
+#### GET `/biz/role-perms`
+
+可勾的权限点　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`PermOption`](#permoption)\[\]
+
+
+### roles
+
+#### GET `/biz/roles`
+
+角色列表（预置 + 自定义）　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`MerchantRole`](#merchantrole)\[\]
+
+
+#### POST `/biz/roles`
+
+建自定义角色　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`MerchantRole`](#merchantrole)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `roleCode` | `string` | 是 | 角色码。预置是 `OWNER`/`MANAGER`… ，自定义是生成的业务键 —— **别拿它给店主看** |
+| `name` | `string` | 是 | 显示名。预置角色也有 —— 别拿 `MANAGER` 直接给店主看 |
+| `builtin` | `boolean` | 是 | 平台预置：**只读**，要改先「复制为自定义角色」 |
+| `perms` | `string`\[\] | 是 | 这个角色带的权限码。老板那行是 `["*"]`（全部），别按长度当权限数 |
+| `permLabels` | `string`\[\] | 是 | 与 `perms` 一一对应的中文短说明 |
+| `usedBy` | `number` | 是 | 几个人在用。删除按钮据此禁用，并且要显示出来 |
+
+
 ### settle
 
 #### GET `/biz/settle/bills`
@@ -1438,11 +1840,124 @@ _无字段_
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `templateNo` | `string` | 是 | 模板单号 |
-| `scope` | `PLATFORM` \| `MERCHANT` | 是 | 模板归属：平台统一维护 or 商家自存。商家只能改自己的 |
+| `scope` | [`SpecTemplateScope`](#spectemplatescope) | 是 | 模板归属：平台统一维护 or 商家自存。商家只能改自己的 |
 | `categoryType` | [`CategoryType`](#categorytype) | 否 | 平台模板按类目推荐；商家模板不限类目 |
 | `name` | `string` | 是 | 规格维度名，如「重量」「香型」 |
 | `options` | [`SpecOption`](#specoption)\[\] | 是 | 该维度的可选项 |
 | `merchantNo` | `string` | 否 | scope=MERCHANT 时归属的商家 |
+
+
+### staff
+
+#### GET `/biz/staff`
+
+员工列表　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`MerchantStaff`](#merchantstaff)\[\]
+
+
+#### POST `/biz/staff`
+
+加员工　🔒
+
+**入参**
+
+请求体：[`AddStaffReq`](#addstaffreq)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `loginPhone` | `string` | 是 | 员工手机号（11 位）。**它就是登录号** —— 员工用它 + 验证码进 B 端 |
+| `displayName` | `string` | 否 | 备注名（如「小张」）。选填但强烈建议 —— 不填的话列表与审计里都只有一串脱敏尾号，三个人以后就分不清谁是谁。 |
+
+**出参**（`data`）
+
+类型：[`MerchantStaff`](#merchantstaff)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `mchAccountNo` | `string` | 是 | 商家账号号。**不叫 staffNo** —— 那个名字被平台运营占着，两者是不同的人 |
+| `displayName` | `string` | 否 | 备注名（老板自己写的，如「小张」）。**列表认人靠它** —— 只有脱敏号的话，三个人以后谁也分不清。为空时端上回落 `loginPhone`。 |
+| `loginPhone` | `string` | 是 | 登录手机号，**已脱敏**。完整号不回显 —— 那等于一份可导出的通讯录 |
+| `isOwner` | `boolean` | 是 | 老板。**不受门店授权限制**，他的店都归他管 |
+| `status` | [`StaffStatus`](#staffstatus) | 是 | ACTIVE / DISABLED |
+| `roles` | [`StoreRole`](#storerole)\[\] | 是 | 他在各门店的角色。老板为空 —— 不是"没授权"，是"不需要授权" |
+
+
+#### POST `/biz/staff/{mchAccountNo}/status`
+
+停用/启用员工　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `mchAccountNo` | path | `string` | 是 | — |
+
+请求体：[`SetActiveReq`](#setactivereq)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `active` | `boolean` | 是 | true 启用 / false 停用 |
+
+**出参**（`data`）
+
+类型：[`MerchantStaff`](#merchantstaff)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `mchAccountNo` | `string` | 是 | 商家账号号。**不叫 staffNo** —— 那个名字被平台运营占着，两者是不同的人 |
+| `displayName` | `string` | 否 | 备注名（老板自己写的，如「小张」）。**列表认人靠它** —— 只有脱敏号的话，三个人以后谁也分不清。为空时端上回落 `loginPhone`。 |
+| `loginPhone` | `string` | 是 | 登录手机号，**已脱敏**。完整号不回显 —— 那等于一份可导出的通讯录 |
+| `isOwner` | `boolean` | 是 | 老板。**不受门店授权限制**，他的店都归他管 |
+| `status` | [`StaffStatus`](#staffstatus) | 是 | ACTIVE / DISABLED |
+| `roles` | [`StoreRole`](#storerole)\[\] | 是 | 他在各门店的角色。老板为空 —— 不是"没授权"，是"不需要授权" |
+
+
+#### POST `/biz/staff/{mchAccountNo}/store`
+
+授权到店　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `mchAccountNo` | path | `string` | 是 | — |
+
+请求体：[`GrantStoreReq`](#grantstorereq)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | 授权到哪家店。只能是本主体的门店 |
+| `role` | [`StaffRole`](#staffrole) | 是 | 要授予/撤销的那一个角色 |
+| `granted` | `boolean` | 否 | true 授予（默认）、false 撤销。撤到一个不剩 = 从这家店移除他 |
+
+**出参**（`data`）
+
+类型：[`MerchantStaff`](#merchantstaff)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `mchAccountNo` | `string` | 是 | 商家账号号。**不叫 staffNo** —— 那个名字被平台运营占着，两者是不同的人 |
+| `displayName` | `string` | 否 | 备注名（老板自己写的，如「小张」）。**列表认人靠它** —— 只有脱敏号的话，三个人以后谁也分不清。为空时端上回落 `loginPhone`。 |
+| `loginPhone` | `string` | 是 | 登录手机号，**已脱敏**。完整号不回显 —— 那等于一份可导出的通讯录 |
+| `isOwner` | `boolean` | 是 | 老板。**不受门店授权限制**，他的店都归他管 |
+| `status` | [`StaffStatus`](#staffstatus) | 是 | ACTIVE / DISABLED |
+| `roles` | [`StoreRole`](#storerole)\[\] | 是 | 他在各门店的角色。老板为空 —— 不是"没授权"，是"不需要授权" |
+
+
+#### GET `/biz/staff/logs`
+
+员工与授权变更记录　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`StaffLog`](#stafflog)\[\]
 
 
 ### store
@@ -1466,6 +1981,8 @@ _无字段_
 | `serviceScope` | [`ServiceScope`](#servicescope) | 是 | 经营范围（B 端自选）。**决定这家店的货在 C 端能被谁看到** —— 选错不是展示问题：选大了会卖到送不到的地方（下单后提不了货 → 退款）， 选小了则整片小区的人都搜不到这家店。所以 B 端要给出后果说明，不能只给三个单选。 |
 | `serviceCommunityNos` | `string`\[\] | 是 | scope=COMMUNITY 时覆盖的社区。空表示还没谈下任何小区，此时 C 端一律不可见 |
 | `serviceCityCode` | `string` | 否 | scope=CITY 时覆盖的城市 |
+| `fulfillmentReach` | [`FulfillmentReach`](#fulfillmentreach) | 否 | 履约能力（ADR-013 阶段二）。**只说「怎么送到你手上」**，送得到哪儿看  {@link  serviceAreas } 。 与上面两个 `@deprecated` 字段的关系：新旧两套并存期间，端上**只传一套** —— 传了 `serviceAreas` 就走新模型，后端不再看 `serviceScope`。 |
+| `serviceAreas` | [`ServiceArea`](#servicearea)\[\] | 否 | 地理覆盖项，可跨粒度组合（三个小区 + 一个区）。 **空的含义由 `fulfillmentReach` 决定**，这是这个字段最容易踩的地方： PICKUP 空 = 谁也看不到（没配自提点就没法履约）； ONSITE / SHIPPING 空 = 不限。同一个空数组两种意思，所以别拿它判「有没有设置过」。 |
 
 
 #### POST `/biz/store`
@@ -1491,6 +2008,171 @@ _无字段_
 | `serviceScope` | [`ServiceScope`](#servicescope) | 是 | 经营范围（B 端自选）。**决定这家店的货在 C 端能被谁看到** —— 选错不是展示问题：选大了会卖到送不到的地方（下单后提不了货 → 退款）， 选小了则整片小区的人都搜不到这家店。所以 B 端要给出后果说明，不能只给三个单选。 |
 | `serviceCommunityNos` | `string`\[\] | 是 | scope=COMMUNITY 时覆盖的社区。空表示还没谈下任何小区，此时 C 端一律不可见 |
 | `serviceCityCode` | `string` | 否 | scope=CITY 时覆盖的城市 |
+| `fulfillmentReach` | [`FulfillmentReach`](#fulfillmentreach) | 否 | 履约能力（ADR-013 阶段二）。**只说「怎么送到你手上」**，送得到哪儿看  {@link  serviceAreas } 。 与上面两个 `@deprecated` 字段的关系：新旧两套并存期间，端上**只传一套** —— 传了 `serviceAreas` 就走新模型，后端不再看 `serviceScope`。 |
+| `serviceAreas` | [`ServiceArea`](#servicearea)\[\] | 否 | 地理覆盖项，可跨粒度组合（三个小区 + 一个区）。 **空的含义由 `fulfillmentReach` 决定**，这是这个字段最容易踩的地方： PICKUP 空 = 谁也看不到（没配自提点就没法履约）； ONSITE / SHIPPING 空 = 不限。同一个空数组两种意思，所以别拿它判「有没有设置过」。 |
+
+
+#### POST `/biz/store/{storeNo}/default`
+
+设为默认店　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `storeNo` | path | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`Store`](#store)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | 门店号。一旦生成不再变 —— 换主体只换归属，不换它 |
+| `name` | `string` | 是 | 门店名 |
+| `address` | `string` | 否 | 门店地址。顾客据此找到取货点，也是履约范围的锚点 |
+| `isDefault` | `boolean` | 是 | 是否默认店。一个主体**恰好一家** —— 它是「找不到具体门店时去哪」的答案 |
+| `status` | [`StoreStatus`](#storestatus) | 是 | ACTIVE 正常营业 / READONLY 已停用（不再接新单，已有单照常履约） |
+| `payMerchantNo` | `string` | 否 | 这家店用哪个收款号。**空 = 用主体的默认收款号**，不是"没配" |
+| `payReady` | `boolean` | 是 | 这家店现在能不能收钱。照它显示，别自己去比状态串 |
+| `staffCount` | `number` | 是 | 授权到这家店的员工数（不含老板）。0 表示只有老板能管这家店 |
+
+
+#### POST `/biz/store/{storeNo}/payment`
+
+换门店收款号　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `storeNo` | path | `string` | 是 | — |
+
+请求体：[`SetStorePaymentReq`](#setstorepaymentreq)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `payMerchantNo` | `string` | 否 | 目标收款商户号。只能是本主体已开通的号；空 = 回到主体默认号 |
+
+**出参**（`data`）
+
+类型：[`Store`](#store)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | 门店号。一旦生成不再变 —— 换主体只换归属，不换它 |
+| `name` | `string` | 是 | 门店名 |
+| `address` | `string` | 否 | 门店地址。顾客据此找到取货点，也是履约范围的锚点 |
+| `isDefault` | `boolean` | 是 | 是否默认店。一个主体**恰好一家** —— 它是「找不到具体门店时去哪」的答案 |
+| `status` | [`StoreStatus`](#storestatus) | 是 | ACTIVE 正常营业 / READONLY 已停用（不再接新单，已有单照常履约） |
+| `payMerchantNo` | `string` | 否 | 这家店用哪个收款号。**空 = 用主体的默认收款号**，不是"没配" |
+| `payReady` | `boolean` | 是 | 这家店现在能不能收钱。照它显示，别自己去比状态串 |
+| `staffCount` | `number` | 是 | 授权到这家店的员工数（不含老板）。0 表示只有老板能管这家店 |
+
+
+#### POST `/biz/store/{storeNo}/rename`
+
+改门店名与地址　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `storeNo` | path | `string` | 是 | — |
+
+请求体：[`StoreEditReq`](#storeeditreq)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `name` | `string` | 是 | 门店名 |
+| `address` | `string` | 否 | 门店地址 |
+
+**出参**（`data`）
+
+类型：[`Store`](#store)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | 门店号。一旦生成不再变 —— 换主体只换归属，不换它 |
+| `name` | `string` | 是 | 门店名 |
+| `address` | `string` | 否 | 门店地址。顾客据此找到取货点，也是履约范围的锚点 |
+| `isDefault` | `boolean` | 是 | 是否默认店。一个主体**恰好一家** —— 它是「找不到具体门店时去哪」的答案 |
+| `status` | [`StoreStatus`](#storestatus) | 是 | ACTIVE 正常营业 / READONLY 已停用（不再接新单，已有单照常履约） |
+| `payMerchantNo` | `string` | 否 | 这家店用哪个收款号。**空 = 用主体的默认收款号**，不是"没配" |
+| `payReady` | `boolean` | 是 | 这家店现在能不能收钱。照它显示，别自己去比状态串 |
+| `staffCount` | `number` | 是 | 授权到这家店的员工数（不含老板）。0 表示只有老板能管这家店 |
+
+
+#### POST `/biz/store/{storeNo}/status`
+
+停用/启用门店　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `storeNo` | path | `string` | 是 | — |
+
+请求体：[`SetActiveReq`](#setactivereq)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `active` | `boolean` | 是 | true 启用 / false 停用 |
+
+**出参**（`data`）
+
+类型：[`Store`](#store)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | 门店号。一旦生成不再变 —— 换主体只换归属，不换它 |
+| `name` | `string` | 是 | 门店名 |
+| `address` | `string` | 否 | 门店地址。顾客据此找到取货点，也是履约范围的锚点 |
+| `isDefault` | `boolean` | 是 | 是否默认店。一个主体**恰好一家** —— 它是「找不到具体门店时去哪」的答案 |
+| `status` | [`StoreStatus`](#storestatus) | 是 | ACTIVE 正常营业 / READONLY 已停用（不再接新单，已有单照常履约） |
+| `payMerchantNo` | `string` | 否 | 这家店用哪个收款号。**空 = 用主体的默认收款号**，不是"没配" |
+| `payReady` | `boolean` | 是 | 这家店现在能不能收钱。照它显示，别自己去比状态串 |
+| `staffCount` | `number` | 是 | 授权到这家店的员工数（不含老板）。0 表示只有老板能管这家店 |
+
+
+#### POST `/biz/store/create`
+
+新建门店　🔒
+
+**入参**
+
+请求体：[`StoreEditReq`](#storeeditreq)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `name` | `string` | 是 | 门店名 |
+| `address` | `string` | 否 | 门店地址 |
+
+**出参**（`data`）
+
+类型：[`Store`](#store)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | 门店号。一旦生成不再变 —— 换主体只换归属，不换它 |
+| `name` | `string` | 是 | 门店名 |
+| `address` | `string` | 否 | 门店地址。顾客据此找到取货点，也是履约范围的锚点 |
+| `isDefault` | `boolean` | 是 | 是否默认店。一个主体**恰好一家** —— 它是「找不到具体门店时去哪」的答案 |
+| `status` | [`StoreStatus`](#storestatus) | 是 | ACTIVE 正常营业 / READONLY 已停用（不再接新单，已有单照常履约） |
+| `payMerchantNo` | `string` | 否 | 这家店用哪个收款号。**空 = 用主体的默认收款号**，不是"没配" |
+| `payReady` | `boolean` | 是 | 这家店现在能不能收钱。照它显示，别自己去比状态串 |
+| `staffCount` | `number` | 是 | 授权到这家店的员工数（不含老板）。0 表示只有老板能管这家店 |
+
+
+#### GET `/biz/store/list`
+
+我的门店　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`Store`](#store)\[\]
 
 
 #### GET `/biz/store/qrcode`
@@ -1552,11 +2234,22 @@ _无字段_
 
 ## 数据模型
 
+### AddStaffReq
+
+加员工。只要手机号 —— 不发密码、不建 C 端账号
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `loginPhone` | `string` | 是 | 员工手机号（11 位）。**它就是登录号** —— 员工用它 + 验证码进 B 端 |
+| `displayName` | `string` | 否 | 备注名（如「小张」）。选填但强烈建议 —— 不填的话列表与审计里都只有一串脱敏尾号，三个人以后就分不清谁是谁。 |
+
 ### AfterSale
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `afterSaleNo` | `string` | 是 | 售后单号。**售后是独立资源，不是订单上的一个字段** —— 它有自己的生命周期（申请→同意/驳回→寄回→收货→退款），能被取消、能上升平台， 一个订单还可能先后发起多次。挂在订单下用 orderNo 寻址，第二次申请就没法表达了。 后端一开始就是这么建的（/mp/after-sale/{afterSaleNo}/**），这里向它对齐。 |
+| `subOrderNo` | `string` | 是 | 所属**子订单**号（`SUB…`）。 ⚠️ **要关联回订单卡片用的是这个，不是下面的 `orderNo`。** C/B 两端列表里的一行是一张子订单，而 `Order.orderNo` 字段里装的就是子订单号 （后端 `OrderVO.orderNo` = `SUB…`）；售后单上的 `orderNo` 却是**主单号**（`SO…`）。 两个字段同名不同物 —— 按 `orderNo` 去 join 一条也匹配不上， 而症状是「售后页签空着」，与它本来要修的 bug 一模一样。 |
+| `orderNo` | `string` | 是 | 所属**主订单**号（`SO…`）。跨商家下单会拆成多笔子订单，它们共用这一个主单号。 展示「同一次下单」时用它，关联单张订单卡片请用  {@link  subOrderNo } 。 |
 | `type` | [`AfterSaleType`](#aftersaletype) | 是 | 售后类型：仅退款 / 退货退款 |
 | `status` | [`AfterSaleStatus`](#aftersalestatus) | 是 | 售后单状态，独立于订单状态流转 |
 | `reason` | `string` | 是 | 用户填写的售后原因 |
@@ -1568,15 +2261,16 @@ _无字段_
 
 ### AfterSaleStatus
 
+售后单状态。**这是后端 `OrdAfterSale` 真实存的取值。** ⚠️ 这里此前是完全另一套：`PENDING`/`AGREED`/`RETURNING`/`RECEIVED`/`DONE`/`DISPUTED`， 与后端**只有 `REJECTED` 一个词重合**。c/b 两端按它判断、按它建 i18n 词条， 于是售后详情页的状态永远落进兜底分支，「填退货单号」按钮永远不出现 （它 gate 在一个后端永远不会下发的 `AGREED` 上）。 那一套描述的是**想象中更细的流程**：同意 → 寄回 → 收货 → 退款四步。 后端没有把「寄回中」「已收货」做成独立状态 —— 商家一同意就进 `REFUNDING`， 退货物流走 `expressNo` 字段而不是状态。粒度差异是真实的设计选择， 端上不能自己补一套更细的词然后假装后端会给。
+
 枚举取值：
 
-- `PENDING`
-- `AGREED`
-- `RETURNING`
-- `RECEIVED`
-- `DONE`
+- `APPLIED`
+- `REFUNDING`
+- `REFUNDED`
 - `REJECTED`
-- `DISPUTED`
+- `ARBITRATING`
+- `CLOSED`
 
 ### AfterSaleType
 
@@ -1610,6 +2304,46 @@ _无字段_
 | `time` | `string` | 是 | — |
 | `left` | `number` | 是 | — |
 
+### AreaLevel
+
+枚举取值：
+
+- `COMMUNITY`
+- `STREET`
+- `DISTRICT`
+- `CITY`
+
+### AreaStatus
+
+枚举取值：
+
+- `ACTIVE`
+- `PENDING`
+
+### ArrivalIssueKind
+
+到货异常类型：缺件 / 破损。B 端到货登记时上报（ADR-005 履约链路）
+
+枚举取值：
+
+- `SHORTAGE`
+- `DAMAGE`
+
+### BizScope
+
+我在**当前门店**能做什么（`GET /biz/context`）。B 端每次会话恢复与切门店后都要重取。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `merchantNo` | `string` | 是 | 当前用户所属的商家主体 |
+| `currentStoreNo` | `string` | 是 | 当前选中的门店。 **切门店后要重新拉这个接口** —— 角色跟着门店走：同一个人可能在 A 店是店长、 B 店是店员，权限跟着变。不重拉的话，界面按上一家店的权限渲染。 |
+| `owner` | `boolean` | 是 | 是不是老板（主体所有者）。老板不受门店角色限制 |
+| `storeNos` | `string`\[\] | 是 | 我能管哪些门店。空 = 只能看当前这家 |
+| `pickupNos` | `string`\[\] | 是 | 我能核销哪些自提点 |
+| `groupNos` | `string`\[\] | 是 | 我发起了哪些团。**第三个作用域**，与门店 / 自提点正交 |
+| `staffRoles` | [`StaffRole`](#staffrole) \| `string`\[\] | 是 | 我在**当前门店**持有的角色（可多个）。老板恒为 `["OWNER"]` |
+| `perms` | `string`\[\] | 是 | 这些角色合起来的权限码，**已取并集**（老板是 `["*"]`）。 端上照它裁剪入口，**不要自己按角色再推一遍** —— 两处各推一次迟早分岔， 而分岔的表现是「看得见但点了报错」。 |
+
 ### CampaignDraft
 
 新建/编辑活动的入参
@@ -1628,6 +2362,7 @@ _无字段_
 | `giftM` | `number` | 否 | 赠送件数 M。BUY_GIFT 用 |
 | `goodsNos` | `string`\[\] | 是 | 参与商品；空数组 = 全店 |
 | `totalCount` | `number` | 否 | 发放总量。COUPON 用，不传表示不限量 |
+| `storeNo` | `string` | 否 | 只对这家门店生效；不传 = 全主体。 **只有 FULL_CUT 接受它**（后端会拒 70005）。判据是活动在哪一刻生效： 满减在算价时生效，那时顾客已选好自提点；限时特价与买赠改的是商品页的展示， 而浏览商品时自提点还没选 —— 允许限定门店会让页面价与下单价打架。 |
 
 ### CampaignStatus
 
@@ -1659,11 +2394,25 @@ _无字段_
 | `timesTotal` | `number` | 否 | 次卡总次数；储值卡为空 |
 | `validDays` | `number` | 是 | 有效期天数 |
 
+### Category
+
+类目树节点（对齐后端 `CategoryVO`）。 <p>⚠️ **不要把它和 `CategoryType` 搞混** —— 那是五品类枚举 （NORMAL/FRESH/SERVICE/VIRTUAL/CARD），挂在商品上、由平台硬编码，决定履约与合规 （冷链、不发货、iOS 可售规则）。这里的类目树是运营可维护的数据，决定归类与经营准入。 两个维度正交，见 `docs/technical/类目树补齐方案.md`。 <p>这个类型此前声明了一个后端根本不返回的 `type` 字段，并写着「仅两级」—— 而后端一直是三级。没人用它，所以错了很久也没暴露。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `categoryNo` | `string` | 是 | 类目单号 |
+| `parentNo` | `string,null` | 否 | 上级类目单号。一级类目为空 |
+| `level` | `number` | 是 | 1–3。**三级封顶** |
+| `name` | `string` | 是 | 类目名（后端按 Accept-Language 下发已本地化文案） |
+| `icon` | `string` | 否 | 类目图标 URL。运营没配就是空串，端上按占位渲染 |
+| `sort` | `number` | 是 | 同级内的展示顺序，小的在前。运营在后台拖动排序改的就是它 |
+| `children` | [`Category`](#category)\[\] | 是 | 子类目。叶子是空数组而不是 undefined —— 端上少一次判空 |
+
 ### CategoryType
 
 枚举取值：
 
-- `GOODS`
+- `NORMAL`
 - `FRESH`
 - `SERVICE`
 - `VIRTUAL`
@@ -1679,6 +2428,33 @@ _无字段_
 | `cityCode` | `string` | 是 | 所属城市。全市范围的商家靠它判定可达 |
 | `distance` | `number` | 是 | 米 |
 | `pickups` | [`Pickup`](#pickup)\[\] | 是 | 本社区可用的自提点 |
+
+### CommunityApply
+
+商家提报的新社区（ADR-013 阶段三）。 提报**不等于**社区已存在：审过之后平台才建出来，`communityNo` 这时才有值。 端上别拿它去当社区用 —— 待审的小区不在任何选点列表里。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `applyNo` | `string` | 是 | 提报单业务键 |
+| `merchantNo` | `string` | 是 | 提报的商家 |
+| `merchantName` | `string` | 是 | 商家名。运营看着一串 M20260811… 判断不了任何事 |
+| `name` | `string` | 是 | 小区名，商家填 |
+| `address` | `string` | 否 | 地址。运营靠它判断这是不是已有社区的另一个叫法 —— 批重了商家会分不清该勾哪个 |
+| `regionCode` | `string` | 否 | 商家选的区划，**只是建议** —— 最终以运营裁决时填的为准 |
+| `regionPath` | `string` | 否 | 区划整条路径名。「北山街道」全国有好几个，光末级判断不了是不是同一个地方 |
+| `note` | `string` | 否 | 补充说明：为什么要开这个点 |
+| `status` | [`CommunityApplyStatus`](#communityapplystatus) | 是 | 待审 / 已建社区 / 已驳回。裁完即终态 |
+| `communityNo` | `string` | 否 | 通过后建出来的社区号；待审与驳回时为空 |
+| `reason` | `string` | 否 | 驳回原因，**原样展示给商家** —— 不给理由他只会原样再提一次 |
+| `submittedAt` | `number` | 是 | 提报时间（毫秒时间戳） |
+
+### CommunityApplyStatus
+
+枚举取值：
+
+- `PENDING`
+- `APPROVED`
+- `REJECTED`
 
 ### CreateGroupReq
 
@@ -1705,13 +2481,21 @@ _无字段_
 | `feeMinor` | `number` | 是 | 配送费，最小货币单位 |
 | `freeThresholdMinor` | `number` | 是 | 免配送费门槛，最小货币单位；0 表示不免 |
 
-### FulfillmentType
+### FulfillmentReach
 
 枚举取值：
 
 - `PICKUP`
+- `ONSITE`
+- `SHIPPING`
+
+### FulfillmentType
+
+枚举取值：
+
+- `STORE_PICKUP`
 - `NEIGHBOR_PICKUP`
-- `DELIVERY`
+- `MERCHANT_DELIVERY`
 - `EXPRESS`
 - `STORE_VERIFY`
 - `APPOINTMENT`
@@ -1759,20 +2543,15 @@ _无字段_
 | `minCount` | `number` | 是 | — |
 | `price` | `number` | 是 | — |
 
-### GoodsDraft
+### GrantStoreReq
 
-商家侧商品草稿。单规格 = 一个规格组一个选项，与多规格同一套结构。 标题与副标题是**三语**：三语是一期范围（C端清单 §五之二）， 但此前商品文案只有一份，中文抄进三语 —— 切到英文看到的还是中文。 **只有中文必填**，其余留空时由服务端回落中文并标注未翻译（不做机翻，见 §M8-2）。
+授予或撤销**一个**门店角色。 **增量式，不是覆盖式**：这一次只动 `role` 这一个角色，不碰他在这家店的其他角色。 覆盖式在多角色下是错的 —— 老板想「再加一个配送员」，结果把「店员」冲掉了。
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `goodsNo` | `string` | 否 | 商品单号。新建时不传，编辑时必传 |
-| `title` | [`I18nText`](#i18ntext) | 是 | 商品标题（多语言）。后端按 Accept-Language 下发对应语言给 C 端 |
-| `subtitle` | [`I18nText`](#i18ntext) | 是 | 副标题/卖点（多语言） |
-| `type` | [`CategoryType`](#categorytype) | 是 | 商品形态，决定详情页用哪套字段。**保存后不建议再改** |
-| `cover` | `string` | 否 | 封面图 URL（来自 `mUploadImage`）。 <p>此前<b>页面上传了封面却没放进提交体</b> —— 店主选了图、页面上也显示出来了， 保存后 C 端拿到的却是空封面。而空封面不报错，只是列表里一块留白。 |
-| `images` | `string`\[\] | 否 | 详情轮播图 |
-| `specGroups` | [`SpecGroupDraft`](#specgroupdraft)\[\] | 是 | 空数组 = 单规格。非空则 skus 必须是各组选项的笛卡尔积 |
-| `skus` | [`SkuDraft`](#skudraft)\[\] | 是 | SKU 列表。单规格商品也有且仅有一条 |
+| `storeNo` | `string` | 是 | 授权到哪家店。只能是本主体的门店 |
+| `role` | [`StaffRole`](#staffrole) | 是 | 要授予/撤销的那一个角色 |
+| `granted` | `boolean` | 否 | true 授予（默认）、false 撤销。撤到一个不剩 = 从这家店移除他 |
 
 ### GrantType
 
@@ -1872,17 +2651,12 @@ _无字段_
 |---|---|:---:|---|
 | `remark` | `string` | 是 | 驳回理由，**必填**（后端 `@NotBlank`）：用户拿不到理由只能升级平台， 平台再回头问商家，多绕一圈。 字段名是 `remark` 不是 `reply` —— 后端 `BizAfterSaleController.RejectReq` 收的是它。 |
 
-### I18nText
-
-多语言文案（mock 内部用；对外契约由后端按 Accept-Language 返回已本地化的 string）
-
-类型：`Record_Lang_string`
-
 ### MarkArrivedReq
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `orderNos` | `string`\[\] | 是 | 批量：一次到货通常是一整批，逐单调用会让通知发成 N 条 |
+| `pickupNo` | `string` | 否 | 给哪个自提点登记；**不传 = 当前门店的那个点**。 一个商家两家店两个点是常态（自提点归属到门店之后）。不传且当前门店没有点时 后端会拒 —— 而不是悄悄登记到另一个点上。 |
 
 ### MarketingCampaign
 
@@ -1904,6 +2678,45 @@ _无字段_
 | `totalCount` | `number` | 否 | COUPON：发放总量。**预算上限，防止发穿** |
 | `takenCount` | `number` | 否 | COUPON：已被领取的数量 |
 | `usedCount` | `number` | 是 | 已核销/已使用次数，衡量效果 |
+| `storeNo` | `string` | 否 | 只对这家门店生效；**空 = 全主体**（存量活动都是它）。 多门店商家必须看得见 —— 否则两条同名的「开业满减」分不清是哪家店的。 |
+
+### MasterData
+
+平台主数据快照（`GET /common/master-data`）。 合成一个响应而不是三条接口，是因为它们在**同一屏上被同时用到**： 「选行业 → 据此过滤可选主体 → 主体决定要不要传营业执照」。 分三次请求会出现「行业回来了、主体还没回来」的中间态， 而那个中间态里表单不知道该不该禁用某个选项。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `industries` | [`MasterDataIndustry`](#masterdataindustry)\[\] | 是 | 可选行业。**决定能不能以小微主体进件**，也是 points_forced 默认值的来源 |
+| `subjects` | [`MasterDataSubject`](#masterdatasubject)\[\] | 是 | 可选主体类型（法律形态）。决定资质要求与结算账户形态 |
+| `channels` | [`MasterDataChannel`](#masterdatachannel)\[\] | 是 | 可用支付通道与其能力位 |
+| `serviceScopes` | [`ServiceScope`](#servicescope)\[\] | 是 | **这一期开放的经营范围档位**（`SERVICE_SCOPE` 的启用子集，运营在后台配）。 端上要照它渲染选项，**不要把三档写死**。写死的后果不是「多了个选项」： 一期自营模式关掉了 `PLATFORM`，而 B 端照样把「全平台发货」摆在那里， 商家点下去得到的是「当前不支持这个经营范围」—— 一个必被拒的选项， 而他无从知道自己该选什么。2026-08-11 的端到端实测撞到过。 拿到 EDI 切平台模式时运营在后台放开，端上不发版就跟着变 —— 这正是它下发而不是写死的理由。 |
+
+### MasterDataChannel
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `payChannel` | `string` | 是 | 通道码（`sys_pay_channel.pay_channel`），如 WECHAT |
+| `name` | `string` | 是 | 展示名 |
+| `enabled` | `boolean` | 是 | 通道是否可用。关掉时下单页不给这个支付方式，而不是点了才失败 |
+| `payMethods` | `string`\[\] | 是 | 该通道支持的支付方式，如 JSAPI / APP / H5 |
+
+### MasterDataIndustry
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `industry` | `string` | 是 | 行业码（`sys_industry.industry`），提交申请时回传的就是它 |
+| `name` | `string` | 是 | 展示名。**取服务端的**，不要在端上再维护一份翻译 |
+| `microAllowed` | `boolean` | 是 | 该行业能否以小微主体进件。**false 时小微选项要禁用**，不是提交后才报错 |
+
+### MasterDataSubject
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `subjectType` | [`MerchantSubject`](#merchantsubject) | 是 | 主体类型码 |
+| `name` | `string` | 是 | 展示名 |
+| `needLicense` | `boolean` | 是 | 要不要传营业执照 |
+| `industryGated` | `boolean` | 是 | 是否受行业白名单管控（小微受管，其余不受） |
+| `settleAccountType` | [`SettleAccountType`](#settleaccounttype) | 是 | 该主体默认的结算账户形态：小微打个人，其余打对公 |
 
 ### MerchantApplyReq
 
@@ -1916,10 +2729,11 @@ _无字段_
 | `category` | `string` | 是 | 主营类目 |
 | `desc` | `string` | 是 | 店铺简介 |
 | `asPickupPoint` | `boolean` | 否 | 承接自提点：小店既是供给方也是取货点（ADR-005 type=STORE） |
-| `serviceScope` | `COMMUNITY` \| `CITY` \| `PLATFORM` | 否 | 期望经营范围（ADR-009）。申请时可空，<b>审核通过时必须确定</b> —— 否则商家上着架却对谁都不可见，且没有任何报错。 |
+| `serviceScope` | [`ServiceScope`](#servicescope) | 否 | 期望经营范围（ADR-009）。申请时可空，<b>审核通过时必须确定</b> —— 否则商家上着架却对谁都不可见，且没有任何报错。 |
 | `communityNos` | `string`\[\] | 否 | 期望覆盖的社区。scope=COMMUNITY 时审核通过必须非空 |
 | `licenses` | `string`\[\] | 否 | 资质图片（营业执照/身份证）。**选填** —— 一期 EDI 不强制。 与下面的结算账户一样，属于**分账主体开户**而不是入驻申请本身（ADR-002）： `usr_merchant_payment` 是独立一张表、有自己的 `apply_status`，就是这个道理。 申请时能传就传，通过后在 B 端补也行 —— 逼一个还没通过审核的人先传营业执照， 只会把人挡在门外。 |
-| `settleAccountType` | `PERSONAL_OPENID` \| `MERCHANT_ID` | 否 | 结算账户类型。真实账号由后端持有，C 端与 B 端都不回显（ADR-002 §5）。**选填**，同上 |
+| `settleAccountType` | [`SettleAccountType`](#settleaccounttype) | 否 | 结算账户类型。真实账号由后端持有，C 端与 B 端都不回显（ADR-002 §5）。**选填**，同上 |
+| `industry` | `string` | 否 | 行业（`sys_industry.industry`）。 **它决定这家店能不能以小微主体进件** —— 微信的小微白名单是按行业给的， 也是 `points_forced` 默认值的来源。 后端一直在收、库里一直有这一列，但契约没登记、端也没传， 于是 `mch_entity.industry` 恒空：进件时才发现主体类型选错了， 而那时商家已经开完店、上完架。 |
 
 ### MerchantApplyReqBody
 
@@ -1953,7 +2767,7 @@ _无字段_
 | `lastOrderAt` | `number` | 是 | 最近一次下单时间 |
 | `daysSinceLast` | `number` | 是 | 距上次下单天数 |
 | `silent` | `boolean` | 是 | 沉默客户：曾经常来、最近没来。**这是店主唯一能立刻行动的信号** |
-| `source` | `MERCHANT_OWNED` \| `PLATFORM` | 是 | 客流来源：他是你自己带来的，还是平台分配的 |
+| `source` | [`TrafficSource`](#trafficsource) | 是 | 客流来源：他是你自己带来的，还是平台分配的 |
 
 ### MerchantLoginReqBody
 
@@ -2014,6 +2828,32 @@ _无字段_
 | `rejectReason` | `string` | 否 | 驳回原因，status=REJECTED 时有值 |
 | `loginBy` | [`GrantType`](#granttype) | 否 | 本次会话的登录方式。第三方登录且 phone 为空时，要引导补绑手机号 |
 
+### MerchantRole
+
+一个角色：6 个平台预置（只读）+ 商家自定义（V71）。 **权限码的中文说明由后端给**（`permLabels`），前端不抄一份 —— 抄的那份迟早与权限码本身漂开，而漂开的表现是 「界面写着能改库存，实际打不通」。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `roleCode` | `string` | 是 | 角色码。预置是 `OWNER`/`MANAGER`… ，自定义是生成的业务键 —— **别拿它给店主看** |
+| `name` | `string` | 是 | 显示名。预置角色也有 —— 别拿 `MANAGER` 直接给店主看 |
+| `builtin` | `boolean` | 是 | 平台预置：**只读**，要改先「复制为自定义角色」 |
+| `perms` | `string`\[\] | 是 | 这个角色带的权限码。老板那行是 `["*"]`（全部），别按长度当权限数 |
+| `permLabels` | `string`\[\] | 是 | 与 `perms` 一一对应的中文短说明 |
+| `usedBy` | `number` | 是 | 几个人在用。删除按钮据此禁用，并且要显示出来 |
+
+### MerchantStaff
+
+商家员工（B 端账号 + 他在各门店的角色）。 <p>**逐店授权**：A 店店长可以同时是 B 店店员 —— 老店的店长去新店帮忙， 但新店不归他管，这是小连锁的常态。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `mchAccountNo` | `string` | 是 | 商家账号号。**不叫 staffNo** —— 那个名字被平台运营占着，两者是不同的人 |
+| `displayName` | `string` | 否 | 备注名（老板自己写的，如「小张」）。**列表认人靠它** —— 只有脱敏号的话，三个人以后谁也分不清。为空时端上回落 `loginPhone`。 |
+| `loginPhone` | `string` | 是 | 登录手机号，**已脱敏**。完整号不回显 —— 那等于一份可导出的通讯录 |
+| `isOwner` | `boolean` | 是 | 老板。**不受门店授权限制**，他的店都归他管 |
+| `status` | [`StaffStatus`](#staffstatus) | 是 | ACTIVE / DISABLED |
+| `roles` | [`StoreRole`](#storerole)\[\] | 是 | 他在各门店的角色。老板为空 —— 不是"没授权"，是"不需要授权" |
+
 ### MerchantStats
 
 | 字段 | 类型 | 必填 | 说明 |
@@ -2068,6 +2908,7 @@ _无字段_
 |---|---|:---:|---|
 | `toShip` | `number` | 是 | 待发货单数（EXPRESS 履约） |
 | `toDeliver` | `number` | 是 | 待自送单数（商家自送履约） |
+| `toStock` | `number` | 是 | 待备货单数（自提单已付款，货还没送到自提点）。**按门店算**，这是供货方的活。 与  {@link  toPick }  是同一批单的两头，**两个数不相等**： 买家常常选别家的自提点。`toPick` 按自提点算（我要在点上分多少）， 这一个按门店算（我要送出去多少）。 |
 | `toVerify` | `number` | 是 | 待核销单数（自提到货、买家还没来取） |
 | `toPick` | `number` | 是 | 待分拣单数（到货后按商品汇总点数） |
 | `afterSale` | `number` | 是 | 待处理售后单数 |
@@ -2094,9 +2935,10 @@ _无字段_
 | `timeline` | [`OrderTimelineNode`](#ordertimelinenode)\[\] | 是 | 状态流转轨迹，按时间正序。订单详情的进度条据此渲染 |
 | `idempotencyKey` | `string` | 否 | 下单幂等 key。端上生成，重复提交返回同一笔订单而不是新建 |
 | `buyerNickname` | `string` | 否 | 下单人昵称。团长视角（分拣单/核销台）要看得见是谁的单 |
+| `receiver` | [`OrderReceiver`](#orderreceiver) | 否 | 收件人（下单时的**快照**，自提单没有）。 快照而不是现查地址：买家下完单把地址改成新家，商家看到的就跟着变了， 而货已经按旧地址在路上。 ⚠️ **`phone` 的脱敏程度由后端按履约方式决定**：商家自送给完整号 （送到楼下找不到人就得打电话），其余履约方式给 `****1234`。 端上**不要自己判**要不要打码 —— 两处规则迟早分叉。 |
 | `reviewed` | `boolean` | 否 | 已评价 |
 | `pointsGranted` | `boolean` | 否 | 积分是否已发放（幂等标记，防止重复核销重复发分） |
-| `trafficSource` | `MERCHANT_OWNED` \| `PLATFORM` | 否 | 客流来源。**决定平台费率档**：商家自带客流建议零佣金 —— 他带来的客户 在别家的消费才是平台的收益（ADR-004 §6）。从店铺码/店铺分享进入即为 MERCHANT_OWNED。 |
+| `trafficSource` | [`TrafficSource`](#trafficsource) | 否 | 客流来源。**决定平台费率档**：商家自带客流建议零佣金 —— 他带来的客户 在别家的消费才是平台的收益（ADR-004 §6）。从店铺码/店铺分享进入即为 MERCHANT_OWNED。 |
 | `groupNo` | `string` | 否 | 参与的团。邻里自提的核销作用域就靠它裁剪（E16） |
 | `afterSale` | [`AfterSale`](#aftersale) | 否 | 售后单。订单状态只有粗粒度的 REFUNDING/REFUNDED，细节在这里 |
 | `merchantNo` | `string` | 否 | 本单归属的商家。**一单只属于一个商家** —— 购物车跨商家时拆成多笔子订单（E3）。 不拆的话分账无从谈起：一笔钱要分给几家、各分多少，没有承载的单据。 |
@@ -2136,18 +2978,28 @@ _无字段_
 | `isGift` | `boolean` | 否 | 赠品行：价格为 0，不参与计价，履约时随单发出 |
 | `points` | `number` | 否 | 该商品每件赠送的积分 |
 
+### OrderReceiver
+
+收件人。下单时固化在子订单上，**不是用户当前的地址簿条目**。 三端共用：C 端订单详情、B 端配送/发货、平台端查单。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `name` | `string` | 否 | 收货人姓名。取不到时为空 —— 空就是空，不要回落成「顾客」 |
+| `phone` | `string` | 否 | 脱敏程度由后端定，见 `Order.receiver` 的说明 |
+| `address` | `string` | 否 | 省市区 + 详细，拼好的一行 |
+
 ### OrderStatus
+
+订单状态。**这是后端真实下发的取值**，不是端上想象的流程。 ⚠️ 曾经这里还有一个 `PREPARING`（备货中）—— 那是 mock 里多出来的一步， 后端从付款直接到 `PAID`（待发货），没有独立的备货态。 端上按一个后端永远不会给的值去筛，筛出来的就是空列表，而且不报错。 ⚠️ 也曾有一个 `REFUNDING` —— 那是**售后单**的状态（ {@link  AfterSaleStatus } ）， 不是订单的。订单只会到 `REFUNDED`。这个混淆的代价是两端的「售后」页签： 它们按 `order.status === "REFUNDING"` 筛，而后端从不下发， **b 端「售后中」页签与工作台售后待办数因此恒为空 / 恒为 0**。 一个订单可以「已完成」的同时挂着一张处理中的售后单 —— 两者并存， 做成互斥的状态就必须二选一，而那是表达不了的。售后要从 `/mp/after-sale` 与 `/biz/after-sale` 单独查。
 
 枚举取值：
 
 - `WAIT_PAY`
 - `PAID`
-- `PREPARING`
 - `ARRIVED`
 - `SHIPPED`
 - `COMPLETED`
 - `CANCELLED`
-- `REFUNDING`
 - `REFUNDED`
 
 ### OrderTimelineNode
@@ -2165,6 +3017,47 @@ _无字段_
 | `CNY` | `number` | 否 | — |
 | `USD` | `number` | 否 | — |
 | `AED` | `number` | 否 | — |
+
+### PaymentApplyStatus
+
+支付**进件**状态（`MerchantPayment.applyStatus`）。 ⚠️ 此前叫 `ApplyStatus`，与入驻审核的 `ApplyStatus` 同名不同义 —— `ACTIVE`/`FROZEN` 两个值就是证据：审核不会有这两个态。
+
+枚举取值：
+
+- `NONE`
+- `APPLYING`
+- `ACTIVE`
+- `REJECTED`
+- `FROZEN`
+
+### PaymentApplyment
+
+收款进件状态（每通道一条）。 <p><b>它与入驻审核是两件事</b>：入驻过了店就能开、货能上架， 但通道没批就收不了钱。合成一个「入驻进度」，商家问「我能收钱了吗」就没法回答。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `payChannel` | `string` | 是 | 通道码，如 WECHAT |
+| `channelName` | `string` | 是 | 通道展示名。取服务端的，端上不要再维护一份翻译 |
+| `applyStatus` | [`PaymentApplyStatus`](#paymentapplystatus) | 是 | NONE / APPLYING / ACTIVE / REJECTED / FROZEN |
+| `canReceiveMoney` | `boolean` | 是 | 这个通道现在能不能收钱。 **照着它显示，不要自己去比 applyStatus** —— 比错的表现是 「显示能收钱但收不了」，而这种错要到第一笔订单才暴露。 |
+| `payMerchantNo` | `string` | 否 | 收款商户号业务键，通过后才有。门店挂收款号引用的就是它 |
+| `subMchidMasked` | `string` | 否 | 二级商户号掩码。完整号不回显 |
+| `settleAccountType` | [`SettleAccountType`](#settleaccounttype) | 否 | 结算账户形态：小微打个人（PERSONAL_OPENID），其余打对公（MERCHANT_ID） |
+| `settleAccountMasked` | `string` | 否 | 结算账号掩码。**明文永不回显**，包括给商家自己（ADR-002 §5） |
+| `rejectReason` | `string` | 否 | 驳回原因。驳回时必有 —— 没有原因商家只能反复重提 |
+| `missing` | `string`\[\] | 是 | 还缺哪些资料（settleAccount / licenses / settleAccountType）。空 = 资料齐了在等通道 |
+| `appliedAt` | `number` | 否 | 提交进件的时间。没提交过为空 |
+| `activatedAt` | `number` | 否 | 通道开户完成的时间 —— 从这一刻起才真的能收钱 |
+| `storeNo` | `string` | 否 | 这条进件是**为哪家门店**做的；空 = 主体级默认号。 多门店商家会有多条「微信 · 已开通」，不显示门店就分不清哪条是哪家店 —— 等于让他猜自己的钱打进了哪张卡。 |
+
+### PermOption
+
+自定义角色**可以勾的一个权限点**。 为什么不让端上「把预置角色的权限并起来」当选项：那个并集**少一条** —— `biz:finance` 只有老板有，而老板那行是 `*`。于是后端明明收这个码， 界面上却勾不到，看起来像功能没做。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `code` | `string` | 是 | 权限码，如 `biz:stock`。**只用于提交，不展示** |
+| `label` | `string` | 是 | 中文短说明，兜底用。端上自己有中/英/阿三份文案 |
 
 ### PickingRow
 
@@ -2202,6 +3095,16 @@ _无字段_
 | `openHours` | `string` | 是 | 营业时间文案，如 `08:00-21:00`。展示用，不参与计算 |
 | `arrivalDesc` | `string` | 是 | 到货时间说明，如「次日 18:00 后到」。影响用户选不选这个点 |
 
+### PickupFeeMode
+
+自提点计费方式。**与 ops-web 的 `PickupFeeMode` 同值** —— 费率线下逐点协商，故两种都留
+
+枚举取值：
+
+- `NONE`
+- `PER_ITEM`
+- `RATE`
+
 ### PickupOverview
 
 自提点履约总览（后端 `GET /biz/pickup/overview`）。 承接方最关心的三个数：还有几单没人来取、今天到了几批、这些活挣了多少服务费。
@@ -2214,24 +3117,51 @@ _无字段_
 | `arrivedBatches` | `number` | 是 | 今日到货批次 |
 | `serviceFeeMinor` | `number` | 是 | 累计履约服务费（最小货币单位） |
 
-### PickupPoint
+### PickupOwnerType
 
-自提点实体。 取代了原先的 `Merchant.isPickupPoint` 布尔字段 —— 那个表达不了「承接方是用户」： 邻里自提是送到**团发起人家里**，承接的是邻居本人，不是商家。
+自提点承接方类型。与  {@link  PickupPointType }  不同：那个说「是什么点」，这个说「谁在承接」
+
+枚举取值：
+
+- `MERCHANT`
+- `USER`
+- `PLATFORM`
+
+### PickupPoint
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `pickupNo` | `string` | 是 | 自提点单号 |
-| `type` | `STORE` \| `NEIGHBOR` \| `PLATFORM` | 是 | 自提点由谁承接。**三档，各自的费用规则完全不同**（2026-08-06 定）：   · STORE    商家自己的门店 —— 商家自行解决，平台不收履约服务费   · NEIGHBOR 团发起人家里 —— **零报酬**（ADR-005），有报酬就是团长招募换个名字   · PLATFORM 平台提供的点 —— 收履约服务费，**费率线下逐点协商，由运营平台录入** |
-| `ownerType` | `MERCHANT` \| `USER` \| `PLATFORM` | 是 | 承接方所属账号池 |
+| `type` | [`PickupPointType`](#pickuppointtype) | 是 | 自提点由谁承接。**三档，各自的费用规则完全不同**（2026-08-06 定）：   · STORE    商家自己的门店 —— 商家自行解决，平台不收履约服务费   · NEIGHBOR 团发起人家里 —— **零报酬**（ADR-005），有报酬就是团长招募换个名字   · PLATFORM 平台提供的点 —— 收履约服务费，**费率线下逐点协商，由运营平台录入** |
+| `ownerType` | [`PickupOwnerType`](#pickupownertype) | 是 | 承接方所属账号池 |
 | `ownerNo` | `string` | 是 | 承接方单号，按 ownerType 落在 merchantNo 或 cUserNo 上 |
-| `scope` | `PERMANENT` \| `GROUP_INSTANCE` | 是 | 常驻 \| 团粒度（一团一销） |
+| `scope` | [`PickupScope`](#pickupscope) | 是 | 常驻 \| 团粒度（一团一销） |
 | `groupNo` | `string` | 否 | type=NEIGHBOR 时必填：这个点只服务这一个团 |
 | `name` | `string` | 是 | 自提点名称 |
 | `address` | `string` | 是 | 展示地址。**成团前只到楼栋，付款后才给完整门牌**（B13）—— 未成团的团不该暴露发起人住址。 |
 | `timeSlot` | `string` | 否 | 约定取货时段。邻居家不能一直堆着货（B15） |
-| `feeMode` | `NONE` \| `PER_ITEM` \| `RATE` | 是 | 计费口径。**必须显式标出用哪一种** —— 库里按件与按率两列长期并存， 没有判别列的话结算侧只能猜，猜错就是给自提点少付或多付钱。 之所以两种都留：费率是**线下逐点协商**的，有的点谈成按件、有的谈成按成交额抽成， 硬统一成一种会让运营在谈判里没有筹码。 |
+| `feeMode` | [`PickupFeeMode`](#pickupfeemode) | 是 | 计费口径。**必须显式标出用哪一种** —— 库里按件与按率两列长期并存， 没有判别列的话结算侧只能猜，猜错就是给自提点少付或多付钱。 之所以两种都留：费率是**线下逐点协商**的，有的点谈成按件、有的谈成按成交额抽成， 硬统一成一种会让运营在谈判里没有筹码。 |
 | `serviceFeePerItemMinor` | `number` | 是 | feeMode=PER_ITEM 时的按件服务费。STORE 与 NEIGHBOR 恒为 0 |
 | `serviceFeeRate` | `number` | 是 | feeMode=RATE 时的费率（万分比）。STORE 与 NEIGHBOR 恒为 0 |
+
+### PickupPointType
+
+自提点类型。对应 `cmt_pickup_point.type`。 ⚠️ 此前只以裸字面量的形式内联在 `PickupPoint.type` 里 —— 值是对的， 但**没有单一声明处**：对账工具扫不到它，各处写的是裸字符串。 `CATEGORY_TYPE` 出事前正是这个状态（见 docs/technical/枚举统一方案.md §2「C 无主」）： 今天没 bug，但下一个人在别处再写一次时，没有任何东西会拦住他写错。
+
+枚举取值：
+
+- `STORE`
+- `NEIGHBOR`
+- `PLATFORM`
+
+### PickupScope
+
+自提点作用域：常驻 / 团粒度（一团一销）
+
+枚举取值：
+
+- `PERMANENT`
+- `GROUP_INSTANCE`
 
 ### Promotion
 
@@ -2298,13 +3228,22 @@ _无字段_
 |---|---|:---:|---|
 | `imageUrl` | `string` | 是 | 待识别的商品图 URL（先走 upload/image 拿到）。返回识别出的标题与类目建议 |
 
-### Record_Lang_string
+### Record_string_string
+
+类型：`object`
+
+### Region
+
+行政区划的一级（`/biz/regions`）。国家统计局统计用区划代码，省 2 / 市 4 / 区 6 / 街道 9 位
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `zh-CN` | `string` | 是 | — |
-| `en` | `string` | 是 | — |
-| `ar` | `string` | 是 | — |
+| `regionCode` | `string` | 是 | 统计用区划代码：省 2 位 / 市 4 位 / 区县 6 位 / 街道 9 位。**前缀即层级**，下级码以上级码开头 |
+| `parentCode` | `string` | 否 | 上级区划码。省级为空 —— 逐级选择器据此判断自己在不在顶层 |
+| `level` | `string` | 是 | PROVINCE / CITY / DISTRICT / STREET |
+| `name` | `string` | 是 | 本级名称，**不含上级**（「西湖区」不是「杭州市 / 西湖区」）。要整条路径的地方自己拼 |
+| `enabled` | `boolean` | 是 | 是否启用。B 端只会拿到启用的 —— 停用的区划是运营的维护对象，不该出现在商家的选择器里 |
+| `hasChild` | `boolean` | 是 | 下面还有没有下级。端上据此决定「还要不要再往下选一层」，而不是点进去才发现是空的 |
 
 ### ReplyReviewReq
 
@@ -2317,7 +3256,7 @@ _无字段_
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `skuNo` | `string` | 是 | 出问题的 SKU |
-| `kind` | `SHORTAGE` \| `DAMAGE` | 是 | 问题类型：少件 / 破损。两者的售后责任判定不同 |
+| `kind` | [`ArrivalIssueKind`](#arrivalissuekind) | 是 | 问题类型：少件 / 破损。两者的售后责任判定不同 |
 | `note` | `string` | 是 | 情况说明。承接方填，供货方与平台据此定责 |
 
 ### Review
@@ -2381,7 +3320,22 @@ _无字段_
 
 ### SaveGoodsReqBody
 
-类型：`GoodsDraft`
+保存商品的**线上格式**，与页面用的  {@link  GoodsDraft }  不同形状。 <p>后端要的是「基准语言的那一份 + 三语 map」两个字段，而不是一个三语对象。 此前这里直接 `= GoodsDraft`，于是端上把 `title` 当对象发过去， 后端反序列化直接抛 —— **b-app 保存商品在真实后端上一次都没成功过**， 而 mock 上完全正常，所以没人发现。拍平在 `http.ts` 里做，页面不受影响。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `goodsNo` | `string` | 否 | 商品单号。新建时不传，编辑时必传 |
+| `title` | `string` | 是 | 基准语言（zh-CN）的标题。后端按 Accept-Language 下发时的兜底 |
+| `subtitle` | `string` | 是 | 基准语言（zh-CN）的副标题/卖点 |
+| `titleI18n` | [`Record_string_string`](#record_string_string) | 是 | 标题的三语原文，键是 Lang。缺译的语言按 R9 回落展示中文 |
+| `subtitleI18n` | [`Record_string_string`](#record_string_string) | 是 | 副标题的三语原文，同上 |
+| `type` | [`CategoryType`](#categorytype) | 是 | 商品形态，决定履约与合规（生鲜要截单、服务不发货、iOS 可售规则） |
+| `categoryNo` | `string` | 否 | 类目单号。选填，决定归类与经营准入 —— 与 `type` 是两个正交维度 |
+| `cover` | `string` | 否 | 封面图 URL（来自 mUploadImage）。漏传的话 C 端列表里是一块留白，且不报错 |
+| `images` | `string`\[\] | 否 | 详情轮播图 |
+| `specGroups` | [`SpecGroupDraft`](#specgroupdraft)\[\] | 是 | 空数组 = 单规格。非空则 skus 必须是各组选项的笛卡尔积 |
+| `fulfillments` | `string`\[\] | 否 | 支持的履约方式；不传 = 不改（新建默认四种全支持） |
+| `skus` | [`SkuDraft`](#skudraft)\[\] | 是 | SKU 列表。单规格商品也有且仅有一条 |
 
 ### SaveSpecTemplateReq
 
@@ -2401,6 +3355,17 @@ _无字段_
 
 类型：`StoreProfile`
 
+### ServiceArea
+
+一条地理覆盖项。名字由后端拼好下发 —— 端上只拿到 330106 的话，要么显示一串数字，要么自己再查一次
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `level` | [`AreaLevel`](#arealevel) | 是 | 粒度：社区 / 街道 / 区县 / 城市。**可跨粒度组合** —— 三个小区 + 一个区是四条 |
+| `refCode` | `string` | 是 | level=COMMUNITY 时是社区号，否则是区划码 |
+| `name` | `string` | 是 | 展示名。区级以上是「浙江省 / 杭州市 / 西湖区」整条路径 —— 光一个「西湖区」全国有好几个，商家分不出删哪条 |
+| `status` | [`AreaStatus`](#areastatus) | 否 | `ACTIVE` 已生效 / `PENDING` 待运营审核。 勾已有社区自助生效；勾区、街道要审 —— 一家菜摊声称覆盖整个西湖区， 影响面差一个量级（ADR-013 §4.2）。**端上必须把待审标出来**： 待审的不参与展开，商家看着它在清单里却一个订单也不来， 而这是他自己永远查不出来的那类故障。 |
+
 ### ServiceScope
 
 枚举取值：
@@ -2409,22 +3374,65 @@ _无字段_
 - `CITY`
 - `PLATFORM`
 
-### SettleBill
+### SetActiveReq
 
-结算单。分账以子订单为单位（ADR-002 §5）
+停用/启用（门店与员工共用同一个形状）
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `billNo` | `string` | 是 | 结算单号 |
-| `periodStart` | `number` | 是 | 结算周期起（含） |
-| `periodEnd` | `number` | 是 | 结算周期止（含） |
-| `payableMinor` | `number` | 是 | 应分金额 |
-| `settledMinor` | `number` | 是 | 已分账金额 |
-| `commissionMinor` | `number` | 是 | 平台佣金 |
-| `fulfillFeeMinor` | `number` | 是 | 自提点履约服务费（承接方收，供货方付；口径待定 B9） |
-| `status` | `PENDING` \| `PARTIAL` \| `DONE` \| `EXPIRED` | 是 | 结算状态：待结算 / 部分已结 / 已结清 / 已过期 |
-| `currency` | [`CurrencyCode`](#currencycode) | 是 | 结算币种 |
-| `orderCount` | `number` | 是 | 本期订单笔数 |
+| `active` | `boolean` | 是 | true 启用 / false 停用 |
+
+### SetStorePaymentReq
+
+换门店收款号。**不传或传空 = 回到主体默认号**，这是合法操作不是清空错误
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `payMerchantNo` | `string` | 否 | 目标收款商户号。只能是本主体已开通的号；空 = 回到主体默认号 |
+
+### SettleAccountType
+
+结算账户形态。个人 openid 收款 / 对公商户号收款（ADR-002 §5）
+
+枚举取值：
+
+- `PERSONAL_OPENID`
+- `MERCHANT_ID`
+
+### SettleBill
+
+结算流水。**一个子订单一行**（ADR-002 §5），不是周期账单。 > 2026-08-11 更正：这个类型此前描述的是一套「周期账单」（`billNo` / `periodStart` > / `orderCount` / `settledMinor`），而后端 `/biz/settle/bills` 从来返回的都是 > 按子单一行的分账流水。**字段一个都对不上**，页面靠 mock 才看起来是好的 —— > 连真后端会整片 undefined。与本轮反复撞到的「单看任一端都完整，断在两端之间」同形状。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `settleNo` | `string` | 是 | 结算单号 |
+| `subOrderNo` | `string` | 是 | 对应的子订单号 —— 分账以它为单位 |
+| `orderNo` | `string` | 是 | 所属主单号 |
+| `merchantNo` | `string` | 是 | 主体号 |
+| `grossMinor` | `number` | 是 | 结算基数（分）= 用户实付 + 平台补贴。**平台出资的优惠要补回给商家** |
+| `commissionMinor` | `number` | 是 | 平台佣金（分） |
+| `serviceFeeMinor` | `number` | 是 | 自提点履约服务费（分）。供货方付、承接方收，两个角色都是自己时账面抵消 |
+| `netMinor` | `number` | 是 | 商家实得（分）= 基数 − 佣金 − 服务费 |
+| `trafficSource` | `string` | 否 | 客流来源：MERCHANT_OWNED 自带客流（零佣金）/ PLATFORM |
+| `commissionRate` | `number` | 是 | 佣金费率快照（万分比）。费率会变，历史账不跟着变 |
+| `status` | [`SettleBillStatus`](#settlebillstatus) | 是 | PENDING / SPLIT / RETRYING / MANUAL / REVERSED |
+| `createdAt` | `number` | 是 | 生成时间 |
+| `splitAt` | `number` | 否 | 分账完成时间；没分完为空 |
+| `storeNo` | `string` | 否 | 这笔钱是**哪家店**挣的（统计维度）。空 = 存量主体级流水。 它**不决定钱打给谁** —— 打给谁看 `payMerchantNo`。 两家店可以共用一个收款号（合并结算），也可以各配各的（分开结算）。 |
+| `payMerchantNo` | `string` | 否 | 这笔钱打给**哪个收款号**（结算维度，生成时快照）。空 = 当时进件还没走完 |
+
+### SettleBillStatus
+
+结算流水状态。**与后端 `StlBill` 逐字一致**。 > 2026-08-11 收敛：这里此前是 `PENDING/PARTIAL/DONE/EXPIRED` —— 一套后端从来没有过的词， > 描述的是「周期账单」而不是「按子单的分账流水」。内联时对所有工具不可见， > 具名化之后才暴露出来（见 enum-registry 里这条的 note）。 - `PENDING` 待分账 · `SPLITTING` 分账中 · `SPLIT` 已分账 - `RETRYING` 失败重试中 · `MANUAL` 转人工（重试用尽，**不会自动再动钱**） - `REVERSED` 已回退（退款前必须先回退分账）
+
+枚举取值：
+
+- `PENDING`
+- `SPLITTING`
+- `SPLIT`
+- `RETRYING`
+- `MANUAL`
+- `REVERSED`
 
 ### ShareKit
 
@@ -2503,11 +3511,88 @@ SKU 草稿。`optionValues` 的顺序与 `specGroups` 一一对应 —— 这是
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `templateNo` | `string` | 是 | 模板单号 |
-| `scope` | `PLATFORM` \| `MERCHANT` | 是 | 模板归属：平台统一维护 or 商家自存。商家只能改自己的 |
+| `scope` | [`SpecTemplateScope`](#spectemplatescope) | 是 | 模板归属：平台统一维护 or 商家自存。商家只能改自己的 |
 | `categoryType` | [`CategoryType`](#categorytype) | 否 | 平台模板按类目推荐；商家模板不限类目 |
 | `name` | `string` | 是 | 规格维度名，如「重量」「香型」 |
 | `options` | [`SpecOption`](#specoption)\[\] | 是 | 该维度的可选项 |
 | `merchantNo` | `string` | 否 | scope=MERCHANT 时归属的商家 |
+
+### SpecTemplateScope
+
+规格模板归属：平台统一维护 / 商家自存
+
+枚举取值：
+
+- `PLATFORM`
+- `MERCHANT`
+
+### StaffLog
+
+一条员工与授权的变更记录（B-11.10.3）。 **授权变更是权限扩散的唯一入口** —— 加人、停用、给角色、撤角色。 别的动作都有业务单据兜底，唯独这几个此前做完就没了： 三个月后问「谁把张三提成了店长」，库里只有一行当前状态。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `actor` | `string` | 否 | 操作人手机号（脱敏）。取不到当时身份时为空 —— 空就是空，不写「系统」 |
+| `targetName` | `string` | 否 | 被操作员工的手机号（脱敏） |
+| `action` | `string` | 是 | STAFF_ADD / STAFF_ENABLE / STAFF_DISABLE / ROLE_GRANT / ROLE_REVOKE |
+| `storeName` | `string` | 否 | 涉及门店的名字。加人与启停为空 |
+| `role` | [`StaffRole`](#staffrole) | 否 | 涉及的角色码。加人与启停为空 |
+| `detail` | `string` | 否 | 人能读的一句话，直接展示 |
+| `at` | `number` | 是 | 发生时间，毫秒时间戳 |
+
+### StaffLoginReq
+
+员工登录。与商家登录同形状，但打的是另一个端点、解析出的是另一套身份
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `phone` | `string` | 是 | 员工的登录手机号（老板在员工管理里加的那个） |
+| `code` | `string` | 是 | 短信验证码 |
+
+### StaffRole
+
+门店角色（B 端）。**一人一店可持有多个**，权限取并集。 分界线画在「出错的后果」上，而不是功能重要性 —— 履约被拆成三种活，因为它们面对的对象不同：分拣对货、核销对顾客、发货对收件人。 拆开之后理货员与配送员才装得下。判断依据见 `docs/requirements/三端角色权限功能对齐清单.md` §4。 ⚠️ `CS` 与运营端的 `Role.CS` **同名不同义**：这个是商家自己雇的客服（只管自己店）， 那个是平台客服（跨商家、能仲裁）。 老板不在这里 —— 他是 `isOwner`，不需要逐店授权。
+
+枚举取值：
+
+- `MANAGER`
+- `CLERK`
+- `PICKER`
+- `COURIER`
+- `CS`
+
+### StaffStatus
+
+员工账号状态
+
+枚举取值：
+
+- `ACTIVE`
+- `DISABLED`
+
+### Store
+
+门店（商家侧管理用）。 <p><b>门店与主体是关联不是归属</b>：换执照店照开。所以 `storeNo` 一旦生成就不再变 —— 评价、订单、顾客的「我常逛的店」都挂在它上面。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | 门店号。一旦生成不再变 —— 换主体只换归属，不换它 |
+| `name` | `string` | 是 | 门店名 |
+| `address` | `string` | 否 | 门店地址。顾客据此找到取货点，也是履约范围的锚点 |
+| `isDefault` | `boolean` | 是 | 是否默认店。一个主体**恰好一家** —— 它是「找不到具体门店时去哪」的答案 |
+| `status` | [`StoreStatus`](#storestatus) | 是 | ACTIVE 正常营业 / READONLY 已停用（不再接新单，已有单照常履约） |
+| `payMerchantNo` | `string` | 否 | 这家店用哪个收款号。**空 = 用主体的默认收款号**，不是"没配" |
+| `payReady` | `boolean` | 是 | 这家店现在能不能收钱。照它显示，别自己去比状态串 |
+| `staffCount` | `number` | 是 | 授权到这家店的员工数（不含老板）。0 表示只有老板能管这家店 |
+
+### StoreEditReq
+
+新建/改名门店。门面其余部分（公告/营业时间/主推）走 SaveStoreReqBody
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `name` | `string` | 是 | 门店名 |
+| `address` | `string` | 否 | 门店地址 |
 
 ### StoreProfile
 
@@ -2522,6 +3607,8 @@ SKU 草稿。`optionValues` 的顺序与 `specGroups` 一一对应 —— 这是
 | `serviceScope` | [`ServiceScope`](#servicescope) | 是 | 经营范围（B 端自选）。**决定这家店的货在 C 端能被谁看到** —— 选错不是展示问题：选大了会卖到送不到的地方（下单后提不了货 → 退款）， 选小了则整片小区的人都搜不到这家店。所以 B 端要给出后果说明，不能只给三个单选。 |
 | `serviceCommunityNos` | `string`\[\] | 是 | scope=COMMUNITY 时覆盖的社区。空表示还没谈下任何小区，此时 C 端一律不可见 |
 | `serviceCityCode` | `string` | 否 | scope=CITY 时覆盖的城市 |
+| `fulfillmentReach` | [`FulfillmentReach`](#fulfillmentreach) | 否 | 履约能力（ADR-013 阶段二）。**只说「怎么送到你手上」**，送得到哪儿看  {@link  serviceAreas } 。 与上面两个 `@deprecated` 字段的关系：新旧两套并存期间，端上**只传一套** —— 传了 `serviceAreas` 就走新模型，后端不再看 `serviceScope`。 |
+| `serviceAreas` | [`ServiceArea`](#servicearea)\[\] | 否 | 地理覆盖项，可跨粒度组合（三个小区 + 一个区）。 **空的含义由 `fulfillmentReach` 决定**，这是这个字段最容易踩的地方： PICKUP 空 = 谁也看不到（没配自提点就没法履约）； ONSITE / SHIPPING 空 = 不限。同一个空数组两种意思，所以别拿它判「有没有设置过」。 |
 
 ### StoreQrcode
 
@@ -2531,6 +3618,37 @@ SKU 草稿。`optionValues` 的顺序与 `specGroups` 一一对应 —— 这是
 |---|---|:---:|---|
 | `url` | `string` | 是 | 扫码后进入的落地页地址，带 merchant_no 归因参数 |
 | `printUrl` | `string` | 是 | 可打印版（贴纸尺寸），真实环境由后端生成小程序码 |
+
+### StoreRole
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | 哪家店 |
+| `storeName` | `string` | 是 | 门店名快照，列表直接显示，省一次查询 |
+| `role` | [`StaffRole`](#staffrole) | 是 | MANAGER 店长 / CLERK 店员 |
+
+### StoreStatus
+
+门店状态。READONLY = 已停用（不再接新单，已有单照常履约）
+
+枚举取值：
+
+- `ACTIVE`
+- `READONLY`
+
+### SubmitPaymentReq
+
+提交收款进件。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `payChannel` | `string` | 是 | 给哪个通道进件，如 WECHAT |
+| `settleAccountType` | [`SettleAccountType`](#settleaccounttype) | 否 | 结算账户形态。不传时后端按法律形态取默认（小微打个人、其余对公） |
+| `settleAccount` | `string` | 是 | 结算账号明文。见上方说明：**不落库、不进日志、不回显** |
+| `licenses` | `string`\[\] | 否 | 资质图地址。小微免传，个体户与企业必传 |
+| `contactName` | `string` | 否 | 进件联系人。通道核对资料时联系他，不一定等于登录人 |
+| `contactPhone` | `string` | 否 | 进件联系电话 |
+| `storeNo` | `string` | 否 | 为**哪家门店**进件；不传 = 主体级默认号（单店永远走这条）。 传它就是在走「分开结算」：微信侧一个商户号只能绑一个结算账户， 两家店各收各的钱，就得进件两次拿两个号。 |
 
 ### ToggleCampaignReq
 
@@ -2543,6 +3661,15 @@ SKU 草稿。`optionValues` 的顺序与 `specGroups` 一一对应 —— 这是
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `onSale` | `boolean` | 是 | 目标状态：true 上架、false 下架。下架后详情页仍可访问但不可下单 |
+
+### TrafficSource
+
+流量来源。**与 ops-web 的 `TrafficSource` 同名** —— 那边多 INVITE/CHANNEL 两个值（已标 MERGE）
+
+枚举取值：
+
+- `MERCHANT_OWNED`
+- `PLATFORM`
 
 ### UploadImageReq
 

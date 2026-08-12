@@ -989,6 +989,7 @@ export interface OrderAmount {
  * 三端共用：C 端订单详情、B 端配送/发货、平台端查单。
  */
 export interface OrderReceiver {
+  /** 收货人姓名。取不到时为空 —— 空就是空，不要回落成「顾客」 */
   name?: string;
   /** 脱敏程度由后端定，见 `Order.receiver` 的说明 */
   phone?: string;
@@ -1587,7 +1588,17 @@ export interface Store {
 export interface MerchantStaff {
   /** 商家账号号。**不叫 staffNo** —— 那个名字被平台运营占着，两者是不同的人 */
   mchAccountNo: string;
-  /** 登录手机号，**已脱敏**。完整号不回显 —— 那等于一份可导出的通讯录 */
+  /**
+   * 姓名（老板自己写的，如「小张」）。**认人靠它** ——
+   * 一列号码谁也分不清。为空时端上回落 `loginPhone`。
+   */
+  displayName?: string;
+  /**
+   * 登录手机号，**完整、不脱敏**。
+   *
+   * 它**就是这个员工的登录用户名**（手机号 + 验证码，没有密码）——
+   * 老板要能核对「他用哪个号登录」、人换号时要能改，脱敏之后这两件事都做不了。
+   */
   loginPhone: string;
   /** 老板。**不受门店授权限制**，他的店都归他管 */
   isOwner: boolean;
@@ -1617,7 +1628,44 @@ export interface StaffLog {
   role?: StaffRole;
   /** 人能读的一句话，直接展示 */
   detail?: string;
+  /** 发生时间，毫秒时间戳 */
   at: number;
+}
+
+/**
+ * 一个角色：6 个平台预置（只读）+ 商家自定义（V71）。
+ *
+ * **权限码的中文说明由后端给**（`permLabels`），前端不抄一份 ——
+ * 抄的那份迟早与权限码本身漂开，而漂开的表现是
+ * 「界面写着能改库存，实际打不通」。
+ */
+export interface MerchantRole {
+  /** 角色码。预置是 `OWNER`/`MANAGER`… ，自定义是生成的业务键 —— **别拿它给店主看** */
+  roleCode: string;
+  /** 显示名。预置角色也有 —— 别拿 `MANAGER` 直接给店主看 */
+  name: string;
+  /** 平台预置：**只读**，要改先「复制为自定义角色」 */
+  builtin: boolean;
+  /** 这个角色带的权限码。老板那行是 `["*"]`（全部），别按长度当权限数 */
+  perms: string[];
+  /** 与 `perms` 一一对应的中文短说明 */
+  permLabels: string[];
+  /** 几个人在用。删除按钮据此禁用，并且要显示出来 */
+  usedBy: number;
+}
+
+/**
+ * 自定义角色**可以勾的一个权限点**。
+ *
+ * 为什么不让端上「把预置角色的权限并起来」当选项：那个并集**少一条** ——
+ * `biz:finance` 只有老板有，而老板那行是 `*`。于是后端明明收这个码，
+ * 界面上却勾不到，看起来像功能没做。
+ */
+export interface PermOption {
+  /** 权限码，如 `biz:stock`。**只用于提交，不展示** */
+  code: string;
+  /** 中文短说明，兜底用。端上自己有中/英/阿三份文案 */
+  label: string;
 }
 
 export interface StoreRole {

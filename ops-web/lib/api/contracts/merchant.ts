@@ -1,6 +1,6 @@
 // 覆盖范围：商家治理（P-11.1 入驻审核 / 档案 / 认证标 / 封禁）。
 // ⚠️ 契约禁止 delete*：下架商家用 archiveMerchant，封禁用 setMerchantStatus。
-import type { AdmissionPolicy, AuthCode, LegalForm, DepositTxn, DepositTxnType, Merchant, MerchantApply, MerchantDeposit, MerchantStatus, Page, StoreMode, Violation, ViolationAction, ViolationType } from "@/lib/types";
+import type { AdmissionPolicy, AuthCode, LegalForm, DepositTxn, DepositTxnType, Merchant, MerchantApply, MerchantDeposit, MerchantStaffRow, MerchantStatus, Page, StoreMode, Violation, ViolationAction, ViolationType } from "@/lib/types";
 import type { ApplyQ, MerchantQ } from "../query";
 
 export interface MerchantApi {
@@ -22,6 +22,15 @@ export interface MerchantApi {
   /** 三档准入策略。 */
   admissionPolicies(): Promise<AdmissionPolicy[]>;
   updateAdmissionPolicy(v: { legalForm: LegalForm } & Partial<AdmissionPolicy>): Promise<void>;
+
+  /**
+   * 这家商家的员工与门店授权（**只读**）。
+   *
+   * 契约里刻意没有写的那一半：平台不能改商家的授权 ——
+   * 那是商家的雇佣关系，替他决定谁能动他的钱不是运营该有的按钮。
+   * 要处置该商家走封禁，那是另一个层级、另一个权限码。
+   */
+  merchantStaff(merchantNo: string): Promise<MerchantStaffRow[]>;
 
   merchantDeposit(merchantNo: string): Promise<MerchantDeposit>;
   depositTxns(merchantNo: string): Promise<DepositTxn[]>;

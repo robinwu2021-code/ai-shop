@@ -1,6 +1,6 @@
 // 商家域 mock 数据（P-11.1）。
 // 覆盖三种主体分层与全部审核状态，让列表页的筛选、徽标、空态在无后端时都能验到。
-import type { MerchantApply, Merchant } from "@/lib/types";
+import type { MerchantApply, Merchant, MerchantStaffRow } from "@/lib/types";
 import type { AdmissionPolicy, DepositTxn, StoreMode } from "@/lib/types";
 
 // 时间用固定字符串而非 Date.now()：mock 数据每次刷新都变的话，截图对不上、测试也不稳。
@@ -143,6 +143,32 @@ export const depositTxns: Record<string, DepositTxn[]> = {
       reason: "入驻缴纳保证金", operator: "admin", createdAt: "2026-07-01T02:00:00Z" },
     { txnNo: "DP-2", txnType: "FREEZE", amountMinor: 50_000, balanceAfterMinor: 200_000,
       reason: "食品变质投诉，理赔冻结", operator: "admin", createdAt: "2026-08-02T06:00:00Z" },
+  ],
+};
+
+/**
+ * 商家的员工与门店授权（**运营端只读**）。
+ *
+ * 这份种子刻意造出三种最常被问到的形态：
+ * 老板（roles 为空但权限最大）、一人两店两角色、以及**授权为空的人** ——
+ * 最后那种正是「他登录进去什么都看不到」的成因，而它在商家自己的界面上
+ * 看起来与正常人没有区别。
+ */
+export const merchantStaff: Record<string, MerchantStaffRow[]> = {
+  M901: [
+    { mchAccountNo: "MA-901-1", displayName: "张老板", loginPhone: "13800008000",
+      isOwner: true, status: "ACTIVE", roles: [] },
+    { mchAccountNo: "MA-901-2", displayName: "小王", loginPhone: "13900002222",
+      isOwner: false, status: "ACTIVE", roles: [
+        { storeNo: "ST001", storeName: "张记粮油·文三路店", role: "MANAGER" },
+        { storeNo: "ST002", storeName: "张记粮油·古荡店", role: "CLERK" },
+      ] },
+    { mchAccountNo: "MA-901-3", displayName: null, loginPhone: "13777771010",
+      isOwner: false, status: "ACTIVE", roles: [] },
+    { mchAccountNo: "MA-901-4", displayName: "老李", loginPhone: "13777771020",
+      isOwner: false, status: "DISABLED", roles: [
+        { storeNo: "ST001", storeName: "张记粮油·文三路店", role: "COURIER" },
+      ] },
   ],
 };
 

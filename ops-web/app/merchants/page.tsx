@@ -21,6 +21,7 @@ import { CategoryTab, VerifyTab } from "./authorize-tab";
 import { BanTab, CreditTab } from "./credit-tab";
 // 准入与保证金单独成块：它是「让不让他卖」那组决定，与档案/处置不同
 import { AdmissionTab } from "./admission-tab";
+import { StaffBlock } from "./staff-block";
 import { ArchiveActions, ShowArchivedToggle, archiveConfirm, archivedRowClass, unarchiveConfirm } from "@/components/archive";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -311,6 +312,8 @@ function MerchantsInner() {
             <Field label={c.fieldRemark}>
               {current.auditRemark || "-"}
             </Field>
+            {/* 人员与授权：只读。为什么不给按钮见 staff-block.tsx 顶部 */}
+            <StaffBlock merchantNo={current.merchantNo} />
           </div>
         )}
       </Drawer>

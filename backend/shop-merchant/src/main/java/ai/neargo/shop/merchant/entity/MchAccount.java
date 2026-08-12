@@ -45,6 +45,14 @@ public class MchAccount extends BaseEntity {
      */
     private String loginPhone;
 
+    /**
+     * 备注名（V71）。老板自己写的，如「小张」「王姐」。
+     *
+     * <p>没有它之前列表只有脱敏号 `139****1111` —— <b>三个人以后谁也分不清</b>，
+     * 而事后翻审计看到的同样只是一串尾号。为空时端上回落脱敏号。
+     */
+    private String displayName;
+
     /** 老板：<b>全主体全门店</b>，不需要逐店授权行。 */
     private Boolean isOwner;
 

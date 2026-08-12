@@ -157,8 +157,8 @@ class StoreAndStaffFlowTest {
                         .content("{\"loginPhone\":\"13600001234\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.isOwner").value(false))
-                // 手机号脱敏：完整号回显等于给店长一份可导出的通讯录
-                .andExpect(jsonPath("$.data.loginPhone").value("136****1234"));
+                // 手机号**完整回显**：它就是这个员工的登录用户名，老板要能核对、能改
+                .andExpect(jsonPath("$.data.loginPhone").value("13600001234"));
 
         // 这个店员从来没注册过 C 端账号，照样能登
         mvc().perform(post("/mp/user/otp/send").contentType(MediaType.APPLICATION_JSON)

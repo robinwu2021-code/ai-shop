@@ -124,6 +124,15 @@ public final class MerchantMappers {
     }
 
     /**
+     * 商家角色（V71）：6 个预置（{@code entity_no='*'}）+ 商家自定义。
+     *
+     * <p>⚠️ 查询一律 {@code entity_no IN (当前商家, '*')} —— 少了 `'*'` 预置角色全没，
+     * 少了当前商家自定义角色全没，两种漏法都表现为「权限突然变少」。
+     */
+    public interface MchRoleMapper extends BaseMapper<ai.neargo.shop.merchant.entity.MchRole> {
+    }
+
+    /**
      * 员工与授权的操作日志（B-11.10.3）。**只写不改** ——
      * 审计记录被更新过就不再是审计记录。
      */

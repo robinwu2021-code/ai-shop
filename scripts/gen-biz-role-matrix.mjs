@@ -88,5 +88,10 @@ for (const p of ordered) {
   L.push("");
 }
 L.push("> **空角色 = 零权限**，不是「零权限 = 全放行」——`BizPerms.can` 对空集合直接返回 false。\n");
+// 自定义角色（V71）不在这张表里，而这份文档看上去像「角色的全集」——
+// 不写这一句的话，下一个人会照着它去判断「某个人到底能做什么」，而那个答案会错
+L.push("> ⚠️ **这里只有 6 个平台预置角色**。商家还能建自定义角色（V71 `mch_role`，");
+L.push("> 权限点在 `BizPerms.assignableCodes()` 里挑，**不含 `biz:store:admin`**）——");
+L.push("> 它们按主体存库，不在这份生成物里。判「某个人能做什么」要看他持有的角色，不是这张表。\n");
 writeFileSync(OUT, L.join("\n") + "\n");
 console.log(`✅ ${OUT}\n   ${ROLE_ORDER.length} 角色 · ${perms.size} 权限点 · ${req.size} 受控端点`);

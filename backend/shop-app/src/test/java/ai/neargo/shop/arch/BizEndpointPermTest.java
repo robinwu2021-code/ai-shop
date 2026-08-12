@@ -124,6 +124,12 @@ class BizEndpointPermTest {
         put("/biz/staff/{mchAccountNo}/store", BizPerms.STORE_ADMIN);
         // 「谁给谁加了什么权限」本身就是权限信息：能看它的人不该比能改它的人多
         put("/biz/staff/logs", BizPerms.STORE_ADMIN);
+        // 角色定义（V71 自定义角色）。与员工管理同一档 ——
+        // **能改角色 = 能一次性改掉所有持有者的能力**，比给某个人授权影响更大
+        put("/biz/roles", BizPerms.STORE_ADMIN);
+        put("/biz/role-perms", BizPerms.STORE_ADMIN);
+        put("/biz/role/{roleCode}", BizPerms.STORE_ADMIN);
+        put("/biz/role/{roleCode}/delete", BizPerms.STORE_ADMIN);
 
         // ---- 钱 ----
         put("/biz/settle/bills", BizPerms.FINANCE);

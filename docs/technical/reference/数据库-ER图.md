@@ -5,7 +5,7 @@
 
 ## 一、总览
 
-全库 **87** 张表、**143** 条引用关系，分 **14** 个域。
+全库 **88** 张表、**144** 条引用关系，分 **14** 个域。
 按「被引用次数」分三条带 —— **不是有向无环图**：域之间存在环
 （`cmt → mkt → usr → cmt`），强行分层会画错。
 
@@ -14,7 +14,7 @@
 | 域 | 前缀 | 表数 | 被几个域引用 |
 |---|---|---:|---:|
 | 消费者账号 | `usr_*` | 4 | 10 |
-| 商家主体与门店 | `mch_*` | 15 | 9 |
+| 商家主体与门店 | `mch_*` | 16 | 9 |
 | 社区与自提点 | `cmt_*` | 3 | 8 |
 | 商品与类目 | `prd_*` | 8 | 5 |
 | 购物车 | `trd_*` | 1 | 0 |
@@ -45,7 +45,7 @@
 
 **跨域引用**：`usr_store_favorite.entity_no` → `mch_entity`、`usr_account.community_no` → `cmt_community`、`usr_account.pickup_no` → `cmt_pickup_point`、`usr_account.entity_no` → `mch_entity`
 
-### 商家主体与门店 `mch_*`（15 张）
+### 商家主体与门店 `mch_*`（16 张）
 
 ![商家主体与门店表关系](../diagrams/db-mch.svg)
 
@@ -66,6 +66,7 @@
 | `mch_deposit_txn` | 保证金流水 |
 | `mch_service_area` | 商家的地理覆盖项：一行一条，可跨粒度组合 |
 | `mch_staff_log` | 员工与授权的操作日志：谁在什么时候把谁的角色改成了什么 |
+| `mch_role` | 商家角色：6 个平台预置（只读）+ 商家自定义 |
 
 **跨域引用**：`mch_entity_apply.user_no` → `usr_account`、`mch_entity_community.community_no` → `cmt_community`、`mch_account.user_no` → `usr_account`
 

@@ -38,6 +38,9 @@ export const merchantMock: MerchantApi = {
 
   storeModes: async (merchantNo) => wait(db.storeModes.filter((s) => s.merchantNo === merchantNo)),
 
+  // 没有种子的商家给空数组，不是 404 —— 「这家店只有老板一个人」是常态
+  merchantStaff: async (merchantNo) => wait(db.merchantStaff[merchantNo] ?? []),
+
   setStoreBusinessMode: async ({ storeNo, businessMode }) => {
     const s = db.storeModes.find((x) => x.storeNo === storeNo);
     if (!s) fail("门店不存在", "Store not found");

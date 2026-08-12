@@ -334,6 +334,11 @@ export interface SetStorePaymentReq {
 export interface AddStaffReq {
   /** 员工手机号（11 位）。**它就是登录号** —— 员工用它 + 验证码进 B 端 */
   loginPhone: string;
+  /**
+   * 备注名（如「小张」）。选填但强烈建议 ——
+   * 不填的话列表与审计里都只有一串脱敏尾号，三个人以后就分不清谁是谁。
+   */
+  displayName?: string;
 }
 
 /**

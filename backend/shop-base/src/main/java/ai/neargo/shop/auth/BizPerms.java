@@ -110,6 +110,45 @@ public final class BizPerms {
             // 只对着顾客说话：回评价、处理售后、看得到那张单。不碰货、不碰钱
             CS, List.of(REVIEW, AFTERSALE, ORDER_VIEW));
 
+    /**
+     * 权限码 → 给店主看的一句话（V71）。
+     *
+     * <p><b>为什么要有它</b>：自定义角色之后，老板要在界面上勾权限码。
+     * 而 `biz:order:view` 这种字符串对他没有意义 —— 他要看到的是「看订单与金额」。
+     *
+     * <p>说明只放这一份，由 {@code /biz/roles} 下发；<b>前端不抄</b>。
+     * 抄一份的下场今天演过：文档里的角色表抄了三份，三处不一致。
+     * {@code BizRoleSeedTest} 断言这里覆盖了全部权限码 —— 加码忘了加说明就红。
+     */
+    public static final Map<String, String> LABELS = Map.ofEntries(
+            Map.entry(RECEIVE, "到货登记与分拣"),
+            Map.entry(VERIFY, "核销取货"),
+            Map.entry(SHIP, "发货与标记送达"),
+            Map.entry(ORDER_VIEW, "看订单与金额"),
+            Map.entry(STOCK, "改库存"),
+            Map.entry(GOODS, "建商品、改价、上下架"),
+            Map.entry(CAMPAIGN, "营销活动与报价"),
+            Map.entry(REVIEW, "回评价、差评申诉"),
+            Map.entry(AFTERSALE, "处理售后"),
+            Map.entry(CUSTOMER, "顾客列表与经营数据"),
+            Map.entry(STORE, "店铺装修与配送规则"),
+            Map.entry(STORE_ADMIN, "建店、停用、挂收款号、管员工"),
+            Map.entry(FINANCE, "结算账单与收款进件"));
+
+    /**
+     * 商家<b>自定义</b>角色可以勾的权限码 —— 少了 {@link #STORE_ADMIN}。
+     *
+     * <p>那是「管人」的码：授出去等于让被授权的人能改所有人的授权、
+     * 能给自己加任何角色，<b>一次授权就绕开了整个模型</b>。
+     * 界面上它根本不出现，后端再校验一次 —— 两道都要，
+     * 界面那道是体验，后端这道才是边界。
+     */
+    public static Set<String> assignableCodes() {
+        return LABELS.keySet().stream()
+                .filter(c -> !STORE_ADMIN.equals(c))
+                .collect(java.util.stream.Collectors.toUnmodifiableSet());
+    }
+
     private BizPerms() {
     }
 

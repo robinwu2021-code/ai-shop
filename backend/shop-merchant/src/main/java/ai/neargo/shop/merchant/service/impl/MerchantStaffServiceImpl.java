@@ -34,16 +34,22 @@ public class MerchantStaffServiceImpl implements MerchantStaffService {
     private final MchStoreMapper storeMapper;
     private final MchStoreRoleMapper roleMapper;
     private final MchStaffLogMapper logMapper;
+    private final ai.neargo.shop.merchant.mapper.MerchantMappers.MchRoleMapper roleDefMapper;
+    private final StaffAuditLogger audit;
     private final TokenStore tokenStore;
     private final OtpStore otpStore;
 
     public MerchantStaffServiceImpl(MchAccountMapper staffMapper, MchStoreMapper storeMapper,
                                     MchStoreRoleMapper roleMapper, MchStaffLogMapper logMapper,
-                                    TokenStore tokenStore, OtpStore otpStore) {
+                                    ai.neargo.shop.merchant.mapper.MerchantMappers.MchRoleMapper roleDefMapper,
+                                    StaffAuditLogger audit, TokenStore tokenStore,
+                                    OtpStore otpStore) {
         this.staffMapper = staffMapper;
         this.storeMapper = storeMapper;
         this.roleMapper = roleMapper;
         this.logMapper = logMapper;
+        this.roleDefMapper = roleDefMapper;
+        this.audit = audit;
         this.tokenStore = tokenStore;
         this.otpStore = otpStore;
     }
@@ -107,7 +113,7 @@ public class MerchantStaffServiceImpl implements MerchantStaffService {
 
     @Override
     @Transactional
-    public StaffVO add(String merchantNo, String loginPhone) {
+    public StaffVO add(String merchantNo, String loginPhone, String displayName) {
         if (loginPhone == null || !loginPhone.matches("\\d{11}")) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
@@ -121,6 +127,10 @@ public class MerchantStaffServiceImpl implements MerchantStaffService {
              * 而那个假号码收不到验证码。
              */
             existing.setStatus(MchAccount.ACTIVE);
+            // 回来时顺手更新备注名：离职再回来常伴随「这次是小李不是小张」
+            if (displayName != null && !displayName.isBlank()) {
+                existing.setDisplayName(displayName.trim());
+            }
             DataScopeContext.executeWithoutScope(() -> staffMapper.updateById(existing));
             // 对老板来说这就是「把人加回来」，所以记 STAFF_ADD 而不是 ENABLE ——
             // 审计要还原他做了什么，不是还原代码走了哪个分支
@@ -137,6 +147,7 @@ public class MerchantStaffServiceImpl implements MerchantStaffService {
         // 不是主账号：主账号决定登录后默认进哪个主体，那是老板的位置
         a.setIsPrimary(false);
         a.setStatus(MchAccount.ACTIVE);
+        a.setDisplayName(displayName == null || displayName.isBlank() ? null : displayName.trim());
         DataScopeContext.executeWithoutScope(() -> staffMapper.insert(a));
         log(merchantNo, a.getMchAccountNo(), MchStaffLog.STAFF_ADD,
                 null, null, "新增员工 " + mask(loginPhone));
@@ -172,7 +183,29 @@ public class MerchantStaffServiceImpl implements MerchantStaffService {
         if (!storeNames(merchantNo).containsKey(storeNo)) {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
-        if (role == null || role.isBlank() || !MchStoreRole.GRANTABLE.contains(role)) {
+        /*
+         * 角色必须是**这家商家可用的**角色（V71 起含自定义）。
+         *
+         * <p>此前这里判的是 {@code MchStoreRole.GRANTABLE} 那张写死的五元组 ——
+         * 自定义角色一上来，授权就全被这行挡住了，而报的是「参数有误」，
+         * 老板刚建完角色转头就用不了，且看不出为什么。
+         *
+         * <p><b>OWNER 授不出去</b>：老板不在 mch_store_role 里，
+         * 把它当角色授给别人等于凭空造一个第二老板。
+         */
+        if (role == null || role.isBlank() || MchStoreRole.OWNER_CODE.equals(role)) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        // 用 selectList 判有无而不是 exists()：后者生成 SELECT EXISTS(...)，
+        // 数据域拦截器改写它时会翻车（表现是 10500，而不是一句「角色不存在」）
+        boolean assignable = !DataScopeContext.executeWithoutScope(() ->
+                roleDefMapper.selectList(Wrappers.<ai.neargo.shop.merchant.entity.MchRole>lambdaQuery()
+                        .in(ai.neargo.shop.merchant.entity.MchRole::getEntityNo,
+                                List.of(merchantNo,
+                                        ai.neargo.shop.merchant.entity.MchRole.BUILTIN_ENTITY))
+                        .eq(ai.neargo.shop.merchant.entity.MchRole::getRoleCode, role)
+                        .last("limit 1"))).isEmpty();
+        if (!assignable) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
 
@@ -196,7 +229,8 @@ public class MerchantStaffServiceImpl implements MerchantStaffService {
                 // 只有真删了才记。撤销一个他本来就没有的角色是空操作，
                 // 记下来会让日志里出现一串「撤销了店长」而他从来不是店长
                 log(merchantNo, mchAccountNo, MchStaffLog.ROLE_REVOKE, storeNo, role,
-                        "撤销 " + storeNames(merchantNo).get(storeNo) + " 的 " + role);
+                        "撤销 " + storeNames(merchantNo).get(storeNo) + " 的 "
+                                + roleName(merchantNo, role));
             }
             return single(merchantNo, a);
         }
@@ -224,7 +258,8 @@ public class MerchantStaffServiceImpl implements MerchantStaffService {
             }
             // 复活与新建都是「授予」，记同一条 —— 那个区别是实现细节，不是老板做的事
             log(merchantNo, mchAccountNo, MchStaffLog.ROLE_GRANT, storeNo, role,
-                    "授予 " + storeNames(merchantNo).get(storeNo) + " 的 " + role);
+                    "授予 " + storeNames(merchantNo).get(storeNo) + " 的 "
+                            + roleName(merchantNo, role));
         }
         return single(merchantNo, a);
     }
@@ -259,7 +294,11 @@ public class MerchantStaffServiceImpl implements MerchantStaffService {
          */
         Map<String, String> phones = new java.util.HashMap<>();
         for (MchAccount a : accounts(merchantNo)) {
-            phones.put(a.getMchAccountNo(), mask(a.getLoginPhone()));
+            // **优先姓名** —— 审计是给三个月后的人看的，那时一串号码说明不了任何事；
+            // 没填姓名才退到脱敏号（日志是长期留存的文本，那里不需要完整号码）
+            String label = a.getDisplayName() != null && !a.getDisplayName().isBlank()
+                    ? a.getDisplayName() : mask(a.getLoginPhone());
+            phones.put(a.getMchAccountNo(), label);
         }
         Map<String, String> storeNames = storeNames(merchantNo);
 
@@ -277,38 +316,12 @@ public class MerchantStaffServiceImpl implements MerchantStaffService {
 
     // ------------------------------------------------------------------ 审计（B-11.10.3）
 
-    /**
-     * 记一条授权变更。
-     *
-     * <p><b>失败不抛</b>，与 {@code AuditLogPort} 同一口径：
-     * 授权已经生效了却因为写日志报错而回滚，是拿一条记录去换一次真实的业务操作。
-     * 反过来「日志写失败」也不该让老板看到「系统开小差」——他做的事成了。
-     *
-     * <p>放在 Service 而不是 Controller：{@link #grantStore} 这类方法将来可能被
-     * 别的入口调用（批量授权、导入），挂在入口上就会漏。
-     */
+    /** 审计写入交给共享组件 —— 角色定义的变更也走它（V71），两处一套口径 */
     private void log(String merchantNo, String targetAccountNo, String action,
                      String storeNo, String role, String detail) {
-        try {
-            MchStaffLog row = new MchStaffLog();
-            row.setLogNo(BizKey.next(BizKey.STAFF_LOG));
-            row.setEntityNo(merchantNo);
-            row.setActorAccountNo(SecurityUtils.currentUser().map(LoginUser::userNo).orElse(null));
-            row.setTargetAccountNo(targetAccountNo);
-            row.setAction(action);
-            row.setStoreNo(storeNo);
-            row.setRole(role);
-            row.setDetail(detail);
-            DataScopeContext.executeWithoutScope(() -> logMapper.insert(row));
-        } catch (RuntimeException e) {
-            // 吞掉：见方法注释。不打印堆栈到业务日志里刷屏，这里只是记账失败
-            LOG.warn("员工授权日志写入失败 entity={} target={} action={}",
-                    merchantNo, targetAccountNo, action, e);
-        }
+        audit.staff(merchantNo, targetAccountNo, action, storeNo, role, detail);
     }
 
-    private static final org.slf4j.Logger LOG =
-            org.slf4j.LoggerFactory.getLogger(MerchantStaffServiceImpl.class);
 
     // ------------------------------------------------------------------ 内部
 
@@ -327,6 +340,31 @@ public class MerchantStaffServiceImpl implements MerchantStaffService {
                 .filter(a -> a.getMchAccountNo().equals(mchAccountNo))
                 .findFirst()
                 .orElseThrow(() -> BizException.of(ErrorCode.NOT_FOUND));
+    }
+
+    /**
+     * 角色码 → 显示名（「店长」而不是 {@code MANAGER}）。
+     *
+     * <p>审计这行字是<b>给老板看的</b>，而他从来没见过角色码 ——
+     * 自定义角色更甚：那边的码是 {@code R-…} 一串生成的业务键，
+     * 写进日志等于这条记录三个月后没人读得懂。
+     *
+     * <p>查不到就退回码本身：角色被删掉之后日志还得留着，
+     * 留一个码总比留一句「授予了 的 」强。
+     */
+    private String roleName(String merchantNo, String role) {
+        return DataScopeContext.executeWithoutScope(() ->
+                        roleDefMapper.selectList(
+                                Wrappers.<ai.neargo.shop.merchant.entity.MchRole>lambdaQuery()
+                                        .in(ai.neargo.shop.merchant.entity.MchRole::getEntityNo,
+                                                List.of(merchantNo,
+                                                        ai.neargo.shop.merchant.entity.MchRole.BUILTIN_ENTITY))
+                                        .eq(ai.neargo.shop.merchant.entity.MchRole::getRoleCode, role)
+                                        .last("limit 1")))
+                .stream().findFirst()
+                .map(ai.neargo.shop.merchant.entity.MchRole::getName)
+                .filter(n -> n != null && !n.isBlank())
+                .orElse(role);
     }
 
     private Map<String, String> storeNames(String merchantNo) {
@@ -360,15 +398,25 @@ public class MerchantStaffServiceImpl implements MerchantStaffService {
                 .map(r -> new StaffVO.StoreRoleVO(r.getStoreNo(),
                         storeNames.getOrDefault(r.getStoreNo(), r.getStoreNo()), r.getRole()))
                 .toList();
-        return new StaffVO(a.getMchAccountNo(), mask(a.getLoginPhone()),
+        /*
+         * **手机号不脱敏**（2026-08-12 拍板）。
+         *
+         * 之前脱敏的理由是「一份可导出的通讯录」，但那条理由在这里站不住：
+         * 手机号<b>就是员工的登录用户名</b> —— 老板要核对「他是用哪个号登录的」、
+         * 要在人换号时改，脱敏之后这两件事都做不了，而号码本来就是老板自己填进去的。
+         *
+         * 姓名（displayName）是另一件事：它是认人的，不是身份。两者都要。
+         */
+        return new StaffVO(a.getMchAccountNo(), a.getDisplayName(), a.getLoginPhone(),
                 Boolean.TRUE.equals(a.getIsOwner()), a.getStatus(), roles);
     }
 
     /**
-     * 手机号脱敏。
+     * 手机号脱敏 —— <b>只用于审计文案</b>。
      *
-     * <p>店长能看到所有店员的完整手机号 = 一份可导出的通讯录。
-     * 加员工时他本来就知道那个号码，列表里不需要再给一遍。
+     * <p>档案里的号码不脱敏（见 {@code toVO}：那是登录用户名，老板要能核对）；
+     * 但日志是一行会被长期留存、可能被导出的文本，
+     * 它要回答的是「谁把谁改成了什么」，不需要一个完整号码。
      */
     private String mask(String phone) {
         if (phone == null || phone.length() < 7) {

@@ -11,15 +11,18 @@
 > 与 [B端功能矩阵-按角色](./B端功能矩阵-按角色.md) 的分工：那份是**角色视角**
 > （谁能碰哪些路径），这份是**功能视角**（哪个功能点归哪个码、画在哪一页）。
 
-统计：**13 个权限码 × 6 个角色 × 63 个受控功能点**
+统计：**13 个权限码 × 6 个角色 × 67 个受控功能点**
 （另有 12 个登录即可、1 个「任一权限即可」）。
+
+> ⚠️ 角色列只有 6 个平台预置角色。商家自定义角色（V71 `mch_role`）按主体存库，
+> 不在这份生成物里 —— 但它们能勾的权限点就是本表第一列（少一个 `biz:store:admin`）。
 
 ## 一、权限码总表
 
 | 权限码 | 常量 | 含义 | 功能点数 | 老板 | 店长 | 店员 | 理货员 | 配送员 | 客服 |
 |---|---|---|---|---|---|---|---|---|---|
 | `biz:finance` | `FINANCE` | 结算账单、费率卡、收款进件、积分开关 | 14 | ✅ | — | — | — | — | — |
-| `biz:store:admin` | `STORE_ADMIN` | 建店、改名、停用、设默认店、挂收款号 | 9 | ✅ | — | — | — | — | — |
+| `biz:store:admin` | `STORE_ADMIN` | 建店、改名、停用、设默认店、挂收款号 | 13 | ✅ | — | — | — | — | — |
 | `biz:campaign` | `CAMPAIGN` | 营销活动、开团、报价 | 6 | ✅ | ✅ | — | — | — | — |
 | `biz:store` | `STORE` | 门店经营面：装修、配送规则、店铺码、分享物料 | 6 | ✅ | ✅ | — | — | — | — |
 | `biz:verify` | `VERIFY` | 核销、批量核销、按码搜索 | 5 | ✅ | ✅ | ✅ | — | — | — |
@@ -66,11 +69,16 @@
 
 | 功能点 | 方法 | 端点 | 契约方法 | 页面 |
 |---|---|---|---|---|
-| 员工列表 | GET | `/biz/staff` | `mStaffList` | staff |
-| 加员工 | POST | `/biz/staff` | `mAddStaff` | staff |
-| 停用/启用员工 | POST | `/biz/staff/:mchAccountNo/status` | `mSetStaffStatus` | staff |
-| 授权到店 | POST | `/biz/staff/:mchAccountNo/store` | `mGrantStore` | staff |
-| 员工与授权变更记录 | GET | `/biz/staff/logs` | `mStaffLogs` | staff |
+| 可勾的权限点 | GET | `/biz/role-perms` | `mRolePerms` | role-detail |
+| 改角色 | POST | `/biz/role/:roleCode` | `mUpdateRole` | role-detail |
+| 删除自定义角色 | POST | `/biz/role/:roleCode/delete` | `mDeleteRole` | role-detail |
+| 角色列表（预置 + 自定义） | GET | `/biz/roles` | `mRoles` | role-detail、staff、staff-detail |
+| 建自定义角色 | POST | `/biz/roles` | `mCreateRole` | role-detail |
+| 员工列表 | GET | `/biz/staff` | `mStaffList` | role-detail、staff、staff-detail |
+| 加员工 | POST | `/biz/staff` | `mAddStaff` | — |
+| 停用/启用员工 | POST | `/biz/staff/:mchAccountNo/status` | `mSetStaffStatus` | staff-detail |
+| 授权到店 | POST | `/biz/staff/:mchAccountNo/store` | `mGrantStore` | staff-detail |
+| 员工与授权变更记录 | GET | `/biz/staff/logs` | `mStaffLogs` | staff、staff-detail |
 | 设为默认店 | POST | `/biz/store/:storeNo/default` | `mSetDefaultStore` | stores |
 | 换门店收款号 | POST | `/biz/store/:storeNo/payment` | `mSetStorePayment` | stores |
 | 改门店名与地址 | POST | `/biz/store/:storeNo/rename` | `mRenameStore` | stores |
@@ -222,8 +230,10 @@
 | `picking` | `biz:receive` | `biz:receive`、`biz:verify` | 老板、店长、店员、理货员 | 理货员（缺 biz:verify） |
 | `quotes` | `biz:campaign` | `biz:campaign` | 老板、店长 | — |
 | `reviews` | `biz:review` | `biz:review` | 老板、店长、客服 | — |
+| `role-detail` | `biz:store:admin` | `biz:store:admin` | 老板 | — |
 | `settle` | `biz:finance` | `biz:finance` | 老板 | — |
 | `staff` | `biz:store:admin` | `biz:store:admin` | 老板 | — |
+| `staff-detail` | `biz:store:admin` | `biz:store:admin` | 老板 | — |
 | `stats` | `biz:customer` | `biz:customer` | 老板、店长 | — |
 | `store` | `biz:store` | `biz:store` | 老板、店长 | — |
 | `stores` | `biz:store:admin` | `biz:finance`、`biz:store:admin` | 老板 | — |
@@ -248,6 +258,15 @@
 
 > 这些是「写了、测了、没人调用」—— 要么排期接上，要么从 `REQUIRED` 删掉。
 > `noStaleEntries` 只拦已删除的端点，**拦不住「端点还在但没人用」**。
+
+### 四之二、契约接了、页面没画
+
+比上一张更隐蔽：`endpoints.ts` 里有、`contract.ts` 里有类型，
+**唯独没有任何一页调用它** —— 看起来像做完了。
+
+| 功能点 | 端点 | 契约方法 | 权限码 |
+|---|---|---|---|
+| 加员工 | `/biz/staff` | `mAddStaff` | `biz:store:admin` |
 
 ## 五、登录即可（不需要授权）
 

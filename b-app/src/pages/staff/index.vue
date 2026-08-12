@@ -1,309 +1,260 @@
 <script setup lang="ts">
-import { useMerchantStore } from "@/stores/merchant";
-
-const merchant = useMerchantStore();
-// 员工与授权（B-11.10）。
+// 员工与授权（B-11.10）。**列表层只回答三个问题，细节都在详情页**：
 //
-// 两件事在一页：**谁是我的人**（账号）与**他能管哪家店**（逐店角色）。
-// 合在一起是因为它们总是一起做 —— 加一个店员的下一步必然是给他指一家店，
-// 分成两页会让「加完了但他什么都看不到」变成常态。
+//   员工 —— 这些人都是谁          → 点进员工详情
+//   角色 —— 某个角色到底能干什么   → 点进角色详情
+//   审计 —— 上周三谁把张三提成了店长
 //
-// 逐店授权不是过度设计：老店的店长去新店帮忙、但新店不归他管，是小连锁的常态。
+// 上一版把这三件事全塞进一张卡片（身份 + 状态 + 角色摘要 + 门店×角色矩阵 + 变更记录），
+// 于是矩阵被压成两行 chip、「更多角色」被折起来、记录只能按人看。
+// **该分页的分页** —— 这一版的主要改动就是把该出去的搬出去。
 import { computed, ref } from "vue";
 import { onShow } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
 import { api } from "@/api";
+import { useMerchantStore } from "@/stores/merchant";
+import { ROUTES } from "@/shared/nav";
 import { datetime } from "@shared/utils/datetime";
-import type { MerchantStaff, StaffLog, StaffRole, Store } from "@shared/types";
+import type { MerchantRole, MerchantStaff, StaffLog } from "@shared/types";
 
 const { t } = useI18n();
+const merchant = useMerchantStore();
+
+const TABS = ["staff", "roles", "logs"] as const;
+type Tab = (typeof TABS)[number];
+const tab = ref<Tab>("staff");
 
 const staff = ref<MerchantStaff[]>([]);
-/** 正在看谁的变更记录；null = 没展开 */
-const logsOf = ref<string | null>(null);
+const roles = ref<MerchantRole[]>([]);
 const logs = ref<StaffLog[]>([]);
-const stores = ref<Store[]>([]);
 const busy = ref(false);
 
+/** 搜索：备注名或尾号。人一多就只能翻，而小连锁十几个人是常态 */
+const keyword = ref("");
+/** 只看在职。停用的默认收起来 —— 但要能看得见，否则没人能把他重新启用 */
+const activeOnly = ref(true);
+
 const adding = ref(false);
-const phone = ref("");
-/** 展开授权面板的员工 —— 一次只展开一个，免得整页变成一张巨大的矩阵 */
-const editing = ref<string | null>(null);
+const form = ref({ phone: "", name: "" });
 
-/**
- * 可授予的角色。**默认只显示前三个** —— 三个角色的选择题谁都会做，
- * 六个并排摆出来就成了需要读说明的题，而店主不会读。
- * 理货员与配送员、客服收在「更多角色」里，夫妻店永远看不到它们。
- */
-const COMMON_ROLES = ["MANAGER", "CLERK"] as const;
-const MORE_ROLES = ["PICKER", "COURIER", "CS"] as const;
-/** 展开了「更多角色」的员工 */
-const expanded = ref<string | null>(null);
+/** 认人优先用姓名 —— 一列号码谁也分不清；没填姓名就只能拿号码顶上 */
+const nameOf = (s: MerchantStaff) => s.displayName || s.loginPhone;
 
-onShow(load);
+/** 他在各店的角色，一句话摘要。列表要的是「他大概管什么」，不是完整矩阵 */
+function summary(s: MerchantStaff) {
+  if (s.isOwner) return t("staff.ownerNote");
+  if (!s.roles.length) return t("staff.noStore");
+  return s.roles.map((r) => `${r.storeName}·${roleName(r.role)}`).join("，");
+}
+
+/** 老板那行是 `*`（全部），数出来是「1 项权限」—— 数字对，意思反了 */
+function permCount(r: MerchantRole) {
+  return r.perms.includes("*")
+    ? t("staff.roleAll")
+    : t("staff.rolePerms", { n: r.perms.length });
+}
+
+/** 角色码 → 显示名。**从后端下发的角色表里查**，不在前端写第二份映射 */
+function roleName(code: string) {
+  return roles.value.find((r) => r.roleCode === code)?.name ?? code;
+}
+
+const visibleStaff = computed(() => {
+  const k = keyword.value.trim();
+  return staff.value
+    .filter((s) => !activeOnly.value || s.status === "ACTIVE" || s.isOwner)
+    .filter((s) => !k || nameOf(s).includes(k) || s.loginPhone.includes(k));
+});
 
 async function load() {
-  staff.value = await api.mStaffList().catch(() => []);
-  stores.value = await api.mStoreList().catch(() => []);
-}
-
-/**
- * 一条记录显示成什么。
- *
- * **优先用结构化字段拼**（action + storeName + role），而不是直接显示后端的 detail ——
- * detail 里的角色是原始码（`MANAGER`），店主不认识它；
- * 而 role 单独存了一列，正是为了在这里能翻成「店长」。
- * 拼不出来时才回落 detail：那说明是个这一版还不认识的新动作，显示原文比显示空白强。
- */
-function logText(l: StaffLog) {
-  const role = l.role ? t(`staff.role.${l.role}`) : "";
-  if (l.action === "ROLE_GRANT" && l.storeName) {
-    return t("staff.logGrant", { store: l.storeName, role });
-  }
-  if (l.action === "ROLE_REVOKE" && l.storeName) {
-    return t("staff.logRevoke", { store: l.storeName, role });
-  }
-  const known: Record<string, string> = {
-    STAFF_ADD: "staff.logAdd",
-    STAFF_ENABLE: "staff.logEnable",
-    STAFF_DISABLE: "staff.logDisable",
-  };
-  return known[l.action] ? t(known[l.action]!) : (l.detail ?? l.action);
-}
-
-/**
- * 展开 / 收起某个人的变更记录。
- *
- * 收起时不缓存：授权刚改过就看记录是最常见的用法，缓存会让人看到改之前的样子，
- * 而那正是他要确认「刚才那下生效了没有」的时刻。
- */
-async function toggleLogs(s: MerchantStaff) {
-  if (logsOf.value === s.mchAccountNo) {
-    logsOf.value = null;
-    logs.value = [];
-    return;
-  }
-  logsOf.value = s.mchAccountNo;
-  logs.value = await api.mStaffLogs(s.mchAccountNo).catch(() => []);
-}
-
-async function run(fn: () => Promise<unknown>) {
-  if (busy.value) return;
-  busy.value = true;
-  try {
-    await fn();
-    await load();
-  } catch (e) {
-    uni.showToast({ title: (e as Error).message, icon: "none" });
-  } finally {
-    busy.value = false;
-  }
+  // 三段各自 catch：角色表拉不到不该让员工列表也空掉
+  [staff.value, roles.value, logs.value] = await Promise.all([
+    api.mStaffList().catch(() => []),
+    api.mRoles().catch(() => []),
+    api.mStaffLogs().catch(() => []),
+  ]);
 }
 
 function add() {
-  if (!/^\d{11}$/.test(phone.value.trim())) {
+  if (!/^\d{11}$/.test(form.value.phone.trim())) {
     uni.showToast({ title: t("staff.needPhone"), icon: "none" });
     return;
   }
-  run(async () => {
-    await api.mAddStaff(phone.value.trim());
-    phone.value = "";
-    adding.value = false;
-  });
+  if (busy.value) return;
+  busy.value = true;
+  api
+    .mAddStaff(form.value.phone.trim(), form.value.name.trim() || undefined)
+    .then(async () => {
+      form.value = { phone: "", name: "" };
+      adding.value = false;
+      await load();
+    })
+    .catch((e: Error) => uni.showToast({ title: e.message, icon: "none" }))
+    .finally(() => {
+      busy.value = false;
+    });
 }
 
-function toggleStatus(s: MerchantStaff) {
-  run(() => api.mSetStaffStatus(s.mchAccountNo, s.status !== "ACTIVE"));
-}
+const openStaff = (s: MerchantStaff) =>
+  uni.navigateTo({ url: `${ROUTES.staffDetail}?no=${s.mchAccountNo}` });
+const openRole = (r: MerchantRole) =>
+  uni.navigateTo({ url: `${ROUTES.roleDetail}?code=${r.roleCode}` });
 
-/**
- * 点一下加一个角色，再点一下去掉 —— **一人一店可多角色**，权限取并集。
- *
- * 小店的常态是一人多岗：站收银台的顺手把货送了（店员 + 配送员）。
- * 此前是单选（点别的角色 = 覆盖），老板想「再加一个」会把原来的冲掉。
- */
-function grant(s: MerchantStaff, storeNo: string, role: StaffRole) {
-  const had = hasRole(s, storeNo, role);
-  run(() => api.mGrantStore(s.mchAccountNo, storeNo, role, !had));
-}
+/** 从预置角色起步建自定义角色 —— 比从空白勾 13 个码容易得多 */
+const copyRole = (r: MerchantRole) =>
+  uni.navigateTo({ url: `${ROUTES.roleDetail}?copyFrom=${r.roleCode}` });
 
-const hasRole = (s: MerchantStaff, storeNo: string, role: string) =>
-  s.roles.some((r) => r.storeNo === storeNo && r.role === role);
-
-/** 这家店上他持有的全部角色，用于摘要展示 */
-const rolesAt = (s: MerchantStaff, storeNo: string) =>
-  s.roles.filter((r) => r.storeNo === storeNo).map((r) => r.role);
+onShow(load);
 </script>
 
 <template>
   <sh-scaffold title-key="staff.title" :denied="!merchant.can('biz:store:admin')">
-    <view class="head">
-      <text class="sh-h1">{{ $t("staff.title") }}</text>
-      <text class="sh-muted mt">{{ $t("staff.hint") }}</text>
-    </view>
+    <sh-tabs
+      :items="TABS.map((k) => ({ key: k, label: String($t(`staff.tab.${k}`)) }))"
+      :active="tab"
+      @change="(k: string) => (tab = k as Tab)"
+    ></sh-tabs>
 
-    <view v-for="s in staff" :key="s.mchAccountNo" class="sh-card p">
-      <view class="p__top">
-        <view class="p__id">
-          <text class="sh-h2">{{ s.loginPhone }}</text>
-          <view class="tags">
+    <!-- ══════════ 员工 ══════════ -->
+    <template v-if="tab === 'staff'">
+      <view class="bar">
+        <input v-model="keyword" class="field__input" :placeholder="$t('staff.search')" />
+        <text
+          class="sh-chip"
+          :class="{ 'sh-chip--primary': activeOnly }"
+          @tap="activeOnly = !activeOnly"
+        >{{ $t("staff.activeOnly") }}</text>
+      </view>
+
+      <sh-empty v-if="!visibleStaff.length" :text='$t("staff.empty")'></sh-empty>
+
+      <!-- 一行四样：认人的、状态、他管什么、进详情。**其余全在详情页** -->
+      <view v-for="s in visibleStaff" :key="s.mchAccountNo" class="sh-card row" @tap="openStaff(s)">
+        <view class="row__main">
+          <view class="row__top">
+            <text class="row__name">{{ nameOf(s) }}</text>
+            <!-- 号码就是他的登录用户名：搜到人之后老板下一眼看的就是这个 -->
+            <text v-if="s.displayName" class="row__phone sh-num sh-muted">{{ s.loginPhone }}</text>
             <text v-if="s.isOwner" class="tag tag--primary">{{ $t("staff.owner") }}</text>
-            <text v-if="s.status !== 'ACTIVE'" class="tag">{{ $t("staff.disabled") }}</text>
+            <text v-else-if="s.status !== 'ACTIVE'" class="tag">{{ $t("staff.disabled") }}</text>
           </view>
+          <text class="row__sub sh-muted">{{ summary(s) }}</text>
         </view>
-        <!-- 老板没有停用入口：那是个能把自己锁在门外的按钮 -->
-        <text v-if="!s.isOwner" class="act" @tap="toggleStatus(s)">
-          {{ s.status === "ACTIVE" ? $t("staff.disable") : $t("staff.enable") }}
-        </text>
+        <text class="row__go">›</text>
       </view>
 
-      <!-- 老板不需要授权：他的店都归他管，列一遍只会让人以为漏配了 -->
-      <text v-if="s.isOwner" class="meta">{{ $t("staff.ownerNote") }}</text>
-
-      <template v-else>
-        <text v-if="!s.roles.length" class="meta warn">{{ $t("staff.noStore") }}</text>
-        <text v-else class="meta">
-          {{ s.roles.map((r) => `${r.storeName}·${$t(`staff.role.${r.role}`)}`).join("，") }}
-        </text>
-
-        <text class="act mt" @tap="editing = editing === s.mchAccountNo ? null : s.mchAccountNo">
-          {{ editing === s.mchAccountNo ? $t("common.done") : $t("staff.editRoles") }}
-        </text>
-
-        <view v-if="editing === s.mchAccountNo" class="grid">
-          <view v-for="st in stores" :key="st.storeNo" class="row">
-            <text class="row__name">{{ st.name }}</text>
-            <view class="row__roles">
-              <text
-                v-for="r in COMMON_ROLES"
-                :key="r"
-                class="sh-chip"
-                :class="{ 'sh-chip--primary': hasRole(s, st.storeNo, r) }"
-                @tap="grant(s, st.storeNo, r)"
-              >
-                {{ $t(`staff.role.${r}`) }}
-              </text>
-              <!-- 更多角色：理货员/配送员/客服。夫妻店不用看见它们 -->
-              <template v-if="expanded === s.mchAccountNo">
-                <text
-                  v-for="r in MORE_ROLES"
-                  :key="r"
-                  class="sh-chip"
-                  :class="{ 'sh-chip--primary': hasRole(s, st.storeNo, r) }"
-                  @tap="grant(s, st.storeNo, r)"
-                >
-                  {{ $t(`staff.role.${r}`) }}
-                </text>
-              </template>
-              <text
-                v-else
-                class="sh-chip more"
-                @tap="expanded = s.mchAccountNo"
-              >{{ $t("staff.moreRoles") }}</text>
-            </view>
-          </view>
-          <text class="hint">{{ $t("staff.grantHint") }}</text>
+      <view v-if="!adding" class="sh-btn sh-btn--soft add" @tap="adding = true">
+        {{ $t("staff.add") }}
+      </view>
+      <view v-else class="sh-card mt-card">
+        <text class="sh-h2">{{ $t("staff.add") }}</text>
+        <text class="hint">{{ $t("staff.addHint") }}</text>
+        <view class="field">
+          <text class="field__label">{{ $t("staff.phone") }}</text>
+          <input v-model="form.phone" class="field__input" type="number" maxlength="11" />
         </view>
-      </template>
+        <view class="field">
+          <text class="field__label">{{ $t("staff.name") }}</text>
+          <input v-model="form.name" class="field__input" :placeholder="$t('staff.namePh')" />
+        </view>
+        <view class="sh-btn save" @tap="add">{{ $t("common.save") }}</view>
+        <view class="sh-btn sh-btn--soft mt-s" @tap="adding = false">{{ $t("common.cancel") }}</view>
+      </view>
+    </template>
 
-      <!--
-        这个人的授权变更记录（B-11.10.3）。**点开才拉** ——
-        平时看的是「他现在能做什么」，只有出事时才问「谁给他开的」。
-      -->
-      <text class="act mt" @tap="toggleLogs(s)">
-        {{ logsOf === s.mchAccountNo ? $t("staff.logsFold") : $t("staff.logs") }}
-      </text>
-      <view v-if="logsOf === s.mchAccountNo" class="logs">
-        <text v-if="!logs.length" class="sh-muted">{{ $t("staff.logsEmpty") }}</text>
-        <view v-for="(l, i) in logs" :key="i" class="log">
+    <!-- ══════════ 角色 ══════════ -->
+    <template v-else-if="tab === 'roles'">
+      <text class="sh-muted tip">{{ $t("staff.roleTip") }}</text>
+
+      <view v-for="r in roles" :key="r.roleCode" class="sh-card row">
+        <view class="row__main" @tap="openRole(r)">
+          <view class="row__top">
+            <text class="row__name">{{ r.name }}</text>
+            <text v-if="r.builtin" class="tag">{{ $t("staff.builtin") }}</text>
+          </view>
+          <text class="row__sub sh-muted">
+            {{ permCount(r) }}　{{ $t("staff.roleUsed", { n: r.usedBy }) }}
+          </text>
+        </view>
+        <!-- 预置角色改不了，但可以「以它为起点」建一个自己的 -->
+        <text v-if="r.builtin" class="act" @tap="copyRole(r)">{{ $t("staff.copyRole") }}</text>
+        <text v-else class="row__go" @tap="openRole(r)">›</text>
+      </view>
+
+      <view class="sh-btn sh-btn--soft add" @tap="openRole({ roleCode: '' } as MerchantRole)">
+        {{ $t("staff.newRole") }}
+      </view>
+    </template>
+
+    <!-- ══════════ 审计 ══════════ -->
+    <template v-else>
+      <text class="sh-muted tip">{{ $t("staff.logTip") }}</text>
+      <sh-empty v-if="!logs.length" :text='$t("staff.logsEmpty")'></sh-empty>
+      <view v-for="(l, i) in logs" :key="i" class="sh-card log">
+        <view class="log__head">
           <text class="log__t sh-num">{{ datetime(l.at) }}</text>
-          <text class="log__d">{{ logText(l) }}</text>
-          <!-- 「谁做的」是这张表存在的理由：只有「张三被提成店长」没法追责 -->
-          <text v-if="l.actor" class="sh-muted log__a">{{ l.actor }}</text>
+          <text v-if="l.actor" class="sh-muted">{{ l.actor }}</text>
         </view>
+        <text class="log__d">{{ l.detail || l.action }}</text>
+        <text v-if="l.targetName" class="sh-muted log__who">→ {{ l.targetName }}</text>
       </view>
-    </view>
-
-    <view v-if="!adding" class="sh-btn sh-btn--soft add" @tap="adding = true">
-      {{ $t("staff.add") }}
-    </view>
-
-    <view v-else class="sh-card mt-card">
-      <text class="sh-h2">{{ $t("staff.add") }}</text>
-      <!-- 说清楚不用设密码：店长最常问的就是「密码给他什么」 -->
-      <text class="hint">{{ $t("staff.addHint") }}</text>
-      <view class="field">
-        <text class="field__label">{{ $t("staff.phone") }}</text>
-        <input
-          v-model="phone"
-          class="field__input sh-num"
-          type="number"
-          maxlength="11"
-          placeholder="13800138000"
-        />
-      </view>
-      <view class="sh-btn submit" @tap="add">{{ $t("common.save") }}</view>
-      <view class="sh-btn sh-btn--soft cancel" @tap="adding = false">{{ $t("common.cancel") }}</view>
-    </view>
+    </template>
   </sh-scaffold>
 </template>
 
 <style scoped>
-.logs {
-  margin-top: 12rpx;
-}
-.log {
+.bar {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 16rpx;
-  padding: 10rpx 0;
-  border-top: 2rpx solid var(--sh-line);
+  margin: 20rpx 0;
+}
+.bar .field__input {
+  flex: 1;
+}
+.tip {
+  display: block;
+  margin: 20rpx 8rpx;
   font-size: 24rpx;
+  line-height: 1.6;
 }
-.log__t {
-  color: var(--sh-sub);
+.row {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  margin-bottom: 16rpx;
 }
-.log__d {
+.row__main {
   flex: 1;
   min-width: 0;
+}
+.row__top {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+.row__name {
+  font-size: 30rpx;
+  font-weight: 600;
   color: var(--sh-ink);
 }
-.log__a {
-  /* 24rpx 是字阶的最小档 —— 想更弱就靠颜色，不靠再缩一号 */
+.row__sub {
+  display: block;
+  margin-top: 6rpx;
+  font-size: 24rpx;
+  line-height: 1.5;
+}
+.row__phone {
   font-size: 24rpx;
 }
-
-.head {
-  padding: 32rpx 32rpx 8rpx;
-}
-.mt {
-  margin-top: 12rpx;
-}
-.mt-card {
-  margin-top: 24rpx;
-}
-.p {
-  margin-top: 24rpx;
-}
-.p__top {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16rpx;
-}
-.p__id {
-  flex: 1;
-  min-width: 0;
-}
-.tags {
-  display: flex;
-  gap: 10rpx;
-  margin-top: 8rpx;
+.row__go {
+  font-size: 34rpx;
+  color: var(--sh-sub);
 }
 .tag {
   padding: 4rpx 14rpx;
   border-radius: 9999px;
-  background: var(--sh-faint);
+  background: var(--sh-fill);
   font-size: 24rpx;
   color: var(--sh-sub);
 }
@@ -311,68 +262,54 @@ const rolesAt = (s: MerchantStaff, storeNo: string) =>
   background: var(--sh-primary-tint);
   color: var(--sh-primary);
 }
-.meta {
-  display: block;
-  margin-top: 12rpx;
-  font-size: 24rpx;
-  line-height: 1.5;
-  color: var(--sh-sub);
-}
-.warn {
-  color: var(--sh-danger);
-}
 .act {
-  font-size: 26rpx;
-  color: var(--sh-primary);
-}
-.grid {
-  margin-top: 20rpx;
-}
-.row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16rpx;
-  padding: 16rpx 0;
-}
-.row__name {
-  font-size: 26rpx;
-  color: var(--sh-ink);
-}
-.row__roles {
-  display: flex;
-  gap: 12rpx;
-}
-.field {
-  margin-top: 28rpx;
-}
-.field__label {
-  display: block;
-  font-size: 26rpx;
-  color: var(--sh-sub);
-}
-.field__input {
-  margin-top: 12rpx;
-  padding: 20rpx 24rpx;
-  border-radius: 24rpx;
-  background: var(--sh-faint);
-  font-size: 28rpx;
-  color: var(--sh-ink);
-}
-.hint {
-  display: block;
-  margin-top: 10rpx;
   font-size: 24rpx;
-  line-height: 1.5;
-  color: var(--sh-sub);
+  color: var(--sh-primary);
 }
 .add {
   margin-top: 24rpx;
 }
-.submit {
-  margin-top: 32rpx;
+.mt-card {
+  margin-top: 24rpx;
 }
-.cancel {
+.mt-s {
   margin-top: 16rpx;
+}
+.hint {
+  display: block;
+  margin-top: 8rpx;
+  font-size: 24rpx;
+  color: var(--sh-sub);
+  line-height: 1.6;
+}
+.field {
+  margin-top: 20rpx;
+}
+.save {
+  margin-top: 28rpx;
+}
+.log {
+  margin-bottom: 16rpx;
+}
+.log__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+.log__t {
+  font-size: 24rpx;
+  color: var(--sh-sub);
+}
+.log__d {
+  display: block;
+  margin-top: 8rpx;
+  font-size: 26rpx;
+  color: var(--sh-ink);
+  line-height: 1.5;
+}
+.log__who {
+  display: block;
+  margin-top: 4rpx;
+  font-size: 24rpx;
 }
 </style>

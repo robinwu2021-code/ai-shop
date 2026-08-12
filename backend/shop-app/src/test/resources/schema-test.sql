@@ -1367,6 +1367,7 @@ CREATE TABLE IF NOT EXISTS mch_account
     version BIGINT(20) NOT NULL DEFAULT 0,
     deleted TINYINT(4) NOT NULL DEFAULT 0,
     login_phone VARCHAR(32) DEFAULT NULL,
+    display_name VARCHAR(32) DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_mch_account_no UNIQUE (mch_account_no),
     CONSTRAINT uk_mch_account_entity_user UNIQUE (entity_no,user_no),
@@ -1378,7 +1379,7 @@ CREATE TABLE IF NOT EXISTS mch_store_role
     id BIGINT(20) NOT NULL AUTO_INCREMENT,
     mch_account_no VARCHAR(64) NOT NULL,
     store_no VARCHAR(64) NOT NULL,
-    role VARCHAR(16) NOT NULL,
+    role VARCHAR(32) NOT NULL,
     tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
     created_at DATETIME NOT NULL,
     created_by VARCHAR(64) DEFAULT NULL,
@@ -2086,10 +2087,10 @@ CREATE TABLE IF NOT EXISTS mch_staff_log
     log_no VARCHAR(64) NOT NULL,
     entity_no VARCHAR(64) NOT NULL,
     actor_account_no VARCHAR(64) DEFAULT NULL,
-    target_account_no VARCHAR(64) NOT NULL,
+    target_account_no VARCHAR(64) DEFAULT NULL,
     action VARCHAR(24) NOT NULL,
     store_no VARCHAR(64) DEFAULT NULL,
-    role VARCHAR(16) DEFAULT NULL,
+    role VARCHAR(32) DEFAULT NULL,
     detail VARCHAR(512) DEFAULT NULL,
     tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
     created_at DATETIME NOT NULL,
@@ -2100,6 +2101,25 @@ CREATE TABLE IF NOT EXISTS mch_staff_log
     deleted TINYINT(4) NOT NULL DEFAULT 0,
     PRIMARY KEY (id),
     CONSTRAINT uk_staff_log_no UNIQUE (log_no)
+);
+
+CREATE TABLE IF NOT EXISTS mch_role
+(
+    id BIGINT(20) NOT NULL AUTO_INCREMENT,
+    entity_no VARCHAR(64) NOT NULL,
+    role_code VARCHAR(32) NOT NULL,
+    name VARCHAR(32) NOT NULL,
+    perms TEXT NOT NULL,
+    builtin TINYINT(1) NOT NULL DEFAULT 0,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT(20) NOT NULL DEFAULT 0,
+    deleted TINYINT(4) NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_mch_role UNIQUE (entity_no, role_code)
 );
 
 -- 种子数据
@@ -3371,3 +3391,11 @@ INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated
 UPDATE sys_function_point SET ui_kind = 'MENU'   WHERE point_type = 'MENU';
 UPDATE sys_function_point SET ui_kind = 'INLINE' WHERE point_type = 'ACTION' AND group_name = '页面内操作';
 UPDATE sys_function_point SET ui_kind = 'NONE'   WHERE point_type = 'ACTION' AND group_name = '无界面入口';
+INSERT INTO mch_role (entity_no, role_code, name, perms, builtin, tenant_no, created_at, created_by, updated_at, updated_by, version, deleted)
+VALUES
+('*', 'OWNER', '老板', '["*"]', 1, 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('*', 'MANAGER', '店长', '["biz:receive","biz:verify","biz:ship","biz:order:view","biz:stock","biz:goods","biz:campaign","biz:review","biz:aftersale","biz:customer","biz:store"]', 1, 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('*', 'CLERK', '店员', '["biz:receive","biz:verify","biz:ship","biz:order:view","biz:stock"]', 1, 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('*', 'PICKER', '理货员', '["biz:receive","biz:stock"]', 1, 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('*', 'COURIER', '配送员', '["biz:ship","biz:order:view"]', 1, 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('*', 'CS', '客服', '["biz:review","biz:aftersale","biz:order:view"]', 1, 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0);

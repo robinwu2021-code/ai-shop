@@ -7,7 +7,7 @@
 > 端点→权限取自 `BizEndpointPermTest.REQUIRED` —— 最后那份是唯一**被守卫强制对过账**的
 > 清单（每个 `/biz` 端点都必须在里面有个说法，漏登记就红），所以比任何手写文档都可信。
 
-统计：**6 个角色 × 13 个权限点 × 62 个受控端点**。
+统计：**6 个角色 × 13 个权限点 × 67 个受控端点**。
 
 ## 一、角色 × 权限
 
@@ -17,7 +17,7 @@
 | 权限点 | 含义 | 端点数 | OWNER | MANAGER | CLERK | PICKER | COURIER | CS |
 |---|---|---|---|---|---|---|---|---|
 | `FINANCE` | 结算账单、费率卡、收款进件、积分开关 | 14 | ✅ | — | — | — | — | — |
-| `STORE_ADMIN` | 建店、改名、停用、设默认店、挂收款号 | 8 | ✅ | — | — | — | — | — |
+| `STORE_ADMIN` | 建店、改名、停用、设默认店、挂收款号 | 13 | ✅ | — | — | — | — | — |
 | `CAMPAIGN` | 营销活动、开团、报价 | 6 | ✅ | ✅ | — | — | — | — |
 | `STORE` | 门店经营面：装修、配送规则、店铺码、分享物料 | 6 | ✅ | ✅ | — | — | — | — |
 | `VERIFY` | 核销、批量核销、按码搜索 | 5 | ✅ | ✅ | ✅ | — | — | — |
@@ -54,7 +54,12 @@
 
 ### `STORE_ADMIN`　（OWNER）
 
+- `/biz/role-perms`
+- `/biz/role/{roleCode}`
+- `/biz/role/{roleCode}/delete`
+- `/biz/roles`
 - `/biz/staff`
+- `/biz/staff/logs`
 - `/biz/staff/{mchAccountNo}/status`
 - `/biz/staff/{mchAccountNo}/store`
 - `/biz/store/create`
@@ -137,4 +142,8 @@
 - `/biz/dashboard/stats`
 
 > **空角色 = 零权限**，不是「零权限 = 全放行」——`BizPerms.can` 对空集合直接返回 false。
+
+> ⚠️ **这里只有 6 个平台预置角色**。商家还能建自定义角色（V71 `mch_role`，
+> 权限点在 `BizPerms.assignableCodes()` 里挑，**不含 `biz:store:admin`**）——
+> 它们按主体存库，不在这份生成物里。判「某个人能做什么」要看他持有的角色，不是这张表。
 

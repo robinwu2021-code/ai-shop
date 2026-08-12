@@ -122,6 +122,9 @@ L.push("> （谁能碰哪些路径），这份是**功能视角**（哪个功能
 L.push(`统计：**${perms.size} 个权限码 × ${ROLE_ORDER.length} 个角色 × ${controlled.length} 个受控功能点**`);
 L.push(`（另有 ${PUBLIC.size} 个登录即可、${ANY_OF.size} 个「任一权限即可」）。\n`);
 
+// 同上：这份表按「预置角色」列，自定义角色不在其中
+L.push("> ⚠️ 角色列只有 6 个平台预置角色。商家自定义角色（V71 `mch_role`）按主体存库，");
+L.push("> 不在这份生成物里 —— 但它们能勾的权限点就是本表第一列（少一个 `biz:store:admin`）。\n");
 L.push("## 一、权限码总表\n");
 L.push("| 权限码 | 常量 | 含义 | 功能点数 | " + ROLE_ORDER.map((r) => ROLE_CN[r]).join(" | ") + " |");
 L.push("|---|---|---|---|" + "---|".repeat(ROLE_ORDER.length));

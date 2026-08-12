@@ -33,28 +33,53 @@ import java.util.Set;
  */
 public record BizContext(String merchantNo, Set<String> pickupNos, Set<String> groupNos,
                          Set<String> storeNos, String currentStoreNo, boolean owner,
-                         java.util.Map<String, Set<String>> rolesByStore) {
+                         java.util.Map<String, Set<String>> rolesByStore,
+                         /**
+                          * 每家店上我持有的**权限码并集**（V71）。
+                          *
+                          * <p>由 {@code BizIdentityResolver} 解析身份时一次查好 ——
+                          * 角色可以是预置的，也可以是这家商家自己建的，
+                          * 而判权那一刻不该再关心这个区别，它只需要一组码。
+                          *
+                          * <p>为空表示「这个调用点还没接入自定义角色」，
+                          * {@link #can} 会回落到 {@link BizPerms} 的预置语义。
+                          */
+                         java.util.Map<String, Set<String>> permsByStore) {
 
     private static final ThreadLocal<BizContext> HOLDER = new ThreadLocal<>();
 
     public static final BizContext NONE =
-            new BizContext(null, Set.of(), Set.of(), Set.of(), null, false, java.util.Map.of());
+            new BizContext(null, Set.of(), Set.of(), Set.of(), null, false,
+                    java.util.Map.of(), java.util.Map.of());
 
     /** 兼容三段式构造：门店维度未接入的调用点照旧可用。 */
     public BizContext(String merchantNo, Set<String> pickupNos, Set<String> groupNos) {
-        this(merchantNo, pickupNos, groupNos, Set.of(), null, false, java.util.Map.of());
+        this(merchantNo, pickupNos, groupNos, Set.of(), null, false,
+                java.util.Map.of(), java.util.Map.of());
     }
 
     /** 兼容六段式构造：多角色接入前的调用点照旧可用。 */
     public BizContext(String merchantNo, Set<String> pickupNos, Set<String> groupNos,
                       Set<String> storeNos, String currentStoreNo, boolean owner) {
-        this(merchantNo, pickupNos, groupNos, storeNos, currentStoreNo, owner, java.util.Map.of());
+        this(merchantNo, pickupNos, groupNos, storeNos, currentStoreNo, owner,
+                java.util.Map.of(), java.util.Map.of());
+    }
+
+    /**
+     * 兼容七段式构造：自定义角色（V71）接入前的调用点照旧可用 ——
+     * 它们拿到的是预置角色语义（{@link #can} 回落 {@link BizPerms}）。
+     */
+    public BizContext(String merchantNo, Set<String> pickupNos, Set<String> groupNos,
+                      Set<String> storeNos, String currentStoreNo, boolean owner,
+                      java.util.Map<String, Set<String>> rolesByStore) {
+        this(merchantNo, pickupNos, groupNos, storeNos, currentStoreNo, owner,
+                rolesByStore, java.util.Map.of());
     }
 
     /** 换一家当前门店（Filter 解析 X-Store-No 之后调）。 */
     public BizContext withStore(String storeNo) {
         return new BizContext(merchantNo, pickupNos, groupNos, storeNos, storeNo, owner,
-                rolesByStore);
+                rolesByStore, permsByStore);
     }
 
     /**
@@ -84,8 +109,40 @@ public record BizContext(String merchantNo, Set<String> pickupNos, Set<String> g
      *
      * <p><b>授权只在 Controller 层判</b>，与运营端同一条原则 ——
      * 散进 Service 的话，同一个业务方法被两个入口调用时就会漏掉一处。
+     *
+     * <h2>V71 起先看 {@code permsByStore}，回落 {@link BizPerms}</h2>
+     * 商家可以自定义角色之后，「角色 → 权限码」不再是一张静态表 ——
+     * 由 {@code BizIdentityResolver} 在解析身份时一次查好（含预置 + 自定义），
+     * 放进 {@code permsByStore}。<b>判权这一刻仍然是纯内存比较，零查询。</b>
+     *
+     * <p>为什么不在这里查库：判权点在事务之外、每个 {@code @PreAuthorize} 都会走一次，
+     * 在这里查等于把一次请求的判权次数变成查询次数。而放在解析那一步，
+     * 每请求仍然只查一次 —— 且**改了角色权限下一次请求就生效**，
+     * 不需要等他重新登录（收回权限必须立刻生效，这是这个选择的主要理由）。
+     *
+     * <p>回落到 {@code BizPerms} 是给两类调用者留的：<b>六段式构造</b>
+     * （没有 permsByStore 的历史调用点）与单元测试。它们拿到的是预置角色的语义，
+     * 与库里的预置角色由 {@code BizRoleSeedTest} 钉住一致。
      */
     public boolean can(String code) {
+        /*
+         * **currentStoreNo 可能是 null** —— 一个建了账号但一家店都没授权的员工就是这样。
+         * 而 permsByStore 多数时候是 Map.of()，**不可变 Map 的 get(null) 直接抛 NPE**
+         * （不是返回 null）。判权链路上抛异常的表现是 10500「系统开小差」，
+         * 而这条路径本该是最干脆的一个 70006。
+         *
+         * 这一行是真实测试打出来的：`noGrantInThisStoreMeansNothing`（空角色 = 零权限）
+         * 在改造后第一次跑就红 —— 而它恰好是安全性最关键的那条。
+         */
+        Set<String> perms = permsByStore == null || currentStoreNo == null || currentStoreNo.isBlank()
+                ? null : permsByStore.get(currentStoreNo);
+        if (owner) {
+            // 老板恒为通配，不走任何一张表 —— 与 BizPerms 的第一条规则一致
+            return code != null && !code.isBlank();
+        }
+        if (perms != null) {
+            return code != null && (perms.contains("*") || perms.contains(code));
+        }
         return BizPerms.can(staffRoles(), code);
     }
 

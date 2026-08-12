@@ -1533,6 +1533,20 @@ components:
         - "quotaExhausted"
         - "quotaWouldExceed"
       additionalProperties: false
+    OrderReceiver: 
+      type: "object"
+      properties: 
+        name: 
+          type: "string"
+          description: "收货人姓名。取不到时为空 —— 空就是空，不要回落成「顾客」"
+        phone: 
+          type: "string"
+          description: "脱敏程度由后端定，见 `Order.receiver` 的说明"
+        address: 
+          type: "string"
+          description: "省市区 + 详细，拼好的一行"
+      additionalProperties: false
+      description: "收件人。下单时固化在子订单上，**不是用户当前的地址簿条目**。\n\n三端共用：C 端订单详情、B 端配送/发货、平台端查单。"
     Order: 
       type: "object"
       properties: 
@@ -1588,6 +1602,9 @@ components:
         buyerNickname: 
           type: "string"
           description: "下单人昵称。团长视角（分拣单/核销台）要看得见是谁的单"
+        receiver: 
+          "$ref": "#/components/schemas/OrderReceiver"
+          description: "收件人（下单时的**快照**，自提单没有）。\n\n快照而不是现查地址：买家下完单把地址改成新家，商家看到的就跟着变了， 而货已经按旧地址在路上。\n\n⚠️ **`phone` 的脱敏程度由后端按履约方式决定**：商家自送给完整号 （送到楼下找不到人就得打电话），其余履约方式给 `****1234`。 端上**不要自己判**要不要打码 —— 两处规则迟早分叉。"
         reviewed: 
           type: "boolean"
           description: "已评价"
@@ -2508,6 +2525,9 @@ components:
         mchAccountNo: 
           type: "string"
           description: "商家账号号。**不叫 staffNo** —— 那个名字被平台运营占着，两者是不同的人"
+        displayName: 
+          type: "string"
+          description: "备注名（老板自己写的，如「小张」）。**列表认人靠它** —— 只有脱敏号的话，三个人以后谁也分不清。为空时端上回落 `loginPhone`。"
         loginPhone: 
           type: "string"
           description: "登录手机号，**已脱敏**。完整号不回显 —— 那等于一份可导出的通讯录"
@@ -2547,6 +2567,83 @@ components:
         - "storeName"
         - "role"
       additionalProperties: false
+    StaffLog: 
+      type: "object"
+      properties: 
+        actor: 
+          type: "string"
+          description: "操作人手机号（脱敏）。取不到当时身份时为空 —— 空就是空，不写「系统」"
+        targetName: 
+          type: "string"
+          description: "被操作员工的手机号（脱敏）"
+        action: 
+          type: "string"
+          description: "STAFF_ADD / STAFF_ENABLE / STAFF_DISABLE / ROLE_GRANT / ROLE_REVOKE"
+        storeName: 
+          type: "string"
+          description: "涉及门店的名字。加人与启停为空"
+        role: 
+          "$ref": "#/components/schemas/StaffRole"
+          description: "涉及的角色码。加人与启停为空"
+        detail: 
+          type: "string"
+          description: "人能读的一句话，直接展示"
+        at: 
+          type: "number"
+          description: "发生时间，毫秒时间戳"
+      required: 
+        - "action"
+        - "at"
+      additionalProperties: false
+      description: "一条员工与授权的变更记录（B-11.10.3）。\n\n**授权变更是权限扩散的唯一入口** —— 加人、停用、给角色、撤角色。 别的动作都有业务单据兜底，唯独这几个此前做完就没了： 三个月后问「谁把张三提成了店长」，库里只有一行当前状态。"
+    MerchantRole: 
+      type: "object"
+      properties: 
+        roleCode: 
+          type: "string"
+          description: "角色码。预置是 `OWNER`/`MANAGER`… ，自定义是生成的业务键 —— **别拿它给店主看**"
+        name: 
+          type: "string"
+          description: "显示名。预置角色也有 —— 别拿 `MANAGER` 直接给店主看"
+        builtin: 
+          type: "boolean"
+          description: "平台预置：**只读**，要改先「复制为自定义角色」"
+        perms: 
+          type: "array"
+          items: 
+            type: "string"
+          description: "这个角色带的权限码。老板那行是 `[\"*\"]`（全部），别按长度当权限数"
+        permLabels: 
+          type: "array"
+          items: 
+            type: "string"
+          description: "与 `perms` 一一对应的中文短说明"
+        usedBy: 
+          type: "number"
+          description: "几个人在用。删除按钮据此禁用，并且要显示出来"
+      required: 
+        - "roleCode"
+        - "name"
+        - "builtin"
+        - "perms"
+        - "permLabels"
+        - "usedBy"
+      additionalProperties: false
+      description: "一个角色：6 个平台预置（只读）+ 商家自定义（V71）。\n\n**权限码的中文说明由后端给**（`permLabels`），前端不抄一份 —— 抄的那份迟早与权限码本身漂开，而漂开的表现是 「界面写着能改库存，实际打不通」。"
+    PermOption: 
+      type: "object"
+      properties: 
+        code: 
+          type: "string"
+          description: "权限码，如 `biz:stock`。**只用于提交，不展示**"
+        label: 
+          type: "string"
+          description: "中文短说明，兜底用。端上自己有中/英/阿三份文案"
+      required: 
+        - "code"
+        - "label"
+      additionalProperties: false
+      description: "自定义角色**可以勾的一个权限点**。\n\n为什么不让端上「把预置角色的权限并起来」当选项：那个并集**少一条** —— `biz:finance` 只有老板有，而老板那行是 `*`。于是后端明明收这个码， 界面上却勾不到，看起来像功能没做。"
     GoodsStatus: 
       type: "string"
       enum: 

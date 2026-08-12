@@ -20,6 +20,8 @@ import type {
   MasterData,
   MerchantStaff,
   StaffLog,
+  MerchantRole,
+  PermOption,
   Store,
   PaymentApplyment,
   MerchantApplyReq,
@@ -239,7 +241,7 @@ export interface MerchantApi {
   /** 含停用的。手机号已脱敏 */
   mStaffList(): Promise<MerchantStaff[]>;
   /** 加员工。**不发密码、不建 C 端账号** —— 他用自己的手机号验证码登录 */
-  mAddStaff(loginPhone: string): Promise<MerchantStaff>;
+  mAddStaff(loginPhone: string, displayName?: string): Promise<MerchantStaff>;
   /** 停用/启用。**老板不能被停用** */
   mSetStaffStatus(mchAccountNo: string, active: boolean): Promise<MerchantStaff>;
   /** 授权到店。role 传空 = 收回这家店的授权 */
@@ -265,6 +267,33 @@ export interface MerchantApi {
    * @param mchAccountNo 只看某个人的；不传看全部
    */
   mStaffLogs(mchAccountNo?: string): Promise<StaffLog[]>;
+
+  // ---- 角色（V71 自定义角色）
+  /**
+   * 本主体可用的角色：6 个预置（只读）+ 自定义。
+   *
+   * **每个角色带 `permLabels`（中文）与 `usedBy`（几个人在用）** ——
+   * 前者让老板勾权限时不用盲选，后者是删除按钮的依据。
+   */
+  mRoles(): Promise<MerchantRole[]>;
+  /**
+   * 自定义角色可以勾的权限点（不含 `biz:store:admin`）。
+   *
+   * **勾选面板的唯一取值来源** —— 不要拿 `mRoles()` 的并集当选项，
+   * 那份少一条 `biz:finance`（只有老板有，而老板那行是 `*`）。
+   */
+  mRolePerms(): Promise<PermOption[]>;
+  /**
+   * 建自定义角色。
+   *
+   * ⚠️ **`biz:store:admin` 不在可勾列表里**，传了后端也会拒（70006）——
+   * 那是「管人」的码，授出去等于让被授权的人能改所有人的授权。
+   */
+  mCreateRole(payload: { name: string; perms: string[] }): Promise<MerchantRole>;
+  /** 改名 / 改权限。**预置角色会被拒**（10400），要改先复制一份 */
+  mUpdateRole(roleCode: string, payload: { name: string; perms: string[] }): Promise<MerchantRole>;
+  /** 删除。**还有人在用时拒**（10409）—— 删了那些人的权限凭空消失 */
+  mDeleteRole(roleCode: string): Promise<void>;
 
   mStoreQrcode(): Promise<StoreQrcode>;
   /** 分享素材：整店或单品。文案要带「还差 N 人」这类可直接转发的内容 */

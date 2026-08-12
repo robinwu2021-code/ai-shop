@@ -62,19 +62,30 @@ export interface FunnelRow {
 
 /** 服务端下发的菜单分区（`GET /ops/menu`）。 */
 export interface MenuFunction {
+  /** 功能点编码，菜单树的一级节点 */
   functionCode: string;
+  /** 菜单显示名 */
   name: string;
+  /** 图标名；为空由前端按 functionCode 兜底 */
   icon?: string | null;
+  /** 一级节点自身的落地路径；为空表示它只是个分组 */
   href?: string | null;
+  /** 同级排序，小的在前 */
   sort: number;
+  /** 这个功能点下的二级菜单/按钮 */
   points: MenuPoint[];
 }
 
 export interface MenuPoint {
+  /** 功能点下的点编码，菜单树的二级节点 */
   pointCode: string;
+  /** 菜单显示名 */
   name: string;
+  /** 侧栏里的分组标题；为空表示不分组 */
   groupName?: string | null;
+  /** 落地路径；为空表示还没有页面 */
   href?: string | null;
+  /** 前端页面自己判的码。与 permCode 不同：**它管的是能不能看见按钮，不是能不能调接口** */
   uiPermCode?: string | null;
   /** 后端权限码。**null = 不受权限约束** —— 与 NOT_IMPLEMENTED 是两回事 */
   permCode?: string | null;
@@ -82,8 +93,10 @@ export interface MenuPoint {
   backendStatus: string;
   /** 后端通了但前端页面还没做完 */
   uiReady: boolean;
+  /** 对应需求矩阵里的编号（如 `P-11.1`），用于回溯这个菜单项是哪条需求 */
   matrixCode?: string | null;
   /** MENU 菜单项 / ACTION 页面内按钮级授权（菜单不渲染 ACTION） */
   pointType: string;
+  /** 同级排序，小的在前 */
   sort: number;
 }

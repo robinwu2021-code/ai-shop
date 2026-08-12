@@ -54,6 +54,8 @@ import type {
   MasterData,
   MerchantStaff,
   StaffLog,
+  MerchantRole,
+  PermOption,
   Store,
   PaymentApplyment,
   MerchantApplyStatus,
@@ -122,8 +124,9 @@ export const httpApi: MerchantApi = {
       { payMerchantNo } satisfies SetStorePaymentReq),
 
   mStaffList: () => http.get<MerchantStaff[]>(E.mStaffList.path),
-  mAddStaff: (loginPhone) =>
-    http.post<MerchantStaff>(E.mAddStaff.path, { loginPhone } satisfies AddStaffReq),
+  mAddStaff: (loginPhone, displayName) =>
+    http.post<MerchantStaff>(E.mAddStaff.path,
+      { loginPhone, displayName } satisfies AddStaffReq),
   mSetStaffStatus: (mchAccountNo, active) =>
     http.post<MerchantStaff>(buildPath(E.mSetStaffStatus.path, { mchAccountNo }),
       { active } satisfies SetActiveReq),
@@ -134,6 +137,14 @@ export const httpApi: MerchantApi = {
   // 只看某个人的时候才带参数：后端把空串当成「全部」也行，但少发一个空参数少一处歧义
   mStaffLogs: (mchAccountNo) =>
     http.get<StaffLog[]>(E.mStaffLogs.path, mchAccountNo ? { mchAccountNo } : undefined),
+
+  mRoles: () => http.get<MerchantRole[]>(E.mRoles.path),
+  mRolePerms: () => http.get<PermOption[]>(E.mRolePerms.path),
+  mCreateRole: (payload) => http.post<MerchantRole>(E.mCreateRole.path, payload),
+  mUpdateRole: (roleCode, payload) =>
+    http.post<MerchantRole>(buildPath(E.mUpdateRole.path, { roleCode }), payload),
+  mDeleteRole: (roleCode) =>
+    http.post<void>(buildPath(E.mDeleteRole.path, { roleCode }), {}),
 
   mStoreQrcode: () => http.get<StoreQrcode>(E.mStoreQrcode.path),
   mShareKit: (goodsNo) =>

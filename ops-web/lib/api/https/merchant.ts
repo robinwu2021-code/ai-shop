@@ -4,6 +4,7 @@ import type { MerchantApi } from "../contracts/merchant";
 
 export const merchantHttp: MerchantApi = {
   storeModes: (merchantNo) => client.get(`/ops/merchants/${merchantNo}/store-modes`),
+  merchantStaff: (merchantNo) => client.get(`/ops/merchants/${merchantNo}/staff`),
   setStoreBusinessMode: (v) => client.put(`/ops/stores/${v.storeNo}/business-mode`, v),
   admissionPolicies: () => client.get("/ops/admission/policies"),
   updateAdmissionPolicy: (v) => client.put(`/ops/admission/policies/${v.legalForm}`, v),

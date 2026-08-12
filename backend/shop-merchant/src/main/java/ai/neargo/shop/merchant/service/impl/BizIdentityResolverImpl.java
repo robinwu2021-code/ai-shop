@@ -40,15 +40,69 @@ public class BizIdentityResolverImpl implements BizIdentityResolver {
     private final ai.neargo.shop.merchant.mapper.MerchantMappers.MchAccountMapper staffMapper;
     private final MchStoreMapper storeMapper;
     private final MchStoreRoleMapper roleMapper;
+    private final ai.neargo.shop.merchant.mapper.MerchantMappers.MchRoleMapper roleDefMapper;
 
     public BizIdentityResolverImpl(MchEntityMapper merchantMapper, PickupQueryPort pickupQueryPort,
                                    ai.neargo.shop.merchant.mapper.MerchantMappers.MchAccountMapper staffMapper,
-                                   MchStoreMapper storeMapper, MchStoreRoleMapper roleMapper) {
+                                   MchStoreMapper storeMapper, MchStoreRoleMapper roleMapper,
+                                   ai.neargo.shop.merchant.mapper.MerchantMappers.MchRoleMapper roleDefMapper) {
         this.storeMapper = storeMapper;
         this.roleMapper = roleMapper;
+        this.roleDefMapper = roleDefMapper;
         this.merchantMapper = merchantMapper;
         this.pickupQueryPort = pickupQueryPort;
         this.staffMapper = staffMapper;
+    }
+
+    /**
+     * 角色 → 权限码（V71）：把「他在每家店是什么角色」翻译成「他在每家店能做什么」。
+     *
+     * <p><b>在这里翻译，判权那一刻就不用再查库</b>（见 {@link BizContext#can}）。
+     * 每请求一次、随请求新鲜 —— 老板改了角色的权限，员工的下一个请求就生效，
+     * 不用等他重新登录。收回权限必须立刻生效，这是把它放在这一步的主要理由。
+     *
+     * <p>查询条件是 {@code entity_no IN (本商家, '*')}：预置角色是全局共享的那一份，
+     * 自定义角色属于这家商家。<b>少了任何一半都表现为「权限突然变少」</b>。
+     *
+     * <p>库里查不到的角色码（比如角色被删了而授权还在）**按零权限处理**，不抛错 ——
+     * 认不出角色时给权限是这类判定最坏的失败方式。
+     */
+    private java.util.Map<String, Set<String>> permsByStore(
+            String entityNo, java.util.Map<String, Set<String>> rolesByStore) {
+        if (rolesByStore.isEmpty()) {
+            return java.util.Map.of();
+        }
+        Set<String> used = rolesByStore.values().stream()
+                .flatMap(Set::stream).collect(Collectors.toSet());
+        java.util.Map<String, Set<String>> permsOfRole = roleDefMapper.selectList(
+                        Wrappers.<ai.neargo.shop.merchant.entity.MchRole>lambdaQuery()
+                                .in(ai.neargo.shop.merchant.entity.MchRole::getEntityNo,
+                                        java.util.List.of(entityNo,
+                                                ai.neargo.shop.merchant.entity.MchRole.BUILTIN_ENTITY))
+                                .in(ai.neargo.shop.merchant.entity.MchRole::getRoleCode, used))
+                .stream()
+                .collect(Collectors.toMap(
+                        ai.neargo.shop.merchant.entity.MchRole::getRoleCode,
+                        r -> parsePerms(r.getPerms()),
+                        // 同一个码既有预置又有自定义时以**自定义**为准：
+                        // 唯一键拦住了同名，这里只是兜底，不该静默丢一份
+                        (builtin, custom) -> custom));
+
+        java.util.Map<String, Set<String>> out = new java.util.HashMap<>();
+        rolesByStore.forEach((storeNo, roles) -> out.put(storeNo, roles.stream()
+                .flatMap(r -> permsOfRole.getOrDefault(r, Set.of()).stream())
+                .collect(Collectors.toUnmodifiableSet())));
+        return out;
+    }
+
+    /** `["biz:a","biz:b"]` → Set。手写解析：只有这一处用，引一个 JSON 库不划算 */
+    private static Set<String> parsePerms(String json) {
+        if (json == null || json.isBlank()) {
+            return Set.of();
+        }
+        return java.util.Arrays.stream(json.replaceAll("[\\[\\]\"]", "").split(","))
+                .map(String::trim).filter(x -> !x.isEmpty())
+                .collect(Collectors.toUnmodifiableSet());
     }
 
     @Override
@@ -152,6 +206,7 @@ public class BizIdentityResolverImpl implements BizIdentityResolver {
                 new java.util.LinkedHashSet<>(pickupQueryPort.activeStorePickupNos(storeNos));
 
         return new BizContext(merchant.getEntityNo(), pickupNos, Set.of(), storeNos, defaultStore,
-                Boolean.TRUE.equals(membership.getIsOwner()), rolesByStore);
+                Boolean.TRUE.equals(membership.getIsOwner()), rolesByStore,
+                permsByStore(merchant.getEntityNo(), rolesByStore));
     }
 }
