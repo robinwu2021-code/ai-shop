@@ -372,8 +372,13 @@ export function useSettleStatusMap(): StatusMap<SettleStatus> {
     PENDING: { label: t("settleStatus.PENDING"), tone: "warning" },
     SPLITTING: { label: t("settleStatus.SPLITTING"), tone: "info" },
     SPLIT: { label: t("settleStatus.SPLIT"), tone: "success" },
-    FAILED: { label: t("settleStatus.FAILED"), tone: "danger" },
-    FROZEN_BACK: { label: t("settleStatus.FROZEN_BACK"), tone: "muted" },
+    RETRYING: { label: t("settleStatus.RETRYING"), tone: "warning" },
+    MANUAL: { label: t("settleStatus.MANUAL"), tone: "danger" },
+    REVERSED: { label: t("settleStatus.REVERSED"), tone: "muted" },
+    // 自营轨道：对账 → 确认 → 付款，与分账那条互不相通
+    PENDING_RECON: { label: t("settleStatus.PENDING_RECON"), tone: "warning" },
+    CONFIRMED: { label: t("settleStatus.CONFIRMED"), tone: "info" },
+    PAID: { label: t("settleStatus.PAID"), tone: "success" },
   };
 }
 export function SettleStatusBadge({ value }: { value: SettleStatus }) {

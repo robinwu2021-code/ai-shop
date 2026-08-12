@@ -1,18 +1,17 @@
 // 覆盖范围：分账结算（P-12.1）与提现·发票·个税（P-12.2）。
-import type { AfterSale, BusinessMode, EffectiveFeeRates, FeeRuleVersion, FeeTrafficSource, InvoiceRequest, Page, Settlement, SplitRecord, TaxRule, Withdrawal } from "@/lib/types";
+import type { AfterSale, BusinessMode, EffectiveFeeRates, FeeRuleVersion, FeeTrafficSource, InvoiceRequest, Page, Settlement, SplitLog, TaxRule, Withdrawal } from "@/lib/types";
 import type { PageQ, SettlementQ } from "../query";
 
 export interface FinanceApi {
-  listSettlements(q?: SettlementQ): Promise<Page<Settlement>>;
-  /**
-   * 下发分账指令（P-12.1.3）。
-   * 前置：商家**已报备分账接收方**（读商家档案 `settleAccountReady`，ADR-002）；
-   * 重试有上限，超过转 FAILED 等人工介入。
+  /** 结算单列表。**自营与第三方都在这里** —— 不该因经营模式分成两个入口。 */
+  listSettlements(q?: { status?: string; merchantNo?: string; businessMode?: string }): Promise<Settlement[]>;
+  /*
+   * **运营端不下发分账、不解冻**：分账的下发与回退有它们自己的触发路径
+   * （结算生成、售后退款）。在运营台放一个「立即分账」按钮，
+   * 等于给人一个绕过状态机的口子 —— 而这条链路动的是真钱。
+   * 所以这里只留读。
    */
-  executeSplit(settleNo: string): Promise<Settlement>;
-  /** 超时兜底（P-12.1.4）：冻结超过 freezeDays 仍未成功的，解冻回平台。 */
-  freezeBackSettlement(settleNo: string): Promise<Settlement>;
-  listSplitRecords(q?: PageQ & { settleNo?: string }): Promise<Page<SplitRecord>>;
+  listSplitRecords(q?: { settleNo?: string; action?: string }): Promise<SplitLog[]>;
 
   /** 待回退分账的售后单（P-12.1.5 / E4）：售后裁决打的 `refundSplitPending` 标记。 */
   listRefundSplitBacks(): Promise<AfterSale[]>;

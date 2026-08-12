@@ -20,53 +20,6 @@ beforeEach(() => {
   feeRules.length = 0; feeRules.push(...(JSON.parse(JSON.stringify(R0)) as typeof feeRules));
 });
 
-describe("分账执行（P-12.1.3）", () => {
-  it("未报备分账接收方的商家不能分账（跨域读商家档案，ADR-002）", async () => {
-    // ST9004 属于 M901，其 settleAccountReady = false
-    await expect(financeMock.executeSplit("ST9004")).rejects.toThrow(/尚未报备/);
-  });
-
-  it("商家补报备后即可分账", async () => {
-    merchants.find((m) => m.merchantNo === "M901")!.settleAccountReady = true;
-    const s = await financeMock.executeSplit("ST9004");
-    expect(s.status).toBe("SPLIT");
-  });
-
-  it("对账不平的结算单拒绝分账（gross ≠ 佣金 + 服务费 + 实付）", async () => {
-    const s = settlements.find((x) => x.settleNo === "ST9001")!;
-    s.netAmount += 1; // 人为制造 1 分钱的差
-    await expect(financeMock.executeSplit("ST9001")).rejects.toThrow(/对账不平/);
-  });
-
-  it("失败可重试，重试次数累加", async () => {
-    const s = await financeMock.executeSplit("ST9003"); // 原 retryCount = 2
-    expect(s.retryCount).toBe(3);
-    expect(s.status).toBe("SPLIT");
-  });
-
-  it("重试到上限后转人工，不再无限重试", async () => {
-    const s = settlements.find((x) => x.settleNo === "ST9003")!;
-    s.retryCount = MAX_SPLIT_RETRY;
-    await expect(financeMock.executeSplit("ST9003")).rejects.toThrow(/上限/);
-  });
-
-  it("已分账的单是终态", async () => {
-    await expect(financeMock.executeSplit("ST9002")).rejects.toThrow(/不允许/);
-  });
-});
-
-describe("超时兜底（P-12.1.4）", () => {
-  it("冻结未达阈值不能解冻回平台", async () => {
-    await expect(financeMock.freezeBackSettlement("ST9001")).rejects.toThrow(/未达兜底阈值/);
-  });
-
-  it("超过阈值可解冻回平台", async () => {
-    // ST9005 冻结自 2026-07-01，已超过 15 天
-    const s = await financeMock.freezeBackSettlement("ST9005");
-    expect(s.status).toBe("FROZEN_BACK");
-  });
-});
-
 describe("退款回退分账（P-12.1.5 / E4）—— 跨域收口", () => {
   it("队列由售后单的 refundSplitPending 派生，不另建实体", async () => {
     await afterSaleMock.decideAfterSale({
@@ -96,6 +49,14 @@ describe("退款回退分账（P-12.1.5 / E4）—— 跨域收口", () => {
   });
 });
 
+/*
+ * 分账执行与超时兜底的用例删掉了：它们测的是 executeSplit / freezeBackSettlement，
+ * 而**后端有意不提供这两个端点** —— 分账的下发与回退有它们自己的触发路径
+ * （结算生成、售后退款），在运营台放一个「立即分账」按钮等于给人一个
+ * 绕过状态机的口子，而这条链路动的是真钱。
+ *
+ * 留着这些用例会让人以为那两个动作还在，只是暂时没接。
+ */
 describe("费率版本（只增不改）", () => {
   it("费率必须在 0–10000 万分比之间", async () => {
     await expect(

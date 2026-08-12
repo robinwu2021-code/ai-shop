@@ -186,7 +186,12 @@ export const en: Messages = {
   skuStatus: { DRAFT: "Draft", PENDING: "Pending review", ON_SALE: "On sale", OFF_SALE: "Off sale", REJECTED: "Rejected" },
   settleStatus: {
     PENDING: "Split pending", SPLITTING: "Splitting", SPLIT: "Split done",
-    FAILED: "Split failed", FROZEN_BACK: "Released to platform",
+    RETRYING: "Retrying",
+    MANUAL: "Manual review",
+    REVERSED: "Split reversed",
+    PENDING_RECON: "Awaiting reconciliation",
+    CONFIRMED: "Payable confirmed",
+    PAID: "Paid",
   },
   attrSource: { STORE_CODE: "Store code", INVITER: "Inviter", CHANNEL: "Channel" },
   riskType: { FAKE_ORDER: "Fake orders", ABNORMAL_FISSION: "Abnormal referral", MALICIOUS_REFUND: "Refund abuse" },

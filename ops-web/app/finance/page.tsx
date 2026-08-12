@@ -17,7 +17,7 @@ import { money } from "@/lib/utils";
 import { useCan } from "@/lib/use-can";
 import { useEditableConfig } from "@/lib/use-editable-config";
 import { notify } from "@/lib/notify";
-import type { AfterSale, Settlement, SplitRecord, TrafficSource } from "@/lib/types";
+import type { AfterSale, Settlement, SplitLog, TrafficSource } from "@/lib/types";
 import { SettleStatusBadge, useSettleStatusMap, useTrafficSourceMap } from "@/components/status";
 import { ReadOnlyNotice } from "@/components/read-only-notice";
 // 提现与发票各自成块 —— 与结算那四个 tab 只共用文案表
@@ -84,9 +84,11 @@ function FinanceInner() {
   const settleStatusMap = useSettleStatusMap();
   const trafficMap = useTrafficSourceMap();
 
-  const settleQ = { keyword, status, page, size };
+  // 后端这两个查询不分页：结算单按子单一张，量大但筛选维度窄，
+  // 先给筛选、分页等有量之后再说 —— 造一个假的分页壳比没有分页更误导
+  const settleQ = { status: status || undefined, merchantNo: keyword || undefined };
   const settlements = useQuery({ queryKey: ["settlements", settleQ], queryFn: () => api.listSettlements(settleQ), enabled: tab === "settlements" });
-  const splitQ = { keyword, page, size };
+  const splitQ = { settleNo: keyword || undefined };
   const splits = useQuery({ queryKey: ["splits", splitQ], queryFn: () => api.listSplitRecords(splitQ), enabled: tab === "splits" });
   const backs = useQuery({ queryKey: ["refund-backs"], queryFn: () => api.listRefundSplitBacks(), enabled: tab === "refund-back" });
 
@@ -96,14 +98,6 @@ function FinanceInner() {
     qc.invalidateQueries({ queryKey: ["after-sales"] });
   };
 
-  const execSplit = useMutation({
-    mutationFn: (settleNo: string) => api.executeSplit(settleNo),
-    onSuccess: (s) => { invalidate(); notify.success(fill(c.toastSplitDone, { no: s.settleNo })); },
-  });
-  const freezeBack = useMutation({
-    mutationFn: (settleNo: string) => api.freezeBackSettlement(settleNo),
-    onSuccess: () => { invalidate(); notify.success(c.toastFrozenBack); },
-  });
   const execBack = useMutation({
     mutationFn: (asNo: string) => api.executeRefundSplitBack(asNo),
     onSuccess: () => { invalidate(); notify.success(c.toastRefundBack); },
@@ -111,67 +105,50 @@ function FinanceInner() {
 
   const settleColumns: Column<Settlement>[] = [
     { header: c.colSettleNo, cell: (s) => s.settleNo, numeric: true, align: "start" },
-    { header: c.colMerchant, cell: (s) => s.merchantName },
-    { header: c.colPeriod, cell: (s) => s.period },
-    { header: c.colOrderCount, cell: (s) => s.orderCount, numeric: true },
-    { header: c.colGross, cell: (s) => money(s.grossAmount), numeric: true },
-    { header: c.colPlatformFee, cell: (s) => money(s.platformFee), numeric: true },
-    { header: c.colServiceFee, cell: (s) => money(s.serviceFee), numeric: true },
-    { header: c.colNet, cell: (s) => money(s.netAmount), numeric: true },
+    { header: c.colOrder, cell: (s) => s.subOrderNo, numeric: true, align: "start" },
+    { header: c.colMerchant, cell: (s) => s.merchantNo },
     {
-      header: c.colRetry,
-      numeric: true,
-      // 到上限就不是"再点一次"能解决的了，颜色要能区分
-      cell: (s) =>
-        s.retryCount >= MAX_SPLIT_RETRY
-          ? <Badge tone="danger">{fill(c.retryMaxed, { n: s.retryCount })}</Badge>
-          : s.retryCount > 0
-            ? <Badge tone="warning">{s.retryCount}</Badge>
-            : <span className="text-muted-foreground">0</span>,
+      header: c.colMode,
+      // 两条轨道的状态含义完全不同，不标出模式就看不懂状态
+      cell: (s) => (s.businessMode === "SELF_OPERATED"
+        ? <Badge tone="warning">{c.modeSelfOperated}</Badge>
+        : <Badge tone="success">{c.modeThirdParty}</Badge>),
     },
-    { header: c.colStatus, cell: (s) => <SettleStatusBadge value={s.status} /> },
-    {
-      header: c.colActions,
-      cell: (s) => {
-        if (!canExecute) return <span className="text-muted-foreground">-</span>;
-        if (s.status === "SPLIT" || s.status === "FROZEN_BACK") return <span className="text-muted-foreground">{c.settleClosed}</span>;
-        return (
-          <div className="flex flex-nowrap items-center gap-2">
-            <Button
-              size="sm"
-              onClick={async () => {
-                const ok = await confirm({
-                  title: fill(c.confirmSplitTitle, { no: s.settleNo }),
-                  desc: fill(c.confirmSplitDesc, { name: s.merchantName, amount: money(s.netAmount) }),
-                  danger: true, confirmText: c.confirmSplitOk, requireText: s.settleNo,
-                });
-                if (ok) execSplit.mutate(s.settleNo);
-              }}
-            >
-              {s.status === "FAILED" ? c.btnRetrySplit : c.btnSplit}
-            </Button>
-            <Button size="sm" variant="outline" onClick={() => freezeBack.mutate(s.settleNo)}>{c.btnFreezeBack}</Button>
-          </div>
-        );
-      },
-    },
-  ];
-
-  const splitColumns: Column<SplitRecord>[] = [
-    { header: c.colSplitNo, cell: (r) => r.splitNo, numeric: true, align: "start" },
-    { header: c.colOrder, cell: (r) => r.orderNo, numeric: true, align: "start" },
-    { header: c.colMerchant, cell: (r) => r.merchantName },
     {
       header: c.colTraffic,
-      // R16：自带客流零佣金。列表里必须能看出"这单为什么不抽佣"
-      cell: (r) => <StatusBadge map={trafficMap} value={r.trafficSource} />,
+      // R16：自带客流零佣金。列表里必须能看出「这单为什么不抽佣」
+      cell: (s) => <StatusBadge map={trafficMap} value={s.trafficSource as TrafficSource} />,
     },
-    { header: c.colFeeRate, cell: (r) => pct(r.feeRate), numeric: true },
-    { header: c.colGrossAmount, cell: (r) => money(r.grossAmount), numeric: true },
-    { header: c.colPlatformFee, cell: (r) => money(r.platformFee), numeric: true },
-    { header: c.colPickup, cell: (r) => r.pickupNo ?? "—" },
-    { header: c.colServiceFee, cell: (r) => money(r.serviceFee), numeric: true },
-    { header: c.colNet, cell: (r) => money(r.netAmount), numeric: true },
+    { header: c.colFeeRate, cell: (s) => pct(s.commissionRate), numeric: true },
+    { header: c.colGross, cell: (s) => money(s.grossMinor), numeric: true },
+    { header: c.colPlatformFee, cell: (s) => money(s.commissionMinor), numeric: true },
+    { header: c.colServiceFee, cell: (s) => money(s.serviceFeeMinor), numeric: true },
+    { header: c.colNet, cell: (s) => money(s.netMinor), numeric: true },
+    {
+      header: c.colPayMerchant,
+      // 空 = 生成时进件还没走完。钱是欠着的，不是不存在 —— 这一列让人看得见欠在哪
+      cell: (s) => s.payMerchantNo ?? <Badge tone="warning">{c.noPayAccount}</Badge>,
+    },
+    { header: c.colStatus, cell: (s) => <SettleStatusBadge value={s.status} /> },
+  ];
+
+  const splitColumns: Column<SplitLog>[] = [
+    { header: c.colSettleNo, cell: (r) => r.settleNo, numeric: true, align: "start" },
+    { header: c.colOrder, cell: (r) => r.subOrderNo, numeric: true, align: "start" },
+    {
+      header: c.colAction,
+      // 补差与分账方向相反：补差往二级商户里放钱，分账从里面拿平台应收
+      cell: (r) => <Badge tone={r.splitAction.startsWith("SUBSIDY") ? "info" : "muted"}>{r.splitAction}</Badge>,
+    },
+    { header: c.colGrossAmount, cell: (r) => money(r.amountMinor), numeric: true },
+    {
+      header: c.colResult,
+      cell: (r) => (r.result === "SUCCESS"
+        ? <Badge tone="success">{c.resultOk}</Badge>
+        : <Badge tone="danger">{c.resultFail}</Badge>),
+    },
+    // 失败原因是这张表存在的意义 —— 「为什么这单没分成」的答案就在这一列
+    { header: c.colMessage, cell: (r) => r.message ?? "—" },
   ];
 
   const backColumns: Column<AfterSale>[] = [
@@ -209,8 +186,10 @@ function FinanceInner() {
     },
   ];
 
-  const rows = settlements.data?.records ?? [];
-  const pendingAmount = rows.filter((s) => s.status !== "SPLIT" && s.status !== "FROZEN_BACK").reduce((n, s) => n + s.netAmount, 0);
+  const rows: Settlement[] = settlements.data ?? [];
+  /** 「还没到商家手上的钱」：分账未完成 + 自营未付款，两条轨道的未结都算进来。 */
+  const settled = new Set(["SPLIT", "PAID", "REVERSED"]);
+  const pendingAmount = rows.filter((s) => !settled.has(s.status)).reduce((n, s) => n + s.netMinor, 0);
 
   return (
     <div>
@@ -227,9 +206,10 @@ function FinanceInner() {
             <StatCard label={c.kpiPageCount} value={rows.length} />
             <StatCard
               label={c.kpiMaxed}
-              value={rows.filter((s) => s.retryCount >= MAX_SPLIT_RETRY).length}
+              // 转人工的单：它们不会自己好，必须有人去看
+              value={rows.filter((s) => s.status === "MANUAL").length}
               sub={c.kpiMaxedSub}
-              tone={rows.some((s) => s.retryCount >= MAX_SPLIT_RETRY) ? "down" : undefined}
+              tone={rows.some((s) => s.status === "MANUAL") ? "down" : undefined}
             />
           </StatRow>
           <Notice className="mb-3">
@@ -239,12 +219,11 @@ function FinanceInner() {
             <FilterSelect aria-label={c.filterStatus} value={status} onChange={(v) => { setStatus(v); setPage(1); }} options={settleStatusMap} allLabel={c.filterStatusAll} />
           </Toolbar>
           <DataTable
-            columns={settleColumns} rows={settlements.data?.records} loading={settlements.isLoading}
+            columns={settleColumns} rows={settlements.data} loading={settlements.isLoading}
             error={settlements.error} onRetry={() => settlements.refetch()}
             rowKey={(s) => s.settleNo}
             empty={c.emptySettle}
           />
-          <Pagination page={page} size={size} onSize={setSize} total={settlements.data?.total ?? 0} onPage={setPage} />
         </>
       )}
 
@@ -252,12 +231,11 @@ function FinanceInner() {
         <>
           <Toolbar search={keyword} onSearch={(v) => { setKeyword(v); setPage(1); }} searchPlaceholder={c.searchSplit} />
           <DataTable
-            columns={splitColumns} rows={splits.data?.records} loading={splits.isLoading}
+            columns={splitColumns} rows={splits.data} loading={splits.isLoading}
             error={splits.error} onRetry={() => splits.refetch()}
-            rowKey={(r) => r.splitNo}
+            rowKey={(r) => r.requestNo}
             empty={c.emptySplit}
           />
-          <Pagination page={page} size={size} onSize={setSize} total={splits.data?.total ?? 0} onPage={setPage} />
         </>
       )}
 

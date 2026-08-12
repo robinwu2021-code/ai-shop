@@ -4,8 +4,6 @@ import type { FinanceApi } from "../contracts/finance";
 
 export const financeHttp: FinanceApi = {
   listSettlements: (q) => client.get("/ops/settlements", q),
-  executeSplit: (no) => client.post(`/ops/settlements/${no}/split`),
-  freezeBackSettlement: (no) => client.post(`/ops/settlements/${no}/freeze-back`),
   listSplitRecords: (q) => client.get("/ops/split-records", q),
   listRefundSplitBacks: () => client.get("/ops/refund-split-backs"),
   executeRefundSplitBack: (asNo) => client.post(`/ops/refund-split-backs/${asNo}/execute`),

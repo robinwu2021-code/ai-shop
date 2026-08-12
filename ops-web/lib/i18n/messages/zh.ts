@@ -182,7 +182,12 @@ export const zh = {
   skuStatus: { DRAFT: "草稿", PENDING: "待审核", ON_SALE: "在售", OFF_SALE: "已下架", REJECTED: "已驳回" },
   settleStatus: {
     PENDING: "待分账", SPLITTING: "分账中", SPLIT: "已分账",
-    FAILED: "分账失败", FROZEN_BACK: "已解冻回平台",
+    RETRYING: "重试中",
+    MANUAL: "转人工",
+    REVERSED: "已回退分账",
+    PENDING_RECON: "待对账（自营）",
+    CONFIRMED: "已确认应付（自营）",
+    PAID: "已付款（自营）",
   },
   attrSource: { STORE_CODE: "店铺码", INVITER: "邀请人", CHANNEL: "渠道" },
   riskType: { FAKE_ORDER: "刷单", ABNORMAL_FISSION: "异常裂变", MALICIOUS_REFUND: "恶意退款" },

@@ -203,9 +203,13 @@ import type { BusinessMode } from "./finance";
  * **这个身份不能由商家自己勾选**，所以只有运营端能改。
  */
 export interface StoreMode {
+  /** 门店号 */
   storeNo: string;
+  /** 门店名，展示用 */
   storeName: string;
+  /** 所属商家主体 */
   merchantNo: string;
+  /** 自营 / 第三方；空 = 尚未设置 */
   businessMode: BusinessMode | null;
   /** 该店实际可用的收款号（本店专属号优先，回落到主体默认号）。**空 = 不能切第三方** */
   payMerchantNo: string | null;
@@ -225,6 +229,7 @@ export interface StoreMode {
 export type LegalForm = "MICRO" | "INDIVIDUAL" | "ENTERPRISE";
 
 export interface AdmissionPolicy {
+  /** 主体档位，三档锁定 */
   legalForm: LegalForm;
   /** 应缴保证金（分）；0 = 免缴 */
   requiredDepositMinor: number;
@@ -234,20 +239,31 @@ export interface AdmissionPolicy {
   dailyAmountLimitMinor: number;
   /** 1 = 禁止经营任何「需资质」品类 */
   banQualifiedCategory: number;
+  /** 额外禁售类目编码，JSON 数组字符串；空 = 无额外禁售 */
   bannedCategoryCodes?: string | null;
+  /** 1 = 该档位的限制生效；0 = 该档位不做任何限制 */
   enabled: number;
+  /** 为什么这么定 —— 回查时这句话比数字更有用 */
   remark?: string | null;
 }
 
 /** 商家保证金账户。**可用余额 = 实缴 − 冻结**，判「够不够」用可用而非实缴。 */
 export interface MerchantDeposit {
+  /** 商家主体 */
   merchantNo: string;
+  /** 实缴（分） */
   paidMinor: number;
+  /** 理赔冻结中（分） */
   frozenMinor: number;
+  /** 可用（分）= 实缴 − 冻结。**判够不够用它，不用实缴** */
   availableMinor: number;
+  /** 本档位应缴（分）；0 = 免缴 */
   requiredMinor: number;
+  /** 可用是否已达应缴。不足则该商家不能上架 */
   sufficient: boolean;
+  /** 单笔限额（分）；0 = 不限 */
   singleOrderLimitMinor: number;
+  /** 日累计限额（分）；0 = 不限 */
   dailyAmountLimitMinor: number;
 }
 
@@ -255,12 +271,18 @@ export type DepositTxnType = "PAY" | "REFUND" | "FREEZE" | "UNFREEZE" | "DEDUCT"
 
 /** 保证金流水。**只有余额字段的账户是不可审计的** —— 说不清这笔钱什么时候少的、谁扣的。 */
 export interface DepositTxn {
+  /** 流水号 */
   txnNo: string;
+  /** 变动类型 */
   txnType: DepositTxnType;
   /** 有符号：扣划为负 */
   amountMinor: number;
+  /** 变动后实缴余额（分），对账用 */
   balanceAfterMinor: number;
+  /** 变动原因 */
   reason?: string | null;
+  /** 操作人 */
   operator?: string | null;
+  /** 发生时间 */
   createdAt?: string | null;
 }

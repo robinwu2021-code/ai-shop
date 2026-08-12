@@ -1,46 +1,59 @@
 // 结算与资金 mock（P-12）。覆盖五种状态与两类失败（可重试 / 已超时），
 // 否则「重试上限」与「超时兜底」两条规则在页面上验不到。
-import type { FeeRuleVersion, Settlement, SplitRecord } from "@/lib/types";
+import type { FeeRuleVersion, Settlement, SplitLog } from "@/lib/types";
 
+/**
+ * 结算单：**一个子订单一张**，与后端 `stl_bill` 同形。
+ *
+ * 此前这里是周期汇总（period / orderCount），而后端从来不是那么结算的 ——
+ * 那份 mock 好看但对不上任何真实数据。
+ */
 export const settlements: Settlement[] = [
   {
-    settleNo: "ST9001", merchantNo: "M903", merchantName: "邻家便利", period: "2026-08-上",
-    orderCount: 128, grossAmount: 486_500, platformFee: 0, serviceFee: 7_290, netAmount: 479_210,
-    // 商家自带客流为主 → 平台佣金 0（R16 建议值）
-    status: "PENDING", retryCount: 0, frozenAt: "2026-08-06T00:00:00Z", createdAt: "2026-08-06T00:00:00Z",
+    // 自带客流 → 佣金 0（R16 建议值）
+    settleNo: "ST9001", subOrderNo: "SUB2026080501", orderNo: "SO2026080501", merchantNo: "M903",
+    grossMinor: 1_780, commissionMinor: 0, serviceFeeMinor: 27, netMinor: 1_753,
+    trafficSource: "MERCHANT_OWNED", commissionRate: 0, status: "PENDING",
+    createdAt: 1_754_438_400_000, storeNo: "ST001", payMerchantNo: "PM_M903",
+    businessMode: "THIRD_PARTY", invoiceStatus: "NO_INVOICE",
   },
   {
-    settleNo: "ST9002", merchantNo: "M902", merchantName: "老张水果店", period: "2026-08-上",
-    orderCount: 64, grossAmount: 238_400, platformFee: 4_768, serviceFee: 3_576, netAmount: 230_056,
-    status: "SPLIT", retryCount: 0, frozenAt: "2026-08-05T00:00:00Z", createdAt: "2026-08-05T00:00:00Z",
+    settleNo: "ST9002", subOrderNo: "SUB2026080502", orderNo: "SO2026080502", merchantNo: "M902",
+    grossMinor: 3_980, commissionMinor: 199, serviceFeeMinor: 60, netMinor: 3_721,
+    trafficSource: "PLATFORM", commissionRate: 500, status: "SPLIT",
+    createdAt: 1_754_352_000_000, splitAt: 1_754_355_600_000,
+    storeNo: "ST002", payMerchantNo: "PM_M902", businessMode: "THIRD_PARTY",
+    invoiceStatus: "NO_INVOICE",
   },
   {
-    // 失败 2 次：再失败一次就到上限转人工
-    settleNo: "ST9003", merchantNo: "M905", merchantName: "快修家电服务", period: "2026-08-上",
-    orderCount: 12, grossAmount: 153_600, platformFee: 4_608, serviceFee: 0, netAmount: 148_992,
-    status: "FAILED", retryCount: 2, failReason: "分账接收方账户状态异常（PSP 返回 ACCOUNT_ABNORMAL）",
-    frozenAt: "2026-08-04T00:00:00Z", createdAt: "2026-08-04T00:00:00Z",
+    // 未报备分账接收方：payMerchantNo 为空，发起分账会被拦
+    settleNo: "ST9004", subOrderNo: "SUB2026080504", orderNo: "SO2026080504", merchantNo: "M901",
+    grossMinor: 41_800, commissionMinor: 2_090, serviceFeeMinor: 627, netMinor: 39_083,
+    trafficSource: "PLATFORM", commissionRate: 500, status: "PENDING",
+    createdAt: 1_754_438_400_000, storeNo: null, payMerchantNo: null,
+    businessMode: "THIRD_PARTY", invoiceStatus: "NO_INVOICE",
   },
   {
-    // 未报备分账接收方：执行分账会被拒（M901 的 settleAccountReady = false）
-    settleNo: "ST9004", merchantNo: "M901", merchantName: "阿姨家的菜摊", period: "2026-08-上",
-    orderCount: 23, grossAmount: 41_800, platformFee: 836, serviceFee: 627, netAmount: 40_337,
-    status: "PENDING", retryCount: 0, frozenAt: "2026-08-06T00:00:00Z", createdAt: "2026-08-06T00:00:00Z",
-  },
-  {
-    // 冻结已久：用来验超时兜底
-    settleNo: "ST9005", merchantNo: "M906", merchantName: "夜市烧烤", period: "2026-07-下",
-    orderCount: 8, grossAmount: 32_000, platformFee: 640, serviceFee: 480, netAmount: 30_880,
-    status: "PENDING", retryCount: 0, frozenAt: "2026-07-01T00:00:00Z", createdAt: "2026-07-01T00:00:00Z",
+    // 自营轨道：走对账→确认→付款，不分账
+    settleNo: "ST9006", subOrderNo: "SUB2026080506", orderNo: "SO2026080506", merchantNo: "M905",
+    grossMinor: 12_800, commissionMinor: 640, serviceFeeMinor: 0, netMinor: 12_160,
+    trafficSource: "PLATFORM", commissionRate: 500, status: "PENDING_RECON",
+    createdAt: 1_754_265_600_000, storeNo: "ST005", payMerchantNo: "PM_M905",
+    businessMode: "SELF_OPERATED", invoiceStatus: "PENDING_INVOICE",
   },
 ];
 
-export const splitRecords: SplitRecord[] = [
-  { splitNo: "SP9001", settleNo: "ST9001", orderNo: "SO2026080501", merchantName: "邻家便利", trafficSource: "MERCHANT_OWNED", grossAmount: 1_780, feeRate: 0, platformFee: 0, pickupNo: "P002", serviceFee: 27, netAmount: 1_753 },
-  { splitNo: "SP9002", settleNo: "ST9001", orderNo: "SO2026080504", merchantName: "邻家便利", trafficSource: "INVITE", grossAmount: 6_550, feeRate: 300, platformFee: 197, serviceFee: 0, netAmount: 6_353 },
-  { splitNo: "SP9003", settleNo: "ST9002", orderNo: "SO2026080502", merchantName: "老张水果店", trafficSource: "MERCHANT_OWNED", grossAmount: 3_980, feeRate: 0, platformFee: 0, pickupNo: "P001", serviceFee: 60, netAmount: 3_920 },
-  { splitNo: "SP9004", settleNo: "ST9002", orderNo: "SO2026080506", merchantName: "老张水果店", trafficSource: "MERCHANT_OWNED", grossAmount: 4_580, feeRate: 0, platformFee: 0, pickupNo: "P001", serviceFee: 69, netAmount: 4_511 },
-  { splitNo: "SP9005", settleNo: "ST9003", orderNo: "SO2026080505", merchantName: "快修家电服务", trafficSource: "CHANNEL", grossAmount: 12_800, feeRate: 500, platformFee: 640, serviceFee: 0, netAmount: 12_160 },
+/** 分账指令流水：**失败的也在这里** —— 出问题时要看的恰恰是它们。 */
+export const splitRecords: SplitLog[] = [
+  { settleNo: "ST9002", subOrderNo: "SUB2026080502", splitAction: "SPLIT", amountMinor: 3_721,
+    result: "SUCCESS", requestNo: "SPL-ST9002", providerNo: "STUB-SPL-ST9002",
+    message: null, createdAt: 1_754_355_600_000 },
+  { settleNo: "ST9001", subOrderNo: "SUB2026080501", splitAction: "SUBSIDY", amountMinor: 200,
+    result: "SUCCESS", requestNo: "SUB-ST9001", providerNo: "STUB-SUB-ST9001",
+    message: null, createdAt: 1_754_442_000_000 },
+  { settleNo: "ST9004", subOrderNo: "SUB2026080504", splitAction: "SPLIT", amountMinor: 39_083,
+    result: "FAIL", requestNo: "SPL-ST9004-F1", providerNo: null,
+    message: "分账接收方账户状态异常（PSP 返回 ACCOUNT_ABNORMAL）", createdAt: 1_754_442_000_000 },
 ];
 
 /**

@@ -15,63 +15,27 @@ function find(settleNo: string): Settlement {
   return s;
 }
 
-/** 对账恒等式：gross = platformFee + serviceFee + net。三个数来自三处，不校验必对不上。 */
-function assertBalanced(s: Pick<Settlement, "grossAmount" | "platformFee" | "serviceFee" | "netAmount">) {
-  const sum = s.platformFee + s.serviceFee + s.netAmount;
-  if (sum !== s.grossAmount) {
-    fail(`对账不平：应结 ${s.grossAmount} ≠ 佣金 ${s.platformFee} + 服务费 ${s.serviceFee} + 实付 ${s.netAmount}`, `Books do not balance: gross ${s.grossAmount} ≠ commission ${s.platformFee} + service fee ${s.serviceFee} + net ${s.netAmount}`);
+/** 对账恒等式：gross = 佣金 + 服务费 + 实付。三个数来自三处，不校验必对不上。 */
+function assertBalanced(s: Settlement) {
+  const sum = s.commissionMinor + s.serviceFeeMinor + s.netMinor;
+  if (sum !== s.grossMinor) {
+    fail(`对账不平：基数 ${s.grossMinor} ≠ 佣金 ${s.commissionMinor} + 服务费 ${s.serviceFeeMinor} + 实付 ${s.netMinor}`, `Books do not balance: gross ${s.grossMinor} ≠ commission ${s.commissionMinor} + service fee ${s.serviceFeeMinor} + net ${s.netMinor}`);
   }
 }
 
 export const financeMock: FinanceApi = {
-  listSettlements: (q = {}) =>
-    wait(
-      db.paginate(db.settlements, q.page, q.size, (s) =>
-        db.eqHit(q.merchantNo, s.merchantNo) &&
-        db.eqHit(q.status, s.status) &&
-        db.eqHit(q.period, s.period) &&
-        db.kwHit(q.keyword, s.settleNo, s.merchantName, s.period),
-      ),
-    ),
+  // 两条轨道都给：运营要回答的是「这家店的钱到哪一步了」，
+  // 分开查等于让一家同时有自营店和第三方店的商家在两个页面之间对照
+  listSettlements: async (q = {}) =>
+    wait(db.settlements.filter((s) =>
+      db.eqHit(q.merchantNo, s.merchantNo)
+      && db.eqHit(q.status, s.status)
+      && db.eqHit(q.businessMode, s.businessMode ?? undefined))),
 
-  executeSplit: async (settleNo) => {
-    const s = find(settleNo);
-    assertBalanced(s);
-    // 跨域前置：没报备分账接收方，分账指令下发下去也是失败（ADR-002）
-    const merchant = db.merchants.find((m) => m.merchantNo === s.merchantNo);
-    if (!merchant?.settleAccountReady) {
-      fail(`${s.merchantName} 尚未报备分账接收方，无法分账（ADR-002）`, `${s.merchantName} has not registered a settlement account, so the split cannot run (ADR-002)`);
-    }
-    // 无限重试会把一个坏账刷成一堆日志，到上限就转人工
-    if (s.retryCount >= MAX_SPLIT_RETRY) {
-      fail(`已重试 ${s.retryCount} 次，达到上限，请人工介入处理`, `${s.retryCount} retries is the cap — this one needs a human`);
-    }
-    db.assertTransition(SETTLE_TRANSITIONS, s.status, "SPLITTING", "结算单", "Settlement");
-    if (s.status === "FAILED") s.retryCount += 1;
-    // mock 简化：指令下发即成功。真实链路是异步回执（ADR-002 走微信支付分账）
-    s.status = "SPLIT";
-    s.failReason = undefined;
-    return wait(s, 400);
-  },
-
-  freezeBackSettlement: async (settleNo) => {
-    const s = find(settleNo);
-    db.assertTransition(SETTLE_TRANSITIONS, s.status, "FROZEN_BACK", "结算单", "Settlement");
-    const days = Math.floor((Date.parse("2026-08-06T00:00:00Z") - Date.parse(s.frozenAt)) / 86_400_000);
-    if (days < db.SETTLE_FREEZE_DAYS) {
-      fail(`冻结仅 ${days} 天，未达兜底阈值 ${db.SETTLE_FREEZE_DAYS} 天，不能解冻回平台`, `Frozen for only ${days} days, short of the ${db.SETTLE_FREEZE_DAYS}-day fallback threshold — it cannot be released back yet`);
-    }
-    s.status = "FROZEN_BACK";
-    return wait(s, 400);
-  },
-
-  listSplitRecords: (q = {}) =>
-    wait(
-      db.paginate(db.splitRecords, q.page, q.size, (r) =>
-        db.eqHit(q.settleNo, r.settleNo) &&
-        db.kwHit(q.keyword, r.splitNo, r.orderNo, r.merchantName),
-      ),
-    ),
+  // 失败的指令**也给**：出问题时要看的恰恰是它们
+  listSplitRecords: async (q = {}) =>
+    wait(db.splitRecords.filter((r) =>
+      db.eqHit(q.settleNo, r.settleNo) && db.eqHit(q.action, r.splitAction))),
 
   // 队列直接由售后单派生，不另建实体：另建就有两份真相，且一定会不同步
   listRefundSplitBacks: async () => wait(db.afterSales.filter((a) => a.refundSplitPending)),

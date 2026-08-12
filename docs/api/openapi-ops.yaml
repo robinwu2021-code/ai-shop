@@ -283,14 +283,18 @@ components:
       properties: 
         storeNo: 
           type: "string"
+          description: "门店号"
         storeName: 
           type: "string"
+          description: "门店名，展示用"
         merchantNo: 
           type: "string"
+          description: "所属商家主体"
         businessMode: 
           anyOf: 
             - "$ref": "#/definitions/BusinessMode"
             - type: "null"
+          description: "自营 / 第三方；空 = 尚未设置"
         payMerchantNo: 
           type: 
             - "string"
@@ -322,6 +326,7 @@ components:
       properties: 
         legalForm: 
           "$ref": "#/definitions/LegalForm"
+          description: "主体档位，三档锁定"
         requiredDepositMinor: 
           type: "number"
           description: "应缴保证金（分）；0 = 免缴"
@@ -338,12 +343,15 @@ components:
           type: 
             - "string"
             - "null"
+          description: "额外禁售类目编码，JSON 数组字符串；空 = 无额外禁售"
         enabled: 
           type: "number"
+          description: "1 = 该档位的限制生效；0 = 该档位不做任何限制"
         remark: 
           type: 
             - "string"
             - "null"
+          description: "为什么这么定 —— 回查时这句话比数字更有用"
       required: 
         - "legalForm"
         - "requiredDepositMinor"
@@ -357,20 +365,28 @@ components:
       properties: 
         merchantNo: 
           type: "string"
+          description: "商家主体"
         paidMinor: 
           type: "number"
+          description: "实缴（分）"
         frozenMinor: 
           type: "number"
+          description: "理赔冻结中（分）"
         availableMinor: 
           type: "number"
+          description: "可用（分）= 实缴 − 冻结。**判够不够用它，不用实缴**"
         requiredMinor: 
           type: "number"
+          description: "本档位应缴（分）；0 = 免缴"
         sufficient: 
           type: "boolean"
+          description: "可用是否已达应缴。不足则该商家不能上架"
         singleOrderLimitMinor: 
           type: "number"
+          description: "单笔限额（分）；0 = 不限"
         dailyAmountLimitMinor: 
           type: "number"
+          description: "日累计限额（分）；0 = 不限"
       required: 
         - "merchantNo"
         - "paidMinor"
@@ -395,25 +411,31 @@ components:
       properties: 
         txnNo: 
           type: "string"
+          description: "流水号"
         txnType: 
           "$ref": "#/definitions/DepositTxnType"
+          description: "变动类型"
         amountMinor: 
           type: "number"
           description: "有符号：扣划为负"
         balanceAfterMinor: 
           type: "number"
+          description: "变动后实缴余额（分），对账用"
         reason: 
           type: 
             - "string"
             - "null"
+          description: "变动原因"
         operator: 
           type: 
             - "string"
             - "null"
+          description: "操作人"
         createdAt: 
           type: 
             - "string"
             - "null"
+          description: "发生时间"
       required: 
         - "txnNo"
         - "txnType"
@@ -828,6 +850,13 @@ components:
         - "count"
       additionalProperties: false
       description: "获客漏斗的一行（P-16.1.4 扫码→进店→注册→首单）。 ⚠️ 此前 interface 与环节枚举撞名叫 FunnelStep，字段写成 `step: FunnelStep` —— 自我引用"
+    CommunityApplyStatus: 
+      type: "string"
+      enum: 
+        - "PENDING"
+        - "APPROVED"
+        - "REJECTED"
+      description: "提报单的状态。\n\n与覆盖项的 PENDING **同名不同物**：那个说「这一条覆盖算不算数」， 这个说「这张提报单走到哪了」—— `APPROVED` 意味着平台已经建出了社区。"
     CommunityApply: 
       type: "object"
       properties: 
@@ -855,12 +884,7 @@ components:
           type: "string"
           description: "商家的补充说明：为什么要开这个点"
         status: 
-          type: "string"
-          enum: 
-            - "PENDING"
-            - "APPROVED"
-            - "REJECTED"
-          description: "PENDING 待审 / APPROVED 已建社区 / REJECTED 驳回"
+          "$ref": "#/definitions/CommunityApplyStatus"
         communityNo: 
           type: "string"
           description: "通过后建出来的社区号；待审与驳回时为空"
@@ -2679,69 +2703,141 @@ components:
         - "PENDING"
         - "SPLITTING"
         - "SPLIT"
-        - "FAILED"
-        - "FROZEN_BACK"
+        - "RETRYING"
+        - "MANUAL"
+        - "REVERSED"
+        - "PENDING_RECON"
+        - "CONFIRMED"
+        - "PAID"
+      description: "结算单状态。<b>两条轨道各走各的</b>： 第三方 PENDING → SPLITTING → SPLIT（分账）； 自营 PENDING_RECON → CONFIRMED → PAID（对账 → 确认 → 财务付款）。 合成一条会让「已完成」在两种模式下指向完全不同的事。"
     Settlement: 
       type: "object"
       properties: 
         settleNo: 
           type: "string"
           description: "结算单号"
+        subOrderNo: 
+          type: "string"
+          description: "对应的子订单，**一条 = 一个子订单**"
+        orderNo: 
+          type: "string"
+          description: "所属主单"
         merchantNo: 
           type: "string"
           description: "结算对象商家"
-        merchantName: 
-          type: "string"
-          description: "商家名快照"
-        period: 
-          type: "string"
-          description: "结算周期，如 2026-08-上"
-        orderCount: 
+        grossMinor: 
           type: "number"
-          description: "本期结算的子订单笔数"
-        grossAmount: 
+          description: "结算基数（分）= 实付 + 平台补贴 + 积分抵扣"
+        commissionMinor: 
           type: "number"
-          description: "应结总额（分）= 子订单实付合计"
-        platformFee: 
+          description: "平台佣金（分）"
+        serviceFeeMinor: 
           type: "number"
-          description: "平台佣金（分）。按「分账内扣」实现（12.1.6 口径待定）"
-        serviceFee: 
-          type: "number"
-          description: "自提点履约服务费（分，R15）"
-        netAmount: 
+          description: "自提点履约服务费（分）"
+        netMinor: 
           type: "number"
           description: "实付商家（分）"
+        trafficSource: 
+          type: "string"
+          description: "该单的流量来源，决定适用哪一档费率"
+        commissionRate: 
+          type: "number"
+          description: "本单快照的佣金费率（万分比）。**费率改了历史单不跟着变**"
         status: 
           "$ref": "#/definitions/SettleStatus"
-          description: "结算状态。允许的流转见 `SETTLE_TRANSITIONS`"
-        retryCount: 
-          type: "number"
-          description: "分账指令重试次数（上限见 lib/constants.ts）"
-        failReason: 
-          type: "string"
-          description: "失败原因。`status=FAILED` 时有值，人工介入据此判断"
-        frozenAt: 
-          type: "string"
-          description: "冻结开始时间：超过 freezeDays 未成功就解冻回平台"
+          description: "结算状态，两条轨道各走各的"
         createdAt: 
-          type: "string"
-          description: "结算单生成时间"
+          type: "number"
+          description: "生成时刻（毫秒）"
+        splitAt: 
+          type: 
+            - "number"
+            - "null"
+          description: "分账成功时刻；空 = 未分账"
+        storeNo: 
+          type: 
+            - "string"
+            - "null"
+          description: "哪家店挣的（统计维度）"
+        payMerchantNo: 
+          type: 
+            - "string"
+            - "null"
+          description: "打给哪个收款号（结算维度）"
+        businessMode: 
+          anyOf: 
+            - "$ref": "#/definitions/BusinessMode"
+            - type: "null"
+          description: "自营 / 第三方"
+        invoiceStatus: 
+          type: 
+            - "string"
+            - "null"
+          description: "自营：进项票状态。第三方恒为 NO_INVOICE"
+        paymentRef: 
+          type: 
+            - "string"
+            - "null"
+          description: "自营：付款凭证号。空 = 尚未付款"
       required: 
         - "settleNo"
+        - "subOrderNo"
+        - "orderNo"
         - "merchantNo"
-        - "merchantName"
-        - "period"
-        - "orderCount"
-        - "grossAmount"
-        - "platformFee"
-        - "serviceFee"
-        - "netAmount"
+        - "grossMinor"
+        - "commissionMinor"
+        - "serviceFeeMinor"
+        - "netMinor"
+        - "trafficSource"
+        - "commissionRate"
         - "status"
-        - "retryCount"
-        - "frozenAt"
         - "createdAt"
       additionalProperties: false
-      description: "结算单：一个商家一个周期一张。 ⚠️ **对账恒等式**：gross = platformFee + serviceFee + net。 这三个数分别来自三处（费率表、自提点配置、余数），不校验就会出现\"分完了还差几分钱\"。"
+      description: "结算单 = <b>一个子订单一张</b>（后端 `stl_bill`）。\n\n⚠️ 与旧类型的形状不同，是有意的。旧那个是**周期汇总** （`period` / `orderCount` / 汇总金额），而后端从来就不是那么结算的 —— 它是「订单成交即生成一张结算单」的即时模型，`/ops/settlements` 也从未实现过。 页面按周期汇总的样子做了很久，而它对不上任何真实数据。\n\n对齐方向是**改前端跟后端**：后端模型是钱真实的流向， 周期汇总只是一个没被实现的设计稿。"
+    SplitLog: 
+      type: "object"
+      properties: 
+        settleNo: 
+          type: "string"
+          description: "所属结算单"
+        subOrderNo: 
+          type: "string"
+          description: "对应的子订单"
+        splitAction: 
+          type: "string"
+          description: "SPLIT / REVERSE / SUBSIDY / SUBSIDY_RETURN"
+        amountMinor: 
+          type: "number"
+          description: "该指令的金额。**补差与分账口径不同**"
+        result: 
+          type: "string"
+          description: "SUCCESS / FAIL"
+        requestNo: 
+          type: "string"
+          description: "平台侧幂等号"
+        providerNo: 
+          type: 
+            - "string"
+            - "null"
+          description: "通道返回的单号；失败时为空"
+        message: 
+          type: 
+            - "string"
+            - "null"
+          description: "失败原因。**这一列是这张表存在的意义**"
+        createdAt: 
+          type: "number"
+          description: "指令时刻（毫秒）"
+      required: 
+        - "settleNo"
+        - "subOrderNo"
+        - "splitAction"
+        - "amountMinor"
+        - "result"
+        - "requestNo"
+        - "createdAt"
+      additionalProperties: false
+      description: "分账指令流水（后端 `stl_split_log`）。\n\n<b>结算单说的是「该给多少」，这里说的是「发了几条指令、成没成、失败在哪」</b>—— 出问题时要看的是后者。失败的记录也在这里。"
     SplitRecord: 
       type: "object"
       properties: 
@@ -2802,10 +2898,13 @@ components:
       properties: 
         ruleNo: 
           type: "string"
+          description: "规则版本号"
         businessMode: 
           "$ref": "#/definitions/BusinessMode"
+          description: "经营模式，费率的第一个维度"
         trafficSource: 
           "$ref": "#/definitions/FeeTrafficSource"
+          description: "适用的流量来源，费率的第二个维度"
         rateBp: 
           type: "number"
           description: "万分比。500 = 5%"
@@ -2814,6 +2913,7 @@ components:
           description: "生效时刻（毫秒）。**填未来时刻 = 预约生效**"
         enabled: 
           type: "number"
+          description: "1 = 该版本生效；0 = 已停用（回退到上一版）"
         remark: 
           type: 
             - "string"
@@ -2821,8 +2921,10 @@ components:
           description: "为什么调这一次 —— 回查时这句话比数字更有用"
         createdAt: 
           type: "string"
+          description: "创建时间"
         createdBy: 
           type: "string"
+          description: "创建人"
       required: 
         - "ruleNo"
         - "businessMode"
@@ -5420,7 +5522,7 @@ paths:
   "/ops/settlements": 
     get: 
       operationId: "listSettlements"
-      summary: "listSettlements"
+      summary: "结算单列表"
       tags: 
         - "finance"
       responses: 
@@ -5437,104 +5539,14 @@ paths:
                   msg: 
                     type: "string"
                   data: 
-                    type: "object"
-                    properties: 
-                      records: 
-                        type: "array"
-                        items: 
-                          "$ref": "#/components/schemas/Settlement"
-                      total: 
-                        type: "integer"
-                      page: 
-                        type: "integer"
-                      size: 
-                        type: "integer"
-                    required: 
-                      - "records"
-                      - "total"
-                      - "page"
-                      - "size"
+                    type: "array"
+                    items: 
+                      "$ref": "#/components/schemas/Settlement"
                 required: 
                   - "code"
                   - "msg"
                   - "data"
       description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
-  "/ops/settlements/{no}/split": 
-    post: 
-      operationId: "executeSplit"
-      summary: "下发分账指令（P-12.1.3）"
-      tags: 
-        - "finance"
-      responses: 
-        "200": 
-          description: "成功"
-          content: 
-            "application/json": 
-              schema: 
-                type: "object"
-                properties: 
-                  code: 
-                    type: "integer"
-                    description: "0 表示成功"
-                  msg: 
-                    type: "string"
-                  data: 
-                    "$ref": "#/components/schemas/Settlement"
-                required: 
-                  - "code"
-                  - "msg"
-                  - "data"
-      parameters: 
-        - name: "no"
-          in: "path"
-          required: true
-          schema: 
-            type: "string"
-      requestBody: 
-        required: true
-        content: 
-          "application/json": 
-            schema: 
-              type: "object"
-        description: "请求体字段见对应契约方法的入参。"
-  "/ops/settlements/{no}/freeze-back": 
-    post: 
-      operationId: "freezeBackSettlement"
-      summary: "超时兜底（P-12.1.4）：冻结超过 freezeDays 仍未成功的，解冻回平台"
-      tags: 
-        - "finance"
-      responses: 
-        "200": 
-          description: "成功"
-          content: 
-            "application/json": 
-              schema: 
-                type: "object"
-                properties: 
-                  code: 
-                    type: "integer"
-                    description: "0 表示成功"
-                  msg: 
-                    type: "string"
-                  data: 
-                    "$ref": "#/components/schemas/Settlement"
-                required: 
-                  - "code"
-                  - "msg"
-                  - "data"
-      parameters: 
-        - name: "no"
-          in: "path"
-          required: true
-          schema: 
-            type: "string"
-      requestBody: 
-        required: true
-        content: 
-          "application/json": 
-            schema: 
-              type: "object"
-        description: "请求体字段见对应契约方法的入参。"
   "/ops/split-records": 
     get: 
       operationId: "listSplitRecords"
@@ -5555,23 +5567,9 @@ paths:
                   msg: 
                     type: "string"
                   data: 
-                    type: "object"
-                    properties: 
-                      records: 
-                        type: "array"
-                        items: 
-                          "$ref": "#/components/schemas/SplitRecord"
-                      total: 
-                        type: "integer"
-                      page: 
-                        type: "integer"
-                      size: 
-                        type: "integer"
-                    required: 
-                      - "records"
-                      - "total"
-                      - "page"
-                      - "size"
+                    type: "array"
+                    items: 
+                      "$ref": "#/components/schemas/SplitLog"
                 required: 
                   - "code"
                   - "msg"

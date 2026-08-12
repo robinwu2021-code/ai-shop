@@ -3,20 +3,39 @@
 // 售后的 refundSplitPending 这四个**已存在的字段**接起来。
 import type { TrafficSource } from "./order";
 
+/**
+ * 结算单状态。<b>两条轨道各走各的</b>：
+ * 第三方 PENDING → SPLITTING → SPLIT（分账）；
+ * 自营 PENDING_RECON → CONFIRMED → PAID（对账 → 确认 → 财务付款）。
+ * 合成一条会让「已完成」在两种模式下指向完全不同的事。
+ */
 export type SettleStatus =
-  | "PENDING"      // 已生成，待下发分账指令
-  | "SPLITTING"    // 指令已下发，等回执
-  | "SPLIT"        // 分账成功（终态）
-  | "FAILED"       // 失败，等人工介入
-  | "FROZEN_BACK"; // 超时兜底：解冻回平台（终态，12.1.4）
+  | "PENDING"        // 第三方：已生成，待下发分账指令
+  | "SPLITTING"      // 指令已下发，等回执
+  | "SPLIT"          // 分账成功（第三方终态）
+  | "RETRYING"       // 失败重试中
+  | "MANUAL"         // 转人工
+  | "REVERSED"       // 已回退分账
+  | "PENDING_RECON"  // 自营：待对账
+  | "CONFIRMED"      // 自营：已确认应付
+  | "PAID";          // 自营：已付款（自营终态）
 
+/**
+ * 允许的状态流转。<b>两条轨道互不相通</b>：第三方的单不会走到 PAID，
+ * 自营的单不会走到 SPLIT —— 它们的钱根本不是同一条路径下去的。
+ */
 export const SETTLE_TRANSITIONS: Record<SettleStatus, SettleStatus[]> = {
-  PENDING: ["SPLITTING", "FROZEN_BACK"],
-  SPLITTING: ["SPLIT", "FAILED"],
-  // 失败可重试（回到下发中），也可能被超时兜底收走
-  FAILED: ["SPLITTING", "FROZEN_BACK"],
-  SPLIT: [],
-  FROZEN_BACK: [],
+  // 第三方轨道
+  PENDING: ["SPLITTING", "RETRYING"],
+  SPLITTING: ["SPLIT", "RETRYING"],
+  RETRYING: ["SPLITTING", "MANUAL"],
+  MANUAL: [],
+  SPLIT: ["REVERSED"],
+  REVERSED: [],
+  // 自营轨道
+  PENDING_RECON: ["CONFIRMED"],
+  CONFIRMED: ["PAID"],
+  PAID: [],
 };
 
 /**
@@ -24,35 +43,82 @@ export const SETTLE_TRANSITIONS: Record<SettleStatus, SettleStatus[]> = {
  * ⚠️ **对账恒等式**：gross = platformFee + serviceFee + net。
  * 这三个数分别来自三处（费率表、自提点配置、余数），不校验就会出现"分完了还差几分钱"。
  */
+/**
+ * 结算单 = <b>一个子订单一张</b>（后端 `stl_bill`）。
+ *
+ * ⚠️ 与旧类型的形状不同，是有意的。旧那个是**周期汇总**
+ * （`period` / `orderCount` / 汇总金额），而后端从来就不是那么结算的 ——
+ * 它是「订单成交即生成一张结算单」的即时模型，`/ops/settlements` 也从未实现过。
+ * 页面按周期汇总的样子做了很久，而它对不上任何真实数据。
+ *
+ * 对齐方向是**改前端跟后端**：后端模型是钱真实的流向，
+ * 周期汇总只是一个没被实现的设计稿。
+ */
 export interface Settlement {
   /** 结算单号 */
   settleNo: string;
+  /** 对应的子订单，**一条 = 一个子订单** */
+  subOrderNo: string;
+  /** 所属主单 */
+  orderNo: string;
   /** 结算对象商家 */
   merchantNo: string;
-  /** 商家名快照 */
-  merchantName: string;
-  /** 结算周期，如 2026-08-上 */
-  period: string;
-  /** 本期结算的子订单笔数 */
-  orderCount: number;
-  /** 应结总额（分）= 子订单实付合计 */
-  grossAmount: number;
-  /** 平台佣金（分）。按「分账内扣」实现（12.1.6 口径待定） */
-  platformFee: number;
-  /** 自提点履约服务费（分，R15） */
-  serviceFee: number;
+  /** 结算基数（分）= 实付 + 平台补贴 + 积分抵扣 */
+  grossMinor: number;
+  /** 平台佣金（分） */
+  commissionMinor: number;
+  /** 自提点履约服务费（分） */
+  serviceFeeMinor: number;
   /** 实付商家（分） */
-  netAmount: number;
-  /** 结算状态。允许的流转见 `SETTLE_TRANSITIONS` */
+  netMinor: number;
+  /** 该单的流量来源，决定适用哪一档费率 */
+  trafficSource: string;
+  /** 本单快照的佣金费率（万分比）。**费率改了历史单不跟着变** */
+  commissionRate: number;
+  /** 结算状态，两条轨道各走各的 */
   status: SettleStatus;
-  /** 分账指令重试次数（上限见 lib/constants.ts） */
-  retryCount: number;
-  /** 失败原因。`status=FAILED` 时有值，人工介入据此判断 */
-  failReason?: string;
-  /** 冻结开始时间：超过 freezeDays 未成功就解冻回平台 */
-  frozenAt: string;
-  /** 结算单生成时间 */
-  createdAt: string;
+  /** 生成时刻（毫秒） */
+  createdAt: number;
+  /** 分账成功时刻；空 = 未分账 */
+  splitAt?: number | null;
+  /** 哪家店挣的（统计维度） */
+  storeNo?: string | null;
+  /** 打给哪个收款号（结算维度） */
+  payMerchantNo?: string | null;
+  /** 自营 / 第三方 */
+  businessMode?: BusinessMode | null;
+  /** 自营：进项票状态。第三方恒为 NO_INVOICE */
+  invoiceStatus?: string | null;
+  /** 自营：付款凭证号。空 = 尚未付款 */
+  paymentRef?: string | null;
+}
+
+/**
+ * 分账指令流水（后端 `stl_split_log`）。
+ *
+ * <b>结算单说的是「该给多少」，这里说的是「发了几条指令、成没成、失败在哪」</b>——
+ * 出问题时要看的是后者。失败的记录也在这里。
+ */
+export interface SplitLog {
+  /** 所属结算单 */
+  settleNo: string;
+  /** 对应的子订单 */
+  subOrderNo: string;
+  /** SPLIT / REVERSE / SUBSIDY / SUBSIDY_RETURN */
+  splitAction: string;
+  /** 该指令的金额。**补差与分账口径不同** */
+  amountMinor: number;
+  /** SUCCESS / FAIL */
+  /** SUCCESS / FAIL */
+  result: string;
+  /** 平台侧幂等号 */
+  requestNo: string;
+  /** 通道返回的单号；失败时为空 */
+  providerNo?: string | null;
+  /** 失败原因。**这一列是这张表存在的意义** */
+  message?: string | null;
+  /** 指令时刻（毫秒） */
+  createdAt: number;
 }
 
 /** 分账明细：一条 = 一个子订单。费率按 trafficSource 分档（R16）。 */
@@ -112,17 +178,23 @@ export type FeeTrafficSource = "MERCHANT_OWNED" | "PLATFORM";
  *   而真正会被问到的是「上个月那批单当时按什么费率算的」。
  */
 export interface FeeRuleVersion {
+  /** 规则版本号 */
   ruleNo: string;
+  /** 经营模式，费率的第一个维度 */
   businessMode: BusinessMode;
+  /** 适用的流量来源，费率的第二个维度 */
   trafficSource: FeeTrafficSource;
   /** 万分比。500 = 5% */
   rateBp: number;
   /** 生效时刻（毫秒）。**填未来时刻 = 预约生效** */
   effectiveFrom: number;
+  /** 1 = 该版本生效；0 = 已停用（回退到上一版） */
   enabled: number;
   /** 为什么调这一次 —— 回查时这句话比数字更有用 */
   remark?: string | null;
+  /** 创建时间 */
   createdAt?: string;
+  /** 创建人 */
   createdBy?: string;
 }
 
