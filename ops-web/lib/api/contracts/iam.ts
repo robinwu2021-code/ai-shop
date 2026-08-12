@@ -42,9 +42,11 @@ export interface IamApi {
   /**
    * 删角色。**还有人在用会被拒（10441）** —— 用 `staffCount` 提前拦在点击之前。
    *
-   * 叫 `remove*` 而不是 `delete*`：命名约定禁止 `delete*`，因为这个仓库里
-   * 「删」几乎都是软删除（archive/unarchive）。**角色这个是真删**，
-   * 用 archive 反而是撒谎 —— 所以取了第三个词。
+   * 叫 `remove*` 而不是 `delete*` / `archive*`：命名约定禁止 `delete*`，
+   * 而 `archive*` 按约定要配一个 `unarchive*`，角色没有「恢复」这条路。
+   *
+   * ⚠️ 实测更正：它**是逻辑删除**（行还在，`deleted=1`），
+   * 我一开始在这里写的「角色这个是真删」是错的。
    */
   removeRole(roleCode: string): Promise<void>;
 
