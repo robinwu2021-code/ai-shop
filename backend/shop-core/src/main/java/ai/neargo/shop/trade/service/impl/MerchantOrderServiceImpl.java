@@ -207,6 +207,12 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
                         Boolean.TRUE.equals(i.getIsGift())))
                 .toList();
 
+        // paidAt 只在主单上（子单没有这一列），同 toOpsVO 的做法 join 回去取
+        var main = DataScopeContext.executeWithoutScope(() ->
+                orderMapper.selectOne(Wrappers.<ai.neargo.shop.trade.entity.OrdOrder>lambdaQuery()
+                        .eq(ai.neargo.shop.trade.entity.OrdOrder::getOrderNo, s.getOrderNo())
+                        .last("limit 1")));
+
         return new OrderVO(s.getSubOrderNo(), s.getOrderNo(),
                 // 同 C 端：下发展示状态。b-app 的「待发货/已发货/待核销」三个标签页靠它区分
                 OrderStatusView.of(s.getStatus(), s.getFulfillment()), s.getFulfillment(),
@@ -217,7 +223,7 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
                 null,
                 s.getCreatedAt() == null ? 0L
                         : s.getCreatedAt().atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli(),
-                null,
+                main == null ? null : main.getPaidAt(),
                 // 商家也要看得到自己填了什么单号 —— 否则改单号之后无从核对
                 s.getExpressNo(), s.getTrafficSource(), receiverFor(s), List.of(), null);
     }
