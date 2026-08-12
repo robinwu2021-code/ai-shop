@@ -76,8 +76,15 @@ management:
 
 shop:
   auth:
-    # memory=本地零依赖；生产必须 redis，否则多实例部署换实例即掉线
+    # memory / ehcache / redis，取舍见 TokenStoreConfig 的类注释。
+    #   memory  = 零依赖但**重启即全员掉线**，只适合测试
+    #   ehcache = 零依赖 + 本地磁盘持久化，**单实例部署用它**
+    #   redis   = 多副本部署的唯一选项（会话要跨实例共享）
     token-store: ${SHOP_TOKEN_STORE:memory}
+    ehcache:
+      # 每个实例独占一个目录：Ehcache 会加文件锁，两个实例指同一个目录时后启动的起不来
+      dir: ${SHOP_SESSION_DIR:./data/sessions}
+      disk-mb: ${SHOP_SESSION_DISK_MB:64}
   default-skin: fresh
   min-app-ver: 1.0.0
   service-hours: "09:00-21:00"
