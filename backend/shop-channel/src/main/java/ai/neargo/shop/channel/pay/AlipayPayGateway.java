@@ -154,4 +154,40 @@ public class AlipayPayGateway implements PayGateway {
             return e.isRetryable() ? Result.retry(e.getMessage()) : Result.fatal(e.getMessage());
         }
     }
+
+    /**
+     * 查单。支付宝的 {@code trade_status} 里<b>两个值都算已支付</b>：
+     * TRADE_SUCCESS（可退款）与 TRADE_FINISHED（已完成、不可退款）——
+     * 只认前者的话，超过退款期的老单会被判成未支付，然后被关掉。
+     *
+     * <p>交易不存在时支付宝返回 {@code ACQ.TRADE_NOT_EXIST}，
+     * 那是「通道没有这笔」，与查询失败不同。
+     */
+    @Override
+    public QueryResult query(String outTradeNo) {
+        try {
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("out_trade_no", outTradeNo);
+            Map<String, Object> resp = client.post(AlipayApis.TRADE_QUERY, body);
+            Object sub = resp.get("sub_code");
+            if (sub != null && String.valueOf(sub).contains("TRADE_NOT_EXIST")) {
+                return QueryResult.notFound();
+            }
+            Object status = resp.get("trade_status");
+            if (!"TRADE_SUCCESS".equals(status) && !"TRADE_FINISHED".equals(status)) {
+                return QueryResult.unpaid();
+            }
+            // 支付宝金额是元（字符串），我方一律最小单位
+            Object amount = resp.get("total_amount");
+            long minor = amount == null ? 0L
+                    : new java.math.BigDecimal(String.valueOf(amount))
+                            .movePointRight(2).longValueExact();
+            return QueryResult.paid(minor, String.valueOf(resp.get("trade_no")));
+        } catch (ChannelClient.ChannelException e) {
+            return QueryResult.failed();
+        } catch (ArithmeticException | NumberFormatException e) {
+            // 金额解析不出来时**不当作已支付** —— 宁可下一轮再查
+            return QueryResult.failed();
+        }
+    }
 }

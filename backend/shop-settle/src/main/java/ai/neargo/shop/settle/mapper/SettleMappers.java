@@ -31,6 +31,9 @@ public final class SettleMappers {
     public interface SplitLogMapper extends BaseMapper<StlSplitLog> {
     }
 
+    public interface ReconDiffMapper extends BaseMapper<ai.neargo.shop.settle.entity.StlReconDiff> {
+    }
+
     public interface PaymentMapper extends BaseMapper<StlPayment> {
     }
 

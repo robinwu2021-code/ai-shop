@@ -42,6 +42,16 @@ public interface OrderService {
      */
     int closeExpiredOrders(long now);
 
+    /**
+     * 关掉指定的一笔待支付单（对账自查用：通道明确回「没有这笔」）。
+     *
+     * <p>与 {@link #closeExpiredOrders} 走同一段关单逻辑 —— 关单要连着释放库存、券、积分，
+     * 两处各写一遍的话，漏掉的那一项会让库存一直占着，而没有任何报错。
+     *
+     * <p>已经不是待支付就当没事发生：对账每一轮都可能再撞到同一笔。
+     */
+    void closeUnpaid(String orderNo, String reason);
+
     /** 订单列表：**子单粒度**（Q6）—— 用户心智里「订单」就是按店分的。 */
     PageData<OrderVO> list(String status, long page, long size);
 

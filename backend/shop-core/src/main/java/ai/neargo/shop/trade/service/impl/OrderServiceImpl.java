@@ -756,29 +756,52 @@ public class OrderServiceImpl implements OrderService {
                 .le(OrdOrder::getPayDeadlineAt, now));
 
         for (OrdOrder order : expired) {
-            // 状态先改再释放库存：改失败（并发下已被支付）就不该释放
-            order.setStatus(OrdOrder.CLOSED);
-            order.setCancelReason("支付超时");
-            orderMapper.updateById(order);
-
-            for (OrdSubOrder sub : subOrders(order.getOrderNo())) {
-                if (!OrdSubOrder.WAIT_PAY.equals(sub.getStatus())) {
-                    continue;
-                }
-                sub.setStatus(OrdSubOrder.CANCELLED);
-                subOrderMapper.updateById(sub);
-                appendStatusLog(sub.getSubOrderNo(), OrdSubOrder.CANCELLED, "支付超时，订单关闭",
-                        OrdStatusLog.BY_SYSTEM, null);
-            }
-            // 幂等：release 只作用于 LOCKED 的锁定行，重复跑不会把库存加两遍
-            stockPort.release(order.getOrderNo());
-            couponPort.release(order.getOrderNo());
-            // 同上，积分逐子单退。reverse 只认 PENDING 的 USE 流水，重复跑不会退两次
-            for (OrdSubOrder sub : subOrders(order.getOrderNo())) {
-                pointsPort.reverse(sub.getSubOrderNo(), "支付超时，订单关闭");
-            }
+            closeOne(order, "支付超时");
         }
         return expired.size();
+    }
+
+    /**
+     * 关掉一笔待支付的单。
+     *
+     * <p>抽出来是因为对账自查也要用它：通道明确回「没有这笔」时，那单可以安全关掉。
+     * <b>两处必须走同一段代码</b> —— 关单要连着释放库存、券、积分，
+     * 各写一遍的话，漏掉的那一项会让库存或券一直占着，而没有任何报错。
+     */
+    void closeOne(OrdOrder order, String reason) {
+        // 状态先改再释放库存：改失败（并发下已被支付）就不该释放
+        order.setStatus(OrdOrder.CLOSED);
+        order.setCancelReason(reason);
+        orderMapper.updateById(order);
+
+        for (OrdSubOrder sub : subOrders(order.getOrderNo())) {
+            if (!OrdSubOrder.WAIT_PAY.equals(sub.getStatus())) {
+                continue;
+            }
+            sub.setStatus(OrdSubOrder.CANCELLED);
+            subOrderMapper.updateById(sub);
+            appendStatusLog(sub.getSubOrderNo(), OrdSubOrder.CANCELLED, reason + "，订单关闭",
+                    OrdStatusLog.BY_SYSTEM, null);
+        }
+        // 幂等：release 只作用于 LOCKED 的锁定行，重复跑不会把库存加两遍
+        stockPort.release(order.getOrderNo());
+        couponPort.release(order.getOrderNo());
+        // 同上，积分逐子单退。reverse 只认 PENDING 的 USE 流水，重复跑不会退两次
+        for (OrdSubOrder sub : subOrders(order.getOrderNo())) {
+            pointsPort.reverse(sub.getSubOrderNo(), reason + "，订单关闭");
+        }
+    }
+
+    /** 按单号关一笔待支付的单。已经不是待支付就当没事发生 —— 对账每轮都可能再撞到它 */
+    @Override
+    @Transactional
+    public void closeUnpaid(String orderNo, String reason) {
+        OrdOrder order = orderMapper.selectOne(Wrappers.<OrdOrder>lambdaQuery()
+                .eq(OrdOrder::getOrderNo, orderNo).last("limit 1"));
+        if (order == null || !OrdOrder.WAIT_PAY.equals(order.getStatus())) {
+            return;
+        }
+        closeOne(order, reason);
     }
 
     @Override

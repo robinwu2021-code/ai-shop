@@ -48,6 +48,15 @@ public final class WechatApis {
      */
     public static final String REFUND = "/v3/ecommerce/refunds/apply";
 
+    /**
+     * 支付查单（按商户订单号）。<b>GET</b>，路径末尾拼 out_trade_no，query 带 mchid。
+     *
+     * <p>返回的 {@code trade_state}：SUCCESS / REFUND / NOTPAY / CLOSED /
+     * REVOKED / USERPAYING / PAYERROR。**只有 SUCCESS 才是已支付** ——
+     * USERPAYING（用户支付中）当成已支付的话，会给一笔还没付的单发货。
+     */
+    public static final String TRANSACTION_BY_OUT_TRADE_NO = "/v3/pay/transactions/out-trade-no/";
+
     /** 二级商户进件。 */
     public static final String APPLYMENT = "/v3/ecommerce/applyments/";
 }

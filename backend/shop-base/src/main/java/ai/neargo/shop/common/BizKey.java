@@ -63,6 +63,8 @@ public final class BizKey {
 
     /** 收款商户号业务键。**不是二级商户号本身** —— 那个由通道给，存在 sub_mchid */
     public static final String PAY_MERCHANT = "PM";
+    /** 对账差异单 */
+    public static final String RECON_DIFF = "RD";
     /** 保证金流水 */
     public static final String DEPOSIT_TXN = "DP";
     /** 积分流水 */

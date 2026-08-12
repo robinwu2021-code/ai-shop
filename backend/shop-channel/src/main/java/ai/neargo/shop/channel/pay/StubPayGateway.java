@@ -55,4 +55,17 @@ public class StubPayGateway implements PayGateway {
                 ctx.tradeNo(), amountMinor, requestNo, reason);
         return Result.ok("STUB-REFUND-" + requestNo);
     }
+
+    /**
+     * 假查单：<b>恒定回「通道没有这笔」</b>，不是「已支付」。
+     *
+     * <p>回「已支付」的话，开发库里每一笔停在 PENDING 的单都会被自动补成已付 ——
+     * 那会让对账自查看起来一直在工作，而它其实什么都没验证。
+     * 回 notFound 则会走关单分支，与真实的「发起失败」一致。
+     */
+    @Override
+    public QueryResult query(String outTradeNo) {
+        log.info("[stub] 查单 out_trade_no={} → 通道无此单", outTradeNo);
+        return QueryResult.notFound();
+    }
 }

@@ -47,6 +47,13 @@ public final class AlipayApis {
      */
     public static final String REFUND = "alipay.trade.refund";
 
+    /**
+     * 交易查询。返回 {@code trade_status}：WAIT_BUYER_PAY / TRADE_CLOSED /
+     * TRADE_SUCCESS / TRADE_FINISHED。**只有后两个算已支付**
+     * （TRADE_FINISHED 是已完成不可退款，钱同样收到了）。
+     */
+    public static final String TRADE_QUERY = "alipay.trade.query";
+
     /** 二级商户进件。 */
     public static final String SUB_MERCHANT_CREATE = "ant.merchant.expand.indirect.zft.create";
 

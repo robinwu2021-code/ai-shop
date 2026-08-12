@@ -2040,6 +2040,36 @@ CREATE TABLE IF NOT EXISTS sys_role_member
     CONSTRAINT uk_role_member UNIQUE (end_code,subject_no,role_code,scope_no)
 );
 
+CREATE TABLE IF NOT EXISTS stl_recon_diff
+(
+    id BIGINT(20) NOT NULL AUTO_INCREMENT,
+    diff_no VARCHAR(64) NOT NULL,
+    bill_date VARCHAR(10) NOT NULL,
+    pay_channel VARCHAR(16) NOT NULL,
+    diff_type VARCHAR(24) NOT NULL,
+    source VARCHAR(16) NOT NULL DEFAULT 'SELF_CHECK',
+    payment_no VARCHAR(64) DEFAULT NULL,
+    order_no VARCHAR(64) DEFAULT NULL,
+    channel_txn_no VARCHAR(64) DEFAULT NULL,
+    channel_amount_minor BIGINT(20) NOT NULL DEFAULT 0,
+    platform_amount_minor BIGINT(20) NOT NULL DEFAULT 0,
+    status VARCHAR(16) NOT NULL DEFAULT 'PENDING',
+    resolution VARCHAR(255) DEFAULT NULL,
+    recovered_order_no VARCHAR(64) DEFAULT NULL,
+    resolved_at BIGINT(20) DEFAULT NULL,
+    resolved_by VARCHAR(64) DEFAULT NULL,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT(20) NOT NULL DEFAULT 0,
+    deleted TINYINT(4) NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_recon_diff_no UNIQUE (diff_no),
+    CONSTRAINT uk_recon_diff_payment UNIQUE (bill_date,pay_channel,payment_no,diff_type)
+);
+
 -- 种子数据
 INSERT INTO sys_industry VALUES
 (1,'CATERING','餐饮',10,1,1,0,0,'微信小微白名单内','MAIN','2026-08-09 12:49:36','SYSTEM','2026-08-09 12:49:36',NULL,0,0),

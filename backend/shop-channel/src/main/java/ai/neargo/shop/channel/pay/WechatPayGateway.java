@@ -103,6 +103,37 @@ public class WechatPayGateway implements PayGateway {
 
     // ---------------------------------------------------------------- 内部
 
+    /**
+     * 查单。<b>只有 {@code trade_state=SUCCESS} 算已支付</b> ——
+     * USERPAYING（用户支付中）当成已支付的话，会给一笔还没付的单发货；
+     * 而 NOTPAY / CLOSED 是「通道有这笔但没付」，与「通道根本没这笔」不同：
+     * 前者不能补单，后者可以安全关单。
+     */
+    @Override
+    public QueryResult query(String outTradeNo) {
+        try {
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("out_trade_no", outTradeNo);
+            Map<String, Object> resp = client.post(
+                    WechatApis.TRANSACTION_BY_OUT_TRADE_NO + outTradeNo, body);
+            Object state = resp.get("trade_state");
+            if (state == null) {
+                // 通道没有这笔（微信对不存在的单返回 ORDERNOTEXIST）
+                return QueryResult.notFound();
+            }
+            if (!"SUCCESS".equals(state)) {
+                return QueryResult.unpaid();
+            }
+            Object amount = resp.get("amount");
+            long minor = amount instanceof Map<?, ?> m && m.get("total") instanceof Number n
+                    ? n.longValue() : 0L;
+            return QueryResult.paid(minor, String.valueOf(resp.get("transaction_id")));
+        } catch (ChannelClient.ChannelException e) {
+            // 查询失败 ≠ 没有这笔。返回 failed 让对账留到下一轮，别关单
+            return QueryResult.failed();
+        }
+    }
+
     private Result call(String api, Map<String, Object> body, String idField) {
         try {
             Map<String, Object> resp = client.post(api, body);

@@ -25,6 +25,55 @@ public interface PayGateway {
     String payChannel();
 
     /**
+     * 查单：拿我方流水号问通道「这笔到底付了没有」。
+     *
+     * <p><b>这是掉单唯一能自动止血的手段。</b> 回调会丢（网络、我方 502、通道重试耗尽），
+     * 丢了之后我方那笔停在 PENDING，而用户的钱**已经扣了** ——
+     * 他看到的是「订单不见了」，我方看到的是一笔没下文的待支付。
+     * 没有查单的话，这种单只能等对账日、或者等用户投诉。
+     *
+     * <p>与回调是同一个真相的两个来源，所以处理必须<b>同一套</b>：
+     * 查到已支付就走原本的支付成功链路（幂等键 {@code paymentNo} 保证不会重复入账），
+     * 而不是另写一段「补一下状态」—— 那段会漏掉发券、积分、通知里的某一个。
+     *
+     * @param outTradeNo 我方流水号（{@code stl_payment.out_trade_no}）
+     * @return 通道侧的真实状态；<b>查不到这笔返回 {@link QueryResult#notFound()}</b> ——
+     *         「通道没有这笔」与「查询失败」必须分开：前者可以安全关单，
+     *         后者关单就可能把一笔已付的单关掉
+     */
+    QueryResult query(String outTradeNo);
+
+    /**
+     * 查单结果。
+     *
+     * @param ok        查询本身是否成功。<b>false 时下面的字段都不可信</b>
+     * @param paid      通道侧是否已支付成功
+     * @param found     通道有没有这笔单
+     * @param amountMinor 通道侧金额（分）—— 与我方不符时是 AMOUNT_DIFF
+     * @param tradeNo   通道流水号
+     */
+    record QueryResult(boolean ok, boolean paid, boolean found, long amountMinor, String tradeNo) {
+        public static QueryResult paid(long amountMinor, String tradeNo) {
+            return new QueryResult(true, true, true, amountMinor, tradeNo);
+        }
+
+        /** 通道有这笔但还没付（用户没付完、或已关闭） */
+        public static QueryResult unpaid() {
+            return new QueryResult(true, false, true, 0, null);
+        }
+
+        /** 通道根本没有这笔 —— 我方发起失败，可以安全关单 */
+        public static QueryResult notFound() {
+            return new QueryResult(true, false, false, 0, null);
+        }
+
+        /** 查询本身失败（网络、鉴权、限流）。<b>不可据此关单</b> */
+        public static QueryResult failed() {
+            return new QueryResult(false, false, false, 0, null);
+        }
+    }
+
+    /**
      * 补差：把平台补贴的金额转入二级商户账户，使其入账等于订单全额。
      *
      * <p><b>时序是硬约束</b>：微信要求「订单支付成功并结算完成后、发起分账前」。
