@@ -17,7 +17,7 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
-const OUT = join(ROOT, "docs/technical/三端功能点矩阵.md");
+const OUT = join(ROOT, "docs/technical/reference/三端功能点矩阵.md");
 
 /** 折叠路径参数：比的是形状不是参数名。与另两个生成器同一口径 */
 const norm = (p) => p.replace(/[:{](\w+)\}?/g, "{id}").replace(/\/$/, "") || "/";

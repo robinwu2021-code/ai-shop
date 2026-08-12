@@ -11,7 +11,7 @@
  * 按表名前缀分域，每张图只画本域的表，跨域引用单独列出来。
  *
  * 用法：npm run gen:erd
- * 查看：docs/technical/数据库-ER图.html（侧栏导航 + 内联 SVG），或 .md 走编辑器预览
+ * 查看：docs/technical/reference/数据库-ER图.html（侧栏导航 + 内联 SVG），或 .md 走编辑器预览
  */
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { domainOverview, tableGraph } from "./lib/svg-erd.mjs";
@@ -20,9 +20,9 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
-const OUT = join(ROOT, "docs/technical/数据库-ER图.md");
+const OUT = join(ROOT, "docs/technical/reference/数据库-ER图.md");
 const DIAG = join(ROOT, "docs/technical/diagrams");
-const OUT_HTML = join(ROOT, "docs/technical/数据库-ER图.html");
+const OUT_HTML = join(ROOT, "docs/technical/reference/数据库-ER图.html");
 
 /** 表名前缀 → 域。顺序即输出顺序 */
 const DOMAINS = [

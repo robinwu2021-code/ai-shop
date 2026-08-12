@@ -138,7 +138,7 @@ export const FIELDS = [
 /**
  * 显式不比对的项。每条都要写清楚**为什么这个差异是对的**，
  * 而不是「暂时先放过」—— 后者会让这张表变成垃圾场（豁免名单静音过一次真 bug，
- * 见 docs/technical/枚举统一方案.md §0）。
+ * 见 docs/technical/design/枚举统一方案.md §0）。
  */
 const INTENTIONAL = new Map([
   [
@@ -147,7 +147,7 @@ const INTENTIONAL = new Map([
       "秒杀场按投放位置分组做重叠校验），由运营建；mkt_campaign 是店铺级活动" +
       "（entity_no NOT NULL，不跨店），由商家建。后端确无对应表。" +
       "按 mkt_campaign 那套改名等于把两个概念合并成一个 —— 见 " +
-      "ops-web/lib/types/marketing.ts 的注释与 docs/technical/营销枚举对账报告.md §1③。",
+      "ops-web/lib/types/marketing.ts 的注释与 docs/technical/archive/营销枚举对账报告.md §1③。",
   ],
   [
     "shared:MerchantStatus",
