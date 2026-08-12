@@ -11,7 +11,7 @@ import { useI18n } from "vue-i18n";
 import { useMerchantStore } from "@/stores/merchant";
 import { ROUTES } from "@/shared/nav";
 import { money } from "@shared/utils/money";
-import { SERVICE_SCOPE } from "@shared/utils/constants";
+import { FULFILLMENT_REACH, SERVICE_SCOPE } from "@shared/utils/constants";
 import type { MerchantStats, MerchantTodo, PaymentApplyment, StoreProfile } from "@shared/types";
 
 const { t } = useI18n();
@@ -37,7 +37,21 @@ const canReceive = computed(() => payments.value.some((p) => p.canReceiveMoney))
 const visible = computed(() => {
   const st = store.value;
   if (!st) return false;
-  // 「仅本社区」却一个都没选 = 对谁都不可见；其余两档天然可见
+  /*
+   * **按新模型判**（ADR-013 阶段二：fulfillmentReach + serviceAreas）。
+   *
+   * 此前读的是 `serviceScope / serviceCommunityNos` —— 那两个字段已 deprecated，
+   * 店铺页保存的是 `serviceAreas`，后端也不再回填旧字段。
+   * 于是店主选完小区、保存成功、C 端确实可见了，**工作台那条红字还在**，
+   * 点进去一看又是已经选好的 —— 一条永远消不掉、也无从消起的告警。
+   *
+   * 空数组的含义由 reach 决定：PICKUP 空 = 谁也看不到；ONSITE / SHIPPING 空 = 不限。
+   */
+  if (st.fulfillmentReach || st.serviceAreas) {
+    return st.fulfillmentReach !== FULFILLMENT_REACH.PICKUP
+      || (st.serviceAreas?.length ?? 0) > 0;
+  }
+  // 老数据回落：后端 V33 之前存的店只有老三档
   return st.serviceScope !== SERVICE_SCOPE.COMMUNITY || st.serviceCommunityNos.length > 0;
 });
 
