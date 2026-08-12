@@ -263,14 +263,28 @@ public final class Perms {
     /**
      * 角色 → 权限码。**对着矩阵 §2.3 的十一个岗位逐条配**。
      *
-     * <p><b>本表是 2026-08-12 从 16 个粗码机械展开来的</b>：原来持有某个粗码的角色，
-     * 拿到该粗码下所有端点展开出的细码。所以<b>它保留了细化前的全部授权，
-     * 包括其中不合理的部分</b> —— 例如 7 个角色都持有
-     * {@link #AFTERSALE_TICKET_HANDLE}（能批退款），那是从 {@code order:view} 带过来的。
-     * 收紧是下一步，逐条评审、每条都会让某个岗位少一样东西。
+     * <p><b>本表 2026-08-12 先从 16 个粗码机械展开（阶段 A，等价，零行为变化），
+     * 随后收紧了三处（阶段 B）</b>：
      *
-     * <p>展开的等价性由 {@code ops-perm-matrix.test.ts} 验证：
-     * 拆前拆后每个角色能访问的端点集合逐格相同。
+     * <ol>
+     *   <li>{@link #AFTERSALE_TICKET_HANDLE} 与 {@link #AFTERSALE_REFUND_APPROVE}
+     *       原本 7 个角色都有（从 {@code order:view} 带过来的）—— 也就是风控、社区运营、
+     *       活动运营都能批退款。收回到客服（裁决是它的本职）与财务（只保留极速退阈值，
+     *       它承担资金后果）。<b>读没有一起收</b>：查售后单是排查恶意退款的最低限度，
+     *       风险与写不在一个量级 —— 一次收两样会让人分不清是哪一样出的问题。</li>
+     *   <li>{@link #MERCHANT_MODE_UPDATE} 从财务挪到 BD —— 经营模式是商家线的事，
+     *       它此前落在财务手里只是因为挂在结算的粗码下。</li>
+     *   <li>{@link #MERCHANT_BAN} 无需改配置：它只在 BD 手里，而商家治理本来就归 BD。
+     *       细化本身就是收益 —— 从今天起它<b>能</b>被单独收回。</li>
+     * </ol>
+     *
+     * <p><b>还有一条改配置解决不了</b>：{@link #FINANCE_SETTLE_EXECUTE}（制单）与
+     * {@link #FINANCE_PAYOUT_EXECUTE}（付款）现在都在 FINANCE 一个角色上。
+     * 真正的职责分离需要第二个财务岗，那是产品决定，不是权限表能单方面做的。
+     * 码已经分开，等那个岗位存在时改一行就行。
+     *
+     * <p>阶段 A 的等价性由 {@code ops-perm-matrix.test.ts} 验证过（逐格相同）；
+     * 阶段 B 让那条守卫变红，红的内容就是上面这三条 —— 审过之后更新的基线。
      *
      * <p>后端角色码与 ops-web 一致；已有的三个（BD / GOODS_OPS / SUPPORT）是历史遗留，
      * 在 ops-web 的 http 层翻译。
@@ -283,15 +297,15 @@ public final class Perms {
     private static final Map<String, List<String>> ROLE_PERMS = Map.ofEntries(
             Map.entry("SUPER_ADMIN", List.of("*")),
 
-            Map.entry("BD", List.of(AFTERSALE_REFUND_APPROVE, AFTERSALE_REFUND_READ,
-                    AFTERSALE_TICKET_HANDLE, AFTERSALE_TICKET_READ, COMMUNITY_READ,
+            Map.entry("BD", List.of(AFTERSALE_REFUND_READ, AFTERSALE_TICKET_READ,
+                    COMMUNITY_READ,
                     DASHBOARD_OVERVIEW_READ, GROUP_DEMAND_ASSIGN, GROUP_DEMAND_READ,
                     MERCHANT_APPLY_AUDIT, MERCHANT_CATEGORY_GRANT, MERCHANT_CATEGORY_READ,
-                    MERCHANT_BAN, MERCHANT_READ, MERCHANT_VERIFY_GRANT, ORDER_READ,
-                    STORE_PAGE_AUDIT)),
+                    MERCHANT_BAN, MERCHANT_READ, MERCHANT_MODE_READ, MERCHANT_MODE_UPDATE,
+                    MERCHANT_VERIFY_GRANT, ORDER_READ, STORE_PAGE_AUDIT)),
 
-            Map.entry("GOODS_OPS", List.of(AFTERSALE_REFUND_APPROVE, AFTERSALE_REFUND_READ,
-                    AFTERSALE_TICKET_HANDLE, AFTERSALE_TICKET_READ, COMMUNITY_READ,
+            Map.entry("GOODS_OPS", List.of(AFTERSALE_REFUND_READ,
+                    AFTERSALE_TICKET_READ, COMMUNITY_READ,
                     DASHBOARD_OVERVIEW_READ, GROUP_CAMPAIGN_AUDIT, GROUP_CAMPAIGN_READ,
                     MARKETING_CAMPAIGN_READ, MARKETING_CAMPAIGN_UPDATE, MARKETING_COUPON_ISSUE,
                     MARKETING_COUPON_READ, MARKETING_COUPON_UPDATE, ORDER_READ,
@@ -305,15 +319,15 @@ public final class Perms {
                     ORDER_READ, REVIEW_AUDIT, REVIEW_READ, REVIEW_SCORE_READ,
                     REVIEW_SCORE_UPDATE)),
 
-            Map.entry("CAMPAIGN_OPS", List.of(AFTERSALE_REFUND_APPROVE, AFTERSALE_REFUND_READ,
-                    AFTERSALE_TICKET_HANDLE, AFTERSALE_TICKET_READ, COMMUNITY_READ,
+            Map.entry("CAMPAIGN_OPS", List.of(AFTERSALE_REFUND_READ,
+                    AFTERSALE_TICKET_READ, COMMUNITY_READ,
                     CONTENT_MATERIAL_AUDIT, CONTENT_MATERIAL_READ, CONTENT_MATERIAL_UPDATE,
                     DASHBOARD_OVERVIEW_READ, GROUP_CAMPAIGN_AUDIT, GROUP_CAMPAIGN_READ,
                     MARKETING_CAMPAIGN_READ, MARKETING_CAMPAIGN_UPDATE, MARKETING_COUPON_ISSUE,
                     MARKETING_COUPON_READ, MARKETING_COUPON_UPDATE, ORDER_READ)),
 
-            Map.entry("COMMUNITY_OPS", List.of(AFTERSALE_REFUND_APPROVE, AFTERSALE_REFUND_READ,
-                    AFTERSALE_TICKET_HANDLE, AFTERSALE_TICKET_READ, COMMUNITY_READ,
+            Map.entry("COMMUNITY_OPS", List.of(AFTERSALE_REFUND_READ,
+                    AFTERSALE_TICKET_READ, COMMUNITY_READ,
                     COMMUNITY_UPDATE, COMMUNITY_PICKUP_READ, COMMUNITY_PICKUP_UPDATE,
                     COMMUNITY_REGION_READ, DASHBOARD_OVERVIEW_READ, ORDER_READ,
                     SYSTEM_INDUSTRY_READ, SYSTEM_INDUSTRY_UPDATE)),
@@ -324,21 +338,19 @@ public final class Perms {
                     REVIEW_SCORE_UPDATE)),
 
             Map.entry("FINANCE", List.of(AFTERSALE_REFUND_APPROVE, AFTERSALE_REFUND_READ,
-                    AFTERSALE_TICKET_HANDLE, AFTERSALE_TICKET_READ, DASHBOARD_OVERVIEW_READ,
+                    AFTERSALE_TICKET_READ, DASHBOARD_OVERVIEW_READ,
                     FINANCE_INVOICE_READ, FINANCE_INVOICE_VERIFY, FINANCE_PAYOUT_EXECUTE,
                     FINANCE_RATE_READ, FINANCE_RATE_UPDATE, FINANCE_RECON_READ,
                     FINANCE_RECON_RESOLVE, FINANCE_SETTLE_EXECUTE, FINANCE_SETTLE_READ,
-                    MERCHANT_ADMISSION_READ, MERCHANT_ADMISSION_UPDATE, MERCHANT_MODE_READ,
-                    MERCHANT_MODE_UPDATE, ORDER_READ)),
+                    MERCHANT_ADMISSION_READ, MERCHANT_ADMISSION_UPDATE, ORDER_READ)),
 
             /*
              * 风控：矩阵给的是「刷单、异常裂变、恶意退款、黑名单」+ 拦截封禁。
              * 后端一个风控端点都没有，所以这份清单短得不正常 ——
              * 而其中的售后裁决与极速退阈值是从 order:view 带过来的，风控本不该有。
              */
-            Map.entry("RISK", List.of(AFTERSALE_REFUND_APPROVE, AFTERSALE_REFUND_READ,
-                    AFTERSALE_TICKET_HANDLE, AFTERSALE_TICKET_READ, DASHBOARD_OVERVIEW_READ,
-                    ORDER_READ)),
+            Map.entry("RISK", List.of(AFTERSALE_REFUND_READ, AFTERSALE_TICKET_READ,
+                    DASHBOARD_OVERVIEW_READ, ORDER_READ)),
 
             /*
              * 数据分析：矩阵写明**只读脱敏**。故意不给 ORDER_READ ——

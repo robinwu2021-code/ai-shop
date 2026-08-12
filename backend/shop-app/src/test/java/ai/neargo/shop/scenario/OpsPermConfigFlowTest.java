@@ -195,6 +195,34 @@ class OpsPermConfigFlowTest {
         }
     }
 
+    @Test
+    @DisplayName("★★★ 风控不能裁决售后 —— 阶段 B 收紧的那条，用 403 钉住而不是靠矩阵纸面")
+    void riskCannotDecideAfterSale() throws Exception {
+        String risk = opsLogin("risk", "risk123");
+        // 排查恶意退款要看售后单，所以**读保留** —— 收的是写，不是一刀切
+        mvc().perform(get("/ops/after-sales").header("Authorization", "Bearer " + risk))
+                .andExpect(jsonPath("$.code").value(0));
+
+        /*
+         * 细化前这两条挂在 order:view 下 —— 一个「看单」的码，11 个角色里 7 个持有。
+         * 也就是说风控、社区运营、活动运营都能批退款、都能改极速退阈值。
+         */
+        mvc().perform(post("/ops/after-sales/AS-NOPE/decide")
+                        .header("Authorization", "Bearer " + risk)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"refund\":true}"))
+                // 拒绝走统一响应包（GlobalExceptionHandler 把 AccessDeniedException
+                // 翻成 code 10403），HTTP 状态仍是 200 —— 断言状态码会永远绿
+                .andExpect(jsonPath("$.code").value(10403));
+        mvc().perform(post("/ops/after-sales/fast-refund-rule")
+                        .header("Authorization", "Bearer " + risk)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        // 字段要给全：**参数绑定发生在判权之前** ——
+                        // 少一个 boolean 会得到 10500 而不是 10403，看着像判权没生效
+                        .content("{\"enabled\":true,\"maxAmount\":100,\"withinHours\":24,"
+                                + "\"categories\":[]}"))
+                .andExpect(jsonPath("$.code").value(10403));
+    }
+
     // ---------------------------------------------------------------- 角色配置写侧
 
     @Test
