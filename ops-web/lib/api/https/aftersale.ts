@@ -4,8 +4,10 @@ import type { AfterSaleApi } from "../contracts/aftersale";
 
 export const afterSaleHttp: AfterSaleApi = {
   listAfterSales: (q) => client.get("/ops/after-sales", q),
-  setAfterSaleStatus: (no, status) => client.post(`/ops/after-sales/${no}/status`, { status }),
-  decideAfterSale: (v) => client.post(`/ops/after-sales/${v.asNo}/decide`, v),
+  decideAfterSale: (v) =>
+    client.post(`/ops/after-sales/${v.afterSaleNo}/decide`, {
+      refund: v.refund, liability: v.liability, verdict: v.verdict,
+    }),
   getFastRefundRule: () => client.get("/ops/after-sales/fast-refund-rule"),
   saveFastRefundRule: (v) => client.post("/ops/after-sales/fast-refund-rule", v),
 };

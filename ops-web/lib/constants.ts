@@ -30,9 +30,6 @@ export const MIN_OVERDUE_GRACE_HOURS = 1;
 /** 评分三维权重之和（P-13.1.4）。和不为它就是配置错误，两侧都校验。 */
 export const SCORE_WEIGHT_TOTAL = 100;
 
-/** 售后赔付三方比例之和（P-6.1.4）。 */
-export const LIABILITY_SHARE_TOTAL = 100;
-
 /** 极速退的最小时限（小时）。0 小时等于关掉，但开关看起来还是"已启用"。 */
 export const MIN_FAST_REFUND_HOURS = 1;
 

@@ -11,7 +11,10 @@ import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.event.OutboxEventBus;
+import ai.neargo.shop.spi.user.MerchantQueryPort;
+import ai.neargo.shop.spi.user.UserQueryPort;
 import ai.neargo.shop.trade.dto.AfterSaleVO;
+import ai.neargo.shop.trade.dto.OpsAfterSaleVO;
 import ai.neargo.shop.trade.entity.OrdAfterSale;
 import ai.neargo.shop.trade.entity.OrdStatusLog;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
@@ -63,16 +66,22 @@ public class AfterSaleServiceImpl implements AfterSaleService {
     private final SettlePort settlePort;
     private final OutboxEventBus eventBus;
     private final ObjectMapper json;
+    /** 仲裁台要看「谁的店、谁买的」——消费者自己的售后单不需要这两个 Port */
+    private final MerchantQueryPort merchantPort;
+    private final UserQueryPort userPort;
 
     public AfterSaleServiceImpl(AfterSaleMapper afterSaleMapper, SubOrderMapper subOrderMapper,
                                 StatusLogMapper statusLogMapper, SettlePort settlePort,
-                                OutboxEventBus eventBus, ObjectMapper json) {
+                                OutboxEventBus eventBus, ObjectMapper json,
+                                MerchantQueryPort merchantPort, UserQueryPort userPort) {
         this.afterSaleMapper = afterSaleMapper;
         this.subOrderMapper = subOrderMapper;
         this.statusLogMapper = statusLogMapper;
         this.settlePort = settlePort;
         this.eventBus = eventBus;
         this.json = json;
+        this.merchantPort = merchantPort;
+        this.userPort = userPort;
     }
 
     @Override
@@ -426,7 +435,7 @@ public class AfterSaleServiceImpl implements AfterSaleService {
     // ---------------------------------------------------------------- 平台仲裁（P-6.1）
 
     @Override
-    public List<AfterSaleVO> opsList(String status, String merchantNo) {
+    public List<OpsAfterSaleVO> opsList(String status, String merchantNo) {
         var w = Wrappers.<OrdAfterSale>lambdaQuery();
         if (status != null && !status.isBlank()) {
             w.eq(OrdAfterSale::getStatus, status);
@@ -436,13 +445,32 @@ public class AfterSaleServiceImpl implements AfterSaleService {
         }
         w.orderByDesc(OrdAfterSale::getId);
         return DataScopeContext.executeWithoutScope(() -> afterSaleMapper.selectList(w))
-                .stream().map(this::detailOf).toList();
+                .stream().map(this::opsDetailOf).toList();
+    }
+
+    /**
+     * 消费者视角的 {@link #detailOf} 拼上商家名与买家昵称，给平台仲裁台用。
+     *
+     * <p>逐条查 Port 而不是先收集 entityNo/userNo 批量查——工单池是运营台的低频页面，
+     * 不是一屏几百条的高频列表，批量优化在这里只是多绕一层没人用得上的复杂度。
+     */
+    private OpsAfterSaleVO opsDetailOf(OrdAfterSale as) {
+        AfterSaleVO base = detailOf(as);
+        String merchantName = merchantPort.find(as.getEntityNo())
+                .map(MerchantQueryPort.MerchantBrief::merchantName).orElse(null);
+        String buyerNickname = userPort.find(as.getUserNo())
+                .map(UserQueryPort.UserBrief::nickname).orElse(null);
+        return new OpsAfterSaleVO(base.afterSaleNo(), base.subOrderNo(), base.orderNo(),
+                as.getEntityNo(), merchantName, buyerNickname,
+                base.type(), base.status(), base.reason(), base.images(), base.refundMinor(),
+                base.instant(), base.merchantRemark(), base.expressNo(), base.liability(),
+                base.createdAt(), base.timeline());
     }
 
     @Override
     @Transactional
-    public AfterSaleVO arbitrate(String afterSaleNo, boolean refund, String liability,
-                                 String verdict, String operatorNo) {
+    public OpsAfterSaleVO arbitrate(String afterSaleNo, boolean refund, String liability,
+                                    String verdict, String operatorNo) {
         if (verdict == null || verdict.isBlank()) {
             // 用户与商家都会看到它。没有说明的裁决，对双方都等于「平台随便判了一下」
             throw BizException.of(ErrorCode.BAD_REQUEST);
@@ -473,7 +501,7 @@ public class AfterSaleServiceImpl implements AfterSaleService {
         appendLog(as.getSubOrderNo(), target,
                 (refund ? "平台裁决：支持退款。" : "平台裁决：维持商家决定。") + verdict.trim(),
                 OrdStatusLog.BY_PLATFORM, operatorNo);
-        return detailOf(as);
+        return opsDetailOf(as);
     }
 
     /** 责任方取值域，与 {@code ord_after_sale.liability} 的注释一致。 */

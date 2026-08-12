@@ -6,7 +6,7 @@ import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.spi.platform.AuditLogPort;
 import ai.neargo.shop.spi.platform.SettingPort;
-import ai.neargo.shop.trade.dto.AfterSaleVO;
+import ai.neargo.shop.trade.dto.OpsAfterSaleVO;
 import ai.neargo.shop.trade.service.AfterSaleService;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -53,7 +53,7 @@ public class OpsAfterSaleController {
 
     @GetMapping("/ops/after-sales")
     @PreAuthorize("@perm.can('" + Perms.AFTERSALE_TICKET_READ + "')")
-    public ai.neargo.shop.common.PageData<AfterSaleVO> list(@RequestParam(required = false) String status,
+    public ai.neargo.shop.common.PageData<OpsAfterSaleVO> list(@RequestParam(required = false) String status,
                                 @RequestParam(required = false) String merchantNo,
                                 @RequestParam(defaultValue = "1") long page,
                                 @RequestParam(defaultValue = "20") long size) {
@@ -67,7 +67,7 @@ public class OpsAfterSaleController {
      */
     @PostMapping("/ops/after-sales/{afterSaleNo}/decide")
     @PreAuthorize("@perm.can('" + Perms.AFTERSALE_TICKET_HANDLE + "')")
-    public AfterSaleVO decide(@PathVariable String afterSaleNo, @RequestBody DecideReq req) {
+    public OpsAfterSaleVO decide(@PathVariable String afterSaleNo, @RequestBody DecideReq req) {
         boolean refund = Boolean.TRUE.equals(req.refund());
         var vo = afterSaleService.arbitrate(afterSaleNo, refund, req.liability(), req.verdict(),
                 SecurityUtils.currentUserNo());

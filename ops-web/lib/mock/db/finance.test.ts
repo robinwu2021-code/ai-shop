@@ -1,8 +1,11 @@
 // 结算与资金规则测试（P-12.1）。本域的价值在**跨域收口**，所以断言也要跨域：
 // 读商家的报备状态、清售后的回退标记。
+//
+// ⚠️ 「退款回退分账」队列读写的 `refundSplitPending`/`share` 是 finance 域私有字段——
+// 售后裁决（`afterSaleMock.decideAfterSale`）真实后端没有这两个字段，不会去设它们。
+// 这里直接摆好 fixture 状态来测 finance 侧的队列逻辑，不借售后裁决当"种数据"的旁路。
 import { beforeEach, describe, expect, it } from "vitest";
 import { financeMock } from "@/lib/api/mocks/finance";
-import { afterSaleMock } from "@/lib/api/mocks/aftersale";
 import { MAX_SPLIT_RETRY, SETTLE_FREEZE_MIN_DAYS } from "@/lib/constants";
 import { feeRules, settlements } from "./finance";
 import { afterSales } from "./aftersale";
@@ -22,26 +25,25 @@ beforeEach(() => {
 
 describe("退款回退分账（P-12.1.5 / E4）—— 跨域收口", () => {
   it("队列由售后单的 refundSplitPending 派生，不另建实体", async () => {
-    await afterSaleMock.decideAfterSale({
-      asNo: "AS9001", liability: "MERCHANT",
-      share: { platform: 0, merchant: 100, pickup: 0 },
-      verdict: "坏果属实", amount: 2_290,
-    });
+    const a = afterSales.find((x) => x.afterSaleNo === "AS9001")!;
+    a.liability = "MERCHANT";
+    a.share = { platform: 0, merchant: 100, pickup: 0 };
+    a.refundSplitPending = true;
     const list = await financeMock.listRefundSplitBacks();
-    expect(list.some((a) => a.asNo === "AS9001")).toBe(true);
+    expect(list.some((x) => x.afterSaleNo === "AS9001")).toBe(true);
   });
 
   it("执行回退后清除标记，队列自然消掉（不清就会被反复执行）", async () => {
-    await afterSaleMock.decideAfterSale({
-      asNo: "AS9001", liability: "MERCHANT",
-      share: { platform: 0, merchant: 100, pickup: 0 },
-      verdict: "坏果属实", amount: 2_290,
-    });
+    const a0 = afterSales.find((x) => x.afterSaleNo === "AS9001")!;
+    a0.liability = "MERCHANT";
+    a0.share = { platform: 0, merchant: 100, pickup: 0 };
+    a0.refundSplitPending = true;
+
     const a = await financeMock.executeRefundSplitBack("AS9001");
     expect(a.refundSplitPending).toBe(false);
     expect(a.status).toBe("REFUNDED");
     const list = await financeMock.listRefundSplitBacks();
-    expect(list.some((x) => x.asNo === "AS9001")).toBe(false);
+    expect(list.some((x) => x.afterSaleNo === "AS9001")).toBe(false);
   });
 
   it("没有待回退标记的单不能执行", async () => {

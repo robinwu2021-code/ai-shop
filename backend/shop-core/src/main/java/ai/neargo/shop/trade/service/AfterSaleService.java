@@ -1,6 +1,7 @@
 package ai.neargo.shop.trade.service;
 
 import ai.neargo.shop.trade.dto.AfterSaleVO;
+import ai.neargo.shop.trade.dto.OpsAfterSaleVO;
 
 import java.util.List;
 
@@ -47,7 +48,7 @@ public interface AfterSaleService {
     // ---------------------------------------------------------------- 平台仲裁（P-6.1）
 
     /** 平台侧售后列表。{@code status} 为空给全部。 */
-    List<AfterSaleVO> opsList(String status, String merchantNo);
+    List<OpsAfterSaleVO> opsList(String status, String merchantNo);
 
     /**
      * 平台裁决（{@code ARBITRATING} 的出口）。
@@ -60,6 +61,6 @@ public interface AfterSaleService {
      *                  否则赔付出资比例无从算起（M4 口径未定，但责任本身要记）
      * @param verdict   裁决说明，<b>必填</b> —— 用户与商家都会看到
      */
-    AfterSaleVO arbitrate(String afterSaleNo, boolean refund, String liability, String verdict,
-                          String operatorNo);
+    OpsAfterSaleVO arbitrate(String afterSaleNo, boolean refund, String liability, String verdict,
+                             String operatorNo);
 }

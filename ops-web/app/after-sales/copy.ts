@@ -2,9 +2,6 @@
 import type { PageCopy } from "@/lib/use-copy";
 
 const zh = {
-  tabTickets: "售后工单",
-  tabIntervene: "平台介入",
-  tabFastRefund: "极速退规则",
 
   liabMerchant: "供货商家",
   liabMerchantHint: "商品本身的问题：坏果、少发、货不对板",
@@ -34,7 +31,7 @@ const zh = {
   readOnlyWhat: "售后裁决",
   readOnlyNote: "不能介入、裁决或判定责任",
   interveneNotice:
-    "平台介入队列：商家与用户谈不拢时才到这里。裁决要同时给出「责任方」与「三方赔付比例」—— 矩阵 M4（出资方比例）尚未拍板，当前默认值只是填单起点，以实际判定为准。",
+    "平台介入队列：商家与用户谈不拢时才到这里。裁决要给出「支不支持退款」与「责任方」—— 矩阵 M4（出资方比例）尚未拍板，暂不支持按比例分摊，先落责任、金额仍是申请时那笔。",
   kpiIntervene: "平台介入待裁决",
   kpiInterveneSub: "用户在等结果",
   kpiInterveneNone: "无积压",
@@ -71,31 +68,22 @@ const zh = {
   none: "无",
   fieldReason: "申请原因",
   secDecide: "平台裁决",
-  secDecideDesc: "退款金额、责任方与出资比例三项互相牵连，请一起确认",
-  fieldRefundAmount: "同意退款金额（元）",
-  refundAmountHint: "不得超过订单实付 —— 超了会被服务端拒绝。",
+  secDecideDesc: "退不退款与责任方互相牵连，请一起确认",
+  fieldRefund: "裁决结果",
+  refundYes: "支持退款",
+  refundNo: "维持商家决定",
+  refundAmountNote: "退款金额就是申请时的这笔，裁决不改金额",
   fieldLiability: "责任方",
-  sharePlatform: "平台出资",
-  shareMerchant: "供货商家",
-  sharePickup: "自提点",
-  /** `{sum}` 合计，`{total}` 要求值 */
-  shareSum: "赔付比例合计：{sum}% / {total}%",
-  shareSumBad: "（不等于 100% 无法提交）",
   fieldVerdict: "裁决说明",
   verdictPlaceholder: "用户与商家都会看到：写清楚依据了哪条规则、为什么这么判",
 
   secResult: "裁决结果",
   liabilityUndecided: "尚未判定",
-  fieldShare: "赔付比例",
-  /** `{p}` 平台、`{m}` 商家、`{k}` 自提点 */
-  shareText: "平台 {p}% · 商家 {m}% · 自提点 {k}%",
-  refundSplitPending: "退款回退分账（E4）依赖资金域 P-12，尚未接入 —— 这笔退款已判定但分账尚未回退，接入后需按标记补跑。",
+  refundDecided: "支持退款",
+  refundRejected: "维持商家决定",
 };
 
 const en: typeof zh = {
-  tabTickets: "After-sales tickets",
-  tabIntervene: "Platform review",
-  tabFastRefund: "Instant-refund rules",
 
   liabMerchant: "Supplying merchant",
   liabMerchantHint: "A problem with the goods themselves: spoiled produce, short shipment, wrong item",
@@ -125,7 +113,7 @@ const en: typeof zh = {
   readOnlyWhat: "after-sales adjudication",
   readOnlyNote: "cannot intervene, decide or assign liability",
   interveneNotice:
-    "The platform review queue: cases land here only when merchant and customer cannot agree. A decision must give both the liable party and the three-way split — matrix item M4 (who pays what) is not settled, so the defaults are only a starting point for the form, not a ruling.",
+    "The platform review queue: cases land here only when merchant and customer cannot agree. A decision must give both whether to refund and the liable party — matrix item M4 (who pays what) is not settled, so funding splits aren't supported yet; the amount stays whatever was originally claimed.",
   kpiIntervene: "Awaiting platform decision",
   kpiInterveneSub: "Customers are waiting",
   kpiInterveneNone: "Nothing queued",
@@ -161,24 +149,19 @@ const en: typeof zh = {
   none: "None",
   fieldReason: "Reason given",
   secDecide: "Platform decision",
-  secDecideDesc: "Refund amount, liable party and funding split are interdependent — settle them together",
-  fieldRefundAmount: "Refund approved (CNY)",
-  refundAmountHint: "Cannot exceed what was actually paid — the server rejects anything higher.",
+  secDecideDesc: "Whether to refund and the liable party are interdependent — settle them together",
+  fieldRefund: "Decision",
+  refundYes: "Support the refund",
+  refundNo: "Uphold the merchant's decision",
+  refundAmountNote: "The refund is whatever was originally claimed — a decision doesn't change the amount",
   fieldLiability: "Liable party",
-  sharePlatform: "Platform pays",
-  shareMerchant: "Supplying merchant",
-  sharePickup: "Pickup point",
-  shareSum: "Split total: {sum}% / {total}%",
-  shareSumBad: " (must equal 100% to submit)",
   fieldVerdict: "Decision note",
   verdictPlaceholder: "Both customer and merchant see this: state which rule applied and why you decided this way",
 
   secResult: "Decision",
   liabilityUndecided: "Not yet decided",
-  fieldShare: "Funding split",
-  shareText: "Platform {p}% · merchant {m}% · pickup point {k}%",
-  refundSplitPending:
-    "Refund split reversal (E4) depends on Settlement (P-12), which is not wired up yet — this refund is decided but the split has not been reversed; once connected it must be replayed from this flag.",
+  refundDecided: "Refund supported",
+  refundRejected: "Merchant's decision upheld",
 };
 
 export const AFTER_SALES_COPY: PageCopy<typeof zh> = { zh, en };

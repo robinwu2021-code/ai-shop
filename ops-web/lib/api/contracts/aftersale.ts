@@ -1,23 +1,20 @@
 // 覆盖范围：售后治理（P-6.1）。
-import type { AfterSale, AfterSaleStatus, FastRefundRule, Liability, LiabilityShare, Page } from "@/lib/types";
+import type { AfterSale, FastRefundRule, Liability, Page } from "@/lib/types";
 import type { AfterSaleQ } from "../query";
 
 export interface AfterSaleApi {
   listAfterSales(q?: AfterSaleQ): Promise<Page<AfterSale>>;
-  /** 状态推进，非法迁移抛错（驳回不是终点，用户可上升平台）。 */
-  setAfterSaleStatus(asNo: string, status: AfterSaleStatus): Promise<AfterSale>;
   /**
-   * 平台介入裁决（P-6.1.3 + 6.1.4）。
-   * **必须同时给出责任方与三方赔付比例**（和为 100）—— 判了责任才谈得上赔付归属，
-   * 分两步做会出现「裁决完了忘了判责」的空档。
+   * 平台介入裁决（`ARBITRATING` 的唯一出口）。
+   * **责任方与裁决说明必填**——判了责任才谈得上赔付归属，裁决说明双方都会看到。
+   * `refund=true` 支持用户（推进到退款），`false` 维持商家决定（关闭）。
+   * 退款金额不在这里改：裁决只决定退不退，金额还是申请时那笔。
    */
   decideAfterSale(v: {
-    asNo: string;
+    afterSaleNo: string;
+    refund: boolean;
     liability: Liability;
-    share: LiabilityShare;
     verdict: string;
-    /** 同意退款金额（分），不得超过订单实付 */
-    amount: number;
   }): Promise<AfterSale>;
 
   getFastRefundRule(): Promise<FastRefundRule>;

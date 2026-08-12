@@ -36,22 +36,25 @@ export type Liability = "PLATFORM" | "MERCHANT" | "PICKUP";
 
 /**
  * 赔付出资比例，百分比，**三者之和必须为 100**。
- * ⚠️ 矩阵 M4「售后责任归属与出资方比例」未定，所以这里**存结构不存结论** ——
- * 口径定了只需要给默认值，不用改模型。
+ * ⚠️ 矩阵 M4「售后责任归属与出资方比例」口径未定，真实后端从没实现过这个概念——
+ * `ord_after_sale` 上没有存它的列，裁决台曾经收集这三个数字一起提交，
+ * 点「确认裁决」时被后端静默丢弃，运营以为填了就生效。**只有 finance 域的
+ * 「退款回退分账」mock 队列还在用这两个字段**（`share`/`refundSplitPending`），
+ * 而那条队列本身也是 mock-only——`/ops/refund-split-backs` 后端不存在。
+ * M4 有结论、这两块真正接上后端之后再把类型收紧。
  */
 export interface LiabilityShare {
-  /** 平台出资比例（百分比） */
   platform: number;
-  /** 商家出资比例（百分比） */
   merchant: number;
-  /** 自提点承接方出资比例（百分比） */
   pickup: number;
 }
 
 export interface AfterSale {
   /** 售后单号 */
-  asNo: string;
+  afterSaleNo: string;
   /** 关联的子订单 */
+  subOrderNo: string;
+  /** 关联的主订单 */
   orderNo: string;
   /** 涉事商家 */
   merchantNo: string;
@@ -63,21 +66,21 @@ export interface AfterSale {
   type: AfterSaleType;
   /** 售后单状态。允许的流转见 `AFTERSALE_TRANSITIONS` */
   status: AfterSaleStatus;
-  /** 申请退款金额（分）。**不得超过订单实付** —— 校验要跨域查订单。 */
-  amount: number;
+  /** 申请退款金额（分）。裁决只决定退不退，不改这个数 */
+  refundMinor: number;
   /** 用户填写的售后原因 */
   reason: string;
-  /** 举证材料数量（照片/聊天记录） */
-  evidenceCount: number;
+  /** 举证材料（照片） */
+  images: string[];
   /** 裁定的责任方。平台介入后才有值 */
   liability?: Liability;
-  /** 赔付出资比例。口径未定（M4），先存结构 */
+  /** 赔付出资比例。**仅 finance 域 mock 队列使用**，真实后端未接（见上方说明） */
   share?: LiabilityShare;
   /** 裁决说明：用户与商家都会看到 */
   verdict?: string;
   /**
-   * E4 退款回退分账待办：裁决完成但资金域（P-12）尚未接。
-   * 留这个标记而不是假装已完成 —— 接资金域时按它补跑。
+   * E4 退款回退分账待办：finance 域「退款回退分账」mock 队列专用字段，
+   * 真实后端未接（见上方说明），售后本身的裁决流程不读写它。
    */
   refundSplitPending?: boolean;
   /** 售后发起时间 */

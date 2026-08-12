@@ -41,7 +41,7 @@ export const financeMock: FinanceApi = {
   listRefundSplitBacks: async () => wait(db.afterSales.filter((a) => a.refundSplitPending)),
 
   executeRefundSplitBack: async (asNo) => {
-    const a = db.afterSales.find((x) => x.asNo === asNo);
+    const a = db.afterSales.find((x) => x.afterSaleNo === asNo);
     if (!a) notFound("售后单", "After-sales case", asNo);
     if (!a.refundSplitPending) fail("该售后单没有待回退的分账", "This case has no split waiting to be reversed");
     if (!a.share) fail("该售后单尚未判定赔付比例，无法按比例回退", "Liability shares have not been decided, so the reversal cannot be apportioned");

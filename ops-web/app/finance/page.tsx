@@ -11,7 +11,7 @@ import { api } from "@/lib/api";
 import { fill, useCopy } from "@/lib/use-copy";
 import { FINANCE_COPY } from "./copy";
 import { usePaging } from "@/lib/use-paging";
-import { usePageTab } from "@/lib/use-page-tab";
+import { usePageTab, useNavTabs } from "@/lib/use-page-tab";
 import { MAX_SPLIT_RETRY, SETTLE_FREEZE_MIN_DAYS } from "@/lib/constants";
 import { money } from "@/lib/utils";
 import { useCan } from "@/lib/use-can";
@@ -40,14 +40,7 @@ import { Toolbar } from "@/components/ui/toolbar";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 
 type Copy = (typeof FINANCE_COPY)["zh"];
-const TABS = (c: Copy) => [
-  { key: "settlements", label: c.tabSettlements },
-  { key: "splits", label: c.tabSplits },
-  { key: "refund-back", label: c.tabRefundBack },
-  { key: "rates", label: c.tabRates },
-  { key: "withdraw", label: c.tabWithdraw },
-  { key: "invoice", label: c.tabInvoice },
-];
+const TAB_KEYS = ["settlements", "splits", "refund-back", "rates", "withdraw", "invoice"] as const;
 
 const TRAFFIC_LABEL = (c: Copy): Record<TrafficSource, string> => ({
   MERCHANT_OWNED: c.trafficMerchantOwned,
@@ -65,7 +58,7 @@ export default function FinancePage() {
 
 function FinanceInner() {
   const c = useCopy(FINANCE_COPY);
-  const tabs = TABS(c);
+  const tabs = useNavTabs("/finance", TAB_KEYS);
   const trafficLabel = TRAFFIC_LABEL(c);
   const qc = useQueryClient();
   const allow = useCan();
@@ -152,10 +145,10 @@ function FinanceInner() {
   ];
 
   const backColumns: Column<AfterSale>[] = [
-    { header: c.colAsNo, cell: (a) => a.asNo, numeric: true, align: "start" },
+    { header: c.colAsNo, cell: (a) => a.afterSaleNo, numeric: true, align: "start" },
     { header: c.colOrderNo, cell: (a) => a.orderNo, numeric: true, align: "start" },
     { header: c.colMerchant, cell: (a) => a.merchantName },
-    { header: c.colRefundAmount, cell: (a) => money(a.amount), numeric: true },
+    { header: c.colRefundAmount, cell: (a) => money(a.refundMinor), numeric: true },
     {
       header: c.colShare,
       // 回退要按裁决时判的比例分摊，所以这里必须显示它 —— 否则财务只能回去翻售后单
@@ -173,11 +166,11 @@ function FinanceInner() {
             size="sm"
             onClick={async () => {
               const ok = await confirm({
-                title: fill(c.confirmBackTitle, { no: a.asNo }),
-                desc: fill(c.confirmBackDesc, { amount: money(a.amount) }),
+                title: fill(c.confirmBackTitle, { no: a.afterSaleNo }),
+                desc: fill(c.confirmBackDesc, { amount: money(a.refundMinor) }),
                 danger: true, confirmText: c.confirmBackOk,
               });
-              if (ok) execBack.mutate(a.asNo);
+              if (ok) execBack.mutate(a.afterSaleNo);
             }}
           >
             {c.btnExecuteBack}
@@ -247,7 +240,7 @@ function FinanceInner() {
           <DataTable
             columns={backColumns} rows={backs.data} loading={backs.isLoading}
             error={backs.error} onRetry={() => backs.refetch()}
-            rowKey={(a) => a.asNo}
+            rowKey={(a) => a.afterSaleNo}
             empty={c.emptyRefundBack}
           />
         </>
