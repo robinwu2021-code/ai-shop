@@ -153,8 +153,16 @@ public class OrderServiceImpl implements OrderService {
             }
         }
 
+        /*
+         * **未配置返回 null，不返回空数组**。
+         *
+         * 一个商家都没配支付方式时（进件还没走完），交集从未被赋值 —— 那是「不知道」，
+         * 不是「一种都不支持」。返回空数组的话两者在端上长得一模一样，
+         * 而端上对空数组的正确动作是**拦住下单**：于是一个完全正常的订单被拦死。
+         * 这个错是在浏览器里跑真实数据时才现形的，单测和类型都拦不住。
+         */
         return new ai.neargo.shop.trade.dto.CheckoutCapabilityVO(
-                usable == null ? List.of() : new ArrayList<>(usable), anyNoInvoice, rows);
+                usable == null ? null : new ArrayList<>(usable), anyNoInvoice, rows);
     }
 
     private static java.util.Set<String> intersect(java.util.Set<String> a,

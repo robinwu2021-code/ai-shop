@@ -5,6 +5,7 @@ import ai.neargo.shop.merchant.mapper.MerchantMappers.MchPaymentMapper;
 import ai.neargo.shop.merchant.service.AdmissionService;
 import ai.neargo.shop.spi.user.MerchantAdminPort;
 import ai.neargo.shop.spi.user.MerchantQueryPort;
+import ai.neargo.shop.trade.service.OrderService;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -41,6 +42,9 @@ class MicroPayCapabilityFlowTest {
 
     @Autowired
     private MchPaymentMapper paymentMapper;
+
+    @Autowired
+    private OrderService orderService;
 
     @Test
     @DisplayName("★ 没有收款记录时全放行 —— 进件没走完不等于他的货谁都买不了")
@@ -127,6 +131,26 @@ class MicroPayCapabilityFlowTest {
         var cap = merchantQueryPort.payCapabilityOf(MERCHANT, null);
         assertThat(cap.quotaLimitMinor()).isEqualTo(500_000L);
         assertThat(cap.quotaUsedMinor()).as("用量是支付累加出来的事实").isEqualTo(30_000L);
+    }
+
+    @Test
+    @DisplayName("★★ 一个商家都没配支付方式 → usablePayMethods 为 null，不是空数组")
+    void unconfiguredIsNullNotEmpty() {
+        /*
+         * 这条是**浏览器验证抓到的**，单测与类型都没拦住：
+         * 种子商家 M0001 没有收款记录，于是所有 payMethods 都是空、被当「未配置」跳过，
+         * 交集从未被赋值。上一版返回 List.of()，而端上对空数组的正确动作是拦住下单 ——
+         * 于是一个完全正常的订单被拦死。
+         *
+         * 「不知道」和「一种都不支持」必须在返回值上分得开。
+         */
+        var cap = orderService.capability(new OrderService.CreateOrderCommand(
+                java.util.List.of(new OrderService.CreateOrderCommand.Item("G0001", "SK0001", 1)),
+                "STORE_PICKUP", "PP0001", null, null, 0L, null));
+
+        assertThat(cap.usablePayMethods())
+                .as("null = 未配置，端上不该拦；空数组 = 真的没有交集，端上必须拦")
+                .isNull();
     }
 
     // ---------------------------------------------------------------- helpers

@@ -748,9 +748,11 @@ export const mockApi: ShopApi = {
       quotaExhausted: false,
       quotaWouldExceed: false,
     }));
-    const usable = merchants.length
-      ? merchants.map((m) => m.payMethods).reduce((a, b) => a.filter((x) => b.includes(x)))
-      : [];
+    // 与后端同口径：一个商家都没配时返回 null（未配置），不是空数组（无交集）
+    const configured = merchants.filter((m) => m.payMethods.length);
+    const usable = configured.length
+      ? configured.map((m) => m.payMethods).reduce((a, b) => a.filter((x) => b.includes(x)))
+      : null;
     return delay({
       usablePayMethods: usable,
       anyNotInvoiceCapable: merchants.some((m) => !m.invoiceCapable),

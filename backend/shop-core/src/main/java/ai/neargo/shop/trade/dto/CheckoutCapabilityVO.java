@@ -17,7 +17,9 @@ import java.util.List;
  *
  * @param usablePayMethods 整单可用的支付方式 = <b>各商家支持集合的交集</b>。
  *                         交集而非并集：一笔支付覆盖整单，有一家不支持就用不了。
- *                         <b>空集合意味着这一车货没有任何支付方式能付</b>，端上要拦在结算页
+ *                         <b>空数组 = 这一车货没有任何方式能付</b>，端上要拦在结算页；
+ *                         <b>null = 未配置</b>（进件还没走完），端上<b>不要拦</b> ——
+ *                         两者混成空数组的话，一个完全正常的订单会被拦死
  * @param merchants        逐商家的能力，端上据此在对应的商家分组上打标
  */
 public record CheckoutCapabilityVO(List<String> usablePayMethods,

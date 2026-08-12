@@ -117,7 +117,10 @@ const noInvoiceMerchants = computed(
  * 拿不到 capability（接口挂了）时不拦，那是我们的问题，不该变成他不能下单。
  */
 const noPayMethod = computed(
-  () => !!capability.value && capability.value.usablePayMethods.length === 0,
+  () => !!capability.value
+    // null = 未配置（进件还没走完），不是「一种都不支持」—— 混为一谈会把正常订单拦死
+    && capability.value.usablePayMethods !== null
+    && capability.value.usablePayMethods.length === 0,
 );
 
 /** 额度已用尽或本单会超的商家：这家的货现在下不了单。 */
