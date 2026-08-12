@@ -99,6 +99,51 @@ export interface Sku {
 }
 
 /**
+ * 商品池里的一行（goods 粒度，SKU 收在 `skus` 里）——**不是** {@link Sku} 的复数形式。
+ *
+ * <p>后端 `prd_goods`/`prd_sku` 本来就是一对多：标题、图、类目、审核状态都在 goods 上，
+ * 价格/库存/规格才是 sku 的。商品池按 goods 展示、审核/强制下架/预售这几个动作
+ * 仍然打在具体某个 sku 上（见 `skus[].skuNo`）——两者granularity 不同，别混用。
+ */
+export interface ProductGoods {
+  /** 商品单号 */
+  goodsNo: string;
+  /** 标题（三语） */
+  title: I18nText;
+  /** 封面图 */
+  cover?: string;
+  /** 归属商家 */
+  merchantNo: string;
+  /** 商家名快照 */
+  merchantName: string;
+  /** 归属类目 */
+  categoryNo?: string;
+  /** 类目名快照 */
+  categoryName?: string;
+  /** 商品状态：AUDITING / ON_SALE / OFF_SALE / REJECTED */
+  status: string;
+  /** 这件商品下的所有规格 */
+  skus: GoodsSkuRow[];
+}
+
+/**
+ * 商品池里一个商品下的某个规格——**故意不是** {@link Sku}。
+ *
+ * <p>{@code Sku} 那份（预售额度/已售/截单时间）是「库存与预售」tab 的形状，
+ * 而那几个字段在真实后端压根不存在（`prd_sku` 没有这些列，见该 tab 的说明）。
+ * 商品池要的是"这个规格在每个市场卖多少钱、还有多少库存"，直接照实定义，
+ * 不要为了复用一个类型就在这里塞几个"这次数据源永远给不出来"的字段。
+ */
+export interface GoodsSkuRow {
+  skuNo: string;
+  optionValues: string[];
+  spec?: string;
+  /** 按市场分别定价（分）。缺某个市场 = 没这个市场的价，不是 0 元 */
+  prices: Partial<Record<Market, number>>;
+  stock: number;
+}
+
+/**
  * 待审商品（后端 `prd_goods`，**goods 粒度不是 sku 粒度**）。
  *
  * <p>与本文件里 `Sku` 的差别：审核判的是「这件商品能不能卖」——

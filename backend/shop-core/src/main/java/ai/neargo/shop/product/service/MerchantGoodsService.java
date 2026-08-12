@@ -19,8 +19,22 @@ import java.util.Map;
  */
 public interface MerchantGoodsService {
 
-    /** 我的商品列表。{@code status} 为空表示全部（含下架与审核中）。 */
-    PageData<GoodsVO> list(String merchantNo, String status, long page, long size);
+    /**
+     * 商品列表。{@code status} 为空表示全部（含下架与审核中）。
+     *
+     * @param merchantNo 为空 = 跨商家查，运营端"商品池"用这个口径
+     * @param categoryNo 按三级类目筛，为空不筛
+     * @param keyword    按标题模糊搜，为空不筛
+     */
+    PageData<GoodsVO> list(String merchantNo, String categoryNo, String keyword, String status, long page, long size);
+
+    /**
+     * 运营端「商品池」列表——与 {@link #list} 的区别在返回形状：这个带多市场价格表
+     * 与三语标题原文，{@link GoodsVO} 为了跟 c-app 对齐特意裁掉了这两样（见
+     * {@link ai.neargo.shop.product.dto.OpsGoodsListVO} 的类注释）。过滤参数同 {@link #list}。
+     */
+    PageData<ai.neargo.shop.product.dto.OpsGoodsListVO> listForOps(
+            String merchantNo, String categoryNo, String keyword, String status, long page, long size);
 
     /** 我的商品详情。<b>不是我的直接 404</b>，不是 403 —— 别家有没有这个商品也不该被探知。 */
     GoodsVO detail(String merchantNo, String goodsNo);

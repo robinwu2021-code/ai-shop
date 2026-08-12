@@ -30,6 +30,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /** {@link MerchantGoodsService} 实现。 */
 @Service
@@ -81,14 +82,16 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
     // ---------------------------------------------------------------- 查询
 
     @Override
-    public PageData<GoodsVO> list(String merchantNo, String status, long page, long size) {
+    public PageData<GoodsVO> list(String merchantNo, String categoryNo, String keyword, String status, long page, long size) {
         /*
-         * merchantNo 为空 = **跨商家查**，给平台审核队列用。
+         * merchantNo 为空 = **跨商家查**，给平台审核队列/商品池用。
          * 不做这个判空的话 MyBatis-Plus 会生成 `entity_no = null`，一行都查不到 ——
          * 而平台侧看到的是「没有待审商品」，与「审完了」长得一模一样。
          */
         var w = Wrappers.<PrdGoods>lambdaQuery()
-                .eq(merchantNo != null && !merchantNo.isBlank(), PrdGoods::getEntityNo, merchantNo);
+                .eq(merchantNo != null && !merchantNo.isBlank(), PrdGoods::getEntityNo, merchantNo)
+                .eq(categoryNo != null && !categoryNo.isBlank(), PrdGoods::getCategoryNo, categoryNo)
+                .like(keyword != null && !keyword.isBlank(), PrdGoods::getTitle, keyword);
         applyStatus(w, status);
         // 新建的排在前面：店主刚录完一件商品，第一件事是看它在不在
         w.orderByDesc(PrdGoods::getId);
@@ -96,6 +99,116 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                 goodsMapper.selectPage(Page.of(page, size), w));
         List<GoodsVO> rows = p.getRecords().stream().map(this::toVO).toList();
         return PageData.of(rows, p.getTotal(), page, size);
+    }
+
+    @Override
+    public PageData<ai.neargo.shop.product.dto.OpsGoodsListVO> listForOps(
+            String merchantNo, String categoryNo, String keyword, String status, long page, long size) {
+        var w = Wrappers.<PrdGoods>lambdaQuery()
+                .eq(merchantNo != null && !merchantNo.isBlank(), PrdGoods::getEntityNo, merchantNo)
+                .eq(categoryNo != null && !categoryNo.isBlank(), PrdGoods::getCategoryNo, categoryNo)
+                .like(keyword != null && !keyword.isBlank(), PrdGoods::getTitle, keyword);
+        applyStatus(w, status);
+        w.orderByDesc(PrdGoods::getId);
+        Page<PrdGoods> p = DataScopeContext.executeWithoutScope(() ->
+                goodsMapper.selectPage(Page.of(page, size), w));
+        if (p.getRecords().isEmpty()) {
+            return PageData.empty(page, size);
+        }
+
+        List<String> goodsNos = p.getRecords().stream().map(PrdGoods::getGoodsNo).toList();
+        /*
+         * **不按 market 过滤**——与 GoodsServiceImpl.loadSkus() 的关键差别。那边只要 CN
+         * 一行给买家看；这里要把同一个 skuNo 在各市场的行都捞出来，按 skuNo 分组、
+         * 组内再按 market 摊成一张价格表，运营才看得出"这件商品缺了哪个市场的价"。
+         */
+        Map<String, List<PrdSku>> skusByGoods = skuMapper.selectList(
+                        Wrappers.<PrdSku>lambdaQuery().in(PrdSku::getGoodsNo, goodsNos)).stream()
+                .collect(java.util.stream.Collectors.groupingBy(PrdSku::getGoodsNo));
+
+        Set<String> merchantNos = p.getRecords().stream().map(PrdGoods::getEntityNo).collect(java.util.stream.Collectors.toSet());
+        Map<String, ai.neargo.shop.spi.user.MerchantQueryPort.MerchantBrief> merchants = merchantPort.findAll(merchantNos);
+
+        // 类目名批量拼——prd_goods 只存 categoryNo，名字要跟类目表对一遍。总量有限，一次性取全表比按需查 N 次划算
+        Map<String, String> categoryNames = categoryService.list(null, null, true).stream()
+                .collect(java.util.stream.Collectors.toMap(
+                        ai.neargo.shop.product.dto.OpsCategoryVO::categoryNo,
+                        ai.neargo.shop.product.dto.OpsCategoryVO::name));
+
+        List<ai.neargo.shop.product.dto.OpsGoodsListVO> rows = p.getRecords().stream()
+                .map(g -> toOpsListVO(g, skusByGoods.getOrDefault(g.getGoodsNo(), List.of()), merchants, categoryNames))
+                .toList();
+        return PageData.of(rows, p.getTotal(), page, size);
+    }
+
+    private ai.neargo.shop.product.dto.OpsGoodsListVO toOpsListVO(
+            PrdGoods g, List<PrdSku> skus,
+            Map<String, ai.neargo.shop.spi.user.MerchantQueryPort.MerchantBrief> merchants,
+            Map<String, String> categoryNames) {
+        Map<String, String> titleI18n = readMap(g.getTitleI18n());
+        var merchant = merchants.get(g.getEntityNo());
+
+        Map<String, List<PrdSku>> byLogicalSku = skus.stream()
+                .collect(java.util.stream.Collectors.groupingBy(PrdSku::getSkuNo, LinkedHashMap::new, java.util.stream.Collectors.toList()));
+        List<ai.neargo.shop.product.dto.OpsGoodsListVO.OpsSkuVO> skuVOs = byLogicalSku.values().stream()
+                .map(rows -> {
+                    PrdSku any = rows.get(0);
+                    Map<String, Long> prices = rows.stream()
+                            .filter(r -> r.getPrice() != null)
+                            .collect(java.util.stream.Collectors.toMap(PrdSku::getMarket, PrdSku::getPrice, (a, b) -> a));
+                    return new ai.neargo.shop.product.dto.OpsGoodsListVO.OpsSkuVO(
+                            any.getSkuNo(), readList(any.getOptionValues()), any.getSpec(),
+                            prices, any.getStock() == null ? 0 : any.getStock());
+                })
+                .toList();
+
+        return new ai.neargo.shop.product.dto.OpsGoodsListVO(
+                g.getGoodsNo(),
+                new ai.neargo.shop.product.dto.OpsGoodsListVO.TitleVO(g.getTitle(), titleI18n.get("en"), titleI18n.get("ar")),
+                g.getCover(), g.getEntityNo(), merchant == null ? g.getEntityNo() : merchant.merchantName(),
+                g.getCategoryNo(), g.getCategoryNo() == null ? null : categoryNames.get(g.getCategoryNo()),
+                opsStatusOf(g), skuVOs);
+    }
+
+    /**
+     * {@code AUDITING/ON_SALE/OFF_SALE/REJECTED} → 商家侧那四个状态码，和 GoodsVO.status 同一套口径。
+     *
+     * <p><b>故意不复用同名的 {@link #statusOf}</b>：那个按"当前门店"算在售与否
+     * （读 {@code BizContext.currentStoreNo()}），运营端跨商家浏览没有"当前门店"这个概念——
+     * 这里只看 {@code prd_goods.on_sale} 这个主体级字段，多门店的细分展示留给以后真要做门店维度筛选时再加。
+     */
+    private String opsStatusOf(PrdGoods g) {
+        if (AUDITING.equals(g.getAuditStatus())) {
+            return AUDITING;
+        }
+        if (REJECTED.equals(g.getAuditStatus())) {
+            return REJECTED;
+        }
+        return Boolean.TRUE.equals(g.getOnSale()) ? "ON_SALE" : "OFF_SALE";
+    }
+
+    private Map<String, String> readMap(String json1) {
+        if (json1 == null || json1.isBlank()) {
+            return Map.of();
+        }
+        try {
+            return json.readValue(json1, new TypeReference<Map<String, String>>() {
+            });
+        } catch (Exception e) {
+            return Map.of();
+        }
+    }
+
+    private List<String> readList(String jsonArray) {
+        if (jsonArray == null || jsonArray.isBlank()) {
+            return List.of();
+        }
+        try {
+            return json.readValue(jsonArray, new TypeReference<List<String>>() {
+            });
+        } catch (Exception e) {
+            return List.of();
+        }
     }
 
     @Override

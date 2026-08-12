@@ -15,7 +15,7 @@ import { usePageTab } from "@/lib/use-page-tab";
 import { fmtTime, money } from "@/lib/utils";
 import { useCan } from "@/lib/use-can";
 import { notify } from "@/lib/notify";
-import { MARKETS, type Category, type Market, type Sku } from "@/lib/types";
+import { MARKETS, type Category, type Market, type ProductGoods, type Sku } from "@/lib/types";
 import { SkuStatusBadge, useCategoryTemplateMap, useSkuStatusMap } from "@/components/status";
 import { ReadOnlyNotice } from "@/components/read-only-notice";
 import { GoodsAuditTab } from "./goods-audit-tab";
@@ -68,7 +68,9 @@ function ProductsInner() {
   /** 商品池按商家/类目筛选（P-3.2）。两个维度都是 mock 早就支持的过滤条件，此前只是没接 UI。 */
   const [merchantFilter, setMerchantFilter] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
-  const [current, setCurrent] = useState<Sku | null>(null);
+  const [current, setCurrent] = useState<ProductGoods | null>(null);
+  /** 抽屉里当前在操作哪个 sku——一个商品可能有多个规格，审核/强制下架是打在具体某个 sku 上的 */
+  const [activeSkuNo, setActiveSkuNo] = useState<string | null>(null);
   const [reason, setReason] = useState("");
   const [presale, setPresale] = useState<{ skuNo: string; quota: string; cutoffAt: string } | null>(null);
 
@@ -86,8 +88,8 @@ function ProductsInner() {
     queryFn: () => api.listMerchants({ size: 200 }),
     enabled: tab === "skus",
   });
-  const skuQ = { keyword, status, merchantNo: merchantFilter, categoryNo: categoryFilter, page, size };
-  const skus = useQuery({ queryKey: ["skus", skuQ], queryFn: () => api.listSkus(skuQ), enabled: tab === "skus" });
+  const goodsQ = { keyword, status, merchantNo: merchantFilter, categoryNo: categoryFilter, page, size };
+  const goodsList = useQuery({ queryKey: ["goods-pool", goodsQ], queryFn: () => api.listGoods(goodsQ), enabled: tab === "skus" });
   const oversell = useQuery({ queryKey: ["oversell"], queryFn: () => api.listOversellSkus(), enabled: tab === "stock" });
   const presaleList = useQuery({
     queryKey: ["skus", "presale"],
@@ -97,6 +99,7 @@ function ProductsInner() {
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ["skus"] });
+    qc.invalidateQueries({ queryKey: ["goods-pool"] });
     qc.invalidateQueries({ queryKey: ["oversell"] });
     qc.invalidateQueries({ queryKey: ["categories"] });
   };
@@ -104,13 +107,13 @@ function ProductsInner() {
   const audit = useMutation({
     mutationFn: (v: { skuNo: string; pass: boolean; reason?: string }) => api.auditSku(v.skuNo, v.pass, v.reason),
     onSuccess: (s) => {
-      invalidate(); setCurrent(null); setReason("");
+      invalidate(); setCurrent(null); setActiveSkuNo(null); setReason("");
       notify.success(s.status === "ON_SALE" ? c.toastApproved : c.toastRejected);
     },
   });
   const forceOff = useMutation({
     mutationFn: (v: { skuNo: string; reason: string }) => api.forceOffSku(v.skuNo, v.reason),
-    onSuccess: () => { invalidate(); setCurrent(null); setReason(""); notify.success(c.toastForcedOff); },
+    onSuccess: () => { invalidate(); setCurrent(null); setActiveSkuNo(null); setReason(""); notify.success(c.toastForcedOff); },
   });
   const savePresale = useMutation({
     mutationFn: () => api.setSkuPresale(presale!.skuNo, Number(presale!.quota), presale!.cutoffAt),
@@ -171,41 +174,43 @@ function ProductsInner() {
     }));
   }, [cats.data]);
 
-  const skuColumns: Column<Sku>[] = [
-    { header: c.colSkuNo, cell: (s) => s.skuNo, numeric: true, align: "start" },
-    { header: c.colTitle, cell: (s) => s.title.zh, className: "whitespace-normal", width: "16rem" },
-    { header: c.colMerchant, cell: (s) => s.merchantName },
-    { header: c.colCategory, cell: (s) => s.categoryName },
+  const goodsColumns: Column<ProductGoods>[] = [
+    { header: c.colSkuNo, cell: (g) => g.goodsNo, numeric: true, align: "start" },
+    { header: c.colTitle, cell: (g) => g.title.zh, className: "whitespace-normal", width: "16rem" },
+    { header: c.colMerchant, cell: (g) => g.merchantName },
+    { header: c.colCategory, cell: (g) => g.categoryName ?? <span className="text-muted-foreground">—</span> },
     {
+      // 一个商品可能有好几个规格，列表只给"起价"——每个市场取全部 sku 里最低的那个价
+      // B6：缺任一市场的价格不能上架，所以要能一眼看出缺哪个（只要有一个 sku 缺，这里就标出来）
       header: c.colPricing,
-      // B6：缺任一市场的价格不能上架，所以列表里就要能一眼看出缺哪个
-      cell: (s) => (
+      cell: (g) => (
         <span className="flex gap-1">
-          {MARKETS.map((m) =>
-            s.prices[m] === undefined
+          {MARKETS.map((m) => {
+            const prices = g.skus.map((s) => s.prices[m]).filter((p): p is number => p !== undefined);
+            return prices.length === 0
               ? <Badge key={m} tone="danger">{fill(c.priceMissing, { m })}</Badge>
-              : <span key={m} className="tabular-nums text-muted-foreground">{m} {money(s.prices[m]!)}</span>,
-          )}
+              : <span key={m} className="tabular-nums text-muted-foreground">{m} {fill(c.priceFrom, { v: money(Math.min(...prices)) })}</span>;
+          })}
         </span>
       ),
     },
     {
       header: c.colI18n,
       // 缺译不拦上架（按 R9 回落到 zh），但要看得见 —— 否则永远没人补
-      cell: (s) => {
-        const missing = (["en", "ar"] as const).filter((k) => !s.title[k]);
+      cell: (g) => {
+        const missing = (["en", "ar"] as const).filter((k) => !g.title[k]);
         return missing.length
           ? <Badge tone="warning">{fill(c.i18nMissing, { langs: missing.join(" / ") })}</Badge>
           : <span className="text-muted-foreground">{c.i18nComplete}</span>;
       },
     },
-    { header: c.colStock, cell: (s) => s.stock, numeric: true },
-    { header: c.colStatus, cell: (s) => <SkuStatusBadge value={s.status} /> },
+    { header: c.colSkuCount, cell: (g) => g.skus.length, numeric: true },
+    { header: c.colStatus, cell: (g) => <SkuStatusBadge value={g.status as Sku["status"]} /> },
     {
       header: c.colActions,
-      cell: (s) => (
-        <Button size="sm" variant="outline" onClick={() => { setCurrent(s); setReason(s.reason ?? ""); }}>
-          {s.status === "PENDING" && canAudit ? c.actionAudit : c.actionView}
+      cell: (g) => (
+        <Button size="sm" variant="outline" onClick={() => { setCurrent(g); setActiveSkuNo(null); setReason(""); }}>
+          {g.status === "PENDING" && canAudit ? c.actionAudit : c.actionView}
         </Button>
       ),
     },
@@ -336,12 +341,12 @@ function ProductsInner() {
             <FilterSelect aria-label={c.filterStatus} value={status} onChange={(v) => { setStatus(v); setPage(1); }} options={statusMap} allLabel={c.filterStatusAll} />
           </Toolbar>
           <DataTable
-            columns={skuColumns} rows={skus.data?.records} loading={skus.isLoading}
-            error={skus.error} onRetry={() => skus.refetch()}
-            rowKey={(s) => s.skuNo}
+            columns={goodsColumns} rows={goodsList.data?.records} loading={goodsList.isLoading}
+            error={goodsList.error} onRetry={() => goodsList.refetch()}
+            rowKey={(g) => g.goodsNo}
             empty={c.emptySku}
           />
-          <Pagination page={page} size={size} onSize={setSize} total={skus.data?.total ?? 0} onPage={setPage} />
+          <Pagination page={page} size={size} onSize={setSize} total={goodsList.data?.total ?? 0} onPage={setPage} />
         </>
       )}
 
@@ -373,22 +378,19 @@ function ProductsInner() {
         </>
       )}
 
-      {/* 商品详情 / 审核 */}
+      {/* 商品详情 / 审核。一个商品可能有好几个规格，通过/驳回/强制下架都是打在具体某个 sku 上的 */}
       <Drawer
         open={!!current}
         onOpenChange={(o) => !o && setCurrent(null)}
         title={current?.title.zh ?? ""}
-        desc={current ? `${current.skuNo} · ${current.merchantName}` : undefined}
+        desc={current ? `${current.goodsNo} · ${current.merchantName}` : undefined}
         width="w-[560px]"
         footer={
-          current && canAudit ? (
+          current && canAudit && activeSkuNo ? (
             current.status === "PENDING" ? (
-              <>
-                <Button variant="outline" onClick={() => audit.mutate({ skuNo: current.skuNo, pass: false, reason })}>{c.btnReject}</Button>
-                <Button onClick={() => audit.mutate({ skuNo: current.skuNo, pass: true })}>{c.btnApprove}</Button>
-              </>
+              <Button onClick={() => audit.mutate({ skuNo: activeSkuNo, pass: false, reason })}>{c.btnConfirmReject}</Button>
             ) : current.status === "ON_SALE" ? (
-              <Button variant="outline" onClick={() => forceOff.mutate({ skuNo: current.skuNo, reason })}>{c.btnForceOff}</Button>
+              <Button onClick={() => forceOff.mutate({ skuNo: activeSkuNo, reason })}>{c.btnConfirmForceOff}</Button>
             ) : null
           ) : null
         }
@@ -396,24 +398,9 @@ function ProductsInner() {
         {current && (
           <div>
             <FieldGrid>
-              <Field className="mb-3" label={c.colStatus}><SkuStatusBadge value={current.status} /></Field>
-              <Field className="mb-3" label={c.colCategory}>{current.categoryName}</Field>
-              <Field className="mb-3" label={c.colStock}>{current.stock}</Field>
-              <Field className="mb-3" label={c.fieldCreatedAt}>{fmtTime(current.createdAt)}</Field>
+              <Field className="mb-3" label={c.colStatus}><SkuStatusBadge value={current.status as Sku["status"]} /></Field>
+              <Field className="mb-3" label={c.colCategory}>{current.categoryName ?? "—"}</Field>
             </FieldGrid>
-
-            <Field label={c.fieldPricing}>
-              <div className="space-y-1">
-                {MARKETS.map((m) => (
-                  <div key={m} className="flex items-center justify-between gap-3">
-                    <span>{marketLabel[m]}（{m}）</span>
-                    {current.prices[m] === undefined
-                      ? <Badge tone="danger">{c.priceMissingBlocking}</Badge>
-                      : <span className="tabular-nums">{money(current.prices[m]!)}</span>}
-                  </div>
-                ))}
-              </div>
-            </Field>
 
             <Field label={c.fieldI18nCopy}>
               <div className="space-y-1">
@@ -423,13 +410,46 @@ function ProductsInner() {
               </div>
             </Field>
 
-            {(current.status === "PENDING" || current.status === "ON_SALE") && canAudit ? (
+            <Field label={c.fieldSkuList}>
+              <div className="space-y-2">
+                {current.skus.map((s) => (
+                  <div key={s.skuNo} className="rounded-field border p-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="txt-caption text-muted-foreground">
+                        {s.skuNo}{s.spec ? ` · ${s.spec}` : ""} · {c.colStock} {s.stock}
+                      </span>
+                      <span className="flex gap-1">
+                        {MARKETS.map((m) => s.prices[m] === undefined
+                          ? <Badge key={m} tone="danger">{fill(c.priceMissing, { m })}</Badge>
+                          : <span key={m} className="tabular-nums text-muted-foreground">{m} {money(s.prices[m]!)}</span>)}
+                      </span>
+                    </div>
+                    {canAudit && current.status === "PENDING" && (
+                      <div className="flex gap-2 mt-2">
+                        <Button size="sm" onClick={() => audit.mutate({ skuNo: s.skuNo, pass: true })}>{c.btnApprove}</Button>
+                        <Button size="sm" variant="outline"
+                          onClick={() => { setActiveSkuNo(s.skuNo); setReason(""); }}>
+                          {c.btnReject}
+                        </Button>
+                      </div>
+                    )}
+                    {canAudit && current.status === "ON_SALE" && (
+                      <div className="mt-2">
+                        <Button size="sm" variant="outline"
+                          onClick={() => { setActiveSkuNo(s.skuNo); setReason(""); }}>
+                          {c.btnForceOff}
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </Field>
+
+            {activeSkuNo && (
               <Field label={current.status === "PENDING" ? c.fieldRejectReason : c.fieldForceOffReason}>
-                <Textarea value={reason} onChange={setReason}
-                  placeholder={c.reasonPlaceholder} />
+                <Textarea value={reason} onChange={setReason} placeholder={c.reasonPlaceholder} />
               </Field>
-            ) : (
-              <Field label={c.fieldHandledReason}>{current.reason || "—"}</Field>
             )}
           </div>
         )}

@@ -80,6 +80,33 @@ export const productMock: ProductApi = {
       ),
     ),
 
+  /**
+   * 商品池，goods 粒度。mock 数据里每个 sku 本来就是独立商品（没有一件多规格的样本），
+   * 所以按 1:1 包一层——goodsNo 借用 skuNo，字段照抄，`skus` 只放这一条。
+   * 真实后端是货真价实的一对多，这里的简化不影响筛选交互本身对不对。
+   */
+  listGoods: (q = {}) =>
+    wait(
+      db.paginate(db.skus, q.page, q.size, (s) =>
+        db.eqHit(q.merchantNo, s.merchantNo) &&
+        db.eqHit(q.status, s.status) &&
+        db.eqHit(q.categoryNo, s.categoryNo) &&
+        db.kwHit(q.keyword, s.skuNo, s.title.zh, s.title.en, s.merchantName, s.categoryName),
+      ),
+    ).then((p) => ({
+      ...p,
+      records: p.records.map((s) => ({
+        goodsNo: s.skuNo,
+        title: s.title,
+        merchantNo: s.merchantNo,
+        merchantName: s.merchantName,
+        categoryNo: s.categoryNo,
+        categoryName: s.categoryName,
+        status: s.status,
+        skus: [{ skuNo: s.skuNo, optionValues: [], spec: undefined, prices: s.prices, stock: s.stock }],
+      })),
+    })),
+
   auditSku: async (skuNo, pass, reason) => {
     const s = findSku(skuNo);
     db.assertTransition(SKU_TRANSITIONS, s.status, pass ? "ON_SALE" : "REJECTED", "商品", "Item");

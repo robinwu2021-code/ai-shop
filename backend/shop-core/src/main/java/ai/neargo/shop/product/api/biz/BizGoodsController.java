@@ -62,7 +62,7 @@ public class BizGoodsController {
     public PageData<GoodsVO> list(@RequestParam(required = false) String status,
                                   @RequestParam(defaultValue = "1") long page,
                                   @RequestParam(defaultValue = "20") long size) {
-        return goodsService.list(BizContext.requireMerchantNo(), status, page, Math.min(size, 50));
+        return goodsService.list(BizContext.requireMerchantNo(), null, null, status, page, Math.min(size, 50));
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")

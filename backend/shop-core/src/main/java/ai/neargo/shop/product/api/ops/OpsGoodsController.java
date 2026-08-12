@@ -58,7 +58,24 @@ public class OpsGoodsController {
          *
          * merchantNo 传 null = 跨商家查，这正是平台审核要的口径。
          */
-        return merchantGoodsService.list(null, "AUDITING", page, size);
+        return merchantGoodsService.list(null, null, null, "AUDITING", page, size);
+    }
+
+    /**
+     * 商品池：运营端浏览全平台商品，按商家/类目/关键词筛。与上面的待审队列区分开——
+     * 那个是固定 status=AUDITING 的工作队列，这个是给"这个商家/这个类目下有什么商品"
+     * 这类日常查询用的，status 留空表示不筛（含在售/下架/待审全部）。
+     */
+    @GetMapping("/ops/goods")
+    @PreAuthorize("@perm.can('" + Perms.PRODUCT_SKU_READ + "')")
+    public PageData<ai.neargo.shop.product.dto.OpsGoodsListVO> goodsPool(
+            @RequestParam(required = false) String merchantNo,
+            @RequestParam(required = false) String categoryNo,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String status,
+            @RequestParam(defaultValue = "1") long page,
+            @RequestParam(defaultValue = "20") long size) {
+        return merchantGoodsService.listForOps(merchantNo, categoryNo, keyword, status, page, size);
     }
 
     /** 审核请求。商品审核只用到前两个字段，进件审核的另两个字段在平台端那份上。 */
