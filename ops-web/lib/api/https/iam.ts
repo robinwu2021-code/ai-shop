@@ -88,5 +88,61 @@ export const iamHttp: IamApi = {
   createRole: (roleCode, name) => client.post("/ops/perm/roles", { roleCode, name }),
   renameRole: (roleCode, name) => client.post(`/ops/perm/roles/${roleCode}/rename`, { name }),
   removeRole: (roleCode) => client.post(`/ops/perm/roles/${roleCode}/delete`, {}),
-  listAuditLogs: (q) => client.get("/ops/audit-logs", q),
+  /**
+   * 审计日志。**2026-08-12 修复**：此前调的是 `/ops/audit-logs`（复数），
+   * 后端从来没有过这个路径，真实路径是 `/ops/audit-log`（单数）——
+   * `ops-endpoint-exists.test.ts` 把它错归进了 `UNBUILT_DOMAINS`（当成"风控域没做"的一部分），
+   * 而它其实一直是活的、有真实数据，只是路径和口径都没对上。
+   *
+   * 后端现状（`OpsPlatformController.auditLogs`）：只接受 `target` 精确匹配，
+   * 固定 `limit 200`，返回裸数组，**没有 `logNo` 也没有 `critical` 字段**
+   * （`sys_audit_log` 表里根本没有存这两样）。
+   *
+   * 与其编一个假的 `critical`（比如按 action 字符串猜"像不像高危操作"）——
+   * 那样"只看高危"筛选会安静地返回错的结果，比没有这个功能更危险。
+   * 这里诚实地：真实的 200 条数据 + 关键词 + 分页都在客户端做（数据集小，
+   * 服务端本来就有 200 条硬顶），`critical` 恒为 false，UI 侧同时把
+   * "只看高危"筛选项藏起来（见 iam/page.tsx）。完整修复（补 critical 列、
+   * logNo、服务端分页/关键词）已登记为独立任务，需要先过数据库→API→对象
+   * 对齐，不在这次顺手改的范围内。
+   */
+  listAuditLogs: async (q) => {
+    const all = await client.get<BackendAuditLog[]>("/ops/audit-log", q?.target ? { target: q.target } : undefined);
+    const kw = (q?.keyword ?? "").trim().toLowerCase();
+    const filtered = kw
+      ? all.filter((l) =>
+          l.staffNo.toLowerCase().includes(kw) ||
+          l.staffName.toLowerCase().includes(kw) ||
+          l.action.toLowerCase().includes(kw) ||
+          l.target.toLowerCase().includes(kw) ||
+          l.detail.toLowerCase().includes(kw))
+      : all;
+    const page = q?.page ?? 1;
+    const size = q?.size ?? 10;
+    const start = (page - 1) * size;
+    return {
+      records: filtered.slice(start, start + size).map((l, i) => ({
+        // 后端没有 logNo，合成一个仅用于 React rowKey 的值，不代表真实单号
+        logNo: `${l.at}-${start + i}`,
+        at: new Date(l.at).toISOString(),
+        operator: `${l.staffName}（${l.staffNo}）`,
+        action: l.action,
+        target: l.target,
+        detail: l.detail,
+        critical: false,
+      })),
+      total: filtered.length,
+      page,
+      size,
+    };
+  },
 };
+
+interface BackendAuditLog {
+  staffNo: string;
+  staffName: string;
+  action: string;
+  target: string;
+  detail: string;
+  at: number;
+}

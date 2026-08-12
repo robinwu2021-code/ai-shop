@@ -65,13 +65,26 @@ function IamInner() {
   const allow = useCan();
   const { confirm, dialog } = useConfirm();
 
-  const [tab, setTab] = usePageTab(tabs, () => { setPage(1); setKeyword(""); });
+  /*
+   * 切 tab 要把还开着的编辑类抽屉关掉。
+   *
+   * 这几个 Drawer 没有挂在 `tab === "xxx"` 下面（一直渲染，只是 open 由各自的
+   * state 控制）——原因是「新建员工」成功后要展示一次性密码，这个动作本身
+   * 可能跨 tab（比如刚建完员工就想去角色页看看要不要建个新角色）。
+   * 但这意味着：开着编辑抽屉时点别的 tab，抽屉不会自动关，切回来发现
+   * 表单还留着上次没保存的东西，或者两个抽屉从不同 tab 里各自开着叠在一起。
+   *
+   * 初始密码抽屉**不关**：它是「只能看这一次」的展示，切 tab 不该把它冲掉。
+   */
+  const [tab, setTab] = usePageTab(tabs, () => {
+    setPage(1); setKeyword("");
+    setEditing(null); setPickedRole(null); setNewRole(null); setNewStaff(null);
+  });
 
   const { page, setPage, size, setSize } = usePaging();
   const [keyword, setKeyword] = useState("");
   const [role, setRole] = useState("");
   const [enabled, setEnabled] = useState("");
-  const [critical, setCritical] = useState("");
   const [editing, setEditing] = useState<Staff | null>(null);
   const [scopeForm, setScopeForm] = useState({ merchantNo: "", communityNo: "", pickupNo: "" });
   // 自定义角色不在 Role 联合类型里 —— 用 string
@@ -104,7 +117,7 @@ function IamInner() {
     queryFn: () => api.getRolePoints(pickedRole!),
     enabled: tab === "roles" && !!pickedRole,
   });
-  const auditQ = { keyword, critical, page, size };
+  const auditQ = { keyword, page, size };
   const logs = useQuery({ queryKey: ["audit-logs", auditQ], queryFn: () => api.listAuditLogs(auditQ), enabled: tab === "audit" });
 
   const invalidate = () => {
@@ -150,6 +163,20 @@ function IamInner() {
   const renameRoleMut = useMutation({
     mutationFn: (v: { roleCode: string; name: string }) => api.renameRole(v.roleCode, v.name),
     onSuccess: () => { invalidate(); notify.success(c.toastRoleRenamed); },
+  });
+  /*
+   * **这条此前只在后端/契约/mock 里存在，页面上从来没有按钮调它** ——
+   * 后端有「还有人在用不能删」的闸（10441），契约写了、mock 测了，
+   * 唯独 page.tsx 没有一个入口能触发它。有能力没有消费方，
+   * 这次全面review时才发现。
+   */
+  const removeRoleMut = useMutation({
+    mutationFn: (roleCode: string) => api.removeRole(roleCode),
+    onSuccess: () => {
+      invalidate();
+      if (pickedRole) setPickedRole(null); // 删的正好是打开的那个，关掉抽屉
+      notify.success(c.toastRoleRemoved);
+    },
   });
   const createRoleMut = useMutation({
     mutationFn: () => api.createRole(newRole!.roleCode.trim(), newRole!.name.trim()),
@@ -225,7 +252,6 @@ function IamInner() {
   useEffect(() => { setChecked(rolePts.data ?? []); }, [rolePts.data]);
 
   const staffColumns: Column<Staff>[] = [
-    { header: c.colStaffNo, cell: (s) => s.staffNo, numeric: true, align: "start" },
     { header: c.colName, cell: (s) => s.name },
     { header: c.colUsername, cell: (s) => s.username },
     {
@@ -270,14 +296,19 @@ function IamInner() {
       cell: (s) => (
         <Switch
           checked={s.enabled}
-          disabled={!canGrant}
+          // **自己那行也要提前拦**，和编辑按钮同一个理由：后端会拒（10420），
+          // 但走完「输入用户名二次确认」一整套流程才在最后被拒，
+          // 是比编辑按钮的行内下拉更差的一种「点完才报错」——
+          // 那套确认动作看着郑重其事，结果毫无意义。
+          disabled={!canGrant || s.username === myUsername}
+          title={s.username === myUsername ? c.cannotDisableSelf : undefined}
           aria-label={fill(c.ariaEnableSwitch, { name: s.name })}
           onChange={async (v) => {
             if (!v && s.roles.includes("SUPER_ADMIN")) {
               const ok = await confirm({
                 title: fill(c.confirmDisableTitle, { name: s.name }),
                 desc: c.confirmDisableDesc,
-                danger: true, confirmText: c.confirmDisableOk, requireText: s.staffNo,
+                danger: true, confirmText: c.confirmDisableOk, requireText: s.username,
               });
               if (!ok) return;
             }
@@ -341,6 +372,24 @@ function IamInner() {
               {c.actionRename}
             </Button>
           )}
+          {canGrant && !r.builtin && (
+            <Button size="sm" variant="ghost"
+              onClick={async () => {
+                // staffCount 在列表里就能看到，这里再报一遍是因为
+                // 「删之前」和「删的时候」之间可能有别人刚把角色配给了新人
+                const ok = await confirm({
+                  title: fill(c.confirmDeleteRoleTitle, { role: r.name }),
+                  desc: r.staffCount > 0
+                    ? fill(c.confirmDeleteRoleInUseDesc, { n: r.staffCount })
+                    : c.confirmDeleteRoleDesc,
+                  danger: true, confirmText: c.confirmDeleteRoleOk,
+                });
+                if (!ok) return;
+                removeRoleMut.mutate(r.roleCode);
+              }}>
+              {c.actionDelete}
+            </Button>
+          )}
         </span>
       ),
     },
@@ -352,7 +401,8 @@ function IamInner() {
     { header: c.colAction, cell: (l) => l.action },
     { header: c.colTarget, cell: (l) => l.target },
     { header: c.colDetail, cell: (l) => l.detail, className: "whitespace-normal", width: "22rem" },
-    { header: c.colCritical, cell: (l) => (l.critical ? <Badge tone="danger">{c.yes}</Badge> : <span className="text-muted-foreground">{c.no}</span>) },
+    // 高危列同理藏起来：l.critical 现在恒为 false，显示这一列会让人读成
+    // "这些操作都不算高危"，而事实是"这件事现在无法判断"——两者不是一回事
   ];
 
   return (
@@ -398,10 +448,12 @@ function IamInner() {
               <FilterSelect aria-label={c.filterStatus} value={enabled} onChange={(v) => { setEnabled(v); setPage(1); }} options={enabledOptions} allLabel={c.filterStatusAll} />
             </>
           )}
-          {tab === "audit" && (
-            <FilterSelect aria-label={c.filterCritical} value={critical} onChange={(v) => { setCritical(v); setPage(1); }}
-              options={[{ value: "1", label: c.filterCriticalOnly }]} allLabel={c.filterCriticalAll} />
-          )}
+          {/*
+            "只看高危"筛选先藏起来：后端 sys_audit_log 根本没有存 critical 这个信息，
+            前端现在恒填 false。显示这个筛选项会让人以为"勾了就能看到高危操作"，
+            实际上勾了永远是空列表——那比不做这个功能更糟，是「有筛选框但摁不动」。
+            完整支持见登记的后续任务（补 critical 列 + 写入时机判断）。
+          */}
         </Toolbar>
       )}
 
@@ -553,7 +605,7 @@ function IamInner() {
         open={!!editing}
         onOpenChange={(o) => !o && setEditing(null)}
         title={editing ? fill(c.staffDrawerTitle, { name: editing.name }) : ""}
-        desc={editing ? `${editing.staffNo} · ${editing.username}` : undefined}
+        desc={editing ? editing.username : undefined}
         footer={editing ? (
           <Button loading={saveStaffMut.isPending} onClick={() => saveStaffMut.mutate()}>{c.save}</Button>
         ) : null}
