@@ -201,11 +201,16 @@ async function submit() {
     });
     merchant.profile = profile;
 
-    // **被驳回就不要说「已提交」也不要跳走** —— 提交了但没过，
-    // 跳到工作台看到「还没有开店」只会让人以为系统坏了。
-    // 留在原页，驳回原因就在上方，改完再交。
+    // **没过审就不要跳走** —— 工作台的空态只会判断「有没有生效的店」（isActive），
+    // APPLYING 和从没申请过在那边长得一模一样，跳过去看到「还没有开店」
+    // 会让人以为提交失败了，回头再交一次。留在原页，用上面的状态卡说清楚。
     if (profile.status === "REJECTED") {
       uni.showToast({ title: profile.rejectReason || t("apply.rejectFallback"), icon: "none" });
+      scrollToTop();
+      return;
+    }
+    if (profile.status === "APPLYING") {
+      uni.showToast({ title: t("apply.submitted"), icon: "none" });
       scrollToTop();
       return;
     }
