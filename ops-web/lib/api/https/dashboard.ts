@@ -59,6 +59,22 @@ export function toOpsRole(backendRole?: string): Role {
   // 认不出来就当分析员（只读），而不是超管
   return (backendRole && BACKEND_ROLE[backendRole]) || "ANALYST";
 }
+
+/**
+ * ops-web 角色码 → 后端角色码（{@link BACKEND_ROLE} 的反向表，只在异名同义的三个上有差）。
+ *
+ * **筛选/查询场景必须过这一层**：员工列表按角色筛选时，前端把 ops-web 的
+ * `PRODUCT_OPS` 原样当查询参数发给后端，而库里存的是 `GOODS_OPS`——
+ * 请求 200、返回 0 条，界面上看是「筛了没结果」，跟没这个人一样，
+ * 而实际上是查询词从一开始就没对上库里的值。
+ * 由 `listStaffs` 在发请求前调用。
+ */
+const OPS_TO_BACKEND: Record<string, string> = Object.fromEntries(
+  Object.entries(BACKEND_ROLE).map(([backend, ops]) => [ops, backend]),
+);
+export function toBackendRole(opsRole?: string): string | undefined {
+  return opsRole ? (OPS_TO_BACKEND[opsRole] ?? opsRole) : undefined;
+}
 import type { DashboardApi } from "../contracts/dashboard";
 
 export const dashboardHttp: DashboardApi = {

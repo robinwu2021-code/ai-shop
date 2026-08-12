@@ -2,7 +2,7 @@
 import { client } from "../http-client";
 import type { IamApi } from "../contracts/iam";
 import type { Staff } from "@/lib/types";
-import { toOpsRole } from "./dashboard";
+import { toBackendRole, toOpsRole } from "./dashboard";
 
 /**
  * 后端 `StaffVO` 的原样形状。**与 ops-web 的 `Staff` 不同形**：
@@ -22,6 +22,7 @@ interface BackendStaff {
   communityNo?: string;
   pickupNo?: string;
   lastLoginAt?: number;
+  mustChangePassword?: boolean;
 }
 
 interface StaffPage {
@@ -31,17 +32,24 @@ interface StaffPage {
   size: number;
 }
 
-/** 一个员工在 ops-web 里只有一个角色；后端是数组，取第一个并翻译角色码 */
+/**
+ * **2026-08-12：不再只取第一个角色。**
+ *
+ * 此前这里写 `role: toOpsRole(s.roles?.[0])` —— 后端给数组、前端只认第一个，
+ * 于是「这个人有两个角色」这件事在页面上根本表达不出来。
+ * 角色码仍要翻译：BD / GOODS_OPS / SUPPORT 是历史遗留的三个异名同义。
+ */
 function toStaff(s: BackendStaff): Staff {
   return {
     staffNo: s.staffNo,
     username: s.username,
     name: s.realName ?? "",
-    role: toOpsRole(s.roles?.[0]),
+    roles: (s.roles ?? []).map((r) => toOpsRole(r) as string),
     merchantNo: s.merchantNo || undefined,
     communityNo: s.communityNo || undefined,
     pickupNo: s.pickupNo || undefined,
     enabled: s.status !== "DISABLED",
+    mustChangePassword: s.mustChangePassword === true,
     lastLoginAt: s.lastLoginAt ? new Date(s.lastLoginAt).toISOString() : undefined,
     createdAt: "",
   };
@@ -49,13 +57,25 @@ function toStaff(s: BackendStaff): Staff {
 
 export const iamHttp: IamApi = {
   listStaffs: async (q) => {
-    const p = await client.get<StaffPage>("/ops/staffs", q);
+    /*
+     * **角色筛选要先把 ops-web 角色码翻回后端码**。BD / GOODS_OPS / SUPPORT
+     * 三个是历史异名同义 —— 筛选框选的是 ops-web 那份（如 PRODUCT_OPS），
+     * 库里的 sys_ops_staff.roles 存的是后端那份（GOODS_OPS）。
+     * 不翻译的话请求 200、返回 0 条，界面上跟这个角色没人一样，
+     * 而实际上是查询词一开始就没对上。
+     */
+    const p = await client.get<StaffPage>("/ops/staffs", { ...q, role: toBackendRole(q?.role) });
     return { ...p, records: (p?.records ?? []).map(toStaff) };
   },
   setStaffEnabled: async (no, enabled) =>
     toStaff(await client.post<BackendStaff>(`/ops/staffs/${no}/enabled`, { enabled })),
-  setStaffRole: async (no, role) =>
-    toStaff(await client.post<BackendStaff>(`/ops/staffs/${no}/role`, { role })),
+  createStaff: async (username, realName, roles) => {
+    const r = await client.post<{ staff: BackendStaff; initialPassword: string }>(
+      "/ops/staffs", { username, realName, roles });
+    return { staff: toStaff(r.staff), initialPassword: r.initialPassword };
+  },
+  setStaffRoles: async (no, roles) =>
+    toStaff(await client.post<BackendStaff>(`/ops/staffs/${no}/roles`, { roles })),
   setStaffScope: async (no, scope) =>
     toStaff(await client.post<BackendStaff>(`/ops/staffs/${no}/scope`, scope)),
   // 角色与功能点。**路径是 /ops/perm/** 而不是 /ops/roles** ——
@@ -66,6 +86,7 @@ export const iamHttp: IamApi = {
   setRolePoints: (roleCode, pointCodes) =>
     client.post(`/ops/perm/roles/${roleCode}/points`, { pointCodes }),
   createRole: (roleCode, name) => client.post("/ops/perm/roles", { roleCode, name }),
+  renameRole: (roleCode, name) => client.post(`/ops/perm/roles/${roleCode}/rename`, { name }),
   removeRole: (roleCode) => client.post(`/ops/perm/roles/${roleCode}/delete`, {}),
   listAuditLogs: (q) => client.get("/ops/audit-logs", q),
 };

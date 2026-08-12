@@ -75,8 +75,31 @@ public class OpsPlatformController {
     @GetMapping("/ops/staffs")
     @PreAuthorize("@perm.can('" + Perms.IAM_STAFF_READ + "')")
     public PageData<StaffVO> staff(@RequestParam(defaultValue = "1") long page,
-                                   @RequestParam(defaultValue = "20") long size) {
-        return PageData.ofAll(opsService.staffList(), page, size);
+                                   @RequestParam(defaultValue = "20") long size,
+                                   @RequestParam(required = false) String keyword,
+                                   @RequestParam(required = false) String role,
+                                   @RequestParam(required = false) String enabled) {
+        /*
+         * **实测发现的缺陷**：这三个参数此前压根不在方法签名里 —— ops-web 的搜索框、
+         * 角色筛选、状态筛选一直在发请求，Spring 静默丢弃它不认识的 query 参数，
+         * 后端原样返回全量列表。界面上看是「搜了没反应」，不报错、不提示，
+         * 是这个仓库最难查的一类缺陷：入口在、请求在，就是不生效。
+         *
+         * 过滤放在 controller 而不是 service：staffList() 就是几十条量级的全量查询，
+         * 不值得为三个可选条件在 mapper 层拼动态 SQL。
+         */
+        List<StaffVO> all = opsService.staffList();
+        String kw = keyword == null ? null : keyword.trim().toLowerCase();
+        List<StaffVO> filtered = all.stream()
+                .filter(s -> kw == null || kw.isEmpty()
+                        || s.staffNo().toLowerCase().contains(kw)
+                        || s.username().toLowerCase().contains(kw)
+                        || s.realName().toLowerCase().contains(kw))
+                .filter(s -> role == null || role.isBlank() || s.roles().contains(role))
+                .filter(s -> enabled == null || enabled.isBlank()
+                        || ("1".equals(enabled)) == "ACTIVE".equals(s.status()))
+                .toList();
+        return PageData.ofAll(filtered, page, size);
     }
 
     /**

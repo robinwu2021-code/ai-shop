@@ -5,14 +5,15 @@ import type { Role } from "@/lib/auth";
 import type { AuditLog, RoleDef, Staff } from "@/lib/types";
 
 export const staffs: Staff[] = [
-  { staffNo: "E9001", username: "admin", name: "陈平台", role: "SUPER_ADMIN", enabled: true, lastLoginAt: "2026-08-06T00:10:00Z", createdAt: "2026-01-05T02:00:00Z" },
-  { staffNo: "E9002", username: "admin2", name: "周超管", role: "SUPER_ADMIN", enabled: true, lastLoginAt: "2026-08-04T09:00:00Z", createdAt: "2026-02-11T02:00:00Z" },
-  { staffNo: "E9003", username: "ops.community1", name: "林社区", role: "COMMUNITY_OPS", communityNo: "C001", enabled: true, lastLoginAt: "2026-08-05T23:40:00Z", createdAt: "2026-03-02T02:00:00Z" },
-  { staffNo: "E9004", username: "bd.wang", name: "王拓展", role: "MERCHANT_BD", merchantNo: "M903", enabled: true, lastLoginAt: "2026-08-05T10:00:00Z", createdAt: "2026-03-20T02:00:00Z" },
-  { staffNo: "E9005", username: "finance01", name: "李财务", role: "FINANCE", enabled: true, lastLoginAt: "2026-08-05T08:30:00Z", createdAt: "2026-02-01T02:00:00Z" },
-  { staffNo: "E9006", username: "cs02", name: "赵客服", role: "CS", enabled: true, lastLoginAt: "2026-08-06T01:00:00Z", createdAt: "2026-04-15T02:00:00Z" },
-  { staffNo: "E9007", username: "audit01", name: "孙审核", role: "AUDITOR", enabled: true, lastLoginAt: "2026-08-05T14:00:00Z", createdAt: "2026-05-06T02:00:00Z" },
-  { staffNo: "E9008", username: "risk01", name: "钱风控", role: "RISK", enabled: false, lastLoginAt: "2026-06-30T02:00:00Z", createdAt: "2026-03-08T02:00:00Z" },
+  { staffNo: "E9001", username: "admin", name: "陈平台", roles: ["SUPER_ADMIN"], enabled: true, lastLoginAt: "2026-08-06T00:10:00Z", createdAt: "2026-01-05T02:00:00Z" },
+  { staffNo: "E9002", username: "admin2", name: "周超管", roles: ["SUPER_ADMIN"], enabled: true, lastLoginAt: "2026-08-04T09:00:00Z", createdAt: "2026-02-11T02:00:00Z" },
+  { staffNo: "E9003", username: "ops.community1", name: "林社区", roles: ["COMMUNITY_OPS"], communityNo: "C001", enabled: true, lastLoginAt: "2026-08-05T23:40:00Z", createdAt: "2026-03-02T02:00:00Z" },
+  { staffNo: "E9004", username: "bd.wang", name: "王拓展", roles: ["MERCHANT_BD"], merchantNo: "M903", enabled: true, lastLoginAt: "2026-08-05T10:00:00Z", createdAt: "2026-03-20T02:00:00Z" },
+  { staffNo: "E9005", username: "finance01", name: "李财务", roles: ["FINANCE"], enabled: true, lastLoginAt: "2026-08-05T08:30:00Z", createdAt: "2026-02-01T02:00:00Z" },
+  { staffNo: "E9006", username: "cs02", name: "赵客服", roles: ["CS"], enabled: true, lastLoginAt: "2026-08-06T01:00:00Z", createdAt: "2026-04-15T02:00:00Z" },
+  { staffNo: "E9007", username: "audit01", name: "孙审核", roles: ["AUDITOR"], enabled: true, lastLoginAt: "2026-08-05T14:00:00Z", createdAt: "2026-05-06T02:00:00Z" },
+  // **故意给两个角色** —— 多角色是这一轮的重点，mock 里没有样本就试不出来
+  { staffNo: "E9008", username: "risk01", name: "钱风控", roles: ["RISK", "ANALYST"], enabled: false, lastLoginAt: "2026-06-30T02:00:00Z", createdAt: "2026-03-08T02:00:00Z" },
 ];
 
 /**
@@ -29,7 +30,7 @@ export const roleDefs: RoleDef[] = (Object.keys(ROLE_LABEL) as Role[]).map((role
   endCode: "OPS",
   builtin: true,
   pointCount: permsOf(role).length,
-  staffCount: staffs.filter((s) => s.role === role).length,
+  staffCount: staffs.filter((s) => s.roles.includes(role)).length,
 }));
 
 /**

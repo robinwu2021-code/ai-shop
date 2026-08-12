@@ -7,8 +7,20 @@ export interface IamApi {
   listStaffs(q?: StaffQ): Promise<Page<Staff>>;
   /** 停用/启用（软删除语义，不删账号 —— 审计要能追溯到人）。 */
   setStaffEnabled(staffNo: string, enabled: boolean): Promise<Staff>;
-  /** 改角色。 */
-  setStaffRole(staffNo: string, role: Role): Promise<Staff>;
+  /**
+   * 新建员工。**返回的初始密码只出现这一次** —— 关掉抽屉就再也取不到。
+   *
+   * 密码由后端生成而不是界面传：收明文的问题不是加密与否，
+   * 是谁都能在 devtools 里看到刚给同事设的密码，且它会顺着请求体进日志。
+   */
+  createStaff(username: string, realName: string, roles: string[]): Promise<{ staff: Staff; initialPassword: string }>;
+  /**
+   * 改角色（**多角色**）。权限取并集。
+   *
+   * ⚠️ **不能改自己**（10420）—— 否则有 iam:staff:update 的人能给自己加超管。
+   * UI 上把自己那行的编辑入口禁掉，别让人点完才知道。
+   */
+  setStaffRoles(staffNo: string, roles: string[]): Promise<Staff>;
   /**
    * 数据域授权（P-1.1.3）。只对受限角色有意义 ——
    * 给全量角色配 scope 会让人以为它被限制了，实际没有，所以直接拒绝。
@@ -39,6 +51,8 @@ export interface IamApi {
    */
   setRolePoints(roleCode: string, pointCodes: string[]): Promise<RoleDef>;
   createRole(roleCode: string, name: string): Promise<RoleDef>;
+  /** 改角色展示名。**只改名不改码** —— 码是授权的键。预置角色会被拒（10440）。 */
+  renameRole(roleCode: string, name: string): Promise<RoleDef>;
   /**
    * 删角色。**还有人在用会被拒（10441）** —— 用 `staffCount` 提前拦在点击之前。
    *

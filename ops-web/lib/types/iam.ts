@@ -13,8 +13,14 @@ export interface Staff {
   username: string;
   /** 姓名 */
   name: string;
-  /** 角色。决定权限码集合，见 `RoleDef` */
-  role: Role;
+  /**
+   * 角色（**可多个**）。权限码取所有角色的并集。
+   *
+   * <p>2026-08-12 从单值 `role` 换成数组：库早就支持多角色
+   * （`sys_role_member` 唯一键含 role_code、`Perms.of` 取并集），
+   * 是写接口把它压成了单值。
+   */
+  roles: string[];
   /**
    * 数据域（P-1.1.3）。只对**受限角色**有意义：
    * 社区运营 → communityNo、商家运营 → merchantNo。
@@ -27,6 +33,11 @@ export interface Staff {
   pickupNo?: string;
   /** 是否启用。停用后立即无法登录，历史操作留痕保留 */
   enabled: boolean;
+  /**
+   * 首登必须改密。
+   * 建号时后端生成的一次性初始密码只是「拿到账号」的凭据，不是长期口令。
+   */
+  mustChangePassword?: boolean;
   /** 最近登录时间。从未登录为空 */
   lastLoginAt?: string;
   /** 建档时间 */

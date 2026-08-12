@@ -27,7 +27,7 @@ describe("超管保护（锁死系统是最贵的错误）", () => {
 
   it("不能把最后一个超管降级", async () => {
     await iamMock.setStaffEnabled("E9002", false);
-    await expect(iamMock.setStaffRole("E9001", "CS")).rejects.toThrow(/最后一个/);
+    await expect(iamMock.setStaffRoles("E9001", ["CS"])).rejects.toThrow(/最后一个/);
   });
 });
 
@@ -42,7 +42,7 @@ describe("数据域授权（P-1.1.3）", () => {
   });
 
   it("换到不需要数据域的角色时，旧 scope 被清掉", async () => {
-    const s = await iamMock.setStaffRole("E9003", "CS");
+    const s = await iamMock.setStaffRoles("E9003", ["CS"]);
     expect(s.communityNo).toBeUndefined();
   });
 });
