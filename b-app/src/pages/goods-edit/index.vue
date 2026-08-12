@@ -339,6 +339,12 @@ onLoad(async (q) => {
   const g = await api.mGoodsDetail(q.goodsNo);
   // 详情接口按当前语言拍平，回显时只能填回当前语言那一格；
   // 真实后端应返回三语原文（这里 mock 的局限，不装作能拿到全部）
+  /*
+   * **主图要回显**。保存时无条件带 `cover: cover.value`，而这里不回填的话
+   * 它是空串 —— 于是「编辑一次商品，主图就没了」，且页面上那个 📷 占位
+   * 看起来就像这个商品本来就没图，谁也不会把两件事联系起来。
+   */
+  cover.value = g.cover ?? "";
   title.value = { ...title.value, [lang.value]: g.title };
   subtitle.value = { ...subtitle.value, [lang.value]: g.subtitle };
   type.value = g.type;

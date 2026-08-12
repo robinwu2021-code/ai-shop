@@ -52,6 +52,14 @@ onMounted(() => {
 
 // 面板里切语言/皮肤时页面不重建，标题与导航栏配色要跟着变
 watch(() => app.lang, applyTitle);
+
+/*
+ * **titleKey 会变**：商品编辑页传的是 `isEdit ? 编辑商品 : 新建商品`，
+ * 而 `isEdit` 依赖 onLoad 拿到的 query —— 挂载那一刻它还是 false。
+ * 只在 onMounted 应用一次的话，页内标题是「编辑商品」、
+ * 导航栏却一直写着「新建商品」，两个标题在同一屏上互相矛盾。
+ */
+watch(() => props.titleKey, applyTitle);
 </script>
 
 <template>

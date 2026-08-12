@@ -677,7 +677,29 @@ export interface Goods {
   limitPerUser: number;
   /** 是否在售。下架后详情页仍可访问（历史订单要点得进去），但不可下单 */
   onSale: boolean;
+  /**
+   * 审核与在售状态（**只有商家侧 `/biz/goods` 下发**，C 端拿不到也不需要）。
+   *
+   * 为什么不能只看 `onSale`：新建和每次改动都会回到审核中，而那时
+   * `onSale` 是 false —— 界面照着布尔值写就成了「已下架 + 上架按钮」，
+   * 点下去后端必然拒（70003「商品还在审核中」）。**商家看到的是一个永远点不动的按钮**。
+   *
+   * ⚠️ 待审在这里是 `AUDITING`（后端 `prd_goods.audit_status` 的原值），
+   * 而 {@link GoodsStatus} 用的是 `PENDING`（ops-web 的 SkuStatus 口径）——
+   * 同一件事两个词，词典 §11 该收敛哪一个还没定。这里如实写后端发的那个。
+   */
+  status?: MerchantGoodsStatus;
 }
+
+/**
+ * 商家侧商品状态（`/biz/goods` 下发的四态）。
+ *
+ * ⚠️ 待审在这里是 `AUDITING`（后端 `prd_goods.audit_status` 的原值），
+ * 而 {@link GoodsStatus} 用 `PENDING`（ops-web 的 SkuStatus 口径）——
+ * **同一件事两个词**，词典 §11 该收敛哪一个还没定。这里如实写后端发的那个，
+ * 收敛之前不要在端上做映射：映射会让「界面显示对了」掩盖住口径还没统一。
+ */
+export type MerchantGoodsStatus = "ON_SALE" | "OFF_SALE" | "AUDITING" | "REJECTED";
 
 // ---------------------------------------------------------------- 购物车
 

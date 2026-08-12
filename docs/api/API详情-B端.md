@@ -586,6 +586,7 @@ _无字段_
 | `points` | `number` | 否 | 本商品每件赠送的积分。不同商品可以给不同积分，不配则按成交额比例默认发放 |
 | `limitPerUser` | `number` | 是 | 每人限购，0 = 不限 |
 | `onSale` | `boolean` | 是 | 是否在售。下架后详情页仍可访问（历史订单要点得进去），但不可下单 |
+| `status` | [`MerchantGoodsStatus`](#merchantgoodsstatus) | 否 | 审核与在售状态（**只有商家侧 `/biz/goods` 下发**，C 端拿不到也不需要）。 为什么不能只看 `onSale`：新建和每次改动都会回到审核中，而那时 `onSale` 是 false —— 界面照着布尔值写就成了「已下架 + 上架按钮」， 点下去后端必然拒（70003「商品还在审核中」）。**商家看到的是一个永远点不动的按钮**。 ⚠️ 待审在这里是 `AUDITING`（后端 `prd_goods.audit_status` 的原值）， 而  {@link  GoodsStatus }  用的是 `PENDING`（ops-web 的 SkuStatus 口径）—— 同一件事两个词，词典 §11 该收敛哪一个还没定。这里如实写后端发的那个。 |
 
 `groupBuy` 的字段：
 
@@ -648,6 +649,7 @@ _无字段_
 | `points` | `number` | 否 | 本商品每件赠送的积分。不同商品可以给不同积分，不配则按成交额比例默认发放 |
 | `limitPerUser` | `number` | 是 | 每人限购，0 = 不限 |
 | `onSale` | `boolean` | 是 | 是否在售。下架后详情页仍可访问（历史订单要点得进去），但不可下单 |
+| `status` | [`MerchantGoodsStatus`](#merchantgoodsstatus) | 否 | 审核与在售状态（**只有商家侧 `/biz/goods` 下发**，C 端拿不到也不需要）。 为什么不能只看 `onSale`：新建和每次改动都会回到审核中，而那时 `onSale` 是 false —— 界面照着布尔值写就成了「已下架 + 上架按钮」， 点下去后端必然拒（70003「商品还在审核中」）。**商家看到的是一个永远点不动的按钮**。 ⚠️ 待审在这里是 `AUDITING`（后端 `prd_goods.audit_status` 的原值）， 而  {@link  GoodsStatus }  用的是 `PENDING`（ops-web 的 SkuStatus 口径）—— 同一件事两个词，词典 §11 该收敛哪一个还没定。这里如实写后端发的那个。 |
 
 `groupBuy` 的字段：
 
@@ -703,6 +705,7 @@ _无字段_
 | `points` | `number` | 否 | 本商品每件赠送的积分。不同商品可以给不同积分，不配则按成交额比例默认发放 |
 | `limitPerUser` | `number` | 是 | 每人限购，0 = 不限 |
 | `onSale` | `boolean` | 是 | 是否在售。下架后详情页仍可访问（历史订单要点得进去），但不可下单 |
+| `status` | [`MerchantGoodsStatus`](#merchantgoodsstatus) | 否 | 审核与在售状态（**只有商家侧 `/biz/goods` 下发**，C 端拿不到也不需要）。 为什么不能只看 `onSale`：新建和每次改动都会回到审核中，而那时 `onSale` 是 false —— 界面照着布尔值写就成了「已下架 + 上架按钮」， 点下去后端必然拒（70003「商品还在审核中」）。**商家看到的是一个永远点不动的按钮**。 ⚠️ 待审在这里是 `AUDITING`（后端 `prd_goods.audit_status` 的原值）， 而  {@link  GoodsStatus }  用的是 `PENDING`（ops-web 的 SkuStatus 口径）—— 同一件事两个词，词典 §11 该收敛哪一个还没定。这里如实写后端发的那个。 |
 
 `groupBuy` 的字段：
 
@@ -764,6 +767,7 @@ _无字段_
 | `points` | `number` | 否 | 本商品每件赠送的积分。不同商品可以给不同积分，不配则按成交额比例默认发放 |
 | `limitPerUser` | `number` | 是 | 每人限购，0 = 不限 |
 | `onSale` | `boolean` | 是 | 是否在售。下架后详情页仍可访问（历史订单要点得进去），但不可下单 |
+| `status` | [`MerchantGoodsStatus`](#merchantgoodsstatus) | 否 | 审核与在售状态（**只有商家侧 `/biz/goods` 下发**，C 端拿不到也不需要）。 为什么不能只看 `onSale`：新建和每次改动都会回到审核中，而那时 `onSale` 是 false —— 界面照着布尔值写就成了「已下架 + 上架按钮」， 点下去后端必然拒（70003「商品还在审核中」）。**商家看到的是一个永远点不动的按钮**。 ⚠️ 待审在这里是 `AUDITING`（后端 `prd_goods.audit_status` 的原值）， 而  {@link  GoodsStatus }  用的是 `PENDING`（ops-web 的 SkuStatus 口径）—— 同一件事两个词，词典 §11 该收敛哪一个还没定。这里如实写后端发的那个。 |
 
 `groupBuy` 的字段：
 
@@ -849,6 +853,7 @@ _无字段_
 | `points` | `number` | 否 | 本商品每件赠送的积分。不同商品可以给不同积分，不配则按成交额比例默认发放 |
 | `limitPerUser` | `number` | 是 | 每人限购，0 = 不限 |
 | `onSale` | `boolean` | 是 | 是否在售。下架后详情页仍可访问（历史订单要点得进去），但不可下单 |
+| `status` | [`MerchantGoodsStatus`](#merchantgoodsstatus) | 否 | 审核与在售状态（**只有商家侧 `/biz/goods` 下发**，C 端拿不到也不需要）。 为什么不能只看 `onSale`：新建和每次改动都会回到审核中，而那时 `onSale` 是 false —— 界面照着布尔值写就成了「已下架 + 上架按钮」， 点下去后端必然拒（70003「商品还在审核中」）。**商家看到的是一个永远点不动的按钮**。 ⚠️ 待审在这里是 `AUDITING`（后端 `prd_goods.audit_status` 的原值）， 而  {@link  GoodsStatus }  用的是 `PENDING`（ops-web 的 SkuStatus 口径）—— 同一件事两个词，词典 §11 该收敛哪一个还没定。这里如实写后端发的那个。 |
 
 `groupBuy` 的字段：
 
@@ -1880,8 +1885,8 @@ _无字段_
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `mchAccountNo` | `string` | 是 | 商家账号号。**不叫 staffNo** —— 那个名字被平台运营占着，两者是不同的人 |
-| `displayName` | `string` | 否 | 备注名（老板自己写的，如「小张」）。**列表认人靠它** —— 只有脱敏号的话，三个人以后谁也分不清。为空时端上回落 `loginPhone`。 |
-| `loginPhone` | `string` | 是 | 登录手机号，**已脱敏**。完整号不回显 —— 那等于一份可导出的通讯录 |
+| `displayName` | `string` | 否 | 姓名（老板自己写的，如「小张」）。**认人靠它** —— 一列号码谁也分不清。为空时端上回落 `loginPhone`。 |
+| `loginPhone` | `string` | 是 | 登录手机号，**完整、不脱敏**。 它**就是这个员工的登录用户名**（手机号 + 验证码，没有密码）—— 老板要能核对「他用哪个号登录」、人换号时要能改，脱敏之后这两件事都做不了。 |
 | `isOwner` | `boolean` | 是 | 老板。**不受门店授权限制**，他的店都归他管 |
 | `status` | [`StaffStatus`](#staffstatus) | 是 | ACTIVE / DISABLED |
 | `roles` | [`StoreRole`](#storerole)\[\] | 是 | 他在各门店的角色。老板为空 —— 不是"没授权"，是"不需要授权" |
@@ -1910,8 +1915,8 @@ _无字段_
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `mchAccountNo` | `string` | 是 | 商家账号号。**不叫 staffNo** —— 那个名字被平台运营占着，两者是不同的人 |
-| `displayName` | `string` | 否 | 备注名（老板自己写的，如「小张」）。**列表认人靠它** —— 只有脱敏号的话，三个人以后谁也分不清。为空时端上回落 `loginPhone`。 |
-| `loginPhone` | `string` | 是 | 登录手机号，**已脱敏**。完整号不回显 —— 那等于一份可导出的通讯录 |
+| `displayName` | `string` | 否 | 姓名（老板自己写的，如「小张」）。**认人靠它** —— 一列号码谁也分不清。为空时端上回落 `loginPhone`。 |
+| `loginPhone` | `string` | 是 | 登录手机号，**完整、不脱敏**。 它**就是这个员工的登录用户名**（手机号 + 验证码，没有密码）—— 老板要能核对「他用哪个号登录」、人换号时要能改，脱敏之后这两件事都做不了。 |
 | `isOwner` | `boolean` | 是 | 老板。**不受门店授权限制**，他的店都归他管 |
 | `status` | [`StaffStatus`](#staffstatus) | 是 | ACTIVE / DISABLED |
 | `roles` | [`StoreRole`](#storerole)\[\] | 是 | 他在各门店的角色。老板为空 —— 不是"没授权"，是"不需要授权" |
@@ -1942,8 +1947,8 @@ _无字段_
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `mchAccountNo` | `string` | 是 | 商家账号号。**不叫 staffNo** —— 那个名字被平台运营占着，两者是不同的人 |
-| `displayName` | `string` | 否 | 备注名（老板自己写的，如「小张」）。**列表认人靠它** —— 只有脱敏号的话，三个人以后谁也分不清。为空时端上回落 `loginPhone`。 |
-| `loginPhone` | `string` | 是 | 登录手机号，**已脱敏**。完整号不回显 —— 那等于一份可导出的通讯录 |
+| `displayName` | `string` | 否 | 姓名（老板自己写的，如「小张」）。**认人靠它** —— 一列号码谁也分不清。为空时端上回落 `loginPhone`。 |
+| `loginPhone` | `string` | 是 | 登录手机号，**完整、不脱敏**。 它**就是这个员工的登录用户名**（手机号 + 验证码，没有密码）—— 老板要能核对「他用哪个号登录」、人换号时要能改，脱敏之后这两件事都做不了。 |
 | `isOwner` | `boolean` | 是 | 老板。**不受门店授权限制**，他的店都归他管 |
 | `status` | [`StaffStatus`](#staffstatus) | 是 | ACTIVE / DISABLED |
 | `roles` | [`StoreRole`](#storerole)\[\] | 是 | 他在各门店的角色。老板为空 —— 不是"没授权"，是"不需要授权" |
@@ -2535,6 +2540,7 @@ _无字段_
 | `points` | `number` | 否 | 本商品每件赠送的积分。不同商品可以给不同积分，不配则按成交额比例默认发放 |
 | `limitPerUser` | `number` | 是 | 每人限购，0 = 不限 |
 | `onSale` | `boolean` | 是 | 是否在售。下架后详情页仍可访问（历史订单要点得进去），但不可下单 |
+| `status` | [`MerchantGoodsStatus`](#merchantgoodsstatus) | 否 | 审核与在售状态（**只有商家侧 `/biz/goods` 下发**，C 端拿不到也不需要）。 为什么不能只看 `onSale`：新建和每次改动都会回到审核中，而那时 `onSale` 是 false —— 界面照着布尔值写就成了「已下架 + 上架按钮」， 点下去后端必然拒（70003「商品还在审核中」）。**商家看到的是一个永远点不动的按钮**。 ⚠️ 待审在这里是 `AUDITING`（后端 `prd_goods.audit_status` 的原值）， 而  {@link  GoodsStatus }  用的是 `PENDING`（ops-web 的 SkuStatus 口径）—— 同一件事两个词，词典 §11 该收敛哪一个还没定。这里如实写后端发的那个。 |
 
 `groupBuy` 的字段：
 
@@ -2769,6 +2775,17 @@ _无字段_
 | `silent` | `boolean` | 是 | 沉默客户：曾经常来、最近没来。**这是店主唯一能立刻行动的信号** |
 | `source` | [`TrafficSource`](#trafficsource) | 是 | 客流来源：他是你自己带来的，还是平台分配的 |
 
+### MerchantGoodsStatus
+
+商家侧商品状态（`/biz/goods` 下发的四态）。 ⚠️ 待审在这里是 `AUDITING`（后端 `prd_goods.audit_status` 的原值）， 而  {@link  GoodsStatus }  用 `PENDING`（ops-web 的 SkuStatus 口径）—— **同一件事两个词**，词典 §11 该收敛哪一个还没定。这里如实写后端发的那个， 收敛之前不要在端上做映射：映射会让「界面显示对了」掩盖住口径还没统一。
+
+枚举取值：
+
+- `ON_SALE`
+- `OFF_SALE`
+- `AUDITING`
+- `REJECTED`
+
 ### MerchantLoginReqBody
 
 | 字段 | 类型 | 必填 | 说明 |
@@ -2848,8 +2865,8 @@ _无字段_
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `mchAccountNo` | `string` | 是 | 商家账号号。**不叫 staffNo** —— 那个名字被平台运营占着，两者是不同的人 |
-| `displayName` | `string` | 否 | 备注名（老板自己写的，如「小张」）。**列表认人靠它** —— 只有脱敏号的话，三个人以后谁也分不清。为空时端上回落 `loginPhone`。 |
-| `loginPhone` | `string` | 是 | 登录手机号，**已脱敏**。完整号不回显 —— 那等于一份可导出的通讯录 |
+| `displayName` | `string` | 否 | 姓名（老板自己写的，如「小张」）。**认人靠它** —— 一列号码谁也分不清。为空时端上回落 `loginPhone`。 |
+| `loginPhone` | `string` | 是 | 登录手机号，**完整、不脱敏**。 它**就是这个员工的登录用户名**（手机号 + 验证码，没有密码）—— 老板要能核对「他用哪个号登录」、人换号时要能改，脱敏之后这两件事都做不了。 |
 | `isOwner` | `boolean` | 是 | 老板。**不受门店授权限制**，他的店都归他管 |
 | `status` | [`StaffStatus`](#staffstatus) | 是 | ACTIVE / DISABLED |
 | `roles` | [`StoreRole`](#storerole)\[\] | 是 | 他在各门店的角色。老板为空 —— 不是"没授权"，是"不需要授权" |

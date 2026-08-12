@@ -40,6 +40,24 @@ const loading = ref(false);
 
 const empty = computed(() => !loading.value && !list.value.length);
 
+/**
+ * 这一行到底是什么状态。
+ *
+ * **不能只看 `onSale`**：新建和每次改动都会回到审核中，那时 `onSale` 是 false，
+ * 照布尔值渲染就成了「已下架」+ 一个必然失败的「上架」。
+ * 后端下发的 `status` 才是四态（AUDITING / REJECTED / ON_SALE / OFF_SALE）；
+ * 老数据没有这个字段时回落布尔值。
+ */
+function stateOf(g: Goods) {
+  return g.status ?? (g.onSale ? "ON_SALE" : "OFF_SALE");
+}
+
+/** 审核中或被驳回 —— 这两种状态下商家自己按不了上架 */
+function pending(g: Goods) {
+  const s = stateOf(g);
+  return s === "AUDITING" || s === "REJECTED";
+}
+
 async function load() {
   if (!merchant.isActive) return;
   loading.value = true;
@@ -166,8 +184,8 @@ onShow(load);
         </view>
       </view>
       <view class="row__ops">
-        <text class="sh-chip" :class="g.onSale ? 'sh-chip--primary' : ''">
-          {{ g.onSale ? $t("goods.statusON_SALE") : $t("goods.statusOFF_SALE") }}
+        <text class="sh-chip" :class="{ 'sh-chip--primary': g.onSale, 'is-warn': pending(g) }">
+          {{ $t(`goods.status${stateOf(g)}`) }}
         </text>
         <view class="row__btns">
           <!-- 编辑与上下架都会改价/改可见性 → biz:goods；改库存只是数量 → biz:stock。
@@ -175,7 +193,9 @@ onShow(load);
           <text v-if="merchant.can('biz:goods')" class="mini" @tap="edit(g)">
             {{ $t("goods.edit") }}
           </text>
-          <text v-if="merchant.can('biz:goods')" class="mini" @tap="toggle(g)">
+          <!-- 审核中/已驳回时**不给上架按钮**：后端必拒（70003），
+               留着它等于给商家一个永远点不动的按钮，而错在哪一句话都没有 -->
+          <text v-if="merchant.can('biz:goods') && !pending(g)" class="mini" @tap="toggle(g)">
             {{ g.onSale ? $t("goods.offSale") : $t("goods.onSale") }}
           </text>
           <text v-if="merchant.can('biz:stock')" class="mini" @tap="editStock(g)">
