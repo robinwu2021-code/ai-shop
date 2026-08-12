@@ -722,6 +722,42 @@ export const mockApi: ShopApi = {
     return delay({ amount, items });
   },
 
+  /**
+   * 结算页能力提示。
+   *
+   * mock 里造两种小微形态：**不可开票**与**额度将超**。
+   * 造成「全都正常」的话这块提示永远不出现，等于没做 —— mock 的价值恰恰是
+   * 让人在开发时就看见那几条提示长什么样。
+   */
+  async orderCapability(req) {
+    const seen = new Map<string, { name: string; micro: boolean }>();
+    for (const it of req.items) {
+      const g = toGoods(findGoodsSeed(it.goodsNo));
+      // 约定：mock 里 merchantNo 以 M9 开头的当作小微，用来演示提示
+      seen.set(g.merchant.merchantNo, {
+        name: g.merchant.name,
+        micro: g.merchant.merchantNo.startsWith("M9"),
+      });
+    }
+    const merchants = [...seen.entries()].map(([merchantNo, m]) => ({
+      merchantNo,
+      merchantName: m.name,
+      invoiceCapable: !m.micro,
+      // 小微通常没有 H5/APP —— 混合购物车里有一件小微的货，整单就只剩 JSAPI
+      payMethods: m.micro ? ["JSAPI"] : ["JSAPI", "H5", "APP"],
+      quotaExhausted: false,
+      quotaWouldExceed: false,
+    }));
+    const usable = merchants.length
+      ? merchants.map((m) => m.payMethods).reduce((a, b) => a.filter((x) => b.includes(x)))
+      : [];
+    return delay({
+      usablePayMethods: usable,
+      anyNotInvoiceCapable: merchants.some((m) => !m.invoiceCapable),
+      merchants,
+    });
+  },
+
   async afterSaleList() {
     // 售后是独立资源：从订单上摘出来，而不是拿订单状态冒充
     return delay(db.orders.filter((o) => o.afterSale).map((o) => o.afterSale!));

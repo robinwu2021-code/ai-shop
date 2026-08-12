@@ -22,7 +22,13 @@ function find(merchantNo: string): Merchant {
 // ⚠️ 会抛错的方法一律写成 **async**：非 async 的箭头函数里 `throw` 是**同步抛出**，
 // 调用方拿不到一个 rejected promise（`api.x().catch()` 根本来不及挂上），
 // 与真实后端「网络返回错误码」的行为不一致 —— react-query 的 onError 也就不会触发。
-/** mock 侧的主体类型映射，见 merchantDeposit 里的说明。 */
+/**
+ * mock 侧的主体档位。
+ *
+ * 真实后端现在会在商家档案里下发 legalForm（见 MerchantProfileVO），
+ * 但 mock 的 merchantDeposit 要按档位算限额，而它拿到的只有 merchantNo，
+ * 所以这张表还留着 —— 与 db.merchants 上的 legalForm 保持一致。
+ */
 const MOCK_LEGAL_FORM: Record<string, LegalForm> = {
   M901: "MICRO",
 };

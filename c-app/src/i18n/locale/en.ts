@@ -357,6 +357,10 @@ export default {
     giftItem: "{title} ×{n} (free)",
   },
   confirm: {
+    capNoInvoice: "These merchants cannot issue invoices: {names}. Please confirm before ordering.",
+    capNoPayMethod: "These items share no common payment method. Please order them separately or remove some.",
+    capQuotaBlocked: "These merchants have insufficient collection quota for this period: {names}.",
+    capPickupOnly: "This order supports pickup only.",
     points: "Pay with points",
     pointsHave: "{n} points available",
     pointsUsed: "{n} points used, {p} off",

@@ -92,11 +92,17 @@ public interface MerchantGovernService {
                                     String qualNumber, String imageUrl, Long expireAt) {
     }
 
+    /**
+     * @param legalForm 主体档位 {@code MICRO}/{@code INDIVIDUAL}/{@code ENTERPRISE}。
+     *                  <b>准入档位完全由它决定</b>——保证金、限额、禁售品类都按它取策略。
+     *                  此前档案里没有它：运营看得到「这家被限额 500」，
+     *                  看不到「因为它是小微」，于是只会来问为什么。
+     */
     record MerchantProfileVO(String merchantNo, String name, String tier, String status,
                              List<String> communityNos, String contactName, String contactPhone,
                              List<String> categoryCodes, boolean verified, int breachCount,
                              boolean settleAccountReady, long createdAt, String auditRemark,
-                             boolean asPickupPoint, String archivedAt) {
+                             boolean asPickupPoint, String archivedAt, String legalForm) {
     }
 
     record ViolationVO(String violationNo, String merchantNo, String merchantName, String type,

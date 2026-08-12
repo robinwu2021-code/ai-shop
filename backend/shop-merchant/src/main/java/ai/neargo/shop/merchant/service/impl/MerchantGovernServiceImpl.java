@@ -250,7 +250,9 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
                 contact.map(MerchantApplyQueryPort.ApplyContact::rejectReason).orElse(null),
                 contact.map(MerchantApplyQueryPort.ApplyContact::asPickupPoint).orElse(false),
                 // 归档用状态表达：FROZEN 即「不在营业中」，没有独立的归档位
-                null);
+                null,
+                // 准入档位完全由它决定 —— 看得到结果看不到原因，只会引出一通电话
+                m.getLegalForm());
     }
 
     private List<String> readList(String raw) {

@@ -23,6 +23,7 @@ import { BanTab, CreditTab } from "./credit-tab";
 import { AdmissionTab } from "./admission-tab";
 import { ArchiveActions, ShowArchivedToggle, archiveConfirm, archivedRowClass, unarchiveConfirm } from "@/components/archive";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { Drawer, Field, FieldGrid } from "@/components/ui/drawer";
 import { MultiSelect } from "@/components/ui/multi-select";
@@ -138,6 +139,25 @@ function MerchantsInner() {
           <VerifiedBadge verified={m.verified} />
         </div>
       ),
+    },
+    {
+      header: c.colLegalForm,
+      /*
+       * 准入档位完全由它决定：保证金、限额、禁售品类都按它取策略。
+       * 不显示的话，运营看得到「这家被限额 500」却看不到「因为它是小微」——
+       * 看得到结果看不到原因，只会引出一通电话。
+       *
+       * 小微标 warning：它是唯一一档带硬限制的，一眼要能挑出来。
+       */
+      cell: (m) => (m.legalForm === "MICRO"
+        ? <Badge tone="warning">{c.formMicro}</Badge>
+        : m.legalForm === "INDIVIDUAL"
+          ? <Badge tone="muted">{c.formIndividual}</Badge>
+          : m.legalForm === "ENTERPRISE"
+            ? <Badge tone="muted">{c.formEnterprise}</Badge>
+            // 存量商家可能没有这个字段 —— 显示「未知」而不是空白，
+            // 空白会被读成「企业」（最常见的那一档）
+            : <span className="text-muted-foreground">{c.formUnknown}</span>),
     },
     { header: c.colTier, cell: (m) => tierLabel(m.tier) },
     { header: c.colCommunity, cell: (m) => m.communityNos.join("、") },

@@ -19,7 +19,7 @@ import { FEATURES, FULFILLMENT, POINTS, ROUTES } from "@shared/utils/constants";
 import { datetime, money } from "@shared/utils/format";
 import { earnPointsFor, pricingFor } from "@shared/strategies/pricing";
 import { currentCurrency } from "@shared/utils/money";
-import type { Address, CartItem, Coupon, FulfillmentType, OrderItem, OrderAmount } from "@shared/types";
+import type { Address, CartItem, CheckoutCapability, Coupon, FulfillmentType, OrderItem, OrderAmount } from "@shared/types";
 
 const { t } = useI18n();
 const cart = useCartStore();
@@ -95,6 +95,36 @@ const gifts = computed(() => items.value.filter((it) => (it.giftQty ?? 0) > 0));
  */
 const serverAmount = ref<OrderAmount | null>(null);
 
+/**
+ * 结算页能力提示：这一车货能不能开票、能用哪些支付方式、额度够不够。
+ *
+ * 三件事的共同后果都是**付款那一刻才炸** —— 小微没有 H5/App 支付方式、
+ * 小微不能开票、额度用尽通道直接拒收。后端一直拦得住，但买家是在
+ * 点了支付之后才知道，而那时候平台既解释不清也补救不了。
+ */
+const capability = ref<CheckoutCapability | null>(null);
+
+/** 开不了票的商家。买完才发现开不了票，平台补救不了 —— 必须在付款前说。 */
+const noInvoiceMerchants = computed(
+  () => capability.value?.merchants.filter((m) => !m.invoiceCapable) ?? [],
+);
+
+/**
+ * 这一车货一种支付方式都用不了。
+ *
+ * **拦在结算页**，别让他点下去：让他点下去只会得到一个说不清原因的「支付失败」。
+ * 注意判据是「后端给了 capability 且交集为空」——
+ * 拿不到 capability（接口挂了）时不拦，那是我们的问题，不该变成他不能下单。
+ */
+const noPayMethod = computed(
+  () => !!capability.value && capability.value.usablePayMethods.length === 0,
+);
+
+/** 额度已用尽或本单会超的商家：这家的货现在下不了单。 */
+const quotaBlocked = computed(
+  () => capability.value?.merchants.filter((m) => m.quotaExhausted || m.quotaWouldExceed) ?? [],
+);
+
 const localEstimate = computed(() => {
   const first = items.value[0];
   if (!first) return null;
@@ -132,14 +162,45 @@ async function refreshAmount() {
   }
 }
 
+/**
+ * 能力提示与金额分开问：金额随优惠、地址、履约方式变，能力只随**车里有谁**变。
+ * 合成一个请求的话，改一次地址就会把三次能力查询也重跑一遍。
+ */
+async function refreshCapability() {
+  if (!items.value.length) {
+    capability.value = null;
+    return;
+  }
+  try {
+    capability.value = await api.orderCapability({
+      items: items.value.map((it) => ({ goodsNo: it.goodsNo, skuNo: it.skuNo, qty: it.qty })),
+      fulfillment: fulfillment.value,
+      pickupNo: needPickup.value ? community.pickup?.pickupNo : undefined,
+    });
+  } catch {
+    // 拿不到就不提示，但**不拦下单**：接口挂了是我们的问题，不该变成他买不了
+    capability.value = null;
+  }
+}
+
 watch(
   () => [items.value.length, fulfillment.value, couponNo.value, usePoints.value, addressId.value, appointmentAt.value],
   () => void refreshAmount(),
   { immediate: true },
 );
 
+// 只跟车里的商品变化 —— 改地址、换券都不影响「这家能不能开票」
+watch(
+  () => items.value.map((it) => it.skuNo).join(","),
+  () => void refreshCapability(),
+  { immediate: true },
+);
+
 const canSubmit = computed(
-  () => !!items.value.length && !submitting.value && (!needAddress.value || !!address.value),
+  () => !!items.value.length && !submitting.value
+    && (!needAddress.value || !!address.value)
+    // 一种支付方式都没有 / 有商家额度过不去：拦在这里，别让他撞一个说不清的「支付失败」
+    && !noPayMethod.value && quotaBlocked.value.length === 0,
 );
 
 async function loadAddresses() {
@@ -224,6 +285,22 @@ onMounted(async () => {
 
 <template>
   <sh-scaffold title-key="confirm.title">
+    <!--
+      能力提示：**必须在付款前**说。
+      三条的共同后果都是付款那一刻才炸 —— 而那时候平台既解释不清也补救不了。
+      放在页首而不是靠近提交按钮：买家的注意力在这一页从上往下走，
+      放在底部他会先看完金额再看到「其实付不了」。
+    -->
+    <view v-if="noPayMethod" class="cap cap--block">
+      <text>{{ $t("confirm.capNoPayMethod") }}</text>
+    </view>
+    <view v-if="quotaBlocked.length" class="cap cap--block">
+      <text>{{ $t("confirm.capQuotaBlocked", { names: quotaBlocked.map((m) => m.merchantName).join("、") }) }}</text>
+    </view>
+    <view v-if="noInvoiceMerchants.length" class="cap cap--warn">
+      <text>{{ $t("confirm.capNoInvoice", { names: noInvoiceMerchants.map((m) => m.merchantName).join("、") }) }}</text>
+    </view>
+
     <!-- 收货信息：按履约方式变形 -->
     <view class="sh-card">
       <text class="sh-chip sh-chip--primary">{{ $t(`fulfillment.${fulfillment}`) }}</text>
@@ -534,5 +611,23 @@ onMounted(async () => {
 }
 .spacer {
   height: 200rpx;
+}
+
+/* 能力提示：拦下的用醒目色，只是提醒的用弱一档 —— 两者的用户动作不同 */
+.cap {
+  margin: 16rpx 24rpx;
+  padding: 20rpx 24rpx;
+  border-radius: 16rpx;
+  font-size: 26rpx;
+  line-height: 1.5;
+}
+/* 拦下的用 danger，只是提醒的用 warning —— 两者要求的用户动作不同 */
+.cap--block {
+  background: var(--sh-danger-tint);
+  color: var(--sh-danger);
+}
+.cap--warn {
+  background: var(--sh-warning-tint);
+  color: var(--sh-warning);
 }
 </style>

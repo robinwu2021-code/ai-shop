@@ -3,6 +3,7 @@
 import type {
   AfterSale,
   OrderPreview,
+  CheckoutCapability,
   AfterSaleReason,
   MasterData,
   MerchantApplyReq,
@@ -145,6 +146,12 @@ export interface ShopApi {
    * 端上永远只能算出一个乐观的近似值。
    */
   orderPreview(req: PreviewOrderReq): Promise<OrderPreview>;
+
+  /**
+   * 结算页能力提示。与 {@link orderPreview} 分开：那个回答「多少钱」，
+   * 这个回答「付得了吗、票拿得到吗」—— 三件事的共同后果都是**付款那一刻才炸**。
+   */
+  orderCapability(req: PreviewOrderReq): Promise<CheckoutCapability>;
 
   // ---- 售后
   /** 申请售后。**仅退款与退货退款流程不同** —— 后者必须先收到货再退款 */

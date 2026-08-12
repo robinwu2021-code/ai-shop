@@ -147,6 +147,7 @@ const RESPONSE_TYPES = {
   // 生成器于是拒绝输出（见下方 missingResp 守卫）。结果是**契约里没有它们**，
   // 而后端明明实现了 —— 所有按契约算的覆盖率都因此低估后端。
   orderPreview: "OrderPreview",
+  orderCapability: "CheckoutCapability",
   afterSaleReasons: "AfterSaleReason[]",
   afterSaleList: "AfterSale[]",
   logout: "void",

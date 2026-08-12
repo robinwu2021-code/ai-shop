@@ -83,6 +83,7 @@ export const ENDPOINTS: Record<keyof ShopApi, EndpointDef> = {
   orderDetail: { method: "GET", path: "/mp/order/:orderNo", auth: true, summary: "订单详情" },
   cancelOrder: { method: "POST", path: "/mp/order/:orderNo/cancel", auth: true, summary: "取消订单" },
   orderPreview: { method: "POST", path: "/mp/order/preview", auth: true, summary: "订单预览（金额以后端为准）" },
+  orderCapability: { method: "POST", path: "/mp/order/capability", auth: true, summary: "结算页能力提示（开票/支付方式/额度）" },
   applyAfterSale: {
     method: "POST",
     path: "/mp/order/:orderNo/after-sale",

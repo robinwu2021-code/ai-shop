@@ -6,7 +6,7 @@ import type { AdmissionPolicy, DepositTxn, StoreMode } from "@/lib/types";
 // 时间用固定字符串而非 Date.now()：mock 数据每次刷新都变的话，截图对不上、测试也不稳。
 export const merchants: Merchant[] = [
   {
-    merchantNo: "M901", name: "阿姨家的菜摊", tier: "SMALL", status: "ACTIVE",
+    merchantNo: "M901", legalForm: "MICRO", name: "阿姨家的菜摊", tier: "SMALL", status: "ACTIVE",
     communityNos: ["C001"],
     contactName: "王秀兰", contactPhone: "138****2011",
     categoryCodes: ["FRESH_VEG"], qualifications: ["食品经营许可证"], verified: false, breachCount: 0,

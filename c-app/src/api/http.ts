@@ -37,6 +37,7 @@ import type {
 import type {
   AfterSale,
   OrderPreview,
+  CheckoutCapability,
   AfterSaleReason,
   Address,
   CartItem,
@@ -126,6 +127,7 @@ export const httpApi: ShopApi = {
   afterSaleReasons: () => call<AfterSaleReason[]>("afterSaleReasons"),
   afterSaleList: () => call<AfterSale[]>("afterSaleList"),
   orderPreview: (req) => http.post<OrderPreview>(ENDPOINTS.orderPreview.path, req),
+  orderCapability: (req) => http.post<CheckoutCapability>(ENDPOINTS.orderCapability.path, req),
 
   // ---- 营销
   fillReturnExpress: (afterSaleNo, expressNo) =>

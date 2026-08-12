@@ -382,6 +382,10 @@ export default {
     giftItem: "{title} ×{n}（0 元）",
   },
   confirm: {
+    capNoInvoice: "以下商家无法开具发票：{names}。下单前请确认。",
+    capNoPayMethod: "这一车商品没有共同支持的支付方式，请分开下单或移除部分商品。",
+    capQuotaBlocked: "以下商家本期收款额度不足，暂时无法下单：{names}。",
+    capPickupOnly: "本单仅支持到店/自提点自取。",
     points: "积分抵扣",
     pointsHave: "有 {n} 积分可用",
     pointsUsed: "已用 {n} 积分，抵 {p}",

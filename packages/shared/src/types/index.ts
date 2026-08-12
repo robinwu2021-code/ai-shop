@@ -886,6 +886,48 @@ export interface OrderPreview {
   items: OrderItem[];
 }
 
+/**
+ * 结算页的<b>能力提示</b>：这一车货能不能开票、能用哪些支付方式、额度还够不够。
+ *
+ * <p>与 {@link OrderPreview} 分开是有意的：preview 回答「多少钱」，
+ * 这个回答「付得了吗、票拿得到吗」。
+ *
+ * <p>三件事一起给，是因为它们的共同后果都是<b>付款那一刻才炸</b>——
+ * 小微没有 H5/App 支付方式（混合购物车整单付不了）、小微不能开票
+ * （买完才发现补救不了）、额度用尽（通道直接拒收）。
+ * 每一条单独看都像偶发故障，放在一起看才是同一件事：
+ * 平台放弱主体进来了，而结算页还没告诉买家这意味着什么。
+ */
+export interface CheckoutCapability {
+  /**
+   * 整单可用的支付方式 = <b>各商家支持集合的交集</b>。
+   *
+   * 交集而非并集：一笔支付覆盖整单，有一家不支持就用不了。
+   * <b>空数组意味着这一车货没有任何方式能付</b>，端上要拦在结算页 ——
+   * 让他点下去只会得到一个说不清原因的「支付失败」。
+   */
+  usablePayMethods: string[];
+  /** 车里有商家开不了票。**必须在付款前告诉用户**：买完才发现，平台补救不了 */
+  anyNotInvoiceCapable: boolean;
+  /** 逐商家的能力，端上据此在对应的商家分组上打标 */
+  merchants: MerchantCapability[];
+}
+
+export interface MerchantCapability {
+  /** 商家单号 */
+  merchantNo: string;
+  /** 商家名，展示用 */
+  merchantName: string;
+  /** 能否开票 */
+  invoiceCapable: boolean;
+  /** 该商家支持的支付方式；**空 = 未配置**（进件还没走完），不是「一种都不支持」 */
+  payMethods: string[];
+  /** 本期收款额度已用尽 —— 这家的货现在下不了单 */
+  quotaExhausted: boolean;
+  /** 加上本车这些货会超额 —— 还没用尽，但这一单过不去 */
+  quotaWouldExceed: boolean;
+}
+
 export interface OrderItem {
   /** 商品单号 */
   goodsNo: string;

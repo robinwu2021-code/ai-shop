@@ -91,6 +91,11 @@ const zh = {
   adSwitchThirdParty: "切第三方",
   adToastModeChanged: "经营模式已更新（仅对新单生效）",
   tabAdmission: "准入与保证金",
+  colLegalForm: "主体档位",
+  formMicro: "小微",
+  formIndividual: "个体户",
+  formEnterprise: "企业",
+  formUnknown: "未知",
   tabCredit: "信用档案",
   tabBan: "违规处置与封禁",
 
@@ -308,6 +313,11 @@ const en: typeof zh = {
   adSwitchThirdParty: "Set third-party",
   adToastModeChanged: "Business mode updated (new orders only)",
   tabAdmission: "Admission & deposit",
+  colLegalForm: "Entity tier",
+  formMicro: "Micro",
+  formIndividual: "Sole proprietor",
+  formEnterprise: "Company",
+  formUnknown: "Unknown",
   tabCredit: "Credit records",
   tabBan: "Penalties & suspensions",
 
