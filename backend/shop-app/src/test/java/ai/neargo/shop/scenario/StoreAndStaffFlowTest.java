@@ -80,10 +80,24 @@ class StoreAndStaffFlowTest {
         create(token, "二店", "");
         create(token, "三店", "");
 
+        /*
+         * **码必须是 70020，不能是 10400**。
+         *
+         * 「请求参数有误」把额度问题说成了输入问题：店主会回去反复改门店名，
+         * 而无论怎么改都一样被拒 —— 他要做的是升套餐，两件事之间没有任何关系。
+         * 真实链路上撞见过：填好名字与地址点保存，只得到一句「请求参数有误」。
+         */
         mvc().perform(post("/biz/store/create").header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\":\"四店\"}"))
-                .andExpect(jsonPath("$.code").value(org.hamcrest.Matchers.not(0)));
+                .andExpect(jsonPath("$.code").value(70020))
+                .andExpect(jsonPath("$.msg").value(org.hamcrest.Matchers.containsString("套餐")));
+
+        // 名字为空仍然是 10400 —— 那才真的是「参数有误」，两者不能混
+        mvc().perform(post("/biz/store/create").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"  \"}"))
+                .andExpect(jsonPath("$.code").value(10400));
     }
 
     @Test

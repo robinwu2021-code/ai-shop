@@ -29,6 +29,8 @@ export const useMerchantStore = defineStore("merchant", {
     staffRoles: [] as string[],
     /** 进行中的 scope 请求，供 ensureScope 去重。不持久化 */
     scopeLoading: null as Promise<unknown> | null,
+    /** 进行中的门店列表请求，供 ensureStores 去重。不持久化 */
+    storesLoading: null as Promise<Store[]> | null,
   }),
 
   getters: {
@@ -109,6 +111,22 @@ export const useMerchantStore = defineStore("merchant", {
       else uni.removeStorageSync(STORAGE.storeNo);
       // 角色跟着门店走 —— 换了店就要重新问「我在这家店能做什么」
       void this.loadScope();
+    },
+
+    /**
+     * 保证门店列表已经拉过一次。**与 {@link ensureScope} 同一个理由**。
+     *
+     * `loadStores` 原先只有首页会调，于是<b>刷新在商品页时 `stores` 是空的</b>：
+     * `multiStore` 变 false，门店切换条整条消失 —— 而 `storeNo` 仍从本地存储里
+     * 读出来发给后端。表现是「页面显示的是古荡店的库存，界面上却没有任何地方
+     * 告诉你现在看的是古荡店」，多店商家据此改库存会改到另一家店去。
+     */
+    async ensureStores() {
+      if (this.stores.length) return this.stores;
+      this.storesLoading ??= this.loadStores().finally(() => {
+        this.storesLoading = null;
+      });
+      return this.storesLoading;
     },
 
     /**

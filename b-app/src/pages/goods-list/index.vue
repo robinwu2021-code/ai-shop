@@ -165,6 +165,11 @@ onShow(load);
       当前门店。**多店才显示** —— 单店商家看到「当前门店」只会疑惑还有别的店。
       不显示的代价是实测出来的：商家给某家店设了 1 件库存，商品页却显示主体总量 91，
       他会以为还有货。
+
+      提示里那半句「没单独设过的门店按 0 卖」是后端的真实语义
+      （`StockPortImpl.hasStoreStock`：任意一家店设过，这个 SKU 就整体转成按店算，
+      没设的店按 0 —— 少卖可恢复，超卖不可）。真实链路上验过：
+      在新店设了 5 件，主店那 80 件当场变成 0 —— **不写出来的话没人能预料到**。
     -->
     <view v-if="merchant.multiStore" class="store" @tap="pickStore">
       <text class="store__name">{{ merchant.currentStore?.name || "—" }}</text>

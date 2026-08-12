@@ -31,6 +31,12 @@ onLaunch(() => {
    * 判权的默认值是拒绝，所以「判权状态没加载」会把界面自己锁死。
    */
   void merchant.ensureScope();
+  /*
+   * 门店列表同理：它只有首页会拉，于是刷新在商品页时 stores 是空的 ——
+   * multiStore 变 false，门店切换条整条消失，而当前门店号还在本地存着照发。
+   * 页面显示的是那家店的库存，界面上却没有一处说明「你在看哪家店」。
+   */
+  void merchant.ensureStores();
   // 演示态：先有店、再有会话、最后补单 —— 顺序反了的话补单时还不知道是哪家店
   if (USE_MOCK) {
     ensureDemoMerchant();

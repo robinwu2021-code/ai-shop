@@ -166,7 +166,7 @@ export default {
   },
 
   goods: {
-    storeStockHint: "库存与上下架按门店算",
+    storeStockHint: "库存与上下架按门店算 —— 没单独设过的门店按 0 卖",
     switchStore: "切换门店 ›",
     /**
      * 五品类的展示名。**此前页面直接渲染枚举码**（NORMAL / FRESH / …），

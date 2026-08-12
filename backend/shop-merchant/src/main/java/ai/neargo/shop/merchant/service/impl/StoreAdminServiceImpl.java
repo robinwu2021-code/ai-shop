@@ -76,7 +76,9 @@ public class StoreAdminServiceImpl implements StoreAdminService {
          * 那样商家会看到一家建出来却打不开的店，比拒绝更难解释。
          */
         if (existing.size() >= maxPerEntity) {
-            throw BizException.of(ErrorCode.BAD_REQUEST);
+            // **不是 BAD_REQUEST**：那句「请求参数有误」会让店主回去反复改门店名，
+            // 而无论怎么改都一样被拒 —— 他要做的是升套餐，两件事毫无关系
+            throw BizException.of(ErrorCode.STORE_QUOTA_EXCEEDED);
         }
 
         MchStore s = new MchStore();

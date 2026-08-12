@@ -102,7 +102,7 @@ export default {
   },
 
   goods: {
-    storeStockHint: "المخزون والعرض لكل فرع",
+    storeStockHint: "المخزون والعرض لكل فرع — الفرع غير المُحدَّد يبيع 0",
     switchStore: "تبديل الفرع ›",
     categoryType: {
       NORMAL: "سلع يومية",

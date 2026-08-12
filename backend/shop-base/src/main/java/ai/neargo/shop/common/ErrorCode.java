@@ -221,6 +221,15 @@ public enum ErrorCode {
      */
     SERVICE_SCOPE_NOT_ALLOWED(70018, "err.merchant.service_scope_not_allowed"),
 
+    /**
+     * 门店数量已到套餐上限。
+     *
+     * <p>不复用 {@code BAD_REQUEST}：那句「请求参数有误」把一个<b>额度问题</b>
+     * 说成了<b>输入问题</b> —— 商家会回去反复改门店名，而无论怎么改都一样被拒。
+     * 他要做的是升套餐（或先停用一家），这两件事之间没有任何关系。
+     */
+    STORE_QUOTA_EXCEEDED(70020, "err.merchant.store_quota_exceeded"),
+
     // ---- 8xxxx 类目维护 ----
     /** 类目最多三级 —— 再深一层 C 端的类目导航就没法展示，也没有第四层的产品定义。 */
     CATEGORY_TOO_DEEP(80001, "err.category.too_deep"),
