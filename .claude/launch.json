@@ -1,42 +1,20 @@
 {
   "version": "0.0.1",
+  "_comment": [
+    "本项目的**唯一一套** dev server。多个会话共用，不要另起端口。",
+    "",
+    "端口是各端 .env 定死的，不是随便选的：",
+    "  · 后端 8081 —— c-app / b-app / ops-web 三端的 API_BASE 都指它，且**直连不走 vite 代理**",
+    "  · ops-web 3100 —— 后端 SecurityConfig 的 CORS 白名单只认它",
+    "所以 autoPort 一律关：换了端口，页面上每个列表都是「网络异常」，",
+    "而控制台里只有一条被浏览器拦掉的预检，很难看出根因。",
+    "",
+    "查端口占用用 `lsof -nP -iTCP:PORT -sTCP:LISTEN`。",
+    "别用 `lsof -ti :PORT` —— 它把**出站连接**也算进来（微信连腾讯的 :8080 就会被误判成占用）。"
+  ],
   "configurations": [
     {
-      "name": "c-app-h5",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": [
-        "run",
-        "dev:h5"
-      ],
-      "cwd": "c-app",
-      "port": 5173,
-      "autoPort": true
-    },
-    {
-      "name": "b-app-h5",
-      "runtimeExecutable": "/bin/zsh",
-      "runtimeArgs": [
-        "-lc",
-        "PORT=5174 npm run dev:h5"
-      ],
-      "cwd": "b-app",
-      "port": 5174,
-      "autoPort": false
-    },
-    {
-      "_comment": "端口必须是 3100 —— 后端 SecurityConfig 的 CORS 白名单只认它。照默认的 3000 起，页面上每个列表都是「网络异常」，而控制台里只有一条被浏览器拦掉的预检。autoPort 同理要关：换了端口就跨不过去。",
-      "name": "ops-web",
-      "runtimeExecutable": "/bin/zsh",
-      "runtimeArgs": [
-        "-lc",
-        "PORT=3100 npm run dev"
-      ],
-      "cwd": "ops-web",
-      "port": 3100,
-      "autoPort": false
-    },
-    {
-      "_comment": "端口必须是 8081：c-app / b-app / ops-web 三端的 .env 里 API_BASE 都指着它，起在 8080 的话三端一个都连不上（而它们不走 vite 代理，直连）。必须带 --spring.profiles.active=api：/mp/** 与 /biz/** 的控制器都标了 @Profile（S8 部署隔离，一个 jar 三种起法）。不带 profile 起出来的实例**一个业务控制器都不注册**，而症状极难判断 —— 任意路径（包括不存在的）都返回 401 而不是 404，看不出是「没登录」还是「没这个端点」。要跑运营端就把 api 换成 ops。",
+      "_comment": "后端。必须带 --spring.profiles.active：/mp/** 与 /biz/** 的控制器都标了 @Profile（S8 部署隔离，一个 jar 三种起法）。不带 profile 起出来的实例**一个业务控制器都不注册**，症状是任意路径（包括不存在的）都返回 401 而非 404 —— 看不出是「没登录」还是「没这个端点」。api 同时提供 /mp 与 /biz；要跑运营端接口换成 ops。",
       "name": "backend",
       "runtimeExecutable": "/bin/zsh",
       "runtimeArgs": [
@@ -48,7 +26,43 @@
       "autoPort": false
     },
     {
-      "_comment": "mock 数据跑 B 端 —— 验证页面行为用，不依赖后端起没起。真机联调用 b-app-h5（连 8081）",
+      "_comment": "运营端。ops 侧的接口在后端的 ops profile 下，与 api 互斥 —— 同时要 /mp 和 /ops 就得起两个后端实例（换 --server.port 与 profile），别改这里。",
+      "name": "ops-web",
+      "runtimeExecutable": "/bin/zsh",
+      "runtimeArgs": [
+        "-lc",
+        "PORT=3100 npm run dev"
+      ],
+      "cwd": "ops-web",
+      "port": 3100,
+      "autoPort": false
+    },
+    {
+      "_comment": "C 端 H5。连 8081（见 c-app/.env 的 VITE_API_BASE）。",
+      "name": "c-app-h5",
+      "runtimeExecutable": "/bin/zsh",
+      "runtimeArgs": [
+        "-lc",
+        "PORT=5173 npm run dev:h5"
+      ],
+      "cwd": "c-app",
+      "port": 5173,
+      "autoPort": false
+    },
+    {
+      "_comment": "B 端 H5。连 8081（见 b-app/.env）。",
+      "name": "b-app-h5",
+      "runtimeExecutable": "/bin/zsh",
+      "runtimeArgs": [
+        "-lc",
+        "PORT=5174 npm run dev:h5"
+      ],
+      "cwd": "b-app",
+      "port": 5174,
+      "autoPort": false
+    },
+    {
+      "_comment": "mock 数据跑 B 端：验证页面行为用，不依赖后端起没起。真机联调用 b-app-h5。",
       "name": "b-app-mock",
       "runtimeExecutable": "/bin/zsh",
       "runtimeArgs": [
