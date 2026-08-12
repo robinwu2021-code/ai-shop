@@ -223,6 +223,98 @@ class OpsPermConfigFlowTest {
                 .andExpect(jsonPath("$.code").value(10403));
     }
 
+    // ---------------------------------------------------------------- 员工与多角色
+
+    @Test
+    @DisplayName("★★★ 多角色：给一个人两个角色，他的 perms 是两个角色的并集")
+    void multiRoleUnionsPerms() throws Exception {
+        String admin = opsLogin("admin", "admin123");
+        String staffNo = staffNoOf(admin, "techops");
+        try {
+            call("/ops/staffs/" + staffNo + "/roles", admin,
+                    "{\"roles\":[\"TECH_OPS\",\"RISK\"]}", 0);
+            Set<String> perms = permsOf(opsLogin("techops", "techops123"));
+            assertThat(perms)
+                    .as("**库早就支持多角色**（sys_role_member 唯一键含 role_code、"
+                            + "roles 是 JSON 数组、Perms.of 取并集），是写接口把它压成了单值")
+                    .contains("iam:audit:read")      // 来自 TECH_OPS
+                    .contains("order:order:read");   // 来自 RISK
+        } finally {
+            call("/ops/staffs/" + staffNo + "/roles", admin, "{\"roles\":[\"TECH_OPS\"]}", 0);
+        }
+    }
+
+    @Test
+    @DisplayName("★★★ 不能给自己加角色 —— 否则有 iam:staff:update 的人能给自己加超管")
+    void cannotGrantRolesToSelf() throws Exception {
+        String admin = opsLogin("admin", "admin123");
+        String self = staffNoOf(admin, "admin");
+        /*
+         * 单角色版靠「不能改自己」挡住了这件事，改成多角色时最容易漏掉它。
+         * 降权是自己倒霉，提权是所有人的事 —— 两者不对称。
+         */
+        call("/ops/staffs/" + self + "/roles", admin, "{\"roles\":[\"SUPER_ADMIN\"]}", 10420);
+    }
+
+    @Test
+    @DisplayName("★★ 建员工：一次性初始密码能登录，且被要求改密")
+    void createStaffReturnsOneTimePassword() throws Exception {
+        String admin = opsLogin("admin", "admin123");
+        String uname = "newbie" + System.currentTimeMillis() % 100000;
+        String body = mvc().perform(post("/ops/staffs").header("Authorization", "Bearer " + admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"" + uname + "\",\"realName\":\"新人\","
+                                + "\"roles\":[\"RISK\"]}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        JsonNode data = json.readTree(body).get("data");
+        String initial = data.get("initialPassword").asString();
+        assertThat(initial).as("初始密码只在这一次出现").isNotBlank();
+        assertThat(data.get("staff").get("mustChangePassword").asBoolean())
+                .as("**要透给前端** —— 不透的话新人拿一次性密码登进来就能一直用")
+                .isTrue();
+
+        // 用它真的能登录
+        assertThat(permsOf(opsLogin(uname, initial))).contains("order:order:read");
+
+        // 登录名不能重
+        mvc().perform(post("/ops/staffs").header("Authorization", "Bearer " + admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"" + uname + "\",\"realName\":\"撞名\","
+                                + "\"roles\":[\"RISK\"]}"))
+                .andExpect(jsonPath("$.code").value(10423));
+    }
+
+    @Test
+    @DisplayName("★★ 改角色集合按增删同步，granted_at 不被重写 —— 那是审计要查的东西")
+    void roleMemberSyncKeepsAuditTrail() throws Exception {
+        String admin = opsLogin("admin", "admin123");
+        String staffNo = staffNoOf(admin, "techops");
+        /*
+         * **必须过滤 deleted** —— 撤销角色是逻辑删除，行还在。
+         * 第一版漏了这个条件，读到三行（两条历史 + 一条有效）而不是一行，
+         * 报错是「Incorrect result size: expected 1, actual 3」，
+         * 看着像有重复数据，实际是查询把历史也捞了。
+         */
+        Long before = jdbc.queryForObject(
+                "SELECT granted_at FROM sys_role_member "
+                        + "WHERE subject_no = ? AND role_code = 'TECH_OPS' AND deleted = 0",
+                Long.class, staffNo);
+        try {
+            call("/ops/staffs/" + staffNo + "/roles", admin,
+                    "{\"roles\":[\"TECH_OPS\",\"RISK\"]}", 0);
+            Long after = jdbc.queryForObject(
+                    "SELECT granted_at FROM sys_role_member "
+                            + "WHERE subject_no = ? AND role_code = 'TECH_OPS' AND deleted = 0",
+                    Long.class, staffNo);
+            assertThat(after)
+                    .as("清空重插会把「这个角色是三个月前谁给的」改成「今天我给的」")
+                    .isEqualTo(before);
+        } finally {
+            call("/ops/staffs/" + staffNo + "/roles", admin, "{\"roles\":[\"TECH_OPS\"]}", 0);
+        }
+    }
+
     // ---------------------------------------------------------------- 角色配置写侧
 
     @Test

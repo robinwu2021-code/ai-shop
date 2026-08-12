@@ -1163,6 +1163,7 @@ CREATE TABLE IF NOT EXISTS sys_ops_staff
     community_no VARCHAR(64) DEFAULT NULL,
     pickup_no VARCHAR(64) DEFAULT NULL,
     last_login_at BIGINT(20) DEFAULT NULL,
+    must_change_password TINYINT(4) NOT NULL DEFAULT 0,
     PRIMARY KEY (id),
     CONSTRAINT uk_ops_staff_no UNIQUE (staff_no),
     CONSTRAINT uk_ops_staff_username UNIQUE (username)
@@ -1977,6 +1978,7 @@ CREATE TABLE IF NOT EXISTS sys_function_point
     updated_by VARCHAR(64) DEFAULT NULL,
     version BIGINT(20) NOT NULL DEFAULT 0,
     deleted TINYINT(4) NOT NULL DEFAULT 0,
+    ui_kind VARCHAR(16) NOT NULL DEFAULT 'MENU',
     PRIMARY KEY (id),
     CONSTRAINT uk_point UNIQUE (point_code)
 );
@@ -3336,3 +3338,6 @@ INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated
 INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at) VALUES ('TECH_OPS', 'OPS_SYSTEM_03', 'OPS', NOW(), NOW());
 INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at) VALUES ('TECH_OPS', 'ACT_33', 'OPS', NOW(), NOW());
 INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at) VALUES ('TECH_OPS', 'ACT_34', 'OPS', NOW(), NOW());
+UPDATE sys_function_point SET ui_kind = 'MENU'   WHERE point_type = 'MENU';
+UPDATE sys_function_point SET ui_kind = 'INLINE' WHERE point_type = 'ACTION' AND group_name = '页面内操作';
+UPDATE sys_function_point SET ui_kind = 'NONE'   WHERE point_type = 'ACTION' AND group_name = '无界面入口';

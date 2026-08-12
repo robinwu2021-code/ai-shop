@@ -51,6 +51,18 @@ public class SysFunctionPoint extends BaseEntity {
      */
     private String pointType;
 
+    /**
+     * 界面形态：MENU / INLINE（页面内按钮） / NONE（后端有能力但前端没做页面）。
+     *
+     * <p><b>不合并成一个布尔</b>：INLINE 与 NONE 都没有 href，但性质相反 ——
+     * 前者本来就不该有独立入口，后者是缺口。合成布尔就再也分不出
+     * 「本来就不该有」和「还没做」。
+     *
+     * <p>此前靠 {@code group_name='无界面入口'} 这个中文字符串判断，
+     * 改一次文案所有判断一起错，且不报错。
+     */
+    private String uiKind;
+
     private Integer sort;
 
 }

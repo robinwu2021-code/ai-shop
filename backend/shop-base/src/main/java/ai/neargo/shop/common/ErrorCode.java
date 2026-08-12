@@ -34,6 +34,9 @@ public enum ErrorCode {
     STAFF_SELF_OPERATION(10420, "err.staff.self_operation"),
     /** 角色码在 Perms.ROLE_PERMS 里没有配置：写进去会造出一个 perms 为空的账号 */
     STAFF_ROLE_UNKNOWN(10421, "err.staff.role_unknown"),
+
+    /** 登录名已被占用。**与「密码错」分开**：这是建号时的校验，不涉及登录探测 */
+    STAFF_USERNAME_TAKEN(10423, "err.staff.username_taken"),
     /** 给全量角色配数据域：存下来会让人以为限制生效了，而实际没有 */
     STAFF_SCOPE_ON_FULL_ACCESS(10422, "err.staff.scope_on_full_access"),
 

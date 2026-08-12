@@ -20,6 +20,7 @@ import ai.neargo.shop.platform.dto.OpsVOs.AuditLogVO;
 import ai.neargo.shop.platform.dto.OpsVOs.LoginResultVO;
 import ai.neargo.shop.platform.dto.OpsVOs.MerchantApplyVO;
 import ai.neargo.shop.platform.dto.OpsVOs.StaffVO;
+import ai.neargo.shop.platform.OpsService.CreatedStaffVO;
 import ai.neargo.shop.platform.entity.SysAuditLog;
 import ai.neargo.shop.platform.entity.SysOpsStaff;
 import ai.neargo.shop.platform.entity.MchEntityApply;
@@ -36,6 +37,10 @@ import tools.jackson.databind.ObjectMapper;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.Set;
+import java.util.LinkedHashSet;
+import java.security.SecureRandom;
 
 @Service
 public class OpsServiceImpl implements OpsService {
@@ -399,7 +404,8 @@ public class OpsServiceImpl implements OpsService {
     private StaffVO toVO(SysOpsStaff s, List<String> roles, List<String> perms) {
         return new StaffVO(s.getStaffNo(), s.getUsername(), s.getRealName(),
                 roles, perms, s.getStatus(),
-                s.getMerchantNo(), s.getCommunityNo(), s.getPickupNo(), s.getLastLoginAt());
+                s.getMerchantNo(), s.getCommunityNo(), s.getPickupNo(), s.getLastLoginAt(),
+                Boolean.TRUE.equals(s.getMustChangePassword()));
     }
 
     // ---------------------------------------------------------------- 员工写侧
@@ -505,12 +511,131 @@ public class OpsServiceImpl implements OpsService {
          * 两张表并存是迁移期的过渡（roles 列保留但停写），
          * 过渡期内**每一处改角色的地方都要同时写两边**。
          */
-        syncRoleMember(staffNo, role);
+        syncRoleMember(staffNo, List.of(role));
         // 换角色即刻生效：旧会话里带的是旧 perms
         tokenStore.revokeUser(staffNo);
         audit("STAFF_ROLE", staffNo, before + " → " + role);
         List<String> roles = List.of(role);
         return toVO(staff, roles, rolePermResolver.of(roles));
+    }
+
+    @Override
+    @Transactional
+    public CreatedStaffVO createStaff(String username, String realName, List<String> roles) {
+        if (!notBlank(username) || !notBlank(realName)) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        List<String> want = normalizeRoles(roles);
+        // **不能给自己加角色**（这里是「建一个新账号」，自然不涉及自己），
+        // 但角色码仍要逐个校验：写进一个不存在的角色，这个账号 perms 为空、
+        // 能登录、导航全空，而页面上看不出任何原因
+        for (String r : want) {
+            if (rolePermResolver.of(List.of(r)).isEmpty()) {
+                throw BizException.of(ErrorCode.STAFF_ROLE_UNKNOWN, r);
+            }
+        }
+        boolean dup = DataScopeContext.executeWithoutScope(() ->
+                staffMapper.selectCount(Wrappers.<SysOpsStaff>lambdaQuery()
+                        .eq(SysOpsStaff::getUsername, username)) > 0);
+        if (dup) {
+            throw BizException.of(ErrorCode.STAFF_USERNAME_TAKEN, username);
+        }
+
+        String initial = randomPassword();
+        SysOpsStaff staff = new SysOpsStaff();
+        staff.setStaffNo("E" + System.currentTimeMillis() % 100000000L);
+        staff.setUsername(username);
+        staff.setRealName(realName);
+        staff.setPassword(hash(initial));
+        staff.setRoles(writeList(want));
+        staff.setStatus("ACTIVE");
+        staff.setMustChangePassword(true);
+        staffMapper.insert(staff);
+        syncRoleMember(staff.getStaffNo(), want);
+
+        // 审计里**不写密码**。写了就等于把「一次性」这件事作废
+        audit("STAFF_CREATE", staff.getStaffNo(), username + " / " + String.join(",", want));
+        return new CreatedStaffVO(toVO(staff, want, rolePermResolver.of(want)), initial);
+    }
+
+    @Override
+    @Transactional
+    public StaffVO setStaffRoles(String staffNo, List<String> roles) {
+        List<String> want = normalizeRoles(roles);
+        if (want.isEmpty()) {
+            // 空角色 = 能登录但什么都点不动，且界面上看不出原因。要停用请用 enabled
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        for (String r : want) {
+            if (rolePermResolver.of(List.of(r)).isEmpty()) {
+                throw BizException.of(ErrorCode.STAFF_ROLE_UNKNOWN, r);
+            }
+        }
+        SysOpsStaff staff = requireStaff(staffNo);
+        /*
+         * **不能改自己的角色。**
+         *
+         * 单角色版这条闸的理由是「超管把自己降成客服就回不去了」，
+         * 多角色版还多一条、而且更重要：**否则有 iam:staff:update 的人
+         * 可以顺手给自己加超管** —— 降权是自己倒霉，提权是所有人的事。
+         */
+        if (staffNo.equals(SecurityUtils.currentUserNo())) {
+            throw BizException.of(ErrorCode.STAFF_SELF_OPERATION);
+        }
+        String before = staff.getRoles();
+        staff.setRoles(writeList(want));
+        staffMapper.updateById(staff);
+        syncRoleMember(staffNo, want);
+        // 换角色即刻生效：旧会话里带的是旧 perms
+        tokenStore.revokeUser(staffNo);
+        audit("STAFF_ROLES", staffNo, before + " → " + writeList(want));
+        return toVO(staff, want, rolePermResolver.of(want));
+    }
+
+    @Override
+    @Transactional
+    public void changeOwnPassword(String oldPassword, String newPassword) {
+        if (!notBlank(newPassword) || newPassword.length() < 8) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        SysOpsStaff staff = requireStaff(SecurityUtils.requireUser().userNo());
+        if (!hash(oldPassword == null ? "" : oldPassword).equals(staff.getPassword())) {
+            throw BizException.of(ErrorCode.UNAUTHORIZED);
+        }
+        staff.setPassword(hash(newPassword));
+        staff.setMustChangePassword(false);
+        staffMapper.updateById(staff);
+        /*
+         * 改完密码把自己的其它会话踢掉 —— 改密的常见动机就是「怀疑密码泄露了」，
+         * 不踢的话拿着旧 token 的人照样在线，改密等于没改。
+         */
+        tokenStore.revokeUser(staff.getStaffNo());
+        audit("STAFF_PASSWORD", staff.getStaffNo(), "自助改密");
+    }
+
+    /** 去空白、去重、保序 —— 「配了两遍同一个角色」不该变成两行成员关系 */
+    private static List<String> normalizeRoles(List<String> roles) {
+        return roles == null ? List.of() : roles.stream()
+                .filter(OpsServiceImpl::notBlank).map(String::trim).distinct().toList();
+    }
+
+    private static String writeList(List<String> roles) {
+        return roles.stream().map(r -> "\"" + r + "\"")
+                .collect(Collectors.joining(",", "[", "]"));
+    }
+
+    /**
+     * 初始密码。**不要求好记** —— 它的寿命只到第一次登录，
+     * 好记反而会让人想留着用。
+     */
+    private static String randomPassword() {
+        final String alphabet = "abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+        SecureRandom rnd = new SecureRandom();
+        StringBuilder sb = new StringBuilder(12);
+        for (int i = 0; i < 12; i++) {
+            sb.append(alphabet.charAt(rnd.nextInt(alphabet.length())));
+        }
+        return sb.toString();
     }
 
     @Override
@@ -545,17 +670,39 @@ public class OpsServiceImpl implements OpsService {
      * <p>先删后插而不是增量比对：运营端一个人只有一个角色（下拉单选），
      * 增量比对是为多选设计的复杂度，这里用不上。
      */
-    private void syncRoleMember(String staffNo, String role) {
-        roleMemberMapper.delete(Wrappers.<SysRoleMember>lambdaQuery()
-                .eq(SysRoleMember::getEndCode, "OPS")
-                .eq(SysRoleMember::getSubjectNo, staffNo));
-        SysRoleMember m = new SysRoleMember();
-        m.setEndCode("OPS");
-        m.setSubjectNo(staffNo);
-        m.setRoleCode(role);
-        m.setGrantedBy(SecurityUtils.currentUserNo());
-        m.setGrantedAt(System.currentTimeMillis());
-        roleMemberMapper.insert(m);
+    /**
+     * 同步 {@code sys_role_member} 到给定角色集合。
+     *
+     * <p><b>按集合增删，不是清空重插</b>：{@code granted_at} / {@code granted_by} 是审计信息 ——
+     * 清空重插会把「这个角色是三个月前谁给的」改成「今天我给的」，
+     * 而那正是权限审计要查的东西。只动真正变化的那几行。
+     */
+    private void syncRoleMember(String staffNo, List<String> roles) {
+        List<SysRoleMember> existing = roleMemberMapper.selectList(
+                Wrappers.<SysRoleMember>lambdaQuery()
+                        .eq(SysRoleMember::getEndCode, "OPS")
+                        .eq(SysRoleMember::getSubjectNo, staffNo));
+        Set<String> want = new LinkedHashSet<>(roles);
+        Set<String> have = existing.stream().map(SysRoleMember::getRoleCode)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+
+        for (SysRoleMember m : existing) {
+            if (!want.contains(m.getRoleCode())) {
+                roleMemberMapper.deleteById(m.getId());
+            }
+        }
+        for (String role : want) {
+            if (have.contains(role)) {
+                continue;
+            }
+            SysRoleMember m = new SysRoleMember();
+            m.setEndCode("OPS");
+            m.setSubjectNo(staffNo);
+            m.setRoleCode(role);
+            m.setGrantedBy(SecurityUtils.currentUserNo());
+            m.setGrantedAt(System.currentTimeMillis());
+            roleMemberMapper.insert(m);
+        }
     }
 
     private static boolean notBlank(String v) {

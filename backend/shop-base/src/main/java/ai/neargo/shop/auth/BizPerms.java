@@ -132,6 +132,31 @@ public final class BizPerms {
         });
     }
 
+    /**
+     * 这个人的订单视图要不要<b>裁到配送员那一档</b>（不含金额、不含核销码）。
+     *
+     * <p>为什么不是「有没有 COURIER 这个角色」：小店的常态是一人多岗，
+     * <b>店员兼配送</b>时他本来就该看到完整订单 —— 按角色存在与否判，
+     * 会把店员的订单页也裁掉，而那是他站收银台要用的。
+     *
+     * <p>所以判的是：<b>给他 {@link #ORDER_VIEW} 的是不是只有 COURIER 这一个角色</b>。
+     * 是 → 裁；只要还有别的角色也给了他这个码 → 不裁。这与 {@link #can} 的并集语义一致：
+     * 并集里更宽的那一档说了算。
+     *
+     * <p>老板不走这里（他的角色集合是 {@code {OWNER}}，不含 COURIER）。
+     */
+    public static boolean onlyCourierOrderView(Set<String> roles) {
+        if (roles == null || !roles.contains(COURIER)) {
+            return false;
+        }
+        return roles.stream()
+                .filter(r -> !COURIER.equals(r))
+                .noneMatch(r -> {
+                    List<String> granted = ROLE_PERMS.getOrDefault(r, List.of());
+                    return granted.contains("*") || granted.contains(ORDER_VIEW);
+                });
+    }
+
     /** 这组角色合起来有哪些权限码 —— 下发给端上做入口裁剪 */
     public static Set<String> of(Set<String> roles) {
         if (roles == null || roles.isEmpty()) {

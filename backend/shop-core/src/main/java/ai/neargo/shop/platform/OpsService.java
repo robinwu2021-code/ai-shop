@@ -33,7 +33,34 @@ public interface OpsService {
      * 写进一个不存在的角色，这个账号的 perms 会是空集 ——
      * 他能登录、导航全空、页面上看不出任何原因。
      */
+    @Deprecated(forRemoval = true)
     StaffVO setStaffRole(String staffNo, String role);
+
+    /**
+     * 新建员工。<b>返回一次性初始密码</b>，之后再也取不到。
+     *
+     * <p>密码由后端生成而不是让调用方传：让界面收明文的问题不是加密与否，
+     * 是<b>谁都能在 devtools 里看到刚给同事设的密码</b>，
+     * 而且它会顺着请求体进日志。生成 + 一次性返回 + 首登强制改密，
+     * 把那个口令的有效期压到「第一次登录之前」。
+     */
+    CreatedStaffVO createStaff(String username, String realName, List<String> roles);
+
+    /**
+     * 改角色（<b>多角色</b>）。权限取所有角色的并集。
+     *
+     * <p>取代单角色的 {@link #setStaffRole}：库早就支持多角色
+     * （{@code sys_role_member} 的唯一键含 role_code、{@code roles} 是 JSON 数组、
+     * {@code Perms.of} 收 List 并取并集），是写接口把它压成了单值。
+     *
+     * <p><b>不能给自己加角色</b> —— 单角色版靠「不能改自己」挡住了这件事，
+     * 改成多角色时最容易漏的就是它：有 {@code iam:staff:update} 的人
+     * 可以顺手给自己加超管。
+     */
+    StaffVO setStaffRoles(String staffNo, List<String> roles);
+
+    /** 改自己的密码。首登被 {@code mustChangePassword} 卡住时也走这条。 */
+    void changeOwnPassword(String oldPassword, String newPassword);
 
     /**
      * 配数据域。空字符串 / null = 不限定。
@@ -101,6 +128,10 @@ public interface OpsService {
      * @param communityNos 覆盖社区。申请时可空，<b>但审核通过时必须有</b>（ADR-009）——
      *                     否则商家上着架却对谁都不可见
      */
+    /** 新建员工的返回。{@code initialPassword} <b>只在这一次出现</b>。 */
+    record CreatedStaffVO(StaffVO staff, String initialPassword) {
+    }
+
     record SubmitApplyCommand(String userNo, String name, String subject,
                               String contactName, String contactPhone,
                               String category, String description,

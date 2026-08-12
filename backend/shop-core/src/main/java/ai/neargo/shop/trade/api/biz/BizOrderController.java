@@ -4,6 +4,7 @@ import ai.neargo.shop.auth.BizPerms;
 import org.springframework.security.access.prepost.PreAuthorize;
 import ai.neargo.shop.auth.BizContext;
 import ai.neargo.shop.common.PageData;
+import ai.neargo.shop.trade.dto.CourierOrderVO;
 import ai.neargo.shop.trade.dto.OrderVO;
 import ai.neargo.shop.trade.service.MerchantOrderService;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -30,12 +31,19 @@ public class BizOrderController {
         this.merchantOrderService = merchantOrderService;
     }
 
+    /**
+     * 订单列表。
+     *
+     * <p><b>返回两种档次</b>：配送员拿 {@link CourierOrderVO}（无金额、无核销码），
+     * 其余角色拿完整 {@link OrderVO}。判断见 {@link BizContext#courierOnlyOrderView()} ——
+     * 一人多岗时以更宽的那一档为准，店员兼配送仍是完整视图。
+     */
     @PreAuthorize("@perm.canBiz('" + BizPerms.ORDER_VIEW + "')")
     @GetMapping("/biz/order")
-    public PageData<OrderVO> orders(@RequestParam(required = false) String status,
-                                    @RequestParam(required = false) Boolean allStores,
-                                    @RequestParam(defaultValue = "1") long page,
-                                    @RequestParam(defaultValue = "10") long size) {
+    public PageData<?> orders(@RequestParam(required = false) String status,
+                              @RequestParam(required = false) Boolean allStores,
+                              @RequestParam(defaultValue = "1") long page,
+                              @RequestParam(defaultValue = "10") long size) {
         /*
          * 默认只给**当前门店**的单。要看全部时端上传 allStores=true ——
          * 默认给全部的话，多门店老板打开订单页看到的是几家店混在一起的流水，
@@ -49,8 +57,15 @@ public class BizOrderController {
         java.util.Collection<String> storeNos = Boolean.TRUE.equals(allStores)
                 ? ctx.allowedStoresOrAll()
                 : java.util.List.of(ctx.currentStoreNo() == null ? "" : ctx.currentStoreNo());
-        return merchantOrderService.list(ctx.requireMerchantNo(), storeNos, status,
-                page, Math.min(size, 50));
+        PageData<OrderVO> full = merchantOrderService.list(ctx.requireMerchantNo(), storeNos,
+                status, page, Math.min(size, 50));
+        return ctx.courierOnlyOrderView() ? narrow(full) : full;
+    }
+
+    /** 整页裁到配送员那一档。分页元信息原样带过去 —— 裁的是每一行，不是这一页有几行。 */
+    private static PageData<CourierOrderVO> narrow(PageData<OrderVO> p) {
+        return PageData.of(p.records().stream().map(CourierOrderVO::of).toList(),
+                p.total(), p.page(), p.size());
     }
 
     /**
@@ -58,12 +73,18 @@ public class BizOrderController {
      *
      * <p>作用域是**当前门店**：多门店之后店员只被授权到某几家，
      * 只按主体判的话 A 店店员能翻出 B 店的单。
+     *
+     * <p>与列表**同一档次规则**：配送员在这里也只拿裁剪档。
+     * 两个端点分开判的话，列表裁了详情没裁，点进去照样看得到金额 ——
+     * 而那种漏洞看起来完全正常。
      */
     @PreAuthorize("@perm.canBiz('" + BizPerms.ORDER_VIEW + "')")
     @GetMapping("/biz/order/{subOrderNo}")
-    public OrderVO detail(@PathVariable String subOrderNo) {
+    public Object detail(@PathVariable String subOrderNo) {
         var ctx = BizContext.current();
-        return merchantOrderService.detail(ctx.requireMerchantNo(), ctx.currentStoreNo(), subOrderNo);
+        OrderVO full = merchantOrderService.detail(ctx.requireMerchantNo(),
+                ctx.currentStoreNo(), subOrderNo);
+        return ctx.courierOnlyOrderView() ? CourierOrderVO.of(full) : full;
     }
 
     /** 发货：快递单号必填 —— 没有单号的「已发货」对买家没有任何用处。 */

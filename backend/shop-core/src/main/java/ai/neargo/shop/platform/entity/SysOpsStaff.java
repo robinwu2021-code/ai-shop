@@ -30,6 +30,15 @@ public class SysOpsStaff extends BaseEntity {
     private String status;
 
     /**
+     * 首登必须改密。
+     *
+     * <p>建号时后端生成随机初始密码、<b>只在创建响应里返回一次</b> ——
+     * 那个密码经过了建号人的屏幕与剪贴板，可能还有一条聊天记录，
+     * 它只是「拿到账号」的凭据，不是长期口令。
+     */
+    private Boolean mustChangePassword;
+
+    /**
      * 数据域：<b>空 = 不限定（全量）</b>，不是「还没配」。
      *
      * <p>⚠️ <b>当前只存不用</b> —— 各域的查询还没有按它裁剪。

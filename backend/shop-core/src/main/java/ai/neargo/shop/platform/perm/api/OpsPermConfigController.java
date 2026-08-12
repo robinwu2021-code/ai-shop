@@ -92,10 +92,21 @@ public class OpsPermConfigController {
     }
 
     /** 删除自定义角色。预置角色、以及**还有人在用的**都拒绝。 */
+    /** 改角色展示名。**只改名不改码** —— 码是授权的键，改了等于换一个角色。 */
+    @PostMapping("/ops/perm/roles/{roleCode}/rename")
+    @PreAuthorize("@perm.can('" + Perms.IAM_ROLE_GRANT + "')")
+    public PermConfigService.RoleVO renameRole(@PathVariable String roleCode,
+                                               @RequestBody RenameReq req) {
+        return permConfigService.renameRole(roleCode, req.name(), SecurityUtils.currentUserNo());
+    }
+
     @PostMapping("/ops/perm/roles/{roleCode}/delete")
     @PreAuthorize("@perm.can('" + Perms.IAM_ROLE_GRANT + "')")
     public void deleteRole(@PathVariable String roleCode) {
         permConfigService.deleteRole(roleCode, SecurityUtils.currentUserNo());
+    }
+
+    public record RenameReq(String name) {
     }
 
     public record CreateRoleReq(String roleCode, String name) {

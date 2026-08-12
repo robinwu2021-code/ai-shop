@@ -4,7 +4,8 @@
     "GET /ops/auth/me",
     "GET /ops/communities",
     "GET /ops/communities/applies",
-    "GET /ops/menu"
+    "GET /ops/menu",
+    "POST /ops/staffs/me/password"
   ],
   "AUDITOR": [
     "POST /ops/auth/login",
@@ -31,7 +32,8 @@
     "GET /ops/review-score-config",
     "POST /ops/review-score-config",
     "GET /ops/reviews",
-    "POST /ops/reviews/{reviewNo}/decide"
+    "POST /ops/reviews/{reviewNo}/decide",
+    "POST /ops/staffs/me/password"
   ],
   "BD": [
     "GET /ops/after-sales",
@@ -71,6 +73,7 @@
     "GET /ops/quotes",
     "POST /ops/quotes/{quoteNo}/breach",
     "POST /ops/quotes/{quoteNo}/price",
+    "POST /ops/staffs/me/password",
     "PUT /ops/stores/{storeNo}/business-mode",
     "GET /ops/stores/audits",
     "POST /ops/stores/audits/{auditNo}/decide"
@@ -116,7 +119,8 @@
     "GET /ops/orders/{orderNo}",
     "GET /ops/orders/{orderNo}/interventions",
     "GET /ops/orders/exceptions",
-    "GET /ops/orders/parent/{parentNo}"
+    "GET /ops/orders/parent/{parentNo}",
+    "POST /ops/staffs/me/password"
   ],
   "COMMUNITY_OPS": [
     "GET /ops/after-sales",
@@ -153,7 +157,8 @@
     "GET /ops/regions",
     "GET /ops/regions/path",
     "GET /ops/service-scopes",
-    "POST /ops/service-scopes/{scope}/enabled"
+    "POST /ops/service-scopes/{scope}/enabled",
+    "POST /ops/staffs/me/password"
   ],
   "FINANCE": [
     "GET /ops/admission/deposits/{merchantNo}",
@@ -194,7 +199,8 @@
     "POST /ops/settle/fee-rules",
     "GET /ops/settle/fee-rules/effective",
     "GET /ops/settlements",
-    "GET /ops/split-records"
+    "GET /ops/split-records",
+    "POST /ops/staffs/me/password"
   ],
   "GOODS_OPS": [
     "GET /ops/after-sales",
@@ -234,7 +240,8 @@
     "GET /ops/orders/{orderNo}",
     "GET /ops/orders/{orderNo}/interventions",
     "GET /ops/orders/exceptions",
-    "GET /ops/orders/parent/{parentNo}"
+    "GET /ops/orders/parent/{parentNo}",
+    "POST /ops/staffs/me/password"
   ],
   "RISK": [
     "GET /ops/after-sales",
@@ -250,7 +257,8 @@
     "GET /ops/orders/{orderNo}",
     "GET /ops/orders/{orderNo}/interventions",
     "GET /ops/orders/exceptions",
-    "GET /ops/orders/parent/{parentNo}"
+    "GET /ops/orders/parent/{parentNo}",
+    "POST /ops/staffs/me/password"
   ],
   "SUPER_ADMIN": [
     "GET /ops/admission/deposits/{merchantNo}",
@@ -365,6 +373,7 @@
     "POST /ops/perm/roles/{roleCode}/delete",
     "GET /ops/perm/roles/{roleCode}/points",
     "POST /ops/perm/roles/{roleCode}/points",
+    "POST /ops/perm/roles/{roleCode}/rename",
     "GET /ops/pickups",
     "POST /ops/pickups",
     "POST /ops/pickups/{pickupNo}/archive",
@@ -398,9 +407,12 @@
     "GET /ops/settlements",
     "GET /ops/split-records",
     "GET /ops/staffs",
+    "POST /ops/staffs",
     "POST /ops/staffs/{staffNo}/enabled",
     "POST /ops/staffs/{staffNo}/role",
+    "POST /ops/staffs/{staffNo}/roles",
     "POST /ops/staffs/{staffNo}/scope",
+    "POST /ops/staffs/me/password",
     "PUT /ops/stores/{storeNo}/business-mode",
     "GET /ops/stores/audits",
     "POST /ops/stores/audits/{auditNo}/decide",
@@ -439,6 +451,7 @@
     "POST /ops/review-score-config",
     "GET /ops/reviews",
     "POST /ops/reviews/{reviewNo}/decide",
+    "POST /ops/staffs/me/password",
     "GET /ops/tickets",
     "POST /ops/tickets/{ticketNo}/close",
     "POST /ops/tickets/{ticketNo}/reply"
@@ -456,6 +469,7 @@
     "GET /ops/menu",
     "GET /ops/rule-texts",
     "POST /ops/rule-texts",
-    "GET /ops/rule-texts/history"
+    "GET /ops/rule-texts/history",
+    "POST /ops/staffs/me/password"
   ]
 }

@@ -90,6 +90,20 @@ public record BizContext(String merchantNo, Set<String> pickupNos, Set<String> g
     }
 
     /**
+     * 当前门店上，他的订单视图要不要裁到配送员那一档。
+     *
+     * <p>判权回答「能不能调这个接口」，这一条回答「同一个接口该给他看多少」——
+     * <b>是第三类判断，与授权和数据范围都不同</b>：配送员有 {@code biz:order:view}，
+     * 他能调 {@code /biz/order}；他也确实该看到本店待自送的单（数据范围没问题）；
+     * 但他不该看到那些单的金额与核销码。
+     *
+     * @see BizPerms#onlyCourierOrderView(Set)
+     */
+    public boolean courierOnlyOrderView() {
+        return BizPerms.onlyCourierOrderView(staffRoles());
+    }
+
+    /**
      * 「全部门店」对这个人意味着哪些店。
      *
      * @return 属主返回 {@code null}（= 不按门店过滤，含历史上没有门店号的单）；

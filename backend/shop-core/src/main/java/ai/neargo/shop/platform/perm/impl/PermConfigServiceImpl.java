@@ -223,6 +223,28 @@ public class PermConfigServiceImpl implements PermConfigService {
 
     @Override
     @Transactional
+    public RoleVO renameRole(String roleCode, String name, String operatorNo) {
+        if (name == null || name.isBlank()) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        SysRole r = requireRole(roleCode);
+        if (!Boolean.FALSE.equals(r.getBuiltin())) {
+            throw BizException.of(ErrorCode.PERM_BUILTIN_ROLE_READONLY, roleCode);
+        }
+        String before = r.getName();
+        r.setName(name.trim());
+        roleMapper.updateById(r);
+        /*
+         * **不清缓存、不踢会话**：改的是展示名，谁能干什么一点没变。
+         * 顺手 invalidate 看着更安全，实际是把一次纯展示改动变成全员重新登录。
+         */
+        auditLogPort.record("PERM_ROLE_RENAME", roleCode, before + " → " + r.getName());
+        return roles(OPS).stream().filter(v -> v.roleCode().equals(roleCode)).findFirst()
+                .orElseThrow(() -> BizException.of(ErrorCode.NOT_FOUND));
+    }
+
+    @Override
+    @Transactional
     public void deleteRole(String roleCode, String operatorNo) {
         SysRole r = requireRole(roleCode);
         if (!Boolean.FALSE.equals(r.getBuiltin())) {

@@ -58,6 +58,17 @@ public interface PermConfigService {
     RoleVO setRolePoints(String roleCode, List<String> pointCodes, String operatorNo);
 
     /**
+     * 改角色展示名。
+     *
+     * <p><b>只改名，不改角色码</b> —— 角色码是授权的键（{@code sys_role_point} /
+     * {@code sys_role_member} 都指着它），改了等于换一个角色。
+     * 真要换码得走「新建 + 迁移成员 + 删旧」。
+     *
+     * <p>预置角色拒绝：与改功能点同一条闸，它们是 {@code Perms.java} 的镜像。
+     */
+    RoleVO renameRole(String roleCode, String name, String operatorNo);
+
+    /**
      * 删除自定义角色。
      *
      * <p>预置角色不可删；<b>还有人在用的角色也不可删</b> ——

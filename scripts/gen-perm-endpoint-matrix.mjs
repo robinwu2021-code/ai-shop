@@ -31,6 +31,8 @@ export const PUBLIC = new Map([
   ["POST /ops/auth/login", "登录本身，此刻还没有身份"],
   ["GET /ops/auth/me", "自查身份，返回的就是调用者自己"],
   ["GET /ops/menu", "菜单本来就按人切片 —— 再加一个码等于「要有权限才能知道自己有什么权限」"],
+  ["POST /ops/staffs/me/password", "改**自己**的密码。要 iam:staff:update 的话，"
+    + "拿一次性初始密码登进来的新员工反而改不了密码 —— 而首登强制改密正是为他准备的"],
 ]);
 
 /** 扫 /ops 端点 → 权限常量名 */

@@ -14,10 +14,15 @@ public final class OpsVOs {
      * <p>数据域三个字段<b>空 = 不限定（全量）</b>。
      * ⚠️ 它们目前<b>只存不用</b> —— 各域查询还没按它裁剪，UI 上标明了尚未生效。
      */
+    /**
+     * @param mustChangePassword 首登必须改密。**要透给前端** ——
+     *     不透的话新员工拿一次性密码登进来就能一直用，
+     *     而那个密码经过了建号人的屏幕与剪贴板。
+     */
     public record StaffVO(String staffNo, String username, String realName,
                           List<String> roles, List<String> perms, String status,
                           String merchantNo, String communityNo, String pickupNo,
-                          Long lastLoginAt) {
+                          Long lastLoginAt, boolean mustChangePassword) {
     }
 
     public record LoginResultVO(String token, StaffVO staff) {

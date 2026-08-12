@@ -9,6 +9,7 @@ import ai.neargo.shop.platform.dto.OpsVOs.AuditLogVO;
 import ai.neargo.shop.platform.dto.OpsVOs.LoginResultVO;
 import ai.neargo.shop.platform.dto.OpsVOs.MerchantApplyVO;
 import ai.neargo.shop.platform.dto.OpsVOs.StaffVO;
+import ai.neargo.shop.platform.OpsService.CreatedStaffVO;
 import jakarta.validation.constraints.NotBlank;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
@@ -88,11 +89,47 @@ public class OpsPlatformController {
         return opsService.setStaffEnabled(staffNo, Boolean.TRUE.equals(req.enabled()));
     }
 
-    /** 改角色。角色码必须在 {@code Perms.ROLE_PERMS} 里真实存在，否则拒绝。 */
+    /**
+     * 新建员工。**返回一次性初始密码**，之后再也取不到。
+     *
+     * <p>密码由后端生成而不是让界面传：收明文的问题不是加密与否，
+     * 是谁都能在 devtools 里看到刚给同事设的密码，而且它会顺着请求体进日志。
+     */
+    @PostMapping("/ops/staffs")
+    @PreAuthorize("@perm.can('" + Perms.IAM_STAFF_UPDATE + "')")
+    public CreatedStaffVO createStaff(@RequestBody CreateStaffReq req) {
+        return opsService.createStaff(req.username(), req.realName(), req.roles());
+    }
+
+    /**
+     * 改角色（<b>多角色</b>）。权限取并集。
+     *
+     * <p>角色码必须在库里真实存在，否则这个账号 perms 为空 ——
+     * 能登录、导航全空、看不出原因。
+     */
+    @PostMapping("/ops/staffs/{staffNo}/roles")
+    @PreAuthorize("@perm.can('" + Perms.IAM_STAFF_UPDATE + "')")
+    public StaffVO setStaffRoles(@PathVariable String staffNo, @RequestBody RolesReq req) {
+        return opsService.setStaffRoles(staffNo, req.roles());
+    }
+
+    /**
+     * 改角色（单角色，<b>已弃用</b>）。
+     *
+     * <p>转调多角色版。**不立刻删**：并行会话的前端可能还在调它，
+     * 删掉的表现是「改角色按钮 404」而不是一条清楚的报错。
+     */
+    @Deprecated(forRemoval = true)
     @PostMapping("/ops/staffs/{staffNo}/role")
     @PreAuthorize("@perm.can('" + Perms.IAM_STAFF_UPDATE + "')")
     public StaffVO setStaffRole(@PathVariable String staffNo, @RequestBody RoleReq req) {
-        return opsService.setStaffRole(staffNo, req.role());
+        return opsService.setStaffRoles(staffNo, java.util.List.of(req.role()));
+    }
+
+    /** 改自己的密码。首登被 mustChangePassword 卡住时也走这条。 */
+    @PostMapping("/ops/staffs/me/password")
+    public void changeOwnPassword(@RequestBody ChangePasswordReq req) {
+        opsService.changeOwnPassword(req.oldPassword(), req.newPassword());
     }
 
     /**
@@ -106,6 +143,15 @@ public class OpsPlatformController {
     @PreAuthorize("@perm.can('" + Perms.IAM_STAFF_UPDATE + "')")
     public StaffVO setStaffScope(@PathVariable String staffNo, @RequestBody ScopeReq req) {
         return opsService.setStaffScope(staffNo, req.merchantNo(), req.communityNo(), req.pickupNo());
+    }
+
+    public record CreateStaffReq(String username, String realName, java.util.List<String> roles) {
+    }
+
+    public record RolesReq(java.util.List<String> roles) {
+    }
+
+    public record ChangePasswordReq(String oldPassword, String newPassword) {
     }
 
     public record RoleReq(String role) {
