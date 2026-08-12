@@ -35,7 +35,8 @@
     "gen:doc-html": "node scripts/gen-doc-html.mjs docs/technical/*.md docs/technical/*/*.md docs/technical/design/ops/*.md docs/technical/ADR/*.md && INDEX=docs/technical node scripts/gen-doc-html.mjs --index",
     "e2e:full": "npm run test && npm run check:p && node scripts/e2e/run.mjs",
     "check:enums": "node scripts/check-enums.mjs",
-    "check:enum-fields": "node scripts/check-enum-fields.mjs"
+    "check:enum-fields": "node scripts/check-enum-fields.mjs",
+    "gen:perm-matrix": "node scripts/gen-perm-endpoint-matrix.mjs"
   },
   "engines": {
     "node": ">=22"
