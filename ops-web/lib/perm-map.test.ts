@@ -155,11 +155,21 @@ describe("can() 的语义", () => {
     expect(can([], "merchant:apply:audit")).toBe(false);
   });
 
-  it("★★ UI 码要经映射再比 —— 直接拿 UI 码比后端 perms 会全 false", () => {
-    // 后端给的是 merchant:audit，页面问的是 merchant:apply:audit
-    expect(can(["merchant:audit"], "merchant:apply:audit")).toBe(true);
-    // 反过来：后端码本身不是 UI 码，问它等于问一个没登记的码
-    expect(can(["merchant:audit"], "merchant:audit")).toBe(false);
+  it("★★ 恒等映射之后，UI 码就是后端码", () => {
+    /*
+     * 2026-08-12 权限码细化之后，后端采纳了这份 UI 码表，大部分是恒等映射。
+     * 这条断言此前写的是 `can(["merchant:audit"], "merchant:apply:audit") === true`
+     * —— 那个粗码已经不存在了。
+     */
+    expect(can(["merchant:apply:audit"], "merchant:apply:audit")).toBe(true);
+    // 已经不存在的旧粗码不该再放行任何东西
+    expect(can(["merchant:audit"], "merchant:apply:audit")).toBe(false);
+  });
+
+  it("★★ 仍需翻译的那几条：界面功能没有独立端点，映到覆盖它的码", () => {
+    // 掉单补偿/关单策略配置 → 订单干预
+    expect(can(["order:order:modify"], "order:pay:repair")).toBe(true);
+    expect(can(["order:order:read"], "order:pay:repair")).toBe(false);
   });
 
   it("★★★ UNIMPLEMENTED 一律 false —— 哪怕是超管", () => {

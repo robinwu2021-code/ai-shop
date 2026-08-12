@@ -5,7 +5,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { tNav } from "./i18n/nav-labels";
 import { BACKEND_ROLE_PERMS, backendPermsOf } from "./permissions";
-import { NAV, activeLeafIndex, breadcrumb, findActiveSection, groupedLeaves, leafParts, normPath, sectionDefaultHref, visibleLeaves, visibleSections } from "./nav";
+import { NAV, activeLeafIndex, breadcrumb, findActiveSection, groupedLeaves, isLeafDisabled, leafParts, matchesQuery, navSearchEntries, normPath, sectionDefaultHref, visibleLeaves, visibleSections } from "./nav";
 import { permsOf, ROLE_LABEL } from "./permissions";
 
 const ROOT = new URL("..", import.meta.url).pathname;
@@ -54,7 +54,10 @@ describe("导航 × 权限", () => {
    * 单列成清单而不是放宽断言：后端把某一块做出来之后，
    * 这里要能提醒人把它移走 —— 否则菜单会一直藏着一个已经能用的功能。
    */
-  const UNBUILT_SECTIONS = ["store", "fulfillment", "risk", "growth"];
+  // store 2026-08-12 移走：店招公告审核（/ops/stores/audits）一直是有后端的 ——
+  // 三方对齐那份 review 把 P-10.1 整域记成「后端零实现」，那一条是错的。
+  // 这条守卫替我把它抓了出来。
+  const UNBUILT_SECTIONS = ["fulfillment", "risk", "growth"];
 
   /**
    * 域已经活了，但**这几个叶子**后端还没有 —— 它们对所有人不可见，也是对的。
@@ -64,11 +67,24 @@ describe("导航 × 权限", () => {
    */
   const UNBUILT_LEAVES = [
     "message:faq:update",   // 帮助中心维护
-    "iam:role:grant",       // 角色与 RBAC：后端只有 GET /ops/staffs，没有授权写接口
-    // 财务域已经活了（settle 有），而这三块还没有 —— 正是「域活了、漏了几条」
-    "finance:rate:update",
+    // 提现审批仍然没有端点（P-12.2 排二期，且涉及真实资金，要先定资金流程）
     "finance:withdraw:approve",
-    "finance:invoice:read",
+    /*
+     * 2026-08-12 权限码细化时**新增**的两条。它们此前映到 marketing:govern ——
+     * 一个覆盖不到它们的粗码，于是"看着有人能进"而实际点进去是 mock。
+     * 细化之后没有粗码可躲，缺口显式了：content-slots 与会员卡后端都没有。
+     */
+    "marketing:slot:update",   // 首页楼层与 Banner
+    "marketing:member:update", // 会员卡与权益（P-7.4 二期）
+    /*
+     * store 域从 UNBUILT_SECTIONS 移走之后，它的叶子开始被逐个检查 ——
+     * 而后端只有店招公告审核那一条。这两个（主页模板配置 / 获客效果看板共用
+     * store:page:read、店铺码导出）确实还没有。
+     * **这正是分域清单与分叶子清单要分开的理由**：整域没做和域里缺几条，
+     * 后者才是最容易变成死按钮的那种。
+     */
+    "store:page:read",
+    "store:qrcode:export",
   ];
 
   it("每个 section 的 module 至少被一个角色持有（否则这个菜单谁都看不见）", () => {
@@ -211,6 +227,40 @@ describe("路由归属与面包屑", () => {
 
   it("面包屑 = L1 › 分组 › 子功能", () => {
     expect(breadcrumb("/merchants", null, null, backendPermsOf("SUPER_ADMIN"))).toEqual(["商家治理", "入驻与资质", "入驻审核"]);
+  });
+
+  it("⌘K 候选：排除待建/锁定叶 —— 面板是「去某处」，列出去不了的只是噪音", () => {
+    for (const r of ALL_ROLES) {
+      const perms = backendPermsOf(r);
+      const entries = navSearchEntries(perms);
+      const byHref = new Map(NAV.flatMap((s) => (s.children ?? []).map((l) => [l.href, l] as const)));
+      for (const e of entries) {
+        if (e.isSection) continue;
+        const leaf = byHref.get(e.href);
+        expect(leaf && isLeafDisabled(leaf), `${e.label} 是待建/锁定叶却进了搜索候选`).toBeFalsy();
+      }
+    }
+  });
+
+  it("⌘K 候选：每个可见 section 都能被搜到，且落地页可点", () => {
+    const perms = backendPermsOf("SUPER_ADMIN");
+    const entries = navSearchEntries(perms);
+    const sections = entries.filter((e) => e.isSection);
+    // 待建整域不该出现（点进去是 404）
+    for (const e of sections) {
+      const s = NAV.find((x) => x.label === e.label)!;
+      expect(s.soon, `${s.key} 整域待建却进了搜索候选`).toBeFalsy();
+    }
+    expect(sections.map((e) => e.label)).toContain("商家治理");
+    expect(entries.find((e) => e.label === "商家档案")?.href).toBe("/merchants?tab=list");
+  });
+
+  it("⌘K 匹配：空格分词，词序无关；不匹配则落空", () => {
+    expect(matchesQuery("商家治理 入驻与资质 商家档案", "商家 档案")).toBe(true);
+    expect(matchesQuery("商家治理 入驻与资质 商家档案", "档案 商家")).toBe(true);
+    expect(matchesQuery("Merchants Merchant profiles", "merchant PROFILE")).toBe(true);
+    expect(matchesQuery("商家治理 商家档案", "订单")).toBe(false);
+    expect(matchesQuery("任意串", "   ")).toBe(true); // 空查询 = 不过滤
   });
 
   it("section 首页默认高亮首个可点叶子", () => {

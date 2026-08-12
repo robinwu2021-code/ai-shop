@@ -47,32 +47,54 @@ describe("数据域授权（P-1.1.3）", () => {
   });
 });
 
-describe("角色权限（P-1.1.2）", () => {
-  it("内置角色（超管）不可编辑", async () => {
-    await expect(iamMock.setRolePerms("SUPER_ADMIN", ["dashboard:overview:read"])).rejects.toThrow(/内置角色/);
+/*
+ * 2026-08-12 换形：授权单位从**权限码**变成**功能点**，
+ * 且预置角色一律只读（与后端 10440 同一条闸）——
+ * 要调整就新建自定义角色。
+ */
+describe("角色与功能点（P-1.1.2）", () => {
+  it("★★ 预置角色一律不可编辑 —— 不只是超管", async () => {
+    await expect(iamMock.setRolePoints("SUPER_ADMIN", ["dashboard:overview:read"]))
+      .rejects.toThrow(/预置角色/);
+    // 客服也是预置的：它是 Perms.java 的镜像，改了会与回落表分叉
+    await expect(iamMock.setRolePoints("CS", ["dashboard:overview:read"]))
+      .rejects.toThrow(/预置角色/);
   });
 
-  it("普通角色可改权限并落库", async () => {
-    const r = await iamMock.setRolePerms("CS", ["dashboard:overview:read", "order:order:read"]);
-    expect(r.perms).toEqual(["dashboard:overview:read", "order:order:read"]);
+  it("自定义角色可建、可改功能点、可删", async () => {
+    await iamMock.createRole("TMP_ROLE", "临时角色");
+    const r = await iamMock.setRolePoints("TMP_ROLE", ["dashboard:overview:read", "order:order:read"]);
+    expect(r.pointCount).toBe(2);
+    expect(await iamMock.getRolePoints("TMP_ROLE")).toEqual([
+      "dashboard:overview:read", "order:order:read"]);
+    await iamMock.removeRole("TMP_ROLE");
+    expect((await iamMock.listRoles()).some((x) => x.roleCode === "TMP_ROLE")).toBe(false);
   });
 
-  it("⚠️ mock 阶段编辑权限**不改变** can() 的判定（真源是编译期常量）", async () => {
-    await iamMock.setRolePerms("CS", ["dashboard:overview:read"]);
-    // permsOf 读的是 lib/permissions.ts 的常量，不受 mock 编辑影响。
-    // 这条断言是为了锁住这个已知边界：以后有人把 can() 改成读 mock，这里会红，
-    // 那时必须同时把页面上的说明改掉，而不是偷偷让两者不一致。
-    expect(permsOf("CS").length).toBeGreaterThan(1);
+  it("★ 还有人在用的角色不能删 —— 删了他们能登录但什么都点不动", async () => {
+    await expect(iamMock.removeRole("CS")).rejects.toThrow();
+  });
+
+  it("功能点全集里，后端没做的标 NOT_IMPLEMENTED —— mock 不许比后端好看", async () => {
+    const fns = await iamMock.listPermFunctions();
+    const pts = fns.flatMap((f) => f.points);
+    expect(pts.length).toBeGreaterThan(0);
+    // 履约整域后端零实现，它的点必须诚实标出来
+    const fulfil = pts.filter((p) => p.uiPermCode?.startsWith("fulfillment:"));
+    expect(fulfil.length).toBeGreaterThan(0);
+    expect(fulfil.every((p) => p.backendStatus === "NOT_IMPLEMENTED")).toBe(true);
   });
 });
 
 describe("审计日志（P-1.1.4）", () => {
   it("写操作会追加审计，且高危操作被标记", async () => {
     const before = auditLogs.length;
-    await iamMock.setRolePerms("ANALYST", ["dashboard:overview:read", "risk:blacklist:update"]);
-    expect(auditLogs.length).toBe(before + 1);
+    await iamMock.createRole("TMP_AUDIT", "审计用临时角色");
+    await iamMock.setRolePoints("TMP_AUDIT", ["dashboard:overview:read", "risk:blacklist:update"]);
+    expect(auditLogs.length).toBe(before + 2);   // 建角色 + 改功能点
     expect(auditLogs[0].critical).toBe(true);
     expect(auditLogs[0].detail).toContain("risk:blacklist:update");
+    await iamMock.removeRole("TMP_AUDIT");
   });
 
   it("非高危操作不打高危标", async () => {

@@ -9,6 +9,7 @@ import ai.neargo.shop.platform.perm.PermConfigService;
 import ai.neargo.shop.platform.perm.entity.SysFunction;
 import ai.neargo.shop.platform.perm.entity.SysFunctionPoint;
 import ai.neargo.shop.platform.perm.entity.SysRole;
+import ai.neargo.shop.auth.TokenStore;
 import ai.neargo.shop.platform.perm.entity.SysRoleMember;
 import ai.neargo.shop.platform.perm.entity.SysRolePoint;
 import ai.neargo.shop.platform.perm.mapper.PermMappers.FunctionMapper;
@@ -40,11 +41,12 @@ public class PermConfigServiceImpl implements PermConfigService {
     private final RoleMemberMapper memberMapper;
     private final RolePermResolver resolver;
     private final AuditLogPort auditLogPort;
+    private final TokenStore tokenStore;
 
     public PermConfigServiceImpl(FunctionMapper functionMapper, FunctionPointMapper pointMapper,
                                  RoleMapper roleMapper, RolePointMapper rolePointMapper,
                                  RoleMemberMapper memberMapper, RolePermResolver resolver,
-                                 AuditLogPort auditLogPort) {
+                                 AuditLogPort auditLogPort, TokenStore tokenStore) {
         this.functionMapper = functionMapper;
         this.pointMapper = pointMapper;
         this.roleMapper = roleMapper;
@@ -52,6 +54,7 @@ public class PermConfigServiceImpl implements PermConfigService {
         this.memberMapper = memberMapper;
         this.resolver = resolver;
         this.auditLogPort = auditLogPort;
+        this.tokenStore = tokenStore;
     }
 
     @Override
@@ -127,12 +130,17 @@ public class PermConfigServiceImpl implements PermConfigService {
                         .eq(SysRolePoint::getEndCode, end))
                 .stream().collect(Collectors.groupingBy(SysRolePoint::getRoleCode,
                         Collectors.counting()));
+        Map<String, Long> members = memberMapper.selectList(Wrappers.<SysRoleMember>lambdaQuery()
+                        .eq(SysRoleMember::getEndCode, end))
+                .stream().collect(Collectors.groupingBy(SysRoleMember::getRoleCode,
+                        Collectors.counting()));
         return roleMapper.selectList(Wrappers.<SysRole>lambdaQuery()
                         .eq(SysRole::getEndCode, end).orderByAsc(SysRole::getSort))
                 .stream()
                 .map(r -> new RoleVO(r.getRoleCode(), r.getName(), r.getEndCode(),
                         !Boolean.FALSE.equals(r.getBuiltin()),
-                        counts.getOrDefault(r.getRoleCode(), 0L).intValue()))
+                        counts.getOrDefault(r.getRoleCode(), 0L).intValue(),
+                        members.getOrDefault(r.getRoleCode(), 0L).intValue()))
                 .toList();
     }
 
@@ -157,7 +165,7 @@ public class PermConfigServiceImpl implements PermConfigService {
         r.setSort(900);
         roleMapper.insert(r);
         auditLogPort.record("PERM_ROLE_CREATE", roleCode, name);
-        return new RoleVO(roleCode, name, OPS, false, 0);
+        return new RoleVO(roleCode, name, OPS, false, 0, 0);
     }
 
     @Override
@@ -192,8 +200,25 @@ public class PermConfigServiceImpl implements PermConfigService {
         }
         // 判权读的是缓存过的整表快照，不清就要等重启
         resolver.invalidate();
-        auditLogPort.record("PERM_ROLE_POINTS", roleCode, codes.size() + " 个功能点");
-        return new RoleVO(roleCode, r.getName(), OPS, false, codes.size());
+        /*
+         * **还要踢持有者的会话**。清缓存只让下一次「算权限」拿到新配置，
+         * 而 perms 是<b>登录那一刻</b>算好塞进会话的 —— 不踢的话，
+         * 已经登录的人要等下次登录才生效，而收紧权限恰恰是最需要立刻生效的场景。
+         *
+         * 旁边三个改人的写接口（setStaffEnabled/Role/Scope）都调了 revokeUser，
+         * 这里上一批漏了。
+         */
+        int kicked = 0;
+        for (SysRoleMember m : memberMapper.selectList(Wrappers.<SysRoleMember>lambdaQuery()
+                .eq(SysRoleMember::getEndCode, OPS).eq(SysRoleMember::getRoleCode, roleCode))) {
+            kicked += tokenStore.revokeUser(m.getSubjectNo());
+        }
+        auditLogPort.record("PERM_ROLE_POINTS", roleCode,
+                codes.size() + " 个功能点，踢下线 " + kicked + " 个会话");
+        return new RoleVO(roleCode, r.getName(), OPS, false, codes.size(),
+                memberMapper.selectCount(Wrappers.<SysRoleMember>lambdaQuery()
+                        .eq(SysRoleMember::getEndCode, OPS)
+                        .eq(SysRoleMember::getRoleCode, roleCode)).intValue());
     }
 
     @Override

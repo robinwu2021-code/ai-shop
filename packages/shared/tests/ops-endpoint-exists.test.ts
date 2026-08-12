@@ -40,9 +40,9 @@ const UNBUILT_DOMAINS = new Set([
   // 营销的后期部分
   "marketing", "content-slots", "fission-campaigns",
   "push-tasks", "demands", "attribution-rule", "attribution-traces",
-  // 组织与权限：staffs 已经活了（GET /ops/staffs），
-  // 剩下的三条写接口与 roles 整块登记在 KNOWN_GAPS / UNBUILT
-  "roles",
+  // 组织与权限：2026-08-12 roles 从这里移走 —— 角色配置接到了 /ops/perm/**，
+  // 读写六条端点都真的存在。此前它是「页面有完整权限树和保存按钮、
+  // 而 /ops/roles 是 404」，缺口诚实登记着，但对着屏幕的人不知道。
 ]);
 
 /**

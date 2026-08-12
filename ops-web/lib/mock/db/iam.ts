@@ -15,14 +15,31 @@ export const staffs: Staff[] = [
   { staffNo: "E9008", username: "risk01", name: "钱风控", role: "RISK", enabled: false, lastLoginAt: "2026-06-30T02:00:00Z", createdAt: "2026-03-08T02:00:00Z" },
 ];
 
-/** 角色定义：权限集合直接取自 permissions.ts，避免两份真相。 */
+/**
+ * 角色定义。**2026-08-12 换形**：授权单位从权限码变成功能点，
+ * 所以这里只留计数，勾了哪些点由 {@link rolePoints} 存。
+ *
+ * 预置角色全部 `builtin: true` —— 它们是 `Perms.java` 的镜像，
+ * mock 里也不该能改，否则 mock 比后端宽松，而 mock 比后端好看正是这个仓库
+ * 反复出问题的形状。
+ */
 export const roleDefs: RoleDef[] = (Object.keys(ROLE_LABEL) as Role[]).map((role) => ({
-  role,
-  label: ROLE_LABEL[role],
-  builtin: role === "SUPER_ADMIN",
-  perms: [...permsOf(role)],
+  roleCode: role,
+  name: ROLE_LABEL[role],
+  endCode: "OPS",
+  builtin: true,
+  pointCount: permsOf(role).length,
   staffCount: staffs.filter((s) => s.role === role).length,
 }));
+
+/**
+ * 角色 → 已勾的功能点码。mock 里用 UI 码当功能点码 ——
+ * 真库里是 `OPS_XXX_01` 这种，但 mock 的用途是让页面能跑，
+ * 而页面只关心「勾了哪些、保存后变没变」。
+ */
+export const rolePoints: Record<string, string[]> = Object.fromEntries(
+  (Object.keys(ROLE_LABEL) as Role[]).map((role) => [role, [...permsOf(role)]]),
+);
 
 export const auditLogs: AuditLog[] = [
   { logNo: "AL9001", at: "2026-08-05T02:10:00Z", operator: "admin", action: "授予角色权限", target: "RISK", detail: "新增 risk:blacklist:update（高危）", critical: true },

@@ -79,6 +79,13 @@ public interface PermConfigService {
                        boolean uiReady, String matrixCode, String pointType, int sort) {
     }
 
-    record RoleVO(String roleCode, String name, String endCode, boolean builtin, int pointCount) {
+    /**
+     * @param staffCount 持有该角色的账号数。
+     *     <p><b>它是删角色前唯一能看出「会影响谁」的信息</b> ——
+     *     {@code deleteRole} 已经拦住了在用的角色（{@code PERM_ROLE_IN_USE}），
+     *     但那是拦在点下去之后。列表上就显示出来，才不会让人白点一次。
+     */
+    record RoleVO(String roleCode, String name, String endCode, boolean builtin, int pointCount,
+                  int staffCount) {
     }
 }

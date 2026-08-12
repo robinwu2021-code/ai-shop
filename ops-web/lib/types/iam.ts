@@ -33,16 +33,31 @@ export interface Staff {
   createdAt: string;
 }
 
+/**
+ * 角色定义（`GET /ops/perm/roles`）。
+ *
+ * **2026-08-12 换形**：原来带 `perms: string[]`（权限码集合），
+ * 现在授权的单位是**功能点**（`sys_role_point`）—— 与后端存的东西一致。
+ *
+ * 为什么不继续用权限码：库里存功能点，界面勾权限码的话，保存时要把码反向
+ * 翻译成功能点集合，而一个码对应多个功能点，反向只能「全给」。
+ * **那就是翻译层**，而这个仓库里绝大多数跨端缺陷都出自翻译层两边各写一套。
+ */
 export interface RoleDef {
-  /** 角色码 */
-  role: Role;
+  /** 角色码。自定义角色不在 `Role` 联合类型里，所以是 string */
+  roleCode: string;
   /** 角色展示名 */
-  label: string;
-  /** 内置角色（超管）：定义就是"全部"，不可编辑 —— 可编辑意味着能把自己降权 */
+  name: string;
+  /** 端。运营端固定 OPS */
+  endCode: string;
+  /** 内置角色：是 `Perms.java` 的镜像，改了会与回落表分叉 —— 渲染但禁用 */
   builtin: boolean;
-  /** 权限码集合；'*' 表示全部 */
-  perms: string[];
-  /** 持有该角色的账号数 */
+  /** 已授予的功能点数 */
+  pointCount: number;
+  /**
+   * 持有该角色的账号数。
+   * **删角色前唯一能看出「会影响谁」的信息** —— 后端也拦（10441），但那是拦在点下去之后。
+   */
   staffCount: number;
 }
 

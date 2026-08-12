@@ -58,7 +58,14 @@ export const iamHttp: IamApi = {
     toStaff(await client.post<BackendStaff>(`/ops/staffs/${no}/role`, { role })),
   setStaffScope: async (no, scope) =>
     toStaff(await client.post<BackendStaff>(`/ops/staffs/${no}/scope`, scope)),
-  listRoles: () => client.get("/ops/roles"),
-  setRolePerms: (role, perms) => client.post(`/ops/roles/${role}/perms`, { perms }),
+  // 角色与功能点。**路径是 /ops/perm/** 而不是 /ops/roles** ——
+  // 后端从来没有过 /ops/roles，这一整块此前点下去 404
+  listRoles: () => client.get("/ops/perm/roles", { end: "OPS" }),
+  listPermFunctions: () => client.get("/ops/perm/functions", { end: "OPS" }),
+  getRolePoints: (roleCode) => client.get(`/ops/perm/roles/${roleCode}/points`),
+  setRolePoints: (roleCode, pointCodes) =>
+    client.post(`/ops/perm/roles/${roleCode}/points`, { pointCodes }),
+  createRole: (roleCode, name) => client.post("/ops/perm/roles", { roleCode, name }),
+  removeRole: (roleCode) => client.post(`/ops/perm/roles/${roleCode}/delete`, {}),
   listAuditLogs: (q) => client.get("/ops/audit-logs", q),
 };

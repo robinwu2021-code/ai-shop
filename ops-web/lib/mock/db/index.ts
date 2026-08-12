@@ -17,7 +17,7 @@ export { afterSales, fastRefundRule } from "./aftersale";
 export { groupCampaigns, demandOrders, quotes } from "./group";
 export { categories, skus, goodsAudits } from "./product";
 export { settlements, splitRecords, feeRules, SETTLE_FREEZE_DAYS } from "./finance";
-export { staffs, roleDefs, auditLogs } from "./iam";
+export { staffs, roleDefs, rolePoints, auditLogs } from "./iam";
 export { attributionRule, attributionTraces, fissionCampaigns } from "./growth";
 export { riskEvents, blacklists, riskRules } from "./risk";
 export { msgTemplates, pushTasks, notifyQuota, tickets, faqs } from "./message";

@@ -4,7 +4,7 @@
 //
 // 敏感操作二次校验（P-1.1.5）**不单独成页**：它是动作上的一层 —— 停用管理员、
 // 授予高危权限时要求手输确认，与资金域的分账下发同一套做法。
-import { Suspense, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
@@ -74,7 +74,8 @@ function IamInner() {
   const [critical, setCritical] = useState("");
   const [editing, setEditing] = useState<Staff | null>(null);
   const [scopeForm, setScopeForm] = useState({ merchantNo: "", communityNo: "", pickupNo: "" });
-  const [pickedRole, setPickedRole] = useState<Role | null>(null);
+  // 自定义角色不在 Role 联合类型里 —— 用 string
+  const [pickedRole, setPickedRole] = useState<string | null>(null);
   const [checked, setChecked] = useState<string[]>([]);
 
   const canGrant = allow("iam:role:grant");
@@ -83,6 +84,13 @@ function IamInner() {
   const staffQ = { keyword, role, enabled, page, size };
   const staffs = useQuery({ queryKey: ["staffs", staffQ], queryFn: () => api.listStaffs(staffQ), enabled: tab === "staffs" });
   const roles = useQuery({ queryKey: ["roles"], queryFn: () => api.listRoles(), enabled: tab === "roles" });
+  // 功能点全集。**不按人切片** —— 配角色时要看到全部，包括自己没有的
+  const permFns = useQuery({ queryKey: ["perm-functions"], queryFn: () => api.listPermFunctions(), enabled: tab === "roles" });
+  const rolePts = useQuery({
+    queryKey: ["role-points", pickedRole],
+    queryFn: () => api.getRolePoints(pickedRole!),
+    enabled: tab === "roles" && !!pickedRole,
+  });
   const auditQ = { keyword, critical, page, size };
   const logs = useQuery({ queryKey: ["audit-logs", auditQ], queryFn: () => api.listAuditLogs(auditQ), enabled: tab === "audit" });
 
@@ -105,37 +113,65 @@ function IamInner() {
     onSuccess: () => { invalidate(); setEditing(null); notify.success(c.toastScopeChanged); },
   });
   const setPermsMut = useMutation({
-    mutationFn: (v: { role: Role; perms: string[] }) => api.setRolePerms(v.role, v.perms),
-    onSuccess: () => { invalidate(); notify.success(c.toastPermsSaved); },
+    mutationFn: (v: { roleCode: string; points: string[] }) => api.setRolePoints(v.roleCode, v.points),
+    onSuccess: () => {
+      invalidate();
+      qc.invalidateQueries({ queryKey: ["role-points"] });
+      notify.success(c.toastPermsSaved);
+    },
   });
 
-  /** 权限码 → 按导航模块分组的树。数据源是 nav，保证"能配的"与"界面上有的"一致。 */
+  /*
+   * 权限树：**功能 → 功能点**两层，数据源是服务端的功能点全集。
+   *
+   * **2026-08-12 换粒度**：此前勾的是「权限码」（去重后只有 16 个），
+   * 而库里存的是功能点。勾权限码的话保存时要把码反向翻译成功能点集合，
+   * 一个码对应多个点，反向只能「全给」—— 那就是翻译层，
+   * 而这个仓库里绝大多数跨端缺陷都出自翻译层两边各写一套。
+   *
+   * 现在：勾什么 = 库里存什么 = 那个人登录后菜单长什么样。
+   */
   const permTree: TreeNode[] = useMemo(
     () =>
-      NAV.filter((s) => (s.children ?? []).some((l) => l.perm)).map((s) => {
-        const perms = [...new Set((s.children ?? []).map((l) => l.perm).filter(Boolean) as string[])];
-        return {
-          key: `m:${s.module}`,
-          label: s.label,
-          children: perms.map((p) => ({
-            key: p,
-            label: (
-              <span className="flex items-center gap-2">
-                <code className="txt-caption">{p}</code>
-                {CRITICAL.includes(p) && <Badge tone="danger">{c.critical}</Badge>}
-              </span>
-            ),
-          })),
-        };
-      }),
-    [],
+      (permFns.data ?? [])
+        .filter((f) => f.points.some((p) => p.pointType === "MENU" || p.pointType === "ACTION"))
+        .map((f) => ({
+          key: `f:${f.functionCode}`,
+          label: f.name,
+          children: f.points.map((p) => {
+            const unbuilt = p.backendStatus === "NOT_IMPLEMENTED";
+            return {
+              key: p.pointCode,
+              // **未实现的点渲染但标出来**，不是藏起来：勾了它不报错，但也不生效 ——
+              // 不标的后果很具体：运营给风控角色勾满了功能点，那个人登录进去还是空看板，
+              // 而没有任何东西告诉他们原因
+              disabled: unbuilt,
+              label: (
+                <span className={`flex items-center gap-2 ${unbuilt ? "text-muted-foreground" : ""}`}>
+                  {p.name}
+                  {p.uiPermCode && <code className="txt-caption text-muted-foreground">{p.uiPermCode}</code>}
+                  {unbuilt && <Badge tone="muted">{c.notImplemented}</Badge>}
+                  {p.uiPermCode && CRITICAL.includes(p.uiPermCode) && <Badge tone="danger">{c.critical}</Badge>}
+                </span>
+              ),
+            };
+          }),
+        })),
+    [permFns.data, c],
   );
 
-  const openRole = (r: RoleDef) => {
-    setPickedRole(r.role);
-    // '*' 展开成具体码，否则树里一个都勾不上（超管是内置角色，本来也不可编辑）
-    setChecked(r.perms.includes("*") ? permTree.flatMap((m) => (m.children ?? []).map((c) => c.key)) : r.perms);
-  };
+  const openRole = (r: RoleDef) => setPickedRole(r.roleCode);
+  const pickedRoleDef = roles.data?.find((r) => r.roleCode === pickedRole);
+  /** 功能点码 → UI 权限码。危险项判定要用它 —— 树的 key 是功能点码 */
+  const pointUiCode: Record<string, string> = useMemo(() => {
+    const m: Record<string, string> = {};
+    for (const f of permFns.data ?? []) for (const p of f.points) if (p.uiPermCode) m[p.pointCode] = p.uiPermCode;
+    return m;
+  }, [permFns.data]);
+
+  // 选中角色时把库里已勾的拉过来。**不能用 openRole 里同步塞** ——
+  // 那要等接口回来，而 setState 是同步的，结果是勾选框空一拍
+  useEffect(() => { setChecked(rolePts.data ?? []); }, [rolePts.data]);
 
   const staffColumns: Column<Staff>[] = [
     { header: c.colStaffNo, cell: (s) => s.staffNo, numeric: true, align: "start" },
@@ -215,20 +251,19 @@ function IamInner() {
   ];
 
   const roleColumns: Column<RoleDef>[] = [
-    { header: c.colRoleLabel, cell: (r) => r.label },
-    { header: c.colRoleCode, cell: (r) => <code className="txt-caption">{r.role}</code> },
+    { header: c.colRoleLabel, cell: (r) => r.name },
+    { header: c.colRoleCode, cell: (r) => <code className="txt-caption">{r.roleCode}</code> },
+    // staffCount 摆在这里是有用途的：它是删角色前唯一能看出「会影响谁」的信息。
+    // 后端也拦（10441），但那是拦在点下去之后
     { header: c.colStaffCount, cell: (r) => r.staffCount, numeric: true },
+    { header: c.colPermCount, cell: (r) => r.pointCount, numeric: true },
     {
-      header: c.colPermCount,
-      numeric: true,
-      cell: (r) => (r.perms.includes("*") ? <Badge tone="danger">{c.permAll}</Badge> : r.perms.length),
-    },
-    {
-      header: c.colCriticalPerms,
-      cell: (r) => {
-        const hits = r.perms.includes("*") ? CRITICAL : r.perms.filter((p) => CRITICAL.includes(p));
-        return hits.length ? <Badge tone="danger">{fill(c.criticalCount, { n: hits.length })}</Badge> : <span className="text-muted-foreground">{c.none}</span>;
-      },
+      header: c.colRoleKind,
+      // **预置角色渲染但不可编辑**，不是藏起来 —— 超管、BD、客服是运营最常看的三个，
+      // 藏起来等于「角色列表里没有客服」
+      cell: (r) => (r.builtin
+        ? <Badge tone="muted">{c.builtinRole}</Badge>
+        : <span className="text-muted-foreground">{c.customRole}</span>),
     },
     {
       header: c.colActions,
@@ -300,38 +335,51 @@ function IamInner() {
           <DataTable
             columns={roleColumns} rows={roles.data} loading={roles.isLoading}
             error={roles.error} onRetry={() => roles.refetch()}
-            rowKey={(r) => r.role}
+            rowKey={(r) => r.roleCode}
             empty={c.emptyRoles}
           />
           <Card>
-            <CardHeader><CardTitle>{pickedRole ? fill(c.permCardTitle, { role: roleLabel(pickedRole) }) : c.permCardEmpty}</CardTitle></CardHeader>
+            <CardHeader><CardTitle>{pickedRole ? fill(c.permCardTitle, { role: pickedRoleDef?.name ?? pickedRole }) : c.permCardEmpty}</CardTitle></CardHeader>
             <CardContent>
               {!pickedRole ? (
                 <p className="txt-body text-muted-foreground">{c.permCardHint}</p>
               ) : (
                 <div className="space-y-3">
-                  {/* 权限树用的就是 Tree 的 checkable 语义：值只认叶子（权限码），父节点三态 */}
+                  {/*
+                    预置角色「渲染但只读」：它们是 Perms.java 的镜像，改了会与回落表分叉，
+                    而什么时候走回落不由前端决定。后端也拒（10440）——
+                    但让人勾完点保存才报错，是最差的一种。
+                  */}
+                  {pickedRoleDef?.builtin && (
+                    <Notice tone="muted">{c.builtinReadOnly}</Notice>
+                  )}
+                  {/* 权限树用的就是 Tree 的 checkable 语义：值只认叶子（功能点码），父节点三态 */}
                   <Tree
                     nodes={permTree}
                     empty={c.emptyPerms}
                     checkable
                     checkedKeys={checked}
-                    onCheckedChange={setChecked}
+                    onCheckedChange={pickedRoleDef?.builtin ? () => {} : setChecked}
                     collapseFrom={1}
                   />
                   <div className="flex items-center gap-2">
                     <Button
+                      disabled={pickedRoleDef?.builtin}
+                      loading={setPermsMut.isPending}
                       onClick={async () => {
-                        const added = checked.filter((p) => CRITICAL.includes(p));
+                        // 危险项按功能点的 UI 码判 —— 树的 key 是功能点码，不是权限码
+                        const added = checked
+                          .map((pc) => pointUiCode[pc])
+                          .filter((ui): ui is string => !!ui && CRITICAL.includes(ui));
                         if (added.length) {
                           const ok = await confirm({
-                            title: fill(c.confirmGrantTitle, { role: roleLabel(pickedRole) }),
+                            title: fill(c.confirmGrantTitle, { role: pickedRoleDef?.name ?? pickedRole }),
                             desc: fill(c.confirmGrantDesc, { n: added.length, list: added.join("、") }),
                             danger: true, confirmText: c.confirmGrantOk, requireText: pickedRole,
                           });
                           if (!ok) return;
                         }
-                        setPermsMut.mutate({ role: pickedRole, perms: checked });
+                        setPermsMut.mutate({ roleCode: pickedRole, points: checked });
                       }}
                     >
                       {c.save}

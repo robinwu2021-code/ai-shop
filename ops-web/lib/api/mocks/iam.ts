@@ -5,6 +5,8 @@ import { SCOPED_ROLES, type RoleDef, type Staff } from "@/lib/types";
 import type { Role } from "@/lib/auth";
 import type { IamApi } from "../contracts/iam";
 import { fail, notFound } from "@/lib/biz-error";
+import { NAV } from "@/lib/nav";
+import { UI_PERM_MAP, UNIMPLEMENTED } from "@/lib/perm-map";
 import { wait } from "./_wait";
 
 function findStaff(staffNo: string): Staff {
@@ -12,9 +14,9 @@ function findStaff(staffNo: string): Staff {
   if (!s) notFound("员工", "Staff member", staffNo);
   return s;
 }
-function findRole(role: Role): RoleDef {
-  const r = db.roleDefs.find((x) => x.role === role);
-  if (!r) notFound("角色", "Role", role);
+function findRole(roleCode: string): RoleDef {
+  const r = db.roleDefs.find((x) => x.roleCode === roleCode);
+  if (!r) notFound("角色", "Role", roleCode);
   return r;
 }
 
@@ -82,17 +84,81 @@ export const iamMock: IamApi = {
   },
 
   listRoles: async () =>
-    wait(db.roleDefs.map((r) => ({ ...r, staffCount: db.staffs.filter((s) => s.role === r.role).length }))),
+    wait(db.roleDefs.map((r) => ({
+      ...r,
+      pointCount: (db.rolePoints[r.roleCode] ?? []).length,
+      staffCount: db.staffs.filter((s) => s.role === r.roleCode).length,
+    }))),
 
-  setRolePerms: async (role, perms) => {
-    const r = findRole(role);
-    // 内置角色的定义就是"全部"。可编辑意味着能把超管自己降权，然后没人能改回来。
-    if (r.builtin) fail("内置角色（超级管理员）的权限不可编辑", "The built-in super admin role's permissions cannot be edited");
-    const added = perms.filter((p) => !r.perms.includes(p));
+  /*
+   * 功能点全集。mock 从 NAV 派生 —— 与真库同源（那份种子也是从 nav.ts 生成的）。
+   * 后端没有的码标 NOT_IMPLEMENTED，**与真接口同一口径**：
+   * mock 比后端好看，页面就会在 mock 下看着正常、连上真后端才发现是空的。
+   */
+  listPermFunctions: async () =>
+    wait(NAV.map((sec, si) => ({
+      functionCode: `OPS_${sec.key.toUpperCase()}`,
+      name: sec.label,
+      icon: sec.icon,
+      href: sec.href,
+      sort: (si + 1) * 10,
+      points: (sec.children ?? []).map((l, li) => ({
+        pointCode: l.perm!,
+        name: l.label,
+        groupName: l.group ?? null,
+        href: l.href,
+        uiPermCode: l.perm ?? null,
+        permCode: UI_PERM_MAP[l.perm!] === UNIMPLEMENTED ? null : l.perm!,
+        backendStatus: UI_PERM_MAP[l.perm!] === UNIMPLEMENTED ? "NOT_IMPLEMENTED" : "IMPLEMENTED",
+        uiReady: l.ready === true,
+        matrixCode: l.matrix ?? null,
+        pointType: "MENU",
+        sort: (li + 1) * 10,
+      })),
+    }))),
+
+  getRolePoints: async (roleCode) => wait([...(db.rolePoints[roleCode] ?? [])]),
+
+  setRolePoints: async (roleCode, pointCodes) => {
+    const r = findRole(roleCode);
+    /*
+     * **预置角色拒绝修改** —— 与后端 10440 同一条闸。
+     * 它们是 Perms.java 的镜像，改了会与回落表分叉，而什么时候回落不由我们决定。
+     */
+    if (r.builtin) {
+      fail("预置角色不可修改", "Built-in roles cannot be modified");
+    }
+    const before = db.rolePoints[roleCode] ?? [];
+    const added = pointCodes.filter((p) => !before.includes(p));
     const critical = added.some((p) => (CRITICAL_PERMS as readonly string[]).includes(p));
-    r.perms = [...perms];
-    audit("授予角色权限", role, added.length ? `新增：${added.join("、")}` : "调整权限集合", critical);
+    db.rolePoints[roleCode] = [...pointCodes];
+    audit("授予角色功能点", roleCode,
+      added.length ? `新增：${added.join("、")}` : "调整功能点集合", critical);
+    return wait({ ...r, pointCount: pointCodes.length }, 400);
+  },
+
+  createRole: async (roleCode, name) => {
+    if (db.roleDefs.some((x) => x.roleCode === roleCode)) {
+      fail("角色码已存在", "Role code already exists");
+    }
+    const r: RoleDef = { roleCode, name, endCode: "OPS", builtin: false, pointCount: 0, staffCount: 0 };
+    db.roleDefs.push(r);
+    db.rolePoints[roleCode] = [];
+    audit("新建角色", roleCode, name, false);
     return wait(r, 400);
+  },
+
+  removeRole: async (roleCode) => {
+    const r = findRole(roleCode);
+    if (r.builtin) fail("预置角色不可删除", "Built-in roles cannot be deleted");
+    // **还有人在用就不让删** —— 删了他们能登录但什么都点不动，且看不出原因
+    if (db.staffs.some((s) => s.role === roleCode)) {
+      fail("还有账号在用这个角色", "Role is still assigned to staff");
+    }
+    db.roleDefs.splice(db.roleDefs.indexOf(r), 1);
+    delete db.rolePoints[roleCode];
+    audit("删除角色", roleCode, r.name, true);
+    return wait(undefined, 400);
   },
 
   listAuditLogs: (q = {}) =>
