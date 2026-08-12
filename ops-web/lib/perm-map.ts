@@ -102,9 +102,11 @@ export const UI_PERM_MAP: Record<string, string | typeof UNIMPLEMENTED> = {
   "risk:blacklist:update": UNIMPLEMENTED,
   "risk:rule:update": UNIMPLEMENTED,
 
-  // 内容运营
-  "content:material:audit": UNIMPLEMENTED,
-  "content:material:update": UNIMPLEMENTED,
+  // 内容运营。**已接通**（2026-08-11）—— content:govern 不复用 review:govern：
+  // 那是评价裁决给客服的，而客服不该能改首页榜单
+  "content:material:audit": "content:govern",
+  "content:material:update": "content:govern",
+  // 帮助中心后端仍然没有
   "message:faq:update": UNIMPLEMENTED,
 
   // 履约调度
@@ -153,8 +155,9 @@ export const UI_PERM_MAP: Record<string, string | typeof UNIMPLEMENTED> = {
   "finance:settle:read": "settle:manage",
   "iam:staff:read": "staff:manage",
 
+  "content:material:read": "content:govern",
+
   // 后端整域未开工的那几个只读页
-  "content:material:read": UNIMPLEMENTED,
   "fulfillment:logistics:read": UNIMPLEMENTED,
   "fulfillment:redeem:read": UNIMPLEMENTED,
   "risk:rule:read": UNIMPLEMENTED,

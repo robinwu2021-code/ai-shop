@@ -54,7 +54,7 @@ describe("导航 × 权限", () => {
    * 单列成清单而不是放宽断言：后端把某一块做出来之后，
    * 这里要能提醒人把它移走 —— 否则菜单会一直藏着一个已经能用的功能。
    */
-  const UNBUILT_SECTIONS = ["store", "fulfillment", "risk", "content", "growth"];
+  const UNBUILT_SECTIONS = ["store", "fulfillment", "risk", "growth"];
 
   /**
    * 域已经活了，但**这几个叶子**后端还没有 —— 它们对所有人不可见，也是对的。

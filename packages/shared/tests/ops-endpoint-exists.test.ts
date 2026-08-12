@@ -29,8 +29,8 @@ const ROOT = join(import.meta.dirname, "../../..");
  */
 const UNBUILT_DOMAINS = new Set([
   // 平台治理的后期功能，UI 先行
-  "contents", "risk-events", "risk-rules", "blacklists", "audit-logs",
-  "faqs", "materials",
+  "risk-events", "risk-rules", "blacklists", "audit-logs",
+  "faqs",
   // 财务与清结算（finance 已开始实现，移到 KNOWN_GAPS 逐条登记）
   "payments", "refund-split-backs",
   // 履约与物流
@@ -65,6 +65,12 @@ const KNOWN_GAPS: Record<string, string> = {
   // 员工那三条写接口**已接通**（2026-08-11），按棘轮规矩从这里删掉。
   // 留一句在这里是因为它容易被误当成缺口再补一遍：
   // /scope 存得下但**还没生效** —— 各域查询按数据域裁剪是单独一批。
+
+  // ── 内容与素材：域已接通（2026-08-11），12 条端点齐 ──
+  // ⚠️ **审核台目前是空的**：C 端还不能发种草内容、不能提问 ——
+  // 平台侧的治理能力有了，生产者还没有。运营端空态文案已写明。
+  // 这条不是缺口，是刻意的分批，写在这里免得下一个人以为坏了。
+  "POST /ops/contents/posts": "刻意不做：内容由 C 端用户发布，平台端只审不发",
 
   // ── 系统与配置：四类已接通（2026-08-11），域从 UNBUILT 移出 ──
   // 剩下这两条是同一页面上的、后端确实还没有的能力。

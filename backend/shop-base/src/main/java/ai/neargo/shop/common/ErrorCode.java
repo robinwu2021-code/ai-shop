@@ -36,6 +36,28 @@ public enum ErrorCode {
     STAFF_ROLE_UNKNOWN(10421, "err.staff.role_unknown"),
     /** 给全量角色配数据域：存下来会让人以为限制生效了，而实际没有 */
     STAFF_SCOPE_ON_FULL_ACCESS(10422, "err.staff.scope_on_full_access"),
+
+    /*
+     * 内容治理（P-15.2）。分成六个码而不是共用 10400：
+     * 审核员看到的提示决定他下一步怎么办 —— 「批量里有风险内容」和「参数不对」
+     * 要采取的行动完全不同（前者是去逐条看，后者是检查自己传了什么）。
+     */
+    /** 驳回/下架/隐藏没写原因。原因**原样回作者**，不写等于让人猜 */
+    REASON_REQUIRED(10430, "err.content.reason_required"),
+    /** 批量通过的单子里含命中风险词的内容。**整批拒绝而不是跳过** —— 静默跳过会让人以为全过了 */
+    CONTENT_RISK_IN_BATCH(10431, "err.content.risk_in_batch"),
+    /** 非法的状态流转。PASSED→OFFLINE 是单独一条路，不能退回待审 */
+    CONTENT_BAD_TRANSITION(10432, "err.content.bad_transition"),
+    /** 已回答的问题不能再答 —— 要改先隐藏，让改动本身留下痕迹 */
+    CONTENT_ALREADY_ANSWERED(10433, "err.content.already_answered"),
+    /** 人工榜条目数超过容量 */
+    CONTENT_RANKING_OVERSIZE(10434, "err.content.ranking_oversize"),
+    /** 人工榜里有不在售的商品：用户点进去是空页 */
+    CONTENT_RANKING_SKU_OFFLINE(10435, "err.content.ranking_sku_offline"),
+    /** 非人工榜带了条目：传了就是调用方理解错了 */
+    CONTENT_RANKING_MANUAL_ONLY(10436, "err.content.ranking_manual_only"),
+    /** 限定投放范围却没有投放对象：保存成功却谁都看不到 */
+    CONTENT_SCOPE_REFS_REQUIRED(10437, "err.content.scope_refs_required"),
     INTERNAL_ERROR(10500, "err.internal"),
 
     // ---- 2xxxx 交易 ----

@@ -121,6 +121,15 @@ public final class Perms {
     public static final String PLATFORM_CONFIG = "platform:config";
 
     /**
+     * 内容治理：种草内容审核、问答、榜单、素材。
+     *
+     * <p><b>不复用 {@link #REVIEW_GOVERN}</b>：那是评价裁决，给客服的 ——
+     * 裁决差评要看聊天记录与订单。而内容审核在矩阵 §2.3 里归<b>审核员</b>，
+     * 且它还管着榜单与素材：<b>客服不该能改首页榜单</b>。
+     */
+    public static final String CONTENT_GOVERN = "content:govern";
+
+    /**
      * 角色 → 权限码。**对着矩阵 §2.3 的十一个岗位逐条配**。
      *
      * <p>此前只有四个，而 ops-web 的角色下拉有十一个 —— 差的那七个不是前端多造的，
@@ -152,7 +161,9 @@ public final class Perms {
              * 得看它实际产生了什么订单，只看活动配置看不出「一分钱买走一百件」。
              * 不给 CATEGORY_MANAGE：活动挂在商品上，改类目树是商品运营的事。
              */
-            Map.entry("CAMPAIGN_OPS", List.of(MARKETING_GOVERN, ORDER_VIEW, COMMUNITY_VIEW)),
+            // 榜单与素材是活动运营的工具，所以它也拿 CONTENT_GOVERN
+            Map.entry("CAMPAIGN_OPS", List.of(MARKETING_GOVERN, ORDER_VIEW, COMMUNITY_VIEW,
+                    CONTENT_GOVERN)),
 
             /*
              * 社区运营：社区网格、自提点建档与启停 —— 那些端点用的都是 INDUSTRY_MANAGE。
@@ -165,7 +176,8 @@ public final class Perms {
              * 商家资质与入驻审核在矩阵里归 BD，那条线要承担后续的商家关系，
              * 与「这张图能不能过」不是一回事。
              */
-            Map.entry("AUDITOR", List.of(GOODS_AUDIT, REVIEW_GOVERN, COMMUNITY_VIEW)),
+            Map.entry("AUDITOR", List.of(GOODS_AUDIT, REVIEW_GOVERN, COMMUNITY_VIEW,
+                    CONTENT_GOVERN)),
 
             /*
              * 财务/结算：矩阵里它的高危权限就是打款与分账。

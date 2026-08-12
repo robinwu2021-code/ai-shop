@@ -205,9 +205,9 @@ export const BACKEND_ROLE_PERMS: Record<string, string[]> = {
   // 短得反常的那几个不是漏配：风控/技术运维/数据分析的核心能力后端还没有端点，
   // 详见 Perms.java 里逐条的说明。**凭空映射一个语义相近的码会让权限表看着是满的，
   // 而实际上什么都点不动** —— 或者顺手给出远超职责的权限。
-  CAMPAIGN_OPS: ["marketing:govern", "order:view", "community:view"],
+  CAMPAIGN_OPS: ["marketing:govern", "order:view", "community:view", "content:govern"],
   COMMUNITY_OPS: ["industry:manage", "community:view", "order:view"],
-  AUDITOR: ["goods:audit", "review:govern", "community:view"],
+  AUDITOR: ["goods:audit", "review:govern", "community:view", "content:govern"],
   FINANCE: ["settle:manage", "order:view"],
   // 风控域后端零端点，只能给「看单」——排查刷单的最低限度
   RISK: ["order:view"],
