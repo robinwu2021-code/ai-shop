@@ -41,11 +41,16 @@ import java.util.stream.Collectors;
 import java.util.Set;
 import java.util.LinkedHashSet;
 import java.security.SecureRandom;
+import java.util.regex.Pattern;
 
 @Service
 public class OpsServiceImpl implements OpsService {
 
-
+    /**
+     * 邮箱格式校验。**只挡"忘了打 @"这类最常见的手滑**，不追求 RFC 5322 全量合规——
+     * 真要验证这个地址收不收得到信，得发验证邮件，那是另一件事。
+     */
+    private static final Pattern EMAIL = Pattern.compile("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$");
 
     private final StaffMapper staffMapper;
     private final RoleMemberMapper roleMemberMapper;
@@ -524,6 +529,15 @@ public class OpsServiceImpl implements OpsService {
     public CreatedStaffVO createStaff(String username, String realName, List<String> roles) {
         if (!notBlank(username) || !notBlank(realName)) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        /*
+         * **新建员工的登录名必须是邮箱。**存量账号（admin/bd 这类短用户名）不受影响——
+         * 这条校验只挡在 createStaff 这一个入口，不回填、不改老数据。
+         * 邮箱格式用一个足够严格、不做网络校验的正则：本地部分 + @ + 至少一个点的域名，
+         * 挡得住"忘了打 @"这种最常见的手滑，不追求 RFC 5322 全量合规。
+         */
+        if (!EMAIL.matcher(username).matches()) {
+            throw BizException.of(ErrorCode.STAFF_USERNAME_NOT_EMAIL);
         }
         List<String> want = normalizeRoles(roles);
         // **不能给自己加角色**（这里是「建一个新账号」，自然不涉及自己），

@@ -47,6 +47,22 @@ const ROLES = Object.keys(ROLE_LABEL) as Role[];
 
 const ENABLED_OPTIONS = (c: Copy) => [{ value: "1", label: c.enabledOn }, { value: "0", label: c.enabledOff }];
 const CRITICAL = CRITICAL_PERMS as readonly string[];
+/**
+ * 新建员工的登录名必须是邮箱——与后端 `OpsServiceImpl.EMAIL` 同一条正则
+ * （只挡"忘了打 @"这类手滑，不追求 RFC 5322 全量合规）。
+ * 前端这份是**体验层的提前拦截**，真正兜底的是后端那份（10424）。
+ */
+const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+/** 自定义角色码：大写字母开头，只能有大写字母/数字/下划线——与后端 `ROLE_CODE` 同一条正则。 */
+const ROLE_CODE_RE = /^[A-Z][A-Z0-9_]{1,31}$/;
+/**
+ * 从角色展示名派生一个建议码：取 ASCII 字母/数字，非法字符转下划线，转大写。
+ * 名字里没有一个 ASCII 字符时（纯中文）没法派生，交回给使用方决定兜底。
+ */
+function suggestRoleCode(name: string): string {
+  const ascii = name.replace(/[^a-zA-Z0-9]+/g, "_").replace(/^_+|_+$/g, "").toUpperCase();
+  return ascii;
+}
 
 export default function IamPage() {
   return <Suspense fallback={null}><IamInner /></Suspense>;
@@ -89,7 +105,14 @@ function IamInner() {
   const [scopeForm, setScopeForm] = useState({ merchantNo: "", communityNo: "", pickupNo: "" });
   // 自定义角色不在 Role 联合类型里 —— 用 string
   const [pickedRole, setPickedRole] = useState<string | null>(null);
-  const [newRole, setNewRole] = useState<{ roleCode: string; name: string } | null>(null);
+  /**
+   * `codeTouched`：角色码是不是被用户手动改过。
+   *
+   * 新建角色时角色码跟着名字自动派生（见 {@link suggestRoleCode}）——
+   * 但只要用户碰过码字段一次，就不再替他改，否则他刚手动订正完
+   * 一个字符，名字随手一改，码又被冲掉，等于白改。
+   */
+  const [newRole, setNewRole] = useState<{ roleCode: string; name: string; codeTouched: boolean } | null>(null);
   const [rolesForm, setRolesForm] = useState<string[]>([]);
   const [newStaff, setNewStaff] = useState<{ username: string; realName: string; roles: string[] } | null>(null);
   /** 建号后一次性展示的初始密码。**关掉就没了** —— 后端也不再返回 */
@@ -368,7 +391,7 @@ function IamInner() {
           </Button>
           {canGrant && !r.builtin && (
             <Button size="sm" variant="ghost"
-              onClick={() => setNewRole({ roleCode: r.roleCode, name: r.name })}>
+              onClick={() => setNewRole({ roleCode: r.roleCode, name: r.name, codeTouched: true })}>
               {c.actionRename}
             </Button>
           )}
@@ -418,7 +441,7 @@ function IamInner() {
           <Notice className="mb-3">{c.notice}</Notice>
           {canGrant && (
             <div className="mb-3">
-              <Button size="sm" onClick={() => setNewRole({ roleCode: "", name: "" })}>
+              <Button size="sm" onClick={() => setNewRole({ roleCode: "", name: "", codeTouched: false })}>
                 {c.actionNewRole}
               </Button>
             </div>
@@ -569,7 +592,7 @@ function IamInner() {
         footer={newRole ? (
           <Button
             loading={createRoleMut.isPending || renameRoleMut.isPending}
-            disabled={!newRole.roleCode.trim() || !newRole.name.trim()}
+            disabled={!newRole.name.trim() || (!renaming && !ROLE_CODE_RE.test(newRole.roleCode))}
             onClick={() => (renaming
               ? renameRoleMut.mutate({ roleCode: newRole.roleCode, name: newRole.name.trim() },
                   { onSuccess: () => setNewRole(null) })
@@ -582,19 +605,30 @@ function IamInner() {
         {newRole && (
           <div className="space-y-4">
             <div className="space-y-1">
+              <Label htmlFor="nr-name">{c.fieldRoleName}</Label>
+              <Input id="nr-name" className="w-full" placeholder={c.phRoleName}
+                value={newRole.name}
+                onChange={(e) => {
+                  const name = e.target.value;
+                  // 名字联动派生角色码——但只在用户没手动碰过码字段时才替他改
+                  const roleCode = newRole.codeTouched ? newRole.roleCode : suggestRoleCode(name);
+                  setNewRole({ ...newRole, name, roleCode });
+                }} />
+            </div>
+            <div className="space-y-1">
               <Label htmlFor="nr-code">{c.fieldRoleCode}</Label>
               {/* 改名时角色码只读 —— 码是授权的键（sys_role_point / sys_role_member
                   都指着它），改了等于换一个角色 */}
               <Input id="nr-code" className="w-full" placeholder={c.phRoleCode}
                 disabled={renaming}
                 value={newRole.roleCode}
-                onChange={(e) => setNewRole({ ...newRole, roleCode: e.target.value.toUpperCase() })} />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="nr-name">{c.fieldRoleName}</Label>
-              <Input id="nr-name" className="w-full" placeholder={c.phRoleName}
-                value={newRole.name}
-                onChange={(e) => setNewRole({ ...newRole, name: e.target.value })} />
+                onChange={(e) => setNewRole({ ...newRole, roleCode: e.target.value.toUpperCase(), codeTouched: true })} />
+              {!renaming && newRole.name.trim() && !newRole.roleCode && (
+                <p className="txt-caption text-muted-foreground mt-1">{c.roleCodeNoSuggestion}</p>
+              )}
+              {newRole.roleCode.length > 0 && !ROLE_CODE_RE.test(newRole.roleCode) && (
+                <p className="txt-caption text-destructive mt-1">{c.roleCodeInvalid}</p>
+              )}
             </div>
           </div>
         )}
@@ -676,7 +710,7 @@ function IamInner() {
         footer={newStaff ? (
           <Button
             loading={createStaffMut.isPending}
-            disabled={!newStaff.username.trim() || !newStaff.realName.trim() || newStaff.roles.length === 0}
+            disabled={!EMAIL_RE.test(newStaff.username.trim()) || !newStaff.realName.trim() || newStaff.roles.length === 0}
             onClick={() => createStaffMut.mutate()}
           >{c.save}</Button>
         ) : null}
@@ -687,6 +721,10 @@ function IamInner() {
               <Label htmlFor="ns-username">{c.fieldUsername}</Label>
               <Input id="ns-username" className="w-full" placeholder={c.phUsername} value={newStaff.username}
                 onChange={(e) => setNewStaff({ ...newStaff, username: e.target.value })} />
+              {/* 只在填过内容之后才报错——刚打开抽屉时字段是空的，不该一上来就红 */}
+              {newStaff.username.trim().length > 0 && !EMAIL_RE.test(newStaff.username.trim()) && (
+                <p className="txt-caption text-destructive mt-1">{c.usernameNotEmail}</p>
+              )}
             </div>
             <div className="space-y-1">
               <Label htmlFor="ns-name">{c.fieldRealName}</Label>

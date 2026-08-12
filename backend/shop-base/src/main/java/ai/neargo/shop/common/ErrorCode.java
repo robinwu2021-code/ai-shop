@@ -37,6 +37,9 @@ public enum ErrorCode {
 
     /** 登录名已被占用。**与「密码错」分开**：这是建号时的校验，不涉及登录探测 */
     STAFF_USERNAME_TAKEN(10423, "err.staff.username_taken"),
+
+    /** 新建员工的登录名必须是邮箱。存量账号（admin/bd 这类短用户名）不受影响，只对新建生效 */
+    STAFF_USERNAME_NOT_EMAIL(10424, "err.staff.username_not_email"),
     /** 给全量角色配数据域：存下来会让人以为限制生效了，而实际没有 */
     STAFF_SCOPE_ON_FULL_ACCESS(10422, "err.staff.scope_on_full_access"),
 
@@ -66,6 +69,9 @@ public enum ErrorCode {
     PERM_BUILTIN_ROLE_READONLY(10440, "err.perm.builtin_role_readonly"),
     /** 还有人在用的角色不能删：删了他们能登录但什么都点不动，且看不出原因 */
     PERM_ROLE_IN_USE(10441, "err.perm.role_in_use"),
+    /** 角色码格式不对。它是授权的键（sys_role_point / sys_role_member 都指着它），
+     *  不能随便塞任意字符——大写字母开头，只能有大写字母/数字/下划线 */
+    PERM_ROLE_CODE_INVALID(10442, "err.perm.role_code_invalid"),
     INTERNAL_ERROR(10500, "err.internal"),
 
     // ---- 2xxxx 交易 ----

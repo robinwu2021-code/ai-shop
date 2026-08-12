@@ -27,12 +27,23 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Predicate;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Service
 public class PermConfigServiceImpl implements PermConfigService {
 
     private static final String OPS = "OPS";
+
+    /**
+     * 角色码格式：大写字母开头，只能有大写字母/数字/下划线，2~32 位。
+     *
+     * <p>它是授权的键——{@code sys_role_point}/{@code sys_role_member} 都指着这个字符串，
+     * 不是展示用的名字。前端此前只做了「自动转大写」，没有拦真正非法的字符
+     * （空格、连字符、中文……），那种码存进库以后，改名容易、改码就是换一个角色，
+     * 格式必须在写入那一刻就挡住，不能指望前端每次都记得转换正确。
+     */
+    private static final Pattern ROLE_CODE = Pattern.compile("^[A-Z][A-Z0-9_]{1,31}$");
 
     private final FunctionMapper functionMapper;
     private final FunctionPointMapper pointMapper;
@@ -151,6 +162,9 @@ public class PermConfigServiceImpl implements PermConfigService {
     public RoleVO createRole(String roleCode, String name, String operatorNo) {
         if (roleCode == null || roleCode.isBlank() || name == null || name.isBlank()) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        if (!ROLE_CODE.matcher(roleCode).matches()) {
+            throw BizException.of(ErrorCode.PERM_ROLE_CODE_INVALID);
         }
         if (find(roleCode) != null) {
             throw BizException.of(ErrorCode.CONFLICT);

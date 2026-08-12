@@ -260,7 +260,8 @@ class OpsPermConfigFlowTest {
     @DisplayName("★★ 建员工：一次性初始密码能登录，且被要求改密")
     void createStaffReturnsOneTimePassword() throws Exception {
         String admin = opsLogin("admin", "admin123");
-        String uname = "newbie" + System.currentTimeMillis() % 100000;
+        // 登录名必须是邮箱（2026-08-12 起）——存量的短用户名账号不受影响，只挡新建
+        String uname = "newbie" + System.currentTimeMillis() % 100000 + "@example.com";
         String body = mvc().perform(post("/ops/staffs").header("Authorization", "Bearer " + admin)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"username\":\"" + uname + "\",\"realName\":\"新人\","
@@ -283,6 +284,25 @@ class OpsPermConfigFlowTest {
                         .content("{\"username\":\"" + uname + "\",\"realName\":\"撞名\","
                                 + "\"roles\":[\"RISK\"]}"))
                 .andExpect(jsonPath("$.code").value(10423));
+    }
+
+    @Test
+    @DisplayName("★★ 建员工的登录名必须是邮箱 —— 存量短用户名账号不受影响，只挡新建")
+    void createStaffRejectsNonEmailUsername() throws Exception {
+        String admin = opsLogin("admin", "admin123");
+        call("/ops/staffs", admin,
+                "{\"username\":\"notanemail\",\"realName\":\"坏邮箱\",\"roles\":[\"RISK\"]}", 10424);
+        // 存量账号（比如 admin 自己）登录不受影响 —— 这条校验只在 createStaff 这一个入口
+        assertThat(permsOf(opsLogin("admin", "admin123"))).contains("*");
+    }
+
+    @Test
+    @DisplayName("★★ 自定义角色码必须大写字母开头，只能有大写字母/数字/下划线")
+    void createRoleRejectsInvalidCode() throws Exception {
+        String admin = opsLogin("admin", "admin123");
+        call("/ops/perm/roles", admin, "{\"roleCode\":\"bad code!\",\"name\":\"坏码\"}", 10442);
+        call("/ops/perm/roles", admin, "{\"roleCode\":\"1STARTSWITHDIGIT\",\"name\":\"坏码\"}", 10442);
+        call("/ops/perm/roles", admin, "{\"roleCode\":\"lowercase\",\"name\":\"坏码\"}", 10442);
     }
 
     @Test
