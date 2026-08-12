@@ -49,7 +49,7 @@ function LeafRow({ leaf, active }: { leaf: NavLeaf; active: boolean }) {
     return (
       <span
         className="flex items-center rounded-field px-2.5 py-1.5 text-[13px] text-muted-foreground/50"
-        title={t("nav.notImplemented.hint")}
+        title={t("nav.notImplementedHint")}
       >
         <span className="truncate">{tNav(leaf.label)}</span>
         <span className="ms-1.5 rounded-chip border border-border px-1.5 text-[10px] leading-4 text-muted-foreground/70">
@@ -96,8 +96,9 @@ export function SecondaryNav() {
   const perms = useAuth((s) => s.perms);
   const { tNav } = useI18n();
 
-  const section = findActiveSection(pathname, perms);
-  const leaves = section ? visibleLeaves(section, perms) : [];
+  const serverHrefs = useServerMenu((s) => s.hrefSet);
+  const section = findActiveSection(pathname, perms, serverHrefs);
+  const leaves = section ? visibleLeaves(section, perms, serverHrefs) : [];
   const activeIdx = section ? activeLeafIndex(leaves, pathname, tab, view) : -1;
   const segments = groupedLeaves(leaves);
 

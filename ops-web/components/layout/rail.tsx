@@ -12,6 +12,7 @@ import {
 } from "@/lib/nav";
 import { useAuth } from "@/lib/auth";
 import { useNavPrefs } from "@/lib/stores/nav-prefs";
+import { useServerMenu } from "@/lib/stores/server-menu";
 import { useI18n } from "@/lib/i18n";
 import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
@@ -81,8 +82,9 @@ export function Rail() {
   const { railExpanded, toggleRail } = useNavPrefs();
   const { t } = useI18n();
 
-  const sections = visibleSections(perms);
-  const activeKey = findActiveSection(pathname, perms)?.key;
+  const serverHrefs = useServerMenu((s) => s.hrefSet);
+  const sections = visibleSections(perms, serverHrefs);
+  const activeKey = findActiveSection(pathname, perms, serverHrefs)?.key;
   const top = sections.filter((s) => !s.pinBottom);
   const bottom = sections.filter((s) => s.pinBottom);
 

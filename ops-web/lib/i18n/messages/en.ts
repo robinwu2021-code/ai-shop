@@ -88,7 +88,7 @@ export const en: Messages = {
   nav: {
     /* 后端未实现：**渲染但禁用** —— 藏起来运营不知道平台规划了这个功能，可点则是死按钮 */
     notImplemented: "Planned",
-    "notImplemented.hint": "The backend for this is not built yet — it is listed so you know it is planned, but it cannot be opened",
+    notImplementedHint: "The backend for this is not built yet — it is listed so you know it is planned, but it cannot be opened",
     expand: "Expand navigation", collapse: "Collapse navigation" },
   theme: { label: "Theme", mode: "Appearance", light: "Light", dark: "Dark", switch: "Switch theme",
     fullSchemeHint: "“Business blue” is a full palette (background included); the other four only change the accent colour.",

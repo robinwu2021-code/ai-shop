@@ -308,12 +308,28 @@ export function leafParts(href: string): { path: string; tab: string | null; vie
  * —— 那是上游项目的场景，提取时已删（见 components/README.md 的去留判据）。
  * 本项目的受限视角由**数据域**表达（矩阵 §2.3），不是由另一套菜单表达。
  */
-export function visibleSections(perms: string[] | undefined): NavSection[] {
+export function visibleSections(perms: string[] | undefined,
+                                serverHrefs?: Set<string>): NavSection[] {
+  /*
+   * **服务端菜单一旦到手就以它为准**（它是按 sys_role_point 算出来的），
+   * 而且它**包含后端未实现的项** —— 那些项要渲染成灰显、不可点。
+   *
+   * 走 can() 的话它们在这一步就被过滤掉了，灰显分支永远走不到 ——
+   * 第一次接前端时就是这么漏的：分支写好了，而上游先把数据筛没了。
+   */
+  if (serverHrefs?.size) {
+    return NAV.filter((s) => !(s.children?.length)
+        || s.children.some((l) => serverHrefs.has(l.href)));
+  }
   return NAV.filter((s) => canModule(perms, s.module));
 }
 
 /** L3 可见性 = leaf.perm ? can() : 跟随 section。phase-locked 叶子保留（灰显）。 */
-export function visibleLeaves(section: NavSection, perms: string[] | undefined): NavLeaf[] {
+export function visibleLeaves(section: NavSection, perms: string[] | undefined,
+                              serverHrefs?: Set<string>): NavLeaf[] {
+  if (serverHrefs?.size) {
+    return (section.children ?? []).filter((l) => serverHrefs.has(l.href));
+  }
   return (section.children ?? []).filter((l) => (l.perm ? can(perms, l.perm) : true));
 }
 
@@ -353,9 +369,17 @@ function sectionMatchPrefixes(section: NavSection): string[] {
  * 由 pathname 反推当前 section：最长前缀匹配；"/" 仅精确匹配。
  * 不做 RBAC 过滤——URL 已到达即需正确归属（页面自身有权限兜底）。
  */
-export function findActiveSection(pathname: string, perms?: string[]): NavSection | undefined {
+export function findActiveSection(pathname: string, perms?: string[],
+                                  serverHrefs?: Set<string>): NavSection | undefined {
   const p = normPath(pathname);
-  const pool = perms?.length ? visibleSections(perms) : NAV;
+  /*
+   * **同样要吃服务端菜单**：这里漏传的话，二级导航拿不到 section，
+   * 于是整块不渲染 —— 而上面的一级导航已经显示了那个分区。
+   * 症状是「点进去左边空了一栏」，实测撞到过：可见性判断散在三个函数里，
+   * 补了两个漏了第三个。
+   */
+  const pool = serverHrefs?.size ? visibleSections(perms, serverHrefs)
+      : (perms?.length ? visibleSections(perms) : NAV);
   let best: { section: NavSection; len: number } | undefined;
   for (const section of pool) {
     for (const prefix of sectionMatchPrefixes(section)) {

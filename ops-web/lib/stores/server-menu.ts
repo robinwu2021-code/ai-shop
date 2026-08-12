@@ -17,6 +17,13 @@ export interface ServerMenuState {
   /** href → 该菜单项的服务端状态。**未加载完成时为空** */
   byHref: Record<string, MenuPoint>;
   /**
+   * 与 {@link byHref} 同源的 href 集合。
+   *
+   * **单独存一份而不是渲染时现建**：zustand 的 selector 按引用比对，
+   * 每次渲染 new Set 会让组件无限重渲染。
+   */
+  hrefSet: Set<string>;
+  /**
    * 是否已拿到服务端菜单。
    *
    * **没拿到时一律回落到静态 nav 的 `can()` 判断** ——
@@ -30,6 +37,7 @@ export interface ServerMenuState {
 
 export const useServerMenu = create<ServerMenuState>()((set) => ({
   byHref: {},
+  hrefSet: new Set<string>(),
   loaded: false,
   load: async () => {
     try {
@@ -42,13 +50,14 @@ export const useServerMenu = create<ServerMenuState>()((set) => ({
           byHref[p.href] = p;
         }
       }
-      set({ byHref, loaded: Object.keys(byHref).length > 0 });
+      set({ byHref, hrefSet: new Set(Object.keys(byHref)),
+            loaded: Object.keys(byHref).length > 0 });
     } catch {
       // 失败不清空已有的：宁可用上一次的结果，也不要突然变成空菜单
       set({ loaded: false });
     }
   },
-  clear: () => set({ byHref: {}, loaded: false }),
+  clear: () => set({ byHref: {}, hrefSet: new Set<string>(), loaded: false }),
 }));
 
 /** 这一项后端有没有实现。未加载时按「有」处理（回落到静态 nav 的判断） */
