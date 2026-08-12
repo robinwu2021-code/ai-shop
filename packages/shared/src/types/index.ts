@@ -684,11 +684,10 @@ export interface Goods {
    * `onSale` 是 false —— 界面照着布尔值写就成了「已下架 + 上架按钮」，
    * 点下去后端必然拒（70003「商品还在审核中」）。**商家看到的是一个永远点不动的按钮**。
    *
-   * ⚠️ 待审在这里是 `AUDITING`（后端 `prd_goods.audit_status` 的原值），
-   * 而 {@link GoodsStatus} 用的是 `PENDING`（ops-web 的 SkuStatus 口径）——
-   * 同一件事两个词，词典 §11 该收敛哪一个还没定。这里如实写后端发的那个。
+   * 待审是 `PENDING`（词典 §11 的通用状态词表；库里那列仍叫 AUDITING，
+   * 但那是审核结果那一轴的列名，不出现在契约里）。
    */
-  status?: MerchantGoodsStatus;
+  status?: GoodsStatus;
   /**
    * 三语标题原文，**只有商家侧 `/biz/goods/{no}` 下发**。
    *
@@ -701,15 +700,6 @@ export interface Goods {
   subtitleI18n?: Record<string, string>;
 }
 
-/**
- * 商家侧商品状态（`/biz/goods` 下发的四态）。
- *
- * ⚠️ 待审在这里是 `AUDITING`（后端 `prd_goods.audit_status` 的原值），
- * 而 {@link GoodsStatus} 用 `PENDING`（ops-web 的 SkuStatus 口径）——
- * **同一件事两个词**，词典 §11 该收敛哪一个还没定。这里如实写后端发的那个，
- * 收敛之前不要在端上做映射：映射会让「界面显示对了」掩盖住口径还没统一。
- */
-export type MerchantGoodsStatus = "ON_SALE" | "OFF_SALE" | "AUDITING" | "REJECTED";
 
 // ---------------------------------------------------------------- 购物车
 

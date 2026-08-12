@@ -423,7 +423,8 @@ class M9aOpsFlowTest {
         JsonNode first = json.readTree(body).get("data").get("records").get(0);
         // 队列里的每一件都必须是待审态
         for (JsonNode g : json.readTree(body).get("data").get("records")) {
-            assertThat(g.get("status").asString()).isEqualTo("AUDITING");
+            // 对外口径是 PENDING（词典 §11）；库里那列仍叫 AUDITING，两者不必一致
+            assertThat(g.get("status").asString()).isEqualTo("PENDING");
         }
 
         mvc().perform(post("/ops/goods/" + first.get("goodsNo").asString() + "/audit")
@@ -438,7 +439,7 @@ class M9aOpsFlowTest {
         assertThat(queueTotal(ops)).isEqualTo(before - 1);
     }
 
-    /** 造一个商家并录一件商品 —— 新录的商品落在 AUDITING，正是队列要的。 */
+    /** 造一个商家并录一件商品 —— 新录的商品落在待审（对外 PENDING），正是队列要的。 */
     private String merchantWithGoods(String phone, String shopName, String goodsTitle) throws Exception {
         String user = login(phone);
         String applyNo = applyMerchant(user, shopName);

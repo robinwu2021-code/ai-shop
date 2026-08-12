@@ -116,7 +116,7 @@ export default {
     categoryTip: "The category decides where the item is filed and whether a licence is required — separate from Type above",
     categoryLeaf: "This is the most specific level",
     title: "Products", add: "New product",
-    statusON_SALE: "On sale", statusOFF_SALE: "Off sale", statusAUDITING: "In review", statusREJECTED: "Rejected",
+    statusON_SALE: "On sale", statusOFF_SALE: "Off sale", statusPENDING: "In review", statusREJECTED: "Rejected",
     stock: "Stock", onSale: "List", offSale: "Delist", edit: "Edit", empty: "No products yet — add one",
     editTitle: "Edit product", createTitle: "New product",
     name: "Title", subtitle: "Subtitle", type: "Category", price: "Price",

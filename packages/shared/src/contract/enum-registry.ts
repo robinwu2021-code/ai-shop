@@ -111,14 +111,10 @@ export const ENUM_REGISTRY: EnumEntry[] = [
   { decl: "shared:MerchantTier", dom: "core", shape: "CLASS", verdict: "OK" },
   { decl: "shared:GoodsStatus", dom: "core", shape: "STATUS", verdict: "RENAME",
     note: "与 ops-web SkuStatus 重叠，P4 待确认状态挂 SPU 还是 SKU。"
-      + "⚠️「AUDITING→PENDING 已归一」只归在端上：后端 /biz/goods 至今下发 AUDITING（2026-08-12 联调实测），"
-      + "见 MerchantGoodsStatus",
+      + "AUDITING→PENDING **2026-08-12 真正归一**：此前只归在端上，"
+      + "后端 /biz/goods 一直下发库列原值 AUDITING（联调实测），现已改发 PENDING；"
+      + "列表筛选两个词都收，老客户端不至于筛出空列表",
     words: ["ON_SALE", "OFF_SALE"] },
-  { decl: "shared:MerchantGoodsStatus", dom: "core", shape: "STATUS", verdict: "RENAME",
-    note: "商家侧商品四态，**如实照抄后端 /biz/goods 下发的值**（含 AUDITING）。"
-      + "端上不做 AUDITING→PENDING 的映射：映射会让「界面显示对了」掩盖住口径其实没统一。"
-      + "真正的收敛动作是后端改发 PENDING，那一步做完这条并回 GoodsStatus",
-    words: ["ON_SALE", "OFF_SALE", "AUDITING"] },
   { decl: "shared:CampaignType", dom: "core", shape: "CLASS", verdict: "OK" },
   { decl: "shared:CampaignStatus", dom: "core", shape: "STATUS", verdict: "RENAME",
     note: "RUNNING 与 ops-web CouponStatus/MemberCardStatus 的 ACTIVE 同为「生效中」，二选一" },

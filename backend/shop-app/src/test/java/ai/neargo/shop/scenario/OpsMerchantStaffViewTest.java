@@ -37,6 +37,9 @@ class OpsMerchantStaffViewTest {
     @Autowired
     private ObjectMapper json;
 
+    @Autowired
+    private ai.neargo.shop.common.OtpStore otpStore;
+
     private MockMvc mvc() {
         return MockMvcBuilders.webAppContextSetup(context)
                 .apply(org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers
@@ -48,7 +51,15 @@ class OpsMerchantStaffViewTest {
     @DisplayName("★★ 运营看得到商家的人、门店角色，以及他用哪个号登录")
     void opsSeesStaffAndTheirLoginPhone() throws Exception {
         String admin = opsLogin("admin", "admin123");
-        String merchantNo = anyMerchantNo(admin);
+        String merchantNo = ownMerchantNo("12700270101", "运营只读店A");
+        /*
+         * **加一个真员工再看**。只有老板的话这条断言是空转的：
+         * 老板的 `mch_account.login_phone` 本来就是空（他走 C 端账号登录），
+         * 而客服要核对的正是店员用哪个号登录 —— 那才是这个面板的用途。
+         */
+        mvc().perform(post("/biz/staff").header("Authorization", "Bearer " + login("12700270101"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"loginPhone\":\"12700270111\",\"displayName\":\"小周\"}"));
 
         String body = mvc().perform(get("/ops/merchants/" + merchantNo + "/staff")
                         .header("Authorization", "Bearer " + admin))
@@ -62,14 +73,17 @@ class OpsMerchantStaffViewTest {
          * 客服要回答的第一个问题往往正是「他到底是用哪个号登进去的」——
          * 一个 `138****8000` 回答不了它。
          */
-        assertThat(body).as("要给完整号，它是登录用户名").contains("\"loginPhone\":\"1");
+        assertThat(body).as("要给完整号，它是登录用户名").contains("12700270111");
+        assertThat(body).as("姓名也要给 —— 一列号码认不出人").contains("小周");
+        // 老板那一行的 loginPhone 本来就是空：他走 C 端账号登录，不占员工手机号
+        assertThat(json.readTree(body).get("data").size()).isEqualTo(2);
     }
 
     @Test
     @DisplayName("★★★ 平台不能改商家的授权 —— 这一段刻意只有读，没有写")
     void noWriteEndpointForMerchantStaff() throws Exception {
         String admin = opsLogin("admin", "admin123");
-        String merchantNo = anyMerchantNo(admin);
+        String merchantNo = ownMerchantNo("12700270102", "运营只读店B");
 
         /*
          * 谁能进这家店是商家的雇佣关系；平台替商家改授权，
@@ -90,7 +104,7 @@ class OpsMerchantStaffViewTest {
     @Test
     @DisplayName("★★ 没有 merchant:merchant:read 的角色看不到 —— 员工名单本身是商家的信息")
     void needsMerchantReadPerm() throws Exception {
-        String merchantNo = anyMerchantNo(opsLogin("admin", "admin123"));
+        String merchantNo = ownMerchantNo("12700270103", "运营只读店C");
         // finance 只管钱，不该顺带拿到全平台商家的员工名单
         String finance = opsLogin("finance", "finance123");
 
@@ -99,10 +113,43 @@ class OpsMerchantStaffViewTest {
                 .andExpect(jsonPath("$.code").value(10403));
     }
 
-    private String anyMerchantNo(String adminToken) throws Exception {
-        String body = mvc().perform(get("/ops/merchants").header("Authorization", "Bearer " + adminToken))
+    /**
+     * **自己造一个商家**，不要从 `/ops/merchants` 里随便取一条。
+     *
+     * 取第一条时这个测试单跑是绿的、进全量套件就红：那一条可能是别的用例
+     * 用运营侧路径造出来的主体，<b>没有任何 mch_account</b>，员工列表当然是空的。
+     * 断言「至少有老板一个人」于是变成了在赌执行顺序。
+     */
+    private String ownMerchantNo(String phone, String name) throws Exception {
+        String user = login(phone);
+        String body = mvc().perform(post("/mp/merchant/apply").header("Authorization", "Bearer " + user)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"" + name + "\",\"subject\":\"INDIVIDUAL_BIZ\","
+                                + "\"contactName\":\"张三\",\"contactPhone\":\"13900000000\","
+                                + "\"category\":\"食品\",\"serviceScope\":\"COMMUNITY\","
+                                + "\"communityNos\":[\"CM001\"]}"))
+                .andExpect(jsonPath("$.code").value(0))
                 .andReturn().getResponse().getContentAsString();
-        return json.readTree(body).get("data").get("records").get(0).get("merchantNo").asString();
+        String applyNo = json.readTree(body).get("data").get("applyNo").asString();
+        mvc().perform(post("/ops/merchant/apply/" + applyNo + "/audit")
+                .header("Authorization", "Bearer " + opsLogin("admin", "admin123"))
+                .contentType(MediaType.APPLICATION_JSON).content("{\"approved\":true}"));
+
+        String profile = mvc().perform(get("/biz/merchant/profile")
+                        .header("Authorization", "Bearer " + login(phone)))
+                .andReturn().getResponse().getContentAsString();
+        return json.readTree(profile).get("data").get("merchantNo").asString();
+    }
+
+    private String login(String phone) throws Exception {
+        mvc().perform(post("/mp/user/otp/send").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"phone\":\"" + phone + "\"}"));
+        String code = otpStore.peek(phone).orElseThrow();
+        String body = mvc().perform(post("/mp/user/login").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"grantType\":\"PHONE_OTP\",\"principal\":\"" + phone
+                                + "\",\"credential\":\"" + code + "\",\"agreed\":true}"))
+                .andReturn().getResponse().getContentAsString();
+        return json.readTree(body).get("data").get("token").asString();
     }
 
     private String opsLogin(String username, String password) throws Exception {

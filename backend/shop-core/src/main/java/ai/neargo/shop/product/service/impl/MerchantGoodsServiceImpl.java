@@ -171,7 +171,8 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
     }
 
     /**
-     * {@code AUDITING/ON_SALE/OFF_SALE/REJECTED} → 商家侧那四个状态码，和 GoodsVO.status 同一套口径。
+     * {@code PENDING/ON_SALE/OFF_SALE/REJECTED} → 商家侧那四个状态码，和 GoodsVO.status 同一套口径。
+     * <b>待审对外叫 PENDING</b>（词典 §11），库里那列仍是 AUDITING。
      *
      * <p><b>故意不复用同名的 {@link #statusOf}</b>：那个按"当前门店"算在售与否
      * （读 {@code BizContext.currentStoreNo()}），运营端跨商家浏览没有"当前门店"这个概念——
@@ -734,7 +735,8 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         switch (status) {
             case "ON_SALE" -> w.eq(PrdGoods::getOnSale, true);
             case "OFF_SALE" -> w.eq(PrdGoods::getOnSale, false).eq(PrdGoods::getAuditStatus, APPROVED);
-            case "AUDITING" -> w.eq(PrdGoods::getAuditStatus, AUDITING);
+            // PENDING 是对外口径；AUDITING 是库里的词，老客户端还在传 —— 两个都收
+            case "PENDING", "AUDITING" -> w.eq(PrdGoods::getAuditStatus, AUDITING);
             case "REJECTED" -> w.eq(PrdGoods::getAuditStatus, REJECTED);
             // 未知取值当作不过滤：前端多传一个筛选项不该让列表变空，那看着像"一件商品都没有"
             default -> { }
@@ -748,7 +750,17 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
      */
     private String statusOf(PrdGoods g) {
         if (AUDITING.equals(g.getAuditStatus())) {
-            return "AUDITING";
+            /*
+             * **下发 PENDING，不是库里那个 AUDITING**（2026-08-12 收敛）。
+             *
+             * 词典 §11 的通用状态词表规定「已提交待处理」= PENDING，ops-web 的
+             * SkuStatus 一直照着写，只有这里发的是列名的原值 —— 于是同一件事
+             * 在三端有两个词，而枚举登记表里那句「已归一」当时只归在端上。
+             *
+             * 库里的 audit_status 不动：它是审核结果那一轴（AUDITING/APPROVED/REJECTED），
+             * 改列值要迁移，而收益只是名字好看 —— 对外口径统一就够了。
+             */
+            return "PENDING";
         }
         if (REJECTED.equals(g.getAuditStatus())) {
             return "REJECTED";

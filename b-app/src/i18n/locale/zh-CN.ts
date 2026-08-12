@@ -188,7 +188,7 @@ export default {
     add: "新建商品",
     statusON_SALE: "在售",
     statusOFF_SALE: "已下架",
-    statusAUDITING: "审核中",
+    statusPENDING: "审核中",
     statusREJECTED: "已驳回",
     stock: "库存",
     onSale: "上架",

@@ -45,7 +45,7 @@ const empty = computed(() => !loading.value && !list.value.length);
  *
  * **不能只看 `onSale`**：新建和每次改动都会回到审核中，那时 `onSale` 是 false，
  * 照布尔值渲染就成了「已下架」+ 一个必然失败的「上架」。
- * 后端下发的 `status` 才是四态（AUDITING / REJECTED / ON_SALE / OFF_SALE）；
+ * 后端下发的 `status` 才是四态（PENDING / REJECTED / ON_SALE / OFF_SALE）；
  * 老数据没有这个字段时回落布尔值。
  */
 function stateOf(g: Goods) {
@@ -55,7 +55,7 @@ function stateOf(g: Goods) {
 /** 审核中或被驳回 —— 这两种状态下商家自己按不了上架 */
 function pending(g: Goods) {
   const s = stateOf(g);
-  return s === "AUDITING" || s === "REJECTED";
+  return s === "PENDING" || s === "REJECTED";
 }
 
 async function load() {

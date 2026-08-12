@@ -54,13 +54,13 @@ class M9bBizGoodsFlowTest {
                         .content(goodsBody(null, "手工辣椒酱", 1580, 20)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(0))
-                .andExpect(jsonPath("$.data.status").value("AUDITING"))
+                .andExpect(jsonPath("$.data.status").value("PENDING"))
                 .andExpect(jsonPath("$.data.onSale").value(false))
                 .andReturn().getResponse().getContentAsString();
         String goodsNo = json.readTree(body).get("data").get("goodsNo").asString();
 
         // ★ 未过审时自己按上架必须被拒。这是商家自己能点的按钮，
-        // 能把 AUDITING 推到 C 端的话，审核这道关就不存在了
+        // 能把待审商品推到 C 端的话，审核这道关就不存在了
         mvc().perform(post("/biz/goods/" + goodsNo + "/toggle")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -80,11 +80,11 @@ class M9bBizGoodsFlowTest {
                         .contentType(MediaType.APPLICATION_JSON).content("{\"onSale\":true}"))
                 .andExpect(jsonPath("$.data.status").value("ON_SALE"));
 
-        // ★ 改标题 → 回到 AUDITING 且强制下架
+        // ★ 改标题 → 回到待审（PENDING）且强制下架
         mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(goodsBody(goodsNo, "进口红酒", 39900, 5)))
-                .andExpect(jsonPath("$.data.status").value("AUDITING"))
+                .andExpect(jsonPath("$.data.status").value("PENDING"))
                 .andExpect(jsonPath("$.data.onSale").value(false));
     }
 
@@ -138,8 +138,16 @@ class M9bBizGoodsFlowTest {
                 .andExpect(jsonPath("$.data.records.length()")
                         .value(org.hamcrest.Matchers.greaterThan(0)));
         mvc().perform(get("/biz/goods").header("Authorization", "Bearer " + token)
+                        .param("status", "PENDING"))
+                .andExpect(jsonPath("$.data.records[0].status").value("PENDING"));
+        /*
+         * 老词也要继续收：库里那列叫 AUDITING，老客户端（以及照着旧文档写的调用方）
+         * 还在传它。不收的话它落进 default 分支「当作不过滤」——
+         * 筛「审核中」筛出全部，比筛出空更难发现。
+         */
+        mvc().perform(get("/biz/goods").header("Authorization", "Bearer " + token)
                         .param("status", "AUDITING"))
-                .andExpect(jsonPath("$.data.records[0].status").value("AUDITING"));
+                .andExpect(jsonPath("$.data.records[0].status").value("PENDING"));
         // 未知筛选值不该让列表变空 —— 那看着像"一件商品都没有"
         mvc().perform(get("/biz/goods").header("Authorization", "Bearer " + token)
                         .param("status", "WHATEVER"))

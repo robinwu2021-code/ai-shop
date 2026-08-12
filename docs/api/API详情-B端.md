@@ -586,7 +586,7 @@ _无字段_
 | `points` | `number` | 否 | 本商品每件赠送的积分。不同商品可以给不同积分，不配则按成交额比例默认发放 |
 | `limitPerUser` | `number` | 是 | 每人限购，0 = 不限 |
 | `onSale` | `boolean` | 是 | 是否在售。下架后详情页仍可访问（历史订单要点得进去），但不可下单 |
-| `status` | [`MerchantGoodsStatus`](#merchantgoodsstatus) | 否 | 审核与在售状态（**只有商家侧 `/biz/goods` 下发**，C 端拿不到也不需要）。 为什么不能只看 `onSale`：新建和每次改动都会回到审核中，而那时 `onSale` 是 false —— 界面照着布尔值写就成了「已下架 + 上架按钮」， 点下去后端必然拒（70003「商品还在审核中」）。**商家看到的是一个永远点不动的按钮**。 ⚠️ 待审在这里是 `AUDITING`（后端 `prd_goods.audit_status` 的原值）， 而  {@link  GoodsStatus }  用的是 `PENDING`（ops-web 的 SkuStatus 口径）—— 同一件事两个词，词典 §11 该收敛哪一个还没定。这里如实写后端发的那个。 |
+| `status` | [`GoodsStatus`](#goodsstatus) | 否 | 审核与在售状态（**只有商家侧 `/biz/goods` 下发**，C 端拿不到也不需要）。 为什么不能只看 `onSale`：新建和每次改动都会回到审核中，而那时 `onSale` 是 false —— 界面照着布尔值写就成了「已下架 + 上架按钮」， 点下去后端必然拒（70003「商品还在审核中」）。**商家看到的是一个永远点不动的按钮**。 待审是 `PENDING`（词典 §11 的通用状态词表；库里那列仍叫 AUDITING， 但那是审核结果那一轴的列名，不出现在契约里）。 |
 | `titleI18n` | [`Record_string_string`](#record_string_string) | 否 | 三语标题原文，**只有商家侧 `/biz/goods/{no}` 下发**。 编辑页按语言逐格填，而保存是整份覆盖 —— 拿不到原文就只能回填当前那一格， 于是用中文改一次，英文与阿语就被清空了。**这个故障不报错**： C 端缺译文时回落中文，看起来一切正常。 |
 | `subtitleI18n` | [`Record_string_string`](#record_string_string) | 否 | 三语副标题原文，同 `titleI18n` |
 
@@ -651,7 +651,7 @@ _无字段_
 | `points` | `number` | 否 | 本商品每件赠送的积分。不同商品可以给不同积分，不配则按成交额比例默认发放 |
 | `limitPerUser` | `number` | 是 | 每人限购，0 = 不限 |
 | `onSale` | `boolean` | 是 | 是否在售。下架后详情页仍可访问（历史订单要点得进去），但不可下单 |
-| `status` | [`MerchantGoodsStatus`](#merchantgoodsstatus) | 否 | 审核与在售状态（**只有商家侧 `/biz/goods` 下发**，C 端拿不到也不需要）。 为什么不能只看 `onSale`：新建和每次改动都会回到审核中，而那时 `onSale` 是 false —— 界面照着布尔值写就成了「已下架 + 上架按钮」， 点下去后端必然拒（70003「商品还在审核中」）。**商家看到的是一个永远点不动的按钮**。 ⚠️ 待审在这里是 `AUDITING`（后端 `prd_goods.audit_status` 的原值）， 而  {@link  GoodsStatus }  用的是 `PENDING`（ops-web 的 SkuStatus 口径）—— 同一件事两个词，词典 §11 该收敛哪一个还没定。这里如实写后端发的那个。 |
+| `status` | [`GoodsStatus`](#goodsstatus) | 否 | 审核与在售状态（**只有商家侧 `/biz/goods` 下发**，C 端拿不到也不需要）。 为什么不能只看 `onSale`：新建和每次改动都会回到审核中，而那时 `onSale` 是 false —— 界面照着布尔值写就成了「已下架 + 上架按钮」， 点下去后端必然拒（70003「商品还在审核中」）。**商家看到的是一个永远点不动的按钮**。 待审是 `PENDING`（词典 §11 的通用状态词表；库里那列仍叫 AUDITING， 但那是审核结果那一轴的列名，不出现在契约里）。 |
 | `titleI18n` | [`Record_string_string`](#record_string_string) | 否 | 三语标题原文，**只有商家侧 `/biz/goods/{no}` 下发**。 编辑页按语言逐格填，而保存是整份覆盖 —— 拿不到原文就只能回填当前那一格， 于是用中文改一次，英文与阿语就被清空了。**这个故障不报错**： C 端缺译文时回落中文，看起来一切正常。 |
 | `subtitleI18n` | [`Record_string_string`](#record_string_string) | 否 | 三语副标题原文，同 `titleI18n` |
 
@@ -709,7 +709,7 @@ _无字段_
 | `points` | `number` | 否 | 本商品每件赠送的积分。不同商品可以给不同积分，不配则按成交额比例默认发放 |
 | `limitPerUser` | `number` | 是 | 每人限购，0 = 不限 |
 | `onSale` | `boolean` | 是 | 是否在售。下架后详情页仍可访问（历史订单要点得进去），但不可下单 |
-| `status` | [`MerchantGoodsStatus`](#merchantgoodsstatus) | 否 | 审核与在售状态（**只有商家侧 `/biz/goods` 下发**，C 端拿不到也不需要）。 为什么不能只看 `onSale`：新建和每次改动都会回到审核中，而那时 `onSale` 是 false —— 界面照着布尔值写就成了「已下架 + 上架按钮」， 点下去后端必然拒（70003「商品还在审核中」）。**商家看到的是一个永远点不动的按钮**。 ⚠️ 待审在这里是 `AUDITING`（后端 `prd_goods.audit_status` 的原值）， 而  {@link  GoodsStatus }  用的是 `PENDING`（ops-web 的 SkuStatus 口径）—— 同一件事两个词，词典 §11 该收敛哪一个还没定。这里如实写后端发的那个。 |
+| `status` | [`GoodsStatus`](#goodsstatus) | 否 | 审核与在售状态（**只有商家侧 `/biz/goods` 下发**，C 端拿不到也不需要）。 为什么不能只看 `onSale`：新建和每次改动都会回到审核中，而那时 `onSale` 是 false —— 界面照着布尔值写就成了「已下架 + 上架按钮」， 点下去后端必然拒（70003「商品还在审核中」）。**商家看到的是一个永远点不动的按钮**。 待审是 `PENDING`（词典 §11 的通用状态词表；库里那列仍叫 AUDITING， 但那是审核结果那一轴的列名，不出现在契约里）。 |
 | `titleI18n` | [`Record_string_string`](#record_string_string) | 否 | 三语标题原文，**只有商家侧 `/biz/goods/{no}` 下发**。 编辑页按语言逐格填，而保存是整份覆盖 —— 拿不到原文就只能回填当前那一格， 于是用中文改一次，英文与阿语就被清空了。**这个故障不报错**： C 端缺译文时回落中文，看起来一切正常。 |
 | `subtitleI18n` | [`Record_string_string`](#record_string_string) | 否 | 三语副标题原文，同 `titleI18n` |
 
@@ -773,7 +773,7 @@ _无字段_
 | `points` | `number` | 否 | 本商品每件赠送的积分。不同商品可以给不同积分，不配则按成交额比例默认发放 |
 | `limitPerUser` | `number` | 是 | 每人限购，0 = 不限 |
 | `onSale` | `boolean` | 是 | 是否在售。下架后详情页仍可访问（历史订单要点得进去），但不可下单 |
-| `status` | [`MerchantGoodsStatus`](#merchantgoodsstatus) | 否 | 审核与在售状态（**只有商家侧 `/biz/goods` 下发**，C 端拿不到也不需要）。 为什么不能只看 `onSale`：新建和每次改动都会回到审核中，而那时 `onSale` 是 false —— 界面照着布尔值写就成了「已下架 + 上架按钮」， 点下去后端必然拒（70003「商品还在审核中」）。**商家看到的是一个永远点不动的按钮**。 ⚠️ 待审在这里是 `AUDITING`（后端 `prd_goods.audit_status` 的原值）， 而  {@link  GoodsStatus }  用的是 `PENDING`（ops-web 的 SkuStatus 口径）—— 同一件事两个词，词典 §11 该收敛哪一个还没定。这里如实写后端发的那个。 |
+| `status` | [`GoodsStatus`](#goodsstatus) | 否 | 审核与在售状态（**只有商家侧 `/biz/goods` 下发**，C 端拿不到也不需要）。 为什么不能只看 `onSale`：新建和每次改动都会回到审核中，而那时 `onSale` 是 false —— 界面照着布尔值写就成了「已下架 + 上架按钮」， 点下去后端必然拒（70003「商品还在审核中」）。**商家看到的是一个永远点不动的按钮**。 待审是 `PENDING`（词典 §11 的通用状态词表；库里那列仍叫 AUDITING， 但那是审核结果那一轴的列名，不出现在契约里）。 |
 | `titleI18n` | [`Record_string_string`](#record_string_string) | 否 | 三语标题原文，**只有商家侧 `/biz/goods/{no}` 下发**。 编辑页按语言逐格填，而保存是整份覆盖 —— 拿不到原文就只能回填当前那一格， 于是用中文改一次，英文与阿语就被清空了。**这个故障不报错**： C 端缺译文时回落中文，看起来一切正常。 |
 | `subtitleI18n` | [`Record_string_string`](#record_string_string) | 否 | 三语副标题原文，同 `titleI18n` |
 
@@ -861,7 +861,7 @@ _无字段_
 | `points` | `number` | 否 | 本商品每件赠送的积分。不同商品可以给不同积分，不配则按成交额比例默认发放 |
 | `limitPerUser` | `number` | 是 | 每人限购，0 = 不限 |
 | `onSale` | `boolean` | 是 | 是否在售。下架后详情页仍可访问（历史订单要点得进去），但不可下单 |
-| `status` | [`MerchantGoodsStatus`](#merchantgoodsstatus) | 否 | 审核与在售状态（**只有商家侧 `/biz/goods` 下发**，C 端拿不到也不需要）。 为什么不能只看 `onSale`：新建和每次改动都会回到审核中，而那时 `onSale` 是 false —— 界面照着布尔值写就成了「已下架 + 上架按钮」， 点下去后端必然拒（70003「商品还在审核中」）。**商家看到的是一个永远点不动的按钮**。 ⚠️ 待审在这里是 `AUDITING`（后端 `prd_goods.audit_status` 的原值）， 而  {@link  GoodsStatus }  用的是 `PENDING`（ops-web 的 SkuStatus 口径）—— 同一件事两个词，词典 §11 该收敛哪一个还没定。这里如实写后端发的那个。 |
+| `status` | [`GoodsStatus`](#goodsstatus) | 否 | 审核与在售状态（**只有商家侧 `/biz/goods` 下发**，C 端拿不到也不需要）。 为什么不能只看 `onSale`：新建和每次改动都会回到审核中，而那时 `onSale` 是 false —— 界面照着布尔值写就成了「已下架 + 上架按钮」， 点下去后端必然拒（70003「商品还在审核中」）。**商家看到的是一个永远点不动的按钮**。 待审是 `PENDING`（词典 §11 的通用状态词表；库里那列仍叫 AUDITING， 但那是审核结果那一轴的列名，不出现在契约里）。 |
 | `titleI18n` | [`Record_string_string`](#record_string_string) | 否 | 三语标题原文，**只有商家侧 `/biz/goods/{no}` 下发**。 编辑页按语言逐格填，而保存是整份覆盖 —— 拿不到原文就只能回填当前那一格， 于是用中文改一次，英文与阿语就被清空了。**这个故障不报错**： C 端缺译文时回落中文，看起来一切正常。 |
 | `subtitleI18n` | [`Record_string_string`](#record_string_string) | 否 | 三语副标题原文，同 `titleI18n` |
 
@@ -2550,7 +2550,7 @@ _无字段_
 | `points` | `number` | 否 | 本商品每件赠送的积分。不同商品可以给不同积分，不配则按成交额比例默认发放 |
 | `limitPerUser` | `number` | 是 | 每人限购，0 = 不限 |
 | `onSale` | `boolean` | 是 | 是否在售。下架后详情页仍可访问（历史订单要点得进去），但不可下单 |
-| `status` | [`MerchantGoodsStatus`](#merchantgoodsstatus) | 否 | 审核与在售状态（**只有商家侧 `/biz/goods` 下发**，C 端拿不到也不需要）。 为什么不能只看 `onSale`：新建和每次改动都会回到审核中，而那时 `onSale` 是 false —— 界面照着布尔值写就成了「已下架 + 上架按钮」， 点下去后端必然拒（70003「商品还在审核中」）。**商家看到的是一个永远点不动的按钮**。 ⚠️ 待审在这里是 `AUDITING`（后端 `prd_goods.audit_status` 的原值）， 而  {@link  GoodsStatus }  用的是 `PENDING`（ops-web 的 SkuStatus 口径）—— 同一件事两个词，词典 §11 该收敛哪一个还没定。这里如实写后端发的那个。 |
+| `status` | [`GoodsStatus`](#goodsstatus) | 否 | 审核与在售状态（**只有商家侧 `/biz/goods` 下发**，C 端拿不到也不需要）。 为什么不能只看 `onSale`：新建和每次改动都会回到审核中，而那时 `onSale` 是 false —— 界面照着布尔值写就成了「已下架 + 上架按钮」， 点下去后端必然拒（70003「商品还在审核中」）。**商家看到的是一个永远点不动的按钮**。 待审是 `PENDING`（词典 §11 的通用状态词表；库里那列仍叫 AUDITING， 但那是审核结果那一轴的列名，不出现在契约里）。 |
 | `titleI18n` | [`Record_string_string`](#record_string_string) | 否 | 三语标题原文，**只有商家侧 `/biz/goods/{no}` 下发**。 编辑页按语言逐格填，而保存是整份覆盖 —— 拿不到原文就只能回填当前那一格， 于是用中文改一次，英文与阿语就被清空了。**这个故障不报错**： C 端缺译文时回落中文，看起来一切正常。 |
 | `subtitleI18n` | [`Record_string_string`](#record_string_string) | 否 | 三语副标题原文，同 `titleI18n` |
 
@@ -2560,6 +2560,17 @@ _无字段_
 |---|---|:---:|---|
 | `minCount` | `number` | 是 | — |
 | `price` | `number` | 是 | — |
+
+### GoodsStatus
+
+商品状态。 ⚠️ 待审用 `PENDING` 不用 `AUDITING` —— ops-web 的 `SkuStatus` 一直用 `PENDING`，同一件事两个词。词典 §11 的通用状态词表规定「已提交待处理」= `PENDING`。
+
+枚举取值：
+
+- `ON_SALE`
+- `OFF_SALE`
+- `PENDING`
+- `REJECTED`
 
 ### GrantStoreReq
 
@@ -2786,17 +2797,6 @@ _无字段_
 | `daysSinceLast` | `number` | 是 | 距上次下单天数 |
 | `silent` | `boolean` | 是 | 沉默客户：曾经常来、最近没来。**这是店主唯一能立刻行动的信号** |
 | `source` | [`TrafficSource`](#trafficsource) | 是 | 客流来源：他是你自己带来的，还是平台分配的 |
-
-### MerchantGoodsStatus
-
-商家侧商品状态（`/biz/goods` 下发的四态）。 ⚠️ 待审在这里是 `AUDITING`（后端 `prd_goods.audit_status` 的原值）， 而  {@link  GoodsStatus }  用 `PENDING`（ops-web 的 SkuStatus 口径）—— **同一件事两个词**，词典 §11 该收敛哪一个还没定。这里如实写后端发的那个， 收敛之前不要在端上做映射：映射会让「界面显示对了」掩盖住口径还没统一。
-
-枚举取值：
-
-- `ON_SALE`
-- `OFF_SALE`
-- `AUDITING`
-- `REJECTED`
 
 ### MerchantLoginReqBody
 
