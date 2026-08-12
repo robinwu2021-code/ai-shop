@@ -25,6 +25,15 @@ public class SysRole extends BaseEntity {
     /** 平台预置，不可删 */
     private Boolean builtin;
 
+    /**
+     * 通配角色（超管）：拥有全部权限码。
+     *
+     * <p><b>库里没有 {@code *} 这个「码」</b> —— 超管靠「被授予全部功能点」
+     * 表达可见性，但那展开出来是一组具体码，{@code contains("*")} 永远为假。
+     * 判权要的是「他有没有全部权限」这个事实本身，所以在角色上显式标出来。
+     */
+    private Boolean wildcard;
+
     /** 非空 = 某商家自定义的角色 */
     private String entityNo;
 

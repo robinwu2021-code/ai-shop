@@ -41,6 +41,12 @@ class OpsPermConfigFlowTest {
     @Autowired
     private ObjectMapper json;
 
+    @Autowired
+    private org.springframework.jdbc.core.JdbcTemplate jdbc;
+
+    @Autowired
+    private ai.neargo.shop.platform.perm.RolePermResolver resolver;
+
     private MockMvc mvc() {
         return MockMvcBuilders.webAppContextSetup(context)
                 .apply(org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers
@@ -160,6 +166,35 @@ class OpsPermConfigFlowTest {
     }
 
     @Test
+    @DisplayName("★★★ 判权真的读库了 —— 删掉库里的授权，那个人的 perms 就少一个码")
+    void permsComeFromDb() throws Exception {
+        String admin = opsLogin("admin", "admin123");
+        // BD 的 quote:govern 来自「团购与求团」下的求团相关功能点
+        Set<String> before = permsOf(opsLogin("bd", "bd123"));
+        assertThat(before).contains("quote:govern");
+
+        // 直接改库：把 BD 与所有带 quote:govern 的功能点的关联删掉
+        int removed = jdbc.update("""
+                DELETE FROM sys_role_point WHERE role_code = 'BD' AND point_code IN
+                  (SELECT point_code FROM sys_function_point WHERE perm_code = 'quote:govern')""");
+        assertThat(removed).as("前置条件：库里应当有 BD 对 quote:govern 的授权").isPositive();
+        resolver.invalidate();
+        try {
+            assertThat(permsOf(opsLogin("bd", "bd123")))
+                    .as("删了库里的授权而 perms 不变，说明判权还在读硬编码 —— "
+                            + "那这次换源就没有真正发生")
+                    .doesNotContain("quote:govern");
+        } finally {
+            // 还原：整套共享一份 H2，不还原会让后面所有 BD 的用例失去这个权限
+            jdbc.update("""
+                    INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+                    SELECT 'BD', point_code, 'OPS', NOW(), NOW() FROM sys_function_point
+                     WHERE perm_code = 'quote:govern'""");
+            resolver.invalidate();
+        }
+    }
+
+    @Test
     @DisplayName("零角色 = 空菜单，不是「默认给点什么」")
     void noRoleMeansEmptyMenu() throws Exception {
         // 用一个没有 sys_role_member 行的账号：种子里 support 有角色，
@@ -213,6 +248,17 @@ class OpsPermConfigFlowTest {
             n += f.get("points").size();
         }
         return n;
+    }
+
+    /** 这个人登录后拿到的权限码（会话快照） */
+    private Set<String> permsOf(String token) throws Exception {
+        String body = mvc().perform(get("/ops/auth/me").header("Authorization", "Bearer " + token))
+                .andReturn().getResponse().getContentAsString();
+        Set<String> out = new HashSet<>();
+        for (JsonNode n : json.readTree(body).get("data").get("perms")) {
+            out.add(n.asString());
+        }
+        return out;
     }
 
     private String staffNoOf(String adminToken, String username) throws Exception {

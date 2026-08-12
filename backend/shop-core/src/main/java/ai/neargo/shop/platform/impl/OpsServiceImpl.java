@@ -3,6 +3,7 @@ package ai.neargo.shop.platform.impl;
 import ai.neargo.shop.platform.OpsService;
 import ai.neargo.shop.auth.Perms;
 import ai.neargo.shop.auth.ScopeDim;
+import ai.neargo.shop.platform.perm.RolePermResolver;
 import ai.neargo.shop.platform.perm.entity.SysRoleMember;
 import ai.neargo.shop.platform.perm.mapper.PermMappers.RoleMemberMapper;
 
@@ -43,6 +44,7 @@ public class OpsServiceImpl implements OpsService {
 
     private final StaffMapper staffMapper;
     private final RoleMemberMapper roleMemberMapper;
+    private final RolePermResolver rolePermResolver;
     private final AuditLogMapper auditLogMapper;
     private final MerchantApplyMapper applyMapper;
     private final MerchantAdminPort merchantAdminPort;
@@ -53,6 +55,7 @@ public class OpsServiceImpl implements OpsService {
     private final ai.neargo.shop.platform.MasterDataService masterDataService;
 
     public OpsServiceImpl(StaffMapper staffMapper, RoleMemberMapper roleMemberMapper,
+                          RolePermResolver rolePermResolver,
                           AuditLogMapper auditLogMapper,
                           MerchantApplyMapper applyMapper, MerchantAdminPort merchantAdminPort,
                           TokenStore tokenStore, ObjectMapper json, ObjectMapper objectMapper,
@@ -63,6 +66,7 @@ public class OpsServiceImpl implements OpsService {
         this.objectMapper = objectMapper;
         this.staffMapper = staffMapper;
         this.roleMemberMapper = roleMemberMapper;
+        this.rolePermResolver = rolePermResolver;
         this.auditLogMapper = auditLogMapper;
         this.applyMapper = applyMapper;
         this.merchantAdminPort = merchantAdminPort;
@@ -85,7 +89,7 @@ public class OpsServiceImpl implements OpsService {
         }
 
         List<String> roles = readList(staff.getRoles());
-        List<String> perms = Perms.of(roles);
+        List<String> perms = rolePermResolver.of(roles);
         String token = tokenStore.issue(TokenStore.SessionData.of(
                 LoginUser.operator(staff.getStaffNo(), staff.getRealName(), roles, perms,
                         scopeOf(staff, perms))));
@@ -104,7 +108,7 @@ public class OpsServiceImpl implements OpsService {
         LoginUser user = SecurityUtils.requireUser();
         SysOpsStaff staff = requireStaff(user.userNo());
         List<String> roles = readList(staff.getRoles());
-        return toVO(staff, roles, Perms.of(roles));
+        return toVO(staff, roles, rolePermResolver.of(roles));
     }
 
     @Override
@@ -114,7 +118,7 @@ public class OpsServiceImpl implements OpsService {
                                 .orderByAsc(SysOpsStaff::getId))).stream()
                 .map(s -> {
                     List<String> roles = readList(s.getRoles());
-                    return toVO(s, roles, Perms.of(roles));
+                    return toVO(s, roles, rolePermResolver.of(roles));
                 }).toList();
     }
 
@@ -436,8 +440,8 @@ public class OpsServiceImpl implements OpsService {
         }
     }
 
-    private static boolean isFullAccess(List<String> roles) {
-        return Perms.of(roles).contains("*");
+    private boolean isFullAccess(List<String> roles) {
+        return rolePermResolver.of(roles).contains("*");
     }
 
     @Override
@@ -463,7 +467,7 @@ public class OpsServiceImpl implements OpsService {
         }
         audit("STAFF_ENABLED", staffNo, enabled ? "启用" : "停用");
         List<String> roles = readList(staff.getRoles());
-        return toVO(staff, roles, Perms.of(roles));
+        return toVO(staff, roles, rolePermResolver.of(roles));
     }
 
     @Override
@@ -478,7 +482,7 @@ public class OpsServiceImpl implements OpsService {
          * 他能登录、导航一片空白、页面上看不出任何原因。
          * 那种「界面正常、就是什么都没有」的故障最难查。
          */
-        if (Perms.of(List.of(role)).isEmpty()) {
+        if (rolePermResolver.of(List.of(role)).isEmpty()) {
             throw BizException.of(ErrorCode.STAFF_ROLE_UNKNOWN, role);
         }
         SysOpsStaff staff = requireStaff(staffNo);
@@ -506,7 +510,7 @@ public class OpsServiceImpl implements OpsService {
         tokenStore.revokeUser(staffNo);
         audit("STAFF_ROLE", staffNo, before + " → " + role);
         List<String> roles = List.of(role);
-        return toVO(staff, roles, Perms.of(roles));
+        return toVO(staff, roles, rolePermResolver.of(roles));
     }
 
     @Override
@@ -532,7 +536,7 @@ public class OpsServiceImpl implements OpsService {
         tokenStore.revokeUser(staffNo);
         audit("STAFF_SCOPE", staffNo, "merchant=" + merchantNo + "｜community=" + communityNo
                 + "｜pickup=" + pickupNo);
-        return toVO(staff, roles, Perms.of(roles));
+        return toVO(staff, roles, rolePermResolver.of(roles));
     }
 
     /**
