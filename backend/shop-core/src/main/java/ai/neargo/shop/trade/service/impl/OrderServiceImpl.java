@@ -494,6 +494,20 @@ public class OrderServiceImpl implements OrderService {
             // 自提点名称快照（C6）：页面要显示名字，且自提点改名不该影响历史订单
             sub.setPickupName(pickupPort.find(cmd.pickupNo()).map(p -> p.name()).orElse(null));
             sub.setAddressId(cmd.addressId());
+            /*
+             * 收件人快照（V69）：与上面的 pickupName 同一个理由 ——
+             * usr_address 可改可删，买家下完单改成新家，商家看到的就跟着变了，
+             * 而货已经按旧地址在路上。
+             *
+             * **取不到不让下单失败**：自提单本来就没有 addressId；
+             * 快递/自送单万一取不到，宁可让商家看到「地址：—」去问一句，
+             * 也不该把已经付过钱的单挡在这里。
+             */
+            userPort.receiverOf(userNo, cmd.addressId()).ifPresent(r -> {
+                sub.setReceiverName(r.name());
+                sub.setReceiverPhone(r.phone());
+                sub.setReceiverAddress(r.address());
+            });
             // ★ 归因在下单这一刻固化，不是结算时回查（TDD-backend §7.4）
             sub.setTrafficSource(attributionPort.resolveTrafficSource(userNo, g.merchantNo));
             sub.setGoodsAmount(g.goodsAmount());
@@ -906,13 +920,14 @@ public class OrderServiceImpl implements OrderService {
                             l.amount(), l.snapshot.categoryType(), false)).toList(),
                     OrderVO.Amount.of(g.goodsAmount(), g.freight,
                             discounts.of(g.merchantNo), 0L, CURRENCY_CNY),
-                    null, null, null, null, 0L, null, null, null, List.of(), null)).toList();
+                    // 预览还没有单，收件人自然也没有
+                    null, null, null, null, 0L, null, null, null, null, List.of(), null)).toList();
 
             return new OrderVO(null, null, OrdOrder.WAIT_PAY, null, null, null,
                     children.stream().flatMap(c -> c.items().stream()).toList(),
                     OrderVO.Amount.of(goodsAmount(), freightAmount(),
                             discounts.total(), 0L, CURRENCY_CNY),
-                    null, null, null, null, 0L, null, null, null, List.of(), children);
+                    null, null, null, null, 0L, null, null, null, null, List.of(), children);
         }
     }
 
@@ -972,8 +987,19 @@ public class OrderServiceImpl implements OrderService {
                 // 买家要靠它查物流；此前库里有这一列而 VO 里没有，发货对买家不可见
                 s.getExpressNo(),
                 s.getTrafficSource(),
+                // 买家看自己的单：完整地址与完整手机号，那本来就是他填的
+                receiverOf(s),
                 timelineOf(s.getSubOrderNo()),
                 null);
+    }
+
+    /** 子单上的收件人快照 → VO。三列都空（自提单）时给 null，让端上少判一层 */
+    private static OrderVO.Receiver receiverOf(OrdSubOrder s) {
+        if (s.getReceiverName() == null && s.getReceiverAddress() == null) {
+            return null;
+        }
+        return new OrderVO.Receiver(s.getReceiverName(), s.getReceiverPhone(),
+                s.getReceiverAddress());
     }
 
     /** 支付视角（Q6）：合计金额 + 各商家子单；**不给 fulfillment**，跨商家可能不同。 */
@@ -993,8 +1019,8 @@ public class OrderServiceImpl implements OrderService {
                         order.getCurrency()),
                 null, null, null,
                 order.getPayDeadlineAt(), millis(order.getCreatedAt()), order.getPaidAt(),
-                // 支付视角跨商家，没有单一快递号 —— 它在每个子单上
-                null, null, List.of(), children);
+                // 支付视角跨商家，没有单一快递号 —— 它在每个子单上。收件人同理
+                null, null, null, List.of(), children);
     }
 
     private OrderVO.ItemVO toItemVO(OrdItem i) {

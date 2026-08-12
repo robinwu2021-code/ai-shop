@@ -22,9 +22,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * 每个 {@code /biz} 端点都必须**明确**它要什么权限。
  *
- * <p>这条守卫的用法是**先让它红**：把 67 个端点该给谁列成下面这张表，
+ * <p>这条守卫的用法是**先让它红**：把每个端点该给谁列成下面这张表，
  * 没在表里的端点直接报错。这样「哪些还没定权限」是可见的 ——
- * 而不是靠人去逐个数 67 个端点，数漏一个就是一个越权口子。
+ * 而不是靠人去逐个数几十个端点，数漏一个就是一个越权口子。
+ *
+ * <p><b>刻意不写端点总数</b>：写死的数字每加一个端点就过期一次，
+ * 而没有任何东西会提醒你改它。当前分布见
+ * {@code docs/technical/reference/B端功能点-权限码-页面.md} 的统计行。
  *
  * <p>将来加端点时它同样会红，逼加的人回答一句「这个该给谁」。
  * <b>这正是这类守卫存在的理由</b>：不是防止今天写错，是防止明天忘记。
@@ -118,6 +122,8 @@ class BizEndpointPermTest {
         put("/biz/staff", BizPerms.STORE_ADMIN);
         put("/biz/staff/{mchAccountNo}/status", BizPerms.STORE_ADMIN);
         put("/biz/staff/{mchAccountNo}/store", BizPerms.STORE_ADMIN);
+        // 「谁给谁加了什么权限」本身就是权限信息：能看它的人不该比能改它的人多
+        put("/biz/staff/logs", BizPerms.STORE_ADMIN);
 
         // ---- 钱 ----
         put("/biz/settle/bills", BizPerms.FINANCE);

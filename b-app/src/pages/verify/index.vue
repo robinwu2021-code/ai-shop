@@ -9,10 +9,13 @@ const merchant = useMerchantStore();
 // 老人机拍的码、屏幕反光都很常见）。只做扫码是不够的。
 import { computed, ref } from "vue";
 import { onShow } from "@dcloudio/uni-app";
+import { useI18n } from "vue-i18n";
 import { api } from "@/api";
 import { scanCode } from "@shared/ports/scan";
 import { money } from "@shared/utils/money";
 import type { Order, PickupOverview, VerifyBatchResult } from "@shared/types";
+
+const { t } = useI18n();
 
 const overview = ref<PickupOverview | null>(null);
 const code = ref("");
@@ -35,23 +38,45 @@ async function load() {
   ]);
 }
 
+/**
+ * 输码失败后的候选单（按码片段搜出来的）。
+ *
+ * **这是第三条路**：扫码 → 输全码 → 按片段搜。前两条都要求那串码是完整可读的，
+ * 而现场最常见的失败恰恰是「读不全」—— 磨花的小票、反光的屏幕、
+ * 邻居只记得后四位。此前走到这一步店主就没辙了，只能让人回家找码。
+ */
+const candidates = ref<Order[] | null>(null);
+
 async function verify(input?: string) {
   const c = (input ?? code.value).trim();
   if (!c || busy.value) return;
   busy.value = true;
   error.value = "";
+  candidates.value = null;
   try {
     const o = await api.mVerify(c);
     justDone.value = o.orderNo;
     code.value = "";
-    uni.showToast({ title: "核销成功", icon: "none" });
+    uni.showToast({ title: t("verify.done"), icon: "none" });
     await load();
   } catch (e) {
     // 失败原因必须说清楚：已核销 / 不在本点 / 码无效，三种处理方式完全不同
     error.value = (e as Error).message;
+    /*
+     * 顺手按片段搜一次。**不自动核销搜到的那单** ——
+     * 片段可能命中多单，替他选一单就是替他承担「核错人」的风险；
+     * 而列出来让他确认，只多一次点击。
+     */
+    candidates.value = await api.mVerifySearch(c).catch(() => []);
   } finally {
     busy.value = false;
   }
+}
+
+/** 从候选里确认核销：这时用的是完整码，走的还是同一条核销路径 */
+async function verifyCandidate(o: Order) {
+  candidates.value = null;
+  await verify(o.verifyCode);
 }
 
 async function scan() {
@@ -145,6 +170,25 @@ onShow(load);
       </view>
       <view class="sh-btn sh-btn--soft scan" @tap="scan">{{ $t("verify.scan") }}</view>
       <text v-if="error" class="err">{{ error }}</text>
+
+      <!--
+        输码没核销掉时，按这几位搜出来的候选。**让他确认是哪一单，而不是替他选** ——
+        片段可能命中多单，替他选就是替他承担「核错人」的风险。
+      -->
+      <view v-if="candidates" class="cands">
+        <text v-if="!candidates.length" class="sh-muted">{{ $t("verify.searchEmpty") }}</text>
+        <template v-else>
+          <text class="sh-muted cands__hint">{{ $t("verify.searchHint") }}</text>
+          <view v-for="c in candidates" :key="c.orderNo" class="cand">
+            <view class="cand__main">
+              <text class="cand__code sh-num">{{ c.verifyCode }}</text>
+              <text class="sh-muted">{{ c.buyerNickname || "—" }}</text>
+            </view>
+            <text class="btn" @tap="verifyCandidate(c)">{{ $t("verify.submit") }}</text>
+          </view>
+        </template>
+      </view>
+
       <!-- 高峰期一次来七八个邻居，逐张扫要等七八次往返 -->
       <text class="link" @tap="batchMode = true">{{ $t("verify.batchEnter") }}</text>
     </view>
@@ -311,6 +355,33 @@ onShow(load);
   background: var(--sh-danger-tint);
   color: var(--sh-danger);
   font-size: 26rpx;
+}
+
+.cands {
+  margin-top: 20rpx;
+}
+.cands__hint {
+  display: block;
+  margin-bottom: 12rpx;
+  font-size: 24rpx;
+}
+.cand {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  padding: 16rpx 0;
+  border-top: 2rpx solid var(--sh-line);
+}
+.cand__main {
+  flex: 1;
+  min-width: 0;
+}
+.cand__code {
+  display: block;
+  font-size: 30rpx;
+  /* 600 而不是 700：700 这个项目里只给价格留着，取货码靠字号和留白突出就够 */
+  font-weight: 600;
+  color: var(--sh-ink);
 }
 .list-head {
   display: flex;

@@ -20,6 +20,7 @@ import type {
   MarketingCampaign,
   MerchantProfile,
   MerchantStaff,
+  StaffLog,
   PaymentApplyment,
   Store,
   StoreProfile,
@@ -868,6 +869,14 @@ function histOrder(
   };
 }
 
+/**
+ * mock 里的日志行：比下发给端上的 {@link StaffLog} 多一个 `targetAccountNo` ——
+ * 「只看某个人的」要按它筛，而下发时不需要（端上已经知道自己点的是谁）。
+ */
+export interface StaffLogRow extends StaffLog {
+  targetAccountNo: string;
+}
+
 export const db = {
   user: {
     cUserNo: "CU10001",
@@ -941,6 +950,13 @@ export const db = {
       roles: [],
     },
   ] as MerchantStaff[],
+
+  /**
+   * 员工与授权的变更记录（B-11.10.3）。**初始为空** ——
+   * 编几条假记录会让「这个功能有没有真的在写」变得看不出来：
+   * 演示数据和真实产生的记录长得一模一样。
+   */
+  staffLogs: [] as StaffLogRow[],
 
   /**
    * 收款进件。**默认停在 APPLYING** —— 演示环境也要能看到「店开了但还收不了钱」这个状态，

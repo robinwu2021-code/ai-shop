@@ -14,12 +14,14 @@ import { computed, ref } from "vue";
 import { onLoad } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
 import { api } from "@/api";
+import { useMerchantStore } from "@/stores/merchant";
 import { CATEGORY_TYPE, MARKETS } from "@shared/utils/constants";
 import { pickImages } from "@shared/ports/media";
 import { toMajor, toMinor } from "@shared/utils/money";
 import type { Category, CategoryType, CurrencyCode, I18nText, SpecTemplate } from "@shared/types";
 
 const { t } = useI18n();
+const merchant = useMerchantStore();
 
 const TYPES = Object.values(CATEGORY_TYPE) as CategoryType[];
 
@@ -409,7 +411,11 @@ async function save() {
 </script>
 
 <template>
-  <sh-scaffold :title-key="isEdit ? 'goods.editTitle' : 'goods.createTitle'">
+  <!-- 建/改商品与价格属于 `biz:goods`；商品列表的入口已判过，这里给深链兜底 -->
+  <sh-scaffold
+    :title-key="isEdit ? 'goods.editTitle' : 'goods.createTitle'"
+    :denied="!merchant.can('biz:goods')"
+  >
     <text class="sh-h1">{{ isEdit ? $t("goods.editTitle") : $t("goods.createTitle") }}</text>
 
     <view class="sh-card mt">

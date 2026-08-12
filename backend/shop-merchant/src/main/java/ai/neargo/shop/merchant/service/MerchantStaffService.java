@@ -78,4 +78,16 @@ public interface MerchantStaffService {
      */
     StaffVO grantStore(String merchantNo, String mchAccountNo, String storeNo,
                        String role, boolean granted);
+
+    /**
+     * 员工与授权的变更记录（B-11.10.3），倒序。
+     *
+     * <p><b>为什么要有它</b>：授权变更是权限扩散的唯一入口 —— 加人、停用、
+     * 给角色、撤角色。别的动作都有业务单据兜底，唯独这几个做完就没了，
+     * 三个月后问「谁把张三提成了店长」答不出来。
+     *
+     * @param targetAccountNo 只看某个人的；传空看全部
+     */
+    java.util.List<ai.neargo.shop.merchant.dto.StaffLogVO> logs(String merchantNo,
+                                                                String targetAccountNo);
 }

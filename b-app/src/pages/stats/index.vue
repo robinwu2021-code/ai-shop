@@ -9,9 +9,11 @@
 import { computed, ref } from "vue";
 import { onShow } from "@dcloudio/uni-app";
 import { api } from "@/api";
+import { useMerchantStore } from "@/stores/merchant";
 import { money } from "@shared/utils/money";
 import type { MerchantStats } from "@shared/types";
 
+const merchant = useMerchantStore();
 const stats = ref<MerchantStats | null>(null);
 
 const ownedPct = computed(() =>
@@ -26,7 +28,8 @@ onShow(load);
 </script>
 
 <template>
-  <sh-scaffold title-key="stats.title">
+  <!-- 经营数据属于客户资产（`biz:customer`）；「我的」页的入口已判过，这里给深链兜底 -->
+  <sh-scaffold title-key="stats.title" :denied="!merchant.can('biz:customer')">
     <text class="sh-h1">{{ $t("stats.title") }}</text>
 
     <template v-if="stats">

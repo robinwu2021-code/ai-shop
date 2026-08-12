@@ -9,10 +9,13 @@ import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.merchant.dto.StaffVO;
 import ai.neargo.shop.merchant.entity.MchAccount;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchAccountMapper;
+import ai.neargo.shop.merchant.mapper.MerchantMappers.MchStaffLogMapper;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreRoleMapper;
+import ai.neargo.shop.merchant.entity.MchStaffLog;
 import ai.neargo.shop.merchant.entity.MchStore;
 import ai.neargo.shop.merchant.entity.MchStoreRole;
+import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.merchant.service.MerchantStaffService;
 import ai.neargo.shop.common.OtpStore;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -30,15 +33,17 @@ public class MerchantStaffServiceImpl implements MerchantStaffService {
     private final MchAccountMapper staffMapper;
     private final MchStoreMapper storeMapper;
     private final MchStoreRoleMapper roleMapper;
+    private final MchStaffLogMapper logMapper;
     private final TokenStore tokenStore;
     private final OtpStore otpStore;
 
     public MerchantStaffServiceImpl(MchAccountMapper staffMapper, MchStoreMapper storeMapper,
-                                    MchStoreRoleMapper roleMapper, TokenStore tokenStore,
-                                    OtpStore otpStore) {
+                                    MchStoreRoleMapper roleMapper, MchStaffLogMapper logMapper,
+                                    TokenStore tokenStore, OtpStore otpStore) {
         this.staffMapper = staffMapper;
         this.storeMapper = storeMapper;
         this.roleMapper = roleMapper;
+        this.logMapper = logMapper;
         this.tokenStore = tokenStore;
         this.otpStore = otpStore;
     }
@@ -117,6 +122,10 @@ public class MerchantStaffServiceImpl implements MerchantStaffService {
              */
             existing.setStatus(MchAccount.ACTIVE);
             DataScopeContext.executeWithoutScope(() -> staffMapper.updateById(existing));
+            // 对老板来说这就是「把人加回来」，所以记 STAFF_ADD 而不是 ENABLE ——
+            // 审计要还原他做了什么，不是还原代码走了哪个分支
+            log(merchantNo, existing.getMchAccountNo(), MchStaffLog.STAFF_ADD,
+                    null, null, "重新启用已存在的员工 " + mask(loginPhone));
             return single(merchantNo, existing);
         }
 
@@ -129,6 +138,8 @@ public class MerchantStaffServiceImpl implements MerchantStaffService {
         a.setIsPrimary(false);
         a.setStatus(MchAccount.ACTIVE);
         DataScopeContext.executeWithoutScope(() -> staffMapper.insert(a));
+        log(merchantNo, a.getMchAccountNo(), MchStaffLog.STAFF_ADD,
+                null, null, "新增员工 " + mask(loginPhone));
         return single(merchantNo, a);
     }
 
@@ -145,6 +156,10 @@ public class MerchantStaffServiceImpl implements MerchantStaffService {
         }
         a.setStatus(active ? MchAccount.ACTIVE : MchAccount.DISABLED);
         DataScopeContext.executeWithoutScope(() -> staffMapper.updateById(a));
+        log(merchantNo, mchAccountNo,
+                active ? MchStaffLog.STAFF_ENABLE : MchStaffLog.STAFF_DISABLE, null, null,
+                // 停用不删门店授权，日志里点明 —— 否则事后会以为权限已经收回了
+                active ? "启用员工" : "停用员工（门店授权保留）");
         return single(merchantNo, a);
     }
 
@@ -178,6 +193,10 @@ public class MerchantStaffServiceImpl implements MerchantStaffService {
             // 撤销。**撤到一个不剩 = 从这家店移除他** —— 不留空壳行
             if (row != null) {
                 DataScopeContext.executeWithoutScope(() -> roleMapper.deleteById(row.getId()));
+                // 只有真删了才记。撤销一个他本来就没有的角色是空操作，
+                // 记下来会让日志里出现一串「撤销了店长」而他从来不是店长
+                log(merchantNo, mchAccountNo, MchStaffLog.ROLE_REVOKE, storeNo, role,
+                        "撤销 " + storeNames(merchantNo).get(storeNo) + " 的 " + role);
             }
             return single(merchantNo, a);
         }
@@ -203,9 +222,93 @@ public class MerchantStaffServiceImpl implements MerchantStaffService {
                 fresh.setRole(role);
                 DataScopeContext.executeWithoutScope(() -> roleMapper.insert(fresh));
             }
+            // 复活与新建都是「授予」，记同一条 —— 那个区别是实现细节，不是老板做的事
+            log(merchantNo, mchAccountNo, MchStaffLog.ROLE_GRANT, storeNo, role,
+                    "授予 " + storeNames(merchantNo).get(storeNo) + " 的 " + role);
         }
         return single(merchantNo, a);
     }
+
+    @Override
+    public List<ai.neargo.shop.merchant.dto.StaffLogVO> logs(String merchantNo,
+                                                             String targetAccountNo) {
+        /*
+         * **必须显式按 entity_no 过滤** —— mch_staff_log 没有注册数据域
+         * （理由见 V68 的注释：门店维度对员工表没有意义）。
+         * 未注册的表不会被自动收窄，漏掉这个条件就是把别家商家的授权记录发出去，
+         * 而且不报错。
+         */
+        List<MchStaffLog> rows = DataScopeContext.executeWithoutScope(() ->
+                logMapper.selectList(Wrappers.<MchStaffLog>lambdaQuery()
+                        .eq(MchStaffLog::getEntityNo, merchantNo)
+                        .eq(targetAccountNo != null && !targetAccountNo.isBlank(),
+                                MchStaffLog::getTargetAccountNo, targetAccountNo)
+                        .orderByDesc(MchStaffLog::getId)
+                        .last("limit 200")));
+        if (rows.isEmpty()) {
+            return List.of();
+        }
+
+        /*
+         * 账号号 → 脱敏手机号。老板认得出「尾号 3456 那个」，认不出 SF2026…
+         *
+         * **不能用 Collectors.toMap** ——「手机号为空」是真实存在的状态：
+         * 老板的 mch_account 是入驻时建的，login_phone 一直是 NULL（他走消费者账号登录）。
+         * 而 toMap 对 null 值直接抛 NPE，表现是整个接口 500。
+         * 这一条单测与 mock 都没抓到：两边造的数据里每个人都有手机号。
+         */
+        Map<String, String> phones = new java.util.HashMap<>();
+        for (MchAccount a : accounts(merchantNo)) {
+            phones.put(a.getMchAccountNo(), mask(a.getLoginPhone()));
+        }
+        Map<String, String> storeNames = storeNames(merchantNo);
+
+        return rows.stream().map(r -> new ai.neargo.shop.merchant.dto.StaffLogVO(
+                phones.get(r.getActorAccountNo()),
+                phones.get(r.getTargetAccountNo()),
+                r.getAction(),
+                r.getStoreNo() == null ? null
+                        : storeNames.getOrDefault(r.getStoreNo(), r.getStoreNo()),
+                r.getRole(), r.getDetail(),
+                r.getCreatedAt() == null ? 0L
+                        : r.getCreatedAt().atZone(java.time.ZoneId.systemDefault())
+                                .toInstant().toEpochMilli())).toList();
+    }
+
+    // ------------------------------------------------------------------ 审计（B-11.10.3）
+
+    /**
+     * 记一条授权变更。
+     *
+     * <p><b>失败不抛</b>，与 {@code AuditLogPort} 同一口径：
+     * 授权已经生效了却因为写日志报错而回滚，是拿一条记录去换一次真实的业务操作。
+     * 反过来「日志写失败」也不该让老板看到「系统开小差」——他做的事成了。
+     *
+     * <p>放在 Service 而不是 Controller：{@link #grantStore} 这类方法将来可能被
+     * 别的入口调用（批量授权、导入），挂在入口上就会漏。
+     */
+    private void log(String merchantNo, String targetAccountNo, String action,
+                     String storeNo, String role, String detail) {
+        try {
+            MchStaffLog row = new MchStaffLog();
+            row.setLogNo(BizKey.next(BizKey.STAFF_LOG));
+            row.setEntityNo(merchantNo);
+            row.setActorAccountNo(SecurityUtils.currentUser().map(LoginUser::userNo).orElse(null));
+            row.setTargetAccountNo(targetAccountNo);
+            row.setAction(action);
+            row.setStoreNo(storeNo);
+            row.setRole(role);
+            row.setDetail(detail);
+            DataScopeContext.executeWithoutScope(() -> logMapper.insert(row));
+        } catch (RuntimeException e) {
+            // 吞掉：见方法注释。不打印堆栈到业务日志里刷屏，这里只是记账失败
+            LOG.warn("员工授权日志写入失败 entity={} target={} action={}",
+                    merchantNo, targetAccountNo, action, e);
+        }
+    }
+
+    private static final org.slf4j.Logger LOG =
+            org.slf4j.LoggerFactory.getLogger(MerchantStaffServiceImpl.class);
 
     // ------------------------------------------------------------------ 内部
 

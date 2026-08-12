@@ -590,6 +590,9 @@ CREATE TABLE IF NOT EXISTS ord_sub_order
     service_fee_minor BIGINT(20) NOT NULL DEFAULT 0,
     store_no VARCHAR(64) DEFAULT NULL,
     require_buyer_confirm TINYINT(4) NOT NULL DEFAULT 0,
+    receiver_name VARCHAR(64) DEFAULT NULL,
+    receiver_phone VARCHAR(32) DEFAULT NULL,
+    receiver_address VARCHAR(255) DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_sub_order_no UNIQUE (sub_order_no),
     CONSTRAINT uk_verify_code UNIQUE (verify_code)
@@ -2070,6 +2073,28 @@ CREATE TABLE IF NOT EXISTS stl_recon_diff
     PRIMARY KEY (id),
     CONSTRAINT uk_recon_diff_no UNIQUE (diff_no),
     CONSTRAINT uk_recon_diff_payment UNIQUE (bill_date,pay_channel,payment_no,diff_type)
+);
+
+CREATE TABLE IF NOT EXISTS mch_staff_log
+(
+    id BIGINT(20) NOT NULL AUTO_INCREMENT,
+    log_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    actor_account_no VARCHAR(64) DEFAULT NULL,
+    target_account_no VARCHAR(64) NOT NULL,
+    action VARCHAR(24) NOT NULL,
+    store_no VARCHAR(64) DEFAULT NULL,
+    role VARCHAR(16) DEFAULT NULL,
+    detail VARCHAR(512) DEFAULT NULL,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT(20) NOT NULL DEFAULT 0,
+    deleted TINYINT(4) NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_staff_log_no UNIQUE (log_no)
 );
 
 -- 种子数据

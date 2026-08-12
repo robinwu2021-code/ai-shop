@@ -22,6 +22,29 @@ public interface UserQueryPort {
     }
 
     /**
+     * 下单时取一次收货地址，用于**在子订单上做快照**（V69）。
+     *
+     * <p><b>这是 {@link UserBrief} 那条规则的例外，且只在这一处</b>：
+     * 它返回完整手机号。理由是快照 —— 存的是「下单那一刻这张单要送给谁」，
+     * 而不是「这个用户现在的联系方式」。两者会分叉，分叉时该以前者为准。
+     *
+     * <p>下发给商家时仍然要脱敏，脱敏口径在 {@code MerchantOrderServiceImpl}：
+     * 自送单给完整（送不到就得打电话），其余给后四位。
+     * <b>Port 的职责是取数，不是决定谁能看到多少</b> —— 两件事混在一起时，
+     * 「换个调用方就漏了」这种错会变得很难看出来。
+     *
+     * @return 地址不存在或不属于这个人时为空
+     */
+    Optional<Receiver> receiverOf(String userNo, String addressId);
+
+    /**
+     * @param phone   <b>完整手机号</b>，仅用于写进订单快照
+     * @param address 省市区 + 详细，拼好的一行
+     */
+    record Receiver(String name, String phone, String address) {
+    }
+
+    /**
      * 用户绑定的社区。
      *
      * <p>下单时把它固化到主单上 —— <b>运营按社区做数据域隔离</b>，

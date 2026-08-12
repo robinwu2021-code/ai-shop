@@ -36,8 +36,29 @@ const totalQty = computed(() => rows.value.reduce((s, r) => s + r.totalQty, 0));
 /** 备货中的单 = 还没标到货的，标记后用户才收到到货通知 */
 const preparing = computed(() => orders.value.filter((o) => o.status === "PAID"));
 
+/** 我能不能看自提单 —— `/biz/pickup/orders` 要 `biz:verify`，理货员没有 */
+const canPickupOrders = computed(() => merchant.can("biz:verify"));
+
+/*
+ * 两件事各自取，**不用裸 Promise.all**。
+ *
+ * 这一页的门禁是 `biz:receive`，而自提单接口要的是 `biz:verify` ——
+ * **理货员（PICKER = receive + stock）恰好只有前者**，而这一页就是为他设的。
+ * 原先绑在一个 Promise.all 里，自提单被 70006 拒就整体 reject，
+ * 连分拣单也一起没了：他打开自己的工作页，看到的是一片空白。
+ *
+ * 到货登记（下面的「备货中」区）依赖自提单，所以它跟着 `biz:verify` 走 ——
+ * 标到货会触发给买家的到货通知，属于交付面，与核销同一档（RECEIVE 对货、VERIFY 对顾客）。
+ */
 async function load() {
-  [rows.value, orders.value] = await Promise.all([api.mPickingList(), api.mPickupOrders()]);
+  // 先等权限到位 —— `can()` fail-closed，深链进来时 onShow 早于外壳的 ensureScope
+  await merchant.ensureScope();
+  const [r, o] = await Promise.all([
+    api.mPickingList().catch(() => []),
+    canPickupOrders.value ? api.mPickupOrders().catch(() => []) : Promise.resolve([]),
+  ]);
+  rows.value = r;
+  orders.value = o;
 }
 
 /**

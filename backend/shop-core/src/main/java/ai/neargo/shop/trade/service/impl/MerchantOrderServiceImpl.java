@@ -219,7 +219,38 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
                         : s.getCreatedAt().atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli(),
                 null,
                 // 商家也要看得到自己填了什么单号 —— 否则改单号之后无从核对
-                s.getExpressNo(), s.getTrafficSource(), List.of(), null);
+                s.getExpressNo(), s.getTrafficSource(), receiverFor(s), List.of(), null);
+    }
+
+    private static final int PHONE_TAIL = 4;
+
+    /**
+     * 商家看到的收件人。**脱敏口径分两档**：
+     *
+     * <ul>
+     *   <li><b>商家自送</b>（{@code MERCHANT_DELIVERY}）→ <b>完整手机号</b>。
+     *       送到楼下找不到人就得打电话，给后四位等于让人站在原地干瞪眼。
+     *       2026-08-12 产品确认放开这一档</li>
+     *   <li>其余履约方式 → 后四位。B12 的原判断不变：商家不需要能打给每一个买家，
+     *       需要联系时走平台客服通道</li>
+     * </ul>
+     *
+     * <p><b>判断写在这里而不是 VO 上</b>：VO 只是形状，「谁能看到多少」是装配时的决定。
+     * 写进 VO 的话，换一个装配路径（比如平台端）就会不知不觉套用商家的口径。
+     */
+    private static OrderVO.Receiver receiverFor(OrdSubOrder s) {
+        if (s.getReceiverName() == null && s.getReceiverAddress() == null) {
+            return null;
+        }
+        String phone = s.getReceiverPhone();
+        boolean selfDelivery = MERCHANT_DELIVERY.equals(s.getFulfillment());
+        return new OrderVO.Receiver(s.getReceiverName(),
+                selfDelivery ? phone : tail(phone), s.getReceiverAddress());
+    }
+
+    private static String tail(String phone) {
+        return phone == null || phone.length() < PHONE_TAIL ? null
+                : "****" + phone.substring(phone.length() - PHONE_TAIL);
     }
 
     private static long nz(Long v) {

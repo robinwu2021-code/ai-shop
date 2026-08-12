@@ -13,11 +13,15 @@ import { computed, ref } from "vue";
 import { onShow } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
 import { api } from "@/api";
-import type { MerchantStaff, StaffRole, Store } from "@shared/types";
+import { datetime } from "@shared/utils/datetime";
+import type { MerchantStaff, StaffLog, StaffRole, Store } from "@shared/types";
 
 const { t } = useI18n();
 
 const staff = ref<MerchantStaff[]>([]);
+/** 正在看谁的变更记录；null = 没展开 */
+const logsOf = ref<string | null>(null);
+const logs = ref<StaffLog[]>([]);
 const stores = ref<Store[]>([]);
 const busy = ref(false);
 
@@ -41,6 +45,46 @@ onShow(load);
 async function load() {
   staff.value = await api.mStaffList().catch(() => []);
   stores.value = await api.mStoreList().catch(() => []);
+}
+
+/**
+ * 一条记录显示成什么。
+ *
+ * **优先用结构化字段拼**（action + storeName + role），而不是直接显示后端的 detail ——
+ * detail 里的角色是原始码（`MANAGER`），店主不认识它；
+ * 而 role 单独存了一列，正是为了在这里能翻成「店长」。
+ * 拼不出来时才回落 detail：那说明是个这一版还不认识的新动作，显示原文比显示空白强。
+ */
+function logText(l: StaffLog) {
+  const role = l.role ? t(`staff.role.${l.role}`) : "";
+  if (l.action === "ROLE_GRANT" && l.storeName) {
+    return t("staff.logGrant", { store: l.storeName, role });
+  }
+  if (l.action === "ROLE_REVOKE" && l.storeName) {
+    return t("staff.logRevoke", { store: l.storeName, role });
+  }
+  const known: Record<string, string> = {
+    STAFF_ADD: "staff.logAdd",
+    STAFF_ENABLE: "staff.logEnable",
+    STAFF_DISABLE: "staff.logDisable",
+  };
+  return known[l.action] ? t(known[l.action]!) : (l.detail ?? l.action);
+}
+
+/**
+ * 展开 / 收起某个人的变更记录。
+ *
+ * 收起时不缓存：授权刚改过就看记录是最常见的用法，缓存会让人看到改之前的样子，
+ * 而那正是他要确认「刚才那下生效了没有」的时刻。
+ */
+async function toggleLogs(s: MerchantStaff) {
+  if (logsOf.value === s.mchAccountNo) {
+    logsOf.value = null;
+    logs.value = [];
+    return;
+  }
+  logsOf.value = s.mchAccountNo;
+  logs.value = await api.mStaffLogs(s.mchAccountNo).catch(() => []);
 }
 
 async function run(fn: () => Promise<unknown>) {
@@ -161,6 +205,23 @@ const rolesAt = (s: MerchantStaff, storeNo: string) =>
           <text class="hint">{{ $t("staff.grantHint") }}</text>
         </view>
       </template>
+
+      <!--
+        这个人的授权变更记录（B-11.10.3）。**点开才拉** ——
+        平时看的是「他现在能做什么」，只有出事时才问「谁给他开的」。
+      -->
+      <text class="act mt" @tap="toggleLogs(s)">
+        {{ logsOf === s.mchAccountNo ? $t("staff.logsFold") : $t("staff.logs") }}
+      </text>
+      <view v-if="logsOf === s.mchAccountNo" class="logs">
+        <text v-if="!logs.length" class="sh-muted">{{ $t("staff.logsEmpty") }}</text>
+        <view v-for="(l, i) in logs" :key="i" class="log">
+          <text class="log__t sh-num">{{ datetime(l.at) }}</text>
+          <text class="log__d">{{ logText(l) }}</text>
+          <!-- 「谁做的」是这张表存在的理由：只有「张三被提成店长」没法追责 -->
+          <text v-if="l.actor" class="sh-muted log__a">{{ l.actor }}</text>
+        </view>
+      </view>
     </view>
 
     <view v-if="!adding" class="sh-btn sh-btn--soft add" @tap="adding = true">
@@ -188,6 +249,30 @@ const rolesAt = (s: MerchantStaff, storeNo: string) =>
 </template>
 
 <style scoped>
+.logs {
+  margin-top: 12rpx;
+}
+.log {
+  display: flex;
+  align-items: baseline;
+  gap: 16rpx;
+  padding: 10rpx 0;
+  border-top: 2rpx solid var(--sh-line);
+  font-size: 24rpx;
+}
+.log__t {
+  color: var(--sh-sub);
+}
+.log__d {
+  flex: 1;
+  min-width: 0;
+  color: var(--sh-ink);
+}
+.log__a {
+  /* 24rpx 是字阶的最小档 —— 想更弱就靠颜色，不靠再缩一号 */
+  font-size: 24rpx;
+}
+
 .head {
   padding: 32rpx 32rpx 8rpx;
 }

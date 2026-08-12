@@ -62,9 +62,11 @@ import type {
   Goods,
   I18nText,
   MarketingCampaign,
+  MerchantStaff,
   Order,
   PickingRow,
   SpecTemplate,
+  StaffRole,
   VerifyBatchResult,
 } from "@shared/types";
 
@@ -173,6 +175,32 @@ function requireStaff(mchAccountNo: string) {
   const s = db.staff.find((x) => x.mchAccountNo === mchAccountNo);
   if (!s) throw new Error("员工不存在");
   return s;
+}
+
+/**
+ * 记一条员工与授权的变更（B-11.10.3）。
+ *
+ * mock 里的操作人恒为老板 —— 演示会话就是老板，而这条日志的价值在于
+ * **它是真的在写**：页面上看到的每一行都来自刚才那次操作，不是种子数据。
+ */
+function logStaff(
+  target: MerchantStaff,
+  action: string,
+  storeName?: string,
+  role?: StaffRole,
+  detail?: string,
+) {
+  const owner = db.staff.find((x) => x.isOwner);
+  db.staffLogs.unshift({
+    targetAccountNo: target.mchAccountNo,
+    actor: owner?.loginPhone,
+    targetName: target.loginPhone,
+    action,
+    storeName,
+    role,
+    detail,
+    at: Date.now(),
+  });
 }
 
 /** 与服务端同一套脱敏：两处不一致会让人以为其中一处泄了 */
@@ -379,6 +407,9 @@ export const mockApi: MerchantApi = {
     if (existing) {
       // 离职再回来是常事：重新启用而不是报「已存在」
       existing.status = "ACTIVE";
+      // 对老板来说这就是「把人加回来」，所以记 STAFF_ADD 而不是 ENABLE ——
+      // 审计要还原他做了什么，不是还原代码走了哪个分支
+      logStaff(existing, "STAFF_ADD", undefined, undefined, "重新启用已存在的员工");
       persist();
       return delay({ ...existing });
     }
@@ -391,6 +422,7 @@ export const mockApi: MerchantApi = {
       roles: [],
     };
     db.staff.push(staff);
+    logStaff(staff, "STAFF_ADD", undefined, undefined, "新增员工");
     persist();
     return delay({ ...staff });
   },
@@ -400,6 +432,8 @@ export const mockApi: MerchantApi = {
     // 老板不能被停用 —— 那是个能把自己锁在门外的按钮
     if (st.isOwner && !active) throw new Error("老板不能被停用");
     st.status = active ? "ACTIVE" : "DISABLED";
+    logStaff(st, active ? "STAFF_ENABLE" : "STAFF_DISABLE", undefined, undefined,
+      active ? "启用员工" : "停用员工（门店授权保留）");
     persist();
     return delay({ ...st });
   },
@@ -430,10 +464,30 @@ export const mockApi: MerchantApi = {
      * 老板想「再加一个配送员」会把「店员」冲掉，而且不报错。
      * mock 与后端必须同一套语义，否则开发期看到的是另一个产品。
      */
+    const had = st.roles.some((r) => r.storeNo === storeNo && r.role === role);
     st.roles = st.roles.filter((r) => !(r.storeNo === storeNo && r.role === role));
     if (granted !== false) st.roles.push({ storeNo, storeName: store.name, role });
+    // 撤销一个他本来就没有的角色是空操作，不留痕 —— 与后端同口径，
+    // 否则日志里会出现一串「撤销了店长」而他从来不是店长
+    if (granted !== false) {
+      logStaff(st, "ROLE_GRANT", store.name, role, `授予 ${store.name} 的 ${role}`);
+    } else if (had) {
+      logStaff(st, "ROLE_REVOKE", store.name, role, `撤销 ${store.name} 的 ${role}`);
+    }
     persist();
     return delay({ ...st });
+  },
+
+  /**
+   * 员工与授权的变更记录（B-11.10.3）。倒序 —— 最近做的那一件最可能是要查的。
+   */
+  async mStaffLogs(mchAccountNo) {
+    const all = db.staffLogs ?? [];
+    return delay(
+      [...all]
+        .filter((l) => !mchAccountNo || l.targetAccountNo === mchAccountNo)
+        .sort((a, b) => b.at - a.at),
+    );
   },
 
   async mCommunities() {
@@ -1271,6 +1325,27 @@ export const mockApi: MerchantApi = {
       }
     }
     return delay({ successCount, failed });
+  },
+
+  /**
+   * 按取货码**片段**搜单。输码核销走不通时的最后一条路：
+   * 码磨花了、屏幕反光、邻居只记得后四位。
+   *
+   * 与真后端同口径：**子串匹配**（`contains`），且只在本自提点的单里找 ——
+   * 跨点搜出来的单他也核销不了，列出来只会让人以为「明明有这单为什么核不了」。
+   */
+  async mVerifySearch(keyword) {
+    const k = keyword.trim();
+    const pickupNo = db.merchant.pickupNo;
+    if (!k) return delay([]);
+    return delay(
+      db.orders.filter(
+        (o) =>
+          !!o.verifyCode
+          && o.verifyCode.includes(k)
+          && (!pickupNo || o.pickupNo === pickupNo),
+      ),
+    );
   },
 
   // ---- 积分：商家只感知发分服务费与开关（V34）。

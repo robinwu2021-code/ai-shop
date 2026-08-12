@@ -53,6 +53,7 @@ import type {
   MerchantPointsRecord,
   MasterData,
   MerchantStaff,
+  StaffLog,
   Store,
   PaymentApplyment,
   MerchantApplyStatus,
@@ -130,6 +131,9 @@ export const httpApi: MerchantApi = {
   mGrantStore: (mchAccountNo, storeNo, role, granted) =>
     http.post<MerchantStaff>(buildPath(E.mGrantStore.path, { mchAccountNo }),
       { storeNo, role, granted } satisfies GrantStoreReq),
+  // 只看某个人的时候才带参数：后端把空串当成「全部」也行，但少发一个空参数少一处歧义
+  mStaffLogs: (mchAccountNo) =>
+    http.get<StaffLog[]>(E.mStaffLogs.path, mchAccountNo ? { mchAccountNo } : undefined),
 
   mStoreQrcode: () => http.get<StoreQrcode>(E.mStoreQrcode.path),
   mShareKit: (goodsNo) =>
@@ -196,6 +200,9 @@ export const httpApi: MerchantApi = {
     http.post<Order>(E.mVerify.path, { verifyCode: code } satisfies VerifyReq),
   mVerifyBatch: (codes) =>
     http.post<VerifyBatchResult>(E.mVerifyBatch.path, { verifyCodes: codes } satisfies VerifyBatchReq),
+  // 按码片段搜单：输码核销失败后的兜底，keyword 走 query
+  mVerifySearch: (keyword) =>
+    http.get<Order[]>(E.mVerifySearch.path, { keyword }),
 
   mAfterSaleList: () => http.get<AfterSale[]>(E.mAfterSaleList.path),
   mApproveAfterSale: (afterSaleNo, reply) =>

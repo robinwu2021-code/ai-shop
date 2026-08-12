@@ -5,7 +5,7 @@
 
 ## 一、总览
 
-全库 **85** 张表、**139** 条引用关系，分 **12** 个域。
+全库 **87** 张表、**143** 条引用关系，分 **14** 个域。
 按「被引用次数」分三条带 —— **不是有向无环图**：域之间存在环
 （`cmt → mkt → usr → cmt`），强行分层会画错。
 
@@ -13,7 +13,8 @@
 
 | 域 | 前缀 | 表数 | 被几个域引用 |
 |---|---|---:|---:|
-| 用户与商家 | `usr_*` | 4 | 10 |
+| 消费者账号 | `usr_*` | 4 | 10 |
+| 商家主体与门店 | `mch_*` | 15 | 9 |
 | 社区与自提点 | `cmt_*` | 3 | 8 |
 | 商品与类目 | `prd_*` | 8 | 5 |
 | 购物车 | `trd_*` | 1 | 0 |
@@ -21,18 +22,19 @@
 | 履约 | `ful_*` | 3 | 0 |
 | 营销与团购 | `mkt_*` | 12 | 3 |
 | 积分 | `pts_*` | 2 | 0 |
-| 结算 | `stl_*` | 6 | 0 |
+| 结算 | `stl_*` | 7 | 0 |
 | 评价 | `rvw_*` | 3 | 0 |
 | 消息与客服 | `msg_*` | 4 | 0 |
+| 内容 | `cnt_*` | 4 | 0 |
 | 系统 | `sys_*` | 16 | 0 |
 
 > `usr` 被 10 个域引用 —— 它是全库的锚点。改它的主键或语义，影响面是全局的。
 
 ## 二、分域
 
-### 用户与商家 `usr_*`（4 张）
+### 消费者账号 `usr_*`（4 张）
 
-![用户与商家表关系](../diagrams/db-usr.svg)
+![消费者账号表关系](../diagrams/db-usr.svg)
 
 | 表 | 说明 |
 |---|---|
@@ -42,6 +44,30 @@
 | `usr_identity` | 用户登录凭证。一个人多条，新增来源只是多一行，不再改表 |
 
 **跨域引用**：`usr_store_favorite.entity_no` → `mch_entity`、`usr_account.community_no` → `cmt_community`、`usr_account.pickup_no` → `cmt_pickup_point`、`usr_account.entity_no` → `mch_entity`
+
+### 商家主体与门店 `mch_*`（15 张）
+
+![商家主体与门店表关系](../diagrams/db-mch.svg)
+
+| 表 | 说明 |
+|---|---|
+| `mch_entity` | 经营主体：一张营业执照的经营实体。收款商户号在 mch_payment_merchant，门店经 mch_store.entity_no 关联（可切换执照） |
+| `mch_entity_apply` | 入驻申请：审核通过时创建 mch_entity 并回填 entity_no（幂等判据应按本表，不按人） |
+| `mch_entity_community` | 商家覆盖的社区（scope=COMMUNITY 时生效） |
+| `mch_payment_merchant` | 收款商户号：进件产物 sub_mchid，每主体×每通道一条。全库唯一合法的 merchant 用法 |
+| `mch_account` | 商家账号：B 端登录账号（login_phone 注册，与消费者账号彻底独立）。当前一行同时承载对主体的成员关系，门店角色见 mch_store_role |
+| `mch_store_role` | 子账号在各门店的角色（每店一个角色） |
+| `mch_store` | 门店：顾客感知的边界（地址/营业时间/库存/评价/履约）。关联主体可切换（换执照店照开）；每主体恰好一个默认店 |
+| `mch_violation` | 商家违规与处置记录：结论在 mch_entity.breach_count，事实在这里 |
+| `mch_store_audit` | 店招与公告的人审队列：只有机审命中的才进来 |
+| `mch_qualification` | 商家资质。结构化存证件类型/编号/有效期，供到期扫描与上架校验 |
+| `mch_admission_policy` | 准入策略：按 legal_form 档位配置，不按商户配置 |
+| `mch_deposit` | 保证金账户，一商户一行 |
+| `mch_deposit_txn` | 保证金流水 |
+| `mch_service_area` | 商家的地理覆盖项：一行一条，可跨粒度组合 |
+| `mch_staff_log` | 员工与授权的操作日志：谁在什么时候把谁的角色改成了什么 |
+
+**跨域引用**：`mch_entity_apply.user_no` → `usr_account`、`mch_entity_community.community_no` → `cmt_community`、`mch_account.user_no` → `usr_account`
 
 ### 社区与自提点 `cmt_*`（3 张）
 
@@ -140,7 +166,7 @@
 
 **跨域引用**：`pts_user_account.user_no` → `usr_account`、`pts_user_ledger.user_no` → `usr_account`、`pts_user_ledger.issuer_merchant_no` → `mch_entity`、`pts_user_ledger.sub_order_no` → `ord_sub_order`
 
-### 结算 `stl_*`（6 张）
+### 结算 `stl_*`（7 张）
 
 ![结算表关系](../diagrams/db-stl.svg)
 
@@ -152,8 +178,9 @@
 | `stl_split_log` | 分账指令与回执（append-only） |
 | `stl_purchase_invoice` | 采购进项票登记（自营）。供应商开给平台，平台据此列支成本 |
 | `stl_fee_rule` | 费率规则：经营模式 × 流量来源，按生效时间分版本 |
+| `stl_recon_diff` | 对账差异：平台侧自查与渠道账单比对的产出，逐条人工裁决 |
 
-**跨域引用**：`stl_bill.sub_order_no` → `ord_sub_order`、`stl_bill.order_no` → `ord_order`、`stl_bill.entity_no` → `mch_entity`、`stl_bill.store_no` → `mch_store`、`stl_bill.pay_merchant_no` → `mch_payment_merchant`、`stl_payment.order_no` → `ord_order`、`stl_payment.sub_order_no` → `ord_sub_order`、`stl_payment.after_sale_no` → `ord_after_sale`、`stl_payment.user_no` → `usr_account`、`stl_payment.entity_no` → `mch_entity`、`stl_points_pool.entity_no` → `mch_entity`、`stl_split_log.sub_order_no` → `ord_sub_order`、`stl_purchase_invoice.entity_no` → `mch_entity`
+**跨域引用**：`stl_bill.sub_order_no` → `ord_sub_order`、`stl_bill.order_no` → `ord_order`、`stl_bill.entity_no` → `mch_entity`、`stl_bill.store_no` → `mch_store`、`stl_bill.pay_merchant_no` → `mch_payment_merchant`、`stl_payment.order_no` → `ord_order`、`stl_payment.sub_order_no` → `ord_sub_order`、`stl_payment.after_sale_no` → `ord_after_sale`、`stl_payment.user_no` → `usr_account`、`stl_payment.entity_no` → `mch_entity`、`stl_points_pool.entity_no` → `mch_entity`、`stl_split_log.sub_order_no` → `ord_sub_order`、`stl_purchase_invoice.entity_no` → `mch_entity`、`stl_recon_diff.order_no` → `ord_order`
 
 ### 评价 `rvw_*`（3 张）
 
@@ -179,6 +206,19 @@
 | `msg_template` | 消息模板。停用即刻生效，引用它的推送发不出去 |
 
 **跨域引用**：`msg_message.user_no` → `usr_account`、`msg_subscribe.user_no` → `usr_account`、`msg_ticket.user_no` → `usr_account`、`msg_ticket.order_no` → `ord_order`
+
+### 内容 `cnt_*`（4 张）
+
+![内容表关系](../diagrams/db-cnt.svg)
+
+| 表 | 说明 |
+|---|---|
+| `cnt_post` | 种草内容与审核结果 |
+| `cnt_question` | 商品问答 |
+| `cnt_ranking` | 榜单配置 |
+| `cnt_material` | 运营素材 |
+
+**跨域引用**：`cnt_post.community_no` → `cmt_community`、`cnt_post.sku_no` → `prd_sku`、`cnt_question.sku_no` → `prd_sku`
 
 ### 系统 `sys_*`（16 张）
 

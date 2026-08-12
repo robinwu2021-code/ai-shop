@@ -59,6 +59,7 @@
 | [domain-model](./reference/domain-model.md) | 草稿（待确认） |
 | [三端功能点矩阵](./reference/三端功能点矩阵.md) | — |
 | [B端功能矩阵-按角色](./reference/B端功能矩阵-按角色.md) | B 端 6 角色 × 13 权限点 × 62 端点（`gen-biz-role-matrix.mjs` 生成） |
+| [B端功能点-权限码-页面](./reference/B端功能点-权限码-页面.md) | 功能视角：62 个功能点归哪个码、画在哪一页；含「页面门禁 vs 实际所需」对照（`gen-biz-feature-perm-matrix.mjs` 生成） |
 | [B端权限方案](./reference/B端权限方案.md) | 判权机制：角色挂「人×门店」、为何不用 hasAuthority、认证/授权/数据范围三层 |
 | [产品架构与实体关系](./reference/产品架构与实体关系.md) | — |
 | [全域命名基准](./reference/全域命名基准.md) | — |
@@ -113,6 +114,7 @@
 
 | 文档 | 状态 |
 |---|---|
+| [B端权限对接-整改清单](./design/B端权限对接-整改清单.md) | 需求→后端→前端→产物四层盘点：A–E 五组 22 条问题 |
 | [B端权限端到端用例](./design/B端权限端到端用例.md) | — |
 | [业务模型-账号商户门店与增长](./design/业务模型-账号商户门店与增长.md) | 设计待确认（部分已落地） |
 | [商户主数据与门店-方案](./design/商户主数据与门店-方案.md) | 主数据已落地 V40/V41 |
@@ -129,6 +131,7 @@
 
 | 文档 | 状态 |
 |---|---|
+| [TDD-B端权限对接整改](./design/TDD-B端权限对接整改.md) | 已确认 · 16 项任务的方案与三处选型拍板 |
 | [TDD-b-app](./design/TDD-b-app.md) | M0–M5 全部已实现（2026-08-05） |
 | [TDD-backend](./design/TDD-backend.md) | 草稿（待确认） |
 | [TDD-c-app](./design/TDD-c-app.md) | 已确认（2026-08-05） |

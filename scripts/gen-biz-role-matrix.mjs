@@ -20,11 +20,23 @@ const OUT = join(ROOT, "docs/technical/reference/B端功能矩阵-按角色.md")
 const permSrc = readFileSync(PERMS, "utf8");
 const testSrc = readFileSync(TEST, "utf8");
 
-// 权限常量 + 紧邻其上的行注释当含义。取不到注释就留空 —— 不编。
+// 权限常量 + 紧邻其上的注释当含义。取不到注释就留空 —— 不编。
+//
+// **不要用一个正则把「注释 + 字段」一起匹配**：`/\**([\s\S]*?)\*\//` 是惰性的，
+// 但当它前面那段不是注释时，整个可选组会从**更早的**那个 `/**` 开始匹配 ——
+// 于是第一个常量（RECEIVE）的含义变成了类 javadoc 的第一句
+// 「B 端权限码与角色定义」，而后面每一个都是对的，看起来像手滑而不是 bug。
+//
+// 改成：先定位字段，再往回取「最后一个 /** … */」——注释块之间不可能嵌套，
+// 所以「最后一个」必然是紧邻它的那一个。
 const perms = new Map();
-for (const m of permSrc.matchAll(/(?:\/\*\*([\s\S]*?)\*\/\s*|\/\/\s*([^\n]*)\n\s*)?public static final String ([A-Z_]+) = "(biz:[a-z:]+)";/g)) {
-  const doc = (m[1] || m[2] || "").replace(/\s*\*\s?/g, " ").replace(/<[^>]+>/g, "").trim();
-  perms.set(m[3], { code: m[4], doc: doc.split("。")[0].slice(0, 40) });
+for (const m of permSrc.matchAll(/public static final String ([A-Z_]+) = "(biz:[a-z:]+)";/g)) {
+  const before = permSrc.slice(0, m.index);
+  const open = before.lastIndexOf("/**");
+  const close = before.lastIndexOf("*/");
+  const raw = open > -1 && close > open ? before.slice(open + 3, close) : "";
+  const doc = raw.replace(/\s*\*\s?/g, " ").replace(/<[^>]+>/g, "").trim();
+  perms.set(m[1], { code: m[2], doc: doc.split("。")[0].slice(0, 40) });
 }
 
 // 角色 → 权限

@@ -60,6 +60,27 @@ function create() {
   });
 }
 
+/**
+ * 改名。
+ *
+ * **地址一起带过去**：`mRenameStore` 收的是整个 `StoreEditReq`，
+ * 只传 name 的话地址会被后端当成「改成空」——「改个名字顺手把地址清了」
+ * 是那种要过很久才有人发现的错。改地址本身另说，这里只保证不弄丢它。
+ */
+function rename(s: Store) {
+  uni.showModal({
+    title: t("stores.rename"),
+    editable: true,
+    placeholderText: t("stores.namePh"),
+    content: s.name,
+    success: (r) => {
+      const name = (r.content ?? "").trim();
+      if (!r.confirm || !name || name === s.name) return;
+      run(() => api.mRenameStore(s.storeNo, { name, address: s.address }));
+    },
+  });
+}
+
 /** 停用是「不再接新单」，已有的单照常履约 —— 文案要说清，否则没人敢点 */
 function toggleStatus(s: Store) {
   run(() => api.mSetStoreStatus(s.storeNo, s.status !== "ACTIVE"));
@@ -120,6 +141,11 @@ function pickPayment(s: Store, payMerchantNo?: string) {
       </view>
 
       <view class="acts">
+        <!--
+          改名。后端与契约一直都在，**这一页却只有建店/停用/设默认/挂收款号四个动作** ——
+          于是开错一个字的店名只能停用重建，而重建会丢掉这家店的历史。
+        -->
+        <text class="act" @tap="rename(s)">{{ $t("stores.rename") }}</text>
         <text v-if="!s.isDefault && s.status === 'ACTIVE'" class="act" @tap="makeDefault(s)">
           {{ $t("stores.setDefault") }}
         </text>

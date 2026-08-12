@@ -69,6 +69,27 @@ public class OrdSubOrder extends BaseEntity {
 
     private String addressId;
 
+    /**
+     * 收件人快照（V69）。<b>不靠 {@link #addressId} 现查</b> ——
+     * {@code usr_address} 可改可删：买家下完单改成新家，商家看到的就跟着变了，
+     * 而货已经按旧地址在路上；删掉的话查出来是空，页面上什么提示都没有。
+     *
+     * <p>与上面 {@link #pickupName} 是同一个道理。
+     */
+    private String receiverName;
+
+    /**
+     * 收件人手机号，<b>库里存完整号</b>。
+     *
+     * <p>下发口径不在这里定，在 {@code MerchantOrderServiceImpl}：
+     * 自送单给完整（送不到就得打电话），其余履约方式给后四位（B12）。
+     * 存完整是因为这是这张单自己的数据 —— 不存的话事后补不回来。
+     */
+    private String receiverPhone;
+
+    /** 收货地址快照（省市区 + 详细）。自提单为空 */
+    private String receiverAddress;
+
     /** MERCHANT_OWNED / PLATFORM —— 决定费率档位，下单时固化。 */
     private String trafficSource;
 

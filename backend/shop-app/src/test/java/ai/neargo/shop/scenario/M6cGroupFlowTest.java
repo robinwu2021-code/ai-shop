@@ -74,6 +74,36 @@ class M6cGroupFlowTest {
     }
 
     @Test
+    @DisplayName("★★ 锁价后：`/quote` 拒、`/revise` 放 —— **两个入口口径不同是有意的**")
+    void quoteAndReviseDifferAfterLock() throws Exception {
+        String owner = login("12900129021");
+        String requestNo = createRequest(owner, "求团：折叠梯");
+        String biz = loginAsOwnerOf("M0001", "12900129022");
+        String quoteNo = quote(biz, requestNo, 8800L, 3, 7);
+        choose(owner, requestNo, quoteNo);
+
+        /*
+         * **这条测试存在的理由是防止「顺手统一」** —— 我就差点这么干过。
+         *
+         * 两个入口做的是同一件事（改价），对「已锁价」的判断却相反：
+         *   · quote(requestNo)：直接拒。这张需求单已经选定了别人／已关闭，
+         *     再收报价「只会让商家以为还有机会」。
+         *   · revise(quoteNo)：放行。锁价保护的是**成交快照**（chosenQuote 里的价），
+         *     而这张报价对**后续**邻居仍然有效 —— 见 chosenQuoteLocksPrice。
+         *
+         * 看起来像不一致，实际是两个问题的两个答案。谁要统一它们，
+         * 先让这条红一次，然后回答：统一之后上面那两句话哪一句不再成立。
+         */
+        mvc().perform(post("/biz/group-request/" + requestNo + "/quote")
+                        .header("Authorization", "Bearer " + biz)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"unitPriceMinor\":9900,\"minQty\":3,\"validDays\":7}"))
+                .andExpect(jsonPath("$.code").value(20004));
+
+        revise(biz, quoteNo, 9900L);   // 同一件事，这条路放行
+    }
+
+    @Test
     @DisplayName("★ 改价必须留痕并公示，涨价单独标记")
     void priceRevisionIsPublic() throws Exception {
         String owner = login("12900129003");

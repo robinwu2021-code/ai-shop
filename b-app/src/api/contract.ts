@@ -19,6 +19,7 @@ import type {
   I18nText,
   MasterData,
   MerchantStaff,
+  StaffLog,
   Store,
   PaymentApplyment,
   MerchantApplyReq,
@@ -257,6 +258,14 @@ export interface MerchantApi {
 
   mGrantStore(mchAccountNo: string, storeNo: string, role: StaffRole,
               granted?: boolean): Promise<MerchantStaff>;
+  /**
+   * 员工与授权的变更记录。**与员工管理同一档权限**（老板）——
+   * 「谁给谁加了什么权限」本身就是权限信息，能看它的人不该比能改它的人多。
+   *
+   * @param mchAccountNo 只看某个人的；不传看全部
+   */
+  mStaffLogs(mchAccountNo?: string): Promise<StaffLog[]>;
+
   mStoreQrcode(): Promise<StoreQrcode>;
   /** 分享素材：整店或单品。文案要带「还差 N 人」这类可直接转发的内容 */
   mShareKit(goodsNo?: string): Promise<ShareKit>;
@@ -307,7 +316,13 @@ export interface MerchantApi {
 
   // ---- 订单与配送（B-11.4）
   /** `status` 用 `OrderStatus` 而不是 `string` —— 松成 string 后，前端传个 "toShip"
-   *  这种 tab key 上去也编译得过，而服务端只认状态枚举（由 requests.ts 的 satisfies 抓出） */
+   *  这种 tab key 上去也编译得过，而服务端只认状态枚举（由 requests.ts 的 satisfies 抓出）
+   *
+   *  ⚠️ **配送员拿到的是裁剪档**：只有 `COURIER` 一个角色的人，后端返回
+   *  `CourierOrderVO`（`orderNo` / `status` / `fulfillment` / `itemQty` / `createdAt`），
+   *  **没有 `amount`、没有 `verifyCode`、没有 `items`**（需求 §4.4：他送的是货不是钱）。
+   *  类型这里仍声明为 `Order` —— 收窄成联合类型会让每个用到订单的页面都要分支，
+   *  而只有配送页会遇到裁剪档。**用到金额的地方按字段有无渲染**，别按角色判。 */
   mOrderList(q: PageQuery & { status?: OrderStatus; allStores?: boolean }): Promise<PageResult<Order>>;
   mOrderDetail(orderNo: string): Promise<Order>;
   /** 快递发货：回填运单号 */
@@ -337,6 +352,14 @@ export interface MerchantApi {
    * **逐条尝试、失败逐条回报**，不整批回滚 —— 一张废码不该让另外四单白扫。
    */
   mVerifyBatch(codes: string[]): Promise<VerifyBatchResult>;
+  /**
+   * 按取货码**片段**搜单。输码核销的兜底之兜底：
+   * 码磨花了、屏幕反光、邻居只记得后四位时，全码输入这条路也走不通。
+   *
+   * 返回的是 `Order`，端上据此让店主确认是哪一单再核销 ——
+   * **不直接核销**：模糊匹配可能命中多单，替他选一单是替他承担风险。
+   */
+  mVerifySearch(keyword: string): Promise<Order[]>;
 
   // ---- 售后（B-11.5）
   /**

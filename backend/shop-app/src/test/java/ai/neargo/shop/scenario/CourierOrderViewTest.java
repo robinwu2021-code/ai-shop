@@ -30,7 +30,9 @@ class CourierOrderViewTest {
                             990L, 1, 990L, "GOODS", false)),
             OrderVO.Amount.of(2150L, 300L, 0L, 2450L, "CNY"),
             "8812", "PK-1", "小区自提点", null, 1_700_000_000_000L, null,
-            null, "MERCHANT_OWNED", List.of(), null);
+            null, "MERCHANT_OWNED",
+            new OrderVO.Receiver("王先生", "13800001234", "杭州市西湖区文三路 100 号"),
+            List.of(), null);
 
     // ---------------------------------------------------------------- 谁该被裁
 
@@ -96,6 +98,16 @@ class CourierOrderViewTest {
                 .isEqualTo("SUB-1");
         assertThat(cut.status()).isEqualTo("TO_DELIVER");
         assertThat(cut.itemQty()).as("件数要合计：他要知道搬几件").isEqualTo(3);
+
+        /*
+         * **裁剪不能把他干活要的东西也裁掉**。第一版就只裁不给 ——
+         * 结果配送员拿到一个「没有金额、也没有地址」的单号列表，比裁剪之前更没法用。
+         */
+        assertThat(cut.receiver()).as("配送员必须拿得到收件人").isNotNull();
+        assertThat(cut.receiver().address()).isEqualTo("杭州市西湖区文三路 100 号");
+        assertThat(cut.receiver().phone())
+                .as("自送单给完整号 —— 送到楼下找不到人就得打电话")
+                .isEqualTo("13800001234");
     }
 
     @Test
@@ -109,7 +121,7 @@ class CourierOrderViewTest {
     @DisplayName("★ 空明细的单件数为 0，不抛异常")
     void toleratesEmptyItems() {
         OrderVO noItems = new OrderVO("SUB-2", null, "PAID", "MERCHANT_DELIVERY", "M-1", null,
-                null, null, null, null, null, null, 0L, null, null, null, List.of(), null);
+                null, null, null, null, null, null, 0L, null, null, null, null, List.of(), null);
         assertThat(CourierOrderVO.of(noItems).itemQty()).isZero();
     }
 }

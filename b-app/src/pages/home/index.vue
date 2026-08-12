@@ -104,6 +104,12 @@ async function load() {
   // 门店要先定下来：它决定后面这一屏所有数字属于哪家店
   await merchant.loadStores();
   /*
+   * 再等权限到位。`loadStores` 里的 `switchStore` 只是**触发**了 loadScope
+   * （`void this.loadScope()`，没有 await），所以紧接着读 `can()` 是一场竞态 ——
+   * 输了的表现是：老板的经营数据/进件状态这一屏静悄悄地少几块，刷新一下又有了。
+   */
+  await merchant.ensureScope();
+  /*
    * 三段状态与待办一起取：分开取的话「能不能收钱」会晚一拍出现，
    * 而那一拍里工作台看着是全绿的。
    *
@@ -115,11 +121,16 @@ async function load() {
    *
    * 拿不到就是拿不到：下面每一块都自己判空，少一块比整屏没了强得多。
    */
+  /*
+   * **没权限的先别发**。catch 已经保证了不会整屏空白，但对店员来说
+   * 后三条是每次进首页都必然 403 的请求 —— 日志里三条噪音、首屏多三个来回，
+   * 而它们的结果本来就不会被画出来（`blockers` 与 `stats` 卡片各自判过 `can()`）。
+   */
   [todo.value, stats.value, payments.value, store.value] = await Promise.all([
     api.mTodo().catch(() => null),
-    api.mStats().catch(() => null),
-    api.mPayments().catch(() => []),
-    api.mStore().catch(() => null),
+    merchant.can("biz:customer") ? api.mStats().catch(() => null) : null,
+    merchant.can("biz:finance") ? api.mPayments().catch(() => []) : [],
+    merchant.can("biz:store") ? api.mStore().catch(() => null) : null,
   ]);
 }
 

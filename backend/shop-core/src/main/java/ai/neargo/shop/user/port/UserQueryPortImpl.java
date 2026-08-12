@@ -24,9 +24,42 @@ public class UserQueryPortImpl implements UserQueryPort {
     private static final int TAIL = 4;
 
     private final UserMapper userMapper;
+    private final ai.neargo.shop.user.mapper.UserMappers.AddressMapper addressMapper;
 
-    public UserQueryPortImpl(UserMapper userMapper) {
+    public UserQueryPortImpl(UserMapper userMapper,
+                             ai.neargo.shop.user.mapper.UserMappers.AddressMapper addressMapper) {
         this.userMapper = userMapper;
+        this.addressMapper = addressMapper;
+    }
+
+    /**
+     * 取收货地址用于**下单时快照**。这是本类「只给后四位」那条规则的唯一例外，
+     * 理由见 {@link UserQueryPort#receiverOf}：快照存的是这张单的事实，不是这个人的资料。
+     */
+    @Override
+    public Optional<Receiver> receiverOf(String userNo, String addressId) {
+        if (userNo == null || userNo.isBlank() || addressId == null || addressId.isBlank()) {
+            return Optional.empty();
+        }
+        /*
+         * **要带 userNo 条件**：地址表按 SELF 收窄，而下单是买家自己的会话，
+         * 本来就查得到自己的地址。加这个条件是第二道 —— 万一将来这个 Port
+         * 被一个不带用户上下文的路径调用（比如运营补单），它不该能拿到别人的地址。
+         */
+        ai.neargo.shop.user.entity.UsrAddress a = addressMapper.selectOne(
+                Wrappers.<ai.neargo.shop.user.entity.UsrAddress>lambdaQuery()
+                        .eq(ai.neargo.shop.user.entity.UsrAddress::getAddressId, addressId)
+                        .eq(ai.neargo.shop.user.entity.UsrAddress::getUserNo, userNo)
+                        .last("limit 1"));
+        if (a == null) {
+            return Optional.empty();
+        }
+        String full = nz(a.getProvince()) + nz(a.getCity()) + nz(a.getDistrict()) + nz(a.getDetail());
+        return Optional.of(new Receiver(a.getName(), a.getPhone(), full));
+    }
+
+    private static String nz(String s) {
+        return s == null ? "" : s;
     }
 
     @Override

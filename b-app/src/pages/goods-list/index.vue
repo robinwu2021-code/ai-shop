@@ -127,7 +127,12 @@ onShow(load);
 </script>
 
 <template>
-  <sh-scaffold title-key="goods.title" tab="goods">
+  <!--
+    列表本身要 `biz:stock`（`/biz/goods`）。**它是 tabBar 四页之一**，
+    客服与配送员没有这个码 —— 不判的话他们每天点一次「商品」，每天吃一个 70006 toast，
+    而页内那几个按钮反倒早就按 can() 裁好了。门禁漏的偏偏是列表这一件必做的事。
+  -->
+  <sh-scaffold title-key="goods.title" tab="goods" :denied="!merchant.can('biz:stock')">
     <view class="bar">
       <sh-tabs
         :items="TABS.map((t) => ({ key: t.key, label: String($t(t.labelKey)) }))"

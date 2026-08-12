@@ -73,6 +73,8 @@ public final class BizKey {
     public static final String RANKING = "RK";
     /** 运营素材 */
     public static final String MATERIAL = "MT";
+    /** 员工与授权的操作日志（B-11.10.3） */
+    public static final String STAFF_LOG = "SL";
 
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
     private static final AtomicInteger SEQ = new AtomicInteger(0);

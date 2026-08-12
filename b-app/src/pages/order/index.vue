@@ -7,24 +7,32 @@ import { computed, ref } from "vue";
 import { onLoad } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
 import { api } from "@/api";
+import { useMerchantStore } from "@/stores/merchant";
 import { money } from "@shared/utils/money";
 import { datetime } from "@shared/utils/datetime";
 import { FULFILLMENT } from "@shared/utils/constants";
 import type { Order } from "@shared/types";
 
 const { t } = useI18n();
+const merchant = useMerchantStore();
 
 const order = ref<Order | null>(null);
 const expressNo = ref("");
 const busy = ref(false);
 
 /** 快递单且已付款 → 该发货 */
+/*
+ * **状态对 + 有权限，两个都要**。原先只判状态：客服有 `biz:order:view` 能进详情页，
+ * 于是「发货」按钮画给了他，点下去 70006 —— 而他既不该发货，也没有任何办法拿到这个权限。
+ */
 const canShip = computed(
-  () => order.value?.fulfillment === FULFILLMENT.EXPRESS && order.value?.status === "PAID",
+  () => order.value?.fulfillment === FULFILLMENT.EXPRESS && order.value?.status === "PAID"
+    && merchant.can("biz:ship"),
 );
-/** 自送单且已付款 → 该送 */
+/** 自送单且已付款 → 该送。同样两个都要判（见 {@link canShip}） */
 const canDeliver = computed(
-  () => order.value?.fulfillment === FULFILLMENT.DELIVERY && order.value?.status === "PAID",
+  () => order.value?.fulfillment === FULFILLMENT.DELIVERY && order.value?.status === "PAID"
+    && merchant.can("biz:ship"),
 );
 
 async function load(orderNo: string) {
@@ -63,7 +71,8 @@ onLoad((q) => {
 </script>
 
 <template>
-  <sh-scaffold title-key="order.detail">
+  <!-- 正常入口（订单列表）已判过一次，这里是给刷新与深链兜底 -->
+  <sh-scaffold title-key="order.detail" :denied="!merchant.can('biz:order:view')">
     <template v-if="order">
       <view class="sh-card">
         <view class="line">
@@ -87,6 +96,21 @@ onLoad((q) => {
           <text class="sh-chip sh-chip--primary">
             {{ $t(`order.traffic${order.trafficSource}`) }}
           </text>
+        </view>
+        <!--
+          收件人。自提单没有这一段（货在自提点，不送）。
+          手机号的脱敏程度后端已经按履约方式定好了，这里原样显示 ——
+          端上再判一次就是第二套规则。
+        -->
+        <view v-if="order.receiver?.address" class="line line--wrap">
+          <text class="sh-muted">{{ $t("order.receiver") }}</text>
+          <view class="recv">
+            <text class="recv__who">
+              {{ order.receiver.name || "—" }}
+              <text v-if="order.receiver.phone" class="sh-num">　{{ order.receiver.phone }}</text>
+            </text>
+            <text class="recv__addr">{{ order.receiver.address }}</text>
+          </view>
         </view>
       </view>
 
@@ -149,6 +173,28 @@ onLoad((q) => {
   align-items: center;
   justify-content: space-between;
   padding: 10rpx 0;
+}
+/* 地址是长文本，跟着基线对齐会把标签顶歪 */
+.line--wrap {
+  align-items: flex-start;
+  gap: 32rpx;
+}
+.recv {
+  flex: 1;
+  min-width: 0;
+  text-align: right;
+}
+.recv__who {
+  display: block;
+  font-size: 28rpx;
+  color: var(--sh-ink);
+}
+.recv__addr {
+  display: block;
+  margin-top: 4rpx;
+  font-size: 26rpx;
+  color: var(--sh-sub);
+  line-height: 1.4;
 }
 .item {
   display: flex;

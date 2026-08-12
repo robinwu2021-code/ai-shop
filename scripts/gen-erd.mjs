@@ -26,9 +26,20 @@ const OUT = join(ROOT, "docs/technical/reference/数据库-ER图.md");
 const DIAG = join(ROOT, "docs/technical/diagrams");
 const OUT_HTML = join(ROOT, "docs/technical/reference/数据库-ER图.html");
 
-/** 表名前缀 → 域。顺序即输出顺序 */
+/**
+ * 表名前缀 → 域。顺序即输出顺序。
+ *
+ * ⚠️ **这张表决定了什么会被画出来，也决定了什么会消失**：`domainOf` 认不出的前缀
+ * 既不进域列表、也不进任何一张图，而总表数是单独数出来的 ——
+ * 于是「全库 87 张表」下面那张域表加起来只有 68，**不报错，也没人会去加**。
+ *
+ * 2026-08-12 补了 `mch` 与 `cnt` 两个域（19 张表）。`mch_*` 里包括
+ * `mch_store_role` —— B 端整套角色权限就挂在它上面，而它此前在 ER 图里根本不存在。
+ * 加新域的表时，**这里要跟着加一行**。
+ */
 const DOMAINS = [
-  ["usr", "用户与商家"],
+  ["usr", "消费者账号"],
+  ["mch", "商家主体与门店"],
   ["cmt", "社区与自提点"],
   ["prd", "商品与类目"],
   ["trd", "购物车"],
@@ -39,6 +50,7 @@ const DOMAINS = [
   ["stl", "结算"],
   ["rvw", "评价"],
   ["msg", "消息与客服"],
+  ["cnt", "内容"],
   ["sys", "系统"],
 ];
 

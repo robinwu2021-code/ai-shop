@@ -20,15 +20,19 @@ function statusChip(status: OrderStatus): string {
   return "";
 }
 
-const TABS: { key: string; status?: OrderStatus; labelKey: string }[] = [
+const ALL_TABS: { key: string; status?: OrderStatus; labelKey: string; perm?: string }[] = [
   { key: "all", labelKey: "order.tabAll" },
   { key: "toShip", status: "PAID", labelKey: "order.tabToShip" },
   { key: "shipped", status: "SHIPPED", labelKey: "order.tabShipped" },
   { key: "toVerify", status: "ARRIVED", labelKey: "order.tabToVerify" },
   { key: "done", status: "COMPLETED", labelKey: "order.tabDone" },
   // 售后不按订单状态筛 —— 它是另一张单，走 /biz/after-sale（见 load()）
-  { key: "afterSale", labelKey: "order.tabAfterSale" },
+  // 而那张单要 `biz:aftersale`：这一页的门禁只有 `biz:order:view`，
+  // 店员与配送员进得来但点不开这个 tab。**跟着自己的权限走**，与工作台待办格子同一手法。
+  { key: "afterSale", labelKey: "order.tabAfterSale", perm: "biz:aftersale" },
 ];
+
+const TABS = computed(() => ALL_TABS.filter((t) => !t.perm || merchant.can(t.perm)));
 
 const tab = ref("all");
 const list = ref<Order[]>([]);
@@ -60,7 +64,7 @@ async function load() {
       const res = await api.mOrderList(scope);
       list.value = res.records.filter((o) => nos.has(o.orderNo));
     } else {
-      const status = TABS.find((t) => t.key === tab.value)?.status;
+      const status = ALL_TABS.find((t) => t.key === tab.value)?.status;
       const res = await api.mOrderList({ ...scope, status });
       list.value = res.records;
     }

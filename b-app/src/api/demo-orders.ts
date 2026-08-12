@@ -66,6 +66,21 @@ function build(
     createdAt: at,
     timeline: [{ status: "PAID", label: "已支付", at }],
     buyerNickname: buyer,
+    /*
+     * 收件人快照。**自提单没有**（货在自提点，不送）。
+     *
+     * 手机号跟着真实口径走：自送给完整号（配送员站在楼下要打电话），
+     * 快递给脱敏号 —— mock 里也照这个分档，否则页面在 mock 下看着是对的，
+     * 接上真后端才发现「配送员点电话没反应」。
+     */
+    receiver:
+      fulfillment === FULFILLMENT.PICKUP
+        ? undefined
+        : {
+            name: buyer,
+            phone: fulfillment === FULFILLMENT.DELIVERY ? "13800001234" : "****1234",
+            address: "杭州市西湖区文三路 100 号 3 幢 502",
+          },
     trafficSource,
     // 拆单后一单只属于一个商家（E3）—— 演示单也照这个粒度造，
     // 否则 B 端会走进「兼容历史单」的回退分支，验证不到真实路径

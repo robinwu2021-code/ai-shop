@@ -42,7 +42,9 @@ public class PlatformOrderServiceImpl implements PlatformOrderService {
                                 nz(s.getDiscountAmount()), nz(s.getPayAmount()), "CNY"),
                         s.getVerifyCode(), s.getPickupNo(), s.getPickupName(),
                         // 平台侧也要看得到快递单号：客服处理「货到哪了」全靠它
-                        null, 0L, null, s.getExpressNo(), s.getTrafficSource(), List.of(), null))
+                        // 收件人先不下发：平台端列表是「查单」不是「送货」，
+                        // 真要给也该是另一档口径，别顺着商家那套走
+                        null, 0L, null, s.getExpressNo(), s.getTrafficSource(), null, List.of(), null))
                 .toList();
         return PageData.of(records, p.getTotal(), p.getCurrent(), p.getSize());
     }

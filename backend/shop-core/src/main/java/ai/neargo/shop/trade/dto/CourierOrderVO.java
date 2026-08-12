@@ -21,11 +21,13 @@ package ai.neargo.shop.trade.dto;
  *   <li><b>买家与商品明细</b> —— 自送只需要知道送几件到哪里</li>
  * </ul>
  *
- * <h2>⚠️ 收货地址还没有</h2>
- * 需求写的是「待自送的单 + <b>地址</b>」，而地址这一列<b>后端从来没下发过</b>：
- * {@code ord_sub_order} 上只有 {@code address_id}，{@link OrderVO} 里连字段都没有，
- * b-app 的配送页也没渲染过它。所以本次只完成「裁剪」这一半，
- * <b>「补地址」是一件独立的、当前对所有角色都缺失的能力</b>，另开任务。
+ * <h2>地址与电话：他唯一比别人多拿到的东西</h2>
+ * 需求写的是「待自送的单 + <b>地址</b>」。地址此前后端从来没下发过（V69 才补上快照），
+ * 所以这个类第一版只完成了「裁剪」那一半 —— 裁掉了金额，而他本来也没拿到地址。
+ *
+ * <p>现在两半都在：<b>无金额、无核销码，但有收件人与完整手机号</b>。
+ * 完整号是刻意的 —— 送到楼下找不到人就得打电话，给后四位等于让他站在原地干瞪眼
+ * （口径见 {@code MerchantOrderServiceImpl.receiverFor}，只有自送这一档放开）。
  *
  * @param orderNo     子单号。<b>字段名随 {@link OrderVO} 的订单视角</b>（那里的
  *                    {@code orderNo} 装的也是子单号）—— 换个名字的话，端上「标记送达」
@@ -41,7 +43,9 @@ public record CourierOrderVO(String orderNo,
                              String status,
                              String fulfillment,
                              int itemQty,
-                             long createdAt) {
+                             long createdAt,
+                             /** 收件人：姓名、电话、地址。**这是他干活唯一需要的那块** */
+                             OrderVO.Receiver receiver) {
 
     /**
      * 从完整视图裁下来。
@@ -52,6 +56,9 @@ public record CourierOrderVO(String orderNo,
     public static CourierOrderVO of(OrderVO o) {
         int qty = o.items() == null ? 0
                 : o.items().stream().mapToInt(OrderVO.ItemVO::qty).sum();
-        return new CourierOrderVO(o.orderNo(), o.status(), o.fulfillment(), qty, o.createdAt());
+        return new CourierOrderVO(o.orderNo(), o.status(), o.fulfillment(), qty, o.createdAt(),
+                // 收件人**原样带过来**：脱敏与否已经在装配 OrderVO 时按履约方式定过了，
+                // 在这里再判一次就是两处规则，而两处迟早分叉
+                o.receiver());
     }
 }

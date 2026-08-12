@@ -161,7 +161,7 @@ export default {
     statusREFUNDED: "Refunded",
     statusCANCELLED: "Cancelled",
     title: "Orders", tabAll: "All", tabToShip: "To ship", tabShipped: "Shipped", tabToVerify: "To redeem", tabDone: "Done", tabAfterSale: "After-sales",
-    no: "Order", createdAt: "Placed", amount: "Amount", fulfillment: "Fulfilment", buyer: "Buyer",
+    no: "Order", createdAt: "Placed", amount: "Amount", fulfillment: "Fulfilment", buyer: "Buyer", receiver: "Ship to",
     ship: "Ship", expressNo: "Tracking no.", delivered: "Delivered", detail: "Detail", empty: "No orders yet",
     trafficMERCHANT_OWNED: "Own customer", trafficPLATFORM: "Platform",
     items: "Items", shipped: "Shipped", deliveredDone: "Marked delivered",
@@ -170,6 +170,9 @@ export default {
   verify: {
     ovPending: "To redeem", ovBatches: "Arrived today", ovFee: "Service fee",
 
+    done: "Redeemed",
+    searchHint: "Not redeemed. Orders whose pickup code contains these digits — pick the right one:",
+    searchEmpty: "No order has a pickup code containing those digits. Ask the neighbour to check again.",
     batchEnter: "Batch redeem", batchAdd: "Add", batchScan: "Scan to add",
     batchSubmit: "Redeem {n} codes", batchOk: "{n} redeemed", batchExit: "Exit batch",
 
@@ -187,6 +190,7 @@ export default {
     title: "Self delivery", rule: "Delivery rules", radius: "Radius (m)", minOrder: "Minimum order",
     fee: "Delivery fee", freeThreshold: "Free delivery over", freeHint: "0 means never free",
     pending: "To deliver", empty: "Nothing to deliver",
+    noAddress: "No address on this order — check with the buyer",
     noRiderHint: "No rider tracking here — tap Delivered when you drop it off. Use third-party logistics if you need tracking.",
   },
   fulfillmentReach: {
@@ -242,7 +246,7 @@ export default {
     staffCount: "{n} staff authorised",
     payment: "Payouts to",
     payDefault: "Entity default",
-    setDefault: "Make default",
+    rename: "Rename", setDefault: "Make default",
     disable: "Disable",
     enable: "Enable",
     add: "+ New store",
@@ -261,6 +265,9 @@ export default {
     disabled: "Disabled",
     ownerNote: "The owner is not limited by per-store access — every store is theirs",
     noStore: "No store assigned yet — they will see nothing after signing in",
+    logs: "Change log",
+    logGrant: "Granted {role} at {store}", logRevoke: "Revoked {role} at {store}",
+    logAdd: "Added as staff", logEnable: "Enabled", logDisable: "Disabled (store access kept)", logsFold: "Hide log", logsEmpty: "No changes yet",
     editRoles: "Edit access",
     role: { MANAGER: "Manager", CLERK: "Clerk" },
     grantHint: "Tap the current role again to revoke access to that store",
@@ -372,6 +379,15 @@ export default {
   },
   settle: {
     rateTitle: "Fee rates",
+    pointsTitle: "Store points", pointsOn: "On", pointsOff: "Off", pointsForced: "On by platform",
+    pointsExpense: "{period} points service fee",
+    pointsHint: "The platform funds what buyers redeem; you only pay the issuing fee.",
+    pointsDetail: "See details", pointsFold: "Hide details",
+    pointsEmpty: "No issuing fees this period", pointsQty: "{n} pts",
+    pointsOnTitle: "Turn on store points?",
+    pointsOnHint: "Orders will start earning points, and an issuing fee applies.",
+    pointsOffTitle: "Turn off store points?",
+    pointsOffHint: "Future orders only — points already issued stay valid and fees already charged are not refunded.",
 
     title: "Settlement", empty: "Nothing to settle yet",
     net: "Net", gross: "Settlement base",

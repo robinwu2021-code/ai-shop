@@ -384,7 +384,7 @@ public class BizMerchantController {
 
     // ---------------------------------------------------------------- 员工与授权（B-11.10）
 
-    /** 员工列表（含停用的）。手机号脱敏 —— 完整号回显等于给店长一份可导出的通讯录。 */
+    /** 员工列表（含停用的）。手机号脱敏 —— 完整号回显等于一次交出全体员工的通讯录。 */
     @PreAuthorize("@perm.canBiz('" + BizPerms.STORE_ADMIN + "')")
     @GetMapping("/biz/staff")
     public List<StaffVO> staffList() {
@@ -424,6 +424,19 @@ public class BizMerchantController {
     public StaffVO grantStore(@PathVariable String mchAccountNo, @RequestBody GrantReq req) {
         return staffService.grantStore(BizContext.requireMerchantNo(), mchAccountNo,
                 req.storeNo(), req.role(), req.granted() == null || req.granted());
+    }
+
+    /**
+     * 员工与授权的变更记录（B-11.10.3）。
+     *
+     * <p>与员工管理三个端点<b>同一档权限</b>（`biz:store:admin`，只有老板）——
+     * 「谁给谁加了什么权限」本身就是权限信息，能看它的人不该比能改它的人多。
+     */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.STORE_ADMIN + "')")
+    @GetMapping("/biz/staff/logs")
+    public List<ai.neargo.shop.merchant.dto.StaffLogVO> staffLogs(
+            @RequestParam(required = false) String mchAccountNo) {
+        return staffService.logs(BizContext.requireMerchantNo(), mchAccountNo);
     }
 
     public record StaffReq(String loginPhone) {

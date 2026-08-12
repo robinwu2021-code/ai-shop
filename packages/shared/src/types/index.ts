@@ -983,6 +983,19 @@ export interface OrderAmount {
   currency: CurrencyCode;
 }
 
+/**
+ * 收件人。下单时固化在子订单上，**不是用户当前的地址簿条目**。
+ *
+ * 三端共用：C 端订单详情、B 端配送/发货、平台端查单。
+ */
+export interface OrderReceiver {
+  name?: string;
+  /** 脱敏程度由后端定，见 `Order.receiver` 的说明 */
+  phone?: string;
+  /** 省市区 + 详细，拼好的一行 */
+  address?: string;
+}
+
 export interface Order {
   /** 订单单号 */
   orderNo: string;
@@ -1016,6 +1029,17 @@ export interface Order {
   idempotencyKey?: string;
   /** 下单人昵称。团长视角（分拣单/核销台）要看得见是谁的单 */
   buyerNickname?: string;
+  /**
+   * 收件人（下单时的**快照**，自提单没有）。
+   *
+   * 快照而不是现查地址：买家下完单把地址改成新家，商家看到的就跟着变了，
+   * 而货已经按旧地址在路上。
+   *
+   * ⚠️ **`phone` 的脱敏程度由后端按履约方式决定**：商家自送给完整号
+   * （送到楼下找不到人就得打电话），其余履约方式给 `****1234`。
+   * 端上**不要自己判**要不要打码 —— 两处规则迟早分叉。
+   */
+  receiver?: OrderReceiver;
   /** 已评价 */
   reviewed?: boolean;
   /** 积分是否已发放（幂等标记，防止重复核销重复发分） */
@@ -1571,6 +1595,29 @@ export interface MerchantStaff {
   status: StaffStatus;
   /** 他在各门店的角色。老板为空 —— 不是"没授权"，是"不需要授权" */
   roles: StoreRole[];
+}
+
+/**
+ * 一条员工与授权的变更记录（B-11.10.3）。
+ *
+ * **授权变更是权限扩散的唯一入口** —— 加人、停用、给角色、撤角色。
+ * 别的动作都有业务单据兜底，唯独这几个此前做完就没了：
+ * 三个月后问「谁把张三提成了店长」，库里只有一行当前状态。
+ */
+export interface StaffLog {
+  /** 操作人手机号（脱敏）。取不到当时身份时为空 —— 空就是空，不写「系统」 */
+  actor?: string;
+  /** 被操作员工的手机号（脱敏） */
+  targetName?: string;
+  /** STAFF_ADD / STAFF_ENABLE / STAFF_DISABLE / ROLE_GRANT / ROLE_REVOKE */
+  action: string;
+  /** 涉及门店的名字。加人与启停为空 */
+  storeName?: string;
+  /** 涉及的角色码。加人与启停为空 */
+  role?: StaffRole;
+  /** 人能读的一句话，直接展示 */
+  detail?: string;
+  at: number;
 }
 
 export interface StoreRole {

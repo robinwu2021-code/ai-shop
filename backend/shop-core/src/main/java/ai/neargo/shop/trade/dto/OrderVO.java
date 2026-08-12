@@ -43,6 +43,14 @@ public record OrderVO(String orderNo,
                        */
                       String expressNo,
                       String trafficSource,
+                      /**
+                       * 收件人（V69 快照）。<b>自提单为 null</b>。
+                       *
+                       * <p>此前这一列在库里有 {@code address_id}、在 VO 里连字段都没有 ——
+                       * 于是「商家自送」这条链路上，<b>所有角色（含店主）都不知道送到哪里</b>，
+                       * 而页面上只有一个「已送达」按钮。
+                       */
+                      Receiver receiver,
                       List<TimelineNode> timeline,
                       /** **仅支付视角**：一次支付覆盖的各商家订单 */
                       List<OrderVO> subOrders) {
@@ -104,6 +112,18 @@ public record OrderVO(String orderNo,
                           * 既显示不了「赠」标，也无法与「商家把价格填成 0」区分开。
                           */
                          boolean isGift) {
+    }
+
+    /**
+     * 收件人。
+     *
+     * @param phone <b>脱敏与否由调用方决定</b>（见 {@code MerchantOrderServiceImpl}）：
+     *              商家自送给完整号 —— 送不到门口就得打电话，给后四位等于让人站在楼下干瞪眼；
+     *              其余履约方式给后四位（B12：商家不需要能打给每一个买家）。
+     *              <b>这条规则写在装配的地方，不写在这里</b> ——
+     *              record 只是形状，谁能看到多少是那一处的判断
+     */
+    public record Receiver(String name, String phone, String address) {
     }
 
     public record TimelineNode(String status, String label, long at) {

@@ -262,7 +262,15 @@ public class GroupServiceImpl implements GroupService {
     public QuoteVO quote(String merchantNo, String requestNo, QuoteCommand cmd) {
         MktRequest r = requireRequest(requestNo);
         if (r.getChosenQuoteNo() != null || MktRequest.CLOSED.equals(r.getStatus())) {
-            // 已锁价的单不再接受报价：接受了也没意义，只会让商家以为还有机会
+            /*
+             * 已锁价的单不再接受报价：接受了也没意义，只会让商家以为还有机会。
+             *
+             * ⚠️ **{@link #revise} 在同样的情况下是放行的，这是有意的** ——
+             * 那条路改的是「我这张报价的挂牌价」，对后续邻居仍然有效；
+             * 这条路问的是「这张需求单还收不收报价」，答案是不收。
+             * 两个入口做同一件事而口径相反，看着像不一致，实际是两个问题。
+             * `M6cGroupFlowTest.quoteAndReviseDifferAfterLock` 把这个差异钉住了。
+             */
             throw BizException.of(ErrorCode.ORDER_STATE_ILLEGAL);
         }
 
@@ -302,6 +310,17 @@ public class GroupServiceImpl implements GroupService {
         if (!q.getEntityNo().equals(merchantNo)) {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
+        /*
+         * ⚠️ **这里刻意不判「已锁价」，与 {@link #quote} 不同** ——
+         * 锁价保护的是**快照**（被选中那一刻的价写进 chosenQuote，此后成交按它算），
+         * 不是禁止商家改自己的挂牌价：那张报价对**后续**邻居仍然有效。
+         * `M6cGroupFlowTest.chosenQuoteLocksPrice` 锁住了这个行为。
+         *
+         * 而 quote() 在锁价后直接拒（「接受了也没意义，只会让商家以为还有机会」）。
+         * 两个入口对同一件事口径不同，**目前没有实际后果**（端上只走 quote），
+         * 但它是一条等着被踩的缝：哪天有人接了 revise，改价的规则会随入口而变。
+         * 见 docs/technical/design/B端权限对接-整改清单.md B1。
+         */
         return doRevise(q, cmd.unitPriceMinor(), cmd);
     }
 

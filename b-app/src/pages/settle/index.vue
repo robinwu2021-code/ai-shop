@@ -12,16 +12,39 @@
 // ⚠️ 费率与服务费口径未定（B9/B10），页面上明确标注，不装作已经定了。
 import { computed, ref } from "vue";
 import { onShow } from "@dcloudio/uni-app";
+import { useI18n } from "vue-i18n";
 import { api } from "@/api";
 import { useMerchantStore } from "@/stores/merchant";
 import { money } from "@shared/utils/money";
 import { monthDay } from "@shared/utils/datetime";
-import type { RateCard, SettleBill } from "@shared/types";
+import type {
+  MerchantPointAccount,
+  MerchantPointsRecord,
+  RateCard,
+  SettleBill,
+} from "@shared/types";
 
+const { t } = useI18n();
 const merchant = useMerchantStore();
 const bills = ref<SettleBill[]>([]);
 const rate = ref<RateCard | null>(null);
 const allStores = ref(false);
+/**
+ * 本店积分：**发分服务费是商家唯一感知到的积分成本**，它是一笔真金白银的支出。
+ *
+ * 放在结算页而不是单开一页：与账单是同一个人在同一个场景下看的（「这个月我付了多少」）。
+ * 单开一页会让「钱」这件事在 B 端有两个入口，而它们本来就该一起看。
+ *
+ * 此前后端与契约都在，**没有任何一页调用它** —— 于是老板既看不到这笔费用，也关不掉它。
+ */
+const points = ref<MerchantPointAccount | null>(null);
+const togglingPoints = ref(false);
+/**
+ * 发分服务费明细（一单一条）。**点开才拉** ——
+ * 多数时候店主只想看一眼这个月花了多少，不需要逐单核对；
+ * 跟着页面一起拉会让结算页多等一个请求，而那个请求大部分时候没人看。
+ */
+const pointsRecords = ref<MerchantPointsRecord[] | null>(null);
 
 const SCOPES = [
   { all: false, labelKey: "settle.scopeCurrent" },
@@ -45,10 +68,52 @@ function switchScope(all: boolean) {
 }
 
 async function load() {
-  [bills.value, rate.value] = await Promise.all([
+  // 三件事各自 catch：积分账户还没开通时这条会失败，而账单本身没问题 ——
+  // 绑在一起的话，一个没开通的功能会把整页结算数据带走
+  [bills.value, rate.value, points.value] = await Promise.all([
     api.mSettleList(allStores.value),
     api.mRateCard(),
+    api.mPointsAccount().catch(() => null),
   ]);
+}
+
+/**
+ * 开 / 关本店积分。
+ *
+ * **关闭只影响将来**：已发出的分仍有效、已扣的服务费不退 ——
+ * 所以这里要二次确认，否则店主会以为关掉就能把这个月的钱要回来。
+ * 平台按行业强制开的（`forced`）不给关，那个开关他按了也没用。
+ */
+async function togglePoints() {
+  const p = points.value;
+  if (!p || p.forced || togglingPoints.value) return;
+  const on = !p.enabled;
+  const res = await new Promise<boolean>((resolve) => {
+    uni.showModal({
+      title: t(on ? "settle.pointsOnTitle" : "settle.pointsOffTitle"),
+      content: t(on ? "settle.pointsOnHint" : "settle.pointsOffHint"),
+      success: (r) => resolve(!!r.confirm),
+      fail: () => resolve(false),
+    });
+  });
+  if (!res) return;
+  togglingPoints.value = true;
+  try {
+    points.value = await api.mPointsToggle({ enabled: on });
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: "none" });
+  } finally {
+    togglingPoints.value = false;
+  }
+}
+
+/** 展开 / 收起明细。收起时置回 null，下次展开重拉 —— 服务费会随新单增加 */
+async function loadPointsRecords() {
+  if (pointsRecords.value) {
+    pointsRecords.value = null;
+    return;
+  }
+  pointsRecords.value = await api.mPointsRecords().catch(() => []);
 }
 
 onShow(load);
@@ -72,6 +137,50 @@ onShow(load);
         <text class="ratecard__v sh-num">{{ pct(rate.platformRate) }}</text>
       </view>
       <text class="sh-muted ratecard__note">{{ rate.note }}</text>
+    </view>
+
+    <!--
+      本店积分。**它是一笔支出**，所以摆在费率卡下面、账单上面 —— 与「怎么算」同一层。
+      不生效时显示后端给的 disabledReason：小微主体要说「升级为个体工商户后可开启」，
+      而不是「本店未开启」—— 后者会让商家去按一个他根本按不动的开关。
+    -->
+    <view v-if="points" class="sh-card points">
+      <view class="points__head">
+        <text class="sh-h2">{{ $t("settle.pointsTitle") }}</text>
+        <text
+          v-if="!points.forced"
+          class="sh-chip"
+          :class="{ 'sh-chip--primary': points.enabled }"
+          @tap="togglePoints"
+        >{{ $t(points.enabled ? "settle.pointsOn" : "settle.pointsOff") }}</text>
+        <!-- 平台按行业强制开的：显示状态但不给按，按了也没用 -->
+        <text v-else class="sh-chip sh-chip--primary">{{ $t("settle.pointsForced") }}</text>
+      </view>
+      <view class="points__row">
+        <text class="sh-muted">{{ $t("settle.pointsExpense", { period: points.period }) }}</text>
+        <text class="sh-num big">{{ money(points.periodExpenseMinor) }}</text>
+      </view>
+      <text v-if="points.disabledReason" class="sh-muted points__note">
+        {{ points.disabledReason }}
+      </text>
+      <text v-else class="sh-muted points__note">{{ $t("settle.pointsHint") }}</text>
+
+      <!--
+        明细按需展开：**一笔支出必须能对到单**，否则「这个月 ¥3.76」就是一个
+        无法核对的数字 —— 商家对不上的账，早晚变成一张工单。
+      -->
+      <text v-if="points.periodExpenseMinor > 0" class="points__more" @tap="loadPointsRecords">
+        {{ pointsRecords ? $t("settle.pointsFold") : $t("settle.pointsDetail") }}
+      </text>
+      <view v-if="pointsRecords" class="rows">
+        <sh-empty v-if="!pointsRecords.length" :text='$t("settle.pointsEmpty")'></sh-empty>
+        <view v-for="r in pointsRecords" :key="r.settleNo + r.subOrderNo" class="row">
+          <text class="sh-muted sh-num">{{ r.subOrderNo }}</text>
+          <text class="sh-num">
+            {{ $t("settle.pointsQty", { n: r.points }) }}　{{ money(r.feeMinor) }}
+          </text>
+        </view>
+      </view>
     </view>
 
     <!--
@@ -159,6 +268,26 @@ onShow(load);
 .ratecard__note {
   display: block;
   margin-top: 14rpx;
+  line-height: 1.6;
+}
+
+.points {
+  margin-top: 20rpx;
+}
+.points__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.points__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-top: 16rpx;
+}
+.points__note {
+  display: block;
+  margin-top: 12rpx;
   line-height: 1.6;
 }
 

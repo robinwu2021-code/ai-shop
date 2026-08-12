@@ -28,7 +28,14 @@ public class MchStoreRole extends BaseEntity {
     public static final String CLERK = "CLERK";
     /** 理货员：只到货、分拣、报短少。**不核销**（那要面对顾客）、不看金额 */
     public static final String PICKER = "PICKER";
-    /** 配送员：只自送。看得到待送的单与地址，看不到金额与全店订单 */
+    /**
+     * 配送员：只自送。看不到金额与核销码 —— 他拿的是
+     * {@code CourierOrderVO}（单号 / 状态 / 履约方式 / 件数 / 下单时间）。
+     *
+     * <p>⚠️ <b>地址还没有</b>：需求要的是「待自送的单 + 地址」，
+     * 而收货地址在 B 端从来没下发过（子单上只有 {@code address_id}），
+     * <b>所有角色都看不到</b>。这一条是能力缺口，不是权限收窄。
+     */
     public static final String COURIER = "COURIER";
     /**
      * 线上客服：回评价、处理售后、答咨询。不碰货、不碰钱。

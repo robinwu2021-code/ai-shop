@@ -16,12 +16,16 @@ import type { DeliveryRule, Order } from "@shared/types";
 
 const { t } = useI18n();
 
-const rule = ref<DeliveryRule>({
-  radius: 3000,
-  minOrderMinor: 0,
-  feeMinor: 0,
-  freeThresholdMinor: 0,
-});
+/**
+ * 配送规则。**只有能改门店经营面的人才拿得到**（`/biz/delivery/rule` 要 `biz:store`）。
+ *
+ * 拿不到时是 `null` 而不是那份默认值 —— 默认值会让店员看到一张
+ * 「半径 3000 米、起送 0 元」的规则卡，那是**编出来的**：他没权限读，
+ * 屏幕上却显示了一个具体数字，而店里真实的规则可能完全不同。
+ */
+const rule = ref<DeliveryRule | null>(null);
+/** 我能不能改配送规则 —— 决定规则卡片画不画 */
+const canRule = computed(() => merchant.can("biz:store"));
 /** 表单用主单位（元），保存时换回最小单位 —— 店主输 20，存 2000 */
 const form = ref({ radius: "3000", minOrder: "0", fee: "0", freeThreshold: "0" });
 const orders = ref<Order[]>([]);
@@ -31,16 +35,37 @@ const pending = computed(() =>
   orders.value.filter((o) => o.fulfillment === FULFILLMENT.DELIVERY && o.status === "PAID"),
 );
 
+/*
+ * 两件事各自取，**不用裸 Promise.all**。
+ *
+ * 这一页的门禁是 `biz:ship`，而规则接口要的是 `biz:store` —— 店员与配送员
+ * 有前者没有后者。原先一个 Promise.all 把两件事绑在一起，规则被 70006 拒
+ * 就整体 reject，**待送列表也一起没了**：配送员打开为他而设的页面，看到的是一片空白。
+ *
+ * 而工作台「待配送」格子的权限正是 `biz:ship`，它每天都在把配送员往这儿送。
+ */
 async function load() {
-  const [r, res] = await Promise.all([api.mDeliveryRule(), api.mOrderList({ size: 100 })]);
+  /*
+   * **先等权限到位**。`can()` 在 perms 没加载时一律 false（fail-closed），
+   * 而深链进来时 `onShow` 会早于外壳的 `ensureScope` 跑完 ——
+   * 不等的话老板刷新这一页也看不到规则卡，且**不会重试**：
+   * 那正是「判权状态没加载 = 界面被自己锁死」这个老问题的新形态。
+   */
+  await merchant.ensureScope();
+  const [r, res] = await Promise.all([
+    canRule.value ? api.mDeliveryRule().catch(() => null) : Promise.resolve(null),
+    api.mOrderList({ size: 100 }).catch(() => null),
+  ]);
   rule.value = r;
-  form.value = {
-    radius: String(r.radius),
-    minOrder: toMajor(r.minOrderMinor),
-    fee: toMajor(r.feeMinor),
-    freeThreshold: toMajor(r.freeThresholdMinor),
-  };
-  orders.value = res.records;
+  if (r) {
+    form.value = {
+      radius: String(r.radius),
+      minOrder: toMajor(r.minOrderMinor),
+      fee: toMajor(r.feeMinor),
+      freeThreshold: toMajor(r.freeThresholdMinor),
+    };
+  }
+  orders.value = res?.records ?? [];
 }
 
 async function saveRule() {
@@ -51,6 +76,16 @@ async function saveRule() {
     freeThresholdMinor: toMinor(form.value.freeThreshold),
   });
   uni.showToast({ title: t("common.saved"), icon: "none" });
+}
+
+/**
+ * 拨号。**脱敏号拨不通，所以只在拿到完整号时才让点** ——
+ * 一个点了没反应的电话号码比不显示更糟。
+ */
+function call(o: Order) {
+  const phone = o.receiver?.phone;
+  if (!phone || phone.includes("*")) return;
+  uni.makePhoneCall({ phoneNumber: phone });
 }
 
 async function delivered(o: Order) {
@@ -74,7 +109,12 @@ onShow(load);
   <sh-scaffold title-key="delivery.title" :denied="!merchant.can('biz:ship')">
     <text class="sh-h1">{{ $t("delivery.title") }}</text>
 
-    <view class="sh-card mt">
+    <!--
+      规则卡片只给能改门店经营面的人（`biz:store`）。店员与配送员进得来这一页
+      （他们有 `biz:ship`），但读不到规则 —— 画一张空表格让他填、点保存报 70006，
+      比不画它更糟。
+    -->
+    <view v-if="canRule && rule" class="sh-card mt">
       <text class="sh-h2">{{ $t("delivery.rule") }}</text>
 
       <view class="field">
@@ -107,10 +147,26 @@ onShow(load);
 
     <view v-for="o in pending" :key="o.orderNo" class="sh-card row">
       <view class="row__main">
-        <text class="row__buyer">{{ o.buyerNickname || "—" }}</text>
-        <text class="sh-muted sh-num">{{ o.orderNo }}</text>
+        <!--
+          **送到哪里、找谁、打哪个号** —— 这一页在这之前只有单号和金额，
+          配送员拿着它出不了门。自送单的手机号后端给的是完整号（其余履约方式脱敏），
+          点一下直接拨：站在楼下找不到人时，多一步操作就是多一次白跑。
+        -->
+        <text class="row__buyer">{{ o.receiver?.name || o.buyerNickname || "—" }}</text>
+        <text v-if="o.receiver?.address" class="row__addr">{{ o.receiver.address }}</text>
+        <text v-else class="row__addr row__addr--none">{{ $t("delivery.noAddress") }}</text>
+        <view class="row__sub">
+          <text class="sh-muted sh-num">{{ o.orderNo }}</text>
+          <text v-if="o.receiver?.phone" class="row__tel sh-num" @tap="call(o)">
+            {{ o.receiver.phone }}
+          </text>
+        </view>
       </view>
-      <text class="row__amount sh-num">
+      <!--
+        配送员拿到的是**裁剪档**（后端 CourierOrderVO，无金额、无核销码）。
+        所以这里按字段有无渲染，而不是按角色判 —— 少一处判断就少一处会漂的地方。
+      -->
+      <text v-if="o.amount" class="row__amount sh-num">
         {{ money(o.amount.payableMinor, o.amount.currency) }}
       </text>
       <text class="btn" @tap="delivered(o)">{{ $t("order.delivered") }}</text>
@@ -154,6 +210,27 @@ onShow(load);
   font-size: 28rpx;
   font-weight: 600;
   color: var(--sh-ink);
+}
+.row__addr {
+  display: block;
+  margin-top: 4rpx;
+  font-size: 26rpx;
+  color: var(--sh-ink);
+  line-height: 1.4;
+}
+.row__addr--none {
+  color: var(--sh-sub);
+}
+.row__sub {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  margin-top: 6rpx;
+}
+.row__tel {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: var(--sh-primary);
 }
 .row__amount {
   font-size: 30rpx;

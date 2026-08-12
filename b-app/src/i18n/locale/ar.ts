@@ -161,7 +161,7 @@ export default {
     statusREFUNDED: "تم الاسترجاع",
     statusCANCELLED: "ملغي",
     title: "الطلبات", tabAll: "الكل", tabToShip: "بانتظار الشحن", tabShipped: "تم الشحن", tabToVerify: "بانتظار الاستلام", tabDone: "مكتمل", tabAfterSale: "ما بعد البيع",
-    no: "رقم الطلب", createdAt: "وقت الطلب", amount: "المبلغ", fulfillment: "طريقة التنفيذ", buyer: "المشتري",
+    no: "رقم الطلب", createdAt: "وقت الطلب", amount: "المبلغ", fulfillment: "طريقة التنفيذ", buyer: "المشتري", receiver: "المستلم",
     ship: "شحن", expressNo: "رقم التتبع", delivered: "تم التوصيل", detail: "التفاصيل", empty: "لا طلبات بعد",
     trafficMERCHANT_OWNED: "عميلك", trafficPLATFORM: "من المنصة",
     items: "المنتجات", shipped: "تم الشحن", deliveredDone: "تم وضع علامة التوصيل",
@@ -170,6 +170,9 @@ export default {
   verify: {
     ovPending: "بانتظار الاستلام", ovBatches: "وصل اليوم", ovFee: "رسوم الخدمة",
 
+    done: "تم الاستلام",
+    searchHint: "لم يتم الاستلام. طلبات يحتوي رمزها على هذه الأرقام — اختر الصحيح:",
+    searchEmpty: "لا طلب يحتوي رمزه على هذه الأرقام. اطلب من الجار التأكد.",
     batchEnter: "استلام جماعي", batchAdd: "إضافة", batchScan: "مسح للإضافة",
     batchSubmit: "استلام {n} رمزًا", batchOk: "نجح {n}", batchExit: "إنهاء الوضع الجماعي",
 
@@ -187,6 +190,7 @@ export default {
     title: "توصيل التاجر", rule: "قواعد التوصيل", radius: "نطاق التوصيل (متر)", minOrder: "الحد الأدنى للطلب",
     fee: "رسوم التوصيل", freeThreshold: "توصيل مجاني عند", freeHint: "الصفر يعني بلا مجانية",
     pending: "بانتظار التوصيل", empty: "لا طلبات للتوصيل",
+    noAddress: "لا عنوان في هذا الطلب — تواصل مع المشتري",
     noRiderHint: "لا تتبع للمندوب: اضغط «تم التوصيل» عند التسليم. استخدم شركة شحن إن احتجت التتبع.",
   },
   fulfillmentReach: {
@@ -242,7 +246,7 @@ export default {
     staffCount: "{n} موظفين مخوّلين",
     payment: "التحصيل إلى",
     payDefault: "حساب الكيان الافتراضي",
-    setDefault: "اجعله الافتراضي",
+    rename: "إعادة تسمية", setDefault: "اجعله الافتراضي",
     disable: "إيقاف",
     enable: "تفعيل",
     add: "+ متجر جديد",
@@ -261,6 +265,9 @@ export default {
     disabled: "موقوف",
     ownerNote: "المالك غير مقيّد بصلاحيات المتاجر — كلها له",
     noStore: "لم يُسنَد إليه متجر بعد — لن يرى شيئًا بعد الدخول",
+    logs: "سجل التغييرات",
+    logGrant: "منح {role} في {store}", logRevoke: "سحب {role} في {store}",
+    logAdd: "أُضيف كموظف", logEnable: "تفعيل", logDisable: "إيقاف (مع بقاء صلاحيات المتجر)", logsFold: "إخفاء السجل", logsEmpty: "لا تغييرات بعد",
     editRoles: "تعديل الصلاحيات",
     role: { MANAGER: "مدير", CLERK: "بائع" },
     grantHint: "اضغط الدور نفسه مرة أخرى لسحب صلاحية ذلك المتجر",
@@ -372,6 +379,15 @@ export default {
   },
   settle: {
     rateTitle: "الرسوم",
+    pointsTitle: "نقاط المتجر", pointsOn: "مفعّلة", pointsOff: "متوقفة", pointsForced: "مفعّلة من المنصة",
+    pointsExpense: "رسوم إصدار النقاط {period}",
+    pointsHint: "المنصة تتحمل ما يخصمه المشتري بالنقاط، وأنت تدفع رسوم الإصدار فقط.",
+    pointsDetail: "عرض التفاصيل", pointsFold: "إخفاء التفاصيل",
+    pointsEmpty: "لا رسوم إصدار هذه الفترة", pointsQty: "{n} نقطة",
+    pointsOnTitle: "تفعيل نقاط المتجر؟",
+    pointsOnHint: "ستبدأ الطلبات بمنح النقاط مع رسوم إصدار.",
+    pointsOffTitle: "إيقاف نقاط المتجر؟",
+    pointsOffHint: "الإيقاف يؤثر على المستقبل فقط: النقاط الممنوحة تبقى صالحة والرسوم المدفوعة لا تُرد.",
 
     title: "كشف التسوية", empty: "لا يوجد ما يُسوّى بعد",
     net: "الصافي", gross: "أساس التسوية",

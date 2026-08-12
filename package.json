@@ -36,7 +36,8 @@
     "e2e:full": "npm run test && npm run check:p && node scripts/e2e/run.mjs",
     "check:enums": "node scripts/check-enums.mjs",
     "check:enum-fields": "node scripts/check-enum-fields.mjs",
-    "gen:perm-matrix": "node scripts/gen-perm-endpoint-matrix.mjs"
+    "gen:perm-matrix": "node scripts/gen-perm-endpoint-matrix.mjs",
+    "gen:biz-matrix": "node scripts/gen-biz-role-matrix.mjs && node scripts/gen-biz-feature-perm-matrix.mjs"
   },
   "engines": {
     "node": ">=22"
