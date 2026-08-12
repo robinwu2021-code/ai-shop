@@ -41,7 +41,7 @@ public class OpsSettleController {
      * 而那不该因为经营模式不同就分成两个入口去查。
      */
     @GetMapping("/ops/settlements")
-    @PreAuthorize("@perm.can('" + Perms.SETTLE_MANAGE + "')")
+    @PreAuthorize("@perm.can('" + Perms.FINANCE_SETTLE_READ + "')")
     public ai.neargo.shop.common.PageData<SettleBillVO> settlements(
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String merchantNo,
@@ -59,7 +59,7 @@ public class OpsSettleController {
      * 只给成功的等于把「为什么这单没分成」的答案藏起来。
      */
     @GetMapping("/ops/split-records")
-    @PreAuthorize("@perm.can('" + Perms.SETTLE_MANAGE + "')")
+    @PreAuthorize("@perm.can('" + Perms.FINANCE_SETTLE_READ + "')")
     public ai.neargo.shop.common.PageData<SplitLogVO> splitRecords(
             @RequestParam(required = false) String settleNo,
             @RequestParam(required = false) String action,

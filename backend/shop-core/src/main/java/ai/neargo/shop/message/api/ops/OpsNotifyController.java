@@ -43,7 +43,7 @@ public class OpsNotifyController {
     }
 
     @GetMapping("/ops/msg-templates")
-    @PreAuthorize("@perm.can('" + Perms.TICKET_HANDLE + "')")
+    @PreAuthorize("@perm.can('" + Perms.MESSAGE_TEMPLATE_READ + "')")
     public PageData<TemplateVO> templates(@RequestParam(defaultValue = "1") long page,
                                           @RequestParam(defaultValue = "50") long size) {
         // 运营端列表页按 {records,total} 渲染 —— 返回裸数组会被当成空页
@@ -52,7 +52,7 @@ public class OpsNotifyController {
 
     /** 停用即刻生效：引用这个模板的推送发不出去。 */
     @PostMapping("/ops/msg-templates/{templateNo}/enabled")
-    @PreAuthorize("@perm.can('" + Perms.TICKET_HANDLE + "')")
+    @PreAuthorize("@perm.can('" + Perms.MESSAGE_TEMPLATE_UPDATE + "')")
     public TemplateVO setEnabled(@PathVariable String templateNo, @RequestBody EnabledReq req) {
         boolean on = Boolean.TRUE.equals(req.enabled());
         TemplateVO vo = messageService.setTemplateEnabled(templateNo, on,
@@ -62,7 +62,7 @@ public class OpsNotifyController {
     }
 
     @GetMapping("/ops/notify-quota")
-    @PreAuthorize("@perm.can('" + Perms.TICKET_HANDLE + "')")
+    @PreAuthorize("@perm.can('" + Perms.MESSAGE_TEMPLATE_READ + "')")
     public NotifyQuotaVO quota() {
         return messageService.notifyQuota();
     }
@@ -73,7 +73,7 @@ public class OpsNotifyController {
      * <p>改频控要留痕：它决定平台一天能给用户发多少条，调松了是全体用户被打扰。
      */
     @PostMapping("/ops/notify-quota")
-    @PreAuthorize("@perm.can('" + Perms.TICKET_HANDLE + "')")
+    @PreAuthorize("@perm.can('" + Perms.MESSAGE_TEMPLATE_UPDATE + "')")
     public NotifyQuotaVO saveQuota(@RequestBody QuotaReq req) {
         NotifyQuotaVO vo = messageService.saveNotifyQuota(req.dailyPerUser(), req.minIntervalHours(),
                 SecurityUtils.currentUserNo());

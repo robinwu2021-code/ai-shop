@@ -41,14 +41,14 @@ public class OpsAuthCodeController {
 
     /** 全量，<b>含已停用</b>，带商家数与类目引用数（改之前要知道影响面）。 */
     @GetMapping("/ops/auth-codes")
-    @PreAuthorize("@perm.can('" + Perms.CATEGORY_MANAGE + "')")
+    @PreAuthorize("@perm.can('" + Perms.PRODUCT_CATEGORY_READ + "')")
     public List<AuthCodeAdminService.AuthCodeAdminVO> list() {
         return adminService.list();
     }
 
     /** 新建或更新（按 {@code code} 判定，{@code code} 本身不可改）。 */
     @PostMapping("/ops/auth-codes")
-    @PreAuthorize("@perm.can('" + Perms.CATEGORY_MANAGE + "')")
+    @PreAuthorize("@perm.can('" + Perms.PRODUCT_CATEGORY_UPDATE + "')")
     public AuthCodeAdminService.AuthCodeAdminVO save(@RequestBody SaveReq req) {
         var vo = adminService.save(new AuthCodeAdminService.SaveCommand(
                 req.code(), req.name(), req.requiredQualification(), req.sort()));
@@ -64,7 +64,7 @@ public class OpsAuthCodeController {
      * 它只是不再发放，已经持有的店照常上架。
      */
     @PostMapping("/ops/auth-codes/{code}/enabled")
-    @PreAuthorize("@perm.can('" + Perms.CATEGORY_MANAGE + "')")
+    @PreAuthorize("@perm.can('" + Perms.PRODUCT_CATEGORY_UPDATE + "')")
     public AuthCodeAdminService.AuthCodeAdminVO setEnabled(@PathVariable String code,
                                                            @RequestBody EnabledReq req) {
         var vo = adminService.setEnabled(code, Boolean.TRUE.equals(req.enabled()), req.reason());

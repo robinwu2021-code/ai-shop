@@ -53,7 +53,7 @@ public class OpsOrderController {
      * 等 ops-web 接真、确认没有别的调用方之后再收敛成一条。
      */
     @GetMapping("/ops/order")
-    @PreAuthorize("@perm.can('" + Perms.ORDER_VIEW + "')")
+    @PreAuthorize("@perm.can('" + Perms.ORDER_READ + "')")
     public PageData<ai.neargo.shop.trade.dto.OrderVO> legacyOrders(
             @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "1") long page,
@@ -64,7 +64,7 @@ public class OpsOrderController {
     }
 
     @GetMapping("/ops/orders")
-    @PreAuthorize("@perm.can('" + Perms.ORDER_VIEW + "')")
+    @PreAuthorize("@perm.can('" + Perms.ORDER_READ + "')")
     public PageData<MerchantOrderService.OpsOrderVO> list(
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String merchantNo,
@@ -75,20 +75,20 @@ public class OpsOrderController {
     }
 
     @GetMapping("/ops/orders/{orderNo}")
-    @PreAuthorize("@perm.can('" + Perms.ORDER_VIEW + "')")
+    @PreAuthorize("@perm.can('" + Perms.ORDER_READ + "')")
     public MerchantOrderService.OpsOrderVO detail(@PathVariable String orderNo) {
         return orderService.opsDetail(orderNo);
     }
 
     /** 同一次结算拆出的兄弟单 —— 客服要知道「他这一单还买了别家什么」。 */
     @GetMapping("/ops/orders/parent/{parentNo}")
-    @PreAuthorize("@perm.can('" + Perms.ORDER_VIEW + "')")
+    @PreAuthorize("@perm.can('" + Perms.ORDER_READ + "')")
     public List<MerchantOrderService.OpsOrderVO> siblings(@PathVariable String parentNo) {
         return orderService.siblings(parentNo);
     }
 
     @GetMapping("/ops/orders/exceptions")
-    @PreAuthorize("@perm.can('" + Perms.ORDER_VIEW + "')")
+    @PreAuthorize("@perm.can('" + Perms.ORDER_READ + "')")
     public ai.neargo.shop.common.PageData<MerchantOrderService.OrderExceptionVO> exceptions(
             @RequestParam(defaultValue = "1") long page,
             @RequestParam(defaultValue = "20") long size) {
@@ -97,7 +97,7 @@ public class OpsOrderController {
     }
 
     @GetMapping("/ops/orders/{orderNo}/interventions")
-    @PreAuthorize("@perm.can('" + Perms.ORDER_VIEW + "')")
+    @PreAuthorize("@perm.can('" + Perms.ORDER_READ + "')")
     public List<MerchantOrderService.InterventionVO> interventions(@PathVariable String orderNo) {
         return orderService.interventions(orderNo);
     }
@@ -109,7 +109,7 @@ public class OpsOrderController {
      * 看单和改单是两件事，前者客服天天做，后者是把系统的判断覆盖掉。
      */
     @PostMapping("/ops/orders/{orderNo}/intervene")
-    @PreAuthorize("@perm.can('" + Perms.ORDER_INTERVENE + "')")
+    @PreAuthorize("@perm.can('" + Perms.ORDER_MODIFY + "')")
     public MerchantOrderService.OpsOrderVO intervene(@PathVariable String orderNo,
                                                      @RequestBody InterveneReq req) {
         var vo = orderService.intervene(orderNo, req.to(), req.remark(), SecurityUtils.currentUserNo());
@@ -125,7 +125,7 @@ public class OpsOrderController {
      * 混在通用干预里，事后无法从留痕上区分「用户要求的」与「运营自己改的」。
      */
     @PostMapping("/ops/orders/{orderNo}/proxy-cancel")
-    @PreAuthorize("@perm.can('" + Perms.ORDER_INTERVENE + "')")
+    @PreAuthorize("@perm.can('" + Perms.ORDER_PROXY + "')")
     public MerchantOrderService.OpsOrderVO proxyCancel(@PathVariable String orderNo,
                                                        @RequestBody ProxyCancelReq req) {
         String reason = req.reason() == null ? "" : req.reason().trim();

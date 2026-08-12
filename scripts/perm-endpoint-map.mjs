@@ -37,7 +37,8 @@ export const RULES = [
   // 两个粗码** —— 机械展开时会让只有其中一个粗码的角色白拿另一半，
   // 那正是这次改造要防的静默放宽。
   ["GET", /^\/ops\/(merchants\/[^/]+\/)?qualifications/, "merchant:category:read"],
-  ["GET", /^\/ops\/merchants\/[^/]+\/auth-codes/, "merchant:category:read"],
+  // 没有 GET /ops/merchants/{no}/auth-codes（只有 PUT）—— 写过一条，被死规则守卫抓出来了。
+  // `GET /ops/merchants/auth-codes` 是另一条路径（少一段），落在下面的档案只读上
   ["*", /^\/ops\/(merchants\/[^/]+\/)?qualifications/, "merchant:category:grant"],
   ["*", /^\/ops\/merchants\/[^/]+\/auth-codes/, "merchant:category:grant"],
   // 资质码字典本身，与类目树同一个维护面（类目上挂 required_code，改哪个都影响准入）

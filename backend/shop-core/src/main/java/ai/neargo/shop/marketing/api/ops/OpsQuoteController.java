@@ -42,7 +42,7 @@ public class OpsQuoteController {
 
     /** @param status 为空给全部；传 {@code BREACH} 就是毁约档 */
     @GetMapping("/ops/quotes")
-    @PreAuthorize("@perm.can('" + Perms.QUOTE_GOVERN + "')")
+    @PreAuthorize("@perm.can('" + Perms.GROUP_DEMAND_READ + "')")
     public PageData<OpsGroupVOs.OpsQuoteVO> list(@RequestParam(required = false) String status,
                                   @RequestParam(defaultValue = "1") long page,
                                   @RequestParam(defaultValue = "50") long size) {
@@ -52,7 +52,7 @@ public class OpsQuoteController {
 
     /** 平台改价（P-8.2.4）。留痕与商家改价同一条路径，公示同一份价格历史。 */
     @PostMapping("/ops/quotes/{quoteNo}/price")
-    @PreAuthorize("@perm.can('" + Perms.QUOTE_GOVERN + "')")
+    @PreAuthorize("@perm.can('" + Perms.GROUP_DEMAND_ASSIGN + "')")
     public QuoteVO price(@PathVariable String quoteNo, @RequestBody PriceReq req) {
         String operator = SecurityUtils.currentUserNo();
         QuoteVO vo = groupService.opsRevisePrice(quoteNo, req.unitPriceMinor(), req.reason(), operator);
@@ -66,7 +66,7 @@ public class OpsQuoteController {
      * {@code detail} 必填——没有事实的处置在申诉时站不住。
      */
     @PostMapping("/ops/quotes/{quoteNo}/breach")
-    @PreAuthorize("@perm.can('" + Perms.QUOTE_GOVERN + "')")
+    @PreAuthorize("@perm.can('" + Perms.GROUP_DEMAND_ASSIGN + "')")
     public QuoteVO breach(@PathVariable String quoteNo, @RequestBody BreachReq req) {
         String operator = SecurityUtils.currentUserNo();
         QuoteVO vo = groupService.markBreach(quoteNo, req.detail(), operator);

@@ -48,7 +48,7 @@ public class OpsPayableController {
      * @param entityNo 为空给全部供应商
      */
     @GetMapping("/ops/payables")
-    @PreAuthorize("@perm.can('" + Perms.SETTLE_MANAGE + "')")
+    @PreAuthorize("@perm.can('" + Perms.FINANCE_SETTLE_READ + "')")
     public List<SettleBillVO> list(@RequestParam(required = false) String status,
                                    @RequestParam(required = false) String entityNo) {
         return settleService.opsPayables(status, entityNo);
@@ -56,7 +56,7 @@ public class OpsPayableController {
 
     /** 对账确认。确认的含义是「双方认这个数」，之后金额不该再变。 */
     @PostMapping("/ops/payables/{settleNo}/confirm")
-    @PreAuthorize("@perm.can('" + Perms.SETTLE_MANAGE + "')")
+    @PreAuthorize("@perm.can('" + Perms.FINANCE_SETTLE_EXECUTE + "')")
     public SettleBillVO confirm(@PathVariable String settleNo) {
         String operator = SecurityUtils.currentUserNo();
         SettleBillVO vo = settleService.confirmRecon(settleNo, operator);
@@ -70,7 +70,7 @@ public class OpsPayableController {
      * <p>凭证号必填：没有凭证号的「已付」事后对不上银行流水，也说不清是谁付的。
      */
     @PostMapping("/ops/payables/{settleNo}/paid")
-    @PreAuthorize("@perm.can('" + Perms.SETTLE_MANAGE + "')")
+    @PreAuthorize("@perm.can('" + Perms.FINANCE_PAYOUT_EXECUTE + "')")
     public SettleBillVO paid(@PathVariable String settleNo, @RequestBody PaidReq req) {
         String operator = SecurityUtils.currentUserNo();
         SettleBillVO vo = settleService.markPaid(settleNo, req.paymentRef(), operator);
@@ -88,7 +88,7 @@ public class OpsPayableController {
      * 「这笔付出去是不能税前列支的」，而不是月末报税时才发现。
      */
     @PostMapping("/ops/payables/{settleNo}/no-invoice")
-    @PreAuthorize("@perm.can('" + Perms.SETTLE_MANAGE + "')")
+    @PreAuthorize("@perm.can('" + Perms.FINANCE_INVOICE_VERIFY + "')")
     public SettleBillVO noInvoice(@PathVariable String settleNo, @RequestBody NoInvoiceReq req) {
         String operator = SecurityUtils.currentUserNo();
         SettleBillVO vo = settleService.markNoInvoice(settleNo, req.reason(), operator);
@@ -100,7 +100,7 @@ public class OpsPayableController {
 
     /** @param status 为空给全部；{@code SUBMITTED} 就是待核验队列 */
     @GetMapping("/ops/purchase-invoices")
-    @PreAuthorize("@perm.can('" + Perms.SETTLE_MANAGE + "')")
+    @PreAuthorize("@perm.can('" + Perms.FINANCE_INVOICE_READ + "')")
     public List<PurchaseInvoiceVO> invoices(@RequestParam(required = false) String status) {
         return settleService.opsInvoices(status);
     }
@@ -112,7 +112,7 @@ public class OpsPayableController {
      * 仍需人工核对。接口不假装它已经查过。
      */
     @PostMapping("/ops/purchase-invoices/{invoiceNo}/verify")
-    @PreAuthorize("@perm.can('" + Perms.SETTLE_MANAGE + "')")
+    @PreAuthorize("@perm.can('" + Perms.FINANCE_INVOICE_VERIFY + "')")
     public PurchaseInvoiceVO verify(@PathVariable String invoiceNo) {
         String operator = SecurityUtils.currentUserNo();
         PurchaseInvoiceVO vo = settleService.verifyInvoice(invoiceNo, operator);
@@ -123,7 +123,7 @@ public class OpsPayableController {
 
     /** 驳回。原因必填——供应商得知道是抬头错了、金额不符还是影像看不清。 */
     @PostMapping("/ops/purchase-invoices/{invoiceNo}/reject")
-    @PreAuthorize("@perm.can('" + Perms.SETTLE_MANAGE + "')")
+    @PreAuthorize("@perm.can('" + Perms.FINANCE_INVOICE_VERIFY + "')")
     public PurchaseInvoiceVO reject(@PathVariable String invoiceNo, @RequestBody RejectReq req) {
         String operator = SecurityUtils.currentUserNo();
         PurchaseInvoiceVO vo = settleService.rejectInvoice(invoiceNo, req.reason(), operator);
@@ -134,14 +134,14 @@ public class OpsPayableController {
     // ---------------------------------------------------------------- 平台开票信息（P0-11）
 
     @GetMapping("/ops/finance/invoice-title")
-    @PreAuthorize("@perm.can('" + Perms.SETTLE_MANAGE + "')")
+    @PreAuthorize("@perm.can('" + Perms.FINANCE_INVOICE_READ + "')")
     public java.util.Map<String, String> invoiceTitle() {
         return settleService.platformInvoiceTitle();
     }
 
     /** 公司全称与税号必填——缺了这两项供应商开不出票，存下去只会让人以为已经配好了。 */
     @PostMapping("/ops/finance/invoice-title")
-    @PreAuthorize("@perm.can('" + Perms.SETTLE_MANAGE + "')")
+    @PreAuthorize("@perm.can('" + Perms.FINANCE_INVOICE_VERIFY + "')")
     public java.util.Map<String, String> saveInvoiceTitle(
             @RequestBody java.util.Map<String, String> fields) {
         var saved = settleService.savePlatformInvoiceTitle(fields, SecurityUtils.currentUserNo());

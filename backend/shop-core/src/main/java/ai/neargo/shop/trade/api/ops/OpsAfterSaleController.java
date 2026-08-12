@@ -52,7 +52,7 @@ public class OpsAfterSaleController {
     }
 
     @GetMapping("/ops/after-sales")
-    @PreAuthorize("@perm.can('" + Perms.ORDER_VIEW + "')")
+    @PreAuthorize("@perm.can('" + Perms.AFTERSALE_TICKET_READ + "')")
     public ai.neargo.shop.common.PageData<AfterSaleVO> list(@RequestParam(required = false) String status,
                                 @RequestParam(required = false) String merchantNo,
                                 @RequestParam(defaultValue = "1") long page,
@@ -66,7 +66,7 @@ public class OpsAfterSaleController {
      * <b>责任方与裁决说明都必填</b>。
      */
     @PostMapping("/ops/after-sales/{afterSaleNo}/decide")
-    @PreAuthorize("@perm.can('" + Perms.ORDER_VIEW + "')")
+    @PreAuthorize("@perm.can('" + Perms.AFTERSALE_TICKET_HANDLE + "')")
     public AfterSaleVO decide(@PathVariable String afterSaleNo, @RequestBody DecideReq req) {
         boolean refund = Boolean.TRUE.equals(req.refund());
         var vo = afterSaleService.arbitrate(afterSaleNo, refund, req.liability(), req.verdict(),
@@ -80,7 +80,7 @@ public class OpsAfterSaleController {
     // ---------------------------------------------------------------- 极速退阈值
 
     @GetMapping("/ops/after-sales/fast-refund-rule")
-    @PreAuthorize("@perm.can('" + Perms.ORDER_VIEW + "')")
+    @PreAuthorize("@perm.can('" + Perms.AFTERSALE_REFUND_READ + "')")
     public FastRefundRule fastRefundRule() {
         return json.readValue(settingPort.get(FAST_REFUND_KEY, FAST_REFUND_DEFAULT),
                 FastRefundRule.class);
@@ -93,7 +93,7 @@ public class OpsAfterSaleController {
      * 运营会以为极速退在跑，实际每一单都进了人工队列。
      */
     @PostMapping("/ops/after-sales/fast-refund-rule")
-    @PreAuthorize("@perm.can('" + Perms.ORDER_VIEW + "')")
+    @PreAuthorize("@perm.can('" + Perms.AFTERSALE_REFUND_APPROVE + "')")
     public FastRefundRule saveFastRefundRule(@RequestBody FastRefundRule req) {
         if (req.maxAmount() <= 0 || req.withinHours() < 1) {
             throw BizException.of(ErrorCode.BAD_REQUEST);

@@ -49,7 +49,7 @@ public class OpsGroupController {
 
     /** @param status 为空给全部；{@code OPEN} / {@code FORMED} / {@code FAILED} */
     @GetMapping("/ops/groups")
-    @PreAuthorize("@perm.can('" + Perms.MARKETING_GOVERN + "')")
+    @PreAuthorize("@perm.can('" + Perms.GROUP_CAMPAIGN_READ + "')")
     public PageData<OpsGroupVOs.OpsGroupVO> list(@RequestParam(required = false) String status,
                                      @RequestParam(defaultValue = "1") long page,
                                      @RequestParam(defaultValue = "50") long size) {
@@ -59,7 +59,7 @@ public class OpsGroupController {
 
     /** 中止拼团。理由必填 —— 团没了总得给参团的人一个说法。 */
     @PostMapping("/ops/groups/{groupNo}/abort")
-    @PreAuthorize("@perm.can('" + Perms.MARKETING_GOVERN + "')")
+    @PreAuthorize("@perm.can('" + Perms.GROUP_CAMPAIGN_AUDIT + "')")
     public GroupBuyVO abort(@PathVariable String groupNo, @RequestBody AbortReq req) {
         String operator = SecurityUtils.currentUserNo();
         GroupBuyVO vo = groupService.abortGroup(groupNo, req.reason(), operator);

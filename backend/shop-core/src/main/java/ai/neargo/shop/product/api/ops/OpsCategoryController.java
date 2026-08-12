@@ -40,7 +40,7 @@ public class OpsCategoryController {
     }
 
     @GetMapping("/ops/categories")
-    @PreAuthorize("@perm.can('" + Perms.CATEGORY_MANAGE + "')")
+    @PreAuthorize("@perm.can('" + Perms.PRODUCT_CATEGORY_READ + "')")
     public ai.neargo.shop.common.PageData<OpsCategoryVO> list(@RequestParam(required = false) String keyword,
                                      @RequestParam(required = false) String template,
                                      @RequestParam(defaultValue = "false") boolean showArchived,
@@ -52,7 +52,7 @@ public class OpsCategoryController {
 
     /** 新建或更新（{@code categoryNo} 为空即新建）。 */
     @PostMapping("/ops/categories")
-    @PreAuthorize("@perm.can('" + Perms.CATEGORY_MANAGE + "')")
+    @PreAuthorize("@perm.can('" + Perms.PRODUCT_CATEGORY_UPDATE + "')")
     public OpsCategoryVO save(@RequestBody SaveReq req) {
         var vo = categoryService.save(new CategoryService.SaveCategoryCommand(
                 req.categoryNo(), req.name(), req.i18nEn(), req.parentNo(), req.template(),
@@ -67,7 +67,7 @@ public class OpsCategoryController {
     }
 
     @PostMapping("/ops/categories/{categoryNo}/archive")
-    @PreAuthorize("@perm.can('" + Perms.CATEGORY_MANAGE + "')")
+    @PreAuthorize("@perm.can('" + Perms.PRODUCT_CATEGORY_UPDATE + "')")
     public OpsCategoryVO archive(@PathVariable String categoryNo) {
         var vo = categoryService.archive(categoryNo);
         auditLogPort.record("CATEGORY_ARCHIVE", categoryNo, vo.name());
@@ -75,7 +75,7 @@ public class OpsCategoryController {
     }
 
     @PostMapping("/ops/categories/{categoryNo}/unarchive")
-    @PreAuthorize("@perm.can('" + Perms.CATEGORY_MANAGE + "')")
+    @PreAuthorize("@perm.can('" + Perms.PRODUCT_CATEGORY_UPDATE + "')")
     public OpsCategoryVO unarchive(@PathVariable String categoryNo) {
         var vo = categoryService.unarchive(categoryNo);
         auditLogPort.record("CATEGORY_UNARCHIVE", categoryNo, vo.name());

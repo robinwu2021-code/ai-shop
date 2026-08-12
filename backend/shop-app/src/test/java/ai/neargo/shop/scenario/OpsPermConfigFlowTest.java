@@ -169,27 +169,28 @@ class OpsPermConfigFlowTest {
     @DisplayName("★★★ 判权真的读库了 —— 删掉库里的授权，那个人的 perms 就少一个码")
     void permsComeFromDb() throws Exception {
         String admin = opsLogin("admin", "admin123");
-        // BD 的 quote:govern 来自「团购与求团」下的求团相关功能点
+        // BD 的 group:demand:assign 来自「团购与求团」下的改价/毁约功能点。
+        // 细化前这里用的是 quote:govern —— 那个粗码已经拆成 read / assign 两个
         Set<String> before = permsOf(opsLogin("bd", "bd123"));
-        assertThat(before).contains("quote:govern");
+        assertThat(before).contains("group:demand:assign");
 
         // 直接改库：把 BD 与所有带 quote:govern 的功能点的关联删掉
         int removed = jdbc.update("""
                 DELETE FROM sys_role_point WHERE role_code = 'BD' AND point_code IN
-                  (SELECT point_code FROM sys_function_point WHERE perm_code = 'quote:govern')""");
+                  (SELECT point_code FROM sys_function_point WHERE perm_code = 'group:demand:assign')""");
         assertThat(removed).as("前置条件：库里应当有 BD 对 quote:govern 的授权").isPositive();
         resolver.invalidate();
         try {
             assertThat(permsOf(opsLogin("bd", "bd123")))
                     .as("删了库里的授权而 perms 不变，说明判权还在读硬编码 —— "
                             + "那这次换源就没有真正发生")
-                    .doesNotContain("quote:govern");
+                    .doesNotContain("group:demand:assign");
         } finally {
             // 还原：整套共享一份 H2，不还原会让后面所有 BD 的用例失去这个权限
             jdbc.update("""
                     INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
                     SELECT 'BD', point_code, 'OPS', NOW(), NOW() FROM sys_function_point
-                     WHERE perm_code = 'quote:govern'""");
+                     WHERE perm_code = 'group:demand:assign'""");
             resolver.invalidate();
         }
     }
@@ -205,13 +206,13 @@ class OpsPermConfigFlowTest {
             call("/ops/perm/roles", admin,
                     "{\"roleCode\":\"" + code + "\",\"name\":\"临时角色\"}", 0);
             // 勾一个带 order:view 的功能点
-            String pc = pointWithPerm(admin, "order:view");
+            String pc = pointWithPerm(admin, "order:order:read");
             call("/ops/perm/roles/" + code + "/points", admin,
                     "{\"pointCodes\":[\"" + pc + "\"]}", 0);
 
             // 授予 techops（他本来没有 order:view）
             String staffNo = staffNoOf(admin, "techops");
-            assertThat(permsOf(opsLogin("techops", "techops123"))).doesNotContain("order:view");
+            assertThat(permsOf(opsLogin("techops", "techops123"))).doesNotContain("order:order:read");
             mvc().perform(post("/ops/staffs/" + staffNo + "/role")
                             .header("Authorization", "Bearer " + admin)
                             .contentType(MediaType.APPLICATION_JSON)
@@ -221,7 +222,7 @@ class OpsPermConfigFlowTest {
             assertThat(permsOf(opsLogin("techops", "techops123")))
                     .as("**这是换源带来的新能力**：在判权读硬编码的时候，"
                             + "自定义角色只能改菜单，而菜单能看、接口 403 是最坏的一种")
-                    .contains("order:view");
+                    .contains("order:order:read");
         } finally {
             String staffNo = staffNoOf(admin, "techops");
             mvc().perform(post("/ops/staffs/" + staffNo + "/role")
@@ -253,7 +254,7 @@ class OpsPermConfigFlowTest {
         try {
             call("/ops/perm/roles", admin,
                     "{\"roleCode\":\"" + code + "\",\"name\":\"占用中\"}", 0);
-            String pc = pointWithPerm(admin, "order:view");
+            String pc = pointWithPerm(admin, "order:order:read");
             call("/ops/perm/roles/" + code + "/points", admin,
                     "{\"pointCodes\":[\"" + pc + "\"]}", 0);
             mvc().perform(post("/ops/staffs/" + staffNo + "/role")

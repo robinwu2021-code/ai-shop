@@ -40,7 +40,7 @@ public class OpsReconController {
 
     /** 差异列表。默认给待处置的 —— 这是个队列，历史是次要视图 */
     @GetMapping("/ops/payments/recon-diffs")
-    @PreAuthorize("@perm.can('" + Perms.SETTLE_MANAGE + "')")
+    @PreAuthorize("@perm.can('" + Perms.FINANCE_RECON_READ + "')")
     public PageData<ReconService.ReconDiffVO> diffs(@RequestParam(required = false) String status,
                                                     @RequestParam(defaultValue = "1") long page,
                                                     @RequestParam(defaultValue = "20") long size) {
@@ -54,14 +54,14 @@ public class OpsReconController {
      * 把说明挂在分页包上，翻到第二页时它就没了。
      */
     @GetMapping("/ops/payments/recon-coverage")
-    @PreAuthorize("@perm.can('" + Perms.SETTLE_MANAGE + "')")
+    @PreAuthorize("@perm.can('" + Perms.FINANCE_RECON_READ + "')")
     public ReconService.Coverage coverage() {
         return reconService.coverage();
     }
 
     /** 已处置。结论必填，且原样留在单据上 */
     @PostMapping("/ops/payments/recon-diffs/{diffNo}/resolve")
-    @PreAuthorize("@perm.can('" + Perms.SETTLE_MANAGE + "')")
+    @PreAuthorize("@perm.can('" + Perms.FINANCE_RECON_RESOLVE + "')")
     public ReconService.ReconDiffVO resolve(@PathVariable String diffNo,
                                             @RequestBody DecideReq req) {
         var vo = reconService.decide(diffNo, false, req.resolution(), SecurityUtils.currentUserNo());
@@ -72,7 +72,7 @@ public class OpsReconController {
 
     /** 忽略：认定不是问题。<b>同样必须写理由</b> —— 下个月再对账时没人记得为什么放过它 */
     @PostMapping("/ops/payments/recon-diffs/{diffNo}/ignore")
-    @PreAuthorize("@perm.can('" + Perms.SETTLE_MANAGE + "')")
+    @PreAuthorize("@perm.can('" + Perms.FINANCE_RECON_RESOLVE + "')")
     public ReconService.ReconDiffVO ignore(@PathVariable String diffNo,
                                            @RequestBody DecideReq req) {
         var vo = reconService.decide(diffNo, true, req.resolution(), SecurityUtils.currentUserNo());

@@ -43,7 +43,7 @@ public class OpsStoreModeController {
     }
 
     @GetMapping("/ops/merchants/{merchantNo}/store-modes")
-    @PreAuthorize("@perm.can('" + Perms.SETTLE_MANAGE + "')")
+    @PreAuthorize("@perm.can('" + Perms.MERCHANT_MODE_READ + "')")
     public List<StoreModeVO> storeModes(@PathVariable String merchantNo) {
         return governService.storeModes(merchantNo);
     }
@@ -54,7 +54,7 @@ public class OpsStoreModeController {
      * 否则运营会以为改了模式能一并修正历史。
      */
     @PutMapping("/ops/stores/{storeNo}/business-mode")
-    @PreAuthorize("@perm.can('" + Perms.SETTLE_MANAGE + "')")
+    @PreAuthorize("@perm.can('" + Perms.MERCHANT_MODE_UPDATE + "')")
     public StoreModeVO setBusinessMode(@PathVariable String storeNo, @RequestBody ModeReq req) {
         String operator = SecurityUtils.currentUserNo();
         StoreModeVO vo = governService.setBusinessMode(storeNo, req.businessMode(), operator);

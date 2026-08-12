@@ -51,7 +51,7 @@ public class OpsReviewController {
     }
 
     @GetMapping("/ops/reviews")
-    @PreAuthorize("@perm.can('" + Perms.REVIEW_GOVERN + "')")
+    @PreAuthorize("@perm.can('" + Perms.REVIEW_READ + "')")
     public ai.neargo.shop.common.PageData<ReviewService.OpsReviewVO> reviews(@RequestParam(required = false) String status,
                                                     @RequestParam(required = false) String merchantNo,
                                                     @RequestParam(required = false) String keyword,
@@ -62,7 +62,7 @@ public class OpsReviewController {
 
     /** 评价审核。驳回必须写理由。 */
     @PostMapping("/ops/reviews/{reviewNo}/decide")
-    @PreAuthorize("@perm.can('" + Perms.REVIEW_GOVERN + "')")
+    @PreAuthorize("@perm.can('" + Perms.REVIEW_AUDIT + "')")
     public ReviewService.OpsReviewVO decide(@PathVariable String reviewNo, @RequestBody DecideReq req) {
         var vo = reviewService.decide(reviewNo, Boolean.TRUE.equals(req.pass()), req.reason(),
                 SecurityUtils.currentUserNo());
@@ -72,7 +72,7 @@ public class OpsReviewController {
     }
 
     @GetMapping("/ops/review-appeals")
-    @PreAuthorize("@perm.can('" + Perms.REVIEW_GOVERN + "')")
+    @PreAuthorize("@perm.can('" + Perms.REVIEW_READ + "')")
     public ai.neargo.shop.common.PageData<ReviewService.OpsAppealVO> appeals(@RequestParam(required = false) String status,
                                                     @RequestParam(defaultValue = "1") long page,
                                                     @RequestParam(defaultValue = "20") long size) {
@@ -84,7 +84,7 @@ public class OpsReviewController {
      * {@code false} 驳回申诉（差评保留）。<b>两种都必须写裁决说明</b> —— 商家会看到。
      */
     @PostMapping("/ops/review-appeals/{appealNo}/decide")
-    @PreAuthorize("@perm.can('" + Perms.REVIEW_GOVERN + "')")
+    @PreAuthorize("@perm.can('" + Perms.REVIEW_AUDIT + "')")
     public ReviewService.OpsAppealVO decideAppeal(@PathVariable String appealNo,
                                                   @RequestBody AppealDecideReq req) {
         boolean uphold = Boolean.TRUE.equals(req.uphold());
@@ -99,7 +99,7 @@ public class OpsReviewController {
     // ---------------------------------------------------------------- 评分参数
 
     @GetMapping("/ops/review-score-config")
-    @PreAuthorize("@perm.can('" + Perms.REVIEW_GOVERN + "')")
+    @PreAuthorize("@perm.can('" + Perms.REVIEW_SCORE_READ + "')")
     public ScoreConfig scoreConfig() {
         return json.readValue(settingPort.get(SCORE_KEY, SCORE_DEFAULT), ScoreConfig.class);
     }
@@ -111,7 +111,7 @@ public class OpsReviewController {
      * 而这个偏移是全平台一致的，从任何一家店的分数上都看不出异常。
      */
     @PostMapping("/ops/review-score-config")
-    @PreAuthorize("@perm.can('" + Perms.REVIEW_GOVERN + "')")
+    @PreAuthorize("@perm.can('" + Perms.REVIEW_SCORE_UPDATE + "')")
     public ScoreConfig saveScoreConfig(@RequestBody ScoreConfig req) {
         int sum = req.weightProduct() + req.weightFulfill() + req.weightService();
         if (sum != 100 || req.newMerchantProtectDays() < 0 || req.decayHalfLifeDays() <= 0) {

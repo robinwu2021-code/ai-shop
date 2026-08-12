@@ -42,13 +42,13 @@ public class OpsAdmissionController {
     }
 
     @GetMapping("/ops/admission/policies")
-    @PreAuthorize("@perm.can('" + Perms.SETTLE_MANAGE + "')")
+    @PreAuthorize("@perm.can('" + Perms.MERCHANT_ADMISSION_READ + "')")
     public List<MchAdmissionPolicy> policies() {
         return admissionService.policies();
     }
 
     @PutMapping("/ops/admission/policies/{legalForm}")
-    @PreAuthorize("@perm.can('" + Perms.SETTLE_MANAGE + "')")
+    @PreAuthorize("@perm.can('" + Perms.MERCHANT_ADMISSION_UPDATE + "')")
     public void updatePolicy(@PathVariable String legalForm, @RequestBody MchAdmissionPolicy patch) {
         String operator = SecurityUtils.currentUserNo();
         admissionService.updatePolicy(legalForm, patch, operator);
@@ -57,19 +57,19 @@ public class OpsAdmissionController {
     }
 
     @GetMapping("/ops/admission/deposits/{merchantNo}")
-    @PreAuthorize("@perm.can('" + Perms.SETTLE_MANAGE + "')")
+    @PreAuthorize("@perm.can('" + Perms.MERCHANT_ADMISSION_READ + "')")
     public DepositVO deposit(@PathVariable String merchantNo) {
         return admissionService.deposit(merchantNo);
     }
 
     @GetMapping("/ops/admission/deposits/{merchantNo}/txns")
-    @PreAuthorize("@perm.can('" + Perms.SETTLE_MANAGE + "')")
+    @PreAuthorize("@perm.can('" + Perms.MERCHANT_ADMISSION_READ + "')")
     public List<TxnVO> txns(@PathVariable String merchantNo) {
         return admissionService.txns(merchantNo);
     }
 
     @PostMapping("/ops/admission/deposits/{merchantNo}/txns")
-    @PreAuthorize("@perm.can('" + Perms.SETTLE_MANAGE + "')")
+    @PreAuthorize("@perm.can('" + Perms.MERCHANT_ADMISSION_UPDATE + "')")
     public void addTxn(@PathVariable String merchantNo, @RequestBody TxnReq req) {
         String operator = SecurityUtils.currentUserNo();
         admissionService.recordTxn(merchantNo, req.txnType(),
@@ -85,7 +85,7 @@ public class OpsAdmissionController {
      * 填错方向的后果不对称：填大了等于没设，填小了会把正常商家的货全拦下来。
      */
     @PutMapping("/ops/admission/pay-quota/{merchantNo}")
-    @PreAuthorize("@perm.can('" + Perms.SETTLE_MANAGE + "')")
+    @PreAuthorize("@perm.can('" + Perms.MERCHANT_ADMISSION_UPDATE + "')")
     public void setPayQuota(@PathVariable String merchantNo, @RequestBody QuotaReq req) {
         String operator = SecurityUtils.currentUserNo();
         admissionService.setPayQuotaLimit(merchantNo, req.storeNo(),

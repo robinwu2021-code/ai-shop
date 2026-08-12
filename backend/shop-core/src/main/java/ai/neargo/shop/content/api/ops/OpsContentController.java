@@ -43,7 +43,7 @@ public class OpsContentController {
     // ---------------------------------------------------------------- 种草内容
 
     @GetMapping("/ops/contents/posts")
-    @PreAuthorize("@perm.can('" + Perms.CONTENT_GOVERN + "')")
+    @PreAuthorize("@perm.can('" + Perms.CONTENT_MATERIAL_READ + "')")
     public PageData<PostVO> posts(@RequestParam(required = false) String status,
                                   @RequestParam(required = false) String hasRisk,
                                   @RequestParam(defaultValue = "1") long page,
@@ -53,7 +53,7 @@ public class OpsContentController {
     }
 
     @PostMapping("/ops/contents/posts/{postNo}/decide")
-    @PreAuthorize("@perm.can('" + Perms.CONTENT_GOVERN + "')")
+    @PreAuthorize("@perm.can('" + Perms.CONTENT_MATERIAL_AUDIT + "')")
     public PostVO decide(@PathVariable String postNo, @RequestBody DecideReq req) {
         return contentService.decidePost(postNo, req.to(), req.remark(),
                 SecurityUtils.currentUserNo());
@@ -61,7 +61,7 @@ public class OpsContentController {
 
     /** 命中风险词的内容不进批量 —— 单子里含命中项时**整批拒绝**。 */
     @PostMapping("/ops/contents/posts/batch-pass")
-    @PreAuthorize("@perm.can('" + Perms.CONTENT_GOVERN + "')")
+    @PreAuthorize("@perm.can('" + Perms.CONTENT_MATERIAL_AUDIT + "')")
     public List<PostVO> batchPass(@RequestBody BatchReq req) {
         return contentService.batchPass(req.postNos(), SecurityUtils.currentUserNo());
     }
@@ -69,7 +69,7 @@ public class OpsContentController {
     // ---------------------------------------------------------------- 问答
 
     @GetMapping("/ops/contents/questions")
-    @PreAuthorize("@perm.can('" + Perms.CONTENT_GOVERN + "')")
+    @PreAuthorize("@perm.can('" + Perms.CONTENT_MATERIAL_READ + "')")
     public PageData<QuestionVO> questions(@RequestParam(required = false) String status,
                                           @RequestParam(defaultValue = "1") long page,
                                           @RequestParam(defaultValue = "20") long size) {
@@ -77,14 +77,14 @@ public class OpsContentController {
     }
 
     @PostMapping("/ops/contents/questions/{questionNo}/answer")
-    @PreAuthorize("@perm.can('" + Perms.CONTENT_GOVERN + "')")
+    @PreAuthorize("@perm.can('" + Perms.CONTENT_MATERIAL_UPDATE + "')")
     public QuestionVO answer(@PathVariable String questionNo, @RequestBody AnswerReq req) {
         return contentService.answerQuestion(questionNo, req.answer(),
                 SecurityUtils.currentUserNo());
     }
 
     @PostMapping("/ops/contents/questions/{questionNo}/hide")
-    @PreAuthorize("@perm.can('" + Perms.CONTENT_GOVERN + "')")
+    @PreAuthorize("@perm.can('" + Perms.CONTENT_MATERIAL_UPDATE + "')")
     public QuestionVO hide(@PathVariable String questionNo, @RequestBody ReasonReq req) {
         return contentService.hideQuestion(questionNo, req.reason(), SecurityUtils.currentUserNo());
     }
@@ -93,13 +93,13 @@ public class OpsContentController {
 
     /** 裸数组：前端契约是 {@code Ranking[]}，不是 {@code Page<Ranking>}。 */
     @GetMapping("/ops/contents/rankings")
-    @PreAuthorize("@perm.can('" + Perms.CONTENT_GOVERN + "')")
+    @PreAuthorize("@perm.can('" + Perms.CONTENT_MATERIAL_READ + "')")
     public List<RankingVO> rankings() {
         return contentService.rankings();
     }
 
     @PostMapping("/ops/contents/rankings")
-    @PreAuthorize("@perm.can('" + Perms.CONTENT_GOVERN + "')")
+    @PreAuthorize("@perm.can('" + Perms.CONTENT_MATERIAL_UPDATE + "')")
     public RankingVO saveRanking(@RequestBody RankingReq req) {
         return contentService.saveRanking(req.rankNo(), req.name(), req.kind(),
                 req.size() == null ? 0 : req.size(), req.manualSkus(),
@@ -107,7 +107,7 @@ public class OpsContentController {
     }
 
     @PostMapping("/ops/contents/rankings/{rankNo}/enabled")
-    @PreAuthorize("@perm.can('" + Perms.CONTENT_GOVERN + "')")
+    @PreAuthorize("@perm.can('" + Perms.CONTENT_MATERIAL_UPDATE + "')")
     public RankingVO setRankingEnabled(@PathVariable String rankNo, @RequestBody EnabledReq req) {
         return contentService.setRankingEnabled(rankNo, Boolean.TRUE.equals(req.enabled()),
                 SecurityUtils.currentUserNo());
@@ -116,7 +116,7 @@ public class OpsContentController {
     // ---------------------------------------------------------------- 素材
 
     @GetMapping("/ops/materials")
-    @PreAuthorize("@perm.can('" + Perms.CONTENT_GOVERN + "')")
+    @PreAuthorize("@perm.can('" + Perms.CONTENT_MATERIAL_READ + "')")
     public PageData<MaterialVO> materials(@RequestParam(required = false) String kind,
                                           @RequestParam(required = false) String keyword,
                                           @RequestParam(defaultValue = "1") long page,
@@ -125,7 +125,7 @@ public class OpsContentController {
     }
 
     @PostMapping("/ops/materials")
-    @PreAuthorize("@perm.can('" + Perms.CONTENT_GOVERN + "')")
+    @PreAuthorize("@perm.can('" + Perms.CONTENT_MATERIAL_UPDATE + "')")
     public MaterialVO saveMaterial(@RequestBody MaterialReq req) {
         return contentService.saveMaterial(req.materialNo(), req.title(), req.kind(),
                 req.content(), req.scope(), req.scopeRefs(), req.langs(),
@@ -133,7 +133,7 @@ public class OpsContentController {
     }
 
     @PostMapping("/ops/materials/{materialNo}/published")
-    @PreAuthorize("@perm.can('" + Perms.CONTENT_GOVERN + "')")
+    @PreAuthorize("@perm.can('" + Perms.CONTENT_MATERIAL_UPDATE + "')")
     public MaterialVO setPublished(@PathVariable String materialNo, @RequestBody PublishedReq req) {
         return contentService.setMaterialPublished(materialNo,
                 Boolean.TRUE.equals(req.published()), SecurityUtils.currentUserNo());

@@ -39,7 +39,7 @@ public class OpsGoodsController {
      * 而上架要求过审，于是商家录的商品一件都上不了架。
      */
     @PostMapping("/ops/goods/{goodsNo}/audit")
-    @PreAuthorize("@perm.can('" + Perms.GOODS_AUDIT + "')")
+    @PreAuthorize("@perm.can('" + Perms.PRODUCT_SKU_AUDIT + "')")
     public GoodsVO auditGoods(@PathVariable String goodsNo, @RequestBody AuditReq req) {
         var vo = merchantGoodsService.audit(goodsNo, Boolean.TRUE.equals(req.approved()), req.reason());
         auditLogPort.record("GOODS_AUDIT", goodsNo,
@@ -48,7 +48,7 @@ public class OpsGoodsController {
     }
 
     @GetMapping("/ops/goods/audit-queue")
-    @PreAuthorize("@perm.can('" + Perms.GOODS_AUDIT + "')")
+    @PreAuthorize("@perm.can('" + Perms.PRODUCT_SKU_READ + "')")
     public PageData<GoodsVO> goodsAuditQueue(@RequestParam(defaultValue = "1") long page,
                                              @RequestParam(defaultValue = "20") long size) {
         /*

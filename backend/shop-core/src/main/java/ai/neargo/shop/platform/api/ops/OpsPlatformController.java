@@ -72,7 +72,7 @@ public class OpsPlatformController {
      * 员工是几十条量级的主数据，全量算完再切页即可。
      */
     @GetMapping("/ops/staffs")
-    @PreAuthorize("@perm.can('" + Perms.STAFF_MANAGE + "')")
+    @PreAuthorize("@perm.can('" + Perms.IAM_STAFF_READ + "')")
     public PageData<StaffVO> staff(@RequestParam(defaultValue = "1") long page,
                                    @RequestParam(defaultValue = "20") long size) {
         return PageData.ofAll(opsService.staffList(), page, size);
@@ -83,14 +83,14 @@ public class OpsPlatformController {
      * 已经登录的人在 token 过期前照常操作，而按下停用的那个人以为生效了。
      */
     @PostMapping("/ops/staffs/{staffNo}/enabled")
-    @PreAuthorize("@perm.can('" + Perms.STAFF_MANAGE + "')")
+    @PreAuthorize("@perm.can('" + Perms.IAM_STAFF_UPDATE + "')")
     public StaffVO setStaffEnabled(@PathVariable String staffNo, @RequestBody EnabledReq req) {
         return opsService.setStaffEnabled(staffNo, Boolean.TRUE.equals(req.enabled()));
     }
 
     /** 改角色。角色码必须在 {@code Perms.ROLE_PERMS} 里真实存在，否则拒绝。 */
     @PostMapping("/ops/staffs/{staffNo}/role")
-    @PreAuthorize("@perm.can('" + Perms.STAFF_MANAGE + "')")
+    @PreAuthorize("@perm.can('" + Perms.IAM_STAFF_UPDATE + "')")
     public StaffVO setStaffRole(@PathVariable String staffNo, @RequestBody RoleReq req) {
         return opsService.setStaffRole(staffNo, req.role());
     }
@@ -103,7 +103,7 @@ public class OpsPlatformController {
      * 免得有人以为限定住了而实际没有。
      */
     @PostMapping("/ops/staffs/{staffNo}/scope")
-    @PreAuthorize("@perm.can('" + Perms.STAFF_MANAGE + "')")
+    @PreAuthorize("@perm.can('" + Perms.IAM_STAFF_UPDATE + "')")
     public StaffVO setStaffScope(@PathVariable String staffNo, @RequestBody ScopeReq req) {
         return opsService.setStaffScope(staffNo, req.merchantNo(), req.communityNo(), req.pickupNo());
     }
@@ -115,13 +115,13 @@ public class OpsPlatformController {
     }
 
     @GetMapping("/ops/audit-log")
-    @PreAuthorize("@perm.can('" + Perms.AUDIT_LOG_VIEW + "')")
+    @PreAuthorize("@perm.can('" + Perms.IAM_AUDIT_READ + "')")
     public List<AuditLogVO> auditLogs(@RequestParam(required = false) String target) {
         return opsService.auditLogs(target);
     }
 
     @GetMapping("/ops/merchant/apply")
-    @PreAuthorize("@perm.can('" + Perms.MERCHANT_AUDIT + "')")
+    @PreAuthorize("@perm.can('" + Perms.MERCHANT_APPLY_AUDIT + "')")
     public List<MerchantApplyVO> applyQueue() {
         return opsService.applyQueue();
     }
@@ -130,13 +130,13 @@ public class OpsPlatformController {
      * 受理：告诉商家「有人在看了」。不改变审核结果，也不是通过的必经步骤。
      */
     @PostMapping("/ops/merchant/apply/{applyNo}/accept")
-    @PreAuthorize("@perm.can('" + Perms.MERCHANT_AUDIT + "')")
+    @PreAuthorize("@perm.can('" + Perms.MERCHANT_APPLY_AUDIT + "')")
     public void acceptApply(@PathVariable String applyNo) {
         opsService.acceptApply(applyNo);
     }
 
     @PostMapping("/ops/merchant/apply/{applyNo}/audit")
-    @PreAuthorize("@perm.can('" + Perms.MERCHANT_AUDIT + "')")
+    @PreAuthorize("@perm.can('" + Perms.MERCHANT_APPLY_AUDIT + "')")
     public void auditApply(@PathVariable String applyNo, @RequestBody AuditReq req) {
         opsService.auditApply(applyNo, Boolean.TRUE.equals(req.approved()), req.reason(),
                 req.serviceScope(), req.communityNos());
@@ -149,7 +149,7 @@ public class OpsPlatformController {
      * 只留待办队列的话，这些问题只能去翻审计日志。
      */
     @GetMapping("/ops/merchant/apply/search")
-    @PreAuthorize("@perm.can('" + Perms.MERCHANT_AUDIT + "')")
+    @PreAuthorize("@perm.can('" + Perms.MERCHANT_APPLY_AUDIT + "')")
     public PageData<MerchantApplyVO> searchApplies(@RequestParam(required = false) String status,
                                                    @RequestParam(required = false) String keyword,
                                                    @RequestParam(defaultValue = "1") long page,
@@ -164,7 +164,7 @@ public class OpsPlatformController {
      * 这一改会影响多少家店；不带的话，「停用某个行业」就是一次盲操作。
      */
     @GetMapping("/ops/industries")
-    @PreAuthorize("@perm.can('" + Perms.INDUSTRY_MANAGE + "')")
+    @PreAuthorize("@perm.can('" + Perms.SYSTEM_INDUSTRY_READ + "')")
     public List<IndustryVO> industries() {
         return industryService.list();
     }
@@ -176,7 +176,7 @@ public class OpsPlatformController {
      * 只有当时那个人知道。
      */
     @PostMapping("/ops/industries/{industry}/micro-allowed")
-    @PreAuthorize("@perm.can('" + Perms.INDUSTRY_MANAGE + "')")
+    @PreAuthorize("@perm.can('" + Perms.SYSTEM_INDUSTRY_UPDATE + "')")
     public IndustryVO setMicroAllowed(@PathVariable String industry,
                                       @RequestBody MicroAllowedReq req) {
         IndustryVO vo = industryService.setMicroAllowed(industry, req.payChannel(),
@@ -188,7 +188,7 @@ public class OpsPlatformController {
 
     /** 启停。<b>只影响新入驻，存量商家不动</b> —— 停用不是撤销资质。 */
     @PostMapping("/ops/industries/{industry}/enabled")
-    @PreAuthorize("@perm.can('" + Perms.INDUSTRY_MANAGE + "')")
+    @PreAuthorize("@perm.can('" + Perms.SYSTEM_INDUSTRY_UPDATE + "')")
     public IndustryVO setIndustryEnabled(@PathVariable String industry,
                                          @RequestBody EnabledReq req) {
         IndustryVO vo = industryService.setEnabled(industry, Boolean.TRUE.equals(req.enabled()));
@@ -202,7 +202,7 @@ public class OpsPlatformController {
      * 一个开关直接改掉所有存量商家的成本结构是不行的。
      */
     @PostMapping("/ops/industries/{industry}/points-forced")
-    @PreAuthorize("@perm.can('" + Perms.INDUSTRY_MANAGE + "')")
+    @PreAuthorize("@perm.can('" + Perms.SYSTEM_INDUSTRY_UPDATE + "')")
     public IndustryVO setPointsForced(@PathVariable String industry,
                                       @RequestBody PointsForcedReq req) {
         IndustryVO vo = industryService.setPointsForced(industry, Boolean.TRUE.equals(req.forced()));
@@ -219,7 +219,7 @@ public class OpsPlatformController {
      * 是一次盲操作 —— 关 CITY 和关一个没人用的档，界面上看起来完全一样。
      */
     @GetMapping("/ops/service-scopes")
-    @PreAuthorize("@perm.can('" + Perms.INDUSTRY_MANAGE + "')")
+    @PreAuthorize("@perm.can('" + Perms.SYSTEM_INDUSTRY_READ + "')")
     public List<ai.neargo.shop.platform.ServiceScopeAdminService.ServiceScopeVO> serviceScopes() {
         return serviceScopeAdminService.list();
     }
@@ -232,7 +232,7 @@ public class OpsPlatformController {
      * 拿到 EDI 切平台模式时在这里打开，不用改代码、不用发版 —— 这正是这个开关存在的理由。
      */
     @PostMapping("/ops/service-scopes/{scope}/enabled")
-    @PreAuthorize("@perm.can('" + Perms.INDUSTRY_MANAGE + "')")
+    @PreAuthorize("@perm.can('" + Perms.SYSTEM_INDUSTRY_UPDATE + "')")
     public List<ai.neargo.shop.platform.ServiceScopeAdminService.ServiceScopeVO> setServiceScopeEnabled(
             @PathVariable String scope, @RequestBody ScopeEnabledReq req) {
         var vos = serviceScopeAdminService.setEnabled(scope, Boolean.TRUE.equals(req.enabled()), req.reason());

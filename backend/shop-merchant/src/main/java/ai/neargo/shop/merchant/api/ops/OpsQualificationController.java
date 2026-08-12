@@ -39,7 +39,7 @@ public class OpsQualificationController {
     }
 
     @GetMapping("/ops/merchants/{merchantNo}/qualifications")
-    @PreAuthorize("@perm.can('" + Perms.MERCHANT_AUDIT + "')")
+    @PreAuthorize("@perm.can('" + Perms.MERCHANT_CATEGORY_READ + "')")
     public List<QualificationVO> list(@PathVariable String merchantNo) {
         return governService.qualifications(merchantNo);
     }
@@ -49,7 +49,7 @@ public class OpsQualificationController {
      * 与「已过期」是两回事，扫描任务不会碰它。
      */
     @PostMapping("/ops/merchants/{merchantNo}/qualifications")
-    @PreAuthorize("@perm.can('" + Perms.MERCHANT_AUDIT + "')")
+    @PreAuthorize("@perm.can('" + Perms.MERCHANT_CATEGORY_GRANT + "')")
     public QualificationVO save(@PathVariable String merchantNo, @RequestBody SaveReq req) {
         String operator = SecurityUtils.currentUserNo();
         QualificationVO vo = governService.saveQualification(merchantNo,
@@ -63,7 +63,7 @@ public class OpsQualificationController {
 
     /** 撤销。不物理删——「当初有没有这张证」是要能查的。 */
     @PostMapping("/ops/qualifications/{qualNo}/revoke")
-    @PreAuthorize("@perm.can('" + Perms.MERCHANT_AUDIT + "')")
+    @PreAuthorize("@perm.can('" + Perms.MERCHANT_CATEGORY_GRANT + "')")
     public QualificationVO revoke(@PathVariable String qualNo) {
         QualificationVO vo = governService.revokeQualification(qualNo, SecurityUtils.currentUserNo());
         auditLogPort.record("QUALIFICATION_REVOKE", qualNo, vo.qualName());

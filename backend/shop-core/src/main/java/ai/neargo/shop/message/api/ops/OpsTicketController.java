@@ -56,7 +56,7 @@ public class OpsTicketController {
      * @param status 为空给全部；传 {@code OPEN} 就是待处理队列
      */
     @GetMapping("/ops/tickets")
-    @PreAuthorize("@perm.can('" + Perms.TICKET_HANDLE + "')")
+    @PreAuthorize("@perm.can('" + Perms.MESSAGE_TICKET_READ + "')")
     public ai.neargo.shop.common.PageData<TicketVO> list(
             @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "1") long page,
@@ -68,7 +68,7 @@ public class OpsTicketController {
      * 客服回复。回复内容**直接发给用户**，署的是平台的名，所以要留痕。
      */
     @PostMapping("/ops/tickets/{ticketNo}/reply")
-    @PreAuthorize("@perm.can('" + Perms.TICKET_HANDLE + "')")
+    @PreAuthorize("@perm.can('" + Perms.MESSAGE_TICKET_HANDLE + "')")
     public TicketVO reply(@PathVariable String ticketNo, @RequestBody ReplyReq req) {
         String operator = SecurityUtils.currentUserNo();
         TicketVO vo = messageService.replyTicket(ticketNo, req.reply(), operator);
@@ -77,7 +77,7 @@ public class OpsTicketController {
     }
 
     @PostMapping("/ops/tickets/{ticketNo}/close")
-    @PreAuthorize("@perm.can('" + Perms.TICKET_HANDLE + "')")
+    @PreAuthorize("@perm.can('" + Perms.MESSAGE_TICKET_HANDLE + "')")
     public TicketVO close(@PathVariable String ticketNo) {
         String operator = SecurityUtils.currentUserNo();
         TicketVO vo = messageService.closeTicket(ticketNo, operator);

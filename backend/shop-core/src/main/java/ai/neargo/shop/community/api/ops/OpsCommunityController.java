@@ -47,7 +47,7 @@ public class OpsCommunityController {
      * 并带了解释「该社区下仍有自提点，请先迁移或停用」。前置校验做在了正确的位置。
      */
     @PostMapping("/ops/pickups/{pickupNo}/archive")
-    @PreAuthorize("@perm.can('" + Perms.INDUSTRY_MANAGE + "')")
+    @PreAuthorize("@perm.can('" + Perms.COMMUNITY_PICKUP_UPDATE + "')")
     public java.util.Map<String, Object> archivePickup(@PathVariable String pickupNo) {
         long at = archiveService.archive(ai.neargo.shop.archive.ArchiveService.Kind.PICKUP,
                 pickupNo, ai.neargo.shop.auth.SecurityUtils.currentUserNo());
@@ -55,7 +55,7 @@ public class OpsCommunityController {
     }
 
     @PostMapping("/ops/pickups/{pickupNo}/unarchive")
-    @PreAuthorize("@perm.can('" + Perms.INDUSTRY_MANAGE + "')")
+    @PreAuthorize("@perm.can('" + Perms.COMMUNITY_PICKUP_UPDATE + "')")
     public java.util.Map<String, Object> unarchivePickup(@PathVariable String pickupNo) {
         archiveService.unarchive(ai.neargo.shop.archive.ArchiveService.Kind.PICKUP,
                 pickupNo, ai.neargo.shop.auth.SecurityUtils.currentUserNo());
@@ -67,7 +67,7 @@ public class OpsCommunityController {
      * 入驻审核要选覆盖小区，那是 BD 的活；而改社区是运营主数据的活。
      */
     @GetMapping("/ops/communities")
-    @PreAuthorize("@perm.can('" + Perms.COMMUNITY_VIEW + "')")
+    @PreAuthorize("@perm.can('" + Perms.COMMUNITY_READ + "')")
     public ai.neargo.shop.common.PageData<CommunityAdminService.CommunityVO> communities(
             @RequestParam(required = false) String keyword,
             @RequestParam(defaultValue = "false") boolean showClosed,
@@ -85,7 +85,7 @@ public class OpsCommunityController {
      * <p>用 {@code COMMUNITY_VIEW}：看队列是读。裁决那个端点才是写。
      */
     @GetMapping("/ops/communities/applies")
-    @PreAuthorize("@perm.can('" + Perms.COMMUNITY_VIEW + "')")
+    @PreAuthorize("@perm.can('" + Perms.COMMUNITY_READ + "')")
     public ai.neargo.shop.common.PageData<CommunityAdminService.ApplyVO> applies(
             @RequestParam(required = false, defaultValue = "PENDING") String status,
             @RequestParam(defaultValue = "1") long page,
@@ -101,7 +101,7 @@ public class OpsCommunityController {
      * 与开城、改归属同一量级 —— 而看队列的人（BD、客服）不该有这个权。
      */
     @PostMapping("/ops/communities/applies/{applyNo}/decide")
-    @PreAuthorize("@perm.can('" + Perms.INDUSTRY_MANAGE + "')")
+    @PreAuthorize("@perm.can('" + Perms.COMMUNITY_UPDATE + "')")
     public CommunityAdminService.ApplyVO decideApply(@PathVariable String applyNo,
                                                      @RequestBody ApplyDecideReq req) {
         boolean pass = Boolean.TRUE.equals(req.pass());
@@ -119,7 +119,7 @@ public class OpsCommunityController {
 
     /** 开城开关。关掉只停获客 —— **已有订单不受影响**。 */
     @PostMapping("/ops/communities/{communityNo}/open")
-    @PreAuthorize("@perm.can('" + Perms.INDUSTRY_MANAGE + "')")
+    @PreAuthorize("@perm.can('" + Perms.COMMUNITY_UPDATE + "')")
     public CommunityAdminService.CommunityVO setOpen(@PathVariable String communityNo,
                                                      @RequestBody OpenReq req) {
         boolean opened = Boolean.TRUE.equals(req.opened());
@@ -137,7 +137,7 @@ public class OpsCommunityController {
      * 与开城、围栏是同一量级的主数据操作。
      */
     @PostMapping("/ops/communities/{communityNo}/region")
-    @PreAuthorize("@perm.can('" + Perms.INDUSTRY_MANAGE + "')")
+    @PreAuthorize("@perm.can('" + Perms.COMMUNITY_UPDATE + "')")
     public CommunityAdminService.CommunityVO setRegion(@PathVariable String communityNo,
                                                        @RequestBody RegionReq req) {
         var vo = adminService.setRegion(communityNo, req.regionCode(), SecurityUtils.currentUserNo());
@@ -151,7 +151,7 @@ public class OpsCommunityController {
     }
 
     @PostMapping("/ops/communities/{communityNo}/fence")
-    @PreAuthorize("@perm.can('" + Perms.INDUSTRY_MANAGE + "')")
+    @PreAuthorize("@perm.can('" + Perms.COMMUNITY_UPDATE + "')")
     public CommunityAdminService.CommunityVO setFence(@PathVariable String communityNo,
                                                       @RequestBody FenceReq req) {
         var vo = adminService.setFence(communityNo, req.fenceRadius() == null ? 0 : req.fenceRadius(),
@@ -163,7 +163,7 @@ public class OpsCommunityController {
     // ---------------------------------------------------------------- 自提点
 
     @GetMapping("/ops/pickups")
-    @PreAuthorize("@perm.can('" + Perms.INDUSTRY_MANAGE + "')")
+    @PreAuthorize("@perm.can('" + Perms.COMMUNITY_PICKUP_READ + "')")
     public ai.neargo.shop.common.PageData<CommunityAdminService.PickupVO> pickups(
             @RequestParam(required = false) String communityNo,
             @RequestParam(required = false) String type,
@@ -182,7 +182,7 @@ public class OpsCommunityController {
      * 能跑通只因为开发种子建了两个。
      */
     @PostMapping("/ops/pickups")
-    @PreAuthorize("@perm.can('" + Perms.INDUSTRY_MANAGE + "')")
+    @PreAuthorize("@perm.can('" + Perms.COMMUNITY_PICKUP_UPDATE + "')")
     public CommunityAdminService.PickupVO createPickup(@RequestBody CreatePickupReq req) {
         var vo = adminService.createPickup(new CommunityAdminService.CreatePickupCommand(
                 req.communityNo(), req.name(), req.type(), req.ownerRef(), req.address(),
@@ -195,7 +195,7 @@ public class OpsCommunityController {
 
     /** 状态。MIGRATING = 不再接新单，存量单仍在本点核销完。 */
     @PostMapping("/ops/pickups/{pickupNo}/status")
-    @PreAuthorize("@perm.can('" + Perms.INDUSTRY_MANAGE + "')")
+    @PreAuthorize("@perm.can('" + Perms.COMMUNITY_PICKUP_UPDATE + "')")
     public CommunityAdminService.PickupVO setPickupStatus(@PathVariable String pickupNo,
                                                           @RequestBody PickupStatusReq req) {
         var vo = adminService.setPickupStatus(pickupNo, req.status(), SecurityUtils.currentUserNo());
@@ -205,7 +205,7 @@ public class OpsCommunityController {
 
     /** 履约服务费费率（万分比）。**NEIGHBOR 必须为 0** —— 给了报酬他就变成团长了。 */
     @PostMapping("/ops/pickups/{pickupNo}/service-fee")
-    @PreAuthorize("@perm.can('" + Perms.INDUSTRY_MANAGE + "')")
+    @PreAuthorize("@perm.can('" + Perms.COMMUNITY_PICKUP_UPDATE + "')")
     public CommunityAdminService.PickupVO setServiceFee(@PathVariable String pickupNo,
                                                         @RequestBody ServiceFeeReq req) {
         var vo = adminService.setPickupServiceFee(pickupNo,
@@ -222,7 +222,7 @@ public class OpsCommunityController {
      * 不编一个看起来像真的数字：运营会照着它去处置，而它是假的。
      */
     @GetMapping("/ops/pickups/risky")
-    @PreAuthorize("@perm.can('" + Perms.INDUSTRY_MANAGE + "')")
+    @PreAuthorize("@perm.can('" + Perms.COMMUNITY_PICKUP_READ + "')")
     public ai.neargo.shop.common.PageData<CommunityAdminService.PickupVO> risky(
             @RequestParam(defaultValue = "30") int minAcceptCount,
             @RequestParam(defaultValue = "1") long page,

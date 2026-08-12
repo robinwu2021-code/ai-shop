@@ -49,13 +49,13 @@ public class OpsPlatformConfigController {
     // ---------------------------------------------------------------- 皮肤
 
     @GetMapping("/ops/appearance")
-    @PreAuthorize("@perm.can('" + Perms.PLATFORM_CONFIG + "')")
+    @PreAuthorize("@perm.can('" + Perms.SYSTEM_THEME_READ + "')")
     public AppearanceVO appearance() {
         return configService.appearance();
     }
 
     @PostMapping("/ops/appearance")
-    @PreAuthorize("@perm.can('" + Perms.PLATFORM_CONFIG + "')")
+    @PreAuthorize("@perm.can('" + Perms.SYSTEM_THEME_UPDATE + "')")
     public AppearanceVO saveAppearance(@RequestBody AppearanceReq req) {
         AppearanceVO vo = configService.saveAppearance(req.defaultSkin(), req.festivalSkin(),
                 req.festivalFrom(), req.festivalTo(), req.fallbackLang(),
@@ -69,13 +69,13 @@ public class OpsPlatformConfigController {
     // ---------------------------------------------------------------- 功能开关
 
     @GetMapping("/ops/feature-flags")
-    @PreAuthorize("@perm.can('" + Perms.PLATFORM_CONFIG + "')")
+    @PreAuthorize("@perm.can('" + Perms.SYSTEM_PARAM_READ + "')")
     public List<FeatureFlagVO> featureFlags() {
         return configService.featureFlags();
     }
 
     @PostMapping("/ops/feature-flags/{key}")
-    @PreAuthorize("@perm.can('" + Perms.PLATFORM_CONFIG + "')")
+    @PreAuthorize("@perm.can('" + Perms.SYSTEM_PARAM_UPDATE + "')")
     public List<FeatureFlagVO> saveFeatureFlag(@PathVariable String key,
                                                @RequestBody FlagReq req) {
         List<FeatureFlagVO> all = configService.saveFeatureFlag(key,
@@ -89,14 +89,14 @@ public class OpsPlatformConfigController {
     // ---------------------------------------------------------------- 规则文案
 
     @GetMapping("/ops/rule-texts")
-    @PreAuthorize("@perm.can('" + Perms.PLATFORM_CONFIG + "')")
+    @PreAuthorize("@perm.can('" + Perms.SYSTEM_THEME_READ + "')")
     public RuleTextsVO ruleTexts() {
         return configService.ruleTexts();
     }
 
     /** 改文案会**留下上一版**：用户同意的是某一版协议，覆盖了就查不回来。 */
     @PostMapping("/ops/rule-texts")
-    @PreAuthorize("@perm.can('" + Perms.PLATFORM_CONFIG + "')")
+    @PreAuthorize("@perm.can('" + Perms.SYSTEM_THEME_UPDATE + "')")
     public RuleTextsVO saveRuleTexts(@RequestBody RuleTextsReq req) {
         RuleTextsVO vo = configService.saveRuleTexts(req.refund(), req.pickup(), req.weighDiff(),
                 SecurityUtils.currentUserNo());
@@ -106,7 +106,7 @@ public class OpsPlatformConfigController {
 
     /** 历史版本，新的在前。纠纷时靠它回答「他当时同意的是什么」。 */
     @GetMapping("/ops/rule-texts/history")
-    @PreAuthorize("@perm.can('" + Perms.PLATFORM_CONFIG + "')")
+    @PreAuthorize("@perm.can('" + Perms.SYSTEM_THEME_READ + "')")
     public List<RuleTextsVO> ruleTextsHistory() {
         return configService.ruleTextsHistory();
     }
@@ -114,13 +114,13 @@ public class OpsPlatformConfigController {
     // ---------------------------------------------------------------- 市场
 
     @GetMapping("/ops/markets")
-    @PreAuthorize("@perm.can('" + Perms.PLATFORM_CONFIG + "')")
+    @PreAuthorize("@perm.can('" + Perms.SYSTEM_PARAM_READ + "')")
     public List<MarketVO> markets() {
         return configService.markets();
     }
 
     @PostMapping("/ops/markets/{code}")
-    @PreAuthorize("@perm.can('" + Perms.PLATFORM_CONFIG + "')")
+    @PreAuthorize("@perm.can('" + Perms.SYSTEM_PARAM_UPDATE + "')")
     public List<MarketVO> saveMarketRate(@PathVariable String code, @RequestBody MarketReq req) {
         List<MarketVO> all = configService.saveMarketRate(code,
                 req.rate() == null ? 0d : req.rate(), Boolean.TRUE.equals(req.enabled()),

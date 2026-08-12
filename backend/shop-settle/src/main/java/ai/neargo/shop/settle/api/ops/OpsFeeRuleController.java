@@ -38,7 +38,7 @@ public class OpsFeeRuleController {
 
     /** 全部版本，含历史。运营要能看见「什么时候调过、调成什么、为什么调」。 */
     @GetMapping("/ops/settle/fee-rules")
-    @PreAuthorize("@perm.can('" + Perms.SETTLE_MANAGE + "')")
+    @PreAuthorize("@perm.can('" + Perms.FINANCE_RATE_READ + "')")
     public List<StlFeeRule> rules() {
         return feeRuleService.rules();
     }
@@ -50,13 +50,13 @@ public class OpsFeeRuleController {
      * 「哪一版此刻在生效」牵涉停用回退的语义，端上推错了不会报错，只会显示错。
      */
     @GetMapping("/ops/settle/fee-rules/effective")
-    @PreAuthorize("@perm.can('" + Perms.SETTLE_MANAGE + "')")
+    @PreAuthorize("@perm.can('" + Perms.FINANCE_RATE_READ + "')")
     public Map<String, Integer> effective(@RequestParam(required = false) Long at) {
         return feeRuleService.effectiveRates(at == null ? System.currentTimeMillis() : at);
     }
 
     @PostMapping("/ops/settle/fee-rules")
-    @PreAuthorize("@perm.can('" + Perms.SETTLE_MANAGE + "')")
+    @PreAuthorize("@perm.can('" + Perms.FINANCE_RATE_UPDATE + "')")
     public StlFeeRule add(@RequestBody AddReq req) {
         String operator = SecurityUtils.currentUserNo();
         long from = req.effectiveFrom() == null ? System.currentTimeMillis() : req.effectiveFrom();

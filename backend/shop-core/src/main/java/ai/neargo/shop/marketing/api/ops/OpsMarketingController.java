@@ -63,7 +63,7 @@ public class OpsMarketingController {
 
     /** @param status 为空给全部；{@code ACTIVE} / {@code PAUSED} / {@code ENDED} */
     @GetMapping("/ops/coupons")
-    @PreAuthorize("@perm.can('" + Perms.MARKETING_GOVERN + "')")
+    @PreAuthorize("@perm.can('" + Perms.MARKETING_COUPON_READ + "')")
     public PageData<OpsCouponVO> coupons(@RequestParam(required = false) String status,
                                       @RequestParam(defaultValue = "false") boolean showArchived,
                                       @RequestParam(defaultValue = "1") long page,
@@ -79,7 +79,7 @@ public class OpsMarketingController {
      * <b>三样都在，唯独运营改不了它</b> —— 预算恒为 0，闸门永远不生效。
      */
     @PostMapping("/ops/coupons/{couponNo}/budget")
-    @PreAuthorize("@perm.can('" + Perms.MARKETING_GOVERN + "')")
+    @PreAuthorize("@perm.can('" + Perms.MARKETING_COUPON_UPDATE + "')")
     public OpsCouponVO setCouponBudget(@PathVariable String couponNo, @RequestBody BudgetReq req) {
         OpsCouponVO vo = couponService.setBudget(couponNo, req.budget() == null ? 0 : req.budget(),
                 SecurityUtils.currentUserNo());
@@ -89,7 +89,7 @@ public class OpsMarketingController {
 
     /** 改券状态。暂停即刻生效：券从领券中心消失，领取被拒。 */
     @PostMapping("/ops/coupons/{couponNo}/status")
-    @PreAuthorize("@perm.can('" + Perms.MARKETING_GOVERN + "')")
+    @PreAuthorize("@perm.can('" + Perms.MARKETING_COUPON_UPDATE + "')")
     public CouponVO setCouponStatus(@PathVariable String couponNo, @RequestBody StatusReq req) {
         String operator = SecurityUtils.currentUserNo();
         CouponVO vo = couponService.setCouponStatus(couponNo, req.status(), req.reason(), operator);
@@ -98,7 +98,7 @@ public class OpsMarketingController {
     }
 
     @GetMapping("/ops/campaigns")
-    @PreAuthorize("@perm.can('" + Perms.MARKETING_GOVERN + "')")
+    @PreAuthorize("@perm.can('" + Perms.MARKETING_CAMPAIGN_READ + "')")
     public PageData<CampaignVO> campaigns(@RequestParam(required = false) String status,
                                           @RequestParam(defaultValue = "false") boolean showArchived,
                                           @RequestParam(defaultValue = "1") long page,
@@ -109,7 +109,7 @@ public class OpsMarketingController {
 
     /** 停/启商家活动。与商家自己的开关走同一个状态字段，但不校验归属。 */
     @PostMapping("/ops/campaigns/{campaignNo}/toggle")
-    @PreAuthorize("@perm.can('" + Perms.MARKETING_GOVERN + "')")
+    @PreAuthorize("@perm.can('" + Perms.MARKETING_CAMPAIGN_UPDATE + "')")
     public CampaignVO toggleCampaign(@PathVariable String campaignNo, @RequestBody ToggleReq req) {
         String operator = SecurityUtils.currentUserNo();
         CampaignVO vo = campaignService.opsToggle(campaignNo,
@@ -126,7 +126,7 @@ public class OpsMarketingController {
      * 返回 10501「还没做完」而不是 10400，理由见 {@code CouponService.issue}。
      */
     @PostMapping("/ops/coupons/{couponNo}/issue")
-    @PreAuthorize("@perm.can('" + Perms.MARKETING_GOVERN + "')")
+    @PreAuthorize("@perm.can('" + Perms.MARKETING_COUPON_ISSUE + "')")
     public CouponIssueVO issueCoupon(@PathVariable String couponNo, @RequestBody IssueReq req) {
         String operator = SecurityUtils.currentUserNo();
         CouponIssueVO vo = couponService.issue(couponNo, req.target(), req.targetDesc(),
@@ -138,7 +138,7 @@ public class OpsMarketingController {
 
     /** 发放记录。留痕的**消费方** —— 没有它，记了也没人看得到 */
     @GetMapping("/ops/coupon-issues")
-    @PreAuthorize("@perm.can('" + Perms.MARKETING_GOVERN + "')")
+    @PreAuthorize("@perm.can('" + Perms.MARKETING_COUPON_READ + "')")
     public PageData<CouponIssueVO> couponIssues(@RequestParam(required = false) String couponNo,
                                                 @RequestParam(defaultValue = "1") long page,
                                                 @RequestParam(defaultValue = "50") long size) {
@@ -156,7 +156,7 @@ public class OpsMarketingController {
      * 因为运营端的「删」几乎总是「不想看见了」，而不是「这条数据错了」。
      */
     @PostMapping("/ops/coupons/{couponNo}/archive")
-    @PreAuthorize("@perm.can('" + Perms.MARKETING_GOVERN + "')")
+    @PreAuthorize("@perm.can('" + Perms.MARKETING_COUPON_UPDATE + "')")
     public java.util.Map<String, Object> archiveCoupon(@PathVariable String couponNo) {
         long at = archiveService.archive(ArchiveService.Kind.COUPON, couponNo,
                 SecurityUtils.currentUserNo());
@@ -164,14 +164,14 @@ public class OpsMarketingController {
     }
 
     @PostMapping("/ops/coupons/{couponNo}/unarchive")
-    @PreAuthorize("@perm.can('" + Perms.MARKETING_GOVERN + "')")
+    @PreAuthorize("@perm.can('" + Perms.MARKETING_COUPON_UPDATE + "')")
     public java.util.Map<String, Object> unarchiveCoupon(@PathVariable String couponNo) {
         archiveService.unarchive(ArchiveService.Kind.COUPON, couponNo, SecurityUtils.currentUserNo());
         return java.util.Map.of("couponNo", couponNo);
     }
 
     @PostMapping("/ops/campaigns/{campaignNo}/archive")
-    @PreAuthorize("@perm.can('" + Perms.MARKETING_GOVERN + "')")
+    @PreAuthorize("@perm.can('" + Perms.MARKETING_CAMPAIGN_UPDATE + "')")
     public java.util.Map<String, Object> archiveCampaign(@PathVariable String campaignNo) {
         long at = archiveService.archive(ArchiveService.Kind.CAMPAIGN, campaignNo,
                 SecurityUtils.currentUserNo());
@@ -179,7 +179,7 @@ public class OpsMarketingController {
     }
 
     @PostMapping("/ops/campaigns/{campaignNo}/unarchive")
-    @PreAuthorize("@perm.can('" + Perms.MARKETING_GOVERN + "')")
+    @PreAuthorize("@perm.can('" + Perms.MARKETING_CAMPAIGN_UPDATE + "')")
     public java.util.Map<String, Object> unarchiveCampaign(@PathVariable String campaignNo) {
         archiveService.unarchive(ArchiveService.Kind.CAMPAIGN, campaignNo, SecurityUtils.currentUserNo());
         return java.util.Map.of("campaignNo", campaignNo);

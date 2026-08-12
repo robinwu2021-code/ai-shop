@@ -52,7 +52,7 @@ public class OpsMerchantAuthController {
      * 挤进同一列的话，「已停业的商家想从列表里收起来」就没法表达。
      */
     @PostMapping("/ops/merchants/{merchantNo}/archive")
-    @PreAuthorize("@perm.can('" + Perms.MERCHANT_AUDIT + "')")
+    @PreAuthorize("@perm.can('" + Perms.MERCHANT_BAN + "')")
     public java.util.Map<String, Object> archiveMerchant(@PathVariable String merchantNo) {
         long at = archiveService.archive(ai.neargo.shop.archive.ArchiveService.Kind.MERCHANT,
                 merchantNo, ai.neargo.shop.auth.SecurityUtils.currentUserNo());
@@ -60,7 +60,7 @@ public class OpsMerchantAuthController {
     }
 
     @PostMapping("/ops/merchants/{merchantNo}/unarchive")
-    @PreAuthorize("@perm.can('" + Perms.MERCHANT_AUDIT + "')")
+    @PreAuthorize("@perm.can('" + Perms.MERCHANT_BAN + "')")
     public java.util.Map<String, Object> unarchiveMerchant(@PathVariable String merchantNo) {
         archiveService.unarchive(ai.neargo.shop.archive.ArchiveService.Kind.MERCHANT,
                 merchantNo, ai.neargo.shop.auth.SecurityUtils.currentUserNo());
@@ -68,13 +68,13 @@ public class OpsMerchantAuthController {
     }
 
     @GetMapping("/ops/merchants/auth-codes")
-    @PreAuthorize("@perm.can('" + Perms.MERCHANT_AUDIT + "')")
+    @PreAuthorize("@perm.can('" + Perms.MERCHANT_READ + "')")
     public List<MerchantAuthCodeService.AuthCodeVO> listCodes() {
         return authCodeService.listCodes();
     }
 
     @PutMapping("/ops/merchants/{merchantNo}/auth-codes")
-    @PreAuthorize("@perm.can('" + Perms.MERCHANT_AUDIT + "')")
+    @PreAuthorize("@perm.can('" + Perms.MERCHANT_CATEGORY_GRANT + "')")
     public List<String> setCodes(@PathVariable String merchantNo, @RequestBody SetReq req) {
         var codes = authCodeService.setCodes(merchantNo, req.codes(), req.reason());
         auditLogPort.record("MERCHANT_AUTH_CODES", merchantNo,
@@ -89,7 +89,7 @@ public class OpsMerchantAuthController {
     // ---------------------------------------------------------------- 商家治理（P-11.1）
 
     @GetMapping("/ops/merchants")
-    @PreAuthorize("@perm.can('" + Perms.MERCHANT_AUDIT + "')")
+    @PreAuthorize("@perm.can('" + Perms.MERCHANT_READ + "')")
     public ai.neargo.shop.common.PageData<MerchantGovernService.MerchantProfileVO> merchants(
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String communityNo,
@@ -100,7 +100,7 @@ public class OpsMerchantAuthController {
     }
 
     @GetMapping("/ops/merchants/{merchantNo}")
-    @PreAuthorize("@perm.can('" + Perms.MERCHANT_AUDIT + "')")
+    @PreAuthorize("@perm.can('" + Perms.MERCHANT_READ + "')")
     public MerchantGovernService.MerchantProfileVO merchant(@PathVariable String merchantNo) {
         return governService.detail(merchantNo);
     }
@@ -112,7 +112,7 @@ public class OpsMerchantAuthController {
      * 两者曾经在 ops-web 上合成一个字段，已拆开。
      */
     @PostMapping("/ops/merchants/{merchantNo}/status")
-    @PreAuthorize("@perm.can('" + Perms.MERCHANT_AUDIT + "')")
+    @PreAuthorize("@perm.can('" + Perms.MERCHANT_BAN + "')")
     public MerchantGovernService.MerchantProfileVO setStatus(@PathVariable String merchantNo,
                                                              @RequestBody StatusReq req) {
         var vo = governService.setStatus(merchantNo, req.status(), req.remark(),
@@ -123,7 +123,7 @@ public class OpsMerchantAuthController {
 
     /** 认证标。只给正常经营中且毁约未达上限的商家 —— 它是平台的背书。 */
     @PostMapping("/ops/merchants/{merchantNo}/verified")
-    @PreAuthorize("@perm.can('" + Perms.MERCHANT_AUDIT + "')")
+    @PreAuthorize("@perm.can('" + Perms.MERCHANT_VERIFY_GRANT + "')")
     public MerchantGovernService.MerchantProfileVO setVerified(@PathVariable String merchantNo,
                                                                @RequestBody VerifiedReq req) {
         boolean v = Boolean.TRUE.equals(req.verified());
@@ -133,7 +133,7 @@ public class OpsMerchantAuthController {
     }
 
     @GetMapping("/ops/merchants/violations")
-    @PreAuthorize("@perm.can('" + Perms.MERCHANT_AUDIT + "')")
+    @PreAuthorize("@perm.can('" + Perms.MERCHANT_READ + "')")
     public ai.neargo.shop.common.PageData<MerchantGovernService.ViolationVO> violations(
             @RequestParam(required = false) String merchantNo,
             @RequestParam(defaultValue = "1") long page,
@@ -147,7 +147,7 @@ public class OpsMerchantAuthController {
      * {@code BREACH} 累加毁约次数（报价卡上公示），{@code SUSPEND} 真的封店。
      */
     @PostMapping("/ops/merchants/{merchantNo}/violations")
-    @PreAuthorize("@perm.can('" + Perms.MERCHANT_AUDIT + "')")
+    @PreAuthorize("@perm.can('" + Perms.MERCHANT_BAN + "')")
     public MerchantGovernService.ViolationVO recordViolation(@PathVariable String merchantNo,
                                                              @RequestBody ViolationReq req) {
         var vo = governService.recordViolation(merchantNo, req.type(), req.action(), req.detail(),
@@ -180,7 +180,7 @@ public class OpsMerchantAuthController {
      * 全部先审后发的话，「今日到货」这类时效内容要等几小时，等于功能没用。
      */
     @GetMapping("/ops/stores/audits")
-    @PreAuthorize("@perm.can('" + Perms.MERCHANT_AUDIT + "')")
+    @PreAuthorize("@perm.can('" + Perms.STORE_PAGE_AUDIT + "')")
     public ai.neargo.shop.common.PageData<MerchantGovernService.StoreAuditVO> storeAudits(
             @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "1") long page,
@@ -191,7 +191,7 @@ public class OpsMerchantAuthController {
 
     /** 裁决。通过 → 内容这时才生效；驳回 → 必须写原因，它原样出现在商家 B 端。 */
     @PostMapping("/ops/stores/audits/{auditNo}/decide")
-    @PreAuthorize("@perm.can('" + Perms.MERCHANT_AUDIT + "')")
+    @PreAuthorize("@perm.can('" + Perms.STORE_PAGE_AUDIT + "')")
     public MerchantGovernService.StoreAuditVO decideStoreAudit(@PathVariable String auditNo,
                                                                @RequestBody StoreAuditDecideReq req) {
         boolean pass = Boolean.TRUE.equals(req.pass());

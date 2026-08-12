@@ -36,7 +36,7 @@ public class OpsRegionController {
      * 停用过的区划必须看得见，否则再也开不回来。与行业、授权码那两处同一条规矩。
      */
     @GetMapping("/ops/regions")
-    @PreAuthorize("@perm.can('" + Perms.INDUSTRY_MANAGE + "')")
+    @PreAuthorize("@perm.can('" + Perms.COMMUNITY_REGION_READ + "')")
     public List<RegionService.RegionVO> children(
             @RequestParam(required = false) String parent,
             @RequestParam(defaultValue = "false") boolean enabledOnly) {
@@ -45,7 +45,7 @@ public class OpsRegionController {
 
     /** 从省到自身的整条链路。给选择器回显用 —— 端上不该自己按码长切片。 */
     @GetMapping("/ops/regions/path")
-    @PreAuthorize("@perm.can('" + Perms.INDUSTRY_MANAGE + "')")
+    @PreAuthorize("@perm.can('" + Perms.COMMUNITY_REGION_READ + "')")
     public List<RegionService.RegionVO> path(@RequestParam String code) {
         return regionService.path(code);
     }

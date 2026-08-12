@@ -34,13 +34,13 @@ public class OpsDashboardController {
     }
 
     @GetMapping("/ops/dashboard/kpi")
-    @PreAuthorize("@perm.can('" + Perms.ORDER_VIEW + "')")
+    @PreAuthorize("@perm.can('" + Perms.DASHBOARD_OVERVIEW_READ + "')")
     public DashboardService.KpiVO kpi() {
         return dashboardService.kpi();
     }
 
     @GetMapping("/ops/dashboard/trend")
-    @PreAuthorize("@perm.can('" + Perms.ORDER_VIEW + "')")
+    @PreAuthorize("@perm.can('" + Perms.DASHBOARD_OVERVIEW_READ + "')")
     public List<DashboardService.TrendPointVO> trend(
             @RequestParam(required = false) Integer days) {
         return dashboardService.trend(days == null ? DEFAULT_TREND_DAYS : days);
@@ -53,7 +53,7 @@ public class OpsDashboardController {
      * 返回 0 会被读成「一个人都没扫码」，而运营会照着它判断投放效果。
      */
     @GetMapping("/ops/dashboard/funnel")
-    @PreAuthorize("@perm.can('" + Perms.ORDER_VIEW + "')")
+    @PreAuthorize("@perm.can('" + Perms.DASHBOARD_OVERVIEW_READ + "')")
     public List<DashboardService.FunnelRowVO> funnel() {
         return dashboardService.funnel();
     }
