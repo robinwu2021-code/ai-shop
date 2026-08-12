@@ -15,6 +15,33 @@ const nav = readFileSync('lib/nav.ts', 'utf8');
 const pmSrc = readFileSync('lib/perm-map.ts', 'utf8');
 const permsJava = readFileSync('../backend/shop-base/src/main/java/ai/neargo/shop/auth/Perms.java', 'utf8');
 
+/**
+ * href → **稳定的** point_code。
+ *
+ * 此前是按顺序编号（`OPS_MERCHANT_01`…），插一个叶子就让其后全部右移。
+ * 而 `sys_role_point` 存的正是 point_code —— 编号一移，原本授权「认证标管理」的角色
+ * 会静默变成授权「准入与保证金」：没有报错，且是**放宽**方向。
+ * 运营自建角色的授权同样会跟着错位，而没有任何东西会发现。
+ *
+ * 改成从 href 派生之后，新增叶子只新增一行，既有授权一律不受影响。
+ * href 在 nav.ts 里本来就唯一（nav.test.ts 有「叶子 href 在 section 内唯一」的守卫），
+ * 所以派生结果天然唯一且稳定。
+ *
+ *   /merchants           → OPS_MERCHANT
+ *   /merchants?tab=list  → OPS_MERCHANT__TAB_LIST
+ *   /system?tab=authCode → OPS_SYSTEM__TAB_AUTHCODE
+ */
+const POINT_SEP = '__';
+export function pointCodeOf(functionCode, href) {
+  const [, qs] = href.split('?');
+  const tab = new URLSearchParams(qs).get('tab');
+  const view = new URLSearchParams(qs).get('view');
+  const suffix = tab ? `TAB_${tab}` : view ? `VIEW_${view}` : '';
+  // 大写 + 非字母数字归一成下划线：tab key 里出现 authCode / refund-back 这类写法
+  const norm = (x) => x.replace(/[^A-Za-z0-9]+/g, '_').toUpperCase();
+  return suffix ? `${functionCode}${POINT_SEP}${norm(suffix)}` : functionCode;
+}
+
 const q = (v) => v === null || v === undefined || v === '' ? 'NULL' : `'${String(v).replace(/'/g, "''")}'`;
 
 // ── UI 码 → 后端码
@@ -69,7 +96,7 @@ secs.forEach((s, si) => {
   s.leaves.forEach((l, li) => {
     const back = map[l.perm];
     const status = back === undefined ? 'UNMAPPED' : back === null ? 'NOT_IMPLEMENTED' : 'IMPLEMENTED';
-    const pc = `${fc}_${String(li + 1).padStart(2, '0')}`;
+    const pc = pointCodeOf(fc, l.href);
     points.push({ pc, perm: back || null, status });
     out.push(`INSERT INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at) VALUES (${q(pc)}, ${q(fc)}, ${q(l.label)}, ${q(l.group)}, ${q(l.href)}, ${q(l.perm)}, ${q(back)}, ${q(status)}, ${l.ready ? 1 : 0}, ${q(l.matrix)}, 'MENU', ${(li + 1) * 10}, NOW(), NOW());`);
   });
@@ -94,14 +121,43 @@ for (const ui of Object.keys(map)) {
   const back = map[ui];
   const status = back === null ? 'NOT_IMPLEMENTED' : 'IMPLEMENTED';
   const fc = prefixToFn[ui.split(':')[0]] || 'OPS_SYSTEM';
-  const pc = `ACT_${String(++actionSeq).padStart(2, '0')}`;
+  // ACTION 点同样改成稳定派生：按 UI 码，不按出现顺序
+  const pc = `ACT${POINT_SEP}${ui.replace(/[^A-Za-z0-9]+/g, '_').toUpperCase()}`;
+  actionSeq++;
   points.push({ pc, perm: back || null, status });
   out.push(`INSERT INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at) VALUES (${q(pc)}, ${q(fc)}, ${q(ui)}, '页面内操作', NULL, ${q(ui)}, ${q(back)}, ${q(status)}, 1, NULL, 'ACTION', ${900 + actionSeq}, NOW(), NOW());`);
 }
+
+/*
+ * ── 兜底：Perms.ROLE_PERMS 用到、但 UI_PERM_MAP 映射不出来的后端码 ──
+ *
+ * **不补这一段，授权会静默蒸发**。角色→功能点是靠 perm_code 对上的：
+ * 一个后端码如果没有任何功能点带它，那条授权就无处安放，
+ * 于是「库里角色→权限码」少掉一截，而**没有任何报错** ——
+ * 表现是那个角色调某个接口 403，界面上什么线索都没有。
+ *
+ * 2026-08-12 实测：权限码从 16 个细化到 68 个之后，Perms.java 长出了 22 个
+ * UI_PERM_MAP 里没有对应项的码，FINANCE 一个角色就丢了 9/16。
+ *
+ * 这些点标 ACTION：它们没有菜单入口（前端还没给这些码做界面），
+ * 但**授权必须存在** —— 后端端点是真的，只是运营端还看不到它。
+ */
+const coveredBackend = new Set(points.map(p => p.perm).filter(Boolean));
+const roleBackendCodes = new Set(Object.values(roles).flat().filter(c => c !== '*'));
+for (const code of [...roleBackendCodes].filter(c => !coveredBackend.has(c)).sort()) {
+  const fc = prefixToFn[code.split(':')[0]] || 'OPS_SYSTEM';
+  const pc = `ACT${POINT_SEP}${code.replace(/[^A-Za-z0-9]+/g, '_').toUpperCase()}`;
+  actionSeq++;
+  points.push({ pc, perm: code, status: 'IMPLEMENTED' });
+  out.push(`INSERT INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at) VALUES (${q(pc)}, ${q(fc)}, ${q(code)}, '仅后端', NULL, NULL, ${q(code)}, 'IMPLEMENTED', 0, NULL, 'ACTION', ${900 + actionSeq}, NOW(), NOW());`);
+}
+
 out.push('');
 // roles + role_point
 Object.entries(roles).forEach(([code, granted], i) => {
-  out.push(`INSERT INTO sys_role (role_code, name, end_code, builtin, sort, created_at, updated_at) VALUES (${q(code)}, ${q(ROLE_NAME[code] || code)}, 'OPS', 1, ${(i + 1) * 10}, NOW(), NOW());`);
+  // 通配（超管）在角色上标出来 —— 库里没有 `*` 这个码，见 sys_role.wildcard 的注释
+  const wildcard = granted.includes('*') ? 1 : 0;
+  out.push(`INSERT INTO sys_role (role_code, name, end_code, builtin, wildcard, sort, created_at, updated_at) VALUES (${q(code)}, ${q(ROLE_NAME[code] || code)}, 'OPS', 1, ${wildcard}, ${(i + 1) * 10}, NOW(), NOW());`);
   for (const p of points) {
     /*
      * 三种情况，**必须分开判**：
