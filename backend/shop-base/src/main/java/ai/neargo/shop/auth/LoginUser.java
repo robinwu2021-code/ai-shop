@@ -49,10 +49,33 @@ public record LoginUser(
      * 运营主体。**权限码在登录时算好并放进会话** —— 每次请求回查角色表会让
      * 「改了角色立刻生效」和「每个请求多一次查询」二选一，而前者可以靠重新登录解决。
      */
+    /**
+     * 不受数据域限制的运营（超管、商品运营等全量角色）。
+     *
+     * <p>此前**所有**运营都走这一条，`DataScopeSpec.ALL` 写死在这里 ——
+     * 于是 `sys_ops_staff` 上配好的数据域一路带到 token，
+     * 而拦截器拿到的永远是「全量」。基础设施是通的，缺的就是这一句。
+     */
     public static LoginUser operator(String staffNo, String realName,
                                      java.util.List<String> roles, java.util.List<String> perms) {
+        return operator(staffNo, realName, roles, perms, DataScopeSpec.ALL);
+    }
+
+    /**
+     * 带数据域的运营。
+     *
+     * <p><b>空 = 不限定</b>：三个归属键都没配时传 {@link DataScopeSpec#ALL}，
+     * 与「配了一个空值」要长得一样 —— 否则「不限定」有两种表示，
+     * 而其中一种会被当成「限定到空字符串」，结果是这个人什么都看不到。
+     *
+     * <p>数据域在**签发那一刻**固化进会话：改了数据域要重建会话才生效，
+     * 所以 {@code setStaffScope} 会踢掉在线会话。
+     */
+    public static LoginUser operator(String staffNo, String realName,
+                                     java.util.List<String> roles, java.util.List<String> perms,
+                                     DataScopeSpec scope) {
         return new LoginUser(Realm.OPERATOR, staffNo, realName, roles, perms, "MAIN",
-                DataScopeSpec.ALL);
+                scope == null ? DataScopeSpec.ALL : scope);
     }
 
     public static LoginUser consumer(String userNo, String nickname) {

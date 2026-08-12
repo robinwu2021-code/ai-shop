@@ -2,6 +2,7 @@ package ai.neargo.shop.platform.impl;
 
 import ai.neargo.shop.platform.OpsService;
 import ai.neargo.shop.auth.Perms;
+import ai.neargo.shop.auth.ScopeDim;
 
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.spi.user.MerchantAdminPort;
@@ -81,7 +82,8 @@ public class OpsServiceImpl implements OpsService {
         List<String> roles = readList(staff.getRoles());
         List<String> perms = Perms.of(roles);
         String token = tokenStore.issue(TokenStore.SessionData.of(
-                LoginUser.operator(staff.getStaffNo(), staff.getRealName(), roles, perms)));
+                LoginUser.operator(staff.getStaffNo(), staff.getRealName(), roles, perms,
+                        scopeOf(staff, perms))));
         /*
          * 记最近登录。加了这一列却没人写的话，员工列表那一列永远是「-」——
          * 而运营停用一个长期没登录的账号之前，看的就是它。
@@ -394,6 +396,41 @@ public class OpsServiceImpl implements OpsService {
     // ---------------------------------------------------------------- 员工写侧
 
     /** 拥有通配权限的角色不受数据域约束 —— 给他们配数据域是配置错误。 */
+    /**
+     * 把员工身上的三个归属键翻成数据域规则。
+     *
+     * <p><b>这一句是「数据域」这半个权限模型此前唯一缺的东西</b>：
+     * 拦截器、表注册、{@code DataScopeSpec} 全都在，
+     * 而 {@code LoginUser.operator} 一律签发 {@code ALL} ——
+     * 于是配好的数据域一路带到 token 就被丢掉了，
+     * 运营以为「已限定到某商家」，那个人照样看到全量。
+     *
+     * <p><b>全量角色一律 ALL</b>：超管即使库里有残留的归属键也不受限 ——
+     * 与 {@code setStaffScope} 拒绝给全量角色配数据域是同一条规矩的两面。
+     *
+     * <p>三个键都为空时返回 {@code ALL}。**空 = 不限定**，
+     * 不能返回一条 refs 为空的规则 —— 那会被翻成 {@code IN ()}，这个人什么都看不到。
+     */
+    private static ai.neargo.common.data.scope.DataScopeSpec scopeOf(SysOpsStaff staff,
+                                                                     List<String> perms) {
+        if (perms.contains("*")) {
+            return ai.neargo.common.data.scope.DataScopeSpec.ALL;
+        }
+        List<ai.neargo.common.data.scope.DataScopeSpec.Rule> rules = new java.util.ArrayList<>();
+        addRule(rules, ScopeDim.MERCHANT, staff.getMerchantNo());
+        addRule(rules, ScopeDim.COMMUNITY, staff.getCommunityNo());
+        addRule(rules, ScopeDim.PICKUP, staff.getPickupNo());
+        return rules.isEmpty() ? ai.neargo.common.data.scope.DataScopeSpec.ALL
+                : new ai.neargo.common.data.scope.DataScopeSpec(false, rules);
+    }
+
+    private static void addRule(List<ai.neargo.common.data.scope.DataScopeSpec.Rule> rules,
+                                String dim, String value) {
+        if (value != null && !value.isBlank()) {
+            rules.add(new ai.neargo.common.data.scope.DataScopeSpec.Rule(dim, java.util.Set.of(value)));
+        }
+    }
+
     private static boolean isFullAccess(List<String> roles) {
         return Perms.of(roles).contains("*");
     }
