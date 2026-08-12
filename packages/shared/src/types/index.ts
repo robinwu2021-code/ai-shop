@@ -775,13 +775,31 @@ export type StaffRole =
  * @property perms 当前门店上的权限码并集。空数组 = 这家店没给我任何角色 = 零权限
  */
 export interface BizScope {
+  /** 当前用户所属的商家主体 */
   merchantNo: string;
+  /**
+   * 当前选中的门店。
+   *
+   * **切门店后要重新拉这个接口** —— 角色跟着门店走：同一个人可能在 A 店是店长、
+   * B 店是店员，权限跟着变。不重拉的话，界面按上一家店的权限渲染。
+   */
   currentStoreNo: string;
+  /** 是不是老板（主体所有者）。老板不受门店角色限制 */
   owner: boolean;
+  /** 我能管哪些门店。空 = 只能看当前这家 */
   storeNos: string[];
+  /** 我能核销哪些自提点 */
   pickupNos: string[];
+  /** 我发起了哪些团。**第三个作用域**，与门店 / 自提点正交 */
   groupNos: string[];
+  /** 我在**当前门店**持有的角色（可多个）。老板恒为 `["OWNER"]` */
   staffRoles: (StaffRole | "OWNER")[];
+  /**
+   * 这些角色合起来的权限码，**已取并集**（老板是 `["*"]`）。
+   *
+   * 端上照它裁剪入口，**不要自己按角色再推一遍** —— 两处各推一次迟早分岔，
+   * 而分岔的表现是「看得见但点了报错」。
+   */
   perms: string[];
 }
 
@@ -1674,6 +1692,7 @@ export interface StoreProfile {
 
 /** 一条地理覆盖项。名字由后端拼好下发 —— 端上只拿到 330106 的话，要么显示一串数字，要么自己再查一次 */
 export interface ServiceArea {
+  /** 粒度：社区 / 街道 / 区县 / 城市。**可跨粒度组合** —— 三个小区 + 一个区是四条 */
   level: AreaLevel;
   /** level=COMMUNITY 时是社区号，否则是区划码 */
   refCode: string;
@@ -1697,11 +1716,15 @@ export interface ServiceArea {
  * 端上别拿它去当社区用 —— 待审的小区不在任何选点列表里。
  */
 export interface CommunityApply {
+  /** 提报单业务键 */
   applyNo: string;
+  /** 提报的商家 */
   merchantNo: string;
+  /** 商家名。运营看着一串 M20260811… 判断不了任何事 */
   merchantName: string;
   /** 小区名，商家填 */
   name: string;
+  /** 地址。运营靠它判断这是不是已有社区的另一个叫法 —— 批重了商家会分不清该勾哪个 */
   address?: string;
   /** 商家选的区划，**只是建议** —— 最终以运营裁决时填的为准 */
   regionCode?: string;
@@ -1709,28 +1732,38 @@ export interface CommunityApply {
   regionPath?: string;
   /** 补充说明：为什么要开这个点 */
   note?: string;
+  /** 待审 / 已建社区 / 已驳回。裁完即终态 */
   status: CommunityApplyStatus;
   /** 通过后建出来的社区号；待审与驳回时为空 */
   communityNo?: string;
   /** 驳回原因，**原样展示给商家** —— 不给理由他只会原样再提一次 */
   reason?: string;
+  /** 提报时间（毫秒时间戳）*/
   submittedAt: number;
 }
 
 export interface CommunityApplyReq {
+  /** 小区名。**必填** —— 运营要靠它与地址一起判断是不是已有社区的另一个叫法 */
   name: string;
+  /** 地址。不填也能提，但运营多半会驳回：光一个小区名判断不了是不是重复 */
   address?: string;
+  /** 商家选的区划，只是建议。留空由运营裁决时补 */
   regionCode?: string;
+  /** 补充说明：为什么要开这个点 */
   note?: string;
 }
 
 /** 行政区划的一级（`/biz/regions`）。国家统计局统计用区划代码，省 2 / 市 4 / 区 6 / 街道 9 位 */
 export interface Region {
+  /** 统计用区划代码：省 2 位 / 市 4 位 / 区县 6 位 / 街道 9 位。**前缀即层级**，下级码以上级码开头 */
   regionCode: string;
+  /** 上级区划码。省级为空 —— 逐级选择器据此判断自己在不在顶层 */
   parentCode?: string;
   /** PROVINCE / CITY / DISTRICT / STREET */
   level: string;
+  /** 本级名称，**不含上级**（「西湖区」不是「杭州市 / 西湖区」）。要整条路径的地方自己拼 */
   name: string;
+  /** 是否启用。B 端只会拿到启用的 —— 停用的区划是运营的维护对象，不该出现在商家的选择器里 */
   enabled: boolean;
   /** 下面还有没有下级。端上据此决定「还要不要再往下选一层」，而不是点进去才发现是空的 */
   hasChild: boolean;

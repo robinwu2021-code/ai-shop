@@ -1257,6 +1257,9 @@ export const mockApi: ShopApi = {
           industryGated: false, settleAccountType: "MERCHANT_ID" as const },
       ],
       channels: [{ payChannel: "WECHAT", name: "微信支付", enabled: true, payMethods: ["JSAPI"] }],
+      // 一期只开「仅本社区」：与 B 端 mock、后端 sys_setting 的白名单同一口径。
+      // 写死三档的话，mock 下能选到一个真实环境必被拒的档，而那种问题只有联调才会撞见
+      serviceScopes: [SERVICE_SCOPE.COMMUNITY],
     });
   },
 

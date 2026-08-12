@@ -18,6 +18,7 @@ export type CommunityApplyStatus = "PENDING" | "APPROVED" | "REJECTED";
  * 待审的小区不在任何选点列表里 —— 进了主表就会出现在用户面前，而点进去什么都没有。
  */
 export interface CommunityApply {
+  /** 提报单业务键。裁决按它定位，**不用自增 id** —— 那个不对外，重建库就变 */
   applyNo: string;
   /** 提报的商家 */
   merchantNo: string;
@@ -33,6 +34,7 @@ export interface CommunityApply {
   regionPath?: string;
   /** 商家的补充说明：为什么要开这个点 */
   note?: string;
+  /** 待审 / 已建社区 / 已驳回。**只有 PENDING 能裁**：裁完就是终态，再裁一次意味着同一条提报有两个结论 */
   status: CommunityApplyStatus;
   /** 通过后建出来的社区号；待审与驳回时为空 */
   communityNo?: string;
@@ -80,9 +82,11 @@ export interface Community extends Archivable {
 export interface Region {
   /** 统计用区划代码：省 2 位 / 市 4 位 / 区县 6 位 / 街道 9 位 */
   regionCode: string;
+  /** 上级区划码。省级为空 —— 逐级选择器据此判断自己是不是在顶层 */
   parentCode?: string;
   /** PROVINCE / CITY / DISTRICT / STREET */
   level: string;
+  /** 本级名称，**不含上级**（「西湖区」不是「杭州市 / 西湖区」）。要整条路径的地方自己拼，见 CommunityApply.regionPath */
   name: string;
   /** 开城开关：停用只影响新的选择，存量商家不动 */
   enabled: boolean;

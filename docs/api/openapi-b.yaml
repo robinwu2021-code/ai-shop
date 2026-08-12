@@ -57,6 +57,30 @@ components:
         - "COMMUNITY"
         - "CITY"
         - "PLATFORM"
+    FulfillmentReach: 
+      type: "string"
+      enum: 
+        - "PICKUP"
+        - "ONSITE"
+        - "SHIPPING"
+    AreaLevel: 
+      type: "string"
+      enum: 
+        - "COMMUNITY"
+        - "STREET"
+        - "DISTRICT"
+        - "CITY"
+    AreaStatus: 
+      type: "string"
+      enum: 
+        - "ACTIVE"
+        - "PENDING"
+    CommunityApplyStatus: 
+      type: "string"
+      enum: 
+        - "PENDING"
+        - "APPROVED"
+        - "REJECTED"
     I18nText: 
       "$ref": "#/components/schemas/Record_Lang_string"
       description: "多语言文案（mock 内部用；对外契约由后端按 Accept-Language 返回已本地化的 string）"
@@ -1222,6 +1246,57 @@ components:
         - "COURIER"
         - "CS"
       description: "门店角色（B 端）。**一人一店可持有多个**，权限取并集。\n\n分界线画在「出错的后果」上，而不是功能重要性 —— 履约被拆成三种活，因为它们面对的对象不同：分拣对货、核销对顾客、发货对收件人。 拆开之后理货员与配送员才装得下。判断依据见 `docs/requirements/三端角色权限功能对齐清单.md` §4。\n\n⚠️ `CS` 与运营端的 `Role.CS` **同名不同义**：这个是商家自己雇的客服（只管自己店）， 那个是平台客服（跨商家、能仲裁）。\n\n老板不在这里 —— 他是 `isOwner`，不需要逐店授权。"
+    BizScope: 
+      type: "object"
+      properties: 
+        merchantNo: 
+          type: "string"
+          description: "当前用户所属的商家主体"
+        currentStoreNo: 
+          type: "string"
+          description: "当前选中的门店。\n\n**切门店后要重新拉这个接口** —— 角色跟着门店走：同一个人可能在 A 店是店长、 B 店是店员，权限跟着变。不重拉的话，界面按上一家店的权限渲染。"
+        owner: 
+          type: "boolean"
+          description: "是不是老板（主体所有者）。老板不受门店角色限制"
+        storeNos: 
+          type: "array"
+          items: 
+            type: "string"
+          description: "我能管哪些门店。空 = 只能看当前这家"
+        pickupNos: 
+          type: "array"
+          items: 
+            type: "string"
+          description: "我能核销哪些自提点"
+        groupNos: 
+          type: "array"
+          items: 
+            type: "string"
+          description: "我发起了哪些团。**第三个作用域**，与门店 / 自提点正交"
+        staffRoles: 
+          type: "array"
+          items: 
+            anyOf: 
+              - "$ref": "#/components/schemas/StaffRole"
+              - type: "string"
+                const: "OWNER"
+          description: "我在**当前门店**持有的角色（可多个）。老板恒为 `[\"OWNER\"]`"
+        perms: 
+          type: "array"
+          items: 
+            type: "string"
+          description: "这些角色合起来的权限码，**已取并集**（老板是 `[\"*\"]`）。\n\n端上照它裁剪入口，**不要自己按角色再推一遍** —— 两处各推一次迟早分岔， 而分岔的表现是「看得见但点了报错」。"
+      required: 
+        - "merchantNo"
+        - "currentStoreNo"
+        - "owner"
+        - "storeNos"
+        - "pickupNos"
+        - "groupNos"
+        - "staffRoles"
+        - "perms"
+      additionalProperties: false
+      description: "我在**当前门店**能做什么（`GET /biz/context`）。B 端每次会话恢复与切门店后都要重取。"
     SettleBillStatus: 
       type: "string"
       enum: 
@@ -2206,10 +2281,16 @@ components:
           items: 
             "$ref": "#/components/schemas/MasterDataChannel"
           description: "可用支付通道与其能力位"
+        serviceScopes: 
+          type: "array"
+          items: 
+            "$ref": "#/components/schemas/ServiceScope"
+          description: "**这一期开放的经营范围档位**（`SERVICE_SCOPE` 的启用子集，运营在后台配）。\n\n端上要照它渲染选项，**不要把三档写死**。写死的后果不是「多了个选项」： 一期自营模式关掉了 `PLATFORM`，而 B 端照样把「全平台发货」摆在那里， 商家点下去得到的是「当前不支持这个经营范围」—— 一个必被拒的选项， 而他无从知道自己该选什么。2026-08-11 的端到端实测撞到过。\n\n拿到 EDI 切平台模式时运营在后台放开，端上不发版就跟着变 —— 这正是它下发而不是写死的理由。"
       required: 
         - "industries"
         - "subjects"
         - "channels"
+        - "serviceScopes"
       additionalProperties: false
       description: "平台主数据快照（`GET /common/master-data`）。\n\n合成一个响应而不是三条接口，是因为它们在**同一屏上被同时用到**： 「选行业 → 据此过滤可选主体 → 主体决定要不要传营业执照」。 分三次请求会出现「行业回来了、主体还没回来」的中间态， 而那个中间态里表单不知道该不该禁用某个选项。"
     MasterDataIndustry: 
@@ -2511,6 +2592,9 @@ components:
         toDeliver: 
           type: "number"
           description: "待自送单数（商家自送履约）"
+        toStock: 
+          type: "number"
+          description: "待备货单数（自提单已付款，货还没送到自提点）。**按门店算**，这是供货方的活。\n\n与  {@link  toPick }  是同一批单的两头，**两个数不相等**： 买家常常选别家的自提点。`toPick` 按自提点算（我要在点上分多少）， 这一个按门店算（我要送出去多少）。"
         toVerify: 
           type: "number"
           description: "待核销单数（自提到货、买家还没来取）"
@@ -2529,6 +2613,7 @@ components:
       required: 
         - "toShip"
         - "toDeliver"
+        - "toStock"
         - "toVerify"
         - "toPick"
         - "afterSale"
@@ -2601,6 +2686,14 @@ components:
         serviceCityCode: 
           type: "string"
           description: "scope=CITY 时覆盖的城市"
+        fulfillmentReach: 
+          "$ref": "#/components/schemas/FulfillmentReach"
+          description: "履约能力（ADR-013 阶段二）。**只说「怎么送到你手上」**，送得到哪儿看  {@link  serviceAreas } 。\n\n与上面两个 `@deprecated` 字段的关系：新旧两套并存期间，端上**只传一套** —— 传了 `serviceAreas` 就走新模型，后端不再看 `serviceScope`。"
+        serviceAreas: 
+          type: "array"
+          items: 
+            "$ref": "#/components/schemas/ServiceArea"
+          description: "地理覆盖项，可跨粒度组合（三个小区 + 一个区）。\n\n**空的含义由 `fulfillmentReach` 决定**，这是这个字段最容易踩的地方： PICKUP 空 = 谁也看不到（没配自提点就没法履约）； ONSITE / SHIPPING 空 = 不限。同一个空数组两种意思，所以别拿它判「有没有设置过」。"
       required: 
         - "announcement"
         - "openHours"
@@ -2610,6 +2703,122 @@ components:
         - "serviceCommunityNos"
       additionalProperties: false
       description: "店铺门面（B-11.2 店铺装修 → C 端门店主页的数据源）。 与 Merchant 分开：Merchant 是平台建档的商家主数据（名称/资质/评分，商家改不了）， 这里是**店主自己能改的门面内容**。混在一起的话，改公告要走审核就荒谬了。"
+    ServiceArea: 
+      type: "object"
+      properties: 
+        level: 
+          "$ref": "#/components/schemas/AreaLevel"
+          description: "粒度：社区 / 街道 / 区县 / 城市。**可跨粒度组合** —— 三个小区 + 一个区是四条"
+        refCode: 
+          type: "string"
+          description: "level=COMMUNITY 时是社区号，否则是区划码"
+        name: 
+          type: "string"
+          description: "展示名。区级以上是「浙江省 / 杭州市 / 西湖区」整条路径 —— 光一个「西湖区」全国有好几个，商家分不出删哪条"
+        status: 
+          "$ref": "#/components/schemas/AreaStatus"
+          description: "`ACTIVE` 已生效 / `PENDING` 待运营审核。\n\n勾已有社区自助生效；勾区、街道要审 —— 一家菜摊声称覆盖整个西湖区， 影响面差一个量级（ADR-013 §4.2）。**端上必须把待审标出来**： 待审的不参与展开，商家看着它在清单里却一个订单也不来， 而这是他自己永远查不出来的那类故障。"
+      required: 
+        - "level"
+        - "refCode"
+        - "name"
+      additionalProperties: false
+      description: "一条地理覆盖项。名字由后端拼好下发 —— 端上只拿到 330106 的话，要么显示一串数字，要么自己再查一次"
+    CommunityApply: 
+      type: "object"
+      properties: 
+        applyNo: 
+          type: "string"
+          description: "提报单业务键"
+        merchantNo: 
+          type: "string"
+          description: "提报的商家"
+        merchantName: 
+          type: "string"
+          description: "商家名。运营看着一串 M20260811… 判断不了任何事"
+        name: 
+          type: "string"
+          description: "小区名，商家填"
+        address: 
+          type: "string"
+          description: "地址。运营靠它判断这是不是已有社区的另一个叫法 —— 批重了商家会分不清该勾哪个"
+        regionCode: 
+          type: "string"
+          description: "商家选的区划，**只是建议** —— 最终以运营裁决时填的为准"
+        regionPath: 
+          type: "string"
+          description: "区划整条路径名。「北山街道」全国有好几个，光末级判断不了是不是同一个地方"
+        note: 
+          type: "string"
+          description: "补充说明：为什么要开这个点"
+        status: 
+          "$ref": "#/components/schemas/CommunityApplyStatus"
+          description: "待审 / 已建社区 / 已驳回。裁完即终态"
+        communityNo: 
+          type: "string"
+          description: "通过后建出来的社区号；待审与驳回时为空"
+        reason: 
+          type: "string"
+          description: "驳回原因，**原样展示给商家** —— 不给理由他只会原样再提一次"
+        submittedAt: 
+          type: "number"
+          description: "提报时间（毫秒时间戳）"
+      required: 
+        - "applyNo"
+        - "merchantNo"
+        - "merchantName"
+        - "name"
+        - "status"
+        - "submittedAt"
+      additionalProperties: false
+      description: "商家提报的新社区（ADR-013 阶段三）。\n\n提报**不等于**社区已存在：审过之后平台才建出来，`communityNo` 这时才有值。 端上别拿它去当社区用 —— 待审的小区不在任何选点列表里。"
+    CommunityApplyReq: 
+      type: "object"
+      properties: 
+        name: 
+          type: "string"
+          description: "小区名。**必填** —— 运营要靠它与地址一起判断是不是已有社区的另一个叫法"
+        address: 
+          type: "string"
+          description: "地址。不填也能提，但运营多半会驳回：光一个小区名判断不了是不是重复"
+        regionCode: 
+          type: "string"
+          description: "商家选的区划，只是建议。留空由运营裁决时补"
+        note: 
+          type: "string"
+          description: "补充说明：为什么要开这个点"
+      required: 
+        - "name"
+      additionalProperties: false
+    Region: 
+      type: "object"
+      properties: 
+        regionCode: 
+          type: "string"
+          description: "统计用区划代码：省 2 位 / 市 4 位 / 区县 6 位 / 街道 9 位。**前缀即层级**，下级码以上级码开头"
+        parentCode: 
+          type: "string"
+          description: "上级区划码。省级为空 —— 逐级选择器据此判断自己在不在顶层"
+        level: 
+          type: "string"
+          description: "PROVINCE / CITY / DISTRICT / STREET"
+        name: 
+          type: "string"
+          description: "本级名称，**不含上级**（「西湖区」不是「杭州市 / 西湖区」）。要整条路径的地方自己拼"
+        enabled: 
+          type: "boolean"
+          description: "是否启用。B 端只会拿到启用的 —— 停用的区划是运营的维护对象，不该出现在商家的选择器里"
+        hasChild: 
+          type: "boolean"
+          description: "下面还有没有下级。端上据此决定「还要不要再往下选一层」，而不是点进去才发现是空的"
+      required: 
+        - "regionCode"
+        - "level"
+        - "name"
+        - "enabled"
+        - "hasChild"
+      additionalProperties: false
+      description: "行政区划的一级（`/biz/regions`）。国家统计局统计用区划代码，省 2 / 市 4 / 区 6 / 街道 9 位"
     StoreQrcode: 
       type: "object"
       properties: 
@@ -3095,6 +3304,11 @@ components:
           items: 
             "$ref": "#/components/schemas/SpecGroupDraft"
           description: "空数组 = 单规格。非空则 skus 必须是各组选项的笛卡尔积"
+        fulfillments: 
+          type: "array"
+          items: 
+            type: "string"
+          description: "支持的履约方式；不传 = 不改（新建默认四种全支持）"
         skus: 
           type: "array"
           items: 
@@ -3925,6 +4139,94 @@ paths:
                     type: "array"
                     items: 
                       "$ref": "#/components/schemas/Community"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/regions": 
+    get: 
+      operationId: "mRegions"
+      summary: "行政区划下一级（框覆盖范围用）"
+      tags: 
+        - "regions"
+      security: 
+        - bearerAuth: []
+      parameters: []
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "array"
+                    items: 
+                      "$ref": "#/components/schemas/Region"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/communities/apply": 
+    post: 
+      operationId: "mApplyCommunity"
+      summary: "提报平台还没有的小区"
+      tags: 
+        - "communities"
+      security: 
+        - bearerAuth: []
+      parameters: []
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/CommunityApply"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/communities/applies": 
+    get: 
+      operationId: "mMyCommunityApplies"
+      summary: "我提报过的小区"
+      tags: 
+        - "communities"
+      security: 
+        - bearerAuth: []
+      parameters: []
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "array"
+                    items: 
+                      "$ref": "#/components/schemas/CommunityApply"
                 required: 
                   - "code"
                   - "msg"
