@@ -2886,6 +2886,86 @@ components:
         - "name"
       additionalProperties: false
       description: "一条地理覆盖项。名字由后端拼好下发 —— 端上只拿到 330106 的话，要么显示一串数字，要么自己再查一次"
+    SubOrderStatus: 
+      type: "string"
+      enum: 
+        - "WAIT_PAY"
+        - "WAIT_FULFILL"
+        - "FULFILLING"
+        - "COMPLETED"
+        - "CANCELLED"
+        - "REFUNDED"
+      description: "子单状态（`ord_sub_order.status`）。\n\n**与  {@link  OrderStatus }  不是同一套**：主单管钱（付没付、退没退）， 子单管货（这家商家的这批货履约到哪一步了）。一张主单拆给三家商家时， 三个子单各走各的 —— 把两者合成一个字段，那三家里有一家发了货就说不清了。"
+    PickupOrder: 
+      type: "object"
+      properties: 
+        subOrderNo: 
+          type: "string"
+          description: "子单号 —— 履约的最小单位是子单，不是主单"
+        verifyCode: 
+          type: "string"
+          description: "取货码"
+        buyerNickname: 
+          type: "string"
+          description: "买家昵称。认人用；没设昵称时为空"
+        buyerPhoneTail: 
+          type: "string"
+          description: "手机号后四位。认人够用，联系走平台通道（B12）"
+        merchantName: 
+          type: "string"
+          description: "货主商家名。自提点可能替好几家收货"
+        status: 
+          "$ref": "#/components/schemas/SubOrderStatus"
+          description: "子单状态：WAIT_FULFILL / ARRIVED / COMPLETED / …"
+        pickupNo: 
+          type: "string"
+          description: "这单该在哪个自提点取。核销时后端会比对，不是本点直接拒"
+        items: 
+          type: "array"
+          items: 
+            type: "object"
+            properties: 
+              goodsNo: 
+                type: "string"
+              title: 
+                type: "string"
+              spec: 
+                type: "string"
+              qty: 
+                type: "number"
+            required: 
+              - "goodsNo"
+              - "title"
+              - "qty"
+            additionalProperties: false
+          description: "这单要交付的东西。分拣与交货时按它点数"
+      required: 
+        - "subOrderNo"
+        - "verifyCode"
+        - "status"
+        - "items"
+      additionalProperties: false
+      description: "自提点履约台上的一单（`/biz/pickup/orders`）。\n\n**不是 `Order`**：这里的承接方可能是别家商家的自提点，字段按「履约必需」 裁到最小 —— 认得出人、点得清件数、核得了码，仅此而已（B12）。 端上此前把它当 `Order` 用，于是按 `status === \"ARRIVED\"` 过滤（那是 mock 的口径）， 真实后端返回 `WAIT_FULFILL`，**列表因此永远是空的**。"
+    VerifyResult: 
+      type: "object"
+      properties: 
+        success: 
+          type: "boolean"
+          description: "**判成功只看它** —— 失败同样是 HTTP 200 + code 0"
+        subOrderNo: 
+          type: 
+            - "string"
+            - "null"
+          description: "成功或识别到单时给出；码根本不存在时为空"
+        reason: 
+          type: 
+            - "string"
+            - "null"
+          description: "CODE_NOT_FOUND / ALREADY_VERIFIED / NOT_THIS_PICKUP / REFUNDED / NOT_PAID"
+      required: 
+        - "success"
+      additionalProperties: false
+      description: "核销结果。\n\n⚠️ **失败也是 HTTP 200 + `code: 0`**，靠 `success` 判 —— 端上不能只看有没有抛异常。 此前 b-app 正是这么写的：任何一次失败（码无效、已核销、不是本点） 都会走进成功分支，界面提示「核销成功」而货其实没核掉。"
     CommunityApply: 
       type: "object"
       properties: 

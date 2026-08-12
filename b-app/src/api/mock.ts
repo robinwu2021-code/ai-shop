@@ -972,12 +972,30 @@ export const mockApi: MerchantApi = {
     });
   },
 
+  /** 履约台的单：**按 PickupOrder 的形状发**（子单号 + 裁剪过的字段），与后端一致 */
   async mPickupOrders() {
     const pickupNo = db.merchant.pickupNo;
     return delay(
-      db.orders.filter(
-        (o) => o.fulfillment === "STORE_PICKUP" && (!pickupNo || o.pickupNo === pickupNo),
-      ),
+      db.orders
+        .filter((o) => o.fulfillment === "STORE_PICKUP" && (!pickupNo || o.pickupNo === pickupNo))
+        .map((o) => ({
+          subOrderNo: o.orderNo,
+          verifyCode: o.verifyCode ?? "",
+          buyerNickname: o.buyerNickname,
+          merchantName: o.merchantName,
+          // 主单状态映到子单那一套：mock 的 PAID/ARRIVED 在后端都算「还没履约完」
+          status:
+            o.status === "COMPLETED" || o.status === "CANCELLED" || o.status === "REFUNDED"
+              ? o.status
+              : ("WAIT_FULFILL" as const),
+          pickupNo: o.pickupNo,
+          items: o.items.map((i) => ({
+            goodsNo: i.goodsNo,
+            title: i.title,
+            spec: i.spec,
+            qty: i.qty,
+          })),
+        })),
     );
   },
 
@@ -1409,12 +1427,30 @@ export const mockApi: MerchantApi = {
     return delay(o);
   },
 
+  /**
+   * 核销。**失败不抛异常，返回 `success: false` + reason** —— 与真实后端同口径。
+   *
+   * 此前 mock 用抛异常表达失败，而后端把失败当业务结果回（code 0）。
+   * 端上照着 mock 写「try/catch，能走到下一行就是成功」，
+   * 于是**真机上任何一次失败都提示「核销成功」**。
+   * mock 与后端在「失败长什么样」上分岔，比在字段名上分岔危险得多。
+   */
   async mVerify(code) {
     const o = db.orders.find((x) => x.verifyCode === code);
-    if (!o) throw new Error("核销码无效");
-    if (o.status === "COMPLETED") throw new Error("该订单已核销");
+    if (!o) return delay({ success: false, subOrderNo: null, reason: "CODE_NOT_FOUND" });
+    if (o.status === "COMPLETED") {
+      return delay({ success: false, subOrderNo: o.orderNo, reason: "ALREADY_VERIFIED" });
+    }
+    if (o.status === "CANCELLED" || o.status === "REFUNDED") {
+      return delay({ success: false, subOrderNo: o.orderNo, reason: "REFUNDED" });
+    }
+    if (o.status === "WAIT_PAY") {
+      return delay({ success: false, subOrderNo: o.orderNo, reason: "NOT_PAID" });
+    }
     const pickupNo = db.merchant.pickupNo;
-    if (pickupNo && o.pickupNo && o.pickupNo !== pickupNo) throw new Error("这单不在本自提点");
+    if (pickupNo && o.pickupNo && o.pickupNo !== pickupNo) {
+      return delay({ success: false, subOrderNo: o.orderNo, reason: "NOT_THIS_PICKUP" });
+    }
     if (o.status === "PAID") {
       o.status = "ARRIVED";
       pushTimeline(o, "已到自提点");
@@ -1423,7 +1459,7 @@ export const mockApi: MerchantApi = {
     o.status = "COMPLETED";
     pushTimeline(o, "已核销完成");
     persist();
-    return delay(o);
+    return delay({ success: true, subOrderNo: o.orderNo, reason: null });
   },
 
   /**

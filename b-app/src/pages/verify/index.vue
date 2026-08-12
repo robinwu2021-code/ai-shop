@@ -13,20 +13,29 @@ import { useI18n } from "vue-i18n";
 import { api } from "@/api";
 import { scanCode } from "@shared/ports/scan";
 import { money } from "@shared/utils/money";
-import type { Order, PickupOverview, VerifyBatchResult } from "@shared/types";
+import type { Order, PickupOrder, PickupOverview, VerifyBatchResult } from "@shared/types";
 
 const { t } = useI18n();
 
 const overview = ref<PickupOverview | null>(null);
 const code = ref("");
 const busy = ref(false);
-const orders = ref<Order[]>([]);
+const orders = ref<PickupOrder[]>([]);
 /** 刚核销成功的单号，用于列表高亮，让店主确认「我刚点的是这单」 */
 const justDone = ref("");
 const error = ref("");
 
-/** 待核销 = 已到点未核销。已完成的不在这里，避免误点重复核销 */
-const waiting = computed(() => orders.value.filter((o) => o.status === "ARRIVED"));
+/**
+ * 待核销 = **后端认为还能核的那些**。
+ *
+ * 判据与 `PickupServiceImpl.doVerify` 同一套：已完成 / 已退 / 已取消 / 未付款
+ * 之外的都还能核。此前这里写的是 `status === "ARRIVED"` —— 那是 **mock 的口径**
+ * （mock 用主单状态），真实后端发的是子单状态 `WAIT_FULFILL`，
+ * 于是这张列表在真机上**永远是空的**，而头部计数是对的：
+ * 同一屏上「1 待核销」与「当前没有待核销的订单」并排。
+ */
+const NOT_VERIFIABLE = ["COMPLETED", "CANCELLED", "REFUNDED", "WAIT_PAY"];
+const waiting = computed(() => orders.value.filter((o) => !NOT_VERIFIABLE.includes(o.status)));
 
 async function load() {
   // 重新进页面时清掉上次的失败提示 —— 否则「该订单已核销」会一直挂在那里，
@@ -54,8 +63,17 @@ async function verify(input?: string) {
   error.value = "";
   candidates.value = null;
   try {
-    const o = await api.mVerify(c);
-    justDone.value = o.orderNo;
+    const r = await api.mVerify(c);
+    /*
+     * **失败也是 code 0**：后端把「码无效 / 已核销 / 不是本点」当成业务结果回，
+     * 不抛错。此前这里只 catch 异常，于是任何一次失败都走进成功分支 ——
+     * 输一个不存在的码，界面照样提示「核销成功」。
+     * 实测过：现场店主会把货交给一个拿废码的人，而且没有任何记录说这单没核掉。
+     */
+    if (!r.success) {
+      throw new Error(t(`verify.reason.${r.reason ?? "UNKNOWN"}`));
+    }
+    justDone.value = r.subOrderNo ?? "";
     code.value = "";
     uni.showToast({ title: t("verify.done"), icon: "none" });
     await load();
@@ -141,7 +159,9 @@ onShow(load);
       <view class="overview__grid">
         <view class="overview__i">
           <text class="overview__n sh-num" :class="{ 'is-on': overview.pendingVerify }">
-            {{ overview.pendingVerify }}
+            <!-- 用列表算，不用后端那个计数：两处各算一次就会出现
+                 「总览说 1 单、下面说没有」，而这正是实测到的那一幕 -->
+            {{ waiting.length }}
           </text>
           <text class="sh-muted">{{ $t("verify.ovPending") }}</text>
         </view>
@@ -249,9 +269,9 @@ onShow(load);
 
     <view
       v-for="o in waiting"
-      :key="o.orderNo"
+      :key="o.subOrderNo"
       class="sh-card row-item"
-      :class="{ 'is-just': justDone === o.orderNo }"
+      :class="{ 'is-just': justDone === o.subOrderNo }"
     >
       <view class="row-item__main">
         <text class="row-item__code sh-num">{{ o.verifyCode }}</text>

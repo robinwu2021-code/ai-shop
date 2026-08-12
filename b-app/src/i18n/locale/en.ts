@@ -168,6 +168,14 @@ export default {
   },
 
   verify: {
+    reason: {
+      CODE_NOT_FOUND: "No such code — ask them to check it again",
+      ALREADY_VERIFIED: "This one was already redeemed",
+      NOT_THIS_PICKUP: "Not your pickup point — they should collect where they ordered",
+      REFUNDED: "Refunded or cancelled — nothing to hand over",
+      NOT_PAID: "Not paid yet",
+      UNKNOWN: "Not redeemed. Retry or contact the platform",
+    },
     ovPending: "To redeem", ovBatches: "Arrived today", ovFee: "Service fee",
 
     done: "Redeemed",

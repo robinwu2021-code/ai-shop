@@ -288,6 +288,14 @@ export default {
     ovBatches: "今日到货",
     ovFee: "履约服务费",
 
+    reason: {
+      CODE_NOT_FOUND: "这个码不存在，让邻居再确认一下",
+      ALREADY_VERIFIED: "这单已经核销过了",
+      NOT_THIS_PICKUP: "这单不在你这个自提点，让他去下单时选的那个点取",
+      REFUNDED: "这单已退款/已取消，不能取货",
+      NOT_PAID: "这单还没付款",
+      UNKNOWN: "没核销掉，请重试或联系平台",
+    },
     done: "核销成功",
     searchHint: "没核销掉。下面是取货码里含这几位的单，确认是哪一单：",
     searchEmpty: "没有取货码含这几位的单。让邻居再确认一下码。",

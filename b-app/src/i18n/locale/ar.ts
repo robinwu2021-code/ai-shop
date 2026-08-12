@@ -168,6 +168,14 @@ export default {
   },
 
   verify: {
+    reason: {
+      CODE_NOT_FOUND: "هذا الرمز غير موجود — اطلب منه التحقق",
+      ALREADY_VERIFIED: "تم تسليم هذا الطلب من قبل",
+      NOT_THIS_PICKUP: "ليس نقطة الاستلام الخاصة بك",
+      REFUNDED: "تم استرداده أو إلغاؤه",
+      NOT_PAID: "لم يتم الدفع بعد",
+      UNKNOWN: "لم يتم التسليم، حاول مجدداً",
+    },
     ovPending: "بانتظار الاستلام", ovBatches: "وصل اليوم", ovFee: "رسوم الخدمة",
 
     done: "تم الاستلام",

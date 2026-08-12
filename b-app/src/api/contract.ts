@@ -21,7 +21,9 @@ import type {
   MerchantStaff,
   StaffLog,
   MerchantRole,
+  PickupOrder,
   PermOption,
+  VerifyResult,
   Store,
   PaymentApplyment,
   MerchantApplyReq,
@@ -365,7 +367,12 @@ export interface MerchantApi {
   /** 本自提点的订单 —— 含别家商家的货，字段已按履约必需裁剪（B12） */
   /** 自提点履约总览（后端已实现）。承接方进履约台第一眼要看的三个数 */
   mPickupOverview(): Promise<PickupOverview>;
-  mPickupOrders(): Promise<Order[]>;
+  /**
+   * 本自提点的待履约单。**返回的是 `PickupOrder`，不是 `Order`** ——
+   * 承接方可能替别家收货，字段按履约必需裁到最小（B12），
+   * 状态也是子单那一套（`WAIT_FULFILL`…），不是主单的。
+   */
+  mPickupOrders(): Promise<PickupOrder[]>;
   mPickingList(): Promise<PickingRow[]>;
   /**
    * 到货登记。
@@ -374,8 +381,14 @@ export interface MerchantApi {
    *                 多点商家必须能指定 —— 否则另一个点的货永远登记不上
    */
   mMarkArrived(orderNos: string[], pickupNo?: string): Promise<Order[]>;
-  /** 核销自提码。核销成功 → C 端该订单立刻变已完成 */
-  mVerify(code: string): Promise<Order>;
+  /**
+   * 核销自提码。核销成功 → C 端该订单立刻变已完成。
+   *
+   * ⚠️ **失败也是 code 0**，靠返回体的 `success` 判 —— 不要只看有没有抛异常。
+   * 码无效、已核销、不是本点这三种都会带 `reason` 回来，
+   * 而它们对店主意味着完全不同的下一步。
+   */
+  mVerify(code: string): Promise<VerifyResult>;
   /**
    * 批量核销（B-6.4 扩展）。高峰期一个个扫码是自提点的真实痛点。
    * **逐条尝试、失败逐条回报**，不整批回滚 —— 一张废码不该让另外四单白扫。

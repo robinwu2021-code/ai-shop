@@ -56,6 +56,8 @@ import type {
   StaffLog,
   MerchantRole,
   PermOption,
+  PickupOrder,
+  VerifyResult,
   Store,
   PaymentApplyment,
   MerchantApplyStatus,
@@ -203,12 +205,12 @@ export const httpApi: MerchantApi = {
   mSaveDeliveryRule: (rule) => http.post<DeliveryRule>(E.mSaveDeliveryRule.path, rule),
 
   mPickupOverview: () => http.get<PickupOverview>(E.mPickupOverview.path),
-  mPickupOrders: () => http.get<Order[]>(E.mPickupOrders.path),
+  mPickupOrders: () => http.get<PickupOrder[]>(E.mPickupOrders.path),
   mPickingList: () => http.get<PickingRow[]>(E.mPickingList.path),
   mMarkArrived: (orderNos, pickupNo) =>
     http.post<Order[]>(E.mMarkArrived.path, { orderNos, pickupNo } satisfies MarkArrivedReq),
   mVerify: (code) =>
-    http.post<Order>(E.mVerify.path, { verifyCode: code } satisfies VerifyReq),
+    http.post<VerifyResult>(E.mVerify.path, { verifyCode: code } satisfies VerifyReq),
   mVerifyBatch: (codes) =>
     http.post<VerifyBatchResult>(E.mVerifyBatch.path, { verifyCodes: codes } satisfies VerifyBatchReq),
   // 按码片段搜单：输码核销失败后的兜底，keyword 走 query

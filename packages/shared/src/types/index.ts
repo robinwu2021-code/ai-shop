@@ -1852,6 +1852,64 @@ export interface StoreProfile {
   serviceAreas?: ServiceArea[];
 }
 
+/**
+ * 子单状态（`ord_sub_order.status`）。
+ *
+ * **与 {@link OrderStatus} 不是同一套**：主单管钱（付没付、退没退），
+ * 子单管货（这家商家的这批货履约到哪一步了）。一张主单拆给三家商家时，
+ * 三个子单各走各的 —— 把两者合成一个字段，那三家里有一家发了货就说不清了。
+ */
+export type SubOrderStatus =
+  | "WAIT_PAY"
+  | "WAIT_FULFILL"
+  | "FULFILLING"
+  | "COMPLETED"
+  | "CANCELLED"
+  | "REFUNDED";
+
+/**
+ * 自提点履约台上的一单（`/biz/pickup/orders`）。
+ *
+ * **不是 `Order`**：这里的承接方可能是别家商家的自提点，字段按「履约必需」
+ * 裁到最小 —— 认得出人、点得清件数、核得了码，仅此而已（B12）。
+ * 端上此前把它当 `Order` 用，于是按 `status === "ARRIVED"` 过滤（那是 mock 的口径），
+ * 真实后端返回 `WAIT_FULFILL`，**列表因此永远是空的**。
+ */
+export interface PickupOrder {
+  /** 子单号 —— 履约的最小单位是子单，不是主单 */
+  subOrderNo: string;
+  /** 取货码 */
+  verifyCode: string;
+  /** 买家昵称。认人用；没设昵称时为空 */
+  buyerNickname?: string;
+  /** 手机号后四位。认人够用，联系走平台通道（B12） */
+  buyerPhoneTail?: string;
+  /** 货主商家名。自提点可能替好几家收货 */
+  merchantName?: string;
+  /** 子单状态：WAIT_FULFILL / ARRIVED / COMPLETED / … */
+  status: SubOrderStatus;
+  /** 这单该在哪个自提点取。核销时后端会比对，不是本点直接拒 */
+  pickupNo?: string;
+  /** 这单要交付的东西。分拣与交货时按它点数 */
+  items: { goodsNo: string; title: string; spec?: string; qty: number }[];
+}
+
+/**
+ * 核销结果。
+ *
+ * ⚠️ **失败也是 HTTP 200 + `code: 0`**，靠 `success` 判 —— 端上不能只看有没有抛异常。
+ * 此前 b-app 正是这么写的：任何一次失败（码无效、已核销、不是本点）
+ * 都会走进成功分支，界面提示「核销成功」而货其实没核掉。
+ */
+export interface VerifyResult {
+  /** **判成功只看它** —— 失败同样是 HTTP 200 + code 0 */
+  success: boolean;
+  /** 成功或识别到单时给出；码根本不存在时为空 */
+  subOrderNo?: string | null;
+  /** CODE_NOT_FOUND / ALREADY_VERIFIED / NOT_THIS_PICKUP / REFUNDED / NOT_PAID */
+  reason?: string | null;
+}
+
 /** 一条地理覆盖项。名字由后端拼好下发 —— 端上只拿到 330106 的话，要么显示一串数字，要么自己再查一次 */
 export interface ServiceArea {
   /** 粒度：社区 / 街道 / 区县 / 城市。**可跨粒度组合** —— 三个小区 + 一个区是四条 */

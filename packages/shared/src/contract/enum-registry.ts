@@ -109,6 +109,11 @@ export const ENUM_REGISTRY: EnumEntry[] = [
     note: "→ MerchantWorkability。它是 B 端「我现在能不能干活」的合并视图，不是主体状态。P4 待确认（影响 B 端首页判断）",
     words: ["NONE", "APPLYING", "REVIEWING"] },
   { decl: "shared:MerchantTier", dom: "core", shape: "CLASS", verdict: "OK" },
+  { decl: "shared:SubOrderStatus", dom: "trade", shape: "STATUS", verdict: "OK",
+    note: "子单履约状态，与主单的 OrderStatus 分开：主单管钱、子单管货。"
+      + "此前端上没有这个具名类型，履约台把子单当主单用，"
+      + "按主单的 ARRIVED 过滤 —— 真实后端发的是 WAIT_FULFILL，列表因此恒空",
+    words: ["WAIT_PAY", "WAIT_FULFILL", "FULFILLING", "COMPLETED", "REFUNDED"] },
   { decl: "shared:GoodsStatus", dom: "core", shape: "STATUS", verdict: "RENAME",
     note: "与 ops-web SkuStatus 重叠，P4 待确认状态挂 SPU 还是 SKU。"
       + "AUDITING→PENDING **2026-08-12 真正归一**：此前只归在端上，"

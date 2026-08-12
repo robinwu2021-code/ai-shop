@@ -11,13 +11,13 @@ import { computed, ref } from "vue";
 import { onShow } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
 import { api } from "@/api";
-import type { Order, PickingRow } from "@shared/types";
+import type { Order, PickingRow, PickupOrder } from "@shared/types";
 
 const { t } = useI18n();
 
 const view = ref<"goods" | "buyer">("goods");
 const rows = ref<PickingRow[]>([]);
-const orders = ref<Order[]>([]);
+const orders = ref<PickupOrder[]>([]);
 
 /** 按用户聚合：从分拣行反查，避免再拉一次订单接口 */
 const byBuyer = computed(() => {
@@ -34,7 +34,14 @@ const byBuyer = computed(() => {
 
 const totalQty = computed(() => rows.value.reduce((s, r) => s + r.totalQty, 0));
 /** 备货中的单 = 还没标到货的，标记后用户才收到到货通知 */
-const preparing = computed(() => orders.value.filter((o) => o.status === "PAID"));
+/**
+ * 备货中 = 还没登记到货的自提单。
+ *
+ * **判据是子单状态 `WAIT_FULFILL`**，不是主单的 `PAID` ——
+ * `/biz/pickup/orders` 发的是子单那一套（与核销台同一个数据源）。
+ * 按 `PAID` 过滤的话真机上这一区永远是空的，而 mock 里一切正常。
+ */
+const preparing = computed(() => orders.value.filter((o) => o.status === "WAIT_FULFILL"));
 
 /** 我能不能看自提单 —— `/biz/pickup/orders` 要 `biz:verify`，理货员没有 */
 const canPickupOrders = computed(() => merchant.can("biz:verify"));
@@ -98,7 +105,8 @@ async function report(orderNo: string, skuNo: string) {
 
 async function markAllArrived() {
   if (!preparing.value.length) return;
-  const changed = await api.mMarkArrived(preparing.value.map((o) => o.orderNo));
+  // 到货登记按**子单号**：后端 markArrived 收的就是子单号（一张主单可能拆给几家）
+  const changed = await api.mMarkArrived(preparing.value.map((o) => o.subOrderNo));
   uni.showToast({ title: `已通知 ${changed.length} 位邻居`, icon: "none" });
   await load();
 }
