@@ -59,6 +59,7 @@
 | [domain-model](./reference/domain-model.md) | 草稿（待确认） |
 | [三端功能点矩阵](./reference/三端功能点矩阵.md) | — |
 | [B端功能矩阵-按角色](./reference/B端功能矩阵-按角色.md) | B 端 6 角色 × 13 权限点 × 62 端点（`gen-biz-role-matrix.mjs` 生成） |
+| [B端权限方案](./reference/B端权限方案.md) | 判权机制：角色挂「人×门店」、为何不用 hasAuthority、认证/授权/数据范围三层 |
 | [产品架构与实体关系](./reference/产品架构与实体关系.md) | — |
 | [全域命名基准](./reference/全域命名基准.md) | — |
 | [全域对象关系-App与小程序](./reference/全域对象关系-App与小程序.md) | — |
