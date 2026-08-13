@@ -59,7 +59,7 @@ public class PointsIdentityJob {
      * 报出来的失衡是假的 —— <b>而假告警比没有告警更糟</b>，
      * 它会让真的那次被当成又一次误报。
      */
-    @Scheduled(cron = "0 40 0 * * *")
+    @Scheduled(cron = "${shop.job.points-identity.cron:0 40 0 * * *}")
     @SchedulerLock(name = "points-identity", lockAtLeastFor = "PT4M", lockAtMostFor = "PT30M")
     public void check() {
         jobs.run("points-identity", () -> {

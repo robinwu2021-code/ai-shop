@@ -121,6 +121,33 @@ shop:
     # 实测认证会成功而投递被拒（554 SendAsDenied）
     from: ${MAIL_FROM:}
 
+  # 定时任务的 cron。**只在 worker 部署生效**（SchedulingConfig 是 @Profile("worker")）。
+  #
+  # 为什么要能配：改一次频率此前要改代码、过一遍构建再发一次版 ——
+  # 而需要改频率的时刻恰恰是**出事的时候**（对账扫描要临时调密、
+  # 某个任务把库压垮了要临时调稀）。那个时刻发版是最不该做的事。
+  #
+  # 每条都带着原值作为默认值：不配任何环境变量时行为与此前**逐字节一致**。
+  # 停掉某个任务用 `-` （Spring 的 disabled 标记），不要设成一个永不触发的表达式 ——
+  # 后者在日志里看不出是「停了」还是「配错了」。
+  job:
+    outbox:
+      # 5 秒一轮：它投的是站内信，用户在等。见 OutboxDispatchJob 的类注释
+      cron: ${SHOP_JOB_OUTBOX_CRON:*/5 * * * * *}
+    points-activate:
+      cron: ${SHOP_JOB_POINTS_ACTIVATE_CRON:0 5 0 * * *}
+    points-expire:
+      cron: ${SHOP_JOB_POINTS_EXPIRE_CRON:0 20 0 * * *}
+    points-identity:
+      # **必须排在上面两条之后** —— 它查的恒等式两边正是那两条要改的。
+      # 调整这三条的先后时要一起调，否则查到的是正在变化的快照，报出来的失衡是假的
+      cron: ${SHOP_JOB_POINTS_IDENTITY_CRON:0 40 0 * * *}
+    qualification-expiry:
+      cron: ${SHOP_JOB_QUALIFICATION_EXPIRY_CRON:0 10 3 * * *}
+    recon-scan:
+      # 调密之前先看 lockAtMostFor（PT9M）—— 间隔小于它时，卡住的那轮会挡住下一轮
+      cron: ${SHOP_JOB_RECON_SCAN_CRON:0 */10 * * * *}
+
   # 发码限流（安全整改方案 §2.2 的三道闸）。**生产必须开着**
   otp:
     rate-limit: ${SHOP_OTP_RATE_LIMIT:true}

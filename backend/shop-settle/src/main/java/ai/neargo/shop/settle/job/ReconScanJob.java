@@ -34,7 +34,7 @@ public class ReconScanJob {
         this.jobs = jobs;
     }
 
-    @Scheduled(cron = "0 */10 * * * *")
+    @Scheduled(cron = "${shop.job.recon-scan.cron:0 */10 * * * *}")
     // **四个任务里重叠窗口最大的一个** —— 10 分钟一次，一次跑久了就会和下一次撞上。
     // lockAtMostFor 给 9 分钟（小于间隔）：真卡死时下一轮能接手，不至于整条对账停摆。
     // lockAtLeastFor 只给 30 秒 —— 扫得快是常态，锁太久会让下一轮白等。
