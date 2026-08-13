@@ -11,6 +11,18 @@ export interface DashboardApi {
    * 等于把权限交给被鉴权的一方。
    */
   login(username: string, password: string): Promise<LoginResp>;
+
+  /**
+   * 忘记密码：往登录名那个邮箱发一次性重置码。
+   *
+   * **无论账号存不存在都成功返回** —— 区分开就等于送了个账号探测器，
+   * 而运营账号的价值远高于普通用户（改费率、批提现、封商家）。
+   * 所以端上也不要根据返回值说「该账号不存在」。
+   */
+  forgotPassword(username: string): Promise<void>;
+
+  /** 用邮件里的重置码设新密码。至少 8 位。 */
+  resetPassword(token: string, newPassword: string): Promise<void>;
   /**
    * 拿当前登录人的最新身份（`GET /ops/auth/me`）。
    *

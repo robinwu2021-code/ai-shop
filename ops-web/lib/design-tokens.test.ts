@@ -151,6 +151,31 @@ describe("页面层同样受约束（基线 0，不留额度）", () => {
     expect(offenders, `改用「」或去掉星号：\n${offenders.join("\n")}`).toEqual([]);
   });
 
+  it("★★ i18n 词典里同样不许写 markdown 星号 —— 它比 JSX 里更难发现", () => {
+    /*
+     * **上一条只扫 page.tsx，扫不到词典**，于是同一个坑又踩了一次：
+     * `login.forgotNote` 里写了 `**……**`，界面上原样显示成带星号的一行。
+     * 而它比 JSX 里的更难发现 —— 词典离渲染点很远，写的时候看不到效果，
+     * 只有真的把那个抽屉点开才会看见。
+     *
+     * ⚠️ 只管 `lib/i18n/messages/`（渲染成纯文本的那批）。
+     * 各页的 `copy.ts` 不在此列：那些文案过 <Notice> 的 markdown 渲染，
+     * 星号在那里是**有效果的**，一起禁掉会把能用的加粗也误伤。
+     */
+    const dir = join(ROOT, "lib/i18n/messages");
+    const offenders: string[] = [];
+    for (const f of walk(dir).filter((f) => f.endsWith(".ts"))) {
+      readFileSync(f, "utf8").split("\n").forEach((l, i) => {
+        const isComment = /^\s*(\/\/|\*|\/\*)/.test(l);
+        if (!isComment && /\*\*[^*]+\*\*/.test(l)) {
+          offenders.push(`${f.slice(ROOT.length).replace(/^\/+/, "")}:${i + 1}`);
+        }
+      });
+    }
+    expect(offenders, `词典里的星号不会被渲染，改用「」或去掉：\n${offenders.join("\n")}`)
+      .toEqual([]);
+  });
+
   // ── 组合件的护栏：这几段样板每复制一次，就多一处"长得不一样"的地方 ──────────
 
   it("tab 与 URL 的同步只能走 usePageTab —— 手写的那 8 行漏掉 setPage(1) 就会翻页翻到空白", () => {

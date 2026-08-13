@@ -120,6 +120,8 @@ export const dashboardHttp: DashboardApi = {
       pickupNo: staff?.pickupNo,
     };
   },
+  forgotPassword: (username) => client.post("/ops/auth/forgot", { username }),
+  resetPassword: (token, newPassword) => client.post("/ops/auth/reset", { token, newPassword }),
   menu: () => client.get("/ops/menu"),
   getDashboardKpi: () => client.get("/ops/dashboard/kpi"),
   getDashboardTrend: () => client.get("/ops/dashboard/trend"),

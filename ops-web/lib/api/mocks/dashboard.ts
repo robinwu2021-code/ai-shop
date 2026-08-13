@@ -40,6 +40,13 @@ export const dashboardMock: DashboardApi = {
    * mock 的菜单从静态 NAV 造 —— 与真后端返回同形状。
    * 不造的话 mock 模式下菜单会整个空掉，而那与「权限配错」长得一样。
    */
+  // mock 下永远「成功」——与真实现同口径：不泄露账号是否存在
+  forgotPassword: () => wait(undefined as unknown as void, 400),
+  resetPassword: (token) => {
+    if (token !== "mock-token") fail("重置码无效或已过期，请重新申请",
+      "Reset code is invalid or expired. Please request a new one");
+    return wait(undefined as unknown as void, 400);
+  },
   menu: () => {
     const a = currentAuth();
     const fns = NAV.map((s, i) => ({
