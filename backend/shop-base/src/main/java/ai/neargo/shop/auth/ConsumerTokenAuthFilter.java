@@ -33,6 +33,15 @@ public class ConsumerTokenAuthFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest req, HttpServletResponse resp, FilterChain chain)
             throws ServletException, IOException {
+        /*
+         * IP 在这条链上也要设。
+         *
+         * **它此前只在 ops 链上设**，于是 /mp 与 /biz 的领域代码拿不到 IP ——
+         * 发码限流的「同 IP 每小时 N 次」这一道就是废的（拿不到 IP 时它放行）。
+         * 而换着手机号刷码的机器人**只会撞这一道**：前两道按号计数，对它无效。
+         */
+        RequestMetaContext.set(ClientMeta.of(req, req.getRequestURI().startsWith("/biz") ? "APP_BIZ" : "APP_C"));
+
         boolean scopeSet = false;
         String token = bearer(req);
         if (token != null) {
@@ -48,6 +57,7 @@ public class ConsumerTokenAuthFilter extends OncePerRequestFilter {
         try {
             chain.doFilter(req, resp);
         } finally {
+            RequestMetaContext.clear();
             if (scopeSet) {
                 DataScopeContext.clear();
             }

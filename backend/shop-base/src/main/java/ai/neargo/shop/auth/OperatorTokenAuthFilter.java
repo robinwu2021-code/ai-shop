@@ -53,7 +53,7 @@ public class OperatorTokenAuthFilter extends OncePerRequestFilter {
          * 审计要记 IP/操作端——这是 web 层唯一能碰 HttpServletRequest 的地方之一，
          * platform 域只读 RequestMetaContext 这个 ThreadLocal（见其类注释）。
          */
-        RequestMetaContext.set(new RequestMetaContext.Meta(clientIp(req), clientType(req)));
+        RequestMetaContext.set(ClientMeta.of(req, clientType(req)));
         try {
             chain.doFilter(req, resp);
         } finally {
@@ -62,14 +62,6 @@ public class OperatorTokenAuthFilter extends OncePerRequestFilter {
                 DataScopeContext.clear();
             }
         }
-    }
-
-    private static String clientIp(HttpServletRequest req) {
-        String forwarded = req.getHeader("X-Forwarded-For");
-        if (forwarded != null && !forwarded.isBlank()) {
-            return forwarded.split(",")[0].trim();
-        }
-        return req.getRemoteAddr();
     }
 
     /** 粗判操作端：目前只分「运营后台网页」与「未知」，够用——真要精确区分再细分 UA。 */

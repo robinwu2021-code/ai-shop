@@ -69,14 +69,21 @@ public class AuthServiceImpl implements AuthService {
      */
     private final String fixedOtp;
 
+    private final ai.neargo.shop.common.ratelimit.OtpSendGuard sendGuard;
+    private final ai.neargo.shop.spi.notify.SmsPort smsPort;
+
     public AuthServiceImpl(UserMapper userMapper, IdentityMapper identityMapper,
                            TokenStore tokenStore, OtpStore otpStore,
+                           ai.neargo.shop.common.ratelimit.OtpSendGuard sendGuard,
+                           ai.neargo.shop.spi.notify.SmsPort smsPort,
                            @org.springframework.beans.factory.annotation.Value(
                                    "${shop.auth.otp.fixed:}") String fixedOtp) {
         this.userMapper = userMapper;
         this.identityMapper = identityMapper;
         this.tokenStore = tokenStore;
         this.otpStore = otpStore;
+        this.sendGuard = sendGuard;
+        this.smsPort = smsPort;
         this.fixedOtp = fixedOtp;
         if (fixedOtp != null && !fixedOtp.isBlank()) {
             log.warn("[DANGEROUS] shop.auth.otp.fixed 已开启（{}）—— "
@@ -86,12 +93,18 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public void sendOtp(String phone) {
+        /*
+         * **闸在生成码之前**：放在之后的话，被拒的那次仍然会把上一条有效码冲掉 ——
+         * 用户手里那条还没用的码突然失效，而他看到的是「操作太频繁」，
+         * 两件事对不上，只会让他再点一次。
+         */
+        sendGuard.check(phone);
+
         String code = fixedOtp == null || fixedOtp.isBlank()
                 ? "%06d".formatted(RANDOM.nextInt(1_000_000))
                 : fixedOtp;
         otpStore.save(phone, code);
-        // S1 没接短信通道：打日志代替发送，方便本地联调。生产环境接通道前这条日志必须去掉
-        log.info("[DEV-ONLY] otp for {} = {}", phone, code);
+        smsPort.sendOtp(phone, code);
     }
 
     @Override

@@ -16,6 +16,17 @@ public enum ErrorCode {
     NOT_FOUND(10404, "err.not_found"),
     CONFLICT(10409, "err.conflict"),
     TOO_MANY_REQUESTS(10429, "err.too_many_requests"),
+
+    /*
+     * 发码限流的两条。**分成两个码而不是共用 10429**：端上要做的事完全不同 ——
+     * 间隔闸能给出「还要等几秒」，端上据此做倒计时按钮；
+     * 当日上限则是「今天别再试了」，显示倒计时反而是骗人。
+     * 共用一个码时端上只能都说「操作太频繁，请稍后再试」，
+     * 而对撞上日上限的人来说，「稍后」是错的。
+     */
+    OTP_TOO_FREQUENT(10450, "err.otp.too_frequent"),
+
+    OTP_DAILY_LIMIT(10451, "err.otp.daily_limit"),
     /**
      * 这条路**还没通**，不是参数错了。
      *
