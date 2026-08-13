@@ -32,7 +32,8 @@ import java.util.Optional;
  * 改本域的商家详情逻辑会不知不觉改掉 trade / settle 依赖的跨域契约。
  */
 @Component
-public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort {
+public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
+        ai.neargo.shop.spi.user.MerchantRatingPort {
 
     private static final String ACTIVE = "ACTIVE";
     /** 履约能力（ADR-013）。值域与 mch_entity.fulfillment_reach 一致 */
@@ -569,6 +570,24 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort {
                 !Boolean.FALSE.equals(pm.getInvoiceCapable()),
                 pm.getQuotaLimitMinor() == null ? 0L : pm.getQuotaLimitMinor(),
                 pm.getQuotaUsedMinor() == null ? 0L : pm.getQuotaUsedMinor());
+    }
+
+    /**
+     * 评分整份盖掉，不做增量 —— 口径见 {@link ai.neargo.shop.spi.user.MerchantRatingPort}。
+     */
+    @Override
+    @Transactional
+    public void updateRating(String merchantNo, int ratingX10, int count) {
+        MchEntity m = DataScopeContext.executeWithoutScope(() ->
+                merchantMapper.selectOne(Wrappers.<MchEntity>lambdaQuery()
+                        .eq(MchEntity::getEntityNo, merchantNo).last("limit 1")));
+        if (m == null) {
+            // 商家不存在不该让「发表评价」整笔失败：评价本身是有效的
+            return;
+        }
+        m.setRating(ratingX10);
+        m.setRatingCount(count);
+        DataScopeContext.executeWithoutScope(() -> merchantMapper.updateById(m));
     }
 
     @Override

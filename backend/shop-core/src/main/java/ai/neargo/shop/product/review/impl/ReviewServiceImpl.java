@@ -49,16 +49,23 @@ public class ReviewServiceImpl implements ReviewService {
     private final AppealMapper appealMapper;
     private final ReviewableOrderPort orderPort;
     private final UserQueryPort userPort;
+    private final ai.neargo.shop.spi.user.MerchantRatingPort ratingPort;
+    private final ai.neargo.shop.product.mapper.ProductMappers.GoodsMapper goodsMapper;
     private final ObjectMapper json;
 
     public ReviewServiceImpl(ReviewMapper reviewMapper, ReviewLikeMapper likeMapper,
                              AppealMapper appealMapper, ReviewableOrderPort orderPort,
-                             UserQueryPort userPort, ObjectMapper json) {
+                             UserQueryPort userPort,
+                             ai.neargo.shop.spi.user.MerchantRatingPort ratingPort,
+                             ai.neargo.shop.product.mapper.ProductMappers.GoodsMapper goodsMapper,
+                             ObjectMapper json) {
         this.reviewMapper = reviewMapper;
         this.likeMapper = likeMapper;
         this.appealMapper = appealMapper;
         this.orderPort = orderPort;
         this.userPort = userPort;
+        this.ratingPort = ratingPort;
+        this.goodsMapper = goodsMapper;
         this.json = json;
     }
 
@@ -133,6 +140,8 @@ public class ReviewServiceImpl implements ReviewService {
             r.setScoreService(cmd.scores().service());
         }
         reviewMapper.insert(r);
+        // 「评价发表后…并计入商家评分」是写在发表页上的一句承诺，这里把它兑现
+        recomputeRating(cmd.goodsNo(), item.merchantNo());
         return toVO(r, false, null);
     }
 
@@ -370,6 +379,8 @@ public class ReviewServiceImpl implements ReviewService {
         r.setStatus(pass ? VISIBLE : REJECTED);
         r.setRejectReason(pass ? null : reason.trim());
         DataScopeContext.executeWithoutScope(() -> reviewMapper.updateById(r));
+        // 驳回一条差评就该把它从评分里拿掉；恢复亦然 —— 否则治理动作只改了可见性
+        recomputeRating(r.getGoodsNo(), r.getEntityNo());
         return toOpsVO(r);
     }
 
@@ -418,9 +429,68 @@ public class ReviewServiceImpl implements ReviewService {
                 r.setStatus(REJECTED);
                 r.setRejectReason("申诉成立：" + verdict.trim());
                 DataScopeContext.executeWithoutScope(() -> reviewMapper.updateById(r));
+                // 差评被裁掉了，分也要跟着回去 —— 只从 C 端隐掉而分还压着，等于申诉赢了一半
+                recomputeRating(r.getGoodsNo(), r.getEntityNo());
             }
         }
         return toAppealVO(a);
+    }
+
+    /** 评分放大 10 倍存整数（48 = 4.8）—— 浮点在不同库/语言里 round 得不一样，而它要展示给人看 */
+    private static final int RATING_SCALE = 10;
+
+    /**
+     * 重算这件商品与这家店的评分。**拿明细算，整份盖掉**。
+     *
+     * <p>与 likeCount 同一条规矩（见 {@link #toggleLike}）：派生值不做增量。
+     * 增量在并发下会漂 —— 两条评价同时落库，各自读到同一个旧值再写回，只算进去一条。
+     * 而评分漂了不会报错、也没有对账口，只是让一家店在列表里悄悄排到后面去。
+     *
+     * <p><b>只算审核通过的</b>：待审、被驳回、申诉成立被撤下的都不计入 ——
+     * 否则平台把一条恶意差评裁掉了，分却还压在商家头上，等于申诉只赢了一半。
+     *
+     * <p>口径是<b>纯评价均分</b>。《待完成功能清单》B4 提的
+     * 「均分 ×0.8 + 订单量对数 ×0.2」还没拍板，那一项定了再往上加 ——
+     * 但「发表评价 → 计入评分」这条链路不该继续空着，页面上已经这么写了。
+     */
+    private void recomputeRating(String goodsNo, String merchantNo) {
+        if (merchantNo != null && !merchantNo.isBlank()) {
+            var agg = aggregate(Wrappers.<RvwReview>lambdaQuery()
+                    .eq(RvwReview::getEntityNo, merchantNo));
+            ratingPort.updateRating(merchantNo, agg.ratingX10(), agg.count());
+        }
+        if (goodsNo == null || goodsNo.isBlank()) {
+            return;
+        }
+        var agg = aggregate(Wrappers.<RvwReview>lambdaQuery().eq(RvwReview::getGoodsNo, goodsNo));
+        var g = DataScopeContext.executeWithoutScope(() ->
+                goodsMapper.selectOne(Wrappers.<ai.neargo.shop.product.entity.PrdGoods>lambdaQuery()
+                        .eq(ai.neargo.shop.product.entity.PrdGoods::getGoodsNo, goodsNo)
+                        .last("limit 1")));
+        if (g == null) {
+            return;
+        }
+        g.setRating(agg.ratingX10());
+        g.setRatingCount(agg.count());
+        DataScopeContext.executeWithoutScope(() -> goodsMapper.updateById(g));
+    }
+
+    private record RatingAgg(int ratingX10, int count) {
+    }
+
+    /**
+     * 一条评价都没有时返回 0 分 / 0 条 —— <b>不是默认给个 5 分</b>。
+     * 新店本来就没人评过，端上按 count 显示「暂无评价」，而一个凭空的 5 分是假的。
+     */
+    private RatingAgg aggregate(
+            com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<RvwReview> w) {
+        List<RvwReview> rows = DataScopeContext.executeWithoutScope(() ->
+                reviewMapper.selectList(w.eq(RvwReview::getStatus, VISIBLE)));
+        if (rows.isEmpty()) {
+            return new RatingAgg(0, 0);
+        }
+        int sum = rows.stream().mapToInt(r -> nz(r.getRating())).sum();
+        return new RatingAgg(Math.round((float) sum * RATING_SCALE / rows.size()), rows.size());
     }
 
     private OpsReviewVO toOpsVO(RvwReview r) {

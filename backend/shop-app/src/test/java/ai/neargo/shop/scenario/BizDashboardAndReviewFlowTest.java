@@ -124,6 +124,39 @@ class BizDashboardAndReviewFlowTest {
     }
 
     @Test
+    @DisplayName("★★★ 评价要真的计入商家评分 —— 那句话就印在发表页上")
+    void reviewActuallyMovesTheRating() throws Exception {
+        var seeded = seedReview("12600142008", "评价测试·评分", 2);
+        String merchantNo = json.readTree(mvc().perform(get("/biz/merchant/profile")
+                        .header("Authorization", "Bearer " + seeded.token))
+                .andReturn().getResponse().getContentAsString())
+                .get("data").get("merchantNo").asString();
+
+        // 一条 2 分，店的评分就该是 2.0 —— 而不是建店时那个初始值一动不动
+        String body = mvc().perform(get("/mp/merchant/" + merchantNo))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        assertThat(json.readTree(body).get("data").get("rating").asDouble())
+                .as("评价发表后要计入商家评分（发表页上就是这么写的）").isEqualTo(2.0);
+        assertThat(json.readTree(body).get("data").get("ratingCount").asInt()).isEqualTo(1);
+
+        /*
+         * 平台把这条差评驳回之后，分要跟着回去。
+         * 只从 C 端隐掉而分还压着，等于申诉只赢了一半 —— 而商家看不出为什么还是 2 分。
+         */
+        mvc().perform(post("/ops/reviews/" + seeded.reviewNo + "/decide")
+                        .header("Authorization", "Bearer " + opsLogin("admin", "admin123"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"pass\":false,\"reason\":\"恶意差评\"}"))
+                .andExpect(jsonPath("$.code").value(0));
+
+        String after = mvc().perform(get("/mp/merchant/" + merchantNo))
+                .andReturn().getResponse().getContentAsString();
+        assertThat(json.readTree(after).get("data").get("ratingCount").asInt())
+                .as("被驳回的评价不计入").isZero();
+    }
+
+    @Test
     @DisplayName("★ 回复只能回一次 —— 回复是公开表态，反复改会变成评论区来回改口")
     void replyOnlyOnce() throws Exception {
         var seeded = seedReview("12600142001", "评价测试·回复", 5);
