@@ -59,6 +59,24 @@ class ApiContractTest {
                 .andExpect(status().isUnauthorized());
     }
 
+    @Test
+    @DisplayName("★★ 请求本身不合规要说「参数有误」，不能说「系统开小差了，请稍后再试」")
+    void badRequestIsNotDressedUpAsAServerError() throws Exception {
+        /*
+         * 少一个必填参数原先落到兜底的 `onAny` 上：返回 10500「系统开小差了，请稍后再试」，
+         * 日志里还挂一条 error 栈。**那句话是在教人重试，而重试一万次也一样** ——
+         * 错的是这次请求，不是服务端；对着它排查的人会去翻后端日志找一个不存在的故障。
+         *
+         * 实测撞上的是核销台的按码搜索（`/biz/pickup/verify/search` 不带 keyword）。
+         * 这里用免登录的门店码端点打同一条路径，不必先造一个商家会话。
+         */
+        mockMvc().perform(get("/mp/store/by-code"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(10400))
+                // 还要说清是哪个参数：这条错误的读者是写调用方的人，参数名对他有用
+                .andExpect(jsonPath("$.msg").value(org.hamcrest.Matchers.containsString("storeCode")));
+    }
+
     @org.junit.jupiter.api.Test
     @org.junit.jupiter.api.DisplayName("★ 登录前的三个端点必须免登录 —— 发验证码曾漏在白名单外")
     void preLoginEndpointsArePublic() throws Exception {
