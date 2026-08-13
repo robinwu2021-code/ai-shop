@@ -1,6 +1,8 @@
 # TDD-三端服务拆分 · 架构与服务依赖规划
 
 状态：**待确认**
+> 📌 **落地看 [§10 定稿](#10-定稿2026-08-13-落地以本节为准)**：一期 1 个项目 · 13 个模块 · 2 个部署产物。
+> §2–§9 是推导过程与实测依据（含 §9 自审），保留备查，与 §10 冲突时以 §10 为准。
 关联决策：[ADR-016](../ADR/ADR-016-后端暂不拆构建产物-边界在数据不在jar.md)（本方案是它的执行路线：
 ADR-016 的结论是「暂不拆，且第一刀切在数据」，本方案给出**怎么切**）
 关联架构：[TDD-backend](TDD-backend.md) §4 · ADR-017 双形态（拆分 = 改依赖列表）
@@ -545,6 +547,93 @@ DataScope 是 MyBatis 拦截器（商家只能看自己的数据）。
    它是 §2.3 那 45% 共用表推出来的，但它意味着服务总数最终会多于 3 个
 2. **S1 先行**是否接受：先拿「独立构建/发布/故障域」，数据库拆分留到最后
 3. `usr_*` 暂归 `platform-svc`（§3.3）是否可接受，还是一期就单开 `user-svc`
+
+---
+
+## 10. 定稿（2026-08-13）· 落地以本节为准
+
+> §2–§9 是推导过程与实测依据，保留备查。**执行看本节。**
+
+三条定稿原则：**① 二期兼容一期**（一期铺的每一块，二期都不用撬）·
+**② 一期可为二期目标做优化**（但只做不返工的那些）· **③ 简洁优先，允许适度耦合**。
+
+### 10.1 一期：1 个项目 · 13 个模块 · 2 个部署产物
+
+```
+backend/                         ← 仍是唯一的 Java 项目（不切两个项目）
+├── pom.xml
+├── kernel/                      ← 目录先分好，二期切项目就是加一个 pom
+│   ├── shop-base                # ＋ spi（Port 接口不独立成模块，反正谁都依赖 base）
+│   ├── shop-channel             # 外部通道适配（带第三方 SDK，不并入 base）
+│   ├── shop-domain-trade
+│   ├── shop-domain-product
+│   ├── shop-domain-mkt
+│   ├── shop-domain-platform     # 最大的一块（86 文件），user/message 是将来的裂点
+│   ├── shop-merchant            # ＋ community ＋ fulfillment
+│   └── shop-settle
+└── service/
+    ├── shop-portal-c            # /mp ＋ 回调 ＋ consumerChain
+    ├── shop-portal-b            # /biz ＋ merchantChain ＋ BizContext
+    ├── shop-portal-p            # /ops ＋ operatorChain
+    ├── shop-app-all             # 一期主服务：装配三 portal ＋ publicChain
+    │                            #   ＋ Flyway 迁移 ＋ 全部 82 个测试
+    └── shop-app-worker          # 独立部署：jobs（含新增 Outbox 投递）＋ 装配
+```
+
+**相比探索版（16 模块 / 2 项目）砍掉的五处，以及为什么二期不用撬**：
+
+| 砍掉 | 一期怎么办 | 二期兼容性 |
+|---|---|---|
+| `shop-spi` 独立模块 | Port 接口留在 `shop-base` | 要独立随时抽，不影响服务边界 |
+| `shop-jobs` 独立模块 | 并入 `shop-app-worker` | worker 一期二期都是同一个服务，**永远不会拆** |
+| `shop-portal-common` | `publicChain` 装在 `app-all` | 二期抽出时 `app-all` 正好退役，**不算返工** |
+| `shop-migration` | 迁移留 `app-all`（今天就这样） | 同上：二期抽走时 `app-all` 退役 |
+| `shop-test-e2e` | 82 个测试留 `app-all` | 同上 |
+| 切成 2 个 Maven 项目 | 一个聚合 pom，**目录已按项目分好** | 二期把目录拿走 ＋ 加 pom |
+
+> 后三项是同一个道理：**它们都挂在 `app-all` 上，而 `app-all` 二期本来就要退役。**
+> 挂在一个注定要拆掉的东西上，不构成技术债——这正是原则③「适度耦合」该用的地方。
+
+**一期唯一为二期多做的是 `portal-c/b/p` 三个模块**：它对一期部署零影响
+（都装在 `app-all` 里），但它是二期拆服务的前提，且**做了不返工**——符合原则②。
+
+### 10.2 二期：加 3 个启动模块 ＋ 抽 3 个模块 ＋ 切项目
+
+| 动作 | 产物 |
+|---|---|
+| 新增 `shop-app-c` / `-b` / `-p` | 各挑一个 portal ＋ common |
+| 从 `app-all` 抽出 | `shop-portal-common` · `shop-migration` · `shop-test-e2e` |
+| `app-all` 退役 | — |
+| `kernel/` `service/` 各加一个 pom | 切成 2 个项目，kernel 零改动 |
+
+**二期不动 kernel 的任何一个模块**——这是「二期兼容一期」的验收标准。
+
+### 10.3 执行顺序：三段，各自可发布可暂停
+
+| 段 | 内容 | 一期兑现的收益 |
+|---|---|---|
+| **S1a** | `shop-core` 一拆四 ＋ community/fulfillment 归位 ＋ `app-worker`（含 Outbox 投递） | **worker 独立部署** · 打断「一依赖全背上」· **站内信终于发得出去** |
+| **S1b** | 三端认证独立（`btk_` ＋ `merchantChain`） | B 端会话/限流可独立于 C 端 |
+| **S1c** | `portal-c/b/p` 拆出 ＋ 目录归位 `kernel/` `service/` | 无部署收益，为二期铺路（可延后） |
+
+顺序内的两条硬约束：**Controller 先迁、域后拆**（否则同一批文件动两次）；
+**每段结束全量测试绿**（708 个）。
+
+### 10.4 依赖规则（六条不变，落进已有的 `ArchitectureTest`，不新建类）
+
+1. `portal-*` → 域模块，只经 Service 接口；**portal 之间互不依赖**
+2. 域 ↔ 域只经 `shop-base` 里的 Port（**实测今天已 100% 满足**，升格为守卫）
+3. 任务代码不依赖任何 portal
+4. 启动模块只有装配；**域模块反向不得依赖 portal / 启动**
+5. `@RestController` 只在 `shop-portal-*` 与 `shop-app-all`（`publicChain` 的那 1 个）
+6. `SecurityFilterChain` 只在 `shop-portal-*` 与 `shop-app-all`，**一个 portal 一条链**
+
+规则 5、6 的「与 `shop-app-all`」是一期的例外，二期随 `portal-common` 抽出后自动消失。
+
+### 10.5 一期不做的
+
+网关（只有一个 HTTP 服务，没有聚合对象）· `TokenStore` 换 Redis
+（**按各端实例数定，与拆分解耦**）· 拆库 · 域服务化 · MQ。
 
 ---
 
