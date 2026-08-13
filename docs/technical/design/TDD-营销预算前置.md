@@ -1,8 +1,9 @@
 # TDD-营销预算前置（把预算从运行时的闸改成建券时的规划）
 
-> 状态：**待确认** · 创建 2026-08-11
+> 状态：**已实现**（方案 A，2026-08-13）· 创建 2026-08-11
 > 关联需求：[平台端功能清单](../../requirements/平台端功能清单.md) `P-7.1` 券模板 / 发放记录
-> 关联代码：`MktCoupon` · `CouponMappers.tryReceive` · `MktCoupon.discountFor`
+> 关联代码：`MktCoupon` · `CouponMappers.tryReceive` · `MktCoupon.discountFor` ·
+> `CouponServiceImpl.saveCoupon` · `POST /ops/coupons`
 
 ---
 
@@ -145,14 +146,15 @@
 
 ## 6. 实现任务
 
-- [ ] T1 `MktCoupon` 文档口径 + 券型必填矩阵进枚举登记表
-- [ ] T2 建券/改券三条校验 + 错误码（含 i18n 三语）
-- [ ] T3 `tryReceive` 删预算条件
-- [ ] T4 存量扫描（启动时一次，只报警）
-- [ ] T5 ops-web 表单：封顶必填 + 敞口实时提示
-- [ ] T6 测试改写与新增
-- [ ] T7 审批阈值（可选，与 T2 同批或延后）
+- [x] T1 `MktCoupon` 文档口径 + 券型必填矩阵进枚举登记表（`CouponBuildableType`）
+- [x] T2 建券/改券三条校验 + 错误码（含 i18n 三语）——`POST /ops/coupons`，
+      原方案假设的"建券端点"当时并不存在，实现前先补了这个端点（`CouponSaveCmd`）
+- [x] T3 `tryReceive` 删预算条件
+- [x] T4 存量扫描（启动时一次，只报警）——`CouponIntegrityChecker`
+- [x] T5 ops-web 表单：封顶必填 + 敞口实时提示（按类型显隐字段）
+- [x] T6 测试改写与新增——`M6bCouponFlowTest` 三条 + mock 层 7 条
+- [ ] T7 审批阈值（可选，未做——`marketing.coupon-approval-threshold-minor` 与更高权限的建券闸留待后续）
 
 ---
 
-确认记录：待确认
+确认记录：2026-08-13，方案 A（产品侧确认不存在"不限额折扣券"场景）
