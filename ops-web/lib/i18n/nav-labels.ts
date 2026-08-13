@@ -110,6 +110,7 @@ const OVERLAY: Record<string, Record<string, string>> = {
   员工与权限: { en: "Staff & access" },
   员工账号与数据域: { en: "Accounts & data scope" },
   角色与权限: { en: "Roles & permissions" },
+  菜单顺序: { en: "Menu order" },
   操作审计日志: { en: "Audit log" },
 
   系统配置: { en: "System" },

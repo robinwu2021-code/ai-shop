@@ -15,6 +15,7 @@ const zh = {
   moveUp: "上移",
   moveDown: "下移",
   reorderHint: "调整菜单顺序（所有人可见）",
+  menuOrderNotice: "这里调的是所有人看到的菜单顺序，不是个人偏好，也与角色无关。只能在同级内上下换位 —— 跨分区移动是改菜单结构，要走 nav.ts → 生成器 → 迁移那条链路。改完最多 60 秒各端生效。",
 
   colName: "姓名",
   colUsername: "登录名",
@@ -176,6 +177,7 @@ const en: typeof zh = {
   moveUp: "Move up",
   moveDown: "Move down",
   reorderHint: "Reorder menu (affects everyone)",
+  menuOrderNotice: "This changes the menu order everyone sees — not a personal preference, and unrelated to roles. Items can only swap with a sibling; moving across sections changes menu structure and goes through nav.ts → generator → migration. Takes effect within 60s.",
 
   colName: "Name",
   colUsername: "Username",

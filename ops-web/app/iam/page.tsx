@@ -38,7 +38,7 @@ import { Tree, type TreeNode } from "@/components/ui/tree";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 
 type Copy = (typeof IAM_COPY)["zh"];
-const TAB_KEYS = ["staffs", "roles", "audit"] as const;
+const TAB_KEYS = ["staffs", "roles", "menu", "audit"] as const;
 
 const ROLES = Object.keys(ROLE_LABEL) as Role[];
 
@@ -151,7 +151,7 @@ function IamInner() {
   // 页面看着正常（没有报错），只是选项集合是空的。
   const roles = useQuery({ queryKey: ["roles"], queryFn: () => api.listRoles(), enabled: tab === "roles" || tab === "staffs" });
   // 功能点全集。**不按人切片** —— 配角色时要看到全部，包括自己没有的
-  const permFns = useQuery({ queryKey: ["perm-functions"], queryFn: () => api.listPermFunctions(), enabled: tab === "roles" });
+  const permFns = useQuery({ queryKey: ["perm-functions"], queryFn: () => api.listPermFunctions(), enabled: tab === "roles" || tab === "menu" });
   const rolePts = useQuery({
     queryKey: ["role-points", pickedRole],
     queryFn: () => api.getRolePoints(pickedRole!),
@@ -287,12 +287,7 @@ function IamInner() {
         .filter((f) => f.points.some((p) => p.pointType === "MENU" || p.pointType === "ACTION"))
         .map((f) => ({
           key: `f:${f.functionCode}`,
-          label: (
-            <span className="flex w-full items-center gap-2">
-              {f.name}
-              <MoveBtns kind="fn" code={f.functionCode} />
-            </span>
-          ),
+          label: f.name,
           children: f.points.map((p) => {
             const unbuilt = p.backendStatus === "NOT_IMPLEMENTED";
             return {
@@ -307,14 +302,39 @@ function IamInner() {
                   {p.uiPermCode && <code className="txt-caption text-muted-foreground">{p.uiPermCode}</code>}
                   {unbuilt && <Badge tone="muted">{c.notImplemented}</Badge>}
                   {p.uiPermCode && CRITICAL.includes(p.uiPermCode) && <Badge tone="danger">{c.critical}</Badge>}
-                  {/* 只有菜单项参与排序：ACTION 是页面内的按钮级授权，它没有"顺序"可言 */}
-                  {p.pointType === "MENU" && <MoveBtns kind="pt" code={p.pointCode} />}
                 </span>
               ),
             };
           }),
         })),
     [permFns.data, c],
+  );
+
+  /** 调序用的树：只有名字与 ↑/↓，**没有勾选** —— 它跟授权不是一件事。 */
+  const orderTree: TreeNode[] = useMemo(
+    () => (permFns.data ?? []).map((f) => ({
+      key: `f:${f.functionCode}`,
+      label: (
+        <span className="flex w-full items-center gap-2">
+          {f.name}
+          <MoveBtns kind="fn" code={f.functionCode} />
+        </span>
+      ),
+      // 只列菜单项：ACTION 是页面内的按钮级授权，它没有"顺序"可言
+      children: f.points.filter((p) => p.pointType === "MENU").map((p) => ({
+        key: p.pointCode,
+        label: (
+          <span className="flex w-full items-center gap-2">
+            {p.name}
+            {p.groupName && <span className="txt-caption text-muted-foreground">{p.groupName}</span>}
+            <MoveBtns kind="pt" code={p.pointCode} />
+          </span>
+        ),
+      })),
+    })),
+    // MoveBtns 依赖 canGrant 与 move.isPending，随组件重渲染即可
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [permFns.data],
   );
 
   const openRole = (r: RoleDef) => setPickedRole(r.roleCode);
@@ -495,6 +515,18 @@ function IamInner() {
 
       {tab !== "audit" && !canGrant && (
         <ReadOnlyNotice what={c.readOnlyWhat} perm="iam:role:grant" note={c.readOnlyNote} className="mb-3" />
+      )}
+
+      {/*
+        菜单顺序「单独成页」，不塞在角色抽屉里 —— 调序是全局的，与角色无关。
+        放在抽屉里等于暗示「这个顺序属于这个角色」，而且预置角色的抽屉写着「只读」，
+        旁边却有能点的上移下移，自相矛盾。
+      */}
+      {tab === "menu" && (
+        <div className="space-y-3">
+          <Notice className="mb-3">{c.menuOrderNotice}</Notice>
+          <Tree nodes={orderTree} empty={c.emptyPerms} collapseFrom={1} />
+        </div>
       )}
 
       {tab === "roles" && (

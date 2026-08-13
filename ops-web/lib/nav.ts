@@ -285,6 +285,11 @@ export const NAV: NavSection[] = [
       // 两者都不单独成页：拆出去就会出现"改完角色忘了配数据域"的空档。
       { href: "/iam", label: "员工账号与数据域", perm: "iam:staff:read", group: "账号", matrix: "P-1.1", ready: true },
       { href: "/iam?tab=roles", label: "角色与权限", perm: "iam:role:grant", group: "账号", matrix: "P-1.1", ready: true },
+      // 菜单顺序单独成页，而不是塞在角色抽屉里 —— **调序是全局的，与角色无关**。
+      // 放在抽屉里等于暗示「这个顺序属于这个角色」，而且预置角色的抽屉写着「只读」，
+      // 旁边却有能点的上移下移，自相矛盾。
+      // 复用 iam:role:grant：能配权限的人才该动菜单结构，不为它新增一个码。
+      { href: "/iam?tab=menu", label: "菜单顺序", perm: "iam:role:grant", group: "账号", matrix: "P-1.1", ready: true },
       { href: "/iam?tab=audit", label: "操作审计日志", perm: "iam:audit:read", group: "审计", matrix: "P-1.1", ready: true },
     ],
   },
