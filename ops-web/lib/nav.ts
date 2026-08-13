@@ -233,6 +233,7 @@ export const NAV: NavSection[] = [
       // 频控（14.1.4）与模板、推送任务同页：它是发送前的闸门，单独成页就没人看了。
       // 代客留痕（14.2.3）在工单抽屉里 —— 它是工单处理的一部分，不是独立台账。
       { href: "/messages", label: "消息模板与推送", perm: "message:template:read", group: "触达", matrix: "P-14.1", ready: true },
+      { href: "/messages?tab=notifyLog", label: "发送记录", perm: "message:template:read", group: "触达", matrix: "P-14.1", ready: true },
       { href: "/messages?tab=tickets", label: "客服工单与代客留痕", perm: "message:ticket:read", group: "客服", matrix: "P-14.2", ready: true },
       { href: "/messages?tab=faq", label: "帮助中心维护", perm: "message:faq:update", group: "客服", matrix: "P-14.2", ready: true },
     ],
