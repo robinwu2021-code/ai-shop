@@ -212,6 +212,15 @@ export const iamMock: IamApi = {
     audit("删除角色", roleCode, r.name, true);
     return wait(undefined, 400);
   },
+  /**
+   * 紧急撤回：强制该角色的成员重新登录。
+   * mock 里没有会话可踢，返回「有几个人持有这个角色」—— 与真实语义同阶
+   * （真实返回的是会话数，一个人可能有多个标签页，所以 mock 只会更小不会更大）。
+   */
+  forceLogoutRole: async (roleCode) => {
+    findRole(roleCode);
+    return wait({ kicked: db.staffs.filter((s) => s.roles.includes(roleCode)).length }, 400);
+  },
 
   listAuditLogs: (q = {}) =>
     wait(

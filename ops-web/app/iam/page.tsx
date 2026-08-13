@@ -219,6 +219,17 @@ function IamInner() {
       notify.success(c.toastRoleRemoved);
     },
   });
+  /**
+   * 紧急撤回：强制这个角色的成员重新登录。
+   *
+   * **不是「让权限生效」** —— 改完功能点本来就立刻生效（判权现算）。
+   * 它唯一的用途是「权限开错了要立刻收回」，而代价是打断这些人正在做的事。
+   * 所以按钮名字说的是它<b>做什么</b>（强制重新登录），不是它<b>为了什么</b>。
+   */
+  const forceLogoutMut = useMutation({
+    mutationFn: (roleCode: string) => api.forceLogoutRole(roleCode),
+    onSuccess: (r) => notify.success(fill(c.toastForceLoggedOut, { n: r.kicked })),
+  });
   const createRoleMut = useMutation({
     mutationFn: () => api.createRole(newRole!.roleCode.trim(), newRole!.name.trim()),
     onSuccess: (r) => {
@@ -464,6 +475,25 @@ function IamInner() {
             <Button size="sm" variant="ghost"
               onClick={() => setNewRole({ roleCode: r.roleCode, name: r.name, codeTouched: true })}>
               {c.actionRename}
+            </Button>
+          )}
+          {canGrant && r.staffCount > 0 && (
+            <Button size="sm" variant="ghost"
+              onClick={async () => {
+                /*
+                 * 二次确认，且**把代价说出来**：这个动作会打断这些人
+                 * 正在做的事（填了一半的表单、写了一半的裁决说明）。
+                 * 预置角色也给这个入口 —— 紧急撤回与「能不能改这个角色」无关。
+                 */
+                const ok = await confirm({
+                  title: fill(c.confirmForceLogoutTitle, { role: r.name }),
+                  desc: fill(c.confirmForceLogoutDesc, { n: r.staffCount }),
+                  danger: true, confirmText: c.confirmForceLogoutOk,
+                });
+                if (!ok) return;
+                forceLogoutMut.mutate(r.roleCode);
+              }}>
+              {c.actionForceLogout}
             </Button>
           )}
           {canGrant && !r.builtin && (

@@ -47,6 +47,16 @@ const zh = {
   colRoleCode: "编码",
   colStaffCount: "账号数",
   actionDelete: "删除",
+  // 名字说它**做什么**，不是它**为了什么** —— 叫「立即生效」会让人以为
+  // 不点就不生效，而改完功能点本来就立刻生效
+  actionForceLogout: "强制重新登录",
+  confirmForceLogoutTitle: "强制「{role}」的成员重新登录？",
+  confirmForceLogoutDesc:
+    "{n} 个账号会立刻掉线，正在填写的表单与未提交的内容会丢失。\n\n"
+    + "普通调权不需要这一步 —— 改完功能点下一个请求就生效。"
+    + "只有「权限开错了要立刻收回」才用它。",
+  confirmForceLogoutOk: "强制下线",
+  toastForceLoggedOut: "已踢掉 {n} 个会话",
   toastRoleRemoved: "角色已删除",
   confirmDeleteRoleTitle: "删除角色「{role}」",
   confirmDeleteRoleDesc: "删除后这个角色码可能被系统认为「还存在但已删除」——如果重建同名角色，请先确认没有历史残留（已知问题，见开发备注）。",
@@ -207,6 +217,14 @@ const en: typeof zh = {
   colRoleCode: "Code",
   colStaffCount: "Accounts",
   actionDelete: "Delete",
+  actionForceLogout: "Force re-login",
+  confirmForceLogoutTitle: "Force members of \u201c{role}\u201d to sign in again?",
+  confirmForceLogoutDesc:
+    "{n} account(s) will be signed out immediately; unsaved forms will be lost.\n\n"
+    + "Routine permission edits do not need this \u2014 they take effect on the next request. "
+    + "Use it only to revoke a mistakenly granted permission right now.",
+  confirmForceLogoutOk: "Force sign-out",
+  toastForceLoggedOut: "{n} session(s) revoked",
   toastRoleRemoved: "Role deleted",
   confirmDeleteRoleTitle: "Delete role {role}",
   confirmDeleteRoleDesc: "A known backend issue can leave a soft-deleted role code looking reusable when it is not fully gone. If you recreate a role with the same code, check for leftovers first.",

@@ -139,6 +139,26 @@ public class OpsPermConfigController {
                 SecurityUtils.currentUserNo());
     }
 
+    /**
+     * <b>强制该角色的成员重新登录</b>（紧急撤回）。
+     *
+     * <p>普通调权不需要它 —— 改完功能点本来就立刻生效（判权现算）。
+     * 这条是给「权限开错了要立刻收回」准备的：跨实例最坏要等一个 TTL（60 秒），
+     * 那一刻 60 秒不能接受。
+     *
+     * <p>用 {@code iam:role:grant}：能改这个角色权限的人，才有资格把它的成员踢下线。
+     */
+    @PostMapping("/ops/perm/roles/{roleCode}/force-logout")
+    @PreAuthorize("@perm.can('" + Perms.IAM_ROLE_GRANT + "')")
+    public ForceLogoutVO forceLogout(@PathVariable String roleCode) {
+        return new ForceLogoutVO(
+                permConfigService.forceLogoutRole(roleCode, SecurityUtils.currentUserNo()));
+    }
+
+    /** @param kicked 实际踢掉的会话数 —— 一个人可能有多个设备/标签页 */
+    public record ForceLogoutVO(int kicked) {
+    }
+
     /** 删除自定义角色。预置角色、以及**还有人在用的**都拒绝。 */
     /** 改角色展示名。**只改名不改码** —— 码是授权的键，改了等于换一个角色。 */
     @PostMapping("/ops/perm/roles/{roleCode}/rename")

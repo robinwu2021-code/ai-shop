@@ -312,6 +312,27 @@ public class PermConfigServiceImpl implements PermConfigService {
                 objectMapper.writeValueAsString(Map.of("name", r.getName(), "roleCode", roleCode)), null);
     }
 
+    @Override
+    @Transactional
+    public int forceLogoutRole(String roleCode, String operatorNo) {
+        // 角色必须存在：对着一个打错的角色码点「强制下线」，返回 0 会被当成「没人在线」
+        requireRole(roleCode);
+        List<SysRoleMember> members = memberMapper.selectList(Wrappers.<SysRoleMember>lambdaQuery()
+                .eq(SysRoleMember::getEndCode, OPS).eq(SysRoleMember::getRoleCode, roleCode));
+        int kicked = 0;
+        for (SysRoleMember m : members) {
+            kicked += tokenStore.revokeUser(m.getSubjectNo());
+        }
+        /*
+         * **高危 + 单独记一条**。它打断的是别人正在做的事，
+         * 事后要能回答「那天是谁把整个客服组踢下线的」——
+         * 混在「改角色功能点」那条审计里就回答不了。
+         */
+        auditLogPort.record("PERM_ROLE_FORCE_LOGOUT", roleCode,
+                "强制 %d 人重新登录，踢掉 %d 个会话".formatted(members.size(), kicked), true);
+        return kicked;
+    }
+
     // ---------------------------------------------------------------- 菜单排序
 
     /**

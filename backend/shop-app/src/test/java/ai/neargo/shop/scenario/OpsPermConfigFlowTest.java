@@ -217,6 +217,48 @@ class OpsPermConfigFlowTest {
                 .contains("aftersale:ticket:read");
     }
 
+    @Test
+    @DisplayName("★★★ 紧急撤回：强制下线是一个**显式动作**，不是改权限的副作用")
+    void forceLogoutIsAnExplicitAction() throws Exception {
+        String admin = opsLogin("admin", "admin123");
+        String roleCode = "FORCEOUT" + System.currentTimeMillis() % 100000;
+        mvc().perform(post("/ops/perm/roles").header("Authorization", "Bearer " + admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"roleCode\":\"" + roleCode + "\",\"name\":\"紧急撤回测试\"}"))
+                .andExpect(jsonPath("$.code").value(0));
+        grantPoints(admin, roleCode, "\"OPS_ORDER\"");
+
+        String uname = "force" + System.currentTimeMillis() % 100000 + "@example.com";
+        String created = mvc().perform(post("/ops/staffs").header("Authorization", "Bearer " + admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"" + uname + "\",\"realName\":\"要被踢的人\","
+                                + "\"roles\":[\"" + roleCode + "\"]}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        String victim = opsLogin(uname, json.readTree(created).get("data")
+                .get("initialPassword").asString());
+        mvc().perform(get("/ops/auth/me").header("Authorization", "Bearer " + victim))
+                .andExpect(jsonPath("$.code").value(0));
+
+        // 点了这个按钮才踢 —— 而且要告诉他踢了几个（一个人可能有多个标签页）
+        mvc().perform(post("/ops/perm/roles/" + roleCode + "/force-logout")
+                        .header("Authorization", "Bearer " + admin))
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.kicked").value(1));
+
+        mvc().perform(get("/ops/auth/me").header("Authorization", "Bearer " + victim))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("★★ 角色码打错要报错，不能返回「踢了 0 个」—— 那会被当成「没人在线」")
+    void forceLogoutRejectsUnknownRole() throws Exception {
+        String admin = opsLogin("admin", "admin123");
+        mvc().perform(post("/ops/perm/roles/NO_SUCH_ROLE/force-logout")
+                        .header("Authorization", "Bearer " + admin))
+                .andExpect(jsonPath("$.code").value(10404));
+    }
+
     private void grantPoints(String admin, String roleCode, String codes) throws Exception {
         mvc().perform(post("/ops/perm/roles/" + roleCode + "/points")
                         .header("Authorization", "Bearer " + admin)

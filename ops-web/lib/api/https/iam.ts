@@ -96,6 +96,7 @@ export const iamHttp: IamApi = {
   createRole: (roleCode, name) => client.post("/ops/perm/roles", { roleCode, name }),
   renameRole: (roleCode, name) => client.post(`/ops/perm/roles/${roleCode}/rename`, { name }),
   removeRole: (roleCode) => client.post(`/ops/perm/roles/${roleCode}/delete`, {}),
+  forceLogoutRole: (roleCode) => client.post(`/ops/perm/roles/${roleCode}/force-logout`, {}),
   /**
    * 审计日志。**2026-08-12 修复路径**：此前调的是 `/ops/audit-logs`（复数），
    * 真实路径是 `/ops/audit-log`（单数）。
