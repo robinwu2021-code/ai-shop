@@ -15,6 +15,9 @@ const OVERLAY: Record<string, Record<string, string>> = {
 
   商家治理: { en: "Merchants" },
   准入与保证金: { en: "Admission & deposit" },
+  无照自营风险: { en: "Unlicensed self-operated risk" },
+  资质档案: { en: "Qualification records" },
+  积分资金看板: { en: "Points fund overview" },
   入驻审核: { en: "Onboarding review" },
   商家档案: { en: "Merchant profiles" },
   类目授权: { en: "Category permits" },
@@ -88,6 +91,7 @@ const OVERLAY: Record<string, Record<string, string>> = {
 
   消息与客服: { en: "Messaging & support" },
   消息模板与推送: { en: "Templates & push" },
+  发送记录: { en: "Send log" },
   客服工单与代客留痕: { en: "Support tickets" },
   帮助中心维护: { en: "Help center" },
 

@@ -76,8 +76,15 @@ export interface Ticket {
   status: TicketStatus;
   /** 处理人（员工登录名）；未分派为空 */
   assignee?: string;
-  /** 代客操作留痕（P-14.2.3）：谁、对什么、做了什么 */
-  proxyActions: string[];
+  /**
+   * 代客操作留痕（P-14.2.3）：谁、对什么、做了什么。
+   *
+   * **可选，不要去掉 `?`。** 后端 `TicketVO` 目前不下发这个字段
+   * （`MessageVOs.java` 里只有 ticketNo/subject/content/orderNo/status/reply/createdAt/repliedAt），
+   * 只有 mock 有。声明成必填数组 + `page.tsx` 直接 `.length` = 真接口下抛 TypeError。
+   * 与 `Merchant.qualifications` 同一形状，由 `ops-contract-fields` 守卫抓出。
+   */
+  proxyActions?: string[];
   /** 提单时间 */
   createdAt: string;
   /**
@@ -109,4 +116,40 @@ export interface FaqEntry {
   published: boolean;
   /** 浏览量，用来发现「大家其实在问什么」 */
   views: number;
+}
+
+/**
+ * 一条短信/邮件发送记录。
+ *
+ * `target` 是**掩码后的**收件人（138****8888 / r***n@neargo.ai）——
+ * 这张表运营都看得到，而收件人是用户的手机号与邮箱。
+ * 要查具体一条，靠 `providerMsgId` 去通道后台查。
+ */
+/** 发送渠道。 */
+export type NotifyChannel = "SMS" | "MAIL";
+
+/** 发送结果。**失败也记**——只记成功的话，这张表回答不了「他为什么没收到」。 */
+export type NotifyStatus = "SENT" | "FAILED";
+
+export interface NotifyLog {
+  notifyNo: string;
+  channel: NotifyChannel;
+  /** OTP / OPS_INIT_PASSWORD / OPS_RESET_PASSWORD / TEST */
+  bizType: string;
+  target: string;
+  /** 短信是阿里云模板号；邮件是主题 */
+  templateCode?: string | null;
+  status: NotifyStatus;
+  /** 失败时通道返回的原文。**排查第一眼看它** */
+  error?: string | null;
+  /** 阿里云 BizId / 邮件 Message-ID */
+  providerMsgId?: string | null;
+  operatorNo?: string | null;
+  createdAt: string;
+}
+
+/** 图形验证码挑战。`imageBase64` 不带 data: 前缀，端上自己拼 */
+export interface Captcha {
+  captchaId: string;
+  imageBase64: string;
 }

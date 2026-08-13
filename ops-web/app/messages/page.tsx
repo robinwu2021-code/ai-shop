@@ -9,6 +9,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { fill, useCopy } from "@/lib/use-copy";
 import { MESSAGES_COPY } from "./copy";
+import { NotifyLogTab } from "./notify-log-tab";
 import { usePaging } from "@/lib/use-paging";
 import { usePageTab, useNavTabs } from "@/lib/use-page-tab";
 import { fmtTime } from "@/lib/utils";
@@ -34,7 +35,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Toolbar } from "@/components/ui/toolbar";
 
 type Copy = (typeof MESSAGES_COPY)["zh"];
-const TAB_KEYS = ["push", "tickets", "faq"] as const;
+const TAB_KEYS = ["push", "tickets", "faq", "notifyLog"] as const;
 
 export default function MessagesPage() {
   return <Suspense fallback={null}><MessagesInner /></Suspense>;
@@ -164,7 +165,7 @@ function MessagesInner() {
     {
       header: c.colProxy,
       // 代客操作是替用户改数据/退款，有几条要能一眼看见（矩阵 P-14.2.3）
-      cell: (t) => (t.proxyActions.length ? <Badge tone="info">{fill(c.proxyCount, { n: t.proxyActions.length })}</Badge> : <span className="text-muted-foreground">{c.none}</span>),
+      cell: (t) => (t.proxyActions?.length ? <Badge tone="info">{fill(c.proxyCount, { n: t.proxyActions.length })}</Badge> : <span className="text-muted-foreground">{c.none}</span>),
     },
     { header: c.colStatus, cell: (t) => <TicketStatusBadge value={t.status} /> },
     {
@@ -276,6 +277,12 @@ function MessagesInner() {
         </>
       )}
 
+      {/* 发送记录与测试发送。写权限用 message:template:update ——
+          后端 /ops/notify-logs/test-send 用的是同一个码 */}
+      {tab === "notifyLog" && (
+        <NotifyLogTab c={c} canWrite={allow("message:template:update")} />
+      )}
+
       {tab === "faq" && (
         <>
           <Notice className="mb-3">
@@ -339,7 +346,7 @@ function MessagesInner() {
             )}
 
             <Field label={c.fieldProxyLog}>
-              {current.proxyActions.length ? (
+              {current.proxyActions?.length ? (
                 <ul className="list-inside list-disc space-y-1">
                   {current.proxyActions.map((a, i) => <li key={i}>{a}</li>)}
                 </ul>

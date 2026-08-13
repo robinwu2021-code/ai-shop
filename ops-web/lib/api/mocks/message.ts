@@ -1,6 +1,6 @@
 // 覆盖范围：消息触达与客服（P-14）。
 import * as db from "@/lib/mock/db";
-import { TICKET_TRANSITIONS, type FaqEntry, type Ticket } from "@/lib/types";
+import { TICKET_TRANSITIONS, type FaqEntry, type NotifyLog, type Ticket } from "@/lib/types";
 import type { MessageApi } from "../contracts/message";
 import { fail, notFound } from "@/lib/biz-error";
 import { wait } from "./_wait";
@@ -55,6 +55,39 @@ export const messageMock: MessageApi = {
     return wait(db.notifyQuota, 400);
   },
 
+  /*
+   * 发送记录：mock 里给三条，覆盖三种形态 —— 成功的短信、成功的邮件、
+   * **失败的那条**。只给成功的话，页面上「错误」那一列永远是空的，
+   * 而它恰恰是这张表最要紧的一列（「他为什么没收到」）。
+   */
+  listNotifyLogs: (q = {}) => {
+    const rows: NotifyLog[] = [
+      { notifyNo: "NL0001", channel: "SMS", bizType: "OTP", target: "138****8888",
+        templateCode: "SMS_474945291", status: "SENT",
+        providerMsgId: "765413486616594710^0", createdAt: "2026-08-13T10:20:00Z" },
+      { notifyNo: "NL0002", channel: "MAIL", bizType: "OPS_INIT_PASSWORD",
+        target: "z***g@neargo.ai", templateCode: "【数智邻购】运营端账号已开通",
+        status: "SENT", providerMsgId: "<abc@neargo.ai>", operatorNo: "E1001",
+        createdAt: "2026-08-13T10:05:00Z" },
+      { notifyNo: "NL0003", channel: "SMS", bizType: "TEST", target: "139****0000",
+        status: "FAILED", error: "isv.TEMPLATE_MISSING_PARAMETERS 模板变量缺失",
+        operatorNo: "E1001", createdAt: "2026-08-13T09:40:00Z" },
+    ];
+    return wait(db.paginate(rows, q.page, q.size,
+      (r) => db.eqHit(q.channel, r.channel) && db.eqHit(q.status, r.status)), 300);
+  },
+
+  getCaptcha: () =>
+    // 1x1 透明 png —— mock 下只要「有个图」，图上写什么无所谓
+    wait({ captchaId: "mock-captcha", imageBase64:
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==" }, 200),
+
+  testSendNotify: (v) => {
+    if (v.captchaCode !== "1234") fail("图形验证码错误或已过期，请重新获取",
+      "Captcha is wrong or expired. Please get a new one");
+    return wait(undefined as unknown as void, 500);
+  },
+
   listTickets: (q = {}) =>
     wait(
       db.paginate(db.tickets, q.page, q.size, (t) =>
@@ -90,7 +123,8 @@ export const messageMock: MessageApi = {
     // 代客操作是替用户改数据/退款，没有留痕就查不出是谁做的（矩阵 P-14.2.3）
     if (!action?.trim()) fail("代客操作内容必填，留痕要写清做了什么", "Say what you did on the customer's behalf — the record has to state it");
     if (!t.assignee) fail("请先分派处理人再记录代客操作", "Assign someone before logging an action taken for the customer");
-    t.proxyActions.push(`${t.assignee} ${action.trim()}`);
+    // mock 侧自己维护这个数组（真接口不下发它，见 types/message.ts 的注）
+    (t.proxyActions ??= []).push(`${t.assignee} ${action.trim()}`);
     return wait(t, 400);
   },
 

@@ -99,6 +99,40 @@ const zh = {
   fieldAnswer: "答案",
   answerPlaceholder: "用用户的话写，别抄规则条款",
   answerHint: "答案为空可以先存草稿，但不能上架。",
+  // ── 发送记录（P-14.3）────────────────────────────────────────────────
+  nlNotice: "短信与邮件的每一次发送都记在这里，**失败的也记**。出问题时最常见的问句是「他到底收没收到」——没有这张表就只能让用户再试一次，而如果真是通道的问题，再试还是收不到。\n\n收件人只存掩码：这张表运营都看得到，而它是用户的手机号与邮箱。要查具体一条，拿「通道流水号」去阿里云/邮箱后台查。",
+  nlColTime: "时间",
+  nlColChannel: "渠道",
+  nlColBiz: "用途",
+  nlColTarget: "收件人",
+  nlColTemplate: "模板/主题",
+  nlColStatus: "状态",
+  nlColMsgId: "通道流水号",
+  nlColOperator: "触发人",
+  nlSent: "已发送",
+  nlFailed: "失败",
+  nlAll: "全部",
+  nlSms: "短信",
+  nlMail: "邮件",
+  nlAuto: "系统自动",
+  nlEmpty: "还没有任何发送记录。接上真实通道之前这里会是空的——桩模式下不会真发，也就不记。",
+  nlBizOTP: "验证码",
+  nlBizInitPwd: "账号初始密码",
+  nlBizResetPwd: "密码重置",
+  nlBizTest: "测试发送",
+
+  nlTestTitle: "测试发送",
+  nlTestDesc: "给指定的手机号或邮箱发一条，用来确认通道是通的。",
+  nlTestWarn: "⚠️ 这是一个**能指定任意收件人**的入口，所以要过图形验证码：账号一旦泄漏，它就是一台群发机，而且发出去的是带平台签名的正规短信，比垃圾短信更能骗到人。",
+  nlTestChannel: "渠道",
+  nlTestTarget: "收件人",
+  nlTestTargetPh: "手机号或邮箱",
+  nlTestCaptcha: "图形验证码",
+  nlTestCaptchaPh: "看图输入",
+  nlTestRefresh: "换一张",
+  nlTestSend: "发送",
+  nlTestOk: "已发出，去下面的记录里看结果",
+
 };
 
 const en: typeof zh = {
@@ -198,6 +232,42 @@ const en: typeof zh = {
   fieldAnswer: "Answer",
   answerPlaceholder: "Write it the way a customer would say it — do not paste the policy text",
   answerHint: "An entry with no answer can be saved as a draft, but cannot be listed.",
+  nlNotice: "Every SMS and email send is recorded here, **failures included**. The most common question when something goes wrong is \"did they actually get it\" — without this table all you can do is ask the user to try again, and if the channel is the problem they still will not get it.\n\nRecipients are stored masked: everyone in ops can read this table, and those are users' phone numbers and emails. To chase one specific send, take the provider message id to the Aliyun / mailbox console.",
+  nlColTime: "Time",
+  nlColChannel: "Channel",
+  nlColBiz: "Purpose",
+  nlColTarget: "Recipient",
+  nlColTemplate: "Template / subject",
+  nlColStatus: "Status",
+  nlColMsgId: "Provider id",
+  nlColOperator: "Triggered by",
+  nlSent: "Sent",
+  nlFailed: "Failed",
+  nlAll: "All",
+  nlSms: "SMS",
+  nlMail: "Email",
+  nlAuto: "System",
+  nlEmpty: "No sends recorded yet. This stays empty until a real channel is switched on — the stub does not actually send, so nothing is recorded.",
+  nlBizOTP: "Verification code",
+  nlBizInitPwd: "Initial password",
+  nlBizResetPwd: "Password reset",
+  nlBizTest: "Test send",
+
+  nlTestTitle: "Test send",
+  nlTestDesc: "Send one to a chosen phone or email to confirm the channel works.",
+  nlTestWarn: "⚠️ This entry point can target **any recipient**, so it is gated by a captcha: once an account leaks it becomes a bulk sender, and what it sends carries the platform's own SMS signature.",
+  nlTestChannel: "Channel",
+  nlTestTarget: "Recipient",
+  nlTestTargetPh: "Phone or email",
+  nlTestCaptcha: "Captcha",
+  nlTestCaptchaPh: "Type what you see",
+  nlTestRefresh: "New image",
+  nlTestSend: "Send",
+  nlTestOk: "Sent — check the result in the list below",
+
 };
 
 export const MESSAGES_COPY: PageCopy<typeof zh> = { zh, en };
+
+/** 拆出去的 tab 组件靠它接文案。 */
+export type MessageCopy = typeof zh;

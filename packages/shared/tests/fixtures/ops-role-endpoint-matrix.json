@@ -417,6 +417,7 @@
     "GET /ops/perm/roles",
     "POST /ops/perm/roles",
     "POST /ops/perm/roles/{roleCode}/delete",
+    "POST /ops/perm/roles/{roleCode}/force-logout",
     "GET /ops/perm/roles/{roleCode}/points",
     "POST /ops/perm/roles/{roleCode}/points",
     "POST /ops/perm/roles/{roleCode}/rename",
