@@ -17,7 +17,7 @@
 <text class="s" x="340" y="85" text-anchor="middle">cmt_* · 3 表</text>
 <rect x="406.5" y="50" width="113" height="46" rx="6" fill="#EDEFF2" stroke="#B3B9C2"/>
 <text class="n" x="463" y="70" text-anchor="middle" font-size="13">交易</text>
-<text class="s" x="463" y="85" text-anchor="middle">ord_* · 5 表</text>
+<text class="s" x="463" y="85" text-anchor="middle">ord_* · 6 表</text>
 <rect x="529.5" y="50" width="113" height="46" rx="6" fill="#EDEFF2" stroke="#B3B9C2"/>
 <text class="n" x="586" y="70" text-anchor="middle" font-size="13">商品与类目</text>
 <text class="s" x="586" y="85" text-anchor="middle">prd_* · 8 表</text>

@@ -5,7 +5,7 @@
 
 ## 一、总览
 
-全库 **88** 张表、**144** 条引用关系，分 **14** 个域。
+全库 **91** 张表、**146** 条引用关系，分 **14** 个域。
 按「被引用次数」分三条带 —— **不是有向无环图**：域之间存在环
 （`cmt → mkt → usr → cmt`），强行分层会画错。
 
@@ -18,7 +18,7 @@
 | 社区与自提点 | `cmt_*` | 3 | 8 |
 | 商品与类目 | `prd_*` | 8 | 5 |
 | 购物车 | `trd_*` | 1 | 0 |
-| 交易 | `ord_*` | 5 | 6 |
+| 交易 | `ord_*` | 6 | 6 |
 | 履约 | `ful_*` | 3 | 0 |
 | 营销与团购 | `mkt_*` | 12 | 3 |
 | 积分 | `pts_*` | 2 | 0 |
@@ -26,7 +26,7 @@
 | 评价 | `rvw_*` | 3 | 0 |
 | 消息与客服 | `msg_*` | 4 | 0 |
 | 内容 | `cnt_*` | 4 | 0 |
-| 系统 | `sys_*` | 16 | 0 |
+| 系统 | `sys_*` | 17 | 0 |
 
 > `usr` 被 10 个域引用 —— 它是全库的锚点。改它的主键或语义，影响面是全局的。
 
@@ -109,7 +109,7 @@
 
 **跨域引用**：`trd_cart_item.user_no` → `usr_account`、`trd_cart_item.goods_no` → `prd_goods`、`trd_cart_item.sku_no` → `prd_sku`
 
-### 交易 `ord_*`（5 张）
+### 交易 `ord_*`（6 张）
 
 ![交易表关系](../diagrams/db-ord.svg)
 
@@ -120,8 +120,9 @@
 | `ord_order` | 主订单：用户视角，一次支付 |
 | `ord_status_log` | 订单状态时间线（append-only） |
 | `ord_sub_order` | 子订单：商家视角，一次分账一条履约链 |
+| `ord_invoice_request` | 开票申请（平台开给消费者，ADR-017 §3.4 条件 2） |
 
-**跨域引用**：`ord_after_sale.user_no` → `usr_account`、`ord_after_sale.entity_no` → `mch_entity`、`ord_item.goods_no` → `prd_goods`、`ord_item.sku_no` → `prd_sku`、`ord_order.user_no` → `usr_account`、`ord_order.community_no` → `cmt_community`、`ord_sub_order.user_no` → `usr_account`、`ord_sub_order.entity_no` → `mch_entity`、`ord_sub_order.pickup_no` → `cmt_pickup_point`、`ord_sub_order.group_no` → `mkt_group_buy`、`ord_sub_order.store_no` → `mch_store`
+**跨域引用**：`ord_after_sale.user_no` → `usr_account`、`ord_after_sale.entity_no` → `mch_entity`、`ord_item.goods_no` → `prd_goods`、`ord_item.sku_no` → `prd_sku`、`ord_order.user_no` → `usr_account`、`ord_order.community_no` → `cmt_community`、`ord_sub_order.user_no` → `usr_account`、`ord_sub_order.entity_no` → `mch_entity`、`ord_sub_order.pickup_no` → `cmt_pickup_point`、`ord_sub_order.group_no` → `mkt_group_buy`、`ord_sub_order.store_no` → `mch_store`、`ord_invoice_request.user_no` → `usr_account`
 
 ### 履约 `ful_*`（3 张）
 
@@ -221,7 +222,7 @@
 
 **跨域引用**：`cnt_post.community_no` → `cmt_community`、`cnt_post.sku_no` → `prd_sku`、`cnt_question.sku_no` → `prd_sku`
 
-### 系统 `sys_*`（16 张）
+### 系统 `sys_*`（17 张）
 
 ![系统表关系](../diagrams/db-sys.svg)
 
@@ -243,6 +244,7 @@
 | `sys_role` | 角色 |
 | `sys_role_point` | 角色 × 功能点。**后端未实现的功能点照样建关联** —— 补齐那天翻个状态就能用，不用重配角色 |
 | `sys_role_member` | 人员 × 角色。**唯一键含 role_code —— 这就是「一人多角色」的落点**。B 端真源仍是 mch_store_role（V18 已为多角色放宽唯一键），这里只装运营端 |
+| `sys_notify_log` | 短信/邮件发送记录 |
 
 **跨域引用**：`sys_idempotent.user_no` → `usr_account`、`sys_ops_staff.merchant_no` → `mch_entity`、`sys_ops_staff.community_no` → `cmt_community`、`sys_ops_staff.pickup_no` → `cmt_pickup_point`、`sys_role.entity_no` → `mch_entity`、`sys_role_point.entity_no` → `mch_entity`
 
