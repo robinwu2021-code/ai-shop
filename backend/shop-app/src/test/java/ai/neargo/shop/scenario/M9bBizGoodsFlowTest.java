@@ -9,6 +9,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
+import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -441,6 +442,123 @@ class M9bBizGoodsFlowTest {
         // C 端不下发：那边的 title 已经按语言拍平，整份译文没有用处
         mvc().perform(get("/mp/goods/" + goodsNo))
                 .andExpect(jsonPath("$.data.titleI18n").doesNotExist());
+    }
+
+    @Test
+    @DisplayName("★★★ 编辑页的 round-trip：详情回不来的字段，保存一次就没了")
+    void detailMustCarryEverythingSaveOverwrites() throws Exception {
+        String token = merchant("13500135091", "回环店");
+
+        /*
+         * **这条守卫防的是一整类缺陷，不是某一个字段。**
+         *
+         * 商品保存是**整份覆盖**：端上把整个表单发上来，没带的字段就是空。
+         * 而编辑页只能填回「详情接口给了什么」—— 于是任何一个
+         * 「保存收得下、详情不返回」的字段，都会在**编辑一次之后静默消失**。
+         * 已经这样丢过两次：商品主图（cover）、三语标题（titleI18n）。
+         * 两次都不报错，第二次要等多市场的买家反馈才可能被发现。
+         *
+         * 做法就是把编辑页那条路径原样走一遍：
+         *   建 → 读详情 → **只用详情里的字段**再存一次 → 再读 → 两次详情必须一致。
+         * 新增可编辑字段时，只要忘了在详情里回传，这条就会红。
+         */
+        String rich = "{\"title\":\"回环菜\",\"subtitle\":\"回环副标\",\"type\":\"NORMAL\","
+                + "\"titleI18n\":{\"en\":\"Round Trip\",\"ar\":\"ذهاب وإياب\"},"
+                + "\"subtitleI18n\":{\"en\":\"Sub\"},"
+                + "\"cover\":\"🥬\",\"images\":[\"img-a\",\"img-b\"],"
+                + "\"categoryNo\":\"CAT111\","
+                + "\"specGroups\":[{\"name\":\"规格\",\"options\":[\"大\",\"小\"]}],"
+                + "\"skus\":[{\"optionValues\":[\"大\"],\"price\":800,\"stock\":7},"
+                + "{\"optionValues\":[\"小\"],\"price\":500,\"stock\":9}]}";
+        String goodsNo = json.readTree(mvc().perform(post("/biz/goods/save")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON).content(rich))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString())
+                .get("data").get("goodsNo").asString();
+
+        JsonNode first = detail(token, goodsNo);
+
+        /*
+         * **先断言详情真的把存进去的东西还回来了。**
+         *
+         * 少了这一段，下面那个「两次详情相等」是空转的：
+         * 一个详情根本不返回的字段，两次都是 null，当然相等 ——
+         * 我第一版就是这么写的，把 titleI18n 的修复撤掉后它依然是绿的。
+         * **能被「两边都没有」满足的断言，等于没有断言。**
+         */
+        assertThat(first.get("cover").asString()).as("详情必须回传主图").isEqualTo("🥬");
+        assertThat(first.get("categoryNo").asString()).as("详情必须回传类目").isEqualTo("CAT111");
+        assertThat(first.get("images").size()).as("详情必须回传图集").isEqualTo(2);
+        assertThat(first.get("titleI18n")).as("详情必须回传三语标题").isNotNull();
+        assertThat(first.get("titleI18n").get("en").asString()).isEqualTo("Round Trip");
+        assertThat(first.get("titleI18n").get("ar").asString()).isEqualTo("ذهاب وإياب");
+        assertThat(first.get("subtitleI18n").get("en").asString()).isEqualTo("Sub");
+        assertThat(first.get("specGroups").size()).as("详情必须回传规格组").isEqualTo(1);
+        assertThat(first.get("skus").size()).as("详情必须回传整个 SKU 矩阵").isEqualTo(2);
+
+        // 再存一次，**只用详情给回来的东西**——这正是编辑页能做的全部
+        mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(resaveBodyFrom(goodsNo, first)))
+                .andExpect(jsonPath("$.code").value(0));
+        JsonNode again = detail(token, goodsNo);
+
+        for (String f : new String[]{"title", "subtitle", "cover", "categoryNo", "type",
+                "titleI18n", "subtitleI18n", "images", "specGroups"}) {
+            assertThat(again.get(f))
+                    .as("字段 %s 在「读详情 → 原样存回」之后变了 —— 详情没把它回传", f)
+                    .isEqualTo(first.get(f));
+        }
+        // SKU 的价与库存同理：编辑页把整个矩阵重发一遍
+        assertThat(again.get("skus").toString())
+                .as("SKU 的价/库存/规格值在 round-trip 之后变了")
+                .isEqualTo(first.get("skus").toString());
+    }
+
+    private JsonNode detail(String token, String goodsNo) throws Exception {
+        return json.readTree(mvc().perform(get("/biz/goods/" + goodsNo)
+                        .header("Authorization", "Bearer " + token))
+                .andReturn().getResponse().getContentAsString())
+                .get("data");
+    }
+
+    /** 把详情原样拼回保存体 —— 编辑页做的就是这件事（它没有别的信息来源）。 */
+    private String resaveBodyFrom(String goodsNo, JsonNode d) {
+        StringBuilder skus = new StringBuilder();
+        for (JsonNode k : d.get("skus")) {
+            if (skus.length() > 0) {
+                skus.append(",");
+            }
+            skus.append("{\"skuNo\":\"").append(k.get("skuNo").asString())
+                    .append("\",\"optionValues\":").append(k.get("optionValues"))
+                    .append(",\"price\":").append(k.get("price").asLong())
+                    .append(",\"stock\":").append(k.get("stock").asInt()).append("}");
+        }
+        StringBuilder groups = new StringBuilder();
+        for (JsonNode g : d.get("specGroups")) {
+            if (groups.length() > 0) {
+                groups.append(",");
+            }
+            groups.append("{\"name\":\"").append(g.get("name").asString())
+                    .append("\",\"options\":").append(g.get("options")).append("}");
+        }
+        return "{\"goodsNo\":\"" + goodsNo + "\""
+                + ",\"title\":\"" + d.get("title").asString() + "\""
+                + ",\"subtitle\":\"" + d.get("subtitle").asString() + "\""
+                + ",\"type\":\"" + d.get("type").asString() + "\""
+                + ",\"cover\":\"" + d.get("cover").asString() + "\""
+                + ",\"categoryNo\":\"" + d.get("categoryNo").asString() + "\""
+                + ",\"images\":" + d.get("images")
+                + ",\"titleI18n\":" + nodeOrEmpty(d.get("titleI18n"))
+                + ",\"subtitleI18n\":" + nodeOrEmpty(d.get("subtitleI18n"))
+                + ",\"specGroups\":[" + groups + "]"
+                + ",\"skus\":[" + skus + "]}";
+    }
+
+    /** 详情没给这个字段时，编辑页发的就是空 —— 守卫要的正是这个「诚实的空」 */
+    private String nodeOrEmpty(JsonNode n) {
+        return n == null || n.isNull() ? "{}" : n.toString();
     }
 
     private String goodsBody(String goodsNo, String title, long price, int stock) {
