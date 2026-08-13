@@ -114,3 +114,35 @@ curl -X POST localhost:8081/callback/pay/stub -H 'Content-Type: application/json
   营销/团/报价、评价回复，以及六个角色在真链路的读写边界（只验了店员的商品页）。
 - **两条守卫未做**：round-trip 字段丢失（根因 1）、共享状态必须挂 App 壳（根因 3 的 #12）。
 - dev 库里留着：`M0001` 的 owner 指向联调账号、5 个测试员工（六角色样本，有用）。
+
+---
+
+## 五、留给权限点那条链路的一条（2026-08-13，dev 库当前卡住）
+
+**现象**：后端 `api` profile 起不来，Flyway 停在 V74。
+
+```
+Migration to version "74 - perm backend only points" failed!
+SQL State 23000 / 1062: Duplicate entry 'ACT__AFTERSALE_REFUND_READ' for key 'uk_point'
+Location: db/migration/V74__perm_backend_only_points.sql  Line 15
+```
+
+**已经查到的**：那两条功能点（`ACT__AFTERSALE_REFUND_READ` /
+`ACT__COMMUNITY_REGION_READ`）**库里已经有了**，内容与脚本要插的一字不差 ——
+说明 V74 之前跑过一次、插到一半失败，`flyway_schema_history` 里那行现在是
+`success = 0`。于是每次启动都重跑、每次都死在同一行。
+
+**根因是脚本内部两套写法不一致**：第 41 行往后的 `sys_role_point` 插入都写了
+`WHERE NOT EXISTS`（可重入），而第 15–16 行的 `sys_function_point` 插入是裸 `INSERT`。
+迁移**只要有任何一步可能失败，它就必须整体可重入** —— 否则第一次失败之后，
+库就进入一个「脚本改对了也起不来」的状态，而报错指向的是那条无辜的插入。
+
+**两步解**（都要做，顺序不能反）：
+
+1. 把第 15–16 行改成与下面同样的 `WHERE NOT EXISTS`（或 `INSERT IGNORE`）；
+2. 清掉失败记录再重跑：`flyway repair`，或直接
+   `DELETE FROM flyway_schema_history WHERE version='74' AND success=0;`
+
+> ⚠️ `flyway_schema_history` 是全库共用的状态，dev 机上有几个会话同时连着 —— 
+> 改它之前先喊一声。B 端真链路（发货、售后）在这条修好之前跑不了：
+> `api` 侧起不来，c-app 与 b-app 都连不上。
