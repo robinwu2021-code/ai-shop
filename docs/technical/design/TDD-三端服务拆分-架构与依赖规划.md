@@ -285,10 +285,33 @@ backend/
 
 #### 3.4.3 Java 项目清单（项目 = 一次独立构建；模块 = 项目内的 Maven module）
 
-**一期 2 个项目，二期 5 个。** 项目边界的唯一判据是**要不要独立构建与版本化**——
-分成项目就要跨项目发版，所以一期只切一刀：**库**与**服务**。
+**一期 2 个项目，二期 5 个**——这是**本仓**的；上面还压着一层不属本仓的公共地基。
+项目边界的唯一判据是**要不要独立构建与版本化**：分成项目就要跨项目发版，
+所以一期只切一刀：**库**与**服务**。
 
-##### 一期
+##### L0 · 公共地基（仓库 `ai-neargo`，**本仓只消费不维护**）
+
+`ai-shop` 的父 POM 就是 `ai.neargo:neargo-parent`（`relativePath` 留空，走本机 `~/.m2`），
+它管 Java 21 + Spring Boot 4.0.x + MyBatis-Plus BOM + commons 版本。
+`ai-neargo/commons/` 共 9 个库模块，**本仓当前只引 3 个**：
+
+| 模块 | 提供什么 | 本仓 |
+|---|---|---|
+| `neargo-parent` | 父 POM：JDK/Boot/BOM/enforcer | ✅ 继承 |
+| `neargo-common-core` | L1 纯库：IdGenerator / ErrorCode | ✅ 引 |
+| `neargo-common-security` | RBAC：`@perm` / PermissionCarrier | ✅ 引（其 autoconfig 在 app 层 exclude） |
+| `neargo-common-data` | 数据权限引擎：DataScopeSpec/Handler/TableRegistry | ✅ 引（同上 exclude） |
+| `neargo-common-mq` | `DomainEventPublisher` / `DomainEvent` / MqAutoConfiguration | ⚠️ **S2 接 MQ 时先评估这个**，别另起一套 |
+| `neargo-auth-core` | `TokenIssuer` / `RevokeService`（21 个文件） | ⚠️ **三端 realm 拆分（T2）时先评估** |
+| `neargo-common-web` | 统一异常处理 / OperateLog | ○ 未引 |
+| `neargo-common-i18n` | CurrencyUtil / LocaleContextHolder | ○ 未引（本仓有自己的 `I18nConfig`） |
+| `neargo-common-api` | 216 个跨业务线 DTO | ✗ 不引：那是 neargo 其它业务线的契约 |
+| `neargo-common-config` | Nacos 配置导入 | ○ 未引 |
+
+> 两个 ⚠️ 是本方案新暴露的：**S2 的 MQ 与 T2 的令牌签发，commons 里都已有现成件**。
+> 不评估就自己写，等于在同一个地基上造第二套——**决定引或不引都行，但要写下理由**。
+
+##### L1–L2 · 本仓一期
 
 | 项目 | 产物 | 含模块 | 文件数 |
 |---|---|---|---|
@@ -310,6 +333,18 @@ backend/
 
 > `shop-portal-common`（publicChain + CommonMeta）三个服务项目共用 →
 > 二期它要么升进 `shop-kernel`，要么单独成一个小库项目。**二期再定，一期不预判。**
+
+##### 四层全景
+
+| 层 | 项目 | 归属 | 变更节奏 |
+|---|---|---|---|
+| **L0 公共地基** | `neargo-parent` ＋ `commons/*`（9 模块，本仓引 3） | 仓库 `ai-neargo` | 跨业务线，最慢 |
+| **L1 本仓内核** | `shop-kernel`（9 模块 · 396 文件） | `ai-shop/backend` | 随业务域 |
+| **L2 本仓服务** | 一期 `shop-service`；二期 `svc-c/-b/-p/-worker` | `ai-shop/backend` | 随端，最快 |
+| **L3 前端** | `c-app` `b-app` `ops-web` `packages/*` | `ai-shop` | 随端 |
+
+**依赖只能自下而上**：L2 → L1 → L0。
+L1 反向依赖 L2 编译期就过不去（跨项目），这正是把 kernel 单独成项目的收益。
 
 ##### 目录（一期就按项目分好，二期把目录拿走即独立）
 
@@ -473,6 +508,7 @@ DataScope 是 MyBatis 拦截器（商家只能看自己的数据）。
 - [ ] T0 建 `module-graph.py` + `split-readiness.py`（度量常驻，是后续所有判断的依据）
 - [ ] T1 S1：`shop-core` 一拆四 + community/fulfillment 归位 `shop-merchant`（纯移动）
 - [ ] T2 S1：**三端认证独立**——`Realm.MERCHANT` + `btk_` + `merchantChain`（§3.4.1）
+      · 动手前先评估 `neargo-auth-core` 的 `TokenIssuer`/`RevokeService`（§3.4.3 L0）
 - [ ] T3 S1：Controller 与各端认证链迁出到 `shop-portal-c/b/p/common`（含 4 个特例）
 - [ ] T4 S1：新建 `shop-jobs`（迁 2 个 Job + 补 Outbox 投递任务）
 - [ ] T5 S1：启动模块收敛为 `shop-app-all` + `shop-app-worker`；profile 保留作运行时锁
@@ -481,6 +517,7 @@ DataScope 是 MyBatis 拦截器（商家只能看自己的数据）。
 - [ ] （网关等 S1-next 触发条件，见 §5）
 - [ ] T6 S2：调用上下文透传（主体 + 数据域）
 - [ ] T7 S2：Outbox 投递侧接 MQ
+      · 动手前先评估 `neargo-common-mq` 的 `DomainEventPublisher`（§3.4.3 L0）
 - [ ] T8 S3：按 §5 顺序切域服务，每切一个补一条守卫
 
 ---
