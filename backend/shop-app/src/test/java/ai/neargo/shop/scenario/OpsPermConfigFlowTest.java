@@ -21,6 +21,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
  * 权限配置落库 + 动态菜单。
@@ -137,6 +138,91 @@ class OpsPermConfigFlowTest {
         }
         // 目前运营端每个叶子都有 UI 码，这条断言防的是将来把两个字段合并
         assertThat(hasFreePoint || true).isTrue();
+    }
+
+    @Test
+    @DisplayName("★★★ 改了权限就必须把人踢下线 —— 运营端删掉轮询之后，这是唯一的传播机制")
+    void changingPermsKicksTheHolders() throws Exception {
+        String admin = opsLogin("admin", "admin123");
+        String staffNo = staffNoOf(admin, "goods");
+        String victim = opsLogin("goods", "goods123");
+
+        // 前置：这张令牌此刻是好用的
+        mvc().perform(get("/ops/auth/me").header("Authorization", "Bearer " + victim))
+                .andExpect(jsonPath("$.code").value(0));
+
+        /*
+         * **运营端已经没有轮询了**（2026-08-13 删掉那个 60 秒的定时器）。
+         * 端上的 `perms` 是登录那一刻存进 localStorage 的快照，
+         * 而它之所以不会过期，靠的就是这一条：<b>改权限的写路径必须踢会话</b>。
+         *
+         * 这条断言塌了，症状不是这个测试红 —— 是**线上有人拿着旧权限接着用**：
+         * 收紧权限之后他照样点得动，直到他自己想起来重新登录。
+         * 而收紧权限恰恰是最需要立刻生效的那一类改动。
+         */
+        mvc().perform(post("/ops/staffs/" + staffNo + "/role")
+                        .header("Authorization", "Bearer " + admin)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"role\":\"FINANCE\"}"))
+                .andExpect(jsonPath("$.code").value(0));
+
+        mvc().perform(get("/ops/auth/me").header("Authorization", "Bearer " + victim))
+                .andExpect(status().isUnauthorized());
+
+        // 还原：整套跑在同一份 H2 上
+        mvc().perform(post("/ops/staffs/" + staffNo + "/role")
+                        .header("Authorization", "Bearer " + admin)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"role\":\"GOODS_OPS\"}"))
+                .andExpect(jsonPath("$.code").value(0));
+    }
+
+    @Test
+    @DisplayName("★★★ 改角色的功能点**不踢会话**，但那个人的权限当场就变了")
+    void changingRolePointsTakesEffectWithoutRelogin() throws Exception {
+        String admin = opsLogin("admin", "admin123");
+        String roleCode = "LIVEPERM" + System.currentTimeMillis() % 100000;
+        mvc().perform(post("/ops/perm/roles").header("Authorization", "Bearer " + admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"roleCode\":\"" + roleCode + "\",\"name\":\"现算测试\"}"))
+                .andExpect(jsonPath("$.code").value(0));
+        grantPoints(admin, roleCode, "\"OPS_ORDER\"");
+
+        String uname = "live" + System.currentTimeMillis() % 100000 + "@example.com";
+        String created = mvc().perform(post("/ops/staffs").header("Authorization", "Bearer " + admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"" + uname + "\",\"realName\":\"现算的人\","
+                                + "\"roles\":[\"" + roleCode + "\"]}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        String victim = opsLogin(uname, json.readTree(created).get("data")
+                .get("initialPassword").asString());
+        assertThat(permsOf(victim)).doesNotContain("aftersale:ticket:read");
+
+        /*
+         * **改的是角色的功能点，不是「他是谁」** —— 会话里存的是角色码，
+         * 而权限码每个请求由 LivePermResolver 按角色现算。所以：
+         *
+         *   · 会话**照常有效**（不打断他手上的活）
+         *   · 权限**当场就变**（连重新登录都不需要）
+         *
+         * 这两条要一起断言。只断言「没被踢」，把现算改回读快照也能过；
+         * 只断言「权限变了」，把 revokeUser 加回来同样能过 —— 而那正是刚去掉的东西。
+         */
+        grantPoints(admin, roleCode, "\"OPS_ORDER\",\"OPS_AFTERSALE\"");
+
+        mvc().perform(get("/ops/auth/me").header("Authorization", "Bearer " + victim))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0));
+        assertThat(permsOf(victim))
+                .as("判权是现算的：改完配置，同一张令牌下一个请求就该拿到新权限")
+                .contains("aftersale:ticket:read");
+    }
+
+    private void grantPoints(String admin, String roleCode, String codes) throws Exception {
+        mvc().perform(post("/ops/perm/roles/" + roleCode + "/points")
+                        .header("Authorization", "Bearer " + admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"pointCodes\":[" + codes + "]}"))
+                .andExpect(jsonPath("$.code").value(0));
     }
 
     @Test

@@ -236,23 +236,25 @@ public class PermConfigServiceImpl implements PermConfigService {
             rp.setEndCode(OPS);
             rolePointMapper.insert(rp);
         }
-        // 判权读的是缓存过的整表快照，不清就要等重启
-        resolver.invalidate();
         /*
-         * **还要踢持有者的会话**。清缓存只让下一次「算权限」拿到新配置，
-         * 而 perms 是<b>登录那一刻</b>算好塞进会话的 —— 不踢的话，
-         * 已经登录的人要等下次登录才生效，而收紧权限恰恰是最需要立刻生效的场景。
+         * 判权读的是缓存过的整表快照，不清就要等重启。
          *
-         * 旁边三个改人的写接口（setStaffEnabled/Role/Scope）都调了 revokeUser，
-         * 这里上一批漏了。
+         * <p><b>清完就够了，不踢会话</b>（2026-08-13 改）。判权是现算的：
+         * 会话里存的是<b>角色</b>，权限码每个请求由 {@code LivePermResolver} 按角色解析。
+         * 角色没变，所以下一个请求算出来的就是新配置 —— <b>连重新登录都不需要</b>。
+         *
+         * <p>此前这里踢了所有持有者，理由写的是「perms 是登录那一刻算好塞进会话的」——
+         * 那句话在换成现算之前是对的，之后就过期了。为一次纯配置改动把一屋子人
+         * 从工作中间踢出去，换的是一个他们本来就会得到的结果。
+         *
+         * <p><b>与旁边三个改人的写接口不同</b>（setStaffRole / setStaffRoles / setStaffScope）：
+         * 那三个改的是<b>「他是谁」</b> —— 角色与数据域都在会话里，
+         * 不重建会话就没有任何机制能让它们变，收紧权限会**永远不生效**。
+         * 那三处的 revokeUser 必须留着，而且它就是「让他重新登录一次」本身。
          */
-        int kicked = 0;
-        for (SysRoleMember m : memberMapper.selectList(Wrappers.<SysRoleMember>lambdaQuery()
-                .eq(SysRoleMember::getEndCode, OPS).eq(SysRoleMember::getRoleCode, roleCode))) {
-            kicked += tokenStore.revokeUser(m.getSubjectNo());
-        }
+        resolver.invalidate();
         auditLogPort.record("PERM_ROLE_POINTS", roleCode,
-                codes.size() + " 个功能点，踢下线 " + kicked + " 个会话", true,
+                codes.size() + " 个功能点（判权现算，未踢会话）", true,
                 objectMapper.writeValueAsString(Map.of("pointCodes", before)),
                 objectMapper.writeValueAsString(Map.of("pointCodes", codes)));
         return new RoleVO(roleCode, r.getName(), OPS, false, codes.size(),
@@ -448,7 +450,8 @@ public class PermConfigServiceImpl implements PermConfigService {
      *
      * <p><b>清缓存但不踢会话</b>：顺序变了，「谁能干什么」一点没变 ——
      * 踢会话会把一次纯展示改动变成全员重新登录（与 renameRole 同一条判断）。
-     * 端上下一次拉 /ops/menu（最多 60 秒）就看到新顺序。
+     * 端上下一次拉 /ops/menu（进入页面或切回窗口时）就看到新顺序 ——
+     * 运营端已经没有轮询了（2026-08-13），纯展示的改动不值得为它每分钟打一次。
      */
     private void afterReorder(String action, String code, String name, MoveDirection dir) {
         resolver.invalidate();
