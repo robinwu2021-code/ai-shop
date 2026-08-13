@@ -57,13 +57,52 @@ public class MerchantPaymentServiceImpl implements MerchantPaymentService {
 
     @Override
     public List<PaymentApplymentVO> list(String merchantNo) {
-        return rows(merchantNo).stream().map(this::toVO).toList();
+        List<MchPaymentMerchant> rows = rows(merchantNo);
+        if (rows.isEmpty()) {
+            /*
+             * **一条都没有时给一条「还没开始」的占位。**
+             *
+             * 进件记录本该在入驻通过时建（{@code MerchantPortImpl.ensurePayment}），
+             * 但走别的路进来的主体（迁移灌的种子、历史数据）没有这一行。
+             * 而端上那一页的表单是 `v-if="current"` —— 于是：
+             * 工作台红字写着「收款进件没走完 · 去处理」，点进去<b>整页只有一句话</b>，
+             * 没有任何可填的东西。**指着一条死路的提示比没有提示更糟。**
+             *
+             * 占位不落库：真正建行在 {@link #submit} 那一刻（那里才知道他填了什么）。
+             */
+            return List.of(placeholder(merchantNo));
+        }
+        return rows.stream().map(this::toVO).toList();
+    }
+
+    /** 「还没进件」的占位：状态 NONE，缺什么按主体算 —— 与提交时同一套判断。 */
+    private PaymentApplymentVO placeholder(String merchantNo) {
+        MchPaymentMerchant virtual = new MchPaymentMerchant();
+        virtual.setEntityNo(merchantNo);
+        virtual.setPayChannel(MchPaymentMerchant.WECHAT);
+        virtual.setLegalForm(legalFormOf(merchantNo));
+        virtual.setApplyStatus(MchPaymentMerchant.NONE);
+        return new PaymentApplymentVO(virtual.getPayChannel(),
+                masterDataPort.channelName(virtual.getPayChannel()),
+                MchPaymentMerchant.NONE, false, null, null, null, null, null,
+                missingOf(virtual, null, null, null), null, null, "");
+    }
+
+    /** 主体 → 通道进件主体。与建商家、入驻校验走同一份主数据（ADR-002 §4） */
+    private String legalFormOf(String merchantNo) {
+        var m = DataScopeContext.executeWithoutScope(() ->
+                merchantMapper.selectOne(Wrappers.<ai.neargo.shop.merchant.entity.MchEntity>lambdaQuery()
+                        .eq(ai.neargo.shop.merchant.entity.MchEntity::getEntityNo, merchantNo)
+                        .last("limit 1")));
+        // 主体上存的就是 legalForm（PERSONAL/INDIVIDUAL/COMPANY），再过一遍主数据归一
+        String canonical = m == null ? null : masterDataPort.canonicalSubject(m.getLegalForm());
+        return canonical != null ? canonical : MchPaymentMerchant.INDIVIDUAL;
     }
 
     @Override
     @Transactional
     public PaymentApplymentVO submit(String merchantNo, SubmitCommand cmd) {
-        MchPaymentMerchant row = require(merchantNo, cmd.payChannel(), cmd.storeNo());
+        MchPaymentMerchant row = requireOrOpen(merchantNo, cmd.payChannel(), cmd.storeNo());
 
         /*
          * 已经开好的户不许重复提交。
@@ -206,6 +245,38 @@ public class MerchantPaymentServiceImpl implements MerchantPaymentService {
      * 会被写进主体默认号，症状是「给分店进件，改的却是总店的账户」——
      * 而这不会报错，只会在第一次打款时把钱打错地方。
      */
+    /**
+     * 取这条进件记录；<b>主体级那一条没有就现建</b>。
+     *
+     * <p>记录本该在入驻通过时建（{@code MerchantPortImpl.ensurePayment}），
+     * 而走别的路进来的主体（种子、历史数据）没有 —— 此前的表现是：
+     * 商家在收款设置页填完卡号点提交，得到一句 <b>「数据不存在」</b>。
+     * 他填的东西没错、店也在，报错却说不存在，这句话没有任何可操作性。
+     *
+     * <p>只补主体级（{@code storeNo} 空）：给某家分店进件仍要求主体级先开好，
+     * 那条链路上「找不到」是真的错（见 {@link #require} 的注释）。
+     */
+    private MchPaymentMerchant requireOrOpen(String merchantNo, String payChannel, String storeNo) {
+        String key = storeNo == null ? "" : storeNo;
+        return rows(merchantNo).stream()
+                .filter(r -> r.getPayChannel().equals(payChannel))
+                .filter(r -> key.equals(r.getStoreNo() == null ? "" : r.getStoreNo()))
+                .findFirst()
+                .orElseGet(() -> {
+                    if (!key.isEmpty()) {
+                        throw BizException.of(ErrorCode.NOT_FOUND);
+                    }
+                    MchPaymentMerchant p = new MchPaymentMerchant();
+                    p.setEntityNo(merchantNo);
+                    p.setStoreNo("");
+                    p.setPayChannel(payChannel);
+                    p.setLegalForm(legalFormOf(merchantNo));
+                    p.setApplyStatus(MchPaymentMerchant.NONE);
+                    DataScopeContext.executeWithoutScope(() -> paymentMapper.insert(p));
+                    return p;
+                });
+    }
+
     private MchPaymentMerchant require(String merchantNo, String payChannel, String storeNo) {
         String key = storeNo == null ? "" : storeNo;
         return rows(merchantNo).stream()

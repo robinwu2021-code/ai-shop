@@ -37,6 +37,9 @@ class MerchantPaymentFlowTest {
     private ObjectMapper json;
 
     @Autowired
+    private org.springframework.jdbc.core.JdbcTemplate jdbc;
+
+    @Autowired
     private ai.neargo.shop.common.OtpStore otpStore;
 
     private MockMvc mvc() {
@@ -161,6 +164,48 @@ class MerchantPaymentFlowTest {
                         .header("Authorization", "Bearer " + token))
                 .andReturn().getResponse().getContentAsString();
         return json.readTree(body).get("data").get(0).get("payMerchantNo").asString();
+    }
+
+    @Test
+    @DisplayName("★★ 一条进件记录都没有时：页面要有东西可填，提交要能建 —— 而不是「数据不存在」")
+    void noRowYetStillUsable() throws Exception {
+        String token = merchant("13500135070", "无进件记录店");
+        String merchantNo = json.readTree(mvc().perform(get("/biz/merchant/profile")
+                        .header("Authorization", "Bearer " + token))
+                .andReturn().getResponse().getContentAsString())
+                .get("data").get("merchantNo").asString();
+
+        /*
+         * 模拟「走别的路进来的主体」：迁移灌的种子、历史数据都没有这一行
+         * （记录本该在入驻通过时由 ensurePayment 建）。
+         *
+         * 这条守的是一条**死路**：工作台上写着「收款进件没走完 · 去处理」，
+         * 点进去整页只有一句话 —— 表单是 `v-if="current"`，而 current 来自这个接口。
+         * 真实链路上撞见过：硬填了提交，也只得到一句「数据不存在」，
+         * 而他填的东西没错、店也在，这句话没有任何可操作性。
+         */
+        jdbc.update("DELETE FROM mch_payment_merchant WHERE entity_no = ?", merchantNo);
+
+        String body = mvc().perform(get("/biz/merchant/payment")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data[0].applyStatus").value("NONE"))
+                .andReturn().getResponse().getContentAsString();
+        assertThat(json.readTree(body).get("data").get(0).get("missing").size())
+                .as("缺什么要说清楚，否则「未开始」等于没说")
+                .isGreaterThan(0);
+
+        // 提交要能把记录建出来，而不是 404
+        mvc().perform(post("/biz/merchant/payment").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"payChannel\":\"WECHAT\",\"settleAccountType\":\"PERSONAL_OPENID\","
+                                + "\"settleAccount\":\"6222021234567890123\",\"licenses\":[\"lic-1\"],"
+                                + "\"contactName\":\"张老板\",\"contactPhone\":\"13500135070\"}"))
+                .andExpect(jsonPath("$.code").value(0));
+
+        mvc().perform(get("/biz/merchant/payment").header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.data[0].applyStatus")
+                        .value(org.hamcrest.Matchers.not("NONE")));
     }
 
     private String merchant(String phone, String name) throws Exception {
