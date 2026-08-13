@@ -283,6 +283,45 @@ backend/
 认证与鉴权在这里是生死线：**认证可以上收，鉴权永远下沉**。
 一期不上——给一个服务配网关，多一个必须活着的进程，换不回任何东西。
 
+#### 3.4.3 Java 项目清单
+
+**现状 6 个模块 → 目标 16 个**（一期建 14 个，二期再加 3 个启动模块、退役 1 个）。
+`neargo-common-core` / `-data` / `-security` 是**外部依赖**（`shop-base` 引入），不属本仓模块。
+
+文件数是**当前主代码实测**（合计 456 个 `.java`），用于估算搬运量；
+「来源」列即迁移动作，全部是 `git mv` + pom，不改业务代码。
+
+| # | 模块（artifactId） | 类型 | 来源 | 文件数 | 一期 | 二期 |
+|---|---|---|---|---|---|---|
+| 1 | `shop-base` | 地基 | 不动（`auth` 包 19 个：`Realm`/`TokenStore`/`LoginUser`/`Perms` 等三端通用件留下，各端的 Filter/Chain 迁出） | 78 | ✓ | ✓ |
+| 2 | `shop-spi` | 跨域契约 | 从 `shop-base` 抽出 Port 接口 | — | ✓ | ✓ |
+| 3 | `shop-channel` | 通道适配 | 不动（`BizUploadController` 迁出） | 11→10 | ✓ | ✓ |
+| 4 | `shop-domain-trade` | 域 | `core/trade` 减 5 个 Controller | 35 | ✓ | ✓ |
+| 5 | `shop-domain-product` | 域 | `core/product` 减 6 | 38 | ✓ | ✓ |
+| 6 | `shop-domain-mkt` | 域 | `core/marketing` 减 7 | 39 | ✓ | ✓ |
+| 7 | `shop-domain-platform` | 域 | `core/platform`+`user`+`content`+`message` 减 10 | 86 | ✓ | ✓ |
+| 8 | `shop-merchant` | 域 | 现有 62 ＋ `core/community` 12 ＋ `core/fulfillment` 12，减 7 | 79 | ✓ | ✓ |
+| 9 | `shop-settle` | 域 | 现有 38 减 7 | 31 | ✓ | ✓ |
+| 10 | `shop-portal-c` | 端接入 | 各域 `api/mp` 7 ＋ settle 1 ＋ `app/portal/mp` 2 ＋ `PayCallbackController` ＋ **consumerChain/ConsumerTokenAuthFilter** | 11＋链 | ✓ | ✓ |
+| 11 | `shop-portal-b` | 端接入 | 各域 `api/biz` 6 ＋ merchant 1 ＋ settle 2 ＋ `app/portal/biz` 5 ＋ `BizUploadController` ＋ **merchantChain/MerchantTokenAuthFilter（新）/BizContextFilter/BizIdentityResolver** | 15＋链 | ✓ | ✓ |
+| 12 | `shop-portal-p` | 端接入 | 各域 `api/ops` 16 ＋ merchant 6 ＋ settle 4 ＋ `OpsPermConfigController` ＋ **operatorChain/OperatorTokenAuthFilter** | 27＋链 | ✓ | ✓ |
+| 13 | `shop-portal-common` | 端接入 | `CommonMetaController` ＋ **publicChain**（`/common` `/callback` `/actuator` `/uploads`） | 1＋链 | ✓ | ✓ |
+| 14 | `shop-jobs` | 任务 | `ReconScanJob` ＋ `QualificationExpiryJob` ＋ **新增 Outbox 投递任务** | 3 | ✓ | ✓ |
+| 15 | `shop-app-all` | 启动 | 现 `shop-app` 的 `config` 7 个 ＋ pom；portal-c/b/p/common | 8 | ✓ | 退役 |
+| 16 | `shop-app-worker` | 启动 | pom ＋ `SchedulingConfig`；jobs | 2 | ✓ | ✓ |
+| 17 | `shop-app-c` | 启动 | pom；portal-c ＋ common | ~2 | — | ✓ |
+| 18 | `shop-app-b` | 启动 | pom；portal-b ＋ common | ~2 | — | ✓ |
+| 19 | `shop-app-p` | 启动 | pom；portal-p ＋ common | ~2 | — | ✓ |
+
+**`shop-core` 消失**——它今天 250 个文件、9 个域包，是「一依赖就全背上」的根源。
+
+**只有两处需要判断，其余都是机械搬运**：
+
+1. `PayCallbackController`（支付回调）归 `portal-c`：它是**公网**入口，
+   与 C 端同一张网卡暴露；二期 `shop-app-c` 带着它，回调域名不变。
+2. `core/user` 归 `shop-domain-platform` 而非独立 `user-svc`：见 §3.3 的权宜说明，
+   包边界保留，将来要拆随时可拆。
+
 ## 4. 拆分会打破的三件事（必须先有答案）
 
 这三件今天靠「同一个进程」成立，拆开就不成立了。
