@@ -220,9 +220,24 @@ onShow(load);
 .waiting {
   margin-top: 20rpx;
 }
+/*
+ * 标签与单号**各占一行**。`<text>` 是行内元素，两个挨着写会连成一串，
+ * 而这一格只有半屏宽 —— 断行落在「退货运单 / 号SF7788990011」上，
+ * 把「运单号」三个字劈成两半。标签本身不许断（nowrap），
+ * 单号可断（运单号比这一格宽是常态）。
+ */
 .express {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4rpx;
+}
+.express > text:first-child {
+  white-space: nowrap;
+}
+.express > text:last-child {
+  word-break: break-all;
 }
 .mt {
   display: block;
