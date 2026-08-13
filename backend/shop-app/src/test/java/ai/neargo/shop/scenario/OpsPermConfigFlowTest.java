@@ -141,38 +141,45 @@ class OpsPermConfigFlowTest {
     }
 
     @Test
-    @DisplayName("★★★ 改了权限就必须把人踢下线 —— 运营端删掉轮询之后，这是唯一的传播机制")
-    void changingPermsKicksTheHolders() throws Exception {
+    @DisplayName("★★★ 改某人的角色：**不踢会话**，但同一张令牌下一个请求就是新身份")
+    void changingSomeonesRoleTakesEffectWithoutKicking() throws Exception {
         String admin = opsLogin("admin", "admin123");
         String staffNo = staffNoOf(admin, "goods");
         String victim = opsLogin("goods", "goods123");
+        assertThat(permsOf(victim)).contains("product:sku:audit");
 
-        // 前置：这张令牌此刻是好用的
-        mvc().perform(get("/ops/auth/me").header("Authorization", "Bearer " + victim))
-                .andExpect(jsonPath("$.code").value(0));
+        try {
+            /*
+             * **角色与数据域也改成现算了**（`LiveIdentityResolver`，2026-08-13）：
+             * 会话里只剩「他是谁」。所以改完角色 ——
+             *
+             *   · 他的会话**照常有效**（不打断手上的活）
+             *   · 但下一个请求已经是新角色（旧权限当场没了）
+             *
+             * 这两条要一起断言。只断言「没被踢」，把身份改回读会话快照也能过；
+             * 只断言「权限变了」，把 revokeUser 加回来同样能过 —— 而那正是刚去掉的。
+             */
+            mvc().perform(post("/ops/staffs/" + staffNo + "/role")
+                            .header("Authorization", "Bearer " + admin)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"role\":\"FINANCE\"}"))
+                    .andExpect(jsonPath("$.code").value(0));
 
-        /*
-         * **运营端已经没有轮询了**（2026-08-13 删掉那个 60 秒的定时器）。
-         * 端上的 `perms` 是登录那一刻存进 localStorage 的快照，
-         * 而它之所以不会过期，靠的就是这一条：<b>改权限的写路径必须踢会话</b>。
-         *
-         * 这条断言塌了，症状不是这个测试红 —— 是**线上有人拿着旧权限接着用**：
-         * 收紧权限之后他照样点得动，直到他自己想起来重新登录。
-         * 而收紧权限恰恰是最需要立刻生效的那一类改动。
-         */
-        mvc().perform(post("/ops/staffs/" + staffNo + "/role")
-                        .header("Authorization", "Bearer " + admin)
-                        .contentType(MediaType.APPLICATION_JSON).content("{\"role\":\"FINANCE\"}"))
-                .andExpect(jsonPath("$.code").value(0));
-
-        mvc().perform(get("/ops/auth/me").header("Authorization", "Bearer " + victim))
-                .andExpect(status().isUnauthorized());
-
-        // 还原：整套跑在同一份 H2 上
-        mvc().perform(post("/ops/staffs/" + staffNo + "/role")
-                        .header("Authorization", "Bearer " + admin)
-                        .contentType(MediaType.APPLICATION_JSON).content("{\"role\":\"GOODS_OPS\"}"))
-                .andExpect(jsonPath("$.code").value(0));
+            mvc().perform(get("/ops/auth/me").header("Authorization", "Bearer " + victim))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.code").value(0));
+            Set<String> now = permsOf(victim);
+            assertThat(now)
+                    .as("换成财务之后，旧令牌下一个请求就不该再有商品审核权 —— "
+                            + "不然「改了角色」在他重新登录之前根本没发生")
+                    .doesNotContain("product:sku:audit");
+            assertThat(now).as("而财务该有的要有").contains("finance:payout:execute");
+        } finally {
+            // 还原放 finally：中间断言失败时不还原，会把后面所有用 goods 账号的用例一起带红
+            mvc().perform(post("/ops/staffs/" + staffNo + "/role")
+                    .header("Authorization", "Bearer " + admin)
+                    .contentType(MediaType.APPLICATION_JSON).content("{\"role\":\"GOODS_OPS\"}"));
+        }
     }
 
     @Test

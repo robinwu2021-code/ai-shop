@@ -122,7 +122,9 @@ public class SecurityConfig {
     @Bean
     @Profile("ops")
     @Order(2)
-    SecurityFilterChain operatorChain(HttpSecurity http, TokenStore tokenStore) throws Exception {
+    SecurityFilterChain operatorChain(
+            HttpSecurity http, TokenStore tokenStore,
+            ObjectProvider<ai.neargo.shop.auth.LiveIdentityResolver> identityResolver) throws Exception {
         return http
                 .securityMatcher("/ops/**")
                 .cors(c -> c.configurationSource(corsSource()))
@@ -134,7 +136,7 @@ public class SecurityConfig {
                         .requestMatchers("/ops/auth/login", "/ops/auth/forgot",
                                 "/ops/auth/reset").permitAll()
                         .anyRequest().authenticated())
-                .addFilterBefore(new OperatorTokenAuthFilter(tokenStore),
+                .addFilterBefore(new OperatorTokenAuthFilter(tokenStore, identityResolver),
                         UsernamePasswordAuthenticationFilter.class)
                 .exceptionHandling(e -> e.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
                 .build();

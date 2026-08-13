@@ -62,6 +62,8 @@ public class OpsServiceImpl implements OpsService {
     private final StaffMapper staffMapper;
     private final RoleMemberMapper roleMemberMapper;
     private final RolePermResolver rolePermResolver;
+    /** 改角色/数据域之后清它 —— 身份也是现算的了（见 LiveIdentityResolver） */
+    private final ai.neargo.shop.platform.perm.StaffIdentityResolver identityResolver;
     private final AuditLogMapper auditLogMapper;
     private final MerchantApplyMapper applyMapper;
     private final MerchantAdminPort merchantAdminPort;
@@ -85,6 +87,7 @@ public class OpsServiceImpl implements OpsService {
 
     public OpsServiceImpl(StaffMapper staffMapper, RoleMemberMapper roleMemberMapper,
                           RolePermResolver rolePermResolver,
+                          ai.neargo.shop.platform.perm.StaffIdentityResolver identityResolver,
                           AuditLogMapper auditLogMapper,
                           MerchantApplyMapper applyMapper, MerchantAdminPort merchantAdminPort,
                           TokenStore tokenStore, ObjectMapper json, ObjectMapper objectMapper,
@@ -106,6 +109,7 @@ public class OpsServiceImpl implements OpsService {
         this.objectMapper = objectMapper;
         this.staffMapper = staffMapper;
         this.roleMemberMapper = roleMemberMapper;
+        this.identityResolver = identityResolver;
         this.rolePermResolver = rolePermResolver;
         this.auditLogMapper = auditLogMapper;
         this.applyMapper = applyMapper;
@@ -682,8 +686,14 @@ public class OpsServiceImpl implements OpsService {
          * 过渡期内**每一处改角色的地方都要同时写两边**。
          */
         syncRoleMember(staffNo, List.of(role));
-        // 换角色即刻生效：旧会话里带的是旧 perms
-        tokenStore.revokeUser(staffNo);
+        /*
+         * **不再踢会话**（2026-08-13）：角色与数据域已经改成每请求现算
+         * （`LiveIdentityResolver`），会话里只剩「他是谁」。改完清一次快照，
+         * 同实例下一个请求就是新身份，跨实例最坏一个 TTL —— 而且不打断任何人。
+         *
+         * 要立刻收回权限（开错了），走运营端那个显式的「强制重新登录」按钮。
+         */
+        identityResolver.invalidate();
         audit("STAFF_ROLE", staffNo, before + " → " + role);
         List<String> roles = List.of(role);
         return toVO(staff, roles, rolePermResolver.of(roles));
@@ -788,8 +798,14 @@ public class OpsServiceImpl implements OpsService {
         staff.setRoles(writeList(want));
         staffMapper.updateById(staff);
         syncRoleMember(staffNo, want);
-        // 换角色即刻生效：旧会话里带的是旧 perms
-        tokenStore.revokeUser(staffNo);
+        /*
+         * **不再踢会话**（2026-08-13）：角色与数据域已经改成每请求现算
+         * （`LiveIdentityResolver`），会话里只剩「他是谁」。改完清一次快照，
+         * 同实例下一个请求就是新身份，跨实例最坏一个 TTL —— 而且不打断任何人。
+         *
+         * 要立刻收回权限（开错了），走运营端那个显式的「强制重新登录」按钮。
+         */
+        identityResolver.invalidate();
         audit("STAFF_ROLES", staffNo, before + " → " + writeList(want), true,
                 objectMapper.writeValueAsString(Map.of("roles", readList(before))),
                 objectMapper.writeValueAsString(Map.of("roles", want)));
@@ -927,8 +943,14 @@ public class OpsServiceImpl implements OpsService {
         staff.setCommunityNo(blankToNull(communityNo));
         staff.setPickupNo(blankToNull(pickupNo));
         staffMapper.updateById(staff);
-        // 数据域进 token，改了要重登才生效
-        tokenStore.revokeUser(staffNo);
+        /*
+         * **不再踢会话**（2026-08-13）：角色与数据域已经改成每请求现算
+         * （`LiveIdentityResolver`），会话里只剩「他是谁」。改完清一次快照，
+         * 同实例下一个请求就是新身份，跨实例最坏一个 TTL —— 而且不打断任何人。
+         *
+         * 要立刻收回权限（开错了），走运营端那个显式的「强制重新登录」按钮。
+         */
+        identityResolver.invalidate();
         audit("STAFF_SCOPE", staffNo, "merchant=" + merchantNo + "｜community=" + communityNo
                 + "｜pickup=" + pickupNo);
         return toVO(staff, roles, rolePermResolver.of(roles));

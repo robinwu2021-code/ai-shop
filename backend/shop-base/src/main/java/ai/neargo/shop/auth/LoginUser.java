@@ -33,6 +33,17 @@ public record LoginUser(
         return realm == Realm.CONSUMER;
     }
 
+    /**
+     * 换上<b>此刻</b>的角色与数据域（运营端每请求现算，见 {@code OperatorTokenAuthFilter}）。
+     *
+     * <p>会话里那份是登录那一刻的快照，只用作解析失败时的回落。
+     * 判权（{@code @perm.can}）读的就是这个对象的 {@code roles()} ——
+     * 不换的话会出现「菜单按新角色画、判权按旧角色算」，而两边各自都说得通。
+     */
+    public LoginUser withRolesAndScope(List<String> newRoles, DataScopeSpec newScope) {
+        return new LoginUser(realm, userNo, nickname, newRoles, perms, tenantNo, newScope);
+    }
+
     @Override
     public Set<String> grantedPermissions() {
         return perms == null ? Set.of() : Set.copyOf(perms);
@@ -40,8 +51,12 @@ public record LoginUser(
 
     /** C 端会话：无角色无权限，数据域恒 SELF（SQL 层防 IDOR 的兜底）。 */
     /**
-     * 运营主体。**权限码在登录时算好并放进会话** —— 每次请求回查角色表会让
-     * 「改了角色立刻生效」和「每个请求多一次查询」二选一，而前者可以靠重新登录解决。
+     * 运营主体。
+     *
+     * <p><b>这里塞进去的角色/权限/数据域只是回落用的快照</b>：判权走
+     * {@code LivePermResolver}、身份走 {@code LiveIdentityResolver}，
+     * 两者都是每请求现算（各自带 TTL 快照，代价是一次 map 查找）。
+     * 会话里留一份，只为了「解析器没装上/库抖」时不至于全员失权。
      */
     /**
      * 不受数据域限制的运营（超管、商品运营等全量角色）。
