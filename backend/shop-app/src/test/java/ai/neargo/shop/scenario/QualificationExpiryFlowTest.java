@@ -1,5 +1,6 @@
 package ai.neargo.shop.scenario;
 
+import ai.neargo.shop.support.TestLogin;
 import ai.neargo.shop.merchant.service.MerchantGovernService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -148,10 +149,6 @@ class QualificationExpiryFlowTest {
     }
 
     private String opsLogin() throws Exception {
-        String body = mvc().perform(post("/ops/auth/login").contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"username\":\"admin\",\"password\":\"admin123\"}"))
-                .andExpect(jsonPath("$.code").value(0))
-                .andReturn().getResponse().getContentAsString();
-        return json.readTree(body).get("data").get("token").asString();
+        return TestLogin.admin(mvc(), json);
     }
 }

@@ -1,5 +1,6 @@
 package ai.neargo.shop.scenario;
 
+import ai.neargo.shop.support.TestLogin;
 import ai.neargo.shop.channel.notify.port.StubMailGateway;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -61,12 +62,7 @@ class OpsPasswordDeliveryFlowTest {
     }
 
     private String adminToken() throws Exception {
-        String body = mvc().perform(post("/ops/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"username\":\"admin\",\"password\":\"admin123\"}"))
-                .andExpect(jsonPath("$.code").value(0))
-                .andReturn().getResponse().getContentAsString();
-        return json.readTree(body).get("data").get("token").asString();
+        return TestLogin.admin(mvc(), json);
     }
 
     private JsonNode createStaff(String token, String username) throws Exception {

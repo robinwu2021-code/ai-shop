@@ -1,5 +1,6 @@
 package ai.neargo.shop.scenario;
 
+import ai.neargo.shop.support.TestLogin;
 import ai.neargo.shop.channel.notify.port.StubMailGateway;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -50,11 +51,7 @@ class OpsForgotPasswordFlowTest {
     }
 
     private String adminToken() throws Exception {
-        String body = mvc().perform(post("/ops/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"username\":\"admin\",\"password\":\"admin123\"}"))
-                .andReturn().getResponse().getContentAsString();
-        return json.readTree(body).get("data").get("token").asString();
+        return TestLogin.admin(mvc(), json);
     }
 
     /** 建一个真账号，返回它的初始密码（testcfg 是 response 模式） */
