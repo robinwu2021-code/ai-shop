@@ -23,10 +23,11 @@ import {
 import { ReadOnlyNotice } from "@/components/read-only-notice";
 // 会员卡自成一块 —— 与券/活动/内容位三个 tab 只共用文案表
 import { MemberTab } from "./member-tab";
-import { ArchiveActions, ShowArchivedToggle, archiveConfirm, archivedRowClass, unarchiveConfirm } from "@/components/archive";
+import { ArchiveActions, ShowArchivedToggle, ARCHIVE_LABEL_KEY, UNARCHIVE_LABEL_KEY, archiveConfirm, archivedRowClass, unarchiveConfirm } from "@/components/archive";
 import { Button } from "@/components/ui/button";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { Drawer, Field, FieldGrid } from "@/components/ui/drawer";
+import { RowActions } from "@/components/ui/dropdown-menu";
 import { FilterSelect } from "@/components/ui/filter-select";
 import { Input, Select } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -260,41 +261,44 @@ function MarketingInner() {
     { header: c.colStatus, cell: (x) => <CouponStatusBadge value={x.status} /> },
     {
       header: c.colActions,
-      cell: (x) => (
-        <ArchiveActions
-          archived={!!x.archivedAt}
-          canWrite={canIssue}
-          onArchive={async () => {
-            await confirm(archiveConfirm(c.entityCoupon, x.name, x.couponNo, () => archiveMut.mutateAsync({ kind: "coupon", no: x.couponNo, restore: false })));
-          }}
-          onUnarchive={async () => {
-            await confirm(unarchiveConfirm(c.entityCoupon, x.name, () => archiveMut.mutateAsync({ kind: "coupon", no: x.couponNo, restore: true })));
-          }}
-          actions={
-            <>
-              {/* 只有 FULL_CUT/DISCOUNT 是这个建券表单能编的类型——NEWCOMER/TARGETED
-                  没有折扣算法撑着，编辑入口不给，避免看着能改、保存必炸 */}
-              {(x.type === "FULL_CUT" || x.type === "DISCOUNT") && (
-                <Button size="sm" variant="outline" disabled={!canIssue} onClick={() => setCouponForm(toCouponForm(x))}>
-                  {c.actionEditCoupon}
-                </Button>
-              )}
-              {/* 只出当前状态允许的那一个动作（合法迁移表见 lib/types/marketing.ts） */}
-              {x.status === "DRAFT" ? (
-                <Button size="sm" variant="outline" onClick={() => askCouponStatus(x, "ACTIVE")}>{c.btnActivate}</Button>
-              ) : x.status === "ACTIVE" ? (
-                <>
-                  <Button size="sm" onClick={() => { setIssuing(x); setIssueForm({ target: "SINGLE_USER", targetDesc: "", userNo: "", count: "1" }); }}>{c.btnIssue}</Button>
-                  {/* 出事时的止损手段：券从领券中心消失、领取被拒，已领到手的不动 */}
-                  <Button size="sm" variant="outline" onClick={() => askCouponStatus(x, "PAUSED")}>{c.btnPause}</Button>
-                </>
-              ) : x.status === "PAUSED" ? (
-                <Button size="sm" variant="outline" onClick={() => askCouponStatus(x, "ACTIVE")}>{c.btnResume}</Button>
-              ) : null}
-            </>
-          }
-        />
-      ),
+      cell: (x) => {
+        // 行内只留「这个状态下最常按的那一个」（DRAFT→启用 / ACTIVE→发券 / PAUSED→恢复），
+        // 其余（编辑、暂停、归档）收进「更多」——行内动作 ≤2 个是本站表格操作列的约定
+        // （见 components/README.md），这一列此前平铺到 4 个按钮，表格被撑得要横向滚动。
+        const primary =
+          x.status === "DRAFT" ? (
+            <Button size="sm" variant="outline" onClick={() => askCouponStatus(x, "ACTIVE")}>{c.btnActivate}</Button>
+          ) : x.status === "ACTIVE" ? (
+            <Button size="sm" onClick={() => { setIssuing(x); setIssueForm({ target: "SINGLE_USER", targetDesc: "", userNo: "", count: "1" }); }}>{c.btnIssue}</Button>
+          ) : x.status === "PAUSED" ? (
+            <Button size="sm" variant="outline" onClick={() => askCouponStatus(x, "ACTIVE")}>{c.btnResume}</Button>
+          ) : null;
+        return (
+          <div className="flex flex-nowrap items-center gap-2">
+            {primary}
+            <RowActions
+              actions={[
+                canIssue && !x.archivedAt && (x.type === "FULL_CUT" || x.type === "DISCOUNT") && {
+                  label: c.actionEditCoupon, onSelect: () => setCouponForm(toCouponForm(x)),
+                },
+                // 出事时的止损手段：券从领券中心消失、领取被拒，已领到手的不动
+                canIssue && !x.archivedAt && x.status === "ACTIVE" && {
+                  label: c.btnPause, onSelect: () => askCouponStatus(x, "PAUSED"), danger: true,
+                },
+                canIssue && (x.archivedAt
+                  ? {
+                      label: t(UNARCHIVE_LABEL_KEY),
+                      onSelect: () => confirm(unarchiveConfirm(c.entityCoupon, x.name, () => archiveMut.mutateAsync({ kind: "coupon", no: x.couponNo, restore: true }))),
+                    }
+                  : {
+                      label: t(ARCHIVE_LABEL_KEY), danger: true,
+                      onSelect: () => confirm(archiveConfirm(c.entityCoupon, x.name, x.couponNo, () => archiveMut.mutateAsync({ kind: "coupon", no: x.couponNo, restore: false }))),
+                    }),
+              ]}
+            />
+          </div>
+        );
+      },
     },
   ];
 
