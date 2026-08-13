@@ -56,8 +56,6 @@ const EXEMPT: Record<string, string> = {
   token: "restore() 在 App.vue 里同步读存储",
   scopeLoading: "内部去重字段，不是数据",
   storesLoading: "同上",
-  // profile 由各页按需拉；它错的表现是「店名不显示」，一眼可见
-  profile: "错了的表现是店名/状态不显示，一眼可见，且各页按需拉",
 };
 
 describe("b-app 共享状态", () => {

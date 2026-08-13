@@ -7,6 +7,7 @@ import ai.neargo.shop.spi.fulfillment.GroupPickupPort;
 import ai.neargo.shop.spi.product.GoodsQueryPort;
 import ai.neargo.shop.spi.trade.FulfillmentQueryPort;
 import ai.neargo.shop.spi.user.MerchantQueryPort;
+import ai.neargo.shop.spi.user.PickupQueryPort;
 import ai.neargo.shop.spi.user.UserQueryPort;
 import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.common.BizException;
@@ -64,6 +65,7 @@ public class GroupServiceImpl implements GroupService {
     private final QuoteRevisionMapper revisionMapper;
     private final MerchantQueryPort merchantPort;
     private final UserQueryPort userPort;
+    private final PickupQueryPort pickupPort;
     private final ai.neargo.shop.spi.user.MerchantGovernPort governPort;
     private final ObjectMapper json;
 
@@ -74,10 +76,12 @@ public class GroupServiceImpl implements GroupService {
                             RequestMapper requestMapper, RequestInterestMapper interestMapper,
                             QuoteMapper quoteMapper, QuoteRevisionMapper revisionMapper,
                             MerchantQueryPort merchantPort, UserQueryPort userPort,
+                            PickupQueryPort pickupPort,
                             ObjectMapper json,
                             GroupPickupPort groupPickupPort, FulfillmentQueryPort fulfillmentPort, GoodsQueryPort goodsPort,
                             ai.neargo.shop.spi.user.MerchantGovernPort governPort) {
         this.governPort = governPort;
+        this.pickupPort = pickupPort;
         this.groupPickupPort = groupPickupPort;
         this.fulfillmentPort = fulfillmentPort;
         this.goodsPort = goodsPort;
@@ -554,18 +558,36 @@ public class GroupServiceImpl implements GroupService {
     }
 
     private RequestVO toRequestVO(MktRequest r, boolean interested) {
-        int quoteCount = Math.toIntExact(scoped(() -> quoteMapper.selectCount(
-                Wrappers.<MktQuote>lambdaQuery().eq(MktQuote::getRequestNo, r.getRequestNo()))));
-        QuoteVO chosen = r.getChosenQuoteNo() == null ? null
-                : toChosenQuoteVO(r);
+        List<QuoteVO> quotes = quotes(r.getRequestNo());
+        QuoteVO chosen = r.getChosenQuoteNo() == null ? null : toChosenQuoteVO(r);
+        var owner = userPort.find(r.getOwnerId());
+        var pickup = r.getPickupNo() == null ? java.util.Optional.<PickupQueryPort.PickupBrief>empty()
+                : pickupPort.find(r.getPickupNo());
         return new RequestVO(r.getRequestNo(), r.getTitle(), r.getDescription(),
                 readList(r.getImages()), r.getOwnerId(),
-                userPort.find(r.getOwnerId()).map(UserQueryPort.UserBrief::nickname).orElse("邻居"),
-                nz(r.getExpectCount()), nz(r.getInterestCount()), interested,
-                r.getStatus(), quoteCount, chosen,
+                owner.map(UserQueryPort.UserBrief::nickname).orElse("邻居"),
+                owner.map(UserQueryPort.UserBrief::avatar).orElse(""),
+                r.getPickupNo(), pickup.map(PickupQueryPort.PickupBrief::name).orElse(""),
+                nz(r.getExpectCount()), r.getBudgetMinor(),
+                nz(r.getInterestCount()), interested,
+                neighbours(r.getRequestNo()),
+                r.getStatus(), quotes, chosen,
                 r.getCreatedAt() == null ? 0L
                         : r.getCreatedAt().atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli(),
-                nz(r.getEndAt()));
+                nz(r.getEndAt()),
+                r.getGroupNo(), r.getLockedPrice());
+    }
+
+    /** +1 的邻居头像墙。**只取前 12 个**：这是展示，不是名单，全量对页面没有用处。 */
+    private List<GroupVOs.NeighbourVO> neighbours(String requestNo) {
+        return scoped(() -> interestMapper.selectList(Wrappers.<MktRequestInterest>lambdaQuery()
+                        .eq(MktRequestInterest::getRequestNo, requestNo)
+                        .orderByAsc(MktRequestInterest::getId).last("limit 12"))).stream()
+                .map(i -> userPort.find(i.getUserNo())
+                        .map(u -> new GroupVOs.NeighbourVO(u.avatar() == null ? "" : u.avatar(),
+                                u.nickname()))
+                        .orElseGet(() -> new GroupVOs.NeighbourVO("", "邻居")))
+                .toList();
     }
 
     /**
@@ -579,11 +601,10 @@ public class GroupServiceImpl implements GroupService {
             return null;
         }
         QuoteVO vo = toQuoteVO(q);
-        return new QuoteVO(vo.quoteNo(), vo.requestNo(), vo.merchantNo(), vo.merchantName(),
-                vo.merchantRating(), vo.breachCount(),
-                nz(r.getLockedPrice()),
-                vo.minQty(), vo.note(), vo.validUntil(), vo.revisionCount(), true, vo.createdAt(),
-                vo.status());
+        // 价用锁定快照，其余照抄；locked=true —— 这一条正是「已锁价」的那条
+        return new QuoteVO(vo.quoteNo(), vo.requestNo(), vo.merchant(),
+                nz(r.getLockedPrice()), vo.minCount(), vo.desc(),
+                vo.validUntil(), vo.createdAt(), true, vo.revisions(), true, vo.status());
     }
 
     // ---------------------------------------------------------------- 平台侧（P-8.2）
@@ -737,17 +758,38 @@ public class GroupServiceImpl implements GroupService {
 
     private QuoteVO toQuoteVO(MktQuote q) {
         var m = merchantPort.find(q.getEntityNo());
-        return new QuoteVO(q.getQuoteNo(), q.getRequestNo(), q.getEntityNo(),
-                m.map(MerchantQueryPort.MerchantBrief::merchantName).orElse(""),
-                m.map(MerchantQueryPort.MerchantBrief::rating).orElse(0d),
-                // ★ 毁约次数直接公示在报价卡上（ADR-003）
-                m.map(MerchantQueryPort.MerchantBrief::breachCount).orElse(0),
+        return new QuoteVO(q.getQuoteNo(), q.getRequestNo(),
+                new GroupVOs.MerchantBriefVO(q.getEntityNo(),
+                        m.map(MerchantQueryPort.MerchantBrief::merchantName).orElse(""),
+                        m.map(MerchantQueryPort.MerchantBrief::logo).orElse(""),
+                        m.map(MerchantQueryPort.MerchantBrief::rating).orElse(0d),
+                        m.map(MerchantQueryPort.MerchantBrief::verified).orElse(false),
+                        // ★ 毁约次数直接公示在报价卡上（ADR-003）
+                        m.map(MerchantQueryPort.MerchantBrief::breachCount).orElse(0)),
                 nz(q.getUnitPriceMinor()), nz(q.getMinQty()), q.getNote(),
-                nz(q.getValidUntil()), nz(q.getRevisionCount()),
-                Boolean.TRUE.equals(q.getChosen()),
+                nz(q.getValidUntil()),
                 q.getCreatedAt() == null ? 0L
                         : q.getCreatedAt().atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli(),
+                Boolean.TRUE.equals(q.getChosen()),
+                revisionsOf(q.getQuoteNo()),
+                // 被选定即锁价：此后价格不可变，下单一律用快照价（ADR-003 第一层）
+                Boolean.TRUE.equals(q.getChosen()),
                 q.getStatus() == null ? MktQuote.ACTIVE : q.getStatus());
+    }
+
+    /**
+     * 这条报价的改价公示。**每项给的是改价前的单价** —— 页面拿最后一条与现价比，
+     * 低于现价就说明涨过，于是卡上挂一条「原 ¥X」。
+     *
+     * <p>此前这里只下发一个 `revisionCount`，于是「谁涨过价」这条 ADR-003 的核心机制
+     * 在页面上永远显示不出来：数字对得上，而公示是空的。
+     */
+    private List<GroupVOs.QuoteHistoryVO> revisionsOf(String quoteNo) {
+        return scoped(() -> revisionMapper.selectList(Wrappers.<MktQuoteRevision>lambdaQuery()
+                        .eq(MktQuoteRevision::getQuoteNo, quoteNo)
+                        .orderByAsc(MktQuoteRevision::getId))).stream()
+                .map(rev -> new GroupVOs.QuoteHistoryVO(nz(rev.getFromPriceMinor()), nz(rev.getAt())))
+                .toList();
     }
 
     private String merchantNameOf(String merchantNo) {

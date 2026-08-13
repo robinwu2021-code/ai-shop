@@ -187,7 +187,7 @@ onShareAppMessage(() => {
         </view>
 
         <view
-          v-if="isInitiator && !q.chosen && request.status !== 'MATCHED'"
+          v-if="isInitiator && !q.chosen && request.status !== 'LOCKED'"
           class="sh-btn sh-btn--soft quote__btn"
           @tap="choose(q)"
         >
@@ -204,7 +204,7 @@ onShareAppMessage(() => {
     </view>
 
     <!-- 已选定报价：+1 的邻居各自二次确认 -->
-    <view v-if="request.status === 'MATCHED'" class="sh-card block matched">
+    <view v-if="request.status === 'LOCKED'" class="sh-card block matched">
       <text class="sh-h2">{{ $t("request.matchedTitle") }}</text>
       <text class="sh-muted nothint">{{ $t("request.matchedHint") }}</text>
       <view class="matched__row">
@@ -217,7 +217,7 @@ onShareAppMessage(() => {
 
     <view class="actionbar">
       <view
-        v-if="request.status === 'MATCHED'"
+        v-if="request.status === 'LOCKED'"
         class="sh-btn"
         :class="{ 'is-disabled': request.confirmed }"
         @tap="confirm"

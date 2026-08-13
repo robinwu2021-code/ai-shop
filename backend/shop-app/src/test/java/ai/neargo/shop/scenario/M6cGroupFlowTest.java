@@ -70,7 +70,7 @@ class M6cGroupFlowTest {
         JsonNode data = requestDetail(owner, requestNo);
         assertThat(data.get("status").asString()).isEqualTo("LOCKED");
         // 锁定的是快照价，不是报价表里的当前价 —— 否则「不审核」等于让商家随时改价
-        assertThat(data.get("chosenQuote").get("unitPriceMinor").asLong()).isEqualTo(19900L);
+        assertThat(data.get("chosenQuote").get("priceMinor").asLong()).isEqualTo(19900L);
     }
 
     @Test
@@ -139,8 +139,8 @@ class M6cGroupFlowTest {
 
             JsonNode quotes = quotes(owner, requestNo);
             // 用户在选报价时就要看到「这家毁过约」，而不是事后投诉
-            assertThat(quotes.get(0).get("breachCount").asInt()).isEqualTo(2);
-            assertThat(quotes.get(0).get("merchantRating").asDouble()).isGreaterThan(0);
+            assertThat(quotes.get(0).get("merchant").get("breachCount").asInt()).isEqualTo(2);
+            assertThat(quotes.get(0).get("merchant").get("rating").asDouble()).isGreaterThan(0);
         } finally {
             setBreachCount("M0002", 0);
         }
@@ -159,13 +159,19 @@ class M6cGroupFlowTest {
 
         JsonNode data = requestDetail(owner, requestNo);
         assertThat(data.get("status").asString()).isEqualTo("QUOTED");
-        assertThat(data.get("quoteCount").asInt()).isEqualTo(2);
+        /*
+         * **报价跟着详情一起下发**（契约 `GroupRequest.quotes`）。
+         * 原先这里只有一个 `quoteCount`，两端的页面却都要列报价 ——
+         * 于是 `request.quotes.length` 读到 undefined，整页当场崩掉。
+         */
+        assertThat(data.get("quotes").size()).as("报价要跟着详情一起给").isEqualTo(2);
+        assertThat(data.get("quotes").get(0).get("merchant").get("name").asString()).isNotEmpty();
 
         JsonNode quotes = quotes(owner, requestNo);
         assertThat(quotes).hasSize(2);
         // 报价按单价升序：用户第一眼看到的应该是最便宜的
-        assertThat(quotes.get(0).get("unitPriceMinor").asLong()).isEqualTo(2800L);
-        assertThat(quotes.get(0).get("minQty").asInt()).isEqualTo(20);
+        assertThat(quotes.get(0).get("priceMinor").asLong()).isEqualTo(2800L);
+        assertThat(quotes.get(0).get("minCount").asInt()).isEqualTo(20);
     }
 
     @Test
@@ -178,7 +184,7 @@ class M6cGroupFlowTest {
         mvc().perform(post("/mp/group-request/" + requestNo + "/interest")
                         .header("Authorization", "Bearer " + neighbor))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.interestCount").value(1))
+                .andExpect(jsonPath("$.data.interestedCount").value(1))
                 .andExpect(jsonPath("$.data.interested").value(true));
 
         // 邻居没有任何订单 —— +1 只是表达「我也想要」
@@ -188,7 +194,7 @@ class M6cGroupFlowTest {
         // 再点一次取消
         mvc().perform(post("/mp/group-request/" + requestNo + "/interest")
                         .header("Authorization", "Bearer " + neighbor))
-                .andExpect(jsonPath("$.data.interestCount").value(0))
+                .andExpect(jsonPath("$.data.interestedCount").value(0))
                 .andExpect(jsonPath("$.data.interested").value(false));
     }
 
@@ -466,7 +472,7 @@ class M6cGroupFlowTest {
         String biz = loginAsOwnerOf("M0001", "13700137102");
         String quoteNo = quote(biz, requestNo, 15000L, 3, 7);
 
-        int before = quoteCard(requestNo, quoteNo).get("breachCount").asInt();
+        int before = quoteCard(requestNo, quoteNo).get("merchant").get("breachCount").asInt();
 
         String bd = opsLogin("bd", "bd123");
         mvc().perform(post("/ops/quotes/" + quoteNo + "/breach")
@@ -486,7 +492,7 @@ class M6cGroupFlowTest {
          */
         String requestNo2 = createRequest(owner, "毁约后的下一单");
         String quoteNo2 = quote(biz, requestNo2, 16000L, 3, 7);
-        assertThat(quoteCard(requestNo2, quoteNo2).get("breachCount").asInt())
+        assertThat(quoteCard(requestNo2, quoteNo2).get("merchant").get("breachCount").asInt())
                 .as("判毁约必须计入 breach_count，并出现在这家店后面的报价上")
                 .isEqualTo(before + 1);
     }
@@ -509,7 +515,7 @@ class M6cGroupFlowTest {
         }
         String requestNo2 = createRequest(owner, "幂等毁约后的下一单");
         String quoteNo2 = quote(biz, requestNo2, 12500L, 2, 7);
-        assertThat(quoteCard(requestNo2, quoteNo2).get("breachCount").asInt())
+        assertThat(quoteCard(requestNo2, quoteNo2).get("merchant").get("breachCount").asInt())
                 .as("判两次只该算一次 —— 否则运营手抖点两下，商家白背一次违规").isEqualTo(1);
     }
 

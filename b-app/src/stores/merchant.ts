@@ -31,6 +31,8 @@ export const useMerchantStore = defineStore("merchant", {
     scopeLoading: null as Promise<unknown> | null,
     /** 进行中的门店列表请求，供 ensureStores 去重。不持久化 */
     storesLoading: null as Promise<Store[]> | null,
+    /** 进行中的资料请求，供 ensureProfile 去重。不持久化 */
+    profileLoading: null as Promise<unknown> | null,
   }),
 
   getters: {
@@ -127,6 +129,24 @@ export const useMerchantStore = defineStore("merchant", {
         this.storesLoading = null;
       });
       return this.storesLoading;
+    },
+
+    /**
+     * 保证商家资料已经拉过一次。**幂等，且并发安全**。
+     *
+     * 它看着像「只影响店名显示」，其实不是：`isActive` 由 `profile.status` 推出来，
+     * 而 `isActive` 决定了好几处**能不能操作**。实测形态：商家打开「邻里求团报价」，
+     * 需求单列得好好的，<b>却一个报价入口都没有</b> —— `profile` 还没拉，
+     * `isActive` 是 false，「我要报价」整个不渲染。他会以为这单轮不到自己报。
+     *
+     * 与 perms / stores 同一类：**默认值是「不能」，所以没加载 = 界面把自己锁死**。
+     */
+    async ensureProfile() {
+      if (this.profile) return this.profile;
+      this.profileLoading ??= this.loadProfile().finally(() => {
+        this.profileLoading = null;
+      });
+      return this.profileLoading;
     },
 
     /**

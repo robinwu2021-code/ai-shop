@@ -312,8 +312,10 @@ export const ENUM_REGISTRY: EnumEntry[] = [
    */
   { decl: "shared:PointRecordType", dom: "growth", shape: "CLASS", verdict: "OK" },
   { decl: "shared:GroupRequestStatus", dom: "group", shape: "STATUS", verdict: "MERGE",
-    note: "与 ops-web 的 DemandStatus 是同一件事（求团需求）的两套说法：类型名不同，且 MATCHED↔CHOSEN 同义异名。OPEN 在这里保留 —— 它是「开放接受报价」这个状态本身，不是「等某人处理」，与 L1 的 PENDING 语义不同，已申报",
-    words: ["OPEN", "QUOTING", "MATCHED", "EXPIRED"] },
+    note: "取值已改为库里存的那套（mkt_request.status）—— 原先的 OPEN/QUOTING/MATCHED/EXPIRED 与后端一个都对不上，"
+      + "页面上 status==='MATCHED' 恒 false。与 ops-web 的 DemandStatus 仍是同一件事的两套说法（CHOSEN↔LOCKED），待合并。"
+      + "COLLECTING 是「开放接受报价」这个状态本身，不是「等某人处理」，与 L1 的 PENDING 语义不同，已申报",
+    words: ["COLLECTING", "QUOTED", "LOCKED", "CONFIRMED"] },
   { decl: "ops-web:ViolationType", dom: "merchant", shape: "CLASS", verdict: "OK" },
   { decl: "ops-web:ExceptionKind", dom: "order", shape: "CLASS", verdict: "OK" },
 

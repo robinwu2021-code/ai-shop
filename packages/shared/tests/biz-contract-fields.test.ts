@@ -16,10 +16,24 @@ import { describe, expect, it } from "vitest";
 const ROOT = join(import.meta.dirname, "../../..");
 const read = (p: string) => readFileSync(join(ROOT, p), "utf8");
 
+/**
+ * 检查哪几端。
+ *
+ * 原先只查 `/biz`（b-app）。而同一个形状在 `/mp` 上更严重 ——
+ * 求团详情的 `RequestVO` 与契约 `GroupRequest` 几乎<b>每个字段都对不上名</b>，
+ * 且契约要的 `quotes` / `neighbours` 干脆没有：模板里 `request.quotes.length`
+ * 读到 undefined 直接抛错，C 端的报价对比区与 B 端的整个求团池<b>一行都渲染不出来</b>。
+ * 守卫只盯着一端，另一端就是盲区 —— 而两端用的是同一份契约。
+ */
+const APPS = [
+  { app: "b-app", prefix: "/biz", fn: "m" },
+  { app: "c-app", prefix: "/mp", fn: "" },
+];
+
 /** 端点名 → 路径 */
-function endpoints(): Record<string, string> {
+function endpoints(app: string): Record<string, string> {
   const out: Record<string, string> = {};
-  for (const m of read("b-app/src/api/endpoints.ts").matchAll(
+  for (const m of read(`${app}/src/api/endpoints.ts`).matchAll(
     /(\w+):\s*\{\s*method:\s*"(?:GET|POST)",\s*path:\s*"([^"]+)"/g,
   )) {
     out[m[1]!] = m[2]!;
@@ -28,10 +42,10 @@ function endpoints(): Record<string, string> {
 }
 
 /** 端点名 → 契约声明的返回类型（去掉数组/分页壳） */
-function declaredTypes(): Record<string, string> {
+function declaredTypes(app: string): Record<string, string> {
   const out: Record<string, string> = {};
-  for (const m of read("b-app/src/api/contract.ts").matchAll(
-    /^\s{2}(m\w+)\s*\([^)]*\)\s*:\s*Promise<([^;]+)>;/gm,
+  for (const m of read(`${app}/src/api/contract.ts`).matchAll(
+    /^\s{2}(\w+)\s*\([^)]*\)\s*:\s*Promise<([^;]+)>;/gm,
   )) {
     const t = m[2]!.trim()
       .replace(/^PageResult<(.*)>$/, "$1")
@@ -83,10 +97,17 @@ function backendReturns(): Record<string, string> {
   return out;
 }
 
-/** record 的组件名（含跨行签名）。找不到返回 null —— 与「找到但没有字段」要分开 */
+/**
+ * record 的组件名（含跨行签名）。找不到返回 null —— 与「找到但没有字段」要分开。
+ *
+ * **不能只按文件名找**。这里原先要求文件叫 `Xxx.java`，于是所有<b>嵌套 record</b>
+ * 一律跳过 —— 而这个仓库里成组的 VO 恰恰都写成 `GroupVOs.java` / `TradeVOs.java`
+ * 这种壳类。求团那一整块（`RequestVO` / `QuoteVO`）就落在盲区里：
+ * 契约与后端<b>每个字段都对不上名</b>，两端页面都当场崩掉，而守卫一声不吭 ——
+ * 它以为自己比过了，实际上一次都没比。
+ */
 function javaComponents(simpleName: string): string[] | null {
   for (const f of JAVA) {
-    if (!f.endsWith(`/${simpleName}.java`)) continue;
     const src = read(f);
     const i = src.indexOf(`public record ${simpleName}(`);
     if (i < 0) continue;
@@ -119,9 +140,9 @@ const EXEMPT: Record<string, string> = {
   "Order.subOrders": "仅支付视角有；B 端子单视图为空数组",
 };
 
-describe("B 端契约字段", () => {
-  const eps = endpoints();
-  const decls = declaredTypes();
+describe.each(APPS)("$app 契约字段（$prefix）", ({ app, prefix }) => {
+  const eps = endpoints(app);
+  const decls = declaredTypes(app);
   const rets = backendReturns();
 
   it("解析到足够多的端点与后端返回类型（正则失效时不要静默通过）", () => {
@@ -135,7 +156,7 @@ describe("B 端契约字段", () => {
 
     for (const [name, path] of Object.entries(decls)) {
       const url = (eps[name] ?? "").replace(/:(\w+)/g, "{$1}");
-      if (!url.startsWith("/biz")) continue;
+      if (!url.startsWith(prefix)) continue;
       const ret = rets[url];
       if (!ret) continue; // 后端路径没解析到：另一条守卫的事
       const comps = javaComponents(ret);
@@ -152,11 +173,36 @@ describe("B 端契约字段", () => {
       }
     }
 
+    /*
+     * 存量欠账：**修好盲区那一刻**库里就有的 21 处（/biz 7、/mp 14）。
+     *
+     * 数字这么大不是因为一夜之间坏了这么多，而是因为守卫此前<b>根本没在比</b>——
+     * 它只按文件名找 record，而这个仓库的 VO 大多嵌在 `XxxVOs.java` 里，
+     * 于是整块整块地跳过（求团、商家团、优惠券、门店主页…）。
+     *
+     * 它们都是**真缺陷**，不是可豁免项 —— 商家团缺 `merchant`/`members`/`expireAt` 九个字段，
+     * 优惠券列表拿不到券名与面额，门店主页拿不到店与货。所以不进 EXEMPT
+     * （那张表是「少了也没关系，且写清为什么」），而记成一个<b>只许降不许升</b>的数。
+     *
+     * 这样两件事同时成立：今天不必一次修完，而**明天新增一处立刻变红**。
+     * 修掉一处就把数字减一 —— 数字不允许往上走，这是它唯一的价值。
+     */
+    const PENDING = { "b-app": 7, "c-app": 14 }[app] ?? 0;
+    if (offenders.length && offenders.length <= PENDING) {
+      expect(
+        offenders.length,
+        `${app} 的存量欠账应当只减不增（当前 ${offenders.length}，记录值 ${PENDING}）——\n`
+          + "  修掉一处就把 PENDING 减一。\n  " + offenders.join("\n  "),
+      ).toBe(PENDING);
+      return;
+    }
+
     expect(
       offenders,
       "契约声明了、后端 VO 里没有的字段 ——\n"
         + "  端上照契约写，屏幕上就静默少一块：时间显示成 NaN、整块 v-if 不渲染、\n"
-        + "  或者永远是「—」。TypeScript 挡不住这类：它只保证端上自己前后一致。\n"
+        + "  或者永远是「—」。少的若是数组（quotes/neighbours），页面直接抛错整页白。\n"
+        + "  TypeScript 挡不住这类：它只保证端上自己前后一致。\n"
         + "  修：后端补字段（多数情况），或改契约并同步改页面。\n  "
         + offenders.join("\n  "),
     ).toEqual([]);

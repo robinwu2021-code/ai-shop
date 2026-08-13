@@ -1150,15 +1150,28 @@ export interface Coupon {
  * 关键约束：**意向 ≠ 订单**。求团阶段不收钱、不锁库存 —— 商品还不存在时收钱是给自己找麻烦。
  * 只有发起人选定报价、转成正式商家团之后，才进入交易链路。
  */
+/**
+ * 求团需求单的状态。**取值以库里存的为准**（`mkt_request.status`）。
+ *
+ * 这里原先是另一套词：OPEN / QUOTING / MATCHED / EXPIRED —— 与后端一个都对不上，
+ * 于是页面上 `status === "MATCHED"` 恒 false（已选定报价那一块、二次确认按钮
+ * 永远不出现），而 `status !== "MATCHED"` 恒真（锁价之后「选定」按钮仍然挂着）。
+ * 两边各写各的，谁也没报错。
+ *
+ * 枚举对账守卫当时也是绿的：它拿端上的取值去全后端的大写字面量里搜，
+ * 而 MATCHED / OPEN / EXPIRED 恰好在别的域里存在（团购、优惠券…）——
+ * **同名异义把缺口盖住了**。词袋比对不了「这个字段的取值」。
+ */
 export type GroupRequestStatus =
-  /** 刚发起，等邻居 +1 */
-  | "OPEN"
+  /** 刚发起，等邻居 +1、等商家来报价 */
+  | "COLLECTING"
   /** 已有商家报价 */
-  | "QUOTING"
-  /** 发起人已选定报价，已转成正式团 */
-  | "MATCHED"
-  | "CLOSED"
-  | "EXPIRED";
+  | "QUOTED"
+  /** 发起人已选定报价，价格就此锁死（ADR-003 第一层） */
+  | "LOCKED"
+  /** 发起人确认收货，需求单收口 */
+  | "CONFIRMED"
+  | "CLOSED";
 
 /** 一次改价的留痕 */
 export interface QuoteRevision {
@@ -1234,7 +1247,7 @@ export interface GroupRequest {
   createdAt: number;
   /** 需求单过期时间。过期即 EXPIRED，不再接受报价 */
   expireAt: number;
-  /** MATCHED 后指向生成的正式团 */
+  /** LOCKED 之后指向生成的正式团 */
   groupNo?: string;
   /**
    * 选定的报价快照。转成正式团后下单用这个价，**不读商家当前价** ——

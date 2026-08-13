@@ -1169,7 +1169,7 @@ export const mockApi: ShopApi = {
       images: [] as string[],
       expectQty: payload.expectQty,
       budgetMinor: payload.budgetMinor,
-      status: "OPEN" as const,
+      status: "COLLECTING" as const,
       // 发起人自己算第一个意向
       interestedCount: 1,
       interested: true,
@@ -1216,7 +1216,7 @@ export const mockApi: ShopApi = {
       // 选定即锁价：之后下单一律用这个快照价，商家改不了 —— 加价在技术上做不到
       x.locked = x.chosen;
     });
-    seed.status = "MATCHED";
+    seed.status = "LOCKED";
     seed.lockedPriceMinor = q.priceMinor;
     // +1 只是意向，转团后每个人要各自确认才算下单
     seed.confirmed = false;
@@ -1232,7 +1232,7 @@ export const mockApi: ShopApi = {
   async confirmRequest(requestNo) {
     const seed = db.requests.find((r) => r.requestNo === requestNo);
     if (!seed) throw new Error("需求不存在");
-    if (seed.status !== "MATCHED") throw new Error("还没有选定报价");
+    if (seed.status !== "LOCKED") throw new Error("还没有选定报价");
     if (seed.confirmed) throw new Error("你已确认");
     seed.confirmed = true;
     seed.confirmedCount = (seed.confirmedCount ?? 0) + 1;

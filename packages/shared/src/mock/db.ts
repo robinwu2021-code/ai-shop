@@ -1272,7 +1272,7 @@ export const db = {
       images: ["🛏️", "📏"],
       expectQty: 1,
       budgetMinor: 80000,
-      status: "QUOTING",
+      status: "QUOTED",
       interestedCount: 6,
       interested: false,
       neighbours: [
@@ -1322,7 +1322,7 @@ export const db = {
       desc: "学校发的不够换洗，想再买一套备用。同校家长一起报个数，量够了找厂家做。",
       images: ["👕"],
       expectQty: 2,
-      status: "OPEN",
+      status: "COLLECTING",
       interestedCount: 3,
       interested: false,
       neighbours: [

@@ -55,6 +55,11 @@ onLaunch(() => {
    * 页面显示的是那家店的库存，界面上却没有一处说明「你在看哪家店」。
    */
   void merchant.ensureStores();
+  /*
+   * 商家资料同理，而且它不只是店名：`isActive` 从 `profile.status` 推出来，
+   * 好几处「能不能操作」看的是它 —— 没拉到的时候，求团报价页一个报价入口都没有。
+   */
+  void merchant.ensureProfile();
   // 演示态：先有店、再有会话、最后补单 —— 顺序反了的话补单时还不知道是哪家店
   if (USE_MOCK) {
     ensureDemoMerchant();

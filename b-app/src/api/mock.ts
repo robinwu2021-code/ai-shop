@@ -1178,14 +1178,14 @@ export const mockApi: MerchantApi = {
   async mRequestList() {
     // 商家看得到所有开放中的需求单。初期靠运营人肉指派（P-8.2.2），
     // 这里先全量放出，商家自己挑 —— 需求少的时候人肉和自助没差别
-    return delay(db.requests.filter((r) => r.status === "OPEN").map(toGroupRequest));
+    return delay(db.requests.filter((r) => r.status === "COLLECTING").map(toGroupRequest));
   },
 
   async mQuote(requestNo, payload) {
     const merchantNo = requireMerchant();
     const seed = db.requests.find((r) => r.requestNo === requestNo);
     if (!seed) throw new Error("需求单不存在");
-    if (seed.status !== "OPEN") throw new Error("该需求单已不接受报价");
+    if (seed.status !== "COLLECTING") throw new Error("该需求单已不接受报价");
 
     const exist = seed.quotes.find((q) => q.merchantNo === merchantNo);
     if (exist) {
