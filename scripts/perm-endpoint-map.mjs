@@ -65,7 +65,11 @@ export const RULES = [
 
   // ── 商品与类目 ─────────────────────────────────────────────────────────
   ["*", /^\/ops\/goods\/[^/]+\/audit$/, "product:sku:audit"],
-  ["GET", /^\/ops\/goods\//, "product:sku:read"],
+  // `(\/|$)` 而不是 `\/`：域根 `GET /ops/goods`（商品池）后面没有下一段，
+  // 只写 `\/` 会漏掉它。这个形状会在每个「先有子路径、后来才补域根」的域上重演 ——
+  // 而漏掉的后果不是报错，是那条端点**匹配不到任何规则**，
+  // 于是权限码细化时它只能留在粗码上，没人知道它被落下了。
+  ["GET", /^\/ops\/goods(\/|$)/, "product:sku:read"],
   ["GET", /^\/ops\/categories/, "product:category:read"],
   ["*", /^\/ops\/categories/, "product:category:update"],
 
