@@ -50,6 +50,8 @@ public class ReviewServiceImpl implements ReviewService {
     private final ReviewableOrderPort orderPort;
     private final UserQueryPort userPort;
     private final ai.neargo.shop.spi.user.MerchantRatingPort ratingPort;
+    /** 只用来把 entityNo 换成店名 —— 裁决台上一列 M0001 谁也认不出是哪家 */
+    private final ai.neargo.shop.spi.user.MerchantQueryPort merchantPort;
     private final ai.neargo.shop.product.mapper.ProductMappers.GoodsMapper goodsMapper;
     private final ObjectMapper json;
 
@@ -57,6 +59,7 @@ public class ReviewServiceImpl implements ReviewService {
                              AppealMapper appealMapper, ReviewableOrderPort orderPort,
                              UserQueryPort userPort,
                              ai.neargo.shop.spi.user.MerchantRatingPort ratingPort,
+                             ai.neargo.shop.spi.user.MerchantQueryPort merchantPort,
                              ai.neargo.shop.product.mapper.ProductMappers.GoodsMapper goodsMapper,
                              ObjectMapper json) {
         this.reviewMapper = reviewMapper;
@@ -65,6 +68,7 @@ public class ReviewServiceImpl implements ReviewService {
         this.orderPort = orderPort;
         this.userPort = userPort;
         this.ratingPort = ratingPort;
+        this.merchantPort = merchantPort;
         this.goodsMapper = goodsMapper;
         this.json = json;
     }
@@ -350,7 +354,20 @@ public class ReviewServiceImpl implements ReviewService {
     private static final String REJECTED = "REJECTED";
     private static final String PENDING = "PENDING";
     private static final String UPHELD = "UPHELD";
-    private static final String DISMISSED = "DISMISSED";
+    /**
+     * 申诉不成立。**用 REJECTED 不用 DISMISSED** —— 项目词典 §11 已经把
+     * 「拒绝 / 驳回 / 申诉不成立」统一到这一个词。
+     *
+     * <p>这里原先写的是 `DISMISSED`，而端上两处都按词典写了 `REJECTED`：
+     * 于是运营端的状态列直接印出 `DISMISSED`（徽标映射里没有这个键），
+     * B 端商家看到的是 **`reviews.appealDISMISSED`** —— i18n 的 key 原文，
+     * 因为那个 key 是拿状态码拼出来的。<b>统一只发生在文档和两个前端的类型声明里</b>，
+     * 后端从没跟着改，而两边都不报错。
+     *
+     * <p>（风控的 `DISMISSED`「已排除」是另一件事：那里没有人被驳回，
+     * 是一条线索被排除，词典没有把它并进来。）
+     */
+    private static final String REJECTED_APPEAL = "REJECTED";
 
     @Override
     public List<OpsReviewVO> opsList(String status, String merchantNo, String keyword) {
@@ -411,7 +428,7 @@ public class ReviewServiceImpl implements ReviewService {
             throw BizException.of(ErrorCode.CONFLICT);
         }
 
-        a.setStatus(uphold ? UPHELD : DISMISSED);
+        a.setStatus(uphold ? UPHELD : REJECTED_APPEAL);
         a.setVerdict(verdict.trim());
         a.setDecidedAt(System.currentTimeMillis());
         a.setDecidedBy(operatorNo);
@@ -515,8 +532,11 @@ public class ReviewServiceImpl implements ReviewService {
 
     private OpsReviewVO toOpsVO(RvwReview r) {
         return new OpsReviewVO(r.getReviewNo(), r.getSubOrderNo(), r.getEntityNo(),
-                // 商家名不在评价表上；平台列表按 merchantNo 展示，前端再去商家域取名
-                r.getEntityNo(),
+                // 商家名不在评价表上，这里去商家域取 —— 原先把 entityNo 传了两遍，
+                // 注释写着「前端再去商家域取名」，而前端并没有取：屏幕上是一列 M0001
+                merchantPort.find(r.getEntityNo())
+                        .map(ai.neargo.shop.spi.user.MerchantQueryPort.MerchantBrief::merchantName)
+                        .orElse(r.getEntityNo()),
                 r.getNickname(), nz(r.getRating()), nz(r.getScoreGoods()),
                 nz(r.getScoreFulfillment()), nz(r.getScoreService()), r.getContent(),
                 readJson(r.getImages()).size(), r.getStatus(), readJson(r.getRiskFlags()),
@@ -525,8 +545,26 @@ public class ReviewServiceImpl implements ReviewService {
                 r.getRejectReason());
     }
 
+    /**
+     * 裁决台的一行。**必须带上被申诉那条评价的正文与星级**。
+     *
+     * <p>此前这里只给一个 `reviewNo`：裁决人要判断「这条差评是不是恶意的」，
+     * 而屏幕上<b>看不到那条差评</b> —— 只有一串单号和商家自己写的申诉理由。
+     * 想读原文得切到另一个页签、改筛选、自己去列表里找。
+     * 一个只听得到一方陈述的裁决台，裁出来的结论也只反映那一方。
+     *
+     * <p>商家名同理：原先把 `entityNo` 传了两遍，注释写着「前端再去商家域取名」，
+     * 而前端并没有取 —— 运营看到的是一列 `M0001`。
+     */
     private OpsAppealVO toAppealVO(RvwAppeal a) {
-        return new OpsAppealVO(a.getAppealNo(), a.getReviewNo(), a.getEntityNo(), a.getEntityNo(),
+        RvwReview r = DataScopeContext.executeWithoutScope(() ->
+                reviewMapper.selectOne(Wrappers.<RvwReview>lambdaQuery()
+                        .eq(RvwReview::getReviewNo, a.getReviewNo()).last("limit 1")));
+        return new OpsAppealVO(a.getAppealNo(), a.getReviewNo(), a.getEntityNo(),
+                merchantPort.find(a.getEntityNo())
+                        .map(ai.neargo.shop.spi.user.MerchantQueryPort.MerchantBrief::merchantName)
+                        .orElse(a.getEntityNo()),
+                r == null ? 0 : nz(r.getRating()), r == null ? "" : r.getContent(),
                 a.getReason(), readJson(a.getImages()).size(), a.getStatus(),
                 a.getSubmittedAt() == null ? 0L : a.getSubmittedAt(), a.getVerdict());
     }

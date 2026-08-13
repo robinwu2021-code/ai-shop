@@ -539,7 +539,8 @@ class BizDashboardAndReviewFlowTest {
                         .header("Authorization", "Bearer " + support)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"uphold\":false,\"verdict\":\"未提供有效证据\"}"))
-                .andExpect(jsonPath("$.data.status").value("DISMISSED"));
+                // 词典 §11：驳回一律 REJECTED。端上两处都按它写，后端此前是 DISMISSED
+                .andExpect(jsonPath("$.data.status").value("REJECTED"));
 
         assertThat(publicReviewCount(goodsNo)).isEqualTo(1);
     }

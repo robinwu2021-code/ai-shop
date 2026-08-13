@@ -81,10 +81,15 @@ public interface ReviewService {
     }
 
     /**
-     * @param status        PENDING / UPHELD（支持商家，差评下架）/ DISMISSED（驳回申诉，差评保留）
+     * @param status        PENDING / UPHELD（支持商家，差评下架）/ REJECTED（驳回申诉，差评保留）
      * @param evidenceCount 举证材料数量
      */
+    /**
+     * @param reviewRating  被申诉那条评价的星级
+     * @param reviewContent 被申诉那条评价的正文
+     */
     record OpsAppealVO(String appealNo, String reviewNo, String merchantNo, String merchantName,
+                       int reviewRating, String reviewContent,
                        String reason, int evidenceCount, String status, long submittedAt,
                        String verdict) {
     }

@@ -46,11 +46,14 @@ export const reviews: Review[] = [
 export const reviewAppeals: ReviewAppeal[] = [
   {
     appealNo: "AP9001", reviewNo: "RV9002", merchantNo: "M902", merchantName: "老张水果店",
+    // 被申诉的那条评价要跟着一起给：裁决人判的是它，不是申诉书
+    reviewRating: 2, reviewContent: "水果到手有两个是坏的，联系店家半天不理人。",
     reason: "顾客反馈的坏果我们当天已全额退款并补发，差评内容里「不理人」与事实不符，附聊天记录。",
     evidenceCount: 3, status: "PENDING", submittedAt: "2026-08-05T15:00:00Z",
   },
   {
     appealNo: "AP9002", reviewNo: "RV9006", merchantNo: "M901", merchantName: "阿姨家的菜摊",
+    reviewRating: 3, reviewContent: "毛豆有点老了。另外能不能加个微信，我私下订购便宜点？",
     reason: "这条评价我们已经处理过了，希望恢复显示以便其他顾客看到我们的回复。",
     evidenceCount: 0, status: "REJECTED", submittedAt: "2026-08-03T02:00:00Z",
     verdict: "原评价因含站外交易引导被下架，与商家服务质量无关，不予恢复。",

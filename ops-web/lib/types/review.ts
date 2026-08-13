@@ -46,7 +46,7 @@ export interface Review {
   */
 export type AppealStatus = "PENDING" | "UPHELD" | "REJECTED";
 
-/** 恶意差评申诉（P-13.1.3）。UPHELD = 支持商家（差评下架），DISMISSED = 驳回申诉（差评保留）。 */
+/** 恶意差评申诉（P-13.1.3）。UPHELD = 支持商家（差评下架），REJECTED = 驳回申诉（差评保留）。 */
 export interface ReviewAppeal {
   /** 申诉单号 */
   appealNo: string;
@@ -56,11 +56,19 @@ export interface ReviewAppeal {
   merchantNo: string;
   /** 商家名快照 */
   merchantName: string;
+  /**
+   * 被申诉那条评价的星级与正文。
+   *
+   * **裁决台必须显示它们** —— 要判断「这条差评是不是恶意的」，
+   * 而屏幕上只有单号和商家自己写的申诉理由的话，裁的是一面之词。
+   */
+  reviewRating: number;
+  reviewContent: string;
   /** 商家的申诉理由 */
   reason: string;
   /** 举证材料数量（截图/聊天记录） */
   evidenceCount: number;
-  /** 裁决状态。UPHELD = 支持商家（差评下架），DISMISSED = 驳回申诉（差评保留） */
+  /** 裁决状态。UPHELD = 支持商家（差评下架），REJECTED = 驳回申诉（差评保留） */
   status: AppealStatus;
   /** 申诉提交时间 */
   submittedAt: string;

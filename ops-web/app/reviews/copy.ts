@@ -42,7 +42,10 @@ const zh = {
   filterStatusAll: "全部状态",
   filterRisky: "刷评信号筛选",
   filterRiskyAll: "不限信号",
-  emptyAudit: "待审队列已清空。用户发表新评价后会重新出现在这里。",
+  // 先发后审：评价发表即展示，这里是**事后**巡查与下架，不是放行闸口。
+  // 原文案写着「用户发表新评价后会重新出现在这里」—— 而默认筛的 PENDING
+  // 后端从来不产生，那句话永远不会兑现。
+  emptyAudit: "还没有评价。评价发表后即对买家展示，这里做事后巡查与下架。",
   emptyAppeals: "没有待裁决的申诉。商家对差评有异议时会从 B 端提交到这里。",
 
   scoreTitleCard: "评分算法参数",
@@ -129,7 +132,7 @@ const en: typeof zh = {
   filterStatusAll: "All statuses",
   filterRisky: "Signal filter",
   filterRiskyAll: "Any signal state",
-  emptyAudit: "The moderation queue is clear. New customer reviews will show up here.",
+  emptyAudit: "No reviews yet. Reviews go live on publish; this page is for post-hoc review and take-down.",
   emptyAppeals: "No appeals to decide. Merchants submit them from the B-end app when they dispute a bad review.",
 
   scoreTitleCard: "Rating algorithm parameters",
