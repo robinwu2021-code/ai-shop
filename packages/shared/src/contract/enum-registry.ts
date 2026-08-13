@@ -214,10 +214,14 @@ export const ENUM_REGISTRY: EnumEntry[] = [
     note: "增长活动冲突策略，后端无增长模块" },
   { decl: "ops-web:NewUserFactor", dom: "growth", shape: "CLASS", verdict: "PLANNED",
     note: "新客判定因子，同上" },
+  { decl: "ops-web:CouponBuildableType", dom: "marketing", shape: "CLASS", verdict: "OK",
+    note: "建券表单能建的类型子集（POST /ops/coupons），是 CouponType 的两个真实取值" },
   { decl: "ops-web:CouponType", dom: "marketing", shape: "CLASS", verdict: "PLANNED",
-    note: "平台券管理，后端只有商家券（mkt_coupon 由店铺活动派生）。平台自营券整块未实现" },
-  { decl: "ops-web:CouponStatus", dom: "marketing", shape: "STATUS", verdict: "PLANNED",
-    note: "同 CouponType，平台券未实现。ACTIVE 与 shared:CampaignStatus 的 RUNNING 同义，实现时二选一" },
+    note: "FULL_CUT/DISCOUNT 已接 POST /ops/coupons（TDD-营销预算前置，2026-08-13）；"
+      + "NEWCOMER/TARGETED 仍未接——discountFor 从未处理过这两种，没有算法撑着不给建" },
+  { decl: "ops-web:CouponStatus", dom: "marketing", shape: "STATUS", verdict: "OK",
+    note: "平台券（FULL_CUT/DISCOUNT）已实现，ACTIVE/PAUSED/ENDED 与后端 MktCoupon 状态一致。"
+      + "ACTIVE 与 shared:CampaignStatus 的 RUNNING 同义，是两个不同领域对象各自的说法，不合并" },
   { decl: "ops-web:IssueTarget", dom: "marketing", shape: "CLASS", verdict: "PLANNED",
     note: "券的发放对象（全员/新客/指定人群），后端无人群圈选能力" },
   { decl: "ops-web:MerchantCampaignType", dom: "marketing", shape: "CLASS", verdict: "OK",

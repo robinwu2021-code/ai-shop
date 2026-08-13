@@ -88,6 +88,12 @@ public enum ErrorCode {
     // ---- 4xxxx 营销 ----
     COUPON_SOLD_OUT(40001, "err.marketing.coupon_sold_out"),
     COUPON_NOT_APPLICABLE(40002, "err.marketing.coupon_not_applicable"),
+    /** 折扣券建券/改券时必须封顶——取消「0 = 不封顶」，见 TDD-营销预算前置 */
+    COUPON_DISCOUNT_CAP_REQUIRED(40003, "err.marketing.coupon_discount_cap_required"),
+    /** 发行量必须 >0——不限量券的敞口同样算不出来 */
+    COUPON_TOTAL_COUNT_REQUIRED(40004, "err.marketing.coupon_total_count_required"),
+    /** 预算低于「发行量 × 单张最大优惠」——不接受一个从第一天起就不可能满足的预算 */
+    COUPON_BUDGET_BELOW_EXPOSURE(40005, "err.marketing.coupon_budget_below_exposure"),
 
     // ---- 5xxxx 资金 ----
     SPLIT_RECEIVER_NOT_READY(50001, "err.settle.receiver_not_ready"),

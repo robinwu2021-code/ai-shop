@@ -4,6 +4,12 @@ import type { Archivable } from "./common";
 
 export type CouponType = "FULL_CUT" | "DISCOUNT" | "NEWCOMER" | "TARGETED";
 
+/**
+ * 建券表单能建的类型子集。NEWCOMER/TARGETED 不在这里——`discountFor` 从未处理过
+ * 它们，没有折扣算法撑着，建券表单不给选，避免看着能建、保存必炸。
+ */
+export type CouponBuildableType = "FULL_CUT" | "DISCOUNT";
+
 /** DRAFT 可改可删；ACTIVE ⇄ PAUSED 之间可来回；ENDED 是终态（券已发出去的仍然有效）。 */
 export type CouponStatus = "DRAFT" | "ACTIVE" | "PAUSED" | "ENDED";
 
@@ -50,6 +56,45 @@ export interface Coupon extends Archivable {
   redeemed: number;
   /** 创建时间（毫秒时间戳） */
   createdAt: number;
+  /**
+   * 发行量。**建券时敞口 = totalCount × 单张最大优惠**（TDD-营销预算前置），
+   * 是预算前置校验的另一半——只有它和面额/封顶一起，敞口才算得出来。
+   */
+  totalCount: number;
+  /** 每人限领张数 */
+  perUserLimit: number;
+  /**
+   * 折扣券封顶（分）。仅 `type=DISCOUNT` 有意义，其余类型恒为 0。
+   * **建券时必填 >0**——0 = 不封顶已取消，敞口在建券那一刻就必须算得出来。
+   * 与 `value`（折扣万分比）分开：一个决定打几折，一个决定最多减多少。
+   */
+  maxDiscountMinor: number;
+}
+
+/**
+ * 建券 / 改券入参（TDD-营销预算前置）。只建平台券——`funder` 不开放。
+ *
+ * 与 `Coupon`（读模型）分开是因为写侧要按类型拆开的原始字段（`faceMinor`/
+ * `discountRate`/`maxDiscountMinor`），读侧的 `value` 是按类型合并展示的那个数。
+ */
+export interface CouponSaveReq {
+  /** 为空 = 新建 */
+  couponNo?: string;
+  name: string;
+  type: CouponBuildableType;
+  /** FULL_CUT 必填 */
+  faceMinor?: number;
+  /** DISCOUNT 必填，万分比 */
+  discountRate?: number;
+  /** DISCOUNT 必填 >0 —— 取消「0=不封顶」 */
+  maxDiscountMinor?: number;
+  threshold?: number;
+  totalCount: number;
+  perUserLimit?: number;
+  /** 0 或不填 = 不限；非零时必须 ≥ 敞口，否则服务端拒绝 */
+  budget?: number;
+  validFrom: number;
+  validTo: number;
 }
 
 /** 发放对象类型（P-7.1.2 发放留痕）。 */

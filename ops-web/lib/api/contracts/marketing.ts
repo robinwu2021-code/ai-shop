@@ -1,9 +1,17 @@
 // 覆盖范围：优惠券（P-7.1）、活动（P-7.2）、内容位（P-7.3）、会员卡（P-7.4）。
-import type { MerchantCampaign, PlatformSlot, ContentSlot, Coupon, CouponIssue, CouponStatus, IssueTarget, MemberCard, MemberCardStatus, Page } from "@/lib/types";
+import type { MerchantCampaign, PlatformSlot, ContentSlot, Coupon, CouponIssue, CouponSaveReq, CouponStatus, IssueTarget, MemberCard, MemberCardStatus, Page } from "@/lib/types";
 import type { CampaignQ, CouponQ, PageQ, SlotQ } from "../query";
 
 export interface MarketingApi {
   listCoupons(q?: CouponQ): Promise<Page<Coupon>>;
+  /**
+   * 建券 / 改券（TDD-营销预算前置）。**只建平台券**——商家自己的店铺券走活动
+   * 同步，这里不管。三条硬校验都在服务端：折扣券必须填封顶（取消 0=不封顶）、
+   * 发行量必须 >0、预算非零时必须 ≥ 敞口（`totalCount × 单张最大优惠`）。
+   *
+   * `couponNo` 为空 = 新建。已发放张数 >0 时，编辑不能把发行量改到低于它。
+   */
+  saveCoupon(v: CouponSaveReq): Promise<Coupon>;
   /** 状态推进（草稿→启用⇄暂停→结束），非法迁移抛错。 */
   /**
    * 改券状态（暂停 / 恢复 / 结束）。**理由必填** —— 停别人的券要说得出为什么，

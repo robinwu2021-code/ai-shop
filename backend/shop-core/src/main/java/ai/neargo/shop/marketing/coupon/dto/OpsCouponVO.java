@@ -27,6 +27,12 @@ package ai.neargo.shop.marketing.coupon.dto;
  *                     也不要编一个看着像真的数</b>
  * @param issued       已领取张数
  * @param redeemed     已核销张数（真正花掉的那部分）
+ * @param totalCount   发行量。**建券/改券表单要用它回显**——此前这个 VO 不带这个字段，
+ *                     编辑一张券时页面填不回当初设的发行量
+ * @param perUserLimit 每人限领张数
+ * @param maxDiscountMinor 折扣券封顶（分）。仅 {@code type=DISCOUNT} 有意义；
+ *                          其余类型恒为 0。同样是编辑表单回显要用的字段——
+ *                          {@code value} 存的是折扣万分比，封顶另有一个字段
  */
 public record OpsCouponVO(String couponNo,
                           String name,
@@ -44,5 +50,8 @@ public record OpsCouponVO(String couponNo,
                           int redeemed,
                           long createdAt,
                           /** 归档时间（毫秒），null = 未归档。端上据此画灰行 */
-                          Long archivedAt) {
+                          Long archivedAt,
+                          int totalCount,
+                          int perUserLimit,
+                          long maxDiscountMinor) {
 }

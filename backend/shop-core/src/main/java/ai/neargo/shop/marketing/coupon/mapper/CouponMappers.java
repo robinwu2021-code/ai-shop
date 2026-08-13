@@ -22,23 +22,22 @@ public final class CouponMappers {
          * @return 1=领取成功，0=已领完
          */
         /*
-         * **预算与张数在同一条 UPDATE 里判定**，理由与上面那句「先查后改在并发下
-         * 必然超发」完全一样：分两步的话，两个人同时领最后一份预算都会通过。
-         * 而超预算的后果是真金白银，比多发一张券重。
+         * **预算不在这条 UPDATE 里判了**（TDD-营销预算前置）。
          *
-         * budget_minor = 0 表示不限（存量券全是这样，迁移不改变已有行为）。
+         * 此前这里有一条 `(received_count+1)*face_minor <= budget_minor`：
+         * 运行时才发现要不要拦。现在 `CouponServiceImpl.saveCoupon` 建券/改券时
+         * 已经把「预算 ≥ 发行量 × 单张最大优惠」钉死为前置断言 ——
+         * 张数闸（下面这条）本身就保证了 `已领张数 × 面额 ≤ 发行量 × 面额 ≤ 预算`，
+         * 这条判断因此**恒真**，留着只是多一次无意义的比较。
          *
-         * ⚠️ **折扣券挡不住**：face_minor 为 0，(received_count+1)*0 恒 ≤ 预算。
-         * 折扣券的实际支出取决于用券那一单的金额，**发放时算不出来** ——
-         * 与其按面额估一个假数去挡，不如明说这里挡不住，让预算这件事
-         * 在折扣券上走核销侧（那是另一件事）。
+         * 折扣券这条更彻底：它的 face_minor 恒为 0，`(received_count+1)*0` 恒 ≤
+         * 任何预算，这条判断从来没有真正拦住过一张折扣券 —— 折扣券的敞口现在
+         * 由建券时的 `totalCount × maxDiscountMinor` 校验兜底，不再指望这里。
          */
         @Update("""
                 UPDATE mkt_coupon SET received_count = received_count + 1, version = version + 1
                 WHERE coupon_no = #{couponNo} AND deleted = 0
                   AND (total_count = 0 OR received_count < total_count)
-                  AND (budget_minor = 0
-                       OR (received_count + 1) * face_minor <= budget_minor)
                 """)
         int tryReceive(@Param("couponNo") String couponNo);
 

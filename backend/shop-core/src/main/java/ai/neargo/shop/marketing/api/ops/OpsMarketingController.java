@@ -24,20 +24,19 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 /**
- * 平台端 · 营销治理（P-7.1 / P-7.2）：优惠券与店铺活动的**止损开关**。
+ * 平台端 · 营销治理（P-7.1 / P-7.2）：优惠券与店铺活动。
  *
  * <p>此前平台对这两块零干预：商家发了一张面额超过商品价的券、或者把满减门槛写成 0
- * （等于白送），运营只能去改数据库。
- *
- * <p><b>只做「停」不做「改」与「发」</b>，这是有意的边界：
+ * （等于白送），运营只能去改数据库。现在有四类动作：
  * <ul>
- *   <li>出事时能止损就够了，怎么改由商家自己去改——平台替商家改营销规则，
- *       改错了责任说不清</li>
- *   <li>契约里的<b>调预算</b>（{@code /ops/coupons/{no}/budget}）与
- *       <b>发券</b>（{@code issue} / {@code coupon-issues}）**没做**：
- *       {@code mkt_coupon} 没有预算列，也没有发券批次表
- *       （库里唯一的 {@code budget_minor} 是需求墙的，与券无关）。
- *       那两条属于「缺表」，不是「缺端点」</li>
+ *   <li><b>停</b>（{@code status}）——出事时的止损手段，不改内容</li>
+ *   <li><b>建 / 改</b>（{@code POST /ops/coupons}）——只建<b>平台券</b>
+ *       （{@code funder=PLATFORM}）；商家自己的店铺券走活动同步
+ *       （{@code CampaignServiceImpl.syncCoupon}），这里不管</li>
+ *   <li><b>调预算</b>（{@code /ops/coupons/{no}/budget}）——建券时已经把
+ *       「预算 ≥ 最大敞口」钉死了，这条端点是后续单独调整用</li>
+ *   <li><b>发</b>（{@code issue} / {@code coupon-issues}）——只有 {@code SINGLE_USER}
+ *       能真发到人手里，其余三种当场拒绝（见 {@code CouponService.issue}）</li>
  * </ul>
  *
  * <p>暂停券**不影响已领到手的券**——那是用户已有的权益，
@@ -70,6 +69,20 @@ public class OpsMarketingController {
                                       @RequestParam(defaultValue = "50") long size) {
         // 运营端列表页按 {records,total} 渲染 —— 返回裸数组会被当成空页
         return PageData.ofAll(couponService.opsCoupons(status, showArchived), page, size);
+    }
+
+    /**
+     * 建券 / 改券（平台券）。三条硬校验（TDD-营销预算前置）：折扣券必须填封顶、
+     * 发行量必须 &gt;0、预算非零时必须 ≥ 敞口。{@code couponNo} 为空＝新建。
+     */
+    @PostMapping("/ops/coupons")
+    @PreAuthorize("@perm.can('" + Perms.MARKETING_COUPON_UPDATE + "')")
+    public OpsCouponVO saveCoupon(@RequestBody ai.neargo.shop.marketing.coupon.dto.CouponSaveCmd cmd) {
+        boolean isNew = cmd.couponNo() == null || cmd.couponNo().isBlank();
+        OpsCouponVO vo = couponService.saveCoupon(cmd, SecurityUtils.currentUserNo());
+        auditLogPort.record(isNew ? "COUPON_CREATE" : "COUPON_UPDATE", vo.couponNo(),
+                vo.name() + "｜" + vo.type());
+        return vo;
     }
 
     /**

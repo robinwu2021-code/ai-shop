@@ -14,7 +14,7 @@ import { usePageTab, useNavTabs } from "@/lib/use-page-tab";
 import { fmtTime, money } from "@/lib/utils";
 import { useCan } from "@/lib/use-can";
 import { notify } from "@/lib/notify";
-import type { MerchantCampaign, ContentSlot, Coupon, CouponIssue, CouponStatus, IssueTarget } from "@/lib/types";
+import type { CouponBuildableType, MerchantCampaign, ContentSlot, Coupon, CouponIssue, CouponStatus, IssueTarget } from "@/lib/types";
 import {
   PlatformSlotStatusBadge, CouponStatusBadge, usePlatformSlotStatusMap, usePlatformSlotTypeMap,
   useCouponStatusMap, useCouponTypeMap, useSlotKindMap,
@@ -26,7 +26,7 @@ import { MemberTab } from "./member-tab";
 import { ArchiveActions, ShowArchivedToggle, archiveConfirm, archivedRowClass, unarchiveConfirm } from "@/components/archive";
 import { Button } from "@/components/ui/button";
 import { DataTable, type Column } from "@/components/ui/data-table";
-import { Drawer, Field } from "@/components/ui/drawer";
+import { Drawer, Field, FieldGrid } from "@/components/ui/drawer";
 import { FilterSelect } from "@/components/ui/filter-select";
 import { Input, Select } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -54,6 +54,43 @@ const TARGET_OPTIONS = (c: Copy): { value: IssueTarget; label: string }[] => [
 function couponValue(coupon: Coupon, c: Copy) {
   return coupon.type === "DISCOUNT" ? fill(c.discountValue, { n: (coupon.value / 1000).toFixed(1) }) : money(coupon.value);
 }
+
+/** 建券表单。字段都是字符串——数值转换与校验留到提交那一刻，与 MemberTab 的 Form 同一套做法。 */
+interface CouponForm {
+  couponNo?: string;
+  name: string;
+  type: CouponBuildableType;
+  faceMinor: string;
+  discountRate: string;
+  maxDiscountMinor: string;
+  threshold: string;
+  totalCount: string;
+  perUserLimit: string;
+  budget: string;
+  validFrom: string;
+  validTo: string;
+}
+
+const EMPTY_COUPON_FORM: CouponForm = {
+  name: "", type: "FULL_CUT", faceMinor: "", discountRate: "", maxDiscountMinor: "",
+  threshold: "", totalCount: "", perUserLimit: "1", budget: "", validFrom: "", validTo: "",
+};
+
+const toCouponForm = (x: Coupon): CouponForm => ({
+  couponNo: x.couponNo, name: x.name, type: x.type === "DISCOUNT" ? "DISCOUNT" : "FULL_CUT",
+  faceMinor: x.type === "DISCOUNT" ? "" : String(x.value / 100),
+  discountRate: x.type === "DISCOUNT" ? (x.value / 1000).toFixed(1) : "",
+  maxDiscountMinor: x.type === "DISCOUNT" ? String(x.maxDiscountMinor / 100) : "",
+  threshold: x.threshold ? String(x.threshold / 100) : "",
+  totalCount: String(x.totalCount), perUserLimit: String(x.perUserLimit),
+  budget: x.budget ? String(x.budget / 100) : "",
+  validFrom: toDatetimeLocal(x.validFrom), validTo: toDatetimeLocal(x.validTo),
+});
+
+const toDatetimeLocal = (ms: number) => {
+  const d = new Date(ms - new Date().getTimezoneOffset() * 60_000);
+  return d.toISOString().slice(0, 16);
+};
 
 export default function MarketingPage() {
   return <Suspense fallback={null}><MarketingInner /></Suspense>;
@@ -83,6 +120,7 @@ function MarketingInner() {
     target: "SINGLE_USER", targetDesc: "", userNo: "", count: "1",
   });
   const [budgetEdit, setBudgetEdit] = useState<{ couponNo: string; value: string } | null>(null);
+  const [couponForm, setCouponForm] = useState<CouponForm | null>(null);
 
   const canIssue = allow("marketing:coupon:issue");
   const canEditCampaign = allow("marketing:campaign:update");
@@ -127,6 +165,23 @@ function MarketingInner() {
   const budgetMut = useMutation({
     mutationFn: (v: { couponNo: string; budget: number }) => api.setCouponBudget(v.couponNo, v.budget),
     onSuccess: () => { invalidate(); setBudgetEdit(null); notify.success(c.toastBudgetSaved); },
+  });
+  const saveCouponMut = useMutation({
+    mutationFn: (f: CouponForm) =>
+      api.saveCoupon({
+        couponNo: f.couponNo, name: f.name, type: f.type,
+        faceMinor: f.type === "FULL_CUT" ? Math.round(Number(f.faceMinor) * 100) : undefined,
+        // 折扣输入的是"折"（8.5 = 八五折），万分比 = 折 × 1000
+        discountRate: f.type === "DISCOUNT" ? Math.round(Number(f.discountRate) * 1000) : undefined,
+        maxDiscountMinor: f.type === "DISCOUNT" ? Math.round(Number(f.maxDiscountMinor) * 100) : undefined,
+        threshold: f.threshold ? Math.round(Number(f.threshold) * 100) : 0,
+        totalCount: Math.round(Number(f.totalCount)),
+        perUserLimit: f.perUserLimit ? Math.round(Number(f.perUserLimit)) : 1,
+        budget: f.budget ? Math.round(Number(f.budget) * 100) : 0,
+        validFrom: new Date(f.validFrom).getTime(),
+        validTo: new Date(f.validTo).getTime(),
+      }),
+    onSuccess: () => { invalidate(); setCouponForm(null); notify.success(c.toastCouponSaved); },
   });
   const issueMut = useMutation({
     mutationFn: () =>
@@ -216,18 +271,27 @@ function MarketingInner() {
             await confirm(unarchiveConfirm(c.entityCoupon, x.name, () => archiveMut.mutateAsync({ kind: "coupon", no: x.couponNo, restore: true })));
           }}
           actions={
-            // 只出当前状态允许的那一个动作（合法迁移表见 lib/types/marketing.ts）
-            x.status === "DRAFT" ? (
-              <Button size="sm" variant="outline" onClick={() => askCouponStatus(x, "ACTIVE")}>{c.btnActivate}</Button>
-            ) : x.status === "ACTIVE" ? (
-              <>
-                <Button size="sm" onClick={() => { setIssuing(x); setIssueForm({ target: "SINGLE_USER", targetDesc: "", userNo: "", count: "1" }); }}>{c.btnIssue}</Button>
-                {/* 出事时的止损手段：券从领券中心消失、领取被拒，已领到手的不动 */}
-                <Button size="sm" variant="outline" onClick={() => askCouponStatus(x, "PAUSED")}>{c.btnPause}</Button>
-              </>
-            ) : x.status === "PAUSED" ? (
-              <Button size="sm" variant="outline" onClick={() => askCouponStatus(x, "ACTIVE")}>{c.btnResume}</Button>
-            ) : null
+            <>
+              {/* 只有 FULL_CUT/DISCOUNT 是这个建券表单能编的类型——NEWCOMER/TARGETED
+                  没有折扣算法撑着，编辑入口不给，避免看着能改、保存必炸 */}
+              {(x.type === "FULL_CUT" || x.type === "DISCOUNT") && (
+                <Button size="sm" variant="outline" disabled={!canIssue} onClick={() => setCouponForm(toCouponForm(x))}>
+                  {c.actionEditCoupon}
+                </Button>
+              )}
+              {/* 只出当前状态允许的那一个动作（合法迁移表见 lib/types/marketing.ts） */}
+              {x.status === "DRAFT" ? (
+                <Button size="sm" variant="outline" onClick={() => askCouponStatus(x, "ACTIVE")}>{c.btnActivate}</Button>
+              ) : x.status === "ACTIVE" ? (
+                <>
+                  <Button size="sm" onClick={() => { setIssuing(x); setIssueForm({ target: "SINGLE_USER", targetDesc: "", userNo: "", count: "1" }); }}>{c.btnIssue}</Button>
+                  {/* 出事时的止损手段：券从领券中心消失、领取被拒，已领到手的不动 */}
+                  <Button size="sm" variant="outline" onClick={() => askCouponStatus(x, "PAUSED")}>{c.btnPause}</Button>
+                </>
+              ) : x.status === "PAUSED" ? (
+                <Button size="sm" variant="outline" onClick={() => askCouponStatus(x, "ACTIVE")}>{c.btnResume}</Button>
+              ) : null}
+            </>
           }
         />
       ),
@@ -372,6 +436,9 @@ function MarketingInner() {
               : tab === "campaigns" ? c.searchCampaigns
                 : c.searchSlots
         }
+        onAdd={tab === "coupons" ? () => setCouponForm(EMPTY_COUPON_FORM) : undefined}
+        addLabel={c.actionNewCoupon}
+        canAdd={canIssue}
       >
         {tab === "coupons" && (
           <>
@@ -510,6 +577,102 @@ function MarketingInner() {
             <Button className="mt-3" onClick={() => budgetMut.mutate({ couponNo: budgetEdit.couponNo, budget: Math.round(Number(budgetEdit.value) * 100) })}>
               {c.save}
             </Button>
+          </div>
+        </Drawer>
+      )}
+
+      {/* 建券 / 改券抽屉（TDD-营销预算前置）。字段随类型切换显隐——折扣券封顶必填，
+          满减券根本不问封顶，避免运营看着一个跟当前类型无关的必填框发懵。 */}
+      {couponForm && (
+        <Drawer
+          open
+          onOpenChange={(o) => !o && setCouponForm(null)}
+          title={couponForm.couponNo ? fill(c.editCouponTitle, { name: couponForm.name }) : c.newCouponTitle}
+          desc={couponForm.couponNo}
+          footer={
+            <Button loading={saveCouponMut.isPending} onClick={() => saveCouponMut.mutate(couponForm)}>
+              {c.btnSaveCoupon}
+            </Button>
+          }
+        >
+          <div className="space-y-4">
+            {(() => {
+              const issued = coupons.data?.records.find((r) => r.couponNo === couponForm.couponNo)?.issued ?? 0;
+              return issued > 0 ? <Notice tone="warning">{fill(c.issuedLockedNotice, { n: issued })}</Notice> : null;
+            })()}
+            <div className="space-y-1">
+              <Label htmlFor="cp-name" required>{c.fieldCouponName}</Label>
+              <Input id="cp-name" className="w-full" value={couponForm.name}
+                onChange={(e) => setCouponForm({ ...couponForm, name: e.target.value })} />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="cp-type" required>{c.fieldCouponType}</Label>
+              <Select id="cp-type" className="w-full" value={couponForm.type}
+                onChange={(e) => setCouponForm({ ...couponForm, type: e.target.value as CouponForm["type"] })}>
+                <option value="FULL_CUT">{c.ctFullCut}</option>
+                <option value="DISCOUNT">{c.ctDiscount}</option>
+              </Select>
+            </div>
+            <FieldGrid>
+              {couponForm.type === "FULL_CUT" ? (
+                <div className="space-y-1">
+                  <Label htmlFor="cp-face" required>{c.fieldFace}</Label>
+                  <Input id="cp-face" className="w-full" value={couponForm.faceMinor}
+                    onChange={(e) => setCouponForm({ ...couponForm, faceMinor: e.target.value })} />
+                </div>
+              ) : (
+                <>
+                  <div className="space-y-1">
+                    <Label htmlFor="cp-rate" required>{c.fieldDiscountRate}</Label>
+                    <Input id="cp-rate" className="w-full" value={couponForm.discountRate}
+                      onChange={(e) => setCouponForm({ ...couponForm, discountRate: e.target.value })} />
+                    <p className="txt-caption text-muted-foreground">{c.discountRateHint}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="cp-cap" required>{c.fieldMaxDiscount}</Label>
+                    <Input id="cp-cap" className="w-full" value={couponForm.maxDiscountMinor}
+                      onChange={(e) => setCouponForm({ ...couponForm, maxDiscountMinor: e.target.value })} />
+                    <p className="txt-caption text-muted-foreground">{c.maxDiscountHint}</p>
+                  </div>
+                </>
+              )}
+              <div className="space-y-1">
+                <Label htmlFor="cp-threshold">{c.fieldThreshold}</Label>
+                <Input id="cp-threshold" className="w-full" value={couponForm.threshold}
+                  onChange={(e) => setCouponForm({ ...couponForm, threshold: e.target.value })} />
+                <p className="txt-caption text-muted-foreground">{c.thresholdHint}</p>
+              </div>
+            </FieldGrid>
+            <FieldGrid>
+              <div className="space-y-1">
+                <Label htmlFor="cp-total" required>{c.fieldTotalCount}</Label>
+                <Input id="cp-total" className="w-full" value={couponForm.totalCount}
+                  onChange={(e) => setCouponForm({ ...couponForm, totalCount: e.target.value })} />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="cp-per-user">{c.fieldPerUserLimit}</Label>
+                <Input id="cp-per-user" className="w-full" value={couponForm.perUserLimit}
+                  onChange={(e) => setCouponForm({ ...couponForm, perUserLimit: e.target.value })} />
+              </div>
+            </FieldGrid>
+            <div className="space-y-1">
+              <Label htmlFor="cp-budget">{c.fieldCouponBudget}</Label>
+              <Input id="cp-budget" className="w-full" value={couponForm.budget}
+                onChange={(e) => setCouponForm({ ...couponForm, budget: e.target.value })} />
+              <p className="txt-caption text-muted-foreground">{c.couponBudgetHint}</p>
+            </div>
+            <FieldGrid>
+              <div className="space-y-1">
+                <Label htmlFor="cp-from" required>{c.fieldValidFrom}</Label>
+                <Input id="cp-from" type="datetime-local" className="w-full" value={couponForm.validFrom}
+                  onChange={(e) => setCouponForm({ ...couponForm, validFrom: e.target.value })} />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="cp-to" required>{c.fieldValidTo}</Label>
+                <Input id="cp-to" type="datetime-local" className="w-full" value={couponForm.validTo}
+                  onChange={(e) => setCouponForm({ ...couponForm, validTo: e.target.value })} />
+              </div>
+            </FieldGrid>
           </div>
         </Drawer>
       )}

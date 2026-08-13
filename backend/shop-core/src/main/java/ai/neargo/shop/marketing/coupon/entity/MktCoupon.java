@@ -48,7 +48,14 @@ public class MktCoupon extends BaseEntity {
 
     private Long thresholdMinor;
 
-    /** 折扣券封顶，0 = 不封顶。 */
+    /**
+     * 折扣券封顶。
+     *
+     * <p><b>建券时必须 &gt;0</b>（{@code CouponServiceImpl.saveCoupon}）——「0 = 不封顶」
+     * 这个取值已被取消（TDD-营销预算前置）：不封顶意味着敞口随订单金额无限放大，
+     * 只能在核销那一刻去追「还剩多少预算」。堵在建券这一步之后，运行时那条路
+     * 根本不需要存在。存量数据（若有）仍可能是 0，读取时按"不可算敞口"处理。
+     */
     private Long maxDiscountMinor;
 
     /** PLATFORM / MERCHANT —— 分账扣款对象。 */
@@ -64,9 +71,11 @@ public class MktCoupon extends BaseEntity {
     /**
      * 预算上限（分）。<b>0 = 不限</b>。
      *
-     * <p>与 {@code totalCount}（发行张数）是两把不同的闸：张数管「发几张」，
-     * 预算管「最多赔多少钱」。只有张数时，把面额从 5 元改成 50 元
-     * 就能让同样的 1000 张变成十倍支出，而没有任何一处会拦。
+     * <p>建券/改券时（{@code CouponServiceImpl.saveCoupon}）已断言
+     * {@code budgetMinor ≥ totalCount × 单张最大优惠}——非零预算从落库那一刻起
+     * 就保证兜得住，运行时（{@code tryReceive}）不再重复判。
+     * 所以它现在的角色是**资金申报额**（审批与对账用），不是拦截器；
+     * 拦截靠的是它与 {@code totalCount} 一起在建券时算出的敞口约束。
      */
     private Long budgetMinor;
 

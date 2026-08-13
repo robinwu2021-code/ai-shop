@@ -249,6 +249,93 @@ public class CouponServiceImpl implements CouponService {
 
     @Override
     @Transactional
+    public ai.neargo.shop.marketing.coupon.dto.OpsCouponVO saveCoupon(
+            ai.neargo.shop.marketing.coupon.dto.CouponSaveCmd cmd, String operatorNo) {
+        boolean isNew = cmd.couponNo() == null || cmd.couponNo().isBlank();
+        MktCoupon c = isNew ? new MktCoupon() : DataScopeContext.executeWithoutScope(() ->
+                couponMapper.selectOne(Wrappers.<MktCoupon>lambdaQuery()
+                        .eq(MktCoupon::getCouponNo, cmd.couponNo()).last("limit 1")));
+        if (!isNew && c == null) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        if (cmd.title() == null || cmd.title().isBlank()
+                || cmd.totalCount() == null || cmd.endAt() == null || cmd.startAt() == null
+                || cmd.endAt() <= cmd.startAt()) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        // 发行量必须 >0——不限量券的敞口同样算不出来（TDD-营销预算前置 §2.2）
+        if (cmd.totalCount() <= 0) {
+            throw BizException.of(ErrorCode.COUPON_TOTAL_COUNT_REQUIRED);
+        }
+        int received = isNew ? 0 : nzi(c.getReceivedCount());
+        // 编辑时发行量不能改到低于已领张数——已发出去的张数收不回来
+        if (!isNew && cmd.totalCount() < received) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+
+        long maxExposure;
+        if (MktCoupon.DISCOUNT.equals(cmd.type())) {
+            // 折扣券必须封顶——取消「0=不封顶」，否则敞口在建券这一刻算不出来
+            if (cmd.discountRate() == null || cmd.discountRate() <= 0
+                    || cmd.maxDiscountMinor() == null || cmd.maxDiscountMinor() <= 0) {
+                throw BizException.of(ErrorCode.COUPON_DISCOUNT_CAP_REQUIRED);
+            }
+            maxExposure = (long) cmd.totalCount() * cmd.maxDiscountMinor();
+        } else if (MktCoupon.FULL_CUT.equals(cmd.type())) {
+            if (cmd.faceMinor() == null || cmd.faceMinor() <= 0) {
+                throw BizException.of(ErrorCode.BAD_REQUEST);
+            }
+            maxExposure = (long) cmd.totalCount() * cmd.faceMinor();
+        } else {
+            // NEWCOMER / TARGETED 还没有折扣算法撑着，明说不支持而不是悄悄当 FULL_CUT 处理
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+
+        long budgetMinor = cmd.budgetMinor() == null ? 0L : cmd.budgetMinor();
+        if (budgetMinor < 0) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        // 预算非零时必须 ≥ 敞口——不接受一个从第一天起就不可能满足的预算
+        if (budgetMinor > 0 && budgetMinor < maxExposure) {
+            throw BizException.of(ErrorCode.COUPON_BUDGET_BELOW_EXPOSURE, maxExposure);
+        }
+        // 与 setBudget 同一条闸：不能改到低于已发放金额
+        long issuedAmount = received * nz(c.getFaceMinor());
+        if (!isNew && budgetMinor > 0 && budgetMinor < issuedAmount) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+
+        if (isNew) {
+            c.setCouponNo(BizKey.next(BizKey.COUPON));
+            c.setReceivedCount(0);
+            c.setFunder(MktCoupon.BY_PLATFORM);
+            c.setStatus(MktCoupon.ACTIVE);
+        }
+        c.setTitle(cmd.title());
+        c.setType(cmd.type());
+        c.setFaceMinor(MktCoupon.FULL_CUT.equals(cmd.type()) ? cmd.faceMinor() : 0L);
+        c.setDiscountRate(MktCoupon.DISCOUNT.equals(cmd.type()) ? cmd.discountRate() : 0);
+        c.setMaxDiscountMinor(MktCoupon.DISCOUNT.equals(cmd.type()) ? cmd.maxDiscountMinor() : 0L);
+        c.setThresholdMinor(cmd.thresholdMinor() == null ? 0L : cmd.thresholdMinor());
+        c.setTotalCount(cmd.totalCount());
+        c.setPerUserLimit(cmd.perUserLimit() == null ? 1 : cmd.perUserLimit());
+        c.setBudgetMinor(budgetMinor);
+        c.setStartAt(cmd.startAt());
+        c.setEndAt(cmd.endAt());
+
+        DataScopeContext.executeWithoutScope(() -> {
+            if (isNew) {
+                couponMapper.insert(c);
+            } else {
+                couponMapper.updateById(c);
+            }
+            return null;
+        });
+        return toOpsVO(c);
+    }
+
+    @Override
+    @Transactional
     public ai.neargo.shop.marketing.coupon.dto.OpsCouponVO setBudget(String couponNo,
                                                                      long budgetMinor,
                                                                      String operatorNo) {
@@ -405,7 +492,8 @@ public class CouponServiceImpl implements CouponService {
                                 .toInstant().toEpochMilli(),
                 c.getArchivedAt() == null ? null
                         : c.getArchivedAt().atZone(java.time.ZoneId.systemDefault())
-                                .toInstant().toEpochMilli());
+                                .toInstant().toEpochMilli(),
+                nzi(c.getTotalCount()), nzi(c.getPerUserLimit()), nz(c.getMaxDiscountMinor()));
     }
 
     @Override

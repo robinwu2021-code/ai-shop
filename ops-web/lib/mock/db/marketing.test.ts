@@ -61,6 +61,57 @@ describe("券预算（P-7.1.3）", () => {
   });
 });
 
+describe("建券 / 改券（TDD-营销预算前置）", () => {
+  const base = { name: "测试券", totalCount: 10, validFrom: Date.now(), validTo: Date.now() + 86_400_000 };
+
+  it("折扣券必须设置封顶——0=不封顶已取消", async () => {
+    await expect(
+      marketingMock.saveCoupon({ ...base, type: "DISCOUNT", discountRate: 8500 }),
+    ).rejects.toThrow(/封顶/);
+  });
+
+  it("发行量必须大于 0", async () => {
+    await expect(
+      marketingMock.saveCoupon({ ...base, type: "FULL_CUT", faceMinor: 500, totalCount: 0 }),
+    ).rejects.toThrow(/发行量/);
+  });
+
+  it("预算低于敞口（发行量 × 单张最大优惠）被拒", async () => {
+    // 敞口 = 10 × 500 = 5000，预算给 1000 必须被拒
+    await expect(
+      marketingMock.saveCoupon({ ...base, type: "FULL_CUT", faceMinor: 500, budget: 1000 }),
+    ).rejects.toThrow(/敞口/);
+  });
+
+  it("预算等于敞口——边界值放行", async () => {
+    const c = await marketingMock.saveCoupon({ ...base, type: "FULL_CUT", faceMinor: 500, budget: 5000 });
+    expect(c.couponNo).toBeTruthy();
+    expect(c.budget).toBe(5000);
+  });
+
+  it("新建落库后能在列表里查到", async () => {
+    await marketingMock.saveCoupon({ ...base, name: "新建的券", type: "FULL_CUT", faceMinor: 300 });
+    const page = await marketingMock.listCoupons({ keyword: "新建的券" });
+    expect(page.records).toHaveLength(1);
+    expect(page.records[0].totalCount).toBe(10);
+  });
+
+  it("编辑：发行量不能改到低于已发放张数", async () => {
+    // CP9002 已发 146 张
+    await expect(
+      marketingMock.saveCoupon({ couponNo: "CP9002", name: "满 39 减 8（生鲜）", type: "FULL_CUT",
+        faceMinor: 800, totalCount: 100, validFrom: base.validFrom, validTo: base.validTo }),
+    ).rejects.toThrow(/已发放/);
+  });
+
+  it("编辑：正常改名与发行量落库", async () => {
+    const c = await marketingMock.saveCoupon({ couponNo: "CP9002", name: "改名后的券", type: "FULL_CUT",
+      faceMinor: 800, totalCount: 200, validFrom: base.validFrom, validTo: base.validTo });
+    expect(c.name).toBe("改名后的券");
+    expect(c.totalCount).toBe(200);
+  });
+});
+
 // 这一组测的是**平台投放场次**的规则。后端还没有这个对象，所以它们守的是
 // mock 与那块 UI —— 以及把「首尾相接不算重叠」「跨位置可并行」这两条产品规则
 // 记下来，等建后端对象时照着做。

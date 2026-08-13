@@ -62,6 +62,22 @@ public interface CouponService {
     CouponVO setCouponStatus(String couponNo, String status, String reason, String operatorNo);
 
     /**
+     * 建券 / 改券（平台券，{@code funder=PLATFORM}）。
+     *
+     * <p><b>预算前置</b>（TDD-营销预算前置）：这里是唯一能让 {@code budgetMinor}
+     * 落库的地方之一（另一处是 {@link #setBudget}），所以"预算 ≥ 最大敞口"这条断言
+     * 必须堵在这里，而不是留到核销那一刻才发现兜不住。
+     *
+     * <p>三条硬校验：折扣券必须填封顶（不再允许 0=不封顶）、发行量必须 &gt;0、
+     * 预算非零时必须 ≥ 敞口。{@code couponNo} 为空＝新建，非空＝编辑
+     * （编辑时另外校验发行量不能改到低于已领张数）。
+     *
+     * @param couponNo 为空新建；非空编辑既有券（必须是平台券）
+     */
+    ai.neargo.shop.marketing.coupon.dto.OpsCouponVO saveCoupon(
+            ai.neargo.shop.marketing.coupon.dto.CouponSaveCmd cmd, String operatorNo);
+
+    /**
      * 改券预算（分）。<b>0 = 不限</b>。
      *
      * <p>**不能改到低于已发放金额** —— 那等于「已经超支了」这个状态被人为造出来，

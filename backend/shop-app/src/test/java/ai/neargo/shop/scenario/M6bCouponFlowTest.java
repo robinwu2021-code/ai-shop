@@ -495,21 +495,67 @@ class M6bCouponFlowTest {
     @DisplayName("★★★ 超预算的领取被拒 —— 此前界面承诺了这道闸门，而它根本不存在")
     void budgetStopsIssuing() throws Exception {
         /*
-         * ops-web 券模板页上写着「预算是唯一挡住『发着发着超支』的地方：
-         * 超预算的发放会被直接拒绝」—— 而后端连 budget 这一列都没有。
-         * **界面承诺了一个不存在的保护，比没有承诺更坏**：
-         * 运营以为有人兜底，于是不再自己盯着发放量。
+         * TDD-营销预算前置：预算不再是运行时的闸，是建券时的一次性断言。
+         * 「发着发着超支」这件事被挡在了建券这一步 —— 敞口 = totalCount × faceMinor，
+         * 预算填得比敞口低，建券当场拒绝；填得等于敞口，正好放行。
          *
-         * 预算 1200 分、面额 500 分 → 只够发 2 张（第 3 张会到 1500 > 1200）。
+         * 面额 500 分、发行 3 张 → 敞口 1500。预算 1200（< 1500）必须被拒。
          */
-        String couponNo = budgetedCoupon("预算 12 元", 500L, 1200L);
+        String opsToken = opsLogin("goods", "goods123");
+        String badBody = """
+                {"title":"预算不够","type":"FULL_CUT","faceMinor":500,"totalCount":3,
+                 "budgetMinor":1200,"startAt":%d,"endAt":%d}
+                """.formatted(System.currentTimeMillis(), System.currentTimeMillis() + 86_400_000L);
+        mvc().perform(post("/ops/coupons").header("Authorization", "Bearer " + opsToken)
+                        .contentType(MediaType.APPLICATION_JSON).content(badBody))
+                .andExpect(jsonPath("$.code")
+                        .value(ai.neargo.shop.common.ErrorCode.COUPON_BUDGET_BELOW_EXPOSURE.code()));
+
+        // 预算 = 敞口（1500）：边界值必须放行，且发满 3 张之后第 4 张按张数闸拒绝
+        String okBody = """
+                {"title":"预算刚好","type":"FULL_CUT","faceMinor":500,"totalCount":3,
+                 "budgetMinor":1500,"startAt":%d,"endAt":%d}
+                """.formatted(System.currentTimeMillis(), System.currentTimeMillis() + 86_400_000L);
+        String created = mvc().perform(post("/ops/coupons").header("Authorization", "Bearer " + opsToken)
+                        .contentType(MediaType.APPLICATION_JSON).content(okBody))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        String couponNo = json.readTree(created).get("data").get("couponNo").asString();
 
         receiveOk(couponNo, "13600360001");
         receiveOk(couponNo, "13600360002");
-
+        receiveOk(couponNo, "13600360003");
         mvc().perform(post("/mp/coupon/" + couponNo + "/receive")
-                        .header("Authorization", "Bearer " + login("13600360003")))
+                        .header("Authorization", "Bearer " + login("13600360004")))
                 .andExpect(jsonPath("$.code").value(ai.neargo.shop.common.ErrorCode.COUPON_SOLD_OUT.code()));
+    }
+
+    @Test
+    @DisplayName("★★ 折扣券建券必须封顶——0=不封顶已取消，敞口算不出来就直接拒绝")
+    void discountCouponMustCapAtCreation() throws Exception {
+        String opsToken = opsLogin("goods", "goods123");
+        String noCap = """
+                {"title":"不封顶折扣","type":"DISCOUNT","discountRate":8500,"totalCount":10,
+                 "startAt":%d,"endAt":%d}
+                """.formatted(System.currentTimeMillis(), System.currentTimeMillis() + 86_400_000L);
+        mvc().perform(post("/ops/coupons").header("Authorization", "Bearer " + opsToken)
+                        .contentType(MediaType.APPLICATION_JSON).content(noCap))
+                .andExpect(jsonPath("$.code")
+                        .value(ai.neargo.shop.common.ErrorCode.COUPON_DISCOUNT_CAP_REQUIRED.code()));
+    }
+
+    @Test
+    @DisplayName("★★ 建券发行量必须 >0——不限量券的敞口同样算不出来")
+    void totalCountMustBePositiveAtCreation() throws Exception {
+        String opsToken = opsLogin("goods", "goods123");
+        String zeroTotal = """
+                {"title":"不限量","type":"FULL_CUT","faceMinor":500,"totalCount":0,
+                 "startAt":%d,"endAt":%d}
+                """.formatted(System.currentTimeMillis(), System.currentTimeMillis() + 86_400_000L);
+        mvc().perform(post("/ops/coupons").header("Authorization", "Bearer " + opsToken)
+                        .contentType(MediaType.APPLICATION_JSON).content(zeroTotal))
+                .andExpect(jsonPath("$.code")
+                        .value(ai.neargo.shop.common.ErrorCode.COUPON_TOTAL_COUNT_REQUIRED.code()));
     }
 
     @Test

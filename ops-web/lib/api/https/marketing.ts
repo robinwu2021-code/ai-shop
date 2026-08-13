@@ -4,6 +4,15 @@ import type { MarketingApi } from "../contracts/marketing";
 
 export const marketingHttp: MarketingApi = {
   listCoupons: (q) => client.get("/ops/coupons", q),
+  // 字段名对齐后端 CouponSaveCmd：name→title、threshold→thresholdMinor、
+  // budget→budgetMinor、validFrom/To→startAt/endAt
+  saveCoupon: (v) =>
+    client.post("/ops/coupons", {
+      couponNo: v.couponNo, title: v.name, type: v.type,
+      faceMinor: v.faceMinor, discountRate: v.discountRate, maxDiscountMinor: v.maxDiscountMinor,
+      thresholdMinor: v.threshold, totalCount: v.totalCount, perUserLimit: v.perUserLimit,
+      budgetMinor: v.budget, startAt: v.validFrom, endAt: v.validTo,
+    }),
   setCouponStatus: (no, status, reason) =>
     client.post(`/ops/coupons/${no}/status`, { status, reason }),
   setCouponBudget: (no, budget) => client.post(`/ops/coupons/${no}/budget`, { budget }),

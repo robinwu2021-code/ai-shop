@@ -41,6 +41,76 @@ export const marketingMock: MarketingApi = {
       ),
     ),
 
+  /**
+   * 建券 / 改券（TDD-营销预算前置）。**镜像后端 `CouponServiceImpl.saveCoupon` 的
+   * 三条硬校验**，不是简化版——mock 比后端宽松的话，这三条校验在演示里永远看不出来。
+   */
+  saveCoupon: async (v) => {
+    if (!v.name.trim()) fail("券名不能为空", "The coupon name cannot be empty");
+    if (!v.totalCount || v.totalCount <= 0) {
+      fail("发行量必须大于 0", "Total count must be greater than 0");
+    }
+    if (!v.validFrom || !v.validTo || v.validTo <= v.validFrom) {
+      fail("结束时间必须晚于开始时间", "The end time must be after the start time");
+    }
+
+    const existing = v.couponNo ? db.coupons.find((x) => x.couponNo === v.couponNo) : undefined;
+    if (v.couponNo && !existing) notFound("券模板", "Coupon template", v.couponNo);
+    const received = existing?.issued ?? 0;
+    if (existing && v.totalCount < received) {
+      fail(`已发放 ${received} 张，发行量不能改到低于它`, `${received} coupons already issued — total count cannot go below that`);
+    }
+
+    let maxExposure: number;
+    let value: number;
+    let maxDiscountMinor: number;
+    if (v.type === "DISCOUNT") {
+      if (!v.discountRate || v.discountRate <= 0 || !v.maxDiscountMinor || v.maxDiscountMinor <= 0) {
+        fail("折扣券必须设置封顶金额", "Discount coupons must have a maximum discount cap");
+      }
+      maxExposure = v.totalCount * v.maxDiscountMinor!;
+      value = v.discountRate!;
+      maxDiscountMinor = v.maxDiscountMinor!;
+    } else {
+      if (!v.faceMinor || v.faceMinor <= 0) {
+        fail("满减面额必须大于 0", "The full-cut face value must be greater than 0");
+      }
+      maxExposure = v.totalCount * v.faceMinor!;
+      value = v.faceMinor!;
+      maxDiscountMinor = 0;
+    }
+
+    const budget = v.budget ?? 0;
+    if (budget > 0 && budget < maxExposure) {
+      fail(
+        `预算不能低于最大敞口（发行量 × 单张最大优惠 = ${(maxExposure / 100).toFixed(2)} 元）`,
+        `Budget cannot be below the maximum exposure (total count × max discount per coupon = ¥${(maxExposure / 100).toFixed(2)})`,
+      );
+    }
+    if (existing && budget > 0 && budget < existing.issuedAmount) {
+      fail(`预算不能低于已发放金额（已发 ${(existing.issuedAmount / 100).toFixed(2)} 元）`, `The budget cannot fall below what has already been issued (¥${(existing.issuedAmount / 100).toFixed(2)})`);
+    }
+
+    if (existing) {
+      Object.assign(existing, {
+        name: v.name, type: v.type, value, threshold: v.threshold ?? 0,
+        maxDiscountMinor, totalCount: v.totalCount, perUserLimit: v.perUserLimit ?? 1,
+        budget, validFrom: v.validFrom, validTo: v.validTo,
+      });
+      return wait(existing, 400);
+    }
+    const created: Coupon = {
+      couponNo: db.nextNo("CP", db.coupons, 9200, "couponNo"),
+      name: v.name, type: v.type, status: "ACTIVE",
+      value, threshold: v.threshold ?? 0, maxDiscountMinor,
+      totalCount: v.totalCount, perUserLimit: v.perUserLimit ?? 1,
+      budget, issuedAmount: 0, issued: 0, redeemed: 0,
+      validFrom: v.validFrom, validTo: v.validTo, createdAt: Date.now(),
+    };
+    db.coupons.unshift(created);
+    return wait(created, 400);
+  },
+
   setCouponStatus: async (couponNo, status, reason) => {
     // **mock 必须和后端一样严**：后端 reason 空就 10400。
     // 此前 mock 没有这条，于是「运营点暂停必然失败」在演示里完全看不出来
