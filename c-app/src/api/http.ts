@@ -44,6 +44,7 @@ import type {
   Community,
   Coupon,
   UserCoupon,
+  GroupPickupOrder,
   Goods,
   GroupBuy,
   GroupRequest,
@@ -123,7 +124,7 @@ export const httpApi: ShopApi = {
   orderDetail: (orderNo) => call<Order>("orderDetail", { orderNo }),
   cancelOrder: (orderNo) => call<Order>("cancelOrder", { orderNo }),
   applyAfterSale: (orderNo, reason, images, type) =>
-    call<Order>("applyAfterSale", { orderNo }, { reason, images, type } satisfies AfterSaleReq),
+    call<AfterSale>("applyAfterSale", { orderNo }, { reason, images, type } satisfies AfterSaleReq),
 
   afterSaleReasons: () => call<AfterSaleReason[]>("afterSaleReasons"),
   afterSaleList: () => call<AfterSale[]>("afterSaleList"),
@@ -132,9 +133,9 @@ export const httpApi: ShopApi = {
 
   // ---- 营销
   fillReturnExpress: (afterSaleNo, expressNo) =>
-    http.post<Order>(buildPath(ENDPOINTS.fillReturnExpress.path, { afterSaleNo }), { expressNo }),
+    http.post<AfterSale>(buildPath(ENDPOINTS.fillReturnExpress.path, { afterSaleNo }), { expressNo }),
   raiseDispute: (afterSaleNo, reason) =>
-    http.post<Order>(buildPath(ENDPOINTS.raiseDispute.path, { afterSaleNo }), { reason }),
+    http.post<AfterSale>(buildPath(ENDPOINTS.raiseDispute.path, { afterSaleNo }), { reason }),
 
   couponList: () => call<Coupon[]>("couponList"),
   receiveCoupon: (couponNo) => call<UserCoupon>("receiveCoupon", { couponNo }),
@@ -158,11 +159,11 @@ export const httpApi: ShopApi = {
   // ---- 邻里求团
   myHostedGroups: () => http.get<GroupBuy[]>(ENDPOINTS.myHostedGroups.path),
   confirmGroupBatch: (groupNo) =>
-    http.post<Order[]>(buildPath(ENDPOINTS.confirmGroupBatch.path, { groupNo }), {}),
+    http.post<GroupBuy>(buildPath(ENDPOINTS.confirmGroupBatch.path, { groupNo }), {}),
   verifyGroupPickup: (groupNo, code) =>
-    http.post<Order>(buildPath(ENDPOINTS.verifyGroupPickup.path, { groupNo }), { code }),
+    http.post<GroupPickupOrder>(buildPath(ENDPOINTS.verifyGroupPickup.path, { groupNo }), { code }),
   groupPickupOrders: (groupNo) =>
-    http.get<Order[]>(buildPath(ENDPOINTS.groupPickupOrders.path, { groupNo })),
+    http.get<GroupPickupOrder[]>(buildPath(ENDPOINTS.groupPickupOrders.path, { groupNo })),
 
   requestList: (pickupNo) => call<GroupRequest[]>("requestList", undefined, { pickupNo } satisfies RequestListQuery),
   requestDetail: (requestNo) => call<GroupRequest>("requestDetail", { requestNo }),

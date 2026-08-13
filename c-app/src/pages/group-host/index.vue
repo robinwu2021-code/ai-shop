@@ -15,13 +15,13 @@ import { onShow } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
 import { api } from "@/api";
 import { ROUTES } from "@shared/utils/constants";
-import type { GroupBuy, Order } from "@shared/types";
+import type { GroupBuy, GroupPickupOrder } from "@shared/types";
 
 const { t } = useI18n();
 
 const groups = ref<GroupBuy[]>([]);
 const active = ref("");
-const orders = ref<Order[]>([]);
+const orders = ref<GroupPickupOrder[]>([]);
 const code = ref("");
 const error = ref("");
 const busy = ref(false);
@@ -48,8 +48,11 @@ async function receive() {
   if (!current.value || busy.value) return;
   busy.value = true;
   try {
-    const changed = await api.confirmGroupBatch(current.value.groupNo);
-    uni.showToast({ title: t("groupHost.received", { n: changed.length }), icon: "none" });
+    // 签收前还在途的这些，签收后就变成「待取」—— 数在调用前算，
+    // 因为接口返回的是团本身（后端一直如此），不是被改动的订单列表
+    const n = preparing.value.length;
+    await api.confirmGroupBatch(current.value.groupNo);
+    uni.showToast({ title: t("groupHost.received", { n }), icon: "none" });
     await load();
   } catch (e) {
     uni.showToast({ title: (e as Error).message, icon: "none" });
@@ -147,7 +150,7 @@ onShow(load);
 
       <sh-empty v-if="!waiting.length" compact :text='$t("groupHost.noWaiting")'></sh-empty>
 
-      <view v-for="o in waiting" :key="o.orderNo" class="sh-card row-item">
+      <view v-for="o in waiting" :key="o.subOrderNo" class="sh-card row-item">
         <view class="row-item__main">
           <text class="row-item__code sh-num">{{ o.verifyCode }}</text>
           <text class="sh-muted">{{ o.buyerNickname || "—" }} · {{ o.items.length }} 件</text>

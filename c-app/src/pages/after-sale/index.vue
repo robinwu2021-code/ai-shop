@@ -68,12 +68,14 @@ async function submit() {
   submitting.value = true;
   try {
     const label = String(t(`afterSale.reason.${reason.value}`));
-    order.value = await api.applyAfterSale(
+    // 返回的是售后单，不是订单 —— 赋给 order 会把这一页的商品与金额清空
+    await api.applyAfterSale(
       o.orderNo,
       detail.value ? `${label}：${detail.value}` : label,
       images.value,
       type.value,
     );
+    await load(o.orderNo);
     submitted.value = true;
   } catch (e) {
     uni.showToast({ title: (e as Error).message, icon: "none" });

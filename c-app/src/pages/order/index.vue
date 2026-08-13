@@ -88,7 +88,10 @@ async function fillExpress() {
   });
   if (!no) return;
   try {
-    order.value = await api.fillReturnExpress(o.afterSale!.afterSaleNo, no);
+    // 返回的是售后单，不是订单 —— 赋给 order 会把整个详情页覆盖成一张售后单。
+    // 售后单变了就重新拉一次订单，让时间线与状态一起对上
+    await api.fillReturnExpress(o.afterSale!.afterSaleNo, no);
+    await load();
     uni.showToast({ title: String(t("afterSale.returnExpressOk")), icon: "none" });
   } catch (e) {
     uni.showToast({ title: (e as Error).message, icon: "none" });
@@ -109,7 +112,8 @@ async function dispute() {
   });
   if (!reason) return;
   try {
-    order.value = await api.raiseDispute(o.afterSale!.afterSaleNo, reason);
+    await api.raiseDispute(o.afterSale!.afterSaleNo, reason);
+    await load();
     uni.showToast({ title: String(t("afterSale.disputeOk")), icon: "none" });
   } catch (e) {
     uni.showToast({ title: (e as Error).message, icon: "none" });

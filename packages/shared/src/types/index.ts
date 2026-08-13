@@ -2259,6 +2259,40 @@ export interface ReorderResult {
  * 那些是 B 端配置，C 端一个字节都不该看到。契约此前直接写 `StoreProfile`，
  * 相当于让门店主页有权拿到商家的全部经营参数。
  */
+/**
+ * 本团待取的一单（发起人视角，C-GB-06 邻里自提）。
+ *
+ * **不是 `Order`**。契约此前把这条链路的三个端点都声明成返回 `Order`，
+ * 而后端返回的一直是这个形状 —— 页面读 `o.orderNo` 拿到 undefined，
+ * 于是 `v-for` 的 key 全是 undefined，核销按钮点谁都一样。
+ * 发起人只需要「谁的、几件、核销码」，不需要整张订单。
+ */
+export interface GroupPickupOrder {
+  /** 子订单号（`SUB…`）—— 这条链路上的「一单」就是一张子订单 */
+  subOrderNo: string;
+  buyerNickname: string;
+  /** 核销码。**只有发起人看得到**，参团者看自己那一单即可 */
+  verifyCode: string;
+  status: OrderStatus;
+  items: { goodsNo: string; title: string; spec: string; qty: number }[];
+}
+
+export interface StoreFront {
+  /** 店铺公告：「今日到货」「今天有土鸡蛋」，店主自发（C-ST-04） */
+  announcement: string;
+  /** 营业时间文案，店主自填 */
+  openHours: string;
+  /** 店铺地址，店主自填 */
+  address: string;
+}
+
+/**
+ * 门店主页上店主自己维护的那一块：公告、营业时间、地址。
+ *
+ * **只有这三个，不是整份 {@link StoreProfile}** —— 经营范围、配送半径、收款号
+ * 那些是 B 端配置，C 端一个字节都不该看到。契约此前直接写 `StoreProfile`，
+ * 相当于让门店主页有权拿到商家的全部经营参数。
+ */
 export interface StoreFront {
   /** 店铺公告：「今日到货」「今天有土鸡蛋」，店主自发（C-ST-04） */
   announcement: string;

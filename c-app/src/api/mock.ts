@@ -31,6 +31,7 @@ import type { CreateOrderReq, GoodsQuery, ShopApi } from "./contract";
 import type {
   AfterSaleReason,
   Coupon,
+  GroupPickupOrder,
   FrequentItem,
   Order,
   OrderItem,
@@ -81,6 +82,26 @@ function settleRefund(o: Order, label: string) {
   if (o.amount.pointsUsed > 0) {
     pushPoint(db.points, "REFUND", o.amount.pointsUsed, "订单退款返还", o.orderNo);
   }
+}
+
+/**
+ * 订单 → 本团待取单。**发起人只需要「谁的、几件、核销码」**，不需要整张订单。
+ * 后端返回的一直是这个裁剪过的形状，mock 此前直接给整张 Order —— 于是
+ * 「mock 下字段都在、真机上 o.orderNo 是 undefined」。
+ */
+function toPickupOrder(o: Order): GroupPickupOrder {
+  return {
+    subOrderNo: o.orderNo,
+    buyerNickname: db.user.nickname,
+    verifyCode: o.verifyCode ?? "",
+    status: o.status,
+    items: o.items.map((it) => ({
+      goodsNo: it.goodsNo,
+      title: it.title,
+      spec: it.spec,
+      qty: it.qty,
+    })),
+  };
 }
 
 function pushTimeline(order: Order, label: string) {
@@ -682,7 +703,8 @@ export const mockApi: ShopApi = {
       settleRefund(o, "极速退款已到账");
     }
     persist();
-    return delay(o);
+    // 返回售后单本身 —— 与后端同形（端上拿它刷新，不是拿它替换订单）
+    return delay(o.afterSale!);
   },
 
   async afterSaleReasons() {
@@ -778,7 +800,7 @@ export const mockApi: ShopApi = {
     as.updatedAt = Date.now();
     pushTimeline(o, `已寄回，运单号 ${as.returnExpressNo}`);
     persist();
-    return delay(o);
+    return delay(as);
   },
 
   async raiseDispute(afterSaleNo, reason) {
@@ -797,7 +819,7 @@ export const mockApi: ShopApi = {
       `/pages/order/index?orderNo=${o.orderNo}`,
     );
     persist();
-    return delay(o);
+    return delay(as);
   },
 
   // ---------------------------------------------------------------- 营销
@@ -892,7 +914,7 @@ export const mockApi: ShopApi = {
   },
 
   async groupPickupOrders(groupNo) {
-    return delay(db.orders.filter((o) => o.groupNo === groupNo));
+    return delay(db.orders.filter((o) => o.groupNo === groupNo).map(toPickupOrder));
   },
 
   async confirmGroupBatch(groupNo) {
@@ -918,7 +940,8 @@ export const mockApi: ShopApi = {
       changed.push(o);
     }
     persist();
-    return delay(changed);
+    // 返回团本身（与后端同形）；「签收了几单」由端上按签收前的在途数说
+    return delay(buildGroupBuy(seed));
   },
 
   async verifyGroupPickup(groupNo, code) {
@@ -939,7 +962,7 @@ export const mockApi: ShopApi = {
     pushTimeline(o, "邻居已取走");
     grantPointsOnComplete(o);
     persist();
-    return delay(o);
+    return delay(toPickupOrder(o));
   },
 
   /** 参团：加入后重算。达到新档时，先参团的人同享 —— 差价退回由结算侧处理 */

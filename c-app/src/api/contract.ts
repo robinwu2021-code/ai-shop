@@ -12,6 +12,7 @@ import type {
   Community,
   Coupon,
   UserCoupon,
+  GroupPickupOrder,
   Goods,
   GroupBuy,
   LoginReq,
@@ -155,13 +156,20 @@ export interface ShopApi {
   orderCapability(req: PreviewOrderReq): Promise<CheckoutCapability>;
 
   // ---- 售后
-  /** 申请售后。**仅退款与退货退款流程不同** —— 后者必须先收到货再退款 */
+  /**
+   * 申请售后。**仅退款与退货退款流程不同** —— 后者必须先收到货再退款。
+   *
+   * **返回的是售后单，不是订单**（这三条都是）。契约此前写 `Order`，
+   * 而页面照着把返回值赋给了 `order.value` —— 真机上等于用一张售后单
+   * <b>覆盖掉整个订单详情</b>：页面上的商品、金额、时间线一起变成 undefined。
+   * 售后是独立资源（见 `AfterSale.afterSaleNo`），它变了就重新拉一次订单。
+   */
   applyAfterSale(
     orderNo: string,
     reason: string,
     images: string[],
     type?: AfterSaleType,
-  ): Promise<Order>;
+  ): Promise<AfterSale>;
   /**
    * 退货退款：用户寄回后填运单号，商家据此收货。
    * **按售后单号寻址，不是订单号** —— 售后是独立资源（见 AfterSale.afterSaleNo）。
@@ -179,9 +187,9 @@ export interface ShopApi {
    * 订单从来不会是这个值，于是页签只剩「已退款」一种，处理中的一条也看不到。
    */
   afterSaleList(): Promise<AfterSale[]>;
-  fillReturnExpress(afterSaleNo: string, expressNo: string): Promise<Order>;
+  fillReturnExpress(afterSaleNo: string, expressNo: string): Promise<AfterSale>;
   /** 商家驳回后上升平台裁决（B-7.4）—— 驳回不能是终点，否则用户没有退路 */
-  raiseDispute(afterSaleNo: string, reason: string): Promise<Order>;
+  raiseDispute(afterSaleNo: string, reason: string): Promise<AfterSale>;
 
   // ---- 营销
   couponList(): Promise<Coupon[]>;
@@ -209,11 +217,15 @@ export interface ShopApi {
   /** 我发起的团 */
   myHostedGroups(): Promise<GroupBuy[]>;
   /** 批次签收：整批到货后发起人点一次，之后个别缺损照常走售后 */
-  confirmGroupBatch(groupNo: string): Promise<Order[]>;
+  /**
+   * 批次签收：整车货到了，必须在逐单核销之前。
+   * **返回的是团本身**（后端一直如此），不是订单列表 —— 签收后重新拉一次待取单。
+   */
+  confirmGroupBatch(groupNo: string): Promise<GroupBuy>;
   /** 发起人轻核销。**作用域严格限该团** —— 与商家履约台是两套权限 */
-  verifyGroupPickup(groupNo: string, code: string): Promise<Order>;
+  verifyGroupPickup(groupNo: string, code: string): Promise<GroupPickupOrder>;
   /** 本团待取的订单（只回履约必需字段，脱敏更严，B12） */
-  groupPickupOrders(groupNo: string): Promise<Order[]>;
+  groupPickupOrders(groupNo: string): Promise<GroupPickupOrder[]>;
 
   // ---- 邻里求团（需求先于供给，意向不是订单）
   requestList(pickupNo?: string): Promise<GroupRequest[]>;
