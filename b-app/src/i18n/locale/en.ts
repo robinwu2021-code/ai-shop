@@ -154,7 +154,7 @@ export default {
     scopeToCurrent: "Current store only ›",
     statusWAIT_PAY: "Unpaid",
     statusPAID: "To ship",
-    statusSHIPPED: "Shipped",
+    statusSHIPPED: "Shipped", delivering: "Out for delivery",
     statusARRIVED: "To collect",
     statusCOMPLETED: "Done",
     statusREFUNDING: "After-sales",
@@ -486,5 +486,10 @@ entryHint: "Who buys · who lapsed", total: "Customers", repeatRate: "Repeat rat
     "biz:store": "Shop styling and delivery rules",
     "biz:store:admin": "Open stores, suspend, payouts, manage staff",
     "biz:finance": "Settlements and payment onboarding",
+  },
+  fulfillmentLabel: {
+    NEIGHBOR_PICKUP: "Neighbour pickup", STORE_PICKUP: "Pickup point",
+    MERCHANT_DELIVERY: "Merchant delivery", EXPRESS: "Courier",
+    STORE_VERIFY: "Redeem in store", APPOINTMENT: "By appointment", INSTANT: "Instant",
   },
 };

@@ -154,7 +154,7 @@ export default {
     scopeToCurrent: "الفرع الحالي فقط ›",
     statusWAIT_PAY: "غير مدفوع",
     statusPAID: "بانتظار الشحن",
-    statusSHIPPED: "تم الشحن",
+    statusSHIPPED: "تم الشحن", delivering: "قيد التوصيل",
     statusARRIVED: "بانتظار الاستلام",
     statusCOMPLETED: "مكتمل",
     statusREFUNDING: "خدمة ما بعد البيع",
@@ -486,5 +486,10 @@ entryHint: "من يشتري · من توقف", total: "العملاء", repeatRa
     "biz:store": "تنسيق المتجر وقواعد التوصيل",
     "biz:store:admin": "فتح المتاجر والإيقاف والتحصيل وإدارة الموظفين",
     "biz:finance": "التسويات وتفعيل الدفع",
+  },
+  fulfillmentLabel: {
+    NEIGHBOR_PICKUP: "استلام من الجار", STORE_PICKUP: "نقطة استلام",
+    MERCHANT_DELIVERY: "توصيل التاجر", EXPRESS: "شحن",
+    STORE_VERIFY: "تسليم في المتجر", APPOINTMENT: "بموعد", INSTANT: "فوري",
   },
 };

@@ -85,7 +85,9 @@ onLoad((q) => {
         </view>
         <view class="line">
           <text class="sh-muted">{{ $t("order.fulfillment") }}</text>
-          <text>{{ order.fulfillment }}</text>
+          <!-- **不要直接渲染枚举**：店主看到的是「快递配送」，不是 EXPRESS。
+               与权限码、角色码同一条规矩，这里是最后一处漏网的 -->
+          <text>{{ $t(`fulfillmentLabel.${order.fulfillment}`) }}</text>
         </view>
         <view class="line">
           <text class="sh-muted">{{ $t("order.buyer") }}</text>

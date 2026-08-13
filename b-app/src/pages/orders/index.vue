@@ -8,16 +8,42 @@ import { onShow } from "@dcloudio/uni-app";
 import { api } from "@/api";
 import { useMerchantStore } from "@/stores/merchant";
 import { ROUTES } from "@/shared/nav";
+import { useI18n } from "vue-i18n";
 import { money } from "@shared/utils/money";
+import { FULFILLMENT } from "@shared/utils/constants";
 import { datetime } from "@shared/utils/datetime";
 import type { Order, OrderStatus } from "@shared/types";
 
 const merchant = useMerchantStore();
+const { t } = useI18n();
 
 /** 状态色：要动手的用主色、售后用警示色、终态保持中性 —— 一眼能挑出「该我做的」 */
 function statusChip(status: OrderStatus): string {
   if (status === "PAID" || status === "ARRIVED") return "sh-chip--primary";
   return "";
+}
+
+/**
+ * 行上那句状态，**要连履约方式一起看**。
+ *
+ * `PAID` 的中文一律写成「待发货」时，一张自提单也会显示「待发货」——
+ * 店主会去找快递单号，而这单根本不发货：邻居自己来取。
+ * 工作台上早就是分开的（待发货 / 待自送 / 待核销），列表这里却只按状态拼 key。
+ *
+ * 只处理「还没交付」的两个状态，其余（已完成/已退款/待付款）与履约方式无关。
+ */
+function statusText(o: Order): string {
+  const f = o.fulfillment;
+  if (o.status === "PAID") {
+    if (f === FULFILLMENT.PICKUP || f === FULFILLMENT.NEIGHBOR_PICKUP) return t("home.toVerify");
+    if (f === FULFILLMENT.DELIVERY) return t("home.toDeliver");
+    return t("order.statusPAID");
+  }
+  if (o.status === "SHIPPED" && f === FULFILLMENT.DELIVERY) {
+    // 自送单「已发货」= 骑手在路上，说「配送中」更准
+    return t("order.delivering");
+  }
+  return t(`order.status${o.status}`);
 }
 
 const ALL_TABS: { key: string; status?: OrderStatus; labelKey: string; perm?: string }[] = [
@@ -117,7 +143,7 @@ onShow(load);
              （`order.tab${PAID ? 'ToShip' : 'All'}`），于是除待发货外一律显示「全部」——
              一屏订单看下来全是「全部」，等于这一列没有信息 -->
         <text class="sh-chip" :class="statusChip(o.status)">
-          {{ $t(`order.status${o.status}`) }}
+          {{ statusText(o) }}
         </text>
       </view>
 
