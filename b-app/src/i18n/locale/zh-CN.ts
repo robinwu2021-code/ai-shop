@@ -542,7 +542,7 @@ export default {
     typeRETURN_REFUND: "退货退款",
     waitReturn: "已同意，等用户寄回商品。收到货后再点确认收货，届时才退款。",
     returnExpress: "退货运单号",
-    confirmReceived: "确认收到退货并退款",
+    confirmReceived: "确认收货并退款",
     refunded: "已确认收货，退款已发起",
     doneHint: "已退款，这一单结束了。",
     instantHint: "小额仅退款，系统已自动通过并退款 —— 这类单不用你处理。",

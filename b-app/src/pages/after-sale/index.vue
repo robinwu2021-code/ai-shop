@@ -181,7 +181,9 @@ onShow(load);
           <text class="sh-muted">{{ $t("afterSale.returnExpress") }}</text>
           <text class="sh-num">{{ r.as.returnExpressNo }}</text>
         </view>
-        <text class="btn" @tap="confirmReturn(r)">{{ $t("afterSale.confirmReceived") }}</text>
+        <text class="btn btn--auto" @tap="confirmReturn(r)">
+          {{ $t("afterSale.confirmReceived") }}
+        </text>
       </view>
 
       <!-- 已退款也要说一句。此前这一支没有分支，卡片下方是**一片空白** ——
@@ -299,6 +301,17 @@ onShow(load);
   color: var(--sh-on-primary);
   font-size: 28rpx;
   font-weight: 600;
+}
+/*
+ * 与运单号同行的那个按钮**按文字宽度收**，不跟着 `flex: 1` 平分。
+ * 平分的结果是两边都只有半屏：按钮把「确认收到退货并退款」九个字撑满，
+ * 运单号那边被挤到剩不下一行，20 位的单号折成两截。
+ * 一行里一个是可变信息、一个是固定文案时，该收的是文案那一侧。
+ */
+.btn--auto {
+  flex: 0 0 auto;
+  padding-left: 24rpx;
+  padding-right: 24rpx;
 }
 .btn--ghost {
   background: var(--sh-faint);

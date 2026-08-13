@@ -374,7 +374,7 @@ export default {
     rejectedHint: "Rejected — waiting for the customer to accept or escalate to the platform.",
     typeREFUND_ONLY: "Refund only", typeRETURN_REFUND: "Return & refund",
     waitReturn: "Approved — waiting for the customer to ship it back. Refund happens after you confirm receipt.",
-    returnExpress: "Return tracking no.", confirmReceived: "Confirm receipt and refund",
+    returnExpress: "Return tracking no.", confirmReceived: "Received, refund",
     refunded: "Receipt confirmed, refund issued",
     doneHint: "Refunded — this case is closed.",
     instantHint: "Small refund-only request: the system approved and refunded it automatically — nothing for you to do.",
