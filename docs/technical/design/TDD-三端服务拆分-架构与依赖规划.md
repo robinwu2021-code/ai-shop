@@ -141,38 +141,75 @@ flowchart TB
 
 ---
 
-### 3.4 短期形态：C+B 合一，业务模块先分开（2026-08-13 确认的收敛）
+### 3.4 一期形态：C+B+P 合一部署，worker 独立（2026-08-13 确认）
 
-短期不必一步到三个端服务。依据还是 §2 的数字：
-
-- C 与 B 共用 6 个服务（**认证、用户**、社区、商家、积分、门店码），
-  且按 [ADR-001](../ADR/ADR-001-商家端形态与拆分时机.md) **共用 `ctk_` 令牌池**
-- C+B 合并成一个 `cb-app` 后，令牌仍在同一个进程里——
-  **§4.1（换 Redis）整条推迟**，Ehcache 进程内存储继续成立
-- 平台端与 C/B 的重叠（8 个 B+P 服务）走域模块共享，不走进程共享
+一期**不按端拆部署**：C+B+P 是一个大服务，worker 独立部署——两个构建产物。
+但**模块与项目现在就按目标形态拆开**，让二期的 c/b/p 拆分收缩成
+「新增一个启动模块、挑一份依赖列表」（ADR-017：拆分 = 改依赖列表）。
 
 ```mermaid
 flowchart TB
-  subgraph 部署["短期拓扑 · 三个构建产物 · 一个库"]
-    CB["cb-app · 公网 8080<br/>/mp/** + /biz/**<br/>多实例水平扩"]
-    P["p-app · 内网 8081<br/>/ops/**<br/>1–2 实例"]
-    W["worker-app · 无 HTTP<br/>定时任务 + Outbox 投递"]
+  ALL["shop-app-all · 一期主服务<br/>/mp + /biz + /ops 一个进程"]
+  WK["shop-app-worker · 独立部署<br/>无 HTTP"]
+  subgraph 接入模块["端接入模块（Maven jar）"]
+    PC["portal-c<br/>/mp"] ~~~ PB["portal-b<br/>/biz"] ~~~ PP["portal-p<br/>/ops"] ~~~ JB["shop-jobs<br/>@Scheduled+Outbox"]
   end
-  subgraph 域模块["域模块（Maven jar，shop-core 按域拆开）"]
+  subgraph 域模块["域模块（shop-core 一拆四 + 已独立的两个）"]
     direction LR
-    M1["trade"] ~~~ M2["product"] ~~~ M3["merchant"] ~~~ M4["settle"] ~~~ M5["mkt"] ~~~ M6["platform"]
+    M1["trade"] ~~~ M2["product"] ~~~ M3["mkt"] ~~~ M4["platform"] ~~~ M5["merchant"] ~~~ M6["settle"]
   end
-  DB[("ai_shop<br/>单库（过渡态）")]
-  CB -->|"依赖列表：<br/>trade product merchant<br/>settle mkt user"| 域模块
-  P -->|"依赖列表：全部 + perm/content 治理"| 域模块
-  W -->|"依赖列表：settle merchant trade"| 域模块
-  域模块 --> DB
+  DB[("ai_shop 单库")]
+  ALL --> PC & PB & PP
+  WK --> JB
+  接入模块 --> 域模块 --> DB
 ```
 
-**「业务模块要分开」的落点**：今天的 `shop-core` 是多个域合成的一个工程。
-本形态要求把它**按域拆成独立 Maven 模块**——这是全方案里真正动手术的一步，
-但它是纯移动（包边界今天已按域画好），不改业务代码。
-拆完之后「端产物 = 挑一份依赖列表」才成立，守卫（依赖树断言）才有的可查。
+⚠️ **一个要点名的回退**：今天 api 与 ops 是**两个进程**（平台面不上公网）；
+合一部署后 `/ops` 与公网流量同进程。缓解（两道都要）：
+① `@Profile` 机制**保留**——同一个 all 产物仍可按 profile 只开某一面，部署自由度不丢；
+② 反代层 `/ops/**` 只对内网放行。
+
+#### 3.4.1 模块与项目拆分方案
+
+现状对拆分友好：Controller 已按 `api/{mp,biz,ops}` 子包组织在各域内
+（core 7/6/16 · merchant 0/1/6 · settle 1/2/4，另有 4 个特例），迁移是机械的。
+
+**目标模块树**（模块数 = 未来可能的部署单元数，原则不变）：
+
+```
+backend/
+├── shop-base                      # 地基，不动
+├── shop-channel                   # 通道适配，不动（BizUploadController 迁出）
+│
+├── 域模块 —— shop-core 一拆四 + 归位
+│   ├── shop-domain-trade          # trade 包
+│   ├── shop-domain-product        # product 包
+│   ├── shop-domain-mkt            # marketing 包
+│   ├── shop-domain-platform       # platform + user + content + message 包
+│   ├── shop-merchant              # 已独立；community、fulfillment 从 core 迁入（§3.3 归属）
+│   └── shop-settle                # 已独立
+│
+├── 端接入模块 —— Controller 从域内 api/{mp,biz,ops} 迁出
+│   ├── shop-portal-c              # 全部 api/mp + portal/mp + PayCallbackController（公网回调）
+│   ├── shop-portal-b              # 全部 api/biz + portal/biz + BizUploadController
+│   └── shop-portal-p              # 全部 api/ops + OpsPermConfigController
+│   （CommonMetaController 三端共用 → 留 shop-domain-platform，是唯一例外）
+│
+├── shop-jobs                      # 全部 @Scheduled + Outbox 投递任务（补上缺的那个）
+│
+└── 启动模块 —— 只有 pom + 装配，零业务代码
+    ├── shop-app-all               # 一期：portal-c/b/p + config
+    └── shop-app-worker            # 一期：jobs
+    （二期：shop-app-c / -b / -p —— 各自一个新 pom，代码零改动）
+```
+
+**依赖规则（五条，ArchUnit 落地）**：
+
+1. `portal-*` → 域模块，只经 Service 接口；**portal 之间互不依赖**
+2. 域 ↔ 域只经 `shop-spi` 的 Port（现状已如此，升格为守卫）
+3. `shop-jobs` → 域模块；**不依赖任何 portal**
+4. 启动模块只有 pom 与装配；**域模块反向不得依赖 portal / jobs / 启动**
+5. `@RestController` 只出现在 `shop-portal-*`；`@Scheduled` 只出现在 `shop-jobs`
 
 ### 3.5 Spring Gateway 聚合的评估
 
@@ -227,20 +264,26 @@ DataScope 是 MyBatis 拦截器（商家只能看自己的数据）。
 
 每一阶段都可独立上线，且上线后系统是完整可用的。
 
-### S1-lite — C+B 合一的两产物拆分（短期形态，§3.4）
+### S1 — 模块拆分 + 两产物部署（一期形态，§3.4）
 
-- `shop-core` **按域拆成独立 Maven 模块**（纯移动，包边界已画好）
-- `shop-app` 拆成 `cb-app` / `p-app` / `worker-app` 三个启动模块，各挑依赖列表
-- **令牌存储不动**：C/B 仍同进程，Ehcache 继续成立
+四步，每步结束时全量测试绿：
 
-**拿到**：平台面与 C/B 的独立构建、独立发布、独立故障域；域模块边界从包升级为工程。
-**没拿到**：C 与 B 还绑在一起发版（按 ADR-001，B 端二期拆独立小程序前这不构成痛点）。
+1. `shop-core` 一拆四（`git mv` + pom，纯移动）；community、fulfillment 迁入 `shop-merchant`
+2. Controller 从域内 `api/{mp,biz,ops}` 迁出到 `shop-portal-c/b/p`
+3. 新建 `shop-jobs`：迁两个既有 Job，**并补上 Outbox 投递任务**
+   （正好是[定时任务方案](定时任务清单与调度方案.md)的 J1——同一次动手）
+4. 启动模块收敛：`shop-app-all`（一期主服务）+ `shop-app-worker`；
+   `worker` profile 退役，`api`/`ops` profile **保留**作 all 产物的运行时第二道锁
 
-### S1-full — C/B 再分开（触发条件到了再做）
+**拿到**：worker 独立发布与故障域；所有模块边界从「包约定」升级为**构建期事实**；
+令牌存储不用动（C/B/P 仍同进程，Ehcache 成立）。
+**没拿到**：端与端仍绑在一起发版——那是二期。
 
-- `cb-app` 一分为二；**此时才做**：令牌换 `RedisTokenStore`（§4.1）、
-  网关上线做统一域名/限流/灰度（§3.5）
-- 触发条件：B 端独立小程序上线（ADR-001 二期）、或 C/B 发版节奏开始互相拖累
+### S1-next — 二期按端拆开（触发条件到了再做）
+
+- 新增 `shop-app-c` / `-b` / `-p` 三个启动 pom，**代码零改动**；
+  **此时才做**：令牌换 `RedisTokenStore`（§4.1）、网关上线（§3.5）
+- 触发条件：B 端独立小程序上线（ADR-001 二期）、或各端发版节奏互相拖累
 
 ### S2 — 把事件链路跑起来（拆域的前置）
 
@@ -274,8 +317,9 @@ DataScope 是 MyBatis 拦截器（商家只能看自己的数据）。
 
 | 阶段 | 守卫 |
 |---|---|
-| S1 | `shop-app-c` 的依赖树里**不出现** ops 侧的域模块（ArchUnit / Maven `dependency:tree` 断言） |
-| S1 | 三个端服务各自启动，`/mp/**` 在 `b-svc` 上返回 404（沿用今天「路由不存在」的隔离口径） |
+| S1 | `@RestController` 只在 `shop-portal-*`，`@Scheduled` 只在 `shop-jobs`（ArchUnit） |
+| S1 | 域模块依赖树里不出现 portal / jobs / 启动模块；portal 之间互不依赖 |
+| S1 | `shop-app-worker` 起来无 HTTP；二期起 `shop-app-c` 依赖树不出现 `portal-p` |
 | S2 | `sys_outbox` 里 `PENDING` 超过 N 分钟的行数为 0（可观测指标，不是测试） |
 | S3 | 域服务之间**没有直接的表访问**：`grep` 别的域的 Mapper = 红 |
 | S3 | 端服务之间零调用（依赖树里互不出现） |
@@ -289,14 +333,15 @@ DataScope 是 MyBatis 拦截器（商家只能看自己的数据）。
 ## 7. 实现任务
 
 - [ ] T0 建 `module-graph.py` + `split-readiness.py`（度量常驻，是后续所有判断的依据）
-- [ ] T1 S1-lite：`shop-core` 按域拆成独立 Maven 模块（纯移动，不改业务代码）
-- [ ] T2 S1-lite：`shop-app` 拆 `cb-app` / `p-app` / `worker-app` + 依赖列表收敛
-- [ ] T3 S1-lite：依赖树守卫 + 路由隔离验证（`/ops/**` 在 cb-app 上 404）
-- [ ] （S1-full 的令牌换 Redis 与网关，等触发条件，见 §5）
-- [ ] T4 S2：Outbox 投递任务（见[定时任务方案](定时任务清单与调度方案.md) J1）
-- [ ] T5 S2：调用上下文透传（主体 + 数据域）
-- [ ] T6 S2：投递侧接 MQ
-- [ ] T7 S3：按 §5 顺序切域服务，每切一个补一条守卫
+- [ ] T1 S1：`shop-core` 一拆四 + community/fulfillment 归位 `shop-merchant`（纯移动）
+- [ ] T2 S1：Controller 迁出到 `shop-portal-c/b/p`（含 4 个特例的归属，见 §3.4.1）
+- [ ] T3 S1：新建 `shop-jobs`（迁 2 个 Job + 补 Outbox 投递任务）
+- [ ] T4 S1：启动模块收敛为 `shop-app-all` + `shop-app-worker`；profile 保留作运行时锁
+- [ ] T5 S1：五条依赖规则落 ArchUnit（§3.4.1）
+- [ ] （S1-next 的令牌换 Redis 与网关，等触发条件，见 §5）
+- [ ] T6 S2：调用上下文透传（主体 + 数据域）
+- [ ] T7 S2：Outbox 投递侧接 MQ
+- [ ] T8 S3：按 §5 顺序切域服务，每切一个补一条守卫
 
 ---
 
