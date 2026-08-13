@@ -267,11 +267,11 @@ Location: db/migration/V74__perm_backend_only_points.sql  Line 15
 
 ### 这一轮的遗留
 
-- **种子数据现在会说谎**：`DevSeeder` 给商家灌 `rating=48 / ratingCount=126`，
-  而评分改成派生之后，真实数字是「有几条评价就是几条」。M0001 已经从 4.8/126
-  变成 4.0/3。**要么让种子灌真的评价明细，要么把这两个数改成 0** ——
-  但 0 分在端上会显示成「0.0」而不是「暂无评价」（`MerchantBrief` 上没有 `ratingCount`
-  可判），所以这两件事得一起做。
+- ~~**种子数据现在会说谎**（`rating=48 / ratingCount=126`）~~ → **已修**（当日稍晚）：
+  种子改成与真实新店一样「中位分 + 0 条」，`MerchantBrief` 补了 `ratingCount`，
+  端上按 `ratingCount === 0` 显示「暂无评价」而不是 0 颗星。
+  <b>但幂等种子只对全新库生效</b>：开发库里 `M0002` 仍挂着旧的 4.8/126，
+  要清得手动 update 那两列或删行重启。
 - **B4「评价均分 ×0.8 + 订单量对数 ×0.2」仍未拍板**。当前口径是**纯评价均分**，
   只需改 `ReviewServiceImpl.aggregate()` 一个方法就能加上后一项。
 
