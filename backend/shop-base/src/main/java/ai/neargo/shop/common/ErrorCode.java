@@ -27,6 +27,9 @@ public enum ErrorCode {
     OTP_TOO_FREQUENT(10450, "err.otp.too_frequent"),
 
     OTP_DAILY_LIMIT(10451, "err.otp.daily_limit"),
+
+    /** 图形验证码错误或已过期。保护「测试发送」那个能指定任意收件人的接口 */
+    CAPTCHA_INVALID(10452, "err.captcha.invalid"),
     /**
      * 这条路**还没通**，不是参数错了。
      *
