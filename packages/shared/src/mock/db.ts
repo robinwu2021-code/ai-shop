@@ -330,19 +330,21 @@ const merchantSeeds: MerchantSeed[] = [
 ];
 
 /**
- * 商家评分 = 消费者评价均分 × 0.8 + 订单量得分 × 0.2。
- * 只按评价算的话，新商家一条五星就能顶满；把订单量按对数折算进来，
- * 让「卖得多且评价好」才拿得到高分，也避免刷单少量评价就冲顶。
- * ⚠️ 真实权重要业务定，这里是可跑通的占位算法 —— 见 TDD 待办。
+ * 商家评分 = **已通过审核的评价均分**。与后端 `ReviewServiceImpl.aggregate()` 同一口径。
+ *
+ * 这里原先实现的是「均分 ×0.8 + 订单量对数 ×0.2」，而后端从来没有实现过它 ——
+ * mock 下一个分、真机上另一个分，联调时会去查「为什么评分算错了」，
+ * 而两边都没错，只是各写各的。那个权重是《待完成功能清单》B4 里**还没拍板**的方案，
+ * 定了要三处一起改：这里、后端的 aggregate、以及商家页上那句 `basis` 文案。
+ *
+ * 没有评价时返回 **0 分 0 条**，不是凭空给 4.8：端上按 `ratingCount === 0`
+ * 显示「暂无评价」—— 一家没人评过的店和一家 0 分的店，对买家是相反的信号。
  */
 function computeRating(merchantNo: string): { rating: number; ratingCount: number } {
   const rs = db.reviews.filter((r) => r.merchantNo === merchantNo);
-  const seed = merchantSeeds.find((m) => m.merchantNo === merchantNo);
-  if (!rs.length) return { rating: seed?.verified ? 4.8 : 4.5, ratingCount: 0 };
+  if (!rs.length) return { rating: 0, ratingCount: 0 };
   const avg = rs.reduce((s, r) => s + r.rating, 0) / rs.length;
-  const volume = Math.min(1, Math.log10((seed?.salesCount ?? 0) + 1) / 4); // 万单封顶
-  const score = avg * 0.8 + (3 + volume * 2) * 0.2;
-  return { rating: Math.round(Math.min(5, score) * 10) / 10, ratingCount: rs.length };
+  return { rating: Math.round(avg * 10) / 10, ratingCount: rs.length };
 }
 
 export function merchantBrief(merchantNo: string): MerchantBrief {
@@ -352,6 +354,7 @@ export function merchantBrief(merchantNo: string): MerchantBrief {
     name: pick(seed.name),
     logo: seed.logo,
     rating: computeRating(seed.merchantNo).rating,
+    ratingCount: computeRating(seed.merchantNo).ratingCount,
     verified: seed.verified,
     breachCount: seed.breachCount,
   };

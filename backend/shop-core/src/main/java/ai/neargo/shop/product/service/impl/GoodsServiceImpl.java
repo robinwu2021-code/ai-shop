@@ -256,8 +256,8 @@ public class GoodsServiceImpl implements GoodsService {
          */
         var brief = merchantPort.find(g.getEntityNo())
                 .map(m -> new GoodsVO.MerchantBriefVO(m.merchantNo(), m.merchantName(),
-                        m.logo(), m.rating(), m.verified(), m.breachCount()))
-                .orElseGet(() -> new GoodsVO.MerchantBriefVO(g.getEntityNo(), "", "", 0d, false, 0));
+                        m.logo(), m.rating(), m.ratingCount(), m.verified(), m.breachCount()))
+                .orElseGet(() -> new GoodsVO.MerchantBriefVO(g.getEntityNo(), "", "", 0d, 0, false, 0));
 
         return new GoodsVO(
                 g.getGoodsNo(), g.getTitle(), g.getSubtitle(), g.getCover(),

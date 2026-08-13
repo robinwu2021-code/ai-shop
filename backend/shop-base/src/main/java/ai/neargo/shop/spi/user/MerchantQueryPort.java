@@ -130,7 +130,8 @@ public interface MerchantQueryPort {
      * @param canReceive   是否可收款（分账接收方已报备，ADR-002）
      */
     record MerchantBrief(String merchantNo, String merchantName, boolean canSell, boolean canReceive,
-                         String logo, double rating, boolean verified, int breachCount) {
+                         String logo, double rating, int ratingCount,
+                         boolean verified, int breachCount) {
     }
 
     /**
@@ -146,6 +147,10 @@ public interface MerchantQueryPort {
      */
     String pointsDenyReason(String merchantNo);
 
+    /**
+     * @param ratingCount 计入评分的评价条数。**没有它就分不清「0 分」和「还没人评过」**——
+     *                    对买家这是相反的信号：0 分是被打出来的，没人评过只是新开的
+     */
     /** 平台按行业强制开启积分，商家不可自行关闭。 */
     boolean isPointsForced(String merchantNo);
 

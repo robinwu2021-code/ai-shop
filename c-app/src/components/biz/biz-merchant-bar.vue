@@ -16,7 +16,10 @@ defineEmits<{ (e: "tap"): void }>();
           {{ $t("merchant.verified") }}
         </text>
       </view>
-      <sh-rating :value="merchant.rating" :size="24"></sh-rating>
+      <!-- **没人评过 ≠ 0 分**：一家 0 分的店是被打出来的，一家没人评过的只是新开的。
+           给新店挂一排空星，看着像差评店 —— 而它连被评的机会都还没有 -->
+      <sh-rating v-if="merchant.ratingCount > 0" :value="merchant.rating" :size="24"></sh-rating>
+      <text v-else class="sh-muted bar__norate">{{ $t("merchant.noRating") }}</text>
     </view>
     <text class="bar__more">{{ $t("merchant.enter") }}</text>
   </view>
@@ -59,6 +62,9 @@ defineEmits<{ (e: "tap"): void }>();
 .bar__verified {
   flex-shrink: 0;
   padding: 4rpx 14rpx;
+  font-size: 24rpx;
+}
+.bar__norate {
   font-size: 24rpx;
 }
 .bar__more {

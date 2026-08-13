@@ -201,6 +201,7 @@ export default {
     descPh: "وصف بسطر واحد (اختياري)",
     submitApply: "إرسال الطلب",
     verified: "موثّق",
+    noRating: "لا تقييمات بعد",
     enter: "زيارة ›",
     reply: "رد التاجر:",
     apply: "انضم كتاجر",

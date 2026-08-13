@@ -74,8 +74,10 @@ public record GoodsVO(String goodsNo,
     public record GroupBuyConfVO(int minCount, long price) {
     }
 
+    /** @param ratingCount 0 条 = 还没人评过，端上据此显示「暂无评价」而不是 0 颗星 */
     public record MerchantBriefVO(String merchantNo, String name, String logo,
-                                  double rating, boolean verified, int breachCount) {
+                                  double rating, int ratingCount,
+                                  boolean verified, int breachCount) {
     }
 
     public record SpecGroupVO(String name, List<String> options) {

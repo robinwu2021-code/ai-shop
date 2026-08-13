@@ -403,13 +403,26 @@ public class DevSeeder {
         m.setLegalForm("INDIVIDUAL");
         m.setDescription(desc);
         m.setOwnerUserNo(ownerUserNo);
-        m.setRating(48);
-        m.setRatingCount(126);
+        /*
+         * **评分与真实新店一样：中位分 + 0 条**，不再灌 4.8 / 126 条。
+         *
+         * 评分现在是派生值（`ReviewServiceImpl` 拿评价明细重算），而那 126 条
+         * 从来不存在 —— 一旦有人发第一条评价，数字会突然掉到 4.0 / 3 条，
+         * 看着像出了故障。**派生值只能由它的真源产生。**
+         *
+         * 中位分不是装饰：它与 `MerchantPortImpl.activate()` 同一条规矩（0 分会让
+         * 新店在按评分排的列表里垫底）。而页面按 `ratingCount == 0` 显示「暂无评价」，
+         * 所以它只影响排序，不会在屏幕上冒充一个 5.0。
+         *
+         * 销量与商品数不同：它们不派生自任何明细，是纯粹的演示道具，留着。
+         */
+        m.setRating(50);
+        m.setRatingCount(0);
         m.setSalesCount(1893);
         m.setGoodsCount(2);
-        m.setScoreGoods(49);
-        m.setScoreService(47);
-        m.setScoreSpeed(48);
+        m.setScoreGoods(50);
+        m.setScoreService(50);
+        m.setScoreSpeed(50);
         m.setVerified(verified);
         m.setBreachCount(0);
         m.setTags(tags);
@@ -437,8 +450,9 @@ public class DevSeeder {
         g.setCategoryNo("CAT210");   // 纸品清洁：无资质门槛，演示商品不该卡在准入上
         g.setFulfillments("[\"STORE_PICKUP\"]");
         g.setSpecGroups("[{\"name\":\"规格\",\"options\":" + optionsJson(skus) + "}]");
-        g.setRating(48);
-        g.setRatingCount(32);
+        // 同上：商品评分也是派生的，不灌一个假的评价数
+        g.setRating(50);
+        g.setRatingCount(0);
         g.setSales(240);
         g.setLimitPerUser(0);
         g.setOnSale(true);

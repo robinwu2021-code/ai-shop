@@ -279,6 +279,7 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
     }
 
     @Override
+                m.getRatingCount() == null ? 0 : m.getRatingCount(),
     public java.util.Map<String, MerchantBrief> findAll(java.util.Collection<String> merchantNos) {
         if (merchantNos == null || merchantNos.isEmpty()) {
             return java.util.Map.of();
@@ -301,6 +302,7 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
         }
         return out;
     }
+                    m.getRatingCount() == null ? 0 : m.getRatingCount(),
 
     @Override
     @Transactional
@@ -577,7 +579,7 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
      */
     @Override
     @Transactional
-    public void updateRating(String merchantNo, int ratingX10, int count) {
+    public void updateRating(String merchantNo, ai.neargo.shop.spi.user.MerchantRatingPort.Rating r) {
         MchEntity m = DataScopeContext.executeWithoutScope(() ->
                 merchantMapper.selectOne(Wrappers.<MchEntity>lambdaQuery()
                         .eq(MchEntity::getEntityNo, merchantNo).last("limit 1")));
@@ -585,8 +587,23 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
             // 商家不存在不该让「发表评价」整笔失败：评价本身是有效的
             return;
         }
-        m.setRating(ratingX10);
-        m.setRatingCount(count);
+        /*
+         * **一条评价都没有时回到中位分，而不是 0 分** —— 与 {@code activate()} 同一条规矩：
+         * 0 分会让这家店在任何按评分排的列表里垫底，而它还没有任何订单可以证明自己。
+         * 这条路径不只发生在新店：唯一那条评价被平台驳回、或申诉成立撤下之后，
+         * 商家会退回「还没人评过」的状态，那时也该退回中位分，不能因为一条被裁掉的
+         * 差评把他打到底。
+         *
+         * 展示层不看这个数：端上按 `ratingCount == 0` 显示「暂无评价」，
+         * 所以中位分只影响排序，不会在页面上冒充一个 5.0。
+         */
+        boolean rated = r.count() > 0;
+        m.setRating(rated ? r.ratingX10() : RATING_INIT);
+        m.setRatingCount(r.count());
+        // 三维度与综合分同源同一批评价：分开写会让看板与总分对不上，而没人看得出是哪边错
+        m.setScoreGoods(rated ? r.goodsX10() : RATING_INIT);
+        m.setScoreService(rated ? r.serviceX10() : RATING_INIT);
+        m.setScoreSpeed(rated ? r.speedX10() : RATING_INIT);
         DataScopeContext.executeWithoutScope(() -> merchantMapper.updateById(m));
     }
 

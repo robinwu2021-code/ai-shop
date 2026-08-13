@@ -154,6 +154,13 @@ class BizDashboardAndReviewFlowTest {
                 .andReturn().getResponse().getContentAsString();
         assertThat(json.readTree(after).get("data").get("ratingCount").asInt())
                 .as("被驳回的评价不计入").isZero();
+        /*
+         * **退回中位分，不是 0 分**。唯一那条评价被裁掉之后这家店回到「还没人评过」，
+         * 而 0 分会让他在按评分排的列表里垫底 —— 因为一条被平台判定为恶意的差评。
+         * 页面按 ratingCount == 0 显示「暂无评价」，所以这个数只影响排序。
+         */
+        assertThat(json.readTree(after).get("data").get("rating").asDouble())
+                .as("没人评过时回到中位分").isEqualTo(5.0);
     }
 
     @Test

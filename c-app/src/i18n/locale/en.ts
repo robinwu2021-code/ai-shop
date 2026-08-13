@@ -201,6 +201,7 @@ export default {
     descPh: "One-line description (optional)",
     submitApply: "Submit application",
     verified: "Verified",
+    noRating: "No reviews yet",
     enter: "Visit ›",
     reply: "Seller:",
     apply: "Sell with us",

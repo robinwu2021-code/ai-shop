@@ -140,7 +140,13 @@ class M6cGroupFlowTest {
             JsonNode quotes = quotes(owner, requestNo);
             // 用户在选报价时就要看到「这家毁过约」，而不是事后投诉
             assertThat(quotes.get(0).get("merchant").get("breachCount").asInt()).isEqualTo(2);
-            assertThat(quotes.get(0).get("merchant").get("rating").asDouble()).isGreaterThan(0);
+            /*
+             * 评分与评价数都要下发。**不断言「大于 0」** ——
+             * 评分改成派生之后，一家还没人评过的店就是 0 分 0 条，那是真话；
+             * 端上按 ratingCount 显示「暂无评价」，而不是挂一排空星当差评店。
+             */
+            assertThat(quotes.get(0).get("merchant").has("rating")).isTrue();
+            assertThat(quotes.get(0).get("merchant").get("ratingCount").asInt()).isZero();
         } finally {
             setBreachCount("M0002", 0);
         }

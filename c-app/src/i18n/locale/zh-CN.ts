@@ -223,6 +223,7 @@ export default {
     descPh: "一句话介绍（选填）",
     submitApply: "提交入驻申请",
     verified: "已认证",
+    noRating: "暂无评价",
     enter: "进店 ›",
     reply: "商家回复：",
     apply: "商家入驻",

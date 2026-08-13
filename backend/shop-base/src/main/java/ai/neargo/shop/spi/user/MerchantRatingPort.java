@@ -14,16 +14,27 @@ package ai.neargo.shop.spi.user;
 public interface MerchantRatingPort {
 
     /**
-     * 覆盖写商家的评分与评价数。<b>调用方必须传重算后的全量值，不是增量</b>。
+     * 覆盖写商家的评分。<b>调用方必须传重算后的全量值，不是增量</b>。
      *
      * <p>增量（+1 / 加权平均）在并发下会漂：两条评价同时落库，各自读到同一个旧值再写回，
      * 结果只算进去一条。而评分一旦漂了没有任何东西会发现 —— 它不报错，
      * 也没有对账口。所以这里的契约是「拿明细重算一遍，整个盖掉」。
      *
      * @param merchantNo 商家业务键
-     * @param ratingX10  评分 ×10（48 = 4.8 分）。<b>库里存整数</b>：
-     *                   浮点数在不同库/不同语言里round 得不一样，而这个数要展示给用户看
-     * @param count      计入评分的评价条数（只算审核通过的）
+     * @param rating     重算后的全量评分
      */
-    void updateRating(String merchantNo, int ratingX10, int count);
+    void updateRating(String merchantNo, Rating rating);
+
+    /**
+     * 商家评分的全量快照。<b>全部 ×10 存整数</b>（48 = 4.8 分）——
+     * 浮点数在不同库、不同语言里 round 得不一样，而这几个数是要展示给用户看的。
+     *
+     * @param ratingX10  综合评分
+     * @param count      计入评分的评价条数（只算审核通过的）
+     * @param goodsX10   商品维度
+     * @param serviceX10 服务维度
+     * @param speedX10   履约速度维度
+     */
+    record Rating(int ratingX10, int count, int goodsX10, int serviceX10, int speedX10) {
+    }
 }

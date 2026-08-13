@@ -338,8 +338,16 @@ export interface MerchantBrief {
   name: string;
   /** 店铺 logo URL */
   logo: string;
-  /** 综合评分，0–5，保留一位小数 */
+  /** 综合评分，0–5，保留一位小数。**0 分要配合 `ratingCount` 一起看** */
   rating: number;
+  /**
+   * 计入评分的评价条数。
+   *
+   * **没有它就分不清「0 分」和「还没人评过」** —— 而这两件事对买家是相反的信号：
+   * 一家 0 分的店是被人打差评打出来的，一家没人评过的店只是新开的。
+   * 端上按 `ratingCount === 0` 显示「暂无评价」，不要显示 0 颗星。
+   */
+  ratingCount: number;
   /** 是否通过资质认证 */
   verified: boolean;
   /** 选定报价后不履约的次数。>0 会在报价卡上公示 —— 事后信用替代事前审核 */

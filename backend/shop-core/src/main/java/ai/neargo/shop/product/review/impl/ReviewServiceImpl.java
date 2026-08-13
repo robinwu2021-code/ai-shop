@@ -457,7 +457,7 @@ public class ReviewServiceImpl implements ReviewService {
         if (merchantNo != null && !merchantNo.isBlank()) {
             var agg = aggregate(Wrappers.<RvwReview>lambdaQuery()
                     .eq(RvwReview::getEntityNo, merchantNo));
-            ratingPort.updateRating(merchantNo, agg.ratingX10(), agg.count());
+            ratingPort.updateRating(merchantNo, agg);
         }
         if (goodsNo == null || goodsNo.isBlank()) {
             return;
@@ -475,22 +475,42 @@ public class ReviewServiceImpl implements ReviewService {
         DataScopeContext.executeWithoutScope(() -> goodsMapper.updateById(g));
     }
 
-    private record RatingAgg(int ratingX10, int count) {
-    }
+
 
     /**
      * 一条评价都没有时返回 0 分 / 0 条 —— <b>不是默认给个 5 分</b>。
      * 新店本来就没人评过，端上按 count 显示「暂无评价」，而一个凭空的 5 分是假的。
      */
-    private RatingAgg aggregate(
+    private ai.neargo.shop.spi.user.MerchantRatingPort.Rating aggregate(
             com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<RvwReview> w) {
         List<RvwReview> rows = DataScopeContext.executeWithoutScope(() ->
                 reviewMapper.selectList(w.eq(RvwReview::getStatus, VISIBLE)));
         if (rows.isEmpty()) {
-            return new RatingAgg(0, 0);
+            return new ai.neargo.shop.spi.user.MerchantRatingPort.Rating(0, 0, 0, 0, 0);
         }
-        int sum = rows.stream().mapToInt(r -> nz(r.getRating())).sum();
-        return new RatingAgg(Math.round((float) sum * RATING_SCALE / rows.size()), rows.size());
+        /*
+         * **三维度与综合分取自同一批评价**。分开算的话看板会与总分对不上，
+         * 而对不上时没人看得出是哪一边错了。
+         *
+         * 三维度是选填的（老评价没有），所以各自只在填了的那些里平均 ——
+         * 把没填的当 0 分摊进去，会让一家店因为「有人只打了总分」而莫名其妙掉分。
+         */
+        return new ai.neargo.shop.spi.user.MerchantRatingPort.Rating(
+                avgX10(rows, RvwReview::getRating), rows.size(),
+                avgX10(rows, RvwReview::getScoreGoods),
+                avgX10(rows, RvwReview::getScoreService),
+                avgX10(rows, RvwReview::getScoreFulfillment));
+    }
+
+    /** 只算填了的那些；一条都没填返回 0（端上按 0 显示「暂无」） */
+    private static int avgX10(List<RvwReview> rows,
+                              java.util.function.Function<RvwReview, Integer> f) {
+        var vals = rows.stream().map(f).filter(v -> v != null && v > 0).toList();
+        if (vals.isEmpty()) {
+            return 0;
+        }
+        int sum = vals.stream().mapToInt(Integer::intValue).sum();
+        return Math.round((float) sum * RATING_SCALE / vals.size());
     }
 
     private OpsReviewVO toOpsVO(RvwReview r) {
