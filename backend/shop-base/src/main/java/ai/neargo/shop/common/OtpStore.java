@@ -51,8 +51,18 @@ public class OtpStore {
         this.limiter = limiter;
     }
 
+    /**
+     * @param code **明文**。
+     *
+     *             <p>安全整改方案 §2.4 提出改存哈希（防堆转储 / 未来 Redis 快照泄露），
+     *             **2026-08-13 决定不做**：验证码只活 5 分钟，且前面已经有四道闸
+     *             （发码三道 + 验码失败锁定）；而明文可读在排查「他到底收没收到、
+     *             收到的是不是这条」时是实打实的价值。
+     *             这个威胁要先攻破服务器才成立，那时泄露的远不止验证码。
+     */
     private record Entry(String code, Instant expireAt) {
     }
+
 
     private final Map<String, Entry> cache = new ConcurrentHashMap<>();
 
@@ -70,7 +80,8 @@ public class OtpStore {
      */
     public boolean verifyAndConsume(String phone, String code) {
         Entry e = cache.get(phone);
-        boolean ok = e != null && !Instant.now().isAfter(e.expireAt()) && e.code().equals(code);
+        boolean ok = e != null && !Instant.now().isAfter(e.expireAt())
+                && e.code().equals(code);
         if (ok) {
             cache.remove(phone);
             // 成功即清零：**按「连续失败」计数而不是累计失败** ——
@@ -87,12 +98,13 @@ public class OtpStore {
         return false;
     }
 
-    private static String failKey(String phone) {
-        return "otp:fail:" + phone;
-    }
-
     /** 仅供测试与本地联调读取当前有效码。生产没有任何调用方。 */
     public Optional<String> peek(String phone) {
         return Optional.ofNullable(cache.get(phone)).map(Entry::code);
     }
+
+    private static String failKey(String phone) {
+        return "otp:fail:" + phone;
+    }
+
 }
