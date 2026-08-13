@@ -1,7 +1,7 @@
 # TDD-短信与邮件通道接入
 
-状态：**待确认（有两处阻塞信息缺失，见 §7）**
-关联缺陷：[安全整改方案-认证与账号体系](安全整改方案-认证与账号体系.md) §二 **缺陷 B：OTP 零限流**（**未修**）
+状态：**已实现**（除 §8 T6 的「存哈希」一半，理由见 §9）
+关联缺陷：[安全整改方案-认证与账号体系](安全整改方案-认证与账号体系.md) §二 **缺陷 B：OTP 零限流** —— **本批修完**（四道闸齐）
 关联架构：[TDD-backend](TDD-backend.md) §4（`shop-channel` 只装适配器，不装业务判断）
 创建日期：2026-08-13
 
@@ -305,25 +305,26 @@ AliSmsGateway / SmtpMailGateway / Stub*
 
 ## 8. 实现任务
 
-- [ ] T1 `RateLimiter` ＋ `InMemoryRateLimiter`（落 `shop-base/common/ratelimit`，按安全方案 §2.3）
-- [ ] T2 三道发码闸接进 `AuthServiceImpl.sendOtp` ＋ 集成测试（场景 2、3）
-- [ ] T3 `SmsPort` / `MailPort` ＋ 两个 Stub 实现，`sendOtp` 改调 Port（场景 1）
-- [ ] T4 `AliSmsGateway`（dysmsapi SDK）＋ 配置 ＋ 缺密钥启动失败（场景 4、5）
-- [ ] T5 `SmtpMailGateway`（JavaMailSender）＋ 配置 ＋ 自检（场景 7）
-- [ ] T6 OTP 日志降级 ＋ 存哈希（场景 6，安全方案 §2.4）
-- [ ] **T7 场景 A：`createStaff` 改为邮件交付**，响应体不再含明文
+- [x] T1 `RateLimiter` ＋ `InMemoryRateLimiter`（落 `shop-base/common/ratelimit`，按安全方案 §2.3）
+- [x] T2 三道发码闸接进 `AuthServiceImpl.sendOtp` ＋ 集成测试（场景 2、3）
+- [x] T3 `SmsPort` / `MailPort` ＋ 两个 Stub 实现，`sendOtp` 改调 Port（场景 1）
+- [x] T4 `AliSmsGateway`（**不引 SDK**，JDK 自写签名 —— 见 §9）＋ 缺密钥启动失败（场景 4、5）
+- [x] T5 `SmtpMailGateway`（JavaMailSender）＋ 配置 ＋ 自检（场景 7）
+- [x] T6a OTP 日志降级（明文不再进 info）
+- [ ] T6b OTP **存哈希** —— 未做，理由见 §9
+- [x] **T7 场景 A：`createStaff` 改为邮件交付**，响应体不再含明文
       ＋ `password-delivery` 降级开关 ＋ ops-web 抽屉改文案（场景 8、9）
-- [ ] **T8 场景 B：`/ops/auth/forgot` ＋ `/ops/auth/reset`**（今天完全没有这条路径）
+- [x] **T8 场景 B：`/ops/auth/forgot` ＋ `/ops/auth/reset`**（今天完全没有这条路径）
       ＋ ops-web 登录页加「忘记密码」（场景 10、11）
-- [ ] T9 全量回归；文档记录「打开开关的前置条件」
-- [ ] （可选同批）T10 闸④验码失败锁定 —— 缺陷 B 本体
+- [x] T9 全量回归；文档记录「打开开关的前置条件」
+- [x] T10 闸④验码失败锁定 —— **做了**，安全方案称它是四条里最重要的一条
 
 **§3.6 追加的四项**：
 
-- [ ] T11 `sys_notify_log` 表 + 迁移；`NotifyLogging*Port` 装饰器（失败也记）
-- [ ] T12 `GET /ops/notify-logs` 列表端点 + ops-web 页面
-- [ ] T13 `GET /ops/captcha` 图形验证码（`java.awt`，2 分钟 TTL，一次性消费）
-- [ ] T14 `POST /ops/notify-logs/test-send`：权限码 + 图形验证码 + 限流三道齐
+- [x] T11 `sys_notify_log` 表 + 迁移；`NotifyLogging*Port` 装饰器（失败也记）
+- [x] T12 `GET /ops/notify-logs` 列表端点 + ops-web 页面
+- [x] T13 `GET /ops/captcha` 图形验证码（`java.awt`，2 分钟 TTL，一次性消费）
+- [x] T14 `POST /ops/notify-logs/test-send`：权限码 + 图形验证码 + 限流三道齐
 
 > ⚠️ T14 的三道闸**要一起上**。只上权限码的话，账号泄漏就等于拿到一台
 > 能指定任意收件人的群发机，而且发的是带平台签名的正规短信。
@@ -334,3 +335,52 @@ AliSmsGateway / SmtpMailGateway / Stub*
 ---
 
 确认记录：待确认
+
+
+---
+
+## 9. 实施记录（2026-08-13）
+
+**结果**：四道闸齐、两条真通道实测发通、运营端密码改走邮件、忘记密码从无到有、
+发送记录与测试发送落地。除 §8 T6b 外全部完成。
+
+### 9.1 ⚠️ 打开开关的前置条件（上线前逐条核对）
+
+| 开关 | 打开前必须成立 |
+|---|---|
+| `SHOP_SMS_STUB=false` | ① `SHOP_OTP_RATE_LIMIT` 为 `true`（默认就是）——它挡的是「谁都能循环调着烧短信费」；② `ALI_SMS_AK/SK/TPL_OTP` 三项齐（缺任一**直接起不来**，不会静默退回桩） |
+| `SHOP_MAIL_STUB=false` | ① `MAIL_USERNAME` ＋ `MAIL_PASSWORD`（邮箱开了 MFA 要填**应用密码**）；② **`MAIL_FROM` 必须等于 `MAIL_USERNAME`**，除非在 M365 后台授了「发送为」权限 |
+| `SHOP_OPS_PASSWORD_DELIVERY=mail` | 邮件通道已验通。否则新建的账号**永远没人能登录** —— 留 `response` 是逃生口 |
+
+已验通的实测值（2026-08-13）：短信模板 `SMS_474945291`、签名「数智邻购」；
+邮件 `platform@neargo.ai` 自发自收。
+
+### 9.2 两处依赖没按方案引，理由是硬约束
+
+§4 原写「不手写签名，引官方 SDK」。**实际两个依赖都改了**：
+
+- **阿里云 SDK 不引**：本项目一律 `mvn -o` 离线构建，SDK 及其依赖树不在本地仓，
+  引进来会让每个人的构建当场挂掉，报的还是「找不到依赖」。签名用 JDK 自带的写完不到
+  三十行，且对着真实接口验证发通过。
+- **`spring-boot-starter-mail` 不引**：本地仓只有 4.0.6 而 Boot BOM 要 4.0.7，
+  离线解析直接失败。改用 `jakarta.mail-api` ＋ `angus-mail`（本地都有）。
+
+签名里三处 URL 编码差异单独注释了：`URLEncoder` 把空格编成 `+`、不编 `~`、留着 `*`，
+三处都与阿里云口径不同，**任何一处不改都会一直返回签名错误**，而错误信息不说是哪个字符。
+
+### 9.3 测试没抓住、实机才抓住的三个
+
+1. **限流打翻了 374 个既有测试**：整套用例反复给同一号码发码，60 秒间隔闸全拦。
+   报的是 `NoSuchElement`（peek 不到码），看着像测试数据问题。
+   → `testcfg` 关限流，另用一个类专门把闸打开验。
+2. **验红发现自己写了个假测试**：「被拒不计数」的用例把 50 次重试全撞在同一时刻，
+   破坏实现后照样绿。重试必须摊在时间轴上才验得出来。
+3. **文案里的裸星号原样显示**，而守卫的豁免理由本身是错的（`Notice` 不解析 markdown）。
+   是实机截图发现的 —— 只跑测试的话，那条错误的豁免会一直留在守卫里。
+
+### 9.4 T6b（OTP 存哈希）为什么没做
+
+`peek()` 有 8 处以上测试调用，散在并行会话也在改的文件里。
+正确的替代路径**已经通了**：测试改用 `StubSmsGateway.last().code()` 拿码。
+等工作区修绿后单独一批做 —— 混在本批里会让 8 个测试类同时变动，
+而它们此刻不是绿的，出问题分不清是谁造成的。
