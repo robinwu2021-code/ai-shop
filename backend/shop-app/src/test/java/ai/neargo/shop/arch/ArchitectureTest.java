@@ -342,7 +342,12 @@ class ArchitectureTest {
                 // 它没有自己的表，只往别人的表上盖一个 archived_at，
                 // 表名由调用方的枚举给。四个域的这段逻辑逐字相同，
                 // 各写一遍必然漂移，而漂移的表现是「某个域归档了但列表还显示」。
-                "archive");
+                "archive",
+                // job：定时任务的统一外壳与运行记录（JobSupport / sys_job_run）。
+                // **不是业务域** —— 它不认识任何一个域的语义，只负责「计时、记录、兜住异常」。
+                // 它有自己的表（sys_job_run），但那是运维记录不是业务数据：
+                // 删光它不影响任何业务，只是从此答不出「这个任务跑没跑过」。
+                "job");
         List<String> known = new ArrayList<>(infra);
         known.addAll(List.of(DOMAINS));
 
