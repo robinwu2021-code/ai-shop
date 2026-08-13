@@ -159,8 +159,8 @@ public class FulfillmentQueryPortImpl implements FulfillmentQueryPort {
     private PickupOrder toPickupOrder(OrdSubOrder s) {
         List<PickupOrder.Item> items = itemMapper.selectList(Wrappers.<OrdItem>lambdaQuery()
                         .eq(OrdItem::getSubOrderNo, s.getSubOrderNo())).stream()
-                .map(i -> new PickupOrder.Item(i.getGoodsNo(), i.getTitle(), i.getSpec(),
-                        i.getQty() == null ? 0 : i.getQty()))
+                .map(i -> new PickupOrder.Item(i.getGoodsNo(), i.getSkuNo(), i.getTitle(),
+                        i.getCover(), i.getSpec(), i.getQty() == null ? 0 : i.getQty()))
                 .toList();
 
         var buyer = userPort.find(s.getUserNo());

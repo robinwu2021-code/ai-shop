@@ -11,6 +11,12 @@ import java.util.List;
 public record CommunityVO(String communityNo,
                           String name,
                           String address,
+                          /**
+                           * 所属城市码。**契约里一直是必填**，后端此前不下发 ——
+                           * 端上判「全市范围的商家在这个小区可不可达」要用它，
+                           * mock 里有、真机上是 undefined，于是那条判断在真机上恒为 false。
+                           */
+                          String cityCode,
                           int distance,
                           List<PickupVO> pickups) {
 

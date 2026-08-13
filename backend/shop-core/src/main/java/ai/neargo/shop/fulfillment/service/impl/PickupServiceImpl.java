@@ -130,17 +130,29 @@ public class PickupServiceImpl implements PickupService {
 
     @Override
     public List<PickingRowVO> picking(String pickupNo) {
+        // **按 SKU 聚合**（此前是 goodsNo|spec）：分拣是按规格分堆的，
+        // 而端上上报短少也要带 skuNo —— 聚合键与那件事对齐才不会两处再各推一遍
         Map<String, PickingRowVO> agg = new LinkedHashMap<>();
-        Map<String, Set<String>> buyers = new LinkedHashMap<>();
+        Map<String, List<PickingRowVO.Buyer>> buyers = new LinkedHashMap<>();
 
         for (PickupOrder o : orderPort.ordersOfPickup(requireScope(pickupNo), "WAIT_FULFILL")) {
             for (PickupOrder.Item item : o.items()) {
-                String key = item.goodsNo() + "|" + item.spec();
+                String key = item.skuNo() == null ? item.goodsNo() + "|" + item.spec()
+                        : item.skuNo();
                 PickingRowVO cur = agg.get(key);
                 int qty = (cur == null ? 0 : cur.totalQty()) + item.qty();
-                buyers.computeIfAbsent(key, k -> new LinkedHashSet<>()).add(o.subOrderNo());
-                agg.put(key, new PickingRowVO(item.goodsNo(), item.title(), item.spec(),
-                        qty, buyers.get(key).size()));
+                /*
+                 * **明细而不是计数**：分拣单上真正要做的是照着名字分堆。
+                 * 只给「3 个人」，店主分不出哪几件是谁的；而端上点某个人
+                 * 还要能上报短少（要 subOrderNo）。
+                 */
+                buyers.computeIfAbsent(key, k -> new ArrayList<>())
+                        .add(new PickingRowVO.Buyer(o.buyerNickname(), item.qty(), o.subOrderNo()));
+                List<PickingRowVO.Buyer> bs = buyers.get(key);
+                agg.put(key, new PickingRowVO(item.goodsNo(), item.skuNo(), item.title(),
+                        item.cover(), item.spec(), qty,
+                        (int) bs.stream().map(PickingRowVO.Buyer::orderNo).distinct().count(),
+                        List.copyOf(bs)));
             }
         }
         return List.copyOf(agg.values());

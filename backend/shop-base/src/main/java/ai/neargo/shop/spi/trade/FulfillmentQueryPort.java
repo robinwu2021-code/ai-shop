@@ -45,7 +45,13 @@ public interface FulfillmentQueryPort {
                        String buyerNickname, String buyerPhoneTail,
                        String groupNo, List<Item> items) {
 
-        public record Item(String goodsNo, String title, String spec, int qty) {
+        /**
+         * @param skuNo 分拣按 <b>SKU</b> 汇总，不是按商品 —— 同一件商品的两个规格
+         *              要分两堆点数，混在一起等于没分拣
+         * @param cover 照着点数时用来认货：一屏文字里找「五常大米」比看图慢得多
+         */
+        public record Item(String goodsNo, String skuNo, String title, String cover,
+                           String spec, int qty) {
         }
     }
 
