@@ -360,7 +360,30 @@ describe("路由归属与面包屑", () => {
       expect(leaf.perm).toBe("merchant:merchant:ban");
     });
 
-    it("★★ sort 只在**全部**兄弟都有时才生效 —— 部分有的话混排两头都不像", () => {
+    it("★★★ 少数项没有 sort 时，其余仍按服务端顺序排 —— 不能整体静默丢弃", () => {
+      /*
+       * 实测踩过：/ops/menu 只返回**有菜单功能点**的分区，而「经营看板」没有子功能，
+       * 于是它不在服务端菜单里。旧规则是「全部兄弟都有 sort 才排」，少这一个，
+       * 整个 L1 排序被整体丢弃 —— 运营在配置页点了上移，Rail 纹丝不动，且不报错。
+       */
+      const sections = NAV.map((s) => s.href);
+      const secOv: Record<string, { sort: number }> = {};
+      // 除首个（模拟经营看板缺席）外，全部给服务端 sort，且把第 2、3 个对调
+      NAV.slice(1).forEach((s, i) => { secOv[s.href] = { sort: (i + 1) * 10 }; });
+      secOv[sections[1]].sort = 20;
+      secOv[sections[2]].sort = 10;
+
+      const out = overlayNav(NAV, { sections: secOv }).map((s) => s.href);
+      expect(out[0], "没有 sort 的首项应当留在原位").toBe(sections[0]);
+      expect(out.slice(1, 3), "其余按服务端 sort 重排").toEqual([sections[2], sections[1]]);
+    });
+
+    it("★★ 一个 sort 都没有时原样返回 —— 服务端菜单没到手就别动顺序", () => {
+      expect(overlayNav(NAV, { sections: { [NAV[0].href]: { name: "x" } } })
+        .map((s) => s.href)).toEqual(NAV.map((s) => s.href));
+    });
+
+    it("★★ 叶子层同理：缺 sort 的跟着前一项走", () => {
       const s = NAV.find((x) => x.key === "store")!;
       const hrefs = s.children!.map((l) => l.href);
       const partial = overlayNav(NAV, { leaves: { [hrefs[1]]: { sort: 1 } } })

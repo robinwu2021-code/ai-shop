@@ -541,11 +541,31 @@ export function overlayNav(nav: NavSection[], overlay: NavOverlay | undefined): 
   const secOv = overlay?.sections ?? {};
   const leafOv = overlay?.leaves ?? {};
   if (Object.keys(secOv).length === 0 && Object.keys(leafOv).length === 0) return nav;
+  /**
+   * 按服务端 sort 重排；**没有 sort 的项跟着它前面那一项走**。
+   *
+   * 此前的规则是「全部兄弟都有 sort 才排，否则原样返回」—— 看着安全，
+   * 实测是个静默失效：`/ops/menu` 只返回**有菜单功能点**的分区，
+   * 而「经营看板」没有子功能，于是它不在服务端菜单里；少这一个，
+   * 整个 L1 排序就被整体丢弃 —— 运营在配置页点了上移，界面纹丝不动，
+   * 而没有任何报错。
+   *
+   * 现在：缺 sort 的项取「前一项的有效序 + 极小量」，从而**留在它原来的邻居旁边**，
+   * 其余按服务端顺序。首项缺 sort 时排在最前（哨兵值），与它在 nav.ts 里的位置一致。
+   */
   const sorted = <T>(items: T[], table: Record<string, NavOverlayEntry>, keyOf: (t: T) => string) => {
-    const withSort = items.map((it, i) => ({ it, i, s: table[keyOf(it)]?.sort }));
-    // 只有**全部**都有服务端 sort 才按它排；部分有的话混排出来的顺序两头都不像
-    if (withSort.some((x) => x.s === undefined)) return items;
-    return withSort.sort((a, b) => (a.s! - b.s!) || (a.i - b.i)).map((x) => x.it);
+    if (!items.some((it) => table[keyOf(it)]?.sort !== undefined)) return items;
+    let prev = Number.MIN_SAFE_INTEGER;
+    const keyed = items.map((it, i) => {
+      const s = table[keyOf(it)]?.sort;
+      prev = s ?? prev + 1e-6;
+      if (s === undefined && process.env.NODE_ENV !== "production") {
+        console.warn(`[nav] ${keyOf(it)} 在服务端菜单里没有 sort —— 它会跟着前一项走。`
+          + "如果它本该可调序，看看 /ops/menu 为什么没返回它");
+      }
+      return { it, i, k: prev };
+    });
+    return keyed.sort((a, b) => (a.k - b.k) || (a.i - b.i)).map((x) => x.it);
   };
   const out = nav.map((s) => {
     const ov = secOv[s.href];

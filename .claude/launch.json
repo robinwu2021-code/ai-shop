@@ -26,6 +26,18 @@
       "autoPort": false
     },
     {
+      "_comment": "运营端后端。与 backend 是**两个实例**：/ops/** 的控制器标了 @Profile(\"ops\")，与 api 互斥，一个实例只能是其中一种。ops-web 的 .env.local 里 NEXT_PUBLIC_API_BASE 指的就是 8082 —— 不起它，运营端所有列表都是 ERR_CONNECTION_REFUSED，而控制台看不出是「后端没起」还是「起错 profile」。",
+      "name": "backend-ops",
+      "runtimeExecutable": "/bin/zsh",
+      "runtimeArgs": [
+        "-lc",
+        "JAVA_HOME=/opt/homebrew/Cellar/openjdk@21/21.0.11/libexec/openjdk.jdk/Contents/Home mvn -o -f shop-app/pom.xml spring-boot:run -Dspring-boot.run.arguments='--server.port=8082 --spring.profiles.active=ops --shop.seed.enabled=true'"
+      ],
+      "cwd": "backend",
+      "port": 8082,
+      "autoPort": false
+    },
+    {
       "_comment": "运营端。ops 侧的接口在后端的 ops profile 下，与 api 互斥 —— 同时要 /mp 和 /ops 就得起两个后端实例（换 --server.port 与 profile），别改这里。",
       "name": "ops-web",
       "runtimeExecutable": "/bin/zsh",
