@@ -62,6 +62,34 @@ class M5AfterSaleFlowTest {
     // ---------------------------------------------------------------- 资损红线
 
     @Test
+    @DisplayName("★★ 售后单要带 updatedAt 与商家回复 —— 契约里有、后端不发，两个端都静默少一块")
+    void afterSaleCarriesReplyAndUpdatedAt() throws Exception {
+        Ordered o = placeAndPay("13200132090", 6980L);
+        String asNo = applyAfterSale(o, "RETURN_REFUND", "质量问题");
+        String biz = loginAsOwnerOf("M0001", "13200132091");
+        mvc().perform(post("/biz/after-sale/" + asNo + "/approve")
+                        .header("Authorization", "Bearer " + biz)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"remark\":\"同意，寄回后退款\"}"))
+                .andExpect(jsonPath("$.code").value(0));
+
+        /*
+         * 三个字段各对应一处「静默少一块」：
+         *   · updatedAt     —— B 端售后页每行的时间，缺了显示 NaN-NaN-NaN NaN:NaN
+         *   · merchantReply —— C 端订单页「商家回复：」整块不渲染，看着像商家没回
+         *   · createdAt     —— 申请时间
+         * 前两个此前要么没发、要么发的是库列名（merchantRemark），
+         * 而契约里两个名字都写着 —— 端上照契约写，屏幕上就少一块。
+         */
+        JsonNode as = json.readTree(detail(o.userToken, asNo)).get("data");
+        assertThat(as.get("updatedAt").asLong()).as("updatedAt 必须有值").isGreaterThan(0L);
+        assertThat(as.get("createdAt").asLong()).isGreaterThan(0L);
+        assertThat(as.get("merchantReply").asString())
+                .as("契约叫 merchantReply，不是库里的 merchantRemark")
+                .isEqualTo("同意，寄回后退款");
+    }
+
+    @Test
     @DisplayName("★ 退款前必须先回退分账（E4）—— 顺序由状态机强制")
     void splitMustBeReversedBeforeRefund() throws Exception {
         Ordered o = placeAndPay("13200132001", 6980L);
@@ -145,7 +173,7 @@ class M5AfterSaleFlowTest {
         mvc().perform(post("/biz/after-sale/" + asNo + "/reject").header("Authorization", "Bearer " + biz)
                         .contentType(MediaType.APPLICATION_JSON).content("{\"remark\":\"商品无质量问题\"}"))
                 .andExpect(jsonPath("$.data.status").value("REJECTED"))
-                .andExpect(jsonPath("$.data.merchantRemark").value("商品无质量问题"));
+                .andExpect(jsonPath("$.data.merchantReply").value("商品无质量问题"));
 
         mvc().perform(post("/mp/after-sale/" + asNo + "/escalate")
                         .header("Authorization", "Bearer " + o.userToken)
@@ -276,7 +304,9 @@ class M5AfterSaleFlowTest {
                         .header("Authorization", "Bearer " + o.userToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"expressCompany\":\"顺丰\",\"expressNo\":\"SF123\"}"))
-                .andExpect(jsonPath("$.data.expressNo").value("SF123"));
+                // 契约里叫 returnExpressNo（用户寄回的那张单）——
+                // 后端此前发的是库列名 expressNo，端上照契约写就取不到
+                .andExpect(jsonPath("$.data.returnExpressNo").value("SF123"));
 
         mvc().perform(post("/biz/after-sale/" + asNo + "/receive").header("Authorization", "Bearer " + biz))
                 .andExpect(jsonPath("$.data.status").value("REFUNDED"));

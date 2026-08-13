@@ -25,7 +25,7 @@ public interface AfterSaleService {
     List<AfterSaleVO> merchantList(String merchantNo, String status);
 
     /** 同意。**退货退款的「同意」不等于退钱** —— 要等收到货（见实现）。 */
-    AfterSaleVO approve(String merchantNo, String afterSaleNo);
+    AfterSaleVO approve(String merchantNo, String afterSaleNo, String remark);
 
     /** 驳回。{@code remark} 必填 —— 用户要据此决定是否申诉。 */
     AfterSaleVO reject(String merchantNo, String afterSaleNo, String remark);

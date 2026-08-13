@@ -1842,6 +1842,17 @@
 | `returnExpressNo` | `string` | 否 | 用户寄回的运单号（RETURN_REFUND） |
 | `disputeReason` | `string` | 否 | 上升平台时用户的申诉理由 |
 | `updatedAt` | `number` | 是 | 最后一次状态变更时间。超时自动同意等时效规则以它为基准 |
+| `createdAt` | `number` | 否 | 申请时间 |
+| `liability` | `string` | 否 | 责任方，平台裁决后才有（口径未定） |
+| `timeline` | `object`（见下）\[\] | 否 | 售后自己的时间线（申请 → 同意 → 寄回 → 退款），与订单时间线分开 |
+
+`timeline[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `status` | `string` | 是 | — |
+| `label` | `string` | 是 | — |
+| `at` | `number` | 是 | — |
 
 ### AfterSaleReason
 

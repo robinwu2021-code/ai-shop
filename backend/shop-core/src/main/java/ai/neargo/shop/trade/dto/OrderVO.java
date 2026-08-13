@@ -53,7 +53,15 @@ public record OrderVO(String orderNo,
                       Receiver receiver,
                       List<TimelineNode> timeline,
                       /** **仅支付视角**：一次支付覆盖的各商家订单 */
-                      List<OrderVO> subOrders) {
+                      List<OrderVO> subOrders,
+                      /**
+                       * 下单人昵称。**商家侧才有**（B12：认得出是谁，不给联系方式）。
+                       *
+                       * <p>端上的契约一直有这个字段，后端此前不下发 —— 于是
+                       * B 端售后页每一行的买家都是「—」：店主要处理一张退货单，
+                       * 却看不到是谁申请的，只能回订单列表里对号入座。
+                       */
+                      String buyerNickname) {
 
     /**
      * 金额值对象（字段名随 c-app）。把 8 个金额收在一起，

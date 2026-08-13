@@ -44,7 +44,9 @@ public class PlatformOrderServiceImpl implements PlatformOrderService {
                         // 平台侧也要看得到快递单号：客服处理「货到哪了」全靠它
                         // 收件人先不下发：平台端列表是「查单」不是「送货」，
                         // 真要给也该是另一档口径，别顺着商家那套走
-                        null, 0L, null, s.getExpressNo(), s.getTrafficSource(), null, List.of(), null))
+                        null, 0L, null, s.getExpressNo(), s.getTrafficSource(), null, List.of(), null,
+                        // 买家昵称：平台端列表是「查单」，认人靠订单号与手机号尾号
+                        null))
                 .toList();
         return PageData.of(records, p.getTotal(), p.getCurrent(), p.getSize());
     }

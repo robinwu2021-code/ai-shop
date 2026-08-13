@@ -218,8 +218,12 @@ public class AfterSaleServiceImpl implements AfterSaleService {
 
     @Override
     @Transactional
-    public AfterSaleVO approve(String merchantNo, String afterSaleNo) {
+    public AfterSaleVO approve(String merchantNo, String afterSaleNo, String remark) {
         OrdAfterSale as = ofMerchant(merchantNo, afterSaleNo);
+        // 说明可空；给了就留下来 —— C 端订单页那句「商家回复」读的就是它
+        if (remark != null && !remark.isBlank()) {
+            as.setMerchantRemark(remark.trim());
+        }
 
         if (OrdAfterSale.RETURN_REFUND.equals(as.getType())) {
             // 退货退款：同意 ≠ 立刻退钱，要等收到货。这里只推进到「等待寄回」
@@ -382,7 +386,9 @@ public class AfterSaleServiceImpl implements AfterSaleService {
                 as.getType(), as.getStatus(), as.getReason(), readList(as.getImages()),
                 as.getRefundMinor() == null ? 0L : as.getRefundMinor(),
                 Boolean.TRUE.equals(as.getInstant()), as.getMerchantRemark(),
-                as.getExpressNo(), as.getLiability(), millis(as.getCreatedAt()), timeline);
+                as.getExpressNo(), as.getLiability(), millis(as.getCreatedAt()),
+                // 更新时间：库里有 updated_at，此前没往外发 —— 两个端都按它显示「最后动了什么时候」
+                millis(as.getUpdatedAt()), timeline);
     }
 
     private void appendLog(String subOrderNo, String status, String label,
@@ -463,7 +469,7 @@ public class AfterSaleServiceImpl implements AfterSaleService {
         return new OpsAfterSaleVO(base.afterSaleNo(), base.subOrderNo(), base.orderNo(),
                 as.getEntityNo(), merchantName, buyerNickname,
                 base.type(), base.status(), base.reason(), base.images(), base.refundMinor(),
-                base.instant(), base.merchantRemark(), base.expressNo(), base.liability(),
+                base.instant(), base.merchantReply(), base.returnExpressNo(), base.liability(),
                 base.createdAt(), base.timeline());
     }
 

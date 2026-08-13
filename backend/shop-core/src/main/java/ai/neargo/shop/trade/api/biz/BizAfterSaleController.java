@@ -40,10 +40,21 @@ public class BizAfterSaleController {
         return afterSaleService.merchantList(BizContext.requireMerchantNo(), status);
     }
 
+    /**
+     * 同意。**收商家的说明**（可空）。
+     *
+     * <p>此前这个端点不收 body，而端上一直在发 `{remark}` —— 于是
+     * <b>商家同意时写的那句话被丢在半路</b>：C 端订单页的「商家回复」永远是空的，
+     * 买家只看到状态变了、不知道商家说了什么。驳回那条一直是收的，
+     * 两条路一个收一个不收，看起来像「同意不需要解释」——
+     * 而实际最需要解释的正是「同意退货、请寄回」这种。
+     */
     @PreAuthorize("@perm.canBiz('" + BizPerms.AFTERSALE + "')")
     @PostMapping("/biz/after-sale/{afterSaleNo}/approve")
-    public AfterSaleVO approve(@PathVariable String afterSaleNo) {
-        return afterSaleService.approve(BizContext.requireMerchantNo(), afterSaleNo);
+    public AfterSaleVO approve(@PathVariable String afterSaleNo,
+                               @RequestBody(required = false) ApproveReq req) {
+        return afterSaleService.approve(BizContext.requireMerchantNo(), afterSaleNo,
+                req == null ? null : req.remark());
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.AFTERSALE + "')")
@@ -59,5 +70,9 @@ public class BizAfterSaleController {
     }
 
     public record RejectReq(@NotBlank String remark) {
+    }
+
+    /** @param remark 同意时的说明，可空 —— 驳回必须给理由，同意不强制 */
+    public record ApproveReq(String remark) {
     }
 }

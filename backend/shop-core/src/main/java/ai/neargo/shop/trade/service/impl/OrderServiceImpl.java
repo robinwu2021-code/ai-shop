@@ -921,13 +921,17 @@ public class OrderServiceImpl implements OrderService {
                     OrderVO.Amount.of(g.goodsAmount(), g.freight,
                             discounts.of(g.merchantNo), 0L, CURRENCY_CNY),
                     // 预览还没有单，收件人自然也没有
-                    null, null, null, null, 0L, null, null, null, null, List.of(), null)).toList();
+                    null, null, null, null, 0L, null, null, null, null, List.of(), null,
+                // 买家昵称只在商家侧下发（B12）——C 端自己就是买家，不需要
+                null)).toList();
 
             return new OrderVO(null, null, OrdOrder.WAIT_PAY, null, null, null,
                     children.stream().flatMap(c -> c.items().stream()).toList(),
                     OrderVO.Amount.of(goodsAmount(), freightAmount(),
                             discounts.total(), 0L, CURRENCY_CNY),
-                    null, null, null, null, 0L, null, null, null, null, List.of(), children);
+                    null, null, null, null, 0L, null, null, null, null, List.of(), children,
+                // 买家昵称只在商家侧下发（B12）——C 端自己就是买家，不需要
+                null);
         }
     }
 
@@ -990,6 +994,8 @@ public class OrderServiceImpl implements OrderService {
                 // 买家看自己的单：完整地址与完整手机号，那本来就是他填的
                 receiverOf(s),
                 timelineOf(s.getSubOrderNo()),
+                null,
+                // 买家昵称只在商家侧下发（B12）——C 端自己就是买家，不需要
                 null);
     }
 
@@ -1020,7 +1026,9 @@ public class OrderServiceImpl implements OrderService {
                 null, null, null,
                 order.getPayDeadlineAt(), millis(order.getCreatedAt()), order.getPaidAt(),
                 // 支付视角跨商家，没有单一快递号 —— 它在每个子单上。收件人同理
-                null, null, null, List.of(), children);
+                null, null, null, List.of(), children,
+                // 买家昵称只在商家侧下发（B12）——C 端自己就是买家，不需要
+                null);
     }
 
     private OrderVO.ItemVO toItemVO(OrdItem i) {

@@ -2407,4 +2407,10 @@ export interface AfterSale {
   disputeReason?: string;
   /** 最后一次状态变更时间。超时自动同意等时效规则以它为基准 */
   updatedAt: number;
+  /** 申请时间 */
+  createdAt?: number;
+  /** 责任方，平台裁决后才有（口径未定） */
+  liability?: string;
+  /** 售后自己的时间线（申请 → 同意 → 寄回 → 退款），与订单时间线分开 */
+  timeline?: { status: string; label: string; at: number }[];
 }

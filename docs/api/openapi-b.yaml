@@ -1709,6 +1709,29 @@ components:
         updatedAt: 
           type: "number"
           description: "最后一次状态变更时间。超时自动同意等时效规则以它为基准"
+        createdAt: 
+          type: "number"
+          description: "申请时间"
+        liability: 
+          type: "string"
+          description: "责任方，平台裁决后才有（口径未定）"
+        timeline: 
+          type: "array"
+          items: 
+            type: "object"
+            properties: 
+              status: 
+                type: "string"
+              label: 
+                type: "string"
+              at: 
+                type: "number"
+            required: 
+              - "status"
+              - "label"
+              - "at"
+            additionalProperties: false
+          description: "售后自己的时间线（申请 → 同意 → 寄回 → 退款），与订单时间线分开"
       required: 
         - "afterSaleNo"
         - "subOrderNo"

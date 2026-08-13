@@ -225,7 +225,11 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
                         : s.getCreatedAt().atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli(),
                 main == null ? null : main.getPaidAt(),
                 // 商家也要看得到自己填了什么单号 —— 否则改单号之后无从核对
-                s.getExpressNo(), s.getTrafficSource(), receiverFor(s), List.of(), null);
+                s.getExpressNo(), s.getTrafficSource(), receiverFor(s), List.of(), null,
+                // 认人用：售后页、配送单都要显示「谁的单」。**只给昵称**，联系方式走
+                // receiver 那一档（B12：商家不需要能打给每一个买家）
+                main == null ? null : userPort.find(main.getUserNo())
+                        .map(ai.neargo.shop.spi.user.UserQueryPort.UserBrief::nickname).orElse(null));
     }
 
     private static final int PHONE_TAIL = 4;
