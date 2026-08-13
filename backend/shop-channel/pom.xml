@@ -31,6 +31,33 @@
             <artifactId>shop-base</artifactId>
             <version>${project.version}</version>
         </dependency>
+
+        <!--
+          邮件：JavaMailSender。Boot 的标准件，本地仓已有。
+
+          ⚠️ **阿里云短信刻意不引官方 SDK**（com.aliyun:dysmsapi20170525）：
+          本项目一律 `mvn -o` 离线构建，而那套 SDK 及其依赖树不在本地仓里 ——
+          引进来会让每个人的构建当场挂掉，且报的是「找不到依赖」，
+          与短信功能毫无关联。它的签名是 HMAC-SHA1 + 参数排序，用 JDK 自带的
+          crypto 与 HttpClient 三十行写完，且已对着真实接口验证发通过。
+        -->
+        <!--
+          直接用 jakarta.mail + angus 实现，**不引 spring-boot-starter-mail**：
+          本地仓里 starter 只有 4.0.6，而 Boot BOM 要 4.0.7，离线构建当场解析失败。
+          底层这两个本地都有，且我们只需要 Session + Transport，
+          用不到 JavaMailSender 那层封装与它的自动配置。
+        -->
+        <dependency>
+            <groupId>jakarta.mail</groupId>
+            <artifactId>jakarta.mail-api</artifactId>
+            <version>2.1.5</version>
+        </dependency>
+        <dependency>
+            <groupId>org.eclipse.angus</groupId>
+            <artifactId>angus-mail</artifactId>
+            <version>2.0.5</version>
+            <scope>runtime</scope>
+        </dependency>
     </dependencies>
 
 </project>

@@ -92,6 +92,42 @@ shop:
     # 积分一期关闭：成本模型已定但跨商家清算未定（ADR-006 §2），打开开关即上线
     points: false
 
+  # 短信与邮件。**密钥一律走环境变量**，不写进这个文件、不进代码库。
+  # 本地模板见 backend/.env.local.example。
+  sms:
+    # 桩：只打日志不真发。**默认 true，与支付相反** ——
+    # 支付默认 stub=false 是因为「假装支付成功」是资金事故；短信反过来：
+    # 默认发真短信意味着本地跑一次测试就在花钱，还会真骚扰到测试手机号。
+    #
+    # ⚠️ 改成 false 之前必须确认发码限流开着（shop.otp.rate-limit，默认 true）——
+    # /mp/user/otp/send 是公网未鉴权端点，没限流 = 谁都能循环调着烧短信费。
+    stub: ${SHOP_SMS_STUB:true}
+    ali:
+      endpoint: ${ALI_SMS_ENDPOINT:dysmsapi.aliyuncs.com}
+      sign: ${ALI_SMS_SIGN:}
+      access-key-id: ${ALI_SMS_AK:}
+      access-key-secret: ${ALI_SMS_SK:}
+      templates:
+        # 阿里云后台报备通过的验证码模板号。缺它一条也发不出去，所以启动即校验
+        otp: ${ALI_SMS_TPL_OTP:}
+  mail:
+    stub: ${SHOP_MAIL_STUB:true}
+    host: ${MAIL_HOST:smtp.office365.com}
+    port: ${MAIL_PORT:587}
+    protocols: ${MAIL_PROTOCOLS:TLSv1.2}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    # **必须与 username 一致**，除非在 M365 后台授了「发送为」权限：
+    # 实测认证会成功而投递被拒（554 SendAsDenied）
+    from: ${MAIL_FROM:}
+
+  # 发码限流（安全整改方案 §2.2 的三道闸）。**生产必须开着**
+  otp:
+    rate-limit: ${SHOP_OTP_RATE_LIMIT:true}
+    interval-seconds: ${SHOP_OTP_INTERVAL_SECONDS:60}
+    daily-per-phone: ${SHOP_OTP_DAILY_PER_PHONE:10}
+    hourly-per-ip: ${SHOP_OTP_HOURLY_PER_IP:20}
+
   # 支付通道。**密钥一律走环境变量**，不写进这个文件、不进代码库。
   pay:
     # 假网关：只在开发期开。默认 false —— 默认开的话，真实现没接上时
