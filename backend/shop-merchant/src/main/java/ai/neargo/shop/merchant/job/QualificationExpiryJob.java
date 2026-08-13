@@ -1,6 +1,7 @@
 package ai.neargo.shop.merchant.job;
 
 import ai.neargo.shop.merchant.service.MerchantGovernService;
+import ai.neargo.shop.job.JobSupport;
 import ai.neargo.shop.spi.platform.AuditLogPort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,9 +33,13 @@ public class QualificationExpiryJob {
     private final MerchantGovernService governService;
     private final AuditLogPort auditLogPort;
 
-    public QualificationExpiryJob(MerchantGovernService governService, AuditLogPort auditLogPort) {
+    private final JobSupport jobs;
+
+    public QualificationExpiryJob(MerchantGovernService governService, AuditLogPort auditLogPort,
+                                  JobSupport jobs) {
         this.governService = governService;
         this.auditLogPort = auditLogPort;
+        this.jobs = jobs;
     }
 
     /**
@@ -53,16 +58,19 @@ public class QualificationExpiryJob {
     // 但它会重复写审计并重复触达商家。**通知发两遍，商家会以为出了两次问题。**
     @SchedulerLock(name = "qualification-expiry", lockAtLeastFor = "PT4M", lockAtMostFor = "PT30M")
     public void scan() {
-        Set<String> affected = governService.expireOverdueQualifications();
-        if (affected.isEmpty()) {
-            return;
-        }
-        log.warn("资质到期：{} 家商家的资质已置为过期 {}", affected.size(), affected);
-        for (String merchantNo : affected) {
-            // 写审计而不是只打日志：运营要能在后台看到「谁什么时候过期的」，
-            // 而不是去翻服务器日志
-            auditLogPort.record("QUALIFICATION_EXPIRED", merchantNo,
-                    "资质到期，已置为 EXPIRED；该商家无法再上架需资质的类目");
-        }
+        jobs.run("qualification-expiry", () -> {
+            Set<String> affected = governService.expireOverdueQualifications();
+            if (affected.isEmpty()) {
+                return null;
+            }
+            log.warn("资质到期：{} 家商家的资质已置为过期 {}", affected.size(), affected);
+            for (String merchantNo : affected) {
+                // 写审计而不是只打日志：运营要能在后台看到「谁什么时候过期的」，
+                // 而不是去翻服务器日志
+                auditLogPort.record("QUALIFICATION_EXPIRED", merchantNo,
+                        "资质到期，已置为 EXPIRED；该商家无法再上架需资质的类目");
+            }
+            return affected.size() + " 家商家的资质已过期";
+        });
     }
 }

@@ -1,5 +1,6 @@
 package ai.neargo.shop.event;
 
+import ai.neargo.shop.job.JobSupport;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,11 +42,13 @@ public class OutboxDispatchJob {
     private static final Logger log = LoggerFactory.getLogger(OutboxDispatchJob.class);
 
     private final OutboxDispatcher dispatcher;
+    private final JobSupport jobs;
     private final int warnBacklog;
 
-    public OutboxDispatchJob(OutboxDispatcher dispatcher,
+    public OutboxDispatchJob(OutboxDispatcher dispatcher, JobSupport jobs,
                              @Value("${shop.job.outbox.warn-backlog:200}") int warnBacklog) {
         this.dispatcher = dispatcher;
+        this.jobs = jobs;
         this.warnBacklog = warnBacklog;
     }
 
@@ -58,30 +61,22 @@ public class OutboxDispatchJob {
      */
     @SchedulerLock(name = "outbox-dispatch", lockAtLeastFor = "PT3S", lockAtMostFor = "PT2M")
     public void dispatch() {
-        int sent;
-        try {
-            sent = dispatcher.dispatchPending();
-        } catch (RuntimeException e) {
+        // 计时、记录、兜异常都在 JobSupport 里 —— 每个任务各写一遍的结果是
+        // 「写了的兜住了，忘了的静默失败」，而忘了的那个恰恰是最新加的那个
+        jobs.run("outbox-dispatch", () -> {
+            int sent = dispatcher.dispatchPending();
+            if (sent == 0) {
+                return null;   // 没有待发事件是常态
+            }
             /*
-             * **兜住异常**：@Scheduled 方法抛出去时 Spring 只打一行 ERROR，
-             * 下一轮照常跑。看着像没事，实际是每 5 秒失败一次而没人发现。
-             * 这里显式记，且记成 error —— 投递整轮失败是要人去看的。
+             * 一轮投出的条数逼近批上限，说明积压在涨（一批只取 BATCH_SIZE 条）。
+             * 这是「消费者卡住了」或「事件产出快过投递」的第一个信号，
+             * 而它比「站内信没收到」的用户反馈早得多。
              */
-            log.error("[outbox] 投递整轮失败 —— 站内信正在积压", e);
-            return;
-        }
-        if (sent == 0) {
-            return;   // 没有待发事件是常态，不打日志
-        }
-        /*
-         * 一轮投出的条数逼近批上限，说明积压在涨（一批只取 BATCH_SIZE 条）。
-         * 这是「消费者卡住了」或「事件产出快过投递」的第一个信号，
-         * 而它比「站内信没收到」的用户反馈早得多。
-         */
-        if (sent >= warnBacklog) {
-            log.warn("[outbox] 本轮投出 {} 条，已达告警线 —— 事件在积压，去看消费者是不是卡了", sent);
-        } else {
-            log.info("[outbox] 投出 {} 条", sent);
-        }
+            if (sent >= warnBacklog) {
+                log.warn("[outbox] 本轮投出 {} 条，已达告警线 —— 事件在积压，去看消费者是不是卡了", sent);
+            }
+            return "投出 " + sent + " 条";
+        });
     }
 }

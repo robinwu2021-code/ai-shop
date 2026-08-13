@@ -1,5 +1,6 @@
 package ai.neargo.shop.settle.job;
 
+import ai.neargo.shop.job.JobSupport;
 import ai.neargo.shop.settle.service.ReconService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,9 +27,11 @@ public class ReconScanJob {
     private static final Logger log = LoggerFactory.getLogger(ReconScanJob.class);
 
     private final ReconService reconService;
+    private final JobSupport jobs;
 
-    public ReconScanJob(ReconService reconService) {
+    public ReconScanJob(ReconService reconService, JobSupport jobs) {
         this.reconService = reconService;
+        this.jobs = jobs;
     }
 
     @Scheduled(cron = "0 */10 * * * *")
@@ -37,21 +40,23 @@ public class ReconScanJob {
     // lockAtLeastFor 只给 30 秒 —— 扫得快是常态，锁太久会让下一轮白等。
     @SchedulerLock(name = "recon-scan", lockAtLeastFor = "PT30S", lockAtMostFor = "PT9M")
     public void scan() {
-        ReconService.ScanResult r = reconService.scan(System.currentTimeMillis());
-        if (r.scanned() == 0) {
-            return;
-        }
-        /*
-         * 有补回或关单就打 WARN：这两件事都意味着回调链路漏了一笔，
-         * 而回调持续漏单是要人去查的（通道配置、回调域名、我方 502），
-         * 不该淹没在 INFO 里。
-         */
-        if (r.repaired() > 0 || r.closed() > 0) {
-            log.warn("[recon] 自查 {} 笔：**补回 {}** · 关单 {} · 留待下轮 {} —— "
-                            + "补回不为零说明支付回调漏了单，要查回调链路",
-                    r.scanned(), r.repaired(), r.closed(), r.deferred());
-        } else {
-            log.info("[recon] 自查 {} 笔，无需处置（留待下轮 {}）", r.scanned(), r.deferred());
-        }
+        jobs.run("recon-scan", () -> {
+            ReconService.ScanResult r = reconService.scan(System.currentTimeMillis());
+            if (r.scanned() == 0) {
+                return null;
+            }
+            /*
+             * 有补回或关单就打 WARN：这两件事都意味着回调链路漏了一笔，
+             * 而回调持续漏单是要人去查的（通道配置、回调域名、我方 502），
+             * 不该淹没在 INFO 里。
+             */
+            if (r.repaired() > 0 || r.closed() > 0) {
+                log.warn("[recon] 自查 {} 笔：**补回 {}** · 关单 {} · 留待下轮 {} —— "
+                                + "补回不为零说明支付回调漏了单，要查回调链路",
+                        r.scanned(), r.repaired(), r.closed(), r.deferred());
+            }
+            return "自查 %d 笔（补回 %d · 关单 %d · 留待 %d）"
+                    .formatted(r.scanned(), r.repaired(), r.closed(), r.deferred());
+        });
     }
 }
