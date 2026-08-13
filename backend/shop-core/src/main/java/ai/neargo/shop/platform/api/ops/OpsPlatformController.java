@@ -55,6 +55,30 @@ public class OpsPlatformController {
         return opsService.login(req.username(), req.password());
     }
 
+    /**
+     * 忘记密码：往登录名那个邮箱发一次性重置码。
+     *
+     * <p><b>免鉴权</b>（忘了密码自然登不进来），且**无论账号存不存在都返回成功** ——
+     * 区分开等于送了个账号探测器，而运营账号的价值远高于普通用户。
+     */
+    @PostMapping("/ops/auth/forgot")
+    public void forgot(@RequestBody ForgotReq req) {
+        opsService.forgotPassword(req.username());
+    }
+
+    /** 用邮件里的重置码设新密码。免鉴权，安全性全靠那个一次性令牌。 */
+    @PostMapping("/ops/auth/reset")
+    public void reset(@RequestBody ResetReq req) {
+        opsService.resetPassword(req.token(), req.newPassword());
+    }
+
+    public record ForgotReq(@NotBlank String username) {
+    }
+
+    /** @param newPassword 至少 8 位 */
+    public record ResetReq(@NotBlank String token, @NotBlank String newPassword) {
+    }
+
     @GetMapping("/ops/auth/me")
     public StaffVO me() {
         return opsService.me();

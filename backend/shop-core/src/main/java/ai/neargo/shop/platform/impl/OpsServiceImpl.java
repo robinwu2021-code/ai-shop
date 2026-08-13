@@ -72,6 +72,8 @@ public class OpsServiceImpl implements OpsService {
     private final ai.neargo.shop.platform.MasterDataService masterDataService;
     private final ai.neargo.shop.auth.PasswordHasher passwordHasher;
     private final ai.neargo.shop.message.notify.NotifyLoggingMailPort mailPort;
+    private final PasswordResetTokens resetTokens;
+    private final ai.neargo.shop.common.ratelimit.RateLimiter resetLimiter;
 
     /**
      * 初始密码怎么交付。{@code mail}（默认）= 邮件发本人、接口不返回明文；
@@ -90,9 +92,13 @@ public class OpsServiceImpl implements OpsService {
                           ai.neargo.shop.platform.MasterDataService masterDataService,
                           ai.neargo.shop.auth.PasswordHasher passwordHasher,
                           ai.neargo.shop.message.notify.NotifyLoggingMailPort mailPort,
+                          PasswordResetTokens resetTokens,
+                          ai.neargo.shop.common.ratelimit.RateLimiter resetLimiter,
                           @org.springframework.beans.factory.annotation.Value(
                                   "${shop.ops.password-delivery:mail}") String passwordDelivery) {
         this.mailPort = mailPort;
+        this.resetTokens = resetTokens;
+        this.resetLimiter = resetLimiter;
         this.passwordDelivery = passwordDelivery;
         this.masterDataService = masterDataService;
         this.passwordHasher = passwordHasher;
@@ -809,6 +815,72 @@ public class OpsServiceImpl implements OpsService {
          */
         tokenStore.revokeUser(staff.getStaffNo());
         audit("STAFF_PASSWORD", staff.getStaffNo(), "自助改密", true, null, null);
+    }
+
+    @Override
+    public void forgotPassword(String username) {
+        SysOpsStaff staff = DataScopeContext.executeWithoutScope(() ->
+                staffMapper.selectOne(Wrappers.<SysOpsStaff>lambdaQuery()
+                        .eq(SysOpsStaff::getUsername, username).last("limit 1")));
+        /*
+         * **账号不存在 / 已停用时也正常返回**，不抛错、不提示。
+         *
+         * 区分开就等于送了个账号探测器：拿一份邮箱清单批量试，就能问出哪些是运营账号，
+         * 而运营账号的价值远高于普通用户（改费率、批提现、封商家）。
+         * 与 login() 那处「用户不存在与密码错误返回同一个错误」是同一条规矩。
+         */
+        if (staff == null || !"ACTIVE".equals(staff.getStatus())) {
+            log.info("[ops] 忘记密码：{} 不存在或已停用，静默返回", Masks.email(username));
+            return;
+        }
+        /*
+         * 限流按**账号**而不是按 IP：这条端点会往真实邮箱发信，
+         * 不限的话任何人都能拿它把某个运营的邮箱刷爆（而且发件人是我们）。
+         */
+        if (!resetLimiter.tryAcquire("ops:forgot:" + staff.getStaffNo(),
+                ai.neargo.shop.common.ratelimit.RateRule.of(
+                        "ops.forgot", java.time.Duration.ofHours(1), 5)).allowed()) {
+            log.warn("[ops] 忘记密码触发限流 staff={}", staff.getStaffNo());
+            return;   // 同样静默：告诉他「你被限流了」也是一种账号存在性泄露
+        }
+
+        String token = resetTokens.issue(staff.getStaffNo());
+        mailPort.send(username, "【数智邻购】运营端密码重置",
+                "你好 " + staff.getRealName() + "，\n\n"
+                        + "有人为你的运营端账号申请了密码重置。\n"
+                        + "重置码（15 分钟内有效，只能用一次）：\n\n    " + token + "\n\n"
+                        + "**如果不是你本人操作，忽略本邮件即可**，你的密码不会有任何变化。\n",
+                SysNotifyLog.BIZ_OPS_RESET_PASSWORD, null);
+        audit("STAFF_PASSWORD_FORGOT", staff.getStaffNo(), "已发送重置邮件", true, null, null);
+    }
+
+    @Override
+    @Transactional
+    public void resetPassword(String token, String newPassword) {
+        if (!notBlank(newPassword) || newPassword.length() < 8) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        String staffNo = resetTokens.consume(token)
+                .orElseThrow(() -> BizException.of(ErrorCode.RESET_TOKEN_INVALID));
+
+        SysOpsStaff staff = DataScopeContext.executeWithoutScope(() ->
+                staffMapper.selectOne(Wrappers.<SysOpsStaff>lambdaQuery()
+                        .eq(SysOpsStaff::getStaffNo, staffNo).last("limit 1")));
+        if (staff == null || !"ACTIVE".equals(staff.getStatus())) {
+            // 令牌已经消费掉了，不退回 —— 停用的账号不该能靠一封旧邮件复活
+            throw BizException.of(ErrorCode.RESET_TOKEN_INVALID);
+        }
+        staff.setPassword(passwordHasher.encode(newPassword));
+        /*
+         * **重置之后不再要求改密**：他刚刚就是在设新密码，
+         * 再逼一次会让人以为没设成功。这与建号时的 mustChangePassword 不同 ——
+         * 那个密码是别人生成的，这个是本人设的。
+         */
+        staff.setMustChangePassword(false);
+        staffMapper.updateById(staff);
+        // 忘记密码的常见动机就是「怀疑被人用了」，不踢的话拿着旧 token 的人照样在线
+        tokenStore.revokeUser(staffNo);
+        audit("STAFF_PASSWORD_RESET", staffNo, "经邮件重置", true, null, null);
     }
 
     /** 去空白、去重、保序 —— 「配了两遍同一个角色」不该变成两行成员关系 */

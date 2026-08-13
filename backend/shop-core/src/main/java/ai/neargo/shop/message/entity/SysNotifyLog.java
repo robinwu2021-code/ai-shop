@@ -41,7 +41,7 @@ public class SysNotifyLog {
     @TableId(type = IdType.AUTO)
     private Long id;
 
-    private String logNo;
+    private String notifyNo;
     private String channel;
     private String bizType;
 

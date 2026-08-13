@@ -63,6 +63,27 @@ public interface OpsService {
     void changeOwnPassword(String oldPassword, String newPassword);
 
     /**
+     * 忘记密码：发一封带一次性重置链接的邮件。
+     *
+     * <p><b>这条路径此前完全不存在</b> —— 管理员侧没有重置入口、员工侧没有、
+     * 登录页也没有，运营忘了密码只能找人改库。
+     *
+     * <p><b>无论账号存不存在都正常返回</b>：区分开就等于送了个账号探测器 ——
+     * 攻击者可以拿一份邮箱清单批量试，问出哪些是运营账号，
+     * 而运营账号的价值远高于普通用户（改费率、批提现、封商家）。
+     * 与登录那处「用户不存在与密码错误返回同一个错误」是同一条规矩。
+     */
+    void forgotPassword(String username);
+
+    /**
+     * 用重置令牌设新密码。
+     *
+     * <p>成功后**踢掉该账号的全部会话**：忘记密码的常见动机就是「怀疑被人用了」，
+     * 不踢的话拿着旧 token 的人照样在线，重置等于没重置。
+     */
+    void resetPassword(String token, String newPassword);
+
+    /**
      * 配数据域。空字符串 / null = 不限定。
      *
      * <p><b>给全量角色（超管等）配数据域直接拒绝</b> ——

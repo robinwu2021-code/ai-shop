@@ -13,7 +13,10 @@
 
 CREATE TABLE IF NOT EXISTS sys_notify_log (
     id              BIGINT       NOT NULL AUTO_INCREMENT,
-    log_no          VARCHAR(32)  NOT NULL COMMENT '业务主键',
+    -- **叫 notify_no 而不是 log_no**：后者与 mch_staff_log.log_no 同名不同义，
+    -- 守卫（schema-lineage）当场拦下。按名字 join 会把发送记录连到员工操作日志上，
+    -- 两边都有值，不报错。新表改个名比登记一条「同名不同义」便宜得多。
+    notify_no       VARCHAR(32)  NOT NULL COMMENT '业务主键',
     channel         VARCHAR(16)  NOT NULL COMMENT 'SMS / MAIL',
     biz_type        VARCHAR(32)  NOT NULL COMMENT 'OTP / OPS_INIT_PASSWORD / OPS_RESET_PASSWORD / TEST',
     target          VARCHAR(64)  NOT NULL COMMENT '收件人，**掩码**。明文不落库',
@@ -25,19 +28,15 @@ CREATE TABLE IF NOT EXISTS sys_notify_log (
     client_ip       VARCHAR(64)           COMMENT '触发来源，排查滥用用',
     created_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
-    UNIQUE KEY uk_notify_log_no (log_no),
+    UNIQUE KEY uk_notify_no (notify_no),
     -- 列表页默认按时间倒序 + 按渠道筛，这两个是主查询形状
     KEY idx_notify_channel_time (channel, created_at),
     KEY idx_notify_status_time (status, created_at)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT '短信/邮件发送记录';
 
--- 运营端功能点：发送记录列表 + 测试发送。
--- **复用 message:template:read / update**，不新增权限码 ——
--- 维护消息模板的与看发送记录的是同一批人，多一个码只增加配置负担。
-INSERT INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at)
-SELECT 'OPS_SYSTEM__TAB_NOTIFY_LOG', 'OPS_SYSTEM', '发送记录', '消息', '/system?tab=notify-log', 'message:template:read', 'message:template:read', 'IMPLEMENTED', 1, 'P-14.3', 'MENU', 40, NOW(), NOW() FROM DUAL
- WHERE NOT EXISTS (SELECT 1 FROM sys_function_point x WHERE x.point_code='OPS_SYSTEM__TAB_NOTIFY_LOG');
-
-INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
-SELECT 'SUPER_ADMIN', 'OPS_SYSTEM__TAB_NOTIFY_LOG', 'OPS', NOW(), NOW() FROM DUAL
- WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPER_ADMIN' AND x.point_code='OPS_SYSTEM__TAB_NOTIFY_LOG');
+-- ⚠️ **功能点（菜单项）不在这条迁移里**。
+-- 加了它，nav.ts 里就得有一个 `/system?tab=notify-log` 的叶子，
+-- 而那个 tab 的页面还没做 —— 于是菜单上会出现一个点进去什么都没有的入口。
+-- 守卫（nav-function-point）当场把这件事拦下来了，拦得对：
+-- **功能点与页面必须同批落地**，先落一半的表现是「菜单有、页面空」，
+-- 而运营看不出那是没做还是坏了。做 ops-web 页面时再补一条迁移。

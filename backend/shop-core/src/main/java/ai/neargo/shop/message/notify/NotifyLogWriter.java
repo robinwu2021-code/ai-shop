@@ -41,7 +41,7 @@ public class NotifyLogWriter {
                       String status, String error, String providerMsgId, String operatorNo) {
         try {
             SysNotifyLog row = new SysNotifyLog();
-            row.setLogNo(BizKey.next(BizKey.NOTIFY_LOG));
+            row.setNotifyNo(BizKey.next(BizKey.NOTIFY_LOG));
             row.setChannel(channel);
             row.setBizType(bizType);
             row.setTarget(SysNotifyLog.MAIL.equals(channel)

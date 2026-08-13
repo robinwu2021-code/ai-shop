@@ -48,6 +48,12 @@ export const RULES = [
   ["GET", /^\/ops\/merchants\/[^/]+\/store-modes$/, "merchant:mode:read"],
   ["PUT", /^\/ops\/stores\/[^/]+\/business-mode$/, "merchant:mode:update",
     "现在挂在 settle:manage 下 —— 改门店经营模式根本不是结算"],
+  // 资金路径（轴②：钱先进谁的账户）。与经营模式共用一组码 ——
+  // 两者都决定钱怎么走，分成两套权限只会让配的人漏配其中一半
+  ["PUT", /^\/ops\/merchants\/[^/]+\/funds-mode$/, "merchant:mode:update"],
+  ["GET", /^\/ops\/merchants\/mode-risk$/, "merchant:mode:read"],
+  // 积分资金看板。**是资金表不是营销表** —— 读它的是财务
+  ["GET", /^\/ops\/points\/overview$/, "finance:settle:read"],
   ["GET", /^\/ops\/merchants/, "merchant:merchant:read"],
 
   // 店招公告审核。**后端其实有**，而 P-10.1 在三方对齐里被记成「后端零实现」——
@@ -125,6 +131,10 @@ export const RULES = [
   ["*", /^\/ops\/(reviews|review-appeals)/, "review:review:audit"],
 
   // ── 消息与客服 ─────────────────────────────────────────────────────────
+  // 发送记录与测试发送**复用模板的两个码**：维护消息模板的与看发送记录的是同一批人，
+  // 多一个码只增加配置负担。测试发送归 update 而不是 read —— 它真的会发出去。
+  ["GET", /^\/ops\/notify-logs$/, "message:template:read"],
+  ["*", /^\/ops\/notify-logs/, "message:template:update"],
   ["GET", /^\/ops\/(msg-templates|notify-quota)/, "message:template:read"],
   ["*", /^\/ops\/(msg-templates|notify-quota)/, "message:template:update"],
   ["GET", /^\/ops\/tickets/, "message:ticket:read"],
@@ -180,6 +190,10 @@ export const NO_UI_PREFIXES = [
   "/ops/notify-quota",            // 推送额度
   "/ops/stores/{storeNo}/business-mode", // 经营模式切换
   "/ops/merchants/{merchantNo}/store-modes",
+  // 资金路径（轴②：钱先进谁的账户）。与经营模式同一批人在配，共用同一组码 ——
+  // 两者都决定钱怎么走，不该分成两套权限
+  "/ops/merchants/{merchantNo}/funds-mode",
+  "/ops/merchants/mode-risk",
 ];
 
 /**

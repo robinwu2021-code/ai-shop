@@ -129,7 +129,10 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(reg -> reg
-                        .requestMatchers("/ops/auth/login").permitAll()
+                        // 忘记密码的两条同样免鉴权：忘了密码自然登不进来。
+                        // 安全性靠邮件里那个一次性令牌，以及「账号不存在也返回成功」
+                        .requestMatchers("/ops/auth/login", "/ops/auth/forgot",
+                                "/ops/auth/reset").permitAll()
                         .anyRequest().authenticated())
                 .addFilterBefore(new OperatorTokenAuthFilter(tokenStore),
                         UsernamePasswordAuthenticationFilter.class)
