@@ -141,6 +141,19 @@ public record BizContext(String merchantNo, Set<String> pickupNos, Set<String> g
             return code != null && !code.isBlank();
         }
         if (perms != null) {
+            /*
+             * **精确比对，只额外认一个裸 `*`（老板）—— B 端不支持模块通配。**
+             *
+             * 与运营端刻意不同：那边走 `Permissions.matches`，认 `merchant:*`
+             * （68 个码，超管与模块负责人需要「这个模块全给」）。B 端 13 个码，
+             * 而且给商家角色配模块通配等于把<b>以后新增的码也一并授出去</b> ——
+             * 老板不会知道他哪天多授了一样东西。
+             *
+             * 所以这里不是「还没实现通配」，是**决定不实现**。
+             * 按运营端的直觉往 `mch_role` 里写一个 `biz:*` 会静默变成零权限
+             * （fail-closed，但不报错，表现是「授了角色什么都点不了」），
+             * 种子那一层有守卫直接禁掉：`packages/shared/tests/biz-role-seed.test.ts`。
+             */
             return code != null && (perms.contains("*") || perms.contains(code));
         }
         return BizPerms.can(staffRoles(), code);

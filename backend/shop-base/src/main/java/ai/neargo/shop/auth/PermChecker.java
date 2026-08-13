@@ -43,9 +43,12 @@ public class PermChecker {
          * 通配判定委托 neargo 的 Permissions.matches —— 它认 `*` 也认 `merchant:*`。
          *
          * 此前这里是手写的 `contains("*") || contains(code)`：**只认精确的 `*`**。
-         * 而 ops-web 的 can() 一直支持模块通配，两端语义不一致。目前无害
-         * （库里发的都是具体码），但哪天有人给角色配一个 `merchant:*`，
-         * 表现会是「前端显示入口、后端 403」—— 最难查的那一类不一致。
+         * 而 ops-web 的 can() 一直支持模块通配，两端语义不一致 ——
+         * 哪天有人给角色配一个 `merchant:*`，表现会是「前端显示入口、后端 403」。
+         *
+         * <p><b>B 端（{@link #canBiz}）刻意走另一条路：不支持模块通配。</b>
+         * 那边 13 个码，且给商家角色配通配等于把以后新增的码也一并授出去。
+         * 两端在这一点上不一致是决定，不是遗漏 —— 理由写在 {@code BizContext.can}。
          */
         var perms = livePerms(user);
         return perms != null && !perms.isEmpty()

@@ -109,6 +109,38 @@ describe("B 端角色种子", () => {
     ).toEqual([]);
   });
 
+  it("★★★ 权限码里不许出现模块通配 —— B 端只认精确码与老板的裸 `*`", () => {
+    /*
+     * **两端的通配语义不一样，而这是有意的**：
+     *
+     *   · 运营端走 `Permissions.matches`，认 `*` 也认 `merchant:*`（68 个码，
+     *     超管与模块负责人都需要「这个模块全给」）；
+     *   · B 端三处判权（`BizContext.can`、`BizPerms.can`、b-app 的 `can()`）
+     *     一律精确比对，只额外认一个裸 `*`（老板）。13 个码，
+     *     而且**给商家角色配模块通配等于把「以后新增的码」也一并授出去** ——
+     *     老板不会知道他哪天多授了一样东西。
+     *
+     * 危险的不是这个差异本身，是**按运营端的直觉往 B 端写一个 `biz:*`**：
+     * 三处都匹配不上，于是那个角色<b>静默变成零权限</b>。
+     * 它是 fail-closed（安全），但不报错 —— 表现是「明明授了角色，什么都点不了」，
+     * 而老板会去怀疑功能坏了。所以在种子这一层直接禁掉。
+     *
+     * 自定义角色那一侧已经拦住了（`assignableCodes()` 里没有任何通配），
+     * 这里管的是**直接写进库的那几行**。
+     */
+    const offenders: string[] = [];
+    for (const [role, codes] of Object.entries(seed)) {
+      for (const c of codes) {
+        if (c === "*") {
+          if (role !== "OWNER") offenders.push(`${role} 带了裸 * —— 只有老板能是通配`);
+          continue;
+        }
+        if (c.includes("*")) offenders.push(`${role} 带了模块通配 ${c} —— B 端匹配不上，等于零权限`);
+      }
+    }
+    expect(offenders, offenders.join("\n  ")).toEqual([]);
+  });
+
   it("★★ 预置角色都不许带 biz:store:admin —— 授权权不能授出去", () => {
     /*
      * 老板之外任何角色拿到它，就等于能把自己提成老板（改门店、挂收款号、给别人授权）。
