@@ -489,7 +489,7 @@ export const mockApi: ShopApi = {
 
     const couponSeed = db.couponSeeds.find((c) => c.couponNo === req.couponNo);
     const coupon: Coupon | undefined = couponSeed
-      ? { ...couponSeed, name: pick(couponSeed.name), scopeDesc: pick(couponSeed.scopeDesc) }
+      ? { ...couponSeed, title: pick(couponSeed.title), scopeDesc: pick(couponSeed.scopeDesc) }
       : undefined;
 
     // 用户可用积分不能超过账户余额 —— 这条必须在服务端校验，端上传什么都不能信
@@ -710,7 +710,7 @@ export const mockApi: ShopApi = {
     if (!items.length) throw new Error("订单商品为空");
     const couponSeed = db.couponSeeds.find((c) => c.couponNo === req.couponNo);
     const coupon: Coupon | undefined = couponSeed
-      ? { ...couponSeed, name: pick(couponSeed.name), scopeDesc: pick(couponSeed.scopeDesc) }
+      ? { ...couponSeed, title: pick(couponSeed.title), scopeDesc: pick(couponSeed.scopeDesc) }
       : undefined;
     const amount = pricingFor(items[0]!.type).estimate(items, {
       fulfillment: req.fulfillment,
@@ -805,7 +805,7 @@ export const mockApi: ShopApi = {
     return delay(
       db.couponSeeds.map((c) => ({
         ...c,
-        name: pick(c.name),
+        title: pick(c.title),
         scopeDesc: pick(c.scopeDesc),
       })),
     );
@@ -817,8 +817,15 @@ export const mockApi: ShopApi = {
     if (c.received) throw new Error("已领取过该券");
     c.received = true;
     persist();
-    pushMessage("MARKETING", "领券成功", `${pick(c.name)} 已放入你的券包`);
-    return delay({ ...c, name: pick(c.name), scopeDesc: pick(c.scopeDesc) });
+    pushMessage("MARKETING", "领券成功", `${pick(c.title)} 已放入你的券包`);
+    // 领券返回的是**领到手的那一张**（UserCoupon），不是券模板 —— 与后端同形
+    return delay({
+      userCouponNo: `UC-${c.couponNo}`,
+      coupon: { ...c, title: pick(c.title), scopeDesc: pick(c.scopeDesc) },
+      status: "UNUSED",
+      usableNow: true,
+      receivedAt: Date.now(),
+    });
   },
 
   /** 只返回**当前自提点**的团 —— 成团单位是自提点，别的点的团与我无关 */

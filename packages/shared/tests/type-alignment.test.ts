@@ -55,6 +55,13 @@ const KNOWN_DRIFT: Record<string, string> = {
     "接后端时要么合并成一张表，要么显式分成 MerchantCampaignType / PlatformCampaignType。",
   CampaignStatus: "shared 有 PAUSED（商家可暂停），ops 有 SCHEDULED（平台可预约生效）。都合理，合并即可。",
   AppealStatus: "ops 的申诉状态；shared 侧叫 ReviewAppealStatus，值域需对齐（UPHELD/REJECTED/PENDING）。",
+  CouponType:
+    "shared 只列后端真的会下发的两种（FULL_CUT/DISCOUNT，与 MktCoupon 常量逐字一致）；" +
+    "ops 多 NEWCOMER/TARGETED —— 那两种 discountFor 从没处理过，登记表里已标 PLANNED。" +
+    "后端实现之后 shared 补上；在那之前 shared 不该写一个后端永远不会给它的值。",
+  CouponStatus:
+    "ops 多一个 DRAFT（运营建券时的草稿态，只存在于运营端的编辑流程）。" +
+    "C 端只看得到已发布的券，DRAFT 对它没有意义 —— 这是视角差，不是漂移。",
 };
 
 describe("两套类型系统的词汇对齐", () => {

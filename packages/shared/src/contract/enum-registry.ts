@@ -222,6 +222,12 @@ export const ENUM_REGISTRY: EnumEntry[] = [
   { decl: "ops-web:CouponStatus", dom: "marketing", shape: "STATUS", verdict: "OK",
     note: "平台券（FULL_CUT/DISCOUNT）已实现，ACTIVE/PAUSED/ENDED 与后端 MktCoupon 状态一致。"
       + "ACTIVE 与 shared:CampaignStatus 的 RUNNING 同义，是两个不同领域对象各自的说法，不合并" },
+  { decl: "shared:CouponFunder", dom: "marketing", shape: "CLASS", verdict: "OK",
+    note: "券的出资方，与后端 MktCoupon.funder 一致。平台券走平台预算，商家券从结算里扣 —— 这个字段决定钱从谁账上出，不是展示用" },
+  { decl: "shared:CouponType", dom: "marketing", shape: "CLASS", verdict: "OK",
+    note: "与后端 MktCoupon 的两个常量逐字一致。与 ops-web:CouponType 是同一件事的两套声明（那边多了两个未接的取值）" },
+  { decl: "shared:CouponStatus", dom: "marketing", shape: "STATUS", verdict: "OK",
+    note: "与 ops-web:CouponStatus 同值同义（ACTIVE/PAUSED/ENDED），两端各有一份声明是现状" },
   { decl: "ops-web:IssueTarget", dom: "marketing", shape: "CLASS", verdict: "PLANNED",
     note: "券的发放对象（全员/新客/指定人群），后端无人群圈选能力" },
   { decl: "ops-web:MerchantCampaignType", dom: "marketing", shape: "CLASS", verdict: "OK",

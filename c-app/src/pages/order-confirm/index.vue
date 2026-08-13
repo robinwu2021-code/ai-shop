@@ -18,6 +18,8 @@ import { useCommunityStore } from "@/stores/community";
 import { FEATURES, FULFILLMENT, POINTS, ROUTES } from "@shared/utils/constants";
 import { datetime, money } from "@shared/utils/format";
 import { earnPointsFor, pricingFor } from "@shared/strategies/pricing";
+// 券能减多少与后端同一套算法算 —— 两处各写一遍就会出现「页面说减 8，付完只减 5」
+import { couponDiscount } from "@shared/strategies/pricing/types";
 import { currentCurrency } from "@shared/utils/money";
 import type { Address, CartItem, CheckoutCapability, Coupon, FulfillmentType, OrderItem, OrderAmount } from "@shared/types";
 
@@ -52,7 +54,7 @@ const coupon = computed(() => coupons.value.find((c) => c.couponNo === couponNo.
 /** 可用券：已领取、未过期、且达到门槛 */
 const usableCoupons = computed(() =>
   coupons.value.filter(
-    (c) => c.received && c.expireAt > Date.now() && goodsMinor.value >= c.thresholdMinor,
+    (c) => c.received && c.endAt > Date.now() && goodsMinor.value >= c.thresholdMinor,
   ),
 );
 
@@ -220,7 +222,7 @@ function pickCoupon() {
   if (!usableCoupons.value.length) return;
   const names = [
     String(t("confirm.noCoupon")),
-    ...usableCoupons.value.map((c) => `${c.name} -${money(c.discountMinor)}`),
+    ...usableCoupons.value.map((c) => `${c.title} -${money(couponDiscount(c, goodsMinor.value))}`),
   ];
   uni.showActionSheet({
     itemList: names,
@@ -373,7 +375,7 @@ onMounted(async () => {
         <text class="cell__k">{{ $t("confirm.coupon") }}</text>
         <text class="cell__v" :class="{ 'is-on': !!coupon }">
           {{ coupon
-            ? `${coupon.name} -${money(coupon.discountMinor)}`
+            ? `${coupon.title} -${money(couponDiscount(coupon, goodsMinor))}`
             : usableCoupons.length
               ? $t("confirm.couponAvailable", { n: usableCoupons.length })
               : $t("confirm.noCouponAvailable") }}

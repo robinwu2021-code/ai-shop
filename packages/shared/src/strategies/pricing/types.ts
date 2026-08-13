@@ -40,6 +40,26 @@ export interface PricingStrategy {
  * 反过来的话，用户会先用积分把金额压低，导致券的门槛达不到 —— 对用户不利，也更难解释。
  * 运费不参与积分抵扣：运费是要付给运力的真金白银，用积分抵等于平台自掏腰包。
  */
+/**
+ * 这张券在这笔金额上能减多少。**与后端 `MktCoupon.discountFor` 同一套算法** ——
+ * 两处各写一遍的表现是「确认订单页显示减 8 元，付完发现只减了 5 元」，
+ * 而两边都不报错，用户只会觉得平台在骗他。
+ *
+ * 契约此前只有一个 `discountMinor`，端上直接减那个数 ——
+ * **折扣券根本表达不了**：打几折要看订单金额，还有封顶。
+ *
+ * @param goodsMinor 参与计算的商品额；商家券只算本店那部分
+ */
+export function couponDiscount(coupon: Coupon | null | undefined, goodsMinor: number): number {
+  if (!coupon || goodsMinor < coupon.thresholdMinor) return 0;
+  if (coupon.type === "DISCOUNT") {
+    const off = Math.floor((goodsMinor * (10_000 - coupon.discountRate)) / 10_000);
+    return coupon.maxDiscountMinor > 0 ? Math.min(off, coupon.maxDiscountMinor) : off;
+  }
+  // 满减不能减成负数：券面额大于商品额时按商品额封顶
+  return Math.min(coupon.faceMinor, goodsMinor);
+}
+
 export function baseAmount(
   items: OrderItem[],
   ctx: PricingContext,
@@ -47,10 +67,7 @@ export function baseAmount(
 ): OrderAmount {
   const goodsMinor = items.reduce((s, it) => s + it.price * it.qty, 0);
 
-  let discountMinor = 0;
-  if (ctx.coupon && goodsMinor >= ctx.coupon.thresholdMinor) {
-    discountMinor = Math.min(ctx.coupon.discountMinor, goodsMinor);
-  }
+  const discountMinor = couponDiscount(ctx.coupon, goodsMinor);
 
   const afterCoupon = Math.max(0, goodsMinor - discountMinor);
   // 抵扣上限：不能整单抵掉，否则平台收不到现金却要向商家兑付这笔积分

@@ -1134,16 +1134,72 @@ export interface Coupon {
   /** 券单号 */
   couponNo: string;
   /** 券名，如「满 50 减 5」 */
-  name: string;
+  title: string;
+  type: CouponType;
+  /** 满减面额（最小货币单位）。`DISCOUNT` 券为 0 */
+  faceMinor: number;
+  /** 折扣**万分比**，8500 = 八五折。`FULL_CUT` 券为 0 */
+  discountRate: number;
   /** 使用门槛（最小货币单位）。0 表示无门槛 */
   thresholdMinor: number;
-  /** 抵扣金额（最小货币单位） */
-  discountMinor: number;
-  /** 过期时间 */
-  expireAt: number;
+  /** 折扣券封顶（最小货币单位）。仅 `DISCOUNT` 有意义 */
+  maxDiscountMinor: number;
+  funder: CouponFunder;
+  /** 商家券的归属商家；平台券为空 */
+  merchantNo: string;
+  /** 可领取/可用的时间窗 */
+  startAt: number;
+  endAt: number;
+  /** 剩余可领数量 */
+  remain: number;
   /** 当前用户是否已领取。列表页据此显示「领取」还是「去使用」 */
+/**
+ * 领到手的那张券（`mkt_user_coupon` 的一行）。
+ *
+ * 与 {@link Coupon} 的关系：Coupon 是**模板**（活动配的那张），
+ * UserCoupon 是**某个人手里的那一张**。领取接口返回的是后者 ——
+ * 契约此前写成返回 Coupon，而后端一直返回这个形状，字段一个都对不上。
+ * 页面恰好不读返回值（领完重拉列表），所以没人撞上；但契约说的是假话。
+ */
+export interface UserCoupon {
+  userCouponNo: string;
+  /** 券模板快照 */
+  coupon: Coupon;
+  /** UNUSED / USED / EXPIRED */
+  status: string;
+  /** 当前这笔订单能不能用它 —— 由服务端算，端上不要自己判门槛 */
+  usableNow: boolean;
+  receivedAt: number;
+  usedAt?: number;
+}
+
+/** 券的出资方。决定这张券的钱最后从谁账上扣 —— 平台券走平台预算，商家券从结算里扣 */
+export type CouponFunder = "PLATFORM" | "MERCHANT";
+
+/** 券类型。与后端 `MktCoupon` 的常量逐字一致 */
+export type CouponType =
+  /** 满减：减 `faceMinor` */
+  | "FULL_CUT"
+  /** 折扣：按 `discountRate` 打折，最多减 `maxDiscountMinor` */
+  | "DISCOUNT";
+
+/** 券状态。与后端 `MktCoupon` 一致；平台列表要靠它筛出被停的券 */
+export type CouponStatus = "ACTIVE" | "PAUSED" | "ENDED";
+
+/**
+ * 优惠券模板。**字段与后端 `CouponVO` 一一对应**。
+ *
+ * 这里原先是一个被简化过的形状（`name` / `discountMinor` / `expireAt`），
+ * 与后端一个都对不上，后果不是「少显示一块」而是**领券中心永远是空的**：
+ * 页面按 `c.expireAt > now` 过滤，而后端发的是 `endAt` ——
+ * `undefined > now` 恒 false，于是商家配好的券一张都露不出来，两边都不报错。
+ *
+ * <b>而且那个简化本身是错的</b>：`discountMinor` 一个数表达不了折扣券 ——
+ * 折扣券要的是「打几折 + 最多减多少」。后端的形状才是对的，端上跟它。
+ */
   received: boolean;
-  /** 适用范围文案，如「仅限张记生鲜」。展示用，实际校验在服务端 */
+  status: CouponStatus;
+  /** 适用范围文案，如「仅限张记粮油店」。展示用，实际校验在服务端 */
   scopeDesc: string;
 }
 

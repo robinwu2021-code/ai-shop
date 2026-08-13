@@ -548,6 +548,7 @@ export default {
     mine: "Mine {n}",
     threshold: "Spend {p}+",
     noThreshold: "No minimum",
+    rate: "{n}0% off",
     until: "Valid until {d}",
     receive: "Claim",
     got: "Claimed",

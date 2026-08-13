@@ -11,6 +11,7 @@ import type {
   CartItem,
   Community,
   Coupon,
+  UserCoupon,
   Goods,
   GroupBuy,
   LoginReq,
@@ -184,7 +185,8 @@ export interface ShopApi {
 
   // ---- 营销
   couponList(): Promise<Coupon[]>;
-  receiveCoupon(couponNo: string): Promise<Coupon>;
+  /** 领券。返回的是**领到手的那张**（UserCoupon），不是券模板 */
+  receiveCoupon(couponNo: string): Promise<UserCoupon>;
   /** 只取当前自提点的团 —— 成团单位是自提点 */
   groupBuyList(pickupNo?: string): Promise<GroupBuy[]>;
   groupBuyDetail(groupNo: string): Promise<GroupBuy>;

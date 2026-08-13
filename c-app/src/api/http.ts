@@ -43,6 +43,7 @@ import type {
   CartItem,
   Community,
   Coupon,
+  UserCoupon,
   Goods,
   GroupBuy,
   GroupRequest,
@@ -136,7 +137,7 @@ export const httpApi: ShopApi = {
     http.post<Order>(buildPath(ENDPOINTS.raiseDispute.path, { afterSaleNo }), { reason }),
 
   couponList: () => call<Coupon[]>("couponList"),
-  receiveCoupon: (couponNo) => call<Coupon>("receiveCoupon", { couponNo }),
+  receiveCoupon: (couponNo) => call<UserCoupon>("receiveCoupon", { couponNo }),
 
   // ---- 拼团
   groupBuyList: (pickupNo) => call<GroupBuy[]>("groupBuyList", undefined, { pickupNo } satisfies GroupBuyListQuery),

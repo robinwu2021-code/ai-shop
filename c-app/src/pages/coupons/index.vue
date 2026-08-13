@@ -5,15 +5,28 @@
 import { computed, ref } from "vue";
 import { onShow } from "@dcloudio/uni-app";
 import { api } from "@/api";
+import { useI18n } from "vue-i18n";
 import { isoDate, money } from "@shared/utils/format";
 import type { Coupon } from "@shared/types";
 
+const { t } = useI18n();
 const tab = ref<"center" | "mine">("center");
 const coupons = ref<Coupon[]>([]);
 const busy = ref("");
 
 const now = Date.now();
-const available = computed(() => coupons.value.filter((c) => !c.received && c.expireAt > now));
+const available = computed(() => coupons.value.filter((c) => !c.received && c.endAt > now));
+
+/**
+ * 券面上的那个大字。**两种券要分开写** ——
+ * 满减券是「减 5 元」，折扣券是「八五折」，一个金额字段表达不了后者。
+ * 契约此前只有一个 `discountMinor`，于是折扣券要么显示成 ¥0，要么显示成面额。
+ */
+function faceText(c: Coupon): string {
+  return c.type === "DISCOUNT"
+    ? String(t("coupon.rate", { n: (c.discountRate / 1000).toFixed(1) }))
+    : money(c.faceMinor);
+}
 const mine = computed(() => coupons.value.filter((c) => c.received));
 const shown = computed(() => (tab.value === "center" ? available.value : mine.value));
 
@@ -35,7 +48,7 @@ async function receive(c: Coupon) {
 }
 
 function expired(c: Coupon) {
-  return c.expireAt <= now;
+  return c.endAt <= now;
 }
 
 onShow(load);
@@ -60,7 +73,7 @@ onShow(load);
       :class="{ 'is-expired': expired(c) }"
     >
       <view class="ticket__amount">
-        <text class="ticket__v sh-num">{{ money(c.discountMinor) }}</text>
+        <text class="ticket__v sh-num">{{ faceText(c) }}</text>
         <text class="ticket__cond sh-num">
           {{ c.thresholdMinor
             ? $t("coupon.threshold", { p: money(c.thresholdMinor) })
@@ -69,9 +82,9 @@ onShow(load);
       </view>
 
       <view class="ticket__main">
-        <text class="ticket__name">{{ c.name }}</text>
+        <text class="ticket__name">{{ c.title }}</text>
         <text class="ticket__scope">{{ c.scopeDesc }}</text>
-        <text class="ticket__exp sh-num">{{ $t("coupon.until", { d: isoDate(c.expireAt) }) }}</text>
+        <text class="ticket__exp sh-num">{{ $t("coupon.until", { d: isoDate(c.endAt) }) }}</text>
       </view>
 
       <view

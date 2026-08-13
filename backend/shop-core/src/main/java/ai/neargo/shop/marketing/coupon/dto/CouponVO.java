@@ -16,5 +16,11 @@ public record CouponVO(String couponNo,
                        int remain,
                        boolean received,
                        /** ACTIVE / PAUSED / ENDED。平台列表要靠它筛出被停的券 */
-                       String status) {
+                       String status,
+                       /**
+                        * 适用范围文案，如「仅限老张粮油店」。**由后端拼**：
+                        * 它要把 merchantNo 换成店名，而端上手里只有一个号。
+                        * 展示用，实际校验仍在服务端（{@code discountFor}）。
+                        */
+                       String scopeDesc) {
 }

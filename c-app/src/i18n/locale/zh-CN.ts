@@ -575,6 +575,8 @@ export default {
     noThreshold: "无门槛",
     until: "有效至 {d}",
     receive: "领取",
+    // 折扣券的券面：满减是「¥5」，折扣是「8.5 折」—— 一个金额字段表达不了后者
+    rate: "{n} 折",
     got: "已领取",
     expired: "已过期",
     centerEmpty: "暂时没有可领的券",

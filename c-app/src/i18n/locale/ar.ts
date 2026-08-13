@@ -548,6 +548,7 @@ export default {
     mine: "قسائمي {n}",
     threshold: "عند إنفاق {p}+",
     noThreshold: "بدون حد أدنى",
+    rate: "خصم {n}0%",
     until: "صالحة حتى {d}",
     receive: "احصل عليها",
     got: "تم الحصول",

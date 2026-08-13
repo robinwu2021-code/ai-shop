@@ -32,16 +32,20 @@ public class CouponServiceImpl implements CouponService {
     private final GoodsQueryPort goodsPort;
     private final ai.neargo.shop.marketing.coupon.mapper.CouponMappers.CouponIssueMapper issueMapper;
     private final ai.neargo.shop.spi.user.UserQueryPort userPort;
+    /** 只用来把 merchantNo 换成店名（scopeDesc） */
+    private final ai.neargo.shop.spi.user.MerchantQueryPort merchantPort;
 
     public CouponServiceImpl(CouponMapper couponMapper, UserCouponMapper userCouponMapper,
                              GoodsQueryPort goodsPort,
                              ai.neargo.shop.marketing.coupon.mapper.CouponMappers.CouponIssueMapper issueMapper,
-                             ai.neargo.shop.spi.user.UserQueryPort userPort) {
+                             ai.neargo.shop.spi.user.UserQueryPort userPort,
+                             ai.neargo.shop.spi.user.MerchantQueryPort merchantPort) {
         this.couponMapper = couponMapper;
         this.userCouponMapper = userCouponMapper;
         this.goodsPort = goodsPort;
         this.issueMapper = issueMapper;
         this.userPort = userPort;
+        this.merchantPort = merchantPort;
     }
 
     @Override
@@ -215,7 +219,21 @@ public class CouponServiceImpl implements CouponService {
                 nzi(c.getDiscountRate()), nz(c.getThresholdMinor()), nz(c.getMaxDiscountMinor()),
                 c.getFunder(), c.getEntityNo(), nz(c.getStartAt()), nz(c.getEndAt()),
                 Math.max(remain, 0), received,
-                c.getStatus() == null ? MktCoupon.ACTIVE : c.getStatus());
+                c.getStatus() == null ? MktCoupon.ACTIVE : c.getStatus(),
+                scopeDescOf(c));
+    }
+
+    /**
+     * 「这张券能在哪儿用」。**后端拼，不让端上拼** —— 端上手里只有一个 `merchantNo`，
+     * 要拼出「仅限老张粮油店」还得再打一次商家接口，而券列表一屏十几张就是十几次。
+     */
+    private String scopeDescOf(MktCoupon c) {
+        if (c.getEntityNo() == null || c.getEntityNo().isBlank()) {
+            return "全平台可用";
+        }
+        return "仅限" + merchantPort.find(c.getEntityNo())
+                .map(ai.neargo.shop.spi.user.MerchantQueryPort.MerchantBrief::merchantName)
+                .orElse(c.getEntityNo());
     }
 
     private UserCouponVO toVO(MktUserCoupon uc, MktCoupon c, boolean usableNow) {

@@ -745,27 +745,62 @@ export function toCommunity(seed: CommunitySeed): Community {
   };
 }
 
-const couponSeeds: (Omit<Coupon, "name" | "scopeDesc"> & {
-  name: I18nText;
+const couponSeeds: (Omit<Coupon, "title" | "scopeDesc"> & {
+  title: I18nText;
   scopeDesc: I18nText;
 })[] = [
   {
     couponNo: "CP001",
-    name: t("新人首单券", "First order voucher", "قسيمة أول طلب"),
+    title: t("新人首单券", "First order voucher", "قسيمة أول طلب"),
+    type: "FULL_CUT",
+    faceMinor: 500,
+    discountRate: 0,
     thresholdMinor: 0,
-    discountMinor: 500,
-    expireAt: Date.now() + 7 * DAY,
+    maxDiscountMinor: 0,
+    funder: "PLATFORM",
+    merchantNo: "",
+    startAt: Date.now() - DAY,
+    endAt: Date.now() + 7 * DAY,
+    remain: 100,
     received: false,
+    status: "ACTIVE",
     scopeDesc: t("全场可用", "Valid storewide", "صالحة على كل المتجر"),
   },
   {
     couponNo: "CP002",
-    name: t("生鲜满减", "Fresh discount", "خصم الطازج"),
+    title: t("生鲜满减", "Fresh discount", "خصم الطازج"),
+    type: "FULL_CUT",
+    faceMinor: 800,
+    discountRate: 0,
     thresholdMinor: 5000,
-    discountMinor: 800,
-    expireAt: Date.now() + 3 * DAY,
+    maxDiscountMinor: 0,
+    funder: "MERCHANT",
+    merchantNo: "M0002",
+    startAt: Date.now() - DAY,
+    endAt: Date.now() + 3 * DAY,
+    remain: 50,
     received: false,
+    status: "ACTIVE",
     scopeDesc: t("限生鲜水果", "Fresh & fruit only", "الطازج والفواكه فقط"),
+  },
+  {
+    // **留一张折扣券**：契约此前只有一个 discountMinor，折扣券根本表达不了，
+    // 而 mock 里一张都没有 —— 于是那个缺陷在 mock 下永远撞不上
+    couponNo: "CP003",
+    title: t("粮油八五折", "15% off staples", "خصم 15% على السلع"),
+    type: "DISCOUNT",
+    faceMinor: 0,
+    discountRate: 8500,
+    thresholdMinor: 3000,
+    maxDiscountMinor: 1500,
+    funder: "MERCHANT",
+    merchantNo: "M0001",
+    startAt: Date.now() - DAY,
+    endAt: Date.now() + 5 * DAY,
+    remain: 20,
+    received: false,
+    status: "ACTIVE",
+    scopeDesc: t("限老张粮油店", "Zhang's grocery only", "متجر زhang فقط"),
   },
 ];
 
