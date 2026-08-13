@@ -1,6 +1,6 @@
 // 真实后端 fetch 封装：拼身份头 + Accept-Language + 统一 Result<T> 拆包 + 抛 ApiError。
 // 契约口径见 lib/types/common.ts（{code,msg,data}），与 C 端一致。
-import { currentAuth, scopeOf, useAuth } from "../auth";
+import { currentAuth, refreshPerms, scopeOf, useAuth } from "../auth";
 import { notify } from "../notify";
 import type { Result } from "../types";
 import { ApiError } from "./error";
@@ -67,6 +67,26 @@ function onUnauthorized(): void {
   }
 }
 
+/**
+ * 被拒了：**多半是权限变了，而这一页的入口还是旧的**。
+ *
+ * 判权在后端是现算的，端上的 `perms` 却是登录那一刻的快照 ——
+ * 中间隔着一个最长 60 秒的窗口（服务端快照 TTL），跨实例还要再加一个。
+ * 所以「点了一个界面上还在、后端已经不允许的按钮」是这套设计**接受的**代价。
+ *
+ * 既然接受，就必须在被拒的那一下说清楚。原先只弹一句后端的「没有操作权限」——
+ * 它读起来像「你本来就不能做这件事」，而真相往往是「你刚刚还能，现在不能了」。
+ * 前者让人去找管理员要权限，后者只需要刷新一下页面。
+ *
+ * <p>顺手把 perms 拉一遍：拉到之后那个按钮会自己消失，
+ * 他不会对着一个点不动的按钮反复点。
+ */
+function onForbidden(): void {
+  if (typeof window === "undefined") return;
+  notify.error(translate(curLocale(), "error.permChanged"));
+  void refreshPerms();
+}
+
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
   let r: Response;
   try {
@@ -77,6 +97,9 @@ async function req<T>(path: string, init?: RequestInit): Promise<T> {
   const body = (await r.json().catch(() => ({}))) as Partial<Result<T>>;
   if (r.status === 401) {
     onUnauthorized();
+  }
+  if (r.status === 403) {
+    onForbidden();
   }
   if (!r.ok || (body.code !== undefined && body.code !== 0)) {
     // 后端已本地化 msg 优先；否则用状态码映射的 i18n 文案

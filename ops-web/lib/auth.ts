@@ -77,6 +77,39 @@ export const useAuth = create<AuthState>()(
   ),
 );
 
+/**
+ * 重新拉一次自己的权限与菜单。**只有一份实现** ——
+ * 挂载时、切回窗口时、被 403 拒绝时走的都是它。
+ *
+ * <p>写在这里而不是 `providers.tsx`：403 的处理在 `lib/api/http-client`，
+ * 那一层不能反过来依赖 React 组件。两处各写一份的下场是
+ * 「切窗口刷新了菜单、被拒时没刷」——同一件事两种行为。
+ *
+ * <p>并发去重：一屏十个请求同时 403，只补拉一次。
+ */
+let inFlight: Promise<void> | null = null;
+
+export function refreshPerms(): Promise<void> {
+  if (inFlight) return inFlight;
+  inFlight = (async () => {
+    const { api } = await import("./api");
+    const { useServerMenu } = await import("./stores/server-menu");
+    try {
+      const me = await api.me();
+      // 期间退出登录：这时写回去等于把已登出的人的权限塞回来
+      if (!useAuth.getState().token) return;
+      useAuth.setState({ role: me.role, perms: me.perms ?? [] });
+      // perms 到手之后再拉菜单 —— 菜单是后端按人算的，早拉一次拿到的是旧身份的
+      await useServerMenu.getState().load();
+    } catch {
+      // 拉不到就保持现状：这只是让界面追上后端，失败不该影响他手上的事
+    } finally {
+      inFlight = null;
+    }
+  })();
+  return inFlight;
+}
+
 /** 供非 React 层（lib/api）读取当前身份 → 拼请求头。 */
 export function currentAuth(): AuthState | null {
   if (typeof window === "undefined") return null;

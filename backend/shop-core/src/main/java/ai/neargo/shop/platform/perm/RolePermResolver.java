@@ -49,20 +49,50 @@ public class RolePermResolver implements ai.neargo.shop.auth.LivePermResolver {
      * 在「每次登录」的口径下只是多两次往返，改成现算之后就是**每个请求每个角色一次查库**
      * —— 缓存整表却在旁边留一条逐次查询，等于没缓存。
      */
-    private record Snapshot(Map<String, Set<String>> byRole, Set<String> wildcardRoles) {
+    private static final org.slf4j.Logger log =
+            org.slf4j.LoggerFactory.getLogger(RolePermResolver.class);
+
+    private record Snapshot(Map<String, Set<String>> byRole, Set<String> wildcardRoles,
+                           long loadedAt) {
     }
 
     private final AtomicReference<Snapshot> cache = new AtomicReference<>();
+
+    /**
+     * 快照的存活时间。**这是兜底，不是主路径** —— 写接口改完配置就 {@link #invalidate()}，
+     * 同一个实例下一个请求即新配置，0 延迟。
+     *
+     * <p>那 TTL 还兜什么：
+     * <ul>
+     *   <li><b>多实例</b>：{@code invalidate()} 只清本实例的。另一个实例上的人
+     *       在下一次过期之前一直用旧配置 —— 没有 TTL 就是<b>一直到重启</b>。</li>
+     *   <li><b>绕过写接口改库</b>：迁移、DBA 手改、种子重灌。快照没有任何办法知道。</li>
+     * </ul>
+     *
+     * <p>60 秒的取法：它是「跨实例最坏滞后」的上限，与之前那个前端轮询周期相同，
+     * 但成本差一个量级 —— <b>轮询按人摊（每人每分钟两个请求），缓存按实例摊
+     * （每实例每分钟最多一次查库）</b>。
+     */
+    private final long ttlMs;
+
+    /**
+     * 取当前时间。**留一个缝是为了能测过期** —— 让测试等 60 秒不现实，
+     * 而把 TTL 调到 0 只能验「立刻过期」，验不了「过期前不重建」。
+     */
+    java.util.function.LongSupplier clock = System::currentTimeMillis;
 
     private final RolePointMapper rolePointMapper;
     private final FunctionPointMapper pointMapper;
     private final RoleMapper roleMapper;
 
     public RolePermResolver(RolePointMapper rolePointMapper, FunctionPointMapper pointMapper,
-                            RoleMapper roleMapper) {
+                            RoleMapper roleMapper,
+                            @org.springframework.beans.factory.annotation.Value(
+                                    "${shop.perm.cache-ttl-ms:60000}") long ttlMs) {
         this.rolePointMapper = rolePointMapper;
         this.pointMapper = pointMapper;
         this.roleMapper = roleMapper;
+        this.ttlMs = ttlMs;
     }
 
     /** 这组角色合起来有哪些权限码（并集）。 */
@@ -114,9 +144,41 @@ public class RolePermResolver implements ai.neargo.shop.auth.LivePermResolver {
 
     private Snapshot snapshot() {
         Snapshot cached = cache.get();
-        if (cached != null) {
+        if (cached != null && clock.getAsLong() - cached.loadedAt() < ttlMs) {
             return cached;
         }
+        try {
+            Snapshot fresh = load();
+            cache.set(fresh);
+            return fresh;
+        } catch (RuntimeException e) {
+            /*
+             * **重建失败就继续用过期的那份，不清空。**
+             *
+             * 库抖一下就让所有人失权，表现是「整个运营端一起变空」——
+             * 而那看起来像系统坏了，没有任何东西指向真正的原因（一次查询失败）。
+             * 多用一会儿旧权限的代价小得多。
+             *
+             * 但**不能无声地一直用下去**：超过上限还拿不到新数据就升级成 error，
+             * 否则「一直用旧的」会安静地变成常态，直到某天有人发现撤权半天没生效。
+             */
+            if (cached == null) {
+                throw e;   // 一次都没成功过：没有旧的可用，只能让调用方看到真正的错误
+            }
+            long age = clock.getAsLong() - cached.loadedAt();
+            if (age > STALE_ALERT_MS) {
+                log.error("[perm] 权限快照已过期 {} 秒仍无法重建，运营端在用旧权限", age / 1000, e);
+            } else {
+                log.warn("[perm] 权限快照重建失败，继续用 {} 秒前的那份", age / 1000, e);
+            }
+            return cached;
+        }
+    }
+
+    /** 过期这么久还重建不出来，就不再是「抖一下」了 —— 升级成 error 告警 */
+    private static final long STALE_ALERT_MS = 5 * 60_000L;
+
+    private Snapshot load() {
         Set<String> wildcards = roleMapper.selectList(Wrappers.<SysRole>lambdaQuery()
                         .eq(SysRole::getEndCode, "OPS"))
                 .stream().filter(r -> Boolean.TRUE.equals(r.getWildcard()))
@@ -137,8 +199,6 @@ public class RolePermResolver implements ai.neargo.shop.auth.LivePermResolver {
                 byRole.computeIfAbsent(rp.getRoleCode(), k -> new LinkedHashSet<>()).add(perm);
             }
         }
-        Snapshot snap = new Snapshot(byRole, wildcards);
-        cache.set(snap);
-        return snap;
+        return new Snapshot(byRole, wildcards, clock.getAsLong());
     }
 }

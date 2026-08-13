@@ -122,6 +122,9 @@ export const zh = {
     forbidden: "无权限",
     badRequest: "请求有误",
     unauthorized: "登录已失效，请重新登录",
+    // 与 forbidden 分开：「没有操作权限」读起来像「你本来就不能做」，
+    // 而真相往往是「你刚刚还能」—— 前者让人去要权限，后者刷新一下就好
+    permChanged: "你的权限已变更，页面上的入口可能已过期 —— 已为你刷新",
     notFound: "资源不存在",
     serverError: "服务器错误",
     network: "网络异常，请稍后重试",

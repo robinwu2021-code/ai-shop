@@ -130,6 +130,7 @@ export const en: Messages = {
     forbidden: "Not allowed",
     badRequest: "Bad request",
     unauthorized: "Session expired, please sign in again",
+    permChanged: "Your permissions changed — some actions on this page may be stale; refreshed for you",
     notFound: "Not found",
     serverError: "Server error",
     network: "Network problem, please retry",

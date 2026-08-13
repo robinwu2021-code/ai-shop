@@ -6,9 +6,7 @@ import { useTheme, applyTheme } from "@/lib/stores/theme";
 import { useLocaleStore, applyLocale } from "@/lib/stores/locale";
 import { notify } from "@/lib/notify";
 import { Toaster } from "@/components/ui/toaster";
-import { useAuth } from "@/lib/auth";
-import { useServerMenu } from "@/lib/stores/server-menu";
-import { api } from "@/lib/api";
+import { refreshPerms, useAuth } from "@/lib/auth";
 
 /**
  * 权限与菜单的刷新时机：**挂载时一次 + 切回窗口时一次。没有轮询。**
@@ -42,18 +40,8 @@ function useRefreshPerms() {
     if (!token) return;
     let alive = true;
 
-    const refresh = () => {
-      api
-        .me()
-        .then((r) => {
-          // 组件已卸载 / 期间退出登录：这时写回去等于把已登出的人的权限塞回来
-          if (!alive || !useAuth.getState().token) return;
-          useAuth.setState({ role: r.role, perms: r.perms ?? [] });
-          // perms 到手之后再拉菜单 —— 菜单是后端按人算的，早拉一次拿到的是旧身份的
-          void useServerMenu.getState().load();
-        })
-        .catch(() => {});
-    };
+    // 只有一份实现（lib/auth 里）—— 403 被拒时走的也是它
+    const refresh = () => void refreshPerms();
 
     refresh();
     /*
