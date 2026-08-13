@@ -16,8 +16,10 @@ public record FrequentItemVO(String goodsNo,
                              String spec,
                              long price,
                              long lastPrice,
-                             int buyCount,
-                             long lastBoughtAt,
+                             /** 买过几次。**列表按它排序，不是按时间** */
+                             int times,
+                             /** 上次购买时间 */
+                             long lastAt,
                              int available,
                              boolean invalid) {
 }

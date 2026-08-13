@@ -54,6 +54,25 @@ public interface MerchantQueryPort {
     java.util.Optional<String> defaultStoreNo(String merchantNo);
 
     /**
+     * 门店的<b>门面文案</b>：公告、营业时间、地址 —— 店主自己维护的那三样。
+     *
+     * <p>只给这三个，<b>不是整个门店资料</b>：经营范围、配送半径、收款号那些是
+     * B 端配置，C 端一个字节都不该看到。Port 返回整条记录的话，
+     * 调用方迟早会顺手用上不该用的字段。
+     *
+     * <p>为什么必须有：门店主页此前把公告写死成空串、履约文案写死成一句
+     * 「每晚 7 点前到货」—— 店主在 B 端认真填的公告与营业时间，
+     * <b>C 端一个字都显示不出来</b>。而门店主页是这一版的主获客路径（ADR-004）。
+     *
+     * @return 空表示这个主体没有门店（不该发生，调用方按空文案渲染即可）
+     */
+    java.util.Optional<StoreFront> storeFront(String merchantNo);
+
+    /** 门面文案。字段与契约 `StoreFront` 一一对应 */
+    record StoreFront(String announcement, String openHours, String address) {
+    }
+
+    /**
      * 这笔钱该打给<b>哪个收款商户号</b>：门店配的号 ?? 主体的默认号。
      *
      * <p><b>只有这一处实现。</b> 两处各写一遍的后果是可预测的：一处按新规则、
@@ -105,6 +124,23 @@ public interface MerchantQueryPort {
      */
     String businessModeOf(String merchantNo, String storeNo);
 
+    /**
+     * 该主体的<b>资金路径</b>：{@link #FUNDS_AGGREGATED} / {@link #FUNDS_DIRECT}。
+     *
+     * <p><b>与 {@link #businessModeOf} 是两件事</b>：这个说钱先进谁的账户，
+     * 那个说谁是销售主体。结算侧「要不要补差」判的是这一列 ——
+     * 钱在商家账户才需要补进去。
+     *
+     * <p>查不到返回 {@link #FUNDS_AGGREGATED}：这是今天唯一在跑的路径，
+     * 而误判成 DIRECT 会让系统去执行一次<b>本不存在的补差</b>（重复付款）。
+     */
+    String fundsModeOf(String merchantNo);
+
+    /** 归集：用户付给平台户，平台是销售主体（代销）。**这条路径没有补差动作** */
+    String FUNDS_AGGREGATED = "AGGREGATED";
+    /** 直连：用户付给商家二级户，平台分账。**只有这条路径需要补差** */
+    String FUNDS_DIRECT = "DIRECT";
+
     /** 自营：平台是销售主体。取值域与 Port 同处——调用方不必依赖商家域就能判断。 */
     String MODE_SELF_OPERATED = "SELF_OPERATED";
     /** 第三方：商家是销售主体，平台收佣金。 */
@@ -129,6 +165,10 @@ public interface MerchantQueryPort {
      * @param canSell      是否可上架售卖（审核通过且未封禁）
      * @param canReceive   是否可收款（分账接收方已报备，ADR-002）
      */
+    /**
+     * @param ratingCount 计入评分的评价条数。**没有它就分不清「0 分」和「还没人评过」**——
+     *                    对买家这是相反的信号：0 分是被打出来的，没人评过只是新开的
+     */
     record MerchantBrief(String merchantNo, String merchantName, boolean canSell, boolean canReceive,
                          String logo, double rating, int ratingCount,
                          boolean verified, int breachCount) {
@@ -147,10 +187,6 @@ public interface MerchantQueryPort {
      */
     String pointsDenyReason(String merchantNo);
 
-    /**
-     * @param ratingCount 计入评分的评价条数。**没有它就分不清「0 分」和「还没人评过」**——
-     *                    对买家这是相反的信号：0 分是被打出来的，没人评过只是新开的
-     */
     /** 平台按行业强制开启积分，商家不可自行关闭。 */
     boolean isPointsForced(String merchantNo);
 

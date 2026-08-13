@@ -207,7 +207,7 @@ describe.each(APPS)("$app 契约字段（$prefix）", ({ app, prefix }) => {
 
     /*
      * 存量欠账：**修好盲区那一刻**库里就有的 21 处（/biz 7、/mp 14），
-     * 修掉求团、商家团、优惠券，再摘掉 4 条同名 record 撞出来的假消息之后，剩 8 处 ——
+     * 修掉求团、商家团、优惠券、门店主页与常买清单，再摘掉 4 条同名 record 撞出来的假消息之后，剩 6 处 ——
      * **全在 /mp**，/biz 这一侧已经清零。
      *
      * 数字这么大不是因为一夜之间坏了这么多，而是因为守卫此前<b>根本没在比</b>——
@@ -221,7 +221,7 @@ describe.each(APPS)("$app 契约字段（$prefix）", ({ app, prefix }) => {
      * 这样两件事同时成立：今天不必一次修完，而**明天新增一处立刻变红**。
      * 修掉一处就把数字减一 —— 数字不允许往上走，这是它唯一的价值。
      */
-    const PENDING = { "b-app": 0, "c-app": 8 }[app] ?? 0;
+    const PENDING = { "b-app": 0, "c-app": 6 }[app] ?? 0;
     if (offenders.length && offenders.length <= PENDING) {
       expect(
         offenders.length,

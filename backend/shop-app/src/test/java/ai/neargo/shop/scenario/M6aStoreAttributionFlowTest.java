@@ -90,8 +90,17 @@ class M6aStoreAttributionFlowTest {
                 .andExpect(jsonPath("$.code").value(0))
                 .andExpect(jsonPath("$.data.merchant.merchantNo").value("M0001"))
                 .andExpect(jsonPath("$.data.merchant.name").value("老张粮油店"))
-                .andExpect(jsonPath("$.data.hotGoods").isArray())
-                .andExpect(jsonPath("$.data.fulfillmentDesc").isNotEmpty());
+                // 字段名按契约：端上读的是 goods 与 store，不是 hotGoods / fulfillmentDesc
+                .andExpect(jsonPath("$.data.goods").isArray())
+                /*
+                 * **门面文案要是店主填的那份**。此前公告写死成空串、履约文案写死成
+                 * 一句「每晚 7 点前到货」—— 店主在 B 端认真填的公告与营业时间
+                 * 一个字都到不了 C 端；而契约要的字段叫 `store`，页面读
+                 * `store.announcement` 直接抛错，门店主页整页空白。
+                 */
+                .andExpect(jsonPath("$.data.store.announcement").exists())
+                .andExpect(jsonPath("$.data.store.openHours").exists())
+                .andExpect(jsonPath("$.data.store.address").exists());
     }
 
     @Test
@@ -227,7 +236,9 @@ class M6aStoreAttributionFlowTest {
         assertThat(items.size()).isGreaterThanOrEqualTo(2);
         // 买得最多的排最前 —— 第一屏就是「我买过的」，顺序错了这个页面就没用了
         assertThat(items.get(0).get("skuNo").asString()).isEqualTo("SK0003");
-        assertThat(items.get(0).get("buyCount").asInt()).isEqualTo(2);
+        // 字段名按契约：端上读的是 times（页面上那句「买过 N 次」）
+        assertThat(items.get(0).get("times").asInt()).isEqualTo(2);
+        assertThat(items.get(0).get("lastAt").asLong()).isPositive();
         assertThat(items.get(0).get("price").asLong()).isPositive();
         assertThat(items.get(0).get("lastPrice").asLong()).isPositive();
     }

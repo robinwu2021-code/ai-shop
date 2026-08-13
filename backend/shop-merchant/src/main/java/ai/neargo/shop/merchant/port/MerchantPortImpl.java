@@ -5,6 +5,7 @@ import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.spi.user.MerchantAdminPort;
 import ai.neargo.shop.spi.user.MerchantQueryPort;
 import ai.neargo.shop.merchant.entity.MchEntity;
+import ai.neargo.shop.merchant.entity.MchQualification;
 import ai.neargo.shop.merchant.entity.MchStore;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
@@ -47,6 +48,8 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
 
     private final MchEntityMapper merchantMapper;
     private final ai.neargo.shop.merchant.service.MerchantGovernService governService;
+    /** 转存入驻资质时用来查重 —— 写侧仍走 governService，这里只读 */
+    private final ai.neargo.shop.merchant.mapper.MerchantMappers.QualificationMapper qualificationMapper;
     private final MchEntityCommunityMapper merchantCommunityMapper;
     private final ai.neargo.shop.merchant.mapper.MerchantMappers.ServiceAreaMapper serviceAreaMapper;
     private final MchPaymentMapper merchantPaymentMapper;
@@ -66,7 +69,9 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
                             ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper storeMapper,
                             tools.jackson.databind.ObjectMapper json,
                             ai.neargo.shop.merchant.service.MerchantGovernService governService,
-                            ai.neargo.shop.merchant.mapper.MerchantMappers.ServiceAreaMapper serviceAreaMapper) {
+                            ai.neargo.shop.merchant.mapper.MerchantMappers.ServiceAreaMapper serviceAreaMapper,
+                            ai.neargo.shop.merchant.mapper.MerchantMappers.QualificationMapper qualificationMapper) {
+        this.qualificationMapper = qualificationMapper;
         this.governService = governService;
         this.json = json;
         this.staffMapper = staffMapper;
@@ -151,6 +156,30 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
                                 .eq(ai.neargo.shop.merchant.entity.MchStore::getIsDefault, true)
                                 .last("limit 1"))))
                 .map(ai.neargo.shop.merchant.entity.MchStore::getStoreNo);
+    }
+
+    /**
+     * 门面文案取<b>默认门店</b>那一条：C 端的门店主页是按主体进的，
+     * 多门店时展示主店的公告与地址（要看分店得从自提点那条路进）。
+     */
+    @Override
+    public Optional<StoreFront> storeFront(String merchantNo) {
+        if (merchantNo == null || merchantNo.isBlank()) {
+            return Optional.empty();
+        }
+        var store = DataScopeContext.executeWithoutScope(() ->
+                storeMapper.selectOne(Wrappers.<ai.neargo.shop.merchant.entity.MchStore>lambdaQuery()
+                        .eq(ai.neargo.shop.merchant.entity.MchStore::getEntityNo, merchantNo)
+                        .orderByDesc(ai.neargo.shop.merchant.entity.MchStore::getIsDefault)
+                        .last("limit 1")));
+        return store == null ? Optional.empty()
+                : Optional.of(new StoreFront(nvl(store.getAnnouncement()),
+                        nvl(store.getOpenHours()), nvl(store.getAddress())));
+    }
+
+    /** 空字符串而不是 null：端上直接渲染，null 会变成屏幕上的「null」 */
+    private static String nvl(String s) {
+        return s == null ? "" : s;
     }
 
     @Override
@@ -274,12 +303,12 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
         boolean active = ACTIVE.equals(m.getStatus());
         return Optional.of(new MerchantBrief(m.getEntityNo(), m.getName(), active, active,
                 m.getLogo(), m.getRating() == null ? 0d : m.getRating() / (double) RATING_SCALE,
+                m.getRatingCount() == null ? 0 : m.getRatingCount(),
                 Boolean.TRUE.equals(m.getVerified()),
                 m.getBreachCount() == null ? 0 : m.getBreachCount()));
     }
 
     @Override
-                m.getRatingCount() == null ? 0 : m.getRatingCount(),
     public java.util.Map<String, MerchantBrief> findAll(java.util.Collection<String> merchantNos) {
         if (merchantNos == null || merchantNos.isEmpty()) {
             return java.util.Map.of();
@@ -297,12 +326,78 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
             boolean active = ACTIVE.equals(m.getStatus());
             out.put(m.getEntityNo(), new MerchantBrief(m.getEntityNo(), m.getName(), active, active,
                     m.getLogo(), m.getRating() == null ? 0d : m.getRating() / (double) RATING_SCALE,
+                    m.getRatingCount() == null ? 0 : m.getRatingCount(),
                     Boolean.TRUE.equals(m.getVerified()),
                     m.getBreachCount() == null ? 0 : m.getBreachCount()));
         }
         return out;
     }
-                    m.getRatingCount() == null ? 0 : m.getRatingCount(),
+
+    @Override
+    public String fundsModeOf(String merchantNo) {
+        MchEntity m = DataScopeContext.executeWithoutScope(() ->
+                merchantMapper.selectOne(Wrappers.<MchEntity>lambdaQuery()
+                        .eq(MchEntity::getEntityNo, merchantNo).last("LIMIT 1")));
+        // 查不到按归集：那是今天唯一在跑的路径，而误判成直连会让系统去执行
+        // 一次**本不存在的补差** —— 应付已按全额算，再补一次就是重复付款
+        return m == null || m.getFundsMode() == null || m.getFundsMode().isBlank()
+                ? FUNDS_AGGREGATED : m.getFundsMode();
+    }
+
+    @Override
+    @Transactional
+    public int saveQualifications(String merchantNo, java.util.List<QualificationItem> items) {
+        if (items == null || items.isEmpty()) {
+            return 0;
+        }
+        // 已有的按 (类型, 证号) 建索引 —— 审核接口会被重复点击，
+        // 重复写入会让「这家店有几张执照」变成一个假数字，而没有任何一处会报错
+        var existing = DataScopeContext.executeWithoutScope(() ->
+                        qualificationMapper.selectList(Wrappers.<MchQualification>lambdaQuery()
+                                .eq(MchQualification::getEntityNo, merchantNo)))
+                .stream()
+                .map(q -> key(q.getQualType(), q.getQualNumber()))
+                .collect(java.util.stream.Collectors.toSet());
+
+        int added = 0;
+        for (QualificationItem it : items) {
+            if (it == null || it.type() == null || it.type().isBlank()) {
+                // 类型为空的条目直接跳过：写进去也匹配不到任何授权码要求的资质，
+                // 是一条永远不会生效的记录 —— 静默存下比拒绝更糟
+                continue;
+            }
+            if (!existing.add(key(it.type(), it.code()))) {
+                continue;
+            }
+            governService.saveQualification(merchantNo,
+                    new ai.neargo.shop.merchant.service.MerchantGovernService.SaveQualificationCommand(
+                            null, it.type(), qualNameOf(it.type()), it.code(),
+                            it.imageUrl(), it.expireAt()),
+                    "SYSTEM");
+            added++;
+        }
+        return added;
+    }
+
+    private static String key(String type, String number) {
+        return type + "|" + (number == null ? "" : number);
+    }
+
+    /**
+     * 资质展示名。
+     *
+     * <p><b>必须与 {@code sys_auth_code.required_qualification} 同一套字面量</b> ——
+     * 类目授权是拿证件名做字符串比对的，名字对不上就等于这张证不存在，
+     * 而两边都不会报错。
+     */
+    private static String qualNameOf(String type) {
+        return switch (type) {
+            case MchQualification.BUSINESS_LICENSE -> "营业执照";
+            case MchQualification.FOOD_PERMIT -> "食品经营许可证";
+            case MchQualification.FOOD_WORKSHOP -> "食品小作坊登记证";
+            default -> type;
+        };
+    }
 
     @Override
     @Transactional
@@ -533,12 +628,27 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
             }
         }
 
-        // 主体：小微一律拒绝，且提示的是「升级后可开启」
-        MchPaymentMerchant pay = merchantPaymentMapper.selectOne(
-                Wrappers.<MchPaymentMerchant>lambdaQuery()
-                        .eq(MchPaymentMerchant::getEntityNo, merchantNo).last("LIMIT 1"));
-        if (pay != null && MchPaymentMerchant.MICRO.equals(pay.getLegalForm())) {
-            return "本店暂不支持积分（升级为个体工商户后可开启）";
+        /*
+         * 主体：**无照商户能不能开积分，取决于资金路径**。
+         *
+         * ┌ 直连（钱在商家二级户）
+         * │   积分抵扣让他少收 → 平台必须补差进去 → **那是一次平台付钱给自然人**
+         * │   → 扣缴义务定性模糊 → 维持禁止
+         * └ 归集（钱在平台户）
+         *     平台自己少收，没有「补」这个动作；付给他的是货款，
+         *     且农产品场景下平台自开收购发票 → **可以开**
+         *
+         * ⚠️ 此前这里判的是 `mch_payment_merchant.legalForm == MICRO` —— 两处都不对：
+         *   1. 判据选错了轴。要不要补差看**钱在谁手里**（funds_mode），
+         *      不是「他是什么主体」，更不是「谁是销售主体」（business_mode）。
+         *   2. 读错了字段。那一列是**通道进件档**（微信小微/个体户），
+         *      不是主体的法律形态 —— 通道给他开了小微户，不代表他就是无照。
+         *
+         * 现在：法律形态走注册表（needLicense），路径走 funds_mode。
+         */
+        boolean unlicensed = !masterDataPort.needLicense(m.getLegalForm());
+        if (unlicensed && FUNDS_DIRECT.equals(fundsModeOf(merchantNo))) {
+            return "本店暂不支持积分（无营业执照，且收款直连到商家账户）";
         }
 
         // L3 本店。forced 为真时商家关不掉

@@ -56,12 +56,16 @@ public class StoreServiceImpl implements StoreService {
         var hot = goodsService.list(new GoodsService.GoodsQuery(
                 null, merchantNo, null, null, null, 1, 6));
 
+        // 门面文案取店主自己填的那份 —— 没有门店时给空文案，页面按空串不渲染那两块
+        var front = merchantPort.storeFront(merchantNo)
+                .map(f -> new StoreHomeVO.StoreFront(f.announcement(), f.openHours(), f.address()))
+                .orElseGet(() -> new StoreHomeVO.StoreFront("", "", ""));
+
         return new StoreHomeVO(
                 new StoreHomeVO.Merchant(merchant.merchantNo(), merchant.merchantName(),
-                        merchant.logo(), merchant.rating(), merchant.verified(),
-                        merchant.breachCount()),
-                "", "每晚 7 点前到货，凭取货码到店自提",
-                favorited, hot.records());
+                        merchant.logo(), merchant.rating(), merchant.ratingCount(),
+                        merchant.verified(), merchant.breachCount()),
+                front, favorited, hot.records());
     }
 
     @Override
