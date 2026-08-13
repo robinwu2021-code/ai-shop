@@ -26,8 +26,6 @@ interface Gap {
 const KNOWN_SHARED: Record<string, string> = {
   PickupScope:
     "GROUP_INSTANCE（团粒度自提点，一团一销）后端未实现。ADR-005 里有，链路还没接",
-  ArrivalIssueKind:
-    "SHORTAGE/DAMAGE 到货异常上报，后端未实现（B 端 D9 只做了端上）",
   GrantType:
     "WX_MINI/WX_PHONE/WX_OPEN 是端上按微信三种登录场景拆的，后端只有一个 WECHAT_MP。" +
     "微信登录本身还没接（code2Session 是 TODO），接的时候两边一起定名",

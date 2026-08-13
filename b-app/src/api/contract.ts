@@ -8,6 +8,7 @@ import type {
   Region,
   StaffRole,
   AfterSale,
+  ArrivalIssueKind,
   Category,
   Community,
   CommunityApply,
@@ -23,6 +24,7 @@ import type {
   MerchantRole,
   PickupOrder,
   PermOption,
+  Quote,
   VerifyResult,
   Store,
   PaymentApplyment,
@@ -380,7 +382,7 @@ export interface MerchantApi {
    * @param pickupNo 给哪个自提点登记；不传 = 当前门店的那个点。
    *                 多点商家必须能指定 —— 否则另一个点的货永远登记不上
    */
-  mMarkArrived(orderNos: string[], pickupNo?: string): Promise<Order[]>;
+  mMarkArrived(subOrderNos: string[], pickupNo?: string): Promise<PickupOrder[]>;
   /**
    * 核销自提码。核销成功 → C 端该订单立刻变已完成。
    *
@@ -401,7 +403,7 @@ export interface MerchantApi {
    * 返回的是 `Order`，端上据此让店主确认是哪一单再核销 ——
    * **不直接核销**：模糊匹配可能命中多单，替他选一单是替他承担风险。
    */
-  mVerifySearch(keyword: string): Promise<Order[]>;
+  mVerifySearch(keyword: string): Promise<PickupOrder[]>;
 
   // ---- 售后（B-11.5）
   /**
@@ -410,14 +412,14 @@ export interface MerchantApi {
    */
   mAfterSaleList(): Promise<AfterSale[]>;
   /** 同意：仅退款直接退；退货退款要等收货后才退（见 mConfirmReturn） */
-  mApproveAfterSale(afterSaleNo: string, reply: string): Promise<Order>;
+  mApproveAfterSale(afterSaleNo: string, reply: string): Promise<AfterSale>;
   /** 驳回**必须给理由** —— 用户据此决定要不要上升平台，没理由就是把路堵死 */
-  mRejectAfterSale(afterSaleNo: string, reply: string): Promise<Order>;
+  mRejectAfterSale(afterSaleNo: string, reply: string): Promise<AfterSale>;
   /**
    * 确认收到退货 → 随即退款（B-7.3）。
    * **退款必须在这一步之后** —— 同意即退的话，货没回来钱先出去了。
    */
-  mConfirmReturn(afterSaleNo: string): Promise<Order>;
+  mConfirmReturn(afterSaleNo: string): Promise<AfterSale>;
 
   // ---- 团购与报价（B-11.6）
   mGroupList(): Promise<GroupBuy[]>;
@@ -429,7 +431,7 @@ export interface MerchantApi {
   mQuote(
     requestNo: string,
     payload: { priceMinor: number; minCount: number; desc: string },
-  ): Promise<GroupRequest>;
+  ): Promise<Quote>;
 
   // ---- 评价（B-11.7）
   mReviewList(): Promise<Review[]>;
@@ -464,9 +466,9 @@ export interface MerchantApi {
   // ---- 到货异常上报（B-10.4.2）
   /** 破损 / 短少上报。下游是售后责任判定（平台 / 供货商家 / 自提点商家，M4 待定） */
   mReportShortage(
-    orderNo: string,
-    payload: { skuNo: string; kind: "SHORTAGE" | "DAMAGE"; note: string },
-  ): Promise<Order>;
+    subOrderNo: string,
+    payload: { skuNo: string; kind: ArrivalIssueKind; note: string },
+  ): Promise<PickupOrder>;
 
   // ---- 积分（商家侧只有成本与开关，看不到抵扣与补差）
   mPointsAccount(): Promise<MerchantPointAccount>;

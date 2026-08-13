@@ -211,6 +211,34 @@ function usersOfRole(roleCode: string) {
 }
 
 /** 权限码 → 中文。**取自 db.permLabels（后端下发的那份）**，不在页面里再抄一遍 */
+/**
+ * 主单 → 履约台视图（`PickupOrder`）。
+ *
+ * 自提点上的四个端点（列表、到货登记、按码搜、上报短少）**返回的都是这一份**，
+ * 而 mock 此前各自返回主单 —— 页面于是照着主单写（拿 `orderNo`、比 `PAID`），
+ * 真机上全部落空。一个 helper 保证四处不会再各写一份。
+ */
+function pickupView(o: (typeof db.orders)[number]) {
+  return {
+    subOrderNo: o.orderNo,
+    verifyCode: o.verifyCode ?? "",
+    buyerNickname: o.buyerNickname,
+    merchantName: o.merchantName,
+    // mock 用主单状态，后端用子单那一套：没取走的一律 WAIT_FULFILL
+    status:
+      o.status === "COMPLETED" || o.status === "CANCELLED" || o.status === "REFUNDED"
+        ? o.status
+        : ("WAIT_FULFILL" as const),
+    pickupNo: o.pickupNo,
+    items: o.items.map((i) => ({
+      goodsNo: i.goodsNo,
+      title: i.title,
+      spec: i.spec,
+      qty: i.qty,
+    })),
+  };
+}
+
 /** 角色码 → 显示名。审计那行字是给老板看的，他没见过 `MANAGER`，更没见过 `R-MOCK-1` */
 function roleName(code: string) {
   return db.roles.find((r) => r.roleCode === code)?.name ?? code;
@@ -978,24 +1006,7 @@ export const mockApi: MerchantApi = {
     return delay(
       db.orders
         .filter((o) => o.fulfillment === "STORE_PICKUP" && (!pickupNo || o.pickupNo === pickupNo))
-        .map((o) => ({
-          subOrderNo: o.orderNo,
-          verifyCode: o.verifyCode ?? "",
-          buyerNickname: o.buyerNickname,
-          merchantName: o.merchantName,
-          // 主单状态映到子单那一套：mock 的 PAID/ARRIVED 在后端都算「还没履约完」
-          status:
-            o.status === "COMPLETED" || o.status === "CANCELLED" || o.status === "REFUNDED"
-              ? o.status
-              : ("WAIT_FULFILL" as const),
-          pickupNo: o.pickupNo,
-          items: o.items.map((i) => ({
-            goodsNo: i.goodsNo,
-            title: i.title,
-            spec: i.spec,
-            qty: i.qty,
-          })),
-        })),
+        .map(pickupView),
     );
   },
 
@@ -1025,9 +1036,10 @@ export const mockApi: MerchantApi = {
     return delay([...map.values()].sort((a, b) => b.totalQty - a.totalQty));
   },
 
-  async mMarkArrived(orderNos, _pickupNo) {
-    const changed: Order[] = [];
-    for (const no of orderNos) {
+  async mMarkArrived(subOrderNos, _pickupNo) {
+    const changed: ReturnType<typeof pickupView>[] = [];
+    for (const no of subOrderNos) {
+      // mock 的主单号当子单号用（一单一商家），与 pickupView 同一口径
       const o = db.orders.find((x) => x.orderNo === no);
       if (!o || o.status !== "PAID") continue;
       assertTransition(o.status, "ARRIVED");
@@ -1039,7 +1051,7 @@ export const mockApi: MerchantApi = {
         `取货码 ${o.verifyCode ?? ""}，到 ${o.pickupName ?? "自提点"} 报码即可`,
         `/pages/order/index?orderNo=${o.orderNo}`,
       );
-      changed.push(o);
+      changed.push(pickupView(o));
     }
     persist();
     return delay(changed);
@@ -1083,12 +1095,12 @@ export const mockApi: MerchantApi = {
         `/pages/order/index?orderNo=${o.orderNo}`,
       );
       persist();
-      return delay(o);
+      return delay(o.afterSale!);
     }
 
     settleRefund(o, "商家已同意退款");
     persist();
-    return delay(o);
+    return delay(o.afterSale!);
   },
 
   async mRejectAfterSale(afterSaleNo, reply) {
@@ -1107,7 +1119,7 @@ export const mockApi: MerchantApi = {
       `/pages/order/index?orderNo=${o.orderNo}`,
     );
     persist();
-    return delay(o);
+    return delay(o.afterSale!);
   },
 
   async mConfirmReturn(afterSaleNo) {
@@ -1124,7 +1136,7 @@ export const mockApi: MerchantApi = {
     // 确认收货与退款是同一个动作的两半，中间不留悬空态
     settleRefund(o, "退款已发起");
     persist();
-    return delay(o);
+    return delay(o.afterSale!);
   },
 
   // ---------------------------------------------------------------- 团购与报价
@@ -1201,7 +1213,11 @@ export const mockApi: MerchantApi = {
       });
     }
     persist();
-    return delay(toGroupRequest(seed));
+    // **返回这条报价**，不是整张需求单：后端 /biz/group-request/{no}/quote 发的是 QuoteVO。
+    // 此前返回需求单，端上拿到的字段与真机完全不同（只是没人用到，所以一直没暴露）
+    // 复用 toGroupRequest 里那份换算（价格要按当前市场换算，自己再写一遍必漂）
+    const mine = toGroupRequest(seed).quotes.find((q) => q.merchant.merchantNo === merchantNo)!;
+    return delay(mine);
   },
 
   // ---------------------------------------------------------------- 评价
@@ -1411,8 +1427,8 @@ export const mockApi: MerchantApi = {
   },
 
   // ---------------------------------------------------------------- 到货异常
-  async mReportShortage(orderNo, payload) {
-    const o = findOrder(orderNo);
+  async mReportShortage(subOrderNo, payload) {
+    const o = findOrder(subOrderNo);
     const label = payload.kind === "SHORTAGE" ? "短少" : "破损";
     pushTimeline(o, `自提点上报${label}：${payload.note}`);
     // 只留痕、通知用户，**不自动退款** —— 责任在供货方还是承接方尚未定（矩阵 M4），
@@ -1424,7 +1440,7 @@ export const mockApi: MerchantApi = {
       `/pages/order/index?orderNo=${o.orderNo}`,
     );
     persist();
-    return delay(o);
+    return delay(pickupView(o));
   },
 
   /**
@@ -1493,12 +1509,14 @@ export const mockApi: MerchantApi = {
     const pickupNo = db.merchant.pickupNo;
     if (!k) return delay([]);
     return delay(
-      db.orders.filter(
-        (o) =>
-          !!o.verifyCode
-          && o.verifyCode.includes(k)
-          && (!pickupNo || o.pickupNo === pickupNo),
-      ),
+      db.orders
+        .filter(
+          (o) =>
+            !!o.verifyCode
+            && o.verifyCode.includes(k)
+            && (!pickupNo || o.pickupNo === pickupNo),
+        )
+        .map(pickupView),
     );
   },
 

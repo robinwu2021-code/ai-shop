@@ -57,6 +57,7 @@ import type {
   MerchantRole,
   PermOption,
   PickupOrder,
+  Quote,
   VerifyResult,
   Store,
   PaymentApplyment,
@@ -208,34 +209,34 @@ export const httpApi: MerchantApi = {
   mPickupOrders: () => http.get<PickupOrder[]>(E.mPickupOrders.path),
   mPickingList: () => http.get<PickingRow[]>(E.mPickingList.path),
   mMarkArrived: (orderNos, pickupNo) =>
-    http.post<Order[]>(E.mMarkArrived.path, { orderNos, pickupNo } satisfies MarkArrivedReq),
+    http.post<PickupOrder[]>(E.mMarkArrived.path, { orderNos, pickupNo } satisfies MarkArrivedReq),
   mVerify: (code) =>
     http.post<VerifyResult>(E.mVerify.path, { verifyCode: code } satisfies VerifyReq),
   mVerifyBatch: (codes) =>
     http.post<VerifyBatchResult>(E.mVerifyBatch.path, { verifyCodes: codes } satisfies VerifyBatchReq),
   // 按码片段搜单：输码核销失败后的兜底，keyword 走 query
   mVerifySearch: (keyword) =>
-    http.get<Order[]>(E.mVerifySearch.path, { keyword }),
+    http.get<PickupOrder[]>(E.mVerifySearch.path, { keyword }),
 
   mAfterSaleList: () => http.get<AfterSale[]>(E.mAfterSaleList.path),
   mApproveAfterSale: (afterSaleNo, reply) =>
-    http.post<Order>(buildPath(E.mApproveAfterSale.path, { afterSaleNo }), {
+    http.post<AfterSale>(buildPath(E.mApproveAfterSale.path, { afterSaleNo }), {
       remark: reply,
     } satisfies HandleAfterSaleReq),
   mRejectAfterSale: (afterSaleNo, reply) =>
-    http.post<Order>(buildPath(E.mRejectAfterSale.path, { afterSaleNo }), {
+    http.post<AfterSale>(buildPath(E.mRejectAfterSale.path, { afterSaleNo }), {
       remark: reply,
     } satisfies HandleAfterSaleReq),
 
   mConfirmReturn: (afterSaleNo) =>
-    http.post<Order>(buildPath(E.mConfirmReturn.path, { afterSaleNo }), {}),
+    http.post<AfterSale>(buildPath(E.mConfirmReturn.path, { afterSaleNo }), {}),
 
   mGroupList: () => http.get<GroupBuy[]>(E.mGroupList.path),
   mCreateGroup: (goodsNo) =>
     http.post<GroupBuy>(E.mCreateGroup.path, { goodsNo } satisfies CreateGroupReq),
   mRequestList: () => http.get<GroupRequest[]>(E.mRequestList.path),
   mQuote: (requestNo, payload) =>
-    http.post<GroupRequest>(buildPath(E.mQuote.path, { requestNo }), {
+    http.post<Quote>(buildPath(E.mQuote.path, { requestNo }), {
       // 契约方法的参数名是前端语义（priceMinor/minCount/desc），
       // 发到线上的字段名必须是后端那套 —— 这一层就是干这个的
       unitPriceMinor: payload.priceMinor,
@@ -264,8 +265,8 @@ export const httpApi: MerchantApi = {
   mSettleList: (allStores) =>
     http.get<SettleBill[]>(E.mSettleList.path, allStores ? { allStores: true } : undefined),
   mRateCard: () => http.get<RateCard>(E.mRateCard.path),
-  mReportShortage: (orderNo, payload) =>
-    http.post<Order>(buildPath(E.mReportShortage.path, { orderNo }), {
+  mReportShortage: (subOrderNo, payload) =>
+    http.post<PickupOrder>(buildPath(E.mReportShortage.path, { orderNo: subOrderNo }), {
       ...payload,
     } satisfies ReportShortageReq),
 

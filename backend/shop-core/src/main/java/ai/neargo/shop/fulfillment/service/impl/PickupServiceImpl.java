@@ -190,7 +190,16 @@ public class PickupServiceImpl implements PickupService {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
 
-        String label = ("DAMAGE".equals(kind) ? "自提点上报破损：" : "自提点上报短少：")
+        /*
+         * 两个词都显式认一次。此前只判 `DAMAGE`、其余全当短少 ——
+         * 行为上没错，但 `SHORTAGE` 这个词在后端<b>一次都没出现过</b>，
+         * 于是端上声明了它、后端「不认识」它，枚举对账那条守卫据此报警：
+         * 契约上写着的取值，后端代码里查无此词，谁也说不清是不是漏实现了。
+         */
+        String label = ("DAMAGE".equals(kind) ? "自提点上报破损："
+                : "SHORTAGE".equals(kind) ? "自提点上报短少："
+                // 兜底仍按短少：上报本身只留痕，不该因为一个词不认识就丢掉
+                : "自提点上报短少：")
                 + (note == null || note.isBlank() ? "无说明" : note.trim());
         orderPort.reportException(subOrderNo, SecurityUtils.currentUserNo(), label);
         return mask(target);

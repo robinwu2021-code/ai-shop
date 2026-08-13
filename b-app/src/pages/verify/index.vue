@@ -54,7 +54,7 @@ async function load() {
  * 而现场最常见的失败恰恰是「读不全」—— 磨花的小票、反光的屏幕、
  * 邻居只记得后四位。此前走到这一步店主就没辙了，只能让人回家找码。
  */
-const candidates = ref<Order[] | null>(null);
+const candidates = ref<PickupOrder[] | null>(null);
 
 async function verify(input?: string) {
   const c = (input ?? code.value).trim();
@@ -92,7 +92,7 @@ async function verify(input?: string) {
 }
 
 /** 从候选里确认核销：这时用的是完整码，走的还是同一条核销路径 */
-async function verifyCandidate(o: Order) {
+async function verifyCandidate(o: PickupOrder) {
   candidates.value = null;
   await verify(o.verifyCode);
 }
@@ -199,7 +199,7 @@ onShow(load);
         <text v-if="!candidates.length" class="sh-muted">{{ $t("verify.searchEmpty") }}</text>
         <template v-else>
           <text class="sh-muted cands__hint">{{ $t("verify.searchHint") }}</text>
-          <view v-for="c in candidates" :key="c.orderNo" class="cand">
+          <view v-for="c in candidates" :key="c.subOrderNo" class="cand">
             <view class="cand__main">
               <text class="cand__code sh-num">{{ c.verifyCode }}</text>
               <text class="sh-muted">{{ c.buyerNickname || "—" }}</text>
