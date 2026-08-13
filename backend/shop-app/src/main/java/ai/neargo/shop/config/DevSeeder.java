@@ -53,7 +53,8 @@ public class DevSeeder {
                                  ai.neargo.shop.platform.mapper.PlatformMappers.SettingMapper settingMapper,
                                  // 平台员工是 staffMapper，商家子账号是 merchantStaffMapper —— 两套人，别混
                                  ai.neargo.shop.merchant.mapper.MerchantMappers.MchAccountMapper merchantStaffMapper,
-                                 ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper storeMapper) {
+                                 ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper storeMapper,
+                                 ai.neargo.shop.auth.PasswordHasher passwordHasher) {
         return args -> {
             /*
              * 运营账号在总闸**之前**灌。
@@ -65,7 +66,7 @@ public class DevSeeder {
              *
              * seedStaff 自己按 username 判存在性，重复调用是安全的。
              */
-            seedStaffs(staffMapper, roleMemberMapper);
+            seedStaffs(staffMapper, roleMemberMapper, passwordHasher);
 
             if (communityMapper.selectCount(Wrappers.emptyWrapper()) > 0) {
                 return;   // 幂等：重启不重复灌
@@ -191,11 +192,12 @@ public class DevSeeder {
 
     /** 运营种子账号。**按岗位分角色**，没有「运营」这种什么都能干的大角色 ——
      *  一个能审商家又能改价又能退款的角色，出事时无法定位是谁的职责。 */
-    private void seedStaffs(StaffMapper staffMapper, RoleMemberMapper roleMemberMapper) {
-            seedStaff(staffMapper, roleMemberMapper, "admin", "超级管理员", "[\"SUPER_ADMIN\"]", "admin123");
-            seedStaff(staffMapper, roleMemberMapper, "bd", "商家运营", "[\"BD\"]", "bd123");
-            seedStaff(staffMapper, roleMemberMapper, "goods", "商品运营", "[\"GOODS_OPS\"]", "goods123");
-            seedStaff(staffMapper, roleMemberMapper, "support", "客服", "[\"SUPPORT\"]", "support123");
+    private void seedStaffs(StaffMapper staffMapper, RoleMemberMapper roleMemberMapper,
+                            ai.neargo.shop.auth.PasswordHasher passwordHasher) {
+            seedStaff(staffMapper, roleMemberMapper, "admin", "超级管理员", "[\"SUPER_ADMIN\"]", "admin123", passwordHasher);
+            seedStaff(staffMapper, roleMemberMapper, "bd", "商家运营", "[\"BD\"]", "bd123", passwordHasher);
+            seedStaff(staffMapper, roleMemberMapper, "goods", "商品运营", "[\"GOODS_OPS\"]", "goods123", passwordHasher);
+            seedStaff(staffMapper, roleMemberMapper, "support", "客服", "[\"SUPPORT\"]", "support123", passwordHasher);
             /*
              * 矩阵 §2.3 另外七个岗位（后端 2026-08-11 补齐权限配置）。
              *
@@ -203,23 +205,25 @@ public class DevSeeder {
              * 而这件事之所以能一直存在，正是因为没人能登进去看一眼。
              * 有账号才验得了「这个岗位登录后到底看得见什么」。
              */
-            seedStaff(staffMapper, roleMemberMapper, "campaign", "活动运营", "[\"CAMPAIGN_OPS\"]", "campaign123");
-            seedStaff(staffMapper, roleMemberMapper, "community", "社区运营", "[\"COMMUNITY_OPS\"]", "community123");
-            seedStaff(staffMapper, roleMemberMapper, "auditor", "审核员", "[\"AUDITOR\"]", "auditor123");
-            seedStaff(staffMapper, roleMemberMapper, "finance", "财务", "[\"FINANCE\"]", "finance123");
-            seedStaff(staffMapper, roleMemberMapper, "risk", "风控", "[\"RISK\"]", "risk123");
-            seedStaff(staffMapper, roleMemberMapper, "analyst", "数据分析", "[\"ANALYST\"]", "analyst123");
-            seedStaff(staffMapper, roleMemberMapper, "techops", "技术运维", "[\"TECH_OPS\"]", "techops123");
+            seedStaff(staffMapper, roleMemberMapper, "campaign", "活动运营", "[\"CAMPAIGN_OPS\"]", "campaign123", passwordHasher);
+            seedStaff(staffMapper, roleMemberMapper, "community", "社区运营", "[\"COMMUNITY_OPS\"]", "community123", passwordHasher);
+            seedStaff(staffMapper, roleMemberMapper, "auditor", "审核员", "[\"AUDITOR\"]", "auditor123", passwordHasher);
+            seedStaff(staffMapper, roleMemberMapper, "finance", "财务", "[\"FINANCE\"]", "finance123", passwordHasher);
+            seedStaff(staffMapper, roleMemberMapper, "risk", "风控", "[\"RISK\"]", "risk123", passwordHasher);
+            seedStaff(staffMapper, roleMemberMapper, "analyst", "数据分析", "[\"ANALYST\"]", "analyst123", passwordHasher);
+            seedStaff(staffMapper, roleMemberMapper, "techops", "技术运维", "[\"TECH_OPS\"]", "techops123", passwordHasher);
     }
 
     private void seedStaff(StaffMapper mapper, RoleMemberMapper roleMemberMapper,
                            String username, String realName,
-                           String rolesJson, String rawPassword) {
+                           String rolesJson, String rawPassword,
+                           ai.neargo.shop.auth.PasswordHasher passwordHasher) {
+        // 播种的账号直接是 bcrypt —— 种子不该产出「待升级」的存量
         var s = new SysOpsStaff();
         String staffNo = "ST-" + username.toUpperCase();
         s.setStaffNo(staffNo);
         s.setUsername(username);
-        s.setPassword(ai.neargo.shop.platform.impl.OpsServiceImpl.hash(rawPassword));
+        s.setPassword(passwordHasher.encode(rawPassword));
         s.setRealName(realName);
         s.setRoles(rolesJson);
         s.setStatus("ACTIVE");

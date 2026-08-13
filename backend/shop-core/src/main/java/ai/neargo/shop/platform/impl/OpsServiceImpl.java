@@ -48,6 +48,9 @@ import java.util.regex.Pattern;
 @Service
 public class OpsServiceImpl implements OpsService {
 
+    private static final org.slf4j.Logger log =
+            org.slf4j.LoggerFactory.getLogger(OpsServiceImpl.class);
+
     /**
      * 邮箱格式校验。**只挡"忘了打 @"这类最常见的手滑**，不追求 RFC 5322 全量合规——
      * 真要验证这个地址收不收得到信，得发验证邮件，那是另一件事。
@@ -65,6 +68,7 @@ public class OpsServiceImpl implements OpsService {
     private final ObjectMapper json;
     private final ai.neargo.shop.platform.IndustryService industryService;
     private final ai.neargo.shop.platform.MasterDataService masterDataService;
+    private final ai.neargo.shop.auth.PasswordHasher passwordHasher;
 
     public OpsServiceImpl(StaffMapper staffMapper, RoleMemberMapper roleMemberMapper,
                           RolePermResolver rolePermResolver,
@@ -72,8 +76,10 @@ public class OpsServiceImpl implements OpsService {
                           MerchantApplyMapper applyMapper, MerchantAdminPort merchantAdminPort,
                           TokenStore tokenStore, ObjectMapper json, ObjectMapper objectMapper,
                           ai.neargo.shop.platform.IndustryService industryService,
-                          ai.neargo.shop.platform.MasterDataService masterDataService) {
+                          ai.neargo.shop.platform.MasterDataService masterDataService,
+                          ai.neargo.shop.auth.PasswordHasher passwordHasher) {
         this.masterDataService = masterDataService;
+        this.passwordHasher = passwordHasher;
         this.industryService = industryService;
         this.objectMapper = objectMapper;
         this.staffMapper = staffMapper;
@@ -86,6 +92,29 @@ public class OpsServiceImpl implements OpsService {
         this.json = json;
     }
 
+    /**
+     * 启动时报一次：还有多少账号停在一期占位哈希。
+     *
+     * <p><b>刻意做成一条会自己消失的日志</b>，而不是接口上的一个字段：
+     * 字段会永远在那里（哪怕早就 0 个），而运营看了也不知道该做什么；
+     * 日志在数字降到 0 之后就不再出现，那本身就是「迁完了」的信号。
+     */
+    @org.springframework.context.event.EventListener(
+            org.springframework.boot.context.event.ApplicationReadyEvent.class)
+    void reportLegacyPasswords() {
+        try {
+            long n = staffMapper.selectList(Wrappers.<SysOpsStaff>lambdaQuery()
+                            .notLike(SysOpsStaff::getPassword, "$2%")).size();
+            if (n > 0) {
+                log.warn("还有 {} 个运营账号是一期占位哈希 —— 他们下次登录时会自动升级成 bcrypt。"
+                        + "长期不登录的账号会一直停在旧格式", n);
+            }
+        } catch (Exception e) {
+            // 一条提示而已，查不出来不该影响启动
+            log.debug("统计存量密码失败：{}", e.toString());
+        }
+    }
+
     // ---------------------------------------------------------------- 登录
 
     @Override
@@ -95,9 +124,18 @@ public class OpsServiceImpl implements OpsService {
                         .eq(SysOpsStaff::getUsername, username).last("limit 1")));
 
         // **用户不存在与密码错误返回同一个错误** —— 区分开等于送了个用户名探测器
-        if (staff == null || !hash(password).equals(staff.getPassword())
+        if (staff == null || !passwordHasher.matches(password, staff.getPassword())
                 || !"ACTIVE".equals(staff.getStatus())) {
             throw BizException.of(ErrorCode.UNAUTHORIZED);
+        }
+        /*
+         * 存量密码就地升级成 bcrypt。**登录成功这一刻是唯一能拿到明文的时机**。
+         *
+         * 放在验证之后：验证失败也重写等于把错误密码写进库，
+         * 而那种故障发生在「用户下次输对了密码」的时刻，最难让人相信是系统的问题。
+         */
+        if (passwordHasher.needsUpgrade(staff.getPassword())) {
+            staff.setPassword(passwordHasher.encode(password));
         }
 
         List<String> roles = readList(staff.getRoles());
@@ -433,14 +471,6 @@ public class OpsServiceImpl implements OpsService {
         return staff;
     }
 
-    /**
-     * 一期占位哈希。**接 auth-core 时换 bcrypt** ——
-     * 这里刻意不用「明文比较」，否则替换时容易漏掉某处比较逻辑。
-     */
-    public static String hash(String raw) {
-        return Integer.toHexString(("shop$" + raw).hashCode());
-    }
-
     private StaffVO toVO(SysOpsStaff s, List<String> roles, List<String> perms) {
         return new StaffVO(s.getStaffNo(), s.getUsername(), s.getRealName(),
                 roles, perms, s.getStatus(),
@@ -597,7 +627,7 @@ public class OpsServiceImpl implements OpsService {
         staff.setStaffNo("E" + System.currentTimeMillis() % 100000000L);
         staff.setUsername(username);
         staff.setRealName(realName);
-        staff.setPassword(hash(initial));
+        staff.setPassword(passwordHasher.encode(initial));
         staff.setRoles(writeList(want));
         staff.setStatus("ACTIVE");
         staff.setMustChangePassword(true);
@@ -652,10 +682,10 @@ public class OpsServiceImpl implements OpsService {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
         SysOpsStaff staff = requireStaff(SecurityUtils.requireUser().userNo());
-        if (!hash(oldPassword == null ? "" : oldPassword).equals(staff.getPassword())) {
+        if (!passwordHasher.matches(oldPassword, staff.getPassword())) {
             throw BizException.of(ErrorCode.UNAUTHORIZED);
         }
-        staff.setPassword(hash(newPassword));
+        staff.setPassword(passwordHasher.encode(newPassword));
         staff.setMustChangePassword(false);
         staffMapper.updateById(staff);
         /*

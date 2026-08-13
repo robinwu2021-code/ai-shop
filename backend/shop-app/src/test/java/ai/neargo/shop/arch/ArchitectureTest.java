@@ -301,6 +301,36 @@ class ArchitectureTest {
      * 提醒作者「你在开一个新域」。这条规则就是那个提醒。
      */
     @Test
+    @DisplayName("★★ 一期占位哈希只准出现在 PasswordHasher 里 —— 它不能再被用来存新密码")
+    void legacyPasswordHashIsContained() throws Exception {
+        /*
+         * 那个哈希是 `Integer.toHexString(("shop$" + raw).hashCode())`：
+         * 32 位、无盐、零计算成本 —— 基本等价于明文。
+         * 它保留下来的唯一理由是**验证存量**，让老账号还能登录并就地升级。
+         *
+         * 守卫盯的是「别处又照着写一遍」：新功能最容易的做法就是抄旁边那行。
+         * 测试自己要造存量数据，所以测试目录不算。
+         */
+        List<String> offenders = new ArrayList<>();
+        Path root = Path.of("..").toAbsolutePath().normalize();
+        try (var paths = Files.walk(root)) {
+            for (Path f : paths.filter(x -> x.toString().endsWith(".java"))
+                    .filter(x -> x.toString().contains("/src/main/")).toList()) {
+                if (f.getFileName().toString().equals("PasswordHasher.java")) {
+                    continue;
+                }
+                if (Files.readString(f).contains("\"shop$\"")) {
+                    offenders.add(root.relativize(f).toString());
+                }
+            }
+        }
+        assertThat(offenders)
+                .as("这些文件里出现了一期占位哈希的盐串。它只准留在 PasswordHasher 内部做存量验证 —— "
+                        + "拿它存新密码等于把密码明文放进库")
+                .isEmpty();
+    }
+
+    @Test
     @DisplayName("顶层包必须登记：新开一个域，要同时登记进 DOMAINS 名单")
     void topLevelPackagesMustBeRegistered() {
         // 非业务域的顶层包：横切基础设施与装配层，各有专门规则管，不进 DOMAINS

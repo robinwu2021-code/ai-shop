@@ -3785,3 +3785,11 @@ UPDATE sys_function_point
 DELETE FROM sys_role_point WHERE point_code = 'OPS_MERCHANT__TAB_ADMISSION';
 DELETE FROM sys_role_point   WHERE point_code = 'ACT__MERCHANT_ADMISSION_READ';
 DELETE FROM sys_function_point WHERE point_code = 'ACT__MERCHANT_ADMISSION_READ';
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'SUPER_ADMIN', 'OPS_MERCHANT__TAB_ADMISSION', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x
+                    WHERE x.role_code='SUPER_ADMIN' AND x.point_code='OPS_MERCHANT__TAB_ADMISSION');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'FINANCE', 'OPS_MERCHANT__TAB_ADMISSION', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x
+                    WHERE x.role_code='FINANCE' AND x.point_code='OPS_MERCHANT__TAB_ADMISSION');
