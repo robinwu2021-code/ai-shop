@@ -29,6 +29,12 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 而 H2 全绿的缺陷有三个（VO 字段名、待审队列没过滤、数据域把商家订单过滤成空），
  * 它们的共同点是：**跨了真 HTTP 栈或真数据库才看得见**。
  *
+ * <h3>它也守配置数据，不只是业务旅程</h3>
+ * {@code PermSeedParityE2eTest} 借的就是这套环境：**默认构建里的 H2 关着 Flyway**
+ * （{@code application-h2db.yml}），那边的权限一致性守卫验的是测试夹具自带的种子，
+ * 不是 {@code db/migration} 跑完的结果 —— 两者漂移过一次，9 个角色丢了权限码而全绿。
+ * 「迁移跑完之后库里是什么」只有这里能验。
+ *
  * <h3>为什么不进 `mvn test`</h3>
  * 它依赖一个跑着的 MariaDB。在没有数据库的机器上会红 ——
  * 而「构建在别人机器上红」会让人开始忽略红灯。用 {@code @Tag("e2e")} 隔开，
