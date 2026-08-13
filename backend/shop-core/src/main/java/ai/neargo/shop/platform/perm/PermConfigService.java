@@ -95,6 +95,20 @@ public interface PermConfigService {
     /** 调整功能点（菜单叶子 / tab）的顺序。同 {@link #moveFunction}，范围是同一个 function 内。 */
     void movePoint(String pointCode, MoveDirection direction, String operatorNo);
 
+    /**
+     * 整段重排菜单分区（拖动用）。
+     *
+     * <p>传**该父级下的完整顺序**，而不是「把 X 挪到第 N 位」——
+     * 后者要服务端反推其余项怎么让位，而客户端本来就知道最终顺序。
+     *
+     * <p><b>{@code codes} 必须与现有集合完全相同，只是顺序不同</b>：
+     * 多一个、少一个、混进别的父级的一律拒绝。前端拦是体验，这里拦才是约束。
+     */
+    void reorderFunctions(List<String> codes, String operatorNo);
+
+    /** 整段重排某个分区下的菜单项。同 {@link #reorderFunctions}，范围限定在 {@code functionCode} 内。 */
+    void reorderPoints(String functionCode, List<String> pointCodes, String operatorNo);
+
     record MenuFunctionVO(String functionCode, String name, String icon, String href,
                           int sort, List<MenuPointVO> points) {
     }

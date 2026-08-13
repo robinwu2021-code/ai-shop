@@ -7,6 +7,7 @@
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronDown, ChevronUp } from "lucide-react";
+import { MenuOrderTree, ORDER_ROOT, type OrderNode } from "./menu-order-tree";
 import { api } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth";
@@ -310,32 +311,24 @@ function IamInner() {
     [permFns.data, c],
   );
 
-  /** 调序用的树：只有名字与 ↑/↓，**没有勾选** —— 它跟授权不是一件事。 */
-  const orderTree: TreeNode[] = useMemo(
+  /** 调序列表：只有名字与顺序，**没有勾选** —— 它跟授权不是一件事。 */
+  const orderNodes: OrderNode[] = useMemo(
     () => (permFns.data ?? []).map((f) => ({
-      key: `f:${f.functionCode}`,
-      label: (
-        <span className="flex w-full items-center gap-2">
-          {f.name}
-          <MoveBtns kind="fn" code={f.functionCode} />
-        </span>
-      ),
+      key: f.functionCode,
+      name: f.name,
       // 只列菜单项：ACTION 是页面内的按钮级授权，它没有"顺序"可言
-      children: f.points.filter((p) => p.pointType === "MENU").map((p) => ({
-        key: p.pointCode,
-        label: (
-          <span className="flex w-full items-center gap-2">
-            {p.name}
-            {p.groupName && <span className="txt-caption text-muted-foreground">{p.groupName}</span>}
-            <MoveBtns kind="pt" code={p.pointCode} />
-          </span>
-        ),
-      })),
+      children: f.points.filter((p) => p.pointType === "MENU")
+        .map((p) => ({ key: p.pointCode, name: p.name, hint: p.groupName })),
     })),
-    // MoveBtns 依赖 canGrant 与 move.isPending，随组件重渲染即可
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [permFns.data],
   );
+
+  /** 整段重排（拖动）。传完整顺序而不是连点 N 次 move —— 见 TDD-菜单顺序拖动 §3.2 */
+  const reorder = useMutation({
+    mutationFn: ({ parentKey, keys }: { parentKey: string; keys: string[] }) =>
+      parentKey === ORDER_ROOT ? api.reorderPermFunctions(keys) : api.reorderPermPoints(parentKey, keys),
+    onSuccess: () => { void qc.invalidateQueries({ queryKey: ["perm-functions"] }); },
+  });
 
   const openRole = (r: RoleDef) => setPickedRole(r.roleCode);
   const pickedRoleDef = roles.data?.find((r) => r.roleCode === pickedRole);
@@ -525,7 +518,17 @@ function IamInner() {
       {tab === "menu" && (
         <div className="space-y-3">
           <Notice className="mb-3">{c.menuOrderNotice}</Notice>
-          <Tree nodes={orderTree} empty={c.emptyPerms} collapseFrom={1} />
+          <MenuOrderTree
+            nodes={orderNodes}
+            canEdit={canGrant}
+            busy={reorder.isPending || move.isPending}
+            onReorder={(parentKey, keys) => reorder.mutate({ parentKey, keys })}
+            // 用 parentKey 判断是分区还是菜单项，**不靠 key 的形状去猜** ——
+            // 那种隐式编码在改一次命名规则之后就会静默走错分支
+            onMove={(parentKey, key, dir) =>
+              move.mutate({ kind: parentKey === ORDER_ROOT ? "fn" : "pt", code: key, dir })}
+            labels={{ moveUp: c.moveUp, moveDown: c.moveDown, dragHint: c.reorderHint, empty: c.emptyPerms }}
+          />
         </div>
       )}
 

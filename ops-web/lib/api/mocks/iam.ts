@@ -136,6 +136,8 @@ export const iamMock: IamApi = {
    */
   movePermFunction: async () => wait(undefined as unknown as void),
   movePermPoint: async () => wait(undefined as unknown as void),
+  reorderPermFunctions: async () => wait(undefined as unknown as void),
+  reorderPermPoints: async () => wait(undefined as unknown as void),
   listPermFunctions: async () =>
     wait(NAV.map((sec, si) => ({
       functionCode: `OPS_${sec.key.toUpperCase()}`,

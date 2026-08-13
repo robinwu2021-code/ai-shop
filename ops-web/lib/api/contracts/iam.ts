@@ -48,6 +48,15 @@ export interface IamApi {
    */
   movePermFunction(functionCode: string, direction: "UP" | "DOWN"): Promise<void>;
   movePermPoint(pointCode: string, direction: "UP" | "DOWN"): Promise<void>;
+  /**
+   * 整段重排（拖动用）：传该父级下的**完整顺序**。
+   *
+   * 与 move 并存而不是取代它 —— ↑/↓ 是键盘可达的那条路，
+   * 而原生拖拽在触屏与辅助技术下不可靠。
+   * 服务端会校验 codes 与现有集合完全相同，只是顺序不同。
+   */
+  reorderPermFunctions(codes: string[]): Promise<void>;
+  reorderPermPoints(functionCode: string, codes: string[]): Promise<void>;
   /** 某个角色已勾的功能点码。 */
   getRolePoints(roleCode: string): Promise<string[]>;
   /**

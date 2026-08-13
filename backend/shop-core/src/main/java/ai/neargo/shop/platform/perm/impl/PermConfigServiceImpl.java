@@ -92,7 +92,8 @@ public class PermConfigServiceImpl implements PermConfigService {
                 .stream().map(SysRolePoint::getPointCode).collect(Collectors.toSet());
         // 菜单只渲染 MENU 类型 —— ACTION 是页面内的按钮级授权，塞进导航会多出几十行看不懂的项
         return build(OPS, p -> pointCodes.contains(p.getPointCode())
-                && !"ACTION".equals(p.getPointType()));
+                && !"ACTION".equals(p.getPointType()),
+                p -> !"ACTION".equals(p.getPointType()));
     }
 
     @Override
@@ -101,6 +102,21 @@ public class PermConfigServiceImpl implements PermConfigService {
     }
 
     private List<MenuFunctionVO> build(String endCode, Predicate<SysFunctionPoint> keep) {
+        return build(endCode, keep, p -> true);
+    }
+
+    /**
+     * @param keep      这个点要不要返回（授权 + 类型）
+     * @param candidate 这个点**算不算本视图的叶子** —— 决定「这个分区本来就没有叶子」怎么判。
+     *                  菜单视图里 ACTION 不算叶子：它是页面内的按钮级授权，没有菜单入口。
+     *
+     *                  <p>不区分的后果实测过：经营看板有 1 个 ACTION 点、0 个菜单点，
+     *                  于是被判成「有叶子但一条都没授权」而整个分区不返回 ——
+     *                  端上因此拿不到它的 sort，**菜单里它的顺序怎么调都不动**，
+     *                  而且不报错。
+     */
+    private List<MenuFunctionVO> build(String endCode, Predicate<SysFunctionPoint> keep,
+                                       Predicate<SysFunctionPoint> candidate) {
         List<SysFunction> fns = functionMapper.selectList(Wrappers.<SysFunction>lambdaQuery()
                 .eq(SysFunction::getEndCode, endCode)
                 .orderByAsc(SysFunction::getSort));
@@ -108,7 +124,9 @@ public class PermConfigServiceImpl implements PermConfigService {
         Map<String, Integer> total = new LinkedHashMap<>();
         for (SysFunctionPoint p : pointMapper.selectList(Wrappers.<SysFunctionPoint>lambdaQuery()
                 .orderByAsc(SysFunctionPoint::getSort))) {
-            total.merge(p.getFunctionCode(), 1, Integer::sum);
+            if (candidate.test(p)) {
+                total.merge(p.getFunctionCode(), 1, Integer::sum);
+            }
             if (keep.test(p)) {
                 kept.computeIfAbsent(p.getFunctionCode(), k -> new ArrayList<>()).add(toVO(p));
             }
@@ -369,6 +387,60 @@ public class PermConfigServiceImpl implements PermConfigService {
         pointMapper.updateById(self);
         pointMapper.updateById(siblings.get(j));
         afterReorder("PERM_POINT_MOVE", pointCode, self.getName(), direction);
+    }
+
+    /**
+     * 校验「传进来的顺序」与「现有集合」是同一批东西。
+     *
+     * <p>只比集合不比顺序：顺序正是要改的。多一个、少一个、混进别的父级的一律拒绝 ——
+     * 少一个尤其危险：它会让被漏掉的那项 sort 保持原值，混在新序列里排到莫名其妙的位置，
+     * 而**界面上看起来只是「顺序有点怪」**，没人会当成 bug。
+     */
+    private static void requireSameSet(List<String> given, List<String> existing) {
+        if (given == null || given.size() != existing.size()
+                || !new java.util.HashSet<>(given).equals(new java.util.HashSet<>(existing))) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+    }
+
+    @Override
+    @Transactional
+    public void reorderFunctions(List<String> codes, String operatorNo) {
+        List<SysFunction> all = functionMapper.selectList(Wrappers.<SysFunction>lambdaQuery()
+                .eq(SysFunction::getEndCode, OPS));
+        requireSameSet(codes, all.stream().map(SysFunction::getFunctionCode).toList());
+        Map<String, SysFunction> byCode = all.stream()
+                .collect(Collectors.toMap(SysFunction::getFunctionCode, f -> f));
+        for (int i = 0; i < codes.size(); i++) {
+            SysFunction f = byCode.get(codes.get(i));
+            f.setSort((i + 1) * 10);   // 重写成等差序列：顺序的真源就是这份列表
+            functionMapper.updateById(f);
+        }
+        afterReorderList("PERM_FUNCTION_REORDER", "OPS", codes.size());
+    }
+
+    @Override
+    @Transactional
+    public void reorderPoints(String functionCode, List<String> pointCodes, String operatorNo) {
+        // 只重排菜单项：ACTION 是页面内的按钮级授权，它没有"顺序"可言
+        List<SysFunctionPoint> all = pointMapper.selectList(Wrappers.<SysFunctionPoint>lambdaQuery()
+                .eq(SysFunctionPoint::getFunctionCode, functionCode)
+                .eq(SysFunctionPoint::getPointType, "MENU"));
+        requireSameSet(pointCodes, all.stream().map(SysFunctionPoint::getPointCode).toList());
+        Map<String, SysFunctionPoint> byCode = all.stream()
+                .collect(Collectors.toMap(SysFunctionPoint::getPointCode, x -> x));
+        for (int i = 0; i < pointCodes.size(); i++) {
+            SysFunctionPoint p = byCode.get(pointCodes.get(i));
+            p.setSort((i + 1) * 10);
+            pointMapper.updateById(p);
+        }
+        afterReorderList("PERM_POINT_REORDER", functionCode, pointCodes.size());
+    }
+
+    /** 与 {@link #afterReorder} 同一条规矩：清缓存，但不踢会话（顺序变了，权限没变）。 */
+    private void afterReorderList(String action, String scope, int n) {
+        resolver.invalidate();
+        auditLogPort.record(action, scope, "重排 %d 项".formatted(n));
     }
 
     /**

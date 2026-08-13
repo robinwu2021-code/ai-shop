@@ -253,6 +253,81 @@ class OpsPermConfigFlowTest {
     }
 
     @Test
+    @DisplayName("★★★ 没有菜单叶子的分区也要返回 —— 否则它的顺序在端上永远调不动")
+    void functionWithoutMenuLeavesIsStillReturned() throws Exception {
+        /*
+         * 经营看板只有 1 个 ACTION 点（dashboard:overview:read）、0 个菜单点。
+         * 此前 build() 统计「本来有没有叶子」时把 ACTION 也算进去，于是它被判成
+         * 「有叶子但一条都没授权」而整个分区不返回 —— 端上拿不到它的 sort，
+         * **菜单里它的顺序怎么调都不动，而且不报错**（实测拖动后库变了、界面纹丝不动）。
+         */
+        String admin = opsLogin("admin", "admin123");
+        assertThat(menuFunctions(admin))
+                .as("经营看板没有菜单叶子，但它是一个菜单入口，必须返回")
+                .contains("OPS_DASHBOARD");
+    }
+
+    @Test
+    @DisplayName("★★★ 整段重排按数组顺序落库，且只影响该父级")
+    void reorderWritesGivenOrder() throws Exception {
+        String admin = opsLogin("admin", "admin123");
+        List<String> before = pointOrder("OPS_MERCHANT");
+        List<String> otherBefore = pointOrder("OPS_ORDER");
+        List<String> want = new java.util.ArrayList<>(before);
+        java.util.Collections.reverse(want);
+        try {
+            mvc().perform(post("/ops/perm/points/reorder")
+                            .header("Authorization", "Bearer " + admin)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json.writeValueAsString(
+                                    java.util.Map.of("functionCode", "OPS_MERCHANT", "codes", want))))
+                    .andExpect(jsonPath("$.code").value(0));
+
+            assertThat(pointOrder("OPS_MERCHANT")).as("应当逐位等于传进去的顺序").isEqualTo(want);
+            assertThat(pointOrder("OPS_ORDER")).as("别的分区不该被牵动").isEqualTo(otherBefore);
+        } finally {
+            mvc().perform(post("/ops/perm/points/reorder")
+                    .header("Authorization", "Bearer " + admin)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(json.writeValueAsString(
+                            java.util.Map.of("functionCode", "OPS_MERCHANT", "codes", before))));
+        }
+        assertThat(pointOrder("OPS_MERCHANT")).isEqualTo(before);
+    }
+
+    @Test
+    @DisplayName("★★★ 集合对不上一律拒绝 —— 少一个、多一个、混进别的父级")
+    void reorderRejectsMismatchedSet() throws Exception {
+        String admin = opsLogin("admin", "admin123");
+        List<String> before = pointOrder("OPS_MERCHANT");
+
+        List<List<String>> bad = List.of(
+                before.subList(0, before.size() - 1),                    // 少一个
+                concat(before, "OPS_ORDER"),                             // 混进别的父级
+                concat(before, before.get(0)));                          // 多一个（重复）
+        for (List<String> codes : bad) {
+            mvc().perform(post("/ops/perm/points/reorder")
+                            .header("Authorization", "Bearer " + admin)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json.writeValueAsString(
+                                    java.util.Map.of("functionCode", "OPS_MERCHANT", "codes", codes))))
+                    .andExpect(jsonPath("$.code").value(
+                            org.hamcrest.Matchers.not(0)));
+        }
+        /*
+         * **少一个尤其危险**：被漏掉的那项 sort 保持原值，混在新序列里排到莫名其妙的位置，
+         * 而界面上看起来只是「顺序有点怪」，没人会当成 bug。所以拒绝，不做部分应用。
+         */
+        assertThat(pointOrder("OPS_MERCHANT")).as("拒绝之后顺序必须一动不动").isEqualTo(before);
+    }
+
+    private static List<String> concat(List<String> base, String extra) {
+        List<String> out = new java.util.ArrayList<>(base);
+        out.add(extra);
+        return out;
+    }
+
+    @Test
     @DisplayName("★★ 首项上移 / 末项下移是 no-op —— 不报错，也不打乱顺序")
     void moveAtBoundaryIsNoop() throws Exception {
         String admin = opsLogin("admin", "admin123");

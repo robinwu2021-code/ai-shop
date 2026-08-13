@@ -25,11 +25,16 @@ function seededPoints() {
   for (const f of readdirSync(MIGRATION_DIR).sort()) {
     if (!f.endsWith(".sql")) continue;
     const sql = readFileSync(join(MIGRATION_DIR, f), "utf8");
-    // VALUES 的列序见 V62：point_code, function_code, name, group_name, href,
-    //                     ui_perm_code, perm_code, backend_status, ui_ready,
-    //                     matrix_code, point_type, sort, ...
+    // 列序见 V62：point_code, function_code, name, group_name, href,
+    //             ui_perm_code, perm_code, backend_status, ui_ready,
+    //             matrix_code, point_type, sort, ...
+    //
+    // **两种插入形式都要认**：裸 `VALUES (…)`，以及 `SELECT … FROM DUAL WHERE NOT EXISTS`
+    // 的可重入形式。后者是 V74 起的写法 —— 裸 VALUES 撞上 uk_point 就是 1062，
+    // 迁移重跑必炸。只认 VALUES 的话，新写法插入的功能点在这里**根本不存在**，
+    // 守卫就会把它报成「只在 nav 里」，指着一个已经补好的缺口喊缺。
     for (const m of sql.matchAll(
-      /INSERT INTO sys_function_point \([^)]*\) VALUES \(('[^']*'|NULL), ('[^']*'|NULL), ('[^']*'|NULL), ('[^']*'|NULL), ('[^']*'|NULL), ('[^']*'|NULL), ('[^']*'|NULL), ('[^']*'|NULL), (\d+), ('[^']*'|NULL), ('[^']*'|NULL)/g,
+      /INSERT INTO sys_function_point \([^)]*\)\s*(?:VALUES \(|SELECT )('[^']*'|NULL), ('[^']*'|NULL), ('[^']*'|NULL), ('[^']*'|NULL), ('[^']*'|NULL), ('[^']*'|NULL), ('[^']*'|NULL), ('[^']*'|NULL), (\d+), ('[^']*'|NULL), ('[^']*'|NULL)/g,
     )) {
       const lit = (v: string) => (v === "NULL" ? null : v.slice(1, -1));
       out.push({

@@ -86,6 +86,10 @@ export const iamHttp: IamApi = {
     client.post(`/ops/perm/functions/${encodeURIComponent(functionCode)}/move`, { direction }),
   movePermPoint: (pointCode: string, direction: "UP" | "DOWN") =>
     client.post(`/ops/perm/points/${encodeURIComponent(pointCode)}/move`, { direction }),
+  reorderPermFunctions: (codes: string[]) =>
+    client.post("/ops/perm/functions/reorder", { codes }),
+  reorderPermPoints: (functionCode: string, codes: string[]) =>
+    client.post("/ops/perm/points/reorder", { functionCode, codes }),
   getRolePoints: (roleCode) => client.get(`/ops/perm/roles/${roleCode}/points`),
   setRolePoints: (roleCode, pointCodes) =>
     client.post(`/ops/perm/roles/${roleCode}/points`, { pointCodes }),

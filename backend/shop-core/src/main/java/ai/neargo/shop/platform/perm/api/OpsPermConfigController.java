@@ -104,6 +104,30 @@ public class OpsPermConfigController {
         permConfigService.movePoint(pointCode, req.direction(), SecurityUtils.currentUserNo());
     }
 
+    /**
+     * 整段重排（拖动用）。传该父级下的**完整顺序**。
+     *
+     * <p>与 {@code /move} 并存而不是取代它：↑/↓ 是键盘可达的那条路，
+     * 而原生拖拽在触屏与辅助技术下不可靠。
+     */
+    @PostMapping("/ops/perm/functions/reorder")
+    @PreAuthorize("@perm.can('" + Perms.IAM_ROLE_GRANT + "')")
+    public void reorderFunctions(@RequestBody ReorderReq req) {
+        permConfigService.reorderFunctions(req.codes(), SecurityUtils.currentUserNo());
+    }
+
+    @PostMapping("/ops/perm/points/reorder")
+    @PreAuthorize("@perm.can('" + Perms.IAM_ROLE_GRANT + "')")
+    public void reorderPoints(@RequestBody ReorderPointsReq req) {
+        permConfigService.reorderPoints(req.functionCode(), req.codes(), SecurityUtils.currentUserNo());
+    }
+
+    public record ReorderReq(List<String> codes) {
+    }
+
+    public record ReorderPointsReq(String functionCode, List<String> codes) {
+    }
+
     public record MoveReq(PermConfigService.MoveDirection direction) {
     }
 
