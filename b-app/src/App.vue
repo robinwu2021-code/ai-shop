@@ -7,7 +7,7 @@ import { useAppStore } from "@ai-shop/ui/stores/app";
 import { useMarketStore } from "@ai-shop/ui/stores/market";
 import { useMerchantStore } from "@/stores/merchant";
 import { initFonts } from "@shared/ports/font";
-import { setUnauthorizedHandler } from "@shared/net/http-client";
+import { setForbiddenHandler, setUnauthorizedHandler } from "@shared/net/http-client";
 import { USE_MOCK } from "@/api";
 import { restoreDb } from "@shared/mock/db";
 import { ensureDemoMerchant, ensureDemoOrders } from "@/api/demo-orders";
@@ -42,6 +42,30 @@ onLaunch(() => {
     uni.showToast({ title: "登录已失效，请重新登录", icon: "none" });
     setTimeout(() => uni.reLaunch({ url: "/pages/login/index" }), 0);
   });
+  /*
+   * 被拒了：**多半是老板刚收回了他的权限，而这一页的入口还是旧的**。
+   *
+   * 后端判权是现算的（老板改完，店员下一个请求就被拦），而端上的 `perms`
+   * 只在启动与切店时拉。中间这个窗口里，界面上会留着一个点不动的按钮。
+   *
+   * 所以被拒的那一下要做两件事：说清楚，然后**把入口收掉** ——
+   * 重拉一次 scope，那个按钮就自己消失了，他不会对着它反复点，
+   * 也不会以为是功能坏了去找老板。
+   */
+  setForbiddenHandler(() => {
+    /*
+     * **这里不弹提示**。实测过：弹了会被页面自己的错误提示盖掉
+     * （后端那句话更具体），两条 toast 抢同一个位置只是噪音。
+     *
+     * 重拉之后页面当场变成「这页不归你管」—— **入口收掉本身就是反馈**，
+     * 比多一句话有用：他看得见状态变了，不会对着按钮反复点。
+     *
+     * **loadScope 而不是 ensureScope**：后者拿到过权限就直接返回，
+     * 而这里要的恰恰是「再问一次」—— 幂等在别处是优点，在这里是不刷新。
+     */
+    void merchant.loadScope();
+  });
+
   /*
    * 权限跟着登录态一起恢复。**必须在这里，不能靠页面自己调** ——
    * 它原先只挂在首页的 loadStores 上，于是刷新在商品页时 perms 是空的，

@@ -59,6 +59,35 @@ describe("登录失效的处理", () => {
     expect(/setUnauthorizedHandler\([\s\S]{0,600}reLaunch/.test(shell)).toBe(true);
   });
 
+  it("★★★ 传输层要有 403 回调 —— 后端判权是现算的，端上的 perms 是拉过一次的", () => {
+    const client = read("packages/shared/src/net/http-client.ts");
+    expect(client).toContain("setForbiddenHandler");
+    /*
+     * **判的必须是业务码，不是 HTTP 状态**：这套后端除 401 外一律 200 + 包体码
+     * （GlobalExceptionHandler 的类注释写明了这条）。按 statusCode === 403 写的话
+     * 这个回调永远不会触发，而且不报错 —— 一条静默失效的分支。
+     */
+    expect(client).toContain("70006");
+    expect(
+      /body\.code !== 0[\s\S]{0,300}onForbidden/.test(client),
+      "403 的判断要挂在业务码分支上，不是 statusCode 上",
+    ).toBe(true);
+  });
+
+  it("★★ b-app 要注册 403 处理，且要强制重拉而不是幂等的 ensure", () => {
+    const shell = read("b-app/src/App.vue");
+    expect(shell).toContain("setForbiddenHandler(");
+    expect(
+      /setForbiddenHandler\([\s\S]{0,400}loadScope\(\)/.test(shell),
+      "要用 loadScope（强制重拉）而不是 ensureScope —— "
+        + "后者拿到过权限就直接返回，而这里要的恰恰是「再问一次」",
+    ).toBe(true);
+  });
+
+  it("★★ c-app 不注册 403 —— 那边没有 RBAC，刷新一次不会让别人的订单变成你的", () => {
+    expect(read("c-app/src/App.vue")).not.toContain("setForbiddenHandler");
+  });
+
   it.each(APPS)("★★ %s 的页面/store 不许自己跳登录 —— 两处各跳一次会互相打架", (app) => {
     const offenders = pagesAndStores(app)
       .filter((f) => /reLaunch\(\{\s*url:\s*["'`][^"'`]*login/.test(f.src))

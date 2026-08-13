@@ -35,6 +35,30 @@ export function setUnauthorizedHandler(fn: () => void): void {
   onUnauthorized = fn;
 }
 
+/**
+ * 被拒了要做什么 —— **多半是权限变了，而这一页的入口还是旧的**。
+ *
+ * 判权在后端是现算的（改完下一个请求就生效），而端上的 `perms` 是
+ * 启动那一刻拉的。中间这个窗口里，界面上会留着一个后端已经不允许的按钮。
+ * 这是设计上接受的代价 —— 但既然接受，被拒的那一下就必须做两件事：
+ * 告诉他发生了什么，以及**把入口收掉**，别让他对着一个点不动的按钮反复点。
+ *
+ * <p>注意判的是**业务码不是 HTTP 状态**：这套后端除 401 外一律 200 + 包体码
+ * （见 GlobalExceptionHandler 的类注释）。
+ *
+ * <p>C 端不注册它：那边没有 RBAC，只有属主鉴权 ——
+ * 「这单不是你的」不会因为刷新一下就变成你的。
+ */
+let onForbidden: (() => void) | null = null;
+let handlingForbidden = false;
+
+/** 10403 通用无权限 · 70006 B 端角色不够（「去找店主」那条） */
+const FORBIDDEN_CODES = [10403, 70006];
+
+export function setForbiddenHandler(fn: () => void): void {
+  onForbidden = fn;
+}
+
 export function request<T>(
   method: Method,
   path: string,
@@ -75,6 +99,11 @@ export function request<T>(
           return;
         }
         if (body.code !== 0) {
+          if (FORBIDDEN_CODES.includes(body.code) && onForbidden && !handlingForbidden) {
+            handlingForbidden = true;
+            onForbidden();
+            setTimeout(() => (handlingForbidden = false), 0);
+          }
           reject(new ApiError(body.code, body.msg || "请求失败"));
           return;
         }
