@@ -243,8 +243,20 @@ public class GoodsServiceImpl implements GoodsService {
                     .min(Comparator.naturalOrder()).orElse(null);
         }
 
+        /*
+         * **四个字段都要给全**：logo / rating / verified / breachCount。
+         *
+         * 这里原先把后三个写死成 `0d, false, 0`（logo 写死成空串），于是商品页那条商家信息条
+         * <b>永远是「无头像 · 0.0 分 · 无认证标」</b>：店家评分 4.8、126 人评过、认证也过了，
+         * 屏幕上一律看不到。而它恰恰是「要不要在这家店下单」的那一眼 ——
+         * 一家 0.0 分的店和一家没人评过的店，在买家眼里是同一回事。
+         *
+         * Port 上这四个字段一直都在（{@link MerchantQueryPort.MerchantBrief}），
+         * 取到了没往下传而已 —— 不报错，页面也照常渲染，只是渲染的是零值。
+         */
         var brief = merchantPort.find(g.getEntityNo())
-                .map(m -> new GoodsVO.MerchantBriefVO(m.merchantNo(), m.merchantName(), "", 0d, false, 0))
+                .map(m -> new GoodsVO.MerchantBriefVO(m.merchantNo(), m.merchantName(),
+                        m.logo(), m.rating(), m.verified(), m.breachCount()))
                 .orElseGet(() -> new GoodsVO.MerchantBriefVO(g.getEntityNo(), "", "", 0d, false, 0));
 
         return new GoodsVO(

@@ -385,7 +385,8 @@ export default {
     appealWaiting: "The platform is verifying; nothing to do meanwhile",
 
     title: "Reviews", pending: "{n} awaiting reply", empty: "No reviews yet",
-    reply: "Reply", edit: "Edit reply", myReply: "Your reply",
+    reply: "Reply", myReply: "Your reply",
+    replyOnce: "A reply can only be posted once and cannot be edited afterwards — check it before you post",
     replyPh: "Your reply shows under the review, visible to everyone",
     submit: "Post reply", replied: "Reply posted",
   },

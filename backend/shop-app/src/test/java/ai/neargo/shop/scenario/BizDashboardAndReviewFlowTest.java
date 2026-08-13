@@ -88,6 +88,42 @@ class BizDashboardAndReviewFlowTest {
     // ---------------------------------------------------------------- 评价
 
     @Test
+    @DisplayName("★★★ 用 C 端手上那个单号（子单号）能发表评价 —— 这条链路曾经整条是断的")
+    void reviewAcceptsTheSubOrderNoCEndActuallyHas() throws Exception {
+        String token = merchant("12600142007", "评价测试·子单号");
+        String goodsNo = saveGoods(token, "评价测试·子单号 商品");
+        approveGoods(goodsNo);
+        mvc().perform(post("/biz/goods/" + goodsNo + "/toggle")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"onSale\":true}"))
+                .andExpect(jsonPath("$.code").value(0));
+
+        String buyer = login("13700142007");
+        String subOrderNo = orderAndComplete(buyer, token, goodsNo);
+        /*
+         * 这里断言的东西很朴素：**买家点「发表评价」能成**。
+         *
+         * 它曾经不成 —— C 端传的是 `SUB…`，而后端拿它去比 `ord_item.order_no`
+         * （那一列是 `SO…`），永远查不中，每一次都返回「数据不存在」。
+         * 单测当时是绿的：夹具改传了主单号，还把这件事写成注释当规则。
+         *
+         * 所以这条用例刻意<b>只走真链路上的那个号</b>：撤掉 ReviewableOrderPortImpl
+         * 的修复，它立刻红。
+         */
+        assertThat(subOrderNo).as("C 端拿到的就是子单号").startsWith("SUB");
+
+        mvc().perform(post("/mp/review").header("Authorization", "Bearer " + buyer)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"orderNo\":\"" + subOrderNo + "\",\"goodsNo\":\"" + goodsNo
+                                + "\",\"rating\":4,\"content\":\"米还行，就是自提点等得久\"}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.reviewNo").isNotEmpty());
+
+        // 商家那边立刻看得到它，且是「待回复」——否则评价发了等于没发
+        assertThat(todoField(token, "toReply")).isEqualTo(1);
+    }
+
+    @Test
     @DisplayName("★ 回复只能回一次 —— 回复是公开表态，反复改会变成评论区来回改口")
     void replyOnlyOnce() throws Exception {
         var seeded = seedReview("12600142001", "评价测试·回复", 5);
@@ -586,8 +622,15 @@ class BizDashboardAndReviewFlowTest {
                 .andExpect(jsonPath("$.code").value(0));
 
         String buyer = login("1370" + merchantPhone.substring(4));
-        // 评价传的是**主单号**（C 端拿到的就是它），不是子单号 ——
-        // 传子单号会 404，而那个 404 看起来像「这单不存在」
+        /*
+         * **传子单号** —— C 端的「订单」就是子单：列表、详情、评价入口拿的都是 `SUB…`。
+         *
+         * 这里原先传主单号，还写着「C 端拿到的就是它，传子单号会 404」——
+         * 那句话把<b>缺陷记成了规则</b>：写测试的人撞上 404，改了测试去迁就实现，
+         * 于是这条链路在真机上整条是断的（每一次「发表评价」都得到「数据不存在」），
+         * 而单测一直是绿的。注释里甚至写明了「那个 404 看起来像『这单不存在』」——
+         * 已经看见症状了，只差没问一句「那 C 端到底传的什么」。
+         */
         String orderNo = orderAndComplete(buyer, token, goodsNo);
 
         String body = mvc().perform(post("/mp/review").header("Authorization", "Bearer " + buyer)
@@ -634,7 +677,8 @@ class BizDashboardAndReviewFlowTest {
         mvc().perform(post("/biz/order/" + subOrderNo + "/delivered")
                 .header("Authorization", "Bearer " + merchantToken)
                 .contentType(MediaType.APPLICATION_JSON).content("{}"));
-        return data.get("orderNo").asString();
+        // **返回子单号**：C 端的「订单」就是子单，评价也是对商家的（一主单可拆给多家）
+        return subOrderNo;
     }
 
     private String saveGoods(String token, String title) throws Exception {

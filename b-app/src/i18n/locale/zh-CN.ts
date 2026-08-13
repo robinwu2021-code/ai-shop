@@ -563,7 +563,7 @@ export default {
     pending: "{n} 条待回复",
     empty: "还没有评价",
     reply: "回复",
-    edit: "修改回复",
+    replyOnce: "回复只能发一次，发出后不能修改，请确认后再发布",
     myReply: "我的回复",
     replyPh: "回复会展示在评价下方，所有人可见",
     submit: "发布回复",

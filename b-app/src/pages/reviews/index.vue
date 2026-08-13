@@ -41,9 +41,17 @@ async function load() {
   list.value = await api.mReviewList();
 }
 
+/**
+ * **回复只有一次**，所以这里不回填旧文案 —— 回填等于暗示「可以改」。
+ *
+ * 后端 `reply()` 明确拒绝第二次（CONFLICT，理由是「回复是公开表态，
+ * 反复改会变成评论区里来回改口」）。而这一页原先给已回复的评价挂了个
+ * 「修改回复」，点进去还把原文填好，写完发出去只得到一句
+ * **「资源冲突，请刷新后重试」** —— 刷新一百次也一样，那条路本来就不通。
+ */
 function startReply(r: Review) {
   replying.value = r.reviewNo;
-  text.value = r.reply ?? "";
+  text.value = "";
 }
 
 async function submit(r: Review) {
@@ -127,6 +135,8 @@ onShow(load);
           :placeholder="$t('reviews.replyPh')"
           maxlength="100"
         />
+        <!-- 「只能发一次」要在他动笔之前说，不是发完之后用一句报错告诉他 -->
+        <text class="sh-muted once">{{ $t("reviews.replyOnce") }}</text>
         <view class="btns">
           <text class="btn btn--ghost" @tap="replying = ''">{{ $t("common.cancel") }}</text>
           <text class="btn" @tap="submit(r)">{{ $t("reviews.submit") }}</text>
@@ -153,8 +163,10 @@ onShow(load);
       </template>
 
       <view v-else-if="replying !== r.reviewNo" class="acts">
-        <text class="link" @tap="startReply(r)">
-          {{ r.reply ? $t("reviews.edit") : $t("reviews.reply") }}
+        <!-- 已回复的不再给入口：那条路后端是关着的（见 startReply 的注释）。
+             上面的「我的回复」块已经把回复内容显示出来了，这里不需要再有按钮 -->
+        <text v-if="!r.reply" class="link" @tap="startReply(r)">
+          {{ $t("reviews.reply") }}
         </text>
         <text v-if="canAppeal(r)" class="link link--warn" @tap="appealing = r.reviewNo">
           {{ $t("reviews.appeal") }}
@@ -263,6 +275,12 @@ onShow(load);
   font-size: 24rpx;
   color: var(--sh-sub);
   margin-bottom: 6rpx;
+}
+.once {
+  display: block;
+  margin-top: 12rpx;
+  font-size: 24rpx;
+  line-height: 1.5;
 }
 .btns {
   display: flex;
