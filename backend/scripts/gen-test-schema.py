@@ -98,10 +98,27 @@ def replay(sql, tables, order, seeds):
                 pass
             else:
                 seeds.append(stmt + ";")
+        elif low.startswith("insert ignore into"):
+            # `INSERT IGNORE` 是可重入写法（V72/V74 用它灌权限点与授权），
+            # 但 **H2 不认这个 MySQL 关键字**。语义上它就是种子 INSERT，
+            # 所以照种子处理，只是把 IGNORE 去掉再落进测试 schema。
+            stmt_h2 = re.sub(r"^INSERT\s+IGNORE\s+INTO", "INSERT INTO", stmt, flags=re.I)
+            if re.search(r"\bselect\b", low):
+                pass
+            else:
+                seeds.append(stmt_h2 + ";")
         elif low.startswith("insert into"):
             # 用正则而不是 `" select " in low`：回填语句里 SELECT 常常另起一行，
             # 而 low 是原样文本 —— 子串判断会漏掉带换行的写法，然后把回填当种子抄进测试库
-            if re.search(r"\bselect\b", low):
+            if re.search(r"\bfrom\s+dual\b", low):
+                # **`INSERT … SELECT … FROM DUAL WHERE NOT EXISTS (…)` 是可重入的种子，
+                # 不是回填。** 数据源是常量（DUAL），不读任何存量表 ——
+                # V74 用这个写法灌权限点授权，跳过它的后果是：H2 上 SUPER_ADMIN
+                # 只有 82 个功能点而代码期望 104，OpsPermConfigFlowTest 直接红，
+                # 而报错看起来像「权限配置写错了」，与生成器毫无关系。
+                # H2 跑在 MODE=MySQL 下，认识 FROM DUAL。
+                seeds.append(stmt + ";")
+            elif re.search(r"\bselect\b", low):
                 # **INSERT ... SELECT 是数据回填，不是种子。**
                 #
                 # 回填读的是**中间态的表结构** —— V42 的回填从 usr_merchant.address
@@ -113,6 +130,18 @@ def replay(sql, tables, order, seeds):
             else:
                 # 种子数据：H2 建表脚本里保留，测试要用到（如端×品类可售规则的 25 行）
                 seeds.append(stmt + ";")
+        elif low.startswith("create temporary table") or low.startswith("drop temporary table"):
+            # **临时表是迁移过程中的草稿纸，不是结构的一部分。**
+            #
+            # V72 用 `CREATE TEMPORARY TABLE tmp_rp_identity AS SELECT …` 把「清空重建
+            # 之前的自定义角色授权」暂存下来，重建完再 `INSERT … SELECT … FROM tmp_…`
+            # 搬回去 —— 与 INSERT ... SELECT 是同一件事：**搬运存量数据**。
+            # H2 测试库本来就是空的，搬无可搬；而它的建表体是一条 MySQL 方言的
+            # 多表 JOIN 查询，重放到 H2 上只会语法错。
+            #
+            # 之前这里没有这一支，V72 一进来整个生成器就 SystemExit ——
+            # 报错说「不认识的语句」，而真正该说的是「这类语句本来就不该进 schema」。
+            pass
         elif low.startswith("create index") or low.startswith("drop index"):
             # 普通索引 H2 测试用不上；DROP INDEX 同理（约束由 CREATE UNIQUE INDEX 重建）
             pass
