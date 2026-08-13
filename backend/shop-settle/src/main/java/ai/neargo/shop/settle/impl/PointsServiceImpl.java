@@ -226,6 +226,47 @@ public class PointsServiceImpl implements PointsService {
         return new PointsOverviewVO(circulating, poolBalance, periodRedeem, byChannel);
     }
 
+    @Override
+    public IdentityCheck checkIdentity(String market) {
+        String mkt = market == null || market.isBlank() ? DEFAULT_MARKET : market;
+
+        long circulating = DataScopeContext.executeWithoutScope(() ->
+                        accountMapper.selectList(Wrappers.<PtsUserAccount>lambdaQuery()
+                                .eq(PtsUserAccount::getMarket, mkt)))
+                .stream().mapToLong(a -> nz(a.getBalance()) + nz(a.getPendingBalance())).sum();
+
+        /*
+         * **PENDING 的抵扣必须算进「还欠着的钱」。**
+         *
+         * 下单扣分之后、兑付成立之前，那笔钱已经不在用户账上（余额扣了），
+         * 也还没付给收单方（池子没动）—— 它正躺在池子里等着。
+         *
+         * 漏掉这一项，等式会在**每个未结算的订单**上都差一截，
+         * 告警天天响，也就等于没有告警。
+         */
+        long pendingUse = DataScopeContext.executeWithoutScope(() ->
+                        ledgerMapper.selectList(Wrappers.<PtsUserLedger>lambdaQuery()
+                                .eq(PtsUserLedger::getBizType, BIZ_USE)
+                                .eq(PtsUserLedger::getStatus, USE_PENDING)
+                                .eq(PtsUserLedger::getMarket, mkt)))
+                .stream().mapToLong(l -> nz(l.getAmountMinor())).sum();
+
+        long pool = DataScopeContext.executeWithoutScope(() ->
+                        poolMapper.selectList(Wrappers.<StlPointsPool>lambdaQuery()
+                                .eq(StlPointsPool::getMarket, mkt)))
+                .stream()
+                .mapToLong(f -> StlPointsPool.IN.equals(f.getDirection())
+                        ? nz(f.getAmountMinor()) : -nz(f.getAmountMinor()))
+                .sum();
+
+        return new IdentityCheck(mkt, circulating,
+                config().toMinor(circulating) + pendingUse, pool, pendingUse);
+    }
+
+    private static long nz(Long v) {
+        return v == null ? 0L : v;
+    }
+
     // ---------------------------------------------------------------- 内部
 
     private PtsUserAccount loadAccount(String userNo) {

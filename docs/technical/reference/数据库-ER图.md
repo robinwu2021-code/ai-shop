@@ -5,7 +5,7 @@
 
 ## 一、总览
 
-全库 **91** 张表、**146** 条引用关系，分 **14** 个域。
+全库 **92** 张表、**146** 条引用关系，分 **14** 个域。
 按「被引用次数」分三条带 —— **不是有向无环图**：域之间存在环
 （`cmt → mkt → usr → cmt`），强行分层会画错。
 
@@ -26,7 +26,7 @@
 | 评价 | `rvw_*` | 3 | 0 |
 | 消息与客服 | `msg_*` | 4 | 0 |
 | 内容 | `cnt_*` | 4 | 0 |
-| 系统 | `sys_*` | 17 | 0 |
+| 系统 | `sys_*` | 18 | 0 |
 
 > `usr` 被 10 个域引用 —— 它是全库的锚点。改它的主键或语义，影响面是全局的。
 
@@ -222,7 +222,7 @@
 
 **跨域引用**：`cnt_post.community_no` → `cmt_community`、`cnt_post.sku_no` → `prd_sku`、`cnt_question.sku_no` → `prd_sku`
 
-### 系统 `sys_*`（17 张）
+### 系统 `sys_*`（18 张）
 
 ![系统表关系](../diagrams/db-sys.svg)
 
@@ -245,6 +245,7 @@
 | `sys_role_point` | 角色 × 功能点。**后端未实现的功能点照样建关联** —— 补齐那天翻个状态就能用，不用重配角色 |
 | `sys_role_member` | 人员 × 角色。**唯一键含 role_code —— 这就是「一人多角色」的落点**。B 端真源仍是 mch_store_role（V18 已为多角色放宽唯一键），这里只装运营端 |
 | `sys_notify_log` | 短信/邮件发送记录 |
+| `sys_job_run` | 定时任务运行记录（一个任务一行） |
 
 **跨域引用**：`sys_idempotent.user_no` → `usr_account`、`sys_ops_staff.merchant_no` → `mch_entity`、`sys_ops_staff.community_no` → `cmt_community`、`sys_ops_staff.pickup_no` → `cmt_pickup_point`、`sys_role.entity_no` → `mch_entity`、`sys_role_point.entity_no` → `mch_entity`
 

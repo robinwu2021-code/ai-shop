@@ -146,6 +146,45 @@ public interface PointsService {
     int expireIdleAccounts();
 
     /**
+     * 校验恒等式 2：<b>池子里的钱 == 还欠着用户的钱</b>。
+     *
+     * <p>积分域-完整方案称它「是这套设计<b>唯一的自检手段</b>，违反即告警」——
+     * 而这个校验此前<b>不存在</b>：两边的数只在 ops 看板上并排显示，没有任何人比较它们。
+     *
+     * <p><b>为什么现在才有意义</b>：在入账（发分收费）与出账（兑付、到期）
+     * 两侧接上之前，两边恒等于 0 —— 查了也看不出任何问题，那正是「看着还挺平」。
+     *
+     * <p><b>等式里必须带上 PENDING 的抵扣</b>，否则每来一单就误报一次：
+     * <pre>
+     *   池子余额 == 流通中积分×汇率 + Σ(PENDING 的 USE 金额)
+     * </pre>
+     * 下单扣分之后、兑付成立之前，那笔钱<b>已经不在用户账上、也还没付给收单方</b> ——
+     * 它正躺在池子里等着。漏掉这一项，等式会在每个未结算的订单上都差一截，
+     * 而告警一旦天天响，就等于没有告警。
+     *
+     * @return 两边的数与差额；{@code balanced()} 为 false 即失衡
+     */
+    IdentityCheck checkIdentity(String market);
+
+    /**
+     * @param circulatingPoints 流通中的积分（可用 + 待生效）
+     * @param owedMinor         按汇率折算 + 未兑付的抵扣 —— <b>平台还欠着的钱</b>
+     * @param poolBalanceMinor  池子里实际有多少钱
+     * @param pendingUseMinor   已扣分但还没兑付给收单方的金额
+     */
+    record IdentityCheck(String market, long circulatingPoints, long owedMinor,
+                         long poolBalanceMinor, long pendingUseMinor) {
+
+        public long diffMinor() {
+            return poolBalanceMinor - owedMinor;
+        }
+
+        public boolean balanced() {
+            return diffMinor() == 0;
+        }
+    }
+
+    /**
      * 积分资金池入账。
      *
      * <p><b>此前池子只读不写</b>：{@code stl_points_pool} 与
