@@ -1,6 +1,7 @@
 // 真实后端 fetch 封装：拼身份头 + Accept-Language + 统一 Result<T> 拆包 + 抛 ApiError。
 // 契约口径见 lib/types/common.ts（{code,msg,data}），与 C 端一致。
-import { currentAuth, scopeOf } from "../auth";
+import { currentAuth, scopeOf, useAuth } from "../auth";
+import { notify } from "../notify";
 import type { Result } from "../types";
 import { ApiError } from "./error";
 import { useLocaleStore } from "../stores/locale";
@@ -38,6 +39,34 @@ function headers(): Record<string, string> {
   };
 }
 
+/**
+ * 登录失效：**清登录态 + 回登录页**。
+ *
+ * 此前这里只是把 401 包成 ApiError 抛出去，而各页把它当成一次普通的取数失败 ——
+ * 实测形态：运营打开评价审核，页面写着
+ * <b>「待审队列已清空。用户发表新评价后会重新出现在这里。」</b>
+ * 而队列里躺着 4 条评价，他只是登录过期了。**这句话不是「没数据」，是一句假话** ——
+ * 他会据此以为平台没人在评价，而不是去重新登录。
+ *
+ * （`useRefreshPerms` 的注释里写着「真的失效了（401）由 http 层统一处理」——
+ * 那时候 http 层并没有处理。注释描述了一个不存在的机制，比没有注释更误导。）
+ *
+ * 同一轮只跑一次：一屏并发几个请求会连着跳几次，把提示刷掉、把路由搅乱。
+ */
+let handlingUnauthorized = false;
+
+function onUnauthorized(): void {
+  if (typeof window === "undefined" || handlingUnauthorized) return;
+  handlingUnauthorized = true;
+  useAuth.getState().logout();
+  notify.error(translate(curLocale(), "error.unauthorized"));
+  // 下一个宏任务放开：这一屏的并发请求算同一轮
+  setTimeout(() => (handlingUnauthorized = false), 0);
+  if (!window.location.pathname.startsWith("/login")) {
+    window.location.href = "/login";
+  }
+}
+
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
   let r: Response;
   try {
@@ -46,6 +75,9 @@ async function req<T>(path: string, init?: RequestInit): Promise<T> {
     throw new ApiError(-1, translate(curLocale(), "error.network")); // 网络层失败
   }
   const body = (await r.json().catch(() => ({}))) as Partial<Result<T>>;
+  if (r.status === 401) {
+    onUnauthorized();
+  }
   if (!r.ok || (body.code !== undefined && body.code !== 0)) {
     // 后端已本地化 msg 优先；否则用状态码映射的 i18n 文案
     const msg = body.msg || translate(curLocale(), statusKey(r.status));
