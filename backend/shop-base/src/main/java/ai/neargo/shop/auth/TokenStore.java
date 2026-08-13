@@ -9,10 +9,20 @@ import java.util.UUID;
  */
 public interface TokenStore {
 
-    /** 会话数据：主体 + 权限版本戳（运营端改了角色权限，靠它让在线会话失效重建）。 */
-    record SessionData(LoginUser user, long permStamp) {
+    /**
+     * 会话数据。
+     *
+     * <p>曾经带一个 {@code permStamp}（权限版本戳），设想是「改了角色权限就让在线会话
+     * 失效重建」。它**从未被写入过非 0 值，也从未被读过** —— 方案后来走了两条别的路：
+     * 停用/改角色时 {@link #revokeUser} 直接踢会话，判权本身则改成由
+     * {@code LivePermResolver} 现算（2026-08-12）。
+     *
+     * <p>删掉它而不是留着：留着的话，下一个人很可能把它「实现完」，
+     * 于是权限新鲜度有了第二个真源，与现算那条并存 —— 而两个真源迟早对不上。
+     */
+    record SessionData(LoginUser user) {
         public static SessionData of(LoginUser user) {
-            return new SessionData(user, 0L);
+            return new SessionData(user);
         }
     }
 

@@ -21,9 +21,6 @@ import org.springframework.stereotype.Component;
 @Component("perm")
 public class PermChecker {
 
-    /** 超管通配：一个码顶所有。生产要谨慎发放。 */
-    private static final String WILDCARD = "*";
-
     private final ObjectProvider<LivePermResolver> liveResolver;
 
     public PermChecker(ObjectProvider<LivePermResolver> liveResolver) {
@@ -42,11 +39,17 @@ public class PermChecker {
             // 非运营会话一律拒绝：C 端 token 不该因为「碰巧没有这个权限码」而落到这里
             return false;
         }
+        /*
+         * 通配判定委托 neargo 的 Permissions.matches —— 它认 `*` 也认 `merchant:*`。
+         *
+         * 此前这里是手写的 `contains("*") || contains(code)`：**只认精确的 `*`**。
+         * 而 ops-web 的 can() 一直支持模块通配，两端语义不一致。目前无害
+         * （库里发的都是具体码），但哪天有人给角色配一个 `merchant:*`，
+         * 表现会是「前端显示入口、后端 403」—— 最难查的那一类不一致。
+         */
         var perms = livePerms(user);
-        if (perms == null || perms.isEmpty()) {
-            return false;
-        }
-        return perms.contains(WILDCARD) || perms.contains(code);
+        return perms != null && !perms.isEmpty()
+                && ai.neargo.common.security.rbac.Permissions.matches(perms, code);
     }
 
     /**

@@ -2,7 +2,6 @@ package ai.neargo.shop.auth;
 
 import ai.neargo.common.data.scope.DataScopeSpec;
 import ai.neargo.common.security.rbac.PermissionCarrier;
-import ai.neargo.common.security.rbac.Permissions;
 
 import java.util.List;
 import java.util.Set;
@@ -37,11 +36,6 @@ public record LoginUser(
     @Override
     public Set<String> grantedPermissions() {
         return perms == null ? Set.of() : Set.copyOf(perms);
-    }
-
-    /** 通配判定委托 neargo，保证前后端权限码语义一致。 */
-    public boolean hasPerm(String code) {
-        return Permissions.matches(perms, code);
     }
 
     /** C 端会话：无角色无权限，数据域恒 SELF（SQL 层防 IDOR 的兜底）。 */

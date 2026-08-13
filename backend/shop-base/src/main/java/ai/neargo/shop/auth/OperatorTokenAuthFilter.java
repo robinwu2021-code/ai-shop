@@ -20,8 +20,9 @@ import java.util.List;
  * <p>与 C 端的区别有两处：授予 {@code ROLE_*} 权威（供 {@code @PreAuthorize} 用），
  * 以及数据域来自员工授权（商家/社区/自提点），不是 SELF。
  *
- * <p>权限变更后的在线会话处理留到 S7：届时比对 {@code permStamp} 并按需重建会话
- * —— 现在没有角色管理功能，先不做，省得留一段没人验证的代码。
+ * <p>权限变更**不必重建会话**：判权由 {@code LivePermResolver} 现算，改完配置下一个
+ * 请求就是新权限（2026-08-12）。停用账号仍走 {@code revokeUser} 直接踢下线 ——
+ * 那是「这个人不该再进来」，与「他的权限变了」是两件事。
  */
 public class OperatorTokenAuthFilter extends OncePerRequestFilter {
 

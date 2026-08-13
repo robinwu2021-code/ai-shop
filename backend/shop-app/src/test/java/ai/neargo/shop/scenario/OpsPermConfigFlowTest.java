@@ -195,6 +195,27 @@ class OpsPermConfigFlowTest {
         }
     }
 
+    @Test
+    @DisplayName("★★ 判权认模块通配 merchant:* —— 与 ops-web 的 can() 同一套语义")
+    void moduleWildcardIsHonoured() {
+        /*
+         * 后端此前是手写的 `contains("*") || contains(code)`，**只认精确的 `*`**；
+         * 而 ops-web 的 can() 一直支持 `merchant:*`。目前库里发的都是具体码，
+         * 所以不一致没有显形 —— 但哪天给某个角色配一个 `merchant:*`，
+         * 表现就是「前端显示入口、后端 403」。
+         *
+         * 直接验 neargo 的判定函数：PermChecker 委托的就是它，
+         * 而起一个带通配角色的会话要改库、跨测试污染，代价远大于收益。
+         */
+        var perms = java.util.List.of("merchant:*", "order:order:read");
+        assertThat(ai.neargo.common.security.rbac.Permissions.matches(perms, "merchant:merchant:ban"))
+                .as("模块通配应当覆盖该模块下的具体码").isTrue();
+        assertThat(ai.neargo.common.security.rbac.Permissions.matches(perms, "finance:settle:read"))
+                .as("模块通配不该越过模块边界").isFalse();
+        assertThat(ai.neargo.common.security.rbac.Permissions.matches(java.util.List.of("*"), "anything:at:all"))
+                .as("超管通配仍然顶所有").isTrue();
+    }
+
     // ---------------------------------------------------------------- 菜单排序
 
     /** 某个 function 下的菜单点顺序（按 sort）。 */
