@@ -28,6 +28,14 @@ public interface SmsPort {
      */
     SendResult sendOtp(String phone, String code);
 
+    /**
+     * 带**用途**与操作人的重载。理由同 {@link MailPort#send(String, String, String, String, String)}：
+     * 运营端的「测试发送」与真实 OTP 要在发送记录里分得开。
+     */
+    default SendResult sendOtp(String phone, String code, String bizType, String operatorNo) {
+        return sendOtp(phone, code);
+    }
+
 
     /** 通道发送失败。{@code retryable} 区分「重试可能成功」与「这条永远发不出去」。 */
     class SmsException extends RuntimeException {

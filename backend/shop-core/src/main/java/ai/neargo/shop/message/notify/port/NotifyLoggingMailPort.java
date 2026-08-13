@@ -1,6 +1,7 @@
-package ai.neargo.shop.message.notify;
+package ai.neargo.shop.message.notify.port;
 
 import ai.neargo.shop.message.entity.SysNotifyLog;
+import ai.neargo.shop.message.notify.NotifyLogWriter;
 import ai.neargo.shop.spi.notify.MailPort;
 import ai.neargo.shop.spi.notify.SendResult;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -32,7 +33,15 @@ public class NotifyLoggingMailPort implements MailPort {
         return send(to, subject, body, SysNotifyLog.BIZ_TEST, null);
     }
 
-    /** @param bizType 见 {@link SysNotifyLog} 的 {@code BIZ_*} 常量 */
+    /**
+     * {@inheritDoc}
+     *
+     * <p><b>override 接口的五参版而不是另起一个方法名</b>：调用方（platform 域）
+     * 只该看见 {@code spi.notify.MailPort}，看不见这个装饰器 ——
+     * 让它依赖具体实现类，platform 就依赖上了 message 域，两个域再也拆不开。
+     * 架构守卫当场把这件事拦下来了。
+     */
+    @Override
     public SendResult send(String to, String subject, String body,
                            String bizType, String operatorNo) {
         try {

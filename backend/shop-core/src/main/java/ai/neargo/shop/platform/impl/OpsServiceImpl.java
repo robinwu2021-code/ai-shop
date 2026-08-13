@@ -1,5 +1,8 @@
 package ai.neargo.shop.platform.impl;
 
+import ai.neargo.shop.common.ratelimit.RateRule;
+import ai.neargo.shop.common.ratelimit.RateLimiter;
+import ai.neargo.shop.spi.notify.MailPort;
 import ai.neargo.shop.platform.OpsService;
 import ai.neargo.shop.auth.Perms;
 import ai.neargo.shop.auth.ScopeDim;
@@ -17,7 +20,7 @@ import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.Masks;
 import ai.neargo.shop.common.PageData;
-import ai.neargo.shop.message.entity.SysNotifyLog;
+import ai.neargo.shop.spi.notify.NotifyBizType;
 import ai.neargo.shop.platform.dto.OpsVOs.AuditLogVO;
 import ai.neargo.shop.platform.dto.OpsVOs.LoginResultVO;
 import ai.neargo.shop.platform.dto.OpsVOs.MerchantApplyVO;
@@ -73,9 +76,9 @@ public class OpsServiceImpl implements OpsService {
     private final ai.neargo.shop.platform.IndustryService industryService;
     private final ai.neargo.shop.platform.MasterDataService masterDataService;
     private final ai.neargo.shop.auth.PasswordHasher passwordHasher;
-    private final ai.neargo.shop.message.notify.NotifyLoggingMailPort mailPort;
+    private final MailPort mailPort;
     private final PasswordResetTokens resetTokens;
-    private final ai.neargo.shop.common.ratelimit.RateLimiter resetLimiter;
+    private final RateLimiter resetLimiter;
 
     /**
      * 初始密码怎么交付。{@code mail}（默认）= 邮件发本人、接口不返回明文；
@@ -94,9 +97,9 @@ public class OpsServiceImpl implements OpsService {
                           ai.neargo.shop.platform.IndustryService industryService,
                           ai.neargo.shop.platform.MasterDataService masterDataService,
                           ai.neargo.shop.auth.PasswordHasher passwordHasher,
-                          ai.neargo.shop.message.notify.NotifyLoggingMailPort mailPort,
+                          MailPort mailPort,
                           PasswordResetTokens resetTokens,
-                          ai.neargo.shop.common.ratelimit.RateLimiter resetLimiter,
+                          RateLimiter resetLimiter,
                           @org.springframework.beans.factory.annotation.Value(
                                   "${shop.ops.password-delivery:mail}") String passwordDelivery) {
         this.mailPort = mailPort;
@@ -763,7 +766,7 @@ public class OpsServiceImpl implements OpsService {
                             + "登录名：" + username + "\n"
                             + "初始密码：" + initial + "\n\n"
                             + "**首次登录会要求你立即修改密码**。请勿转发本邮件。\n",
-                    SysNotifyLog.BIZ_OPS_INIT_PASSWORD, SecurityUtils.currentUserNo());
+                    NotifyBizType.OPS_INIT_PASSWORD, SecurityUtils.currentUserNo());
             return new CreatedStaffVO(toVO(staff, want, rolePermResolver.of(want)),
                     null, Masks.email(username));
         }
@@ -854,7 +857,7 @@ public class OpsServiceImpl implements OpsService {
          * 不限的话任何人都能拿它把某个运营的邮箱刷爆（而且发件人是我们）。
          */
         if (!resetLimiter.tryAcquire("ops:forgot:" + staff.getStaffNo(),
-                ai.neargo.shop.common.ratelimit.RateRule.of(
+                RateRule.of(
                         "ops.forgot", java.time.Duration.ofHours(1), 5)).allowed()) {
             log.warn("[ops] 忘记密码触发限流 staff={}", staff.getStaffNo());
             return;   // 同样静默：告诉他「你被限流了」也是一种账号存在性泄露
@@ -866,7 +869,7 @@ public class OpsServiceImpl implements OpsService {
                         + "有人为你的运营端账号申请了密码重置。\n"
                         + "重置码（15 分钟内有效，只能用一次）：\n\n    " + token + "\n\n"
                         + "**如果不是你本人操作，忽略本邮件即可**，你的密码不会有任何变化。\n",
-                SysNotifyLog.BIZ_OPS_RESET_PASSWORD, null);
+                NotifyBizType.OPS_RESET_PASSWORD, null);
         audit("STAFF_PASSWORD_FORGOT", staff.getStaffNo(), "已发送重置邮件", true, null, null);
     }
 

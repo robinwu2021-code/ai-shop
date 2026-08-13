@@ -25,6 +25,24 @@ public interface MailPort {
      */
     SendResult send(String to, String subject, String body);
 
+    /**
+     * 带**用途**与操作人的重载。
+     *
+     * <p><b>为什么 bizType 属于这个契约而不是记录层的私事</b>：发送记录要能把
+     * 「验证码」「账号初始密码」「测试发送」分开 —— 混在一起时，看到发送量激增
+     * 分不清是有人在刷还是有人在测。而只有调用方知道这一次是为了什么。
+     *
+     * <p>默认忽略这两个参数，直接走三参版：**桩与真实现都不必关心记录**，
+     * 记录由装饰器统一做（见 {@code NotifyLoggingMailPort}）。
+     *
+     * @param bizType    见 {@code SysNotifyLog} 的 {@code BIZ_*}
+     * @param operatorNo 手动触发时是操作人；系统自动发出的传 null
+     */
+    default SendResult send(String to, String subject, String body,
+                            String bizType, String operatorNo) {
+        return send(to, subject, body);
+    }
+
     /** 邮件发送失败。 */
     class MailException extends RuntimeException {
 

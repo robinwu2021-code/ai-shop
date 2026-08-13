@@ -1,6 +1,7 @@
-package ai.neargo.shop.message.notify;
+package ai.neargo.shop.message.notify.port;
 
 import ai.neargo.shop.message.entity.SysNotifyLog;
+import ai.neargo.shop.message.notify.NotifyLogWriter;
 import ai.neargo.shop.spi.notify.SendResult;
 import ai.neargo.shop.spi.notify.SmsPort;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -39,6 +40,7 @@ public class NotifyLoggingSmsPort implements SmsPort {
      *                   混在一起的话，看到发送量激增时分不清是有人在刷还是有人在测
      * @param operatorNo 手动触发时是操作人；OTP 这类自动发出的传 null
      */
+    @Override
     public SendResult sendOtp(String phone, String code, String bizType, String operatorNo) {
         try {
             SendResult r = delegate.sendOtp(phone, code);

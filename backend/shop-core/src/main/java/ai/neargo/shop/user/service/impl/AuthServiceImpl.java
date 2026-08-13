@@ -1,5 +1,7 @@
 package ai.neargo.shop.user.service.impl;
 
+import ai.neargo.shop.spi.notify.SmsPort;
+import ai.neargo.shop.common.ratelimit.OtpSendGuard;
 import ai.neargo.shop.user.service.AuthService;
 import ai.neargo.shop.common.OtpStore;
 
@@ -69,13 +71,13 @@ public class AuthServiceImpl implements AuthService {
      */
     private final String fixedOtp;
 
-    private final ai.neargo.shop.common.ratelimit.OtpSendGuard sendGuard;
-    private final ai.neargo.shop.spi.notify.SmsPort smsPort;
+    private final OtpSendGuard sendGuard;
+    private final SmsPort smsPort;
 
     public AuthServiceImpl(UserMapper userMapper, IdentityMapper identityMapper,
                            TokenStore tokenStore, OtpStore otpStore,
-                           ai.neargo.shop.common.ratelimit.OtpSendGuard sendGuard,
-                           ai.neargo.shop.spi.notify.SmsPort smsPort,
+                           OtpSendGuard sendGuard,
+                           SmsPort smsPort,
                            @org.springframework.beans.factory.annotation.Value(
                                    "${shop.auth.otp.fixed:}") String fixedOtp) {
         this.userMapper = userMapper;

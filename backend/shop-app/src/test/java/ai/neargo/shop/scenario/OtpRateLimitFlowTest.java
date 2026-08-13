@@ -30,6 +30,17 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 循环调它就能烧掉平台的短信费。
  */
 @SpringBootTest(properties = {
+        /*
+         * **自己一个内存库**。用 properties 覆盖配置会造出第二个 Spring 上下文，
+         * 而 h2db profile 里的库是**命名共享**的（`jdbc:h2:mem:shop;DB_CLOSE_DELAY=-1`）——
+         * 第二个上下文会把 schema-test.sql 的种子再插一遍，整类挂在主键冲突上，
+         * 报出来的是「Failed to load ApplicationContext」，看不出与建表有关。
+         *
+         * testcfg 的注释里早就写下了这个坑（「后者会造出第二个 Spring 上下文……
+         * 整套测试成片挂在主键冲突上」），我还是踩了 —— 单类跑绿、全量才炸，
+         * 因为单类跑时只有这一个上下文。
+         */
+        "spring.datasource.url=jdbc:h2:mem:otp-rate;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1",
         "shop.otp.rate-limit=true",
         "shop.otp.interval-seconds=60",
         // 日上限调到 3，才能在一个用例里撞到；生产是 10

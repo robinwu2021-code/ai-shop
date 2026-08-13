@@ -1,4 +1,4 @@
-package ai.neargo.shop.channel.notify;
+package ai.neargo.shop.channel.notify.port;
 
 import ai.neargo.shop.spi.notify.MailPort;
 import ai.neargo.shop.spi.notify.SendResult;

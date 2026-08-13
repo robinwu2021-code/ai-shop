@@ -1,6 +1,6 @@
 package ai.neargo.shop.scenario;
 
-import ai.neargo.shop.channel.notify.StubMailGateway;
+import ai.neargo.shop.channel.notify.port.StubMailGateway;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -30,7 +30,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 而<b>管理员本人不该知道另一个人的密码</b> —— {@code mustChangePassword}
  * 只保证「本人首登后会变」，不保证「管理员在这之前没登过」。
  */
-@SpringBootTest(properties = "shop.ops.password-delivery=mail")
+@SpringBootTest(properties = {
+        // 自己一个内存库，理由见 OtpRateLimitFlowTest 顶部
+        "spring.datasource.url=jdbc:h2:mem:ops-pwd;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1",
+        "shop.ops.password-delivery=mail",
+})
 @ActiveProfiles("test")
 @DisplayName("运营端初始密码邮件交付")
 class OpsPasswordDeliveryFlowTest {
