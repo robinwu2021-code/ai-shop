@@ -49,6 +49,9 @@ class OtpRateLimitFlowTest {
     @Autowired
     private CaptchaService captcha;
 
+    @Autowired
+    private ai.neargo.shop.common.OtpStore otpStore;
+
     /**
      * **必须 apply(springSecurity())**：IP 是由 {@code ConsumerTokenAuthFilter} 放进
      * ThreadLocal 的，不装安全链那个过滤器根本不跑 —— 于是按 IP 那道闸拿不到 IP 而放行，
@@ -70,6 +73,9 @@ class OtpRateLimitFlowTest {
     @org.junit.jupiter.api.BeforeEach
     void resetIpQuota() {
         limiter.reset("otp:ip:127.0.0.1");
+        // 验码失败计数同样是进程内单例，跨用例共享
+        limiter.reset("otp:fail:" + phone("4004"));
+        limiter.reset("otp:fail:" + phone("5005"));
     }
 
     /** 每条用例换一个号，免得互相踩到对方的计数 */
@@ -127,6 +133,47 @@ class OtpRateLimitFlowTest {
                         .content("{\"phone\":\"" + phone("3099") + "\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(10429));
+    }
+
+    @Test
+    @DisplayName("★★★ 验码连错 5 次即锁定，并作废当前码 —— 四道闸里唯一防「账号被攻破」的那道")
+    void wrongCodesLockTheAccount() {
+        String p = phone("4004");
+        otpStore.save(p, "123456");
+
+        // 前 5 次：错就是错，但还能继续试
+        for (int i = 0; i < 5; i++) {
+            assertThat(otpStore.verifyAndConsume(p, "000000"))
+                    .as("第 %d 次错码应返回 false 而不是抛", i + 1).isFalse();
+        }
+        // 第 6 次：锁
+        assertThatThrownBy(() -> otpStore.verifyAndConsume(p, "000000"))
+                .hasMessageContaining("OTP_LOCKED");
+
+        /*
+         * **锁定时当前码也要作废**：不作废的话，锁一过攻击者接着用同一条码继续猜，
+         * 等于只是让他歇了一会儿。所以这里拿「对的码」也进不去。
+         */
+        assertThatThrownBy(() -> otpStore.verifyAndConsume(p, "123456"))
+                .as("锁定期内即使码是对的也不放行，且原码已被作废")
+                .hasMessageContaining("OTP_LOCKED");
+    }
+
+    @Test
+    @DisplayName("★★ 成功一次就清零 —— 按「连续失败」计数，不是累计")
+    void successResetsTheFailureCount() {
+        String p = phone("5005");
+        otpStore.save(p, "654321");
+        for (int i = 0; i < 4; i++) {
+            otpStore.verifyAndConsume(p, "000000");
+        }
+        assertThat(otpStore.verifyAndConsume(p, "654321")).isTrue();
+
+        // 清零后又能错满 5 次才锁；累计计数的话这里第 2 次就锁了
+        otpStore.save(p, "111111");
+        for (int i = 0; i < 5; i++) {
+            assertThat(otpStore.verifyAndConsume(p, "000000")).isFalse();
+        }
     }
 
     @Test
