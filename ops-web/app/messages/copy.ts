@@ -100,7 +100,7 @@ const zh = {
   answerPlaceholder: "用用户的话写，别抄规则条款",
   answerHint: "答案为空可以先存草稿，但不能上架。",
   // ── 发送记录（P-14.3）────────────────────────────────────────────────
-  nlNotice: "短信与邮件的每一次发送都记在这里，**失败的也记**。出问题时最常见的问句是「他到底收没收到」——没有这张表就只能让用户再试一次，而如果真是通道的问题，再试还是收不到。\n\n收件人只存掩码：这张表运营都看得到，而它是用户的手机号与邮箱。要查具体一条，拿「通道流水号」去阿里云/邮箱后台查。",
+  nlNotice: "短信与邮件的每一次发送都记在这里，「失败的也记」。出问题时最常见的问句是「他到底收没收到」——没有这张表就只能让用户再试一次，而如果真是通道的问题，再试还是收不到。\n\n收件人只存掩码：这张表运营都看得到，而它是用户的手机号与邮箱。要查具体一条，拿「通道流水号」去阿里云/邮箱后台查。",
   nlColTime: "时间",
   nlColChannel: "渠道",
   nlColBiz: "用途",
@@ -123,7 +123,7 @@ const zh = {
 
   nlTestTitle: "测试发送",
   nlTestDesc: "给指定的手机号或邮箱发一条，用来确认通道是通的。",
-  nlTestWarn: "⚠️ 这是一个**能指定任意收件人**的入口，所以要过图形验证码：账号一旦泄漏，它就是一台群发机，而且发出去的是带平台签名的正规短信，比垃圾短信更能骗到人。",
+  nlTestWarn: "⚠️ 这是一个「能指定任意收件人」的入口，所以要过图形验证码：账号一旦泄漏，它就是一台群发机，而且发出去的是带平台签名的正规短信，比垃圾短信更能骗到人。",
   nlTestChannel: "渠道",
   nlTestTarget: "收件人",
   nlTestTargetPh: "手机号或邮箱",
@@ -232,7 +232,7 @@ const en: typeof zh = {
   fieldAnswer: "Answer",
   answerPlaceholder: "Write it the way a customer would say it — do not paste the policy text",
   answerHint: "An entry with no answer can be saved as a draft, but cannot be listed.",
-  nlNotice: "Every SMS and email send is recorded here, **failures included**. The most common question when something goes wrong is \"did they actually get it\" — without this table all you can do is ask the user to try again, and if the channel is the problem they still will not get it.\n\nRecipients are stored masked: everyone in ops can read this table, and those are users' phone numbers and emails. To chase one specific send, take the provider message id to the Aliyun / mailbox console.",
+  nlNotice: "Every SMS and email send is recorded here, 「failures included」. The most common question when something goes wrong is \"did they actually get it\" — without this table all you can do is ask the user to try again, and if the channel is the problem they still will not get it.\n\nRecipients are stored masked: everyone in ops can read this table, and those are users' phone numbers and emails. To chase one specific send, take the provider message id to the Aliyun / mailbox console.",
   nlColTime: "Time",
   nlColChannel: "Channel",
   nlColBiz: "Purpose",
@@ -255,7 +255,7 @@ const en: typeof zh = {
 
   nlTestTitle: "Test send",
   nlTestDesc: "Send one to a chosen phone or email to confirm the channel works.",
-  nlTestWarn: "⚠️ This entry point can target **any recipient**, so it is gated by a captcha: once an account leaks it becomes a bulk sender, and what it sends carries the platform's own SMS signature.",
+  nlTestWarn: "⚠️ This entry point can target 「any recipient」, so it is gated by a captcha: once an account leaks it becomes a bulk sender, and what it sends carries the platform's own SMS signature.",
   nlTestChannel: "Channel",
   nlTestTarget: "Recipient",
   nlTestTargetPh: "Phone or email",

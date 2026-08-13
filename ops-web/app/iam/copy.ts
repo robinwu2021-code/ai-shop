@@ -47,7 +47,7 @@ const zh = {
   colRoleCode: "编码",
   colStaffCount: "账号数",
   actionDelete: "删除",
-  // 名字说它**做什么**，不是它**为了什么** —— 叫「立即生效」会让人以为
+  // 名字说它「做什么」，不是它「为了什么」 —— 叫「立即生效」会让人以为
   // 不点就不生效，而改完功能点本来就立刻生效
   actionForceLogout: "强制重新登录",
   confirmForceLogoutTitle: "强制「{role}」的成员重新登录？",
@@ -161,7 +161,7 @@ const zh = {
   /** `{name}` 是员工姓名 */
   scopeDrawerTitle: "{name} 的数据域",
   scopeNotice:
-    "⚠️ 配置会保存，但**裁剪尚未生效**：后端各域的查询目前还没有按数据域过滤，配了也仍然能看到全量。按它裁剪是单独一批。\n\n数据域只对受限角色生效（社区运营、商家运营）。留空 = 不限定，等同全量 —— 这一点在列表里会用橙色标出来，避免“以为限制了其实没限制”。",
+    "⚠️ 配置会保存，但「裁剪尚未生效」：后端各域的查询目前还没有按数据域过滤，配了也仍然能看到全量。按它裁剪是单独一批。\n\n数据域只对受限角色生效（社区运营、商家运营）。留空 = 不限定，等同全量 —— 这一点在列表里会用橙色标出来，避免“以为限制了其实没限制”。",
   phCommunity: "如 C001",
   phMerchant: "如 M903",
   phPickup: "如 P001",
@@ -323,7 +323,7 @@ const en: typeof zh = {
 
   scopeDrawerTitle: "Data scope for {name}",
   scopeNotice:
-    "⚠️ The setting is saved, but **filtering is not live yet**: backend queries do not honour data scope today, so a scoped account still sees everything. Enforcement ships separately.\n\nData scope only applies to restricted roles (community ops, merchant ops). Leaving it blank means unbounded, i.e. the same as unrestricted — the list marks that in amber so nobody assumes a limit that is not there.",
+    "⚠️ The setting is saved, but 「filtering is not live yet」: backend queries do not honour data scope today, so a scoped account still sees everything. Enforcement ships separately.\n\nData scope only applies to restricted roles (community ops, merchant ops). Leaving it blank means unbounded, i.e. the same as unrestricted — the list marks that in amber so nobody assumes a limit that is not there.",
   phCommunity: "e.g. C001",
   phMerchant: "e.g. M903",
   phPickup: "e.g. P001",

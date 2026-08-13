@@ -118,12 +118,12 @@ const zh = {
   readOnlyNote: "不能发券、启停或归档",
   couponNotice:
     "预算是唯一挡住「发着发着超支」的地方：超预算的发放会被直接拒绝，改预算也不能改到低于已发放金额。客服的补偿券走同一套校验（矩阵 §2.3）。",
-  // 这里列的**不是平台场次**：后端 /ops/campaigns 返回的是店铺级活动（商家自己建的），
+  // 这里列的「不是平台场次」：后端 /ops/campaigns 返回的是店铺级活动（商家自己建的），
   // 而这一页的位置/场次重叠那套对应的后端对象还没有。不说清楚的话，
   // 运营会把商家的活动当成自己投放的 —— 而「误以为是自己建的」比看不到更危险。
   // 见 docs/technical/运营端营销列表契约错配.md
   campaignNotice:
-    "这里是**商家自建的店铺活动**：平台看得见、能停，但不能建也不能改内容 —— 那是商家自己的经营决定。平台投放的营销场次（位置、秒杀场次重叠校验）是另一件事，后端尚未实现。",
+    "这里是「商家自建的店铺活动」：平台看得见、能停，但不能建也不能改内容 —— 那是商家自己的经营决定。平台投放的营销场次（位置、秒杀场次重叠校验）是另一件事，后端尚未实现。",
   searchCoupons: "搜索券编号 / 名称",
   searchIssues: "搜索发放单号 / 券名 / 操作人",
   searchCampaigns: "搜索活动编号 / 名称 / 位置",
@@ -303,7 +303,7 @@ const en: typeof zh = {
   couponNotice:
     "The budget is the only thing standing between you and quietly overspending: an issue that exceeds it is rejected outright, and the budget itself cannot be lowered below what has already been issued. Support's goodwill coupons go through the same checks (matrix §2.3).",
   campaignNotice:
-    "These are **merchant-owned store campaigns**: the platform can see them and stop them, but cannot create or edit them \u2014 that is the merchant's own call. Platform-placed marketing slots (placements, overlap checks) are a separate thing, not implemented on the backend yet.",
+    "These are 「merchant-owned store campaigns」: the platform can see them and stop them, but cannot create or edit them \u2014 that is the merchant's own call. Platform-placed marketing slots (placements, overlap checks) are a separate thing, not implemented on the backend yet.",
   searchCoupons: "Search coupon no. / name",
   searchIssues: "Search issue no. / coupon name / operator",
   searchCampaigns: "Search campaign no. / name / placement",

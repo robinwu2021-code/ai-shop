@@ -153,18 +153,27 @@ describe("页面层同样受约束（基线 0，不留额度）", () => {
 
   it("★★ i18n 词典里同样不许写 markdown 星号 —— 它比 JSX 里更难发现", () => {
     /*
-     * **上一条只扫 page.tsx，扫不到词典**，于是同一个坑又踩了一次：
-     * `login.forgotNote` 里写了 `**……**`，界面上原样显示成带星号的一行。
-     * 而它比 JSX 里的更难发现 —— 词典离渲染点很远，写的时候看不到效果，
-     * 只有真的把那个抽屉点开才会看见。
+     * 上一条只扫 page.tsx，扫不到文案文件，于是同一个坑又踩了一次：
+     * `login.forgotNote` 里写了星号，界面上原样显示成带星号的一行。
+     * 而它比 JSX 里的更难发现 —— 文案离渲染点很远，写的时候看不到效果，
+     * 只有真把那个抽屉点开才会看见。
      *
-     * ⚠️ 只管 `lib/i18n/messages/`（渲染成纯文本的那批）。
-     * 各页的 `copy.ts` 不在此列：那些文案过 <Notice> 的 markdown 渲染，
-     * 星号在那里是**有效果的**，一起禁掉会把能用的加粗也误伤。
+     * ⚠️ 第一版把 `copy.ts` 排除在外，理由写的是「那些文案过 <Notice> 的
+     * markdown 渲染，星号在那里有效果」—— **那句话是错的**：
+     * `Notice` 直接渲染 `{children}`，一个字符都不解析。
+     * 实机截图里 `**失败的也记**` 原样出现，才发现这一点。
+     * 现在两处一起扫：i18n 词典 + 各页 copy.ts。
+     *
+     * 排除 finance/ 与 merchants/：并行会话正在改那两个文件，
+     * 它们各自的星号由那批一起清（暂列在 PENDING 里）。
      */
-    const dir = join(ROOT, "lib/i18n/messages");
+    const PENDING = ["app/finance/copy.ts", "app/merchants/copy.ts"];
     const offenders: string[] = [];
-    for (const f of walk(dir).filter((f) => f.endsWith(".ts"))) {
+    const files = [...walk(join(ROOT, "lib/i18n/messages")),
+                   ...walk(join(ROOT, "app")).filter((f) => f.endsWith("copy.ts"))]
+      .filter((f) => f.endsWith(".ts"))
+      .filter((f) => !PENDING.some((p) => f.endsWith(p)));
+    for (const f of files) {
       readFileSync(f, "utf8").split("\n").forEach((l, i) => {
         const isComment = /^\s*(\/\/|\*|\/\*)/.test(l);
         if (!isComment && /\*\*[^*]+\*\*/.test(l)) {
