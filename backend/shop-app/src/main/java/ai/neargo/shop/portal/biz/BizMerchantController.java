@@ -18,6 +18,7 @@ import ai.neargo.shop.merchant.service.StoreAdminService;
 import ai.neargo.shop.merchant.service.MerchantStoreService;
 import ai.neargo.shop.merchant.service.MerchantService;
 import ai.neargo.shop.community.service.CommunityAdminService;
+import ai.neargo.shop.spi.user.MerchantQueryPort;
 import ai.neargo.shop.user.service.UserService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -57,7 +58,7 @@ public class BizMerchantController {
     /** 提报新社区（ADR-013 阶段三）：社区是 community 域的主数据，商家只是提报方 */
     private final ai.neargo.shop.community.service.CommunityAdminService communityAdminService;
     /** 资金路径 —— B 端价格字段叫什么由它决定，判据与积分能力同一根轴 */
-    private final ai.neargo.shop.spi.user.MerchantQueryPort merchantQueryPort;
+    private final MerchantQueryPort merchantQueryPort;
 
     public BizMerchantController(MerchantService merchantService, OpsService opsService,
                                  UserService userService, BizIdentityResolver identityResolver,
@@ -67,7 +68,7 @@ public class BizMerchantController {
                                  MerchantStaffService staffService,
                                  ai.neargo.shop.merchant.service.MerchantRoleService roleService,
                                  ai.neargo.shop.community.service.CommunityAdminService communityAdminService,
-                                 ai.neargo.shop.spi.user.MerchantQueryPort merchantQueryPort) {
+                                 MerchantQueryPort merchantQueryPort) {
         this.merchantQueryPort = merchantQueryPort;
         this.communityAdminService = communityAdminService;
         this.roleService = roleService;
