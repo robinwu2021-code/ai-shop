@@ -1265,9 +1265,25 @@ export interface GroupRequest {
  * 定位：**只是一种活动**，不是平台核心机制。所以单档成团，不做阶梯价。，不是运营配置的活动位。
  * 成团单位是自提点（拼的是一车送到一个点的成本），单档成团，不做阶梯。
  */
+/**
+ * 商家团 / 邻里团的状态。**与库 `mkt_group_buy.status` 逐字一致**。
+ *
+ * 契约上原先没有这个字段，端上只能拿 `reached` 判断 —— 而**平台中止的团
+ * 人数可能已经够了**，只看 reached 会把一个已经作废的团显示成正常可参的团。
+ */
+export type GroupBuyStatus =
+  /** 开团中，还能参 */
+  | "OPEN"
+  /** 已成团 */
+  | "FORMED"
+  /** 没成团 / 被平台中止。不作废订单：按原价照常发货 */
+  | "FAILED";
+
 export interface GroupBuy {
   /** 团单号 */
   groupNo: string;
+  /** 团的状态 */
+  status: GroupBuyStatus;
   /** 开团的商品 */
   goodsNo: string;
   /** 商品标题快照 */
@@ -1298,8 +1314,14 @@ export interface GroupBuy {
   need: number;
   /** 截止时间：发起后 validHours 与商品截单时间取更早 */
   expireAt: number;
-  /** 已参团的人及各自件数，展示用 */
-  members: { avatar: string; nickname: string; qty: number }[];
+  /**
+   * 已参团的邻居，展示用。
+   *
+   * **没有件数**：参团是一人一份 —— 成团判断、「还差 N 人」的文案、`joinedCount`
+   * 全部按人算，库里也没存过件数。这里原先有个 `qty`，页面照着渲染 `×{qty}`，
+   * 而它从来没有值。
+   */
+  members: { avatar: string; nickname: string }[];
   /** 当前用户是否已参团 */
   joined: boolean;
   /**

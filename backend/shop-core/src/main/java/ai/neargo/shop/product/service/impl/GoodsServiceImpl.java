@@ -272,7 +272,15 @@ public class GoodsServiceImpl implements GoodsService {
                 // 买家侧不下发状态：某件商品是"审核中"还是"被驳回"是店主和平台之间的事
                 null,
                 // 译文原文同理：这里的 title 已经按当前语言拍平，整份译文只有编辑页才用得上
-                null, null);
+                null, null,
+                groupBuyConf(g));
+    }
+
+    /** 配齐了团价与起团人数才算「能开团」—— 缺一个都开不出来 */
+    static GoodsVO.GroupBuyConfVO groupBuyConf(PrdGoods g) {
+        return g.getGroupPriceMinor() == null || g.getGroupMinCount() == null
+                ? null
+                : new GoodsVO.GroupBuyConfVO(g.getGroupMinCount(), g.getGroupPriceMinor());
     }
 
     private GoodsVO.SkuVO toSkuVO(PrdSku s, Long flashPrice) {

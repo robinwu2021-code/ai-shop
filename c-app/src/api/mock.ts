@@ -871,7 +871,7 @@ export const mockApi: ShopApi = {
       initiatorNickname: db.user.nickname,
       initiatorAvatar: db.user.avatar,
       createdAt: Date.now(),
-      members: [{ avatar: db.user.avatar, nickname: db.user.nickname, qty: 1 }],
+      members: [{ avatar: db.user.avatar, nickname: db.user.nickname }],
       joined: true,
     };
     db.groupSeeds.unshift(seed);
@@ -943,7 +943,7 @@ export const mockApi: ShopApi = {
     const before = buildGroupBuy(seed);
     seed.members = [
       ...seed.members,
-      { avatar: db.user.avatar, nickname: db.user.nickname, qty },
+      { avatar: db.user.avatar, nickname: db.user.nickname },
     ];
     seed.joined = true;
     persist();

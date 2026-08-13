@@ -311,6 +311,10 @@ export const ENUM_REGISTRY: EnumEntry[] = [
    * **单向的守卫会漏，双向的不会。**
    */
   { decl: "shared:PointRecordType", dom: "growth", shape: "CLASS", verdict: "OK" },
+  { decl: "shared:GroupBuyStatus", dom: "group", shape: "STATUS", verdict: "OK",
+    note: "与库 mkt_group_buy.status 逐字一致。此前契约里没有这个字段，端上只能拿 reached 推 —— "
+      + "而被平台中止的团人数可能已经够了，推出来是「已成团」，页面把作废的团当正常团显示",
+    words: ["OPEN", "FORMED"] },   // FAILED 是 L1 状态词，不必申报
   { decl: "shared:GroupRequestStatus", dom: "group", shape: "STATUS", verdict: "MERGE",
     note: "取值已改为库里存的那套（mkt_request.status）—— 原先的 OPEN/QUOTING/MATCHED/EXPIRED 与后端一个都对不上，"
       + "页面上 status==='MATCHED' 恒 false。与 ops-web 的 DemandStatus 仍是同一件事的两套说法（CHOSEN↔LOCKED），待合并。"

@@ -3,6 +3,7 @@ package ai.neargo.shop.marketing.api.mp;
 import ai.neargo.shop.marketing.group.GroupService;
 import ai.neargo.shop.marketing.group.dto.GroupVOs.GroupPickupOrderVO;
 import ai.neargo.shop.marketing.group.dto.GroupVOs.GroupBuyVO;
+import ai.neargo.shop.marketing.group.dto.GroupVOs.JoinResultVO;
 import ai.neargo.shop.marketing.group.dto.GroupVOs.QuoteRevisionVO;
 import ai.neargo.shop.marketing.group.dto.GroupVOs.QuoteVO;
 import ai.neargo.shop.marketing.group.dto.GroupVOs.RequestVO;
@@ -40,7 +41,7 @@ public class MpGroupController {
     }
 
     @PostMapping("/mp/group-buy/{groupNo}/join")
-    public GroupBuyVO join(@PathVariable String groupNo) {
+    public JoinResultVO join(@PathVariable String groupNo) {
         return groupService.join(groupNo);
     }
 

@@ -1,6 +1,7 @@
 package ai.neargo.shop.marketing.group;
 
 import ai.neargo.shop.marketing.group.dto.GroupVOs.GroupBuyVO;
+import ai.neargo.shop.marketing.group.dto.GroupVOs.JoinResultVO;
 import ai.neargo.shop.marketing.group.dto.GroupVOs.GroupPickupOrderVO;
 import ai.neargo.shop.marketing.group.dto.GroupVOs.QuoteRevisionVO;
 import ai.neargo.shop.marketing.group.dto.GroupVOs.QuoteVO;
@@ -15,7 +16,7 @@ public interface GroupService {
 
     GroupBuyVO groupBuyDetail(String groupNo);
 
-    GroupBuyVO join(String groupNo);
+    JoinResultVO join(String groupNo);
 
     /**
      * C 端发起团（C-GB-05）。商品必须已开放拼团 —— 团购价由商家在商品上配，

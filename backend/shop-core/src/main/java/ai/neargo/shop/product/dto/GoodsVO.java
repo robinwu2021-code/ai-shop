@@ -58,7 +58,21 @@ public record GoodsVO(String goodsNo,
                        */
                       java.util.Map<String, String> titleI18n,
                       /** 三语副标题原文，同 {@link #titleI18n} */
-                      java.util.Map<String, String> subtitleI18n) {
+                      java.util.Map<String, String> subtitleI18n,
+                      /**
+                       * 已配好的拼团设置：{@code {minCount, price}}。没配过为 null。
+                       *
+                       * <p><b>B 端「可开团的商品」整个列表靠它</b>：页面按
+                       * `g.groupBuy && g.onSale` 筛。此前后端一直不下发，
+                       * 于是那一栏永远是「还没有配过团购价的商品」——
+                       * 商家在商品里配好了团价，<b>开团入口从来没有出现过</b>，
+                       * 而两处都不报错。
+                       */
+                      GroupBuyConfVO groupBuy) {
+
+    /** 商品上配好的拼团设置。开团那一步不能临时定价，价与人数都取自这里 */
+    public record GroupBuyConfVO(int minCount, long price) {
+    }
 
     public record MerchantBriefVO(String merchantNo, String name, String logo,
                                   double rating, boolean verified, int breachCount) {

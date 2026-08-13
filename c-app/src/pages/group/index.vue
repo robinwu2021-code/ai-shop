@@ -124,7 +124,6 @@ onShareAppMessage(() => {
         <view v-for="(m, i) in group.members" :key="i" class="member">
           <text class="member__a">{{ m.avatar }}</text>
           <text class="member__n">{{ m.nickname }}</text>
-          <text class="member__q sh-num">×{{ m.qty }}</text>
         </view>
       </view>
     </view>

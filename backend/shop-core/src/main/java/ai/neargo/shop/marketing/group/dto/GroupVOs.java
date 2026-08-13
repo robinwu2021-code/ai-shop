@@ -9,17 +9,50 @@ public final class GroupVOs {
     }
 
     /**
+     * 商家团 / 邻里团 —— **字段与契约 `GroupBuy` 一一对应**。
+     *
+     * <p>此前这里是另一套名字：`merchantNo`+`merchantName` 而不是整块 `merchant`，
+     * `groupPriceMinor`↔`groupPrice`、`originPriceMinor`↔`basePrice`、`endAt`↔`expireAt`，
+     * 而 `reached` / `need` / `members` / `pickupName` / `initiatorAvatar` 一个都没有。
+     * 症状不是少一块，是**卡片上每一个数字都是 NaN**：
+     * 「¥NaN.NaN」「还差 [空] 人成团」「NaN:NaN:NaN」——
+     * B 端开完团看不出团价，C 端买家看不出要差几个人、也看不出还剩多久。
+     * 团开了等于没开，而接口一路 200。
+     *
+     * <p>{@code reached} / {@code need} 由后端算：**「差几人」是成团规则的一部分**，
+     * 端上各算一遍迟早与后端的成团判断分叉，而分叉的表现是「显示已成团、
+     * 下单还是原价」。
+     *
      * @param initiatorNickname C 端发起人昵称；商家开的团为 null
      * @param isOwner           当前用户是不是发起人 —— 决定要不要露出签收与核销入口
      * @param neighborPickup    勾了「送到我家」时的邻里自提点（ADR-005），否则 null
      */
     public record GroupBuyVO(String groupNo, String goodsNo, String title, String cover,
-                             String merchantNo, String merchantName,
-                             long groupPriceMinor, long originPriceMinor,
-                             int minCount, int joinedCount, String status,
-                             long endAt, boolean joined,
-                             String initiatorNickname, boolean isOwner,
-                             String pickupNo, NeighborPickupVO neighborPickup) {
+                             MerchantBriefVO merchant,
+                             String initiatorNickname, String initiatorAvatar,
+                             String pickupNo, String pickupName,
+                             long basePrice, long groupPrice,
+                             int minCount, int joinedCount,
+                             boolean reached, int need,
+                             long expireAt, List<MemberVO> members,
+                             boolean joined, boolean isOwner,
+                             /**
+                              * OPEN / FORMED / FAILED。**不能用 `reached` 代替它** ——
+                              * 平台中止的团（FAILED）人数可能已经够了，只看 reached
+                              * 会把一个已经作废的团显示成正常可参的团。
+                              */
+                             String status,
+                             NeighborPickupVO neighborPickup) {
+    }
+
+    /**
+     * 参团的邻居。
+     *
+     * <p><b>没有件数</b>：参团是一人一份 —— 成团判断、「还差 N 人」的文案、
+     * `joinedCount` 全部按人算，库里也没有存过件数。契约上原先有个 `qty`，
+     * 页面照着渲染 `×{qty}`，而它<b>从来没有值</b>。
+     */
+    public record MemberVO(String avatar, String nickname) {
     }
 
     /**
@@ -70,6 +103,23 @@ public final class GroupVOs {
                             String status, List<QuoteVO> quotes, QuoteVO chosenQuote,
                             long createdAt, long expireAt,
                             String groupNo, Long lockedPriceMinor) {
+    }
+
+    /**
+     * 参团的结果。**不是裸的团** —— 端上还要知道「这一脚是不是把团踢成了」。
+     *
+     * <p>后端原先直接返回 {@code GroupBuyVO}，而契约要的是
+     * {@code { group, justReached, refundPerMember }}：于是端上 `res.group` 是 undefined，
+     * 赋回去之后<b>整个团详情页变成一片空白</b> —— 买家点「参团」，看到一句
+     * 「参团成功」，然后什么都没了。
+     *
+     * <p>{@code justReached} 还带着这个方案的卖点：<b>先参团的邻居也退差价</b>。
+     * 不告诉他，他感知不到 —— 而这正是它区别于其它拼团的地方。
+     *
+     * @param justReached      这一次参团**恰好**让团达成（只有触发那一下为 true）
+     * @param refundPerMember  达成时每位已参团邻居退回的差价；未达成为 0
+     */
+    public record JoinResultVO(GroupBuyVO group, boolean justReached, long refundPerMember) {
     }
 
     /** +1 的邻居（头像墙）。只有展示用的两个字段 —— 谁 +1 了不该顺带泄露身份。 */

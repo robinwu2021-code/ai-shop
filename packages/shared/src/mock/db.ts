@@ -1346,8 +1346,8 @@ export const db = {
       initiatorAvatar: "👩",
       createdAt: Date.now() - 3 * 3600_000,
       members: [
-        { avatar: "👩", nickname: "王姐", qty: 1 },
-        { avatar: "🧑", nickname: "老陈", qty: 2 },
+        { avatar: "👩", nickname: "王姐" },
+        { avatar: "🧑", nickname: "老陈" },
       ],
       joined: false,
     },
@@ -1535,7 +1535,7 @@ interface GroupSeed {
   initiatorNickname: string;
   initiatorAvatar: string;
   createdAt: number;
-  members: { avatar: string; nickname: string; qty: number }[];
+  members: { avatar: string; nickname: string }[];
   joined: boolean;
 }
 
@@ -1563,6 +1563,8 @@ export function buildGroupBuy(seed: GroupSeed): GroupBuy {
 
   return {
     groupNo: seed.groupNo,
+    // 与后端同一口径：够人数即 FORMED，否则仍在 OPEN（mock 里没有平台中止）
+    status: reached ? "FORMED" : "OPEN",
     goodsNo: seed.goodsNo,
     title: goods.title,
     cover: goods.cover,

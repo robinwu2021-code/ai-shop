@@ -174,7 +174,8 @@ describe.each(APPS)("$app 契约字段（$prefix）", ({ app, prefix }) => {
     }
 
     /*
-     * 存量欠账：**修好盲区那一刻**库里就有的 21 处（/biz 7、/mp 14）。
+     * 存量欠账：**修好盲区那一刻**库里就有的 21 处（/biz 7、/mp 14），
+     * 修掉求团与商家团之后剩 15 处（/biz 5、/mp 10）。
      *
      * 数字这么大不是因为一夜之间坏了这么多，而是因为守卫此前<b>根本没在比</b>——
      * 它只按文件名找 record，而这个仓库的 VO 大多嵌在 `XxxVOs.java` 里，
@@ -187,7 +188,7 @@ describe.each(APPS)("$app 契约字段（$prefix）", ({ app, prefix }) => {
      * 这样两件事同时成立：今天不必一次修完，而**明天新增一处立刻变红**。
      * 修掉一处就把数字减一 —— 数字不允许往上走，这是它唯一的价值。
      */
-    const PENDING = { "b-app": 7, "c-app": 14 }[app] ?? 0;
+    const PENDING = { "b-app": 5, "c-app": 10 }[app] ?? 0;
     if (offenders.length && offenders.length <= PENDING) {
       expect(
         offenders.length,

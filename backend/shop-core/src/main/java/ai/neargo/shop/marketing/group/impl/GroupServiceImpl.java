@@ -115,7 +115,7 @@ public class GroupServiceImpl implements GroupService {
 
     @Override
     @Transactional
-    public GroupBuyVO join(String groupNo) {
+    public GroupVOs.JoinResultVO join(String groupNo) {
         String userNo = SecurityUtils.currentUserNo();
         MktGroupBuy g = requireGroupBuy(groupNo);
         if (!MktGroupBuy.OPEN.equals(g.getStatus())) {
@@ -133,12 +133,23 @@ public class GroupServiceImpl implements GroupService {
         member.setJoinedAt(System.currentTimeMillis());
         scoped(() -> memberMapper.insert(member));
 
+        boolean wasFormed = MktGroupBuy.FORMED.equals(g.getStatus());
         g.setJoinedCount(nz(g.getJoinedCount()) + 1);
         if (g.getJoinedCount() >= nz(g.getMinCount())) {
             g.setStatus(MktGroupBuy.FORMED);
         }
         scoped(() -> groupBuyMapper.updateById(g));
-        return toGroupBuyVO(g, true);
+
+        /*
+         * **只有踢成团的那一下** justReached 才为 true —— 之后再有人参团，
+         * 团早就成了，不该再弹一次「先参团的邻居也退了差价」。
+         * 差价是原价与团价之差：达成时每位已参团的邻居各退这么多。
+         */
+        boolean justReached = !wasFormed && MktGroupBuy.FORMED.equals(g.getStatus());
+        long refundPerMember = justReached
+                ? Math.max(0, nz(g.getOriginPriceMinor()) - nz(g.getGroupPriceMinor()))
+                : 0L;
+        return new GroupVOs.JoinResultVO(toGroupBuyVO(g, true), justReached, refundPerMember);
     }
 
     // ---------------------------------------------------------------- 求团
@@ -416,7 +427,7 @@ public class GroupServiceImpl implements GroupService {
         }
 
         // 发起人自动算参团第一人 —— 开了团自己不买，「还差 N 人」就永远差一个
-        return join(g.getGroupNo());
+        return join(g.getGroupNo()).group();
     }
 
     @Override
@@ -535,13 +546,27 @@ public class GroupServiceImpl implements GroupService {
                         MktGroupBuy.FORMED.equals(g.getStatus()) ? np.address() : maskAddress(np.address()),
                         np.timeSlot(), np.receivedAt()))
                 .orElse(null);
+        int minCount = nz(g.getMinCount());
+        int joinedCount = nz(g.getJoinedCount());
+        var m = merchantPort.find(g.getEntityNo());
+        var pickup = g.getPickupNo() == null ? java.util.Optional.<PickupQueryPort.PickupBrief>empty()
+                : pickupPort.find(g.getPickupNo());
         return new GroupBuyVO(g.getGroupNo(), g.getGoodsNo(), g.getTitle(), g.getCover(),
-                g.getEntityNo(), merchantNameOf(g.getEntityNo()),
-                nz(g.getGroupPriceMinor()), nz(g.getOriginPriceMinor()),
-                nz(g.getMinCount()), nz(g.getJoinedCount()), g.getStatus(),
-                nz(g.getEndAt()), joined,
-                initiator == null ? null : nicknameOf(initiator), owner,
-                g.getPickupNo(), neighbor);
+                new GroupVOs.MerchantBriefVO(g.getEntityNo(),
+                        m.map(MerchantQueryPort.MerchantBrief::merchantName).orElse(""),
+                        m.map(MerchantQueryPort.MerchantBrief::logo).orElse(""),
+                        m.map(MerchantQueryPort.MerchantBrief::rating).orElse(0d),
+                        m.map(MerchantQueryPort.MerchantBrief::verified).orElse(false),
+                        m.map(MerchantQueryPort.MerchantBrief::breachCount).orElse(0)),
+                initiator == null ? null : nicknameOf(initiator),
+                initiator == null ? "" : avatarOf(initiator),
+                g.getPickupNo(), pickup.map(PickupQueryPort.PickupBrief::name).orElse(""),
+                nz(g.getOriginPriceMinor()), nz(g.getGroupPriceMinor()),
+                minCount, joinedCount,
+                // 「差几人」由后端算：它是成团规则的一部分，端上再算一遍迟早分叉
+                joinedCount >= minCount, Math.max(0, minCount - joinedCount),
+                nz(g.getEndAt()), members(g.getGroupNo()),
+                joined, owner, g.getStatus(), neighbor);
     }
 
     /** 「阳光里小区 3 幢 101」→「阳光里小区 3 幢（成团后显示门牌）」 */
@@ -551,6 +576,20 @@ public class GroupServiceImpl implements GroupService {
         }
         int cut = Math.max(address.lastIndexOf('幢'), address.lastIndexOf('栋'));
         return cut < 0 ? address : address.substring(0, cut + 1) + "（成团后显示门牌）";
+    }
+
+    /** 参团的邻居（展示用）。人数不多，一次查完即可 —— 团本来就是几十人的量级。 */
+    private List<GroupVOs.MemberVO> members(String groupNo) {
+        return scoped(() -> memberMapper.selectList(Wrappers.<MktGroupMember>lambdaQuery()
+                        .eq(MktGroupMember::getGroupNo, groupNo)
+                        .orderByAsc(MktGroupMember::getId))).stream()
+                .map(mb -> new GroupVOs.MemberVO(avatarOf(mb.getUserNo()),
+                        mb.getNickname() == null ? nicknameOf(mb.getUserNo()) : mb.getNickname()))
+                .toList();
+    }
+
+    private String avatarOf(String userNo) {
+        return userPort.find(userNo).map(UserQueryPort.UserBrief::avatar).orElse("");
     }
 
     private String nicknameOf(String userNo) {

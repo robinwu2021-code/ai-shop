@@ -823,7 +823,9 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                  * 拿不到原文它就只能回填当前那一格，于是用中文改一次，
                  * 英文与阿语的标题被清空，而且不报错（C 端回落中文，看起来一切正常）。
                  */
-                readMap(g.getTitleI18n()), readMap(g.getSubtitleI18n()));
+                readMap(g.getTitleI18n()), readMap(g.getSubtitleI18n()),
+                // 「可开团的商品」那一栏就是按它筛的
+                GoodsServiceImpl.groupBuyConf(g));
     }
 
     /**

@@ -295,16 +295,27 @@ class M6cGroupFlowTest {
     void joinGroupBuyUntilFormed() throws Exception {
         String groupNo = openGroupBuy("M0001", "G0001", 4500L, 2);
 
+        /*
+         * 参团返回的是 `{ group, justReached, refundPerMember }` 而不是裸的团 ——
+         * 端上要知道「这一脚是不是把团踢成了」，才能告诉他
+         * **先参团的邻居也退了差价**（这个方案区别于其它拼团的地方）。
+         * 后端原先直接返回团本身，于是端上 `res.group` 是 undefined，
+         * 赋回去之后整个团详情页变成一片空白：点了参团、看到「参团成功」、然后什么都没了。
+         */
         String a = login("12900129030");
         mvc().perform(post("/mp/group-buy/" + groupNo + "/join").header("Authorization", "Bearer " + a))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.joinedCount").value(1))
-                .andExpect(jsonPath("$.data.status").value("OPEN"));
+                .andExpect(jsonPath("$.data.group.joinedCount").value(1))
+                .andExpect(jsonPath("$.data.group.status").value("OPEN"))
+                .andExpect(jsonPath("$.data.justReached").value(false));
 
         String b = login("12900129031");
         mvc().perform(post("/mp/group-buy/" + groupNo + "/join").header("Authorization", "Bearer " + b))
-                .andExpect(jsonPath("$.data.joinedCount").value(2))
-                .andExpect(jsonPath("$.data.status").value("FORMED"));
+                .andExpect(jsonPath("$.data.group.joinedCount").value(2))
+                .andExpect(jsonPath("$.data.group.status").value("FORMED"))
+                // 恰好踢成团的那一下才是 true，且要给出每人退多少
+                .andExpect(jsonPath("$.data.justReached").value(true))
+                .andExpect(jsonPath("$.data.refundPerMember").value(1000));
     }
 
     @Test
@@ -329,7 +340,33 @@ class M6cGroupFlowTest {
         mvc().perform(get("/mp/group-buy/" + groupNo))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.groupNo").value(groupNo))
-                .andExpect(jsonPath("$.data.merchantName").isNotEmpty());
+                .andExpect(jsonPath("$.data.merchant.name").isNotEmpty());
+    }
+
+    @Test
+    @DisplayName("★★★ 团卡片上的数字必须都是真的 —— 否则买家看到的是「¥NaN · 还差 人成团」")
+    void groupCardCarriesEveryNumberThePageShows() throws Exception {
+        String groupNo = openGroupBuy("M0001", "G0001", 3980L, 3);
+
+        JsonNode g = json.readTree(mvc().perform(get("/mp/group-buy/" + groupNo))
+                        .andExpect(jsonPath("$.code").value(0))
+                        .andReturn().getResponse().getContentAsString()).get("data");
+
+        /*
+         * 这些字段少一个，页面上就是一个 NaN —— 而 NaN 不报错，它只是让人看不懂。
+         * 实测过的形态：「¥NaN.NaN」「还差 [空] 人成团」「NaN:NaN:NaN」，
+         * 三个页面（B 端团列表、C 端团列表、C 端团详情）上一个正确数字都没有 ——
+         * 团开了等于没开，而接口一路 200。
+         */
+        assertThat(g.get("groupPrice").asLong()).isEqualTo(3980L);
+        assertThat(g.get("basePrice").asLong()).isGreaterThan(3980L);
+        assertThat(g.get("expireAt").asLong()).isGreaterThan(0L);
+        assertThat(g.get("need").asInt()).as("还差几人由后端算，端上不要自己减").isEqualTo(3);
+        assertThat(g.get("reached").asBoolean()).isFalse();
+        assertThat(g.get("members").isArray()).isTrue();
+        assertThat(g.get("merchant").get("name").asString()).isNotEmpty();
+        // status 不能省成 reached：被平台中止的团人数可能已经够了
+        assertThat(g.get("status").asString()).isEqualTo("OPEN");
     }
 
     // ---------------------------------------------------------------- helpers
@@ -633,7 +670,7 @@ class M6cGroupFlowTest {
                 .header("Authorization", "Bearer " + login("12900129091")));
         mvc().perform(post("/mp/group-buy/" + groupNo + "/join")
                         .header("Authorization", "Bearer " + login("12900129092")))
-                .andExpect(jsonPath("$.data.status").value("FORMED"));
+                .andExpect(jsonPath("$.data.group.status").value("FORMED"));
 
         mvc().perform(post("/ops/groups/" + groupNo + "/abort")
                         .header("Authorization", "Bearer " + opsLogin("goods", "goods123"))
