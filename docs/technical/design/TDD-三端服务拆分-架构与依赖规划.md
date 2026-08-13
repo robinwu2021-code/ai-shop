@@ -169,17 +169,58 @@ flowchart TB
 ① `@Profile` 机制**保留**——同一个 all 产物仍可按 profile 只开某一面，部署自由度不丢；
 ② 反代层 `/ops/**` 只对内网放行。
 
-#### 3.4.1 模块与项目拆分方案
+#### 3.4.1 三端认证各自独立（2026-08-13 决定，**推翻 ADR-001 的共用令牌池**）
+
+现状：`Realm` **只有两个**（`CONSUMER` / `OPERATOR`），`ctk_` 被 C 与 B 共用，
+`consumerChain` 一条链同时匹配 `/mp/**` 与 `/biz/**`。
+B 端身份靠 `BizContextFilter` 在 C 端令牌之上再解析一层。
+
+ADR-001 当初共用的理由是「一期商家专区**内嵌 C 端小程序**，店主用自己的微信号」——
+**这个前提已经不成立**：[ADR-014](../ADR/ADR-014-小程序打包边界.md) §5 起商家端是独立的 `b-app`。
+代码里也已经写下同向的判断（`/biz/auth/otp/send` 注释：
+「这两个端的鉴权链、限流策略**将来会分开**」）。
+
+**改为三个 realm，各自独立**：
+
+| Realm | 前缀 | 链 | 登录入口 |
+|---|---|---|---|
+| `CONSUMER` | `ctk_` | `/mp/**` | `/mp/user/login` |
+| `MERCHANT` | `btk_` | `/biz/**` | `/biz/auth/login`（老板）· `/biz/auth/staff-login`（店员） |
+| `OPERATOR` | `otk_` | `/ops/**` | `/ops/auth/login` |
+
+**四条后果，都要点名**：
+
+1. **一个人两个身份 = 两个令牌。** 同一手机号既是消费者又是店主时，
+   两端各自登录。这正是解耦要的，但 `b-app` **不能再复用 `c-app` 的登录态**。
+2. `/biz/auth/login` 仍可**用 C 端账号校验身份**（老板从 C 端发起入驻，账号在那边），
+   但**签发的是 `btk_`**——校验源与令牌池是两件事，分开后才能各自演进。
+3. `BizContextFilter` 从「在 C 端令牌上再解析一层」变成 **B 端链的组成部分**；
+   `BizIdentityResolver.resolve(userNo)` 签名不变，改的是谁在什么链上调它。
+4. **换 Redis 的理由变了**：不再是「C/B 共用池要跨进程」，而是
+   「**同一端多实例**要共享会话」。`api` 今天就多实例——所以 Redis 的优先级
+   与端拆分**解耦**，按各端自己的实例数决定。
+
+> 副作用是好的：三端各自的**会话时长、限流、踢人策略、密码策略**从此可以不同。
+> 今天 B 端只能跟着 C 端走，而商家的会话诉求（长在线、多设备）与消费者本就不同。
+
+#### 3.4.2 模块与项目拆分方案
 
 现状对拆分友好：Controller 已按 `api/{mp,biz,ops}` 子包组织在各域内
 （core 7/6/16 · merchant 0/1/6 · settle 1/2/4，另有 4 个特例），迁移是机械的。
+
+**关键设计：认证随端下沉到 portal 模块。**
+今天三条 `SecurityFilterChain` 挤在 `shop-app/config/SecurityConfig` 一个文件里；
+拆开后**每个 portal 自带自己那条链的 `@Configuration`**——
+于是「二期 `shop-app-c` 只依赖 `portal-c`」天然意味着「它只有 consumerChain」，
+不需要任何开关或 profile 判断。**装配即隔离。**
 
 **目标模块树**（模块数 = 未来可能的部署单元数，原则不变）：
 
 ```
 backend/
-├── shop-base                      # 地基，不动
-├── shop-channel                   # 通道适配，不动（BizUploadController 迁出）
+├── shop-base                      # 地基：TokenStore/LoginUser/Perms/Realm 等三端通用件
+├── shop-spi                       # 跨域契约 Port（今天在 base 内，建议随本次独立）
+├── shop-channel                   # 通道适配（BizUploadController 迁出到 portal-b）
 │
 ├── 域模块 —— shop-core 一拆四 + 归位
 │   ├── shop-domain-trade          # trade 包
@@ -189,27 +230,44 @@ backend/
 │   ├── shop-merchant              # 已独立；community、fulfillment 从 core 迁入（§3.3 归属）
 │   └── shop-settle                # 已独立
 │
-├── 端接入模块 —— Controller 从域内 api/{mp,biz,ops} 迁出
-│   ├── shop-portal-c              # 全部 api/mp + portal/mp + PayCallbackController（公网回调）
-│   ├── shop-portal-b              # 全部 api/biz + portal/biz + BizUploadController
-│   └── shop-portal-p              # 全部 api/ops + OpsPermConfigController
-│   （CommonMetaController 三端共用 → 留 shop-domain-platform，是唯一例外）
+├── 端接入模块 —— Controller + 该端的认证链，一起搬
+│   ├── shop-portal-c              # /mp · ConsumerTokenAuthFilter + consumerChain
+│   │                              #   ＋ api/mp 全部 + portal/mp + PayCallbackController
+│   ├── shop-portal-b              # /biz · MerchantTokenAuthFilter + merchantChain
+│   │                              #   ＋ BizContextFilter/BizIdentityResolver（B 端专有）
+│   │                              #   ＋ api/biz 全部 + portal/biz + BizUploadController
+│   ├── shop-portal-p              # /ops · OperatorTokenAuthFilter + operatorChain
+│   │                              #   ＋ api/ops 全部 + OpsPermConfigController
+│   └── shop-portal-common         # publicChain：/common + /actuator + CommonMetaController
+│                                  #   三个启动模块都依赖它
 │
 ├── shop-jobs                      # 全部 @Scheduled + Outbox 投递任务（补上缺的那个）
 │
-└── 启动模块 —— 只有 pom + 装配，零业务代码
-    ├── shop-app-all               # 一期：portal-c/b/p + config
+└── 启动模块 —— 只有 pom + 装配（DataScope/Mybatis/I18n/Upload/TokenStore），零业务代码
+    ├── shop-app-all               # 一期：portal-c + portal-b + portal-p + common
     └── shop-app-worker            # 一期：jobs
-    （二期：shop-app-c / -b / -p —— 各自一个新 pom，代码零改动）
+    （二期：shop-app-c / -b / -p —— 各自一个新 pom 挑一个 portal，代码零改动）
 ```
 
-**依赖规则（五条，ArchUnit 落地）**：
+**一期到二期的差异只有 pom**：
+
+| 启动模块 | 一期 | 二期 |
+|---|---|---|
+| `shop-app-all` | portal-c + b + p + common | 退役 |
+| `shop-app-c` | — | portal-c + common |
+| `shop-app-b` | — | portal-b + common |
+| `shop-app-p` | — | portal-p + common |
+| `shop-app-worker` | jobs | jobs（不变） |
+
+**依赖规则（六条，ArchUnit 落地）**：
 
 1. `portal-*` → 域模块，只经 Service 接口；**portal 之间互不依赖**
 2. 域 ↔ 域只经 `shop-spi` 的 Port（现状已如此，升格为守卫）
 3. `shop-jobs` → 域模块；**不依赖任何 portal**
 4. 启动模块只有 pom 与装配；**域模块反向不得依赖 portal / jobs / 启动**
 5. `@RestController` 只出现在 `shop-portal-*`；`@Scheduled` 只出现在 `shop-jobs`
+6. **`SecurityFilterChain` 只出现在 `shop-portal-*`**，且一个 portal 只有一条链
+   ——这条是三端认证独立的守卫：装配了谁才有谁的链
 
 ### 3.5 Spring Gateway 聚合的评估
 
@@ -229,16 +287,17 @@ backend/
 
 这三件今天靠「同一个进程」成立，拆开就不成立了。
 
-### 4.1 令牌存储：进程内 → 共享
+### 4.1 令牌存储：进程内 → 共享（理由已随 §3.4.1 改变）
 
-C 端与 B 端**共用 `ctk_` 令牌池**（[ADR-001](../ADR/ADR-001-商家端形态与拆分时机.md)：
-共用令牌池、分开前缀，拆端时后端零改动）。
-今天令牌存在 `EhcacheTokenStore`（**进程内**，磁盘持久化）。
+~~C 端与 B 端共用 `ctk_` 令牌池，拆成两个进程后 B 端签发的令牌 C 端不认识。~~
+**三端认证独立后这条不成立了**：三个 realm 各自的令牌**本就不需要跨端共享**。
 
-`c-svc` 与 `b-svc` 一拆成两个进程，B 端签发的令牌 C 端就不认识了。
+真正的理由变成一条，且**与端拆分无关**：**同一端多实例要共享会话**。
+`api` 今天就多实例水平扩，`EhcacheTokenStore` 是**进程内**存储——
+两个实例各存各的，用户被 LB 换一个实例就掉登录。
 
 **好消息：缝已经留好了。** `TokenStore` 是接口，`RedisTokenStore` 已经存在。
-换实现是配置，不是重写。
+换实现是配置，不是重写。**优先级按各端自己的实例数定**，不必等端拆分。
 
 ### 4.2 行级数据域：MyBatis 拦截器 → 每服务各自装配
 
@@ -270,10 +329,12 @@ DataScope 是 MyBatis 拦截器（商家只能看自己的数据）。
 四步，每步结束时全量测试绿：
 
 1. `shop-core` 一拆四（`git mv` + pom，纯移动）；community、fulfillment 迁入 `shop-merchant`
-2. Controller 从域内 `api/{mp,biz,ops}` 迁出到 `shop-portal-c/b/p`
-3. 新建 `shop-jobs`：迁两个既有 Job，**并补上 Outbox 投递任务**
+2. **`Realm` 加 `MERCHANT`（`btk_`）+ `MerchantTokenAuthFilter` + `merchantChain`**
+   （§3.4.1；先在现结构里落地并跑绿，再做模块迁移，免得两件事绞在一起）
+3. Controller 与**各端认证链**迁出到 `shop-portal-c/b/p/common`
+4. 新建 `shop-jobs`：迁两个既有 Job，**并补上 Outbox 投递任务**
    （正好是[定时任务方案](定时任务清单与调度方案.md)的 J1——同一次动手）
-4. 启动模块收敛：`shop-app-all`（一期主服务）+ `shop-app-worker`；
+5. 启动模块收敛：`shop-app-all`（一期主服务）+ `shop-app-worker`；
    `worker` profile 退役，`api`/`ops` profile **保留**作 all 产物的运行时第二道锁
 
 **拿到**：worker 独立发布与故障域；所有模块边界从「包约定」升级为**构建期事实**；
@@ -335,11 +396,13 @@ DataScope 是 MyBatis 拦截器（商家只能看自己的数据）。
 
 - [ ] T0 建 `module-graph.py` + `split-readiness.py`（度量常驻，是后续所有判断的依据）
 - [ ] T1 S1：`shop-core` 一拆四 + community/fulfillment 归位 `shop-merchant`（纯移动）
-- [ ] T2 S1：Controller 迁出到 `shop-portal-c/b/p`（含 4 个特例的归属，见 §3.4.1）
-- [ ] T3 S1：新建 `shop-jobs`（迁 2 个 Job + 补 Outbox 投递任务）
-- [ ] T4 S1：启动模块收敛为 `shop-app-all` + `shop-app-worker`；profile 保留作运行时锁
-- [ ] T5 S1：五条依赖规则落 ArchUnit（§3.4.1）
-- [ ] （S1-next 的令牌换 Redis 与网关，等触发条件，见 §5）
+- [ ] T2 S1：**三端认证独立**——`Realm.MERCHANT` + `btk_` + `merchantChain`（§3.4.1）
+- [ ] T3 S1：Controller 与各端认证链迁出到 `shop-portal-c/b/p/common`（含 4 个特例）
+- [ ] T4 S1：新建 `shop-jobs`（迁 2 个 Job + 补 Outbox 投递任务）
+- [ ] T5 S1：启动模块收敛为 `shop-app-all` + `shop-app-worker`；profile 保留作运行时锁
+- [ ] T6 S1：六条依赖规则落 ArchUnit（§3.4.2）
+- [ ] T7 独立：`TokenStore` 换 Redis（**按各端实例数定优先级，不必等端拆分**，§4.1）
+- [ ] （网关等 S1-next 触发条件，见 §5）
 - [ ] T6 S2：调用上下文透传（主体 + 数据域）
 - [ ] T7 S2：Outbox 投递侧接 MQ
 - [ ] T8 S3：按 §5 顺序切域服务，每切一个补一条守卫
