@@ -126,14 +126,22 @@ flowchart TB
 
 ### 3.3 数据归属（64 张表 → 6 个域服务）
 
+**逐张归属见 [迁移后-项目模块与数据归属清单](../reference/迁移后-项目模块与数据归属清单.md) §5**
+（88 张全表实测，下表是按前缀的概览）：
+
 | 域服务 | 拥有的表（前缀） | 张数 |
 |---|---|---|
 | `trade-svc` | `ord_*` `trd_*` | 6 |
-| `product-svc` | `prd_*` | 5 |
-| `merchant-svc` | `mch_*` `cmt_*` `ful_*` | 12 |
-| `settle-svc` | `stl_*` `pts_*` | 8 |
-| `mkt-svc` | `mkt_*` `rvw_*` | 14 |
-| `platform-svc` | `sys_*` `cnt_*` `msg_*` `usr_*` | 19 |
+| `product-svc` | `prd_*` **`rvw_*`** | 11 |
+| `merchant-svc` | `mch_*`（除 `_apply`）`cmt_*` `ful_*` `sys_auth_code` | 22 |
+| `settle-svc` | `stl_*` `pts_*` | 9 |
+| `mkt-svc` | `mkt_*` | 12 |
+| `platform-svc` | `sys_*` `cnt_*` `msg_*` `usr_*` `mch_entity_apply` | 26 |
+| （`shop-base`） | `sys_idempotent` `sys_outbox` | 2 |
+
+⚠️ 两处与直觉相反、但**符合代码现状**：`rvw_*`（评价）在 **product** 不在 mkt
+（评价挂商品上，实体住 `product` 包）；`mch_entity_apply`（入驻申请）在 **platform** 不在 merchant
+（申请发生在**成为商家之前**，与审核同侧）。
 
 `usr_*`（账号/身份/地址/收藏）暂归 `platform-svc` 是**权宜**：
 它其实该有自己的 `user-svc`，但一期用户域改动少，先不多拆一个部署单元。
