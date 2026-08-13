@@ -279,8 +279,14 @@ onShow(load);
   font-weight: 700;
   color: var(--sh-danger);
 }
+/*
+ * `align-items: center` 不是排版偏好，是**药丸按钮的前提**：
+ * 默认的 stretch 会把按钮拉到与同行最高的那格一样高（运单号那格是两行），
+ * 而 `border-radius: 9999px` 在被拉高的盒子上不再是药丸，是椭圆。
+ */
 .btns {
   display: flex;
+  align-items: center;
   gap: 16rpx;
   margin-top: 20rpx;
 }
