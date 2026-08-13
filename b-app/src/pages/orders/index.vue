@@ -215,9 +215,17 @@ onShow(load);
   flex: 1;
   min-width: 0;
 }
+/*
+ * 商品名是这张卡片的**标题**，要靠字重站住，不能只靠颜色。
+ * 此前它 26rpx/400 墨色，而紧挨着的规格与时间是 26rpx/400 灰色 ——
+ * 同号同重，只差一档灰度，于是整张卡片唯一「重」的东西是金额，
+ * 一屏列表扫下来看不出每单卖的是什么。墨色已经是最深的一档，
+ * 再往下压没有空间，能动的是字重与字号。
+ */
 .item__title {
   display: block;
-  font-size: 26rpx;
+  font-size: 28rpx;
+  font-weight: 600;
   color: var(--sh-ink);
 }
 .row__foot {
