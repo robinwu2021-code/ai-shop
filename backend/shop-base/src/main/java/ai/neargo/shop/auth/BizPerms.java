@@ -136,6 +136,17 @@ public final class BizPerms {
             Map.entry(FINANCE, "结算账单与收款进件"));
 
     /**
+     * 权限码 → 给人看的一句话；认不出的码原样返回。
+     *
+     * <p>给 70006 的错误消息用：**「这一步需要什么」比「你不能做这件事」有用得多**。
+     * 认不出时返回码本身而不是一句兜底文案 —— 前者至少能让人搜到，
+     * 后者会让「码写错了」和「他确实没这个权限」长得一模一样。
+     */
+    public static String labelOf(String code) {
+        return LABELS.getOrDefault(code, code);
+    }
+
+    /**
      * 商家<b>自定义</b>角色可以勾的权限码 —— 少了 {@link #STORE_ADMIN}。
      *
      * <p>那是「管人」的码：授出去等于让被授权的人能改所有人的授权、

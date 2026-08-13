@@ -108,9 +108,14 @@ public class PermChecker {
          * 两者撞同一个码时，「权限没配对」与「数据不在范围里」在日志里长得一模一样，
          * 排查只能靠猜。给用户的话也不一样：通用提示会让店员去找店主要权限，
          * 而那个开关**设计上就不存在**。
+         *
+         * <p><b>带上缺的是哪一样</b>：这句话原先写死成「结算、收款与门店管理只有店主能操作」——
+         * 而触发它的可能是改商品、回评价、看顾客。一句话套所有场景，
+         * 说的事情和实际发生的对不上，店员照着它去找店主要「结算权限」，
+         * 而他要的其实是「建商品、改价、上下架」。
          */
         throw ai.neargo.shop.common.BizException.of(
-                ai.neargo.shop.common.ErrorCode.BIZ_ROLE_FORBIDDEN);
+                ai.neargo.shop.common.ErrorCode.BIZ_ROLE_FORBIDDEN, BizPerms.labelOf(code));
     }
 
     /**
@@ -137,8 +142,13 @@ public class PermChecker {
                 return true;
             }
         }
-        // 一个都没有 = 这家店没给他任何角色，与 canBiz 同一个码
+        /*
+         * 一个都没有 = 这家店没给他任何角色，与 canBiz 同一个码。
+         * 这里列出**其中一样**而不是全部：汇总端点动辄五六个码，
+         * 全列出来是一句读不完的话，而他缺的通常不止一样 —— 给一个具体的更可行动。
+         */
         throw ai.neargo.shop.common.BizException.of(
-                ai.neargo.shop.common.ErrorCode.BIZ_ROLE_FORBIDDEN);
+                ai.neargo.shop.common.ErrorCode.BIZ_ROLE_FORBIDDEN,
+                codes.length == 0 ? "" : BizPerms.labelOf(codes[0]));
     }
 }
