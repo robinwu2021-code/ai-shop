@@ -180,7 +180,7 @@ function FinanceInner() {
     },
   ];
 
-  const rows: Settlement[] = settlements.data ?? [];
+  const rows: Settlement[] = settlements.data?.records ?? [];
   /** 「还没到商家手上的钱」：分账未完成 + 自营未付款，两条轨道的未结都算进来。 */
   const settled = new Set(["SPLIT", "PAID", "REVERSED"]);
   const pendingAmount = rows.filter((s) => !settled.has(s.status)).reduce((n, s) => n + s.netMinor, 0);
@@ -213,7 +213,7 @@ function FinanceInner() {
             <FilterSelect aria-label={c.filterStatus} value={status} onChange={(v) => { setStatus(v); setPage(1); }} options={settleStatusMap} allLabel={c.filterStatusAll} />
           </Toolbar>
           <DataTable
-            columns={settleColumns} rows={settlements.data} loading={settlements.isLoading}
+            columns={settleColumns} rows={settlements.data?.records ?? []} loading={settlements.isLoading}
             error={settlements.error} onRetry={() => settlements.refetch()}
             rowKey={(s) => s.settleNo}
             empty={c.emptySettle}
@@ -225,7 +225,7 @@ function FinanceInner() {
         <>
           <Toolbar search={keyword} onSearch={(v) => { setKeyword(v); setPage(1); }} searchPlaceholder={c.searchSplit} />
           <DataTable
-            columns={splitColumns} rows={splits.data} loading={splits.isLoading}
+            columns={splitColumns} rows={splits.data?.records ?? []} loading={splits.isLoading}
             error={splits.error} onRetry={() => splits.refetch()}
             rowKey={(r) => r.requestNo}
             empty={c.emptySplit}
@@ -239,7 +239,14 @@ function FinanceInner() {
             {c.refundBackNotice}
           </Notice>
           <DataTable
-            columns={backColumns} rows={backs.data} loading={backs.isLoading}
+            columns={backColumns}
+            /*
+             * `?? []` 而不是直接传：这条端点后端还没有（refund-split-backs 整域未开工，
+             * 见 ops-endpoint-exists 的 UNBUILT_DOMAINS），真接口下拿到的是 404 的错误响应，
+             * 直接传给表格就是 `rows.filter is not a function` —— **整页崩**，
+             * 而它本该只是这一个 tab 显示空态。
+             */
+            rows={backs.data ?? []} loading={backs.isLoading}
             error={backs.error} onRetry={() => backs.refetch()}
             rowKey={(a) => a.afterSaleNo}
             empty={c.emptyRefundBack}

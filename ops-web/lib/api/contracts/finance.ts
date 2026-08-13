@@ -11,14 +11,20 @@ export interface FinanceApi {
   pointsOverview(market?: string): Promise<PointsOverview>;
 
   /** 结算单列表。**自营与第三方都在这里** —— 不该因经营模式分成两个入口。 */
-  listSettlements(q?: { status?: string; merchantNo?: string; businessMode?: string }): Promise<Settlement[]>;
+  /**
+   * 结算单列表。**返回分页包**，不是裸数组 ——
+   * 后端 `GET /ops/settlements` 返的是 `{records,total,page,size}`（`PageData.ofAll`）。
+   * 此前这里声明成 `Settlement[]`，真接口下 `rows.filter is not a function` 整页崩，
+   * 而 mock 里是数组，所以本地怎么点都正常。
+   */
+  listSettlements(q?: { status?: string; merchantNo?: string; businessMode?: string }): Promise<Page<Settlement>>;
   /*
    * **运营端不下发分账、不解冻**：分账的下发与回退有它们自己的触发路径
    * （结算生成、售后退款）。在运营台放一个「立即分账」按钮，
    * 等于给人一个绕过状态机的口子 —— 而这条链路动的是真钱。
    * 所以这里只留读。
    */
-  listSplitRecords(q?: { settleNo?: string; action?: string }): Promise<SplitLog[]>;
+  listSplitRecords(q?: { settleNo?: string; action?: string }): Promise<Page<SplitLog>>;
 
   /** 待回退分账的售后单（P-12.1.5 / E4）：售后裁决打的 `refundSplitPending` 标记。 */
   listRefundSplitBacks(): Promise<AfterSale[]>;

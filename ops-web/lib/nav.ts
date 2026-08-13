@@ -378,10 +378,39 @@ export function visibleLeaves(section: NavSection, perms: string[] | undefined,
  */
 export function groupedLeaves(leaves: NavLeaf[]): { group?: string; leaves: NavLeaf[] }[] {
   const out: { group?: string; leaves: NavLeaf[] }[] = [];
+  /*
+   * **同名分组归并，而不是按相邻切段** —— 分组是集合，不是连续段。
+   *
+   * 此前按相邻切：顺序里同名分组一旦被别的组隔开，就渲染出**两个同名小标题**，
+   * 而它们的 React key 都是组名，于是「Encountered two children with the same key」，
+   * 页面上出现两个「分账结算」。
+   *
+   * 而**菜单顺序是运营可拖的**（`/iam?tab=menu`），这个状态随时可以被造出来：
+   * 实测就是这么来的 —— 库里 40 是「费率」，50 是「积分资金看板」（属分账结算），
+   * 把后者夹在了前者之后。只修数据不够，任何一次拖动都能再造一遍。
+   *
+   * 归并后组出现在**它第一个成员的位置**：拖动仍然改得动组之间的先后，
+   * 只是组本身不会被拆开 —— 那正是「分组」这个概念的含义。
+   *
+   * 无分组的叶子（group 为空）仍按相邻切段：它们没有名字可归并，
+   * 而把全部散叶合成一段会打乱它们与相邻分组的相对位置。
+   */
+  const byGroup = new Map<string, { group?: string; leaves: NavLeaf[] }>();
   for (const leaf of leaves) {
-    const last = out[out.length - 1];
-    if (last && last.group === leaf.group) last.leaves.push(leaf);
-    else out.push({ group: leaf.group, leaves: [leaf] });
+    if (!leaf.group) {
+      const last = out[out.length - 1];
+      if (last && !last.group) last.leaves.push(leaf);
+      else out.push({ group: undefined, leaves: [leaf] });
+      continue;
+    }
+    const seg = byGroup.get(leaf.group);
+    if (seg) {
+      seg.leaves.push(leaf);
+    } else {
+      const fresh = { group: leaf.group, leaves: [leaf] };
+      byGroup.set(leaf.group, fresh);
+      out.push(fresh);
+    }
   }
   return out;
 }

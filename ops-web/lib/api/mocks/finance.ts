@@ -44,15 +44,22 @@ export const financeMock: FinanceApi = {
     });
   },
 
+  /*
+   * **返回分页包，与真后端同形**。
+   *
+   * 此前 mock 返裸数组而后端返 `{records,…}` —— 页面按数组用，
+   * 于是 mock 下一切正常、真接口下 `rows.filter is not a function` 整页崩。
+   * mock 与真接口形状不一致时，mock 不再是「后端的替身」，而是一层遮罩。
+   */
   listSettlements: async (q = {}) =>
-    wait(db.settlements.filter((s) =>
+    wait(db.paginate(db.settlements, 1, 100, (s) =>
       db.eqHit(q.merchantNo, s.merchantNo)
       && db.eqHit(q.status, s.status)
       && db.eqHit(q.businessMode, s.businessMode ?? undefined))),
 
   // 失败的指令**也给**：出问题时要看的恰恰是它们
   listSplitRecords: async (q = {}) =>
-    wait(db.splitRecords.filter((r) =>
+    wait(db.paginate(db.splitRecords, 1, 100, (r) =>
       db.eqHit(q.settleNo, r.settleNo) && db.eqHit(q.action, r.splitAction))),
 
   // 队列直接由售后单派生，不另建实体：另建就有两份真相，且一定会不同步
