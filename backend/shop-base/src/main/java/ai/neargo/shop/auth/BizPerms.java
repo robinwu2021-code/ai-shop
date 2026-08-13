@@ -125,7 +125,7 @@ public final class BizPerms {
             Map.entry(VERIFY, "核销取货"),
             Map.entry(SHIP, "发货与标记送达"),
             Map.entry(ORDER_VIEW, "看订单与金额"),
-            Map.entry(STOCK, "改库存"),
+            Map.entry(STOCK, "看商品、改库存"),
             Map.entry(GOODS, "建商品、改价、上下架"),
             Map.entry(CAMPAIGN, "营销活动与报价"),
             Map.entry(REVIEW, "回评价、差评申诉"),

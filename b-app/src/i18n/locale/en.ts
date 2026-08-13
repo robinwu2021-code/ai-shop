@@ -490,7 +490,7 @@ entryHint: "Who buys · who lapsed", total: "Customers", repeatRate: "Repeat rat
     "biz:verify": "Redeem pickups",
     "biz:ship": "Ship and mark delivered",
     "biz:order:view": "See orders and amounts",
-    "biz:stock": "Edit stock",
+    "biz:stock": "View goods, edit stock",
     "biz:goods": "Create products, price, publish",
     "biz:campaign": "Campaigns and quotes",
     "biz:review": "Reply to reviews, appeal",
