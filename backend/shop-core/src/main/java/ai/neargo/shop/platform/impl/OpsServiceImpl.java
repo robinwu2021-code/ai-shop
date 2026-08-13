@@ -15,7 +15,9 @@ import ai.neargo.shop.auth.TokenStore;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.common.Masks;
 import ai.neargo.shop.common.PageData;
+import ai.neargo.shop.message.entity.SysNotifyLog;
 import ai.neargo.shop.platform.dto.OpsVOs.AuditLogVO;
 import ai.neargo.shop.platform.dto.OpsVOs.LoginResultVO;
 import ai.neargo.shop.platform.dto.OpsVOs.MerchantApplyVO;
@@ -69,6 +71,15 @@ public class OpsServiceImpl implements OpsService {
     private final ai.neargo.shop.platform.IndustryService industryService;
     private final ai.neargo.shop.platform.MasterDataService masterDataService;
     private final ai.neargo.shop.auth.PasswordHasher passwordHasher;
+    private final ai.neargo.shop.message.notify.NotifyLoggingMailPort mailPort;
+
+    /**
+     * 初始密码怎么交付。{@code mail}（默认）= 邮件发本人、接口不返回明文；
+     * {@code response} = 维持旧行为，是**邮件不通时的逃生口**。
+     */
+    private final String passwordDelivery;
+
+    private static final String MAIL_DELIVERY = "mail";
 
     public OpsServiceImpl(StaffMapper staffMapper, RoleMemberMapper roleMemberMapper,
                           RolePermResolver rolePermResolver,
@@ -77,7 +88,12 @@ public class OpsServiceImpl implements OpsService {
                           TokenStore tokenStore, ObjectMapper json, ObjectMapper objectMapper,
                           ai.neargo.shop.platform.IndustryService industryService,
                           ai.neargo.shop.platform.MasterDataService masterDataService,
-                          ai.neargo.shop.auth.PasswordHasher passwordHasher) {
+                          ai.neargo.shop.auth.PasswordHasher passwordHasher,
+                          ai.neargo.shop.message.notify.NotifyLoggingMailPort mailPort,
+                          @org.springframework.beans.factory.annotation.Value(
+                                  "${shop.ops.password-delivery:mail}") String passwordDelivery) {
+        this.mailPort = mailPort;
+        this.passwordDelivery = passwordDelivery;
         this.masterDataService = masterDataService;
         this.passwordHasher = passwordHasher;
         this.industryService = industryService;
@@ -273,6 +289,23 @@ public class OpsServiceImpl implements OpsService {
                     null, apply.getIndustry(), apply.getDescription(),
                     apply.getEntityNo()));
             apply.setEntityNo(merchantNo);
+
+            /*
+             * **把入驻时收的资质转存到主体档案上。**
+             *
+             * 此前这一步不存在：商家传的执照停在 mch_entity_apply 里，
+             * 而上架的两个闸门（资质过期、类目授权）读的是 mch_qualification ——
+             * 那张表实测 0 行，于是两个闸门都写好了、都从不触发。
+             *
+             * 放在 activate 之后：主体号要先有。与本方法同一个事务，
+             * 转存失败则审核一并回滚 —— 半通过（主体建了、资质没进）是最难查的状态。
+             */
+            int saved = merchantAdminPort.saveQualifications(
+                    merchantNo, toPortItems(apply.getQualificationItems()));
+            if (saved > 0) {
+                audit("MERCHANT_QUALIFICATION_IMPORT", merchantNo,
+                        "入驻转存资质 " + saved + " 条");
+            }
         } else {
             apply.setRejectReason(reason);
         }
@@ -303,6 +336,7 @@ public class OpsServiceImpl implements OpsService {
         }
 
         requireSubjectAllowedByIndustry(cmd.industry(), cmd.subject());
+        requireLicenseIfNeeded(cmd);
 
         MchEntityApply apply = new MchEntityApply();
         apply.setApplyNo(BizKey.next(BizKey.MERCHANT_APPLY));
@@ -320,6 +354,7 @@ public class OpsServiceImpl implements OpsService {
                 ? ai.neargo.shop.common.ServiceScopes.COMMUNITY : cmd.serviceScope());
         apply.setCommunityNos(writeJson(cmd.communityNos()));
         apply.setQualifications(writeJson(cmd.qualifications()));
+        apply.setQualificationItems(writeItemsJson(cmd.qualificationItems()));
         apply.setAsPickupPoint(cmd.asPickupPoint());
         apply.setIndustry(cmd.industry());
         apply.setStatus(MchEntityApply.PENDING);
@@ -360,6 +395,63 @@ public class OpsServiceImpl implements OpsService {
      * <p>行业为空时<b>放行</b>：存量商家的行业还要人工映射（V40 刻意可空），
      * 这里拦住等于把老商家的重新提交也一并堵死。行业的必填由端上表单保证。
      */
+    /**
+     * 需要执照的档位，提交时就必须带营业执照。
+     *
+     * <p><b>此前提交与审核两侧都不校验</b>，唯一硬拦在支付进件 ——
+     * 于是没有执照的商家可以完整走完入驻、建店、上架，
+     * 直到他去开通收款那一刻才被拦，而那时商品已经在架上了。
+     *
+     * <p>免执照的档位（自然人）跳过 —— 对他们要执照本来就是错的。
+     */
+    private void requireLicenseIfNeeded(SubmitApplyCommand cmd) {
+        /*
+         * ⚠️ **只对已支持结构化资质的客户端生效**（qualificationItems 非 null）。
+         *
+         * 端上还没开始传这个字段时硬拦，等于把入驻整条路堵死 ——
+         * 我第一版就是这么写的，当场打断 24 个测试 fixture 里的商家创建。
+         * 校验必须晚于「能满足它的 UI」上线，否则拦的不是坏商家，是所有人。
+         *
+         * 字段非 null = 这个端知道结构化资质这回事，那就按新规矩要求它。
+         * b-app 逐项录入上线后（第二步 2-5），这条自然全量生效。
+         *
+         * <b>在此之前真正的防线是审核那一侧</b>：运营看不到执照就不该点通过。
+         */
+        if (cmd.qualificationItems() == null) {
+            return;
+        }
+        String canonical = masterDataService.canonicalSubject(cmd.subject());
+        if (!masterDataService.needLicense(canonical != null ? canonical : cmd.subject())) {
+            return;
+        }
+        boolean hasLicense = cmd.qualificationItems().stream().anyMatch(it -> it != null
+                && "BUSINESS_LICENSE".equals(it.type()));
+        if (!hasLicense) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+    }
+
+    /** 申请单上的资质 JSON → Port 的入参。解析不出来当作空，不抛 —— 审核不该被脏数据卡死 */
+    private java.util.List<ai.neargo.shop.spi.user.MerchantAdminPort.QualificationItem>
+            toPortItems(String jsonText) {
+        if (jsonText == null || jsonText.isBlank()) {
+            return java.util.List.of();
+        }
+        try {
+            java.util.List<OpsService.QualificationItem> raw = this.json.readValue(jsonText,
+                    new TypeReference<java.util.List<OpsService.QualificationItem>>() { });
+            return raw == null ? java.util.List.of() : raw.stream()
+                    .map(it -> new ai.neargo.shop.spi.user.MerchantAdminPort.QualificationItem(
+                            it.type(), it.code(), it.imageUrl(), it.expireAt(), it.issuer()))
+                    .toList();
+        } catch (RuntimeException e) {
+            // 解析不出来当作空：**审核不该被一条脏数据卡死**。
+            // 但不要静默 —— 记一条审计，否则「资质没转过来」就成了无从追查的哑故障
+            audit("MERCHANT_QUALIFICATION_PARSE_FAIL", "", "结构化资质解析失败，已按空处理");
+            return java.util.List.of();
+        }
+    }
+
     private void requireSubjectAllowedByIndustry(String industry, String subject) {
         if (industry == null || industry.isBlank()) {
             return;
@@ -636,7 +728,30 @@ public class OpsServiceImpl implements OpsService {
 
         // 审计里**不写密码**。写了就等于把「一次性」这件事作废
         audit("STAFF_CREATE", staff.getStaffNo(), username + " / " + String.join(",", want));
-        return new CreatedStaffVO(toVO(staff, want, rolePermResolver.of(want)), initial);
+
+        /*
+         * 密码交付。**默认走邮件**，接口不再返回明文。
+         *
+         * 发失败就整体回滚（不 catch）：留下一个「已建号但没人知道密码」的账号
+         * 比原来的问题更糟 —— 它看起来是正常账号，只是永远没人登得进去，
+         * 而运营会以为建成功了，等新同事说登不上才发现。
+         *
+         * `response` 模式是**逃生口**：邮件不通时（密码错、MFA、SMTP 被封）
+         * 若没有它，新建的账号就永远没人能登录，而那时管理员可能连一个
+         * 能用的运营账号都没有。
+         */
+        if (MAIL_DELIVERY.equals(passwordDelivery)) {
+            mailPort.send(username, "【数智邻购】运营端账号已开通",
+                    "你好 " + realName + "，\n\n"
+                            + "你的运营端账号已开通。\n"
+                            + "登录名：" + username + "\n"
+                            + "初始密码：" + initial + "\n\n"
+                            + "**首次登录会要求你立即修改密码**。请勿转发本邮件。\n",
+                    SysNotifyLog.BIZ_OPS_INIT_PASSWORD, SecurityUtils.currentUserNo());
+            return new CreatedStaffVO(toVO(staff, want, rolePermResolver.of(want)),
+                    null, Masks.email(username));
+        }
+        return new CreatedStaffVO(toVO(staff, want, rolePermResolver.of(want)), initial, null);
     }
 
     @Override
@@ -806,7 +921,34 @@ public class OpsServiceImpl implements OpsService {
                 a.getStatus(), a.getRejectReason(),
                 a.getCreatedAt() == null ? 0L
                         : a.getCreatedAt().atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli(),
-                a.getAuditedAt() == null ? 0L : a.getAuditedAt());
+                a.getAuditedAt() == null ? 0L : a.getAuditedAt(),
+                readQualItems(a.getQualificationItems()));
+    }
+
+    /** 申请单上的结构化资质 → VO。解析不出来给空 —— 审核页不该被脏数据整页打不开 */
+    private List<ai.neargo.shop.platform.dto.OpsVOs.QualificationItemVO> readQualItems(String jsonText) {
+        if (jsonText == null || jsonText.isBlank()) {
+            return List.of();
+        }
+        try {
+            List<OpsService.QualificationItem> raw = this.json.readValue(jsonText,
+                    new TypeReference<List<OpsService.QualificationItem>>() { });
+            return raw == null ? List.of() : raw.stream()
+                    .map(it -> new ai.neargo.shop.platform.dto.OpsVOs.QualificationItemVO(
+                            it.type(), it.code(), it.imageUrl(), it.expireAt(), it.issuer()))
+                    .toList();
+        } catch (RuntimeException e) {
+            return List.of();
+        }
+    }
+
+    /** 结构化资质单独一个方法：与 {@link #writeJson(List)} 的 List&lt;String&gt; 重载会冲突 */
+    private String writeItemsJson(List<OpsService.QualificationItem> items) {
+        try {
+            return json.writeValueAsString(items == null ? List.of() : items);
+        } catch (Exception e) {
+            return "[]";
+        }
     }
 
     private String writeJson(List<String> values) {

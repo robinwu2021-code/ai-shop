@@ -86,17 +86,15 @@
 
 ### 3.1 端接入层不持数据，域层持数据
 
-```mermaid
-flowchart TB
-  subgraph 接入["接入层 · 无业务表"]
-    CS["c · /mp"] ~~~ BS["b · /biz"] ~~~ PS["p · /ops"]
-  end
-  subgraph 域["领域层 · 持数据"]
-    direction LR
-    T["trade"] ~~~ P["product"] ~~~ M["mkt"] ~~~ PL["platform"] ~~~ MC["merchant"] ~~~ ST["settle"]
-  end
-  DB[("ai_shop 单库（S4 前不拆）")]
-  接入 --> 域 --> DB
+```
+  接入层 · 无业务表        c (/mp)      b (/biz)      p (/ops)
+                             │            │             │
+                             └────────────┼─────────────┘
+                                          ▼
+  领域层 · 持数据      trade  product  mkt  platform  merchant  settle
+                                          │
+                                          ▼
+                              ai_shop 单库（S4 前不拆）
 ```
 
 端接入层做**路由、认证、端专属编排与字段裁剪**；它天然满足「独立发布」——

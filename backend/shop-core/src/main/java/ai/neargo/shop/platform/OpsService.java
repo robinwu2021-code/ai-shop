@@ -128,8 +128,21 @@ public interface OpsService {
      * @param communityNos 覆盖社区。申请时可空，<b>但审核通过时必须有</b>（ADR-009）——
      *                     否则商家上着架却对谁都不可见
      */
-    /** 新建员工的返回。{@code initialPassword} <b>只在这一次出现</b>。 */
-    record CreatedStaffVO(StaffVO staff, String initialPassword) {
+    /**
+     * 新建员工的返回。
+     *
+     * @param initialPassword 一次性初始密码。
+     *        <p><b>{@code mail} 交付模式下恒为 {@code null}</b> —— 密码直接邮件发给本人，
+     *        不经过响应体。此前它会被返回、由 ops-web 弹窗显示、管理员抄下来转告，
+     *        于是这串明文走过「后端 → 网络 → 浏览器内存 → 屏幕」，
+     *        会进浏览器网络面板、会被截图、会被复制进聊天工具。
+     *        而<b>管理员本人不该知道另一个人的密码</b>：{@code mustChangePassword}
+     *        只保证「本人首登后会变」，不保证「管理员在这之前没登过」。
+     *        <p>{@code response} 模式下仍返回明文，那是邮件不通时的逃生口
+     *        （{@code shop.ops.password-delivery}）。
+     * @param deliveredTo 密码发到了哪个邮箱（掩码）。{@code response} 模式下为 null
+     */
+    record CreatedStaffVO(StaffVO staff, String initialPassword, String deliveredTo) {
     }
 
     record SubmitApplyCommand(String userNo, String name, String subject,
@@ -146,7 +159,29 @@ public interface OpsService {
                                * 商家已经在上架商品了，再告诉他"你这行不能用这个主体"，
                                * 要么改主体重新走资质，要么这家店根本收不了款。
                                */
-                              String industry) {
+                              String industry,
+                              /*
+                               * **结构化资质**（V79）。与上面的 qualifications 并存：
+                               * 那个是纯图片 URL 数组，填不出 mch_qualification 需要的
+                               * 类型/证号/有效期 —— 于是审核通过时无从转存，
+                               * 那张表实测恒空，上架的两个资质闸门从不触发。
+                               *
+                               * 可空：存量端上还在只传 qualifications。
+                               */
+                              List<QualificationItem> qualificationItems) {
+    }
+
+    /**
+     * 一条结构化资质。
+     *
+     * @param type     资质类型码，取值同 {@code mch_qualification.qual_type}
+     * @param code     证照编号
+     * @param expireAt 有效期截止（毫秒）。<b>长期有效传 null</b> ——
+     *                 不要用 0 或一个很大的数字冒充：过期扫描会把前者当成已过期、
+     *                 把后者当成永不过期，两种都错，且都不报错
+     */
+    record QualificationItem(String type, String code, String imageUrl,
+                             Long expireAt, String issuer) {
     }
 
     /** 写审计。高危操作必须调用。 */
