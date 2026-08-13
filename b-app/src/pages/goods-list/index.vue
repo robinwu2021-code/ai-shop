@@ -75,8 +75,12 @@ function switchTab(key: GoodsStatus | "") {
 }
 
 async function toggle(g: Goods) {
-  await api.mToggleGoods(g.goodsNo, !g.onSale);
-  await load();
+  try {
+    await api.mToggleGoods(g.goodsNo, !g.onSale);
+    await load();
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: "none" });
+  }
 }
 
 /**
