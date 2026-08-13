@@ -2028,8 +2028,6 @@ export interface Region {
 export interface StoreQrcode {
   /** 扫码后进入的落地页地址，带 merchant_no 归因参数 */
   url: string;
-  /** 可打印版（贴纸尺寸），真实环境由后端生成小程序码 */
-  printUrl: string;
 }
 
 /** 分享素材（B-11.2.7）。文案与海报由服务端按当前语言与市场生成 */

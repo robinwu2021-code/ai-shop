@@ -684,7 +684,7 @@ export const mockApi: MerchantApi = {
     const merchantNo = requireMerchant();
     // 落地页必须带 merchant_no —— 扫码进店的归因就靠它，进而决定费率档（ADR-004 §6）
     const url = `/pages/store/index?merchantNo=${merchantNo}&from=QR`;
-    return delay({ url, printUrl: `${url}&size=print` });
+    return delay({ url });
   },
 
   async mShareKit(goodsNo) {

@@ -80,9 +80,15 @@ function javaFiles(dir = "backend", out: string[] = []): string[] {
 
 const JAVA = javaFiles();
 
-/** 路径 → 该端点的返回类型简名（去掉 List/PageData 壳） */
-function backendReturns(): Record<string, string> {
-  const out: Record<string, string> = {};
+/**
+ * 路径 → 该端点的返回类型简名与**声明它的控制器文件**。
+ *
+ * 记住文件是为了解析同名 record：`StaffVO` 在 merchant 与 platform 两个模块里各有一个，
+ * 形状完全不同。不看来源就按第一个匹配比，会拿运营侧的 VO 去比商家侧的契约 ——
+ * 报出来的缺失字段是假的，而真正缺的那些反而被这条假消息盖住。
+ */
+function backendReturns(): Record<string, { ret: string; file: string }> {
+  const out: Record<string, { ret: string; file: string }> = {};
   for (const f of JAVA) {
     for (const m of read(f).matchAll(
       /@(?:Get|Post)Mapping\((?:value\s*=\s*)?"([^"]+)"\)[\s\S]{0,400}?public\s+([\w.<>?, ]+?)\s+\w+\s*\(/g,
@@ -91,10 +97,19 @@ function backendReturns(): Record<string, string> {
         .replace(/^(java\.util\.)?(List|PageData|Page)<(.*)>$/, "$3")
         .replace(/^[\w.]*\./, "")
         .trim();
-      out[m[1]!] = ret;
+      out[m[1]!] = { ret, file: f };
     }
   }
   return out;
+}
+
+/** 两条路径共同前缀的长度（按目录段算）—— 用来在同名 record 里挑「离控制器最近」的那个 */
+function nearness(a: string, b: string): number {
+  const x = a.split("/");
+  const y = b.split("/");
+  let n = 0;
+  while (n < x.length && n < y.length && x[n] === y[n]) n++;
+  return n;
 }
 
 /**
@@ -105,12 +120,29 @@ function backendReturns(): Record<string, string> {
  * 这种壳类。求团那一整块（`RequestVO` / `QuoteVO`）就落在盲区里：
  * 契约与后端<b>每个字段都对不上名</b>，两端页面都当场崩掉，而守卫一声不吭 ——
  * 它以为自己比过了，实际上一次都没比。
+ * <p><b>同名 record 按控制器的 import 挑</b>：`StaffVO` 在 merchant 与 platform 里
+ * 各有一个，形状完全不同（一个是店员，一个是平台运营账号）。取第一个匹配的话，
+ * 会拿运营侧的 VO 去比商家侧的契约，报出一串并不存在的缺失字段 ——
+ * <b>假消息比没消息更糟</b>：它把真正缺的那几条盖在噪音底下。
+ *
+ * <p>控制器里那行 `import ai.neargo.shop.merchant.dto.StaffVO;` 是最硬的线索，
+ * 因为它就是编译器用的那条。import 找不到（同包、嵌套类）才退回按路径就近。
  */
-function javaComponents(simpleName: string): string[] | null {
-  for (const f of JAVA) {
-    const src = read(f);
-    const i = src.indexOf(`public record ${simpleName}(`);
-    if (i < 0) continue;
+function javaComponents(simpleName: string, from: string): string[] | null {
+  const candidates = JAVA.filter((f) => read(f).includes(`public record ${simpleName}(`));
+  if (!candidates.length) return null;
+
+  const imported = read(from).match(
+    new RegExp(`^import\\s+([\\w.]+)\\.${simpleName};`, "m"),
+  )?.[1];
+  const byImport = imported
+    && candidates.find((c) => c.includes(imported.replace(/\./g, "/")));
+
+  const f = byImport ?? candidates.reduce((best, c) =>
+    nearness(c, from) > nearness(best, from) ? c : best);
+  const src = read(f);
+  const i = src.indexOf(`public record ${simpleName}(`);
+  {
     let depth = 0;
     let j = src.indexOf("(", i);
     const start = j;
@@ -125,7 +157,6 @@ function javaComponents(simpleName: string): string[] | null {
     // 组件形如 `String foo` / `List<X> bar` / `long baz`
     return [...body.matchAll(/[\w.<>?\[\], ]+?\s(\w+)\s*(?:,|$)/g)].map((m) => m[1]!);
   }
-  return null;
 }
 
 /**
@@ -157,9 +188,10 @@ describe.each(APPS)("$app 契约字段（$prefix）", ({ app, prefix }) => {
     for (const [name, path] of Object.entries(decls)) {
       const url = (eps[name] ?? "").replace(/:(\w+)/g, "{$1}");
       if (!url.startsWith(prefix)) continue;
-      const ret = rets[url];
-      if (!ret) continue; // 后端路径没解析到：另一条守卫的事
-      const comps = javaComponents(ret);
+      const hit = rets[url];
+      if (!hit) continue; // 后端路径没解析到：另一条守卫的事
+      const { ret, file } = hit;
+      const comps = javaComponents(ret, file);
       if (!comps) continue; // 不是 record（Map/void/未知）——比不了就别假装比过
 
       const missing = tsFields(path)
@@ -175,7 +207,8 @@ describe.each(APPS)("$app 契约字段（$prefix）", ({ app, prefix }) => {
 
     /*
      * 存量欠账：**修好盲区那一刻**库里就有的 21 处（/biz 7、/mp 14），
-     * 修掉求团与商家团之后剩 15 处（/biz 5、/mp 10）。
+     * 修掉求团、商家团，再摘掉 4 条同名 record 撞出来的假消息之后，剩 10 处 ——
+     * **全在 /mp**，/biz 这一侧已经清零。
      *
      * 数字这么大不是因为一夜之间坏了这么多，而是因为守卫此前<b>根本没在比</b>——
      * 它只按文件名找 record，而这个仓库的 VO 大多嵌在 `XxxVOs.java` 里，
@@ -188,7 +221,7 @@ describe.each(APPS)("$app 契约字段（$prefix）", ({ app, prefix }) => {
      * 这样两件事同时成立：今天不必一次修完，而**明天新增一处立刻变红**。
      * 修掉一处就把数字减一 —— 数字不允许往上走，这是它唯一的价值。
      */
-    const PENDING = { "b-app": 5, "c-app": 10 }[app] ?? 0;
+    const PENDING = { "b-app": 0, "c-app": 10 }[app] ?? 0;
     if (offenders.length && offenders.length <= PENDING) {
       expect(
         offenders.length,
