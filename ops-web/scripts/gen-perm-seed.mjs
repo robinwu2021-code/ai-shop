@@ -9,11 +9,18 @@
  * 手写的清单三个月后必然过期，而这份的口径与运营端界面**同源** ——
  * 界面看到什么，库里就是什么。
  */
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 
-const nav = readFileSync('lib/nav.ts', 'utf8');
-const pmSrc = readFileSync('lib/perm-map.ts', 'utf8');
-const permsJava = readFileSync('../backend/shop-base/src/main/java/ai/neargo/shop/auth/Perms.java', 'utf8');
+/*
+ * 路径相对**本文件**解析，不相对 cwd。
+ * 相对 cwd 的话换个目录跑就是 ENOENT —— 而更坏的情况是碰巧读到同名的别的文件，
+ * 那时它会安静地生成一份错的种子。
+ */
+const AT = (rel) => new URL(rel, import.meta.url);
+const nav = readFileSync(AT('../lib/nav.ts'), 'utf8');
+const pmSrc = readFileSync(AT('../lib/perm-map.ts'), 'utf8');
+const permsJava = readFileSync(
+  AT('../../backend/shop-base/src/main/java/ai/neargo/shop/auth/Perms.java'), 'utf8');
 
 /**
  * href → **稳定的** point_code。
@@ -189,4 +196,98 @@ out.push('--    而库里的角色配置看着完全正常。');
 for (const code of Object.keys(roles)) {
   out.push(`INSERT INTO sys_role_member (end_code, subject_no, role_code, granted_at, created_at, updated_at) SELECT 'OPS', staff_no, ${q(code)}, UNIX_TIMESTAMP()*1000, NOW(), NOW() FROM sys_ops_staff WHERE deleted = 0 AND roles LIKE ${q('%"' + code + '"%')};`);
 }
-console.log(out.join('\n'));
+/*
+ * ── `--markdown`：把同一份种子渲染成文档里的数据清单 ──
+ *
+ * **解析自己刚生成的 SQL**，而不是另走一遍数据。看着绕，但它保证了一件事：
+ * 文档描述的就是种子本身，两者不可能对不上。
+ * 此前那份清单是手写的，三个月后写着「68 个功能点」而库里已经 104 个 ——
+ * 一份错的清单比没有清单更坏，因为人会照着它做判断。
+ */
+function renderMarkdown(sql) {
+  const val = (line) => [...line.matchAll(/'((?:[^']|'')*)'|\b(NULL)\b/g)]
+    .map((m) => (m[2] ? null : m[1].replace(/''/g, "'")));
+  const fns = [], pts = [], rls = [], rps = [];
+  for (const l of sql) {
+    if (l.startsWith('INSERT INTO sys_function ')) fns.push(val(l));
+    else if (l.startsWith('INSERT INTO sys_function_point ')) pts.push(val(l));
+    else if (l.startsWith('INSERT INTO sys_role ')) rls.push(val(l));
+    else if (l.startsWith('INSERT INTO sys_role_point ')) rps.push(val(l));
+  }
+  // 字段序与上面的 INSERT 一致
+  const P = pts.map((v) => ({ code: v[0], fn: v[1], name: v[2], group: v[3], href: v[4],
+                              ui: v[5], perm: v[6], status: v[7], matrix: v[8], type: v[9] }));
+  const menu = P.filter((x) => x.type === 'MENU');
+  const notImpl = P.filter((x) => x.status === 'NOT_IMPLEMENTED');
+  const L = [];
+  L.push('<!-- BEGIN:generated · 由 `node ops-web/scripts/gen-perm-seed.mjs --doc` 产出，**请勿手改** -->');
+  L.push('');
+  L.push(`**${fns.length} 个功能 · ${P.length} 个功能点**（菜单项 ${menu.length} · 页面内操作 ${P.length - menu.length}）`
+       + ` · 其中后端未实现 ${notImpl.length} · 二级分组 ${new Set(menu.map((x) => x.group).filter(Boolean)).size} 个`);
+  L.push('');
+  L.push('### `point_code` 是 href 派生的，不是序号');
+  L.push('');
+  L.push('`/merchants?tab=list` → `OPS_MERCHANT__TAB_LIST`。**这一条很重要**：');
+  L.push('序号编码下插入一个叶子会让其后全部右移，而 `sys_role_point` 存的正是 `point_code`');
+  L.push('—— 编号一移，既有授权会静默指向另一个功能，且是放宽方向。');
+  L.push('');
+  L.push('### sys_function（运营端 ' + fns.length + ' 行）');
+  L.push('');
+  L.push('| function_code | 名称 | 功能点 | 其中后端未实现 |');
+  L.push('|---|---|--:|--:|');
+  for (const f of fns) {
+    const mine = P.filter((x) => x.fn === f[0]);
+    const bad = mine.filter((x) => x.status === 'NOT_IMPLEMENTED').length;
+    L.push(`| \`${f[0]}\` | ${f[1]} | ${mine.length} | ${bad ? '**' + bad + '**' : 0} |`);
+  }
+  L.push('');
+  L.push('### sys_function_point（菜单项 ' + menu.length + ' 行）');
+  L.push('');
+  L.push('> 页面内操作（`ACTION`，' + (P.length - menu.length) + ' 行）不列：它们没有菜单入口，');
+  L.push('> 存在的意义是**承载授权** —— 后端有码而运营端还没有界面的那些。');
+  L.push('');
+  L.push('| point_code | 分区 | 二级分组 | 功能点 | perm_code | 后端 |');
+  L.push('|---|---|---|---|---|:--:|');
+  for (const x of menu) {
+    L.push(`| \`${x.code}\` | ${x.fn.replace('OPS_', '')} | ${x.group ?? '—'} | ${x.name} `
+         + `| ${x.perm ? '`' + x.perm + '`' : '—'} | ${x.status === 'IMPLEMENTED' ? '✅' : '⚠️'} |`);
+  }
+  L.push('');
+  L.push('### sys_role（' + rls.length + ' 行）与授权数');
+  L.push('');
+  L.push('| role_code | 名称 | 通配 | 功能点数 |');
+  L.push('|---|---|:--:|--:|');
+  // 角色行要取 wildcard 这个**数字**字段，而 val() 只抓引号串 —— 单独按位置解析
+  for (const line of sql.filter((l) => l.startsWith('INSERT INTO sys_role '))) {
+    const m = line.match(/VALUES \('([^']+)', '((?:[^']|'')*)', '[^']*', \d+, (\d+)/);
+    if (!m) continue;
+    const [, code, name, wildcard] = m;
+    const n = rps.filter((x) => x[0] === code).length;
+    L.push(`| \`${code}\` | ${name.replace(/''/g, "'")} | ${wildcard === '1' ? '✅' : ''} `
+         + `| ${wildcard === '1' ? '全部' : n} |`);
+  }
+  L.push('');
+  L.push('<!-- END:generated -->');
+  return L.join('\n');
+}
+
+const args = process.argv.slice(2);
+if (args.includes('--markdown') || args.includes('--doc')) {
+  const md = renderMarkdown(out);
+  if (args.includes('--doc')) {
+    const DOC = AT('../../docs/technical/design/权限配置落库-数据库设计与数据清单.md');
+    const cur = readFileSync(DOC, 'utf8');
+    const b = cur.indexOf('<!-- BEGIN:generated');
+    const e = cur.indexOf('<!-- END:generated -->');
+    if (b < 0 || e < 0) {
+      console.error('文档里找不到 <!-- BEGIN:generated --> / <!-- END:generated --> 标记');
+      process.exit(1);
+    }
+    writeFileSync(DOC, cur.slice(0, b) + md + cur.slice(e + '<!-- END:generated -->'.length));
+    console.error('已写回文档');
+  } else {
+    console.log(md);
+  }
+} else {
+  console.log(out.join('\n'));
+}
