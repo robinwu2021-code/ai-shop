@@ -2,7 +2,8 @@
 import { computed } from "vue";
 import { onLaunch } from "@dcloudio/uni-app";
 import { configureShell } from "@ai-shop/ui/shell";
-import { TABS } from "@shared/utils/constants";
+import { ROUTES, TABS } from "@shared/utils/constants";
+import { setUnauthorizedHandler } from "@shared/net/http-client";
 import { flyState, registerCartAnchor } from "@/shared/fly";
 import { useThemeStore } from "@ai-shop/ui/stores/theme";
 import { useAppStore } from "@ai-shop/ui/stores/app";
@@ -38,6 +39,22 @@ onLaunch(() => {
   useThemeStore().init(); // 皮肤 + 明暗
   useAppStore().init(); // 语言 + RTL
   useUserStore().restore(); // 登录态
+
+  /*
+   * 登录失效时去登录页。**注册在壳上**，因为 401 可能从任何一个请求回来。
+   *
+   * 此前一处也没接：令牌一过期（重启后端、放一夜），页面渲染成一片空白
+   * 加一个未捕获错误 —— 没有提示、没有跳转，刷新也一样，因为没人清 token。
+   *
+   * 用 reLaunch 而不是 navigateTo：登录态没了，栈里剩下的页面每一张都拉不到数据。
+   * 再延一个宏任务：这条路径最常见的触发点是启动时的那几个请求，
+   * 那一刻首页还没挂载，此时发起的跳转会被直接丢掉（B 端实测过两次）。
+   */
+  setUnauthorizedHandler(() => {
+    useUserStore().clearSession();
+    uni.showToast({ title: "登录已失效，请重新登录", icon: "none" });
+    setTimeout(() => uni.reLaunch({ url: ROUTES.login }), 0);
+  });
 
   // 社区归属里存的是**绑定当时那门语言/那个市场**的文案快照。
   // 上次用英文绑定、这次以中文启动时，界面是中文而归属条是英文 —— 所以启动时也要校正一次，

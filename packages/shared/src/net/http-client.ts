@@ -18,6 +18,23 @@ export class ApiError extends Error {
 
 type Method = "GET" | "POST" | "PUT";
 
+/**
+ * 登录失效时做什么 —— **由各端在 App 壳上注册一次**。
+ *
+ * 为什么放在传输层而不是各页各自 catch：401 可能从任何一个请求上回来，
+ * 而「哪一页发的请求」与「该去哪」无关。C 端此前一处也没接，
+ * 令牌一过期（重启后端、放一夜）整页就是空白 + 一个未捕获错误 ——
+ * 没有提示、没有跳转，刷新也一样，因为 token 还在存储里躺着。
+ * B 端接过，但只接在 `ensureScope` 一处，别的请求上的 401 同样什么也不发生。
+ */
+let onUnauthorized: (() => void) | null = null;
+/** 同一轮里只触发一次：一屏并发三个请求就跳三次，会把提示刷掉、把路由搅乱 */
+let handling = false;
+
+export function setUnauthorizedHandler(fn: () => void): void {
+  onUnauthorized = fn;
+}
+
 export function request<T>(
   method: Method,
   path: string,
@@ -44,6 +61,12 @@ export function request<T>(
         const body = res.data as Result<T>;
         if (res.statusCode === 401) {
           uni.removeStorageSync(STORAGE.token);
+          if (onUnauthorized && !handling) {
+            handling = true;
+            onUnauthorized();
+            // 下一轮宏任务放开：这一屏的并发请求算同一轮，用户下次点才是新一轮
+            setTimeout(() => (handling = false), 0);
+          }
           reject(new ApiError(401, "登录已失效，请重新登录"));
           return;
         }

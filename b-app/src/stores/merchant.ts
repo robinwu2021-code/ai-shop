@@ -178,22 +178,16 @@ export const useMerchantStore = defineStore("merchant", {
          * 店主看着自己的店被告知「你没角色」，而真相只是要重新登录一次 ——
          * 他会去找店主（他自己），不会去点退出重登。
          *
-         * http-client 那层已经把 token 从存储里删了，但内存里的登录态还在，
-         * 所以这里要显式 logout：两处不一致的话「我的」页仍显示已登录。
+         * **跳登录这件事不在这里做**：401 可能从任何一个请求上回来，
+         * 而这里只看得到 `/biz/scope` 那一个。挂在这一处的后果是
+         * 「从首页进来会跳、在商品页点保存不跳」—— 同一件事两种表现。
+         * 统一由 App.vue 注册的 401 处理负责（`setUnauthorizedHandler`）。
+         *
+         * 这里仍要显式清登录态：http-client 只删了存储里的 token，
+         * 内存里的还在，两处不一致的话「我的」页仍显示已登录。
          */
         if ((e as { code?: number }).code === 401) {
           this.logout();
-          uni.showToast({ title: (e as Error).message, icon: "none" });
-          /*
-           * **reLaunch 而不是 navigateTo**：登录态没了，栈里剩下的页面
-           * 每一张都会渲染成「这页不归你管」。
-           *
-           * **而且要延到下一个宏任务**：这条路径最常见的触发点是 App.vue 的
-           * `ensureScope()`，那一刻首页还没挂载，此时发起的跳转会被直接丢掉 ——
-           * 实测两次：navigateTo 无效，reLaunch 也无效，token 被清了、
-           * 人还留在商品页看那句「让店主给你加个角色」。
-           */
-          setTimeout(() => uni.reLaunch({ url: "/pages/login/index" }), 0);
         }
         return null;
       }

@@ -52,6 +52,17 @@ export const useUserStore = defineStore("user", {
       } catch {
         // 吞掉：本地必须清干净，理由见上
       }
+      this.clearSession();
+    },
+
+    /**
+     * 只清本地，**不调后端**。
+     *
+     * 令牌已经失效时走的就是这一条（App.vue 里的 401 处理）——
+     * 那时再调一次 `/logout` 只会再收一个 401，而那个 401 又会触发同一段处理，
+     * 转起来就下不来了。正常登出仍然要先调后端作废会话，见 {@link logout}。
+     */
+    clearSession() {
       this.token = "";
       this.user = null;
       uni.removeStorageSync(STORAGE.token);

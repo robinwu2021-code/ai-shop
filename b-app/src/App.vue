@@ -7,6 +7,7 @@ import { useAppStore } from "@ai-shop/ui/stores/app";
 import { useMarketStore } from "@ai-shop/ui/stores/market";
 import { useMerchantStore } from "@/stores/merchant";
 import { initFonts } from "@shared/ports/font";
+import { setUnauthorizedHandler } from "@shared/net/http-client";
 import { USE_MOCK } from "@/api";
 import { restoreDb } from "@shared/mock/db";
 import { ensureDemoMerchant, ensureDemoOrders } from "@/api/demo-orders";
@@ -24,6 +25,23 @@ onLaunch(() => {
   useAppStore().init(); // 语言 + RTL
   const merchant = useMerchantStore();
   merchant.restore(); // 商家登录态
+
+  /*
+   * 登录失效时去登录页。**注册在壳上，因为 401 可能从任何一个请求回来** ——
+   * 原先这段挂在 `loadScope` 的 catch 里，只有 `/biz/scope` 那一个请求算数：
+   * 从首页进来会跳，而在商品页点保存收到的 401 什么也不发生。同一件事两种表现。
+   *
+   * reLaunch 而不是 navigateTo：登录态没了，栈里剩下的页面每一张都会渲染成
+   * 「这页不归你管 —— 让店主给你加个角色」，而真相只是要重新登录一次。
+   *
+   * 再延一个宏任务：最常见的触发点是下面那两个 ensure，那一刻首页还没挂载，
+   * 此时发起的跳转会被直接丢掉 —— 实测两次，navigateTo 无效，reLaunch 也无效。
+   */
+  setUnauthorizedHandler(() => {
+    merchant.logout();
+    uni.showToast({ title: "登录已失效，请重新登录", icon: "none" });
+    setTimeout(() => uni.reLaunch({ url: "/pages/login/index" }), 0);
+  });
   /*
    * 权限跟着登录态一起恢复。**必须在这里，不能靠页面自己调** ——
    * 它原先只挂在首页的 loadStores 上，于是刷新在商品页时 perms 是空的，
