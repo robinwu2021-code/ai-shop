@@ -110,6 +110,10 @@ export function ensureDemoMerchant(): void {
     subject: "INDIVIDUAL_BIZ",
     phone: "13800138000",
     isPickupPoint: true,
+    // 演示商户走**归集**：平台目前只有自营，这是绝大多数商家实际所处的路径。
+    // 种成 DIRECT 的话，「期望收购价」这条在 mock 下永远走不到 ——
+    // 而 mock 正是产品和设计看的那一份
+    fundsMode: "AGGREGATED",
   });
   // 落盘：不存的话每次启动都重新种，店主改过的资料会被盖掉，
   // 而且「刷新一下数据就回到初始」本身就不像真后端

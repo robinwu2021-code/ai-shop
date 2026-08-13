@@ -27,6 +27,41 @@ public class MchEntity extends BaseEntity {
     /** PERSONAL / INDIVIDUAL / COMPANY —— 主体类型，决定资质要求与结算通道。 */
     private String legalForm;
 
+    /**
+     * 资金路径（轴②）：{@code AGGREGATED} 归集 / {@code DIRECT} 直连。
+     *
+     * <p><b>能走哪条由商户类型决定，不是平台自选</b>（ADR-017 §3.2）——
+     * 自然人开不出票，平台按全额确认收入而成本不可税前扣除，所以禁归集；
+     * 自产农产品例外（平台可自开农产品收购发票）。
+     */
+    private String fundsMode;
+
+    /**
+     * 是否农业生产者。为 1 时**允许走归集路径**（自然人的例外）——
+     * 平台可自开农产品收购发票，成本有合法凭证。
+     *
+     * <p>与商品侧「自产农产品」品类<b>两者都满足</b>才适用：
+     * 合作社卖百货不算，公司卖自产农产品同样算。
+     */
+    private Integer isAgriProducer;
+
+    /**
+     * 经营资格（轴①，法定）：{@code REGISTERED} / {@code EXEMPT} / {@code UNREGISTERED}。
+     *
+     * <p><b>决定能不能交易，与通道无关</b> —— {@code UNREGISTERED} 是违法经营，
+     * 平台不得提供交易能力；{@code EXEMPT} 是电商法 §10 明文豁免的<b>合法经营者</b>，
+     * 不是「无资质」。
+     */
+    private String bizQualification;
+
+    /**
+     * 免登记情形（电商法 §10 四类）：{@code AGRI}/{@code HANDCRAFT}/{@code SERVICE}/{@code PETTY}。
+     *
+     * <p>⚠️ <b>只有 {@code PETTY} 受 10 万元/年 约束</b>，其余三类无金额上限 ——
+     * 农户卖 50 万自产柿饼仍然免登记。四类混起来监控会误伤前三类。
+     */
+    private String exemptType;
+
     /** 分层（P-11.1.6）：一期只留字段，为引入大商家预留。 */
     private String tier;
 

@@ -64,6 +64,31 @@ public interface MerchantAdminPort {
      * <p><b>关闭只影响将来</b>：不动已发出的分，也不退已扣的服务费 ——
      * 否则关一次开关就是一次资金事故。
      */
+    /**
+     * 把入驻申请里的结构化资质**转存**成主体档案上的资质记录。
+     *
+     * <p><b>这是一条断了的链</b>：商家在入驻时传的执照，此前只存进
+     * {@code mch_entity_apply.qualifications}，审核通过时没有任何一处把它转过来。
+     * 而上架的两个闸门（资质过期、类目授权）读的是 {@code mch_qualification} ——
+     * 那张表实测 <b>0 行</b>，于是两个闸门都写好了、都从不触发。
+     *
+     * <p><b>幂等</b>：按 {@code (entityNo, qualType, qualNumber)} 去重。
+     * 审核接口会被重复点击，而资质重复写入会让「这家店有几张执照」变成一个假数字。
+     *
+     * @param items 结构化资质；空或 null 时什么也不做（免执照档位本来就没有）
+     * @return 本次实际新增的条数 —— 调用方用它写审计日志，
+     *         「转存了 0 条」与「没调用」在排查时是两件事
+     */
+    int saveQualifications(String merchantNo, java.util.List<QualificationItem> items);
+
+    /**
+     * @param expireAt 有效期截止（毫秒）。<b>null = 长期有效</b> ——
+     *                 过期扫描按 null 跳过，不要用 0 或极大值冒充
+     */
+    record QualificationItem(String type, String code, String imageUrl,
+                             Long expireAt, String issuer) {
+    }
+
     void setPointsEnabled(String merchantNo, boolean enabled);
 
     /**

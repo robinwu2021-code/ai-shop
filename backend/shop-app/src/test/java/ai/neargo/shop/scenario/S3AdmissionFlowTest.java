@@ -35,7 +35,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @DisplayName("S3 准入：保证金 / 限品类 / 限额，三样必须同时生效")
 class S3AdmissionFlowTest {
 
-    private static final String MICRO = "MICRO";
+    private static final String MICRO = "NATURAL_PERSON";
     private static final String ENTERPRISE = "ENTERPRISE";
 
     /** 与 V27 默认策略一致：应缴 2000 元、单笔 500 元、日累计 5000 元。 */

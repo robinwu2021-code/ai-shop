@@ -54,6 +54,18 @@ public final class OpsVOs {
                                   /** 行业。审核页要看到它 —— 它决定这家店能不能开小微 */
                                   String industry,
                                   String status, String rejectReason,
-                                  long createdAt, long auditedAt) {
+                                  long createdAt, long auditedAt,
+                                  /**
+                                   * 结构化资质（V79）。<b>审核台要看到类型与有效期</b> ——
+                                   * 上面的 {@code licenses} 只有图片 URL，审核员看不出
+                                   * 「这是执照还是食品证」「什么时候过期」，
+                                   * 而通过之后转存进 mch_qualification 的正是这一份。
+                                   */
+                                  List<QualificationItemVO> qualificationItems) {
+    }
+
+    /** @param expireAt 有效期截止（毫秒）；<b>null = 长期有效</b> */
+    public record QualificationItemVO(String type, String code, String imageUrl,
+                                      Long expireAt, String issuer) {
     }
 }

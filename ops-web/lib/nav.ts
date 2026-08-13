@@ -80,12 +80,21 @@ export const NAV: NavSection[] = [
       { href: "/merchants", label: "入驻审核", perm: "merchant:apply:audit", group: "入驻与资质", matrix: "P-11.1", ready: true },
       { href: "/merchants?tab=list", label: "商家档案", perm: "merchant:merchant:read", group: "入驻与资质", matrix: "P-11.1", ready: true },
       { href: "/merchants?tab=categories", label: "类目授权", perm: "merchant:category:grant", group: "入驻与资质", matrix: "P-11.1" },
+      // 上架的「资质过期」「类目授权」两个闸门读的就是这张表 ——
+      // 后端三个接口早已实现，此前**前端零调用**，于是表恒空、闸门从不触发
+      { href: "/merchants?tab=qualifications", label: "资质档案", perm: "merchant:category:read", group: "入驻与资质", matrix: "P-11.1" },
       // 准入与保证金：页面早就有这个 tab，菜单里一直漏登记 —— 于是它只能靠手改 URL 进去。
       // 放在本组末尾而不是 verify 后面：同 group 的叶子必须相邻（nav.test.ts 锁这条）
       // 用专属的 admission 码而不是 merchant:merchant:read：Perms.ROLE_PERMS 把这两个码
       // 给了**财务**，用商家读权限的话正好反过来 —— 财务看不到，商家运营却看得到。
       // （该码 2026-08-12 才补进 UI_PERM_MAP；此前未登记，can() 会判所有人无权限）
       { href: "/merchants?tab=admission", label: "准入与保证金", perm: "merchant:admission:read", group: "入驻与资质", matrix: "P-11.1" },
+      // 用 mode:read 而不是 merchant:read：这张表答的是「哪些店按自营结算」，
+      // 与门店经营模式读的是同一个字段、同一批人在处置。
+      // ⚠️ 该码目前归 BD 与超管，**财务看不到** —— 而这是一张税务表，
+      // 财务本该是主要读者。给 FINANCE 加这个码要动 ROLE_PERMS 与权限矩阵基线，
+      // 属于单独一次改动，不混在本次里做。
+      { href: "/merchants?tab=mode-risk", label: "无照自营风险", perm: "merchant:mode:read", group: "入驻与资质", matrix: "P-11.1" },
       { href: "/merchants?tab=verify", label: "认证标管理", perm: "merchant:verify:grant", group: "信用与处置", matrix: "P-11.1" },
       { href: "/merchants?tab=credit", label: "信用档案", perm: "merchant:merchant:read", group: "信用与处置", matrix: "P-11.1" },
       { href: "/merchants?tab=ban", label: "违规处置与封禁", perm: "merchant:merchant:ban", group: "信用与处置", matrix: "P-11.1" },
@@ -208,6 +217,11 @@ export const NAV: NavSection[] = [
       { href: "/finance?tab=splits", label: "分账明细", perm: "finance:settle:read", group: "分账结算", matrix: "P-12.1", ready: true },
       // E4：队列由售后单的 refundSplitPending 派生（P-6.1 打标记，这里消费）
       { href: "/finance?tab=refund-back", label: "退款回退分账", perm: "finance:settle:execute", group: "分账结算", matrix: "P-12.1", ready: true },
+      // 积分资金看板。**是资金表不是营销表** —— 读它的是财务。
+      // 服务侧 overview 早就实现了，而运营端此前一个积分接口都没有：
+      // 池子对不对得上，只能连数据库看
+      { href: "/finance?tab=points", label: "积分资金看板", perm: "finance:settle:read", group: "分账结算", matrix: "P-12.1", ready: true },
+
       { href: "/finance?tab=rates", label: "分档费率与服务费", perm: "finance:rate:update", group: "费率", matrix: "P-12.1", ready: true },
       { href: "/finance?tab=withdraw", label: "提现审批", perm: "finance:withdraw:approve", group: "提现与税", matrix: "P-12.2", phase: 2, ready: true },
       { href: "/finance?tab=invoice", label: "发票与个税", perm: "finance:invoice:read", group: "提现与税", matrix: "P-12.2", phase: 2, ready: true },

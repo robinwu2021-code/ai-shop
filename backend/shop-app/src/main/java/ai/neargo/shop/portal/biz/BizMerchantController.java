@@ -56,6 +56,8 @@ public class BizMerchantController {
     private final ai.neargo.shop.merchant.service.MerchantRoleService roleService;
     /** 提报新社区（ADR-013 阶段三）：社区是 community 域的主数据，商家只是提报方 */
     private final ai.neargo.shop.community.service.CommunityAdminService communityAdminService;
+    /** 资金路径 —— B 端价格字段叫什么由它决定，判据与积分能力同一根轴 */
+    private final ai.neargo.shop.spi.user.MerchantQueryPort merchantQueryPort;
 
     public BizMerchantController(MerchantService merchantService, OpsService opsService,
                                  UserService userService, BizIdentityResolver identityResolver,
@@ -64,7 +66,9 @@ public class BizMerchantController {
                                  StoreAdminService storeAdminService,
                                  MerchantStaffService staffService,
                                  ai.neargo.shop.merchant.service.MerchantRoleService roleService,
-                                 ai.neargo.shop.community.service.CommunityAdminService communityAdminService) {
+                                 ai.neargo.shop.community.service.CommunityAdminService communityAdminService,
+                                 ai.neargo.shop.spi.user.MerchantQueryPort merchantQueryPort) {
+        this.merchantQueryPort = merchantQueryPort;
         this.communityAdminService = communityAdminService;
         this.roleService = roleService;
         this.storeService = storeService;
@@ -137,13 +141,18 @@ public class BizMerchantController {
                     phone, false, null,
                     apply == null ? null : apply.rejectReason(),
                     apply == null ? null : apply.industry(),
-                    apply == null ? null : apply.desc());
+                    apply == null ? null : apply.desc(),
+                    // 还没进件：资金路径未定，不猜一个默认值。
+                    // 猜 AGGREGATED 的话，申请人会在入驻页看到「期望收购价」——
+                    // 而他此刻还不知道自己会被分到哪条路径
+                    null);
         }
         return new MerchantProfileVO(
                 account.merchantNo(), account.name(), account.logo(),
                 bizStatus(account.status()), account.subject(), account.tier(),
                 phone, !pickups.isEmpty(), pickups.isEmpty() ? null : pickups.get(0),
-                null, account.industry(), account.description());
+                null, account.industry(), account.description(),
+                merchantQueryPort.fundsModeOf(account.merchantNo()));
     }
 
     /**
@@ -179,7 +188,8 @@ public class BizMerchantController {
                 SecurityUtils.currentUserNo(), req.name(), req.subject(),
                 req.contactName(), req.contactPhone(), req.category(), req.desc(),
                 req.serviceScope(), req.communityNos(), req.licenses(),
-                Boolean.TRUE.equals(req.asPickupPoint()), req.industry()));
+                Boolean.TRUE.equals(req.asPickupPoint()), req.industry(),
+                req.qualificationItems()));
         return profile();
     }
 
@@ -572,17 +582,28 @@ public class BizMerchantController {
                            List<String> communityNos, List<String> licenses,
                            Boolean asPickupPoint,
                            /** 行业。**决定可选的主体类型** —— 线上业态不能选小微 */
-                           String industry) {
+                           String industry,
+                           /**
+                            * 结构化资质（V79）。与上面的 {@code licenses}（纯图片 URL）并存：
+                            * 只有这一份带类型/证号/有效期，**审核通过时才转得进
+                            * {@code mch_qualification}** —— 而上架的两个闸门读的就是那张表。
+                            * 可空：存量端上还在只传 licenses。
+                            */
+                           List<OpsService.QualificationItem> qualificationItems) {
     }
 
     /** 对齐 shared {@code MerchantProfile}。 */
     /**
      * @param industry    行业。B 端要展示它，也要在「改主体」时据此判断哪些主体可选
      * @param description 店铺简介。C 端门店页展示的就是它
+     * @param fundsMode   资金路径 AGGREGATED/DIRECT。<b>B 端靠它决定价格字段怎么叫</b> ——
+     *                    归集路径下平台是销售主体、最终售价由平台定，商家填的是
+     *                    「期望收购价」；直连路径下他自己就是销售主体，那就是售价。
+     *                    还没进件的申请人为空 —— 那时资金路径尚未确定
      */
     public record MerchantProfileVO(String merchantNo, String name, String logo, String status,
                                     String subject, String tier, String phone,
                                     boolean isPickupPoint, String pickupNo, String rejectReason,
-                                    String industry, String description) {
+                                    String industry, String description, String fundsMode) {
     }
 }

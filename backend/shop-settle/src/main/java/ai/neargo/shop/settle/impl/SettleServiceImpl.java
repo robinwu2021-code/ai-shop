@@ -12,6 +12,7 @@ import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.settle.dto.RateCardVO;
 import ai.neargo.shop.settle.dto.SettleBillVO;
 import ai.neargo.shop.settle.entity.StlBill;
+import ai.neargo.shop.settle.entity.StlPointsPool;
 import ai.neargo.shop.settle.entity.StlFeeRule;
 import ai.neargo.shop.settle.entity.StlPurchaseInvoice;
 import ai.neargo.shop.settle.dto.PurchaseInvoiceVO;
@@ -56,6 +57,11 @@ public class SettleServiceImpl implements SettleService {
      */
     private final ai.neargo.shop.settle.service.FeeRuleService feeRuleService;
 
+    /** 积分池入账 —— 池子的记账口径归积分域，结算侧只在发生时调它 */
+    private final ai.neargo.shop.settle.PointsService pointsService;
+    /** 通道能力（能否补差）—— 判在结算侧，因为下单时通道还没定 */
+    private final ai.neargo.shop.spi.platform.MasterDataPort masterDataPort;
+
     private final BillMapper billMapper;
     private final SplitLogMapper splitLogMapper;
     private final SettleSourcePort sourcePort;
@@ -73,7 +79,11 @@ public class SettleServiceImpl implements SettleService {
                              ai.neargo.shop.spi.user.MerchantQueryPort merchantQueryPort,
                              ai.neargo.shop.settle.mapper.SettleMappers.PurchaseInvoiceMapper purchaseInvoiceMapper,
                              ai.neargo.shop.spi.platform.SettingPort settingPort,
-                             ai.neargo.shop.settle.service.FeeRuleService feeRuleService) {
+                             ai.neargo.shop.settle.service.FeeRuleService feeRuleService,
+                             ai.neargo.shop.settle.PointsService pointsService,
+                             ai.neargo.shop.spi.platform.MasterDataPort masterDataPort) {
+        this.masterDataPort = masterDataPort;
+        this.pointsService = pointsService;
         this.settingPort = settingPort;
         this.feeRuleService = feeRuleService;
         this.purchaseInvoiceMapper = purchaseInvoiceMapper;
@@ -171,11 +181,45 @@ public class SettleServiceImpl implements SettleService {
             bill.setGrossMinor(gross);
             bill.setCommissionMinor(commission);
             bill.setServiceFeeMinor(serviceFee);
-            bill.setNetMinor(gross - commission - serviceFee);
+            /*
+             * ★ 发分费用金：**单独一列，不并进 serviceFeeMinor**。
+             *
+             * 商家最常问的是「这个月为什么少了」，而两者的解释路径完全不同 ——
+             * 佣金是按率的（他改不了），费用金是按他自己开的积分活动走的（他关掉就没了）。
+             * 并成一列，客服每次都得回去翻明细才答得出。
+             *
+             * 此前这一列全库零写入：B 端「本期积分支出」永远是 0，
+             * 而池子只出不进（用户花分时 MERCHANT_PAY 出账，发分时没有对应入账）——
+             * 恒等式 2「池子余额 == 流通中积分 × 汇率」会随发放量单调失衡。
+             */
+            long pointsFee = src.pointsFeeMinor();
+            bill.setPointsFeeMinor(pointsFee);
+            bill.setNetMinor(gross - commission - serviceFee - pointsFee);
             bill.setTrafficSource(src.trafficSource());
             bill.setCommissionRate(rate);
-            // 补差额落快照：积分规则会变，而「这单当初补了多少」必须能原样查回来
-            bill.setSubsidyMinor(src.pointsDeductMinor());
+            /*
+             * 积分抵扣的成本落到哪一列，**取决于资金路径**：
+             *
+             *   DIRECT     钱在商家二级户 → 抵扣让他少收 → 平台必须补差进去
+             *              → subsidy_minor，executeSplit 会真的发起一次划转
+             *   AGGREGATED 钱在平台户     → 平台自己少收 → **没有补的动作**
+             *              → points_cost_minor，只记账
+             *
+             * 此前两条路径都写 subsidy_minor，而自营单不走 executeSplit ——
+             * 于是自营单上挂着一个「补差额」，那条链路根本没有补差这个动作，
+             * 读单据的人会以为平台补过钱。不是 bug，是缺一层语义。
+             *
+             * 落快照的理由不变：积分规则会变，「这单当初补了多少」必须能原样查回来。
+             */
+            String fundsMode = merchantQueryPort.fundsModeOf(src.merchantNo());
+            bill.setFundsMode(fundsMode);
+            if (MerchantQueryPort.FUNDS_DIRECT.equals(fundsMode)) {
+                bill.setSubsidyMinor(src.pointsDeductMinor());
+                bill.setPointsCostMinor(0L);
+            } else {
+                bill.setSubsidyMinor(0L);
+                bill.setPointsCostMinor(src.pointsDeductMinor());
+            }
             /*
              * 两个快照，与 commissionRate 同一个理由：配置会变，历史账不能跟着变。
              *   storeNo       —— 这笔钱是哪家店挣的（统计维度）
@@ -202,6 +246,19 @@ public class SettleServiceImpl implements SettleService {
             bill.setInvoiceStatus(selfOperated ? StlBill.INV_PENDING : StlBill.INV_NONE);
             bill.setRetryCount(0);
             DataScopeContext.executeWithoutScope(() -> billMapper.insert(bill));
+
+            /*
+             * 费用金入池 —— **与货款扣减同一时刻**。
+             *
+             * 不在发分时入池：那一刻钱还没到手（货款要到结算才扣），
+             * 提前入池等于池子里记着一笔还没收到的钱。
+             *
+             * refNo 用结算单号：对账时要能从池子的一笔回溯到是哪张单收的。
+             */
+            if (pointsFee > 0) {
+                pointsService.recordPoolFlow(StlPointsPool.MERCHANT_RECEIVE, pointsFee,
+                        src.merchantNo(), bill.getSettleNo(), bill.getPayChannel(), null);
+            }
             created++;
         }
         return created;
@@ -242,6 +299,36 @@ public class SettleServiceImpl implements SettleService {
          * 补差失败就不分账，整单转重试：只改了结算基数而钱没补进去，
          * 等于把商家的账做大而钱没打，比不改更糟。
          */
+        /*
+         * **补差只在直连路径上存在。**
+         *
+         * 归集路径下应付账款已经按全额算过了（gross 里加回了积分抵扣），
+         * 再补一次就是**重复付款** —— 100 元的货平台会付出 110。
+         *
+         * 现在不出这个问题，只是因为自营单不走到这里；那是<b>巧合式的正确</b>，
+         * 不是设计。在执行点断言，而不是指望调用方记得。
+         */
+        if (!MerchantQueryPort.FUNDS_DIRECT.equals(bill.getFundsMode())
+                && nz(bill.getSubsidyMinor()) > 0) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+        /*
+         * **通道要真的支持补差。**
+         *
+         * `sys_pay_channel.supports_subsidy` 这一列建出来就是为了拦这里，
+         * 但此前**零读取** —— 不具备补差能力的通道照样走到这一步，
+         * 然后补差调用失败、整单转重试，而根因（通道压根没这个能力）
+         * 要翻网关日志才看得出来。
+         *
+         * 判在这里而不是扣分那一刻：**下单时通道还没定**（markPaid 才有），
+         * 那时判等于拿一个还不存在的事实做判断。
+         */
+        if (nz(bill.getSubsidyMinor()) > 0 && !masterDataPort.supportsSubsidy(bill.getPayChannel())) {
+            bill.setStatus(StlBill.MANUAL);
+            bill.setLastError("通道不支持积分补差，需人工处理：" + bill.getPayChannel());
+            update(bill);
+            return;
+        }
         long subsidy = nz(bill.getSubsidyMinor());
         if (subsidy > 0 && bill.getSubsidyAt() == null) {
             boolean subsidized = callProvider(StlSplitLog.SUBSIDY, bill, "SUB-" + settleNo);
@@ -267,6 +354,15 @@ public class SettleServiceImpl implements SettleService {
         bill.setStatus(StlBill.SPLIT);
         bill.setSplitAt(System.currentTimeMillis());
         update(bill);
+
+        /*
+         * 积分抵扣兑付跟着分账走 —— **同一时点，不另立一套「积分售后期」**。
+         * 分账成立意味着钱真的到了商家账户，抵扣的那部分补差也在同一笔里，
+         * 此刻才谈得上「平台已付」。
+         *
+         * 各设一套时点的代价：月末对不平，第一件事要先分辨是账单晚了还是积分晚了。
+         */
+        pointsService.confirmDeduction(bill.getSubOrderNo());
     }
 
     // ---------------------------------------------------------------- SettlePort（退款链路）
@@ -573,6 +669,14 @@ public class SettleServiceImpl implements SettleService {
         b.setPaymentRef(paymentRef);
         b.setPaidAt(System.currentTimeMillis());
         DataScopeContext.executeWithoutScope(() -> billMapper.updateById(b));
+
+        /*
+         * 归集路径的兑付时点在这里，**不是 executeSplit** ——
+         * 自营单根本不走分账（钱本来就在平台账户，没有划转动作）。
+         * 只把确认挂在分账上的话，归集路径下的 USE 会永远停在 PENDING，
+         * 池子只进不出，而且不报任何错。
+         */
+        pointsService.confirmDeduction(b.getSubOrderNo());
         return toVO(b);
     }
 
@@ -889,7 +993,8 @@ public class SettleServiceImpl implements SettleService {
                 b.getCreatedAt() == null ? 0L
                         : b.getCreatedAt().atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli(),
                 b.getSplitAt(), b.getStoreNo(), b.getPayMerchantNo(),
-                b.getBusinessMode(), b.getInvoiceStatus(), b.getPaymentRef());
+                b.getBusinessMode(), b.getInvoiceStatus(), b.getPaymentRef(),
+                nz(b.getPointsFeeMinor()));
     }
 
     private static long nz(Long v) {

@@ -662,10 +662,19 @@ public class OrderServiceImpl implements OrderService {
             if (!Boolean.TRUE.equals(sub.getPointsGranted())) {
                 long base = sub.getPayAmount() == null ? 0L
                         : sub.getPayAmount() - (sub.getFreightAmount() == null ? 0L : sub.getFreightAmount());
-                long granted = pointsPort.grant(order.getUserNo(), sub.getEntityNo(),
+                var g = pointsPort.grant(order.getUserNo(), sub.getEntityNo(),
                         base, sub.getSubOrderNo());
-                if (granted > 0) {
+                if (g.points() > 0) {
                     sub.setPointsGranted(true);
+                    /*
+                     * 费用金落在子单上，**结算时才真的扣**（发分即付，从货款里出）。
+                     *
+                     * 此前这一列全库零写入 —— 于是 stl_bill 也拿不到值，
+                     * B 端「本期积分支出」永远是 0，而池子只出不进：
+                     * 用户花分时 MERCHANT_PAY 出账，发分时却没有对应的入账，
+                     * 恒等式 2 会随发放量单调失衡。
+                     */
+                    sub.setPointsFeeMinor(g.feeMinor());
                     subOrderMapper.updateById(sub);
                 }
             }

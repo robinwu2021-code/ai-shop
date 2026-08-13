@@ -191,8 +191,16 @@ const KEY_OWNERS: Record<string, { table: string; col?: string }> = {
  */
 const NAME_COLLISIONS: Record<string, string> = {
   request_no:
-    "mkt_request 是求团需求单号；stl_split_log 是分账幂等号。" +
-    "建表时已发现约束名会撞车并加了 uk_split_request_no 前缀，但列名的撞车还在。",
+    "mkt_request 是求团需求单号；stl_split_log 是分账幂等号；" +
+    "ord_invoice_request 是开票申请单号。**三族**，互不相干。\n" +
+    "  建表时已发现约束名会撞车并加了 uk_split_request_no 前缀，但列名的撞车还在。",
+  invoice_no:
+    "**方向相反的两张票，这是最危险的一组同名**：\n" +
+    "  stl_purchase_invoice 是**进项**（供应商开给平台，决定平台能不能列支成本）；\n" +
+    "  ord_invoice_request 是**销项**（平台开给消费者，ADR-017 §3.4 条件 2，" +
+    "决定归集资金模式成不成立）。\n" +
+    "  义务人、方向、法律后果都相反 —— 按名字 join 出来的「发票」会把进项当销项，" +
+    "而两边都有值、都不报错。",
   express_no: "ord_sub_order 是发货快递单号；ord_after_sale 是用户退货的快递单号。方向相反。",
   apply_no:
     "mch_entity_apply 是商家入驻申请单；cmt_community_apply 是商家提报新社区的单子。\n" +

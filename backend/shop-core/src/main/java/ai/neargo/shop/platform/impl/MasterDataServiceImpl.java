@@ -148,6 +148,20 @@ public class MasterDataServiceImpl implements MasterDataService {
     }
 
     @Override
+    public boolean supportsSubsidy(String payChannel) {
+        if (payChannel == null || payChannel.isBlank()) {
+            return false;
+        }
+        var row = DataScopeContext.executeWithoutScope(() ->
+                channelMapper.selectOne(Wrappers.<ai.neargo.shop.platform.entity.SysPayChannel>lambdaQuery()
+                        .eq(ai.neargo.shop.platform.entity.SysPayChannel::getPayChannel, payChannel)
+                        .last("LIMIT 1")));
+        // 查不到按 false：这个字段建出来就是为了拦截，而「查不到 = 支持」
+        // 会让不具备补差能力的通道静默开出积分抵扣 —— 症状是商家账上少一笔钱
+        return row != null && Boolean.TRUE.equals(row.getSupportsSubsidy());
+    }
+
+    @Override
     public String channelName(String payChannel) {
         if (payChannel == null || payChannel.isBlank()) {
             return payChannel;

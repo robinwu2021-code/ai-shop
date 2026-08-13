@@ -113,12 +113,13 @@ describe("canPay —— 商家 × 通道 × 端", () => {
   });
 });
 
-describe("canPoints —— 通道能力 + 四级串联", () => {
+describe("canPoints —— 判据是资金路径，不是主体类型", () => {
   const base = {
     globalOn: true,
     communityOn: true,
     merchantOn: true,
-    subjectType: "INDIVIDUAL" as const,
+    licensed: true,
+    fundsMode: "AGGREGATED" as const,
     channelSupportsSubsidy: true,
   };
 
@@ -126,14 +127,30 @@ describe("canPoints —— 通道能力 + 四级串联", () => {
     expect(canPoints(base).ok).toBe(true);
   });
 
-  it("通道不支持补差就拒绝 —— 而且提示的是「支付方式」不是「本店」", () => {
-    // 积分抵扣要求平台在分账前把差额补进二级商户账户。没有这个能力，
-    // 商家收到的钱就与订单金额对不上 —— 那是**做不到**，不是**没开**。
-    // 提示语说成「本店未开启」的话，用户会去找商家，而商家什么也做不了。
-    const v = canPoints({ ...base, channelSupportsSubsidy: false });
+  it("★★ 无照 + 直连 → 拒 —— 补差是一次平台付钱给自然人，扣缴定性模糊", () => {
+    const v = canPoints({ ...base, licensed: false, fundsMode: "DIRECT" });
     expect(v.ok).toBe(false);
-    expect(v.reason).toContain("支付方式");
-    expect(v.reason).not.toContain("本店");
+    expect(v.reason).toContain("无营业执照");
+    // 「不可开」不是「关着」：说成「未开启」的话，商家会去后台找一个他打不开的开关
+    expect(v.reason).not.toContain("未开启");
+  });
+
+  it("★★ 无照 + 归集 → 放行 —— 平台自己少收，没有「补」这个动作", () => {
+    // 这正是上一版判错的那格：把「自营/无照」当成免检条件或一律拒绝，
+    // 都会把农产品农户这类本可发分的商户判错
+    expect(canPoints({ ...base, licensed: false, fundsMode: "AGGREGATED" }).ok).toBe(true);
+  });
+
+  it("★★ 通道补差能力只在直连下参与判断", () => {
+    // 直连：拿不到补差能力就真的做不到
+    const direct = canPoints({ ...base, fundsMode: "DIRECT", channelSupportsSubsidy: false });
+    expect(direct.ok).toBe(false);
+    expect(direct.reason).toContain("支付方式");
+    expect(direct.reason).not.toContain("本店");
+
+    // 归集：根本不发起补差，拿通道能力去拦它是**错误拒绝**
+    expect(canPoints({ ...base, fundsMode: "AGGREGATED", channelSupportsSubsidy: false }).ok)
+      .toBe(true);
   });
 
   it("上层关，下层一定关", () => {
@@ -141,17 +158,10 @@ describe("canPoints —— 通道能力 + 四级串联", () => {
     expect(canPoints({ ...base, communityOn: false }).ok).toBe(false);
   });
 
-  it("小微一律拒绝，且提示的是「升级后可开启」而不是「未开启」", () => {
-    // 主体这一级排在商家开关之前是刻意的：小微是「不可开」不是「关着」。
-    // 顺序反了的话，小微商家会看到「本店未开启积分」，以为自己打开就行。
-    const v = canPoints({ ...base, subjectType: "MICRO" });
+  it("「不可开」排在商家开关之前 —— 提示语不能说成「未开启」", () => {
+    const v = canPoints({ ...base, licensed: false, fundsMode: "DIRECT", merchantOn: true });
     expect(v.ok).toBe(false);
-    expect(v.reason).toContain("升级");
     expect(v.reason).not.toContain("未开启");
-  });
-
-  it("小微即便商家开关是开的也拒绝 —— 主体优先于开关", () => {
-    expect(canPoints({ ...base, subjectType: "MICRO", merchantOn: true }).ok).toBe(false);
   });
 });
 

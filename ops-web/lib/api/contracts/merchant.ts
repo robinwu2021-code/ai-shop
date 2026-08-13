@@ -1,12 +1,31 @@
 // 覆盖范围：商家治理（P-11.1 入驻审核 / 档案 / 认证标 / 封禁）。
 // ⚠️ 契约禁止 delete*：下架商家用 archiveMerchant，封禁用 setMerchantStatus。
-import type { AdmissionPolicy, AuthCode, LegalForm, DepositTxn, DepositTxnType, Merchant, MerchantApply, MerchantDeposit, MerchantStaffRow, MerchantStatus, Page, StoreMode, Violation, ViolationAction, ViolationType } from "@/lib/types";
+import type {
+  ModeRisk,
+  FundsMode,
+  Qualification,
+  AdmissionPolicy, AuthCode, LegalForm, DepositTxn, DepositTxnType, Merchant, MerchantApply, MerchantDeposit, MerchantStaffRow, MerchantStatus, Page, StoreMode, Violation, ViolationAction, ViolationType } from "@/lib/types";
 import type { ApplyQ, MerchantQ } from "../query";
 
 export interface MerchantApi {
   // ── 门店经营模式与弱主体准入 ─────────────────────────────────
 
   storeModes(merchantNo: string): Promise<StoreMode[]>;
+  /** 无照主体 × 自营门店的税务敞口清单。后端按敞口倒序 */
+  modeRisk(): Promise<ModeRisk[]>;
+  /**
+   * 改资金路径。**拒两种**：取值不在枚举里（400）、无照主体要走归集（409）。
+   * 后者的理由不是税负偏高，是成本不可税前扣除 —— 走一单亏一单。
+   */
+  setFundsMode(v: { merchantNo: string; fundsMode: FundsMode }): Promise<Merchant>;
+
+  // ── 资质（P1-7）。后端三个接口早已实现，此前**前端零调用** ─────────
+  /** 某商家已登记的资质。上架的两个闸门读的就是这张表 */
+  qualifications(merchantNo: string): Promise<Qualification[]>;
+  /** 登记或更新。qualNo 为空 = 新增；expireAt 为 null = 长期有效 */
+  saveQualification(v: { merchantNo: string } & Partial<Qualification>): Promise<Qualification>;
+  /** 撤销。**不物理删** —— 「当初有没有这张证」是要能查的 */
+  revokeQualification(qualNo: string): Promise<Qualification>;
 
   /**
    * 改门店经营模式。

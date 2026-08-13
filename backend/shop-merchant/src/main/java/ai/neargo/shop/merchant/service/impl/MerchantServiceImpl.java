@@ -111,7 +111,10 @@ public class MerchantServiceImpl implements MerchantService {
         if (m == null) {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
-        return ai.neargo.shop.merchant.dto.MerchantScoreVO.of(m);
+        // 归集 = 平台是销售主体：服务与时效是平台在做，标注出来而不是把分藏掉
+        boolean platformIsSeller = ai.neargo.shop.spi.user.MerchantQueryPort.FUNDS_AGGREGATED
+                .equals(m.getFundsMode());
+        return ai.neargo.shop.merchant.dto.MerchantScoreVO.of(m, platformIsSeller);
     }
 
     @Override

@@ -35,13 +35,43 @@ class M5AfterSaleFlowTest {
     private static final String STUB_SECRET = "stub-secret";
 
     @Autowired
+    private ai.neargo.shop.common.OtpStore otpStore;
+
+    @Autowired
     private WebApplicationContext context;
+
+    @Autowired
+    private ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper entityMapperForFunds;
+
+    /**
+     * 本类测的是<b>第三方商家的售后流程</b>（商家审 → 驳回 → 升级平台仲裁）。
+     *
+     * <p>那条流程只在 {@code funds_mode=DIRECT} 下存在：钱在商家二级户、票是他开的，
+     * 所以先由他处理。而归集路径下平台是销售主体，售后<b>直接进平台仲裁</b>
+     * （ADR-017 §3.4 条件 3），根本不经过商家。
+     *
+     * <p>M0001 在 V87 之后是归集，于是这些用例全部走进了自营分支。
+     * <b>显式把它设成直连</b>，而不是放宽断言 —— 断言本身没错，是 fixture 没说清它在测哪条路。
+     */
+    @org.junit.jupiter.api.BeforeEach
+    void makeMerchantDirect() {
+        ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() -> {
+            var e = entityMapperForFunds.selectOne(
+                    com.baomidou.mybatisplus.core.toolkit.Wrappers
+                            .<ai.neargo.shop.merchant.entity.MchEntity>lambdaQuery()
+                            .eq(ai.neargo.shop.merchant.entity.MchEntity::getEntityNo, "M0001")
+                            .last("LIMIT 1"));
+            if (e != null) {
+                e.setFundsMode(ai.neargo.shop.spi.user.MerchantQueryPort.FUNDS_DIRECT);
+                entityMapperForFunds.updateById(e);
+            }
+            return null;
+        });
+    }
 
     @Autowired
     private ObjectMapper json;
 
-    @Autowired
-    private ai.neargo.shop.common.OtpStore otpStore;
 
     @Autowired
     private MchEntityMapper merchantMapper;

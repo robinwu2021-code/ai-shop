@@ -90,7 +90,7 @@ const mForm = ref({
   name: "",
   // 主体类型：个人 → 个体户 → 企业，门槛前低后高（ADR-002 §4）。
   // 默认「个人」—— 一期的目标是「入驻容易」，让摆摊的邻居也能开
-  subject: "MICRO" as MerchantSubject,
+  subject: "NATURAL_PERSON" as MerchantSubject,
   contactName: "",
   contactPhone: "",
   category: "",
@@ -281,7 +281,7 @@ onShow(() => {
           </view>
         </view>
         <!-- 禁用要给理由：光变灰只会让人反复点它 -->
-        <text v-if="!subjectAllowed('MICRO')" class="blocked-tip">
+        <text v-if="!subjectAllowed('NATURAL_PERSON')" class="blocked-tip">
           {{ $t("merchant.microBlocked") }}
         </text>
 

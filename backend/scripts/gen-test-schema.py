@@ -64,10 +64,40 @@ def main():
     return 0
 
 
+def strip_comments(sql):
+    """剥掉 `--` 行注释，**必须在按分号切分之前做**。
+
+    此前是先切后剥，于是**注释里出现一个分号就会把语句切碎** ——
+    V91 的注释里写了一段含分号的正则，生成器当场报「不认识的语句：\\n]*)」，
+    而那个报错既不指向 V91，也看不出跟注释有关。
+
+    要认引号：种子数据的 remark 里可能出现 `--`（中文破折号 `——` 是另一个码位，
+    不会误伤，但英文场景会）。在字符串字面量内部的 `--` 不是注释。
+    """
+    out = []
+    for line in sql.splitlines():
+        in_str = False
+        cut = None
+        i = 0
+        while i < len(line):
+            c = line[i]
+            if c == "'":
+                # SQL 的转义是叠写两个单引号，跳过即可
+                if in_str and i + 1 < len(line) and line[i + 1] == "'":
+                    i += 2
+                    continue
+                in_str = not in_str
+            elif not in_str and c == "-" and i + 1 < len(line) and line[i + 1] == "-":
+                cut = i
+                break
+            i += 1
+        out.append(line[:cut] if cut is not None else line)
+    return "\n".join(out)
+
+
 def replay(sql, tables, order, seeds):
     # 逐语句切分（本项目的迁移脚本里没有存储过程，分号切分是安全的）
-    for stmt in [s.strip() for s in sql.split(";") if s.strip()]:
-        stmt = re.sub(r"--[^\n]*", "", stmt).strip()
+    for stmt in [s.strip() for s in strip_comments(sql).split(";") if s.strip()]:
         if not stmt:
             continue
         low = stmt.lower()

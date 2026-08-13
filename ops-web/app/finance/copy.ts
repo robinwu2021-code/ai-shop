@@ -2,6 +2,20 @@
 import type { PageCopy } from "@/lib/use-copy";
 
 const zh = {
+  ptHint: "恒等式：流通中的积分应当等于池子里的钱。两个数分开看的话，失衡要等到有人主动比对才会发现 —— 所以这一页把差额直接算出来。本页只读：池子的钱由流水推出，要调整就补一笔有类型的流水。",
+  ptCirculating: "流通中的积分",
+  ptPoolBalance: "池子余额",
+  ptPeriodRedeem: "本期兑付",
+  ptGapTitle: "差额（池子 − 流通）",
+  ptBalanced: "已平",
+  ptGapPoolMore: "池子多了：收了钱但没发出对应的分，查发放链路",
+  ptGapPoolLess: "池子少了：发了分但没收到对应的钱，查发分服务费入账",
+  ptByChannelTitle: "按通道分账本",
+  ptByChannelHint: "账面是一个池子，钱实际分散在各通道账户 —— 只看总数的话，一个溢一个空时总数仍然是平的",
+  ptColChannel: "通道",
+  ptColMarket: "市场",
+  ptColBalance: "余额",
+  ptEmpty: "暂无通道账本",
 
   withdrawNotice: "这是运营端唯一会把钱打出去的动作。通过后落「已通过」而不是「已打款」—— 打款结果来自渠道回执，界面上不提供「标记已打款」，那样等于允许在钱没到账时把单子做平。超过 {n} 元必须写复核说明。",
   searchWithdraw: "搜提现单号 / 商家",
@@ -220,6 +234,20 @@ const zh = {
 };
 
 const en: typeof zh = {
+  ptHint: "Identity: points in circulation should equal the money in the pool. Viewed separately, an imbalance only surfaces when someone compares them by hand — so this page computes the gap directly. Read-only: the pool balance is derived from flows; to adjust it, post a typed flow.",
+  ptCirculating: "Points in circulation",
+  ptPoolBalance: "Pool balance",
+  ptPeriodRedeem: "Redeemed this period",
+  ptGapTitle: "Gap (pool − circulation)",
+  ptBalanced: "Balanced",
+  ptGapPoolMore: "Pool is higher: money collected without issuing matching points — check the granting path",
+  ptGapPoolLess: "Pool is lower: points issued without collecting the matching fee — check issuance fee postings",
+  ptByChannelTitle: "Ledger by channel",
+  ptByChannelHint: "One pool on paper, but the money sits in separate channel accounts — a total alone stays balanced while one overflows and another runs dry",
+  ptColChannel: "Channel",
+  ptColMarket: "Market",
+  ptColBalance: "Balance",
+  ptEmpty: "No channel ledger yet",
 
   withdrawNotice: "This is the only action in the console that sends money out. Approving marks it “approved, awaiting payout”, never “paid” — the payout result comes from the channel receipt, and there is no “mark as paid” button, because that would let a case be closed while the money has not landed. Above ¥{n} a review note is required.",
   searchWithdraw: "Search withdrawal no. / merchant",

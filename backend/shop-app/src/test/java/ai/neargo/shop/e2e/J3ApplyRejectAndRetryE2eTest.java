@@ -116,7 +116,7 @@ class J3ApplyRejectAndRetryE2eTest extends E2eBase {
     private LinkedHashMap<String, Object> applyBody(String name, List<String> communityNos) {
         var body = new LinkedHashMap<String, Object>();
         body.put("name", name);
-        body.put("subject", "MICRO");
+        body.put("subject", "NATURAL_PERSON");
         body.put("industry", "RETAIL");
         body.put("contactName", "J3 老板");
         body.put("contactPhone", "13500000000");

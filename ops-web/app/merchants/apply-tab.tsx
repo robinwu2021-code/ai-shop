@@ -45,6 +45,14 @@ function scopeLabel(c: MerchantsCopy, scope?: string | null): string {
   return c.applyScopeCommunity;
 }
 
+/** 文案表是扁平的 Record<string,string>，枚举 → 文案的映射在组件里拼 */
+const qualTypeLabel = (c: MerchantsCopy): Record<string, string> => ({
+  BUSINESS_LICENSE: c.qualBUSINESS_LICENSE,
+  FOOD_PERMIT: c.qualFOOD_PERMIT,
+  FOOD_WORKSHOP: c.qualFOOD_WORKSHOP,
+  OTHER: c.qualOTHER,
+});
+
 export function ApplyTab({ c, canAudit }: { c: MerchantsCopy; canAudit: boolean }) {
   const qc = useQueryClient();
   // 行业/主体的展示名来自后端主数据，不在这里再维护一份翻译
@@ -195,10 +203,45 @@ export function ApplyTab({ c, canAudit }: { c: MerchantsCopy; canAudit: boolean 
               )}
             </DrawerSection>
 
-            {/* 资质：个体户/企业必传，小微免。缺它正是驳回的主因 */}
-            {!!current.licenses?.length && (
+            {/*
+              资质：需要执照的档位必传，免执照档位没有。缺它正是驳回的主因。
+
+              **结构化的那份优先展示** —— 只列文件名的话，审核员看不出
+              「这是执照还是食品证」「什么时候过期」，而通过之后转存进
+              mch_qualification 的正是这一份，类型与有效期都来自它。
+            */}
+            {!!current.qualificationItems?.length && (
               <DrawerSection title={c.applySectionLicenses}>
-                <div className="flex flex-wrap gap-2">
+                <div className="grid grid-cols-2 gap-3">
+                  {current.qualificationItems.map((q, i) => (
+                    <div key={i} className="rounded-lg border p-2">
+                      <div className="flex items-center justify-between">
+                        <Badge tone="info">{qualTypeLabel(c)[q.type] ?? q.type}</Badge>
+                        <span className="txt-caption text-muted-foreground">
+                          {q.expireAt ? fmtTime(q.expireAt) : c.applyQualForever}
+                        </span>
+                      </div>
+                      <div className="mt-1 txt-caption tabular-nums">{q.code || "—"}</div>
+                      {q.imageUrl && (
+                        <a href={q.imageUrl} target="_blank" rel="noreferrer">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={q.imageUrl} alt={q.type} className="mt-2 w-full rounded" />
+                        </a>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </DrawerSection>
+            )}
+
+            {/*
+              旧字段：只有图片 URL。**单独一块并标注「非结构化」** ——
+              与上面那份混在一起，审核员会以为这些也带类型与有效期。
+            */}
+            {!!current.licenses?.length && (
+              <DrawerSection title={c.applySectionRawFiles}>
+                <p className="txt-caption text-muted-foreground">{c.applyRawFilesHint}</p>
+                <div className="mt-1 flex flex-wrap gap-2">
                   {current.licenses.map((url) => (
                     <a key={url} href={url} target="_blank" rel="noreferrer" className="text-sm underline">
                       {url.split("/").pop()}

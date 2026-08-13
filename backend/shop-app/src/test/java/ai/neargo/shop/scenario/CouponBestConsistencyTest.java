@@ -41,13 +41,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class CouponBestConsistencyTest {
 
     @Autowired
+    private ai.neargo.shop.common.OtpStore otpStore;
+
+    @Autowired
     private WebApplicationContext context;
 
     @Autowired
     private ObjectMapper json;
 
-    @Autowired
-    private ai.neargo.shop.common.OtpStore otpStore;
 
     @Autowired
     private CouponMapper couponMapper;

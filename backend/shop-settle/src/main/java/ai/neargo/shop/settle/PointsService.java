@@ -89,7 +89,88 @@ public interface PointsService {
      * @param baseMinor 计分基数：实付金额，不含运费与积分抵扣部分
      * @return 实际发放的分数；商家未开启或基数太小时为 0
      */
-    long grantOnPay(String userNo, String merchantNo, long baseMinor, String subOrderNo);
+    /**
+     * 待生效转正：把到点的 EARN 分从 {@code pending_balance} 挪进 {@code balance}。
+     *
+     * <p><b>由定时任务调用。</b>此前这一步整个不存在 —— 发放时不写 available_at，
+     * 也没有任何任务在转正，于是 balance 恒 0、抵扣永远抵不了，且不报错。
+     *
+     * @return 本次转正的流水条数。0 表示「扫过了，没有到点的」——
+     *         与「任务没跑」是两回事，调用方据此决定要不要记日志
+     */
+    int activateDuePoints();
+
+    /**
+     * 抵扣兑付成立：把该子单的 {@code USE} 流水从 {@code PENDING} 置为 {@code CONFIRMED}，
+     * 并记一笔 {@code MERCHANT_PAY} 出池 —— <b>平台真的把这笔钱付给了收单商家</b>。
+     *
+     * <p><b>时点跟着账单走，不另立一套「积分售后期」。</b>
+     * {@code stl_bill} 里已经有这套语义：{@code accruedAt}（计提，支付成功时）
+     * 与 {@code splitAt}（资金真的动，售后期结束）。
+     * 抵扣兑付问的是同一个问题 —— 平台什么时候真的付钱给收单方 ——
+     * 所以直接复用那个时点：
+     * <ul>
+     *   <li>直连：{@code executeSplit} 分账成功时</li>
+     *   <li>归集：账单 {@code markPaid} 时（<b>自营单根本不走 executeSplit</b>，
+     *       只挂在分账上的话，归集路径的积分永远确认不了）</li>
+     * </ul>
+     *
+     * <p>各设一套的代价很具体：月末对不平时，第一件事要先分辨
+     * 「是账单晚了还是积分晚了」，而这两条链路的延迟原因完全不同。
+     *
+     * <p><b>幂等</b>：只挑 {@code PENDING} 的改。已 {@code CONFIRMED} 的重复调用返回 0，
+     * 已 {@code REVERSED}（退款退回）的<b>不会被重新确认</b> ——
+     * 那正是这里按状态过滤而不是按子单号覆写的原因。
+     *
+     * @return 本次确认的流水条数
+     */
+    int confirmDeduction(String subOrderNo);
+
+    /**
+     * 到期清零：把 {@code expire_at} 已过的账户余额清空，并把对应的钱转为平台收入。
+     *
+     * <p><b>这个任务此前不存在，而它是恒等式成立的前提。</b>
+     * 池子的恒等式是「流通中的积分 == 池子里的钱」——
+     * 用户的分过期了却不清零，流通侧不减；池子侧也不记 {@code EXPIRE_INCOME}，
+     * 于是<b>池子只增不减，恒等式永久失衡</b>，且失衡量随时间单调增长。
+     *
+     * <p><b>滚动到期</b>：任何积分变动都把 {@code expire_at} 推后，
+     * 所以到期意味着「这个账户已经 {@code inactiveDays} 天没有任何动静」。
+     *
+     * <p>⚠️ 它是<b>一次性全部清零</b>，冲击远大于零星过期 ——
+     * 到期前的推送提醒不是可选项，没有提醒这个模型对用户是敌意的。
+     * 提醒本身由另一条链路负责（{@code expire_notified_at}），本方法只管清。
+     *
+     * @return 本次清零的账户数
+     */
+    int expireIdleAccounts();
+
+    /**
+     * 积分资金池入账。
+     *
+     * <p><b>此前池子只读不写</b>：{@code stl_points_pool} 与
+     * {@code stl_bill.points_fee_minor} 全仓找不到任何写入点 ——
+     * 预付费模型的账<b>一分钱都没记过</b>，B 端「本期积分支出」永远是 0，
+     * 而 overview 的恒等式（流通积分 vs 池子余额）两边都是 0，看着还挺平。
+     *
+     * <p><b>按资金路径分流</b>：平台掏的钱在两条路径下性质不同 ——
+     * <ul>
+     *   <li>直连：划进商家二级户 → {@code MERCHANT_PAY}（对外付款）</li>
+     *   <li>归集：平台自己少收   → {@code PLATFORM_ISSUE}（收入减项）</li>
+     * </ul>
+     * 记成同一种的话，「平台给商家补了多少钱」这个数会被归集的部分虚增。
+     *
+     * @param poolType    {@code MERCHANT_RECEIVE}（收发分服务费，IN）/
+     *                    {@code MERCHANT_PAY} / {@code PLATFORM_ISSUE}（OUT）
+     * @param amountMinor 金额（分），<b>必须为正</b> —— 方向由 poolType 决定，
+     *                    不靠符号表达。符号与方向两处表达同一件事，迟早对不上
+     * @param refNo       关联单据（结算单号 / 补贴批次），用于对账时回溯
+     */
+    void recordPoolFlow(String poolType, long amountMinor, String entityNo,
+                        String refNo, String payChannel, String market);
+
+    ai.neargo.shop.spi.settle.PointsPort.GrantResult grantOnPay(
+            String userNo, String merchantNo, long baseMinor, String subOrderNo);
 
     /**
      * 一个子单的抵扣目标。

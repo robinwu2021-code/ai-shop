@@ -7,7 +7,7 @@ import { onShow, onLoad } from "@dcloudio/uni-app";
 import { api } from "@/api";
 import { CATEGORY_TYPE, ROUTES } from "@shared/utils/constants";
 import { datetime, money } from "@shared/utils/format";
-import type { Order } from "@shared/types";
+import type { InvoiceRequest, Order } from "@shared/types";
 
 const { t } = useI18n();
 
@@ -26,6 +26,60 @@ const canReview = computed(
   () => order.value?.status === "COMPLETED" && !order.value?.reviewed,
 );
 
+/*
+ * 开票（ADR-017 §3.4 条件 2）。**此前这里什么都没有** ——
+ * C 端只有下单前一句「本商家无法开具发票」，连申请的地方都没有。
+ * 而归集路径要成立，「平台开票给消费者」是四个必要条件之一：
+ * 没有入口 = 没有履行途径。
+ *
+ * 开的是**平台的票**，不是商家的 —— 所以这个按钮跟商家有没有执照无关。
+ */
+const invoice = ref<InvoiceRequest | null>(null);
+// 没成交就没有可开的票；被驳回过可以改抬头重申请
+const canInvoice = computed(
+  () =>
+    !!order.value &&
+    !["WAIT_PAY", "CANCELLED", "CLOSED"].includes(order.value.status) &&
+    (!invoice.value || invoice.value.status === "REJECTED"),
+);
+
+async function loadInvoice() {
+  if (!orderNo.value) return;
+  // 查不到是常态（这单还没申请过），后端返回 null 而不是报错
+  invoice.value = await api.invoiceOfOrder(orderNo.value);
+}
+
+async function applyInvoice() {
+  const { confirm, content } = await uni.showModal({
+    title: String(t("invoice.applyTitle")),
+    editable: true,
+    placeholderText: String(t("invoice.titlePh")),
+    content: invoice.value?.title ?? "",
+  });
+  if (!confirm || !content?.trim()) return;
+  const mail = await uni.showModal({
+    title: String(t("invoice.emailTitle")),
+    editable: true,
+    placeholderText: String(t("invoice.emailPh")),
+    content: invoice.value?.email ?? "",
+  });
+  if (!mail.confirm || !mail.content?.trim()) return;
+  try {
+    // 这一版只收个人抬头：单位抬头要税号，而一个 showModal 收不了两个字段。
+    // 收不全就开不出票 —— 与其半途报错，不如这一版先只做个人抬头，
+    // 单位抬头等专门的表单页
+    invoice.value = await api.applyInvoice({
+      orderNo: orderNo.value,
+      titleType: "PERSONAL",
+      title: content.trim(),
+      email: mail.content.trim(),
+    });
+    uni.showToast({ title: String(t("invoice.applied")), icon: "none" });
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: "none" });
+  }
+}
+
 const isVirtualOrCard = computed(() => {
   const type = order.value?.items[0]?.type;
   return type === CATEGORY_TYPE.VIRTUAL || type === CATEGORY_TYPE.CARD;
@@ -33,7 +87,9 @@ const isVirtualOrCard = computed(() => {
 
 async function load() {
   if (!orderNo.value) return;
-  order.value = await api.orderDetail(orderNo.value);
+  // 并行拉：开票状态与订单详情互不依赖，串行只会让页面多等一个来回
+  const [o] = await Promise.all([api.orderDetail(orderNo.value), loadInvoice()]);
+  order.value = o;
 }
 
 async function cancel() {
@@ -281,6 +337,17 @@ onShow(load);
       </view>
     </view>
 
+    <!-- 开票状态。**申请完就没下文**是这类入口最常见的失败 ——
+         用户点完按钮，页面毫无变化，他会以为没提交成功而再点一次 -->
+    <view v-if="invoice" class="sh-card invoicecard">
+      <text class="sh-muted">{{ $t("invoice.section") }}</text>
+      <text class="invoicecard__st">{{ $t(`invoiceStatus.${invoice.status}`) }}</text>
+      <text v-if="invoice.status === 'ISSUED'" class="sh-muted">
+        {{ $t("invoice.sentTo", { email: invoice.email }) }}
+      </text>
+      <text v-if="invoice.rejectReason" class="sh-muted">{{ invoice.rejectReason }}</text>
+    </view>
+
     <view class="ops">
       <view v-if="order.status === 'WAIT_PAY'" class="sh-btn op" @tap="pay">
         {{ $t("orders.pay") }}
@@ -293,6 +360,9 @@ onShow(load);
       </view>
       <view v-if="canAfterSale" class="sh-btn sh-btn--soft op" @tap="afterSale">
         {{ $t("order.afterSale") }}
+      </view>
+      <view v-if="canInvoice" class="sh-btn sh-btn--soft op" @tap="applyInvoice">
+        {{ invoice ? $t("invoice.reapply") : $t("invoice.apply") }}
       </view>
       <view class="sh-btn sh-btn--muted op" @tap="buyAgain">{{ $t("order.buyAgain") }}</view>
     </view>

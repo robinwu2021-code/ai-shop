@@ -22,6 +22,7 @@ import ai.neargo.shop.spi.user.MerchantAdminPort;
 import ai.neargo.shop.spi.platform.SettingPort;
 import ai.neargo.shop.spi.user.MerchantQueryPort;
 import tools.jackson.databind.ObjectMapper;
+import ai.neargo.common.data.scope.DataScopeContext;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -45,6 +46,9 @@ import java.util.List;
  */
 @Service
 public class PointsServiceImpl implements PointsService {
+
+    private static final org.slf4j.Logger log =
+            org.slf4j.LoggerFactory.getLogger(PointsServiceImpl.class);
 
     private static final DateTimeFormatter PERIOD = DateTimeFormatter.ofPattern("yyyyMM");
 
@@ -296,6 +300,8 @@ public class PointsServiceImpl implements PointsService {
     private static final String BIZ_REFUND = "REFUND";
     private static final String USE_PENDING = "PENDING";
     private static final String USE_REVERSED = "REVERSED";
+    /** 兑付成立 —— 平台已把钱付给收单商家，此后不可再退回池子 */
+    private static final String USE_CONFIRMED = "CONFIRMED";
 
     @Override
     @Transactional
@@ -397,6 +403,38 @@ public class PointsServiceImpl implements PointsService {
 
     @Override
     @Transactional
+    public int confirmDeduction(String subOrderNo) {
+        PtsUserLedger use = ledgerMapper.selectOne(Wrappers.<PtsUserLedger>lambdaQuery()
+                .eq(PtsUserLedger::getSubOrderNo, subOrderNo)
+                .eq(PtsUserLedger::getBizType, BIZ_USE)
+                // **只挑 PENDING**。已 REVERSED 的（退款退回过）不能被重新确认 ——
+                // 按子单号覆写的写法会把退过的单又付一遍钱，而账面看不出异常
+                .eq(PtsUserLedger::getStatus, USE_PENDING)
+                .last("LIMIT 1"));
+        if (use == null) {
+            // 没用积分、或已确认、或已退回：都是静默返回 0。
+            // 结算链路会对同一单调多次（分账重试、账单重推），报错会让结算失败
+            return 0;
+        }
+        long amountMinor = use.getAmountMinor() == null ? 0L : use.getAmountMinor();
+
+        use.setStatus(USE_CONFIRMED);
+        ledgerMapper.updateById(use);
+
+        /*
+         * 出池：平台把这笔钱付给收单商家。**到这一步池子才真的减少** ——
+         * 此前 USE 只是预占（订单还可能取消或退款），池子一分没动。
+         *
+         * 不记这一笔的话，池子只进不出，「流通中的积分 == 池子里的钱」
+         * 这条恒等式会随成交量单调失衡 —— 与 EXPIRE_INCOME 缺失时是同一个病。
+         */
+        recordPoolFlow(StlPointsPool.MERCHANT_PAY, amountMinor,
+                use.getAcceptorMerchantNo(), subOrderNo, null, use.getMarket());
+        return 1;
+    }
+
+    @Override
+    @Transactional
     public void reverse(String subOrderNo, String reason) {
         PtsUserLedger use = ledgerMapper.selectOne(Wrappers.<PtsUserLedger>lambdaQuery()
                 .eq(PtsUserLedger::getSubOrderNo, subOrderNo)
@@ -434,14 +472,147 @@ public class PointsServiceImpl implements PointsService {
 
     @Override
     @Transactional
-    public long grantOnPay(String userNo, String merchantNo, long baseMinor, String subOrderNo) {
+    public void recordPoolFlow(String poolType, long amountMinor, String entityNo,
+                               String refNo, String payChannel, String market) {
+        if (amountMinor <= 0) {
+            // 0 或负数不入账。**方向由 poolType 决定，不靠符号** ——
+            // 两处表达同一件事，迟早对不上，而对不上时恒等式不会告诉你是哪一笔
+            return;
+        }
+        String mkt = market == null || market.isBlank() ? DEFAULT_MARKET : market;
+        String direction = StlPointsPool.MERCHANT_RECEIVE.equals(poolType)
+                ? StlPointsPool.IN : StlPointsPool.OUT;
+
+        StlPointsPool f = new StlPointsPool();
+        f.setFlowNo(BizKey.next(BizKey.POINTS_POOL));
+        f.setDirection(direction);
+        f.setPoolType(poolType);
+        f.setAmountMinor(amountMinor);
+        f.setEntityNo(entityNo);
+        f.setRefNo(refNo);
+        f.setMarket(mkt);
+        f.setPayChannel(payChannel);
+        f.setPeriod(java.time.LocalDate.now().toString().substring(0, 7));
+        /*
+         * balance_after 落快照。逐笔重算的代价不是性能，是**对不上时说不清**：
+         * 中间少了一笔的话，只有快照能指出断点在哪一行。
+         */
+        f.setBalanceAfter(poolBalanceOf(mkt, payChannel)
+                + (StlPointsPool.IN.equals(direction) ? amountMinor : -amountMinor));
+        DataScopeContext.executeWithoutScope(() -> poolMapper.insert(f));
+    }
+
+    /** 某通道账户当前的池子余额。IN 加 OUT 减 —— 与 overview 同一口径 */
+    private long poolBalanceOf(String market, String payChannel) {
+        return DataScopeContext.executeWithoutScope(() ->
+                        poolMapper.selectList(Wrappers.<StlPointsPool>lambdaQuery()
+                                .eq(StlPointsPool::getMarket, market)
+                                .eq(StlPointsPool::getPayChannel, payChannel)))
+                .stream()
+                .mapToLong(x -> StlPointsPool.IN.equals(x.getDirection())
+                        ? x.getAmountMinor() : -x.getAmountMinor())
+                .sum();
+    }
+
+    @Override
+    @Transactional
+    public int expireIdleAccounts() {
+        long now = System.currentTimeMillis();
+        List<PtsUserAccount> idle = DataScopeContext.executeWithoutScope(() ->
+                accountMapper.selectList(Wrappers.<PtsUserAccount>lambdaQuery()
+                        .isNotNull(PtsUserAccount::getExpireAt)
+                        .le(PtsUserAccount::getExpireAt, now)
+                        // 已经是 0 的不用再清 —— 否则每天都会为同一批空账户写一条 0 分流水
+                        .gt(PtsUserAccount::getBalance, 0)
+                        .last("LIMIT 500")));
+
+        int cleared = 0;
+        for (PtsUserAccount a : idle) {
+            long amount = a.getBalance() == null ? 0L : a.getBalance();
+            String market = a.getMarket() == null ? DEFAULT_MARKET : a.getMarket();
+
+            /*
+             * 先记流水再清余额。顺序反了的话，中间崩一次就只剩「余额没了」
+             * 而没有任何一条记录解释得了它去哪了 —— 而积分是用户看得见的东西。
+             *
+             * points 带符号：EXPIRE 记负数（与 USE/REVOKE 同一约定）。
+             */
+            PtsUserLedger row = new PtsUserLedger();
+            row.setLedgerNo(BizKey.next(BizKey.POINTS_LEDGER));
+            row.setUserNo(a.getUserNo());
+            row.setBizType(PtsUserLedger.EXPIRE);
+            row.setPoints(-amount);
+            row.setBalanceAfter(0L);
+            row.setMarket(market);
+            DataScopeContext.executeWithoutScope(() -> ledgerMapper.insert(row));
+
+            a.setBalance(0L);
+            DataScopeContext.executeWithoutScope(() -> accountMapper.updateById(a));
+
+            /*
+             * **池子侧同步转收入。** 不记这一笔的话池子只增不减 ——
+             * 用户那边的分没了，池子里对应的钱还挂着，恒等式永久失衡，
+             * 且失衡量随时间单调增长。这是 EXPIRE_INCOME 这个类型存在的全部理由。
+             */
+            recordPoolFlow(StlPointsPool.EXPIRE_INCOME, amount, null,
+                    row.getLedgerNo(), null, market);
+            cleared++;
+        }
+        return cleared;
+    }
+
+    @Override
+    @Transactional
+    public int activateDuePoints() {
+        long now = System.currentTimeMillis();
+        /*
+         * 只扫「到点且未转正」的 EARN 行。
+         *
+         * **幂等靠 activated_at，不靠余额守卫兜底** —— 只按时间判的话，
+         * 每天扫到的都是同一批已转过的行，第二次转正被「pending 不足」拦下、
+         * 返回 0 行、任务当成没事发生，**不报错也永远不知道自己在空转**。
+         */
+        List<PtsUserLedger> due = DataScopeContext.executeWithoutScope(() ->
+                ledgerMapper.selectList(Wrappers.<PtsUserLedger>lambdaQuery()
+                        .eq(PtsUserLedger::getBizType, BIZ_EARN)
+                        .isNull(PtsUserLedger::getActivatedAt)
+                        .isNotNull(PtsUserLedger::getAvailableAt)
+                        .le(PtsUserLedger::getAvailableAt, now)
+                        // 一次别捞太多：这条链上每行都要改账户余额，
+                        // 一个超大事务卡住的是所有人的下单
+                        .last("LIMIT 500")));
+        int activated = 0;
+        for (PtsUserLedger row : due) {
+            String market = row.getMarket() == null ? DEFAULT_MARKET : row.getMarket();
+            int moved = accountMapper.activatePending(row.getUserNo(), market, row.getPoints(), now);
+            if (moved == 0) {
+                /*
+                 * pending 不够。**不是可以忽略的情况** —— 说明发放与转正的账已经对不上，
+                 * 而这条行会被反复扫到。标记掉并留日志，让它变成一条可查的记录，
+                 * 而不是每天在任务里空转一次。
+                 */
+                log.warn("积分转正跳过：pending 不足 user={} ledger={} points={}",
+                        row.getUserNo(), row.getLedgerNo(), row.getPoints());
+            } else {
+                activated++;
+            }
+            row.setActivatedAt(now);
+            DataScopeContext.executeWithoutScope(() -> ledgerMapper.updateById(row));
+        }
+        return activated;
+    }
+
+    @Override
+    @Transactional
+    public ai.neargo.shop.spi.settle.PointsPort.GrantResult grantOnPay(
+            String userNo, String merchantNo, long baseMinor, String subOrderNo) {
         if (baseMinor <= 0 || pointsDenyReason(merchantNo) != null) {
-            return 0;
+            return ai.neargo.shop.spi.settle.PointsPort.GrantResult.none();
         }
         PointsConfig cfg = config();
         long points = cfg.earnFor(baseMinor);
         if (points <= 0) {
-            return 0;
+            return ai.neargo.shop.spi.settle.PointsPort.GrantResult.none();
         }
         PtsUserAccount account = loadAccount(userNo);
         long now = System.currentTimeMillis();
@@ -467,11 +638,34 @@ public class PointsServiceImpl implements PointsService {
         earn.setPoints(points);
         // 待生效的分不进 balance，所以余额快照不变 —— 这一行看着奇怪，但它是对的
         earn.setBalanceAfter(account.getBalance());
+        /*
+         * **可用时间。此前这一行不存在，整条积分链因此是断的。**
+         *
+         * 后果链：available_at 恒 NULL → 转正任务扫不到任何行 → balance 恒 0
+         * → maxUsablePoints 算出 0 → 抵扣永远抵不了。
+         * 用户看得见分在涨（pending_balance），却一分也花不出去，
+         * 而 account() 的 nextActivate 也恒返回 null —— 页面连「何时生效」都显示不了。
+         *
+         * 全链路没有任何一处报错。
+         */
+        earn.setAvailableAt(now + cfg.pendingDays() * 86_400_000L);
         // 发放方只用于追溯与统计，不参与任何资金流动
         earn.setIssuerMerchantNo(merchantNo);
         earn.setSubOrderNo(subOrderNo);
         earn.setMarket(market);
         ledgerMapper.insert(earn);
-        return points;
+
+        /*
+         * 费用金 **1:1**，不打折不加价。
+         *
+         * 这些分将来可能被用户在**别家**花掉，那时平台要从池子里付给收单方 ——
+         * 收的比将来要付的少，恒等式 2（池子余额 == 流通中积分 × 汇率）当场不成立，
+         * 而失衡量会随发放量单调增长，与此前 EXPIRE_INCOME 缺失时是同一个病。
+         *
+         * **这里只算定，不入池**：钱还没到手（货款要到结算才扣）。
+         * 入池发生在 SettleServiceImpl 建单时，与货款扣减同一时刻 ——
+         * 提前入池等于池子里记着一笔还没收到的钱。
+         */
+        return new ai.neargo.shop.spi.settle.PointsPort.GrantResult(points, cfg.toMinor(points));
     }
 }

@@ -42,13 +42,14 @@ class CampaignDiscountFlowTest {
     private static final String TEST_CAMPAIGN = "测试活动";
 
     @Autowired
+    private ai.neargo.shop.common.OtpStore otpStore;
+
+    @Autowired
     private WebApplicationContext context;
 
     @Autowired
     private ObjectMapper json;
 
-    @Autowired
-    private ai.neargo.shop.common.OtpStore otpStore;
 
     @Autowired
     private CampaignMapper campaignMapper;

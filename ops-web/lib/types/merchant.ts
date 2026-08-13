@@ -6,7 +6,7 @@ import type { Archivable } from "./common";
  * 商家**分层**（规模）。对应 `mch_entity.tier`，与 shared 的 `MerchantTier` 同名同值。
  *
  * ⚠️ 这里此前是 `PERSONAL | INDIVIDUAL | COMPANY` —— 那是**主体类型**的旧取值
- * （权威码见 shared 的 `MerchantSubject`：MICRO / INDIVIDUAL / ENTERPRISE）。
+ * （权威码见 shared 的 `MerchantSubject`：NATURAL_PERSON / INDIVIDUAL / ENTERPRISE）。
  * 名字对得上后端字段，取值却来自另一个概念，于是这一列**永远显示不出东西**：
  * 后端下发的 tier 要么是 null（一期没启用分层），要么是 SMALL，
  * 而 SMALL 不在这个联合类型里，i18n 也查不到词条。
@@ -65,8 +65,15 @@ export interface Merchant extends Archivable {
   categoryCodes: string[];
   /** 认证标（P-11.1.2） */
   verified: boolean;
-  /** 已上传并通过的资质名。授权需要资质的类目码时要对照它 */
-  qualifications: string[];
+  /**
+   * 已登记的结构化资质名。授权需要资质的类目码时要对照它。
+   *
+   * **必须是可选的。** 后端 `MerchantProfileVO` 曾经完全没有这个字段，
+   * 而这里声明成必填 `string[]` —— 类型检查过得去，真接口下 `m.qualifications.length`
+   * 直接抛 TypeError。只有 mock 有这个字段，所以一直没暴露。
+   * 「契约有、后端不发」是字段问题，不是类型问题：**别把 `?` 去掉**。
+   */
+  qualifications?: string[];
   /** 信用档案：毁约次数（P-11.1.5 / ADR-003） */
   breachCount: number;
   /** 分账接收方报备状态（P-12.1.1，ADR-002） */
@@ -87,10 +94,60 @@ export interface Merchant extends Archivable {
   /**
    * 主体档位。**准入档位完全由它决定** —— 保证金、限额、禁售品类都按它取策略。
    *
-   * 此前档案里没有它：运营看得到「这家被限额 500」，看不到「因为它是小微」，
+   * 此前档案里没有它：运营看得到「这家被限额 500」，看不到「因为它是无照自然人」，
    * 于是只会来问为什么。
    */
   legalForm?: LegalForm | null;
+
+  /**
+   * 资金路径（轴②）：钱先进谁的账户。
+   *
+   * **与经营模式（`StoreMode.businessMode`，轴③）是两件事** ——
+   * 这个说钱先进谁的账户，那个说谁是销售主体。两者正交：
+   * 「直连 + 自营」（钱进商家户却说平台是卖方）是非法组合，要拦。
+   *
+   * 而「要不要给积分补差」判的是**这一列** —— 钱在商家账户才需要补进去。
+   */
+  fundsMode?: FundsMode;
+  /**
+   * 农业生产者。**无照主体走归集的唯一例外** ——
+   * 平台可自开农产品收购发票，成本有合法凭证。
+   */
+  agriProducer?: boolean;
+}
+
+/**
+ * 资金路径。**能走哪条由商户类型决定，不是平台自选**（ADR-017 §3.2）：
+ * 自然人开不出票 → 平台按全额确认收入而成本不可税前扣除 → 禁归集；
+ * 自产农产品例外。
+ */
+export type FundsMode = "AGGREGATED" | "DIRECT";
+
+/** 资质证件类型。与后端 MchQualification 的四个常量逐字一致 */
+export type QualificationType = "BUSINESS_LICENSE" | "FOOD_PERMIT" | "FOOD_WORKSHOP" | "OTHER";
+
+/** 申请单上提交的一条结构化资质。`expireAt` 为 null = 长期有效 */
+export interface QualificationItem {
+  type: QualificationType;
+  code: string;
+  imageUrl: string;
+  expireAt: number | null;
+  issuer?: string;
+}
+
+/** 主体档案上**已登记**的一条资质（mch_qualification）。上架闸门读的就是它 */
+export interface Qualification {
+  qualNo: string;
+  entityNo: string;
+  qualType: string;
+  /** 证件名。**要与 sys_auth_code.required_qualification 同一套字面量** —— 类目授权按名字比对 */
+  qualName: string;
+  qualNumber?: string;
+  imageUrl?: string;
+  /** null = 长期有效。与「已过期」是两回事，扫描任务不碰它 */
+  expireAt?: number | null;
+  /** VALID / EXPIRED / REVOKED */
+  status: string;
 }
 
 // ── 类目授权 / 信用与处置（P-11.1.3 / 11.1.4 / 11.1.5）────────────────
@@ -163,7 +220,7 @@ export interface MerchantApply {
   /** 拟用店铺名 */
   /** 拟用店铺名。**存快照** —— 后来改名不该让历史申请跟着变 */
   name: string;
-  /** 法律形态 MICRO / INDIVIDUAL / ENTERPRISE */
+  /** 法律形态 NATURAL_PERSON / INDIVIDUAL / ENTERPRISE */
   subject: string;
   /** 联系人姓名。审核要打电话找人 */
   contactName: string;
@@ -185,8 +242,14 @@ export interface MerchantApply {
   serviceScope?: string;
   /** 覆盖的小区。scope=COMMUNITY 时**空 = 通过之后对谁都不可见** */
   communityNos?: string[];
-  /** 已传的资质图。个体户/企业必传，小微免 —— 缺它正是驳回的主因 */
+  /** 已传的资质图。个体户/企业必传，自然人免 —— 缺它正是驳回的主因 */
   licenses?: string[];
+  /**
+   * 结构化资质（V79）。**审核台看的是这一份** ——
+   * 上面的 licenses 只有图片 URL，审核员看不出「这是执照还是食品证」「什么时候过期」。
+   * 而通过之后转存进 mch_qualification 的正是它。
+   */
+  qualificationItems?: QualificationItem[];
   /** 是否愿意承接自提点（ADR-005）。**只是意愿，不代表点已建立** */
   asPickupPoint: boolean;
   /** 审核状态 */
@@ -224,6 +287,31 @@ export interface StoreMode {
 }
 
 /**
+ * 无营业执照的主体 × 自营门店 —— **税务敞口清单**。
+ *
+ * 自营下平台是销售主体，列支成本要进项发票，而无照主体开不出票 ——
+ * 这笔支出**不得在企业所得税前扣除**，不是「多交一点税」，
+ * 是账面上凭空多出等额利润。
+ *
+ * 而这个组合**是默认会发生的**：`mch_store.business_mode` 默认就是自营，
+ * 且后端没有任何一处校验「无照不得自营」。所以这份清单不是异常报表，
+ * 是**现状盘点**。
+ */
+export interface ModeRisk {
+  merchantNo: string;
+  merchantName: string;
+  /** 主体档位（免执照的那一档） */
+  legalForm: string;
+  storeNo: string;
+  storeName: string;
+  businessMode: string;
+  /** 已产生的自营结算单数。**0 表示「查过了，没有」** —— 与「还没查」在界面上要分开 */
+  settledBills: number;
+  /** 累计商家实得（分）。**这就是不可税前扣除的成本规模** */
+  settledMinor: number;
+}
+
+/**
  * 准入策略：按 `legalForm` 档位配置，**不按商户配置**。
  *
  * 挂档位是三档三行，改规则改一行；挂商户要逐个配、改一次规则要批量刷数据。
@@ -233,8 +321,11 @@ export interface StoreMode {
  * 主体档位 —— 与后端 `mch_entity.legal_form` 同一套取值。
  *
  * **三档锁定，不再增删**：S1/S2/S3 是对这三个值的读法，不是新枚举。
+ *
+ * V87 起 `MICRO` 改名 `NATURAL_PERSON` —— 那是通道发明的收款档位，不是法律形态，
+ * 且与法规「小微企业（有照）」重名含义相反。通道档留在 `mch_payment_merchant` 上。
  */
-export type LegalForm = "MICRO" | "INDIVIDUAL" | "ENTERPRISE";
+export type LegalForm = "NATURAL_PERSON" | "INDIVIDUAL" | "ENTERPRISE";
 
 export interface AdmissionPolicy {
   /** 主体档位，三档锁定 */

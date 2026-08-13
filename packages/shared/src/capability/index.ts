@@ -10,7 +10,7 @@
 // 两侧跑同一套逻辑；服务端在下单时**重跑一遍**，不信任端上的裁剪。
 //
 // 设计依据：docs/technical/多端多通道-详细设计.md §二
-import type { MerchantSubject, PaymentApplyStatus } from "@shared/types";
+import type { FundsMode, MerchantSubject, PaymentApplyStatus } from "@shared/types";
 
 /** 端。注意是「端」不是「支付通道」—— 同一个通道在不同端受的约束不同 */
 export type Scene = "MP_WECHAT" | "MP_ALIPAY" | "IOS" | "ANDROID" | "H5";
@@ -174,27 +174,52 @@ export function canPoints(ctx: {
   globalOn: boolean;
   communityOn: boolean;
   merchantOn: boolean;
-  subjectType: MerchantSubject;
+  /**
+   * 这家主体**有没有营业执照**。权威在 `sys_legal_form.need_license`，
+   * 由 `/common/master-data` 下发 —— **不要在端上写 `subject === "MICRO"`**：
+   * 主体取值正在改造（MICRO → NATURAL_PERSON），写死取值那天会静默失配。
+   */
+  licensed: boolean;
+  /**
+   * 资金路径：钱先进谁的账户。
+   *
+   * **补差只在 `DIRECT` 下发生** —— 钱在商家二级户，积分抵扣让他少收，
+   * 平台要补进去，而那是一次**平台付钱给自然人**（扣缴定性模糊）。
+   * `AGGREGATED` 下钱本就在平台手里，平台自己少收，没有「补」这个动作。
+   *
+   * ⚠️ **不要用 `business_mode` 判**：那说的是「谁是销售主体」，
+   * 与「钱在谁手里」正交。两者不一致时会判错 —— 而库里恰好有这样的单。
+   */
+  fundsMode: FundsMode;
   /**
    * 本次支付走的通道能否**补差**（`sys_pay_channel.supports_subsidy`）。
    *
-   * 积分抵扣要求平台在分账前把差额补进二级商户账户，否则商家收到的钱
-   * 与订单金额对不上。通道没有这个能力时**直接不开积分** ——
-   * 不做兜底记账：那意味着一套余额表、冲抵逻辑、打款流程和监控，
-   * 而它服务的是一个尚不存在的通道。
+   * **只在 `DIRECT` 下参与判断**：归集路径根本不发起补差，
+   * 拿通道能力去拦它会错误拒绝掉本可以开积分的商户（例如农产品农户）。
    */
   channelSupportsSubsidy: boolean;
 }): Verdict {
   if (!ctx.globalOn) return deny("积分功能未开放");
-  // 通道能力排在社区/商家开关之前：它是**做不到**，不是**没开** ——
-  // 提示语要让用户知道换个端就能用，而不是以为这家店不支持
-  if (!ctx.channelSupportsSubsidy) return deny("当前支付方式不支持积分抵扣");
+  /*
+   * 通道能否补差 —— **只在直连路径上问这个问题**。
+   * 顺序放在社区/商家开关之前：它是「做不到」，不是「没开」，提示语要让用户
+   * 知道换个端就能用，而不是以为这家店不支持。
+   */
+  if (ctx.fundsMode === "DIRECT" && !ctx.channelSupportsSubsidy) {
+    return deny("当前支付方式不支持积分抵扣");
+  }
   if (!ctx.communityOn) return deny("本社区暂未开放积分");
-  if (ctx.subjectType === "MICRO") {
-    // 积分兑付涉及平台向商家付钱，而小微的税务定性本就模糊，叠加后扣缴风险更高。
-    // 同时它天然是一个升级激励。
-    return deny("本店暂不支持积分（升级为个体工商户后可开启）");
+  /*
+   * 无照 + 直连：补差是一次平台 → 自然人的付款，扣缴义务定性模糊，维持禁止。
+   * 无照 + 归集：平台自己少收，没有付款动作 —— 放行。
+   *
+   * 排在商家开关**之前**是刻意的：这是「不可开」而不是「关着」，
+   * 提示语也不同 —— 前者要告诉他条件是什么，后者只是「你自己关了」。
+   */
+  if (!ctx.licensed && ctx.fundsMode === "DIRECT") {
+    return deny("本店暂不支持积分（无营业执照，且收款直连到商家账户）");
   }
   if (!ctx.merchantOn) return deny("本店未开启积分");
   return allow();
 }
+

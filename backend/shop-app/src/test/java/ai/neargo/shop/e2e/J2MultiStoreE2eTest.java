@@ -109,7 +109,7 @@ class J2MultiStoreE2eTest extends E2eBase {
         String userToken = loginConsumer(phone);
         var body = new LinkedHashMap<String, Object>();
         body.put("name", shopName);
-        body.put("subject", "MICRO");
+        body.put("subject", "NATURAL_PERSON");
         body.put("industry", "RETAIL");
         body.put("contactName", "J2 老板");
         body.put("contactPhone", phone);

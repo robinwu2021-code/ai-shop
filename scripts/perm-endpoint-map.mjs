@@ -116,6 +116,11 @@ export const RULES = [
   ["GET", /^\/ops\/(settlements|split-records|payables)/, "finance:settle:read"],
   ["GET", /^\/ops\/(purchase-invoices|finance\/invoice-title)/, "finance:invoice:read"],
   ["*", /^\/ops\/(purchase-invoices|finance\/invoice-title)/, "finance:invoice:verify"],
+  // 开票申请（**销项**，平台开给消费者）。与上面的 purchase-invoices（进项）
+  // 复用同一对权限码 —— 经办的是同一批财务人员；但**不能合并成一条规则**：
+  // 两者方向相反，将来若要分权（比如销项交给客服代办），得先分得开
+  ["GET", /^\/ops\/invoice-requests/, "finance:invoice:read"],
+  ["*", /^\/ops\/invoice-requests/, "finance:invoice:verify"],
   // 支付对账差异（并发会话 2026-08-12 新增）。**这条是守卫抓出来的** ——
   // 它们刚落进 settle:manage，矩阵当场报 FINANCE「多出来 4 条」。
   // 处理差异会改账，与只读覆盖率分开

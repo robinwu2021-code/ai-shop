@@ -3,6 +3,7 @@ import { client } from "../http-client";
 import type { FinanceApi } from "../contracts/finance";
 
 export const financeHttp: FinanceApi = {
+  pointsOverview: (market) => client.get("/ops/points/overview", { market: market ?? "CN" }),
   listSettlements: (q) => client.get("/ops/settlements", q),
   listSplitRecords: (q) => client.get("/ops/split-records", q),
   listRefundSplitBacks: () => client.get("/ops/refund-split-backs"),

@@ -139,14 +139,35 @@ public class AfterSaleServiceImpl implements AfterSaleService {
         as.setReason(cmd.reason());
         as.setImages(writeJson(cmd.images()));
         as.setRefundMinor(refund);
-        as.setStatus(OrdAfterSale.APPLIED);
+        /*
+         * **自营单的售后直接进平台仲裁，不派给商家。**
+         *
+         * 归集路径下平台是法律上的销售主体 —— 合同相对方是平台、票是平台开的、
+         * 钱在平台账户。ADR-017 §3.4 条件 3 写得很直白：
+         * <b>平台对消费者承担商品与售后责任，再向商家追偿</b>。
+         * 做不到这一条，「自营」就不成立，整条资金链退回第三方模式。
+         *
+         * 而此前自营单同样派给「商家」—— 而那个商家就是平台自己：
+         * 消费者申请退款 → 等平台自己审 → 驳回后再升级给平台仲裁。
+         * 一条本该一步的路走了两段，中间那段还是平台审自己。
+         *
+         * 判据用 funds_mode 而不是门店的 business_mode：**责任跟着钱走** ——
+         * 钱在谁账户，谁就是那个要先赔的人。
+         */
+        boolean platformIsSeller = MerchantQueryPort.FUNDS_AGGREGATED
+                .equals(merchantPort.fundsModeOf(sub.getEntityNo()));
+        as.setStatus(platformIsSeller ? OrdAfterSale.ARBITRATING : OrdAfterSale.APPLIED);
         as.setSplitReversed(false);
 
         // 极速退：仅退款且金额在阈值内 → 自动通过。退货退款要等收到货，不能自动
         boolean instant = OrdAfterSale.REFUND_ONLY.equals(cmd.type()) && refund <= instantThresholdMinor;
         as.setInstant(instant);
         afterSaleMapper.insert(as);
-        appendLog(subOrderNo, OrdAfterSale.APPLIED, "已申请售后", OrdStatusLog.BY_USER, sub.getUserNo());
+        // 日志要写**真实去向**：自营单没有「等商家处理」这一步，
+        // 写成一样的话，用户看时间线会以为在等商家，而实际在等平台
+        appendLog(subOrderNo, as.getStatus(),
+                platformIsSeller ? "已申请售后，由平台直接处理" : "已申请售后",
+                OrdStatusLog.BY_USER, sub.getUserNo());
 
         if (instant) {
             doRefund(as, "极速退");

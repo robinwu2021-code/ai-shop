@@ -43,13 +43,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class StoreCampaignFlowTest {
 
     @Autowired
+    private ai.neargo.shop.common.OtpStore otpStore;
+
+    @Autowired
     private WebApplicationContext context;
 
     @Autowired
     private ObjectMapper json;
 
-    @Autowired
-    private ai.neargo.shop.common.OtpStore otpStore;
 
     @Autowired
     private ai.neargo.shop.spi.marketing.CampaignPort campaignPort;

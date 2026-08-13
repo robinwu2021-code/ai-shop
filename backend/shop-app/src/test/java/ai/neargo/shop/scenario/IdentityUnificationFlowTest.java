@@ -37,13 +37,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class IdentityUnificationFlowTest {
 
     @Autowired
+    private ai.neargo.shop.common.OtpStore otpStore;
+
+    @Autowired
     private WebApplicationContext context;
 
     @Autowired
     private ObjectMapper json;
 
-    @Autowired
-    private OtpStore otpStore;
 
     @Autowired
     private IdentityMapper identityMapper;

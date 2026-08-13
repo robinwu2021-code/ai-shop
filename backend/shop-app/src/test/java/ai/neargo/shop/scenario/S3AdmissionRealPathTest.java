@@ -51,9 +51,12 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 class S3AdmissionRealPathTest {
 
     private static final String SEED_MERCHANT = "M0001";
-    private static final String MICRO = "MICRO";
+    private static final String MICRO = "NATURAL_PERSON";
     /** 支付回调桩的签名 —— 漏了它回调静默失败，订单停在 WAIT_PAY 而不计入当日成交额 */
     private static final String STUB_SECRET = "stub-secret";
+
+    @Autowired
+    private ai.neargo.shop.common.OtpStore otpStore;
 
     @Autowired
     private WebApplicationContext context;
@@ -61,8 +64,6 @@ class S3AdmissionRealPathTest {
     @Autowired
     private ObjectMapper json;
 
-    @Autowired
-    private OtpStore otpStore;
 
     @Autowired
     private AdmissionPort admissionPort;

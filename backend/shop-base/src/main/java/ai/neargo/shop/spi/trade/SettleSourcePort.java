@@ -33,9 +33,16 @@ public interface SettleSourcePort {
      *                          所以结算基数要把它加回来，并由平台补差进二级商户。
      *                          不加回来的话，积分的成本就从商家的货款里出了。
      */
+    /**
+     * @param pointsFeeMinor 本单**发分**要向商家收的费用金（分）。发放时算定，结算时扣。
+     *                       <p>与 {@code pointsDeductMinor} 是<b>反方向的两笔</b>，别混：
+     *                       抵扣是平台<b>付给</b>收单商家的钱（出池），
+     *                       费用金是平台<b>向发放商家收的</b>钱（入池）。
+     *                       同一张单上两笔都可能有，而且收付双方通常不是同一家。
+     */
     record SettleSource(String subOrderNo, String merchantNo, String trafficSource,
                         long payAmount, long discountPlatform, long discountMerchant,
                         String pickupNo, int itemCount, String storeNo,
-                        long pointsDeductMinor) {
+                        long pointsDeductMinor, long pointsFeeMinor) {
     }
 }

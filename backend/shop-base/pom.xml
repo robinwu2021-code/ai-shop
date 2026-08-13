@@ -79,6 +79,19 @@
         </dependency>
 
         <!--
+            ShedLock：定时任务的分布式锁。放在 shop-base 而不是 shop-app，
+            因为 @SchedulerLock 标在各域自己的 Job 上（shop-merchant / shop-settle），
+            注解要在它们的编译期可见；**锁的实现（JdbcTemplate provider）在 shop-app**，
+            那里才知道连的是哪个库 —— 域模块不该知道。
+            版本不由 neargo-parent 管理，显式钉住。
+        -->
+        <dependency>
+            <groupId>net.javacrumbs.shedlock</groupId>
+            <artifactId>shedlock-spring</artifactId>
+            <version>${shedlock.version}</version>
+        </dependency>
+
+        <!--
             Ehcache 3：会话的**单机持久化**形态（shop.auth.token-store=ehcache）。
             classifier 必须是 jakarta —— 默认包用的是 javax.cache，Spring Boot 4 下
             连 CacheManager 都装配不起来，而报错信息是 NoClassDefFoundError: javax/cache/...，

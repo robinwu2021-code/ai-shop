@@ -5,6 +5,7 @@
 import { http } from "@shared/net/http-client";
 import { buildPath, ENDPOINTS } from "./endpoints";
 import type { CreateOrderReq, GoodsQuery, ShopApi } from "./contract";
+import type { InvoiceRequest } from "@shared/types";
 // 入参的 wire 契约。satisfies 让「实际发出去的 body」在编译期受检 ——
 // 字段写错、少传、多传都编译不过，而不是等联调才发现。
 import type {
@@ -121,6 +122,9 @@ export const httpApi: ShopApi = {
     call<Goods[]>("promotedGoods", undefined, { ...q } satisfies PromotedGoodsQuery),
   promotedMerchants: (q) =>
     call<Merchant[]>("promotedMerchants", undefined, { ...q } satisfies PromotedMerchantsQuery),
+  applyInvoice: (req) => call<InvoiceRequest>("applyInvoice", undefined, req),
+  myInvoices: () => call<InvoiceRequest[]>("myInvoices"),
+  invoiceOfOrder: (orderNo) => call<InvoiceRequest | null>("invoiceOfOrder", { orderNo }),
   orderDetail: (orderNo) => call<Order>("orderDetail", { orderNo }),
   cancelOrder: (orderNo) => call<Order>("cancelOrder", { orderNo }),
   applyAfterSale: (orderNo, reason, images, type) =>

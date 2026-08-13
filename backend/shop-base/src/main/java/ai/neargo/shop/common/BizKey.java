@@ -46,6 +46,8 @@ public final class BizKey {
     public static final String REVIEW = "RV";
     public static final String APPEAL = "AP";
     public static final String SETTLE_BILL = "STL";
+    /** 开票申请（平台开给消费者）。与 STL 的采购发票是两回事：那是进项，这是销项 */
+    public static final String INVOICE_REQUEST = "INV";
     /** 费率规则版本 */
     public static final String FEE_RULE = "FR";
     public static final String EVENT = "EVT";

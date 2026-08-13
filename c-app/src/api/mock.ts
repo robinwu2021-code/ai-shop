@@ -29,6 +29,7 @@ import { defaultFulfillment } from "@shared/utils/goods";
 import { buyNGetM, giftQtyFor } from "@shared/utils/promotion";
 import type { CreateOrderReq, GoodsQuery, ShopApi } from "./contract";
 import type {
+  InvoiceRequest,
   AfterSaleReason,
   Coupon,
   GroupPickupOrder,
@@ -651,6 +652,54 @@ export const mockApi: ShopApi = {
   async orderList(q: PageQuery & { status?: string }) {
     const list = q.status ? db.orders.filter((o) => o.status === q.status) : db.orders;
     return delay(paginate(list, q.page, q.size));
+  },
+
+  async applyInvoice(req) {
+    const order = db.orders.find((x) => x.orderNo === req.orderNo);
+    if (!order) throw new Error("订单不存在");
+    // mock 也照真实边界来：未支付的单不能开票。恒成功的话，
+    // 「什么时候该出现这个入口」这段永远走不到
+    if (order.status === "WAIT_PAY" || order.status === "CANCELLED") {
+      throw new Error("这笔订单还没有成交，无法开票");
+    }
+    if (req.titleType === "COMPANY" && !req.taxNo?.trim()) {
+      throw new Error("单位抬头需要税号");
+    }
+    const exist = db.invoiceRequests.find((x) => x.orderNo === req.orderNo);
+    if (exist && exist.status !== "REJECTED") throw new Error("这笔订单已经申请过发票");
+    if (exist) {
+      // 被驳回后改抬头重提：**改同一条，不插新的** —— 与后端一致，
+      // 插新的话同一订单会有两条，运营分不清该开哪张
+      Object.assign(exist, { ...req, status: "REQUESTED", rejectReason: undefined });
+      persist();
+      return delay({ ...exist });
+    }
+    const r: InvoiceRequest = {
+      requestNo: `INV${Date.now()}`,
+      orderNo: req.orderNo,
+      titleType: req.titleType,
+      title: req.title,
+      taxNo: req.taxNo,
+      email: req.email,
+      // 开票金额 = **应付**，不是商品小计：运费与优惠都在里面。
+      // 取错的话票面金额与消费者实付对不上，对方入账时会被退回
+      amountMinor: order.amount.payableMinor,
+      status: "REQUESTED",
+      createdAt: Date.now(),
+    };
+    db.invoiceRequests.push(r);
+    persist();
+    return delay({ ...r });
+  },
+
+  async myInvoices() {
+    return delay(db.invoiceRequests.map((x) => ({ ...x })));
+  },
+
+  async invoiceOfOrder(orderNo) {
+    const r = db.invoiceRequests.find((x) => x.orderNo === orderNo);
+    // 没申请过返回 null 而不是抛错：那是常态不是错误
+    return delay(r ? { ...r } : null);
   },
 
   async orderDetail(orderNo) {
@@ -1317,8 +1366,8 @@ export const mockApi: ShopApi = {
         { industry: "ONLINE_SERVICE", name: "线上服务", microAllowed: false },
       ],
       subjects: [
-        { subjectType: "MICRO" as const, name: "小微商户", needLicense: false,
-          industryGated: true, settleAccountType: "PERSONAL_OPENID" as const },
+        { subjectType: "NATURAL_PERSON" as const, name: "自然人", needLicense: false,
+          industryGated: true, settleAccountType: "PERSONAL_BANK_CARD" as const },
         { subjectType: "INDIVIDUAL" as const, name: "个体工商户", needLicense: true,
           industryGated: false, settleAccountType: "MERCHANT_ID" as const },
         { subjectType: "ENTERPRISE" as const, name: "企业", needLicense: true,

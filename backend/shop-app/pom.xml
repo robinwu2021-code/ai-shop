@@ -69,6 +69,13 @@
             <artifactId>flyway-mysql</artifactId>
         </dependency>
 
+        <!-- ShedLock 的锁实现：只有启动模块知道连的是哪个库（注解在 shop-base） -->
+        <dependency>
+            <groupId>net.javacrumbs.shedlock</groupId>
+            <artifactId>shedlock-provider-jdbc-template</artifactId>
+            <version>${shedlock.version}</version>
+        </dependency>
+
         <dependency>
             <groupId>com.tngtech.archunit</groupId>
             <artifactId>archunit-junit5</artifactId>

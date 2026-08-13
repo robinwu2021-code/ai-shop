@@ -19,6 +19,11 @@ public class StlBill extends BaseEntity {
 
     // ── 自营链路状态（business_mode = SELF_OPERATED）
     /** 待对账：应付账款已生成，等供应商核对。 */
+    /** 资金路径：归集到平台户（代销）。今天唯一在跑的 */
+    public static final String AGGREGATED = "AGGREGATED";
+    /** 资金路径：直连商家二级户（分账）。**只有这条路径存在补差动作** */
+    public static final String DIRECT = "DIRECT";
+
     public static final String PENDING_RECON = "PENDING_RECON";
     /** 已确认：双方对账一致，等收票与付款。 */
     public static final String CONFIRMED = "CONFIRMED";
@@ -140,6 +145,24 @@ public class StlBill extends BaseEntity {
      * 自营的单要收进项票、第三方的单不用，走错分支的结果是凭证对不上账。
      */
     private String businessMode;
+
+    /**
+     * 下单时的<b>资金路径</b>快照：{@link #AGGREGATED} / {@link #DIRECT}。
+     *
+     * <p><b>与 {@link #businessMode} 是两件事</b>：这个说钱先进谁的账户，
+     * 那个说谁是销售主体。「要不要补差」看的是**这一列** ——
+     * 钱在商家账户才需要补进去，钱在平台账户是平台自己少收，无人需要补。
+     */
+    private String fundsMode;
+
+    /**
+     * 归集路径下平台自己承担的积分成本（分）。
+     *
+     * <p><b>与 {@link #subsidyMinor} 互斥</b>：那个是直连下真的划进商家账户的一笔钱，
+     * 这个只是记账。混用的后果是读单据的人以为平台补过钱 ——
+     * 而归集路径上根本没有「补」这个动作。
+     */
+    private Long pointsCostMinor;
 
     /** 付款凭证号（网银流水号）。自营专用；空 = 尚未付款。 */
     private String paymentRef;

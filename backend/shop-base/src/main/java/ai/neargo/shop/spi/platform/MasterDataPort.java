@@ -26,8 +26,34 @@ public interface MasterDataPort {
     /** 该主体（权威码）是否受行业白名单限制。仅小微为 true。 */
     boolean industryGated(String subjectType);
 
-    /** 该主体（权威码）的结算账户形态：PERSONAL_OPENID / MERCHANT_ID。查不到返回 null。 */
+    /** 该主体（权威码）的结算账户形态：PERSONAL_BANK_CARD / MERCHANT_ID。查不到返回 null。 */
     String settleAccountType(String subjectType);
+
+    /**
+     * 该主体（权威码）是否<b>需要营业执照</b>（{@code sys_legal_form.need_license}）。
+     *
+     * <p><b>查不到一律返回 true</b>（当作需要执照）。取向与 {@code canSell} 一致：
+     * 新增一个档位而忘了配这一列时，「查不到 = 不需要执照」会静默放出一个
+     * 本该被管控的主体，而症状是税务或合规问题 —— 那类问题不报错，
+     * 且要到季度结账才看得出来。
+     *
+     * <p>用它而不是在代码里写 {@code "MICRO".equals(x)}：哪一档免执照是
+     * <b>注册表说了算</b>，而主体档位的取值正在改造中。写死取值的地方，
+     * 改造那天会静默失配 —— 不报错，只是判断结果全变。
+     */
+    boolean needLicense(String subjectType);
+
+    /**
+     * 该通道能否**补差**（{@code sys_pay_channel.supports_subsidy}）。
+     *
+     * <p>积分抵扣要求平台在分账前把差额补进二级商户账户，否则商家收到的钱
+     * 与订单金额对不上。<b>只在直连路径上有意义</b> —— 归集路径不发起补差。
+     *
+     * <p><b>查不到返回 false</b>：这个字段建出来就是为了拦截，
+     * 而「查不到 = 支持」会让不具备补差能力的通道静默开出积分抵扣，
+     * 症状是商家账上少一笔钱，且没有任何一处报错。
+     */
+    boolean supportsSubsidy(String payChannel);
 
     /**
      * 支付通道的展示名（{@code sys_pay_channel.name}）。

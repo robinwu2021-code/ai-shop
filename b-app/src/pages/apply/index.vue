@@ -15,7 +15,7 @@ import { useMerchantStore } from "@/stores/merchant";
 import { ROUTES } from "@/shared/nav";
 import { pickImages } from "@shared/ports/media";
 import { SERVICE_SCOPE } from "@shared/utils/constants";
-import type { Community, MasterData, MerchantSubject, ServiceScope } from "@shared/types";
+import type { Community, MasterData, MerchantSubject, ServiceScope, QualificationItem } from "@shared/types";
 
 const { t } = useI18n();
 const merchant = useMerchantStore();
@@ -25,7 +25,7 @@ const merchant = useMerchantStore();
  * 微信放开某个行业的小微白名单时不用发版。
  * 主数据没回来之前用这份兜底：表单不能因为一个 GET 失败就打不开。
  */
-const SUBJECTS: MerchantSubject[] = ["MICRO", "INDIVIDUAL", "ENTERPRISE"];
+const SUBJECTS: MerchantSubject[] = ["NATURAL_PERSON", "INDIVIDUAL", "ENTERPRISE"];
 const master = ref<MasterData | null>(null);
 const industries = computed(() => master.value?.industries ?? []);
 const subjectList = computed<MerchantSubject[]>(
@@ -64,7 +64,7 @@ const scopes = computed<readonly ServiceScope[]>(
 
 const form = ref({
   name: "",
-  subject: "MICRO" as MerchantSubject,
+  subject: "NATURAL_PERSON" as MerchantSubject,
   contactName: "",
   contactPhone: "",
   category: "",
@@ -105,11 +105,22 @@ function toggleCommunity(communityNo: string) {
 }
 
 const status = computed(() => merchant.profile?.status ?? "NONE");
-/** 个人主体不需要营业执照，也就不需要商户号 */
-// 小微免执照 —— 这正是它存在的意义。权威在 sys_merchant_subject.need_license
-const needLicense = computed(() => form.value.subject !== "MICRO");
+/**
+ * 要不要营业执照 —— **从主数据取，不在端上写死取值**。
+ *
+ * 这一行原先是 `subject !== "MICRO"`。权威在 `sys_legal_form.need_license`，
+ * 而取值在 V87 就真的改了（MICRO → NATURAL_PERSON）—— 当初若写死取值，
+ * 那天会**静默失配**：
+ * 不报错，只是所有人都被要求传执照，或者所有人都不被要求。
+ *
+ * 取不到主数据时按 true（要执照）：宁可多要一次，也不要放进一个本该有照却没照的商家。
+ */
+const needLicense = computed(() => {
+  const meta = master.value?.subjects.find((x) => x.subjectType === form.value.subject);
+  return meta ? meta.needLicense : true;
+});
 const settleType = computed(() =>
-  needLicense.value ? "settleMERCHANT_ID" : "settlePERSONAL_OPENID",
+  needLicense.value ? "settleMERCHANT_ID" : "settlePERSONAL_BANK_CARD",
 );
 /** 「仅本社区」却一个小区都没选 = 上架后对谁都不可见，所以它也是提交的前置 */
 const scopeReady = computed(
@@ -123,9 +134,40 @@ const canSubmit = computed(
     scopeReady.value,
 );
 
-/** 已上传的资质图（个体户/企业必需，个人免） */
+/** 已上传的资质图（旧字段，仍然传 —— 后端两个都收，存量申请单靠它回看） */
 const licenses = ref<string[]>([]);
 const uploading = ref(false);
+
+/**
+ * **结构化资质**：只有带类型/证号/有效期的这一份，审核通过时才转得进
+ * `mch_qualification` —— 而上架的两个闸门（资质过期、类目授权）读的就是那张表。
+ *
+ * 光传图片 URL 填不出那些列，所以此前商家传的执照停在申请单里，两个闸门从不触发。
+ */
+// 直接用契约类型，不在端上另造一个 —— 另造的那个迟早与契约漂移，而漂移不报错
+const qualItems = ref<QualificationItem[]>([]);
+/** 长期有效 —— 勾上时 expireAt 传 null。**不要用 0 或一个很大的数字冒充**：
+ *  过期扫描会把前者当成已过期、后者当成永不过期，两种都错且都不报错 */
+const foreverFlags = ref<boolean[]>([]);
+
+function addQual(type: QualificationItem["type"]) {
+  qualItems.value.push({ type, code: "", imageUrl: "", expireAt: null });
+  foreverFlags.value.push(true);
+}
+function removeQual(i: number) {
+  qualItems.value.splice(i, 1);
+  foreverFlags.value.splice(i, 1);
+}
+/** 提交前把界面状态折成后端要的形状；勾了长期有效就抹掉日期 */
+function toPayload(): QualificationItem[] {
+  return qualItems.value
+    .filter((q) => q.type && q.imageUrl)
+    .map((q, i) => ({ ...q, expireAt: foreverFlags.value[i] ? null : q.expireAt }));
+}
+/** 缺营业执照 —— 需要执照的档位不能提交 */
+const licenseMissing = computed(
+  () => needLicense.value && !qualItems.value.some((q) => q.type === "BUSINESS_LICENSE" && q.imageUrl),
+);
 
 onShow(async () => {
   // **不拿 profile.phone 预填**：那是脱敏后的登录号（138****8000），
@@ -160,7 +202,8 @@ onShow(async () => {
 });
 
 /** 上传资质。缺它正是个体户/企业被驳回的主因，所以入口要显眼 */
-async function addLicense() {
+/** @param idx 传入下标 = 上传到该条结构化资质；不传 = 旧的图片数组（两者并存） */
+async function addLicense(idx?: number) {
   if (uploading.value) return;
   let picked;
   try {
@@ -173,7 +216,13 @@ async function addLicense() {
   uploading.value = true;
   try {
     const { url } = await api.mUploadImage(img.tempPath);
-    licenses.value.push(url);
+    if (idx === undefined) {
+      licenses.value.push(url);
+    } else {
+      qualItems.value[idx]!.imageUrl = url;
+      // 旧字段同步塞一份：审核台与存量逻辑还在读它
+      licenses.value.push(url);
+    }
   } catch (e) {
     uni.showToast({ title: (e as Error).message, icon: "none" });
   } finally {
@@ -187,6 +236,11 @@ async function submit() {
     uni.showToast({ title: t("store.scopeNeedCommunity"), icon: "none" });
     return;
   }
+  if (licenseMissing.value) {
+    // 单独提示：与「必填项没填」不是一回事 —— 后端也会拒，但在这里说清楚缺的是哪张证
+    uni.showToast({ title: t("apply.licenseRequired"), icon: "none" });
+    return;
+  }
   if (!canSubmit.value) {
     uni.showToast({ title: t("apply.required"), icon: "none" });
     return;
@@ -197,7 +251,8 @@ async function submit() {
     const profile = await api.mApply({
       ...form.value,
       licenses: licenses.value,
-      settleAccountType: needLicense.value ? "MERCHANT_ID" : "PERSONAL_OPENID",
+      qualificationItems: toPayload(),
+      settleAccountType: needLicense.value ? "MERCHANT_ID" : "PERSONAL_BANK_CARD",
     });
     merchant.profile = profile;
 
@@ -290,7 +345,7 @@ async function submit() {
           </text>
         </view>
         <!-- 禁用要给出理由：光变灰会让人以为是 bug，然后去反复点它 -->
-        <text v-if="!subjectAllowed('MICRO')" class="warn">
+        <text v-if="!subjectAllowed('NATURAL_PERSON')" class="warn">
           {{ $t("apply.microBlocked") }}
         </text>
         <text class="hint">{{ $t("apply.subjectHint") }}</text>
@@ -395,21 +450,52 @@ async function submit() {
       <text class="field__label">{{ $t("apply.settle") }}</text>
       <text class="sh-h2">{{ $t(`apply.${settleType}`) }}</text>
       <text class="hint">{{ $t("apply.settleHint") }}</text>
-      <view v-if="needLicense" class="license">
+      <!-- 免执照档位：整块隐藏，换一句说明。对自然人要执照本来就是错的 -->
+      <view v-if="!needLicense" class="license">
+        <text class="hint">{{ $t("apply.noLicenseNeeded") }}</text>
+      </view>
+
+      <view v-else class="license">
         <text class="field__label">{{ $t("apply.licenses") }}</text>
         <text class="hint">{{ $t("apply.licensesHint") }}</text>
-        <view class="shots">
-          <image
-            v-for="(url, i) in licenses"
-            :key="i"
-            :src="url"
-            class="shot"
-            mode="aspectFill"
+
+        <view v-for="(q, i) in qualItems" :key="i" class="qual">
+          <view class="qual__head">
+            <text class="qual__type">{{ $t(`apply.qual${q.type}`) }}</text>
+            <text class="qual__del" @tap="removeQual(i)">{{ $t("apply.qualRemove") }}</text>
+          </view>
+          <input
+            v-model="q.code"
+            class="sh-input"
+            :placeholder="$t('apply.qualCode')"
           />
-          <view class="shot shot--add" @tap="addLicense">
-            <text>{{ uploading ? $t("apply.uploading") : "＋" }}</text>
+          <view class="qual__row">
+            <view class="qual__forever" @tap="foreverFlags[i] = !foreverFlags[i]">
+              <view class="cb" :class="{ 'is-on': foreverFlags[i] }" />
+              <text>{{ $t("apply.qualForever") }}</text>
+            </view>
+            <input
+              v-if="!foreverFlags[i]"
+              class="sh-input qual__date"
+              type="number"
+              :value="q.expireAt ?? ''"
+              :placeholder="$t('apply.qualExpire')"
+              @input="q.expireAt = Number(($event as any).detail.value) || null"
+            />
+          </view>
+          <view class="shots">
+            <image v-if="q.imageUrl" :src="q.imageUrl" class="shot" mode="aspectFill" />
+            <view class="shot shot--add" @tap="addLicense(i)">
+              <text>{{ uploading ? $t("apply.uploading") : "＋" }}</text>
+            </view>
           </view>
         </view>
+
+        <view class="qual__add">
+          <text @tap="addQual('BUSINESS_LICENSE')">＋ {{ $t("apply.qualBUSINESS_LICENSE") }}</text>
+          <text @tap="addQual('FOOD_PERMIT')">＋ {{ $t("apply.qualFOOD_PERMIT") }}</text>
+        </view>
+        <text v-if="licenseMissing" class="warn">{{ $t("apply.licenseRequired") }}</text>
       </view>
     </view>
 
@@ -431,6 +517,26 @@ async function submit() {
   color: var(--sh-danger);
   line-height: 1.6;
 }
+/* 结构化资质：一条一块，与旧的「一排缩略图」区分开 —— 那个表达不出「哪张证」 */
+.qual {
+  margin-top: 20rpx;
+  padding: 20rpx;
+  border: 1px solid var(--sh-border);
+  border-radius: 16rpx;
+}
+.qual__head { display: flex; justify-content: space-between; align-items: center; }
+.qual__type { font-weight: 600; }
+.qual__del { color: var(--sh-danger); font-size: 24rpx; }
+.qual__row { display: flex; align-items: center; gap: 16rpx; margin-top: 12rpx; }
+.qual__forever { display: flex; align-items: center; gap: 8rpx; }
+.qual__date { flex: 1; }
+.qual__add { display: flex; gap: 24rpx; margin-top: 20rpx; color: var(--sh-primary); }
+.cb {
+  width: 28rpx; height: 28rpx;
+  border: 1px solid var(--sh-border); border-radius: 16rpx;
+}
+.cb.is-on { background: var(--sh-primary); border-color: var(--sh-primary); }
+
 .shots {
   display: flex;
   flex-wrap: wrap;

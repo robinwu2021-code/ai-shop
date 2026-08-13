@@ -367,8 +367,8 @@ export const mockApi: MerchantApi = {
         { industry: "ONLINE_SERVICE", name: "线上服务", microAllowed: false },
       ],
       subjects: [
-        { subjectType: "MICRO" as const, name: "小微商户", needLicense: false,
-          industryGated: true, settleAccountType: "PERSONAL_OPENID" as const },
+        { subjectType: "NATURAL_PERSON" as const, name: "自然人", needLicense: false,
+          industryGated: true, settleAccountType: "PERSONAL_BANK_CARD" as const },
         { subjectType: "INDIVIDUAL" as const, name: "个体工商户", needLicense: true,
           industryGated: false, settleAccountType: "MERCHANT_ID" as const },
         { subjectType: "ENTERPRISE" as const, name: "企业", needLicense: true,

@@ -186,7 +186,9 @@ public class AdmissionPortImpl implements AdmissionPort {
         return switch (String.valueOf(m.getLegalForm())) {
             case "ENTERPRISE" -> 1;
             case "INDIVIDUAL" -> 2;
-            case "MICRO" -> 3;
+            // V87 起 MICRO 改名 NATURAL_PERSON（那是通道档，不是法律形态）。
+            // 旧值一并认，因为申请单上的历史快照不迁移
+            case "NATURAL_PERSON", "MICRO" -> 3;
             default -> 0;
         };
     }

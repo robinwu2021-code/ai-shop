@@ -24,6 +24,10 @@ interface Gap {
  * 否则这份名单会退化成「报错了就加一行」，而守卫就此失效。
  */
 const KNOWN_SHARED: Record<string, string> = {
+  ExemptType:
+    "HANDCRAFT（家庭手工业）后端 seed 里还没有主体用它。电商法 §10 的四类豁免是**法条给定的闭集**，" +
+    "不能因为暂时没人用就从契约里删 —— 删了之后来一个手工业者，端上会落进兜底分支而不报错。" +
+    "AGRI/SERVICE/PETTY 已在用",
   PickupScope:
     "GROUP_INSTANCE（团粒度自提点，一团一销）后端未实现。ADR-005 里有，链路还没接",
   GrantType:

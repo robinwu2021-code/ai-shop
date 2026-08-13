@@ -54,6 +54,33 @@ export const SETTLE_TRANSITIONS: Record<SettleStatus, SettleStatus[]> = {
  * 对齐方向是**改前端跟后端**：后端模型是钱真实的流向，
  * 周期汇总只是一个没被实现的设计稿。
  */
+/**
+ * 积分资金总览。
+ *
+ * **三个数摆在一起是刻意的** —— 恒等式是「流通中的积分 == 池子里的钱」，
+ * 分开看的话，失衡要等到有人主动比对才会发现。
+ */
+export interface PointsOverview {
+  /** 流通中的积分（用户可用 + 待生效） */
+  circulatingPoints: number;
+  /** 池子余额（分）。与上一个数对不上就是失衡 */
+  poolBalanceMinor: number;
+  /** 本期兑付（分）：补给商家的钱 */
+  periodRedeemMinor: number;
+  /**
+   * 按通道分的账本。**不能只看总数** ——
+   * 账面是一个池子，钱实际分散在两个通道账户；
+   * 一个溢一个空的时候，总数仍然是平的。
+   */
+  byChannel: PoolByChannel[];
+}
+
+export interface PoolByChannel {
+  market: string;
+  payChannel: string;
+  balanceMinor: number;
+}
+
 export interface Settlement {
   /** 结算单号 */
   settleNo: string;

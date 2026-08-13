@@ -21,6 +21,8 @@ import { CategoryTab, VerifyTab } from "./authorize-tab";
 import { BanTab, CreditTab } from "./credit-tab";
 // 准入与保证金单独成块：它是「让不让他卖」那组决定，与档案/处置不同
 import { AdmissionTab } from "./admission-tab";
+import { ModeRiskTab } from "./mode-risk-tab";
+import { QualificationTab } from "./qualification-tab";
 import { StaffBlock } from "./staff-block";
 import { ArchiveActions, ShowArchivedToggle, archiveConfirm, archivedRowClass, unarchiveConfirm } from "@/components/archive";
 import { Button } from "@/components/ui/button";
@@ -42,7 +44,7 @@ const TIER_OPTIONS = (c: Copy) => [
   { value: "COMPANY", label: c.tierCompany },
 ];
 
-const TAB_KEYS = ["audit", "list", "categories", "verify", "credit", "admission", "ban"] as const;
+const TAB_KEYS = ["audit", "list", "categories", "qualifications", "verify", "credit", "admission", "mode-risk", "ban"] as const;
 
 /** 入驻审核视图只看**还没走完审核**的那几档 —— 已通过/已封禁的属于档案，不该混在待办里。 */
 const AUDIT_STATUSES = ["SUBMITTED", "REVIEWING"];
@@ -140,9 +142,9 @@ function MerchantsInner() {
        * 不显示的话，运营看得到「这家被限额 500」却看不到「因为它是小微」——
        * 看得到结果看不到原因，只会引出一通电话。
        *
-       * 小微标 warning：它是唯一一档带硬限制的，一眼要能挑出来。
+       * 自然人标 warning：它是唯一一档带硬限制的（无照 → 禁归集、限行业），一眼要能挑出来。
        */
-      cell: (m) => (m.legalForm === "MICRO"
+      cell: (m) => (m.legalForm === "NATURAL_PERSON"
         ? <Badge tone="warning">{c.formMicro}</Badge>
         : m.legalForm === "INDIVIDUAL"
           ? <Badge tone="muted">{c.formIndividual}</Badge>
@@ -151,6 +153,20 @@ function MerchantsInner() {
             // 存量商家可能没有这个字段 —— 显示「未知」而不是空白，
             // 空白会被读成「企业」（最常见的那一档）
             : <span className="text-muted-foreground">{c.formUnknown}</span>),
+    },
+    {
+      header: c.colFundsMode,
+      /*
+       * 资金路径（轴②）：钱先进谁的账户。
+       *
+       * 与上一列的「主体档位」放在一起是刻意的 —— **能走哪条由档位决定**，
+       * 而不是平台自选。运营看不到它，就理解不了「为什么这家店改不了归集」。
+       *
+       * 直连标 info：它是尚未落地的那条（要 EDI + 收付通），一眼要能挑出来。
+       */
+      cell: (m) => (m.fundsMode === "DIRECT"
+        ? <Badge tone="info">{c.fundsDirect}</Badge>
+        : <Badge tone="muted">{c.fundsAggregated}</Badge>),
     },
     { header: c.colTier, cell: (m) => tierLabel(m.tier) },
     { header: c.colCommunity, cell: (m) => m.communityNos.join("、") },
@@ -220,6 +236,8 @@ function MerchantsInner() {
       {tab === "credit" && <CreditTab c={c} />}
 
       {tab === "admission" && <AdmissionTab c={c} />}
+      {tab === "qualifications" && <QualificationTab c={c} />}
+      {tab === "mode-risk" && <ModeRiskTab c={c} />}
 
       {tab === "ban" && (
         <>

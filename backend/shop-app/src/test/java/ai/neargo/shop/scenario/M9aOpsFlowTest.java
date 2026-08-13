@@ -32,13 +32,14 @@ class M9aOpsFlowTest {
     private static final String STUB_SECRET = "stub-secret";
 
     @Autowired
+    private ai.neargo.shop.common.OtpStore otpStore;
+
+    @Autowired
     private WebApplicationContext context;
 
     @Autowired
     private ObjectMapper json;
 
-    @Autowired
-    private ai.neargo.shop.common.OtpStore otpStore;
 
     private MockMvc mvc() {
         return MockMvcBuilders.webAppContextSetup(context)
@@ -751,9 +752,9 @@ class M9aOpsFlowTest {
                 .andExpect(jsonPath("$.data.industries[?(@.industry=='ONLINE')]")
                         .value(org.hamcrest.Matchers.empty()))
                 // 小微免执照、受行业限制；个体户要执照、不受限 —— 这些判断此前三端各写一遍
-                .andExpect(jsonPath("$.data.subjects[?(@.subjectType=='MICRO')].needLicense")
+                .andExpect(jsonPath("$.data.subjects[?(@.subjectType=='NATURAL_PERSON')].needLicense")
                         .value(org.hamcrest.Matchers.contains(false)))
-                .andExpect(jsonPath("$.data.subjects[?(@.subjectType=='MICRO')].industryGated")
+                .andExpect(jsonPath("$.data.subjects[?(@.subjectType=='NATURAL_PERSON')].industryGated")
                         .value(org.hamcrest.Matchers.contains(true)))
                 .andExpect(jsonPath("$.data.subjects[?(@.subjectType=='INDIVIDUAL')].needLicense")
                         .value(org.hamcrest.Matchers.contains(true)))

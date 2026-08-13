@@ -1,8 +1,15 @@
 // 覆盖范围：分账结算（P-12.1）与提现·发票·个税（P-12.2）。
-import type { AfterSale, BusinessMode, EffectiveFeeRates, FeeRuleVersion, FeeTrafficSource, InvoiceRequest, Page, Settlement, SplitLog, TaxRule, Withdrawal } from "@/lib/types";
+import type { PointsOverview, AfterSale, BusinessMode, EffectiveFeeRates, FeeRuleVersion, FeeTrafficSource, InvoiceRequest, Page, Settlement, SplitLog, TaxRule, Withdrawal } from "@/lib/types";
 import type { PageQ, SettlementQ } from "../query";
 
 export interface FinanceApi {
+  /**
+   * 积分资金总览。**只读** —— 池子的钱是靠流水推出来的，不是靠人改的。
+   * 开一个「手工调整余额」的入口，等于允许在没有业务事件的情况下改账，
+   * 而那之后恒等式失衡就再也说不清是哪一笔。
+   */
+  pointsOverview(market?: string): Promise<PointsOverview>;
+
   /** 结算单列表。**自营与第三方都在这里** —— 不该因经营模式分成两个入口。 */
   listSettlements(q?: { status?: string; merchantNo?: string; businessMode?: string }): Promise<Settlement[]>;
   /*

@@ -5,6 +5,7 @@ import ai.neargo.shop.spi.platform.AuditLogPort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Profile;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -48,6 +49,9 @@ public class QualificationExpiryJob {
      * 一夜之间整店下架而他毫不知情。**先让状态变成事实，再让人看见。**
      */
     @Scheduled(cron = "0 10 3 * * *")
+    // 这条改的是商家状态、会导致整店下架 —— 重复执行本身幂等（已过期的再置一次还是过期），
+    // 但它会重复写审计并重复触达商家。**通知发两遍，商家会以为出了两次问题。**
+    @SchedulerLock(name = "qualification-expiry", lockAtLeastFor = "PT4M", lockAtMostFor = "PT30M")
     public void scan() {
         Set<String> affected = governService.expireOverdueQualifications();
         if (affected.isEmpty()) {

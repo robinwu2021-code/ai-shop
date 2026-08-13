@@ -84,6 +84,11 @@ export const ENDPOINTS: Record<keyof ShopApi, EndpointDef> = {
   cancelOrder: { method: "POST", path: "/mp/order/:orderNo/cancel", auth: true, summary: "取消订单" },
   orderPreview: { method: "POST", path: "/mp/order/preview", auth: true, summary: "订单预览（金额以后端为准）" },
   orderCapability: { method: "POST", path: "/mp/order/capability", auth: true, summary: "结算页能力提示（开票/支付方式/额度）" },
+  // 开票（ADR-017 §3.4 条件 2）。此前 C 端零入口 —— 只有下单前一句「本商家无法开票」，
+  // 连申请的地方都没有。归集路径下开票的是平台，不是商家
+  applyInvoice: { method: "POST", path: "/mp/invoice/apply", auth: true, summary: "申请开票" },
+  myInvoices: { method: "GET", path: "/mp/invoice/mine", auth: true, summary: "我的开票申请" },
+  invoiceOfOrder: { method: "GET", path: "/mp/invoice/order/:orderNo", auth: true, summary: "某单的开票状态" },
   applyAfterSale: {
     method: "POST",
     path: "/mp/order/:orderNo/after-sale",

@@ -28,7 +28,9 @@ class MerchantStatusMappingTest {
         return new MerchantApplyVO("MA1", "", "老张粮油店", "PERSONAL",
                 "张三", "13800000000", "", "", "COMMUNITY",
                 List.of(), List.of(), false, "GROCERY",
-                status, null, 0L, 0L);
+                status, null, 0L, 0L,
+                // 结构化资质（V79）：本测试只关心状态映射，给空即可
+                List.of());
     }
 
     @Test

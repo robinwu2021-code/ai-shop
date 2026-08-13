@@ -209,12 +209,14 @@ export default {
       REJECTED: "已驳回，可修改重提",
     },
     subject: {
-      MICRO: "小微商户",
+      // V87 起键名与取值一致（NATURAL_PERSON）。**文案不能沿用「小微」** ——
+      // 法规「小微企业」是有营业执照的规模划型，与本档（无照自然人）含义相反。
+      NATURAL_PERSON: "个人经营者",
       INDIVIDUAL: "个体工商户",
       ENTERPRISE: "企业",
     },
     applySubmitted: "申请已提交，运营会尽快联系你",
-    microBlocked: "该行业不支持小微主体，请选个体户或企业",
+    microBlocked: "该行业不支持个人经营者，请选个体户或企业",
     applyFormHint: "填好后运营会联系你核对资质。个体户也可以先入驻，之后再升级。",
     shopName: "店铺名称",
     category: "主营类目（如 生鲜、家政）",
@@ -222,6 +224,7 @@ export default {
     phone: "手机号",
     descPh: "一句话介绍（选填）",
     submitApply: "提交入驻申请",
+    selfOperated: "自营",
     verified: "已认证",
     noRating: "暂无评价",
     enter: "进店 ›",
@@ -237,7 +240,7 @@ export default {
     reviewTab: "全部评价 {n}",
     dim: { goods: "商品", service: "服务", speed: "时效" },
     // 与 subject 同一套取值（ADR-010）——「平台自营」不是主体类型，已去掉
-    type: { MICRO: "小微商户", INDIVIDUAL: "个体工商户", ENTERPRISE: "企业商家" },
+    type: { NATURAL_PERSON: "个人经营者", INDIVIDUAL: "个体工商户", ENTERPRISE: "企业商家" },
   },
   review: {
     dimGoods: "商品质量",
@@ -442,6 +445,22 @@ export default {
     moreItems: "等共 {n} 件其他商品",
     empty: "还没有订单",
   },
+  invoice: {
+    section: "发票",
+    apply: "申请发票",
+    reapply: "重新申请",
+    applyTitle: "发票抬头",
+    titlePh: "填写个人姓名或单位名称",
+    emailTitle: "收票邮箱",
+    emailPh: "电子发票会发到这个邮箱",
+    applied: "已提交，开好后发到你的邮箱",
+    sentTo: "已发送至 {email}",
+  },
+  invoiceStatus: {
+    REQUESTED: "开票中，3 个工作日内发到你的邮箱",
+    ISSUED: "已开具",
+    REJECTED: "信息有误，已退回",
+  },
   orderStatus: {
     WAIT_PAY: "待付款",
     PAID: "已支付",
@@ -573,10 +592,10 @@ export default {
     mine: "我的券包 {n}",
     threshold: "满 {p} 可用",
     noThreshold: "无门槛",
-    until: "有效至 {d}",
-    receive: "领取",
     // 折扣券的券面：满减是「¥5」，折扣是「8.5 折」—— 一个金额字段表达不了后者
     rate: "{n} 折",
+    until: "有效至 {d}",
+    receive: "领取",
     got: "已领取",
     expired: "已过期",
     centerEmpty: "暂时没有可领的券",

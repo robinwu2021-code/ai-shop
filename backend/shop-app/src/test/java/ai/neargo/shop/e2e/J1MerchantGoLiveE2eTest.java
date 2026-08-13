@@ -44,7 +44,7 @@ class J1MerchantGoLiveE2eTest extends E2eBase {
         // ── 2. 提交入驻申请：带行业与服务范围 ─────────────────────────
         var applyReq = new LinkedHashMap<String, Object>();
         applyReq.put("name", "E2E 粮油店");
-        applyReq.put("subject", "MICRO");
+        applyReq.put("subject", "NATURAL_PERSON");
         applyReq.put("industry", "RETAIL");
         applyReq.put("contactName", "E2E 老板");
         applyReq.put("contactPhone", merchantPhone);

@@ -15,7 +15,7 @@ package ai.neargo.shop.merchant.dto;
  *                       「显示能收钱但收不了」，而这种错要到第一笔订单才暴露
  * @param payMerchantNo  收款商户号业务键，通过后才有
  * @param subMchidMasked 二级商户号<b>掩码</b>。完整号不回显给端
- * @param settleAccountType PERSONAL_OPENID / MERCHANT_ID
+ * @param settleAccountType PERSONAL_BANK_CARD / MERCHANT_ID
  * @param settleAccountMasked 结算账号掩码。<b>明文永不回显</b>，包括给商家自己
  * @param rejectReason   驳回原因。驳回时必有 —— 没有原因商家只能反复重提
  * @param missing        还缺哪些资料（如 settleAccount / licenses）。空表示资料齐了在等通道

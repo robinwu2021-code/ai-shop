@@ -30,13 +30,72 @@ function find(merchantNo: string): Merchant {
  * 所以这张表还留着 —— 与 db.merchants 上的 legalForm 保持一致。
  */
 const MOCK_LEGAL_FORM: Record<string, LegalForm> = {
-  M901: "MICRO",
+  M901: "NATURAL_PERSON",
 };
 
 export const merchantMock: MerchantApi = {
   // ── 门店经营模式与弱主体准入 ─────────────────────────────────
 
   storeModes: async (merchantNo) => wait(db.storeModes.filter((s) => s.merchantNo === merchantNo)),
+  // 无照 × 自营。mock 里从 storeModes 与商家档案现算，**不另建一份数据** ——
+  // 另建的话它会和 setStoreBusinessMode 的写入脱节，页面上改完模式清单不变
+  modeRisk: async () => wait(
+    db.storeModes
+      .filter((s) => s.businessMode === "SELF_OPERATED")
+      .flatMap((s) => {
+        const m = db.merchants.find((x) => x.merchantNo === s.merchantNo);
+        if (!m || m.legalForm !== "NATURAL_PERSON") return [];
+        return [{
+          merchantNo: m.merchantNo, merchantName: m.name, legalForm: m.legalForm,
+          storeNo: s.storeNo, storeName: s.storeName, businessMode: s.businessMode!,
+          settledBills: 0, settledMinor: 0,
+        }];
+      })),
+
+  setFundsMode: async ({ merchantNo, fundsMode }) => {
+    const m = find(merchantNo);
+    // 无照主体不得走归集：平台按全额确认收入，而他开不出进项票 ——
+    // 那笔支出不得税前扣除。农业生产者例外（平台可自开收购发票）
+    if (fundsMode === "AGGREGATED" && m.legalForm === "NATURAL_PERSON" && !m.agriProducer) {
+      fail("无营业执照的主体不能走归集路径（自产农产品除外）",
+        "Unlicensed entities cannot use the aggregated funds path (self-produced agricultural goods excepted)");
+    }
+    m.fundsMode = fundsMode;
+    return wait(m, 400);
+  },
+
+  // ── 资质 ───────────────────────────────────────────────
+  // mock 侧真存一份，写完能读回 —— 只返回空数组的话，
+  // 「登记完列表还是空」这种 bug 在开发期永远看不到
+  qualifications: async (merchantNo) => wait(db.qualifications.filter((q) => q.entityNo === merchantNo)),
+
+  saveQualification: async ({ merchantNo, qualNo, ...patch }) => {
+    if (qualNo) {
+      const q = db.qualifications.find((x) => x.qualNo === qualNo);
+      if (!q) notFound("资质", "Qualification", qualNo);
+      Object.assign(q!, patch);
+      return wait(q!, 400);
+    }
+    if (!patch.qualType || !patch.qualName) {
+      fail("资质类型与名称必填", "Qualification type and name are required");
+    }
+    const created = {
+      qualNo: `Q${db.qualifications.length + 1}`, entityNo: merchantNo,
+      qualType: patch.qualType!, qualName: patch.qualName!,
+      qualNumber: patch.qualNumber, imageUrl: patch.imageUrl,
+      expireAt: patch.expireAt ?? null, status: "VALID",
+    };
+    db.qualifications.push(created);
+    return wait(created, 400);
+  },
+
+  revokeQualification: async (qualNo) => {
+    const q = db.qualifications.find((x) => x.qualNo === qualNo);
+    if (!q) notFound("资质", "Qualification", qualNo);
+    // 不物理删：「当初有没有这张证」是要能查的
+    q!.status = "REVOKED";
+    return wait(q!, 400);
+  },
 
   // 没有种子的商家给空数组，不是 404 —— 「这家店只有老板一个人」是常态
   merchantStaff: async (merchantNo) => wait(db.merchantStaff[merchantNo] ?? []),
@@ -233,7 +292,10 @@ export const merchantMock: MerchantApi = {
     for (const code of codes) {
       const ac = db.authCodes.find((x) => x.code === code);
       if (!ac) notFound("授权码", "Permission code", code);
-      if (ac.requiredQualification && !m.qualifications.includes(ac.requiredQualification)) {
+      // ⚠️ 这条校验**只有 mock 有**：真实后端 MerchantAuthCodeServiceImpl.setCodes
+      // 不比对 requiredQualification，直调接口即可绕过。前端的 disabled 也只是装饰。
+      // 补后端拦截要等资质数据真的存在（入驻转存 mch_qualification）—— 现在补等于全禁。
+      if (ac.requiredQualification && !(m.qualifications ?? []).includes(ac.requiredQualification)) {
         fail(`${ac.name} 需要「${ac.requiredQualification}」，该商家尚未上传`, `${ac.name} requires “${ac.requiredQualification}”, which this merchant has not uploaded`);
       }
     }

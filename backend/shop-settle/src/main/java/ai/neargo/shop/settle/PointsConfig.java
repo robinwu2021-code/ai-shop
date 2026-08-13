@@ -18,9 +18,13 @@ package ai.neargo.shop.settle;
  *                       含运费的话，一单全靠积分抵掉，商家一分收不到
  * @param earnPerMinor   消费一个最小货币单位送多少分。0 = 不发放
  * @param inactiveDays   无积分变动多久清零（滚动到期：任何变动都把到期日推后）
+ * @param pendingDays    发放后多少天转为<b>可用</b>（售后期）。发出来的分先进
+ *                       {@code pending_balance}（可见不可用），过了这个期才挪进
+ *                       {@code balance} —— 售后期内退款要连分一起收回，
+ *                       而已经花掉的分收不回来
  */
 public record PointsConfig(long perMinor, double maxDeductRatio, double earnPerMinor,
-                           int inactiveDays) {
+                           int inactiveDays, int pendingDays) {
 
     /** {@code sys_setting} 的键。 */
     public static final String KEY = "points.config";
@@ -31,7 +35,7 @@ public record PointsConfig(long perMinor, double maxDeductRatio, double earnPerM
      * C 端试算显示能抵 5 元、下单实扣 3 元，而两边代码各自都说得通。
      */
     public static final String DEFAULT_JSON = """
-            {"perMinor":1,"maxDeductRatio":0.3,"earnPerMinor":0.01,"inactiveDays":365}""";
+            {"perMinor":1,"maxDeductRatio":0.3,"earnPerMinor":0.01,"inactiveDays":365,"pendingDays":7}""";
 
     /**
      * 这单最多能用多少积分。

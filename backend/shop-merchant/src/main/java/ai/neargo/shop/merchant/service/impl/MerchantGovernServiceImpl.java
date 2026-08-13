@@ -24,6 +24,7 @@ import tools.jackson.databind.ObjectMapper;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 @Service
@@ -61,6 +62,8 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
     /** 待审覆盖项的展示名 —— 让运营对着「DISTRICT:330106」裁决等于让他去别处查一次 */
     private final ai.neargo.shop.spi.user.CommunityQueryPort communityNamePort;
     private final ai.neargo.shop.spi.platform.MasterDataPort masterDataPort;
+    /** 自营结算敞口 —— 金额口径归结算域，商家域只负责「谁是无照的」 */
+    private final ai.neargo.shop.spi.settle.SelfOperatedExposurePort exposurePort;
 
     public MerchantGovernServiceImpl(MchEntityMapper merchantMapper,
                                      MchEntityCommunityMapper communityMapper,
@@ -73,10 +76,12 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
             ai.neargo.shop.merchant.mapper.MerchantMappers.QualificationMapper qualificationMapper,
             ai.neargo.shop.merchant.mapper.MerchantMappers.ServiceAreaMapper serviceAreaMapper,
             ai.neargo.shop.spi.user.CommunityQueryPort communityNamePort,
-            ai.neargo.shop.spi.platform.MasterDataPort masterDataPort) {
+            ai.neargo.shop.spi.platform.MasterDataPort masterDataPort,
+            ai.neargo.shop.spi.settle.SelfOperatedExposurePort exposurePort) {
         this.serviceAreaMapper = serviceAreaMapper;
         this.communityNamePort = communityNamePort;
         this.masterDataPort = masterDataPort;
+        this.exposurePort = exposurePort;
         this.qualificationMapper = qualificationMapper;
         this.merchantMapper = merchantMapper;
         this.communityMapper = communityMapper;
@@ -239,6 +244,13 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
                         .eq(ai.neargo.shop.merchant.entity.MchPaymentMerchant::getEntityNo, m.getEntityNo())
                         .eq(ai.neargo.shop.merchant.entity.MchPaymentMerchant::getApplyStatus, ACTIVE))) > 0;
 
+        // 只取仍然有效的：过期/吊销的资质拿来比对授权，等于让已经失效的证继续开门
+        List<String> quals = DataScopeContext.executeWithoutScope(() ->
+                        qualificationMapper.selectList(Wrappers.<MchQualification>lambdaQuery()
+                                .eq(MchQualification::getEntityNo, m.getEntityNo())
+                                .eq(MchQualification::getStatus, MchQualification.VALID)))
+                .stream().map(MchQualification::getQualName).filter(Objects::nonNull).toList();
+
         var contact = applyPort.latestOf(m.getEntityNo());
         return new MerchantProfileVO(m.getEntityNo(), m.getName(), m.getTier(), m.getStatus(),
                 communities,
@@ -252,7 +264,12 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
                 // 归档用状态表达：FROZEN 即「不在营业中」，没有独立的归档位
                 null,
                 // 准入档位完全由它决定 —— 看得到结果看不到原因，只会引出一通电话
-                m.getLegalForm());
+                m.getLegalForm(),
+                quals,
+                m.getFundsMode() == null || m.getFundsMode().isBlank()
+                        ? ai.neargo.shop.spi.user.MerchantQueryPort.FUNDS_AGGREGATED
+                        : m.getFundsMode(),
+                Integer.valueOf(1).equals(m.getIsAgriProducer()));
     }
 
     private List<String> readList(String raw) {
@@ -315,6 +332,76 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
                 .stream()
                 .map(st -> new StoreModeVO(st.getStoreNo(), st.getName(), st.getEntityNo(),
                         st.getBusinessMode(), activePayMerchantNo(st)))
+                .toList();
+    }
+
+    @Override
+    @Transactional
+    public MerchantProfileVO setFundsMode(String merchantNo, String mode, String operatorNo) {
+        if (!ai.neargo.shop.spi.user.MerchantQueryPort.FUNDS_AGGREGATED.equals(mode)
+                && !ai.neargo.shop.spi.user.MerchantQueryPort.FUNDS_DIRECT.equals(mode)) {
+            // 枚举只有两个值，第三个只可能是笔误 —— 静默存下会让这家店走进一条不存在的路径
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        MchEntity m = require(merchantNo);
+
+        /*
+         * 无照主体不得走归集：平台是销售主体、按全额确认收入，
+         * 而他开不出进项票 —— 那笔支出**不得在企业所得税前扣除**，走一单亏一单。
+         *
+         * 农业生产者例外：平台可自开农产品收购发票，成本有合法凭证。
+         */
+        boolean unlicensed = !masterDataPort.needLicense(m.getLegalForm());
+        boolean agri = Integer.valueOf(1).equals(m.getIsAgriProducer());
+        if (ai.neargo.shop.spi.user.MerchantQueryPort.FUNDS_AGGREGATED.equals(mode)
+                && unlicensed && !agri) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+        m.setFundsMode(mode);
+        DataScopeContext.executeWithoutScope(() -> merchantMapper.updateById(m));
+        return toVO(m);
+    }
+
+    @Override
+    public List<ModeRiskVO> modeRiskStores() {
+        // 全量主体只有几百量级，一次捞出来在内存里筛 ——
+        // 「哪一档免执照」由注册表决定，SQL 里写不出这个条件
+        List<MchEntity> all = DataScopeContext.executeWithoutScope(() ->
+                merchantMapper.selectList(Wrappers.<MchEntity>lambdaQuery()));
+        Map<String, MchEntity> unlicensed = new java.util.HashMap<>();
+        for (MchEntity m : all) {
+            if (!masterDataPort.needLicense(m.getLegalForm())) {
+                unlicensed.put(m.getEntityNo(), m);
+            }
+        }
+        if (unlicensed.isEmpty()) {
+            return List.of();
+        }
+
+        List<MchStore> selfOperated = DataScopeContext.executeWithoutScope(() ->
+                storeProfileMapper.selectList(Wrappers.<MchStore>lambdaQuery()
+                        .eq(MchStore::getBusinessMode, MchStore.SELF_OPERATED)
+                        .in(MchStore::getEntityNo, unlicensed.keySet())));
+        if (selfOperated.isEmpty()) {
+            return List.of();
+        }
+
+        var exposure = exposurePort.selfOperatedExposure(
+                selfOperated.stream().map(MchStore::getEntityNo).distinct().toList());
+
+        return selfOperated.stream()
+                .map(st -> {
+                    MchEntity m = unlicensed.get(st.getEntityNo());
+                    // 缺省成 0 而不是跳过：**「有这家店但还没成交」也是要显示的一行** ——
+                    // 它是即将发生的敞口，正好是最该在成交前处理掉的那些
+                    var e = exposure.getOrDefault(st.getEntityNo(),
+                            new ai.neargo.shop.spi.settle.SelfOperatedExposurePort.Exposure(0, 0));
+                    return new ModeRiskVO(m.getEntityNo(), m.getName(), m.getLegalForm(),
+                            st.getStoreNo(), st.getName(), st.getBusinessMode(),
+                            e.billCount(), e.amountMinor());
+                })
+                // 敞口大的排前面 —— 这份清单的用途就是决定先处理谁
+                .sorted(java.util.Comparator.comparingLong(ModeRiskVO::settledMinor).reversed())
                 .toList();
     }
 

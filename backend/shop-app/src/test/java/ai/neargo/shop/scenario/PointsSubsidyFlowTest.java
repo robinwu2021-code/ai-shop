@@ -50,7 +50,7 @@ class PointsSubsidyFlowTest {
     @DisplayName("★ SettleSource 要把积分抵扣带出来 —— 结算域拿不到它就无从加回")
     void settleSourceCarriesPointsDeduction() {
         var src = new SettleSourcePort.SettleSource(
-                "SUB-X", "M0001", "PLATFORM", 8_000L, 1_000L, 0L, null, 1, "ST001", 2_000L);
+                "SUB-X", "M0001", "PLATFORM", 8_000L, 1_000L, 0L, null, 1, "ST001", 2_000L, 0L);
 
         assertThat(src.payAmount() + src.discountPlatform() + src.pointsDeductMinor())
                 .as("结算基数 = 实付 + 平台补贴 + 积分抵扣；缺一项商家就少收一项，"
@@ -139,6 +139,23 @@ class PointsSubsidyFlowTest {
                 .isEqualTo(1L);
     }
 
+    @org.junit.jupiter.api.Test
+    @org.junit.jupiter.api.DisplayName("★★ 通道不支持补差 → 转人工，而不是发起一次注定失败的补差")
+    void unsupportedChannelGoesManual() {
+        StlBill bill = aBill(300L);
+        bill.setPayChannel("CASH_ON_DELIVERY");   // 不在 sys_pay_channel 里
+        billMapper.updateById(bill);
+
+        settleService.executeSplit(bill.getSettleNo());
+
+        StlBill after = reload(bill.getSettleNo());
+        // supports_subsidy 这一列建出来就是为了拦这里，而此前**零读取** ——
+        // 不具备补差能力的通道照样走到分账，然后失败、转重试，
+        // 而根因（通道压根没这个能力）要翻网关日志才看得出来
+        assertThat(after.getStatus()).isEqualTo(StlBill.MANUAL);
+        assertThat(after.getLastError()).contains("不支持积分补差");
+    }
+
     // ---------------------------------------------------------------- helpers
 
     private StlBill aBill(long subsidyMinor) {
@@ -154,6 +171,13 @@ class PointsSubsidyFlowTest {
         b.setServiceFeeMinor(0L);
         b.setNetMinor(10_450L);
         b.setCommissionRate(500);
+        // 补差只在**直连**路径上存在：钱在商家二级户，积分抵扣让他少收，平台要补进去。
+        // 归集路径下钱本就在平台手里，应付已按全额算过 —— 再补一次就是重复付款，
+        // 所以 executeSplit 会在执行点断言。造带补差的单必须显式声明这条路径。
+        b.setFundsMode(ai.neargo.shop.spi.user.MerchantQueryPort.FUNDS_DIRECT);
+        // 通道必须真的支持补差 —— sys_pay_channel.supports_subsidy 现在会在
+        // executeSplit 里被读到。不设的话（null 查不到 → 判 false）整单转 MANUAL
+        b.setPayChannel("WECHAT");
         b.setSubsidyMinor(subsidyMinor);
         b.setStatus(StlBill.PENDING);
         b.setRetryCount(0);

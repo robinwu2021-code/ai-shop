@@ -92,6 +92,12 @@ export const UI_PERM_MAP: Record<string, string | typeof UNIMPLEMENTED> = {
    * 于是财务在界面上根本看不到自己有权做的事，且没有任何报错。
    */
   "merchant:admission:read": "merchant:admission:read",
+  // 门店经营模式（含无照自营风险表）。不登记的话 can() 一律判无权限 ——
+  // 后端明明给了 BD 这个码，界面上却什么也看不到，且不报错
+  "merchant:mode:read": "merchant:mode:read",
+  // 资质档案。同一个坑第二次：后端有码、UI_PERM_MAP 没登记 → can() 一律判无权限，
+  // 页面上什么也看不到且不报错
+  "merchant:category:read": "merchant:category:read",
   "merchant:admission:update": "merchant:admission:update",
   "order:order:read": "order:order:read",
   "order:pay:read": "order:order:read",

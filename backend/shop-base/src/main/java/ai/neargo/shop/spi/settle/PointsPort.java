@@ -51,7 +51,22 @@ public interface PointsPort {
      * @param baseMinor 计分基数：<b>实付金额</b>，不含运费、不含积分抵扣部分
      * @return 实际发放的分数，0 = 商家未开启或基数太小
      */
-    long grant(String userNo, String merchantNo, long baseMinor, String subOrderNo);
+    GrantResult grant(String userNo, String merchantNo, long baseMinor, String subOrderNo);
+
+    /**
+     * @param points   实际发放的分数
+     * @param feeMinor 本单要向商家收的**费用金**（分）。
+     *                 <p><b>预付费模型的入账侧</b>：商家发出去的分，将来用户可能在
+     *                 <b>别家</b>花掉，那时平台要从池子里付给收单方 ——
+     *                 所以钱必须在发分这一刻就进池子（积分域-完整方案 §恒等式 2）。
+     *                 <p>费用金 = 这些分对应的钱，1:1。不打折不加价：
+     *                 打折的话池子收的比将来要付的少，恒等式当场不成立。
+     */
+    record GrantResult(long points, long feeMinor) {
+        public static GrantResult none() {
+            return new GrantResult(0L, 0L);
+        }
+    }
 
     record Target(String merchantNo, long payableMinor, String subOrderNo) {
     }

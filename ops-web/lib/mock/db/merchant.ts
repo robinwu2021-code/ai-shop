@@ -6,7 +6,7 @@ import type { AdmissionPolicy, DepositTxn, StoreMode } from "@/lib/types";
 // 时间用固定字符串而非 Date.now()：mock 数据每次刷新都变的话，截图对不上、测试也不稳。
 export const merchants: Merchant[] = [
   {
-    merchantNo: "M901", legalForm: "MICRO", name: "阿姨家的菜摊", tier: "SMALL", status: "ACTIVE",
+    merchantNo: "M901", legalForm: "NATURAL_PERSON", name: "阿姨家的菜摊", tier: "SMALL", status: "ACTIVE",
     communityNos: ["C001"],
     contactName: "王秀兰", contactPhone: "138****2011",
     categoryCodes: ["FRESH_VEG"], qualifications: ["食品经营许可证"], verified: false, breachCount: 0,
@@ -93,7 +93,7 @@ export const violations: import("@/lib/types").Violation[] = [
  */
 export const applies: MerchantApply[] = [
   {
-    applyNo: "A901", name: "阿姨家的菜摊", subject: "MICRO",
+    applyNo: "A901", name: "阿姨家的菜摊", subject: "NATURAL_PERSON",
     contactName: "王秀兰", contactPhone: "138****2011",
     category: "生鲜", desc: "小区门口卖了十年菜", industry: "FRESH",
     serviceScope: "COMMUNITY", communityNos: ["C001"],
@@ -123,7 +123,7 @@ export const applies: MerchantApply[] = [
 
 /**
  * 三档准入策略。**S1/S2 三项全 0 是有意的** ——
- * 一个默认就生效的准入闸门，比没有闸门更危险。只有 MICRO 一档带限制。
+ * 一个默认就生效的准入闸门，比没有闸门更危险。只有自然人一档带限制。
  */
 export const admissionPolicies: AdmissionPolicy[] = [
   { legalForm: "ENTERPRISE", requiredDepositMinor: 0, singleOrderLimitMinor: 0,
@@ -132,7 +132,7 @@ export const admissionPolicies: AdmissionPolicy[] = [
   { legalForm: "INDIVIDUAL", requiredDepositMinor: 0, singleOrderLimitMinor: 0,
     dailyAmountLimitMinor: 0, banQualifiedCategory: 0, enabled: 1,
     remark: "S2：能追到人、赔付能力弱；先不设限，观察后再调" },
-  { legalForm: "MICRO", requiredDepositMinor: 200_000, singleOrderLimitMinor: 50_000,
+  { legalForm: "NATURAL_PERSON", requiredDepositMinor: 200_000, singleOrderLimitMinor: 50_000,
     dailyAmountLimitMinor: 500_000, banQualifiedCategory: 1, enabled: 1,
     remark: "S3：几乎追不到人，平台是唯一被追的一方；三样同时生效" },
 ];
@@ -178,4 +178,23 @@ export const storeModes: StoreMode[] = [
     businessMode: "SELF_OPERATED", payMerchantNo: null },
   { storeNo: "ST002", storeName: "张记粮油·古荡店", merchantNo: "M901",
     businessMode: "THIRD_PARTY", payMerchantNo: "PM_M901_DEFAULT" },
+];
+
+/**
+ * 已登记的资质（后端 `mch_qualification`）。**上架的两个闸门读的就是这张表。**
+ *
+ * 真库里它此前是空的 —— 入驻收的执照停在申请单，审核通过时没人转存，
+ * 于是「资质过期」「类目授权」两个闸门都写好了、都从不触发（V79 已接上）。
+ *
+ * qualName 要与 `authCodes[].requiredQualification` **同一套字面量** ——
+ * 类目授权是按证件名做字符串比对的，名字对不上等于这张证不存在，而两边都不报错。
+ */
+export const qualifications: import("@/lib/types").Qualification[] = [
+  { qualNo: "Q1", entityNo: "M901", qualType: "FOOD_PERMIT", qualName: "食品经营许可证",
+    qualNumber: "JY13301060000001", imageUrl: "https://picsum.photos/seed/q1/400/260",
+    expireAt: Date.UTC(2027, 5, 30), status: "VALID" },
+  { qualNo: "Q2", entityNo: "M901", qualType: "BUSINESS_LICENSE", qualName: "营业执照",
+    qualNumber: "91330106MA2XXXXX01", imageUrl: "https://picsum.photos/seed/q2/400/260",
+    // 长期有效：**与「已过期」是两回事**，扫描任务不碰它
+    expireAt: null, status: "VALID" },
 ];

@@ -4,6 +4,13 @@ import type { MerchantApi } from "../contracts/merchant";
 
 export const merchantHttp: MerchantApi = {
   storeModes: (merchantNo) => client.get(`/ops/merchants/${merchantNo}/store-modes`),
+  modeRisk: () => client.get("/ops/merchants/mode-risk"),
+  setFundsMode: ({ merchantNo, ...body }) =>
+    client.put(`/ops/merchants/${merchantNo}/funds-mode`, body),
+  qualifications: (merchantNo) => client.get(`/ops/merchants/${merchantNo}/qualifications`),
+  saveQualification: ({ merchantNo, ...body }) =>
+    client.post(`/ops/merchants/${merchantNo}/qualifications`, body),
+  revokeQualification: (qualNo) => client.post(`/ops/qualifications/${qualNo}/revoke`, {}),
   merchantStaff: (merchantNo) => client.get(`/ops/merchants/${merchantNo}/staff`),
   setStoreBusinessMode: (v) => client.put(`/ops/stores/${v.storeNo}/business-mode`, v),
   admissionPolicies: () => client.get("/ops/admission/policies"),

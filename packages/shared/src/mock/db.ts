@@ -9,6 +9,7 @@ import { currentLang } from "@shared/utils/locale";
 import { currentCurrency } from "@shared/utils/money";
 import { isoDate, todayAtLocal } from "@shared/utils/datetime";
 import type {
+  InvoiceRequest,
   OrderItem,
   Region,
   ServiceScope,
@@ -942,7 +943,7 @@ export const db = {
     name: "",
     logo: "🏪",
     status: "NONE",
-    subject: "MICRO",
+    subject: "NATURAL_PERSON",
     tier: "SMALL",
     phone: "",
     isPickupPoint: false,
@@ -1237,6 +1238,15 @@ export const db = {
   ] as CommunityApply[],
   couponSeeds,
   reviews: reviewSeeds,
+
+  /**
+   * 开票申请（ADR-017 §3.4 条件 2）。
+   *
+   * **种成空数组是有意的**：这条链路的第一屏是「还没申请过」——
+   * 种一条已开具的进去，那个入口在 mock 下永远走不到，
+   * 而它恰恰是唯一一个消费者会主动点的地方。
+   */
+  invoiceRequests: [] as InvoiceRequest[],
 
   addresses: [
     {

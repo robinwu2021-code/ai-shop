@@ -29,5 +29,15 @@ public record SettleBillVO(String settleNo,
                            /** 自营：进项票状态。第三方恒为 NO_INVOICE */
                            String invoiceStatus,
                            /** 自营：付款凭证号（网银流水）。空 = 尚未付款 */
-                           String paymentRef) {
+                           String paymentRef,
+                           /**
+                            * 本单发分的费用金（分）。**单独一列，不并进 serviceFeeMinor** ——
+                            * 商家最常问「这个月为什么少了」，而佣金是按率的（他改不了）、
+                            * 费用金是按他自己开的积分活动走的（他关掉就没了），
+                            * 两者的解释路径完全不同。并成一列，客服每次都得翻明细才答得出。
+                            *
+                            * <p>此前它不在 VO 里，于是 B 端「本期积分支出」<b>永远是 0</b> ——
+                            * 不是数字不对，是这个数根本没下发。
+                            */
+                           long pointsFeeMinor) {
 }

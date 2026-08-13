@@ -1,6 +1,8 @@
 // 唯一契约。页面只依赖这个接口，不感知 mock / 真实后端。
 // 端点对齐后端 C 端 BFF `/mp/**`（见 docs/api）。
 import type {
+  InvoiceRequest,
+  InvoiceTitleType,
   AfterSale,
   OrderPreview,
   CheckoutCapability,
@@ -133,6 +135,22 @@ export interface ShopApi {
    * 在任何按销量/评分排的列表里都永远排在最后，靠自然流量起不来。
    */
   promotedMerchants(q?: { communityNo?: string; size?: number }): Promise<Merchant[]>;
+  /**
+   * 申请开票（ADR-017 §3.4 条件 2）。**平台开给消费者**，不是商家开。
+   *
+   * 一张订单只能申请一次 —— 重复申请 = 一笔交易两张票，那是税务问题不是体验问题。
+   * 被驳回后可以改抬头重新提交（后端改的是同一条，不插新的）。
+   */
+  applyInvoice(req: {
+    orderNo: string;
+    titleType: InvoiceTitleType;
+    title: string;
+    taxNo?: string;
+    email: string;
+  }): Promise<InvoiceRequest>;
+  myInvoices(): Promise<InvoiceRequest[]>;
+  /** 某单的开票状态。**没申请过返回 null 而不是报错** —— 那是常态不是错误 */
+  invoiceOfOrder(orderNo: string): Promise<InvoiceRequest | null>;
   orderDetail(orderNo: string): Promise<Order>;
   cancelOrder(orderNo: string): Promise<Order>;
   /**

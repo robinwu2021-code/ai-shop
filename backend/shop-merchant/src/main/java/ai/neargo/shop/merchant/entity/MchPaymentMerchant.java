@@ -26,6 +26,14 @@ public class MchPaymentMerchant extends BaseEntity {
     public static final String ALIPAY = "ALIPAY";
 
     /** 无营业执照。**只被授权 JSAPI/Native/付款码，没有 APP 与 H5 支付**。 */
+    /**
+     * 微信小微商户档（<b>通道进件档，不是法律形态</b>）。
+     *
+     * <p>V87 把 {@code mch_entity.legal_form} 上的同名值改成了 {@code NATURAL_PERSON} ——
+     * 「小微」本来就是支付通道发明的收款档位，留在通道这一维是对的。
+     * 两处同名不同物正是那次改名要分开的东西：通道给他开了小微户，
+     * <b>不代表他就是无照自然人</b>。
+     */
     public static final String MICRO = "MICRO";
     public static final String INDIVIDUAL = "INDIVIDUAL";
     public static final String ENTERPRISE = "ENTERPRISE";

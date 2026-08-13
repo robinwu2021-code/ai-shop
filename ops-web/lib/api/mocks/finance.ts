@@ -26,6 +26,24 @@ function assertBalanced(s: Settlement) {
 export const financeMock: FinanceApi = {
   // 两条轨道都给：运营要回答的是「这家店的钱到哪一步了」，
   // 分开查等于让一家同时有自营店和第三方店的商家在两个页面之间对照
+  /*
+   * ⚠️ mock 里**故意让两个数对得上**（流通 12800 分 == 池子 12800 分）。
+   * 这一页的用途就是发现失衡，而开发时看到的应该是「正常的样子」——
+   * 造一份天然不平的假数据，会让人误以为页面坏了。
+   * 真接口下这两个数由流水推出来，对不上才是真信号。
+   */
+  pointsOverview: async (market = "CN") => {
+    return wait({
+      circulatingPoints: 12_800,
+      poolBalanceMinor: 12_800,
+      periodRedeemMinor: 3_400,
+      byChannel: [
+        { market, payChannel: "WECHAT", balanceMinor: 9_000 },
+        { market, payChannel: "ALIPAY", balanceMinor: 3_800 },
+      ],
+    });
+  },
+
   listSettlements: async (q = {}) =>
     wait(db.settlements.filter((s) =>
       db.eqHit(q.merchantNo, s.merchantNo)

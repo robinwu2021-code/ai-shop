@@ -147,7 +147,7 @@ public class MpCatalogController {
                 SecurityUtils.currentUserNo(), req.name(), req.subject(),
                 req.contactName(), req.contactPhone(), req.category(), req.desc(),
                 req.serviceScope(), req.communityNos(), req.licenses(),
-                false, req.industry()));
+                false, req.industry(), req.qualificationItems()));
         return opsService.myApply(SecurityUtils.currentUserNo());
     }
 
@@ -169,7 +169,9 @@ public class MpCatalogController {
                            String category, String desc, String serviceScope,
                            List<String> communityNos, List<String> licenses,
                            /** 行业。**决定可选的主体类型** —— 线上业态不能选小微 */
-                           String industry) {
+                           String industry,
+                           /** 结构化资质（V79）。见 B 端 {@code ApplyReq} 的说明 —— 两端同一口径 */
+                           List<OpsService.QualificationItem> qualificationItems) {
     }
 
     @GetMapping("/mp/merchant/{merchantNo}/score")

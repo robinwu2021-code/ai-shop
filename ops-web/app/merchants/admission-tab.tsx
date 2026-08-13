@@ -91,6 +91,28 @@ export function AdmissionTab({ c }: { c: Copy }) {
     },
   });
 
+  /*
+   * 资金路径与门店经营模式放在同一页，理由与「保证金/限额/限品类三样同页」一致：
+   * 它们是**同一组决定**。
+   *   funds_mode     钱先进谁的账户  ← 决定要不要给积分补差
+   *   business_mode  谁是销售主体    ← 决定走哪条结算状态机、要不要进项票
+   * 分开配的人只会漏配其中一半，而漏配不报错。
+   */
+  const profile = useQuery({
+    queryKey: ["merchant-detail", queried],
+    queryFn: () => api.getMerchant(queried),
+    enabled: !!queried,
+  });
+  const setFunds = useMutation({
+    mutationFn: (fundsMode: "AGGREGATED" | "DIRECT") =>
+      api.setFundsMode({ merchantNo: queried, fundsMode }),
+    onSuccess: () => {
+      notify.success(c.fundsModeChanged);
+      qc.invalidateQueries({ queryKey: ["merchant-detail", queried] });
+      qc.invalidateQueries({ queryKey: ["merchants"] });
+    },
+  });
+
   const setMode = useMutation({
     mutationFn: (v: { storeNo: string; businessMode: StoreMode["businessMode"] }) =>
       api.setStoreBusinessMode(v),
@@ -101,7 +123,7 @@ export function AdmissionTab({ c }: { c: Copy }) {
   });
 
   const formLabel: Record<LegalForm, string> = {
-    MICRO: c.adFormMicro,
+    NATURAL_PERSON: c.adFormMicro,
     INDIVIDUAL: c.adFormIndividual,
     ENTERPRISE: c.adFormEnterprise,
   };
@@ -232,6 +254,21 @@ export function AdmissionTab({ c }: { c: Copy }) {
           <div className="mb-2 txt-strong">{c.adTxnTitle}</div>
           <p className="txt-caption text-muted-foreground mb-2">{c.adTxnHint}</p>
           <DataTable columns={txnColumns} rows={txns.data ?? []} rowKey={(t) => t.txnNo} />
+        </div>
+      )}
+
+      {queried && (
+        <div>
+          <div className="mb-2 txt-strong">{c.fundsModeTitle}</div>
+          <p className="txt-caption text-muted-foreground mb-2">{c.fundsModeHint}</p>
+          <FilterSelect
+            value={profile.data?.fundsMode ?? "AGGREGATED"}
+            onChange={(v) => setFunds.mutate(v as "AGGREGATED" | "DIRECT")}
+            options={[
+              { value: "AGGREGATED", label: c.fundsAggregated },
+              { value: "DIRECT", label: c.fundsDirect },
+            ]}
+          />
         </div>
       )}
 

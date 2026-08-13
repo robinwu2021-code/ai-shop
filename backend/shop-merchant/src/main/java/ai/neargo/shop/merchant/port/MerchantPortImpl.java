@@ -677,9 +677,36 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
              */
             return new PayCapability(java.util.Set.of(), true, 0L, 0L);
         }
+        /*
+         * ★ 能不能开票，判的是「**谁是销售主体**」，不是「这家商家自己开不开得出票」。
+         *
+         * 归集路径下平台是销售主体：合同相对方是平台、钱在平台账户，
+         * **票由平台开给消费者**（ADR-017 §3.4 条件 2）——
+         * 供应商有没有票是平台跟他之间的事（进项），与消费者这张销项票无关。
+         *
+         * 此前只读 mch_payment_merchant.invoice_capable，于是无照自然人在归集下
+         * 会显示「本商家无法开具发票」。那句话有两重错：
+         * 一是事实错（平台开得出），二是**它把销售方指给了商家** ——
+         * 而那正是 seller-statement 守卫在防的表述（写了它，归集资金模式就不成立）。
+         *
+         * 与积分判据同一根轴：**责任跟着钱走**。
+         */
+        /*
+         * ⚠️ **不能用 fundsModeOf()** —— 它查不到主体时默认归集。
+         * 那个默认在补差那条轴上是安全的（宁可不补，也不能重复付款），
+         * 在这条轴上却是反的：**「查不到主体」不等于「平台是销售主体」**，
+         * 照那个默认走，会对一个连主体都找不到的商家承诺开票。
+         *
+         * 同一个默认值在两条轴上的安全方向相反 —— 所以这里直接读实体。
+         */
+        MchEntity entity = DataScopeContext.executeWithoutScope(() ->
+                merchantMapper.selectOne(Wrappers.<MchEntity>lambdaQuery()
+                        .eq(MchEntity::getEntityNo, merchantNo).last("LIMIT 1")));
+        boolean platformIsSeller = entity != null
+                && MerchantQueryPort.FUNDS_AGGREGATED.equals(entity.getFundsMode());
         return new PayCapability(
                 readList(pm.getPayMethods()),
-                !Boolean.FALSE.equals(pm.getInvoiceCapable()),
+                platformIsSeller || !Boolean.FALSE.equals(pm.getInvoiceCapable()),
                 pm.getQuotaLimitMinor() == null ? 0L : pm.getQuotaLimitMinor(),
                 pm.getQuotaUsedMinor() == null ? 0L : pm.getQuotaUsedMinor());
     }

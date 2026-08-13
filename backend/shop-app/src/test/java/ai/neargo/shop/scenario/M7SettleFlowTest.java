@@ -42,13 +42,14 @@ class M7SettleFlowTest {
     private static final String STUB_SECRET = "stub-secret";
 
     @Autowired
+    private ai.neargo.shop.common.OtpStore otpStore;
+
+    @Autowired
     private WebApplicationContext context;
 
     @Autowired
     private ObjectMapper json;
 
-    @Autowired
-    private ai.neargo.shop.common.OtpStore otpStore;
 
     @Autowired
     private MchEntityMapper merchantMapper;
@@ -203,6 +204,56 @@ class M7SettleFlowTest {
     }
 
     @Test
+    @DisplayName("★★★ 真链路：发分的费用金要真的从货款里扣走，并真的入池")
+    void pointsFeeIsDeductedAndPooled() throws Exception {
+        /*
+         * **必须显式打开积分开关**：mch_entity.points_enabled 默认 0。
+         * 不开的话 grant 走 pointsDenyReason 直接返回 none，费用金恒 0 ——
+         * 而断言会红在「fee 不是正数」上，看起来像费用金没算，
+         * 实际是这单根本没发分。本轮第四次踩「fixture 落在默认值上」。
+         */
+        setPoints("M0001", true);
+        try {
+        String token = login("12800128099");
+        String payOrderNo = buyAndPay(token, "G0002", "SK0003", null, "m7-points-fee");
+
+        String biz = loginAsOwnerOf("M0001", "12800128098");
+        JsonNode bill = null;
+        String body = mvc().perform(get("/biz/settle/bills").header("Authorization", "Bearer " + biz))
+                .andReturn().getResponse().getContentAsString();
+        for (JsonNode b : json.readTree(body).get("data")) {
+            if (payOrderNo.equals(b.get("orderNo").asString())) {
+                bill = b;
+            }
+        }
+        assertThat(bill).as("这单没有结算单，后面每条断言都无从谈起").isNotNull();
+
+        /*
+         * 这两条一起断言才有意义：
+         *   · 扣了但没入池 → 商家少收了钱，而那笔钱不知去向
+         *   · 入池了但没扣 → 池子里凭空多出一笔平台没收到的钱
+         * 单独任何一条为真都不能说明链路是通的。
+         */
+        long fee = bill.get("pointsFeeMinor").asLong();
+        assertThat(fee).as("发分费用金全库零写入 —— B 端「本期积分支出」因此永远是 0").isPositive();
+
+        long gross = bill.get("grossMinor").asLong();
+        long commission = bill.get("commissionMinor").asLong();
+        long serviceFee = bill.get("serviceFeeMinor").asLong();
+        assertThat(bill.get("netMinor").asLong())
+                .as("实得没扣掉费用金 = 商家白发了分，钱从平台出")
+                .isEqualTo(gross - commission - serviceFee - fee);
+        } finally {
+            /*
+             * **用完即还**：同类其他用例算的是「没有费用金」的实得，
+             * 开着不关会让它们全部对不上 —— 而报错指向的是它们的金额断言，
+             * 与积分毫无关系。共享库下，改全局开关的用例必须自己收拾。
+             */
+            setPoints("M0001", false);
+        }
+    }
+
+    @Test
     @DisplayName("一个子单只能有一张结算单（重复生成 = 重复分账）")
     void oneBillPerSubOrder() throws Exception {
         String token = login("12800128024");
@@ -336,6 +387,22 @@ class M7SettleFlowTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"storeCode\":\"" + m.getStoreCode() + "\"}"));
     }
+
+
+    /** 开/关某主体的积分开关。默认是关的，而发分链路的第一道闸就是它 */
+    private void setPoints(String merchantNo, boolean on) {
+        ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() -> {
+            var m = entityMapper.selectOne(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                    .<ai.neargo.shop.merchant.entity.MchEntity>lambdaQuery()
+                    .eq(ai.neargo.shop.merchant.entity.MchEntity::getEntityNo, merchantNo)
+                    .last("LIMIT 1"));
+            m.setPointsEnabled(on);
+            return entityMapper.updateById(m);
+        });
+    }
+
+    @Autowired
+    private ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper entityMapper;
 
     private String buyAndPay(String token, String goodsNo, String skuNo,
                              String userCouponNo, String idemKey) throws Exception {

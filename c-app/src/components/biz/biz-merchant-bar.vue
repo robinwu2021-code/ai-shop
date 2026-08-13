@@ -11,6 +11,14 @@ defineEmits<{ (e: "tap"): void }>();
     <text class="bar__logo">{{ merchant.logo }}</text>
     <view class="bar__main">
       <view class="bar__title">
+        <!--
+          自营标识。**电商法 §37 的法定义务** —— 平台自营业务必须以显著方式区分标记。
+          排在店名**之前**：它回答的是「谁在卖」，而店名只回答「货是谁供的」。
+          放后面会被读成店名的一个后缀。
+        -->
+        <text v-if="merchant.selfOperated" class="sh-chip sh-chip--accent bar__self">
+          {{ $t("merchant.selfOperated") }}
+        </text>
         <text class="bar__name">{{ merchant.name }}</text>
         <text v-if="merchant.verified" class="sh-chip sh-chip--primary bar__verified">
           {{ $t("merchant.verified") }}
@@ -50,6 +58,9 @@ defineEmits<{ (e: "tap"): void }>();
   align-items: center;
   gap: 12rpx;
   margin-bottom: 8rpx;
+}
+.bar__self {
+  flex-shrink: 0;
 }
 .bar__name {
   font-size: 28rpx;

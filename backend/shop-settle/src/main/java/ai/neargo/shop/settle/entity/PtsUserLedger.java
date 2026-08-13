@@ -57,6 +57,16 @@ public class PtsUserLedger extends BaseEntity {
      */
     private Long availableAt;
 
+    /**
+     * 仅 EARN：转正时间（pending → balance 那一刻）。{@code null} = 尚未转正。
+     *
+     * <p><b>它是转正任务的幂等键。</b>只按 {@code availableAt <= now} 判的话，
+     * 任务每天扫到的都是同一批已经转过的行 —— 第二次转正会被
+     * 「pending 不足」的守卫拦下、返回 0 行、任务当成「没事发生」，
+     * <b>不报错，但也永远不知道自己在空转</b>。
+     */
+    private Long activatedAt;
+
     /** 仅 EARN：谁发的。**只用于追溯与统计**，不参与任何资金流动（V28 起与兑付脱钩）。 */
     private String issuerMerchantNo;
 

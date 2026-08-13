@@ -48,7 +48,7 @@ public class SettleSourcePortImpl implements SettleSourcePort {
                 .map(s -> new SettleSource(s.getSubOrderNo(), s.getEntityNo(), s.getTrafficSource(),
                         nz(s.getPayAmount()), nz(s.getDiscountPlatform()), nz(s.getDiscountMerchant()),
                         s.getPickupNo(), qtyBySub.getOrDefault(s.getSubOrderNo(), 0),
-                        s.getStoreNo(), nz(s.getPointsDeductMinor())))
+                        s.getStoreNo(), nz(s.getPointsDeductMinor()), nz(s.getPointsFeeMinor())))
                 .toList();
     }
 

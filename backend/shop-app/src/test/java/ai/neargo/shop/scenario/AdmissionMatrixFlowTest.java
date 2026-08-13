@@ -45,7 +45,7 @@ class AdmissionMatrixFlowTest {
     @Test
     @DisplayName("★★ S3 × T1（小微 + 商家自送）→ 拒（70014）")
     void microSelfDeliveryDenied() {
-        String micro = merchantOf("MICRO", null);
+        String micro = merchantOf("NATURAL_PERSON", null);
 
         assertThatThrownBy(() ->
                 admissionPort.requireFulfillmentAllowed(micro, Fulfillments.MERCHANT_DELIVERY, null))
@@ -57,7 +57,7 @@ class AdmissionMatrixFlowTest {
     @Test
     @DisplayName("★ S3 走快递 / 自提都放行 —— 给最弱一档留的路不能堵死")
     void microStillHasAPath() {
-        String micro = merchantOf("MICRO", null);
+        String micro = merchantOf("NATURAL_PERSON", null);
 
         assertThatCode(() -> admissionPort.requireFulfillmentAllowed(micro, Fulfillments.EXPRESS, null))
                 .as("保证金 + 限品类 + 限额由 F-6 的策略表管，矩阵只回答「这个组合准不准」")
@@ -84,7 +84,7 @@ class AdmissionMatrixFlowTest {
     @DisplayName("★★ 降级：小微邻居供货 + 自家自提点 → 由 T2 降到 T1，被拒")
     void neighborSupplierAtOwnPickupIsDegradedAndDenied() {
         String ownerUser = "U-NB-" + System.nanoTime() % 1_000_000;
-        String micro = merchantOf("MICRO", ownerUser);
+        String micro = merchantOf("NATURAL_PERSON", ownerUser);
         String pickup = neighborPickup(ownerUser);
 
         /*
@@ -120,7 +120,7 @@ class AdmissionMatrixFlowTest {
     @Test
     @DisplayName("★★ 别人家的自提点不触发降级 —— 降级判的是「是不是同一个人」")
     void otherPersonsPickupDoesNotDegrade() {
-        String micro = merchantOf("MICRO", "U-OWNER-A");
+        String micro = merchantOf("NATURAL_PERSON", "U-OWNER-A");
         String pickup = neighborPickup("U-OWNER-B");
 
         assertThatCode(() ->
@@ -153,7 +153,7 @@ class AdmissionMatrixFlowTest {
                 admissionPort.requireFulfillmentAllowed(unknown, Fulfillments.MERCHANT_DELIVERY, null))
                 .doesNotThrowAnyException();
         assertThatCode(() ->
-                admissionPort.requireFulfillmentAllowed(merchantOf("MICRO", null), "DRONE", null))
+                admissionPort.requireFulfillmentAllowed(merchantOf("NATURAL_PERSON", null), "DRONE", null))
                 .doesNotThrowAnyException();
     }
 

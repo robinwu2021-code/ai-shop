@@ -141,6 +141,20 @@ const canSave = computed(
     rows.value.every((r) => Object.values(r.priceMajor).some((v) => Number(v) > 0)),
 );
 /** 展示价 = 最低 SKU 价，与列表页「¥12 起」同口径 */
+/*
+ * 价格字段叫什么，跟着**资金路径**走而不是门店的经营模式 ——
+ * 与积分能力同一根轴：**责任跟着钱走**。
+ *
+ * 归集（钱进平台账户）：平台是销售主体，最终售价平台定，商家填的是「期望收购价」。
+ * 直连：他自己就是销售主体，那就是售价。
+ *
+ * 仍然让他填 —— 不填的等于让他闭眼供货。填的值是议价的起点，不是最终价。
+ */
+const aggregated = computed(() => merchant.profile?.fundsMode === "AGGREGATED");
+const priceLabel = computed(() =>
+  aggregated.value ? "goods.priceAggregated" : "goods.price",
+);
+
 const fromPrice = computed(() => {
   const prices = rows.value.map((r) => Number(r.priceMajor[market.value])).filter((n) => n > 0);
   return prices.length ? Math.min(...prices).toFixed(2) : "—";
@@ -601,13 +615,18 @@ async function save() {
         </view>
       </view>
       <text class="sh-muted hint">{{ $t("goods.marketPriceHint") }}</text>
+      <!-- 归集路径必须说清「这不是最终售价」—— 只改标签不解释，
+           商家会以为平台擅自改了他的价 -->
+      <text v-if="aggregated" class="sh-muted hint">
+        {{ $t("goods.priceAggregatedHint") }}
+      </text>
 
       <view v-if="rows.length > 1" class="bulk">
         <input
           v-model="bulk.price"
           class="bulk__input sh-num"
           type="digit"
-          :placeholder="$t('goods.bulkPrice')"
+          :placeholder="$t(aggregated ? 'goods.priceAggregated' : 'goods.bulkPrice')"
         />
         <input
           v-model="bulk.stock"
@@ -626,7 +645,7 @@ async function save() {
           v-model="r.priceMajor[market]"
           class="row__input sh-num"
           type="digit"
-          :placeholder="$t('goods.price')"
+          :placeholder="$t(priceLabel)"
         />
         <input
           v-model="r.stock"

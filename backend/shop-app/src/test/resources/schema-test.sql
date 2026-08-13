@@ -799,6 +799,7 @@ CREATE TABLE IF NOT EXISTS pts_user_ledger
     period VARCHAR(8) DEFAULT NULL,
     confirmed_at BIGINT(20) DEFAULT NULL,
     currency VARCHAR(8) DEFAULT NULL,
+    activated_at BIGINT(20) DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_pts_ledger_no UNIQUE (ledger_no)
 );
@@ -923,6 +924,8 @@ CREATE TABLE IF NOT EXISTS stl_bill
     invoice_status VARCHAR(16) NOT NULL DEFAULT 'PENDING_INVOICE',
     subsidy_minor BIGINT(20) NOT NULL DEFAULT 0,
     subsidy_at BIGINT(20) DEFAULT NULL,
+    funds_mode VARCHAR(16) NOT NULL DEFAULT 'AGGREGATED',
+    points_cost_minor BIGINT(20) NOT NULL DEFAULT 0,
     PRIMARY KEY (id),
     CONSTRAINT uk_settle_no UNIQUE (settle_no),
     CONSTRAINT uk_sub_order UNIQUE (sub_order_no)
@@ -1259,6 +1262,10 @@ CREATE TABLE IF NOT EXISTS mch_entity
     category_codes VARCHAR(512) DEFAULT NULL,
     archived_at DATETIME DEFAULT NULL,
     fulfillment_reach VARCHAR(16) NOT NULL DEFAULT 'PICKUP',
+    funds_mode VARCHAR(16) NOT NULL DEFAULT 'AGGREGATED',
+    is_agri_producer TINYINT NOT NULL DEFAULT 0,
+    biz_qualification VARCHAR(16) NOT NULL DEFAULT 'UNREGISTERED',
+    exempt_type VARCHAR(24) DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_entity_no UNIQUE (entity_no),
     CONSTRAINT uk_store_code UNIQUE (store_code)
@@ -1293,6 +1300,7 @@ CREATE TABLE IF NOT EXISTS mch_entity_apply
     active_owner VARCHAR(64) DEFAULT NULL,
     as_pickup_point TINYINT(4) NOT NULL DEFAULT 0,
     industry VARCHAR(24) DEFAULT NULL,
+    qualification_items TEXT DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_apply_no UNIQUE (apply_no),
     CONSTRAINT uk_apply_active_owner UNIQUE (active_owner)
@@ -2120,6 +2128,61 @@ CREATE TABLE IF NOT EXISTS mch_role
     deleted TINYINT(4) NOT NULL DEFAULT 0,
     PRIMARY KEY (id),
     CONSTRAINT uk_mch_role UNIQUE (entity_no, role_code)
+);
+
+CREATE TABLE IF NOT EXISTS sys_notify_log
+(
+    id              BIGINT       NOT NULL AUTO_INCREMENT,
+    notify_no       VARCHAR(32)  NOT NULL,
+    channel         VARCHAR(16)  NOT NULL,
+    biz_type        VARCHAR(32)  NOT NULL,
+    target          VARCHAR(64)  NOT NULL,
+    template_code   VARCHAR(64),
+    status          VARCHAR(16)  NOT NULL,
+    error           VARCHAR(512),
+    provider_msg_id VARCHAR(64),
+    operator_no     VARCHAR(32),
+    client_ip       VARCHAR(64),
+    created_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_notify_no UNIQUE (notify_no)
+);
+
+CREATE TABLE IF NOT EXISTS shedlock
+(
+    name       VARCHAR(64)  NOT NULL,
+    lock_until TIMESTAMP(3) NOT NULL,
+    locked_at  TIMESTAMP(3) NOT NULL,
+    locked_by  VARCHAR(255) NOT NULL,
+    PRIMARY KEY (name)
+);
+
+CREATE TABLE IF NOT EXISTS ord_invoice_request
+(
+    id BIGINT(20) NOT NULL AUTO_INCREMENT,
+    request_no VARCHAR(32) NOT NULL,
+    order_no VARCHAR(32) NOT NULL,
+    user_no VARCHAR(32) NOT NULL,
+    title_type VARCHAR(16) NOT NULL DEFAULT 'PERSONAL',
+    title VARCHAR(128) NOT NULL,
+    tax_no VARCHAR(32) DEFAULT NULL,
+    email VARCHAR(128) NOT NULL,
+    amount_minor BIGINT(20) NOT NULL,
+    status VARCHAR(16) NOT NULL DEFAULT 'REQUESTED',
+    invoice_no VARCHAR(64) DEFAULT NULL,
+    issued_at BIGINT(20) DEFAULT NULL,
+    reject_reason VARCHAR(255) DEFAULT NULL,
+    operator_no VARCHAR(64) DEFAULT NULL,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT(20) NOT NULL DEFAULT 0,
+    deleted TINYINT(4) NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_ord_invoice_request UNIQUE (request_no),
+    CONSTRAINT uk_ord_invoice_request_order UNIQUE (order_no, deleted)
 );
 
 -- 种子数据
@@ -3793,7 +3856,55 @@ INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated
 SELECT 'FINANCE', 'OPS_MERCHANT__TAB_ADMISSION', 'OPS', NOW(), NOW() FROM DUAL
  WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x
                     WHERE x.role_code='FINANCE' AND x.point_code='OPS_MERCHANT__TAB_ADMISSION');
-INSERT INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at) VALUES ('OPS_IAM__TAB_MENU', 'OPS_IAM', '菜单顺序', '账号', '/iam?tab=menu', 'iam:role:grant', 'iam:role:grant', 'IMPLEMENTED', 1, 'P-1.1', 'MENU', 30, NOW(), NOW());
+INSERT INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at)
+SELECT 'OPS_IAM__TAB_MENU', 'OPS_IAM', '菜单顺序', '账号', '/iam?tab=menu', 'iam:role:grant', 'iam:role:grant', 'IMPLEMENTED', 1, 'P-1.1', 'MENU', 30, NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_function_point x WHERE x.point_code='OPS_IAM__TAB_MENU');
 INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
 SELECT 'SUPER_ADMIN', 'OPS_IAM__TAB_MENU', 'OPS', NOW(), NOW() FROM DUAL
  WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPER_ADMIN' AND x.point_code='OPS_IAM__TAB_MENU');
+INSERT INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at) VALUES ('OPS_MERCHANT__TAB_MODE_RISK', 'OPS_MERCHANT', '无照自营风险', '入驻与资质', '/merchants?tab=mode-risk', 'merchant:mode:read', 'merchant:mode:read', 'IMPLEMENTED', 0, 'P-11.1', 'MENU', 50, NOW(), NOW()) ON DUPLICATE KEY UPDATE point_code = point_code;
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at) VALUES ('SUPER_ADMIN', 'OPS_MERCHANT__TAB_MODE_RISK', 'OPS', NOW(), NOW()) ON DUPLICATE KEY UPDATE point_code = point_code;
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at) VALUES ('BD', 'OPS_MERCHANT__TAB_MODE_RISK', 'OPS', NOW(), NOW()) ON DUPLICATE KEY UPDATE point_code = point_code;
+INSERT INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at) VALUES ('OPS_MERCHANT__TAB_QUALIFICATIONS', 'OPS_MERCHANT', '资质档案', '入驻与资质', '/merchants?tab=qualifications', 'merchant:category:read', 'merchant:category:read', 'IMPLEMENTED', 0, 'P-11.1', 'MENU', 40, NOW(), NOW()) ON DUPLICATE KEY UPDATE point_code = point_code;
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at) VALUES ('SUPER_ADMIN', 'OPS_MERCHANT__TAB_QUALIFICATIONS', 'OPS', NOW(), NOW()) ON DUPLICATE KEY UPDATE point_code = point_code;
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at) VALUES ('BD', 'OPS_MERCHANT__TAB_QUALIFICATIONS', 'OPS', NOW(), NOW()) ON DUPLICATE KEY UPDATE point_code = point_code;
+UPDATE rvw_appeal SET status = 'REJECTED' WHERE status = 'DISMISSED';
+INSERT INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at) VALUES ('OPS_FINANCE__TAB_POINTS', 'OPS_FINANCE', '积分资金看板', '分账结算', '/finance?tab=points', 'finance:settle:read', 'finance:settle:read', 'IMPLEMENTED', 1, 'P-12.1', 'MENU', 50, NOW(), NOW()) ON DUPLICATE KEY UPDATE point_code = point_code;
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at) VALUES ('SUPER_ADMIN', 'OPS_FINANCE__TAB_POINTS', 'OPS', NOW(), NOW()) ON DUPLICATE KEY UPDATE point_code = point_code;
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at) VALUES ('FINANCE', 'OPS_FINANCE__TAB_POINTS', 'OPS', NOW(), NOW()) ON DUPLICATE KEY UPDATE point_code = point_code;
+UPDATE mch_entity       SET legal_form = 'NATURAL_PERSON' WHERE legal_form = 'MICRO';
+UPDATE mch_entity_apply SET legal_form = 'NATURAL_PERSON' WHERE legal_form = 'MICRO';
+UPDATE sys_legal_form
+   SET legal_form = 'NATURAL_PERSON',
+       name = '自然人',
+       remark = '无营业执照的自然人经营者。**与法规「小微企业」无关** —— 那是有照企业的规模划型，重名且含义相反。受行业白名单限制（线上业态不收）；支付宝侧无对应档，故 alipay_code 留空'
+ WHERE legal_form = 'MICRO';
+UPDATE mch_admission_policy SET legal_form = 'NATURAL_PERSON' WHERE legal_form = 'MICRO';
+UPDATE mch_entity SET biz_qualification = 'REGISTERED'
+ WHERE legal_form IN ('INDIVIDUAL', 'ENTERPRISE');
+UPDATE mch_entity SET biz_qualification = 'EXEMPT', exempt_type = 'PETTY'
+ WHERE legal_form = 'NATURAL_PERSON';
+UPDATE mch_entity SET is_agri_producer = 1, exempt_type = 'AGRI'
+ WHERE legal_form = 'NATURAL_PERSON'
+ ORDER BY entity_no LIMIT 2;
+INSERT INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at)
+SELECT 'OPS_MESSAGE__TAB_NOTIFYLOG', 'OPS_MESSAGE', '发送记录', '触达', '/messages?tab=notifyLog', 'message:template:read', 'message:template:read', 'IMPLEMENTED', 1, 'P-14.1', 'MENU', 20, NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_function_point x WHERE x.point_code='OPS_MESSAGE__TAB_NOTIFYLOG');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'SUPER_ADMIN', 'OPS_MESSAGE__TAB_NOTIFYLOG', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPER_ADMIN' AND x.point_code='OPS_MESSAGE__TAB_NOTIFYLOG');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'SUPPORT', 'OPS_MESSAGE__TAB_NOTIFYLOG', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPPORT' AND x.point_code='OPS_MESSAGE__TAB_NOTIFYLOG');
+UPDATE sys_legal_form SET wechat_code = 'INDIVIDUAL' WHERE legal_form = 'INDIVIDUAL';
+UPDATE sys_legal_form SET settle_account_type = 'PERSONAL_BANK_CARD'
+ WHERE settle_account_type = 'PERSONAL_OPENID';
+UPDATE sys_legal_form
+   SET remark = CONCAT(remark, ' ⚠️ 结算到【个人银行卡】（不是微信零钱）。走【小微商户进件】接口，与个体户/企业的【特约商户进件】不是同一个接口，subject_type 只能是 SUBJECT_TYPE_MICRO')
+ WHERE legal_form = 'NATURAL_PERSON' AND remark NOT LIKE '%小微商户进件%';
+UPDATE sys_legal_form
+   SET remark = CONCAT(remark, '。走【特约商户进件】，subject_type=SUBJECT_TYPE_INDIVIDUAL')
+ WHERE legal_form = 'INDIVIDUAL' AND remark NOT LIKE '%特约商户进件%';
+UPDATE sys_legal_form
+   SET remark = CONCAT(remark, '。走【特约商户进件】，subject_type=SUBJECT_TYPE_ENTERPRISE')
+ WHERE legal_form = 'ENTERPRISE' AND remark NOT LIKE '%特约商户进件%';

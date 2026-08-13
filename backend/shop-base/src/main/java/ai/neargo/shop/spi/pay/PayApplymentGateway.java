@@ -46,7 +46,7 @@ public interface PayApplymentGateway {
      * @param contactName        联系人
      * @param contactPhone       联系电话
      * @param licenses           资质图（营业执照/身份证）的可访问地址
-     * @param settleAccountType  结算账户形态 PERSONAL_OPENID / MERCHANT_ID
+     * @param settleAccountType  结算账户形态 PERSONAL_BANK_CARD / MERCHANT_ID
      * @param settleAccount      结算账号**明文**。<b>只在本次调用中存在</b> ——
      *                           不落库、不进日志，库里只留 {@code settle_account_masked}
      */

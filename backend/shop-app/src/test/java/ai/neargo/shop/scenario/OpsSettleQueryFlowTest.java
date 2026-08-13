@@ -121,6 +121,10 @@ class OpsSettleQueryFlowTest {
         b.setServiceFeeMinor(0L);
         b.setNetMinor(9_500L);
         b.setCommissionRate(500);
+        // 补差只在**直连**路径上存在：钱在商家二级户，积分抵扣让他少收，平台要补进去。
+        // 归集路径下钱本就在平台手里，应付已按全额算过 —— 再补一次就是重复付款，
+        // 所以 executeSplit 会在执行点断言。造带补差的单必须显式声明这条路径。
+        b.setFundsMode(ai.neargo.shop.spi.user.MerchantQueryPort.FUNDS_DIRECT);
         b.setSubsidyMinor(0L);
         b.setBusinessMode(businessMode);
         b.setStatus(status);

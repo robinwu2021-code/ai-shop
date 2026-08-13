@@ -32,6 +32,9 @@ public interface MasterDataService {
      */
     boolean needLicense(String subjectType);
 
+    /** 该通道能否补差（{@code sys_pay_channel.supports_subsidy}）。**查不到按 false**。 */
+    boolean supportsSubsidy(String payChannel);
+
     /** 该主体是否受行业白名单限制（仅小微）。查不到按 false —— 未知不该凭空加限制。 */
     boolean industryGated(String subjectType);
 
@@ -46,7 +49,7 @@ public interface MasterDataService {
      */
     String canonicalSubject(String anySubject);
 
-    /** 该主体的结算账户形态：PERSONAL_OPENID（打到个人）/ MERCHANT_ID（打到对公）。查不到返回 null。 */
+    /** 该主体的结算账户形态：PERSONAL_BANK_CARD（打到个人）/ MERCHANT_ID（打到对公）。查不到返回 null。 */
     String settleAccountType(String subjectType);
 
     /** 支付通道展示名。查不到返回通道码本身 —— 页面宁可显示 WECHAT 也不要显示空白 */

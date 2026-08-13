@@ -71,6 +71,19 @@ export function CreditTab({ c }: { c: MerchantsCopy }) {
       numeric: true,
     },
     {
+      /*
+       * 责任归属：**这一列决定了「毁约次数」旁边那些分该不该算在他头上**。
+       * 归集路径下平台是销售主体，服务与时效是平台在做 ——
+       * 拿它考核供应商是拿他控制不了的事罚他。
+       * 而分照常展示给消费者：那是他们的真实体验，藏起来的后果是没人为它负责。
+       */
+      header: c.colBorne,
+      cell: (m) =>
+        m.fundsMode === "AGGREGATED"
+          ? <Badge tone="warning">{c.bornePlatform}</Badge>
+          : <span className="text-muted-foreground">{c.borneMerchant}</span>,
+    },
+    {
       header: c.colVerified,
       cell: (m) => (m.verified ? <Badge tone="success">{c.badgeVerified}</Badge> : <span className="text-muted-foreground">{c.badgeUnverified}</span>),
     },
@@ -87,6 +100,7 @@ export function CreditTab({ c }: { c: MerchantsCopy }) {
   return (
     <>
       <Notice className="mb-3">{fill(c.creditNotice, { n: MAX_MERCHANT_BREACH })}</Notice>
+      <Notice className="mb-3">{c.borneNotice}</Notice>
       <Toolbar search={keyword} onSearch={(v) => { setKeyword(v); setPage(1); }} searchPlaceholder={c.searchPlaceholder} />
       <DataTable
         columns={columns} rows={list.data?.records} loading={list.isLoading}

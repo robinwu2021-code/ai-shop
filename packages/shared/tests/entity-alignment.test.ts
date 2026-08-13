@@ -117,7 +117,10 @@ describe("Java 实体与库表对齐", () => {
   });
 
   it("每张业务表都有实体，或已登记为「知道欠着」", () => {
-    const IGNORE = /^(flyway_schema_history|sys_idempotent|sys_outbox)$/;
+    // shedlock 进这里而不是 NO_ENTITY_YET：**它不是欠账，是框架自管表**。
+    // 表结构由 ShedLock 硬编码（列名不能改），读写全在 JdbcTemplateLockProvider 内部，
+    // 配一个实体反而会让人以为可以用它读锁状态 —— 而那样读到的是不带锁语义的快照。
+    const IGNORE = /^(flyway_schema_history|sys_idempotent|sys_outbox|shedlock)$/;
     const naked = [...schema.keys()]
       .filter((t) => !IGNORE.test(t) && !entities.has(t) && !(t in NO_ENTITY_YET));
     expect(

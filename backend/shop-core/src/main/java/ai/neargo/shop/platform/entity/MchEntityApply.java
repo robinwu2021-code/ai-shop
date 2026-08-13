@@ -102,6 +102,15 @@ public class MchEntityApply extends BaseEntity {
      */
     private Boolean asPickupPoint;
     private String qualifications;
+
+    /**
+     * 结构化资质 JSON（V79）：{@code [{type,code,imageUrl,expireAt,issuer}]}。
+     *
+     * <p>审核通过时按它逐条写入 {@code mch_qualification} —— 上面那个
+     * {@code qualifications} 是纯 URL 数组，填不出类型/证号/有效期，转不过去。
+     */
+    private String qualificationItems;
+
     private String status;
     private String rejectReason;
     private String auditedBy;

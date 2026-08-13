@@ -360,4 +360,39 @@ class ArchitectureTest {
                         + "若是新业务域，加进 DOMAINS；若是基础设施，加进本测试的 infra 名单")
                 .isEmpty();
     }
+
+    /**
+     * 每个 {@code @Scheduled} 都必须带 {@code @SchedulerLock}。
+     *
+     * <p><b>这条守的是「加第二个 worker 实例的那一天」。</b>
+     * 定时任务已经被 {@code @Profile("worker")} 挡住了「api 实例也在跑」这一层，
+     * 但那个闸挡不住 worker 自己起两份 —— 而扩容是运维在容量吃紧时做的动作，
+     * 不会回来问代码准备好没有。
+     *
+     * <p>漏一个的后果不是报错，是**重复执行**：
+     * 资质到期任务会给同一个商家发两遍下架通知（商家以为出了两次问题）、
+     * 积分转正会一个成功一个全程回滚（日志里的「转正 0 条」和
+     * 「今天确实没有到点的」长得一模一样）。
+     * <b>幂等守的是正确性，锁守的是可观测性</b>，两者都要。
+     *
+     * <p>所以这条不能靠人记得 —— 加任务的人正在想的是业务，不是部署形态。
+     */
+    @Test
+    @DisplayName("★★★ 每个 @Scheduled 都要有 @SchedulerLock —— 漏一个，扩容那天就重复执行")
+    void everyScheduledMethodMustBeLocked() {
+        List<String> unlocked = classes.stream()
+                .flatMap(c -> c.getMethods().stream())
+                .filter(m -> m.isAnnotatedWith(org.springframework.scheduling.annotation.Scheduled.class))
+                .filter(m -> !m.isAnnotatedWith(net.javacrumbs.shedlock.spring.annotation.SchedulerLock.class))
+                .map(m -> m.getOwner().getSimpleName() + "#" + m.getName())
+                .sorted()
+                .toList();
+
+        assertThat(unlocked)
+                .as("这些定时任务没有分布式锁。worker 起两个实例时它们会各跑一遍。\n"
+                        + "  加 @SchedulerLock(name=..., lockAtLeastFor=..., lockAtMostFor=...)：\n"
+                        + "  · name 每个任务独立 —— 共用一把锁会让后一个被静默跳过\n"
+                        + "  · lockAtMostFor 要小于调度间隔，否则卡死时整条链停摆")
+                .isEmpty();
+    }
 }

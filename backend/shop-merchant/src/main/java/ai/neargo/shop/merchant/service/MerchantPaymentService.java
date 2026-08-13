@@ -67,7 +67,7 @@ public interface MerchantPaymentService {
 
     /**
      * @param payChannel        目标通道，如 WECHAT
-     * @param settleAccountType PERSONAL_OPENID / MERCHANT_ID；为空时按法律形态取默认
+     * @param settleAccountType PERSONAL_BANK_CARD / MERCHANT_ID；为空时按法律形态取默认
      * @param settleAccount     结算账号明文，**不落库**
      * @param licenses          资质图地址
      * @param storeNo           为哪家门店进件；<b>为空 = 主体级默认号</b>（单店永远走这条）

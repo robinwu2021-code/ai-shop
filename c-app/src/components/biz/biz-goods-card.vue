@@ -72,6 +72,8 @@ const off = computed(() => {
 
       <!-- 落款行：谁在卖 + 卖得好不好。位置固定在最下面才好扫 -->
       <view class="card__merchant">
+        <!-- 自营标识（电商法 §37）。放在店名前 —— 「谁在卖」先于「货是谁供的」 -->
+        <text v-if="goods.merchant.selfOperated" class="card__self">{{ $t("merchant.selfOperated") }}</text>
         <text class="card__shop">{{ goods.merchant.logo }} {{ goods.merchant.name }}</text>
         <text class="card__sales sh-num">{{ $t("common.sold", { n: goods.sales }) }}</text>
       </view>
@@ -196,6 +198,14 @@ const off = computed(() => {
   justify-content: space-between;
   gap: 16rpx;
   margin-top: 8rpx;
+}
+.card__self {
+  margin-right: 8rpx;
+  padding: 0 8rpx;
+  border-radius: var(--sh-radius-sm, 16rpx);
+  background: var(--sh-accent-tint);
+  color: var(--sh-accent);
+  font-size: 24rpx;
 }
 .card__shop {
   font-size: 24rpx;

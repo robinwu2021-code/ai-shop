@@ -4,6 +4,7 @@ import ai.neargo.shop.settle.service.ReconService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Profile;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -31,6 +32,10 @@ public class ReconScanJob {
     }
 
     @Scheduled(cron = "0 */10 * * * *")
+    // **四个任务里重叠窗口最大的一个** —— 10 分钟一次，一次跑久了就会和下一次撞上。
+    // lockAtMostFor 给 9 分钟（小于间隔）：真卡死时下一轮能接手，不至于整条对账停摆。
+    // lockAtLeastFor 只给 30 秒 —— 扫得快是常态，锁太久会让下一轮白等。
+    @SchedulerLock(name = "recon-scan", lockAtLeastFor = "PT30S", lockAtMostFor = "PT9M")
     public void scan() {
         ReconService.ScanResult r = reconService.scan(System.currentTimeMillis());
         if (r.scanned() == 0) {

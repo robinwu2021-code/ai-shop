@@ -69,7 +69,7 @@ export function CategoryTab({ c, canGrant }: { c: MerchantsCopy; canGrant: boole
     {
       header: c.colQualifications,
       cell: (m) =>
-        m.qualifications.length
+        m.qualifications?.length
           ? m.qualifications.join("、")
           : <span className="text-muted-foreground">{c.noQualification}</span>,
     },
@@ -104,7 +104,7 @@ export function CategoryTab({ c, canGrant }: { c: MerchantsCopy; canGrant: boole
           <div>
             <DrawerSection first title={c.secQualification}>
               <p className="txt-body">
-                {current.qualifications.length ? current.qualifications.join("、") : c.noQualification}
+                {current.qualifications?.length ? current.qualifications.join("、") : c.noQualification}
               </p>
               <p className="mt-1 txt-caption text-muted-foreground">{c.qualificationHint}</p>
             </DrawerSection>
@@ -112,8 +112,12 @@ export function CategoryTab({ c, canGrant }: { c: MerchantsCopy; canGrant: boole
             <DrawerSection title={c.secAuthCodes}>
               <div className="space-y-2">
                 {authCodes.data?.map((a) => {
-                  // 缺资质的直接禁掉：勾上再保存报错，等于让人白点一次
-                  const blocked = !!a.requiredQualification && !current.qualifications.includes(a.requiredQualification);
+                  // 缺资质的直接禁掉：勾上再保存报错，等于让人白点一次。
+                  // `?? []` 不是防御性冗余：后端此前不下发 qualifications，
+                  // 少了它这一行会在真接口下抛 TypeError（见 types/merchant.ts 的注）。
+                  const blocked =
+                    !!a.requiredQualification &&
+                    !(current.qualifications ?? []).includes(a.requiredQualification);
                   return (
                     <label key={a.code} className="flex items-start gap-2">
                       <Checkbox

@@ -320,7 +320,36 @@ export type AfterSaleReason =
  * （DEVICE/MERCHANT/USER）。两个不同的概念同名，读代码的人迟早会把
  * 一个当成另一个 —— 类型对齐守卫正是为此存在的。
  */
-export type MerchantSubject = "MICRO" | "INDIVIDUAL" | "ENTERPRISE";
+/**
+ * 资金路径：**钱先进谁的账户**。与 `mch_entity.funds_mode` 同值。
+ *
+ * ⚠️ **与「经营模式」（谁是销售主体）正交，不要合并** ——
+ * 合成一个枚举后，「直连 + 自营」（钱进商家户却说平台是卖方）
+ * 这种非法组合在类型上就是可表达的（同 ADR-013 教训）。
+ *
+ * 结算侧「要不要给积分补差」判的是**这一个**：
+ * 钱在商家二级户才需要补进去，钱在平台户是平台自己少收。
+ */
+export type FundsMode = "AGGREGATED" | "DIRECT";
+
+export type MerchantSubject = "NATURAL_PERSON" | "INDIVIDUAL" | "ENTERPRISE";
+
+/**
+ * 经营资格（轴①，法定）：**决定能不能交易**，与通道无关。
+ *
+ * - `REGISTERED` 已办市场主体登记（有营业执照）
+ * - `EXEMPT` 依法免登记（电商法 §10 四类情形）—— **是合法经营者，不是无资质**
+ * - `UNREGISTERED` 应登记而未登记 —— 违法经营，平台不得提供交易能力
+ */
+export type BizQualification = "REGISTERED" | "EXEMPT" | "UNREGISTERED";
+
+/**
+ * 免登记情形（电商法 §10）。
+ *
+ * ⚠️ **只有 `PETTY` 受 10 万元/年 约束**，其余三类无金额上限 ——
+ * 农户卖 50 万自产柿饼仍然免登记。四类混起来监控会误伤前三类。
+ */
+export type ExemptType = "AGRI" | "HANDCRAFT" | "SERVICE" | "PETTY";
 
 /**
  * @deprecated 用 {@link MerchantSubject}。旧取值 `PLATFORM/COMPANY/INDIVIDUAL` 已废弃 ——
@@ -334,6 +363,20 @@ export type MerchantType = MerchantSubject;
 export interface MerchantBrief {
   /** 商家单号。贯穿商品/订单/评价/结算，是多商家模型的主线（ADR-001） */
   merchantNo: string;
+  /**
+   * 这单是不是**平台自营**（销售主体是平台）。
+   *
+   * **必须显示出来 —— 电商法 §37 要求平台以显著方式区分标记自营业务，
+   * 不得误导消费者。这是法定义务，不是产品选择。**
+   *
+   * 而它同时是资金模式合法性的一部分：归集路径下平台是销售主体，
+   * 页面上却让消费者以为在跟商家交易，四流就不一致了（ADR-017 §3.4）。
+   *
+   * ⚠️ 自营时**商家信息照常展示**（供货商、产地、门店、评分）——
+   * 要禁的是把销售方指给商家的**表述**，不是商家信息本身。
+   * 见 `packages/shared/tests/seller-statement.test.ts` 的禁用词表。
+   */
+  selfOperated?: boolean;
   /** 店铺名 */
   name: string;
   /** 店铺 logo URL */
@@ -753,7 +796,7 @@ export interface CartItem {
  * ──────────────────────────────────────────────────────────────────────────── */
 
 /** 结算账户形态。个人 openid 收款 / 对公商户号收款（ADR-002 §5） */
-export type SettleAccountType = "PERSONAL_OPENID" | "MERCHANT_ID";
+export type SettleAccountType = "PERSONAL_BANK_CARD" | "MERCHANT_ID";
 
 /**
  * 支付**进件**状态（`MerchantPayment.applyStatus`）。
@@ -1027,6 +1070,44 @@ export interface OrderReceiver {
   address?: string;
 }
 
+/**
+ * 开票申请的状态（ADR-017 §3.4 条件 2）。
+ *
+ * 本版是**手工开票**：运营在票据系统里开完，回来回填票号。
+ * 接票据系统是第二步，届时在 `ISSUED` 之后延长状态机，不改前面的。
+ */
+export type InvoiceRequestStatus = "REQUESTED" | "ISSUED" | "REJECTED";
+
+/** 抬头类型。单位抬头必须有税号，否则对方入不了账 —— 票开出来等于白开 */
+export type InvoiceTitleType = "PERSONAL" | "COMPANY";
+
+/**
+ * 开票申请：**平台开给消费者**的销项票。
+ *
+ * 与结算侧的采购发票（`stl_purchase_invoice`）是两回事：
+ * 那是**进项**（供应商开给平台，决定平台能不能列支成本），
+ * 这是**销项**（平台开给消费者，决定归集资金模式成不成立）。
+ */
+export interface InvoiceRequest {
+  requestNo: string;
+  /** 按**主单**申请，不按子单 —— 消费者眼里那是一次购买，票也该是一张 */
+  orderNo: string;
+  titleType: InvoiceTitleType;
+  title: string;
+  /** 单位抬头必填 */
+  taxNo?: string;
+  /** 电子票只能发到这里，填错就是开了也收不到 */
+  email: string;
+  /** 开票金额快照。**不实时读订单** —— 退款会改订单金额，已开的票不会跟着变 */
+  amountMinor: number;
+  status: InvoiceRequestStatus;
+  invoiceNo?: string;
+  issuedAt?: number;
+  /** 驳回原因。不写原因的驳回等于让消费者再猜一遍 */
+  rejectReason?: string;
+  createdAt?: number;
+}
+
 export interface Order {
   /** 订单单号 */
   orderNo: string;
@@ -1130,29 +1211,6 @@ export interface UserCard {
 
 // ---------------------------------------------------------------- 营销
 
-export interface Coupon {
-  /** 券单号 */
-  couponNo: string;
-  /** 券名，如「满 50 减 5」 */
-  title: string;
-  type: CouponType;
-  /** 满减面额（最小货币单位）。`DISCOUNT` 券为 0 */
-  faceMinor: number;
-  /** 折扣**万分比**，8500 = 八五折。`FULL_CUT` 券为 0 */
-  discountRate: number;
-  /** 使用门槛（最小货币单位）。0 表示无门槛 */
-  thresholdMinor: number;
-  /** 折扣券封顶（最小货币单位）。仅 `DISCOUNT` 有意义 */
-  maxDiscountMinor: number;
-  funder: CouponFunder;
-  /** 商家券的归属商家；平台券为空 */
-  merchantNo: string;
-  /** 可领取/可用的时间窗 */
-  startAt: number;
-  endAt: number;
-  /** 剩余可领数量 */
-  remain: number;
-  /** 当前用户是否已领取。列表页据此显示「领取」还是「去使用」 */
 /**
  * 领到手的那张券（`mkt_user_coupon` 的一行）。
  *
@@ -1197,6 +1255,29 @@ export type CouponStatus = "ACTIVE" | "PAUSED" | "ENDED";
  * <b>而且那个简化本身是错的</b>：`discountMinor` 一个数表达不了折扣券 ——
  * 折扣券要的是「打几折 + 最多减多少」。后端的形状才是对的，端上跟它。
  */
+export interface Coupon {
+  /** 券单号 */
+  couponNo: string;
+  /** 券名，如「满 50 减 5」 */
+  title: string;
+  type: CouponType;
+  /** 满减面额（最小货币单位）。`DISCOUNT` 券为 0 */
+  faceMinor: number;
+  /** 折扣**万分比**，8500 = 八五折。`FULL_CUT` 券为 0 */
+  discountRate: number;
+  /** 使用门槛（最小货币单位）。0 表示无门槛 */
+  thresholdMinor: number;
+  /** 折扣券封顶（最小货币单位）。仅 `DISCOUNT` 有意义 */
+  maxDiscountMinor: number;
+  funder: CouponFunder;
+  /** 商家券的归属商家；平台券为空 */
+  merchantNo: string;
+  /** 可领取/可用的时间窗 */
+  startAt: number;
+  endAt: number;
+  /** 剩余可领数量 */
+  remain: number;
+  /** 当前用户是否已领取。列表页据此显示「领取」还是「去使用」 */
   received: boolean;
   status: CouponStatus;
   /** 适用范围文案，如「仅限张记粮油店」。展示用，实际校验在服务端 */
@@ -1513,6 +1594,17 @@ export interface MerchantProfile {
   rejectReason?: string;
   /** 本次会话的登录方式。第三方登录且 phone 为空时，要引导补绑手机号 */
   loginBy?: GrantType;
+  /**
+   * 资金路径。**B 端价格字段叫什么由它决定** ——
+   * 归集（钱进平台账户）下平台是销售主体、最终售价平台定，商家填的是「期望收购价」；
+   * 直连下他自己就是销售主体，那就是「售价」。
+   *
+   * 判据用它而不是门店的 `businessMode`：与积分能力同一根轴 —— **责任跟着钱走**。
+   *
+   * 还没进件的申请人为空：那时资金路径尚未确定，
+   * 猜一个默认值会让他在入驻页看到一个还轮不到他的字段名。
+   */
+  fundsMode?: FundsMode;
 }
 
 export interface MerchantLoginResp {
@@ -1520,6 +1612,37 @@ export interface MerchantLoginResp {
   token: string;
   /** 商家档案 */
   merchant: MerchantProfile;
+}
+
+/**
+ * 一条**结构化资质**。
+ *
+ * 与 `MerchantApplyReq.licenses`（纯图片 URL 数组）并存，两者都传。
+ * 只有这一份带类型/证号/有效期 —— **审核通过时才转得进 `mch_qualification`**，
+ * 而上架的两个闸门（资质过期、类目授权）读的就是那张表。
+ * 光有图片 URL 填不出那些列，所以此前商家传的执照停在申请单里，两个闸门从不触发。
+ */
+/**
+ * 资质类型码。取值同后端 `mch_qualification.qual_type`。
+ *
+ * ⚠️ **`BUSINESS_LICENSE` 是入驻校验的判据** —— 需要执照的档位必须含它，
+ * 改名会让那条校验静默失效（找不到就当没传，然后放行）。
+ */
+export type QualificationType = "BUSINESS_LICENSE" | "FOOD_PERMIT" | "FOOD_WORKSHOP" | "OTHER";
+
+export interface QualificationItem {
+  /** 资质类型码 */
+  type: QualificationType;
+  /** 证照编号 */
+  code: string;
+  imageUrl: string;
+  /**
+   * 有效期截止（毫秒）。**长期有效传 `null`** ——
+   * 不要用 0 或一个很大的数字冒充：过期扫描会把前者当成已过期、
+   * 后者当成永不过期，两种都错且都不报错。
+   */
+  expireAt: number | null;
+  issuer?: string;
 }
 
 export interface MerchantApplyReq {
@@ -1537,6 +1660,12 @@ export interface MerchantApplyReq {
   desc: string;
   /** 承接自提点：小店既是供给方也是取货点（ADR-005 type=STORE） */
   asPickupPoint?: boolean;
+  /**
+   * 结构化资质。**可选**：老版本端上还在只传 `licenses`，
+   * 后端对未传该字段的请求跳过执照校验（见 `OpsServiceImpl.requireLicenseIfNeeded`）——
+   * 校验必须晚于能满足它的 UI 上线，否则拦的不是坏商家，是所有人。
+   */
+  qualificationItems?: QualificationItem[];
   /**
    * 期望经营范围（ADR-009）。申请时可空，<b>审核通过时必须确定</b> ——
    * 否则商家上着架却对谁都不可见，且没有任何报错。
@@ -1654,7 +1783,7 @@ export interface PaymentApplyment {
   payMerchantNo?: string;
   /** 二级商户号掩码。完整号不回显 */
   subMchidMasked?: string;
-  /** 结算账户形态：小微打个人（PERSONAL_OPENID），其余打对公（MERCHANT_ID） */
+  /** 结算账户形态：小微打个人（PERSONAL_BANK_CARD），其余打对公（MERCHANT_ID） */
   settleAccountType?: SettleAccountType;
   /** 结算账号掩码。**明文永不回显**，包括给商家自己（ADR-002 §5） */
   settleAccountMasked?: string;
@@ -2203,6 +2332,40 @@ export interface CampaignDraft {
  * ⚠️ 这是**交易页不是介绍页**：登录用户第一屏是「我买过的」，不是店招 Banner。
  * 粮油副食的复购路径必须压到三步 —— 打开 → 常买 → 下单（ADR-004 §3.3）。
  */
+/**
+ * 门店主页上店主自己维护的那一块：公告、营业时间、地址。
+ *
+ * **只有这三个，不是整份 {@link StoreProfile}** —— 经营范围、配送半径、收款号
+ * 那些是 B 端配置，C 端一个字节都不该看到。契约此前直接写 `StoreProfile`，
+ * 相当于让门店主页有权拿到商家的全部经营参数。
+ */
+/**
+ * 本团待取的一单（发起人视角，C-GB-06 邻里自提）。
+ *
+ * **不是 `Order`**。契约此前把这条链路的三个端点都声明成返回 `Order`，
+ * 而后端返回的一直是这个形状 —— 页面读 `o.orderNo` 拿到 undefined，
+ * 于是 `v-for` 的 key 全是 undefined，核销按钮点谁都一样。
+ * 发起人只需要「谁的、几件、核销码」，不需要整张订单。
+ */
+export interface GroupPickupOrder {
+  /** 子订单号（`SUB…`）—— 这条链路上的「一单」就是一张子订单 */
+  subOrderNo: string;
+  buyerNickname: string;
+  /** 核销码。**只有发起人看得到**，参团者看自己那一单即可 */
+  verifyCode: string;
+  status: OrderStatus;
+  items: { goodsNo: string; title: string; spec: string; qty: number }[];
+}
+
+export interface StoreFront {
+  /** 店铺公告：「今日到货」「今天有土鸡蛋」，店主自发（C-ST-04） */
+  announcement: string;
+  /** 营业时间文案，店主自填 */
+  openHours: string;
+  /** 店铺地址，店主自填 */
+  address: string;
+}
+
 export interface StoreHome {
   /** 平台建档的商家主数据（名称/资质/评分），店主改不了 */
   merchant: MerchantBrief;
@@ -2252,56 +2415,6 @@ export interface ReorderResult {
  * 入驻申请状态（C 端查自己的进度 / 平台端审核队列共用）。
  *
  * 状态机：`PENDING → REVIEWING → APPROVED | REJECTED`，`REJECTED → PENDING`（补料重提）。
-/**
- * 门店主页上店主自己维护的那一块：公告、营业时间、地址。
- *
- * **只有这三个，不是整份 {@link StoreProfile}** —— 经营范围、配送半径、收款号
- * 那些是 B 端配置，C 端一个字节都不该看到。契约此前直接写 `StoreProfile`，
- * 相当于让门店主页有权拿到商家的全部经营参数。
- */
-/**
- * 本团待取的一单（发起人视角，C-GB-06 邻里自提）。
- *
- * **不是 `Order`**。契约此前把这条链路的三个端点都声明成返回 `Order`，
- * 而后端返回的一直是这个形状 —— 页面读 `o.orderNo` 拿到 undefined，
- * 于是 `v-for` 的 key 全是 undefined，核销按钮点谁都一样。
- * 发起人只需要「谁的、几件、核销码」，不需要整张订单。
- */
-export interface GroupPickupOrder {
-  /** 子订单号（`SUB…`）—— 这条链路上的「一单」就是一张子订单 */
-  subOrderNo: string;
-  buyerNickname: string;
-  /** 核销码。**只有发起人看得到**，参团者看自己那一单即可 */
-  verifyCode: string;
-  status: OrderStatus;
-  items: { goodsNo: string; title: string; spec: string; qty: number }[];
-}
-
-export interface StoreFront {
-  /** 店铺公告：「今日到货」「今天有土鸡蛋」，店主自发（C-ST-04） */
-  announcement: string;
-  /** 营业时间文案，店主自填 */
-  openHours: string;
-  /** 店铺地址，店主自填 */
-  address: string;
-}
-
-/**
- * 门店主页上店主自己维护的那一块：公告、营业时间、地址。
- *
- * **只有这三个，不是整份 {@link StoreProfile}** —— 经营范围、配送半径、收款号
- * 那些是 B 端配置，C 端一个字节都不该看到。契约此前直接写 `StoreProfile`，
- * 相当于让门店主页有权拿到商家的全部经营参数。
- */
-export interface StoreFront {
-  /** 店铺公告：「今日到货」「今天有土鸡蛋」，店主自发（C-ST-04） */
-  announcement: string;
-  /** 营业时间文案，店主自填 */
-  openHours: string;
-  /** 店铺地址，店主自填 */
-  address: string;
-}
-
  * **APPROVED 是终态** —— 已经建了商家、发了账号，回退没有意义。
  *
  * ⚠️ 这条是**审核**生命周期，与 `Merchant` 上的**经营**状态（ACTIVE/SUSPENDED）无关：

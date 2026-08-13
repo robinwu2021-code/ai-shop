@@ -33,7 +33,7 @@ public class SysLegalForm extends BaseEntity {
     /** 小微不需要营业执照 —— 这正是它存在的意义。 */
     private Boolean needLicense;
 
-    /** PERSONAL_OPENID（打到个人）/ MERCHANT_ID（打到对公）。 */
+    /** PERSONAL_BANK_CARD（打到个人）/ MERCHANT_ID（打到对公）。 */
     private String settleAccountType;
 
     /** 仅小微为 true：行业白名单只对小微生效，个体户/企业走另一套准入。 */

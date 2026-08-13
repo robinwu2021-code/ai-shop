@@ -40,6 +40,16 @@ public class MasterDataPortImpl implements MasterDataPort {
     }
 
     @Override
+    public boolean needLicense(String subjectType) {
+        return masterDataService.needLicense(subjectType);
+    }
+
+    @Override
+    public boolean supportsSubsidy(String payChannel) {
+        return masterDataService.supportsSubsidy(payChannel);
+    }
+
+    @Override
     public void assertServiceScopeAllowed(String scope) {
         masterDataService.assertServiceScopeAllowed(scope);
     }

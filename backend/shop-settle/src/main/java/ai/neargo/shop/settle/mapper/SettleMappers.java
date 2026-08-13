@@ -100,6 +100,23 @@ public final class SettleMappers {
         int grantPending(@Param("userNo") String userNo, @Param("market") String market,
                          @Param("points") long points, @Param("now") long now,
                          @Param("expireAt") long expireAt);
+
+        /**
+         * 待生效转正：把 {@code points} 从 pending 挪进 balance。
+         *
+         * <p><b>是「挪」不是「加」</b> —— 两列同时改，且 pending 不能被扣成负数。
+         * 分成两条语句写的话，中间崩一次就会出现「加了 balance 没减 pending」，
+         * 而那笔多出来的余额没有任何流水解释得了。
+         */
+        @Update("""
+                UPDATE pts_user_account
+                   SET balance = balance + #{points},
+                       pending_balance = pending_balance - #{points},
+                       last_active_at = #{now}, updated_at = NOW(), version = version + 1
+                 WHERE user_no = #{userNo} AND market = #{market}
+                   AND pending_balance >= #{points} AND deleted = 0""")
+        int activatePending(@Param("userNo") String userNo, @Param("market") String market,
+                            @Param("points") long points, @Param("now") long now);
     }
 
     public interface PointsLedgerMapper extends BaseMapper<PtsUserLedger> {

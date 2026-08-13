@@ -44,7 +44,7 @@ public class PointsPortImpl implements PointsPort {
     }
 
     @Override
-    public long grant(String userNo, String merchantNo, long baseMinor, String subOrderNo) {
+    public GrantResult grant(String userNo, String merchantNo, long baseMinor, String subOrderNo) {
         return pointsService.grantOnPay(userNo, merchantNo, baseMinor, subOrderNo);
     }
 }

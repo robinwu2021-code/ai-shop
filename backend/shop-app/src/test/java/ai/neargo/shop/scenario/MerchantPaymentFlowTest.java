@@ -31,6 +31,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class MerchantPaymentFlowTest {
 
     @Autowired
+    private ai.neargo.shop.common.OtpStore otpStore;
+
+    @Autowired
     private WebApplicationContext context;
 
     @Autowired
@@ -39,8 +42,6 @@ class MerchantPaymentFlowTest {
     @Autowired
     private org.springframework.jdbc.core.JdbcTemplate jdbc;
 
-    @Autowired
-    private ai.neargo.shop.common.OtpStore otpStore;
 
     private MockMvc mvc() {
         return MockMvcBuilders.webAppContextSetup(context)
@@ -198,7 +199,7 @@ class MerchantPaymentFlowTest {
         // 提交要能把记录建出来，而不是 404
         mvc().perform(post("/biz/merchant/payment").header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"payChannel\":\"WECHAT\",\"settleAccountType\":\"PERSONAL_OPENID\","
+                        .content("{\"payChannel\":\"WECHAT\",\"settleAccountType\":\"PERSONAL_BANK_CARD\","
                                 + "\"settleAccount\":\"6222021234567890123\",\"licenses\":[\"lic-1\"],"
                                 + "\"contactName\":\"张老板\",\"contactPhone\":\"13500135070\"}"))
                 .andExpect(jsonPath("$.code").value(0));
