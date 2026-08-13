@@ -1,0 +1,50 @@
+package ai.neargo.shop.message.notify;
+
+import ai.neargo.shop.message.entity.SysNotifyLog;
+import ai.neargo.shop.spi.notify.MailPort;
+import ai.neargo.shop.spi.notify.SendResult;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.context.annotation.Primary;
+import org.springframework.stereotype.Component;
+
+/**
+ * 给邮件通道套一层发送记录。理由同 {@link NotifyLoggingSmsPort}。
+ *
+ * <p>邮件这一侧的记录尤其要紧：它的消费方是**运营端密码交付**——
+ * 「新同事说没收到初始密码」时，这张表是唯一能区分
+ * 「发了但进了垃圾箱」与「压根没发出去」的地方。
+ * 两者的处置完全不同：前者让他去翻垃圾箱，后者要重置并查 SMTP。
+ */
+@Component
+@Primary
+public class NotifyLoggingMailPort implements MailPort {
+
+    private final MailPort delegate;
+    private final NotifyLogWriter writer;
+
+    public NotifyLoggingMailPort(@Qualifier("mailGateway") MailPort delegate, NotifyLogWriter writer) {
+        this.delegate = delegate;
+        this.writer = writer;
+    }
+
+    @Override
+    public SendResult send(String to, String subject, String body) {
+        return send(to, subject, body, SysNotifyLog.BIZ_TEST, null);
+    }
+
+    /** @param bizType 见 {@link SysNotifyLog} 的 {@code BIZ_*} 常量 */
+    public SendResult send(String to, String subject, String body,
+                           String bizType, String operatorNo) {
+        try {
+            SendResult r = delegate.send(to, subject, body);
+            // 邮件没有模板号，把**主题**记进 templateCode 列 —— 列表页要能一眼看出这是哪类邮件
+            writer.write(SysNotifyLog.MAIL, bizType, to, subject,
+                    SysNotifyLog.SENT, null, r.providerMsgId(), operatorNo);
+            return r;
+        } catch (RuntimeException e) {
+            writer.write(SysNotifyLog.MAIL, bizType, to, subject,
+                    SysNotifyLog.FAILED, e.getMessage(), null, operatorNo);
+            throw e;
+        }
+    }
+}

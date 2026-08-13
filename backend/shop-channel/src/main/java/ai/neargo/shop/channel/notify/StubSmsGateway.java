@@ -1,5 +1,6 @@
 package ai.neargo.shop.channel.notify;
 
+import ai.neargo.shop.spi.notify.SendResult;
 import ai.neargo.shop.spi.notify.SmsPort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,7 +22,7 @@ import java.util.List;
  * 靠日志断言是不可靠的（缓冲、轮转、并发混叠），而这批改造里
  * 「码有没有真的发出去」正是要验的东西。
  */
-@Component
+@Component("smsGateway")
 @ConditionalOnProperty(name = "shop.sms.stub", havingValue = "true", matchIfMissing = true)
 public class StubSmsGateway implements SmsPort {
 
@@ -37,7 +38,7 @@ public class StubSmsGateway implements SmsPort {
     }
 
     @Override
-    public void sendOtp(String phone, String code) {
+    public SendResult sendOtp(String phone, String code) {
         synchronized (sent) {
             sent.addLast(new Sent(phone, code));
             while (sent.size() > KEEP) {
@@ -49,6 +50,7 @@ public class StubSmsGateway implements SmsPort {
          * （安全整改方案 §2.4 点名的两处之一）。本地联调把这个包的级别调到 debug 即可。
          */
         log.debug("[sms-stub] otp to {} = {}", phone, code);
+        return SendResult.none();
     }
 
     /** 供测试断言：最近发出的一条。 */

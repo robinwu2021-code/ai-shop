@@ -1,0 +1,68 @@
+package ai.neargo.shop.message.entity;
+
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
+import lombok.Getter;
+import lombok.Setter;
+
+import java.time.LocalDateTime;
+
+/**
+ * 短信/邮件发送记录。
+ *
+ * <p><b>不继承 {@code BaseEntity}</b>：那上面有逻辑删除与更新时间，
+ * 而发送记录是**只追加**的事实流水——它没有「修改」这个动作，
+ * 也不该能被删（能删的审计等于没有审计）。
+ *
+ * <p><b>{@code target} 存掩码</b>：这张表运营都看得到，而收件人是用户的手机号与邮箱。
+ * 要查具体一条，靠 {@code providerMsgId} 去通道后台查——通道那边本来就有明文。
+ */
+@Getter
+@Setter
+@TableName("sys_notify_log")
+public class SysNotifyLog {
+
+    public static final String SMS = "SMS";
+    public static final String MAIL = "MAIL";
+
+    public static final String SENT = "SENT";
+    public static final String FAILED = "FAILED";
+
+    /** 验证码。自动触发，没有操作人。 */
+    public static final String BIZ_OTP = "OTP";
+    /** 运营账号初始密码。 */
+    public static final String BIZ_OPS_INIT_PASSWORD = "OPS_INIT_PASSWORD";
+    /** 运营账号密码重置。 */
+    public static final String BIZ_OPS_RESET_PASSWORD = "OPS_RESET_PASSWORD";
+    /** 运营端页面上手动触发的测试发送。 */
+    public static final String BIZ_TEST = "TEST";
+
+    @TableId(type = IdType.AUTO)
+    private Long id;
+
+    private String logNo;
+    private String channel;
+    private String bizType;
+
+    /** **掩码后的**收件人。明文不落库 */
+    private String target;
+
+    /** 短信为阿里云模板号；邮件为主题 */
+    private String templateCode;
+
+    private String status;
+
+    /** 通道返回的错误码与消息，失败时才有 */
+    private String error;
+
+    /** 阿里云 {@code BizId} / 邮件 {@code Message-ID} —— 找通道对账靠它 */
+    private String providerMsgId;
+
+    /** 谁触发的。OTP 这类自动发出的为空 */
+    private String operatorNo;
+
+    private String clientIp;
+
+    private LocalDateTime createdAt;
+}

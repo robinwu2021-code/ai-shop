@@ -23,7 +23,7 @@ public interface MailPort {
      * @param body    正文（纯文本）。**含密码时实现方不得写进日志**
      * @throws MailException 认证失败、被拒收、网络失败
      */
-    void send(String to, String subject, String body);
+    SendResult send(String to, String subject, String body);
 
     /** 邮件发送失败。 */
     class MailException extends RuntimeException {

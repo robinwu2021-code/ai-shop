@@ -24,4 +24,8 @@ public final class MessageMappers {
     public interface TemplateMapper extends BaseMapper<MsgTemplate> {
     }
 
+    /** 短信/邮件发送记录。**只追加**，没有更新与删除。 */
+    public interface NotifyLogMapper extends BaseMapper<ai.neargo.shop.message.entity.SysNotifyLog> {
+    }
+
 }

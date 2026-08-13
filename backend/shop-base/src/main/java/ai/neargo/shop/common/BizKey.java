@@ -49,6 +49,8 @@ public final class BizKey {
     /** 费率规则版本 */
     public static final String FEE_RULE = "FR";
     public static final String EVENT = "EVT";
+    /** 短信/邮件发送记录 */
+    public static final String NOTIFY_LOG = "NL";
     /**
      * 类目。运营新建的类目走这个前缀；种子里那批（CAT100…CAT400）是手写的主数据，
      * 编号与 ops-web 的 mock 对齐，联调时不用在两套编号之间换算。
@@ -69,6 +71,8 @@ public final class BizKey {
     public static final String DEPOSIT_TXN = "DP";
     /** 积分流水 */
     public static final String POINTS_LEDGER = "PL";
+    /** 积分资金池流水 */
+    public static final String POINTS_POOL = "PP";
     /** 榜单 */
     public static final String RANKING = "RK";
     /** 运营素材 */

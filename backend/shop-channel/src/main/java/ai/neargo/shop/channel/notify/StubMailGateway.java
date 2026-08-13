@@ -1,6 +1,7 @@
 package ai.neargo.shop.channel.notify;
 
 import ai.neargo.shop.spi.notify.MailPort;
+import ai.neargo.shop.spi.notify.SendResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -16,7 +17,7 @@ import java.util.List;
  * <p>它让「运营端密码改走邮件」这件事**在拿到邮箱密码之前就能做完并测完** ——
  * 记下「发给谁、发了什么」，就足以断言接口响应里不再有明文密码。
  */
-@Component
+@Component("mailGateway")
 @ConditionalOnProperty(name = "shop.mail.stub", havingValue = "true", matchIfMissing = true)
 public class StubMailGateway implements MailPort {
 
@@ -30,7 +31,7 @@ public class StubMailGateway implements MailPort {
     }
 
     @Override
-    public void send(String to, String subject, String body) {
+    public SendResult send(String to, String subject, String body) {
         synchronized (sent) {
             sent.addLast(new Sent(to, subject, body));
             while (sent.size() > KEEP) {
@@ -39,6 +40,7 @@ public class StubMailGateway implements MailPort {
         }
         // 正文可能含一次性密码或重置令牌，**不进日志**，只记收件人与主题
         log.debug("[mail-stub] to={} subject={}", to, subject);
+        return SendResult.none();
     }
 
     public Sent last() {

@@ -26,7 +26,8 @@ public interface SmsPort {
      * @param code  验证码明文。**实现方不得把它写进日志**
      * @throws SmsException 通道拒绝或网络失败
      */
-    void sendOtp(String phone, String code);
+    SendResult sendOtp(String phone, String code);
+
 
     /** 通道发送失败。{@code retryable} 区分「重试可能成功」与「这条永远发不出去」。 */
     class SmsException extends RuntimeException {

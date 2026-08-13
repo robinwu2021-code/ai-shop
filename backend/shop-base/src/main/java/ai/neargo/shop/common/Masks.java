@@ -32,6 +32,29 @@ public final class Masks {
     }
 
     /**
+     * 邮箱：本地部分留头一尾一，域名不动（{@code r***n@neargo.ai}）。
+     *
+     * <p><b>域名不遮</b>：遮了就分不清「发到公司邮箱」还是「发到个人邮箱」，
+     * 而排查发送记录时这恰恰是第一个要看的。本地部分留两头，本人能认出是不是自己。
+     */
+    public static String email(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        String s = raw.trim();
+        int at = s.indexOf('@');
+        if (at <= 0) {
+            return tail(s);      // 不是邮箱形状时退化，不抛错
+        }
+        String local = s.substring(0, at);
+        String domain = s.substring(at);
+        if (local.length() <= 2) {
+            return "*".repeat(local.length()) + domain;
+        }
+        return local.charAt(0) + "***" + local.charAt(local.length() - 1) + domain;
+    }
+
+    /**
      * 账号类：只留尾四位。
      *
      * <p>银行卡号、二级商户号共用它 —— 两处用不同口径，
