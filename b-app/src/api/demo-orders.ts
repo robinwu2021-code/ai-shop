@@ -167,6 +167,8 @@ export function ensureDemoOrders(): void {
       status: "APPLIED",
       reason: "QUALITY",
       images: [],
+      // 整单退：mock 里这张单只有一件货
+      refundMinor: withAfterSale.amount.payableMinor,
       updatedAt: Date.now(),
     };
     rows.push(withAfterSale);

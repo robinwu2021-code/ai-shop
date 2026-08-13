@@ -740,6 +740,10 @@ export const mockApi: ShopApi = {
       status: "APPLIED",
       reason,
       images,
+      // 整单退：mock 不做部分退款
+      refundMinor: o.amount.paidMinor || o.amount.payableMinor,
+      instant: type === "REFUND_ONLY"
+        && (o.amount.paidMinor || o.amount.payableMinor) <= TRADE_RULES.instantRefundMaxMinor,
       updatedAt: Date.now(),
     };
     pushTimeline(o, `已申请${type === "RETURN_REFUND" ? "退货退款" : "仅退款"}：${reason}`);

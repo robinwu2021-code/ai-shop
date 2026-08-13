@@ -376,6 +376,8 @@ export default {
     waitReturn: "Approved — waiting for the customer to ship it back. Refund happens after you confirm receipt.",
     returnExpress: "Return tracking no.", confirmReceived: "Confirm receipt and refund",
     refunded: "Receipt confirmed, refund issued",
+    doneHint: "Refunded — this case is closed.",
+    instantHint: "Small refund-only request: the system approved and refunded it automatically — nothing for you to do.",
     disputed: "Platform review", disputedHint: "The customer escalated to the platform. Support will contact both sides; nothing to do meanwhile.",
     title: "After-sales", empty: "Nothing to handle", refundAmount: "Refund amount",
     agree: "Approve refund", reject: "Decline", confirmReject: "Confirm decline",

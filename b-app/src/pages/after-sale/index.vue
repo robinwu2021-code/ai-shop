@@ -131,10 +131,14 @@ onShow(load);
         </text>
       </view>
 
-      <view v-if="r.order" class="item__amount">
+      <!-- 金额取**售后单自己的** refundMinor，不是订单的应付：
+           一张子订单可以只退其中一件，也可以先后发起多次。
+           也因此不再挂 `v-if="r.order"` —— 订单没匹配上时，
+           退款金额这一行照样该出现，那是这一页最要紧的一个数。 -->
+      <view class="item__amount">
         <text class="sh-muted">{{ $t("afterSale.refundAmount") }}</text>
         <text class="sh-num amount">
-          {{ money(r.order.amount.payableMinor, r.order.amount.currency) }}
+          {{ money(r.as.refundMinor, r.order?.amount.currency) }}
         </text>
       </view>
 
@@ -178,6 +182,15 @@ onShow(load);
           <text class="sh-num">{{ r.as.returnExpressNo }}</text>
         </view>
         <text class="btn" @tap="confirmReturn(r)">{{ $t("afterSale.confirmReceived") }}</text>
+      </view>
+
+      <!-- 已退款也要说一句。此前这一支没有分支，卡片下方是**一片空白** ——
+           而空白与「还没轮到我处理」长得一模一样。
+           极速退单独说：那类单商家可见不可拒，不说清楚会以为是自己漏点了。 -->
+      <view v-else-if="asStatus(r) === 'REFUNDED'" class="waiting">
+        <text class="sh-muted">
+          {{ r.as.instant ? $t("afterSale.instantHint") : $t("afterSale.doneHint") }}
+        </text>
       </view>
 
       <view v-else-if="asStatus(r) === 'REJECTED'" class="waiting">

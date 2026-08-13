@@ -544,6 +544,8 @@ export default {
     returnExpress: "退货运单号",
     confirmReceived: "确认收到退货并退款",
     refunded: "已确认收货，退款已发起",
+    doneHint: "已退款，这一单结束了。",
+    instantHint: "小额仅退款，系统已自动通过并退款 —— 这类单不用你处理。",
     disputed: "平台介入中",
     disputedHint: "用户已申请平台裁决，客服会联系双方核实，期间无需操作。",
     title: "售后处理",
