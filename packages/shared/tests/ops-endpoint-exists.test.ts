@@ -94,15 +94,6 @@ const KNOWN_GAPS: Record<string, string> = {
   "GET /ops/finance/tax-rule": "税率规则",
   "PUT /ops/finance/tax-rule": "改税率规则",
 
-  // ── 支付：域刚活（对账自查落地，recon-diffs 三条 + recon-coverage）──
-  // 关单规则是 /orders 的「自动关单」tab：一个读回来能编、有保存按钮的配置表单，
-  // 而两条端点都不存在 —— **保存点下去 404，页面却什么都不说**。
-  // 这就是守卫盯的那个时刻：域一活，整页不再明显是 mock，
-  // 漏掉的这两条就从「这块还没做」变成了「系统坏了」。
-  // 谁接通 close-rule 谁把这两行删掉。
-  "GET /ops/payments/close-rule": "订单自动关单规则（读）—— 后端未实现，见 /orders?tab=close",
-  "PUT /ops/payments/close-rule": "订单自动关单规则（写）—— 同上，保存按钮当前是死的",
-
   // ── 平台投放场次：后端没有这个领域对象，见 运营端营销列表契约错配.md §3 ──
   // 平台场次：**一期刻意不做**（2026-08-12 决定）。
   // 平台自己出资、跨商家的活动与 mkt_campaign（店铺级、商家出资）不是一回事，

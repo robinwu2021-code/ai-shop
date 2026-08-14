@@ -2,6 +2,7 @@ package ai.neargo.shop.trade.service.impl;
 
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.spi.user.PickupQueryPort;
+import ai.neargo.shop.trade.service.CloseRuleService;
 import ai.neargo.shop.trade.service.OrderService;
 import ai.neargo.shop.trade.service.OrderStateMachine;
 import ai.neargo.shop.trade.service.OrderStatusView;
@@ -57,8 +58,21 @@ import java.util.stream.Collectors;
 @Service
 public class OrderServiceImpl implements OrderService {
 
-    /** 15 分钟未支付关单。与端上倒计时一致，两边都从 {@code expireAt} 读，不各自算。 */
-    private static final Duration PAY_TTL = Duration.ofMinutes(15);
+    /**
+     * 支付时限**由平台配置决定**（P-4.2.3，{@code /orders?tab=close}）。
+     *
+     * <p>此前这里是 {@code PAY_TTL = 15 分钟} 的常量，而运营端有一个能编辑、
+     * 能保存的关单策略表单 —— 那个表单配的是一个<b>不存在的行为</b>。
+     *
+     * <p><b>在下单这一刻按当时的配置算好、盖在 {@code pay_deadline_at} 上</b>，
+     * 而不是让关单任务每轮现算：
+     * <ul>
+     *   <li>改配置不会回头关掉已经在跑的老单 —— 运营改个数不会让一批订单当场消失</li>
+     *   <li>端上倒计时读的就是这枚章，倒计时与真实关单时刻<b>由构造保证一致</b>，
+     *       不需要端上再同步一份时长</li>
+     * </ul>
+     */
+    private final CloseRuleService closeRuleService;
     private static final String CURRENCY_CNY = "CNY";
     private static final SecureRandom RANDOM = new SecureRandom();
 
@@ -95,10 +109,12 @@ public class OrderServiceImpl implements OrderService {
                             PickupQueryPort pickupPort,
                             ai.neargo.shop.spi.user.UserQueryPort userPort,
                             IdempotencyService idempotency, OutboxEventBus eventBus,
-                            ai.neargo.shop.spi.user.AdmissionPort admissionPort) {
+                            ai.neargo.shop.spi.user.AdmissionPort admissionPort,
+                            CloseRuleService closeRuleService) {
         this.orderMapper = orderMapper;
         this.subOrderMapper = subOrderMapper;
         this.admissionPort = admissionPort;
+        this.closeRuleService = closeRuleService;
         this.itemMapper = itemMapper;
         this.cartMapper = cartMapper;
         this.goodsPort = goodsPort;
@@ -429,7 +445,7 @@ public class OrderServiceImpl implements OrderService {
          * 否则昨天的单会跳到新社区的报表里。
          */
         userPort.communityOf(userNo).ifPresent(order::setCommunityNo);
-        order.setPayDeadlineAt(now + PAY_TTL.toMillis());
+        order.setPayDeadlineAt(now + closeRuleService.unpaidMinutes() * 60_000L);
 
         /*
          * 弱主体限额（F-6）。**按拆单后的每个商家分别判**，不是按整单总额：
@@ -685,6 +701,12 @@ public class OrderServiceImpl implements OrderService {
 
         eventBus.publish(new OrderEvents.OrderPaid(orderNo, order.getUserNo(),
                 order.getPayAmount(), payChannel));
+        // B-N-1：商家的「新订单」提醒是子单粒度 —— 跨商家合单时每家只被自己的那单吵到
+        for (OrdSubOrder sub : subOrders(orderNo)) {
+            eventBus.publish(new OrderEvents.SubOrderPaid(sub.getSubOrderNo(), orderNo,
+                    sub.getEntityNo(), sub.getStoreNo(), order.getUserNo(),
+                    sub.getPayAmount() == null ? 0L : sub.getPayAmount()));
+        }
     }
 
     // ---------------------------------------------------------------- 查询与取消

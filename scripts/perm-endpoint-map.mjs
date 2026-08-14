@@ -65,19 +65,42 @@ export const RULES = [
   // 有人只看不审；店招待审队列没有这种角色。
   ["*", /^\/ops\/stores\/audits/, "store:page:audit"],
 
+  // ── 门店档案（P-11.2.1，V96）────────────────────────────────────────────
+  // 解除强制下线 = 处置动作的另一半，与压下（violations 里的 STORE_OFFLINE）同码
+  ["POST", /^\/ops\/stores\/[^/]+\/restore$/, "merchant:merchant:ban"],
+  // 档案与经营数据挂商家治理的只读码：门店维度的端点按「这件事属于哪条业务线」归码，
+  // 不按 URL 前缀归码（business-mode 挂 merchant:mode:* 是同一个道理）。
+  // store:page:audit 不能借 —— 那是店招审核动作的钥匙，塞进只读档案等于「能查店 = 能审店」。
+  // 必须排在 /ops/stores/audits 与 business-mode 之后：规则第一条命中生效
+  ["GET", /^\/ops\/stores(\/|$)/, "merchant:merchant:read"],
+
   // ── 准入（保证金 / 支付额度 / 准入策略）· 无菜单入口 ─────────────────────
   ["GET", /^\/ops\/admission\//, "merchant:admission:read"],
   ["*", /^\/ops\/admission\//, "merchant:admission:update"],
 
   // ── 商品与类目 ─────────────────────────────────────────────────────────
   ["*", /^\/ops\/goods\/[^/]+\/audit$/, "product:sku:audit"],
+  // 强制下架 = 撤销过审，与审核同一个动作面、同一拨人（P-3.2.3）
+  ["POST", /^\/ops\/goods\/[^/]+\/force-off$/, "product:sku:audit"],
   // `(\/|$)` 而不是 `\/`：域根 `GET /ops/goods`（商品池）后面没有下一段，
   // 只写 `\/` 会漏掉它。这个形状会在每个「先有子路径、后来才补域根」的域上重演 ——
   // 而漏掉的后果不是报错，是那条端点**匹配不到任何规则**，
   // 于是权限码细化时它只能留在粗码上，没人知道它被落下了。
   ["GET", /^\/ops\/goods(\/|$)/, "product:sku:read"],
+  // sku 粒度的动作（P-3.3 预售 / sku 级审核与压下架）。与 goods 级同一拨人、
+  // 同一个动作面 —— ops-web 的 `product:stock:update` 一直就是映到这个码的
+  // （perm-map.ts 与 NEAREST_CODE 两处都是），所以这里不新造码
+  ["*", /^\/ops\/skus\/[^/]+\/(audit|force-off|presale)$/, "product:sku:audit"],
+  // 同 /ops/goods 的形状：`(\/|$)` 才盖得住域根 `GET /ops/skus`。
+  // 必须排在上面那条之后 —— 规则第一条命中生效，写反了 oversell 之外的写动作会被判成只读
+  ["GET", /^\/ops\/skus(\/|$)/, "product:sku:read"],
   ["GET", /^\/ops\/categories/, "product:category:read"],
   ["*", /^\/ops\/categories/, "product:category:update"],
+  // 规格模板（P-3.4）。**归类目维护面不归审核面**：模板按品类预置，
+  // 与类目树、资质码字典是同一拨人在配。归审核码的话，只有审核员能维护模板，
+  // 而审核员不碰类目结构
+  ["GET", /^\/ops\/spec-templates(\/|$)/, "product:category:read"],
+  ["*", /^\/ops\/spec-templates(\/|$)/, "product:category:update"],
 
   // ── 交易订单 ───────────────────────────────────────────────────────────
   ["POST", /^\/ops\/orders\/[^/]+\/intervene$/, "order:order:modify"],
@@ -121,6 +144,11 @@ export const RULES = [
   // 两者方向相反，将来若要分权（比如销项交给客服代办），得先分得开
   ["GET", /^\/ops\/invoice-requests/, "finance:invoice:read"],
   ["*", /^\/ops\/invoice-requests/, "finance:invoice:verify"],
+  // 关单策略（P-4.2.3）。**读写必须分开**：这个数与掉单直接因果 ——
+  // 调短了会把正在付款的人关掉，而客服、数据这类角色需要看得到「现在配的是多久」
+  // 才能判断一次投诉是不是撞上了它。给他们只读，不给写。
+  ["GET", /^\/ops\/payments\/close-rule$/, "order:order:read"],
+  ["PUT", /^\/ops\/payments\/close-rule$/, "order:order:modify"],
   // 支付对账差异（并发会话 2026-08-12 新增）。**这条是守卫抓出来的** ——
   // 它们刚落进 settle:manage，矩阵当场报 FINANCE「多出来 4 条」。
   // 处理差异会改账，与只读覆盖率分开

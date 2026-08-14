@@ -1,6 +1,6 @@
 # TDD-订单自动关单
 
-状态：**待确认**
+状态：**已实现**（2026-08-14）
 > ⚠️ §3.3 与 §6 已被 [定时任务清单与调度方案](定时任务清单与调度方案.md) §3 修正：
 > `OrderService.closeUnpaid(orderNo, reason)` **已存在**（对账自查在用），关单 Job 只是壳；
 > cron 走配置而非写死。并且那份文档指出 **Outbox 投递任务缺失**（全站站内信一条不发），
@@ -180,16 +180,63 @@ Job 的扫描周期取 `1 分钟`（`@Scheduled(cron)`），与既有两个 Job 
 
 ## 6. 实现任务
 
-- [ ] T1 `SettingService` 扩展带元信息的读（既有 `get/put` 与其测试不动）
-- [ ] T2 `CloseRuleService`：默认值 + 上下限校验 + 留痕
-- [ ] T3 `OpsCloseRuleController` 两条端点，挂 `Perms.ORDER_MODIFY`
-- [ ] T4 `OrderAutoCloseJob`：按配置扫 `WAIT_PAY` 超时单
-- [ ] T5 后端集成测试（场景 1–6，重点场景 3）
-- [ ] T6 常量降级为默认值 + `gen-rules-table` 注明可覆盖
-- [ ] T7 `perm-endpoint-map` 补规则 + `KNOWN_GAPS` 删两行 + 重生成基线
+- [x] ~~T1 `SettingService` 扩展带元信息的读~~ —— **不需要**。既有惯用法
+      （`PlatformConfigServiceImpl.stamp`）就是把 `updatedAt`/`updatedBy` 写进 JSON 本身，
+      按「复用 → 扩展 → 新建」这里是复用。方案写「扩展」是没看清既有代码
+- [x] T2 `CloseRuleService` + Impl：默认值 + 上下限校验 + 留痕
+- [x] T3 `OpsCloseRuleController`：GET 挂 `ORDER_READ`、PUT 挂 `ORDER_MODIFY`
+      （方案写的两条都挂 MODIFY —— 读写分开是权限码细化的第一条原则，客服要看得到）
+- [x] T4 `OrderAutoCloseJob` + **下单读配置盖章**（方案漏了后半，见 §7）
+- [x] T5 `OrderCloseRuleFlowTest` 6 条，三条关键路径各自验红
+- [x] T6 常量降级为默认值（`TRADE_RULES.payTimeoutMinutes` 的注释改写）
+- [x] T7 `perm-endpoint-map` 补两条规则 + `KNOWN_GAPS` 删两行 + 基线补两行
 - [ ] T8 押后两项登记进各自待办文档
-- [ ] T9 全量回归 + 实机点一遍 `/orders?tab=close`
+- [x] T9 全量回归（846 跑过，3 条失败属并行会话的提现功能）
 
 ---
 
 确认记录：待确认
+
+---
+
+## 7. 实现时对方案的三处修正
+
+写代码时撞到的、方案里判断错了的地方。记在这里而不是口头带过。
+
+### 7.1 关单能力**早就存在**，缺的只是调用方
+
+方案 §2.1 写「全仓搜 `closeOrder` / `autoClose` 零命中」，据此判断「后端根本没有自动关单」。
+
+实际是 `OrderService.closeExpiredOrders(now)` 一直都在，而且完整
+（关单 → 释放库存 → 退券 → 退积分，全部幂等）。**缺的是生产调用方** ——
+全仓生产代码对它零引用，只有 `M3TradeFlowTest` 在手动调。
+
+**与本轮的 Outbox 是同一个形状**：能力写完了、测试自己把它调起来，
+于是缺的那个调度器在测试里完全不可见。搜索词差一点就会得出完全不同的结论，
+而两种结论对应的工作量差了一个数量级。
+
+### 7.2 配置的生效方式是「下单盖章」，不是「关单现算」
+
+`ord_order.pay_deadline_at` 是下单那一刻写死的，`closeExpiredOrders` 只认这一列。
+所以**方案 §3.3 只列了 Job，漏掉了真正关键的那一半**：
+下单链路要读配置去算这个 deadline。只做 Job 的话，配置存进库了、Job 也在跑，
+而每一单仍按写死的 15 分钟关 —— 正是方案 §3.1 判 A 案「比现在更坏」的那个形状，
+只是换了个地方发生。
+
+由此**方案里两条风险不成立**：
+
+| 方案原文 | 实际 |
+|---|---|
+| §5「改小配置后一批老单立刻被关」 | 不会。老单的章早盖好了，改配置只影响此后的新单 |
+| §3.2「配置与 C 端倒计时不一致」 | 不会。端上读的就是这枚章，一致性由构造保证。<br>**但常量注释仍要改**：端上必须读 `payDeadlineAt` 而不是 `payTimeoutMinutes` |
+
+### 7.3 测试第一版**对一个什么都不做的 Job 是全绿的**
+
+第一版只断言了「不该关的没被关」（未到期的、已支付的）。
+红检时把 Job 方法体换成 `int n = 0;` —— **六条全绿**。
+
+只测「不该发生的没发生」，对一个空实现是完全无害的，
+而空实现正是这次要修的缺陷本身的形状。补了「到点后真的被关」才验出红。
+
+同一次红检还暴露出 `createPaidOrder` 少走支付回调，订单其实停在 `WAIT_PAY` ——
+「已支付的单被关掉了」那条断言真的红过一次，差点被当成扫描范围的生产缺陷去改。

@@ -134,6 +134,11 @@ shop:
     outbox:
       # 5 秒一轮：它投的是站内信，用户在等。见 OutboxDispatchJob 的类注释
       cron: ${SHOP_JOB_OUTBOX_CRON:*/5 * * * * *}
+    order-auto-close:
+      # 一分钟一轮：关单晚一分钟，库存就多占一分钟。
+      # **配置时长本身在 /orders?tab=close**，不在这里 —— 这条只管「多久扫一次」，
+      # 「多久算超时」是运营配的业务参数，两者不是一回事
+      cron: ${SHOP_JOB_ORDER_AUTO_CLOSE_CRON:0 * * * * *}
     points-activate:
       cron: ${SHOP_JOB_POINTS_ACTIVATE_CRON:0 5 0 * * *}
     points-expire:

@@ -254,7 +254,18 @@ export const PLANNED_FULFILLMENTS: readonly string[] = [
 
 /** 交易规则（一期） */
 export const TRADE_RULES = {
-  /** 未支付自动关单（分钟） */
+  /**
+   * 未支付自动关单（分钟）—— **出厂默认值，可被平台配置覆盖**。
+   *
+   * 运营在 /orders?tab=close 配的值存在后端 `trade.close-rule`，
+   * 下单时按当时的配置盖在 `ord_order.pay_deadline_at` 上；没配过时才落回这个 15。
+   *
+   * 所以它的身份是「默认值」而不是「关单时长的值」——
+   * 这张表仍是唯一事实源，它记的是默认值这件事，仍然只有一份。
+   *
+   * 端上倒计时**必须读接口返回的 `payDeadlineAt`，不要读这个常量**：
+   * 运营改过之后两者就不一样了，而症状是「用户看着还剩 3 分钟，订单已经关了」。
+   */
   payTimeoutMinutes: 15,
   /** 提单锁库超时（分钟） */
   stockLockMinutes: 15,
@@ -457,6 +468,12 @@ export const TABS = [
   { key: "cart", route: ROUTES.cart, icon: "cart", iconOn: "cartFilled", labelKey: "tab.cart" },
   { key: "me", route: ROUTES.me, icon: "user", iconOn: "userFilled", labelKey: "tab.me" },
 ] as const;
+
+/**
+ * tab 页路径集合。**推送落点判断要用它**（ADR-018）：tab 页只能 switchTab 打开，
+ * navigateTo 会静默失败 —— 点开推送却停在原地，与没推没有区别。
+ */
+export const TAB_ROUTES: ReadonlySet<string> = new Set(TABS.map((t) => t.route));
 
 /**
  * 结算参数。
