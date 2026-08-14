@@ -14,7 +14,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { fmtTime } from "@/lib/utils";
 import { usePaging } from "@/lib/use-paging";
-import { notifyFailReason } from "@/lib/notify-reason";
+import { isStubbed, notifyFailReason } from "@/lib/notify-reason";
 import { bizLabel, channelLabel } from "@/lib/notify-label";
 import type { InAppLog, NotifyChannel, NotifyLog } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
@@ -121,7 +121,14 @@ export function NotifyLogTab({ c, canWrite }: { c: MessageCopy; canWrite: boolea
       header: c.nlColStatus,
       cell: (r: NotifyLog) =>
         r.status === "SENT"
-          ? <Badge tone="success">{c.nlSent}</Badge>
+          // 桩与真发**必须分得开**：两者都「成功」，但下一步完全不同 ——
+          // 一个是去配凭据，一个是去通道后台查回执
+          ? isStubbed(r.status, r.providerMsgId)
+            ? <div className="space-y-1">
+                <Badge tone="warning">{c.nlStubbed}</Badge>
+                <div className="txt-caption text-muted-foreground">{c.nlStubbedHint}</div>
+              </div>
+            : <Badge tone="success">{c.nlSent}</Badge>
           // 失败原因**直接铺在行里**，不折进详情：这一列是这张表存在的理由，
           // 藏一层就等于让人多点一次才能看到最要紧的东西。
           // 归因在上、原文在下：归因回答「该找谁」，原文是排查的唯一凭据，两者都不能省

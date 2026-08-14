@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { notifyFailReason } from "./notify-reason";
+import { isStubbed, notifyFailReason } from "./notify-reason";
 
 describe("发送失败归因", () => {
   it("认得出四条通道的真实错误原文", () => {
@@ -23,5 +23,21 @@ describe("发送失败归因", () => {
     // 「token 无效」同时含 token 与 connect 时，先报凭据：
     // 网络类会让人去重试，而凭据错重试一万次也是同一个结果
     expect(notifyFailReason("auth failed while connect to provider")).toBe("CRED");
+  });
+});
+
+describe("到底出没出平台", () => {
+  it("成功但没有通道方 id = 桩，没真发", () => {
+    expect(isStubbed("SENT", null)).toBe(true);
+    expect(isStubbed("SENT", undefined)).toBe(true);
+    expect(isStubbed("SENT", "")).toBe(true);
+  });
+
+  it("有通道方 id = 真到过通道", () => {
+    expect(isStubbed("SENT", "BizId-123")).toBe(false);
+  });
+
+  it("失败的不算桩 —— 它有自己的失败原文要看，别被盖过去", () => {
+    expect(isStubbed("FAILED", null)).toBe(false);
   });
 });

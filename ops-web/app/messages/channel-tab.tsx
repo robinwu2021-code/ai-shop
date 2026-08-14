@@ -15,7 +15,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { notify } from "@/lib/notify";
 import { fmtTime } from "@/lib/utils";
-import { notifyFailReason } from "@/lib/notify-reason";
+import { isStubbed, notifyFailReason } from "@/lib/notify-reason";
 import type { NotifyChannel, NotifyChannelHealth, NotifyLog } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -248,7 +248,10 @@ function RecentLogs({ c, rows, loading }:
     {
       header: c.nlColStatus,
       cell: (r) => r.status === "SENT"
-        ? <Badge tone="success">{c.nlSent}</Badge>
+        // 同发送记录页：没带回通道方 id 的，是桩收下的，不是真发出去了
+        ? isStubbed(r.status, r.providerMsgId)
+          ? <Badge tone="warning">{c.nlStubbed}</Badge>
+          : <Badge tone="success">{c.nlSent}</Badge>
         : <div className="space-y-1">
             <Badge tone="danger">{c.nlFailed}</Badge>
             {notifyFailReason(r.error) && (

@@ -36,3 +36,19 @@ export function notifyFailReason(error?: string | null): NotifyFailReason | null
   }
   return null;
 }
+
+/**
+ * 这条记录**到底出没出平台**。
+ *
+ * <p>判据是 `providerMsgId`：四条真通道成功时都会带回通道方的 id
+ * （阿里云 BizId / SMTP Message-ID / 微信 msgid / 个推 task_id），
+ * 四个桩一律为空。所以「状态成功但没有 id」= 桩，只是被平台收下了。
+ *
+ * <p><b>为什么要专门标出来</b>：此前这两种都显示成朴素的「已发送」。
+ * 于是运营点完模拟发送、看到成功、手机上没有 —— 而他没有任何办法
+ * 从页面上分辨「桩没真发」与「真发了但没收到」，这两件事的下一步完全不同：
+ * 一个是去配凭据，一个是去通道后台查回执。这是实际发生过的一次误判。
+ */
+export function isStubbed(status: string, providerMsgId?: string | null): boolean {
+  return status === "SENT" && !providerMsgId;
+}
