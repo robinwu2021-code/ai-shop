@@ -11,7 +11,7 @@
     "compilerVersion": 3,
     "distribute": {
       "//packagename": "三端同一个标识（安卓包名 / iOS BundleId / 鸿蒙 bundleName）。上架后不可改",
-      "//待定": "C 端包名尚未拍板：B 端已定 top.hxmall.bapp，而《品牌工程与官网方案》§1.2 记的是 ai.neargo.shop.*。两套前缀并存会让证书与深链各绑各的域名 —— 见《App 签名与打包参数》§4",
+      "//待定": "C 端的发布标识未定（B 端是 top.hxmall.bapp）。注意这与 Java 包名 ai.neargo.shop.* 是两件事，后者不动 —— 见《App签名与打包参数》§1",
       "android": { "permissions": [] },
       "ios": {},
       "sdkConfigs": {
