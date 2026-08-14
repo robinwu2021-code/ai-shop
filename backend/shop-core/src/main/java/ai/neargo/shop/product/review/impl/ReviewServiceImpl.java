@@ -53,6 +53,7 @@ public class ReviewServiceImpl implements ReviewService {
     /** 只用来把 entityNo 换成店名 —— 裁决台上一列 M0001 谁也认不出是哪家 */
     private final ai.neargo.shop.spi.user.MerchantQueryPort merchantPort;
     private final ai.neargo.shop.product.mapper.ProductMappers.GoodsMapper goodsMapper;
+    private final ai.neargo.shop.event.OutboxEventBus eventBus;
     private final ObjectMapper json;
 
     public ReviewServiceImpl(ReviewMapper reviewMapper, ReviewLikeMapper likeMapper,
@@ -61,6 +62,7 @@ public class ReviewServiceImpl implements ReviewService {
                              ai.neargo.shop.spi.user.MerchantRatingPort ratingPort,
                              ai.neargo.shop.spi.user.MerchantQueryPort merchantPort,
                              ai.neargo.shop.product.mapper.ProductMappers.GoodsMapper goodsMapper,
+                             ai.neargo.shop.event.OutboxEventBus eventBus,
                              ObjectMapper json) {
         this.reviewMapper = reviewMapper;
         this.likeMapper = likeMapper;
@@ -70,6 +72,7 @@ public class ReviewServiceImpl implements ReviewService {
         this.ratingPort = ratingPort;
         this.merchantPort = merchantPort;
         this.goodsMapper = goodsMapper;
+        this.eventBus = eventBus;
         this.json = json;
     }
 
@@ -146,6 +149,9 @@ public class ReviewServiceImpl implements ReviewService {
         reviewMapper.insert(r);
         // 「评价发表后…并计入商家评分」是写在发表页上的一句承诺，这里把它兑现
         recomputeRating(cmd.goodsNo(), item.merchantNo());
+        // B-N-3：商家要看到新评价，差评（≤2 星）在消费侧单独点名
+        eventBus.publish(new ai.neargo.shop.spi.product.ProductEvents.ReviewCreated(
+                r.getReviewNo(), item.merchantNo(), cmd.goodsNo(), cmd.rating()));
         return toVO(r, false, null);
     }
 
@@ -457,6 +463,26 @@ public class ReviewServiceImpl implements ReviewService {
     private static final int RATING_SCALE = 10;
 
     /**
+     * 评分的**时间半衰期**：这么多天前的一条评价，只顶今天一条的一半。
+     *
+     * <p>为什么要加权（2026-08-14 拍板）：纯算术平均下，<b>一家店的分是它历史的
+     * 平均而不是它现在的样子</b>。开了两年、攒了几百条好评的店，换了老板、菜品
+     * 变了、迟迟不发货，分也几乎不动 —— 新买家看到的 4.8 描述的是两年前那家店。
+     * 反过来，一家整改好了的店要靠新评价把旧账「稀释」掉，而稀释需要的条数
+     * 与它的历史成正比：越老的店越难翻身，这与整改的努力完全无关。
+     *
+     * <p>180 天：一个季节循环 + 一点余量。太短（如 30 天）会让分随几条新评价
+     * 剧烈跳动，商家会觉得这个分是随机的；太长（如 2 年）等于没加权。
+     */
+    private static final double RATING_HALF_LIFE_DAYS = 180.0;
+
+    /**
+     * 取当前时间。留一个缝是为了能测衰减 —— 否则测试要么等半年，
+     * 要么往库里塞「未来的评价」，后者会让别的用例莫名其妙。
+     */
+    java.util.function.Supplier<LocalDateTime> clock = LocalDateTime::now;
+
+    /**
      * 重算这件商品与这家店的评分。**拿明细算，整份盖掉**。
      *
      * <p>与 likeCount 同一条规矩（见 {@link #toggleLike}）：派生值不做增量。
@@ -520,14 +546,46 @@ public class ReviewServiceImpl implements ReviewService {
     }
 
     /** 只算填了的那些；一条都没填返回 0（端上按 0 显示「暂无」） */
-    private static int avgX10(List<RvwReview> rows,
-                              java.util.function.Function<RvwReview, Integer> f) {
-        var vals = rows.stream().map(f).filter(v -> v != null && v > 0).toList();
-        if (vals.isEmpty()) {
+    /** 包级可见：{@code ReviewRatingWeightTest} 直接喂几条评价验证衰减，不必造整套 mapper */
+    int avgX10(List<RvwReview> rows,
+               java.util.function.Function<RvwReview, Integer> f) {
+        LocalDateTime now = clock.get();
+        double weighted = 0;
+        double weights = 0;
+        for (RvwReview r : rows) {
+            Integer v = f.apply(r);
+            if (v == null || v <= 0) {
+                continue;   // 三维度是选填的：没填的不参与，不是当 0 分摊进去
+            }
+            double w = weightOf(r, now);
+            weighted += w * v;
+            weights += w;
+        }
+        if (weights <= 0) {
             return 0;
         }
-        int sum = vals.stream().mapToInt(Integer::intValue).sum();
-        return Math.round((float) sum * RATING_SCALE / vals.size());
+        return (int) Math.round(weighted * RATING_SCALE / weights);
+    }
+
+    /**
+     * 一条评价此刻的权重：{@code 0.5 ^ (天数 / 半衰期)}。
+     *
+     * <p><b>是衰减不是截断</b>。「只算最近半年」那种写法有一个很难解释的后果：
+     * 一条评价在某个午夜之后突然不算了，分会自己跳一下，而那一刻店家什么也没做。
+     * 指数衰减下每条评价的影响是连续变小的，任何一天的变化都小到看不出来。
+     *
+     * <p>没有 createdAt 的按最老算（权重最低）而不是最新：历史数据缺字段时，
+     * 宁可让它少影响分，也不要让一批来历不明的行主导今天的评分。
+     */
+    private static double weightOf(RvwReview r, LocalDateTime now) {
+        if (r.getCreatedAt() == null) {
+            return Math.pow(0.5, 10);   // ≈ 0.001，等于「几乎不算」但不是 0
+        }
+        double days = java.time.Duration.between(r.getCreatedAt(), now).toMinutes() / 1440.0;
+        if (days <= 0) {
+            return 1.0;   // 时钟回拨或同一分钟内的评价，按最新算
+        }
+        return Math.pow(0.5, days / RATING_HALF_LIFE_DAYS);
     }
 
     private OpsReviewVO toOpsVO(RvwReview r) {

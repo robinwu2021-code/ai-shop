@@ -330,13 +330,22 @@ const merchantSeeds: MerchantSeed[] = [
   },
 ];
 
+/** 评分的时间半衰期（天）。**必须与后端 `RATING_HALF_LIFE_DAYS` 一致** */
+const RATING_HALF_LIFE_DAYS = 180;
+
 /**
- * 商家评分 = **已通过审核的评价均分**。与后端 `ReviewServiceImpl.aggregate()` 同一口径。
+ * 商家评分 = 已通过审核的评价的**按时间加权均分**（B4，2026-08-14 拍板）。
+ * 与后端 `ReviewServiceImpl.aggregate()` 同一口径 —— 公式变了要两处一起改，
+ * 否则 mock 下一个分、真机上另一个分，联调时会去查「为什么评分算错了」，
+ * 而两边都没错，只是各写各的（这里此前就发生过一次：mock 实现了
+ * 「均分 ×0.8 + 订单量对数 ×0.2」，而后端从来没有实现过它）。
  *
- * 这里原先实现的是「均分 ×0.8 + 订单量对数 ×0.2」，而后端从来没有实现过它 ——
- * mock 下一个分、真机上另一个分，联调时会去查「为什么评分算错了」，
- * 而两边都没错，只是各写各的。那个权重是《待完成功能清单》B4 里**还没拍板**的方案，
- * 定了要三处一起改：这里、后端的 aggregate、以及商家页上那句 `basis` 文案。
+ * <b>权重 = 0.5 ^ (天数 / 180)</b>：半年前的一条评价只顶今天一条的一半。
+ * 理由见后端那份注释 —— 纯算术平均下，一家店的分是它历史的平均而不是
+ * 它现在的样子；老店换了人、变了品质，分也几乎不动。
+ *
+ * **条数不加权**（`ratingCount` 是原始条数）：「126 条评价」是一个事实，
+ * 把它也衰减成「87.3 条」没有任何人能理解。
  *
  * 没有评价时返回 **0 分 0 条**，不是凭空给 4.8：端上按 `ratingCount === 0`
  * 显示「暂无评价」—— 一家没人评过的店和一家 0 分的店，对买家是相反的信号。
@@ -344,8 +353,16 @@ const merchantSeeds: MerchantSeed[] = [
 function computeRating(merchantNo: string): { rating: number; ratingCount: number } {
   const rs = db.reviews.filter((r) => r.merchantNo === merchantNo);
   if (!rs.length) return { rating: 0, ratingCount: 0 };
-  const avg = rs.reduce((s, r) => s + r.rating, 0) / rs.length;
-  return { rating: Math.round(avg * 10) / 10, ratingCount: rs.length };
+  const now = Date.now();
+  let weighted = 0;
+  let weights = 0;
+  for (const r of rs) {
+    const days = Math.max(0, (now - r.createdAt) / 86_400_000);
+    const w = Math.pow(0.5, days / RATING_HALF_LIFE_DAYS);
+    weighted += w * r.rating;
+    weights += w;
+  }
+  return { rating: Math.round((weighted / weights) * 10) / 10, ratingCount: rs.length };
 }
 
 export function merchantBrief(merchantNo: string): MerchantBrief {

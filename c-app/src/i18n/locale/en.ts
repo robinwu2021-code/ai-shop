@@ -208,7 +208,7 @@ export default {
     apply: "Sell with us",
     applyHint: "Sole traders & companies",
     applyDesc: "Phase one is platform-operated; third-party onboarding is opening up. The application form ships in the next release, supporting both sole traders and companies.",
-    basis: "{r} reviews · {s} orders",
+    basis: "{r} reviews · {s} orders · recent weighted higher",
     address: "Address",
     hours: "Opening hours",
     joined: "Joined",

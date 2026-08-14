@@ -232,7 +232,7 @@ export default {
     apply: "商家入驻",
     applyHint: "个体户 / 企业均可",
     applyDesc: "一期由平台自营，第三方入驻开放中。入驻申请表单将在下个版本上线，届时支持个体户与企业提交资质审核。",
-    basis: "{r} 条评价 · {s} 单",
+    basis: "{r} 条评价 · {s} 单 · 新评价权重更高",
     address: "地址",
     hours: "营业时间",
     joined: "入驻时间",
