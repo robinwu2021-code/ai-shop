@@ -142,6 +142,12 @@ function MessagesInner() {
         push: c.nlPush, inapp: c.channelInbox,
       }),
     },
+    /*
+     * 语言列。V145 之后一个模板号每种语言一行 —— 不显示的话，
+     * 这张表上会出现两条模板号、名称、渠道全都相同的行，只有正文不一样，
+     * 而运营看不出那是「同一条的两个译本」还是「重复数据」。
+     */
+    { header: c.colLang, cell: (t) => t.lang ?? "—" },
     { header: c.colContent, cell: (t) => t.content, className: "whitespace-normal", width: "24rem" },
     { header: c.colSent30d, cell: (t) => t.sentCount, numeric: true },
     {
@@ -256,7 +262,8 @@ function MessagesInner() {
             <DataTable
               columns={templateColumns} rows={templates.data?.records} loading={templates.isLoading}
               error={templates.error} onRetry={() => templates.refetch()}
-              rowKey={(t) => t.templateNo}
+              // 同上：模板号不再唯一，只用它做 key 会撞车
+              rowKey={(t) => `${t.templateNo}:${t.lang ?? ""}`}
               empty={c.emptyTemplates}
             />
           </div>

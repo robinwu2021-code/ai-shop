@@ -14,7 +14,11 @@ export const msgTemplates: MsgTemplate[] = [
   { templateNo: "TPL_MAIL_TEST", name: "通道联通测试", channel: "MAIL", lang: "zh-CN", content: "{subject}\n\n{body}", enabled: true, sentCount: 12 },
   { templateNo: "TPL_MAIL_OPS_INIT_PWD", name: "运营账号开通", channel: "MAIL", lang: "zh-CN", content: "你好 {realName}，\n\n你的运营端账号已开通。\n登录名：{username}\n初始密码：{password}\n\n首次登录会要求你立即修改密码。请勿转发本邮件。", enabled: true, sentCount: 3 },
   { templateNo: "TPL_MAIL_OPS_RESET_PWD", name: "运营密码重置", channel: "MAIL", lang: "zh-CN", content: "你好 {realName}，\n\n有人为你的运营端账号申请了密码重置。\n重置码（{ttlMinutes} 分钟内有效，只能用一次）：\n\n    {token}\n\n如果不是你本人操作，忽略本邮件即可。", enabled: true, sentCount: 1 },
+{ templateNo: "TPL_MAIL_OPS_RESET_PWD", name: "Ops password reset", channel: "MAIL", lang: "en", content: "Hi {realName},\n\nSomeone requested a password reset.\nReset code (valid {ttlMinutes} minutes, single use):\n\n    {token}\n", enabled: true, sentCount: 1 },
   { templateNo: "TPL_WX_ARRIVED", name: "到货通知", channel: "WXSUB", lang: "zh-CN", content: "您有 {number1} 件包裹已到自提点 · {thing2}", enabled: true, sentCount: 640 },
+  // 与后端 V141 种子对齐。**缺了这条的话，抽屉里只剩一条模板 → 选择器不出现**，
+  // 而「两条微信模板都能测」正是 G2 要保证的事，在 mock 下就演示不出来
+  { templateNo: "TPL_WX_REFUNDED", name: "退款通知", channel: "WXSUB", lang: "zh-CN", content: "退款 {amount1} 已处理 · {thing2}", enabled: true, sentCount: 120 },
   { templateNo: "TPL_PUSH_TEST", name: "通用推送", channel: "PUSH", lang: "zh-CN", content: "{subject}\n{body}", enabled: true, sentCount: 210 },
   { templateNo: "TPL_INAPP_TEST", name: "站内信", channel: "INAPP", lang: "zh-CN", content: "{subject}\n{body}", enabled: false, sentCount: 12 },
 ];

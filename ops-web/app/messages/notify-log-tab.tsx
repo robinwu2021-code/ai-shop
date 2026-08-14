@@ -125,7 +125,8 @@ export function NotifyLogTab({ c, canWrite }: { c: MessageCopy; canWrite: boolea
 
       <Card>
         <CardHeader className="flex-row items-center gap-3">
-          <CardTitle className="me-auto">{c.nlColTime}</CardTitle>
+          {/* 这里原本误用了表格列名「时间」当卡片标题 —— 下面就是起止日筛选，两者叠在一起自相矛盾 */}
+          <CardTitle className="me-auto">{c.nlTitle}</CardTitle>
           <Select value={channel} onChange={(e) => { setChannel(e.target.value); setPage(1); }} className="w-36">
             <option value="">{c.nlAll}</option>
             <option value="SMS">{c.nlSms}</option>
