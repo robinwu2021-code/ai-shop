@@ -109,6 +109,17 @@ export const messageMock: MessageApi = {
    * 而本地没有那些数据 —— 编成「一律通过」会让这条路在 mock 下永远走不到失败分支，
    * 而运营第一次见到它恰恰是失败的时候。
    */
+  // mock 下也存一份：只回固定值的话，「改了保存后还是旧的」这类缺陷在本地看不出来
+  getDefaultLang: () => wait({ lang: db.defaultLang.value, options: ["zh-CN", "en", "ar"] }),
+
+  saveDefaultLang: async (lang) => {
+    if (!["zh-CN", "en", "ar"].includes(lang)) {
+      fail("不支持的语言", "Unsupported language");
+    }
+    db.defaultLang.value = lang;
+    return wait({ lang, options: ["zh-CN", "en", "ar"] }, 300);
+  },
+
   precheckNotifyTarget: (v) => {
     if (/no-?quota/i.test(v.target)) {
       fail("该用户没有可用的订阅额度，这条测试会白发",

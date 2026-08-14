@@ -319,6 +319,37 @@ class NotifyChannelOpsTest {
     }
 
     @Test
+    @DisplayName("★★ 语言未知时按平台默认发 —— 管理员建账号那封的收件人还没登录过")
+    void unknownLangUsesPlatformDefault() {
+        channelService.saveDefaultLang("en", "ST-TEST");
+        try {
+            // lang 传 null = 调用方明确说「我不知道收件人的语言」
+            mailTemplatePort.send("unknown@neargo.ai", MailTemplatePort.TPL_OPS_RESET_PWD, null,
+                    "Reset", java.util.Map.of("realName", "Sam", "token", "TOKEN-D-1",
+                            "ttlMinutes", "15"),
+                    "built-in {realName}", NotifyBizType.OPS_RESET_PASSWORD, null);
+
+            assertThat(mailStub.last()).isNotNull();
+            assertThat(mailStub.last().body())
+                    .as("平台默认设成 en，语言未知的那封就该按 en 发")
+                    .contains("Reset code");
+        } finally {
+            channelService.saveDefaultLang("zh-CN", "ST-TEST");
+        }
+    }
+
+    @Test
+    @DisplayName("★★ 默认语言只收白名单 —— 拼错的语言码不该被存进去，页面会一直显示着它")
+    void defaultLangRejectsUnknownValue() {
+        assertThatThrownBy(() -> channelService.saveDefaultLang("zh_TW", "ST-TEST"))
+                .hasMessageContaining(ErrorCode.BAD_REQUEST.name());
+        assertThatThrownBy(() -> channelService.saveDefaultLang("", "ST-TEST"))
+                .hasMessageContaining(ErrorCode.BAD_REQUEST.name());
+        // 没配过时是 zh-CN，不是空
+        assertThat(channelService.defaultLang()).isEqualTo("zh-CN");
+    }
+
+    @Test
     @DisplayName("发送记录按用途筛 —— 通道与用途是两个正交维度")
     void logsFilterByBizType() throws Exception {
         String admin = ai.neargo.shop.support.TestLogin.admin(mvc(), json);

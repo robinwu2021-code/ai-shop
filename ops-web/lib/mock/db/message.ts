@@ -39,3 +39,9 @@ export const faqs: FaqEntry[] = [
   { faqNo: "FQ9003", question: "逾期未取会怎样？", answer: "按平台逾期规则处理：默认顺延到下一批，超过顺延上限后按作废退款。", category: "取货", published: true, views: 980 },
   { faqNo: "FQ9004", question: "如何申请开店？", answer: "", category: "商家", published: false, views: 0 },
 ];
+
+/**
+ * 平台默认语言（G2e）。**可变对象而不是常量**：mock 要能被 saveDefaultLang 改，
+ * 否则「保存后仍显示旧值」这类缺陷在本地看不出来。
+ */
+export const defaultLang = { value: "zh-CN" };

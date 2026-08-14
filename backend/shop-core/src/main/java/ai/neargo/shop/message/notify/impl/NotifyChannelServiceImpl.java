@@ -179,6 +179,30 @@ public class NotifyChannelServiceImpl implements NotifyChannelService {
         settingPort.put(ai.neargo.shop.spi.notify.WxSubscribePort.TEMPLATES_SETTING_KEY, json.toString(), operatorNo);
     }
 
+    @Override
+    public String defaultLang() {
+        String v = settingPort.get(
+                ai.neargo.shop.spi.notify.MailTemplatePort.DEFAULT_LANG_SETTING_KEY, null);
+        /*
+         * **认不出就回落 zh-CN**。这个值只在「收件人语言未知」时用，
+         * 而它的下游是账号开通邮件 —— 一个拼错的语言码不该让新同事收不到登录信息。
+         */
+        return v != null && SUPPORTED_LANGS.contains(v.trim())
+                ? v.trim() : ai.neargo.shop.message.entity.MsgTemplate.LANG_DEFAULT;
+    }
+
+    @Override
+    public void saveDefaultLang(String lang, String operatorNo) {
+        String v = lang == null ? "" : lang.trim();
+        // 白名单校验放在写入这一侧：读的那侧回落是兜底，不是校验 ——
+        // 只靠读侧兜底的话，页面上会一直显示着那个存进去的错值
+        if (!SUPPORTED_LANGS.contains(v)) {
+            throw ai.neargo.shop.common.BizException.of(ai.neargo.shop.common.ErrorCode.BAD_REQUEST);
+        }
+        settingPort.put(ai.neargo.shop.spi.notify.MailTemplatePort.DEFAULT_LANG_SETTING_KEY,
+                v, operatorNo);
+    }
+
     /** appid/appKey 这类**可公开的标识**照常回显；secret/AK/SK 只回 present。 */
     private Credential cred(String envVar, String value, boolean required) {
         return new Credential(envVar, value != null && !value.isBlank(), required);

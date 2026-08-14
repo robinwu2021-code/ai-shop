@@ -19,6 +19,19 @@ import java.util.Map;
  */
 public interface MailTemplatePort {
 
+    /**
+     * 平台默认语言的设置键（{@code sys_setting}）。
+     *
+     * <p><b>它答的是「收件人语言未知时按哪种发」</b>，不是「邮件用哪种语言」——
+     * 知道收件人语言时（本人发起的请求）一律用他自己的，与这个设置无关。
+     * 目前唯一用到它的是「管理员替别人建账号」：那封信的收件人还没登录过，
+     * 平台对他一无所知。
+     *
+     * <p>做成系统统一设置而不是按人存：一个平台的对外默认语言是**一件事**，
+     * 存在人身上就变成 N 件事，而那 N 份值第一次写入时全都是猜的。
+     */
+    String DEFAULT_LANG_SETTING_KEY = "notify.default-lang";
+
     /** 运营账号开通。参数：{@code realName} / {@code username} / {@code password}。 */
     String TPL_OPS_INIT_PWD = "TPL_MAIL_OPS_INIT_PWD";
 
@@ -37,6 +50,10 @@ public interface MailTemplatePort {
      */
     /**
      * @param lang 收件人的语言（{@code zh-CN} / {@code en} / {@code ar}）。
+     *             <b>传 {@code null} 表示「不知道收件人的语言」</b> ——
+     *             此时按平台默认语言发（{@link #DEFAULT_LANG_SETTING_KEY}）。
+     *             这不是「随便给个默认值」：调用方明确知道自己不知道，
+     *             而由谁来决定默认是平台的事，不是每个调用点各猜一个。
      *             <b>取不到那种语言的翻译就回落 zh-CN</b>，再取不到才用内置文案 ——
      *             一封英文用户读不懂的中文邮件，仍然好过一封发不出去的邮件。
      *             <p><b>传谁的语言要想清楚</b>：只有「请求人 == 收件人」时

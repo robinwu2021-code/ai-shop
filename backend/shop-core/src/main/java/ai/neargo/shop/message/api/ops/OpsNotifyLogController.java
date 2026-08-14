@@ -165,6 +165,35 @@ public class OpsNotifyLogController {
     }
 
     /**
+     * 平台默认语言（触达能力矩阵 G2e）。
+     *
+     * <p><b>它答的是「收件人语言未知时按哪种发」</b>，不是「所有邮件用哪种语言」——
+     * 知道收件人语言时（本人发起的请求，如忘记密码）一律用他自己的。
+     * 目前唯一用到它的是「管理员替别人建账号」：那封信的收件人还没登录过。
+     *
+     * <p>跨通道，所以放在**通道总览**而不是邮件页 —— 它不是邮件的配置。
+     */
+    @GetMapping("/ops/notify-channels/default-lang")
+    @PreAuthorize("@perm.can('" + Perms.MESSAGE_TEMPLATE_READ + "')")
+    public DefaultLangVO defaultLang() {
+        return new DefaultLangVO(channelService.defaultLang(),
+                ai.neargo.shop.message.notify.NotifyChannelService.SUPPORTED_LANGS);
+    }
+
+    @PostMapping("/ops/notify-channels/default-lang")
+    @PreAuthorize("@perm.can('" + Perms.MESSAGE_TEMPLATE_UPDATE + "')")
+    public DefaultLangVO saveDefaultLang(@RequestBody DefaultLangVO req) {
+        String operator = SecurityUtils.currentUserNo();
+        channelService.saveDefaultLang(req.lang(), operator);
+        auditLogPort.record("NOTIFY_DEFAULT_LANG_SAVE", operator, req.lang());
+        return defaultLang();
+    }
+
+    /** @param options 可选值一并下发 —— 端上硬编码一份的话，加语言时两边会不同步 */
+    public record DefaultLangVO(String lang, java.util.List<String> options) {
+    }
+
+    /**
      * @param target  随通道而变：SMS=手机号 / MAIL=邮箱 / WXSUB、PUSH=<b>userNo</b>
      * @param level   仅 PUSH 用（{@code RING} / {@code NORMAL}），其余通道忽略
      * @param subject 邮件主题 / 推送标题。**短信忽略**（正文由报备模板决定）

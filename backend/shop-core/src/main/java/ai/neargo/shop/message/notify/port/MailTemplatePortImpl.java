@@ -29,10 +29,14 @@ public class MailTemplatePortImpl implements MailTemplatePort {
 
     private final TemplateMapper templateMapper;
     private final NotifyLoggingMailPort mailPort;
+    /** 同域，直接依赖即可 —— 平台默认语言的口径只有它一份 */
+    private final ai.neargo.shop.message.notify.NotifyChannelService channelService;
 
-    public MailTemplatePortImpl(TemplateMapper templateMapper, NotifyLoggingMailPort mailPort) {
+    public MailTemplatePortImpl(TemplateMapper templateMapper, NotifyLoggingMailPort mailPort,
+                                ai.neargo.shop.message.notify.NotifyChannelService channelService) {
         this.templateMapper = templateMapper;
         this.mailPort = mailPort;
+        this.channelService = channelService;
     }
 
     @Override
@@ -51,7 +55,11 @@ public class MailTemplatePortImpl implements MailTemplatePort {
      * 运营端的模板页也照这个口径写明，否则运营会以为停用能关掉它们。
      */
     private String contentOf(String templateNo, String lang, String defaultContent) {
-        String want = lang == null || lang.isBlank() ? MsgTemplate.LANG_DEFAULT : lang.trim();
+        /*
+         * 语言未知（null）时按**平台默认语言**走，而不是各调用点各写一个 zh-CN。
+         * 解析放在这里：设置属于 message 域，而调用方（platform 域）跨域只能经本 Port。
+         */
+        String want = lang == null || lang.isBlank() ? channelService.defaultLang() : lang.trim();
         MsgTemplate t = pick(templateNo, want);
         if (t == null && !MsgTemplate.LANG_DEFAULT.equals(want)) {
             /*

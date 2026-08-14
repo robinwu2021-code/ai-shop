@@ -26,6 +26,23 @@ public interface NotifyChannelService {
     void saveWxTemplates(String orderArrived, String refunded, String operatorNo);
 
     /**
+     * 平台默认语言（{@link ai.neargo.shop.spi.notify.MailTemplatePort#DEFAULT_LANG_SETTING_KEY}）。
+     *
+     * <p><b>只在收件人语言未知时用</b>。没配过、或配了个不认识的值，都回落 {@code zh-CN} ——
+     * 一个拼错的语言码不该让账号邮件发不出去。
+     */
+    String defaultLang();
+
+    /** 保存平台默认语言。**只接受 {@link #SUPPORTED_LANGS} 里的值**，其余拒绝。 */
+    void saveDefaultLang(String lang, String operatorNo);
+
+    /**
+     * 平台支持的语言。**与端上的三语一致** —— 这里多一个的话，
+     * 运营能选到一个模板永远不会有译文的语言，然后每封信都在回落。
+     */
+    java.util.List<String> SUPPORTED_LANGS = java.util.List.of("zh-CN", "en", "ar");
+
+    /**
      * @param channel     {@code SysNotifyLog} 的四个通道常量之一
      * @param stub        当前是否走桩（桩=不真发）
      * @param enabled     真实通道是否已启用（{@code !stub}）

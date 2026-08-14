@@ -6,7 +6,7 @@
 // 删掉的话点进来是 404。而总览本身有价值 —— 「今天哪条通道在掉」一眼看完，
 // 不必逐个 tab 点过去。
 import { useRouter } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import type { NotifyChannelHealth } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
@@ -14,6 +14,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { Notice } from "@/components/ui/notice";
+import { Select } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { notify } from "@/lib/notify";
+import { useCan } from "@/lib/use-can";
 import type { MessageCopy } from "./copy";
 
 /** 通道 → 该通道页的 tab key。总览行点进去就是它（D3）。 */
@@ -85,6 +89,47 @@ export function ChannelOverviewTab({ c }: { c: MessageCopy }) {
                      rowKey={(r) => r.channel} empty={c.nlEmpty} />
         </CardContent>
       </Card>
+
+      <DefaultLangCard c={c} />
     </div>
+  );
+}
+
+/**
+ * 平台默认语言。
+ *
+ * <p><b>放在总览而不是邮件页</b>：它是跨通道的系统设置，不是邮件的配置。
+ * 放邮件页的话，以后推送/站内信也要多语言时，运营会去邮件页找一个不属于那里的开关。
+ */
+function DefaultLangCard({ c }: { c: MessageCopy }) {
+  const qc = useQueryClient();
+  const canWrite = useCan()("message:template:update");
+  const cfg = useQuery({ queryKey: ["notify-default-lang"], queryFn: () => api.getDefaultLang() });
+
+  const save = useMutation({
+    mutationFn: (lang: string) => api.saveDefaultLang(lang),
+    onSuccess: () => {
+      notify.success(c.chSaved);
+      void qc.invalidateQueries({ queryKey: ["notify-default-lang"] });
+    },
+  });
+
+  return (
+    <Card>
+      <CardHeader><CardTitle>{c.ovLangTitle}</CardTitle></CardHeader>
+      <CardContent className="space-y-3">
+        {/* 不说清楚的话，运营会以为这是「所有邮件都用这种语言」，然后疑惑为什么有人收到英文 */}
+        <Notice tone="info">{c.ovLangHint}</Notice>
+        <div className="space-y-1.5">
+          <Label htmlFor="ov-lang">{c.ovLangLabel}</Label>
+          <Select id="ov-lang" className="w-48" disabled={!canWrite || save.isPending}
+                  value={cfg.data?.lang ?? ""}
+                  onChange={(e) => save.mutate(e.target.value)}>
+            {/* 可选值由后端下发 —— 端上硬编码一份的话，加语言时两边会不同步 */}
+            {(cfg.data?.options ?? []).map((o) => <option key={o} value={o}>{o}</option>)}
+          </Select>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

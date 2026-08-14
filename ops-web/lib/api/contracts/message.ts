@@ -65,6 +65,14 @@ export interface MessageApi {
    */
   precheckNotifyTarget(v: { channel: NotifyChannel; target: string; scene?: string }): Promise<void>;
 
+  /**
+   * 平台默认语言：**收件人语言未知时按哪种发**（不是「所有邮件用哪种语言」）。
+   * 知道收件人语言时一律用他自己的 —— 目前唯一用到它的是「管理员替别人建账号」。
+   * `options` 由后端下发，端上不硬编码一份：加语言时两边会不同步。
+   */
+  getDefaultLang(): Promise<{ lang: string; options: string[] }>;
+  saveDefaultLang(lang: string): Promise<{ lang: string; options: string[] }>;
+
   listTickets(q?: TicketQ): Promise<Page<Ticket>>;
   /** 分派工单（P-14.2.1）。必须指定处理人；已关闭工单不能再分派。 */
   assignTicket(ticketNo: string, assignee: string): Promise<Ticket>;
