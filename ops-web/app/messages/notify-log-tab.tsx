@@ -33,20 +33,34 @@ export function NotifyLogTab({ c, canWrite }: { c: MessageCopy; canWrite: boolea
   const [channel, setChannel] = useState("");
   const [status, setStatus] = useState("");
   const [biz, setBiz] = useState("");
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+  /*
+   * 收件人是**待提交**的：每敲一个字就查一次，会在「1」「13」「138」上各打一次库，
+   * 而这张表只增不删。回车或点「查」才发请求 —— 输入框的值单独存，
+   * 提交时才进 queryKey。
+   */
+  const [targetInput, setTargetInput] = useState("");
+  const [target, setTarget] = useState("");
   const [testOpen, setTestOpen] = useState(false);
   // D1：此前完全没有分页 —— 组件不传 page/size，后端默认给 20 条，
   // 于是第 21 条之后的记录在界面上等于不存在
   const { page, setPage, size, setSize } = usePaging();
 
   const logs = useQuery({
-    queryKey: ["notify-logs", channel, status, biz, page, size],
+    queryKey: ["notify-logs", channel, status, biz, from, to, target, page, size],
     queryFn: () => api.listNotifyLogs({
       channel: channel || undefined,
       status: status || undefined,
       bizType: biz || undefined,
+      from: from || undefined,
+      to: to || undefined,
+      target: target || undefined,
       page, size,
     }),
   });
+
+  const submitTarget = () => { setTarget(targetInput.trim()); setPage(1); };
 
   // 映射规则在 lib/notify-label.ts（纯函数，有测试守着 —— 本仓只测 lib，
   // 内联在这里的话「WXSUB 被显示成短信」那类缺陷没有任何测试能拦）
@@ -132,7 +146,31 @@ export function NotifyLogTab({ c, canWrite }: { c: MessageCopy; canWrite: boolea
             <option value="FAILED">{c.nlFailed}</option>
           </Select>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-3">
+          {/* 排查永远是「今天出的事」+「这个人有没有收到」，所以这两个条件放在一起 */}
+          <div className="flex flex-wrap items-end gap-2">
+            <div className="space-y-1">
+              <Label htmlFor="nl-from">{c.nlFrom}</Label>
+              <Input id="nl-from" type="date" className="w-40" value={from}
+                     onChange={(e) => { setFrom(e.target.value); setPage(1); }} />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="nl-to">{c.nlTo}</Label>
+              <Input id="nl-to" type="date" className="w-40" value={to}
+                     onChange={(e) => { setTo(e.target.value); setPage(1); }} />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="nl-target">{c.nlTarget}</Label>
+              <Input id="nl-target" className="w-52" value={targetInput}
+                     placeholder={c.nlTargetPlaceholder}
+                     onChange={(e) => setTargetInput(e.target.value)}
+                     onKeyDown={(e) => { if (e.key === "Enter") submitTarget(); }} />
+            </div>
+            <Button size="sm" variant="ghost" onClick={submitTarget}>{c.nlSearch}</Button>
+          </div>
+          {/* 库里存的是掩码值，但输入完整号码也能查到 —— 不说的话没人敢输完整的 */}
+          <Notice tone="info">{c.nlTargetHint}</Notice>
+
           <DataTable
             columns={cols}
             rows={logs.data?.records ?? []}

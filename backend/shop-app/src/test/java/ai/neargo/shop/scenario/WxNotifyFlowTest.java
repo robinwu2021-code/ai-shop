@@ -58,6 +58,9 @@ class WxNotifyFlowTest {
     private ai.neargo.shop.event.OutboxEventBus eventBus;
     @Autowired
     private StubWxSubscribeGateway wxStub;
+    /** 走 @Primary 的留痕装饰器，与领域拿到的是同一个 —— 直接注桩就绕过了留痕那一段 */
+    @Autowired
+    private ai.neargo.shop.spi.notify.WxSubscribePort wxPort;
     @Autowired
     private SubscribeMapper subscribeMapper;
     @Autowired
@@ -249,6 +252,32 @@ class WxNotifyFlowTest {
         assertThat(sent).hasSize(1);
         assertThat(sent.getFirst().scene()).isEqualTo("REFUNDED");
         assertThat(sent.getFirst().summary()).contains("12.50元");
+    }
+
+    @Test
+    @DisplayName("★ 退款的提示语也能自定义 —— 两条微信模板必须对称，一个能改一个不能最难查")
+    void refundTipIsCustomisableToo() {
+        String openId = "wx-open-tip-1";
+
+        /*
+         * 到货那条早就放开了 tip，退款那条一直写死在网关里。
+         * 不对称的后果不是「少一个功能」，而是运营在页面上看到两条长得一样的模板，
+         * 改其中一条没反应 —— 他不会想到「这条没放开」，只会以为保存失败了。
+         */
+        wxPort.sendRefunded(openId, "9.90元", "pages/orders/index", "已退回原支付账户");
+
+        var sent = wxStub.sent().stream().filter(s -> openId.equals(s.openId())).toList();
+        assertThat(sent).hasSize(1);
+        assertThat(sent.getFirst().summary())
+                .as("自定义话术要真的传到通道，桩摘要里看得见")
+                .contains("已退回原支付账户");
+
+        // 不传时回落默认话术，不是发一条空的
+        wxPort.sendRefunded("wx-open-tip-2", "1.00元", "pages/orders/index", null);
+        var fallback = wxStub.sent().stream()
+                .filter(s -> "wx-open-tip-2".equals(s.openId())).toList();
+        assertThat(fallback).hasSize(1);
+        assertThat(fallback.getFirst().summary()).doesNotContain("null");
     }
 
     @Test

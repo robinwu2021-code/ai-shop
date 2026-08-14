@@ -116,11 +116,12 @@ public class WxSubscribeGateway implements WxSubscribePort {
     }
 
     @Override
-    public SendResult sendRefunded(String openId, String amountText, String page) {
-        // amount1=退款金额 thing2=提示语
+    public SendResult sendRefunded(String openId, String amountText, String page, String tip) {
+        // amount1=退款金额 thing2=提示语。截断口径与到货那条一致（见 sendOrderArrived）
         Map<String, String> data = new LinkedHashMap<>();
         data.put("amount1", amountText);
-        data.put("thing2", "退款将原路退回，到账以支付渠道为准");
+        data.put("thing2", clamp(tip == null || tip.isBlank()
+                ? "退款将原路退回，到账以支付渠道为准" : tip, 20));
         return send(openId, tplRefunded, page, data);
     }
 

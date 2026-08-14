@@ -60,9 +60,12 @@ public class OpsNotifyLogController {
     public PageData<SysNotifyLog> list(@RequestParam(required = false) String channel,
                                        @RequestParam(required = false) String status,
                                        @RequestParam(required = false) String bizType,
+                                       @RequestParam(required = false) String from,
+                                       @RequestParam(required = false) String to,
+                                       @RequestParam(required = false) String target,
                                        @RequestParam(defaultValue = "1") long page,
                                        @RequestParam(defaultValue = "20") long size) {
-        return notifyLogService.list(channel, status, bizType, page, size);
+        return notifyLogService.list(channel, status, bizType, from, to, target, page, size);
     }
 
     /**

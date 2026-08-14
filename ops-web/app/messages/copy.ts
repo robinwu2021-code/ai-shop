@@ -132,6 +132,12 @@ const zh = {
   nlReasonTarget: "收件人不可达：未装 App / 未授权 / 已卸载",
   nlReasonNetwork: "通道网络异常，可重试",
   nlColBizAll: "全部用途",
+  nlFrom: "起始日",
+  nlTo: "截止日",
+  nlTarget: "收件人",
+  nlTargetPlaceholder: "手机号 / 邮箱 / 后四位",
+  nlSearch: "查",
+  nlTargetHint: "记录里的收件人是掩码后的，但这里输完整手机号或邮箱一样查得到；只记得后四位也可以。",
 
   // ── 通道页（TDD-运营端触达中心 §3.2）────────────────────────────────
   ovTitle: "四条外发通道",
@@ -344,6 +350,12 @@ const en: typeof zh = {
   nlReasonTarget: "Recipient unreachable: app not installed / not authorised / uninstalled",
   nlReasonNetwork: "Channel network error, retryable",
   nlColBizAll: "All purposes",
+  nlFrom: "From",
+  nlTo: "To",
+  nlTarget: "Recipient",
+  nlTargetPlaceholder: "Phone / email / last 4",
+  nlSearch: "Search",
+  nlTargetHint: "Recipients are stored masked, but a full phone or email still finds them here; the last four digits work too.",
 
   ovTitle: "Four outbound channels",
   ovNotice: "These four are outbound channels: they can fail, they leave a record, they need reconciliation. In-app messages are not among them — they succeed as soon as they are stored, and they already are the table each app's message centre reads.",

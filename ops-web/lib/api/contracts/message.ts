@@ -21,7 +21,11 @@ export interface MessageApi {
    * <p>通道与用途是**两个正交维度**：同一条短信通道上既有验证码也有交易触达，
    * 同一个交易触达会同时走微信与推送 —— 只按通道筛答不了「今天的验证码发得怎么样」。
    */
-  listNotifyLogs(q?: PageQ & { channel?: string; status?: string; bizType?: string }): Promise<Page<NotifyLog>>;
+  listNotifyLogs(q?: PageQ & { channel?: string; status?: string; bizType?: string;
+    /** 起止日期 yyyy-MM-dd，含当天 */
+    from?: string; to?: string;
+    /** 收件人。后端会把完整手机号/邮箱按同一口径掩码后再匹配 */
+    target?: string }): Promise<Page<NotifyLog>>;
   /** 四条通道的体检：开没开、凭据齐不齐、今天发了多少。**不含任何密钥明文**。 */
   listNotifyChannels(): Promise<NotifyChannelHealth[]>;
   getWxTemplates(): Promise<WxTemplates>;

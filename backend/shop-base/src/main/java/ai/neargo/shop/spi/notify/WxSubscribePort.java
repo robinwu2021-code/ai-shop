@@ -58,8 +58,12 @@ public interface WxSubscribePort {
      *
      * @param amountText 已格式化的金额文案（如「12.50元」）。格式化在调用方 ——
      *                   金额口径（分转元、货币符号）是业务概念，不该由通道决定
+     * @param tip        提示语，同 {@link #sendOrderArrived} 的 {@code tip}。
+     *                   <b>两条模板必须对称</b>：一条能改话术一条不能的话，
+     *                   运营在页面上看到两个长得一样的模板，改其中一个没反应 ——
+     *                   而他不会想到那是「这条没放开」，只会以为保存失败了
      */
-    SendResult sendRefunded(String openId, String amountText, String page);
+    SendResult sendRefunded(String openId, String amountText, String page, String tip);
 
     class WxSubscribeException extends RuntimeException {
         /** 网络类失败可重试；微信业务码（额度不足、模板被封）重试一万次也是同一个结果。 */

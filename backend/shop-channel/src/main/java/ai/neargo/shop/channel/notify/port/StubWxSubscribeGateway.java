@@ -45,8 +45,10 @@ public class StubWxSubscribeGateway implements WxSubscribePort {
     }
 
     @Override
-    public SendResult sendRefunded(String openId, String amountText, String page) {
-        return record(openId, SCENE_REFUNDED, "退款" + amountText + " -> " + page);
+    public SendResult sendRefunded(String openId, String amountText, String page, String tip) {
+        // 把 tip 记进摘要：桩不记的话，「话术改了没生效」在桩世界里看不出来
+        return record(openId, SCENE_REFUNDED,
+                "退款" + amountText + (tip == null || tip.isBlank() ? "" : "/" + tip) + " -> " + page);
     }
 
     private synchronized SendResult record(String openId, String scene, String summary) {

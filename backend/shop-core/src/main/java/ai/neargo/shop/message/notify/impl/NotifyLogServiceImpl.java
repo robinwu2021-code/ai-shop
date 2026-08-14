@@ -19,6 +19,7 @@ import ai.neargo.shop.message.notify.port.NotifyLoggingMailPort;
 import ai.neargo.shop.message.notify.port.NotifyLoggingSmsPort;
 import ai.neargo.shop.message.mapper.MessageMappers.NotifyLogMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -70,18 +71,66 @@ public class NotifyLogServiceImpl implements NotifyLogService {
         this.rateLimitOn = rateLimitOn;
     }
 
-    /** @param channel/status/bizType 传 null 表示不筛 */
     @Override
     public PageData<SysNotifyLog> list(String channel, String status, String bizType,
+                                       String from, String to, String target,
                                        long page, long size) {
+        String needle = maskedNeedle(target);
+        /*
+         * **先算好再传**：`ge(condition, col, value)` 的 value 是提前求值的，
+         * 条件为 false 也照样执行 —— 直接写 startOf(from) 会在不筛时间时 NPE。
+         */
+        LocalDateTime fromAt = startOf(from);
+        // 「到 8/14」在人的说法里含 8/14 一整天，所以是次日零点的开区间，
+        // 不是 8/14 00:00 —— 按闭区间写的话选「今天到今天」会一条都查不到
+        LocalDateTime toAt = endOf(to);
         var q = Wrappers.<SysNotifyLog>lambdaQuery()
                 .eq(channel != null && !channel.isBlank(), SysNotifyLog::getChannel, channel)
                 .eq(status != null && !status.isBlank(), SysNotifyLog::getStatus, status)
                 .eq(bizType != null && !bizType.isBlank(), SysNotifyLog::getBizType, bizType)
+                .ge(fromAt != null, SysNotifyLog::getCreatedAt, fromAt)
+                .lt(toAt != null, SysNotifyLog::getCreatedAt, toAt)
+                .like(needle != null, SysNotifyLog::getTarget, needle)
                 .orderByDesc(SysNotifyLog::getId);
-        // 平台侧运维记录，没有数据域概念
-        List<SysNotifyLog> all = DataScopeContext.executeWithoutScope(() -> mapper.selectList(q));
-        return PageData.ofAll(all, page, size);
+        // 平台侧运维记录，没有数据域概念。
+        // **走库分页而不是全捞进内存**：这张表只增不删（发送记录长期保留是明确决定），
+        // 每翻一页就把全表读进 JVM 的话，撑不到第一次真正需要查它的时候
+        return DataScopeContext.executeWithoutScope(
+                () -> PageData.of(mapper.selectPage(Page.of(page, size), q)));
+    }
+
+    /**
+     * 把运营输入的收件人变成能匹配<b>掩码值</b>的模糊串。
+     *
+     * <p><b>这是这个功能唯一容易做错的地方</b>：库里存的是 {@code 138****8000}，
+     * 运营手上有的是完整手机号 {@code 13800008000}。不做这层转换的话，
+     * 输入正确的号码得到的是「没有记录」—— 而那会被读成「这条根本没发出去」，
+     * 排查直接走错方向。
+     *
+     * <p>片段输入（尾四位、域名）原样模糊匹配即可：掩码保留了头尾，片段本来就能命中。
+     */
+    private String maskedNeedle(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        String s = raw.trim();
+        if (s.indexOf('@') > 0) {
+            return ai.neargo.shop.common.Masks.email(s);
+        }
+        // 纯数字且够长 = 完整手机号；否则当片段
+        return s.length() >= 8 && s.chars().allMatch(Character::isDigit)
+                ? ai.neargo.shop.common.Masks.phone(s) : s;
+    }
+
+    /** 空 = 不筛。返回 null 而不是抛，调用方按 null 决定加不加条件。 */
+    private LocalDateTime startOf(String day) {
+        return day == null || day.isBlank()
+                ? null : java.time.LocalDate.parse(day.trim()).atStartOfDay();
+    }
+
+    private LocalDateTime endOf(String day) {
+        return day == null || day.isBlank()
+                ? null : java.time.LocalDate.parse(day.trim()).plusDays(1).atStartOfDay();
     }
 
     /**

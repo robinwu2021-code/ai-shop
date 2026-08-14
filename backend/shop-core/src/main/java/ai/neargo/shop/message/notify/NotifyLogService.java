@@ -18,15 +18,21 @@ import ai.neargo.shop.message.entity.SysNotifyLog;
  */
 public interface NotifyLogService {
 
-    /** @param channel/status 传 null 表示不筛 */
     /**
      * @param channel 通道（SMS/MAIL/WXSUB/PUSH），空=不筛
      * @param status  SENT/FAILED，空=不筛
      * @param bizType 用途（{@code NotifyBizType}），空=不筛。
      *                <b>与 channel 正交</b>：同一条短信通道上既有验证码也有交易触达，
      *                只按通道筛答不了「今天的验证码发得怎么样」
+     * @param from    起始日（含），空=不限。排查永远是「今天出的事」，
+     *                而这张表是<b>只增不删</b>的（发送记录长期保留），按通道翻页找当天的很快就翻不动
+     * @param to      截止日（<b>含当天</b>，实现里按次日零点开区间），空=不限
+     * @param target  收件人。<b>库里存的是掩码后的值</b>（{@code 138****8000} / {@code r***n@neargo.ai}），
+     *                所以输入要先按同一口径掩码再匹配 —— 直接拿明文查会一条都查不到，
+     *                而那正是运营手上唯一有的东西。输入片段（如尾四位）则原样模糊匹配
      */
-    PageData<SysNotifyLog> list(String channel, String status, String bizType, long page, long size);
+    PageData<SysNotifyLog> list(String channel, String status, String bizType,
+                                String from, String to, String target, long page, long size);
 
     /**
      * 模拟发送前的收件人预检（TDD-运营端触达中心 §5.3/§5.4）。

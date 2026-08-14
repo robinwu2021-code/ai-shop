@@ -68,8 +68,13 @@ public class WxSubscribeSender {
 
     /** 退款完成通知。 */
     public void refunded(String userNo, String amountText, String page) {
+        refunded(userNo, amountText, page, null);
+    }
+
+    /** 带自定义提示语的重载，与 {@link #orderArrived(String, int, String, String)} 对称。 */
+    public void refunded(String userNo, String amountText, String page, String tip) {
         send(userNo, WxSubscribePort.SCENE_REFUNDED,
-                openId -> port.sendRefunded(openId, amountText, page));
+                openId -> port.sendRefunded(openId, amountText, page, tip));
     }
 
     private void send(String userNo, String scene, java.util.function.Consumer<String> call) {

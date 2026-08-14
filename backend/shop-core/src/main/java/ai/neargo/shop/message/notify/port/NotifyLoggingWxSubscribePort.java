@@ -76,9 +76,9 @@ public class NotifyLoggingWxSubscribePort implements WxSubscribePort {
     }
 
     @Override
-    public SendResult sendRefunded(String openId, String amountText, String page) {
+    public SendResult sendRefunded(String openId, String amountText, String page, String tip) {
         return logged(openId, SCENE_REFUNDED,
-                () -> delegate.sendRefunded(openId, amountText, page));
+                () -> delegate.sendRefunded(openId, amountText, page, tip));
     }
 
     private SendResult logged(String openId, String scene, java.util.function.Supplier<SendResult> call) {
