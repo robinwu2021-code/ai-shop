@@ -39,3 +39,18 @@ export function placeholdersOf(content: string): string[] {
 export function isFreeText(channel: string): boolean {
   return channel === "MAIL" || channel === "PUSH" || channel === "INAPP";
 }
+
+/**
+ * 选中的微信模板 → 后端要发哪一条（场景码）。
+ *
+ * <p><b>为什么不加一个「场景」下拉</b>：抽屉里本来就要选模板，而微信正好一条模板
+ * 对一个场景。再加一个控件就有两个能互相矛盾的输入 —— 选了「退款通知」模板、
+ * 场景却停在「到货」，发出去的是到货那条，而页面上两处都写着退款。
+ *
+ * <p>额度是**逐模板**授权的（用户点「允许」的是哪条就只有哪条有额度），
+ * 所以这个值也决定预检查哪条模板的额度。认不出时回落到货 —— 两条里它更常用，
+ * 且不会误发退款话术。
+ */
+export function wxSceneOf(templateNo: string | undefined): string {
+  return templateNo && /REFUND/i.test(templateNo) ? "REFUNDED" : "ORDER_ARRIVED";
+}

@@ -14,7 +14,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { notify } from "@/lib/notify";
 import { fill } from "@/lib/use-copy";
-import { isFreeText, placeholdersOf, renderTemplate } from "@/lib/notify-template";
+import { isFreeText, placeholdersOf, renderTemplate, wxSceneOf } from "@/lib/notify-template";
 import type { MsgTemplate } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Drawer, DrawerSection } from "@/components/ui/drawer";
@@ -61,6 +61,12 @@ export function TestSendDrawer({
   const [link, setLink] = useState("/messages");
   const [values, setValues] = useState<Record<string, string>>({});
   const [captchaCode, setCaptchaCode] = useState("");
+  /*
+   * 预检结果。**在填完收件人时就查**，早于取验证码 ——
+   * 「没额度 / 没绑设备」输完 userNo 就能知道，而验证码是一次性的：
+   * 等到点发送才告诉他「换个账号」，那张码已经废了，得从头再来一遍。
+   */
+  const [precheckErr, setPrecheckErr] = useState("");
 
   const captcha = useQuery({
     queryKey: ["captcha"],
@@ -71,7 +77,8 @@ export function TestSendDrawer({
   const refreshCaptcha = () => { setCaptchaCode(""); void captcha.refetch(); };
 
   // 换通道/换模板时把上一条的内容清掉 —— 留着会让人以为这次填的就是上次那些
-  useEffect(() => { setValues({}); setTarget(""); setCaptchaCode(""); }, [channel, open]);
+  useEffect(() => { setValues({}); setTarget(""); setCaptchaCode(""); setPrecheckErr(""); },
+    [channel, open]);
 
   const keys = tpl ? placeholdersOf(tpl.content) : [];
   const preview = tpl ? renderTemplate(tpl.content, values) : "";
@@ -89,8 +96,10 @@ export function TestSendDrawer({
         channel, target: target.trim(),
         level: channel === "PUSH" ? level : undefined,
         subject: values.subject, body: values.body,
-        // 短信/微信只认 params：通道方收的是模板号 + 参数
-        params: values,
+        // 短信/微信只认 params：通道方收的是模板号 + 参数。
+        // 微信再带一个 scene：一条模板对一个场景，后端据此决定发到货还是退款
+        params: channel === "WXSUB"
+          ? { ...values, scene: wxSceneOf(tpl?.templateNo) } : values,
         captchaId: captcha.data?.captchaId ?? "",
         captchaCode: captchaCode.trim(),
       });
@@ -108,7 +117,25 @@ export function TestSendDrawer({
     : channel === "MAIL" ? c.chTargetMail
       : channel === "INAPP" ? c.tsReceiverType : c.chTargetUserNo;
 
-  const canSend = !!target.trim() && !bodyTooLong
+  /*
+   * 只有微信与推送有可预检的东西（额度 / 设备绑定）。
+   * 短信邮件号码对不对只有发出去才知道 —— 给它们也调一次只是白跑一趟。
+   */
+  const runPrecheck = async () => {
+    if ((channel !== "WXSUB" && channel !== "PUSH") || !target.trim()) return;
+    try {
+      await api.precheckNotifyTarget({
+        channel, target: target.trim(),
+        scene: channel === "WXSUB" ? wxSceneOf(tpl?.templateNo) : undefined,
+      });
+      setPrecheckErr("");
+    } catch (e) {
+      setPrecheckErr(e instanceof Error ? e.message : c.tsPrecheckFailed);
+    }
+  };
+
+  // 预检没过就别让他往下走：验证码是一次性的，白按一次就得重取
+  const canSend = !!target.trim() && !bodyTooLong && !precheckErr
     && (channel === "INAPP" || !!captchaCode.trim());
 
   return (
@@ -138,7 +165,11 @@ export function TestSendDrawer({
             </Select>
           </div>
         )}
-        <Input value={target} onChange={(e) => setTarget(e.target.value)} />
+        <Input value={target}
+               onChange={(e) => { setTarget(e.target.value); setPrecheckErr(""); }}
+               onBlur={() => void runPrecheck()} />
+        {/* 预检失败要压在最上面：它说的是「这一发注定白发」，比下面的通道提示更该先看到 */}
+        {precheckErr && <Notice tone="danger" className="mt-2">{precheckErr}</Notice>}
         {channel === "WXSUB" && <Notice tone="danger" className="mt-2">{c.chWxQuotaWarn}</Notice>}
         {channel === "PUSH" && <Notice tone="info" className="mt-2">{c.chPushHint}</Notice>}
       </DrawerSection>

@@ -17,6 +17,7 @@ export const messageHttp: MessageApi = {
   testSendInApp: (v) => client.post("/ops/notify-logs/test-inapp", v),
   getCaptcha: () => client.get("/ops/captcha"),
   testSendNotify: (v) => client.post("/ops/notify-logs/test-send", v),
+  precheckNotifyTarget: (v) => client.post("/ops/notify-logs/precheck", v),
   listTickets: (q) => client.get("/ops/tickets", q),
   assignTicket: (no, assignee) => client.post(`/ops/tickets/${no}/assign`, { assignee }),
   replyTicket: (no, reply) => client.post(`/ops/tickets/${no}/reply`, { reply }),

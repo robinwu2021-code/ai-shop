@@ -46,7 +46,7 @@ public interface NotifyLogService {
      *
      * @param target WXSUB/PUSH 传 userNo；其余通道忽略
      */
-    void precheckTestTarget(String channel, String target);
+    void precheckTestTarget(String channel, String target, String scene);
 
     /**
      * 站内信的模拟发送（TDD-运营端触达中心 §5.5）。

@@ -59,6 +59,15 @@ export interface MessageApi {
     captchaId: string; captchaCode: string;
   }): Promise<void>;
 
+  /**
+   * 收件人预检。**在运营填完 userNo 时调，早于取验证码** ——
+   * 图形验证码一次性，而「没额度 / 没绑设备」输完就能知道。
+   * 不预检的话，填完表、输完验证码、点了发送才被告知「换个账号」，那张码已经废了。
+   *
+   * @param scene 仅微信用。额度逐模板授权，要查选中的那条模板
+   */
+  precheckNotifyTarget(v: { channel: NotifyChannel; target: string; scene?: string }): Promise<void>;
+
   listTickets(q?: TicketQ): Promise<Page<Ticket>>;
   /** 分派工单（P-14.2.1）。必须指定处理人；已关闭工单不能再分派。 */
   assignTicket(ticketNo: string, assignee: string): Promise<Ticket>;

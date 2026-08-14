@@ -127,6 +127,23 @@ export const messageMock: MessageApi = {
     wait({ captchaId: "mock-captcha", imageBase64:
       "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==" }, 200),
 
+  /*
+   * mock 下按 userNo 演两种失败：真实后端查的是订阅额度与设备绑定，
+   * 而本地没有那些数据 —— 编成「一律通过」会让这条路在 mock 下永远走不到失败分支，
+   * 而运营第一次见到它恰恰是失败的时候。
+   */
+  precheckNotifyTarget: (v) => {
+    if (/no-?quota/i.test(v.target)) {
+      fail("该用户没有可用的订阅额度，这条测试会白发",
+        "This user has no subscribe-message quota left; the test would go nowhere");
+    }
+    if (/no-?device/i.test(v.target)) {
+      fail("该用户没有绑定 App 设备：可能没装、没登录过，或已登出解绑",
+        "This user has no app device bound: not installed, never signed in, or unbound at logout");
+    }
+    return wait(undefined as unknown as void, 200);
+  },
+
   testSendNotify: (v) => {
     if (v.captchaCode !== "1234") fail("图形验证码错误或已过期，请重新获取",
       "Captcha is wrong or expired. Please get a new one");

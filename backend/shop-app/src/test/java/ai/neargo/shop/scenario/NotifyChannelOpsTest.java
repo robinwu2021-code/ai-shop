@@ -141,7 +141,25 @@ class NotifyChannelOpsTest {
     void wxTestSendRefusesWhenNoQuota() {
         // 这个用户从没授权过订阅消息 —— 发出去会被微信以 43101 拒，
         // 而运营看到的会是一条无从下手的通道错误
-        assertThatThrownBy(() -> notifyLogService.precheckTestTarget("WXSUB", "U-NO-QUOTA"))
+        assertThatThrownBy(() -> notifyLogService.precheckTestTarget("WXSUB", "U-NO-QUOTA", null))
+                .hasMessageContaining(ErrorCode.NOTIFY_WX_QUOTA_EMPTY.name());
+        assertThat(wxStub.sent()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("★★ 预检查的是**选中那条模板**的额度 —— 写死一条的话，选退款会得到假的「有额度」")
+    void precheckFollowsTheChosenScene() {
+        /*
+         * 额度是逐模板授权的：用户点「允许」的是哪条就只有哪条有额度。
+         * 预检写死到货的话，运营选了退款、页面说「可以发」，然后那一发静默没出去 ——
+         * 而他会以为是通道坏了，去查环境变量。
+         */
+        assertThatThrownBy(() ->
+                notifyLogService.precheckTestTarget("WXSUB", "U-NO-QUOTA", "REFUNDED"))
+                .hasMessageContaining(ErrorCode.NOTIFY_WX_QUOTA_EMPTY.name());
+        // 认不出的场景回落到货，仍然要按额度拒 —— 不能因为参数没认出来就放行
+        assertThatThrownBy(() ->
+                notifyLogService.precheckTestTarget("WXSUB", "U-NO-QUOTA", "WHAT_IS_THIS"))
                 .hasMessageContaining(ErrorCode.NOTIFY_WX_QUOTA_EMPTY.name());
         assertThat(wxStub.sent()).isEmpty();
     }
@@ -149,7 +167,7 @@ class NotifyChannelOpsTest {
     @Test
     @DisplayName("★★ 没绑设备的用户：**明确拒绝**，而不是静默成功")
     void pushTestSendRefusesWhenNoDevice() {
-        assertThatThrownBy(() -> notifyLogService.precheckTestTarget("PUSH", "U-NO-DEVICE"))
+        assertThatThrownBy(() -> notifyLogService.precheckTestTarget("PUSH", "U-NO-DEVICE", null))
                 .hasMessageContaining(ErrorCode.NOTIFY_NO_DEVICE.name());
         assertThat(pushStub.sent()).isEmpty();
     }

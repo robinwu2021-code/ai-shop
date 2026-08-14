@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isFreeText, placeholdersOf, renderTemplate } from "./notify-template";
+import { isFreeText, placeholdersOf, renderTemplate, wxSceneOf } from "./notify-template";
 
 describe("模板预览", () => {
   it("代入后就是发出去的样子", () => {
@@ -30,5 +30,18 @@ describe("模板预览", () => {
     expect(isFreeText("MAIL")).toBe(true);
     expect(isFreeText("PUSH")).toBe(true);
     expect(isFreeText("INAPP")).toBe(true);
+  });
+});
+
+describe("wxSceneOf", () => {
+  it("退款模板 → REFUNDED，到货模板 → ORDER_ARRIVED", () => {
+    expect(wxSceneOf("TPL_WX_REFUNDED")).toBe("REFUNDED");
+    expect(wxSceneOf("TPL_WX_ARRIVED")).toBe("ORDER_ARRIVED");
+  });
+
+  it("认不出的模板号回落到货 —— 宁可发常用那条，也不误发退款话术", () => {
+    expect(wxSceneOf("TPL_WX_SOMETHING_NEW")).toBe("ORDER_ARRIVED");
+    expect(wxSceneOf(undefined)).toBe("ORDER_ARRIVED");
+    expect(wxSceneOf("")).toBe("ORDER_ARRIVED");
   });
 });

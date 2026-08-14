@@ -107,10 +107,11 @@ public class OpsNotifyLogController {
     @PostMapping("/ops/notify-logs/precheck")
     @PreAuthorize("@perm.can('" + Perms.MESSAGE_TEMPLATE_UPDATE + "')")
     public void precheck(@RequestBody PrecheckReq req) {
-        notifyLogService.precheckTestTarget(req.channel(), req.target());
+        notifyLogService.precheckTestTarget(req.channel(), req.target(), req.scene());
     }
 
-    public record PrecheckReq(@NotBlank String channel, @NotBlank String target) {
+    /** @param scene 仅微信用（ORDER_ARRIVED/REFUNDED）。额度逐模板授权，预检要查选中的那条 */
+    public record PrecheckReq(@NotBlank String channel, @NotBlank String target, String scene) {
     }
 
     /**

@@ -195,21 +195,38 @@ public class NotifyLogServiceImpl implements NotifyLogService {
      * 额度为 0 时直接告诉运营「换测试账号」，而不是发出去被微信以 43101 拒。
      */
     private void testWxSubscribe(String userNo, TestContent c) {
-        precheckTestTarget(SysNotifyLog.WXSUB, userNo);
+        String scene = sceneOf(c.paramOr("scene", null));
+        precheckTestTarget(SysNotifyLog.WXSUB, userNo, scene);
         // thing2 是微信模板里允许自定义的字段（≤20 字）。此前写死在网关里，
         // 改一句话都要发版 —— 现在从这里传，模拟发送与真实发送共用同一条路
-        wxSender.orderArrived(userNo, 1, "pages/orders/index",
-                c.paramOr("thing2", null));
+        String tip = c.paramOr("thing2", null);
+        if (WxSubscribePort.SCENE_REFUNDED.equals(scene)) {
+            // 金额随便给一个可辨认的小数：这条是测话术与通道，不是测金额格式化
+            wxSender.refunded(userNo, c.paramOr("amount1", "0.01元"), "pages/orders/index", tip);
+        } else {
+            wxSender.orderArrived(userNo, 1, "pages/orders/index", tip);
+        }
+    }
+
+    /** 认不出的场景一律当到货 —— 两条模板里它是更常用的那条，且不会误发退款话术。 */
+    private String sceneOf(String raw) {
+        return WxSubscribePort.SCENE_REFUNDED.equals(raw)
+                ? WxSubscribePort.SCENE_REFUNDED : WxSubscribePort.SCENE_ORDER_ARRIVED;
     }
 
     /** 预检。**与真正发送共用同一份判断** —— 两份判断迟早分叉，而分叉时预检会放行一个发不出去的目标。 */
     @Override
-    public void precheckTestTarget(String channel, String target) {
+    public void precheckTestTarget(String channel, String target, String scene) {
         if (target == null || target.isBlank()) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
         if (SysNotifyLog.WXSUB.equals(channel)) {
-            String templateId = wxSender.templateIdOf(WxSubscribePort.SCENE_ORDER_ARRIVED);
+            /*
+             * **按选中的那条模板查额度**。写死到货的话，运营选了退款、
+             * 预检说「有额度」，然后那一发静默没出去 —— 而额度本来就是逐模板授权的，
+             * 用户点「允许」的是哪条就只有哪条有额度。
+             */
+            String templateId = wxSender.templateIdOf(sceneOf(scene));
             boolean hasQuota = templateId != null && DataScopeContext.executeWithoutScope(() ->
                     subscribeMapper.selectCount(Wrappers.<MsgSubscribe>lambdaQuery()
                             .eq(MsgSubscribe::getUserNo, target)
@@ -239,7 +256,7 @@ public class NotifyLogServiceImpl implements NotifyLogService {
      *              上线前必须能在真机上验一次它到底响不响（免费档还受厂商配额约束）
      */
     private void testPush(String userNo, String level, TestContent c) {
-        precheckTestTarget(SysNotifyLog.PUSH, userNo);
+        precheckTestTarget(SysNotifyLog.PUSH, userNo, null);
         String title = c.subjectOr("通道联通测试");
         String body = c.bodyOr("这是一条测试推送，用于确认推送通道可用。");
         String link = "/pages/message/index";
