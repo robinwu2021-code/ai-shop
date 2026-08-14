@@ -145,10 +145,18 @@ onShow(() => {
     user.loadProfile();
     // 没申请过返回 null，不是错误 —— 失败也不该影响整页
     api.myMerchantApply().then((a) => (applyStatus.value = a)).catch(() => {});
+    // 只取一个数 —— 拉整个列表数未读是把带宽当角标用
+    api.unreadMessages().then((n) => (unread.value = n)).catch(() => {});
+  } else {
+    /*
+     * **未登录必须清零**：这一条此前写在 isLogin 块外面 ——
+     * 于是未登录的人也会看到「N 条未读」，而那不是他的消息；
+     * 接真后端时还会白挨一个 401（并可能触发全局登出跳转）。
+     * 不清零的话，登出之后旧数字还挂在那儿。
+     */
+    unread.value = 0;
   }
   if (FEATURES.points) api.pointAccount().then((a) => (points.value = a.balance));
-  // 只取一个数 —— 拉整个列表数未读是把带宽当角标用
-  api.unreadMessages().then((n) => (unread.value = n)).catch(() => {});
 });
 </script>
 
@@ -181,7 +189,12 @@ onShow(() => {
     <view class="cells">
       <view class="cell" @tap="gotoMessages">
         <text class="cell__label">{{ $t("message.title") }}</text>
-        <text class="cell__value sh-num">
+        <!--
+          未登录时**什么都不显示**。显示「已全部阅读」是在说一句假话：
+          它暗示这个人有消息且都读过了，而他还没登录，平台根本不知道他是谁。
+          与上面「我的常去店」未登录时显示「—」是同一个口径。
+        -->
+        <text v-if="user.isLogin" class="cell__value sh-num">
           {{ unread ? $t("message.unread", { n: unread }) : $t("message.allRead") }}
         </text>
       </view>
