@@ -43,7 +43,9 @@ class NotifyLogFlowTest {
     private NotifyLogService notifyLogService;
 
     private PageData<SysNotifyLog> logs() {
-        return notifyLogService.list(null, null, 1, 50);
+        // bizType 这一维是并行会话 2026-08-14 加的（发送记录按用途筛）——
+        // 这条 helper 要的是「全部记录」，三维都传 null
+        return notifyLogService.list(null, null, null, 1, 50);
     }
 
     @Test

@@ -313,7 +313,10 @@ DataScope 是 MyBatis 拦截器（商家只能看自己的数据），主体今�
 - [ ] T1 Controller 从各域 `api/{mp,biz,ops}` 迁出（**先于**域拆分，否则同一批文件动两次）
 - [ ] T2 `shop-core` 一拆四；`community`、`fulfillment` 归位 `shop-merchant`
 - [ ] T3 `shop-app-worker`：迁 2 个既有 Job ＋ **补上 Outbox 投递任务**
-- [ ] T4 清理仓库根的孤儿目录 `shop-svc-fulfillment/`（6 个文件与 core 重复，无 pom、不参与构建）
+- [x] T4 清理仓库根的孤儿目录 `shop-svc-fulfillment/` —— **已完成**（2026-08-14）。
+      订正本条的描述：不是「6 个文件与 core 重复」，**4 个与 core 不同**，
+      每处都是 core 更靠前；而 `PickupOrderVO` 里有两行 core 已丢失的隐私取舍注释，
+      删前捞回了。加了 `OrphanModuleTest` 防它再长出来
 
 **兑现**：worker 独立部署 · 打断「一依赖全背上」· **站内信终于发得出去**。
 

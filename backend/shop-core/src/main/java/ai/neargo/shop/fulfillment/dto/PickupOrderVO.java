@@ -19,7 +19,9 @@ import java.util.List;
  */
 public record PickupOrderVO(String subOrderNo,
                             String verifyCode,
+                            /** 只给昵称：承接方需要的是「认出这个人」，不是知道他是谁 */
                             String buyerNickname,
+                            /** 后四位，用于当面核对 */
                             String buyerPhoneTail,
                             String merchantName,
                             String status,
