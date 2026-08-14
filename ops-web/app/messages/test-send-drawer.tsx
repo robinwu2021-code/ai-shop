@@ -14,7 +14,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { notify } from "@/lib/notify";
 import { fill } from "@/lib/use-copy";
-import { isFreeText, placeholdersOf, renderTemplate, wxSceneOf } from "@/lib/notify-template";
+import { isFreeText, isSubjectBodyTemplate, placeholdersOf, renderTemplate, wxSceneOf } from "@/lib/notify-template";
 import type { MsgTemplate } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Drawer, DrawerSection } from "@/components/ui/drawer";
@@ -57,8 +57,14 @@ export function TestSendDrawer({
    */
   const [templateKey, setTemplateKey] = useState("");
   const keyOf = (t: MsgTemplate) => `${t.templateNo}:${t.lang ?? ""}`;
+  /*
+   * 默认选「联通测试」那条（占位是 subject/body）而不是列表第一条 ——
+   * 排序改成按模板号分组之后，第一条成了「运营账号开通」，
+   * 而模拟发送默认给人发一封开户通知是不合适的。
+   */
+  const fallback = mine.find((t) => isSubjectBodyTemplate(t.content)) ?? mine[0];
   const tpl: MsgTemplate | undefined =
-    mine.find((t) => keyOf(t) === templateKey) ?? mine[0];
+    mine.find((t) => keyOf(t) === templateKey) ?? fallback;
 
   const [target, setTarget] = useState("");
   const [level, setLevel] = useState("NORMAL");
@@ -97,10 +103,19 @@ export function TestSendDrawer({
           title: values.subject ?? "", body: values.body, link,
         });
       }
+      /*
+       * **业务模板要把参数代进去发**，不能只传 subject/body ——
+       * 那两个框只有「联通测试」那种 {subject}/{body} 模板才有。
+       * 此前一律按后者处理：选了「账号开通」填完一屏参数，
+       * subject/body 是空的，后端回落默认文案 —— 运营收到的是「这是一封测试邮件」。
+       * 现在按模板种类分流，发出去的正是抽屉里预览的那段。
+       */
+      const plain = !tpl || isSubjectBodyTemplate(tpl.content);
       return api.testSendNotify({
         channel, target: target.trim(),
         level: channel === "PUSH" ? level : undefined,
-        subject: values.subject, body: values.body,
+        subject: plain ? values.subject : tpl?.name,
+        body: plain ? values.body : preview,
         // 短信/微信只认 params：通道方收的是模板号 + 参数。
         // 微信再带一个 scene：一条模板对一个场景，后端据此决定发到货还是退款
         params: channel === "WXSUB"

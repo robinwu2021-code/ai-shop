@@ -54,3 +54,20 @@ export function isFreeText(channel: string): boolean {
 export function wxSceneOf(templateNo: string | undefined): string {
   return templateNo && /REFUND/i.test(templateNo) ? "REFUNDED" : "ORDER_ARRIVED";
 }
+
+/**
+ * 这条模板是不是「主题 + 正文」那种自由文本模板。
+ *
+ * <p>邮件通道有两类模板：一类是联通测试用的 `{subject}` `{body}`
+ * ——运营在抽屉里直接写主题正文；另一类是业务模板（账号开通、密码重置），
+ * 占位是 `realName`/`password` 这些，正文由模板决定。
+ *
+ * <p><b>两类的发送方式不同</b>：前者把两个框原样当主题与正文，
+ * 后者要把参数代进模板、拿渲染结果当正文 —— 而抽屉此前一律按前者处理，
+ * 于是选了业务模板时 subject/body 是空的，后端回落到默认测试文案：
+ * **运营填了一屏参数，收到的却是「这是一封测试邮件」。**
+ */
+export function isSubjectBodyTemplate(content: string): boolean {
+  const keys = placeholdersOf(content);
+  return keys.includes("subject") && keys.includes("body");
+}

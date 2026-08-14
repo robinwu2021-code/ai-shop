@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isFreeText, placeholdersOf, renderTemplate, wxSceneOf } from "./notify-template";
+import { isFreeText, isSubjectBodyTemplate, placeholdersOf, renderTemplate, wxSceneOf } from "./notify-template";
 
 describe("模板预览", () => {
   it("代入后就是发出去的样子", () => {
@@ -43,5 +43,20 @@ describe("wxSceneOf", () => {
     expect(wxSceneOf("TPL_WX_SOMETHING_NEW")).toBe("ORDER_ARRIVED");
     expect(wxSceneOf(undefined)).toBe("ORDER_ARRIVED");
     expect(wxSceneOf("")).toBe("ORDER_ARRIVED");
+  });
+});
+
+describe("isSubjectBodyTemplate", () => {
+  it("联通测试模板：主题正文由运营直接写", () => {
+    expect(isSubjectBodyTemplate("{subject}\n\n{body}")).toBe(true);
+  });
+
+  it("业务模板：占位是业务字段，正文由模板决定", () => {
+    expect(isSubjectBodyTemplate("你好 {realName}，初始密码：{password}")).toBe(false);
+    expect(isSubjectBodyTemplate("您有 {number1} 件包裹 · {thing2}")).toBe(false);
+  });
+
+  it("只有其中一个不算 —— 两个都在才是那种模板", () => {
+    expect(isSubjectBodyTemplate("{subject} 之后没有正文")).toBe(false);
   });
 });

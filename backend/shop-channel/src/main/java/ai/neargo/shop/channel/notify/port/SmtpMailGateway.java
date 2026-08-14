@@ -67,6 +67,30 @@ public class SmtpMailGateway implements MailPort {
         props.put("mail.smtp.starttls.enable", "true");
         props.put("mail.smtp.starttls.required", "true");
         props.put("mail.smtp.ssl.protocols", protocols);
+        /*
+         * **EHLO 用发件域，而不是本机 IP。**
+         *
+         * <p>不设这一项时 JavaMail 拿本机地址顶上，于是两处都变成私网 IP：
+         * EHLO 报的名字，以及 Message-ID 的域部分（实测收到过
+         * {@code <...@[10.221.117.8]>}）。两者都是垃圾邮件过滤器的扣分项 ——
+         * 正规发件方不会用 IP 字面量自报家门。
+         *
+         * <p>症状很难查：SMTP 返回成功、发送记录里有 Message-ID、
+         * **但收件人只在垃圾箱里找得到**，而链路上每一步看起来都是对的。
+         */
+        props.put("mail.smtp.localhost", domainOf(from));
+        /*
+         * **Message-ID 的域也要是发件域。**
+         *
+         * <p>上面那行只管 EHLO —— Message-ID 是 JavaMail 另外生成的
+         * （{@code UniqueValue.getUniqueMessageIDValue}），它看的是 {@code mail.from}，
+         * 取不到才退回本机地址。实测第一版只设了 localhost，记录里的 ID 仍是
+         * {@code <...@[10.221.117.8]>}，白改了一半。
+         *
+         * <p>这一列不只是好看：M365 的邮件跟踪按 Message-ID 查，
+         * 一个 IP 字面量的 ID 在那里很难对上。
+         */
+        props.put("mail.from", from);
         // 三个超时都要设：不设的话通道不可达时线程会挂很久，而调用方是同步等待的
         props.put("mail.smtp.connectiontimeout", "10000");
         props.put("mail.smtp.timeout", "15000");
@@ -88,6 +112,12 @@ public class SmtpMailGateway implements MailPort {
                             + " —— 直接失败而不是退回桩：退回桩会让运营端「初始密码已发送」"
                             + "的提示照常出现，而新同事永远收不到那封信");
         }
+    }
+
+    /** 取发件地址的域部分。取不到就退回一个可解析的常量 —— 总好过报 IP。 */
+    private static String domainOf(String address) {
+        int at = address == null ? -1 : address.indexOf('@');
+        return at > 0 && at < address.length() - 1 ? address.substring(at + 1) : "localhost";
     }
 
     @Override
