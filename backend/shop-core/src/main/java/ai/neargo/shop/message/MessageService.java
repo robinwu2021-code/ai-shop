@@ -16,18 +16,45 @@ public interface MessageService {
     String SYSTEM = "SYSTEM";
 
     /**
-     * 推送站内消息。
+     * 推送站内消息给消费者（C 端收件箱）。
      *
      * @param dedupKey 幂等键（通常是 eventNo）。已存在则**静默跳过** ——
      *                 事件重投是正常现象，不该抛异常让投递器一直重试
      */
     void push(String userNo, String type, String title, String body, String link, String dedupKey);
 
-    List<MessageVO> list();
+    /**
+     * 推送给任意收件人（{@code MsgMessage.RECEIVER_*}）。
+     *
+     * <p>同一事件扇出给多个员工时，调用方要把收件人编进 dedupKey
+     * （如 {@code eventNo + ":" + receiverNo}）—— dedup 唯一索引是全局的，
+     * 只用 eventNo 的话第二个收件人会被当成重投而静默丢掉。
+     */
+    void pushTo(String receiverType, String receiverNo, String type,
+                String title, String body, String link, String dedupKey);
 
-    List<MessageVO> markRead(String messageNo);
+    /**
+     * 营销消息的**唯一**入口，频控（P-14.1.4）在这里执行：
+     * 模板停用、当日条数达上限、同模板未过最小间隔，任一命中就不发。
+     *
+     * <p>交易/待办类**不走这里** —— 到货通知被频控拦掉是事故，不是保护。
+     *
+     * @param templateNo {@code msg_template} 的模板号。必填：没有模板归属的营销消息
+     *                   无法执行「同模板最小间隔」，频控对它就是摆设
+     * @return 发出去了 true；被频控或停用拦下 false（调用方据此统计触达率）
+     */
+    boolean pushMarketing(String userNo, String templateNo, String title, String body,
+                          String link, String dedupKey);
 
-    List<MessageVO> markAllRead();
+    /** 当前登录者在指定收件箱的消息。C 端传 USER、B 端传 STAFF、平台传 OPS。 */
+    List<MessageVO> list(String receiverType);
+
+    List<MessageVO> markRead(String receiverType, String messageNo);
+
+    List<MessageVO> markAllRead(String receiverType);
+
+    /** 未读数。三端角标轮询用 —— 只 count，不拉列表。 */
+    long unreadCount(String receiverType);
 
     /** 订阅授权上报。同意与拒绝都记。 */
     void subscribe(List<String> templateIds, boolean accepted);

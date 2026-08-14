@@ -1,0 +1,266 @@
+"use client";
+
+// 模拟发送抽屉（TDD-触达中心界面优化 §2）。五条通道共用。
+//
+// **为什么是抽屉不是常驻卡片**：本仓的约定写在 components/ui/popover.tsx 顶部 ——
+// 「顺手看一眼/改一下」用 Popover，「进去做一件事」用 Drawer。填收件人、改内容、
+// 看预览、输验证码，是典型的「进去做一件事」；常驻在页面上则把首屏占掉，
+// 而运营大部分时候来这一页是查记录，不是发测试。
+//
+// **模板可见 + 自定义可填 + 实时预览**：三段一起给，运营点发送前就知道
+// 「这条发出去长什么样」。各通道能填多少不是我们定的，是通道定的（见 lib/notify-template）。
+import { useEffect, useMemo, useState } from "react";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { api } from "@/lib/api";
+import { notify } from "@/lib/notify";
+import { fill } from "@/lib/use-copy";
+import { isFreeText, placeholdersOf, renderTemplate } from "@/lib/notify-template";
+import type { MsgTemplate } from "@/lib/types";
+import { Button } from "@/components/ui/button";
+import { Drawer, DrawerSection } from "@/components/ui/drawer";
+import { Input, Select } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Notice } from "@/components/ui/notice";
+import { Textarea } from "@/components/ui/textarea";
+import type { MessageCopy } from "./copy";
+
+/** 站内信不在 NotifyChannel 里（它不进 sys_notify_log），所以这里单独放宽。 */
+export type TestChannel = "SMS" | "MAIL" | "WXSUB" | "PUSH" | "INAPP";
+
+const MAX_BODY = 2000;
+
+export function TestSendDrawer({
+  c, channel, open, onOpenChange, onSent,
+}: {
+  c: MessageCopy;
+  channel: TestChannel;
+  open: boolean;
+  onOpenChange: (o: boolean) => void;
+  onSent: () => void;
+}) {
+  const free = isFreeText(channel);
+
+  // 模板从 msg_template 读（V141 种子）。停用的不给选 —— 停用即刻生效是它的既有语义
+  const templates = useQuery({
+    queryKey: ["msg-templates"],
+    queryFn: () => api.listMsgTemplates({ size: 100 }),
+    enabled: open,
+  });
+  const mine = useMemo(
+    () => (templates.data?.records ?? []).filter((t) => t.channel === channel && t.enabled),
+    [templates.data, channel],
+  );
+
+  const [templateNo, setTemplateNo] = useState("");
+  const tpl: MsgTemplate | undefined =
+    mine.find((t) => t.templateNo === templateNo) ?? mine[0];
+
+  const [target, setTarget] = useState("");
+  const [level, setLevel] = useState("NORMAL");
+  const [receiverType, setReceiverType] = useState("OPS");
+  const [link, setLink] = useState("/messages");
+  const [values, setValues] = useState<Record<string, string>>({});
+  const [captchaCode, setCaptchaCode] = useState("");
+
+  const captcha = useQuery({
+    queryKey: ["captcha"],
+    queryFn: () => api.getCaptcha(),
+    // 站内信不过验证码：它发不出平台，骚扰不到外部的人
+    enabled: open && channel !== "INAPP",
+  });
+  const refreshCaptcha = () => { setCaptchaCode(""); void captcha.refetch(); };
+
+  // 换通道/换模板时把上一条的内容清掉 —— 留着会让人以为这次填的就是上次那些
+  useEffect(() => { setValues({}); setTarget(""); setCaptchaCode(""); }, [channel, open]);
+
+  const keys = tpl ? placeholdersOf(tpl.content) : [];
+  const preview = tpl ? renderTemplate(tpl.content, values) : "";
+  const bodyTooLong = (values.body ?? "").length > MAX_BODY;
+
+  const send = useMutation({
+    mutationFn: async () => {
+      if (channel === "INAPP") {
+        return api.testSendInApp({
+          receiverType, receiverNo: target.trim(),
+          title: values.subject ?? "", body: values.body, link,
+        });
+      }
+      return api.testSendNotify({
+        channel, target: target.trim(),
+        level: channel === "PUSH" ? level : undefined,
+        subject: values.subject, body: values.body,
+        // 短信/微信只认 params：通道方收的是模板号 + 参数
+        params: values,
+        captchaId: captcha.data?.captchaId ?? "",
+        captchaCode: captchaCode.trim(),
+      });
+    },
+    onSuccess: () => {
+      notify.success(c.nlTestOk);
+      onSent();
+      onOpenChange(false);
+    },
+    // 验证码一次性：无论成败都得换一张，否则下次提交必报「验证码错误」
+    onError: () => refreshCaptcha(),
+  });
+
+  const targetLabel = channel === "SMS" ? c.chTargetPhone
+    : channel === "MAIL" ? c.chTargetMail
+      : channel === "INAPP" ? c.tsReceiverType : c.chTargetUserNo;
+
+  const canSend = !!target.trim() && !bodyTooLong
+    && (channel === "INAPP" || !!captchaCode.trim());
+
+  return (
+    <Drawer
+      open={open}
+      onOpenChange={onOpenChange}
+      title={fill(c.tsTitle, { ch: channelName(c, channel) })}
+      desc={c.tsDesc}
+      footer={
+        <div className="flex justify-end gap-2">
+          <Button variant="ghost" onClick={() => onOpenChange(false)}>{c.tsCancel}</Button>
+          <Button onClick={() => send.mutate()} disabled={!canSend || send.isPending}>
+            {c.tsSubmit}
+          </Button>
+        </div>
+      }
+    >
+      {/* 收件人 */}
+      <DrawerSection first title={targetLabel}>
+        {channel === "INAPP" && (
+          <div className="mb-2 space-y-1.5">
+            <Label>{c.tsReceiverType}</Label>
+            <Select value={receiverType} onChange={(e) => setReceiverType(e.target.value)}>
+              <option value="USER">{c.tsReceiverUser}</option>
+              <option value="STAFF">{c.tsReceiverStaff}</option>
+              <option value="OPS">{c.tsReceiverOps}</option>
+            </Select>
+          </div>
+        )}
+        <Input value={target} onChange={(e) => setTarget(e.target.value)} />
+        {channel === "WXSUB" && <Notice tone="danger" className="mt-2">{c.chWxQuotaWarn}</Notice>}
+        {channel === "PUSH" && <Notice tone="info" className="mt-2">{c.chPushHint}</Notice>}
+      </DrawerSection>
+
+      {/* 模板：只读展示 */}
+      <DrawerSection title={c.tsTemplate}>
+        {mine.length === 0 && <Notice tone="warning">{c.tsTemplateNone}</Notice>}
+        {mine.length > 1 && (
+          <Select className="mb-2" value={tpl?.templateNo ?? ""}
+                  onChange={(e) => { setTemplateNo(e.target.value); setValues({}); }}>
+            {mine.map((t) => (
+              <option key={t.templateNo} value={t.templateNo}>{t.name}</option>
+            ))}
+          </Select>
+        )}
+        {tpl && (
+          <>
+            <pre className="whitespace-pre-wrap rounded-field bg-secondary p-3 txt-caption">
+              {tpl.content}
+            </pre>
+            {tpl.providerTemplateId && (
+              <div className="mt-1 txt-caption text-muted-foreground">
+                {tpl.providerTemplateId}
+              </div>
+            )}
+            {/* 短信/微信改不了正文，这句必须写 —— 不写运营会以为是功能没做 */}
+            <Notice tone={free ? "info" : "warning"} className="mt-2">
+              {free ? c.tsTemplateFree : c.tsTemplateFixed}
+            </Notice>
+          </>
+        )}
+      </DrawerSection>
+
+      {/* 自定义部分：占位逐个给输入框 */}
+      {tpl && keys.length > 0 && (
+        <DrawerSection title={c.tsCustom}>
+          <div className="space-y-3">
+            {keys.map((k) => (
+              <div key={k} className="space-y-1.5">
+                <Label>{fieldLabel(c, k)}</Label>
+                {k === "body" ? (
+                  // Textarea 的 onChange 直接给值（本仓 README 约定），不是 event
+                  <Textarea rows={4} value={values[k] ?? ""}
+                            onChange={(v) => setValues((p) => ({ ...p, [k]: v }))} />
+                ) : (
+                  <Input value={values[k] ?? ""}
+                         onChange={(e) => setValues((p) => ({ ...p, [k]: e.target.value }))} />
+                )}
+                {k === "thing2" && <div className="txt-caption text-muted-foreground">{c.tsTipHint}</div>}
+                {k === "body" && bodyTooLong && (
+                  <div className="txt-caption text-destructive">{c.tsBodyTooLong}</div>
+                )}
+              </div>
+            ))}
+            {channel === "INAPP" && (
+              <div className="space-y-1.5">
+                <Label>{c.tsFieldLink}</Label>
+                <Input value={link} onChange={(e) => setLink(e.target.value)} />
+              </div>
+            )}
+            {channel === "PUSH" && (
+              <div className="space-y-1.5">
+                <Label>{c.chPushLevel}</Label>
+                <Select value={level} onChange={(e) => setLevel(e.target.value)}>
+                  <option value="NORMAL">{c.chLevelNormal}</option>
+                  <option value="RING">{c.chLevelRing}</option>
+                </Select>
+              </div>
+            )}
+          </div>
+        </DrawerSection>
+      )}
+
+      {/* 预览：点发送前就知道发出去长什么样 */}
+      {tpl && (
+        <DrawerSection title={c.tsPreview}>
+          <pre className="whitespace-pre-wrap rounded-field border border-border p-3 txt-body">
+            {preview}
+          </pre>
+        </DrawerSection>
+      )}
+
+      {/* 图形验证码：站内信没有 */}
+      <DrawerSection title={c.nlTestCaptcha}>
+        {channel === "INAPP" ? (
+          <Notice tone="info">{c.tsInappNoCaptcha}</Notice>
+        ) : (
+          <>
+            <Notice tone="warning" className="mb-2">{c.nlTestWarn}</Notice>
+            <div className="flex items-center gap-2">
+              <Input value={captchaCode} onChange={(e) => setCaptchaCode(e.target.value)}
+                     placeholder={c.nlTestCaptchaPh} className="w-28" />
+              {captcha.data && (
+                <button type="button" onClick={refreshCaptcha} title={c.nlTestRefresh}
+                        className="rounded-field border border-card-border">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={`data:image/png;base64,${captcha.data.imageBase64}`}
+                       alt={c.nlTestCaptcha} className="h-9" />
+                </button>
+              )}
+            </div>
+          </>
+        )}
+      </DrawerSection>
+    </Drawer>
+  );
+}
+
+function channelName(c: MessageCopy, ch: TestChannel): string {
+  return { SMS: c.nlSms, MAIL: c.nlMail, WXSUB: c.nlWxsub,
+           PUSH: c.nlPush, INAPP: c.channelInbox }[ch];
+}
+
+/** 占位名 → 人话。认不出的占位直接显示原名 —— 猜一个好听的名字会掩盖模板写错。 */
+function fieldLabel(c: MessageCopy, key: string): string {
+  return ({
+    code: c.tsFieldCode,
+    subject: c.tsFieldSubject,
+    body: c.tsFieldBody,
+    title: c.tsFieldTitle,
+    thing2: c.tsFieldTip,
+    number1: c.chWxTplArrived,
+    amount1: c.chWxTplRefunded,
+  } as Record<string, string>)[key] ?? key;
+}

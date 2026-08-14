@@ -1,18 +1,29 @@
 // 消息与客服 mock（P-14）。
 import type { FaqEntry, MsgTemplate, NotifyQuota, PushTask, Ticket } from "@/lib/types";
 
+/*
+ * 模板 mock。**通道值与后端种子（V141）同一套** —— SMS/MAIL/WXSUB/PUSH/INAPP。
+ * 此前这里写的是 V20 建表注释里的旧叫法（SUBSCRIBE/PUSH/INBOX），
+ * 与真实数据对不上：真后端下模板列表的通道列会是空白，而 mock 下看着正常。
+ *
+ * 占位用英文键（{code} 而不是 {社区}）：预览与模板参数输入框都按占位名取值，
+ * 中文占位名在 URL/JSON 里传起来只会添乱。
+ */
 export const msgTemplates: MsgTemplate[] = [
-  { templateNo: "MT9001", name: "到货提醒", channel: "SUBSCRIBE", content: "您在{社区}的订单已到达{自提点}，取货码 {code}，请于 {deadline} 前取货。", enabled: true, sentCount: 3820 },
-  { templateNo: "MT9002", name: "拼团成功", channel: "SUBSCRIBE", content: "「{团名}」已成团，预计 {date} 到货。", enabled: true, sentCount: 640 },
-  { templateNo: "MT9003", name: "逾期未取提醒", channel: "PUSH", content: "您有 {n} 件商品即将超过取货期限。", enabled: true, sentCount: 210 },
-  { templateNo: "MT9004", name: "系统维护公告", channel: "INBOX", content: "系统将于 {time} 维护，期间下单可能受影响。", enabled: false, sentCount: 12 },
+  { templateNo: "TPL_SMS_OTP", name: "验证码", channel: "SMS", content: "【数智邻购】您的验证码是 {code}，5 分钟内有效，请勿泄露。", providerTemplateId: "SMS_474945291", enabled: true, sentCount: 3820 },
+  { templateNo: "TPL_MAIL_TEST", name: "通道联通测试", channel: "MAIL", content: "{subject}\n\n{body}", enabled: true, sentCount: 12 },
+  { templateNo: "TPL_MAIL_OPS_INIT_PWD", name: "运营账号开通", channel: "MAIL", content: "你好 {realName}，\n\n你的运营端账号已开通。\n登录名：{username}\n初始密码：{password}\n\n首次登录会要求你立即修改密码。请勿转发本邮件。", enabled: true, sentCount: 3 },
+  { templateNo: "TPL_MAIL_OPS_RESET_PWD", name: "运营密码重置", channel: "MAIL", content: "你好 {realName}，\n\n有人为你的运营端账号申请了密码重置。\n重置码（{ttlMinutes} 分钟内有效，只能用一次）：\n\n    {token}\n\n如果不是你本人操作，忽略本邮件即可。", enabled: true, sentCount: 1 },
+  { templateNo: "TPL_WX_ARRIVED", name: "到货通知", channel: "WXSUB", content: "您有 {number1} 件包裹已到自提点 · {thing2}", enabled: true, sentCount: 640 },
+  { templateNo: "TPL_PUSH_TEST", name: "通用推送", channel: "PUSH", content: "{subject}\n{body}", enabled: true, sentCount: 210 },
+  { templateNo: "TPL_INAPP_TEST", name: "站内信", channel: "INAPP", content: "{subject}\n{body}", enabled: false, sentCount: 12 },
 ];
 
 export const pushTasks: PushTask[] = [
-  { taskNo: "PT9001", name: "周五生鲜到货提醒", templateNo: "MT9001", audience: "锦绣花园 + 阳光里有未取订单的用户", estimatedReach: 186, status: "SCHEDULED", scheduledAt: "2026-08-07T09:00:00Z", createdAt: "2026-08-06T00:30:00Z" },
-  { taskNo: "PT9002", name: "新人礼包召回", templateNo: "MT9003", audience: "注册 7 天未下单", estimatedReach: 412, status: "SENT", createdAt: "2026-08-04T02:00:00Z" },
+  { taskNo: "PT9001", name: "周五生鲜到货提醒", templateNo: "TPL_WX_ARRIVED", audience: "锦绣花园 + 阳光里有未取订单的用户", estimatedReach: 186, status: "SCHEDULED", scheduledAt: "2026-08-07T09:00:00Z", createdAt: "2026-08-06T00:30:00Z" },
+  { taskNo: "PT9002", name: "新人礼包召回", templateNo: "TPL_PUSH_TEST", audience: "注册 7 天未下单", estimatedReach: 412, status: "SENT", createdAt: "2026-08-04T02:00:00Z" },
   // 空人群：发了等于白发一次，用来验"预估触达 0 不许发"
-  { taskNo: "PT9003", name: "梧桐苑开城通知（人群待定）", templateNo: "MT9004", audience: "梧桐苑已注册用户", estimatedReach: 0, status: "DRAFT", createdAt: "2026-08-06T01:00:00Z" },
+  { taskNo: "PT9003", name: "梧桐苑开城通知（人群待定）", templateNo: "TPL_INAPP_TEST", audience: "梧桐苑已注册用户", estimatedReach: 0, status: "DRAFT", createdAt: "2026-08-06T01:00:00Z" },
 ];
 
 export const notifyQuota: NotifyQuota = {

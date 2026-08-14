@@ -213,6 +213,14 @@ export const httpApi: ShopApi = {
   messageList: () => call<Message[]>("messageList"),
   readMessage: (messageNo) => call<Message[]>("readMessage", { messageNo }),
   readAllMessages: () => call<Message[]>("readAllMessages"),
+  unreadMessages: () => call<number>("unreadMessages"),
+  subscribeReport: (templateIds, accepted) =>
+    call<void>("subscribeReport", undefined, { templateIds, accepted }),
+
+  registerPushToken: (platform, clientId) =>
+    call<void>("registerPushToken", undefined, { platform, clientId }),
+  unregisterPushToken: (clientId) =>
+    call<void>("unregisterPushToken", undefined, { clientId }),
 
   // ---- 团长
 };

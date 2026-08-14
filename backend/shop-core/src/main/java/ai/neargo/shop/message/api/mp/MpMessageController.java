@@ -1,6 +1,7 @@
 package ai.neargo.shop.message.api.mp;
 
 import ai.neargo.shop.message.MessageService;
+import ai.neargo.shop.message.entity.MsgMessage;
 import ai.neargo.shop.message.dto.MessageVOs.FaqVO;
 import ai.neargo.shop.message.dto.MessageVOs.MessageVO;
 import ai.neargo.shop.message.dto.MessageVOs.TicketVO;
@@ -29,17 +30,23 @@ public class MpMessageController {
 
     @GetMapping("/mp/message")
     public List<MessageVO> messages() {
-        return messageService.list();
+        return messageService.list(MsgMessage.RECEIVER_USER);
+    }
+
+    /** 未读角标。轮询端点，只给一个数 —— 拉整个列表数未读是把带宽当角标用。 */
+    @GetMapping("/mp/message/unread-count")
+    public long unreadCount() {
+        return messageService.unreadCount(MsgMessage.RECEIVER_USER);
     }
 
     @PostMapping("/mp/message/{messageNo}/read")
     public List<MessageVO> read(@PathVariable String messageNo) {
-        return messageService.markRead(messageNo);
+        return messageService.markRead(MsgMessage.RECEIVER_USER, messageNo);
     }
 
     @PostMapping("/mp/message/read-all")
     public List<MessageVO> readAll() {
-        return messageService.markAllRead();
+        return messageService.markAllRead(MsgMessage.RECEIVER_USER);
     }
 
     @PostMapping("/mp/message/subscribe")

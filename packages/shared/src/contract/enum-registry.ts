@@ -92,8 +92,12 @@ export const ENUM_REGISTRY: EnumEntry[] = [
     note: "皮肤分组，纯展示层。后端零出现" },
   { decl: "shared:ImageSource", dom: "ui", shape: "CLASS", verdict: "OK",
     note: "取图来源（相机/相册），端上能力选择。后端零出现" },
-  { decl: "shared:SUBSCRIBE_TMPL", dom: "message", shape: "CLASS", verdict: "PLANNED",
-    note: "微信订阅消息模板 id，后端未接微信推送。接的时候模板 id 由微信侧分配，这份是占位" },
+  { decl: "shared:PushPlatform", dom: "message", shape: "CLASS", verdict: "OK",
+    note: "APP_ANDROID/APP_IOS，与后端 msg_push_token.platform 及 MsgPushToken 的常量逐字一致。**不含 WEB** —— Web Push 是另一条通道（触达能力矩阵 G6），混进来会让「有 token 就能推」不再成立" },
+  { decl: "ops-web:NotifyFailReason", dom: "message", shape: "CLASS", verdict: "OK",
+    note: "CRED/QUOTA/TARGET/NETWORK。**不是 wire 契约**：后端只回自由文本 error，这四类是端上对它的归因分桶（lib/notify-reason.ts），用来把「下一步该做什么」显示给运营。归不出来时返回 null，不硬塞一个兜底类" },
+  { decl: "ops-web:InboxMessageType", dom: "message", shape: "CLASS", verdict: "OK",
+    note: "运营收件箱的消息类型，与后端 MsgMessage 的三个常量逐字一致。与 shared:MessageType 同值不同端 —— 端上各有一份是既有惯例" },
   { decl: "shared:MessageType", dom: "core", shape: "CLASS", verdict: "OK",
     note: "TRADE/MARKETING/SYSTEM 与后端 MsgMessage 的三个常量逐字一致" },
   { decl: "shared:AfterSaleReason", dom: "core", shape: "CLASS", verdict: "TO_DICT",
@@ -109,7 +113,7 @@ export const ENUM_REGISTRY: EnumEntry[] = [
   { decl: "ops-web:FundsMode", dom: "settle", shape: "CLASS", verdict: "OK",
     note: "资金路径（轴②：钱先进谁的账户）。与 mch_entity.funds_mode 同值。**与 BusinessMode（轴③：谁是销售主体）正交，不要合并** —— 合成一个枚举后「直连+自营」这种非法组合在类型上就可表达（同 ADR-013 教训）。结算侧「要不要给积分补差」判的是这一个，不是 BusinessMode" },
   { decl: "ops-web:NotifyChannel", dom: "message", shape: "CLASS", verdict: "OK",
-    note: "SMS/MAIL 与后端 SysNotifyLog 的两个常量、sys_notify_log.channel 三处一致" },
+    note: "SMS/MAIL/WXSUB/PUSH 与后端 SysNotifyLog 的四个常量、sys_notify_log.channel 三处一致" },
   { decl: "ops-web:NotifyStatus", dom: "message", shape: "STATUS", verdict: "OK",
     // SENT 不在 L1 词表里，申报为领域特有词：这条链路的终态就是「发出去了」，
     // 而 L1 的 COMPLETED/SUCCESS 指的是业务完成 —— 短信发出去不等于用户看到了，

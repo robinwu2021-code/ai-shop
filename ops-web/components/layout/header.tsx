@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ThemeSwitcher } from "./theme-switcher";
 import { LangSwitcher } from "./lang-switcher";
+import { NotifyBell } from "./notify-bell";
 import { CommandPalette, useCommandPalette } from "./command-palette";
 import { ChevronRight, LogOut, PanelLeft, Search } from "lucide-react";
 
@@ -98,6 +99,7 @@ export function Header() {
       <div className="flex items-center gap-2 txt-body">
         <SearchTrigger onOpen={() => setOpen(true)} />
         <CommandPalette open={open} onOpenChange={setOpen} />
+        <NotifyBell />
         <LangSwitcher />
         <ThemeSwitcher />
         {/* 角色名不再单独占位：进用户名的 title。此前"运营管理员 admin"两段文本

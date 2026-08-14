@@ -153,6 +153,38 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
     auth: true,
     summary: "开/关本店积分",
   },
+
+  // ---------------------------------------------------------------- 消息（二期）
+  mMessageList: { method: "GET", path: "/biz/message", auth: true, summary: "商家消息列表" },
+  mMessageUnread: {
+    method: "GET",
+    path: "/biz/message/unread-count",
+    auth: true,
+    summary: "未读数（红点轮询，只给一个数）",
+  },
+  mMessageRead: {
+    method: "POST",
+    path: "/biz/message/:messageNo/read",
+    auth: true,
+    summary: "标记已读",
+  },
+  mMessageReadAll: { method: "POST", path: "/biz/message/read-all", auth: true, summary: "全部已读" },
+
+  // ---------------------------------------------------------------- 推送设备（三期，ADR-018）
+  mRegisterPushToken: {
+    method: "POST",
+    path: "/biz/push-token",
+    auth: true,
+    summary: "绑定 App 推送设备（登录后）",
+  },
+  mUnregisterPushToken: {
+    // POST 而非 DELETE：端上 call() 只走 GET/POST 两条路，
+    // DELETE 会被静默当成 POST —— 解绑「没报错但没生效」是最坏的失败方式
+    method: "POST",
+    path: "/biz/push-token/unregister",
+    auth: true,
+    summary: "解绑推送设备（登出前，共用设备换班必须解）",
+  },
 };
 
 export function buildPath(path: string, params: Record<string, string | number>): string {

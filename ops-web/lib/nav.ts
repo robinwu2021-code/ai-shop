@@ -244,9 +244,22 @@ export const NAV: NavSection[] = [
   {
     key: "message", label: "消息与客服", icon: "MessageSquare", module: "message", href: "/messages",
     children: [
-      // 频控（14.1.4）与模板、推送任务同页：它是发送前的闸门，单独成页就没人看了。
-      // 代客留痕（14.2.3）在工单抽屉里 —— 它是工单处理的一部分，不是独立台账。
-      { href: "/messages", label: "消息模板与推送", perm: "message:template:read", group: "触达", matrix: "P-14.1", ready: true },
+      /*
+       * 触达**按通道拆菜单**（2026-08-14，TDD-运营端触达中心 §3.1）。
+       *
+       * 拆的理由是排查时的第一个问句：运营问的永远是「**哪条通道**没到」，
+       * 而不是「配置还是记录」。一条通道的配置、模拟发送、最近记录在同一页，
+       * 一次排查一个页面完成；按功能拆则要在三个页面之间来回跳。
+       *
+       * 频控（14.1.4）与模板同页：它是发送前的闸门，单独成页就没人看了。
+       * 代客留痕（14.2.3）在工单抽屉里 —— 它是工单处理的一部分，不是独立台账。
+       */
+      { href: "/messages", label: "通道总览", perm: "message:template:read", group: "触达", matrix: "P-14.1", ready: true },
+      { href: "/messages?tab=sms", label: "短信", perm: "message:template:read", group: "触达", matrix: "P-14.1", ready: true },
+      { href: "/messages?tab=mail", label: "邮件", perm: "message:template:read", group: "触达", matrix: "P-14.1", ready: true },
+      { href: "/messages?tab=wxsub", label: "微信订阅消息", perm: "message:template:read", group: "触达", matrix: "P-14.1", ready: true },
+      { href: "/messages?tab=apppush", label: "App 推送", perm: "message:template:read", group: "触达", matrix: "P-14.1", ready: true },
+      { href: "/messages?tab=inapp", label: "站内信模板与推送任务", perm: "message:template:read", group: "触达", matrix: "P-14.1", ready: true },
       { href: "/messages?tab=notifyLog", label: "发送记录", perm: "message:template:read", group: "触达", matrix: "P-14.1", ready: true },
       { href: "/messages?tab=tickets", label: "客服工单与代客留痕", perm: "message:ticket:read", group: "客服", matrix: "P-14.2", ready: true },
       { href: "/messages?tab=faq", label: "帮助中心维护", perm: "message:faq:update", group: "客服", matrix: "P-14.2", ready: true },

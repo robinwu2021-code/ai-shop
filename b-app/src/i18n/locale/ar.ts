@@ -479,7 +479,8 @@ entryHint: "من يشتري · من توقف", total: "العملاء", repeatRa
     silentHint: "المتوقف = اشترى مرتين فأكثر ثم غاب ١٤ يومًا. الشراء مرة واحدة ليس فقدانًا — فالعلاقة لم تبدأ أصلًا.",
   },
   me: {
-    store: "متجري", appearance: "المظهر واللغة", appearanceValue: "الألوان · فاتح/داكن · اللغة",
+    store: "متجري", messages: "الرسائل",
+    appearance: "المظهر واللغة", appearanceValue: "الألوان · فاتح/داكن · اللغة",
     staff: "الموظفون والصلاحيات",
     settle: "كشف التسوية", stats: "بيانات الأعمال", help: "مساعدة التجار", logout: "تسجيل الخروج",
     notLogin: "غير مسجّل", notLoginHint: "سجّل الدخول لإدارة متجرك",
@@ -504,5 +505,12 @@ entryHint: "من يشتري · من توقف", total: "العملاء", repeatRa
     NEIGHBOR_PICKUP: "استلام من الجار", STORE_PICKUP: "نقطة استلام",
     MERCHANT_DELIVERY: "توصيل التاجر", EXPRESS: "شحن",
     STORE_VERIFY: "تسليم في المتجر", APPOINTMENT: "بموعد", INSTANT: "فوري",
+  },
+  message: {
+    title: "الرسائل",
+    readAll: "تعليم الكل كمقروء",
+    view: "عرض ›",
+    empty: "لا رسائل بعد",
+    tab: { all: "الكل", TRADE: "الأعمال", MARKETING: "العروض", SYSTEM: "النظام" },
   },
 };

@@ -59,8 +59,12 @@ async function pay() {
     // 以回查为准，不用端侧返回值判成功
     order.value = await api.orderDetail(o.orderNo);
 
-    // 订阅消息必须由用户点击行为触发，支付成功这一刻是收集授权的最佳时机
-    void requestSubscribe([SUBSCRIBE_TMPL.arrived, SUBSCRIBE_TMPL.shipped]);
+    // 订阅消息必须由用户点击行为触发，支付成功这一刻是收集授权的最佳时机。
+    // 收集与上报是两步：不上报的话后端额度永远是 0，到货/退款一条都发不出
+    void requestSubscribe([SUBSCRIBE_TMPL.arrived, SUBSCRIBE_TMPL.refunded]).then((r) => {
+      if (r.accepted.length) void api.subscribeReport(r.accepted, true);
+      if (r.rejected.length) void api.subscribeReport(r.rejected, false);
+    });
   } catch (e) {
     uni.showToast({ title: (e as Error).message, icon: "none" });
   } finally {

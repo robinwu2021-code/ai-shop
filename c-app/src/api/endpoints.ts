@@ -219,6 +219,33 @@ export const ENDPOINTS: Record<keyof ShopApi, EndpointDef> = {
     summary: "标记已读",
   },
   readAllMessages: { method: "POST", path: "/mp/message/read-all", auth: true, summary: "全部已读" },
+  unreadMessages: {
+    method: "GET",
+    path: "/mp/message/unread-count",
+    auth: true,
+    summary: "未读数（角标用，只给一个数）",
+  },
+  subscribeReport: {
+    method: "POST",
+    path: "/mp/message/subscribe",
+    auth: true,
+    summary: "订阅消息授权上报（同意与拒绝都报：后端记额度 + 防反复弹窗）",
+  },
+  registerPushToken: {
+    method: "POST",
+    path: "/mp/push-token",
+    auth: true,
+    summary: "绑定 App 推送设备（登录后）",
+  },
+  unregisterPushToken: {
+    // POST 而不是 DELETE：端上的 call() 只分 GET / POST 两条路
+    // （见 http.ts），DELETE 会被当成 POST 发出去，路径对而动词错，
+    // 表现是「解绑没报错但没生效」—— 那正是这个功能最不能出的错
+    method: "POST",
+    path: "/mp/push-token/unregister",
+    auth: true,
+    summary: "解绑推送设备（登出前，共用设备换人必须解）",
+  },
 
   // ---------------------------------------------------------------- 团长
 };

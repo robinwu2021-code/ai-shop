@@ -1,6 +1,14 @@
 // 中文（基准语言：key 全集以此为准）。
 // 平台端一期只出中文（需求矩阵 §九 M7），但机制保留 —— 见 lib/i18n/index.ts 顶部说明。
 export const zh = {
+  bell: {
+    aria: "通知",
+    title: "通知",
+    readAll: "全部已读",
+    empty: "没有新通知",
+    desktopTitle: "邻里购 运营",
+    desktopBody: "你有 {n} 条未读通知",
+  },
   common: {
     pageSize: "每页条数",
     jumpToPage: "跳转到第几页",

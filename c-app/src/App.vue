@@ -2,7 +2,8 @@
 import { computed } from "vue";
 import { onLaunch } from "@dcloudio/uni-app";
 import { configureShell } from "@ai-shop/ui/shell";
-import { ROUTES, TABS } from "@shared/utils/constants";
+import { ROUTES, TABS, TAB_ROUTES } from "@shared/utils/constants";
+import { initPush } from "@shared/ports/push";
 import { setUnauthorizedHandler } from "@shared/net/http-client";
 import { flyState, registerCartAnchor } from "@/shared/fly";
 import { useThemeStore } from "@ai-shop/ui/stores/theme";
@@ -64,6 +65,17 @@ onLaunch(() => {
   void community.refreshLocalized();
 
   initFonts(); // 远程字体，失败静默降级
+
+  // 推送点击的落点（ADR-018）。tab 页只能 switchTab —— 用 navigateTo 会静默失败，
+  // 表现是「点开推送什么也没发生」
+  initPush((link) => {
+    const path = link.split("?")[0] ?? link;
+    if (TAB_ROUTES.has(path)) {
+      uni.switchTab({ url: path });
+    } else {
+      uni.navigateTo({ url: link });
+    }
+  });
 });
 </script>
 

@@ -50,7 +50,14 @@ class BizEndpointPermTest {
             // 行政区划与 /biz/communities 同性质：主数据，不含任何一家店的数据。
             // 要 biz:store 的话，还没建店的申请人就挑不了经营范围
             "/biz/category/tree", "/biz/communities", "/biz/regions",
-            "/biz/spec-templates", "/biz/upload/image");
+            "/biz/spec-templates", "/biz/upload/image",
+            // 消息收件箱：按当前 userNo 隔离，别人的本来就查不到。
+            // 要 biz 权限的话，收到「新订单」通知的店员反而打不开消息中心
+            "/biz/message", "/biz/message/unread-count",
+            "/biz/message/{messageNo}/read", "/biz/message/read-all",
+            // 设备绑定：绑的是当前登录者自己的设备。要权限的话，
+            // 收「新订单」提醒的店员反而绑不上（ADR-018）
+            "/biz/push-token", "/biz/push-token/unregister");
 
     /**
      * 端点 → 需要的权限码。

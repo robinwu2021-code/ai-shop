@@ -3,6 +3,7 @@
 import { computed, ref } from "vue";
 import { onShow } from "@dcloudio/uni-app";
 import { useMerchantStore } from "@/stores/merchant";
+import { refreshUnread, unreadCount } from "@/stores/messages";
 import { ROUTES } from "@/shared/nav";
 
 const merchant = useMerchantStore();
@@ -22,13 +23,18 @@ function later() {
   uni.showToast({ title: "该功能在后续批次交付", icon: "none" });
 }
 
-function logout() {
+async function logout() {
+  // 解绑要在清令牌**之前** —— 之后就没有可用的令牌了。
+  // 门店共用一台手机换班时，上一班的人不该继续收到这家店的订单推送
+  await merchant.unbindPushDevice();
   merchant.logout();
   uni.showToast({ title: "已退出", icon: "none" });
 }
 
 onShow(() => {
   void merchant.loadProfile().catch(() => null);
+  // 从消息页返回时角标要立即回落，不等下一轮 30s 轮询
+  void refreshUnread();
 });
 </script>
 
@@ -75,6 +81,14 @@ onShow(() => {
     </view>
 
     <view class="cells">
+      <!-- 消息：新订单/售后/评价的落点。红点数与 tabBar 角标同源（30s 轮询） -->
+      <view v-if="merchant.isLogin" class="cell" @tap="go(ROUTES.messages)">
+        <text class="cell__label">{{ $t("me.messages") }}</text>
+        <text v-if="unreadCount" class="cell__badge sh-num">
+          {{ unreadCount > 99 ? "99+" : unreadCount }}
+        </text>
+        <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
+      </view>
       <view class="cell" @tap="sheetOpen = true">
         <text class="cell__label">{{ $t("me.appearance") }}</text>
         <text class="cell__value">{{ $t("me.appearanceValue") }}</text>
@@ -143,6 +157,19 @@ onShow(() => {
 /* 退出登录用警示色：它是不可逆动作，和「查看结算单」不该长得一样 */
 .cell__label--danger {
   color: var(--sh-danger);
+}
+.cell__badge {
+  flex-shrink: 0;
+  min-width: 32rpx;
+  height: 32rpx;
+  line-height: 32rpx;
+  padding: 0 8rpx;
+  border-radius: 9999px;
+  background: var(--sh-danger);
+  color: #fff;
+  /* 字阶最小档。20rpx 不在字阶上，且「99+」在小屏上本来就快挤不下了 */
+  font-size: 24rpx;
+  text-align: center;
 }
 .cell__value {
   font-size: 26rpx;

@@ -10,6 +10,10 @@ import { api } from "@/lib/api";
 import { fill, useCopy } from "@/lib/use-copy";
 import { MESSAGES_COPY } from "./copy";
 import { NotifyLogTab } from "./notify-log-tab";
+import { ChannelTab } from "./channel-tab";
+import { ChannelOverviewTab } from "./channel-overview-tab";
+import { TestSendDrawer } from "./test-send-drawer";
+import { channelLabel } from "@/lib/notify-label";
 import { usePaging } from "@/lib/use-paging";
 import { usePageTab, useNavTabs } from "@/lib/use-page-tab";
 import { fmtTime } from "@/lib/utils";
@@ -35,7 +39,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { Toolbar } from "@/components/ui/toolbar";
 
 type Copy = (typeof MESSAGES_COPY)["zh"];
-const TAB_KEYS = ["push", "tickets", "faq", "notifyLog"] as const;
+/*
+ * 触达按通道拆 tab（TDD-运营端触达中心 §3.2）。**顺序即菜单顺序**。
+ *
+ * ⚠️ 原来的 "push" tab 指的是「模板 + 推送任务 + 频控」，与新加的 App 推送**通道**
+ * 同名不同义。改名 "inapp"（它管的正是站内信模板与站内推送任务），
+ * 通道那个叫 "apppush" —— 两个 push 并存迟早被人当成一回事。
+ */
+const TAB_KEYS = ["overview", "sms", "mail", "wxsub", "apppush", "inapp",
+                  "tickets", "faq", "notifyLog"] as const;
 
 export default function MessagesPage() {
   return <Suspense fallback={null}><MessagesInner /></Suspense>;
@@ -46,6 +58,7 @@ function MessagesInner() {
   const tabs = useNavTabs("/messages", TAB_KEYS);
   const qc = useQueryClient();
   const allow = useCan();
+  const [inappTestOpen, setInappTestOpen] = useState(false);
 
   const [tab, setTab] = usePageTab(tabs, () => { setPage(1); setKeyword(""); setStatus(""); });
 
@@ -65,9 +78,9 @@ function MessagesInner() {
   const pushStatusMap = usePushStatusMap();
   const ticketStatusMap = useTicketStatusMap();
 
-  const templates = useQuery({ queryKey: ["msg-templates"], queryFn: () => api.listMsgTemplates({ size: 100 }), enabled: tab === "push" });
-  const tasks = useQuery({ queryKey: ["push-tasks"], queryFn: () => api.listPushTasks({ size: 100 }), enabled: tab === "push" });
-  const quota = useQuery({ queryKey: ["notify-quota"], queryFn: () => api.getNotifyQuota(), enabled: tab === "push" });
+  const templates = useQuery({ queryKey: ["msg-templates"], queryFn: () => api.listMsgTemplates({ size: 100 }), enabled: tab === "inapp" });
+  const tasks = useQuery({ queryKey: ["push-tasks"], queryFn: () => api.listPushTasks({ size: 100 }), enabled: tab === "inapp" });
+  const quota = useQuery({ queryKey: ["notify-quota"], queryFn: () => api.getNotifyQuota(), enabled: tab === "inapp" });
   const ticketQ = { keyword, status, page, size };
   const tickets = useQuery({ queryKey: ["tickets", ticketQ], queryFn: () => api.listTickets(ticketQ), enabled: tab === "tickets" });
   const faqs = useQuery({ queryKey: ["faqs"], queryFn: () => api.listFaqs({ size: 100 }), enabled: tab === "faq" });
@@ -123,7 +136,19 @@ function MessagesInner() {
   const templateColumns: Column<MsgTemplate>[] = [
     { header: c.colTemplateNo, cell: (t) => t.templateNo, numeric: true, align: "start" },
     { header: c.colName, cell: (t) => t.name },
-    { header: c.colChannel, cell: (t) => ({ SUBSCRIBE: c.channelSubscribe, PUSH: c.channelPush, INBOX: c.channelInbox })[t.channel] },
+    {
+      header: c.colChannel,
+      /*
+       * 用与发送记录同一个映射（lib/notify-label）。
+       * 此前这里只认 SUBSCRIBE/PUSH/INBOX —— 那是 V20 建表注释里的旧叫法，
+       * 而代码与种子用的是 SMS/MAIL/WXSUB/PUSH/INAPP：
+       * **六条模板里五条的通道列是空白**，看着像数据坏了。
+       */
+      cell: (t) => channelLabel(t.channel, {
+        sms: c.nlSms, mail: c.nlMail, wxsub: c.nlWxsub,
+        push: c.nlPush, inapp: c.channelInbox,
+      }),
+    },
     { header: c.colContent, cell: (t) => t.content, className: "whitespace-normal", width: "24rem" },
     { header: c.colSent30d, cell: (t) => t.sentCount, numeric: true },
     {
@@ -212,8 +237,15 @@ function MessagesInner() {
     <div>
       <TabHeader tabs={tabs} value={tab} onChange={setTab} />
 
-      {tab === "push" && (
+      {tab === "inapp" && (
         <div className="space-y-4">
+          {/* D2：站内信的模拟发送后端一直就绪（/ops/notify-logs/test-inapp），
+              此前前端没有任何调用方 —— 一个接完却用不到的功能 */}
+          <div className="flex justify-end">
+            {allow("message:template:update") && (
+              <Button size="sm" onClick={() => setInappTestOpen(true)}>{c.tsOpen}</Button>
+            )}
+          </div>
           <Card className="max-w-xl">
             <CardHeader><CardTitle>{c.quotaTitle}</CardTitle></CardHeader>
             <CardContent>
@@ -279,9 +311,18 @@ function MessagesInner() {
 
       {/* 发送记录与测试发送。写权限用 message:template:update ——
           后端 /ops/notify-logs/test-send 用的是同一个码 */}
+      {tab === "overview" && <ChannelOverviewTab c={c} />}
+      {tab === "sms" && <ChannelTab c={c} channel="SMS" canWrite={allow("message:template:update")} />}
+      {tab === "mail" && <ChannelTab c={c} channel="MAIL" canWrite={allow("message:template:update")} />}
+      {tab === "wxsub" && <ChannelTab c={c} channel="WXSUB" canWrite={allow("message:template:update")} />}
+      {tab === "apppush" && <ChannelTab c={c} channel="PUSH" canWrite={allow("message:template:update")} />}
+
       {tab === "notifyLog" && (
         <NotifyLogTab c={c} canWrite={allow("message:template:update")} />
       )}
+
+      <TestSendDrawer c={c} channel="INAPP" open={inappTestOpen}
+                      onOpenChange={setInappTestOpen} onSent={() => undefined} />
 
       {tab === "faq" && (
         <>

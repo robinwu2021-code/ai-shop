@@ -2,6 +2,7 @@
 import { defineStore } from "pinia";
 import { api } from "@/api";
 import { STORAGE } from "@shared/utils/constants";
+import { getPushDevice } from "@shared/ports/push";
 import { useCommunityStore } from "./community";
 import type { LoginReq, User } from "@shared/types";
 
@@ -28,7 +29,21 @@ export const useUserStore = defineStore("user", {
       uni.setStorageSync(STORAGE.token, resp.token);
       // 游客期间选的社区要补同步 —— 否则登录这一步反而把他刚做的选择丢了
       await useCommunityStore().syncBinding();
+      // App 端绑定推送设备。**不 await**：拿 clientId 要等推送服务初始化，
+      // 让登录卡在它上面得不偿失 —— 推送是加速通道，站内信才是必达的
+      void this.bindPushDevice();
       return resp.user;
+    },
+
+    /** 绑定本机推送标识（仅 App 构建有值）。失败静默：推不到不该影响用户用 app。 */
+    async bindPushDevice() {
+      const device = await getPushDevice();
+      if (!device) return;
+      try {
+        await api.registerPushToken(device.platform, device.clientId);
+      } catch {
+        // 下次登录会再试一次
+      }
     },
 
     async loadProfile() {
@@ -47,6 +62,17 @@ export const useUserStore = defineStore("user", {
      * 而且失败多半是网络问题，令牌会随过期自然失效。
      */
     async logout() {
+      /*
+       * 解绑设备要在作废会话**之前** —— 之后就没有令牌可用了。
+       * 不解绑的后果不是「多推一条」：这台设备换人登录后，
+       * 前一个账号的订单会继续推到这里（ADR-018）。
+       */
+      try {
+        const device = await getPushDevice();
+        if (device) await api.unregisterPushToken(device.clientId);
+      } catch {
+        // 解绑失败不拦登出：下一个人登录时的抢占逻辑会兜底（PushTokenService#register）
+      }
       try {
         await api.logout();
       } catch {

@@ -34,7 +34,7 @@ describe("推送任务（P-14.1.2）", () => {
   });
 
   it("模板停用时不许发", async () => {
-    msgTemplates.find((t) => t.templateNo === "MT9001")!.enabled = false;
+    msgTemplates.find((t) => t.templateNo === "TPL_WX_ARRIVED")!.enabled = false;
     await expect(messageMock.sendPushTask("PT9001")).rejects.toThrow(/模板已停用/);
   });
 

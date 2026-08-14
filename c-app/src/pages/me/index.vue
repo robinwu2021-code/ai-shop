@@ -147,7 +147,8 @@ onShow(() => {
     api.myMerchantApply().then((a) => (applyStatus.value = a)).catch(() => {});
   }
   if (FEATURES.points) api.pointAccount().then((a) => (points.value = a.balance));
-  api.messageList().then((m) => (unread.value = m.filter((x) => !x.read).length));
+  // 只取一个数 —— 拉整个列表数未读是把带宽当角标用
+  api.unreadMessages().then((n) => (unread.value = n)).catch(() => {});
 });
 </script>
 

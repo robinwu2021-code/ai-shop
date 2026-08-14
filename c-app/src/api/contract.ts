@@ -318,6 +318,21 @@ export interface ShopApi {
   messageList(): Promise<Message[]>;
   readMessage(messageNo: string): Promise<Message[]>;
   readAllMessages(): Promise<Message[]>;
+  /** 未读数。角标用 —— 拉整个列表数未读是把带宽当角标用 */
+  unreadMessages(): Promise<number>;
+  /**
+   * 订阅授权上报。**同意与拒绝都要报**：后端按模板记发送额度（一次授权=一次发送），
+   * 拒绝的记录用于避免反复弹授权框。不报 = 后端额度永远是 0，订阅消息一条都发不出。
+   */
+  subscribeReport(templateIds: string[], accepted: boolean): Promise<void>;
+
+  // ---- App 推送设备（ADR-018；仅 App 构建有 clientId）
+  registerPushToken(platform: string, clientId: string): Promise<void>;
+  /**
+   * 解绑。**登出流程必须调** —— 共用设备换人登录后，
+   * 前一个账号的订单不能继续推到这台机器上。
+   */
+  unregisterPushToken(clientId: string): Promise<void>;
 
 
   // ---- 商家入驻

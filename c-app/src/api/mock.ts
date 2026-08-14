@@ -1419,6 +1419,24 @@ export const mockApi: ShopApi = {
     return delay([...db.messages]);
   },
 
+  async subscribeReport() {
+    // mock 世界没有微信授权额度这回事，收下即可
+    return delay(undefined);
+  },
+
+  async unreadMessages() {
+    return delay(db.messages.filter((m) => !m.read).length);
+  },
+
+  // mock 世界没有真设备（H5 下 getPushDevice 恒为 null，这两个压根不会被调到）
+  async registerPushToken() {
+    return delay(undefined);
+  },
+
+  async unregisterPushToken() {
+    return delay(undefined);
+  },
+
   async readAllMessages() {
     db.messages.forEach((m) => (m.read = true));
     persist();

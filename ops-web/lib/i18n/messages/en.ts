@@ -10,6 +10,14 @@
 import type { Messages } from "./zh";
 
 export const en: Messages = {
+  bell: {
+    aria: "Notifications",
+    title: "Notifications",
+    readAll: "Mark all read",
+    empty: "No new notifications",
+    desktopTitle: "NeighborShop Ops",
+    desktopBody: "You have {n} unread notifications",
+  },
   common: {
     pageSize: "Rows per page",
     jumpToPage: "Jump to page",

@@ -71,6 +71,7 @@
 | `SecondaryNav` | `layout/secondary-nav.tsx` | L2 分组 + L3 子功能（含待建灰显与分期徽章）；可由顶栏开关收起 |
 | `CommandPalette` / `useCommandPalette` | `layout/command-palette.tsx` | ⌘K 搜索并跳转功能 —— SecondaryNav 可收起的前提 |
 | `PhaseGuard` | `layout/phase-guard.tsx` | 分期门禁：直达未开放功能时的兜底页 |
+| `NotifyBell` | `layout/notify-bell.tsx` | 顶栏铃铛：运营通知收件箱（15s 轮询 + 浏览器桌面横幅） |
 | `ThemeSwitcher` | `layout/theme-switcher.tsx` | 顶栏皮肤切换（五套） |
 | `LangSwitcher` | `layout/lang-switcher.tsx` | 顶栏**中 / EN** 语言切换 |
 

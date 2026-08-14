@@ -1,5 +1,11 @@
 // 消息与客服域（矩阵 P-14）。
-export type MsgChannel = "SUBSCRIBE" | "PUSH" | "INBOX";
+/**
+ * 模板所属通道。**与后端 `SysNotifyLog` 的四个常量 + INAPP 一致**。
+ *
+ * <p>旧值 `SUBSCRIBE/PUSH/INBOX` 来自 V20 的建表注释，而代码与种子（V141）
+ * 用的一直是这一套 —— 两套名字并存时，模板列表的通道列会显示成空白。
+ */
+export type MsgChannel = "SMS" | "MAIL" | "WXSUB" | "PUSH" | "INAPP";
 export type PushStatus = "DRAFT" | "SCHEDULED" | "SENT" | "CANCELLED";
 
 /** 订阅消息模板（P-14.1.1）。 */
@@ -8,10 +14,17 @@ export interface MsgTemplate {
   templateNo: string;
   /** 模板名 */
   name: string;
-  /** 触达渠道：订阅消息 / App 推送 / 站内信 */
+  /** 触达渠道 */
   channel: MsgChannel;
-  /** 模板正文，含 {占位符} */
+  /** 模板正文，含 {占位符}。**模拟发送靠它展示「会发出什么」并做预览** */
   content: string;
+  /**
+   * 渠道侧模板 ID（阿里云 `SMS_xxx` / 微信模板号）。站内信为空。
+   *
+   * <p>后端 `TemplateVO` 一直有这个字段，端上类型此前漏了 —— 于是页面拿不到它，
+   * 而它正是运营核对「我们发的是哪个报备模板」的唯一凭据。
+   */
+  providerTemplateId?: string | null;
   /** 是否启用。停用后引用它的推送任务发不出去 */
   enabled: boolean;
   /** 近 30 天发送量 */
@@ -125,8 +138,59 @@ export interface FaqEntry {
  * 这张表运营都看得到，而收件人是用户的手机号与邮箱。
  * 要查具体一条，靠 `providerMsgId` 去通道后台查。
  */
-/** 发送渠道。 */
-export type NotifyChannel = "SMS" | "MAIL";
+/**
+ * 外发渠道。**与后端 `SysNotifyLog` 的四个常量逐字一致**。
+ *
+ * <p>WXSUB = 微信小程序订阅消息（服务通知），target 是掩码后的 openid；
+ * PUSH = App 推送（个推/uni-push，ADR-018），target 是掩码后的 clientId。
+ *
+ * <p><b>站内信（INAPP）不在这里</b>：它不进 `sys_notify_log`，
+ * 它自己就是一张可查的表（`msg_message`）。混进来会让人以为能在发送记录里查到它。
+ */
+export type NotifyChannel = "SMS" | "MAIL" | "WXSUB" | "PUSH";
+
+/**
+ * 通道体检（TDD-运营端触达中心 §4.1）。
+ *
+ * <p><b>凭据只有「配没配」，没有值</b>：一个能在 Web 上读出生产短信密钥的接口，
+ * 泄漏一次就是全平台可群发。要改密钥去改环境变量并重启，不在这个页面上改。
+ */
+export interface NotifyChannelHealth {
+  channel: NotifyChannel;
+  /** 走桩：不真发，只记日志 */
+  stub: boolean;
+  /** 真实通道已启用（!stub） */
+  enabled: boolean;
+  credentials: { envVar: string; present: boolean; required: boolean }[];
+  /** 非密业务参数，可回显（模板号、endpoint 这类本就印在短信里的东西） */
+  params: { key: string; value: string }[];
+  todaySent: number;
+  todayFailed: number;
+}
+
+/** 微信订阅消息的模板号映射。**唯一一项开放到运营端的通道参数**（模板号不是凭据）。 */
+export interface WxTemplates {
+  orderArrived: string;
+  refunded: string;
+}
+
+/**
+ * 运营自己的通知收件箱（顶栏铃铛）。
+ * 与 NotifyLog 是两回事：这个是**发给运营的待办**（新工单/待审核/告警），
+ * 那个是**平台发给用户**的触达留痕。
+ */
+/** 与后端 MsgMessage 的三个常量逐字一致 —— 内联在 interface 里的话对登记表不可见（规范 §D5） */
+export type InboxMessageType = "TRADE" | "MARKETING" | "SYSTEM";
+
+export interface InboxMessage {
+  messageNo: string;
+  type: InboxMessageType;
+  title: string;
+  body: string;
+  link?: string | null;
+  read: boolean;
+  at: number;
+}
 
 /** 发送结果。**失败也记**——只记成功的话，这张表回答不了「他为什么没收到」。 */
 export type NotifyStatus = "SENT" | "FAILED";

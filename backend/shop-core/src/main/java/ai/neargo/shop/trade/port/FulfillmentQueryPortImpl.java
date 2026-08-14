@@ -199,6 +199,19 @@ public class FulfillmentQueryPortImpl implements FulfillmentQueryPort {
             appendLog(sub.getSubOrderNo(), OrdSubOrder.FULFILLING, "已到自提点，可来取货", operatorNo);
             moved.add(sub.getSubOrderNo());
         }
+
+        /*
+         * 到货事件按买家聚合（一人一批一条）——同一买家这批里有三单的话，
+         * 逐单发事件会让他收到三条「到货了」。事件与状态变更同事务（Outbox）。
+         */
+        rows.stream()
+                .filter(s -> moved.contains(s.getSubOrderNo()))
+                .collect(java.util.stream.Collectors.groupingBy(OrdSubOrder::getUserNo,
+                        java.util.LinkedHashMap::new,
+                        java.util.stream.Collectors.mapping(OrdSubOrder::getSubOrderNo,
+                                java.util.stream.Collectors.toList())))
+                .forEach((userNo, subNos) -> eventBus.publish(
+                        new OrderEvents.SubOrdersArrived(userNo, pickupNo, subNos)));
         return moved;
     }
 

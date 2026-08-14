@@ -19,6 +19,7 @@ import type {
   GoodsStatus,
   I18nText,
   MasterData,
+  Message,
   MerchantStaff,
   StaffLog,
   MerchantRole,
@@ -481,4 +482,19 @@ export interface MerchantApi {
    * 否则关一次开关就是一次资金事故。
    */
   mPointsToggle(req: TogglePointsReq): Promise<MerchantPointAccount>;
+
+  // ---- 消息（新订单/售后/评价的落点；推送与响铃是三期的加速通道，这里是事实记录）
+  mMessageList(): Promise<Message[]>;
+  /** 未读数。tabBar 红点 30s 轮询用 —— 拉整个列表数未读是把带宽当角标用 */
+  mMessageUnread(): Promise<number>;
+  mMessageRead(messageNo: string): Promise<Message[]>;
+  mMessageReadAll(): Promise<Message[]>;
+
+  // ---- App 推送设备（ADR-018；仅 App 构建有 clientId）
+  mRegisterPushToken(platform: string, clientId: string): Promise<void>;
+  /**
+   * 解绑。**登出必须调** —— 门店共用一台手机换班时，
+   * 上一班的人不能继续收到这家店的订单推送。
+   */
+  mUnregisterPushToken(clientId: string): Promise<void>;
 }

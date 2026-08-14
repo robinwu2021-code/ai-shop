@@ -479,7 +479,8 @@ entryHint: "Who buys · who lapsed", total: "Customers", repeatRate: "Repeat rat
     silentHint: "Lapsed = bought twice or more but nothing for 14 days. A single purchase is not churn — that relationship never started.",
   },
   me: {
-    store: "My shop", appearance: "Appearance & language", appearanceValue: "Colour · Light/dark · Language",
+    store: "My shop", messages: "Messages",
+    appearance: "Appearance & language", appearanceValue: "Colour · Light/dark · Language",
     staff: "Staff & access",
     settle: "Settlement", stats: "Business data", help: "Merchant help", logout: "Sign out",
     notLogin: "Not signed in", notLoginHint: "Sign in to manage your shop",
@@ -504,5 +505,12 @@ entryHint: "Who buys · who lapsed", total: "Customers", repeatRate: "Repeat rat
     NEIGHBOR_PICKUP: "Neighbour pickup", STORE_PICKUP: "Pickup point",
     MERCHANT_DELIVERY: "Merchant delivery", EXPRESS: "Courier",
     STORE_VERIFY: "Redeem in store", APPOINTMENT: "By appointment", INSTANT: "Instant",
+  },
+  message: {
+    title: "Messages",
+    readAll: "Mark all read",
+    view: "View ›",
+    empty: "No messages yet",
+    tab: { all: "All", TRADE: "Business", MARKETING: "Offers", SYSTEM: "System" },
   },
 };

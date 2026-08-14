@@ -190,17 +190,24 @@ const KEY_OWNERS: Record<string, { table: string; col?: string }> = {
  * 我们自己就连错过一次。
  */
 const NAME_COLLISIONS: Record<string, string> = {
+  receiver_no:
+    "msg_message 与 msg_push_token 都是「收件人编号」，但**都是多态的**：\n" +
+    "  真正的含义由同表的 receiver_type 决定 —— USER 时是 usr_user.user_no，" +
+    "STAFF 时是 mch_staff.staff_no（两族编号，取值空间不重叠但也不保证）。\n" +
+    "  所以它不是任何一张表的外键，按名字 join 会把店员的设备连到买家身上：" +
+    "**推送发错人**，而且不报错。要连必须带上 receiver_type 一起连。",
   request_no:
     "mkt_request 是求团需求单号；stl_split_log 是分账幂等号；" +
     "ord_invoice_request 是开票申请单号。**三族**，互不相干。\n" +
     "  建表时已发现约束名会撞车并加了 uk_split_request_no 前缀，但列名的撞车还在。",
   invoice_no:
-    "**方向相反的两张票，这是最危险的一组同名**：\n" +
+    "**三个方向的票，这是最危险的一组同名**：\n" +
     "  stl_purchase_invoice 是**进项**（供应商开给平台，决定平台能不能列支成本）；\n" +
-    "  ord_invoice_request 是**销项**（平台开给消费者，ADR-017 §3.4 条件 2，" +
-    "决定归集资金模式成不成立）。\n" +
-    "  义务人、方向、法律后果都相反 —— 按名字 join 出来的「发票」会把进项当销项，" +
-    "而两边都有值、都不报错。",
+    "  ord_invoice_request 是**销项·对消费者**（平台开给买家，ADR-017 §3.4 条件 2，" +
+    "决定归集资金模式成不成立）；\n" +
+    "  stl_settle_invoice 是**销项·对商家**（平台开给商家的结算凭证，P-12.2.4）。\n" +
+    "  义务人、方向、法律后果各不相同 —— 按名字 join 出来的「发票」会把进项当销项，" +
+    "而三边都有值、都不报错。",
   express_no: "ord_sub_order 是发货快递单号；ord_after_sale 是用户退货的快递单号。方向相反。",
   apply_no:
     "mch_entity_apply 是商家入驻申请单；cmt_community_apply 是商家提报新社区的单子。\n" +

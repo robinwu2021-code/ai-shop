@@ -378,7 +378,7 @@ CREATE TABLE IF NOT EXISTS msg_message
 (
     id BIGINT(20) NOT NULL AUTO_INCREMENT,
     message_no VARCHAR(64) NOT NULL,
-    user_no VARCHAR(64) NOT NULL,
+    receiver_no VARCHAR(64) NOT NULL,
     msg_type VARCHAR(16) NOT NULL,
     title VARCHAR(128) NOT NULL,
     body VARCHAR(512) DEFAULT NULL,
@@ -394,6 +394,7 @@ CREATE TABLE IF NOT EXISTS msg_message
     version BIGINT(20) NOT NULL DEFAULT 0,
     deleted TINYINT(4) NOT NULL DEFAULT 0,
     template_no VARCHAR(64) DEFAULT NULL,
+    receiver_type VARCHAR(16) NOT NULL DEFAULT 'USER',
     PRIMARY KEY (id),
     CONSTRAINT uk_message_no UNIQUE (message_no),
     CONSTRAINT uk_msg_dedup UNIQUE (dedup_key)
@@ -413,6 +414,7 @@ CREATE TABLE IF NOT EXISTS msg_subscribe
     updated_by VARCHAR(64) DEFAULT NULL,
     version BIGINT(20) NOT NULL DEFAULT 0,
     deleted TINYINT(4) NOT NULL DEFAULT 0,
+    quota INT NOT NULL DEFAULT 0,
     PRIMARY KEY (id),
     CONSTRAINT uk_sub_user_template UNIQUE (user_no,template_id)
 );
@@ -2202,6 +2204,24 @@ CREATE TABLE IF NOT EXISTS sys_job_run
     CONSTRAINT uk_job_name UNIQUE (job_name)
 );
 
+CREATE TABLE IF NOT EXISTS msg_push_token
+(
+    id BIGINT(20) NOT NULL AUTO_INCREMENT,
+    receiver_type VARCHAR(16) NOT NULL,
+    receiver_no VARCHAR(64) NOT NULL,
+    platform VARCHAR(16) NOT NULL,
+    client_id VARCHAR(128) NOT NULL,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT(20) NOT NULL DEFAULT 0,
+    deleted TINYINT(4) NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_push_token_receiver UNIQUE (receiver_type, receiver_no, platform)
+);
+
 -- 种子数据
 INSERT INTO sys_industry VALUES
 (1,'CATERING','餐饮',10,1,1,0,0,'微信小微白名单内','MAIN','2026-08-09 12:49:36','SYSTEM','2026-08-09 12:49:36',NULL,0,0),
@@ -3925,3 +3945,112 @@ UPDATE sys_legal_form
 UPDATE sys_legal_form
    SET remark = CONCAT(remark, '。走【特约商户进件】，subject_type=SUBJECT_TYPE_ENTERPRISE')
  WHERE legal_form = 'ENTERPRISE' AND remark NOT LIKE '%特约商户进件%';
+UPDATE sys_function_point SET name = '通道总览', updated_at = NOW()
+ WHERE point_code = 'OPS_MESSAGE' AND name = '消息模板与推送';
+INSERT INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at)
+SELECT 'OPS_MESSAGE__TAB_SMS', 'OPS_MESSAGE', '短信', '触达', '/messages?tab=sms', 'message:template:read', 'message:template:read', 'IMPLEMENTED', 1, 'P-14.1', 'MENU', 21, NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_function_point x WHERE x.point_code='OPS_MESSAGE__TAB_SMS');
+INSERT INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at)
+SELECT 'OPS_MESSAGE__TAB_MAIL', 'OPS_MESSAGE', '邮件', '触达', '/messages?tab=mail', 'message:template:read', 'message:template:read', 'IMPLEMENTED', 1, 'P-14.1', 'MENU', 22, NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_function_point x WHERE x.point_code='OPS_MESSAGE__TAB_MAIL');
+INSERT INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at)
+SELECT 'OPS_MESSAGE__TAB_WXSUB', 'OPS_MESSAGE', '微信订阅消息', '触达', '/messages?tab=wxsub', 'message:template:read', 'message:template:read', 'IMPLEMENTED', 1, 'P-14.1', 'MENU', 23, NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_function_point x WHERE x.point_code='OPS_MESSAGE__TAB_WXSUB');
+INSERT INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at)
+SELECT 'OPS_MESSAGE__TAB_APPPUSH', 'OPS_MESSAGE', 'App 推送', '触达', '/messages?tab=apppush', 'message:template:read', 'message:template:read', 'IMPLEMENTED', 1, 'P-14.1', 'MENU', 24, NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_function_point x WHERE x.point_code='OPS_MESSAGE__TAB_APPPUSH');
+INSERT INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at)
+SELECT 'OPS_MESSAGE__TAB_INAPP', 'OPS_MESSAGE', '站内信模板与推送任务', '触达', '/messages?tab=inapp', 'message:template:read', 'message:template:read', 'IMPLEMENTED', 1, 'P-14.1', 'MENU', 25, NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_function_point x WHERE x.point_code='OPS_MESSAGE__TAB_INAPP');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'SUPER_ADMIN', 'OPS_MESSAGE__TAB_SMS', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPER_ADMIN' AND x.point_code='OPS_MESSAGE__TAB_SMS');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'SUPER_ADMIN', 'OPS_MESSAGE__TAB_MAIL', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPER_ADMIN' AND x.point_code='OPS_MESSAGE__TAB_MAIL');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'SUPER_ADMIN', 'OPS_MESSAGE__TAB_WXSUB', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPER_ADMIN' AND x.point_code='OPS_MESSAGE__TAB_WXSUB');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'SUPER_ADMIN', 'OPS_MESSAGE__TAB_APPPUSH', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPER_ADMIN' AND x.point_code='OPS_MESSAGE__TAB_APPPUSH');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'SUPER_ADMIN', 'OPS_MESSAGE__TAB_INAPP', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPER_ADMIN' AND x.point_code='OPS_MESSAGE__TAB_INAPP');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'SUPPORT', 'OPS_MESSAGE__TAB_SMS', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPPORT' AND x.point_code='OPS_MESSAGE__TAB_SMS');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'SUPPORT', 'OPS_MESSAGE__TAB_MAIL', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPPORT' AND x.point_code='OPS_MESSAGE__TAB_MAIL');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'SUPPORT', 'OPS_MESSAGE__TAB_WXSUB', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPPORT' AND x.point_code='OPS_MESSAGE__TAB_WXSUB');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'SUPPORT', 'OPS_MESSAGE__TAB_APPPUSH', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPPORT' AND x.point_code='OPS_MESSAGE__TAB_APPPUSH');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'SUPPORT', 'OPS_MESSAGE__TAB_INAPP', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPPORT' AND x.point_code='OPS_MESSAGE__TAB_INAPP');
+INSERT INTO msg_template (template_no, name, channel, content, provider_template_id, enabled, created_at, updated_at)
+SELECT 'TPL_SMS_OTP', '验证码', 'SMS',
+       '【数智邻购】您的验证码是 {code}，5 分钟内有效，请勿泄露。',
+       'SMS_474945291', 1, NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM msg_template x WHERE x.template_no='TPL_SMS_OTP');
+INSERT INTO msg_template (template_no, name, channel, content, provider_template_id, enabled, created_at, updated_at)
+SELECT 'TPL_MAIL_TEST', '通道联通测试', 'MAIL',
+       '{subject}\n\n{body}',
+       NULL, 1, NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM msg_template x WHERE x.template_no='TPL_MAIL_TEST');
+INSERT INTO msg_template (template_no, name, channel, content, provider_template_id, enabled, created_at, updated_at)
+SELECT 'TPL_WX_ARRIVED', '到货通知', 'WXSUB',
+       '您有 {number1} 件包裹已到自提点 · {thing2}',
+       NULL, 1, NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM msg_template x WHERE x.template_no='TPL_WX_ARRIVED');
+INSERT INTO msg_template (template_no, name, channel, content, provider_template_id, enabled, created_at, updated_at)
+SELECT 'TPL_WX_REFUNDED', '退款通知', 'WXSUB',
+       '退款 {amount1} 已处理 · {thing2}',
+       NULL, 1, NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM msg_template x WHERE x.template_no='TPL_WX_REFUNDED');
+INSERT INTO msg_template (template_no, name, channel, content, provider_template_id, enabled, created_at, updated_at)
+SELECT 'TPL_PUSH_TEST', '通用推送', 'PUSH',
+       '{subject}\n{body}',
+       NULL, 1, NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM msg_template x WHERE x.template_no='TPL_PUSH_TEST');
+INSERT INTO msg_template (template_no, name, channel, content, provider_template_id, enabled, created_at, updated_at)
+SELECT 'TPL_INAPP_TEST', '站内信', 'INAPP',
+       '{subject}\n{body}',
+       NULL, 1, NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM msg_template x WHERE x.template_no='TPL_INAPP_TEST');
+INSERT INTO msg_template (template_no, name, channel, content, provider_template_id, enabled, created_at, updated_at)
+SELECT 'TPL_MAIL_OPS_INIT_PWD', '运营账号开通', 'MAIL',
+       '你好 {realName}，
+
+你的运营端账号已开通。
+登录名：{username}
+初始密码：{password}
+
+首次登录会要求你立即修改密码。请勿转发本邮件。
+',
+       NULL, 1, NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM msg_template x WHERE x.template_no='TPL_MAIL_OPS_INIT_PWD');
+INSERT INTO msg_template (template_no, name, channel, content, provider_template_id, enabled, created_at, updated_at)
+SELECT 'TPL_MAIL_OPS_RESET_PWD', '运营密码重置', 'MAIL',
+       '你好 {realName}，
+
+有人为你的运营端账号申请了密码重置。
+重置码（{ttlMinutes} 分钟内有效，只能用一次）：
+
+    {token}
+
+如果不是你本人操作，忽略本邮件即可，你的密码不会有任何变化。
+',
+       NULL, 1, NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM msg_template x WHERE x.template_no='TPL_MAIL_OPS_RESET_PWD');
+UPDATE msg_template SET content = '{subject}
+
+{body}' WHERE template_no = 'TPL_MAIL_TEST';
+UPDATE msg_template SET content = '{subject}
+{body}' WHERE template_no = 'TPL_PUSH_TEST';
+UPDATE msg_template SET content = '{subject}
+{body}' WHERE template_no = 'TPL_INAPP_TEST';

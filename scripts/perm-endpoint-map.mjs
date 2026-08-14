@@ -168,6 +168,13 @@ export const RULES = [
   // 多一个码只增加配置负担。测试发送归 update 而不是 read —— 它真的会发出去。
   ["GET", /^\/ops\/notify-logs$/, "message:template:read"],
   ["*", /^\/ops\/notify-logs/, "message:template:update"],
+  // 通道体检：只回「配了没有」（envVar + present），从不回密钥本身，所以是读权限。
+  // 改微信模板号是**写**：两端不同值时一条也发不出去，等同于关掉这条通道
+  ["GET", /^\/ops\/notify-channels/, "message:template:read"],
+  ["*", /^\/ops\/notify-channels/, "message:template:update"],
+  // 运营自己的收件箱：免鉴权（理由见 gen-perm-endpoint-matrix.mjs 的 PUBLIC）。
+  // 这里仍要有归属，否则权限码细化时它会被落下而没人知道
+  ["*", /^\/ops\/message/, "message:template:read"],
   ["GET", /^\/ops\/(msg-templates|notify-quota)/, "message:template:read"],
   ["*", /^\/ops\/(msg-templates|notify-quota)/, "message:template:update"],
   ["GET", /^\/ops\/tickets/, "message:ticket:read"],

@@ -19,6 +19,7 @@ export const ROUTES = {
   staffDetail: "/pages/staff-detail/index",
   roleDetail: "/pages/role-detail/index",
   afterSale: "/pages/after-sale/index",
+  messages: "/pages/messages/index",
   reviews: "/pages/reviews/index",
   quotes: "/pages/quotes/index",
   groups: "/pages/groups/index",
@@ -27,6 +28,17 @@ export const ROUTES = {
   customers: "/pages/customers/index",
   marketing: "/pages/marketing/index",
 } as const;
+
+/**
+ * tab 页路径集合。**推送落点判断要用它**：tab 页只能 switchTab 打开，
+ * 用 navigateTo 会静默失败（点了没反应），而「新订单」的落点正是 tab 页。
+ */
+export const TAB_ROUTES: ReadonlySet<string> = new Set([
+  ROUTES.home,
+  ROUTES.orders,
+  ROUTES.goods,
+  ROUTES.me,
+]);
 
 export const TABS = [
   { key: "home", route: ROUTES.home, icon: "home", iconOn: "homeFilled", labelKey: "tab.home" },

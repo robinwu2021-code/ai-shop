@@ -20,8 +20,16 @@ public class MsgMessage extends BaseEntity {
     public static final String MARKETING = "MARKETING";
     public static final String SYSTEM = "SYSTEM";
 
+    /** 消费者（C 端，receiver_no = userNo）。 */
+    public static final String RECEIVER_USER = "USER";
+    /** 商家侧员工（B 端）。与 C 端共用账号池，receiver_no 同样是 userNo —— 同一个人的两个收件箱靠 type 分开。 */
+    public static final String RECEIVER_STAFF = "STAFF";
+    /** 平台运营（receiver_no = staffNo）。 */
+    public static final String RECEIVER_OPS = "OPS";
+
     private String messageNo;
-    private String userNo;
+    private String receiverType;
+    private String receiverNo;
 
     /** 列名 msg_type：type 在部分数据库里是保留字，且 SysOutbox 已有 eventType，避免混淆。 */
     private String msgType;

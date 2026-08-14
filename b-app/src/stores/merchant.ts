@@ -3,6 +3,7 @@
 import { defineStore } from "pinia";
 import { api } from "@/api";
 import { STORAGE } from "@shared/utils/constants";
+import { getPushDevice } from "@shared/ports/push";
 import type { LoginReq, MerchantProfile, Store } from "@shared/types";
 
 export const useMerchantStore = defineStore("merchant", {
@@ -77,7 +78,23 @@ export const useMerchantStore = defineStore("merchant", {
       this.token = resp.token;
       this.profile = resp.merchant;
       uni.setStorageSync(STORAGE.token, resp.token);
+      // 不 await：拿 clientId 要等推送服务初始化，登录不该卡在它上面
+      void this.bindPushDevice();
       return resp.merchant;
+    },
+
+    /**
+     * 绑定本机推送标识（仅 App 构建有值）。**新订单响铃全靠这一步**——
+     * 不绑的话商家只能自己盯着屏幕刷订单列表。失败静默：下次登录再试。
+     */
+    async bindPushDevice() {
+      const device = await getPushDevice();
+      if (!device) return;
+      try {
+        await api.mRegisterPushToken(device.platform, device.clientId);
+      } catch {
+        // 推送是加速通道，绑不上不影响用 app
+      }
     },
 
     /**
@@ -89,6 +106,8 @@ export const useMerchantStore = defineStore("merchant", {
       this.token = resp.token;
       this.profile = resp.merchant;
       uni.setStorageSync(STORAGE.token, resp.token);
+      // 店员更需要这一步：门店那台共用手机上，谁在班谁收单
+      void this.bindPushDevice();
       return resp.merchant;
     },
 
@@ -217,6 +236,23 @@ export const useMerchantStore = defineStore("merchant", {
       if (!this.token) return null;
       this.profile = await api.mProfile();
       return this.profile;
+    },
+
+    /**
+     * 解绑本机推送。**只在用户主动登出时调**，不放进 {@link logout} ——
+     * logout 还走 401 兜底那条路（App.vue），那时令牌已经失效，
+     * 再发一个请求只会再收一个 401，而那个 401 又会触发同一段处理。
+     *
+     * <p>解绑失败也不拦登出：下一个人在这台设备登录时，
+     * 后端的抢占逻辑（PushTokenService#register）会把旧绑定顶掉。
+     */
+    async unbindPushDevice() {
+      try {
+        const device = await getPushDevice();
+        if (device) await api.mUnregisterPushToken(device.clientId);
+      } catch {
+        // 见上：抢占兜底
+      }
     },
 
     logout() {

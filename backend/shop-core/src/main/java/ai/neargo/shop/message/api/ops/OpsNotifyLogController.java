@@ -29,23 +29,40 @@ import org.springframework.web.bind.annotation.RestController;
 public class OpsNotifyLogController {
 
     private final NotifyLogService notifyLogService;
+    private final ai.neargo.shop.message.notify.NotifyChannelService channelService;
     private final CaptchaService captchaService;
     private final AuditLogPort auditLogPort;
 
-    public OpsNotifyLogController(NotifyLogService notifyLogService, CaptchaService captchaService,
+    public OpsNotifyLogController(NotifyLogService notifyLogService,
+                                  ai.neargo.shop.message.notify.NotifyChannelService channelService,
+                                  CaptchaService captchaService,
                                   AuditLogPort auditLogPort) {
         this.notifyLogService = notifyLogService;
+        this.channelService = channelService;
         this.captchaService = captchaService;
         this.auditLogPort = auditLogPort;
+    }
+
+    /**
+     * 四条通道的体检（TDD-运营端触达中心 §4.1）。
+     *
+     * <p><b>只回「配了没有」，不回密钥明文</b>。此前「短信为什么没发出去」
+     * 只能登服务器看环境变量 —— 而那时通常是深夜、且改不动。
+     */
+    @GetMapping("/ops/notify-channels")
+    @PreAuthorize("@perm.can('" + Perms.MESSAGE_TEMPLATE_READ + "')")
+    public java.util.List<ai.neargo.shop.message.notify.NotifyChannelService.ChannelHealth> channels() {
+        return channelService.health();
     }
 
     @GetMapping("/ops/notify-logs")
     @PreAuthorize("@perm.can('" + Perms.MESSAGE_TEMPLATE_READ + "')")
     public PageData<SysNotifyLog> list(@RequestParam(required = false) String channel,
                                        @RequestParam(required = false) String status,
+                                       @RequestParam(required = false) String bizType,
                                        @RequestParam(defaultValue = "1") long page,
                                        @RequestParam(defaultValue = "20") long size) {
-        return notifyLogService.list(channel, status, page, size);
+        return notifyLogService.list(channel, status, bizType, page, size);
     }
 
     /**
@@ -70,19 +87,89 @@ public class OpsNotifyLogController {
     @PreAuthorize("@perm.can('" + Perms.MESSAGE_TEMPLATE_UPDATE + "')")
     public void testSend(@RequestBody TestSendReq req) {
         String operator = SecurityUtils.currentUserNo();
-        notifyLogService.testSend(req.channel(), req.target(), req.captchaId(), req.captchaCode(),
-                operator);
+        notifyLogService.testSend(req.channel(), req.target(), req.level(),
+                new NotifyLogService.TestContent(req.subject(), req.body(), req.params()),
+                req.captchaId(), req.captchaCode(), operator);
         // **审计里不写收件人明文**：发送记录那张表已经存了掩码版，这里只记「谁测了哪个渠道」
         auditLogPort.record("NOTIFY_TEST_SEND", operator, req.channel());
     }
 
     /**
-     * @param channel     {@code SMS} / {@code MAIL}
-     * @param target      收件手机号或邮箱
-     * @param captchaId   {@link #captcha()} 返回的挑战 ID
-     * @param captchaCode 用户看图输入的四位字符
+     * 模拟发送前的收件人预检。
+     *
+     * <p>页面在运营填完 userNo 时调它 —— 图形验证码是一次性的，
+     * 而「这个用户没额度 / 没绑设备」输完就能知道。不预检的话，
+     * 填完表输完验证码点了发送才被告知「换个账号」，那张验证码已经废了。
      */
-    public record TestSendReq(@NotBlank String channel, @NotBlank String target,
+    @PostMapping("/ops/notify-logs/precheck")
+    @PreAuthorize("@perm.can('" + Perms.MESSAGE_TEMPLATE_UPDATE + "')")
+    public void precheck(@RequestBody PrecheckReq req) {
+        notifyLogService.precheckTestTarget(req.channel(), req.target());
+    }
+
+    public record PrecheckReq(@NotBlank String channel, @NotBlank String target) {
+    }
+
+    /**
+     * 站内信的模拟发送（TDD-运营端触达中心 §5.5）。
+     *
+     * <p><b>不过图形验证码</b>：它只能往本平台的收件箱里塞，发不出去也骚扰不到外部的人 ——
+     * 给它加验证码是把「防群发」的闸装在一扇不通往外面的门上。权限码与审计照旧。
+     */
+    @PostMapping("/ops/notify-logs/test-inapp")
+    @PreAuthorize("@perm.can('" + Perms.MESSAGE_TEMPLATE_UPDATE + "')")
+    public void testInApp(@RequestBody TestInAppReq req) {
+        String operator = SecurityUtils.currentUserNo();
+        notifyLogService.testInApp(req.receiverType(), req.receiverNo(), req.title(),
+                req.body(), req.link(), operator);
+        auditLogPort.record("NOTIFY_TEST_INAPP", operator, req.receiverType());
+    }
+
+    /** @param receiverType USER / STAFF / OPS */
+    public record TestInAppReq(@NotBlank String receiverType, @NotBlank String receiverNo,
+                               @NotBlank String title, String body, String link) {
+    }
+
+    /**
+     * 微信订阅消息的模板号映射（TDD-运营端触达中心 §4.2）。
+     *
+     * <p><b>这是唯一一项从环境变量开放到运营端的通道参数</b>：模板号不是凭据
+     * （拿到也发不出东西），而 mp 后台重新报备之后要发一次版才能生效是不合理的。
+     * 没配过时读到的是环境变量的值，所以对既有部署零行为变化。
+     *
+     * <p>⚠️ 端上（{@code VITE_WX_TPL_*}）必须同值 —— 不同值的话前端攒的订阅额度
+     * 后端查不到，一条也发不出去。页面要把这句话写在输入框旁边。
+     */
+    @GetMapping("/ops/notify-channels/wx-templates")
+    @PreAuthorize("@perm.can('" + Perms.MESSAGE_TEMPLATE_READ + "')")
+    public WxTemplatesVO wxTemplates() {
+        return new WxTemplatesVO(
+                channelService.templateIdOf(ai.neargo.shop.spi.notify.WxSubscribePort.SCENE_ORDER_ARRIVED),
+                channelService.templateIdOf(ai.neargo.shop.spi.notify.WxSubscribePort.SCENE_REFUNDED));
+    }
+
+    @PostMapping("/ops/notify-channels/wx-templates")
+    @PreAuthorize("@perm.can('" + Perms.MESSAGE_TEMPLATE_UPDATE + "')")
+    public WxTemplatesVO saveWxTemplates(@RequestBody WxTemplatesVO req) {
+        String operator = SecurityUtils.currentUserNo();
+        channelService.saveWxTemplates(req.orderArrived(), req.refunded(), operator);
+        auditLogPort.record("NOTIFY_WX_TEMPLATES_SAVE", operator, "wx-templates");
+        return wxTemplates();
+    }
+
+    public record WxTemplatesVO(String orderArrived, String refunded) {
+    }
+
+    /**
+     * @param target  随通道而变：SMS=手机号 / MAIL=邮箱 / WXSUB、PUSH=<b>userNo</b>
+     * @param level   仅 PUSH 用（{@code RING} / {@code NORMAL}），其余通道忽略
+     * @param subject 邮件主题 / 推送标题。**短信忽略**（正文由报备模板决定）
+     * @param body    邮件正文 / 推送正文。同上
+     * @param params  模板参数（短信 {@code code}、微信 {@code thing2}…）。
+     *                <b>短信只认这个</b> —— 阿里云收模板号+参数，不收自由文本
+     */
+    public record TestSendReq(@NotBlank String channel, @NotBlank String target, String level,
+                              String subject, String body, java.util.Map<String, String> params,
                               @NotBlank String captchaId, @NotBlank String captchaCode) {
     }
 }

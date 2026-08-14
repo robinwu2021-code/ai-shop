@@ -1,7 +1,10 @@
 <script setup lang="ts">
-import { onLaunch } from "@dcloudio/uni-app";
+import { onHide, onLaunch, onShow } from "@dcloudio/uni-app";
 import { configureShell } from "@ai-shop/ui/shell";
 import { TABS } from "@/shared/nav";
+import { startUnreadPolling, stopUnreadPolling, unreadCount } from "@/stores/messages";
+import { initPush } from "@shared/ports/push";
+import { TAB_ROUTES } from "@/shared/nav";
 import { useThemeStore } from "@ai-shop/ui/stores/theme";
 import { useAppStore } from "@ai-shop/ui/stores/app";
 import { useMarketStore } from "@ai-shop/ui/stores/market";
@@ -13,9 +16,9 @@ import { restoreDb } from "@shared/mock/db";
 import { ensureDemoMerchant, ensureDemoOrders } from "@/api/demo-orders";
 
 onLaunch(() => {
-  // B 端外壳只需要一份导航：没有购物车，也就没有角标、飞入动效与落点登记。
+  // B 端外壳的角标只有一个：「我的」上的未读消息数（新订单/售后/评价的落点）。
   // 切语言后各页 onShow 自然重取服务端文案，不需要额外副作用
-  configureShell({ tabs: TABS });
+  configureShell({ tabs: TABS, badge: (key) => (key === "me" ? unreadCount.value : 0) });
 
   // mock 的种子数据与 C 端同源（@shared/mock/db）；运行时状态按 origin 隔离，
   // 两端各持一份（见 TDD-b-app §4.4）。
@@ -92,7 +95,28 @@ onLaunch(() => {
   }
 
   initFonts(); // 远程字体，失败静默降级
+
+  /*
+   * 推送点击的落点（ADR-018）。**一条「新订单」点开却停在首页，
+   * 与没推没有区别** —— 商家还得自己去翻订单列表。
+   *
+   * tab 页要用 switchTab：navigateTo 打不开 tab 页，表现是点了没反应，
+   * 而「新订单」的落点 /pages/orders/index 恰好就是 tab 页。
+   */
+  initPush((link) => {
+    const path = link.split("?")[0] ?? link;
+    if (TAB_ROUTES.has(path)) {
+      uni.switchTab({ url: path });
+    } else {
+      uni.navigateTo({ url: link });
+    }
+  });
 });
+
+// 未读角标 30s 轮询：app 在前台才跑（onHide 停，后台空转是白耗电量与请求），
+// 回前台立即刷一次 —— 商家最常见的动作就是「听见手机响，点亮屏幕看一眼」
+onShow(startUnreadPolling);
+onHide(stopUnreadPolling);
 </script>
 
 <style>

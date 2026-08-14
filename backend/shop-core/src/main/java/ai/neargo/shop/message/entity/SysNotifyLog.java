@@ -25,6 +25,10 @@ public class SysNotifyLog {
 
     public static final String SMS = "SMS";
     public static final String MAIL = "MAIL";
+    /** 微信小程序订阅消息（服务通知）。target 存掩码后的 openid。 */
+    public static final String WXSUB = "WXSUB";
+    /** App 推送（个推/uni-push，ADR-018）。target 存掩码后的 clientId。 */
+    public static final String PUSH = "PUSH";
 
     public static final String SENT = "SENT";
     public static final String FAILED = "FAILED";

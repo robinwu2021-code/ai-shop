@@ -40,6 +40,13 @@ export const PUBLIC = new Map([
   ["GET /ops/captcha", "取一张图形验证码。它本身不泄露任何东西；"
     + "挂了码，没权限的人看到的是一张裂图而不是「无权限」，反而更难查。"
     + "权限在真正发送的 /ops/notify-logs/test-send 那步判"],
+  // ── 运营自己的收件箱（顶栏铃铛）。四条同一个理由，逐条登记以便日后单独撤销
+  ["GET /ops/message", "**收件人是调用者自己**：查询按当前 userNo 裁剪，别人的本来就查不到。"
+    + "挂 message:template:read 的话，收到「待审商家」通知的审核员反而打不开铃铛 —— "
+    + "而那条通知正是发给他的"],
+  ["GET /ops/message/unread-count", "同上，且只返回一个整数，不含任何内容"],
+  ["POST /ops/message/{messageNo}/read", "把**自己的**一条标为已读。改不到别人的：写入同样按 userNo 裁剪"],
+  ["POST /ops/message/read-all", "同上，批量版"],
 ]);
 
 /** 扫 /ops 端点 → 权限常量名 */

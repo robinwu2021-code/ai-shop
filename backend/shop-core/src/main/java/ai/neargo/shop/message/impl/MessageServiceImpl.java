@@ -3,6 +3,7 @@ package ai.neargo.shop.message.impl;
 import ai.neargo.shop.message.MessageService;
 
 import ai.neargo.common.data.scope.DataScopeContext;
+import ai.neargo.shop.auth.Perms;
 import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
@@ -44,26 +45,35 @@ public class MessageServiceImpl implements MessageService {
     private final TicketMapper ticketMapper;
     private final TemplateMapper templateMapper;
     private final ai.neargo.shop.spi.platform.SettingPort settingPort;
+    private final ai.neargo.shop.spi.platform.OpsStaffPort opsStaffPort;
     private final SubscribeMapper subscribeMapper;
 
     public MessageServiceImpl(MessageMapper messageMapper, TicketMapper ticketMapper,
                               SubscribeMapper subscribeMapper,
                               TemplateMapper templateMapper,
-                              ai.neargo.shop.spi.platform.SettingPort settingPort) {
+                              ai.neargo.shop.spi.platform.SettingPort settingPort,
+                              ai.neargo.shop.spi.platform.OpsStaffPort opsStaffPort) {
         this.templateMapper = templateMapper;
         this.settingPort = settingPort;
+        this.opsStaffPort = opsStaffPort;
         this.messageMapper = messageMapper;
         this.ticketMapper = ticketMapper;
         this.subscribeMapper = subscribeMapper;
     }
 
     @Override
-    @Transactional
     public void push(String userNo, String type, String title, String body,
                      String link, String dedupKey) {
-        if (userNo == null || userNo.isBlank()) {
-            // 事件里没带用户号：记日志但不抛 —— 抛了会让整条事件卡在队列里反复重试
-            log.warn("skip message without userNo: title={} dedup={}", title, dedupKey);
+        pushTo(MsgMessage.RECEIVER_USER, userNo, type, title, body, link, dedupKey);
+    }
+
+    @Override
+    @Transactional
+    public void pushTo(String receiverType, String receiverNo, String type,
+                       String title, String body, String link, String dedupKey) {
+        if (receiverNo == null || receiverNo.isBlank()) {
+            // 事件里没带收件人：记日志但不抛 —— 抛了会让整条事件卡在队列里反复重试
+            log.warn("skip message without receiver: title={} dedup={}", title, dedupKey);
             return;
         }
         boolean exists = DataScopeContext.executeWithoutScope(() ->
@@ -75,7 +85,8 @@ public class MessageServiceImpl implements MessageService {
 
         MsgMessage m = new MsgMessage();
         m.setMessageNo(BizKey.next(BizKey.MESSAGE));
-        m.setUserNo(userNo);
+        m.setReceiverType(receiverType);
+        m.setReceiverNo(receiverNo);
         m.setMsgType(type);
         m.setTitle(title);
         m.setBody(body);
@@ -87,35 +98,113 @@ public class MessageServiceImpl implements MessageService {
     }
 
     @Override
-    public List<MessageVO> list() {
-        return rows().stream().map(this::toVO).toList();
+    @Transactional
+    public boolean pushMarketing(String userNo, String templateNo, String title, String body,
+                                 String link, String dedupKey) {
+        if (userNo == null || userNo.isBlank() || templateNo == null || templateNo.isBlank()) {
+            log.warn("skip marketing message without userNo/templateNo: dedup={}", dedupKey);
+            return false;
+        }
+        // 停用即刻生效：运营停掉扰民模板的那一刻起，引用它的推送一条都不该再出去
+        MsgTemplate tpl = templateMapper.selectOne(Wrappers.<MsgTemplate>lambdaQuery()
+                .eq(MsgTemplate::getTemplateNo, templateNo).last("limit 1"));
+        if (tpl == null || Boolean.FALSE.equals(tpl.getEnabled())) {
+            log.info("[quota] 模板不存在或已停用，营销消息拦下 template={} user={}", templateNo, userNo);
+            return false;
+        }
+
+        NotifyQuotaVO quota = notifyQuota();
+        long now = System.currentTimeMillis();
+        long dayStart = java.time.LocalDate.now().atStartOfDay(java.time.ZoneId.systemDefault())
+                .toInstant().toEpochMilli();
+
+        // 日上限：只数营销类 —— 交易消息不占用户的「被打扰额度」
+        long today = DataScopeContext.executeWithoutScope(() ->
+                messageMapper.selectCount(Wrappers.<MsgMessage>lambdaQuery()
+                        .eq(MsgMessage::getReceiverType, MsgMessage.RECEIVER_USER)
+                        .eq(MsgMessage::getReceiverNo, userNo)
+                        .eq(MsgMessage::getMsgType, MsgMessage.MARKETING)
+                        .ge(MsgMessage::getAt, dayStart)));
+        if (today >= quota.dailyPerUser()) {
+            log.info("[quota] 日上限拦下 user={} today={}/{}", userNo, today, quota.dailyPerUser());
+            return false;
+        }
+
+        // 同模板最小间隔 —— msg_message.templateNo 为此存在（见实体注释）
+        boolean recent = DataScopeContext.executeWithoutScope(() ->
+                messageMapper.selectCount(Wrappers.<MsgMessage>lambdaQuery()
+                        .eq(MsgMessage::getReceiverType, MsgMessage.RECEIVER_USER)
+                        .eq(MsgMessage::getReceiverNo, userNo)
+                        .eq(MsgMessage::getTemplateNo, templateNo)
+                        .ge(MsgMessage::getAt, now - quota.minIntervalHours() * 3600_000L))) > 0;
+        if (recent) {
+            log.info("[quota] 模板间隔拦下 user={} template={}", userNo, templateNo);
+            return false;
+        }
+
+        boolean exists = DataScopeContext.executeWithoutScope(() ->
+                messageMapper.selectCount(Wrappers.<MsgMessage>lambdaQuery()
+                        .eq(MsgMessage::getDedupKey, dedupKey))) > 0;
+        if (exists) {
+            return false;
+        }
+        MsgMessage m = new MsgMessage();
+        m.setMessageNo(BizKey.next(BizKey.MESSAGE));
+        m.setReceiverType(MsgMessage.RECEIVER_USER);
+        m.setReceiverNo(userNo);
+        m.setMsgType(MsgMessage.MARKETING);
+        m.setTemplateNo(templateNo);
+        m.setTitle(title);
+        m.setBody(body);
+        m.setLink(link);
+        m.setIsRead(false);
+        m.setDedupKey(dedupKey);
+        m.setAt(now);
+        DataScopeContext.executeWithoutScope(() -> messageMapper.insert(m));
+        return true;
+    }
+
+    @Override
+    public List<MessageVO> list(String receiverType) {
+        return rows(receiverType).stream().map(this::toVO).toList();
     }
 
     @Override
     @Transactional
-    public List<MessageVO> markRead(String messageNo) {
+    public List<MessageVO> markRead(String receiverType, String messageNo) {
         MsgMessage m = messageMapper.selectOne(Wrappers.<MsgMessage>lambdaQuery()
                 .eq(MsgMessage::getMessageNo, messageNo)
-                .eq(MsgMessage::getUserNo, SecurityUtils.currentUserNo())
+                // 属主 + 收件箱都进查询条件：messageNo 可猜，且同一个人的
+                // C/B 两个收件箱不能互相标已读（会把对方的角标悄悄清掉）
+                .eq(MsgMessage::getReceiverType, receiverType)
+                .eq(MsgMessage::getReceiverNo, SecurityUtils.currentUserNo())
                 .last("limit 1"));
         if (m == null) {
-            // 属主写进查询条件：messageNo 可猜
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
         m.setIsRead(true);
         messageMapper.updateById(m);
-        return list();
+        return list(receiverType);
     }
 
     @Override
     @Transactional
-    public List<MessageVO> markAllRead() {
+    public List<MessageVO> markAllRead(String receiverType) {
         MsgMessage patch = new MsgMessage();
         patch.setIsRead(true);
         messageMapper.update(patch, Wrappers.<MsgMessage>lambdaUpdate()
-                .eq(MsgMessage::getUserNo, SecurityUtils.currentUserNo())
+                .eq(MsgMessage::getReceiverType, receiverType)
+                .eq(MsgMessage::getReceiverNo, SecurityUtils.currentUserNo())
                 .eq(MsgMessage::getIsRead, false));
-        return list();
+        return list(receiverType);
+    }
+
+    @Override
+    public long unreadCount(String receiverType) {
+        return messageMapper.selectCount(Wrappers.<MsgMessage>lambdaQuery()
+                .eq(MsgMessage::getReceiverType, receiverType)
+                .eq(MsgMessage::getReceiverNo, SecurityUtils.currentUserNo())
+                .eq(MsgMessage::getIsRead, false));
     }
 
     @Override
@@ -128,6 +217,10 @@ public class MessageServiceImpl implements MessageService {
                     .eq(MsgSubscribe::getTemplateId, templateId).last("limit 1"));
             if (existing != null) {
                 existing.setAccepted(accepted);
+                if (accepted) {
+                    // 一次性订阅：每次「允许」都是新攒一次发送额度，不是覆盖开关
+                    existing.setQuota((existing.getQuota() == null ? 0 : existing.getQuota()) + 1);
+                }
                 existing.setAt(System.currentTimeMillis());
                 subscribeMapper.updateById(existing);
                 continue;
@@ -136,6 +229,7 @@ public class MessageServiceImpl implements MessageService {
             s.setUserNo(userNo);
             s.setTemplateId(templateId);
             s.setAccepted(accepted);
+            s.setQuota(accepted ? 1 : 0);
             s.setAt(System.currentTimeMillis());
             subscribeMapper.insert(s);
         }
@@ -152,6 +246,18 @@ public class MessageServiceImpl implements MessageService {
         t.setOrderNo(orderNo);
         t.setStatus(MsgTicket.OPEN);
         ticketMapper.insert(t);
+
+        /*
+         * P-N-1：新工单进有权处理的客服的收件箱。同域直推，不绕 Outbox ——
+         * 工单和通知在同一个事务里，没有跨域一致性问题要解。
+         * 按权限码找人而不是按角色名：角色随时会被运营改组（见 OpsStaffPort）。
+         */
+        for (String staffNo : opsStaffPort.staffNosWithPerm(Perms.MESSAGE_TICKET_HANDLE)) {
+            pushTo(MsgMessage.RECEIVER_OPS, staffNo, SYSTEM,
+                    "新工单", "「" + subject + "」等待处理",
+                    "/messages?tab=tickets",   // ops-web 的工单池就在消息页的 tickets tab
+                    "TICKET:" + t.getTicketNo() + ":" + staffNo);
+        }
         return toVO(t);
     }
 
@@ -242,9 +348,10 @@ public class MessageServiceImpl implements MessageService {
         return t;
     }
 
-    private List<MsgMessage> rows() {
+    private List<MsgMessage> rows(String receiverType) {
         return messageMapper.selectList(Wrappers.<MsgMessage>lambdaQuery()
-                .eq(MsgMessage::getUserNo, SecurityUtils.currentUserNo())
+                .eq(MsgMessage::getReceiverType, receiverType)
+                .eq(MsgMessage::getReceiverNo, SecurityUtils.currentUserNo())
                 .orderByDesc(MsgMessage::getAt).orderByDesc(MsgMessage::getId));
     }
 

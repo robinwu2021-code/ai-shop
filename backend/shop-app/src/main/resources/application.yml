@@ -121,6 +121,31 @@ shop:
     # 实测认证会成功而投递被拒（554 SendAsDenied）
     from: ${MAIL_FROM:}
 
+  # 微信小程序：登录 code2Session + 订阅消息（服务通知）。
+  # **一个开关管两件事**：库里存假 openid 而通道在真发，会缝合出一个
+  # 「发给不存在的人」的世界 —— 两者共享 stub 是刻意的（见 WxAuthGateway 类注释）。
+  wx:
+    stub: ${SHOP_WX_STUB:true}
+    appid: ${WX_APPID:}
+    secret: ${WX_SECRET:}
+    # developer / trial / formal。联调切 trial，免得打扰真实用户
+    mp-state: ${WX_MP_STATE:formal}
+    templates:
+      # mp 后台报备通过的模板号。**必须与端上 VITE_WX_TPL_* 同值** ——
+      # 不同值的话前端攒的订阅额度后端查不到，一条也发不出去
+      order-arrived: ${WX_TPL_ORDER_ARRIVED:}
+      refunded: ${WX_TPL_REFUNDED:}
+
+  # App 推送（uni-push 2.0 / 个推，ADR-018）。**先用免费档**：
+  # 在线消息不限量，厂商离线通道有日配额 —— 配额用尽时留痕 FAILED，站内信兜底。
+  push:
+    # 桩默认 true，理由同短信且更强：推送会在夜里把人吵醒
+    stub: ${SHOP_PUSH_STUB:true}
+    getui:
+      app-id: ${GETUI_APP_ID:}
+      app-key: ${GETUI_APP_KEY:}
+      master-secret: ${GETUI_MASTER_SECRET:}
+
   # 定时任务的 cron。**只在 worker 部署生效**（SchedulingConfig 是 @Profile("worker")）。
   #
   # 为什么要能配：改一次频率此前要改代码、过一遍构建再发一次版 ——

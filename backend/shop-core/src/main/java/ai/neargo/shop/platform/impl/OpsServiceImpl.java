@@ -20,6 +20,7 @@ import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.Masks;
 import ai.neargo.shop.common.PageData;
+import ai.neargo.shop.spi.notify.MailTemplatePort;
 import ai.neargo.shop.spi.notify.NotifyBizType;
 import ai.neargo.shop.platform.dto.OpsVOs.AuditLogVO;
 import ai.neargo.shop.platform.dto.OpsVOs.LoginResultVO;
@@ -77,6 +78,8 @@ public class OpsServiceImpl implements OpsService {
     private final ai.neargo.shop.platform.MasterDataService masterDataService;
     private final ai.neargo.shop.auth.PasswordHasher passwordHasher;
     private final MailPort mailPort;
+    /** 账号类邮件走平台业务模板（运营端可看可改），见 MailTemplatePort */
+    private final ai.neargo.shop.spi.notify.MailTemplatePort mailTemplatePort;
     private final PasswordResetTokens resetTokens;
     private final RateLimiter resetLimiter;
 
@@ -98,11 +101,13 @@ public class OpsServiceImpl implements OpsService {
                           ai.neargo.shop.platform.MasterDataService masterDataService,
                           ai.neargo.shop.auth.PasswordHasher passwordHasher,
                           MailPort mailPort,
+                          ai.neargo.shop.spi.notify.MailTemplatePort mailTemplatePort,
                           PasswordResetTokens resetTokens,
                           RateLimiter resetLimiter,
                           @org.springframework.beans.factory.annotation.Value(
                                   "${shop.ops.password-delivery:mail}") String passwordDelivery) {
         this.mailPort = mailPort;
+        this.mailTemplatePort = mailTemplatePort;
         this.resetTokens = resetTokens;
         this.resetLimiter = resetLimiter;
         this.passwordDelivery = passwordDelivery;
@@ -760,12 +765,24 @@ public class OpsServiceImpl implements OpsService {
          * 能用的运营账号都没有。
          */
         if (MAIL_DELIVERY.equals(passwordDelivery)) {
-            mailPort.send(username, "【数智邻购】运营端账号已开通",
-                    "你好 " + realName + "，\n\n"
+            /*
+             * 正文走**平台业务模板**（msg_template，运营端可看可改）。
+             * 此前是字符串拼接 —— 改一句话要发版，而需要改文案的时刻
+             * （措辞引起误解、要加一句合规提示）恰恰不该等发版。
+             *
+             * 第 5 个参数是**内置兜底文案**：模板被停用/删掉/占位没取到值时用它。
+             * 账号类邮件发不出去的后果是「新同事永远登不进来」，
+             * 比「文案没跟上最新一版」严重得多。
+             */
+            mailTemplatePort.send(username, MailTemplatePort.TPL_OPS_INIT_PWD,
+                    "【数智邻购】运营端账号已开通",
+                    java.util.Map.of("realName", realName, "username", username,
+                            "password", initial),
+                    "你好 {realName}，\n\n"
                             + "你的运营端账号已开通。\n"
-                            + "登录名：" + username + "\n"
-                            + "初始密码：" + initial + "\n\n"
-                            + "**首次登录会要求你立即修改密码**。请勿转发本邮件。\n",
+                            + "登录名：{username}\n"
+                            + "初始密码：{password}\n\n"
+                            + "首次登录会要求你立即修改密码。请勿转发本邮件。\n",
                     NotifyBizType.OPS_INIT_PASSWORD, SecurityUtils.currentUserNo());
             return new CreatedStaffVO(toVO(staff, want, rolePermResolver.of(want)),
                     null, Masks.email(username));
@@ -864,11 +881,14 @@ public class OpsServiceImpl implements OpsService {
         }
 
         String token = resetTokens.issue(staff.getStaffNo());
-        mailPort.send(username, "【数智邻购】运营端密码重置",
-                "你好 " + staff.getRealName() + "，\n\n"
+        mailTemplatePort.send(username, MailTemplatePort.TPL_OPS_RESET_PWD,
+                "【数智邻购】运营端密码重置",
+                java.util.Map.of("realName", staff.getRealName() == null ? "" : staff.getRealName(),
+                        "token", token, "ttlMinutes", "15"),
+                "你好 {realName}，\n\n"
                         + "有人为你的运营端账号申请了密码重置。\n"
-                        + "重置码（15 分钟内有效，只能用一次）：\n\n    " + token + "\n\n"
-                        + "**如果不是你本人操作，忽略本邮件即可**，你的密码不会有任何变化。\n",
+                        + "重置码（{ttlMinutes} 分钟内有效，只能用一次）：\n\n    {token}\n\n"
+                        + "如果不是你本人操作，忽略本邮件即可，你的密码不会有任何变化。\n",
                 NotifyBizType.OPS_RESET_PASSWORD, null);
         audit("STAFF_PASSWORD_FORGOT", staff.getStaffNo(), "已发送重置邮件", true, null, null);
     }

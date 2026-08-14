@@ -5,6 +5,16 @@ import type { MessageApi } from "../contracts/message";
 import { fail, notFound } from "@/lib/biz-error";
 import { wait } from "./_wait";
 
+// 铃铛收件箱的 mock 状态。发给运营的待办，与 NotifyLog（发给用户的留痕）是两回事
+const inbox: import("@/lib/types").InboxMessage[] = [
+  { messageNo: "MSO-1", type: "SYSTEM", title: "新工单", body: "「取货码扫不出来」等待处理",
+    link: "/messages?tab=tickets", read: false, at: Date.now() - 8 * 60_000 },
+  { messageNo: "MSO-2", type: "SYSTEM", title: "入驻待审核", body: "「张记粮油」提交了进件资料",
+    link: "/merchants?tab=applies", read: false, at: Date.now() - 42 * 60_000 },
+  { messageNo: "MSO-3", type: "SYSTEM", title: "对账差异", body: "昨日结算对账有 1 笔差异待处理",
+    link: "/finance?tab=recon", read: true, at: Date.now() - 26 * 3600_000 },
+];
+
 function findTicket(no: string): Ticket {
   const t = db.tickets.find((x) => x.ticketNo === no);
   if (!t) notFound("工单", "Ticket", no);
@@ -60,22 +70,57 @@ export const messageMock: MessageApi = {
    * **失败的那条**。只给成功的话，页面上「错误」那一列永远是空的，
    * 而它恰恰是这张表最要紧的一列（「他为什么没收到」）。
    */
-  listNotifyLogs: (q = {}) => {
-    const rows: NotifyLog[] = [
-      { notifyNo: "NL0001", channel: "SMS", bizType: "OTP", target: "138****8888",
-        templateCode: "SMS_474945291", status: "SENT",
-        providerMsgId: "765413486616594710^0", createdAt: "2026-08-13T10:20:00Z" },
-      { notifyNo: "NL0002", channel: "MAIL", bizType: "OPS_INIT_PASSWORD",
-        target: "z***g@neargo.ai", templateCode: "【数智邻购】运营端账号已开通",
-        status: "SENT", providerMsgId: "<abc@neargo.ai>", operatorNo: "E1001",
-        createdAt: "2026-08-13T10:05:00Z" },
-      { notifyNo: "NL0003", channel: "SMS", bizType: "TEST", target: "139****0000",
-        status: "FAILED", error: "isv.TEMPLATE_MISSING_PARAMETERS 模板变量缺失",
-        operatorNo: "E1001", createdAt: "2026-08-13T09:40:00Z" },
-    ];
-    return wait(db.paginate(rows, q.page, q.size,
-      (r) => db.eqHit(q.channel, r.channel) && db.eqHit(q.status, r.status)), 300);
-  },
+  /*
+   * 发送记录：mock 下**是空的**，这是本地开发的真实状态 ——
+   * 桩通道不真发，也就不记（页面上那句 nlEmpty 说的就是这件事）。
+   *
+   * 此前这里编了六条「历史记录」，会让人以为「已经在发了」。
+   * 那六条唯一的价值是能暴露「新通道被显示成短信」那类映射缺陷，
+   * 而那条防线已经交给 lib/notify-label.test.ts（纯函数，5 个用例）。
+   */
+  listNotifyLogs: (q = {}) =>
+    wait(db.paginate([] as NotifyLog[], q.page, q.size), 300),
+
+  // 通道体检。mock 下四条都在桩模式、凭据全空 —— 那正是本地开发的真实状态，
+  // 编成「全绿」会让人以为配好了
+  listNotifyChannels: () => wait([
+    { channel: "SMS" as const, stub: true, enabled: false,
+      credentials: [{ envVar: "ALI_SMS_AK", present: false, required: true },
+                    { envVar: "ALI_SMS_SK", present: false, required: true },
+                    { envVar: "ALI_SMS_SIGN", present: true, required: true },
+                    { envVar: "ALI_SMS_TPL_OTP", present: true, required: true }],
+      params: [{ key: "endpoint", value: "dysmsapi.aliyuncs.com" },
+               { key: "sign", value: "数智邻购" },
+               { key: "templates.otp", value: "SMS_474945291" }],
+      todaySent: 12, todayFailed: 1 },
+    { channel: "MAIL" as const, stub: true, enabled: false,
+      credentials: [{ envVar: "MAIL_USERNAME", present: true, required: true },
+                    { envVar: "MAIL_PASSWORD", present: false, required: true },
+                    { envVar: "MAIL_FROM", present: true, required: true }],
+      params: [{ key: "host", value: "smtp.office365.com" },
+               { key: "from", value: "platform@neargo.ai" }],
+      todaySent: 3, todayFailed: 0 },
+    { channel: "WXSUB" as const, stub: true, enabled: false,
+      credentials: [{ envVar: "WX_APPID", present: false, required: true },
+                    { envVar: "WX_SECRET", present: false, required: true },
+                    { envVar: "WX_TPL_ORDER_ARRIVED", present: false, required: true },
+                    { envVar: "WX_TPL_REFUNDED", present: false, required: true }],
+      params: [{ key: "mpState", value: "formal" },
+               { key: "templates.orderArrived", value: "STUB_TPL_ORDER_ARRIVED" },
+               { key: "templates.refunded", value: "STUB_TPL_REFUNDED" }],
+      todaySent: 8, todayFailed: 0 },
+    { channel: "PUSH" as const, stub: true, enabled: false,
+      credentials: [{ envVar: "GETUI_APP_ID", present: false, required: true },
+                    { envVar: "GETUI_APP_KEY", present: false, required: true },
+                    { envVar: "GETUI_MASTER_SECRET", present: false, required: true }],
+      params: [{ key: "appId", value: "" }],
+      todaySent: 5, todayFailed: 2 },
+  ], 300),
+
+  getWxTemplates: () => wait({ orderArrived: "STUB_TPL_ORDER_ARRIVED",
+                               refunded: "STUB_TPL_REFUNDED" }, 200),
+  saveWxTemplates: (v) => wait(v, 400),
+  testSendInApp: () => wait(undefined as unknown as void, 400),
 
   getCaptcha: () =>
     // 1x1 透明 png —— mock 下只要「有个图」，图上写什么无所谓
@@ -133,6 +178,21 @@ export const messageMock: MessageApi = {
     db.assertTransition(TICKET_TRANSITIONS, t.status, "CLOSED", "工单", "Ticket");
     t.status = "CLOSED";
     return wait(t, 400);
+  },
+
+  listInbox: () => wait([...inbox].sort((a, b) => b.at - a.at)),
+
+  inboxUnread: () => wait(inbox.filter((m) => !m.read).length),
+
+  readInbox: async (messageNo) => {
+    const m = inbox.find((x) => x.messageNo === messageNo);
+    if (m) m.read = true;
+    return wait([...inbox]);
+  },
+
+  readAllInbox: async () => {
+    inbox.forEach((m) => (m.read = true));
+    return wait([...inbox]);
   },
 
   listFaqs: (q = {}) =>

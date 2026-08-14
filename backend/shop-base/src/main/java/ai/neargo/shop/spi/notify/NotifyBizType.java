@@ -26,4 +26,7 @@ public final class NotifyBizType {
 
     /** 运营端页面上手动触发的测试发送 */
     public static final String TEST = "TEST";
+
+    /** 交易关键节点的用户触达（到货、退款）。事件驱动，没有操作人 */
+    public static final String TRADE_NOTIFY = "TRADE_NOTIFY";
 }

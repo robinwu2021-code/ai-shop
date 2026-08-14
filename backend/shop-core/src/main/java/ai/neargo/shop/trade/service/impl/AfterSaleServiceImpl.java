@@ -169,6 +169,10 @@ public class AfterSaleServiceImpl implements AfterSaleService {
                 platformIsSeller ? "已申请售后，由平台直接处理" : "已申请售后",
                 OrdStatusLog.BY_USER, sub.getUserNo());
 
+        // B-N-2：商家越早看到售后越可能协商解决。自营单也发 —— 收件的是平台商户的员工
+        eventBus.publish(new OrderEvents.AfterSaleApplied(as.getAfterSaleNo(), subOrderNo,
+                sub.getEntityNo(), sub.getUserNo(), cmd.type(), refund));
+
         if (instant) {
             doRefund(as, "极速退");
         }

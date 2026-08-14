@@ -37,12 +37,11 @@ import java.util.List;
  * <p>旧结构的问题不是不够优雅，是**存不下事实**：单列唯一键意味着一个账号只能有一个
  * openid，而微信 openid 按应用隔离，同一个人在小程序和 App 里是两个值。
  *
- * <p><b>S1 的边界</b>：微信 {@code code2Session} 与 Apple 的 identityToken 校验都还没接
- * （需要小程序 appid/secret 与真机联调），当前按「principal 即稳定标识」建户。
- * 接真渠道时改的是 {@link #resolveCredentials} 一个方法——届时小程序一次
- * {@code wx.login} + {@code getPhoneNumber} 会同时给出 openid、unionid 和手机号，
- * 三条凭证一起登记，建户主干与会话发放不动。
- * 这一点在此显式写明，避免有人误以为微信登录已经通了。
+ * <p><b>渠道接入状态</b>：微信 {@code code2Session} 已走 {@code WxAuthPort}
+ * （TDD-通知与消息推送 §一期）—— 桩默认开启（openId=code，即接入前的既有行为），
+ * 配上 {@code shop.wx.stub=false} + appid/secret 后换回真 openid 与 unionid。
+ * Apple 的 identityToken 校验仍未接，当前按「principal 即稳定标识」建户。
+ * {@code getPhoneNumber} 的手机号凭证等小程序端上报流程建好后补第三条。
  */
 @Service
 public class AuthServiceImpl implements AuthService {
@@ -73,11 +72,13 @@ public class AuthServiceImpl implements AuthService {
 
     private final OtpSendGuard sendGuard;
     private final SmsPort smsPort;
+    private final ai.neargo.shop.spi.user.WxAuthPort wxAuthPort;
 
     public AuthServiceImpl(UserMapper userMapper, IdentityMapper identityMapper,
                            TokenStore tokenStore, OtpStore otpStore,
                            OtpSendGuard sendGuard,
                            SmsPort smsPort,
+                           ai.neargo.shop.spi.user.WxAuthPort wxAuthPort,
                            @org.springframework.beans.factory.annotation.Value(
                                    "${shop.auth.otp.fixed:}") String fixedOtp) {
         this.userMapper = userMapper;
@@ -86,6 +87,7 @@ public class AuthServiceImpl implements AuthService {
         this.otpStore = otpStore;
         this.sendGuard = sendGuard;
         this.smsPort = smsPort;
+        this.wxAuthPort = wxAuthPort;
         this.fixedOtp = fixedOtp;
         if (fixedOtp != null && !fixedOtp.isBlank()) {
             log.warn("[DANGEROUS] shop.auth.otp.fixed 已开启（{}）—— "
@@ -152,14 +154,30 @@ public class AuthServiceImpl implements AuthService {
      */
     private List<Credential> resolveCredentials(LoginCommand cmd) {
         return switch (cmd.grantType() == null ? "" : cmd.grantType()) {
-            case GRANT_WECHAT_MP ->
+            case GRANT_WECHAT_MP -> {
                 /*
-                 * TODO(S4) 接 code2Session：cmd.principal() 是 wx.login 的 code，
-                 * 换回 openid 与 unionid；再配合 getPhoneNumber 拿到手机号。
-                 * 届时这里返回三条凭证，一次授权就完成识别——这正是小程序侧被推荐为
-                 * 「最优路径」的原因（安全整改方案 §6.5）。
+                 * code2Session 走 WxAuthPort（S4，安全整改方案 §6.5）：
+                 * 桩实现返回 openId = code（接入前的既有行为），真实通道换回真 openid 与
+                 * unionid。剩下的第三条凭证（getPhoneNumber 的手机号）等小程序端上报，
+                 * 走 GRANT_PHONE_OTP 之外的新授权类型时再加。
                  */
-                    List.of(new Credential(IdentityType.WX_OPENID_MP, cmd.principal(), "MP"));
+                ai.neargo.shop.spi.user.WxAuthPort.WxSession session;
+                try {
+                    session = wxAuthPort.codeToSession(cmd.principal());
+                } catch (ai.neargo.shop.spi.user.WxAuthPort.WxAuthException e) {
+                    // code 无效/已用过是端上重复提交的形状，给 400 而不是 500 ——
+                    // 500 会让端上重试同一个 code，而它重试一万次也是无效
+                    log.warn("[auth] code2Session 失败: {}", e.getMessage());
+                    throw BizException.of(ErrorCode.BAD_REQUEST);
+                }
+                List<Credential> creds = new ArrayList<>();
+                if (session.unionId() != null) {
+                    // unionid 排前面：它跨应用稳定，识别强度高于按应用隔离的 openid
+                    creds.add(new Credential(IdentityType.WX_UNIONID, session.unionId(), "MP"));
+                }
+                creds.add(new Credential(IdentityType.WX_OPENID_MP, session.openId(), "MP"));
+                yield creds;
+            }
             case GRANT_PHONE_OTP -> {
                 verifyOtp(cmd.principal(), cmd.credential());
                 yield List.of(new Credential(IdentityType.PHONE, cmd.principal(), null));

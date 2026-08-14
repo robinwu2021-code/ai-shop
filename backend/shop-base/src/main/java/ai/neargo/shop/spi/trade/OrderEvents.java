@@ -77,6 +77,80 @@ public final class OrderEvents {
     }
 
     /**
+     * 子订单支付成功（按商家粒度）。消费方：message（B 端「新订单」提醒，B-N-1）。
+     *
+     * <p>与 {@link OrderPaid}（主单粒度）并存而不是取代：结算/履约要的是主单事实，
+     * 而商家通知天然是子单粒度 —— 跨商家合单支付时，每家只该被自己的那单吵到。
+     */
+    public record SubOrderPaid(String subOrderNo, String orderNo, String entityNo,
+                               String storeNo, String userNo, long payAmount)
+            implements DomainEvent {
+        @Override
+        public String aggregateType() {
+            return AGG_SUB_ORDER;
+        }
+
+        @Override
+        public String aggregateId() {
+            return subOrderNo;
+        }
+
+        @Override
+        public String eventType() {
+            return "SUB_ORDER_PAID";
+        }
+    }
+
+    /**
+     * 售后申请提交。消费方：message（B 端提醒，B-N-2）。
+     * <b>发布时机在申请落库之后、任何审核动作之前</b> —— 商家越早看到越可能协商解决，
+     * 拖到平台介入时双方都已经在气头上。
+     */
+    public record AfterSaleApplied(String afterSaleNo, String subOrderNo, String entityNo,
+                                   String userNo, String type, long refundMinor)
+            implements DomainEvent {
+        @Override
+        public String aggregateType() {
+            return "AFTER_SALE";
+        }
+
+        @Override
+        public String aggregateId() {
+            return afterSaleNo;
+        }
+
+        @Override
+        public String eventType() {
+            return "AFTER_SALE_APPLIED";
+        }
+    }
+
+    /**
+     * 到货：自提点把一批子订单标记为「可来取货」。消费方：message（到货通知，C-FF-02）。
+     *
+     * <p><b>按 userNo 聚合发布</b>，不是一个子订单一个事件：一次到货登记通常是一车货，
+     * 同一个买家在这批里有三单的话，逐单发事件会让他收到三条「到货了」——
+     * 到货通知是全链路最重要的一条触达，恰恰最不能被自己刷成噪音。
+     */
+    public record SubOrdersArrived(String userNo, String pickupNo, List<String> subOrderNos)
+            implements DomainEvent {
+        @Override
+        public String aggregateType() {
+            return AGG_SUB_ORDER;
+        }
+
+        @Override
+        public String aggregateId() {
+            return subOrderNos == null || subOrderNos.isEmpty() ? "" : subOrderNos.getFirst();
+        }
+
+        @Override
+        public String eventType() {
+            return "ORDER_ARRIVED";
+        }
+    }
+
+    /**
      * 售后退款完成。消费方：settle（账务冲销）、product（库存回补）、user（商家评分）。
      * <b>发布时机在退款成功之后</b> —— 提前发的话，下游会按「已退款」处理一笔还没退成的钱。
      */

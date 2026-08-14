@@ -273,7 +273,19 @@ public enum ErrorCode {
     /** 下面还挂着商品或未归档的子类目 —— 直接归档会让那些商品挂在一个不存在的类目上。 */
     CATEGORY_IN_USE(80002, "err.category.in_use"),
     /** 父类目已归档，恢复它会造出一个挂在已删父节点下的孤儿。 */
-    CATEGORY_PARENT_ARCHIVED(80003, "err.category.parent_archived");
+    CATEGORY_PARENT_ARCHIVED(80003, "err.category.parent_archived"),
+
+    /*
+     * 触达通道的模拟发送（P-14.1 / TDD-运营端触达中心 §5）。
+     *
+     * <p>**不复用 BAD_REQUEST**：运营看到「请求参数有误」会去改输入框里的 userNo，
+     * 而这两种情况下 userNo 是对的 —— 问题在那个用户的状态上，且各自的下一步动作不同：
+     * 一个要换测试账号，一个要让那个人先装 App 登录一次。
+     */
+    /** 该用户没有可用的微信订阅额度，测试会白发（发出去也会被微信以 43101 拒） */
+    NOTIFY_WX_QUOTA_EMPTY(80101, "err.notify.wx_quota_empty"),
+    /** 该用户没有绑定 App 设备：没装、没登录过 App，或已登出解绑 */
+    NOTIFY_NO_DEVICE(80102, "err.notify.no_device");
 
     private final int code;
     private final String msgKey;

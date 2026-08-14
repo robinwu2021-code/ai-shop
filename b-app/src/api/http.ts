@@ -52,6 +52,7 @@ import type {
   MerchantPointAccount,
   MerchantPointsRecord,
   MasterData,
+  Message,
   MerchantStaff,
   StaffLog,
   MerchantRole,
@@ -276,4 +277,16 @@ export const httpApi: MerchantApi = {
     http.get<MerchantPointsRecord[]>(E.mPointsRecords.path, { ...q } satisfies PointsRecordQuery),
   mPointsToggle: (req) =>
     http.post<MerchantPointAccount>(E.mPointsToggle.path, { ...req } satisfies TogglePointsReq),
+
+  // ---- 消息
+  mMessageList: () => http.get<Message[]>(E.mMessageList.path),
+  mMessageUnread: () => http.get<number>(E.mMessageUnread.path),
+  mMessageRead: (messageNo) => http.post<Message[]>(buildPath(E.mMessageRead.path, { messageNo })),
+  mMessageReadAll: () => http.post<Message[]>(E.mMessageReadAll.path),
+
+  // ---- 推送设备
+  mRegisterPushToken: (platform, clientId) =>
+    http.post<void>(E.mRegisterPushToken.path, { platform, clientId }),
+  mUnregisterPushToken: (clientId) =>
+    http.post<void>(E.mUnregisterPushToken.path, { clientId }),
 };

@@ -90,7 +90,12 @@ const OVERLAY: Record<string, Record<string, string>> = {
   评分算法参数: { en: "Rating parameters" },
 
   消息与客服: { en: "Messaging & support" },
-  消息模板与推送: { en: "Templates & push" },
+  通道总览: { en: "Channel overview" },
+  短信: { en: "SMS" },
+  邮件: { en: "Email" },
+  微信订阅消息: { en: "WeChat subscribe" },
+  "App 推送": { en: "App push" },
+  站内信模板与推送任务: { en: "In-app templates & push tasks" },
   发送记录: { en: "Send log" },
   客服工单与代客留痕: { en: "Support tickets" },
   帮助中心维护: { en: "Help center" },

@@ -10,10 +10,12 @@
 // 带平台签名的正规短信，比垃圾短信更能骗到人。
 // 光靠权限码挡不住这件事：泄漏的是 token，而验证码要人眼。
 import { useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import { notify } from "@/lib/notify";
 import { fmtTime } from "@/lib/utils";
+import { usePaging } from "@/lib/use-paging";
+import { notifyFailReason } from "@/lib/notify-reason";
+import { bizLabel, channelLabel } from "@/lib/notify-label";
 import type { NotifyChannel, NotifyLog } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -22,26 +24,50 @@ import { DataTable, type Column } from "@/components/ui/data-table";
 import { Input, Select } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Notice } from "@/components/ui/notice";
+import { Pagination } from "@/components/ui/misc";
+import { TestSendDrawer } from "./test-send-drawer";
 import type { MessageCopy } from "./copy";
 
 export function NotifyLogTab({ c, canWrite }: { c: MessageCopy; canWrite: boolean }) {
   const qc = useQueryClient();
   const [channel, setChannel] = useState("");
   const [status, setStatus] = useState("");
+  const [biz, setBiz] = useState("");
+  const [testOpen, setTestOpen] = useState(false);
+  // D1：此前完全没有分页 —— 组件不传 page/size，后端默认给 20 条，
+  // 于是第 21 条之后的记录在界面上等于不存在
+  const { page, setPage, size, setSize } = usePaging();
 
   const logs = useQuery({
-    queryKey: ["notify-logs", channel, status],
-    queryFn: () => api.listNotifyLogs({ channel: channel || undefined, status: status || undefined }),
+    queryKey: ["notify-logs", channel, status, biz, page, size],
+    queryFn: () => api.listNotifyLogs({
+      channel: channel || undefined,
+      status: status || undefined,
+      bizType: biz || undefined,
+      page, size,
+    }),
   });
 
-  const bizLabel = (t: string) =>
-    ({ OTP: c.nlBizOTP, OPS_INIT_PASSWORD: c.nlBizInitPwd,
-       OPS_RESET_PASSWORD: c.nlBizResetPwd, TEST: c.nlBizTest } as Record<string, string>)[t] ?? t;
+  // 映射规则在 lib/notify-label.ts（纯函数，有测试守着 —— 本仓只测 lib，
+  // 内联在这里的话「WXSUB 被显示成短信」那类缺陷没有任何测试能拦）
+  const chLabels = { sms: c.nlSms, mail: c.nlMail, wxsub: c.nlWxsub, push: c.nlPush };
+  const bizLabels = {
+    otp: c.nlBizOTP, initPwd: c.nlBizInitPwd, resetPwd: c.nlBizResetPwd,
+    test: c.nlBizTest, trade: c.nlBizTrade,
+  };
+
+  /** 失败原文 → 可读归因文案。规则在 lib/notify-reason.ts（那里的中文是匹配模式，不是文案）。 */
+  const reasonOf = (error?: string | null): string | null => {
+    const r = notifyFailReason(error);
+    if (!r) return null;
+    return { CRED: c.nlReasonCred, QUOTA: c.nlReasonQuota,
+             TARGET: c.nlReasonTarget, NETWORK: c.nlReasonNetwork }[r];
+  };
 
   const cols: Column<NotifyLog>[] = [
     { header: c.nlColTime, cell: (r: NotifyLog) => fmtTime(r.createdAt) },
-    { header: c.nlColChannel, cell: (r: NotifyLog) => (r.channel === "MAIL" ? c.nlMail : c.nlSms) },
-    { header: c.nlColBiz, cell: (r: NotifyLog) => bizLabel(r.bizType) },
+    { header: c.nlColChannel, cell: (r: NotifyLog) => channelLabel(r.channel, chLabels) },
+    { header: c.nlColBiz, cell: (r: NotifyLog) => bizLabel(r.bizType, bizLabels) },
     { header: c.nlColTarget, cell: (r: NotifyLog) => r.target },
     { header: c.nlColTemplate, cell: (r: NotifyLog) => r.templateCode ?? "-" },
     {
@@ -50,9 +76,13 @@ export function NotifyLogTab({ c, canWrite }: { c: MessageCopy; canWrite: boolea
         r.status === "SENT"
           ? <Badge tone="success">{c.nlSent}</Badge>
           // 失败原因**直接铺在行里**，不折进详情：这一列是这张表存在的理由，
-          // 藏一层就等于让人多点一次才能看到最要紧的东西
+          // 藏一层就等于让人多点一次才能看到最要紧的东西。
+          // 归因在上、原文在下：归因回答「该找谁」，原文是排查的唯一凭据，两者都不能省
           : <div className="space-y-1">
               <Badge tone="danger">{c.nlFailed}</Badge>
+              {reasonOf(r.error) && (
+                <div className="txt-caption font-medium text-foreground">{reasonOf(r.error)}</div>
+              )}
               {r.error && <div className="txt-caption text-muted-foreground">{r.error}</div>}
             </div>,
     },
@@ -68,19 +98,35 @@ export function NotifyLogTab({ c, canWrite }: { c: MessageCopy; canWrite: boolea
 
   return (
     <div className="space-y-4">
-      <Notice tone="info">{c.nlNotice}</Notice>
+      {/* U4：两条说明合成一条 —— 站内信那句降为次要文字，不再单占一个 Notice */}
+      <Notice tone="info">
+        {c.nlNotice}
+        <div className="mt-2 txt-caption text-muted-foreground">{c.nlInappNotice}</div>
+      </Notice>
 
-      {canWrite && <TestSendCard c={c} onSent={() => qc.invalidateQueries({ queryKey: ["notify-logs"] })} />}
+      <div className="flex justify-end gap-2">
+        <Button variant="ghost" size="sm" onClick={() => void logs.refetch()}>{c.chRefresh}</Button>
+        {canWrite && <Button size="sm" onClick={() => setTestOpen(true)}>{c.tsOpen}</Button>}
+      </div>
 
       <Card>
         <CardHeader className="flex-row items-center gap-3">
           <CardTitle className="me-auto">{c.nlColTime}</CardTitle>
-          <Select value={channel} onChange={(e) => setChannel(e.target.value)} className="w-32">
+          <Select value={channel} onChange={(e) => { setChannel(e.target.value); setPage(1); }} className="w-36">
             <option value="">{c.nlAll}</option>
             <option value="SMS">{c.nlSms}</option>
             <option value="MAIL">{c.nlMail}</option>
+            <option value="WXSUB">{c.nlWxsub}</option>
+            <option value="PUSH">{c.nlPush}</option>
           </Select>
-          <Select value={status} onChange={(e) => setStatus(e.target.value)} className="w-32">
+          {/* 用途筛选：同一条通道上既有验证码也有交易触达，只按通道筛不够 */}
+          <Select value={biz} onChange={(e) => { setBiz(e.target.value); setPage(1); }} className="w-36">
+            <option value="">{c.nlColBizAll}</option>
+            <option value="OTP">{c.nlBizOTP}</option>
+            <option value="TRADE_NOTIFY">{c.nlBizTrade}</option>
+            <option value="TEST">{c.nlBizTest}</option>
+          </Select>
+          <Select value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }} className="w-32">
             <option value="">{c.nlAll}</option>
             <option value="SENT">{c.nlSent}</option>
             <option value="FAILED">{c.nlFailed}</option>
@@ -96,81 +142,14 @@ export function NotifyLogTab({ c, canWrite }: { c: MessageCopy; canWrite: boolea
           />
         </CardContent>
       </Card>
+
+      <Pagination page={page} size={size} onSize={setSize}
+                  total={logs.data?.total ?? 0} onPage={setPage} />
+
+      {/* 记录页的模拟发送默认走短信；要试别的通道去对应通道页 —— 
+          那里同时能看到该通道的凭据与今日量，排查在一个页面里完成 */}
+      <TestSendDrawer c={c} channel="SMS" open={testOpen} onOpenChange={setTestOpen}
+                      onSent={() => void qc.invalidateQueries({ queryKey: ["notify-logs"] })} />
     </div>
-  );
-}
-
-/** 测试发送。三道闸里的图形验证码这一道在这里，另外两道在后端。 */
-function TestSendCard({ c, onSent }: { c: MessageCopy; onSent: () => void }) {
-  const [channel, setChannel] = useState<NotifyChannel>("SMS");
-  const [target, setTarget] = useState("");
-  const [code, setCode] = useState("");
-
-  const captcha = useQuery({ queryKey: ["captcha"], queryFn: () => api.getCaptcha() });
-  const refresh = () => { setCode(""); captcha.refetch(); };
-
-  const send = useMutation({
-    mutationFn: () => api.testSendNotify({
-      channel, target: target.trim(),
-      captchaId: captcha.data?.captchaId ?? "", captchaCode: code.trim(),
-    }),
-    onSuccess: () => {
-      notify.success(c.nlTestOk);
-      setTarget("");
-      // **无论成败都换一张**：验证码在服务端是一次性的，用过就没了。
-      // 不换的话下一次提交必然报「验证码错误」，而用户看到的是自己刚输对过的那张图
-      refresh();
-      onSent();
-    },
-    onError: () => refresh(),
-  });
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{c.nlTestTitle}</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <p className="txt-body text-muted-foreground">{c.nlTestDesc}</p>
-        <Notice tone="warning">{c.nlTestWarn}</Notice>
-
-        <div className="grid gap-4 sm:grid-cols-3">
-          <div className="space-y-1.5">
-            <Label>{c.nlTestChannel}</Label>
-            <Select value={channel} onChange={(e) => setChannel(e.target.value as NotifyChannel)}>
-              <option value="SMS">{c.nlSms}</option>
-              <option value="MAIL">{c.nlMail}</option>
-            </Select>
-          </div>
-          <div className="space-y-1.5">
-            <Label>{c.nlTestTarget}</Label>
-            <Input value={target} onChange={(e) => setTarget(e.target.value)}
-                   placeholder={c.nlTestTargetPh} />
-          </div>
-          <div className="space-y-1.5">
-            <Label>{c.nlTestCaptcha}</Label>
-            <div className="flex items-center gap-2">
-              <Input value={code} onChange={(e) => setCode(e.target.value)}
-                     placeholder={c.nlTestCaptchaPh} className="w-28" />
-              {captcha.data && (
-                <button type="button" onClick={refresh} title={c.nlTestRefresh}
-                        className="rounded-field border border-card-border">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={`data:image/png;base64,${captcha.data.imageBase64}`}
-                       alt={c.nlTestCaptcha} className="h-9" />
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-
-        <Button
-          onClick={() => send.mutate()}
-          disabled={!target.trim() || !code.trim() || send.isPending}
-        >
-          {c.nlTestSend}
-        </Button>
-      </CardContent>
-    </Card>
   );
 }
