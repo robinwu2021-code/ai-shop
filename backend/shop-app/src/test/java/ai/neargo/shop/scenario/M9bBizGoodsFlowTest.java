@@ -361,15 +361,7 @@ class M9bBizGoodsFlowTest {
 
     /** 员工登录：走商家账号那条路，不建 C 端账号 */
     private String staffLogin(String phone) throws Exception {
-        mvc().perform(post("/mp/user/otp/send").contentType(MediaType.APPLICATION_JSON)
-                .content("{\"phone\":\"" + phone + "\"}"));
-        String code = otpStore.peek(phone).orElseThrow();
-        String body = mvc().perform(post("/biz/auth/staff-login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"phone\":\"" + phone + "\",\"code\":\"" + code + "\"}"))
-                .andExpect(jsonPath("$.code").value(0))
-                .andReturn().getResponse().getContentAsString();
-        return json.readTree(body).get("data").get("token").asString();
+        return TestLogin.merchantStaff(mvc(), json, otpStore, phone);
     }
 
     @Test

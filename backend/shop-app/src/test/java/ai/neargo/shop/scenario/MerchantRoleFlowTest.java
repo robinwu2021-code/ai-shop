@@ -294,15 +294,7 @@ class MerchantRoleFlowTest {
     }
 
     private String staffLogin(String phone) throws Exception {
-        mvc().perform(post("/biz/auth/otp/send").contentType(MediaType.APPLICATION_JSON)
-                .content("{\"phone\":\"" + phone + "\"}"));
-        String code = otpStore.peek(phone).orElseThrow();
-        String body = mvc().perform(post("/biz/auth/staff-login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"phone\":\"" + phone + "\",\"code\":\"" + code + "\"}"))
-                .andExpect(jsonPath("$.code").value(0))
-                .andReturn().getResponse().getContentAsString();
-        return json.readTree(body).get("data").get("token").asString();
+        return TestLogin.merchantStaff(mvc(), json, otpStore, phone);
     }
 
     private String merchant(String phone, String name) throws Exception {

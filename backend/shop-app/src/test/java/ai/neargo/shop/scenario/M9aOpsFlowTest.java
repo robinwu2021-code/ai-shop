@@ -834,17 +834,7 @@ class M9aOpsFlowTest {
         staff.setStatus(ai.neargo.shop.merchant.entity.MchAccount.ACTIVE);
         merchantStaffMapper.insert(staff);
 
-        mvc().perform(post("/mp/user/otp/send").contentType(MediaType.APPLICATION_JSON)
-                .content("{\"phone\":\"" + staffPhone + "\"}"));
-        String code = otpStore.peek(staffPhone).orElseThrow();
-
-        String body = mvc().perform(post("/biz/auth/staff-login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"phone\":\"" + staffPhone + "\",\"code\":\"" + code + "\"}"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(0))
-                .andReturn().getResponse().getContentAsString();
-        String token = json.readTree(body).get("data").get("token").asString();
+        String token = TestLogin.merchantStaff(mvc(), json, otpStore, staffPhone);
 
         // ★ 拿到的作用域必须是这家店 —— 只认 user_no 的解析器会让这里作用域为空、全部 403
         mvc().perform(get("/biz/context").header("Authorization", "Bearer " + token))
