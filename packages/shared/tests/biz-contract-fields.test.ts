@@ -87,17 +87,28 @@ const JAVA = javaFiles();
  * 形状完全不同。不看来源就按第一个匹配比，会拿运营侧的 VO 去比商家侧的契约 ——
  * 报出来的缺失字段是假的，而真正缺的那些反而被这条假消息盖住。
  */
-function backendReturns(): Record<string, { ret: string; file: string }> {
-  const out: Record<string, { ret: string; file: string }> = {};
+function backendReturns(): Record<string, { ret: string; file: string; pkg?: string }> {
+  const out: Record<string, { ret: string; file: string; pkg?: string }> = {};
   for (const f of JAVA) {
     for (const m of read(f).matchAll(
       /@(?:Get|Post)Mapping\((?:value\s*=\s*)?"([^"]+)"\)[\s\S]{0,400}?public\s+([\w.<>?, ]+?)\s+\w+\s*\(/g,
     )) {
-      const ret = m[2]!
+      const inner = m[2]!
         .replace(/^(java\.util\.)?(List|PageData|Page)<(.*)>$/, "$3")
-        .replace(/^[\w.]*\./, "")
         .trim();
-      out[m[1]!] = { ret, file: f };
+      /*
+       * **写成全限定名时，包名不能丢**。`List<ai.neargo.shop.merchant.dto.RoleVO>`
+       * 剥成 `RoleVO` 之后，就和平台侧的 `PermConfigService.RoleVO` 撞了名 ——
+       * 后者是运营角色（roleCode/endCode/pointCount），拿它去比商家侧的契约，
+       * 会报出「perms/permLabels/usedBy 都没有」这种整片的假缺失。
+       * 而假消息比没消息更糟：它把真正缺的那几条盖在噪音底下。
+       */
+      const dot = inner.lastIndexOf(".");
+      out[m[1]!] = {
+        ret: dot < 0 ? inner : inner.slice(dot + 1),
+        pkg: dot < 0 ? undefined : inner.slice(0, dot),
+        file: f,
+      };
     }
   }
   return out;
@@ -128,9 +139,18 @@ function nearness(a: string, b: string): number {
  * <p>控制器里那行 `import ai.neargo.shop.merchant.dto.StaffVO;` 是最硬的线索，
  * 因为它就是编译器用的那条。import 找不到（同包、嵌套类）才退回按路径就近。
  */
-function javaComponents(simpleName: string, from: string): string[] | null {
-  const candidates = JAVA.filter((f) => read(f).includes(`public record ${simpleName}(`));
+function javaComponents(simpleName: string, from: string, pkg?: string): string[] | null {
+  /*
+   * **不要求 `public`**：接口成员隐式 public，所以写在 interface 里的嵌套 record
+   * 源码上就是 `record InvoiceRequestVO(`。要求 `public record` 的那版把这一类
+   * 整个跳过了 —— 386 个端点里有 77 个（20%）落在这个盲区，`比不了` 与 `比过了`
+   * 在结果上长得一模一样，都是一片绿。
+   */
+  const candidates = JAVA.filter((f) => read(f).includes(`record ${simpleName}(`));
   if (!candidates.length) return null;
+
+  // 返回类型直接写了全限定名时，它比 import 更硬 —— 那就是编译器认的那个
+  const byPkg = pkg && candidates.find((c) => c.includes(pkg.replace(/\./g, "/")));
 
   const imported = read(from).match(
     new RegExp(`^import\\s+([\\w.]+)\\.${simpleName};`, "m"),
@@ -138,10 +158,10 @@ function javaComponents(simpleName: string, from: string): string[] | null {
   const byImport = imported
     && candidates.find((c) => c.includes(imported.replace(/\./g, "/")));
 
-  const f = byImport ?? candidates.reduce((best, c) =>
+  const f = byPkg ?? byImport ?? candidates.reduce((best, c) =>
     nearness(c, from) > nearness(best, from) ? c : best);
   const src = read(f);
-  const i = src.indexOf(`public record ${simpleName}(`);
+  const i = src.indexOf(`record ${simpleName}(`);
   {
     let depth = 0;
     let j = src.indexOf("(", i);
@@ -190,8 +210,8 @@ describe.each(APPS)("$app 契约字段（$prefix）", ({ app, prefix }) => {
       if (!url.startsWith(prefix)) continue;
       const hit = rets[url];
       if (!hit) continue; // 后端路径没解析到：另一条守卫的事
-      const { ret, file } = hit;
-      const comps = javaComponents(ret, file);
+      const { ret, file, pkg } = hit;
+      const comps = javaComponents(ret, file, pkg);
       if (!comps) continue; // 不是 record（Map/void/未知）——比不了就别假装比过
 
       const missing = tsFields(path)
@@ -206,23 +226,38 @@ describe.each(APPS)("$app 契约字段（$prefix）", ({ app, prefix }) => {
     }
 
     /*
-     * **存量欠账已经清零**（2026-08-13）。
+     * 存量欠账。**按端分开记**——合成一个数的话，一端修好了另一端就白得一个名额。
      *
-     * 修好盲区那一刻是 21 处（/biz 7、/mp 14）—— 数字那么大不是因为一夜之间坏了这么多，
-     * 而是守卫此前<b>根本没在比</b>：它只按文件名找 record，而这个仓库的 VO 大多嵌在
-     * `XxxVOs.java` 里，于是求团、商家团、优惠券、门店主页整块整块地跳过。
-     * 其中 4 条还是同名 record 撞出来的假消息（拿运营的 StaffVO 比商家的契约）。
+     * 2026-08-13 清零过一次：修好「只按文件名找 record」那个盲区时是 21 处
+     * （/biz 7、/mp 14），数字那么大不是因为一夜之间坏了这么多，而是守卫此前
+     * <b>根本没在比</b> —— 这个仓库的 VO 大多嵌在 `XxxVOs.java` 里，于是求团、
+     * 商家团、优惠券、门店主页整块整块地跳过。
      *
-     * 这个数只许降不许升：**新增一处立刻变红**。留着它是为了让「又欠了一笔」
-     * 这件事必须被显式承认 —— 改成 0 之后，任何一处不一致都会直接失败。
+     * 2026-08-14 又修一层盲区（要求 `public record`，漏掉 interface 里的隐式
+     * public 嵌套 record，386 个端点里 77 个受影响），翻出 c-app 这一条：
+     *
+     *   payOrder 契约声明 `Promise<Order>`，而后端返回的是
+     *   `PayResult(orderNo, payChannel, payParams)` —— 支付参数，不是订单。
+     *
+     * 今天不炸，因为 `pages/pay/index.vue` 拿到返回值就扔了（注释写着「以回查为准」）。
+     * 但那一行的上面还写着「真实链路：后端下单拿支付参数 → 唤起」——
+     * <b>真接微信支付的人会发现 `res.payParams` 在类型里不存在</b>，
+     * 而最省事的解法（`as any`）会把这个错永久固化。
+     *
+     * 没有在这次一并修：`c-app/src/api/contract.ts` 此刻有并行会话未提交的推送契约，
+     * 改它就没法只提交自己那部分。修法是加一个 `PayParams` 类型（对应 PayResult）
+     * 并同步 mock，然后把这里改回 0。
+     *
+     * 这个数只许降不许升：**新增一处立刻变红**。
      */
-    const PENDING = 0;
-    if (offenders.length && offenders.length <= PENDING) {
+    const PENDING: Record<string, number> = { "b-app": 0, "c-app": 1 };
+    const budget = PENDING[app] ?? 0;
+    if (offenders.length && offenders.length <= budget) {
       expect(
         offenders.length,
-        `${app} 的存量欠账应当只减不增（当前 ${offenders.length}，记录值 ${PENDING}）——\n`
+        `${app} 的存量欠账应当只减不增（当前 ${offenders.length}，记录值 ${budget}）——\n`
           + "  修掉一处就把 PENDING 减一。\n  " + offenders.join("\n  "),
-      ).toBe(PENDING);
+      ).toBe(budget);
       return;
     }
 
