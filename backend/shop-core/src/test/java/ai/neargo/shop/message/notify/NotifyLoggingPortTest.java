@@ -33,7 +33,8 @@ class NotifyLoggingPortTest {
     private static final class CapturingWriter extends NotifyLogWriter {
 
         record Row(String channel, String bizType, String target, String templateCode,
-                   String status, String error, String providerMsgId, String operatorNo) {
+                   String templateNo, String status, String error, String providerMsgId,
+                   String operatorNo) {
         }
 
         final List<Row> rows = new ArrayList<>();
@@ -44,9 +45,10 @@ class NotifyLoggingPortTest {
 
         @Override
         public void write(String channel, String bizType, String targetPlain, String templateCode,
-                          String status, String error, String providerMsgId, String operatorNo) {
-            rows.add(new Row(channel, bizType, targetPlain, templateCode, status, error,
-                    providerMsgId, operatorNo));
+                          String templateNo, String status, String error, String providerMsgId,
+                          String operatorNo) {
+            rows.add(new Row(channel, bizType, targetPlain, templateCode, templateNo, status,
+                    error, providerMsgId, operatorNo));
         }
     }
 

@@ -44,15 +44,27 @@ public class NotifyLoggingMailPort implements MailPort {
     @Override
     public SendResult send(String to, String subject, String body,
                            String bizType, String operatorNo) {
+        return send(to, subject, body, bizType, operatorNo, null);
+    }
+
+    /**
+     * 带业务模板号的重载。**只给 message 域内部用**（MailTemplatePortImpl 走模板发信时）——
+     * 不放进 {@code MailPort} SPI：别的域发信时并不知道模板号，
+     * 逼它们传一个 null 只是把噪音推给调用方。
+     *
+     * @param templateNo 平台业务模板号；自由文本发送传 null
+     */
+    public SendResult send(String to, String subject, String body,
+                           String bizType, String operatorNo, String templateNo) {
         try {
             SendResult r = delegate.send(to, subject, body);
-            // 邮件没有模板号，把**主题**记进 templateCode 列 —— 列表页要能一眼看出这是哪类邮件
+            // 邮件没有通道方模板号，把**主题**记进 templateCode 列 —— 列表页要能一眼看出这是哪类邮件
             writer.write(SysNotifyLog.MAIL, bizType, to, subject,
-                    SysNotifyLog.SENT, null, r.providerMsgId(), operatorNo);
+                    templateNo, SysNotifyLog.SENT, null, r.providerMsgId(), operatorNo);
             return r;
         } catch (RuntimeException e) {
             writer.write(SysNotifyLog.MAIL, bizType, to, subject,
-                    SysNotifyLog.FAILED, e.getMessage(), null, operatorNo);
+                    templateNo, SysNotifyLog.FAILED, e.getMessage(), null, operatorNo);
             throw e;
         }
     }

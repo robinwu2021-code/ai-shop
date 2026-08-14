@@ -37,8 +37,14 @@ public class NotifyLogWriter {
     }
 
     /** 目标地址由调用方传**明文**，这里负责掩码——省得每个调用点各写一遍、各写各的口径。 */
+    /**
+     * @param templateCode 通道方的码（阿里云 SMS_xxx / 邮件主题）—— 排查拿它去通道后台
+     * @param templateNo   我们自己的业务模板号 —— 盘点「这条模板发了多少次」靠它。
+     *                     自由文本发送传 {@code null}：留空是「不知道」，编一个值是「记错了」
+     */
     public void write(String channel, String bizType, String targetPlain, String templateCode,
-                      String status, String error, String providerMsgId, String operatorNo) {
+                      String templateNo, String status, String error, String providerMsgId,
+                      String operatorNo) {
         try {
             SysNotifyLog row = new SysNotifyLog();
             row.setNotifyNo(BizKey.next(BizKey.NOTIFY_LOG));
@@ -47,6 +53,7 @@ public class NotifyLogWriter {
             row.setTarget(SysNotifyLog.MAIL.equals(channel)
                     ? Masks.email(targetPlain) : Masks.phone(targetPlain));
             row.setTemplateCode(truncate(templateCode, 64));
+            row.setTemplateNo(truncate(templateNo, 64));
             row.setStatus(status);
             row.setError(truncate(error, 512));
             row.setProviderMsgId(truncate(providerMsgId, 64));
@@ -64,8 +71,10 @@ public class NotifyLogWriter {
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void writeInNewTx(String channel, String bizType, String targetPlain, String templateCode,
-                             String status, String error, String providerMsgId, String operatorNo) {
-        write(channel, bizType, targetPlain, templateCode, status, error, providerMsgId, operatorNo);
+                             String templateNo, String status, String error, String providerMsgId,
+                             String operatorNo) {
+        write(channel, bizType, targetPlain, templateCode, templateNo, status, error,
+                providerMsgId, operatorNo);
     }
 
     private static String truncate(String s, int max) {

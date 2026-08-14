@@ -16,6 +16,7 @@ import ai.neargo.shop.message.dto.MessageVOs.TicketVO;
 import ai.neargo.shop.message.entity.MsgMessage;
 import ai.neargo.shop.message.entity.MsgSubscribe;
 import ai.neargo.shop.message.entity.MsgTemplate;
+import ai.neargo.shop.message.entity.SysNotifyLog;
 import ai.neargo.shop.message.entity.MsgTicket;
 import ai.neargo.shop.message.mapper.MessageMappers.MessageMapper;
 import ai.neargo.shop.message.mapper.MessageMappers.SubscribeMapper;
@@ -47,18 +48,22 @@ public class MessageServiceImpl implements MessageService {
     private final ai.neargo.shop.spi.platform.SettingPort settingPort;
     private final ai.neargo.shop.spi.platform.OpsStaffPort opsStaffPort;
     private final SubscribeMapper subscribeMapper;
+    /** 外发模板的发送量从这张表数 —— 它们不写 msg_message */
+    private final ai.neargo.shop.message.mapper.MessageMappers.NotifyLogMapper notifyLogMapper;
 
     public MessageServiceImpl(MessageMapper messageMapper, TicketMapper ticketMapper,
                               SubscribeMapper subscribeMapper,
                               TemplateMapper templateMapper,
                               ai.neargo.shop.spi.platform.SettingPort settingPort,
-                              ai.neargo.shop.spi.platform.OpsStaffPort opsStaffPort) {
+                              ai.neargo.shop.spi.platform.OpsStaffPort opsStaffPort,
+                              ai.neargo.shop.message.mapper.MessageMappers.NotifyLogMapper notifyLogMapper) {
         this.templateMapper = templateMapper;
         this.settingPort = settingPort;
         this.opsStaffPort = opsStaffPort;
         this.messageMapper = messageMapper;
         this.ticketMapper = ticketMapper;
         this.subscribeMapper = subscribeMapper;
+        this.notifyLogMapper = notifyLogMapper;
     }
 
     @Override
@@ -386,11 +391,78 @@ public class MessageServiceImpl implements MessageService {
                         // 不下发 lang 的话，运营在列表上看到两条一模一样的
                         t.getLang(), t.getContent(), t.getProviderTemplateId(),
                         !Boolean.FALSE.equals(t.getEnabled()),
-                        // 近 30 天发送量按 msg_message 真算，不写死 —— 编一个数比留空更糟
-                        messageMapper.selectCount(Wrappers.<MsgMessage>lambdaQuery()
-                                .eq(MsgMessage::getTemplateNo, t.getTemplateNo())
-                                .ge(MsgMessage::getAt, since))))
+                        sentCountOf(t, since)))
                 .toList();
+    }
+
+    @Override
+    public ai.neargo.shop.common.PageData<ai.neargo.shop.message.dto.MessageVOs.InAppLogVO>
+            opsInAppMessages(String receiverType, String receiverNo,
+                             String from, String to, long page, long size) {
+        /*
+         * 与发送记录同一套口径（见 NotifyLogServiceImpl.list）：
+         * 「到 X 日」含当天，所以是次日零点的开区间；条件值先算好再传 ——
+         * MyBatis-Plus 的 ge(condition, col, value) 的 value 是提前求值的。
+         */
+        Long fromAt = dayStart(from);
+        Long toAt = dayEndExclusive(to);
+        var q = Wrappers.<MsgMessage>lambdaQuery()
+                .eq(receiverType != null && !receiverType.isBlank(),
+                        MsgMessage::getReceiverType, receiverType)
+                .eq(receiverNo != null && !receiverNo.isBlank(),
+                        MsgMessage::getReceiverNo, receiverNo)
+                .ge(fromAt != null, MsgMessage::getAt, fromAt)
+                .lt(toAt != null, MsgMessage::getAt, toAt)
+                .orderByDesc(MsgMessage::getId);
+        // 平台侧运维视图，没有数据域概念；走库分页，这张表会一直涨
+        return DataScopeContext.executeWithoutScope(() ->
+                ai.neargo.shop.common.PageData.of(
+                        messageMapper.selectPage(
+                                com.baomidou.mybatisplus.extension.plugins.pagination.Page
+                                        .of(page, size), q)
+                                .convert(m -> new ai.neargo.shop.message.dto.MessageVOs.InAppLogVO(
+                                        m.getMessageNo(), m.getReceiverType(), m.getReceiverNo(),
+                                        m.getMsgType(), m.getTitle(), m.getTemplateNo(),
+                                        Boolean.TRUE.equals(m.getIsRead()), m.getAt()))));
+    }
+
+    /** msg_message.at 存的是毫秒时间戳，不是 DATETIME —— 与 sys_notify_log 不同，别照抄 */
+    private Long dayStart(String day) {
+        return day == null || day.isBlank() ? null
+                : java.time.LocalDate.parse(day.trim()).atStartOfDay(
+                        java.time.ZoneId.systemDefault()).toInstant().toEpochMilli();
+    }
+
+    private Long dayEndExclusive(String day) {
+        return day == null || day.isBlank() ? null
+                : java.time.LocalDate.parse(day.trim()).plusDays(1).atStartOfDay(
+                        java.time.ZoneId.systemDefault()).toInstant().toEpochMilli();
+    }
+
+    /**
+     * 近 30 天发送量。**按通道取不同的真源** —— 这是这个数唯一能对的方式：
+     *
+     * <ul>
+     *   <li>站内信：它就是 {@code msg_message} 那张表</li>
+     *   <li>其余四条外发通道：它们**不写** {@code msg_message}，只写 {@code sys_notify_log}</li>
+     * </ul>
+     *
+     * <p>此前一律按 {@code msg_message} 数，于是外发模板<b>永远显示 0</b> ——
+     * 而 {@code TPL_SMS_OTP} 真发了十几次。运营拿这一列判断「哪条模板可以下线」，
+     * 一个恒为 0 的数会让他把还在用的模板停掉。
+     */
+    private long sentCountOf(MsgTemplate t, long since) {
+        if (MsgTemplate.CHANNEL_INAPP.equals(t.getChannel())) {
+            return messageMapper.selectCount(Wrappers.<MsgMessage>lambdaQuery()
+                    .eq(MsgMessage::getTemplateNo, t.getTemplateNo())
+                    .ge(MsgMessage::getAt, since));
+        }
+        java.time.LocalDateTime from = java.time.Instant.ofEpochMilli(since)
+                .atZone(java.time.ZoneId.systemDefault()).toLocalDateTime();
+        return DataScopeContext.executeWithoutScope(() ->
+                notifyLogMapper.selectCount(Wrappers.<SysNotifyLog>lambdaQuery()
+                        .eq(SysNotifyLog::getTemplateNo, t.getTemplateNo())
+                        .ge(SysNotifyLog::getCreatedAt, from)));
     }
 
     @Override

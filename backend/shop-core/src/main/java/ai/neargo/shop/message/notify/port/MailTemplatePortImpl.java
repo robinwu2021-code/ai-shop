@@ -44,7 +44,9 @@ public class MailTemplatePortImpl implements MailTemplatePort {
                      Map<String, String> params, String defaultContent,
                      String bizType, String operatorNo) {
         String content = contentOf(templateNo, lang, defaultContent);
-        mailPort.send(to, subject, render(content, params, defaultContent), bizType, operatorNo);
+        // 带上模板号：这一条是走业务模板发出去的，盘点「这条模板发了多少次」要认它
+        mailPort.send(to, subject, render(content, params, defaultContent),
+                bizType, operatorNo, templateNo);
     }
 
     /**

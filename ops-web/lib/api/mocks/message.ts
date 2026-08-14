@@ -110,6 +110,9 @@ export const messageMock: MessageApi = {
    * 而运营第一次见到它恰恰是失败的时候。
    */
   // mock 下也存一份：只回固定值的话，「改了保存后还是旧的」这类缺陷在本地看不出来
+  // 与真后端同形状：mock 下站内信只有模拟发送塞进去的那些
+  listInAppMessages: (q = {}) => wait(db.paginate(db.inAppLogs, q.page, q.size)),
+
   getDefaultLang: () => wait({ lang: db.defaultLang.value, options: ["zh-CN", "en", "ar"] }),
 
   saveDefaultLang: async (lang) => {

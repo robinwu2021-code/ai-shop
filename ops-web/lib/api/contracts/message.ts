@@ -1,5 +1,5 @@
 // 覆盖范围：消息触达（P-14.1）与客服（P-14.2）。
-import type { Captcha, FaqEntry, InboxMessage, MsgTemplate, NotifyChannel, NotifyChannelHealth, NotifyLog, NotifyQuota, Page, Ticket, WxTemplates } from "@/lib/types";
+import type { Captcha, FaqEntry, InAppLog, InboxMessage, MsgTemplate, NotifyChannel, NotifyChannelHealth, NotifyLog, NotifyQuota, Page, Ticket, WxTemplates } from "@/lib/types";
 import type { PageQ, TicketQ } from "../query";
 
 export interface MessageApi {
@@ -70,6 +70,14 @@ export interface MessageApi {
    * 知道收件人语言时一律用他自己的 —— 目前唯一用到它的是「管理员替别人建账号」。
    * `options` 由后端下发，端上不硬编码一份：加语言时两边会不同步。
    */
+  /**
+   * 站内信记录。**与 listNotifyLogs 分开**：外发答「发出去了吗」（有失败态），
+   * 站内信答「他读了吗」（入库即到达）——合成一列的话「已发送」会有两种意思。
+   */
+  listInAppMessages(q?: PageQ & {
+    receiverType?: string; receiverNo?: string; from?: string; to?: string;
+  }): Promise<Page<InAppLog>>;
+
   getDefaultLang(): Promise<{ lang: string; options: string[] }>;
   saveDefaultLang(lang: string): Promise<{ lang: string; options: string[] }>;
 

@@ -2147,6 +2147,7 @@ CREATE TABLE IF NOT EXISTS sys_notify_log
     operator_no     VARCHAR(32),
     client_ip       VARCHAR(64),
     created_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    template_no VARCHAR(64) DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_notify_no UNIQUE (notify_no)
 );

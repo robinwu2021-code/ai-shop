@@ -29,15 +29,18 @@ import org.springframework.web.bind.annotation.RestController;
 public class OpsNotifyLogController {
 
     private final NotifyLogService notifyLogService;
+    private final ai.neargo.shop.message.MessageService messageService;
     private final ai.neargo.shop.message.notify.NotifyChannelService channelService;
     private final CaptchaService captchaService;
     private final AuditLogPort auditLogPort;
 
     public OpsNotifyLogController(NotifyLogService notifyLogService,
+                                  ai.neargo.shop.message.MessageService messageService,
                                   ai.neargo.shop.message.notify.NotifyChannelService channelService,
                                   CaptchaService captchaService,
                                   AuditLogPort auditLogPort) {
         this.notifyLogService = notifyLogService;
+        this.messageService = messageService;
         this.channelService = channelService;
         this.captchaService = captchaService;
         this.auditLogPort = auditLogPort;
@@ -66,6 +69,28 @@ public class OpsNotifyLogController {
                                        @RequestParam(defaultValue = "1") long page,
                                        @RequestParam(defaultValue = "20") long size) {
         return notifyLogService.list(channel, status, bizType, from, to, target, page, size);
+    }
+
+    /**
+     * 站内信记录（发送记录页的第二个 tab）。
+     *
+     * <p><b>与上面那条分开而不是合成一张表</b>：外发记录答「发出去了吗」（有失败态、
+     * 排查要去通道后台查回执），站内信答「他读了吗」（入库即到达，没有失败态）。
+     * 合成一列的话，同一个「已发送」在两种语义之间摇摆 ——
+     * 而运营看到它时的下一步动作完全不同：一个去通道后台，一个去问用户为什么没点。
+     *
+     * <p>复用 {@code message:template:read}：看外发记录的与看站内信记录的是同一批人。
+     */
+    @GetMapping("/ops/inapp-messages")
+    @PreAuthorize("@perm.can('" + Perms.MESSAGE_TEMPLATE_READ + "')")
+    public PageData<ai.neargo.shop.message.dto.MessageVOs.InAppLogVO> inAppMessages(
+            @RequestParam(required = false) String receiverType,
+            @RequestParam(required = false) String receiverNo,
+            @RequestParam(required = false) String from,
+            @RequestParam(required = false) String to,
+            @RequestParam(defaultValue = "1") long page,
+            @RequestParam(defaultValue = "20") long size) {
+        return messageService.opsInAppMessages(receiverType, receiverNo, from, to, page, size);
     }
 
     /**

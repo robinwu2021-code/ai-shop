@@ -81,15 +81,25 @@ public class NotifyLoggingWxSubscribePort implements WxSubscribePort {
                 () -> delegate.sendRefunded(openId, amountText, page, tip));
     }
 
+    /**
+     * 场景 → **我们自己的**模板号。与 {@code delegate.templateId(scene)} 不同：
+     * 那个返回微信侧报备的 id（会随重新报备而变），这个是库里那份可查可改的模板。
+     */
+    private static String bizTemplateOf(String scene) {
+        return WxSubscribePort.SCENE_REFUNDED.equals(scene) ? "TPL_WX_REFUNDED" : "TPL_WX_ARRIVED";
+    }
+
     private SendResult logged(String openId, String scene, java.util.function.Supplier<SendResult> call) {
         try {
             SendResult r = call.get();
             writer.write(SysNotifyLog.WXSUB, NotifyBizType.TRADE_NOTIFY, openId,
-                    r.templateCode(), SysNotifyLog.SENT, null, r.providerMsgId(), null);
+                    r.templateCode(), bizTemplateOf(scene),
+                    SysNotifyLog.SENT, null, r.providerMsgId(), null);
             return r;
         } catch (RuntimeException e) {
             writer.write(SysNotifyLog.WXSUB, NotifyBizType.TRADE_NOTIFY, openId,
-                    delegate.templateId(scene), SysNotifyLog.FAILED, e.getMessage(), null, null);
+                    delegate.templateId(scene), bizTemplateOf(scene),
+                    SysNotifyLog.FAILED, e.getMessage(), null, null);
             throw e;
         }
     }

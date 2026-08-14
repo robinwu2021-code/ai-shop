@@ -16,7 +16,7 @@ import { fmtTime } from "@/lib/utils";
 import { usePaging } from "@/lib/use-paging";
 import { notifyFailReason } from "@/lib/notify-reason";
 import { bizLabel, channelLabel } from "@/lib/notify-label";
-import type { NotifyChannel, NotifyLog } from "@/lib/types";
+import type { InAppLog, NotifyChannel, NotifyLog } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -43,6 +43,14 @@ export function NotifyLogTab({ c, canWrite }: { c: MessageCopy; canWrite: boolea
   const [targetInput, setTargetInput] = useState("");
   const [target, setTarget] = useState("");
   const [testOpen, setTestOpen] = useState(false);
+  /*
+   * 外发 / 站内信**分两张表**，不合并。
+   * 外发答「发出去了吗」（有失败态、排查去通道后台查回执），
+   * 站内信答「他读了吗」（入库即到达，没有失败态）——
+   * 合成一列的话，同一个「已发送」在两种语义之间摇摆，而下一步动作完全不同。
+   * 放同一页是因为运营找「记录」时只会想到一个地方。
+   */
+  const [kind, setKind] = useState<"outbound" | "inapp">("outbound");
   // D1：此前完全没有分页 —— 组件不传 page/size，后端默认给 20 条，
   // 于是第 21 条之后的记录在界面上等于不存在
   const { page, setPage, size, setSize } = usePaging();
@@ -61,6 +69,31 @@ export function NotifyLogTab({ c, canWrite }: { c: MessageCopy; canWrite: boolea
   });
 
   const submitTarget = () => { setTarget(targetInput.trim()); setPage(1); };
+
+  const inapp = useQuery({
+    queryKey: ["inapp-messages", from, to, target, page, size],
+    // 站内信的 target 是 receiverNo（平台内部标识），与外发的手机号/邮箱不是一回事，
+    // 但输入框共用一个 —— 运营查的都是「这个人」
+    queryFn: () => api.listInAppMessages({
+      receiverNo: target || undefined,
+      from: from || undefined, to: to || undefined, page, size,
+    }),
+    enabled: kind === "inapp",
+  });
+
+  const inappCols: Column<InAppLog>[] = [
+    { header: c.nlColTime, cell: (r: InAppLog) => fmtTime(new Date(r.at).toISOString()) },
+    { header: c.nlColReceiver, cell: (r: InAppLog) => `${r.receiverType} / ${r.receiverNo}` },
+    { header: c.nlColTitle2, cell: (r: InAppLog) => r.title },
+    { header: c.nlColTemplate, cell: (r: InAppLog) => r.templateNo ?? "-" },
+    {
+      header: c.nlColRead,
+      // 这一列就是站内信存在的意义：外发记录答不了「他读了吗」
+      cell: (r: InAppLog) => r.read
+        ? <Badge tone="success">{c.nlRead}</Badge>
+        : <Badge tone="muted">{c.nlUnread}</Badge>,
+    },
+  ];
 
   // 映射规则在 lib/notify-label.ts（纯函数，有测试守着 —— 本仓只测 lib，
   // 内联在这里的话「WXSUB 被显示成短信」那类缺陷没有任何测试能拦）
@@ -119,7 +152,10 @@ export function NotifyLogTab({ c, canWrite }: { c: MessageCopy; canWrite: boolea
       </Notice>
 
       <div className="flex justify-end gap-2">
-        <Button variant="ghost" size="sm" onClick={() => void logs.refetch()}>{c.chRefresh}</Button>
+        <Button variant="ghost" size="sm"
+                onClick={() => void (kind === "outbound" ? logs.refetch() : inapp.refetch())}>
+          {c.chRefresh}
+        </Button>
         {canWrite && <Button size="sm" onClick={() => setTestOpen(true)}>{c.tsOpen}</Button>}
       </div>
 
@@ -127,6 +163,13 @@ export function NotifyLogTab({ c, canWrite }: { c: MessageCopy; canWrite: boolea
         <CardHeader className="flex-row items-center gap-3">
           {/* 这里原本误用了表格列名「时间」当卡片标题 —— 下面就是起止日筛选，两者叠在一起自相矛盾 */}
           <CardTitle className="me-auto">{c.nlTitle}</CardTitle>
+          <Select value={kind} className="w-40"
+                  onChange={(e) => { setKind(e.target.value as "outbound" | "inapp"); setPage(1); }}>
+            <option value="outbound">{c.nlKindOutbound}</option>
+            <option value="inapp">{c.nlKindInapp}</option>
+          </Select>
+          {/* 通道/用途/状态只对外发有意义：站内信没有通道，也没有失败态 */}
+          {kind === "outbound" && <>
           <Select value={channel} onChange={(e) => { setChannel(e.target.value); setPage(1); }} className="w-36">
             <option value="">{c.nlAll}</option>
             <option value="SMS">{c.nlSms}</option>
@@ -146,6 +189,7 @@ export function NotifyLogTab({ c, canWrite }: { c: MessageCopy; canWrite: boolea
             <option value="SENT">{c.nlSent}</option>
             <option value="FAILED">{c.nlFailed}</option>
           </Select>
+          </>}
         </CardHeader>
         <CardContent className="space-y-3">
           {/* 排查永远是「今天出的事」+「这个人有没有收到」，所以这两个条件放在一起 */}
@@ -169,21 +213,34 @@ export function NotifyLogTab({ c, canWrite }: { c: MessageCopy; canWrite: boolea
             </div>
             <Button size="sm" variant="ghost" onClick={submitTarget}>{c.nlSearch}</Button>
           </div>
-          {/* 库里存的是掩码值，但输入完整号码也能查到 —— 不说的话没人敢输完整的 */}
-          <Notice tone="info">{c.nlTargetHint}</Notice>
+          {/* 两种记录的收件人不是一回事：外发是掩码手机号/邮箱，站内信是 userNo */}
+          <Notice tone="info">
+            {kind === "outbound" ? c.nlTargetHint : c.nlInappTargetHint}
+          </Notice>
 
-          <DataTable
-            columns={cols}
-            rows={logs.data?.records ?? []}
-            loading={logs.isLoading}
-            rowKey={(r) => r.notifyNo}
-            empty={c.nlEmpty}
-          />
+          {kind === "outbound" ? (
+            <DataTable
+              columns={cols}
+              rows={logs.data?.records ?? []}
+              loading={logs.isLoading}
+              rowKey={(r) => r.notifyNo}
+              empty={c.nlEmpty}
+            />
+          ) : (
+            <DataTable
+              columns={inappCols}
+              rows={inapp.data?.records ?? []}
+              loading={inapp.isLoading}
+              rowKey={(r) => r.messageNo}
+              empty={c.nlInappEmpty}
+            />
+          )}
         </CardContent>
       </Card>
 
       <Pagination page={page} size={size} onSize={setSize}
-                  total={logs.data?.total ?? 0} onPage={setPage} />
+                  total={(kind === "outbound" ? logs.data?.total : inapp.data?.total) ?? 0}
+                  onPage={setPage} />
 
       {/* 记录页的模拟发送默认走短信；要试别的通道去对应通道页 —— 
           那里同时能看到该通道的凭据与今日量，排查在一个页面里完成 */}

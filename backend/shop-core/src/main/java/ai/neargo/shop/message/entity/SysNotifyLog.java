@@ -55,6 +55,16 @@ public class SysNotifyLog {
     /** 短信为阿里云模板号；邮件为主题 */
     private String templateCode;
 
+    /**
+     * 平台业务模板号（{@code msg_template.template_no}）。自由文本发送为空。
+     *
+     * <p><b>与 {@link #templateCode} 不是一回事</b>：那个是**通道方的**码
+     * （阿里云 SMS_xxx / 邮件主题），排查时拿它去通道后台查回执；
+     * 这个是我们自己的号，对应运营能改的那份模板，用来回答
+     * 「这条模板最近发了多少次、还能不能下线」。
+     */
+    private String templateNo;
+
     private String status;
 
     /** 通道返回的错误码与消息，失败时才有 */

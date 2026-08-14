@@ -20,6 +20,6 @@ export { settlements, splitRecords, feeRules, SETTLE_FREEZE_DAYS } from "./finan
 export { staffs, roleDefs, rolePoints, auditLogs } from "./iam";
 export { attributionRule, attributionTraces, fissionCampaigns } from "./growth";
 export { riskEvents, blacklists, riskRules } from "./risk";
-export { msgTemplates, notifyQuota, tickets, faqs, defaultLang } from "./message";
+export { msgTemplates, notifyQuota, tickets, faqs, defaultLang, inAppLogs } from "./message";
 export { materials } from "./content";
 export { appearance, markets, ruleTexts, featureFlags, industries, authCodeAdmins, serviceScopes } from "./system";

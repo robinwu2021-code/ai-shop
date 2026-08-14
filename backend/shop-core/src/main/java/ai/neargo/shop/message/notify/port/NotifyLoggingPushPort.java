@@ -28,16 +28,19 @@ public class NotifyLoggingPushPort implements PushPort {
         this.writer = writer;
     }
 
+    /** 推送目前只有一条通用模板（标题+正文），场景差异体现在内容而不是模板 */
+    private static final String TPL_PUSH = "TPL_PUSH_TEST";
+
     @Override
     public SendResult push(String clientId, String title, String body, String link, String level) {
         try {
             SendResult r = delegate.push(clientId, title, body, link, level);
             writer.write(SysNotifyLog.PUSH, NotifyBizType.TRADE_NOTIFY, clientId,
-                    r.templateCode(), SysNotifyLog.SENT, null, r.providerMsgId(), null);
+                    r.templateCode(), TPL_PUSH, SysNotifyLog.SENT, null, r.providerMsgId(), null);
             return r;
         } catch (RuntimeException e) {
             writer.write(SysNotifyLog.PUSH, NotifyBizType.TRADE_NOTIFY, clientId,
-                    level, SysNotifyLog.FAILED, e.getMessage(), null, null);
+                    level, TPL_PUSH, SysNotifyLog.FAILED, e.getMessage(), null, null);
             throw e;
         }
     }

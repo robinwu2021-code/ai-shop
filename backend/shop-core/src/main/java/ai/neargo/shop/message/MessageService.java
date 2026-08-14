@@ -1,6 +1,7 @@
 package ai.neargo.shop.message;
 
 import ai.neargo.shop.message.dto.MessageVOs.FaqVO;
+import ai.neargo.shop.message.dto.MessageVOs.InAppLogVO;
 import ai.neargo.shop.message.dto.MessageVOs.MessageVO;
 import ai.neargo.shop.message.dto.MessageVOs.NotifyQuotaVO;
 import ai.neargo.shop.message.dto.MessageVOs.TemplateVO;
@@ -66,6 +67,22 @@ public interface MessageService {
     TicketVO ticket(String ticketNo);
 
     List<FaqVO> faq();
+
+    /**
+     * 平台侧的站内信记录（运营端·发送记录页的「站内信」tab）。
+     *
+     * <p><b>为什么不并进 sys_notify_log 那张表</b>：两者回答的不是同一个问题 ——
+     * 外发记录答「发出去了吗」（有失败态、要去通道后台查回执），
+     * 站内信答「他读了吗」（入库即到达，没有失败态）。
+     * 合成一列的话「已发送」在两种语义之间摇摆，而运营看到它时的下一步动作完全不同。
+     *
+     * @param receiverType USER / STAFF / OPS，空=不筛
+     * @param receiverNo   收件人编号，空=不筛。**这里不掩码** ——
+     *                     站内信的收件人是平台内部标识（userNo），不是手机号邮箱
+     * @param from/to      起止日 yyyy-MM-dd，含当天
+     */
+    ai.neargo.shop.common.PageData<InAppLogVO> opsInAppMessages(
+            String receiverType, String receiverNo, String from, String to, long page, long size);
 
     // ---------------------------------------------------------------- 平台侧（P-14.2）
 

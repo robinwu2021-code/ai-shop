@@ -1,5 +1,5 @@
 // 消息与客服 mock（P-14）。
-import type { FaqEntry, MsgTemplate, NotifyQuota, Ticket } from "@/lib/types";
+import type { FaqEntry, InAppLog, MsgTemplate, NotifyQuota, Ticket } from "@/lib/types";
 
 /*
  * 模板 mock。**通道值与后端种子（V141）同一套** —— SMS/MAIL/WXSUB/PUSH/INAPP。
@@ -49,3 +49,15 @@ export const faqs: FaqEntry[] = [
  * 否则「保存后仍显示旧值」这类缺陷在本地看不出来。
  */
 export const defaultLang = { value: "zh-CN" };
+
+/**
+ * 站内信记录（发送记录页第二个 tab）。**只放两条**：
+ * 一条已读一条未读，够看出「他读了吗」这一列在工作；
+ * 编一屏假数据会让人以为平台真在群发。
+ */
+export const inAppLogs: InAppLog[] = [
+  { messageNo: "IM0002", receiverType: "OPS", receiverNo: "ST0001", type: "SYSTEM",
+    title: "联通测试", templateNo: "TPL_INAPP_TEST", read: false, at: Date.now() - 3600_000 },
+  { messageNo: "IM0001", receiverType: "USER", receiverNo: "U0001", type: "TRADE",
+    title: "包裹已到自提点", templateNo: null, read: true, at: Date.now() - 2 * 86400_000 },
+];

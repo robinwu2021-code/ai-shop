@@ -17,12 +17,27 @@ import lombok.Setter;
 @TableName("msg_template")
 public class MsgTemplate extends BaseEntity {
 
-    /** 订阅消息（微信）。 */
+    /*
+     * ⚠️ 下面三个是 V20 建表注释里的旧叫法，**与实际存的值对不上** ——
+     * 代码与种子（V141）用的一直是 SMS/MAIL/WXSUB/PUSH/INAPP。
+     * 留着是因为可能还有旧引用；新代码一律用 CHANNEL_* 那几个。
+     */
+    /** @deprecated 旧叫法，实际存的是 {@code WXSUB} */
+    @Deprecated
     public static final String SUBSCRIBE = "SUBSCRIBE";
-    /** App 推送。 */
+    /** @deprecated 与 {@link #CHANNEL_PUSH} 同值，保留以免旧引用编译不过 */
+    @Deprecated
     public static final String PUSH = "PUSH";
-    /** 站内信。 */
+    /** @deprecated 旧叫法，实际存的是 {@code INAPP} */
+    @Deprecated
     public static final String INBOX = "INBOX";
+
+    /** 站内信。**它不进 sys_notify_log**，自己就是 msg_message 那张表 */
+    public static final String CHANNEL_INAPP = "INAPP";
+    public static final String CHANNEL_SMS = "SMS";
+    public static final String CHANNEL_MAIL = "MAIL";
+    public static final String CHANNEL_WXSUB = "WXSUB";
+    public static final String CHANNEL_PUSH = "PUSH";
 
     /** 默认语言。**存量与新建都落它** —— 回落链的终点（G2c）。 */
     public static final String LANG_DEFAULT = "zh-CN";

@@ -178,6 +178,25 @@ export interface InboxMessage {
   at: number;
 }
 
+/**
+ * 站内信的平台侧记录（发送记录页第二个 tab）。
+ *
+ * <p><b>没有 status</b>：站内信入库即到达，不存在「发送中/失败」——
+ * 这正是它与 NotifyLog 不能合成一张表的原因。
+ */
+export interface InAppLog {
+  messageNo: string;
+  /** USER / STAFF / OPS */
+  receiverType: string;
+  /** 收件人编号。**不掩码**：它是平台内部标识（userNo），不是手机号邮箱 */
+  receiverNo: string;
+  type: InboxMessageType;
+  title: string;
+  templateNo?: string | null;
+  read: boolean;
+  at: number;
+}
+
 /** 发送结果。**失败也记**——只记成功的话，这张表回答不了「他为什么没收到」。 */
 export type NotifyStatus = "SENT" | "FAILED";
 

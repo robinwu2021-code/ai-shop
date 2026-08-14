@@ -30,6 +30,13 @@ public class NotifyLoggingSmsPort implements SmsPort {
         this.writer = writer;
     }
 
+    /**
+     * 短信目前只有验证码这一条业务模板 —— 模拟发送走的也是它
+     * （阿里云只收已报备的模板，测试发一条"自由文本"是发不出去的）。
+     * 报备第二条之后，这里要改成由调用方传（触达能力矩阵 G4）。
+     */
+    private static final String TPL_SMS_OTP = "TPL_SMS_OTP";
+
     @Override
     public SendResult sendOtp(String phone, String code) {
         return sendOtp(phone, code, SysNotifyLog.BIZ_OTP, null);
@@ -45,11 +52,11 @@ public class NotifyLoggingSmsPort implements SmsPort {
         try {
             SendResult r = delegate.sendOtp(phone, code);
             writer.write(SysNotifyLog.SMS, bizType, phone, r.templateCode(),
-                    SysNotifyLog.SENT, null, r.providerMsgId(), operatorNo);
+                    TPL_SMS_OTP, SysNotifyLog.SENT, null, r.providerMsgId(), operatorNo);
             return r;
         } catch (RuntimeException e) {
             writer.write(SysNotifyLog.SMS, bizType, phone, null,
-                    SysNotifyLog.FAILED, e.getMessage(), null, operatorNo);
+                    TPL_SMS_OTP, SysNotifyLog.FAILED, e.getMessage(), null, operatorNo);
             throw e;
         }
     }
