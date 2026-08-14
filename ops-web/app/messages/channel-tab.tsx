@@ -209,10 +209,15 @@ function ChannelTemplates({ c, channel }: { c: MessageCopy; channel: NotifyChann
           <div className="txt-body text-muted-foreground">{c.chTplEmpty}</div>
         )}
         {mine.map((t) => (
-          <div key={t.templateNo} className="space-y-1 border-t border-border pt-3 first:border-t-0 first:pt-0">
+          /* key 要带上语言：同一个模板号每种语言一行（V145），
+             只用 templateNo 的话 React key 会撞车 —— 症状是切换时渲染错行 */
+          <div key={`${t.templateNo}:${t.lang ?? ""}`}
+               className="space-y-1 border-t border-border pt-3 first:border-t-0 first:pt-0">
             <div className="flex items-center gap-2">
               <span className="txt-body font-medium">{t.name}</span>
               <code className="txt-caption text-muted-foreground">{t.templateNo}</code>
+              {/* 不显示语言的话，运营看到的是两条一模一样的模板 */}
+              {t.lang && <Badge tone="info">{t.lang}</Badge>}
               {!t.enabled && <Badge tone="muted">{c.chTplDisabled}</Badge>}
             </div>
             <pre className="whitespace-pre-wrap rounded-field bg-secondary p-3 txt-caption">

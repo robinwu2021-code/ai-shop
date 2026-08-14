@@ -51,9 +51,14 @@ export function TestSendDrawer({
     [templates.data, channel],
   );
 
-  const [templateNo, setTemplateNo] = useState("");
+  /*
+   * **选中的身份是「模板号 + 语言」**，不是模板号。同一条业务模板每种语言一行（V145）——
+   * 只按模板号找的话，选了英文版拿到的仍是中文那条（find 命中第一个）。
+   */
+  const [templateKey, setTemplateKey] = useState("");
+  const keyOf = (t: MsgTemplate) => `${t.templateNo}:${t.lang ?? ""}`;
   const tpl: MsgTemplate | undefined =
-    mine.find((t) => t.templateNo === templateNo) ?? mine[0];
+    mine.find((t) => keyOf(t) === templateKey) ?? mine[0];
 
   const [target, setTarget] = useState("");
   const [level, setLevel] = useState("NORMAL");
@@ -178,10 +183,13 @@ export function TestSendDrawer({
       <DrawerSection title={c.tsTemplate}>
         {mine.length === 0 && <Notice tone="warning">{c.tsTemplateNone}</Notice>}
         {mine.length > 1 && (
-          <Select className="mb-2" value={tpl?.templateNo ?? ""}
-                  onChange={(e) => { setTemplateNo(e.target.value); setValues({}); }}>
+          <Select className="mb-2" value={tpl ? keyOf(tpl) : ""}
+                  onChange={(e) => { setTemplateKey(e.target.value); setValues({}); }}>
             {mine.map((t) => (
-              <option key={t.templateNo} value={t.templateNo}>{t.name}</option>
+              /* 名字后缀语言：不带的话下拉里会出现两条同名项，选哪个全靠猜 */
+              <option key={keyOf(t)} value={keyOf(t)}>
+                {t.lang ? `${t.name}（${t.lang}）` : t.name}
+              </option>
             ))}
           </Select>
         )}

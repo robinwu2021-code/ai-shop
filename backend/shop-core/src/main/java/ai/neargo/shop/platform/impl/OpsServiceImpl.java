@@ -774,7 +774,15 @@ public class OpsServiceImpl implements OpsService {
              * 账号类邮件发不出去的后果是「新同事永远登不进来」，
              * 比「文案没跟上最新一版」严重得多。
              */
+            /*
+             * **写死 zh-CN，不用请求语言**（G2c）。这个请求是**管理员**发的，
+             * Accept-Language 是他浏览器的语言 —— 用它等于按管理员的偏好
+             * 给新同事发信，而新同事读什么语言这里根本不知道。
+             * 要做对得先有「按人存的语言」，全库现在没有这个字段（矩阵 G2e）。
+             * 写死中文与改造前逐字一致，不会因为加了语言维度而让谁收到不同的东西。
+             */
             mailTemplatePort.send(username, MailTemplatePort.TPL_OPS_INIT_PWD,
+                    ai.neargo.shop.message.entity.MsgTemplate.LANG_DEFAULT,
                     "【数智邻购】运营端账号已开通",
                     java.util.Map.of("realName", realName, "username", username,
                             "password", initial),
@@ -881,7 +889,13 @@ public class OpsServiceImpl implements OpsService {
         }
 
         String token = resetTokens.issue(staff.getStaffNo());
+        /*
+         * **这一封可以用请求语言**：忘记密码是本人在登录页发起的，
+         * 请求人就是收件人，Accept-Language 天然是他自己的偏好。
+         * 与上面「管理员建账号」正相反 —— 同一个 Port，传谁的语言取决于谁发的请求。
+         */
         mailTemplatePort.send(username, MailTemplatePort.TPL_OPS_RESET_PWD,
+                org.springframework.context.i18n.LocaleContextHolder.getLocale().toLanguageTag(),
                 "【数智邻购】运营端密码重置",
                 java.util.Map.of("realName", staff.getRealName() == null ? "" : staff.getRealName(),
                         "token", token, "ttlMinutes", "15"),

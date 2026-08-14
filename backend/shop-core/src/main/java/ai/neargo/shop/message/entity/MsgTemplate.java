@@ -24,9 +24,22 @@ public class MsgTemplate extends BaseEntity {
     /** 站内信。 */
     public static final String INBOX = "INBOX";
 
+    /** 默认语言。**存量与新建都落它** —— 回落链的终点（G2c）。 */
+    public static final String LANG_DEFAULT = "zh-CN";
+
     private String templateNo;
     private String name;
     private String channel;
+
+    /**
+     * 语言（zh-CN / en / ar）。
+     *
+     * <p><b>与 templateNo 一起构成唯一键</b>：一条业务模板 + N 份翻译，
+     * 而不是三个模板号。按模板号分语言的话，运营端的模板列表会变成三倍长
+     * 且无法分组 —— 一条业务模板在上面出现三次，认不出哪三条是同一件事。
+     */
+    private String lang;
+
     private String content;
 
     /** 渠道侧模板 ID（如微信的）。站内信为空。 */

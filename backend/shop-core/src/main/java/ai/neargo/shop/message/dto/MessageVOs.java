@@ -17,8 +17,9 @@ public final class MessageVOs {
     public record FaqVO(String question, String answer, String category) {
     }
     /** 消息模板（P-14.1.1）。sentCount 取近 30 天。 */
-    public record TemplateVO(String templateNo, String name, String channel, String content,
-                             String providerTemplateId, boolean enabled, long sentCount) {
+    public record TemplateVO(String templateNo, String name, String channel, String lang,
+                             String content, String providerTemplateId,
+                             boolean enabled, long sentCount) {
     }
 
     /**

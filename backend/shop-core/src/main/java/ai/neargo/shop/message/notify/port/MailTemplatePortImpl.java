@@ -36,9 +36,10 @@ public class MailTemplatePortImpl implements MailTemplatePort {
     }
 
     @Override
-    public void send(String to, String templateNo, String subject, Map<String, String> params,
-                     String defaultContent, String bizType, String operatorNo) {
-        String content = contentOf(templateNo, defaultContent);
+    public void send(String to, String templateNo, String lang, String subject,
+                     Map<String, String> params, String defaultContent,
+                     String bizType, String operatorNo) {
+        String content = contentOf(templateNo, lang, defaultContent);
         mailPort.send(to, subject, render(content, params, defaultContent), bizType, operatorNo);
     }
 
@@ -49,16 +50,32 @@ public class MailTemplatePortImpl implements MailTemplatePort {
      * 比「文案没跟上最新一版」严重得多。所以停用一条账号模板不会拦住它 ——
      * 运营端的模板页也照这个口径写明，否则运营会以为停用能关掉它们。
      */
-    private String contentOf(String templateNo, String defaultContent) {
-        MsgTemplate t = DataScopeContext.executeWithoutScope(() ->
-                templateMapper.selectOne(Wrappers.<MsgTemplate>lambdaQuery()
-                        .eq(MsgTemplate::getTemplateNo, templateNo).last("limit 1")));
-        if (t == null || Boolean.FALSE.equals(t.getEnabled())
-                || t.getContent() == null || t.getContent().isBlank()) {
+    private String contentOf(String templateNo, String lang, String defaultContent) {
+        String want = lang == null || lang.isBlank() ? MsgTemplate.LANG_DEFAULT : lang.trim();
+        MsgTemplate t = pick(templateNo, want);
+        if (t == null && !MsgTemplate.LANG_DEFAULT.equals(want)) {
+            /*
+             * **缺译回落默认语言**，而不是回落内置文案：库里那份中文至少是
+             * 运营维护中的最新文案，内置那份是发版时冻住的。
+             * 一封读得懂但语言不对的邮件，好过一封内容过期的。
+             */
+            log.warn("[mail] 模板 {} 没有 {} 译文，回落 {}", templateNo, want, MsgTemplate.LANG_DEFAULT);
+            t = pick(templateNo, MsgTemplate.LANG_DEFAULT);
+        }
+        if (t == null || t.getContent() == null || t.getContent().isBlank()) {
             log.warn("[mail] 模板 {} 缺失或已停用，回落内置文案 —— 账号类邮件不因此不发", templateNo);
             return defaultContent;
         }
         return t.getContent();
+    }
+
+    /** 停用的当作没有 —— 与「缺失」同一处理，回落链才只有一条。 */
+    private MsgTemplate pick(String templateNo, String lang) {
+        MsgTemplate t = DataScopeContext.executeWithoutScope(() ->
+                templateMapper.selectOne(Wrappers.<MsgTemplate>lambdaQuery()
+                        .eq(MsgTemplate::getTemplateNo, templateNo)
+                        .eq(MsgTemplate::getLang, lang).last("limit 1")));
+        return t == null || Boolean.FALSE.equals(t.getEnabled()) ? null : t;
     }
 
     /**

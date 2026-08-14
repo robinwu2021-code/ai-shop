@@ -15,6 +15,13 @@ export interface MsgTemplate {
   name: string;
   /** 触达渠道 */
   channel: MsgChannel;
+  /**
+   * 语言（zh-CN / en / ar）。
+   *
+   * <p>同一个 templateNo 每种语言一行（V145）——**列表上必须显示它**，
+   * 否则运营看到的是两条一模一样的模板，改了其中一条还发现"没生效"。
+   */
+  lang?: string;
   /** 模板正文，含 {占位符}。**模拟发送靠它展示「会发出什么」并做预览** */
   content: string;
   /**

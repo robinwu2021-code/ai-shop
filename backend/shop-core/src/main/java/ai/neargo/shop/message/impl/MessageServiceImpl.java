@@ -377,9 +377,14 @@ public class MessageServiceImpl implements MessageService {
     public List<TemplateVO> opsTemplates() {
         long since = System.currentTimeMillis() - 30L * 24 * 3600 * 1000;
         return templateMapper.selectList(Wrappers.<MsgTemplate>lambdaQuery()
-                        .orderByDesc(MsgTemplate::getId)).stream()
+                        // 同一模板号的多语言必须相邻：按 id 排的话，
+                        // 后补的英文译文会掉到列表最后，与它的中文原文隔着十几行
+                        .orderByAsc(MsgTemplate::getTemplateNo)
+                        .orderByAsc(MsgTemplate::getLang)).stream()
                 .map(t -> new TemplateVO(t.getTemplateNo(), t.getName(), t.getChannel(),
-                        t.getContent(), t.getProviderTemplateId(),
+                        // 同一个模板号现在会有多行（每种语言一行，V145）——
+                        // 不下发 lang 的话，运营在列表上看到两条一模一样的
+                        t.getLang(), t.getContent(), t.getProviderTemplateId(),
                         !Boolean.FALSE.equals(t.getEnabled()),
                         // 近 30 天发送量按 msg_message 真算，不写死 —— 编一个数比留空更糟
                         messageMapper.selectCount(Wrappers.<MsgMessage>lambdaQuery()

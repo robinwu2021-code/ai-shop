@@ -228,7 +228,7 @@ class NotifyChannelOpsTest {
     @Test
     @DisplayName("★ 邮件按平台业务模板渲染 —— 库里那份就是发出去的那份")
     void mailRendersFromTemplate() {
-        mailTemplatePort.send("tpl@neargo.ai", MailTemplatePort.TPL_OPS_INIT_PWD,
+        mailTemplatePort.send("tpl@neargo.ai", MailTemplatePort.TPL_OPS_INIT_PWD, "zh-CN",
                 "【数智邻购】运营端账号已开通",
                 java.util.Map.of("realName", "小王", "username", "tpl@neargo.ai",
                         "password", "Init#2026"),
@@ -244,7 +244,7 @@ class NotifyChannelOpsTest {
     @Test
     @DisplayName("★★ 占位没取到值时整封回落内置文案 —— 不发一封写着 {password} 的邮件")
     void missingPlaceholderFallsBack() {
-        mailTemplatePort.send("miss@neargo.ai", MailTemplatePort.TPL_OPS_INIT_PWD,
+        mailTemplatePort.send("miss@neargo.ai", MailTemplatePort.TPL_OPS_INIT_PWD, "zh-CN",
                 "主题", java.util.Map.of("realName", "小李"),   // 少了 username / password
                 "内置兜底：你好 {realName}，请联系管理员获取密码。",
                 NotifyBizType.OPS_INIT_PASSWORD, "ST-TEST");
@@ -263,7 +263,7 @@ class NotifyChannelOpsTest {
         tpl.setEnabled(false);
         templateMapper.updateById(tpl);
         try {
-            mailTemplatePort.send("off@neargo.ai", MailTemplatePort.TPL_OPS_INIT_PWD, "主题",
+            mailTemplatePort.send("off@neargo.ai", MailTemplatePort.TPL_OPS_INIT_PWD, "zh-CN", "主题",
                     java.util.Map.of("realName", "小张"),
                     "内置兜底：{realName} 的账号已开通",
                     NotifyBizType.OPS_INIT_PASSWORD, "ST-TEST");
@@ -273,6 +273,49 @@ class NotifyChannelOpsTest {
             tpl.setEnabled(true);
             templateMapper.updateById(tpl);
         }
+    }
+
+    @Test
+    @DisplayName("★★ 英文用户拿到英文正文 —— 三语平台却只发中文，是这条改造的全部理由")
+    void englishRecipientGetsEnglishBody() {
+        mailTemplatePort.send("en@neargo.ai", MailTemplatePort.TPL_OPS_RESET_PWD, "en",
+                "Password reset",
+                java.util.Map.of("realName", "Sam", "token", "TOKEN-EN-1", "ttlMinutes", "15"),
+                "built-in fallback for {realName}",
+                NotifyBizType.OPS_RESET_PASSWORD, null);
+
+        var last = mailStub.last();
+        assertThat(last).isNotNull();
+        // V145 的英文种子，不是内置兜底、也不是中文那份
+        assertThat(last.body()).contains("Reset code").contains("TOKEN-EN-1");
+        assertThat(last.body()).doesNotContain("重置码").doesNotContain("built-in fallback");
+    }
+
+    @Test
+    @DisplayName("★★ 没有那种语言的译文时回落中文，而不是回落内置文案")
+    void missingTranslationFallsBackToDefaultLang() {
+        // ar 没种过。库里那份中文至少是运营维护中的最新文案，内置那份是发版时冻住的
+        mailTemplatePort.send("ar@neargo.ai", MailTemplatePort.TPL_OPS_RESET_PWD, "ar",
+                "重置", java.util.Map.of("realName", "阿里", "token", "TOKEN-AR-1", "ttlMinutes", "15"),
+                "内置兜底 {realName}",
+                NotifyBizType.OPS_RESET_PASSWORD, null);
+
+        var last = mailStub.last();
+        assertThat(last).isNotNull();
+        assertThat(last.body()).as("应回落中文模板").contains("重置码").contains("TOKEN-AR-1");
+        assertThat(last.body()).doesNotContain("内置兜底");
+    }
+
+    @Test
+    @DisplayName("语言传空按默认走 —— 调用方拿不到 locale 时不该发不出去")
+    void blankLangUsesDefault() {
+        mailTemplatePort.send("blank@neargo.ai", MailTemplatePort.TPL_OPS_RESET_PWD, null,
+                "重置", java.util.Map.of("realName", "小周", "token", "TOKEN-B-1", "ttlMinutes", "15"),
+                "内置兜底 {realName}",
+                NotifyBizType.OPS_RESET_PASSWORD, null);
+
+        assertThat(mailStub.last()).isNotNull();
+        assertThat(mailStub.last().body()).contains("重置码").contains("TOKEN-B-1");
     }
 
     @Test

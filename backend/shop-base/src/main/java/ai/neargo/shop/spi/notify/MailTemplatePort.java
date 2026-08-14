@@ -35,6 +35,15 @@ public interface MailTemplatePort {
      * @param defaultContent 模板缺失/停用时用的内置文案（与模板正文保持一致）
      * @param bizType        {@link NotifyBizType}，进发送记录
      */
-    void send(String to, String templateNo, String subject, Map<String, String> params,
-              String defaultContent, String bizType, String operatorNo);
+    /**
+     * @param lang 收件人的语言（{@code zh-CN} / {@code en} / {@code ar}）。
+     *             <b>取不到那种语言的翻译就回落 zh-CN</b>，再取不到才用内置文案 ——
+     *             一封英文用户读不懂的中文邮件，仍然好过一封发不出去的邮件。
+     *             <p><b>传谁的语言要想清楚</b>：只有「请求人 == 收件人」时
+     *             才能用请求的 {@code Accept-Language}。管理员替别人建账号那种，
+     *             用请求语言等于按管理员的偏好给新同事发信
+     */
+    void send(String to, String templateNo, String lang, String subject,
+              Map<String, String> params, String defaultContent,
+              String bizType, String operatorNo);
 }

@@ -1629,8 +1629,9 @@ CREATE TABLE IF NOT EXISTS msg_template
     updated_by VARCHAR(64) DEFAULT NULL,
     version BIGINT(20) NOT NULL DEFAULT 0,
     deleted TINYINT(4) NOT NULL DEFAULT 0,
-    PRIMARY KEY (id),
-    CONSTRAINT uk_msg_template_no UNIQUE (template_no)
+    lang VARCHAR(16) NOT NULL DEFAULT 'zh-CN',
+    CONSTRAINT uk_msg_template_template_no_lang UNIQUE (template_no, lang),
+    PRIMARY KEY (id)
 );
 
 CREATE TABLE IF NOT EXISTS stl_purchase_invoice
@@ -4057,3 +4058,17 @@ UPDATE msg_template SET content = '{subject}
 UPDATE sys_function_point
    SET name = '站内信模板', updated_at = NOW()
  WHERE point_code = 'OPS_MESSAGE__TAB_INAPP';
+INSERT INTO msg_template (template_no, name, channel, lang, content, provider_template_id, enabled, created_at, updated_at)
+SELECT 'TPL_MAIL_OPS_RESET_PWD', 'Ops password reset', 'MAIL', 'en',
+       'Hi {realName},
+
+Someone requested a password reset for your operations account.
+Reset code (valid for {ttlMinutes} minutes, single use):
+
+    {token}
+
+If this was not you, just ignore this email — your password stays unchanged.
+',
+       NULL, 1, NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM msg_template x
+                    WHERE x.template_no='TPL_MAIL_OPS_RESET_PWD' AND x.lang='en');
