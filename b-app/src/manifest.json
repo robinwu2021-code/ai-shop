@@ -10,9 +10,15 @@
     "nvueStyleCompiler": "uni-app",
     "compilerVersion": 3,
     "distribute": {
-      "android": { "permissions": [] },
-      "ios": {},
-      "sdkConfigs": {}
+      "//packagename": "三端同一个标识（安卓包名 / iOS BundleId / 鸿蒙 bundleName）。上架后不可改",
+      "android": { "packagename": "top.hxmall.bapp", "permissions": [] },
+      "ios": { "bundleId": "top.hxmall.bapp" },
+      "sdkConfigs": {
+        "//push": "ADR-018：推送走 uni-push 2.0，底座就是个推，端上不写一行原生代码。",
+        "//clientId": "uni.getPushClientId() 拿到的就是个推 cid，后端直连个推 RestAPI V2 发送。",
+        "//offline": "false = 只用在线通道（个推长连接）。厂商通道（小米/华为/OPPO/vivo/荣耀）要逐家申请资质，在 uni-push 控制台配，配好后把这里改 true —— 后端零改动。",
+        "push": { "unipush": { "version": "2", "offline": false } }
+      }
     }
   },
   "mp-weixin": {

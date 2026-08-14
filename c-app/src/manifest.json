@@ -10,9 +10,15 @@
     "nvueStyleCompiler": "uni-app",
     "compilerVersion": 3,
     "distribute": {
+      "//packagename": "三端同一个标识（安卓包名 / iOS BundleId / 鸿蒙 bundleName）。上架后不可改",
+      "//待定": "C 端包名尚未拍板：B 端已定 top.hxmall.bapp，而《品牌工程与官网方案》§1.2 记的是 ai.neargo.shop.*。两套前缀并存会让证书与深链各绑各的域名 —— 见《App 签名与打包参数》§4",
       "android": { "permissions": [] },
       "ios": {},
-      "sdkConfigs": {}
+      "sdkConfigs": {
+        "//push": "ADR-018：推送走 uni-push 2.0，底座就是个推，端上不写一行原生代码。",
+        "//offline": "false = 只用在线通道；厂商通道在 uni-push 控制台配好后改 true，后端零改动。",
+        "push": { "unipush": { "version": "2", "offline": false } }
+      }
     }
   },
   "mp-weixin": {

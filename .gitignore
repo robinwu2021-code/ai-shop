@@ -12,3 +12,10 @@ target/
 # Markdown 是唯一真源 —— 两份都入库，diff 里就会出现「改了 md 忘了重跑」的半成品状态，
 # 而 review 的人无从判断哪份是对的。要看网页版跑一次 npm run gen:docs 即可。
 docs/**/*.html
+
+# 签名密钥与它的密码。**这两条丢一条都是不可逆的事故**：
+# 密钥泄露 = 别人能签出「看起来是我们」的安装包；密钥丢失 = 这个包名再也发不了更新。
+# keystore.properties.example 是模板，被跟踪；填了真密码的那份永远不进来。
+*.jks
+*.keystore
+android-shell/signing/keystore.properties
