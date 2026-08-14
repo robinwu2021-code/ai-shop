@@ -1,16 +1,14 @@
 // 消息与客服规则测试（P-14）。
 import { beforeEach, describe, expect, it } from "vitest";
 import { messageMock } from "@/lib/api/mocks/message";
-import { faqs, msgTemplates, notifyQuota, pushTasks, tickets } from "./message";
+import { faqs, msgTemplates, notifyQuota, tickets } from "./message";
 
 const T0 = JSON.parse(JSON.stringify(msgTemplates)) as typeof msgTemplates;
-const P0 = JSON.parse(JSON.stringify(pushTasks)) as typeof pushTasks;
 const K0 = JSON.parse(JSON.stringify(tickets)) as typeof tickets;
 const F0 = JSON.parse(JSON.stringify(faqs)) as typeof faqs;
 const Q0 = { ...notifyQuota };
 beforeEach(() => {
   msgTemplates.length = 0; msgTemplates.push(...(JSON.parse(JSON.stringify(T0)) as typeof msgTemplates));
-  pushTasks.length = 0; pushTasks.push(...(JSON.parse(JSON.stringify(P0)) as typeof pushTasks));
   tickets.length = 0; tickets.push(...(JSON.parse(JSON.stringify(K0)) as typeof tickets));
   faqs.length = 0; faqs.push(...(JSON.parse(JSON.stringify(F0)) as typeof faqs));
   Object.assign(notifyQuota, Q0);
@@ -25,26 +23,6 @@ describe("触达频控（P-14.1.4）", () => {
   it("合法配置落库", async () => {
     const q = await messageMock.saveNotifyQuota({ dailyPerUser: 5, minIntervalHours: 12 });
     expect(q).toMatchObject({ dailyPerUser: 5, minIntervalHours: 12 });
-  });
-});
-
-describe("推送任务（P-14.1.2）", () => {
-  it("预估触达 0 不许发 —— 人群是空的，发了等于白发一次", async () => {
-    await expect(messageMock.sendPushTask("PT9003")).rejects.toThrow(/预估触达为 0/);
-  });
-
-  it("模板停用时不许发", async () => {
-    msgTemplates.find((t) => t.templateNo === "TPL_WX_ARRIVED")!.enabled = false;
-    await expect(messageMock.sendPushTask("PT9001")).rejects.toThrow(/模板已停用/);
-  });
-
-  it("正常任务可发送", async () => {
-    const t = await messageMock.sendPushTask("PT9001");
-    expect(t.status).toBe("SENT");
-  });
-
-  it("已发送不能撤销", async () => {
-    await expect(messageMock.cancelPushTask("PT9002")).rejects.toThrow(/无法撤销/);
   });
 });
 

@@ -226,7 +226,6 @@ export const en: Messages = {
   riskType: { FAKE_ORDER: "Fake orders", ABNORMAL_FISSION: "Abnormal referral", MALICIOUS_REFUND: "Refund abuse" },
   riskStatus: { PENDING: "Open", CONFIRMED: "Confirmed", DISMISSED: "Dismissed" },
   blacklistAppeal: { NONE: "No appeal", PENDING: "Appeal pending", UPHELD: "Appeal upheld", REJECTED: "Appeal rejected" },
-  pushStatus: { DRAFT: "Draft", SCHEDULED: "Scheduled", SENT: "Sent", CANCELLED: "Cancelled" },
   ticketStatus: { PENDING: "Unassigned", ASSIGNED: "In progress", RESOLVED: "Resolved", CLOSED: "Closed" },
   materialKind: { COPY: "Copy", IMAGE: "Image", POSTER: "Poster", VIDEO: "Short video" },
   materialScope: { ALL: "All merchants", COMMUNITY: "Selected communities", MERCHANT: "Selected merchants" },

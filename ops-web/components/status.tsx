@@ -12,7 +12,7 @@ import type {
   ReviewStatus, AppealStatus, RiskFlag,
   AfterSaleType, AfterSaleStatus, GroupStatus, DemandStatus,
   CategoryTemplate, SkuStatus, SettleStatus, AttrSource, RiskType, RiskStatus, BlacklistAppealStatus,
-  PushStatus, TicketStatus, MaterialKind, MaterialScope,
+  TicketStatus, MaterialKind, MaterialScope,
 } from "@/lib/types";
 import { StatusBadge, type StatusMap } from "@/components/ui/status-badge";
 import { Badge } from "@/components/ui/badge";
@@ -429,16 +429,6 @@ export function useBlacklistAppealMap(): StatusMap<BlacklistAppealStatus> {
 }
 
 // ── 消息与客服（P-14）/ 素材（P-15）──────────────────────────────────────
-export function usePushStatusMap(): StatusMap<PushStatus> {
-  const { t } = useI18n();
-  return {
-    DRAFT: { label: t("pushStatus.DRAFT"), tone: "muted" },
-    SCHEDULED: { label: t("pushStatus.SCHEDULED"), tone: "info" },
-    SENT: { label: t("pushStatus.SENT"), tone: "success" },
-    CANCELLED: { label: t("pushStatus.CANCELLED"), tone: "muted" },
-  };
-}
-
 /** PENDING 用 warning：未分派的工单是"有人在等"，不是中性状态。 */
 export function useTicketStatusMap(): StatusMap<TicketStatus> {
   const { t } = useI18n();

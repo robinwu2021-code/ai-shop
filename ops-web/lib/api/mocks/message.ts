@@ -32,29 +32,6 @@ export const messageMock: MessageApi = {
     return wait(t, 400);
   },
 
-  listPushTasks: (q = {}) =>
-    wait(db.paginate(db.pushTasks, q.page, q.size, (t) => db.kwHit(q.keyword, t.taskNo, t.name, t.audience))),
-
-  sendPushTask: async (taskNo) => {
-    const t = db.pushTasks.find((x) => x.taskNo === taskNo);
-    if (!t) notFound("推送任务", "Push task", taskNo);
-    if (t.status === "SENT") fail("该任务已发送", "This task has already been sent");
-    // 选了个空人群等于白发一次，而且发送记录会污染后面的效果分析
-    if (t.estimatedReach <= 0) fail("预估触达为 0，人群可能是空的，请先确认人群再发送", "Estimated reach is 0 — the audience may be empty. Check it before sending");
-    const tpl = db.msgTemplates.find((x) => x.templateNo === t.templateNo);
-    if (!tpl?.enabled) fail("关联的消息模板已停用，无法发送", "The linked message template is disabled, so this cannot be sent");
-    t.status = "SENT";
-    return wait(t, 400);
-  },
-
-  cancelPushTask: async (taskNo) => {
-    const t = db.pushTasks.find((x) => x.taskNo === taskNo);
-    if (!t) notFound("推送任务", "Push task", taskNo);
-    if (t.status === "SENT") fail("已发送的任务无法撤销", "A task that has been sent cannot be recalled");
-    t.status = "CANCELLED";
-    return wait(t, 400);
-  },
-
   getNotifyQuota: async () => wait(db.notifyQuota),
 
   saveNotifyQuota: async (v) => {

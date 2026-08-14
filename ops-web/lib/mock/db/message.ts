@@ -1,5 +1,5 @@
 // 消息与客服 mock（P-14）。
-import type { FaqEntry, MsgTemplate, NotifyQuota, PushTask, Ticket } from "@/lib/types";
+import type { FaqEntry, MsgTemplate, NotifyQuota, Ticket } from "@/lib/types";
 
 /*
  * 模板 mock。**通道值与后端种子（V141）同一套** —— SMS/MAIL/WXSUB/PUSH/INAPP。
@@ -17,13 +17,6 @@ export const msgTemplates: MsgTemplate[] = [
   { templateNo: "TPL_WX_ARRIVED", name: "到货通知", channel: "WXSUB", content: "您有 {number1} 件包裹已到自提点 · {thing2}", enabled: true, sentCount: 640 },
   { templateNo: "TPL_PUSH_TEST", name: "通用推送", channel: "PUSH", content: "{subject}\n{body}", enabled: true, sentCount: 210 },
   { templateNo: "TPL_INAPP_TEST", name: "站内信", channel: "INAPP", content: "{subject}\n{body}", enabled: false, sentCount: 12 },
-];
-
-export const pushTasks: PushTask[] = [
-  { taskNo: "PT9001", name: "周五生鲜到货提醒", templateNo: "TPL_WX_ARRIVED", audience: "锦绣花园 + 阳光里有未取订单的用户", estimatedReach: 186, status: "SCHEDULED", scheduledAt: "2026-08-07T09:00:00Z", createdAt: "2026-08-06T00:30:00Z" },
-  { taskNo: "PT9002", name: "新人礼包召回", templateNo: "TPL_PUSH_TEST", audience: "注册 7 天未下单", estimatedReach: 412, status: "SENT", createdAt: "2026-08-04T02:00:00Z" },
-  // 空人群：发了等于白发一次，用来验"预估触达 0 不许发"
-  { taskNo: "PT9003", name: "梧桐苑开城通知（人群待定）", templateNo: "TPL_INAPP_TEST", audience: "梧桐苑已注册用户", estimatedReach: 0, status: "DRAFT", createdAt: "2026-08-06T01:00:00Z" },
 ];
 
 export const notifyQuota: NotifyQuota = {

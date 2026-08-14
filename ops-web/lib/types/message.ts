@@ -6,7 +6,6 @@
  * 用的一直是这一套 —— 两套名字并存时，模板列表的通道列会显示成空白。
  */
 export type MsgChannel = "SMS" | "MAIL" | "WXSUB" | "PUSH" | "INAPP";
-export type PushStatus = "DRAFT" | "SCHEDULED" | "SENT" | "CANCELLED";
 
 /** 订阅消息模板（P-14.1.1）。 */
 export interface MsgTemplate {
@@ -29,26 +28,6 @@ export interface MsgTemplate {
   enabled: boolean;
   /** 近 30 天发送量 */
   sentCount: number;
-}
-
-/** 推送任务（P-14.1.2）。 */
-export interface PushTask {
-  /** 任务单号 */
-  taskNo: string;
-  /** 任务名 */
-  name: string;
-  /** 使用的消息模板 */
-  templateNo: string;
-  /** 人群描述，如「近 7 日未下单的老客」 */
-  audience: string;
-  /** 预估触达数。为 0 说明人群是空的，发了等于白发 */
-  estimatedReach: number;
-  /** 任务状态 */
-  status: PushStatus;
-  /** 计划发送时间。`status=SCHEDULED` 时有值 */
-  scheduledAt?: string;
-  /** 创建时间 */
-  createdAt: string;
 }
 
 /**
@@ -174,14 +153,14 @@ export interface WxTemplates {
   refunded: string;
 }
 
+/** 与后端 MsgMessage 的三个常量逐字一致 —— 内联在 interface 里的话对登记表不可见（规范 §D5） */
+export type InboxMessageType = "TRADE" | "MARKETING" | "SYSTEM";
+
 /**
  * 运营自己的通知收件箱（顶栏铃铛）。
  * 与 NotifyLog 是两回事：这个是**发给运营的待办**（新工单/待审核/告警），
  * 那个是**平台发给用户**的触达留痕。
  */
-/** 与后端 MsgMessage 的三个常量逐字一致 —— 内联在 interface 里的话对登记表不可见（规范 §D5） */
-export type InboxMessageType = "TRADE" | "MARKETING" | "SYSTEM";
-
 export interface InboxMessage {
   messageNo: string;
   type: InboxMessageType;

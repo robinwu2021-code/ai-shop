@@ -5,9 +5,6 @@ import type { MessageApi } from "../contracts/message";
 export const messageHttp: MessageApi = {
   listMsgTemplates: (q) => client.get("/ops/msg-templates", q),
   setTemplateEnabled: (no, enabled) => client.post(`/ops/msg-templates/${no}/enabled`, { enabled }),
-  listPushTasks: (q) => client.get("/ops/push-tasks", q),
-  sendPushTask: (no) => client.post(`/ops/push-tasks/${no}/send`),
-  cancelPushTask: (no) => client.post(`/ops/push-tasks/${no}/cancel`),
   getNotifyQuota: () => client.get("/ops/notify-quota"),
   saveNotifyQuota: (v) => client.post("/ops/notify-quota", v),
   listNotifyLogs: (q) => client.get("/ops/notify-logs", q),

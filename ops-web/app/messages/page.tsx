@@ -19,8 +19,8 @@ import { usePageTab, useNavTabs } from "@/lib/use-page-tab";
 import { fmtTime } from "@/lib/utils";
 import { useCan } from "@/lib/use-can";
 import { notify } from "@/lib/notify";
-import type { FaqEntry, MsgTemplate, PushTask, Ticket } from "@/lib/types";
-import { TicketStatusBadge, usePushStatusMap, useTicketStatusMap } from "@/components/status";
+import type { FaqEntry, MsgTemplate, Ticket } from "@/lib/types";
+import { TicketStatusBadge, useTicketStatusMap } from "@/components/status";
 import { ReadOnlyNotice } from "@/components/read-only-notice";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -75,11 +75,9 @@ function MessagesInner() {
   const canHandleTicket = allow("message:ticket:handle");
   const canEditFaq = allow("message:faq:update");
 
-  const pushStatusMap = usePushStatusMap();
   const ticketStatusMap = useTicketStatusMap();
 
   const templates = useQuery({ queryKey: ["msg-templates"], queryFn: () => api.listMsgTemplates({ size: 100 }), enabled: tab === "inapp" });
-  const tasks = useQuery({ queryKey: ["push-tasks"], queryFn: () => api.listPushTasks({ size: 100 }), enabled: tab === "inapp" });
   const quota = useQuery({ queryKey: ["notify-quota"], queryFn: () => api.getNotifyQuota(), enabled: tab === "inapp" });
   const ticketQ = { keyword, status, page, size };
   const tickets = useQuery({ queryKey: ["tickets", ticketQ], queryFn: () => api.listTickets(ticketQ), enabled: tab === "tickets" });
@@ -87,7 +85,6 @@ function MessagesInner() {
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ["msg-templates"] });
-    qc.invalidateQueries({ queryKey: ["push-tasks"] });
     qc.invalidateQueries({ queryKey: ["tickets"] });
     qc.invalidateQueries({ queryKey: ["faqs"] });
     qc.invalidateQueries({ queryKey: ["notify-quota"] });
@@ -96,10 +93,6 @@ function MessagesInner() {
   const toggleTemplate = useMutation({
     mutationFn: (v: { no: string; enabled: boolean }) => api.setTemplateEnabled(v.no, v.enabled),
     onSuccess: () => { invalidate(); notify.success(c.toastTemplateSaved); },
-  });
-  const sendTask = useMutation({
-    mutationFn: (no: string) => api.sendPushTask(no),
-    onSuccess: (t) => { invalidate(); notify.success(fill(c.toastSent, { name: t.name })); },
   });
   const [quotaForm, setQuotaForm] = useState<{ daily: string; interval: string } | null>(null);
   const editingQuota = quotaForm ?? (quota.data ? { daily: String(quota.data.dailyPerUser), interval: String(quota.data.minIntervalHours) } : null);
@@ -157,27 +150,6 @@ function MessagesInner() {
         <Switch checked={t.enabled} disabled={!canEditTemplate} aria-label={fill(c.ariaEnable, { name: t.name })}
           onChange={(v) => toggleTemplate.mutate({ no: t.templateNo, enabled: v })} />
       ),
-    },
-  ];
-
-  const taskColumns: Column<PushTask>[] = [
-    { header: c.colTaskNo, cell: (t) => t.taskNo, numeric: true, align: "start" },
-    { header: c.colName, cell: (t) => t.name },
-    { header: c.colAudience, cell: (t) => t.audience, className: "whitespace-normal", width: "18rem" },
-    {
-      header: c.colReach,
-      numeric: true,
-      // 0 说明人群是空的：发了等于白发，还会污染后面的效果分析
-      cell: (t) => (t.estimatedReach > 0 ? t.estimatedReach : <Badge tone="danger">{c.reachEmpty}</Badge>),
-    },
-    { header: c.colScheduledAt, cell: (t) => fmtTime(t.scheduledAt) },
-    { header: c.colStatus, cell: (t) => <StatusBadge map={pushStatusMap} value={t.status} /> },
-    {
-      header: c.colActions,
-      cell: (t) =>
-        canEditTemplate && t.status !== "SENT" && t.status !== "CANCELLED" ? (
-          <Button size="sm" onClick={() => sendTask.mutate(t.taskNo)}>{c.btnSendNow}</Button>
-        ) : <span className="text-muted-foreground">—</span>,
     },
   ];
 
@@ -271,15 +243,13 @@ function MessagesInner() {
             </CardContent>
           </Card>
 
-          <div>
-            <div className="mb-2 txt-strong">{c.sectionTasks}</div>
-            <DataTable
-              columns={taskColumns} rows={tasks.data?.records} loading={tasks.isLoading}
-              error={tasks.error} onRetry={() => tasks.refetch()}
-              rowKey={(t) => t.taskNo}
-              empty={c.emptyTasks}
-            />
-          </div>
+          {/*
+            推送任务（群发）后端一条端点都没有。此前这里的表格在调 /ops/push-tasks ——
+            mock 下一切正常，接真后端时这一页当场 404。
+            摘掉表格、留一句说明：一个报错的页面比没有这个页面更糟，
+            它让人以为功能坏了，而不是没做。立项前要保留的三条规则见触达能力矩阵 §7.2.1。
+          */}
+          <Notice tone="info">{c.tasksNotBuilt}</Notice>
 
           <div>
             <div className="mb-2 txt-strong">{c.sectionTemplates}</div>

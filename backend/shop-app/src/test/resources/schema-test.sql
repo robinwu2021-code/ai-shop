@@ -4054,3 +4054,6 @@ UPDATE msg_template SET content = '{subject}
 {body}' WHERE template_no = 'TPL_PUSH_TEST';
 UPDATE msg_template SET content = '{subject}
 {body}' WHERE template_no = 'TPL_INAPP_TEST';
+UPDATE sys_function_point
+   SET name = '站内信模板', updated_at = NOW()
+ WHERE point_code = 'OPS_MESSAGE__TAB_INAPP';

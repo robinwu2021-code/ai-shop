@@ -224,7 +224,6 @@ export const zh = {
   riskType: { FAKE_ORDER: "刷单", ABNORMAL_FISSION: "异常裂变", MALICIOUS_REFUND: "恶意退款" },
   riskStatus: { PENDING: "待处置", CONFIRMED: "已确认", DISMISSED: "已排除" },
   blacklistAppeal: { NONE: "无申诉", PENDING: "申诉待裁决", UPHELD: "申诉成立", REJECTED: "申诉驳回" },
-  pushStatus: { DRAFT: "草稿", SCHEDULED: "待发送", SENT: "已发送", CANCELLED: "已撤销" },
   ticketStatus: { PENDING: "待分派", ASSIGNED: "处理中", RESOLVED: "已解决", CLOSED: "已关闭" },
   materialKind: { COPY: "文案", IMAGE: "图片", POSTER: "海报", VIDEO: "短视频" },
   materialScope: { ALL: "全部商家", COMMUNITY: "指定社区", MERCHANT: "指定商家" },
