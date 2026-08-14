@@ -74,6 +74,17 @@ export const RULES = [
   // 必须排在 /ops/stores/audits 与 business-mode 之后：规则第一条命中生效
   ["GET", /^\/ops\/stores(\/|$)/, "merchant:merchant:read"],
 
+  // ── 增值包与门店额度（P-11.2.2~11.2.6，V150）────────────────────────────
+  // 授予套餐 / 覆盖额度 = 处置面：决定一家商家能开几家店，与决定他能不能营业同一量级
+  ["POST", /^\/ops\/merchant-plans\/[^/]+\/grant$/, "merchant:merchant:ban"],
+  ["PUT", /^\/ops\/merchant-plans\/[^/]+\/quota$/, "merchant:merchant:ban"],
+  ["GET", /^\/ops\/merchant-plans(\/|$)/, "merchant:merchant:read"],
+  // **档位定义的写入刻意不与授予同码**：BD 能给某家授予套餐，但不能改「套餐是什么」——
+  // 后者影响这一档之后的所有订阅，与「功能开关、灰度、汇率」同级。
+  // 读反过来给 merchant:merchant:read：授予对话框要拿档位列表填下拉。
+  ["PUT", /^\/ops\/plan-defs(\/|$)/, "system:param:update"],
+  ["GET", /^\/ops\/plan-defs(\/|$)/, "merchant:merchant:read"],
+
   // ── 准入（保证金 / 支付额度 / 准入策略）· 无菜单入口 ─────────────────────
   ["GET", /^\/ops\/admission\//, "merchant:admission:read"],
   ["*", /^\/ops\/admission\//, "merchant:admission:update"],
@@ -116,6 +127,39 @@ export const RULES = [
   // ── 经营看板 ───────────────────────────────────────────────────────────
   ["GET", /^\/ops\/dashboard\//, "dashboard:overview:read"],
 
+  // ── 履约调度与物流（P-5.1 / P-5.2，V130–V135）───────────────────────────
+  // 批次推进与「看批次」共用 batch:read，是全表第二处不拆读写的地方 ——
+  // 理由写在 Perms.FULFILLMENT_BATCH_READ 上：ops-web 的发车按钮就是用它门控的，
+  // 后端另判一个写码等于造一个「看得见、点下去 403」的按钮
+  ["*", /^\/ops\/fulfillment\/batches/, "fulfillment:batch:read"],
+  ["GET", /^\/ops\/fulfillment\/sorting/, "fulfillment:batch:read"],
+  ["GET", /^\/ops\/fulfillment\/redeem/, "fulfillment:redeem:read"],
+  ["GET", /^\/ops\/fulfillment\/overdue-rule/, "fulfillment:batch:read"],
+  ["POST", /^\/ops\/fulfillment\/overdue-rule/, "fulfillment:rule:update"],
+  ["GET", /^\/ops\/fulfillment\/carriers/, "fulfillment:logistics:read"],
+  ["*", /^\/ops\/fulfillment\/carriers/, "fulfillment:rule:update"],
+  ["GET", /^\/ops\/(shipments|freight-templates)/, "fulfillment:logistics:read"],
+  ["*", /^\/ops\/(shipments|freight-templates)/, "fulfillment:rule:update"],
+
+  // ── 增长与归因（P-9，V121）──────────────────────────────────────────────
+  // 读写分开的理由写在 Perms.GROWTH_ATTRIBUTION_READ 上：BD 要查得到链路（商家质疑账单），
+  // 但改优先级 = 改一批商家的佣金档（ADR-004 §6）
+  ["GET", /^\/ops\/attribution-(rule|traces)/, "growth:attribution:read"],
+  ["*", /^\/ops\/attribution-rule/, "growth:attribution:update"],
+  ["GET", /^\/ops\/fission-campaigns/, "growth:fission:read"],
+  ["*", /^\/ops\/fission-campaigns/, "growth:fission:update"],
+
+  // ── 风控（P-16.2，V120）─────────────────────────────────────────────────
+  // 读写分开的理由写在 Perms.RISK_EVENT_READ 上：客服要看得到「这个人是不是被标记过」
+  // 才解释得了一次拦截，但处置只能是风控的事。合成一个码，两头都不对。
+  ["POST", /^\/ops\/risk-events\/[^/]+\/decide$/, "risk:event:handle"],
+  ["GET", /^\/ops\/risk-events/, "risk:event:read"],
+  // 申诉裁决与拉黑同码：两者都在改「这个人能不能下单」，分开会让配的人漏配其中一半
+  ["POST", /^\/ops\/blacklists/, "risk:blacklist:update"],
+  ["GET", /^\/ops\/blacklists/, "risk:blacklist:read"],
+  ["GET", /^\/ops\/risk-rules/, "risk:rule:read"],
+  ["*", /^\/ops\/risk-rules/, "risk:rule:update"],
+
   // ── 营销 ───────────────────────────────────────────────────────────────
   ["POST", /^\/ops\/coupons\/[^/]+\/issue$/, "marketing:coupon:issue"],
   ["GET", /^\/ops\/(coupons|coupon-issues)/, "marketing:coupon:read"],
@@ -144,6 +188,29 @@ export const RULES = [
   // 两者方向相反，将来若要分权（比如销项交给客服代办），得先分得开
   ["GET", /^\/ops\/invoice-requests/, "finance:invoice:read"],
   ["*", /^\/ops\/invoice-requests/, "finance:invoice:verify"],
+  /*
+   * 提现审批（P-12.2.1）。**全表第三处刻意不拆读写**（前两处是 store:page:audit
+   * 与 fulfillment:batch:read）：提现队列的「读」就是审批动作的一半，
+   * 没有「只看提现不审提现」的岗位 —— 拆出的只读码不会有任何角色单独持有。
+   *
+   * ⚠️ 持有它**不等于能打款**：通过后落 APPROVED，出款是线下动作（B-12.5）。
+   */
+  ["*", /^\/ops\/finance\/withdrawals/, "finance:withdraw:approve"],
+  /*
+   * 商家结算发票（P-12.2.4）。**第三个方向的票**：进项是供应商开给平台
+   * （purchase-invoices），销项对 C 是平台开给消费者（invoice-requests），
+   * 这一条是平台开给商家。复用同一对码（经办的是同一批财务），
+   * 但同样单列一条规则 —— 三者方向不同，将来要分权得先分得开。
+   *
+   * 个税规则跟着发票走：开票与代扣是同一个问题的两半（对外的凭证、对内的扣除），
+   * 而它们在 ops-web 上就是同一个 tab。
+   */
+  ["GET", /^\/ops\/finance\/(invoices|tax-rule)/, "finance:invoice:read"],
+  ["*", /^\/ops\/finance\/(invoices|tax-rule)/, "finance:invoice:verify"],
+  // 退款回退分账（P-12.1.5 / E4）。**归结算不归售后**：这个动作动的是分账
+  // （把钱从商家账户收回），不是裁决 —— 裁决在 /ops/after-sales 由售后组做
+  ["GET", /^\/ops\/refund-split-backs/, "finance:settle:read"],
+  ["*", /^\/ops\/refund-split-backs/, "finance:settle:execute"],
   // 关单策略（P-4.2.3）。**读写必须分开**：这个数与掉单直接因果 ——
   // 调短了会把正在付款的人关掉，而客服、数据这类角色需要看得到「现在配的是多久」
   // 才能判断一次投诉是不是撞上了它。给他们只读，不给写。
@@ -175,6 +242,9 @@ export const RULES = [
   // 运营自己的收件箱：免鉴权（理由见 gen-perm-endpoint-matrix.mjs 的 PUBLIC）。
   // 这里仍要有归属，否则权限码细化时它会被落下而没人知道
   ["*", /^\/ops\/message/, "message:template:read"],
+  // 站内信的**平台侧**记录（发送记录页第二个 tab）——与上一条不是一回事：
+  // 那个是「我的收件箱」，这个是运营在查「平台发给谁了」
+  ["GET", /^\/ops\/inapp-messages/, "message:template:read"],
   ["GET", /^\/ops\/(msg-templates|notify-quota)/, "message:template:read"],
   ["*", /^\/ops\/(msg-templates|notify-quota)/, "message:template:update"],
   ["GET", /^\/ops\/tickets/, "message:ticket:read"],
