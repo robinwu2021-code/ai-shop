@@ -299,7 +299,12 @@ function fieldLabel(c: MessageCopy, key: string): string {
     body: c.tsFieldBody,
     title: c.tsFieldTitle,
     thing2: c.tsFieldTip,
-    number1: c.chWxTplArrived,
-    amount1: c.chWxTplRefunded,
+    /*
+     * number1 是**件数**、amount1 是**金额**，不是模板名。
+     * 此前这里错用了模板号配置区的标签（「到货通知」「退款通知」）——
+     * 运营看到一个叫「到货通知」的输入框，猜不出它要的是几件。
+     */
+    number1: c.tsFieldCount,
+    amount1: c.tsFieldAmount,
   } as Record<string, string>)[key] ?? key;
 }
