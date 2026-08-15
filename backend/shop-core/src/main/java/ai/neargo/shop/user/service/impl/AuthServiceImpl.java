@@ -89,9 +89,14 @@ public class AuthServiceImpl implements AuthService {
         this.smsPort = smsPort;
         this.wxAuthPort = wxAuthPort;
         this.fixedOtp = fixedOtp;
-        if (fixedOtp != null && !fixedOtp.isBlank()) {
-            log.warn("[DANGEROUS] shop.auth.otp.fixed 已开启（{}）—— "
-                    + "任何人都能用这个码登录任意手机号。**生产环境绝不能出现这条日志**", fixedOtp);
+        if (usingFixedOtp()) {
+            /*
+             * ERROR 而不是 WARN：这条要在日志里**一眼扎出来**。
+             * WARN 在启动刷屏里是背景噪音，而这条说的是「此刻任何人都能登进任何账号」。
+             */
+            log.error("[DANGEROUS] shop.auth.otp.fixed 已开启（{}）—— "
+                    + "任何人都能用这个码登录任意手机号，且不再发真实短信。"
+                    + "**生产环境绝不能出现这条日志**（prod profile 下会直接拒绝启动）", fixedOtp);
         }
     }
 
@@ -104,11 +109,31 @@ public class AuthServiceImpl implements AuthService {
          */
         sendGuard.check(phone);
 
-        String code = fixedOtp == null || fixedOtp.isBlank()
-                ? "%06d".formatted(RANDOM.nextInt(1_000_000))
-                : fixedOtp;
+        if (usingFixedOtp()) {
+            /*
+             * 预设码**不走短信通道**。走的话有两个代价：真实通道下每次自动化测试
+             * 都在烧短信费，而且给人发一条「你的验证码是 123456」的真短信 ——
+             * 那个码谁都知道，等于把它做成了一把公开的钥匙。
+             */
+            otpStore.save(phone, fixedOtp);
+            log.warn("[otp] 预设验证码已下发给 {}（未发短信）", mask(phone));
+            return;
+        }
+        String code = "%06d".formatted(RANDOM.nextInt(1_000_000));
         otpStore.save(phone, code);
         smsPort.sendOtp(phone, code);
+    }
+
+    /** 预设验证码是否开着。空/未配 = 关 —— 默认必须是关的那一侧 */
+    private boolean usingFixedOtp() {
+        return fixedOtp != null && !fixedOtp.isBlank();
+    }
+
+    /** 日志里的手机号一律打码：日志会被收集、被转发，它不该成为一份号码库 */
+    private static String mask(String phone) {
+        return phone == null || phone.length() < 11
+                ? "***"
+                : phone.substring(0, 3) + "****" + phone.substring(7);
     }
 
     @Override
@@ -154,7 +179,8 @@ public class AuthServiceImpl implements AuthService {
      */
     private List<Credential> resolveCredentials(LoginCommand cmd) {
         return switch (cmd.grantType() == null ? "" : cmd.grantType()) {
-            case GRANT_WECHAT_MP -> {
+            // 两个标签一个分支：WX_MINI 是端上对同一件事的叫法（见 AuthService 常量注释）
+            case GRANT_WECHAT_MP, GRANT_WX_MINI -> {
                 /*
                  * code2Session 走 WxAuthPort（S4，安全整改方案 §6.5）：
                  * 桩实现返回 openId = code（接入前的既有行为），真实通道换回真 openid 与

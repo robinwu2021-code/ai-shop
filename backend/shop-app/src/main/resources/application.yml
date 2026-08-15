@@ -85,6 +85,17 @@ shop:
       # 每个实例独占一个目录：Ehcache 会加文件锁，两个实例指同一个目录时后启动的起不来
       dir: ${SHOP_SESSION_DIR:./data/sessions}
       disk-mb: ${SHOP_SESSION_DISK_MB:64}
+    otp:
+      # 预设验证码：**测试环境专用**。设了之后 /biz/auth/otp/send 与 /mp/user/otp/send
+      # 一律下发这个码，且**不再调短信通道**（省钱，也免得真给人发一条固定码的短信）。
+      #
+      # 空 = 关（默认）。开着时任何人都能用这个码登录**任意手机号** ——
+      # 自动化 e2e 需要它（真机收不到码，也不该为跑测试去接短信平台），
+      # 但它同时是一把可以登进任何人账号的万能钥匙。
+      #
+      # 三道防线：① 默认空；② 开着时每次启动打一条 ERROR 级横幅；
+      # ③ prod profile 下直接拒绝启动（见 FixedOtpGuard）。
+      fixed: ${SHOP_OTP_FIXED:}
   default-skin: fresh
   min-app-ver: 1.0.0
   service-hours: "09:00-21:00"
