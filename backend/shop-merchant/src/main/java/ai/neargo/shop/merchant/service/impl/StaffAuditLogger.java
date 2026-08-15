@@ -54,6 +54,11 @@ public class StaffAuditLogger {
             MchStaffLog row = new MchStaffLog();
             row.setLogNo(BizKey.next(BizKey.STAFF_LOG));
             row.setEntityNo(merchantNo);
+            /*
+             * 这里存的是 **userNo**，而不是 `mch_account_no` —— 列名叫 actor_account_no
+             * 容易让人以为是后者。读侧（`MerchantStaffServiceImpl.logs`）两种键都认，
+             * 改这里之前先去看那一段：只改一处的话，历史 17 条会再次查不出操作人。
+             */
             row.setActorAccountNo(SecurityUtils.currentUser().map(LoginUser::userNo).orElse(null));
             row.setTargetAccountNo(targetAccountNo);
             row.setAction(action);

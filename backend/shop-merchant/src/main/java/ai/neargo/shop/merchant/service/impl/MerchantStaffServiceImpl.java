@@ -304,9 +304,23 @@ public class MerchantStaffServiceImpl implements MerchantStaffService {
         for (MchAccount a : accounts(merchantNo)) {
             // **优先姓名** —— 审计是给三个月后的人看的，那时一串号码说明不了任何事；
             // 没填姓名才退到脱敏号（日志是长期留存的文本，那里不需要完整号码）
-            String label = a.getDisplayName() != null && !a.getDisplayName().isBlank()
-                    ? a.getDisplayName() : mask(a.getLoginPhone());
+            String label = labelOf(a);
             phones.put(a.getMchAccountNo(), label);
+            /*
+             * **两种键都要能查到**。写日志时存的是当前登录身份的 `userNo`
+             * （`StaffAuditLogger.write` 里的 `LoginUser::userNo`），而这张表的键是
+             * `mchAccountNo` —— 两个键永远对不上，于是**每一条日志的操作人都是 null**。
+             *
+             * 而 VO 上写着「取不到当前身份时为空」，于是这个 null 被读成
+             * 「当时没取到身份」，真相是键不匹配：B-11.10.3 要的「谁干的」
+             * 从上线起就没有一条记下来过（实测 17 条，actor 非空 0 条）。
+             *
+             * 老板尤其明显：他的 `mch_account.user_no` 有值而 `login_phone` 是 NULL，
+             * 而绝大多数授权操作都是他做的。
+             */
+            if (a.getUserNo() != null && !a.getUserNo().isBlank()) {
+                phones.put(a.getUserNo(), label);
+            }
         }
         Map<String, String> storeNames = storeNames(merchantNo);
 
@@ -397,6 +411,28 @@ public class MerchantStaffServiceImpl implements MerchantStaffService {
         return toVO(a, rolesOf(List.of(a)).stream()
                         .collect(Collectors.groupingBy(MchStoreRole::getMchAccountNo)),
                 storeNames(merchantNo));
+    }
+
+    /**
+     * 审计日志里怎么称呼一个人。**优先姓名** —— 审计是给三个月后的人看的，
+     * 那时一串号码说明不了任何事；没填姓名才退到脱敏号
+     * （日志长期留存，那里不需要完整号码）。
+     *
+     * <p><b>老板要单独兜底</b>：他的 `mch_account` 是入驻时建的，
+     * `display_name` 与 `login_phone` <b>两列都是 NULL</b>（他走消费者账号登录），
+     * 于是标签算出来是空字符串 —— 而绝大多数授权操作都是他做的，
+     * 结果是整张日志表上「谁干的」全是空白。
+     */
+    private String labelOf(MchAccount a) {
+        if (a.getDisplayName() != null && !a.getDisplayName().isBlank()) {
+            return a.getDisplayName();
+        }
+        String masked = mask(a.getLoginPhone());
+        if (masked != null && !masked.isBlank()) {
+            return masked;
+        }
+        // 「店主」而不是账号号：老板认得出前者，SF2026… 谁也认不出
+        return Boolean.TRUE.equals(a.getIsOwner()) ? "店主" : a.getMchAccountNo();
     }
 
     private StaffVO toVO(MchAccount a, Map<String, List<MchStoreRole>> byAccount,
