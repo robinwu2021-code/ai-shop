@@ -173,11 +173,17 @@ describe("can() 的语义", () => {
   });
 
   it("★★★ UNIMPLEMENTED 一律 false —— 哪怕是超管", () => {
-    // 后端根本没有这块能力，入口不该存在。
-    // 显示出来然后点出 404，比藏起来坏得多
-    expect(can(["risk:whatever"], "risk:rule:update")).toBe(false);
+    /*
+     * 后端根本没有这块能力，入口不该存在。显示出来然后点出 404，比藏起来坏得多。
+     *
+     * ⚠️ 这里的样例码**会随后端补齐而失效**：原先用的是 `risk:rule:update`，
+     * 2026-08-13 风控域落地后它不再是 UNIMPLEMENTED，这条测试当场变红 ——
+     * 那是对的，它逼着人回来确认「翻标记」这一步真的做了。
+     * 换样例时挑一个当下确实还没有后端的码。
+     */
+    expect(can(["marketing:whatever"], "marketing:member:update")).toBe(false);
     // 超管也一样：那个端点根本不存在，他点下去同样 404
-    expect(can(["*"], "risk:rule:update")).toBe(false);
+    expect(can(["*"], "marketing:member:update")).toBe(false);
   });
 
   it("★★ 没登记的码判 false（拒绝优先）—— 默认放行会静默开口子", () => {

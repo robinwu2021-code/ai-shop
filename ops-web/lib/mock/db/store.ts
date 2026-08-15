@@ -73,3 +73,59 @@ export const storeTemplates: import("@/lib/types").StoreTemplate[] = [
     updatedAt: "2026-07-28T09:00:00Z", updatedBy: "ops01",
   },
 ];
+
+/**
+ * 门店档案（P-11.2.1）。
+ *
+ * ⚠️ `storeNo` 与 `name` **逐条对齐 `merchant.ts` 的 `storeModes` 与
+ * `merchantStaff[].roles`** —— 那两处早就有 ST001/ST002，另起一套编号的话
+ * 「门店档案」和「准入与保证金」会各说各的门店，而两边都自洽、谁也不报错。
+ *
+ * 门店名与主体名**故意不同**（张记粮油 vs 阿姨家的菜摊）：一个主体可以开几家
+ * 挂别的招牌的店，列表里门店名与商家名是两列，共用一个名字就验不出这一点。
+ *
+ * 四条样本覆盖运营真的会遇到的四种状态：
+ *   · ST001 默认店 + 自营 + 无专属收款号（走主体默认号）
+ *   · ST002 第三方 + 有专属收款号
+ *   · ST003 **平台强制下线** —— 「解除下线」这个动作唯一能验到的样本
+ *   · ST004 商家自助停用 —— 用来验「READONLY 解不了」（那是商家自己关的）
+ */
+export const stores: import("@/lib/types").StoreGovern[] = [
+  {
+    storeNo: "ST001", name: "张记粮油·文三路店", address: "杭州市西湖区文三路 122 号",
+    merchantNo: "M901", merchantName: "阿姨家的菜摊",
+    isDefault: true, status: "ACTIVE", businessMode: "SELF_OPERATED",
+    // null = 用主体默认收款号，**不是「没配」** —— 页面要显示成前者
+    payMerchantNo: null,
+    announcement: "每日 6 点到货，蔬菜当日售完不留隔夜。", openHours: "06:00-21:00",
+    deliveryRadiusM: 2000, deliveryMinOrderMinor: 1500, deliveryFeeMinor: 300,
+    deliveryFreeThresholdMinor: 4900,
+  },
+  {
+    storeNo: "ST002", name: "张记粮油·古荡店", address: "杭州市西湖区古荡新村 3 幢",
+    merchantNo: "M901", merchantName: "阿姨家的菜摊",
+    isDefault: false, status: "ACTIVE", businessMode: "THIRD_PARTY",
+    payMerchantNo: "PM_M901_DEFAULT",
+    announcement: "", openHours: "07:00-20:30",
+    deliveryRadiusM: 1500, deliveryMinOrderMinor: 2000, deliveryFeeMinor: 400,
+    deliveryFreeThresholdMinor: 5900,
+  },
+  {
+    storeNo: "ST003", name: "夜市烧烤·凤起路店", address: "杭州市下城区凤起路 88 号",
+    merchantNo: "M906", merchantName: "夜市烧烤（停业整改）",
+    isDefault: true, status: "SUSPENDED", businessMode: "THIRD_PARTY",
+    payMerchantNo: "PM_M906_DEFAULT",
+    announcement: "", openHours: "17:00-02:00",
+    deliveryRadiusM: 3000, deliveryMinOrderMinor: 3000, deliveryFeeMinor: 500,
+    deliveryFreeThresholdMinor: 9900,
+  },
+  {
+    storeNo: "ST004", name: "邻家便利·阳光里店", address: "杭州市拱墅区阳光里 1 号商铺",
+    merchantNo: "M903", merchantName: "邻家便利",
+    isDefault: true, status: "READONLY", businessMode: "THIRD_PARTY",
+    payMerchantNo: null,
+    announcement: "店主外出，暂停接单三天。", openHours: "08:00-22:00",
+    deliveryRadiusM: 1200, deliveryMinOrderMinor: 0, deliveryFeeMinor: 0,
+    deliveryFreeThresholdMinor: 0,
+  },
+];

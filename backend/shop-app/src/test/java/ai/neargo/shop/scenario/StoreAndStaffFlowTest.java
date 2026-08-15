@@ -1,6 +1,7 @@
 package ai.neargo.shop.scenario;
 
 import ai.neargo.shop.support.TestLogin;
+import ai.neargo.shop.support.TestPlan;
 import tools.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -24,8 +25,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * <p>这两块此前**表和实体全齐、写侧零接口**：除了「激活时建一家默认店」，
  * 没有任何代码能再建第二家店，也没有任何代码能给员工授权到店。
  *
- * <p>额度在 {@code application-test.yml} 里开到 3（生产默认 1 = 与单店时代行为一致）：
- * 用默认值的话「超额被拒」之外的分支一条都走不到。
+ * <p><b>额度来自订阅档位，不是配置</b>：新入驻的主体是 FREE（1 家店），
+ * 所以凡是要开第二家店的用例都先 {@link TestPlan#grantPro} —— 多门店本来就是
+ * 付费能力，测试要说出「这家商家买了包」，而不是靠一个碰巧宽松的全局配置。
  * <b>不要改用 @TestPropertySource</b> —— 那会造出第二个 Spring 上下文，
  * 而 H2 是同一个内存库，建表脚本跑第二遍会让整套测试成片挂在主键冲突上。
  */
@@ -42,6 +44,8 @@ class StoreAndStaffFlowTest {
     @Autowired
     private ObjectMapper json;
 
+    @Autowired
+    private ai.neargo.shop.merchant.mapper.MerchantMappers.EntityPlanMapper planMapper;
 
     private MockMvc mvc() {
         return MockMvcBuilders.webAppContextSetup(context)
@@ -56,6 +60,8 @@ class StoreAndStaffFlowTest {
     @DisplayName("★ 激活后就有一家默认店，新建的不抢默认标")
     void defaultStoreExistsAndStaysUnique() throws Exception {
         String token = merchant("12600129001", "门店测试店A");
+        // 多门店是 PRO 才有的能力，测试要说出「这家商家买了包」
+        TestPlan.grantPro(mvc(), json, planMapper, token);
 
         mvc().perform(get("/biz/store/list").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
@@ -79,6 +85,8 @@ class StoreAndStaffFlowTest {
     @DisplayName("★ 超出额度直接拒 —— 建出来却打不开的店比拒绝更难解释")
     void quotaIsEnforced() throws Exception {
         String token = merchant("12600129002", "门店测试店B");
+        // PRO = 3 家店：默认店 + 二店 + 三店 刚好占满，四店必须被拒
+        TestPlan.grantPro(mvc(), json, planMapper, token);
         create(token, "二店", "");
         create(token, "三店", "");
 
@@ -106,6 +114,7 @@ class StoreAndStaffFlowTest {
     @DisplayName("★ 默认店不能停用 —— 停掉之后「这个主体的店在哪」就没有答案了")
     void defaultStoreCannotBeDisabled() throws Exception {
         String token = merchant("12600129003", "门店测试店C");
+        TestPlan.grantPro(mvc(), json, planMapper, token);
         String def = storeNoOf(token, 0);
 
         mvc().perform(post("/biz/store/" + def + "/status").header("Authorization", "Bearer " + token)
@@ -223,6 +232,7 @@ class StoreAndStaffFlowTest {
     @DisplayName("★ 逐店授权：A 店店长可以同时是 B 店店员")
     void perStoreRoles() throws Exception {
         String token = merchant("12600129010", "员工测试店D");
+        TestPlan.grantPro(mvc(), json, planMapper, token);
         String storeA = storeNoOf(token, 0);
         String storeB = create(token, "二店", "");
         String staff = addStaff(token, "13600003456");

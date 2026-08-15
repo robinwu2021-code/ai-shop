@@ -33,31 +33,90 @@ public class DataScopeRegistration implements DataScopeRegistrar {
 
         // —— 交易：子订单是商家视角的账本，也是 C 端「我的订单」的来源 ——
         // SELF 必须登记，理由见类注释第 2 条。
+        // COMMUNITY 是运营端接入时补的（V137 的冗余列）：运营会话的维度是
+        // MERCHANT/COMMUNITY/PICKUP，缺哪一个，配了那个维度的运营就整页空白。
         registry.register("ord_sub_order", Map.of(
                 ScopeDim.SELF, "user_no",
                 ScopeDim.MERCHANT, "entity_no",
+                ScopeDim.COMMUNITY, "community_no",
                 ScopeDim.PICKUP, "pickup_no"));
 
+        // 主单跨商家（一次结算拆成多个商家的子单），没有单一 entity_no/pickup_no ——
+        // 运营端不列主单，只经已授权子单按主键回捞（见 MerchantOrderServiceImpl#toOpsVO）。
         registry.register("ord_order", Map.of(
-                ScopeDim.SELF, "user_no"));
+                ScopeDim.SELF, "user_no",
+                ScopeDim.COMMUNITY, "community_no"));
 
         // —— 商品：商家只能改自己的货 ——
         registry.register("prd_goods", Map.of(
                 ScopeDim.MERCHANT, "entity_no"));
 
-        // —— 履约：自提点承接的任务含别家商品，行级过滤之外还要字段级裁剪（第 ④ 道防线）——
-        registry.register("ful_pickup_task", Map.of(
-                ScopeDim.SELF, "user_no",
-                ScopeDim.PICKUP, "pickup_no",
-                ScopeDim.MERCHANT, "entity_no"));
+        /*
+         * 履约任务表 `ful_pickup_task` 这里曾经登记着，而**这张表从来没有建过** ——
+         * 没有迁移、没有实体、没有任何 Java 引用。登记一张不存在的表不报错
+         * （没有查询会碰到它），坏处是它让人以为这块已经防住了。
+         * 2026-08-14 由 `ops-data-scope.test.ts` 的 G3 点名后删除。
+         * 真做这张表时，连同 SELF/PICKUP/MERCHANT 三个锚点一起加回来。
+         */
 
         // —— 邻里自提：作用域是单个团，且发起人零报酬（ADR-005）——
+        // PICKUP 是运营端接入时补的：表上本来就有 pickup_no，只是没登记 ——
+        // 而没登记的后果不是「不过滤」，是配了自提点域的运营看这张表全空（fail-closed）。
         registry.register("ful_group_pickup", Map.of(
                 ScopeDim.SELF, "user_no",
+                ScopeDim.PICKUP, "pickup_no",
                 ScopeDim.GROUP, "group_no"));
 
         // —— 结算：钱的可见性最敏感，只有商家自己和平台财务 ——
         registry.register("stl_bill", Map.of(
                 ScopeDim.MERCHANT, "entity_no"));
+
+        /*
+         * —— 商家主体与门店（批②，2026-08-14）——
+         *
+         * **只登记 MERCHANT 一个维度**，COMMUNITY / PICKUP 刻意不登记。
+         *
+         * 一度打算给 mch_store 加一列冗余 community_no 好登记 COMMUNITY，理由是
+         * 「社区运营打开门店档案会是空白」。那个判断错了两层：
+         *   ① 门店的社区是**多值**的（一家店可以在多个社区各挂一个自提点，
+         *      cmt_pickup_point.owner_ref 上没有唯一键），单列表达不了 ——
+         *      取其中一个的后果是「另一个社区的运营看不到这家店」，
+         *      比整页空白更难发现；
+         *   ② 更根本的是**那个担忧是假想的**：COMMUNITY_OPS 的 15 个权限码里
+         *      一个 merchant:* 都没有，而 GET /ops/stores 要 merchant:merchant:read
+         *      —— 它根本进不了这个页面。
+         *
+         * 教训：**加一列冗余数据之前，先确认那个角色进不进得来。**
+         *
+         * 若将来给社区运营开了门店档案，回到
+         * TDD-运营端数据域接入 §6.1 的三个选项里重选，不要直接加列。
+         */
+        registry.register("mch_entity", Map.of(
+                ScopeDim.MERCHANT, "entity_no"));
+
+        registry.register("mch_store", Map.of(
+                ScopeDim.MERCHANT, "entity_no"));
+
+        /*
+         * —— 图片资产记账 sys_media_asset：**刻意不登记**（TDD-图片存储与空间回收）——
+         *
+         * 它带 entity_no 与 store_no 两个归属列，看着该登记。一开始也确实登记了
+         * MERCHANT → entity_no，然后被 MediaUploadFlowTest 当场按住：
+         *
+         *     UPDATE sys_media_asset SET status=? WHERE id=? AND 1 = 0
+         *
+         * 上传的第三步（PENDING → ACTIVE）影响 0 行，记账行永远停在 PENDING。
+         * 这正是类注释第 2 条说的 fail-closed —— 而它的表现恰好是最难查的那种：
+         * 上传返回 200、文件也确实落盘了，只有那一列状态不对。
+         *
+         * 不登记的理由不是「绕开麻烦」，是**它和 sys_outbox / sys_idempotent 同类**：
+         * `sys_` 前缀的横切基础设施表，由系统自己写、平台自己读，
+         * 没有任何 B 端端点把它暴露给商家。而运营端那个页面（platform:media:read，
+         * 只发平台角色）要的恰恰是**全平台视图** —— 过滤才是错的。
+         *
+         * ⚠️ **触发重新登记的那一天**：B 端出现「我的存储占用」这类页面时。
+         * 那时要连同「这个会话到底带哪几个维度」一起验，别照抄 prd_goods 的写法 ——
+         * 上面这次 1=0 就是照抄来的。
+         */
     }
 }

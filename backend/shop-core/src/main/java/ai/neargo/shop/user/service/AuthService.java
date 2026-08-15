@@ -13,6 +13,17 @@ import ai.neargo.shop.user.dto.UserVO;
 public interface AuthService {
 
     String GRANT_WECHAT_MP = "WECHAT_MP";
+    /**
+     * 端上对小程序静默登录的叫法（`shared:GrantType`）。<b>与 {@link #GRANT_WECHAT_MP}
+     * 走同一分支</b>，两个名字同一件事。
+     *
+     * <p>为什么不统一成一个名字：端上把微信拆成三种场景（小程序静默 / 小程序取手机号 /
+     * App 开放平台），而后端此刻只需要区分「拿到的是不是 jscode2session 能换的 code」。
+     * 抹平成一个名字会把场景信息丢掉，而 {@code WX_OPEN} 换 openid 走的是
+     * {@code sns/oauth2/access_token}，不是同一个端点 —— 迟早要分。
+     * 保留 {@code WECHAT_MP} 不动是为了不动既有用例。
+     */
+    String GRANT_WX_MINI = "WX_MINI";
     String GRANT_PHONE_OTP = "PHONE_OTP";
     String GRANT_APPLE = "APPLE";
 

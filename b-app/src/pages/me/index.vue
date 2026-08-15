@@ -5,9 +5,15 @@ import { onShow } from "@dcloudio/uni-app";
 import { useMerchantStore } from "@/stores/merchant";
 import { refreshUnread, unreadCount } from "@/stores/messages";
 import { ROUTES } from "@/shared/nav";
+import { api } from "@/api";
+import type { MerchantPlan } from "@shared/types";
 
 const merchant = useMerchantStore();
 const sheetOpen = ref(false);
+const plan = ref<MerchantPlan | null>(null);
+
+/** 额度用完：这一行的数字转警示色 —— 它是升档的第一次提示，也是最自然的那一次 */
+const quotaFull = computed(() => !!plan.value && plan.value.storeUsed >= plan.value.storeQuota);
 
 const statusKey = computed(() => `me.status${merchant.profile?.status ?? "NONE"}`);
 
@@ -23,6 +29,23 @@ function later() {
   uni.showToast({ title: "该功能在后续批次交付", icon: "none" });
 }
 
+/**
+ * 套餐副标题。
+ *
+ * <p>**先 `ensureScope()` 再 `can()`**：权限还没加载时 `can()` fail-closed 返回 false，
+ * 直接判的话——从推送深链进到这一页的老板会**永远看不到这一行**，而且不会重试。
+ *
+ * <p>**静默失败**：拿不到就不显示副标题，不弹错。店长（无 `biz:store:admin`）
+ * 调这条是 403，而他本来就看不到这一行 —— 为一个不显示的副标题弹红字，
+ * 是把权限设计做成了故障。
+ */
+async function loadPlan() {
+  if (!merchant.isLogin) return;
+  await merchant.ensureScope().catch(() => null);
+  if (!merchant.can("biz:store:admin")) return;
+  plan.value = await api.mMyPlan().catch(() => null);
+}
+
 async function logout() {
   // 解绑要在清令牌**之前** —— 之后就没有可用的令牌了。
   // 门店共用一台手机换班时，上一班的人不该继续收到这家店的订单推送
@@ -33,6 +56,7 @@ async function logout() {
 
 onShow(() => {
   void merchant.loadProfile().catch(() => null);
+  void loadPlan();
   // 从消息页返回时角标要立即回落，不等下一轮 30s 轮询
   void refreshUnread();
 });
@@ -73,6 +97,21 @@ onShow(() => {
       -->
       <view v-if="merchant.can('biz:store:admin')" class="cell" @tap="go(ROUTES.staff)">
         <text class="cell__label">{{ $t("me.staff") }}</text>
+      </view>
+      <!--
+        我的套餐。**副标题带数字**（「成长版 · 门店 2/3」）——
+        只写档位名的话，他要点进去才知道自己满没满，而满没满正是他要看的。
+        额度用完时数字转警示色：这一行本身就是升档的第一次提示。
+
+        与员工同一个码（biz:store:admin，只有老板）：这一页答的是「主体买了什么」。
+        店长看到额度只会去催老板买单，而他不是做这个决定的人。
+      -->
+      <view v-if="merchant.can('biz:store:admin')" class="cell" @tap="go(ROUTES.plan)">
+        <text class="cell__label">{{ $t("plan.meCell") }}</text>
+        <text v-if="plan" class="cell__value" :class="{ 'cell__value--warn': quotaFull }">
+          {{ $t("plan.meSub", { name: plan.planName, used: plan.storeUsed, quota: plan.storeQuota }) }}
+        </text>
+        <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
       </view>
       <view v-if="merchant.can('biz:customer')" class="cell" @tap="go(ROUTES.stats)">
         <text class="cell__label">{{ $t("me.stats") }}</text>
@@ -178,5 +217,9 @@ onShow(() => {
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
+}
+/* 额度用完：这一行的数字要看得出来不对劲，但不是报错 —— 他没做错任何事 */
+.cell__value--warn {
+  color: var(--sh-warning, #d46b08);
 }
 </style>

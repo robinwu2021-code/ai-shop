@@ -83,6 +83,12 @@ class BizEndpointPermTest {
         put("/biz/order/{subOrderNo}", BizPerms.ORDER_VIEW);
         put("/biz/dashboard/stats", BizPerms.CUSTOMER);
         put("/biz/customers", BizPerms.CUSTOMER);
+        // 跨店总览与对比（B-11.12.5/6）：同样是经营数据，与 /biz/dashboard/stats 同一档。
+        // **不新造码** —— 「跨店」是数据的范围，不是一类新的东西；
+        // 造一个 biz:cross-store 会让老板必须给店长两个码才能看同一批数字。
+        // 能不能看是这个码管的，**买没买是能力位管的**，两道门正交（见控制器注释）
+        put("/biz/cross-store/overview", BizPerms.CUSTOMER);
+        put("/biz/cross-store/compare", BizPerms.CUSTOMER);
 
         // ---- 商品：改库存与改价是两件事 ----
         put("/biz/goods", BizPerms.STOCK);
@@ -156,6 +162,15 @@ class BizEndpointPermTest {
         // 余额和流水会暴露平台对这家店的风险判断
         put("/biz/deposit", BizPerms.FINANCE);
         put("/biz/deposit/txns", BizPerms.FINANCE);
+        /*
+         * 增值包（B-11.13）。挂 STORE_ADMIN 而不是更宽的码：这两条答的是
+         * 「主体买了什么」，与建店、停用、挂收款号同属主体结构面 ——
+         * 而那个码**只在老板手里**（BizPerms 刻意不让它进自定义角色）。
+         * 店长看不到套餐是对的：他不决定要不要升档，而额度数字只会让他去催老板。
+         * 试用更是如此 —— 它是一次「开通」，与建店同一个量级。
+         */
+        put("/biz/plan", BizPerms.STORE_ADMIN);
+        put("/biz/plan/trial", BizPerms.STORE_ADMIN);
     }};
 
     /**

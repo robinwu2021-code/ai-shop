@@ -133,10 +133,25 @@ shop:
     from: ${MAIL_FROM:}
 
   # 微信小程序：登录 code2Session + 订阅消息（服务通知）。
-  # **一个开关管两件事**：库里存假 openid 而通道在真发，会缝合出一个
-  # 「发给不存在的人」的世界 —— 两者共享 stub 是刻意的（见 WxAuthGateway 类注释）。
+  #
+  # **两条通道各有各的开关**，`stub` 是它们共同的默认值：
+  #   shop.wx.stub            总开关 —— 不单独配时两条都跟它走
+  #   shop.wx.login.stub      登录（code2Session）。只要 appid + secret
+  #   shop.wx.subscribe.stub  订阅消息。还要 mp 后台**报备过的两个模板号**
+  #
+  # 为什么拆：**两条通道的接入前置不一样**。登录拿到 appid/secret 就能通，
+  # 订阅消息要先在 mp 后台报备模板。合成一个开关时，想先把登录接通会被
+  # 订阅消息的 fail-fast 拦在启动阶段 —— 这不是配置错误，是开关粒度不够。
+  #
+  # **但反方向仍然禁止**：登录走桩（库里存的是假 openid）而订阅消息真发，
+  # 会缝合出一个「发给不存在的人」的世界。这个组合由 WxSubscribeGateway
+  # 的构造器直接拒绝，不是靠人记得别这么配。
   wx:
     stub: ${SHOP_WX_STUB:true}
+    login:
+      stub: ${SHOP_WX_LOGIN_STUB:${SHOP_WX_STUB:true}}
+    subscribe:
+      stub: ${SHOP_WX_SUBSCRIBE_STUB:${SHOP_WX_STUB:true}}
     appid: ${WX_APPID:}
     secret: ${WX_SECRET:}
     # developer / trial / formal。联调切 trial，免得打扰真实用户

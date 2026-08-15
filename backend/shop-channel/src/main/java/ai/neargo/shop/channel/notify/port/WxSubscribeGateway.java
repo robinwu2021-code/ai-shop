@@ -36,7 +36,7 @@ import java.util.regex.Pattern;
  * 静默退回的表现是「已发送」日志照常出现而用户一条都收不到）。
  */
 @Component("wxSubscribeGateway")
-@ConditionalOnProperty(name = "shop.wx.stub", havingValue = "false")
+@ConditionalOnProperty(name = "shop.wx.subscribe.stub", havingValue = "false")
 public class WxSubscribeGateway implements WxSubscribePort {
 
     private static final Logger log = LoggerFactory.getLogger(WxSubscribeGateway.class);
@@ -64,13 +64,28 @@ public class WxSubscribeGateway implements WxSubscribePort {
                               @Value("${shop.wx.secret:}") String secret,
                               @Value("${shop.wx.templates.order-arrived:}") String tplOrderArrived,
                               @Value("${shop.wx.templates.refunded:}") String tplRefunded,
-                              @Value("${shop.wx.mp-state:formal}") String mpState) {
+                              @Value("${shop.wx.mp-state:formal}") String mpState,
+                              @Value("${shop.wx.login.stub:true}") boolean loginStub) {
         this.host = host;
         this.appid = appid;
         this.secret = secret;
         this.tplOrderArrived = tplOrderArrived;
         this.tplRefunded = tplRefunded;
         this.mpState = mpState;
+        /*
+         * 两条通道的开关拆开之后，出现了一个此前不可能存在的组合：登录走桩、订阅消息真发。
+         * 那意味着库里存的是**假 openid**（桩把 wx.login 的 code 直接当 openid），
+         * 而这里拿着它去调 subscribeMessage.send —— 每一条都会以 40003 失败，
+         * 且失败发生在异步发送里，日志上看是「发过了」。
+         *
+         * 拆开关的收益只在「登录先真、订阅消息后真」这一个方向上，反方向没有任何用途，
+         * 所以不留给人去记，直接在启动时拒绝。
+         */
+        if (loginStub) {
+            throw new IllegalStateException(
+                    "订阅消息已开启（shop.wx.subscribe.stub=false）但登录还是桩（shop.wx.login.stub=true）"
+                            + " —— 库里是假 openid，发出去每条都是 40003。要真发就先把登录也切真");
+        }
         require(appid, "WX_APPID");
         require(secret, "WX_SECRET");
         require(tplOrderArrived, "WX_TPL_ORDER_ARRIVED（mp 后台报备的到货通知模板号）");
@@ -81,7 +96,7 @@ public class WxSubscribeGateway implements WxSubscribePort {
     private static void require(String v, String envName) {
         if (v == null || v.isBlank()) {
             throw new IllegalStateException(
-                    "订阅消息通道已开启（shop.wx.stub=false）但缺少配置：" + envName
+                    "订阅消息通道已开启（shop.wx.subscribe.stub=false）但缺少配置：" + envName
                             + " —— 不配就发不出去，这里直接失败而不是退回桩");
         }
     }

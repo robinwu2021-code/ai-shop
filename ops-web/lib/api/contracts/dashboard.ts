@@ -1,5 +1,5 @@
 // 覆盖范围：认证登录 + 工作台（P-16.1）。
-import type { DashboardKpi, FunnelRow, LoginResp, MenuFunction, TrendPoint } from "@/lib/types";
+import type { DashboardKpi, FunnelRow, LoginResp, MenuFunction, MerchantRankRow, TrendPoint } from "@/lib/types";
 import type { Role } from "@/lib/auth";
 
 export type { LoginResp };
@@ -48,4 +48,12 @@ export interface DashboardApi {
   getDashboardKpi(): Promise<DashboardKpi>;
   getDashboardTrend(): Promise<TrendPoint[]>;
   getAcquisitionFunnel(): Promise<FunnelRow[]>;
+
+  /**
+   * 商家经营排行（P-16.1.2 / P-16.1.3）——大盘之下的第一层下钻。
+   *
+   * 按 GMV 降序、**只含有成交的商家**：零单商家排在末尾没有信息量，
+   * 全带上还会稀释「平台有多少家在做生意」这个数。
+   */
+  getMerchantRanking(): Promise<MerchantRankRow[]>;
 }

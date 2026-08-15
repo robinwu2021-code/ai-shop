@@ -60,6 +60,14 @@ public record GoodsVO(String goodsNo,
                       /** 三语副标题原文，同 {@link #titleI18n} */
                       java.util.Map<String, String> subtitleI18n,
                       /**
+                       * 最近一次驳回/强制下架的原因（V96）。
+                       *
+                       * <p><b>只在 B 端与运营端下发，C 端恒为 null</b>。它是审核结论里
+                       * 商家能看到的那半边：审计日志只有运营看得到，没有它商家面对
+                       * REJECTED 只能猜要改什么。过审时清空。
+                       */
+                      String auditReason,
+                      /**
                        * 已配好的拼团设置：{@code {minCount, price}}。没配过为 null。
                        *
                        * <p><b>B 端「可开团的商品」整个列表靠它</b>：页面按
@@ -80,7 +88,15 @@ public record GoodsVO(String goodsNo,
                                   boolean verified, int breachCount) {
     }
 
-    public record SpecGroupVO(String name, List<String> options) {
+    /**
+     * @param optionCodes 与 {@link #options} 一一对应的规格编码（B-4.5）。
+     *                    <b>来自平台模板的才有</b>，手输的没有 —— 有 code 的才聚合得起来
+     *                    （三家店的「500g」「五百克」「0.5kg」是同一件事）。
+     *                    此前它在写库那一步就被丢掉了，从接口到页面全程看不出来。
+     * @param templateNo  这组规格取自哪个平台模板。历史商品靠它解释自己的 code 是什么意思
+     */
+    public record SpecGroupVO(String name, List<String> options,
+                              List<String> optionCodes, String templateNo) {
     }
 
     public record SkuVO(String skuNo,

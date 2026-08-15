@@ -24,6 +24,19 @@ public final class SettleMappers {
     public interface PurchaseInvoiceMapper extends BaseMapper<StlPurchaseInvoice> {
     }
 
+    /** 商家提现单（P-12.2.1）。**只记账不打款**，见 {@code StlWithdraw} 类注释。 */
+    public interface WithdrawMapper
+            extends BaseMapper<ai.neargo.shop.settle.entity.StlWithdraw> {
+    }
+
+    /**
+     * 商家结算发票申请（P-12.2.4）。**与进项票、C 端销项票是三张不同方向的票**，
+     * 别按 invoice_no 跨表 join —— 见 {@code StlSettleInvoice} 类注释。
+     */
+    public interface SettleInvoiceMapper
+            extends BaseMapper<ai.neargo.shop.settle.entity.StlSettleInvoice> {
+    }
+
     public interface FeeRuleMapper
             extends BaseMapper<ai.neargo.shop.settle.entity.StlFeeRule> {
     }

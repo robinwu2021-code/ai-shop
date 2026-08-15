@@ -167,6 +167,22 @@ const RESPONSE_TYPES = {
   mShareKit: "ShareKit",
   mTodo: "MerchantTodo",
   mStats: "MerchantStats",
+  mCrossStoreOverview: "CrossStoreOverview",
+  mCrossStoreCompare: "CrossStoreCompare",
+  // 试用返回的是**开通后的新视图**，与读接口同一个类型 ——
+  // 端上拿到就能重渲染，不必再拉一次
+  mMyPlan: "MerchantPlan",
+  mStartTrial: "MerchantPlan",
+
+  // 消息与推送（触达域）。这五条一直没登记，而**漏一条整份 spec 就不生成** ——
+  // 于是 `check:api` 全仓中断，连带别的域的契约校验也跑不了。
+  // 类型逐字取自 contract.ts 的签名，不另猜。
+  mMessageList: "Message[]",
+  mMessageUnread: "number",
+  mMessageRead: "Message[]",
+  mMessageReadAll: "Message[]",
+  mRegisterPushToken: "void",
+  mUnregisterPushToken: "void",
   mGoodsList: "PageResult<Goods>",
   mGoodsDetail: "Goods",
   mSaveGoods: "Goods",
@@ -215,6 +231,7 @@ const RESPONSE_TYPES = {
 
 /** 契约方法 → 入参类型名。GET 的展开成 query 参数，POST 的作为 requestBody */
 const REQUEST_TYPES = {
+  mCrossStoreCompare: "CrossStoreCompareQuery",
   mLogin: "MerchantLoginReqBody",
   mStaffLogin: "StaffLoginReq",
   mApply: "MerchantApplyReqBody",
@@ -271,8 +288,25 @@ function queryParams(typeName) {
   }));
 }
 
+/**
+ * 契约里的**标量**返回类型。
+ *
+ * 没有这张表的话，`"void"` / `"number"` 会走到最后一行，生成
+ * `$ref: #/components/schemas/void` —— 一个**指向不存在组件的悬空引用**。
+ * 校验器多半不报（$ref 解析是懒的），而拿这份 spec 生成客户端的人会得到一个
+ * 编译不过的类型名，然后来问「后端返回的 void 是个什么对象」。
+ */
+const SCALARS = {
+  void: { description: "无返回体（data 恒为 null）", nullable: true },
+  number: { type: "number" },
+  integer: { type: "integer" },
+  string: { type: "string" },
+  boolean: { type: "boolean" },
+};
+
 function dataSchema(typeExpr) {
   if (!typeExpr || typeExpr === "object") return { type: "object" };
+  if (SCALARS[typeExpr]) return { ...SCALARS[typeExpr] };
   const arr = typeExpr.match(/^(\w+)\[\]$/);
   if (arr) return { type: "array", items: { $ref: `#/components/schemas/${arr[1]}` } };
   const page = typeExpr.match(/^PageResult<(\w+)>$/);

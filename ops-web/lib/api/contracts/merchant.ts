@@ -4,6 +4,9 @@ import type {
   ModeRisk,
   FundsMode,
   Qualification,
+  MerchantPlanRow,
+  PlanDef,
+  PlanUpgradeSignal,
   AdmissionPolicy, AuthCode, LegalForm, DepositTxn, DepositTxnType, Merchant, MerchantApply, MerchantDeposit, MerchantStaffRow, MerchantStatus, Page, StoreMode, Violation, ViolationAction, ViolationType } from "@/lib/types";
 import type { ApplyQ, MerchantQ } from "../query";
 
@@ -149,5 +152,60 @@ export interface MerchantApi {
     type: ViolationType;
     action: ViolationAction;
     detail: string;
+    /**
+     * 门店级处置的对象门店。**`STORE_OFFLINE` 必填，其余动作必须为空** ——
+     * 处置动作与它作用的对象是同一次提交的两半，分开发就会出现
+     * 「压了店但没有处置记录」或反过来。
+     */
+    storeNo?: string;
   }): Promise<Violation>;
+
+  // ── 增值包与门店额度（P-11.2.2~11.2.6）─────────────────────────
+  //
+  // 一期**没有支付**：商家点「升级」→ 联系平台 → 运营在这里授予。
+  // 所以契约里没有 `payPlan`/`orderPlan` —— 那条链路（通道签约、发票、退订退款）
+  // 是独立项目，在验证「有没有人愿意买」之前建它，是拿最贵的一步去赌未验证的假设。
+
+  /**
+   * 到期与降级看板。
+   *
+   * @param q.filter `EXPIRING_7D`（7 天内到期且仍在生效）/ `GRACE`（宽限期中）/
+   *   `DOWNGRADED`（已降级）。三个筛选各对应一个动作：去催、去救、去回访。
+   *   窗口取 7 天 = 宽限期长度：**催的窗口与救的窗口一样长**，
+   *   于是「催过一轮还没续」与「已经掉进宽限期」在时间上刚好接续
+   */
+  merchantPlans(q?: { filter?: string; keyword?: string; page?: number; size?: number }): Promise<Page<MerchantPlanRow>>;
+
+  /** 升档信号：一个人名下多个主体 = 他已经在多店经营，只是绕过了额度。 */
+  planUpgradeSignals(): Promise<PlanUpgradeSignal[]>;
+
+  /**
+   * 授予 / 延长。
+   *
+   * @param months 延长月数；**留空 = 只补缴不延长**，此时不刷新额度快照 ——
+   *   他买的是当初那个额度，中途运营下调档位定义不该殃及他
+   *
+   * 延长的基准是「原到期日与今天里较晚的那个」：一律从今天重算，
+   * 会吞掉他已付未用的那几天。
+   */
+  grantPlan(v: { merchantNo: string; planCode: string; months?: number; reason: string }): Promise<MerchantPlanRow>;
+
+  /**
+   * 单商家额度覆盖。**优先于档位快照**，`storeQuota` 传 null = 清除覆盖、回到快照。
+   *
+   * 为什么需要它：谈下来的条件常常不落在任何一档上（「先给你 5 家，年底再谈」）。
+   * 没有这个口子，运营只能去改档位定义 —— 而那会影响这一档之后的所有新订阅。
+   */
+  overridePlanQuota(v: { merchantNo: string; storeQuota: number | null; staffQuota: number | null; reason: string }): Promise<MerchantPlanRow>;
+
+  /** 档位定义。读挂商家只读码 —— 授予对话框要拿它填下拉。 */
+  planDefs(): Promise<PlanDef[]>;
+
+  /**
+   * 改档位定义。**只影响之后新订阅的人**，已订阅的用的是自己的额度快照。
+   *
+   * 权限刻意与授予分开（`system:param:update`）：BD 能给某家授予套餐，
+   * 但不能改「套餐是什么」—— 后者影响这一档之后的所有订阅。
+   */
+  savePlanDef(v: { planCode: string; storeQuota: number; staffQuota: number; crossStoreStats: boolean; trialDays: number; enabled: boolean }): Promise<PlanDef>;
 }

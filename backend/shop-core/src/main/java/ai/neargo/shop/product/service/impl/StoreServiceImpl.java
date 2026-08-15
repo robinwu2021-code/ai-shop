@@ -57,15 +57,24 @@ public class StoreServiceImpl implements StoreService {
                 null, merchantNo, null, null, null, 1, 6));
 
         // 门面文案取店主自己填的那份 —— 没有门店时给空文案，页面按空串不渲染那两块
-        var front = merchantPort.storeFront(merchantNo)
+        var frontOpt = merchantPort.storeFront(merchantNo);
+        var front = frontOpt
                 .map(f -> new StoreHomeVO.StoreFront(f.announcement(), f.openHours(), f.address()))
                 .orElseGet(() -> new StoreHomeVO.StoreFront("", "", ""));
+        /*
+         * 已停业 = 门店非 ACTIVE（商家自助停用 READONLY / 平台强制下线 SUSPENDED，V96）。
+         * 给标志而不是 404：扫码进来的老客要知道是店关了，不是链接坏了。
+         * 这是需求 B-11.12.4「停用的门店 C 端不可见」一直没兑现的那半边。
+         */
+        boolean closed = frontOpt
+                .map(f -> f.status() != null && !f.status().isBlank() && !"ACTIVE".equals(f.status()))
+                .orElse(false);
 
         return new StoreHomeVO(
                 new StoreHomeVO.Merchant(merchant.merchantNo(), merchant.merchantName(),
                         merchant.logo(), merchant.rating(), merchant.ratingCount(),
                         merchant.verified(), merchant.breachCount()),
-                front, favorited, hot.records());
+                front, favorited, hot.records(), closed);
     }
 
     @Override

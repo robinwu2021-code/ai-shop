@@ -68,21 +68,28 @@ export const UI_PERM_MAP: Record<string, string | typeof UNIMPLEMENTED> = {
   "iam:audit:read": "iam:audit:read",
   "finance:invoice:read": "finance:invoice:read",
   "finance:rate:update": "finance:rate:update",
-  "finance:withdraw:approve": UNIMPLEMENTED,
-  "risk:blacklist:update": UNIMPLEMENTED,
-  "risk:rule:update": UNIMPLEMENTED,
+  // 2026-08-13 接通：OpsWithdrawController（列表 + 审批）。**恒等映射** ——
+  // 后端新增了同名码 Perms.FINANCE_WITHDRAW_APPROVE，且 V112 把 OPS_FINANCE_05
+  // 的 perm_code 从 NULL 补上、授给 FINANCE。
+  // ⚠️ 持有它不等于能打款：通过后落 APPROVED，出款是线下动作（B-12.5）
+  "finance:withdraw:approve": "finance:withdraw:approve",
+  "risk:blacklist:update": "risk:blacklist:update",
+  "risk:rule:update": "risk:rule:update",
   "content:material:audit": "content:material:audit",
   "content:material:update": "content:material:update",
   "message:faq:update": UNIMPLEMENTED,
-  "fulfillment:batch:read": UNIMPLEMENTED,
-  "fulfillment:rule:update": UNIMPLEMENTED,
-  "growth:attribution:read": UNIMPLEMENTED,
-  "growth:fission:update": UNIMPLEMENTED,
+  "fulfillment:batch:read": "fulfillment:batch:read",
+  "fulfillment:rule:update": "fulfillment:rule:update",
+  "growth:attribution:read": "growth:attribution:read",
+  "growth:fission:update": "growth:fission:update",
   "store:page:audit": "store:page:audit",
   "store:qrcode:export": UNIMPLEMENTED,
   "system:theme:update": "system:theme:update",
   "system:param:read": "system:param:read",
   "system:env:switch": UNIMPLEMENTED,
+  // 存储空间治理：看清单与发起回收是两个码，页面按后者显隐勾选框与批量条
+  "system:media:read": "system:media:read",
+  "system:media:purge": "system:media:purge",
   "iam:role:grant": "iam:role:grant",
   "merchant:merchant:read": "merchant:merchant:read",
   /*
@@ -113,8 +120,8 @@ export const UI_PERM_MAP: Record<string, string | typeof UNIMPLEMENTED> = {
   "finance:settle:read": "finance:settle:read",
   "iam:staff:read": "iam:staff:read",
   "content:material:read": "content:material:read",
-  "fulfillment:logistics:read": UNIMPLEMENTED,
-  "fulfillment:redeem:read": UNIMPLEMENTED,
-  "risk:rule:read": UNIMPLEMENTED,
+  "fulfillment:logistics:read": "fulfillment:logistics:read",
+  "fulfillment:redeem:read": "fulfillment:redeem:read",
+  "risk:rule:read": "risk:rule:read",
   "store:page:read": UNIMPLEMENTED,
 };

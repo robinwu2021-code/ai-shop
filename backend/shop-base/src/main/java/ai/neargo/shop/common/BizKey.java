@@ -84,6 +84,28 @@ public final class BizKey {
     /** 商家自定义角色（V71）。预置角色的码是 OWNER/MANAGER… 这类词，不走这里 */
     public static final String MERCHANT_ROLE = "R";
 
+    /** 到货批次（P-5.1.1）。一个自提点一天一批，配车信息挂在它上面 */
+    public static final String ARRIVAL_BATCH = "BAT";
+    /**
+     * 快递运单记录（P-5.2.1）。<b>不是快递单号</b> —— 那个由承运商给，存在 waybill_no。
+     * 分成两个键是因为换单号时运单记录必须还是同一条，否则轨迹会断
+     */
+    public static final String SHIPMENT = "SH";
+    /** 运费模板（P-5.2.3） */
+    public static final String FREIGHT_TEMPLATE = "FT";
+
+    /**
+     * 风险事件（P-16.2）。<b>不复用 {@link #EVENT}</b> —— 那个是 Outbox 的领域事件，
+     * 两者是完全不同的东西，共用前缀之后「EVT... 是哪种事件」要靠猜
+     */
+    public static final String RISK_EVENT = "RE";
+    /** 黑名单记录（P-16.2.4） */
+    public static final String BLACKLIST = "BL";
+    /** 归因链路（P-9.1.3）。运营端按它检索一次归因判定 */
+    public static final String ATTRIBUTION_TRACE = "AT";
+    /** 裂变活动（P-9.2.1） */
+    public static final String FISSION = "FS";
+
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
     private static final AtomicInteger SEQ = new AtomicInteger(0);
     private static final SecureRandom RANDOM = new SecureRandom();

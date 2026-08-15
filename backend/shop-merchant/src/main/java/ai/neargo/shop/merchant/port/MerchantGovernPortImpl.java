@@ -22,6 +22,7 @@ public class MerchantGovernPortImpl implements MerchantGovernPort {
 
     @Override
     public void record(String merchantNo, String type, String action, String detail, String operatorNo) {
-        governService.recordViolation(merchantNo, type, action, detail, operatorNo);
+        // Port 的调用方都是主体级处置（风控/营销的违规上报），门店号恒空
+        governService.recordViolation(merchantNo, null, type, action, detail, operatorNo);
     }
 }

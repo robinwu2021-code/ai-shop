@@ -39,6 +39,9 @@ const useActionMap = (c: MerchantsCopy): StatusMap<ViolationAction> => ({
   WARN: { label: c.vaWarn, tone: "muted" },
   LIMIT: { label: c.vaLimit, tone: "warning" },
   SUSPEND: { label: c.vaSuspend, tone: "danger" },
+  // 门店级：只压一家店，不封整个主体。与 SUSPEND 分成两个动作而不是
+  // 「SUSPEND + 可选门店号」—— 后者让读处置记录的人分不出封的是谁
+  STORE_OFFLINE: { label: c.vaStoreOffline, tone: "danger" },
 });
 
 /** 信用档案：只读。它是处置的依据，不是处置本身。 */
@@ -152,8 +155,8 @@ export function BanTab({ c, canBan }: { c: MerchantsCopy; canBan: boolean }) {
   const [keyword, setKeyword] = useState("");
   const [type, setType] = useState("");
   const [target, setTarget] = useState<Merchant | null>(null);
-  const [form, setForm] = useState<{ type: ViolationType; action: ViolationAction; detail: string }>({
-    type: "BREACH", action: "WARN", detail: "",
+  const [form, setForm] = useState<{ type: ViolationType; action: ViolationAction; detail: string; storeNo: string }>({
+    type: "BREACH", action: "WARN", detail: "", storeNo: "",
   });
 
   const violations = useQuery({ queryKey: ["violations", "all"], queryFn: () => api.listViolations() });
@@ -162,11 +165,29 @@ export function BanTab({ c, canBan }: { c: MerchantsCopy; canBan: boolean }) {
     queryFn: () => api.listMerchants({ keyword, size: 100 }),
   });
 
+  /*
+   * 该商家的门店，只在选中商家后拉：门店级处置要选**具体哪一家**，
+   * 让人手敲门店号等于把一次选择变成一次记忆测验，敲错了压的是别人家的店。
+   */
+  const stores = useQuery({
+    queryKey: ["stores-govern", "ban", target?.merchantNo],
+    queryFn: () => api.listStores({ merchantNo: target!.merchantNo, size: 100 }),
+    enabled: !!target,
+  });
+
   const record = useMutation({
-    mutationFn: () => api.recordViolation({ merchantNo: target!.merchantNo, ...form }),
+    mutationFn: () => api.recordViolation({
+      merchantNo: target!.merchantNo,
+      type: form.type,
+      action: form.action,
+      detail: form.detail,
+      // storeNo 只跟着门店级动作走：主体级处置带上它，读记录的人会以为只压了那一家
+      storeNo: form.action === "STORE_OFFLINE" ? form.storeNo : undefined,
+    }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["violations"] });
       qc.invalidateQueries({ queryKey: ["merchants"] });
+      qc.invalidateQueries({ queryKey: ["stores-govern"] });
       setTarget(null);
       notify.success(c.toastViolationRecorded);
     },
@@ -188,6 +209,8 @@ export function BanTab({ c, canBan }: { c: MerchantsCopy; canBan: boolean }) {
     { header: c.colName, cell: (v) => v.merchantName },
     { header: c.colViolationType, cell: (v) => <StatusBadge map={typeMap} value={v.type} /> },
     { header: c.colViolationAction, cell: (v) => <StatusBadge map={actionMap} value={v.action} /> },
+    // 空 = 主体级处置（作用于全部门店），不是「漏填了门店」
+    { header: c.vlStoreLabel, cell: (v) => v.storeNo ?? <span className="text-muted-foreground">—</span> },
     { header: c.colDetail, cell: (v) => v.detail },
     { header: c.colAt, cell: (v) => fmtTime(v.at) },
     { header: c.colOperator, cell: (v) => v.operator },
@@ -210,7 +233,7 @@ export function BanTab({ c, canBan }: { c: MerchantsCopy; canBan: boolean }) {
         <div className="mb-4 flex flex-wrap gap-2">
           {(merchants.data?.records ?? []).slice(0, 8).map((m) => (
             <Button key={m.merchantNo} size="sm" variant="outline"
-              onClick={() => { setTarget(m); setForm({ type: "BREACH", action: "WARN", detail: "" }); }}>
+              onClick={() => { setTarget(m); setForm({ type: "BREACH", action: "WARN", detail: "", storeNo: "" }); }}>
               {fill(c.btnRecordFor, { name: m.name })}
             </Button>
           ))}
@@ -243,7 +266,17 @@ export function BanTab({ c, canBan }: { c: MerchantsCopy; canBan: boolean }) {
         onOpenChange={(o) => !o && setTarget(null)}
         title={target ? fill(c.recordTitle, { name: target.name }) : ""}
         width="w-[520px]"
-        footer={<Button loading={record.isPending} onClick={() => record.mutate()}>{c.btnRecordViolation}</Button>}
+        footer={
+          <Button
+            loading={record.isPending}
+            // 门店级处置没选门店就发出去，后端会拒 —— 前端先拦一道，
+            // 不然人填完一整份表单才被退回来
+            disabled={form.action === "STORE_OFFLINE" && !form.storeNo}
+            onClick={() => record.mutate()}
+          >
+            {c.btnRecordViolation}
+          </Button>
+        }
       >
         {target && (
           <div>
@@ -272,6 +305,26 @@ export function BanTab({ c, canBan }: { c: MerchantsCopy; canBan: boolean }) {
                   ))}
                 </Select>
               </div>
+              {/* 门店级处置才出这一格：其余动作作用于该商家的全部门店，
+                  摆一个用不上的门店选择器会让人以为「不选就是全选」 */}
+              {form.action === "STORE_OFFLINE" && (
+                <div className="mb-3 space-y-1">
+                  <Label htmlFor="vl-store" required>{c.vlStoreLabel}</Label>
+                  <Select id="vl-store" className="w-full" value={form.storeNo}
+                    onChange={(e) => setForm((p) => ({ ...p, storeNo: e.target.value }))}>
+                    <option value="">{c.vlStorePick}</option>
+                    {(stores.data?.records ?? []).map((s) => (
+                      // 已被压下的店不再出现在可选项里：重复压一次会抛错，摆出来是在骗人点
+                      <option key={s.storeNo} value={s.storeNo} disabled={s.status === "SUSPENDED"}>
+                        {s.name} · {s.storeNo}
+                      </option>
+                    ))}
+                  </Select>
+                  <p className="txt-caption text-muted-foreground">
+                    {stores.data && stores.data.records.length === 0 ? c.vlStoreEmpty : c.vlStoreHint}
+                  </p>
+                </div>
+              )}
               <Field className="mb-0" label={c.colDetail}>
                 <Textarea value={form.detail} onChange={(v) => setForm((p) => ({ ...p, detail: v }))}
                   placeholder={c.detailPlaceholder} rows={3} />

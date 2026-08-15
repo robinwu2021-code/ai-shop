@@ -63,4 +63,23 @@ public interface AfterSaleService {
      */
     OpsAfterSaleVO arbitrate(String afterSaleNo, boolean refund, String liability, String verdict,
                              String operatorNo);
+
+    /**
+     * 把一笔停在 {@code REFUNDING} 的售后单走完退款（矩阵 P-12.1.5，E4）。
+     *
+     * <p><b>为什么需要它</b>：{@link #arbitrate}{@code (refund=true)} 只把状态推到
+     * {@code REFUNDING}，钱一分没退 —— 单子停在那里等一个不会来的动作。
+     * 而它对应的子单可能已经分过账，所以收尾必须走「先回退分账再退款」那条唯一路径。
+     *
+     * <p>本方法<b>只是 {@code doRefund} 的入口</b>，不重写收尾逻辑：
+     * 子单转态、{@code AfterSaleRefunded} 事件、下游回补库存与评分都挂在那里。
+     * 财务侧（{@code /ops/refund-split-backs/{no}/execute}）通过
+     * {@code RefundSplitBackPort} 调它。
+     *
+     * <p><b>幂等</b>：已 {@code REFUNDED} 直接返回 —— 运营看到列表没刷新会再点一次。
+     *
+     * @throws ai.neargo.shop.common.BizException 状态不允许，或分账回退失败
+     *         （后者是 {@code SPLIT_EXPIRED}，此时<b>退款不会发生</b>）
+     */
+    void resumeRefund(String afterSaleNo, String operatorNo);
 }

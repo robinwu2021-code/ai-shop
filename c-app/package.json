@@ -10,7 +10,8 @@
     "build:mp-weixin": "uni build -p mp-weixin",
     "build:app": "uni build -p app",
     "type-check": "vue-tsc --noEmit",
-    "gen:api": "node scripts/gen-openapi.mjs"
+    "gen:api": "node scripts/gen-openapi.mjs",
+    "upload:mp": "node scripts/upload-mp.mjs"
   },
   "dependencies": {
     "@ai-shop/ui": "*",
@@ -36,6 +37,7 @@
     "@dcloudio/vite-plugin-uni": "3.0.0-5010520260709002",
     "@vue/runtime-core": "^3.5.41",
     "@vue/tsconfig": "^0.8.0",
+    "miniprogram-ci": "^2.1.31",
     "sass": "^1.102.0",
     "ts-json-schema-generator": "^2.9.0",
     "typescript": "~5.9.3",

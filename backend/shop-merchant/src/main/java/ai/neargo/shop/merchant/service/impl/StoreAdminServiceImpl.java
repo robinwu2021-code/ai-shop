@@ -13,7 +13,6 @@ import ai.neargo.shop.merchant.entity.MchStore;
 import ai.neargo.shop.merchant.entity.MchStoreRole;
 import ai.neargo.shop.merchant.service.StoreAdminService;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,21 +34,22 @@ public class StoreAdminServiceImpl implements StoreAdminService {
     private final MchPaymentMapper paymentMapper;
 
     /**
-     * 每个主体的门店上限。
+     * 门店额度的来源（V150 起）。
      *
-     * <p>默认 1 —— **与单店时代行为完全一致**，放开多门店是一次显式的配置/订阅变更，
-     * 而不是升个版就悄悄变了。M4 Plan 落地后这个值由订阅档位给
-     * （FREE 1 / PRO 3 / CHAIN 10），届时这里改成读 plan。
+     * <p>此前是一个全局配置 `shop.store.max-per-entity` —— 对所有商家同一个数，
+     * 运营调一次影响所有人。现在按主体的订阅档位给（FREE 1 / PRO 3 / CHAIN 10）。
+     * 那个配置仍然存在，但降级为**订阅行还不存在时的兜底**，判断在
+     * {@link ai.neargo.shop.merchant.service.MerchantPlanService} 里。
      */
-    private final int maxPerEntity;
+    private final ai.neargo.shop.merchant.service.MerchantPlanService planService;
 
     public StoreAdminServiceImpl(MchStoreMapper storeMapper, MchStoreRoleMapper roleMapper,
                                  MchPaymentMapper paymentMapper,
-                                 @Value("${shop.store.max-per-entity:1}") int maxPerEntity) {
+                                 ai.neargo.shop.merchant.service.MerchantPlanService planService) {
         this.storeMapper = storeMapper;
         this.roleMapper = roleMapper;
         this.paymentMapper = paymentMapper;
-        this.maxPerEntity = maxPerEntity;
+        this.planService = planService;
     }
 
     @Override
@@ -70,16 +70,22 @@ public class StoreAdminServiceImpl implements StoreAdminService {
         if (name == null || name.isBlank()) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
-        List<MchStore> existing = stores(merchantNo);
         /*
          * 超额直接拒。**不要"建了再说、超了不给用"** ——
          * 那样商家会看到一家建出来却打不开的店，比拒绝更难解释。
+         *
+         * 额度来自**这个主体的订阅档位**（V150），不再是全局配置。
+         * planService 会锁住订阅行 —— 并发建店时「各自数一下都合法」会双双通过。
+         *
+         * **只数 ACTIVE**：商家自己停掉一家再开一家是合理的。
+         * 这对存量是零行为变化 —— 默认店不能停用（见 setStatus），
+         * 而单店商家的唯一一家就是默认店，所以他的 ACTIVE 数恒等于总数。
          */
-        if (existing.size() >= maxPerEntity) {
-            // **不是 BAD_REQUEST**：那句「请求参数有误」会让店主回去反复改门店名，
-            // 而无论怎么改都一样被拒 —— 他要做的是升套餐，两件事毫无关系
-            throw BizException.of(ErrorCode.STORE_QUOTA_EXCEEDED);
-        }
+        planService.requireStoreQuota(merchantNo,
+                () -> (int) stores(merchantNo).stream()
+                        .filter(x -> MchStore.ACTIVE.equals(x.getStatus())).count());
+        // 数完之后才读列表：第一家店要自动成为默认店，这个判断不能用加锁前的快照
+        List<MchStore> existing = stores(merchantNo);
 
         MchStore s = new MchStore();
         s.setEntityNo(merchantNo);
@@ -111,6 +117,13 @@ public class StoreAdminServiceImpl implements StoreAdminService {
     @Transactional
     public StoreVO setStatus(String merchantNo, String storeNo, boolean active) {
         MchStore s = require(merchantNo, storeNo);
+        /*
+         * 平台强制下线（SUSPENDED）商家不能自救：解除只能由平台做（V96）。
+         * 不拦的话，处置就是「商家点两下启用」能绕开的东西。
+         */
+        if (MchStore.SUSPENDED.equals(s.getStatus())) {
+            throw BizException.of(ErrorCode.STORE_SUSPENDED_BY_PLATFORM);
+        }
         /*
          * 默认店不能停用：主体必须恰好有一家默认店，停掉之后
          * 「这个主体的店在哪」没有答案 —— 下单兜底、门店码、分享都依赖它。
@@ -221,6 +234,9 @@ public class StoreAdminServiceImpl implements StoreAdminService {
         return new StoreVO(s.getStoreNo(), s.getName(), s.getAddress(),
                 Boolean.TRUE.equals(s.getIsDefault()), s.getStatus(),
                 s.getPayMerchantNo(), payReady,
-                staffCount.getOrDefault(s.getStoreNo(), 0L).intValue());
+                staffCount.getOrDefault(s.getStoreNo(), 0L).intValue(),
+                Boolean.TRUE.equals(s.getPlanSuspended()),
+                s.getRating() == null ? 0 : s.getRating(),
+                s.getRatingCount() == null ? 0 : s.getRatingCount());
     }
 }

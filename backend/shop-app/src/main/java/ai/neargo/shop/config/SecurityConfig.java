@@ -149,8 +149,18 @@ public class SecurityConfig {
     SecurityFilterChain publicChain(HttpSecurity http) throws Exception {
         return http
                 // /uploads/** 是商品图：**游客必须能看**，否则未登录逛首页全是裂图。
-                // 图本身不是秘密（它就是要给买家看的），访问控制在"能不能传"那一侧
-                .securityMatcher("/common/**", "/callback/**", "/actuator/**", "/uploads/**")
+                // 图本身不是秘密（它就是要给买家看的），访问控制在"能不能传"那一侧。
+                //
+                // ⚠️ 这句话**只对商品图成立**。证件与售后凭证曾经也落在这个目录下，
+                // 于是营业执照跟着一起 permitAll —— UUID 文件名给的是"不可枚举"而不是访问控制，
+                // URL 一旦进了数据库导出或运营端截图，谁都能拉到原件。
+                // 现在四层目录把它们分开了，UploadResourceConfig 只放行 goods 那一层。
+                //
+                // /media/** 是私有资产（证件 / 售后凭证）：它同样不走 Bearer，
+                // 但**不是不鉴权** —— 凭 URL 里的 HMAC 签名放行，有效期按分钟计。
+                // 之所以不能用带 Bearer 的接口：<img> 与小程序的 <image> 都没法带请求头。
+                .securityMatcher("/common/**", "/callback/**", "/actuator/**",
+                        "/uploads/**", "/media/**")
                 .cors(c -> c.configurationSource(corsSource()))
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

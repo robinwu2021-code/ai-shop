@@ -60,6 +60,25 @@ export interface FunnelRow {
 }
 
 
+/**
+ * 商家经营排行的一行（P-16.1.2 / P-16.1.3）—— 大盘之下的第一层下钻。
+ *
+ * 大盘回答「平台整体怎么样」，运营下一句必然是「哪几家在拉高、哪几家在拖后腿」。
+ */
+export interface MerchantRankRow {
+  merchantNo: string;
+  /** 商家名。**必须有** —— 只给编号的话运营还要再查一次「这家是谁」 */
+  merchantName: string;
+  /** 成交额（最小货币单位整数） */
+  gmv: number;
+  orderCount: number;
+  /** 客单价（最小货币单位整数） */
+  avgOrderValue: number;
+  afterSaleCount: number;
+  /** 售后率 0–1。与 GMV 并列才看得出「卖得多」是不是「赔得也多」 */
+  afterSaleRate: number;
+}
+
 /** 服务端下发的菜单分区（`GET /ops/menu`）。 */
 export interface MenuFunction {
   /** 功能点编码，菜单树的一级节点 */

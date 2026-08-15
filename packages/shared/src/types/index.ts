@@ -809,6 +809,14 @@ export type PaymentApplyStatus = "NONE" | "APPLYING" | "ACTIVE" | "REJECTED" | "
 /** 门店状态。READONLY = 已停用（不再接新单，已有单照常履约） */
 export type StoreStatus = "ACTIVE" | "READONLY";
 
+/**
+ * 增值包订阅状态。
+ *
+ * `GRACE`（宽限期，7 天）**能力全保留** —— 到期当天就压店的话，
+ * 一次忘记续费等于让他的店在客户面前消失，而他往往正在门店里忙。
+ */
+export type PlanStatus = "ACTIVE" | "GRACE" | "EXPIRED";
+
 /** 员工账号状态 */
 export type StaffStatus = "ACTIVE" | "DISABLED";
 
@@ -1827,6 +1835,18 @@ export interface Store {
   payReady: boolean;
   /** 授权到这家店的员工数（不含老板）。0 表示只有老板能管这家店 */
   staffCount: number;
+  /** 门店评分 ×10（V155）。与主体评分是两个数：主体分是各店的合成，反过来推不回去 */
+  rating?: number;
+  /** 计入门店评分的条数。**0 = 暂无评价**，不是 0 分 */
+  ratingCount?: number;
+  /**
+   * 这家店的只读**是套餐降级压下来的**，不是店主自己停的。
+   *
+   * <p>两者的 `status` 一模一样（都是 `READONLY`），而端上要给的下一步完全不同：
+   * 降级压的要**补缴/升档**，自己停的**点一下启用就开**。
+   * 不分开的表现是店主反复点那个对降级店无效的启用按钮。
+   */
+  planSuspended?: boolean;
 }
 
 /**
@@ -2037,6 +2057,196 @@ export interface MerchantStats {
   ratingCount: number;
   /** 自带客流占比（trafficSource=MERCHANT_OWNED），决定费率档（ADR-004 §6） */
   ownedTrafficRate: number;
+}
+
+/**
+ * 跨店总览的一行 —— 一家门店的今日 / 本月 / 三项待办（B-11.12.5）。
+ *
+ * <p>**没有单的门店也占一行（全零），不会从列表里消失**：
+ * 一家今天还没开张的店从总览里不见了，店主的第一反应是「我的店呢」。
+ * 零是一个答案，缺席不是。
+ */
+export interface CrossStoreRow {
+  /** 门店号。点进去切门店时用它 */
+  storeNo: string;
+  /** 门店名。列表里认店靠它，不要拿门店号显示 */
+  storeName: string;
+  /** 是否默认店。**一个主体恰好一家**，界面上要标出来 */
+  isDefault: boolean;
+  /** ACTIVE 正常营业 / READONLY 已停用。停用的店仍在列表里 —— 看不见会被当成「店被删了」 */
+  status: StoreStatus;
+  /** 今日订单数（自然日，按市场本地时区切分） */
+  todayOrders: number;
+  /** 今日成交额（最小货币单位） */
+  todayGmvMinor: number;
+  /** 本月订单数 */
+  monthOrders: number;
+  /** 本月成交额（最小货币单位） */
+  monthGmvMinor: number;
+  /** 待发货单数（快递） */
+  toShip: number;
+  /** 待自送单数（商家自送） */
+  toDeliver: number;
+  /** 待备货单数（自提单已付款、货还没送到自提点）。按**门店**算 */
+  toStock: number;
+}
+
+/**
+ * 跨店总览（B-11.12.5）· `GET /biz/cross-store/overview`。
+ *
+ * <p>**只有门店维度的三项待办**：工作台上的 `toVerify`（待核销）与 `toPick`（待分拣）
+ * 后端刻意不给 —— 那两个数是**自提点**维度且不限商家（一个自提点承接多家商家的货，
+ * ADR-005）。摆进「门店」这一列，商家会读成「这家店的活」，点进去却是别人的货。
+ *
+ * <p>需要 `cross_store_stats` 能力位（PRO / CHAIN）。FREE 档访问会被后端以
+ * `PLAN_CAPABILITY_REQUIRED`(70023) 拒绝 —— 端上要渲染**示例态 + 升档说明**，
+ * 不是空白页也不是红色报错。
+ */
+export interface CrossStoreOverview {
+  /** 统计口径的币种。与 `/biz/dashboard/stats` 同一个字段 */
+  currency: CurrencyCode;
+  /** 按店并列。顺序与门店列表一致（默认店在前），端上不必自己排 */
+  stores: CrossStoreRow[];
+}
+
+/**
+ * 跨店对比的一行 —— 窗口内这家店的销售额 / 订单 / 复购 / 缺货（B-11.12.6）。
+ *
+ * <p>⚠️ **这里没有评分**，它在 {@link CrossStoreCompare#rating} 上，是主体级的。
+ */
+export interface CrossStoreCompareRow {
+  /** 门店号 */
+  storeNo: string;
+  /** 门店名 */
+  storeName: string;
+  /** 是否默认店 */
+  isDefault: boolean;
+  /** ACTIVE 正常营业 / READONLY 已停用 */
+  status: StoreStatus;
+  /** 窗口内订单数（不含已取消） */
+  orders: number;
+  /** 窗口内成交额（最小货币单位） */
+  gmvMinor: number;
+  /** 窗口内下过单的买家数（去重）。复购率的分母 */
+  buyers: number;
+  /** 其中下过 ≥2 单的买家数 */
+  repeatBuyers: number;
+  /** `repeatBuyers / buyers`，0–1。**分母为 0 时是 0**，一家还没开张的店显示 0% */
+  repeatRate: number;
+  /**
+   * **这家店自己的**评分（V155，ADR-011：评价归门店）。
+   *
+   * ⚠️ 与顶层的 {@link CrossStoreCompare#rating} 是两个数：那个是主体整体分
+   * （C 端商家卡上显示的那个），这个是「楼下那家」的分。两个都要显示 ——
+   * 商家问「为什么我的店 4.9 而搜索里是 4.6」时，只有并排看得到才解释得通。
+   */
+  rating: number;
+  /**
+   * 计入这家店评分的条数。**0 = 暂无评价**，按条数判空而不是按分值 ——
+   * 老评价没有门店归属，所以老店在第一条新评价到来之前也是 0。
+   */
+  ratingCount: number;
+  /**
+   * 该店可用量（stock − locked）≤ 0 的 SKU 数。
+   * **只数已启用分店库存的 SKU** —— 一条店级行都没有的 SKU 走主体总量，不算这家店缺货。
+   */
+  outOfStockSkus: number;
+}
+
+/**
+ * 跨店对比（B-11.12.6）· `GET /biz/cross-store/compare?days=30`。
+ *
+ * <p>门禁与 {@link CrossStoreOverview} 相同（`cross_store_stats` 能力位）。
+ */
+export interface CrossStoreCompare {
+  /** **实际生效**的窗口天数（后端已夹在 1–365）。回显它，端上才知道传 99999 被截成了 365 */
+  days: number;
+  /** 统计口径的币种 */
+  currency: CurrencyCode;
+  /**
+   * **主体整体评分**（各店的合成，也是 C 端商家卡上显示的那个）。
+   * 每家店自己的分在 {@link CrossStoreCompareRow#rating} 上（V155 起）。
+   *
+   * 【历史】V155 之前 `rvw_review` 只有 `entity_no` 没有 `store_no`，
+   * 门店维度的评分没有数据源，所以这个数只能放顶层。
+   *
+   * <p>渲染成一条「本店铺整体评分」的说明；对比表格里那一列用每行自己的
+   * {@link CrossStoreCompareRow#rating}。**别拿这个数去填表格列** ——
+   * 那样三家店会显示同一个数字，而这正是 V155 之前的样子。
+   */
+  rating: number;
+  /** 计入评分的评价条数。0 = 还没人评过，显示「暂无评价」而不是 0 颗星 */
+  ratingCount: number;
+  /** 按店并列，顺序同门店列表 */
+  stores: CrossStoreCompareRow[];
+}
+
+/**
+ * 我的增值包（B-11.13，`GET /biz/plan`）。
+ *
+ * <p>与运营端那份（`MerchantPlanRow`）刻意是两个类型：运营看的是「这家商家买了什么」，
+ * 商家看的是「我有什么、还差什么、能不能试」。挤成一个的结果是商家侧要接一堆
+ * 用不上的字段（授予方、降级时间、额度来源），而它们每一个都会被端上误读成给他看的。
+ */
+export interface MerchantPlan {
+  /** 档位码。**文案用 `planName`，不要按 code 自己映射** —— 运营改了名端上不会跟着变 */
+  planCode: string;
+  /** 档位显示名（「成长版」） */
+  planName: string;
+  /**
+   * ACTIVE 生效中 / GRACE 宽限期（**能力全保留**，7 天）/ EXPIRED 已过期并降级。
+   *
+   * <p>GRACE 要显示成「即将到期，请尽快续费」而**不是**「已失效」：
+   * 他的门店、子账号、跨店数据一样都没少，这时候说失效只会让他打客服电话。
+   */
+  status: PlanStatus;
+  /** 订阅起始时间（毫秒）。null = 还没有过任何订阅 */
+  startAt?: number | null;
+  /** 到期时间（毫秒）。null = 不到期（免费档） */
+  expireAt?: number | null;
+  /** 生效门店额度 */
+  storeQuota: number;
+  /** 已用门店数。**后端算，只数营业中的店** —— 端上自己数会与建店那道闸的口径分岔 */
+  storeUsed: number;
+  /** 生效子账号额度 */
+  staffQuota: number;
+  /** 已用子账号数（不含老板本人） */
+  staffUsed: number;
+  /** 有没有跨店总览与对比 */
+  crossStoreStats: boolean;
+  /** 试用是否已用过。**一主体一次，永不回退** */
+  trialUsed: boolean;
+  /**
+   * 可试用的目标档位码；null = 现在不能试用（已用过 / 已经是付费档 / 平台没配试用）。
+   *
+   * <p>端上按它决定要不要显示「免费试用」按钮 —— 不要自己用
+   * `planCode === 'FREE' && !trialUsed` 推：那会漏掉「平台把试用天数配成 0」这种情况。
+   */
+  trialTier?: string | null;
+  /** 试用天数，配合 `trialTier` 显示「免费试用 14 天」 */
+  trialDays?: number | null;
+  /**
+   * 因降级被压成只读的门店名。
+   *
+   * <p>**只含平台压的那几家**，商家自己停用的不在里面 ——
+   * 页面要写明是「哪几家」：只说「部分门店已停用」，他得自己一家家点开去找。
+   */
+  suspendedStores: string[];
+  /** 三档对比，顺序即展示顺序（后端按 sort 排好） */
+  tiers: PlanTier[];
+}
+
+/** 档位对比的一行。 */
+export interface PlanTier {
+  planCode: string;
+  name: string;
+  storeQuota: number;
+  staffQuota: number;
+  crossStoreStats: boolean;
+  /** 0 = 这一档不提供试用 */
+  trialDays: number;
+  /** 是不是他现在用的那一档 */
+  current: boolean;
 }
 
 /**

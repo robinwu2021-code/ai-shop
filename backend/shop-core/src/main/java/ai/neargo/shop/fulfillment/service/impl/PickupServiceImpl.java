@@ -13,7 +13,9 @@ import ai.neargo.shop.fulfillment.dto.PickingRowVO;
 import ai.neargo.shop.fulfillment.dto.PickupOrderVO;
 import ai.neargo.shop.fulfillment.dto.PickupOverviewVO;
 import ai.neargo.shop.fulfillment.dto.VerifyResultVO;
+import ai.neargo.shop.fulfillment.entity.FulShortageReport;
 import ai.neargo.shop.fulfillment.entity.FulVerifyLog;
+import ai.neargo.shop.fulfillment.mapper.FulfillmentMappers.ShortageReportMapper;
 import ai.neargo.shop.fulfillment.mapper.FulfillmentMappers.VerifyLogMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,12 +34,14 @@ public class PickupServiceImpl implements PickupService {
     private final FulfillmentQueryPort orderPort;
     private final PickupQueryPort pickupPort;
     private final VerifyLogMapper logMapper;
+    private final ShortageReportMapper shortageMapper;
 
     public PickupServiceImpl(FulfillmentQueryPort orderPort, PickupQueryPort pickupPort,
-                             VerifyLogMapper logMapper) {
+                             VerifyLogMapper logMapper, ShortageReportMapper shortageMapper) {
         this.orderPort = orderPort;
         this.pickupPort = pickupPort;
         this.logMapper = logMapper;
+        this.shortageMapper = shortageMapper;
     }
 
     @Override
@@ -208,12 +212,36 @@ public class PickupServiceImpl implements PickupService {
          * 于是端上声明了它、后端「不认识」它，枚举对账那条守卫据此报警：
          * 契约上写着的取值，后端代码里查无此词，谁也说不清是不是漏实现了。
          */
-        String label = ("DAMAGE".equals(kind) ? "自提点上报破损："
-                : "SHORTAGE".equals(kind) ? "自提点上报短少："
+        String normalizedKind = "DAMAGE".equals(kind)
+                ? FulShortageReport.KIND_DAMAGE : FulShortageReport.KIND_SHORTAGE;
+        String label = (FulShortageReport.KIND_DAMAGE.equals(normalizedKind)
+                ? "自提点上报破损：" : "自提点上报短少：")
                 // 兜底仍按短少：上报本身只留痕，不该因为一个词不认识就丢掉
-                : "自提点上报短少：")
                 + (note == null || note.isBlank() ? "无说明" : note.trim());
         orderPort.reportException(subOrderNo, SecurityUtils.currentUserNo(), label);
+
+        /*
+         * **结构化留一份**（V131）。此前这里只往订单时间线追加上面那句话，
+         * 收下的 {@code skuNo} 原地丢掉 —— 买家看得到，而平台分拣汇总里的
+         * 「哪个 SKU 缺了几件」无从算起：一句自由文本没法聚合。
+         *
+         * 后果不是少一个数字，是 {@code DispatchService.sorting()} 的 shortQty **恒为 0**，
+         * 页面上那个红色徽标永远不亮 —— 而看的人会把它读成「今天没缺件」。
+         * 表与读的那一侧都已经在了，缺的一直是这一段。
+         */
+        FulShortageReport report = new FulShortageReport();
+        report.setSubOrderNo(subOrderNo);
+        report.setPickupNo(scope);
+        report.setSkuNo(skuNo == null || skuNo.isBlank() ? null : skuNo.trim());
+        report.setKind(normalizedKind);
+        // 端上今天只报「缺了」不报「缺几件」，落 1 —— 给 0 会让汇总恒为 0，
+        // 与「表在、数字永远是 0」是同一种坏法
+        report.setQty(1);
+        report.setNote(note == null || note.isBlank() ? null : note.trim());
+        report.setReporterNo(SecurityUtils.currentUserNo());
+        report.setAt(System.currentTimeMillis());
+        report.setTenantNo("MAIN");
+        shortageMapper.insert(report);
         return mask(target);
     }
 

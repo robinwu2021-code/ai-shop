@@ -17,7 +17,14 @@ import java.util.Map;
 public record OpsGoodsListVO(String goodsNo, TitleVO title, String cover,
                              String merchantNo, String merchantName,
                              String categoryNo, String categoryName,
-                             String status, List<OpsSkuVO> skus) {
+                             String status, List<OpsSkuVO> skus,
+                             /**
+                              * 门店投影（查询带 {@code storeNo} 时才有值）：这件商品在**那家店**
+                              * 上不上架。{@code null} = 未按店管理（跟随主体级 status）。
+                              * 语义与 {@code prd_store_goods} 一致：有任意店级行即按店管理，
+                              * 没有行的店视为未上架。
+                              */
+                             Boolean storeOnSale) {
 
     public record TitleVO(String zh, String en, String ar) {
     }
@@ -26,8 +33,11 @@ public record OpsGoodsListVO(String goodsNo, TitleVO title, String cover,
      * @param prices 按市场分别定价，{@code market -> 价格（分）}。
      *               {@code prd_sku} 一个逻辑 SKU 在库里是"一市场一行"
      *               （唯一键 {@code entity_no,sku_no,market}），这里按 skuNo 分组聚合。
+     * @param storeStock 门店投影（查询带 {@code storeNo} 时才有值）：该店的可用库存。
+     *                   {@code null} = 该 SKU 未启用分店库存（stock 就是它的数）；
+     *                   启用了但该店没有行 = 0（不是回退总量，与 V13 语义一致）。
      */
     public record OpsSkuVO(String skuNo, List<String> optionValues, String spec,
-                           Map<String, Long> prices, int stock) {
+                           Map<String, Long> prices, int stock, Integer storeStock) {
     }
 }

@@ -1,10 +1,13 @@
 <script setup lang="ts">
-// 登录：端差异全在 ports/auth（小程序=微信一键；App/H5=手机号 OTP）。页面不写 #ifdef。
-import { onUnmounted, ref } from "vue";
+// 登录：端差异全在 ports/auth（小程序=微信静默登录；App/H5=手机号 OTP）。页面不写 #ifdef。
+//
+// **页面渲染什么，取决于 `loginMethods()` 给了什么** —— 此前这里写死了手机号表单，
+// 而小程序上实际发出去的是微信 code，用户填的手机号被丢弃：界面与行为是两回事。
+import { computed, onUnmounted, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { onLoad } from "@dcloudio/uni-app";
 import { useUserStore } from "@/stores/user";
-import { acquireCredential } from "@shared/ports/auth";
+import { loginMethods, type LoginMethod } from "@shared/ports/auth";
 import { api } from "@/api";
 
 const { t } = useI18n();
@@ -12,6 +15,12 @@ const user = useUserStore();
 const phone = ref("");
 const otp = ref("");
 const loading = ref(false);
+
+const methods = loginMethods();
+/** 免输入的快捷方式（微信）。小程序上有，H5 上为空数组 */
+const quickMethods = computed(() => methods.filter((m) => !m.needsPhone));
+/** 手机号 OTP：全端都有，小程序上是兜底 */
+const phoneMethod = computed(() => methods.find((m) => m.needsPhone));
 
 /** 裂变归因：分享链接带进来的邀请人 / 团长，登录时一并提交 */
 const inviterNo = ref("");
@@ -55,10 +64,16 @@ async function sendOtp() {
   }
 }
 
-async function submit() {
+async function doLogin(method: LoginMethod) {
+  // 只有要手机号的方式才校验手机号 —— 微信登录不需要，此前的写法会拦住它
+  if (method.needsPhone && !/^\d{11}$/.test(phone.value)) {
+    uni.showToast({ title: String(t("login.phoneInvalid")), icon: "none" });
+    return;
+  }
+  if (loading.value) return;
   loading.value = true;
   try {
-    const cred = await acquireCredential(phone.value, otp.value);
+    const cred = await method.acquire(phone.value, otp.value);
     await user.login({ ...cred, inviterNo: inviterNo.value, merchantNo: merchantNo.value });
     uni.showToast({ title: String(t("login.success")), icon: "none" });
     setTimeout(() => uni.navigateBack(), 400);
@@ -77,31 +92,48 @@ async function submit() {
       <text class="sh-muted head__sub">{{ $t("login.sub") }}</text>
     </view>
 
-    <view class="form">
-      <input
-        v-model="phone"
-        class="field"
-        type="number"
-        :placeholder="$t('login.phone')"
-        maxlength="11"
-      />
-      <view class="otp-row">
-        <input
-          v-model="otp"
-          class="field otp-row__input"
-          type="number"
-          :placeholder="$t('login.otp')"
-          maxlength="6"
-        />
-        <text class="otp-row__send" :class="{ 'is-off': left > 0 }" @tap="sendOtp">
-          {{ left > 0 ? $t("login.resend", { s: left }) : $t("login.sendOtp") }}
-        </text>
-      </view>
+    <!-- 快捷方式（小程序上是微信静默登录）。H5 / App 上 quickMethods 为空，整块不渲染 -->
+    <view
+      v-for="m in quickMethods"
+      :key="m.id"
+      class="sh-btn quick"
+      :class="{ 'sh-btn--soft': !m.primary, 'is-loading': loading }"
+      @tap="doLogin(m)"
+    >
+      {{ loading ? $t("login.submitting") : $t(m.labelKey) }}
     </view>
 
-    <view class="sh-btn submit" :class="{ 'is-loading': loading }" @tap="submit">
-      {{ loading ? $t("login.submitting") : $t("login.submit") }}
+    <view v-if="quickMethods.length && phoneMethod" class="divider">
+      <text class="sh-muted">{{ $t("login.orPhone") }}</text>
     </view>
+
+    <template v-if="phoneMethod">
+      <view class="form">
+        <input
+          v-model="phone"
+          class="field"
+          type="number"
+          :placeholder="$t('login.phone')"
+          maxlength="11"
+        />
+        <view class="otp-row">
+          <input
+            v-model="otp"
+            class="field otp-row__input"
+            type="number"
+            :placeholder="$t('login.otp')"
+            maxlength="6"
+          />
+          <text class="otp-row__send" :class="{ 'is-off': left > 0 }" @tap="sendOtp">
+            {{ left > 0 ? $t("login.resend", { s: left }) : $t("login.sendOtp") }}
+          </text>
+        </view>
+      </view>
+
+      <view class="sh-btn submit" :class="{ 'is-loading': loading }" @tap="doLogin(phoneMethod)">
+        {{ loading ? $t("login.submitting") : $t("login.submit") }}
+      </view>
+    </template>
 
     <text class="agree">{{ $t("login.agree") }}</text>
   </sh-scaffold>
@@ -124,6 +156,18 @@ async function submit() {
 }
 .otp-row__send.is-off {
   color: var(--sh-sub);
+}
+
+.quick {
+  margin-top: 72rpx;
+}
+.quick + .quick {
+  margin-top: 20rpx;
+}
+.divider {
+  text-align: center;
+  margin: 40rpx 0 0;
+  font-size: 24rpx;
 }
 
 .head {

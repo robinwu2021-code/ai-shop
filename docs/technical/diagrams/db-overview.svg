@@ -11,23 +11,23 @@
 <text class="s" x="94" y="85" text-anchor="middle">usr_* · 4 表</text>
 <rect x="160.5" y="50" width="113" height="46" rx="6" fill="#EDEFF2" stroke="#B3B9C2"/>
 <text class="n" x="217" y="70" text-anchor="middle" font-size="13">商家主体与门店</text>
-<text class="s" x="217" y="85" text-anchor="middle">mch_* · 16 表</text>
+<text class="s" x="217" y="85" text-anchor="middle">mch_* · 17 表</text>
 <rect x="283.5" y="50" width="113" height="46" rx="6" fill="#EDEFF2" stroke="#B3B9C2"/>
 <text class="n" x="340" y="70" text-anchor="middle" font-size="13">社区与自提点</text>
 <text class="s" x="340" y="85" text-anchor="middle">cmt_* · 3 表</text>
 <rect x="406.5" y="50" width="113" height="46" rx="6" fill="#EDEFF2" stroke="#B3B9C2"/>
-<text class="n" x="463" y="70" text-anchor="middle" font-size="13">交易</text>
-<text class="s" x="463" y="85" text-anchor="middle">ord_* · 6 表</text>
+<text class="n" x="463" y="70" text-anchor="middle" font-size="13">商品与类目</text>
+<text class="s" x="463" y="85" text-anchor="middle">prd_* · 8 表</text>
 <rect x="529.5" y="50" width="113" height="46" rx="6" fill="#EDEFF2" stroke="#B3B9C2"/>
-<text class="n" x="586" y="70" text-anchor="middle" font-size="13">商品与类目</text>
-<text class="s" x="586" y="85" text-anchor="middle">prd_* · 8 表</text>
+<text class="n" x="586" y="70" text-anchor="middle" font-size="13">交易</text>
+<text class="s" x="586" y="85" text-anchor="middle">ord_* · 6 表</text>
 <line class="ar" x1="340" y1="124" x2="340" y2="104" marker-end="url(#a)"/>
 <text class="l" x="348" y="118">依赖</text>
 <line x1="36" y1="124" x2="644" y2="124" stroke="#D8DEE6"/>
 <text class="b" x="36" y="138">主数据与交易</text>
 <rect x="265" y="148" width="150" height="46" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
 <text class="n" x="340" y="168" text-anchor="middle" font-size="13">营销与团购</text>
-<text class="s" x="340" y="183" text-anchor="middle">mkt_* · 12 表</text>
+<text class="s" x="340" y="183" text-anchor="middle">mkt_* · 15 表</text>
 <line class="ar" x1="340" y1="222" x2="340" y2="202" marker-end="url(#a)"/>
 <text class="l" x="348" y="216">依赖</text>
 <line x1="36" y1="222" x2="644" y2="222" stroke="#D8DEE6"/>

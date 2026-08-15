@@ -535,6 +535,38 @@ public class AfterSaleServiceImpl implements AfterSaleService {
         return opsDetailOf(as);
     }
 
+    /**
+     * 退款回退分账队列的收尾（P-12.1.5 / E4）。
+     *
+     * <p>刻意<b>只有三行</b>：查单、校状态、进 {@link #doRefund}。
+     * 收尾的每一件事（回退分账 → 退款 → 子单转态 → 发事件）都在那里，
+     * 这里再抄一遍的话，漏掉的那几件不会报错。
+     */
+    @Override
+    @Transactional
+    public void resumeRefund(String afterSaleNo, String operatorNo) {
+        OrdAfterSale as = DataScopeContext.executeWithoutScope(() ->
+                afterSaleMapper.selectOne(Wrappers.<OrdAfterSale>lambdaQuery()
+                        .eq(OrdAfterSale::getAfterSaleNo, afterSaleNo).last("limit 1")));
+        if (as == null) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        if (OrdAfterSale.REFUNDED.equals(as.getStatus())) {
+            return;   // 幂等：列表没刷新就再点一次，不能退两次
+        }
+        /*
+         * **只收尾已经判过的单**。APPLIED 的单还没人决定要不要退，
+         * 从财务这个入口把它退掉，等于绕过商家与仲裁两道判断 ——
+         * 而这个按钮的岗位是财务，不是售后。
+         */
+        if (!OrdAfterSale.REFUNDING.equals(as.getStatus())) {
+            throw BizException.of(ErrorCode.ORDER_STATE_ILLEGAL);
+        }
+        doRefund(as, "平台执行退款回退分账");
+        appendLog(as.getSubOrderNo(), OrdAfterSale.REFUNDED, "财务执行：先回退分账，再退款",
+                OrdStatusLog.BY_PLATFORM, operatorNo);
+    }
+
     /** 责任方取值域，与 {@code ord_after_sale.liability} 的注释一致。 */
     private static final java.util.Set<String> LIABILITIES =
             java.util.Set.of("PLATFORM", "MERCHANT", "PICKUP");

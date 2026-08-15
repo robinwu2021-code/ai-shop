@@ -1,6 +1,7 @@
 package ai.neargo.shop.scenario;
 
 import ai.neargo.shop.support.TestLogin;
+import ai.neargo.shop.support.TestPlan;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -44,6 +45,8 @@ class MultiStoreOrderScopeTest {
     @Autowired
     private ObjectMapper json;
 
+    @Autowired
+    private ai.neargo.shop.merchant.mapper.MerchantMappers.EntityPlanMapper planMapper;
 
     private MockMvc mvc() {
         return MockMvcBuilders.webAppContextSetup(context)
@@ -56,6 +59,8 @@ class MultiStoreOrderScopeTest {
     void ordersAreScopedToCurrentStoreByDefault() throws Exception {
         String token = merchant("12600180001", "双店测试·总店");
         String defaultStore = defaultStoreNo(token);
+        // 多门店是 PRO 才有的能力，测试要说出「这家商家买了包」
+        TestPlan.grantPro(planMapper, merchantNoOf(token));
         String second = createStore(token, "双店测试·分店");
         assertThat(second).isNotEqualTo(defaultStore);
 

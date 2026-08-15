@@ -1,6 +1,6 @@
 // 覆盖范围：商品与类目（P-3）。上架前的三条校验是本域的核心。
 import * as db from "@/lib/mock/db";
-import { MARKETS, MAX_CATEGORY_LEVEL, SKU_TRANSITIONS, type Category, type Sku } from "@/lib/types";
+import { MARKETS, MAX_CATEGORY_LEVEL, SKU_TRANSITIONS, type Category, type Sku, type SpecTemplate } from "@/lib/types";
 import type { ProductApi } from "../contracts/product";
 import { fail, notFound } from "@/lib/biz-error";
 import { wait } from "./_wait";
@@ -76,6 +76,9 @@ export const productMock: ProductApi = {
         db.eqHit(q.merchantNo, s.merchantNo) &&
         db.eqHit(q.status, s.status) &&
         db.eqHit(q.categoryNo, s.categoryNo) &&
+        // presaleOnly 与真后端同样做在"查询"里而不是让页面自己过滤：
+        // 页面过滤在 mock 上永远对（样本只有八条），到真库就会因为分页而漏掉
+        (!q.presaleOnly || s.presaleQuota > 0) &&
         db.kwHit(q.keyword, s.skuNo, s.title.zh, s.title.en, s.merchantName, s.categoryName),
       ),
     ),
@@ -106,6 +109,52 @@ export const productMock: ProductApi = {
         skus: [{ skuNo: s.skuNo, optionValues: [], spec: undefined, prices: s.prices, stock: s.stock }],
       })),
     })),
+
+  /*
+   * mock 里 goods 与 sku 是 1:1（见上面 listGoods 的说明），所以 goodsNo 就是 skuNo。
+   * 真实后端是货真价实的一对多，这里的简化不影响抽屉交互本身对不对。
+   */
+  getGoodsDetail: async (goodsNo) => {
+    const s = findSku(goodsNo);
+    return wait({
+      goodsNo,
+      title: s.title.zh,
+      cover: undefined,
+      // 后端必发这四个数组（可能是空的）。声明成可选会让页面到处写 `?? []`，
+      // 而那正是「后端某天真的不发了」也发现不了的写法
+      images: [],
+      type: "NORMAL",
+      categoryNo: s.categoryNo,
+      merchant: { merchantNo: s.merchantNo, name: s.merchantName },
+      titleI18n: { zh: s.title.zh, ...(s.title.en ? { en: s.title.en } : {}), ...(s.title.ar ? { ar: s.title.ar } : {}) },
+      specGroups: [],
+      // 详情里的价是**单一价**（后端 SkuVO 就一份），取 CN 那档；多市场价在列表行上
+      skus: [{ skuNo: s.skuNo, optionValues: [], spec: undefined, price: s.prices.CN ?? 0, originPrice: null, stock: s.stock }],
+      fulfillments: [],
+      price: s.prices.CN ?? 0,
+      status: s.status,
+      auditReason: s.reason ?? null,
+    });
+  },
+
+  forceOffGoods: async (goodsNo, reason) => {
+    const s = findSku(goodsNo);
+    // goods 级强制下架 = **撤销过审**，所以只有在架的才谈得上撤
+    if (s.status !== "ON_SALE") fail("只有在售商品可以强制下架", "Only goods on sale can be forcibly delisted");
+    // 原因原样进商家 B 端：空原因等于让商家猜，猜不到就会反复重提
+    if (!reason?.trim()) fail("强制下架必须填写原因，商家会原样看到", "A forced delisting needs a reason — the merchant sees it verbatim");
+    /*
+     * 落到 REJECTED 而不是 OFF_SALE —— 两者对商家意味着完全不同的下一步：
+     * OFF_SALE 他自己点一下就能重新上架，REJECTED 必须改完重新提审。
+     * 平台既然是"撤销过审"，就不能给他一条一键复原的路。
+     */
+    s.status = "REJECTED";
+    s.reason = `平台强制下架：${reason.trim()}`;
+    // 待审队列里若有同一件商品，状态跟着走：两处不同步的话审核台会显示一个已被撤下的商品
+    const g = db.goodsAudits.find((x) => x.goodsNo === goodsNo);
+    if (g) g.status = "REJECTED";
+    return productMock.getGoodsDetail(goodsNo);
+  },
 
   auditSku: async (skuNo, pass, reason) => {
     const s = findSku(skuNo);
@@ -146,19 +195,82 @@ export const productMock: ProductApi = {
     return wait(s, 400);
   },
 
-  setSkuPresale: async (skuNo, presaleQuota, cutoffAt) => {
+  setSkuPresale: async (skuNo, presaleQuota, cutoffAt, arriveAt) => {
     const s = findSku(skuNo);
     if (presaleQuota < 0) fail("预售额度不能为负", "The pre-sale allowance cannot be negative");
+    // arriveAt 不传 = 不改（与后端同一条语义）。「不改」与「清空」分开：
+    // 只改额度的那次提交若顺手清了到货时间，下面这条校验从此形同虚设
+    const arrive = arriveAt || s.arriveAt;
     // 截单晚于到货 = 货到了还能下单，必然超卖
-    if (s.arriveAt && new Date(cutoffAt) >= new Date(s.arriveAt)) {
+    if (cutoffAt && arrive && new Date(cutoffAt) >= new Date(arrive)) {
       fail("截单时间必须早于到货时间，否则货到了还能继续下单", "The cut-off must come before the arrival time, or people keep ordering after the goods land");
     }
+    /*
+     * **刻意不拦「额度小于已售」** —— 与后端同一条取舍：拦住看着更严谨，
+     * 实际是把问题藏起来（运营改不动额度只好不改，那批已超出去的订单谁也不知道）。
+     * 调完这条 SKU 立刻出现在 listOversellSkus 里，有人认领才是重点。
+     */
     s.presaleQuota = presaleQuota;
-    s.cutoffAt = cutoffAt;
+    s.cutoffAt = cutoffAt || undefined;
+    if (arriveAt) s.arriveAt = arriveAt;
     return wait(s, 400);
   },
 
   listOversellSkus: async () =>
     // 只报不处置：补货还是退单要人判断，自动关单会把还能补上的团也关掉
     wait(db.skus.filter((s) => s.presaleQuota > 0 && s.soldCount > s.presaleQuota)),
+
+  // ── 规格模板（P-3.4 / E27）
+
+  listSpecTemplates: (q = {}) =>
+    wait(
+      db.paginate(db.specTemplates, q.page, q.size, (t) =>
+        db.liveHit(t, q.showArchived) &&
+        db.eqHit(q.categoryType, t.categoryType ?? undefined) &&
+        db.kwHit(q.keyword, t.templateNo, t.name, ...t.options.map((o) => o.code)),
+      ),
+    ),
+
+  saveSpecTemplate: async (v) => {
+    if (!v.name?.trim()) fail("模板名称必填", "A template name is required");
+    if (!v.options?.length) fail("至少要有一个选项", "A template needs at least one option");
+    /*
+     * 每个选项必须带 code —— 这是平台模板存在的唯一理由（B-4.5）。
+     * mock 也拦：不拦的话这条规则在开发期永远走不到，
+     * 而它正是「平台模板」与「商家手输」的全部区别。
+     */
+    const codes = new Set<string>();
+    for (const o of v.options) {
+      if (!o.code?.trim() || !o.label?.trim()) {
+        fail("每个选项都要填规格编码和名称，否则各店的写法聚合不到一起",
+          "Every option needs both an option code and a label, otherwise the wording each shop uses cannot be grouped");
+      }
+      // 组内重复会让「500g」和「1kg」在聚合时并成同一个规格 —— 正是 code 要防的事
+      if (codes.has(o.code.trim())) fail(`选项编码重复：${o.code}`, `Duplicate option code: ${o.code}`);
+      codes.add(o.code.trim());
+    }
+    const dup = db.specTemplates.find((t) =>
+      t.templateNo !== v.templateNo && !t.archivedAt &&
+      t.name.trim() === v.name.trim() && (t.categoryType ?? "") === (v.categoryType ?? ""));
+    // 同品类重名：商家的下拉里会出现两个「重量」，选哪个都对不上
+    if (dup) fail("同一品类下已有同名模板", "A template with this name already exists for this category type");
+
+    const saved = db.upsert<SpecTemplate>(
+      db.specTemplates,
+      {
+        templateNo: v.templateNo,
+        // scope 由后端写死，mock 跟着写死 —— 否则 mock 上能造出平台端改不了的商家模板
+        scope: "PLATFORM",
+        categoryType: (v.categoryType || undefined) as SpecTemplate["categoryType"],
+        name: v.name.trim(),
+        options: v.options.map((o) => ({ code: o.code.trim(), label: o.label.trim() })),
+      },
+      "templateNo",
+      () => db.nextNo("SPT", db.specTemplates, 900, "templateNo"),
+    );
+    return wait(saved, 400);
+  },
+
+  archiveSpecTemplate: async (no) => wait(db.archiveRow(db.specTemplates, "templateNo", no), 400),
+  unarchiveSpecTemplate: async (no) => wait(db.unarchiveRow(db.specTemplates, "templateNo", no), 400),
 };

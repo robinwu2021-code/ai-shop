@@ -91,6 +91,62 @@ public interface MerchantOrderService {
     /** 经营数据（B-11.1）。无单时返回 0，**不是报错** —— 新店第一天打开工作台是正常场景。 */
     StatsSummary stats(String merchantNo, java.util.Collection<String> storeNos);
 
+    // ---------------------------------------------------------------- 跨店（B-11.12.5/6）
+
+    /**
+     * 按门店分组的经营数据。跨店总览用。
+     *
+     * <p><b>口径与 {@link #stats} 逐字相同，只是不合并</b> —— 同一次扫描、同一个成交定义、
+     * 同一个时间轴。另写一套的话，总览与单店页面迟早给出两个数，
+     * 而商家第一句话会是「哪个是真的」。
+     *
+     * <p><b>一次查完，不逐店循环调 {@link #stats}</b>：那是 N 次全表扫，
+     * 而门店数正是这个功能的自变量 —— 店越多越慢，恰好对着最该用它的那批商家。
+     *
+     * <p>没有单的门店<b>不在返回的 Map 里</b>（不是 0 值行）。调用方按自己的门店列表
+     * 取值并兜底 0 —— 这里凭空补出一堆空行，会让「这个主体有哪些店」出现第二个来源。
+     *
+     * @return storeNo → 这家店的经营数据。{@code store_no} 为空的历史单不计入任何一行
+     */
+    java.util.Map<String, StatsSummary> statsByStore(String merchantNo,
+                                                     java.util.Collection<String> storeNos);
+
+    /**
+     * 按门店分组的待办。**只有门店维度的三项**（toShip / toDeliver / toStock），
+     * {@code toVerify} 与 {@code toPick} 恒为 0。
+     *
+     * <p>后两项是<b>自提点</b>维度且不限商家（见 {@link #todo}）——
+     * 把它们摆进「门店」那一列，商家会读成「这家店的活」，
+     * 而那些单可能属于别家商家、挂在别人的点上。跨店总览里没有它们的位置。
+     */
+    java.util.Map<String, TodoCounts> todoByStore(String merchantNo,
+                                                  java.util.Collection<String> storeNos);
+
+    /**
+     * 按门店分组的窗口对比指标。跨店对比用。
+     *
+     * @param days 回看天数（含今天）。窗口按<b>自然日</b>取，与商家心里的「最近 30 天」一致
+     */
+    java.util.Map<String, StoreCompare> compareByStore(String merchantNo,
+                                                       java.util.Collection<String> storeNos,
+                                                       int days);
+
+    /**
+     * 一家店在窗口内的对比指标。
+     *
+     * @param buyers       窗口内下过单的买家数（去重）
+     * @param repeatBuyers 其中下过 ≥2 单的
+     * @param repeatRate   {@code repeatBuyers / buyers}。<b>分母为 0 时是 0，不是除零也不是 null</b> ——
+     *                     一家还没开张的店，「复购率」这一格该显示 0%，
+     *                     而不是让整行变成空白或者让接口 500
+     */
+    record StoreCompare(int orders, long gmvMinor, int buyers, int repeatBuyers, double repeatRate) {
+
+        public static StoreCompare empty() {
+            return new StoreCompare(0, 0L, 0, 0, 0d);
+        }
+    }
+
     /**
      * @param toShip    待发货（快递履约）—— 按门店
      * @param toDeliver 待自送（商家自送履约）—— 按门店
@@ -138,9 +194,11 @@ public interface MerchantOrderService {
      * 平台侧订单列表。**跨商家**，客服处理任何问题的第一站。
      *
      * @param keyword 订单号 / 买家昵称，模糊匹配
+     * @param storeNo 按履约门店筛（{@code ord_sub_order.store_no}，ADR-011 双写），为空不筛
      */
     ai.neargo.shop.common.PageData<OpsOrderVO> opsList(String status, String merchantNo,
-                                                       String keyword, long page, long size);
+                                                       String storeNo, String keyword,
+                                                       long page, long size);
 
     /** 平台侧订单详情。 */
     OpsOrderVO opsDetail(String subOrderNo);

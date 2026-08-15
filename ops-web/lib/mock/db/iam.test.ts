@@ -79,10 +79,24 @@ describe("角色与功能点（P-1.1.2）", () => {
     const fns = await iamMock.listPermFunctions();
     const pts = fns.flatMap((f) => f.points);
     expect(pts.length).toBeGreaterThan(0);
-    // 履约整域后端零实现，它的点必须诚实标出来
-    const fulfil = pts.filter((p) => p.uiPermCode?.startsWith("fulfillment:"));
-    expect(fulfil.length).toBeGreaterThan(0);
-    expect(fulfil.every((p) => p.backendStatus === "NOT_IMPLEMENTED")).toBe(true);
+    /*
+     * 后端确实没做的那些点，必须诚实标出来。
+     *
+     * ⚠️ 样例**会随后端补齐而失效**：这里原先用的是履约整域，
+     * 2026-08-13 履约/风控/增长三域落地后它不再成立，这条测试当场变红 ——
+     * 那是对的，它逼着人回来把 mock 的 backendStatus 与 perm-map 的标记一起改。
+     * 换样例时挑一个当下确实还没有后端的（会员卡、首页楼层、店铺码导出）。
+     */
+    const unbuilt = pts.filter((p) => p.uiPermCode === "marketing:member:update"
+      || p.uiPermCode === "marketing:slot:update");
+    expect(unbuilt.length).toBeGreaterThan(0);
+    expect(unbuilt.every((p) => p.backendStatus === "NOT_IMPLEMENTED")).toBe(true);
+
+    // 反向：已落地的域不许还标着「待建」—— 标着就等于对所有人隐藏，功能白做
+    const built = pts.filter((p) => p.uiPermCode?.startsWith("fulfillment:")
+      || p.uiPermCode?.startsWith("risk:"));
+    expect(built.length).toBeGreaterThan(0);
+    expect(built.every((p) => p.backendStatus !== "NOT_IMPLEMENTED")).toBe(true);
   });
 });
 

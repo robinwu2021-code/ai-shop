@@ -18,15 +18,19 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * 微信 {@code jscode2session}。与 {@link WxSubscribeGateway} 共用 {@code shop.wx.*} 配置
- * 与开关 —— 登录换 openid 和拿 openid 发消息是同一枚硬币的两面，只开一半会造出
- * 「库里是假 openid、通道却在真发」的缝合世界。
+ * 微信 {@code jscode2session}。与 {@link WxSubscribeGateway} 共用 {@code shop.wx.appid/secret}，
+ * 但**开关是分开的**（{@code shop.wx.login.stub}）：本通道只要 appid + secret 就能通，
+ * 订阅消息还要 mp 后台报备过的模板号 —— 接入前置不同，合成一个开关会让
+ * 「先把登录接通」被订阅消息的 fail-fast 拦在启动阶段。
+ *
+ * <p>反过来那一半仍然不许：登录走桩而订阅消息真发，会造出「库里是假 openid、
+ * 通道却在真发」的缝合世界。那个组合由 {@link WxSubscribeGateway} 的构造器拒绝。
  *
  * <p>{@code session_key} <b>刻意不返回也不落库</b>：它是解密用户敏感数据的密钥，
  * 当前登录链路用不到；存一个用不到的密钥只是多一处泄露面。
  */
 @Component("wxAuthGateway")
-@ConditionalOnProperty(name = "shop.wx.stub", havingValue = "false")
+@ConditionalOnProperty(name = "shop.wx.login.stub", havingValue = "false")
 public class WxAuthGateway implements WxAuthPort {
 
     private static final Logger log = LoggerFactory.getLogger(WxAuthGateway.class);
@@ -48,7 +52,7 @@ public class WxAuthGateway implements WxAuthPort {
         this.appid = appid;
         this.secret = secret;
         if (appid == null || appid.isBlank() || secret == null || secret.isBlank()) {
-            throw new IllegalStateException("微信登录已开启（shop.wx.stub=false）但缺少 WX_APPID / WX_SECRET");
+            throw new IllegalStateException("微信登录已开启（shop.wx.login.stub=false）但缺少 WX_APPID / WX_SECRET");
         }
         log.info("[wxauth] code2Session 已启用 appid={}", appid);
     }

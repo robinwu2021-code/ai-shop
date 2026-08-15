@@ -21,7 +21,14 @@ public record StoreHomeVO(Merchant merchant,
                           StoreFront store,
                           boolean favorited,
                           /** 在售商品。字段名按契约叫 goods —— 端上读的就是这个名字 */
-                          List<GoodsVO> goods) {
+                          List<GoodsVO> goods,
+                          /**
+                           * 已停业（门店非 ACTIVE：商家自助停用或平台强制下线，V96）。
+                           *
+                           * <p>是一个标志而不是 404：扫码进来的老客要知道**店关了**，
+                           * 不是链接坏了。端上据此盖「已停业」并禁掉加购。
+                           */
+                          boolean closed) {
 
     /** 门面文案。三个字段都不会是 null：端上直接渲染，null 会变成屏幕上的「null」 */
     public record StoreFront(String announcement, String openHours, String address) {

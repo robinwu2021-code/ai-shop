@@ -134,3 +134,94 @@ export interface ServiceScopeConfig {
   /** 当前在用的商家数。不带计数的开关是盲操作 */
   merchantCount: number;
 }
+
+// ── 存储空间治理（TDD-图片存储与空间回收 §L3-7）──────────────────────
+
+/** 顶部四张卡。`abnormal` 为真时页面置顶红条并禁用批量回收。 */
+export interface MediaOverview {
+  totalBytes: number;
+  totalCount: number;
+  activeBytes: number;
+  activeCount: number;
+  reclaimableBytes: number;
+  reclaimableCount: number;
+  /** 可回收占比 > 50%。多半是有图片列没登记进 MediaRefSource —— 先查，别照删 */
+  abnormal: boolean;
+}
+
+export interface MediaStoreUsage {
+  /** `_ENTITY` = 主体级（证件，以及门店维度出现之前的存量图） */
+  storeNo: string;
+  entityNo: string;
+  count: number;
+  activeBytes: number;
+  reclaimableBytes: number;
+}
+
+/** 待回收的一行。`reason` 是这一列的全部意义 —— 运营靠它判断「这张能不能删」。 */
+export interface MediaReclaimable {
+  assetKey: string;
+  entityNo: string;
+  storeNo: string;
+  bizType: "GOODS" | "QUAL" | "AFTERSALE";
+  bytes: number;
+  width?: number | null;
+  height?: number | null;
+  uploadedBy?: string | null;
+  createdAt?: string | null;
+  markedAt?: string | null;
+  /** 「从未被引用」或「曾被『商品 G0012 · 主图』引用，… 后失去引用」 */
+  reason: string;
+  status: string;
+}
+
+export interface MediaPurgeBatch {
+  batchNo: string;
+  operator: string;
+  /** 发起时的显示名快照 —— 人离职改名之后这条记录还得说得清是谁 */
+  operatorName?: string | null;
+  status: "QUEUED" | "RUNNING" | "DONE" | "PARTIAL";
+  totalCount: number;
+  totalBytes: number;
+  purgedCount: number;
+  failedCount: number;
+  startedAt?: string | null;
+  finishedAt?: string | null;
+  createdAt?: string | null;
+}
+
+export interface MediaBatchDetail {
+  batch: MediaPurgeBatch;
+  items: MediaReclaimable[];
+}
+
+export interface MediaScanResult {
+  total: number;
+  referenced: number;
+  marked: number;
+  rescued: number;
+  abnormal: boolean;
+}
+
+export interface MediaPurgePreview {
+  count: number;
+  bytes: number;
+  sample: string[];
+}
+
+export interface MediaBackfillResult {
+  scanned: number;
+  inserted: number;
+  skipped: number;
+}
+
+/** 待回收清单的筛选。`includeQual` 默认 false —— 证件留存期是法务口径。 */
+export interface MediaReclaimableQuery {
+  entityNo?: string;
+  storeNo?: string;
+  includeQual?: boolean;
+  /** true 只看「从未被引用」，false 只看「被替换掉的」，不传都要 */
+  neverUsed?: boolean;
+  page?: number;
+  size?: number;
+}

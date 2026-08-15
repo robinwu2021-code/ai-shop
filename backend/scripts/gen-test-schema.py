@@ -30,6 +30,22 @@ HEADER = """-- 【自动生成，勿手改】由 backend/scripts/gen-test-schema
 """
 
 
+
+def _h2_type(col: str) -> str:
+    """列类型的 H2 兼容映射。
+
+    **JSON → TEXT**：H2 的 JSON 列经 MyBatis 映射成 String 时读回来是**空串**，
+    于是「存下去了、字段全没了」，而代码与 SQL 各自看都正常。
+    本库其余 JSON 串（title_i18n / spec_groups / featured / out_of_range）
+    在建表时本来就写的 TEXT，只有 prd_spec_template.options 用了 JSON —— 
+    它让平台规格模板（E27）在测试里从来跑不通。
+
+    **修在生成器而不是产物**：手改 schema-test.sql 会在下一次重新生成时被冲掉，
+    这一条已经被覆盖过三次。生产库仍是 JSON，那边没有这个问题。
+    """
+    return re.sub(r"(?<![\w])JSON(?![\w])", "TEXT", col, flags=re.I)
+
+
 def main():
     # 可选的输出路径：**先生成到别处比对、确认无误再覆盖**。
     # 这个口子是有来由的：这份产物一度与生成器分叉了很久（生成器根本跑不通，
@@ -209,6 +225,7 @@ def create_table(stmt, tables, order):
         u = re.match(r"^UNIQUE KEY\s+(\w+)\s*\((.*)\)$", line, re.I)
         if u:
             line = f"CONSTRAINT {u.group(1)} UNIQUE ({u.group(2)})"
+        line = _h2_type(line)
         cols.append("    " + line)
     # ENGINE=... 尾巴会粘在最后一行上，切掉
     if cols:

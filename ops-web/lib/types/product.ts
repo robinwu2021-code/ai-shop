@@ -124,6 +124,13 @@ export interface ProductGoods {
   status: string;
   /** 这件商品下的所有规格 */
   skus: GoodsSkuRow[];
+  /**
+   * 门店投影（列表查询带 `storeNo` 时才有值）：这件商品在**那家店**上不上架。
+   *
+   * `null`/缺失 = 未按店管理，跟随主体级 `status` —— 与「在那家店下架了」是两回事，
+   * 显示成同一个「否」会让运营去催商家上架一件其实全店都在卖的商品。
+   */
+  storeOnSale?: boolean | null;
 }
 
 /**
@@ -141,6 +148,51 @@ export interface GoodsSkuRow {
   /** 按市场分别定价（分）。缺某个市场 = 没这个市场的价，不是 0 元 */
   prices: Partial<Record<Market, number>>;
   stock: number;
+  /**
+   * 门店投影（列表查询带 `storeNo` 时才有值）：该店的可用库存。
+   *
+   * `null`/缺失 = 该 SKU 未启用分店库存，`stock` 就是它的数；
+   * 启用了但那家店没有行 = 0（**不回退总量**，与后端 V13 语义一致）。
+   */
+  storeStock?: number | null;
+}
+
+/**
+ * 平台规格模板（P-3.4 / E27，后端 `prd_spec_template` 里 `scope=PLATFORM` 的那些）。
+ *
+ * <p>B-4.4 商家建品时能选它，而平台端此前**没有维护入口** —— 表里只有初始化时
+ * 塞进去的几行，谁也改不了、加不了。三端联动表把这条记成「❌ 断裂：模板是死的」。
+ *
+ * <p>与商家自存的模板（`scope=MERCHANT`）不是同一批数据：那些归商家，
+ * 平台端一条都不该列出来，更不该改 —— 改了那家店的历史规格就对不上了。
+ */
+export interface SpecTemplate extends Archivable {
+  /** 模板单号 */
+  templateNo: string;
+  /** 恒为 `PLATFORM`。后端写死，请求体里传什么都忽略 */
+  scope: string;
+  /**
+   * 按五品类预置（与 `CategoryTemplate` 同一套取值）。**空 = 不限品类**。
+   * 商家建品时按这个轴筛（`GET /biz/goods/spec-templates?categoryType=`）。
+   */
+  categoryType?: CategoryTemplate | null;
+  /** 规格维度名，如「重量」「香型」 */
+  name: string;
+  /** 选项。整体替换，不做逐项 diff */
+  options: SpecTemplateOption[];
+  createdAt?: string;
+}
+
+/** {@link SpecTemplate} 的一个选项。 */
+export interface SpecTemplateOption {
+  /**
+   * 聚合键。**平台模板必填** —— 这是平台模板存在的唯一理由（B-4.5）：
+   * 自由文本下三家店会把同一件事写成「5 斤」「五斤」「2.5kg」，
+   * 聚合、比价、搜索全部对不上。没有 code 的平台模板与商家手输的没有区别。
+   */
+  code: string;
+  /** 展示文案 */
+  label: string;
 }
 
 /**
@@ -173,4 +225,73 @@ export interface GoodsAudit {
    * 后端 `GoodsVO` 里它同时承载审核态与上下架态：AUDITING / ON_SALE / OFF_SALE / REJECTED。
    */
   status?: string;
+}
+
+/**
+ * 商品详情（后端 `GoodsVO`，`GET /ops/goods/{goodsNo}`）。
+ *
+ * <p>**只声明运营端抽屉真的会读的字段** —— 后端那份 VO 是 C 端契约，
+ * 有近三十个字段（评分、销量、拼团配置、称重克重…），照抄一遍等于在前端
+ * 维护一份"我们从不显示"的清单，而它每次后端调整都会假性变更。
+ *
+ * <p>与 {@link ProductGoods} 的关系：那是**列表行**（一次给一页，字段窄），
+ * 这是**单条详情**（一次一件，字段全）。两者故意不是同一个类型：
+ * 列表塞进详情的字段会让分页响应大一个量级。
+ */
+export interface GoodsDetail {
+  /** 商品单号 */
+  goodsNo: string;
+  /** 标题（按当前语言拍平后的那一份） */
+  title: string;
+  /** 副标题 / 卖点 */
+  subtitle?: string;
+  /** 封面图 */
+  cover?: string;
+  /** 详情图。后端必发（可能是空数组） */
+  images: string[];
+  /** 商品形态 NORMAL/FRESH/SERVICE/VIRTUAL/CARD */
+  type: string;
+  /** 平台类目 */
+  categoryNo?: string;
+  /** 归属商家 brief —— 审核要看得到是谁上的架 */
+  merchant?: { merchantNo: string; name: string };
+  /**
+   * 三语标题原文（`prd_goods.title_i18n`）。
+   * 运营审文案看的是它，而不是拍平后的 `title` —— 拍平那份看不出缺译。
+   */
+  titleI18n?: Partial<Record<"zh" | "en" | "ar", string>>;
+  /** 三语副标题原文，同 {@link titleI18n} */
+  subtitleI18n?: Partial<Record<"zh" | "en" | "ar", string>>;
+  /** 规格组（如「重量」→「500g / 1kg」）。后端必发 */
+  specGroups: { name: string; options: string[] }[];
+  /** SKU 矩阵。后端必发 */
+  skus: GoodsDetailSku[];
+  /** 支持的履约方式（自提 / 配送 …）。后端必发 */
+  fulfillments: string[];
+  /** 展示价 = 最低 SKU 价（分） */
+  price?: number;
+  /** 商品状态：AUDITING / ON_SALE / OFF_SALE / REJECTED */
+  status?: string;
+  /**
+   * 最近一次驳回 / 强制下架的原因。
+   * **它是商家能看到的那半边** —— 审计日志只有运营看得到，
+   * 没有它商家面对 REJECTED 只能猜要改什么。过审时清空。
+   */
+  auditReason?: string | null;
+}
+
+/** {@link GoodsDetail} 里的一条 SKU。价格是**单一价**（分），不按市场分列 —— 后端 `SkuVO` 就这一份。 */
+export interface GoodsDetailSku {
+  /** 规格单号 */
+  skuNo: string;
+  /** 各规格组上选中的值，顺序与 `specGroups` 一致 */
+  optionValues: string[];
+  /** 规格展示串（如「500g / 红」）。后端拼好下发，前端不再自己拼 */
+  spec?: string;
+  /** 售价（分） */
+  price: number;
+  /** 划线价（分）。没有 = 不划线 */
+  originPrice?: number | null;
+  /** 可售库存 */
+  stock: number;
 }

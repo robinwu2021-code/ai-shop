@@ -48,7 +48,7 @@ components:
         - "SMALL"
         - "MEDIUM"
         - "LARGE"
-      description: "商家**分层**（规模）。对应 `mch_entity.tier`，与 shared 的 `MerchantTier` 同名同值。\n\n⚠️ 这里此前是 `PERSONAL | INDIVIDUAL | COMPANY` —— 那是**主体类型**的旧取值 （权威码见 shared 的 `MerchantSubject`：MICRO / INDIVIDUAL / ENTERPRISE）。 名字对得上后端字段，取值却来自另一个概念，于是这一列**永远显示不出东西**： 后端下发的 tier 要么是 null（一期没启用分层），要么是 SMALL， 而 SMALL 不在这个联合类型里，i18n 也查不到词条。\n\n<p>如果运营界面真正想看的是**主体类型**（小微/个体户/企业），那要后端在 ops 商家 VO 里补一个字段 —— `mch_entity` 上没有 subject 列， 它在申请单与进件表上。这是另一件事，不能靠改端上的类型变出来。"
+      description: "商家**分层**（规模）。对应 `mch_entity.tier`，与 shared 的 `MerchantTier` 同名同值。\n\n⚠️ 这里此前是 `PERSONAL | INDIVIDUAL | COMPANY` —— 那是**主体类型**的旧取值 （权威码见 shared 的 `MerchantSubject`：NATURAL_PERSON / INDIVIDUAL / ENTERPRISE）。 名字对得上后端字段，取值却来自另一个概念，于是这一列**永远显示不出东西**： 后端下发的 tier 要么是 null（一期没启用分层），要么是 SMALL， 而 SMALL 不在这个联合类型里，i18n 也查不到词条。\n\n<p>如果运营界面真正想看的是**主体类型**（小微/个体户/企业），那要后端在 ops 商家 VO 里补一个字段 —— `mch_entity` 上没有 subject 列， 它在申请单与进件表上。这是另一件事，不能靠改端上的类型变出来。"
     MerchantStatus: 
       type: "string"
       enum: 
@@ -99,7 +99,7 @@ components:
           type: "array"
           items: 
             type: "string"
-          description: "已上传并通过的资质名。授权需要资质的类目码时要对照它"
+          description: "已登记的结构化资质名。授权需要资质的类目码时要对照它。\n\n**必须是可选的。** 后端 `MerchantProfileVO` 曾经完全没有这个字段， 而这里声明成必填 `string[]` —— 类型检查过得去，真接口下 `m.qualifications.length` 直接抛 TypeError。只有 mock 有这个字段，所以一直没暴露。 「契约有、后端不发」是字段问题，不是类型问题：**别把 `?` 去掉**。"
         breachCount: 
           type: "number"
           description: "信用档案：毁约次数（P-11.1.5 / ADR-003）"
@@ -115,6 +115,17 @@ components:
         asPickupPoint: 
           type: "boolean"
           description: "申请人是否愿意承接自提点（ADR-005）。\n\n**只是意愿，通过审核不会自动建点** —— 自提点的服务费口径是逐点线下谈的， 没有一个默认值能覆盖。放在审核页上是为了让运营**看见有人在等**： 不显示的话，申请人勾了这一项、通过后什么也没发生，而中间没有任何一处会报错。"
+        legalForm: 
+          anyOf: 
+            - "$ref": "#/definitions/LegalForm"
+            - type: "null"
+          description: "主体档位。**准入档位完全由它决定** —— 保证金、限额、禁售品类都按它取策略。\n\n此前档案里没有它：运营看得到「这家被限额 500」，看不到「因为它是无照自然人」， 于是只会来问为什么。"
+        fundsMode: 
+          "$ref": "#/definitions/FundsMode"
+          description: "资金路径（轴②）：钱先进谁的账户。\n\n**与经营模式（`StoreMode.businessMode`，轴③）是两件事** —— 这个说钱先进谁的账户，那个说谁是销售主体。两者正交： 「直连 + 自营」（钱进商家户却说平台是卖方）是非法组合，要拦。\n\n而「要不要给积分补差」判的是**这一列** —— 钱在商家账户才需要补进去。"
+        agriProducer: 
+          type: "boolean"
+          description: "农业生产者。**无照主体走归集的唯一例外** —— 平台可自开农产品收购发票，成本有合法凭证。"
       required: 
         - "merchantNo"
         - "name"
@@ -125,11 +136,85 @@ components:
         - "contactPhone"
         - "categoryCodes"
         - "verified"
-        - "qualifications"
         - "breachCount"
         - "settleAccountReady"
         - "createdAt"
       additionalProperties: false
+    LegalForm: 
+      type: "string"
+      enum: 
+        - "NATURAL_PERSON"
+        - "INDIVIDUAL"
+        - "ENTERPRISE"
+      description: "主体档位 —— 与后端 `mch_entity.legal_form` 同一套取值。\n\n**三档锁定，不再增删**：S1/S2/S3 是对这三个值的读法，不是新枚举。\n\nV87 起 `MICRO` 改名 `NATURAL_PERSON` —— 那是通道发明的收款档位，不是法律形态， 且与法规「小微企业（有照）」重名含义相反。通道档留在 `mch_payment_merchant` 上。"
+    FundsMode: 
+      type: "string"
+      enum: 
+        - "AGGREGATED"
+        - "DIRECT"
+      description: "资金路径。**能走哪条由商户类型决定，不是平台自选**（ADR-017 §3.2）： 自然人开不出票 → 平台按全额确认收入而成本不可税前扣除 → 禁归集； 自产农产品例外。"
+    QualificationType: 
+      type: "string"
+      enum: 
+        - "BUSINESS_LICENSE"
+        - "FOOD_PERMIT"
+        - "FOOD_WORKSHOP"
+        - "OTHER"
+      description: "资质证件类型。与后端 MchQualification 的四个常量逐字一致"
+    QualificationItem: 
+      type: "object"
+      properties: 
+        type: 
+          "$ref": "#/definitions/QualificationType"
+        code: 
+          type: "string"
+        imageUrl: 
+          type: "string"
+        expireAt: 
+          type: 
+            - "number"
+            - "null"
+        issuer: 
+          type: "string"
+      required: 
+        - "type"
+        - "code"
+        - "imageUrl"
+        - "expireAt"
+      additionalProperties: false
+      description: "申请单上提交的一条结构化资质。`expireAt` 为 null = 长期有效"
+    Qualification: 
+      type: "object"
+      properties: 
+        qualNo: 
+          type: "string"
+        entityNo: 
+          type: "string"
+        qualType: 
+          type: "string"
+        qualName: 
+          type: "string"
+          description: "证件名。**要与 sys_auth_code.required_qualification 同一套字面量** —— 类目授权按名字比对"
+        qualNumber: 
+          type: "string"
+        imageUrl: 
+          type: "string"
+        expireAt: 
+          type: 
+            - "number"
+            - "null"
+          description: "null = 长期有效。与「已过期」是两回事，扫描任务不碰它"
+        status: 
+          type: "string"
+          description: "VALID / EXPIRED / REVOKED"
+      required: 
+        - "qualNo"
+        - "entityNo"
+        - "qualType"
+        - "qualName"
+        - "status"
+      additionalProperties: false
+      description: "主体档案上**已登记**的一条资质（mch_qualification）。上架闸门读的就是它"
     AuthCode: 
       type: "object"
       properties: 
@@ -161,7 +246,8 @@ components:
         - "WARN"
         - "LIMIT"
         - "SUSPEND"
-      description: "处置动作。SUSPEND 会真的把商家状态推到 SUSPENDED。"
+        - "STORE_OFFLINE"
+      description: "处置动作。**两个动作有真副作用**，不是记一笔就完： `SUSPEND` 把整个商家推到 SUSPENDED，`STORE_OFFLINE` 把**指定的那一家门店** 压到 SUSPENDED 并撤下它的货架行。\n\n门店级独立成一个 action 而不是「SUSPEND + 可选 storeNo」：后者的语义 由一个可空字段决定，读处置记录的人分不出「封了整个商家」和「只压了一家店」。"
     Violation: 
       type: "object"
       properties: 
@@ -180,6 +266,11 @@ components:
         action: 
           "$ref": "#/definitions/ViolationAction"
           description: "处置动作。`SUSPEND` 会真的把商家状态推到 SUSPENDED"
+        storeNo: 
+          type: 
+            - "string"
+            - "null"
+          description: "门店级处置的对象门店。**`STORE_OFFLINE` 必有、其余动作必空** —— 主体级处置带上门店号会让人以为只压了那一家。"
         detail: 
           type: "string"
           description: "事实描述与证据出处。必填 —— 没有事实的处置在申诉时站不住"
@@ -221,7 +312,7 @@ components:
           description: "拟用店铺名。**存快照** —— 后来改名不该让历史申请跟着变"
         subject: 
           type: "string"
-          description: "法律形态 MICRO / INDIVIDUAL / ENTERPRISE"
+          description: "法律形态 NATURAL_PERSON / INDIVIDUAL / ENTERPRISE"
         contactName: 
           type: "string"
           description: "联系人姓名。审核要打电话找人"
@@ -249,7 +340,12 @@ components:
           type: "array"
           items: 
             type: "string"
-          description: "已传的资质图。个体户/企业必传，小微免 —— 缺它正是驳回的主因"
+          description: "已传的资质图。个体户/企业必传，自然人免 —— 缺它正是驳回的主因"
+        qualificationItems: 
+          type: "array"
+          items: 
+            "$ref": "#/definitions/QualificationItem"
+          description: "结构化资质（V79）。**审核台看的是这一份** —— 上面的 licenses 只有图片 URL，审核员看不出「这是执照还是食品证」「什么时候过期」。 而通过之后转存进 mch_qualification 的正是它。"
         asPickupPoint: 
           type: "boolean"
           description: "是否愿意承接自提点（ADR-005）。**只是意愿，不代表点已建立**"
@@ -314,13 +410,39 @@ components:
         - "SELF_OPERATED"
         - "THIRD_PARTY"
       description: "经营模式。与  {@link  FeeRuleVersion }  一起构成费率的第一个维度。\n\n自营：平台是销售主体，这个费率是**进销差价（毛利）**。 第三方：平台是撮合方，这个费率是**服务收入（佣金）**。 算法一样，记账口径不同 —— 口径由结算单上的 `businessMode` 快照决定。"
-    LegalForm: 
-      type: "string"
-      enum: 
-        - "MICRO"
-        - "INDIVIDUAL"
-        - "ENTERPRISE"
-      description: "主体档位 —— 与后端 `mch_entity.legal_form` 同一套取值。\n\n**三档锁定，不再增删**：S1/S2/S3 是对这三个值的读法，不是新枚举。"
+    ModeRisk: 
+      type: "object"
+      properties: 
+        merchantNo: 
+          type: "string"
+        merchantName: 
+          type: "string"
+        legalForm: 
+          type: "string"
+          description: "主体档位（免执照的那一档）"
+        storeNo: 
+          type: "string"
+        storeName: 
+          type: "string"
+        businessMode: 
+          type: "string"
+        settledBills: 
+          type: "number"
+          description: "已产生的自营结算单数。**0 表示「查过了，没有」** —— 与「还没查」在界面上要分开"
+        settledMinor: 
+          type: "number"
+          description: "累计商家实得（分）。**这就是不可税前扣除的成本规模**"
+      required: 
+        - "merchantNo"
+        - "merchantName"
+        - "legalForm"
+        - "storeNo"
+        - "storeName"
+        - "businessMode"
+        - "settledBills"
+        - "settledMinor"
+      additionalProperties: false
+      description: "无营业执照的主体 × 自营门店 —— **税务敞口清单**。\n\n自营下平台是销售主体，列支成本要进项发票，而无照主体开不出票 —— 这笔支出**不得在企业所得税前扣除**，不是「多交一点税」， 是账面上凭空多出等额利润。\n\n而这个组合**是默认会发生的**：`mch_store.business_mode` 默认就是自营， 且后端没有任何一处校验「无照不得自营」。所以这份清单不是异常报表， 是**现状盘点**。"
     AdmissionPolicy: 
       type: "object"
       properties: 
@@ -443,6 +565,177 @@ components:
         - "balanceAfterMinor"
       additionalProperties: false
       description: "保证金流水。**只有余额字段的账户是不可审计的** —— 说不清这笔钱什么时候少的、谁扣的。"
+    MerchantStaffRow: 
+      type: "object"
+      properties: 
+        mchAccountNo: 
+          type: "string"
+          description: "商家账号号"
+        displayName: 
+          type: 
+            - "string"
+            - "null"
+          description: "姓名（老板自己写的）。认人靠它；可能为空"
+        loginPhone: 
+          type: "string"
+          description: "登录手机号。**它就是这个员工的登录用户名**（手机号 + 验证码，没有密码）"
+        isOwner: 
+          type: "boolean"
+          description: "老板。**不受门店授权限制**，所以 roles 为空不代表他没权限"
+        status: 
+          type: "string"
+          description: "ACTIVE / DISABLED"
+        roles: 
+          type: "array"
+          items: 
+            type: "object"
+            properties: 
+              storeNo: 
+                type: "string"
+              storeName: 
+                type: "string"
+              role: 
+                type: "string"
+            required: 
+              - "storeNo"
+              - "storeName"
+              - "role"
+            additionalProperties: false
+          description: "他在各门店的角色。一人一店可多角色，权限取并集"
+      required: 
+        - "mchAccountNo"
+        - "loginPhone"
+        - "isOwner"
+        - "status"
+        - "roles"
+      additionalProperties: false
+      description: "商家的一个员工，以及他在各门店的角色（**运营端只读**）。\n\n为什么运营要看得到：客服接到「我们店的配送员看不到订单」时， 在此之前只能让老板自己截图 —— 而问题往往正是「他以为授了、其实没授」， 截图里看不出这一点。\n\n平台**不能改**这些授权：谁能进这家店是商家的雇佣关系。"
+    PlanStatus: 
+      type: "string"
+      enum: 
+        - "ACTIVE"
+        - "GRACE"
+        - "EXPIRED"
+      description: "订阅状态。\n\n`GRACE`（宽限期，7 天）**能力全保留** —— 到期当天就压店的话， 一次忘记续费等于让他的店在客户面前消失，而他往往正在门店里忙。 宽限期是给「人」的缓冲，不是给系统的。"
+    PlanQuotaSource: 
+      type: "string"
+      enum: 
+        - "PLAN"
+        - "OVERRIDE"
+        - "CONFIG"
+      description: "生效额度的来源。运营必须看得出这个数是哪来的 —— 否则「这家怎么是 5 家？」只能靠翻审计日志回答。"
+    MerchantPlanRow: 
+      type: "object"
+      properties: 
+        merchantNo: 
+          type: "string"
+        merchantName: 
+          type: "string"
+        planCode: 
+          type: "string"
+        storeQuota: 
+          type: "number"
+          description: "生效额度（覆盖值优先于快照）。与 storeUsed 一起显示成 2/3"
+        staffQuota: 
+          type: "number"
+        storeUsed: 
+          type: "number"
+          description: "已用门店数。**只数 ACTIVE**，与建店时那道额度闸同一口径"
+        staffUsed: 
+          type: "number"
+        crossStoreStats: 
+          type: "boolean"
+        status: 
+          "$ref": "#/definitions/PlanStatus"
+        startAt: 
+          type: 
+            - "number"
+            - "null"
+        expireAt: 
+          type: 
+            - "number"
+            - "null"
+        grantedBy: 
+          type: 
+            - "string"
+            - "null"
+          description: "PLATFORM（运营授予）/ SELF（一期没有这条路）"
+        trialUsed: 
+          type: "boolean"
+        downgradedAt: 
+          type: 
+            - "number"
+            - "null"
+          description: "降级发生的时间。非空 = 已经压过店了（扫描靠它保证幂等）"
+        quotaSource: 
+          "$ref": "#/definitions/PlanQuotaSource"
+      required: 
+        - "merchantNo"
+        - "merchantName"
+        - "planCode"
+        - "storeQuota"
+        - "staffQuota"
+        - "storeUsed"
+        - "staffUsed"
+        - "crossStoreStats"
+        - "status"
+        - "trialUsed"
+        - "quotaSource"
+      additionalProperties: false
+      description: "到期看板的一行（`GET /ops/merchant-plans`）。"
+    PlanDef: 
+      type: "object"
+      properties: 
+        planCode: 
+          type: "string"
+        name: 
+          type: "string"
+        storeQuota: 
+          type: "number"
+        staffQuota: 
+          type: "number"
+        crossStoreStats: 
+          type: "boolean"
+        trialDays: 
+          type: "number"
+        enabled: 
+          type: "boolean"
+        subscriberCount: 
+          type: "number"
+          description: "当前有几家在用这一档。\n\n**改定义的人必须看得到这个数** —— 它是「只影响之后新订阅的人」那句话的具体量。 不给这个数，改档位的人只能凭感觉判断影响面。"
+      required: 
+        - "planCode"
+        - "name"
+        - "storeQuota"
+        - "staffQuota"
+        - "crossStoreStats"
+        - "trialDays"
+        - "enabled"
+        - "subscriberCount"
+      additionalProperties: false
+      description: "档位定义（`GET /ops/plan-defs`）。"
+    PlanUpgradeSignal: 
+      type: "object"
+      properties: 
+        ownerUserNo: 
+          type: "string"
+        entityNos: 
+          type: "array"
+          items: 
+            type: "string"
+        entityNames: 
+          type: "array"
+          items: 
+            type: "string"
+        entityCount: 
+          type: "number"
+      required: 
+        - "ownerUserNo"
+        - "entityNos"
+        - "entityNames"
+        - "entityCount"
+      additionalProperties: false
+      description: "升档信号的一行（`GET /ops/merchant-plans/upgrade-signals`）。\n\n**按 owner 分组而不是按主体**：「同一个人开了两个主体」正是要找的人 —— 他已经在多店经营，只是绕过了额度。主体表上没有联系电话（那在申请单上）， 所以这里只给 owner 号，销售拿它去后台查人。"
     FulfillmentType: 
       type: "string"
       enum: 
@@ -850,6 +1143,125 @@ components:
         - "count"
       additionalProperties: false
       description: "获客漏斗的一行（P-16.1.4 扫码→进店→注册→首单）。 ⚠️ 此前 interface 与环节枚举撞名叫 FunnelStep，字段写成 `step: FunnelStep` —— 自我引用"
+    MerchantRankRow: 
+      type: "object"
+      properties: 
+        merchantNo: 
+          type: "string"
+        merchantName: 
+          type: "string"
+          description: "商家名。**必须有** —— 只给编号的话运营还要再查一次「这家是谁」"
+        gmv: 
+          type: "number"
+          description: "成交额（最小货币单位整数）"
+        orderCount: 
+          type: "number"
+        avgOrderValue: 
+          type: "number"
+          description: "客单价（最小货币单位整数）"
+        afterSaleCount: 
+          type: "number"
+        afterSaleRate: 
+          type: "number"
+          description: "售后率 0–1。与 GMV 并列才看得出「卖得多」是不是「赔得也多」"
+      required: 
+        - "merchantNo"
+        - "merchantName"
+        - "gmv"
+        - "orderCount"
+        - "avgOrderValue"
+        - "afterSaleCount"
+        - "afterSaleRate"
+      additionalProperties: false
+      description: "商家经营排行的一行（P-16.1.2 / P-16.1.3）—— 大盘之下的第一层下钻。\n\n大盘回答「平台整体怎么样」，运营下一句必然是「哪几家在拉高、哪几家在拖后腿」。"
+    MenuFunction: 
+      type: "object"
+      properties: 
+        functionCode: 
+          type: "string"
+          description: "功能点编码，菜单树的一级节点"
+        name: 
+          type: "string"
+          description: "菜单显示名"
+        icon: 
+          type: 
+            - "string"
+            - "null"
+          description: "图标名；为空由前端按 functionCode 兜底"
+        href: 
+          type: 
+            - "string"
+            - "null"
+          description: "一级节点自身的落地路径；为空表示它只是个分组"
+        sort: 
+          type: "number"
+          description: "同级排序，小的在前"
+        points: 
+          type: "array"
+          items: 
+            "$ref": "#/definitions/MenuPoint"
+          description: "这个功能点下的二级菜单/按钮"
+      required: 
+        - "functionCode"
+        - "name"
+        - "sort"
+        - "points"
+      additionalProperties: false
+      description: "服务端下发的菜单分区（`GET /ops/menu`）。"
+    MenuPoint: 
+      type: "object"
+      properties: 
+        pointCode: 
+          type: "string"
+          description: "功能点下的点编码，菜单树的二级节点"
+        name: 
+          type: "string"
+          description: "菜单显示名"
+        groupName: 
+          type: 
+            - "string"
+            - "null"
+          description: "侧栏里的分组标题；为空表示不分组"
+        href: 
+          type: 
+            - "string"
+            - "null"
+          description: "落地路径；为空表示还没有页面"
+        uiPermCode: 
+          type: 
+            - "string"
+            - "null"
+          description: "前端页面自己判的码。与 permCode 不同：**它管的是能不能看见按钮，不是能不能调接口**"
+        permCode: 
+          type: 
+            - "string"
+            - "null"
+          description: "后端权限码。**null = 不受权限约束** —— 与 NOT_IMPLEMENTED 是两回事"
+        backendStatus: 
+          type: "string"
+          description: "IMPLEMENTED / NOT_IMPLEMENTED / UNMAPPED"
+        uiReady: 
+          type: "boolean"
+          description: "后端通了但前端页面还没做完"
+        matrixCode: 
+          type: 
+            - "string"
+            - "null"
+          description: "对应需求矩阵里的编号（如 `P-11.1`），用于回溯这个菜单项是哪条需求"
+        pointType: 
+          type: "string"
+          description: "MENU 菜单项 / ACTION 页面内按钮级授权（菜单不渲染 ACTION）"
+        sort: 
+          type: "number"
+          description: "同级排序，小的在前"
+      required: 
+        - "pointCode"
+        - "name"
+        - "backendStatus"
+        - "uiReady"
+        - "pointType"
+        - "sort"
+      additionalProperties: false
     CommunityApplyStatus: 
       type: "string"
       enum: 
@@ -1673,6 +2085,127 @@ components:
         - "updatedBy"
       additionalProperties: false
       description: "店铺主页模板。\n\n⚠️ `usedByCount` 是**只读的引用计数**，不是配置项 —— 它存在的唯一理由是 拦住\"停用一个正在被 12 家店用着的模板\"这件事。"
+    StoreGovernStatus: 
+      type: "string"
+      enum: 
+        - "ACTIVE"
+        - "READONLY"
+        - "SUSPENDED"
+      description: "门店经营状态。三档**不是同一个人在管**，所以不能压成一个 `enabled` 布尔：\n\n- `ACTIVE`    正常营业；\n- `READONLY`  商家自助停用（自己关的，自己能开回来）；\n- `SUSPENDED` 平台强制下线 —— **只有平台解得开**，商家侧的启停对它一律拒绝。\n\n压成布尔的后果是运营看不出「这家店是自己歇业还是被我们压下去的」， 而这两件事该做的动作完全相反。"
+    StoreGovern: 
+      type: "object"
+      properties: 
+        storeNo: 
+          type: "string"
+          description: "门店号"
+        name: 
+          type: "string"
+          description: "门店名"
+        address: 
+          type: "string"
+          description: "门店地址"
+        merchantNo: 
+          type: "string"
+          description: "所属商家主体"
+        merchantName: 
+          type: "string"
+          description: "商家名快照"
+        isDefault: 
+          type: "boolean"
+          description: "是否主体的默认门店。默认店承接「没指定门店」的那些流量"
+        status: 
+          "$ref": "#/definitions/StoreGovernStatus"
+          description: "经营状态，见  {@link  StoreGovernStatus }"
+        businessMode: 
+          "$ref": "#/definitions/BusinessMode"
+          description: "自营 / 第三方。决定这家店的钱怎么走、票怎么开"
+        payMerchantNo: 
+          type: 
+            - "string"
+            - "null"
+          description: "本店专属收款商户号。\n**`null` 不是「没配」，是「用主体默认收款号」** —— 显示成空白会被读成前者。"
+        announcement: 
+          type: "string"
+          description: "门店公告（走 P-10.1 的机审 + 人审）"
+        openHours: 
+          type: "string"
+          description: "营业时间，展示串"
+        deliveryRadiusM: 
+          type: "number"
+          description: "配送半径（米）"
+        deliveryMinOrderMinor: 
+          type: "number"
+          description: "起送价（分）"
+        deliveryFeeMinor: 
+          type: "number"
+          description: "配送费（分）"
+        deliveryFreeThresholdMinor: 
+          type: "number"
+          description: "免配送费门槛（分）"
+      required: 
+        - "storeNo"
+        - "name"
+        - "address"
+        - "merchantNo"
+        - "merchantName"
+        - "isDefault"
+        - "status"
+        - "businessMode"
+        - "payMerchantNo"
+        - "announcement"
+        - "openHours"
+        - "deliveryRadiusM"
+        - "deliveryMinOrderMinor"
+        - "deliveryFeeMinor"
+        - "deliveryFreeThresholdMinor"
+      additionalProperties: false
+      description: "平台视角的门店档案（后端 `mch_store`，`GET /ops/stores`）。\n\n**只读为主**：门店资料、价格、库存运营一律不改 —— 平台的边界是「裁、定、兜」， 不替商家运营。这份类型里唯一会被写回的是 `status`（解除强制下线）。\n\n与  {@link  StoreMode  }  的关系：那份是「准入与保证金」页里**只关心经营模式与收款号** 的窄投影，这份是门店档案的全貌。两者共用 storeNo，故意不合并 —— 合并会让那一页凭空多出十个它不该关心的字段。"
+    StoreStats: 
+      type: "object"
+      properties: 
+        storeNo: 
+          type: "string"
+          description: "门店号"
+        merchantNo: 
+          type: "string"
+          description: "所属商家主体"
+        todayOrders: 
+          type: "number"
+          description: "今日订单数"
+        todayGmvMinor: 
+          type: "number"
+          description: "今日 GMV（分）"
+        monthOrders: 
+          type: "number"
+          description: "本月订单数"
+        monthGmvMinor: 
+          type: "number"
+          description: "本月 GMV（分）"
+        ownedTrafficRate: 
+          type: "number"
+          description: "自带客流占比，0–1。**直接对应这家店少付的佣金**（ADR-004）"
+        toShip: 
+          type: "number"
+          description: "待发货"
+        toDeliver: 
+          type: "number"
+          description: "待自送"
+        toStock: 
+          type: "number"
+          description: "缺货待补。运营看它判断「这家店是不是没人管了」"
+      required: 
+        - "storeNo"
+        - "merchantNo"
+        - "todayOrders"
+        - "todayGmvMinor"
+        - "monthOrders"
+        - "monthGmvMinor"
+        - "ownedTrafficRate"
+        - "toShip"
+        - "toDeliver"
+        - "toStock"
+      additionalProperties: false
+      description: "门店经营状况（`GET /ops/stores/{storeNo}/stats`）。\n\n后端复用商家自己在 B 端看的那套统计，不另存计数器 —— 另存的迟早出现「总览说 3 单、点进去只有 2 单」。\n\n待办只有**门店维度**三项：核销与分拣是自提点维度且不限商家， 摆进门店页会被读成「这家店的活」。"
     CouponType: 
       type: "string"
       enum: 
@@ -1680,6 +2213,12 @@ components:
         - "DISCOUNT"
         - "NEWCOMER"
         - "TARGETED"
+    CouponBuildableType: 
+      type: "string"
+      enum: 
+        - "FULL_CUT"
+        - "DISCOUNT"
+      description: "建券表单能建的类型子集。NEWCOMER/TARGETED 不在这里——`discountFor` 从未处理过 它们，没有折扣算法撑着，建券表单不给选，避免看着能建、保存必炸。"
     CouponStatus: 
       type: "string"
       enum: 
@@ -1735,6 +2274,15 @@ components:
         createdAt: 
           type: "number"
           description: "创建时间（毫秒时间戳）"
+        totalCount: 
+          type: "number"
+          description: "发行量。**建券时敞口 = totalCount × 单张最大优惠**（TDD-营销预算前置）， 是预算前置校验的另一半——只有它和面额/封顶一起，敞口才算得出来。"
+        perUserLimit: 
+          type: "number"
+          description: "每人限领张数"
+        maxDiscountMinor: 
+          type: "number"
+          description: "折扣券封顶（分）。仅 `type=DISCOUNT` 有意义，其余类型恒为 0。\n**建券时必填 >0**——0 = 不封顶已取消，敞口在建券那一刻就必须算得出来。 与 `value`（折扣万分比）分开：一个决定打几折，一个决定最多减多少。"
       required: 
         - "couponNo"
         - "name"
@@ -1749,7 +2297,50 @@ components:
         - "issued"
         - "redeemed"
         - "createdAt"
+        - "totalCount"
+        - "perUserLimit"
+        - "maxDiscountMinor"
       additionalProperties: false
+    CouponSaveReq: 
+      type: "object"
+      properties: 
+        couponNo: 
+          type: "string"
+          description: "为空 = 新建"
+        name: 
+          type: "string"
+        type: 
+          "$ref": "#/definitions/CouponBuildableType"
+        faceMinor: 
+          type: "number"
+          description: "FULL_CUT 必填"
+        discountRate: 
+          type: "number"
+          description: "DISCOUNT 必填，万分比"
+        maxDiscountMinor: 
+          type: "number"
+          description: "DISCOUNT 必填 >0 —— 取消「0=不封顶」"
+        threshold: 
+          type: "number"
+        totalCount: 
+          type: "number"
+        perUserLimit: 
+          type: "number"
+        budget: 
+          type: "number"
+          description: "0 或不填 = 不限；非零时必须 ≥ 敞口，否则服务端拒绝"
+        validFrom: 
+          type: "number"
+        validTo: 
+          type: "number"
+      required: 
+        - "name"
+        - "type"
+        - "totalCount"
+        - "validFrom"
+        - "validTo"
+      additionalProperties: false
+      description: "建券 / 改券入参（TDD-营销预算前置）。只建平台券——`funder` 不开放。\n\n与 `Coupon`（读模型）分开是因为写侧要按类型拆开的原始字段（`faceMinor`/ `discountRate`/`maxDiscountMinor`），读侧的 `value` 是按类型合并展示的那个数。"
     IssueTarget: 
       type: "string"
       enum: 
@@ -2154,6 +2745,11 @@ components:
         merchantName: 
           type: "string"
           description: "商家名快照"
+        reviewRating: 
+          type: "number"
+          description: "被申诉那条评价的星级与正文。\n\n**裁决台必须显示它们** —— 要判断「这条差评是不是恶意的」， 而屏幕上只有单号和商家自己写的申诉理由的话，裁的是一面之词。"
+        reviewContent: 
+          type: "string"
         reason: 
           type: "string"
           description: "商家的申诉理由"
@@ -2162,7 +2758,7 @@ components:
           description: "举证材料数量（截图/聊天记录）"
         status: 
           "$ref": "#/definitions/AppealStatus"
-          description: "裁决状态。UPHELD = 支持商家（差评下架），DISMISSED = 驳回申诉（差评保留）"
+          description: "裁决状态。UPHELD = 支持商家（差评下架），REJECTED = 驳回申诉（差评保留）"
         submittedAt: 
           type: "string"
           description: "申诉提交时间"
@@ -2174,12 +2770,14 @@ components:
         - "reviewNo"
         - "merchantNo"
         - "merchantName"
+        - "reviewRating"
+        - "reviewContent"
         - "reason"
         - "evidenceCount"
         - "status"
         - "submittedAt"
       additionalProperties: false
-      description: "恶意差评申诉（P-13.1.3）。UPHELD = 支持商家（差评下架），DISMISSED = 驳回申诉（差评保留）。"
+      description: "恶意差评申诉（P-13.1.3）。UPHELD = 支持商家（差评下架），REJECTED = 驳回申诉（差评保留）。"
     ScoreConfig: 
       type: "object"
       properties: 
@@ -2241,28 +2839,28 @@ components:
       properties: 
         platform: 
           type: "number"
-          description: "平台出资比例（百分比）"
         merchant: 
           type: "number"
-          description: "商家出资比例（百分比）"
         pickup: 
           type: "number"
-          description: "自提点承接方出资比例（百分比）"
       required: 
         - "platform"
         - "merchant"
         - "pickup"
       additionalProperties: false
-      description: "赔付出资比例，百分比，**三者之和必须为 100**。 ⚠️ 矩阵 M4「售后责任归属与出资方比例」未定，所以这里**存结构不存结论** —— 口径定了只需要给默认值，不用改模型。"
+      description: "赔付出资比例，百分比，**三者之和必须为 100**。 ⚠️ 矩阵 M4「售后责任归属与出资方比例」口径未定，真实后端从没实现过这个概念—— `ord_after_sale` 上没有存它的列，裁决台曾经收集这三个数字一起提交， 点「确认裁决」时被后端静默丢弃，运营以为填了就生效。**只有 finance 域的 「退款回退分账」mock 队列还在用这两个字段**（`share`/`refundSplitPending`）， 而那条队列本身也是 mock-only——`/ops/refund-split-backs` 后端不存在。 M4 有结论、这两块真正接上后端之后再把类型收紧。"
     AfterSale: 
       type: "object"
       properties: 
-        asNo: 
+        afterSaleNo: 
           type: "string"
           description: "售后单号"
-        orderNo: 
+        subOrderNo: 
           type: "string"
           description: "关联的子订单"
+        orderNo: 
+          type: "string"
+          description: "关联的主订单"
         merchantNo: 
           type: "string"
           description: "涉事商家"
@@ -2278,41 +2876,44 @@ components:
         status: 
           "$ref": "#/definitions/AfterSaleStatus"
           description: "售后单状态。允许的流转见 `AFTERSALE_TRANSITIONS`"
-        amount: 
+        refundMinor: 
           type: "number"
-          description: "申请退款金额（分）。**不得超过订单实付** —— 校验要跨域查订单。"
+          description: "申请退款金额（分）。裁决只决定退不退，不改这个数"
         reason: 
           type: "string"
           description: "用户填写的售后原因"
-        evidenceCount: 
-          type: "number"
-          description: "举证材料数量（照片/聊天记录）"
+        images: 
+          type: "array"
+          items: 
+            type: "string"
+          description: "举证材料（照片）"
         liability: 
           "$ref": "#/definitions/Liability"
           description: "裁定的责任方。平台介入后才有值"
         share: 
           "$ref": "#/definitions/LiabilityShare"
-          description: "赔付出资比例。口径未定（M4），先存结构"
+          description: "赔付出资比例。**仅 finance 域 mock 队列使用**，真实后端未接（见上方说明）"
         verdict: 
           type: "string"
           description: "裁决说明：用户与商家都会看到"
         refundSplitPending: 
           type: "boolean"
-          description: "E4 退款回退分账待办：裁决完成但资金域（P-12）尚未接。 留这个标记而不是假装已完成 —— 接资金域时按它补跑。"
+          description: "E4 退款回退分账待办：finance 域「退款回退分账」mock 队列专用字段， 真实后端未接（见上方说明），售后本身的裁决流程不读写它。"
         createdAt: 
           type: "string"
           description: "售后发起时间"
       required: 
-        - "asNo"
+        - "afterSaleNo"
+        - "subOrderNo"
         - "orderNo"
         - "merchantNo"
         - "merchantName"
         - "buyerNickname"
         - "type"
         - "status"
-        - "amount"
+        - "refundMinor"
         - "reason"
-        - "evidenceCount"
+        - "images"
         - "createdAt"
       additionalProperties: false
     FastRefundRule: 
@@ -2659,6 +3260,130 @@ components:
         SG: 
           type: "number"
       additionalProperties: false
+    ProductGoods: 
+      type: "object"
+      properties: 
+        goodsNo: 
+          type: "string"
+          description: "商品单号"
+        title: 
+          "$ref": "#/definitions/I18nText"
+          description: "标题（三语）"
+        cover: 
+          type: "string"
+          description: "封面图"
+        merchantNo: 
+          type: "string"
+          description: "归属商家"
+        merchantName: 
+          type: "string"
+          description: "商家名快照"
+        categoryNo: 
+          type: "string"
+          description: "归属类目"
+        categoryName: 
+          type: "string"
+          description: "类目名快照"
+        status: 
+          type: "string"
+          description: "商品状态：AUDITING / ON_SALE / OFF_SALE / REJECTED"
+        skus: 
+          type: "array"
+          items: 
+            "$ref": "#/definitions/GoodsSkuRow"
+          description: "这件商品下的所有规格"
+        storeOnSale: 
+          type: 
+            - "boolean"
+            - "null"
+          description: "门店投影（列表查询带 `storeNo` 时才有值）：这件商品在**那家店**上不上架。\n\n`null`/缺失 = 未按店管理，跟随主体级 `status` —— 与「在那家店下架了」是两回事， 显示成同一个「否」会让运营去催商家上架一件其实全店都在卖的商品。"
+      required: 
+        - "goodsNo"
+        - "title"
+        - "merchantNo"
+        - "merchantName"
+        - "status"
+        - "skus"
+      additionalProperties: false
+      description: "商品池里的一行（goods 粒度，SKU 收在 `skus` 里）——**不是**  {@link  Sku }  的复数形式。\n\n<p>后端 `prd_goods`/`prd_sku` 本来就是一对多：标题、图、类目、审核状态都在 goods 上， 价格/库存/规格才是 sku 的。商品池按 goods 展示、审核/强制下架/预售这几个动作 仍然打在具体某个 sku 上（见 `skus[].skuNo`）——两者granularity 不同，别混用。"
+    GoodsSkuRow: 
+      type: "object"
+      properties: 
+        skuNo: 
+          type: "string"
+        optionValues: 
+          type: "array"
+          items: 
+            type: "string"
+        spec: 
+          type: "string"
+        prices: 
+          "$ref": "#/definitions/Partial%3CRecord%3CMarket%2Cnumber%3E%3E"
+          description: "按市场分别定价（分）。缺某个市场 = 没这个市场的价，不是 0 元"
+        stock: 
+          type: "number"
+        storeStock: 
+          type: 
+            - "number"
+            - "null"
+          description: "门店投影（列表查询带 `storeNo` 时才有值）：该店的可用库存。\n\n`null`/缺失 = 该 SKU 未启用分店库存，`stock` 就是它的数； 启用了但那家店没有行 = 0（**不回退总量**，与后端 V13 语义一致）。"
+      required: 
+        - "skuNo"
+        - "optionValues"
+        - "prices"
+        - "stock"
+      additionalProperties: false
+      description: "商品池里一个商品下的某个规格——**故意不是**  {@link  Sku } 。\n\n<p>{@code Sku} 那份（预售额度/已售/截单时间）是「库存与预售」tab 的形状， 而那几个字段在真实后端压根不存在（`prd_sku` 没有这些列，见该 tab 的说明）。 商品池要的是\"这个规格在每个市场卖多少钱、还有多少库存\"，直接照实定义， 不要为了复用一个类型就在这里塞几个\"这次数据源永远给不出来\"的字段。"
+    SpecTemplate: 
+      type: "object"
+      properties: 
+        archivedAt: 
+          type: 
+            - "string"
+            - "null"
+          description: "归档时间。**软删除标记** —— 有值即视为已删除，列表默认不返回。 契约禁止 `delete*`，一律 `archive*` / `unarchive*`（工程约定 §10.6）。"
+        templateNo: 
+          type: "string"
+          description: "模板单号"
+        scope: 
+          type: "string"
+          description: "恒为 `PLATFORM`。后端写死，请求体里传什么都忽略"
+        categoryType: 
+          anyOf: 
+            - "$ref": "#/definitions/CategoryTemplate"
+            - type: "null"
+          description: "按五品类预置（与 `CategoryTemplate` 同一套取值）。**空 = 不限品类**。 商家建品时按这个轴筛（`GET /biz/goods/spec-templates?categoryType=`）。"
+        name: 
+          type: "string"
+          description: "规格维度名，如「重量」「香型」"
+        options: 
+          type: "array"
+          items: 
+            "$ref": "#/definitions/SpecTemplateOption"
+          description: "选项。整体替换，不做逐项 diff"
+        createdAt: 
+          type: "string"
+      required: 
+        - "templateNo"
+        - "scope"
+        - "name"
+        - "options"
+      additionalProperties: false
+      description: "平台规格模板（P-3.4 / E27，后端 `prd_spec_template` 里 `scope=PLATFORM` 的那些）。\n\n<p>B-4.4 商家建品时能选它，而平台端此前**没有维护入口** —— 表里只有初始化时 塞进去的几行，谁也改不了、加不了。三端联动表把这条记成「❌ 断裂：模板是死的」。\n\n<p>与商家自存的模板（`scope=MERCHANT`）不是同一批数据：那些归商家， 平台端一条都不该列出来，更不该改 —— 改了那家店的历史规格就对不上了。"
+    SpecTemplateOption: 
+      type: "object"
+      properties: 
+        code: 
+          type: "string"
+          description: "聚合键。**平台模板必填** —— 这是平台模板存在的唯一理由（B-4.5）： 自由文本下三家店会把同一件事写成「5 斤」「五斤」「2.5kg」， 聚合、比价、搜索全部对不上。没有 code 的平台模板与商家手输的没有区别。"
+        label: 
+          type: "string"
+          description: "展示文案"
+      required: 
+        - "code"
+        - "label"
+      additionalProperties: false
+      description: "{@link  SpecTemplate }  的一个选项。"
     GoodsAudit: 
       type: "object"
       properties: 
@@ -2701,6 +3426,139 @@ components:
         - "type"
       additionalProperties: false
       description: "待审商品（后端 `prd_goods`，**goods 粒度不是 sku 粒度**）。\n\n<p>与本文件里 `Sku` 的差别：审核判的是「这件商品能不能卖」—— 标题、图、类目、资质都在 goods 上；sku 只是规格与价格。 拿 sku 粒度去审，同一件商品会被审好几遍。"
+    GoodsDetail: 
+      type: "object"
+      properties: 
+        goodsNo: 
+          type: "string"
+          description: "商品单号"
+        title: 
+          type: "string"
+          description: "标题（按当前语言拍平后的那一份）"
+        subtitle: 
+          type: "string"
+          description: "副标题 / 卖点"
+        cover: 
+          type: "string"
+          description: "封面图"
+        images: 
+          type: "array"
+          items: 
+            type: "string"
+          description: "详情图。后端必发（可能是空数组）"
+        type: 
+          type: "string"
+          description: "商品形态 NORMAL/FRESH/SERVICE/VIRTUAL/CARD"
+        categoryNo: 
+          type: "string"
+          description: "平台类目"
+        merchant: 
+          type: "object"
+          properties: 
+            merchantNo: 
+              type: "string"
+            name: 
+              type: "string"
+          required: 
+            - "merchantNo"
+            - "name"
+          additionalProperties: false
+          description: "归属商家 brief —— 审核要看得到是谁上的架"
+        titleI18n: 
+          "$ref": "#/definitions/Partial%3CRecord%3C(%22zh%22%7C%22en%22%7C%22ar%22)%2Cstring%3E%3E"
+          description: "三语标题原文（`prd_goods.title_i18n`）。 运营审文案看的是它，而不是拍平后的 `title` —— 拍平那份看不出缺译。"
+        subtitleI18n: 
+          "$ref": "#/definitions/Partial%3CRecord%3C(%22zh%22%7C%22en%22%7C%22ar%22)%2Cstring%3E%3E"
+          description: "三语副标题原文，同  {@link  titleI18n }"
+        specGroups: 
+          type: "array"
+          items: 
+            type: "object"
+            properties: 
+              name: 
+                type: "string"
+              options: 
+                type: "array"
+                items: 
+                  type: "string"
+            required: 
+              - "name"
+              - "options"
+            additionalProperties: false
+          description: "规格组（如「重量」→「500g / 1kg」）。后端必发"
+        skus: 
+          type: "array"
+          items: 
+            "$ref": "#/definitions/GoodsDetailSku"
+          description: "SKU 矩阵。后端必发"
+        fulfillments: 
+          type: "array"
+          items: 
+            type: "string"
+          description: "支持的履约方式（自提 / 配送 …）。后端必发"
+        price: 
+          type: "number"
+          description: "展示价 = 最低 SKU 价（分）"
+        status: 
+          type: "string"
+          description: "商品状态：AUDITING / ON_SALE / OFF_SALE / REJECTED"
+        auditReason: 
+          type: 
+            - "string"
+            - "null"
+          description: "最近一次驳回 / 强制下架的原因。\n**它是商家能看到的那半边** —— 审计日志只有运营看得到， 没有它商家面对 REJECTED 只能猜要改什么。过审时清空。"
+      required: 
+        - "goodsNo"
+        - "title"
+        - "images"
+        - "type"
+        - "specGroups"
+        - "skus"
+        - "fulfillments"
+      additionalProperties: false
+      description: "商品详情（后端 `GoodsVO`，`GET /ops/goods/{goodsNo}`）。\n\n<p>**只声明运营端抽屉真的会读的字段** —— 后端那份 VO 是 C 端契约， 有近三十个字段（评分、销量、拼团配置、称重克重…），照抄一遍等于在前端 维护一份\"我们从不显示\"的清单，而它每次后端调整都会假性变更。\n\n<p>与  {@link  ProductGoods }  的关系：那是**列表行**（一次给一页，字段窄）， 这是**单条详情**（一次一件，字段全）。两者故意不是同一个类型： 列表塞进详情的字段会让分页响应大一个量级。"
+    "Partial<Record<(\"zh\"|\"en\"|\"ar\"),string>>": 
+      type: "object"
+      properties: 
+        zh: 
+          type: "string"
+        en: 
+          type: "string"
+        ar: 
+          type: "string"
+      additionalProperties: false
+    GoodsDetailSku: 
+      type: "object"
+      properties: 
+        skuNo: 
+          type: "string"
+          description: "规格单号"
+        optionValues: 
+          type: "array"
+          items: 
+            type: "string"
+          description: "各规格组上选中的值，顺序与 `specGroups` 一致"
+        spec: 
+          type: "string"
+          description: "规格展示串（如「500g / 红」）。后端拼好下发，前端不再自己拼"
+        price: 
+          type: "number"
+          description: "售价（分）"
+        originPrice: 
+          type: 
+            - "number"
+            - "null"
+          description: "划线价（分）。没有 = 不划线"
+        stock: 
+          type: "number"
+          description: "可售库存"
+      required: 
+        - "skuNo"
+        - "optionValues"
+        - "price"
+        - "stock"
+      additionalProperties: false
+      description: "{@link  GoodsDetail }  里的一条 SKU。价格是**单一价**（分），不按市场分列 —— 后端 `SkuVO` 就这一份。"
     SettleStatus: 
       type: "string"
       enum: 
@@ -2714,6 +3572,44 @@ components:
         - "CONFIRMED"
         - "PAID"
       description: "结算单状态。<b>两条轨道各走各的</b>： 第三方 PENDING → SPLITTING → SPLIT（分账）； 自营 PENDING_RECON → CONFIRMED → PAID（对账 → 确认 → 财务付款）。 合成一条会让「已完成」在两种模式下指向完全不同的事。"
+    PointsOverview: 
+      type: "object"
+      properties: 
+        circulatingPoints: 
+          type: "number"
+          description: "流通中的积分（用户可用 + 待生效）"
+        poolBalanceMinor: 
+          type: "number"
+          description: "池子余额（分）。与上一个数对不上就是失衡"
+        periodRedeemMinor: 
+          type: "number"
+          description: "本期兑付（分）：补给商家的钱"
+        byChannel: 
+          type: "array"
+          items: 
+            "$ref": "#/definitions/PoolByChannel"
+          description: "按通道分的账本。**不能只看总数** —— 账面是一个池子，钱实际分散在两个通道账户； 一个溢一个空的时候，总数仍然是平的。"
+      required: 
+        - "circulatingPoints"
+        - "poolBalanceMinor"
+        - "periodRedeemMinor"
+        - "byChannel"
+      additionalProperties: false
+      description: "积分资金总览。\n\n**三个数摆在一起是刻意的** —— 恒等式是「流通中的积分 == 池子里的钱」， 分开看的话，失衡要等到有人主动比对才会发现。"
+    PoolByChannel: 
+      type: "object"
+      properties: 
+        market: 
+          type: "string"
+        payChannel: 
+          type: "string"
+        balanceMinor: 
+          type: "number"
+      required: 
+        - "market"
+        - "payChannel"
+        - "balanceMinor"
+      additionalProperties: false
     Settlement: 
       type: "object"
       properties: 
@@ -2797,7 +3693,6 @@ components:
         - "status"
         - "createdAt"
       additionalProperties: false
-      description: "结算单 = <b>一个子订单一张</b>（后端 `stl_bill`）。\n\n⚠️ 与旧类型的形状不同，是有意的。旧那个是**周期汇总** （`period` / `orderCount` / 汇总金额），而后端从来就不是那么结算的 —— 它是「订单成交即生成一张结算单」的即时模型，`/ops/settlements` 也从未实现过。 页面按周期汇总的样子做了很久，而它对不上任何真实数据。\n\n对齐方向是**改前端跟后端**：后端模型是钱真实的流向， 周期汇总只是一个没被实现的设计稿。"
     SplitLog: 
       type: "object"
       properties: 
@@ -3117,9 +4012,11 @@ components:
         name: 
           type: "string"
           description: "姓名"
-        role: 
-          "$ref": "#/definitions/Role"
-          description: "角色。决定权限码集合，见 `RoleDef`"
+        roles: 
+          type: "array"
+          items: 
+            type: "string"
+          description: "角色（**可多个**）。权限码取所有角色的并集。\n\n<p>2026-08-12 从单值 `role` 换成数组：库早就支持多角色 （`sys_role_member` 唯一键含 role_code、`Perms.of` 取并集）， 是写接口把它压成了单值。"
         merchantNo: 
           type: "string"
           description: "数据域（P-1.1.3）。只对**受限角色**有意义： 社区运营 → communityNo、商家运营 → merchantNo。 给全量角色（超管等）配数据域是配置错误 —— 会让人以为它被限制了，实际没有。"
@@ -3132,6 +4029,9 @@ components:
         enabled: 
           type: "boolean"
           description: "是否启用。停用后立即无法登录，历史操作留痕保留"
+        mustChangePassword: 
+          type: "boolean"
+          description: "首登必须改密。 建号时后端生成的一次性初始密码只是「拿到账号」的凭据，不是长期口令。"
         lastLoginAt: 
           type: "string"
           description: "最近登录时间。从未登录为空"
@@ -3142,37 +4042,40 @@ components:
         - "staffNo"
         - "username"
         - "name"
-        - "role"
+        - "roles"
         - "enabled"
         - "createdAt"
       additionalProperties: false
     RoleDef: 
       type: "object"
       properties: 
-        role: 
-          "$ref": "#/definitions/Role"
-          description: "角色码"
-        label: 
+        roleCode: 
+          type: "string"
+          description: "角色码。自定义角色不在 `Role` 联合类型里，所以是 string"
+        name: 
           type: "string"
           description: "角色展示名"
+        endCode: 
+          type: "string"
+          description: "端。运营端固定 OPS"
         builtin: 
           type: "boolean"
-          description: "内置角色（超管）：定义就是\"全部\"，不可编辑 —— 可编辑意味着能把自己降权"
-        perms: 
-          type: "array"
-          items: 
-            type: "string"
-          description: "权限码集合；'*' 表示全部"
+          description: "内置角色：是 `Perms.java` 的镜像，改了会与回落表分叉 —— 渲染但禁用"
+        pointCount: 
+          type: "number"
+          description: "已授予的功能点数"
         staffCount: 
           type: "number"
-          description: "持有该角色的账号数"
+          description: "持有该角色的账号数。\n**删角色前唯一能看出「会影响谁」的信息** —— 后端也拦（10441），但那是拦在点下去之后。"
       required: 
-        - "role"
-        - "label"
+        - "roleCode"
+        - "name"
+        - "endCode"
         - "builtin"
-        - "perms"
+        - "pointCount"
         - "staffCount"
       additionalProperties: false
+      description: "角色定义（`GET /ops/perm/roles`）。\n\n**2026-08-12 换形**：原来带 `perms: string[]`（权限码集合）， 现在授权的单位是**功能点**（`sys_role_point`）—— 与后端存的东西一致。\n\n为什么不继续用权限码：库里存功能点，界面勾权限码的话，保存时要把码反向 翻译成功能点集合，而一个码对应多个功能点，反向只能「全给」。\n**那就是翻译层**，而这个仓库里绝大多数跨端缺陷都出自翻译层两边各写一套。"
     AuditLog: 
       type: "object"
       properties: 
@@ -3197,6 +4100,18 @@ components:
         critical: 
           type: "boolean"
           description: "是否涉及高危权限（矩阵 §2.3 的那批码）"
+        ip: 
+          type: "string"
+          description: "操作者 IP。后端拿不到（非请求线程）时为空，不是所有旧数据都有"
+        clientType: 
+          type: "string"
+          description: "操作端，如 WEB_OPS。同上，可能没有"
+        before: 
+          type: "string"
+          description: "变更前结构化快照（JSON 字符串）。只有员工与权限域的部分动作有，其余为空——不伪造"
+        after: 
+          type: "string"
+          description: "变更后结构化快照，同上"
       required: 
         - "logNo"
         - "at"
@@ -3485,16 +4400,12 @@ components:
     MsgChannel: 
       type: "string"
       enum: 
-        - "SUBSCRIBE"
+        - "SMS"
+        - "MAIL"
+        - "WXSUB"
         - "PUSH"
-        - "INBOX"
-    PushStatus: 
-      type: "string"
-      enum: 
-        - "DRAFT"
-        - "SCHEDULED"
-        - "SENT"
-        - "CANCELLED"
+        - "INAPP"
+      description: "模板所属通道。**与后端 `SysNotifyLog` 的四个常量 + INAPP 一致**。\n\n<p>旧值 `SUBSCRIBE/PUSH/INBOX` 来自 V20 的建表注释，而代码与种子（V141） 用的一直是这一套 —— 两套名字并存时，模板列表的通道列会显示成空白。"
     MsgTemplate: 
       type: "object"
       properties: 
@@ -3506,10 +4417,18 @@ components:
           description: "模板名"
         channel: 
           "$ref": "#/definitions/MsgChannel"
-          description: "触达渠道：订阅消息 / App 推送 / 站内信"
+          description: "触达渠道"
+        lang: 
+          type: "string"
+          description: "语言（zh-CN / en / ar）。\n\n<p>同一个 templateNo 每种语言一行（V145）——**列表上必须显示它**， 否则运营看到的是两条一模一样的模板，改了其中一条还发现\"没生效\"。"
         content: 
           type: "string"
-          description: "模板正文，含 {占位符}"
+          description: "模板正文，含 {占位符}。**模拟发送靠它展示「会发出什么」并做预览**"
+        providerTemplateId: 
+          type: 
+            - "string"
+            - "null"
+          description: "渠道侧模板 ID（阿里云 `SMS_xxx` / 微信模板号）。站内信为空。\n\n<p>后端 `TemplateVO` 一直有这个字段，端上类型此前漏了 —— 于是页面拿不到它， 而它正是运营核对「我们发的是哪个报备模板」的唯一凭据。"
         enabled: 
           type: "boolean"
           description: "是否启用。停用后引用它的推送任务发不出去"
@@ -3525,43 +4444,6 @@ components:
         - "sentCount"
       additionalProperties: false
       description: "订阅消息模板（P-14.1.1）。"
-    PushTask: 
-      type: "object"
-      properties: 
-        taskNo: 
-          type: "string"
-          description: "任务单号"
-        name: 
-          type: "string"
-          description: "任务名"
-        templateNo: 
-          type: "string"
-          description: "使用的消息模板"
-        audience: 
-          type: "string"
-          description: "人群描述，如「近 7 日未下单的老客」"
-        estimatedReach: 
-          type: "number"
-          description: "预估触达数。为 0 说明人群是空的，发了等于白发"
-        status: 
-          "$ref": "#/definitions/PushStatus"
-          description: "任务状态"
-        scheduledAt: 
-          type: "string"
-          description: "计划发送时间。`status=SCHEDULED` 时有值"
-        createdAt: 
-          type: "string"
-          description: "创建时间"
-      required: 
-        - "taskNo"
-        - "name"
-        - "templateNo"
-        - "audience"
-        - "estimatedReach"
-        - "status"
-        - "createdAt"
-      additionalProperties: false
-      description: "推送任务（P-14.1.2）。"
     NotifyQuota: 
       type: "object"
       properties: 
@@ -3616,7 +4498,7 @@ components:
           type: "array"
           items: 
             type: "string"
-          description: "代客操作留痕（P-14.2.3）：谁、对什么、做了什么"
+          description: "代客操作留痕（P-14.2.3）：谁、对什么、做了什么。\n\n**可选，不要去掉 `?`。** 后端 `TicketVO` 目前不下发这个字段 （`MessageVOs.java` 里只有 ticketNo/subject/content/orderNo/status/reply/createdAt/repliedAt）， 只有 mock 有。声明成必填数组 + `page.tsx` 直接 `.length` = 真接口下抛 TypeError。 与 `Merchant.qualifications` 同一形状，由 `ops-contract-fields` 守卫抓出。"
         createdAt: 
           type: "string"
           description: "提单时间"
@@ -3634,7 +4516,6 @@ components:
         - "title"
         - "userNickname"
         - "status"
-        - "proxyActions"
         - "createdAt"
       additionalProperties: false
       description: "客服工单（P-14.2.1）。"
@@ -3668,6 +4549,177 @@ components:
         - "views"
       additionalProperties: false
       description: "帮助中心条目（P-14.2.4）。"
+    NotifyChannel: 
+      type: "string"
+      enum: 
+        - "SMS"
+        - "MAIL"
+        - "WXSUB"
+        - "PUSH"
+      description: "外发渠道。**与后端 `SysNotifyLog` 的四个常量逐字一致**。\n\n<p>WXSUB = 微信小程序订阅消息（服务通知），target 是掩码后的 openid； PUSH = App 推送（个推/uni-push，ADR-018），target 是掩码后的 clientId。\n\n<p><b>站内信（INAPP）不在这里</b>：它不进 `sys_notify_log`， 它自己就是一张可查的表（`msg_message`）。混进来会让人以为能在发送记录里查到它。"
+    NotifyChannelHealth: 
+      type: "object"
+      properties: 
+        channel: 
+          "$ref": "#/definitions/NotifyChannel"
+        stub: 
+          type: "boolean"
+          description: "走桩：不真发，只记日志"
+        enabled: 
+          type: "boolean"
+          description: "真实通道已启用（!stub）"
+        credentials: 
+          type: "array"
+          items: 
+            type: "object"
+            properties: 
+              envVar: 
+                type: "string"
+              present: 
+                type: "boolean"
+              required: 
+                type: "boolean"
+            required: 
+              - "envVar"
+              - "present"
+              - "required"
+            additionalProperties: false
+        params: 
+          type: "array"
+          items: 
+            type: "object"
+            properties: 
+              key: 
+                type: "string"
+              value: 
+                type: "string"
+            required: 
+              - "key"
+              - "value"
+            additionalProperties: false
+          description: "非密业务参数，可回显（模板号、endpoint 这类本就印在短信里的东西）"
+        todaySent: 
+          type: "number"
+        todayFailed: 
+          type: "number"
+      required: 
+        - "channel"
+        - "stub"
+        - "enabled"
+        - "credentials"
+        - "params"
+        - "todaySent"
+        - "todayFailed"
+      additionalProperties: false
+      description: "通道体检（TDD-运营端触达中心 §4.1）。\n\n<p><b>凭据只有「配没配」，没有值</b>：一个能在 Web 上读出生产短信密钥的接口， 泄漏一次就是全平台可群发。要改密钥去改环境变量并重启，不在这个页面上改。"
+    WxTemplates: 
+      type: "object"
+      properties: 
+        orderArrived: 
+          type: "string"
+        refunded: 
+          type: "string"
+      required: 
+        - "orderArrived"
+        - "refunded"
+      additionalProperties: false
+      description: "微信订阅消息的模板号映射。**唯一一项开放到运营端的通道参数**（模板号不是凭据）。"
+    InboxMessageType: 
+      type: "string"
+      enum: 
+        - "TRADE"
+        - "MARKETING"
+        - "SYSTEM"
+      description: "与后端 MsgMessage 的三个常量逐字一致 —— 内联在 interface 里的话对登记表不可见（规范 §D5）"
+    InboxMessage: 
+      type: "object"
+      properties: 
+        messageNo: 
+          type: "string"
+        type: 
+          "$ref": "#/definitions/InboxMessageType"
+        title: 
+          type: "string"
+        body: 
+          type: "string"
+        link: 
+          type: 
+            - "string"
+            - "null"
+        read: 
+          type: "boolean"
+        at: 
+          type: "number"
+      required: 
+        - "messageNo"
+        - "type"
+        - "title"
+        - "body"
+        - "read"
+        - "at"
+      additionalProperties: false
+      description: "运营自己的通知收件箱（顶栏铃铛）。 与 NotifyLog 是两回事：这个是**发给运营的待办**（新工单/待审核/告警）， 那个是**平台发给用户**的触达留痕。"
+    NotifyStatus: 
+      type: "string"
+      enum: 
+        - "SENT"
+        - "FAILED"
+      description: "发送结果。**失败也记**——只记成功的话，这张表回答不了「他为什么没收到」。"
+    NotifyLog: 
+      type: "object"
+      properties: 
+        notifyNo: 
+          type: "string"
+        channel: 
+          "$ref": "#/definitions/NotifyChannel"
+        bizType: 
+          type: "string"
+          description: "OTP / OPS_INIT_PASSWORD / OPS_RESET_PASSWORD / TEST"
+        target: 
+          type: "string"
+        templateCode: 
+          type: 
+            - "string"
+            - "null"
+          description: "短信是阿里云模板号；邮件是主题"
+        status: 
+          "$ref": "#/definitions/NotifyStatus"
+        error: 
+          type: 
+            - "string"
+            - "null"
+          description: "失败时通道返回的原文。**排查第一眼看它**"
+        providerMsgId: 
+          type: 
+            - "string"
+            - "null"
+          description: "阿里云 BizId / 邮件 Message-ID"
+        operatorNo: 
+          type: 
+            - "string"
+            - "null"
+        createdAt: 
+          type: "string"
+      required: 
+        - "notifyNo"
+        - "channel"
+        - "bizType"
+        - "target"
+        - "status"
+        - "createdAt"
+      additionalProperties: false
+    Captcha: 
+      type: "object"
+      properties: 
+        captchaId: 
+          type: "string"
+        imageBase64: 
+          type: "string"
+      required: 
+        - "captchaId"
+        - "imageBase64"
+      additionalProperties: false
+      description: "图形验证码挑战。`imageBase64` 不带 data: 前缀，端上自己拼"
     MaterialKind: 
       type: "string"
       enum: 
@@ -4130,6 +5182,236 @@ components:
         - "merchantCount"
       additionalProperties: false
       description: "经营范围档位的启用状态（ADR-009 三档）。\n\n档位本身是枚举，永远是那三个；这里配的是**这一期开放哪几档**。 一期自营模式关掉了 PLATFORM —— 没有虚拟商品/卡券/自营快递品支撑它。"
+    MediaOverview: 
+      type: "object"
+      properties: 
+        totalBytes: 
+          type: "number"
+        totalCount: 
+          type: "number"
+        activeBytes: 
+          type: "number"
+        activeCount: 
+          type: "number"
+        reclaimableBytes: 
+          type: "number"
+        reclaimableCount: 
+          type: "number"
+        abnormal: 
+          type: "boolean"
+          description: "可回收占比 > 50%。多半是有图片列没登记进 MediaRefSource —— 先查，别照删"
+      required: 
+        - "totalBytes"
+        - "totalCount"
+        - "activeBytes"
+        - "activeCount"
+        - "reclaimableBytes"
+        - "reclaimableCount"
+        - "abnormal"
+      additionalProperties: false
+      description: "顶部四张卡。`abnormal` 为真时页面置顶红条并禁用批量回收。"
+    MediaStoreUsage: 
+      type: "object"
+      properties: 
+        storeNo: 
+          type: "string"
+          description: "`_ENTITY` = 主体级（证件，以及门店维度出现之前的存量图）"
+        entityNo: 
+          type: "string"
+        count: 
+          type: "number"
+        activeBytes: 
+          type: "number"
+        reclaimableBytes: 
+          type: "number"
+      required: 
+        - "storeNo"
+        - "entityNo"
+        - "count"
+        - "activeBytes"
+        - "reclaimableBytes"
+      additionalProperties: false
+    MediaReclaimable: 
+      type: "object"
+      properties: 
+        assetKey: 
+          type: "string"
+        entityNo: 
+          type: "string"
+        storeNo: 
+          type: "string"
+        bizType: 
+          type: "string"
+          enum: 
+            - "GOODS"
+            - "QUAL"
+            - "AFTERSALE"
+        bytes: 
+          type: "number"
+        width: 
+          type: 
+            - "number"
+            - "null"
+        height: 
+          type: 
+            - "number"
+            - "null"
+        uploadedBy: 
+          type: 
+            - "string"
+            - "null"
+        createdAt: 
+          type: 
+            - "string"
+            - "null"
+        markedAt: 
+          type: 
+            - "string"
+            - "null"
+        reason: 
+          type: "string"
+          description: "「从未被引用」或「曾被『商品 G0012 · 主图』引用，… 后失去引用」"
+        status: 
+          type: "string"
+      required: 
+        - "assetKey"
+        - "entityNo"
+        - "storeNo"
+        - "bizType"
+        - "bytes"
+        - "reason"
+        - "status"
+      additionalProperties: false
+      description: "待回收的一行。`reason` 是这一列的全部意义 —— 运营靠它判断「这张能不能删」。"
+    MediaPurgeBatch: 
+      type: "object"
+      properties: 
+        batchNo: 
+          type: "string"
+        operator: 
+          type: "string"
+        operatorName: 
+          type: 
+            - "string"
+            - "null"
+          description: "发起时的显示名快照 —— 人离职改名之后这条记录还得说得清是谁"
+        status: 
+          type: "string"
+          enum: 
+            - "QUEUED"
+            - "RUNNING"
+            - "DONE"
+            - "PARTIAL"
+        totalCount: 
+          type: "number"
+        totalBytes: 
+          type: "number"
+        purgedCount: 
+          type: "number"
+        failedCount: 
+          type: "number"
+        startedAt: 
+          type: 
+            - "string"
+            - "null"
+        finishedAt: 
+          type: 
+            - "string"
+            - "null"
+        createdAt: 
+          type: 
+            - "string"
+            - "null"
+      required: 
+        - "batchNo"
+        - "operator"
+        - "status"
+        - "totalCount"
+        - "totalBytes"
+        - "purgedCount"
+        - "failedCount"
+      additionalProperties: false
+    MediaBatchDetail: 
+      type: "object"
+      properties: 
+        batch: 
+          "$ref": "#/definitions/MediaPurgeBatch"
+        items: 
+          type: "array"
+          items: 
+            "$ref": "#/definitions/MediaReclaimable"
+      required: 
+        - "batch"
+        - "items"
+      additionalProperties: false
+    MediaScanResult: 
+      type: "object"
+      properties: 
+        total: 
+          type: "number"
+        referenced: 
+          type: "number"
+        marked: 
+          type: "number"
+        rescued: 
+          type: "number"
+        abnormal: 
+          type: "boolean"
+      required: 
+        - "total"
+        - "referenced"
+        - "marked"
+        - "rescued"
+        - "abnormal"
+      additionalProperties: false
+    MediaPurgePreview: 
+      type: "object"
+      properties: 
+        count: 
+          type: "number"
+        bytes: 
+          type: "number"
+        sample: 
+          type: "array"
+          items: 
+            type: "string"
+      required: 
+        - "count"
+        - "bytes"
+        - "sample"
+      additionalProperties: false
+    MediaBackfillResult: 
+      type: "object"
+      properties: 
+        scanned: 
+          type: "number"
+        inserted: 
+          type: "number"
+        skipped: 
+          type: "number"
+      required: 
+        - "scanned"
+        - "inserted"
+        - "skipped"
+      additionalProperties: false
+    MediaReclaimableQuery: 
+      type: "object"
+      properties: 
+        entityNo: 
+          type: "string"
+        storeNo: 
+          type: "string"
+        includeQual: 
+          type: "boolean"
+        neverUsed: 
+          type: "boolean"
+          description: "true 只看「从未被引用」，false 只看「被替换掉的」，不传都要"
+        page: 
+          type: "number"
+        size: 
+          type: "number"
+      additionalProperties: false
+      description: "待回收清单的筛选。`includeQual` 默认 false —— 证件留存期是法务口径。"
 security: 
   - bearerAuth: []
 paths: 
@@ -4175,48 +5457,10 @@ paths:
                   - "msg"
                   - "data"
       description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
-  "/ops/after-sales/{no}/status": 
-    post: 
-      operationId: "setAfterSaleStatus"
-      summary: "状态推进，非法迁移抛错（驳回不是终点，用户可上升平台）"
-      tags: 
-        - "aftersale"
-      responses: 
-        "200": 
-          description: "成功"
-          content: 
-            "application/json": 
-              schema: 
-                type: "object"
-                properties: 
-                  code: 
-                    type: "integer"
-                    description: "0 表示成功"
-                  msg: 
-                    type: "string"
-                  data: 
-                    "$ref": "#/components/schemas/AfterSale"
-                required: 
-                  - "code"
-                  - "msg"
-                  - "data"
-      parameters: 
-        - name: "no"
-          in: "path"
-          required: true
-          schema: 
-            type: "string"
-      requestBody: 
-        required: true
-        content: 
-          "application/json": 
-            schema: 
-              type: "object"
-        description: "请求体字段见对应契约方法的入参。"
-  "/ops/after-sales/{asNo}/decide": 
+  "/ops/after-sales/{afterSaleNo}/decide": 
     post: 
       operationId: "decideAfterSale"
-      summary: "平台介入裁决（P-6.1.3 + 6.1.4）"
+      summary: "平台介入裁决（`ARBITRATING` 的唯一出口）"
       tags: 
         - "aftersale"
       responses: 
@@ -4239,7 +5483,7 @@ paths:
                   - "msg"
                   - "data"
       parameters: 
-        - name: "asNo"
+        - name: "afterSaleNo"
           in: "path"
           required: true
           schema: 
@@ -5441,6 +6685,100 @@ paths:
                   - "msg"
                   - "data"
       description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/auth/forgot": 
+    post: 
+      operationId: "forgotPassword"
+      summary: "忘记密码：往登录名那个邮箱发一次性重置码"
+      tags: 
+        - "dashboard"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "object"
+                    nullable: true
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/auth/reset": 
+    post: 
+      operationId: "resetPassword"
+      summary: "用邮件里的重置码设新密码"
+      tags: 
+        - "dashboard"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "object"
+                    nullable: true
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/menu": 
+    get: 
+      operationId: "menu"
+      summary: "当前登录人的**动态菜单**（`GET /ops/menu`）"
+      tags: 
+        - "dashboard"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "array"
+                    items: 
+                      "$ref": "#/components/schemas/MenuFunction"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
   "/ops/dashboard/kpi": 
     get: 
       operationId: "getDashboardKpi"
@@ -5523,6 +6861,60 @@ paths:
                   - "msg"
                   - "data"
       description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/dashboard/merchants": 
+    get: 
+      operationId: "getMerchantRanking"
+      summary: "商家经营排行（P-16.1.2 / P-16.1.3）——大盘之下的第一层下钻"
+      tags: 
+        - "dashboard"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "array"
+                    items: 
+                      "$ref": "#/components/schemas/MerchantRankRow"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/points/overview": 
+    get: 
+      operationId: "pointsOverview"
+      summary: "积分资金总览"
+      tags: 
+        - "finance"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/PointsOverview"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
   "/ops/settlements": 
     get: 
       operationId: "listSettlements"
@@ -5543,9 +6935,23 @@ paths:
                   msg: 
                     type: "string"
                   data: 
-                    type: "array"
-                    items: 
-                      "$ref": "#/components/schemas/Settlement"
+                    type: "object"
+                    properties: 
+                      records: 
+                        type: "array"
+                        items: 
+                          "$ref": "#/components/schemas/Settlement"
+                      total: 
+                        type: "integer"
+                      page: 
+                        type: "integer"
+                      size: 
+                        type: "integer"
+                    required: 
+                      - "records"
+                      - "total"
+                      - "page"
+                      - "size"
                 required: 
                   - "code"
                   - "msg"
@@ -5571,9 +6977,23 @@ paths:
                   msg: 
                     type: "string"
                   data: 
-                    type: "array"
-                    items: 
-                      "$ref": "#/components/schemas/SplitLog"
+                    type: "object"
+                    properties: 
+                      records: 
+                        type: "array"
+                        items: 
+                          "$ref": "#/components/schemas/SplitLog"
+                      total: 
+                        type: "integer"
+                      page: 
+                        type: "integer"
+                      size: 
+                        type: "integer"
+                    required: 
+                      - "records"
+                      - "total"
+                      - "page"
+                      - "size"
                 required: 
                   - "code"
                   - "msg"
@@ -7065,6 +8485,37 @@ paths:
                   - "msg"
                   - "data"
       description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+    post: 
+      operationId: "createStaff"
+      summary: "新建员工"
+      tags: 
+        - "iam"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "object"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
   "/ops/staffs/{no}/enabled": 
     post: 
       operationId: "setStaffEnabled"
@@ -7103,10 +8554,10 @@ paths:
             schema: 
               type: "object"
         description: "请求体字段见对应契约方法的入参。"
-  "/ops/staffs/{no}/role": 
+  "/ops/staffs/{no}/roles": 
     post: 
-      operationId: "setStaffRole"
-      summary: "改角色"
+      operationId: "setStaffRoles"
+      summary: "改角色（**多角色**）"
       tags: 
         - "iam"
       responses: 
@@ -7179,7 +8630,7 @@ paths:
             schema: 
               type: "object"
         description: "请求体字段见对应契约方法的入参。"
-  "/ops/roles": 
+  "/ops/perm/roles": 
     get: 
       operationId: "listRoles"
       summary: "listRoles"
@@ -7207,10 +8658,234 @@ paths:
                   - "msg"
                   - "data"
       description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
-  "/ops/roles/{role}/perms": 
     post: 
-      operationId: "setRolePerms"
-      summary: "改角色权限"
+      operationId: "createRole"
+      summary: "createRole"
+      tags: 
+        - "iam"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/RoleDef"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/perm/functions": 
+    get: 
+      operationId: "listPermFunctions"
+      summary: "功能与功能点全集 —— 权限树的数据源"
+      tags: 
+        - "iam"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "array"
+                    items: 
+                      "$ref": "#/components/schemas/MenuFunction"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/perm/functions/${encodeURIComponent(functionCode)}/move": 
+    post: 
+      operationId: "movePermFunction"
+      summary: "菜单调序：同级内上移/下移"
+      tags: 
+        - "iam"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "object"
+                    nullable: true
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/perm/points/${encodeURIComponent(pointCode)}/move": 
+    post: 
+      operationId: "movePermPoint"
+      summary: "movePermPoint"
+      tags: 
+        - "iam"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "object"
+                    nullable: true
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/perm/functions/reorder": 
+    post: 
+      operationId: "reorderPermFunctions"
+      summary: "整段重排（拖动用）：传该父级下的**完整顺序**"
+      tags: 
+        - "iam"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "object"
+                    nullable: true
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/perm/points/reorder": 
+    post: 
+      operationId: "reorderPermPoints"
+      summary: "reorderPermPoints"
+      tags: 
+        - "iam"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "object"
+                    nullable: true
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/perm/roles/{roleCode}/points": 
+    get: 
+      operationId: "getRolePoints"
+      summary: "某个角色已勾的功能点码"
+      tags: 
+        - "iam"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "array"
+                    items: 
+                      type: "object"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters: 
+        - name: "roleCode"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+    post: 
+      operationId: "setRolePoints"
+      summary: "改角色的功能点"
       tags: 
         - "iam"
       responses: 
@@ -7233,7 +8908,7 @@ paths:
                   - "msg"
                   - "data"
       parameters: 
-        - name: "role"
+        - name: "roleCode"
           in: "path"
           required: true
           schema: 
@@ -7245,7 +8920,122 @@ paths:
             schema: 
               type: "object"
         description: "请求体字段见对应契约方法的入参。"
-  "/ops/audit-logs": 
+  "/ops/perm/roles/{roleCode}/rename": 
+    post: 
+      operationId: "renameRole"
+      summary: "改角色展示名"
+      tags: 
+        - "iam"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/RoleDef"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters: 
+        - name: "roleCode"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/perm/roles/{roleCode}/delete": 
+    post: 
+      operationId: "removeRole"
+      summary: "删角色"
+      tags: 
+        - "iam"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "object"
+                    nullable: true
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters: 
+        - name: "roleCode"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/perm/roles/{roleCode}/force-logout": 
+    post: 
+      operationId: "forceLogoutRole"
+      summary: "**强制该角色的成员重新登录**（紧急撤回）"
+      tags: 
+        - "iam"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "object"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters: 
+        - name: "roleCode"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/audit-log": 
     get: 
       operationId: "listAuditLogs"
       summary: "审计日志（P-1.1.4）"
@@ -7329,6 +9119,37 @@ paths:
                   - "msg"
                   - "data"
       description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+    post: 
+      operationId: "saveCoupon"
+      summary: "建券 / 改券（TDD-营销预算前置）"
+      tags: 
+        - "marketing"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/Coupon"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
   "/ops/coupons/{no}/status": 
     post: 
       operationId: "setCouponStatus"
@@ -8132,6 +9953,215 @@ paths:
           schema: 
             type: "string"
       description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/merchants/mode-risk": 
+    get: 
+      operationId: "modeRisk"
+      summary: "无照主体 × 自营门店的税务敞口清单"
+      tags: 
+        - "merchant"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "array"
+                    items: 
+                      "$ref": "#/components/schemas/ModeRisk"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/merchants/{merchantNo}/funds-mode": 
+    put: 
+      operationId: "setFundsMode"
+      summary: "改资金路径"
+      tags: 
+        - "merchant"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/Merchant"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters: 
+        - name: "merchantNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/merchants/{merchantNo}/qualifications": 
+    get: 
+      operationId: "qualifications"
+      summary: "某商家已登记的资质"
+      tags: 
+        - "merchant"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "array"
+                    items: 
+                      "$ref": "#/components/schemas/Qualification"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters: 
+        - name: "merchantNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+    post: 
+      operationId: "saveQualification"
+      summary: "登记或更新"
+      tags: 
+        - "merchant"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/Qualification"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters: 
+        - name: "merchantNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/qualifications/{qualNo}/revoke": 
+    post: 
+      operationId: "revokeQualification"
+      summary: "撤销"
+      tags: 
+        - "merchant"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/Qualification"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters: 
+        - name: "qualNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/merchants/{merchantNo}/staff": 
+    get: 
+      operationId: "merchantStaff"
+      summary: "这家商家的员工与门店授权（**只读**）"
+      tags: 
+        - "merchant"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "array"
+                    items: 
+                      "$ref": "#/components/schemas/MerchantStaffRow"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters: 
+        - name: "merchantNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
   "/ops/stores/{storeNo}/business-mode": 
     put: 
       operationId: "setStoreBusinessMode"
@@ -8819,6 +10849,218 @@ paths:
             schema: 
               type: "object"
         description: "请求体字段见对应契约方法的入参。"
+  "/ops/merchant-plans": 
+    get: 
+      operationId: "merchantPlans"
+      summary: "到期与降级看板"
+      tags: 
+        - "merchant"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "object"
+                    properties: 
+                      records: 
+                        type: "array"
+                        items: 
+                          "$ref": "#/components/schemas/MerchantPlanRow"
+                      total: 
+                        type: "integer"
+                      page: 
+                        type: "integer"
+                      size: 
+                        type: "integer"
+                    required: 
+                      - "records"
+                      - "total"
+                      - "page"
+                      - "size"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/merchant-plans/upgrade-signals": 
+    get: 
+      operationId: "planUpgradeSignals"
+      summary: "升档信号：一个人名下多个主体 = 他已经在多店经营，只是绕过了额度"
+      tags: 
+        - "merchant"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "array"
+                    items: 
+                      "$ref": "#/components/schemas/PlanUpgradeSignal"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/merchant-plans/{merchantNo}/grant": 
+    post: 
+      operationId: "grantPlan"
+      summary: "授予 / 延长"
+      tags: 
+        - "merchant"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/MerchantPlanRow"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters: 
+        - name: "merchantNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/merchant-plans/{merchantNo}/quota": 
+    put: 
+      operationId: "overridePlanQuota"
+      summary: "单商家额度覆盖"
+      tags: 
+        - "merchant"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/MerchantPlanRow"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters: 
+        - name: "merchantNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/plan-defs": 
+    get: 
+      operationId: "planDefs"
+      summary: "档位定义"
+      tags: 
+        - "merchant"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "array"
+                    items: 
+                      "$ref": "#/components/schemas/PlanDef"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/plan-defs/{planCode}": 
+    put: 
+      operationId: "savePlanDef"
+      summary: "改档位定义"
+      tags: 
+        - "merchant"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/PlanDef"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters: 
+        - name: "planCode"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
   "/ops/msg-templates": 
     get: 
       operationId: "listMsgTemplates"
@@ -8899,128 +11141,10 @@ paths:
             schema: 
               type: "object"
         description: "请求体字段见对应契约方法的入参。"
-  "/ops/push-tasks": 
-    get: 
-      operationId: "listPushTasks"
-      summary: "listPushTasks"
-      tags: 
-        - "message"
-      responses: 
-        "200": 
-          description: "成功"
-          content: 
-            "application/json": 
-              schema: 
-                type: "object"
-                properties: 
-                  code: 
-                    type: "integer"
-                    description: "0 表示成功"
-                  msg: 
-                    type: "string"
-                  data: 
-                    type: "object"
-                    properties: 
-                      records: 
-                        type: "array"
-                        items: 
-                          "$ref": "#/components/schemas/PushTask"
-                      total: 
-                        type: "integer"
-                      page: 
-                        type: "integer"
-                      size: 
-                        type: "integer"
-                    required: 
-                      - "records"
-                      - "total"
-                      - "page"
-                      - "size"
-                required: 
-                  - "code"
-                  - "msg"
-                  - "data"
-      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
-  "/ops/push-tasks/{no}/send": 
-    post: 
-      operationId: "sendPushTask"
-      summary: "发送推送（P-14.1.2）"
-      tags: 
-        - "message"
-      responses: 
-        "200": 
-          description: "成功"
-          content: 
-            "application/json": 
-              schema: 
-                type: "object"
-                properties: 
-                  code: 
-                    type: "integer"
-                    description: "0 表示成功"
-                  msg: 
-                    type: "string"
-                  data: 
-                    "$ref": "#/components/schemas/PushTask"
-                required: 
-                  - "code"
-                  - "msg"
-                  - "data"
-      parameters: 
-        - name: "no"
-          in: "path"
-          required: true
-          schema: 
-            type: "string"
-      requestBody: 
-        required: true
-        content: 
-          "application/json": 
-            schema: 
-              type: "object"
-        description: "请求体字段见对应契约方法的入参。"
-  "/ops/push-tasks/{no}/cancel": 
-    post: 
-      operationId: "cancelPushTask"
-      summary: "cancelPushTask"
-      tags: 
-        - "message"
-      responses: 
-        "200": 
-          description: "成功"
-          content: 
-            "application/json": 
-              schema: 
-                type: "object"
-                properties: 
-                  code: 
-                    type: "integer"
-                    description: "0 表示成功"
-                  msg: 
-                    type: "string"
-                  data: 
-                    "$ref": "#/components/schemas/PushTask"
-                required: 
-                  - "code"
-                  - "msg"
-                  - "data"
-      parameters: 
-        - name: "no"
-          in: "path"
-          required: true
-          schema: 
-            type: "string"
-      requestBody: 
-        required: true
-        content: 
-          "application/json": 
-            schema: 
-              type: "object"
-        description: "请求体字段见对应契约方法的入参。"
   "/ops/notify-quota": 
     get: 
       operationId: "getNotifyQuota"
-      summary: "getNotifyQuota"
+      summary: "发送推送（P-14.1.2）"
       tags: 
         - "message"
       responses: 
@@ -9063,6 +11187,315 @@ paths:
                     type: "string"
                   data: 
                     "$ref": "#/components/schemas/NotifyQuota"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/notify-logs": 
+    get: 
+      operationId: "listNotifyLogs"
+      summary: "发送记录（P-14.3）"
+      tags: 
+        - "message"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "object"
+                    properties: 
+                      records: 
+                        type: "array"
+                        items: 
+                          "$ref": "#/components/schemas/NotifyLog"
+                      total: 
+                        type: "integer"
+                      page: 
+                        type: "integer"
+                      size: 
+                        type: "integer"
+                    required: 
+                      - "records"
+                      - "total"
+                      - "page"
+                      - "size"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/notify-channels": 
+    get: 
+      operationId: "listNotifyChannels"
+      summary: "四条通道的体检：开没开、凭据齐不齐、今天发了多少"
+      tags: 
+        - "message"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "array"
+                    items: 
+                      "$ref": "#/components/schemas/NotifyChannelHealth"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/notify-channels/wx-templates": 
+    get: 
+      operationId: "getWxTemplates"
+      summary: "getWxTemplates"
+      tags: 
+        - "message"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/WxTemplates"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+    post: 
+      operationId: "saveWxTemplates"
+      summary: "保存微信模板号"
+      tags: 
+        - "message"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/WxTemplates"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/notify-logs/test-inapp": 
+    post: 
+      operationId: "testSendInApp"
+      summary: "站内信的模拟发送：往某个收件箱塞一条"
+      tags: 
+        - "message"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "object"
+                    nullable: true
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/captcha": 
+    get: 
+      operationId: "getCaptcha"
+      summary: "取一张图形验证码"
+      tags: 
+        - "message"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/Captcha"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/notify-logs/test-send": 
+    post: 
+      operationId: "testSendNotify"
+      summary: "测试发送"
+      tags: 
+        - "message"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "object"
+                    nullable: true
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/notify-logs/precheck": 
+    post: 
+      operationId: "precheckNotifyTarget"
+      summary: "收件人预检"
+      tags: 
+        - "message"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "object"
+                    nullable: true
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/notify-channels/default-lang": 
+    get: 
+      operationId: "getDefaultLang"
+      summary: "平台默认语言：**收件人语言未知时按哪种发**（不是「所有邮件用哪种语言」）"
+      tags: 
+        - "message"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "object"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+    post: 
+      operationId: "saveDefaultLang"
+      summary: "saveDefaultLang"
+      tags: 
+        - "message"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "object"
                 required: 
                   - "code"
                   - "msg"
@@ -9261,6 +11694,134 @@ paths:
           required: true
           schema: 
             type: "string"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/message": 
+    get: 
+      operationId: "listInbox"
+      summary: "listInbox"
+      tags: 
+        - "message"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "array"
+                    items: 
+                      "$ref": "#/components/schemas/InboxMessage"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/message/unread-count": 
+    get: 
+      operationId: "inboxUnread"
+      summary: "未读数"
+      tags: 
+        - "message"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "integer"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/message/{no}/read": 
+    post: 
+      operationId: "readInbox"
+      summary: "readInbox"
+      tags: 
+        - "message"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "array"
+                    items: 
+                      "$ref": "#/components/schemas/InboxMessage"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters: 
+        - name: "no"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/message/read-all": 
+    post: 
+      operationId: "readAllInbox"
+      summary: "readAllInbox"
+      tags: 
+        - "message"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "array"
+                    items: 
+                      "$ref": "#/components/schemas/InboxMessage"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
       requestBody: 
         required: true
         content: 
@@ -10061,10 +12622,122 @@ paths:
             schema: 
               type: "object"
         description: "请求体字段见对应契约方法的入参。"
+  "/ops/goods": 
+    get: 
+      operationId: "listGoods"
+      summary: "商品池：按商家/类目/关键词/状态筛，goods 粒度（每行一个商品，SKU 嵌在 `skus[]` 里）"
+      tags: 
+        - "product"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "object"
+                    properties: 
+                      records: 
+                        type: "array"
+                        items: 
+                          "$ref": "#/components/schemas/ProductGoods"
+                      total: 
+                        type: "integer"
+                      page: 
+                        type: "integer"
+                      size: 
+                        type: "integer"
+                    required: 
+                      - "records"
+                      - "total"
+                      - "page"
+                      - "size"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/goods/{goodsNo}": 
+    get: 
+      operationId: "getGoodsDetail"
+      summary: "商品详情：三语文案、SKU 矩阵、规格组、驳回原因，审核抽屉读的就是它"
+      tags: 
+        - "product"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/GoodsDetail"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters: 
+        - name: "goodsNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/goods/{goodsNo}/force-off": 
+    post: 
+      operationId: "forceOffGoods"
+      summary: "平台强制下架（P-3.2.3），goods 粒度 = **撤销过审**：商品回到 `REJECTED`"
+      tags: 
+        - "product"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/GoodsDetail"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters: 
+        - name: "goodsNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
   "/ops/skus": 
     get: 
       operationId: "listSkus"
-      summary: "listSkus"
+      summary: "sku 粒度全量查询"
       tags: 
         - "product"
       responses: 
@@ -10106,7 +12779,7 @@ paths:
   "/ops/skus/{no}/audit": 
     post: 
       operationId: "auditSku"
-      summary: "商品审核（P-3.2.2）"
+      summary: "商品审核（P-3.2.2），sku 粒度入口"
       tags: 
         - "product"
       responses: 
@@ -10144,7 +12817,7 @@ paths:
   "/ops/skus/{no}/force-off": 
     post: 
       operationId: "forceOffSku"
-      summary: "强制下架（P-3.2.3）：必须带原因，原样进商家 B 端"
+      summary: "平台**压下架**（P-3.2.3）：必须带原因，原样进商家 B 端"
       tags: 
         - "product"
       responses: 
@@ -10245,6 +12918,155 @@ paths:
                   - "msg"
                   - "data"
       description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/spec-templates": 
+    get: 
+      operationId: "listSpecTemplates"
+      summary: "平台模板列表"
+      tags: 
+        - "product"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "object"
+                    properties: 
+                      records: 
+                        type: "array"
+                        items: 
+                          "$ref": "#/components/schemas/SpecTemplate"
+                      total: 
+                        type: "integer"
+                      page: 
+                        type: "integer"
+                      size: 
+                        type: "integer"
+                    required: 
+                      - "records"
+                      - "total"
+                      - "page"
+                      - "size"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+    post: 
+      operationId: "saveSpecTemplate"
+      summary: "新建或更新（`templateNo` 为空即新建）"
+      tags: 
+        - "product"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/SpecTemplate"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/spec-templates/{no}/archive": 
+    post: 
+      operationId: "archiveSpecTemplate"
+      summary: "归档：商家侧立刻不再下发"
+      tags: 
+        - "product"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/SpecTemplate"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters: 
+        - name: "no"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/spec-templates/{no}/unarchive": 
+    post: 
+      operationId: "unarchiveSpecTemplate"
+      summary: "unarchiveSpecTemplate"
+      tags: 
+        - "product"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/SpecTemplate"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters: 
+        - name: "no"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
   "/ops/reviews": 
     get: 
       operationId: "listReviews"
@@ -10708,6 +13530,150 @@ paths:
                   - "data"
       parameters: 
         - name: "type"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/stores": 
+    get: 
+      operationId: "listStores"
+      summary: "跨主体门店检索"
+      tags: 
+        - "store"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "object"
+                    properties: 
+                      records: 
+                        type: "array"
+                        items: 
+                          "$ref": "#/components/schemas/StoreGovern"
+                      total: 
+                        type: "integer"
+                      page: 
+                        type: "integer"
+                      size: 
+                        type: "integer"
+                    required: 
+                      - "records"
+                      - "total"
+                      - "page"
+                      - "size"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/stores/{storeNo}": 
+    get: 
+      operationId: "getStore"
+      summary: "门店档案详情：门面 + 配送规则 + 经营模式 + 收款商户号"
+      tags: 
+        - "store"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/StoreGovern"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters: 
+        - name: "storeNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/stores/{storeNo}/stats": 
+    get: 
+      operationId: "getStoreStats"
+      summary: "门店经营状况：今日/本月订单与 GMV，外加待发货/待自送/缺货三项待办堆积"
+      tags: 
+        - "store"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/StoreStats"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters: 
+        - name: "storeNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/stores/{storeNo}/restore": 
+    post: 
+      operationId: "restoreStore"
+      summary: "解除门店强制下线，恢复被平台压下的货架行"
+      tags: 
+        - "store"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/StoreGovern"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters: 
+        - name: "storeNo"
           in: "path"
           required: true
           schema: 
@@ -11526,6 +14492,290 @@ paths:
           required: true
           schema: 
             type: "string"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/media/overview": 
+    get: 
+      operationId: "getMediaOverview"
+      summary: "getMediaOverview"
+      tags: 
+        - "system"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/MediaOverview"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/media/stores": 
+    get: 
+      operationId: "listMediaStoreUsage"
+      summary: "门店占用"
+      tags: 
+        - "system"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "array"
+                    items: 
+                      "$ref": "#/components/schemas/MediaStoreUsage"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/media/reclaimable": 
+    get: 
+      operationId: "listMediaReclaimable"
+      summary: "listMediaReclaimable"
+      tags: 
+        - "system"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "object"
+                    properties: 
+                      records: 
+                        type: "array"
+                        items: 
+                          "$ref": "#/components/schemas/MediaReclaimable"
+                      total: 
+                        type: "integer"
+                      page: 
+                        type: "integer"
+                      size: 
+                        type: "integer"
+                    required: 
+                      - "records"
+                      - "total"
+                      - "page"
+                      - "size"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/media/batches": 
+    get: 
+      operationId: "listMediaBatches"
+      summary: "listMediaBatches"
+      tags: 
+        - "system"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "array"
+                    items: 
+                      "$ref": "#/components/schemas/MediaPurgeBatch"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/media/batches/{batchNo}": 
+    get: 
+      operationId: "getMediaBatch"
+      summary: "getMediaBatch"
+      tags: 
+        - "system"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/MediaBatchDetail"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters: 
+        - name: "batchNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/media/scan": 
+    post: 
+      operationId: "scanMedia"
+      summary: "重扫"
+      tags: 
+        - "system"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/MediaScanResult"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/media/backfill": 
+    post: 
+      operationId: "backfillMedia"
+      summary: "磁盘对账：把「磁盘上有、库里没有」的文件补录进来"
+      tags: 
+        - "system"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/MediaBackfillResult"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/media/purge/preview": 
+    post: 
+      operationId: "previewMediaPurge"
+      summary: "预览这一票有多少张、多少字节"
+      tags: 
+        - "system"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/MediaPurgePreview"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/media/purge": 
+    post: 
+      operationId: "purgeMedia"
+      summary: "提交回收"
+      tags: 
+        - "system"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "object"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
       requestBody: 
         required: true
         content: 

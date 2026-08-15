@@ -143,17 +143,21 @@ public class OpsMerchantAuthController {
     }
 
     /**
-     * 记一条违规处置。两个副作用是处置的一部分：
-     * {@code BREACH} 累加毁约次数（报价卡上公示），{@code SUSPEND} 真的封店。
+     * 记一条违规处置。副作用是处置的一部分：
+     * {@code BREACH} 累加毁约次数（报价卡上公示），{@code SUSPEND} 真的封店，
+     * {@code STORE_OFFLINE} 真的把那家门店压到 SUSPENDED 并撤下货架（V96）。
      */
     @PostMapping("/ops/merchants/{merchantNo}/violations")
     @PreAuthorize("@perm.can('" + Perms.MERCHANT_BAN + "')")
     public MerchantGovernService.ViolationVO recordViolation(@PathVariable String merchantNo,
                                                              @RequestBody ViolationReq req) {
-        var vo = governService.recordViolation(merchantNo, req.type(), req.action(), req.detail(),
-                SecurityUtils.currentUserNo());
+        var vo = governService.recordViolation(merchantNo, req.storeNo(), req.type(), req.action(),
+                req.detail(), SecurityUtils.currentUserNo());
+        // 门店级处置是不可逆的状态变更，critical 留痕
         auditLogPort.record("MERCHANT_VIOLATION", merchantNo,
-                req.type() + "/" + req.action() + "：" + req.detail());
+                (req.storeNo() == null ? "" : "门店 " + req.storeNo() + "｜")
+                        + req.type() + "/" + req.action() + "：" + req.detail(),
+                ai.neargo.shop.merchant.entity.MchViolation.STORE_OFFLINE.equals(req.action()));
         return vo;
     }
 
@@ -165,10 +169,11 @@ public class OpsMerchantAuthController {
     }
 
     /**
-     * @param type   FAKE_GOODS / BREACH / PRICE_FRAUD / SERVICE
-     * @param action WARN / LIMIT / SUSPEND
+     * @param type    FAKE_GOODS / BREACH / PRICE_FRAUD / SERVICE
+     * @param action  WARN / LIMIT / SUSPEND / STORE_OFFLINE
+     * @param storeNo 门店级处置（STORE_OFFLINE）必填，其余动作必须为空
      */
-    public record ViolationReq(String type, String action, String detail) {
+    public record ViolationReq(String type, String action, String detail, String storeNo) {
     }
 
     // ---------------------------------------------------------------- 门面内容审核（P-10.1）

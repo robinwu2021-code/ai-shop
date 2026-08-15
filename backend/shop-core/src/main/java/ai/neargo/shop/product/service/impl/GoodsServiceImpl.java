@@ -273,6 +273,8 @@ public class GoodsServiceImpl implements GoodsService {
                 null,
                 // 译文原文同理：这里的 title 已经按当前语言拍平，整份译文只有编辑页才用得上
                 null, null,
+                // 驳回原因也是店主和平台之间的事
+                null,
                 groupBuyConf(g));
     }
 

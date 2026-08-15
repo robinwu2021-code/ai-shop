@@ -19,14 +19,19 @@ public class MchViolation extends BaseEntity {
 
     public static final String BREACH = "BREACH";
     public static final String SUSPEND = "SUSPEND";
+    /** 门店强制下线：作用在 {@link #storeNo} 那家店上，不动主体。 */
+    public static final String STORE_OFFLINE = "STORE_OFFLINE";
 
     private String violationNo;
     private String entityNo;
 
+    /** 门店级处置时的门店号，空 = 主体级处置（V96）。 */
+    private String storeNo;
+
     /** FAKE_GOODS / BREACH / PRICE_FRAUD / SERVICE。**只有 BREACH 计入 breachCount**。 */
     private String type;
 
-    /** WARN / LIMIT / SUSPEND。SUSPEND 会真的把商家推到 SUSPENDED。 */
+    /** WARN / LIMIT / SUSPEND / STORE_OFFLINE。SUSPEND 推主体到 SUSPENDED；STORE_OFFLINE 推门店到 SUSPENDED。 */
     private String action;
 
     /** 事实描述与证据出处。必填 —— 没有事实的处置在申诉时站不住。 */

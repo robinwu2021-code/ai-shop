@@ -21,6 +21,7 @@ import { ReadOnlyNotice } from "@/components/read-only-notice";
 import { IndustryTab } from "./industry-tab";
 import { AuthCodeTab } from "./auth-code-tab";
 import { ServiceScopeTab } from "./service-scope-tab";
+import { StorageTab } from "./storage-tab";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -34,7 +35,7 @@ import { TabHeader } from "@/components/ui/tab-header";
 import { Textarea } from "@/components/ui/textarea";
 
 type Copy = (typeof SYSTEM_COPY)["zh"];
-const TAB_KEYS = ["appearance", "market", "flags", "industry", "authCode", "scope"] as const;
+const TAB_KEYS = ["appearance", "market", "flags", "storage", "industry", "authCode", "scope"] as const;
 
 export default function SystemPage() {
   return <Suspense fallback={null}><SystemInner /></Suspense>;
@@ -52,6 +53,8 @@ function SystemInner() {
   const canTheme = allow("system:theme:update");
   const canEnv = allow("system:env:switch");
   const canParam = allow("system:param:read");
+  // 看清单与发起回收是两个码：看是日常查看，删是不可逆操作
+  const canMediaPurge = allow("system:media:purge");
 
   const appearance = useQuery({ queryKey: ["appearance"], queryFn: () => api.getAppearance(), enabled: tab === "appearance" });
   const texts = useQuery({ queryKey: ["rule-texts"], queryFn: () => api.getRuleTexts(), enabled: tab === "appearance" });
@@ -266,6 +269,7 @@ function SystemInner() {
       )}
 
       {/* 主数据三块都接了真后端（其余 tab 仍走 mock） */}
+      {tab === "storage" && <StorageTab c={c} canPurge={canMediaPurge} />}
       {tab === "industry" && <IndustryTab c={c} canWrite={canEnv} />}
       {/* 授权码字典改的是「一共有哪些门槛」，与类目树同权限（category:manage） */}
       {tab === "authCode" && <AuthCodeTab c={c} canWrite={allow("category:manage")} />}

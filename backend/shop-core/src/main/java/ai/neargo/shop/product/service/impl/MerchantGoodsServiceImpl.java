@@ -95,6 +95,13 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         applyStatus(w, status);
         // 新建的排在前面：店主刚录完一件商品，第一件事是看它在不在
         w.orderByDesc(PrdGoods::getId);
+        /*
+         * **豁免数据域是必须的，不是没做**：这个方法与 B 端商家商品列表共用
+         * （BizGoodsController#list），而 B 端会话的维度是 SELF ——
+         * prd_goods 只有 MERCHANT 锚点，接上就是 1=0，商家的商品列表当场全空。
+         *
+         * 运营端的待审队列已经拆到 auditQueue()，那一条**是接数据域的**。
+         */
         Page<PrdGoods> p = DataScopeContext.executeWithoutScope(() ->
                 goodsMapper.selectPage(Page.of(page, size), w));
         List<GoodsVO> rows = p.getRecords().stream().map(this::toVO).toList();
@@ -102,16 +109,50 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
     }
 
     @Override
+    public PageData<GoodsVO> auditQueue(long page, long size) {
+        /*
+         * ★ 这里**没有** executeWithoutScope —— 批③ 的核心就是这一行的缺席：
+         * 配了商家域的审核员只看到自己负责那几家的待审商品。
+         * 会话不带任何维度（超管 / ALL）时 DataScopeHandler 直接放行，与今天一致。
+         */
+        var w = Wrappers.<PrdGoods>lambdaQuery();
+        applyStatus(w, "PENDING");
+        w.orderByDesc(PrdGoods::getId);
+        Page<PrdGoods> p = goodsMapper.selectPage(Page.of(page, size), w);
+        List<GoodsVO> rows = p.getRecords().stream().map(this::toVO).toList();
+        return PageData.of(rows, p.getTotal(), page, size);
+    }
+
+    @Override
     public PageData<ai.neargo.shop.product.dto.OpsGoodsListVO> listForOps(
-            String merchantNo, String categoryNo, String keyword, String status, long page, long size) {
+            String merchantNo, String categoryNo, String keyword, String status,
+            String storeNo, long page, long size) {
+        /*
+         * 门店投影（P-11.2.1e）：带 storeNo 时查询范围**强制收敛到该店的主体**——
+         * 商品挂主体不挂门店（ADR-011 双键模型），「门店的商品」= 主体商品池 ×
+         * 该店库存/在售的投影，不是给商品加 store_no。
+         */
+        if (storeNo != null && !storeNo.isBlank()) {
+            String entityNo = merchantPort.entityOfStores(List.of(storeNo)).get(storeNo);
+            if (entityNo == null) {
+                throw BizException.of(ErrorCode.NOT_FOUND);
+            }
+            merchantNo = entityNo;
+        }
         var w = Wrappers.<PrdGoods>lambdaQuery()
                 .eq(merchantNo != null && !merchantNo.isBlank(), PrdGoods::getEntityNo, merchantNo)
                 .eq(categoryNo != null && !categoryNo.isBlank(), PrdGoods::getCategoryNo, categoryNo)
                 .like(keyword != null && !keyword.isBlank(), PrdGoods::getTitle, keyword);
         applyStatus(w, status);
         w.orderByDesc(PrdGoods::getId);
-        Page<PrdGoods> p = DataScopeContext.executeWithoutScope(() ->
-                goodsMapper.selectPage(Page.of(page, size), w));
+        /*
+         * ★ 接数据域（批③）：这个方法**只有运营调**（GET /ops/goods），
+         * 配了商家域的运营只看到自己负责那几家的商品。
+         * 上面按 storeNo 收敛出的 merchantNo 是**用户给的过滤条件**，
+         * 与数据域是两件事 —— 传一个不属于自己域的 storeNo，过滤条件成立而数据域拒绝，
+         * 结果是空列表，正确。
+         */
+        Page<PrdGoods> p = goodsMapper.selectPage(Page.of(page, size), w);
         if (p.getRecords().isEmpty()) {
             return PageData.empty(page, size);
         }
@@ -135,16 +176,60 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                         ai.neargo.shop.product.dto.OpsCategoryVO::categoryNo,
                         ai.neargo.shop.product.dto.OpsCategoryVO::name));
 
+        StoreProjection projection = storeNo == null || storeNo.isBlank()
+                ? null
+                : loadStoreProjection(storeNo, goodsNos,
+                        skusByGoods.values().stream().flatMap(List::stream).map(PrdSku::getSkuNo).distinct().toList());
+
         List<ai.neargo.shop.product.dto.OpsGoodsListVO> rows = p.getRecords().stream()
-                .map(g -> toOpsListVO(g, skusByGoods.getOrDefault(g.getGoodsNo(), List.of()), merchants, categoryNames))
+                .map(g -> toOpsListVO(g, skusByGoods.getOrDefault(g.getGoodsNo(), List.of()),
+                        merchants, categoryNames, projection))
                 .toList();
         return PageData.of(rows, p.getTotal(), page, size);
+    }
+
+    /**
+     * 门店投影的两张覆盖表，语义都是「有任意行即按店管理，没有行的店视为 0 / 未上架」。
+     *
+     * @param managedGoods   已转店级管理的商品（任意门店有行）
+     * @param onSaleAtStore  该店在售的商品
+     * @param managedSkus    已启用分店库存的 SKU（任意门店有行）
+     * @param stockAtStore   该店的可用库存（stock - locked）
+     */
+    private record StoreProjection(Set<String> managedGoods, Set<String> onSaleAtStore,
+                                   Set<String> managedSkus, Map<String, Integer> stockAtStore) {
+    }
+
+    private StoreProjection loadStoreProjection(String storeNo, List<String> goodsNos, List<String> skuNos) {
+        List<ai.neargo.shop.product.entity.PrdStoreGoods> goodsRows = DataScopeContext.executeWithoutScope(() ->
+                storeGoodsMapper.selectList(Wrappers.<ai.neargo.shop.product.entity.PrdStoreGoods>lambdaQuery()
+                        .in(ai.neargo.shop.product.entity.PrdStoreGoods::getGoodsNo, goodsNos)));
+        Set<String> managedGoods = goodsRows.stream()
+                .map(ai.neargo.shop.product.entity.PrdStoreGoods::getGoodsNo)
+                .collect(java.util.stream.Collectors.toSet());
+        Set<String> onSaleAtStore = goodsRows.stream()
+                .filter(r -> storeNo.equals(r.getStoreNo()) && Boolean.TRUE.equals(r.getOnSale()))
+                .map(ai.neargo.shop.product.entity.PrdStoreGoods::getGoodsNo)
+                .collect(java.util.stream.Collectors.toSet());
+
+        List<PrdStoreStock> stockRows = skuNos.isEmpty() ? List.of()
+                : DataScopeContext.executeWithoutScope(() ->
+                        storeStockMapper.selectList(Wrappers.<PrdStoreStock>lambdaQuery()
+                                .in(PrdStoreStock::getSkuNo, skuNos)));
+        Set<String> managedSkus = stockRows.stream().map(PrdStoreStock::getSkuNo)
+                .collect(java.util.stream.Collectors.toSet());
+        Map<String, Integer> stockAtStore = stockRows.stream()
+                .filter(r -> storeNo.equals(r.getStoreNo()))
+                .collect(java.util.stream.Collectors.toMap(PrdStoreStock::getSkuNo,
+                        r -> Math.max(nz(r.getStock()) - nz(r.getLockedStock()), 0), (a, b) -> a));
+        return new StoreProjection(managedGoods, onSaleAtStore, managedSkus, stockAtStore);
     }
 
     private ai.neargo.shop.product.dto.OpsGoodsListVO toOpsListVO(
             PrdGoods g, List<PrdSku> skus,
             Map<String, ai.neargo.shop.spi.user.MerchantQueryPort.MerchantBrief> merchants,
-            Map<String, String> categoryNames) {
+            Map<String, String> categoryNames,
+            StoreProjection projection) {
         Map<String, String> titleI18n = readMap(g.getTitleI18n());
         var merchant = merchants.get(g.getEntityNo());
 
@@ -156,18 +241,25 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                     Map<String, Long> prices = rows.stream()
                             .filter(r -> r.getPrice() != null)
                             .collect(java.util.stream.Collectors.toMap(PrdSku::getMarket, PrdSku::getPrice, (a, b) -> a));
+                    Integer storeStock = projection == null || !projection.managedSkus().contains(any.getSkuNo())
+                            ? null
+                            : projection.stockAtStore().getOrDefault(any.getSkuNo(), 0);
                     return new ai.neargo.shop.product.dto.OpsGoodsListVO.OpsSkuVO(
                             any.getSkuNo(), readList(any.getOptionValues()), any.getSpec(),
-                            prices, any.getStock() == null ? 0 : any.getStock());
+                            prices, any.getStock() == null ? 0 : any.getStock(), storeStock);
                 })
                 .toList();
+
+        Boolean storeOnSale = projection == null || !projection.managedGoods().contains(g.getGoodsNo())
+                ? null
+                : projection.onSaleAtStore().contains(g.getGoodsNo());
 
         return new ai.neargo.shop.product.dto.OpsGoodsListVO(
                 g.getGoodsNo(),
                 new ai.neargo.shop.product.dto.OpsGoodsListVO.TitleVO(g.getTitle(), titleI18n.get("en"), titleI18n.get("ar")),
                 g.getCover(), g.getEntityNo(), merchant == null ? g.getEntityNo() : merchant.merchantName(),
                 g.getCategoryNo(), g.getCategoryNo() == null ? null : categoryNames.get(g.getCategoryNo()),
-                opsStatusOf(g), skuVOs);
+                opsStatusOf(g), skuVOs, storeOnSale);
     }
 
     /**
@@ -390,6 +482,201 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         DataScopeContext.executeWithoutScope(() -> goodsMapper.updateById(g));
         syncPool(g, onSale);
         return toVO(g);
+    }
+
+    @Override
+    public GoodsVO detailForOps(String goodsNo) {
+        /*
+         * 不走 toVO()：statusOf/storeSkus 读 BizContext 的「当前门店」，
+         * 而运营端请求没有 BizContext —— 这里用主体级口径（opsStatusOf），
+         * 与商品池列表同一套状态词。
+         */
+        return toVOWithoutStoreContext(requireByNoInScope(goodsNo));
+    }
+
+    @Override
+    @Transactional
+    public GoodsVO forceOff(String goodsNo, String reason) {
+        if (reason == null || reason.isBlank()) {
+            // 与审核驳回同一条规矩：没有原因的处置在申诉时站不住
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        PrdGoods g = requireByNo(goodsNo);
+        /*
+         * 强制下架 = 撤销过审（TDD D1）。不新增状态值：REJECTED 之后商家改商品
+         * 重新提审走的是**既有**链路，B 端也已经会渲染「被驳回 + 原因」。
+         * 与首次驳回靠原因前缀区分。
+         */
+        g.setAuditStatus(REJECTED);
+        g.setAuditReason("平台强制下架：" + reason.trim());
+        g.setOnSale(false);
+        DataScopeContext.executeWithoutScope(() -> goodsMapper.updateById(g));
+        // 店级行全下且**不打 platform_suspended**：商品要重新过审才能回来，
+        // 恢复走审核链路，不走门店解除处置那条标记
+        for (var row : storeGoodsRows(goodsNo)) {
+            if (Boolean.TRUE.equals(row.getOnSale())) {
+                row.setOnSale(false);
+                DataScopeContext.executeWithoutScope(() -> storeGoodsMapper.updateById(row));
+            }
+        }
+        syncPool(g, false);
+        return toVOWithoutStoreContext(g);
+    }
+
+    @Override
+    @Transactional
+    public GoodsVO platformSuspendGoods(String goodsNo, String reason) {
+        if (reason == null || reason.isBlank()) {
+            // 与审核驳回同一条规矩：没有原因的处置在申诉时站不住
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        PrdGoods g = requireByNo(goodsNo);
+        // 只有在售的才谈得上「压下架」。已经下架/被驳回的再压一次，
+        // 唯一的效果是把上一条更重要的处置原因覆盖掉
+        if (!Boolean.TRUE.equals(g.getOnSale()) || REJECTED.equals(g.getAuditStatus())) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+        /*
+         * **不动 auditStatus** —— 这正是与 forceOff 的分界：过审结论还在，
+         * 商家处理完问题自己点一下就能重新上架，不必走一遍重新提审。
+         */
+        g.setAuditReason("平台下架：" + reason.trim());
+        g.setOnSale(false);
+        DataScopeContext.executeWithoutScope(() -> goodsMapper.updateById(g));
+        for (var row : storeGoodsRows(goodsNo)) {
+            if (Boolean.TRUE.equals(row.getOnSale())) {
+                row.setOnSale(false);
+                DataScopeContext.executeWithoutScope(() -> storeGoodsMapper.updateById(row));
+            }
+        }
+        // 撤池：只改 on_sale 不撤池的话，被压下的商品在 C 端还搜得到 ——
+        // 处置没有落到买家看得见的地方，就等于没处置
+        syncPool(g, false);
+        return toVOWithoutStoreContext(g);
+    }
+
+    @Override
+    @Transactional
+    public void platformOfflineStore(String entityNo, String storeNo) {
+        List<PrdGoods> all = DataScopeContext.executeWithoutScope(() ->
+                goodsMapper.selectList(Wrappers.<PrdGoods>lambdaQuery()
+                        .eq(PrdGoods::getEntityNo, entityNo)));
+        for (PrdGoods g : all) {
+            List<ai.neargo.shop.product.entity.PrdStoreGoods> rows = storeGoodsRows(g.getGoodsNo());
+            boolean managed = !rows.isEmpty();
+            boolean onAtStore = managed
+                    ? rows.stream().anyMatch(r -> storeNo.equals(r.getStoreNo())
+                            && Boolean.TRUE.equals(r.getOnSale()))
+                    : Boolean.TRUE.equals(g.getOnSale());
+            if (!onAtStore) {
+                // 只压当前在售的：商家自己下架的不打标记，解除时才不会替他重新上架
+                continue;
+            }
+            setStoreOnSale(g, storeNo, false);
+            markPlatformSuspended(g.getGoodsNo(), storeNo, true);
+            boolean anyOn = storeGoodsRows(g.getGoodsNo()).stream()
+                    .anyMatch(r -> Boolean.TRUE.equals(r.getOnSale()));
+            g.setOnSale(anyOn);
+            DataScopeContext.executeWithoutScope(() -> goodsMapper.updateById(g));
+            syncPool(g, anyOn);
+        }
+    }
+
+    @Override
+    @Transactional
+    public void platformRestoreStore(String entityNo, String storeNo) {
+        List<ai.neargo.shop.product.entity.PrdStoreGoods> suspended = DataScopeContext.executeWithoutScope(() ->
+                storeGoodsMapper.selectList(Wrappers.<ai.neargo.shop.product.entity.PrdStoreGoods>lambdaQuery()
+                        .eq(ai.neargo.shop.product.entity.PrdStoreGoods::getStoreNo, storeNo)
+                        .eq(ai.neargo.shop.product.entity.PrdStoreGoods::getEntityNo, entityNo)
+                        .eq(ai.neargo.shop.product.entity.PrdStoreGoods::getPlatformSuspended, true)));
+        for (var row : suspended) {
+            row.setOnSale(true);
+            row.setPlatformSuspended(false);
+            DataScopeContext.executeWithoutScope(() -> storeGoodsMapper.updateById(row));
+            PrdGoods g = DataScopeContext.executeWithoutScope(() ->
+                    goodsMapper.selectOne(Wrappers.<PrdGoods>lambdaQuery()
+                            .eq(PrdGoods::getGoodsNo, row.getGoodsNo()).last("limit 1")));
+            if (g == null) {
+                continue;
+            }
+            /*
+             * 处置期间商品可能被驳回/强制下架（audit_status 变了）——那种行不能跟着回架：
+             * 恢复门店不等于恢复商品，商品要走它自己的重新提审链路。
+             */
+            if (!APPROVED.equals(g.getAuditStatus())) {
+                continue;
+            }
+            if (!Boolean.TRUE.equals(g.getOnSale())) {
+                g.setOnSale(true);
+                DataScopeContext.executeWithoutScope(() -> goodsMapper.updateById(g));
+            }
+            syncPool(g, true);
+        }
+    }
+
+    /** ops 视角的整装 VO：与 {@link #toVO} 的差别只在不读 BizContext（无「当前门店」）。 */
+    private GoodsVO toVOWithoutStoreContext(PrdGoods g) {
+        GoodsVO base = goodsService.detail(g.getGoodsNo());
+        return new GoodsVO(base.goodsNo(), base.title(), base.subtitle(), base.cover(),
+                base.images(), base.type(), base.categoryNo(), base.merchant(),
+                base.rating(), base.ratingCount(), base.price(), base.originPrice(),
+                base.fulfillments(), base.specGroups(), base.skus(), base.sales(),
+                base.cutoffAt(), base.arrivalDesc(), base.weighed(), base.origin(),
+                base.durationMin(), base.storeName(), base.limitPerUser(), base.onSale(),
+                opsStatusOf(g),
+                readMap(g.getTitleI18n()), readMap(g.getSubtitleI18n()),
+                g.getAuditReason(),
+                GoodsServiceImpl.groupBuyConf(g));
+    }
+
+    /**
+     * 按 goodsNo 取商品，**不接数据域** —— 写路径（强制下架、平台压下架）用。
+     *
+     * <p>与读路径分成两个方法而不是加一个布尔参数（批② T2 的同一条结论）：
+     * 参数化的话，下一个人在处置路径上传错一次，就把一次平台处置变成了
+     * <b>静默失败</b> —— 按钮点了、返回 200、商品还在架上。
+     */
+    private PrdGoods requireByNo(String goodsNo) {
+        PrdGoods g = DataScopeContext.executeWithoutScope(() ->
+                goodsMapper.selectOne(Wrappers.<PrdGoods>lambdaQuery()
+                        .eq(PrdGoods::getGoodsNo, goodsNo).last("limit 1")));
+        if (g == null) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        return g;
+    }
+
+    /**
+     * 同上，但**接数据域**（批③）—— 运营端的只读详情用。
+     *
+     * <p>不在自己数据域内的商品返回 {@code NOT_FOUND} 而不是 403：
+     * 「这件商品不归你管」与「这件商品不存在」在运营端应当是同一个回答 ——
+     * 403 会告诉他这个货号真实存在，那本身就是一次信息泄露。
+     */
+    private PrdGoods requireByNoInScope(String goodsNo) {
+        PrdGoods g = goodsMapper.selectOne(Wrappers.<PrdGoods>lambdaQuery()
+                .eq(PrdGoods::getGoodsNo, goodsNo).last("limit 1"));
+        if (g == null) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        return g;
+    }
+
+    private void markPlatformSuspended(String goodsNo, String storeNo, boolean flag) {
+        var row = DataScopeContext.executeWithoutScope(() ->
+                storeGoodsMapper.selectOne(Wrappers.<ai.neargo.shop.product.entity.PrdStoreGoods>lambdaQuery()
+                        .eq(ai.neargo.shop.product.entity.PrdStoreGoods::getStoreNo, storeNo)
+                        .eq(ai.neargo.shop.product.entity.PrdStoreGoods::getGoodsNo, goodsNo)
+                        .last("limit 1")));
+        if (row != null) {
+            row.setPlatformSuspended(flag);
+            DataScopeContext.executeWithoutScope(() -> storeGoodsMapper.updateById(row));
+        }
+    }
+
+    private static int nz(Integer v) {
+        return v == null ? 0 : v;
     }
 
     /**
@@ -628,6 +915,41 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
     }
 
     @Override
+    public java.util.Map<String, Integer> outOfStockCountByStore(String merchantNo,
+                                                                 java.util.Collection<String> storeNos) {
+        // 空集合 = 一家都不看（fail-closed），与订单侧同一套口径。
+        // 当成「不过滤」的话，一个没被授权到任何门店的店员会看到全主体的缺货
+        if (merchantNo == null || merchantNo.isBlank() || (storeNos != null && storeNos.isEmpty())) {
+            return java.util.Map.of();
+        }
+        List<PrdStoreStock> rows = DataScopeContext.executeWithoutScope(() ->
+                storeStockMapper.selectList(Wrappers.<PrdStoreStock>lambdaQuery()
+                        .eq(PrdStoreStock::getEntityNo, merchantNo)
+                        .in(storeNos != null, PrdStoreStock::getStoreNo,
+                                storeNos == null ? List.of() : storeNos)));
+        java.util.Map<String, Integer> out = new java.util.LinkedHashMap<>();
+        for (PrdStoreStock r : rows) {
+            if (r.getStoreNo() == null || r.getStoreNo().isBlank()) {
+                continue;
+            }
+            /*
+             * 可用量 = stock − locked。**扣掉锁定量而不是只看 stock**：
+             * 20 件全被未付款的单锁着，货架上就是空的 —— 只看 stock 的话
+             * 商家在「缺货 0」的页面上眼看着卖不出去。
+             */
+            int available = nzi(r.getStock()) - nzi(r.getLockedStock());
+            if (available <= 0) {
+                out.merge(r.getStoreNo(), 1, Integer::sum);
+            }
+        }
+        return out;
+    }
+
+    private static int nzi(Integer v) {
+        return v == null ? 0 : v;
+    }
+
+    @Override
     @Transactional
     public GoodsVO audit(String goodsNo, boolean approved, String reason) {
         if (!approved && (reason == null || reason.isBlank())) {
@@ -641,6 +963,9 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
         g.setAuditStatus(approved ? APPROVED : REJECTED);
+        // 原因落在商品行上（V96）：它是商家能看到的那半边。过审清空 ——
+        // 旧原因留着会被当成「还有问题没改完」
+        g.setAuditReason(approved ? null : reason.trim());
         if (!approved) {
             // 驳回同时强制下架**并撤出社区池**：只改 on_sale 不撤池的话，
             // 被驳回的商品在 C 端还搜得到 —— 审核结论没有落到买家看得见的地方
@@ -658,6 +983,12 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
     @Override
     public List<SpecTemplateVO> specTemplates(String merchantNo, String categoryType) {
         var w = Wrappers.<PrdSpecTemplate>lambdaQuery()
+                /*
+                 * 归档的不下发（V102）。**归档了商家还能选，等于没归档** ——
+                 * 而运营会以为自己把那套错的规格下线了，直到发现新品还在用它。
+                 * 存量行的 status 由迁移的 DEFAULT 'ACTIVE' 兜住。
+                 */
+                .eq(PrdSpecTemplate::getStatus, PrdSpecTemplate.ACTIVE)
                 // 平台模板 + 我自己的。别家商家自存的模板与我无关
                 .and(q -> q.eq(PrdSpecTemplate::getScope, PrdSpecTemplate.PLATFORM)
                         .or(o -> o.eq(PrdSpecTemplate::getScope, PrdSpecTemplate.MERCHANT)
@@ -681,6 +1012,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         t.setTemplateNo(BizKey.next(BizKey.SPEC_TEMPLATE));
         // 一律存成 MERCHANT：商家改不了平台模板 —— 平台模板是跨店可比的基础
         t.setScope(PrdSpecTemplate.MERCHANT);
+        t.setStatus(PrdSpecTemplate.ACTIVE);
         t.setEntityNo(merchantNo);
         t.setName(name);
         t.setOptions(writeJson(options));
@@ -824,6 +1156,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                  * 英文与阿语的标题被清空，而且不报错（C 端回落中文，看起来一切正常）。
                  */
                 readMap(g.getTitleI18n()), readMap(g.getSubtitleI18n()),
+                g.getAuditReason(),
                 // 「可开团的商品」那一栏就是按它筛的
                 GoodsServiceImpl.groupBuyConf(g));
     }
@@ -888,8 +1221,30 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         if (groups == null || groups.isEmpty()) {
             return "[]";
         }
+        /*
+         * **optionCodes 与 templateNo 必须一起存下去。**
+         *
+         * 此前这里只写 name/options，两者在保存那一刻被静默丢弃 —— 于是
+         * B-4.5 说的「一期只写入不消费」连写入都没有，而平台规格模板（P-3.4/E27）
+         * 存在的唯一理由就是那个 code：没有它，三家店的「500g」「五百克」「0.5kg」
+         * 永远聚合不到一起，模板与手输没有任何区别。
+         *
+         * 丢弃发生在写库这一步，所以从接口到页面全程看不出来 —— 建品成功、
+         * 规格显示正常，只是那一列 code 从来没存在过。
+         */
         return writeJson(groups.stream()
-                .map(g -> Map.of("name", g.name(), "options", g.options() == null ? List.of() : g.options()))
+                .map(g -> {
+                    java.util.Map<String, Object> m = new java.util.LinkedHashMap<>();
+                    m.put("name", g.name());
+                    m.put("options", g.options() == null ? List.of() : g.options());
+                    if (g.optionCodes() != null && !g.optionCodes().isEmpty()) {
+                        m.put("optionCodes", g.optionCodes());
+                    }
+                    if (g.templateNo() != null && !g.templateNo().isBlank()) {
+                        m.put("templateNo", g.templateNo());
+                    }
+                    return m;
+                })
                 .toList());
     }
 

@@ -198,3 +198,76 @@ export const qualifications: import("@/lib/types").Qualification[] = [
     // 长期有效：**与「已过期」是两回事**，扫描任务不碰它
     expireAt: null, status: "VALID" },
 ];
+
+// ── 增值包与门店额度（P-11.2.2~11.2.6）────────────────────────────────────
+
+/**
+ * 相对今天的毫秒时间戳。**mock 数据里的到期日必须是相对的** ——
+ * 写死成 2026-09-01 的话，过了那天所有 mock 商家一起变成「已过期」，
+ * 而三个筛选（快到期/宽限期/已降级）会同时坏掉，且没有任何报错。
+ */
+const days = (n: number) => Date.now() + n * 86_400_000;
+
+/**
+ * 主体的订阅（后端 `mch_entity_plan`）。
+ *
+ * 这五行刻意覆盖**每一个筛选各至少一行**：一个筛选在 mock 里返回空，
+ * 与「筛选写错了」在界面上是同一个样子。
+ */
+export const merchantPlans: import("@/lib/types").MerchantPlanRow[] = [
+  // 正常订阅中：2 家店用掉 2/3
+  {
+    merchantNo: "M901", merchantName: "阿姨家的菜摊", planCode: "PRO",
+    storeQuota: 3, staffQuota: 10, storeUsed: 2, staffUsed: 4,
+    crossStoreStats: true, status: "ACTIVE",
+    startAt: days(-200), expireAt: days(160), grantedBy: "PLATFORM",
+    trialUsed: true, downgradedAt: null, quotaSource: "PLAN",
+  },
+  // 快到期（7 天内且仍在生效）：催续费的对象。**天数必须落在 EXPIRING_7D 的窗口里** ——
+  // 写 11 天的话这个筛选在 mock 里恒空，而那与「筛选写错了」是同一个样子
+  {
+    merchantNo: "M905", merchantName: "快修家电服务", planCode: "PRO",
+    storeQuota: 3, staffQuota: 10, storeUsed: 1, staffUsed: 2,
+    crossStoreStats: true, status: "ACTIVE",
+    startAt: days(-350), expireAt: days(4), grantedBy: "PLATFORM",
+    trialUsed: true, downgradedAt: null, quotaSource: "PLAN",
+  },
+  // 宽限期中：**能力全保留**，还来得及救
+  {
+    merchantNo: "M902", merchantName: "老张水果店", planCode: "PRO",
+    storeQuota: 3, staffQuota: 10, storeUsed: 1, staffUsed: 1,
+    crossStoreStats: true, status: "GRACE",
+    startAt: days(-370), expireAt: days(-3), grantedBy: "PLATFORM",
+    trialUsed: true, downgradedAt: null, quotaSource: "PLAN",
+  },
+  // 已降级：ST004 就是被压成 READONLY 的那家（见 db/store.ts）——
+  // 两份 mock 数据必须互相对得上，否则页面上「降级 1 家店」而门店档案里一家只读的都没有
+  {
+    merchantNo: "M903", merchantName: "邻家便利", planCode: "FREE",
+    storeQuota: 1, staffQuota: 3, storeUsed: 1, staffUsed: 2,
+    crossStoreStats: false, status: "EXPIRED",
+    startAt: days(-400), expireAt: days(-20), grantedBy: "PLATFORM",
+    trialUsed: true, downgradedAt: days(-13), quotaSource: "PLAN",
+  },
+  // 额度单独谈过的：quotaSource=OVERRIDE，页面要显示得出这个数不是档位给的
+  {
+    merchantNo: "M904", merchantName: "社区鲜奶站", planCode: "PRO",
+    storeQuota: 5, staffQuota: 5, storeUsed: 1, staffUsed: 1,
+    crossStoreStats: false, status: "ACTIVE",
+    startAt: days(-60), expireAt: days(300), grantedBy: "PLATFORM",
+    trialUsed: false, downgradedAt: null, quotaSource: "OVERRIDE",
+  },
+];
+
+/**
+ * 档位定义（后端 `sys_merchant_plan_def`）。
+ *
+ * **码与额度逐字取自 V150 的种子**（FREE 1/0、PRO 3/3、CHAIN 10/15）——
+ * mock 里自造一套 BASIC/专业版，页面上就会出现一个后端根本不认的档位码，
+ * 而接真后端那天它表现为「下拉里选了这一档，授予返回 400」。
+ */
+export const planDefs: import("@/lib/types").PlanDef[] = [
+  { planCode: "FREE", name: "孵化版", storeQuota: 1, staffQuota: 0, crossStoreStats: false, trialDays: 0, enabled: true, subscriberCount: 1 },
+  { planCode: "PRO", name: "成长版", storeQuota: 3, staffQuota: 3, crossStoreStats: true, trialDays: 14, enabled: true, subscriberCount: 3 },
+  { planCode: "CHAIN", name: "连锁版", storeQuota: 10, staffQuota: 15, crossStoreStats: true, trialDays: 14, enabled: true, subscriberCount: 1 },
+];

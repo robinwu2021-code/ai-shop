@@ -22,7 +22,7 @@
     }
   },
   "mp-weixin": {
-    "appid": "",
+    "appid": "wxdb0513c549437ffe",
     "setting": { "urlCheck": false, "minified": true },
     "usingComponents": true,
     "permission": {

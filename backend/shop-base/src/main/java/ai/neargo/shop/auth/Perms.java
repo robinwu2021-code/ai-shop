@@ -34,8 +34,11 @@ import java.util.Map;
  * 而通过前又强制要求选一个，<b>招商的日常流程被自己的权限卡死</b>，
  * 页面上还看不出是权限问题（列表就是空的）。
  *
- * <p><b>② 只配后端真有的码。</b>风控的拦截/黑名单、履约调度、增长归因在后端
- * 还没有任何端点，所以那几个角色拿到的清单很短 —— 这是如实反映。
+ * <p><b>② 只配后端真有的码。</b>
+ * （<b>2026-08-13 落地三域</b>：履约调度四个 {@code fulfillment:*} 码全部给社区运营
+ * —— 矩阵 §2.3 把「履约调度」写在那个岗位名下；风控六个 {@code risk:*} 给风控；
+ * 增长四个 {@code growth:*} 给活动运营，其中只读那个另给 BD。
+ * 在此之前这三域后端一个端点都没有，那几个角色的清单短得不正常 —— 那是如实反映。）
  * <b>凭空映射到一个语义相近的现有码，会让权限表看着是满的而实际什么都点不动</b>；
  * 更坏的是可能顺手给出远超职责的权限（风控要封禁，就把商家治理给它，于是风控还能批入驻）。
  *
@@ -83,6 +86,37 @@ public final class Perms {
     // ── 经营看板 ────────────────────────────────────────────────────────────
     public static final String DASHBOARD_OVERVIEW_READ = "dashboard:overview:read";
 
+    // ── 履约调度与物流（P-5.1 / P-5.2）──────────────────────────────────────
+
+    /**
+     * 到货批次与跨自提点分拣汇总。
+     *
+     * <p><b>批次推进（发车/到货/签收）故意共用这个码</b>，是全表第二处不拆读写的地方
+     * （第一处是店招审核 {@code STORE_PAGE_AUDIT}）。理由与那里相同：
+     * 「看批次」与「发车」是同一个人同一次动作的两半，拆出来会得到一个
+     * 只有社区运营用、且他必然同时持有的码 —— 那种码只增加配置负担。
+     *
+     * <p>还有一条更硬的理由：<b>ops-web 的发车按钮就是用这个码门控的</b>
+     * （{@code app/fulfillment/page.tsx} 的 {@code canDispatch}）。
+     * 后端另判一个写码，等于造一个「看得见、点下去 403」的按钮。
+     */
+    public static final String FULFILLMENT_BATCH_READ = "fulfillment:batch:read";
+
+    /** 核销监控与逾期看板。<b>只读</b> —— 平台不核销（核销要扫码、要在现场、要按点收敛）。 */
+    public static final String FULFILLMENT_REDEEM_READ = "fulfillment:redeem:read";
+
+    /** 快递运单、运费模板、运力档案的只读面。 */
+    public static final String FULFILLMENT_LOGISTICS_READ = "fulfillment:logistics:read";
+
+    /**
+     * 履约与物流的**规则写**：逾期处置、运费模板与超区、运力启停、换运单号。
+     *
+     * <p>四件事共用一个码是 ops-web 的既有口径（三个 tab 的 {@code canEdit} 都是它）。
+     * 它们的共同点是「配错了订单发不出去 / 客诉」，而读它们的人（客服、财务）
+     * 都不该能改 —— 该分的那一刀已经分在读写之间了。
+     */
+    public static final String FULFILLMENT_RULE_UPDATE = "fulfillment:rule:update";
+
     // ── 结算与资金 ──────────────────────────────────────────────────────────
     public static final String FINANCE_SETTLE_READ = "finance:settle:read";
 
@@ -108,6 +142,18 @@ public final class Perms {
 
     /** 处理支付对账差异 —— 会改账，与只读覆盖率分开。 */
     public static final String FINANCE_RECON_RESOLVE = "finance:recon:resolve";
+
+    /**
+     * 提现审批（P-12.2.1）。<b>这是运营端唯一会把钱批出去的动作</b>。
+     *
+     * <p><b>刻意不拆读写</b>（与 {@link #STORE_PAGE_AUDIT} 同一个例外理由）：
+     * 提现队列的「读」就是审批动作的一半，没有「只看提现不审提现」的岗位。
+     * 拆出的只读码会是一个没有任何角色单独持有的码 —— 那种码只增加配置负担。
+     *
+     * <p>⚠️ 持有它<b>不等于能打款</b>：通过后落 APPROVED，实际出款是线下动作
+     * （待完成功能清单 B-12.5「一期只记账、线下结算」）。
+     */
+    public static final String FINANCE_WITHDRAW_APPROVE = "finance:withdraw:approve";
 
     // ── 团购与求团 ──────────────────────────────────────────────────────────
     public static final String GROUP_CAMPAIGN_READ = "group:campaign:read";
@@ -238,6 +284,43 @@ public final class Perms {
      */
     public static final String STORE_PAGE_AUDIT = "store:page:audit";
 
+    // ── 风控（P-16.2）────────────────────────────────────────────────────────
+    /**
+     * 风险事件（刷单 / 异常裂变 / 恶意退款）。
+     *
+     * <p><b>读写分开</b>：客服要看得到「这个用户是不是被风控标记过」才能解释一次拦截，
+     * 但处置（确认/误判）只能由风控做 —— 合成一个码，要么客服处置得了，
+     * 要么他连解释都做不到。
+     */
+    public static final String RISK_EVENT_READ = "risk:event:read";
+    public static final String RISK_EVENT_HANDLE = "risk:event:handle";
+
+    /** 黑名单与申诉。拉黑直接挡住一个人下单，与只读分开 */
+    public static final String RISK_BLACKLIST_READ = "risk:blacklist:read";
+    public static final String RISK_BLACKLIST_UPDATE = "risk:blacklist:update";
+
+    /**
+     * 拦截规则配置。<b>规则是全平台生效的</b> ——
+     * 改一个阈值可能一次拦掉一批正常用户，所以写权限只给风控。
+     */
+    public static final String RISK_RULE_READ = "risk:rule:read";
+    public static final String RISK_RULE_UPDATE = "risk:rule:update";
+
+    // ── 增长与归因（P-9，V121）───────────────────────────────────────────────
+    /**
+     * 归因规则与链路审计。
+     *
+     * <p><b>读写必须分开</b>：商家质疑账单时，BD 与客服要查得到归因链路（读），
+     * 但**改优先级等于改一批商家的佣金档**（ADR-004 §6）—— 那只能是增长运营的事。
+     * 合成一个码，要么 BD 答不了商家的问题，要么他能顺手改掉全平台的费率归属。
+     */
+    public static final String GROWTH_ATTRIBUTION_READ = "growth:attribution:read";
+    public static final String GROWTH_ATTRIBUTION_UPDATE = "growth:attribution:update";
+
+    /** 裂变活动（邀请有礼 / 老带新）。奖励只能是券（ADR-004：不用现金买增长） */
+    public static final String GROWTH_FISSION_READ = "growth:fission:read";
+    public static final String GROWTH_FISSION_UPDATE = "growth:fission:update";
+
     // ── 平台配置与主数据 ────────────────────────────────────────────────────
     public static final String SYSTEM_INDUSTRY_READ = "system:industry:read";
 
@@ -259,6 +342,18 @@ public final class Perms {
      * 汇率错一位、灰度开关拨错一档，是所有人立刻受影响。
      */
     public static final String SYSTEM_PARAM_UPDATE = "system:param:update";
+
+    /** 存储空间统计与待回收清单，只读。 */
+    public static final String SYSTEM_MEDIA_READ = "system:media:read";
+
+    /**
+     * 发起图片回收任务 —— <b>删文件，不可逆</b>。
+     *
+     * <p>与 {@link #SYSTEM_MEDIA_READ} 分成两个码，因为「能看」和「能删」通常不是同一个人：
+     * 看清单是日常巡检，删是一次性的破坏操作。合成一个码的话，
+     * 任何一个来看看占了多少空间的人手里都握着删库的按钮。
+     */
+    public static final String SYSTEM_MEDIA_PURGE = "system:media:purge";
 
     /**
      * 角色 → 权限码。**对着矩阵 §2.3 的十一个岗位逐条配**。
@@ -302,7 +397,10 @@ public final class Perms {
                     DASHBOARD_OVERVIEW_READ, GROUP_DEMAND_ASSIGN, GROUP_DEMAND_READ,
                     MERCHANT_APPLY_AUDIT, MERCHANT_CATEGORY_GRANT, MERCHANT_CATEGORY_READ,
                     MERCHANT_BAN, MERCHANT_READ, MERCHANT_MODE_READ, MERCHANT_MODE_UPDATE,
-                    MERCHANT_VERIFY_GRANT, ORDER_READ, STORE_PAGE_AUDIT)),
+                    MERCHANT_VERIFY_GRANT, ORDER_READ, STORE_PAGE_AUDIT,
+                    // 只读：商家质疑「这单是我带来的」时 BD 要查得到链路，
+                    // 但改优先级 = 改一批商家的佣金档，那是增长运营的事
+                    GROWTH_ATTRIBUTION_READ)),
 
             Map.entry("GOODS_OPS", List.of(AFTERSALE_REFUND_READ,
                     AFTERSALE_TICKET_READ, COMMUNITY_READ,
@@ -323,13 +421,26 @@ public final class Perms {
                     AFTERSALE_TICKET_READ, COMMUNITY_READ,
                     CONTENT_MATERIAL_AUDIT, CONTENT_MATERIAL_READ, CONTENT_MATERIAL_UPDATE,
                     DASHBOARD_OVERVIEW_READ, GROUP_CAMPAIGN_AUDIT, GROUP_CAMPAIGN_READ,
+                    GROWTH_ATTRIBUTION_READ, GROWTH_ATTRIBUTION_UPDATE,
+                    GROWTH_FISSION_READ, GROWTH_FISSION_UPDATE,
                     MARKETING_CAMPAIGN_READ, MARKETING_CAMPAIGN_UPDATE, MARKETING_COUPON_ISSUE,
                     MARKETING_COUPON_READ, MARKETING_COUPON_UPDATE, ORDER_READ)),
 
+            /*
+             * 社区运营。矩阵 §2.3 原话：「社区网格、自提点建档与启停、**履约调度**」——
+             * 四个 fulfillment 码全给它，其余角色一个都不给。
+             *
+             * **刻意不给客服快递只读**：他的数据边界是「按工单授权」，
+             * 而 /ops/shipments 是全平台运单。要让客服查一单物流，
+             * 该做的是工单里的订单维度入口，不是把全量运单表发出去。
+             */
             Map.entry("COMMUNITY_OPS", List.of(AFTERSALE_REFUND_READ,
                     AFTERSALE_TICKET_READ, COMMUNITY_READ,
                     COMMUNITY_UPDATE, COMMUNITY_PICKUP_READ, COMMUNITY_PICKUP_UPDATE,
-                    COMMUNITY_REGION_READ, DASHBOARD_OVERVIEW_READ, ORDER_READ,
+                    COMMUNITY_REGION_READ, DASHBOARD_OVERVIEW_READ,
+                    FULFILLMENT_BATCH_READ, FULFILLMENT_LOGISTICS_READ,
+                    FULFILLMENT_REDEEM_READ, FULFILLMENT_RULE_UPDATE,
+                    ORDER_READ,
                     SYSTEM_INDUSTRY_READ, SYSTEM_INDUSTRY_UPDATE)),
 
             Map.entry("AUDITOR", List.of(COMMUNITY_READ, CONTENT_MATERIAL_AUDIT,
@@ -342,15 +453,22 @@ public final class Perms {
                     FINANCE_INVOICE_READ, FINANCE_INVOICE_VERIFY, FINANCE_PAYOUT_EXECUTE,
                     FINANCE_RATE_READ, FINANCE_RATE_UPDATE, FINANCE_RECON_READ,
                     FINANCE_RECON_RESOLVE, FINANCE_SETTLE_EXECUTE, FINANCE_SETTLE_READ,
+                    // 提现审批（P-12.2.1）。财务是唯一该持有它的角色 ——
+                    // 超管靠通配拿到，其余角色一律不给：这是把钱批出去的那个动作
+                    FINANCE_WITHDRAW_APPROVE,
                     MERCHANT_ADMISSION_READ, MERCHANT_ADMISSION_UPDATE, ORDER_READ)),
 
             /*
              * 风控：矩阵给的是「刷单、异常裂变、恶意退款、黑名单」+ 拦截封禁。
-             * 后端一个风控端点都没有，所以这份清单短得不正常 ——
-             * 而其中的售后裁决与极速退阈值是从 order:view 带过来的，风控本不该有。
+             * 六个 risk:* 码随风控域落地补齐（V120）——
+             * <b>在此之前这份清单短得不正常</b>：后端一个风控端点都没有，
+             * 而清单里的售后裁决与极速退阈值是从 order:view 带过来的，风控本不该有。
+             * 那两条现在保留，因为恶意退款画像要看得到售后单。
              */
             Map.entry("RISK", List.of(AFTERSALE_REFUND_READ, AFTERSALE_TICKET_READ,
-                    DASHBOARD_OVERVIEW_READ, ORDER_READ)),
+                    DASHBOARD_OVERVIEW_READ, ORDER_READ,
+                    RISK_EVENT_READ, RISK_EVENT_HANDLE, RISK_BLACKLIST_READ,
+                    RISK_BLACKLIST_UPDATE, RISK_RULE_READ, RISK_RULE_UPDATE)),
 
             /*
              * 数据分析：矩阵写明**只读脱敏**。故意不给 ORDER_READ ——
@@ -359,9 +477,17 @@ public final class Perms {
              */
             Map.entry("ANALYST", List.of(COMMUNITY_READ)),
 
-            /* 技术运维：配置、灰度、日志。环境切换仍然没有端点。 */
+            /*
+             * 技术运维：配置、灰度、日志、存储。环境切换仍然没有端点。
+             *
+             * 存储回收（SYSTEM_MEDIA_PURGE）给到这个岗位而不是更广的范围：
+             * 它删的是磁盘上的文件，判断依据是「这张图还有没有人引用」——
+             * 这是个工程问题，不是业务问题。业务岗位需要的是看得见占用（READ），
+             * 而不是握着删除按钮。
+             */
             Map.entry("TECH_OPS", List.of(IAM_AUDIT_READ, SYSTEM_PARAM_READ, SYSTEM_PARAM_UPDATE,
-                    SYSTEM_THEME_READ, SYSTEM_THEME_UPDATE)));
+                    SYSTEM_THEME_READ, SYSTEM_THEME_UPDATE,
+                    SYSTEM_MEDIA_READ, SYSTEM_MEDIA_PURGE)));
 
     private Perms() {
     }

@@ -45,6 +45,32 @@ public class MktAttributionLog {
     private String reason;
 
     private Long at;
+
+    // ---------------------------------------------------------------- V121
+
+    /**
+     * 归因链路单号（{@code AT...}）。老行为空时端上回落成 {@code AT{id}}。
+     *
+     * <p>它是客服与商家争执时唯一能对上的抓手 —— 「你说的是哪一次判定」。
+     */
+    private String traceNo;
+
+    /**
+     * 上报设备号 / IP。
+     *
+     * <p><b>没有这两列，P-16.2.2「异常裂变（同设备/同 IP）」就退化成
+     * 「某人邀请人数多」</b> —— 那不是需求写的那件事，但看起来很像：
+     * 一个真的在拉人的店主会被判成刷单，而真刷单的人换个账号就绕过去了。
+     */
+    private String deviceId;
+    private String ip;
+
+    /** 该用户首单，由 {@code ORDER_CREATED} 事件回填。归因值不值钱看这一列。 */
+    private String orderNo;
+
+    /** 判定时算出的风控信号，与风险事件同一套口径（不另造一份平行数据）。 */
+    private String riskSignals;
+
     private String tenantNo;
     private LocalDateTime createdAt;
 }

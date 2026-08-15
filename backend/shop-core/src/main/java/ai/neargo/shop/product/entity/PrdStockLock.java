@@ -35,6 +35,15 @@ public class PrdStockLock extends BaseEntity {
      */
     private String storeNo;
 
+    /**
+     * 这一笔吃的是**预售额度**而不是现货（V100/V101，P-3.3.1）。
+     *
+     * <p>与 {@link #storeNo} 同一个用法：锁在哪个池子就记在哪，释放与确认据此决定回退方向。
+     * 不记的话，取消一单预售会把数减回 {@code locked_stock}，现货库存凭空多出一件 ——
+     * 而那件货根本不存在，下一个买家要等到发货那天才发现。
+     */
+    private Boolean presale;
+
     /** LOCKED / RELEASED / CONFIRMED */
     private String status;
 

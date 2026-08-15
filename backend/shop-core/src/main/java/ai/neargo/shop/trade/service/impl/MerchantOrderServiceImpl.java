@@ -353,14 +353,19 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
             return new StatsSummary(0, 0, 0, 0, 0d);
         }
         /*
-         * 只统计**已付款**的单：WAIT_PAY 还不是生意，把它算进 GMV
-         * 会让商家看到一个自己收不到的数字，而且刷新一下就变小。
-         * 已退款（REFUNDED）保留在内：那笔钱确实成交过，退款在结算侧另算。
+         * 成交口径走 {@code OrdSubOrder.TRANSACTED}（**全后端唯一一份**）。
+         *
+         * 这里此前写的是 `!= WAIT_PAY`，于是 **CANCELLED 也被算成了成交** ——
+         * 而平台侧的排行用的是显式集合（不含取消）。同一个月、同一家店，
+         * 商家后台的 GMV 比平台大，差额恰好是那些被取消的单，
+         * 两边各自都说得通、都不报错。商家拿它去对账时，第一反应是平台少算了他的钱。
+         *
+         * 已退款仍在内：GMV 是毛成交额，那笔钱确实成交过，退款在结算侧另算。
          */
         java.time.LocalDate today = java.time.LocalDate.now();
         java.time.LocalDateTime monthStart = today.withDayOfMonth(1).atStartOfDay();
         List<OrdSubOrder> rows = scan(merchantNo, storeNos,
-                w -> w.ne(OrdSubOrder::getStatus, OrdSubOrder.WAIT_PAY)
+                w -> w.in(OrdSubOrder::getStatus, OrdSubOrder.TRANSACTED)
                         .ge(OrdSubOrder::getCreatedAt, monthStart));
 
         int todayOrders = 0;
@@ -388,6 +393,146 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
         double rate = attributed == 0 ? 0d : owned / (double) attributed;
         return new StatsSummary(todayOrders, todayGmv, rows.size(), monthGmv, rate);
     }
+
+    // ---------------------------------------------------------------- 跨店（B-11.12.5/6）
+
+    @Override
+    public java.util.Map<String, StatsSummary> statsByStore(String merchantNo,
+                                                            java.util.Collection<String> storeNos) {
+        if (storeNos != null && storeNos.isEmpty()) {
+            return java.util.Map.of();
+        }
+        /*
+         * 与 stats() 逐字同一个过滤条件与同一条时间轴 —— **刻意重复而不是抽公共方法**
+         * 的反面：这里就是抽出来的那一份，两处共用 monthStart 与 OrdSubOrder.TRANSACTED。
+         * 口径分岔的表现是「总览说 3 单，点进去只有 2 单」，而两边各自都说得通。
+         */
+        java.time.LocalDate today = java.time.LocalDate.now();
+        java.time.LocalDateTime monthStart = today.withDayOfMonth(1).atStartOfDay();
+        // ★ 一次扫完按店分组，不是逐店调 stats()：后者是 N 次全表扫，
+        //   而门店数正是这个功能的自变量 —— 店越多越慢
+        List<OrdSubOrder> rows = scan(merchantNo, storeNos,
+                w -> w.in(OrdSubOrder::getStatus, OrdSubOrder.TRANSACTED)
+                        .ge(OrdSubOrder::getCreatedAt, monthStart));
+
+        // [todayOrders, todayGmv, monthOrders, monthGmv, owned, attributed]
+        java.util.Map<String, long[]> cells = new java.util.LinkedHashMap<>();
+        for (OrdSubOrder o : rows) {
+            /*
+             * store_no 为空的历史单**不算进任何一家店**。
+             * 随便挂给默认店会让那家店的数字对不上它自己的订单列表 ——
+             * 而「对得上」正是这个功能唯一的信任来源。
+             */
+            if (o.getStoreNo() == null || o.getStoreNo().isBlank()) {
+                continue;
+            }
+            long[] c = cells.computeIfAbsent(o.getStoreNo(), k -> new long[6]);
+            long amount = nz(o.getPayAmount());
+            c[2] += 1;
+            c[3] += amount;
+            if (o.getCreatedAt() != null && o.getCreatedAt().toLocalDate().isEqual(today)) {
+                c[0] += 1;
+                c[1] += amount;
+            }
+            if (o.getTrafficSource() != null && !o.getTrafficSource().isBlank()) {
+                c[5] += 1;
+                if ("MERCHANT_OWNED".equals(o.getTrafficSource())) {
+                    c[4] += 1;
+                }
+            }
+        }
+        java.util.Map<String, StatsSummary> out = new java.util.LinkedHashMap<>();
+        for (var e : cells.entrySet()) {
+            long[] c = e.getValue();
+            double rate = c[5] == 0 ? 0d : c[4] / (double) c[5];
+            out.put(e.getKey(), new StatsSummary((int) c[0], c[1], (int) c[2], c[3], rate));
+        }
+        return out;
+    }
+
+    @Override
+    public java.util.Map<String, TodoCounts> todoByStore(String merchantNo,
+                                                         java.util.Collection<String> storeNos) {
+        if (storeNos != null && storeNos.isEmpty()) {
+            return java.util.Map.of();
+        }
+        // [toShip, toDeliver, toStock]。自提点维度的两项不在这里 —— 见接口注释
+        java.util.Map<String, int[]> cells = new java.util.LinkedHashMap<>();
+        for (OrdSubOrder o : scan(merchantNo, storeNos,
+                w -> w.eq(OrdSubOrder::getStatus, OrdSubOrder.WAIT_FULFILL))) {
+            if (o.getStoreNo() == null || o.getStoreNo().isBlank()) {
+                continue;
+            }
+            int[] c = cells.computeIfAbsent(o.getStoreNo(), k -> new int[3]);
+            String f = o.getFulfillment();
+            if (PICKUP_FULFILLMENTS.contains(f)) {
+                c[2] += 1;
+            } else if (MERCHANT_DELIVERY.equals(f)) {
+                c[1] += 1;
+            } else {
+                // fulfillment 为空按快递算，与 todo() 的默认一致
+                c[0] += 1;
+            }
+        }
+        java.util.Map<String, TodoCounts> out = new java.util.LinkedHashMap<>();
+        for (var e : cells.entrySet()) {
+            int[] c = e.getValue();
+            out.put(e.getKey(), new TodoCounts(c[0], c[1], c[2], 0, 0));
+        }
+        return out;
+    }
+
+    @Override
+    public java.util.Map<String, StoreCompare> compareByStore(String merchantNo,
+                                                              java.util.Collection<String> storeNos,
+                                                              int days) {
+        if (storeNos != null && storeNos.isEmpty()) {
+            return java.util.Map.of();
+        }
+        // days 含今天：days=1 就是「今天」。<=0 当 1 天处理，不抛错 ——
+        // 端上传了个 0 不该让整页报错，那一格显示今天的数就好
+        int window = Math.max(1, days);
+        java.time.LocalDateTime from =
+                java.time.LocalDate.now().minusDays(window - 1L).atStartOfDay();
+        List<OrdSubOrder> rows = scan(merchantNo, storeNos,
+                w -> w.in(OrdSubOrder::getStatus, OrdSubOrder.TRANSACTED)
+                        .ge(OrdSubOrder::getCreatedAt, from));
+
+        // storeNo → (userNo → 该买家在这家店的单量)
+        java.util.Map<String, java.util.Map<String, Integer>> buyersByStore = new java.util.HashMap<>();
+        java.util.Map<String, long[]> cells = new java.util.LinkedHashMap<>();
+        for (OrdSubOrder o : rows) {
+            if (o.getStoreNo() == null || o.getStoreNo().isBlank()) {
+                continue;
+            }
+            long[] c = cells.computeIfAbsent(o.getStoreNo(), k -> new long[2]);
+            c[0] += 1;
+            c[1] += nz(o.getPayAmount());
+            if (o.getUserNo() != null && !o.getUserNo().isBlank()) {
+                buyersByStore.computeIfAbsent(o.getStoreNo(), k -> new java.util.HashMap<>())
+                        .merge(o.getUserNo(), 1, Integer::sum);
+            }
+        }
+
+        java.util.Map<String, StoreCompare> out = new java.util.LinkedHashMap<>();
+        for (var e : cells.entrySet()) {
+            long[] c = e.getValue();
+            var perBuyer = buyersByStore.getOrDefault(e.getKey(), java.util.Map.of());
+            int buyers = perBuyer.size();
+            int repeat = (int) perBuyer.values().stream().filter(n -> n >= REPEAT_MIN_ORDERS).count();
+            /*
+             * ★ 分母为 0 返回 0，不是除零。
+             * 一家窗口内没单的店，「复购率」这一格该显示 0%，而不是让整个对比页 500 ——
+             * 而新开的店恰恰是最常被拿来对比的那一家。
+             */
+            double rate = buyers == 0 ? 0d : repeat / (double) buyers;
+            out.put(e.getKey(), new StoreCompare((int) c[0], c[1], buyers, repeat, rate));
+        }
+        return out;
+    }
+
+    /** 复购的门槛：窗口内下过 ≥2 单才算「回来过」。与顾客页的沉默判定同一个数 */
+    private static final int REPEAT_MIN_ORDERS = 2;
 
     /**
      * 按主体 + 门店范围捞子单。
@@ -419,7 +564,7 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
             return List.of();
         }
         List<OrdSubOrder> rows = scan(merchantNo, storeNos,
-                w -> w.ne(OrdSubOrder::getStatus, OrdSubOrder.WAIT_PAY));
+                w -> w.in(OrdSubOrder::getStatus, OrdSubOrder.TRANSACTED));
 
         // 按买家聚合。一个人在本店下过几单、花了多少、最后一次是什么时候
         java.util.Map<String, java.util.List<OrdSubOrder>> byUser = rows.stream()
@@ -475,9 +620,13 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
             OrderStatusView.ARRIVED, 1440L);
 
     @Override
-    public PageData<OpsOrderVO> opsList(String status, String merchantNo, String keyword,
-                                        long page, long size) {
+    public PageData<OpsOrderVO> opsList(String status, String merchantNo, String storeNo,
+                                        String keyword, long page, long size) {
         var w = Wrappers.<OrdSubOrder>lambdaQuery();
+        // 门店筛选（P-11.2.1f）：ord_sub_order.store_no 是履约键（ADR-011 双写），直接等值
+        if (storeNo != null && !storeNo.isBlank()) {
+            w.eq(OrdSubOrder::getStoreNo, storeNo);
+        }
         List<String> stored = OrderStatusView.toStored(status);
         if (!stored.isEmpty()) {
             w.in(OrdSubOrder::getStatus, stored);
@@ -499,26 +648,33 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
         w.orderByDesc(OrdSubOrder::getId);
 
         /*
-         * 平台侧是**跨商家**查询，必须解除数据域 —— 运营的会话没有 entity 维度，
-         * 不解除的话这里会按运营自己的 user_no 过滤，结果恒为空。
+         * **走数据域**（2026-08-14，运营端数据域接入 批①）。
+         *
+         * 这里原先解除数据域，注释写的是「运营的会话没有 entity 维度」——
+         * 那句话在 V60 之后就不成立了：运营会话带的正是
+         * MERCHANT / COMMUNITY / PICKUP 三个维度，`ord_sub_order` 四个锚点都已登记
+         * （SELF/MERCHANT/COMMUNITY/PICKUP，community_no 见 V137）。
+         *
+         * 没配数据域的账号是 ALL（空 = 不限定），超管恒 ALL —— 存量账号零变化。
+         * 变的是配了数据域的那些人：他们此前看到的是全平台的单。
          */
-        Page<OrdSubOrder> p = DataScopeContext.executeWithoutScope(() ->
-                subOrderMapper.selectPage(Page.of(page, size), w));
+        Page<OrdSubOrder> p = subOrderMapper.selectPage(Page.of(page, size), w);
         List<OpsOrderVO> rows = p.getRecords().stream().map(this::toOpsVO).toList();
         return PageData.of(rows, p.getTotal(), page, size);
     }
 
     @Override
     public OpsOrderVO opsDetail(String subOrderNo) {
-        return toOpsVO(requireAny(subOrderNo));
+        return toOpsVO(requireInScope(subOrderNo));
     }
 
     @Override
     public List<OpsOrderVO> siblings(String parentNo) {
-        return DataScopeContext.executeWithoutScope(() ->
-                        subOrderMapper.selectList(Wrappers.<OrdSubOrder>lambdaQuery()
-                                .eq(OrdSubOrder::getOrderNo, parentNo)
-                                .orderByAsc(OrdSubOrder::getId)))
+        // 走数据域：兄弟单里不属于自己域的那几条不该出现 ——
+        // 「他这一单还买了别家什么」对配了商家域的运营来说，答案本来就该是残缺的
+        return subOrderMapper.selectList(Wrappers.<OrdSubOrder>lambdaQuery()
+                        .eq(OrdSubOrder::getOrderNo, parentNo)
+                        .orderByAsc(OrdSubOrder::getId))
                 .stream().map(this::toOpsVO).toList();
     }
 
@@ -530,10 +686,12 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
          * 落表就会过期：订单已经推进了，异常记录还挂在那里，
          * 运营会去处理一个不存在的问题。
          */
-        List<OrdSubOrder> live = DataScopeContext.executeWithoutScope(() ->
-                subOrderMapper.selectList(Wrappers.<OrdSubOrder>lambdaQuery()
+        // 走数据域（批①）：异常队列是给人去处理的待办，
+        // 列出一条自己无权处置的单，只会让人白点一次
+        List<OrdSubOrder> live = subOrderMapper.selectList(
+                Wrappers.<OrdSubOrder>lambdaQuery()
                         .in(OrdSubOrder::getStatus, OrdSubOrder.WAIT_PAY,
-                                OrdSubOrder.WAIT_FULFILL, OrdSubOrder.FULFILLING)));
+                                OrdSubOrder.WAIT_FULFILL, OrdSubOrder.FULFILLING));
 
         List<OrderExceptionVO> out = new java.util.ArrayList<>();
         for (OrdSubOrder o : live) {
@@ -556,6 +714,12 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
 
     @Override
     public List<InterventionVO> interventions(String subOrderNo) {
+        /*
+         * 先按数据域把这张单捞一次 —— `ord_status_log` 没有归属列、也不该有
+         * （它是子单的附属），所以行级可见性只能由子单代判。
+         * 不判的话，配了商家域的运营换个单号就能读到别家单的全部干预记录。
+         */
+        requireInScope(subOrderNo);
         return DataScopeContext.executeWithoutScope(() ->
                         statusLogMapper.selectList(Wrappers.<OrdStatusLog>lambdaQuery()
                                 .eq(OrdStatusLog::getSubOrderNo, subOrderNo)
@@ -604,7 +768,30 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
         return toOpsVO(sub);
     }
 
-    /** 平台侧取单：不限商家，但仍要解除数据域（运营会话没有 entity 维度）。 */
+    /**
+     * 平台侧**读**路径取单：<b>走数据域</b>（批①）。
+     *
+     * <p>域外的单在这里的表现是 {@code NOT_FOUND} 而不是 403 —— 这是刻意的：
+     * 「这张单存在但不归你管」本身就是一条信息，按单号试探能拼出别家的单量。
+     */
+    private OrdSubOrder requireInScope(String subOrderNo) {
+        OrdSubOrder sub = subOrderMapper.selectOne(Wrappers.<OrdSubOrder>lambdaQuery()
+                .eq(OrdSubOrder::getSubOrderNo, subOrderNo).last("limit 1"));
+        if (sub == null) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        return sub;
+    }
+
+    /**
+     * 平台侧**写**路径取单：解除数据域，不限商家。
+     *
+     * <p><b>写路径刻意不走数据域</b>（TDD-运营端数据域接入 §5 T2）：
+     * 写操作的越权由 {@code @PreAuthorize} + Service 内的归属校验挡。
+     * 写路径也走数据域，会把「运营处置一家不在自己域内的商家」变成
+     * <b>静默失败</b>（查不到 → NOT_FOUND，看起来像单号打错了），
+     * 而静默失败比明确拒绝更坏。
+     */
     private OrdSubOrder requireAny(String subOrderNo) {
         OrdSubOrder sub = DataScopeContext.executeWithoutScope(() ->
                 subOrderMapper.selectOne(Wrappers.<OrdSubOrder>lambdaQuery()

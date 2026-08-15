@@ -1,6 +1,6 @@
 // 商品与类目 mock（P-3）。刻意覆盖：三级树、五种模板、缺市场价的待审商品、
 // 缺资质的商家商品、超卖的预售商品 —— 每条规则都要有能验到它的样本。
-import type { GoodsAudit, Category, Sku } from "@/lib/types";
+import type { GoodsAudit, Category, Sku, SpecTemplate } from "@/lib/types";
 
 // 一期收敛后的类目树（V22 / TDD-一期主数据收敛）。**与真库逐条对齐** ——
 // 编号或资质文案与 V22 不一致的话，症状是「mock 上跑得通、连真库就找不到类目」，
@@ -85,6 +85,51 @@ export const skus: Sku[] = [
     status: "REJECTED", prices: { CN: 480, SG: 100 }, stock: 0,
     presaleQuota: 0, soldCount: 0, createdAt: "2026-08-02T02:00:00Z",
     reason: "主图含其它平台水印，请换图后重新提交",
+  },
+];
+
+/**
+ * 平台规格模板（P-3.4 / E27）。样本刻意覆盖三种情形：
+ * 按品类预置的（FRESH 的「重量」）、不限品类的（「颜色」）、已归档的（旧的一套重量档）——
+ * 少了最后一条，「归档 / 恢复」那段界面在开发期永远走不到。
+ *
+ * ⚠️ `code` 每条都有值，且**跨模板不复用**：B-4.5 的整条理由都在这上面 ——
+ * 三家店各写「5 斤」「五斤」「2.5kg」，只有 code 能把它们认成同一个规格。
+ */
+export const specTemplates: SpecTemplate[] = [
+  {
+    templateNo: "SPT901", scope: "PLATFORM", categoryType: "FRESH", name: "重量",
+    options: [
+      { code: "W_500G", label: "500g" },
+      { code: "W_1KG", label: "1kg" },
+      { code: "W_2500G", label: "2.5kg（5 斤）" },
+    ],
+    createdAt: "2026-07-01T02:00:00Z",
+  },
+  {
+    templateNo: "SPT902", scope: "PLATFORM", categoryType: "FRESH", name: "分拣等级",
+    options: [
+      { code: "GRADE_A", label: "特级" },
+      { code: "GRADE_B", label: "一级" },
+    ],
+    createdAt: "2026-07-03T02:00:00Z",
+  },
+  {
+    // 不限品类：日用、卡券都用得上，categoryType 留空
+    templateNo: "SPT903", scope: "PLATFORM", name: "颜色",
+    options: [
+      { code: "COLOR_RED", label: "红" },
+      { code: "COLOR_BLUE", label: "蓝" },
+      { code: "COLOR_BLACK", label: "黑" },
+    ],
+    createdAt: "2026-07-05T02:00:00Z",
+  },
+  {
+    // 已归档：商家侧不再下发，但历史商品还靠它解释 optionCode
+    templateNo: "SPT904", scope: "PLATFORM", categoryType: "STANDARD", name: "旧规格档（已停用）",
+    options: [{ code: "LEGACY_S", label: "小份" }, { code: "LEGACY_L", label: "大份" }],
+    createdAt: "2026-06-01T02:00:00Z",
+    archivedAt: "2026-08-01T02:00:00Z",
   },
 ];
 

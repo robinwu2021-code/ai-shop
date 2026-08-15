@@ -31,10 +31,14 @@ public class DashboardServiceImpl implements DashboardService {
 
     private final TradeStatsPort tradeStats;
     private final MerchantApplyMapper applyMapper;
+    /** 排行要显示商家名 —— platform 与 merchant 是兄弟模块，只能走 Port */
+    private final ai.neargo.shop.spi.user.MerchantQueryPort merchantPort;
 
-    public DashboardServiceImpl(TradeStatsPort tradeStats, MerchantApplyMapper applyMapper) {
+    public DashboardServiceImpl(TradeStatsPort tradeStats, MerchantApplyMapper applyMapper,
+                                ai.neargo.shop.spi.user.MerchantQueryPort merchantPort) {
         this.tradeStats = tradeStats;
         this.applyMapper = applyMapper;
+        this.merchantPort = merchantPort;
     }
 
     @Override
@@ -94,5 +98,43 @@ public class DashboardServiceImpl implements DashboardService {
         TradeStatsPort.Reach reach = tradeStats.reach();
         return List.of(new FunnelRowVO("REGISTER", reach.ordered()),
                 new FunnelRowVO("FIRST_ORDER", reach.paid()));
+    }
+
+    @Override
+    public List<MerchantRankRowVO> merchantRanking(int days, int limit) {
+        int span = Math.min(Math.max(days, 1), 90);
+        int top = Math.min(Math.max(limit, 1), 100);
+        LocalDate from = LocalDate.now().minusDays(span - 1L);
+
+        List<TradeStatsPort.MerchantTotal> totals = tradeStats.merchantTotals(from);
+        if (totals.isEmpty()) {
+            return List.of();
+        }
+        List<TradeStatsPort.MerchantTotal> head = totals.size() > top ? totals.subList(0, top) : totals;
+
+        /*
+         * 商家名批量取回来 —— 逐行查是 N+1，而这是首屏的一部分。
+         * 走 Port 不直连 merchant 域的表：platform 与 merchant 是兄弟模块。
+         */
+        Map<String, ai.neargo.shop.spi.user.MerchantQueryPort.MerchantBrief> briefs =
+                merchantPort.findAll(head.stream()
+                        .map(TradeStatsPort.MerchantTotal::merchantNo)
+                        .collect(java.util.stream.Collectors.toSet()));
+
+        return head.stream().map(t -> {
+            var brief = briefs.get(t.merchantNo());
+            // 无单时客单价 0 而不是除零 —— 与 kpi() 同一口径
+            long avg = t.orderCount() == 0 ? 0L : t.gmv() / t.orderCount();
+            /*
+             * 分母是**总成交单数**（在售的 + 已退的），不是只有在售的。
+             * 只用在售的话，一家单子全退光的商家分母为 0、率显示 0% ——
+             * 而它恰恰是这一列要揪出来的那家。
+             */
+            long sold = t.orderCount() + t.refundedCount();
+            double rate = sold == 0 ? 0d : (double) t.afterSaleCount() / sold;
+            return new MerchantRankRowVO(t.merchantNo(),
+                    brief == null ? t.merchantNo() : brief.merchantName(),
+                    t.gmv(), t.orderCount(), avg, t.afterSaleCount(), rate);
+        }).toList();
     }
 }

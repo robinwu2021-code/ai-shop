@@ -68,7 +68,7 @@ CREATE TABLE IF NOT EXISTS ful_batch
     pickup_no VARCHAR(64) NOT NULL,
     arrive_date VARCHAR(16) NOT NULL,
     total_qty INT(11) NOT NULL DEFAULT 0,
-    status VARCHAR(16) NOT NULL DEFAULT 'PENDING',
+    status VARCHAR(16) NOT NULL DEFAULT 'PLANNED',
     received_at BIGINT(20) DEFAULT NULL,
     received_by VARCHAR(64) DEFAULT NULL,
     tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
@@ -78,6 +78,9 @@ CREATE TABLE IF NOT EXISTS ful_batch
     updated_by VARCHAR(64) DEFAULT NULL,
     version BIGINT(20) NOT NULL DEFAULT 0,
     deleted TINYINT(4) NOT NULL DEFAULT 0,
+    community_no VARCHAR(64) DEFAULT NULL,
+    plan_arrive_at BIGINT(20) DEFAULT NULL,
+    vehicle VARCHAR(64) DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_batch_no UNIQUE (batch_no)
 );
@@ -155,6 +158,11 @@ CREATE TABLE IF NOT EXISTS mkt_attribution_log
     at BIGINT(20) NOT NULL,
     tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
     created_at DATETIME NOT NULL,
+    trace_no VARCHAR(64) DEFAULT NULL,
+    device_id VARCHAR(64) DEFAULT NULL,
+    ip VARCHAR(64) DEFAULT NULL,
+    order_no VARCHAR(64) DEFAULT NULL,
+    risk_signals VARCHAR(255) DEFAULT NULL,
     PRIMARY KEY (id)
 );
 
@@ -173,7 +181,7 @@ CREATE TABLE IF NOT EXISTS mkt_campaign
     flash_price_minor BIGINT(20) DEFAULT NULL,
     buy_n INT(11) DEFAULT NULL,
     gift_m INT(11) DEFAULT NULL,
-    goods_nos JSON DEFAULT NULL,
+    goods_nos TEXT DEFAULT NULL,
     total_count INT(11) DEFAULT NULL,
     taken_count INT(11) NOT NULL DEFAULT 0,
     used_count INT(11) NOT NULL DEFAULT 0,
@@ -595,6 +603,7 @@ CREATE TABLE IF NOT EXISTS ord_sub_order
     receiver_name VARCHAR(64) DEFAULT NULL,
     receiver_phone VARCHAR(32) DEFAULT NULL,
     receiver_address VARCHAR(255) DEFAULT NULL,
+    community_no VARCHAR(64) DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_sub_order_no UNIQUE (sub_order_no),
     CONSTRAINT uk_verify_code UNIQUE (verify_code)
@@ -679,9 +688,10 @@ CREATE TABLE IF NOT EXISTS prd_goods
     points_config INT(11) DEFAULT NULL,
     group_price_minor BIGINT(20) DEFAULT NULL,
     group_min_count INT(11) DEFAULT NULL,
-    sellable_override JSON DEFAULT NULL,
+    sellable_override TEXT DEFAULT NULL,
     title_i18n TEXT DEFAULT NULL,
     subtitle_i18n TEXT DEFAULT NULL,
+    audit_reason VARCHAR(512) DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_goods_no UNIQUE (goods_no)
 );
@@ -707,6 +717,10 @@ CREATE TABLE IF NOT EXISTS prd_sku
     updated_by VARCHAR(64) DEFAULT NULL,
     version BIGINT(20) NOT NULL DEFAULT 0,
     deleted TINYINT(4) NOT NULL DEFAULT 0,
+    presale_quota INT(11) NOT NULL DEFAULT 0,
+    sold_count INT(11) NOT NULL DEFAULT 0,
+    cutoff_at DATETIME DEFAULT NULL,
+    arrive_at DATETIME DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_entity_sku_market UNIQUE (entity_no,sku_no,market)
 );
@@ -718,7 +732,7 @@ CREATE TABLE IF NOT EXISTS prd_spec_template
     scope VARCHAR(16) NOT NULL DEFAULT 'MERCHANT',
     category_type VARCHAR(16) DEFAULT NULL,
     name VARCHAR(64) NOT NULL,
-    options JSON NOT NULL,
+    options TEXT NOT NULL,
     entity_no VARCHAR(64) DEFAULT NULL,
     tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
     created_at DATETIME NOT NULL,
@@ -727,6 +741,7 @@ CREATE TABLE IF NOT EXISTS prd_spec_template
     updated_by VARCHAR(64) DEFAULT NULL,
     version BIGINT(20) NOT NULL DEFAULT 0,
     deleted TINYINT(4) NOT NULL DEFAULT 0,
+    status VARCHAR(16) NOT NULL DEFAULT 'ACTIVE',
     PRIMARY KEY (id),
     CONSTRAINT uk_template_no UNIQUE (template_no)
 );
@@ -748,6 +763,7 @@ CREATE TABLE IF NOT EXISTS prd_stock_lock
     version BIGINT(20) NOT NULL DEFAULT 0,
     deleted TINYINT(4) NOT NULL DEFAULT 0,
     store_no VARCHAR(64) DEFAULT NULL,
+    presale TINYINT(4) NOT NULL DEFAULT 0,
     PRIMARY KEY (id)
 );
 
@@ -813,7 +829,7 @@ CREATE TABLE IF NOT EXISTS rvw_appeal
     review_no VARCHAR(64) NOT NULL,
     entity_no VARCHAR(64) NOT NULL,
     reason VARCHAR(512) NOT NULL,
-    images JSON DEFAULT NULL,
+    images TEXT DEFAULT NULL,
     status VARCHAR(16) NOT NULL DEFAULT 'PENDING',
     submitted_at BIGINT(20) NOT NULL,
     verdict VARCHAR(512) DEFAULT NULL,
@@ -848,14 +864,14 @@ CREATE TABLE IF NOT EXISTS rvw_review
     score_fulfillment TINYINT(4) DEFAULT NULL,
     score_service TINYINT(4) DEFAULT NULL,
     content VARCHAR(1024) DEFAULT NULL,
-    images JSON DEFAULT NULL,
+    images TEXT DEFAULT NULL,
     spec VARCHAR(255) DEFAULT NULL,
     like_count INT(11) NOT NULL DEFAULT 0,
     reply VARCHAR(512) DEFAULT NULL,
     replied_at BIGINT(20) DEFAULT NULL,
     status VARCHAR(16) NOT NULL DEFAULT 'PASSED',
     reject_reason VARCHAR(255) DEFAULT NULL,
-    risk_flags JSON DEFAULT NULL,
+    risk_flags TEXT DEFAULT NULL,
     tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
     created_at DATETIME NOT NULL,
     created_by VARCHAR(64) DEFAULT NULL,
@@ -863,6 +879,7 @@ CREATE TABLE IF NOT EXISTS rvw_review
     updated_by VARCHAR(64) DEFAULT NULL,
     version BIGINT(20) NOT NULL DEFAULT 0,
     deleted TINYINT(4) NOT NULL DEFAULT 0,
+    store_no VARCHAR(32) DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_review_no UNIQUE (review_no),
     CONSTRAINT uk_order_goods UNIQUE (sub_order_no,goods_no)
@@ -1139,8 +1156,8 @@ CREATE TABLE IF NOT EXISTS sys_pay_channel
     supports_subsidy TINYINT(4) NOT NULL DEFAULT 0,
     supports_split TINYINT(4) NOT NULL DEFAULT 1,
     supports_payout TINYINT(4) NOT NULL DEFAULT 0,
-    pay_methods JSON DEFAULT NULL,
-    markets JSON DEFAULT NULL,
+    pay_methods TEXT DEFAULT NULL,
+    markets TEXT DEFAULT NULL,
     pool_account_ref VARCHAR(64) DEFAULT NULL,
     tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
     created_at DATETIME NOT NULL,
@@ -1335,7 +1352,7 @@ CREATE TABLE IF NOT EXISTS mch_payment_merchant
     channel_apply_no VARCHAR(64) DEFAULT NULL,
     apply_status VARCHAR(16) NOT NULL DEFAULT 'NONE',
     reject_reason VARCHAR(512) DEFAULT NULL,
-    pay_methods JSON DEFAULT NULL,
+    pay_methods TEXT DEFAULT NULL,
     invoice_capable TINYINT(4) NOT NULL DEFAULT 0,
     settle_account_type VARCHAR(24) DEFAULT NULL,
     settle_account_masked VARCHAR(64) DEFAULT NULL,
@@ -1427,6 +1444,12 @@ CREATE TABLE IF NOT EXISTS mch_store
     delivery_fee_minor BIGINT(20) NOT NULL DEFAULT 0,
     delivery_free_threshold_minor BIGINT(20) NOT NULL DEFAULT 0,
     business_mode VARCHAR(16) NOT NULL DEFAULT 'SELF_OPERATED',
+    plan_suspended TINYINT NOT NULL DEFAULT 0,
+    rating INT(11) NOT NULL DEFAULT 0,
+    rating_count INT(11) NOT NULL DEFAULT 0,
+    score_goods INT(11) NOT NULL DEFAULT 0,
+    score_service INT(11) NOT NULL DEFAULT 0,
+    score_speed INT(11) NOT NULL DEFAULT 0,
     PRIMARY KEY (id),
     CONSTRAINT uk_store_no UNIQUE (store_no)
 );
@@ -1547,6 +1570,7 @@ CREATE TABLE IF NOT EXISTS mch_violation
     updated_by VARCHAR(64) DEFAULT NULL,
     version BIGINT(20) NOT NULL DEFAULT 0,
     deleted TINYINT(4) NOT NULL DEFAULT 0,
+    store_no VARCHAR(64) DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_violation_no UNIQUE (violation_no)
 );
@@ -1609,6 +1633,7 @@ CREATE TABLE IF NOT EXISTS prd_store_goods
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     deleted TINYINT(4) NOT NULL DEFAULT 0,
+    platform_suspended TINYINT NOT NULL DEFAULT 0,
     PRIMARY KEY (id),
     CONSTRAINT uk_store_goods UNIQUE (store_no,goods_no)
 );
@@ -2147,7 +2172,6 @@ CREATE TABLE IF NOT EXISTS sys_notify_log
     operator_no     VARCHAR(32),
     client_ip       VARCHAR(64),
     created_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    template_no VARCHAR(64) DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_notify_no UNIQUE (notify_no)
 );
@@ -2222,6 +2246,410 @@ CREATE TABLE IF NOT EXISTS msg_push_token
     deleted TINYINT(4) NOT NULL DEFAULT 0,
     PRIMARY KEY (id),
     CONSTRAINT uk_push_token_receiver UNIQUE (receiver_type, receiver_no, platform)
+);
+
+CREATE TABLE IF NOT EXISTS stl_withdraw
+(
+    id BIGINT(20) NOT NULL AUTO_INCREMENT,
+    withdraw_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    merchant_name VARCHAR(128) DEFAULT NULL,
+    amount_minor BIGINT(20) NOT NULL,
+    available_balance_minor BIGINT(20) NOT NULL DEFAULT 0,
+    bank_account_masked VARCHAR(64) DEFAULT NULL,
+    status VARCHAR(16) NOT NULL DEFAULT 'PENDING',
+    applied_at BIGINT(20) NOT NULL,
+    decided_at BIGINT(20) DEFAULT NULL,
+    decided_by VARCHAR(64) DEFAULT NULL,
+    remark VARCHAR(255) DEFAULT NULL,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT(20) NOT NULL DEFAULT 0,
+    deleted TINYINT(4) NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_stl_withdraw UNIQUE (withdraw_no)
+);
+
+CREATE TABLE IF NOT EXISTS stl_settle_invoice
+(
+    id BIGINT(20) NOT NULL AUTO_INCREMENT,
+    invoice_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    merchant_name VARCHAR(128) DEFAULT NULL,
+    period VARCHAR(16) NOT NULL,
+    amount_minor BIGINT(20) NOT NULL,
+    settled_amount_minor BIGINT(20) NOT NULL DEFAULT 0,
+    title_type VARCHAR(16) NOT NULL DEFAULT 'COMPANY',
+    title VARCHAR(128) NOT NULL,
+    tax_no VARCHAR(32) DEFAULT NULL,
+    status VARCHAR(16) NOT NULL DEFAULT 'PENDING',
+    serial_no VARCHAR(64) DEFAULT NULL,
+    applied_at BIGINT(20) NOT NULL,
+    decided_at BIGINT(20) DEFAULT NULL,
+    decided_by VARCHAR(64) DEFAULT NULL,
+    remark VARCHAR(255) DEFAULT NULL,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT(20) NOT NULL DEFAULT 0,
+    deleted TINYINT(4) NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_stl_settle_invoice UNIQUE (invoice_no),
+    CONSTRAINT uk_stl_settle_invoice_period UNIQUE (entity_no, period, deleted)
+);
+
+CREATE TABLE IF NOT EXISTS risk_event
+(
+    id            BIGINT       NOT NULL AUTO_INCREMENT,
+    risk_event_no VARCHAR(64)  NOT NULL,
+    type          VARCHAR(32)  NOT NULL,
+    subject_type  VARCHAR(16)  NOT NULL,
+    subject       VARCHAR(64)  NOT NULL,
+    subject_name  VARCHAR(128),
+    signals       VARCHAR(512) NOT NULL DEFAULT '',
+    refs          VARCHAR(1024) NOT NULL DEFAULT '',
+    hit_count     INT          NOT NULL DEFAULT 1,
+    status        VARCHAR(16)  NOT NULL DEFAULT 'PENDING',
+    verdict       VARCHAR(512),
+    decided_by    VARCHAR(64),
+    decided_at    DATETIME,
+    dedup_key     VARCHAR(160) NOT NULL,
+    tenant_no     VARCHAR(32)  NOT NULL DEFAULT 'MAIN',
+    created_at    DATETIME     NOT NULL,
+    created_by    VARCHAR(64)           DEFAULT NULL,
+    updated_at    DATETIME     NOT NULL,
+    updated_by    VARCHAR(64)           DEFAULT NULL,
+    version       BIGINT       NOT NULL DEFAULT 0,
+    deleted       TINYINT      NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_risk_event_no UNIQUE (risk_event_no),
+    CONSTRAINT uk_risk_event_dedup UNIQUE (dedup_key)
+);
+
+CREATE TABLE IF NOT EXISTS risk_signal_hit
+(
+    id           BIGINT       NOT NULL AUTO_INCREMENT,
+    type         VARCHAR(32)  NOT NULL,
+    subject_type VARCHAR(16)  NOT NULL,
+    subject      VARCHAR(64)  NOT NULL,
+    evidence_ref VARCHAR(64)  NOT NULL,
+    detail       VARCHAR(255),
+    hit_at       BIGINT       NOT NULL,
+    tenant_no    VARCHAR(32)  NOT NULL DEFAULT 'MAIN',
+    created_at   DATETIME     NOT NULL,
+    created_by   VARCHAR(64)           DEFAULT NULL,
+    updated_at   DATETIME     NOT NULL,
+    updated_by   VARCHAR(64)           DEFAULT NULL,
+    version      BIGINT       NOT NULL DEFAULT 0,
+    deleted      TINYINT      NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_risk_hit_ref UNIQUE (type, evidence_ref)
+);
+
+CREATE TABLE IF NOT EXISTS risk_blacklist
+(
+    id             BIGINT       NOT NULL AUTO_INCREMENT,
+    black_no       VARCHAR(64)  NOT NULL,
+    subject_type   VARCHAR(16)  NOT NULL,
+    subject        VARCHAR(64)  NOT NULL,
+    subject_name   VARCHAR(128),
+    reason         VARCHAR(512) NOT NULL,
+    until_at       DATETIME     NOT NULL,
+    appeal_status  VARCHAR(16)  NOT NULL DEFAULT 'NONE',
+    appeal_reason  VARCHAR(512),
+    appeal_verdict VARCHAR(512),
+    active         TINYINT      NOT NULL DEFAULT 1,
+    tenant_no      VARCHAR(32)  NOT NULL DEFAULT 'MAIN',
+    created_at     DATETIME     NOT NULL,
+    created_by     VARCHAR(64)           DEFAULT NULL,
+    updated_at     DATETIME     NOT NULL,
+    updated_by     VARCHAR(64)           DEFAULT NULL,
+    version        BIGINT       NOT NULL DEFAULT 0,
+    deleted        TINYINT      NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_risk_black_no UNIQUE (black_no)
+);
+
+CREATE TABLE IF NOT EXISTS risk_rule
+(
+    id           BIGINT      NOT NULL AUTO_INCREMENT,
+    type         VARCHAR(32) NOT NULL,
+    threshold    INT         NOT NULL,
+    window_hours INT         NOT NULL DEFAULT 24,
+    auto_block   TINYINT     NOT NULL DEFAULT 0,
+    tenant_no    VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at   DATETIME    NOT NULL,
+    created_by   VARCHAR(64)          DEFAULT NULL,
+    updated_at   DATETIME    NOT NULL,
+    updated_by   VARCHAR(64)          DEFAULT NULL,
+    version      BIGINT      NOT NULL DEFAULT 0,
+    deleted      TINYINT     NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_risk_rule_type UNIQUE (type)
+);
+
+CREATE TABLE IF NOT EXISTS mkt_attribution_rule
+(
+    id               BIGINT      NOT NULL AUTO_INCREMENT,
+    rule_key         VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    priority         VARCHAR(64) NOT NULL DEFAULT 'STORE_CODE,INVITER,CHANNEL',
+    window_days      INT         NOT NULL DEFAULT 30,
+    conflict_policy  VARCHAR(16) NOT NULL DEFAULT 'OVERWRITE',
+    new_user_factors VARCHAR(32) NOT NULL DEFAULT 'DEVICE,PHONE',
+    tenant_no        VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at       DATETIME    NOT NULL,
+    created_by       VARCHAR(64)          DEFAULT NULL,
+    updated_at       DATETIME    NOT NULL,
+    updated_by       VARCHAR(64)          DEFAULT NULL,
+    version          BIGINT      NOT NULL DEFAULT 0,
+    deleted          TINYINT     NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_attr_rule_key UNIQUE (rule_key)
+);
+
+CREATE TABLE IF NOT EXISTS mkt_fission_campaign
+(
+    id              BIGINT      NOT NULL AUTO_INCREMENT,
+    fission_no      VARCHAR(64) NOT NULL,
+    name            VARCHAR(128) NOT NULL,
+    reward_type     VARCHAR(16) NOT NULL DEFAULT 'COUPON',
+    coupon_no       VARCHAR(64) NOT NULL,
+    inviter_count   INT         NOT NULL DEFAULT 0,
+    invitee_count   INT         NOT NULL DEFAULT 0,
+    enabled         TINYINT     NOT NULL DEFAULT 0,
+    invited_count   INT         NOT NULL DEFAULT 0,
+    converted_count INT         NOT NULL DEFAULT 0,
+    tenant_no       VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at      DATETIME    NOT NULL,
+    created_by      VARCHAR(64)          DEFAULT NULL,
+    updated_at      DATETIME    NOT NULL,
+    updated_by      VARCHAR(64)          DEFAULT NULL,
+    version         BIGINT      NOT NULL DEFAULT 0,
+    deleted         TINYINT     NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_fission_no UNIQUE (fission_no)
+);
+
+CREATE TABLE IF NOT EXISTS mkt_fission_invite
+(
+    id           BIGINT      NOT NULL AUTO_INCREMENT,
+    fission_no   VARCHAR(64) NOT NULL,
+    inviter_no   VARCHAR(64) NOT NULL,
+    invitee_no   VARCHAR(64) NOT NULL,
+    device_id    VARCHAR(64),
+    phone_tail   VARCHAR(8),
+    is_new_user  TINYINT     NOT NULL DEFAULT 1,
+    rewarded     TINYINT     NOT NULL DEFAULT 0,
+    reward_error VARCHAR(255),
+    order_no     VARCHAR(64),
+    tenant_no    VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at   DATETIME    NOT NULL,
+    created_by   VARCHAR(64)          DEFAULT NULL,
+    updated_at   DATETIME    NOT NULL,
+    updated_by   VARCHAR(64)          DEFAULT NULL,
+    version      BIGINT      NOT NULL DEFAULT 0,
+    deleted      TINYINT     NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_fission_invitee UNIQUE (fission_no, invitee_no)
+);
+
+CREATE TABLE IF NOT EXISTS ful_shortage_report
+(
+    id BIGINT(20) NOT NULL AUTO_INCREMENT,
+    sub_order_no VARCHAR(64) NOT NULL,
+    pickup_no VARCHAR(64) NOT NULL,
+    sku_no VARCHAR(64) DEFAULT NULL,
+    kind VARCHAR(16) NOT NULL DEFAULT 'SHORTAGE',
+    qty INT(11) NOT NULL DEFAULT 1,
+    note VARCHAR(255) DEFAULT NULL,
+    reporter_no VARCHAR(64) DEFAULT NULL,
+    at BIGINT(20) NOT NULL,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT(20) NOT NULL DEFAULT 0,
+    deleted TINYINT(4) NOT NULL DEFAULT 0,
+    PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS ful_shipment
+(
+    id BIGINT(20) NOT NULL AUTO_INCREMENT,
+    shipment_no VARCHAR(64) NOT NULL,
+    sub_order_no VARCHAR(64) NOT NULL,
+    carrier VARCHAR(16) NOT NULL,
+    waybill_no VARCHAR(64) DEFAULT NULL,
+    status VARCHAR(16) NOT NULL DEFAULT 'CREATED',
+    receiver VARCHAR(64) DEFAULT NULL,
+    region VARCHAR(64) DEFAULT NULL,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT(20) NOT NULL DEFAULT 0,
+    deleted TINYINT(4) NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_shipment_no UNIQUE (shipment_no),
+    CONSTRAINT uk_shipment_sub_order UNIQUE (sub_order_no)
+);
+
+CREATE TABLE IF NOT EXISTS ful_shipment_trace
+(
+    id BIGINT(20) NOT NULL AUTO_INCREMENT,
+    shipment_no VARCHAR(64) NOT NULL,
+    at BIGINT(20) NOT NULL,
+    text VARCHAR(255) NOT NULL,
+    location VARCHAR(64) DEFAULT NULL,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS ful_freight_template
+(
+    id BIGINT(20) NOT NULL AUTO_INCREMENT,
+    template_no VARCHAR(64) NOT NULL,
+    name VARCHAR(128) NOT NULL,
+    first_weight_gram INT(11) NOT NULL DEFAULT 1000,
+    first_fee BIGINT(20) NOT NULL DEFAULT 0,
+    add_weight_gram INT(11) NOT NULL DEFAULT 500,
+    add_fee BIGINT(20) NOT NULL DEFAULT 0,
+    free_threshold BIGINT(20) NOT NULL DEFAULT 0,
+    is_default TINYINT(4) NOT NULL DEFAULT 0,
+    out_of_range TEXT DEFAULT NULL,
+    archived_at BIGINT(20) DEFAULT NULL,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT(20) NOT NULL DEFAULT 0,
+    deleted TINYINT(4) NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_freight_template_no UNIQUE (template_no)
+);
+
+CREATE TABLE IF NOT EXISTS ful_carrier
+(
+    id BIGINT(20) NOT NULL AUTO_INCREMENT,
+    carrier VARCHAR(16) NOT NULL,
+    name VARCHAR(64) NOT NULL,
+    enabled TINYINT(4) NOT NULL DEFAULT 0,
+    priority INT(11) NOT NULL DEFAULT 1,
+    account_masked VARCHAR(64) DEFAULT NULL,
+    api_key_configured TINYINT(4) NOT NULL DEFAULT 0,
+    pickup_cutoff VARCHAR(8) NOT NULL DEFAULT '17:00',
+    sla_hours INT(11) NOT NULL DEFAULT 48,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT(20) NOT NULL DEFAULT 0,
+    deleted TINYINT(4) NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_carrier UNIQUE (carrier),
+    CONSTRAINT uk_carrier_priority UNIQUE (priority)
+);
+
+CREATE TABLE IF NOT EXISTS sys_merchant_plan_def
+(
+    id                BIGINT       NOT NULL AUTO_INCREMENT,
+    plan_code         VARCHAR(16)  NOT NULL,
+    name              VARCHAR(64)  NOT NULL,
+    store_quota       INT          NOT NULL DEFAULT 1,
+    staff_quota       INT          NOT NULL DEFAULT 0,
+    cross_store_stats TINYINT      NOT NULL DEFAULT 0,
+    trial_days        INT          NOT NULL DEFAULT 0,
+    enabled           TINYINT      NOT NULL DEFAULT 1,
+    sort              INT          NOT NULL DEFAULT 0,
+    tenant_no         VARCHAR(32)  NOT NULL DEFAULT 'MAIN',
+    created_at        DATETIME     NOT NULL,
+    created_by        VARCHAR(64)           DEFAULT NULL,
+    updated_at        DATETIME     NOT NULL,
+    updated_by        VARCHAR(64)           DEFAULT NULL,
+    version           BIGINT       NOT NULL DEFAULT 0,
+    deleted           TINYINT      NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_plan_code UNIQUE (plan_code)
+);
+
+CREATE TABLE IF NOT EXISTS mch_entity_plan
+(
+    id             BIGINT       NOT NULL AUTO_INCREMENT,
+    entity_no      VARCHAR(64)  NOT NULL,
+    plan_code      VARCHAR(16)  NOT NULL DEFAULT 'FREE',
+    store_quota    INT          NOT NULL DEFAULT 1,
+    staff_quota    INT          NOT NULL DEFAULT 0,
+    cross_store_stats TINYINT   NOT NULL DEFAULT 0,
+    store_quota_override INT             DEFAULT NULL,
+    staff_quota_override INT             DEFAULT NULL,
+    status         VARCHAR(16)  NOT NULL DEFAULT 'ACTIVE',
+    start_at       BIGINT                DEFAULT NULL,
+    expire_at      BIGINT                DEFAULT NULL,
+    granted_by     VARCHAR(16)  NOT NULL DEFAULT 'SELF_PAID',
+    trial_used     TINYINT      NOT NULL DEFAULT 0,
+    downgraded_at  BIGINT                DEFAULT NULL,
+    tenant_no      VARCHAR(32)  NOT NULL DEFAULT 'MAIN',
+    created_at     DATETIME     NOT NULL,
+    created_by     VARCHAR(64)           DEFAULT NULL,
+    updated_at     DATETIME     NOT NULL,
+    updated_by     VARCHAR(64)           DEFAULT NULL,
+    version        BIGINT       NOT NULL DEFAULT 0,
+    deleted        TINYINT      NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_entity_plan UNIQUE (entity_no)
+);
+
+CREATE TABLE IF NOT EXISTS sys_media_asset
+(
+    id                 BIGINT       NOT NULL AUTO_INCREMENT,
+    asset_key          VARCHAR(255) NOT NULL,
+    entity_no          VARCHAR(64)  NOT NULL,
+    store_no           VARCHAR(64)  NOT NULL,
+    biz_type           VARCHAR(16)  NOT NULL,
+    bytes              BIGINT       NOT NULL,
+    width              INT                   DEFAULT NULL,
+    height             INT                   DEFAULT NULL,
+    content_type       VARCHAR(64)           DEFAULT NULL,
+    status             VARCHAR(16)  NOT NULL DEFAULT 'PENDING',
+    last_referenced_at DATETIME              DEFAULT NULL,
+    last_ref_desc      VARCHAR(128)          DEFAULT NULL,
+    marked_at          DATETIME              DEFAULT NULL,
+    uploaded_by        VARCHAR(64)           DEFAULT NULL,
+    purge_batch_no     VARCHAR(64)           DEFAULT NULL,
+    created_at         DATETIME     NOT NULL,
+    updated_at         DATETIME     NOT NULL,
+    purged_at          DATETIME              DEFAULT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_asset_key UNIQUE (asset_key)
+);
+
+CREATE TABLE IF NOT EXISTS sys_media_purge_batch
+(
+    id            BIGINT       NOT NULL AUTO_INCREMENT,
+    batch_no      VARCHAR(64)  NOT NULL,
+    operator      VARCHAR(64)  NOT NULL,
+    operator_name VARCHAR(64)           DEFAULT NULL,
+    status        VARCHAR(16)  NOT NULL DEFAULT 'QUEUED',
+    total_count   INT          NOT NULL DEFAULT 0,
+    total_bytes   BIGINT       NOT NULL DEFAULT 0,
+    purged_count  INT          NOT NULL DEFAULT 0,
+    failed_count  INT          NOT NULL DEFAULT 0,
+    started_at    DATETIME              DEFAULT NULL,
+    finished_at   DATETIME              DEFAULT NULL,
+    created_at    DATETIME     NOT NULL,
+    updated_at    DATETIME     NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_media_batch_no UNIQUE (batch_no)
 );
 
 -- 种子数据
@@ -3947,6 +4375,198 @@ UPDATE sys_legal_form
 UPDATE sys_legal_form
    SET remark = CONCAT(remark, '。走【特约商户进件】，subject_type=SUBJECT_TYPE_ENTERPRISE')
  WHERE legal_form = 'ENTERPRISE' AND remark NOT LIKE '%特约商户进件%';
+INSERT INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at)
+SELECT 'OPS_MERCHANT__TAB_STORES', 'OPS_MERCHANT', '门店档案', '入驻与资质', '/merchants?tab=stores', 'merchant:merchant:read', 'merchant:merchant:read', 'IMPLEMENTED', 0, 'P-11.2', 'MENU', 25, NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_function_point x WHERE x.point_code='OPS_MERCHANT__TAB_STORES');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'SUPER_ADMIN', 'OPS_MERCHANT__TAB_STORES', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPER_ADMIN' AND x.point_code='OPS_MERCHANT__TAB_STORES');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'BD', 'OPS_MERCHANT__TAB_STORES', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='BD' AND x.point_code='OPS_MERCHANT__TAB_STORES');
+INSERT INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at)
+SELECT 'OPS_PRODUCT__TAB_TEMPLATES', 'OPS_PRODUCT', '规格模板维护', '规格模板', '/products?tab=templates', 'product:category:read', 'product:category:read', 'IMPLEMENTED', 1, 'P-3.4', 'MENU', 50, NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_function_point x WHERE x.point_code='OPS_PRODUCT__TAB_TEMPLATES');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'SUPER_ADMIN', 'OPS_PRODUCT__TAB_TEMPLATES', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPER_ADMIN' AND x.point_code='OPS_PRODUCT__TAB_TEMPLATES');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'GOODS_OPS', 'OPS_PRODUCT__TAB_TEMPLATES', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='GOODS_OPS' AND x.point_code='OPS_PRODUCT__TAB_TEMPLATES');
+UPDATE sys_function_point
+   SET perm_code = 'finance:withdraw:approve', backend_status = 'IMPLEMENTED', updated_at = NOW()
+ WHERE point_code = 'OPS_FINANCE__TAB_WITHDRAW';
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'FINANCE', 'OPS_FINANCE__TAB_WITHDRAW', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x
+                    WHERE x.role_code = 'FINANCE'
+                      AND x.point_code = 'OPS_FINANCE__TAB_WITHDRAW');
+UPDATE ful_batch SET status = 'PLANNED' WHERE status = 'PENDING';
+UPDATE ful_batch SET status = 'SIGNED' WHERE status = 'RECEIVED';
+INSERT INTO ful_freight_template
+(template_no, name, first_weight_gram, first_fee, add_weight_gram, add_fee, free_threshold, is_default, out_of_range, tenant_no, created_at, created_by, updated_at, updated_by, version, deleted)
+VALUES
+('FT0001', '默认运费模板', 1000, 800, 500, 200, 9900, 1,
+ '[{"region":"新疆维吾尔自治区","action":"SURCHARGE","surcharge":2000},{"region":"西藏自治区","action":"REJECT","surcharge":0}]',
+ 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0);
+INSERT INTO ful_carrier
+(carrier, name, enabled, priority, account_masked, api_key_configured, pickup_cutoff, sla_hours, tenant_no, created_at, created_by, updated_at, updated_by, version, deleted)
+VALUES
+('SF', '顺丰速运', 1, 1, 'SF-****-8821', 1, '17:00', 48, 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0);
+INSERT INTO ful_carrier
+(carrier, name, enabled, priority, account_masked, api_key_configured, pickup_cutoff, sla_hours, tenant_no, created_at, created_by, updated_at, updated_by, version, deleted)
+VALUES
+('JD', '京东物流', 1, 2, 'JD-****-3390', 1, '16:30', 72, 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0);
+INSERT INTO ful_carrier
+(carrier, name, enabled, priority, account_masked, api_key_configured, pickup_cutoff, sla_hours, tenant_no, created_at, created_by, updated_at, updated_by, version, deleted)
+VALUES
+('YTO', '圆通速递', 0, 3, NULL, 0, '18:00', 96, 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0);
+UPDATE sys_function_point SET perm_code = 'fulfillment:batch:read', backend_status = 'IMPLEMENTED', ui_ready = 1
+ WHERE point_code = 'OPS_FULFILLMENT';
+UPDATE sys_function_point SET perm_code = 'fulfillment:batch:read', backend_status = 'IMPLEMENTED', ui_ready = 1
+ WHERE point_code = 'OPS_FULFILLMENT__TAB_SORTING';
+UPDATE sys_function_point SET perm_code = 'fulfillment:redeem:read', backend_status = 'IMPLEMENTED', ui_ready = 1
+ WHERE point_code = 'OPS_FULFILLMENT__TAB_REDEEM';
+UPDATE sys_function_point SET perm_code = 'fulfillment:rule:update', backend_status = 'IMPLEMENTED', ui_ready = 1
+ WHERE point_code = 'OPS_FULFILLMENT__TAB_OVERDUE';
+UPDATE sys_function_point SET perm_code = 'fulfillment:logistics:read', backend_status = 'IMPLEMENTED', ui_ready = 1
+ WHERE point_code = 'OPS_FULFILLMENT__TAB_EXPRESS';
+UPDATE sys_function_point SET perm_code = 'fulfillment:rule:update', backend_status = 'IMPLEMENTED', ui_ready = 1
+ WHERE point_code = 'OPS_FULFILLMENT__TAB_FREIGHT';
+UPDATE sys_function_point SET perm_code = 'fulfillment:logistics:read', backend_status = 'IMPLEMENTED', ui_ready = 1
+ WHERE point_code = 'OPS_FULFILLMENT__TAB_CARRIER';
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'COMMUNITY_OPS', 'OPS_FULFILLMENT', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='COMMUNITY_OPS' AND x.point_code='OPS_FULFILLMENT');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'COMMUNITY_OPS', 'OPS_FULFILLMENT__TAB_SORTING', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='COMMUNITY_OPS' AND x.point_code='OPS_FULFILLMENT__TAB_SORTING');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'COMMUNITY_OPS', 'OPS_FULFILLMENT__TAB_REDEEM', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='COMMUNITY_OPS' AND x.point_code='OPS_FULFILLMENT__TAB_REDEEM');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'COMMUNITY_OPS', 'OPS_FULFILLMENT__TAB_OVERDUE', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='COMMUNITY_OPS' AND x.point_code='OPS_FULFILLMENT__TAB_OVERDUE');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'COMMUNITY_OPS', 'OPS_FULFILLMENT__TAB_EXPRESS', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='COMMUNITY_OPS' AND x.point_code='OPS_FULFILLMENT__TAB_EXPRESS');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'COMMUNITY_OPS', 'OPS_FULFILLMENT__TAB_FREIGHT', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='COMMUNITY_OPS' AND x.point_code='OPS_FULFILLMENT__TAB_FREIGHT');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'COMMUNITY_OPS', 'OPS_FULFILLMENT__TAB_CARRIER', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='COMMUNITY_OPS' AND x.point_code='OPS_FULFILLMENT__TAB_CARRIER');
+INSERT INTO sys_function (function_code, name, end_code, icon, href, sort, enabled, created_at, updated_at)
+SELECT 'OPS_GROWTH', '增长与归因', 'OPS', 'TrendingUp', '/growth', 100, 1, NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_function x WHERE x.function_code='OPS_GROWTH');
+INSERT INTO sys_function (function_code, name, end_code, icon, href, sort, enabled, created_at, updated_at)
+SELECT 'OPS_RISK', '风控', 'OPS', 'ShieldAlert', '/risk', 160, 1, NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_function x WHERE x.function_code='OPS_RISK');
+INSERT INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at)
+SELECT 'OPS_GROWTH', 'OPS_GROWTH', '归因规则', '归因引擎', '/growth', 'growth:attribution:read', 'growth:attribution:read', 'IMPLEMENTED', 1, 'P-9.1', 'MENU', 10, NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_function_point x WHERE x.point_code='OPS_GROWTH');
+INSERT INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at)
+SELECT 'OPS_GROWTH__TAB_TRACES', 'OPS_GROWTH', '归因链路审计', '归因引擎', '/growth?tab=traces', 'growth:attribution:read', 'growth:attribution:read', 'IMPLEMENTED', 1, 'P-9.1', 'MENU', 20, NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_function_point x WHERE x.point_code='OPS_GROWTH__TAB_TRACES');
+INSERT INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at)
+SELECT 'OPS_GROWTH__TAB_FISSION', 'OPS_GROWTH', '邀请有礼配置', '裂变活动', '/growth?tab=fission', 'growth:fission:update', 'growth:fission:update', 'IMPLEMENTED', 1, 'P-9.2', 'MENU', 30, NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_function_point x WHERE x.point_code='OPS_GROWTH__TAB_FISSION');
+INSERT INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at)
+SELECT 'OPS_RISK', 'OPS_RISK', '风险事件', '识别', '/risk', 'risk:rule:read', 'risk:rule:read', 'IMPLEMENTED', 1, 'P-16.2', 'MENU', 10, NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_function_point x WHERE x.point_code='OPS_RISK');
+INSERT INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at)
+SELECT 'OPS_RISK__TAB_BLACKLIST', 'OPS_RISK', '黑名单与申诉', '处置', '/risk?tab=blacklist', 'risk:blacklist:update', 'risk:blacklist:update', 'IMPLEMENTED', 1, 'P-16.2', 'MENU', 20, NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_function_point x WHERE x.point_code='OPS_RISK__TAB_BLACKLIST');
+INSERT INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at)
+SELECT 'OPS_RISK__TAB_RULES', 'OPS_RISK', '拦截规则配置', '处置', '/risk?tab=rules', 'risk:rule:update', 'risk:rule:update', 'IMPLEMENTED', 1, 'P-16.2', 'MENU', 30, NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_function_point x WHERE x.point_code='OPS_RISK__TAB_RULES');
+INSERT INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at)
+SELECT 'ACT__GROWTH_ATTRIBUTION_UPDATE', 'OPS_GROWTH', 'growth:attribution:update', '仅后端', NULL, NULL, 'growth:attribution:update', 'IMPLEMENTED', 0, NULL, 'ACTION', 920, NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_function_point x WHERE x.point_code='ACT__GROWTH_ATTRIBUTION_UPDATE');
+INSERT INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at)
+SELECT 'ACT__GROWTH_FISSION_READ', 'OPS_GROWTH', 'growth:fission:read', '仅后端', NULL, NULL, 'growth:fission:read', 'IMPLEMENTED', 0, NULL, 'ACTION', 921, NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_function_point x WHERE x.point_code='ACT__GROWTH_FISSION_READ');
+INSERT INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at)
+SELECT 'ACT__RISK_BLACKLIST_READ', 'OPS_RISK', 'risk:blacklist:read', '仅后端', NULL, NULL, 'risk:blacklist:read', 'IMPLEMENTED', 0, NULL, 'ACTION', 927, NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_function_point x WHERE x.point_code='ACT__RISK_BLACKLIST_READ');
+INSERT INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at)
+SELECT 'ACT__RISK_EVENT_HANDLE', 'OPS_RISK', 'risk:event:handle', '仅后端', NULL, NULL, 'risk:event:handle', 'IMPLEMENTED', 0, NULL, 'ACTION', 928, NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_function_point x WHERE x.point_code='ACT__RISK_EVENT_HANDLE');
+INSERT INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at)
+SELECT 'ACT__RISK_EVENT_READ', 'OPS_RISK', 'risk:event:read', '仅后端', NULL, NULL, 'risk:event:read', 'IMPLEMENTED', 0, NULL, 'ACTION', 929, NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_function_point x WHERE x.point_code='ACT__RISK_EVENT_READ');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'SUPER_ADMIN', 'OPS_GROWTH', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPER_ADMIN' AND x.point_code='OPS_GROWTH');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'SUPER_ADMIN', 'OPS_GROWTH__TAB_TRACES', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPER_ADMIN' AND x.point_code='OPS_GROWTH__TAB_TRACES');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'SUPER_ADMIN', 'OPS_GROWTH__TAB_FISSION', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPER_ADMIN' AND x.point_code='OPS_GROWTH__TAB_FISSION');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'SUPER_ADMIN', 'OPS_RISK', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPER_ADMIN' AND x.point_code='OPS_RISK');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'SUPER_ADMIN', 'OPS_RISK__TAB_BLACKLIST', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPER_ADMIN' AND x.point_code='OPS_RISK__TAB_BLACKLIST');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'SUPER_ADMIN', 'OPS_RISK__TAB_RULES', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPER_ADMIN' AND x.point_code='OPS_RISK__TAB_RULES');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'SUPER_ADMIN', 'ACT__GROWTH_ATTRIBUTION_UPDATE', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPER_ADMIN' AND x.point_code='ACT__GROWTH_ATTRIBUTION_UPDATE');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'SUPER_ADMIN', 'ACT__GROWTH_FISSION_READ', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPER_ADMIN' AND x.point_code='ACT__GROWTH_FISSION_READ');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'SUPER_ADMIN', 'ACT__RISK_BLACKLIST_READ', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPER_ADMIN' AND x.point_code='ACT__RISK_BLACKLIST_READ');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'SUPER_ADMIN', 'ACT__RISK_EVENT_HANDLE', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPER_ADMIN' AND x.point_code='ACT__RISK_EVENT_HANDLE');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'SUPER_ADMIN', 'ACT__RISK_EVENT_READ', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPER_ADMIN' AND x.point_code='ACT__RISK_EVENT_READ');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'BD', 'OPS_GROWTH', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='BD' AND x.point_code='OPS_GROWTH');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'BD', 'OPS_GROWTH__TAB_TRACES', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='BD' AND x.point_code='OPS_GROWTH__TAB_TRACES');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'CAMPAIGN_OPS', 'OPS_GROWTH', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='CAMPAIGN_OPS' AND x.point_code='OPS_GROWTH');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'CAMPAIGN_OPS', 'OPS_GROWTH__TAB_TRACES', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='CAMPAIGN_OPS' AND x.point_code='OPS_GROWTH__TAB_TRACES');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'CAMPAIGN_OPS', 'OPS_GROWTH__TAB_FISSION', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='CAMPAIGN_OPS' AND x.point_code='OPS_GROWTH__TAB_FISSION');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'CAMPAIGN_OPS', 'ACT__GROWTH_ATTRIBUTION_UPDATE', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='CAMPAIGN_OPS' AND x.point_code='ACT__GROWTH_ATTRIBUTION_UPDATE');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'CAMPAIGN_OPS', 'ACT__GROWTH_FISSION_READ', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='CAMPAIGN_OPS' AND x.point_code='ACT__GROWTH_FISSION_READ');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'RISK', 'OPS_RISK', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='RISK' AND x.point_code='OPS_RISK');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'RISK', 'OPS_RISK__TAB_BLACKLIST', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='RISK' AND x.point_code='OPS_RISK__TAB_BLACKLIST');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'RISK', 'OPS_RISK__TAB_RULES', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='RISK' AND x.point_code='OPS_RISK__TAB_RULES');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'RISK', 'ACT__RISK_BLACKLIST_READ', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='RISK' AND x.point_code='ACT__RISK_BLACKLIST_READ');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'RISK', 'ACT__RISK_EVENT_HANDLE', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='RISK' AND x.point_code='ACT__RISK_EVENT_HANDLE');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'RISK', 'ACT__RISK_EVENT_READ', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='RISK' AND x.point_code='ACT__RISK_EVENT_READ');
 UPDATE sys_function_point SET name = '通道总览', updated_at = NOW()
  WHERE point_code = 'OPS_MESSAGE' AND name = '消息模板与推送';
 INSERT INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at)
@@ -4073,3 +4693,57 @@ If this was not you, just ignore this email — your password stays unchanged.
        NULL, 1, NOW(), NOW() FROM DUAL
  WHERE NOT EXISTS (SELECT 1 FROM msg_template x
                     WHERE x.template_no='TPL_MAIL_OPS_RESET_PWD' AND x.lang='en');
+INSERT INTO sys_merchant_plan_def
+    (plan_code, name, store_quota, staff_quota, cross_store_stats, trial_days, enabled, sort,
+     tenant_no, created_at, updated_at, version, deleted)
+SELECT 'FREE', '孵化版', 1, 0, 0, 0, 1, 10, 'MAIN', NOW(), NOW(), 0, 0 FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_merchant_plan_def x WHERE x.plan_code = 'FREE');
+INSERT INTO sys_merchant_plan_def
+    (plan_code, name, store_quota, staff_quota, cross_store_stats, trial_days, enabled, sort,
+     tenant_no, created_at, updated_at, version, deleted)
+SELECT 'PRO', '成长版', 3, 3, 1, 14, 1, 20, 'MAIN', NOW(), NOW(), 0, 0 FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_merchant_plan_def x WHERE x.plan_code = 'PRO');
+INSERT INTO sys_merchant_plan_def
+    (plan_code, name, store_quota, staff_quota, cross_store_stats, trial_days, enabled, sort,
+     tenant_no, created_at, updated_at, version, deleted)
+SELECT 'CHAIN', '连锁版', 10, 15, 1, 14, 1, 30, 'MAIN', NOW(), NOW(), 0, 0 FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_merchant_plan_def x WHERE x.plan_code = 'CHAIN');
+DELETE FROM sys_role_point
+ WHERE point_code IN ('OPS_GROWTH_01', 'OPS_GROWTH_02', 'OPS_GROWTH_03',
+                      'OPS_RISK_01', 'OPS_RISK_02', 'OPS_RISK_03');
+DELETE FROM sys_function_point
+ WHERE point_code IN ('OPS_GROWTH_01', 'OPS_GROWTH_02', 'OPS_GROWTH_03',
+                      'OPS_RISK_01', 'OPS_RISK_02', 'OPS_RISK_03');
+UPDATE sys_function_point
+   SET perm_code = ui_perm_code, backend_status = 'IMPLEMENTED', updated_at = NOW()
+ WHERE point_code IN ('OPS_GROWTH', 'OPS_GROWTH__TAB_TRACES', 'OPS_GROWTH__TAB_FISSION',
+                      'OPS_RISK', 'OPS_RISK__TAB_BLACKLIST', 'OPS_RISK__TAB_RULES')
+   AND (perm_code IS NULL OR perm_code = '')
+   AND ui_perm_code IS NOT NULL;
+INSERT INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at)
+SELECT 'OPS_MERCHANT__TAB_PLANS', 'OPS_MERCHANT', '增值包与额度', '增值包', '/merchants?tab=plans', 'merchant:merchant:read', 'merchant:merchant:read', 'IMPLEMENTED', 0, 'P-11.2', 'MENU', 80, NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_function_point x WHERE x.point_code='OPS_MERCHANT__TAB_PLANS');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'SUPER_ADMIN', 'OPS_MERCHANT__TAB_PLANS', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPER_ADMIN' AND x.point_code='OPS_MERCHANT__TAB_PLANS');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'BD', 'OPS_MERCHANT__TAB_PLANS', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='BD' AND x.point_code='OPS_MERCHANT__TAB_PLANS');
+INSERT INTO sys_function_point
+    (point_code, function_code, name, group_name, href, ui_perm_code, perm_code,
+     backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at)
+VALUES ('OPS_SYSTEM__TAB_STORAGE', 'OPS_SYSTEM', '存储空间治理', '运行配置', '/system?tab=storage',
+        'system:media:read', 'system:media:read', 'IMPLEMENTED', 1, 'P-17.1', 'MENU', 31, NOW(), NOW());
+INSERT INTO sys_function_point
+    (point_code, function_code, name, group_name, href, ui_perm_code, perm_code,
+     backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at)
+VALUES ('ACT__SYSTEM_MEDIA_PURGE', 'OPS_SYSTEM', 'system:media:purge', '页面内操作', NULL,
+        'system:media:purge', 'system:media:purge', 'IMPLEMENTED', 1, NULL, 'ACTION', 910, NOW(), NOW());
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+VALUES ('SUPER_ADMIN', 'OPS_SYSTEM__TAB_STORAGE', 'OPS', NOW(), NOW());
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+VALUES ('SUPER_ADMIN', 'ACT__SYSTEM_MEDIA_PURGE', 'OPS', NOW(), NOW());
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+VALUES ('TECH_OPS', 'OPS_SYSTEM__TAB_STORAGE', 'OPS', NOW(), NOW());
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+VALUES ('TECH_OPS', 'ACT__SYSTEM_MEDIA_PURGE', 'OPS', NOW(), NOW());

@@ -155,4 +155,12 @@ public final class MerchantMappers {
     /** 店招与公告的人审队列。 */
     public interface StoreAuditMapper extends BaseMapper<ai.neargo.shop.merchant.entity.MchStoreAudit> {
     }
+
+    /** 增值包档位定义（平台配置，运营可调）。 */
+    public interface PlanDefMapper extends BaseMapper<ai.neargo.shop.merchant.entity.SysMerchantPlanDef> {
+    }
+
+    /** 主体的增值包订阅（一主体一行）。 */
+    public interface EntityPlanMapper extends BaseMapper<ai.neargo.shop.merchant.entity.MchEntityPlan> {
+    }
 }

@@ -34,6 +34,27 @@ public interface DashboardService {
     List<FunnelRowVO> funnel();
 
     /**
+     * 商家经营排行（P-16.1.2 / P-16.1.3）—— 大盘之下的第一层下钻。
+     *
+     * <p>大盘三个数回答「平台整体怎么样」，但运营下一句必然是「哪几家在拉高、
+     * 哪几家在拖后腿」。没有这一层，那个问题只能靠翻订单列表人工数。
+     *
+     * @param days  回看天数，1–90（与 {@link #trend} 同一个夹取口径）
+     * @param limit 取前几名，1–100
+     */
+    List<MerchantRankRowVO> merchantRanking(int days, int limit);
+
+    /**
+     * @param merchantName 商家名快照。**必须下发** —— 只给 merchantNo 的话运营看到的是
+     *                     一列编号，要判断「这家是谁」还得再查一次
+     * @param afterSaleRate 售后率 0–1 = 售后单数 ÷ 成交单数。无单时为 0（不是除零）。
+     *                      与 GMV 并列才看得出「卖得多」是不是「赔得也多」
+     */
+    record MerchantRankRowVO(String merchantNo, String merchantName, long gmv, long orderCount,
+                             long avgOrderValue, long afterSaleCount, double afterSaleRate) {
+    }
+
+    /**
      * @param gmv                   已支付订单的成交额（分）
      * @param orderCount            已支付订单数
      * @param avgOrderValue         客单价（分）。无单时为 0，<b>不是除零</b>

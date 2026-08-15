@@ -64,6 +64,18 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
     private final ai.neargo.shop.spi.platform.MasterDataPort masterDataPort;
     /** 自营结算敞口 —— 金额口径归结算域，商家域只负责「谁是无照的」 */
     private final ai.neargo.shop.spi.settle.SelfOperatedExposurePort exposurePort;
+    /**
+     * 门店强制下线要真的撤下货架（product 域的事，走 Port）—— 只改 status 是「处置完了还在卖」。
+     *
+     * <p><b>用 ObjectProvider 延迟解析而不是直接注入</b>：直接注入会形成构造期的环
+     * （{@code MerchantPortImpl → 本类 → StoreShelfPort → MerchantGoodsService
+     * → GoodsService → MerchantPortImpl}），整个上下文起不来。
+     *
+     * <p>不把撤货架挪到 Controller 去编排来绕开这个环：那样它就从
+     * <b>处置的一部分</b>变成了「调用方记得调就调」的可选步骤，
+     * 而漏掉一次的症状是「处置完了还在卖」—— 与压根没做一模一样，且没有任何报错。
+     */
+    private final org.springframework.beans.factory.ObjectProvider<ai.neargo.shop.spi.product.StoreShelfPort> shelfPort;
 
     public MerchantGovernServiceImpl(MchEntityMapper merchantMapper,
                                      MchEntityCommunityMapper communityMapper,
@@ -77,11 +89,13 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
             ai.neargo.shop.merchant.mapper.MerchantMappers.ServiceAreaMapper serviceAreaMapper,
             ai.neargo.shop.spi.user.CommunityQueryPort communityNamePort,
             ai.neargo.shop.spi.platform.MasterDataPort masterDataPort,
-            ai.neargo.shop.spi.settle.SelfOperatedExposurePort exposurePort) {
+            ai.neargo.shop.spi.settle.SelfOperatedExposurePort exposurePort,
+            org.springframework.beans.factory.ObjectProvider<ai.neargo.shop.spi.product.StoreShelfPort> shelfPort) {
         this.serviceAreaMapper = serviceAreaMapper;
         this.communityNamePort = communityNamePort;
         this.masterDataPort = masterDataPort;
         this.exposurePort = exposurePort;
+        this.shelfPort = shelfPort;
         this.qualificationMapper = qualificationMapper;
         this.merchantMapper = merchantMapper;
         this.communityMapper = communityMapper;
@@ -105,7 +119,11 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
         }
         w.orderByDesc(MchEntity::getId);
 
-        List<MchEntity> rows = DataScopeContext.executeWithoutScope(() -> merchantMapper.selectList(w));
+        /*
+         * ★ **接数据域**（批②）：配了 merchant 域的运营只看得到那一家。
+         * 没配的会话是 ALL（空 = 不限定），超管恒 ALL —— 存量账号零变化。
+         */
+        List<MchEntity> rows = merchantMapper.selectList(w);
         List<MerchantProfileVO> all = rows.stream()
                 .map(this::toVO)
                 // 社区筛在内存里做：一家店服务多个社区，SQL 侧要 join 一张多对多表，
@@ -122,7 +140,24 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
 
     @Override
     public MerchantProfileVO detail(String merchantNo) {
-        return toVO(require(merchantNo));
+        return toVO(requireInScope(merchantNo));
+    }
+
+    /**
+     * 读路径专用：**接数据域**（批②）。域外的商家号查不到 → NOT_FOUND，
+     * <b>不是 403</b> —— 403 等于确认「这个商家确实存在」，那本身是一条信息，
+     * 而商家号可枚举。
+     *
+     * <p>与 {@link #require} 分成两个方法而不是加一个 boolean 参数：
+     * 参数化的话，下一个人在写路径上传错一次就把处置变成了静默失败。
+     */
+    private MchEntity requireInScope(String merchantNo) {
+        MchEntity m = merchantMapper.selectOne(Wrappers.<MchEntity>lambdaQuery()
+                .eq(MchEntity::getEntityNo, merchantNo).last("limit 1"));
+        if (m == null) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        return m;
     }
 
     @Override
@@ -168,23 +203,38 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
         w.orderByDesc(MchViolation::getId);
         List<MchViolation> rows = DataScopeContext.executeWithoutScope(() -> violationMapper.selectList(w));
         return rows.stream().map(v -> new ViolationVO(v.getViolationNo(), v.getEntityNo(),
-                nameOf(v.getEntityNo()), v.getType(), v.getAction(), v.getDetail(),
+                nameOf(v.getEntityNo()), v.getStoreNo(), v.getType(), v.getAction(), v.getDetail(),
                 v.getOperatorNo(), v.getAt() == null ? 0L : v.getAt())).toList();
     }
 
     @Override
     @Transactional
-    public ViolationVO recordViolation(String merchantNo, String type, String action, String detail,
-                                       String operatorNo) {
+    public ViolationVO recordViolation(String merchantNo, String storeNo, String type, String action,
+                                       String detail, String operatorNo) {
         if (detail == null || detail.isBlank()) {
             // 没有事实的处置在申诉时站不住 —— 商家问「凭什么」，运营答不上来
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
+        boolean storeLevel = MchViolation.STORE_OFFLINE.equals(action);
+        // 门店号与动作必须成对：门店级处置没有门店号，或主体级处置带着门店号，
+        // 申诉时都说不清处置对象到底是谁
+        if (storeLevel == (storeNo == null || storeNo.isBlank())) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
         MchEntity m = require(merchantNo);
+        MchStore store = storeLevel ? requireStoreOf(merchantNo, storeNo) : null;
+        if (storeLevel && !MchStore.ACTIVE.equals(store.getStatus())) {
+            /*
+             * 只处置 ACTIVE 的店（TDD T4）：对 READONLY（商家自己已停）再压一层，
+             * 解除时「恢复到什么状态」就没有答案了 —— 从源头消掉这个分支。
+             */
+            throw BizException.of(ErrorCode.ORDER_STATE_ILLEGAL);
+        }
 
         MchViolation v = new MchViolation();
         v.setViolationNo(BizKey.next(BizKey.VIOLATION));
         v.setEntityNo(merchantNo);
+        v.setStoreNo(storeLevel ? storeNo : null);
         v.setType(type);
         v.setAction(action);
         v.setDetail(detail.trim());
@@ -193,7 +243,7 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
         DataScopeContext.executeWithoutScope(() -> violationMapper.insert(v));
 
         /*
-         * 两个副作用是**处置的一部分**，不是可选项：
+         * 副作用是**处置的一部分**，不是可选项：
          * 只记录不执行的处置等于没处置，而商家那边什么都不会发生。
          */
         boolean changed = false;
@@ -209,13 +259,128 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
         if (changed) {
             DataScopeContext.executeWithoutScope(() -> merchantMapper.updateById(m));
         }
-        return new ViolationVO(v.getViolationNo(), merchantNo, m.getName(), type, action,
-                v.getDetail(), operatorNo, v.getAt());
+        if (storeLevel) {
+            store.setStatus(MchStore.SUSPENDED);
+            DataScopeContext.executeWithoutScope(() -> storeProfileMapper.updateById(store));
+            /*
+             * 撤货架必须跟上（TDD D3）：门店 status 在 C 端可见性链路上没有读者，
+             * 只改状态 = 「处置完了还在卖」。真闸门是店级在售 × 主体总闸 × 社区池。
+             */
+            shelfPort.getObject().platformOffline(merchantNo, storeNo);
+        }
+        return new ViolationVO(v.getViolationNo(), merchantNo, m.getName(), v.getStoreNo(),
+                type, action, v.getDetail(), operatorNo, v.getAt());
+    }
+
+    // ---------------------------------------------------------------- 门店档案（P-11.2.1）
+
+    @Override
+    public ai.neargo.shop.common.PageData<StoreGovernVO> searchStores(String merchantNo, String status,
+                                                                      String businessMode, String keyword,
+                                                                      long page, long size) {
+        var w = Wrappers.<MchStore>lambdaQuery()
+                .eq(merchantNo != null && !merchantNo.isBlank(), MchStore::getEntityNo, merchantNo)
+                .eq(status != null && !status.isBlank(), MchStore::getStatus, status)
+                .eq(businessMode != null && !businessMode.isBlank(), MchStore::getBusinessMode, businessMode);
+        if (keyword != null && !keyword.isBlank()) {
+            w.and(q -> q.like(MchStore::getName, keyword).or().eq(MchStore::getStoreNo, keyword));
+        }
+        w.orderByDesc(MchStore::getId);
+        // ★ 接数据域（批②）：商家域运营只看得到那一家的门店
+        var p = storeProfileMapper.selectPage(
+                com.baomidou.mybatisplus.extension.plugins.pagination.Page.of(page, size), w);
+
+        // 商家名批量拼 —— 逐行 nameOf 是 N+1
+        Set<String> entityNos = p.getRecords().stream().map(MchStore::getEntityNo)
+                .collect(java.util.stream.Collectors.toSet());
+        // 装饰性取名：entityNos 来自上面**已接数据域**的门店查询，再裁一次只会让名字变空
+        Map<String, String> names = entityNos.isEmpty() ? Map.of()
+                : merchantMapper.selectList(Wrappers.<MchEntity>lambdaQuery()
+                                .in(MchEntity::getEntityNo, entityNos))
+                        .stream().collect(java.util.stream.Collectors.toMap(
+                                MchEntity::getEntityNo, MchEntity::getName, (a, b) -> a));
+
+        List<StoreGovernVO> rows = p.getRecords().stream()
+                .map(s -> toStoreGovernVO(s, names.getOrDefault(s.getEntityNo(), s.getEntityNo())))
+                .toList();
+        return ai.neargo.shop.common.PageData.of(rows, p.getTotal(), page, size);
+    }
+
+    @Override
+    public StoreGovernVO storeDetail(String storeNo) {
+        MchStore s = requireStoreInScope(storeNo);
+        return toStoreGovernVO(s, nameOf(s.getEntityNo()));
+    }
+
+    /**
+     * 读路径专用：**接数据域**（批②）。域外的门店号查不到 → NOT_FOUND，不是 403 ——
+     * 门店号可枚举，403 等于确认它存在。写路径见 {@link #requireStore}。
+     */
+    private MchStore requireStoreInScope(String storeNo) {
+        MchStore s = storeProfileMapper.selectOne(Wrappers.<MchStore>lambdaQuery()
+                .eq(MchStore::getStoreNo, storeNo).last("limit 1"));
+        if (s == null) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        return s;
+    }
+
+    @Override
+    @Transactional
+    public StoreGovernVO restoreStore(String storeNo, String operatorNo) {
+        MchStore s = requireStore(storeNo);
+        if (!MchStore.SUSPENDED.equals(s.getStatus())) {
+            // 只有平台压下去的才由平台解除；对 ACTIVE/READONLY 的店「解除」没有意义
+            throw BizException.of(ErrorCode.ORDER_STATE_ILLEGAL);
+        }
+        s.setStatus(MchStore.ACTIVE);
+        DataScopeContext.executeWithoutScope(() -> storeProfileMapper.updateById(s));
+        // 只回带 platform_suspended 标记的行 —— 商家在处置期间自己下架的不动
+        shelfPort.getObject().platformRestore(s.getEntityNo(), storeNo);
+        return toStoreGovernVO(s, nameOf(s.getEntityNo()));
+    }
+
+    private StoreGovernVO toStoreGovernVO(MchStore s, String merchantName) {
+        return new StoreGovernVO(s.getStoreNo(), s.getName(), s.getAddress(),
+                s.getEntityNo(), merchantName,
+                Boolean.TRUE.equals(s.getIsDefault()), s.getStatus(), s.getBusinessMode(),
+                s.getPayMerchantNo(), s.getAnnouncement(), s.getOpenHours(),
+                s.getDeliveryRadiusM(), s.getDeliveryMinOrderMinor(),
+                s.getDeliveryFeeMinor(), s.getDeliveryFreeThresholdMinor());
+    }
+
+    private MchStore requireStore(String storeNo) {
+        /*
+         * **不接数据域**（T2）：解除强制下线、门店级处置都走这里。
+         * 接了之后「处置一家域外的店」会变成静默 NOT_FOUND —— 比明确拒绝更坏。
+         * 读路径走 {@link #requireStoreInScope}。
+         */
+        MchStore s = DataScopeContext.executeWithoutScope(() ->
+                storeProfileMapper.selectOne(Wrappers.<MchStore>lambdaQuery()
+                        .eq(MchStore::getStoreNo, storeNo).last("limit 1")));
+        if (s == null) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        return s;
+    }
+
+    private MchStore requireStoreOf(String merchantNo, String storeNo) {
+        MchStore s = requireStore(storeNo);
+        if (!merchantNo.equals(s.getEntityNo())) {
+            // 门店不归这个主体：按 404 处理，别的主体有没有这家店不该被探知
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        return s;
     }
 
     // ───────────────────────────────────────────────────────────────────
 
     private MchEntity require(String merchantNo) {
+        /*
+         * **不接数据域**（T2）：这个方法同时被封禁/授标/记违规等写路径调用，
+         * 接了之后「处置一家不在自己域内的商家」会变成静默的 NOT_FOUND ——
+         * 而静默失败比明确拒绝更坏。读路径走 {@link #requireInScope}。
+         */
         MchEntity m = DataScopeContext.executeWithoutScope(() ->
                 merchantMapper.selectOne(Wrappers.<MchEntity>lambdaQuery()
                         .eq(MchEntity::getEntityNo, merchantNo).last("limit 1")));
@@ -366,8 +531,8 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
     public List<ModeRiskVO> modeRiskStores() {
         // 全量主体只有几百量级，一次捞出来在内存里筛 ——
         // 「哪一档免执照」由注册表决定，SQL 里写不出这个条件
-        List<MchEntity> all = DataScopeContext.executeWithoutScope(() ->
-                merchantMapper.selectList(Wrappers.<MchEntity>lambdaQuery()));
+        // ★ 接数据域（批②）：这是主查询 —— 商家域运营的风险清单只该有那一家
+        List<MchEntity> all = merchantMapper.selectList(Wrappers.<MchEntity>lambdaQuery());
         Map<String, MchEntity> unlicensed = new java.util.HashMap<>();
         for (MchEntity m : all) {
             if (!masterDataPort.needLicense(m.getLegalForm())) {
@@ -378,10 +543,11 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
             return List.of();
         }
 
-        List<MchStore> selfOperated = DataScopeContext.executeWithoutScope(() ->
-                storeProfileMapper.selectList(Wrappers.<MchStore>lambdaQuery()
+        // 同上接数据域。两处都接才一致 —— 只接一处会得到「主体裁了、门店没裁」
+        List<MchStore> selfOperated = storeProfileMapper.selectList(
+                Wrappers.<MchStore>lambdaQuery()
                         .eq(MchStore::getBusinessMode, MchStore.SELF_OPERATED)
-                        .in(MchStore::getEntityNo, unlicensed.keySet())));
+                        .in(MchStore::getEntityNo, unlicensed.keySet()));
         if (selfOperated.isEmpty()) {
             return List.of();
         }

@@ -138,6 +138,18 @@ export interface SaveSpecTemplateReq {
   options: string[];
 }
 
+// ---------------------------------------------------------------- 跨店对比
+
+export interface CrossStoreCompareQuery {
+  /**
+   * 回看天数（含今天）。不传 = 30。
+   *
+   * 后端会夹在 1–365 并在返回体的 `days` 里回显 —— **窗口按回显的那个画**，
+   * 不要照着自己发出去的值写「近 N 天」：传 99999 时两个数会对不上。
+   */
+  days?: number;
+}
+
 // ---------------------------------------------------------------- 订单与履约
 
 export interface OrderListQuery {

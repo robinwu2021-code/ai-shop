@@ -1,8 +1,28 @@
-// 覆盖范围：门店主页治理（P-10.1）—— 一期主获客路径的平台侧。
-import type { Page, StoreAcquisition, StorePageAudit, StoreQrcode, StoreTemplate } from "@/lib/types";
-import type { PageQ, StoreAuditQ } from "../query";
+// 覆盖范围：门店主页治理（P-10.1）—— 一期主获客路径的平台侧；
+// 以及门店档案与经营状况（P-11.2.1）—— 平台看一家店的全貌。
+import type { Page, StoreAcquisition, StoreGovern, StorePageAudit, StoreQrcode, StoreStats, StoreTemplate } from "@/lib/types";
+import type { PageQ, StoreAuditQ, StoreQ } from "../query";
 
 export interface StoreApi {
+  // ── 门店档案（P-11.2.1）——**已接真后端** `/ops/stores`
+
+  /** 跨主体门店检索。含停用与强制下线的店 —— 治理视角更不能看不见 */
+  listStores(q?: StoreQ): Promise<Page<StoreGovern>>;
+
+  /** 门店档案详情：门面 + 配送规则 + 经营模式 + 收款商户号。 */
+  getStore(storeNo: string): Promise<StoreGovern>;
+
+  /** 门店经营状况：今日/本月订单与 GMV，外加待发货/待自送/缺货三项待办堆积。 */
+  getStoreStats(storeNo: string): Promise<StoreStats>;
+
+  /**
+   * 解除门店强制下线，恢复被平台压下的货架行。
+   *
+   * **只有 `SUSPENDED` 的店可以调** —— 商家自助停用（READONLY）的店由商家自己开回来，
+   * 平台替他开等于替他做经营决定。压下那一侧走违规处置的 `STORE_OFFLINE`。
+   */
+  restoreStore(storeNo: string): Promise<StoreGovern>;
+
   listStoreAudits(q?: StoreAuditQ): Promise<Page<StorePageAudit>>;
   /** 审核裁决（P-10.1.2）。**驳回必须带原因**：原因原样进商家 B 端。 */
   decideStoreAudit(auditNo: string, pass: boolean, reason?: string): Promise<StorePageAudit>;

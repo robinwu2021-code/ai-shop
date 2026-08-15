@@ -25,6 +25,8 @@ import {
   toCommunity,
 } from "@shared/mock/db";
 import { currentCurrency, money } from "@shared/utils/money";
+// 能力位被拒要抛**带业务码**的错（70023），页面据此渲染示例态而不是错误页
+import { ApiError } from "@shared/net/http-client";
 import { CATEGORY_TYPE, POINTS, SETTLE, REVIEW_RULES } from "@shared/utils/constants";
 import { ensureDemoOrders } from "./demo-orders";
 import type { GoodsDraft, MerchantApi } from "./contract";
@@ -59,6 +61,7 @@ function pointsAccount() {
 }
 import type { StaffLogRow } from "@shared/mock/db";
 import type {
+  MerchantPlan,
   CurrencyCode,
   Goods,
   I18nText,
@@ -68,6 +71,7 @@ import type {
   PickingRow,
   SpecTemplate,
   StaffRole,
+  Store,
   VerifyBatchResult,
 } from "@shared/types";
 
@@ -130,6 +134,171 @@ function belongsToMerchant(o: Order, merchantNo: string): boolean {
 function myGoods(): Goods[] {
   const merchantNo = db.merchant.merchantNo;
   return allGoods().filter((g) => g.merchant.merchantNo === merchantNo);
+}
+
+// ------------------------------------------------ 跨店总览与对比（增值包 P2）
+
+/**
+ * mock 下的套餐档位。**开发期两条路都要能走到** ——
+ * 跨店那两页有两种完全不同的样子（真实数据 / FREE 示例态），
+ * 而恒返回数据的 mock 会让示例态那条路一次都没被看过，
+ * 直到一个 FREE 商家点进去为止。
+ *
+ * 取值顺序：本地存储的显式开关 → 按门店额度推。
+ * 默认（`storeQuota === 1`）就是 **FREE**，与生产一致（存量主体全部回填 FREE）。
+ *
+ * 切档位：控制台里 `uni.setStorageSync("mock:plan", "PRO")` 然后刷新。
+ */
+const MOCK_PLAN_KEY = "mock:plan";
+type MockPlan = "FREE" | "PRO" | "CHAIN";
+
+function mockPlan(): MockPlan {
+  const saved = uni.getStorageSync(MOCK_PLAN_KEY) as string;
+  if (saved === "FREE" || saved === "PRO" || saved === "CHAIN") return saved;
+  return db.storeQuota > 1 ? "PRO" : "FREE";
+}
+
+/**
+ * mock 下的三档定义。**与 V150 的种子逐字一致**（FREE 1/0、PRO 3/3、CHAIN 10/15）——
+ * 自造一套额度的话，套餐页上的数字与建店时那道闸给出的数字对不上，
+ * 而两处都是「真的」，谁也说不清哪个错。
+ */
+const MOCK_TIERS = [
+  { planCode: "FREE", name: "孵化版", storeQuota: 1, staffQuota: 0, crossStoreStats: false, trialDays: 0 },
+  { planCode: "PRO", name: "成长版", storeQuota: 3, staffQuota: 3, crossStoreStats: true, trialDays: 14 },
+  { planCode: "CHAIN", name: "连锁版", storeQuota: 10, staffQuota: 15, crossStoreStats: true, trialDays: 14 },
+] as const;
+
+/** 试用开通时刻。有它才能算出「还剩几天」——试用期内店主会反复进来看这个数 */
+const MOCK_TRIAL_KEY = "mock:plan:trial-at";
+
+/**
+ * 我的套餐视图。用量**现算**（与建店闸门同口径：只数营业中的店），
+ * 不存一份计数器 —— 存了就会与门店列表对不上，而那是最容易被店主发现的不一致。
+ */
+function minePlan(): MerchantPlan {
+  const code = mockPlan();
+  const tier = MOCK_TIERS.find((t) => t.planCode === code) ?? MOCK_TIERS[0];
+  const trialAt = Number(uni.getStorageSync(MOCK_TRIAL_KEY)) || 0;
+  const trialUsed = trialAt > 0;
+  // 可试用的目标档位：可试用且 sort 最小的那一档（MOCK_TIERS 已按 sort 排）。
+  // 不写死 PRO —— 与后端同一条规则，两边各写一套的话开通的档位会不一样
+  const trialTier = code === "FREE" && !trialUsed
+    ? MOCK_TIERS.find((t) => t.trialDays > 0)
+    : undefined;
+  return {
+    planCode: tier.planCode,
+    planName: tier.name,
+    status: "ACTIVE",
+    startAt: trialAt || null,
+    // 试用期算得出到期日；非试用的 mock 档位不设到期（免费档本来就不到期）
+    expireAt: trialUsed && code !== "FREE" ? trialAt + tier.trialDays * 86_400_000 : null,
+    storeQuota: tier.storeQuota,
+    storeUsed: db.stores.filter((s) => s.status === "ACTIVE").length,
+    staffQuota: tier.staffQuota,
+    staffUsed: db.staff.filter((s) => !s.isOwner && s.status === "ACTIVE").length,
+    crossStoreStats: tier.crossStoreStats,
+    trialUsed,
+    trialTier: trialTier?.planCode ?? null,
+    trialDays: trialTier?.trialDays ?? null,
+    // mock 里没有降级链路（那是运营端扫描干的），恒空 ——
+    // 空数组而不是 undefined：页面按 length 判断要不要显示横幅
+    suspendedStores: [],
+    tiers: MOCK_TIERS.map((t) => ({ ...t, current: t.planCode === code })),
+  };
+}
+
+/**
+ * 能力位门禁。**抛的是带业务码的 ApiError，不是裸 Error** ——
+ * 页面靠 `code === 70023` 区分「这是付费功能」与「这个接口坏了」，
+ * 而裸 Error 在端上与网络故障长得一模一样，示例态就永远不会出现。
+ */
+function requireCrossStoreStats(): void {
+  const plan = mockPlan();
+  if (plan !== "FREE") return;
+  throw new ApiError(
+    70023,
+    `跨店总览与对比是成长版 / 连锁版的能力，当前是 ${plan} 版。`
+      + "升级套餐后，多家店的今日订单、销售额与待办就能并排看",
+  );
+}
+
+/**
+ * PRO/CHAIN 档下的门店。**不够两家就补两家** ——
+ * 种子里只有一家店（= FREE 的额度），而这两页的自变量正是门店数：
+ * 一行的「跨店对比」验证不了任何东西（列宽、排序、默认店标记、停用店）。
+ *
+ * 只在显式切到 PRO/CHAIN 之后才补，默认档位下 db 一个字节都不动。
+ * 额度跟着一起放开，否则门店管理页会显示「已达上限」而列表里有三家。
+ */
+function ensureCrossStoreDemoStores(): void {
+  if (db.stores.length >= 3) return;
+  const extra = [
+    { storeNo: "ST-MOCK-2", name: "张记粮油 · 翠苑店", address: "翠苑一区 12 幢底商" },
+    // 第三家刻意是**停用**的：停用店仍要出现在总览里（否则店主以为店被删了）,
+    // 而它长什么样只有在有这么一行时才看得见
+    { storeNo: "ST-MOCK-3", name: "张记粮油 · 文三店", address: "文三路 100 号" },
+  ];
+  for (const [i, s] of extra.entries()) {
+    if (db.stores.some((x) => x.storeNo === s.storeNo)) continue;
+    db.stores.push({
+      ...s,
+      isDefault: false,
+      status: i === 1 ? "READONLY" : "ACTIVE",
+      payReady: i !== 1,
+      staffCount: 0,
+    });
+  }
+  db.storeQuota = Math.max(db.storeQuota, db.stores.length);
+  persist();
+}
+
+/** 这家店的评分：按「这家店的单」反推它对应的评价（mock 没有 store_no） */
+function storeRating(rows: { orderNo: string }[], reviews: { orderNo?: string; rating: number }[]) {
+  const nos = new Set(rows.map((o) => o.orderNo));
+  const mine = reviews.filter((r) => r.orderNo && nos.has(r.orderNo));
+  return {
+    rating: mine.length
+      ? Number((mine.reduce((s, r) => s + r.rating, 0) / mine.length).toFixed(1))
+      : 0,
+    // 0 = 暂无评价。端上按条数判空，不按分值 —— 0 分与「没人评过」是两件事
+    ratingCount: mine.length,
+  };
+}
+
+/** 这两页看到的门店列表（顺序同 mStoreList：默认店在前由种子保证） */
+function crossStoreStores(): Store[] {
+  ensureCrossStoreDemoStores();
+  return db.stores;
+}
+
+/** 计入统计的订单：我的、且未取消（与 mStats 同一口径） */
+function crossStoreOrders(): Order[] {
+  const merchantNo = db.merchant.merchantNo;
+  return db.orders.filter((o) => belongsToMerchant(o, merchantNo) && o.status !== "CANCELLED");
+}
+
+function sumPayable(list: Order[]): number {
+  return list.reduce((s, o) => s + o.amount.payableMinor, 0);
+}
+
+/** 把一个单号稳定地散到某一家店上 —— 同一个号每次都落到同一家，刷新不跳 */
+function hashPick(key: string, stores: Store[]): string {
+  let h = 0;
+  for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) % 100_000;
+  return stores[h % stores.length]?.storeNo ?? "";
+}
+
+/**
+ * 这一单算哪家店的。
+ *
+ * mock 的订单种子上**没有 storeNo**（它比多门店早），而按店分组是这两页的全部内容。
+ * 所以这里按单号散列指派，且**只是指派，不是编造**：各店之和恒等于主体总数，
+ * 「总览说 3 单、点进去只有 2 单」那类矛盾在 mock 上也不会出现。
+ * 真实后端读的是 `ord_order.store_no`，历史空值单不计入任何一行。
+ */
+function storeOfOrder(o: Order, stores: Store[]): string {
+  return hashPick(o.orderNo, stores);
 }
 
 /** 规格名与选项仍是单语录入（模板本身跨语言，见 M8 未覆盖项），照旧抄三语 */
@@ -744,6 +913,115 @@ export const mockApi: MerchantApi = {
       rating: rs.length ? Number((rs.reduce((s, r) => s + r.rating, 0) / rs.length).toFixed(1)) : 0,
       ratingCount: rs.length,
       ownedTrafficRate: mine.length ? owned / mine.length : 0,
+    });
+  },
+
+  // ------------------------------------------------ 我的增值包（增值包 P4）
+  async mMyPlan() {
+    return delay(minePlan());
+  },
+
+  async mStartTrial() {
+    const plan = minePlan();
+    if (!plan.trialTier) {
+      // 与后端同一个口径：三种拒因（已用过 / 已经是付费档 / 没配试用）合成一个
+      throw new ApiError(10400, "当前不能开通试用");
+    }
+    /*
+     * **真落库**：写进本地存储的档位开关 + 放开额度，重开小程序读回来还是试用中。
+     * 只在内存里改的话，页面上「试用已开通」而下一次进来又回到 FREE ——
+     * 而那正是这个功能最需要被看到的一段（试用期内他会反复进来看还剩几天）。
+     */
+    uni.setStorageSync(MOCK_PLAN_KEY, plan.trialTier);
+    const tier = plan.tiers.find((t: { planCode: string }) => t.planCode === plan.trialTier);
+    db.storeQuota = Math.max(db.storeQuota, tier?.storeQuota ?? 1);
+    uni.setStorageSync(MOCK_TRIAL_KEY, Date.now());
+    persist();
+    return delay(minePlan());
+  },
+
+  // ------------------------------------------------ 跨店总览与对比（增值包 P2）
+  async mCrossStoreOverview() {
+    requireCrossStoreStats();
+    const stores = crossStoreStores();
+    const mine = crossStoreOrders();
+    const dayStart = new Date().setHours(0, 0, 0, 0);
+
+    return delay({
+      currency: currentCurrency(),
+      stores: stores.map((s) => {
+        const rows = mine.filter((o) => storeOfOrder(o, stores) === s.storeNo);
+        const today = rows.filter((o) => o.createdAt >= dayStart);
+        const paid = (f: string) => rows.filter((o) => o.fulfillment === f && o.status === "PAID").length;
+        return {
+          storeNo: s.storeNo,
+          storeName: s.name,
+          isDefault: s.isDefault,
+          status: s.status,
+          todayOrders: today.length,
+          todayGmvMinor: sumPayable(today),
+          monthOrders: rows.length,
+          monthGmvMinor: sumPayable(rows),
+          toShip: paid("EXPRESS"),
+          toDeliver: paid("MERCHANT_DELIVERY"),
+          toStock: paid("STORE_PICKUP"),
+        };
+      }),
+    });
+  },
+
+  async mCrossStoreCompare(days) {
+    requireCrossStoreStats();
+    // 与后端同一条夹取：端上传 0 或 99999 不该让整页报错
+    const window = Math.min(Math.max(days ?? 30, 1), 365);
+    const stores = crossStoreStores();
+    const since = Date.now() - window * 86_400_000;
+    const mine = crossStoreOrders().filter((o) => o.createdAt >= since);
+    const rs = db.reviews.filter((r) => r.merchantNo === db.merchant.merchantNo);
+    // 缺货：可用量 ≤ 0 的 SKU。mock 没有店级库存表，按同一套散列分给各店
+    const oosSkus = myGoods().flatMap((g) =>
+      g.skus.filter((k) => (k.stock ?? 0) <= 0).map((k) => k.skuNo),
+    );
+
+    return delay({
+      days: window,
+      currency: currentCurrency(),
+      /*
+       * 主体整体评分：与 mStats 用**同一个算法**（同一批评价、同一个口径）。
+       * 每家店自己的分在下面每行的 rating 上（V155 起，评价归门店）。
+       */
+      rating: rs.length ? Number((rs.reduce((s, r) => s + r.rating, 0) / rs.length).toFixed(1)) : 0,
+      ratingCount: rs.length,
+      stores: stores.map((s) => {
+        const rows = mine.filter((o) => storeOfOrder(o, stores) === s.storeNo);
+        const perBuyer = new Map<string, number>();
+        for (const o of rows) {
+          const who = o.buyerNickname || o.receiver?.name || o.orderNo;
+          perBuyer.set(who, (perBuyer.get(who) ?? 0) + 1);
+        }
+        const buyers = perBuyer.size;
+        const repeatBuyers = [...perBuyer.values()].filter((n) => n >= 2).length;
+        return {
+          storeNo: s.storeNo,
+          storeName: s.name,
+          isDefault: s.isDefault,
+          status: s.status,
+          orders: rows.length,
+          gmvMinor: sumPayable(rows),
+          buyers,
+          repeatBuyers,
+          /*
+           * 门店评分（V155）。mock 里的评价没有 store_no，所以**按订单反推**：
+           * 这家店的单对应的那些评价。真后端读的是 rvw_review.store_no ——
+           * 两边算法不同但**语义相同**，而这里刻意不去伪造一个 store_no：
+           * 伪造的话，mock 与真库对「老评价没有门店归属」这件事的表现会不一样。
+           */
+          ...storeRating(rows, rs),
+          // 分母为 0 时是 0，不是除零、不是 null —— 还没开张的店显示 0%
+          repeatRate: buyers ? repeatBuyers / buyers : 0,
+          outOfStockSkus: oosSkus.filter((no) => hashPick(no, stores) === s.storeNo).length,
+        };
+      }),
     });
   },
 

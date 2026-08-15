@@ -25,6 +25,8 @@ export const ROUTES = {
   groups: "/pages/groups/index",
   settle: "/pages/settle/index",
   stats: "/pages/stats/index",
+  crossStore: "/pages/cross-store/index",
+  plan: "/pages/plan/index",
   customers: "/pages/customers/index",
   marketing: "/pages/marketing/index",
 } as const;

@@ -28,6 +28,41 @@ public class OrdSubOrder extends BaseEntity {
     public static final String REFUNDED = "REFUNDED";
 
     /**
+     * <b>成交口径的唯一定义处。</b>「这笔单算不算一次生意」——
+     * 商家看板、跨店对比、顾客画像、平台看板、商家排行，全部引用这里。
+     *
+     * <p><b>为什么必须只有一份</b>：此前是两份，且没有人声明过它们是两份 ——
+     * 商家侧写的是 {@code status != WAIT_PAY}（于是 <b>CANCELLED 也算成交</b>），
+     * 平台侧写的是一个显式集合（不含 CANCELLED）。
+     * 后果是同一个月、同一家店，商家后台的 GMV 比平台排行上的大，
+     * 而两边各自都说得通、都不报错 —— 差额恰好是那些被取消的单。
+     * 商家拿这个数去对账时，第一反应是平台少算了他的钱。
+     *
+     * <p><b>取消不是成交</b>：未付款自动关闭的单从来没有钱进来；
+     * 付款后被平台强制取消的单，钱已经原路退回。两者都不该出现在任何 GMV 里。
+     */
+    public static final java.util.Set<String> PAID =
+            java.util.Set.of(WAIT_FULFILL, FULFILLING, COMPLETED);
+
+    /**
+     * 成交口径 <b>+ 已退款</b>：GMV 是<b>毛</b>成交额，退款单要留在里面。
+     *
+     * <p>两条理由，缺一条这个集合就不成立：
+     * <ul>
+     *   <li><b>那笔钱确实成交过</b>。退款是之后发生的另一件事，它的出口在结算与售后，
+     *       不是把历史成交抹掉</li>
+     *   <li>不含它的话，<b>单子全退光的商家会从排行里整个消失</b> ——
+     *       而那正是最该被看见的一家（实测：一笔 30 元的单低于即时退款阈值被自动退掉，
+     *       那个商家在排行榜上凭空不见了）</li>
+     * </ul>
+     *
+     * <p>「净成交」是另一个指标，属于结算域；不要在这里用减法凑出来 ——
+     * 凑出来的数没有出处，对不上账时谁也说不清它是怎么来的。
+     */
+    public static final java.util.Set<String> TRANSACTED =
+            java.util.Set.of(WAIT_FULFILL, FULFILLING, COMPLETED, REFUNDED);
+
+    /**
      * {@code fulfillment} 列的取值域。
      *
      * <p>此前这四个值只以字面量形式散在各处（{@code MERCHANT_DELIVERY} 全后端仅一处），
@@ -63,6 +98,17 @@ public class OrdSubOrder extends BaseEntity {
     private String fulfillment;
 
     private String pickupNo;
+
+    /**
+     * 下单时买家所属社区，<b>冗余自主单</b>（V137）。
+     *
+     * <p>存在的理由只有一个：**数据域的锚点必须是本表上的一列** ——
+     * 拦截器在 SQL 层追加 where，join 出来的列它够不着。
+     * 社区本来只在 {@code ord_order} 上，而运营会话可能带 COMMUNITY 维度；
+     * 不冗余这一列的话，`ord_sub_order` 一旦接上数据域，
+     * 配了社区域的运营打开订单页就是**整页空白且不报错**（fail-closed，见 V137 注释）。
+     */
+    private String communityNo;
 
     /** 自提点名称快照：页面要显示名字，不能只给号（C6）。 */
     private String pickupName;

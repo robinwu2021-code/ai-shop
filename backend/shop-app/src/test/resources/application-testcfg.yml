@@ -48,3 +48,14 @@ shop:
     # 三道闸本身由 OtpRateLimitFlowTest 单独验：它用 @SpringBootTest(properties=…)
     # 把开关打开并把阈值调小，是唯一一处真的跑闸的地方。
     rate-limit: false
+  upload:
+    # 上传落在 target 下而不是默认的 ./data/uploads —— 后者会往仓库里写文件。
+    #
+    # 放在这里而不是各测试类上的 @DynamicPropertySource：理由与本文件开头那条一样，
+    # 而且是刚踩过的 —— 两个媒体测试类各声明一份动态属性，就造出了第二个上下文，
+    # 于是 H2（同一个内存库）被重复播种，整批测试挂在 sys_industry 主键冲突上。
+    dir: target/test-uploads
+  media:
+    # 固定签名密钥。不配的话每次启动随机生成（生产必须配 SHOP_MEDIA_SIGN_SECRET），
+    # 而随机密钥下「签名 URL 能打开」这条断言就无从谈起。
+    sign-secret: test-secret-for-media-signing

@@ -1,0 +1,155 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="980" height="760" viewBox="0 0 980 760" role="img" font-family="system-ui,-apple-system,'PingFang SC',sans-serif">
+<title>运营端「存储空间治理」线框：门店占用、待回收明细、批量条与强确认</title>
+<desc>三个页签。门店占用按待回收体积倒序，因为这一页的目的就是找出最该清的店。待回收明细每行给缩略图与可回收理由，理由是扫描时算出来的真实数据而不是推断：从未被引用的说明它从没被用过，被替换的说明它原来挂在哪个商品的哪个字段上、什么时候失去引用。默认一张都不勾选，证件默认不出现在清单里，确认弹窗要照抄本次删除的张数。</desc>
+<defs>
+<style>
+.n{font-size:12px;font-weight:600;fill:#161A21}
+.t{font-size:10px;fill:#5A6472}
+.b{font-size:11px;fill:#8A94A2;letter-spacing:.12em}
+.th{font-size:9.5px;font-weight:600;fill:#8A94A2}
+.cell{font-size:9.5px;fill:#5A6472}
+.cs{font-size:9.5px;font-weight:600;fill:#161A21}
+.box{fill:#fff;stroke:#D8DEE6;stroke-width:1.2}
+.panel{fill:#FBFCFD;stroke:#D8DEE6;stroke-width:1.2}
+.key{fill:#F2F8F4;stroke:#7FB894;stroke-width:1.4}
+.warn{fill:#FDF6EC;stroke:#E0B27A;stroke-width:1.4}
+.stop{fill:#FCF3F3;stroke:#D89A9A;stroke-width:1.6}
+.grey{fill:#F5F6F8;stroke:#E2E6EC;stroke-width:1}
+.hair{stroke:#EDF0F4;stroke-width:1}
+.btn{fill:#161A21}
+.btnT{font-size:9.5px;font-weight:600;fill:#fff}
+.btn2{fill:#fff;stroke:#C6CDD8;stroke-width:1.1}
+.btn2T{font-size:9.5px;font-weight:600;fill:#3A4250}
+.dgr{fill:#C0524F}
+.tagT{font-size:8.5px;font-weight:600;fill:#fff}
+.note{font-size:9.5px;fill:#8A94A2}
+.thumb{fill:#E4E8ED;stroke:#CFD6DE;stroke-width:1}
+</style></defs>
+
+<!-- ① 页面骨架 -->
+<text class="b" x="24" y="24">① 页面骨架 —— /system/storage · 复用既有 StatRow + TabHeader + DataTable + Toolbar</text>
+
+<text class="n" x="24" y="52">存储空间治理</text>
+
+<rect class="box" x="24" y="62" width="222" height="46" rx="7"/>
+<text class="t" x="36" y="80">总占用</text><text class="n" x="36" y="98">4.8 GB · 12,431 张</text>
+<rect class="box" x="254" y="62" width="222" height="46" rx="7"/>
+<text class="t" x="266" y="80">在用</text><text class="n" x="266" y="98">3.1 GB · 8,902 张</text>
+<rect class="warn" x="484" y="62" width="222" height="46" rx="7"/>
+<text class="t" x="496" y="80">待回收</text><text class="n" x="496" y="98">1.7 GB · 3,529 张</text>
+<rect class="box" x="714" y="62" width="228" height="46" rx="7"/>
+<text class="t" x="726" y="80">上次扫描</text><text class="n" x="726" y="98">2026-08-14 03:00</text>
+
+<rect class="grey" x="24" y="120" width="300" height="26" rx="13"/>
+<rect x="28" y="124" width="96" height="18" rx="9" fill="#fff" stroke="#DDE2E9"/>
+<text class="cs" x="48" y="137">门店占用</text>
+<text class="cell" x="140" y="137">待回收</text>
+<text class="cell" x="220" y="137">回收记录</text>
+<text class="note" x="336" y="137">TabHeader · 页内 tab，走 URL，可直接分享链接</text>
+
+<!-- 门店占用表 -->
+<rect class="panel" x="24" y="156" width="918" height="98" rx="7"/>
+<line class="hair" x1="24" y1="180" x2="942" y2="180"/>
+<text class="th" x="38" y="174">门店</text>
+<text class="th" x="230" y="174">状态</text>
+<text class="th" x="352" y="174">图片数</text>
+<text class="th" x="430" y="174">在用</text>
+<text class="th" x="520" y="174">待回收 ↓</text>
+<text class="th" x="628" y="174">占比</text>
+<text class="th" x="708" y="174">最后上传</text>
+<text class="th" x="846" y="174">操作</text>
+
+<text class="cs" x="38" y="200">文三路店 · S0003</text>
+<rect class="stop" x="230" y="190" width="96" height="14" rx="7"/><text class="cell" x="238" y="201">已下线 128 天</text>
+<text class="cell" x="352" y="200">1,204</text><text class="cell" x="430" y="200">96 MB</text>
+<text class="cs" x="520" y="200">612 MB</text><text class="cell" x="628" y="200">86%</text>
+<text class="cell" x="708" y="200">2026-04-02</text>
+<text class="cs" x="846" y="200" fill="#3A4250">查看待回收</text>
+
+<line class="hair" x1="24" y1="210" x2="942" y2="210"/>
+<text class="cs" x="38" y="230">滨江店 · S0011</text>
+<rect class="key" x="230" y="220" width="60" height="14" rx="7"/><text class="cell" x="238" y="231">在营</text>
+<text class="cell" x="352" y="230">3,882</text><text class="cell" x="430" y="230">1.4 GB</text>
+<text class="cs" x="520" y="230">381 MB</text><text class="cell" x="628" y="230">21%</text>
+<text class="cell" x="708" y="230">2026-08-13</text>
+<text class="cs" x="846" y="230" fill="#3A4250">查看待回收</text>
+
+<text class="note" x="38" y="248">默认按「待回收」倒序 —— 这一页的目的就是找出最该清的店，不是让人自己去排</text>
+
+<!-- ② 待回收明细 -->
+<text class="b" x="24" y="292">② 待回收明细 —— 每一行都要能让人判断「这张能不能删」</text>
+
+<rect class="panel" x="24" y="304" width="918" height="34" rx="7"/>
+<rect class="btn2" x="36" y="313" width="132" height="18" rx="4"/><text class="btn2T" x="44" y="326">搜索商家 / 门店</text>
+<rect class="btn2" x="176" y="313" width="86" height="18" rx="4"/><text class="btn2T" x="184" y="326">门店 · 全部 ▾</text>
+<rect class="btn2" x="270" y="313" width="98" height="18" rx="4"/><text class="btn2T" x="278" y="326">理由 · 全部 ▾</text>
+<rect class="warn" x="376" y="311" width="150" height="22" rx="4"/><text class="btn2T" x="384" y="326">☐ 包含证件（QUAL）</text>
+<rect class="btn2" x="836" y="313" width="94" height="18" rx="4"/><text class="btn2T" x="844" y="326">重新扫描</text>
+
+<rect class="panel" x="24" y="344" width="918" height="176" rx="7"/>
+<line class="hair" x1="24" y1="366" x2="942" y2="366"/>
+<text class="th" x="36" y="360">☐</text>
+<text class="th" x="62" y="360">缩略图</text>
+<text class="th" x="140" y="360">用途</text>
+<text class="th" x="196" y="360">归属</text>
+<text class="th" x="352" y="360">大小 · 尺寸</text>
+<text class="th" x="462" y="360">上传时间 · 上传人</text>
+<text class="th" x="614" y="360">可回收理由</text>
+<text class="th" x="884" y="360">扫描于</text>
+
+<!-- 行 1 -->
+<text class="cell" x="36" y="392">☐</text>
+<rect class="thumb" x="62" y="374" width="36" height="36" rx="4"/>
+<rect class="grey" x="140" y="382" width="44" height="14" rx="7"/><text class="cell" x="147" y="393">商品图</text>
+<text class="cell" x="196" y="386">鲜果坊 · 文三路店</text>
+<rect class="stop" x="196" y="392" width="86" height="13" rx="6"/><text class="cell" x="203" y="402">门店已下线 128 天</text>
+<text class="cell" x="352" y="392">412 KB · 1200×1200</text>
+<text class="cell" x="462" y="392">2026-03-12 · zhang@…</text>
+<text class="cs" x="614" y="386">曾被「商品 G0012 · 主图」引用</text>
+<text class="cell" x="614" y="400">2026-06-04 后失去引用（71 天）</text>
+<text class="cell" x="884" y="392">08-14 03:00</text>
+
+<line class="hair" x1="24" y1="416" x2="942" y2="416"/>
+<!-- 行 2 展开 -->
+<text class="cell" x="36" y="440">☐</text>
+<rect class="thumb" x="62" y="422" width="36" height="36" rx="4"/>
+<rect class="grey" x="140" y="430" width="44" height="14" rx="7"/><text class="cell" x="147" y="441">商品图</text>
+<text class="cell" x="196" y="440">鲜果坊 · 文三路店</text>
+<text class="cell" x="352" y="440">288 KB · 900×900</text>
+<text class="cell" x="462" y="440">2026-07-30 · zhang@…</text>
+<text class="cs" x="614" y="434">从未被引用</text>
+<text class="cell" x="614" y="448">上传后 15 天无人使用</text>
+<text class="cell" x="884" y="440">08-14 03:00</text>
+
+<rect class="grey" x="36" y="464" width="894" height="46" rx="5"/>
+<text class="cell" x="48" y="480">展开行 · 完整 key：E0001/S0003/goods/202607/9f2c1b7e…a1.jpg</text>
+<text class="cell" x="48" y="496">最后引用者：—— ｜ 最后引用时间：—— ｜ 上传渠道：B 端商品编辑 ｜ 内容类型：image/jpeg</text>
+
+<!-- ③ 批量条 + 确认 -->
+<text class="b" x="24" y="556">③ 勾选之后 —— Toolbar 整条换成批量操作条，确认要照抄张数</text>
+
+<rect class="key" x="24" y="568" width="918" height="34" rx="7"/>
+<text class="cs" x="38" y="589">已选 137 张 · 共 412 MB</text>
+<rect class="btn2" x="200" y="577" width="126" height="18" rx="4"/><text class="btn2T" x="208" y="590">选中筛选结果全部</text>
+<rect class="btn2" x="334" y="577" width="72" height="18" rx="4"/><text class="btn2T" x="342" y="590">清除选择</text>
+<rect class="dgr" x="820" y="575" width="110" height="22" rx="4"/><text class="btnT" x="840" y="590">发起回收任务</text>
+
+<rect class="box" x="24" y="614" width="470" height="132" rx="8"/>
+<text class="n" x="40" y="638">确认发起回收任务</text>
+<rect class="stop" x="40" y="648" width="438" height="30" rx="5"/>
+<text class="cell" x="50" y="661">将删除 137 张图片，共 412 MB。文件删除后不可恢复；</text>
+<text class="cell" x="50" y="673">记账行保留，谁在什么时候删了什么永远可查。</text>
+<text class="cell" x="40" y="696">涉及 2 家门店 · 商品图 137 张 · 证件 0 张</text>
+<text class="cell" x="40" y="712">请输入本次删除的张数以确认：</text>
+<rect class="btn2" x="40" y="718" width="120" height="20" rx="4"/><text class="btn2T" x="48" y="732">137</text>
+<rect class="btn2" x="290" y="718" width="60" height="20" rx="4"/><text class="btn2T" x="308" y="732">取消</text>
+<rect class="dgr" x="358" y="718" width="120" height="20" rx="4"/><text class="btnT" x="386" y="732">确认删除</text>
+
+<rect class="warn" x="510" y="614" width="432" height="132" rx="8"/>
+<text class="n" x="526" y="638">四条做进 UI 的护栏</text>
+<text class="cell" x="526" y="660">① 默认一张都不勾选 —— 破坏性操作不预选</text>
+<text class="cell" x="526" y="678">② 证件（QUAL）默认不进清单，要显式打开开关</text>
+<text class="cell" x="526" y="696">③ 全选只选当前页；跨页要走「选中筛选结果全部」并二次确认</text>
+<text class="cell" x="526" y="714">④ 强确认照抄的是张数，不是固定串 —— 逼着把数字读一遍</text>
+<text class="cell" x="526" y="734">扫描结果异常（可回收占比 &gt; 50%）时置顶红条，并禁用批量回收</text>
+</svg>

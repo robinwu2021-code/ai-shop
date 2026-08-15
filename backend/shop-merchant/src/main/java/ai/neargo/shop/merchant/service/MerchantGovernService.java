@@ -43,12 +43,48 @@ public interface MerchantGovernService {
     /**
      * 记一条违规处置。
      *
-     * <p>两个副作用是**处置的一部分**，不是可选项：
+     * <p>副作用是**处置的一部分**，不是可选项：
      * {@code BREACH} 累加 {@code breachCount}（毁约次数在报价卡上公示，ADR-003）；
-     * {@code SUSPEND} 真的把商家推到 SUSPENDED —— 只记录不执行的处置等于没处置。
+     * {@code SUSPEND} 真的把商家推到 SUSPENDED；{@code STORE_OFFLINE} 真的把门店
+     * 压到 SUSPENDED 并撤下该店货架 —— 只记录不执行的处置等于没处置。
+     *
+     * @param storeNo 门店级处置（{@code STORE_OFFLINE}）必填，其余动作必须为空 ——
+     *                「对着门店记一条主体级违规」会让申诉时说不清处置对象是谁
      */
-    ViolationVO recordViolation(String merchantNo, String type, String action, String detail,
-                                String operatorNo);
+    ViolationVO recordViolation(String merchantNo, String storeNo, String type, String action,
+                                String detail, String operatorNo);
+
+    // ---------------------------------------------------------------- 门店档案（P-11.2.1）
+
+    /**
+     * 跨主体门店检索。传 {@code merchantNo} 就是「该主体的全部门店」（含停用的 ——
+     * 治理视角更不能看不见）。**只读**：门店资料、价格、库存运营一律不改，
+     * 平台的边界是「裁、定、兜」，不替商家运营。
+     */
+    ai.neargo.shop.common.PageData<StoreGovernVO> searchStores(String merchantNo, String status,
+                                                               String businessMode, String keyword,
+                                                               long page, long size);
+
+    /** 门店详情：门面 + 配送规则 + 经营模式 + 收款商户号。 */
+    StoreGovernVO storeDetail(String storeNo);
+
+    /**
+     * 解除门店强制下线（{@code SUSPENDED → ACTIVE}），并恢复被平台压下的货架行。
+     * <b>只有平台能做</b> —— 商家侧的启停对 SUSPENDED 一律拒绝（70021）。
+     */
+    StoreGovernVO restoreStore(String storeNo, String operatorNo);
+
+    /**
+     * @param payMerchantNo 空 = 用主体默认收款号（不是「没配」）
+     * @param status ACTIVE / READONLY（商家自助停用）/ SUSPENDED（平台强制下线）
+     */
+    record StoreGovernVO(String storeNo, String name, String address,
+                         String merchantNo, String merchantName,
+                         boolean isDefault, String status, String businessMode,
+                         String payMerchantNo, String announcement, String openHours,
+                         Integer deliveryRadiusM, Long deliveryMinOrderMinor,
+                         Long deliveryFeeMinor, Long deliveryFreeThresholdMinor) {
+    }
 
     /**
      * @param status       ACTIVE / SUSPENDED / FROZEN —— **经营状态**
@@ -124,8 +160,9 @@ public interface MerchantGovernService {
                              String fundsMode, boolean agriProducer) {
     }
 
-    record ViolationVO(String violationNo, String merchantNo, String merchantName, String type,
-                       String action, String detail, String operator, long at) {
+    /** @param storeNo 门店级处置时的门店号，主体级处置为 null（V96） */
+    record ViolationVO(String violationNo, String merchantNo, String merchantName, String storeNo,
+                       String type, String action, String detail, String operator, long at) {
     }
 
     // ---------------------------------------------------------------- 门面内容审核（P-10.1）

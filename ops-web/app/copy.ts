@@ -25,7 +25,16 @@ const zh = {
   funnelRegister: "注册",
   funnelFirstOrder: "首单",
 
-  soon: "商家排行、履约质量、trafficSource 结构分析（P-16.1.2/5/6）待建",
+  rankTitle: "商家经营排行",
+  rankDesc: "近 14 天，按成交额降序 · 只含有成交的商家",
+  rankColMerchant: "商家",
+  rankColGmv: "成交额",
+  rankColOrders: "订单数",
+  rankColAov: "客单价",
+  rankColAfterSale: "售后率",
+  rankEmpty: "近 14 天还没有成交",
+
+  soon: "履约质量、trafficSource 结构分析（P-16.1.5/6）待建",
 };
 
 const en: typeof zh = {
@@ -51,7 +60,16 @@ const en: typeof zh = {
   funnelRegister: "Register",
   funnelFirstOrder: "First order",
 
-  soon: "Merchant ranking, fulfillment quality and traffic-source breakdown (P-16.1.2/5/6) are not built yet",
+  rankTitle: "Merchant performance ranking",
+  rankDesc: "Last 14 days, by GMV · merchants with sales only",
+  rankColMerchant: "Merchant",
+  rankColGmv: "GMV",
+  rankColOrders: "Orders",
+  rankColAov: "Avg order value",
+  rankColAfterSale: "After-sales rate",
+  rankEmpty: "No sales in the last 14 days",
+
+  soon: "Fulfillment quality and traffic-source breakdown (P-16.1.5/6) are not built yet",
 };
 
 export const HOME_COPY: PageCopy<typeof zh> = { zh, en };

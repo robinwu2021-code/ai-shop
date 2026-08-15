@@ -69,6 +69,28 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
   mTodo: { method: "GET", path: "/biz/dashboard/todo", auth: true, summary: "工作台待办" },
   mStats: { method: "GET", path: "/biz/dashboard/stats", auth: true, summary: "经营数据" },
 
+  // 跨店总览与对比（B-11.12.5 / 11.12.6）。权限与 /biz/dashboard/stats 同一档
+  // （biz:customer，后端没有另造 biz:cross-store 码），另有一道能力位门禁：
+  // 无 cross_store_stats 的档位会被拒（70023），端上渲染示例态。
+  mCrossStoreOverview: {
+    method: "GET",
+    path: "/biz/cross-store/overview",
+    auth: true,
+    summary: "跨店总览（按店并列今日/本月/待办）",
+  },
+  mCrossStoreCompare: {
+    method: "GET",
+    path: "/biz/cross-store/compare",
+    auth: true,
+    summary: "跨店对比（销售额/订单/复购/缺货）",
+  },
+
+  // 我的增值包（B-11.13，增值包 P4）。挂 biz:store:admin —— **只有老板**：
+  // 这一页答的是「主体买了什么」，与建店、挂收款号同属主体结构面。
+  // 店长调这两条会 403，所以端上要按 can('biz:store:admin') 决定渲不渲染入口
+  mMyPlan: { method: "GET", path: "/biz/plan", auth: true, summary: "我的套餐（档位/用量/三档对比）" },
+  mStartTrial: { method: "POST", path: "/biz/plan/trial", auth: true, summary: "自助开通试用（一主体一次）" },
+
   mGoodsList: { method: "GET", path: "/biz/goods", auth: true, summary: "商品列表" },
   mGoodsDetail: { method: "GET", path: "/biz/goods/:goodsNo", auth: true, summary: "商品详情" },
   mSaveGoods: { method: "POST", path: "/biz/goods/save", auth: true, summary: "新建/编辑商品" },
@@ -177,9 +199,11 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
     auth: true,
     summary: "绑定 App 推送设备（登录后）",
   },
+  // POST 而非 DELETE：端上 call() 只走 GET/POST 两条路，
+  // DELETE 会被静默当成 POST —— 解绑「没报错但没生效」是最坏的失败方式。
+  //
+  // ⚠️ 注释放在属性外面：生成器正则是 `\{\s*method:`，夹在中间这个端点就不进 spec。
   mUnregisterPushToken: {
-    // POST 而非 DELETE：端上 call() 只走 GET/POST 两条路，
-    // DELETE 会被静默当成 POST —— 解绑「没报错但没生效」是最坏的失败方式
     method: "POST",
     path: "/biz/push-token/unregister",
     auth: true,

@@ -66,4 +66,5 @@ export const dashboardMock: DashboardApi = {
   getDashboardKpi: () => wait(db.kpi),
   getDashboardTrend: () => wait(db.trend),
   getAcquisitionFunnel: () => wait(db.funnel),
+  getMerchantRanking: () => wait(db.merchantRanking),
 };

@@ -66,6 +66,13 @@ public class PrdGoods extends BaseEntity {
     /** AUDITING / APPROVED / REJECTED —— 商家商品需平台审核（P-3.2.2）。 */
     private String auditStatus;
 
+    /**
+     * 驳回/强制下架原因（V96）。**它是商家能看到的那半边**：
+     * 审计日志里的原因只有运营看得到，商家面对 REJECTED 只能猜要改什么。
+     * 通过审核时清空 —— 旧原因留着会被当成「还有问题没改完」。
+     */
+    private String auditReason;
+
     // ---- FRESH ----
     private Long cutoffAt;
     private String arrivalDesc;

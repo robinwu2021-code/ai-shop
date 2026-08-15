@@ -137,4 +137,67 @@ export const systemMock: SystemApi = {
     f.updatedAt = "2026-08-06T00:00:00Z";
     return wait(f, 400);
   },
+
+  // ── 存储空间治理 ──
+  getMediaOverview: async () => {
+    const rows = db.mediaStoreUsage;
+    const activeBytes = rows.reduce((a, r) => a + r.activeBytes, 0);
+    const reclaimableBytes = rows.reduce((a, r) => a + r.reclaimableBytes, 0);
+    const reclaimableCount = db.mediaReclaimable.length;
+    const totalCount = rows.reduce((a, r) => a + r.count, 0);
+    return wait({
+      totalBytes: activeBytes + reclaimableBytes,
+      totalCount,
+      activeBytes,
+      activeCount: totalCount - reclaimableCount,
+      reclaimableBytes,
+      reclaimableCount,
+      // mock 里刻意为 false：异常态由页面的 storybook 场景单独试，
+      // 让它常驻会让每次打开都顶着一条红条，反而看不出真异常
+      abnormal: false,
+    });
+  },
+  listMediaStoreUsage: async () =>
+    wait([...db.mediaStoreUsage].sort((a, b) => b.reclaimableBytes - a.reclaimableBytes)),
+  listMediaReclaimable: async (q) => {
+    let rows = [...db.mediaReclaimable];
+    // 证件默认不进清单 —— 与后端同一个默认值，不然 mock 下看到的和真后端不一样
+    if (!q?.includeQual) rows = rows.filter((r) => r.bizType !== "QUAL");
+    if (q?.storeNo) rows = rows.filter((r) => r.storeNo === q.storeNo);
+    if (q?.entityNo) rows = rows.filter((r) => r.entityNo === q.entityNo);
+    if (q?.neverUsed === true) rows = rows.filter((r) => r.reason.startsWith("从未"));
+    if (q?.neverUsed === false) rows = rows.filter((r) => !r.reason.startsWith("从未"));
+    const page = q?.page ?? 1;
+    const size = q?.size ?? 20;
+    return wait({ records: rows.slice((page - 1) * size, page * size), total: rows.length, page, size });
+  },
+  listMediaBatches: async () => wait([...db.mediaBatches]),
+  getMediaBatch: async (batchNo) => {
+    const batch = db.mediaBatches.find((b) => b.batchNo === batchNo);
+    if (!batch) notFound("回收批次", "Purge batch", batchNo);
+    return wait({ batch, items: [...db.mediaReclaimable] });
+  },
+  scanMedia: async () => wait({
+    total: db.mediaReclaimable.length + 20, referenced: 20,
+    marked: db.mediaReclaimable.length, rescued: 0, abnormal: false,
+  }),
+  backfillMedia: async () => wait({ scanned: 1250, inserted: 3, skipped: 1247 }),
+  previewMediaPurge: async (q) => {
+    const rows = q?.includeQual ? db.mediaReclaimable
+      : db.mediaReclaimable.filter((r) => r.bizType !== "QUAL");
+    const picked = q?.storeNo ? rows.filter((r) => r.storeNo === q.storeNo) : rows;
+    return wait({
+      count: picked.length,
+      bytes: picked.reduce((a, r) => a + r.bytes, 0),
+      sample: picked.slice(0, 20).map((r) => r.assetKey),
+    });
+  },
+  purgeMedia: async (v) => {
+    const keys = v.assetKeys ?? [];
+    // 跨页全选那道闸也要在 mock 里成立 —— 否则前端的错误分支永远试不出来
+    if (keys.length === 0 && v.expectedCount == null) {
+      fail("跨页全选必须带预期数量", "Cross-page selection requires an expected count");
+    }
+    return wait({ batchNo: "MP" + Date.now() });
+  },
 };

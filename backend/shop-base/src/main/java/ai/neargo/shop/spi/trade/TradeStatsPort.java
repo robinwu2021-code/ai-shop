@@ -48,6 +48,34 @@ public interface TradeStatsPort {
      */
     Reach reach();
 
+    /**
+     * 按商家聚合的经营数据（P-16.1.2 商家排行 / P-16.1.3 商家经营）。
+     *
+     * <p><b>与 {@code MerchantOrderService.stats} 是同一份订单数据的两种切法</b>：
+     * 那个答「这一家做了多少」（商家自己看），这个答「哪几家做得多」（平台横着比）。
+     * 不另存排行榜表 —— 另存的迟早出现「榜上说 12 单、点进去只有 9 单」。
+     *
+     * @param from 起始日（含），为空不限
+     * @return 按 GMV 降序，<b>只含有成交的商家</b>：零单商家排在末尾没有信息量，
+     *         而把它们全带上会让「平台有多少家在做生意」这个数被稀释
+     */
+    List<MerchantTotal> merchantTotals(LocalDate from);
+
+    /**
+     * @param gmv            <b>实收</b>：只算仍在成交态的单，退掉的不计 —— 与 {@link #paidTotals}
+     *                       同一口径，看板上下两层不能有两个 GMV 定义
+     * @param orderCount     仍在成交态的单数
+     * @param refundedCount  已退款的单数。<b>必须单列</b>：退掉的单会离开成交态，
+     *                       只按成交态取商家集合的话，<b>一家单子全退光的商家会从排行里整个消失</b>——
+     *                       而那恰恰是这张表最该显示的一家（实测撞到：¥30 的单低于极速退阈值，
+     *                       自动退款后商家凭空不见了）
+     * @param afterSaleCount 该商家的售后单数（含已完结）—— 与 GMV 并列才看得出
+     *                       「卖得多」是不是「赔得也多」，那正是平台要盯的商家
+     */
+    record MerchantTotal(String merchantNo, long gmv, long orderCount, long refundedCount,
+                         long afterSaleCount) {
+    }
+
     record Totals(long gmv, long orderCount) {
     }
 

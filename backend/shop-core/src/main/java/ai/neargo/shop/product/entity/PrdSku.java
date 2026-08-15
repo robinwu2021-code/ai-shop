@@ -48,4 +48,25 @@ public class PrdSku extends BaseEntity {
 
     /** FRESH 且按重计价：标称重量（克）。 */
     private Integer nominalGram;
+
+    /**
+     * 预售额度（V100 / P-3.3.1）。**0 = 不做预售**，下单闸门只看现货。
+     *
+     * <p>它不是一个给人看的配置项 —— 现货卖完后，下单会回落到这个额度上继续成交
+     * （{@code StockPortImpl.lock()} 的第二级）。只存不读的话，配 500 和配 0
+     * 对买家完全一样，而运营会以为自己开了预售。
+     */
+    private Integer presaleQuota;
+
+    /** 预售期内已售。锁定即计入、释放即回退 —— 与 {@link #lockedStock} 是两个池子。 */
+    private Integer soldCount;
+
+    /**
+     * 截单时间（P-3.3.2）。{@code null} = 不设截单，只靠额度封顶。
+     * <b>必须早于 {@link #arriveAt}</b>：否则货到了还能继续下单，而那批订单没有对应的采购。
+     */
+    private java.time.LocalDateTime cutoffAt;
+
+    /** 到货时间。一期只做「截单必须早于到货」的校验基准，不驱动履约批次。 */
+    private java.time.LocalDateTime arriveAt;
 }

@@ -126,4 +126,5 @@ export const dashboardHttp: DashboardApi = {
   getDashboardKpi: () => client.get("/ops/dashboard/kpi"),
   getDashboardTrend: () => client.get("/ops/dashboard/trend"),
   getAcquisitionFunnel: () => client.get("/ops/dashboard/funnel"),
+  getMerchantRanking: () => client.get("/ops/dashboard/merchants"),
 };

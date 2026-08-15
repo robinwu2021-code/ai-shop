@@ -79,6 +79,9 @@ export const NAV: NavSection[] = [
     children: [
       { href: "/merchants", label: "入驻审核", perm: "merchant:apply:audit", group: "入驻与资质", matrix: "P-11.1", ready: true },
       { href: "/merchants?tab=list", label: "商家档案", perm: "merchant:merchant:read", group: "入驻与资质", matrix: "P-11.1", ready: true },
+      // 紧挨着商家档案：同一份 merchant:merchant:read，且门店是主体的下一层 ——
+      // 从「这家商家」翻到「他的哪家店」是一次连续动作，中间隔着类目授权会断掉
+      { href: "/merchants?tab=stores", label: "门店档案", perm: "merchant:merchant:read", group: "入驻与资质", matrix: "P-11.2" },
       { href: "/merchants?tab=categories", label: "类目授权", perm: "merchant:category:grant", group: "入驻与资质", matrix: "P-11.1" },
       // 上架的「资质过期」「类目授权」两个闸门读的就是这张表 ——
       // 后端三个接口早已实现，此前**前端零调用**，于是表恒空、闸门从不触发
@@ -98,6 +101,14 @@ export const NAV: NavSection[] = [
       { href: "/merchants?tab=verify", label: "认证标管理", perm: "merchant:verify:grant", group: "信用与处置", matrix: "P-11.1" },
       { href: "/merchants?tab=credit", label: "信用档案", perm: "merchant:merchant:read", group: "信用与处置", matrix: "P-11.1" },
       { href: "/merchants?tab=ban", label: "违规处置与封禁", perm: "merchant:merchant:ban", group: "信用与处置", matrix: "P-11.1" },
+      // 单独一个 group 而不是塞进「信用与处置」：降级确实压店，但它不是处置 ——
+      // 处置是商家做错了事，降级是他没续费。混在一起，运营会照处置的口径去回访。
+      //
+      // 只有一个叶子：档位定义（`system:param:update`）**不能**在这里再开一条 ——
+      // 叶子的 perm 前缀必须等于 section 的 module（nav.test.ts 锁着）。
+      // 它作为页内区块存在，编辑按钮按 can('system:param:update') 显隐：
+      // BD 能授予套餐，但改「套餐是什么」不在他手里。
+      { href: "/merchants?tab=plans", label: "增值包与额度", perm: "merchant:merchant:read", group: "增值包", matrix: "P-11.2" },
     ],
   },
 
@@ -126,6 +137,10 @@ export const NAV: NavSection[] = [
       // 那边是全量池按状态筛，这边只有待审队列 —— 审核员日常只用这一个
       { href: "/products?tab=audit", label: "商品审核队列", perm: "product:sku:audit", group: "商品", matrix: "P-3.2", ready: true },
       { href: "/products?tab=stock", label: "预售额度与超卖", perm: "product:stock:update", group: "库存与预售", matrix: "P-3.3", ready: true },
+      // 规格模板（P-3.4 / E27）。**归类目权限不归商品权限**：模板按品类预置，
+      // 与类目树、资质码字典是同一拨人在配。此前 B-4.4 商家能选模板而平台没有维护入口 ——
+      // 三端联动表把这条记成「❌ 断裂：模板是死的」
+      { href: "/products?tab=templates", label: "规格模板维护", perm: "product:category:read", group: "规格模板", matrix: "P-3.4", ready: true },
     ],
   },
 
@@ -330,6 +345,11 @@ export const NAV: NavSection[] = [
       { href: "/system", label: "外观与规则文案", perm: "system:theme:update", group: "外观与语言", matrix: "P-17.1", ready: true },
       { href: "/system?tab=market", label: "市场/货币/汇率", perm: "system:param:read", group: "外观与语言", matrix: "P-17.1", ready: true },
       { href: "/system?tab=flags", label: "开关与灰度", perm: "system:param:read", group: "运行配置", matrix: "P-17.1", ready: true },
+      // 存储空间治理：门店占用 / 待回收 / 回收记录三个页签。
+      // perm 用 read 而不是 purge —— 叶子的 perm 决定能不能看见入口，
+      // 而「能看占用」的人比「能删」的人多；删的权限由页面内部按 system:media:purge 判，
+      // 没有它就隐藏勾选框与批量操作条（TDD-图片存储与空间回收 §L3-7）
+      { href: "/system?tab=storage", label: "存储空间治理", perm: "system:media:read", group: "运行配置", matrix: "P-17.1", ready: true },
       // 下面三个页面早有 tab、菜单一直漏登记 —— 都是「平台一共允许经营什么」这组配置。
       // perm 用 read 码而不是各自的写码（env:switch / category:manage）：
       // 叶子的 perm 决定**能不能看见这个入口**，写权限由页面内部各自判。

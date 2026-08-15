@@ -9,6 +9,7 @@ import type {
   AppealReviewReq,
   SaveGoodsReqBody,
   CreateGroupReq,
+  CrossStoreCompareQuery,
   GoodsListQuery,
   HandleAfterSaleReq,
   MarkArrivedReq,
@@ -45,6 +46,9 @@ import type {
   Community,
   CommunityApply,
   CommunityApplyReq,
+  CrossStoreCompare,
+  CrossStoreOverview,
+  MerchantPlan,
   Region,
   DeliveryRule,
   Goods,
@@ -156,6 +160,22 @@ export const httpApi: MerchantApi = {
 
   mTodo: () => http.get<MerchantTodo>(E.mTodo.path),
   mStats: () => http.get<MerchantStats>(E.mStats.path),
+
+  mCrossStoreOverview: () => http.get<CrossStoreOverview>(E.mCrossStoreOverview.path),
+  /*
+   * days 不传就不发这个参数：后端的默认值是 30，端上再抄一遍就是两处默认值，
+   * 改一处另一处静默不动。
+   */
+  mCrossStoreCompare: (days) =>
+    http.get<CrossStoreCompare>(
+      E.mCrossStoreCompare.path,
+      (days === undefined ? {} : { days }) satisfies CrossStoreCompareQuery,
+    ),
+
+  mMyPlan: () => http.get<MerchantPlan>(E.mMyPlan.path),
+  // 无 body：试用的目标档位由后端按「可试用且在售、sort 最小」选 ——
+  // 端上传档位码等于把定价逻辑抄到端上，而它会与后端各自演进
+  mStartTrial: () => http.post<MerchantPlan>(E.mStartTrial.path),
 
   mGoodsList: (q) => http.get<PageResult<Goods>>(E.mGoodsList.path, { ...q } satisfies GoodsListQuery),
   mGoodsDetail: (goodsNo) => http.get<Goods>(buildPath(E.mGoodsDetail.path, { goodsNo })),

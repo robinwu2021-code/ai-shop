@@ -182,9 +182,16 @@ public class OpsPlatformController {
     /**
      * 配数据域。空 = 不限定。
      *
-     * <p>⚠️ <b>当前只存不用</b>：各域查询还没按它裁剪（{@code LoginUser.operator}
-     * 目前一律签发 {@code DataScopeSpec.ALL}）。运营端已就此标注，
-     * 免得有人以为限定住了而实际没有。
+     * <p><b>已生效的范围</b>（2026-08-14，TDD-运营端数据域接入 批①）：
+     * 订单检索/详情/异常队列/兄弟单，以及运营看板上所有基于子订单的口径 ——
+     * 它们走 {@code ord_sub_order}，四个维度锚点齐（SELF/MERCHANT/COMMUNITY/PICKUP）。
+     *
+     * <p><b>还没接的</b>：商品池与 SKU（批③）、结算与履约（批④）、门店与主体档案（批②，
+     * 卡在「门店属于哪个社区」没有单值表示，见 TDD §六 Q1 的实施记录）。
+     * 那几处仍是全量 —— 配了数据域的人在那些页面上看到的仍是全平台。
+     *
+     * <p>写路径**刻意不受数据域约束**（§5 T2）：越权由 {@code @PreAuthorize} +
+     * Service 内归属校验挡。写路径也走数据域会把「处置域外主体」变成静默失败。
      */
     @PostMapping("/ops/staffs/{staffNo}/scope")
     @PreAuthorize("@perm.can('" + Perms.IAM_STAFF_UPDATE + "')")

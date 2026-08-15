@@ -130,6 +130,39 @@ public enum ErrorCode {
     NOT_THIS_PICKUP_POINT(30002, "err.fulfillment.not_this_pickup"),
     ORDER_REFUNDED(30003, "err.fulfillment.order_refunded"),
 
+    /*
+     * 履约调度与物流（P-5.1 / P-5.2）。**每一条都对应运营端一个不同的下一步动作** ——
+     * 共用 10400「参数有误」的话，运营看到的永远是同一句话，而他要做的事完全不同：
+     * 改一个数字、换一家运力、还是先去把在途单跑完。
+     */
+
+    /** 批次跳步（没发车就到货、没到货就签收）。责任判定的依据会被跳过去 */
+    BATCH_TRANSITION_ILLEGAL(30004, "err.fulfillment.batch_transition_illegal"),
+
+    /** 逾期宽限期不足 1 小时。**到点即作废必产生客诉**，宽限期是规则不是建议 */
+    OVERDUE_GRACE_TOO_SHORT(30005, "err.fulfillment.overdue_grace_too_short"),
+
+    /** 已签收的快递单不许改运单号 —— 等于把一条已完成的轨迹指向别处 */
+    WAYBILL_LOCKED(30006, "err.fulfillment.waybill_locked"),
+
+    /** 同一承运商下运单号重复 —— 会把两单的轨迹搅在一起 */
+    WAYBILL_DUPLICATED(30007, "err.fulfillment.waybill_duplicated"),
+
+    /** 默认运费模板不能归档 —— 归档之后新商家没有模板可用 */
+    FREIGHT_DEFAULT_LOCKED(30008, "err.fulfillment.freight_default_locked"),
+
+    /** 运力优先级重复 —— 同优先级时选哪家取决于查询顺序，那是隐性行为 */
+    CARRIER_PRIORITY_TAKEN(30009, "err.fulfillment.carrier_priority_taken"),
+
+    /** 没配接入密钥不能启用 —— 启用后下单当场失败，比不启用更糟 */
+    CARRIER_KEY_MISSING(30010, "err.fulfillment.carrier_key_missing"),
+
+    /** 还有在途快递单，停用后那些单的轨迹拉不回来 */
+    CARRIER_HAS_IN_FLIGHT(30011, "err.fulfillment.carrier_has_in_flight"),
+
+    /** 不能停掉最后一家启用的运力 —— 全停之后快递单无处可下 */
+    CARRIER_LAST_ENABLED(30012, "err.fulfillment.carrier_last_enabled"),
+
     // ---- 4xxxx 营销 ----
     COUPON_SOLD_OUT(40001, "err.marketing.coupon_sold_out"),
     COUPON_NOT_APPLICABLE(40002, "err.marketing.coupon_not_applicable"),
@@ -140,12 +173,81 @@ public enum ErrorCode {
     /** 预算低于「发行量 × 单张最大优惠」——不接受一个从第一天起就不可能满足的预算 */
     COUPON_BUDGET_BELOW_EXPOSURE(40005, "err.marketing.coupon_budget_below_exposure"),
 
+    /*
+     * 增长与归因（P-9）。**归因规则决定商家付多少佣金**（ADR-004 §6），
+     * 所以这几条不复用 BAD_REQUEST：「请求参数有误」会让运营去改别的字段，
+     * 而问题在优先级表的完整性上——那是个看起来填了、其实只填了一半的框。
+     */
+    /** 归因优先级不是全序（三个来源有重复或有遗漏）——半张表在冲突时会随机裁决 */
+    ATTRIBUTION_PRIORITY_INVALID(40006, "err.marketing.attribution_priority_invalid"),
+    /** 归因窗口期越界（1–90 天）。0 天等于关掉归因，而页面上看不出来 */
+    ATTRIBUTION_WINDOW_INVALID(40007, "err.marketing.attribution_window_invalid"),
+    /** 新客判定一个因子都没选 = 所有人都是新客，新人券会被无限领 */
+    ATTRIBUTION_FACTOR_REQUIRED(40008, "err.marketing.attribution_factor_required"),
+    /** 邀请有礼只能发券（ADR-004：去团长化后不存在现金激励） */
+    FISSION_REWARD_MUST_BE_COUPON(40009, "err.marketing.fission_reward_must_be_coupon"),
+    /** 两边都是 0 张 = 一个不发奖的裂变活动，或者张数为负 */
+    FISSION_REWARD_COUNT_INVALID(40010, "err.marketing.fission_reward_count_invalid"),
+
     // ---- 5xxxx 资金 ----
     SPLIT_RECEIVER_NOT_READY(50001, "err.settle.receiver_not_ready"),
     SPLIT_EXPIRED(50002, "err.settle.split_expired"),
 
+    /**
+     * 提现单状态不允许该动作（P-12.2.1）。
+     *
+     * <p>不复用 {@code CONFLICT}：财务看到「操作冲突」不知道该做什么，
+     * 看到「这张单已经审过了」就知道该去刷新列表 —— 而重复审批一笔提现，
+     * 后果是同一笔钱被批两次。
+     */
+    WITHDRAW_STATE_ILLEGAL(50003, "err.settle.withdraw_state_illegal"),
+    /** 申请金额超过<b>申请时</b>的可提余额快照。用快照而不是实时值，见 StlWithdraw。 */
+    WITHDRAW_OVER_BALANCE(50004, "err.settle.withdraw_over_balance"),
+    /** 低于单笔下限 —— 渠道手续费比本金还贵。 */
+    WITHDRAW_BELOW_MIN(50005, "err.settle.withdraw_below_min"),
+    /** 超过复核阈值却没写复核说明。大额是最容易被冒用的口子。 */
+    WITHDRAW_REVIEW_NOTE_REQUIRED(50006, "err.settle.withdraw_review_note_required"),
+    /**
+     * 商家处于封禁中，不放行提现。
+     *
+     * <p>解封是另一条链路上的决定（P-11.1.4），在这里绕过去等于让处置形同虚设 ——
+     * 而处置期间恰恰是最该冻住资金的时候。单独一个码，财务才知道该去找谁解封。
+     */
+    WITHDRAW_MERCHANT_BANNED(50010, "err.settle.withdraw_merchant_banned"),
+    /**
+     * 开票金额超过该周期已结算金额。
+     *
+     * <p>单独一个码而不是 BAD_REQUEST：超出的那部分<b>没有真实交易对应，就是虚开</b>，
+     * 而运营看到「参数有误」只会去改金额再试一次。
+     */
+    INVOICE_OVER_SETTLED(50007, "err.settle.invoice_over_settled"),
+    /** 企业抬头缺纳税人识别号 —— 开出来对方也入不了账。 */
+    INVOICE_TAX_NO_REQUIRED(50008, "err.settle.invoice_tax_no_required"),
+    /** 个税税率超过硬上限（45%）。超过一定是配置错误，而它会扣光每一笔提现。 */
+    TAX_RATE_TOO_HIGH(50009, "err.settle.tax_rate_too_high"),
+
     // ---- 6xxxx 风控 ----
     RISK_BLOCKED(60001, "err.risk.blocked"),
+
+    /*
+     * 风控处置（P-16.2）。这几条都不复用 BAD_REQUEST：运营是在一个**队列**上工作，
+     * 「请求参数有误」在队列场景里最没用——他要知道的是「这单已经被同事处理了」
+     * 还是「我少写了结论」，而这两件事的下一步动作完全不同。
+     */
+    /** 事件已被处置（多半是同事先动了手）。端上据此提示刷新列表 */
+    RISK_EVENT_HANDLED(60002, "err.risk.event_handled"),
+    /** 处置结论必填。**排除也要写理由**——下次同一主体再命中时，得知道上次为什么放过 */
+    RISK_VERDICT_REQUIRED(60003, "err.risk.verdict_required"),
+    /** 拉黑原因必填：申诉时被拉黑者要能看到自己因为什么被拉黑 */
+    BLACKLIST_REASON_REQUIRED(60004, "err.risk.blacklist_reason_required"),
+    /** 到期时间必填且必须在未来。无期限拉黑没有申诉出口，是产品事故不是风控严格 */
+    BLACKLIST_UNTIL_REQUIRED(60005, "err.risk.blacklist_until_required"),
+    /** 该对象已在生效中的黑名单里——重复拉黑会让「解禁」变成要点两次的迷题 */
+    BLACKLIST_DUPLICATE(60006, "err.risk.blacklist_duplicate"),
+    /** 该记录没有待裁决的申诉 */
+    BLACKLIST_NO_APPEAL(60007, "err.risk.blacklist_no_appeal"),
+    /** 触发阈值必须 &gt; 0——0 等于全量拦截，而页面上它只是一个普通数字 */
+    RISK_THRESHOLD_INVALID(60008, "err.risk.threshold_invalid"),
 
     // ---- 7xxxx 商家与通道准入 ----
     /**
@@ -199,6 +301,23 @@ public enum ErrorCode {
      * 说出来 —— 通用的「请求参数有误」会让用户反复重试同一个动作。
      */
     FULFILLMENT_NOT_SUPPORTED(70013, "err.trade.fulfillment_not_supported"),
+    /*
+     * 快递 / 自送单缺收货地址。**单独一个码**：端上要把人送到地址簿去，
+     * 而通用的「请求参数有误」只会让他在结算页上反复点提交。
+     *
+     * 这条闸此前不存在 —— 于是不带 addressId 的快递单能一路下成功，
+     * 商家侧看到「收货人：—」，货发不出去，而全程没有任何异常
+     * （2026-08-15 e2e 实测：库里 55 张快递单，有收货人的 0 张）。
+     */
+    RECEIVER_REQUIRED(70014, "err.trade.receiver_required"),
+    /*
+     * 这个权限码**不能授给自定义角色**（目前只有 `biz:store:admin` 与裸 `*`）。
+     *
+     * **与 70006 分开**：70006 说的是「你的角色不够」，而这里请求的人是老板，
+     * 他有权建角色 —— 被拒的是那个码本身。共用一个码的表现是
+     * 「店主被告知『让店主给你加个角色』」，而他就是店主。
+     */
+    ROLE_PERM_NOT_ASSIGNABLE(70015, "err.biz.role_perm_not_assignable"),
     /*
      * 准入矩阵拒绝了这个 (主体档位 × 履约方式) 组合。与 70013 分开：
      * 那个是「这件商品不支持这种送法」（换一种即可），
@@ -281,6 +400,41 @@ public enum ErrorCode {
      */
     STORE_QUOTA_EXCEEDED(70020, "err.merchant.store_quota_exceeded"),
 
+    /**
+     * 门店被平台强制下线，商家的启停操作一律拒绝。
+     *
+     * <p>不复用 {@code BAD_REQUEST}：商家看到「请求参数有误」会反复重试启用按钮，
+     * 而他该做的是联系平台申诉 —— 解除只能由平台做，这正是强制下线与
+     * 自主停用（READONLY）分成两个值的原因。
+     */
+    STORE_SUSPENDED_BY_PLATFORM(70021, "err.merchant.store_suspended_by_platform"),
+
+    /**
+     * 子账号数量已达套餐上限（P-11.2）。
+     *
+     * <p>与 {@link #STORE_QUOTA_EXCEEDED} 分成两个码而不是共用一个「额度不足」：
+     * 两者的解法不同 —— 一个是停用一家旧店或升档，一个是停用一个旧账号或升档，
+     * 而商家看到的提示决定他下一步做什么。
+     *
+     * <p>三个参数是**现在几个、上限几个、当前档位** —— 只说「额度不足」，
+     * 他的下一步是打客服电话。
+     */
+    STAFF_QUOTA_EXCEEDED(70022, "err.merchant.staff_quota_exceeded"),
+
+    /**
+     * 当前档位没有这项能力位（一期只有 {@code cross_store_stats}，B-11.12.5/6）。
+     *
+     * <p><b>明确拒绝，不返回空数据</b>：跨店总览返回一个空列表，商家看到的是
+     * 「我明明有两家店，这一页却什么都没有」—— 他会当成故障去找客服，
+     * 而这本该是一次升档的机会。空数据把「你还没买这个」说成了「它坏了」。
+     *
+     * <p>唯一的参数是<b>当前档位</b>：只说「无权访问」，商家不知道自己差在哪、
+     * 也不知道升到哪一档才有。与 {@link #BIZ_ROLE_FORBIDDEN}(70006) 分开 ——
+     * 那个是「你这个角色不能看」（解法是找老板授权），
+     * 这个是「这家店还没买这个包」（解法是升档），两者的下一步动作完全不同。
+     */
+    PLAN_CAPABILITY_REQUIRED(70023, "err.merchant.plan_capability_required"),
+
     // ---- 8xxxx 类目维护 ----
     /** 类目最多三级 —— 再深一层 C 端的类目导航就没法展示，也没有第四层的产品定义。 */
     CATEGORY_TOO_DEEP(80001, "err.category.too_deep"),
@@ -288,6 +442,32 @@ public enum ErrorCode {
     CATEGORY_IN_USE(80002, "err.category.in_use"),
     /** 父类目已归档，恢复它会造出一个挂在已删父节点下的孤儿。 */
     CATEGORY_PARENT_ARCHIVED(80003, "err.category.parent_archived"),
+
+    /**
+     * 截单时间不早于到货时间（P-3.3.2）。
+     *
+     * <p>不复用 {@code BAD_REQUEST}：运营看到「参数有误」会去检查数字格式，
+     * 而错的是两个时间的**先后**。截单晚于到货 = 货都到了还在收单，
+     * 那批订单没有对应的采购，最后只能挨个退。
+     */
+    PRESALE_CUTOFF_AFTER_ARRIVAL(80004, "err.presale.cutoff_after_arrival"),
+
+    /**
+     * 平台规格模板的选项缺 {@code code}（P-3.4 / B-4.5）。
+     *
+     * <p>这是平台模板存在的**唯一理由**：自由文本下三家店会把同一件事写成
+     * 「5 斤」「五斤」「2.5kg」，聚合、比价、搜索全部对不上。
+     * 一个没有 code 的平台模板与商家手输的没有区别，它只让人**以为**规格统一了。
+     */
+    SPEC_TEMPLATE_CODE_REQUIRED(80005, "err.spec_template.code_required"),
+
+    /**
+     * 同一品类下模板重名，或同一模板里两个选项的 code 相同。
+     *
+     * <p>前者会让商家的下拉里出现两个「重量」，选哪个都对不上；
+     * 后者会让「500g」和「1kg」在聚合时并成同一个规格 —— 而那正是 code 要防的事。
+     */
+    SPEC_TEMPLATE_DUPLICATE(80006, "err.spec_template.duplicate"),
 
     /*
      * 触达通道的模拟发送（P-14.1 / TDD-运营端触达中心 §5）。
@@ -301,32 +481,6 @@ public enum ErrorCode {
     /** 该用户没有绑定 App 设备：没装、没登录过 App，或已登出解绑 */
     NOTIFY_NO_DEVICE(80102, "err.notify.no_device");
 
-    /*
-     * 快递 / 自送单缺收货地址。**单独一个码**：端上要把人送到地址簿去，
-     * 而通用的「请求参数有误」只会让他在结算页上反复点提交。
-     *
-     * 这条闸此前不存在 —— 于是不带 addressId 的快递单能一路下成功，
-     * 商家侧看到「收货人：—」，货发不出去，而全程没有任何异常
-     * （2026-08-15 e2e 实测：库里 55 张快递单，有收货人的 0 张）。
-     */
-    RECEIVER_REQUIRED(70014, "err.trade.receiver_required"),
-    /*
-     * 这个权限码**不能授给自定义角色**（目前只有 `biz:store:admin` 与裸 `*`）。
-     *
-     * **与 70006 分开**：70006 说的是「你的角色不够」，而这里请求的人是老板，
-     * 他有权建角色 —— 被拒的是那个码本身。共用一个码的表现是
-     * 「店主被告知『让店主给你加个角色』」，而他就是店主。
-     */
-    ROLE_PERM_NOT_ASSIGNABLE(70015, "err.biz.role_perm_not_assignable"),
-    /*
-     * 快递 / 自送单缺收货地址。**单独一个码**：端上要把人送到地址簿去，
-     * 而通用的「请求参数有误」只会让他在结算页上反复点提交。
-     *
-     * 这条闸此前不存在 —— 于是不带 addressId 的快递单能一路下成功，
-     * 商家侧看到「收货人：—」，货发不出去，而全程没有任何异常
-     * （2026-08-15 e2e 实测：库里 55 张快递单，有收货人的 0 张）。
-     */
-    RECEIVER_REQUIRED(70014, "err.trade.receiver_required"),
     private final int code;
     private final String msgKey;
 

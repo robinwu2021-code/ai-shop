@@ -1,0 +1,216 @@
+"use client";
+
+// 门店档案（矩阵 P-11.2.1）。
+//
+// 为什么它在「商家治理」下而不是「门店主页」下：门店主页那一域管的是**门面内容**
+// （店招、公告、店铺码、获客），这一页管的是**主体的下一层实体** ——
+// 谁开的、在哪、按什么模式结算、钱进哪个号、还在不在营业。
+// 两者读的是同一张 `mch_store`，但回答的是完全不同的问题。
+//
+// **只读为主**：门店资料、价格、库存运营一律不改 —— 平台的边界是「裁、定、兜」，
+// 不替商家运营。唯一的写动作是解除强制下线；压下那一侧在「违规处置与封禁」，
+// 因为处置动作与它的留痕必须是同一次提交。
+import { useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { api } from "@/lib/api";
+import { notify } from "@/lib/notify";
+import { fill } from "@/lib/use-copy";
+import { useCan } from "@/lib/use-can";
+import { usePaging } from "@/lib/use-paging";
+import { money } from "@/lib/utils";
+import type { StoreGovern, StoreGovernStatus } from "@/lib/types";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { DataTable, type Column } from "@/components/ui/data-table";
+import { Drawer, DrawerSection, Field, FieldGrid } from "@/components/ui/drawer";
+import { FilterSelect } from "@/components/ui/filter-select";
+import { Input } from "@/components/ui/input";
+import { Notice } from "@/components/ui/notice";
+import { ReadOnlyNotice } from "@/components/read-only-notice";
+import { Pagination } from "@/components/ui/misc";
+import { StatusBadge, type StatusMap } from "@/components/ui/status-badge";
+import { Toolbar } from "@/components/ui/toolbar";
+import type { MerchantsCopy as Copy } from "./copy";
+
+/**
+ * 三档状态**不能压成「营业 / 停业」两档**：
+ * READONLY 是商家自己关的，SUSPENDED 是平台压下的 —— 运营对这两者要做的事相反。
+ */
+const useStatusMap = (c: Copy): StatusMap<StoreGovernStatus> => ({
+  ACTIVE: { label: c.stStatusActive, tone: "success" },
+  READONLY: { label: c.stStatusReadonly, tone: "muted" },
+  SUSPENDED: { label: c.stStatusSuspended, tone: "danger" },
+});
+
+const MODE_OPTIONS = (c: Copy) => [
+  { value: "SELF_OPERATED", label: c.stModeSelf },
+  { value: "THIRD_PARTY", label: c.stModeThird },
+];
+
+export function StoresTab({ c }: { c: Copy }) {
+  const qc = useQueryClient();
+  const allow = useCan();
+  const statusMap = useStatusMap(c);
+  const modeOptions = MODE_OPTIONS(c);
+
+  const [keyword, setKeyword] = useState("");
+  const [status, setStatus] = useState("");
+  const [businessMode, setBusinessMode] = useState("");
+  const [merchantNo, setMerchantNo] = useState("");
+  const { page, setPage, size, setSize } = usePaging();
+  const [current, setCurrent] = useState<StoreGovern | null>(null);
+
+  const canBan = allow("merchant:merchant:ban");
+
+  const q = { keyword, status, businessMode, merchantNo, page, size };
+  const list = useQuery({ queryKey: ["stores-govern", q], queryFn: () => api.listStores(q) });
+
+  /*
+   * 经营状况单独一条请求，只在抽屉打开时发：它在后端是另一个域（trade），
+   * 列表里每行都带上等于把商品池那份统计查询乘以一页的行数。
+   */
+  const stats = useQuery({
+    queryKey: ["store-stats", current?.storeNo],
+    queryFn: () => api.getStoreStats(current!.storeNo),
+    enabled: !!current,
+  });
+
+  const restore = useMutation({
+    mutationFn: (storeNo: string) => api.restoreStore(storeNo),
+    onSuccess: (s) => {
+      qc.invalidateQueries({ queryKey: ["stores-govern"] });
+      // 门店被压下时货架也被撤了，恢复后商品池那边的投影跟着变
+      qc.invalidateQueries({ queryKey: ["goods-pool"] });
+      setCurrent(s);
+      notify.success(c.stToastRestored);
+    },
+  });
+
+  const columns: Column<StoreGovern>[] = [
+    { header: c.stColNo, cell: (s) => s.storeNo, numeric: true, align: "start" },
+    {
+      header: c.stColName,
+      cell: (s) => (
+        <span className="flex items-center gap-2">
+          {s.name}
+          {s.isDefault && <Badge tone="muted">{c.stIsDefault}</Badge>}
+        </span>
+      ),
+    },
+    { header: c.stColMerchant, cell: (s) => s.merchantName },
+    { header: c.stColStatus, cell: (s) => <StatusBadge map={statusMap} value={s.status} /> },
+    {
+      header: c.stColMode,
+      cell: (s) => (s.businessMode === "SELF_OPERATED"
+        ? <Badge tone="warning">{c.stModeSelf}</Badge>
+        : <Badge tone="success">{c.stModeThird}</Badge>),
+    },
+    {
+      // 空**不是「没配」，是「用主体默认收款号」** —— 显示成空白会被读成前者，
+      // 然后有人去给这家店补一个它本来就不需要的收款号
+      header: c.stColPayMerchant,
+      cell: (s) => s.payMerchantNo ?? <span className="text-muted-foreground">{c.stPayFallback}</span>,
+    },
+    {
+      header: c.stColActions,
+      cell: (s) => <Button size="sm" variant="outline" onClick={() => setCurrent(s)}>{c.stDetail}</Button>,
+    },
+  ];
+
+  return (
+    <>
+      <Notice className="mb-3">{c.stNotice}</Notice>
+
+      <Toolbar search={keyword} onSearch={(v) => { setKeyword(v); setPage(1); }} searchPlaceholder={c.stSearchPh}>
+        <Input
+          className="w-52" placeholder={c.stFilterMerchantPh}
+          value={merchantNo} onChange={(e) => { setMerchantNo(e.target.value); setPage(1); }}
+        />
+        <FilterSelect
+          aria-label={c.stFilterStatus} value={status} allLabel={c.stFilterStatusAll}
+          options={statusMap} onChange={(v) => { setStatus(v); setPage(1); }}
+        />
+        <FilterSelect
+          aria-label={c.stFilterMode} value={businessMode} allLabel={c.stFilterModeAll}
+          options={modeOptions} onChange={(v) => { setBusinessMode(v); setPage(1); }}
+        />
+      </Toolbar>
+
+      <DataTable
+        columns={columns} rows={list.data?.records} loading={list.isLoading}
+        error={list.error} onRetry={() => list.refetch()}
+        rowKey={(s) => s.storeNo}
+        empty={c.stEmpty}
+      />
+      <Pagination page={page} size={size} onSize={setSize} total={list.data?.total ?? 0} onPage={setPage} />
+
+      <Drawer
+        open={!!current}
+        onOpenChange={(o) => !o && setCurrent(null)}
+        title={current?.name ?? ""}
+        desc={current ? `${current.storeNo} · ${current.merchantName}` : undefined}
+        width="w-[560px]"
+      >
+        {current && (
+          <div>
+            <DrawerSection first title={c.stSecProfile}>
+              <FieldGrid>
+                <Field className="mb-3" label={c.stColStatus}><StatusBadge map={statusMap} value={current.status} /></Field>
+                <Field className="mb-3" label={c.stColMode}>
+                  {current.businessMode === "SELF_OPERATED" ? c.stModeSelf : c.stModeThird}
+                </Field>
+                <Field className="mb-3" label={c.stColMerchant}>{current.merchantName}</Field>
+                <Field className="mb-3" label={c.stColPayMerchant}>
+                  {current.payMerchantNo ?? <span className="text-muted-foreground">{c.stPayFallback}</span>}
+                </Field>
+              </FieldGrid>
+              <Field label={c.stFieldAddress}>{current.address}</Field>
+              <Field label={c.stFieldOpenHours}>{current.openHours}</Field>
+              <Field label={c.stFieldAnnouncement}>
+                {current.announcement || <span className="text-muted-foreground">{c.stAnnouncementEmpty}</span>}
+              </Field>
+              {/* 配送四个数摆在一起：单看任何一个都判断不了这家店的配送划不划得来 */}
+              <FieldGrid>
+                <Field className="mb-3" label={c.stFieldRadius}>{fill(c.stMeters, { n: current.deliveryRadiusM })}</Field>
+                <Field className="mb-3" label={c.stFieldMinOrder}>{money(current.deliveryMinOrderMinor)}</Field>
+                <Field className="mb-3" label={c.stFieldFee}>{money(current.deliveryFeeMinor)}</Field>
+                <Field className="mb-3" label={c.stFieldFreeThreshold}>{money(current.deliveryFreeThresholdMinor)}</Field>
+              </FieldGrid>
+            </DrawerSection>
+
+            <DrawerSection title={c.stSecStats}>
+              {stats.isLoading && <p className="txt-caption text-muted-foreground">{c.stStatsLoading}</p>}
+              {stats.data && (
+                <FieldGrid>
+                  <Field className="mb-3" label={c.stStatTodayOrders}>{stats.data.todayOrders}</Field>
+                  <Field className="mb-3" label={c.stStatTodayGmv}>{money(stats.data.todayGmvMinor)}</Field>
+                  <Field className="mb-3" label={c.stStatMonthOrders}>{stats.data.monthOrders}</Field>
+                  <Field className="mb-3" label={c.stStatMonthGmv}>{money(stats.data.monthGmvMinor)}</Field>
+                  {/* 自带客流占比直接对应这家店少付的佣金（ADR-004），所以与经营数摆在一起 */}
+                  <Field className="mb-3" label={c.stStatOwnedTraffic}>{Math.round(stats.data.ownedTrafficRate * 100)}%</Field>
+                  <Field className="mb-3" label={c.stStatToShip}>{stats.data.toShip}</Field>
+                  <Field className="mb-3" label={c.stStatToDeliver}>{stats.data.toDeliver}</Field>
+                  <Field className="mb-3" label={c.stStatToStock}>{stats.data.toStock}</Field>
+                </FieldGrid>
+              )}
+            </DrawerSection>
+
+            <DrawerSection title={c.stSecActions} desc={c.stRestoreHint}>
+              {current.status !== "SUSPENDED"
+                ? <p className="txt-caption text-muted-foreground">{c.stNoAction}</p>
+                : canBan
+                  ? (
+                    <Button loading={restore.isPending} onClick={() => restore.mutate(current.storeNo)}>
+                      {c.stBtnRestore}
+                    </Button>
+                  )
+                  // 有动作但你做不了：置灰说明「有，只是现在不能用」，
+                  // 直接藏起来会让人以为这家店解不开
+                  : <ReadOnlyNotice what={c.stReadOnlyWhat} perm="merchant:merchant:ban" />}
+            </DrawerSection>
+          </div>
+        )}
+      </Drawer>
+    </>
+  );
+}

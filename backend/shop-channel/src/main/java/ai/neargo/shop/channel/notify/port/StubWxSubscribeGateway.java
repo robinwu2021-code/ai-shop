@@ -12,14 +12,15 @@ import java.util.Deque;
 import java.util.List;
 
 /**
- * 订阅消息桩：不真发，只记下来。**默认启用**（{@code shop.wx.stub} 默认 true），
+ * 订阅消息桩：不真发，只记下来。**默认启用**（{@code shop.wx.subscribe.stub} 默认跟随
+ * {@code shop.wx.stub}，也就是 true），
  * 理由同 {@link StubSmsGateway} —— 默认真发意味着本地跑一次测试就在骚扰真实用户的微信。
  *
  * <p>模板号给固定值 {@code STUB_TPL_*}：额度记账（{@code msg_subscribe}）按模板号对账，
  * 桩世界里前端上报授权、后端查扣额度用的是同一套假模板号，链路照样闭环可测。
  */
 @Component("wxSubscribeGateway")
-@ConditionalOnProperty(name = "shop.wx.stub", havingValue = "true", matchIfMissing = true)
+@ConditionalOnProperty(name = "shop.wx.subscribe.stub", havingValue = "true", matchIfMissing = true)
 public class StubWxSubscribeGateway implements WxSubscribePort {
 
     private static final Logger log = LoggerFactory.getLogger(StubWxSubscribeGateway.class);

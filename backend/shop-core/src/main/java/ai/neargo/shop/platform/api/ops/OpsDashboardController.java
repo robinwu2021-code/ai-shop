@@ -27,6 +27,9 @@ public class OpsDashboardController {
     /** 趋势的默认跨度。两周足够看出周内波动，又不至于把首屏拉慢 */
     private static final int DEFAULT_TREND_DAYS = 14;
 
+    /** 排行默认取前十：看板上是一屏能扫完的长度，要全量该去商家列表页筛 */
+    private static final int DEFAULT_RANK_LIMIT = 10;
+
     private final DashboardService dashboardService;
 
     public OpsDashboardController(DashboardService dashboardService) {
@@ -56,5 +59,24 @@ public class OpsDashboardController {
     @PreAuthorize("@perm.can('" + Perms.DASHBOARD_OVERVIEW_READ + "')")
     public List<DashboardService.FunnelRowVO> funnel() {
         return dashboardService.funnel();
+    }
+
+    /**
+     * 商家经营排行（P-16.1.2 / P-16.1.3）—— 大盘之下的第一层下钻。
+     *
+     * <p>大盘回答「平台整体怎么样」，运营的下一句必然是「哪几家在拉高、哪几家在拖后腿」。
+     * 没有这一层，那个问题只能靠翻订单列表人工数。
+     *
+     * <p>权限沿用大盘那个码：排行里的数就是同一份订单聚合的另一种切法，
+     * 能看大盘的人本来就该能看它。
+     */
+    @GetMapping("/ops/dashboard/merchants")
+    @PreAuthorize("@perm.can('" + Perms.DASHBOARD_OVERVIEW_READ + "')")
+    public List<DashboardService.MerchantRankRowVO> merchantRanking(
+            @RequestParam(required = false) Integer days,
+            @RequestParam(required = false) Integer limit) {
+        return dashboardService.merchantRanking(
+                days == null ? DEFAULT_TREND_DAYS : days,
+                limit == null ? DEFAULT_RANK_LIMIT : limit);
     }
 }

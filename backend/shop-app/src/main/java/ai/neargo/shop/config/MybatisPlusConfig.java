@@ -34,7 +34,7 @@ import java.util.List;
  * 按 @Mapper 注解扫，范围收在 archive 包内：不放开到全局，
  * 免得又把「谁都能当 Mapper」这条口子开回来。
  */
-@MapperScan(basePackages = "ai.neargo.shop.archive",
+@MapperScan(basePackages = {"ai.neargo.shop.archive", "ai.neargo.shop.media"},
         annotationClass = org.apache.ibatis.annotations.Mapper.class)
 public class MybatisPlusConfig {
 

@@ -8,7 +8,9 @@ import { api } from "@/lib/api";
 import { money } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { DataTable, type Column } from "@/components/ui/data-table";
 import { StatRow, PageTitle, Skeleton, StatCard } from "@/components/ui/misc";
+import type { MerchantRankRow } from "@/lib/types";
 import { fill, useCopy } from "@/lib/use-copy";
 import { HOME_COPY } from "./copy";
 
@@ -24,8 +26,28 @@ export default function DashboardPage() {
   const kpi = useQuery({ queryKey: ["dashboard", "kpi"], queryFn: () => api.getDashboardKpi() });
   const trend = useQuery({ queryKey: ["dashboard", "trend"], queryFn: () => api.getDashboardTrend() });
   const funnel = useQuery({ queryKey: ["dashboard", "funnel"], queryFn: () => api.getAcquisitionFunnel() });
+  const ranking = useQuery({ queryKey: ["dashboard", "merchants"], queryFn: () => api.getMerchantRanking() });
 
   const k = kpi.data;
+
+  const rankColumns: Column<MerchantRankRow>[] = [
+    { header: c.rankColMerchant, cell: (r) => r.merchantName },
+    { header: c.rankColGmv, numeric: true, cell: (r) => money(r.gmv) },
+    { header: c.rankColOrders, numeric: true, cell: (r) => r.orderCount.toLocaleString() },
+    { header: c.rankColAov, numeric: true, cell: (r) => money(r.avgOrderValue) },
+    {
+      header: c.rankColAfterSale,
+      numeric: true,
+      /* 售后率高的标红：这一列的意义就是把「卖得多但赔得也多」的商家挑出来，
+         不标出来的话它混在数字里，而那正是运营要处置的那一家。
+         10% 不是拍脑袋——低于它的都在个位数，超过的只有异常商家。 */
+      cell: (r) => (
+        <span className={r.afterSaleRate >= 0.1 ? "text-destructive" : undefined}>
+          {(r.afterSaleRate * 100).toFixed(1)}%
+        </span>
+      ),
+    },
+  ];
 
   return (
     <div>
@@ -103,6 +125,26 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* 商家经营排行（P-16.1.2 / P-16.1.3）—— 大盘之下的第一层下钻。
+          大盘回答「平台整体怎么样」，运营下一句必然是「哪几家在拉高、哪几家在拖后腿」。 */}
+      <Card className="mt-4">
+        <CardHeader>
+          <CardTitle>{c.rankTitle}</CardTitle>
+          <p className="txt-caption text-muted-foreground">{c.rankDesc}</p>
+        </CardHeader>
+        <CardContent>
+          <DataTable
+            columns={rankColumns}
+            rows={ranking.data}
+            loading={ranking.isLoading}
+            error={ranking.error}
+            onRetry={() => ranking.refetch()}
+            rowKey={(r) => r.merchantNo}
+            empty={c.rankEmpty}
+          />
+        </CardContent>
+      </Card>
 
       <p className="mt-4 txt-caption text-muted-foreground">
         {t("common.mockData")} · {c.soon}

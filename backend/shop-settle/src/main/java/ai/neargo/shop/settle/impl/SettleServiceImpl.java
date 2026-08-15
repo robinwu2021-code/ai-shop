@@ -574,13 +574,20 @@ public class SettleServiceImpl implements SettleService {
 
     @Override
     public List<SettleBillVO> opsPayables(String status, String entityNo) {
-        return DataScopeContext.executeWithoutScope(() ->
-                        billMapper.selectList(Wrappers.<StlBill>lambdaQuery()
-                                // 只看自营：第三方的钱走分账，不存在「应付账款」这件事
-                                .eq(StlBill::getBusinessMode, MerchantQueryPort.MODE_SELF_OPERATED)
-                                .eq(status != null && !status.isBlank(), StlBill::getStatus, status)
-                                .eq(entityNo != null && !entityNo.isBlank(), StlBill::getEntityNo, entityNo)
-                                .orderByDesc(StlBill::getId)))
+        /*
+         * ★ 接数据域（批④）：这条只有 /ops/payables 调，配了商家域的财务
+         * 只该看到自己负责那几家的应付。此前这里 executeWithoutScope ——
+         * **配置页显示「已限定」而查询照样全量**，那比不限定更危险。
+         *
+         * entityNo 是用户给的筛选条件，与数据域是两件事：传一个域外的主体号，
+         * 筛选成立而数据域拒绝 → 空列表，正确。
+         */
+        return billMapper.selectList(Wrappers.<StlBill>lambdaQuery()
+                        // 只看自营：第三方的钱走分账，不存在「应付账款」这件事
+                        .eq(StlBill::getBusinessMode, MerchantQueryPort.MODE_SELF_OPERATED)
+                        .eq(status != null && !status.isBlank(), StlBill::getStatus, status)
+                        .eq(entityNo != null && !entityNo.isBlank(), StlBill::getEntityNo, entityNo)
+                        .orderByDesc(StlBill::getId))
                 .stream().map(this::toVO).toList();
     }
 
@@ -591,13 +598,13 @@ public class SettleServiceImpl implements SettleService {
          * 而那不该因为经营模式不同就分成两个入口去查 —— 分开的直接后果是
          * 一家同时有自营店和第三方店的商家，运营得在两个页面之间对照才拼得出全貌。
          */
-        return DataScopeContext.executeWithoutScope(() ->
-                        billMapper.selectList(Wrappers.<StlBill>lambdaQuery()
-                                .eq(status != null && !status.isBlank(), StlBill::getStatus, status)
-                                .eq(entityNo != null && !entityNo.isBlank(), StlBill::getEntityNo, entityNo)
-                                .eq(businessMode != null && !businessMode.isBlank(),
-                                        StlBill::getBusinessMode, businessMode)
-                                .orderByDesc(StlBill::getId)))
+        // ★ 接数据域（批④），理由同 opsPayables
+        return billMapper.selectList(Wrappers.<StlBill>lambdaQuery()
+                        .eq(status != null && !status.isBlank(), StlBill::getStatus, status)
+                        .eq(entityNo != null && !entityNo.isBlank(), StlBill::getEntityNo, entityNo)
+                        .eq(businessMode != null && !businessMode.isBlank(),
+                                StlBill::getBusinessMode, businessMode)
+                        .orderByDesc(StlBill::getId))
                 .stream().map(this::toVO).toList();
     }
 

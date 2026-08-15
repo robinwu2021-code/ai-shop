@@ -70,7 +70,8 @@ public class NotifyChannelServiceImpl implements NotifyChannelService {
             @Value("${shop.mail.username:}") String mailUsername,
             @Value("${shop.mail.password:}") String mailPassword,
             @Value("${shop.mail.from:}") String mailFrom,
-            @Value("${shop.wx.stub:true}") boolean wxStub,
+            // 这里报的是**订阅消息通道**的健康度，跟的是订阅消息那个开关（登录另有一个）
+            @Value("${shop.wx.subscribe.stub:true}") boolean wxStub,
             @Value("${shop.wx.appid:}") String wxAppid,
             @Value("${shop.wx.secret:}") String wxSecret,
             @Value("${shop.wx.mp-state:formal}") String wxMpState,

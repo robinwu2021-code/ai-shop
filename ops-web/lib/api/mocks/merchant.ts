@@ -33,6 +33,13 @@ const MOCK_LEGAL_FORM: Record<string, LegalForm> = {
   M901: "NATURAL_PERSON",
 };
 
+/** 订阅行。没有行不是「未订阅」而是数据缺失 —— 真后端会兜底建一行 FREE。 */
+function findPlan(merchantNo: string) {
+  const r = db.merchantPlans.find((x) => x.merchantNo === merchantNo);
+  if (!r) notFound("套餐订阅", "Plan subscription", merchantNo);
+  return r;
+}
+
 export const merchantMock: MerchantApi = {
   // ── 门店经营模式与弱主体准入 ─────────────────────────────────
 
@@ -321,12 +328,36 @@ export const merchantMock: MerchantApi = {
   listViolations: async (q = {}) =>
     wait(db.violations.filter((v) => db.eqHit(q.merchantNo, v.merchantNo))),
 
-  recordViolation: async ({ merchantNo, type, action, detail }) => {
+  recordViolation: async ({ merchantNo, type, action, detail, storeNo }) => {
     const m = find(merchantNo);
     if (!detail.trim()) fail("必须写清事实与证据出处 —— 没有事实的处置在申诉时站不住", "State the facts and where the evidence sits — an action with no facts does not hold up on appeal");
 
+    /*
+     * 门店级处置：动作与它作用的对象必须**同一次提交**。
+     * 分成两步（先记违规、再去门店页压下）的话，中间任何一次失败都留下
+     * 「压了店但没有处置记录」或反过来 —— 而申诉时拿不出记录的处置站不住。
+     *
+     * 反向也拦：`storeNo` 只跟着 STORE_OFFLINE 走。主体级处置带着门店号，
+     * 读记录的人会以为只压了那一家店。
+     */
+    if (action === "STORE_OFFLINE" && !storeNo?.trim()) {
+      fail("门店强制下线必须指定门店", "A forced store offline must name the store");
+    }
+    if (action !== "STORE_OFFLINE" && storeNo?.trim()) {
+      fail("只有「门店强制下线」可以指定门店，主体级处置作用于全部门店", "Only a forced store offline may name a store — the other actions hit the whole merchant");
+    }
+
     // SUSPEND 走同一张状态机：已封禁的再封一次会在这里抛错，而不是静默重复
     if (action === "SUSPEND") db.assertTransition(MERCHANT_TRANSITIONS, m.status, "SUSPENDED", "商家", "Merchant");
+
+    const store = action === "STORE_OFFLINE"
+      ? db.stores.find((s) => s.storeNo === storeNo!.trim())
+      : undefined;
+    if (action === "STORE_OFFLINE") {
+      if (!store) notFound("门店", "Store", storeNo!.trim());
+      if (store.merchantNo !== merchantNo) fail("这家门店不属于该商家", "That store does not belong to this merchant");
+      if (store.status === "SUSPENDED") fail("该门店已被强制下线", "That store is already forced offline");
+    }
 
     // 只有毁约计入 breachCount：别的违规也计，ADR-003 那条阈值规则就失去意义了
     if (type === "BREACH") m.breachCount += 1;
@@ -334,13 +365,110 @@ export const merchantMock: MerchantApi = {
       m.status = "SUSPENDED";
       m.auditRemark = detail.trim();
     }
+    // 压下那一刻就落库：真副作用，不是记一笔就完（解除走 restoreStore）
+    if (store) store.status = "SUSPENDED";
 
     const v = {
       violationNo: db.nextNo("VL", db.violations, 900, "violationNo"),
-      merchantNo, merchantName: m.name, type, action,
+      merchantNo, merchantName: m.name, storeNo: store?.storeNo ?? null, type, action,
       detail: detail.trim(), operator: "admin", at: new Date().toISOString(),
     };
     db.violations.unshift(v);
     return wait(v, 400);
+  },
+  // ── 增值包与门店额度（P-11.2.2~11.2.6）─────────────────────────
+  //
+  // 校验逐条对齐后端 `MerchantPlanServiceImpl`：理由必填、停售档位不能新授、
+  // 额度非负、续费顺延而不是从今天重算。**mock 宽于后端的地方，就是上线才发现的地方。**
+
+  merchantPlans: async (q) => {
+    const now = Date.now();
+    const GRACE_MS = 7 * 86_400_000;
+    const rows = db.merchantPlans.filter((r) => {
+      if (q?.filter === "GRACE") return r.status === "GRACE";
+      if (q?.filter === "DOWNGRADED") return r.downgradedAt != null;
+      if (q?.filter === "EXPIRING_7D") {
+        // 「快到期」只对还在生效的有意义 —— 已进宽限期的归上一个筛选
+        return r.status === "ACTIVE" && r.expireAt != null
+          && r.expireAt >= now && r.expireAt <= now + GRACE_MS;
+      }
+      return true;
+    }).filter((r) => {
+      const k = q?.keyword?.trim();
+      return !k || r.merchantName.includes(k) || r.merchantNo.includes(k);
+    });
+    // 与后端同序：按到期日升序 —— 最急的在最上面，这个列表就是一张待办
+    const sorted = [...rows].sort((a, b) => (a.expireAt ?? Infinity) - (b.expireAt ?? Infinity));
+    return wait(db.paginate(sorted, q?.page, q?.size));
+  },
+
+  planUpgradeSignals: async () =>
+    // mock 里只有一个人名下有两个主体。真后端按 owner_user_no 分组，
+    // 这里没有 owner 列，用固定一行代表那个形状 —— 页面要的是「怎么渲染」，不是真数据
+    wait([{
+      ownerUserNo: "U-9001",
+      entityNos: ["M901", "M904"],
+      entityNames: ["阿姨家的菜摊", "社区鲜奶站"],
+      entityCount: 2,
+    }]),
+
+  grantPlan: async ({ merchantNo, planCode, months, reason }) => {
+    if (!reason?.trim()) fail("请填写授予理由", "A reason is required");
+    const row = findPlan(merchantNo);
+    const def = db.planDefs.find((d) => d.planCode === planCode);
+    // 停售的档位不能新授（已订阅的照常用到到期，那才是 enabled 的语义）
+    if (!def || !def.enabled) fail("该档位已停售，不能新授", "That plan tier is retired");
+    const now = Date.now();
+    const extending = !!months && months > 0;
+    // 换档或续费才刷新快照；**只补缴不延长不动快照** ——
+    // 他买的是当初那个额度，中途下调档位定义不该殃及他
+    if (planCode !== row.planCode || extending) {
+      row.planCode = planCode;
+      row.storeQuota = def.storeQuota;
+      row.staffQuota = def.staffQuota;
+      row.crossStoreStats = def.crossStoreStats;
+      row.quotaSource = "PLAN";
+    }
+    if (extending) {
+      // 还在生效期内就从原到期日接着算 —— 一律从今天重算会**吞掉他已付未用的那几天**，
+      // 而提前续费正是我们希望他做的事
+      const base = row.expireAt != null && row.expireAt > now ? row.expireAt : now;
+      row.expireAt = base + months! * 30 * 86_400_000;
+      row.startAt ??= now;
+    }
+    row.status = "ACTIVE";
+    row.grantedBy = "PLATFORM";
+    row.downgradedAt = null;
+    // 恢复被降级压下的门店（真后端只回 plan_suspended=1 的那批；
+    // mock 里 ST004 就是被压的那家，商家自停的不在这张表上）
+    for (const s of db.stores) {
+      if (s.merchantNo === merchantNo && s.status === "READONLY") s.status = "ACTIVE";
+    }
+    return wait(row, 400);
+  },
+
+  overridePlanQuota: async ({ merchantNo, storeQuota, staffQuota, reason }) => {
+    if (!reason?.trim()) fail("请填写覆盖理由", "A reason is required");
+    if ((storeQuota ?? 0) < 0 || (staffQuota ?? 0) < 0) fail("额度不能为负", "Quota cannot be negative");
+    const row = findPlan(merchantNo);
+    const def = db.planDefs.find((d) => d.planCode === row.planCode);
+    // null = 清除覆盖、回到档位快照。**不是把 0 写进额度** ——
+    // 那两件事在界面上长得一样，而后者会让这家商家一家店都开不了
+    row.storeQuota = storeQuota ?? def?.storeQuota ?? row.storeQuota;
+    row.staffQuota = staffQuota ?? def?.staffQuota ?? row.staffQuota;
+    row.quotaSource = storeQuota == null && staffQuota == null ? "PLAN" : "OVERRIDE";
+    return wait(row, 400);
+  },
+
+  planDefs: async () => wait(db.planDefs),
+
+  savePlanDef: async ({ planCode, storeQuota, staffQuota, crossStoreStats, trialDays, enabled }) => {
+    const def = db.planDefs.find((d) => d.planCode === planCode);
+    if (!def) notFound("套餐档位", "Plan tier", planCode);
+    if (storeQuota < 1) fail("门店额度至少为 1", "Store quota must be at least 1");
+    Object.assign(def, { storeQuota, staffQuota, crossStoreStats, trialDays, enabled });
+    // **刻意不动 db.merchantPlans 的任何一行**：已订阅的用的是自己的快照。
+    // 这里顺手改掉他们的额度，就把「老用户保护」这条规则在 mock 里演示反了
+    return wait(def, 400);
   },
 };

@@ -13,6 +13,9 @@ import type {
   Community,
   CommunityApply,
   CommunityApplyReq,
+  CrossStoreCompare,
+  CrossStoreOverview,
+  MerchantPlan,
   DeliveryRule,
   Goods,
   CurrencyCode,
@@ -307,6 +310,48 @@ export interface MerchantApi {
   // ---- 工作台（B-10.1 + B-11 汇总）
   mTodo(): Promise<MerchantTodo>;
   mStats(): Promise<MerchantStats>;
+
+  // ---- 跨店总览与对比（B-11.12.5 / 11.12.6，增值包 P2）
+  /**
+   * 按店并列的今日 / 本月 / 三项待办。**单店商家也能打开** —— 他看到的就是他那一家，
+   * 不是空列表也不是报错。
+   *
+   * ⚠️ **无能力位（FREE 档）会抛 `ApiError(70023)`**（`PLAN_CAPABILITY_REQUIRED`，
+   * 文案带当前档位）。调用方要接住它并渲染**示例态**：
+   * 入口照常显示、点进去看得到这一页长什么样 + 一句升档说明。
+   * 渲染成空白页或红色报错的话，商家看到的是「功能坏了」而不是「这是付费功能」。
+   */
+  mCrossStoreOverview(): Promise<CrossStoreOverview>;
+  /**
+   * 按店对比：销售额 / 订单数 / 复购率 / 缺货数，外加一个**主体级**评分。
+   *
+   * ⚠️ 返回体里的 `rating` **不在每店那一行上**（`rvw_review` 只有 `entity_no`）——
+   * 画成表格的一列会让各店显示同一个数字。放在页面顶部作主体口径说明。
+   *
+   * @param days 回看天数（含今天），默认 30。后端夹在 1–365 并在 `days` 字段回显实际值
+   */
+  mCrossStoreCompare(days?: number): Promise<CrossStoreCompare>;
+
+  // ---- 我的增值包（B-11.13，增值包 P4）
+  /**
+   * 我的档位、用量与三档对比。
+   *
+   * ⚠️ **只有老板调得到**（`biz:store:admin`）—— 店长会拿到 403。
+   * 端上按 `can('biz:store:admin')` 决定要不要渲染入口，别让店长点进去看报错。
+   *
+   * 用量（`storeUsed` / `staffUsed`）**一律用后端给的**：自己拿门店列表数会与
+   * 建店那道闸的口径分岔（闸门只数营业中的店），表现是「页面说满了、其实还能建」。
+   */
+  mMyPlan(): Promise<MerchantPlan>;
+  /**
+   * 自助开通试用。**一主体一次，永不回退**。
+   *
+   * 能不能点看 `MerchantPlan.trialTier`（null = 不能）。**不要自己用
+   * `planCode === 'FREE' && !trialUsed` 推** —— 那会漏掉「平台把试用天数配成 0」。
+   *
+   * @returns 开通后的视图，直接用它重渲染，不必再拉一次 {@link mMyPlan}
+   */
+  mStartTrial(): Promise<MerchantPlan>;
 
   // ---- 商品（B-11.3）
   mGoodsList(q: PageQuery & { status?: GoodsStatus }): Promise<PageResult<Goods>>;

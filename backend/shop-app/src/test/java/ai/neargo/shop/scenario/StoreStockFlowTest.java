@@ -1,6 +1,7 @@
 package ai.neargo.shop.scenario;
 
 import ai.neargo.shop.support.TestLogin;
+import ai.neargo.shop.support.TestPlan;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -47,6 +48,8 @@ class StoreStockFlowTest {
     @Autowired
     private ObjectMapper json;
 
+    @Autowired
+    private ai.neargo.shop.merchant.mapper.MerchantMappers.EntityPlanMapper planMapper;
 
     private MockMvc mvc() {
         return MockMvcBuilders.webAppContextSetup(context)
@@ -76,6 +79,8 @@ class StoreStockFlowTest {
         String goodsNo = listedGoods(biz, 100);
         String skuNo = firstSku(goodsNo);
         String storeA = defaultStoreNo(biz);
+        // 多门店是 PRO 才有的能力 —— 这家商家买了包，所以它开得出第二家店
+        TestPlan.grantPro(mvc(), json, planMapper, biz);
         String storeB = createStore(biz, "双店库存·分店");
 
         // 两家店各设 1 件。**一旦设了，这个 SKU 就整体转为按店管理**
@@ -100,6 +105,7 @@ class StoreStockFlowTest {
         String goodsNo = listedGoods(biz, 100);
         String skuNo = firstSku(goodsNo);
         String storeA = defaultStoreNo(biz);
+        TestPlan.grantPro(mvc(), json, planMapper, biz);
         createStore(biz, "没设库存的分店");
 
         // 只给默认店设 2 件；分店一条行都没有
@@ -122,6 +128,7 @@ class StoreStockFlowTest {
         String goodsNo = listedGoods(biz, 100);
         String skuNo = firstSku(goodsNo);
         String storeA = defaultStoreNo(biz);
+        TestPlan.grantPro(mvc(), json, planMapper, biz);
         String storeB = createStore(biz, "看得见·分店");
 
         setStoreStock(biz, storeA, goodsNo, skuNo, 7);
@@ -144,6 +151,7 @@ class StoreStockFlowTest {
         String goodsNo = listedGoods(biz, 100);
         String skuNo = firstSku(goodsNo);
         String storeA = defaultStoreNo(biz);
+        TestPlan.grantPro(mvc(), json, planMapper, biz);
         String storeB = createStore(biz, "没设的那家");
 
         setStoreStock(biz, storeA, goodsNo, skuNo, 5);

@@ -1,11 +1,15 @@
 // 门店主页治理规则测试（P-10.1）。
 import { beforeEach, describe, expect, it } from "vitest";
 import { storeMock } from "@/lib/api/mocks/store";
-import { storeAcquisition, storeAudits } from "./store";
+import { storeAcquisition, storeAudits, stores } from "./store";
 
 const A0 = JSON.parse(JSON.stringify(storeAudits)) as typeof storeAudits;
+const S0 = JSON.parse(JSON.stringify(stores)) as typeof stores;
 beforeEach(() => {
   storeAudits.length = 0; storeAudits.push(...(JSON.parse(JSON.stringify(A0)) as typeof storeAudits));
+  // 门店档案的写操作真落库（restoreStore 改 status），不复位的话下一条用例
+  // 拿到的是上一条改过的状态 —— 而那种串味是按用例顺序才复现的，最难查
+  stores.length = 0; stores.push(...(JSON.parse(JSON.stringify(S0)) as typeof stores));
 });
 
 describe("店招/公告审核", () => {
@@ -51,5 +55,43 @@ describe("获客漏斗（P-10.1.4）", () => {
       expect(r.register).toBeGreaterThanOrEqual(r.firstOrder);
     }
     expect(page.records.length).toBe(storeAcquisition.length);
+  });
+});
+
+describe("门店档案（P-11.2.1）", () => {
+  it("检索含停用与强制下线的店 —— 治理视角更不能看不见", async () => {
+    const page = await storeMock.listStores({ size: 100 });
+    expect(page.records.map((s) => s.status)).toContain("SUSPENDED");
+    expect(page.records.map((s) => s.status)).toContain("READONLY");
+  });
+
+  it("按主体筛只出这家的店", async () => {
+    const page = await storeMock.listStores({ merchantNo: "M901", size: 100 });
+    expect(page.records.length).toBeGreaterThan(0);
+    expect(page.records.every((s) => s.merchantNo === "M901")).toBe(true);
+  });
+
+  it("payMerchantNo 为 null 表示「用主体默认收款号」，不是没配", async () => {
+    const s = await storeMock.getStore("ST001");
+    expect(s.payMerchantNo).toBeNull();
+    expect(s.isDefault).toBe(true);
+  });
+
+  it("★ 只有平台强制下线的店解得开 —— 商家自助停用的由商家自己开", async () => {
+    await expect(storeMock.restoreStore("ST004")).rejects.toThrow(/强制下线/);
+    const s = await storeMock.restoreStore("ST003");
+    expect(s.status).toBe("ACTIVE");
+  });
+
+  it("解除下线真落库（重新读回来是 ACTIVE，不是只改了返回值）", async () => {
+    await storeMock.restoreStore("ST003");
+    expect((await storeMock.getStore("ST003")).status).toBe("ACTIVE");
+  });
+
+  it("经营状况按门店给，且带得回所属主体", async () => {
+    const st = await storeMock.getStoreStats("ST001");
+    expect(st.storeNo).toBe("ST001");
+    expect(st.merchantNo).toBe("M901");
+    expect(st.monthOrders).toBeGreaterThanOrEqual(st.todayOrders);
   });
 });

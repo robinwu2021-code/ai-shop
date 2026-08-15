@@ -132,6 +132,13 @@ public class ReviewServiceImpl implements ReviewService {
         r.setGoodsNo(cmd.goodsNo());
         r.setSkuNo(item.skuNo());
         r.setEntityNo(item.merchantNo());
+        /*
+         * ★ 评价归门店（ADR-011 决定表第 3 行，V155）。
+         * 取的是**下单那一刻**子单上的门店，不是「商家现在的默认店」——
+         * 半年后他把那家店关了、或者换了默认店，这条评价不该跟着搬家。
+         * 老单可能没有门店，那样这条评价只计主体分。
+         */
+        r.setStoreNo(item.storeNo());
         r.setUserNo(userNo);
         // 昵称与头像存快照：用户改昵称不该让历史评价的署名跟着变
         r.setNickname(userPort.find(userNo).map(UserQueryPort.UserBrief::nickname).orElse("匿名用户"));
@@ -148,7 +155,7 @@ public class ReviewServiceImpl implements ReviewService {
         }
         reviewMapper.insert(r);
         // 「评价发表后…并计入商家评分」是写在发表页上的一句承诺，这里把它兑现
-        recomputeRating(cmd.goodsNo(), item.merchantNo());
+        recomputeRating(cmd.goodsNo(), item.merchantNo(), item.storeNo());
         // B-N-3：商家要看到新评价，差评（≤2 星）在消费侧单独点名
         eventBus.publish(new ai.neargo.shop.spi.product.ProductEvents.ReviewCreated(
                 r.getReviewNo(), item.merchantNo(), cmd.goodsNo(), cmd.rating()));
@@ -402,8 +409,9 @@ public class ReviewServiceImpl implements ReviewService {
         r.setStatus(pass ? VISIBLE : REJECTED);
         r.setRejectReason(pass ? null : reason.trim());
         DataScopeContext.executeWithoutScope(() -> reviewMapper.updateById(r));
-        // 驳回一条差评就该把它从评分里拿掉；恢复亦然 —— 否则治理动作只改了可见性
-        recomputeRating(r.getGoodsNo(), r.getEntityNo());
+        // 驳回一条差评就该把它从评分里拿掉；恢复亦然 —— 否则治理动作只改了可见性。
+        // **门店那一份也要跟着变**：只回主体分的话，那家店的分里仍然压着一条已被裁掉的差评
+        recomputeRating(r.getGoodsNo(), r.getEntityNo(), r.getStoreNo());
         return toOpsVO(r);
     }
 
@@ -453,7 +461,7 @@ public class ReviewServiceImpl implements ReviewService {
                 r.setRejectReason("申诉成立：" + verdict.trim());
                 DataScopeContext.executeWithoutScope(() -> reviewMapper.updateById(r));
                 // 差评被裁掉了，分也要跟着回去 —— 只从 C 端隐掉而分还压着，等于申诉赢了一半
-                recomputeRating(r.getGoodsNo(), r.getEntityNo());
+                recomputeRating(r.getGoodsNo(), r.getEntityNo(), r.getStoreNo());
             }
         }
         return toAppealVO(a);
@@ -496,11 +504,31 @@ public class ReviewServiceImpl implements ReviewService {
      * 「均分 ×0.8 + 订单量对数 ×0.2」还没拍板，那一项定了再往上加 ——
      * 但「发表评价 → 计入评分」这条链路不该继续空着，页面上已经这么写了。
      */
-    private void recomputeRating(String goodsNo, String merchantNo) {
+    /**
+     * <b>刻意没有「不传门店」的重载</b>：留一个两参版本的话，下一个调用点少传一个参数
+     * 就悄悄跳过了门店那一份，而症状是「主体分变了、门店分没变」——
+     * 没有报错，只有两个数字对不上，而且要等到有人并排看它们时才发现。
+     *
+     * @param storeNo 一并重算这家门店的分；**为空则不动任何门店**（老评价没有门店）
+     */
+    private void recomputeRating(String goodsNo, String merchantNo, String storeNo) {
         if (merchantNo != null && !merchantNo.isBlank()) {
             var agg = aggregate(Wrappers.<RvwReview>lambdaQuery()
                     .eq(RvwReview::getEntityNo, merchantNo));
             ratingPort.updateRating(merchantNo, agg);
+        }
+        /*
+         * ★ 门店分与主体分**同一份明细、同一套口径**（含 180 天半衰期）——
+         * 两套口径的后果是「主体 4.6 分，三家店 4.8/4.7/4.9」，
+         * 而没有人能解释那个 4.6 是怎么来的。
+         *
+         * 只在评价带门店时算：老评价不属于任何一家店，
+         * 拿它去更新某家店等于把别人的口碑记到这家头上。
+         */
+        if (storeNo != null && !storeNo.isBlank()) {
+            var agg = aggregate(Wrappers.<RvwReview>lambdaQuery()
+                    .eq(RvwReview::getStoreNo, storeNo));
+            ratingPort.updateStoreRating(storeNo, agg);
         }
         if (goodsNo == null || goodsNo.isBlank()) {
             return;

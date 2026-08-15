@@ -36,4 +36,18 @@ public class PrdSpecTemplate extends BaseEntity {
 
     /** scope=MERCHANT 时归属的商家。 */
     private String entityNo;
+
+    /** 归档后仍要能恢复。 */
+    public static final String ACTIVE = "ACTIVE";
+    public static final String DISABLED = "DISABLED";
+
+    /**
+     * ACTIVE / DISABLED（V102，P-3.4）。
+     *
+     * <p>不用 {@code deleted} 逻辑删除承载：模板停用是常态（换季、类目调整），停了还要能恢复；
+     * 而真删掉之后，历史商品记下的 {@code templateNo} 就再也解释不了那些 optionCode 是什么意思。
+     *
+     * <p>商家侧查询同步只取 ACTIVE —— <b>归档了商家还能选，等于没归档</b>。
+     */
+    private String status;
 }

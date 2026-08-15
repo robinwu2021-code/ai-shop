@@ -1,6 +1,7 @@
 package ai.neargo.shop.scenario;
 
 import ai.neargo.shop.support.TestLogin;
+import ai.neargo.shop.support.TestPlan;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -57,6 +58,9 @@ class StoreSettleFlowTest {
     @Autowired
     private ai.neargo.shop.spi.user.MerchantQueryPort merchantQueryPort;
 
+    @Autowired
+    private ai.neargo.shop.merchant.mapper.MerchantMappers.EntityPlanMapper planMapper;
+
     private MockMvc mvc() {
         return MockMvcBuilders.webAppContextSetup(context)
                 .apply(org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity())
@@ -80,6 +84,8 @@ class StoreSettleFlowTest {
         String biz = merchant("12600210010", "合并结算·总店");
         String pm = activatePayment(biz, null);
         String storeA = defaultStoreNo(biz);
+        // 多门店是 PRO 才有的能力，测试要说出「这家商家买了包」
+        TestPlan.grantPro(mvc(), json, planMapper, biz);
         String storeB = createStore(biz, "合并结算·分店");
 
         assertThat(merchantQueryPort.payMerchantNoOf(merchantNo(biz), storeA)).contains(pm);
@@ -92,6 +98,7 @@ class StoreSettleFlowTest {
         String biz = merchant("12600210020", "分开结算·总店");
         String entityPm = activatePayment(biz, null);
         String storeA = defaultStoreNo(biz);
+        TestPlan.grantPro(mvc(), json, planMapper, biz);
         String storeB = createStore(biz, "分开结算·分店");
 
         // 为 B 店单独进件 —— 微信侧一个商户号只能绑一个结算账户，
@@ -111,6 +118,7 @@ class StoreSettleFlowTest {
         String biz = merchant("12600210030", "改号测试店");
         String entityPm = activatePayment(biz, null);
         String storeA = defaultStoreNo(biz);
+        TestPlan.grantPro(mvc(), json, planMapper, biz);
         String storeB = createStore(biz, "改号测试·分店");
         String storePm = activatePayment(biz, storeB);
 
@@ -167,6 +175,7 @@ class StoreSettleFlowTest {
         clearStoreOn(bills.get(0).get("settleNo").asString());
 
         // 开第二家店之后再看 —— 此时按门店筛是生效的
+        TestPlan.grantPro(mvc(), json, planMapper, biz);
         createStore(biz, "存量流水·分店");
         assertThat(billsOf(biz))
                 .as("没有门店归属的行属于整个主体，任何一家店的视角都该看得到它")

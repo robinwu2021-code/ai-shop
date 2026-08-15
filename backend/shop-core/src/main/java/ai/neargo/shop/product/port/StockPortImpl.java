@@ -54,6 +54,20 @@ public class StockPortImpl implements StockPort {
             int affected = perStore
                     ? storeStockMapper.lockStock(storeNo, item.skuNo(), item.qty())
                     : skuMapper.lockStock(item.skuNo(), item.qty());
+            /*
+             * 现货不足 → **回落到预售额度**（P-3.3.1）。顺序不能反：先吃额度的话，
+             * 有现货的时候也在消耗预售额度，而预售额度对应的是次日现采的采购计划 ——
+             * 采购会按一个虚高的数字去备货。
+             *
+             * **只在主体级回落**：分店库存的语义是「没设过库存的店视为 0」，
+             * 叠一个主体级额度上去，等于给没设库存的店开了一个后门 ——
+             * 那家店会卖出它一件都没有的货。
+             */
+            boolean presale = false;
+            if (affected == 0 && !perStore) {
+                presale = skuMapper.lockPresale(item.skuNo(), item.qty()) > 0;
+                affected = presale ? 1 : 0;
+            }
             if (affected == 0) {
                 failed.add(item.skuNo());
                 // 不 break：一次把所有不足的 SKU 都收集齐，端上能一次性标红，
@@ -67,6 +81,9 @@ public class StockPortImpl implements StockPort {
             // **锁在哪张表就记在哪** —— 释放与确认靠它决定把数减回哪里，
             // 记错的后果是库存凭空多出或少掉一批，而且要等到对账才发现
             lock.setStoreNo(perStore ? storeNo : null);
+            // 同理：吃的是现货还是预售额度也要记下来，否则释放时会把预售单的数
+            // 减回 locked_stock —— 现货凭空多出一件，而那件货根本不存在
+            lock.setPresale(presale);
             lock.setStatus(PrdStockLock.LOCKED);
             lock.setLockedAt(LocalDateTime.now());
             lockMapper.insert(lock);
@@ -83,7 +100,11 @@ public class StockPortImpl implements StockPort {
     @Transactional
     public void release(String lockNo) {
         forEachActiveLock(lockNo, lock -> {
-            if (lock.getStoreNo() != null) {
+            if (Boolean.TRUE.equals(lock.getPresale())) {
+                // 预售单取消：额度还回去。不还的话额度会随着取消数一路缩水，
+                // 而那批货其实还没卖出去 —— 表现是「明明没卖多少，却说额度满了」
+                skuMapper.releasePresale(lock.getSkuNo(), lock.getQty());
+            } else if (lock.getStoreNo() != null) {
                 storeStockMapper.releaseStock(lock.getStoreNo(), lock.getSkuNo(), lock.getQty());
             } else {
                 skuMapper.releaseStock(lock.getSkuNo(), lock.getQty());
@@ -98,6 +119,18 @@ public class StockPortImpl implements StockPort {
     @Transactional
     public void confirm(String lockNo) {
         forEachActiveLock(lockNo, lock -> {
+            /*
+             * 预售单确认：**什么都不减**。sold_count 在锁定时就已经计入，
+             * 而现货本来就没有 —— 去减 stock 会把一个已经是 0 的数减成负数，
+             * 或者（因为 SQL 带 `stock >= qty` 的守卫）静默失败，
+             * 让这一单永远停在 LOCKED，超时任务反复来释放它。
+             */
+            if (Boolean.TRUE.equals(lock.getPresale())) {
+                lock.setStatus(PrdStockLock.CONFIRMED);
+                lock.setSettledAt(LocalDateTime.now());
+                lockMapper.updateById(lock);
+                return;
+            }
             // 锁定转实扣：总库存减、锁定量同步减，此后不再释放
             if (lock.getStoreNo() != null) {
                 storeStockMapper.confirmStock(lock.getStoreNo(), lock.getSkuNo(), lock.getQty());

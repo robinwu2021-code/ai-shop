@@ -1,6 +1,7 @@
 package ai.neargo.shop.scenario;
 
 import ai.neargo.shop.support.TestLogin;
+import ai.neargo.shop.support.TestPlan;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -44,6 +45,9 @@ class StoreGoodsFlowTest {
 
     @Autowired
     private ObjectMapper json;
+
+    @Autowired
+    private ai.neargo.shop.merchant.mapper.MerchantMappers.EntityPlanMapper planMapper;
 
 
     private MockMvc mvc() {
@@ -90,6 +94,8 @@ class StoreGoodsFlowTest {
         String biz = merchant("12600220010", "双店上架·总店");
         String goodsNo = approvedGoods(biz);
         String storeA = defaultStoreNo(biz);
+        // 多门店是 PRO 才有的能力，测试要说出「这家商家买了包」
+        TestPlan.grantPro(mvc(), json, planMapper, biz);
         String storeB = createStore(biz, "双店上架·分店");
 
         // 两家店各自上架
@@ -116,6 +122,7 @@ class StoreGoodsFlowTest {
         // 主体级上架（此时还是单店，走的就是改造前那条路）
         toggle(biz, storeA, goodsNo, true);
         // 然后才开第二家店 —— 两家店都在卖，但**谁都没有店级行**
+        TestPlan.grantPro(mvc(), json, planMapper, biz);
         String storeB = createStore(biz, "转换时刻·分店");
         assertThat(statusOf(biz, storeB, goodsNo)).isEqualTo("ON_SALE");
 
@@ -134,6 +141,7 @@ class StoreGoodsFlowTest {
         String biz = merchant("12600220020", "只在分店卖·总店");
         String goodsNo = approvedGoods(biz);
         String storeA = defaultStoreNo(biz);
+        TestPlan.grantPro(mvc(), json, planMapper, biz);
         String storeB = createStore(biz, "只在分店卖·分店");
 
         // 只给 B 店上架 —— 商家做的就是「这货只在分店卖」
@@ -151,6 +159,7 @@ class StoreGoodsFlowTest {
         String biz = merchant("12600220030", "全下架店");
         String goodsNo = approvedGoods(biz);
         String storeA = defaultStoreNo(biz);
+        TestPlan.grantPro(mvc(), json, planMapper, biz);
         String storeB = createStore(biz, "全下架·分店");
 
         toggle(biz, storeA, goodsNo, true);
@@ -168,6 +177,7 @@ class StoreGoodsFlowTest {
         String biz = merchant("12600220040", "默认店口径店");
         String goodsNo = approvedGoods(biz);
         String storeA = defaultStoreNo(biz);
+        TestPlan.grantPro(mvc(), json, planMapper, biz);
         String storeB = createStore(biz, "默认店口径·分店");
 
         // 只在 B 店上架

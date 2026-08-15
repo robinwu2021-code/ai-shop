@@ -29,4 +29,15 @@ export const systemHttp: SystemApi = {
   saveRuleTexts: (v) => client.post("/ops/rule-texts", v),
   listFeatureFlags: () => client.get("/ops/feature-flags"),
   saveFeatureFlag: (key, enabled, rolloutPercent) => client.post(`/ops/feature-flags/${key}`, { enabled, rolloutPercent }),
+
+  // ── 存储空间治理 ──
+  getMediaOverview: () => client.get("/ops/media/overview"),
+  listMediaStoreUsage: () => client.get("/ops/media/stores"),
+  listMediaReclaimable: (q) => client.get("/ops/media/reclaimable", q),
+  listMediaBatches: () => client.get("/ops/media/batches"),
+  getMediaBatch: (batchNo) => client.get(`/ops/media/batches/${batchNo}`),
+  scanMedia: () => client.post("/ops/media/scan", {}),
+  backfillMedia: () => client.post("/ops/media/backfill", {}),
+  previewMediaPurge: (q) => client.post("/ops/media/purge/preview", q),
+  purgeMedia: (v) => client.post("/ops/media/purge", v),
 };

@@ -68,8 +68,13 @@ public interface MerchantQueryPort {
      */
     java.util.Optional<StoreFront> storeFront(String merchantNo);
 
-    /** 门面文案。字段与契约 `StoreFront` 一一对应 */
-    record StoreFront(String announcement, String openHours, String address) {
+    /**
+     * 门面文案。字段与契约 `StoreFront` 一一对应。
+     *
+     * @param status 门店状态 ACTIVE / READONLY / SUSPENDED（V96）——
+     *               门店主页要据此显示「已停业」，而不是让停用的店照常收单
+     */
+    record StoreFront(String announcement, String openHours, String address, String status) {
     }
 
     /**

@@ -6,6 +6,56 @@ import { fail, notFound } from "@/lib/biz-error";
 import { wait } from "./_wait";
 
 export const storeMock: StoreApi = {
+  // ── 门店档案（P-11.2.1）────────────────────────────────────────
+
+  listStores: (q = {}) =>
+    wait(
+      db.paginate(db.stores, q.page, q.size, (s) =>
+        db.eqHit(q.merchantNo, s.merchantNo) &&
+        db.eqHit(q.status, s.status) &&
+        db.eqHit(q.businessMode, s.businessMode) &&
+        db.kwHit(q.keyword, s.storeNo, s.name, s.address, s.merchantName),
+      ),
+    ),
+
+  getStore: async (storeNo) => {
+    const s = db.stores.find((x) => x.storeNo === storeNo);
+    if (!s) notFound("门店", "Store", storeNo);
+    return wait(s);
+  },
+
+  /*
+   * 固定数字，不随机：mock 数据每次刷新都变的话，截图对不上、测试也不稳
+   * （与本文件顶部那份种子同一个理由）。ownedTrafficRate 给一个非 0 非 1 的值 ——
+   * 0 或 1 会让「自带客流占比」那一格看起来像没接上数据。
+   */
+  getStoreStats: async (storeNo) => {
+    const s = db.stores.find((x) => x.storeNo === storeNo);
+    if (!s) notFound("门店", "Store", storeNo);
+    return wait({
+      storeNo, merchantNo: s.merchantNo,
+      todayOrders: 12, todayGmvMinor: 38650,
+      monthOrders: 305, monthGmvMinor: 1042300,
+      ownedTrafficRate: 0.42,
+      toShip: 3, toDeliver: 2, toStock: 1,
+    });
+  },
+
+  restoreStore: async (storeNo) => {
+    const s = db.stores.find((x) => x.storeNo === storeNo);
+    if (!s) notFound("门店", "Store", storeNo);
+    /*
+     * 只有平台压下的店解得开。**READONLY 是商家自己关的** ——
+     * 平台替他开等于替他做经营决定，而他下一分钟就会再关一次。
+     * mock 也拦：不拦的话页面会给每家店都摆一个「解除下线」按钮。
+     */
+    if (s.status !== "SUSPENDED") {
+      fail("只有被平台强制下线的门店可以解除，商家自助停用的店由商家自己开回来", "Only a store the platform forced offline can be restored — one the merchant paused reopens on their side");
+    }
+    s.status = "ACTIVE";
+    return wait(s, 400);
+  },
+
   listStoreAudits: (q = {}) =>
     wait(
       db.paginate(db.storeAudits, q.page, q.size, (a) =>

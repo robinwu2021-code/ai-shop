@@ -59,6 +59,9 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
     private final ai.neargo.shop.merchant.mapper.MerchantMappers.MchAccountMapper staffMapper;
     private final ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper storeMapper;
     private final tools.jackson.databind.ObjectMapper json;
+    /** 主体激活时建 FREE 订阅行（V150）—— 与 ensureDefaultStore 同一类动作 */
+    private final ai.neargo.shop.merchant.mapper.MerchantMappers.EntityPlanMapper entityPlanMapper;
+    private final ai.neargo.shop.merchant.mapper.MerchantMappers.PlanDefMapper planDefMapper;
 
     public MerchantPortImpl(MchEntityMapper merchantMapper, MchEntityCommunityMapper merchantCommunityMapper,
                             MchPaymentMapper merchantPaymentMapper,
@@ -70,7 +73,11 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
                             tools.jackson.databind.ObjectMapper json,
                             ai.neargo.shop.merchant.service.MerchantGovernService governService,
                             ai.neargo.shop.merchant.mapper.MerchantMappers.ServiceAreaMapper serviceAreaMapper,
-                            ai.neargo.shop.merchant.mapper.MerchantMappers.QualificationMapper qualificationMapper) {
+                            ai.neargo.shop.merchant.mapper.MerchantMappers.QualificationMapper qualificationMapper,
+                            ai.neargo.shop.merchant.mapper.MerchantMappers.EntityPlanMapper entityPlanMapper,
+                            ai.neargo.shop.merchant.mapper.MerchantMappers.PlanDefMapper planDefMapper) {
+        this.entityPlanMapper = entityPlanMapper;
+        this.planDefMapper = planDefMapper;
         this.qualificationMapper = qualificationMapper;
         this.governService = governService;
         this.json = json;
@@ -174,7 +181,8 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
                         .last("limit 1")));
         return store == null ? Optional.empty()
                 : Optional.of(new StoreFront(nvl(store.getAnnouncement()),
-                        nvl(store.getOpenHours()), nvl(store.getAddress())));
+                        nvl(store.getOpenHours()), nvl(store.getAddress()),
+                        nvl(store.getStatus())));
     }
 
     /** 空字符串而不是 null：端上直接渲染，null 会变成屏幕上的「null」 */
@@ -290,8 +298,9 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
 
     @Override
     public Optional<MerchantBrief> find(String merchantNo) {
-        MchEntity m = merchantMapper.selectOne(Wrappers.<MchEntity>lambdaQuery()
-                .eq(MchEntity::getEntityNo, merchantNo).last("limit 1"));
+        MchEntity m = DataScopeContext.executeWithoutScope(() ->
+                merchantMapper.selectOne(Wrappers.<MchEntity>lambdaQuery()
+                .eq(MchEntity::getEntityNo, merchantNo).last("limit 1")));
         if (m == null) {
             return Optional.empty();
         }
@@ -435,6 +444,7 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
             // 重复点击「通过」是常态：全部按幂等写，不重复插
             ensureOwnerStaff(existing.getEntityNo(), ownerUserNo);
             ensureDefaultStore(existing.getEntityNo(), name);
+            ensureFreePlan(existing.getEntityNo());
             syncCommunities(existing.getEntityNo(), cmd.communityNos());
             ensurePayment(existing.getEntityNo(), type, cmd.settleAccountType());
             return existing.getEntityNo();
@@ -479,6 +489,7 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
          */
         ensureOwnerStaff(m.getEntityNo(), ownerUserNo);
         ensureDefaultStore(m.getEntityNo(), name);
+        ensureFreePlan(m.getEntityNo());
         syncCommunities(m.getEntityNo(), cmd.communityNos());
         ensurePayment(m.getEntityNo(), type, cmd.settleAccountType());
         return m.getEntityNo();
@@ -515,6 +526,40 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
         staff.setIsPrimary(!hasPrimary);
         staff.setStatus(ai.neargo.shop.merchant.entity.MchAccount.ACTIVE);
         DataScopeContext.executeWithoutScope(() -> staffMapper.insert(staff));
+    }
+
+    /**
+     * 建 FREE 订阅行（V150）。
+     *
+     * <p><b>与 {@link #ensureDefaultStore} 是同一类动作</b>：主体一激活就该有的东西。
+     * 迁移里的回填只覆盖迁移那一刻的存量，**新入驻的商家没人给它建行** ——
+     * 漏了这一步的症状不是报错，是额度一路落到配置兜底：
+     * 测试环境那个兜底是 3，于是新商家能开三家店，而他明明是 FREE。
+     * （实测抓到：三条额度用例同时红。）
+     */
+    private void ensureFreePlan(String merchantNo) {
+        boolean exists = DataScopeContext.executeWithoutScope(() ->
+                entityPlanMapper.exists(Wrappers.<ai.neargo.shop.merchant.entity.MchEntityPlan>lambdaQuery()
+                        .eq(ai.neargo.shop.merchant.entity.MchEntityPlan::getEntityNo, merchantNo)));
+        if (exists) {
+            return;
+        }
+        var def = DataScopeContext.executeWithoutScope(() ->
+                planDefMapper.selectOne(Wrappers.<ai.neargo.shop.merchant.entity.SysMerchantPlanDef>lambdaQuery()
+                        .eq(ai.neargo.shop.merchant.entity.SysMerchantPlanDef::getPlanCode,
+                                ai.neargo.shop.merchant.entity.MchEntityPlan.FREE)
+                        .last("limit 1")));
+        var row = new ai.neargo.shop.merchant.entity.MchEntityPlan();
+        row.setEntityNo(merchantNo);
+        row.setPlanCode(ai.neargo.shop.merchant.entity.MchEntityPlan.FREE);
+        // 档位定义缺失时给 1/0 —— 与 FREE 的种子逐字一致，不去读那个会被改的配置
+        row.setStoreQuota(def == null || def.getStoreQuota() == null ? 1 : def.getStoreQuota());
+        row.setStaffQuota(def == null || def.getStaffQuota() == null ? 0 : def.getStaffQuota());
+        row.setCrossStoreStats(def != null && Boolean.TRUE.equals(def.getCrossStoreStats()));
+        row.setStatus(ai.neargo.shop.merchant.entity.MchEntityPlan.ACTIVE);
+        row.setGrantedBy(ai.neargo.shop.merchant.entity.MchEntityPlan.BY_SELF_PAID);
+        row.setTrialUsed(false);
+        DataScopeContext.executeWithoutScope(() -> entityPlanMapper.insert(row));
     }
 
     /** 建默认门店。一主体恰好一个，删不掉 —— 它是单店商家的全部。 */
@@ -611,8 +656,9 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
      */
     @Override
     public String pointsDenyReason(String merchantNo) {
-        MchEntity m = merchantMapper.selectOne(
-                Wrappers.<MchEntity>lambdaQuery().eq(MchEntity::getEntityNo, merchantNo).last("LIMIT 1"));
+        MchEntity m = DataScopeContext.executeWithoutScope(() ->
+                merchantMapper.selectOne(
+                Wrappers.<MchEntity>lambdaQuery().eq(MchEntity::getEntityNo, merchantNo).last("LIMIT 1")));
         if (m == null) {
             return "商家不存在";
         }
@@ -660,8 +706,9 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
 
     @Override
     public boolean isPointsForced(String merchantNo) {
-        MchEntity m = merchantMapper.selectOne(
-                Wrappers.<MchEntity>lambdaQuery().eq(MchEntity::getEntityNo, merchantNo).last("LIMIT 1"));
+        MchEntity m = DataScopeContext.executeWithoutScope(() ->
+                merchantMapper.selectOne(
+                Wrappers.<MchEntity>lambdaQuery().eq(MchEntity::getEntityNo, merchantNo).last("LIMIT 1")));
         return m != null && Boolean.TRUE.equals(m.getPointsForced());
     }
 
@@ -745,6 +792,34 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
     }
 
     @Override
+    public void updateStoreRating(String storeNo, ai.neargo.shop.spi.user.MerchantRatingPort.Rating r) {
+        var st = DataScopeContext.executeWithoutScope(() ->
+                storeMapper.selectOne(Wrappers.<ai.neargo.shop.merchant.entity.MchStore>lambdaQuery()
+                        .eq(ai.neargo.shop.merchant.entity.MchStore::getStoreNo, storeNo)
+                        .last("limit 1")));
+        if (st == null) {
+            // 门店不存在不该让「发表评价」整笔失败 —— 与主体那条同一条规矩
+            return;
+        }
+        /*
+         * 与主体评分逐字同构，包括「一条评价都没有时回到中位分而不是 0 分」：
+         * 0 分会让这家店在任何按评分排的列表里垫底，而它还没有任何订单可以证明自己。
+         * 展示层按 ratingCount == 0 显示「暂无评价」，所以中位分只影响排序。
+         *
+         * ⚠️ **老评价（store_no 为空）不会走到这里**（调用方只在评价带门店时调）——
+         * 于是一家老店在第一条带门店的新评价到来之前，rating_count 是 0。
+         * 那是对的：把主体分照搬给每家店，等于让新开的分店凭空继承老店的口碑。
+         */
+        boolean rated = r.count() > 0;
+        st.setRating(rated ? r.ratingX10() : RATING_INIT);
+        st.setRatingCount(r.count());
+        st.setScoreGoods(rated ? r.goodsX10() : RATING_INIT);
+        st.setScoreService(rated ? r.serviceX10() : RATING_INIT);
+        st.setScoreSpeed(rated ? r.speedX10() : RATING_INIT);
+        DataScopeContext.executeWithoutScope(() -> storeMapper.updateById(st));
+    }
+
+    @Override
     @Transactional
     public void accruePayQuota(String merchantNo, String storeNo, long amountMinor) {
         if (amountMinor <= 0) {
@@ -784,11 +859,12 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
     /** 本店专属收款记录优先，回落到主体默认号 —— 不配店号就是「合并结算，走主体号」。 */
     private MchPaymentMerchant resolvePayment(String merchantNo, String storeNo) {
         if (storeNo != null && !storeNo.isBlank()) {
-            MchPaymentMerchant own = merchantPaymentMapper.selectOne(
+            MchPaymentMerchant own = DataScopeContext.executeWithoutScope(() ->
+                    merchantPaymentMapper.selectOne(
                     Wrappers.<MchPaymentMerchant>lambdaQuery()
                             .eq(MchPaymentMerchant::getEntityNo, merchantNo)
                             .eq(MchPaymentMerchant::getStoreNo, storeNo)
-                            .last("LIMIT 1"));
+                            .last("LIMIT 1")));
             if (own != null) {
                 return own;
             }
@@ -816,8 +892,9 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
 
     @Override
     public java.util.Optional<String> ownerUserNoOf(String merchantNo) {
-        MchEntity m = merchantMapper.selectOne(
-                Wrappers.<MchEntity>lambdaQuery().eq(MchEntity::getEntityNo, merchantNo).last("LIMIT 1"));
+        MchEntity m = DataScopeContext.executeWithoutScope(() ->
+                merchantMapper.selectOne(
+                Wrappers.<MchEntity>lambdaQuery().eq(MchEntity::getEntityNo, merchantNo).last("LIMIT 1")));
         return m == null ? java.util.Optional.empty()
                 : java.util.Optional.ofNullable(m.getOwnerUserNo());
     }
@@ -829,8 +906,9 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
 
     @Override
     public java.util.Set<String> authorizedCategoryCodes(String merchantNo) {
-        MchEntity m = merchantMapper.selectOne(
-                Wrappers.<MchEntity>lambdaQuery().eq(MchEntity::getEntityNo, merchantNo).last("LIMIT 1"));
+        MchEntity m = DataScopeContext.executeWithoutScope(() ->
+                merchantMapper.selectOne(
+                Wrappers.<MchEntity>lambdaQuery().eq(MchEntity::getEntityNo, merchantNo).last("LIMIT 1")));
         if (m == null || m.getCategoryCodes() == null || m.getCategoryCodes().isBlank()) {
             // 空 = 没有任何特许类目，只能上架无门槛的类目。**不是「不限制」**
             return java.util.Set.of();
@@ -851,8 +929,9 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
 
     @Override
     public void setPointsEnabled(String merchantNo, boolean enabled) {
-        MchEntity m = merchantMapper.selectOne(
-                Wrappers.<MchEntity>lambdaQuery().eq(MchEntity::getEntityNo, merchantNo).last("LIMIT 1"));
+        MchEntity m = DataScopeContext.executeWithoutScope(() ->
+                merchantMapper.selectOne(
+                Wrappers.<MchEntity>lambdaQuery().eq(MchEntity::getEntityNo, merchantNo).last("LIMIT 1")));
         if (m == null) {
             return;
         }

@@ -120,3 +120,32 @@ describe("预售与超卖（P-3.3）", () => {
     }
   });
 });
+
+describe("goods 级强制下架（P-3.2.3）", () => {
+  it("原因必填 —— 它原样进商家 B 端", async () => {
+    await expect(productMock.forceOffGoods("SKU1001", "")).rejects.toThrow(/原因/);
+    await expect(productMock.forceOffGoods("SKU1001", "  ")).rejects.toThrow(/原因/);
+  });
+
+  it("只有在售的才谈得上撤销过审", async () => {
+    await expect(productMock.forceOffGoods("SKU1002", "图文不符")).rejects.toThrow(/在售/);
+  });
+
+  it("★ 落到 REJECTED 而不是 OFF_SALE —— 商家必须改完重新提审，不能一键复原", async () => {
+    const g = await productMock.forceOffGoods("SKU1001", "图片盗用他人素材");
+    expect(g.status).toBe("REJECTED");
+    expect(g.auditReason).toContain("平台强制下架");
+    expect(g.auditReason).toContain("盗用");
+  });
+
+  it("详情读得回驳回原因（商家看到的就是这句）", async () => {
+    await productMock.forceOffGoods("SKU1001", "图片盗用他人素材");
+    const d = await productMock.getGoodsDetail("SKU1001");
+    expect(d.auditReason).toContain("平台强制下架");
+    // 后端必发的四个数组：声明成必填才逼得出页面不写 `?? []`
+    expect(Array.isArray(d.images)).toBe(true);
+    expect(Array.isArray(d.skus)).toBe(true);
+    expect(Array.isArray(d.specGroups)).toBe(true);
+    expect(Array.isArray(d.fulfillments)).toBe(true);
+  });
+});

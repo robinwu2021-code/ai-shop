@@ -178,8 +178,15 @@ export type ViolationType =
   /** 服务问题 */
   | "SERVICE";
 
-/** 处置动作。SUSPEND 会真的把商家状态推到 SUSPENDED。 */
-export type ViolationAction = "WARN" | "LIMIT" | "SUSPEND";
+/**
+ * 处置动作。**两个动作有真副作用**，不是记一笔就完：
+ * `SUSPEND` 把整个商家推到 SUSPENDED，`STORE_OFFLINE` 把**指定的那一家门店**
+ * 压到 SUSPENDED 并撤下它的货架行。
+ *
+ * 门店级独立成一个 action 而不是「SUSPEND + 可选 storeNo」：后者的语义
+ * 由一个可空字段决定，读处置记录的人分不出「封了整个商家」和「只压了一家店」。
+ */
+export type ViolationAction = "WARN" | "LIMIT" | "SUSPEND" | "STORE_OFFLINE";
 
 export interface Violation {
   /** 违规记录单号 */
@@ -192,6 +199,11 @@ export interface Violation {
   type: ViolationType;
   /** 处置动作。`SUSPEND` 会真的把商家状态推到 SUSPENDED */
   action: ViolationAction;
+  /**
+   * 门店级处置的对象门店。**`STORE_OFFLINE` 必有、其余动作必空** ——
+   * 主体级处置带上门店号会让人以为只压了那一家。
+   */
+  storeNo?: string | null;
   /** 事实描述与证据出处。必填 —— 没有事实的处置在申诉时站不住 */
   detail: string;
   /** 处置人（STAFF 账号） */
@@ -408,4 +420,82 @@ export interface MerchantStaffRow {
   status: string;
   /** 他在各门店的角色。一人一店可多角色，权限取并集 */
   roles: { storeNo: string; storeName: string; role: string }[];
+}
+
+// ── 增值包与门店额度（P-11.2.2~11.2.6，V150）──────────────────────────────
+
+/**
+ * 订阅状态。
+ *
+ * `GRACE`（宽限期，7 天）**能力全保留** —— 到期当天就压店的话，
+ * 一次忘记续费等于让他的店在客户面前消失，而他往往正在门店里忙。
+ * 宽限期是给「人」的缓冲，不是给系统的。
+ */
+export type PlanStatus = "ACTIVE" | "GRACE" | "EXPIRED";
+
+/**
+ * 生效额度的来源。运营必须看得出这个数是哪来的 ——
+ * 否则「这家怎么是 5 家？」只能靠翻审计日志回答。
+ */
+export type PlanQuotaSource =
+  /** 档位快照：订阅那一刻从档位定义抄下来的 */
+  | "PLAN"
+  /** 单独谈的覆盖值，优先于快照 */
+  | "OVERRIDE"
+  /** 还没有订阅行，走配置兜底 */
+  | "CONFIG";
+
+/** 到期看板的一行（`GET /ops/merchant-plans`）。 */
+export interface MerchantPlanRow {
+  merchantNo: string;
+  merchantName: string;
+  planCode: string;
+  /** 生效额度（覆盖值优先于快照）。与 storeUsed 一起显示成 2/3 */
+  storeQuota: number;
+  staffQuota: number;
+  /** 已用门店数。**只数 ACTIVE**，与建店时那道额度闸同一口径 */
+  storeUsed: number;
+  staffUsed: number;
+  crossStoreStats: boolean;
+  status: PlanStatus;
+  startAt?: number | null;
+  expireAt?: number | null;
+  /** PLATFORM（运营授予）/ SELF（一期没有这条路） */
+  grantedBy?: string | null;
+  trialUsed: boolean;
+  /** 降级发生的时间。非空 = 已经压过店了（扫描靠它保证幂等） */
+  downgradedAt?: number | null;
+  quotaSource: PlanQuotaSource;
+}
+
+/** 档位定义（`GET /ops/plan-defs`）。 */
+export interface PlanDef {
+  planCode: string;
+  name: string;
+  storeQuota: number;
+  staffQuota: number;
+  crossStoreStats: boolean;
+  trialDays: number;
+  enabled: boolean;
+  /**
+   * 当前有几家在用这一档。
+   *
+   * **改定义的人必须看得到这个数** —— 它是「只影响之后新订阅的人」那句话的具体量。
+   * 不给这个数，改档位的人只能凭感觉判断影响面。
+   */
+  subscriberCount: number;
+}
+
+/**
+ * 升档信号的一行（`GET /ops/merchant-plans/upgrade-signals`）。
+ *
+ * **按 owner 分组而不是按主体**：「同一个人开了两个主体」正是要找的人 ——
+ * 他已经在多店经营，只是绕过了额度。主体表上没有联系电话（那在申请单上），
+ * 所以这里只给 owner 号，销售拿它去后台查人。
+ */
+export interface PlanUpgradeSignal {
+  ownerUserNo: string;
+  entityNos: string[];
+  entityNames: string[];
+  entityCount: number;
 }

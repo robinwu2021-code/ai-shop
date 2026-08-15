@@ -15,4 +15,12 @@ public final class AttributionMappers {
 
     public interface AttributionLogMapper extends BaseMapper<MktAttributionLog> {
     }
+
+    public interface AttributionRuleMapper
+            extends BaseMapper<ai.neargo.shop.marketing.attribution.entity.MktAttributionRule> {
+    }
+
+    public interface FissionCampaignMapper
+            extends BaseMapper<ai.neargo.shop.marketing.attribution.entity.MktFissionCampaign> {
+    }
 }

@@ -1,6 +1,7 @@
 package ai.neargo.shop.scenario;
 
 import ai.neargo.shop.support.TestLogin;
+import ai.neargo.shop.support.TestPlan;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,6 +40,8 @@ class M9bBizGoodsFlowTest {
     @Autowired
     private ObjectMapper json;
 
+    @Autowired
+    private ai.neargo.shop.merchant.mapper.MerchantMappers.EntityPlanMapper planMapper;
 
     private MockMvc mvc() {
         return MockMvcBuilders.webAppContextSetup(context)
@@ -284,7 +287,8 @@ class M9bBizGoodsFlowTest {
                 .get("data").get("currentStoreNo").asString();
         assertThat(defaultStore).isNotBlank();
 
-        // 再开一家分店
+        // 再开一家分店 —— 多门店是 PRO 才有的能力，测试要说出「这家商家买了包」
+        TestPlan.grantPro(mvc(), json, planMapper, token);
         String second = json.readTree(mvc().perform(post("/biz/store/create")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -323,7 +327,8 @@ class M9bBizGoodsFlowTest {
                 .contentType(MediaType.APPLICATION_JSON).content("{\"onSale\":true}"));
         placeOrder(login("12600127032"), goodsNo);
 
-        // 开一家分店，把店员只授权到分店
+        // 开一家分店，把店员只授权到分店（多门店是 PRO 才有的能力）
+        TestPlan.grantPro(mvc(), json, planMapper, token);
         String branch = json.readTree(mvc().perform(post("/biz/store/create")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"语义分店\"}"))

@@ -1,6 +1,8 @@
 package ai.neargo.shop.e2e;
 
+import ai.neargo.shop.support.TestPlan;
 import org.junit.jupiter.api.BeforeEach;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.JsonNode;
@@ -24,6 +26,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 @DisplayName("J2 · 多门店隔离与员工视角")
 class J2MultiStoreE2eTest extends E2eBase {
 
+    @Autowired
+    private ai.neargo.shop.merchant.mapper.MerchantMappers.EntityPlanMapper planMapper;
+
     @BeforeEach
     void setUp() {
         resetDatabaseOnce();
@@ -44,6 +49,10 @@ class J2MultiStoreE2eTest extends E2eBase {
         step(1, "默认店", defaultStore);
 
         // ── 2. 新开一家分店 ────────────────────────────────────────
+        // 多门店是 PRO 才有的能力 —— 新入驻主体默认 FREE（1 家店），
+        // 这条旅程验的是「三家店的账能分开」，前提是这家商家买了包
+        TestPlan.grantPro(planMapper,
+                get("/biz/merchant/profile", merchantToken).get("merchantNo").asString());
         String branch = post("/biz/store/create", merchantToken,
                 Map.of("name", "J2 文三路分店")).get("storeNo").asString();
         JsonNode stores = get("/biz/store/list", merchantToken);

@@ -16,13 +16,30 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-/** trade 侧的看板聚合实现（{@link TradeStatsPort}）。 */
+/**
+ * trade 侧的看板聚合实现（{@link TradeStatsPort}）。
+ *
+ * <p><b>子订单上的聚合走数据域</b>（2026-08-14，运营端数据域接入 批①）：
+ * 唯一的调用方是运营看板（{@code DashboardServiceImpl}），
+ * 而看板此前对所有运营都是全平台口径 —— 配了「只看城西片区」的人，
+ * 打开首屏看到的仍是全平台 GMV。没配数据域的账号是 {@code ALL}（空 = 不限定），
+ * 超管恒 {@code ALL}，所以存量账号零变化。
+ *
+ * <p>`ord_after_sale` 上的两处仍解除数据域：那张表没有注册进
+ * {@code DataScopeRegistration}，解除与否结果相同（未注册表 = 放行），
+ * 留着只是不去动无关的行。
+ */
 @Component
 public class TradeStatsPortImpl implements TradeStatsPort {
 
-    /** 计入成交的状态。WAIT_PAY 不算 —— 没付钱的单不是成交 */
-    private static final Set<String> PAID_STATES =
-            Set.of(OrdSubOrder.WAIT_FULFILL, OrdSubOrder.FULFILLING, OrdSubOrder.COMPLETED);
+    /*
+     * 成交口径**不在这里定义** —— 它在 {@link OrdSubOrder#TRANSACTED} 上，
+     * 与商家看板、跨店对比、顾客画像共用同一份。
+     *
+     * 这两个常量此前是本类私有的，而商家侧另写了一套（`!= WAIT_PAY`）——
+     * 两份口径没有任何地方声明过它们是两份，于是平台排行与商家后台的 GMV
+     * 长期对不上，差额是被取消的单。谁也没报错，只有商家会打电话来问。
+     */
 
     private static final Set<String> OPEN_AFTER_SALE =
             Set.of(OrdAfterSale.APPLIED, OrdAfterSale.ARBITRATING);
@@ -68,15 +85,14 @@ public class TradeStatsPortImpl implements TradeStatsPort {
     @Override
     public double todayRedeemRate() {
         long from = LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli();
-        List<OrdSubOrder> today = DataScopeContext.executeWithoutScope(() ->
-                subOrderMapper.selectList(Wrappers.<OrdSubOrder>lambdaQuery()
-                        .in(OrdSubOrder::getFulfillment,
-                                List.of(OrdSubOrder.STORE_PICKUP, OrdSubOrder.NEIGHBOR_PICKUP))
-                        .in(OrdSubOrder::getStatus,
-                                List.of(OrdSubOrder.FULFILLING, OrdSubOrder.COMPLETED))
-                        .ge(OrdSubOrder::getCreatedAt,
-                                java.time.LocalDateTime.ofInstant(
-                                        java.time.Instant.ofEpochMilli(from), ZoneId.systemDefault()))));
+        List<OrdSubOrder> today = subOrderMapper.selectList(Wrappers.<OrdSubOrder>lambdaQuery()
+                .in(OrdSubOrder::getFulfillment,
+                        List.of(OrdSubOrder.STORE_PICKUP, OrdSubOrder.NEIGHBOR_PICKUP))
+                .in(OrdSubOrder::getStatus,
+                        List.of(OrdSubOrder.FULFILLING, OrdSubOrder.COMPLETED))
+                .ge(OrdSubOrder::getCreatedAt,
+                        java.time.LocalDateTime.ofInstant(
+                                java.time.Instant.ofEpochMilli(from), ZoneId.systemDefault())));
         if (today.isEmpty()) {
             // 0 而不是 1：「没有单要核销」不等于「全核销完了」
             return 0d;
@@ -87,21 +103,75 @@ public class TradeStatsPortImpl implements TradeStatsPort {
 
     @Override
     public Reach reach() {
-        List<OrdSubOrder> all = DataScopeContext.executeWithoutScope(() ->
-                subOrderMapper.selectList(Wrappers.<OrdSubOrder>lambdaQuery()));
+        List<OrdSubOrder> all = subOrderMapper.selectList(Wrappers.<OrdSubOrder>lambdaQuery());
         long ordered = all.stream().map(OrdSubOrder::getUserNo)
                 .filter(java.util.Objects::nonNull).distinct().count();
-        long paidUsers = all.stream().filter(s -> PAID_STATES.contains(s.getStatus()))
+        // 转化漏斗的「付过款的人」：退款过的人**也算付过** —— 他确实转化了，
+        // 退款是之后的另一件事。用不含退款的集合会让转化率随退款慢慢变低，
+        // 而那与获客做得好不好毫无关系
+        long paidUsers = all.stream().filter(s -> OrdSubOrder.TRANSACTED.contains(s.getStatus()))
                 .map(OrdSubOrder::getUserNo).filter(java.util.Objects::nonNull).distinct().count();
         return new Reach(ordered, paidUsers);
     }
 
+    @Override
+    public List<MerchantTotal> merchantTotals(LocalDate from) {
+        /*
+         * 取的是「成交态 + 已退款」两类，而不是只取成交态。
+         *
+         * 只取成交态的话，**单子全退光的商家会从排行里整个消失** —— 而售后率这一列
+         * 存在的理由就是揪出「卖得多也赔得多」的店。实测撞到过：一笔 ¥30 的单低于
+         * 极速退阈值，自动退款后那家商家凭空不见了。
+         *
+         * GMV 仍只累成交态（实收），与 paidTotals 同口径 —— 看板上下两层不能有两个 GMV 定义。
+         */
+        List<OrdSubOrder> rows = subOrderMapper.selectList(Wrappers.<OrdSubOrder>lambdaQuery()
+                .in(OrdSubOrder::getStatus, OrdSubOrder.TRANSACTED)
+                .ge(from != null, OrdSubOrder::getCreatedAt,
+                        from == null ? null : from.atStartOfDay()));
+
+        Map<String, long[]> byMerchant = new LinkedHashMap<>();
+        for (OrdSubOrder s : rows) {
+            if (s.getEntityNo() == null) {
+                continue;
+            }
+            long[] cell = byMerchant.computeIfAbsent(s.getEntityNo(), k -> new long[]{0L, 0L, 0L});
+            if (OrdSubOrder.REFUNDED.equals(s.getStatus())) {
+                cell[2] += 1;
+                continue;
+            }
+            cell[0] += nz(s.getPayAmount());
+            cell[1] += 1;
+        }
+        if (byMerchant.isEmpty()) {
+            return List.of();
+        }
+        /*
+         * 售后数一次查回来按商家分组，不在循环里逐个查 —— 那是 N+1，
+         * 而这个接口是看板首屏的一部分。
+         *
+         * **不按 from 过滤售后**：一单可能这个月成交、下个月才售后，
+         * 按成交窗口去截售后会让「卖得多赔得也多」的商家看起来很干净。
+         */
+        Map<String, Long> afterSales = DataScopeContext.executeWithoutScope(() ->
+                        afterSaleMapper.selectList(Wrappers.<OrdAfterSale>lambdaQuery()
+                                .in(OrdAfterSale::getEntityNo, byMerchant.keySet())))
+                .stream()
+                .collect(java.util.stream.Collectors.groupingBy(
+                        OrdAfterSale::getEntityNo, java.util.stream.Collectors.counting()));
+
+        return byMerchant.entrySet().stream()
+                .map(e -> new MerchantTotal(e.getKey(), e.getValue()[0], e.getValue()[1],
+                        e.getValue()[2], afterSales.getOrDefault(e.getKey(), 0L)))
+                .sorted(java.util.Comparator.comparingLong(MerchantTotal::gmv).reversed())
+                .toList();
+    }
+
     private List<OrdSubOrder> paid(LocalDate from) {
-        return DataScopeContext.executeWithoutScope(() ->
-                subOrderMapper.selectList(Wrappers.<OrdSubOrder>lambdaQuery()
-                        .in(OrdSubOrder::getStatus, PAID_STATES)
-                        .ge(from != null, OrdSubOrder::getCreatedAt,
-                                from == null ? null : from.atStartOfDay())));
+        return subOrderMapper.selectList(Wrappers.<OrdSubOrder>lambdaQuery()
+                .in(OrdSubOrder::getStatus, OrdSubOrder.TRANSACTED)
+                .ge(from != null, OrdSubOrder::getCreatedAt,
+                        from == null ? null : from.atStartOfDay()));
     }
 
     private static long nz(Long v) {

@@ -150,6 +150,18 @@
       }
     },
     {
+      "path": "pages/cross-store/index",
+      "style": {
+        "navigationBarTitleText": "跨店总览"
+      }
+    },
+    {
+      "path": "pages/plan/index",
+      "style": {
+        "navigationBarTitleText": "我的套餐"
+      }
+    },
+    {
       "path": "pages/marketing/index",
       "style": {
         "navigationBarTitleText": "营销活动"

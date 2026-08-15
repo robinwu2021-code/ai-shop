@@ -30,4 +30,11 @@ public class PrdStoreGoods extends BaseEntity {
     /** 冗余主体号：按商家查全部门店上架情况时免 join */
     private String entityNo;
     private Boolean onSale;
+
+    /**
+     * 该行由平台强制下线压下（V96）。解除处置时**只恢复带标记的行**——
+     * 商家在处置期间自己下架的东西不带标记，恢复时不动它，
+     * 否则解除等于平台替商家做了一次全店上架。
+     */
+    private Boolean platformSuspended;
 }

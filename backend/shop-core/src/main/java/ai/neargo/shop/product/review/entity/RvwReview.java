@@ -38,6 +38,19 @@ public class RvwReview extends BaseEntity {
     private String goodsNo;
     private String skuNo;
     private String entityNo;
+
+    /**
+     * 评价归属门店（V155，ADR-011 决定表第 3 行）。
+     *
+     * <p>取的是**下单那一刻**子单上的 {@code store_no}，不是「商家现在的默认店」——
+     * 顾客评的是当时那家店给他的体验，半年后商家把那家店关了，这条评价不该跟着搬家。
+     *
+     * <p><b>老评价为空</b>，且不回填成默认店：硬塞给默认店会让那家店的分凭空多出
+     * 一批来路不明的评价，而那批顾客从来没去过那家店。空的评价照常计入**主体**分，
+     * 只是不计入任何一家门店。
+     */
+    private String storeNo;
+
     private String userNo;
 
     /** 昵称/头像存快照：用户改昵称不该让历史评价跟着变。 */

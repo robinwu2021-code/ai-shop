@@ -19,6 +19,7 @@ import { MARKETS, type Category, type Market, type ProductGoods, type Sku } from
 import { SkuStatusBadge, useCategoryTemplateMap, useSkuStatusMap } from "@/components/status";
 import { ReadOnlyNotice } from "@/components/read-only-notice";
 import { GoodsAuditTab } from "./goods-audit-tab";
+import { SpecTemplateTab } from "./spec-template-tab";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -37,7 +38,7 @@ import { Tree, type TreeNode } from "@/components/ui/tree";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 
 type Copy = (typeof PRODUCTS_COPY)["zh"];
-const TAB_KEYS = ["categories", "skus", "audit", "stock"] as const;   // 顺序与 lib/nav.ts 的叶子一致
+const TAB_KEYS = ["categories", "skus", "audit", "stock", "templates"] as const;   // 顺序与 lib/nav.ts 的叶子一致
 
 const MARKET_LABEL = (c: Copy): Record<Market, string> => ({ CN: c.marketCN, SG: c.marketSG });
 
@@ -66,8 +67,16 @@ function ProductsInner() {
   const [current, setCurrent] = useState<ProductGoods | null>(null);
   /** 抽屉里当前在操作哪个 sku——一个商品可能有多个规格，审核/强制下架是打在具体某个 sku 上的 */
   const [activeSkuNo, setActiveSkuNo] = useState<string | null>(null);
+  /**
+   * 抽屉里正在做 **goods 级**强制下架（= 撤销过审）。
+   *
+   * 与 `activeSkuNo` 互斥而不是共用一个状态：两者粒度不同 ——
+   * 一个撤的是整件商品的过审结论（商家必须改完重新提审），
+   * 一个只压一个规格。共用一个状态会写出「选了规格却撤了整件」这种歧义。
+   */
+  const [goodsOff, setGoodsOff] = useState(false);
   const [reason, setReason] = useState("");
-  const [presale, setPresale] = useState<{ skuNo: string; quota: string; cutoffAt: string } | null>(null);
+  const [presale, setPresale] = useState<{ skuNo: string; quota: string; cutoffAt: string; arriveAt: string } | null>(null);
 
   const canAudit = allow("product:sku:audit");
   const canEditCategory = allow("product:category:update");
@@ -86,9 +95,16 @@ function ProductsInner() {
   const goodsQ = { keyword, status, merchantNo: merchantFilter, categoryNo: categoryFilter, page, size };
   const goodsList = useQuery({ queryKey: ["goods-pool", goodsQ], queryFn: () => api.listGoods(goodsQ), enabled: tab === "skus" });
   const oversell = useQuery({ queryKey: ["oversell"], queryFn: () => api.listOversellSkus(), enabled: tab === "stock" });
+  /*
+   * 预售清单**由后端筛**（`presaleOnly`），不再拉一页回来自己 filter。
+   *
+   * 此前是 `listSkus({ size: 100 })` 再在下面 `filter(presaleQuota > 0)` ——
+   * mock 上永远对（样本只有八条），接上真库之后预售 SKU 大概率不在前 100 条里，
+   * 这个 tab 会长期显示为空，而接口 200、数据也是真的。
+   */
   const presaleList = useQuery({
-    queryKey: ["skus", "presale"],
-    queryFn: () => api.listSkus({ size: 100 }),
+    queryKey: ["skus", "presale", page, size],
+    queryFn: () => api.listSkus({ presaleOnly: true, page, size }),
     enabled: tab === "stock",
   });
 
@@ -110,8 +126,22 @@ function ProductsInner() {
     mutationFn: (v: { skuNo: string; reason: string }) => api.forceOffSku(v.skuNo, v.reason),
     onSuccess: () => { invalidate(); setCurrent(null); setActiveSkuNo(null); setReason(""); notify.success(c.toastForcedOff); },
   });
+  /*
+   * goods 级强制下架 —— **已接真后端** `POST /ops/goods/{goodsNo}/force-off`。
+   * 与上面那个 sku 级的 forceOff 是两件事：这个把商品撤回 REJECTED（撤销过审），
+   * 商家改完走重新提审链路回来；那个只是把一个规格下架，商家自己点一下就能上回去。
+   */
+  const forceOffGoods = useMutation({
+    mutationFn: () => api.forceOffGoods(current!.goodsNo, reason),
+    onSuccess: () => {
+      invalidate(); setCurrent(null); setGoodsOff(false); setReason("");
+      notify.success(c.toastGoodsForcedOff);
+    },
+  });
   const savePresale = useMutation({
-    mutationFn: () => api.setSkuPresale(presale!.skuNo, Number(presale!.quota), presale!.cutoffAt),
+    // arriveAt 传空 = 不改（后端语义）——「不改」与「清空」必须分开：
+    // 只改额度的那次提交若把它抹掉，「截单必须早于到货」这条校验从此形同虚设
+    mutationFn: () => api.setSkuPresale(presale!.skuNo, Number(presale!.quota), presale!.cutoffAt, presale!.arriveAt || undefined),
     onSuccess: () => { invalidate(); setPresale(null); notify.success(c.toastPresaleSaved); },
   });
   const archiveCat = useMutation({
@@ -211,7 +241,8 @@ function ProductsInner() {
     },
   ];
 
-  const stockRows = (presaleList.data?.records ?? []).filter((s) => s.presaleQuota > 0);
+  // 后端已按 presaleOnly 筛过，这里不再二次过滤 —— 再筛一次会让分页总数与行数对不上
+  const stockRows = presaleList.data?.records ?? [];
   const stockColumns: Column<Sku>[] = [
     { header: c.colSkuNo, cell: (s) => s.skuNo, numeric: true, align: "start" },
     { header: c.colTitle, cell: (s) => s.title.zh, className: "whitespace-normal", width: "16rem" },
@@ -229,7 +260,7 @@ function ProductsInner() {
       cell: (s) =>
         canEditStock ? (
           <Button size="sm" variant="outline"
-            onClick={() => setPresale({ skuNo: s.skuNo, quota: String(s.presaleQuota), cutoffAt: s.cutoffAt ?? "" })}>
+            onClick={() => setPresale({ skuNo: s.skuNo, quota: String(s.presaleQuota), cutoffAt: s.cutoffAt ?? "", arriveAt: s.arriveAt ?? "" })}>
             {c.actionEditPresale}
           </Button>
         ) : <span className="text-muted-foreground">-</span>,
@@ -370,18 +401,31 @@ function ProductsInner() {
             rowKey={(s) => s.skuNo}
             empty={c.emptyStock}
           />
+          <Pagination page={page} size={size} onSize={setSize} total={presaleList.data?.total ?? 0} onPage={setPage} />
         </>
       )}
+
+      {/* 规格模板（P-3.4 / E27）：平台侧终于有了维护入口 —— B-4.4 商家选到的不再是一张空表 */}
+      {tab === "templates" && <SpecTemplateTab c={c} canEdit={canEditCategory} />}
 
       {/* 商品详情 / 审核。一个商品可能有好几个规格，通过/驳回/强制下架都是打在具体某个 sku 上的 */}
       <Drawer
         open={!!current}
-        onOpenChange={(o) => !o && setCurrent(null)}
+        onOpenChange={(o) => { if (!o) { setCurrent(null); setGoodsOff(false); setActiveSkuNo(null); setReason(""); } }}
         title={current?.title.zh ?? ""}
         desc={current ? `${current.goodsNo} · ${current.merchantName}` : undefined}
         width="w-[560px]"
         footer={
-          current && canAudit && activeSkuNo ? (
+          current && canAudit && goodsOff ? (
+            <Button
+              loading={forceOffGoods.isPending}
+              // 原因原样进商家 B 端 —— 空原因等于让商家猜，猜不到就会反复重提
+              disabled={!reason.trim()}
+              onClick={() => forceOffGoods.mutate()}
+            >
+              {c.btnConfirmForceOffGoods}
+            </Button>
+          ) : current && canAudit && activeSkuNo ? (
             current.status === "PENDING" ? (
               <Button onClick={() => audit.mutate({ skuNo: activeSkuNo, pass: false, reason })}>{c.btnConfirmReject}</Button>
             ) : current.status === "ON_SALE" ? (
@@ -404,6 +448,20 @@ function ProductsInner() {
                 <div>ar：{current.title.ar ?? <span className="text-[var(--warning)]">{c.i18nFallbackLong}</span>}</div>
               </div>
             </Field>
+
+            {/* goods 级动作摆在规格清单**之前**：它撤的是整件商品的过审结论，
+                摆在一堆规格按钮中间会被当成"对某个规格的操作" */}
+            {canAudit && current.status === "ON_SALE" && (
+              <Field label={c.fieldGoodsAction}>
+                <Button
+                  size="sm" variant="outline"
+                  onClick={() => { setGoodsOff(true); setActiveSkuNo(null); setReason(""); }}
+                >
+                  {c.btnForceOffGoods}
+                </Button>
+                <p className="mt-1 txt-caption text-muted-foreground">{c.forceOffGoodsHint}</p>
+              </Field>
+            )}
 
             <Field label={c.fieldSkuList}>
               <div className="space-y-2">
@@ -441,7 +499,13 @@ function ProductsInner() {
               </div>
             </Field>
 
-            {activeSkuNo && (
+            {goodsOff && (
+              <Field label={c.fieldGoodsForceOffReason}>
+                <Textarea value={reason} onChange={setReason} placeholder={c.reasonPlaceholder} />
+              </Field>
+            )}
+
+            {activeSkuNo && !goodsOff && (
               <Field label={current.status === "PENDING" ? c.fieldRejectReason : c.fieldForceOffReason}>
                 <Textarea value={reason} onChange={setReason} placeholder={c.reasonPlaceholder} />
               </Field>
@@ -471,6 +535,14 @@ function ProductsInner() {
               <Input id="ps-cutoff" className="w-full" value={presale.cutoffAt}
                 onChange={(e) => setPresale({ ...presale, cutoffAt: e.target.value })} />
               <p className="txt-caption text-muted-foreground">{c.cutoffHint}</p>
+            </div>
+            {/* 到货时间此前只在列表里显示、没有任何地方能填 —— 那一列因此永远是空的，
+                而「截单必须早于到货」这条校验也就永远校验不到东西 */}
+            <div className="space-y-1">
+              <Label htmlFor="ps-arrive">{c.fieldArrive}</Label>
+              <Input id="ps-arrive" className="w-full" value={presale.arriveAt}
+                onChange={(e) => setPresale({ ...presale, arriveAt: e.target.value })} />
+              <p className="txt-caption text-muted-foreground">{c.arriveHint}</p>
             </div>
           </div>
         )}

@@ -31,8 +31,11 @@ const KNOWN_SHARED: Record<string, string> = {
   PickupScope:
     "GROUP_INSTANCE（团粒度自提点，一团一销）后端未实现。ADR-005 里有，链路还没接",
   GrantType:
-    "WX_MINI/WX_PHONE/WX_OPEN 是端上按微信三种登录场景拆的，后端只有一个 WECHAT_MP。" +
-    "微信登录本身还没接（code2Session 是 TODO），接的时候两边一起定名",
+    "**WX_MINI 已对齐**（2026-08-14）：后端 AuthService.GRANT_WX_MINI 与 WECHAT_MP 同分支，" +
+    "小程序静默登录已跑通。剩下两个各缺一截，都不是命名问题：" +
+    "WX_PHONE（一键取手机号）缺端上的 getPhoneNumber encryptedData 与服务端解密分支，" +
+    "前置是微信认证；WX_OPEN（App 微信开放平台）换 openid 走 sns/oauth2/access_token，" +
+    "是另一个端点，接 App 时再补。两者接通时删掉本条对应的半句",
   MerchantTier:
     "MEDIUM/LARGE 是分层费率的预留档，后端目前只产出 SMALL —— 分层上线时后端补齐",
   AREA_LEVEL:

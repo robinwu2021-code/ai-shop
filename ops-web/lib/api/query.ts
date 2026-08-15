@@ -31,8 +31,13 @@ export type ApplyQ = { status?: string; keyword?: string; page?: number; size?: 
 /** 商家：审核状态 + 分层 + 归档开关（P-11.1）。 */
 export type MerchantQ = ArchiveQ & { status?: string; tier?: string };
 
-/** 订单：状态 + 履约方式 + 流量来源（P-4.1；trafficSource 供 P-16.1.6 结构分析）。 */
-export type OrderQ = ScopedQ & { status?: string; fulfillType?: string; trafficSource?: string };
+/**
+ * 订单：状态 + 履约方式 + 流量来源（P-4.1；trafficSource 供 P-16.1.6 结构分析）。
+ *
+ * `storeNo` 是**门店档案抽屉里那条「看这家店的订单」**用的（P-11.2）——
+ * 一个商家可能有好几家店，按 merchantNo 筛出来的是全部店的单。
+ */
+export type OrderQ = ScopedQ & { status?: string; fulfillType?: string; trafficSource?: string; storeNo?: string };
 
 /** 社区：城市 + 开城状态 + 归档开关（P-2.1）。 */
 export type CommunityQ = ArchiveQ & { city?: string; opened?: string };
@@ -48,6 +53,14 @@ export type BatchQ = ScopedQ & { status?: string };
 
 /** 门店主页审核：类型（店招/公告）+ 审核状态（P-10.1.2）。 */
 export type StoreAuditQ = PageQ & { kind?: string; status?: string };
+
+/**
+ * 门店档案检索：主体 + 经营状态 + 经营模式 + 关键词（P-11.2.1）。
+ *
+ * **含停用与强制下线的店** —— 治理视角更不能看不见：
+ * 默认过滤掉非 ACTIVE 的话，运营点开一个被自己压下去的店会找不到它。
+ */
+export type StoreQ = PageQ & { merchantNo?: string; status?: string; businessMode?: string };
 
 /** 券模板：类型 + 状态 + 归档开关（P-7.1）。 */
 export type CouponQ = ArchiveQ & { type?: string; status?: string };
@@ -73,8 +86,27 @@ export type DemandQ = ScopedQ & { status?: string };
 /** 类目：模板 + 归档开关（P-3.1）。 */
 export type CategoryQ = ArchiveQ & { template?: string };
 
-/** 商品：状态 + 类目 + 商家（P-3.2）。 */
-export type SkuQ = ScopedQ & { status?: string; categoryNo?: string };
+/**
+ * 商品：状态 + 类目 + 商家（P-3.2）。
+ *
+ * 带 `storeNo` 时列表切成**门店商品投影**：行上多一个 `storeOnSale`、
+ * 每个 sku 多一个 `storeStock`（P-11.2）。不带就是主体级的商品池，两者字段不同源，
+ * 别拿门店视图的库存去回答"这个商家总共还有多少货"。
+ */
+export type SkuQ = ScopedQ & {
+  status?: string; categoryNo?: string; storeNo?: string;
+  /**
+   * 只看开了预售额度的 SKU（P-3.3）。
+   *
+   * **必须做在后端**：交给前端拉一页再自己 `filter(presaleQuota > 0)` 的话，
+   * 真实库里预售 SKU 大概率不在第一页，「库存与预售」tab 会长期显示为空 ——
+   * 而接口 200、数据也是真的，没有任何东西提示出错。
+   */
+  presaleOnly?: boolean;
+};
+
+/** 平台规格模板（P-3.4）：按品类筛 + 是否看已归档的。 */
+export type SpecTemplateQ = PageQ & { categoryType?: string; keyword?: string; showArchived?: boolean };
 
 /** 结算单：状态 + 周期（P-12.1）。 */
 export type SettlementQ = ScopedQ & { status?: string; period?: string };

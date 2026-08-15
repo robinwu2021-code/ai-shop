@@ -3,6 +3,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { merchantMock } from "@/lib/api/mocks/merchant";
 import { merchants } from "./merchant";
+import { stores } from "./store";
 
 // 用例之间会改同一份内存数据，逐个用例复位受影响的行。
 const SNAPSHOT = JSON.parse(JSON.stringify(merchants)) as typeof merchants;
@@ -91,5 +92,42 @@ describe("归档", () => {
     const after = await merchantMock.getMerchant("M905");
     expect(after.archivedAt).toBeNull();
     expect(after.breachCount).toBe(before.breachCount);
+  });
+});
+
+describe("门店级违规处置（STORE_OFFLINE，P-11.2）", () => {
+  const S0 = JSON.parse(JSON.stringify(stores)) as typeof stores;
+  beforeEach(() => {
+    stores.length = 0; stores.push(...(JSON.parse(JSON.stringify(S0)) as typeof stores));
+  });
+
+  const base = { merchantNo: "M901", type: "SERVICE" as const, detail: "多次超时未发货，见工单 T-9001" };
+
+  it("门店强制下线必须指定门店", async () => {
+    await expect(merchantMock.recordViolation({ ...base, action: "STORE_OFFLINE" })).rejects.toThrow(/门店/);
+  });
+
+  it("★ 只有门店级动作能带门店号 —— 主体级处置带上它会被读成「只压了那一家」", async () => {
+    await expect(
+      merchantMock.recordViolation({ ...base, action: "WARN", storeNo: "ST001" }),
+    ).rejects.toThrow(/门店/);
+  });
+
+  it("不能压别人家的店", async () => {
+    await expect(
+      merchantMock.recordViolation({ ...base, action: "STORE_OFFLINE", storeNo: "ST004" }),
+    ).rejects.toThrow(/不属于/);
+  });
+
+  it("★ 处置与压下是同一次提交：记录落库，门店状态真的变 SUSPENDED", async () => {
+    const v = await merchantMock.recordViolation({ ...base, action: "STORE_OFFLINE", storeNo: "ST002" });
+    expect(v.storeNo).toBe("ST002");
+    expect(stores.find((s) => s.storeNo === "ST002")!.status).toBe("SUSPENDED");
+  });
+
+  it("已下线的店不重复压 —— 静默重复会在信用档案里堆出一串同样的记录", async () => {
+    await expect(
+      merchantMock.recordViolation({ ...base, merchantNo: "M906", action: "STORE_OFFLINE", storeNo: "ST003" }),
+    ).rejects.toThrow(/已被强制下线/);
   });
 });

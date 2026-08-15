@@ -26,9 +26,13 @@ public interface ReviewableOrderPort {
     /**
      * @param subOrderNo 评价的唯一键落在 (sub_order_no, goods_no) 上 ——
      *                   一个主单可能拆成多个商家的子单，评价是**对商家**的
+     * @param storeNo    **下单那一刻**子单上的门店（ADR-011 P2 固化的那一列）。
+     *                   评价归它，不归「商家现在的默认店」—— 顾客评的是当时那家店给他的体验，
+     *                   半年后商家把那家店关了，这条评价不该跟着搬家。
+     *                   老单可能为空，那样的评价只计主体分（TDD-评价归门店 §2.1）
      * @param completed  是否已完成。未完成不允许评价（验收清单：「订单完成后才能评价」）
      */
-    record ReviewableItem(String subOrderNo, String merchantNo, String userNo,
+    record ReviewableItem(String subOrderNo, String merchantNo, String storeNo, String userNo,
                           String skuNo, String spec, boolean completed) {
     }
 }

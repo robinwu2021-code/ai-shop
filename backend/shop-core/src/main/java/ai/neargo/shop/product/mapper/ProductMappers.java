@@ -51,6 +51,42 @@ public final class ProductMappers {
                 WHERE sku_no = #{skuNo} AND deleted = 0 AND locked_stock >= #{qty} AND stock >= #{qty}
                 """)
         int confirmStock(@Param("skuNo") String skuNo, @Param("qty") int qty);
+
+        /**
+         * 预售成交（P-3.3.1）：现货不足时的**第二级闸门**，与 {@link #lockStock} 同一套手法 ——
+         * 三个条件全写在 WHERE 里，靠影响行数判断，绝不先查后改。
+         *
+         * <p>三个条件缺一不可，各自防住一件事：
+         * <ul>
+         *   <li>{@code presale_quota > 0} —— 没开预售的 SKU 缺货就是缺货，行为一个字节不变</li>
+         *   <li>{@code cutoff_at IS NULL OR cutoff_at > NOW()} —— 截单后不再收单（P-3.3.2）。
+         *       少了它，次日现采的采购单已经下了，还在继续进新订单</li>
+         *   <li>{@code sold_count + qty <= presale_quota} —— 额度是硬顶。
+         *       少了它，「额度」只是个建议值</li>
+         * </ul>
+         *
+         * @return 1=预售成交，0=没开预售 / 已截单 / 额度用尽
+         */
+        @Update("""
+                UPDATE prd_sku SET sold_count = sold_count + #{qty}, version = version + 1
+                WHERE sku_no = #{skuNo} AND deleted = 0 AND presale_quota > 0
+                  AND (cutoff_at IS NULL OR cutoff_at > NOW())
+                  AND sold_count + #{qty} <= presale_quota
+                """)
+        int lockPresale(@Param("skuNo") String skuNo, @Param("qty") int qty);
+
+        /**
+         * 预售释放：已售减回去。
+         *
+         * <p><b>刻意不校验截单时间</b> —— 释放是「这一单不算数了」，
+         * 截单之后取消的订单同样要把额度还回去，否则额度会随着取消数一路缩水，
+         * 而那批货其实还没卖出去。
+         */
+        @Update("""
+                UPDATE prd_sku SET sold_count = sold_count - #{qty}, version = version + 1
+                WHERE sku_no = #{skuNo} AND deleted = 0 AND sold_count >= #{qty}
+                """)
+        int releasePresale(@Param("skuNo") String skuNo, @Param("qty") int qty);
     }
 
     /**

@@ -1,9 +1,14 @@
 // 端能力：登录与注册。
 //
 // 各端可用的方式不同：
-//   小程序：微信一键取手机号（最快，一次授权直接拿到号）· 手机号 OTP（兜底）
+//   小程序：微信静默登录（拿 openid）· 手机号 OTP（兜底）
 //   App   ：手机号 OTP · 微信开放平台 · Apple（iOS 上架硬要求：接了第三方登录就必须提供 Apple）
 //   H5    ：手机号 OTP
+//
+// **小程序为什么是静默登录而不是「一键取手机号」**（TDD-小程序登录打通 §3.1）：
+// 后者要 `<button open-type="getPhoneNumber">` 的 encryptedData 由服务端解密，
+// 而那个接口很可能要求微信认证 —— 一期不认证。静默登录不需要任何资质，
+// 且它拿到的 openid 正是**微信支付 JSAPI 下单的必填参数**，先拿到就不用回头改登录。
 //
 // **页面不写 `#ifdef`**（规范约束）：页面只问 `loginMethods()` 当前端能用哪几种，
 // 拿到的每一项都带同签名的 `acquire()`，业务层照调即可。
@@ -57,17 +62,32 @@ const phoneOtp: LoginMethod = {
   },
 };
 
-const wxPhone: LoginMethod = {
-  id: "WX_PHONE",
-  labelKey: "login.byWxPhone",
+/**
+ * 小程序静默登录：`wx.login` 的 code 交给服务端换 openid/unionid。
+ *
+ * 拿不到手机号 —— 这是它与 {@link wxPhone} 的全部差别。需要手机号的场景
+ * （下单联系人、商家账号主标识）走绑定流程另说，不是登录这一步的事。
+ */
+const wxMini: LoginMethod = {
+  id: "WX_MINI",
+  labelKey: "login.byWxMini",
   primary: true,
   needsPhone: false,
   async acquire() {
-    // 真实实现：<button open-type="getPhoneNumber"> 拿 encryptedData，服务端解密出手机号。
-    // 这里取 login code，服务端凭它 + 前端回传的加密串完成绑定。
-    return { grantType: "WX_PHONE", principal: await wxLoginCode() };
+    return { grantType: "WX_MINI", principal: await wxLoginCode() };
   },
 };
+
+/*
+ * 这里曾有一个 `wxPhone`（`WX_PHONE`，小程序一键取手机号）作为小程序首选。
+ * 它**从来没有真正工作过**：`acquire()` 只取了 login code，而一键取手机号要的是
+ * `<button open-type="getPhoneNumber">` 的 encryptedData 由服务端解密；
+ * 后端也没有 `WX_PHONE` 分支，请求进去直接 400。
+ *
+ * 不改成「补齐 WX_PHONE」而是换成静默登录，是因为该接口的前置是微信认证，
+ * 而一期不认证。`GrantType` 里保留 `WX_PHONE` 取值不动 —— 它是将来的路，
+ * 挂账记在 tests/enum-alignment.test.ts。
+ */
 
 const wxOpen: LoginMethod = {
   id: "WX_OPEN",
@@ -96,7 +116,7 @@ const apple: LoginMethod = {
  */
 export function loginMethods(): LoginMethod[] {
   // #ifdef MP-WEIXIN
-  return [wxPhone, phoneOtp];
+  return [wxMini, phoneOtp];
   // #endif
 
   // #ifdef APP-PLUS
@@ -112,9 +132,12 @@ export function loginMethods(): LoginMethod[] {
   // #endif
 }
 
-/** 兼容旧调用：取当前端的首选方式 */
-export async function acquireCredential(phone?: string, otp?: string): Promise<Credential> {
-  const [first] = loginMethods();
-  if (!first) throw new Error("当前端没有可用的登录方式");
-  return first.acquire(phone, otp);
-}
+/*
+ * 这里曾有一个 `acquireCredential(phone, otp)`「取首选方式」的兼容壳。
+ * 它是 c-app 登录页此前唯一的入口，而**那个页面写死渲染手机号表单**——
+ * 于是小程序上取到的首选是微信登录，用户填的手机号与验证码被静默丢弃，
+ * 界面显示的与实际发出的不是一回事。
+ *
+ * 删掉它是为了让这种错配不可能再发生：页面只能通过 `loginMethods()` 拿方式，
+ * 拿到什么就得渲染什么。
+ */

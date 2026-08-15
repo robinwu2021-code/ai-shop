@@ -29,17 +29,21 @@ const ROOT = join(import.meta.dirname, "../../..");
  */
 const UNBUILT_DOMAINS = new Set([
   // 平台治理的后期功能，UI 先行
-  "risk-events", "risk-rules", "blacklists", "audit-logs",
+  // risk-events / risk-rules / blacklists 已于 2026-08-13 接通（OpsRiskController，
+  // V120），按棘轮规矩从这里删掉
+  "audit-logs",
   "faqs",
   // 财务与清结算（finance 已开始实现，移到 KNOWN_GAPS 逐条登记）
-  "refund-split-backs",
-  // 履约与物流
-  "fulfillment", "shipments", "freight-templates",
-  // 商品中心（现有的是 goods，skus 是另一套更细的视图）
-  "skus",
+  // refund-split-backs 已于 2026-08-13 接通（OpsRefundSplitBackController，
+  // 读 + 执行两条都在），按棘轮规矩从这里删掉
+  // 履约与物流：2026-08-13 接通（V130–V135）。fulfillment / shipments /
+  // freight-templates 三个域根都有实现，carriers 同批
+  // 商品中心：skus 已于 2026-08-13 接通（OpsSkuController，V100–V102）
+  // 归因：attribution-rule / attribution-traces 已于 2026-08-13 接通
+  //（OpsGrowthController，V121，规则真正驱动引擎）
   // 营销的后期部分
-  "marketing", "content-slots", "fission-campaigns",
-  "push-tasks", "demands", "attribution-rule", "attribution-traces",
+  "marketing", "content-slots",
+  "push-tasks", "demands",
   // 组织与权限：2026-08-12 roles 从这里移走 —— 角色配置接到了 /ops/perm/**，
   // 读写六条端点都真的存在。此前它是「页面有完整权限树和保存按钮、
   // 而 /ops/roles 是 404」，缺口诚实登记着，但对着屏幕的人不知道。
@@ -83,16 +87,11 @@ const KNOWN_GAPS: Record<string, string> = {
   "POST /ops/settlements/{x}/freeze-back": "结算单解冻回滚",
   "POST /ops/settlements/{x}/split": "手动触发分账",
 
-  // ── 财务：域已经活了（自营应付账款那批端点落地），剩下这几条还没有 ──
-  // 这正是守卫要盯的那个时刻：域一活，页面就看着能用，而漏掉的会变成死按钮。
-  // 后端目前只有 invoice-title 两条（平台开票抬头）。
-  "GET /ops/finance/invoices": "进项票列表",
-  "POST /ops/finance/invoices/{x}/issue": "开票",
-  "POST /ops/finance/invoices/{x}/reject": "驳回开票",
-  "GET /ops/finance/withdrawals": "提现列表",
-  "POST /ops/finance/withdrawals/{x}/decide": "提现审批",
-  "GET /ops/finance/tax-rule": "税率规则",
-  "PUT /ops/finance/tax-rule": "改税率规则",
+  // ── 财务：2026-08-13 这七条全部接通（TDD-运营端财务补齐）──
+  // 商家结算发票 OpsSettleInvoiceController（**第三个方向的票**，与进项票、
+  // C 端销项票各一张表）、提现审批与个税规则 OpsWithdrawController。
+  // ⚠️ 提现「通过」不打款：落 APPROVED，出款是线下动作（B-12.5）。
+  // 按棘轮规矩，接通即从清单里删掉 —— 留着会让人以为这块还没做，从而另写一套。
 
   // ── 平台投放场次：后端没有这个领域对象，见 运营端营销列表契约错配.md §3 ──
   // 平台场次：**一期刻意不做**（2026-08-12 决定）。

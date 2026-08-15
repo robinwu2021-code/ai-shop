@@ -1,0 +1,111 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="980" height="540" viewBox="0 0 980 540" role="img" font-family="system-ui,-apple-system,'PingFang SC',sans-serif">
+<title>三类多余图片的回收：扫描标记 → 运营端确认 → 执行删除</title>
+<desc>临时图、替换图、下线门店的存量图是三个来源、一种形态：没人引用了。所以用一套 mark and sweep 定期回收，而不是在每个写入点维护引用计数——替换恰恰是引用计数最容易漏的场景。扫描只标记不删除，删除由运营端人工勾选并强确认后触发。已标记的若又被引用，下次扫描自动救回 ACTIVE。三道闸防止标记阶段出错导致整库误判。</desc>
+<defs>
+<marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+<path d="M2 1L8 5L2 9" fill="none" stroke="#8A94A2" stroke-width="1.4" stroke-linecap="round"/></marker>
+<marker id="arg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+<path d="M2 1L8 5L2 9" fill="none" stroke="#7FB894" stroke-width="1.6" stroke-linecap="round"/></marker>
+<style>
+.n{font-size:12.5px;font-weight:600;fill:#161A21}
+.t{font-size:10.5px;fill:#5A6472}
+.b{font-size:11px;fill:#8A94A2;letter-spacing:.12em}
+.tb{font-size:10.5px;font-weight:700;fill:#161A21}
+.box{fill:#fff;stroke:#D8DEE6;stroke-width:1.2}
+.key{fill:#F2F8F4;stroke:#7FB894;stroke-width:1.4}
+.warn{fill:#FDF6EC;stroke:#E0B27A;stroke-width:1.6}
+.stop{fill:#FCF3F3;stroke:#D89A9A;stroke-width:1.6}
+.st{fill:#FBFCFD;stroke:#B9C2CE;stroke-width:1.6}
+.ar{stroke:#8A94A2;stroke-width:1.3;fill:none}
+.arg{stroke:#7FB894;stroke-width:1.6;fill:none}
+.zone{fill:none;stroke:#DDE2E9;stroke-width:1.2;stroke-dasharray:5 4}
+.l{font-size:9.5px;fill:#5A6472;paint-order:stroke;stroke:#fff;stroke-width:3.5;stroke-linejoin:round}
+.lg{font-size:9.5px;font-weight:600;fill:#4E8C67;paint-order:stroke;stroke:#fff;stroke-width:3.5;stroke-linejoin:round}
+</style></defs>
+
+<!-- ① 三类垃圾 -->
+<text class="b" x="24" y="26">① 三个来源，一种形态 —— 都是「没人引用了」，所以一套机制就够</text>
+
+<rect class="box" x="24" y="40" width="296" height="66" rx="7"/>
+<text class="n" x="38" y="62">临时图</text>
+<text class="t" x="38" y="80">商家编辑商品时传了，最后没点保存</text>
+<text class="t" x="38" y="96">从来没被任何字段引用过</text>
+
+<rect class="warn" x="332" y="40" width="296" height="66" rx="7"/>
+<text class="n" x="346" y="62">替换图 —— 量最大的一类</text>
+<text class="t" x="346" y="80">商品图从 A 换成 B，A 就没人引用了</text>
+<text class="t" x="346" y="96">商家反复改图，每改一次多一张</text>
+
+<rect class="box" x="640" y="40" width="302" height="66" rx="7"/>
+<text class="n" x="654" y="62">下线门店的存量图</text>
+<text class="t" x="654" y="80">店下线很久，商品也早已下架</text>
+<text class="t" x="654" y="96">引用随商品一起消失</text>
+
+<path class="ar" marker-end="url(#ar)" d="M172 106 L172 140"/>
+<path class="ar" marker-end="url(#ar)" d="M480 106 L480 140"/>
+<path class="ar" marker-end="url(#ar)" d="M790 106 L790 140"/>
+
+<rect class="key" x="24" y="140" width="918" height="34" rx="7"/>
+<text class="tb" x="38" y="162">每晚一次扫描（只读）：遍历所有 MediaRefSource 收集在用的 key，不在集合里的进候选清单<tspan class="t" dx="14">—— 替换恰恰是引用计数最容易漏的场景，所以不做计数，做扫描</tspan></text>
+
+<!-- ② 状态机 -->
+<text class="b" x="24" y="208">② 扫描只标记，删除靠人工 —— 标记后若又被引用，下次扫描自动救回</text>
+
+<rect class="st" x="40" y="228" width="150" height="56" rx="7"/>
+<text class="n" x="54" y="250">PENDING</text>
+<text class="t" x="54" y="268">刚写记账行，字节还没落盘</text>
+
+<rect class="key" x="248" y="228" width="150" height="56" rx="7"/>
+<text class="n" x="262" y="250">ACTIVE</text>
+<text class="t" x="262" y="268">在用，算进门店空间</text>
+
+<rect class="warn" x="506" y="228" width="180" height="56" rx="7"/>
+<text class="n" x="520" y="250">RECLAIMABLE</text>
+<text class="t" x="520" y="268">候选清单 · 运营端可见</text>
+
+<rect class="stop" x="762" y="228" width="180" height="56" rx="7"/>
+<text class="n" x="776" y="250">PURGED</text>
+<text class="t" x="776" y="268">文件已删，行永久保留</text>
+
+<path class="ar" marker-end="url(#ar)" d="M190 256 L248 256"/>
+<text class="l" x="200" y="248">落盘成功</text>
+
+<path class="ar" marker-end="url(#ar)" d="M398 256 L506 256"/>
+<text class="l" x="408" y="248">扫描判定未引用</text>
+<text class="l" x="408" y="276">且已过宽限期</text>
+
+<path class="ar" marker-end="url(#ar)" d="M686 256 L762 256"/>
+<text class="l" x="694" y="248">运营端勾选 + 强确认</text>
+
+<path class="arg" marker-end="url(#arg)" d="M596 284 C596 316 330 320 320 292"/>
+<text class="lg" x="404" y="316">又被引用 → 下次扫描救回 ACTIVE。没有这条边，误判就是不可逆的</text>
+
+<path class="ar" marker-end="url(#ar)" d="M115 284 L115 306 L200 306"/>
+<text class="l" x="126" y="322">超时未落盘 → 对账任务删行</text>
+
+<!-- ③ 三道闸 -->
+<text class="b" x="24" y="366">③ 三道闸 —— 标记阶段一旦漏算，后果是那批图全被列进候选清单</text>
+
+<rect class="zone" x="24" y="378" width="918" height="106" rx="8"/>
+
+<rect class="box" x="40" y="394" width="286" height="74" rx="7"/>
+<text class="n" x="54" y="416">闸一 · 守卫测试</text>
+<text class="t" x="54" y="434">schema 里注释含「图」的列，</text>
+<text class="t" x="54" y="450">必须有对应的 MediaRefSource</text>
+<text class="t" x="54" y="464">对不上就构建失败</text>
+
+<rect class="box" x="342" y="394" width="286" height="74" rx="7"/>
+<text class="n" x="356" y="416">闸二 · 宽限期</text>
+<text class="t" x="356" y="434">只把上传满 72 小时的图列进候选</text>
+<text class="t" x="356" y="450">商家传完图还没点保存那一刻，</text>
+<text class="t" x="356" y="464">它确实没人引用 —— 别删它</text>
+
+<rect class="stop" x="644" y="394" width="282" height="74" rx="7"/>
+<text class="n" x="658" y="416">闸三 · 异常拦截</text>
+<text class="t" x="658" y="434">可回收占比超过 50% 时页面置顶</text>
+<text class="t" x="658" y="450">红条并禁用批量回收 ——</text>
+<text class="t" x="658" y="464">让人先查为什么，而不是照删</text>
+
+<rect class="warn" x="24" y="496" width="918" height="34" rx="7"/>
+<text class="t" x="38" y="518">本期不做任何自动删除：扫描是只读的，可以每晚跑；删除一律要运营在页面上勾选、强确认、发起任务。门店下线后商品一并下架的图会自动进入候选清单，但仍要人工点头。</text>
+</svg>

@@ -13,7 +13,7 @@ import org.springframework.stereotype.Component;
  * 切到真实通道的那天，新登录的用户开始拿到真 openid，老数据按手机号凭证仍能认出人。
  */
 @Component("wxAuthGateway")
-@ConditionalOnProperty(name = "shop.wx.stub", havingValue = "true", matchIfMissing = true)
+@ConditionalOnProperty(name = "shop.wx.login.stub", havingValue = "true", matchIfMissing = true)
 public class StubWxAuthGateway implements WxAuthPort {
 
     @Override

@@ -113,7 +113,7 @@ export const ENUM_REGISTRY: EnumEntry[] = [
   { decl: "ops-web:FundsMode", dom: "settle", shape: "CLASS", verdict: "OK",
     note: "资金路径（轴②：钱先进谁的账户）。与 mch_entity.funds_mode 同值。**与 BusinessMode（轴③：谁是销售主体）正交，不要合并** —— 合成一个枚举后「直连+自营」这种非法组合在类型上就可表达（同 ADR-013 教训）。结算侧「要不要给积分补差」判的是这一个，不是 BusinessMode" },
   { decl: "ops-web:NotifyChannel", dom: "message", shape: "CLASS", verdict: "OK",
-    note: "SMS/MAIL/WXSUB/PUSH 与后端 SysNotifyLog 的四个常量、sys_notify_log.channel 三处一致" },
+    note: "SMS/MAIL/WXSUB/PUSH 与后端 SysNotifyLog 的四个常量、sys_notify_log.channel 三处一致。**站内信 INAPP 刻意不在此枚举**：它不进 sys_notify_log，自己就是 msg_message 那张表（TDD-运营端触达中心 §1.1）" },
   { decl: "ops-web:NotifyStatus", dom: "message", shape: "STATUS", verdict: "OK",
     // SENT 不在 L1 词表里，申报为领域特有词：这条链路的终态就是「发出去了」，
     // 而 L1 的 COMPLETED/SUCCESS 指的是业务完成 —— 短信发出去不等于用户看到了，
@@ -325,6 +325,12 @@ export const ENUM_REGISTRY: EnumEntry[] = [
     note: "门店装修审核项，后端 mch_store_audit 表在但只有整单状态没有分项" },
   { decl: "ops-web:StoreAuditStatus", dom: "store", shape: "STATUS", verdict: "PLANNED",
     note: "门店装修审核状态，后端有表待接" },
+  { decl: "ops-web:StoreGovernStatus", dom: "merchant", shape: "STATUS", verdict: "OK",
+    note: "门店经营状态，与库 mch_store.status 逐字一致（ACTIVE/READONLY/SUSPENDED）。⚠️ 与 ops-web:StoreAuditStatus 不同域：那个审的是门面内容，这个是「这家店还开不开门」。READONLY 与 SUSPENDED 必须分开——前者商家自己关的、自己开得回来，后者只有平台解得开（restoreStore）；压成一个 enabled 布尔的话运营看不出该找谁",
+    // READONLY 不用 L1 的 DISABLED/CLOSED：那两个词说的是「关了」，
+    // 而这家店**还在，只是不接单** —— 商品页照常可看、历史单照常售后，
+    // 只有下单入口关着。用 CLOSED 的话运营会以为它已经不存在了
+    words: ["READONLY"] },
   { decl: "ops-web:SectionKey", dom: "store", shape: "CLASS", verdict: "PLANNED",
     note: "门店装修版块键，后端 featured 只存商品列表，没有版块概念" },
   { decl: "c-app:HttpMethod", dom: "infra", shape: "CLASS", verdict: "OK",

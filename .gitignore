@@ -5,6 +5,9 @@ dist
 *.local
 .env.local
 
+# 小程序代码上传密钥（private.wx*.key）。进了库等于任何人都能往你的小程序上传代码。
+*.key
+
 # Maven 构建产物（mvn package 随时可重建；其中 shop-app 的 fat jar 有 50MB+）
 target/
 
@@ -19,3 +22,10 @@ docs/**/*.html
 *.jks
 *.keystore
 android-shell/signing/keystore.properties
+
+# Android 壳的构建产物（gradle 随时重建，含几十 MB 的中间产物与 APK）
+android-shell/.gradle/
+android-shell/build/
+android-shell/app/build/
+# WebView 壳的 H5 资源是从 b-app/c-app 的 dist 拷进来的构建产物（一构建就变，可重建）
+android-shell/app/src/*/assets/h5/

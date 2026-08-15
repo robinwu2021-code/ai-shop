@@ -46,4 +46,14 @@ export const merchantHttp: MerchantApi = {
   setMerchantAuthCodes: (v) => client.put(`/ops/merchants/${v.merchantNo}/auth-codes`, v),
   listViolations: (q) => client.get("/ops/merchants/violations", q),
   recordViolation: (v) => client.post(`/ops/merchants/${v.merchantNo}/violations`, v),
+
+  // 增值包（P-11.2.2~11.2.6）。**路径是 `/ops/merchant-plans` 而不是
+  // `/ops/merchants/plans`**：后端 `/ops/merchants/{merchantNo}` 会把 `plans` 当成一个
+  // 商家号吞掉，而那种冲突不报错 —— 只是返回一个「商家不存在」。
+  merchantPlans: (q) => client.get("/ops/merchant-plans", q),
+  planUpgradeSignals: () => client.get("/ops/merchant-plans/upgrade-signals"),
+  grantPlan: (v) => client.post(`/ops/merchant-plans/${v.merchantNo}/grant`, v),
+  overridePlanQuota: (v) => client.put(`/ops/merchant-plans/${v.merchantNo}/quota`, v),
+  planDefs: () => client.get("/ops/plan-defs"),
+  savePlanDef: (v) => client.put(`/ops/plan-defs/${v.planCode}`, v),
 };

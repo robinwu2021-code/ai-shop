@@ -29,15 +29,79 @@ public interface MerchantGoodsService {
     PageData<GoodsVO> list(String merchantNo, String categoryNo, String keyword, String status, long page, long size);
 
     /**
+     * 运营端**待审队列**（P-3.2.2）。固定只给 {@code AUDITING}。
+     *
+     * <p><b>为什么不复用 {@link #list}(null, null, null, "AUDITING", …)</b> ——
+     * 它此前正是那么调的，而两者在<b>数据域</b>上必须相反：
+     * <ul>
+     *   <li>{@link #list} 与 B 端商家商品列表共用。B 端会话的维度是 SELF，
+     *       而 {@code prd_goods} 只有 MERCHANT 锚点 —— 接数据域就是
+     *       {@code 1=0}，商家的商品列表当场全空（批② 在 mch_entity 上实测过这个形状）</li>
+     *   <li>这一条**只有运营调**，所以它要接数据域：配了商家域的审核员
+     *       只该看到自己负责那几家的待审商品</li>
+     * </ul>
+     *
+     * <p>不用「参数为空就跳过数据域」那种写法：判权旁路藏在参数语义里，
+     * 下一个人在 B 端路径上把参数传漏一次，就把全平台商品开出去了
+     * （与 {@link #detailForOps} 单独成方法是同一条理由）。
+     */
+    PageData<GoodsVO> auditQueue(long page, long size);
+
+    /**
      * 运营端「商品池」列表——与 {@link #list} 的区别在返回形状：这个带多市场价格表
      * 与三语标题原文，{@link GoodsVO} 为了跟 c-app 对齐特意裁掉了这两样（见
      * {@link ai.neargo.shop.product.dto.OpsGoodsListVO} 的类注释）。过滤参数同 {@link #list}。
      */
     PageData<ai.neargo.shop.product.dto.OpsGoodsListVO> listForOps(
-            String merchantNo, String categoryNo, String keyword, String status, long page, long size);
+            String merchantNo, String categoryNo, String keyword, String status,
+            String storeNo, long page, long size);
 
     /** 我的商品详情。<b>不是我的直接 404</b>，不是 403 —— 别家有没有这个商品也不该被探知。 */
     GoodsVO detail(String merchantNo, String goodsNo);
+
+    /**
+     * 运营端商品详情（P-3.2.2b）。<b>单独一个方法而不是给 {@link #detail} 的
+     * merchantNo 加 null 语义</b>：归属校验的旁路必须显式——藏在「参数为空」里，
+     * 下一个在 biz 路径上把 merchantNo 传漏的人就把全平台商品开给了商家。
+     */
+    GoodsVO detailForOps(String goodsNo);
+
+    /**
+     * 平台强制下架（P-3.2.3，TDD-运营端门店与商品治理 D1）：**撤销过审**。
+     * {@code auditStatus → REJECTED} + 原因、主体级下架、店级行全下、撤出社区池。
+     * 商家改后走既有的重新提审链路回来。
+     *
+     * <p>不复用 {@link #toggle}：那是「商家管自己的货」——无原因、无留痕，
+     * 且商家可以自己再上架，「强制」名存实亡。
+     *
+     * @param reason 必填。它会出现在商家 B 端（{@code auditReason}），带「平台强制下架」前缀
+     */
+    GoodsVO forceOff(String goodsNo, String reason);
+
+    /**
+     * 平台<b>压下架</b>（P-3.2.3 的另一半，走 {@code POST /ops/skus/{skuNo}/force-off}）：
+     * 主体级下架 + 店级行全下 + 撤社区池 + 记原因，<b>但不撤过审</b>。
+     *
+     * <p>与 {@link #forceOff} 分成两件事，是因为它们对商家意味着完全不同的下一步：
+     * 那个是撤销过审 —— 商家必须改完重新提审；这个只是压下架 ——
+     * 问题处理完商家自己点一下就能回来。
+     *
+     * <p><b>只做一件事就用错的那个</b>：临时压一个规格却整件打回，
+     * 商家要为一件本来没问题的商品走完整的重新提审；反过来，
+     * 真的违规却只压下架，他自己点一下就回到了 C 端。
+     *
+     * @param reason 必填。原样进商家 B 端（{@code auditReason}），带「平台下架」前缀
+     */
+    GoodsVO platformSuspendGoods(String goodsNo, String reason);
+
+    /**
+     * 平台压下某门店的货架（TDD D3，给 {@link ai.neargo.shop.spi.product.StoreShelfPort} 用）。
+     * 只压当前在售的行并打 {@code platform_suspended} 标记。
+     */
+    void platformOfflineStore(String entityNo, String storeNo);
+
+    /** 解除：只恢复带标记的行，商家在处置期间的自主下架不受影响。 */
+    void platformRestoreStore(String entityNo, String storeNo);
 
     /**
      * 新建 / 编辑。
@@ -72,6 +136,28 @@ public interface MerchantGoodsService {
      * <p>所以这个动作在界面上要说清楚，不能像补货那样一按了事。
      */
     GoodsVO saveStoreStock(String merchantNo, String storeNo, String goodsNo, String skuNo, int stock);
+
+    /**
+     * 各门店的缺货 SKU 数（跨店对比，B-11.12.6）。
+     *
+     * <p>口径：这家店 {@code prd_store_stock} 里<b>可用量（stock − locked）≤ 0</b> 的行数。
+     *
+     * <p><b>只数已启用分店库存的 SKU</b> —— 一个 SKU 一条店级行都没有时走主体总量
+     * （见 {@link #saveStoreStock}），它对这家店<b>不算缺货</b>：
+     * 那件商品在这里照常卖得出去，把它记成缺货会让一家什么都没配过的店
+     * 显示「缺货 200 件」，而店主根本没有可做的动作。
+     *
+     * <p>⚠️ 已知的不对称：某 SKU 已转为店级管理、但<b>这家店没有行</b>时，
+     * 实际可售量是 0（那是 {@code PrdStoreStock} 刻意的语义），而这里不计。
+     * 保持与「只数已启用的」这句话一致 —— 要把它算进来，得先决定
+     * 「没配过的店到底算不算这件商品的经营范围」，那是另一个问题。
+     *
+     * @param storeNos 门店范围。{@code null} = 全部门店；<b>空集合 = 一家都不看</b>，
+     *                 与订单侧同一套 fail-closed 口径
+     * @return storeNo → 缺货 SKU 数。<b>没有任何店级行的门店不在 Map 里</b>，调用方兜底 0
+     */
+    Map<String, Integer> outOfStockCountByStore(String merchantNo,
+                                                java.util.Collection<String> storeNos);
 
     /**
      * 平台审核商品（P-3.2.2）。<b>不带 merchantNo</b> —— 运营审的是全平台的商品。

@@ -32,6 +32,11 @@ public class MchStore extends BaseEntity {
     /** ACTIVE / SUSPENDED / READONLY（Plan 降级：不接新单，但未完成的单照常核销）。 */
     public static final String ACTIVE = "ACTIVE";
     public static final String READONLY = "READONLY";
+    /**
+     * 平台强制下线（V96 起收编 DDL 里既有的取值）。与 {@link #READONLY}（商家自助停用/Plan 降级）
+     * 必须是两个值：处置中的店商家不能自己点两下启用就解除 —— 解除只能由平台做。
+     */
+    public static final String SUSPENDED = "SUSPENDED";
 
     private String entityNo;
 
@@ -56,6 +61,19 @@ public class MchStore extends BaseEntity {
     private Boolean isDefault;
 
     private String status;
+
+    /**
+     * 因**套餐降级**被压为只读（V150）。与商家自己停用的 {@link #READONLY} 状态相同，
+     * 靠这一列区分「谁压的」。
+     *
+     * <p><b>补缴恢复时只回这一批</b>：降级压了 2 家、商家又自己停了 1 家时，
+     * 三家的 status 一模一样 —— 全恢复等于平台替商家做了开店决定，
+     * 全不恢复等于他买的东西没还给他。
+     *
+     * <p>与 {@code prd_store_goods.platform_suspended} 是同一个形状：
+     * 凡是「系统压下去、以后要按原样还回来」的地方，都必须留标记说明是谁压的。
+     */
+    private Boolean planSuspended;
 
     /**
      * 这家店用哪个收款商户号（{@code mch_payment_merchant}）。
@@ -94,4 +112,19 @@ public class MchStore extends BaseEntity {
 
     /** 免配送费门槛（分）。0 = 不免。 */
     private Long deliveryFreeThresholdMinor;
+
+    /**
+     * 门店评分（V155，ADR-011 决定表第 3 行）。**×10 存整数**，与主体那几列同名同口径。
+     *
+     * <p>为什么门店要有自己的分：顾客评的是「楼下那家」。三家店混成一个分，
+     * 好店会被差店拖下去，而新开的分店会凭空继承老店的分。
+     *
+     * <p>{@code ratingCount = 0} 是「暂无评价」，不是 0 分 ——
+     * 新店与老评价还没重算过的店都是这个形状，页面要按条数判空而不是按分值。
+     */
+    private Integer rating;
+    private Integer ratingCount;
+    private Integer scoreGoods;
+    private Integer scoreService;
+    private Integer scoreSpeed;
 }

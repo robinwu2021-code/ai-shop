@@ -68,10 +68,11 @@ public class OpsOrderController {
     public PageData<MerchantOrderService.OpsOrderVO> list(
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String merchantNo,
+            @RequestParam(required = false) String storeNo,
             @RequestParam(required = false) String keyword,
             @RequestParam(defaultValue = "1") long page,
             @RequestParam(defaultValue = "20") long size) {
-        return orderService.opsList(status, merchantNo, keyword, page, Math.min(size, 100));
+        return orderService.opsList(status, merchantNo, storeNo, keyword, page, Math.min(size, 100));
     }
 
     @GetMapping("/ops/orders/{orderNo}")

@@ -30,9 +30,18 @@ public class PlatformOrderServiceImpl implements PlatformOrderService {
         }
         w.orderByDesc(OrdSubOrder::getId);
 
-        // 平台视角看全量：数据域授权在登录时已给 ALL，这里显式豁免是为了不依赖那个假设
-        Page<OrdSubOrder> p = DataScopeContext.executeWithoutScope(
-                () -> subOrderMapper.selectPage(Page.of(page, size), w));
+        /*
+         * **走数据域**（2026-08-14，运营端数据域接入 批①）。
+         *
+         * 这里原先是 `executeWithoutScope`，理由写的是「平台视角看全量」——
+         * 而那句话只对没配数据域的账号成立。配了「只看某商家 / 某片区」的运营，
+         * 他的 `DataScopeSpec` 一路带到这里就被丢掉了：
+         * 配置页显示「已限定」，他照样看到全平台的单。
+         *
+         * 没配数据域的账号仍然是 `DataScopeSpec.ALL`（空 = 不限定），
+         * 超管恒 ALL —— 所以对存量账号零变化。
+         */
+        Page<OrdSubOrder> p = subOrderMapper.selectPage(Page.of(page, size), w);
 
         List<OrderVO> records = p.getRecords().stream()
                 .map(s -> new OrderVO(s.getSubOrderNo(), s.getOrderNo(), s.getStatus(),

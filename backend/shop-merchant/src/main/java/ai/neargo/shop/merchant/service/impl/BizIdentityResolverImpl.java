@@ -2,6 +2,7 @@ package ai.neargo.shop.merchant.service.impl;
 
 import ai.neargo.shop.auth.BizContext;
 import ai.neargo.shop.auth.BizIdentityResolver;
+import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.merchant.entity.MchEntity;
 import ai.neargo.shop.merchant.entity.MchStore;
 import ai.neargo.shop.merchant.entity.MchStoreRole;
@@ -132,9 +133,19 @@ public class BizIdentityResolverImpl implements BizIdentityResolver {
             return BizContext.NONE;
         }
         // M1 仍只取一个主体 —— BizContext 扩成多主体是 M6 的事，这一期要零行为变化
-        MchEntity merchant = merchantMapper.selectOne(Wrappers.<MchEntity>lambdaQuery()
-                .eq(MchEntity::getEntityNo, memberships.get(0).getEntityNo())
-                .eq(MchEntity::getStatus, "ACTIVE").last("limit 1"));
+        /*
+         * **必须解除数据域**（mch_entity/mch_store 于批② 注册进 DataScopeRegistration）。
+         *
+         * 这里是**身份解析本身** —— 它跑在作用域建立之前，授权来自 token 里的成员关系。
+         * 不解除的话：B 端会话的维度是 SELF，而这两张表只有 MERCHANT 锚点，
+         * handler 直接拼 `1=0` —— **商家登录后作用域恒为空，整个 /biz/** 全部 403**。
+         * （实测：注册那一刻 54 个 B 端用例同时红。这正是 DataScopeRegistration
+         * 类注释第 2 条说的 fail-closed，只是这次踩在 B 端而不是 C 端。）
+         */
+        MchEntity merchant = DataScopeContext.executeWithoutScope(() ->
+                merchantMapper.selectOne(Wrappers.<MchEntity>lambdaQuery()
+                        .eq(MchEntity::getEntityNo, memberships.get(0).getEntityNo())
+                        .eq(MchEntity::getStatus, "ACTIVE").last("limit 1")));
         if (merchant == null) {
             // 成员行在但主体被封 —— 同样 fail-closed
             return BizContext.NONE;
@@ -162,10 +173,12 @@ public class BizIdentityResolverImpl implements BizIdentityResolver {
                 .collect(Collectors.groupingBy(MchStoreRole::getStoreNo,
                         Collectors.mapping(MchStoreRole::getRole, Collectors.toUnmodifiableSet())));
 
+        // 同上：老板的门店集合是作用域的一部分，解析它时作用域还不存在
         Set<String> storeNos = Boolean.TRUE.equals(membership.getIsOwner())
-                ? storeMapper.selectList(Wrappers.<MchStore>lambdaQuery()
-                        .eq(MchStore::getEntityNo, merchant.getEntityNo())
-                        .eq(MchStore::getStatus, "ACTIVE")).stream()
+                ? DataScopeContext.executeWithoutScope(() ->
+                        storeMapper.selectList(Wrappers.<MchStore>lambdaQuery()
+                                .eq(MchStore::getEntityNo, merchant.getEntityNo())
+                                .eq(MchStore::getStatus, "ACTIVE"))).stream()
                         .map(MchStore::getStoreNo).collect(Collectors.toSet())
                 : roleMapper.selectList(Wrappers.<MchStoreRole>lambdaQuery()
                         .eq(MchStoreRole::getMchAccountNo, membership.getMchAccountNo())).stream()

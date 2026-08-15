@@ -212,6 +212,30 @@ class M1UserFlowTest {
         assertThat(second).isEqualTo(first);
     }
 
+    /*
+     * 端上小程序发的是 WX_MINI，后端此前只认 WECHAT_MP —— 请求落进 default 分支抛 400，
+     * 小程序上登录**必然失败**。两个名字同一件事，这里钉住它们不会再分家。
+     */
+    @Test
+    @DisplayName("WX_MINI 与 WECHAT_MP 是同一个授权分支，同一凭证登进同一个账号")
+    void wxMiniIsTheSameGrantAsWechatMp() throws Exception {
+        String viaWechatMp = profileUserNo(loginWechat("wx-openid-mini-001"));
+        String viaWxMini = profileUserNo(loginWxMini("wx-openid-mini-001"));
+        assertThat(viaWxMini).isEqualTo(viaWechatMp);
+    }
+
+    /*
+     * 上一条是「把 default 分支改窄」，这条守住「别改宽」——
+     * 合并 case 时手滑写成 default 也能让上一条变绿，而那等于任何字符串都能登录。
+     */
+    @Test
+    @DisplayName("未知 grantType 仍然被拒（default 分支不许被改宽）")
+    void unknownGrantTypeIsRejected() throws Exception {
+        mvc().perform(post("/mp/user/login").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"grantType\":\"WX_PHONE\",\"principal\":\"whatever\",\"agreed\":true}"))
+                .andExpect(jsonPath("$.code").value(10400));
+    }
+
     @Test
     @DisplayName("归属整体替换：自提点必须属于该社区（不变量②）")
     void belongingMustBeConsistent() throws Exception {
@@ -294,8 +318,18 @@ class M1UserFlowTest {
     }
 
     private String loginWechat(String openid) throws Exception {
+        return loginByGrant("WECHAT_MP", openid);
+    }
+
+    /** 端上小程序真正发的那个值（`shared:GrantType` 的 WX_MINI） */
+    private String loginWxMini(String code) throws Exception {
+        return loginByGrant("WX_MINI", code);
+    }
+
+    private String loginByGrant(String grantType, String principal) throws Exception {
         String body = mvc().perform(post("/mp/user/login").contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"grantType\":\"WECHAT_MP\",\"principal\":\"" + openid + "\",\"agreed\":true}"))
+                        .content("{\"grantType\":\"" + grantType + "\",\"principal\":\"" + principal
+                                + "\",\"agreed\":true}"))
                 .andReturn().getResponse().getContentAsString();
         return json.readTree(body).get("data").get("token").asString();
     }

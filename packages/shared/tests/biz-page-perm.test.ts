@@ -75,6 +75,10 @@ const EXEMPT: Record<string, string> = {
     "规则卡片用 can('biz:store') 包住并单独 catch；配送员只拿待送列表与「已送达」，两个码他都有",
   "picking/biz:verify":
     "自提单调用用 can('biz:verify') 包住并单独 catch；理货员看到的是分拣单与短少上报，到货区不画",
+  "me/biz:store:admin":
+    "「我的套餐」这一行（含 mMyPlan）用 can('biz:store:admin') 包住并单独 catch，"
+    + "且 loadPlan() 里先 await ensureScope() —— 否则深链进来 can() fail-closed，老板永远看不到这一行。"
+    + "店长看不到套餐是刻意的：他不决定要不要升档",
 };
 
 interface Page {

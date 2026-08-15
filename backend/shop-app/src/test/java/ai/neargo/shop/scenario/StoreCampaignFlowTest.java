@@ -1,6 +1,7 @@
 package ai.neargo.shop.scenario;
 
 import ai.neargo.shop.support.TestLogin;
+import ai.neargo.shop.support.TestPlan;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -56,6 +57,9 @@ class StoreCampaignFlowTest {
     @Autowired
     private ai.neargo.shop.spi.marketing.CampaignPort campaignPort;
 
+    @Autowired
+    private ai.neargo.shop.merchant.mapper.MerchantMappers.EntityPlanMapper planMapper;
+
     private MockMvc mvc() {
         return MockMvcBuilders.webAppContextSetup(context)
                 .apply(org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity())
@@ -81,6 +85,8 @@ class StoreCampaignFlowTest {
     void storeCampaignOnlyAppliesToItsStore() throws Exception {
         String biz = merchant("12600230010", "开业满减·总店");
         String entityNo = merchantNo(biz);
+        // 多门店是 PRO 才有的能力，测试要说出「这家商家买了包」
+        TestPlan.grantPro(planMapper, entityNo);
         String storeB = createStore(biz, "开业满减·分店");
         saveFullCut(biz, "新店开业满减", 5000, 800, storeB);
 
@@ -97,6 +103,7 @@ class StoreCampaignFlowTest {
     @DisplayName("★★ 限时特价 / 买赠 / 店铺券限定门店当场被拒，且不是通用「参数有误」")
     void onlyFullCutAcceptsStoreScope() throws Exception {
         String biz = merchant("12600230020", "限定门店被拒铺");
+        TestPlan.grantPro(mvc(), json, planMapper, biz);
         String storeB = createStore(biz, "被拒·分店");
 
         for (String type : java.util.List.of("FLASH", "BUY_GIFT", "COUPON")) {
@@ -113,6 +120,7 @@ class StoreCampaignFlowTest {
     void bestOfStoreAndEntityWide() throws Exception {
         String biz = merchant("12600230030", "两个满减铺");
         String entityNo = merchantNo(biz);
+        TestPlan.grantPro(planMapper, entityNo);
         String storeB = createStore(biz, "两个满减·分店");
         saveFullCut(biz, "全店满 50 减 8", 5000, 800, null);
         saveFullCut(biz, "分店满 50 减 15", 5000, 1500, storeB);

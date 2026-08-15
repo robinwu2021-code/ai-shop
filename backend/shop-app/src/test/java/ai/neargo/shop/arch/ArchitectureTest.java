@@ -47,7 +47,12 @@ class ArchitectureTest {
             "fulfillment", "marketing", "settle", "message", "platform",
             // content：内容与素材（帖子/问答/榜单/素材库）。有自己的表（cnt_*），
             // 所以是业务域而不是基础设施 —— 登记进来它才受域间依赖规则约束
-            "content"};
+            "content",
+            // risk：风控（风险事件/黑名单/拦截规则，V120）。同样有自己的表（risk_*），
+            // 是业务域。**这条是被本测试自己抓出来的** —— 风控域落地时建了新顶层包
+            // 却没登记，于是它有半天时间不受域间依赖规则约束：那期间任何一处
+            // 跨域直连（比如直接读 ord_sub_order 而不走 Port）都不会被拦下来
+            "risk"};
 
     /** {@link #DOMAINS} 的 ArchUnit 包表达式形式（{@code ai.neargo.shop.x..}）。 */
     private static String[] domainPackages() {
@@ -347,7 +352,12 @@ class ArchitectureTest {
                 // **不是业务域** —— 它不认识任何一个域的语义，只负责「计时、记录、兜住异常」。
                 // 它有自己的表（sys_job_run），但那是运维记录不是业务数据：
                 // 删光它不影响任何业务，只是从此答不出「这个任务跑没跑过」。
-                "job");
+                "job",
+                // media：图片资产记账（sys_media_asset）。**不是业务域** ——
+                // 它不认识商品也不认识证件，只回答「这个 key 占多少字节、还有没有人引用」。
+                // 与 job 同构：有自己的表，但那是账不是业务数据。
+                // 上传写它、扫描改它、运营端读它，三方分属不同模块，所以它必须住在地基里。
+                "media");
         List<String> known = new ArrayList<>(infra);
         known.addAll(List.of(DOMAINS));
 

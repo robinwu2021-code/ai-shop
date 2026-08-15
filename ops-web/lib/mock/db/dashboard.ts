@@ -1,5 +1,5 @@
 // 看板域 mock 数据（P-16.1）。金额均为最小货币单位（分）。
-import type { DashboardKpi, FunnelRow, TrendPoint } from "@/lib/types";
+import type { DashboardKpi, FunnelRow, MerchantRankRow, TrendPoint } from "@/lib/types";
 
 export const kpi: DashboardKpi = {
   gmv: 128_640_00,
@@ -29,4 +29,15 @@ export const trend: TrendPoint[] = [
 export const funnel: FunnelRow[] = [
   { step: "REGISTER", count: 1180 },
   { step: "FIRST_ORDER", count: 640 },
+];
+
+// 商家经营排行（P-16.1.2 / P-16.1.3）。按 GMV 降序 —— 与后端同一口径。
+//
+// 第三行刻意是「GMV 中等但售后率高」的形状：排行如果只按 GMV 排，
+// 那种商家永远排在中间不显眼，而他恰恰是平台最该盯的一家。
+export const merchantRanking: MerchantRankRow[] = [
+  { merchantNo: "M901", merchantName: "张记粮油", gmv: 42_360_00, orderCount: 452, avgOrderValue: 9_371, afterSaleCount: 9, afterSaleRate: 0.0199 },
+  { merchantNo: "M902", merchantName: "阿明果蔬合作社", gmv: 31_180_00, orderCount: 388, avgOrderValue: 8_036, afterSaleCount: 12, afterSaleRate: 0.0309 },
+  { merchantNo: "M903", merchantName: "巷口鲜肉铺", gmv: 18_940_00, orderCount: 176, avgOrderValue: 10_761, afterSaleCount: 31, afterSaleRate: 0.1761 },
+  { merchantNo: "M904", merchantName: "社区烘焙工坊", gmv: 12_470_00, orderCount: 214, avgOrderValue: 5_827, afterSaleCount: 4, afterSaleRate: 0.0187 },
 ];

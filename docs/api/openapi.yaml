@@ -428,13 +428,33 @@ components:
         - "EXPIRED"
         - "OTHER"
       description: "售后原因。**取值与后端 `/mp/after-sale/reasons` 下发的一致** —— 端上不再自己硬编码一份清单（此前那份少两个、多一个，两边各自漂移， 运营改后端那份端上纹丝不动）。\n\n后端下发的是**码**不是文案：这是三语 App，翻译得留在端上。"
+    FundsMode: 
+      type: "string"
+      enum: 
+        - "AGGREGATED"
+        - "DIRECT"
+      description: "资金路径：**钱先进谁的账户**。与 `mch_entity.funds_mode` 同值。\n\n⚠️ **与「经营模式」（谁是销售主体）正交，不要合并** —— 合成一个枚举后，「直连 + 自营」（钱进商家户却说平台是卖方） 这种非法组合在类型上就是可表达的（同 ADR-013 教训）。\n\n结算侧「要不要给积分补差」判的是**这一个**： 钱在商家二级户才需要补进去，钱在平台户是平台自己少收。"
     MerchantSubject: 
       type: "string"
       enum: 
-        - "MICRO"
+        - "NATURAL_PERSON"
         - "INDIVIDUAL"
         - "ENTERPRISE"
-      description: "商家主体类型 —— **权威口径取通道侧**（ADR-010）。\n\n主体类型的唯一硬约束来自支付通道：能不能进件、要什么资质、钱打到个人还是对公。 展示名反而可以随便改。让权威贴着约束走，映射就只需要一个方向。\n\n规则（要不要执照、受不受行业白名单限制、结算账户形态）在 `sys_merchant_subject` 表里，随通道调整；**这里只管取值域**。 端上取 `GET /common/master-data`，不要在页面里写死。\n\n<p><b>不叫 `SubjectType`</b>：那个名字在平台端已经是**风控主体** （DEVICE/MERCHANT/USER）。两个不同的概念同名，读代码的人迟早会把 一个当成另一个 —— 类型对齐守卫正是为此存在的。"
+    BizQualification: 
+      type: "string"
+      enum: 
+        - "REGISTERED"
+        - "EXEMPT"
+        - "UNREGISTERED"
+      description: "经营资格（轴①，法定）：**决定能不能交易**，与通道无关。\n\n- `REGISTERED` 已办市场主体登记（有营业执照）\n- `EXEMPT` 依法免登记（电商法 §10 四类情形）—— **是合法经营者，不是无资质**\n- `UNREGISTERED` 应登记而未登记 —— 违法经营，平台不得提供交易能力"
+    ExemptType: 
+      type: "string"
+      enum: 
+        - "AGRI"
+        - "HANDCRAFT"
+        - "SERVICE"
+        - "PETTY"
+      description: "免登记情形（电商法 §10）。\n\n⚠️ **只有 `PETTY` 受 10 万元/年 约束**，其余三类无金额上限 —— 农户卖 50 万自产柿饼仍然免登记。四类混起来监控会误伤前三类。"
     MerchantType: 
       "$ref": "#/components/schemas/MerchantSubject"
       deprecated: "用 {@link MerchantSubject }。旧取值 `PLATFORM/COMPANY/INDIVIDUAL` 已废弃 ——\n其中 `PLATFORM`（平台自营）**不是一种主体类型**：平台自营的主体也是个企业，\n「自营」是归属标记，混进主体枚举里让这一列同时承担了两件事。\n一期没有真实的自营商家，暂不为它单开字段。"
@@ -444,6 +464,9 @@ components:
         merchantNo: 
           type: "string"
           description: "商家单号。贯穿商品/订单/评价/结算，是多商家模型的主线（ADR-001）"
+        selfOperated: 
+          type: "boolean"
+          description: "这单是不是**平台自营**（销售主体是平台）。\n\n**必须显示出来 —— 电商法 §37 要求平台以显著方式区分标记自营业务， 不得误导消费者。这是法定义务，不是产品选择。**\n\n而它同时是资金模式合法性的一部分：归集路径下平台是销售主体， 页面上却让消费者以为在跟商家交易，四流就不一致了（ADR-017 §3.4）。\n\n⚠️ 自营时**商家信息照常展示**（供货商、产地、门店、评分）—— 要禁的是把销售方指给商家的**表述**，不是商家信息本身。 见 `packages/shared/tests/seller-statement.test.ts` 的禁用词表。"
         name: 
           type: "string"
           description: "店铺名"
@@ -452,7 +475,10 @@ components:
           description: "店铺 logo URL"
         rating: 
           type: "number"
-          description: "综合评分，0–5，保留一位小数"
+          description: "综合评分，0–5，保留一位小数。**0 分要配合 `ratingCount` 一起看**"
+        ratingCount: 
+          type: "number"
+          description: "计入评分的评价条数。\n\n**没有它就分不清「0 分」和「还没人评过」** —— 而这两件事对买家是相反的信号： 一家 0 分的店是被人打差评打出来的，一家没人评过的店只是新开的。 端上按 `ratingCount === 0` 显示「暂无评价」，不要显示 0 颗星。"
         verified: 
           type: "boolean"
           description: "是否通过资质认证"
@@ -464,6 +490,7 @@ components:
         - "name"
         - "logo"
         - "rating"
+        - "ratingCount"
         - "verified"
         - "breachCount"
       additionalProperties: false
@@ -474,6 +501,9 @@ components:
         merchantNo: 
           type: "string"
           description: "商家单号。贯穿商品/订单/评价/结算，是多商家模型的主线（ADR-001）"
+        selfOperated: 
+          type: "boolean"
+          description: "这单是不是**平台自营**（销售主体是平台）。\n\n**必须显示出来 —— 电商法 §37 要求平台以显著方式区分标记自营业务， 不得误导消费者。这是法定义务，不是产品选择。**\n\n而它同时是资金模式合法性的一部分：归集路径下平台是销售主体， 页面上却让消费者以为在跟商家交易，四流就不一致了（ADR-017 §3.4）。\n\n⚠️ 自营时**商家信息照常展示**（供货商、产地、门店、评分）—— 要禁的是把销售方指给商家的**表述**，不是商家信息本身。 见 `packages/shared/tests/seller-statement.test.ts` 的禁用词表。"
         name: 
           type: "string"
           description: "店铺名"
@@ -482,7 +512,10 @@ components:
           description: "店铺 logo URL"
         rating: 
           type: "number"
-          description: "综合评分，0–5，保留一位小数"
+          description: "综合评分，0–5，保留一位小数。**0 分要配合 `ratingCount` 一起看**"
+        ratingCount: 
+          type: "number"
+          description: "参与评分的评价条数"
         verified: 
           type: "boolean"
           description: "是否通过资质认证"
@@ -512,9 +545,6 @@ components:
         salesCount: 
           type: "number"
           description: "累计订单量（评分权重之一）"
-        ratingCount: 
-          type: "number"
-          description: "参与评分的评价条数"
         goodsCount: 
           type: "number"
           description: "在售商品数"
@@ -580,6 +610,9 @@ components:
         merchantNo: 
           type: "string"
           description: "商家单号。贯穿商品/订单/评价/结算，是多商家模型的主线（ADR-001）"
+        selfOperated: 
+          type: "boolean"
+          description: "这单是不是**平台自营**（销售主体是平台）。\n\n**必须显示出来 —— 电商法 §37 要求平台以显著方式区分标记自营业务， 不得误导消费者。这是法定义务，不是产品选择。**\n\n而它同时是资金模式合法性的一部分：归集路径下平台是销售主体， 页面上却让消费者以为在跟商家交易，四流就不一致了（ADR-017 §3.4）。\n\n⚠️ 自营时**商家信息照常展示**（供货商、产地、门店、评分）—— 要禁的是把销售方指给商家的**表述**，不是商家信息本身。 见 `packages/shared/tests/seller-statement.test.ts` 的禁用词表。"
         name: 
           type: "string"
           description: "店铺名"
@@ -588,7 +621,10 @@ components:
           description: "店铺 logo URL"
         rating: 
           type: "number"
-          description: "综合评分，0–5，保留一位小数"
+          description: "综合评分，0–5，保留一位小数。**0 分要配合 `ratingCount` 一起看**"
+        ratingCount: 
+          type: "number"
+          description: "参与评分的评价条数"
         verified: 
           type: "boolean"
           description: "是否通过资质认证"
@@ -618,9 +654,6 @@ components:
         salesCount: 
           type: "number"
           description: "累计订单量（评分权重之一）"
-        ratingCount: 
-          type: "number"
-          description: "参与评分的评价条数"
         goodsCount: 
           type: "number"
           description: "在售商品数"
@@ -1231,7 +1264,7 @@ components:
     SettleAccountType: 
       type: "string"
       enum: 
-        - "PERSONAL_OPENID"
+        - "PERSONAL_BANK_CARD"
         - "MERCHANT_ID"
       description: "结算账户形态。个人 openid 收款 / 对公商户号收款（ADR-002 §5）"
     PaymentApplyStatus: 
@@ -1249,6 +1282,13 @@ components:
         - "ACTIVE"
         - "READONLY"
       description: "门店状态。READONLY = 已停用（不再接新单，已有单照常履约）"
+    PlanStatus: 
+      type: "string"
+      enum: 
+        - "ACTIVE"
+        - "GRACE"
+        - "EXPIRED"
+      description: "增值包订阅状态。\n\n`GRACE`（宽限期，7 天）**能力全保留** —— 到期当天就压店的话， 一次忘记续费等于让他的店在客户面前消失，而他往往正在门店里忙。"
     StaffStatus: 
       type: "string"
       enum: 
@@ -1564,6 +1604,61 @@ components:
           description: "省市区 + 详细，拼好的一行"
       additionalProperties: false
       description: "收件人。下单时固化在子订单上，**不是用户当前的地址簿条目**。\n\n三端共用：C 端订单详情、B 端配送/发货、平台端查单。"
+    InvoiceRequestStatus: 
+      type: "string"
+      enum: 
+        - "REQUESTED"
+        - "ISSUED"
+        - "REJECTED"
+      description: "开票申请的状态（ADR-017 §3.4 条件 2）。\n\n本版是**手工开票**：运营在票据系统里开完，回来回填票号。 接票据系统是第二步，届时在 `ISSUED` 之后延长状态机，不改前面的。"
+    InvoiceTitleType: 
+      type: "string"
+      enum: 
+        - "PERSONAL"
+        - "COMPANY"
+      description: "抬头类型。单位抬头必须有税号，否则对方入不了账 —— 票开出来等于白开"
+    InvoiceRequest: 
+      type: "object"
+      properties: 
+        requestNo: 
+          type: "string"
+        orderNo: 
+          type: "string"
+          description: "按**主单**申请，不按子单 —— 消费者眼里那是一次购买，票也该是一张"
+        titleType: 
+          "$ref": "#/components/schemas/InvoiceTitleType"
+        title: 
+          type: "string"
+        taxNo: 
+          type: "string"
+          description: "单位抬头必填"
+        email: 
+          type: "string"
+          description: "电子票只能发到这里，填错就是开了也收不到"
+        amountMinor: 
+          type: "number"
+          description: "开票金额快照。**不实时读订单** —— 退款会改订单金额，已开的票不会跟着变"
+        status: 
+          "$ref": "#/components/schemas/InvoiceRequestStatus"
+        invoiceNo: 
+          type: "string"
+        issuedAt: 
+          type: "number"
+        rejectReason: 
+          type: "string"
+          description: "驳回原因。不写原因的驳回等于让消费者再猜一遍"
+        createdAt: 
+          type: "number"
+      required: 
+        - "requestNo"
+        - "orderNo"
+        - "titleType"
+        - "title"
+        - "email"
+        - "amountMinor"
+        - "status"
+      additionalProperties: false
+      description: "开票申请：**平台开给消费者**的销项票。\n\n与结算侧的采购发票（`stl_purchase_invoice`）是两回事： 那是**进项**（供应商开给平台，决定平台能不能列支成本）， 这是**销项**（平台开给消费者，决定归集资金模式成不成立）。"
     Order: 
       type: "object"
       properties: 
@@ -1698,6 +1793,12 @@ components:
           items: 
             type: "string"
           description: "举证图（破损、少件的照片）。是否必填由售后类型决定"
+        refundMinor: 
+          type: "number"
+          description: "这张售后单要退的钱（分）。**不等于订单金额** —— 一张子订单可以只退其中一件，也可以先后发起多次。\n\n<p>后端一直在发（`AfterSaleVO.refundMinor`），只是契约里漏了声明， 于是 B 端售后页拿不到它，只能退而求其次显示**整张子订单的应付**。 单件单品的单子上两个数恰好相等，所以这个错在联调环境里看不出来 —— 直到有人退三件里的一件。"
+        instant: 
+          type: "boolean"
+          description: "极速退：金额在阈值内的仅退款，系统自动通过。\n**商家只可见不可拒**，所以这类单上不该出现同意/驳回按钮。"
         merchantReply: 
           type: "string"
           description: "商家同意/驳回时的说明"
@@ -1741,6 +1842,7 @@ components:
         - "status"
         - "reason"
         - "images"
+        - "refundMinor"
         - "updatedAt"
       additionalProperties: false
     AfterSaleType: 
@@ -1794,48 +1896,122 @@ components:
         - "expireAt"
         - "currency"
       additionalProperties: false
+    UserCoupon: 
+      type: "object"
+      properties: 
+        userCouponNo: 
+          type: "string"
+        coupon: 
+          "$ref": "#/components/schemas/Coupon"
+          description: "券模板快照"
+        status: 
+          type: "string"
+          description: "UNUSED / USED / EXPIRED"
+        usableNow: 
+          type: "boolean"
+          description: "当前这笔订单能不能用它 —— 由服务端算，端上不要自己判门槛"
+        receivedAt: 
+          type: "number"
+        usedAt: 
+          type: "number"
+      required: 
+        - "userCouponNo"
+        - "coupon"
+        - "status"
+        - "usableNow"
+        - "receivedAt"
+      additionalProperties: false
+      description: "领到手的那张券（`mkt_user_coupon` 的一行）。\n\n与  {@link  Coupon }  的关系：Coupon 是**模板**（活动配的那张）， UserCoupon 是**某个人手里的那一张**。领取接口返回的是后者 —— 契约此前写成返回 Coupon，而后端一直返回这个形状，字段一个都对不上。 页面恰好不读返回值（领完重拉列表），所以没人撞上；但契约说的是假话。"
     Coupon: 
       type: "object"
       properties: 
         couponNo: 
           type: "string"
           description: "券单号"
-        name: 
+        title: 
           type: "string"
           description: "券名，如「满 50 减 5」"
+        type: 
+          "$ref": "#/components/schemas/CouponType"
+        faceMinor: 
+          type: "number"
+          description: "满减面额（最小货币单位）。`DISCOUNT` 券为 0"
+        discountRate: 
+          type: "number"
+          description: "折扣**万分比**，8500 = 八五折。`FULL_CUT` 券为 0"
         thresholdMinor: 
           type: "number"
           description: "使用门槛（最小货币单位）。0 表示无门槛"
-        discountMinor: 
+        maxDiscountMinor: 
           type: "number"
-          description: "抵扣金额（最小货币单位）"
-        expireAt: 
+          description: "折扣券封顶（最小货币单位）。仅 `DISCOUNT` 有意义"
+        funder: 
+          "$ref": "#/components/schemas/CouponFunder"
+        merchantNo: 
+          type: "string"
+          description: "商家券的归属商家；平台券为空"
+        startAt: 
           type: "number"
-          description: "过期时间"
+          description: "可领取/可用的时间窗"
+        endAt: 
+          type: "number"
+        remain: 
+          type: "number"
+          description: "剩余可领数量"
         received: 
           type: "boolean"
           description: "当前用户是否已领取。列表页据此显示「领取」还是「去使用」"
+        status: 
+          "$ref": "#/components/schemas/CouponStatus"
         scopeDesc: 
           type: "string"
-          description: "适用范围文案，如「仅限张记生鲜」。展示用，实际校验在服务端"
+          description: "适用范围文案，如「仅限张记粮油店」。展示用，实际校验在服务端"
       required: 
         - "couponNo"
-        - "name"
+        - "title"
+        - "type"
+        - "faceMinor"
+        - "discountRate"
         - "thresholdMinor"
-        - "discountMinor"
-        - "expireAt"
+        - "maxDiscountMinor"
+        - "funder"
+        - "merchantNo"
+        - "startAt"
+        - "endAt"
+        - "remain"
         - "received"
+        - "status"
         - "scopeDesc"
       additionalProperties: false
+      description: "优惠券模板。**字段与后端 `CouponVO` 一一对应**。\n\n这里原先是一个被简化过的形状（`name` / `discountMinor` / `expireAt`）， 与后端一个都对不上，后果不是「少显示一块」而是**领券中心永远是空的**： 页面按 `c.expireAt > now` 过滤，而后端发的是 `endAt` —— `undefined > now` 恒 false，于是商家配好的券一张都露不出来，两边都不报错。\n\n<b>而且那个简化本身是错的</b>：`discountMinor` 一个数表达不了折扣券 —— 折扣券要的是「打几折 + 最多减多少」。后端的形状才是对的，端上跟它。"
+    CouponType: 
+      type: "string"
+      enum: 
+        - "FULL_CUT"
+        - "DISCOUNT"
+      description: "券类型。与后端 `MktCoupon` 的常量逐字一致"
+    CouponFunder: 
+      type: "string"
+      enum: 
+        - "PLATFORM"
+        - "MERCHANT"
+      description: "券的出资方。决定这张券的钱最后从谁账上扣 —— 平台券走平台预算，商家券从结算里扣"
+    CouponStatus: 
+      type: "string"
+      enum: 
+        - "ACTIVE"
+        - "PAUSED"
+        - "ENDED"
+      description: "券状态。与后端 `MktCoupon` 一致；平台列表要靠它筛出被停的券"
     GroupRequestStatus: 
       type: "string"
       enum: 
-        - "OPEN"
-        - "QUOTING"
-        - "MATCHED"
+        - "COLLECTING"
+        - "QUOTED"
+        - "LOCKED"
+        - "CONFIRMED"
         - "CLOSED"
-        - "EXPIRED"
-      description: "邻里求团：**需求先于供给**。\n\n与「商家团」是两条完全不同的线，刻意不复用一个模型：   商家团 —— 商品已上架、价格已定、库存已备，用户只是参与；适合生鲜日用这类高频标品。   求团   —— 发起时**商品还不存在，甚至没有商家**，用户只有一句「想买儿童床垫」；            适合床垫、校服、家电这类低频高单价、有议价空间的非标品。\n\n关键约束：**意向 ≠ 订单**。求团阶段不收钱、不锁库存 —— 商品还不存在时收钱是给自己找麻烦。 只有发起人选定报价、转成正式商家团之后，才进入交易链路。"
+      description: "求团需求单的状态。**取值以库里存的为准**（`mkt_request.status`）。\n\n这里原先是另一套词：OPEN / QUOTING / MATCHED / EXPIRED —— 与后端一个都对不上， 于是页面上 `status === \"MATCHED\"` 恒 false（已选定报价那一块、二次确认按钮 永远不出现），而 `status !== \"MATCHED\"` 恒真（锁价之后「选定」按钮仍然挂着）。 两边各写各的，谁也没报错。\n\n枚举对账守卫当时也是绿的：它拿端上的取值去全后端的大写字面量里搜， 而 MATCHED / OPEN / EXPIRED 恰好在别的域里存在（团购、优惠券…）——\n**同名异义把缺口盖住了**。词袋比对不了「这个字段的取值」。"
     QuoteRevision: 
       type: "object"
       properties: 
@@ -1969,7 +2145,7 @@ components:
           description: "需求单过期时间。过期即 EXPIRED，不再接受报价"
         groupNo: 
           type: "string"
-          description: "MATCHED 后指向生成的正式团"
+          description: "LOCKED 之后指向生成的正式团"
         lockedPriceMinor: 
           type: "number"
           description: "选定的报价快照。转成正式团后下单用这个价，**不读商家当前价** —— 这是防加价最硬的一层：加价在技术上做不到，不需要审核。"
@@ -1997,12 +2173,22 @@ components:
         - "createdAt"
         - "expireAt"
       additionalProperties: false
+    GroupBuyStatus: 
+      type: "string"
+      enum: 
+        - "OPEN"
+        - "FORMED"
+        - "FAILED"
+      description: "商家团 / 邻里团的状态。**与库 `mkt_group_buy.status` 逐字一致**。\n\n契约上原先没有这个字段，端上只能拿 `reached` 判断 —— 而**平台中止的团 人数可能已经够了**，只看 reached 会把一个已经作废的团显示成正常可参的团。"
     GroupBuy: 
       type: "object"
       properties: 
         groupNo: 
           type: "string"
           description: "团单号"
+        status: 
+          "$ref": "#/components/schemas/GroupBuyStatus"
+          description: "团的状态"
         goodsNo: 
           type: "string"
           description: "开团的商品"
@@ -2057,14 +2243,11 @@ components:
                 type: "string"
               nickname: 
                 type: "string"
-              qty: 
-                type: "number"
             required: 
               - "avatar"
               - "nickname"
-              - "qty"
             additionalProperties: false
-          description: "已参团的人及各自件数，展示用"
+          description: "已参团的邻居，展示用。\n\n**没有件数**：参团是一人一份 —— 成团判断、「还差 N 人」的文案、`joinedCount` 全部按人算，库里也没存过件数。这里原先有个 `qty`，页面照着渲染 `×{qty}`， 而它从来没有值。"
         joined: 
           type: "boolean"
           description: "当前用户是否已参团"
@@ -2076,6 +2259,7 @@ components:
           description: "我是不是这个团的发起人 —— 决定是否显示轻核销入口"
       required: 
         - "groupNo"
+        - "status"
         - "goodsNo"
         - "title"
         - "cover"
@@ -2094,7 +2278,6 @@ components:
         - "members"
         - "joined"
       additionalProperties: false
-      description: "商家团 —— 商家在已上架商品上开的团，用户可参与或自己开一桌。 定位：**只是一种活动**，不是平台核心机制。所以单档成团，不做阶梯价。，不是运营配置的活动位。 成团单位是自提点（拼的是一车送到一个点的成本），单档成团，不做阶梯。"
     PickupPoint: 
       type: "object"
       properties: 
@@ -2301,6 +2484,9 @@ components:
         loginBy: 
           "$ref": "#/components/schemas/GrantType"
           description: "本次会话的登录方式。第三方登录且 phone 为空时，要引导补绑手机号"
+        fundsMode: 
+          "$ref": "#/components/schemas/FundsMode"
+          description: "资金路径。**B 端价格字段叫什么由它决定** —— 归集（钱进平台账户）下平台是销售主体、最终售价平台定，商家填的是「期望收购价」； 直连下他自己就是销售主体，那就是「售价」。\n\n判据用它而不是门店的 `businessMode`：与积分能力同一根轴 —— **责任跟着钱走**。\n\n还没进件的申请人为空：那时资金路径尚未确定， 猜一个默认值会让他在入驻页看到一个还轮不到他的字段名。"
       required: 
         - "merchantNo"
         - "name"
@@ -2324,6 +2510,38 @@ components:
       required: 
         - "token"
         - "merchant"
+      additionalProperties: false
+    QualificationType: 
+      type: "string"
+      enum: 
+        - "BUSINESS_LICENSE"
+        - "FOOD_PERMIT"
+        - "FOOD_WORKSHOP"
+        - "OTHER"
+      description: "资质类型码。取值同后端 `mch_qualification.qual_type`。\n\n⚠️ **`BUSINESS_LICENSE` 是入驻校验的判据** —— 需要执照的档位必须含它， 改名会让那条校验静默失效（找不到就当没传，然后放行）。"
+    QualificationItem: 
+      type: "object"
+      properties: 
+        type: 
+          "$ref": "#/components/schemas/QualificationType"
+          description: "资质类型码"
+        code: 
+          type: "string"
+          description: "证照编号"
+        imageUrl: 
+          type: "string"
+        expireAt: 
+          type: 
+            - "number"
+            - "null"
+          description: "有效期截止（毫秒）。**长期有效传 `null`** —— 不要用 0 或一个很大的数字冒充：过期扫描会把前者当成已过期、 后者当成永不过期，两种都错且都不报错。"
+        issuer: 
+          type: "string"
+      required: 
+        - "type"
+        - "code"
+        - "imageUrl"
+        - "expireAt"
       additionalProperties: false
     MerchantApplyReq: 
       type: "object"
@@ -2349,6 +2567,11 @@ components:
         asPickupPoint: 
           type: "boolean"
           description: "承接自提点：小店既是供给方也是取货点（ADR-005 type=STORE）"
+        qualificationItems: 
+          type: "array"
+          items: 
+            "$ref": "#/components/schemas/QualificationItem"
+          description: "结构化资质。**可选**：老版本端上还在只传 `licenses`， 后端对未传该字段的请求跳过执照校验（见 `OpsServiceImpl.requireLicenseIfNeeded`）—— 校验必须晚于能满足它的 UI 上线，否则拦的不是坏商家，是所有人。"
         serviceScope: 
           "$ref": "#/components/schemas/ServiceScope"
           description: "期望经营范围（ADR-009）。申请时可空，<b>审核通过时必须确定</b> —— 否则商家上着架却对谁都不可见，且没有任何报错。"
@@ -2494,7 +2717,7 @@ components:
           description: "二级商户号掩码。完整号不回显"
         settleAccountType: 
           "$ref": "#/components/schemas/SettleAccountType"
-          description: "结算账户形态：小微打个人（PERSONAL_OPENID），其余打对公（MERCHANT_ID）"
+          description: "结算账户形态：小微打个人（PERSONAL_BANK_CARD），其余打对公（MERCHANT_ID）"
         settleAccountMasked: 
           type: "string"
           description: "结算账号掩码。**明文永不回显**，包括给商家自己（ADR-002 §5）"
@@ -2550,6 +2773,15 @@ components:
         staffCount: 
           type: "number"
           description: "授权到这家店的员工数（不含老板）。0 表示只有老板能管这家店"
+        rating: 
+          type: "number"
+          description: "门店评分 ×10（V155）。与主体评分是两个数：主体分是各店的合成，反过来推不回去"
+        ratingCount: 
+          type: "number"
+          description: "计入门店评分的条数。**0 = 暂无评价**，不是 0 分"
+        planSuspended: 
+          type: "boolean"
+          description: "这家店的只读**是套餐降级压下来的**，不是店主自己停的。\n\n<p>两者的 `status` 一模一样（都是 `READONLY`），而端上要给的下一步完全不同： 降级压的要**补缴/升档**，自己停的**点一下启用就开**。 不分开的表现是店主反复点那个对降级店无效的启用按钮。"
       required: 
         - "storeNo"
         - "name"
@@ -2843,6 +3075,257 @@ components:
         - "ratingCount"
         - "ownedTrafficRate"
       additionalProperties: false
+    CrossStoreRow: 
+      type: "object"
+      properties: 
+        storeNo: 
+          type: "string"
+          description: "门店号。点进去切门店时用它"
+        storeName: 
+          type: "string"
+          description: "门店名。列表里认店靠它，不要拿门店号显示"
+        isDefault: 
+          type: "boolean"
+          description: "是否默认店。**一个主体恰好一家**，界面上要标出来"
+        status: 
+          "$ref": "#/components/schemas/StoreStatus"
+          description: "ACTIVE 正常营业 / READONLY 已停用。停用的店仍在列表里 —— 看不见会被当成「店被删了」"
+        todayOrders: 
+          type: "number"
+          description: "今日订单数（自然日，按市场本地时区切分）"
+        todayGmvMinor: 
+          type: "number"
+          description: "今日成交额（最小货币单位）"
+        monthOrders: 
+          type: "number"
+          description: "本月订单数"
+        monthGmvMinor: 
+          type: "number"
+          description: "本月成交额（最小货币单位）"
+        toShip: 
+          type: "number"
+          description: "待发货单数（快递）"
+        toDeliver: 
+          type: "number"
+          description: "待自送单数（商家自送）"
+        toStock: 
+          type: "number"
+          description: "待备货单数（自提单已付款、货还没送到自提点）。按**门店**算"
+      required: 
+        - "storeNo"
+        - "storeName"
+        - "isDefault"
+        - "status"
+        - "todayOrders"
+        - "todayGmvMinor"
+        - "monthOrders"
+        - "monthGmvMinor"
+        - "toShip"
+        - "toDeliver"
+        - "toStock"
+      additionalProperties: false
+      description: "跨店总览的一行 —— 一家门店的今日 / 本月 / 三项待办（B-11.12.5）。\n\n<p>**没有单的门店也占一行（全零），不会从列表里消失**： 一家今天还没开张的店从总览里不见了，店主的第一反应是「我的店呢」。 零是一个答案，缺席不是。"
+    CrossStoreOverview: 
+      type: "object"
+      properties: 
+        currency: 
+          "$ref": "#/components/schemas/CurrencyCode"
+          description: "统计口径的币种。与 `/biz/dashboard/stats` 同一个字段"
+        stores: 
+          type: "array"
+          items: 
+            "$ref": "#/components/schemas/CrossStoreRow"
+          description: "按店并列。顺序与门店列表一致（默认店在前），端上不必自己排"
+      required: 
+        - "currency"
+        - "stores"
+      additionalProperties: false
+      description: "跨店总览（B-11.12.5）· `GET /biz/cross-store/overview`。\n\n<p>**只有门店维度的三项待办**：工作台上的 `toVerify`（待核销）与 `toPick`（待分拣） 后端刻意不给 —— 那两个数是**自提点**维度且不限商家（一个自提点承接多家商家的货， ADR-005）。摆进「门店」这一列，商家会读成「这家店的活」，点进去却是别人的货。\n\n<p>需要 `cross_store_stats` 能力位（PRO / CHAIN）。FREE 档访问会被后端以 `PLAN_CAPABILITY_REQUIRED`(70023) 拒绝 —— 端上要渲染**示例态 + 升档说明**， 不是空白页也不是红色报错。"
+    CrossStoreCompareRow: 
+      type: "object"
+      properties: 
+        storeNo: 
+          type: "string"
+          description: "门店号"
+        storeName: 
+          type: "string"
+          description: "门店名"
+        isDefault: 
+          type: "boolean"
+          description: "是否默认店"
+        status: 
+          "$ref": "#/components/schemas/StoreStatus"
+          description: "ACTIVE 正常营业 / READONLY 已停用"
+        orders: 
+          type: "number"
+          description: "窗口内订单数（不含已取消）"
+        gmvMinor: 
+          type: "number"
+          description: "窗口内成交额（最小货币单位）"
+        buyers: 
+          type: "number"
+          description: "窗口内下过单的买家数（去重）。复购率的分母"
+        repeatBuyers: 
+          type: "number"
+          description: "其中下过 ≥2 单的买家数"
+        repeatRate: 
+          type: "number"
+          description: "`repeatBuyers / buyers`，0–1。**分母为 0 时是 0**，一家还没开张的店显示 0%"
+        rating: 
+          type: "number"
+          description: "**这家店自己的**评分（V155，ADR-011：评价归门店）。\n\n⚠️ 与顶层的  {@link  CrossStoreCompare#rating  }  是两个数：那个是主体整体分 （C 端商家卡上显示的那个），这个是「楼下那家」的分。两个都要显示 —— 商家问「为什么我的店 4.9 而搜索里是 4.6」时，只有并排看得到才解释得通。"
+        ratingCount: 
+          type: "number"
+          description: "计入这家店评分的条数。**0 = 暂无评价**，按条数判空而不是按分值 —— 老评价没有门店归属，所以老店在第一条新评价到来之前也是 0。"
+        outOfStockSkus: 
+          type: "number"
+          description: "该店可用量（stock − locked）≤ 0 的 SKU 数。\n**只数已启用分店库存的 SKU** —— 一条店级行都没有的 SKU 走主体总量，不算这家店缺货。"
+      required: 
+        - "storeNo"
+        - "storeName"
+        - "isDefault"
+        - "status"
+        - "orders"
+        - "gmvMinor"
+        - "buyers"
+        - "repeatBuyers"
+        - "repeatRate"
+        - "rating"
+        - "ratingCount"
+        - "outOfStockSkus"
+      additionalProperties: false
+      description: "跨店对比的一行 —— 窗口内这家店的销售额 / 订单 / 复购 / 缺货（B-11.12.6）。\n\n<p>⚠️ **这里没有评分**，它在  {@link  CrossStoreCompare#rating  }  上，是主体级的。"
+    CrossStoreCompare: 
+      type: "object"
+      properties: 
+        days: 
+          type: "number"
+          description: "**实际生效**的窗口天数（后端已夹在 1–365）。回显它，端上才知道传 99999 被截成了 365"
+        currency: 
+          "$ref": "#/components/schemas/CurrencyCode"
+          description: "统计口径的币种"
+        rating: 
+          type: "number"
+          description: "**主体整体评分**（各店的合成，也是 C 端商家卡上显示的那个）。 每家店自己的分在  {@link  CrossStoreCompareRow#rating  }  上（V155 起）。\n\n【历史】V155 之前 `rvw_review` 只有 `entity_no` 没有 `store_no`， 门店维度的评分没有数据源，所以这个数只能放顶层。\n\n<p>渲染成一条「本店铺整体评分」的说明；对比表格里那一列用每行自己的  {@link  CrossStoreCompareRow#rating  } 。**别拿这个数去填表格列** —— 那样三家店会显示同一个数字，而这正是 V155 之前的样子。"
+        ratingCount: 
+          type: "number"
+          description: "计入评分的评价条数。0 = 还没人评过，显示「暂无评价」而不是 0 颗星"
+        stores: 
+          type: "array"
+          items: 
+            "$ref": "#/components/schemas/CrossStoreCompareRow"
+          description: "按店并列，顺序同门店列表"
+      required: 
+        - "days"
+        - "currency"
+        - "rating"
+        - "ratingCount"
+        - "stores"
+      additionalProperties: false
+      description: "跨店对比（B-11.12.6）· `GET /biz/cross-store/compare?days=30`。\n\n<p>门禁与  {@link  CrossStoreOverview }  相同（`cross_store_stats` 能力位）。"
+    MerchantPlan: 
+      type: "object"
+      properties: 
+        planCode: 
+          type: "string"
+          description: "档位码。**文案用 `planName`，不要按 code 自己映射** —— 运营改了名端上不会跟着变"
+        planName: 
+          type: "string"
+          description: "档位显示名（「成长版」）"
+        status: 
+          "$ref": "#/components/schemas/PlanStatus"
+          description: "ACTIVE 生效中 / GRACE 宽限期（**能力全保留**，7 天）/ EXPIRED 已过期并降级。\n\n<p>GRACE 要显示成「即将到期，请尽快续费」而**不是**「已失效」： 他的门店、子账号、跨店数据一样都没少，这时候说失效只会让他打客服电话。"
+        startAt: 
+          type: 
+            - "number"
+            - "null"
+          description: "订阅起始时间（毫秒）。null = 还没有过任何订阅"
+        expireAt: 
+          type: 
+            - "number"
+            - "null"
+          description: "到期时间（毫秒）。null = 不到期（免费档）"
+        storeQuota: 
+          type: "number"
+          description: "生效门店额度"
+        storeUsed: 
+          type: "number"
+          description: "已用门店数。**后端算，只数营业中的店** —— 端上自己数会与建店那道闸的口径分岔"
+        staffQuota: 
+          type: "number"
+          description: "生效子账号额度"
+        staffUsed: 
+          type: "number"
+          description: "已用子账号数（不含老板本人）"
+        crossStoreStats: 
+          type: "boolean"
+          description: "有没有跨店总览与对比"
+        trialUsed: 
+          type: "boolean"
+          description: "试用是否已用过。**一主体一次，永不回退**"
+        trialTier: 
+          type: 
+            - "string"
+            - "null"
+          description: "可试用的目标档位码；null = 现在不能试用（已用过 / 已经是付费档 / 平台没配试用）。\n\n<p>端上按它决定要不要显示「免费试用」按钮 —— 不要自己用 `planCode === 'FREE' && !trialUsed` 推：那会漏掉「平台把试用天数配成 0」这种情况。"
+        trialDays: 
+          type: 
+            - "number"
+            - "null"
+          description: "试用天数，配合 `trialTier` 显示「免费试用 14 天」"
+        suspendedStores: 
+          type: "array"
+          items: 
+            type: "string"
+          description: "因降级被压成只读的门店名。\n\n<p>**只含平台压的那几家**，商家自己停用的不在里面 —— 页面要写明是「哪几家」：只说「部分门店已停用」，他得自己一家家点开去找。"
+        tiers: 
+          type: "array"
+          items: 
+            "$ref": "#/components/schemas/PlanTier"
+          description: "三档对比，顺序即展示顺序（后端按 sort 排好）"
+      required: 
+        - "planCode"
+        - "planName"
+        - "status"
+        - "storeQuota"
+        - "storeUsed"
+        - "staffQuota"
+        - "staffUsed"
+        - "crossStoreStats"
+        - "trialUsed"
+        - "suspendedStores"
+        - "tiers"
+      additionalProperties: false
+      description: "我的增值包（B-11.13，`GET /biz/plan`）。\n\n<p>与运营端那份（`MerchantPlanRow`）刻意是两个类型：运营看的是「这家商家买了什么」， 商家看的是「我有什么、还差什么、能不能试」。挤成一个的结果是商家侧要接一堆 用不上的字段（授予方、降级时间、额度来源），而它们每一个都会被端上误读成给他看的。"
+    PlanTier: 
+      type: "object"
+      properties: 
+        planCode: 
+          type: "string"
+        name: 
+          type: "string"
+        storeQuota: 
+          type: "number"
+        staffQuota: 
+          type: "number"
+        crossStoreStats: 
+          type: "boolean"
+        trialDays: 
+          type: "number"
+          description: "0 = 这一档不提供试用"
+        current: 
+          type: "boolean"
+          description: "是不是他现在用的那一档"
+      required: 
+        - "planCode"
+        - "name"
+        - "storeQuota"
+        - "staffQuota"
+        - "crossStoreStats"
+        - "trialDays"
+        - "current"
+      additionalProperties: false
+      description: "档位对比的一行。"
     StoreProfile: 
       type: "object"
       properties: 
@@ -3090,12 +3573,8 @@ components:
         url: 
           type: "string"
           description: "扫码后进入的落地页地址，带 merchant_no 归因参数"
-        printUrl: 
-          type: "string"
-          description: "可打印版（贴纸尺寸），真实环境由后端生成小程序码"
       required: 
         - "url"
-        - "printUrl"
       additionalProperties: false
       description: "店铺码（C-ST-08 扫码进店的商家侧）"
     ShareKit: 
@@ -3246,15 +3725,72 @@ components:
         - "goodsNos"
       additionalProperties: false
       description: "新建/编辑活动的入参"
+    GroupPickupOrder: 
+      type: "object"
+      properties: 
+        subOrderNo: 
+          type: "string"
+          description: "子订单号（`SUB…`）—— 这条链路上的「一单」就是一张子订单"
+        buyerNickname: 
+          type: "string"
+        verifyCode: 
+          type: "string"
+          description: "核销码。**只有发起人看得到**，参团者看自己那一单即可"
+        status: 
+          "$ref": "#/components/schemas/OrderStatus"
+        items: 
+          type: "array"
+          items: 
+            type: "object"
+            properties: 
+              goodsNo: 
+                type: "string"
+              title: 
+                type: "string"
+              spec: 
+                type: "string"
+              qty: 
+                type: "number"
+            required: 
+              - "goodsNo"
+              - "title"
+              - "spec"
+              - "qty"
+            additionalProperties: false
+      required: 
+        - "subOrderNo"
+        - "buyerNickname"
+        - "verifyCode"
+        - "status"
+        - "items"
+      additionalProperties: false
+      description: "本团待取的一单（发起人视角，C-GB-06 邻里自提）。\n\n**不是 `Order`**。契约此前把这条链路的三个端点都声明成返回 `Order`， 而后端返回的一直是这个形状 —— 页面读 `o.orderNo` 拿到 undefined， 于是 `v-for` 的 key 全是 undefined，核销按钮点谁都一样。 发起人只需要「谁的、几件、核销码」，不需要整张订单。"
+    StoreFront: 
+      type: "object"
+      properties: 
+        announcement: 
+          type: "string"
+          description: "店铺公告：「今日到货」「今天有土鸡蛋」，店主自发（C-ST-04）"
+        openHours: 
+          type: "string"
+          description: "营业时间文案，店主自填"
+        address: 
+          type: "string"
+          description: "店铺地址，店主自填"
+      required: 
+        - "announcement"
+        - "openHours"
+        - "address"
+      additionalProperties: false
     StoreHome: 
       type: "object"
       properties: 
         merchant: 
-          "$ref": "#/components/schemas/Merchant"
+          "$ref": "#/components/schemas/MerchantBrief"
           description: "平台建档的商家主数据（名称/资质/评分），店主改不了"
         store: 
-          "$ref": "#/components/schemas/StoreProfile"
-          description: "店主自己维护的门面内容（公告/营业时间/地址）"
+          "$ref": "#/components/schemas/StoreFront"
+          description: "店主自己维护的门面内容"
         goods: 
           type: "array"
           items: 
@@ -3269,7 +3805,6 @@ components:
         - "goods"
         - "favorited"
       additionalProperties: false
-      description: "门店主页数据（C-ST-01）。 ⚠️ 这是**交易页不是介绍页**：登录用户第一屏是「我买过的」，不是店招 Banner。 粮油副食的复购路径必须压到三步 —— 打开 → 常买 → 下单（ADR-004 §3.3）。"
     FrequentItem: 
       type: "object"
       properties: 
@@ -3949,7 +4484,8 @@ paths:
                   msg: 
                     type: "string"
                   data: 
-                    "$ref": "#/components/schemas/void"
+                    description: "无返回体（data 恒为 null）"
+                    nullable: true
                 required: 
                   - "code"
                   - "msg"
@@ -4038,7 +4574,8 @@ paths:
                   msg: 
                     type: "string"
                   data: 
-                    "$ref": "#/components/schemas/void"
+                    description: "无返回体（data 恒为 null）"
+                    nullable: true
                 required: 
                   - "code"
                   - "msg"
@@ -4836,6 +5373,97 @@ paths:
                     type: "string"
                   data: 
                     "$ref": "#/components/schemas/CheckoutCapability"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/mp/invoice/apply": 
+    post: 
+      operationId: "applyInvoice"
+      summary: "申请开票"
+      tags: 
+        - "invoice"
+      security: 
+        - bearerAuth: []
+      parameters: []
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/InvoiceRequest"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/mp/invoice/mine": 
+    get: 
+      operationId: "myInvoices"
+      summary: "我的开票申请"
+      tags: 
+        - "invoice"
+      security: 
+        - bearerAuth: []
+      parameters: []
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "array"
+                    items: 
+                      "$ref": "#/components/schemas/InvoiceRequest"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/mp/invoice/order/{orderNo}": 
+    get: 
+      operationId: "invoiceOfOrder"
+      summary: "某单的开票状态"
+      tags: 
+        - "invoice"
+      security: 
+        - bearerAuth: []
+      parameters: 
+        - name: "orderNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/InvoiceRequest"
                 required: 
                   - "code"
                   - "msg"
@@ -6211,6 +6839,121 @@ paths:
                     type: "array"
                     items: 
                       "$ref": "#/components/schemas/Message"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/mp/message/unread-count": 
+    get: 
+      operationId: "unreadMessages"
+      summary: "未读数（角标用，只给一个数）"
+      tags: 
+        - "message"
+      security: 
+        - bearerAuth: []
+      parameters: []
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "number"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/mp/message/subscribe": 
+    post: 
+      operationId: "subscribeReport"
+      summary: "订阅消息授权上报（同意与拒绝都报：后端记额度 + 防反复弹窗）"
+      tags: 
+        - "message"
+      security: 
+        - bearerAuth: []
+      parameters: []
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    description: "无返回体（data 恒为 null）"
+                    nullable: true
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/mp/push-token": 
+    post: 
+      operationId: "registerPushToken"
+      summary: "绑定 App 推送设备（登录后）"
+      tags: 
+        - "push-token"
+      security: 
+        - bearerAuth: []
+      parameters: []
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    description: "无返回体（data 恒为 null）"
+                    nullable: true
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/mp/push-token/unregister": 
+    post: 
+      operationId: "unregisterPushToken"
+      summary: "解绑推送设备（登出前，共用设备换人必须解）"
+      tags: 
+        - "push-token"
+      security: 
+        - bearerAuth: []
+      parameters: []
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    description: "无返回体（data 恒为 null）"
+                    nullable: true
                 required: 
                   - "code"
                   - "msg"

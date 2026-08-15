@@ -1,0 +1,101 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="980" height="470" viewBox="0 0 980 470" role="img" font-family="system-ui,-apple-system,'PingFang SC',sans-serif">
+<title>一台 4 GB 机器上，JVM 方案与 native 方案的内存怎么分</title>
+<desc>应用与 MariaDB 同机时，native 省下的约 500 MB 最该去的地方是 InnoDB buffer pool，而不是理解成「少买一台机器」。应用是无状态的、内存需求是平的；数据库的内存需求随数据量涨，缓存命中率的边际收益高得多。但 CPU 的账是反的：native 没有 C2，同样 QPS 下 CPU 占用更高，而 2 核机器上先到瓶颈的正是 CPU。</desc>
+<defs>
+<marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+<path d="M2 1L8 5L2 9" fill="none" stroke="#7FB894" stroke-width="1.4" stroke-linecap="round"/></marker>
+<style>
+.n{font-size:12.5px;font-weight:600;fill:#161A21}
+.t{font-size:10.5px;fill:#5A6472}
+.b{font-size:11px;fill:#8A94A2;letter-spacing:.12em}
+.seg{stroke:#fff;stroke-width:1.5}
+.sl{font-size:10px;font-weight:600;fill:#fff}
+.sv{font-size:9.5px;fill:#fff;opacity:.88}
+.tag{font-size:9.5px;font-weight:600;fill:#5A6472}
+.ar{stroke:#7FB894;stroke-width:1.6;fill:none}
+.box{fill:#fff;stroke:#D8DEE6;stroke-width:1.2}
+.warn{fill:#FDF6EC;stroke:#E0B27A;stroke-width:1.6}
+.zt{font-size:10px;fill:#A6AEBB;letter-spacing:.1em}
+</style></defs>
+
+<text class="b" x="24" y="26">一台 4 GB 机器 · 应用与 MariaDB 同机 —— 两种方案的内存怎么分</text>
+
+<!-- JVM 方案 -->
+<text class="n" x="24" y="60">JDK 21 · JVM<tspan class="t" dx="10">-Xmx 1g，应用稳态 600–900 MB</tspan></text>
+
+<rect class="seg" x="24" y="70" width="202" height="46" fill="#5B7DB1"/>
+<text class="sl" x="36" y="92">应用 JVM</text>
+<text class="sv" x="36" y="107">~900 MB</text>
+
+<rect class="seg" x="226" y="70" width="230" height="46" fill="#7FB894"/>
+<text class="sl" x="238" y="92">InnoDB buffer pool</text>
+<text class="sv" x="238" y="107">1024 MB</text>
+
+<rect class="seg" x="456" y="70" width="90" height="46" fill="#A8C4A2"/>
+<text class="sv" x="466" y="92">DB 其它</text>
+<text class="sv" x="466" y="107">400</text>
+
+<rect class="seg" x="546" y="70" width="135" height="46" fill="#9AA5B4"/>
+<text class="sv" x="556" y="92">OS · 监控</text>
+<text class="sv" x="556" y="107">600</text>
+
+<rect class="seg" x="681" y="70" width="263" height="46" fill="#E4E8ED"/>
+<text class="sv" x="691" y="92" fill="#5A6472">余量</text>
+<text class="sv" x="691" y="107" fill="#5A6472">~1.1 GB</text>
+
+<!-- 迁移箭头 -->
+<path class="ar" marker-end="url(#ar)" d="M120 122 C120 148 300 142 300 172"/>
+<text class="tag" x="136" y="150" fill="#4E8C67">省下的 ~500 MB 该去这里 →</text>
+
+<!-- native 方案 -->
+<text class="n" x="24" y="174">GraalVM · native<tspan class="t" dx="10">同样负载，应用稳态 250–400 MB（经验值，未实测）</tspan></text>
+
+<rect class="seg" x="24" y="184" width="90" height="46" fill="#5B7DB1"/>
+<text class="sl" x="34" y="206">应用</text>
+<text class="sv" x="34" y="221">~400</text>
+
+<rect class="seg" x="114" y="184" width="345" height="46" fill="#7FB894"/>
+<text class="sl" x="126" y="206">InnoDB buffer pool</text>
+<text class="sv" x="126" y="221">1536 MB —— 全库热数据都能进缓存</text>
+
+<rect class="seg" x="459" y="184" width="90" height="46" fill="#A8C4A2"/>
+<text class="sv" x="469" y="206">DB 其它</text>
+<text class="sv" x="469" y="221">400</text>
+
+<rect class="seg" x="549" y="184" width="135" height="46" fill="#9AA5B4"/>
+<text class="sv" x="559" y="206">OS · 监控</text>
+<text class="sv" x="559" y="221">600</text>
+
+<rect class="seg" x="684" y="184" width="260" height="46" fill="#E4E8ED"/>
+<text class="sv" x="694" y="206" fill="#5A6472">余量</text>
+<text class="sv" x="694" y="221" fill="#5A6472">~1.1 GB</text>
+
+<text class="zt" x="24" y="248">0</text>
+<text class="zt" x="484" y="248" text-anchor="middle">2 GB</text>
+<text class="zt" x="944" y="248" text-anchor="end">4 GB</text>
+
+<!-- 结论三格 -->
+<text class="b" x="24" y="286">内存的账是这么算的，但 CPU 的账是反的</text>
+
+<rect class="box" x="24" y="300" width="298" height="86" rx="7"/>
+<text class="n" x="38" y="322">内存：native 净赚 ~500 MB</text>
+<text class="t" x="38" y="340">没有 metaspace（实测 94 MB）</text>
+<text class="t" x="38" y="356">没有 code cache（实测 47 MB）</text>
+<text class="t" x="38" y="372">没有 JIT 编译线程与其栈</text>
+
+<rect class="warn" x="334" y="300" width="298" height="86" rx="7"/>
+<text class="n" x="348" y="322">CPU：native 净亏 10–30%</text>
+<text class="t" x="348" y="340">没有 C2，同样 QPS 要更多 CPU</text>
+<text class="t" x="348" y="356">而 2 核机器上先到瓶颈的是 CPU，</text>
+<text class="t" x="348" y="372">不是内存 —— 方向反了</text>
+
+<rect class="box" x="644" y="300" width="298" height="86" rx="7"/>
+<text class="n" x="658" y="322">所以：看机型决定值不值</text>
+<text class="t" x="658" y="340">2C4G —— CPU 紧、内存松：不划算</text>
+<text class="t" x="658" y="356">4C8G —— CPU 有余量：内存是净赚</text>
+<text class="t" x="658" y="372">但 4C8G 本来也不缺那 500 MB</text>
+
+<rect class="warn" x="24" y="402" width="918" height="48" rx="7"/>
+<text class="n" x="38" y="424">⚠️ 还有一笔容易漏的账：native 单次编译要 8–16 GB 内存</text>
+<text class="t" x="38" y="441">比生产机本身还大 —— 不能在生产机上构建，必须有独立构建机或 CI。这是「省运行资源」要先付的固定成本。</text>
+</svg>

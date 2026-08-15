@@ -237,10 +237,14 @@ export const ENDPOINTS: Record<keyof ShopApi, EndpointDef> = {
     auth: true,
     summary: "绑定 App 推送设备（登录后）",
   },
+  // POST 而不是 DELETE：端上的 call() 只分 GET / POST 两条路（见 http.ts），
+  // DELETE 会被当成 POST 发出去，路径对而动词错，表现是「解绑没报错但没生效」。
+  //
+  // ⚠️ 注释必须在**属性外面**：生成器的正则是 `\{\s*method:`，
+  // 大括号与 method 之间夹一行注释，这个端点就**静默地不进 spec** ——
+  // 然后 api-align 报「前端调用了契约里没有的端点」，而端点明明就在这张表里。
+  // （同一个形状本轮在 ops-web 的 setSkuPresale 上踩过一次。）
   unregisterPushToken: {
-    // POST 而不是 DELETE：端上的 call() 只分 GET / POST 两条路
-    // （见 http.ts），DELETE 会被当成 POST 发出去，路径对而动词错，
-    // 表现是「解绑没报错但没生效」—— 那正是这个功能最不能出的错
     method: "POST",
     path: "/mp/push-token/unregister",
     auth: true,

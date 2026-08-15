@@ -56,9 +56,12 @@ public class OpsGoodsController {
          * 返回的是**全部商品** —— 审完一件，队列长度纹丝不动，
          * 而运营会以为是没保存成功，反复再审一遍。
          *
-         * merchantNo 传 null = 跨商家查，这正是平台审核要的口径。
+         * 走 auditQueue() 而不是 list(null, …, "AUDITING", …)：**两者在数据域上相反**。
+         * list 与 B 端商家商品列表共用，必须豁免（B 端会话是 SELF 维度，
+         * 而 prd_goods 只有 MERCHANT 锚点，接上就是 1=0）；
+         * 而这一条只有运营调，要接 —— 配了商家域的审核员只看自己负责那几家的待审商品。
          */
-        return merchantGoodsService.list(null, null, null, "AUDITING", page, size);
+        return merchantGoodsService.auditQueue(page, size);
     }
 
     /**
@@ -73,12 +76,40 @@ public class OpsGoodsController {
             @RequestParam(required = false) String categoryNo,
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String status,
+            @RequestParam(required = false) String storeNo,
             @RequestParam(defaultValue = "1") long page,
             @RequestParam(defaultValue = "20") long size) {
-        return merchantGoodsService.listForOps(merchantNo, categoryNo, keyword, status, page, size);
+        return merchantGoodsService.listForOps(merchantNo, categoryNo, keyword, status, storeNo, page, size);
+    }
+
+    /**
+     * 商品详情（P-3.2.2b）。审核抽屉与门店商品投影都从这里取全量：
+     * 三语文案、多市场价、SKU 矩阵、驳回原因。
+     */
+    @GetMapping("/ops/goods/{goodsNo}")
+    @PreAuthorize("@perm.can('" + Perms.PRODUCT_SKU_READ + "')")
+    public GoodsVO goodsDetail(@PathVariable String goodsNo) {
+        return merchantGoodsService.detailForOps(goodsNo);
+    }
+
+    /**
+     * 平台强制下架（P-3.2.3）= 撤销过审。原因必填 —— 它会出现在商家 B 端；
+     * 商家改后走既有的重新提审链路回来。
+     */
+    @PostMapping("/ops/goods/{goodsNo}/force-off")
+    @PreAuthorize("@perm.can('" + Perms.PRODUCT_SKU_AUDIT + "')")
+    public GoodsVO forceOff(@PathVariable String goodsNo, @RequestBody ForceOffReq req) {
+        var vo = merchantGoodsService.forceOff(goodsNo, req.reason());
+        // 不可逆的处置动作，critical 留痕（P-1 审计是平台权力的制衡）
+        auditLogPort.record("GOODS_FORCE_OFF", goodsNo, req.reason(), true);
+        return vo;
     }
 
     /** 审核请求。商品审核只用到前两个字段，进件审核的另两个字段在平台端那份上。 */
     public record AuditReq(Boolean approved, String reason) {
+    }
+
+    /** @param reason 必填。商家看得到它 —— 没有事实的处置在申诉时站不住 */
+    public record ForceOffReq(String reason) {
     }
 }
