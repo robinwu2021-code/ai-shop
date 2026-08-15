@@ -85,7 +85,7 @@ public class BizPickupController {
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.VERIFY + "')")
     @PostMapping("/biz/pickup/verify")
-    public VerifyResultVO verify(@RequestBody VerifyReq req) {
+    public VerifyResultVO verify(@jakarta.validation.Valid @RequestBody VerifyReq req) {
         return pickupService.verify(req.verifyCode(), Boolean.TRUE.equals(req.onBehalf()));
     }
 
@@ -127,7 +127,14 @@ public class BizPickupController {
     public record StoreQrcode(String merchantNo, String storeCode, String url, String printableHint) {
     }
 
-    public record VerifyReq(String verifyCode, Boolean onBehalf) {
+    /**
+     * @param verifyCode 自提码。**必填** —— 漏传时 null 会一路走到失败日志的插入，
+     *                   而 {@code ful_verify_log.verify_code} 是 NOT NULL 且无默认值，
+     *                   于是一个本该 400 的输入变成 500「系统开小差了」，
+     *                   把排查引向服务端故障（2026-08-15 e2e 实测）
+     */
+    public record VerifyReq(@jakarta.validation.constraints.NotBlank String verifyCode,
+                            Boolean onBehalf) {
     }
 
     public record VerifyBatchReq(List<String> verifyCodes) {

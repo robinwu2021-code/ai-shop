@@ -340,6 +340,7 @@ public class OrderServiceImpl implements OrderService {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
         requireFulfillmentSupported(cmd.fulfillment(), split);
+        requireReceiverWhenShipped(cmd, userNo);
 
         String orderNo = BizKey.next(BizKey.ORDER);
         long now = System.currentTimeMillis();
@@ -494,6 +495,12 @@ public class OrderServiceImpl implements OrderService {
             sub.setOrderNo(orderNo);
             sub.setUserNo(userNo);
             sub.setEntityNo(g.merchantNo);
+            /*
+             * 社区冗余进子单（V137）：数据域的锚点只能是**本表上的一列**，
+             * 而社区在主单上。不写这一句，接上数据域之后配了社区域的运营
+             * 打开订单页是整页空白 —— 见 OrdSubOrder#communityNo。
+             */
+            sub.setCommunityNo(order.getCommunityNo());
             /*
              * 双写门店（M2）：entity_no 是**结算键**（分账/积分/对账都按它），
              * store_no 是**履约键**（发货/自提/评价/门店报表按它）。
@@ -1121,6 +1128,35 @@ public class OrderServiceImpl implements OrderService {
      * <p>快照里履约方式为空的商品放行——那是存量数据，
      * 不能因为补了这道校验就把一批老商品变成不可下单。
      */
+    /** 送到人手上的两种履约方式 —— 它们必须有地址，自提不需要 */
+    private static final java.util.Set<String> SHIPPED_FULFILLMENTS =
+            java.util.Set.of("EXPRESS", "MERCHANT_DELIVERY");
+
+    /**
+     * 快递 / 自送必须有**能解析出来**的收货地址。
+     *
+     * <p>此前没有这道闸，后果是一张**发不出去的订单**能一路下成功、付成功：
+     * 商家侧订单详情的收货人是 null，界面上是「—」。系统全程没有任何异常，
+     * 要等商家准备发货时才发现，而那时钱已经收了。
+     * 实测：库里 55 张快递子单，有收货人的 0 张。
+     *
+     * <p><b>与下面那句「取不到不让下单失败」不矛盾</b>：那句说的是
+     * 「给了 addressId 但此刻查不出来」——那是容错，不该让已付款的单卡住；
+     * 这里挡的是「从头就没给过地址」，那是漏校验。两件事。
+     *
+     * <p>拦在**创建**这一步，不是支付后：付过钱再告诉他「地址没选」，
+     * 他要先退款才能重下。
+     */
+    private void requireReceiverWhenShipped(CreateOrderCommand cmd, String userNo) {
+        if (cmd.fulfillment() == null || !SHIPPED_FULFILLMENTS.contains(cmd.fulfillment())) {
+            return;
+        }
+        if (cmd.addressId() == null || cmd.addressId().isBlank()
+                || userPort.receiverOf(userNo, cmd.addressId()).isEmpty()) {
+            throw BizException.of(ErrorCode.RECEIVER_REQUIRED);
+        }
+    }
+
     private void requireFulfillmentSupported(String fulfillment, Split split) {
         if (fulfillment == null || fulfillment.isBlank()) {
             return;

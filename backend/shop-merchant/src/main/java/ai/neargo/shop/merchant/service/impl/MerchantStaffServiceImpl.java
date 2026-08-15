@@ -57,7 +57,9 @@ public class MerchantStaffServiceImpl implements MerchantStaffService {
     @Override
     public String loginByPhone(String phone, String code) {
         if (!otpStore.verifyAndConsume(phone, code)) {
-            throw BizException.of(ErrorCode.UNAUTHORIZED);
+            // 与 AuthServiceImpl.verifyOtp 同一个码：**同一件事在两条登录路上
+            // 不该有两种说法**（此前这条回 10401「未登录」，而他正在登录）
+            throw BizException.of(ErrorCode.OTP_INVALID);
         }
         /*
          * 验证码对了但不是员工 —— 报 403 而不是「账号不存在」。

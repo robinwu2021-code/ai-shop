@@ -218,7 +218,9 @@ public class AuthServiceImpl implements AuthService {
 
     private void verifyOtp(String phone, String code) {
         if (!otpStore.verifyAndConsume(phone, code)) {
-            throw BizException.of(ErrorCode.BAD_REQUEST);
+            // **不是 10400**：那句「请求参数有误」让用户去检查自己传了什么，
+            // 而他要做的只是再看一眼短信、或者重新要一个码
+            throw BizException.of(ErrorCode.OTP_INVALID);
         }
     }
 
