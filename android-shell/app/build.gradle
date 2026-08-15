@@ -1,0 +1,62 @@
+plugins { id "com.android.application" }
+
+android {
+    namespace "ai.neargo.shop.shell"
+    compileSdk 34
+
+    defaultConfig {
+        minSdk 24
+        targetSdk 34
+        versionCode 1
+        versionName "0.1.0"
+    }
+
+    // 两个端一套壳代码，靠 flavor 分开：
+    // **applicationId 必须不同**，否则装第二个会顶掉第一个 ——
+    // 而运营/商家/用户三种身份要能在同一台测试机上并存
+    flavorDimensions += "endpoint"
+    productFlavors {
+        consumer {
+            dimension "endpoint"
+            applicationId "ai.neargo.shop.c"
+            resValue "string", "app_name", "社区好物"
+        }
+        merchant {
+            dimension "endpoint"
+            applicationId "ai.neargo.shop.b"
+            resValue "string", "app_name", "邻里商家"
+        }
+    }
+
+    buildTypes {
+        /*
+         * debug 指向宿主机的 dev server（配合 `adb reverse`），**不是 assets 里的离线产物**。
+         * 理由见 MainActivity.ENTRY_RES：file:// 的 origin 是 null，后端 CORS 不认，
+         * 于是每个请求都被浏览器拦掉，页面渲染成一片空状态而不报错。
+         * 端口 5174 = b-app dev server（launch.json 里的 b-app-h5）。
+         */
+        debug {
+            applicationIdSuffix ""
+            resValue "string", "shell_entry", "http://localhost:5174"
+        }
+        // **不配 release 签名**：签名密钥不该进代码库（见 signing/keystore.properties.example）
+        release {
+            resValue "string", "shell_entry", "file:///android_asset/h5/index.html"
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    implementation "androidx.appcompat:appcompat:1.7.0"
+
+    // appcompat 1.7 会同时拉进 kotlin-stdlib 1.8.22 与 kotlin-stdlib-jdk8 1.6.21，
+    // 两者含同名类，D8 合并时报 Duplicate class。
+    // 1.8 起 jdk7/jdk8 的内容已并入主 stdlib，把它们对齐到同一版本即可 ——
+    // 不是 exclude，因为传递依赖里确实有代码引用它们
+    implementation platform("org.jetbrains.kotlin:kotlin-bom:1.8.22")
+}

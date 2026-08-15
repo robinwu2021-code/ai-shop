@@ -25,6 +25,19 @@ public interface MerchantStaffService {
     String loginByPhone(String phone, String code);
 
     /**
+     * 发一个员工会话，<b>不校验验证码</b> —— 调用方必须已经验过。
+     *
+     * <p>为统一登录而拆出来：`/biz/auth/login` 现在一个端点同时管老板与店员，
+     * 而验证码是<b>一次性</b>的。先走消费者登录（那一步消费掉验证码、顺带
+     * 「登录即注册」）、再回头判这个手机号是不是店员时，码已经用掉了 ——
+     * 两条路各验一次的写法在这里必然失败，且失败得像「验证码错了」。
+     *
+     * @return 该手机号的在职员工会话；不是员工则 {@link java.util.Optional#empty()}
+     *         —— 这里不抛 403，因为「不是员工」在统一登录里是正常分支（他是老板或新用户）
+     */
+    java.util.Optional<String> issueStaffSession(String phone);
+
+    /**
      * 这个 principal 的员工登录手机号；不是员工就返回空串。
      *
      * <p>{@code principal} 两条路径都认（{@code user_no} 或 {@code mch_account_no}），

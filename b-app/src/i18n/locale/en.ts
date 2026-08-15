@@ -22,10 +22,7 @@ export default {
   login: {
     otpSent: "Code sent",
     title: "Merchant sign-in",
-    asOwner: "I own the shop",
-    asStaff: "I work here",
-    staffHint: "Sign in with the number your boss added — no signup, no password.",
-    hint: "Signing in registers you. First time through, we take you straight to opening a shop.",
+    hint: "Signing in registers you. Owners are taken straight to opening a shop; staff sign in with the number their boss added.",
     phone: "Phone", phonePh: "11-digit number", code: "Code", codePh: "6-digit code",
     sendCode: "Send code", resend: "Resend in {s}s", mockCode: "Demo code is 1234",
     submit: "Sign in / register", phoneInvalid: "Enter an 11-digit phone number",

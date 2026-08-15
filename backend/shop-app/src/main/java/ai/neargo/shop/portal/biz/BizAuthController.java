@@ -62,21 +62,50 @@ public class BizAuthController {
                 null, null, req.agreed()));
         // 手机号直接从登录结果取：此刻 SecurityContext 里还没有人
         // （过滤器跑在发 token 之前），去查 userService.profile() 只会拿到空
-        return new MerchantLoginResp(result.token(),
-                merchantController.profileOf(result.user().userNo(), result.user().phone()));
+        String phone = result.user().phone();
+        BizMerchantController.MerchantProfileVO owner = merchantController.profileOf(result.user().userNo(), phone);
+        /*
+         * 查员工表要用**请求里那个原始号**，不能用登录结果里的 ——
+         * 后者是打过码的（`185****8359`，B12：完整号码永远不出 UserQueryPort）。
+         * 拿掩码去 `where login_phone = ?` 永远查不到，而表现是「店员登进去
+         * 变成了没开店的新用户」：不报错，只是他的店不见了。
+         */
+        String rawPhone = AuthService.GRANT_PHONE_OTP.equals(req.grantType())
+                ? nz(req.principal()) : "";
+
+        /*
+         * **登录页不问「你是老板还是店员」，后端按身份判**（2026-08-15 拍板）。
+         *
+         * 让人先选身份的问题不在于多点一下，而在于**他可能选错，而选错的表现
+         * 是「验证码错误」或「你不是店员」**——两句都在说谎，真正的原因是他点了另一个 tab。
+         * 店员这个身份还是老板给他的，他自己未必知道自己在系统里算什么。
+         *
+         * 判定顺序 **老板 → 店员 → 新用户**，理由是「自己的店优先」：
+         * 一个人可能既开着自己的店、又被邻居的店加成店员（`mch_account` 里
+         * 老板行的 `login_phone` 是 NULL、店员行才有值，所以这两行能同时存在）。
+         * 那种情况下他打开这个 App 十有八九是要管自己的店。
+         *
+         * 反过来，店员没有主体时 `merchantNo` 为空，走下面这一支拿到员工会话。
+         * 都不是就保持消费者会话——工作台会显示「还没有开店 / 去入驻」，
+         * 这正是「登录即注册」承诺的那一屏。
+         */
+        if (owner != null && !nz(owner.merchantNo()).isBlank()) {
+            return new MerchantLoginResp(result.token(), owner);
+        }
+        if (rawPhone.isBlank()) {
+            // 微信/Apple 登录拿不到手机号，判不了店员身份 —— 他要走这条路就得先补绑
+            return new MerchantLoginResp(result.token(), owner);
+        }
+        return merchantStaffService.issueStaffSession(rawPhone)
+                .map(token -> new MerchantLoginResp(token,
+                        merchantController.profileOf(principalOf(token), rawPhone)))
+                .orElseGet(() -> new MerchantLoginResp(result.token(), owner));
     }
 
-    /**
-     * 员工登录（App 路径）。手机号 + 验证码，**不需要 C 端账号**。
-     *
-     * <p>与 {@code /biz/auth/login} 并存而不是合并：那条走的是 C 端账号池
-     * （老板从 C 端发起入驻，他本来就是消费者），这条走员工自己的登录身份。
-     * 合成一条就要在里面判断「这个手机号是消费者还是店员」——
-     * 而同一个手机号完全可能两者都是。
-     *
-     * <p>验证码走 {@link #sendOtp} —— 与 C 端**同一个实现、各自的入口**，
-     * 与 {@code /mp/merchant/apply} 和 {@code /biz/merchant/apply} 是同一套做法。
-     */
+    private static String nz(String s) {
+        return s == null ? "" : s;
+    }
+
     /**
      * 发验证码（B 端入口）。
      *
@@ -97,6 +126,18 @@ public class BizAuthController {
     public record OtpReq(String phone) {
     }
 
+    /**
+     * 员工登录（**兼容端点**）。手机号 + 验证码，不需要 C 端账号。
+     *
+     * <p>登录页已经不再分「老板 / 店员」——{@code /biz/auth/login} 一条就够，
+     * 身份由后端按手机号判（见那里的注释）。这条留着只为两件事：
+     * 已发出去的旧版本 App，以及 `MerchantStaffService.loginByPhone` 的
+     * 「不是员工就 403」这条语义在测试里还有人依赖。
+     *
+     * <p><b>新代码不要调它。</b>它与统一登录的差别是：这条**只认员工**，
+     * 老板拿自己的手机号打它会得到 403，而那不是任何用户能理解的答复。
+     */
+    @Deprecated
     @PostMapping("/biz/auth/staff-login")
     public MerchantLoginResp staffLogin(@RequestBody StaffLoginReq req) {
         String token = merchantStaffService.loginByPhone(req.phone(), req.code());

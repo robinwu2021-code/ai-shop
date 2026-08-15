@@ -59,6 +59,17 @@ public class MerchantStaffServiceImpl implements MerchantStaffService {
         if (!otpStore.verifyAndConsume(phone, code)) {
             throw BizException.of(ErrorCode.UNAUTHORIZED);
         }
+        /*
+         * 验证码对了但不是员工 —— 报 403 而不是「账号不存在」。
+         * 后者会把「某个手机号是不是这家店的员工」变成一条可枚举的信息，
+         * 而验证码本来就是任何人都能给自己的手机号要的。
+         */
+        return issueStaffSession(phone)
+                .orElseThrow(() -> BizException.of(ErrorCode.FORBIDDEN));
+    }
+
+    @Override
+    public java.util.Optional<String> issueStaffSession(String phone) {
         MchAccount staff = DataScopeContext.executeWithoutScope(() ->
                 staffMapper.selectOne(Wrappers.<MchAccount>lambdaQuery()
                         .eq(MchAccount::getLoginPhone, phone)
@@ -68,19 +79,14 @@ public class MerchantStaffServiceImpl implements MerchantStaffService {
                         .orderByAsc(MchAccount::getId)
                         .last("limit 1")));
         if (staff == null) {
-            /*
-             * 验证码对了但不是员工 —— 报 403 而不是「账号不存在」。
-             * 后者会把「某个手机号是不是这家店的员工」变成一条可枚举的信息，
-             * 而验证码本来就是任何人都能给自己的手机号要的。
-             */
-            throw BizException.of(ErrorCode.FORBIDDEN);
+            return java.util.Optional.empty();
         }
         /*
          * principal 用 mch_account_no：这个员工可能**根本没有 C 端账号**。
          * BizIdentityResolver 两条路径都认（user_no 或 mch_account_no）。
          */
-        return tokenStore.issue(TokenStore.SessionData.of(
-                LoginUser.consumer(staff.getMchAccountNo(), "")));
+        return java.util.Optional.of(tokenStore.issue(TokenStore.SessionData.of(
+                LoginUser.consumer(staff.getMchAccountNo(), ""))));
     }
 
     @Override
