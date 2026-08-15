@@ -118,7 +118,13 @@ public class MerchantRoleServiceImpl implements MerchantRoleService {
         }
         Set<String> codes = Set.copyOf(perms);
         if (codes.contains(BizPerms.STORE_ADMIN) || codes.contains("*")) {
-            throw BizException.of(ErrorCode.BIZ_ROLE_FORBIDDEN);
+            /*
+             * **不是 70006**。70006 的文案是「你在这家店的角色没有——让店主给你加个角色」，
+             * 而发这个请求的人就是店主，他有权建角色 —— 被拒的是那个码本身。
+             * 而且 70006 的文案带 `{0}`（缺的那个权限名），这里没有参数可传，
+             * 于是界面上直接显示占位符 `{0}`（2026-08-15 e2e 实测到）。
+             */
+            throw BizException.of(ErrorCode.ROLE_PERM_NOT_ASSIGNABLE);
         }
         if (!BizPerms.assignableCodes().containsAll(codes)) {
             // 认不出的码：手滑写错存进去不会报错，只会让那个角色少一样能力

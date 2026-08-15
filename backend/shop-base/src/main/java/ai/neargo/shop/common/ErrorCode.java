@@ -310,6 +310,23 @@ public enum ErrorCode {
      * （2026-08-15 e2e 实测：库里 55 张快递单，有收货人的 0 张）。
      */
     RECEIVER_REQUIRED(70014, "err.trade.receiver_required"),
+    /*
+     * 这个权限码**不能授给自定义角色**（目前只有 `biz:store:admin` 与裸 `*`）。
+     *
+     * **与 70006 分开**：70006 说的是「你的角色不够」，而这里请求的人是老板，
+     * 他有权建角色 —— 被拒的是那个码本身。共用一个码的表现是
+     * 「店主被告知『让店主给你加个角色』」，而他就是店主。
+     */
+    ROLE_PERM_NOT_ASSIGNABLE(70015, "err.biz.role_perm_not_assignable"),
+    /*
+     * 快递 / 自送单缺收货地址。**单独一个码**：端上要把人送到地址簿去，
+     * 而通用的「请求参数有误」只会让他在结算页上反复点提交。
+     *
+     * 这条闸此前不存在 —— 于是不带 addressId 的快递单能一路下成功，
+     * 商家侧看到「收货人：—」，货发不出去，而全程没有任何异常
+     * （2026-08-15 e2e 实测：库里 55 张快递单，有收货人的 0 张）。
+     */
+    RECEIVER_REQUIRED(70014, "err.trade.receiver_required"),
     private final int code;
     private final String msgKey;
 
