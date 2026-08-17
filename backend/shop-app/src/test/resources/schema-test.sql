@@ -2284,6 +2284,7 @@ CREATE TABLE IF NOT EXISTS notify_channel
     priority INT(11) NOT NULL DEFAULT 100,
     cred_ref VARCHAR(64) DEFAULT NULL,
     config_json VARCHAR(1024) NOT NULL DEFAULT '{}',
+    secret_cipher VARCHAR(2048) DEFAULT NULL,
     tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
     created_at DATETIME NOT NULL,
     created_by VARCHAR(64) DEFAULT NULL,

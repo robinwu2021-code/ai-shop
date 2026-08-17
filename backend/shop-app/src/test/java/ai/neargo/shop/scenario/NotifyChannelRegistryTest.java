@@ -45,6 +45,10 @@ class NotifyChannelRegistryTest {
     @DisplayName("★★★ 状态读时派生：测试环境未配密钥 → 平台通道走桩(STUB)，INAPP 就绪(READY)")
     void statusDerivedFromEnvAndSwitch() {
         for (NotifyChannel ch : registry.list()) {
+            // 只看种子登记的平台/测试渠道；商家渠道(MERCHANT)由 MerchantChannelTest 造，另有规则
+            if (NotifyChannel.SCOPE_MERCHANT.equals(ch.getScope())) {
+                continue;
+            }
             String status = registry.statusOf(ch);
             if (NotifyChannel.SCOPE_TEST.equals(ch.getScope())) {
                 assertThat(status).as("测试接入恒 STUB").isEqualTo(NotifyChannel.STATUS_STUB);

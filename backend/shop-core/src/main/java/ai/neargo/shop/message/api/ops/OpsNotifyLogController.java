@@ -33,6 +33,7 @@ public class OpsNotifyLogController {
     private final ai.neargo.shop.message.MessageService messageService;
     private final ai.neargo.shop.message.notify.NotifyChannelService channelService;
     private final ai.neargo.shop.message.notify.NotifyChannelRegistry channelRegistry;
+    private final ai.neargo.shop.message.notify.MerchantChannelService merchantChannelService;
     private final CaptchaService captchaService;
     private final AuditLogPort auditLogPort;
 
@@ -40,12 +41,14 @@ public class OpsNotifyLogController {
                                   ai.neargo.shop.message.MessageService messageService,
                                   ai.neargo.shop.message.notify.NotifyChannelService channelService,
                                   ai.neargo.shop.message.notify.NotifyChannelRegistry channelRegistry,
+                                  ai.neargo.shop.message.notify.MerchantChannelService merchantChannelService,
                                   CaptchaService captchaService,
                                   AuditLogPort auditLogPort) {
         this.notifyLogService = notifyLogService;
         this.messageService = messageService;
         this.channelService = channelService;
         this.channelRegistry = channelRegistry;
+        this.merchantChannelService = merchantChannelService;
         this.captchaService = captchaService;
         this.auditLogPort = auditLogPort;
     }
@@ -74,6 +77,32 @@ public class OpsNotifyLogController {
         var ch = channelRegistry.setEnabled(channelNo, on, SecurityUtils.currentUserNo());
         auditLogPort.record("NOTIFY_CHANNEL", channelNo, on ? "启用" : "停用");
         return NotifyChannelVO.of(ch, channelRegistry.statusOf(ch));
+    }
+
+    /**
+     * 外部接入（N5）：平台代商家配置其自带渠道。密钥经加密落库、**响应体永不含明文**
+     * （NotifyChannelVO 就没有 secret 字段）。secret 为空表示只改非密项、不动已存密钥。
+     */
+    @GetMapping("/ops/notify-channels/merchant")
+    @PreAuthorize("@perm.can('" + Perms.MESSAGE_TEMPLATE_READ + "')")
+    public java.util.List<NotifyChannelVO> merchantChannels(@RequestParam String ownerNo) {
+        return merchantChannelService.listForOwner(ownerNo).stream()
+                .map(ch -> NotifyChannelVO.of(ch, channelRegistry.statusOf(ch))).toList();
+    }
+
+    @PostMapping("/ops/notify-channels/merchant")
+    @PreAuthorize("@perm.can('" + Perms.MESSAGE_TEMPLATE_UPDATE + "')")
+    public NotifyChannelVO saveMerchantChannel(@RequestBody MerchantChannelReq req) {
+        var ch = merchantChannelService.upsert(req.ownerNo(), req.channelType(), req.provider(),
+                req.configJson(), req.secret(), SecurityUtils.currentUserNo());
+        auditLogPort.record("NOTIFY_MERCHANT_CHANNEL", ch.getChannelNo(),
+                "配置商家渠道 " + req.channelType() + "/" + req.provider());
+        return NotifyChannelVO.of(ch, channelRegistry.statusOf(ch));
+    }
+
+    /** @param secret 商家凭据明文；空=只改非密项不动密钥。**请求进、密文存，永不回传** */
+    public record MerchantChannelReq(String ownerNo, String channelType, String provider,
+                                     String configJson, String secret) {
     }
 
     /**

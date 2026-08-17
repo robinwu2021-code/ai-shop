@@ -57,4 +57,10 @@ public class NotifyChannel extends BaseEntity {
     private Integer priority;
     private String credRef;
     private String configJson;
+
+    /**
+     * 商家渠道凭据密文（N5，AES-256-GCM，见 NotifyCredCipher）。
+     * <b>仅 scope=MERCHANT 有值，明文永不落此列、也永不回前端</b>；平台/测试接入为空。
+     */
+    private String secretCipher;
 }

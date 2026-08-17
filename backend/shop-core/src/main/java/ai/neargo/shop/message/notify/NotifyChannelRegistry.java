@@ -67,6 +67,11 @@ public class NotifyChannelRegistry {
         if (!Boolean.TRUE.equals(ch.getEnabled())) {
             return NotifyChannel.STATUS_DISABLED;
         }
+        // 商家自带渠道（外部接入）：凭据是它自己的加密密文，不看平台 env、不走桩
+        if (NotifyChannel.SCOPE_MERCHANT.equals(ch.getScope())) {
+            boolean hasSecret = ch.getSecretCipher() != null && !ch.getSecretCipher().isBlank();
+            return hasSecret ? NotifyChannel.STATUS_READY : NotifyChannel.STATUS_UNCONFIGURED;
+        }
         if (channelService.isStub(ch.getChannelType(), ch.getProvider())) {
             return NotifyChannel.STATUS_STUB;
         }

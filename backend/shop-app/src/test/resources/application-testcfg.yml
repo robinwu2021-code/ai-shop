@@ -11,6 +11,9 @@ spring:
 shop:
   auth:
     token-store: memory
+  notify:
+    # 商家渠道凭据加密密钥（AES-256，N5）。测试固定值；生产走 SHOP_NOTIFY_CRED_KEY。
+    cred-key: bmVhcmdvLW5vdGlmeS10ZXN0LWtleS0zMmJ5dGVzISE=
   after-sale:
     # 显式设阈值，让用例的「命中/不命中」一眼可读，不依赖生产缺省值
     instant-threshold-minor: 5000
