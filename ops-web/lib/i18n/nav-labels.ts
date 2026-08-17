@@ -99,6 +99,7 @@ const OVERLAY: Record<string, Record<string, string>> = {
   "App 推送": { en: "App push" },
   站内信模板: { en: "In-app templates" },
   发送记录: { en: "Send log" },
+  营销广播: { en: "Marketing broadcast" },
   客服工单与代客留痕: { en: "Support tickets" },
   帮助中心维护: { en: "Help center" },
 

@@ -230,6 +230,34 @@ export interface NotifyChannelRow {
   locked: boolean;
 }
 
+/**
+ * 平台营销广播推送任务（触达推送中台 N6）。运营主动发起的群发：
+ * 圈人群 → 预估触达 → 定时下发。与事件驱动触达（发给用户的必达通知）分开。
+ */
+export interface NotifyPushTask {
+  /** 任务号 */
+  taskNo: string;
+  /** 任务名（运营自己看的） */
+  name: string;
+  /** 人群 ALL_APP_USER（消费者）/ ALL_STAFF（商家员工） */
+  audienceType: string;
+  /** 下发通道，一期仅 PUSH */
+  channel: string;
+  title: string;
+  body: string;
+  /** 点开落点，可空 */
+  link?: string | null;
+  /** 定时下发时刻 ISO；空=尽快发 */
+  scheduledAt?: string | null;
+  /** QUEUED / RUNNING / DONE / CANCELLED */
+  status: string;
+  /** 创建时预估触达人数 */
+  estimatedCount: number;
+  /** 实际发出条数 */
+  sentCount: number;
+  finishedAt?: string | null;
+}
+
 export interface NotifyLog {
   notifyNo: string;
   channel: NotifyChannel;

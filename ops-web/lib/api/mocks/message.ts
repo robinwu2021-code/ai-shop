@@ -1,6 +1,6 @@
 // 覆盖范围：消息触达与客服（P-14）。
 import * as db from "@/lib/mock/db";
-import { TICKET_TRANSITIONS, type FaqEntry, type NotifyChannelRow, type NotifyLog, type Ticket } from "@/lib/types";
+import { TICKET_TRANSITIONS, type FaqEntry, type NotifyChannelRow, type NotifyLog, type NotifyPushTask, type Ticket } from "@/lib/types";
 import type { MessageApi } from "../contracts/message";
 import { fail, notFound } from "@/lib/biz-error";
 import { wait } from "./_wait";
@@ -16,6 +16,13 @@ const channels: NotifyChannelRow[] = [
   { channelNo: "NCH-PUSH-APNS", channelType: "PUSH", provider: "APNS", scope: "PLATFORM", ownerNo: "", enabled: true, status: "STUB", priority: 100, credRef: "shop.push.apns", configJson: "{}", locked: false },
   { channelNo: "NCH-INAPP", channelType: "INAPP", provider: "INTERNAL", scope: "PLATFORM", ownerNo: "", enabled: true, status: "READY", priority: 100, credRef: null, configJson: "{}", locked: true },
   { channelNo: "NCH-PUSH-GETUI-TEST", channelType: "PUSH", provider: "GETUI", scope: "TEST", ownerNo: "", enabled: true, status: "STUB", priority: 100, credRef: null, configJson: "{}", locked: false },
+];
+
+// 营销广播 mock 状态。建/取消就地改。
+const pushTasks: NotifyPushTask[] = [
+  { taskNo: "NPT-DEMO-1", name: "双十一预热", audienceType: "ALL_APP_USER", channel: "PUSH",
+    title: "秒杀来了", body: "点进来看看今天的秒杀", link: "/pages/activity/1111",
+    scheduledAt: null, status: "DONE", estimatedCount: 5230, sentCount: 5180, finishedAt: null },
 ];
 
 // 铃铛收件箱的 mock 状态。发给运营的待办，与 NotifyLog（发给用户的留痕）是两回事
@@ -116,6 +123,29 @@ export const messageMock: MessageApi = {
     ch.enabled = enabled;
     ch.status = enabled ? (ch.channelType === "INAPP" ? "READY" : "STUB") : "DISABLED";
     return wait(ch, 300);
+  },
+
+  // 营销广播（N6）。mock 下预估按人群给个固定数；建/取消就地改。
+  listPushTasks: (q = {}) => wait(db.paginate(
+    pushTasks.filter((t) => !q.status || t.status === q.status), q.page, q.size), 300),
+  estimatePushTask: (audienceType) =>
+    wait({ audienceType, count: audienceType === "ALL_STAFF" ? 128 : 5230 }, 200),
+  createPushTask: (v) => {
+    const t: NotifyPushTask = {
+      taskNo: "NPT" + Date.now(), name: v.name, audienceType: v.audienceType,
+      channel: "PUSH", title: v.title, body: v.body, link: v.link ?? null,
+      scheduledAt: v.scheduledAt ?? null, status: "QUEUED",
+      estimatedCount: v.audienceType === "ALL_STAFF" ? 128 : 5230, sentCount: 0, finishedAt: null,
+    };
+    pushTasks.unshift(t);
+    return wait(t, 400);
+  },
+  cancelPushTask: (taskNo) => {
+    const t = pushTasks.find((x) => x.taskNo === taskNo);
+    if (!t) return notFound("广播任务", "Broadcast task", taskNo);
+    if (t.status !== "QUEUED") return fail("只有待发的广播可以取消", "Only queued broadcasts can be cancelled");
+    t.status = "CANCELLED";
+    return wait(t, 300);
   },
 
   getWxTemplates: () => wait({ orderArrived: "STUB_TPL_ORDER_ARRIVED",

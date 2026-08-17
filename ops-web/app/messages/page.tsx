@@ -10,6 +10,7 @@ import { api } from "@/lib/api";
 import { fill, useCopy } from "@/lib/use-copy";
 import { MESSAGES_COPY } from "./copy";
 import { NotifyLogTab } from "./notify-log-tab";
+import { BroadcastTab } from "./broadcast-tab";
 import { ChannelTab } from "./channel-tab";
 import { ChannelOverviewTab } from "./channel-overview-tab";
 import { TestSendDrawer } from "./test-send-drawer";
@@ -47,7 +48,7 @@ type Copy = (typeof MESSAGES_COPY)["zh"];
  * 通道那个叫 "apppush" —— 两个 push 并存迟早被人当成一回事。
  */
 const TAB_KEYS = ["overview", "sms", "mail", "wxsub", "apppush", "inapp",
-                  "tickets", "faq", "notifyLog"] as const;
+                  "tickets", "faq", "notifyLog", "broadcast"] as const;
 
 export default function MessagesPage() {
   return <Suspense fallback={null}><MessagesInner /></Suspense>;
@@ -297,6 +298,8 @@ function MessagesInner() {
       {tab === "notifyLog" && (
         <NotifyLogTab c={c} canWrite={allow("message:template:update")} />
       )}
+
+      {tab === "broadcast" && <BroadcastTab c={c} />}
 
       <TestSendDrawer c={c} channel="INAPP" open={inappTestOpen}
                       onOpenChange={setInappTestOpen} onSent={() => undefined} />

@@ -12,6 +12,10 @@ export const messageHttp: MessageApi = {
   listChannelRegistry: () => client.get("/ops/notify-channels/registry"),
   setChannelEnabled: (channelNo, enabled) =>
     client.post(`/ops/notify-channels/registry/${channelNo}/enabled`, { enabled }),
+  listPushTasks: (q) => client.get("/ops/push-tasks", q),
+  estimatePushTask: (audienceType) => client.get("/ops/push-tasks/estimate", { audienceType }),
+  createPushTask: (v) => client.post("/ops/push-tasks", v),
+  cancelPushTask: (taskNo) => client.post(`/ops/push-tasks/${taskNo}/cancel`),
   getWxTemplates: () => client.get("/ops/notify-channels/wx-templates"),
   saveWxTemplates: (v) => client.post("/ops/notify-channels/wx-templates", v),
   testSendInApp: (v) => client.post("/ops/notify-logs/test-inapp", v),

@@ -1,5 +1,5 @@
 // 覆盖范围：消息触达（P-14.1）与客服（P-14.2）。
-import type { Captcha, FaqEntry, InAppLog, InboxMessage, MsgTemplate, NotifyChannel, NotifyChannelHealth, NotifyChannelRow, NotifyLog, NotifyQuota, Page, Ticket, WxTemplates } from "@/lib/types";
+import type { Captcha, FaqEntry, InAppLog, InboxMessage, MsgTemplate, NotifyChannel, NotifyChannelHealth, NotifyChannelRow, NotifyLog, NotifyPushTask, NotifyQuota, Page, Ticket, WxTemplates } from "@/lib/types";
 import type { PageQ, TicketQ } from "../query";
 
 export interface MessageApi {
@@ -31,6 +31,19 @@ export interface MessageApi {
   listChannelRegistry(): Promise<NotifyChannelRow[]>;
   /** 软启停某条渠道（N2）。INAPP 后端拒关（站内信是事实记录）。 */
   setChannelEnabled(channelNo: string, enabled: boolean): Promise<NotifyChannelRow>;
+
+  /** 营销广播任务列表（N6）。`status` 为空表示不筛。 */
+  listPushTasks(q?: PageQ & { status?: string }): Promise<Page<NotifyPushTask>>;
+  /** 预估触达：**建任务前**先看某人群当下覆盖多少人（N6b）。 */
+  estimatePushTask(audienceType: string): Promise<{ audienceType: string; count: number }>;
+  /** 新建广播（N6）。创建时后端即预估触达并落 QUEUED。 */
+  createPushTask(v: { name: string; audienceType: string; title: string; body: string;
+    /** 点开落点，可空 */
+    link?: string;
+    /** 定时下发 ISO 本地时刻；空=尽快发 */
+    scheduledAt?: string }): Promise<NotifyPushTask>;
+  /** 取消广播（仅 QUEUED 可取消）。 */
+  cancelPushTask(taskNo: string): Promise<NotifyPushTask>;
   getWxTemplates(): Promise<WxTemplates>;
   /**
    * 保存微信模板号。**空值 = 清掉覆盖回落环境变量**，不是「设成空」。
