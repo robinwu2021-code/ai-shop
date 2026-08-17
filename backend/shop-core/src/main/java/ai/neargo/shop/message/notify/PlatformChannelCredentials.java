@@ -36,9 +36,11 @@ public class PlatformChannelCredentials {
      * @param stubDefault     桩开关缺省值（本地/测试默认走桩）
      * @param providerRequired 这个供应商是不是平台**必需**的：SMS/MAIL/WXSUB/个推 是；
      *                        FCM/APNs 是可选供应商（个推已覆盖国内+透传 APNs），缺配不代表通道坏
+     * @param secretKeys      **商家自带渠道**时，其凭证 JSON 必须含的字段名（外部接入用，平台侧走 env）
      */
     public record ChannelSpec(String channelType, String provider, String stubProp,
-                              boolean stubDefault, boolean providerRequired, List<Cred> creds) {
+                              boolean stubDefault, boolean providerRequired,
+                              List<Cred> creds, List<String> secretKeys) {
     }
 
     /** 声明式规格表。加供应商 = 在这里加一条，health/credsReady 自动跟上。 */
@@ -48,34 +50,40 @@ public class PlatformChannelCredentials {
                     new Cred("ALI_SMS_AK", "shop.sms.ali.access-key-id", true),
                     new Cred("ALI_SMS_SK", "shop.sms.ali.access-key-secret", true),
                     new Cred("ALI_SMS_SIGN", "shop.sms.ali.sign", false),
-                    new Cred("ALI_SMS_TPL_OTP", "shop.sms.ali.templates.otp", false))),
+                    new Cred("ALI_SMS_TPL_OTP", "shop.sms.ali.templates.otp", false)),
+                    List.of("accessKeyId", "accessKeySecret", "sign")),
             new ChannelSpec(NotifyChannel.TYPE_MAIL, NotifyChannel.PROV_SMTP,
                     "shop.mail.stub", true, true, List.of(
                     new Cred("MAIL_USERNAME", "shop.mail.username", true),
                     new Cred("MAIL_PASSWORD", "shop.mail.password", true),
-                    new Cred("MAIL_FROM", "shop.mail.from", false))),
+                    new Cred("MAIL_FROM", "shop.mail.from", false)),
+                    List.of("username", "password", "from")),
             new ChannelSpec(NotifyChannel.TYPE_WXSUB, NotifyChannel.PROV_WECHAT,
                     "shop.wx.subscribe.stub", true, true, List.of(
                     new Cred("WX_APPID", "shop.wx.appid", false),
                     new Cred("WX_SECRET", "shop.wx.secret", true),
                     new Cred("WX_TPL_ORDER_ARRIVED", "shop.wx.templates.order-arrived", false),
-                    new Cred("WX_TPL_REFUNDED", "shop.wx.templates.refunded", false))),
+                    new Cred("WX_TPL_REFUNDED", "shop.wx.templates.refunded", false)),
+                    List.of("appId", "secret")),
             new ChannelSpec(NotifyChannel.TYPE_PUSH, NotifyChannel.PROV_GETUI,
                     "shop.push.stub", true, true, List.of(
                     new Cred("GETUI_APP_ID", "shop.push.getui.app-id", false),
                     new Cred("GETUI_APP_KEY", "shop.push.getui.app-key", true),
-                    new Cred("GETUI_MASTER_SECRET", "shop.push.getui.master-secret", true))),
+                    new Cred("GETUI_MASTER_SECRET", "shop.push.getui.master-secret", true)),
+                    List.of("appId", "appKey", "masterSecret")),
             new ChannelSpec(NotifyChannel.TYPE_PUSH, NotifyChannel.PROV_FCM,
                     "shop.push.fcm.stub", true, false, List.of(
                     new Cred("FCM_PROJECT_ID", "shop.push.fcm.project-id", false),
                     new Cred("FCM_CLIENT_EMAIL", "shop.push.fcm.client-email", false),
-                    new Cred("FCM_PRIVATE_KEY", "shop.push.fcm.private-key", true))),
+                    new Cred("FCM_PRIVATE_KEY", "shop.push.fcm.private-key", true)),
+                    List.of("projectId", "clientEmail", "privateKey")),
             new ChannelSpec(NotifyChannel.TYPE_PUSH, NotifyChannel.PROV_APNS,
                     "shop.push.apns.stub", true, false, List.of(
                     new Cred("APNS_TEAM_ID", "shop.push.apns.team-id", false),
                     new Cred("APNS_KEY_ID", "shop.push.apns.key-id", false),
                     new Cred("APNS_PRIVATE_KEY", "shop.push.apns.private-key", true),
-                    new Cred("APNS_TOPIC", "shop.push.apns.topic", false))));
+                    new Cred("APNS_TOPIC", "shop.push.apns.topic", false)),
+                    List.of("teamId", "keyId", "privateKey", "topic")));
 
     private static final Map<String, ChannelSpec> BY_KEY = SPECS.stream()
             .collect(Collectors.toMap(s -> key(s.channelType(), s.provider()), Function.identity()));
@@ -139,6 +147,15 @@ public class PlatformChannelCredentials {
         return s.creds().stream()
                 .map(c -> new Credential(c.envVar(), present(c.propKey()), s.providerRequired()))
                 .toList();
+    }
+
+    /**
+     * **商家自带渠道**的凭证 JSON 必须含哪些字段（外部接入）。未知供应商返回空 = 不校验。
+     * 与平台侧 env 凭证同出一份规格，商家配错在保存时就拦下，不留到发送那一刻才炸。
+     */
+    public List<String> requiredSecretKeys(String channelType, String provider) {
+        ChannelSpec s = spec(channelType, provider);
+        return s == null ? List.of() : s.secretKeys();
     }
 
     /** 非密属性的值（供运营核对，如 endpoint/sign/appId/topic）。密钥项永不经此回传。 */

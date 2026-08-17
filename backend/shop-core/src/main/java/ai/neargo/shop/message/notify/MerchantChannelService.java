@@ -23,10 +23,16 @@ public class MerchantChannelService {
 
     private final NotifyChannelMapper mapper;
     private final NotifyCredCipher cipher;
+    private final PlatformChannelCredentials creds;
+    private final tools.jackson.databind.ObjectMapper json;
 
-    public MerchantChannelService(NotifyChannelMapper mapper, NotifyCredCipher cipher) {
+    public MerchantChannelService(NotifyChannelMapper mapper, NotifyCredCipher cipher,
+                                  PlatformChannelCredentials creds,
+                                  tools.jackson.databind.ObjectMapper json) {
         this.mapper = mapper;
         this.cipher = cipher;
+        this.creds = creds;
+        this.json = json;
     }
 
     /**
@@ -45,6 +51,11 @@ public class MerchantChannelService {
         boolean hasSecret = secretPlain != null && !secretPlain.isBlank();
         if (hasSecret && !cipher.configured()) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        // 商家凭证 JSON 必须含该供应商所需字段（与平台侧同一份规格）—— 配错在这里拦，
+        // 不留到发送那一刻才发现「少了 masterSecret」
+        if (hasSecret) {
+            validateSecret(channelType, provider, secretPlain);
         }
         return DataScopeContext.executeWithoutScope(() -> {
             NotifyChannel ch = mapper.selectOne(Wrappers.<NotifyChannel>lambdaQuery()
@@ -75,6 +86,29 @@ public class MerchantChannelService {
             }
             return ch;
         });
+    }
+
+    /**
+     * 校验商家凭证 JSON：能解析，且含该供应商所需的全部字段（非空）。缺字段直接拒 ——
+     * 用与平台侧同一份规格（{@link PlatformChannelCredentials#requiredSecretKeys}），两边不会分叉。
+     */
+    private void validateSecret(String channelType, String provider, String secretPlain) {
+        List<String> required = creds.requiredSecretKeys(channelType, provider);
+        if (required.isEmpty()) {
+            return; // 未知供应商不强校验（也拦不出什么）
+        }
+        tools.jackson.databind.JsonNode node;
+        try {
+            node = json.readTree(secretPlain);
+        } catch (RuntimeException e) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        for (String key : required) {
+            tools.jackson.databind.JsonNode v = node.get(key);
+            if (v == null || v.asString() == null || v.asString().isBlank()) {
+                throw BizException.of(ErrorCode.BAD_REQUEST);
+            }
+        }
     }
 
     /** 商家自己的渠道列表。<b>调用方必须映射成不含 secret_cipher 的 VO</b>再下发。 */

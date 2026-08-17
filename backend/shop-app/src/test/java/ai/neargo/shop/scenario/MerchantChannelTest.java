@@ -27,7 +27,9 @@ class MerchantChannelTest {
     private NotifyChannelRegistry registry;
 
     private static final String OWNER = "E-NCH-TEST";
-    private static final String SECRET = "{\"appKey\":\"mk\",\"masterSecret\":\"top-secret-value\"}";
+    // GETUI 商家凭证：必须含 appId/appKey/masterSecret（与平台侧同一份规格）
+    private static final String SECRET =
+            "{\"appId\":\"pa\",\"appKey\":\"mk\",\"masterSecret\":\"top-secret-value\"}";
 
     @Test
     @DisplayName("★★★ 商家渠道：密钥加密落库、解密取回、状态 READY")
@@ -52,9 +54,10 @@ class MerchantChannelTest {
     @Test
     @DisplayName("★★ 幂等：同商家同类型同供应商只一条；改非密项不动已存密钥")
     void upsertIsIdempotentAndKeepsSecret() {
+        String aliSecret = "{\"accessKeyId\":\"AAA\",\"accessKeySecret\":\"BBB\",\"sign\":\"数智邻购\"}";
         svc.upsert(OWNER, NotifyChannel.TYPE_SMS, NotifyChannel.PROV_ALI,
-                "{\"sign\":\"旧签名\"}", "{\"ak\":\"AAA\"}", "ST-OPS");
-        // 第二次只改非密的签名，secret 传空 —— 不能把已存的 ak 清掉
+                "{\"sign\":\"旧签名\"}", aliSecret, "ST-OPS");
+        // 第二次只改非密的配置，secret 传空 —— 不能把已存的密钥清掉
         NotifyChannel again = svc.upsert(OWNER, NotifyChannel.TYPE_SMS, NotifyChannel.PROV_ALI,
                 "{\"sign\":\"新签名\"}", null, "ST-OPS");
 
@@ -62,6 +65,16 @@ class MerchantChannelTest {
                 .filteredOn(c -> NotifyChannel.TYPE_SMS.equals(c.getChannelType()))
                 .as("同商家同类型同供应商只一条").hasSize(1);
         assertThat(again.getConfigJson()).contains("新签名");
-        assertThat(svc.decryptSecret(again)).as("空 secret 不动已存密钥").isEqualTo("{\"ak\":\"AAA\"}");
+        assertThat(svc.decryptSecret(again)).as("空 secret 不动已存密钥").isEqualTo(aliSecret);
+    }
+
+    @Test
+    @DisplayName("★★ 凭证缺字段：保存时就拒，不留到发送才炸")
+    void incompleteSecretRejectedAtSave() {
+        // 个推缺 masterSecret —— 与平台侧同一份规格判定，保存这一步就拦下
+        org.assertj.core.api.Assertions.assertThatThrownBy(() ->
+                svc.upsert("E-BAD", NotifyChannel.TYPE_PUSH, NotifyChannel.PROV_GETUI,
+                        "{}", "{\"appId\":\"pa\",\"appKey\":\"mk\"}", "ST-OPS"))
+                .isInstanceOf(ai.neargo.shop.common.BizException.class);
     }
 }
