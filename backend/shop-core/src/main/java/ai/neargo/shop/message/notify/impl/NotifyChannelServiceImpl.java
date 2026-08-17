@@ -48,11 +48,22 @@ public class NotifyChannelServiceImpl implements NotifyChannelService {
     private final String wxMpState;
     private final String wxTplArrived;
     private final String wxTplRefunded;
-    // ---- 推送
+    // ---- 推送 · 个推（默认供应商）
     private final boolean pushStub;
     private final String getuiAppId;
     private final String getuiAppKey;
     private final String getuiMasterSecret;
+    // ---- 推送 · FCM（可选，海外 Android）
+    private final boolean fcmStub;
+    private final String fcmProjectId;
+    private final String fcmClientEmail;
+    private final String fcmPrivateKey;
+    // ---- 推送 · APNs（可选，iOS 直连）
+    private final boolean apnsStub;
+    private final String apnsTeamId;
+    private final String apnsKeyId;
+    private final String apnsPrivateKey;
+    private final String apnsTopic;
 
     @SuppressWarnings("checkstyle:ParameterNumber")
     public NotifyChannelServiceImpl(
@@ -80,7 +91,16 @@ public class NotifyChannelServiceImpl implements NotifyChannelService {
             @Value("${shop.push.stub:true}") boolean pushStub,
             @Value("${shop.push.getui.app-id:}") String getuiAppId,
             @Value("${shop.push.getui.app-key:}") String getuiAppKey,
-            @Value("${shop.push.getui.master-secret:}") String getuiMasterSecret) {
+            @Value("${shop.push.getui.master-secret:}") String getuiMasterSecret,
+            @Value("${shop.push.fcm.stub:true}") boolean fcmStub,
+            @Value("${shop.push.fcm.project-id:}") String fcmProjectId,
+            @Value("${shop.push.fcm.client-email:}") String fcmClientEmail,
+            @Value("${shop.push.fcm.private-key:}") String fcmPrivateKey,
+            @Value("${shop.push.apns.stub:true}") boolean apnsStub,
+            @Value("${shop.push.apns.team-id:}") String apnsTeamId,
+            @Value("${shop.push.apns.key-id:}") String apnsKeyId,
+            @Value("${shop.push.apns.private-key:}") String apnsPrivateKey,
+            @Value("${shop.push.apns.topic:}") String apnsTopic) {
         this.logMapper = logMapper;
         this.wxPort = wxPort;
         this.settingPort = settingPort;
@@ -105,6 +125,15 @@ public class NotifyChannelServiceImpl implements NotifyChannelService {
         this.getuiAppId = getuiAppId;
         this.getuiAppKey = getuiAppKey;
         this.getuiMasterSecret = getuiMasterSecret;
+        this.fcmStub = fcmStub;
+        this.fcmProjectId = fcmProjectId;
+        this.fcmClientEmail = fcmClientEmail;
+        this.fcmPrivateKey = fcmPrivateKey;
+        this.apnsStub = apnsStub;
+        this.apnsTeamId = apnsTeamId;
+        this.apnsKeyId = apnsKeyId;
+        this.apnsPrivateKey = apnsPrivateKey;
+        this.apnsTopic = apnsTopic;
     }
 
     @Override
@@ -145,11 +174,35 @@ public class NotifyChannelServiceImpl implements NotifyChannelService {
                         sentToday(SysNotifyLog.WXSUB, SysNotifyLog.SENT),
                         sentToday(SysNotifyLog.WXSUB, SysNotifyLog.FAILED)),
 
-                new ChannelHealth(SysNotifyLog.PUSH, pushStub, !pushStub,
+                /*
+                 * PUSH 一条通道、三家供应商（个推/FCM/APNs）。**不拆成三行**：
+                 * 三家都写 sys_notify_log.channel=PUSH，计数无法按供应商拆，拆成三行会重复计数
+                 * （NotifyEndToEndFlowTest 也钉死了通道恰好四条）。所以把三家的凭据与启停并进这一行：
+                 *   stub    = 三家全桩才算整体桩
+                 *   enabled = 任一家真发即启用
+                 * FCM/APNs 的凭据 required=false —— 它们是可选供应商（个推已覆盖国内 + 透传 APNs），
+                 * 缺配不代表这条通道坏，只代表这家没开。
+                 */
+                new ChannelHealth(SysNotifyLog.PUSH,
+                        pushStub && fcmStub && apnsStub,
+                        !pushStub || !fcmStub || !apnsStub,
                         List.of(cred("GETUI_APP_ID", getuiAppId, true),
                                 cred("GETUI_APP_KEY", getuiAppKey, true),
-                                cred("GETUI_MASTER_SECRET", getuiMasterSecret, true)),
-                        List.of(new Param("appId", getuiAppId)),
+                                cred("GETUI_MASTER_SECRET", getuiMasterSecret, true),
+                                cred("FCM_PROJECT_ID", fcmProjectId, false),
+                                cred("FCM_CLIENT_EMAIL", fcmClientEmail, false),
+                                cred("FCM_PRIVATE_KEY", fcmPrivateKey, false),
+                                cred("APNS_TEAM_ID", apnsTeamId, false),
+                                cred("APNS_KEY_ID", apnsKeyId, false),
+                                cred("APNS_PRIVATE_KEY", apnsPrivateKey, false),
+                                cred("APNS_TOPIC", apnsTopic, false)),
+                        // 每家的启停一眼可见；appId/topic 是可公开标识，照常回显
+                        List.of(new Param("getui", pushStub ? "桩" : "启用"),
+                                new Param("getui.appId", getuiAppId),
+                                new Param("fcm", fcmStub ? "桩" : "启用"),
+                                new Param("fcm.projectId", fcmProjectId),
+                                new Param("apns", apnsStub ? "桩" : "启用"),
+                                new Param("apns.topic", apnsTopic)),
                         sentToday(SysNotifyLog.PUSH, SysNotifyLog.SENT),
                         sentToday(SysNotifyLog.PUSH, SysNotifyLog.FAILED)));
     }
