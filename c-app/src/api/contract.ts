@@ -327,7 +327,7 @@ export interface ShopApi {
   subscribeReport(templateIds: string[], accepted: boolean): Promise<void>;
 
   // ---- App 推送设备（ADR-018；仅 App 构建有 clientId）
-  registerPushToken(platform: string, clientId: string): Promise<void>;
+  registerPushToken(platform: string, provider: string, clientId: string): Promise<void>;
   /**
    * 解绑。**登出流程必须调** —— 共用设备换人登录后，
    * 前一个账号的订单不能继续推到这台机器上。

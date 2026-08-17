@@ -3,6 +3,7 @@ package ai.neargo.shop.message.notify;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.message.entity.MsgPushToken;
 import ai.neargo.shop.message.mapper.MessageMappers.PushTokenMapper;
+import ai.neargo.shop.spi.notify.PushProvider;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,27 +29,32 @@ public class PushTokenBinder {
     }
 
     /**
-     * 登录后上报。幂等：同一人同一平台重复上报只更新 clientId。
+     * 登录后上报。幂等：同一人同一平台同一供应商重复上报只更新 clientId。
      *
      * @param platform {@link MsgPushToken#APP_ANDROID} / {@link MsgPushToken#APP_IOS}
+     * @param provider {@link PushProvider}（GETUI/FCM/APNS）；空/未知回落 GETUI（存量都是个推）
      */
     @Transactional
-    public void register(String receiverType, String receiverNo, String platform, String clientId) {
+    public void register(String receiverType, String receiverNo, String platform,
+                         String provider, String clientId) {
         if (receiverNo == null || receiverNo.isBlank()
                 || clientId == null || clientId.isBlank()
                 || platform == null || platform.isBlank()) {
             return;
         }
+        String prov = PushProvider.normalize(provider);
         DataScopeContext.executeWithoutScope(() -> {
-            // 抢占：这台设备之前登的是别人，先解绑他
+            // 抢占：这台设备之前登的是别人，先解绑他（按 clientId + provider 定位这台设备）
             tokenMapper.delete(Wrappers.<MsgPushToken>lambdaQuery()
                     .eq(MsgPushToken::getClientId, clientId)
+                    .eq(MsgPushToken::getProvider, prov)
                     .ne(MsgPushToken::getReceiverNo, receiverNo));
 
             MsgPushToken existing = tokenMapper.selectOne(Wrappers.<MsgPushToken>lambdaQuery()
                     .eq(MsgPushToken::getReceiverType, receiverType)
                     .eq(MsgPushToken::getReceiverNo, receiverNo)
-                    .eq(MsgPushToken::getPlatform, platform).last("limit 1"));
+                    .eq(MsgPushToken::getPlatform, platform)
+                    .eq(MsgPushToken::getProvider, prov).last("limit 1"));
             if (existing != null) {
                 existing.setClientId(clientId);
                 return tokenMapper.updateById(existing);
@@ -57,6 +63,7 @@ public class PushTokenBinder {
             t.setReceiverType(receiverType);
             t.setReceiverNo(receiverNo);
             t.setPlatform(platform);
+            t.setProvider(prov);
             t.setClientId(clientId);
             return tokenMapper.insert(t);
         });

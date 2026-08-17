@@ -32,4 +32,9 @@ public final class MessageMappers {
     public interface PushTokenMapper extends BaseMapper<ai.neargo.shop.message.entity.MsgPushToken> {
     }
 
+    /** 场景×通道触达配置（运营可配「哪个事件走哪些通道」）。 */
+    public interface SceneChannelMapper
+            extends BaseMapper<ai.neargo.shop.message.entity.MsgSceneChannel> {
+    }
+
 }

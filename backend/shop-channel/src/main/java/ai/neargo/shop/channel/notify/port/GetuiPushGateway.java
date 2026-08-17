@@ -1,6 +1,7 @@
 package ai.neargo.shop.channel.notify.port;
 
-import ai.neargo.shop.spi.notify.PushPort;
+import ai.neargo.shop.spi.notify.PushGateway;
+import ai.neargo.shop.spi.notify.PushProvider;
 import ai.neargo.shop.spi.notify.SendResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,11 +33,16 @@ import java.util.regex.Pattern;
  * 配额用尽时个推返回业务码，这里当**不可重试**抛出 —— 重试只会把日志刷满，
  * 而用户那边的结果是一样的：这条推送没到，站内信兜底。
  */
-@Component("pushGateway")
+@Component
 @ConditionalOnProperty(name = "shop.push.stub", havingValue = "false")
-public class GetuiPushGateway implements PushPort {
+public class GetuiPushGateway implements PushGateway {
 
     private static final Logger log = LoggerFactory.getLogger(GetuiPushGateway.class);
+
+    @Override
+    public String provider() {
+        return PushProvider.GETUI;
+    }
 
     private static final String STR_FIELD = "\"%s\"\\s*:\\s*\"([^\"]*)\"";
     private static final String NUM_FIELD = "\"%s\"\\s*:\\s*(-?\\d+)";

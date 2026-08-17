@@ -2166,6 +2166,7 @@ CREATE TABLE IF NOT EXISTS sys_notify_log
     biz_type        VARCHAR(32)  NOT NULL,
     target          VARCHAR(64)  NOT NULL,
     template_code   VARCHAR(64),
+    template_no     VARCHAR(64),
     status          VARCHAR(16)  NOT NULL,
     error           VARCHAR(512),
     provider_msg_id VARCHAR(64),
@@ -2236,6 +2237,7 @@ CREATE TABLE IF NOT EXISTS msg_push_token
     receiver_type VARCHAR(16) NOT NULL,
     receiver_no VARCHAR(64) NOT NULL,
     platform VARCHAR(16) NOT NULL,
+    provider VARCHAR(16) NOT NULL DEFAULT 'GETUI',
     client_id VARCHAR(128) NOT NULL,
     tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
     created_at DATETIME NOT NULL,
@@ -2245,7 +2247,27 @@ CREATE TABLE IF NOT EXISTS msg_push_token
     version BIGINT(20) NOT NULL DEFAULT 0,
     deleted TINYINT(4) NOT NULL DEFAULT 0,
     PRIMARY KEY (id),
-    CONSTRAINT uk_push_token_receiver UNIQUE (receiver_type, receiver_no, platform)
+    CONSTRAINT uk_push_token_receiver UNIQUE (receiver_type, receiver_no, platform, provider)
+);
+
+-- 场景×通道触达配置（对应 V156）。H2 建表 + 种子与迁移逐格一致。
+CREATE TABLE IF NOT EXISTS msg_scene_channel
+(
+    id BIGINT(20) NOT NULL AUTO_INCREMENT,
+    scene_code VARCHAR(48) NOT NULL,
+    audience VARCHAR(16) NOT NULL,
+    channel VARCHAR(16) NOT NULL,
+    enabled TINYINT(4) NOT NULL DEFAULT 1,
+    push_level VARCHAR(8) NOT NULL DEFAULT 'NORMAL',
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT(20) NOT NULL DEFAULT 0,
+    deleted TINYINT(4) NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_scene_channel UNIQUE (scene_code, audience, channel)
 );
 
 CREATE TABLE IF NOT EXISTS stl_withdraw
@@ -4747,3 +4769,29 @@ INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated
 VALUES ('TECH_OPS', 'OPS_SYSTEM__TAB_STORAGE', 'OPS', NOW(), NOW());
 INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
 VALUES ('TECH_OPS', 'ACT__SYSTEM_MEDIA_PURGE', 'OPS', NOW(), NOW());
+
+-- 场景×通道种子（对应 V156，逐格照搬 NotificationConsumer 搬迁前规则）。
+INSERT INTO msg_scene_channel (scene_code, audience, channel, enabled, push_level, created_at, updated_at)
+SELECT t.scene_code, t.audience, t.channel, t.enabled, t.push_level, NOW(), NOW()
+FROM (
+    SELECT 'ORDER_PAID' AS scene_code, 'C_USER' AS audience, 'INAPP' AS channel, 1 AS enabled, 'NORMAL' AS push_level UNION ALL
+    SELECT 'ORDER_PAID', 'C_USER', 'PUSH', 0, 'NORMAL' UNION ALL
+    SELECT 'ORDER_ARRIVED', 'C_USER', 'INAPP', 1, 'NORMAL' UNION ALL
+    SELECT 'ORDER_ARRIVED', 'C_USER', 'WXSUB', 1, 'NORMAL' UNION ALL
+    SELECT 'ORDER_ARRIVED', 'C_USER', 'PUSH', 1, 'NORMAL' UNION ALL
+    SELECT 'SUB_ORDER_COMPLETED', 'C_USER', 'INAPP', 1, 'NORMAL' UNION ALL
+    SELECT 'SUB_ORDER_COMPLETED', 'C_USER', 'PUSH', 0, 'NORMAL' UNION ALL
+    SELECT 'AFTER_SALE_REFUNDED', 'C_USER', 'INAPP', 1, 'NORMAL' UNION ALL
+    SELECT 'AFTER_SALE_REFUNDED', 'C_USER', 'WXSUB', 1, 'NORMAL' UNION ALL
+    SELECT 'AFTER_SALE_REFUNDED', 'C_USER', 'PUSH', 0, 'NORMAL' UNION ALL
+    SELECT 'SUB_ORDER_PAID', 'B_STAFF', 'INAPP', 1, 'NORMAL' UNION ALL
+    SELECT 'SUB_ORDER_PAID', 'B_STAFF', 'PUSH', 1, 'RING' UNION ALL
+    SELECT 'AFTER_SALE_APPLIED', 'B_STAFF', 'INAPP', 1, 'NORMAL' UNION ALL
+    SELECT 'AFTER_SALE_APPLIED', 'B_STAFF', 'PUSH', 1, 'NORMAL' UNION ALL
+    SELECT 'REVIEW_CREATED', 'B_STAFF', 'INAPP', 1, 'NORMAL' UNION ALL
+    SELECT 'REVIEW_CREATED', 'B_STAFF', 'PUSH', 1, 'NORMAL'
+) t
+WHERE NOT EXISTS (
+    SELECT 1 FROM msg_scene_channel m
+    WHERE m.scene_code = t.scene_code AND m.audience = t.audience AND m.channel = t.channel
+);

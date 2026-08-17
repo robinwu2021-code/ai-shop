@@ -4,6 +4,7 @@ import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.message.entity.MsgPushToken;
 import ai.neargo.shop.message.mapper.MessageMappers.PushTokenMapper;
 import ai.neargo.shop.spi.notify.PushPort;
+import ai.neargo.shop.spi.notify.PushProvider;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,11 +29,11 @@ public class PushSender {
 
     private static final Logger log = LoggerFactory.getLogger(PushSender.class);
 
-    private final PushPort port;
+    private final PushRouter router;
     private final PushTokenMapper tokenMapper;
 
-    public PushSender(PushPort port, PushTokenMapper tokenMapper) {
-        this.port = port;
+    public PushSender(PushRouter router, PushTokenMapper tokenMapper) {
+        this.router = router;
         this.tokenMapper = tokenMapper;
     }
 
@@ -59,11 +60,12 @@ public class PushSender {
                         .eq(MsgPushToken::getReceiverNo, receiverNo)));
         for (MsgPushToken t : tokens) {
             try {
-                port.push(t.getClientId(), title, body, link, level);
+                router.push(PushProvider.normalize(t.getProvider()), t.getClientId(),
+                        title, body, link, level);
             } catch (RuntimeException e) {
-                // 装饰器已留痕；这里保证一台失败不拖累其它台，也不让事件重试
-                log.warn("[push] 发送失败（已留痕，不重试）receiver={} platform={}: {}",
-                        receiverNo, t.getPlatform(), e.getMessage());
+                // 路由内已留痕；这里保证一台失败不拖累其它台，也不让事件重试
+                log.warn("[push] 发送失败（已留痕，不重试）receiver={} platform={} provider={}: {}",
+                        receiverNo, t.getPlatform(), t.getProvider(), e.getMessage());
             }
         }
     }

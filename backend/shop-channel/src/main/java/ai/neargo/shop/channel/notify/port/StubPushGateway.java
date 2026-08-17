@@ -1,6 +1,7 @@
 package ai.neargo.shop.channel.notify.port;
 
-import ai.neargo.shop.spi.notify.PushPort;
+import ai.neargo.shop.spi.notify.PushGateway;
+import ai.neargo.shop.spi.notify.PushProvider;
 import ai.neargo.shop.spi.notify.SendResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,11 +17,22 @@ import java.util.List;
  * 理由同 {@link StubSmsGateway} —— 默认真推意味着本地跑一次测试就在震别人的手机，
  * 而推送比短信更打扰：它会在夜里把人吵醒。
  */
-@Component("pushGateway")
+@Component
 @ConditionalOnProperty(name = "shop.push.stub", havingValue = "true", matchIfMissing = true)
-public class StubPushGateway implements PushPort {
+public class StubPushGateway implements PushGateway {
 
     private static final Logger log = LoggerFactory.getLogger(StubPushGateway.class);
+
+    /** 桩顶所有供应商：路由据 {@link #stub()} 把任何 provider 的推送都交给它。 */
+    @Override
+    public String provider() {
+        return PushProvider.GETUI;
+    }
+
+    @Override
+    public boolean stub() {
+        return true;
+    }
 
     private static final int KEEP = 200;
 

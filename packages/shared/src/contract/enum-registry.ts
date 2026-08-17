@@ -94,6 +94,8 @@ export const ENUM_REGISTRY: EnumEntry[] = [
     note: "取图来源（相机/相册），端上能力选择。后端零出现" },
   { decl: "shared:PushPlatform", dom: "message", shape: "CLASS", verdict: "OK",
     note: "APP_ANDROID/APP_IOS，与后端 msg_push_token.platform 及 MsgPushToken 的常量逐字一致。**不含 WEB** —— Web Push 是另一条通道（触达能力矩阵 G6），混进来会让「有 token 就能推」不再成立" },
+  { decl: "shared:PushProvider", dom: "message", shape: "CLASS", verdict: "OK",
+    note: "GETUI/FCM/APNS，与后端 PushProvider 及 msg_push_token.provider 逐字一致（设计：多渠道推送与运营端触达配置 · 需求 2）。决定一台设备的推送交给哪家 gateway：uni-push 底座即个推(GETUI)，海外 Android 走 FCM、iOS 可直连 APNS。**GETUI 是默认** —— 存量与 uni-push 打包上报的都是个推 cid" },
   { decl: "ops-web:NotifyFailReason", dom: "message", shape: "CLASS", verdict: "OK",
     note: "CRED/QUOTA/TARGET/NETWORK。**不是 wire 契约**：后端只回自由文本 error，这四类是端上对它的归因分桶（lib/notify-reason.ts），用来把「下一步该做什么」显示给运营。归不出来时返回 null，不硬塞一个兜底类" },
   { decl: "ops-web:InboxMessageType", dom: "message", shape: "CLASS", verdict: "OK",

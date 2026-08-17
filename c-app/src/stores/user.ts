@@ -40,7 +40,7 @@ export const useUserStore = defineStore("user", {
       const device = await getPushDevice();
       if (!device) return;
       try {
-        await api.registerPushToken(device.platform, device.clientId);
+        await api.registerPushToken(device.platform, device.provider, device.clientId);
       } catch {
         // 下次登录会再试一次
       }

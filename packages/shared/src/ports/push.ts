@@ -57,9 +57,18 @@ export function requestSubscribe(tmplIds: string[]): Promise<SubscribeResult> {
 /** 后端 msg_push_token.platform 的取值。**与后端 MsgPushToken 的常量逐字一致**。 */
 export type PushPlatform = "APP_ANDROID" | "APP_IOS";
 
+/**
+ * 推送供应商。**与后端 PushProvider 逐字一致**。
+ * uni-push 打包的底座是个推，故恒 GETUI；将来海外包直连 FCM、iOS 直连 APNs 时，
+ * 那些构建各自上报 "FCM" / "APNS"（后端 PushRouter 据此分发）。
+ */
+export type PushProvider = "GETUI" | "FCM" | "APNS";
+
 export interface PushDevice {
   platform: PushPlatform;
-  /** uni-push 的 clientId，即个推 cid */
+  /** 供应商。uni-push 底座即个推，恒 "GETUI"。 */
+  provider: PushProvider;
+  /** 供应商设备标识（个推 cid / FCM token / APNs token） */
   clientId: string;
 }
 
@@ -85,6 +94,8 @@ export function getPushDevice(): Promise<PushDevice | null> {
           }
           resolve({
             platform: uni.getSystemInfoSync().platform === "ios" ? "APP_IOS" : "APP_ANDROID",
+            // uni-push 底座是个推；海外/直连包将来在各自构建里改这里上报 FCM/APNS
+            provider: "GETUI",
             clientId: cid,
           });
         },

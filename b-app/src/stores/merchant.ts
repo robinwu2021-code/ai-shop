@@ -91,7 +91,7 @@ export const useMerchantStore = defineStore("merchant", {
       const device = await getPushDevice();
       if (!device) return;
       try {
-        await api.mRegisterPushToken(device.platform, device.clientId);
+        await api.mRegisterPushToken(device.platform, device.provider, device.clientId);
       } catch {
         // 推送是加速通道，绑不上不影响用 app
       }

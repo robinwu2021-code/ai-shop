@@ -536,7 +536,7 @@ export interface MerchantApi {
   mMessageReadAll(): Promise<Message[]>;
 
   // ---- App 推送设备（ADR-018；仅 App 构建有 clientId）
-  mRegisterPushToken(platform: string, clientId: string): Promise<void>;
+  mRegisterPushToken(platform: string, provider: string, clientId: string): Promise<void>;
   /**
    * 解绑。**登出必须调** —— 门店共用一台手机换班时，
    * 上一班的人不能继续收到这家店的订单推送。

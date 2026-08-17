@@ -217,8 +217,8 @@ export const httpApi: ShopApi = {
   subscribeReport: (templateIds, accepted) =>
     call<void>("subscribeReport", undefined, { templateIds, accepted }),
 
-  registerPushToken: (platform, clientId) =>
-    call<void>("registerPushToken", undefined, { platform, clientId }),
+  registerPushToken: (platform, provider, clientId) =>
+    call<void>("registerPushToken", undefined, { platform, provider, clientId }),
   unregisterPushToken: (clientId) =>
     call<void>("unregisterPushToken", undefined, { clientId }),
 

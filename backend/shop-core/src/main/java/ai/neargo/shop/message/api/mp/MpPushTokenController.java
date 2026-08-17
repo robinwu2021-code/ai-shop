@@ -30,7 +30,7 @@ public class MpPushTokenController {
     @PostMapping("/mp/push-token")
     public void register(@RequestBody RegisterReq req) {
         pushTokenBinder.register(MsgMessage.RECEIVER_USER, SecurityUtils.currentUserNo(),
-                req.platform(), req.clientId());
+                req.platform(), req.provider(), req.clientId());
     }
 
     /**
@@ -47,7 +47,8 @@ public class MpPushTokenController {
                 req == null ? null : req.clientId());
     }
 
-    public record RegisterReq(@NotBlank String platform, @NotBlank String clientId) {
+    /** provider 可空：uni-push 打包上报即个推，端上可不带，后端回落 GETUI。 */
+    public record RegisterReq(@NotBlank String platform, String provider, @NotBlank String clientId) {
     }
 
     /** clientId 可空：端上取不到时按人解绑全部设备（宁可多解一台）。 */

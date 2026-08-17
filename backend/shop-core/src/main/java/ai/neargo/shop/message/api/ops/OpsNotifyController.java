@@ -36,10 +36,13 @@ public class OpsNotifyController {
 
     private final MessageService messageService;
     private final AuditLogPort auditLogPort;
+    private final ai.neargo.shop.message.notify.SceneChannelRouting sceneChannelRouting;
 
-    public OpsNotifyController(MessageService messageService, AuditLogPort auditLogPort) {
+    public OpsNotifyController(MessageService messageService, AuditLogPort auditLogPort,
+                               ai.neargo.shop.message.notify.SceneChannelRouting sceneChannelRouting) {
         this.messageService = messageService;
         this.auditLogPort = auditLogPort;
+        this.sceneChannelRouting = sceneChannelRouting;
     }
 
     @GetMapping("/ops/msg-templates")
@@ -82,9 +85,49 @@ public class OpsNotifyController {
         return vo;
     }
 
+    // ------------------------------------------------------------ 场景×通道配置
+
+    /**
+     * 场景×通道矩阵（设计：多渠道推送与运营端触达配置 · 需求 1）。
+     *
+     * <p>「哪个事件走哪些通道」以前硬编码在编排里，这里让运营看得见、能勾选。
+     * INAPP 行回传 {@code locked=true}：站内信是事实记录，界面锁定不给关。
+     */
+    @GetMapping("/ops/scene-channel")
+    @PreAuthorize("@perm.can('" + Perms.MESSAGE_TEMPLATE_READ + "')")
+    public List<SceneChannelVO> sceneChannels() {
+        return sceneChannelRouting.list().stream().map(SceneChannelVO::of).toList();
+    }
+
+    /**
+     * 切换某格开关。INAPP 会被后端拒绝（站内信不可关，前端被绕过也兜住）。
+     * 触达策略调整要留痕：它决定平台在某场景对用户发不发某条通道。
+     */
+    @PostMapping("/ops/scene-channel/{scene}/{audience}/{channel}")
+    @PreAuthorize("@perm.can('" + Perms.MESSAGE_TEMPLATE_UPDATE + "')")
+    public SceneChannelVO setSceneChannel(@PathVariable String scene, @PathVariable String audience,
+                                          @PathVariable String channel, @RequestBody EnabledReq req) {
+        boolean on = Boolean.TRUE.equals(req.enabled());
+        SceneChannelVO vo = SceneChannelVO.of(
+                sceneChannelRouting.setEnabled(scene, audience, channel, on, SecurityUtils.currentUserNo()));
+        auditLogPort.record("SCENE_CHANNEL", scene + "/" + audience + "/" + channel,
+                on ? "开启" : "关闭");
+        return vo;
+    }
+
     public record EnabledReq(Boolean enabled) {
     }
 
     public record QuotaReq(int dailyPerUser, int minIntervalHours) {
+    }
+
+    /** @param locked INAPP 恒锁定：站内信是事实记录，运营不可关 */
+    public record SceneChannelVO(String scene, String audience, String channel,
+                                 boolean enabled, String pushLevel, boolean locked) {
+        static SceneChannelVO of(ai.neargo.shop.message.entity.MsgSceneChannel r) {
+            boolean inapp = ai.neargo.shop.message.entity.MsgSceneChannel.CH_INAPP.equals(r.getChannel());
+            return new SceneChannelVO(r.getSceneCode(), r.getAudience(), r.getChannel(),
+                    Boolean.TRUE.equals(r.getEnabled()), r.getPushLevel(), inapp);
+        }
     }
 }

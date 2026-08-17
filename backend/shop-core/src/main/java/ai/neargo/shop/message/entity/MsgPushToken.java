@@ -24,6 +24,9 @@ public class MsgPushToken extends BaseEntity {
     private String receiverNo;
     private String platform;
 
-    /** 聚合商设备标识（个推 cid）。 */
+    /** 推送供应商 {@link ai.neargo.shop.spi.notify.PushProvider}（GETUI/FCM/APNS）。默认 GETUI。 */
+    private String provider;
+
+    /** 供应商设备标识（个推 cid / FCM registration token / APNs device token）。 */
     private String clientId;
 }

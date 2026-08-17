@@ -305,8 +305,8 @@ export const httpApi: MerchantApi = {
   mMessageReadAll: () => http.post<Message[]>(E.mMessageReadAll.path),
 
   // ---- 推送设备
-  mRegisterPushToken: (platform, clientId) =>
-    http.post<void>(E.mRegisterPushToken.path, { platform, clientId }),
+  mRegisterPushToken: (platform, provider, clientId) =>
+    http.post<void>(E.mRegisterPushToken.path, { platform, provider, clientId }),
   mUnregisterPushToken: (clientId) =>
     http.post<void>(E.mUnregisterPushToken.path, { clientId }),
 };
