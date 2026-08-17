@@ -8,7 +8,7 @@ import java.util.Map;
  * <p><b>与 {@link SmsPort} / {@link WxSubscribePort} 的模板不是一回事</b>：
  * 那两条通道的模板由通道方报备，我们只能填参数；邮件的模板是我们自己定义的，
  * 库里那份就是发出去的那份。所以这个 Port 收的是 <b>模板号 + 参数</b>，
- * 而模板正文在 {@code msg_template} 里，运营端可看可改。
+ * 而模板正文在 {@code notify_template} 里，运营端可看可改。
  *
  * <p>放在 spi 是因为调用方在 platform 域（建运营账号、重置密码），
  * 而模板与渲染在 message 域 —— 两个域之间只能经 Port。
@@ -40,7 +40,7 @@ public interface MailTemplatePort {
 
     /**
      * @param to             收件邮箱
-     * @param templateNo     {@code msg_template.template_no}
+     * @param templateNo     {@code notify_template.template_no}
      * @param subject        邮件主题。**不进模板**：主题短、且与正文的可变部分无关，
      *                       为它再加一层模板只是多一处要对齐的地方
      * @param params         占位参数。**缺参数时按内置默认发**，不发一封写着

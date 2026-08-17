@@ -8,7 +8,7 @@ import lombok.Setter;
 /** 客服工单。{@code repliedBy} 记客服身份 —— 代客操作要能追到人（M6 权限边界）。 */
 @Getter
 @Setter
-@TableName("msg_ticket")
+@TableName("notify_ticket")
 public class MsgTicket extends BaseEntity {
 
     public static final String OPEN = "OPEN";

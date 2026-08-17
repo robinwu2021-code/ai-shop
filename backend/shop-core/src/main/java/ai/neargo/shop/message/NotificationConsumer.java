@@ -21,7 +21,7 @@ import java.util.Set;
  * B 端：来单了、有售后、有评价 —— 每多一条可有可无的通知，
  * 「到货了去取」「来新订单了」这两条最重要的就更容易被划走。
  *
- * <p><b>站内信必发，订阅消息尽力</b>：站内信是事实记录（落 {@code msg_message}），
+ * <p><b>站内信必发，订阅消息尽力</b>：站内信是事实记录（落 {@code notify_message}），
  * 订阅消息是把人从微信里拉回来的加速通道，{@link WxSubscribeSender} 内部消化失败。
  *
  * <p>幂等：C 端单收件人 {@code dedupKey = eventNo}；B 端扇出给多个员工，
@@ -166,7 +166,7 @@ public class NotificationConsumer implements OutboxConsumer {
      * B 端扇出：店主 + 持角色员工，dedupKey 带收件人。受众为空就静默作罢（店还没配人）。
      *
      * <p>站内信必发；App 推送与级别（NORMAL/RING）由运营的场景×通道配置决定 ——
-     * 「新订单响铃、其余常规」这条规则从硬编码搬进了 {@code msg_scene_channel}。
+     * 「新订单响铃、其余常规」这条规则从硬编码搬进了 {@code notify_scene_channel}。
      */
     private void fanOutToStaff(SysOutbox event, String entityNo, Set<String> roles,
                                String title, String body, String link) {

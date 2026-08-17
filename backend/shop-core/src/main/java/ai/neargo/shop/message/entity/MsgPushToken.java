@@ -14,7 +14,7 @@ import lombok.Setter;
  */
 @Getter
 @Setter
-@TableName("msg_push_token")
+@TableName("notify_push_token")
 public class MsgPushToken extends BaseEntity {
 
     public static final String APP_ANDROID = "APP_ANDROID";

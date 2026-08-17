@@ -13,7 +13,7 @@ import lombok.Setter;
  */
 @Getter
 @Setter
-@TableName("msg_message")
+@TableName("notify_message")
 public class MsgMessage extends BaseEntity {
 
     public static final String TRADE = "TRADE";

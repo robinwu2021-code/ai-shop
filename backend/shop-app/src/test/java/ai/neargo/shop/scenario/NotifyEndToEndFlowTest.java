@@ -111,7 +111,7 @@ class NotifyEndToEndFlowTest {
     @Test
     @DisplayName("★★★ 业务模板与语言：中文走模板、英文走译文、语言未知走平台默认")
     void templateAndLanguage() {
-        // ── 中文：正文来自 msg_template（V142），不是代码里的兜底
+        // ── 中文：正文来自 notify_template（V142），不是代码里的兜底
         mailTemplatePort.send(MAIL, MailTemplatePort.TPL_OPS_RESET_PWD, "zh-CN",
                 "重置", java.util.Map.of("realName", "小周", "token", "E2E-ZH", "ttlMinutes", "15"),
                 "内置兜底 {realName}", NotifyBizType.OPS_RESET_PASSWORD, null);

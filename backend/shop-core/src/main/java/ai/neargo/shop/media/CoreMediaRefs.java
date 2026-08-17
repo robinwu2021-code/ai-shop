@@ -62,7 +62,7 @@ public class CoreMediaRefs implements MediaRefSource {
                 // —— 消息 ——
                 // 模板与工单正文理论上不该有图，但它们是自由文本，扫一遍的成本可以忽略，
                 // 而「理论上不该有」正是最容易出事的措辞
-                of("msg_template", "content", "消息模板 · 正文内嵌", "template_no"),
-                of("msg_ticket", "content", "工单 · 正文内嵌", "ticket_no"));
+                of("notify_template", "content", "消息模板 · 正文内嵌", "template_no"),
+                of("notify_ticket", "content", "工单 · 正文内嵌", "ticket_no"));
     }
 }

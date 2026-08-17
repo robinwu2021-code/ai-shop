@@ -18,7 +18,7 @@ public interface NotifyChannelService {
 
     /**
      * 该(通道类型,供应商)当前是否走桩（{@code shop.*.stub}）。
-     * INAPP 恒 false（站内信从不桩，它就是 msg_message 那张表）。
+     * INAPP 恒 false（站内信从不桩，它就是 notify_message 那张表）。
      *
      * <p>单一环境变量读取点 —— 渠道注册表派生状态问它，不自己再读一遍配置（两处必分叉）。
      */

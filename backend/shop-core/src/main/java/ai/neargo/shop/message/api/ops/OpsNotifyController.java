@@ -22,7 +22,7 @@ import java.util.List;
 /**
  * 平台端 · 触达治理（P-14.1）：消息模板与频控。
  *
- * <p>缺口的来源：{@code msg_subscribe.template_id} 一直在引用模板 ID，
+ * <p>缺口的来源：{@code notify_subscribe.template_id} 一直在引用模板 ID，
  * 而没有任何表管理这些模板——想停掉一个扰民的模板，平台侧无从下手。
  *
  * <p><b>推送任务（{@code /ops/push-tasks} 三条）没做</b>，那不是补齐：

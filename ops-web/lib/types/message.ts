@@ -89,7 +89,7 @@ export interface Ticket {
   /**
    * 客服回复正文。**用户在 C 端工单详情页看的就是这个字段**。
    *
-   * 此前它在三层上各缺一处：后端 `msg_ticket` 建表就留了 `reply`/`replied_at`/`replied_by`
+   * 此前它在三层上各缺一处：后端 `notify_ticket` 建表就留了 `reply`/`replied_at`/`replied_by`
    * 且注释写明「代客操作要能追到人」，但没有任何代码写过它们；
    * 契约里也从没定义过「回复」这个动作（只有分派、关闭、代客留痕）。
    * 于是用户提单后反复点开详情，看到的永远是空的，而且不报任何错。
@@ -131,7 +131,7 @@ export interface FaqEntry {
  * PUSH = App 推送（个推/uni-push，ADR-018），target 是掩码后的 clientId。
  *
  * <p><b>站内信（INAPP）不在这里</b>：它不进 `sys_notify_log`，
- * 它自己就是一张可查的表（`msg_message`）。混进来会让人以为能在发送记录里查到它。
+ * 它自己就是一张可查的表（`notify_message`）。混进来会让人以为能在发送记录里查到它。
  */
 export type NotifyChannel = "SMS" | "MAIL" | "WXSUB" | "PUSH";
 

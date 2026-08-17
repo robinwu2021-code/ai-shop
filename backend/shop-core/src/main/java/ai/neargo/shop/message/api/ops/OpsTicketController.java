@@ -25,7 +25,7 @@ import java.util.List;
  * 用户那边 {@code TicketVO} 一直在展示 {@code reply} 字段，
  * 于是他会反复点开看有没有回复。
  *
- * <p>比「漏实现」更值得记的是：{@code msg_ticket} 建表时就留了
+ * <p>比「漏实现」更值得记的是：{@code notify_ticket} 建表时就留了
  * {@code reply} / {@code replied_at} / {@code replied_by}，注释写着
  * 「记客服身份 —— 代客操作要能追到人」，**设计时就想好了要有这一步**，
  * 但连契约里都没定义过这个动作。漏实现是排期问题，漏定义是没人发现这件事需要做。

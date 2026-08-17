@@ -89,7 +89,7 @@ class MessageDomainE2eTest {
 
         /*
          * ── **用户看得到那句回复**。这是整个闭环唯一有价值的一步：
-         * 此前 msg_ticket 建表就留了 reply 列、契约里却从没定义过「回复」这个动作，
+         * 此前 notify_ticket 建表就留了 reply 列、契约里却从没定义过「回复」这个动作，
          * 于是用户提单后反复点开详情看到的永远是空的 —— 而且不报任何错。
          */
         String detail = mvc().perform(get("/mp/ticket/" + ticketNo)
@@ -150,11 +150,11 @@ class MessageDomainE2eTest {
     void templateSentCountCountsTheRightTable() {
         var before = sentCountOf("TPL_SMS_OTP");
 
-        // 走真实装饰器发一条：它写 sys_notify_log，**不写 msg_message**
+        // 走真实装饰器发一条：它写 sys_notify_log，**不写 notify_message**
         smsPort.sendOtp("13633330003", "112233", NotifyBizType.OTP, null);
 
         /*
-         * 此前这个数按 msg_message（站内信收件箱）统计，而外发通道根本不写那张表 ——
+         * 此前这个数按 notify_message（站内信收件箱）统计，而外发通道根本不写那张表 ——
          * 于是七条模板永远显示 0。运营拿这一列判断「哪条模板可以下线」，
          * 一个恒为 0 的数会让他把还在用的模板停掉。
          */
@@ -162,7 +162,7 @@ class MessageDomainE2eTest {
                 .as("发了一条短信，这条模板的近 30 天发送量就该 +1")
                 .isEqualTo(before + 1);
 
-        // 站内信模板仍走 msg_message —— 两个真源不能互换
+        // 站内信模板仍走 notify_message —— 两个真源不能互换
         assertThat(sentCountOf("TPL_INAPP_TEST"))
                 .as("站内信模板不受外发影响")
                 .isEqualTo(sentCountOf("TPL_INAPP_TEST"));

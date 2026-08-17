@@ -16,7 +16,7 @@ import lombok.Setter;
  */
 @Getter
 @Setter
-@TableName("msg_scene_channel")
+@TableName("notify_scene_channel")
 public class MsgSceneChannel extends BaseEntity {
 
     // ---- 受众

@@ -112,6 +112,9 @@ export function readSchema(root) {
   // 不认它的话，新表名在 tables 里不存在，后续 ALTER 被 `if (!t) continue` 静默丢掉，
   // 于是那张表的列集合停在改名前 —— 报出来的是「实体多出一堆字段」，
   // 而真正的原因是这个解析器没跟上改名。
+  // old→new，供列级 ALTER 阶段回溯：一条 `ADD COLUMN` 若发生在改名**之前**的版本、
+  // 但本阶段（改名先于列 ALTER 重放）已经把旧名删了，列会静默丢。记下映射，列阶段兜住。
+  const renamed = new Map();
   for (const m of sql.matchAll(/ALTER TABLE\s+(\w+)\s+RENAME TO\s+(\w+)/gi)) {
     const [, from, to] = m;
     const t = tables.get(from);
@@ -119,6 +122,7 @@ export function readSchema(root) {
     t.name = to;
     tables.delete(from);
     tables.set(to, t);
+    renamed.set(from, to);
   }
 
   // 表注释也会被改。不解析的话，图上和文档里显示的永远是**建表当天**的说法 ——
@@ -178,7 +182,8 @@ export function readSchema(root) {
     /ALTER TABLE\s+(\w+)\s+(ADD COLUMN|RENAME COLUMN|DROP COLUMN|MODIFY COLUMN)\s+(?:IF\s+(?:NOT\s+)?EXISTS\s+)?(\w+)(?:\s+([\w()]+))?([^;]*)/gi,
   )) {
     const [, table, opRaw, col, rest, tail] = m;
-    const t = tables.get(table);
+    // 直接命中优先；命中不到再看它是不是被改名了（列 ALTER 版本早于改名的情况）
+    const t = tables.get(table) ?? tables.get(renamed.get(table));
     if (!t) continue;
     switch (opRaw.toUpperCase()) {
       case "ADD COLUMN":

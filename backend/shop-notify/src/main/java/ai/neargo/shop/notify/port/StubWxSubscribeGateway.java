@@ -16,7 +16,7 @@ import java.util.List;
  * {@code shop.wx.stub}，也就是 true），
  * 理由同 {@link StubSmsGateway} —— 默认真发意味着本地跑一次测试就在骚扰真实用户的微信。
  *
- * <p>模板号给固定值 {@code STUB_TPL_*}：额度记账（{@code msg_subscribe}）按模板号对账，
+ * <p>模板号给固定值 {@code STUB_TPL_*}：额度记账（{@code notify_subscribe}）按模板号对账，
  * 桩世界里前端上报授权、后端查扣额度用的是同一套假模板号，链路照样闭环可测。
  */
 @Component("wxSubscribeGateway")

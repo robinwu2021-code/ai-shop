@@ -11,7 +11,7 @@ import lombok.Setter;
  */
 @Getter
 @Setter
-@TableName("msg_subscribe")
+@TableName("notify_subscribe")
 public class MsgSubscribe extends BaseEntity {
 
     private String userNo;

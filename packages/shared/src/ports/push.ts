@@ -54,7 +54,7 @@ export function requestSubscribe(tmplIds: string[]): Promise<SubscribeResult> {
   // #endif
 }
 
-/** 后端 msg_push_token.platform 的取值。**与后端 MsgPushToken 的常量逐字一致**。 */
+/** 后端 notify_push_token.platform 的取值。**与后端 MsgPushToken 的常量逐字一致**。 */
 export type PushPlatform = "APP_ANDROID" | "APP_IOS";
 
 /**

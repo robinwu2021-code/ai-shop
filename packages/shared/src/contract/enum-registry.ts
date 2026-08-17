@@ -93,9 +93,9 @@ export const ENUM_REGISTRY: EnumEntry[] = [
   { decl: "shared:ImageSource", dom: "ui", shape: "CLASS", verdict: "OK",
     note: "取图来源（相机/相册），端上能力选择。后端零出现" },
   { decl: "shared:PushPlatform", dom: "message", shape: "CLASS", verdict: "OK",
-    note: "APP_ANDROID/APP_IOS，与后端 msg_push_token.platform 及 MsgPushToken 的常量逐字一致。**不含 WEB** —— Web Push 是另一条通道（触达能力矩阵 G6），混进来会让「有 token 就能推」不再成立" },
+    note: "APP_ANDROID/APP_IOS，与后端 notify_push_token.platform 及 MsgPushToken 的常量逐字一致。**不含 WEB** —— Web Push 是另一条通道（触达能力矩阵 G6），混进来会让「有 token 就能推」不再成立" },
   { decl: "shared:PushProvider", dom: "message", shape: "CLASS", verdict: "OK",
-    note: "GETUI/FCM/APNS，与后端 PushProvider 及 msg_push_token.provider 逐字一致（设计：多渠道推送与运营端触达配置 · 需求 2）。决定一台设备的推送交给哪家 gateway：uni-push 底座即个推(GETUI)，海外 Android 走 FCM、iOS 可直连 APNS。**GETUI 是默认** —— 存量与 uni-push 打包上报的都是个推 cid" },
+    note: "GETUI/FCM/APNS，与后端 PushProvider 及 notify_push_token.provider 逐字一致（设计：多渠道推送与运营端触达配置 · 需求 2）。决定一台设备的推送交给哪家 gateway：uni-push 底座即个推(GETUI)，海外 Android 走 FCM、iOS 可直连 APNS。**GETUI 是默认** —— 存量与 uni-push 打包上报的都是个推 cid" },
   { decl: "ops-web:NotifyFailReason", dom: "message", shape: "CLASS", verdict: "OK",
     note: "CRED/QUOTA/TARGET/NETWORK。**不是 wire 契约**：后端只回自由文本 error，这四类是端上对它的归因分桶（lib/notify-reason.ts），用来把「下一步该做什么」显示给运营。归不出来时返回 null，不硬塞一个兜底类" },
   { decl: "ops-web:InboxMessageType", dom: "message", shape: "CLASS", verdict: "OK",
@@ -115,7 +115,7 @@ export const ENUM_REGISTRY: EnumEntry[] = [
   { decl: "ops-web:FundsMode", dom: "settle", shape: "CLASS", verdict: "OK",
     note: "资金路径（轴②：钱先进谁的账户）。与 mch_entity.funds_mode 同值。**与 BusinessMode（轴③：谁是销售主体）正交，不要合并** —— 合成一个枚举后「直连+自营」这种非法组合在类型上就可表达（同 ADR-013 教训）。结算侧「要不要给积分补差」判的是这一个，不是 BusinessMode" },
   { decl: "ops-web:NotifyChannel", dom: "message", shape: "CLASS", verdict: "OK",
-    note: "SMS/MAIL/WXSUB/PUSH 与后端 SysNotifyLog 的四个常量、sys_notify_log.channel 三处一致。**站内信 INAPP 刻意不在此枚举**：它不进 sys_notify_log，自己就是 msg_message 那张表（TDD-运营端触达中心 §1.1）" },
+    note: "SMS/MAIL/WXSUB/PUSH 与后端 SysNotifyLog 的四个常量、sys_notify_log.channel 三处一致。**站内信 INAPP 刻意不在此枚举**：它不进 sys_notify_log，自己就是 notify_message 那张表（TDD-运营端触达中心 §1.1）" },
   { decl: "ops-web:NotifyStatus", dom: "message", shape: "STATUS", verdict: "OK",
     // SENT 不在 L1 词表里，申报为领域特有词：这条链路的终态就是「发出去了」，
     // 而 L1 的 COMPLETED/SUCCESS 指的是业务完成 —— 短信发出去不等于用户看到了，

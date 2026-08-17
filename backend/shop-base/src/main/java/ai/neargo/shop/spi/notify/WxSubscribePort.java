@@ -9,7 +9,7 @@ package ai.neargo.shop.spi.notify;
  * 纯粹的通道概念。再来第三种场景时**新增一个方法**，让通道决定它对应哪个模板。
  *
  * <p><b>{@link #templateId(String)} 是唯一的例外</b>：订阅消息是一次性授权
- * （用户点一次「允许」= 攒一次发送额度），额度按微信模板号记在 {@code msg_subscribe}。
+ * （用户点一次「允许」= 攒一次发送额度），额度按微信模板号记在 {@code notify_subscribe}。
  * 发送方必须先知道场景对应哪个模板号才能查扣额度 —— 模板号在这里是**不透明的对账键**，
  * 领域代码不解释它，只拿它当 key 用。
  *
@@ -36,7 +36,7 @@ public interface WxSubscribePort {
     /**
      * 场景 → 微信模板号。没配这个场景时返回 {@code null}（调用方据此静默跳过）。
      *
-     * <p>返回值只作为 {@code msg_subscribe} 的额度对账键使用，
+     * <p>返回值只作为 {@code notify_subscribe} 的额度对账键使用，
      * 领域代码不得对它的内容做任何假设。
      */
     String templateId(String scene);

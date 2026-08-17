@@ -40,7 +40,7 @@ public interface MessageService {
      *
      * <p>交易/待办类**不走这里** —— 到货通知被频控拦掉是事故，不是保护。
      *
-     * @param templateNo {@code msg_template} 的模板号。必填：没有模板归属的营销消息
+     * @param templateNo {@code notify_template} 的模板号。必填：没有模板归属的营销消息
      *                   无法执行「同模板最小间隔」，频控对它就是摆设
      * @return 发出去了 true；被频控或停用拦下 false（调用方据此统计触达率）
      */
@@ -99,7 +99,7 @@ public interface MessageService {
     /**
      * 客服回复。工单从 {@code OPEN} → {@code REPLIED}。
      *
-     * <p>{@code msg_ticket} 建表时就留了 {@code reply} / {@code replied_at} /
+     * <p>{@code notify_ticket} 建表时就留了 {@code reply} / {@code replied_at} /
      * {@code replied_by} 三个字段，注释写着「记客服身份 —— 代客操作要能追到人」，
      * 但**全仓库没有任何代码写过它们**，连契约里都没定义过这个动作。
      * 用户那边 {@code TicketVO} 一直在展示 {@code reply}，于是他会反复点开看有没有回复。

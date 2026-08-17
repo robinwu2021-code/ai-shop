@@ -14,7 +14,7 @@ import java.util.List;
  * 场景×通道路由（设计：多渠道推送与运营端触达配置 · 需求 1）。
  *
  * <p>回答 {@link NotificationConsumer} 的两个问题：这个场景发给这个受众时，
- * <b>某条外发通道开没开</b>，以及 <b>推送该用什么级别</b>。规则来自 {@code msg_scene_channel}，
+ * <b>某条外发通道开没开</b>，以及 <b>推送该用什么级别</b>。规则来自 {@code notify_scene_channel}，
  * 运营可改，不再硬编码。
  *
  * <p><b>站内信不问这里</b>：INAPP 是事实记录，{@link NotificationConsumer} 里硬编码必发。

@@ -14,7 +14,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * {@link MailTemplatePort} 实现：从 {@code msg_template} 取正文、代入参数、交给邮件通道。
+ * {@link MailTemplatePort} 实现：从 {@code notify_template} 取正文、代入参数、交给邮件通道。
  *
  * <p><b>为什么邮件的模板正文在库里而短信的不在</b>：短信模板由阿里云报备，
  * 库里那份只是给运营看的副本；邮件模板没有第三方，**库里这份就是发出去的那份**。

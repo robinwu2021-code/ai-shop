@@ -48,7 +48,7 @@ public class MessageServiceImpl implements MessageService {
     private final ai.neargo.shop.spi.platform.SettingPort settingPort;
     private final ai.neargo.shop.spi.platform.OpsStaffPort opsStaffPort;
     private final SubscribeMapper subscribeMapper;
-    /** 外发模板的发送量从这张表数 —— 它们不写 msg_message */
+    /** 外发模板的发送量从这张表数 —— 它们不写 notify_message */
     private final ai.neargo.shop.message.mapper.MessageMappers.NotifyLogMapper notifyLogMapper;
 
     public MessageServiceImpl(MessageMapper messageMapper, TicketMapper ticketMapper,
@@ -135,7 +135,7 @@ public class MessageServiceImpl implements MessageService {
             return false;
         }
 
-        // 同模板最小间隔 —— msg_message.templateNo 为此存在（见实体注释）
+        // 同模板最小间隔 —— notify_message.templateNo 为此存在（见实体注释）
         boolean recent = DataScopeContext.executeWithoutScope(() ->
                 messageMapper.selectCount(Wrappers.<MsgMessage>lambdaQuery()
                         .eq(MsgMessage::getReceiverType, MsgMessage.RECEIVER_USER)
@@ -426,7 +426,7 @@ public class MessageServiceImpl implements MessageService {
                                         Boolean.TRUE.equals(m.getIsRead()), m.getAt()))));
     }
 
-    /** msg_message.at 存的是毫秒时间戳，不是 DATETIME —— 与 sys_notify_log 不同，别照抄 */
+    /** notify_message.at 存的是毫秒时间戳，不是 DATETIME —— 与 sys_notify_log 不同，别照抄 */
     private Long dayStart(String day) {
         return day == null || day.isBlank() ? null
                 : java.time.LocalDate.parse(day.trim()).atStartOfDay(
@@ -443,11 +443,11 @@ public class MessageServiceImpl implements MessageService {
      * 近 30 天发送量。**按通道取不同的真源** —— 这是这个数唯一能对的方式：
      *
      * <ul>
-     *   <li>站内信：它就是 {@code msg_message} 那张表</li>
-     *   <li>其余四条外发通道：它们**不写** {@code msg_message}，只写 {@code sys_notify_log}</li>
+     *   <li>站内信：它就是 {@code notify_message} 那张表</li>
+     *   <li>其余四条外发通道：它们**不写** {@code notify_message}，只写 {@code sys_notify_log}</li>
      * </ul>
      *
-     * <p>此前一律按 {@code msg_message} 数，于是外发模板<b>永远显示 0</b> ——
+     * <p>此前一律按 {@code notify_message} 数，于是外发模板<b>永远显示 0</b> ——
      * 而 {@code TPL_SMS_OTP} 真发了十几次。运营拿这一列判断「哪条模板可以下线」，
      * 一个恒为 0 的数会让他把还在用的模板停掉。
      */

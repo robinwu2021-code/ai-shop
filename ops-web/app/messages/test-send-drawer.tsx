@@ -40,7 +40,7 @@ export function TestSendDrawer({
 }) {
   const free = isFreeText(channel);
 
-  // 模板从 msg_template 读（V141 种子）。停用的不给选 —— 停用即刻生效是它的既有语义
+  // 模板从 notify_template 读（V141 种子）。停用的不给选 —— 停用即刻生效是它的既有语义
   const templates = useQuery({
     queryKey: ["msg-templates"],
     queryFn: () => api.listMsgTemplates({ size: 100 }),

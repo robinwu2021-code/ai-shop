@@ -382,7 +382,7 @@ CREATE TABLE IF NOT EXISTS mkt_user_coupon
     CONSTRAINT uk_user_coupon_no UNIQUE (user_coupon_no)
 );
 
-CREATE TABLE IF NOT EXISTS msg_message
+CREATE TABLE IF NOT EXISTS notify_message
 (
     id BIGINT(20) NOT NULL AUTO_INCREMENT,
     message_no VARCHAR(64) NOT NULL,
@@ -408,7 +408,7 @@ CREATE TABLE IF NOT EXISTS msg_message
     CONSTRAINT uk_msg_dedup UNIQUE (dedup_key)
 );
 
-CREATE TABLE IF NOT EXISTS msg_subscribe
+CREATE TABLE IF NOT EXISTS notify_subscribe
 (
     id BIGINT(20) NOT NULL AUTO_INCREMENT,
     user_no VARCHAR(64) NOT NULL,
@@ -427,7 +427,7 @@ CREATE TABLE IF NOT EXISTS msg_subscribe
     CONSTRAINT uk_sub_user_template UNIQUE (user_no,template_id)
 );
 
-CREATE TABLE IF NOT EXISTS msg_ticket
+CREATE TABLE IF NOT EXISTS notify_ticket
 (
     id BIGINT(20) NOT NULL AUTO_INCREMENT,
     ticket_no VARCHAR(64) NOT NULL,
@@ -1638,7 +1638,7 @@ CREATE TABLE IF NOT EXISTS prd_store_goods
     CONSTRAINT uk_store_goods UNIQUE (store_no,goods_no)
 );
 
-CREATE TABLE IF NOT EXISTS msg_template
+CREATE TABLE IF NOT EXISTS notify_template
 (
     id BIGINT(20) NOT NULL AUTO_INCREMENT,
     template_no VARCHAR(64) NOT NULL,
@@ -1655,7 +1655,7 @@ CREATE TABLE IF NOT EXISTS msg_template
     version BIGINT(20) NOT NULL DEFAULT 0,
     deleted TINYINT(4) NOT NULL DEFAULT 0,
     lang VARCHAR(16) NOT NULL DEFAULT 'zh-CN',
-    CONSTRAINT uk_msg_template_template_no_lang UNIQUE (template_no, lang),
+    CONSTRAINT uk_notify_template_template_no_lang UNIQUE (template_no, lang),
     PRIMARY KEY (id)
 );
 
@@ -2232,7 +2232,7 @@ CREATE TABLE IF NOT EXISTS sys_job_run
     CONSTRAINT uk_job_name UNIQUE (job_name)
 );
 
-CREATE TABLE IF NOT EXISTS msg_push_token
+CREATE TABLE IF NOT EXISTS notify_push_token
 (
     id BIGINT(20) NOT NULL AUTO_INCREMENT,
     receiver_type VARCHAR(16) NOT NULL,
@@ -2252,7 +2252,7 @@ CREATE TABLE IF NOT EXISTS msg_push_token
 );
 
 -- 场景×通道触达配置（对应 V156）。H2 建表 + 种子与迁移逐格一致。
-CREATE TABLE IF NOT EXISTS msg_scene_channel
+CREATE TABLE IF NOT EXISTS notify_scene_channel
 (
     id BIGINT(20) NOT NULL AUTO_INCREMENT,
     scene_code VARCHAR(48) NOT NULL,
@@ -4690,37 +4690,37 @@ SELECT 'SUPPORT', 'OPS_MESSAGE__TAB_APPPUSH', 'OPS', NOW(), NOW() FROM DUAL
 INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
 SELECT 'SUPPORT', 'OPS_MESSAGE__TAB_INAPP', 'OPS', NOW(), NOW() FROM DUAL
  WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPPORT' AND x.point_code='OPS_MESSAGE__TAB_INAPP');
-INSERT INTO msg_template (template_no, name, channel, content, provider_template_id, enabled, created_at, updated_at)
+INSERT INTO notify_template (template_no, name, channel, content, provider_template_id, enabled, created_at, updated_at)
 SELECT 'TPL_SMS_OTP', '验证码', 'SMS',
        '【数智邻购】您的验证码是 {code}，5 分钟内有效，请勿泄露。',
        'SMS_474945291', 1, NOW(), NOW() FROM DUAL
- WHERE NOT EXISTS (SELECT 1 FROM msg_template x WHERE x.template_no='TPL_SMS_OTP');
-INSERT INTO msg_template (template_no, name, channel, content, provider_template_id, enabled, created_at, updated_at)
+ WHERE NOT EXISTS (SELECT 1 FROM notify_template x WHERE x.template_no='TPL_SMS_OTP');
+INSERT INTO notify_template (template_no, name, channel, content, provider_template_id, enabled, created_at, updated_at)
 SELECT 'TPL_MAIL_TEST', '通道联通测试', 'MAIL',
        '{subject}\n\n{body}',
        NULL, 1, NOW(), NOW() FROM DUAL
- WHERE NOT EXISTS (SELECT 1 FROM msg_template x WHERE x.template_no='TPL_MAIL_TEST');
-INSERT INTO msg_template (template_no, name, channel, content, provider_template_id, enabled, created_at, updated_at)
+ WHERE NOT EXISTS (SELECT 1 FROM notify_template x WHERE x.template_no='TPL_MAIL_TEST');
+INSERT INTO notify_template (template_no, name, channel, content, provider_template_id, enabled, created_at, updated_at)
 SELECT 'TPL_WX_ARRIVED', '到货通知', 'WXSUB',
        '您有 {number1} 件包裹已到自提点 · {thing2}',
        NULL, 1, NOW(), NOW() FROM DUAL
- WHERE NOT EXISTS (SELECT 1 FROM msg_template x WHERE x.template_no='TPL_WX_ARRIVED');
-INSERT INTO msg_template (template_no, name, channel, content, provider_template_id, enabled, created_at, updated_at)
+ WHERE NOT EXISTS (SELECT 1 FROM notify_template x WHERE x.template_no='TPL_WX_ARRIVED');
+INSERT INTO notify_template (template_no, name, channel, content, provider_template_id, enabled, created_at, updated_at)
 SELECT 'TPL_WX_REFUNDED', '退款通知', 'WXSUB',
        '退款 {amount1} 已处理 · {thing2}',
        NULL, 1, NOW(), NOW() FROM DUAL
- WHERE NOT EXISTS (SELECT 1 FROM msg_template x WHERE x.template_no='TPL_WX_REFUNDED');
-INSERT INTO msg_template (template_no, name, channel, content, provider_template_id, enabled, created_at, updated_at)
+ WHERE NOT EXISTS (SELECT 1 FROM notify_template x WHERE x.template_no='TPL_WX_REFUNDED');
+INSERT INTO notify_template (template_no, name, channel, content, provider_template_id, enabled, created_at, updated_at)
 SELECT 'TPL_PUSH_TEST', '通用推送', 'PUSH',
        '{subject}\n{body}',
        NULL, 1, NOW(), NOW() FROM DUAL
- WHERE NOT EXISTS (SELECT 1 FROM msg_template x WHERE x.template_no='TPL_PUSH_TEST');
-INSERT INTO msg_template (template_no, name, channel, content, provider_template_id, enabled, created_at, updated_at)
+ WHERE NOT EXISTS (SELECT 1 FROM notify_template x WHERE x.template_no='TPL_PUSH_TEST');
+INSERT INTO notify_template (template_no, name, channel, content, provider_template_id, enabled, created_at, updated_at)
 SELECT 'TPL_INAPP_TEST', '站内信', 'INAPP',
        '{subject}\n{body}',
        NULL, 1, NOW(), NOW() FROM DUAL
- WHERE NOT EXISTS (SELECT 1 FROM msg_template x WHERE x.template_no='TPL_INAPP_TEST');
-INSERT INTO msg_template (template_no, name, channel, content, provider_template_id, enabled, created_at, updated_at)
+ WHERE NOT EXISTS (SELECT 1 FROM notify_template x WHERE x.template_no='TPL_INAPP_TEST');
+INSERT INTO notify_template (template_no, name, channel, content, provider_template_id, enabled, created_at, updated_at)
 SELECT 'TPL_MAIL_OPS_INIT_PWD', '运营账号开通', 'MAIL',
        '你好 {realName}，
 
@@ -4731,8 +4731,8 @@ SELECT 'TPL_MAIL_OPS_INIT_PWD', '运营账号开通', 'MAIL',
 首次登录会要求你立即修改密码。请勿转发本邮件。
 ',
        NULL, 1, NOW(), NOW() FROM DUAL
- WHERE NOT EXISTS (SELECT 1 FROM msg_template x WHERE x.template_no='TPL_MAIL_OPS_INIT_PWD');
-INSERT INTO msg_template (template_no, name, channel, content, provider_template_id, enabled, created_at, updated_at)
+ WHERE NOT EXISTS (SELECT 1 FROM notify_template x WHERE x.template_no='TPL_MAIL_OPS_INIT_PWD');
+INSERT INTO notify_template (template_no, name, channel, content, provider_template_id, enabled, created_at, updated_at)
 SELECT 'TPL_MAIL_OPS_RESET_PWD', '运营密码重置', 'MAIL',
        '你好 {realName}，
 
@@ -4744,18 +4744,18 @@ SELECT 'TPL_MAIL_OPS_RESET_PWD', '运营密码重置', 'MAIL',
 如果不是你本人操作，忽略本邮件即可，你的密码不会有任何变化。
 ',
        NULL, 1, NOW(), NOW() FROM DUAL
- WHERE NOT EXISTS (SELECT 1 FROM msg_template x WHERE x.template_no='TPL_MAIL_OPS_RESET_PWD');
-UPDATE msg_template SET content = '{subject}
+ WHERE NOT EXISTS (SELECT 1 FROM notify_template x WHERE x.template_no='TPL_MAIL_OPS_RESET_PWD');
+UPDATE notify_template SET content = '{subject}
 
 {body}' WHERE template_no = 'TPL_MAIL_TEST';
-UPDATE msg_template SET content = '{subject}
+UPDATE notify_template SET content = '{subject}
 {body}' WHERE template_no = 'TPL_PUSH_TEST';
-UPDATE msg_template SET content = '{subject}
+UPDATE notify_template SET content = '{subject}
 {body}' WHERE template_no = 'TPL_INAPP_TEST';
 UPDATE sys_function_point
    SET name = '站内信模板', updated_at = NOW()
  WHERE point_code = 'OPS_MESSAGE__TAB_INAPP';
-INSERT INTO msg_template (template_no, name, channel, lang, content, provider_template_id, enabled, created_at, updated_at)
+INSERT INTO notify_template (template_no, name, channel, lang, content, provider_template_id, enabled, created_at, updated_at)
 SELECT 'TPL_MAIL_OPS_RESET_PWD', 'Ops password reset', 'MAIL', 'en',
        'Hi {realName},
 
@@ -4767,7 +4767,7 @@ Reset code (valid for {ttlMinutes} minutes, single use):
 If this was not you, just ignore this email — your password stays unchanged.
 ',
        NULL, 1, NOW(), NOW() FROM DUAL
- WHERE NOT EXISTS (SELECT 1 FROM msg_template x
+ WHERE NOT EXISTS (SELECT 1 FROM notify_template x
                     WHERE x.template_no='TPL_MAIL_OPS_RESET_PWD' AND x.lang='en');
 INSERT INTO sys_merchant_plan_def
     (plan_code, name, store_quota, staff_quota, cross_store_stats, trial_days, enabled, sort,
@@ -4825,7 +4825,7 @@ INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated
 VALUES ('TECH_OPS', 'ACT__SYSTEM_MEDIA_PURGE', 'OPS', NOW(), NOW());
 
 -- 场景×通道种子（对应 V156，逐格照搬 NotificationConsumer 搬迁前规则）。
-INSERT INTO msg_scene_channel (scene_code, audience, channel, enabled, push_level, created_at, updated_at)
+INSERT INTO notify_scene_channel (scene_code, audience, channel, enabled, push_level, created_at, updated_at)
 SELECT t.scene_code, t.audience, t.channel, t.enabled, t.push_level, NOW(), NOW()
 FROM (
     SELECT 'ORDER_PAID' AS scene_code, 'C_USER' AS audience, 'INAPP' AS channel, 1 AS enabled, 'NORMAL' AS push_level UNION ALL
@@ -4846,7 +4846,7 @@ FROM (
     SELECT 'REVIEW_CREATED', 'B_STAFF', 'PUSH', 1, 'NORMAL'
 ) t
 WHERE NOT EXISTS (
-    SELECT 1 FROM msg_scene_channel m
+    SELECT 1 FROM notify_scene_channel m
     WHERE m.scene_code = t.scene_code AND m.audience = t.audience AND m.channel = t.channel
 );
 

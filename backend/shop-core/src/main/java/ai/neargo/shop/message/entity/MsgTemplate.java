@@ -8,13 +8,13 @@ import lombok.Setter;
 /**
  * 消息模板（P-14.1.1）。
  *
- * <p><b>为什么需要它</b>：{@code msg_subscribe.template_id} 一直在引用模板 ID，
+ * <p><b>为什么需要它</b>：{@code notify_subscribe.template_id} 一直在引用模板 ID，
  * 而没有任何表管理这些模板——模板是谁建的、还启不启用、正文长什么样，全都无处可查。
  * 运营想停掉一个扰民的模板只能去微信后台改，平台侧完全不知情。
  */
 @Getter
 @Setter
-@TableName("msg_template")
+@TableName("notify_template")
 public class MsgTemplate extends BaseEntity {
 
     /*
@@ -32,7 +32,7 @@ public class MsgTemplate extends BaseEntity {
     @Deprecated
     public static final String INBOX = "INBOX";
 
-    /** 站内信。**它不进 sys_notify_log**，自己就是 msg_message 那张表 */
+    /** 站内信。**它不进 sys_notify_log**，自己就是 notify_message 那张表 */
     public static final String CHANNEL_INAPP = "INAPP";
     public static final String CHANNEL_SMS = "SMS";
     public static final String CHANNEL_MAIL = "MAIL";

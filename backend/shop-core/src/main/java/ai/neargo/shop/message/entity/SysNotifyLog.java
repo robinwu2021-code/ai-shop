@@ -58,7 +58,7 @@ public class SysNotifyLog {
     private String templateCode;
 
     /**
-     * 平台业务模板号（{@code msg_template.template_no}）。自由文本发送为空。
+     * 平台业务模板号（{@code notify_template.template_no}）。自由文本发送为空。
      *
      * <p><b>与 {@link #templateCode} 不是一回事</b>：那个是**通道方的**码
      * （阿里云 SMS_xxx / 邮件主题），排查时拿它去通道后台查回执；

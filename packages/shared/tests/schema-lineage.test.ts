@@ -191,7 +191,7 @@ const KEY_OWNERS: Record<string, { table: string; col?: string }> = {
  */
 const NAME_COLLISIONS: Record<string, string> = {
   receiver_no:
-    "msg_message 与 msg_push_token 都是「收件人编号」，但**都是多态的**：\n" +
+    "notify_message 与 notify_push_token 都是「收件人编号」，但**都是多态的**：\n" +
     "  真正的含义由同表的 receiver_type 决定 —— USER 时是 usr_user.user_no，" +
     "STAFF 时是 mch_staff.staff_no（两族编号，取值空间不重叠但也不保证）。\n" +
     "  所以它不是任何一张表的外键，按名字 join 会把店员的设备连到买家身上：" +
@@ -219,11 +219,11 @@ const NAME_COLLISIONS: Record<string, string> = {
     "所以谁都不能登记成外键，按名字 join 必然连错，且不报错。",
   operator_no: "ord_status_log 与 ful_verify_log 各自记录操作人，不是同一张表的外键。",
   template_no:
-    "**同一个列名下其实是两族**：msg_template 是消息模板，msg_message.template_no 引用它；" +
+    "**同一个列名下其实是两族**：notify_template 是消息模板，notify_message.template_no 引用它；" +
     "prd_spec_template.template_no 是商品规格模板（颜色/尺码那套），与消息毫无关系。\n" +
     "  按名字 join 会把「发过哪条推送」连到「用了哪个规格模板」上 —— 两边都有值，不报错。\n" +
     "  没改名是因为两族在各自的域里都叫得通；登记在这里，是为了让下一个人先看到这句话。\n" +
-    "  注意 msg_message → msg_template 这一跳**没有守卫** —— LINEAGE 只管资金账与积分账，" +
+    "  注意 notify_message → notify_template 这一跳**没有守卫** —— LINEAGE 只管资金账与积分账，" +
     "触达链路断了的后果（推送发不出去）不在这个文件的职责里。",
 };
 

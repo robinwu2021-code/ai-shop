@@ -4,7 +4,7 @@ package ai.neargo.shop.spi.notify;
  * 推送供应商（设计：多渠道推送与运营端触达配置 · 需求 2）。
  *
  * <p>一台设备的推送归哪家：个推聚合国内厂商通道（小米/华为/OPPO/vivo/荣耀 + 透传 APNs），
- * 海外 Android 走 Google FCM，iOS 亦可直连 Apple APNs。{@code msg_push_token.provider}
+ * 海外 Android 走 Google FCM，iOS 亦可直连 Apple APNs。{@code notify_push_token.provider}
  * 记的就是它，{@code PushRouter} 据此把一条推送分发到对应 gateway。
  *
  * <p><b>默认 GETUI</b>：存量设备与 uni-push 打包上报的都是个推 cid。
