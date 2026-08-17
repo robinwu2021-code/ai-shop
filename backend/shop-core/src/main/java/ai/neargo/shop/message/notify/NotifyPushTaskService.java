@@ -144,15 +144,28 @@ public class NotifyPushTaskService {
                         .eq(NotifyPushTask::getTaskNo, taskNo).last("limit 1")));
     }
 
-    /** 人群 → 收件人编号列表。一期只有「全体装了 App 的消费者」（有推送令牌 = opt-in）。 */
+    /** 预估触达：不建任务，只算当下人群规模。供运营（或 UI）发之前先看覆盖多少人。 */
+    public int estimate(String audienceType) {
+        return resolveAudience(audienceType).size();
+    }
+
+    /**
+     * 人群 → 收件人编号列表。有推送令牌 = opt-in：
+     * <ul>
+     *   <li>{@code ALL_APP_USER} → 全体装了 App 的消费者；</li>
+     *   <li>{@code ALL_STAFF} → 全体装了 App 的商家员工（平台面向 B 端的公告）。</li>
+     * </ul>
+     */
     private List<String> resolveAudience(String audienceType) {
-        if (!NotifyPushTask.AUD_ALL_APP_USER.equals(audienceType)) {
-            throw BizException.of(ErrorCode.BAD_REQUEST);
-        }
+        String receiverType = switch (audienceType == null ? "" : audienceType) {
+            case NotifyPushTask.AUD_ALL_APP_USER -> MsgMessage.RECEIVER_USER;
+            case NotifyPushTask.AUD_ALL_STAFF -> MsgMessage.RECEIVER_STAFF;
+            default -> throw BizException.of(ErrorCode.BAD_REQUEST);
+        };
         return DataScopeContext.executeWithoutScope(() ->
                 tokenMapper.selectList(Wrappers.<MsgPushToken>lambdaQuery()
                         .select(MsgPushToken::getReceiverNo)
-                        .eq(MsgPushToken::getReceiverType, MsgMessage.RECEIVER_USER)
+                        .eq(MsgPushToken::getReceiverType, receiverType)
                         .groupBy(MsgPushToken::getReceiverNo))
                 .stream().map(MsgPushToken::getReceiverNo).toList());
     }

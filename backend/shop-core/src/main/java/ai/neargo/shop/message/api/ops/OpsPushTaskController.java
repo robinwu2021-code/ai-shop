@@ -47,6 +47,20 @@ public class OpsPushTaskController {
     }
 
     /**
+     * 预估触达：**建任务前先看覆盖多少人**。运营在填广播表单时实时看到「这一发覆盖 N 人」，
+     * 不用先建一个 QUEUED 任务再看数、发现不对再取消。
+     */
+    @GetMapping("/ops/push-tasks/estimate")
+    @PreAuthorize("@perm.can('" + Perms.MESSAGE_TEMPLATE_READ + "')")
+    public EstimateVO estimate(@RequestParam String audienceType) {
+        return new EstimateVO(audienceType, service.estimate(audienceType));
+    }
+
+    /** @param count 当下人群规模；随人装/卸 App 变化，只是发起时的快照参考 */
+    public record EstimateVO(String audienceType, int count) {
+    }
+
+    /**
      * 新建。**创建时即预估触达人数**（当下人群规模）—— 发之前先让运营看到「这一发覆盖多少人」，
      * 而不是发完才知道。scheduledAt 空 = 尽快发。
      */

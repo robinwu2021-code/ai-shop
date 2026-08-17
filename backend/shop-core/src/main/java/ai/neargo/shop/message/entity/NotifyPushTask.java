@@ -21,6 +21,8 @@ public class NotifyPushTask extends BaseEntity {
     // ---- 人群
     /** 全体装了 App（有推送令牌）的消费者。 */
     public static final String AUD_ALL_APP_USER = "ALL_APP_USER";
+    /** 全体装了 App 的商家员工（平台面向 B 端的公告广播）。 */
+    public static final String AUD_ALL_STAFF = "ALL_STAFF";
 
     // ---- 状态
     public static final String STATUS_QUEUED = "QUEUED";

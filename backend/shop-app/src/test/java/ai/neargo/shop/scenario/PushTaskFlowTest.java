@@ -61,6 +61,26 @@ class PushTaskFlowTest {
     }
 
     @Test
+    @DisplayName("★★ 员工人群 + 预估：ALL_STAFF 发给装了 App 的员工；estimate 不建任务")
+    void staffAudienceAndEstimate() {
+        binder.register(MsgMessage.RECEIVER_STAFF, "ST-NPT-1", MsgPushToken.APP_ANDROID, "GETUI", "cid-st-1");
+
+        // 预估不建任务，只算当下规模
+        int est = taskService.estimate(NotifyPushTask.AUD_ALL_STAFF);
+        assertThat(est).as("至少含刚绑的那个员工").isGreaterThanOrEqualTo(1);
+
+        NotifyPushTask t = taskService.create("店主公告", NotifyPushTask.AUD_ALL_STAFF,
+                "平台通知", "本周六系统维护", null, null, "ST-OPS");
+        assertThat(t.getEstimatedCount()).as("ALL_STAFF 人群解析到员工").isGreaterThanOrEqualTo(1);
+
+        taskService.dispatchDue();
+        // 用任务自身的终态断言（隔离安全，不依赖与别的任务共享的 stub）
+        NotifyPushTask done = taskService.list(NotifyPushTask.STATUS_DONE, 1, 200).records().stream()
+                .filter(x -> x.getTaskNo().equals(t.getTaskNo())).findFirst().orElseThrow();
+        assertThat(done.getSentCount()).as("发给了 ≥1 个装 App 的员工").isGreaterThanOrEqualTo(1);
+    }
+
+    @Test
     @DisplayName("★★ 定时任务未到点不发；QUEUED 才可取消，已完成的取消不了")
     void scheduledNotDueAndCancelRules() {
         NotifyPushTask future = taskService.create("明天的", NotifyPushTask.AUD_ALL_APP_USER,
