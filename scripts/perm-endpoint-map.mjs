@@ -247,6 +247,9 @@ export const RULES = [
   ["GET", /^\/ops\/inapp-messages/, "message:template:read"],
   ["GET", /^\/ops\/(msg-templates|notify-quota)/, "message:template:read"],
   ["*", /^\/ops\/(msg-templates|notify-quota)/, "message:template:update"],
+  // 营销广播推送任务（N6）：管触达模板/渠道的同一批运营发广播
+  ["GET", /^\/ops\/push-tasks/, "message:template:read"],
+  ["*", /^\/ops\/push-tasks/, "message:template:update"],
   // 场景×通道触达配置（哪个事件走哪些通道，运营可配 —— 设计：多渠道推送与运营端触达配置）
   ["GET", /^\/ops\/scene-channel/, "message:template:read"],
   ["*", /^\/ops\/scene-channel/, "message:template:update"],

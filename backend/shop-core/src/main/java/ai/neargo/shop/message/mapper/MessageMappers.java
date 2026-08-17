@@ -42,4 +42,9 @@ public final class MessageMappers {
             extends BaseMapper<ai.neargo.shop.message.entity.NotifyChannel> {
     }
 
+    /** 平台营销广播推送任务。 */
+    public interface PushTaskMapper
+            extends BaseMapper<ai.neargo.shop.message.entity.NotifyPushTask> {
+    }
+
 }

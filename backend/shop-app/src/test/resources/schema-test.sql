@@ -2297,6 +2297,33 @@ CREATE TABLE IF NOT EXISTS notify_channel
     CONSTRAINT uk_notify_channel_no UNIQUE (channel_no)
 );
 
+-- 平台营销广播推送任务（对应 V161）。
+CREATE TABLE IF NOT EXISTS notify_push_task
+(
+    id BIGINT(20) NOT NULL AUTO_INCREMENT,
+    task_no VARCHAR(48) NOT NULL,
+    name VARCHAR(128) NOT NULL,
+    audience_type VARCHAR(32) NOT NULL,
+    channel VARCHAR(16) NOT NULL DEFAULT 'PUSH',
+    title VARCHAR(128) NOT NULL,
+    body VARCHAR(512) NOT NULL,
+    link VARCHAR(256) DEFAULT NULL,
+    scheduled_at DATETIME DEFAULT NULL,
+    status VARCHAR(16) NOT NULL DEFAULT 'QUEUED',
+    estimated_count INT(11) NOT NULL DEFAULT 0,
+    sent_count INT(11) NOT NULL DEFAULT 0,
+    finished_at DATETIME DEFAULT NULL,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT(20) NOT NULL DEFAULT 0,
+    deleted TINYINT(4) NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_push_task_no UNIQUE (task_no)
+);
+
 CREATE TABLE IF NOT EXISTS stl_withdraw
 (
     id BIGINT(20) NOT NULL AUTO_INCREMENT,
