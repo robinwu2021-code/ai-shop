@@ -24,7 +24,7 @@ class PushRouterTest {
 
     /** 捕获写进记录表的字段（同 NotifyLoggingPortTest 的手法）。 */
     private static final class CapturingWriter extends NotifyLogWriter {
-        record Row(String channel, String status, String error, String providerMsgId) {
+        record Row(String channel, String status, String error, String providerMsgId, String provider) {
         }
 
         final List<Row> rows = new ArrayList<>();
@@ -33,11 +33,12 @@ class PushRouterTest {
             super(null);
         }
 
+        // PushRouter 走带 provider 的 10 参重载 —— 捕获它，顺带断言 provider 归对了家
         @Override
         public void write(String channel, String bizType, String targetPlain, String templateCode,
                           String templateNo, String status, String error, String providerMsgId,
-                          String operatorNo) {
-            rows.add(new Row(channel, status, error, providerMsgId));
+                          String operatorNo, String provider) {
+            rows.add(new Row(channel, status, error, providerMsgId, provider));
         }
     }
 
@@ -89,6 +90,8 @@ class PushRouterTest {
         assertThat(writer.rows).hasSize(1);
         assertThat(writer.rows.getFirst().status()).isEqualTo(SysNotifyLog.SENT);
         assertThat(writer.rows.getFirst().providerMsgId()).isEqualTo("task-GETUI");
+        assertThat(writer.rows.getFirst().provider())
+                .as("记录按**请求的**供应商归家：桩顶发但这条设备是 FCM").isEqualTo(PushProvider.FCM);
     }
 
     @Test

@@ -47,6 +47,8 @@ public class SysNotifyLog {
 
     private String notifyNo;
     private String channel;
+    /** 供应商 ALI/SMTP/WECHAT/GETUI/FCM/APNS（N3）；旧行与单供应商推出为空。 */
+    private String provider;
     private String bizType;
 
     /** **掩码后的**收件人。明文不落库 */

@@ -45,10 +45,26 @@ public class NotifyLogWriter {
     public void write(String channel, String bizType, String targetPlain, String templateCode,
                       String templateNo, String status, String error, String providerMsgId,
                       String operatorNo) {
+        // 单供应商通道的 provider 是定的，从通道推出来；PUSH 有多供应商，走下面带 provider 的重载
+        write(channel, bizType, targetPlain, templateCode, templateNo, status, error,
+                providerMsgId, operatorNo, defaultProvider(channel));
+    }
+
+    /**
+     * 带**供应商**的写入（设计：触达推送中台 · N3）。PUSH 通道靠它把记录归到具体供应商
+     * （个推/FCM/APNs），否则三家挤在 channel=PUSH 一格里，计数拆不开。
+     *
+     * @param provider {@link ai.neargo.shop.message.entity.NotifyChannel} 的供应商常量；
+     *                 单供应商通道（SMS/MAIL/WXSUB）由 9 参重载自动推出，无需显式传
+     */
+    public void write(String channel, String bizType, String targetPlain, String templateCode,
+                      String templateNo, String status, String error, String providerMsgId,
+                      String operatorNo, String provider) {
         try {
             SysNotifyLog row = new SysNotifyLog();
             row.setNotifyNo(BizKey.next(BizKey.NOTIFY_LOG));
             row.setChannel(channel);
+            row.setProvider(provider);
             row.setBizType(bizType);
             row.setTarget(SysNotifyLog.MAIL.equals(channel)
                     ? Masks.email(targetPlain) : Masks.phone(targetPlain));
@@ -67,6 +83,16 @@ public class NotifyLogWriter {
             log.error("[notify] 写发送记录失败 channel={} biz={} —— 不影响发送本身",
                     channel, bizType, e);
         }
+    }
+
+    /** 单供应商通道的固定供应商；PUSH/INAPP 由调用方显式传（PUSH 多供应商），返回 null。 */
+    private static String defaultProvider(String channel) {
+        return switch (channel) {
+            case SysNotifyLog.SMS -> ai.neargo.shop.message.entity.NotifyChannel.PROV_ALI;
+            case SysNotifyLog.MAIL -> ai.neargo.shop.message.entity.NotifyChannel.PROV_SMTP;
+            case SysNotifyLog.WXSUB -> ai.neargo.shop.message.entity.NotifyChannel.PROV_WECHAT;
+            default -> null;
+        };
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)

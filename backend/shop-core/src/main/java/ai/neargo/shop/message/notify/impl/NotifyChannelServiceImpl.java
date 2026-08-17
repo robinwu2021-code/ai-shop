@@ -196,13 +196,25 @@ public class NotifyChannelServiceImpl implements NotifyChannelService {
                                 cred("APNS_KEY_ID", apnsKeyId, false),
                                 cred("APNS_PRIVATE_KEY", apnsPrivateKey, false),
                                 cred("APNS_TOPIC", apnsTopic, false)),
-                        // 每家的启停一眼可见；appId/topic 是可公开标识，照常回显
+                        // 每家的启停 + 今日发送数一眼可见（N3 拆到供应商）；appId/topic 可公开回显
                         List.of(new Param("getui", pushStub ? "桩" : "启用"),
                                 new Param("getui.appId", getuiAppId),
+                                new Param("getui.todaySent",
+                                        String.valueOf(sentToday(SysNotifyLog.PUSH,
+                                                ai.neargo.shop.message.entity.NotifyChannel.PROV_GETUI,
+                                                SysNotifyLog.SENT))),
                                 new Param("fcm", fcmStub ? "桩" : "启用"),
                                 new Param("fcm.projectId", fcmProjectId),
+                                new Param("fcm.todaySent",
+                                        String.valueOf(sentToday(SysNotifyLog.PUSH,
+                                                ai.neargo.shop.message.entity.NotifyChannel.PROV_FCM,
+                                                SysNotifyLog.SENT))),
                                 new Param("apns", apnsStub ? "桩" : "启用"),
-                                new Param("apns.topic", apnsTopic)),
+                                new Param("apns.topic", apnsTopic),
+                                new Param("apns.todaySent",
+                                        String.valueOf(sentToday(SysNotifyLog.PUSH,
+                                                ai.neargo.shop.message.entity.NotifyChannel.PROV_APNS,
+                                                SysNotifyLog.SENT)))),
                         sentToday(SysNotifyLog.PUSH, SysNotifyLog.SENT),
                         sentToday(SysNotifyLog.PUSH, SysNotifyLog.FAILED)));
     }
@@ -309,6 +321,17 @@ public class NotifyChannelServiceImpl implements NotifyChannelService {
         return DataScopeContext.executeWithoutScope(() ->
                 logMapper.selectCount(Wrappers.<SysNotifyLog>lambdaQuery()
                         .eq(SysNotifyLog::getChannel, channel)
+                        .eq(SysNotifyLog::getStatus, status)
+                        .ge(SysNotifyLog::getCreatedAt, dayStart)));
+    }
+
+    /** 按供应商细分的今日计数（N3：sys_notify_log.provider 落地后才拆得开个推/FCM/APNs）。 */
+    private long sentToday(String channel, String provider, String status) {
+        LocalDateTime dayStart = LocalDate.now().atStartOfDay();
+        return DataScopeContext.executeWithoutScope(() ->
+                logMapper.selectCount(Wrappers.<SysNotifyLog>lambdaQuery()
+                        .eq(SysNotifyLog::getChannel, channel)
+                        .eq(SysNotifyLog::getProvider, provider)
                         .eq(SysNotifyLog::getStatus, status)
                         .ge(SysNotifyLog::getCreatedAt, dayStart)));
     }

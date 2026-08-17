@@ -158,7 +158,7 @@ class NotifyEndToEndFlowTest {
          * 而重置码在有效期内等同于那个账号的钥匙。
          */
         PageData<SysNotifyLog> rows = notifyLogService.list(
-                null, null, null, null, null, MAIL, 1, 50);
+                null, null, null, null, null, null, MAIL, 1, 50);
         assertThat(rows.records()).isNotEmpty();
         assertThat(rows.records().toString())
                 .as("重置码绝不能出现在发送记录的任何字段里")

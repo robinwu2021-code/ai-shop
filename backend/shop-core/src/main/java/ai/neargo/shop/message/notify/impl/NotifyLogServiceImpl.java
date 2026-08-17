@@ -72,7 +72,7 @@ public class NotifyLogServiceImpl implements NotifyLogService {
     }
 
     @Override
-    public PageData<SysNotifyLog> list(String channel, String status, String bizType,
+    public PageData<SysNotifyLog> list(String channel, String provider, String status, String bizType,
                                        String from, String to, String target,
                                        long page, long size) {
         String needle = maskedNeedle(target);
@@ -86,6 +86,7 @@ public class NotifyLogServiceImpl implements NotifyLogService {
         LocalDateTime toAt = endOf(to);
         var q = Wrappers.<SysNotifyLog>lambdaQuery()
                 .eq(channel != null && !channel.isBlank(), SysNotifyLog::getChannel, channel)
+                .eq(provider != null && !provider.isBlank(), SysNotifyLog::getProvider, provider)
                 .eq(status != null && !status.isBlank(), SysNotifyLog::getStatus, status)
                 .eq(bizType != null && !bizType.isBlank(), SysNotifyLog::getBizType, bizType)
                 .ge(fromAt != null, SysNotifyLog::getCreatedAt, fromAt)

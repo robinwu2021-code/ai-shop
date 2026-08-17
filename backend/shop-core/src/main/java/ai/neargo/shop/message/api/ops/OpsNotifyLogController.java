@@ -110,6 +110,7 @@ public class OpsNotifyLogController {
     @GetMapping("/ops/notify-logs")
     @PreAuthorize("@perm.can('" + Perms.MESSAGE_TEMPLATE_READ + "')")
     public PageData<SysNotifyLog> list(@RequestParam(required = false) String channel,
+                                       @RequestParam(required = false) String provider,
                                        @RequestParam(required = false) String status,
                                        @RequestParam(required = false) String bizType,
                                        @RequestParam(required = false) String from,
@@ -117,7 +118,8 @@ public class OpsNotifyLogController {
                                        @RequestParam(required = false) String target,
                                        @RequestParam(defaultValue = "1") long page,
                                        @RequestParam(defaultValue = "20") long size) {
-        return notifyLogService.list(channel, status, bizType, from, to, target, page, size);
+        // provider 筛选（N3）：终于能只看 FCM / 只看 APNs 的记录，不再混在 PUSH 一格里
+        return notifyLogService.list(channel, provider, status, bizType, from, to, target, page, size);
     }
 
     /**

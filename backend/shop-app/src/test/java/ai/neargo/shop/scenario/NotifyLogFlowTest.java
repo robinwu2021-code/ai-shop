@@ -44,7 +44,7 @@ class NotifyLogFlowTest {
 
     private PageData<SysNotifyLog> logs() {
         // 这条 helper 要的是「全部记录」，各维都传 null
-        return notifyLogService.list(null, null, null, null, null, null, 1, 50);
+        return notifyLogService.list(null, null, null, null, null, null, null, 1, 50);
     }
 
     @Test
@@ -57,18 +57,18 @@ class NotifyLogFlowTest {
          * 运营手上唯一有的就是完整手机号。这一条挂掉的表现是「查不到」——
          * 而「查不到」会被读成「这条根本没发出去」，排查当场走错方向。
          */
-        var byPlain = notifyLogService.list(null, null, null, null, null, phone, 1, 50);
+        var byPlain = notifyLogService.list(null, null, null, null, null, null, phone, 1, 50);
         assertThat(byPlain.records())
                 .as("输完整手机号必须命中那条掩码记录")
                 .extracting(SysNotifyLog::getTarget)
                 .contains("137****2222");
 
         // 尾四位这种片段输入也要能用 —— 运营常常只记得后四位
-        var byTail = notifyLogService.list(null, null, null, null, null, "2222", 1, 50);
+        var byTail = notifyLogService.list(null, null, null, null, null, null, "2222", 1, 50);
         assertThat(byTail.records()).isNotEmpty();
 
         // 不相干的号码不能被模糊匹配捞进来
-        var miss = notifyLogService.list(null, null, null, null, null, "18600009999", 1, 50);
+        var miss = notifyLogService.list(null, null, null, null, null, null, "18600009999", 1, 50);
         assertThat(miss.records())
                 .extracting(SysNotifyLog::getTarget)
                 .doesNotContain("137****2222");
@@ -80,14 +80,14 @@ class NotifyLogFlowTest {
         smsPort.sendOtp("13500003333", "123456", NotifyBizType.OTP, null);
         String today = java.time.LocalDate.now().toString();
 
-        var rows = notifyLogService.list(null, null, null, today, today, "13500003333", 1, 50);
+        var rows = notifyLogService.list(null, null, null, null, today, today, "13500003333", 1, 50);
         assertThat(rows.records())
                 .as("到货日期含当天，实现里要按次日零点的开区间")
                 .isNotEmpty();
 
         // 昨天以前的窗口里不该有它
         String yesterday = java.time.LocalDate.now().minusDays(1).toString();
-        var none = notifyLogService.list(null, null, null, null, yesterday, "13500003333", 1, 50);
+        var none = notifyLogService.list(null, null, null, null, null, yesterday, "13500003333", 1, 50);
         assertThat(none.records()).isEmpty();
     }
 

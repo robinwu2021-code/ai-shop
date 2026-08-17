@@ -2163,6 +2163,7 @@ CREATE TABLE IF NOT EXISTS sys_notify_log
     id              BIGINT       NOT NULL AUTO_INCREMENT,
     notify_no       VARCHAR(32)  NOT NULL,
     channel         VARCHAR(16)  NOT NULL,
+    provider        VARCHAR(16),
     biz_type        VARCHAR(32)  NOT NULL,
     target          VARCHAR(64)  NOT NULL,
     template_code   VARCHAR(64),

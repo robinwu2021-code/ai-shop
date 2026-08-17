@@ -31,7 +31,7 @@ public interface NotifyLogService {
      *                所以输入要先按同一口径掩码再匹配 —— 直接拿明文查会一条都查不到，
      *                而那正是运营手上唯一有的东西。输入片段（如尾四位）则原样模糊匹配
      */
-    PageData<SysNotifyLog> list(String channel, String status, String bizType,
+    PageData<SysNotifyLog> list(String channel, String provider, String status, String bizType,
                                 String from, String to, String target, long page, long size);
 
     /**
