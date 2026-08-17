@@ -1,6 +1,6 @@
 package ai.neargo.shop.arch;
 
-import ai.neargo.shop.channel.notify.port.WxSubscribeGateway;
+import ai.neargo.shop.notify.port.WxSubscribeGateway;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 

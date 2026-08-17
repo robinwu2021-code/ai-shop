@@ -1,6 +1,6 @@
 package ai.neargo.shop.scenario;
 
-import ai.neargo.shop.channel.notify.port.StubPushGateway;
+import ai.neargo.shop.notify.port.StubPushGateway;
 import ai.neargo.shop.merchant.entity.MchEntity;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper;
 import ai.neargo.shop.message.entity.MsgPushToken;

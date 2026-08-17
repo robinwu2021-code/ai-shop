@@ -1,4 +1,4 @@
-package ai.neargo.shop.channel.notify.port;
+package ai.neargo.shop.notify.port;
 
 import ai.neargo.shop.spi.notify.PushGateway;
 import ai.neargo.shop.spi.notify.PushProvider;

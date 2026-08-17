@@ -1,4 +1,4 @@
-package ai.neargo.shop.channel.notify.port;
+package ai.neargo.shop.notify.port;
 
 import java.nio.charset.StandardCharsets;
 import java.security.KeyFactory;

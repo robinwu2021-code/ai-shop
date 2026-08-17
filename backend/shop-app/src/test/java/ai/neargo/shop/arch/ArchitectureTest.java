@@ -287,9 +287,11 @@ class ArchitectureTest {
     @DisplayName("领域层不得直接依赖通道实现（只认 spi 包的网关接口）")
     void domainsMustNotTouchChannel() {
         noClasses().that().resideInAnyPackage(domainPackages())
-                .should().dependOnClassesThat().resideInAPackage("ai.neargo.shop.channel..")
+                .should().dependOnClassesThat()
+                .resideInAnyPackage("ai.neargo.shop.channel..", "ai.neargo.shop.notify.port..")
                 .allowEmptyShould(true)
-                .because("微信/支付宝的报文格式与「这笔钱怎么分」无关。领域层一旦 import 具体网关，"
+                .because("微信/支付宝的报文格式与「这笔钱怎么分」无关；短信/推送的供应商 SDK 与「发什么」无关。"
+                        + "领域层一旦 import 具体网关（channel 的支付适配 / notify 的触达网关），"
                         + "换通道就要改业务代码，而 ops 部署（不含支付通道）会连编译都过不去")
                 .check(classes);
     }
@@ -340,9 +342,13 @@ class ArchitectureTest {
     void topLevelPackagesMustBeRegistered() {
         // 非业务域的顶层包：横切基础设施与装配层，各有专门规则管，不进 DOMAINS
         List<String> infra = List.of("common", "spi", "auth", "event", "idem", "portal", "config", "arch",
-                // channel：外部通道适配（支付/进件/登录凭证/推送）。不是业务域——
+                // channel：外部通道适配（支付/进件/登录凭证）。不是业务域——
                 // 它没有自己的表，只把外部协议翻译成 spi 的接口。见 domainsMustNotTouchChannel。
                 "channel",
+                // notify：触达中台的通道适配（短信/邮件/微信订阅/聚合推送/平台直连推送）。
+                // 与 channel 同构——不是业务域，只把各家推送/短信协议翻译成 spi.notify 的接口。
+                // 编排（谁该收到）仍在 message 域；这里只管「怎么发出去」。见 domainsMustNotTouchChannel。
+                "notify",
                 // archive：运营端归档（软删除）。**同样不是业务域** ——
                 // 它没有自己的表，只往别人的表上盖一个 archived_at，
                 // 表名由调用方的枚举给。四个域的这段逻辑逐字相同，

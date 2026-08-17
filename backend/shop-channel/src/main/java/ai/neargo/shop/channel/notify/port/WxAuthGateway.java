@@ -18,13 +18,13 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * 微信 {@code jscode2session}。与 {@link WxSubscribeGateway} 共用 {@code shop.wx.appid/secret}，
+ * 微信 {@code jscode2session}。与 {@link ai.neargo.shop.notify.port.WxSubscribeGateway} 共用 {@code shop.wx.appid/secret}，
  * 但**开关是分开的**（{@code shop.wx.login.stub}）：本通道只要 appid + secret 就能通，
  * 订阅消息还要 mp 后台报备过的模板号 —— 接入前置不同，合成一个开关会让
  * 「先把登录接通」被订阅消息的 fail-fast 拦在启动阶段。
  *
  * <p>反过来那一半仍然不许：登录走桩而订阅消息真发，会造出「库里是假 openid、
- * 通道却在真发」的缝合世界。那个组合由 {@link WxSubscribeGateway} 的构造器拒绝。
+ * 通道却在真发」的缝合世界。那个组合由 {@link ai.neargo.shop.notify.port.WxSubscribeGateway} 的构造器拒绝。
  *
  * <p>{@code session_key} <b>刻意不返回也不落库</b>：它是解密用户敏感数据的密钥，
  * 当前登录链路用不到；存一个用不到的密钥只是多一处泄露面。

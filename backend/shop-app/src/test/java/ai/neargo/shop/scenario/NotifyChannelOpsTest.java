@@ -1,7 +1,7 @@
 package ai.neargo.shop.scenario;
 
-import ai.neargo.shop.channel.notify.port.StubPushGateway;
-import ai.neargo.shop.channel.notify.port.StubWxSubscribeGateway;
+import ai.neargo.shop.notify.port.StubPushGateway;
+import ai.neargo.shop.notify.port.StubWxSubscribeGateway;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.message.entity.MsgMessage;
 import ai.neargo.shop.message.mapper.MessageMappers.MessageMapper;
@@ -63,7 +63,7 @@ class NotifyChannelOpsTest {
     @Autowired
     private ai.neargo.shop.spi.notify.MailTemplatePort mailTemplatePort;
     @Autowired
-    private ai.neargo.shop.channel.notify.port.StubMailGateway mailStub;
+    private ai.neargo.shop.notify.port.StubMailGateway mailStub;
     @Autowired
     private ai.neargo.shop.message.mapper.MessageMappers.TemplateMapper templateMapper;
 

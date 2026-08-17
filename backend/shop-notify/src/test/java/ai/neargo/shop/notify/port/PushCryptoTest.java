@@ -1,4 +1,4 @@
-package ai.neargo.shop.channel.notify.port;
+package ai.neargo.shop.notify.port;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

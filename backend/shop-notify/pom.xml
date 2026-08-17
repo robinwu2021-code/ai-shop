@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>ai.neargo.shop</groupId>
+        <artifactId>shop-parent</artifactId>
+        <version>0.1.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>shop-notify</artifactId>
+    <packaging>jar</packaging>
+    <description>触达中台 · 通道适配：短信 · 邮件 · 微信订阅 · 聚合推送(个推) · 平台直连推送(FCM/APNs)</description>
+
+    <!--
+      从 shop-channel 分出来的理由：触达是一整块可独立演进的能力（渠道注册、状态、启停、
+      路由、留痕），与支付/进件/上传的外部适配不是一回事。**只装通道适配器，不装业务判断** ——
+      一旦这里出现「这条事件该不该发」，就是编排逻辑跟着报文格式跑了。
+
+      领域面向的 SPI 仍在 shop-base，本模块实现它；方向永远是「领域→契约←触达中台」。
+    -->
+    <dependencies>
+        <dependency>
+            <groupId>ai.neargo.shop</groupId>
+            <artifactId>shop-base</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <!--
+          邮件：直接用 jakarta.mail + angus（不引 spring-boot-starter-mail），
+          阿里云短信 / 个推 / FCM / APNs 一律纯 JDK 无 SDK —— 理由见各 Gateway 与原 shop-channel 注释：
+          本项目 `mvn -o` 离线构建，官方 SDK 依赖树不在本地仓。
+        -->
+        <dependency>
+            <groupId>jakarta.mail</groupId>
+            <artifactId>jakarta.mail-api</artifactId>
+            <version>2.1.5</version>
+        </dependency>
+        <dependency>
+            <groupId>org.eclipse.angus</groupId>
+            <artifactId>angus-mail</artifactId>
+            <version>2.0.5</version>
+            <scope>runtime</scope>
+        </dependency>
+    </dependencies>
+
+</project>

@@ -60,7 +60,7 @@ class NotifyEndToEndFlowTest {
     @Autowired
     private NotifyChannelService channelService;
     @Autowired
-    private ai.neargo.shop.channel.notify.port.StubMailGateway mailStub;
+    private ai.neargo.shop.notify.port.StubMailGateway mailStub;
 
     private MockMvc mvc() {
         return MockMvcBuilders.webAppContextSetup(context)
