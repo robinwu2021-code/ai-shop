@@ -16,6 +16,17 @@ public interface NotifyChannelService {
 
     List<ChannelHealth> health();
 
+    /**
+     * 该(通道类型,供应商)当前是否走桩（{@code shop.*.stub}）。
+     * INAPP 恒 false（站内信从不桩，它就是 msg_message 那张表）。
+     *
+     * <p>单一环境变量读取点 —— 渠道注册表派生状态问它，不自己再读一遍配置（两处必分叉）。
+     */
+    boolean isStub(String channelType, String provider);
+
+    /** 该(通道类型,供应商)的**必需**凭据是否配齐。INAPP 恒 true（无需凭据）。 */
+    boolean credsReady(String channelType, String provider);
+
     /** 当前生效的微信模板号（运营配置优先，回落环境变量）。 */
     String templateIdOf(String scene);
 

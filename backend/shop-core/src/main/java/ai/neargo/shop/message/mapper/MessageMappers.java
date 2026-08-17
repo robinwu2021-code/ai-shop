@@ -37,4 +37,9 @@ public final class MessageMappers {
             extends BaseMapper<ai.neargo.shop.message.entity.MsgSceneChannel> {
     }
 
+    /** 触达渠道注册表（通道类型×供应商×接入范围×归属）。 */
+    public interface NotifyChannelMapper
+            extends BaseMapper<ai.neargo.shop.message.entity.NotifyChannel> {
+    }
+
 }

@@ -12,6 +12,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -31,19 +32,67 @@ public class OpsNotifyLogController {
     private final NotifyLogService notifyLogService;
     private final ai.neargo.shop.message.MessageService messageService;
     private final ai.neargo.shop.message.notify.NotifyChannelService channelService;
+    private final ai.neargo.shop.message.notify.NotifyChannelRegistry channelRegistry;
     private final CaptchaService captchaService;
     private final AuditLogPort auditLogPort;
 
     public OpsNotifyLogController(NotifyLogService notifyLogService,
                                   ai.neargo.shop.message.MessageService messageService,
                                   ai.neargo.shop.message.notify.NotifyChannelService channelService,
+                                  ai.neargo.shop.message.notify.NotifyChannelRegistry channelRegistry,
                                   CaptchaService captchaService,
                                   AuditLogPort auditLogPort) {
         this.notifyLogService = notifyLogService;
         this.messageService = messageService;
         this.channelService = channelService;
+        this.channelRegistry = channelRegistry;
         this.captchaService = captchaService;
         this.auditLogPort = auditLogPort;
+    }
+
+    /**
+     * 渠道注册表（设计：触达推送中台 · N2）。列出所有渠道实例（类型×供应商×接入范围），
+     * 带**读时派生**的状态。与上面 {@code /ops/notify-channels}（按通道类型的体检）互补：
+     * 那个答「这条通道能不能用」，这个答「平台登记了哪些渠道、各自接入范围与开关」。
+     */
+    @GetMapping("/ops/notify-channels/registry")
+    @PreAuthorize("@perm.can('" + Perms.MESSAGE_TEMPLATE_READ + "')")
+    public java.util.List<NotifyChannelVO> channelRegistry() {
+        return channelRegistry.list().stream()
+                .map(ch -> NotifyChannelVO.of(ch, channelRegistry.statusOf(ch))).toList();
+    }
+
+    /**
+     * 软启停某条渠道。INAPP 会被后端拒绝（站内信是事实记录，前端被绕过也兜住）。
+     * 触达渠道启停要留痕：它决定平台某条外发通道整体开不开。
+     */
+    @PostMapping("/ops/notify-channels/registry/{channelNo}/enabled")
+    @PreAuthorize("@perm.can('" + Perms.MESSAGE_TEMPLATE_UPDATE + "')")
+    public NotifyChannelVO setChannelEnabled(@PathVariable String channelNo,
+                                             @RequestBody EnabledReq req) {
+        boolean on = Boolean.TRUE.equals(req.enabled());
+        var ch = channelRegistry.setEnabled(channelNo, on, SecurityUtils.currentUserNo());
+        auditLogPort.record("NOTIFY_CHANNEL", channelNo, on ? "启用" : "停用");
+        return NotifyChannelVO.of(ch, channelRegistry.statusOf(ch));
+    }
+
+    /**
+     * @param status  读时派生（UNCONFIGURED/STUB/READY/DISABLED/DEGRADED），不落库
+     * @param locked  INAPP 恒锁定：站内信不可关
+     */
+    public record NotifyChannelVO(String channelNo, String channelType, String provider,
+                                  String scope, String ownerNo, boolean enabled, String status,
+                                  int priority, String credRef, String configJson, boolean locked) {
+        static NotifyChannelVO of(ai.neargo.shop.message.entity.NotifyChannel c, String status) {
+            boolean inapp = ai.neargo.shop.message.entity.NotifyChannel.TYPE_INAPP.equals(c.getChannelType());
+            return new NotifyChannelVO(c.getChannelNo(), c.getChannelType(), c.getProvider(),
+                    c.getScope(), c.getOwnerNo(), Boolean.TRUE.equals(c.getEnabled()), status,
+                    c.getPriority() == null ? 100 : c.getPriority(), c.getCredRef(),
+                    c.getConfigJson(), inapp);
+        }
+    }
+
+    public record EnabledReq(Boolean enabled) {
     }
 
     /**

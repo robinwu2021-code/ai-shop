@@ -208,6 +208,48 @@ public class NotifyChannelServiceImpl implements NotifyChannelService {
     }
 
     @Override
+    public boolean isStub(String channelType, String provider) {
+        return switch (channelType) {
+            case SysNotifyLog.SMS -> smsStub;
+            case SysNotifyLog.MAIL -> mailStub;
+            case SysNotifyLog.WXSUB -> wxStub;
+            case SysNotifyLog.PUSH -> switch (provider) {
+                case ai.neargo.shop.message.entity.NotifyChannel.PROV_FCM -> fcmStub;
+                case ai.neargo.shop.message.entity.NotifyChannel.PROV_APNS -> apnsStub;
+                default -> pushStub; // GETUI
+            };
+            default -> false; // INAPP 从不桩
+        };
+    }
+
+    @Override
+    public boolean credsReady(String channelType, String provider) {
+        return switch (channelType) {
+            case SysNotifyLog.SMS -> present(smsAk, smsSk, smsSign, smsTplOtp);
+            case SysNotifyLog.MAIL -> present(mailUsername, mailPassword, mailFrom);
+            case SysNotifyLog.WXSUB -> present(wxAppid, wxSecret, wxTplArrived, wxTplRefunded);
+            case SysNotifyLog.PUSH -> switch (provider) {
+                case ai.neargo.shop.message.entity.NotifyChannel.PROV_FCM ->
+                        present(fcmProjectId, fcmClientEmail, fcmPrivateKey);
+                case ai.neargo.shop.message.entity.NotifyChannel.PROV_APNS ->
+                        present(apnsTeamId, apnsKeyId, apnsPrivateKey, apnsTopic);
+                default -> present(getuiAppId, getuiAppKey, getuiMasterSecret);
+            };
+            default -> true; // INAPP 无需凭据
+        };
+    }
+
+    /** 全部非空才算齐 —— 缺一个就发不出，这里当「没配」。 */
+    private static boolean present(String... values) {
+        for (String v : values) {
+            if (v == null || v.isBlank()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    @Override
     public String templateIdOf(String scene) {
         // 问通道本身，而不是自己再解析一遍配置 —— 两份解析必然分叉，
         // 而分叉时页面显示的模板号与真正发出去用的不是同一个
