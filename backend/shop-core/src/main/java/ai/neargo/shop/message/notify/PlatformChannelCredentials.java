@@ -116,6 +116,18 @@ public class PlatformChannelCredentials {
     }
 
     /**
+     * 该 (通道,供应商) **还缺哪些凭证**（返回环境变量名）。运营端据此直接告诉运维「要开这条
+     * 通道，还差 GETUI_APP_KEY」，而不是只显示一个 UNCONFIGURED。无凭证通道返回空。
+     */
+    public List<String> missing(String channelType, String provider) {
+        ChannelSpec s = spec(channelType, provider);
+        if (s == null) {
+            return List.of();
+        }
+        return s.creds().stream().filter(c -> !present(c.propKey())).map(Cred::envVar).toList();
+    }
+
+    /**
      * 体检用的凭证清单（present + required）。required = 该供应商是否平台必需 ——
      * FCM/APNs 缺配显示 required=false（可选供应商），不误报成「通道坏了」。
      */

@@ -139,7 +139,20 @@ function ChannelRegistryCard({ c }: { c: MessageCopy }) {
     { header: c.ovColChannel, cell: (r) => typeLabel[r.channelType] ?? r.channelType },
     { header: c.crColProvider, cell: (r) => <span className="txt-caption">{r.provider}</span> },
     { header: c.crColScope, cell: (r) => scopeLabel[r.scope] ?? r.scope },
-    { header: c.crColStatus, cell: (r) => statusBadge(r.status) },
+    {
+      header: c.crColStatus,
+      // 缺凭证时直接点名要配哪个 env —— 只显示 UNCONFIGURED 的话运维还要去猜
+      cell: (r) => (
+        <div className="space-y-1">
+          {statusBadge(r.status)}
+          {r.missingCreds.length > 0 && (
+            <div className="txt-caption text-muted-foreground">
+              {c.crMissingPrefix}{r.missingCreds.join(", ")}
+            </div>
+          )}
+        </div>
+      ),
+    },
     {
       header: c.crColSwitch,
       // INAPP 锁定：显示「不可关」而不是一个点了没反应的按钮

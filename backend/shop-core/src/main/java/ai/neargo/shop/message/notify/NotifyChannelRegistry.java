@@ -28,10 +28,24 @@ public class NotifyChannelRegistry {
 
     private final NotifyChannelMapper mapper;
     private final NotifyChannelService channelService;
+    private final PlatformChannelCredentials creds;
 
-    public NotifyChannelRegistry(NotifyChannelMapper mapper, NotifyChannelService channelService) {
+    public NotifyChannelRegistry(NotifyChannelMapper mapper, NotifyChannelService channelService,
+                                 PlatformChannelCredentials creds) {
         this.mapper = mapper;
         this.channelService = channelService;
+        this.creds = creds;
+    }
+
+    /**
+     * 该渠道**还缺哪些平台凭证**（环境变量名），供运营端直接指出「要开它还差什么」。
+     * 只对平台接入报：商家接入走加密密文、测试接入走桩，都不看 env 凭证。
+     */
+    public java.util.List<String> missingCreds(NotifyChannel ch) {
+        if (!NotifyChannel.SCOPE_PLATFORM.equals(ch.getScope())) {
+            return java.util.List.of();
+        }
+        return creds.missing(ch.getChannelType(), ch.getProvider());
     }
 
     /** 全部渠道，按 类型→供应商→接入范围 稳定排序。 */

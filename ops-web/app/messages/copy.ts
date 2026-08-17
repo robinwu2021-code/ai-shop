@@ -260,6 +260,7 @@ const zh = {
   crDisable: "停用",
   crLocked: "不可关",
   crEmpty: "还没有登记任何渠道",
+  crMissingPrefix: "缺：",
   nlProviderAll: "全部供应商",
 
   // 营销广播（N6b）
@@ -548,6 +549,7 @@ const en: typeof zh = {
   crDisable: "Disable",
   crLocked: "Locked",
   crEmpty: "No channels registered yet",
+  crMissingPrefix: "Missing: ",
   nlProviderAll: "All providers",
 
   bcTitle: "Marketing broadcast",

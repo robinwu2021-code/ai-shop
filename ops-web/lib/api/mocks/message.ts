@@ -8,14 +8,14 @@ import { wait } from "./_wait";
 // 渠道注册表 mock 状态。平台通道本地全走桩（= 真实状态，编成 READY 会误导）；
 // INAPP 就绪且锁定（站内信不可关）。启停可变，setChannelEnabled 就地改。
 const channels: NotifyChannelRow[] = [
-  { channelNo: "NCH-SMS-ALI", channelType: "SMS", provider: "ALI", scope: "PLATFORM", ownerNo: "", enabled: true, status: "STUB", priority: 100, credRef: "shop.sms.ali", configJson: "{}", locked: false },
-  { channelNo: "NCH-MAIL-SMTP", channelType: "MAIL", provider: "SMTP", scope: "PLATFORM", ownerNo: "", enabled: true, status: "STUB", priority: 100, credRef: "shop.mail", configJson: "{}", locked: false },
-  { channelNo: "NCH-WXSUB-WECHAT", channelType: "WXSUB", provider: "WECHAT", scope: "PLATFORM", ownerNo: "", enabled: true, status: "STUB", priority: 100, credRef: "shop.wx", configJson: "{}", locked: false },
-  { channelNo: "NCH-PUSH-GETUI", channelType: "PUSH", provider: "GETUI", scope: "PLATFORM", ownerNo: "", enabled: true, status: "STUB", priority: 100, credRef: "shop.push.getui", configJson: "{}", locked: false },
-  { channelNo: "NCH-PUSH-FCM", channelType: "PUSH", provider: "FCM", scope: "PLATFORM", ownerNo: "", enabled: true, status: "STUB", priority: 100, credRef: "shop.push.fcm", configJson: "{}", locked: false },
-  { channelNo: "NCH-PUSH-APNS", channelType: "PUSH", provider: "APNS", scope: "PLATFORM", ownerNo: "", enabled: true, status: "STUB", priority: 100, credRef: "shop.push.apns", configJson: "{}", locked: false },
-  { channelNo: "NCH-INAPP", channelType: "INAPP", provider: "INTERNAL", scope: "PLATFORM", ownerNo: "", enabled: true, status: "READY", priority: 100, credRef: null, configJson: "{}", locked: true },
-  { channelNo: "NCH-PUSH-GETUI-TEST", channelType: "PUSH", provider: "GETUI", scope: "TEST", ownerNo: "", enabled: true, status: "STUB", priority: 100, credRef: null, configJson: "{}", locked: false },
+  { channelNo: "NCH-SMS-ALI", channelType: "SMS", provider: "ALI", scope: "PLATFORM", ownerNo: "", enabled: true, status: "STUB", priority: 100, credRef: "shop.sms.ali", configJson: "{}", missingCreds: [], locked: false },
+  { channelNo: "NCH-MAIL-SMTP", channelType: "MAIL", provider: "SMTP", scope: "PLATFORM", ownerNo: "", enabled: true, status: "STUB", priority: 100, credRef: "shop.mail", configJson: "{}", missingCreds: [], locked: false },
+  { channelNo: "NCH-WXSUB-WECHAT", channelType: "WXSUB", provider: "WECHAT", scope: "PLATFORM", ownerNo: "", enabled: true, status: "STUB", priority: 100, credRef: "shop.wx", configJson: "{}", missingCreds: [], locked: false },
+  { channelNo: "NCH-PUSH-GETUI", channelType: "PUSH", provider: "GETUI", scope: "PLATFORM", ownerNo: "", enabled: true, status: "STUB", priority: 100, credRef: "shop.push.getui", configJson: "{}", missingCreds: [], locked: false },
+  { channelNo: "NCH-PUSH-FCM", channelType: "PUSH", provider: "FCM", scope: "PLATFORM", ownerNo: "", enabled: true, status: "STUB", priority: 100, credRef: "shop.push.fcm", configJson: "{}", missingCreds: [], locked: false },
+  { channelNo: "NCH-PUSH-APNS", channelType: "PUSH", provider: "APNS", scope: "PLATFORM", ownerNo: "", enabled: true, status: "STUB", priority: 100, credRef: "shop.push.apns", configJson: "{}", missingCreds: [], locked: false },
+  { channelNo: "NCH-INAPP", channelType: "INAPP", provider: "INTERNAL", scope: "PLATFORM", ownerNo: "", enabled: true, status: "READY", priority: 100, credRef: null, configJson: "{}", missingCreds: [], locked: true },
+  { channelNo: "NCH-PUSH-GETUI-TEST", channelType: "PUSH", provider: "GETUI", scope: "TEST", ownerNo: "", enabled: true, status: "STUB", priority: 100, credRef: null, configJson: "{}", missingCreds: [], locked: false },
 ];
 
 // 营销广播 mock 状态。建/取消就地改。

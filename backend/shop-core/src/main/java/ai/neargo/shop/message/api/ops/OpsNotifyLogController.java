@@ -62,7 +62,8 @@ public class OpsNotifyLogController {
     @PreAuthorize("@perm.can('" + Perms.MESSAGE_TEMPLATE_READ + "')")
     public java.util.List<NotifyChannelVO> channelRegistry() {
         return channelRegistry.list().stream()
-                .map(ch -> NotifyChannelVO.of(ch, channelRegistry.statusOf(ch))).toList();
+                .map(ch -> NotifyChannelVO.of(ch, channelRegistry.statusOf(ch),
+                        channelRegistry.missingCreds(ch))).toList();
     }
 
     /**
@@ -76,7 +77,7 @@ public class OpsNotifyLogController {
         boolean on = Boolean.TRUE.equals(req.enabled());
         var ch = channelRegistry.setEnabled(channelNo, on, SecurityUtils.currentUserNo());
         auditLogPort.record("NOTIFY_CHANNEL", channelNo, on ? "启用" : "停用");
-        return NotifyChannelVO.of(ch, channelRegistry.statusOf(ch));
+        return NotifyChannelVO.of(ch, channelRegistry.statusOf(ch), channelRegistry.missingCreds(ch));
     }
 
     /**
@@ -87,7 +88,8 @@ public class OpsNotifyLogController {
     @PreAuthorize("@perm.can('" + Perms.MESSAGE_TEMPLATE_READ + "')")
     public java.util.List<NotifyChannelVO> merchantChannels(@RequestParam String ownerNo) {
         return merchantChannelService.listForOwner(ownerNo).stream()
-                .map(ch -> NotifyChannelVO.of(ch, channelRegistry.statusOf(ch))).toList();
+                .map(ch -> NotifyChannelVO.of(ch, channelRegistry.statusOf(ch),
+                        channelRegistry.missingCreds(ch))).toList();
     }
 
     @PostMapping("/ops/notify-channels/merchant")
@@ -97,7 +99,7 @@ public class OpsNotifyLogController {
                 req.configJson(), req.secret(), SecurityUtils.currentUserNo());
         auditLogPort.record("NOTIFY_MERCHANT_CHANNEL", ch.getChannelNo(),
                 "配置商家渠道 " + req.channelType() + "/" + req.provider());
-        return NotifyChannelVO.of(ch, channelRegistry.statusOf(ch));
+        return NotifyChannelVO.of(ch, channelRegistry.statusOf(ch), channelRegistry.missingCreds(ch));
     }
 
     /** @param secret 商家凭据明文；空=只改非密项不动密钥。**请求进、密文存，永不回传** */
@@ -106,18 +108,21 @@ public class OpsNotifyLogController {
     }
 
     /**
-     * @param status  读时派生（UNCONFIGURED/STUB/READY/DISABLED/DEGRADED），不落库
-     * @param locked  INAPP 恒锁定：站内信不可关
+     * @param status      读时派生（UNCONFIGURED/STUB/READY/DISABLED/DEGRADED），不落库
+     * @param missingCreds 平台接入还缺哪些环境变量（供运维直接照配）；商家/测试接入为空
+     * @param locked      INAPP 恒锁定：站内信不可关
      */
     public record NotifyChannelVO(String channelNo, String channelType, String provider,
                                   String scope, String ownerNo, boolean enabled, String status,
-                                  int priority, String credRef, String configJson, boolean locked) {
-        static NotifyChannelVO of(ai.neargo.shop.message.entity.NotifyChannel c, String status) {
+                                  int priority, String credRef, String configJson,
+                                  java.util.List<String> missingCreds, boolean locked) {
+        static NotifyChannelVO of(ai.neargo.shop.message.entity.NotifyChannel c, String status,
+                                  java.util.List<String> missingCreds) {
             boolean inapp = ai.neargo.shop.message.entity.NotifyChannel.TYPE_INAPP.equals(c.getChannelType());
             return new NotifyChannelVO(c.getChannelNo(), c.getChannelType(), c.getProvider(),
                     c.getScope(), c.getOwnerNo(), Boolean.TRUE.equals(c.getEnabled()), status,
                     c.getPriority() == null ? 100 : c.getPriority(), c.getCredRef(),
-                    c.getConfigJson(), inapp);
+                    c.getConfigJson(), missingCreds, inapp);
         }
     }
 

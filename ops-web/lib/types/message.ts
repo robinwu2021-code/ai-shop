@@ -226,6 +226,8 @@ export interface NotifyChannelRow {
   credRef?: string | null;
   /** 非密参数（签名/模板号/topic），JSON 串 */
   configJson: string;
+  /** 平台接入还缺哪些环境变量（供运维照配）；商家/测试接入为空 */
+  missingCreds: string[];
   /** INAPP 恒锁定：站内信不可关 */
   locked: boolean;
 }
