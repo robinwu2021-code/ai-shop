@@ -200,9 +200,41 @@ export interface InAppLog {
 /** 发送结果。**失败也记**——只记成功的话，这张表回答不了「他为什么没收到」。 */
 export type NotifyStatus = "SENT" | "FAILED";
 
+/**
+ * 渠道注册表一行（触达推送中台 N2/N4）。一条 = 类型×供应商×接入范围×归属。
+ * 类型/供应商/接入范围/状态用 string（同 NotifyLog.bizType）：取值随后端演进，
+ * 端上不硬编码一份联合类型。
+ */
+export interface NotifyChannelRow {
+  /** 渠道编号（业务主键，启停用它） */
+  channelNo: string;
+  /** SMS / MAIL / WXSUB / PUSH / INAPP */
+  channelType: string;
+  /** ALI / SMTP / WECHAT / GETUI / FCM / APNS / INTERNAL */
+  provider: string;
+  /** 接入范围 PLATFORM / MERCHANT / TEST */
+  scope: string;
+  /** scope=MERCHANT 的商家号；平台/测试为空串 */
+  ownerNo: string;
+  /** 软开关（运营即时启停） */
+  enabled: boolean;
+  /** 读时派生 UNCONFIGURED / STUB / READY / DISABLED / DEGRADED */
+  status: string;
+  /** 同类型同供应商多实例的选择优先级，小者先 */
+  priority: number;
+  /** 凭据引用（env 前缀），不含密钥明文；可空 */
+  credRef?: string | null;
+  /** 非密参数（签名/模板号/topic），JSON 串 */
+  configJson: string;
+  /** INAPP 恒锁定：站内信不可关 */
+  locked: boolean;
+}
+
 export interface NotifyLog {
   notifyNo: string;
   channel: NotifyChannel;
+  /** 供应商 ALI/SMTP/WECHAT/GETUI/FCM/APNS（N3）；旧行与单供应商推出为空 */
+  provider?: string | null;
   /** OTP / OPS_INIT_PASSWORD / OPS_RESET_PASSWORD / TEST */
   bizType: string;
   target: string;

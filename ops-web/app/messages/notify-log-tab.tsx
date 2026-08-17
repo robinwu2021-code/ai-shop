@@ -31,6 +31,8 @@ import type { MessageCopy } from "./copy";
 export function NotifyLogTab({ c, canWrite }: { c: MessageCopy; canWrite: boolean }) {
   const qc = useQueryClient();
   const [channel, setChannel] = useState("");
+  // 供应商筛选只对 PUSH 有意义（个推/FCM/APNs 三家挤在 channel=PUSH，N3 才拆得开）
+  const [provider, setProvider] = useState("");
   const [status, setStatus] = useState("");
   const [biz, setBiz] = useState("");
   const [from, setFrom] = useState("");
@@ -56,9 +58,11 @@ export function NotifyLogTab({ c, canWrite }: { c: MessageCopy; canWrite: boolea
   const { page, setPage, size, setSize } = usePaging();
 
   const logs = useQuery({
-    queryKey: ["notify-logs", channel, status, biz, from, to, target, page, size],
+    queryKey: ["notify-logs", channel, provider, status, biz, from, to, target, page, size],
     queryFn: () => api.listNotifyLogs({
       channel: channel || undefined,
+      // 供应商只在 PUSH 下发筛：换到别的通道时那个下拉本就藏起来了，值也不带过去
+      provider: (channel === "PUSH" && provider) || undefined,
       status: status || undefined,
       bizType: biz || undefined,
       from: from || undefined,
@@ -177,13 +181,24 @@ export function NotifyLogTab({ c, canWrite }: { c: MessageCopy; canWrite: boolea
           </Select>
           {/* 通道/用途/状态只对外发有意义：站内信没有通道，也没有失败态 */}
           {kind === "outbound" && <>
-          <Select value={channel} onChange={(e) => { setChannel(e.target.value); setPage(1); }} className="w-36">
+          <Select value={channel}
+                  onChange={(e) => { setChannel(e.target.value); setProvider(""); setPage(1); }}
+                  className="w-36">
             <option value="">{c.nlAll}</option>
             <option value="SMS">{c.nlSms}</option>
             <option value="MAIL">{c.nlMail}</option>
             <option value="WXSUB">{c.nlWxsub}</option>
             <option value="PUSH">{c.nlPush}</option>
           </Select>
+          {/* 供应商筛选：只在 PUSH 下出现，个推/FCM/APNs 三家终于拆得开（N3） */}
+          {channel === "PUSH" && (
+            <Select value={provider} onChange={(e) => { setProvider(e.target.value); setPage(1); }} className="w-32">
+              <option value="">{c.nlProviderAll}</option>
+              <option value="GETUI">GETUI</option>
+              <option value="FCM">FCM</option>
+              <option value="APNS">APNS</option>
+            </Select>
+          )}
           {/* 用途筛选：同一条通道上既有验证码也有交易触达，只按通道筛不够 */}
           <Select value={biz} onChange={(e) => { setBiz(e.target.value); setPage(1); }} className="w-36">
             <option value="">{c.nlColBizAll}</option>

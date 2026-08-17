@@ -1,5 +1,5 @@
 // 覆盖范围：消息触达（P-14.1）与客服（P-14.2）。
-import type { Captcha, FaqEntry, InAppLog, InboxMessage, MsgTemplate, NotifyChannel, NotifyChannelHealth, NotifyLog, NotifyQuota, Page, Ticket, WxTemplates } from "@/lib/types";
+import type { Captcha, FaqEntry, InAppLog, InboxMessage, MsgTemplate, NotifyChannel, NotifyChannelHealth, NotifyChannelRow, NotifyLog, NotifyQuota, Page, Ticket, WxTemplates } from "@/lib/types";
 import type { PageQ, TicketQ } from "../query";
 
 export interface MessageApi {
@@ -19,12 +19,18 @@ export interface MessageApi {
    * 同一个交易触达会同时走微信与推送 —— 只按通道筛答不了「今天的验证码发得怎么样」。
    */
   listNotifyLogs(q?: PageQ & { channel?: string; status?: string; bizType?: string;
+    /** 供应商（N3）：channel=PUSH 时可只看 GETUI / FCM / APNS 的记录 */
+    provider?: string;
     /** 起止日期 yyyy-MM-dd，含当天 */
     from?: string; to?: string;
     /** 收件人。后端会把完整手机号/邮箱按同一口径掩码后再匹配 */
     target?: string }): Promise<Page<NotifyLog>>;
   /** 四条通道的体检：开没开、凭据齐不齐、今天发了多少。**不含任何密钥明文**。 */
   listNotifyChannels(): Promise<NotifyChannelHealth[]>;
+  /** 渠道注册表（触达推送中台 N2）：类型×供应商×接入范围×归属 + 读时派生状态。 */
+  listChannelRegistry(): Promise<NotifyChannelRow[]>;
+  /** 软启停某条渠道（N2）。INAPP 后端拒关（站内信是事实记录）。 */
+  setChannelEnabled(channelNo: string, enabled: boolean): Promise<NotifyChannelRow>;
   getWxTemplates(): Promise<WxTemplates>;
   /**
    * 保存微信模板号。**空值 = 清掉覆盖回落环境变量**，不是「设成空」。

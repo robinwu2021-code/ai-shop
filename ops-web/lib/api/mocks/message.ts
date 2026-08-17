@@ -1,9 +1,22 @@
 // 覆盖范围：消息触达与客服（P-14）。
 import * as db from "@/lib/mock/db";
-import { TICKET_TRANSITIONS, type FaqEntry, type NotifyLog, type Ticket } from "@/lib/types";
+import { TICKET_TRANSITIONS, type FaqEntry, type NotifyChannelRow, type NotifyLog, type Ticket } from "@/lib/types";
 import type { MessageApi } from "../contracts/message";
 import { fail, notFound } from "@/lib/biz-error";
 import { wait } from "./_wait";
+
+// 渠道注册表 mock 状态。平台通道本地全走桩（= 真实状态，编成 READY 会误导）；
+// INAPP 就绪且锁定（站内信不可关）。启停可变，setChannelEnabled 就地改。
+const channels: NotifyChannelRow[] = [
+  { channelNo: "NCH-SMS-ALI", channelType: "SMS", provider: "ALI", scope: "PLATFORM", ownerNo: "", enabled: true, status: "STUB", priority: 100, credRef: "shop.sms.ali", configJson: "{}", locked: false },
+  { channelNo: "NCH-MAIL-SMTP", channelType: "MAIL", provider: "SMTP", scope: "PLATFORM", ownerNo: "", enabled: true, status: "STUB", priority: 100, credRef: "shop.mail", configJson: "{}", locked: false },
+  { channelNo: "NCH-WXSUB-WECHAT", channelType: "WXSUB", provider: "WECHAT", scope: "PLATFORM", ownerNo: "", enabled: true, status: "STUB", priority: 100, credRef: "shop.wx", configJson: "{}", locked: false },
+  { channelNo: "NCH-PUSH-GETUI", channelType: "PUSH", provider: "GETUI", scope: "PLATFORM", ownerNo: "", enabled: true, status: "STUB", priority: 100, credRef: "shop.push.getui", configJson: "{}", locked: false },
+  { channelNo: "NCH-PUSH-FCM", channelType: "PUSH", provider: "FCM", scope: "PLATFORM", ownerNo: "", enabled: true, status: "STUB", priority: 100, credRef: "shop.push.fcm", configJson: "{}", locked: false },
+  { channelNo: "NCH-PUSH-APNS", channelType: "PUSH", provider: "APNS", scope: "PLATFORM", ownerNo: "", enabled: true, status: "STUB", priority: 100, credRef: "shop.push.apns", configJson: "{}", locked: false },
+  { channelNo: "NCH-INAPP", channelType: "INAPP", provider: "INTERNAL", scope: "PLATFORM", ownerNo: "", enabled: true, status: "READY", priority: 100, credRef: null, configJson: "{}", locked: true },
+  { channelNo: "NCH-PUSH-GETUI-TEST", channelType: "PUSH", provider: "GETUI", scope: "TEST", ownerNo: "", enabled: true, status: "STUB", priority: 100, credRef: null, configJson: "{}", locked: false },
+];
 
 // 铃铛收件箱的 mock 状态。发给运营的待办，与 NotifyLog（发给用户的留痕）是两回事
 const inbox: import("@/lib/types").InboxMessage[] = [
@@ -93,6 +106,17 @@ export const messageMock: MessageApi = {
       params: [{ key: "appId", value: "" }],
       todaySent: 5, todayFailed: 2 },
   ], 300),
+
+  // 渠道注册表。mock 下平台通道全走桩（本地真实状态），INAPP 就绪且锁定；启停可变。
+  listChannelRegistry: () => wait(channels.slice(), 300),
+  setChannelEnabled: (channelNo, enabled) => {
+    const ch = channels.find((x) => x.channelNo === channelNo);
+    if (!ch) return notFound("渠道", "Channel", channelNo);
+    if (ch.locked) return fail("站内信不可关", "In-app messages cannot be disabled");
+    ch.enabled = enabled;
+    ch.status = enabled ? (ch.channelType === "INAPP" ? "READY" : "STUB") : "DISABLED";
+    return wait(ch, 300);
+  },
 
   getWxTemplates: () => wait({ orderArrived: "STUB_TPL_ORDER_ARRIVED",
                                refunded: "STUB_TPL_REFUNDED" }, 200),

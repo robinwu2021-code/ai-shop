@@ -9,6 +9,9 @@ export const messageHttp: MessageApi = {
   saveNotifyQuota: (v) => client.post("/ops/notify-quota", v),
   listNotifyLogs: (q) => client.get("/ops/notify-logs", q),
   listNotifyChannels: () => client.get("/ops/notify-channels"),
+  listChannelRegistry: () => client.get("/ops/notify-channels/registry"),
+  setChannelEnabled: (channelNo, enabled) =>
+    client.post(`/ops/notify-channels/registry/${channelNo}/enabled`, { enabled }),
   getWxTemplates: () => client.get("/ops/notify-channels/wx-templates"),
   saveWxTemplates: (v) => client.post("/ops/notify-channels/wx-templates", v),
   testSendInApp: (v) => client.post("/ops/notify-logs/test-inapp", v),

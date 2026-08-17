@@ -8,7 +8,7 @@
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import type { NotifyChannelHealth } from "@/lib/types";
+import type { NotifyChannelHealth, NotifyChannelRow } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -90,8 +90,77 @@ export function ChannelOverviewTab({ c }: { c: MessageCopy }) {
         </CardContent>
       </Card>
 
+      <ChannelRegistryCard c={c} />
+
       <DefaultLangCard c={c} />
     </div>
+  );
+}
+
+/**
+ * 渠道注册表（触达推送中台 N2/N4）。与上面的四通道体检互补：那个答「这条通道能不能用」，
+ * 这个答「平台登记了哪些渠道（含 FCM/APNs 与测试接入）、各自接入范围与开关」。
+ *
+ * <p><b>启停是软开关</b>：改 enabled 即时生效，不重启。INAPP 锁定不给关（站内信是事实记录）。
+ */
+function ChannelRegistryCard({ c }: { c: MessageCopy }) {
+  const qc = useQueryClient();
+  const canWrite = useCan()("message:template:update");
+  const reg = useQuery({
+    queryKey: ["notify-channel-registry"],
+    queryFn: () => api.listChannelRegistry(),
+  });
+  const toggle = useMutation({
+    mutationFn: (v: { channelNo: string; enabled: boolean }) =>
+      api.setChannelEnabled(v.channelNo, v.enabled),
+    onSuccess: () => {
+      notify.success(c.chSaved);
+      void qc.invalidateQueries({ queryKey: ["notify-channel-registry"] });
+    },
+  });
+
+  const typeLabel: Record<string, string> = {
+    SMS: c.nlSms, MAIL: c.nlMail, WXSUB: c.nlWxsub, PUSH: c.nlPush, INAPP: c.channelInbox,
+  };
+  const scopeLabel: Record<string, string> = {
+    PLATFORM: c.crScopePlatform, MERCHANT: c.crScopeMerchant, TEST: c.crScopeTest,
+  };
+  const statusBadge = (s: string) => {
+    switch (s) {
+      case "READY": return <Badge tone="success">{c.crStReady}</Badge>;
+      case "STUB": return <Badge tone="warning">{c.crStStub}</Badge>;
+      case "DISABLED": return <Badge tone="muted">{c.crStDisabled}</Badge>;
+      case "DEGRADED": return <Badge tone="danger">{c.crStDegraded}</Badge>;
+      default: return <Badge tone="danger">{c.crStUnconfigured}</Badge>;
+    }
+  };
+
+  const cols: Column<NotifyChannelRow>[] = [
+    { header: c.ovColChannel, cell: (r) => typeLabel[r.channelType] ?? r.channelType },
+    { header: c.crColProvider, cell: (r) => <span className="txt-caption">{r.provider}</span> },
+    { header: c.crColScope, cell: (r) => scopeLabel[r.scope] ?? r.scope },
+    { header: c.crColStatus, cell: (r) => statusBadge(r.status) },
+    {
+      header: c.crColSwitch,
+      // INAPP 锁定：显示「不可关」而不是一个点了没反应的按钮
+      cell: (r) => r.locked
+        ? <Badge tone="muted">{c.crLocked}</Badge>
+        : <Button variant="ghost" size="sm" disabled={!canWrite || toggle.isPending}
+                  onClick={() => toggle.mutate({ channelNo: r.channelNo, enabled: !r.enabled })}>
+            {r.enabled ? c.crDisable : c.crEnable}
+          </Button>,
+    },
+  ];
+
+  return (
+    <Card>
+      <CardHeader><CardTitle>{c.crTitle}</CardTitle></CardHeader>
+      <CardContent className="space-y-3">
+        <Notice tone="info">{c.crNotice}</Notice>
+        <DataTable columns={cols} rows={reg.data ?? []} loading={reg.isLoading}
+                   rowKey={(r) => r.channelNo} empty={c.crEmpty} />
+      </CardContent>
+    </Card>
   );
 }
 

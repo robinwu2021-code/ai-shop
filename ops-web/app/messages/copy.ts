@@ -241,6 +241,27 @@ const zh = {
   nlTestSend: "发送",
   nlTestOk: "已发出，去下面的记录里看结果",
 
+  // 渠道注册表（触达推送中台 N2/N4）
+  crTitle: "渠道注册表",
+  crNotice: "平台登记的所有触达渠道：类型 × 供应商 × 接入范围。启停是软开关，点一下即时生效，不用改配置重启（是否真发仍由部署期的桩开关决定）。",
+  crColProvider: "供应商",
+  crColScope: "接入范围",
+  crColStatus: "状态",
+  crColSwitch: "启停",
+  crScopePlatform: "平台",
+  crScopeMerchant: "商家",
+  crScopeTest: "测试",
+  crStReady: "就绪",
+  crStStub: "桩",
+  crStUnconfigured: "缺凭据",
+  crStDisabled: "已停用",
+  crStDegraded: "降级",
+  crEnable: "启用",
+  crDisable: "停用",
+  crLocked: "不可关",
+  crEmpty: "还没有登记任何渠道",
+  nlProviderAll: "全部供应商",
+
 };
 
 const en: typeof zh = {
@@ -476,6 +497,26 @@ const en: typeof zh = {
   nlTestRefresh: "New image",
   nlTestSend: "Send",
   nlTestOk: "Sent — check the result in the list below",
+
+  crTitle: "Channel registry",
+  crNotice: "Every touch-point channel the platform has registered: type × provider × access scope. Enable/disable is a soft switch — one click takes effect immediately, no config change or restart (whether it really sends is still gated by the deploy-time stub flag).",
+  crColProvider: "Provider",
+  crColScope: "Scope",
+  crColStatus: "Status",
+  crColSwitch: "On/off",
+  crScopePlatform: "Platform",
+  crScopeMerchant: "Merchant",
+  crScopeTest: "Test",
+  crStReady: "Ready",
+  crStStub: "Stub",
+  crStUnconfigured: "No creds",
+  crStDisabled: "Disabled",
+  crStDegraded: "Degraded",
+  crEnable: "Enable",
+  crDisable: "Disable",
+  crLocked: "Locked",
+  crEmpty: "No channels registered yet",
+  nlProviderAll: "All providers",
 
 };
 
