@@ -1,6 +1,11 @@
 node_modules
-# 合站产物（npm run build:web），随时可重建
-dist
+# 构建产物，随时可重建。
+# ⚠️ 必须**逐个写路径**，不能只写 `dist` —— 那条规则匹配任意层级的目录名，
+# 把 `brand/dist/`（按端分发的品牌素材，是要入库的交付物）一起吞掉了，
+# 而症状是「git add 了但文件没进去」，不看 check-ignore 根本发现不了。
+/dist
+/c-app/dist
+/b-app/dist
 .DS_Store
 *.local
 .env.local

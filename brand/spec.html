@@ -1,0 +1,443 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>虹选 · 好物 / HX MALL — 视觉规范</title>
+<style>
+/* 视觉规范页 · 手写，非生成物。色值与几何参数的真源是 brand/build.py，
+   本页只做「看得见的对照」——改色请改 build.py 后同步本页顶部的 :root。 */
+:root{
+  --red:#e1251b; --red-deep:#b31710; --red-bright:#ff5a4d;
+  --ink:#17181a; --muted:#63676e; --panel:#f5f6f8; --line:#e5e7ea; --tint:#fdeceb;
+  --plate-b:#e1251b; --dark-bg:#161a22;
+  --r:14px; --edge:clamp(20px,5vw,56px);
+  --sans:"Figtree","Noto Sans SC","Source Han Sans SC",system-ui,-apple-system,sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;background:#fff;color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.65;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1120px;margin:0 auto;padding:0 var(--edge)}
+h1,h2,h3,h4{margin:0;line-height:1.2;letter-spacing:-.01em;font-weight:700}
+p{margin:0}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.92em;background:var(--panel);padding:1px 6px;border-radius:5px}
+a{color:var(--red);text-decoration:none}
+
+/* 头 */
+header{background:var(--red);color:#fff;padding:clamp(40px,6vw,72px) 0 clamp(36px,5vw,60px)}
+header .kicker{font-size:12px;letter-spacing:.22em;text-transform:uppercase;opacity:.8}
+header h1{font-size:clamp(30px,4.4vw,50px);margin:14px 0 0}
+header p{margin-top:16px;max-width:58ch;color:rgba(255,255,255,.85);font-size:16px}
+header .meta{margin-top:26px;display:flex;gap:26px;flex-wrap:wrap;font-size:13px;color:rgba(255,255,255,.8)}
+
+/* 目录 */
+nav.toc{border-bottom:1px solid var(--line);position:sticky;top:0;background:rgba(255,255,255,.92);backdrop-filter:blur(10px);z-index:5}
+nav.toc .wrap{display:flex;gap:22px;overflow-x:auto;padding-top:14px;padding-bottom:14px;font-size:14px}
+nav.toc a{color:var(--muted);white-space:nowrap}
+nav.toc a:hover{color:var(--red)}
+
+section{padding:clamp(44px,6vw,76px) 0;border-bottom:1px solid var(--line)}
+section>.wrap>.kicker{font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-bottom:12px}
+section h2{font-size:clamp(23px,3vw,34px)}
+section>.wrap>.lede{color:var(--muted);max-width:62ch;margin-top:14px;font-size:16px}
+.grid{display:grid;gap:18px;margin-top:32px}
+.g2{grid-template-columns:repeat(2,1fr)}
+.g3{grid-template-columns:repeat(3,1fr)}
+.g4{grid-template-columns:repeat(4,1fr)}
+@media(max-width:900px){.g3,.g4{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:600px){.g2,.g3,.g4{grid-template-columns:1fr}}
+.card{border:1px solid var(--line);border-radius:var(--r);padding:22px;background:#fff}
+.card h4{font-size:15px}
+.card p{font-size:14px;color:var(--muted);margin-top:8px}
+.stage{border:1px solid var(--line);border-radius:var(--r);background:var(--panel);display:grid;place-items:center;min-height:190px;padding:30px}
+.stage.dark{background:var(--ink);border-color:var(--ink)}
+.cap{font-size:12px;letter-spacing:.08em;color:var(--muted);text-align:center;margin-top:10px}
+
+/* 表 */
+table{width:100%;border-collapse:collapse;font-size:14.5px;background:#fff;border:1px solid var(--line);margin-top:28px}
+th{text-align:left;font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);background:var(--panel);padding:11px 14px;border-bottom:1px solid var(--line);font-weight:600}
+td{padding:11px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+tbody tr:last-child td{border-bottom:0}
+td.n{font-variant-numeric:tabular-nums;font-weight:700;color:var(--red-deep);white-space:nowrap}
+.scroll{overflow-x:auto}
+
+/* 色卡 */
+.sw{border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.sw .chip{height:104px;display:grid;place-items:center;font-size:14px;font-weight:600}
+.sw .body{padding:14px 16px}
+.sw b{display:block;font-size:14px}
+.sw code{background:none;padding:0;color:var(--muted);font-size:13px}
+.sw .use{font-size:13px;color:var(--muted);margin-top:8px;line-height:1.5}
+.ratio{display:inline-block;font-size:11.5px;font-weight:700;padding:2px 8px;border-radius:999px;margin-top:10px;font-variant-numeric:tabular-nums}
+.pass{background:#e7f7ef;color:#05663a}
+.fail{background:var(--tint);color:var(--red-deep)}
+
+/* ── 标识：全部按 font-size = 边长 等比推导，任何尺寸不重叠 ── */
+.mark{flex:none;width:1em;height:1em;font-size:96px;border-radius:.275em;background:var(--red);color:#fff;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden}
+/* 弧：宽 0.44em、扁平度 0.65（竖半径 0.65 × 横半径）。用椭圆圆角画，
+   与 build.py 的 A rx ry 是同一个形状 —— 这里是演示件，真源仍是 build.py */
+.mark::before{content:"";display:block;width:.44em;height:.152em;border:.05em solid currentColor;border-bottom:0;border-radius:50% 50% 0 0 / 100% 100% 0 0;margin-bottom:.04em;opacity:.95}
+.mark .hx{display:block;height:.30em;width:auto;fill:currentColor}
+.mark.circle{border-radius:50%}
+.mark.bare{background:transparent;color:var(--red);border-radius:0}
+.mark.inv{background:#fff;color:var(--red)}
+.mark.plate{background:var(--plate-b)}
+.mark.plate::before{color:var(--paper)}
+.mark.cn{justify-content:center}
+.mark.cn::before{width:.4em;height:.139em;border-radius:50% 50% 0 0 / 100% 100% 0 0;margin-bottom:.02em}
+.mark.cn i{font-style:normal;font-weight:700;font-size:.42em;line-height:1}
+/* H 单字符：字高 0.64 × 边长，且**去弧线**——favicon 与通知栏 16px 下弧线糊成一团 */
+.mark.h-only .hx{height:.64em}
+.mark.h-only::before{display:none}
+
+/* 中文字标：弧线只压在「虹」上 */
+.cn-lock{display:grid;justify-items:start;color:var(--ink);line-height:1;font-size:44px}
+.cn-lock .arc{width:1em;height:.34em;border:.085em solid var(--red);border-bottom:0;border-radius:50% 50% 0 0 / 100% 100% 0 0;margin-left:.02em}
+.cn-lock b{font-size:1em;font-weight:700;letter-spacing:.1em;white-space:nowrap;display:block;margin-top:.04em}
+.cn-lock small{font-size:.26em;font-weight:600;letter-spacing:.3em;color:var(--muted);display:block;margin-top:.14em}
+.cn-lock .slogan{font-size:.3em;font-weight:500;letter-spacing:.06em;color:var(--muted);display:block;margin-top:.34em}
+.cn-lock.inv{color:#fff}.cn-lock.inv small{color:rgba(255,255,255,.62)}.cn-lock.inv .arc{border-color:#fff}
+.cn-lock.mono,.cn-lock.mono small{color:var(--ink)}.cn-lock.mono .arc{border-color:var(--ink)}
+
+/* 横向锁定 */
+.lock{display:flex;align-items:center;gap:.28em;font-size:56px}
+.lock .t{display:grid;gap:2px;line-height:1.15}
+.lock .t b{font-size:.32em;font-weight:700;letter-spacing:.02em}
+.lock .t small{font-size:.19em;font-weight:600;letter-spacing:.28em;color:var(--muted)}
+.lock.inv .t b{color:#fff}.lock.inv .t small{color:rgba(255,255,255,.6)}
+
+.dom{font-weight:700;font-size:30px;color:var(--ink);letter-spacing:.01em}
+.dom span{color:var(--red)}
+
+.row{display:flex;align-items:flex-end;gap:34px;flex-wrap:wrap}
+
+/* 按钮演示 */
+.btn{display:inline-flex;align-items:center;gap:8px;padding:11px 20px;border-radius:999px;font:inherit;font-size:14.5px;font-weight:600;border:1px solid transparent;cursor:pointer}
+.btn-primary{background:var(--red);color:#fff}
+.btn-quiet{border-color:var(--line);color:var(--ink);background:#fff}
+.btn-danger-ok{border-color:#d0d3d9;color:var(--ink);background:#fff}
+.btn-danger-bad{background:#f04438;color:#fff}
+.demo{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-top:16px}
+
+.ok,.no{border-radius:var(--r);padding:20px 22px;border:1px solid var(--line)}
+.ok{background:#f4fbf7;border-color:#cfead9}
+.no{background:var(--tint);border-color:#f2cdca}
+.ok h4::before{content:"✓ ";color:#05663a}
+.no h4::before{content:"✕ ";color:var(--red-deep)}
+.ok p,.no p{color:var(--ink);opacity:.8}
+
+footer{padding:44px 0 60px;color:var(--muted);font-size:13.5px}
+footer .wrap{display:flex;gap:22px;flex-wrap:wrap;justify-content:space-between}
+</style>
+</head>
+<body>
+
+<!-- HX 自绘几何字形：H 与 X 同源，笔画等宽 0.267×字高，直角切口。全页复用这一份定义。 -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <symbol id="hx" viewBox="0 0 96 44">
+    <path d="M0 0H11.5V10.97H31.5V0H43V44H31.5V22.47H11.5V44H0Z"/>
+    <path transform="translate(53,0)" d="M0 0H13L21.5 13.5L30 0H43L28 22L43 44H30L21.5 30.5L13 44H0L15 22Z"/>
+  </symbol>
+  <symbol id="h" viewBox="0 0 43 44">
+    <path d="M0 0H11.5V10.97H31.5V0H43V44H31.5V22.47H11.5V44H0Z"/>
+  </symbol>
+</defs></svg>
+
+<header>
+  <div class="wrap">
+    <div class="kicker">Visual identity · 全项目</div>
+    <h1>虹选 · 好物 / HX MALL<br>视觉规范</h1>
+    <p>一个真源、四条派生链。色、形、各端图标、官网与物料全部由 <code style="background:rgba(255,255,255,.18);color:#fff">brand/build.py</code> 的一组参数推出——本页是它的可视对照，不是另一份定义。</p>
+    <div class="meta">
+      <span>主色 #e1251b</span><span>母题 一道弧线（虹）</span><span>字形 自绘 H/X 同源</span><span>2026-08-19</span>
+    </div>
+  </div>
+</header>
+
+<nav class="toc"><div class="wrap">
+  <a href="#color">颜色</a><a href="#geometry">几何</a><a href="#lockups">标识形态</a>
+  <a href="#wordmark">字标与命名</a><a href="#apps">各端制版</a><a href="#ui">界面用色</a>
+  <a href="#filing">商标申报</a><a href="#misuse">禁止事项</a>
+</div></nav>
+
+<!-- ─────────────── 颜色 ─────────────── -->
+<section id="color"><div class="wrap">
+  <div class="kicker">01 — Color</div>
+  <h2>颜色</h2>
+  <p class="lede">主色一个，中性色四个，深色模式各配一档。每张色卡上的数字是实测对比度，不是估的——不达 AA 的组合在下面明确标出来了。</p>
+
+  <div class="grid g4">
+    <div class="sw"><div class="chip" style="background:#e1251b;color:#fff">压白字</div><div class="body">
+      <b>主色 Primary</b><code>#e1251b</code>
+      <p class="use">标识、主按钮底、强调。印刷参考 C0 M91 Y92 K0</p>
+      <span class="ratio pass">白字 4.69 ✓ AA</span></div></div>
+
+    <div class="sw"><div class="chip" style="background:#b31710;color:#fff">压白字</div><div class="body">
+      <b>深红 Deep</b><code>#b31710</code>
+      <p class="use">浅底上的红色<strong>文字</strong>、hover 态</p>
+      <span class="ratio pass">白底 6.89 · 面板 6.37 ✓</span></div></div>
+
+    <div class="sw"><div class="chip" style="background:#ff5a4d;color:#17181a">压墨字</div><div class="body">
+      <b>亮红 Bright</b><code>#ff5a4d</code>
+      <p class="use"><strong>深色模式</strong>主色；B 端图标弧线</p>
+      <span class="ratio pass">深底 5.66 ✓ · 墨字 5.77 ✓</span></div></div>
+
+    <div class="sw"><div class="chip" style="background:#17181a;color:#fff">压白字</div><div class="body">
+      <b>墨 Ink</b><code>#17181a</code>
+      <p class="use">正文、深底、单色稿</p>
+      <span class="ratio pass">白底 17.77 ✓</span></div></div>
+
+    <div class="sw"><div class="chip" style="background:#63676e;color:#fff">次要</div><div class="body">
+      <b>次要文字 Muted</b><code>#63676e</code>
+      <p class="use">副行、说明、Slogan</p>
+      <span class="ratio pass">白底 5.68 ✓</span></div></div>
+
+    <div class="sw"><div class="chip" style="background:#f5f6f8;color:#63676e">面板</div><div class="body">
+      <b>面板 Panel</b><code>#f5f6f8</code>
+      <p class="use">区块底色</p></div></div>
+
+    <div class="sw"><div class="chip" style="background:#fdeceb;color:#b31710">浅红底</div><div class="body">
+      <b>浅红 Tint</b><code>#fdeceb</code>
+      <p class="use">标签、选中态。上面的字用深红</p>
+      <span class="ratio pass">深红字 6.03 ✓</span></div></div>
+
+    <div class="sw"><div class="chip" style="background:#e1251b;color:#fff">B 端底板</div><div class="body">
+      <b>主色红 Plate</b><code>#e1251b</code>
+      <p class="use">B 端图标底板 = 主色。<b>2026-08-20 改</b>：原为深板岩 #242b33，
+      但那条的理由是「不用近黑——黑壁纸上图标会失去边界」，而 #242b33 本身就是近黑：
+      <b>压纯黑壁纸只有 1.47</b>，恰恰最没边界；主色红是 4.48。按这条判据自己算，红底更成立。</p>
+      <span class="ratio pass">白字形 4.69 ✓</span></div></div>
+  </div>
+
+  <h3 style="margin-top:40px;font-size:19px">三条不可互换的分工</h3>
+  <div class="scroll"><table>
+    <thead><tr><th>规则</th><th>实测</th><th>不这么做会怎样</th></tr></thead>
+    <tbody>
+      <tr><td>灰底上的红字用 <code>#b31710</code>，不用主色</td><td class="n">主色压面板 4.33 ✗</td><td>差 0.17 不到 AA，而面板里的红字最多（金额、状态、链接）</td></tr>
+      <tr><td>深色模式主色用 <code>#ff5a4d</code>，不用主色</td><td class="n">主色压深底 3.72 ✗</td><td>深色下主按钮糊进背景</td></tr>
+      <tr><td><code>#ff5a4d</code> 上的字用墨，不用白</td><td class="n">白压亮红 3.08 ✗</td><td>深色模式主按钮的字不可读</td></tr>
+    </tbody>
+  </table></div>
+</div></section>
+
+<!-- ─────────────── 几何 ─────────────── -->
+<section id="geometry"><div class="wrap">
+  <div class="kicker">02 — Geometry</div>
+  <h2>几何：六条规则管住全部形态</h2>
+  <p class="lede">改任何一条，改的是整个体系。这也是它区别于「随便一个 H」的地方。</p>
+
+  <div class="grid g3">
+    <div class="card"><h4>母题 Motif · 一道弧线</h4><p>取「虹」的字义。<strong>扁圆弧</strong>（竖半径 ÷ 横半径 = <code>arc_flat</code> 0.65；原为正半圆 1.00，2026-08-20 压扁 —— 横向占位不变，纵向省 31%），固定在字符正上方。<strong>H 档没有弧线。</strong></p></div>
+    <div class="card"><h4>字形 Letterform · H 与 X 同源</h4><p>笔画等宽 0.267 × 字高、直角切口。X 按 H 的参数反推。中文用思源黑体 Bold，不重绘。</p></div>
+    <div class="card"><h4>容器 Container · 四态</h4><p>透明 → 圆章 → 圆角方章（圆角 0.275 × 边长）→ 镂空。字形与弧线参数不随容器变化。</p></div>
+    <div class="card"><h4>层级 Hierarchy</h4><p>单字符 → 双字符 → 词标 → 全称 → 母品牌。场合越小，层级越低。</p></div>
+    <div class="card"><h4>分隔符 Separator</h4><p><code>·</code> 表并列，<code>｜</code> 表分组。域名全小写。</p></div>
+    <div class="card"><h4>颜色 Color · 四种</h4><p>主色 / 墨 / 反白 / 主色描边。<strong>不用渐变，不用灰。</strong></p></div>
+  </div>
+
+  <div class="row" style="margin-top:36px;align-items:center;gap:48px">
+    <figure style="margin:0"><svg viewBox="0 0 43 44" width="72" height="74" fill="#e1251b"><use href="#h"/></svg><div class="cap">H</div></figure>
+    <figure style="margin:0"><svg viewBox="0 0 43 44" width="72" height="74" fill="#e1251b"><path d="M0 0H13L21.5 13.5L30 0H43L28 22L43 44H30L21.5 30.5L13 44H0L15 22Z"/></svg><div class="cap">X（由 H 反推）</div></figure>
+    <figure style="margin:0"><svg viewBox="0 0 96 44" width="160" height="74" fill="#e1251b"><use href="#hx"/></svg><div class="cap">HX 字标</div></figure>
+  </div>
+
+  <div class="scroll"><table>
+    <thead><tr><th>参数</th><th>数值</th><th>说明</th></tr></thead>
+    <tbody>
+      <tr><td>方章圆角</td><td class="n">0.275 × 边长</td><td>96px 章 = 26.4px；App 图标另按平台遮罩</td></tr>
+      <tr><td>弧线宽（HX）</td><td class="n">0.44 × 边长</td><td>描边 0.05 × 边长。<strong>不等于字形笔画宽</strong> —— 取笔画宽的话描边比弧半径还宽，弧会糊成一顶实心帽子</td></tr>
+      <tr><td>弧线宽（虹）</td><td class="n">0.40 × 边长</td><td>单字符较宽，弧线相应收窄</td></tr>
+      <tr><td>弧线宽（虹选字标）</td><td class="n">1.00 × 字高</td><td>等于「虹」字宽，左端与「虹」左边缘对齐</td></tr>
+      <tr><td>字形笔画宽</td><td class="n">0.267 × 字高</td><td>H、X 通用，直角切口</td></tr>
+      <tr><td>H 字高（章内）</td><td class="n">0.64 × 边长</td><td>圆章与方章一致。<strong>H 档不带弧线</strong>（素材 h-square.svg / h-circle.svg 里就没有）</td></tr>
+      <tr><td>HX 字高（章内）</td><td class="n">0.30 × 边长</td><td>弧线下方留 0.04 × 边长间距。字高 ÷ 弧高 = 1.36×，读作「HX，头上有一道虹」</td></tr>
+      <tr><td>弧线扁平度 arc_flat</td><td class="n">0.65</td><td>竖半径 ÷ 横半径。1.00 为正半圆；压到 0.50 时弧内净空不足两个描边宽，小尺寸下读成一条直线</td></tr>
+      <tr><td>H 横画高度 bar</td><td class="n">0.38 × 字高</td><td>从顶算起。旧版 G4 的造型动作，2026-08-20 取回。<strong>单独 H 与 HX 里的 H 同值</strong> —— 两处 H 不同就是两套字形</td></tr>
+      <tr><td>虹选双字方章</td><td class="n">字高 0.38 · 字距 0.02</td><td>两字紧排；弧仍只压「虹」。按 0.10em 排，144px 下两字各自糊掉</td></tr>
+      <tr><td>安全区</td><td class="n">0.25 × 边长</td><td>四周留白，任何元素不得侵入</td></tr>
+      <tr><td>中文字距</td><td class="n">0.10 em</td><td>英文副行 0.30 em</td></tr>
+    </tbody>
+  </table></div>
+</div></section>
+
+<!-- ─────────────── 标识形态 ─────────────── -->
+<section id="lockups"><div class="wrap">
+  <div class="kicker">03 — Lockups</div>
+  <h2>标识形态</h2>
+  <p class="lede">字形与弧线不动，只换容器。下面每一枚都是同一组参数按 <code>font-size = 边长</code> 等比推出来的实时渲染。</p>
+
+  <div class="grid g4">
+    <div><div class="stage"><span class="mark" style="font-size:96px"><svg class="hx" viewBox="0 0 96 44"><use href="#hx"/></svg></span></div><div class="cap">方章（默认主标）</div></div>
+    <div><div class="stage"><span class="mark circle" style="font-size:96px"><svg class="hx" viewBox="0 0 96 44"><use href="#hx"/></svg></span></div><div class="cap">圆章</div></div>
+    <div><div class="stage"><span class="mark bare" style="font-size:96px"><svg class="hx" viewBox="0 0 96 44"><use href="#hx"/></svg></span></div><div class="cap">透明底红字</div></div>
+    <div><div class="stage dark"><span class="mark inv" style="font-size:96px"><svg class="hx" viewBox="0 0 96 44"><use href="#hx"/></svg></span></div><div class="cap">反白</div></div>
+  </div>
+
+  <div class="grid g4" style="margin-top:22px">
+    <div><div class="stage"><span class="mark circle h-only" style="font-size:96px"><svg class="hx" viewBox="0 0 43 44"><use href="#h"/></svg></span></div><div class="cap">H 圆章 · 头像 / favicon（最小 16px）</div></div>
+    <div><div class="stage"><span class="mark cn" style="font-size:96px"><i>虹</i></span></div><div class="cap">「虹」方章 · 字标小于 20px 时的替身</div></div>
+    <div><div class="stage"><span class="mark plate" style="font-size:96px"><svg class="hx" viewBox="0 0 96 44"><use href="#hx"/></svg></span></div><div class="cap">B 端图标 · 主色红 + 纸白字形</div></div>
+    <div><div class="stage dark"><span class="lock inv" style="font-size:44px">
+      <span class="mark" style="font-size:1em"><svg class="hx" viewBox="0 0 96 44"><use href="#hx"/></svg></span>
+      <span class="t"><b>虹选 · 好物</b><small>HX MALL</small></span></span></div><div class="cap">横向锁定（间距 0.28 × 边长）</div></div>
+  </div>
+</div></section>
+
+<!-- ─────────────── 字标 ─────────────── -->
+<section id="wordmark"><div class="wrap">
+  <div class="kicker">04 — Wordmark</div>
+  <h2>字标与命名</h2>
+  <p class="lede">弧线宽度等于「虹」字宽，左端与「虹」左边缘对齐，<strong>只覆盖这一个字</strong>——它是「虹」的字义符号，不是整个词的装饰。加「好物」之后弧线不变宽。</p>
+
+  <div class="grid g3">
+    <div><div class="stage"><span class="cn-lock"><span class="arc"></span><b>虹选</b><small>HX MALL</small></span></div><div class="cap">核心字标</div></div>
+    <div><div class="stage"><span class="cn-lock"><span class="arc"></span><b>虹选 · 好物</b><small>HX MALL</small></span></div><div class="cap">全称 · 间隔点表并列</div></div>
+    <div><div class="stage"><span class="cn-lock"><span class="arc"></span><b>虹选｜好物</b><small>HX MALL</small></span></div><div class="cap">分组 · 竖线表两个板块</div></div>
+    <div><div class="stage"><span class="cn-lock"><span class="arc"></span><b>虹选科技</b><small>HX TECH</small></span></div><div class="cap">母品牌</div></div>
+    <div><div class="stage"><span class="cn-lock"><span class="arc"></span><b>虹选 · 好物</b><small>HX MALL</small><span class="slogan">好货，稳定到手</span></span></div><div class="cap">Slogan 锁定（间距 0.34 × 字高，待定稿）</div></div>
+    <div><div class="stage" style="align-content:center;gap:14px"><span class="dom">hxmall<span>.top</span></span><span class="dom" style="font-size:24px">hxtech<span>.top</span></span></div><div class="cap">域名字标 · 全小写，后缀取主色</div></div>
+  </div>
+
+  <div class="scroll"><table>
+    <thead><tr><th>场合</th><th>写法</th><th>为什么</th></tr></thead>
+    <tbody>
+      <tr><td>标准字标</td><td><strong>虹选 · 好物</strong>（副行 HX MALL）</td><td>对外全称</td></tr>
+      <tr><td>密排横向</td><td><strong>虹选｜好物</strong></td><td>页脚一行式署名、面包屑</td></tr>
+      <tr><td>极窄</td><td><strong>虹选</strong></td><td>空间紧张时舍「好物」保「虹选」——后者是公司字号，是真正的品牌资产</td></tr>
+      <tr><td>App 桌面显示名</td><td><strong>虹选好物</strong>（连写）</td><td>启动器会截断，间隔号白占一个字符位</td></tr>
+      <tr><td>商标 / 软著 / 备案</td><td><strong>虹选好物</strong>（连写）</td><td>注册的是文字本身，<strong>加标点等于注册了另一个东西</strong></td></tr>
+      <tr><td>英文</td><td>Logo 副行 <code>HX MALL</code> · 商店名 <code>HX Mall</code> · 代码域名 <code>hxmall</code></td><td>不出现 HXMall / Hx Mall / HX-Mall，变体会稀释商标检索与商店搜索</td></tr>
+      <tr><td>法律署名</td><td><strong>深圳虹选科技有限公司</strong></td><td>官网页脚、隐私政策、用户协议、App 关于页、开发者名称、发票合同</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3 style="margin-top:40px;font-size:19px">字体</h3>
+  <div class="scroll"><table>
+    <thead><tr><th>位置</th><th>字体</th><th>说明</th></tr></thead>
+    <tbody>
+      <tr><td>中文标识与标题</td><td>思源黑体 Bold</td><td>SIL OFL 可商用；交印刷厂 / 商标申报前<strong>转轮廓</strong></td></tr>
+      <tr><td>中文正文</td><td>思源黑体 Regular / Medium</td><td>官网需子集化——中文全量 webfont 3–8MB，是移动端性能头号杀手</td></tr>
+      <tr><td>拉丁</td><td>Figtree</td><td>界面与英文副行</td></tr>
+      <tr><td>官网展示大字</td><td>Instrument Serif</td><td><strong>仅官网</strong>，不进产品界面与标识</td></tr>
+      <tr><td>标识内 HX</td><td>自绘路径</td><td>不依赖字体，任何环境不变形</td></tr>
+    </tbody>
+  </table></div>
+</div></section>
+
+<!-- ─────────────── 各端制版 ─────────────── -->
+<section id="apps"><div class="wrap">
+  <div class="kicker">05 — Platforms</div>
+  <h2>各端制版</h2>
+  <p class="lede">母版为 1024×1024 满幅方章：底色出血到边，弧线与字符按参数缩放，<strong>圆角交给平台遮罩</strong>——自己预切会二次圆角，边缘被削一圈。</p>
+
+  <div class="row" style="margin-top:32px;gap:30px">
+    <figure style="margin:0;text-align:center"><span class="mark" style="font-size:120px;border-radius:.275em"><svg class="hx" viewBox="0 0 96 44"><use href="#hx"/></svg></span><div class="cap">C 端 1024²</div></figure>
+    <figure style="margin:0;text-align:center"><span class="mark plate" style="font-size:120px"><svg class="hx" viewBox="0 0 96 44"><use href="#hx"/></svg></span><div class="cap">B 端 1024²</div></figure>
+    <figure style="margin:0;text-align:center"><span class="mark circle" style="font-size:72px"><svg class="hx" viewBox="0 0 96 44"><use href="#hx"/></svg></span><div class="cap">小程序 144²</div></figure>
+    <figure style="margin:0;text-align:center"><span class="mark cn" style="font-size:72px"><i>虹</i></span><div class="cap">小程序中文版</div></figure>
+    <figure style="margin:0;text-align:center"><span class="mark circle h-only" style="font-size:48px"><svg class="hx" viewBox="0 0 43 44"><use href="#h"/></svg></span><div class="cap">通知栏 76²（去弧线）</div></figure>
+    <figure style="margin:0;text-align:center"><span class="mark circle h-only" style="font-size:32px"><svg class="hx" viewBox="0 0 43 44"><use href="#h"/></svg></span><div class="cap">favicon 32²</div></figure>
+    <figure style="margin:0;text-align:center"><span class="mark circle h-only" style="font-size:16px"><svg class="hx" viewBox="0 0 43 44"><use href="#h"/></svg></span><div class="cap">16²（纯色 H）</div></figure>
+  </div>
+
+  <div class="scroll"><table>
+    <thead><tr><th>用途</th><th>尺寸</th><th>做法</th></tr></thead>
+    <tbody>
+      <tr><td>App Store / Play</td><td class="n">1024 × 1024</td><td>满幅底 + HX。<strong>不自带圆角、不留白边、不透明</strong>——iOS 带 alpha 通道直接拒</td></tr>
+      <tr><td>iOS 桌面</td><td class="n">180 / 120</td><td>由 1024 母版导出，圆角交系统遮罩</td></tr>
+      <tr><td>Android 自适应</td><td class="n">432 前景 / 背景</td><td>前景放 HX（占 66%），背景层纯色。H 四角距中心须 &lt; 33，否则圆形遮罩削角</td></tr>
+      <tr><td>小程序方形</td><td class="n">144 × 144</td><td>满幅底 + HX，微信端自动裁圆</td></tr>
+      <tr><td>小程序中文版</td><td class="n">144 × 144</td><td>「虹」方章，弧线收窄至 0.40 × 边长</td></tr>
+      <tr><td>通知 / 状态栏</td><td class="n">76 / 48</td><td><strong>去弧线，仅 H</strong>，保证 16px 可辨</td></tr>
+      <tr><td>favicon</td><td class="n">48 / 32 / 16</td><td>H 圆章；16px 用纯色 H，无弧线</td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="lede" style="margin-top:22px"><strong>最小尺寸</strong>：方章 28px · H 圆章 16px · 字标字高 20px。字标小于 20px 时改用「虹」方章或圆章。</p>
+</div></section>
+
+<!-- ─────────────── 界面用色 ─────────────── -->
+<section id="ui"><div class="wrap">
+  <div class="kicker">06 — Product UI</div>
+  <h2>界面用色</h2>
+  <p class="lede">C 端 / B 端新增 <code>brand</code> 皮肤并设为默认，其余八套皮肤一个不动——换肤是产品既有能力，也是「虹」这个名字的由来。运营端例外，见下。</p>
+
+  <div class="grid g2">
+    <div class="card"><h4>c-app / b-app · brand 皮肤</h4>
+      <p><code>light #e1251b</code> / <code>dark #ff5a4d</code>；<code>--sh-on-primary</code> 由生成器按对比度自动选（浅色档白、深色档墨），不手填。</p>
+      <p style="margin-top:10px">改 <code>tokens.ts</code> → <code>npm run gen:skins</code> → <code>npm test</code>。<code>base.css</code> 是生成物，手改会被覆盖。</p>
+    </div>
+    <div class="card"><h4>ops-web · 品牌红不进 --primary</h4>
+      <p>运营端 <code>--primary</code> 保持近黑 <code>#18181b</code>。品牌红只出现在左上角标识、登录页、页脚署名三处。</p>
+      <p style="margin-top:10px"><strong>为什么</strong>：运营端 <code>--destructive</code> 是 <code>#d92d20</code>，与品牌红肉眼几乎同色。密集表格里主按钮和删除按钮同色，是会真出事故的。</p>
+    </div>
+  </div>
+
+  <h3 style="margin-top:40px;font-size:19px">主色是红，危险色也是红——这条必须处理</h3>
+  <p class="lede" style="margin-top:10px">颜色不能是唯一的信息载体（WCAG 1.4.1）。在红色主色的产品里，这条从「建议」变成「必须」。</p>
+  <div class="grid g2" style="margin-top:20px">
+    <div class="ok"><h4>危险操作：描边按钮 + 墨字 + 明确动词</h4>
+      <div class="demo"><button class="btn btn-primary">确认下单</button><button class="btn btn-danger-ok">删除订单</button></div>
+      <p style="margin-top:14px;font-size:14px">两个按钮形态不同，不靠颜色区分。</p></div>
+    <div class="no"><h4>两个红并排：用户分不清确认和删除</h4>
+      <div class="demo"><button class="btn btn-primary">确认下单</button><button class="btn btn-danger-bad">删除订单</button></div>
+      <p style="margin-top:14px;font-size:14px">红实心只留给二次确认弹窗——那时页面上不会同时出现主色按钮。</p></div>
+  </div>
+</div></section>
+
+<!-- ─────────────── 商标 ─────────────── -->
+<section id="filing"><div class="wrap">
+  <div class="kicker">07 — Trademark</div>
+  <h2>商标申报</h2>
+  <p class="lede">按「图形」「中文文字」「组合」三类分别申报，避免单一注册被局限。申报稿：<strong>纯黑实心、白底、无渐变、无阴影、无描边</strong>，边界清晰；Slogan 与英文副行不进申报稿。</p>
+
+  <div class="grid g4">
+    <div><div class="stage" style="background:#fff"><span class="mark" style="font-size:88px;background:#000"><svg class="hx" viewBox="0 0 96 44"><use href="#hx"/></svg></span></div><div class="cap">HX 黑白稿</div></div>
+    <div><div class="stage" style="background:#000;border-color:#000"><span class="mark inv" style="font-size:88px;color:#000"><svg class="hx" viewBox="0 0 96 44"><use href="#hx"/></svg></span></div><div class="cap">HX 反白稿</div></div>
+    <div><div class="stage" style="background:#fff"><span class="cn-lock mono" style="font-size:38px"><span class="arc"></span><b>虹选</b></span></div><div class="cap">虹选 黑白稿</div></div>
+    <div><div class="stage" style="background:#fff"><span class="mark circle h-only" style="font-size:88px;background:#000"><svg class="hx" viewBox="0 0 43 44"><use href="#h"/></svg></span></div><div class="cap">H 图形黑白稿</div></div>
+  </div>
+
+  <div class="scroll"><table>
+    <thead><tr><th>申报单元</th><th>类型</th><th>用途</th></tr></thead>
+    <tbody>
+      <tr><td>HX 方章</td><td>图形 + 文字</td><td>App / 小程序图标、官网、海外物料</td></tr>
+      <tr><td>虹选</td><td>中文文字</td><td>国内渠道、包装、单据、门店</td></tr>
+      <tr><td>虹选 · 好物</td><td>中文文字</td><td>对外全称、印刷物、开屏</td></tr>
+      <tr><td>H 圆章</td><td>图形</td><td>头像、favicon、封口贴</td></tr>
+      <tr><td>虹选科技 / HX TECH</td><td>组合</td><td>母品牌署名、合同、资质</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="grid g4" style="margin-top:22px">
+    <div class="card"><h4>字体授权</h4><p>思源黑体 SIL OFL 可商用；提交前文字<strong>转轮廓</strong></p></div>
+    <div class="card"><h4>文件格式</h4><p>矢量 SVG / AI 交设计；申报提交 JPG，边长 ≥ 400px</p></div>
+    <div class="card"><h4>近似检索</h4><p>HX 图形与「虹选」文字<strong>分别</strong>查询，建议委托代理机构</p></div>
+    <div class="card"><h4>类别</h4><p>至少 35 类（零售批发）与 9 类（App 软件），按实际业务扩展</p></div>
+  </div>
+</div></section>
+
+<!-- ─────────────── 禁止 ─────────────── -->
+<section id="misuse"><div class="wrap">
+  <div class="kicker">08 — Misuse</div>
+  <h2>禁止事项</h2>
+  <p class="lede">每一条后面都跟着「防住什么」。防不住任何东西的规则，多半是可以删掉的。</p>
+
+  <div class="grid g3">
+    <div class="no"><h4>不动几何</h4><p>不拉伸、不倾斜、不改圆角比例、不换弧线形状或角度。参数一变，全体系失去可复现性。</p></div>
+    <div class="no"><h4>不加效果</h4><p>不加渐变、阴影、外发光、描边、立体、纹理。渐变无法算对比度，也无法单色印刷。</p></div>
+    <div class="no"><h4>不改结构</h4><p>弧线不脱离「虹」或 HX 单独使用，不移到字标右侧或下方。它是字义符号，不是装饰条。</p></div>
+    <div class="no"><h4>不改配色</h4><p>底色只用主色 / 墨 / 反白。不用灰底红字（对比不足），不在照片上直接放标识。</p></div>
+    <div class="no"><h4>不侵安全区</h4><p>四周 0.25 × 边长内不放任何文字、图形或裁切边。</p></div>
+    <div class="no"><h4>不在代码里写死色值</h4><p>一律 <code>var(--sh-*)</code> / <code>var(--hx-*)</code>。<code>.vue</code> 的 <code>&lt;style&gt;</code> 里出现 hex 会被规范测试拦下。</p></div>
+  </div>
+</div></section>
+
+<footer><div class="wrap">
+  <span>虹选 · 好物 / HX MALL — 视觉规范 · 真源 <code>brand/build.py</code></span>
+  <span>完整方案见 docs/technical/design/视觉设计方案-全项目.md</span>
+  <span>© 2026 深圳虹选科技有限公司</span>
+</div></footer>
+
+</body>
+</html>

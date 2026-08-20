@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 31+：交给系统的 SplashScreen，图标复用自适应前景（矢量，任何密度不糊）。
+         用平台属性而非 androidx 库 —— 本仓库没有 core-splashscreen 依赖。 -->
+    <style name="Theme.Shell.Splash" parent="Theme.AppCompat.NoActionBar">
+        <item name="android:windowSplashScreenBackground">@color/splash_background</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+    </style>
+</resources>
