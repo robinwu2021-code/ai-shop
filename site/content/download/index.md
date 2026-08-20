@@ -1,31 +1,19 @@
 ---
 title: 下载
 slug: /download/
-description: 顾客端与商家端的下载入口。顾客用微信小程序或 App 下单；商家用商家端接单、发货、核销与对账，安卓可直接下载安装包。
-audience: 顾客与商家（两端分开，别下错）
+description: 商家端「虹选商家」用于接单、发货、核销与对账；消费者端「虹选 · 好物」用于浏览附近门店、下单与取货。
+audience: 商家与消费者
 goal: 下载对应的那一端
 ---
 
-## 两个 App，别下错。
+## 下载
 
 ```yaml
 type: hero
 ```
 
-**顾客用「虹选 · 好物」买东西，商家用「虹选商家」接单。**
-两个是不同的应用，装的时候看清楚名字。未上架的入口会显示「即将上线」。
-
----
-
-## 顾客端 · 虹选 · 好物
-
-```yaml
-type: cta
-cta: [App Store, Android 下载, 微信小程序]
-ctaHref: ["{{download.consumerAppStore}}", "{{download.consumerAndroid}}", "{{download.consumerMiniProgram}}"]
-```
-
-打开就是附近的店：挑好、下单、就近取货。不装 App，用微信小程序也一样。
+商家端用于接单、发货、核销与对账；消费者端用于浏览附近门店、下单与取货。
+未上架的入口显示「即将上线」。
 
 ---
 
@@ -34,34 +22,46 @@ ctaHref: ["{{download.consumerAppStore}}", "{{download.consumerAndroid}}", "{{do
 ```yaml
 type: cta
 tone: brand
-cta: [Android 安装包, 微信小程序]
+cta: [Android 安装包 · {{download.merchantAndroidVersion}}, 微信小程序]
 ctaHref: ["{{download.merchantAndroid}}", ""]
 ```
 
-接单、发货、核销、对账，还有几家店的经营数据。**iOS 版规划中。**
+接单、发货、核销、对账，以及多门店经营数据。**iOS 版规划中。**
 
-安卓安装包请用**手机浏览器**打开下载 —— 在微信里点会被拦住，那不是链接坏了。
+安卓安装包请使用**手机浏览器**打开下载，微信内置浏览器会拦截该下载。
 
 ---
 
-## 顾客那侧是这样买的
+## 消费者端 · 虹选 · 好物
+
+```yaml
+type: cta
+cta: [App Store, Android 下载, 微信小程序]
+ctaHref: ["{{download.consumerAppStore}}", "{{download.consumerAndroid}}", "{{download.consumerMiniProgram}}"]
+```
+
+浏览附近门店、下单、就近取货。不安装 App 时可使用微信小程序。
+
+---
+
+## 消费者的购买流程
 
 ```yaml
 type: timeline
 ```
 
-1. **挑** —— 打开就是附近的店，营业时间、能不能送、多久到都写在列表里。
-2. **下单** —— 一个订单里可以有几家店的东西，按店拆单，各自履约。
-3. **就近取货** —— 到店核销一个码，或等老板送上门；服务类还能预约上门时间。
+1. **浏览** —— 展示附近门店，营业时间、可否配送、送达时长均在列表中标明。
+2. **下单** —— 一笔订单可包含多家门店的商品，按门店拆单，各自履约。
+3. **取货** —— 到店核销取货码，或由商家配送；服务类可预约上门时间。
 
 ---
 
-## 还没开店？
+## 尚未开店？
 
 ```yaml
 type: cta
-cta: [免费开店, 看看支持哪些店]
+cta: [免费开店, 查看支持的行业]
 ctaHref: ["{{site.merchantEntry}}", "/scenarios/"]
 ```
 
-零门槛开店，0 元起步。不用押金、不用年费。
+不收取入驻费、年费与押金。

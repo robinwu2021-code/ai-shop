@@ -10,9 +10,9 @@ import { site } from "@/lib/site.config";
 const NAV = [
   { href: "/scenarios/", label: "支持哪些店" },
   { href: "/how-it-works/", label: "怎么开店" },
-  { href: "/pricing/", label: "收费与套餐" },
+  { href: "/#plans", label: "套餐" },
   { href: "/mini-program/", label: "自有小程序" },
-  { href: "/download/", label: "顾客入口" },
+  { href: "/download/", label: "下载 App" },
 ];
 
 /**

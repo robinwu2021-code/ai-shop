@@ -28,7 +28,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
     "scenarios",
     ...scenarioSlugs(),
     "how-it-works",
-    "pricing",
     "capabilities",
     "mini-program",
     "download",

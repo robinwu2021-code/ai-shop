@@ -55,22 +55,29 @@ export const site = {
   /**
    * 下载入口 —— **空值是合法状态**：页面据此渲染成「即将上线」而不是死链。
    *
-   * 顾客端与商家端分开：两个 App 的 applicationId 不同（`ai.neargo.shop.c` /
+   * 消费者端与商家端分开：两个 App 的 applicationId 不同（`ai.neargo.shop.c` /
    * `top.hxmall.bapp`），装的是两个东西，同一个按钮下两份包会装串。
    */
   download: {
-    /** 顾客端 · 虹选好物 */
+    /** 消费者端 · 虹选好物 */
     consumerAppStore: "", // TODO: 上架后填
     consumerAndroid: "", // TODO: 上架后填
     consumerMiniProgram: "", // TODO: 小程序码图片路径
     /**
-     * 商家端 · 虹选商家（Android APK 直链，托管在 COS 的 download 桶）。
-     * 形如 https://hxmall-download-<APPID>.cos.ap-guangzhou.myqcloud.com/b-app/latest.apk
-     * 发布流程见 deploy/tencent/README.md §商家端 App 分发。
+     * 商家端 · 虹选商家（Android APK 直链）。
+     *
+     * **当前托管在自己的服务器上**：`/var/www/ai-shop/dl/`，由 nginx 的 `location ^~ /dl/`
+     * 直出。用相对路径而不是绝对地址 —— 备案未过之前，商家多半从 `http://<IP>/` 进来，
+     * 写死 https://www.hxmall.top 会让 IP 入口的下载跳到一个他打不开的地方。
+     *
+     * **COS 现在用不了**：桶已建、包已传，但腾讯云禁止用 COS 默认域名向公网分发
+     * APK/IPA（`DownloadForbidden`），必须绑自定义域名，而大陆地域桶的自定义域名要备案。
+     * 从服务器上验会得到 200（内网不受限），**只有从公网出口验才看得到 403**。
+     * 备案下来、域名绑好后把这里换成直链即可，页面不用改。
      */
-    merchantAndroid: "",
+    merchantAndroid: "/dl/hxmall-merchant-0.1.0.apk",
     /** 商家端安卓包的版本号，跟着链接一起改 —— 页面上要让人看得出下的是哪一版 */
-    merchantAndroidVersion: "",
+    merchantAndroidVersion: "0.1.0",
   },
 } as const;
 

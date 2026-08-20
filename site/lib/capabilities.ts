@@ -31,7 +31,7 @@ export type Surface = {
  */
 export const SURFACES: readonly Surface[] = [
   {
-    name: "顾客端",
+    name: "消费者端",
     who: "你的顾客",
     forms: [
       { label: "微信小程序" },
@@ -61,7 +61,8 @@ export const SURFACES: readonly Surface[] = [
   {
     name: "自有小程序",
     who: "你的顾客（你的招牌）",
-    forms: [{ label: "微信小程序", status: "对接中" }],
+    forms: [{ label: "微信小程序", status: "对接中" },
+      { label: "App", status: "规划中" }],
     desc: "按年加购。挂你自己的名称与图标，顾客名单归你；商品、订单、履约、结算与虹选后台同一套。",
   },
 ];
@@ -86,8 +87,8 @@ export const DOMAINS: readonly Domain[] = [
     items: [
       { label: "手机号验证码登录，登录即注册" },
       { label: "微信一键登录（小程序端）" },
-      { label: "三种经营主体：个人 / 个体工商户 / 企业" },
-      { label: "行业决定可选主体，个人主体免营业执照" },
+      { label: "三种开店身份：个人 / 个体工商户 / 企业" },
+      { label: "可选身份由行业决定，不允许的身份在选择行业后置灰" },
       { label: "资质校验与驳回原因，草稿续填" },
       { label: "自提点意愿：本店同时作为社区自提点" },
     ],
@@ -112,7 +113,7 @@ export const DOMAINS: readonly Domain[] = [
       { label: "全部 / 待发货 / 已发货 / 待核销 / 已完成 / 售后 分筛" },
       { label: "订单详情：买家、履约方式、金额、客流来源" },
       { label: "按门店精确归属，拆单后一单只属一家" },
-      { label: "状态机强制：非法流转直接拒绝，前后端同一张表" },
+      { label: "订单状态不会错乱：非法流转直接拒绝" },
       { label: "发货填运单号；自送标记送达" },
     ],
   },
@@ -120,8 +121,8 @@ export const DOMAINS: readonly Domain[] = [
     name: "收款与结算",
     lede: "钱怎么进来、怎么算、什么时候出账单。",
     items: [
-      { label: "收款进件：按经营主体提交，状态可刷新" },
-      { label: "个人主体收款走微信零钱，无需对公户" },
+      { label: "收款申请：按开店身份提交，状态可刷新" },
+      { label: "个人身份收款进入微信零钱" },
       { label: "门店级收款绑定，多店的钱各走各的" },
       { label: "微信 / 支付宝支付通道", status: "对接中" },
       { label: "费率卡：先说清怎么算，以下单时快照为准" },
@@ -204,7 +205,7 @@ export const DOMAINS: readonly Domain[] = [
     items: [
       { label: "工作台六项待办，数字即入口" },
       { label: "今日经营：订单数、成交额、评分" },
-      { label: "自带客流占比：这个数字对应你少付的钱" },
+      { label: "老客占比：对应少付的佣金" },
       { label: "周期结算单与费率明细" },
       { label: "跨店总览与对比：销售额 / 订单数 / 复购率 / 评分 / 缺货数" },
       { label: "对账与客户导出", status: "规划中" },
@@ -229,7 +230,7 @@ export const DOMAINS: readonly Domain[] = [
     lede: "顾客怎么找到你，以及老客怎么记住你。",
     items: [
       { label: "店铺装修：公告、营业时间、门店地址" },
-      { label: "店铺码：印在包装或收银台，扫码进店记为自带客流" },
+      { label: "店铺码：印在包装或收银台，扫码进店记为老客" },
       { label: "分享素材：链接与可打印版" },
       { label: "覆盖社区申请：决定商品能卖到哪几个小区" },
       { label: "九套配色 × 明暗两套主题，店面外观自己定" },

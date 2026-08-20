@@ -17,7 +17,7 @@ const COLS = [
     title: "产品",
     links: [
       { href: "/how-it-works/", label: "怎么开店" },
-      { href: "/pricing/", label: "收费与套餐" },
+      { href: "/#plans", label: "套餐" },
       { href: "/capabilities/", label: "功能总览" },
       { href: "/mini-program/", label: "自有小程序" },
       { href: "/download/", label: "下载 App" },
