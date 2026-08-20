@@ -121,7 +121,12 @@ export interface ShopApi {
   // ---- 交易
   createOrder(req: CreateOrderReq): Promise<Order>;
   payOrder(orderNo: string): Promise<Order>;
-  orderList(q: PageQuery & { status?: string }): Promise<PageResult<Order>>;
+  /**
+   * 订单列表。**`status` 与 `fulfillments` 正交**：前者是抽象状态、后者是履约方式，
+   * 页签由两者组合成谓词（「待取货」= FULFILLING + 自提类）。
+   * 此前只有一个 `status`，值里混着 ARRIVED/SHIPPED 这种「状态 × 履约」的组合。
+   */
+  orderList(q: PageQuery & { status?: string; fulfillments?: string[] }): Promise<PageResult<Order>>;
   /**
    * 首页推广位。**是运营位，不是自动热销榜** —— 社区里 SKU 就那么几十个，
    * 按销量自动排出来的「热卖」和「全部商品」几乎是同一个列表，那样没有意义。

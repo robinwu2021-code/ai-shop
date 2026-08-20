@@ -29,7 +29,7 @@ const busy = ref(false);
 /** 只有「送到我家」的团才需要发起人履约 —— 到店自提的团由商家核销 */
 const hosting = computed(() => groups.value.filter((g) => g.neighborPickup));
 const current = computed(() => hosting.value.find((g) => g.groupNo === active.value));
-const waiting = computed(() => orders.value.filter((o) => o.status === "ARRIVED"));
+const waiting = computed(() => orders.value.filter((o) => o.status === "FULFILLING"));
 const preparing = computed(() => orders.value.filter((o) => o.status === "PAID"));
 
 async function load() {
@@ -198,7 +198,7 @@ onShow(load);
   padding: 16rpx 20rpx;
   border-radius: 24rpx;
   background: var(--sh-primary-tint);
-  color: var(--sh-primary);
+  color: var(--sh-primary-text);
   font-size: 24rpx;
   line-height: 1.6;
 }

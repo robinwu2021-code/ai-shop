@@ -209,7 +209,7 @@ onShow(load);
   font-weight: 400;
 }
 .rec__v.is-in {
-  color: var(--sh-primary);
+  color: var(--sh-primary-text);
 }
 .rec__v.is-out {
   color: var(--sh-danger);

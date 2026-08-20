@@ -31,11 +31,14 @@ public class BizGoodsController {
 
     private final MerchantGoodsService goodsService;
     private final ai.neargo.shop.product.service.CategoryService categoryService;
+    private final ai.neargo.shop.spi.product.GoodsVisionPort vision;
 
     public BizGoodsController(MerchantGoodsService goodsService,
-                              ai.neargo.shop.product.service.CategoryService categoryService) {
+                              ai.neargo.shop.product.service.CategoryService categoryService,
+                              ai.neargo.shop.spi.product.GoodsVisionPort vision) {
         this.goodsService = goodsService;
         this.categoryService = categoryService;
+        this.vision = vision;
     }
 
     /**
@@ -60,9 +63,16 @@ public class BizGoodsController {
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
     @GetMapping("/biz/goods")
     public PageData<GoodsVO> list(@RequestParam(required = false) String status,
+                                  @RequestParam(required = false) String keyword,
                                   @RequestParam(defaultValue = "1") long page,
                                   @RequestParam(defaultValue = "20") long size) {
-        return goodsService.list(BizContext.requireMerchantNo(), null, null, status, page, Math.min(size, 50));
+        /*
+         * `keyword` 此前**写死传 null** —— service 一直支持按标题模糊搜（见接口注释），
+         * 只有这个端点没往下传，于是 B 端商品页没有搜索。
+         * 商品少的时候看不出来；实测 194 条的账号，找一个商品要滚三十屏。
+         */
+        return goodsService.list(BizContext.requireMerchantNo(), null, keyword, status,
+                page, Math.min(size, 50));
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
@@ -147,7 +157,40 @@ public class BizGoodsController {
     @PreAuthorize("@perm.canBiz('" + BizPerms.GOODS + "')")
     @PostMapping("/biz/goods/recognize")
     public GoodsGuessVO recognize(@RequestBody RecognizeReq req) {
-        return new GoodsGuessVO("", "NORMAL", 0d);
+        /*
+         * 把**候选类目**喂给模型，而不是让它自由发挥：不给列表时它会返回
+         * 「日用品」这种不存在的编号，而查无此项的 categoryNo 落进草稿之后，
+         * 商家要到点保存那一刻才撞上类目校验 —— 那时他已经不记得是谁填的了。
+         *
+         * 只给**挂得住商品的层级**（叶子/二级），一级大类不参与：把「食品生鲜」
+         * 选给一个商品没有任何信息量，却会挤掉真正该选的那一档。
+         */
+        /*
+         * 摊平成「编号 → 中文路径」。**只收二级与三级** ——
+         * 一级大类（食品生鲜/日用百货）选给一个商品没有任何信息量，
+         * 却会占掉模型本该选中真正那一档的机会。
+         * 叶子的 children 是空列表不是 null（见 CategoryVO 注释），所以不必判空。
+         */
+        var categories = new java.util.LinkedHashMap<String, String>();
+        for (var lv1 : categoryService.tree()) {
+            for (var lv2 : lv1.children()) {
+                if (lv2.children().isEmpty()) {
+                    categories.put(lv2.categoryNo(), lv1.name() + "/" + lv2.name());
+                } else {
+                    for (var lv3 : lv2.children()) {
+                        categories.put(lv3.categoryNo(),
+                                lv1.name() + "/" + lv2.name() + "/" + lv3.name());
+                    }
+                }
+            }
+        }
+        var guess = vision.recognize(req.imageUrl(), categories);
+        if (guess == null) {
+            // 识别不出来不是错误。confidence=0 时端上只提示、不预填（见 b-app shoot()）
+            return new GoodsGuessVO("", "", "NORMAL", "", 0d);
+        }
+        return new GoodsGuessVO(guess.title(), guess.subtitle(), guess.type(),
+                guess.categoryNo(), guess.confidence());
     }
 
     public record SaveGoodsReq(String goodsNo, String title, String subtitle,
@@ -181,6 +224,12 @@ public class BizGoodsController {
     }
 
     /** 对齐 b-app {@code GoodsGuess}。全部是建议值，店主可改可弃。 */
-    public record GoodsGuessVO(String title, String type, double confidence) {
+    /**
+     * @param subtitle   一句话卖点。**建议值**，店主可改可弃
+     * @param categoryNo 类目编号。已按候选表校验过 —— 模型给的编号不在表里时是空串，
+     *                   不会把一个查无此项的编号塞进草稿（那样商家要到保存那刻才撞上校验）
+     */
+    public record GoodsGuessVO(String title, String subtitle, String type,
+                               String categoryNo, double confidence) {
     }
 }

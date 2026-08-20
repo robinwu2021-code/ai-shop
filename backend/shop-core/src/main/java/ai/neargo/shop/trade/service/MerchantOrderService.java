@@ -26,8 +26,18 @@ public interface MerchantOrderService {
      *                 一个没被授权到任何门店的员工不该看到任何单。
      *                 把空集合当成「不过滤」是这类越权最常见的写法。
      */
+    /**
+     * 商家订单列表。
+     *
+     * @param status       抽象状态（{@code PAID / FULFILLING / COMPLETED / ...}）。
+     *                     <b>不再接受 ARRIVED / SHIPPED</b> —— 那是「状态 × 履约」的组合
+     * @param fulfillments 想要的履约方式；空 = 不限。与 {@code status} <b>正交</b>：
+     *                     商家的「待核销」= {@code FULFILLING} + 自提/到店核销类，
+     *                     「已发货」= {@code FULFILLING} + 配送类
+     */
     PageData<OrderVO> list(String merchantNo, java.util.Collection<String> storeNos,
-                           String status, long page, long size);
+                           String status, java.util.List<String> fulfillments,
+                           long page, long size);
 
     /**
      * 订单详情（商家视角）。

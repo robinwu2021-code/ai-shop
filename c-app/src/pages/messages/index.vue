@@ -85,7 +85,7 @@ onShow(load);
 .readall {
   flex-shrink: 0;
   font-size: 24rpx;
-  color: var(--sh-primary);
+  color: var(--sh-primary-text);
 }
 .msg {
   display: flex;
@@ -141,7 +141,7 @@ onShow(load);
 .msg__more {
   display: block;
   font-size: 24rpx;
-  color: var(--sh-primary);
+  color: var(--sh-primary-text);
   margin-top: 14rpx;
 }
 </style>

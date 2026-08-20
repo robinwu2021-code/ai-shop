@@ -5,5 +5,5 @@ export const brand = {
   redBright: "#FF5A4D",
   ink: "#17181A",
   paper: "#FFFFFF",
-  plateMerchant: "#242B33",
+  plateMerchant: "#17181A",
 } as const;

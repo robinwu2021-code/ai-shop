@@ -86,6 +86,7 @@ class M4FulfillmentFlowTest {
     void verifySucceedsThenCodeIsSpent() throws Exception {
         Ordered o = placeAndPay("13300133010", "G0002", "SK0003");
         String biz = loginAsOwnerOf("M0001", "13300133011");
+        markArrived(biz, o.subOrderNo);
 
         mvc().perform(post("/biz/pickup/verify").header("Authorization", "Bearer " + biz)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -104,6 +105,36 @@ class M4FulfillmentFlowTest {
                         .content("{\"verifyCode\":\"" + o.verifyCode + "\"}"))
                 .andExpect(jsonPath("$.data.success").value(false))
                 .andExpect(jsonPath("$.data.reason").value("ALREADY_VERIFIED"));
+    }
+
+    @Test
+    @DisplayName("★★ 货还没到点上 → 核销被拒（NOT_ARRIVED），与「不归你」分开说")
+    void cannotVerifyBeforeArrival() throws Exception {
+        Ordered o = placeAndPay("13300133019", "G0002", "SK0003");
+        String biz = loginAsOwnerOf("M0001", "13300133020");
+
+        /*
+         * 不登记到货直接扫码。此前这里**核销成功** ——
+         * 邻居代收点上就是「货还在路上，系统已记成已取货」，
+         * 而已取货是终态，之后没有任何人会去追它到底到没到。
+         */
+        mvc().perform(post("/biz/pickup/verify").header("Authorization", "Bearer " + biz)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"verifyCode\":\"" + o.verifyCode + "\"}"))
+                .andExpect(jsonPath("$.data.success").value(false))
+                /*
+                 * **不能复用 NOT_THIS_PICKUP**：那句话是「这单不归你，让顾客换个点」，
+                 * 而这里顾客站对了地方 —— 该说的是「等到货通知」。
+                 * 说错的代价是把人支去一个根本没有他货的点。
+                 */
+                .andExpect(jsonPath("$.data.reason").value("NOT_ARRIVED"));
+
+        // 登记到货之后，同一个码就能核销 —— 拒的是时机，不是这张单
+        markArrived(biz, o.subOrderNo);
+        mvc().perform(post("/biz/pickup/verify").header("Authorization", "Bearer " + biz)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"verifyCode\":\"" + o.verifyCode + "\"}"))
+                .andExpect(jsonPath("$.data.success").value(true));
     }
 
     @Test
@@ -135,6 +166,7 @@ class M4FulfillmentFlowTest {
     void onBehalfVerifyIsLogged() throws Exception {
         Ordered o = placeAndPay("13300133015", "G0002", "SK0003");
         String biz = loginAsOwnerOf("M0001", "13300133016");
+        markArrived(biz, o.subOrderNo);
 
         mvc().perform(post("/biz/pickup/verify").header("Authorization", "Bearer " + biz)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -154,6 +186,7 @@ class M4FulfillmentFlowTest {
     void batchVerifyReportsEachFailure() throws Exception {
         Ordered a = placeAndPay("13300133017", "G0002", "SK0003");
         String biz = loginAsOwnerOf("M0001", "13300133018");
+        markArrived(biz, a.subOrderNo);
 
         String body = mvc().perform(post("/biz/pickup/verify/batch").header("Authorization", "Bearer " + biz)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -326,6 +359,11 @@ class M4FulfillmentFlowTest {
         Ordered o = placeAndPay("13300134001", "G0002", "SK0003");
         String biz = loginAsOwnerOf("M0001", "13300134002");
 
+        // 到货**之前**先看一眼：PAID（商家还没把货送到自提点）。
+        // 没有这一眼的话，下面那句断言在「状态压根没变过」时也会绿。
+        mvc().perform(get("/mp/order/" + o.subOrderNo).header("Authorization", "Bearer " + o.userToken))
+                .andExpect(jsonPath("$.data.status").value("PAID"));
+
         String body = mvc().perform(post("/biz/pickup/arrived").header("Authorization", "Bearer " + biz)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"orderNos\":[\"" + o.subOrderNo + "\"]}"))
@@ -335,8 +373,25 @@ class M4FulfillmentFlowTest {
         assertThat(json.readTree(body).get("data")).hasSize(1);
 
         mvc().perform(get("/mp/order/" + o.subOrderNo).header("Authorization", "Bearer " + o.userToken))
-                // 自提单到货后，买家看到的是 ARRIVED（去取货），不是 SHIPPED（在路上）
-                .andExpect(jsonPath("$.data.status").value("ARRIVED"));
+                /*
+                 * 到货后是 **FULFILLING**，不再有 ARRIVED 这个状态。
+                 *
+                 * 「去取货」与「在路上」的区别没有消失，它换了个地方表达：
+                 * 状态只说「正在履约」，**怎么显示由履约方式决定** ——
+                 * 自提单的 FULFILLING 渲染成「已到自提点·去取货」，快递单渲染成「在路上」
+                 * （见 packages/shared/src/strategies/order-view.ts）。
+                 *
+                 * 这么改是因为每加一种履约方式就要加一个状态的话，
+                 * 到店核销、上门预约、即时达各来一个，状态集合会跟着履约方式无限长，
+                 * 而每一个新状态都要在三端、状态机、统计口径里各补一遍。
+                 */
+                .andExpect(jsonPath("$.data.status").value("FULFILLING"))
+                /*
+                 * 同时钉住履约方式：状态自己不再区分自提与快递了，
+                 * **是这个字段在承担那份区别**。它一旦丢了或改了值，
+                 * 上面那句 FULFILLING 就会被渲染成「在路上」，而状态断言照样绿。
+                 */
+                .andExpect(jsonPath("$.data.fulfillment").value("STORE_PICKUP"));
 
         /*
          * 再点一次：到货登记在自提点是高频且容易重复点的动作。
@@ -378,6 +433,7 @@ class M4FulfillmentFlowTest {
     void cannotReportAfterVerified() throws Exception {
         Ordered o = placeAndPay("13300134020", "G0002", "SK0003");
         String biz = loginAsOwnerOf("M0001", "13300134021");
+        markArrived(biz, o.subOrderNo);
 
         mvc().perform(post("/biz/pickup/verify").header("Authorization", "Bearer " + biz)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -404,7 +460,13 @@ class M4FulfillmentFlowTest {
     private record Ordered(String userToken, String subOrderNo, String verifyCode) {
     }
 
-    /** 下单 + 支付，返回可核销的单。 */
+    /**
+     * 下单 + 支付，返回一张**待到货**的单。
+     *
+     * <p><b>不在这里登记到货</b>：一半用例要的正是「货还没到」那个状态
+     * （分拣单、待备货计数、缺货上报）。要核销的用例自己调 {@link #markArrived} ——
+     * 谁需要哪一步，写在谁那里。
+     */
     private Ordered placeAndPay(String phone, String goodsNo, String skuNo) throws Exception {
         String token = login(phone);
         mvc().perform(post("/mp/cart/add").header("Authorization", "Bearer " + token)
@@ -425,6 +487,19 @@ class M4FulfillmentFlowTest {
                 .andReturn().getResponse().getContentAsString();
         JsonNode row = json.readTree(list).get("data").get("records").get(0);
         return new Ordered(token, row.get("orderNo").asString(), row.get("verifyCode").asString());
+    }
+
+    /**
+     * 登记到货 —— <b>核销的前置</b>：货没到点上时核销会被拒（{@code NOT_ARRIVED}）。
+     *
+     * <p>写成显式一步而不是塞进 {@code placeAndPay}：店员真实走的就是这两步，
+     * 而「测试里能核销、真实流程里不能」是这类替身最贵的失效方式。
+     */
+    private void markArrived(String bizToken, String subOrderNo) throws Exception {
+        mvc().perform(post("/biz/pickup/arrived").header("Authorization", "Bearer " + bizToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"orderNos\":[\"" + subOrderNo + "\"]}"))
+                .andExpect(jsonPath("$.code").value(0));
     }
 
     /** 把某个手机号登录出来的用户设为该商家的店主，从而获得 B 端作用域。 */

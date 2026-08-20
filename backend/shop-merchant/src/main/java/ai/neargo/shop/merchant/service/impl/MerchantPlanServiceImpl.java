@@ -428,9 +428,45 @@ public class MerchantPlanServiceImpl implements MerchantPlanService {
     private MchEntityPlan require(String merchantNo) {
         MchEntityPlan row = find(merchantNo);
         if (row == null) {
-            throw BizException.of(ErrorCode.NOT_FOUND);
+            row = materialize(merchantNo);
         }
         return row;
+    }
+
+    /**
+     * 订阅行**按需物化**。
+     *
+     * <p>发现的经过：`mch_entity_plan` 线上一行都没有 —— 而 `planMapper.insert`
+     * 在整个代码库里出现**零次**，也就是说这张表从来没有任何代码往里写过。
+     * 于是每个主体都走 {@link #fallback}：`/biz/plan` 显示「孵化版 · 没用过试用」，
+     * 看起来试用是可点的；而 {@link #trialTargetOf} 第一行 `row == null` 直接返回 null
+     * （按钮灰掉），{@link #startTrial} 的 `require()` 则抛 NOT_FOUND。
+     *
+     * <p>后果是**自助开通试用对系统里的每一个商家都是死的**，而它存在的理由
+     * 恰恰是 startTrial 注释里写的「他正要建第二家店的那一刻」—— 那一刻按钮点不动。
+     * 这件事没有任何症状：额度闸正常工作，页面也正常显示，只是升不上去。
+     *
+     * <p>{@link #lockAndRead} 的注释里已经点过名：「真要收紧，应该是把回填补齐
+     * 让每个主体都有行」。这就是那个回填 —— 做成**按需**而不是一次性刷库：
+     * 刷库要挑时机、要考虑新入驻的主体，而按需物化对新老一视同仁。
+     *
+     * <p>物化出来的是**兜底那一档原样**（FREE + 定义表里的额度），所以它不改变
+     * 任何主体当前的能力，只是把「隐含的默认」变成「一行真实的记录」。
+     */
+    private MchEntityPlan materialize(String merchantNo) {
+        var def = findDef(MchEntityPlan.FREE);
+        var row = new MchEntityPlan();
+        row.setEntityNo(merchantNo);
+        row.setPlanCode(MchEntityPlan.FREE);
+        row.setStoreQuota(def == null ? fallbackStoreQuota : nz(def.getStoreQuota()));
+        row.setStaffQuota(def == null ? 0 : nz(def.getStaffQuota()));
+        row.setCrossStoreStats(def != null && Boolean.TRUE.equals(def.getCrossStoreStats()));
+        row.setStatus(MchEntityPlan.ACTIVE);
+        row.setTrialUsed(false);
+        row.setGrantedBy(MchEntityPlan.BY_SELF_PAID);
+        MchEntityPlan toSave = row;
+        DataScopeContext.executeWithoutScope(() -> planMapper.insert(toSave));
+        return toSave;
     }
 
     private ai.neargo.shop.merchant.entity.SysMerchantPlanDef findDef(String planCode) {
@@ -444,8 +480,13 @@ public class MerchantPlanServiceImpl implements MerchantPlanService {
 
     @Override
     public MinePlanVO mine(String merchantNo) {
-        MchEntityPlan row = find(merchantNo);
-        PlanVO v = row == null ? fallback(merchantNo) : toVO(row);
+        /*
+         * 用 require 而不是 find：**读这一页正是最自然的物化时机**。
+         * 用 find 的话，页面上显示「没用过试用」而按钮永远是灰的 ——
+         * 两个字段来自同一次调用却互相矛盾（见 materialize 的说明）。
+         */
+        MchEntityPlan row = require(merchantNo);
+        PlanVO v = toVO(row);
         var def = findDef(v.planCode());
 
         /*

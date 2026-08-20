@@ -85,7 +85,7 @@ onShareAppMessage(() => {
     <!-- 头部：当前价 + 自提点 -->
     <view class="sh-card">
       <view class="head">
-        <view class="head__cover" @tap="openGoods">{{ group.cover || GOODS_COVER_FALLBACK }}</view>
+        <sh-cover class="head__cover" :src="group.cover || GOODS_COVER_FALLBACK" @tap="openGoods"></sh-cover>
         <view class="head__main">
           <text class="sh-h2">{{ group.title }}</text>
           <text class="head__pickup">📍 {{ group.pickupName }}</text>
@@ -264,7 +264,7 @@ onShareAppMessage(() => {
 .goal__text {
   font-size: 26rpx;
   font-weight: 600;
-  color: var(--sh-primary);
+  color: var(--sh-primary-text);
 }
 .goal--max .goal__text {
   color: var(--sh-success);

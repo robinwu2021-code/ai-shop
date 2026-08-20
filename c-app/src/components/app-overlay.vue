@@ -26,7 +26,7 @@ const style = computed(() => {
 
 <template>
   <view v-if="flyState.visible" class="fly" :style="style">
-    <text class="fly__text">{{ flyState.emoji }}</text>
+    <sh-cover class="fly__text" :src="flyState.emoji"></sh-cover>
   </view>
 </template>
 
@@ -49,7 +49,11 @@ const style = computed(() => {
     transform 0.62s cubic-bezier(0.42, 0.02, 0.72, 0.35),
     opacity 0.62s ease-in;
 }
+/* 真图时 sh-cover 的内层要有可撑的尺寸；emoji 时这个框正好等于字号 */
 .fly__text {
+  width: 44rpx;
+  height: 44rpx;
+  border-radius: 16rpx;
   font-size: 36rpx;
   line-height: 1;
 }

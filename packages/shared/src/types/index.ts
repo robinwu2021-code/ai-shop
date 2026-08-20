@@ -584,6 +584,14 @@ export interface Category {
   name: string;
   /** 类目图标 URL。运营没配就是空串，端上按占位渲染 */
   icon?: string;
+  /**
+   * 该类目的**品类模板**：`STANDARD` / `FRESH` / `SERVICE` / `VOUCHER`。
+   *
+   * <p><b>它就是「品类」，只是另一套码</b>（STANDARD↔NORMAL、VOUCHER↔CARD，
+   * 见 `TEMPLATE_TO_TYPE`）。选定类目即可推出品类 —— 让商家把同一件事填两遍，
+   * 唯一的产出是两者可能互相矛盾，而矛盾没有任何一处会拦。
+   */
+  template?: string;
   /** 同级内的展示顺序，小的在前。运营在后台拖动排序改的就是它 */
   sort: number;
   /** 子类目。叶子是空数组而不是 undefined —— 端上少一次判空 */
@@ -740,6 +748,18 @@ export interface Goods {
    */
   status?: GoodsStatus;
   /**
+   * 最近一次驳回 / 平台强制下架的原因（**只在商家侧与运营端下发，C 端恒空**）。
+   *
+   * **没有它，商家面对 `REJECTED` 只能猜要改什么** —— 审计日志只有运营看得到。
+   * 平台强制下架时后端会带「平台强制下架」前缀，商家据此知道是自己被驳
+   * 还是被平台下的。过审时清空。
+   *
+   * ⚠️ 后端 `GoodsVO` 一直在发它，`MerchantGoodsService` 的注释甚至写着
+   * 「它会出现在商家 B 端（`auditReason`）」—— 而端上从没声明这个字段。
+   * 那句注释描述的是一件**从未发生过**的事。
+   */
+  auditReason?: string;
+  /**
    * 三语标题原文，**只有商家侧 `/biz/goods/{no}` 下发**。
    *
    * 编辑页按语言逐格填，而保存是整份覆盖 —— 拿不到原文就只能回填当前那一格，
@@ -773,6 +793,15 @@ export interface CartItem {
   type: CategoryType;
   /** 用户选定的履约方式。跨履约方式的商品结算时会拆单 */
   fulfillment: FulfillmentType;
+  /**
+   * 所属商家。**后端 `CartItemVO` 一直在发这两个字段，是这里此前没声明**——
+   * 于是数据到了端上就被丢掉，购物车只能按履约方式分组，店名一个字都显示不出来。
+   *
+   * 后果不是「少个标签」：用户从头到尾看到「一单」，提交后拿到的是按商家拆出的
+   * N 笔子订单（`ord_sub_order`）。见 TDD-购物车商家可见。
+   */
+  merchantNo: string;
+  merchantName: string;
   /** 失效原因，如「已下架」「库存不足」。有值即不可勾选结算 */
   invalidReason?: string;
   /** 买赠自动带出的赠品件数（不计价） */
@@ -945,9 +974,23 @@ export type TrafficSource = "MERCHANT_OWNED" | "PLATFORM";
  */
 export type OrderStatus =
   | "WAIT_PAY"
+  /** 已付款，交付方还没行动。库里叫 `WAIT_FULFILL`，同一件事 */
   | "PAID"
-  | "ARRIVED"
-  | "SHIPPED"
+  /**
+   * 交付方已行动，等交接完成。
+   *
+   * ⚠️ **这里曾经是 `ARRIVED` 与 `SHIPPED` 两个值** —— 它们不是状态，
+   * 是「状态 × 履约方式」的组合冒充状态：库里同为 `FULFILLING`，
+   * 只因自提要「去取」、快递要「等着」而被拆成两个。
+   *
+   * 拆的动机是对的（用户下一步动作不同），做法不可扩展：
+   * **每加一种履约就要加一批状态**（服务类差点又加了 `TO_USE`/`TO_SERVE`）。
+   *
+   * 现在的模型：状态集合封闭，履约集合开放，
+   * 展示由 `(状态 × 履约 × 信息)` 决定 —— 见 {@link orderView}
+   * 与《订单状态-统一整理》。页签是**谓词**（status + fulfillments），不是状态值。
+   */
+  | "FULFILLING"
   | "COMPLETED"
   | "CANCELLED"
   | "REFUNDED";
@@ -1183,8 +1226,20 @@ export interface Order {
   /**
    * 支付组号。同一次结算拆出的子订单共享它，**一次支付付掉整组**。
    * 用户感知是「买了一次」，资金与分账感知是「N 笔各归各家」。
+   *
+   * ⚠️ **后端叫 `payOrderNo`，库里是 `ord_order.order_no`** —— 三处三个名字。
+   * 按这个名去后端或库里找会找不到（2026-08-17 人工测试时撞到）。
    */
   payGroupNo?: string;
+  /**
+   * **仅支付视角**：这次付款覆盖的各商家订单。订单视角为空。
+   *
+   * 后端 `OrderVO` 一直在发（同一个结构承担订单/支付两种视角），
+   * 端上此前没声明 —— 于是收银台是整条拆单链路里**唯一哑掉的一屏**：
+   * 购物车说会拆 2 单、确认页说会拆 2 单、订单详情各自标着商家，
+   * 中间付款那一步却只有一个总额。
+   */
+  subOrders?: Order[];
 }
 
 export interface OrderTimelineNode {
@@ -1516,8 +1571,17 @@ export interface PickingRow {
  * · WX_OPEN  App 微信开放平台
  * · APPLE    Apple 登录（iOS 上架硬要求）
  * · PHONE_OTP 手机号 + 短信验证码（全端兜底，也是商家账号的主标识）
+ * · PASSWORD  手机号 + 密码（**只有 B 端有**）。商家一天开好几次 App，
+ *   每次等一条短信是实打实的摩擦；而它与其它方式最本质的差别是**不建户** ——
+ *   能用密码登录的前提是他已经设过密码，而设密码本身要先登录。
  */
-export type GrantType = "WX_MINI" | "WX_PHONE" | "WX_OPEN" | "PHONE_OTP" | "APPLE";
+export type GrantType =
+  | "WX_MINI"
+  | "WX_PHONE"
+  | "WX_OPEN"
+  | "PHONE_OTP"
+  | "APPLE"
+  | "PASSWORD";
 
 export interface LoginReq {
   /** 登录方式，决定 principal / credential 各放什么 */
@@ -2344,7 +2408,7 @@ export interface VerifyResult {
   success: boolean;
   /** 成功或识别到单时给出；码根本不存在时为空 */
   subOrderNo?: string | null;
-  /** CODE_NOT_FOUND / ALREADY_VERIFIED / NOT_THIS_PICKUP / REFUNDED / NOT_PAID */
+  /** CODE_NOT_FOUND / ALREADY_VERIFIED / NOT_THIS_PICKUP / NOT_ARRIVED / REFUNDED / NOT_PAID */
   reason?: string | null;
 }
 
@@ -2429,8 +2493,27 @@ export interface Region {
 
 /** 店铺码（C-ST-08 扫码进店的商家侧） */
 export interface StoreQrcode {
-  /** 扫码后进入的落地页地址，带 merchant_no 归因参数 */
-  url: string;
+  /** 商家单号 */
+  merchantNo?: string;
+  /** 印在贴纸上的短码。**去掉了 0/O/1/I/L**，让人手输时不会认错 */
+  storeCode?: string;
+  /**
+   * 落地页链接。**未配对外域名时为 null** —— 端上据此不显示链接那一行。
+   *
+   * ⚠️ 此前后端在两处各写死一个 `https://shop.example.com/s/<code>` 占位域名，
+   * 商家复制出去的链接与印出去的贴纸**全都指向一个不存在的地方**，
+   * 而这两个功能点在清单上标着「已实现」。不发假链接比发一个点不开的强。
+   */
+  url?: string | null;
+  /**
+   * 店铺**小程序码**的 PNG base64（不含 `data:` 前缀）。通道未开启时为 null。
+   *
+   * 用小程序码而不是 H5 链接：ADR-004 的主获客路径是「码印在包装袋上，老客扫码直达」，
+   * 而小程序码**不依赖备案域名**（备案要 7–20 个工作日），扫了直接进门店页。
+   */
+  imageBase64?: string | null;
+  /** 打印建议，服务端给的一句话 */
+  printableHint?: string;
 }
 
 /** 分享素材（B-11.2.7）。文案与海报由服务端按当前语言与市场生成 */
@@ -2585,6 +2668,17 @@ export interface StoreHome {
   goods: Goods[];
   /** 我是否收藏了这家店 */
   favorited: boolean;
+  /**
+   * 已停业（门店非 ACTIVE：商家自助停用或平台强制下线）。
+   *
+   * **是标志而不是 404**：扫码进来的老客要知道「店关了」，不是「链接坏了」。
+   * 端上据此盖「已停业」并禁掉加购。
+   *
+   * ⚠️ 后端 `StoreHomeVO` 一直在发这个字段，这里此前没声明 ——
+   * 于是**扫码进一家已停业的店，看起来与正常营业毫无区别**，
+   * 加购、下单一路走到底，最后在库存或下单闸门上撞一个说不清的错误。
+   */
+  closed?: boolean;
 }
 
 /** 常买清单的一行（C-ST-02）。按购买频次排序，不是按时间 */
@@ -2666,8 +2760,19 @@ export interface MerchantApplyStatus {
   serviceScope?: ServiceScope;
   /** 期望覆盖的社区 */
   communityNos?: string[];
-  /** 已传的资质图 */
+  /** 已传的资质图（只有图片 URL，看不出是哪种证、什么时候过期） */
   licenses?: string[];
+  /**
+   * 结构化资质（V79）：**哪张证、证件号、有效期**。
+   *
+   * ⚠️ 这一段的标题写着「用于驳回后回填」，而此前只回填了 {@link licenses}
+   * ——只有图片。**证件类型、编号、有效期三项全丢**，商家重提时得逐格再填一遍，
+   * 而这正是本段注释想避免的那件事：「把补交变成重来」。
+   *
+   * 后端 `MerchantApplyVO` 一直在发它（审核台就靠它看类型与有效期），
+   * 端上这里没声明。
+   */
+  qualificationItems?: QualificationItem[];
   /** 申请时选的行业。驳回回填要用它 —— 换个行业可能连主体类型都得跟着换 */
   industry?: string;
   /**

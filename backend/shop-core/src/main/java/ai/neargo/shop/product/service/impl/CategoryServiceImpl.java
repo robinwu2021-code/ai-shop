@@ -218,7 +218,7 @@ public class CategoryServiceImpl implements CategoryService {
                 .map(x -> toVO(x, byParent))
                 .toList();
         return new CategoryVO(c.getCategoryNo(), c.getParentNo(), nz(c.getLevel()),
-                c.getName(), c.getIcon(), nz(c.getSort()), children);
+                c.getName(), c.getIcon(), nz(c.getSort()), c.getTemplate(), children);
     }
 
     private OpsCategoryVO toOpsVO(PrdCategory c, int skuCount) {

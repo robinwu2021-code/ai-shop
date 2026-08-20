@@ -13,9 +13,9 @@ import { computed, onMounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { onLoad } from "@dcloudio/uni-app";
 import { api, idempotencyKey } from "@/api";
-import { useCartStore } from "@/stores/cart";
+import { segmentByMerchant, useCartStore } from "@/stores/cart";
 import { useCommunityStore } from "@/stores/community";
-import { FEATURES, FULFILLMENT, POINTS, ROUTES } from "@shared/utils/constants";
+import { FEATURES, FULFILLMENT, POINTS, ROUTES, TRADE_RULES } from "@shared/utils/constants";
 import { datetime, money } from "@shared/utils/format";
 import { earnPointsFor, pricingFor } from "@shared/strategies/pricing";
 // 券能减多少与后端同一套算法算 —— 两处各写一遍就会出现「页面说减 8，付完只减 5」
@@ -40,13 +40,58 @@ const submitting = ref(false);
 /** 预约时段：从商品详情带过来 */
 const appointmentAt = ref<number | undefined>(undefined);
 
-/** 需要收货地址的履约方式 */
+/**
+ * 需要收货地址的履约方式。
+ *
+ * ⚠️ **上门预约也要**：师傅要知道去哪。这里此前只有快递与自送，
+ * 而后端的 `SHIPPED_FULFILLMENTS` 已经把 APPOINTMENT 算进去 ——
+ * 两边不一致的表现是：端上放行、后端拒收，用户点提交拿到一个说不清的错误。
+ */
 const needAddress = computed(
   () =>
     fulfillment.value === FULFILLMENT.DELIVERY ||
-    fulfillment.value === FULFILLMENT.EXPRESS,
+    fulfillment.value === FULFILLMENT.EXPRESS ||
+    fulfillment.value === FULFILLMENT.APPOINTMENT,
 );
 const needPickup = computed(() => fulfillment.value === FULFILLMENT.PICKUP);
+/** 要选时段的履约方式。**没有时间的预约单商家不知道该几点去** */
+const needAppointment = computed(() => fulfillment.value === FULFILLMENT.APPOINTMENT);
+
+/**
+ * 可选时段：今天起 `appointmentWindowDays` 天，每天几个整点。
+ *
+ * **不做真正的排期**（师傅有没有空）—— 那是另一个量级，一期明确不做。
+ * 这里只解决「买家说个时间、商家知道几点去」，商家线下确认。
+ */
+const SLOT_HOURS = [9, 11, 14, 16, 18];
+const slots = computed(() => {
+  const out: { at: number; label: string }[] = [];
+  const now = Date.now();
+  for (let d = 0; d < TRADE_RULES.appointmentWindowDays; d += 1) {
+    const day = new Date();
+    day.setDate(day.getDate() + d);
+    for (const h of SLOT_HOURS) {
+      day.setHours(h, 0, 0, 0);
+      const at = day.getTime();
+      // 过去的时段不给选 —— 后端那道闸也会拒，早点拦住比让他撞一次好
+      if (at <= now) continue;
+      out.push({ at, label: datetime(at) });
+    }
+  }
+  return out;
+});
+
+function pickSlot() {
+  const list = slots.value;
+  if (!list.length) return;
+  uni.showActionSheet({
+    itemList: list.slice(0, 12).map((s) => s.label),
+    success: (r) => {
+      const picked = list[r.tapIndex];
+      if (picked) appointmentAt.value = picked.at;
+    },
+  });
+}
 
 const address = computed(() => addresses.value.find((a) => a.addressId === addressId.value));
 const coupon = computed(() => coupons.value.find((c) => c.couponNo === couponNo.value));
@@ -79,6 +124,14 @@ const orderItems = computed(
 
 /** 赠品行：不计价，只展示 */
 const gifts = computed(() => items.value.filter((it) => (it.giftQty ?? 0) > 0));
+
+/**
+ * 按商家分段。**段数就是提交后会生成的子订单数**。
+ *
+ * 与购物车页用的是同一个函数：两页显示的段必须一致 ——
+ * 各写一份的话，购物车说两家、确认页说一家，而用户只会记住后一个。
+ */
+const merchantSegments = computed(() => segmentByMerchant(items.value));
 
 /**
  * 金额**以后端预览为准**，端上不自己算。
@@ -204,6 +257,8 @@ watch(
 const canSubmit = computed(
   () => !!items.value.length && !submitting.value
     && (!needAddress.value || !!address.value)
+    // 没选时段就提交，后端会拒 —— 在这里灰掉按钮，别让他撞一次
+    && (!needAppointment.value || !!appointmentAt.value)
     // 一种支付方式都没有 / 有商家额度过不去：拦在这里，别让他撞一个说不清的「支付失败」
     && !noPayMethod.value && quotaBlocked.value.length === 0,
 );
@@ -335,30 +390,56 @@ onMounted(async () => {
         </view>
       </view>
 
-      <!-- 到店核销 / 预约 / 即时发放 -->
+      <!-- 到店核销 / 即时发放 -->
       <view v-else class="recv">
         <text class="recv__title">{{ $t(`fulfillmentDesc.${fulfillment}`) }}</text>
-        <text v-if="appointmentAt" class="recv__sub sh-num">
-          {{ $t("confirm.appointmentAt", { t: datetime(appointmentAt) }) }}
-        </text>
       </view>
+    </view>
+
+    <!--
+      预约时段。**与地址并列而不是塞进地址块** —— 它们回答两个不同的问题：
+      「去哪」和「几点」，缺任何一个这单都履约不了。
+    -->
+    <view v-if="needAppointment" class="sh-card block recv" @tap="pickSlot">
+      <view class="recv__row">
+        <text class="recv__title">{{ $t("confirm.appointmentSlot") }}</text>
+        <text class="recv__more">{{ appointmentAt ? $t("confirm.change") : $t("confirm.pick") }}</text>
+      </view>
+      <text v-if="appointmentAt" class="recv__sub sh-num">
+        {{ $t("confirm.appointmentAt", { t: datetime(appointmentAt) }) }}
+      </text>
+      <text v-else class="recv__empty-text">{{ $t("confirm.pickSlotHint") }}</text>
     </view>
 
     <!-- 商品 -->
     <view class="sh-card block">
-      <biz-sku-row
-        v-for="it in items"
-        :key="it.skuNo"
-        :cover="it.cover"
-        :title="it.title"
-        :spec="it.spec"
-        size="lg"
-      >
-        <view class="row__foot">
-          <text class="row__price sh-num">{{ money(it.price) }}</text>
-          <text class="row__qty sh-num">×{{ it.qty }}</text>
+      <!--
+        **这一页才是拆单真正发生的地方**：提交后按商家生成 N 笔 ord_sub_order。
+        此前这里只列一份平铺清单，用户看到「一单」、拿到两单。
+      -->
+      <template v-for="m in merchantSegments" :key="m.merchantNo">
+        <view v-if="merchantSegments.length > 1" class="seg">
+          <text class="seg__name">{{ m.merchantName || $t("cart.unknownMerchant") }}</text>
         </view>
-      </biz-sku-row>
+
+        <biz-sku-row
+          v-for="it in m.items"
+          :key="it.skuNo"
+          :cover="it.cover"
+          :title="it.title"
+          :spec="it.spec"
+          size="lg"
+        >
+          <view class="row__foot">
+            <text class="row__price sh-num">{{ money(it.price) }}</text>
+            <text class="row__qty sh-num">×{{ it.qty }}</text>
+          </view>
+        </biz-sku-row>
+      </template>
+
+      <text v-if="merchantSegments.length > 1" class="splitnote">
+        {{ $t("confirm.splitNote", { n: merchantSegments.length }) }}
+      </text>
 
       <!-- 赠品：单独列出来，让用户在付款前就看见 -->
       <view v-for="g in gifts" :key="`gift-${g.skuNo}`" class="giftrow">
@@ -464,7 +545,7 @@ onMounted(async () => {
 .recv__more {
   margin-inline-start: auto;
   font-size: 24rpx;
-  color: var(--sh-primary);
+  color: var(--sh-primary-text);
 }
 .recv__sub {
   display: block;
@@ -482,6 +563,23 @@ onMounted(async () => {
   flex: 1;
   font-size: 28rpx;
   color: var(--sh-sub);
+}
+.seg {
+  display: flex;
+  align-items: center;
+  margin: 24rpx 0 8rpx;
+}
+.seg__name {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: var(--sh-ink);
+}
+.splitnote {
+  display: block;
+  margin-top: 16rpx;
+  font-size: 24rpx;
+  color: var(--sh-sub);
+  line-height: 1.5;
 }
 .block {
   margin-top: 20rpx;
@@ -567,7 +665,7 @@ onMounted(async () => {
   color: var(--sh-danger);
 }
 .amt__v--earn {
-  color: var(--sh-primary);
+  color: var(--sh-primary-text);
 }
 .pointsline {
   display: flex;

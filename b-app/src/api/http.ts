@@ -35,7 +35,6 @@ import type {
   GrantStoreReq,
   ToggleCampaignReq,
   ToggleGoodsReq,
-  UploadImageReq,
   VerifyBatchReq,
   VerifyReq,
 } from "./requests";
@@ -93,6 +92,8 @@ import type {
 
 export const httpApi: MerchantApi = {
   mSendOtp: (phone) => http.post<void>(E.mSendOtp.path, { phone }),
+  mSetPassword: (password) => http.post<void>(E.mSetPassword.path, { password }),
+  mHasPassword: () => http.get<{ hasPassword: boolean }>(E.mHasPassword.path),
   mLogin: (req: LoginReq) =>
     http.post<MerchantLoginResp>(E.mLogin.path, { ...req } satisfies MerchantLoginReqBody),
   mStaffLogin: (payload) =>
@@ -206,8 +207,9 @@ export const httpApi: MerchantApi = {
   mSaveStoreStock: (goodsNo, skuNo, stock) =>
     http.post<Goods>(buildPath(E.mSaveStoreStock.path, { goodsNo }), { skuNo, stock } satisfies SaveStockReq),
 
+  // 真上传文件字节（multipart），不是把本地路径当 JSON 发 —— 后端要 MultipartFile
   mUploadImage: (tempPath) =>
-    http.post<{ url: string }>(E.mUploadImage.path, { tempPath } satisfies UploadImageReq),
+    http.uploadFile<{ url: string }>(E.mUploadImage.path, tempPath),
   mRecognizeGoods: (imageUrl) =>
     http.post<GoodsGuess>(E.mRecognizeGoods.path, { imageUrl } satisfies RecognizeGoodsReq),
 

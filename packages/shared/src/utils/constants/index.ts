@@ -85,6 +85,23 @@ export const MARKETS = [
   { id: "US", currency: "USD", utcOffsetMinutes: -5 * 60, labelKey: "market.US" },
 ] as const;
 
+/**
+ * 类目模板 → 品类。**两套码指同一件事，只是不同名。**
+ *
+ * <p>`prd_category.template` 用 STANDARD/VOUCHER，而 `prd_goods.type` 用 NORMAL/CARD ——
+ * 这个不一致是历史遗留，改任何一边都要刷数据，所以留一张映射把它挡在这里，
+ * 别让每个用到的地方各写一遍 `=== "STANDARD" ? "NORMAL" : ...`。
+ *
+ * <p>`VOUCHER → CARD` 而不是 VIRTUAL：卡券要到店核销，虚拟商品是即时发放，
+ * 两者履约方式不同（STORE_VERIFY vs INSTANT）。
+ */
+export const TEMPLATE_TO_TYPE: Record<string, string> = {
+  STANDARD: "NORMAL",
+  FRESH: "FRESH",
+  SERVICE: "SERVICE",
+  VOUCHER: "CARD",
+};
+
 export const DEFAULT_MARKET = "CN";
 
 /** 品类类型 —— 驱动计价/履约策略分发 */
@@ -221,11 +238,20 @@ export const FULFILLMENT = {
   /** 快递配送 */
   EXPRESS: "EXPRESS",
 
-  // ── 以下后端未实现（见 PLANNED_FULFILLMENTS） ──
-  /** 到店核销（SERVICE 商品） */
+  /**
+   * 到店核销（SERVICE 商品）。**与 STORE_PICKUP 是两件事**：
+   * 自提是去代收点取别人送来的货，到店核销是去卖家门店消费自己买的服务。
+   * 没有「发货」这一步 —— 付款即出码，支付成功直接落 FULFILLING。
+   */
   STORE_VERIFY: "STORE_VERIFY",
-  /** 预约到店或上门，需选时段（SERVICE 商品） */
+
+  /**
+   * 预约到店或上门，需选时段（SERVICE 商品）。
+   * **两道必填闸**：预约时间（没时间的「待服务」等于没说）、上门地址（师傅要知道去哪）。
+   */
   APPOINTMENT: "APPOINTMENT",
+
+  // ── 以下后端未实现（见 PLANNED_FULFILLMENTS） ──
   /** 即时发放：虚拟商品发码 / 卡券入卡包（VIRTUAL / CARD 商品） */
   INSTANT: "INSTANT",
 } as const;
@@ -247,8 +273,8 @@ export const FULFILLMENT = {
  * 对账工具据此区别对待：前者必须报，后者是待办不是缺陷。
  */
 export const PLANNED_FULFILLMENTS: readonly string[] = [
-  FULFILLMENT.STORE_VERIFY,
-  FULFILLMENT.APPOINTMENT,
+  // STORE_VERIFY 与 APPOINTMENT 已于 2026-08-17 接通（服务履约一、二期）：
+  // 后端取值域、支付后落 FULFILLING（不经「待发货」）、预约时段与上门地址两道闸、核销全链路
   FULFILLMENT.INSTANT,
 ];
 

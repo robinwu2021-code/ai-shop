@@ -332,26 +332,31 @@ onShow(load);
   margin-top: 16rpx;
 }
 .go {
-  margin-top: 48rpx;
+  /* 48rpx 是一整行字的高度，作为「主按钮与上方内容」的距离过头了 */
+  margin-top: 28rpx;
 }
 .stores {
   display: flex;
   flex-wrap: wrap;
   gap: 14rpx;
-  margin-bottom: 24rpx;
+  margin-bottom: 16rpx;
 }
 .stores__i.is-on {
   background: var(--sh-primary);
-  color: #fff;
+  /* 压在主色上的前景必须用 --sh-on-primary：它是按对比度算出来的（守卫断言 ≥4.5）。
+     写死白字的话，fresh（微信绿）这类亮主色上只有 2.27 —— 选中的门店名反而最难认 */
+  color: var(--sh-on-primary);
 }
 .blocker {
   display: flex;
   align-items: center;
   gap: 16rpx;
-  margin-top: 24rpx;
+  margin-top: 14rpx;
   padding: 24rpx;
   border-radius: 32rpx;
-  background: var(--sh-warn-tint, var(--sh-faint));
+  /* 真名是 --sh-warning-tint（此前拼成 --sh-warn-tint，恒走兜底的中性灰 ——
+     「还不能收款」这类拦路提示整块退化成灰，看不出是警示） */
+  background: var(--sh-warning-tint);
 }
 .blocker__main {
   flex: 1;
@@ -359,7 +364,7 @@ onShow(load);
 }
 .blocker__t {
   display: block;
-  font-size: 26rpx;
+  font-size: 28rpx;
   font-weight: 600;
   color: var(--sh-ink);
 }
@@ -372,28 +377,28 @@ onShow(load);
 }
 .blocker__go {
   flex-shrink: 0;
-  font-size: 26rpx;
-  color: var(--sh-primary);
+  font-size: 24rpx;
+  color: var(--sh-primary-text);
 }
 .grid {
   display: flex;
   flex-wrap: wrap;
-  gap: 20rpx;
-  margin: 28rpx 0;
+  gap: 16rpx;
+  margin: 20rpx 0;
 }
 .grid__cell {
   flex: 1 1 calc(33.33% - 14rpx);
   min-width: calc(33.33% - 14rpx);
   background: var(--sh-surface);
   border-radius: 32rpx;
-  padding: 28rpx 20rpx;
+  padding: 20rpx 16rpx;
   text-align: center;
 }
 .grid__n {
   display: block;
   font-size: 48rpx;
   font-weight: 600;
-  color: var(--sh-primary);
+  color: var(--sh-primary-text);
   line-height: 1.2;
 }
 .grid__n.is-zero {
@@ -406,11 +411,11 @@ onShow(load);
   color: var(--sh-sub);
 }
 .stats {
-  margin-bottom: 24rpx;
+  margin-bottom: 16rpx;
 }
 .stats__row {
   display: flex;
-  margin-top: 24rpx;
+  margin-top: 16rpx;
 }
 .stats__item {
   flex: 1;
@@ -423,7 +428,7 @@ onShow(load);
   color: var(--sh-ink);
 }
 .owned {
-  margin-bottom: 24rpx;
+  margin-bottom: 16rpx;
   background: var(--sh-primary-tint);
 }
 .owned__row {
@@ -435,10 +440,11 @@ onShow(load);
 .owned__v {
   font-size: 40rpx;
   font-weight: 600;
-  color: var(--sh-primary);
+  color: var(--sh-primary-text);
 }
+/* 入口卡之间只留一条缝：这一列有 6+ 张卡，每张多 12rpx 就少露大半张 */
 .entry {
-  margin-bottom: 24rpx;
+  margin-bottom: 12rpx;
 }
 .entry .sh-muted {
   display: block;
@@ -447,6 +453,6 @@ onShow(load);
 /* 未入驻的整屏空态：它带标题与主按钮，不是通用空态那一行灰字，所以留在页面里 */
 .empty {
   text-align: center;
-  padding: 120rpx 40rpx;
+  padding: 80rpx 40rpx;
 }
 </style>

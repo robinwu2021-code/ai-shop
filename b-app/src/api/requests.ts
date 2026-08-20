@@ -67,6 +67,11 @@ export interface GoodsListQuery {
   size?: number;
   /** 按商品状态过滤。B 端能看到全部状态，C 端只看得到 ON_SALE */
   status?: GoodsStatus;
+  /**
+   * 按标题模糊搜。**服务层一直支持，端点此前写死传 null** ——
+   * 于是商品页没有搜索，而商品一多这一页就只能靠滚。
+   */
+  keyword?: string;
 }
 
 /**

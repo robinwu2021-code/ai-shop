@@ -75,7 +75,7 @@ onShow(load);
   display: flex;
   align-items: center;
   gap: 16rpx;
-  margin-bottom: 24rpx;
+  margin-bottom: 16rpx;
 }
 .tabs {
   flex: 1;
@@ -84,7 +84,7 @@ onShow(load);
 .readall {
   flex-shrink: 0;
   font-size: 24rpx;
-  color: var(--sh-primary);
+  color: var(--sh-primary-text);
 }
 .msg {
   display: flex;
@@ -116,7 +116,7 @@ onShow(load);
   gap: 20rpx;
 }
 .msg__title {
-  font-size: 26rpx;
+  font-size: 28rpx;
   color: var(--sh-ink);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -137,7 +137,7 @@ onShow(load);
 .msg__more {
   display: block;
   font-size: 24rpx;
-  color: var(--sh-primary);
+  color: var(--sh-primary-text);
   margin-top: 14rpx;
 }
 </style>

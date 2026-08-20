@@ -146,7 +146,7 @@ onShow(load);
     <template v-if="view === 'goods'">
       <view v-for="r in rows" :key="r.skuNo" class="sh-card row">
         <view class="row__head">
-          <text class="row__cover">{{ r.cover }}</text>
+          <sh-cover class="row__cover" :src="r.cover"></sh-cover>
           <view class="row__main">
             <text class="row__title">{{ r.title }}</text>
             <text class="sh-muted">{{ r.spec }}</text>
@@ -211,10 +211,10 @@ onShow(load);
 .tabs {
   display: flex;
   gap: 12rpx;
-  margin-bottom: 24rpx;
+  margin-bottom: 16rpx;
 }
 .tabs .sh-chip {
-  font-size: 26rpx;
+  font-size: 24rpx;
   padding: 14rpx 28rpx;
 }
 /* 列表密度对齐 C 端（平台版式约定）：卡片之间只留一条缝、正文行高 1.35。
@@ -249,7 +249,7 @@ onShow(load);
 .row__qty {
   font-size: 34rpx;
   font-weight: 600;
-  color: var(--sh-primary);
+  color: var(--sh-primary-text);
 }
 .buyers {
   display: flex;
@@ -258,6 +258,6 @@ onShow(load);
   margin-top: 20rpx;
 }
 .arrive {
-  margin-top: 32rpx;
+  margin-top: 24rpx;
 }
 </style>

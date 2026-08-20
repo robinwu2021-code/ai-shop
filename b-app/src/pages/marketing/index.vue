@@ -314,12 +314,12 @@ onShow(load);
   justify-content: space-between;
 }
 .mt {
-  margin-top: 24rpx;
+  margin-top: 16rpx;
 }
 .link {
-  font-size: 26rpx;
+  font-size: 24rpx;
   font-weight: 600;
-  color: var(--sh-primary);
+  color: var(--sh-primary-text);
 }
 .row {
   display: flex;

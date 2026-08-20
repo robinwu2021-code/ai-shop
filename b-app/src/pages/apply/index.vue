@@ -199,6 +199,19 @@ onShow(async () => {
     communityNos: [...(draft.communityNos ?? [])],
   };
   licenses.value = [...(draft.licenses ?? [])];
+
+  /*
+   * **结构化资质也要回填**（V79）。
+   *
+   * 此前只回填了 `licenses` —— 那只有图片 URL。证件类型、编号、有效期三项全丢，
+   * 商家重提时得逐格再填一遍，而这正是上面那段注释想避免的：
+   * 「让人从头重填一遍是把补交变成重来」。后端一直在发 `qualificationItems`。
+   *
+   * `foreverFlags` 由 expireAt 推出：null = 长期有效（见 QualificationItem 的注释，
+   * 不要用 0 或很大的数字冒充）。
+   */
+  qualItems.value = (draft.qualificationItems ?? []).map((q) => ({ ...q }));
+  foreverFlags.value = qualItems.value.map((q) => q.expireAt == null);
 });
 
 /** 上传资质。缺它正是个体户/企业被驳回的主因，所以入口要显眼 */
@@ -507,13 +520,13 @@ async function submit() {
 
 <style scoped>
 .rejected {
-  margin-bottom: 24rpx;
+  margin-bottom: 16rpx;
   background: var(--sh-danger-tint);
 }
 .reason {
   display: block;
   margin-top: 12rpx;
-  font-size: 26rpx;
+  font-size: 28rpx;
   color: var(--sh-danger);
   line-height: 1.6;
 }
@@ -521,7 +534,7 @@ async function submit() {
 .qual {
   margin-top: 20rpx;
   padding: 20rpx;
-  border: 1px solid var(--sh-border);
+  border: 1px solid var(--sh-line);
   border-radius: 16rpx;
 }
 .qual__head { display: flex; justify-content: space-between; align-items: center; }
@@ -530,12 +543,12 @@ async function submit() {
 .qual__row { display: flex; align-items: center; gap: 16rpx; margin-top: 12rpx; }
 .qual__forever { display: flex; align-items: center; gap: 8rpx; }
 .qual__date { flex: 1; }
-.qual__add { display: flex; gap: 24rpx; margin-top: 20rpx; color: var(--sh-primary); }
+.qual__add { display: flex; gap: 24rpx; margin-top: 20rpx; color: var(--sh-primary-text); }
 .cb {
   width: 28rpx; height: 28rpx;
-  border: 1px solid var(--sh-border); border-radius: 16rpx;
+  border: 1px solid var(--sh-line); border-radius: 16rpx;
 }
-.cb.is-on { background: var(--sh-primary); border-color: var(--sh-primary); }
+.cb.is-on { background: var(--sh-primary); border-color: var(--sh-primary-text); }
 
 .shots {
   display: flex;
@@ -565,10 +578,10 @@ async function submit() {
   margin-top: 12rpx;
 }
 .mt-card {
-  margin-top: 24rpx;
+  margin-top: 16rpx;
 }
 .status {
-  margin-bottom: 24rpx;
+  margin-bottom: 16rpx;
   background: var(--sh-warning-tint);
 }
 .field + .field {
@@ -580,7 +593,7 @@ async function submit() {
   flex-wrap: wrap;
 }
 .chips .sh-chip {
-  font-size: 26rpx;
+  font-size: 24rpx;
   padding: 14rpx 28rpx;
 }
 .hint {
@@ -620,7 +633,7 @@ async function submit() {
   transform: translateX(40rpx);
 }
 .license {
-  margin-top: 28rpx;
+  margin-top: 20rpx;
 }
 
 .sh-chip.is-blocked {
@@ -646,7 +659,7 @@ async function submit() {
 }
 .scope__name {
   display: block;
-  font-size: 26rpx;
+  font-size: 28rpx;
   font-weight: 600;
   color: var(--sh-ink);
 }
@@ -660,10 +673,10 @@ async function submit() {
 .scope__tick {
   flex-shrink: 0;
   font-size: 30rpx;
-  color: var(--sh-primary);
+  color: var(--sh-primary-text);
 }
 .cms {
-  margin-top: 28rpx;
+  margin-top: 20rpx;
 }
 .cms__list {
   display: flex;
@@ -673,7 +686,9 @@ async function submit() {
 }
 .cms__i.is-on {
   background: var(--sh-primary);
-  color: #fff;
+  /* 主色上的前景走 --sh-on-primary（按对比度算出来的）；写死白字在 fresh
+     这类亮主色上只有 2.27，选中项反而最难认 */
+  color: var(--sh-on-primary);
 }
 .warn {
   display: block;
@@ -682,6 +697,6 @@ async function submit() {
   color: var(--sh-danger);
 }
 .submit {
-  margin-top: 40rpx;
+  margin-top: 28rpx;
 }
 </style>

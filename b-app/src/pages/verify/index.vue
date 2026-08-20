@@ -287,7 +287,7 @@ onShow(load);
   margin-bottom: 14rpx;
 }
 .overview__name {
-  font-size: 26rpx;
+  font-size: 28rpx;
   font-weight: 600;
   color: var(--sh-ink);
 }
@@ -308,7 +308,7 @@ onShow(load);
 }
 /* 有待核销才点亮 —— 全是灰的时候一眼就知道没活儿 */
 .overview__n.is-on {
-  color: var(--sh-primary);
+  color: var(--sh-primary-text);
 }
 
 .basket {
@@ -326,9 +326,9 @@ onShow(load);
 }
 .batch-result .ok {
   display: block;
-  font-size: 26rpx;
+  font-size: 28rpx;
   font-weight: 600;
-  color: var(--sh-primary);
+  color: var(--sh-primary-text);
 }
 .fail {
   display: flex;
@@ -342,7 +342,7 @@ onShow(load);
   display: block;
   margin-top: 20rpx;
   font-size: 24rpx;
-  color: var(--sh-primary);
+  color: var(--sh-primary-text);
 }
 .is-disabled {
   opacity: 0.45;
@@ -361,7 +361,7 @@ onShow(load);
   border-radius: 9999px;
   background: var(--sh-primary);
   color: var(--sh-on-primary);
-  font-size: 26rpx;
+  font-size: 28rpx;
   font-weight: 600;
 }
 .scan {
@@ -374,7 +374,7 @@ onShow(load);
   border-radius: 24rpx;
   background: var(--sh-danger-tint);
   color: var(--sh-danger);
-  font-size: 26rpx;
+  font-size: 28rpx;
 }
 
 .cands {

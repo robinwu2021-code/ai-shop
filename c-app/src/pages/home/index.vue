@@ -168,7 +168,7 @@ onShareAppMessage(() =>
           class="freq__i"
           @tap="openGoods(g)"
         >
-          <text class="freq__cover">{{ g.cover || GOODS_COVER_FALLBACK }}</text>
+          <sh-cover class="freq__cover" :src="g.cover || GOODS_COVER_FALLBACK"></sh-cover>
           <text class="freq__title">{{ g.title }}</text>
           <view class="freq__foot">
             <text class="freq__price sh-num">{{ money(g.price) }}</text>
@@ -328,7 +328,7 @@ onShareAppMessage(() =>
   justify-content: center;
 }
 .freq__sign {
-  color: var(--sh-primary);
+  color: var(--sh-primary-text);
   font-size: 28rpx;
   line-height: 1;
 }

@@ -104,6 +104,19 @@ public class PickupServiceImpl implements PickupService {
             case "WAIT_PAY" -> {
                 return VerifyResultVO.fail(VerifyResultVO.NOT_PAID, order.subOrderNo());
             }
+            case "WAIT_FULFILL" -> {
+                /*
+                 * **货还没到这个点上。**
+                 *
+                 * 此前这一支落进下面的 default「继续核销」，于是未到货的码核销成功 ——
+                 * 邻居代收点上，货还在路上就被记成「已取货」，
+                 * 而「已取货」是终态：之后没有任何人会去追它到底到没到。
+                 *
+                 * 拦住的代价是「货到了但没人点到货登记」时店员会被卡一下（先去点一次到货），
+                 * 那是一次多点一下；放行的代价是一件货不知去向。
+                 */
+                return VerifyResultVO.fail(VerifyResultVO.NOT_ARRIVED, order.subOrderNo());
+            }
             default -> {
                 // 继续核销
             }

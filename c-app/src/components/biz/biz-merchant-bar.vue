@@ -80,7 +80,7 @@ defineEmits<{ (e: "tap"): void }>();
 }
 .bar__more {
   font-size: 24rpx;
-  color: var(--sh-primary);
+  color: var(--sh-primary-text);
   flex-shrink: 0;
 }
 </style>

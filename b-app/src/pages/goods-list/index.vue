@@ -3,7 +3,7 @@
 // 不进详情页 —— 店主蹲在货架前改库存，不该点三层。
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
-import { onShow } from "@dcloudio/uni-app";
+import { onReachBottom, onShow } from "@dcloudio/uni-app";
 import { api } from "@/api";
 import { useMerchantStore } from "@/stores/merchant";
 import { ROUTES } from "@/shared/nav";
@@ -13,9 +13,16 @@ import type { Goods, GoodsStatus } from "@shared/types";
 const { t } = useI18n();
 const merchant = useMerchantStore();
 
+/*
+ * 页签。**此前只有三个** —— 而 `status` 是四态：
+ * 被驳回的商品商家筛不出来，只能在「全部」里一条条翻，
+ * 而那恰恰是最需要他去处理的一批（改完才能重新提交）。
+ */
 const TABS: { key: GoodsStatus | ""; labelKey: string }[] = [
   { key: "", labelKey: "common.all" },
   { key: "ON_SALE", labelKey: "goods.statusON_SALE" },
+  { key: "PENDING", labelKey: "goods.statusPENDING" },
+  { key: "REJECTED", labelKey: "goods.statusREJECTED" },
   { key: "OFF_SALE", labelKey: "goods.statusOFF_SALE" },
 ];
 
@@ -36,6 +43,35 @@ function pickStore() {
 
 const tab = ref<GoodsStatus | "">("");
 const list = ref<Goods[]>([]);
+/**
+ * 翻页。**后端一页最多 50 条**（`Math.min(size, 50)`），而这里原先写死
+ * `size: 50` 且从不翻页 —— 商品超过 50 个的商家**永远只能看到 50 个**，
+ * 且界面上没有任何迹象表明还有别的：没有页码、没有「加载更多」、拉到底就没了。
+ *
+ * 实测：194 条商品的账号，列表停在第 50 条，剩下 144 条在 B 端不存在。
+ * 这个缺陷只有在真实数据量下才看得见 —— 四条种子数据时它完全正常。
+ */
+const page = ref(1);
+const hasMore = ref(false);
+
+/**
+ * 按标题搜。**服务层一直支持，端点此前写死传 null**，所以这一页从来没有搜索 ——
+ * 商品少时看不出来，194 条的账号找一个商品要滚三十屏。
+ *
+ * 防抖 300ms：每敲一个字发一次请求，既费流量又会让结果乱序回来
+ * （后发的先到，界面上闪一下又变回去）。
+ */
+const keyword = ref("");
+let searchTimer: ReturnType<typeof setTimeout> | undefined;
+function onSearch(v: string) {
+  keyword.value = v;
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => void load(), 300);
+}
+function clearSearch() {
+  keyword.value = "";
+  void load();
+}
 const loading = ref(false);
 
 const empty = computed(() => !loading.value && !list.value.length);
@@ -58,16 +94,35 @@ function pending(g: Goods) {
   return s === "PENDING" || s === "REJECTED";
 }
 
-async function load() {
+/**
+ * @param more true = 追加下一页；false/省略 = 从第一页重来（切页签、切门店、改完数据）
+ */
+async function load(more = false) {
   if (!merchant.isActive) return;
+  if (more && (!hasMore.value || loading.value)) return;
   loading.value = true;
   try {
-    const res = await api.mGoodsList({ status: tab.value || undefined, size: 50 });
-    list.value = res.records;
+    const next = more ? page.value + 1 : 1;
+    const res = await api.mGoodsList({
+      status: tab.value || undefined,
+      keyword: keyword.value.trim() || undefined,
+      page: next,
+      size: PAGE_SIZE,
+    });
+    list.value = more ? [...list.value, ...res.records] : res.records;
+    page.value = next;
+    // 拿满一页就认为还有下一页 —— 比信任 total 稳：total 与 records 的口径
+    // 在按门店裁剪的场景下会分岔，而「这一页满了」是端上能自己看见的事实
+    hasMore.value = res.records.length >= PAGE_SIZE;
   } finally {
     loading.value = false;
   }
 }
+
+/** 与后端上限同一个数。写 100 也只会拿回 50，而端上会以为「没有下一页了」 */
+const PAGE_SIZE = 50;
+
+onReachBottom(() => void load(true));
 
 function switchTab(key: GoodsStatus | "") {
   tab.value = key;
@@ -156,11 +211,15 @@ onShow(load);
   -->
   <sh-scaffold title-key="goods.title" tab="goods" :denied="!merchant.can('biz:stock')">
     <view class="bar">
-      <sh-tabs
-        :items="TABS.map((t) => ({ key: t.key, label: String($t(t.labelKey)) }))"
-        :active="tab"
-        @change="switchTab"
-      ></sh-tabs>
+      <!-- 必须套一层容器：sh-tabs 是**多根组件**（v-if/v-else 两个根），
+           Vue 3 下 class 无法透传到 fragment 根上，写在组件标签上会被静默丢弃 -->
+      <view class="bar__tabs">
+        <sh-tabs
+          :items="TABS.map((t) => ({ key: t.key, label: String($t(t.labelKey)) }))"
+          :active="tab"
+          @change="switchTab"
+        ></sh-tabs>
+      </view>
       <!-- 建商品/改价属于 biz:goods；店员只有 biz:stock（改库存），不显示这个入口 -->
       <text v-if="merchant.can('biz:goods')" class="add" @tap="edit()">＋ {{ $t("goods.add") }}</text>
     </view>
@@ -175,6 +234,21 @@ onShow(load);
       没设的店按 0 —— 少卖可恢复，超卖不可）。真实链路上验过：
       在新店设了 5 件，主店那 80 件当场变成 0 —— **不写出来的话没人能预料到**。
     -->
+    <!--
+      搜索。**商品一多，筛选页签解决不了「找某一个」** —— 五个状态页签是分类，
+      而商家的真实动作是「涨价的那袋米在哪」。194 条商品时，没有它这一页只能靠滚。
+    -->
+    <view class="search">
+      <input
+        class="search__input"
+        :value="keyword"
+        :placeholder="$t('goods.searchPh')"
+        confirm-type="search"
+        @input="onSearch(String(($event as any).detail.value ?? ''))"
+      />
+      <text v-if="keyword" class="search__clear" @tap="clearSearch">✕</text>
+    </view>
+
     <view v-if="merchant.multiStore" class="store" @tap="pickStore">
       <text class="store__name">{{ merchant.currentStore?.name || "—" }}</text>
       <text class="store__hint">{{ $t("goods.storeStockHint") }}</text>
@@ -184,18 +258,26 @@ onShow(load);
     <sh-empty v-if="empty" :text='$t("goods.empty")'></sh-empty>
 
     <view v-for="g in list" :key="g.goodsNo" class="sh-card row">
-      <text class="row__cover">{{ g.cover }}</text>
+      <sh-cover class="row__cover" :src="g.cover"></sh-cover>
       <view class="row__main">
         <text class="row__title">{{ g.title }}</text>
         <view class="row__meta">
           <text class="row__price sh-num">{{ money(g.price) }}</text>
-          <text class="sh-muted">{{ $t("goods.stock") }} {{ stockOf(g) }}</text>
+          <text class="row__stock sh-num" :class="{ 'is-out': stockOf(g) === 0 }">
+            {{ $t("goods.stock") }} {{ stockOf(g) }}
+          </text>
         </view>
       </view>
       <view class="row__ops">
-        <text class="sh-chip" :class="{ 'sh-chip--primary': g.onSale, 'is-warn': pending(g) }">
-          {{ $t(`goods.status${stateOf(g)}`) }}
-        </text>
+        <view class="state" :class="'state--' + stateOf(g)">
+          <text class="state__dot"></text>
+          <text class="state__txt">{{ $t(`goods.status${stateOf(g)}`) }}</text>
+        </view>
+        <!--
+          驳回 / 强制下架的理由。**没有它，商家面对「已驳回」只能猜要改什么** ——
+          审计日志只有运营看得到。后端一直在发这个字段，端上此前连声明都没有。
+        -->
+        <text v-if="g.auditReason" class="reason">{{ g.auditReason }}</text>
         <view class="row__btns">
           <!-- 编辑与上下架都会改价/改可见性 → biz:goods；改库存只是数量 → biz:stock。
                这条缝就是店员的权限边界：卖完了能马上改数，但改不了价 -->
@@ -213,10 +295,54 @@ onShow(load);
         </view>
       </view>
     </view>
+
+    <!--
+      翻页反馈。**没有它，滚到底会以为「就这些了」** —— 而下一页可能正在路上。
+      到底了也要说一声：194 条里滚到最后却什么提示都没有，人会怀疑是不是卡住了。
+    -->
+    <text v-if="loading && list.length" class="more">{{ $t("common.loading") }}</text>
+    <text v-else-if="list.length && !hasMore" class="more">{{ $t("goods.noMore") }}</text>
   </sh-scaffold>
 </template>
 
 <style scoped>
+/* 搜索：贴着筛选条，不套卡片 —— 它是这一页的工具，不是一条内容 */
+.search {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  padding: 0 24rpx;
+  margin-bottom: 16rpx;
+  background: var(--sh-surface);
+  border-radius: 16rpx;
+}
+.search__input {
+  flex: 1;
+  height: 72rpx;
+  font-size: 26rpx;
+  color: var(--sh-ink);
+}
+.search__clear {
+  padding: 0 8rpx;
+  font-size: 28rpx;
+  color: var(--sh-sub);
+}
+/* 翻页反馈：弱化到底，它是状态不是内容 */
+.more {
+  display: block;
+  padding: 24rpx 0 8rpx;
+  text-align: center;
+  font-size: 24rpx;
+  color: var(--sh-sub);
+}
+.reason {
+  display: block;
+  margin-top: 8rpx;
+  font-size: 24rpx;
+  color: var(--sh-sub);
+  line-height: 1.4;
+  text-align: right;
+}
 .store {
   display: flex;
   align-items: center;
@@ -227,7 +353,7 @@ onShow(load);
   border-radius: 16rpx;
 }
 .store__name {
-  font-size: 26rpx;
+  font-size: 28rpx;
   color: var(--sh-ink);
 }
 .store__hint {
@@ -237,18 +363,35 @@ onShow(load);
 }
 .store__switch {
   font-size: 24rpx;
-  color: var(--sh-primary);
+  color: var(--sh-primary-text);
 }
 .bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 24rpx;
+  margin-bottom: 16rpx;
+}
+/*
+ * 分栏横向可滚动（五个状态排不下）。作为 flex 子项，它默认按内容宽度撑开、
+ * 溢出到「＋ 新建商品」底下，而且**因为自身盒子就等于内容宽度，反而滚不动** ——
+ * 表现是最后一个 chip 被压掉半截且够不到，那个状态筛不了。
+ *
+ * `flex:1 + min-width:0` 给它一个确定且可收缩的宽度，滚动条件就成立了。
+ * ⚠️ **不要再加 `overflow: hidden`** —— 试过，那会让 scroll-view 彻底滚不动
+ * （裁是裁住了，但用户再也划不到后面的 chip，比溢出更糟）。
+ */
+.bar__tabs {
+  flex: 1;
+  min-width: 0;
 }
 .add {
-  font-size: 26rpx;
+  font-size: 24rpx;
   font-weight: 600;
-  color: var(--sh-primary);
+  color: var(--sh-primary-text);
+  /* 头部是 flex + space-between，被 tabs 挤窄会把「＋ 新建商品」折成两行 —— 锁死不换行、不被压缩 */
+  white-space: nowrap;
+  flex-shrink: 0;
+  margin-left: 16rpx;
 }
 /* 列表密度对齐 C 端（平台版式约定）：卡片之间只留一条缝。
    商家一天要扫几十次这类列表，行距每多 10rpx，一屏就少一行。 */
@@ -271,11 +414,23 @@ onShow(load);
   flex: 1;
   min-width: 0;
 }
+/*
+ * **标题是这一页的识别锚点，要压过价格。**
+ * 原先价格 30rpx/700 深红、标题 28rpx/600（字阶只到 30，所以标题取 30、价格降到 26） —— 商家扫列表是在找「哪个商品」，
+ * 最抢眼的却是它的价格。维护页与 C 端商品卡的重点本来就相反：
+ * 那边卖东西，价格该跳出来；这边管东西，名字才是入口。
+ *
+ * 单行省略：长名换行会把卡片撑高，一屏少一行 —— 194 条的列表里，
+ * 每屏少一行就是多滚五屏。
+ */
 .row__title {
   display: block;
-  font-size: 28rpx;
+  font-size: 30rpx;
   font-weight: 600;
   color: var(--sh-ink);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 .row__meta {
   display: flex;
@@ -283,10 +438,53 @@ onShow(load);
   align-items: baseline;
   margin-top: 8rpx;
 }
+/* 降到属性档：仍是深红（可读性由 primary-text 保证），但不再抢标题的位 */
 .row__price {
-  font-size: 30rpx;
-  font-weight: 700;
-  color: var(--sh-primary);
+  font-size: 26rpx;
+  font-weight: 600;
+  color: var(--sh-primary-text);
+}
+.row__stock {
+  font-size: 26rpx;
+  color: var(--sh-sub);
+}
+/* 卖完了要一眼扫得到 —— 它是「今天要干的活」，而 0 和 180 现在长得一样 */
+.row__stock.is-out {
+  color: var(--sh-danger);
+  font-weight: 600;
+}
+/* 状态：色点 + 文字，**无底色** —— 与动作按钮在形态上分开。
+   原先它和「编辑/改库存」同样是灰底圆角：一屏六行、每行三个圆角块，
+   人得逐个试才知道哪个能按。状态是状态，不是动作。 */
+.state {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+}
+.state__dot {
+  width: 12rpx;
+  height: 12rpx;
+  border-radius: 9999px;
+  background: var(--sh-sub);
+}
+.state__txt {
+  font-size: 24rpx;
+  color: var(--sh-sub);
+}
+.state--ON_SALE .state__dot {
+  background: var(--sh-success);
+}
+.state--ON_SALE .state__txt {
+  color: var(--sh-ink);
+}
+.state--PENDING .state__dot {
+  background: var(--sh-warning);
+}
+.state--REJECTED .state__dot {
+  background: var(--sh-danger);
+}
+.state--REJECTED .state__txt {
+  color: var(--sh-danger);
 }
 .row__ops {
   text-align: end;

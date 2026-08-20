@@ -73,7 +73,8 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
         if (shipped && no.equals(sub.getExpressNo())) {
             return toVO(sub);
         }
-        OrderStateMachine.assertSubOrderTransit(sub.getStatus(), OrdSubOrder.FULFILLING);
+        // 商家发起 → 用带「未付款不许推进」那条闸的断言（见 assertMerchantSubOrderTransit）
+        OrderStateMachine.assertMerchantSubOrderTransit(sub.getStatus(), OrdSubOrder.FULFILLING);
         String old = sub.getExpressNo();
         sub.setStatus(OrdSubOrder.FULFILLING);
         sub.setExpressNo(no);
@@ -88,7 +89,7 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
     @Transactional
     public OrderVO delivered(String merchantNo, String storeNo, String subOrderNo) {
         OrdSubOrder sub = require(merchantNo, storeNo, subOrderNo);
-        OrderStateMachine.assertSubOrderTransit(sub.getStatus(), OrdSubOrder.COMPLETED);
+        OrderStateMachine.assertMerchantSubOrderTransit(sub.getStatus(), OrdSubOrder.COMPLETED);
         sub.setStatus(OrdSubOrder.COMPLETED);
         save(sub);
         /*
@@ -138,7 +139,7 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
 
     @Override
     public PageData<OrderVO> list(String merchantNo, java.util.Collection<String> storeNos,
-                                  String status, long page, long size) {
+                                  String status, List<String> fulfillments, long page, long size) {
         var w = Wrappers.<OrdSubOrder>lambdaQuery().eq(OrdSubOrder::getEntityNo, merchantNo);
         /*
          * 门店过滤。**结算键 entity_no 仍然保留** —— 两个键各管各的：
@@ -164,14 +165,10 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
         List<String> stored = OrderStatusView.toStored(status);
         if (!stored.isEmpty()) {
             w.in(OrdSubOrder::getStatus, stored);
-            // 发货与到货在库里是同一个状态，靠履约方式区分
-            Boolean pickupOnly = OrderStatusView.pickupOnly(status);
-            if (Boolean.TRUE.equals(pickupOnly)) {
-                w.in(OrdSubOrder::getFulfillment, PICKUP_FULFILLMENTS);
-            } else if (Boolean.FALSE.equals(pickupOnly)) {
-                w.and(x -> x.notIn(OrdSubOrder::getFulfillment, PICKUP_FULFILLMENTS)
-                        .or().isNull(OrdSubOrder::getFulfillment));
-            }
+        }
+        // 与 status 正交：页签是「状态 + 履约集合」的谓词，端上传哪些履约就筛哪些
+        if (fulfillments != null && !fulfillments.isEmpty()) {
+            w.in(OrdSubOrder::getFulfillment, fulfillments);
         }
         w.orderByDesc(OrdSubOrder::getId);
 
@@ -215,7 +212,7 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
 
         return new OrderVO(s.getSubOrderNo(), s.getOrderNo(),
                 // 同 C 端：下发展示状态。b-app 的「待发货/已发货/待核销」三个标签页靠它区分
-                OrderStatusView.of(s.getStatus(), s.getFulfillment()), s.getFulfillment(),
+                OrderStatusView.toContract(s.getStatus()), s.getFulfillment(),
                 s.getEntityNo(), s.getEntityName(), items,
                 OrderVO.Amount.of(nz(s.getGoodsAmount()), nz(s.getFreightAmount()),
                         nz(s.getDiscountAmount()), nz(s.getPayAmount()), "CNY"),
@@ -225,7 +222,8 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
                         : s.getCreatedAt().atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli(),
                 main == null ? null : main.getPaidAt(),
                 // 商家也要看得到自己填了什么单号 —— 否则改单号之后无从核对
-                s.getExpressNo(), s.getTrafficSource(), receiverFor(s), List.of(), null,
+                s.getExpressNo(), s.getTrafficSource(), s.getAppointmentAt(),
+                receiverFor(s), List.of(), null,
                 // 认人用：售后页、配送单都要显示「谁的单」。**只给昵称**，联系方式走
                 // receiver 那一档（B12：商家不需要能打给每一个买家）
                 main == null ? null : userPort.find(main.getUserNo())
@@ -615,9 +613,26 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
      */
     private static final java.util.Map<String, Long> STUCK_MINUTES = java.util.Map.of(
             OrderStatusView.WAIT_PAY, 15L,
-            OrderStatusView.PAID, 120L,
-            OrderStatusView.SHIPPED, 240L,
-            OrderStatusView.ARRIVED, 1440L);
+            OrderStatusView.PAID, 120L);
+
+    /** 履约中的时限：自提类等人来取，放一天正常；配送类在途超过 4 小时就该问一句。 */
+    private static final long FULFILLING_PICKUP_MINUTES = 1440L;
+    private static final long FULFILLING_SHIP_MINUTES = 240L;
+
+    /**
+     * 这一单卡多久算异常。
+     *
+     * <p><b>按（状态 × 履约方式）判，不是按状态</b>：此前 `SHIPPED` 与 `ARRIVED`
+     * 是两个「状态」，各挂一个时限；它们合并回 `FULFILLING` 之后，时限的差别
+     * 落在履约方式上 —— 这本来就是它真正依赖的东西。
+     */
+    private static Long stuckThreshold(String status, String fulfillment) {
+        if (OrderStatusView.FULFILLING.equals(status)) {
+            return PICKUP_FULFILLMENTS.contains(fulfillment)
+                    ? FULFILLING_PICKUP_MINUTES : FULFILLING_SHIP_MINUTES;
+        }
+        return STUCK_MINUTES.get(status);
+    }
 
     @Override
     public PageData<OpsOrderVO> opsList(String status, String merchantNo, String storeNo,
@@ -630,13 +645,6 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
         List<String> stored = OrderStatusView.toStored(status);
         if (!stored.isEmpty()) {
             w.in(OrdSubOrder::getStatus, stored);
-            Boolean pickupOnly = OrderStatusView.pickupOnly(status);
-            if (Boolean.TRUE.equals(pickupOnly)) {
-                w.in(OrdSubOrder::getFulfillment, PICKUP_FULFILLMENTS);
-            } else if (Boolean.FALSE.equals(pickupOnly)) {
-                w.and(x -> x.notIn(OrdSubOrder::getFulfillment, PICKUP_FULFILLMENTS)
-                        .or().isNull(OrdSubOrder::getFulfillment));
-            }
         }
         if (merchantNo != null && !merchantNo.isBlank()) {
             w.eq(OrdSubOrder::getEntityNo, merchantNo);
@@ -696,7 +704,7 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
         List<OrderExceptionVO> out = new java.util.ArrayList<>();
         for (OrdSubOrder o : live) {
             OpsOrderVO vo = toOpsVO(o);
-            Long threshold = STUCK_MINUTES.get(vo.status());
+            Long threshold = stuckThreshold(vo.status(), o.getFulfillment());
             if (threshold == null) {
                 continue;
             }
@@ -750,7 +758,7 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
          * 必须有一份是权威，否则迟早出现「界面允许、后端拒绝」或更糟的反过来。
          */
         OrderStateMachine.assertSubOrderTransit(sub.getStatus(), stored);
-        String from = OrderStatusView.of(sub.getStatus(), sub.getFulfillment());
+        String from = OrderStatusView.toContract(sub.getStatus());
 
         sub.setStatus(stored);
         DataScopeContext.executeWithoutScope(() -> subOrderMapper.updateById(sub));
@@ -828,7 +836,7 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
                 : s.getUpdatedAt().atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli());
 
         return new OpsOrderVO(s.getSubOrderNo(), s.getOrderNo(),
-                OrderStatusView.of(s.getStatus(), s.getFulfillment()),
+                OrderStatusView.toContract(s.getStatus()),
                 s.getEntityNo(), s.getEntityName(),
                 main == null ? null : main.getCommunityNo(),
                 s.getPickupNo(), s.getFulfillment(), s.getTrafficSource(),

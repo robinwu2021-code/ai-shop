@@ -191,7 +191,7 @@ onShow(load);
 
     <view
       v-if="!isNew && !readonly"
-      class="sh-btn sh-btn--soft del"
+      class="sh-btn sh-btn--danger del"
       :class="{ 'is-disabled': (current?.usedBy ?? 0) > 0 }"
       @tap="remove"
     >
@@ -204,7 +204,7 @@ onShow(load);
 
 <style scoped>
 .mt {
-  margin-top: 24rpx;
+  margin-top: 16rpx;
 }
 .note {
   display: block;
@@ -227,14 +227,14 @@ onShow(load);
   justify-content: space-between;
   padding: 16rpx 0;
   border-top: 2rpx solid var(--sh-line);
-  font-size: 26rpx;
+  font-size: 24rpx;
   color: var(--sh-ink);
 }
 .row__go {
   color: var(--sh-sub);
 }
 .save {
-  margin-top: 32rpx;
+  margin-top: 24rpx;
 }
 .del {
   margin-top: 16rpx;

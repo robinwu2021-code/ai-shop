@@ -19,6 +19,7 @@ import type {
   DeliveryRule,
   Goods,
   CurrencyCode,
+  MarketId,
   GoodsStatus,
   I18nText,
   MasterData,
@@ -65,8 +66,21 @@ import type {
 /** 拍照识别的结果。全部是**建议值**，店主可改可弃 */
 export interface GoodsGuess {
   title: string;
+  /** 一句话卖点。模型从包装上的广告语里提取，店主可改可弃 */
+  subtitle: string;
   type: Goods["type"];
-  /** 识别置信度 0–1。低于阈值时页面不预填，只提示「没认出来」 */
+  /**
+   * 类目编号。**后端已按候选表校验过** —— 模型给出的编号不在类目树里时是空串，
+   * 不会把一个查无此项的编号塞进草稿（那样商家要到点保存那一刻才撞上类目校验）。
+   */
+  categoryNo: string;
+  /**
+   * 识别置信度 0–1。低于阈值时页面不预填，只提示「没认出来」。
+   *
+   * <p>⚠️ 它答的是「**我看这张图看得准不准**」，不是「这是不是一个能上架的商品」。
+   * 拿一张纯色纹理图去识别，模型会 0.95 地确信那是「红色斜纹图案」—— 实测过。
+   * 所以这道闸拦得住「看不清」，拦不住「看清了但那不是商品」。
+   */
   confidence: number;
 }
 
@@ -100,8 +114,13 @@ export interface SkuDraft {
    * **按市场分别定价**（B6）。未填的市场不在该市场售卖 ——
    * 汇率换算出的价没有价格心理学（¥29.9 → $4.19 不是任何人会标的价），
    * 且汇率一动全店价格跟着抖，而商家并没有调价。
+   *
+   * <p>⚠️ 键是**市场码**（CN/AE/US），不是币种码。这两套码一一对应，所以写错了
+   * 不报任何错 —— 但落到 `prd_sku.market` 上就成了一行 `market='CNY'` 的死数据：
+   * C 端按市场取价永远取不到它。此前端上按 `currency` 发，于是每个新 SKU 多一行脏数据，
+   * 且商家在 AED/USD 页签填的价**在那两个市场一分钱也卖不出去**。
    */
-  priceByMarket?: Partial<Record<CurrencyCode, number>>;
+  priceByMarket?: Partial<Record<MarketId, number>>;
   /** 可售库存 */
   stock: number;
 }
@@ -185,6 +204,15 @@ export interface MerchantApi {
    * 返回体不含验证码（后端刻意如此）—— 这条别为了联调方便破例。
    */
   mSendOtp(phone: string): Promise<void>;
+
+  /**
+   * 设置 / 修改登录密码。**要求已登录** —— 当前会话即授权，不收旧密码
+   * （要旧密码会把「忘了密码」变成死路，而重设的正路本来就是「验证码登录进来再设」）。
+   */
+  mSetPassword(password: string): Promise<void>;
+
+  /** 我设过密码没有 —— 决定「我的」页里显示「设置密码」还是「修改密码」 */
+  mHasPassword(): Promise<{ hasPassword: boolean }>;
 
   mStaffLogin(payload: StaffLoginReq): Promise<MerchantLoginResp>;
 
@@ -354,7 +382,11 @@ export interface MerchantApi {
   mStartTrial(): Promise<MerchantPlan>;
 
   // ---- 商品（B-11.3）
-  mGoodsList(q: PageQuery & { status?: GoodsStatus }): Promise<PageResult<Goods>>;
+  /**
+   * @param q.keyword 按标题模糊搜。服务层一直支持，端点此前写死传 null ——
+   *                  商品一多，没有搜索的列表就只能靠滚
+   */
+  mGoodsList(q: PageQuery & { status?: GoodsStatus; keyword?: string }): Promise<PageResult<Goods>>;
   mGoodsDetail(goodsNo: string): Promise<Goods>;
   mSaveGoods(payload: GoodsDraft): Promise<Goods>;
   mToggleGoods(goodsNo: string, onSale: boolean): Promise<Goods>;
@@ -402,7 +434,10 @@ export interface MerchantApi {
    *  **没有 `amount`、没有 `verifyCode`、没有 `items`**（需求 §4.4：他送的是货不是钱）。
    *  类型这里仍声明为 `Order` —— 收窄成联合类型会让每个用到订单的页面都要分支，
    *  而只有配送页会遇到裁剪档。**用到金额的地方按字段有无渲染**，别按角色判。 */
-  mOrderList(q: PageQuery & { status?: OrderStatus; allStores?: boolean }): Promise<PageResult<Order>>;
+  /** `status` 与 `fulfillments` 正交，见 c-app 的 orderList 注释 */
+  mOrderList(
+    q: PageQuery & { status?: OrderStatus; fulfillments?: string[]; allStores?: boolean },
+  ): Promise<PageResult<Order>>;
   mOrderDetail(orderNo: string): Promise<Order>;
   /** 快递发货：回填运单号 */
   mShip(orderNo: string, expressNo: string): Promise<Order>;

@@ -82,14 +82,33 @@ describe("色板：JS 与 CSS 必须同源", () => {
     }
   });
 
-  it("原生 tabBar 选中色与默认皮肤一致（它不吃 CSS 变量，只能写死）", () => {
-    // 漂移的症状很隐蔽：页面颜色变了，底部菜单没变
+  it("原生 tabBar 选中色与**该端**默认皮肤一致（它不吃 CSS 变量，只能写死）", () => {
+    /*
+     * 漂移的症状很隐蔽：页面颜色变了，底部菜单没变。
+     *
+     * **两端的默认皮肤不同**（B 端品牌红、C 端微信绿），所以不能都比 `SKINS[0]`——
+     * 这个断言原先就是那么写的，加品牌皮肤后它会逼着人把 C 端也改红。
+     * 这份映射必须与 `gen-skins.mjs` 的 `APP_DEFAULT_SKIN`、以及各端 `App.vue` 的
+     * `configureShell({ defaultSkin })` 三处一致 —— 下面顺带断言了生成器那一份。
+     */
+    const expected: Record<string, string> = { "b-app": "brand", "c-app": "fresh" };
+
+    const gen = readFileSync(join(ROOT, "packages/shared/scripts/gen-skins.mjs"), "utf8");
+    for (const [app, skinId] of Object.entries(expected)) {
+      expect(
+        gen,
+        `gen-skins.mjs 的 APP_DEFAULT_SKIN 与本测试不一致（${app} 应为 ${skinId}）`,
+      ).toContain(`"${app}": "${skinId}"`);
+    }
+
     for (const app of APPS) {
+      const want = SKINS.find((s) => s.id === expected[app]);
+      expect(want, `测试里没给 ${app} 指定默认皮肤`).toBeTruthy();
       const pages = JSON.parse(readFileSync(join(ROOT, app, "src/pages.json"), "utf8"));
       expect(
         pages.tabBar.selectedColor.toLowerCase(),
-        `${app}: pages.json 的 tabBar.selectedColor 与默认皮肤不符 —— 跑 npm run gen:skins`,
-      ).toBe(SKINS[0]!.color.toLowerCase());
+        `${app}: pages.json 的 tabBar.selectedColor 与该端默认皮肤(${expected[app]})不符 —— 跑 npm run gen:skins`,
+      ).toBe(want!.color.toLowerCase());
     }
   });
 });
@@ -105,7 +124,13 @@ describe("组件层不许写死颜色", () => {
     for (const app of VUE_ROOTS) {
       for (const file of vueFiles(app)) {
         if (file.endsWith("App.vue")) continue;
-        const css = styleBlocks(readFileSync(file, "utf8"));
+        /*
+         * **先剥掉 CSS 注释再扫**。注释里出现色值是正当的 —— 解释「这里原本写死了
+         * #fff7e6，为什么改掉」恰恰需要把旧值写出来，而那不是生效的样式。
+         * 不剥的话这类注释会把守卫打成红的，逼着后来的人要么删注释、要么把
+         * 真问题和假警报一起无视 —— 后者更常见，守卫也就废了。
+         */
+        const css = styleBlocks(readFileSync(file, "utf8")).replace(/\/\*[\s\S]*?\*\//g, " ");
         // 允许 #fff / #ffffff 作为「叠在语义色上的前景白」—— 它不随皮肤变，
         // 例如红色角标上的白字。除此之外一律走 var(--sh-*)。
         const hits = (css.match(COLOR) ?? []).filter(
@@ -221,6 +246,115 @@ describe("皮肤对比度：可读性是硬约束，不是审美偏好", () => {
         }
       }
     }
+  });
+
+  /*
+   * 下面两条补的是**此前的守卫盲区**：老断言只盯着主色，而真正让人「看不清」的
+   * 是中性面 —— 卡片与页面底的分界、以及次要文字。两处都曾不达标且无人发觉：
+   * 卡片↔底只有 1.08（白卡浮在近白底上，一屏卡片糊成一片），
+   * 次要文字在白底上只有 3.96（低于 AA）。
+   */
+  it("卡片与页面底必须分得开（1.17，微信档）", () => {
+    for (const app of APPS) {
+      for (const skin of SKINS) {
+        for (const mode of ["light", "dark"] as const) {
+          const surface = cssVar(app, skin.id, mode, "--sh-surface");
+          const bg = cssVar(app, skin.id, mode, "--sh-bg");
+          const ratio = contrast(surface, bg);
+          // 1.17 = 微信的「页面 #EDEDED + 卡片白」。这套设计不用描边也不用阴影，
+          // 分层**全靠面色**，所以面色一旦接近，层次就彻底没有了。
+          expect(
+            ratio,
+            `${app} ${skin.id}/${mode}: 卡片 ${surface} 与页面底 ${bg} 对比仅 ${ratio.toFixed(2)} —— 卡片边界会消失`,
+          ).toBeGreaterThanOrEqual(1.17);
+        }
+      }
+    }
+  });
+
+  it("次要文字在卡片上达 WCAG AA（4.5:1）", () => {
+    for (const app of APPS) {
+      for (const skin of SKINS) {
+        for (const mode of ["light", "dark"] as const) {
+          const sub = cssVar(app, skin.id, mode, "--sh-sub");
+          const surface = cssVar(app, skin.id, mode, "--sh-surface");
+          const ratio = contrast(sub, surface);
+          // 次要信息（单号、时间、店名）本就该弱一档 —— 但弱到读不清就不是层次而是缺陷。
+          expect(
+            ratio,
+            `${app} ${skin.id}/${mode}: 次要文字 ${sub} 在卡片 ${surface} 上对比仅 ${ratio.toFixed(2)}`,
+          ).toBeGreaterThanOrEqual(4.5);
+        }
+      }
+    }
+  });
+
+  /*
+   * 上面那条只测了「压卡片（白）」，而**页面底比卡片深**——同一个 sub 压页面底
+   * 要低半档。漏掉这一档的代价是实测出来的：`#727780` 压白 4.50 刚好过线，
+   * 压页面底 `#ECEDEF` 只有 **3.84**，而 `sh-muted` 大量落在页面底上
+   * （卡片外的说明文字、空态、页脚提示）。断言写在哪一档，缺陷就藏在另一档。
+   */
+  it("次要文字在**页面底**上也达 AA —— 卡片那一档过了不代表这一档过", () => {
+    for (const app of APPS) {
+      for (const skin of SKINS) {
+        for (const mode of ["light", "dark"] as const) {
+          const sub = cssVar(app, skin.id, mode, "--sh-sub");
+          const bg = cssVar(app, skin.id, mode, "--sh-bg");
+          const ratio = contrast(sub, bg);
+          expect(
+            ratio,
+            `${app} ${skin.id}/${mode}: 次要文字 ${sub} 在页面底 ${bg} 上对比仅 ${ratio.toFixed(2)}`,
+          ).toBeGreaterThanOrEqual(4.5);
+        }
+      }
+    }
+  });
+
+  /*
+   * **主色当文字用**的那一档（`--sh-primary-text`）。
+   *
+   * 主色是为「压白字的按钮底」调的，拿去当文字压在页面底上不一定够 ——
+   * 实测八套皮肤里有六套不达标（brand 4.00 / blue 3.92 / promo 3.86 / teal 3.85 …），
+   * 而这件事**没有任何症状**：颜色看着是对的品牌色，只是弱视用户读不清。
+   *
+   * 规则（brand/spec.html §01 三条分工之一）：**红字一律用这一档，红底白字才用主色**。
+   * 所以断言压的是两个底都要过 —— 页面底与卡片，红字两处都会出现。
+   */
+  it("主色文字档在页面底与卡片上都达 AA", () => {
+    for (const app of APPS) {
+      for (const skin of SKINS) {
+        for (const mode of ["light", "dark"] as const) {
+          const text = cssVar(app, skin.id, mode, "--sh-primary-text");
+          for (const on of ["--sh-bg", "--sh-surface"] as const) {
+            const base = cssVar(app, skin.id, mode, on);
+            const ratio = contrast(text, base);
+            expect(
+              ratio,
+              `${app} ${skin.id}/${mode}: 主色文字 ${text} 压 ${on} ${base} 仅 ${ratio.toFixed(2)}`,
+            ).toBeGreaterThanOrEqual(4.5);
+          }
+        }
+      }
+    }
+  });
+
+  /*
+   * 规则本身也要守住：**别再用 `--sh-primary` 当文字色**。
+   * 上一版就是这么漏的 —— 变量名没说它只能当底色，于是 71 处红字全用了它。
+   */
+  it("源码里不再出现 `color: var(--sh-primary)` —— 红字要走 primary-text", () => {
+    const offenders: string[] = [];
+    for (const dir of ["b-app/src", "c-app/src", "packages/ui/src"]) {
+      for (const f of walk(join(ROOT, dir))) {
+        if (!/\.(vue|css)$/.test(f)) continue;
+        const src = readFileSync(f, "utf8");
+        if (/(?<!-text)color:\s*var\(--sh-primary\)\s*;/.test(src)) {
+          offenders.push(f.replace(ROOT + "/", ""));
+        }
+      }
+    }
+    expect(offenders, `这些文件把主色当文字色用了：\n${offenders.join("\n")}`).toEqual([]);
   });
 
   it("品牌锁定是**自觉取舍**，要显式记录而不是悄悄跳过", () => {

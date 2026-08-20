@@ -30,7 +30,7 @@ withDefaults(
 
 <template>
   <view class="skurow" :class="`skurow--${size}`">
-    <view class="skurow__cover">{{ cover }}</view>
+    <sh-cover class="skurow__cover" :src="cover"></sh-cover>
     <view class="skurow__main">
       <text class="skurow__title">{{ title }}</text>
       <text v-if="spec" class="skurow__spec">{{ spec }}</text>

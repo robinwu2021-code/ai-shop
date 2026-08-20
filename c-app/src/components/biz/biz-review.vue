@@ -116,7 +116,7 @@ defineEmits<{ (e: "like"): void }>();
   line-height: 1.6;
 }
 .rv__reply-tag {
-  color: var(--sh-primary);
+  color: var(--sh-primary-text);
   font-weight: 600;
 }
 .rv__foot {

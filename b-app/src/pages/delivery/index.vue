@@ -178,7 +178,7 @@ onShow(load);
 
 <style scoped>
 .mt {
-  margin-top: 24rpx;
+  margin-top: 16rpx;
 }
 .hint {
   display: block;
@@ -187,7 +187,7 @@ onShow(load);
   color: var(--sh-sub);
 }
 .save {
-  margin-top: 32rpx;
+  margin-top: 24rpx;
 }
 .list-head {
   display: flex;
@@ -214,7 +214,7 @@ onShow(load);
 .row__addr {
   display: block;
   margin-top: 4rpx;
-  font-size: 26rpx;
+  font-size: 28rpx;
   color: var(--sh-ink);
   line-height: 1.4;
 }
@@ -228,9 +228,9 @@ onShow(load);
   margin-top: 6rpx;
 }
 .row__tel {
-  font-size: 26rpx;
+  font-size: 28rpx;
   font-weight: 600;
-  color: var(--sh-primary);
+  color: var(--sh-primary-text);
 }
 .row__amount {
   font-size: 30rpx;

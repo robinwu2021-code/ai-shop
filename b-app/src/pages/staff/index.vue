@@ -265,23 +265,24 @@ onShow(load);
 .tag {
   padding: 4rpx 14rpx;
   border-radius: 9999px;
-  background: var(--sh-fill);
+  /* --sh-fill 不存在，此前 tag 底色是透明的（与 .sh-chip 同款，用 --sh-faint） */
+  background: var(--sh-faint);
   font-size: 24rpx;
   color: var(--sh-sub);
 }
 .tag--primary {
   background: var(--sh-primary-tint);
-  color: var(--sh-primary);
+  color: var(--sh-primary-text);
 }
 .act {
   font-size: 24rpx;
-  color: var(--sh-primary);
+  color: var(--sh-primary-text);
 }
 .add {
   margin-top: 24rpx;
 }
 .mt-card {
-  margin-top: 24rpx;
+  margin-top: 16rpx;
 }
 .mt-s {
   margin-top: 16rpx;
@@ -314,7 +315,7 @@ onShow(load);
 .log__d {
   display: block;
   margin-top: 8rpx;
-  font-size: 26rpx;
+  font-size: 28rpx;
   color: var(--sh-ink);
   line-height: 1.5;
 }

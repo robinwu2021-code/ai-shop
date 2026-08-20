@@ -133,7 +133,14 @@ onShow(load);
         <text class="sh-muted note">
           {{ staff.status === "ACTIVE" ? $t("staff.disableHint") : $t("staff.enableHint") }}
         </text>
-        <view class="sh-btn sh-btn--soft mt-s" @tap="toggleStatus">
+        <!-- 只有「停用」是危险操作，「启用」是把人放回来 —— 两者不该长一个样。
+             危险态用描边+墨字（见 base.css 的 .sh-btn--danger：品牌主色是红，
+             危险色也是红，靠形态而不是颜色区分） -->
+        <view
+          class="sh-btn mt-s"
+          :class="staff.status === 'ACTIVE' ? 'sh-btn--danger' : 'sh-btn--soft'"
+          @tap="toggleStatus"
+        >
           {{ staff.status === "ACTIVE" ? $t("staff.disable") : $t("staff.enable") }}
         </view>
       </view>
@@ -150,7 +157,7 @@ onShow(load);
 .phone {
   display: block;
   margin-top: 8rpx;
-  font-size: 26rpx;
+  font-size: 24rpx;
 }
 .note {
   display: block;
@@ -162,7 +169,7 @@ onShow(load);
   margin: 24rpx 8rpx;
 }
 .mt {
-  margin-top: 24rpx;
+  margin-top: 16rpx;
 }
 .mt-s {
   margin-top: 20rpx;
@@ -174,23 +181,24 @@ onShow(load);
   margin-top: 16rpx;
 }
 .store {
-  margin-top: 24rpx;
+  margin-top: 14rpx;
 }
 .store__name {
-  font-size: 26rpx;
+  font-size: 28rpx;
   font-weight: 600;
   color: var(--sh-ink);
 }
 .tag {
   padding: 4rpx 14rpx;
   border-radius: 9999px;
-  background: var(--sh-fill);
+  /* --sh-fill 不存在，此前 tag 底色是透明的（与 .sh-chip 同款，用 --sh-faint） */
+  background: var(--sh-faint);
   font-size: 24rpx;
   color: var(--sh-sub);
 }
 .tag--primary {
   background: var(--sh-primary-tint);
-  color: var(--sh-primary);
+  color: var(--sh-primary-text);
 }
 .log {
   display: flex;

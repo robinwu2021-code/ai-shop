@@ -68,7 +68,7 @@ onShow(load);
 
     <view v-for="g in groups" :key="g.groupNo" class="sh-card item">
       <view class="item__head">
-        <text class="item__cover">{{ g.cover }}</text>
+        <sh-cover class="item__cover" :src="g.cover"></sh-cover>
         <view class="item__main">
           <text class="item__title">{{ g.title }}</text>
           <text class="sh-muted">{{ g.pickupName }}</text>
@@ -92,7 +92,7 @@ onShow(load);
     <sh-empty v-if="!groupable.length" :text='$t("groups.noGroupable")'></sh-empty>
 
     <view v-for="g in groupable" :key="g.goodsNo" class="sh-card row">
-      <text class="row__cover">{{ g.cover }}</text>
+      <sh-cover class="row__cover" :src="g.cover"></sh-cover>
       <text class="row__title">{{ g.title }}</text>
       <text class="btn" @tap="create(g.goodsNo)">{{ $t("groups.open") }}</text>
     </view>
@@ -112,7 +112,7 @@ onShow(load);
   margin: 40rpx 8rpx 16rpx;
 }
 .item {
-  margin-bottom: 20rpx;
+  margin-bottom: 14rpx;
 }
 .item__head {
   display: flex;
@@ -145,7 +145,7 @@ onShow(load);
   display: block;
   font-size: 30rpx;
   font-weight: 400;
-  color: var(--sh-primary);
+  color: var(--sh-primary-text);
 }
 .base {
   font-size: 24rpx;

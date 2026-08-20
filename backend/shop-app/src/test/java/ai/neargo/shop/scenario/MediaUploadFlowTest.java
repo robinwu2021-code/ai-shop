@@ -113,6 +113,40 @@ class MediaUploadFlowTest {
         assertThat(row.getStoreNo()).isEqualTo(SysMediaAsset.ENTITY_SCOPE);
     }
 
+    /**
+     * <b>后缀是客户端说了算的，所以类型判定不能只看后缀。</b>
+     *
+     * <p>实测过的真实后果：一段纯文本改名 {@code x.png} 传上去，白名单放行、
+     * {@code dimensionsOf} 读不出尺寸也不拦（它的注释明说「读不出尺寸不该让上传失败」），
+     * 于是任意字节以 {@code Content-Type: image/png} 落进<b>公开桶</b>并可公开取回 ——
+     * 生产上确实存进去了两个这样的文件。记账表里 width/height 是 NULL，
+     * 但没有任何人会去看那两列，所以这件事同样<b>没有症状</b>。
+     *
+     * <p><b>撤掉 {@code BizUploadController.looksLikeImage}，这个用例必须变红。</b>
+     */
+    @Test
+    @DisplayName("不是图的字节传不上去 —— 后缀白名单挡不住改名")
+    void nonImageBytesAreRejectedEvenWithImageExtension() throws Exception {
+        String token = merchant();
+
+        // ① 纯文本改名 .png
+        mvc().perform(multipart("/biz/upload/image")
+                        .file(new MockMultipartFile("file", "a.png", "image/png",
+                                "this-is-not-an-image".repeat(20).getBytes()))
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.code").value(org.hamcrest.Matchers.not(0)));
+
+        // ② 真图但后缀对不上：JPEG 字节叫 .png。
+        //    存下来 Content-Type 与真实字节不符，按 Content-Type 分发的下游会拿到
+        //    一个它处理不了的东西，而且报错报在离上传很远的地方。
+        ByteArrayOutputStream jpg = new ByteArrayOutputStream();
+        ImageIO.write(new BufferedImage(40, 40, BufferedImage.TYPE_INT_RGB), "jpg", jpg);
+        mvc().perform(multipart("/biz/upload/image")
+                        .file(new MockMultipartFile("file", "b.png", "image/png", jpg.toByteArray()))
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.code").value(org.hamcrest.Matchers.not(0)));
+    }
+
     @Test
     @DisplayName("证件从公开目录拿不到 —— 这是整个四层目录的主要理由")
     void qualNotReachableFromPublicDir() throws Exception {

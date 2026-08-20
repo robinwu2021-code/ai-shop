@@ -228,7 +228,7 @@ onLoad((q) => {
 }
 .hist__clear {
   font-size: 24rpx;
-  color: var(--sh-primary);
+  color: var(--sh-primary-text);
 }
 .hist__list {
   display: flex;

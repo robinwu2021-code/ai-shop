@@ -177,6 +177,6 @@ onShow(load);
   color: var(--sh-sub);
 }
 .ticket__state--ok {
-  color: var(--sh-primary);
+  color: var(--sh-primary-text);
 }
 </style>

@@ -221,7 +221,7 @@ onShareAppMessage(() =>
   <sh-scaffold v-if="goods">
     <!-- 主视觉 -->
     <view class="hero">
-      <text class="hero__emoji">{{ goods.cover }}</text>
+      <sh-cover class="hero__emoji" :src="goods.cover"></sh-cover>
       <text v-if="off" class="hero__off sh-num">-{{ off }}%</text>
     </view>
 
@@ -447,7 +447,12 @@ onShareAppMessage(() =>
   align-items: center;
   justify-content: center;
 }
+/* 原先只有字号 —— 那是给 emoji 写的。换成真图后没有可撑的尺寸，
+   图会塌成 0 高；给满整块 hero，emoji 仍按字号居中显示。 */
 .hero__emoji {
+  width: 100%;
+  height: 100%;
+  border-radius: 44rpx;
   font-size: 200rpx;
   line-height: 1;
 }
@@ -659,7 +664,7 @@ onShareAppMessage(() =>
   line-height: 1.5;
 }
 .notice--info .notice__text {
-  color: var(--sh-primary);
+  color: var(--sh-primary-text);
 }
 .actionbar {
   position: fixed;
@@ -716,7 +721,7 @@ onShareAppMessage(() =>
 }
 .actionbar__add {
   background: var(--sh-primary-tint);
-  color: var(--sh-primary);
+  color: var(--sh-primary-text);
 }
 .actionbar__spacer {
   height: 220rpx;

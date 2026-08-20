@@ -119,7 +119,7 @@ onLoad((q) => {
       <view class="sh-card mt">
         <text class="sh-h2">{{ $t("order.items") }}</text>
         <view v-for="it in order.items" :key="it.skuNo" class="item">
-          <text class="item__cover">{{ it.cover }}</text>
+          <sh-cover class="item__cover" :src="it.cover"></sh-cover>
           <view class="item__main">
             <text class="item__title">{{ it.title }}</text>
             <text class="sh-muted">{{ it.spec }} × {{ it.qty }}</text>
@@ -165,7 +165,7 @@ onLoad((q) => {
 
 <style scoped>
 .mt {
-  margin-top: 24rpx;
+  margin-top: 16rpx;
 }
 .mt-s {
   margin-top: 20rpx;
@@ -194,7 +194,7 @@ onLoad((q) => {
 .recv__addr {
   display: block;
   margin-top: 4rpx;
-  font-size: 26rpx;
+  font-size: 24rpx;
   color: var(--sh-sub);
   line-height: 1.4;
 }
@@ -202,7 +202,7 @@ onLoad((q) => {
   display: flex;
   gap: 20rpx;
   align-items: center;
-  margin-top: 20rpx;
+  margin-top: 14rpx;
 }
 .item__cover {
   font-size: 48rpx;
@@ -219,11 +219,11 @@ onLoad((q) => {
 }
 .item__title {
   display: block;
-  font-size: 26rpx;
+  font-size: 28rpx;
   color: var(--sh-ink);
 }
 .total {
-  margin-top: 24rpx;
+  margin-top: 16rpx;
 }
 .total__v {
   font-size: 34rpx;

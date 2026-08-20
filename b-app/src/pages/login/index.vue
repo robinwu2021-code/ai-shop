@@ -33,9 +33,18 @@ const merchant = useMerchantStore();
  * 判定顺序在后端：老板 → 店员 → 新用户（见 BizAuthController.login）。
  */
 
-const methods = loginMethods();
-const phoneMethod = methods.find((m) => m.needsPhone);
+// withPassword：密码登录只有 B 端有（商家一天开好几次 App，每次等短信是实打实的摩擦）
+const methods = loginMethods({ withPassword: true });
+const otpMethod = methods.find((m) => m.id === "PHONE_OTP");
+const pwdMethod = methods.find((m) => m.id === "PASSWORD");
 const quickMethods = computed(() => methods.filter((m) => !m.needsPhone));
+
+/**
+ * 当前用验证码还是密码。**默认验证码**，理由不是习惯而是硬约束：
+ * 密码登录不建户，新商家第一次来根本没有密码，默认到那一栏他会卡住。
+ */
+const byPwd = ref(false);
+const phoneMethod = computed(() => (byPwd.value ? pwdMethod : otpMethod));
 
 const phone = ref("");
 const code = ref("");
@@ -49,7 +58,18 @@ let timer: ReturnType<typeof setInterval> | undefined;
 onUnmounted(() => clearInterval(timer));
 
 const phoneOk = computed(() => /^\d{11}$/.test(phone.value));
-const canSubmit = computed(() => phoneOk.value && code.value.length >= 4 && agreed.value);
+/** 副凭证的最短长度：密码 6 位（与后端 PWD_MIN_LEN 一致），验证码 4 位 */
+const credMin = computed(() => (byPwd.value ? 6 : 4));
+const canSubmit = computed(
+  () => phoneOk.value && code.value.length >= credMin.value && agreed.value,
+);
+
+/** 换方式时清掉上一种的输入 —— 验证码栏里留着密码是「看着填好了但登不进去」 */
+function switchMode(toPwd: boolean) {
+  if (byPwd.value === toPwd) return;
+  byPwd.value = toPwd;
+  code.value = "";
+}
 
 function requireAgree(): boolean {
   if (agreed.value) return true;
@@ -135,20 +155,45 @@ async function doLogin(method: LoginMethod) {
         />
       </view>
 
+      <!--
+        验证码 / 密码二选一。**默认验证码** —— 密码登录不建户，
+        新商家第一次来没有密码，默认到那一栏他会卡在一个填不出的框上。
+        用文字 tab 而不是两个按钮：这是「同一件事的两种方式」，不是两个动作。
+      -->
+      <view v-if="pwdMethod" class="modes">
+        <text class="modes__i" :class="{ 'is-on': !byPwd }" @tap="switchMode(false)">
+          {{ $t("login.byOtp") }}
+        </text>
+        <text class="modes__i" :class="{ 'is-on': byPwd }" @tap="switchMode(true)">
+          {{ $t("login.byPassword") }}
+        </text>
+      </view>
+
       <view class="field">
-        <text class="field__label">{{ $t("login.code") }}</text>
+        <text class="field__label">{{ byPwd ? $t("login.password") : $t("login.code") }}</text>
         <view class="row">
           <input
+            v-if="byPwd"
+            v-model="code"
+            class="field__input flex1"
+            password
+            maxlength="32"
+            :placeholder="$t('login.passwordPh')"
+          />
+          <input
+            v-else
             v-model="code"
             class="field__input sh-num flex1"
             type="number"
             maxlength="6"
             :placeholder="$t('login.codePh')"
           />
-          <text class="send" :class="{ 'is-off': left > 0 }" @tap="sendCode">
+          <text v-if="!byPwd" class="send" :class="{ 'is-off': left > 0 }" @tap="sendCode">
             {{ left > 0 ? $t("login.resend", { s: left }) : $t("login.sendCode") }}
           </text>
         </view>
+        <!-- 没设过密码的人点进来会撞上 10457，这一行提前说清楚出路 -->
+        <text v-if="byPwd" class="sh-muted pwd-tip">{{ $t("login.passwordTip") }}</text>
       </view>
 
       <view class="sh-btn submit" :class="{ 'is-off': !canSubmit }" @tap="doLogin(phoneMethod)">
@@ -206,12 +251,31 @@ async function doLogin(method: LoginMethod) {
 .flex1 {
   flex: 1;
 }
+/* 方式切换：文字 tab，选中靠主色 + 字重，不做成按钮 ——
+   它是「同一件事的两种方式」，做成按钮会读作两个可执行的动作 */
+.modes {
+  display: flex;
+  gap: 28rpx;
+  margin-top: 20rpx;
+}
+.modes__i {
+  font-size: 26rpx;
+  color: var(--sh-sub);
+}
+.modes__i.is-on {
+  color: var(--sh-primary-text);
+  font-weight: 600;
+}
+.pwd-tip {
+  display: block;
+  margin-top: 12rpx;
+}
 .send {
   padding: 22rpx 28rpx;
   border-radius: 24rpx;
   background: var(--sh-primary-tint);
-  color: var(--sh-primary);
-  font-size: 26rpx;
+  color: var(--sh-primary-text);
+  font-size: 24rpx;
   font-weight: 600;
 }
 .send.is-off {
@@ -259,7 +323,7 @@ async function doLogin(method: LoginMethod) {
   line-height: 1.5;
 }
 .agree__link {
-  color: var(--sh-primary);
+  color: var(--sh-primary-text);
 }
 .tip {
   display: block;

@@ -1,30 +1,66 @@
 <script setup lang="ts">
 // 订单列表。tab 是「用户视角的下一步动作」，不是订单状态枚举 ——
 // 用户关心的是「我要去付钱 / 我要去取货」，不是 PAID 和 ARRIVED 的区别。
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
+import { useI18n } from "vue-i18n";
 import { onShow } from "@dcloudio/uni-app";
 import { api } from "@/api";
 import { ROUTES } from "@shared/utils/constants";
 import { datetime, money } from "@shared/utils/format";
-import type { Order, OrderStatus } from "@shared/types";
+import type { Order } from "@shared/types";
+import {
+  DELIVERY_SHAPE,
+  orderView,
+  tabQuery,
+  type OrderTabSpec,
+} from "@shared/strategies/order-view";
 
 /**
- * 每个 tab 对应一组订单状态。
+ * 页签 = **谓词**（抽象状态 + 交付形态集合），不是状态值。
  *
- * ⚠️「售后」是**唯一不按订单状态筛的页签** —— `statuses: null` 且单独取数。
- * 售后是挂在订单上的另一张单，与订单状态并存：一个「已完成」的订单
- * 照样可以有一张处理中的售后单。此前这个页签筛
- * `["REFUNDING","REFUNDED"]`，而 `REFUNDING` 从来只是售后单的状态、
+ * 这一点是刻意的：状态集合封闭（6 个，与履约无关），履约集合开放。
+ * 「待取货」不是一个状态，是 `FULFILLING ∧ 自己去取` 这个条件 ——
+ * 于是**加一种履约方式不需要加状态**，只要把它归进某个交付形态；
+ * 想把两个页签并成一个，改这里的 `shapes`，后端一行不用动。
+ *
+ * ⚠️ 曾经这里是 `toPick: [PAID, ARRIVED, SHIPPED]` 三个「状态」并成一个页签，
+ * 而 `ARRIVED`/`SHIPPED` 本身就是「状态 × 履约」的组合冒充状态。
+ * 两层错叠在一起的表现是：**买快递的用户在「待取货」下看到自己的单**。
+ *
+ * ⚠️「售后」是**唯一不按订单状态筛的页签** —— 售后是挂在订单上的另一张单，
+ * 与订单状态并存：一个「已完成」的订单照样可以有一张处理中的售后单。
+ * 此前这个页签筛 `["REFUNDING","REFUNDED"]`，而 `REFUNDING` 从来只是售后单的状态、
  * 订单不会是这个值，于是处理中的售后一条也进不来。
  */
-const TABS: { key: string; statuses: OrderStatus[] | null }[] = [
-  { key: "all", statuses: null },
-  { key: "toPay", statuses: ["WAIT_PAY"] },
-  { key: "toPick", statuses: ["PAID", "ARRIVED", "SHIPPED"] },
-  { key: "done", statuses: ["COMPLETED"] },
-  { key: "afterSale", statuses: null },
+const TABS: OrderTabSpec[] = [
+  { key: "all" },
+  { key: "toPay", status: "WAIT_PAY" },
+  /** 已付款、等交付方行动 —— 用户这时什么都不用做 */
+  { key: "toShip", status: "PAID" },
+  /** 该你了：自提到点了要去取、到店核销的码已出可去用 */
+  {
+    key: "toPick",
+    status: "FULFILLING",
+    shapes: [DELIVERY_SHAPE.SELF_PICKUP, DELIVERY_SHAPE.SELF_SERVE],
+  },
+  /** 等着：实物在路上、服务方按约定时间来 */
+  {
+    key: "toReceive",
+    status: "FULFILLING",
+    shapes: [DELIVERY_SHAPE.SHIP_TO_BUYER, DELIVERY_SHAPE.SERVE_TO_BUYER],
+  },
+  { key: "done", status: "COMPLETED" },
+  { key: "afterSale" },
 ];
 
+/**
+ * 后端 `Math.min(size, 50)`。**端上写 100 是自欺**：要 100 拿 50，
+ * 而前端还在这 50 条上做筛选 —— 老用户的订单会静默缺失，且不报错。
+ * 写成与后端一致的 50，超出部分由 `hiddenCount` 明说。
+ */
+const PAGE_SIZE = 50;
+
+const { t } = useI18n();
 const tab = ref("all");
 const orders = ref<Order[]>([]);
 /**
@@ -35,24 +71,43 @@ const orders = ref<Order[]>([]);
 const afterSaleOrderNos = ref<Set<string>>(new Set());
 const loaded = ref(false);
 
-const shown = computed(() => {
-  if (tab.value === "afterSale") {
-    return orders.value.filter((o) => afterSaleOrderNos.value.has(o.orderNo));
-  }
-  const def = TABS.find((x) => x.key === tab.value);
-  if (!def?.statuses) return orders.value;
-  return orders.value.filter((o) => def.statuses!.includes(o.status));
-});
+/**
+ * 状态页签由**后端**筛完了，端上不再二次过滤。
+ * 「售后」是例外：它按另一张单的存在与否筛，后端的 status 参数管不着。
+ */
+const shown = computed(() =>
+  tab.value === "afterSale"
+    ? orders.value.filter((o) => afterSaleOrderNos.value.has(o.orderNo))
+    : orders.value,
+);
+
+/** 后端还有、这一页没拿到的条数。**说出来**，不要让它悄悄消失 */
+const hiddenCount = ref(0);
 
 async function load() {
+  // 售后页签要在全量里找挂了售后单的那些，不能带筛选
+  const spec = tab.value === "afterSale"
+    ? undefined
+    : TABS.find((x) => x.key === tab.value);
+
   const [res, afterSales] = await Promise.all([
-    api.orderList({ size: 100 }),
+    api.orderList({ size: PAGE_SIZE, ...(spec ? tabQuery(spec) : {}) }),
     // 售后单独取。失败不该拖垮整个订单列表 —— 主列表是这一页的正事
     api.afterSaleList().catch(() => []),
   ]);
   orders.value = res.records;
+  hiddenCount.value = Math.max(0, res.total - res.records.length);
   afterSaleOrderNos.value = new Set(afterSales.map((a) => a.subOrderNo));
   loaded.value = true;
+}
+
+/** 换页签要重新取数 —— 筛选在后端，不换数据就还是上一个页签的结果 */
+watch(tab, load);
+
+/** 状态文案：`(状态 × 履约 × 信息)`。预约单要把时间带进文案，没时间的「待服务」等于没说 */
+function statusText(o: Order): string {
+  const v = orderView(o.status, o.fulfillment, { appointmentAt: o.appointmentAt });
+  return String(v.needsTime ? t(v.labelKey, { t: datetime(o.appointmentAt!) }) : t(v.labelKey));
 }
 
 function open(o: Order) {
@@ -83,8 +138,13 @@ onShow(load);
         <text class="card__pickup">
           {{ o.pickupName || $t(`fulfillment.${o.fulfillment}`) }}
         </text>
+        <!--
+          状态文案不再是 `orderStatus.<状态>` 一对一 —— 同一个 FULFILLING，
+          自提说「已到自提点」、快递说「已发货」、预约说「待服务 · 明天 14:00」。
+          由 orderView(状态, 履约, 信息) 决定，三端共用同一份映射。
+        -->
         <text class="card__status" :class="`is-${o.status}`">
-          {{ $t(`orderStatus.${o.status}`) }}
+          {{ statusText(o) }}
         </text>
       </view>
 
@@ -125,6 +185,14 @@ onShow(load);
       </view>
     </view>
 
+    <!--
+      后端还有、这一页没拿到的。**宁可难看也要说** ——
+      不说的表现是「我上个月那单不见了」，而用户会以为订单丢了。
+    -->
+    <text v-if="hiddenCount > 0" class="hidden-note">
+      {{ $t("orders.hiddenCount", { n: hiddenCount }) }}
+    </text>
+
     <view v-if="loaded && !shown.length" class="empty">
       <text class="empty__text">{{ $t("orders.empty") }}</text>
       <view class="sh-btn empty__btn" @tap="goShopping">{{ $t("visited.go") }}</view>
@@ -152,7 +220,7 @@ onShow(load);
 .card__status {
   font-size: 24rpx;
   font-weight: 600;
-  color: var(--sh-primary);
+  color: var(--sh-primary-text);
   flex-shrink: 0;
 }
 .card__status.is-WAIT_PAY {
@@ -225,7 +293,7 @@ onShow(load);
 }
 .codeline__label {
   font-size: 24rpx;
-  color: var(--sh-primary);
+  color: var(--sh-primary-text);
 }
 .codeline__v {
   font-size: 30rpx;
@@ -243,6 +311,14 @@ onShow(load);
   display: inline-block;
   padding-left: 60rpx;
   padding-right: 60rpx;
+}
+.hidden-note {
+  display: block;
+  text-align: center;
+  padding: 24rpx 32rpx;
+  font-size: 24rpx;
+  color: var(--sh-sub);
+  line-height: 1.5;
 }
 .empty {
   text-align: center;

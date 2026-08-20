@@ -183,7 +183,7 @@ onShow(load);
   margin-top: 16rpx;
 }
 .quotes {
-  margin-top: 24rpx;
+  margin-top: 16rpx;
 }
 .quote {
   display: flex;
@@ -202,13 +202,13 @@ onShow(load);
 }
 .quote__name {
   display: block;
-  font-size: 26rpx;
+  font-size: 28rpx;
   font-weight: 600;
   color: var(--sh-ink);
 }
 .mine-tag {
   font-size: 24rpx;
-  color: var(--sh-primary);
+  color: var(--sh-primary-text);
 }
 .raised {
   display: block;

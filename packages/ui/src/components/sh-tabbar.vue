@@ -10,6 +10,7 @@
 import { computed, getCurrentInstance, nextTick, onMounted, ref, watch } from "vue";
 import { onShow } from "@dcloudio/uni-app";
 import { useShell } from "../shell";
+import { hideNativeTabBar } from "@shared/ports/tabbar";
 import type { IconName } from "@shared/design/icons";
 
 const props = defineProps<{ active: string }>();
@@ -35,6 +36,8 @@ function go(key: string, route: string) {
 }
 
 function ready() {
+  // App 端：藏掉没被 custom:true 藏住的原生 tabBar，否则与本组件叠成两排
+  hideNativeTabBar();
   nextTick(() => shell.onTabbarReady?.(instance?.proxy));
 }
 
@@ -103,7 +106,7 @@ watch(
   transition: color 0.18s ease;
 }
 .tabbar__item.is-on {
-  color: var(--sh-primary);
+  color: var(--sh-primary-text);
 }
 .tabbar__icon-wrap {
   position: relative;

@@ -22,7 +22,7 @@ import {
 } from "@shared/mock/db";
 import { earnPointsFor, pricingFor } from "@shared/strategies/pricing";
 import { fulfillmentFor } from "@shared/strategies/fulfillment";
-import { CATEGORY_TYPE, POINTS, SERVICE_SCOPE, TRADE_RULES } from "@shared/utils/constants";
+import { CATEGORY_TYPE, FULFILLMENT, POINTS, SERVICE_SCOPE, TRADE_RULES } from "@shared/utils/constants";
 import { currentCurrency } from "@shared/utils/money";
 import { pointsExpireAt } from "@shared/utils/datetime";
 import { defaultFulfillment } from "@shared/utils/goods";
@@ -437,6 +437,11 @@ export const mockApi: ShopApi = {
         qty,
         type: g.type,
         fulfillment: defaultFulfillment(g),
+        // 商家：购物车与确认页要按它分段（一段 = 一笔子订单）。
+        // 不带这两个字段的话，mock 下所有商品会聚成同一段，
+        // 而那正是这个缺口此前藏了这么久的样子 —— 看起来「就是一单」
+        merchantNo: g.merchant.merchantNo,
+        merchantName: g.merchant.name,
       });
     }
     // 限购校验
@@ -472,6 +477,19 @@ export const mockApi: ShopApi = {
     // 幂等：同一 key 重复提交返回同一单
     const dup = db.orders.find((o) => o.idempotencyKey === req.idempotencyKey);
     if (dup) return delay(dup);
+
+    /*
+     * 上门预约的两道闸，**与后端逐条同形**。
+     *
+     * mock 放行而后端拒收，是最坏的一种不一致：本地怎么点都对，
+     * 一连真后端就拿到一个说不清的错误，而那时候没人会想到是 mock 太宽松。
+     */
+    if (req.fulfillment === FULFILLMENT.APPOINTMENT) {
+      if (!req.appointmentAt || req.appointmentAt <= Date.now()) {
+        throw new Error("请选择上门时段");
+      }
+      if (!req.addressId) throw new Error("上门服务需要收货地址");
+    }
 
     const items: OrderItem[] = req.items.map((it) => {
       const seed = findGoodsSeed(it.goodsNo);
@@ -649,8 +667,12 @@ export const mockApi: ShopApi = {
     return delay(target);
   },
 
-  async orderList(q: PageQuery & { status?: string }) {
-    const list = q.status ? db.orders.filter((o) => o.status === q.status) : db.orders;
+  async orderList(q: PageQuery & { status?: string; fulfillments?: string[] }) {
+    // 两个条件正交，各筛各的 —— 与真实后端同形（页签是谓词，不是状态值）
+    const want = q.fulfillments?.length ? new Set(q.fulfillments) : null;
+    const list = db.orders.filter(
+      (o) => (!q.status || o.status === q.status) && (!want || want.has(o.fulfillment)),
+    );
     return delay(paginate(list, q.page, q.size));
   },
 
@@ -703,7 +725,18 @@ export const mockApi: ShopApi = {
   },
 
   async orderDetail(orderNo) {
-    return delay(findOrder(orderNo));
+    const o = findOrder(orderNo);
+    /*
+     * 同支付组的兄弟单一起带上（对齐后端 OrderVO 的支付视角）。
+     * 收银台靠它显示「本次付款覆盖 N 笔订单」——
+     * mock 不给的话，那一屏在 mock 下永远是哑的，而它恰恰是最该被看见的一屏。
+     *
+     * 只在**确实跨了商家**时带：单商家时 subOrders 等于把自己抄一遍，端上也不渲染。
+     */
+    const siblings = o.payGroupNo
+      ? db.orders.filter((x) => x.payGroupNo === o.payGroupNo)
+      : [];
+    return delay(siblings.length > 1 ? { ...o, subOrders: siblings } : o);
   },
 
   async cancelOrder(orderNo) {
@@ -981,8 +1014,8 @@ export const mockApi: ShopApi = {
     const changed: Order[] = [];
     for (const o of db.orders) {
       if (o.groupNo !== groupNo || o.status !== "PAID") continue;
-      assertTransition(o.status, "ARRIVED");
-      o.status = "ARRIVED";
+      assertTransition(o.status, "FULFILLING");
+      o.status = "FULFILLING";
       pushTimeline(o, "已送到发起人家，请按约定时段取货");
       pushMessage(
         "TRADE",
@@ -1007,7 +1040,7 @@ export const mockApi: ShopApi = {
     if (o.groupNo !== groupNo) throw new Error("这单不属于本团");
     if (o.status === "COMPLETED") throw new Error("该订单已核销");
     if (o.status === "PAID") {
-      o.status = "ARRIVED";
+      o.status = "FULFILLING";
       pushTimeline(o, "已送到发起人家");
     }
     assertTransition(o.status, "COMPLETED");
@@ -1100,6 +1133,12 @@ export const mockApi: ShopApi = {
       store: { ...db.store },
       goods: allGoods().filter((g) => g.onSale && g.merchant.merchantNo === merchantNo),
       favorited: db.favoriteStores.includes(merchantNo),
+      /*
+       * 停业标志。mock 里由商家种子的 status 推出 —— **不能恒为 false**：
+       * 恒 false 的话「已停业」这条分支在 mock 下永远走不到，
+       * 而它恰恰是扫码老客最需要看见的那一条。
+       */
+      closed: db.merchantSeeds.find((m) => m.merchantNo === merchantNo)?.closed === true,
     });
   },
 
@@ -1176,6 +1215,8 @@ export const mockApi: ShopApi = {
           qty: it.qty,
           type: g.type,
           fulfillment: defaultFulfillment(g),
+          merchantNo: g.merchant.merchantNo,
+          merchantName: g.merchant.name,
         });
       }
       added += 1;

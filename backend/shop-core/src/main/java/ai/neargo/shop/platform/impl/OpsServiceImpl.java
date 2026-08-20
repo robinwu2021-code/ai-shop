@@ -766,7 +766,7 @@ public class OpsServiceImpl implements OpsService {
          */
         if (MAIL_DELIVERY.equals(passwordDelivery)) {
             /*
-             * 正文走**平台业务模板**（msg_template，运营端可看可改）。
+             * 正文走**平台业务模板**（notify_template，运营端可看可改）。
              * 此前是字符串拼接 —— 改一句话要发版，而需要改文案的时刻
              * （措辞引起误解、要加一句合规提示）恰恰不该等发版。
              *

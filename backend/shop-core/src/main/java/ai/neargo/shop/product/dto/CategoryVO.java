@@ -9,5 +9,14 @@ public record CategoryVO(String categoryNo,
                          String name,
                          String icon,
                          int sort,
+                         /**
+                          * 该类目对应的**品类模板**：STANDARD / FRESH / SERVICE / VOUCHER。
+                          *
+                          * <p><b>它就是「品类」，只是换了一套码</b>（STANDARD↔NORMAL、VOUCHER↔CARD）。
+                          * 此前没往端上传，于是商家要把同一件事填两遍 —— 先选品类，再选类目 ——
+                          * 而两者**可以互相矛盾**：选「生鲜」品类配「纸品清洁」类目，没有任何一处会拦。
+                          * 而品类决定履约与合规（生鲜要截单、服务不发货），选错要到下单时才显现。
+                          */
+                         String template,
                          List<CategoryVO> children) {
 }

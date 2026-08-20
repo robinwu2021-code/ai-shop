@@ -457,7 +457,7 @@ onShow(load);
   padding: 24rpx;
   border-radius: 32rpx;
   background: var(--sh-primary-tint);
-  margin-bottom: 24rpx;
+  margin-bottom: 16rpx;
 }
 .lock__row {
   display: flex;
@@ -494,7 +494,7 @@ onShow(load);
   margin-top: 20rpx;
 }
 .store {
-  margin-bottom: 24rpx;
+  margin-bottom: 14rpx;
 }
 /*
  * 示例态的遮罩：**压低对比度而不是模糊**。
@@ -533,11 +533,11 @@ onShow(load);
 }
 .tag--demo {
   border: 2rpx dashed var(--sh-primary);
-  color: var(--sh-primary);
+  color: var(--sh-primary-text);
 }
 .grid {
   display: flex;
-  margin-top: 24rpx;
+  margin-top: 16rpx;
 }
 .grid__i {
   flex: 1;
@@ -554,7 +554,7 @@ onShow(load);
 }
 .todo {
   display: flex;
-  margin-top: 24rpx;
+  margin-top: 16rpx;
   padding-top: 20rpx;
   border-top: 2rpx solid var(--sh-faint);
 }
@@ -566,7 +566,7 @@ onShow(load);
   display: block;
   font-size: 34rpx;
   font-weight: 600;
-  color: var(--sh-primary);
+  color: var(--sh-primary-text);
 }
 .todo__v.is-zero {
   color: var(--sh-faint);
@@ -578,7 +578,7 @@ onShow(load);
   color: var(--sh-sub);
 }
 .rating {
-  margin-bottom: 24rpx;
+  margin-bottom: 16rpx;
 }
 .rating__row {
   display: flex;
@@ -593,7 +593,7 @@ onShow(load);
 .windows {
   display: flex;
   gap: 12rpx;
-  margin-bottom: 24rpx;
+  margin-bottom: 16rpx;
 }
 .windows__i {
   font-size: 24rpx;

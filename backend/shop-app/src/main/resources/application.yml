@@ -5,6 +5,21 @@ spring:
   application:
     name: shop-app
 
+  servlet:
+    multipart:
+      # **必须与 BizUploadController.MAX_BYTES 一致**。
+      # 这里原先一个字都没写 —— 于是走 Spring 默认的 1MB，而控制器里那个 5MB 的
+      # 判断**根本够不着**：1.85MB 的图在进方法之前就被容器拦掉，返回一个
+      # **空包体的 413**（端上会把它显示成「响应格式不符合契约」，一个字都没说到大小）。
+      #
+      # 走 App 相册这条路暂时撞不上：`pickImages` 的 `sizeType: compressed`
+      # 会把 4000×3000/3.6MB 压成 1440×1080/约 700KB（实测）。但那是**端上的实现细节**，
+      # 换个端、关掉压缩、或走别的上传入口，这个 1MB 就立刻生效 ——
+      # 而两个数不一致这件事本身没有任何症状，只有撞上的人才知道。
+      max-file-size: 5MB
+      # 比单文件略大：多出来的是 multipart 的边界与表单字段（bizType）本身
+      max-request-size: 6MB
+
   profiles:
     group:
       # 测试要同时验三端的接口，所以 test/e2e 同时装 api 与 ops 两套面。
@@ -75,6 +90,17 @@ management:
       enabled: false   # token-store=memory 时没有 Redis，开着会让 readiness 常绿变常红
 
 shop:
+  # 图片/媒体存储：local = 本地磁盘（默认，兜底）；cos = 腾讯云对象存储（生产）。
+  media:
+    provider: ${SHOP_MEDIA_PROVIDER:local}
+  # 腾讯云 COS。provider=cos 时必填（缺任一项直接起不来）。密钥走 env，不入库不入镜像。
+  cos:
+    secret-id: ${COS_SECRET_ID:}
+    secret-key: ${COS_SECRET_KEY:}
+    region: ${COS_REGION:}
+    bucket: ${COS_BUCKET:}
+    # 可选 CDN/自定义域名；留空用 COS 默认域名
+    domain: ${COS_DOMAIN:}
   auth:
     # memory / ehcache / redis，取舍见 TokenStoreConfig 的类注释。
     #   memory  = 零依赖但**重启即全员掉线**，只适合测试
@@ -132,6 +158,15 @@ shop:
     # 实测认证会成功而投递被拒（554 SendAsDenied）
     from: ${MAIL_FROM:}
 
+  # 对外可访问的 Web 域名（分享链接、店铺码落地页）。
+  #
+  # **没配就不发链接**（StoreLinkService 返回 null），而不是发一个占位域名 ——
+  # 这里原本在两个控制器里各写死一遍 `https://shop.example.com/s/<code>`，
+  # 商家复制出去的链接与印在包装袋上的码全都指向一个不存在的地方，
+  # 而那两个功能点在清单上都标着「已实现」。备案下来后填上即可。
+  web:
+    base-url: ${SHOP_WEB_BASE_URL:}
+
   # 微信小程序：登录 code2Session + 订阅消息（服务通知）。
   #
   # **两条通道各有各的开关**，`stub` 是它们共同的默认值：
@@ -152,6 +187,11 @@ shop:
       stub: ${SHOP_WX_LOGIN_STUB:${SHOP_WX_STUB:true}}
     subscribe:
       stub: ${SHOP_WX_SUBSCRIBE_STUB:${SHOP_WX_STUB:true}}
+    # 小程序码（wxacode.getUnlimited）。只要 appid+secret，不需要模板号也不需要备案域名
+    acode:
+      stub: ${SHOP_WX_ACODE_STUB:${SHOP_WX_STUB:true}}
+      # 小程序**还没发布过任何版本**时必须 false，否则微信校验 page 是否存在于已发布版本
+      check-path: ${SHOP_WX_ACODE_CHECK_PATH:false}
     appid: ${WX_APPID:}
     secret: ${WX_SECRET:}
     # developer / trial / formal。联调切 trial，免得打扰真实用户

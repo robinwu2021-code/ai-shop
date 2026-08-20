@@ -23,7 +23,7 @@ const off = computed(() =>
 <template>
   <view class="gcard" @tap="$emit('tap')">
     <view class="gcard__top">
-      <view class="gcard__cover">{{ group.cover }}</view>
+      <sh-cover class="gcard__cover" :src="group.cover"></sh-cover>
       <view class="gcard__main">
         <text class="gcard__title">{{ group.title }}</text>
         <text class="gcard__pickup">{{ group.pickupName }}</text>
@@ -154,7 +154,7 @@ const off = computed(() =>
   font-size: 26rpx;
   font-weight: 400;
   line-height: 1.5;
-  color: var(--sh-primary);
+  color: var(--sh-primary-text);
 }
 .gcard__goal-text--max {
   color: var(--sh-success);

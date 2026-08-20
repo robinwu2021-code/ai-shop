@@ -62,221 +62,266 @@
 
    取值全部由 packages/shared/tests/design-tokens.test.ts 的对比度断言守着。 */
 :root,
+:root[data-skin="brand"],
+:root[data-skin="brand"][data-theme="light"],
+.sh-root.skin-brand.mode-light {
+  --sh-primary: #E1251B;
+  --sh-primary-tint: rgba(225, 37, 27, 0.12);
+  --sh-primary-text: #B31710;
+  --sh-on-primary: #FFFFFF;
+  --sh-bg: #ECEDEF;
+  --sh-surface: #FFFFFF;
+  --sh-elev: #FFFFFF;
+  --sh-ink: #17181A;
+  --sh-sub: #63676E;
+  --sh-faint: #E4E5E8;
+  --sh-line: #DCDEE2;
+}
+:root[data-skin="brand"][data-theme="dark"],
+.sh-root.skin-brand.mode-dark {
+  --sh-primary: #FF5A4D;
+  --sh-primary-tint: rgba(255, 90, 77, 0.2);
+  --sh-primary-text: #FF5A4D;
+  --sh-on-primary: #14161A;
+  --sh-bg: #000000;
+  --sh-surface: #161719;
+  --sh-elev: #1D2023;
+  --sh-ink: #F3F4F6;
+  --sh-sub: #9AA1AC;
+  --sh-faint: #23262B;
+  --sh-line: #2E3036;
+}
 :root[data-skin="fresh"],
 :root[data-skin="fresh"][data-theme="light"],
 .sh-root.skin-fresh.mode-light {
-  --sh-primary: #00b578;
+  --sh-primary: #00B578;
   --sh-primary-tint: rgba(0, 181, 120, 0.12);
-  --sh-on-primary: #14161a;
-  --sh-bg: #f5f6f8;
-  --sh-surface: #ffffff;
-  --sh-elev: #ffffff;
-  --sh-ink: #14161a;
-  --sh-sub: #7b808a;
-  --sh-faint: #edeef1;
-  --sh-line: #e4e6ea;
+  --sh-primary-text: #007A51;
+  --sh-on-primary: #14161A;
+  --sh-bg: #ECEDEF;
+  --sh-surface: #FFFFFF;
+  --sh-elev: #FFFFFF;
+  --sh-ink: #14161A;
+  --sh-sub: #63676E;
+  --sh-faint: #E4E5E8;
+  --sh-line: #DCDEE2;
 }
 :root[data-skin="fresh"][data-theme="dark"],
 .sh-root.skin-fresh.mode-dark {
-  --sh-primary: #00b578;
+  --sh-primary: #00B578;
   --sh-primary-tint: rgba(0, 181, 120, 0.2);
-  --sh-on-primary: #14161a;
+  --sh-primary-text: #00B578;
+  --sh-on-primary: #14161A;
   --sh-bg: #000000;
-  --sh-surface: #111214;
-  --sh-elev: #17191c;
-  --sh-ink: #f3f4f6;
-  --sh-sub: #9aa1ac;
-  --sh-faint: #1c1e22;
-  --sh-line: #24262b;
+  --sh-surface: #161719;
+  --sh-elev: #1D2023;
+  --sh-ink: #F3F4F6;
+  --sh-sub: #9AA1AC;
+  --sh-faint: #23262B;
+  --sh-line: #2E3036;
 }
 :root[data-skin="mono"],
 :root[data-skin="mono"][data-theme="light"],
 .sh-root.skin-mono.mode-light {
-  --sh-primary: #18181b;
+  --sh-primary: #18181B;
   --sh-primary-tint: rgba(24, 24, 27, 0.12);
-  --sh-on-primary: #ffffff;
-  --sh-bg: #f5f6f8;
-  --sh-surface: #ffffff;
-  --sh-elev: #ffffff;
-  --sh-ink: #18181b;
-  --sh-sub: #7b808a;
-  --sh-faint: #edeef1;
-  --sh-line: #e4e6ea;
+  --sh-primary-text: #18181B;
+  --sh-on-primary: #FFFFFF;
+  --sh-bg: #ECEDEF;
+  --sh-surface: #FFFFFF;
+  --sh-elev: #FFFFFF;
+  --sh-ink: #18181B;
+  --sh-sub: #63676E;
+  --sh-faint: #E4E5E8;
+  --sh-line: #DCDEE2;
 }
 :root[data-skin="mono"][data-theme="dark"],
 .sh-root.skin-mono.mode-dark {
-  --sh-primary: #f2f3f5;
+  --sh-primary: #F2F3F5;
   --sh-primary-tint: rgba(242, 243, 245, 0.2);
-  --sh-on-primary: #14161a;
+  --sh-primary-text: #F2F3F5;
+  --sh-on-primary: #14161A;
   --sh-bg: #000000;
-  --sh-surface: #111214;
-  --sh-elev: #17191c;
-  --sh-ink: #f2f3f5;
-  --sh-sub: #9aa1ac;
-  --sh-faint: #1c1e22;
-  --sh-line: #24262b;
+  --sh-surface: #161719;
+  --sh-elev: #1D2023;
+  --sh-ink: #F2F3F5;
+  --sh-sub: #9AA1AC;
+  --sh-faint: #23262B;
+  --sh-line: #2E3036;
 }
 :root[data-skin="blue"],
 :root[data-skin="blue"][data-theme="light"],
 .sh-root.skin-blue.mode-light {
-  --sh-primary: #2c69ff;
+  --sh-primary: #2C69FF;
   --sh-primary-tint: rgba(44, 105, 255, 0.12);
-  --sh-on-primary: #ffffff;
-  --sh-bg: #f5f6f8;
-  --sh-surface: #ffffff;
-  --sh-elev: #ffffff;
+  --sh-primary-text: #2860E8;
+  --sh-on-primary: #FFFFFF;
+  --sh-bg: #ECEDEF;
+  --sh-surface: #FFFFFF;
+  --sh-elev: #FFFFFF;
   --sh-ink: #121619;
-  --sh-sub: #7b808a;
-  --sh-faint: #edeef1;
-  --sh-line: #e4e6ea;
+  --sh-sub: #63676E;
+  --sh-faint: #E4E5E8;
+  --sh-line: #DCDEE2;
 }
 :root[data-skin="blue"][data-theme="dark"],
 .sh-root.skin-blue.mode-dark {
-  --sh-primary: #5b8cff;
+  --sh-primary: #5B8CFF;
   --sh-primary-tint: rgba(91, 140, 255, 0.2);
-  --sh-on-primary: #14161a;
+  --sh-primary-text: #5B8CFF;
+  --sh-on-primary: #14161A;
   --sh-bg: #000000;
-  --sh-surface: #111214;
-  --sh-elev: #17191c;
-  --sh-ink: #f1f4f6;
-  --sh-sub: #9aa1ac;
-  --sh-faint: #1c1e22;
-  --sh-line: #24262b;
+  --sh-surface: #161719;
+  --sh-elev: #1D2023;
+  --sh-ink: #F1F4F6;
+  --sh-sub: #9AA1AC;
+  --sh-faint: #23262B;
+  --sh-line: #2E3036;
 }
 :root[data-skin="crimson"],
 :root[data-skin="crimson"][data-theme="light"],
 .sh-root.skin-crimson.mode-light {
-  --sh-primary: #d6303a;
+  --sh-primary: #D6303A;
   --sh-primary-tint: rgba(214, 48, 58, 0.12);
-  --sh-on-primary: #ffffff;
-  --sh-bg: #f5f6f8;
-  --sh-surface: #ffffff;
-  --sh-elev: #ffffff;
-  --sh-ink: #1a1214;
-  --sh-sub: #7b808a;
-  --sh-faint: #edeef1;
-  --sh-line: #e4e6ea;
+  --sh-primary-text: #C92D37;
+  --sh-on-primary: #FFFFFF;
+  --sh-bg: #ECEDEF;
+  --sh-surface: #FFFFFF;
+  --sh-elev: #FFFFFF;
+  --sh-ink: #1A1214;
+  --sh-sub: #63676E;
+  --sh-faint: #E4E5E8;
+  --sh-line: #DCDEE2;
 }
 :root[data-skin="crimson"][data-theme="dark"],
 .sh-root.skin-crimson.mode-dark {
-  --sh-primary: #e8555e;
+  --sh-primary: #E8555E;
   --sh-primary-tint: rgba(232, 85, 94, 0.2);
-  --sh-on-primary: #14161a;
+  --sh-primary-text: #E8555E;
+  --sh-on-primary: #14161A;
   --sh-bg: #000000;
-  --sh-surface: #111214;
-  --sh-elev: #17191c;
-  --sh-ink: #f5f0f0;
-  --sh-sub: #9aa1ac;
-  --sh-faint: #1c1e22;
-  --sh-line: #24262b;
+  --sh-surface: #161719;
+  --sh-elev: #1D2023;
+  --sh-ink: #F5F0F0;
+  --sh-sub: #9AA1AC;
+  --sh-faint: #23262B;
+  --sh-line: #2E3036;
 }
 :root[data-skin="promo"],
 :root[data-skin="promo"][data-theme="light"],
 .sh-root.skin-promo.mode-light {
-  --sh-primary: #d24600;
+  --sh-primary: #D24600;
   --sh-primary-tint: rgba(210, 70, 0, 0.12);
-  --sh-on-primary: #ffffff;
-  --sh-bg: #faf7f2;
-  --sh-surface: #ffffff;
-  --sh-elev: #ffffff;
-  --sh-ink: #1a1712;
-  --sh-sub: #857c6e;
-  --sh-faint: #f3eee5;
-  --sh-line: #ebe4d8;
+  --sh-primary-text: #BE3F00;
+  --sh-on-primary: #FFFFFF;
+  --sh-bg: #EFECE7;
+  --sh-surface: #FFFFFF;
+  --sh-elev: #FFFFFF;
+  --sh-ink: #1A1712;
+  --sh-sub: #71695E;
+  --sh-faint: #E8E4DB;
+  --sh-line: #E1DACE;
 }
 :root[data-skin="promo"][data-theme="dark"],
 .sh-root.skin-promo.mode-dark {
-  --sh-primary: #ff6010;
+  --sh-primary: #FF6010;
   --sh-primary-tint: rgba(255, 96, 16, 0.2);
-  --sh-on-primary: #14161a;
-  --sh-bg: #12100d;
-  --sh-surface: #1b1813;
-  --sh-elev: #221e18;
-  --sh-ink: #f5f2ec;
-  --sh-sub: #a79c8b;
-  --sh-faint: #241f18;
-  --sh-line: #2c271f;
+  --sh-primary-text: #FF6010;
+  --sh-on-primary: #14161A;
+  --sh-bg: #12100D;
+  --sh-surface: #242019;
+  --sh-elev: #2D2720;
+  --sh-ink: #F5F2EC;
+  --sh-sub: #A79C8B;
+  --sh-faint: #2F2920;
+  --sh-line: #3A3329;
 }
 :root[data-skin="amber"],
 :root[data-skin="amber"][data-theme="light"],
 .sh-root.skin-amber.mode-light {
-  --sh-primary: #a46911;
+  --sh-primary: #A46911;
   --sh-primary-tint: rgba(164, 105, 17, 0.12);
-  --sh-on-primary: #ffffff;
-  --sh-bg: #faf7f2;
-  --sh-surface: #ffffff;
-  --sh-elev: #ffffff;
-  --sh-ink: #1a1712;
-  --sh-sub: #857c6e;
-  --sh-faint: #f3eee5;
-  --sh-line: #ebe4d8;
+  --sh-primary-text: #945F0F;
+  --sh-on-primary: #FFFFFF;
+  --sh-bg: #EFECE7;
+  --sh-surface: #FFFFFF;
+  --sh-elev: #FFFFFF;
+  --sh-ink: #1A1712;
+  --sh-sub: #71695E;
+  --sh-faint: #E8E4DB;
+  --sh-line: #E1DACE;
 }
 :root[data-skin="amber"][data-theme="dark"],
 .sh-root.skin-amber.mode-dark {
-  --sh-primary: #e8961b;
+  --sh-primary: #E8961B;
   --sh-primary-tint: rgba(232, 150, 27, 0.2);
-  --sh-on-primary: #14161a;
-  --sh-bg: #12100d;
-  --sh-surface: #1b1813;
-  --sh-elev: #221e18;
-  --sh-ink: #f5f2ec;
-  --sh-sub: #a79c8b;
-  --sh-faint: #241f18;
-  --sh-line: #2c271f;
+  --sh-primary-text: #E8961B;
+  --sh-on-primary: #14161A;
+  --sh-bg: #12100D;
+  --sh-surface: #242019;
+  --sh-elev: #2D2720;
+  --sh-ink: #F5F2EC;
+  --sh-sub: #A79C8B;
+  --sh-faint: #2F2920;
+  --sh-line: #3A3329;
 }
 :root[data-skin="teal"],
 :root[data-skin="teal"][data-theme="light"],
 .sh-root.skin-teal.mode-light {
   --sh-primary: #008484;
   --sh-primary-tint: rgba(0, 132, 132, 0.12);
-  --sh-on-primary: #ffffff;
-  --sh-bg: #f2f6fa;
-  --sh-surface: #ffffff;
-  --sh-elev: #ffffff;
+  --sh-primary-text: #007777;
+  --sh-on-primary: #FFFFFF;
+  --sh-bg: #E9EDF1;
+  --sh-surface: #FFFFFF;
+  --sh-elev: #FFFFFF;
   --sh-ink: #121619;
-  --sh-sub: #74808a;
-  --sh-faint: #e9f0f6;
-  --sh-line: #dfe7ee;
+  --sh-sub: #626C75;
+  --sh-faint: #E1E7ED;
+  --sh-line: #D7DFE5;
 }
 :root[data-skin="teal"][data-theme="dark"],
 .sh-root.skin-teal.mode-dark {
-  --sh-primary: #00a3a3;
+  --sh-primary: #00A3A3;
   --sh-primary-tint: rgba(0, 163, 163, 0.2);
-  --sh-on-primary: #14161a;
-  --sh-bg: #0a0e12;
-  --sh-surface: #141a20;
-  --sh-elev: #1a222a;
-  --sh-ink: #f1f4f6;
-  --sh-sub: #93a0ac;
-  --sh-faint: #1b232b;
-  --sh-line: #212b34;
+  --sh-primary-text: #00A3A3;
+  --sh-on-primary: #14161A;
+  --sh-bg: #0A0E12;
+  --sh-surface: #182027;
+  --sh-elev: #202933;
+  --sh-ink: #F1F4F6;
+  --sh-sub: #93A0AC;
+  --sh-faint: #212A34;
+  --sh-line: #28343F;
 }
 :root[data-skin="violet"],
 :root[data-skin="violet"][data-theme="light"],
 .sh-root.skin-violet.mode-light {
-  --sh-primary: #7a4ce0;
+  --sh-primary: #7A4CE0;
   --sh-primary-tint: rgba(122, 76, 224, 0.12);
-  --sh-on-primary: #ffffff;
-  --sh-bg: #f2f6fa;
-  --sh-surface: #ffffff;
-  --sh-elev: #ffffff;
+  --sh-primary-text: #7A4CE0;
+  --sh-on-primary: #FFFFFF;
+  --sh-bg: #E9EDF1;
+  --sh-surface: #FFFFFF;
+  --sh-elev: #FFFFFF;
   --sh-ink: #121619;
-  --sh-sub: #74808a;
-  --sh-faint: #e9f0f6;
-  --sh-line: #dfe7ee;
+  --sh-sub: #626C75;
+  --sh-faint: #E1E7ED;
+  --sh-line: #D7DFE5;
 }
 :root[data-skin="violet"][data-theme="dark"],
 .sh-root.skin-violet.mode-dark {
-  --sh-primary: #9a78e8;
+  --sh-primary: #9A78E8;
   --sh-primary-tint: rgba(154, 120, 232, 0.2);
-  --sh-on-primary: #14161a;
-  --sh-bg: #0a0e12;
-  --sh-surface: #141a20;
-  --sh-elev: #1a222a;
-  --sh-ink: #f1f4f6;
-  --sh-sub: #93a0ac;
-  --sh-faint: #1b232b;
-  --sh-line: #212b34;
+  --sh-primary-text: #9A78E8;
+  --sh-on-primary: #14161A;
+  --sh-bg: #0A0E12;
+  --sh-surface: #182027;
+  --sh-elev: #202933;
+  --sh-ink: #F1F4F6;
+  --sh-sub: #93A0AC;
+  --sh-faint: #212A34;
+  --sh-line: #28343F;
 }
 
 /* ============================================================================
@@ -361,11 +406,61 @@ uni-page-wrapper[style*="--window-bottom"] {
   unicode-bidi: isolate;
 }
 
-/* 卡片：纯面色 + 大圆角，无边框无阴影 */
+
+/* ---- 表单字段：标签 / 输入 / 多行 / 说明 ----
+
+   **收进组件库的理由不是复用，是这三份已经漂了**：
+   同一个 `.field__input` 在 b-app/App.vue 里是 `height: 88rpx; font-size: 30rpx`，
+   在 stores 与 payment 两页里各自又写了一遍 `padding: 20rpx; font-size: 28rpx` ——
+   同一个类名，两种高度两种字号，而三处谁也不知道另外两处存在。
+   商品编辑页用了 5 次 `field__label`、3 次 `field__input`，自己一份都没定义，
+   拿到的是哪一份取决于样式加载顺序。
+
+   顺带把层级排开：此前一页里十个元素都是 24rpx，字段标签、说明文字、小按钮
+   同一档 —— 信息层级被压平，看不出主次。现在：输入 30 > 标签 26 > 说明 24。 */
+.field__label {
+  display: block;
+  font-size: 26rpx;
+  color: var(--sh-sub);
+  margin-bottom: 12rpx;
+}
+.field__input {
+  height: 88rpx;
+  padding: 0 24rpx;
+  border-radius: 24rpx;
+  background: var(--sh-faint);
+  font-size: 30rpx;
+  color: var(--sh-ink);
+}
+.field__area {
+  width: 100%;
+  box-sizing: border-box;
+  height: 140rpx;
+  padding: 20rpx 24rpx;
+  border-radius: 24rpx;
+  background: var(--sh-faint);
+  font-size: 28rpx;
+  color: var(--sh-ink);
+}
+/* 说明文字：**最弱的一档**。它解释规则，不承载操作 */
+.field__hint {
+  display: block;
+  margin-top: 10rpx;
+  font-size: 24rpx;
+  color: var(--sh-sub);
+  line-height: 1.5;
+}
+
+
+/* 卡片：纯面色 + 大圆角，无边框无阴影。
+   内边距走变量：**这套界面此前没有任何「松紧总开关」** —— 密度散在 28 个页面的
+   scoped style 里，想整体调紧只能逐页改。而两端对密度的诉求本来就不同：
+   C 端是顾客逛店（松一点显精致），B 端是店主一天扫几十次的作业台，密度即效率。
+   默认值保持原样（C 端不受影响），B 端在自己的 App.vue 里覆盖这几个变量。 */
 .sh-card {
   background: var(--sh-surface);
   border-radius: 32rpx;
-  padding: 32rpx;
+  padding: var(--sh-pad-card, 32rpx);
 }
 
 /*
@@ -418,7 +513,7 @@ uni-page-wrapper[style*="--window-bottom"] {
 }
 .sh-chip--primary {
   background: var(--sh-primary-tint);
-  color: var(--sh-primary);
+  color: var(--sh-primary-text);
 }
 .sh-chip--warning {
   background: var(--sh-warning-tint);
@@ -514,9 +609,13 @@ uni-page-wrapper[style*="--window-bottom"] {
   line-height: 1.3;
   color: var(--sh-ink);
 }
+/* 次要文字。**字号走变量**，理由与密度变量同源（见 .sh-card）：
+   正文是 page 默认的 28rpx，而次要档若取 26rpx，两者只差 1px ——
+   同一张卡里「商品名」与「下单时间」看着一样重，层级只能靠颜色撑。
+   B 端把它降到 24rpx，与正文拉开 2px，一眼分得出主次（C 端维持 26rpx 不变）。 */
 .sh-muted {
   color: var(--sh-sub);
-  font-size: 26rpx;
+  font-size: var(--sh-fs-sub, 26rpx);
   font-weight: 400;
   line-height: 1.5;
 }
@@ -535,11 +634,42 @@ uni-page-wrapper[style*="--window-bottom"] {
 }
 .sh-btn--soft {
   background: var(--sh-primary-tint);
-  color: var(--sh-primary);
+  color: var(--sh-primary-text);
 }
 .sh-btn--muted {
   background: var(--sh-faint);
   color: var(--sh-sub);
+}
+
+/*
+ * 危险操作：**描边 + 墨字**，不是红实心。
+ *
+ * 品牌主色是红（brand 皮肤），而危险色也是红 —— 两个红实心按钮并排时，
+ * 「确认下单」和「删除订单」在一眼之内分不出来，这是会真出事故的。
+ * 所以两者靠**形态**区分而不是靠颜色：主操作实心、危险操作描边。
+ * 颜色不做唯一的信息载体（WCAG 1.4.1）；在红色主色的产品里这条从建议变成必须。
+ *
+ * 文案也要担责：按钮上写明确动词（「停用员工」而不是「确定」）——
+ * 描边形态说明「这一步要当心」，动词说明「当心的是什么」。
+ */
+.sh-btn--danger {
+  background: transparent;
+  color: var(--sh-ink);
+  border: 2rpx solid var(--sh-danger);
+  /* 实心按钮没有边框，描边按钮多出 2rpx 上下边 —— 不减内边距两种按钮会差 4rpx 高，
+     并排时基线对不齐 */
+  padding: 28rpx 0;
+}
+
+/*
+ * 红实心**只留给二次确认**（弹层里的最终一击）。那一刻页面上不会同时出现主色按钮，
+ * 不存在混淆；而这一步确实需要「最重」的视觉分量。
+ */
+.sh-btn--danger-solid {
+  background: var(--sh-danger);
+  /* 危险色是固定的语义红（不随皮肤变），白字压它 3.3 —— 达不到 4.5，
+     但这是 WCAG 对大号粗体文字（≥18.66px bold）放宽后的档位，且此处字号 30rpx/600 命中该档 */
+  color: #fff;
 }
 
 /* 宽屏：应用收成居中窄栏，框外铺一层比页面底色更沉的背景以示边界。

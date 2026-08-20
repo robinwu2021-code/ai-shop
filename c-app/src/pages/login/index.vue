@@ -152,7 +152,7 @@ async function doLogin(method: LoginMethod) {
 .otp-row__send {
   flex-shrink: 0;
   font-size: 26rpx;
-  color: var(--sh-primary);
+  color: var(--sh-primary-text);
 }
 .otp-row__send.is-off {
   color: var(--sh-sub);

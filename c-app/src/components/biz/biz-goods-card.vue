@@ -37,7 +37,7 @@ const off = computed(() => {
 
 <template>
   <view class="card" @tap="$emit('tap')">
-    <view class="card__cover">{{ goods.cover || GOODS_COVER_FALLBACK }}</view>
+    <sh-cover class="card__cover" :src="goods.cover || GOODS_COVER_FALLBACK"></sh-cover>
 
     <view class="card__body">
       <text class="card__title">{{ goods.title }}</text>
@@ -188,7 +188,7 @@ const off = computed(() => {
   margin-inline-start: auto;
 }
 .add__sign {
-  color: var(--sh-primary);
+  color: var(--sh-primary-text);
   font-size: 32rpx;
   line-height: 1;
 }

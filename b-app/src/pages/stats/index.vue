@@ -86,11 +86,11 @@ onShow(load);
 
 <style scoped>
 .block {
-  margin-top: 24rpx;
+  margin-top: 16rpx;
 }
 .pair {
   display: flex;
-  margin-top: 24rpx;
+  margin-top: 16rpx;
 }
 .pair__i {
   flex: 1;
@@ -103,7 +103,7 @@ onShow(load);
   line-height: 1.2;
 }
 .owned {
-  margin-top: 24rpx;
+  margin-top: 16rpx;
   background: var(--sh-primary-tint);
 }
 .owned__row {
@@ -114,7 +114,7 @@ onShow(load);
 .owned__v {
   font-size: 48rpx;
   font-weight: 600;
-  color: var(--sh-primary);
+  color: var(--sh-primary-text);
 }
 .bar {
   height: 16rpx;

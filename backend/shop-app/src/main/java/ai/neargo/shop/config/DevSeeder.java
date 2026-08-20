@@ -43,6 +43,7 @@ public class DevSeeder {
 
     private static final Logger log = LoggerFactory.getLogger(DevSeeder.class);
 
+
     @Bean
     ApplicationRunner seedRunner(CommunityMapper communityMapper, PickupPointMapper pickupMapper,
                                  MchEntityMapper merchantMapper, GoodsMapper goodsMapper,
@@ -184,6 +185,7 @@ public class DevSeeder {
             seedGoods(goodsMapper, skuMapper, poolMapper,
                     "G0004", "M0002", "FRESH", "🫐", "云南蓝莓 125g×4盒", "当季头茬",
                     List.of(new SkuSeed("SK0005", "4盒装", 3980L, null, 30)));
+
         };
     }
 
@@ -314,7 +316,10 @@ public class DevSeeder {
             "PACKAGED_FOOD", "仅销售预包装食品备案",
             "FRESH_DAIRY", "食品经营许可证",
             "FOOD", "食品经营许可证",
-            "SERVICE_REPAIR", "家电维修资质");
+            "SERVICE_REPAIR", "家电维修资质",
+            // 药品零售。**这一条是为了让「没资质上不了架」那道闸真的能被触发** ——
+            // 在它之前，挂着资质码的类目一个都没有商品，闸是否生效谁也没验过
+            "DRUG_RETAIL", "药品经营许可证");
 
     private void seedCategory(CategoryMapper mapper, String no, String parentNo, int level,
                               String name, String template, String requiredCode, int sort,
@@ -393,6 +398,7 @@ public class DevSeeder {
         s.setFeatured("[]");
         return s;
     }
+
 
     private MchEntity merchant(String no, String name, String ownerUserNo, boolean verified,
                                  String desc, String tags) {

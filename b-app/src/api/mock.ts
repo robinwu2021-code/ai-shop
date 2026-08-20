@@ -27,8 +27,21 @@ import {
 import { currentCurrency, money } from "@shared/utils/money";
 // 能力位被拒要抛**带业务码**的错（70023），页面据此渲染示例态而不是错误页
 import { ApiError } from "@shared/net/http-client";
-import { CATEGORY_TYPE, POINTS, SETTLE, REVIEW_RULES } from "@shared/utils/constants";
+import { CATEGORY_TYPE, MARKETS, POINTS, SETTLE, REVIEW_RULES } from "@shared/utils/constants";
 import { ensureDemoOrders } from "./demo-orders";
+import { DELIVERY_SHAPE, fulfillmentsOf } from "@shared/strategies/order-view";
+
+/**
+ * 「要核销」的履约方式：自提点自提、邻居家自提、到店核销。
+ *
+ * **不再用状态区分**：`ARRIVED`（已到自提点）与 `SHIPPED`（已发货）曾是两个状态，
+ * 其实是同一个 `FULFILLING` 乘上履约方式的两种展示。合并回一个之后，
+ * 「待核销」这类筛选靠履约方式表达 —— 加一种要核销的履约（如到店核销）
+ * 只需归进对应形态，状态一个不加。
+ */
+const PICKUP_LIKE = new Set<string>(
+  fulfillmentsOf(DELIVERY_SHAPE.SELF_PICKUP, DELIVERY_SHAPE.SELF_SERVE),
+);
 import type { GoodsDraft, MerchantApi } from "./contract";
 
 /** 本店积分开关。mock 内存态，真实实现在 usr_merchant.points_enabled */
@@ -63,6 +76,7 @@ import type { StaffLogRow } from "@shared/mock/db";
 import type {
   MerchantPlan,
   CurrencyCode,
+  MarketId,
   Goods,
   I18nText,
   MarketingCampaign,
@@ -455,6 +469,8 @@ function maskPhone(phone: string) {
   return phone.length < 7 ? phone : `${phone.slice(0, 3)}****${phone.slice(-4)}`;
 }
 
+let mockPassword = "";
+
 export const mockApi: MerchantApi = {
   // ---------------------------------------------------------------- 账号与入驻
   async mLogin(req) {
@@ -474,6 +490,18 @@ export const mockApi: MerchantApi = {
   async mSendOtp(phone: string) {
     if (!/^\d{11}$/.test(phone)) throw new Error("手机号格式不对");
     await delay(undefined);
+  },
+
+  /** mock 里密码只存在内存：它只为让「设了密码 → 能用密码登录」这条链在 mock 下走得通 */
+  async mSetPassword(password: string) {
+    if (password.length < 6) throw new Error("密码至少 6 位");
+    mockPassword = password;
+    await delay(undefined);
+  },
+
+  async mHasPassword() {
+    await delay(undefined);
+    return { hasPassword: mockPassword.length > 0 };
   },
 
   async mStaffLogin(payload) {
@@ -886,7 +914,7 @@ export const mockApi: MerchantApi = {
       // 待备货按**我的单**算（mine），不是按我的自提点（atMyPoint）——
       // 买家常常选别家的点，两个数因此不相等。后端也是这个口径
       toStock: mine.filter((o) => o.fulfillment === "STORE_PICKUP" && o.status === "PAID").length,
-      toVerify: atMyPoint.filter((o) => o.status === "ARRIVED").length,
+      toVerify: atMyPoint.filter((o) => o.status === "FULFILLING").length,
       toPick: atMyPoint.filter((o) => o.status === "PAID").length,
       afterSale: mine.filter((o) => o.afterSale?.status === "APPLIED").length,
       toReply: db.reviews.filter((r) => r.merchantNo === merchantNo && !r.reply).length,
@@ -1028,8 +1056,16 @@ export const mockApi: MerchantApi = {
   // ---------------------------------------------------------------- 商品
   async mGoodsList(q) {
     let list = myGoods();
+    /*
+     * **按四态筛，不是按 onSale 布尔值**。
+     *
+     * 此前只认 ON_SALE / OFF_SALE 两个值，而 `status` 有四态 ——
+     * 「审核中」与「已驳回」两个页签落进 else：不过滤，显示全部。
+     * 商家点「已驳回」看到的是所有商品，包括在售的。
+     */
     if (q.status === "ON_SALE") list = list.filter((g) => g.onSale);
-    if (q.status === "OFF_SALE") list = list.filter((g) => !g.onSale);
+    else if (q.status === "OFF_SALE") list = list.filter((g) => !g.onSale && !g.status);
+    else if (q.status) list = list.filter((g) => g.status === q.status);
     return delay(paginate(list, q.page, q.size));
   },
 
@@ -1045,14 +1081,28 @@ export const mockApi: MerchantApi = {
 
     // 展示价取最低 SKU 价 —— 列表页「¥12 起」的口径，端上不各算各的
     const price = Math.min(...payload.skus.map((k) => k.price));
+    /*
+     * 契约里 `priceByMarket` 的键是**市场码**（CN/AE/US），而 mock 库内部一律按
+     * **币种**索引（`priceIn()` 拿 currentCurrency 去查）。所以在这个边界上换一次码 ——
+     * 与真后端做的是同一件事：它把市场码原样落进 `prd_sku.market`。
+     * 不换的话 mock 里查得到、线上查不到，两套实现对同一份契约给出不同结果。
+     */
+    const toCurrency = (m: MarketId): CurrencyCode =>
+      MARKETS.find((x) => x.id === m)!.currency;
+    const skuPricesByCurrency = (k: { priceByMarket?: Partial<Record<MarketId, number>> }) =>
+      Object.entries(k.priceByMarket ?? {}).reduce<Partial<Record<CurrencyCode, number>>>(
+        (acc, [mid, v]) => {
+          if (v !== undefined) acc[toCurrency(mid as MarketId)] = v;
+          return acc;
+        },
+        {},
+      );
     // 商品级也存一份按市场的展示价：各市场分别取该市场下的最低 SKU 价
-    const priceByMarket = (["CNY", "USD", "AED"] as const).reduce<
-      Partial<Record<CurrencyCode, number>>
-    >((acc, cur) => {
+    const priceByMarket = MARKETS.reduce<Partial<Record<CurrencyCode, number>>>((acc, m) => {
       const vals = payload.skus
-        .map((k) => k.priceByMarket?.[cur])
+        .map((k) => k.priceByMarket?.[m.id])
         .filter((v): v is number => v !== undefined);
-      if (vals.length) acc[cur] = Math.min(...vals);
+      if (vals.length) acc[m.currency] = Math.min(...vals);
       return acc;
     }, {});
     const specGroups = payload.specGroups.map((g) => ({
@@ -1074,8 +1124,9 @@ export const mockApi: MerchantApi = {
           nextNo("SK"),
         optionValues: k.optionValues.map(toI18n),
         price: k.price,
-        // 分别定价是真源；只填了当前市场时其余市场留空 = 不在那边卖
-        priceByMarket: k.priceByMarket,
+        // 分别定价是真源；只填了当前市场时其余市场留空 = 不在那边卖。
+        // 契约按市场码来，mock 库按币种存 —— 在这里换码（见上方 toCurrency 的说明）
+        priceByMarket: skuPricesByCurrency(k),
         stock: k.stock,
       }));
 
@@ -1151,10 +1202,10 @@ export const mockApi: MerchantApi = {
     // ⚠️ **这是假识别**：mock 里没有模型，按当前时间在几个常见品类里轮换，
     // 只为把「识别 → 预填 → 店主改 → 保存」这条交互链路跑通。
     // 真实实现在服务端（小程序不能跑本地模型），置信度由模型给。
-    const guesses: { title: string; type: Goods["type"] }[] = [
-      { title: "东北五常大米", type: CATEGORY_TYPE.NORMAL },
-      { title: "本地土鸡蛋", type: CATEGORY_TYPE.FRESH },
-      { title: "洗衣液 大容量装", type: CATEGORY_TYPE.NORMAL },
+    const guesses: { title: string; subtitle: string; type: Goods["type"]; categoryNo: string }[] = [
+      { title: "东北五常大米 10斤装", subtitle: "当季新米 颗粒饱满", type: CATEGORY_TYPE.NORMAL, categoryNo: "CAT131" },
+      { title: "本地土鸡蛋 30枚", subtitle: "当日现捡 冷链直达", type: CATEGORY_TYPE.FRESH, categoryNo: "CAT130" },
+      { title: "洗衣液 大容量装 3kg", subtitle: "深层洁净 低泡易漂", type: CATEGORY_TYPE.NORMAL, categoryNo: "CAT210" },
     ];
     const g = guesses[db.seq % guesses.length]!;
     return delay({ ...g, confidence: 0.72 }, 700);
@@ -1203,6 +1254,11 @@ export const mockApi: MerchantApi = {
     const merchantNo = db.merchant.merchantNo;
     let list = merchantNo ? db.orders.filter((o) => belongsToMerchant(o, merchantNo)) : [];
     if (q.status) list = list.filter((o) => o.status === q.status);
+    // 与 status 正交：商家的「待核销」= FULFILLING + 自提/到店核销类
+    if (q.fulfillments?.length) {
+      const want = new Set(q.fulfillments);
+      list = list.filter((o) => want.has(o.fulfillment));
+    }
     return delay(paginate(list, q.page, q.size));
   },
 
@@ -1212,8 +1268,8 @@ export const mockApi: MerchantApi = {
 
   async mShip(orderNo, expressNo) {
     const o = findOrder(orderNo);
-    assertTransition(o.status, "SHIPPED");
-    o.status = "SHIPPED";
+    assertTransition(o.status, "FULFILLING");
+    o.status = "FULFILLING";
     o.expressNo = expressNo;
     pushTimeline(o, "已发货");
     pushMessage(
@@ -1269,7 +1325,8 @@ export const mockApi: MerchantApi = {
     return delay({
       pickupNo: pickupNo || "",
       pickupName: db.merchant.name || "",
-      pendingVerify: mine.filter((o) => o.status === "ARRIVED").length,
+      pendingVerify: mine.filter((o) => o.status === "FULFILLING"
+        && PICKUP_LIKE.has(o.fulfillment)).length,
       // 「批次」= 今天标记过到货的单，按到货动作聚合
       arrivedBatches: mine.filter((o) => o.status !== "PAID" && o.createdAt >= startOfDay)
         .length,
@@ -1294,7 +1351,7 @@ export const mockApi: MerchantApi = {
     for (const o of db.orders) {
       if (o.fulfillment !== "STORE_PICKUP") continue;
       if (pickupNo && o.pickupNo !== pickupNo) continue;
-      if (!["PAID", "ARRIVED"].includes(o.status)) continue;
+      if (!["PAID", "FULFILLING"].includes(o.status)) continue;
       const buyer = o.buyerNickname ?? db.user.nickname;
       for (const it of o.items) {
         const cur = map.get(it.skuNo) ?? {
@@ -1320,8 +1377,8 @@ export const mockApi: MerchantApi = {
       // mock 的主单号当子单号用（一单一商家），与 pickupView 同一口径
       const o = db.orders.find((x) => x.orderNo === no);
       if (!o || o.status !== "PAID") continue;
-      assertTransition(o.status, "ARRIVED");
-      o.status = "ARRIVED";
+      assertTransition(o.status, "FULFILLING");
+      o.status = "FULFILLING";
       pushTimeline(o, "已到自提点，请及时取货");
       pushMessage(
         "TRADE",
@@ -1746,7 +1803,7 @@ export const mockApi: MerchantApi = {
       return delay({ success: false, subOrderNo: o.orderNo, reason: "NOT_THIS_PICKUP" });
     }
     if (o.status === "PAID") {
-      o.status = "ARRIVED";
+      o.status = "FULFILLING";
       pushTimeline(o, "已到自提点");
     }
     assertTransition(o.status, "COMPLETED");

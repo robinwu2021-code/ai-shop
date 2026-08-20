@@ -271,4 +271,93 @@ describe.each(APPS)("$app 契约字段（$prefix）", ({ app, prefix }) => {
         + offenders.join("\n  "),
     ).toEqual([]);
   });
+
+  /*
+   * **反方向**：后端发了、契约没声明 —— 数据到了端上被静默丢掉。
+   *
+   * 上一条查的是「契约要的后端没有」（屏幕上少一块）。这一条是它的镜像，
+   * 2026-08-17 靠人工测试才发现：
+   *
+   *   后端 `CartItemVO` 一直在发 `merchantNo` / `merchantName`，
+   *   而 shared 的 `CartItem` 没声明这两个字段。于是购物车只能按履约方式分组，
+   *   **店名一个字都显示不出来** —— 用户从头到尾看到「一单」，
+   *   提交后拿到按商家拆出的两笔子订单。
+   *
+   * 为什么上一条抓不到：它只从契约往后端看。契约里压根没有的字段，
+   * 在那个方向上不存在，自然也就「没缺」。
+   *
+   * 为什么用棘轮而不是要求清零：后端 VO 里有大量端上确实不需要的字段
+   * （tenantNo、审计列、内部编号），全要求声明是噪音。这个数只保证
+   * **新丢掉的字段立刻变红**，存量慢慢还。
+   */
+  it("★★ 后端发了而契约没声明的字段（棘轮：只许降不许升）", () => {
+    /*
+     * **按「类型.字段」去重计数，不按端点条目**。
+     *
+     * 第一版按条目计：`Order` 在 6 个端点上各报一条，修好其中一个字段
+     * （`subOrders`）之后条目一条都没少 —— 因为那几条还欠着别的字段。
+     * 于是「修了一个真问题」和「什么都没干」在数字上一模一样，
+     * 而一个看不出进展的棘轮，下一个人就不会再去拧它。
+     */
+    const dropped = new Set<string>();
+
+    for (const [name, path] of Object.entries(decls)) {
+      const url = (eps[name] ?? "").replace(/:(\w+)/g, "{$1}");
+      if (!url.startsWith(prefix)) continue;
+      const hit = rets[url];
+      if (!hit) continue;
+      const comps = javaComponents(hit.ret, hit.file, hit.pkg);
+      if (!comps) continue;
+
+      const declared = new Set(tsFields(path).map((f) => f.name));
+      if (!declared.size) continue; // 契约类型解析不到，别假装比过
+      for (const c of comps) {
+        if (declared.has(c) || IGNORED_BACKEND_FIELDS.has(c)) continue;
+        dropped.add(`${path}.${c}（后端 ${hit.ret}）`);
+      }
+    }
+
+    /*
+     * 存量欠账（2026-08-17 首次测量）。**这批不是全都无害**，
+     * 挑出来的几条记在这里，免得它们混在数字里没人再看：
+     *
+     *   · ~~`Order` 丢 `subOrders`~~ —— **2026-08-17 已修**。CartItem 那条的同族。
+     *     订单详情的「本单由 XX 提供并收款」本来就在（用 `merchantName`，我一度误判成没实现）；
+     *     真正哑掉的是**收银台**：购物车与确认页都说了会拆几单，付款那一屏只有一个总额。
+     *   · `StoreHome` 丢 `closed` —— 店铺打烊与否端上不知道，会让人对着打烊的店下单
+     *   · `Goods` 丢 `auditReason` —— 商品被驳回，商家看不到理由（b-app 侧同样丢）
+     *   · `MerchantApplyStatus` 丢 `qualificationItems` —— 入驻要补哪张证，端上说不出
+     *   · `SettleBill` 丢 `businessMode/invoiceStatus/paymentRef/pointsFeeMinor`
+     *
+     * 另有一批是**同物异名**而非真丢（`CartItem.invalid` ↔ 端上 `invalidReason`），
+     * 那类改契约名要连页面一起动，不在这次范围里。
+     *
+     * 这个数只许降不许升。修一条减一。
+     */
+    /*
+     * c-app 32 而不是 31：`OrderPreview` **刻意只声明预览页要用的那部分**
+     * （它的类型注释里写着理由：声明全套会让后端每加一个字段都得改端上类型）。
+     * 于是后端 `OrderVO` 每加一个字段，它就多欠一条 —— 这次加的是 `appointmentAt`。
+     *
+     * 这类「有意的子集」与真漏接混在一个数里，是这个棘轮的已知钝处。
+     * 现在靠这段注释区分；真要分开，得给 FIELDS 加一个「子集类型」标记。
+     */
+    const BASELINE: Record<string, number> = { "b-app": 15, "c-app": 29 };
+    expect(
+      dropped.size,
+      `${app}：后端在发、契约没接的字段共 ${dropped.size} 个（基线 ${BASELINE[app]}）——\n`
+        + "  这类不会报错，只是数据到端上就没了。修：契约补字段，或确认端上真的不需要\n"
+        + "  （真不需要就加进 IGNORED_BACKEND_FIELDS 并写清理由）。\n  "
+        + [...dropped].join("\n  "),
+    ).toBeLessThanOrEqual(BASELINE[app] ?? 0);
+  });
 });
+
+/**
+ * 端上确实不需要的后端字段。**加进来要说得出为什么端上不需要**，
+ * 否则这张表会退化成「报错了就加一行」，守卫就此失效。
+ */
+const IGNORED_BACKEND_FIELDS = new Set([
+  "tenantNo", "createdBy", "updatedBy", "version", "deleted",
+  "id", // 库自增主键，端上一律用业务单号
+]);

@@ -15,15 +15,28 @@ import { onLoad } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
 import { api } from "@/api";
 import { useMerchantStore } from "@/stores/merchant";
-import { CATEGORY_TYPE, MARKETS } from "@shared/utils/constants";
-import { pickImages } from "@shared/ports/media";
+import { CATEGORY_TYPE, MARKETS, TEMPLATE_TO_TYPE } from "@shared/utils/constants";
+import { MAX_IMAGE_BYTES, pickImages } from "@shared/ports/media";
 import { toMajor, toMinor } from "@shared/utils/money";
-import type { Category, CategoryType, CurrencyCode, I18nText, SpecTemplate } from "@shared/types";
+import type { Category, CategoryType, CurrencyCode, MarketId, I18nText, SpecTemplate } from "@shared/types";
 
 const { t } = useI18n();
 const merchant = useMerchantStore();
 
 const TYPES = Object.values(CATEGORY_TYPE) as CategoryType[];
+
+/**
+ * 多语言 / 多市场的**展示开关**（2026-08-20）。
+ *
+ * <p>当前只做中文单市场，界面上那两排页签（中/EN/ع、CNY/AED/USD）对店主是纯噪音：
+ * 他九成时间只填中文、只卖 CN，却要在每次建品时看见并绕过它们。
+ *
+ * <p><b>关的是展示，不是能力</b> —— 三语与按市场分别定价（B6）是已经实现并有数据落地的
+ * 功能，删掉将来要重写，而重写一次的代价远大于留一个 false。
+ * 关掉时的行为：文案只填中文那一格，价只填 CN 市场，与打开时填了中文/CN 的结果一模一样。
+ */
+const MULTI_LANG_UI = false;
+const MULTI_MARKET_UI = false;
 
 interface Row {
   skuNo?: string;
@@ -76,9 +89,26 @@ const type = ref<CategoryType>(CATEGORY_TYPE.NORMAL as CategoryType);
  */
 const categoryTree = ref<Category[]>([]);
 const categoryNo = ref("");
-/** 三级选择的当前路径，[一级, 二级, 三级]；只走到二级也允许 */
+/** **已选**的三级路径，[一级, 二级, 三级]；只走到二级也允许。面包屑与提交都取它 */
 const catPath = ref<Category[]>([]);
+/**
+ * **正在浏览**的层级 —— 与 `catPath` 分开的两个状态。
+ *
+ * <p>此前两者共用 `catPath`，于是**选定之后就改不了了**：选到叶子后
+ * `catOptions` 取的是叶子的 children（空），再打开弹层只有一句「已是最末级」
+ * 和一个返回按钮 —— 商家想换个类目，得先连按返回往上爬。
+ * 识别自动填了三级路径时更糟：他没点过任何一级，却要按两次返回才看得到选项。
+ *
+ * <p>拆开之后：打开弹层从**已选项的同级**开始浏览（`catPath` 去掉最后一级），
+ * 也就是「你现在选的是这个，它旁边还有这些」—— 这正是要改类目的人想看的那一屏。
+ */
+const browse = ref<Category[]>([]);
 const showCategory = ref(false);
+
+function openCategory() {
+  browse.value = catPath.value.slice(0, -1);
+  showCategory.value = true;
+}
 
 /** 面包屑：「食品生鲜 / 蔬菜 / 叶菜」。没选时给占位，不留空白 */
 const categoryLabel = computed(() =>
@@ -87,20 +117,49 @@ const categoryLabel = computed(() =>
 
 /** 当前层可选项：还没选就是一级，选了就是最后一级的子节点 */
 const catOptions = computed<Category[]>(() =>
-  catPath.value.length ? (catPath.value[catPath.value.length - 1]?.children ?? []) : categoryTree.value,
+  browse.value.length ? (browse.value[browse.value.length - 1]?.children ?? []) : categoryTree.value,
 );
 
 function pickCategory(c: Category) {
-  catPath.value = [...catPath.value, c];
+  const next = [...browse.value, c];
+  browse.value = next;
+  // 每一级都是合法的选择（只走到二级也允许），所以每点一下都更新已选
+  catPath.value = next;
   categoryNo.value = c.categoryNo;
+  /*
+   * **类目带出品类。**
+   *
+   * 类目在库里就带着 `template`（STANDARD/FRESH/SERVICE/VOUCHER），它与品类
+   * 是同一件事的两套码。此前端上拿不到这个字段，于是商家要把同一件事填两遍 ——
+   * 而两者**可以互相矛盾**：选「生鲜」品类配「纸品清洁」类目，没有一处会拦，
+   * 直到下单时才因为履约方式不对而出问题（生鲜要截单、服务不发货）。
+   *
+   * 仍然允许他改：类目树是运营维护的，可能有归类不准的时候，
+   * 而品类决定的是履约，最终解释权该在开店的人手里。改了就提示两者不一致。
+   */
+  const inferred = c.template ? TEMPLATE_TO_TYPE[c.template] : undefined;
+  if (inferred && inferred !== type.value) {
+    type.value = inferred as CategoryType;
+    void loadTemplates();
+  }
   // 叶子节点即选定；还有下级就留在弹层里继续选
   if (!c.children?.length) showCategory.value = false;
 }
 
+/**
+ * 品类与所选类目是否对不上。**只提示不阻断** —— 见 pickCategory 的说明。
+ * 类目没选时不提示：那时没有可比的对象，提示只会变成噪音。
+ */
+const typeMismatch = computed(() => {
+  const leaf = catPath.value[catPath.value.length - 1];
+  const inferred = leaf?.template ? TEMPLATE_TO_TYPE[leaf.template] : undefined;
+  return !!inferred && inferred !== type.value;
+});
+
 /** 回退一级。整棵重选比逐级点返回更烦 —— 商家改类目通常只是改最后一级 */
+/** 往上一级。**只动浏览位置，不动已选** —— 翻着看不等于改了选择 */
 function popCategory() {
-  catPath.value = catPath.value.slice(0, -1);
-  categoryNo.value = catPath.value[catPath.value.length - 1]?.categoryNo ?? "";
+  browse.value = browse.value.slice(0, -1);
 }
 
 /** 按 categoryNo 还原选择路径（回显已有商品时用） */
@@ -133,13 +192,33 @@ const bulk = ref({ price: "", stock: "" });
 
 const isEdit = computed(() => !!goodsNo.value);
 const multi = computed(() => groups.value.length > 0);
-const canSave = computed(
-  // 只有中文必填 —— 其余语言留空回落中文（不做机翻）
-  // 价格只要求**至少一个市场**填了，未填的市场就是不在那边卖
-  () =>
-    !!title.value["zh-CN"].trim() &&
-    rows.value.every((r) => Object.values(r.priceMajor).some((v) => Number(v) > 0)),
-);
+/**
+ * 还差什么才能保存。**把判据说出来，而不是只把按钮灰掉。**
+ *
+ * <p>此前按钮灰着的时候一个字都没有，而判据有两条（中文名 + 每行至少一个价）——
+ * 多规格商品有 8 行时，商家得挨行找是哪一行没填价。灰按钮只说明「不行」，
+ * 不说明「差什么」，而后者才是他下一步要做的事。
+ *
+ * <p>只有中文必填 —— 其余语言留空回落中文（不做机翻）。
+ * 价格只要求**至少一个市场**填了，未填的市场就是不在那边卖。
+ */
+const missing = computed<string[]>(() => {
+  const out: string[] = [];
+  if (!title.value["zh-CN"].trim()) out.push(t("goods.name"));
+  const noPrice = rows.value.filter(
+    (r) => !Object.values(r.priceMajor).some((v) => Number(v) > 0),
+  );
+  if (noPrice.length) {
+    // 单规格就说「价格」；多规格点名是哪几个规格没填，省得他逐行找
+    out.push(
+      multi.value && noPrice.length < rows.value.length
+        ? `${t("goods.price")}（${noPrice.map((r) => r.optionValues.join("/")).join("、")}）`
+        : t("goods.price"),
+    );
+  }
+  return out;
+});
+const canSave = computed(() => missing.value.length === 0);
 /** 展示价 = 最低 SKU 价，与列表页「¥12 起」同口径 */
 /*
  * 价格字段叫什么，跟着**资金路径**走而不是门店的经营模式 ——
@@ -188,6 +267,16 @@ async function shoot(source: "camera" | "album") {
   const img = picked[0];
   if (!img) return;
 
+  /*
+   * 先在端上挡一道。`pickImages` 一直把 `size` 带回来，却从来没人比过 ——
+   * 于是一张超限的图要走完整个上传才在服务端被拒，商家等的那几秒是白等的，
+   * 流量也是白花的（他多半正用着移动网络）。与后端 MAX_BYTES 同一个数。
+   */
+  if (img.size > MAX_IMAGE_BYTES) {
+    uni.showToast({ title: t("goods.imageTooLarge"), icon: "none" });
+    return;
+  }
+
   uploading.value = true;
   try {
     const { url } = await api.mUploadImage(img.tempPath);
@@ -202,15 +291,40 @@ async function shoot(source: "camera" | "album") {
       uni.showToast({ title: t("goods.guessLow"), icon: "none" });
       return;
     }
-    // 已经填了标题就不覆盖：店主自己写的优先于机器猜的。
-    // 识别结果只写进**中文**那一格 —— 识别本身是中文的，塞进英文格是假装翻译过
-    if (!title.value["zh-CN"].trim()) {
+    /*
+     * **逐个字段判空后再填，不整体覆盖**：店主可能先手打了标题再去拍照，
+     * 那时副标题与类目仍是空的 —— 整体覆盖会抹掉他写的，整体跳过又浪费了识别结果。
+     *
+     * 识别结果只写进**中文**那一格：识别本身是中文的，塞进英文格是假装翻译过。
+     */
+    let filled = false;
+    if (!title.value["zh-CN"].trim() && guess.title) {
       title.value = { ...title.value, "zh-CN": guess.title };
       lang.value = "zh-CN";
       type.value = guess.type;
       await loadTemplates();
+      filled = true;
     }
-    uni.showToast({ title: t("goods.guessed"), icon: "none" });
+    if (!subtitle.value["zh-CN"].trim() && guess.subtitle) {
+      subtitle.value = { ...subtitle.value, "zh-CN": guess.subtitle };
+      filled = true;
+    }
+    /*
+     * 类目要连**面包屑**一起还原，不能只塞编号：只设 categoryNo 的话，
+     * 页面上那一栏仍显示「选择类目（选填）」，而提交时却带着一个类目 ——
+     * 商家看到的和将要保存的不是一回事。
+     */
+    if (!categoryNo.value && guess.categoryNo) {
+      const path = findPath(categoryTree.value, guess.categoryNo);
+      if (path.length) {
+        catPath.value = path;
+        categoryNo.value = guess.categoryNo;
+        filled = true;
+      }
+    }
+    if (filled) {
+      uni.showToast({ title: t("goods.guessed"), icon: "none" });
+    }
   } catch (e) {
     uni.showToast({ title: (e as Error).message, icon: "none" });
   } finally {
@@ -235,17 +349,48 @@ function rebuild() {
     ];
     return;
   }
-  const prev = new Map(rows.value.map((r) => [keyOf(r.optionValues), r]));
+  const before = rows.value;
+  const prev = new Map(before.map((r) => [keyOf(r.optionValues), r]));
   let combos: string[][] = [[]];
   for (const g of groups.value) {
     const opts = g.options.map((o) => o.trim()).filter(Boolean);
     if (!opts.length) continue;
     combos = combos.flatMap((c) => opts.map((o) => [...c, o]));
   }
+
+  /**
+   * 新组合**继承哪一行的价与库存**。
+   *
+   * <p>只按精确键匹配是不够的 —— `keyOf` 是把选项值拼起来，所以**增删规格组会让
+   * 每一个键都变**：单规格的键是 `""`，加一组「尺寸」之后变成 `"S"`/`"M"`，
+   * 一个都对不上，于是店主刚填的价与库存**全部清零**。
+   * 而页面底部一直写着「改规格时已填的价与库存会按选项组合保留」——
+   * 文案与行为对不上，且清零不报错，他要滚回去才发现。
+   *
+   * <p>三级回落，从最精确到最合理：
+   *   1. 精确命中（同组内增删选项，原行原样保留）
+   *   2. **前缀命中**（在已有规格上再加一组：`["S"]` → `["S","红"]` 继承 `["S"]`）
+   *   3. **单行回落**（单规格 → 多规格：只有一行可继承，那就是它）——
+   *      店主说「这个商品现在有 S 和 M」时，他的意思显然是两个都从刚填的价起步
+   */
+  const inherit = (values: string[]): Row | undefined => {
+    const exact = prev.get(keyOf(values));
+    if (exact) return exact;
+    const prefix = before.find(
+      (r) => r.optionValues.length > 0
+        && r.optionValues.length < values.length
+        && r.optionValues.every((v, i) => v === values[i]),
+    );
+    if (prefix) return prefix;
+    return before.length === 1 ? before[0] : undefined;
+  };
+
   rows.value = combos.map((values) => {
-    const old = prev.get(keyOf(values));
+    const old = inherit(values);
     return {
-      skuNo: old?.skuNo,
+      // **skuNo 只跟精确命中走** —— 前缀/单行回落继承的是「价与库存」这类可重填的值，
+      // 而 skuNo 是身份：两行拿同一个编号，历史订单与库存流水就指向了错的规格
+      skuNo: prev.get(keyOf(values))?.skuNo,
       optionValues: values,
       priceMajor: old?.priceMajor ?? emptyPrices(),
       stock: old?.stock ?? "0",
@@ -411,20 +556,27 @@ async function save() {
           templateNo: g.templateNo,
         })),
       skus: rows.value.map((r) => {
-        const byMarket = MARKET_CURRENCIES.reduce<Partial<Record<CurrencyCode, number>>>(
+        /*
+         * **键是市场码，值取自币种列**。页内那套输入框按币种索引（页签就是币种），
+         * 但 `priceByMarket` 落到 `prd_sku.market` 上 —— 发币种码等于往市场列写
+         * 一个不存在的市场：多一行 `market='CNY'` 的死数据，而 AED/USD 填的价
+         * 在 AE/US 两个市场一分钱也卖不出去。两套码一一对应，所以错了不报任何错。
+         */
+        const byMarket = MARKET_CURRENCIES.reduce<Partial<Record<MarketId, number>>>(
           (acc, m) => {
             if (Number(r.priceMajor[m.currency]) > 0) {
-              acc[m.currency] = toMinor(r.priceMajor[m.currency]);
+              acc[m.id] = toMinor(r.priceMajor[m.currency]);
             }
             return acc;
           },
           {},
         );
+        const homeMarket = MARKET_CURRENCIES.find((m) => m.currency === market.value)!.id;
         return {
           skuNo: r.skuNo,
           optionValues: r.optionValues,
           // price 保留当前市场值，兼容按单市场读取的地方
-          price: byMarket[market.value] ?? Object.values(byMarket)[0] ?? 0,
+          price: byMarket[homeMarket] ?? Object.values(byMarket)[0] ?? 0,
           priceByMarket: byMarket,
           stock: Number(r.stock) || 0,
         };
@@ -453,8 +605,10 @@ async function save() {
       <view class="field">
         <text class="field__label">{{ $t("goods.cover") }}</text>
         <view class="shoot">
+          <!-- 这里原先只画 <image>：老商品的封面是 emoji，于是编辑页显示一个空灰框，
+               而列表里明明有图 —— 看着像图丢了。sh-cover 按值分流，两种都画得出来。 -->
           <view class="shoot__preview">
-            <image v-if="cover" :src="cover" class="shoot__img" mode="aspectFill" />
+            <sh-cover v-if="cover" class="shoot__img" :src="cover"></sh-cover>
             <text v-else class="shoot__ph">📷</text>
           </view>
           <view class="shoot__ops">
@@ -471,7 +625,7 @@ async function save() {
       <view class="field">
         <view class="field__head">
           <text class="field__label">{{ $t("goods.name") }}</text>
-          <view class="langs">
+          <view v-if="MULTI_LANG_UI" class="langs">
             <text
               v-for="l in LANGS"
               :key="l.id"
@@ -483,13 +637,13 @@ async function save() {
             </text>
           </view>
         </view>
-        <input v-model="title[lang]" class="field__input" placeholder="五常大米" />
+        <input v-model="title[lang]" class="field__input" />
       </view>
       <view class="field">
         <text class="field__label">{{ $t("goods.subtitle") }}</text>
-        <input v-model="subtitle[lang]" class="field__input" placeholder="当季新米，颗粒饱满" />
+        <input v-model="subtitle[lang]" class="field__input" />
       </view>
-      <text v-if="untranslated.length" class="sh-muted hint">
+      <text v-if="MULTI_LANG_UI && untranslated.length" class="sh-muted hint">
         {{ $t("goods.untranslated", { s: untranslated.map((k) => $t(k)).join("、") }) }}
       </text>
       <view class="field">
@@ -509,8 +663,10 @@ async function save() {
 
       <!-- 类目：与上面的「形态」分开两个控件（见 script 里 categoryTree 的注释） -->
       <view class="field">
+        <!-- 品类与类目对不上：不阻断，但要说出来 —— 品类决定履约，错了要到下单才显现 -->
+        <text v-if="typeMismatch" class="missing">{{ $t("goods.typeMismatch") }}</text>
         <text class="field__label">{{ $t("goods.category") }}</text>
-        <view class="cat-pick" @tap="showCategory = true">
+        <view class="cat-pick" @tap="openCategory">
           <text v-if="categoryLabel" class="cat-pick__val">{{ categoryLabel }}</text>
           <text v-else class="cat-pick__ph">{{ $t("goods.categoryPh") }}</text>
           <text class="cat-pick__arrow">›</text>
@@ -523,7 +679,7 @@ async function save() {
     <view v-if="showCategory" class="cat-mask" @tap="showCategory = false">
       <view class="cat-sheet" @tap.stop>
         <view class="cat-sheet__bar">
-          <text v-if="catPath.length" class="cat-sheet__back" @tap="popCategory">‹ {{ $t("common.back") }}</text>
+          <text v-if="browse.length" class="cat-sheet__back" @tap="popCategory">‹ {{ $t("common.back") }}</text>
           <text class="cat-sheet__title">{{ categoryLabel || $t("goods.category") }}</text>
           <text class="cat-sheet__close" @tap="showCategory = false">×</text>
         </view>
@@ -599,7 +755,7 @@ async function save() {
     <view class="sh-card mt">
       <view class="sec">
         <text class="sh-h2">{{ $t("goods.skuMatrix") }}</text>
-        <view class="langs">
+        <view v-if="MULTI_MARKET_UI" class="langs">
           <text
             v-for="m in MARKET_CURRENCIES"
             :key="m.currency"
@@ -614,7 +770,8 @@ async function save() {
           </text>
         </view>
       </view>
-      <text class="sh-muted hint">{{ $t("goods.marketPriceHint") }}</text>
+      <!-- 「按市场分别定价」的说明只在多市场打开时才有意义 -->
+      <text v-if="MULTI_MARKET_UI" class="sh-muted hint">{{ $t("goods.marketPriceHint") }}</text>
       <!-- 归集路径必须说清「这不是最终售价」—— 只改标签不解释，
            商家会以为平台擅自改了他的价 -->
       <text v-if="aggregated" class="sh-muted hint">
@@ -656,14 +813,21 @@ async function save() {
       </view>
 
       <view class="from">
-        <text class="sh-muted">{{ $t("goods.fromPrice") }}（{{ market }}）</text>
+        <!-- 币种后缀只在多市场下有意义：单市场时「（CNY）」是在回答没人问的问题 -->
+        <text class="sh-muted">
+          {{ $t("goods.fromPrice") }}<text v-if="MULTI_MARKET_UI">（{{ market }}）</text>
+        </text>
         <text class="sh-num from__v">{{ fromPrice }}</text>
       </view>
-      <text v-if="unpricedMarkets.length" class="sh-muted hint">
+      <text v-if="MULTI_MARKET_UI && unpricedMarkets.length" class="sh-muted hint">
         {{ $t("goods.unpriced", { s: unpricedMarkets.join("、") }) }}
       </text>
     </view>
 
+    <!-- 差什么就说什么 —— 灰按钮只说明「不行」，不说明「下一步做什么」 -->
+    <text v-if="missing.length" class="missing">
+      {{ $t("goods.missing", { s: missing.join("、") }) }}
+    </text>
     <view class="sh-btn save" :class="{ 'sh-btn--muted': !canSave }" @tap="save">
       {{ $t("common.save") }}
     </view>
@@ -673,7 +837,7 @@ async function save() {
 
 <style scoped>
 .mt {
-  margin-top: 24rpx;
+  margin-top: 16rpx;
 }
 .field__head {
   display: flex;
@@ -694,7 +858,7 @@ async function save() {
 }
 .lang.is-on {
   background: var(--sh-primary-tint);
-  color: var(--sh-primary);
+  color: var(--sh-primary-text);
   font-weight: 600;
 }
 /* 未填的语言标出来 —— 否则要逐个点过去才知道漏了哪门 */
@@ -734,6 +898,8 @@ async function save() {
 .shoot__img {
   width: 140rpx;
   height: 140rpx;
+  /* emoji 封面按这个字号排；真图时 sh-cover 内部撑满，字号用不上 */
+  font-size: 72rpx;
 }
 .shoot__ph {
   font-size: 48rpx;
@@ -747,7 +913,7 @@ async function save() {
   padding: 16rpx 28rpx;
   border-radius: 16rpx;
   background: var(--sh-primary-tint);
-  color: var(--sh-primary);
+  color: var(--sh-primary-text);
   font-size: 24rpx;
   font-weight: 600;
   text-align: center;
@@ -780,7 +946,7 @@ async function save() {
   margin-bottom: 8rpx;
 }
 .tpl__name {
-  font-size: 26rpx;
+  font-size: 28rpx;
   font-weight: 600;
   color: var(--sh-ink);
 }
@@ -789,13 +955,21 @@ async function save() {
   margin-top: 10rpx;
   line-height: 1.6;
 }
+/* 差什么：**不是报错**（他还没做错任何事），所以用警示色不用危险色 */
+.missing {
+  display: block;
+  margin: 16rpx 8rpx 0;
+  font-size: 24rpx;
+  color: var(--sh-warning);
+  line-height: 1.5;
+}
 .link {
-  font-size: 26rpx;
+  font-size: 24rpx;
   font-weight: 600;
-  color: var(--sh-primary);
+  color: var(--sh-primary-text);
 }
 .group {
-  margin-top: 28rpx;
+  margin-top: 20rpx;
 }
 .group__head {
   display: flex;
@@ -875,12 +1049,12 @@ async function save() {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  margin-top: 28rpx;
+  margin-top: 20rpx;
 }
 .from__v {
   font-size: 34rpx;
   font-weight: 600;
-  color: var(--sh-primary);
+  color: var(--sh-primary-text);
 }
 .cat-pick {
   display: flex;
@@ -888,7 +1062,9 @@ async function save() {
   justify-content: space-between;
   padding: 20rpx 24rpx;
   border: 2rpx solid var(--sh-line);
-  border-radius: var(--sh-radius);
+  /* 与本页其它表单控件同档（16rpx）。此前写 var(--sh-radius) —— 该变量不存在
+     且没给兜底，圆角实际是 0，在一片圆角控件里方棱棱地突兀 */
+  border-radius: 16rpx;
 }
 .cat-pick__ph {
   color: var(--sh-sub);
@@ -910,7 +1086,9 @@ async function save() {
   max-height: 70vh;
   overflow-y: auto;
   background: var(--sh-surface);
-  border-radius: var(--sh-radius) var(--sh-radius) 0 0;
+  /* 底部弹层用 xl 档（44rpx），与 sh-theme-sheet 一致。
+     同上：var(--sh-radius) 不存在，此前这张品类弹层是**直角**的 */
+  border-radius: 44rpx 44rpx 0 0;
 }
 .cat-sheet__bar {
   display: flex;
@@ -934,7 +1112,7 @@ async function save() {
   text-align: center;
 }
 .save {
-  margin-top: 32rpx;
+  margin-top: 24rpx;
 }
 .tip {
   display: block;

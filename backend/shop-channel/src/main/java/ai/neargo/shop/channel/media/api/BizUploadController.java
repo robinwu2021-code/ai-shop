@@ -95,6 +95,19 @@ public class BizUploadController {
         if (!ALLOWED.contains(ext)) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
+        /*
+         * **后缀白名单只认文件名，而文件名是客户端说了算的。**
+         * 实测：一段纯文本改名 `x.png` 传进来，白名单放行、`dimensionsOf()` 读不出尺寸
+         * 也不拦（它的注释明说「读不出尺寸不该让上传失败」—— 对尺寸而言没错），
+         * 于是任意字节以 `Content-Type: image/png` 落进**公开桶**并可公开取回。
+         * 记账表里 width/height 是 NULL，但没有任何人会去看那两列。
+         *
+         * 所以真正的类型判定放在这里：看头几个字节。它与 `dimensionsOf` 是两件事 ——
+         * 那个答的是「多大」，这个答的是「是不是图」，后者不该因为前者失败而放行。
+         */
+        if (!looksLikeImage(file, ext)) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
 
         String entityNo = BizContext.requireMerchantNo();
         /*
@@ -161,6 +174,43 @@ public class BizUploadController {
         String url = SysMediaAsset.GOODS.equals(type)
                 ? mediaStore.publicUrl(key) : mediaStore.privatePath(key);
         return Map.of("url", url);
+    }
+
+    /**
+     * 头几个字节是不是一张图，且与后缀说的是同一种。
+     *
+     * <p><b>两边都要判</b>：只判「是不是图」的话，`.png` 后缀配一个 JPEG 内容仍会通过 ——
+     * 存下来 Content-Type 与真实字节不符，浏览器多半仍能显示，但缩略图/转码这类
+     * 按 Content-Type 分发的下游会拿到一个它处理不了的东西，而且报错报在离这里很远的地方。
+     *
+     * <p>不引解码库：magic number 就够，且它<b>只读前 12 个字节</b> ——
+     * 与 {@link #dimensionsOf} 同样的理由，不能为了判类型把整张图解进堆里。
+     */
+    private static boolean looksLikeImage(MultipartFile file, String ext) {
+        byte[] h = new byte[12];
+        try (InputStream in = file.getInputStream()) {
+            int n = in.readNBytes(h, 0, 12);
+            if (n < 12) {
+                return false;
+            }
+        } catch (IOException e) {
+            return false;
+        }
+        return switch (ext) {
+            // FF D8 FF
+            case "jpg", "jpeg" -> (h[0] & 0xFF) == 0xFF && (h[1] & 0xFF) == 0xD8 && (h[2] & 0xFF) == 0xFF;
+            // 89 50 4E 47 0D 0A 1A 0A
+            case "png" -> (h[0] & 0xFF) == 0x89 && h[1] == 'P' && h[2] == 'N' && h[3] == 'G'
+                    && (h[4] & 0xFF) == 0x0D && (h[5] & 0xFF) == 0x0A
+                    && (h[6] & 0xFF) == 0x1A && (h[7] & 0xFF) == 0x0A;
+            // "GIF87a" / "GIF89a"
+            case "gif" -> h[0] == 'G' && h[1] == 'I' && h[2] == 'F' && h[3] == '8'
+                    && (h[4] == '7' || h[4] == '9') && h[5] == 'a';
+            // "RIFF"????"WEBP"
+            case "webp" -> h[0] == 'R' && h[1] == 'I' && h[2] == 'F' && h[3] == 'F'
+                    && h[8] == 'W' && h[9] == 'E' && h[10] == 'B' && h[11] == 'P';
+            default -> false;
+        };
     }
 
     /**

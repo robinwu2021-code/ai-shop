@@ -863,6 +863,27 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         if (stock < 0) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
+        /*
+         * **这个 SKU 已经按店管理时，写到当前门店去** —— 否则写与读不是同一个数。
+         *
+         * 主体总量与分店库存是两笔账：SKU 一旦有过分店库存行，
+         * 商品详情读的就是分店那份（见 {@code applyStoreStock}）。这条端点写的是主体总量，
+         * 于是商家点「保存」→ **返回成功 → 页面数字纹丝不动 → 没有任何提示**。
+         * 实测：store-stock 设 33 → 读回 33；stock 设 99 → code 0，读回还是 33。
+         *
+         * b-app 已经绕开了（多店走 store-stock、单店走 stock），但**两边判据不同**：
+         * 端上按「商家是否多店」，后端按「这个 SKU 是否已按店管理」——
+         * 单店商家若有按店库存的 SKU（比如关掉过一家店），就会落进这个静默无效。
+         *
+         * 改成「写落到读的地方」而不是报错：报错的话，那位商家在界面上
+         * **没有任何可用路径**去改这件商品的库存（单店模式不显示分店库存入口）。
+         */
+        if (isStoreManaged(skuNo)) {
+            String storeNo = ai.neargo.shop.auth.BizContext.current().currentStoreNo();
+            if (storeNo != null && !storeNo.isBlank()) {
+                return saveStoreStock(merchantNo, storeNo, goodsNo, skuNo, stock);
+            }
+        }
         List<PrdSku> rows = DataScopeContext.executeWithoutScope(() ->
                 skuMapper.selectList(Wrappers.<PrdSku>lambdaQuery()
                         .eq(PrdSku::getGoodsNo, goodsNo).eq(PrdSku::getSkuNo, skuNo)));
@@ -912,6 +933,17 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
             DataScopeContext.executeWithoutScope(() -> storeStockMapper.updateById(toUpdate));
         }
         return toVO(g);
+    }
+
+    /**
+     * 这个 SKU 是否已经切成「按店管理」。判据与 {@code applyStoreStock} 一致：
+     * <b>只要存在任何一行分店库存</b>，读取口径就已经换成分店那份了。
+     */
+    private boolean isStoreManaged(String skuNo) {
+        return skuNo != null && !skuNo.isBlank()
+                && DataScopeContext.executeWithoutScope(() ->
+                storeStockMapper.selectCount(Wrappers.<PrdStoreStock>lambdaQuery()
+                        .eq(PrdStoreStock::getSkuNo, skuNo))) > 0;
     }
 
     @Override
@@ -1031,16 +1063,17 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         g.setSales(0);
         g.setLimitPerUser(0);
         /*
-         * 新建默认**四种全支持**，由商家去收窄。
+         * 新建默认**实物类全支持**，由商家去收窄。
          *
          * 此前默认是 ["STORE_PICKUP"] 且商家改不了 —— 那个值从来不表示
          * 「只支持到店自提」，只是个占位，而这些商品一直在被下成快递单。
          * F-1 给下单加了「必须支持」的校验之后，照原样留着会让新商品一建出来
          * 就只能自提。默认放宽、由商家收窄，是唯一不会凭空拦单的方向。
+         *
+         * ⚠️ **是 PHYSICAL 不是 ALL**：服务类履约（到店核销 / 上门预约）
+         * 要由商家显式选择 —— 一件大米不该一建出来就声称支持到店核销。
          */
-        g.setFulfillments(writeJson(new java.util.ArrayList<>(
-                java.util.List.of(Fulfillments.STORE_PICKUP, Fulfillments.NEIGHBOR_PICKUP,
-                        Fulfillments.MERCHANT_DELIVERY, Fulfillments.EXPRESS))));
+        g.setFulfillments(writeJson(new java.util.ArrayList<>(Fulfillments.PHYSICAL)));
         return g;
     }
 

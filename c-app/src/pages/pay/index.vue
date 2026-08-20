@@ -112,6 +112,20 @@ onUnmounted(() => clearInterval(timer));
       <view class="sh-card hero">
         <text class="hero__amount sh-num">{{ money(order.amount.payableMinor) }}</text>
         <text class="hero__label">{{ $t("pay.payable") }}</text>
+        <!--
+          这次付款覆盖哪几笔单。**只有跨商家时才出现** —— 单商家时它等于把
+          总额又抄了一遍，是噪音。
+          放在金额下面而不是折叠起来：用户在这一屏要回答的是「我付的是什么」，
+          而拆单是这个问题里最容易意外的那部分。
+        -->
+        <view v-if="(order.subOrders?.length ?? 0) > 1" class="subs">
+          <text class="subs__title">{{ $t("pay.covers", { n: order.subOrders!.length }) }}</text>
+          <view v-for="s in order.subOrders" :key="s.orderNo" class="subs__row">
+            <text class="subs__name">{{ s.merchantName }}</text>
+            <text class="subs__amount sh-num">{{ money(s.amount.payableMinor) }}</text>
+          </view>
+        </view>
+
         <view v-if="order.payDeadlineAt" class="cd" :class="{ 'is-expired': expired }">
           <text class="cd__text sh-num">
             {{ expired
@@ -183,6 +197,31 @@ onUnmounted(() => clearInterval(timer));
   color: var(--sh-sub);
   margin-top: 12rpx;
 }
+.subs {
+  margin-top: 32rpx;
+  padding-top: 24rpx;
+  border-top: 1rpx solid var(--sh-line);
+}
+.subs__title {
+  display: block;
+  font-size: 24rpx;
+  color: var(--sh-sub);
+  margin-bottom: 12rpx;
+}
+.subs__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8rpx 0;
+}
+.subs__name {
+  font-size: 26rpx;
+  color: var(--sh-ink);
+}
+.subs__amount {
+  font-size: 26rpx;
+  color: var(--sh-sub);
+}
 .cd {
   display: inline-block;
   margin-top: 28rpx;
@@ -226,7 +265,7 @@ onUnmounted(() => clearInterval(timer));
 }
 .method__tick {
   font-size: 30rpx;
-  color: var(--sh-primary);
+  color: var(--sh-primary-text);
   font-weight: 400;
 }
 .done {
@@ -272,7 +311,7 @@ onUnmounted(() => clearInterval(timer));
 .code__label {
   display: block;
   font-size: 24rpx;
-  color: var(--sh-primary);
+  color: var(--sh-primary-text);
 }
 .code--redeem .code__label {
   color: var(--sh-warning);

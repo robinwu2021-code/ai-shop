@@ -38,6 +38,10 @@ class BizEndpointPermTest {
     /** 不需要授权的端点：登录相关，以及「还不是商家的人」也要能用的那几个 */
     private static final Set<String> PUBLIC = Set.of(
             "/biz/auth/login", "/biz/auth/otp/send", "/biz/auth/staff-login",
+            // 设/查自己的登录密码：作用对象是**调用者本人**（SecurityUtils.currentUserNo），
+            // 拿不到别人的。挂 biz 权限码反而错了 —— 店员也该能给自己设密码，
+            // 而他一个 biz:* 都可能没有
+            "/biz/auth/password",
             // 入驻链路：申请人此刻还没有 merchantNo，一律 403 的话被驳回的人
             // 就永远看不到驳回原因，闭环在这里断掉
             "/biz/merchant/apply", "/biz/merchant/profile",

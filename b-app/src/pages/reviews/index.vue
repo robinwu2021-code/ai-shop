@@ -266,7 +266,7 @@ onShow(load);
   padding: 20rpx 24rpx;
   border-radius: 24rpx;
   background: var(--sh-faint);
-  font-size: 26rpx;
+  font-size: 28rpx;
   color: var(--sh-ink);
   line-height: 1.6;
 }
@@ -304,8 +304,8 @@ onShow(load);
 .link {
   display: inline-block;
   margin-top: 20rpx;
-  font-size: 26rpx;
+  font-size: 24rpx;
   font-weight: 600;
-  color: var(--sh-primary);
+  color: var(--sh-primary-text);
 }
 </style>

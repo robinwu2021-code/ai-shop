@@ -32,11 +32,14 @@ public class BizPickupController {
 
     private final PickupService pickupService;
     private final ai.neargo.shop.merchant.service.StoreCodeService storeCodeService;
+    private final ai.neargo.shop.merchant.service.StoreLinkService storeLinkService;
 
     public BizPickupController(PickupService pickupService,
-                               ai.neargo.shop.merchant.service.StoreCodeService storeCodeService) {
+                               ai.neargo.shop.merchant.service.StoreCodeService storeCodeService,
+                               ai.neargo.shop.merchant.service.StoreLinkService storeLinkService) {
         this.pickupService = pickupService;
         this.storeCodeService = storeCodeService;
+        this.storeLinkService = storeLinkService;
     }
 
     /**
@@ -114,17 +117,33 @@ public class BizPickupController {
         return pickupService.picking(pickupNo);
     }
 
-    /** 我的店铺码（B-11.2.6）。可打印，印在包装袋/贴纸上。 */
+    /**
+     * 我的店铺码（B-11.2.6）。可打印，印在包装袋/贴纸上。
+     *
+     * <p><b>码是真的微信小程序码</b>（{@code wxacode.getUnlimited}），扫了直接进 C 端门店页。
+     * 此前这里只返回一个写死 {@code https://shop.example.com/s/<code>} 的链接 ——
+     * <b>占位域名</b>，商家印出去的贴纸指向一个不存在的地方，而功能点标着「已实现」。
+     *
+     * <p>{@code url} 在未配 {@code shop.web.base-url} 时为 <b>null</b>：
+     * 不发假链接，端上据此只显示码。
+     */
     @PreAuthorize("@perm.canBiz('" + BizPerms.STORE + "')")
     @GetMapping("/biz/store/qrcode")
     public StoreQrcode qrcode() {
         String merchantNo = BizContext.requireMerchantNo();
         String code = storeCodeService.ensureFor(merchantNo);
-        return new StoreQrcode(merchantNo, code, "https://shop.example.com/s/" + code,
+        return new StoreQrcode(merchantNo, code,
+                storeLinkService.linkOf(code, null),
+                storeCodeService.acodeBase64(merchantNo),
                 "建议印成 3×3cm 贴纸，贴在包装袋封口处");
     }
 
-    public record StoreQrcode(String merchantNo, String storeCode, String url, String printableHint) {
+    /**
+     * @param url         对外链接。<b>未配域名时为 null</b> —— 端上不显示链接那一行
+     * @param imageBase64 小程序码 PNG 的 base64（不含 data: 前缀）。通道未开启时为 null
+     */
+    public record StoreQrcode(String merchantNo, String storeCode, String url,
+                              String imageBase64, String printableHint) {
     }
 
     /**

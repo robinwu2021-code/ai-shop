@@ -15,9 +15,11 @@ import { api } from "@/api";
 import { useCartStore } from "@/stores/cart";
 import { useUserStore } from "@/stores/user";
 import { ROUTES } from "@shared/utils/constants";
+import { firstSku } from "@shared/utils/goods";
+import { flyToCart, tapPoint } from "@/shared/fly";
 import { money } from "@shared/utils/money";
 import { buildShareMessage } from "@shared/ports/share";
-import type { FrequentItem, StoreHome } from "@shared/types";
+import type { FrequentItem, Goods, StoreHome } from "@shared/types";
 
 const { t } = useI18n();
 const cart = useCartStore();
@@ -28,6 +30,12 @@ const data = ref<StoreHome | null>(null);
 const frequent = ref<FrequentItem[]>([]);
 const keyword = ref("");
 const busy = ref(false);
+
+/**
+ * 已停业。**扫码进来的老客要知道「店关了」，不是「链接坏了」** ——
+ * 所以不做 404，而是盖一条横幅并禁掉加购与再来一单。
+ */
+const closed = computed(() => !!data.value?.closed);
 
 /** 店内搜索：只在本店范围内找，与全平台搜索分开（C-ST-06） */
 const goods = computed(() => {
@@ -61,7 +69,31 @@ onLoad(async (q) => {
   await load();
 });
 
+/**
+ * 商品卡的加购。**这一页此前没接 `@add`** —— 卡片把事件 emit 出来，没人接，
+ * 于是「全部商品」区的 ＋ 点了完全没反应：不是报错，是什么都不发生。
+ * 首页、分类、商家页、搜索页四处都接了，只有这里漏了。
+ */
+async function addGoods(g: Goods, e: unknown) {
+  if (closed.value) {
+    uni.showToast({ title: t("store.closedTip"), icon: "none" });
+    return;
+  }
+  try {
+    await cart.add(g.goodsNo, firstSku(g).skuNo, 1);
+    const p = tapPoint(e as Parameters<typeof tapPoint>[0]);
+    flyToCart(p.x, p.y, g.cover);
+  } catch (err) {
+    uni.showToast({ title: (err as Error).message, icon: "none" });
+  }
+}
+
 async function addOne(f: FrequentItem) {
+  // 停业的店先拦住：让他加完购、到结算才被拒，是把一次失望拖长了三步
+  if (closed.value) {
+    uni.showToast({ title: t("store.closedTip"), icon: "none" });
+    return;
+  }
   if (f.invalid) {
     uni.showToast({ title: t("store.itemInvalid"), icon: "none" });
     return;
@@ -79,6 +111,10 @@ async function addOne(f: FrequentItem) {
 /** 一键再来一单：拿最近一笔本店订单整单复制（C-ST-03） */
 async function reorder() {
   if (busy.value) return;
+  if (closed.value) {
+    uni.showToast({ title: t("store.closedTip"), icon: "none" });
+    return;
+  }
   if (!user.isLogin) {
     uni.navigateTo({ url: ROUTES.login });
     return;
@@ -143,6 +179,14 @@ onShareAppMessage(() =>
 
 <template>
   <sh-scaffold v-if="data" :padded="true">
+    <!--
+      已停业横幅。**放在最上面、盖不住内容** —— 老客扫码进来是冲着这家店来的，
+      要第一眼知道「店关了」而不是翻了半天才发现加不了购。
+    -->
+    <view v-if="closed" class="closed">
+      <text class="closed__text">{{ $t("store.closed") }}</text>
+    </view>
+
     <!-- 店招：登录用户看到的是「常买」优先，这里只占一行 -->
     <view class="store">
       <text class="store__logo">{{ data.merchant.logo }}</text>
@@ -184,7 +228,7 @@ onShareAppMessage(() =>
         class="freq"
         :class="{ 'is-off': f.invalid }"
       >
-        <text class="freq__cover">{{ f.cover }}</text>
+        <sh-cover class="freq__cover" :src="f.cover"></sh-cover>
         <view class="freq__main" @tap="gotoGoods(f.goodsNo)">
           <text class="freq__title">{{ f.title }}</text>
           <text class="sh-muted">{{ f.spec }}</text>
@@ -229,12 +273,23 @@ onShareAppMessage(() =>
         :key="g.goodsNo"
         :goods="g"
         @tap="gotoGoods(g.goodsNo)"
+        @add="addGoods(g, $event)"
       ></biz-goods-card>
     </view>
   </sh-scaffold>
 </template>
 
 <style scoped>
+.closed {
+  padding: 20rpx 24rpx;
+  margin-bottom: 16rpx;
+  border-radius: 24rpx;
+  background: var(--sh-faint);
+}
+.closed__text {
+  font-size: 26rpx;
+  color: var(--sh-sub);
+}
 .store {
   display: flex;
   align-items: center;
@@ -275,7 +330,7 @@ onShareAppMessage(() =>
   padding: 20rpx 24rpx;
   border-radius: 24rpx;
   background: var(--sh-primary-tint);
-  color: var(--sh-primary);
+  color: var(--sh-primary-text);
   font-size: 26rpx;
   line-height: 1.6;
 }
@@ -287,7 +342,7 @@ onShareAppMessage(() =>
 .link {
   font-size: 26rpx;
   font-weight: 600;
-  color: var(--sh-primary);
+  color: var(--sh-primary-text);
 }
 /* 底和圆角由外层 .sh-block 给 —— 常买行在块内成行，不再各自一张卡 */
 .freq {

@@ -415,7 +415,7 @@ onShow(load);
 .codecard__label {
   display: block;
   font-size: 24rpx;
-  color: var(--sh-primary);
+  color: var(--sh-primary-text);
 }
 .codecard--redeem .codecard__label {
   color: var(--sh-warning);
@@ -441,7 +441,7 @@ onShow(load);
   display: block;
   font-size: 34rpx;
   font-weight: 600;
-  color: var(--sh-primary);
+  color: var(--sh-primary-text);
 }
 .status.is-WAIT_PAY {
   color: var(--sh-warning);

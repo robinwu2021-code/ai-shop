@@ -226,7 +226,7 @@ onLoad((q) => {
   border: 2rpx solid transparent;
 }
 .type.is-on {
-  border-color: var(--sh-primary);
+  border-color: var(--sh-primary-text);
   background: var(--sh-primary-tint);
 }
 .type__t {
@@ -306,7 +306,7 @@ onLoad((q) => {
 }
 .notice__text {
   font-size: 24rpx;
-  color: var(--sh-primary);
+  color: var(--sh-primary-text);
   line-height: 1.6;
 }
 .done {

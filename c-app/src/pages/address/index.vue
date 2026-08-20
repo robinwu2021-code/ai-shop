@@ -182,7 +182,7 @@ onLoad((q) => {
 }
 .op {
   font-size: 24rpx;
-  color: var(--sh-primary);
+  color: var(--sh-primary-text);
 }
 .op--danger {
   color: var(--sh-danger);

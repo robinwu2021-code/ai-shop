@@ -4,6 +4,8 @@
 //       → 全局即时生效，零重载。
 
 export type SkinId =
+  /** 品牌皮肤（虹选红）。B 端默认；色值真源 brand/spec.html */
+  | "brand"
   | "fresh"
   | "promo"
   | "blue"
@@ -69,23 +71,33 @@ export const SURFACES: Record<SurfaceTone, { light: Surface; dark: Surface }> = 
   // ⚠️ 纯白底组的 bg **不是纯白**：页面底与卡片同为 #FFFFFF 时，
   // 卡片、列表行、空态之间没有任何边界，整屏糊成一片白（设计语言不用描边、不用阴影，
   // 分层全靠面色，所以面色一旦相同，层次就彻底没有了）。
-  // 微信自己也是「页面 #EDEDED + 卡片白」；这里取更克制的 #F5F6F8 ——
-  // 足够划出边界，又保住「白纸一张」的观感。
+  //
+  // **两个数由对比度定，不是挑出来的**（design-tokens.test.ts 有断言守着）：
+  //
+  // 1. `surface ↔ bg ≥ 1.17` —— 取「微信档」：微信是页面 #EDEDED + 卡片白 = 1.171。
+  //    此前 #F5F6F8 只有 **1.08**，白卡浮在近白底上等于没有边界，一屏卡片糊成一片
+  //    （真机截图上卡片边界要靠猜）。往深里再压会丢掉「白纸一张」的观感，
+  //    而微信这个档是国内商家最熟悉的参照，故就此打住。
+  // 2. `sub 文字 on surface ≥ 4.5` —— WCAG AA 正文下限。此前 #7B808A 在白底上只有
+  //    **3.96，不达标**：次要信息（单号、时间、店名）本就该弱一档，但弱到读不清
+  //    就不是层次而是缺陷了。
+  //
+  // 深色档反过来：底不动，把 surface/elev/faint/line 一起提亮到同样的 1.17。
   pure: {
-    light: { bg: "#F5F6F8", surface: "#FFFFFF", elev: "#FFFFFF", ink: "#14161A", sub: "#7B808A", faint: "#EDEEF1", line: "#E4E6EA" },
-    dark: { bg: "#000000", surface: "#111214", elev: "#17191C", ink: "#F3F4F6", sub: "#9AA1AC", faint: "#1C1E22", line: "#24262B" },
+    light: { bg: "#ECEDEF", surface: "#FFFFFF", elev: "#FFFFFF", ink: "#14161A", sub: "#63676E", faint: "#E4E5E8", line: "#DCDEE2" },
+    dark: { bg: "#000000", surface: "#161719", elev: "#1D2023", ink: "#F3F4F6", sub: "#9AA1AC", faint: "#23262B", line: "#2E3036" },
   },
   neutral: {
-    light: { bg: "#F4F5F7", surface: "#FFFFFF", elev: "#FFFFFF", ink: "#14161A", sub: "#7B808A", faint: "#EFF0F3", line: "#E7E9ED" },
-    dark: { bg: "#0C0E12", surface: "#16191F", elev: "#1D2129", ink: "#F3F4F6", sub: "#9AA1AC", faint: "#21252D", line: "#262B34" },
+    light: { bg: "#ECEDEF", surface: "#FFFFFF", elev: "#FFFFFF", ink: "#14161A", sub: "#63676E", faint: "#E7E8EB", line: "#E0E2E5" },
+    dark: { bg: "#0C0E12", surface: "#1C1F27", elev: "#242933", ink: "#F3F4F6", sub: "#9AA1AC", faint: "#292E38", line: "#303641" },
   },
   warm: {
-    light: { bg: "#FAF7F2", surface: "#FFFFFF", elev: "#FFFFFF", ink: "#1A1712", sub: "#857C6E", faint: "#F3EEE5", line: "#EBE4D8" },
-    dark: { bg: "#12100D", surface: "#1B1813", elev: "#221E18", ink: "#F5F2EC", sub: "#A79C8B", faint: "#241F18", line: "#2C271F" },
+    light: { bg: "#EFECE7", surface: "#FFFFFF", elev: "#FFFFFF", ink: "#1A1712", sub: "#71695E", faint: "#E8E4DB", line: "#E1DACE" },
+    dark: { bg: "#12100D", surface: "#242019", elev: "#2D2720", ink: "#F5F2EC", sub: "#A79C8B", faint: "#2F2920", line: "#3A3329" },
   },
   cool: {
-    light: { bg: "#F2F6FA", surface: "#FFFFFF", elev: "#FFFFFF", ink: "#121619", sub: "#74808A", faint: "#E9F0F6", line: "#DFE7EE" },
-    dark: { bg: "#0A0E12", surface: "#141A20", elev: "#1A222A", ink: "#F1F4F6", sub: "#93A0AC", faint: "#1B232B", line: "#212B34" },
+    light: { bg: "#E9EDF1", surface: "#FFFFFF", elev: "#FFFFFF", ink: "#121619", sub: "#626C75", faint: "#E1E7ED", line: "#D7DFE5" },
+    dark: { bg: "#0A0E12", surface: "#182027", elev: "#202933", ink: "#F1F4F6", sub: "#93A0AC", faint: "#212A34", line: "#28343F" },
   },
 };
 
@@ -118,10 +130,33 @@ export interface SkinPalette extends SkinColor {
    * 但压在它上面的**文字仍必须达 4.5:1**（改用墨色即可，不必牺牲绿色本身）。
    */
   brandLocked?: boolean;
+  /**
+   * **主色当文字用时的那一档**（`--sh-primary-text`）。不填就由生成器算。
+   *
+   * <p>为什么需要它：主色是为「压白字的按钮底」调的，而同一个红拿去当**文字**
+   * 压在页面底上就不够了 —— 实测 `#E1251B` 压 `#ECEDEF` 只有 **4.00**，
+   * 而 AA 要 4.5。这件事没有任何症状：颜色看着是对的品牌红，只是弱视用户读不清，
+   * 而 B 端满屏都是这种用法（「＋新建商品」「获取验证码」「从相册选」）。
+   *
+   * <p>**八套皮肤里有六套中招**（blue 3.92 / promo 3.86 / amber 3.87 / teal 3.85 …），
+   * 所以它不是品牌的特例，是整套设计系统缺的一档。
+   *
+   * <p>只有 brand 手填：`#B31710` 是 `brand/spec.html` §01 点名的「深红 Deep」，
+   * 品牌书里写死的值优先于算出来的最小值（算出来是 `#D02219`，4.57 —— 刚好过线，
+   * 底色再动一点就又掉下去）。其余皮肤没有品牌书，交给生成器按对比度算。
+   */
+  deep?: { light: string; dark: string };
 }
 
 // 名称与说明走 i18n（skin.* / mode.*），此处只放与语言无关的色值
 export const SKINS: SkinDef[] = [
+  /*
+   * 品牌皮肤（虹选红）。排首位 —— 它是**品牌本身**，其余八套是「换肤」这个功能。
+   * 色值真源：brand/tokens.json 与 brand/spec.html（主色 #E1251B、深色档 #FF5A4D）。
+   * 深色档不是"把主色调亮一点"的美学选择：主色压深底只有 3.72，深色模式下
+   * 主按钮会糊进背景；#FF5A4D 压深底 5.66 才够。
+   */
+  { id: "brand", color: "#E1251B" },
   { id: "fresh", color: "#00B578" },
   { id: "promo", color: "#D24600" },
   { id: "blue", color: "#2C69FF" },
@@ -134,6 +169,13 @@ export const SKINS: SkinDef[] = [
 
 export const MODES: ModeId[] = ["light", "dark", "auto"];
 
+/**
+ * 默认皮肤的**兜底值**。各端可以有自己的默认：B 端经 `configureShell({ defaultSkin })`
+ * 注入 `brand`（品牌红），C 端不注入就用这里的 `fresh`。
+ *
+ * <p>为什么不把这个常量直接改成 `brand`：那会把 C 端一起换掉，而 C 端换不换是
+ * 另一个决定。默认值是「端的选择」，不是「色板的属性」——放在色板里就没法分端了。
+ */
 export const DEFAULT_SKIN: SkinId = "fresh";
 export const DEFAULT_MODE: ModeId = "light";
 
@@ -144,6 +186,24 @@ export const DEFAULT_MODE: ModeId = "light";
  * 值必须与 App.vue 里的 CSS 变量保持一致（改一处要改两处，由规范测试比对）。
  */
 export const SKIN_HEX: Record<SkinId, SkinPalette> = {
+  /**
+   * brand = **虹选红**。真源 `brand/spec.html` §01，色值与对比度都是实测值：
+   * 主色 `#E1251B` 压白字 4.69 ✓ AA；深色档 `#FF5A4D` 压深底 5.66 ✓、压墨字 5.77 ✓。
+   *
+   * <p><b>两档不可互换</b>（规范里点名的三条分工之一）：主色压深底只有 3.72，
+   * 深色模式用它主按钮会糊进背景；而 `#FF5A4D` 压白字只有 3.08，浅底上用它不可读。
+   * 判断依据是底色，不是喜好。
+   *
+   * <p>`ink` 取规范的墨 `#17181A`（白底 17.77）。不 brandLocked ——
+   * 品牌红本身就达标，不需要豁免。
+   */
+  brand: {
+    group: "pure", tone: "pure",
+    light: "#E1251B", dark: "#FF5A4D",
+    ink: { light: "#17181A", dark: "#F3F4F6" },
+    // 「深红 Deep」，spec §01 三条分工的第一条：灰底上的红字用它，不用主色
+    deep: { light: "#B31710", dark: "#FF5A4D" },
+  },
   // ---- 纯白底组：底恒为白，只换主色与字色 ----
   /**
    * fresh = **微信绿 `#00B578`，不压深**。

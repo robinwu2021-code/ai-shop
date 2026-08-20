@@ -199,17 +199,20 @@ async function refresh() {
 </template>
 
 <style scoped>
+/* 同 stores：横向内边距由 sh-scaffold 统一给，这里再加一道会与卡片左边界错开 */
 .head {
-  padding: 32rpx 32rpx 8rpx;
+  padding: 8rpx 0 16rpx;
 }
+/* 同 stores：`<text>` 默认 inline，不给 block 标题与说明会挤在同一行 */
 .mt {
+  display: block;
   margin-top: 12rpx;
 }
 .mt-card {
-  margin-top: 24rpx;
+  margin-top: 16rpx;
 }
 .ch {
-  margin-top: 24rpx;
+  margin-top: 14rpx;
 }
 .ch__top {
   display: flex;
@@ -223,7 +226,7 @@ async function refresh() {
 }
 .badge.is-ok {
   background: var(--sh-primary-tint);
-  color: var(--sh-primary);
+  color: var(--sh-primary-text);
 }
 .badge.is-wait {
   background: var(--sh-faint);
@@ -242,11 +245,11 @@ async function refresh() {
   margin-top: 20rpx;
 }
 .kv__k {
-  font-size: 26rpx;
+  font-size: 24rpx;
   color: var(--sh-sub);
 }
 .kv__v {
-  font-size: 26rpx;
+  font-size: 28rpx;
   color: var(--sh-ink);
 }
 .miss {
@@ -254,7 +257,7 @@ async function refresh() {
 }
 .miss__t {
   display: block;
-  font-size: 26rpx;
+  font-size: 28rpx;
   color: var(--sh-ink);
 }
 .miss__i {
@@ -264,20 +267,7 @@ async function refresh() {
   color: var(--sh-sub);
 }
 .field {
-  margin-top: 28rpx;
-}
-.field__label {
-  display: block;
-  font-size: 26rpx;
-  color: var(--sh-sub);
-}
-.field__input {
-  margin-top: 12rpx;
-  padding: 20rpx 24rpx;
-  border-radius: 24rpx;
-  background: var(--sh-faint);
-  font-size: 28rpx;
-  color: var(--sh-ink);
+  margin-top: 20rpx;
 }
 .hint {
   display: block;
@@ -306,7 +296,7 @@ async function refresh() {
   color: var(--sh-sub);
 }
 .submit {
-  margin-top: 40rpx;
+  margin-top: 28rpx;
 }
 .refresh {
   margin-top: 16rpx;

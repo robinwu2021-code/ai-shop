@@ -279,17 +279,23 @@ function pickPayment(s: Store, payMerchantNo?: string) {
 </template>
 
 <style scoped>
+/* 横向不再自己加内边距：页面边距由 sh-scaffold 统一给，这里再加一道，
+   标题就比下方卡片多缩进一截（同一屏里两条左边界，看着像没对齐） */
 .head {
-  padding: 32rpx 32rpx 8rpx;
+  padding: 8rpx 0 16rpx;
 }
+/* `<text>` 默认 inline —— 不给 block，标题与这行说明会**挤在同一行**
+   （「门店管理这里管有几家店…」），而 margin-top 对 inline 元素也不起作用。
+   apply / login 两页早就是这么写的，payment / stores 漏了。 */
 .mt {
+  display: block;
   margin-top: 12rpx;
 }
 .mt-card {
-  margin-top: 24rpx;
+  margin-top: 16rpx;
 }
 .st {
-  margin-top: 24rpx;
+  margin-top: 14rpx;
 }
 .st__top {
   display: flex;
@@ -310,7 +316,7 @@ function pickPayment(s: Store, payMerchantNo?: string) {
 }
 .tag--primary {
   background: var(--sh-primary-tint);
-  color: var(--sh-primary);
+  color: var(--sh-primary-text);
 }
 .tag--warn {
   color: var(--sh-danger);
@@ -342,24 +348,11 @@ function pickPayment(s: Store, payMerchantNo?: string) {
   margin-top: 20rpx;
 }
 .act {
-  font-size: 26rpx;
-  color: var(--sh-primary);
+  font-size: 24rpx;
+  color: var(--sh-primary-text);
 }
 .field {
-  margin-top: 28rpx;
-}
-.field__label {
-  display: block;
-  font-size: 26rpx;
-  color: var(--sh-sub);
-}
-.field__input {
-  margin-top: 12rpx;
-  padding: 20rpx 24rpx;
-  border-radius: 24rpx;
-  background: var(--sh-faint);
-  font-size: 28rpx;
-  color: var(--sh-ink);
+  margin-top: 20rpx;
 }
 .hint {
   display: block;
@@ -372,7 +365,7 @@ function pickPayment(s: Store, payMerchantNo?: string) {
   margin-top: 24rpx;
 }
 .submit {
-  margin-top: 32rpx;
+  margin-top: 28rpx;
 }
 .cancel {
   margin-top: 16rpx;

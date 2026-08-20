@@ -291,9 +291,11 @@ function copyText() {
 }
 
 function copyLink() {
-  if (!qrcode.value) return;
+  // url 可空：后端未配对外域名时返回 null，此时按钮本来就不显示，这里再兜一道
+  const url = qrcode.value?.url;
+  if (!url) return;
   uni.setClipboardData({
-    data: qrcode.value.url,
+    data: url,
     success: () => uni.showToast({ title: t("store.copied"), icon: "none" }),
   });
 }
@@ -454,13 +456,25 @@ onShow(load);
     <!-- 店铺码：线下场景的主入口，印在包装袋上 -->
     <view class="sh-card mt">
       <text class="sh-h2">{{ $t("store.qrcode") }}</text>
+      <!-- 真的小程序码。扫了直接进 C 端门店页，不依赖备案域名 -->
       <view class="qr">
-        <text class="qr__ph">▦</text>
-        <text class="sh-muted qr__note">{{ $t("store.qrcodePlaceholder") }}</text>
+        <image
+          v-if="qrcode?.imageBase64"
+          class="qr__img"
+          :src="`data:image/png;base64,${qrcode.imageBase64}`"
+          mode="widthFix"
+        />
+        <template v-else>
+          <text class="qr__ph">▦</text>
+          <!-- **不画一张假码**：占位图会被印到包装袋上，而它扫不出任何东西 -->
+          <text class="sh-muted qr__note">{{ $t("store.qrcodePending") }}</text>
+        </template>
+        <text v-if="qrcode?.storeCode" class="qr__code sh-num">{{ qrcode.storeCode }}</text>
       </view>
-      <text class="link sh-num">{{ qrcode?.url }}</text>
+      <!-- 链接只在真的有域名时显示 —— 后端未配时返回 null，这里就整行不出现 -->
+      <text v-if="qrcode?.url" class="link sh-num">{{ qrcode.url }}</text>
       <view class="btns">
-        <text class="mini" @tap="copyLink">{{ $t("store.copyLink") }}</text>
+        <text v-if="qrcode?.url" class="mini" @tap="copyLink">{{ $t("store.copyLink") }}</text>
         <text class="mini">{{ $t("store.printVersion") }}</text>
       </view>
       <text class="hint">{{ $t("store.qrcodeHint") }}</text>
@@ -477,6 +491,16 @@ onShow(load);
 </template>
 
 <style scoped>
+.qr__img {
+  width: 320rpx;
+}
+.qr__code {
+  display: block;
+  margin-top: 12rpx;
+  font-size: 30rpx;
+  letter-spacing: 4rpx;
+  color: var(--sh-ink);
+}
 .scope {
   display: flex;
   align-items: center;
@@ -495,7 +519,7 @@ onShow(load);
 }
 .scope__name {
   display: block;
-  font-size: 26rpx;
+  font-size: 28rpx;
   font-weight: 600;
   color: var(--sh-ink);
 }
@@ -510,10 +534,10 @@ onShow(load);
   flex-shrink: 0;
   font-size: 30rpx;
   font-weight: 400;
-  color: var(--sh-primary);
+  color: var(--sh-primary-text);
 }
 .cms {
-  margin-top: 28rpx;
+  margin-top: 20rpx;
 }
 .cms__list {
   display: flex;
@@ -523,11 +547,12 @@ onShow(load);
 }
 .cms__i.is-on {
   background: var(--sh-primary);
-  color: #fff;
+  /* 同 apply：主色上的前景走 --sh-on-primary，不写死白字 */
+  color: var(--sh-on-primary);
 }
 .sec {
   display: block;
-  margin-top: 28rpx;
+  margin-top: 16rpx;
 }
 .addr {
   margin-top: 20rpx;
@@ -543,7 +568,7 @@ onShow(load);
   flex-wrap: wrap;
   gap: 8rpx;
   font-size: 24rpx;
-  color: var(--sh-primary);
+  color: var(--sh-primary-text);
 }
 .rg__list {
   margin-top: 12rpx;
@@ -557,7 +582,7 @@ onShow(load);
 }
 .rg__n {
   flex: 1;
-  font-size: 26rpx;
+  font-size: 28rpx;
   color: var(--sh-ink);
 }
 .rg__more {
@@ -566,7 +591,7 @@ onShow(load);
 .rg__pick {
   flex-shrink: 0;
   font-size: 24rpx;
-  color: var(--sh-primary);
+  color: var(--sh-primary-text);
 }
 .rg__close {
   display: inline-block;
@@ -590,7 +615,7 @@ onShow(load);
   color: var(--sh-danger);
 }
 .mt {
-  margin-top: 24rpx;
+  margin-top: 16rpx;
 }
 .hint {
   display: block;
@@ -600,7 +625,7 @@ onShow(load);
   line-height: 1.6;
 }
 .save {
-  margin-top: 32rpx;
+  margin-top: 24rpx;
 }
 .qr {
   margin: 24rpx 0;
@@ -643,7 +668,7 @@ onShow(load);
   padding: 24rpx;
   border-radius: 24rpx;
   background: var(--sh-faint);
-  font-size: 26rpx;
+  font-size: 24rpx;
   line-height: 1.7;
   color: var(--sh-ink);
 }

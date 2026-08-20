@@ -17,11 +17,12 @@ REPO = ROOT.parent
 RED      = "#E1251B"   # 主色 · 标识 / 主按钮底 / C 端图标底。压白字 4.69 ✓ AA
 RED_DEEP = "#B31710"   # 深红 · 浅底上的红色文字、hover。白底 6.89 ✓
 RED_BRIGHT = "#FF5A4D" # 亮红 · 深色模式主色。压深底 5.66 ✓
-                       # （曾注为「B 端图标弧线」—— 那是深板岩底板时代的事，
-                       #  B 端已改红底 + 纸白字形，见下方 APPS["b"] 与 spec §01）
 INK      = "#17181A"   # 墨 · 正文 / 深底 / 单色稿。白底 17.77 ✓
 PAPER    = "#FFFFFF"
-PLATE_B  = "#242B33"   # B 端底板 · 深板岩（近黑会在黑壁纸上失去边界）
+# B 端图标底板。**2026-08-20 由深板岩 #242B33 改为墨**：
+# spec 的禁止事项写着「底色只用主色 / 墨 / 反白」，深板岩三样都不是；
+# 而合规的三种里红已被 C 端占用（两端曾因此撞成同一张图），反白在浅色壁纸上丢边界。
+PLATE_B  = INK
 
 # ── 几何（spec §02；2026-08-20 定档）
 # 全部按「边长 S」的比例定义 —— 与尺寸无关，任何画布等比推出。
@@ -266,11 +267,20 @@ def adaptive_fg_svg(glyph, arc=None):
 APPS = {
     "c": dict(name="虹选好物", label="虹选 · 好物", plate=RED, glyph=PAPER, arc=PAPER,
               flavor="consumer", pkg="ai.neargo.shop.c"),
-    # B 端底色**用主色红**（2026-08-19 拍板，覆盖 spec §03 的「深板岩」那一档）。
-    # 代价是两端图标同色系，靠桌面名区分（虹选好物 / 虹选商家）；
-    # 收益是商家打开手机第一眼就是品牌色，而深板岩在一堆彩色图标里读作「系统工具」。
+    # B 端：**红底 + 中文字标「虹选」**（2026-08-20 拍板）。
+    #
+    # 走过的两版都记在这里，免得再绕：
+    #   ① 红底 + HX —— 与 C 端**字节完全相同**，桌面上只能靠名字分，
+    #      而桌面名在文件夹里、在搜索结果里都会被截断。
+    #   ② 墨底 + HX —— 分得开了，但商家端第一眼不是品牌色。
+    # 现在这版两头都要：底色仍是主色红（品牌一致 + 深浅壁纸上边界都最稳，
+    # 实测压黑 4.48、压白 4.69），靠**字形**与 C 端区分 —— 一个 HX，一个「虹选」。
+    #
+    # 为什么是「虹选」两字而不是「虹选商家」四字：图标在桌面上是 48dp，
+    # 四个汉字每个不到 10dp，笔画糊成一团 —— 而「商家」这层信息桌面名里已经有了
+    # （app_name = 虹选商家）。方章走 spec §02 已有的 CN2 档，不新造几何。
     "b": dict(name="虹选商家", label="虹选 · 商家", plate=RED, glyph=PAPER, arc=PAPER,
-              flavor="merchant", pkg="ai.neargo.shop.b"),
+              cn="虹选", flavor="merchant", pkg="ai.neargo.shop.b"),
 }
 
 # ─────────────────────────────────────────── PNG 渲染（headless Chrome）
@@ -324,6 +334,9 @@ def write(p: pathlib.Path, text):
 
 
 def app_icon_svg(a):
+    # 带 `cn` 的走中文方章（B 端「虹选」），否则走 HX 方章（C 端）
+    if a.get("cn"):
+        return cn_icon_svg(a["plate"], a["glyph"], a["arc"], text=a["cn"], span="虹")
     return icon_svg(a["plate"], a["glyph"], a["arc"])
 
 
@@ -383,7 +396,7 @@ def build_tokens():
             "redBright":   {"value": RED_BRIGHT, "note": "亮红 · 深色模式主色 / B 端图标 4.65 AA"},
             "ink":         {"value": INK,      "note": "墨"},
             "paper":       {"value": PAPER,    "note": "纸"},
-            "plateMerchant": {"value": PLATE_B, "note": "B 端图标底板 · 深板岩"},
+            "plateMerchant": {"value": PLATE_B, "note": "B 端图标底板 · 墨（原深板岩 #242B33，见 spec §01）"},
         }
     }
     write(ROOT / "tokens.json", json.dumps(tok, ensure_ascii=False, indent=2) + "\n")
@@ -457,7 +470,9 @@ def build_android():
                   '</adaptive-icon>\n')
         n += 4
         # Play 商店图
-        render_png(icon_svg(a["plate"], a["glyph"]), 512, ROOT / "store" / f"play-{k}-512.png")
+        # 走分派器而不是直接 icon_svg：直接调会跳过 APPS 里的 `cn`，
+        # 于是 B 端在 Play 商店那张图上仍是 HX，而桌面上是「虹选」—— 同一个 app 两张脸
+        render_png(app_icon_svg(a), 512, ROOT / "store" / f"play-{k}-512.png")
         n += 1
     return n
 
@@ -467,7 +482,7 @@ def build_ios():
     n = 0
     for k, a in APPS.items():
         d = ROOT / "ios" / f"AppIcon-{k}.appiconset"
-        render_png(icon_svg(a["plate"], a["glyph"]), 1024, d / "icon-1024.png")
+        render_png(app_icon_svg(a), 1024, d / "icon-1024.png")   # 同上：必须走分派器
         write(d / "Contents.json", json.dumps({
             "images": [{"filename": "icon-1024.png", "idiom": "universal",
                         "platform": "ios", "size": "1024x1024"}],

@@ -12,14 +12,27 @@ import { useI18n } from "vue-i18n";
 import { money } from "@shared/utils/money";
 import { FULFILLMENT } from "@shared/utils/constants";
 import { datetime } from "@shared/utils/datetime";
-import type { Order, OrderStatus } from "@shared/types";
+import type { Order } from "@shared/types";
+import {
+  DELIVERY_SHAPE,
+  fulfillmentsOf,
+  tabQuery,
+  type OrderTabSpec,
+} from "@shared/strategies/order-view";
+
+/** 要商家核销的履约：自提点、邻居家、到店核销。**靠履约方式判，不靠状态** */
+const PICKUP_LIKE = new Set<string>(
+  fulfillmentsOf(DELIVERY_SHAPE.SELF_PICKUP, DELIVERY_SHAPE.SELF_SERVE),
+);
 
 const merchant = useMerchantStore();
 const { t } = useI18n();
 
 /** 状态色：要动手的用主色、售后用警示色、终态保持中性 —— 一眼能挑出「该我做的」 */
-function statusChip(status: OrderStatus): string {
-  if (status === "PAID" || status === "ARRIVED") return "sh-chip--primary";
+function statusChip(o: Order): string {
+  // 「该我做的」= 待履约，或已履约但还要我核销的（自提/到店核销）
+  if (o.status === "PAID") return "sh-chip--primary";
+  if (o.status === "FULFILLING" && PICKUP_LIKE.has(o.fulfillment)) return "sh-chip--primary";
   return "";
 }
 
@@ -39,18 +52,37 @@ function statusText(o: Order): string {
     if (f === FULFILLMENT.DELIVERY) return t("home.toDeliver");
     return t("order.statusPAID");
   }
-  if (o.status === "SHIPPED" && f === FULFILLMENT.DELIVERY) {
-    // 自送单「已发货」= 骑手在路上，说「配送中」更准
-    return t("order.delivering");
+  if (o.status === "FULFILLING") {
+    // 自送单在路上说「配送中」更准；自提/到店核销说「待核销」；快递才是「已发货」
+    if (f === FULFILLMENT.DELIVERY) return t("order.delivering");
+    if (PICKUP_LIKE.has(f)) return t("home.toVerify");
+    return t("order.statusSHIPPED");
   }
   return t(`order.status${o.status}`);
 }
 
-const ALL_TABS: { key: string; status?: OrderStatus; labelKey: string; perm?: string }[] = [
+/*
+ * 页签 = **谓词**（抽象状态 + 交付形态），不是状态值。
+ *
+ * 商家侧与买家侧看同一批单、分法不同：买家分「去取 / 等着」，
+ * 商家分「待发货 / 已发货 / 待核销」。**同一份状态支撑两种分法**，
+ * 正是因为状态不含履约 —— 此前 `ARRIVED`/`SHIPPED` 把商家的分法烧进了状态里。
+ */
+const ALL_TABS: (OrderTabSpec & { labelKey: string; perm?: string })[] = [
   { key: "all", labelKey: "order.tabAll" },
   { key: "toShip", status: "PAID", labelKey: "order.tabToShip" },
-  { key: "shipped", status: "SHIPPED", labelKey: "order.tabShipped" },
-  { key: "toVerify", status: "ARRIVED", labelKey: "order.tabToVerify" },
+  {
+    key: "shipped",
+    status: "FULFILLING",
+    shapes: [DELIVERY_SHAPE.SHIP_TO_BUYER, DELIVERY_SHAPE.SERVE_TO_BUYER],
+    labelKey: "order.tabShipped",
+  },
+  {
+    key: "toVerify",
+    status: "FULFILLING",
+    shapes: [DELIVERY_SHAPE.SELF_PICKUP, DELIVERY_SHAPE.SELF_SERVE],
+    labelKey: "order.tabToVerify",
+  },
   { key: "done", status: "COMPLETED", labelKey: "order.tabDone" },
   // 售后不按订单状态筛 —— 它是另一张单，走 /biz/after-sale（见 load()）
   // 而那张单要 `biz:aftersale`：这一页的门禁只有 `biz:order:view`，
@@ -90,8 +122,8 @@ async function load() {
       const res = await api.mOrderList(scope);
       list.value = res.records.filter((o) => nos.has(o.orderNo));
     } else {
-      const status = ALL_TABS.find((t) => t.key === tab.value)?.status;
-      const res = await api.mOrderList({ ...scope, status });
+      const spec = ALL_TABS.find((t) => t.key === tab.value);
+      const res = await api.mOrderList({ ...scope, ...(spec ? tabQuery(spec) : {}) });
       list.value = res.records;
     }
   } finally {
@@ -142,13 +174,13 @@ onShow(load);
         <!-- 行内显示的是**订单自己的状态**。原先拼的是 tab 的 key
              （`order.tab${PAID ? 'ToShip' : 'All'}`），于是除待发货外一律显示「全部」——
              一屏订单看下来全是「全部」，等于这一列没有信息 -->
-        <text class="sh-chip" :class="statusChip(o.status)">
+        <text class="sh-chip" :class="statusChip(o)">
           {{ statusText(o) }}
         </text>
       </view>
 
       <view v-for="it in o.items" :key="it.skuNo" class="item">
-        <text class="item__cover">{{ it.cover }}</text>
+        <sh-cover class="item__cover" :src="it.cover"></sh-cover>
         <view class="item__main">
           <text class="item__title">{{ it.title }}</text>
           <text class="sh-muted">{{ it.spec }} × {{ it.qty }}</text>
@@ -174,12 +206,12 @@ onShow(load);
   border-radius: 16rpx;
 }
 .scope__cur {
-  font-size: 26rpx;
+  font-size: 24rpx;
   color: var(--sh-ink);
 }
 .scope__switch {
   font-size: 24rpx;
-  color: var(--sh-primary);
+  color: var(--sh-primary-text);
 }
 /* 列表密度对齐 C 端（平台版式约定）：卡片之间只留一条缝、正文行高 1.35。
    商家一天要扫几十次这类列表，行距每多 10rpx，一屏就少一行。 */

@@ -8,6 +8,12 @@
 //   3. 小程序切后台会挂起，长传要断点重来；App 可后台续传
 //
 // 结论：**识别统一放服务端**。两端一套逻辑，小程序不掉队，App 也不用为端侧模型撑大包体。
+/**
+ * 单张图的上限。**必须与后端 `BizUploadController.MAX_BYTES` 一致** ——
+ * 两边各写一个数的话，端上放行、服务端拒绝，商家白等一次上传却看不出原因。
+ */
+export const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+
 export type ImageSource = "camera" | "album";
 
 export interface PickedImage {
