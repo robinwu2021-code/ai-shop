@@ -10,7 +10,7 @@
 //   3. **批量设价/设库存**。8 个 SKU 一个个填是劝退的，多数店主其实只想「都设成 12 块」。
 //
 // 价格用主单位输入、最小单位存储 —— 店主输 12.5，存 1250。
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import { onLoad } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
 import { api } from "@/api";
@@ -336,6 +336,27 @@ function keyOf(values: string[]): string {
   return values.join("");
 }
 
+/**
+ * 规格一变就重建矩阵。**不再只靠 `@blur`**。
+ *
+ * <p>此前重建的唯一触发点是输入框失焦。实测踩过：用系统返回键收键盘
+ * **不触发 blur**，矩阵就停在旧状态 —— 屏幕上写着两个选项，底下却只有一行 SKU，
+ * 而这时点保存，发出去的是「声明了 2 个选项、只带 1 个 SKU」的不一致包体。
+ * 真实用户点保存时 blur 通常会先触发，但那是时序上的巧合，不是设计。
+ *
+ * <p>防抖 250ms：每敲一个字符重建一次，矩阵会在打字过程中反复闪；
+ * 停手四分之一秒再重建，观感上就是「填完就出来了」。
+ */
+let rebuildTimer: ReturnType<typeof setTimeout> | undefined;
+watch(
+  groups,
+  () => {
+    clearTimeout(rebuildTimer);
+    rebuildTimer = setTimeout(rebuild, 250);
+  },
+  { deep: true },
+);
+
 /** 规格组变化后重建矩阵，按选项组合保留已填的价与库存 */
 function rebuild() {
   if (!groups.value.length) {
@@ -449,6 +470,14 @@ function addGroup() {
     return;
   }
   groups.value.push({ name: "", options: [""] });
+  /*
+   * 有模板就顺手摊开。加完组，商家面对的是两个空框，而「规格名该填什么」
+   * 恰恰是此刻最难的一步 —— 平台模板就在同一张卡片里，却要再点一次才看得到。
+   * 已经有组了就不摊开：那时他多半知道自己在干什么。
+   */
+  if (templates.value.length && groups.value.length === 1) {
+    showTemplates.value = true;
+  }
 }
 
 function removeGroup(i: number) {
@@ -794,10 +823,12 @@ async function save() {
         <text class="link" @tap="applyBulk">{{ $t("goods.applyBulk") }}</text>
       </view>
 
-      <view v-for="(r, i) in rows" :key="i" class="row">
-        <text class="row__spec">
-          {{ multi ? r.optionValues.join(" · ") : $t("goods.singleSpec") }}
-        </text>
+      <view v-for="(r, i) in rows" :key="i" class="row" :class="{ 'row--single': !multi }">
+        <!--
+          单规格不画左边这一格。只有一行时「默认规格」是在回答没人问的问题，
+          还占掉近半行宽度 —— 而这一行真正要填的只有价与库存两个数。
+        -->
+        <text v-if="multi" class="row__spec">{{ r.optionValues.join(" · ") }}</text>
         <input
           v-model="r.priceMajor[market]"
           class="row__input sh-num"
@@ -1029,6 +1060,10 @@ async function save() {
   align-items: center;
   gap: 12rpx;
   margin-top: 16rpx;
+}
+/* 单规格：左边那格不画，两个输入框各占一半 */
+.row--single .row__input {
+  flex: 1;
 }
 .row__spec {
   flex: 1;
