@@ -1,0 +1,11 @@
+node_modules
+.next
+.env.local
+next-env.d.ts
+tsconfig.tsbuildinfo
+
+# 静态导出产物（next build 随时重建）
+/out/
+
+# 源字体与定重母版：14 MB 的 OFL 原件与 instancer 产物，构建时按需下载/生成
+fonts/src/

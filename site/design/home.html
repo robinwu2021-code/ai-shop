@@ -1,0 +1,467 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>虹选 · 好物 — 官网首页设计稿</title>
+<meta name="description" content="楼下的好东西，都在虹选。社区邻里电商：附近的店、当天到手、每个商家有自己的颜色。">
+<style>
+/* ════════════════════════════════════════════════════════════════════════
+   hxmall.top 官网 · 首页设计稿（静态，非生产代码）
+
+   这份稿子的每个自定义属性都对应未来 Tailwind v4 `@theme` 的一个键，
+   命名已经按 v4 的 `--color-*` / `--font-*` 约定写好 —— 移植时是「搬运」不是「翻译」：
+     --color-brand      → theme 里的 brand，类名 bg-brand / text-brand
+     --color-ink        → ink，类名 bg-ink / text-ink
+     --text-display     → 展示大字，类名 text-display
+   色值真源是 brand/build.py，规范见 brand/spec.html。这里不许出现第二套红。
+   ════════════════════════════════════════════════════════════════════════ */
+:root{
+  /* —— 色（对应 @theme 的 --color-*）—— */
+  --color-brand:#e1251b;        /* 主色 · 压白字 4.69 AA */
+  --color-brand-deep:#b31710;   /* 浅底上的红字 / hover · 白底 6.89 */
+  --color-brand-bright:#ff5a4d; /* 深色区块里的主色 · 压墨底 5.66 */
+  --color-ink:#17181a;
+  --color-muted:#63676e;        /* 白底 5.68 */
+  --color-panel:#f5f6f8;
+  --color-line:#e5e7ea;
+  --color-tint:#fdeceb;
+  --color-paper:#ffffff;
+
+  /* —— 字（对应 @theme 的 --font-*）——
+     展示大字：拉丁走 Instrument Serif，中文落到思源黑体 Regular。
+     中文不加粗是刻意的：LBS 生活服务要「轻」，中文大字一上 Bold 就变成促销横幅。 */
+  --font-sans:"Figtree","Noto Sans SC","Source Han Sans SC",system-ui,-apple-system,sans-serif;
+  --font-display:"Instrument Serif","Noto Sans SC","Source Han Sans SC",Georgia,serif;
+
+  /* —— 尺（对应 @theme 的 --radius-* / --spacing-*）—— */
+  --radius-card:14px;
+  --edge:clamp(20px,5vw,64px);
+  --wrap:1160px;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--color-paper);color:var(--color-ink);font-family:var(--font-sans);font-size:16px;line-height:1.65;-webkit-font-smoothing:antialiased;text-wrap:pretty}
+img{display:block;max-width:100%}
+h1,h2,h3,h4{margin:0;line-height:1.15;letter-spacing:-.01em;font-weight:600}
+p{margin:0}
+a{color:var(--color-brand);text-decoration:none}
+a:hover{color:var(--color-brand-deep)}
+:focus-visible{outline:2px solid var(--color-brand);outline-offset:3px}
+::selection{background:var(--color-tint)}
+.wrap{max-width:var(--wrap);margin:0 auto;padding:0 var(--edge)}
+.display{font-family:var(--font-display);font-weight:400;letter-spacing:-.005em}
+.kicker{display:block;font-size:12.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--color-muted);margin-bottom:14px}
+.lede{color:var(--color-muted);font-size:17px;max-width:56ch}
+section{padding:clamp(56px,7vw,100px) 0}
+
+/* ── 按钮 ───────────────────────────────────────────── */
+.btn{display:inline-flex;align-items:center;gap:8px;padding:13px 24px;border-radius:999px;font:inherit;font-size:15px;font-weight:600;border:1px solid transparent;cursor:pointer;transition:background .18s,color .18s,border-color .18s;min-height:44px}
+.btn-primary{background:var(--color-brand);color:#fff}
+.btn-primary:hover{background:var(--color-brand-deep);color:#fff}
+.btn-quiet{border-color:var(--color-line);color:var(--color-ink);background:transparent}
+.btn-quiet:hover{background:var(--color-panel)}
+.btn-light{background:#fff;color:var(--color-brand)}
+.btn-light:hover{background:var(--color-tint);color:var(--color-brand-deep)}
+.btn-outline-light{border-color:rgba(255,255,255,.45);color:#fff}
+.btn-outline-light:hover{background:rgba(255,255,255,.12)}
+
+/* ── 标识（几何按 font-size = 边长 等比推导，参数见 brand/spec.html）── */
+.mark{flex:none;width:1em;height:1em;font-size:40px;border-radius:.275em;background:var(--color-brand);color:#fff;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden}
+.mark::before{content:"";display:block;width:.5em;height:.2em;border:.05em solid currentColor;border-bottom:0;border-radius:.25em .25em 0 0;margin-bottom:.04em}
+.mark .hx{display:block;height:.26em;width:auto;fill:currentColor}
+.mark.inv{background:#fff;color:var(--color-brand)}
+.logo{display:flex;align-items:center;gap:11px;color:var(--color-ink)}
+.logo .t{display:grid;gap:1px;line-height:1.15}
+.logo .t b{font-size:18px;font-weight:700;letter-spacing:.02em}
+.logo .t small{font-size:11.5px;font-weight:600;letter-spacing:.16em;color:var(--color-muted)}
+.logo.inv,.logo.inv .t b{color:#fff}
+.logo.inv .t small{color:rgba(255,255,255,.6)}
+
+/* ── 顶栏 ───────────────────────────────────────────── */
+header.top{position:sticky;top:0;z-index:30;background:rgba(255,255,255,.88);backdrop-filter:blur(10px);border-bottom:1px solid var(--color-line)}
+header.top .wrap{display:flex;align-items:center;gap:36px;height:74px}
+nav.links{display:flex;gap:28px;margin-left:auto;font-size:15px}
+nav.links a{color:var(--color-ink);white-space:nowrap}
+nav.links a:hover{color:var(--color-brand)}
+.nav-cta{display:flex;gap:10px}
+.nav-toggle{display:none;width:44px;height:44px;align-items:center;justify-content:center;background:transparent;border:1px solid var(--color-line);border-radius:11px;cursor:pointer;color:var(--color-ink);margin-left:auto}
+@media(max-width:1040px){
+  nav.links{display:none;position:absolute;top:100%;left:0;right:0;flex-direction:column;gap:0;background:#fff;border-bottom:1px solid var(--color-line);box-shadow:0 14px 30px rgba(23,24,26,.08);padding:6px var(--edge) 14px;margin-left:0}
+  nav.links[data-open]{display:flex}
+  nav.links a{padding:13px 0;border-bottom:1px solid var(--color-line)}
+  nav.links a:last-child{border-bottom:0}
+  .nav-toggle{display:inline-flex}
+  .nav-cta{display:none}
+  header.top .wrap{position:relative;gap:16px}
+}
+
+/* ── 1 首屏 ─────────────────────────────────────────── */
+.hero{padding:clamp(48px,7vw,96px) 0 clamp(40px,5vw,64px)}
+.hero .grid{display:grid;grid-template-columns:minmax(0,1.06fr) minmax(0,.94fr);gap:clamp(32px,5vw,72px);align-items:center}
+.hero h1{font-size:clamp(38px,5.6vw,70px);line-height:1.08}
+.hero h1 em{font-style:normal;color:var(--color-brand)}
+.hero p.sub{margin-top:22px;font-size:17.5px;color:var(--color-muted);max-width:44ch}
+.hero .row{display:flex;gap:12px;flex-wrap:wrap;margin-top:32px}
+.hero .note{margin-top:18px;font-size:13.5px;color:var(--color-muted)}
+/* 手机占位：设计稿里不放假截图 —— 真机图未产出前，用带说明的槽位，
+   免得评审把示意图当成已实现的界面。 */
+.slot{border-radius:var(--radius-card);background:var(--color-panel);border:1px dashed #cfd2d8;display:grid;place-items:center;text-align:center;color:var(--color-muted);font-size:13.5px;padding:20px}
+.hero .slot{aspect-ratio:4/5}
+@media(max-width:860px){.hero .grid{grid-template-columns:1fr}.hero .slot{aspect-ratio:16/10;order:-1}}
+
+/* ── 2 LBS 服务半径 ─────────────────────────────────── */
+.radius-sec{background:var(--color-panel)}
+.radius-grid{display:grid;grid-template-columns:minmax(0,.95fr) minmax(0,1.05fr);gap:clamp(32px,5vw,64px);align-items:center}
+/* width:100% 是必须的：里面全是绝对定位的子元素，没有它这个格子撑不出宽度，
+   aspect-ratio 会把整张图压成一条 30px 的竖条（实测过）。 */
+.rings{position:relative;width:100%;aspect-ratio:1;max-width:420px;margin:0 auto;display:grid;place-items:center}
+.ring{position:absolute;border-radius:50%;border:1px solid #d4d7dd}
+.ring.r1{inset:0;background:rgba(225,37,27,.03)}
+.ring.r2{inset:16%;background:rgba(225,37,27,.05)}
+.ring.r3{inset:34%;background:rgba(225,37,27,.08);border-color:rgba(225,37,27,.28)}
+.pin{position:absolute;width:14px;height:14px;border-radius:50%;background:var(--color-brand);box-shadow:0 0 0 4px rgba(225,37,27,.16)}
+.rings .me{width:18px;height:18px;background:var(--color-ink);box-shadow:0 0 0 5px rgba(23,24,26,.12)}
+.ring-label{position:absolute;font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-muted);background:var(--color-panel);padding:0 8px}
+.tiers{display:grid;gap:0;border-top:1px solid var(--color-line)}
+.tier{display:grid;grid-template-columns:92px minmax(0,1fr);gap:20px;padding:20px 0;border-bottom:1px solid var(--color-line);align-items:baseline}
+.tier b{font-family:var(--font-display);font-weight:400;font-size:26px;color:var(--color-brand);line-height:1.1}
+.tier h3{font-size:17.5px;margin-bottom:6px}
+.tier p{font-size:14.5px;color:var(--color-muted)}
+@media(max-width:860px){.radius-grid{grid-template-columns:1fr}}
+@media(max-width:560px){.tier{grid-template-columns:1fr;gap:4px}}
+
+/* ── 3 三步 ─────────────────────────────────────────── */
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-top:44px}
+.step{border:1px solid var(--color-line);border-radius:var(--radius-card);padding:26px 24px 28px;transition:box-shadow .2s,transform .2s}
+.step:hover{box-shadow:0 14px 40px rgba(16,21,28,.08);transform:translateY(-2px)}
+.step b{display:inline-grid;place-items:center;width:38px;height:38px;border-radius:50%;background:var(--color-tint);color:var(--color-brand-deep);font-size:14px;font-weight:700;font-variant-numeric:tabular-nums;margin-bottom:16px}
+.step h3{font-size:19px;margin-bottom:8px}
+.step p{font-size:14.5px;color:var(--color-muted)}
+@media(max-width:760px){.steps{grid-template-columns:1fr}}
+
+/* ── 4 皮肤演示（墨底）───────────────────────────────── */
+.skins{background:var(--color-ink);color:#fff}
+.skins .lede{color:rgba(255,255,255,.66)}
+.skins h2{color:#fff}
+.skins .kicker{color:rgba(255,255,255,.5)}
+.skin-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:clamp(30px,5vw,64px);align-items:center;margin-top:44px}
+.swatches{display:flex;flex-wrap:wrap;gap:12px}
+/* 内圈描边不是装饰：极简黑 #18181B 压在墨底 #17181a 上对比 1.0，没有它这颗色卡在深色区块里等于消失 */
+.swatch{width:46px;height:46px;border-radius:50%;border:2px solid transparent;cursor:pointer;padding:0;transition:transform .15s,border-color .15s;box-shadow:inset 0 0 0 1px rgba(255,255,255,.28)}
+.swatch:hover{transform:scale(1.1)}
+.swatch[aria-pressed="true"]{border-color:#fff}
+.skin-name{margin-top:18px;font-size:14px;color:rgba(255,255,255,.66)}
+.skin-name b{color:#fff}
+/* 演示机：一张极简的商家首页，主色由 --demo 驱动 —— 换色只动一个变量，
+   这正是要证明的产品能力，所以演示件本身也得是「一个变量」的结构。 */
+.phone{--demo:#e1251b;width:100%;max-width:320px;margin:0 auto;background:#fff;border-radius:26px;padding:16px;color:var(--color-ink);box-shadow:0 24px 60px rgba(0,0,0,.35)}
+.phone .bar{height:5px;width:44px;border-radius:99px;background:#e3e5e9;margin:2px auto 14px}
+.phone .shop{display:flex;align-items:center;gap:10px}
+.phone .avatar{width:38px;height:38px;border-radius:12px;background:var(--demo);display:grid;place-items:center;color:#fff;font-weight:700;font-size:15px}
+.phone .shop b{font-size:15px}
+.phone .shop small{display:block;font-size:11.5px;color:var(--color-muted);font-weight:500}
+.phone .banner{margin-top:14px;height:74px;border-radius:12px;background:color-mix(in srgb,var(--demo) 12%,#fff);display:grid;place-items:center;color:var(--demo);font-size:13px;font-weight:600}
+.phone .items{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.phone .item{border:1px solid #edeef1;border-radius:12px;padding:10px}
+.phone .thumb{height:52px;border-radius:8px;background:#f2f3f5}
+.phone .item span{display:block;font-size:11.5px;color:var(--color-muted);margin-top:8px}
+.phone .item b{display:block;font-size:13px;color:var(--demo);margin-top:2px}
+.phone .cta{margin-top:14px;height:42px;border-radius:999px;background:var(--demo);color:#fff;display:grid;place-items:center;font-size:14px;font-weight:600}
+@media(max-width:860px){.skin-grid{grid-template-columns:1fr}}
+
+/* ── 5 邻里集市 ─────────────────────────────────────── */
+.cats{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;margin-top:40px}
+.cat{border:1px solid var(--color-line);border-radius:var(--radius-card);padding:22px 20px}
+.cat h3{font-size:17px}
+.cat .en{font-size:11.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--color-brand);margin:7px 0 10px}
+.cat p{font-size:14px;color:var(--color-muted)}
+@media(max-width:900px){.cats{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:520px){.cats{grid-template-columns:1fr}}
+
+/* ── 6 商家入驻 ─────────────────────────────────────── */
+.merchant{background:var(--color-panel)}
+.merchant .grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:clamp(30px,5vw,64px);align-items:center}
+.merchant ul{list-style:none;margin:26px 0 0;padding:0;display:grid;gap:14px}
+.merchant li{display:grid;grid-template-columns:22px 1fr;gap:12px;font-size:15.5px;color:var(--color-muted)}
+.merchant li svg{width:22px;height:22px;color:var(--color-brand);margin-top:4px}
+.merchant .slot{aspect-ratio:16/11}
+@media(max-width:860px){.merchant .grid{grid-template-columns:1fr}}
+
+/* ── 7 下载 ─────────────────────────────────────────── */
+.download{background:var(--color-brand);color:#fff}
+.download .wrap{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:36px;align-items:center}
+.download h2{color:#fff;font-size:clamp(28px,3.8vw,46px)}
+.download p{margin-top:14px;color:rgba(255,255,255,.78);max-width:44ch}
+.download .row{display:flex;gap:12px;flex-wrap:wrap}
+.qr{width:132px;text-align:center}
+.qr .box{aspect-ratio:1;border-radius:var(--radius-card);background:rgba(255,255,255,.14);border:1px dashed rgba(255,255,255,.5);display:grid;place-items:center;font-size:12.5px;color:rgba(255,255,255,.8);padding:12px}
+.qr figcaption{font-size:12.5px;color:rgba(255,255,255,.8);margin-top:10px}
+@media(max-width:860px){.download .wrap{grid-template-columns:1fr}}
+
+/* ── 页脚 ───────────────────────────────────────────── */
+footer.site{border-top:1px solid var(--color-line);background:#fff}
+footer.site .cols{display:grid;grid-template-columns:1.7fr 1fr 1fr 1.2fr;gap:36px;padding-top:56px;padding-bottom:40px}
+footer.site h4{margin:0 0 14px;font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--color-muted);font-weight:600}
+footer.site ul{margin:0;padding:0;list-style:none;display:grid;gap:9px;font-size:14.5px}
+footer.site ul a{color:var(--color-ink)}
+footer.site ul a:hover{color:var(--color-brand)}
+footer.site .tagline{font-size:14px;color:var(--color-muted);margin-top:16px;max-width:34ch}
+footer.site .legal{border-top:1px solid var(--color-line);display:flex;flex-wrap:wrap;gap:18px;font-size:13px;color:var(--color-muted);padding:20px 0 40px}
+@media(max-width:820px){footer.site .cols{grid-template-columns:1fr 1fr}}
+
+/* 设计稿标记：移植成 React 时整段删掉 */
+.draft{position:fixed;left:14px;bottom:14px;z-index:60;background:var(--color-ink);color:#fff;font-size:11.5px;letter-spacing:.08em;padding:7px 12px;border-radius:999px;opacity:.82}
+@media print{.draft{display:none}}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <symbol id="hx" viewBox="0 0 96 44">
+    <path d="M0 0H11.5V10.97H31.5V0H43V44H31.5V22.47H11.5V44H0Z"/>
+    <path transform="translate(53,0)" d="M0 0H13L21.5 13.5L30 0H43L28 22L43 44H30L21.5 30.5L13 44H0L15 22Z"/>
+  </symbol>
+  <symbol id="check" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+</defs></svg>
+
+<header class="top">
+  <div class="wrap">
+    <a class="logo" href="#top" aria-label="虹选 · 好物 首页">
+      <span class="mark"><svg class="hx" viewBox="0 0 96 44"><use href="#hx"/></svg></span>
+      <span class="t"><b>虹选 · 好物</b><small>HX MALL</small></span>
+    </a>
+    <button class="nav-toggle" aria-expanded="false" aria-controls="nav" aria-label="菜单">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+    </button>
+    <nav class="links" id="nav">
+      <a href="#nearby">附近的店</a>
+      <a href="#how">怎么买</a>
+      <a href="#colors">商家的颜色</a>
+      <a href="#market">邻里集市</a>
+      <a href="#merchant">商家入驻</a>
+    </nav>
+    <div class="nav-cta">
+      <a class="btn btn-quiet" href="#merchant">开店</a>
+      <a class="btn btn-primary" href="#download">下载 App</a>
+    </div>
+  </div>
+</header>
+
+<!-- ① 首屏 · 一句话说清 LBS 内核 -->
+<section class="hero" id="top">
+  <div class="wrap grid">
+    <div>
+      <h1 class="display">楼下的好东西，<br>都在<em>虹选</em>。</h1>
+      <p class="sub">好物在身边 —— 只显示你走得到的店。下单、自提或者让老板送上门，不用等三天，也不用猜发货的是哪个仓。</p>
+      <div class="row">
+        <a class="btn btn-primary" href="#download">下载 App</a>
+        <a class="btn btn-quiet" href="#nearby">先看看附近有什么</a>
+      </div>
+      <p class="note">已覆盖 <b>—— 个社区</b> · <b>—— 家门店</b>（数据待填，见方案待确认 6）</p>
+    </div>
+    <figure class="slot" style="margin:0">
+      C 端 App 首页真机图<br>4 : 5 竖版 · 待产出
+    </figure>
+  </div>
+</section>
+
+<!-- ② LBS 服务半径 —— 产品真实模型：经营范围三档地理覆盖 -->
+<section class="radius-sec" id="nearby">
+  <div class="wrap">
+    <span class="kicker">Nearby</span>
+    <h2 class="display" style="font-size:clamp(27px,3.6vw,42px)">先问「在哪」，再问「卖什么」。</h2>
+    <p class="lede" style="margin-top:16px">社区过滤是邻里购物的第一约束，不是排序偏好。同一件商品，你看到的价格、库存和送达方式，取决于哪几家店真的够得着你。</p>
+
+    <div class="radius-grid" style="margin-top:44px">
+      <div class="rings" role="img" aria-label="三档服务半径示意：同小区、步行圈、同城配送">
+        <span class="ring r1"></span><span class="ring r2"></span><span class="ring r3"></span>
+        <span class="pin me"></span>
+        <span class="pin" style="top:34%;left:38%"></span>
+        <span class="pin" style="top:58%;left:60%"></span>
+        <span class="pin" style="top:26%;left:64%"></span>
+        <span class="pin" style="top:70%;left:33%"></span>
+        <span class="pin" style="top:12%;left:47%"></span>
+        <span class="ring-label" style="top:2%;left:50%;transform:translateX(-50%)">同城</span>
+        <span class="ring-label" style="top:18%;left:50%;transform:translateX(-50%)">步行圈</span>
+        <span class="ring-label" style="top:36%;left:50%;transform:translateX(-50%)">同小区</span>
+      </div>
+
+      <div class="tiers">
+        <div class="tier"><b>01</b><div><h3>同小区</h3><p>下楼就能取。店主自己送，常见的是十几分钟。</p></div></div>
+        <div class="tier"><b>02</b><div><h3>步行圈</h3><p>一条街上的店。支持到店自提，也支持当天送。</p></div></div>
+        <div class="tier"><b>03</b><div><h3>同城</h3><p>够不着的走同城配送，页面上会写清楚是哪一档，不含糊。</p></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ③ 三步 -->
+<section id="how">
+  <div class="wrap">
+    <span class="kicker">How it works</span>
+    <h2 class="display" style="font-size:clamp(27px,3.6vw,42px)">挑 → 下单 → 楼下自提。</h2>
+    <p class="lede" style="margin-top:16px">中间没有第四步。没有跨仓调拨，没有「已揽收」之后的三天沉默。</p>
+    <div class="steps">
+      <div class="step"><b>01</b><h3>挑</h3><p>打开就是附近的店。每家店的营业时间、能不能送、多久到，写在列表里，不用点进去猜。</p></div>
+      <div class="step"><b>02</b><h3>下单</h3><p>同一个订单里可以有几家店的东西，按店拆单结算，各自履约，进度分开看。</p></div>
+      <div class="step"><b>03</b><h3>楼下自提</h3><p>到店核销一个码，或者等老板送上门。服务类商品还能预约上门时间。</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ④ 「虹」的叙事 —— 演示的是产品真能力，不是插画 -->
+<section class="skins" id="colors">
+  <div class="wrap">
+    <span class="kicker">Why 虹</span>
+    <h2 class="display" style="font-size:clamp(27px,3.6vw,42px)">虹不是一个颜色，<br>是七种颜色排在一起还很和谐。</h2>
+    <p class="lede" style="margin-top:16px">平台不给商家统一的脸。楼下那家花店和街角的五金店本来就不该长得一样 —— 点一下换个颜色，右边这台手机里换的是真的产品配色。</p>
+
+    <div class="skin-grid">
+      <div>
+        <div class="swatches" role="group" aria-label="商家配色">
+          <button class="swatch" style="background:#e1251b" data-c="#e1251b" data-n="虹选红 · 平台默认" aria-pressed="true" aria-label="虹选红"></button>
+          <button class="swatch" style="background:#00B578" data-c="#00B578" data-n="清新绿 · 生鲜果蔬" aria-label="清新绿"></button>
+          <button class="swatch" style="background:#D24600" data-c="#D24600" data-n="促销橙 · 折扣与活动" aria-label="促销橙"></button>
+          <button class="swatch" style="background:#2C69FF" data-c="#2C69FF" data-n="时尚蓝 · 3C 与家电" aria-label="时尚蓝"></button>
+          <button class="swatch" style="background:#18181B" data-c="#18181B" data-n="极简黑 · 服饰与设计" aria-label="极简黑"></button>
+          <button class="swatch" style="background:#D6303A" data-c="#D6303A" data-n="正红 · 烟酒与礼品" aria-label="正红"></button>
+          <button class="swatch" style="background:#A46911" data-c="#A46911" data-n="琥珀 · 烘焙与咖啡" aria-label="琥珀"></button>
+          <button class="swatch" style="background:#008484" data-c="#008484" data-n="青碧 · 药房与个护" aria-label="青碧"></button>
+          <button class="swatch" style="background:#7A4CE0" data-c="#7A4CE0" data-n="紫罗兰 · 花店与文创" aria-label="紫罗兰"></button>
+        </div>
+        <p class="skin-name">当前：<b id="skinName">虹选红 · 平台默认</b></p>
+        <p class="lede" style="margin-top:20px;font-size:15px">这九套配色不是官网上画的示意 —— 它们就是 App 里能选的那几套，色值同一份真源，每一套的文字对比度都过 WCAG AA。</p>
+      </div>
+
+      <div class="phone" id="phone" aria-hidden="true">
+        <div class="bar"></div>
+        <div class="shop">
+          <span class="avatar">花</span>
+          <span><b>转角花店</b><small>步行 3 分钟 · 今天 21:00 打烊</small></span>
+        </div>
+        <div class="banner">今日到货 · 满 39 免配送</div>
+        <div class="items">
+          <div class="item"><div class="thumb"></div><span>单支洋桔梗</span><b>¥ 8.00</b></div>
+          <div class="item"><div class="thumb"></div><span>周末花束</span><b>¥ 68.00</b></div>
+        </div>
+        <div class="cta">下单 · 楼下自提</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ⑤ 邻里集市 -->
+<section id="market">
+  <div class="wrap">
+    <span class="kicker">Marketplace</span>
+    <h2 class="display" style="font-size:clamp(27px,3.6vw,42px)">邻里集市</h2>
+    <p class="lede" style="margin-top:16px">不是什么都卖，只卖你楼下真有人在做的事。</p>
+    <div class="cats">
+      <div class="cat"><h3>生鲜果蔬</h3><div class="en">Fresh</div><p>当天进货当天卖，卖完就下架，不做「预计 3 天后到货」。</p></div>
+      <div class="cat"><h3>便利与日用</h3><div class="en">Daily</div><p>缺一瓶酱油不用凑单，起送门槛由店主自己定。</p></div>
+      <div class="cat"><h3>烘焙与咖啡</h3><div class="en">Bakery</div><p>可预约时段自提，出炉时间写在商品上。</p></div>
+      <div class="cat"><h3>花店与文创</h3><div class="en">Florist</div><p>支持定制留言与指定送达时间。</p></div>
+      <div class="cat"><h3>药房与个护</h3><div class="en">Pharmacy</div><p>需资质的品类只让有证的店上架。</p></div>
+      <div class="cat"><h3>五金与维修</h3><div class="en">Hardware</div><p>上门服务按服务履约走：预约时段、到场核销。</p></div>
+      <div class="cat"><h3>宠物</h3><div class="en">Pets</div><p>寄养、洗护这类到店服务，用核销码而不是快递单。</p></div>
+      <div class="cat"><h3>餐饮外带</h3><div class="en">Takeaway</div><p>到店取餐，避开配送费；忙时店主可一键停单。</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ⑥ 商家入驻 -->
+<section class="merchant" id="merchant">
+  <div class="wrap grid">
+    <div>
+      <span class="kicker">For merchants</span>
+      <h2 class="display" style="font-size:clamp(27px,3.6vw,42px)">你家楼下那家店，<br>也有自己的颜色。</h2>
+      <p class="lede" style="margin-top:16px">开店不用先交年费。一部手机就能上架、收款、看账。</p>
+      <ul>
+        <li><svg><use href="#check"/></svg><span>手机开店：营业执照拍照上传，审核过了就能卖；无资质的走邻里集市另一套规则。</span></li>
+        <li><svg><use href="#check"/></svg><span>自己定服务半径：只送同小区，还是整条街，你说了算。</span></li>
+        <li><svg><use href="#check"/></svg><span>自己挑配色：九套皮肤，选一套就是你的店面。</span></li>
+        <li><svg><use href="#check"/></svg><span>员工与权限分开：收银、拣货、看账各是各的账号，老板不用把密码给所有人。</span></li>
+        <li><svg><use href="#check"/></svg><span>多门店可以一起管：库存、订单、结算按门店分开算。</span></li>
+      </ul>
+      <div class="hero-row" style="display:flex;gap:12px;flex-wrap:wrap;margin-top:32px">
+        <a class="btn btn-primary" href="#">申请开店</a>
+        <a class="btn btn-quiet" href="#">先看商家端能做什么</a>
+      </div>
+    </div>
+    <figure class="slot" style="margin:0">
+      B 端商家 App 真机图<br>16 : 11 · 待产出
+    </figure>
+  </div>
+</section>
+
+<!-- ⑦ 下载 -->
+<section class="download" id="download">
+  <div class="wrap">
+    <div>
+      <h2 class="display">附近有什么，打开就知道。</h2>
+      <p>iOS、Android，或者不装 App 直接用小程序。</p>
+      <div class="row" style="margin-top:28px">
+        <a class="btn btn-light" href="#">App Store</a>
+        <a class="btn btn-light" href="#">Android 下载</a>
+        <a class="btn btn-outline-light" href="#">微信小程序</a>
+      </div>
+    </div>
+    <figure class="qr" style="margin:0">
+      <div class="box">小程序码<br>待生成</div>
+      <figcaption>微信扫一扫</figcaption>
+    </figure>
+  </div>
+</section>
+
+<footer class="site">
+  <div class="wrap cols">
+    <div>
+      <span class="logo">
+        <span class="mark" style="font-size:36px"><svg class="hx" viewBox="0 0 96 44"><use href="#hx"/></svg></span>
+        <span class="t"><b>虹选 · 好物</b><small>HX MALL</small></span>
+      </span>
+      <p class="tagline">社区邻里电商 —— 附近的店，当天到手。</p>
+    </div>
+    <div>
+      <h4>产品</h4>
+      <ul><li><a href="#nearby">附近的店</a></li><li><a href="#how">怎么买</a></li><li><a href="#market">邻里集市</a></li><li><a href="#download">下载 App</a></li></ul>
+    </div>
+    <div>
+      <h4>商家</h4>
+      <ul><li><a href="#merchant">商家入驻</a></li><li><a href="#">商家端说明</a></li><li><a href="#">费率与结算</a></li></ul>
+    </div>
+    <div>
+      <h4>法务与联系</h4>
+      <ul><li><a href="#">隐私政策</a></li><li><a href="#">用户协议</a></li><li><a href="mailto:hello@hxmall.top">hello@hxmall.top</a></li></ul>
+    </div>
+  </div>
+  <div class="wrap"><div class="legal">
+    <span>© 2026 深圳虹选科技有限公司</span>
+    <span>粤ICP备XXXXXXXX号-X（待补）</span>
+    <span>hxmall.top</span>
+  </div></div>
+</footer>
+
+<span class="draft">设计稿 · 非生产代码</span>
+
+<script>
+// 移动端菜单
+const tgl = document.querySelector('.nav-toggle'), nav = document.getElementById('nav');
+tgl.addEventListener('click', () => {
+  const open = nav.hasAttribute('data-open');
+  open ? nav.removeAttribute('data-open') : nav.setAttribute('data-open', '');
+  tgl.setAttribute('aria-expanded', String(!open));
+});
+
+// 皮肤演示：只改演示机上的一个自定义属性 —— 这就是产品里换肤的真实做法
+const phone = document.getElementById('phone'), name = document.getElementById('skinName');
+document.querySelectorAll('.swatch').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('.swatch').forEach(o => o.setAttribute('aria-pressed', String(o === b)));
+  phone.style.setProperty('--demo', b.dataset.c);
+  name.textContent = b.dataset.n;
+}));
+</script>
+</body>
+</html>

@@ -184,7 +184,7 @@ site/                          ← 新 workspace（根 package.json workspaces �
 | 指标 | 阈值 | 为什么是这个数 |
 |---|---|---|
 | 首页首屏 JS（gzip） | **≤ 160 KB** | **实测基线 129.9 KB**（T1 脚手架，零客户端组件，5 个 chunk）。这就是 App Router + React 19 的地板，省不掉。留 30 KB 给 `SkinShowcase` 一个组件；超了说明有人多加了 `"use client"` |
-| 中文字体子集单文件 | **≤ 120 KB** | 全量 3–8MB，子集化是这套站点性能的头号动作 |
+| 中文字体子集**单档** | **≤ 130 KB** | 全量 14 MB。795 字实测 400 档 103.8 KB / 600 档 105.6 KB（2026-08-20） |
 | 单张图片 | **≤ 200 KB** | `optimize-images.mjs` 输出 AVIF 优先 |
 | Lighthouse 移动端 Performance | **≥ 90** | 静态站没理由更低；100 会被 JS 地板卡住，不作为目标 |
 
@@ -221,7 +221,14 @@ site/                          ← 新 workspace（根 package.json workspaces �
 - [x] **T8 部署**（2026-08-19）· 官网接管 `www.hxmall.top/`，C 端移到 `/c/`；见 [部署 README](../../deploy/tencent/README.md)
 - [ ] T4 download / merchant / privacy / terms 四页
 - [ ] T5 SEO：metadata / sitemap / robots / OG / JSON-LD / favicon / 微信分享图
-- [ ] T6 构建脚本：`optimize-images.mjs` + `subset-fonts.mjs`，接进 `prebuild`
+- [x] **T6 字体子集**（2026-08-20）：`subset-fonts.mjs` 已接进 `prebuild`。
+      795 字 × 两档字重（400/600）各 ~105 KB；字符集从 `content/` 与 tsx 实算（剥注释、
+      跳过 content 内部文档），产物进仓库、源字体不进 —— 构建机不必装 fontTools。
+      `lib/fonts.test.ts` 兜底：源码里的字不在覆盖清单里就红。
+      ⚠️ **预算从「单文件 ≤120 KB」改成「单档 ≤130 KB」**：120 KB 是三页站的估算，
+      现在 13 页 795 字，单档实测 103.8 KB。变量字体保留 wght 轴反而要 216 KB（CJK 插值数据太贵），
+      所以出两个定重文件而不是一个变量文件。
+- [ ] `optimize-images.mjs`（真机图产出后再接）
 - [ ] T7 测试 + 四档宽度走查 + Lighthouse 达标
 
 ---
