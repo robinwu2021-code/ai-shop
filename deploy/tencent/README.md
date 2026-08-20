@@ -64,8 +64,35 @@ tail -20 /var/log/ai-shop/backup.log        # 看结果
 
 > 全平台的桶怎么划分、为什么只要三个，见 [cos-buckets.md](./cos-buckets.md)。
 >
-> 状态：**桶还没建**（2026-08-20）。官网侧已就绪 —— `site.config.download.merchantAndroid`
-> 填上直链即可，空着时下载页渲染成「即将上线」而不是死链。
+> 状态（2026-08-20）：**桶已建，但默认域名不能用来分发 APK。**
+>
+> ## ⚠️ COS 默认域名禁止分发 APK / IPA
+>
+> 包传上去了（`b-app/hxmall-merchant-0.1.0.apk`，ETag 与本地 md5 一致），
+> **但公网取回是 403**：
+>
+> ```
+> <Code>DownloadForbidden</Code>
+> <Message>The APK/IPA file is not allowed to be distributed in a public network
+> using COS default domain, please use custom domain instead.</Message>
+> ```
+>
+> **从服务器上取是 200** —— 它在腾讯云内网，不受这条限制。
+> 只用服务器验证会得出「能下载」的错误结论，**必须从公网出口验一次**。
+>
+> 解封要绑**自定义域名**，而大陆地域桶的自定义域名**要备案**。备案没下来之前这条路走不通。
+>
+> ### 当前的做法：服务器直出
+>
+> 包放 `/var/www/ai-shop/dl/`（**不在 `/var/www/ai-shop/site/` 里** —— 官网发布用
+> `rsync --delete` 同步 site 目录，放进去每次发官网都会被删掉），
+> nginx 用 `location ^~ /dl/` 直出，`www.hxmall.top` 与 `ai-shop-ip` **两个 server 块都要有**。
+>
+> `site.config.download.merchantAndroid` 填**相对路径** `/dl/xxx.apk`：
+> 备案未过时商家多半从 `http://<IP>/` 进来，写死 https 的绝对地址会让 IP 入口的下载
+> 跳到一个他打不开的地方。
+>
+> 备案下来、自定义域名绑好之后，把 `site.config` 换成直链即可，页面不用改。
 
 ### 桶
 
