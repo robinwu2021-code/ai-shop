@@ -5046,3 +5046,60 @@ INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated
 INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at) VALUES ('SUPER_ADMIN', 'ACT__PRODUCT_TOPIC_UPDATE', 'OPS', NOW(), NOW());
 INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at) VALUES ('GOODS_OPS', 'OPS_PRODUCT__TAB_TOPICS', 'OPS', NOW(), NOW());
 INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at) VALUES ('GOODS_OPS', 'ACT__PRODUCT_TOPIC_UPDATE', 'OPS', NOW(), NOW());
+INSERT INTO prd_spec_template
+(template_no, scope, category_type, name, options, entity_no, status,
+ tenant_no, created_at, created_by, updated_at, updated_by, version, deleted)
+VALUES
+
+('SPT_SEED_FRESH_WEIGHT', 'PLATFORM', 'FRESH', '重量',
+ '[{"code":"W500G","label":"约1斤"},{"code":"W1KG","label":"约2斤"},{"code":"W2500G","label":"约5斤"},{"code":"W5KG","label":"约10斤"}]',
+ NULL, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('SPT_SEED_FRESH_PACK', 'PLATFORM', 'FRESH', '包装',
+ '[{"code":"PBULK","label":"散装"},{"code":"PBAG","label":"袋装"},{"code":"PBOX","label":"盒装"},{"code":"PGIFT","label":"礼盒"}]',
+ NULL, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+
+('SPT_SEED_NORMAL_COUNT', 'PLATFORM', 'NORMAL', '规格',
+ '[{"code":"C1","label":"单件"},{"code":"C2","label":"2件装"},{"code":"C5","label":"5件装"},{"code":"CCASE","label":"整箱"}]',
+ NULL, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('SPT_SEED_NORMAL_PACK', 'PLATFORM', 'NORMAL', '包装',
+ '[{"code":"PBAG","label":"袋装"},{"code":"PBOTTLE","label":"瓶装"},{"code":"PBOX","label":"盒装"},{"code":"PCAN","label":"罐装"}]',
+ NULL, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+
+('SPT_SEED_SERVICE_DURATION', 'PLATFORM', 'SERVICE', '时长',
+ '[{"code":"D30","label":"30分钟"},{"code":"D60","label":"60分钟"},{"code":"D90","label":"90分钟"},{"code":"D120","label":"120分钟"}]',
+ NULL, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('SPT_SEED_SERVICE_HEADCOUNT', 'PLATFORM', 'SERVICE', '人数',
+ '[{"code":"H1","label":"1人"},{"code":"H2","label":"2人"},{"code":"H3","label":"3人及以上"}]',
+ NULL, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0);
+UPDATE prd_category
+SET required_code = 'PACKAGED_FOOD',
+    qualification_required = '["仅销售预包装食品备案"]'
+WHERE category_no = 'CAT130'
+  AND status = 'ACTIVE'
+  AND required_code IS NULL;
+UPDATE sys_auth_code
+SET enabled = 1
+WHERE code IN ('FOOD', 'DRUG_RETAIL')
+  AND enabled = 0;
+INSERT INTO sys_auth_code
+(code, name, required_qualification, sort, enabled, tenant_no, created_at, created_by, updated_at, updated_by, version, deleted)
+VALUES
+('ALCOHOL', '酒类', '食品经营许可证（含酒类）', 27, 1, 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0);
+INSERT INTO prd_category
+(category_no, parent_no, level, name, name_en, icon, sort, template,
+ attr_template, qualification_required, required_code, status,
+ tenant_no, created_at, created_by, updated_at, updated_by, version, deleted)
+VALUES
+('CAT150', 'CAT100', 2, '酒类', 'Alcohol', NULL, 50, 'STANDARD', NULL,
+ '["食品经营许可证（含酒类）"]', 'ALCOHOL', 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('CAT160', 'CAT100', 2, '茶叶', 'Tea', NULL, 60, 'STANDARD', NULL,
+ '["仅销售预包装食品备案"]', 'PACKAGED_FOOD', 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0);
+INSERT INTO prd_category
+(category_no, parent_no, level, name, name_en, icon, sort, template,
+ attr_template, qualification_required, required_code, status,
+ tenant_no, created_at, created_by, updated_at, updated_by, version, deleted)
+VALUES
+('CAT600', NULL,     1, '电子产品', 'Electronics',      NULL, 60, 'STANDARD', NULL, NULL, NULL, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('CAT610', 'CAT600', 2, '手机数码', 'Phones & Digital', NULL, 10, 'STANDARD', NULL, NULL, NULL, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('CAT620', 'CAT600', 2, '家用电器', 'Home Appliances',  NULL, 20, 'STANDARD', NULL, NULL, NULL, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('CAT630', 'CAT600', 2, '配件耗材', 'Accessories',      NULL, 30, 'STANDARD', NULL, NULL, NULL, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0);

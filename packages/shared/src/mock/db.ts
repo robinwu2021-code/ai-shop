@@ -1118,18 +1118,14 @@ export const db = {
     {
       categoryNo: "CAT100", template: "FRESH", parentNo: null, level: 1, name: "食品生鲜", icon: "", sort: 10,
       children: [
-        {
-          categoryNo: "CAT110", template: "FRESH", parentNo: "CAT100", level: 2, name: "蔬菜", icon: "", sort: 10,
-          children: [],
-        },
-        {
-          categoryNo: "CAT120", template: "FRESH", parentNo: "CAT100", level: 2, name: "水果", icon: "", sort: 20,
-          children: [],
-        },
-        {
-          categoryNo: "CAT130", template: "FRESH", parentNo: "CAT100", level: 2, name: "预包装食品", icon: "", sort: 30,
-          children: [],
-        },
+        { categoryNo: "CAT110", template: "FRESH", parentNo: "CAT100", level: 2, name: "蔬菜", icon: "", sort: 10, children: [] },
+        { categoryNo: "CAT120", template: "FRESH", parentNo: "CAT100", level: 2, name: "水果", icon: "", sort: 20, children: [] },
+        // ⚠️ 预包装食品/酒类/茶叶是 **STANDARD**（→ NORMAL），不是 FRESH ——
+        // 品类看的是二级自己的 template，不继承一级那个用来分组的「食品生鲜」。
+        // 写成 FRESH 的后果是一箱啤酒在建品页上要求填截单时间
+        { categoryNo: "CAT130", template: "STANDARD", parentNo: "CAT100", level: 2, name: "预包装食品", icon: "", sort: 30, children: [] },
+        { categoryNo: "CAT150", template: "STANDARD", parentNo: "CAT100", level: 2, name: "酒类", icon: "", sort: 50, children: [] },
+        { categoryNo: "CAT160", template: "STANDARD", parentNo: "CAT100", level: 2, name: "茶叶", icon: "", sort: 60, children: [] },
       ],
     },
     {
@@ -1146,8 +1142,24 @@ export const db = {
         { categoryNo: "CAT310", template: "SERVICE", parentNo: "CAT300", level: 2, name: "家政保洁", icon: "", sort: 10, children: [] },
       ],
     },
-    // CAT400 卡券一期停用（V22）：端上的树只给启用的，所以这里不再出现。
-    // 库里那一行还在，切平台模式后在运营端恢复即可
+    // 卡券只有一级：**一级没有子级时它自己就是终点**，选择器允许直接选它。
+    // 塞一个占位的二级只会让商家多点一次
+    { categoryNo: "CAT400", template: "VOUCHER", parentNo: null, level: 1, name: "卡券", icon: "", sort: 40, children: [] },
+    {
+      categoryNo: "CAT500", template: "VIRTUAL", parentNo: null, level: 1, name: "虚拟商品", icon: "", sort: 50,
+      children: [
+        { categoryNo: "CAT510", template: "VIRTUAL", parentNo: "CAT500", level: 2, name: "话费充值", icon: "", sort: 10, children: [] },
+        { categoryNo: "CAT520", template: "VIRTUAL", parentNo: "CAT500", level: 2, name: "会员充值", icon: "", sort: 20, children: [] },
+      ],
+    },
+    {
+      categoryNo: "CAT600", template: "STANDARD", parentNo: null, level: 1, name: "电子产品", icon: "", sort: 60,
+      children: [
+        { categoryNo: "CAT610", template: "STANDARD", parentNo: "CAT600", level: 2, name: "手机数码", icon: "", sort: 10, children: [] },
+        { categoryNo: "CAT620", template: "STANDARD", parentNo: "CAT600", level: 2, name: "家用电器", icon: "", sort: 20, children: [] },
+        { categoryNo: "CAT630", template: "STANDARD", parentNo: "CAT600", level: 2, name: "配件耗材", icon: "", sort: 30, children: [] },
+      ],
+    },
   ],
 
   /**
