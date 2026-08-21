@@ -33,10 +33,14 @@ public class BizPickupController {
     private final PickupService pickupService;
     private final ai.neargo.shop.merchant.service.StoreCodeService storeCodeService;
     private final ai.neargo.shop.merchant.service.StoreLinkService storeLinkService;
+    /** 主体已授权的经营类目码 —— /biz/context 要把它带给端上 */
+    private final ai.neargo.shop.spi.user.MerchantQueryPort merchantPort;
 
     public BizPickupController(PickupService pickupService,
                                ai.neargo.shop.merchant.service.StoreCodeService storeCodeService,
-                               ai.neargo.shop.merchant.service.StoreLinkService storeLinkService) {
+                               ai.neargo.shop.merchant.service.StoreLinkService storeLinkService,
+                               ai.neargo.shop.spi.user.MerchantQueryPort merchantPort) {
+        this.merchantPort = merchantPort;
         this.pickupService = pickupService;
         this.storeCodeService = storeCodeService;
         this.storeLinkService = storeLinkService;
@@ -64,7 +68,13 @@ public class BizPickupController {
                 List.copyOf(ctx.groupNos()), List.copyOf(ctx.staffRoles()),
                 // **与判权同一个来源**（含自定义角色）：这里另算一遍的话，
                 // 只有自定义角色的人会看到一个什么入口都没有的经营台
-                List.copyOf(ctx.effectivePerms()));
+                List.copyOf(ctx.effectivePerms()),
+                /*
+                 * 主体已获批的经营类目码。**端上据它把没资质的类目标出来** ——
+                 * 不下发的话，商家只能靠「选了、保存、被拒」这条路才知道自己不能卖，
+                 * 而那句报错既说不出缺哪张证，也说不出去哪申请。
+                 */
+                List.copyOf(merchantPort.authorizedCategoryCodes(ctx.merchantNo())));
     }
 
     /**
@@ -77,7 +87,13 @@ public class BizPickupController {
     public record BizContextVO(String merchantNo, String currentStoreNo, boolean owner,
                                List<String> storeNos, List<String> pickupNos,
                                List<String> groupNos,
-                               List<String> staffRoles, List<String> perms) {
+                               List<String> staffRoles, List<String> perms,
+                               /**
+                                * 主体已获批的经营类目码（如 {@code ["FRESH_VEG"]}）。
+                                * 与 {@code prd_category.requiredCode} 比对 —— 端上用它
+                                * 在类目选择器里把「你还不能卖」标出来，而不是等保存被拒。
+                                */
+                               List<String> categoryCodes) {
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.VERIFY + "')")

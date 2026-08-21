@@ -26,6 +26,8 @@ export const useMerchantStore = defineStore("merchant", {
      * 点了报 70006」。
      */
     perms: [] as string[],
+    /** 主体已获批的经营类目码。类目选择器据它标出「你还不能卖这一类」 */
+    categoryCodes: [] as string[],
     /** 我在当前门店持有的角色，只用于展示（「你是这家店的店员」）。判权一律看 perms */
     staffRoles: [] as string[],
     /** 进行中的 scope 请求，供 ensureScope 去重。不持久化 */
@@ -215,6 +217,7 @@ export const useMerchantStore = defineStore("merchant", {
         const scope = await api.mBizScope();
         this.perms = scope.perms ?? [];
         this.staffRoles = scope.staffRoles ?? [];
+        this.categoryCodes = scope.categoryCodes ?? [];
         return scope;
       } catch (e) {
         this.perms = [];

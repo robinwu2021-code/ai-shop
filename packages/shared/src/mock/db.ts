@@ -1115,17 +1115,21 @@ export const db = {
    * `CategoryServiceImpl.save()` 强制继承，mock 这边只能靠种子写对。
    */
   categories: [
+    // ⚠️ 卡券（CAT400）与虚拟商品（CAT500）**已归档**（V176）：它们是「有类目、没链路」——
+    // 后端没有任何 CARD/VIRTUAL 分支，履约候选给的是实物那四种。
+    // mock 里同样不出现，否则开发期选得到、真环境选不到。
     {
       categoryNo: "CAT100", template: "FRESH", parentNo: null, level: 1, name: "食品生鲜", icon: "", sort: 10,
       children: [
-        { categoryNo: "CAT110", template: "FRESH", parentNo: "CAT100", level: 2, name: "蔬菜", icon: "", sort: 10, children: [] },
-        { categoryNo: "CAT120", template: "FRESH", parentNo: "CAT100", level: 2, name: "水果", icon: "", sort: 20, children: [] },
-        // ⚠️ 预包装食品/酒类/茶叶是 **STANDARD**（→ NORMAL），不是 FRESH ——
-        // 品类看的是二级自己的 template，不继承一级那个用来分组的「食品生鲜」。
-        // 写成 FRESH 的后果是一箱啤酒在建品页上要求填截单时间
-        { categoryNo: "CAT130", template: "STANDARD", parentNo: "CAT100", level: 2, name: "预包装食品", icon: "", sort: 30, children: [] },
-        { categoryNo: "CAT150", template: "STANDARD", parentNo: "CAT100", level: 2, name: "酒类", icon: "", sort: 50, children: [] },
-        { categoryNo: "CAT160", template: "STANDARD", parentNo: "CAT100", level: 2, name: "茶叶", icon: "", sort: 60, children: [] },
+        { categoryNo: "CAT110", template: "FRESH", parentNo: "CAT100", level: 2, name: "蔬菜", icon: "", sort: 10, requiredCode: "FRESH_VEG", qualifications: ["营业执照（食用农产品）"], children: [] },
+        { categoryNo: "CAT120", template: "FRESH", parentNo: "CAT100", level: 2, name: "水果", icon: "", sort: 20, requiredCode: "FRESH_FRUIT", qualifications: ["营业执照（食用农产品）"], children: [] },
+        // ⚠️ 预包装食品/酒类/茶叶是 STANDARD（→ NORMAL），不是 FRESH ——
+        // 品类看的是二级自己的 template。写成 FRESH 会让一箱啤酒要求填截单时间
+        { categoryNo: "CAT130", template: "STANDARD", parentNo: "CAT100", level: 2, name: "预包装食品", icon: "", sort: 30, requiredCode: "PACKAGED_FOOD", qualifications: ["仅销售预包装食品备案"], children: [] },
+        { categoryNo: "CAT150", template: "STANDARD", parentNo: "CAT100", level: 2, name: "酒类", icon: "", sort: 50, requiredCode: "ALCOHOL", qualifications: ["食品经营许可证（含酒类）"], children: [] },
+        { categoryNo: "CAT160", template: "STANDARD", parentNo: "CAT100", level: 2, name: "茶叶", icon: "", sort: 60, requiredCode: "PACKAGED_FOOD", qualifications: ["仅销售预包装食品备案"], children: [] },
+        { categoryNo: "CAT170", template: "FRESH", parentNo: "CAT100", level: 2, name: "肉禽蛋", icon: "", sort: 70, requiredCode: "FRESH_MEAT", qualifications: ["食品经营许可证"], children: [] },
+        { categoryNo: "CAT180", template: "FRESH", parentNo: "CAT100", level: 2, name: "乳制品", icon: "", sort: 80, requiredCode: "FRESH_DAIRY", qualifications: ["食品经营许可证"], children: [] },
       ],
     },
     {
@@ -1134,22 +1138,21 @@ export const db = {
         { categoryNo: "CAT210", template: "STANDARD", parentNo: "CAT200", level: 2, name: "纸品清洁", icon: "", sort: 10, children: [] },
         { categoryNo: "CAT220", template: "STANDARD", parentNo: "CAT200", level: 2, name: "家居用品", icon: "", sort: 20, children: [] },
         { categoryNo: "CAT230", template: "STANDARD", parentNo: "CAT200", level: 2, name: "个护化妆", icon: "", sort: 30, children: [] },
+        { categoryNo: "CAT250", template: "STANDARD", parentNo: "CAT200", level: 2, name: "母婴用品", icon: "", sort: 50, children: [] },
+        { categoryNo: "CAT260", template: "STANDARD", parentNo: "CAT200", level: 2, name: "宠物用品", icon: "", sort: 60, children: [] },
+        // 门槛挂在「宠物食品」而不是「宠物用品」上，否则卖猫爬架的也被拦
+        { categoryNo: "CAT270", template: "STANDARD", parentNo: "CAT200", level: 2, name: "宠物食品", icon: "", sort: 70, requiredCode: "PET_FOOD", qualifications: ["饲料和饲料添加剂经营备案"], children: [] },
+        { categoryNo: "CAT280", template: "STANDARD", parentNo: "CAT200", level: 2, name: "文具玩具", icon: "", sort: 80, children: [] },
       ],
     },
     {
       categoryNo: "CAT300", template: "SERVICE", parentNo: null, level: 1, name: "生活服务", icon: "", sort: 30,
       children: [
-        { categoryNo: "CAT310", template: "SERVICE", parentNo: "CAT300", level: 2, name: "家政保洁", icon: "", sort: 10, children: [] },
-      ],
-    },
-    // 卡券只有一级：**一级没有子级时它自己就是终点**，选择器允许直接选它。
-    // 塞一个占位的二级只会让商家多点一次
-    { categoryNo: "CAT400", template: "VOUCHER", parentNo: null, level: 1, name: "卡券", icon: "", sort: 40, children: [] },
-    {
-      categoryNo: "CAT500", template: "VIRTUAL", parentNo: null, level: 1, name: "虚拟商品", icon: "", sort: 50,
-      children: [
-        { categoryNo: "CAT510", template: "VIRTUAL", parentNo: "CAT500", level: 2, name: "话费充值", icon: "", sort: 10, children: [] },
-        { categoryNo: "CAT520", template: "VIRTUAL", parentNo: "CAT500", level: 2, name: "会员充值", icon: "", sort: 20, children: [] },
+        { categoryNo: "CAT310", template: "SERVICE", parentNo: "CAT300", level: 2, name: "家政保洁", icon: "", sort: 10, requiredCode: "HOUSEKEEPING", children: [] },
+        { categoryNo: "CAT330", template: "SERVICE", parentNo: "CAT300", level: 2, name: "洗衣洗鞋", icon: "", sort: 30, children: [] },
+        { categoryNo: "CAT340", template: "SERVICE", parentNo: "CAT300", level: 2, name: "美容美发", icon: "", sort: 40, children: [] },
+        { categoryNo: "CAT350", template: "SERVICE", parentNo: "CAT300", level: 2, name: "宠物洗护", icon: "", sort: 50, children: [] },
+        { categoryNo: "CAT360", template: "SERVICE", parentNo: "CAT300", level: 2, name: "跑腿代办", icon: "", sort: 60, children: [] },
       ],
     },
     {
@@ -1158,6 +1161,23 @@ export const db = {
         { categoryNo: "CAT610", template: "STANDARD", parentNo: "CAT600", level: 2, name: "手机数码", icon: "", sort: 10, children: [] },
         { categoryNo: "CAT620", template: "STANDARD", parentNo: "CAT600", level: 2, name: "家用电器", icon: "", sort: 20, children: [] },
         { categoryNo: "CAT630", template: "STANDARD", parentNo: "CAT600", level: 2, name: "配件耗材", icon: "", sort: 30, children: [] },
+      ],
+    },
+    {
+      categoryNo: "CAT700", template: "STANDARD", parentNo: null, level: 1, name: "食品饮料", icon: "", sort: 70,
+      children: [
+        { categoryNo: "CAT710", template: "STANDARD", parentNo: "CAT700", level: 2, name: "粮油调味", icon: "", sort: 10, requiredCode: "PACKAGED_FOOD", qualifications: ["仅销售预包装食品备案"], children: [] },
+        { categoryNo: "CAT720", template: "STANDARD", parentNo: "CAT700", level: 2, name: "休闲零食", icon: "", sort: 20, requiredCode: "PACKAGED_FOOD", qualifications: ["仅销售预包装食品备案"], children: [] },
+        { categoryNo: "CAT730", template: "STANDARD", parentNo: "CAT700", level: 2, name: "饮料冲调", icon: "", sort: 30, requiredCode: "PACKAGED_FOOD", qualifications: ["仅销售预包装食品备案"], children: [] },
+        { categoryNo: "CAT740", template: "STANDARD", parentNo: "CAT700", level: 2, name: "烘焙面点", icon: "", sort: 40, requiredCode: "FOOD", qualifications: ["食品经营许可证"], children: [] },
+        { categoryNo: "CAT750", template: "STANDARD", parentNo: "CAT700", level: 2, name: "婴幼儿食品", icon: "", sort: 50, requiredCode: "INFANT_FORMULA", qualifications: ["婴幼儿配方乳粉销售备案"], children: [] },
+      ],
+    },
+    {
+      categoryNo: "CAT800", template: "STANDARD", parentNo: null, level: 1, name: "鲜花绿植", icon: "", sort: 80,
+      children: [
+        { categoryNo: "CAT810", template: "STANDARD", parentNo: "CAT800", level: 2, name: "鲜花", icon: "", sort: 10, children: [] },
+        { categoryNo: "CAT820", template: "STANDARD", parentNo: "CAT800", level: 2, name: "绿植盆栽", icon: "", sort: 20, children: [] },
       ],
     },
   ],

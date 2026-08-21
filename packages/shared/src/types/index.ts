@@ -592,6 +592,16 @@ export interface Category {
    * 唯一的产出是两者可能互相矛盾，而矛盾没有任何一处会拦。
    */
   template?: string;
+  /**
+   * 经营这个类目要的授权码；**空 = 无门槛**。
+   *
+   * <p>与 `BizScope.categoryCodes` 比对，端上就能在选之前说清楚「你还不能卖这一类」——
+   * 不下发的话商家只能靠「选了、保存、被拒」这条路才知道，
+   * 而那句报错既说不出缺哪张证，也说不出去哪申请。
+   */
+  requiredCode?: string;
+  /** 人读的资质名，如「食品经营许可证」。展示用，判据是 `requiredCode` */
+  qualifications?: string[];
   /** 同级内的展示顺序，小的在前。运营在后台拖动排序改的就是它 */
   sort: number;
   /** 子类目。叶子是空数组而不是 undefined —— 端上少一次判空 */
@@ -976,6 +986,13 @@ export interface BizScope {
   groupNos: string[];
   /** 我在**当前门店**持有的角色（可多个）。老板恒为 `["OWNER"]` */
   staffRoles: (StaffRole | "OWNER")[];
+  /**
+   * 主体已获批的经营类目码（如 `["FRESH_VEG"]`）。
+   *
+   * **与门店货架是两件事**：这是平台批的证（能不能卖这一类），
+   * 货架是商家自己摆的（店里怎么摆）。
+   */
+  categoryCodes?: string[];
   /**
    * 这些角色合起来的权限码，**已取并集**（老板是 `["*"]`）。
    *

@@ -799,6 +799,12 @@ export const mockApi: MerchantApi = {
       groupNos: [],
       staffRoles: ["OWNER"],
       perms: ["*"],
+      /*
+       * **只给两张证**，不给全集：给全了「缺资质」这条路在开发期永远走不到，
+       * 而它正是类目选择器上那个角标要表达的东西。
+       * mock 商家能卖蔬菜与预包装食品，卖不了酒、肉、奶粉。
+       */
+      categoryCodes: ["FRESH_VEG", "PACKAGED_FOOD"],
     });
   },
 
@@ -1411,6 +1417,24 @@ export const mockApi: MerchantApi = {
     ];
     const g = guesses[db.seq % guesses.length]!;
     return delay({ ...g, confidence: 0.72 }, 700);
+  },
+
+  /**
+   * 自动生成图文详情。**这是假生成**：mock 里没有模型，按标题套一个模板。
+   *
+   * 保留它的意义是把「点按钮 → 转圈 → 文字进框 → 商家改 → 保存」整条链路跑通，
+   * 包括**没填标题时应当拒绝**这一档 —— 真实实现里模型没有名字只能瞎编，
+   * 所以那一档在服务端也是拒绝，不该只在真机上才发现。
+   */
+  async mDescribeGoods(req) {
+    if (!req.title?.trim()) return delay({ detail: "" }, 300);
+    const lines = [
+      `· ${req.subtitle?.trim() || req.title.trim()}，适合日常家庭采买。`,
+      "· 规格与分量以商品页所列为准，下单后按规格备货。",
+      "· 建议收到后尽快食用或使用，开封后请按包装说明保存。",
+      "· 如遇缺货或规格调整，我们会在发货前与你确认。",
+    ];
+    return delay({ detail: lines.join("\n") }, 900);
   },
 
   // ---------------------------------------------------------------- 标准品库

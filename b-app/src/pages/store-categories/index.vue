@@ -36,6 +36,10 @@ const storeNo = computed(() => merchant.storeNo);
 
 /** 已摆的编号集合，勾选态与「撤架代价」都读它 */
 const pickedNos = computed(() => new Set(picked.value.map((c) => c.categoryNo)));
+/** 这个类目要证、而主体还没有 —— 与后端 requireSelectable 同一条判据 */
+const ungranted = (c: Category) =>
+  !!c.requiredCode && !merchant.categoryCodes.includes(c.requiredCode);
+
 const countOf = (no: string) =>
   picked.value.find((c) => c.categoryNo === no)?.goodsCount ?? 0;
 
@@ -137,6 +141,11 @@ async function save(items: { categoryNo: string; displayName?: string; sort: num
           <text v-if="countOf(c.categoryNo)" class="opt__n">
             {{ $t("storeCategories.goodsCount", { n: countOf(c.categoryNo) }) }}
           </text>
+          <!--
+            没那张证的类目**先标出来**，别等他勾完一屏再报 70002 ——
+            那句「缺少经营这一类的资质」既说不出缺哪张，也说不出去哪申请。
+          -->
+          <text v-if="ungranted(c)" class="opt__gate">{{ $t("storeCategories.needCert") }}</text>
         </view>
       </view>
     </view>
@@ -194,6 +203,11 @@ async function save(items: { categoryNo: string; displayName?: string; sort: num
 .opt__name {
   font-size: 26rpx;
   color: var(--sh-ink);
+}
+
+.opt__gate {
+  font-size: 24rpx;
+  color: var(--sh-warning);
 }
 
 .opt__n {
