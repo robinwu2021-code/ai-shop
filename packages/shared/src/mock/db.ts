@@ -236,6 +236,11 @@ interface MerchantSeed {
   openHours?: string;
   joinedAt: number;
   tags: I18nText[];
+  /**
+   * 已停业。**扫码进店的老客最需要看见的就是这一条** ——
+   * 不给这个字段的话 mock 侧恒为 false，「已停业」那条分支永远走不到。
+   */
+  closed?: boolean;
 }
 
 const merchantSeeds: MerchantSeed[] = [
@@ -429,7 +434,7 @@ const goodsSeeds: GoodsSeed[] = [
     cover: "🍎",
     images: ["🍎"],
     type: CATEGORY_TYPE.FRESH,
-    categoryNo: "C_FRUIT",
+    categoryNo: "CAT120",
     price: 2980,
     originPrice: 3980,
     fulfillments: [FULFILLMENT.PICKUP, FULFILLMENT.DELIVERY],
@@ -457,7 +462,7 @@ const goodsSeeds: GoodsSeed[] = [
     cover: "🥬",
     images: ["🥬"],
     type: CATEGORY_TYPE.FRESH,
-    categoryNo: "C_VEG",
+    categoryNo: "CAT110",
     price: 1280,
     // 邻里自提：这条链路（ADR-005）此前**没有任何种子商品支持**，
     // 于是「送到发起人家里」整条分支从未被验证过 —— 由 mock-coverage 体检查出。
@@ -483,7 +488,7 @@ const goodsSeeds: GoodsSeed[] = [
     cover: "🧴",
     images: ["🧴"],
     type: CATEGORY_TYPE.NORMAL,
-    categoryNo: "C_CLEAN",
+    categoryNo: "CAT210",
     price: 2990,
     originPrice: 3990,
     fulfillments: [FULFILLMENT.PICKUP, FULFILLMENT.EXPRESS],
@@ -513,7 +518,7 @@ const goodsSeeds: GoodsSeed[] = [
     cover: "🧻",
     images: ["🧻"],
     type: CATEGORY_TYPE.NORMAL,
-    categoryNo: "C_PAPER",
+    categoryNo: "CAT210",
     price: 3990,
     originPrice: 5990,
     fulfillments: [FULFILLMENT.PICKUP, FULFILLMENT.EXPRESS],
@@ -538,7 +543,7 @@ const goodsSeeds: GoodsSeed[] = [
     cover: "❄️",
     images: ["❄️"],
     type: CATEGORY_TYPE.SERVICE,
-    categoryNo: "C_HOME",
+    categoryNo: "CAT310",
     price: 12800,
     originPrice: 19800,
     fulfillments: [FULFILLMENT.APPOINTMENT],
@@ -564,7 +569,7 @@ const goodsSeeds: GoodsSeed[] = [
     cover: "💈",
     images: ["💈"],
     type: CATEGORY_TYPE.SERVICE,
-    categoryNo: "C_BEAUTY",
+    categoryNo: "CAT340",
     price: 2900,
     originPrice: 5800,
     fulfillments: [FULFILLMENT.STORE_VERIFY],
@@ -586,7 +591,7 @@ const goodsSeeds: GoodsSeed[] = [
     cover: "🎬",
     images: ["🎬"],
     type: CATEGORY_TYPE.VIRTUAL,
-    categoryNo: "C_DIGITAL",
+    categoryNo: "",
     price: 1500,
     originPrice: 2500,
     fulfillments: [FULFILLMENT.INSTANT],
@@ -616,7 +621,7 @@ const goodsSeeds: GoodsSeed[] = [
     cover: "💳",
     images: ["💳"],
     type: CATEGORY_TYPE.CARD,
-    categoryNo: "C_CARD",
+    categoryNo: "",
     price: 20000,
     originPrice: 22000,
     fulfillments: [FULFILLMENT.INSTANT],
@@ -636,7 +641,7 @@ const goodsSeeds: GoodsSeed[] = [
     cover: "🎟️",
     images: ["🎟️"],
     type: CATEGORY_TYPE.CARD,
-    categoryNo: "C_CARD",
+    categoryNo: "",
     price: 11900,
     originPrice: 14500,
     fulfillments: [FULFILLMENT.INSTANT],
@@ -1818,10 +1823,19 @@ export function pointBalance(ledger: PointRecord[]): number {
  */
 const TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   WAIT_PAY: ["PAID", "CANCELLED"],
-  // 没有独立的「备货中」：后端从付款直接到 PAID（待发货），mock 与它保持一致
-  PAID: ["ARRIVED", "SHIPPED", "COMPLETED", "REFUNDED", "CANCELLED"],
-  ARRIVED: ["COMPLETED", "REFUNDED"],
-  SHIPPED: ["COMPLETED", "REFUNDED"],
+  /*
+   * **付款之后只有一个「正在履约」**。
+   *
+   * 早先这里是 ARRIVED（已到自提点）与 SHIPPED（已发货）两个并列状态 ——
+   * 那是把「怎么送」编进了状态名，于是每加一种履约方式就得加一个状态
+   * （到店核销、上门预约、即时达各来一个），三端、状态机、统计口径都要各补一遍。
+   *
+   * 现在状态只说「进行到哪一步」，**送法由 fulfillment 表达**，
+   * 「去自提点取」还是「在路上」由 orderView(status, fulfillment, info) 决定
+   * （见 strategies/order-view.ts）。
+   */
+  PAID: ["FULFILLING", "COMPLETED", "REFUNDED", "CANCELLED"],
+  FULFILLING: ["COMPLETED", "REFUNDED"],
   COMPLETED: ["REFUNDED"],
   REFUNDED: [],
   CANCELLED: [],

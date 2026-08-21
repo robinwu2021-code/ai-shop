@@ -75,17 +75,30 @@ class CommunityApplyFlowTest {
         var vo = adminService.submitApply(m, "没坐标的小区", null, null, null);
         adminService.decideApply(vo.applyNo(), true, null, null, "OPS1");
 
-        // 带定位查：算不出距离的（distance=0）必须排在算得出的后面
-        var list = communityService.nearby(30_290_000, 120_110_000);
-        int idx = -1;
-        for (int i = 0; i < list.size(); i++) {
-            if (list.get(i).communityNo().equals(
-                    adminService.appliesOf(m).get(0).communityNo())) {
-                idx = i;
-            }
-        }
-        assertThat(idx).as("新社区应排在有坐标的社区之后").isGreaterThan(0);
-        assertThat(list.get(0).distance()).isGreaterThan(0);
+        String newNo = adminService.appliesOf(m).get(0).communityNo();
+
+        /*
+         * **算不出距离的不进「附近」** —— 从「排最后」收紧成「不出现」（2026-08-21）。
+         *
+         * 原先它排在有坐标的后面但仍然可见。可见就有人会选，而「没坐标」意味着
+         * 系统根本不知道它在哪 —— 一个杭州用户能在「附近」里选到刚提报的广州社区，
+         * 与「把 1056 公里外的点伪装成附近」是同一个错，只是换了个来源。
+         * 未知就是未知，不是零米。
+         */
+        var nearby = communityService.nearby(30_290_000, 120_110_000);
+        assertThat(nearby.stream().map(v -> v.communityNo()))
+                .as("没坐标的社区不该出现在「附近」——系统并不知道它在哪")
+                .doesNotContain(newNo);
+        assertThat(nearby.get(0).distance()).isGreaterThan(0);
+
+        /*
+         * **但链路不能断**：商家提报审过之后建出来的社区只有名字与区划，
+         * 坐标要运营后补（ADR-013 阶段三）。补之前它必须在「全部已开通社区」里看得到，
+         * 否则「提报 → 审核通过 → 谁也看不见」，商家会以为审核没过。
+         */
+        assertThat(communityService.all().stream().map(v -> v.communityNo()))
+                .as("坐标补齐前，新社区要能在「全部已开通」里被手动选到")
+                .contains(newNo);
     }
 
     @Test

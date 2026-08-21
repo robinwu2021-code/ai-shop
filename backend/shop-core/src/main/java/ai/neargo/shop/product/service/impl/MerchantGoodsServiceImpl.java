@@ -1,5 +1,6 @@
 package ai.neargo.shop.product.service.impl;
 
+import ai.neargo.shop.auth.BizContext;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
@@ -805,7 +806,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         if (onSale) {
             requireCategoryAuthorized(merchantNo, g.getCategoryNo());
         }
-        String storeNo = ai.neargo.shop.auth.BizContext.current().currentStoreNo();
+        String storeNo = BizContext.current().currentStoreNo();
         /*
          * 闸二：**上架的商品，它的类目必须在这家店的货架上**（TDD-品类约束全链路 §4.3）。
          *

@@ -1143,6 +1143,53 @@ export const mockApi: MerchantApi = {
     if (q.status === "ON_SALE") list = list.filter((g) => g.onSale);
     else if (q.status === "OFF_SALE") list = list.filter((g) => !g.onSale && !g.status);
     else if (q.status) list = list.filter((g) => g.status === q.status);
+
+    /*
+     * **关键词与类目过滤此前完全没实现。**
+     *
+     * 页面两个都在发（真后端 `GET /biz/goods` 也都支持），而 mock 只看 status ——
+     * 于是搜索框输什么都返回全部、类目筛点哪个都返回全部。
+     * 这比「筛出 0 条」更难发现：界面一直有内容，看起来在工作。
+     *
+     * 实测：按 6 个一级类目分别筛，每个都返回同样的 2 条。
+     */
+    const kw = q.keyword?.trim().toLowerCase();
+    if (kw) {
+      list = list.filter((g) => String(g.title ?? "").toLowerCase().includes(kw));
+    }
+    if (q.categoryNo) {
+      /*
+       * **要连子孙一起匹配**：页面筛的是**一级**类目，而商品挂在二级上 ——
+       * 只比对 categoryNo 相等的话，选「食品生鲜」一条也筛不出来。
+       */
+      /*
+       * 先把树摊平成 `{编号, 上级}` 再算，**不在树上做类型断言** ——
+       * db 里各层节点的字面量类型并不一致（`parentNo` 一级是 null、二级是 string），
+       * 强转会被 TS 拒绝，而绕过它的 `as unknown as` 只是把问题藏起来。
+       */
+      interface Node { categoryNo: string; parentNo?: string | null; children?: Node[] }
+      const flat: Node[] = [];
+      const collect = (nodes: Node[]) => {
+        for (const c of nodes) {
+          flat.push(c);
+          if (c.children?.length) collect(c.children);
+        }
+      };
+      collect(db.categories as unknown as Node[]);
+
+      const wanted = new Set<string>([q.categoryNo]);
+      // 逐层展开：树最深三层，跑到不再新增为止（比写死轮数稳）
+      for (let grew = true; grew; ) {
+        grew = false;
+        for (const c of flat) {
+          if (c.parentNo && wanted.has(c.parentNo) && !wanted.has(c.categoryNo)) {
+            wanted.add(c.categoryNo);
+            grew = true;
+          }
+        }
+      }
+      list = list.filter((g) => wanted.has(g.categoryNo));
+    }
     return delay(paginate(list, q.page, q.size));
   },
 
@@ -1152,6 +1199,23 @@ export const mockApi: MerchantApi = {
 
   async mSaveGoods(payload) {
     const merchantNo = requireMerchant();
+    /*
+     * **先脱掉响应式外壳再往库里存。**
+     *
+     * 页面传进来的 `images` / `optionValues` 是 Vue 的 reactive 代理数组
+     * （`images: images.value`、`optionValues: r.optionValues` 都是直接给的引用）。
+     * 直接存下去有两个后果，第二个更严重：
+     *
+     *   1. `delay()` 用 `structuredClone` 返回副本，而 Chrome **拒绝克隆 Proxy** ——
+     *      于是在 mock 上建完商品，再打开它就抛 DataCloneError，
+     *      整个商品详情打不开（实测：goods.images → DataCloneError）；
+     *   2. 库里存的是**页面状态的活引用**：商家在编辑页再改一下，
+     *      没点保存也已经改到了「数据库」里。真后端不可能有这种事
+     *      （HTTP 那条路上一切都经过 JSON 序列化）。
+     *
+     * 在这个边界上做一次深拷贝，等价于 HTTP 的 JSON 往返 —— 这正是 mock 该模仿的。
+     */
+    payload = JSON.parse(JSON.stringify(payload)) as typeof payload;
     if (!payload.skus.length) throw new Error("至少要有一个规格");
     // 中文是基准语言：没有它就没有回落目标
     if (!payload.title["zh-CN"].trim()) throw new Error("中文商品名必填");

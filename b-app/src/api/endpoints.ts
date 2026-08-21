@@ -112,6 +112,7 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
 
   mUploadImage: { method: "POST", path: "/biz/upload/image", auth: true, summary: "上传商品图" },
   mRecognizeGoods: { method: "POST", path: "/biz/goods/recognize", auth: true, summary: "拍照识别商品" },
+  mDescribeGoods: { method: "POST", path: "/biz/goods/describe", auth: true, summary: "自动生成图文详情" },
 
   mCategoryTree: { method: "GET", path: "/biz/category/tree", auth: true, summary: "类目树（选类目）" },
   // ⚠️ 注释放在属性外面：生成器正则是 `\{\s*method:`，夹在中间这个端点就不进 spec

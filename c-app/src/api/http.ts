@@ -100,6 +100,7 @@ export const httpApi: ShopApi = {
   // ---- 社区
   nearbyCommunities: (lat, lng) =>
     call<Community[]>("nearbyCommunities", undefined, { lat, lng } satisfies NearbyQuery),
+  allCommunities: () => call<Community[]>("allCommunities"),
 
   // ---- 商品
   goodsList: (q: GoodsQuery) => call<PageResult<Goods>>("goodsList", undefined, { ...q } satisfies GoodsListQuery),

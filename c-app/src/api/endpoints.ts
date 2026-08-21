@@ -63,6 +63,12 @@ export const ENDPOINTS: Record<keyof ShopApi, EndpointDef> = {
     auth: false,
     summary: "附近社区与自提点",
   },
+  allCommunities: {
+    method: "GET",
+    path: "/mp/community",
+    auth: false,
+    summary: "全部已开通社区（附近为空时的出路）",
+  },
 
   // ---------------------------------------------------------------- 商品
   goodsList: { method: "GET", path: "/mp/goods", auth: false, summary: "商品列表" },

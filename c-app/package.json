@@ -11,7 +11,8 @@
     "build:app": "uni build -p app",
     "type-check": "vue-tsc --noEmit",
     "gen:api": "node scripts/gen-openapi.mjs",
-    "upload:mp": "node scripts/upload-mp.mjs"
+    "upload:mp": "node scripts/upload-mp.mjs",
+    "release:mp": "bash scripts/release-mp.sh"
   },
   "dependencies": {
     "@ai-shop/ui": "*",

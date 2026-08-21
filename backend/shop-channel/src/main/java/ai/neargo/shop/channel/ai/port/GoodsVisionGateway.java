@@ -153,6 +153,116 @@ public class GoodsVisionGateway implements GoodsVisionPort {
         }
     }
 
+    /**
+     * 生成图文详情正文。
+     *
+     * <p>与 {@link #recognize} 共用同一个 client 与同一条「必须关 thinking」的教训，
+     * 但**不要 JSON**：这里要的就是一段纯文本，让模型套 JSON 只会多一层解析，
+     * 而且它经常把换行转义得没法直接用。
+     *
+     * <p>token 预算给到 800：详情是长文，300 会在句子中间被截断 ——
+     * 而截断的那一段看起来像模型写坏了，其实是配额到头了。
+     */
+    @Override
+    public String describe(String imageUrl, String title, String subtitle, String category) {
+        if (!isEnabled() || title == null || title.isBlank()) {
+            return null;
+        }
+        try {
+            // 有图就带图：同一件货，看得见实物写出来的描述具体得多
+            var content = new java.util.ArrayList<Map<String, Object>>();
+            content.add(Map.of("type", "text", "text", describePrompt(title, subtitle, category)));
+            if (imageUrl != null && !imageUrl.isBlank()) {
+                content.add(Map.of("type", "image_url", "image_url", Map.of("url", imageUrl)));
+            }
+            var body = Map.of(
+                    "model", model,
+                    "max_tokens", 800,
+                    // 详情要的是可读，不是可复现 —— 比识别那边的 0.1 高一些
+                    "temperature", 0.6,
+                    // ★ 同 recognize：不关掉的话 content 永远是空串
+                    "chat_template_kwargs", Map.of("enable_thinking", false),
+                    "messages", List.of(Map.of("role", "user", "content", content)));
+
+            var req = HttpRequest.newBuilder(URI.create(baseUrl + "/chat/completions"))
+                    .timeout(Duration.ofSeconds(timeoutSeconds))
+                    .header("Content-Type", "application/json");
+            if (!apiKey.isBlank()) {
+                req.header("Authorization", "Bearer " + apiKey);
+            }
+            var resp = http.send(
+                    req.POST(HttpRequest.BodyPublishers.ofString(json.writeValueAsString(body))).build(),
+                    HttpResponse.BodyHandlers.ofString());
+            if (resp.statusCode() / 100 != 2) {
+                log.warn("详情生成失败：HTTP {} {}", resp.statusCode(), abbreviate(resp.body()));
+                return null;
+            }
+            String text = json.readTree(resp.body())
+                    .path("choices").path(0).path("message").path("content").asText("").trim();
+            // 模型偶尔仍会套一层代码块，剥掉再给端上 —— 详情框里出现 ``` 很难看
+            if (text.startsWith("```")) {
+                int nl = text.indexOf('\n');
+                int close = text.lastIndexOf("```");
+                if (nl > 0 && close > nl) {
+                    text = text.substring(nl + 1, close).trim();
+                }
+            }
+            return text.isBlank() ? null : text;
+        } catch (Exception e) {
+            log.warn("详情生成异常：{}", e.toString());
+            return null;
+        }
+    }
+
+    /**
+     * 详情提示词。**这一版是对着真模型调出来的，改之前先照着 qwen3.6 跑一遍。**
+     *
+     * <p>第一版只写了「不要编产地品牌保质期」与「不要营销腔」，实测输出是：
+     * <pre>
+     *   · 本地散养土鸡蛋，当日现捡现发，蛋壳干净无破损，蛋黄饱满紧实，色泽金黄诱人…
+     *   · 每盒30枚，分量实在…性价比高，满足全家营养需求。
+     * </pre>
+     * 标题里只有「本地土鸡蛋 30枚」—— <b>「散养」「饱满」「金黄」全是编的</b>，
+     * 而这类词不在「产地品牌保质期」的字面清单里，所以模型不认为自己违规了。
+     *
+     * <p>三处修正，每一处都对应实测出来的偏差：
+     * <ol>
+     *   <li><b>把「没人验证过的品质描述」单列一类并举例</b>（散养/饱满/金黄/无破损）——
+     *       只说抽象原则不管用，得给出它真会写的那些词；
+     *   <li><b>营销话术也举例</b>（性价比高/看得见的新鲜/老少皆宜），同理；
+     *   <li><b>正面给出「可以写什么」</b>。只有禁令的话模型会缩到只剩两行套话；
+     *       给了可写范围，它才写得出「蛋壳颜色深浅不一属正常现象」这种真有用的话。
+     * </ol>
+     * 另外明说「行与行之间不要空行」：第一版输出是 `\n\n` 分段，
+     * 填进详情框里松得像没排版过。
+     */
+    private String describePrompt(String title, String subtitle, String category) {
+        var sb = new StringBuilder("""
+                你是社区团购的商品文案助手。为下面这件商品写一段图文详情正文。
+
+                格式：
+                · 纯文本，不要 Markdown、不要标题符号、不要代码块
+                · 3 到 5 行，每行以「· 」开头，**行与行之间不要空行**
+                · 总长 200 字以内
+
+                内容只能来自「商品名、卖点、类目」这三项和图片里看得见的东西。**下面这些一律不许写**：
+                · 产地、品牌、等级、保质期、认证、执行标准
+                · 没人验证过的品质描述：散养、饱满、鲜嫩、金黄、香甜、无破损、色泽诱人
+                · 营销话术：性价比高、值得拥有、看得见的新鲜、老少皆宜、满足全家
+
+                可以写：怎么吃/怎么用、怎么存放、分量与适用场景、下单与到货提醒。
+                宁可少写一行，也不要写一句你无法确认的话。口吻像店主在跟老顾客交代事情。
+                """);
+        sb.append("\n商品名：").append(title).append('\n');
+        if (subtitle != null && !subtitle.isBlank()) {
+            sb.append("卖点：").append(subtitle).append('\n');
+        }
+        if (category != null && !category.isBlank()) {
+            sb.append("类目：").append(category).append('\n');
+        }
+        return sb.toString();
+    }
+
     private String prompt(Map<String, String> categories) {
         var sb = new StringBuilder("""
                 你是电商商品录入助手。看图，只输出一个 JSON 对象，不要解释、不要代码块。

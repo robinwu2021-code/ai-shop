@@ -10,6 +10,7 @@ import ai.neargo.shop.spi.user.MerchantQueryPort.MerchantBrief;
 import ai.neargo.shop.community.mapper.CommunityMappers.CommunityMapper;
 import ai.neargo.shop.community.mapper.CommunityMappers.PickupPointMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.Comparator;
@@ -33,11 +34,22 @@ public class CommunityServiceImpl implements CommunityService {
      */
     private final MerchantQueryPort merchantQueryPort;
 
+    /**
+     * 「附近」的半径（米）。默认 5 公里 —— <b>自提是走过去取的</b>，
+     * 几公里之外的自提点在物理上就不成立。
+     *
+     * <p>做成配置而不是常量：这条闸管着 C 端第一屏，设小了已开通社区的用户也会看到空态。
+     * 真出问题改一个配置项即可，不用发版。
+     */
+    private final int nearbyRadiusM;
+
     public CommunityServiceImpl(CommunityMapper communityMapper, PickupPointMapper pickupMapper,
-                                MerchantQueryPort merchantQueryPort) {
+                                MerchantQueryPort merchantQueryPort,
+                                @Value("${shop.community.nearby-radius-m:5000}") int nearbyRadiusM) {
         this.communityMapper = communityMapper;
         this.pickupMapper = pickupMapper;
         this.merchantQueryPort = merchantQueryPort;
+        this.nearbyRadiusM = nearbyRadiusM;
     }
 
     @Override
@@ -80,6 +92,7 @@ public class CommunityServiceImpl implements CommunityService {
          */
         boolean located = latE6 != null && lngE6 != null;
         return communities.stream()
+                .filter(c -> !located || withinRadius(c, latE6, lngE6))
                 .map(c -> toVO(c, byCommunity.getOrDefault(c.getCommunityNo(), List.of()), owners, latE6, lngE6))
                 .sorted(Comparator.comparingInt(
                         v -> located && v.distance() == 0 ? Integer.MAX_VALUE : v.distance()))
@@ -160,6 +173,26 @@ public class CommunityServiceImpl implements CommunityService {
     }
 
     /** 未传定位返回 0：端上按 0 隐藏距离展示，比编一个假距离诚实。 */
+    /**
+     * 这个社区算不算「附近」。
+     *
+     * <p><b>坐标缺失 = 不算附近，不是算 0 米。</b> {@link #distance} 对缺失兜底返回 0，
+     * 若按 0 参与过滤，一个没配坐标的社区会出现在**每个人**的附近列表里、而且排第一。
+     * 未知就是未知。这类社区会长期存在 —— 商家提报审过后建出来的只有名字与区划，
+     * 坐标靠运营后补（ADR-013 阶段三）。
+     *
+     * <p>不过滤的后果实测过：用广州坐标请求，返回的是杭州的「阳光花园」，
+     * 距离 1056 公里，却排在「附近社区」第一位。用户能绑上去，
+     * 然后下单一件他永远取不到的货 —— <b>不是查不到，是查到了一个错的</b>，
+     * 而系统全程不认为有任何异常。
+     */
+    private boolean withinRadius(CmtCommunity c, Integer myLatE6, Integer myLngE6) {
+        if (c.getLatE6() == null || c.getLngE6() == null) {
+            return false;
+        }
+        return distance(c.getLatE6(), c.getLngE6(), myLatE6, myLngE6) <= nearbyRadiusM;
+    }
+
     private int distance(Integer latE6, Integer lngE6, Integer myLatE6, Integer myLngE6) {
         if (latE6 == null || lngE6 == null || myLatE6 == null || myLngE6 == null) {
             return 0;

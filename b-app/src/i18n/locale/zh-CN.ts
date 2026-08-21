@@ -273,7 +273,6 @@ export default {
     multiSkuStock: "多规格商品请在编辑页按规格修改",
     stockInvalid: "库存须为 0 或正整数",
     skus: "规格",
-    skuHint: "规格组 × 选项自动生成 SKU，最多 3 组",
     langZh: "中",
     langEn: "EN",
     langAr: "ع",
@@ -351,7 +350,10 @@ export default {
     genDetailFail: "生成失败，请稍后再试",
     genDetailDone: "已生成，可直接修改",
     genDetailOverwrite: "已有内容，生成后会被替换。继续？",
-
+    gateRow: "缺资质",
+    gateBlocked: "缺「{s}」，上架会被拒",
+    gateTab: "缺资质",
+    gateCount: "{n} 件商品缺资质，无法上架",
   },
 
   order: {
@@ -805,9 +807,9 @@ export default {
     orders: "订单数",
     repeatRate: "复购率",
     storeRating: "门店评分",
-    outOfStock: "缺货 SKU",
+    outOfStock: "缺货规格",
     repeatBasis: "{b} 个买家里有 {r} 个回头",
-    oosNote: "缺货只数已按门店管库存的 SKU；没设过分店库存的走店铺总量，不算这家店缺货。",
+    oosNote: "缺货只数已按门店单独设过库存的规格；没设过分店库存的走店铺总量，不算这家店缺货。",
     best: "销售额最高",
     noStores: "你还没有被授权的门店 —— 找店主给你授权到店",
     failed: "数据没取到",

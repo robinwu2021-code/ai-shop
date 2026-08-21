@@ -61,6 +61,18 @@ public class MpCatalogController {
         return communityService.nearby(toE6(lat), toE6(lng));
     }
 
+    /**
+     * 全部已开通社区 —— <b>「附近没有」时的出路</b>。
+     *
+     * <p>附近为空不能是死路：这一页是新用户的第一屏，停在「暂未开通」而没有下一步，
+     * 等于在第一屏劝退。而异地下单在社区团购里是真实高频场景（给父母下单、出差前囤货），
+     * 手动选一个远点是**用户的知情选择** —— 与系统把远点伪装成「附近」是两回事。
+     */
+    @GetMapping("/mp/community")
+    public List<CommunityVO> allCommunities() {
+        return communityService.all();
+    }
+
     @GetMapping("/mp/community/{communityNo}")
     public CommunityVO communityDetail(@PathVariable String communityNo) {
         return communityService.detail(communityNo);

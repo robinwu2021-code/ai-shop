@@ -81,6 +81,28 @@ function gotoCommunity() {
   uni.navigateTo({ url: ROUTES.community });
 }
 
+/**
+ * 未绑归属时，<b>先探附近有没有，再决定要不要推他去选</b>。
+ *
+ * <p>此前是无条件推：所在区域还没开通的用户，每次回首页都被推去一个
+ * 只会说「这一带还没有自提点」的页面 —— 那一页对他没有任何用处，
+ * 却是他绕不过去的第一屏。
+ *
+ * <p>附近没有就**留在首页让他先逛**：商品、门店、团购在后端本来就是游客可访问的。
+ * 归属这件事推迟到他真要下自提单时再要（下单页会引导），
+ * 而顶栏那个「选自提点」入口一直在，想手动选随时能点。
+ */
+async function maybePickCommunity() {
+  if (community.bound) return;
+  if (await community.probeNearby()) {
+    gotoCommunity();
+  } else if (!hintedNoNearby) {
+    hintedNoNearby = true; // 一次会话说一次就够，每次回首页都弹是骚扰
+    uni.showToast({ title: String(t("home.noNearbyPickup")), icon: "none", duration: 2600 });
+  }
+}
+let hintedNoNearby = false;
+
 function gotoSearch() {
   uni.navigateTo({ url: ROUTES.search });
 }
@@ -88,7 +110,7 @@ function gotoSearch() {
 onShow(() => {
   load();
   cart.load();
-  if (!community.bound) gotoCommunity();
+  maybePickCommunity();
   timer = setInterval(() => (now.value = Date.now()), 1000);
 });
 

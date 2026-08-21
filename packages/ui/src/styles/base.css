@@ -389,7 +389,13 @@ uni-page-wrapper[style*="--window-bottom"] {
  * 在一个刻意压低灰面积的界面上尤其刺眼。
  *
  * 横滑排（推荐商品）同理：它靠「半张卡露在边缘」暗示可滑，不需要滚动条再说一遍。
+ *
+ * **小程序里要排除掉**：WXSS 不支持 `*` 通配选择器，带着它上传会被微信直接拒收
+ * （`-80056 ./app.wxss unexpected token \`*\``）—— 而本地构建、开发者工具预览全都正常，
+ * 只有真正上传那一刻才报，报的还是产物里的字符偏移，回溯不到这几行。
+ * 小程序本来也不显示滚动条，这条规则在那边纯属多余。
  */
+/* #ifndef MP-WEIXIN */
 * {
   scrollbar-width: none;
   -ms-overflow-style: none;
@@ -398,6 +404,7 @@ uni-page-wrapper[style*="--window-bottom"] {
   width: 0;
   height: 0;
 }
+/* #endif */
 
 .sh-num {
   font-variant-numeric: tabular-nums;

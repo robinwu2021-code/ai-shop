@@ -18,6 +18,7 @@ import type {
   TogglePointsReq,
   OrderListQuery,
   QuoteReq,
+  DescribeGoodsReq,
   RecognizeGoodsReq,
   ReplyReviewReq,
   ReportShortageReq,
@@ -231,6 +232,9 @@ export const httpApi: MerchantApi = {
     http.uploadFile<{ url: string }>(E.mUploadImage.path, tempPath),
   mRecognizeGoods: (imageUrl) =>
     http.post<GoodsGuess>(E.mRecognizeGoods.path, { imageUrl } satisfies RecognizeGoodsReq),
+
+  mDescribeGoods: (req) =>
+    http.post<{ detail: string }>(E.mDescribeGoods.path, req satisfies DescribeGoodsReq),
 
   mCategoryTree: () => http.get<Category[]>(E.mCategoryTree.path),
   mSpuStdSearch: (q) => http.get<SpuStd[]>(E.mSpuStdSearch.path, { ...q }),

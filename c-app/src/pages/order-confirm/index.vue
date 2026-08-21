@@ -293,6 +293,20 @@ function gotoAddress() {
 
 async function submit() {
   if (!canSubmit.value) return;
+  /*
+   * **自提单必须先有归属。**
+   *
+   * 附近没开通的用户现在不再被强制推去选社区页（他会留在首页先逛），
+   * 于是「没绑归属」会一路走到这里。不拦的话后端回 70025「请先选择自提点」——
+   * 一句正确但没有出口的话：他站在结算页，不知道去哪儿选。
+   *
+   * 这里把他直接送到选社区页，那页有「查看全部已开通社区」的出路。
+   */
+  if (needPickup.value && !community.pickup) {
+    uni.showToast({ title: String(t("confirm.pickPickupFirst")), icon: "none" });
+    setTimeout(() => uni.navigateTo({ url: ROUTES.community }), 800);
+    return;
+  }
   submitting.value = true;
   try {
     const order = await api.createOrder({

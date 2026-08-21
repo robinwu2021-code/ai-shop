@@ -31,8 +31,10 @@ public class MainActivity extends AppCompatActivity {
      * 页面入口。**按构建类型分**（`app/build.gradle` 里的 `resValue`）：
      *
      * <ul>
-     *   <li><b>release</b>：{@code file:///android_asset/h5/index.html} —— 离线可用，
-     *       装了就能看，不依赖任何机器开着；</li>
+     *   <li><b>release</b>：{@code http://106.55.27.246/b/} —— nginx 上的 b-app。
+     *       <b>不是 assets 里那份离线产物</b>：uni-app 的 H5 在 {@code file://} 下黑屏
+     *       （见下面 debug 那条的同一个 origin 问题），所以生产改走 http 同源，
+     *       API 经 {@code /biz} 反代到 8081。代价是装了也要联网才能看；</li>
      *   <li><b>debug</b>：{@code http://localhost:5174} —— 连宿主机的 dev server。</li>
      * </ul>
      *

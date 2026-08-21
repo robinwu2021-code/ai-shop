@@ -125,6 +125,46 @@ async function loadCategories() {
   rootCategories.value = await api.mCategoryTree().catch(() => []);
 }
 
+/**
+ * 类目编号 → 类目节点的**平铺索引**。
+ *
+ * <p>`mCategoryTree()` 返回的是树，而列表里每一行只有 `categoryNo` ——
+ * 逐行去树里递归查是 O(行 × 树)，一屏 50 行就是几千次比较。
+ */
+const categoryIndex = computed<Map<string, Category>>(() => {
+  const m = new Map<string, Category>();
+  const walk = (list: Category[]) => {
+    for (const c of list) {
+      m.set(c.categoryNo, c);
+      if (c.children?.length) walk(c.children);
+    }
+  };
+  walk(rootCategories.value);
+  return m;
+});
+
+/**
+ * 这件商品**缺不缺资质**。缺 = 它现在点「上架」必被后端拒（70002）。
+ *
+ * <p>为什么要在列表页算：门槛卡在**上架**那一刻，而列表页此前没有任何迹象 ——
+ * 商家只能一条一条点上架去撞。线上实测 M0001 有 138 件货处在这个状态，
+ * 分布在 9 个类目里，一件都上不了架，而列表上看不出任何区别。
+ *
+ * <p>判据与后端 `requireCategoryAuthorized` 一致：类目挂了 `requiredCode`
+ * 且主体没持有它。没归类的商品不算缺 —— 那是另一件事（后端也放行）。
+ *
+ * @returns null = 不缺；否则给出人读的资质名，用来说「缺哪张」
+ */
+function gateOf(g: Goods): string | null {
+  const c = g.categoryNo ? categoryIndex.value.get(g.categoryNo) : undefined;
+  const code = c?.requiredCode;
+  if (!code || merchant.categoryCodes.includes(code)) return null;
+  return (c?.qualifications ?? []).join("、") || code;
+}
+
+/** 本页缺资质的件数。**只统计当前已加载的**，不谎称是全店总数 */
+const gatedCount = computed(() => list.value.filter((g) => gateOf(g) !== null).length);
+
 function switchCategory(no: string) {
   categoryNo.value = categoryNo.value === no ? "" : no;
   void load();
@@ -164,6 +204,18 @@ function switchTab(key: GoodsStatus | "") {
 }
 
 async function toggle(g: Goods) {
+  /*
+   * 上架前先在端上说清楚。**只拦上架，不拦下架** ——
+   * 缺资质的商品要能下架（它可能是资质过期前上的架）。
+   *
+   * 不这样做的话商家看到的是后端那句通用错误，既说不出缺哪张证，
+   * 也说不出是类目的问题 —— 他会反复回去改商品信息，而问题不在商品上。
+   */
+  const need = !g.onSale ? gateOf(g) : null;
+  if (need) {
+    uni.showToast({ title: t("goods.gateBlocked", { s: need }), icon: "none" });
+    return;
+  }
   try {
     await api.mToggleGoods(g.goodsNo, !g.onSale);
     await load();
@@ -318,6 +370,14 @@ onShow(() => {
       <text v-if="merchant.can('biz:goods')" class="add" @tap="edit()">＋ {{ $t("goods.add") }}</text>
     </view>
 
+    <!--
+      缺资质汇总。**只在真有的时候出现**，且说清是「当前列表里」的数 ——
+      分页只加载了一部分，把它说成全店总数是在编一个自己也不知道的数字。
+    -->
+    <text v-if="gatedCount" class="gate-sum">
+      {{ $t("goods.gateCount", { n: gatedCount }) }}
+    </text>
+
     <!-- 一级类目筛。只有一个类目时不显示 —— 那时它是个恒真的开关 -->
     <scroll-view v-if="rootCategories.length > 1" class="cats" scroll-x>
       <view class="cats__row">
@@ -387,6 +447,13 @@ onShow(() => {
           审计日志只有运营看得到。后端一直在发这个字段，端上此前连声明都没有。
         -->
         <text v-if="g.auditReason" class="reason">{{ g.auditReason }}</text>
+        <!--
+          缺资质。放在状态那一列而不是标题旁边：它回答的是
+          「这件货为什么上不了架」，属于状态，不是商品属性。
+        -->
+        <text v-if="gateOf(g)" class="reason reason--gate">
+          {{ $t("goods.gateRow") }}
+        </text>
         <view class="row__btns">
           <!-- 编辑与上下架都会改价/改可见性 → biz:goods；改库存只是数量 → biz:stock。
                这条缝就是店员的权限边界：卖完了能马上改数，但改不了价 -->
@@ -476,6 +543,18 @@ onShow(() => {
   line-height: 1.4;
   text-align: right;
 }
+/* 缺资质：用警示色而不是危险色 —— 商品本身没错，缺的是一张证 */
+.reason--gate {
+  color: var(--sh-warning);
+}
+.gate-sum {
+  display: block;
+  padding: 16rpx 24rpx;
+  font-size: 24rpx;
+  line-height: 1.4;
+  color: var(--sh-warning);
+  background: var(--sh-warning-tint);
+}
 .store {
   display: flex;
   align-items: center;
@@ -525,6 +604,16 @@ onShow(() => {
 .cats__chip {
   font-size: 24rpx;
   padding: 10rpx 20rpx;
+  /*
+   * 两条都要，缺一个都会换行 —— 类目从 3 个扩到 6 个之后才显形：
+   *
+   * · `white-space`：uni 的 `<text>` 自带 `pre-line`，会**盖掉**父级 `.cats` 上的
+   *   nowrap（实测 computed 就是 pre-line），于是「食品生鲜」断成两行
+   * · `flex-shrink`：父级是 inline-flex 但被容器宽度框住，默认 shrink=1 时
+   *   6 个 chip 会被压到 33px 宽而不是横向溢出滚动（实测 computed w=33.5px）
+   */
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 .bar__tabs {
   flex: 1;

@@ -203,8 +203,8 @@ const off = computed(() => {
   margin-right: 8rpx;
   padding: 0 8rpx;
   border-radius: var(--sh-radius-sm, 16rpx);
-  background: var(--sh-accent-tint);
-  color: var(--sh-accent);
+  background: var(--sh-primary-tint);
+  color: var(--sh-primary-text);
   font-size: 24rpx;
 }
 .card__shop {

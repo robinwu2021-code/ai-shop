@@ -183,7 +183,7 @@ export default {
     priceInvalid: "يجب أن يكون السعر 0 أو أكثر",
     editStock: "المخزون", multiSkuStock: "عدّل المخزون لكل مواصفة من صفحة التحرير",
     stockInvalid: "يجب أن يكون المخزون 0 أو عدداً صحيحاً موجباً",
-    skus: "المواصفات", skuHint: "المجموعات × الخيارات تولّد المصفوفة، 3 مجموعات كحد أقصى",
+    skus: "المواصفات",
     langZh: "ZH", langEn: "EN", langAr: "AR",
     untranslated: "{s} فارغ — ستظهر الصينية. أسماء المنتجات لا تُترجم آلياً",
     cover: "صورة المنتج",
@@ -249,7 +249,10 @@ export default {
     genDetailFail: "فشل التوليد، حاول لاحقًا",
     genDetailDone: "تم التوليد — يمكنك التعديل",
     genDetailOverwrite: "سيحل هذا محل ما كتبته. المتابعة؟",
-
+    gateRow: "يلزم ترخيص",
+    gateBlocked: "ينقص «{s}» — سيُرفض النشر",
+    gateTab: "يلزم ترخيص",
+    gateCount: "{n} منتجًا لا يمكن نشرها دون الترخيص المطلوب",
   },
 
   order: {

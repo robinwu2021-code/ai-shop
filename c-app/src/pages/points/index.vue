@@ -121,13 +121,13 @@ onShow(load);
 .hero__pending {
   display: block;
   font-size: 24rpx;
-  color: var(--sh-brand);
+  color: var(--sh-primary-text);
   margin-top: 8rpx;
 }
 .hero__off {
   display: block;
   font-size: 24rpx;
-  color: var(--sh-warn);
+  color: var(--sh-warning);
   margin-top: 14rpx;
 }
 .hero__worth {

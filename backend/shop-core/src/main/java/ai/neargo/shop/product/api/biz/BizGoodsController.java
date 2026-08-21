@@ -293,6 +293,46 @@ public class BizGoodsController {
     }
 
     /**
+     * 按商品名与主图**生成图文详情正文**（B 端「自动生成」按钮）。
+     *
+     * <p>返回的永远是**草稿**：端上把它填进那个可编辑的 textarea，商家改完再保存。
+     * 这里不直接落库 —— 模型不知道这家店真实的产地与保质期，
+     * 一键写进商品详情等于替商家做了他没做过的承诺。
+     *
+     * <p>生成不出来时返回空串而不是报错：这个按钮是省事的捷径，
+     * 不是必经步骤，模型不可达时商家照样能自己写。
+     */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.GOODS + "')")
+    @PostMapping("/biz/goods/describe")
+    public DescribeVO describe(@RequestBody DescribeReq req) {
+        // 类目路径喂中文名而不是编号：模型认得「食品生鲜/水果」，不认得 CAT120
+        String category = "";
+        if (req.categoryNo() != null && !req.categoryNo().isBlank()) {
+            for (var lv1 : categoryService.tree()) {
+                for (var lv2 : lv1.children()) {
+                    if (lv2.categoryNo().equals(req.categoryNo())) {
+                        category = lv1.name() + "/" + lv2.name();
+                    }
+                    for (var lv3 : lv2.children()) {
+                        if (lv3.categoryNo().equals(req.categoryNo())) {
+                            category = lv1.name() + "/" + lv2.name() + "/" + lv3.name();
+                        }
+                    }
+                }
+            }
+        }
+        String text = vision.describe(req.imageUrl(), req.title(), req.subtitle(), category);
+        return new DescribeVO(text == null ? "" : text);
+    }
+
+    public record DescribeReq(String imageUrl, String title, String subtitle, String categoryNo) {
+    }
+
+    /** 空串 = 没生成出来。端上据此提示，而不是把空白填进详情框 */
+    public record DescribeVO(String detail) {
+    }
+
+    /**
      * <b>没有 {@code type} 字段</b>：五品类由 {@code categoryNo} 派生（P1-1）。
      *
      * <p>留一个「收下但忽略」的字段看着更兼容，其实更糟：契约对齐守卫

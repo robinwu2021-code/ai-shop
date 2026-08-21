@@ -364,6 +364,11 @@ export const mockApi: ShopApi = {
     return delay(db.communitySeeds.map(toCommunity));
   },
 
+  async allCommunities() {
+    // mock 侧两者同源：真后端的差别是 nearby 带半径过滤，而 mock 只有一个城市的种子
+    return delay(db.communitySeeds.map(toCommunity));
+  },
+
   // ---------------------------------------------------------------- 商品
   async goodsList(q: GoodsQuery) {
     let list = allGoods().filter((g) => g.onSale);

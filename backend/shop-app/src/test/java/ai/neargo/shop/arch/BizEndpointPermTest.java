@@ -107,6 +107,9 @@ class BizEndpointPermTest {
         put("/biz/goods/save", BizPerms.GOODS);
         put("/biz/goods/{goodsNo}/toggle", BizPerms.GOODS);
         put("/biz/goods/recognize", BizPerms.GOODS);
+        // 自动生成图文详情：写的是这家店的商品文案，与建品同一档权限。
+        // 店员（只有 biz:stock）不该能改商品文案
+        put("/biz/goods/describe", BizPerms.GOODS);
         /*
          * 规格模板：**从 PUBLIC 移过来的**（2026-08-21）。
          *
