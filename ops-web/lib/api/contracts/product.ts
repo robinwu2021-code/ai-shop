@@ -51,7 +51,20 @@ export interface ProductApi {
 
   /** 类目树：一次给全量（三级树总量有限，前端自己组树比逐层拉更快）。 */
   listCategories(q?: CategoryQ): Promise<Category[]>;
-  saveCategory(v: Pick<Category, "categoryNo" | "name" | "parentNo" | "template" | "qualifications"> & { i18nEn?: string }): Promise<Category>;
+  /**
+   * 新建 / 改类目。
+   *
+   * <p><b>`requiredCode` 必须能在这里设</b> —— 它是经营准入的**判据**，
+   * 而 `qualifications` 只是给人看的文案。此前这个字段不在契约里，
+   * 于是运营在界面上改不了门槛：新开一个类目要么没门槛，要么等一条迁移。
+   *
+   * <p>后端会拒两种：层级超过两级、门槛码查无此项。**空 `requiredCode` = 无门槛**，
+   * 与「没传」是同一件事。
+   */
+  saveCategory(
+    v: Pick<Category, "categoryNo" | "name" | "parentNo" | "template" | "qualifications">
+      & { i18nEn?: string; requiredCode?: string; sort?: number },
+  ): Promise<Category>;
   /** 有子类目或有在售商品的类目不能归档 —— 归档后 C 端类目树会断枝。 */
   archiveCategory(categoryNo: string): Promise<Category>;
   unarchiveCategory(categoryNo: string): Promise<Category>;

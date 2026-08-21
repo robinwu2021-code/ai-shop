@@ -66,10 +66,28 @@ export const productMock: ProductApi = {
     // 三级封顶：再深一层，C 端的类目导航就没法展示了（也没有第四层的产品定义）
     if (level > MAX_CATEGORY_LEVEL) fail(`类目最多 ${MAX_CATEGORY_LEVEL} 级，不能在三级类目下再建子类目`, `Categories go ${MAX_CATEGORY_LEVEL} levels deep — a third-level category cannot take children`);
     if (!v.name?.trim()) fail("类目名称必填", "A category name is required");
+    /*
+     * 形态**继承父级**，不采信传上来的值：二级与它的一级形态不同，会让
+     * 「食品生鲜 → 粮油调味」建出来的商品要求填截单时间。真后端同样强制继承。
+     */
+    const template = parent ? parent.template : v.template;
+    /*
+     * 门槛码必须是**启用中**的码。挂一个停用码 = 那个类目永远拒绝所有人：
+     * 授权页只从启用码里挑，运营根本授不出去，而商家看到的是「你还没有资质授权」。
+     * 2026-08-21 线上真踩到过（熟食卤味 → FOOD、医药健康 → DRUG_RETAIL）。
+     */
+    if (v.requiredCode) {
+      const code = db.authCodeAdmins.find((a) => a.code === v.requiredCode);
+      if (!code) notFound("授权码", "Permission code", v.requiredCode);
+      if (!code.enabled) {
+        fail(`授权码「${code.name}」已停用，挂上去这个类目谁也上不了架`,
+          `Permission code “${code.name}” is disabled — nobody could list in this category`);
+      }
+    }
     const saved = db.upsert<Category>(
       db.categories,
       {
-        ...v, level, skuCount: 0,
+        ...v, level, template, skuCount: 0,
         i18n: { zh: v.name, ...(v.i18nEn ? { en: v.i18nEn } : {}) },
       },
       "categoryNo",

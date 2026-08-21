@@ -129,7 +129,7 @@ export const NAV: NavSection[] = [
     key: "product", label: "商品与类目", icon: "Package", module: "product", href: "/products",
     children: [
       // 属性模板（3.1.2）与类目多语言（3.1.3）是类目行上的字段，在类目详情里看，不单独成页。
-      { href: "/products", label: "三级类目树", perm: "product:category:read", group: "类目", matrix: "P-3.1", ready: true },
+      { href: "/products", label: "平台类目树", perm: "product:category:read", group: "类目", matrix: "P-3.1", ready: true },
       // 商品审核（3.2.2）= 商品池按「待审核」筛；多语言文案审核（3.2.5）与多市场定价（3.2.6）
       // 都在商品抽屉里 —— 审文案时看不到商品本身是没法审的。
       { href: "/products?tab=skus", label: "商品池与审核", perm: "product:sku:read", group: "商品", matrix: "P-3.2", ready: true },

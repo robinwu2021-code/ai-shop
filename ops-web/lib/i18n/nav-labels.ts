@@ -34,7 +34,7 @@ const OVERLAY: Record<string, Record<string, string>> = {
 
   商品与类目: { en: "Catalog" },
   商品审核队列: { en: "Product review queue" },
-  三级类目树: { en: "Category tree" },
+  平台类目树: { en: "Category tree" },
   商品池与审核: { en: "Product pool & review" },
   预售额度与超卖: { en: "Presale quota & oversell" },
   规格模板维护: { en: "Spec templates" },

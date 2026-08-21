@@ -26,7 +26,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DataTable, type Column } from "@/components/ui/data-table";
-import { Drawer, Field, FieldGrid } from "@/components/ui/drawer";
+import { Drawer, DrawerSection, Field, FieldGrid } from "@/components/ui/drawer";
 import { FilterSelect } from "@/components/ui/filter-select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -152,6 +152,44 @@ function ProductsInner() {
     mutationFn: () => api.setSkuPresale(presale!.skuNo, Number(presale!.quota), presale!.cutoffAt, presale!.arriveAt || undefined),
     onSuccess: () => { invalidate(); setPresale(null); notify.success(c.toastPresaleSaved); },
   });
+  /**
+   * 类目编辑表单。`null` = 抽屉关着。
+   *
+   * <p>此前这一页**只能看与归档** —— 新开一个类目要等一条迁移，
+   * 而门槛码（经营准入的判据）连契约里都没有，运营在界面上根本设不了。
+   */
+  const [catForm, setCatForm] = useState<{
+    categoryNo?: string; name: string; i18nEn: string; parentNo: string;
+    template: string; requiredCode: string; sort: string;
+  } | null>(null);
+
+  // 授权码字典：门槛码要从这里挑，不能手输 —— 输错一个字母就是一个永不命中的门槛
+  const authCodes = useQuery({
+    queryKey: ["auth-code-dict"],
+    queryFn: () => api.listAuthCodeDict(),
+    enabled: tab === "categories",
+  });
+
+  const saveCat = useMutation({
+    mutationFn: () =>
+      api.saveCategory({
+        categoryNo: catForm!.categoryNo,
+        name: catForm!.name.trim(),
+        i18nEn: catForm!.i18nEn.trim() || undefined,
+        parentNo: catForm!.parentNo || undefined,
+        template: catForm!.template,
+        qualifications: [],
+        // 空串 = 无门槛，与「没传」是同一件事
+        requiredCode: catForm!.requiredCode || undefined,
+        sort: Number(catForm!.sort) || 0,
+      } as Parameters<typeof api.saveCategory>[0]),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["categories"] });
+      setCatForm(null);
+      notify.success(c.catSaved);
+    },
+  });
+
   const archiveCat = useMutation({
     mutationFn: (categoryNo: string) => api.archiveCategory(categoryNo),
     onSuccess: () => { invalidate(); notify.success(c.toastCatArchived); },
@@ -292,6 +330,18 @@ function ProductsInner() {
               <Notice className="mb-3">
                 {c.catTreeNotice}
               </Notice>
+              {canEditCategory && (
+                <div className="mb-3">
+                  <Button
+                    onClick={() => setCatForm({
+                      name: "", i18nEn: "", parentNo: "", template: "STANDARD",
+                      requiredCode: "", sort: "0",
+                    })}
+                  >
+                    {c.catNew}
+                  </Button>
+                </div>
+              )}
               {cats.isLoading ? (
                 <div className="py-8 text-center text-muted-foreground">{c.loading}</div>
               ) : (
@@ -316,6 +366,16 @@ function ProductsInner() {
                         <div>{pickedCat.qualifications.join("、")}</div>
                         {/* 判据是 requiredCode 而不是上面这行文案 —— 文案给人看，编码给机器判 */}
                         <div className="txt-caption text-muted-foreground">{fill(c.requiredCode, { code: pickedCat.requiredCode ?? "—" })}</div>
+                        {/*
+                          挂了一个发不出来的码 = 这个类目「永远拒绝所有人」：
+                          授权页只从启用码里挑，运营授不出去，而商家看到的是「你还没有资质授权」。
+                          这一行是那道后端守卫在界面上的同一句话。
+                        */}
+                        {pickedCat.requiredCode && !(authCodes.data ?? []).some(
+                          (a) => a.code === pickedCat.requiredCode && a.enabled,
+                        ) && (
+                          <div className="txt-caption text-[var(--danger)]">{c.catCodeUnusable}</div>
+                        )}
                       </div>
                     ) : c.noQualification}
                   </Field>
@@ -346,6 +406,22 @@ function ProductsInner() {
                     {canEditCategory && (
                       <Button
                         size="sm" variant="outline"
+                        onClick={() => setCatForm({
+                          categoryNo: pickedCat.categoryNo,
+                          name: pickedCat.name,
+                          i18nEn: pickedCat.i18n.en ?? "",
+                          parentNo: pickedCat.parentNo ?? "",
+                          template: pickedCat.template,
+                          requiredCode: pickedCat.requiredCode ?? "",
+                          sort: "0",
+                        })}
+                      >
+                        {c.catEdit}
+                      </Button>
+                    )}
+                    {canEditCategory && (
+                      <Button
+                        size="sm" variant="outline"
                         onClick={async () => {
                           const ok = await confirm({
                             title: fill(c.confirmArchiveTitle, { name: pickedCat.name }),
@@ -365,6 +441,90 @@ function ProductsInner() {
           </Card>
         </div>
       )}
+
+      {/*
+        类目编辑抽屉。「形态」与「门槛码」是这里最要紧的两个字段：
+        形态决定商品长什么样（生鲜要截单、服务不发货），门槛码决定谁能卖。
+        二级的形态继承父级，所以是只读的 —— 让它可改会造出
+        「食品生鲜 → 粮油调味」却要求填截单时间的类目。
+      */}
+      <Drawer
+        open={!!catForm}
+        onOpenChange={(o) => !o && setCatForm(null)}
+        title={catForm?.categoryNo ? c.catEdit : c.catNew}
+      >
+        {catForm && (
+          <DrawerSection first title={c.catFormBasic}>
+            <Field label={c.fieldCatName}>
+              <Input value={catForm.name} onChange={(e) => setCatForm({ ...catForm, name: e.target.value })} />
+            </Field>
+            <Field label={c.fieldCatNameEn}>
+              <Input value={catForm.i18nEn} onChange={(e) => setCatForm({ ...catForm, i18nEn: e.target.value })} />
+            </Field>
+            <Field label={c.fieldParent}>
+              <FilterSelect
+                value={catForm.parentNo}
+                onChange={(v) => {
+                  const parent = (cats.data ?? []).find((x) => x.categoryNo === v);
+                  // 选了父级就跟着父级的形态走，与后端强制继承同一条规则
+                  setCatForm({ ...catForm, parentNo: v, template: parent?.template ?? catForm.template });
+                }}
+                options={[
+                  { value: "", label: c.catParentNone },
+                  ...(cats.data ?? [])
+                    .filter((x) => x.level === 1 && !x.archivedAt)
+                    .map((x) => ({ value: x.categoryNo, label: x.name })),
+                ]}
+              />
+            </Field>
+            <Field label={c.fieldTemplate}>
+              {catForm.parentNo ? (
+                <div className="txt-body text-muted-foreground">
+                  {catForm.template}
+                  <span className="ml-2 txt-caption">{c.catTemplateInherited}</span>
+                </div>
+              ) : (
+                <FilterSelect
+                  value={catForm.template}
+                  onChange={(v) => setCatForm({ ...catForm, template: v })}
+                  options={[
+                    { value: "STANDARD", label: c.tplStandard },
+                    { value: "FRESH", label: c.tplFresh },
+                    { value: "SERVICE", label: c.tplService },
+                    { value: "VOUCHER", label: c.tplVoucher },
+                    { value: "VIRTUAL", label: c.tplVirtual },
+                  ]}
+                />
+              )}
+            </Field>
+            {/*
+              门槛码只能从字典里挑、不能手输 —— 输错一个字母就是一个永不命中的门槛，
+              而它不报错：商家照常上架，那张证从此没有任何一处会去比对。
+              只列启用中的：停用码挂上去等于把类目关死。
+            */}
+            <Field label={c.fieldRequiredCode}>
+              <FilterSelect
+                value={catForm.requiredCode}
+                onChange={(v) => setCatForm({ ...catForm, requiredCode: v })}
+                options={[
+                  { value: "", label: c.catNoGate },
+                  ...(authCodes.data ?? [])
+                    .filter((a) => a.enabled)
+                    .map((a) => ({ value: a.code, label: `${a.name}（${a.code}）` })),
+                ]}
+              />
+            </Field>
+            <p className="mt-1 txt-caption text-muted-foreground">{c.catGateHint}</p>
+            <Button
+              className="mt-4"
+              disabled={!catForm.name.trim() || saveCat.isPending}
+              onClick={() => saveCat.mutate()}
+            >
+              {c.catSave}
+            </Button>
+          </DrawerSection>
+        )}
+      </Drawer>
 
       {/* ── 商品池 ────────────────────────────────────────────────────── */}
       {tab === "skus" && (

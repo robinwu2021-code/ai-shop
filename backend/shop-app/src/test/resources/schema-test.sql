@@ -5071,16 +5071,6 @@ VALUES
 ('SPT_SEED_SERVICE_HEADCOUNT', 'PLATFORM', 'SERVICE', '人数',
  '[{"code":"H1","label":"1人"},{"code":"H2","label":"2人"},{"code":"H3","label":"3人及以上"}]',
  NULL, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0);
-UPDATE prd_category
-SET required_code = 'PACKAGED_FOOD',
-    qualification_required = '["仅销售预包装食品备案"]'
-WHERE category_no = 'CAT130'
-  AND status = 'ACTIVE'
-  AND required_code IS NULL;
-UPDATE sys_auth_code
-SET enabled = 1
-WHERE code IN ('FOOD', 'DRUG_RETAIL')
-  AND enabled = 0;
 INSERT INTO sys_auth_code
 (code, name, required_qualification, sort, enabled, tenant_no, created_at, created_by, updated_at, updated_by, version, deleted)
 VALUES
@@ -5103,3 +5093,79 @@ VALUES
 ('CAT610', 'CAT600', 2, '手机数码', 'Phones & Digital', NULL, 10, 'STANDARD', NULL, NULL, NULL, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
 ('CAT620', 'CAT600', 2, '家用电器', 'Home Appliances',  NULL, 20, 'STANDARD', NULL, NULL, NULL, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
 ('CAT630', 'CAT600', 2, '配件耗材', 'Accessories',      NULL, 30, 'STANDARD', NULL, NULL, NULL, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0);
+INSERT INTO sys_auth_code
+(code, name, required_qualification, sort, enabled, tenant_no, created_at, created_by, updated_at, updated_by, version, deleted)
+VALUES
+('FRESH_MEAT',      '肉禽蛋',     '食品经营许可证',           15, 1, 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+
+
+('PET_FOOD',        '宠物食品',   '饲料和饲料添加剂经营备案', 70, 1, 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+
+('INFANT_FORMULA',  '婴幼儿食品', '婴幼儿配方乳粉销售备案',   28, 1, 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0);
+UPDATE sys_auth_code SET enabled = 1 WHERE code = 'FRESH_DAIRY' AND enabled = 0;
+INSERT INTO prd_category
+(category_no, parent_no, level, name, name_en, icon, sort, template,
+ attr_template, qualification_required, required_code, status,
+ tenant_no, created_at, created_by, updated_at, updated_by, version, deleted)
+VALUES
+('CAT170', 'CAT100', 2, '肉禽蛋', 'Meat & Eggs', NULL, 70, 'FRESH', NULL,
+ '["食品经营许可证"]', 'FRESH_MEAT', 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('CAT180', 'CAT100', 2, '乳制品', 'Dairy', NULL, 80, 'FRESH', NULL,
+ '["食品经营许可证"]', 'FRESH_DAIRY', 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0);
+INSERT INTO prd_category
+(category_no, parent_no, level, name, name_en, icon, sort, template,
+ attr_template, qualification_required, required_code, status,
+ tenant_no, created_at, created_by, updated_at, updated_by, version, deleted)
+VALUES
+('CAT700', NULL,     1, '食品饮料',   'Food & Drinks',     NULL, 70, 'STANDARD', NULL, NULL, NULL, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('CAT710', 'CAT700', 2, '粮油调味',   'Grain & Seasoning', NULL, 10, 'STANDARD', NULL,
+ '["仅销售预包装食品备案"]', 'PACKAGED_FOOD', 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('CAT720', 'CAT700', 2, '休闲零食',   'Snacks',            NULL, 20, 'STANDARD', NULL,
+ '["仅销售预包装食品备案"]', 'PACKAGED_FOOD', 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('CAT730', 'CAT700', 2, '饮料冲调',   'Drinks',            NULL, 30, 'STANDARD', NULL,
+ '["仅销售预包装食品备案"]', 'PACKAGED_FOOD', 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('CAT740', 'CAT700', 2, '烘焙面点',   'Bakery',            NULL, 40, 'STANDARD', NULL,
+ '["食品经营许可证"]', 'FOOD', 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('CAT750', 'CAT700', 2, '婴幼儿食品', 'Baby Food',         NULL, 50, 'STANDARD', NULL,
+ '["婴幼儿配方乳粉销售备案"]', 'INFANT_FORMULA', 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0);
+INSERT INTO prd_category
+(category_no, parent_no, level, name, name_en, icon, sort, template,
+ attr_template, qualification_required, required_code, status,
+ tenant_no, created_at, created_by, updated_at, updated_by, version, deleted)
+VALUES
+('CAT250', 'CAT200', 2, '母婴用品', 'Baby Care',   NULL, 50, 'STANDARD', NULL, NULL, NULL,        'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('CAT260', 'CAT200', 2, '宠物用品', 'Pet Supplies', NULL, 60, 'STANDARD', NULL, NULL, NULL,       'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('CAT270', 'CAT200', 2, '宠物食品', 'Pet Food',    NULL, 70, 'STANDARD', NULL,
+ '["饲料和饲料添加剂经营备案"]', 'PET_FOOD', 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('CAT280', 'CAT200', 2, '文具玩具', 'Stationery & Toys', NULL, 80, 'STANDARD', NULL, NULL, NULL,  'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0);
+INSERT INTO prd_category
+(category_no, parent_no, level, name, name_en, icon, sort, template,
+ attr_template, qualification_required, required_code, status,
+ tenant_no, created_at, created_by, updated_at, updated_by, version, deleted)
+VALUES
+('CAT800', NULL,     1, '鲜花绿植', 'Flowers & Plants', NULL, 80, 'STANDARD', NULL, NULL, NULL, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('CAT810', 'CAT800', 2, '鲜花',     'Fresh Flowers',    NULL, 10, 'STANDARD', NULL, NULL, NULL, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('CAT820', 'CAT800', 2, '绿植盆栽', 'Potted Plants',    NULL, 20, 'STANDARD', NULL, NULL, NULL, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0);
+INSERT INTO prd_category
+(category_no, parent_no, level, name, name_en, icon, sort, template,
+ attr_template, qualification_required, required_code, status,
+ tenant_no, created_at, created_by, updated_at, updated_by, version, deleted)
+VALUES
+('CAT330', 'CAT300', 2, '洗衣洗鞋', 'Laundry',      NULL, 30, 'SERVICE', NULL, NULL, NULL, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('CAT340', 'CAT300', 2, '美容美发', 'Beauty & Hair', NULL, 40, 'SERVICE', NULL, NULL, NULL, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('CAT350', 'CAT300', 2, '宠物洗护', 'Pet Grooming', NULL, 50, 'SERVICE', NULL, NULL, NULL, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('CAT360', 'CAT300', 2, '跑腿代办', 'Errands',      NULL, 60, 'SERVICE', NULL, NULL, NULL, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0);
+UPDATE prd_category SET status = 'ARCHIVED'
+WHERE category_no IN ('CAT400', 'CAT500', 'CAT510', 'CAT520') AND status = 'ACTIVE';
+UPDATE sys_function_point SET name = '平台类目树'
+WHERE function_code = 'OPS_PRODUCT' AND name = '三级类目树';
+UPDATE prd_category
+SET required_code = 'PACKAGED_FOOD',
+    qualification_required = '["仅销售预包装食品备案"]'
+WHERE category_no = 'CAT130'
+  AND status = 'ACTIVE'
+  AND required_code IS NULL;
+UPDATE sys_auth_code
+SET enabled = 1
+WHERE code IN ('FOOD', 'DRUG_RETAIL')
+  AND enabled = 0;
