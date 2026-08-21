@@ -20,10 +20,47 @@ public class StoreCodeServiceImpl implements StoreCodeService {
     private static final int CODE_LEN = 6;
     private static final SecureRandom RANDOM = new SecureRandom();
 
-    private final MchEntityMapper merchantMapper;
+    /** C 端门店页。扫码落这里，scene 里的店铺码由页面读出来做归因 */
+    private static final String STORE_PAGE = "pages/store/index";
 
-    public StoreCodeServiceImpl(MchEntityMapper merchantMapper) {
+    private final MchEntityMapper merchantMapper;
+    private final ai.neargo.shop.spi.user.WxAcodePort acodePort;
+
+    public StoreCodeServiceImpl(MchEntityMapper merchantMapper,
+                                ai.neargo.shop.spi.user.WxAcodePort acodePort) {
         this.merchantMapper = merchantMapper;
+        this.acodePort = acodePort;
+    }
+
+    @Override
+    @Transactional
+    public String acodeBase64(String merchantNo) {
+        MchEntity m = DataScopeContext.executeWithoutScope(() ->
+                merchantMapper.selectOne(Wrappers.<MchEntity>lambdaQuery()
+                        .eq(MchEntity::getEntityNo, merchantNo).last("limit 1")));
+        if (m == null) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        // 已经有了就直接给 —— 永久码，且额度有限，不能每次请求都去要一张
+        if (m.getAcodeBase64() != null && !m.getAcodeBase64().isBlank()) {
+            return m.getAcodeBase64();
+        }
+        if (!acodePort.enabled()) {
+            return null;
+        }
+        String code = ensureFor(merchantNo);
+        byte[] png = acodePort.unlimited(code, STORE_PAGE);
+        if (png == null || png.length == 0) {
+            /*
+             * 生成失败**不落库、也不抛**：下次请求会再试一次。
+             * 抛出去的话商家整个店铺页打不开，而他此刻要看的多半不是码。
+             */
+            return null;
+        }
+        String b64 = java.util.Base64.getEncoder().encodeToString(png);
+        m.setAcodeBase64(b64);
+        DataScopeContext.executeWithoutScope(() -> merchantMapper.updateById(m));
+        return b64;
     }
 
     @Override

@@ -169,7 +169,7 @@ class BizOrderFulfillFlowTest {
         String goodsNo = json.readTree(mvc().perform(post("/biz/goods/save")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"title\":\"发货测试商品\",\"subtitle\":\"测试\",\"type\":\"NORMAL\","
+                        .content("{\"categoryNo\":\"CAT210\",\"title\":\"发货测试商品\",\"subtitle\":\"测试\",\"type\":\"NORMAL\","
                                 + "\"cover\":\"📦\",\"images\":[],\"specGroups\":[],"
                                 + "\"skus\":[{\"optionValues\":[],\"price\":1000,\"stock\":10}]}"))
                 .andExpect(jsonPath("$.code").value(0))

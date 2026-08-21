@@ -19,7 +19,7 @@ import java.util.List;
  * 先把链路跑通、让消费者有测试覆盖，比先接一个没人消费的 MQ 有用得多（X3）。
  *
  * <p><b>投递语义是 at-least-once</b>：失败的事件留在队列里重投，
- * 所以**消费者必须自己幂等**（见 `msg_message.dedup_key`）。
+ * 所以**消费者必须自己幂等**（见 `notify_message.dedup_key`）。
  * 想做 exactly-once 的代价是分布式事务，那不值得。
  */
 @Component

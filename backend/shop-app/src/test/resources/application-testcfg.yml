@@ -9,6 +9,14 @@ spring:
       port: 6379
 
 shop:
+  web:
+    # 对外域名。**生产默认空** —— 空时 StoreLinkService 返回 null，端上只显示
+    # 小程序码、不显示链接（宁可少一样东西，也不发一个点不开的链接给商家去印）。
+    #
+    # 测试里必须配上，否则「分享文案带得出可点链接」那条断言退化成
+    # 「文案不带链接也算过」—— 闸门还在，但没人守着它了。
+    # 反方向（没配就不发假链接）由 StoreLinkServiceTest 单独钉，不用第二个 Spring 上下文。
+    base-url: https://m.neargo.ai
   auth:
     token-store: memory
   notify:

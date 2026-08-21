@@ -17,6 +17,18 @@ public interface GoodsService {
     GoodsVO detail(String goodsNo);
 
     /**
+     * 批量取详情，{@code goodsNo → GoodsVO}。查不到的编号不出现在返回里。
+     *
+     * <p><b>为列表页而加</b>：商家侧列表原先是逐行调 {@link #detail}，而那一条每次都会
+     * 重新查商品、查 SKU、查商家、查限时特价 —— 一页 20 条就是 80 次往返，
+     * 再加上门店库存投影接近 100 次。同一个类里的 {@code listForOps} 一直是批量写法，
+     * 两种写法并存，说明不是不会写，是这条路径没被重看过。
+     *
+     * <p>返回 Map 而不是 List：调用方要按分页顺序组装，拿 List 还得自己转一次。
+     */
+    java.util.Map<String, GoodsVO> detailAll(java.util.List<String> goodsNos);
+
+    /**
      * 推荐商品（运营位）。<b>运营意图，不是销量事实</b> ——
      * 社区里 SKU 只有几十个，按销量自动排出来的「热卖」和「全部商品」几乎是同一个列表。
      *

@@ -24,9 +24,12 @@ withDefaults(defineProps<{ text?: string; compact?: boolean; bare?: boolean }>()
 </template>
 
 <style scoped>
+/* 空态的上下留白。**这个数原本是随手取的**（见下方 is-compact/is-bare 的来历），
+   而它出现在一个「本来就没东西可看」的状态里，留白越大越像页面坏了。
+   走变量：默认保持 C 端原样，B 端调紧。 */
 .empty {
   text-align: center;
-  padding: 72rpx 24rpx;
+  padding: var(--sh-pad-empty, 72rpx) 24rpx;
 }
 /* 页内小块的空态（如某个分组下暂无内容），不必占满一屏 */
 .empty.is-compact {

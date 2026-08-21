@@ -727,7 +727,7 @@ class BizDashboardAndReviewFlowTest {
     private String saveGoods(String token, String title) throws Exception {
         String body = mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"title\":\"" + title + "\",\"subtitle\":\"测试\",\"type\":\"NORMAL\","
+                        .content("{\"categoryNo\":\"CAT210\",\"title\":\"" + title + "\",\"subtitle\":\"测试\",\"type\":\"NORMAL\","
                                 + "\"specGroups\":[],"
                                 + "\"skus\":[{\"optionValues\":[],\"price\":500,\"stock\":10}]}"))
                 .andExpect(jsonPath("$.code").value(0))

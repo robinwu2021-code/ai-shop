@@ -25,6 +25,7 @@ import type {
   MerchantRole,
   PaymentApplyment,
   Store,
+  StoreCategory,
   StoreProfile,
   Address,
   Message,
@@ -1004,6 +1005,19 @@ export const db = {
   /** 门店额度。改这个数就能在 mock 下体验 PRO/CHAIN 档 */
   storeQuota: 1,
 
+  /**
+   * 门店货架（TDD-品类约束全链路 §三）。按 storeNo 分组。
+   *
+   * <p>**只摆了无门槛的那两类**：CAT110 蔬菜要 FRESH_VEG，而 mock 商家没那张证 ——
+   * 种子里塞上它的话，「没证摆不上」这条最要紧的拒绝在开发期永远看不到。
+   */
+  storeCategories: {
+    "ST-MOCK-1": [
+      { categoryNo: "CAT210", name: "纸品清洁", platformName: "纸品清洁", sort: 0, goodsCount: 2 },
+      { categoryNo: "CAT130", name: "米面粮油", platformName: "预包装食品", displayName: "米面粮油", sort: 1, goodsCount: 3 },
+    ],
+  } as Record<string, StoreCategory[]>,
+
   /** 员工。第一条是老板 —— 列表第一眼要能看出谁是老板 */
   staff: [
     {
@@ -1094,53 +1108,76 @@ export const db = {
    * 三处对不上时的症状是「mock 上跑得通、连真库就找不到类目」，而三处各自都自洽，
    * 谁也不报错。
    *
-   * ⚠️ 与 `CATEGORY_TYPE`（五品类）是两个正交维度：那个决定履约与合规、平台硬编码；
-   * 这棵树决定归类与经营准入、运营可维护。
+   * ⚠️ 与 `CATEGORY_TYPE`（五品类）**不是两个并列的维度**：节点上的 `template` 就是形态，
+   * 商品的 `type` 由所选类目派生（见 `TEMPLATE_TO_TYPE`）。这棵树另外决定归类与经营准入。
+   *
+   * <p>`template` 每个节点都要写且**必须与父节点一致** —— 真库那边由
+   * `CategoryServiceImpl.save()` 强制继承，mock 这边只能靠种子写对。
    */
   categories: [
     {
-      categoryNo: "CAT100", parentNo: null, level: 1, name: "食品生鲜", icon: "", sort: 10,
+      categoryNo: "CAT100", template: "FRESH", parentNo: null, level: 1, name: "食品生鲜", icon: "", sort: 10,
       children: [
         {
-          categoryNo: "CAT110", parentNo: "CAT100", level: 2, name: "蔬菜", icon: "", sort: 10,
-          children: [
-            { categoryNo: "CAT111", parentNo: "CAT110", level: 3, name: "叶菜", icon: "", sort: 10, children: [] },
-            { categoryNo: "CAT112", parentNo: "CAT110", level: 3, name: "根茎菜", icon: "", sort: 20, children: [] },
-          ],
+          categoryNo: "CAT110", template: "FRESH", parentNo: "CAT100", level: 2, name: "蔬菜", icon: "", sort: 10,
+          children: [],
         },
         {
-          categoryNo: "CAT120", parentNo: "CAT100", level: 2, name: "水果", icon: "", sort: 20,
-          children: [
-            { categoryNo: "CAT121", parentNo: "CAT120", level: 3, name: "浆果", icon: "", sort: 10, children: [] },
-            { categoryNo: "CAT122", parentNo: "CAT120", level: 3, name: "常温水果", icon: "", sort: 20, children: [] },
-          ],
+          categoryNo: "CAT120", template: "FRESH", parentNo: "CAT100", level: 2, name: "水果", icon: "", sort: 20,
+          children: [],
         },
         {
-          categoryNo: "CAT130", parentNo: "CAT100", level: 2, name: "预包装食品", icon: "", sort: 30,
-          children: [
-            { categoryNo: "CAT131", parentNo: "CAT130", level: 3, name: "粮油调味", icon: "", sort: 10, children: [] },
-            { categoryNo: "CAT132", parentNo: "CAT130", level: 3, name: "休闲零食", icon: "", sort: 20, children: [] },
-            { categoryNo: "CAT133", parentNo: "CAT130", level: 3, name: "茶叶", icon: "", sort: 30, children: [] },
-          ],
+          categoryNo: "CAT130", template: "FRESH", parentNo: "CAT100", level: 2, name: "预包装食品", icon: "", sort: 30,
+          children: [],
         },
       ],
     },
     {
-      categoryNo: "CAT200", parentNo: null, level: 1, name: "日用百货", icon: "", sort: 20,
+      categoryNo: "CAT200", template: "STANDARD", parentNo: null, level: 1, name: "日用百货", icon: "", sort: 20,
       children: [
-        { categoryNo: "CAT210", parentNo: "CAT200", level: 2, name: "纸品清洁", icon: "", sort: 10, children: [] },
-        { categoryNo: "CAT220", parentNo: "CAT200", level: 2, name: "家居用品", icon: "", sort: 20, children: [] },
-        { categoryNo: "CAT230", parentNo: "CAT200", level: 2, name: "个护化妆", icon: "", sort: 30, children: [] },
+        { categoryNo: "CAT210", template: "STANDARD", parentNo: "CAT200", level: 2, name: "纸品清洁", icon: "", sort: 10, children: [] },
+        { categoryNo: "CAT220", template: "STANDARD", parentNo: "CAT200", level: 2, name: "家居用品", icon: "", sort: 20, children: [] },
+        { categoryNo: "CAT230", template: "STANDARD", parentNo: "CAT200", level: 2, name: "个护化妆", icon: "", sort: 30, children: [] },
       ],
     },
     {
-      categoryNo: "CAT300", parentNo: null, level: 1, name: "生活服务", icon: "", sort: 30,
+      categoryNo: "CAT300", template: "SERVICE", parentNo: null, level: 1, name: "生活服务", icon: "", sort: 30,
       children: [
-        { categoryNo: "CAT310", parentNo: "CAT300", level: 2, name: "家政保洁", icon: "", sort: 10, children: [] },
+        { categoryNo: "CAT310", template: "SERVICE", parentNo: "CAT300", level: 2, name: "家政保洁", icon: "", sort: 10, children: [] },
       ],
     },
     // CAT400 卡券一期停用（V22）：端上的树只给启用的，所以这里不再出现。
     // 库里那一行还在，切平台模式后在运营端恢复即可
+  ],
+
+  /**
+   * 平台标准品（TDD-标准品库）。**编号与真库 V166 的种子保持一致** ——
+   * 前后端 mock 与真库对得上，联调时不用在两套编号之间换算。
+   *
+   * <p>只给一小批：够验证「搜到 → 填充 → 建品」这条链而已。真正决定这个功能
+   * 成不成的是覆盖率，而覆盖率靠运营手录，不是 mock 能替代的。
+   */
+  spuStds: [
+    {
+      stdNo: "STD1001", categoryNo: "CAT110", title: "本地菠菜", subtitle: "当季叶菜",
+      keywords: "菠菜 波斯菜 叶菜", status: "ACTIVE", refCount: 0,
+      specGroups: [{ name: "重量", options: ["500g", "1斤", "2斤"], optionCodes: ["W500G", "W1JIN", "W2JIN"] }],
+    },
+    {
+      stdNo: "STD1011", categoryNo: "CAT110", title: "土豆", subtitle: "根茎菜",
+      keywords: "土豆 马铃薯 洋芋", status: "ACTIVE", refCount: 0,
+      specGroups: [{ name: "重量", options: ["1斤", "2斤", "5斤"], optionCodes: ["W1JIN", "W2JIN", "W5JIN"] }],
+    },
+    {
+      stdNo: "STD2001", categoryNo: "CAT210", title: "抽纸", subtitle: "家用抽取式面巾纸",
+      keywords: "抽纸 面巾纸 纸巾", status: "ACTIVE", refCount: 0,
+      specGroups: [{ name: "规格", options: ["3包", "6包", "12包"], optionCodes: ["B3", "B6", "B12"] }],
+    },
+    {
+      stdNo: "STD2004", categoryNo: "CAT210", title: "洗衣液", subtitle: "衣物清洁",
+      keywords: "洗衣液 洗涤剂", status: "ACTIVE", refCount: 0,
+      specGroups: [{ name: "规格", options: ["1L", "2L", "3L"], optionCodes: ["V1L", "V2L", "V3L"] }],
+    },
   ],
 
   /**

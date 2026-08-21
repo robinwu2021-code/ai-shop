@@ -517,7 +517,7 @@ class OpsMerchantPlanFlowTest {
         String goodsNo = json.readTree(mvc().perform(post("/biz/goods/save")
                         .header("Authorization", "Bearer " + bizToken)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"title\":\"降级测试商品\",\"subtitle\":\"测试\",\"type\":\"NORMAL\","
+                        .content("{\"categoryNo\":\"CAT210\",\"title\":\"降级测试商品\",\"subtitle\":\"测试\",\"type\":\"NORMAL\","
                                 + "\"cover\":\"📦\",\"images\":[],\"specGroups\":[],"
                                 + "\"skus\":[{\"optionValues\":[],\"price\":1000,\"stock\":10}]}"))
                 .andExpect(jsonPath("$.code").value(0))

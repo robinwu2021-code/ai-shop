@@ -5,6 +5,7 @@ import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.media.MediaStore;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.Mac;
@@ -34,6 +35,8 @@ import java.util.HexFormat;
  */
 @Slf4j
 @Component
+// 存储实现开关：默认（含缺省）本地磁盘；填 cos 则用 CosMediaStore。
+@ConditionalOnProperty(name = "shop.media.provider", havingValue = "local", matchIfMissing = true)
 public class LocalDiskMediaStore implements MediaStore {
 
     /** HMAC 算法。与 COS 的预签名同族，换过去时签名语义不变。 */

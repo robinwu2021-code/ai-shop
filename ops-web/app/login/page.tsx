@@ -99,7 +99,6 @@ export default function LoginPage() {
             <Button className="w-full" type="submit" disabled={busy}>
               {busy ? t("common.loading") : t("login.submit")}
             </Button>
-            <p className="txt-caption text-muted-foreground">{t("login.hint")}</p>
           </form>
 
           {/*

@@ -32,8 +32,11 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class SchemaParityTest {
 
-    private static final Pattern CREATE_TABLE =
-            Pattern.compile("CREATE TABLE IF NOT EXISTS (\\w+)", Pattern.CASE_INSENSITIVE);
+    /** 建表 或 改名，**一个正则**，这样两者能按出现顺序处理（见 {@link #collect}） */
+    private static final Pattern CREATE_OR_RENAME = Pattern.compile(
+            "CREATE TABLE IF NOT EXISTS (\\w+)"
+                    + "|ALTER TABLE\\s+(\\w+)\\s+RENAME TO\\s+(\\w+)",
+            Pattern.CASE_INSENSITIVE);
 
     @Test
     @DisplayName("★ 迁移里建的每张表，H2 测试 schema 里都要有")
@@ -47,7 +50,14 @@ class SchemaParityTest {
 
         Set<String> migrated = new LinkedHashSet<>();
         try (Stream<Path> files = Files.list(migrations)) {
-            for (Path f : files.filter(p -> p.toString().endsWith(".sql")).toList()) {
+            /*
+             * **按版本号数字排序重放**，不是按文件名字典序，也不是 Files.list 的任意顺序：
+             * 有了 RENAME 之后「谁先谁后」就有意义了 —— V162 把 msg_* 改成 notify_*，
+             * 先看到 V162 再看到建表的话，改名落空，产出的期望表名是旧的那一批。
+             * 字典序同样不行：V15 会排在 V2 前面（生成器里踩过同一个坑）。
+             */
+            for (Path f : files.filter(p -> p.toString().endsWith(".sql"))
+                    .sorted(java.util.Comparator.comparingInt(SchemaParityTest::versionOf)).toList()) {
                 collect(Files.readString(f, StandardCharsets.UTF_8), migrated);
             }
         }
@@ -63,11 +73,32 @@ class SchemaParityTest {
                 .isEmpty();
     }
 
+    /**
+     * 收集这段 SQL 里表名的**净变化**：建表加进来，{@code RENAME TO} 就地改名。
+     *
+     * <p>不认改名的话，这条守卫会拿**改名前**的表名去测试 schema 里找，
+     * 报「msg_message 没建」—— 而它其实建了，只是叫 notify_message 了。
+     * 报错文案指向「加迁移忘了同步测试 schema」，把人引向一个不存在的问题。
+     *
+     * <p>建表与改名必须**按出现顺序**处理（用一个合并的正则一次扫过去），
+     * 而不是先收全部建表再收全部改名：同一个文件里先改名后建同名表是合法的。
+     */
     private static void collect(String sql, Set<String> out) {
-        Matcher m = CREATE_TABLE.matcher(sql);
+        Matcher m = CREATE_OR_RENAME.matcher(sql);
         while (m.find()) {
-            out.add(m.group(1).toLowerCase());
+            if (m.group(1) != null) {
+                out.add(m.group(1).toLowerCase());
+            } else {
+                out.remove(m.group(2).toLowerCase());
+                out.add(m.group(3).toLowerCase());
+            }
         }
+    }
+
+    /** 文件名里的版本号。V15 必须排在 V2 之后，所以按数字比而不是按字符串比 */
+    private static int versionOf(Path p) {
+        Matcher m = Pattern.compile("^V(\\d+)").matcher(p.getFileName().toString());
+        return m.find() ? Integer.parseInt(m.group(1)) : Integer.MAX_VALUE;
     }
 
     private static Path resolve(Path root, String... candidates) {

@@ -44,15 +44,15 @@ listAfterSales
 | `size` | `integer` | 是 | — |
 
 
-#### POST `/ops/after-sales/{asNo}/decide`
+#### POST `/ops/after-sales/{afterSaleNo}/decide`
 
-平台介入裁决（P-6.1.3 + 6.1.4）
+平台介入裁决（`ARBITRATING` 的唯一出口）
 
 **入参**
 
 | 参数 | 位置 | 类型 | 必填 | 说明 |
 |---|---|---|:---:|---|
-| `asNo` | path | — | 是 | 售后单号（平台端写法） |
+| `afterSaleNo` | path | `string` | 是 | 售后单号 |
 
 _无字段_
 
@@ -62,55 +62,21 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `asNo` | `string` | 是 | 售后单号 |
-| `orderNo` | `string` | 是 | 关联的子订单 |
+| `afterSaleNo` | `string` | 是 | 售后单号 |
+| `subOrderNo` | `string` | 是 | 关联的子订单 |
+| `orderNo` | `string` | 是 | 关联的主订单 |
 | `merchantNo` | `string` | 是 | 涉事商家 |
 | `merchantName` | `string` | 是 | 商家名快照 |
 | `buyerNickname` | `string` | 是 | 申请人昵称 |
 | `type` | [`#/definitions/AfterSaleType`](#definitionsaftersaletype) | 是 | 售后类型：仅退款 / 退货退款 / 换货 |
 | `status` | [`#/definitions/AfterSaleStatus`](#definitionsaftersalestatus) | 是 | 售后单状态。允许的流转见 `AFTERSALE_TRANSITIONS` |
-| `amount` | `number` | 是 | 申请退款金额（分）。**不得超过订单实付** —— 校验要跨域查订单。 |
+| `refundMinor` | `number` | 是 | 申请退款金额（分）。裁决只决定退不退，不改这个数 |
 | `reason` | `string` | 是 | 用户填写的售后原因 |
-| `evidenceCount` | `number` | 是 | 举证材料数量（照片/聊天记录） |
+| `images` | `string`\[\] | 是 | 举证材料（照片） |
 | `liability` | [`#/definitions/Liability`](#definitionsliability) | 否 | 裁定的责任方。平台介入后才有值 |
-| `share` | [`#/definitions/LiabilityShare`](#definitionsliabilityshare) | 否 | 赔付出资比例。口径未定（M4），先存结构 |
+| `share` | [`#/definitions/LiabilityShare`](#definitionsliabilityshare) | 否 | 赔付出资比例。**仅 finance 域 mock 队列使用**，真实后端未接（见上方说明） |
 | `verdict` | `string` | 否 | 裁决说明：用户与商家都会看到 |
-| `refundSplitPending` | `boolean` | 否 | E4 退款回退分账待办：裁决完成但资金域（P-12）尚未接。 留这个标记而不是假装已完成 —— 接资金域时按它补跑。 |
-| `createdAt` | `string` | 是 | 售后发起时间 |
-
-
-#### POST `/ops/after-sales/{no}/status`
-
-状态推进，非法迁移抛错（驳回不是终点，用户可上升平台）
-
-**入参**
-
-| 参数 | 位置 | 类型 | 必填 | 说明 |
-|---|---|---|:---:|---|
-| `no` | path | — | 是 | 该资源的业务单号 |
-
-_无字段_
-
-**出参**（`data`）
-
-类型：[`AfterSale`](#aftersale)
-
-| 字段 | 类型 | 必填 | 说明 |
-|---|---|:---:|---|
-| `asNo` | `string` | 是 | 售后单号 |
-| `orderNo` | `string` | 是 | 关联的子订单 |
-| `merchantNo` | `string` | 是 | 涉事商家 |
-| `merchantName` | `string` | 是 | 商家名快照 |
-| `buyerNickname` | `string` | 是 | 申请人昵称 |
-| `type` | [`#/definitions/AfterSaleType`](#definitionsaftersaletype) | 是 | 售后类型：仅退款 / 退货退款 / 换货 |
-| `status` | [`#/definitions/AfterSaleStatus`](#definitionsaftersalestatus) | 是 | 售后单状态。允许的流转见 `AFTERSALE_TRANSITIONS` |
-| `amount` | `number` | 是 | 申请退款金额（分）。**不得超过订单实付** —— 校验要跨域查订单。 |
-| `reason` | `string` | 是 | 用户填写的售后原因 |
-| `evidenceCount` | `number` | 是 | 举证材料数量（照片/聊天记录） |
-| `liability` | [`#/definitions/Liability`](#definitionsliability) | 否 | 裁定的责任方。平台介入后才有值 |
-| `share` | [`#/definitions/LiabilityShare`](#definitionsliabilityshare) | 否 | 赔付出资比例。口径未定（M4），先存结构 |
-| `verdict` | `string` | 否 | 裁决说明：用户与商家都会看到 |
-| `refundSplitPending` | `boolean` | 否 | E4 退款回退分账待办：裁决完成但资金域（P-12）尚未接。 留这个标记而不是假装已完成 —— 接资金域时按它补跑。 |
+| `refundSplitPending` | `boolean` | 否 | E4 退款回退分账待办：finance 域「退款回退分账」mock 队列专用字段， 真实后端未接（见上方说明），售后本身的裁决流程不读写它。 |
 | `createdAt` | `string` | 是 | 售后发起时间 |
 
 
@@ -188,7 +154,7 @@ archiveCommunity
 
 | 参数 | 位置 | 类型 | 必填 | 说明 |
 |---|---|---|:---:|---|
-| `no` | path | — | 是 | 该资源的业务单号 |
+| `no` | path | `string` | 是 | 该资源的业务单号 |
 
 _无字段_
 
@@ -207,6 +173,8 @@ _无字段_
 | `fenceRadius` | `number` | 是 | 覆盖围栏半径，米（P-2.1.3） |
 | `pickupCount` | `number` | 是 | 本社区的自提点数量（列表直接给，避免逐行再查一次） |
 | `createdAt` | `string` | 是 | 建档时间 |
+| `regionCode` | `string` | 否 | 所属行政区划码（`sys_region.region_code`），空 = 尚未归属。 挂上之后「按区/按街道覆盖」才能命中这个社区（ADR-013）。 **空着不代表配错了** —— 平台不按名字猜归属：猜错不报错，只会让这个社区 悄悄出现在别人的经营范围里。 |
+| `regionPath` | `string` | 否 | 从省到自身的中文路径，如「浙江省 / 杭州市 / 西湖区 / 北山街道」。 **后端拼好给的**：只给一个 330106002 的话，端上要么显示一串数字， 要么自己按码长切片再逐级查 —— 而国标编码规则不是端该知道的事。 |
 
 
 #### POST `/ops/communities/{no}/fence`
@@ -217,7 +185,7 @@ _无字段_
 
 | 参数 | 位置 | 类型 | 必填 | 说明 |
 |---|---|---|:---:|---|
-| `no` | path | — | 是 | 该资源的业务单号 |
+| `no` | path | `string` | 是 | 该资源的业务单号 |
 
 _无字段_
 
@@ -236,6 +204,8 @@ _无字段_
 | `fenceRadius` | `number` | 是 | 覆盖围栏半径，米（P-2.1.3） |
 | `pickupCount` | `number` | 是 | 本社区的自提点数量（列表直接给，避免逐行再查一次） |
 | `createdAt` | `string` | 是 | 建档时间 |
+| `regionCode` | `string` | 否 | 所属行政区划码（`sys_region.region_code`），空 = 尚未归属。 挂上之后「按区/按街道覆盖」才能命中这个社区（ADR-013）。 **空着不代表配错了** —— 平台不按名字猜归属：猜错不报错，只会让这个社区 悄悄出现在别人的经营范围里。 |
+| `regionPath` | `string` | 否 | 从省到自身的中文路径，如「浙江省 / 杭州市 / 西湖区 / 北山街道」。 **后端拼好给的**：只给一个 330106002 的话，端上要么显示一串数字， 要么自己按码长切片再逐级查 —— 而国标编码规则不是端该知道的事。 |
 
 
 #### POST `/ops/communities/{no}/open`
@@ -246,7 +216,7 @@ _无字段_
 
 | 参数 | 位置 | 类型 | 必填 | 说明 |
 |---|---|---|:---:|---|
-| `no` | path | — | 是 | 该资源的业务单号 |
+| `no` | path | `string` | 是 | 该资源的业务单号 |
 
 _无字段_
 
@@ -265,6 +235,39 @@ _无字段_
 | `fenceRadius` | `number` | 是 | 覆盖围栏半径，米（P-2.1.3） |
 | `pickupCount` | `number` | 是 | 本社区的自提点数量（列表直接给，避免逐行再查一次） |
 | `createdAt` | `string` | 是 | 建档时间 |
+| `regionCode` | `string` | 否 | 所属行政区划码（`sys_region.region_code`），空 = 尚未归属。 挂上之后「按区/按街道覆盖」才能命中这个社区（ADR-013）。 **空着不代表配错了** —— 平台不按名字猜归属：猜错不报错，只会让这个社区 悄悄出现在别人的经营范围里。 |
+| `regionPath` | `string` | 否 | 从省到自身的中文路径，如「浙江省 / 杭州市 / 西湖区 / 北山街道」。 **后端拼好给的**：只给一个 330106002 的话，端上要么显示一串数字， 要么自己按码长切片再逐级查 —— 而国标编码规则不是端该知道的事。 |
+
+
+#### POST `/ops/communities/{no}/region`
+
+把社区挂到行政区划下（ADR-013）
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`Community`](#community)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `archivedAt` | `string,null` | 否 | 归档时间。**软删除标记** —— 有值即视为已删除，列表默认不返回。 契约禁止 `delete*`，一律 `archive*` / `unarchive*`（工程约定 §10.6）。 |
+| `communityNo` | `string` | 是 | 社区单号。平台端数据域裁剪的主键之一 |
+| `name` | `string` | 是 | 社区名（小区名） |
+| `city` | `string` | 是 | 所属城市 |
+| `grid` | `string` | 是 | 网格：城市与社区之间的运营划分单位 |
+| `opened` | `boolean` | 是 | 开城开关（P-2.1.2）：关掉后 C 端不再展示该社区，已有订单不受影响 |
+| `fenceRadius` | `number` | 是 | 覆盖围栏半径，米（P-2.1.3） |
+| `pickupCount` | `number` | 是 | 本社区的自提点数量（列表直接给，避免逐行再查一次） |
+| `createdAt` | `string` | 是 | 建档时间 |
+| `regionCode` | `string` | 否 | 所属行政区划码（`sys_region.region_code`），空 = 尚未归属。 挂上之后「按区/按街道覆盖」才能命中这个社区（ADR-013）。 **空着不代表配错了** —— 平台不按名字猜归属：猜错不报错，只会让这个社区 悄悄出现在别人的经营范围里。 |
+| `regionPath` | `string` | 否 | 从省到自身的中文路径，如「浙江省 / 杭州市 / 西湖区 / 北山街道」。 **后端拼好给的**：只给一个 330106002 的话，端上要么显示一串数字， 要么自己按码长切片再逐级查 —— 而国标编码规则不是端该知道的事。 |
 
 
 #### POST `/ops/communities/{no}/unarchive`
@@ -275,7 +278,7 @@ unarchiveCommunity
 
 | 参数 | 位置 | 类型 | 必填 | 说明 |
 |---|---|---|:---:|---|
-| `no` | path | — | 是 | 该资源的业务单号 |
+| `no` | path | `string` | 是 | 该资源的业务单号 |
 
 _无字段_
 
@@ -294,6 +297,60 @@ _无字段_
 | `fenceRadius` | `number` | 是 | 覆盖围栏半径，米（P-2.1.3） |
 | `pickupCount` | `number` | 是 | 本社区的自提点数量（列表直接给，避免逐行再查一次） |
 | `createdAt` | `string` | 是 | 建档时间 |
+| `regionCode` | `string` | 否 | 所属行政区划码（`sys_region.region_code`），空 = 尚未归属。 挂上之后「按区/按街道覆盖」才能命中这个社区（ADR-013）。 **空着不代表配错了** —— 平台不按名字猜归属：猜错不报错，只会让这个社区 悄悄出现在别人的经营范围里。 |
+| `regionPath` | `string` | 否 | 从省到自身的中文路径，如「浙江省 / 杭州市 / 西湖区 / 北山街道」。 **后端拼好给的**：只给一个 330106002 的话，端上要么显示一串数字， 要么自己按码长切片再逐级查 —— 而国标编码规则不是端该知道的事。 |
+
+
+#### GET `/ops/communities/applies`
+
+提报队列
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`object`（见下）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `records` | [`CommunityApply`](#communityapply)\[\] | 是 | — |
+| `total` | `integer` | 是 | — |
+| `page` | `integer` | 是 | — |
+| `size` | `integer` | 是 | — |
+
+
+#### POST `/ops/communities/applies/{applyNo}/decide`
+
+裁决
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `applyNo` | path | `string` | 是 | — |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`CommunityApply`](#communityapply)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `applyNo` | `string` | 是 | 提报单业务键。裁决按它定位，**不用自增 id** —— 那个不对外，重建库就变 |
+| `merchantNo` | `string` | 是 | 提报的商家 |
+| `merchantName` | `string` | 是 | 商家名。运营看着一串 M20260811… 判断不了任何事 |
+| `name` | `string` | 是 | 小区名，商家填 |
+| `address` | `string` | 否 | 地址。运营靠它判断这是不是已有社区的另一个叫法 —— 同一个小区两条记录，商家会分不清该勾哪个 |
+| `regionCode` | `string` | 否 | 商家选的区划，**只是建议**：最终以裁决时填的为准 |
+| `regionPath` | `string` | 否 | 区划整条路径名。「北山街道」全国有好几个，光末级判断不了是不是同一个地方 |
+| `note` | `string` | 否 | 商家的补充说明：为什么要开这个点 |
+| `status` | [`#/definitions/CommunityApplyStatus`](#definitionscommunityapplystatus) | 是 | 待审 / 已建社区 / 已驳回。**只有 PENDING 能裁**：裁完就是终态，再裁一次意味着同一条提报有两个结论 |
+| `communityNo` | `string` | 否 | 通过后建出来的社区号；待审与驳回时为空 |
+| `reason` | `string` | 否 | 驳回原因。**原样出现在商家 B 端**，所以驳回必须填 |
+| `submittedAt` | `number` | 是 | 提报时间 |
 
 
 #### GET `/ops/pickups`
@@ -316,15 +373,11 @@ listPickups
 | `size` | `integer` | 是 | — |
 
 
-#### POST `/ops/pickups/{no}/archive`
+#### POST `/ops/pickups`
 
-archivePickup
+建自提点
 
 **入参**
-
-| 参数 | 位置 | 类型 | 必填 | 说明 |
-|---|---|---|:---:|---|
-| `no` | path | — | 是 | 该资源的业务单号 |
 
 _无字段_
 
@@ -337,16 +390,55 @@ _无字段_
 | `archivedAt` | `string,null` | 否 | 归档时间。**软删除标记** —— 有值即视为已删除，列表默认不返回。 契约禁止 `delete*`，一律 `archive*` / `unarchive*`（工程约定 §10.6）。 |
 | `pickupNo` | `string` | 是 | 自提点单号 |
 | `name` | `string` | 是 | 自提点名称 |
-| `type` | [`#/definitions/PickupType`](#definitionspickuptype) | 是 | 自提点类型。**STORE 与 NEIGHBOR 的报酬、脱敏、作用域规则完全不同**（ADR-005） |
+| `type` | [`#/definitions/PickupPointType`](#definitionspickuppointtype) | 是 | 自提点类型（ADR-005）。三类的报酬、脱敏、作用域规则完全不同。 ⚠️ 这里此前只有 STORE\|NEIGHBOR 两类，而后端还有 **PLATFORM**（平台提供、 线下协商费率）—— 少一类的后果是平台点在列表里渲染成 undefined 或被当成常驻点， 而它的费率规则与常驻点完全不同。 |
+| `feeMode` | [`#/definitions/PickupFeeMode`](#definitionspickupfeemode) | 是 | 计费口径。目前只有 PLATFORM 有值，见 `PickupFeeMode` 的说明 |
 | `status` | [`#/definitions/PickupStatus`](#definitionspickupstatus) | 是 | 自提点状态。`MIGRATING` = 不再接新单，存量单仍在本点核销完 |
 | `communityNo` | `string` | 是 | 归属社区 |
 | `communityName` | `string` | 是 | 社区名快照 |
-| `merchantNo` | `string` | 否 | 承接商家；NEIGHBOR 点为空（承接方是 C 端用户，不是商家） |
-| `merchantName` | `string` | 否 | 承接商家名快照；NEIGHBOR 点为空 |
+| `storeNo` | `string` | 否 | 承接**门店**；NEIGHBOR 点为空（承接方是 C 端用户，不是商家）。 此前叫 `merchantNo` 且装的是主体号。自提点归属改到门店之后（后端 V16）， 名字与内容就对不上了 —— 一并改名，而不是让下一个人以为它还是主体号。 |
+| `merchantName` | `string` | 否 | 承接商家名快照；NEIGHBOR 点为空。名字仍挂在主体上，不是门店名 |
 | `address` | `string` | 是 | 自提点地址。NEIGHBOR 点**成团前只到楼栋**，付款后才给完整门牌 |
 | `openHours` | `string` | 是 | 营业/可取货时段，形如 "09:00-21:00" |
 | `arriveTime` | `string` | 是 | 到货时间（运营排车依据） |
-| `serviceFeeRate` | `number` | 是 | 履约服务费费率，万分比（P-2.2.4）。**仅 STORE 有意义**，NEIGHBOR 恒为 0。 存费率不存金额：R15 口径（按单/按件/保底）未定，等定了只改结算不改主数据。 |
+| `serviceFeeRate` | `number` | 是 | 履约服务费费率，万分比（P-2.2.4）。**NEIGHBOR 恒为 0**（库上有 CHECK 约束兜底）。 目前有值的只有 PLATFORM 点（线下逐点协商）；STORE 要等 B9 定口径。 存费率不存金额：口径（按单/按件/保底）未定，等定了只改结算不改主数据。 |
+| `serviceFeePerItemMinor` | `number` | 是 | 按件履约服务费（分）。与 serviceFeeRate 二选一，由 feeMode 决定用哪个 |
+| `acceptCount30d` | `number` | 是 | 近 30 天承接次数（P-2.2.5 职业化风控依据） |
+| `createdAt` | `string` | 是 | 建档时间 |
+
+
+#### POST `/ops/pickups/{no}/archive`
+
+archivePickup
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`PickupPoint`](#pickuppoint)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `archivedAt` | `string,null` | 否 | 归档时间。**软删除标记** —— 有值即视为已删除，列表默认不返回。 契约禁止 `delete*`，一律 `archive*` / `unarchive*`（工程约定 §10.6）。 |
+| `pickupNo` | `string` | 是 | 自提点单号 |
+| `name` | `string` | 是 | 自提点名称 |
+| `type` | [`#/definitions/PickupPointType`](#definitionspickuppointtype) | 是 | 自提点类型（ADR-005）。三类的报酬、脱敏、作用域规则完全不同。 ⚠️ 这里此前只有 STORE\|NEIGHBOR 两类，而后端还有 **PLATFORM**（平台提供、 线下协商费率）—— 少一类的后果是平台点在列表里渲染成 undefined 或被当成常驻点， 而它的费率规则与常驻点完全不同。 |
+| `feeMode` | [`#/definitions/PickupFeeMode`](#definitionspickupfeemode) | 是 | 计费口径。目前只有 PLATFORM 有值，见 `PickupFeeMode` 的说明 |
+| `status` | [`#/definitions/PickupStatus`](#definitionspickupstatus) | 是 | 自提点状态。`MIGRATING` = 不再接新单，存量单仍在本点核销完 |
+| `communityNo` | `string` | 是 | 归属社区 |
+| `communityName` | `string` | 是 | 社区名快照 |
+| `storeNo` | `string` | 否 | 承接**门店**；NEIGHBOR 点为空（承接方是 C 端用户，不是商家）。 此前叫 `merchantNo` 且装的是主体号。自提点归属改到门店之后（后端 V16）， 名字与内容就对不上了 —— 一并改名，而不是让下一个人以为它还是主体号。 |
+| `merchantName` | `string` | 否 | 承接商家名快照；NEIGHBOR 点为空。名字仍挂在主体上，不是门店名 |
+| `address` | `string` | 是 | 自提点地址。NEIGHBOR 点**成团前只到楼栋**，付款后才给完整门牌 |
+| `openHours` | `string` | 是 | 营业/可取货时段，形如 "09:00-21:00" |
+| `arriveTime` | `string` | 是 | 到货时间（运营排车依据） |
+| `serviceFeeRate` | `number` | 是 | 履约服务费费率，万分比（P-2.2.4）。**NEIGHBOR 恒为 0**（库上有 CHECK 约束兜底）。 目前有值的只有 PLATFORM 点（线下逐点协商）；STORE 要等 B9 定口径。 存费率不存金额：口径（按单/按件/保底）未定，等定了只改结算不改主数据。 |
+| `serviceFeePerItemMinor` | `number` | 是 | 按件履约服务费（分）。与 serviceFeeRate 二选一，由 feeMode 决定用哪个 |
 | `acceptCount30d` | `number` | 是 | 近 30 天承接次数（P-2.2.5 职业化风控依据） |
 | `createdAt` | `string` | 是 | 建档时间 |
 
@@ -359,7 +451,7 @@ _无字段_
 
 | 参数 | 位置 | 类型 | 必填 | 说明 |
 |---|---|---|:---:|---|
-| `no` | path | — | 是 | 该资源的业务单号 |
+| `no` | path | `string` | 是 | 该资源的业务单号 |
 
 _无字段_
 
@@ -372,16 +464,18 @@ _无字段_
 | `archivedAt` | `string,null` | 否 | 归档时间。**软删除标记** —— 有值即视为已删除，列表默认不返回。 契约禁止 `delete*`，一律 `archive*` / `unarchive*`（工程约定 §10.6）。 |
 | `pickupNo` | `string` | 是 | 自提点单号 |
 | `name` | `string` | 是 | 自提点名称 |
-| `type` | [`#/definitions/PickupType`](#definitionspickuptype) | 是 | 自提点类型。**STORE 与 NEIGHBOR 的报酬、脱敏、作用域规则完全不同**（ADR-005） |
+| `type` | [`#/definitions/PickupPointType`](#definitionspickuppointtype) | 是 | 自提点类型（ADR-005）。三类的报酬、脱敏、作用域规则完全不同。 ⚠️ 这里此前只有 STORE\|NEIGHBOR 两类，而后端还有 **PLATFORM**（平台提供、 线下协商费率）—— 少一类的后果是平台点在列表里渲染成 undefined 或被当成常驻点， 而它的费率规则与常驻点完全不同。 |
+| `feeMode` | [`#/definitions/PickupFeeMode`](#definitionspickupfeemode) | 是 | 计费口径。目前只有 PLATFORM 有值，见 `PickupFeeMode` 的说明 |
 | `status` | [`#/definitions/PickupStatus`](#definitionspickupstatus) | 是 | 自提点状态。`MIGRATING` = 不再接新单，存量单仍在本点核销完 |
 | `communityNo` | `string` | 是 | 归属社区 |
 | `communityName` | `string` | 是 | 社区名快照 |
-| `merchantNo` | `string` | 否 | 承接商家；NEIGHBOR 点为空（承接方是 C 端用户，不是商家） |
-| `merchantName` | `string` | 否 | 承接商家名快照；NEIGHBOR 点为空 |
+| `storeNo` | `string` | 否 | 承接**门店**；NEIGHBOR 点为空（承接方是 C 端用户，不是商家）。 此前叫 `merchantNo` 且装的是主体号。自提点归属改到门店之后（后端 V16）， 名字与内容就对不上了 —— 一并改名，而不是让下一个人以为它还是主体号。 |
+| `merchantName` | `string` | 否 | 承接商家名快照；NEIGHBOR 点为空。名字仍挂在主体上，不是门店名 |
 | `address` | `string` | 是 | 自提点地址。NEIGHBOR 点**成团前只到楼栋**，付款后才给完整门牌 |
 | `openHours` | `string` | 是 | 营业/可取货时段，形如 "09:00-21:00" |
 | `arriveTime` | `string` | 是 | 到货时间（运营排车依据） |
-| `serviceFeeRate` | `number` | 是 | 履约服务费费率，万分比（P-2.2.4）。**仅 STORE 有意义**，NEIGHBOR 恒为 0。 存费率不存金额：R15 口径（按单/按件/保底）未定，等定了只改结算不改主数据。 |
+| `serviceFeeRate` | `number` | 是 | 履约服务费费率，万分比（P-2.2.4）。**NEIGHBOR 恒为 0**（库上有 CHECK 约束兜底）。 目前有值的只有 PLATFORM 点（线下逐点协商）；STORE 要等 B9 定口径。 存费率不存金额：口径（按单/按件/保底）未定，等定了只改结算不改主数据。 |
+| `serviceFeePerItemMinor` | `number` | 是 | 按件履约服务费（分）。与 serviceFeeRate 二选一，由 feeMode 决定用哪个 |
 | `acceptCount30d` | `number` | 是 | 近 30 天承接次数（P-2.2.5 职业化风控依据） |
 | `createdAt` | `string` | 是 | 建档时间 |
 
@@ -394,7 +488,7 @@ _无字段_
 
 | 参数 | 位置 | 类型 | 必填 | 说明 |
 |---|---|---|:---:|---|
-| `no` | path | — | 是 | 该资源的业务单号 |
+| `no` | path | `string` | 是 | 该资源的业务单号 |
 
 _无字段_
 
@@ -407,16 +501,18 @@ _无字段_
 | `archivedAt` | `string,null` | 否 | 归档时间。**软删除标记** —— 有值即视为已删除，列表默认不返回。 契约禁止 `delete*`，一律 `archive*` / `unarchive*`（工程约定 §10.6）。 |
 | `pickupNo` | `string` | 是 | 自提点单号 |
 | `name` | `string` | 是 | 自提点名称 |
-| `type` | [`#/definitions/PickupType`](#definitionspickuptype) | 是 | 自提点类型。**STORE 与 NEIGHBOR 的报酬、脱敏、作用域规则完全不同**（ADR-005） |
+| `type` | [`#/definitions/PickupPointType`](#definitionspickuppointtype) | 是 | 自提点类型（ADR-005）。三类的报酬、脱敏、作用域规则完全不同。 ⚠️ 这里此前只有 STORE\|NEIGHBOR 两类，而后端还有 **PLATFORM**（平台提供、 线下协商费率）—— 少一类的后果是平台点在列表里渲染成 undefined 或被当成常驻点， 而它的费率规则与常驻点完全不同。 |
+| `feeMode` | [`#/definitions/PickupFeeMode`](#definitionspickupfeemode) | 是 | 计费口径。目前只有 PLATFORM 有值，见 `PickupFeeMode` 的说明 |
 | `status` | [`#/definitions/PickupStatus`](#definitionspickupstatus) | 是 | 自提点状态。`MIGRATING` = 不再接新单，存量单仍在本点核销完 |
 | `communityNo` | `string` | 是 | 归属社区 |
 | `communityName` | `string` | 是 | 社区名快照 |
-| `merchantNo` | `string` | 否 | 承接商家；NEIGHBOR 点为空（承接方是 C 端用户，不是商家） |
-| `merchantName` | `string` | 否 | 承接商家名快照；NEIGHBOR 点为空 |
+| `storeNo` | `string` | 否 | 承接**门店**；NEIGHBOR 点为空（承接方是 C 端用户，不是商家）。 此前叫 `merchantNo` 且装的是主体号。自提点归属改到门店之后（后端 V16）， 名字与内容就对不上了 —— 一并改名，而不是让下一个人以为它还是主体号。 |
+| `merchantName` | `string` | 否 | 承接商家名快照；NEIGHBOR 点为空。名字仍挂在主体上，不是门店名 |
 | `address` | `string` | 是 | 自提点地址。NEIGHBOR 点**成团前只到楼栋**，付款后才给完整门牌 |
 | `openHours` | `string` | 是 | 营业/可取货时段，形如 "09:00-21:00" |
 | `arriveTime` | `string` | 是 | 到货时间（运营排车依据） |
-| `serviceFeeRate` | `number` | 是 | 履约服务费费率，万分比（P-2.2.4）。**仅 STORE 有意义**，NEIGHBOR 恒为 0。 存费率不存金额：R15 口径（按单/按件/保底）未定，等定了只改结算不改主数据。 |
+| `serviceFeeRate` | `number` | 是 | 履约服务费费率，万分比（P-2.2.4）。**NEIGHBOR 恒为 0**（库上有 CHECK 约束兜底）。 目前有值的只有 PLATFORM 点（线下逐点协商）；STORE 要等 B9 定口径。 存费率不存金额：口径（按单/按件/保底）未定，等定了只改结算不改主数据。 |
+| `serviceFeePerItemMinor` | `number` | 是 | 按件履约服务费（分）。与 serviceFeeRate 二选一，由 feeMode 决定用哪个 |
 | `acceptCount30d` | `number` | 是 | 近 30 天承接次数（P-2.2.5 职业化风控依据） |
 | `createdAt` | `string` | 是 | 建档时间 |
 
@@ -429,7 +525,7 @@ unarchivePickup
 
 | 参数 | 位置 | 类型 | 必填 | 说明 |
 |---|---|---|:---:|---|
-| `no` | path | — | 是 | 该资源的业务单号 |
+| `no` | path | `string` | 是 | 该资源的业务单号 |
 
 _无字段_
 
@@ -442,16 +538,18 @@ _无字段_
 | `archivedAt` | `string,null` | 否 | 归档时间。**软删除标记** —— 有值即视为已删除，列表默认不返回。 契约禁止 `delete*`，一律 `archive*` / `unarchive*`（工程约定 §10.6）。 |
 | `pickupNo` | `string` | 是 | 自提点单号 |
 | `name` | `string` | 是 | 自提点名称 |
-| `type` | [`#/definitions/PickupType`](#definitionspickuptype) | 是 | 自提点类型。**STORE 与 NEIGHBOR 的报酬、脱敏、作用域规则完全不同**（ADR-005） |
+| `type` | [`#/definitions/PickupPointType`](#definitionspickuppointtype) | 是 | 自提点类型（ADR-005）。三类的报酬、脱敏、作用域规则完全不同。 ⚠️ 这里此前只有 STORE\|NEIGHBOR 两类，而后端还有 **PLATFORM**（平台提供、 线下协商费率）—— 少一类的后果是平台点在列表里渲染成 undefined 或被当成常驻点， 而它的费率规则与常驻点完全不同。 |
+| `feeMode` | [`#/definitions/PickupFeeMode`](#definitionspickupfeemode) | 是 | 计费口径。目前只有 PLATFORM 有值，见 `PickupFeeMode` 的说明 |
 | `status` | [`#/definitions/PickupStatus`](#definitionspickupstatus) | 是 | 自提点状态。`MIGRATING` = 不再接新单，存量单仍在本点核销完 |
 | `communityNo` | `string` | 是 | 归属社区 |
 | `communityName` | `string` | 是 | 社区名快照 |
-| `merchantNo` | `string` | 否 | 承接商家；NEIGHBOR 点为空（承接方是 C 端用户，不是商家） |
-| `merchantName` | `string` | 否 | 承接商家名快照；NEIGHBOR 点为空 |
+| `storeNo` | `string` | 否 | 承接**门店**；NEIGHBOR 点为空（承接方是 C 端用户，不是商家）。 此前叫 `merchantNo` 且装的是主体号。自提点归属改到门店之后（后端 V16）， 名字与内容就对不上了 —— 一并改名，而不是让下一个人以为它还是主体号。 |
+| `merchantName` | `string` | 否 | 承接商家名快照；NEIGHBOR 点为空。名字仍挂在主体上，不是门店名 |
 | `address` | `string` | 是 | 自提点地址。NEIGHBOR 点**成团前只到楼栋**，付款后才给完整门牌 |
 | `openHours` | `string` | 是 | 营业/可取货时段，形如 "09:00-21:00" |
 | `arriveTime` | `string` | 是 | 到货时间（运营排车依据） |
-| `serviceFeeRate` | `number` | 是 | 履约服务费费率，万分比（P-2.2.4）。**仅 STORE 有意义**，NEIGHBOR 恒为 0。 存费率不存金额：R15 口径（按单/按件/保底）未定，等定了只改结算不改主数据。 |
+| `serviceFeeRate` | `number` | 是 | 履约服务费费率，万分比（P-2.2.4）。**NEIGHBOR 恒为 0**（库上有 CHECK 约束兜底）。 目前有值的只有 PLATFORM 点（线下逐点协商）；STORE 要等 B9 定口径。 存费率不存金额：口径（按单/按件/保底）未定，等定了只改结算不改主数据。 |
+| `serviceFeePerItemMinor` | `number` | 是 | 按件履约服务费（分）。与 serviceFeeRate 二选一，由 feeMode 决定用哪个 |
 | `acceptCount30d` | `number` | 是 | 近 30 天承接次数（P-2.2.5 职业化风控依据） |
 | `createdAt` | `string` | 是 | 建档时间 |
 
@@ -474,6 +572,32 @@ _无字段_
 | `total` | `integer` | 是 | — |
 | `page` | `integer` | 是 | — |
 | `size` | `integer` | 是 | — |
+
+
+#### GET `/ops/regions`
+
+某区划的直接下级
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`Region`](#region)\[\]
+
+
+#### GET `/ops/regions/path`
+
+从省到自身的整条链路
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`Region`](#region)\[\]
 
 
 ### content
@@ -506,7 +630,7 @@ listPosts
 
 | 参数 | 位置 | 类型 | 必填 | 说明 |
 |---|---|---|:---:|---|
-| `postNo` | path | — | 是 | 种草内容单号 |
+| `postNo` | path | `string` | 是 | 种草内容单号 |
 
 _无字段_
 
@@ -574,7 +698,7 @@ listQuestions
 
 | 参数 | 位置 | 类型 | 必填 | 说明 |
 |---|---|---|:---:|---|
-| `questionNo` | path | — | 是 | 商品问答单号 |
+| `questionNo` | path | `string` | 是 | 商品问答单号 |
 
 _无字段_
 
@@ -605,7 +729,7 @@ _无字段_
 
 | 参数 | 位置 | 类型 | 必填 | 说明 |
 |---|---|---|:---:|---|
-| `questionNo` | path | — | 是 | 商品问答单号 |
+| `questionNo` | path | `string` | 是 | 商品问答单号 |
 
 _无字段_
 
@@ -673,7 +797,7 @@ setRankingEnabled
 
 | 参数 | 位置 | 类型 | 必填 | 说明 |
 |---|---|---|:---:|---|
-| `rankNo` | path | — | 是 | 榜单单号 |
+| `rankNo` | path | `string` | 是 | 榜单单号 |
 
 _无字段_
 
@@ -747,7 +871,7 @@ setMaterialPublished
 
 | 参数 | 位置 | 类型 | 必填 | 说明 |
 |---|---|---|:---:|---|
-| `no` | path | — | 是 | 该资源的业务单号 |
+| `no` | path | `string` | 是 | 该资源的业务单号 |
 
 _无字段_
 
@@ -771,9 +895,22 @@ _无字段_
 
 ### dashboard
 
+#### POST `/ops/auth/forgot`
+
+忘记密码：往登录名那个邮箱发一次性重置码
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：`object`
+
+
 #### POST `/ops/auth/login`
 
-登录换后端 token
+登录
 
 **入参**
 
@@ -788,8 +925,44 @@ _无字段_
 | `username` | `string` | 是 | 登录名 |
 | `role` | [`#/definitions/Role`](#definitionsrole) | 是 | 角色。**权限判定以后端为准**，前端只做菜单裁剪 |
 | `token` | `string` | 是 | 访问令牌。STAFF 池，与 C 端、B 端账号不通用 |
+| `perms` | `string`\[\] | 是 | **后端下发的权限码**（`staff.perms`）。判权以它为准。 `["*"]` = 超管通配。前端的 UI 码要先经 `UI_PERM_MAP` 翻译成后端码 再来这里查 —— 两边的粒度不同（前端 45 个、后端 14 个）， 直接比会全判 false。 |
 | `merchantNo` | `string` | 否 | 商家运营（BD）等受限角色的数据域；平台全量角色为空 |
 | `communityNo` | `string` | 否 | 受限角色的社区数据域 |
+
+
+#### GET `/ops/auth/me`
+
+拿当前登录人的最新身份（`GET /ops/auth/me`）
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`LoginResp`](#loginresp)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `username` | `string` | 是 | 登录名 |
+| `role` | [`#/definitions/Role`](#definitionsrole) | 是 | 角色。**权限判定以后端为准**，前端只做菜单裁剪 |
+| `token` | `string` | 是 | 访问令牌。STAFF 池，与 C 端、B 端账号不通用 |
+| `perms` | `string`\[\] | 是 | **后端下发的权限码**（`staff.perms`）。判权以它为准。 `["*"]` = 超管通配。前端的 UI 码要先经 `UI_PERM_MAP` 翻译成后端码 再来这里查 —— 两边的粒度不同（前端 45 个、后端 14 个）， 直接比会全判 false。 |
+| `merchantNo` | `string` | 否 | 商家运营（BD）等受限角色的数据域；平台全量角色为空 |
+| `communityNo` | `string` | 否 | 受限角色的社区数据域 |
+
+
+#### POST `/ops/auth/reset`
+
+用邮件里的重置码设新密码
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：`object`
 
 
 #### GET `/ops/dashboard/funnel`
@@ -802,7 +975,7 @@ getAcquisitionFunnel
 
 **出参**（`data`）
 
-类型：[`FunnelStep`](#funnelstep)\[\]
+类型：[`FunnelRow`](#funnelrow)\[\]
 
 
 #### GET `/ops/dashboard/kpi`
@@ -827,6 +1000,19 @@ getDashboardKpi
 | `redeemRate` | `number` | 是 | 今日核销率（P-5.1.3 核销监控），0–1 |
 
 
+#### GET `/ops/dashboard/merchants`
+
+商家经营排行（P-16.1.2 / P-16.1.3）——大盘之下的第一层下钻
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`MerchantRankRow`](#merchantrankrow)\[\]
+
+
 #### GET `/ops/dashboard/trend`
 
 getDashboardTrend
@@ -840,11 +1026,9 @@ getDashboardTrend
 类型：[`TrendPoint`](#trendpoint)\[\]
 
 
-### finance
+#### GET `/ops/menu`
 
-#### GET `/ops/fee-rule`
-
-getFeeRule
+当前登录人的**动态菜单**（`GET /ops/menu`）
 
 > 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
 
@@ -852,37 +1036,10 @@ getFeeRule
 
 **出参**（`data`）
 
-类型：[`FeeRule`](#feerule)
-
-| 字段 | 类型 | 必填 | 说明 |
-|---|---|:---:|---|
-| `byTrafficSource` | [`#/definitions/Record<TrafficSource,number>`](#definitionsrecordtrafficsourcenumber) | 是 | 按流量来源分档的平台佣金费率（R16）。 ⚠️ `MERCHANT_OWNED`（商家自带客流）**建议 0** —— 商家自己把客人带来的单还抽佣， 商家就会把客人带去别处成交（ADR-004 的增长模型立不住）。口径未定，故可配。 |
-| `pickupServiceFeeRate` | `number` | 是 | 自提点履约服务费默认费率（R15）；自提点自己配了就用它自己的 |
-| `freezeDays` | `number` | 是 | 超时兜底天数（12.1.4）：冻结超过它仍未分账成功，解冻回平台 |
-| `updatedAt` | `string` | 是 | 最后修改时间。**改费率不影响已生成的结算单** |
-| `updatedBy` | `string` | 是 | 最后修改人（STAFF 账号） |
+类型：[`MenuFunction`](#menufunction)\[\]
 
 
-#### POST `/ops/fee-rule`
-
-费率配置（P-12.1.7 / 12.1.8 / 12.1.4）
-
-**入参**
-
-_无字段_
-
-**出参**（`data`）
-
-类型：[`FeeRule`](#feerule)
-
-| 字段 | 类型 | 必填 | 说明 |
-|---|---|:---:|---|
-| `byTrafficSource` | [`#/definitions/Record<TrafficSource,number>`](#definitionsrecordtrafficsourcenumber) | 是 | 按流量来源分档的平台佣金费率（R16）。 ⚠️ `MERCHANT_OWNED`（商家自带客流）**建议 0** —— 商家自己把客人带来的单还抽佣， 商家就会把客人带去别处成交（ADR-004 的增长模型立不住）。口径未定，故可配。 |
-| `pickupServiceFeeRate` | `number` | 是 | 自提点履约服务费默认费率（R15）；自提点自己配了就用它自己的 |
-| `freezeDays` | `number` | 是 | 超时兜底天数（12.1.4）：冻结超过它仍未分账成功，解冻回平台 |
-| `updatedAt` | `string` | 是 | 最后修改时间。**改费率不影响已生成的结算单** |
-| `updatedBy` | `string` | 是 | 最后修改人（STAFF 账号） |
-
+### finance
 
 #### GET `/ops/finance/invoices`
 
@@ -912,7 +1069,7 @@ listInvoiceRequests
 
 | 参数 | 位置 | 类型 | 必填 | 说明 |
 |---|---|---|:---:|---|
-| `invoiceNo` | path | — | 是 | 开票申请单号 |
+| `invoiceNo` | path | `string` | 是 | 开票申请单号 |
 
 _无字段_
 
@@ -946,7 +1103,7 @@ rejectInvoice
 
 | 参数 | 位置 | 类型 | 必填 | 说明 |
 |---|---|---|:---:|---|
-| `invoiceNo` | path | — | 是 | 开票申请单号 |
+| `invoiceNo` | path | `string` | 是 | 开票申请单号 |
 
 _无字段_
 
@@ -1040,7 +1197,7 @@ listWithdrawals
 
 | 参数 | 位置 | 类型 | 必填 | 说明 |
 |---|---|---|:---:|---|
-| `withdrawNo` | path | — | 是 | 提现单号 |
+| `withdrawNo` | path | `string` | 是 | 提现单号 |
 
 _无字段_
 
@@ -1061,6 +1218,26 @@ _无字段_
 | `decidedAt` | `string,null` | 否 | 审批时间。未审为 null |
 | `decidedBy` | `string,null` | 否 | 审批人（STAFF 账号）。未审为 null |
 | `remark` | `string,null` | 否 | 驳回原因 / 大额复核说明。原样回商家 B 端 |
+
+
+#### GET `/ops/points/overview`
+
+积分资金总览
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`PointsOverview`](#pointsoverview)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `circulatingPoints` | `number` | 是 | 流通中的积分（用户可用 + 待生效） |
+| `poolBalanceMinor` | `number` | 是 | 池子余额（分）。与上一个数对不上就是失衡 |
+| `periodRedeemMinor` | `number` | 是 | 本期兑付（分）：补给商家的钱 |
+| `byChannel` | [`#/definitions/PoolByChannel`](#definitionspoolbychannel)\[\] | 是 | 按通道分的账本。**不能只看总数** —— 账面是一个池子，钱实际分散在两个通道账户； 一个溢一个空的时候，总数仍然是平的。 |
 
 
 #### GET `/ops/refund-split-backs`
@@ -1084,7 +1261,7 @@ _无字段_
 
 | 参数 | 位置 | 类型 | 必填 | 说明 |
 |---|---|---|:---:|---|
-| `asNo` | path | — | 是 | 售后单号（平台端写法） |
+| `asNo` | path | `string` | 是 | 售后单号（平台端写法） |
 
 _无字段_
 
@@ -1094,26 +1271,80 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `asNo` | `string` | 是 | 售后单号 |
-| `orderNo` | `string` | 是 | 关联的子订单 |
+| `afterSaleNo` | `string` | 是 | 售后单号 |
+| `subOrderNo` | `string` | 是 | 关联的子订单 |
+| `orderNo` | `string` | 是 | 关联的主订单 |
 | `merchantNo` | `string` | 是 | 涉事商家 |
 | `merchantName` | `string` | 是 | 商家名快照 |
 | `buyerNickname` | `string` | 是 | 申请人昵称 |
 | `type` | [`#/definitions/AfterSaleType`](#definitionsaftersaletype) | 是 | 售后类型：仅退款 / 退货退款 / 换货 |
 | `status` | [`#/definitions/AfterSaleStatus`](#definitionsaftersalestatus) | 是 | 售后单状态。允许的流转见 `AFTERSALE_TRANSITIONS` |
-| `amount` | `number` | 是 | 申请退款金额（分）。**不得超过订单实付** —— 校验要跨域查订单。 |
+| `refundMinor` | `number` | 是 | 申请退款金额（分）。裁决只决定退不退，不改这个数 |
 | `reason` | `string` | 是 | 用户填写的售后原因 |
-| `evidenceCount` | `number` | 是 | 举证材料数量（照片/聊天记录） |
+| `images` | `string`\[\] | 是 | 举证材料（照片） |
 | `liability` | [`#/definitions/Liability`](#definitionsliability) | 否 | 裁定的责任方。平台介入后才有值 |
-| `share` | [`#/definitions/LiabilityShare`](#definitionsliabilityshare) | 否 | 赔付出资比例。口径未定（M4），先存结构 |
+| `share` | [`#/definitions/LiabilityShare`](#definitionsliabilityshare) | 否 | 赔付出资比例。**仅 finance 域 mock 队列使用**，真实后端未接（见上方说明） |
 | `verdict` | `string` | 否 | 裁决说明：用户与商家都会看到 |
-| `refundSplitPending` | `boolean` | 否 | E4 退款回退分账待办：裁决完成但资金域（P-12）尚未接。 留这个标记而不是假装已完成 —— 接资金域时按它补跑。 |
+| `refundSplitPending` | `boolean` | 否 | E4 退款回退分账待办：finance 域「退款回退分账」mock 队列专用字段， 真实后端未接（见上方说明），售后本身的裁决流程不读写它。 |
 | `createdAt` | `string` | 是 | 售后发起时间 |
+
+
+#### GET `/ops/settle/fee-rules`
+
+全部费率版本，含历史
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`FeeRuleVersion`](#feeruleversion)\[\]
+
+
+#### POST `/ops/settle/fee-rules`
+
+新增一个费率版本
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`FeeRuleVersion`](#feeruleversion)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `ruleNo` | `string` | 是 | 规则版本号 |
+| `businessMode` | [`#/definitions/BusinessMode`](#definitionsbusinessmode) | 是 | 经营模式，费率的第一个维度 |
+| `trafficSource` | [`#/definitions/FeeTrafficSource`](#definitionsfeetrafficsource) | 是 | 适用的流量来源，费率的第二个维度 |
+| `rateBp` | `number` | 是 | 万分比。500 = 5% |
+| `effectiveFrom` | `number` | 是 | 生效时刻（毫秒）。**填未来时刻 = 预约生效** |
+| `enabled` | `number` | 是 | 1 = 该版本生效；0 = 已停用（回退到上一版） |
+| `remark` | `string,null` | 否 | 为什么调这一次 —— 回查时这句话比数字更有用 |
+| `createdAt` | `string` | 否 | 创建时间 |
+| `createdBy` | `string` | 否 | 创建人 |
+
+
+#### GET `/ops/settle/fee-rules/effective`
+
+某时刻实际生效的四格费率
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`EffectiveFeeRates`](#effectivefeerates)
+
+_无字段_
 
 
 #### GET `/ops/settlements`
 
-listSettlements
+结算单列表
 
 > 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
 
@@ -1131,74 +1362,6 @@ listSettlements
 | `size` | `integer` | 是 | — |
 
 
-#### POST `/ops/settlements/{no}/freeze-back`
-
-超时兜底（P-12.1.4）：冻结超过 freezeDays 仍未成功的，解冻回平台
-
-**入参**
-
-| 参数 | 位置 | 类型 | 必填 | 说明 |
-|---|---|---|:---:|---|
-| `no` | path | — | 是 | 该资源的业务单号 |
-
-_无字段_
-
-**出参**（`data`）
-
-类型：[`Settlement`](#settlement)
-
-| 字段 | 类型 | 必填 | 说明 |
-|---|---|:---:|---|
-| `settleNo` | `string` | 是 | 结算单号 |
-| `merchantNo` | `string` | 是 | 结算对象商家 |
-| `merchantName` | `string` | 是 | 商家名快照 |
-| `period` | `string` | 是 | 结算周期，如 2026-08-上 |
-| `orderCount` | `number` | 是 | 本期结算的子订单笔数 |
-| `grossAmount` | `number` | 是 | 应结总额（分）= 子订单实付合计 |
-| `platformFee` | `number` | 是 | 平台佣金（分）。按「分账内扣」实现（12.1.6 口径待定） |
-| `serviceFee` | `number` | 是 | 自提点履约服务费（分，R15） |
-| `netAmount` | `number` | 是 | 实付商家（分） |
-| `status` | [`#/definitions/SettleStatus`](#definitionssettlestatus) | 是 | 结算状态。允许的流转见 `SETTLE_TRANSITIONS` |
-| `retryCount` | `number` | 是 | 分账指令重试次数（上限见 lib/constants.ts） |
-| `failReason` | `string` | 否 | 失败原因。`status=FAILED` 时有值，人工介入据此判断 |
-| `frozenAt` | `string` | 是 | 冻结开始时间：超过 freezeDays 未成功就解冻回平台 |
-| `createdAt` | `string` | 是 | 结算单生成时间 |
-
-
-#### POST `/ops/settlements/{no}/split`
-
-下发分账指令（P-12.1.3）
-
-**入参**
-
-| 参数 | 位置 | 类型 | 必填 | 说明 |
-|---|---|---|:---:|---|
-| `no` | path | — | 是 | 该资源的业务单号 |
-
-_无字段_
-
-**出参**（`data`）
-
-类型：[`Settlement`](#settlement)
-
-| 字段 | 类型 | 必填 | 说明 |
-|---|---|:---:|---|
-| `settleNo` | `string` | 是 | 结算单号 |
-| `merchantNo` | `string` | 是 | 结算对象商家 |
-| `merchantName` | `string` | 是 | 商家名快照 |
-| `period` | `string` | 是 | 结算周期，如 2026-08-上 |
-| `orderCount` | `number` | 是 | 本期结算的子订单笔数 |
-| `grossAmount` | `number` | 是 | 应结总额（分）= 子订单实付合计 |
-| `platformFee` | `number` | 是 | 平台佣金（分）。按「分账内扣」实现（12.1.6 口径待定） |
-| `serviceFee` | `number` | 是 | 自提点履约服务费（分，R15） |
-| `netAmount` | `number` | 是 | 实付商家（分） |
-| `status` | [`#/definitions/SettleStatus`](#definitionssettlestatus) | 是 | 结算状态。允许的流转见 `SETTLE_TRANSITIONS` |
-| `retryCount` | `number` | 是 | 分账指令重试次数（上限见 lib/constants.ts） |
-| `failReason` | `string` | 否 | 失败原因。`status=FAILED` 时有值，人工介入据此判断 |
-| `frozenAt` | `string` | 是 | 冻结开始时间：超过 freezeDays 未成功就解冻回平台 |
-| `createdAt` | `string` | 是 | 结算单生成时间 |
-
-
 #### GET `/ops/split-records`
 
 listSplitRecords
@@ -1213,7 +1376,7 @@ listSplitRecords
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `records` | [`SplitRecord`](#splitrecord)\[\] | 是 | — |
+| `records` | [`SplitLog`](#splitlog)\[\] | 是 | — |
 | `total` | `integer` | 是 | — |
 | `page` | `integer` | 是 | — |
 | `size` | `integer` | 是 | — |
@@ -1270,7 +1433,7 @@ _无字段_
 
 | 参数 | 位置 | 类型 | 必填 | 说明 |
 |---|---|---|:---:|---|
-| `templateNo` | path | — | 是 | 模板单号 |
+| `templateNo` | path | `string` | 是 | 模板单号 |
 
 _无字段_
 
@@ -1302,7 +1465,7 @@ unarchiveFreightTemplate
 
 | 参数 | 位置 | 类型 | 必填 | 说明 |
 |---|---|---|:---:|---|
-| `templateNo` | path | — | 是 | 模板单号 |
+| `templateNo` | path | `string` | 是 | 模板单号 |
 
 _无字段_
 
@@ -1354,7 +1517,7 @@ listArrivalBatches
 
 | 参数 | 位置 | 类型 | 必填 | 说明 |
 |---|---|---|:---:|---|
-| `batchNo` | path | — | 是 | 到货批次号 |
+| `batchNo` | path | `string` | 是 | 到货批次号 |
 
 _无字段_
 
@@ -1397,7 +1560,7 @@ listCarriers
 
 | 参数 | 位置 | 类型 | 必填 | 说明 |
 |---|---|---|:---:|---|
-| `carrier` | path | — | 是 | 承运商标识 |
+| `carrier` | path | `string` | 是 | 承运商标识 |
 
 _无字段_
 
@@ -1427,7 +1590,7 @@ _无字段_
 
 | 参数 | 位置 | 类型 | 必填 | 说明 |
 |---|---|---|:---:|---|
-| `carrier` | path | — | 是 | 承运商标识 |
+| `carrier` | path | `string` | 是 | 承运商标识 |
 
 _无字段_
 
@@ -1545,7 +1708,7 @@ listShipments
 
 | 参数 | 位置 | 类型 | 必填 | 说明 |
 |---|---|---|:---:|---|
-| `shipmentNo` | path | — | 是 | 运单记录单号（平台侧主键，非快递单号） |
+| `shipmentNo` | path | `string` | 是 | 运单记录单号（平台侧主键，非快递单号） |
 
 _无字段_
 
@@ -1597,7 +1760,7 @@ listDemands
 
 | 参数 | 位置 | 类型 | 必填 | 说明 |
 |---|---|---|:---:|---|
-| `demandNo` | path | — | 是 | 求团需求单号 |
+| `demandNo` | path | `string` | 是 | 求团需求单号 |
 
 _无字段_
 
@@ -1614,10 +1777,10 @@ _无字段_
 | `merchantName` | `string` | 是 | 商家名快照 |
 | `price` | `number` | 是 | 单价（分） |
 | `minQty` | `number` | 是 | 起订量 |
-| `validTo` | `string` | 是 | 报价有效期。过期不可被选定 —— 报价不能无限期挂着 |
+| `validTo` | `number` | 是 | 报价有效期（毫秒时间戳）。过期不可被选定 —— 报价不能无限期挂着 |
 | `priceChanges` | `number` | 是 | 改价次数（P-8.2.4 改价留痕）。ADR-003：不禁止改价，但**每次都公示**， 超过阈值禁止再改 —— 频繁改价本身就是信号。 |
 | `breached` | `boolean` | 是 | 是否毁约（P-8.2.5）。毁约累计影响商家信用档案（P-11.1.5） |
-| `createdAt` | `string` | 是 | 报价时间 |
+| `createdAt` | `number` | 是 | 报价时间（毫秒时间戳） |
 
 
 #### GET `/ops/groups`
@@ -1648,7 +1811,7 @@ listGroupCampaigns
 
 | 参数 | 位置 | 类型 | 必填 | 说明 |
 |---|---|---|:---:|---|
-| `no` | path | — | 是 | 该资源的业务单号 |
+| `no` | path | `string` | 是 | 该资源的业务单号 |
 
 _无字段_
 
@@ -1667,8 +1830,8 @@ _无字段_
 | `minCount` | `number` | 是 | 起团人数，必须 ≥ 2（1 个人不叫团） |
 | `joined` | `number` | 是 | 已参团人数 |
 | `status` | [`#/definitions/GroupStatus`](#definitionsgroupstatus) | 是 | 团状态。允许的流转见 `GROUP_TRANSITIONS` |
-| `endAt` | `string` | 是 | 成团截止时间 |
-| `createdAt` | `string` | 是 | 开团时间 |
+| `endAt` | `number` | 是 | 成团截止时间（毫秒时间戳） |
+| `createdAt` | `number` | 是 | 开团时间（毫秒时间戳） |
 
 
 #### POST `/ops/groups/{no}/status`
@@ -1679,7 +1842,7 @@ setGroupStatus
 
 | 参数 | 位置 | 类型 | 必填 | 说明 |
 |---|---|---|:---:|---|
-| `no` | path | — | 是 | 该资源的业务单号 |
+| `no` | path | `string` | 是 | 该资源的业务单号 |
 
 _无字段_
 
@@ -1698,8 +1861,8 @@ _无字段_
 | `minCount` | `number` | 是 | 起团人数，必须 ≥ 2（1 个人不叫团） |
 | `joined` | `number` | 是 | 已参团人数 |
 | `status` | [`#/definitions/GroupStatus`](#definitionsgroupstatus) | 是 | 团状态。允许的流转见 `GROUP_TRANSITIONS` |
-| `endAt` | `string` | 是 | 成团截止时间 |
-| `createdAt` | `string` | 是 | 开团时间 |
+| `endAt` | `number` | 是 | 成团截止时间（毫秒时间戳） |
+| `createdAt` | `number` | 是 | 开团时间（毫秒时间戳） |
 
 
 #### GET `/ops/quotes`
@@ -1730,7 +1893,7 @@ listQuotes
 
 | 参数 | 位置 | 类型 | 必填 | 说明 |
 |---|---|---|:---:|---|
-| `no` | path | — | 是 | 该资源的业务单号 |
+| `no` | path | `string` | 是 | 该资源的业务单号 |
 
 _无字段_
 
@@ -1747,10 +1910,10 @@ _无字段_
 | `merchantName` | `string` | 是 | 商家名快照 |
 | `price` | `number` | 是 | 单价（分） |
 | `minQty` | `number` | 是 | 起订量 |
-| `validTo` | `string` | 是 | 报价有效期。过期不可被选定 —— 报价不能无限期挂着 |
+| `validTo` | `number` | 是 | 报价有效期（毫秒时间戳）。过期不可被选定 —— 报价不能无限期挂着 |
 | `priceChanges` | `number` | 是 | 改价次数（P-8.2.4 改价留痕）。ADR-003：不禁止改价，但**每次都公示**， 超过阈值禁止再改 —— 频繁改价本身就是信号。 |
 | `breached` | `boolean` | 是 | 是否毁约（P-8.2.5）。毁约累计影响商家信用档案（P-11.1.5） |
-| `createdAt` | `string` | 是 | 报价时间 |
+| `createdAt` | `number` | 是 | 报价时间（毫秒时间戳） |
 
 
 #### POST `/ops/quotes/{no}/price`
@@ -1761,7 +1924,7 @@ _无字段_
 
 | 参数 | 位置 | 类型 | 必填 | 说明 |
 |---|---|---|:---:|---|
-| `no` | path | — | 是 | 该资源的业务单号 |
+| `no` | path | `string` | 是 | 该资源的业务单号 |
 
 _无字段_
 
@@ -1778,10 +1941,10 @@ _无字段_
 | `merchantName` | `string` | 是 | 商家名快照 |
 | `price` | `number` | 是 | 单价（分） |
 | `minQty` | `number` | 是 | 起订量 |
-| `validTo` | `string` | 是 | 报价有效期。过期不可被选定 —— 报价不能无限期挂着 |
+| `validTo` | `number` | 是 | 报价有效期（毫秒时间戳）。过期不可被选定 —— 报价不能无限期挂着 |
 | `priceChanges` | `number` | 是 | 改价次数（P-8.2.4 改价留痕）。ADR-003：不禁止改价，但**每次都公示**， 超过阈值禁止再改 —— 频繁改价本身就是信号。 |
 | `breached` | `boolean` | 是 | 是否毁约（P-8.2.5）。毁约累计影响商家信用档案（P-11.1.5） |
-| `createdAt` | `string` | 是 | 报价时间 |
+| `createdAt` | `number` | 是 | 报价时间（毫秒时间戳） |
 
 
 ### growth
@@ -1904,7 +2067,7 @@ setFissionEnabled
 
 | 参数 | 位置 | 类型 | 必填 | 说明 |
 |---|---|---|:---:|---|
-| `no` | path | — | 是 | 该资源的业务单号 |
+| `no` | path | `string` | 是 | 该资源的业务单号 |
 
 _无字段_
 
@@ -1928,7 +2091,7 @@ _无字段_
 
 ### iam
 
-#### GET `/ops/audit-logs`
+#### GET `/ops/audit-log`
 
 审计日志（P-1.1.4）
 
@@ -1948,7 +2111,72 @@ _无字段_
 | `size` | `integer` | 是 | — |
 
 
-#### GET `/ops/roles`
+#### GET `/ops/perm/functions`
+
+功能与功能点全集 —— 权限树的数据源
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`MenuFunction`](#menufunction)\[\]
+
+
+#### POST `/ops/perm/functions/${encodeURIComponent(functionCode)}/move`
+
+菜单调序：同级内上移/下移
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：`object`
+
+
+#### POST `/ops/perm/functions/reorder`
+
+整段重排（拖动用）：传该父级下的**完整顺序**
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：`object`
+
+
+#### POST `/ops/perm/points/${encodeURIComponent(pointCode)}/move`
+
+movePermPoint
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：`object`
+
+
+#### POST `/ops/perm/points/reorder`
+
+reorderPermPoints
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：`object`
+
+
+#### GET `/ops/perm/roles`
 
 listRoles
 
@@ -1961,15 +2189,11 @@ listRoles
 类型：[`RoleDef`](#roledef)\[\]
 
 
-#### POST `/ops/roles/{role}/perms`
+#### POST `/ops/perm/roles`
 
-改角色权限
+createRole
 
 **入参**
-
-| 参数 | 位置 | 类型 | 必填 | 说明 |
-|---|---|---|:---:|---|
-| `role` | path | — | 是 | 角色码 |
 
 _无字段_
 
@@ -1979,11 +2203,115 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `role` | [`#/definitions/Role`](#definitionsrole) | 是 | 角色码 |
-| `label` | `string` | 是 | 角色展示名 |
-| `builtin` | `boolean` | 是 | 内置角色（超管）：定义就是"全部"，不可编辑 —— 可编辑意味着能把自己降权 |
-| `perms` | `string`\[\] | 是 | 权限码集合；'*' 表示全部 |
-| `staffCount` | `number` | 是 | 持有该角色的账号数 |
+| `roleCode` | `string` | 是 | 角色码。自定义角色不在 `Role` 联合类型里，所以是 string |
+| `name` | `string` | 是 | 角色展示名 |
+| `endCode` | `string` | 是 | 端。运营端固定 OPS |
+| `builtin` | `boolean` | 是 | 内置角色：是 `Perms.java` 的镜像，改了会与回落表分叉 —— 渲染但禁用 |
+| `pointCount` | `number` | 是 | 已授予的功能点数 |
+| `staffCount` | `number` | 是 | 持有该角色的账号数。 **删角色前唯一能看出「会影响谁」的信息** —— 后端也拦（10441），但那是拦在点下去之后。 |
+
+
+#### POST `/ops/perm/roles/{roleCode}/delete`
+
+删角色
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `roleCode` | path | `string` | 是 | — |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：`object`
+
+
+#### POST `/ops/perm/roles/{roleCode}/force-logout`
+
+**强制该角色的成员重新登录**（紧急撤回）
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `roleCode` | path | `string` | 是 | — |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：`object`
+
+
+#### GET `/ops/perm/roles/{roleCode}/points`
+
+某个角色已勾的功能点码
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `roleCode` | path | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：`object`\[\]
+
+
+#### POST `/ops/perm/roles/{roleCode}/points`
+
+改角色的功能点
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `roleCode` | path | `string` | 是 | — |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`RoleDef`](#roledef)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `roleCode` | `string` | 是 | 角色码。自定义角色不在 `Role` 联合类型里，所以是 string |
+| `name` | `string` | 是 | 角色展示名 |
+| `endCode` | `string` | 是 | 端。运营端固定 OPS |
+| `builtin` | `boolean` | 是 | 内置角色：是 `Perms.java` 的镜像，改了会与回落表分叉 —— 渲染但禁用 |
+| `pointCount` | `number` | 是 | 已授予的功能点数 |
+| `staffCount` | `number` | 是 | 持有该角色的账号数。 **删角色前唯一能看出「会影响谁」的信息** —— 后端也拦（10441），但那是拦在点下去之后。 |
+
+
+#### POST `/ops/perm/roles/{roleCode}/rename`
+
+改角色展示名
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `roleCode` | path | `string` | 是 | — |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`RoleDef`](#roledef)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `roleCode` | `string` | 是 | 角色码。自定义角色不在 `Role` 联合类型里，所以是 string |
+| `name` | `string` | 是 | 角色展示名 |
+| `endCode` | `string` | 是 | 端。运营端固定 OPS |
+| `builtin` | `boolean` | 是 | 内置角色：是 `Perms.java` 的镜像，改了会与回落表分叉 —— 渲染但禁用 |
+| `pointCount` | `number` | 是 | 已授予的功能点数 |
+| `staffCount` | `number` | 是 | 持有该角色的账号数。 **删角色前唯一能看出「会影响谁」的信息** —— 后端也拦（10441），但那是拦在点下去之后。 |
 
 
 #### GET `/ops/staffs`
@@ -2006,6 +2334,19 @@ listStaffs
 | `size` | `integer` | 是 | — |
 
 
+#### POST `/ops/staffs`
+
+新建员工
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：`object`
+
+
 #### POST `/ops/staffs/{no}/enabled`
 
 停用/启用（软删除语义，不删账号 —— 审计要能追溯到人）
@@ -2014,7 +2355,7 @@ listStaffs
 
 | 参数 | 位置 | 类型 | 必填 | 说明 |
 |---|---|---|:---:|---|
-| `no` | path | — | 是 | 该资源的业务单号 |
+| `no` | path | `string` | 是 | 该资源的业务单号 |
 
 _无字段_
 
@@ -2027,24 +2368,25 @@ _无字段_
 | `staffNo` | `string` | 是 | 员工单号 |
 | `username` | `string` | 是 | 登录名 |
 | `name` | `string` | 是 | 姓名 |
-| `role` | [`#/definitions/Role`](#definitionsrole) | 是 | 角色。决定权限码集合，见 `RoleDef` |
+| `roles` | `string`\[\] | 是 | 角色（**可多个**）。权限码取所有角色的并集。 <p>2026-08-12 从单值 `role` 换成数组：库早就支持多角色 （`sys_role_member` 唯一键含 role_code、`Perms.of` 取并集）， 是写接口把它压成了单值。 |
 | `merchantNo` | `string` | 否 | 数据域（P-1.1.3）。只对**受限角色**有意义： 社区运营 → communityNo、商家运营 → merchantNo。 给全量角色（超管等）配数据域是配置错误 —— 会让人以为它被限制了，实际没有。 |
 | `communityNo` | `string` | 否 | 社区运营的社区数据域 |
 | `pickupNo` | `string` | 否 | 自提点数据域 |
 | `enabled` | `boolean` | 是 | 是否启用。停用后立即无法登录，历史操作留痕保留 |
+| `mustChangePassword` | `boolean` | 否 | 首登必须改密。 建号时后端生成的一次性初始密码只是「拿到账号」的凭据，不是长期口令。 |
 | `lastLoginAt` | `string` | 否 | 最近登录时间。从未登录为空 |
 | `createdAt` | `string` | 是 | 建档时间 |
 
 
-#### POST `/ops/staffs/{no}/role`
+#### POST `/ops/staffs/{no}/roles`
 
-改角色
+改角色（**多角色**）
 
 **入参**
 
 | 参数 | 位置 | 类型 | 必填 | 说明 |
 |---|---|---|:---:|---|
-| `no` | path | — | 是 | 该资源的业务单号 |
+| `no` | path | `string` | 是 | 该资源的业务单号 |
 
 _无字段_
 
@@ -2057,11 +2399,12 @@ _无字段_
 | `staffNo` | `string` | 是 | 员工单号 |
 | `username` | `string` | 是 | 登录名 |
 | `name` | `string` | 是 | 姓名 |
-| `role` | [`#/definitions/Role`](#definitionsrole) | 是 | 角色。决定权限码集合，见 `RoleDef` |
+| `roles` | `string`\[\] | 是 | 角色（**可多个**）。权限码取所有角色的并集。 <p>2026-08-12 从单值 `role` 换成数组：库早就支持多角色 （`sys_role_member` 唯一键含 role_code、`Perms.of` 取并集）， 是写接口把它压成了单值。 |
 | `merchantNo` | `string` | 否 | 数据域（P-1.1.3）。只对**受限角色**有意义： 社区运营 → communityNo、商家运营 → merchantNo。 给全量角色（超管等）配数据域是配置错误 —— 会让人以为它被限制了，实际没有。 |
 | `communityNo` | `string` | 否 | 社区运营的社区数据域 |
 | `pickupNo` | `string` | 否 | 自提点数据域 |
 | `enabled` | `boolean` | 是 | 是否启用。停用后立即无法登录，历史操作留痕保留 |
+| `mustChangePassword` | `boolean` | 否 | 首登必须改密。 建号时后端生成的一次性初始密码只是「拿到账号」的凭据，不是长期口令。 |
 | `lastLoginAt` | `string` | 否 | 最近登录时间。从未登录为空 |
 | `createdAt` | `string` | 是 | 建档时间 |
 
@@ -2074,7 +2417,7 @@ _无字段_
 
 | 参数 | 位置 | 类型 | 必填 | 说明 |
 |---|---|---|:---:|---|
-| `no` | path | — | 是 | 该资源的业务单号 |
+| `no` | path | `string` | 是 | 该资源的业务单号 |
 
 _无字段_
 
@@ -2087,11 +2430,12 @@ _无字段_
 | `staffNo` | `string` | 是 | 员工单号 |
 | `username` | `string` | 是 | 登录名 |
 | `name` | `string` | 是 | 姓名 |
-| `role` | [`#/definitions/Role`](#definitionsrole) | 是 | 角色。决定权限码集合，见 `RoleDef` |
+| `roles` | `string`\[\] | 是 | 角色（**可多个**）。权限码取所有角色的并集。 <p>2026-08-12 从单值 `role` 换成数组：库早就支持多角色 （`sys_role_member` 唯一键含 role_code、`Perms.of` 取并集）， 是写接口把它压成了单值。 |
 | `merchantNo` | `string` | 否 | 数据域（P-1.1.3）。只对**受限角色**有意义： 社区运营 → communityNo、商家运营 → merchantNo。 给全量角色（超管等）配数据域是配置错误 —— 会让人以为它被限制了，实际没有。 |
 | `communityNo` | `string` | 否 | 社区运营的社区数据域 |
 | `pickupNo` | `string` | 否 | 自提点数据域 |
 | `enabled` | `boolean` | 是 | 是否启用。停用后立即无法登录，历史操作留痕保留 |
+| `mustChangePassword` | `boolean` | 否 | 首登必须改密。 建号时后端生成的一次性初始密码只是「拿到账号」的凭据，不是长期口令。 |
 | `lastLoginAt` | `string` | 否 | 最近登录时间。从未登录为空 |
 | `createdAt` | `string` | 是 | 建档时间 |
 
@@ -2100,7 +2444,7 @@ _无字段_
 
 #### GET `/ops/campaigns`
 
-listCampaigns
+**商家自建的店铺活动**（平台治理视角）
 
 > 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
 
@@ -2112,36 +2456,10 @@ listCampaigns
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `records` | [`Campaign`](#campaign)\[\] | 是 | — |
+| `records` | [`MerchantCampaign`](#merchantcampaign)\[\] | 是 | — |
 | `total` | `integer` | 是 | — |
 | `page` | `integer` | 是 | — |
 | `size` | `integer` | 是 | — |
-
-
-#### POST `/ops/campaigns`
-
-保存活动（P-7.2）
-
-**入参**
-
-_无字段_
-
-**出参**（`data`）
-
-类型：[`Campaign`](#campaign)
-
-| 字段 | 类型 | 必填 | 说明 |
-|---|---|:---:|---|
-| `archivedAt` | `string,null` | 否 | 归档时间。**软删除标记** —— 有值即视为已删除，列表默认不返回。 契约禁止 `delete*`，一律 `archive*` / `unarchive*`（工程约定 §10.6）。 |
-| `campaignNo` | `string` | 是 | 活动单号 |
-| `name` | `string` | 是 | 活动名 |
-| `type` | [`#/definitions/CampaignType`](#definitionscampaigntype) | 是 | 活动类型 |
-| `status` | [`#/definitions/CampaignStatus`](#definitionscampaignstatus) | 是 | 活动状态 |
-| `startAt` | `string` | 是 | 开始时间 |
-| `endAt` | `string` | 是 | 结束时间。须晚于 startAt |
-| `position` | `string` | 是 | 投放位置：秒杀场次的重叠校验按位置分组（跨位置可并行） |
-| `skuCount` | `number` | 是 | 参与商品数 |
-| `createdAt` | `string` | 是 | 创建时间 |
 
 
 #### POST `/ops/campaigns/{no}/archive`
@@ -2152,26 +2470,54 @@ archiveCampaign
 
 | 参数 | 位置 | 类型 | 必填 | 说明 |
 |---|---|---|:---:|---|
-| `no` | path | — | 是 | 该资源的业务单号 |
+| `no` | path | `string` | 是 | 该资源的业务单号 |
 
 _无字段_
 
 **出参**（`data`）
 
-类型：[`Campaign`](#campaign)
+类型：[`MerchantCampaign`](#merchantcampaign)
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `archivedAt` | `string,null` | 否 | 归档时间。**软删除标记** —— 有值即视为已删除，列表默认不返回。 契约禁止 `delete*`，一律 `archive*` / `unarchive*`（工程约定 §10.6）。 |
-| `campaignNo` | `string` | 是 | 活动单号 |
-| `name` | `string` | 是 | 活动名 |
-| `type` | [`#/definitions/CampaignType`](#definitionscampaigntype) | 是 | 活动类型 |
-| `status` | [`#/definitions/CampaignStatus`](#definitionscampaignstatus) | 是 | 活动状态 |
-| `startAt` | `string` | 是 | 开始时间 |
-| `endAt` | `string` | 是 | 结束时间。须晚于 startAt |
-| `position` | `string` | 是 | 投放位置：秒杀场次的重叠校验按位置分组（跨位置可并行） |
-| `skuCount` | `number` | 是 | 参与商品数 |
-| `createdAt` | `string` | 是 | 创建时间 |
+| `campaignNo` | `string` | 是 | 活动号。跨端唯一，平台治理与商家自己看到的是同一个 |
+| `merchantNo` | `string` | 是 | 所属商家（主体号）。平台视角要按它归堆 |
+| `name` | `string` | 是 | 活动名，商家自己填的。C 端会原样展示，平台治理时也按它认人 |
+| `type` | [`#/definitions/MerchantCampaignType`](#definitionsmerchantcampaigntype) | 是 | COUPON / FULL_CUT / FLASH / BUY_GIFT —— 商家能建的四种 |
+| `status` | `string` | 是 | RUNNING / ENDED / PAUSED |
+| `startAt` | `number` | 是 | 开始时间（毫秒时间戳） |
+| `endAt` | `number` | 是 | 结束时间（毫秒时间戳） |
+| `goodsNos` | `string`\[\] \| `null` | 否 | 参与的商品号。**列表上只显示条数**，明细进详情看 |
+
+
+#### POST `/ops/campaigns/{no}/toggle`
+
+停用 / 启用商家活动（矩阵 §2.3）
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`MerchantCampaign`](#merchantcampaign)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `archivedAt` | `string,null` | 否 | 归档时间。**软删除标记** —— 有值即视为已删除，列表默认不返回。 契约禁止 `delete*`，一律 `archive*` / `unarchive*`（工程约定 §10.6）。 |
+| `campaignNo` | `string` | 是 | 活动号。跨端唯一，平台治理与商家自己看到的是同一个 |
+| `merchantNo` | `string` | 是 | 所属商家（主体号）。平台视角要按它归堆 |
+| `name` | `string` | 是 | 活动名，商家自己填的。C 端会原样展示，平台治理时也按它认人 |
+| `type` | [`#/definitions/MerchantCampaignType`](#definitionsmerchantcampaigntype) | 是 | COUPON / FULL_CUT / FLASH / BUY_GIFT —— 商家能建的四种 |
+| `status` | `string` | 是 | RUNNING / ENDED / PAUSED |
+| `startAt` | `number` | 是 | 开始时间（毫秒时间戳） |
+| `endAt` | `number` | 是 | 结束时间（毫秒时间戳） |
+| `goodsNos` | `string`\[\] \| `null` | 否 | 参与的商品号。**列表上只显示条数**，明细进详情看 |
 
 
 #### POST `/ops/campaigns/{no}/unarchive`
@@ -2182,26 +2528,25 @@ unarchiveCampaign
 
 | 参数 | 位置 | 类型 | 必填 | 说明 |
 |---|---|---|:---:|---|
-| `no` | path | — | 是 | 该资源的业务单号 |
+| `no` | path | `string` | 是 | 该资源的业务单号 |
 
 _无字段_
 
 **出参**（`data`）
 
-类型：[`Campaign`](#campaign)
+类型：[`MerchantCampaign`](#merchantcampaign)
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `archivedAt` | `string,null` | 否 | 归档时间。**软删除标记** —— 有值即视为已删除，列表默认不返回。 契约禁止 `delete*`，一律 `archive*` / `unarchive*`（工程约定 §10.6）。 |
-| `campaignNo` | `string` | 是 | 活动单号 |
-| `name` | `string` | 是 | 活动名 |
-| `type` | [`#/definitions/CampaignType`](#definitionscampaigntype) | 是 | 活动类型 |
-| `status` | [`#/definitions/CampaignStatus`](#definitionscampaignstatus) | 是 | 活动状态 |
-| `startAt` | `string` | 是 | 开始时间 |
-| `endAt` | `string` | 是 | 结束时间。须晚于 startAt |
-| `position` | `string` | 是 | 投放位置：秒杀场次的重叠校验按位置分组（跨位置可并行） |
-| `skuCount` | `number` | 是 | 参与商品数 |
-| `createdAt` | `string` | 是 | 创建时间 |
+| `campaignNo` | `string` | 是 | 活动号。跨端唯一，平台治理与商家自己看到的是同一个 |
+| `merchantNo` | `string` | 是 | 所属商家（主体号）。平台视角要按它归堆 |
+| `name` | `string` | 是 | 活动名，商家自己填的。C 端会原样展示，平台治理时也按它认人 |
+| `type` | [`#/definitions/MerchantCampaignType`](#definitionsmerchantcampaigntype) | 是 | COUPON / FULL_CUT / FLASH / BUY_GIFT —— 商家能建的四种 |
+| `status` | `string` | 是 | RUNNING / ENDED / PAUSED |
+| `startAt` | `number` | 是 | 开始时间（毫秒时间戳） |
+| `endAt` | `number` | 是 | 结束时间（毫秒时间戳） |
+| `goodsNos` | `string`\[\] \| `null` | 否 | 参与的商品号。**列表上只显示条数**，明细进详情看 |
 
 
 #### GET `/ops/content-slots`
@@ -2232,7 +2577,7 @@ archiveSlot
 
 | 参数 | 位置 | 类型 | 必填 | 说明 |
 |---|---|---|:---:|---|
-| `no` | path | — | 是 | 该资源的业务单号 |
+| `no` | path | `string` | 是 | 该资源的业务单号 |
 
 _无字段_
 
@@ -2261,7 +2606,7 @@ _无字段_
 
 | 参数 | 位置 | 类型 | 必填 | 说明 |
 |---|---|---|:---:|---|
-| `no` | path | — | 是 | 该资源的业务单号 |
+| `no` | path | `string` | 是 | 该资源的业务单号 |
 
 _无字段_
 
@@ -2290,7 +2635,7 @@ _无字段_
 
 | 参数 | 位置 | 类型 | 必填 | 说明 |
 |---|---|---|:---:|---|
-| `no` | path | — | 是 | 该资源的业务单号 |
+| `no` | path | `string` | 是 | 该资源的业务单号 |
 
 _无字段_
 
@@ -2319,7 +2664,7 @@ unarchiveSlot
 
 | 参数 | 位置 | 类型 | 必填 | 说明 |
 |---|---|---|:---:|---|
-| `no` | path | — | 是 | 该资源的业务单号 |
+| `no` | path | `string` | 是 | 该资源的业务单号 |
 
 _无字段_
 
@@ -2380,15 +2725,48 @@ listCoupons
 | `size` | `integer` | 是 | — |
 
 
+#### POST `/ops/coupons`
+
+建券 / 改券（TDD-营销预算前置）
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`Coupon`](#coupon)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `archivedAt` | `string,null` | 否 | 归档时间。**软删除标记** —— 有值即视为已删除，列表默认不返回。 契约禁止 `delete*`，一律 `archive*` / `unarchive*`（工程约定 §10.6）。 |
+| `couponNo` | `string` | 是 | 券模板单号 |
+| `name` | `string` | 是 | 券名，展示给用户 |
+| `type` | [`#/definitions/CouponType`](#definitionscoupontype) | 是 | 券类型，决定 `value` 的口径 |
+| `status` | [`#/definitions/CouponStatus`](#definitionscouponstatus) | 是 | 券状态。允许的流转见 `COUPON_TRANSITIONS`；**ENDED 不影响已发出的券** |
+| `value` | `number` | 是 | 面额（满减/新人/定向）或折扣万分比（DISCOUNT，如 8500 = 85 折） |
+| `threshold` | `number` | 是 | 使用门槛，0 表示无门槛 |
+| `validFrom` | `number` | 是 | 生效开始时间（毫秒时间戳，后端全域口径） |
+| `validTo` | `number` | 是 | 生效结束时间（毫秒时间戳） |
+| `budget` | `number` | 是 | 预算（分）。**已发放金额不得超过它** —— 这是唯一挡住"发着发着超支"的地方， 且必须在服务端校验：客服也持有发券权限（矩阵 §2.3 补偿券）。 `0` = 不限。存量券全是这样：加预算列的迁移不改变已在跑的券的行为。 服务端的校验在领券那条 UPDATE 里与张数一起判（原子）， 见 `CouponMappers.tryReceive`。⚠️ 折扣券挡不住 —— 它的实际支出 取决于用券那一单的金额，发放时算不出来。 |
+| `issuedAmount` | `number` | 是 | 已发放金额（分）= 已领张数 × 面额。折扣券算不出来，恒为 0 |
+| `issued` | `number` | 是 | 已发放张数 |
+| `redeemed` | `number` | 是 | 已核销张数（P-7.1.4 效果） |
+| `createdAt` | `number` | 是 | 创建时间（毫秒时间戳） |
+| `totalCount` | `number` | 是 | 发行量。**建券时敞口 = totalCount × 单张最大优惠**（TDD-营销预算前置）， 是预算前置校验的另一半——只有它和面额/封顶一起，敞口才算得出来。 |
+| `perUserLimit` | `number` | 是 | 每人限领张数 |
+| `maxDiscountMinor` | `number` | 是 | 折扣券封顶（分）。仅 `type=DISCOUNT` 有意义，其余类型恒为 0。 **建券时必填 >0**——0 = 不封顶已取消，敞口在建券那一刻就必须算得出来。 与 `value`（折扣万分比）分开：一个决定打几折，一个决定最多减多少。 |
+
+
 #### POST `/ops/coupons/{couponNo}/issue`
 
-发券（P-7.1.2）
+主动发券（P-7.1.2）
 
 **入参**
 
 | 参数 | 位置 | 类型 | 必填 | 说明 |
 |---|---|---|:---:|---|
-| `couponNo` | path | — | 是 | 券单号 |
+| `couponNo` | path | `string` | 是 | 券单号 |
 
 _无字段_
 
@@ -2417,7 +2795,7 @@ archiveCoupon
 
 | 参数 | 位置 | 类型 | 必填 | 说明 |
 |---|---|---|:---:|---|
-| `no` | path | — | 是 | 该资源的业务单号 |
+| `no` | path | `string` | 是 | 该资源的业务单号 |
 
 _无字段_
 
@@ -2434,13 +2812,16 @@ _无字段_
 | `status` | [`#/definitions/CouponStatus`](#definitionscouponstatus) | 是 | 券状态。允许的流转见 `COUPON_TRANSITIONS`；**ENDED 不影响已发出的券** |
 | `value` | `number` | 是 | 面额（满减/新人/定向）或折扣万分比（DISCOUNT，如 8500 = 85 折） |
 | `threshold` | `number` | 是 | 使用门槛，0 表示无门槛 |
-| `validFrom` | `string` | 是 | 生效开始时间 |
-| `validTo` | `string` | 是 | 生效结束时间 |
-| `budget` | `number` | 是 | 预算（分）。**已发放金额不得超过它** —— 这是唯一挡住"发着发着超支"的地方， 且必须在服务端校验：客服也持有发券权限（矩阵 §2.3 补偿券）。 |
-| `issuedAmount` | `number` | 是 | 已发放金额（分） |
+| `validFrom` | `number` | 是 | 生效开始时间（毫秒时间戳，后端全域口径） |
+| `validTo` | `number` | 是 | 生效结束时间（毫秒时间戳） |
+| `budget` | `number` | 是 | 预算（分）。**已发放金额不得超过它** —— 这是唯一挡住"发着发着超支"的地方， 且必须在服务端校验：客服也持有发券权限（矩阵 §2.3 补偿券）。 `0` = 不限。存量券全是这样：加预算列的迁移不改变已在跑的券的行为。 服务端的校验在领券那条 UPDATE 里与张数一起判（原子）， 见 `CouponMappers.tryReceive`。⚠️ 折扣券挡不住 —— 它的实际支出 取决于用券那一单的金额，发放时算不出来。 |
+| `issuedAmount` | `number` | 是 | 已发放金额（分）= 已领张数 × 面额。折扣券算不出来，恒为 0 |
 | `issued` | `number` | 是 | 已发放张数 |
 | `redeemed` | `number` | 是 | 已核销张数（P-7.1.4 效果） |
-| `createdAt` | `string` | 是 | 创建时间 |
+| `createdAt` | `number` | 是 | 创建时间（毫秒时间戳） |
+| `totalCount` | `number` | 是 | 发行量。**建券时敞口 = totalCount × 单张最大优惠**（TDD-营销预算前置）， 是预算前置校验的另一半——只有它和面额/封顶一起，敞口才算得出来。 |
+| `perUserLimit` | `number` | 是 | 每人限领张数 |
+| `maxDiscountMinor` | `number` | 是 | 折扣券封顶（分）。仅 `type=DISCOUNT` 有意义，其余类型恒为 0。 **建券时必填 >0**——0 = 不封顶已取消，敞口在建券那一刻就必须算得出来。 与 `value`（折扣万分比）分开：一个决定打几折，一个决定最多减多少。 |
 
 
 #### POST `/ops/coupons/{no}/budget`
@@ -2451,7 +2832,7 @@ _无字段_
 
 | 参数 | 位置 | 类型 | 必填 | 说明 |
 |---|---|---|:---:|---|
-| `no` | path | — | 是 | 该资源的业务单号 |
+| `no` | path | `string` | 是 | 该资源的业务单号 |
 
 _无字段_
 
@@ -2468,24 +2849,27 @@ _无字段_
 | `status` | [`#/definitions/CouponStatus`](#definitionscouponstatus) | 是 | 券状态。允许的流转见 `COUPON_TRANSITIONS`；**ENDED 不影响已发出的券** |
 | `value` | `number` | 是 | 面额（满减/新人/定向）或折扣万分比（DISCOUNT，如 8500 = 85 折） |
 | `threshold` | `number` | 是 | 使用门槛，0 表示无门槛 |
-| `validFrom` | `string` | 是 | 生效开始时间 |
-| `validTo` | `string` | 是 | 生效结束时间 |
-| `budget` | `number` | 是 | 预算（分）。**已发放金额不得超过它** —— 这是唯一挡住"发着发着超支"的地方， 且必须在服务端校验：客服也持有发券权限（矩阵 §2.3 补偿券）。 |
-| `issuedAmount` | `number` | 是 | 已发放金额（分） |
+| `validFrom` | `number` | 是 | 生效开始时间（毫秒时间戳，后端全域口径） |
+| `validTo` | `number` | 是 | 生效结束时间（毫秒时间戳） |
+| `budget` | `number` | 是 | 预算（分）。**已发放金额不得超过它** —— 这是唯一挡住"发着发着超支"的地方， 且必须在服务端校验：客服也持有发券权限（矩阵 §2.3 补偿券）。 `0` = 不限。存量券全是这样：加预算列的迁移不改变已在跑的券的行为。 服务端的校验在领券那条 UPDATE 里与张数一起判（原子）， 见 `CouponMappers.tryReceive`。⚠️ 折扣券挡不住 —— 它的实际支出 取决于用券那一单的金额，发放时算不出来。 |
+| `issuedAmount` | `number` | 是 | 已发放金额（分）= 已领张数 × 面额。折扣券算不出来，恒为 0 |
 | `issued` | `number` | 是 | 已发放张数 |
 | `redeemed` | `number` | 是 | 已核销张数（P-7.1.4 效果） |
-| `createdAt` | `string` | 是 | 创建时间 |
+| `createdAt` | `number` | 是 | 创建时间（毫秒时间戳） |
+| `totalCount` | `number` | 是 | 发行量。**建券时敞口 = totalCount × 单张最大优惠**（TDD-营销预算前置）， 是预算前置校验的另一半——只有它和面额/封顶一起，敞口才算得出来。 |
+| `perUserLimit` | `number` | 是 | 每人限领张数 |
+| `maxDiscountMinor` | `number` | 是 | 折扣券封顶（分）。仅 `type=DISCOUNT` 有意义，其余类型恒为 0。 **建券时必填 >0**——0 = 不封顶已取消，敞口在建券那一刻就必须算得出来。 与 `value`（折扣万分比）分开：一个决定打几折，一个决定最多减多少。 |
 
 
 #### POST `/ops/coupons/{no}/status`
 
-状态推进（草稿→启用⇄暂停→结束），非法迁移抛错
+改券状态（暂停 / 恢复 / 结束）
 
 **入参**
 
 | 参数 | 位置 | 类型 | 必填 | 说明 |
 |---|---|---|:---:|---|
-| `no` | path | — | 是 | 该资源的业务单号 |
+| `no` | path | `string` | 是 | 该资源的业务单号 |
 
 _无字段_
 
@@ -2502,13 +2886,16 @@ _无字段_
 | `status` | [`#/definitions/CouponStatus`](#definitionscouponstatus) | 是 | 券状态。允许的流转见 `COUPON_TRANSITIONS`；**ENDED 不影响已发出的券** |
 | `value` | `number` | 是 | 面额（满减/新人/定向）或折扣万分比（DISCOUNT，如 8500 = 85 折） |
 | `threshold` | `number` | 是 | 使用门槛，0 表示无门槛 |
-| `validFrom` | `string` | 是 | 生效开始时间 |
-| `validTo` | `string` | 是 | 生效结束时间 |
-| `budget` | `number` | 是 | 预算（分）。**已发放金额不得超过它** —— 这是唯一挡住"发着发着超支"的地方， 且必须在服务端校验：客服也持有发券权限（矩阵 §2.3 补偿券）。 |
-| `issuedAmount` | `number` | 是 | 已发放金额（分） |
+| `validFrom` | `number` | 是 | 生效开始时间（毫秒时间戳，后端全域口径） |
+| `validTo` | `number` | 是 | 生效结束时间（毫秒时间戳） |
+| `budget` | `number` | 是 | 预算（分）。**已发放金额不得超过它** —— 这是唯一挡住"发着发着超支"的地方， 且必须在服务端校验：客服也持有发券权限（矩阵 §2.3 补偿券）。 `0` = 不限。存量券全是这样：加预算列的迁移不改变已在跑的券的行为。 服务端的校验在领券那条 UPDATE 里与张数一起判（原子）， 见 `CouponMappers.tryReceive`。⚠️ 折扣券挡不住 —— 它的实际支出 取决于用券那一单的金额，发放时算不出来。 |
+| `issuedAmount` | `number` | 是 | 已发放金额（分）= 已领张数 × 面额。折扣券算不出来，恒为 0 |
 | `issued` | `number` | 是 | 已发放张数 |
 | `redeemed` | `number` | 是 | 已核销张数（P-7.1.4 效果） |
-| `createdAt` | `string` | 是 | 创建时间 |
+| `createdAt` | `number` | 是 | 创建时间（毫秒时间戳） |
+| `totalCount` | `number` | 是 | 发行量。**建券时敞口 = totalCount × 单张最大优惠**（TDD-营销预算前置）， 是预算前置校验的另一半——只有它和面额/封顶一起，敞口才算得出来。 |
+| `perUserLimit` | `number` | 是 | 每人限领张数 |
+| `maxDiscountMinor` | `number` | 是 | 折扣券封顶（分）。仅 `type=DISCOUNT` 有意义，其余类型恒为 0。 **建券时必填 >0**——0 = 不封顶已取消，敞口在建券那一刻就必须算得出来。 与 `value`（折扣万分比）分开：一个决定打几折，一个决定最多减多少。 |
 
 
 #### POST `/ops/coupons/{no}/unarchive`
@@ -2519,7 +2906,7 @@ unarchiveCoupon
 
 | 参数 | 位置 | 类型 | 必填 | 说明 |
 |---|---|---|:---:|---|
-| `no` | path | — | 是 | 该资源的业务单号 |
+| `no` | path | `string` | 是 | 该资源的业务单号 |
 
 _无字段_
 
@@ -2536,13 +2923,16 @@ _无字段_
 | `status` | [`#/definitions/CouponStatus`](#definitionscouponstatus) | 是 | 券状态。允许的流转见 `COUPON_TRANSITIONS`；**ENDED 不影响已发出的券** |
 | `value` | `number` | 是 | 面额（满减/新人/定向）或折扣万分比（DISCOUNT，如 8500 = 85 折） |
 | `threshold` | `number` | 是 | 使用门槛，0 表示无门槛 |
-| `validFrom` | `string` | 是 | 生效开始时间 |
-| `validTo` | `string` | 是 | 生效结束时间 |
-| `budget` | `number` | 是 | 预算（分）。**已发放金额不得超过它** —— 这是唯一挡住"发着发着超支"的地方， 且必须在服务端校验：客服也持有发券权限（矩阵 §2.3 补偿券）。 |
-| `issuedAmount` | `number` | 是 | 已发放金额（分） |
+| `validFrom` | `number` | 是 | 生效开始时间（毫秒时间戳，后端全域口径） |
+| `validTo` | `number` | 是 | 生效结束时间（毫秒时间戳） |
+| `budget` | `number` | 是 | 预算（分）。**已发放金额不得超过它** —— 这是唯一挡住"发着发着超支"的地方， 且必须在服务端校验：客服也持有发券权限（矩阵 §2.3 补偿券）。 `0` = 不限。存量券全是这样：加预算列的迁移不改变已在跑的券的行为。 服务端的校验在领券那条 UPDATE 里与张数一起判（原子）， 见 `CouponMappers.tryReceive`。⚠️ 折扣券挡不住 —— 它的实际支出 取决于用券那一单的金额，发放时算不出来。 |
+| `issuedAmount` | `number` | 是 | 已发放金额（分）= 已领张数 × 面额。折扣券算不出来，恒为 0 |
 | `issued` | `number` | 是 | 已发放张数 |
 | `redeemed` | `number` | 是 | 已核销张数（P-7.1.4 效果） |
-| `createdAt` | `string` | 是 | 创建时间 |
+| `createdAt` | `number` | 是 | 创建时间（毫秒时间戳） |
+| `totalCount` | `number` | 是 | 发行量。**建券时敞口 = totalCount × 单张最大优惠**（TDD-营销预算前置）， 是预算前置校验的另一半——只有它和面额/封顶一起，敞口才算得出来。 |
+| `perUserLimit` | `number` | 是 | 每人限领张数 |
+| `maxDiscountMinor` | `number` | 是 | 折扣券封顶（分）。仅 `type=DISCOUNT` 有意义，其余类型恒为 0。 **建券时必填 >0**——0 = 不封顶已取消，敞口在建券那一刻就必须算得出来。 与 `value`（折扣万分比）分开：一个决定打几折，一个决定最多减多少。 |
 
 
 #### GET `/ops/marketing/member-cards`
@@ -2600,7 +2990,7 @@ _无字段_
 
 | 参数 | 位置 | 类型 | 必填 | 说明 |
 |---|---|---|:---:|---|
-| `cardNo` | path | — | 是 | 卡号 / 会员卡单号 |
+| `cardNo` | path | `string` | 是 | 卡号 / 会员卡单号 |
 
 _无字段_
 
@@ -2631,7 +3021,7 @@ _无字段_
 
 | 参数 | 位置 | 类型 | 必填 | 说明 |
 |---|---|---|:---:|---|
-| `cardNo` | path | — | 是 | 卡号 / 会员卡单号 |
+| `cardNo` | path | `string` | 是 | 卡号 / 会员卡单号 |
 
 _无字段_
 
@@ -2662,7 +3052,7 @@ unarchiveMemberCard
 
 | 参数 | 位置 | 类型 | 必填 | 说明 |
 |---|---|---|:---:|---|
-| `cardNo` | path | — | 是 | 卡号 / 会员卡单号 |
+| `cardNo` | path | `string` | 是 | 卡号 / 会员卡单号 |
 
 _无字段_
 
@@ -2686,6 +3076,255 @@ _无字段_
 
 
 ### merchant
+
+#### GET `/ops/admission/deposits/{merchantNo}`
+
+merchantDeposit
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `merchantNo` | path | `string` | 是 | 商家单号 |
+
+**出参**（`data`）
+
+类型：[`MerchantDeposit`](#merchantdeposit)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `merchantNo` | `string` | 是 | 商家主体 |
+| `paidMinor` | `number` | 是 | 实缴（分） |
+| `frozenMinor` | `number` | 是 | 理赔冻结中（分） |
+| `availableMinor` | `number` | 是 | 可用（分）= 实缴 − 冻结。**判够不够用它，不用实缴** |
+| `requiredMinor` | `number` | 是 | 本档位应缴（分）；0 = 免缴 |
+| `sufficient` | `boolean` | 是 | 可用是否已达应缴。不足则该商家不能上架 |
+| `singleOrderLimitMinor` | `number` | 是 | 单笔限额（分）；0 = 不限 |
+| `dailyAmountLimitMinor` | `number` | 是 | 日累计限额（分）；0 = 不限 |
+
+
+#### GET `/ops/admission/deposits/{merchantNo}/txns`
+
+depositTxns
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `merchantNo` | path | `string` | 是 | 商家单号 |
+
+**出参**（`data`）
+
+类型：[`DepositTxn`](#deposittxn)\[\]
+
+
+#### POST `/ops/admission/deposits/{merchantNo}/txns`
+
+addDepositTxn
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `merchantNo` | path | `string` | 是 | 商家单号 |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：`object`
+
+
+#### GET `/ops/admission/policies`
+
+三档准入策略
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`AdmissionPolicy`](#admissionpolicy)\[\]
+
+
+#### PUT `/ops/admission/policies/{legalForm}`
+
+updateAdmissionPolicy
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `legalForm` | path | `string` | 是 | — |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：`object`
+
+
+#### GET `/ops/merchant-plans`
+
+到期与降级看板
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`object`（见下）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `records` | [`MerchantPlanRow`](#merchantplanrow)\[\] | 是 | — |
+| `total` | `integer` | 是 | — |
+| `page` | `integer` | 是 | — |
+| `size` | `integer` | 是 | — |
+
+
+#### POST `/ops/merchant-plans/{merchantNo}/grant`
+
+授予 / 延长
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `merchantNo` | path | `string` | 是 | 商家单号 |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`MerchantPlanRow`](#merchantplanrow)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `merchantNo` | `string` | 是 | — |
+| `merchantName` | `string` | 是 | — |
+| `planCode` | `string` | 是 | — |
+| `storeQuota` | `number` | 是 | 生效额度（覆盖值优先于快照）。与 storeUsed 一起显示成 2/3 |
+| `staffQuota` | `number` | 是 | — |
+| `storeUsed` | `number` | 是 | 已用门店数。**只数 ACTIVE**，与建店时那道额度闸同一口径 |
+| `staffUsed` | `number` | 是 | — |
+| `crossStoreStats` | `boolean` | 是 | — |
+| `status` | [`#/definitions/PlanStatus`](#definitionsplanstatus) | 是 | — |
+| `startAt` | `number,null` | 否 | — |
+| `expireAt` | `number,null` | 否 | — |
+| `grantedBy` | `string,null` | 否 | PLATFORM（运营授予）/ SELF（一期没有这条路） |
+| `trialUsed` | `boolean` | 是 | — |
+| `downgradedAt` | `number,null` | 否 | 降级发生的时间。非空 = 已经压过店了（扫描靠它保证幂等） |
+| `quotaSource` | [`#/definitions/PlanQuotaSource`](#definitionsplanquotasource) | 是 | — |
+
+
+#### PUT `/ops/merchant-plans/{merchantNo}/quota`
+
+单商家额度覆盖
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `merchantNo` | path | `string` | 是 | 商家单号 |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`MerchantPlanRow`](#merchantplanrow)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `merchantNo` | `string` | 是 | — |
+| `merchantName` | `string` | 是 | — |
+| `planCode` | `string` | 是 | — |
+| `storeQuota` | `number` | 是 | 生效额度（覆盖值优先于快照）。与 storeUsed 一起显示成 2/3 |
+| `staffQuota` | `number` | 是 | — |
+| `storeUsed` | `number` | 是 | 已用门店数。**只数 ACTIVE**，与建店时那道额度闸同一口径 |
+| `staffUsed` | `number` | 是 | — |
+| `crossStoreStats` | `boolean` | 是 | — |
+| `status` | [`#/definitions/PlanStatus`](#definitionsplanstatus) | 是 | — |
+| `startAt` | `number,null` | 否 | — |
+| `expireAt` | `number,null` | 否 | — |
+| `grantedBy` | `string,null` | 否 | PLATFORM（运营授予）/ SELF（一期没有这条路） |
+| `trialUsed` | `boolean` | 是 | — |
+| `downgradedAt` | `number,null` | 否 | 降级发生的时间。非空 = 已经压过店了（扫描靠它保证幂等） |
+| `quotaSource` | [`#/definitions/PlanQuotaSource`](#definitionsplanquotasource) | 是 | — |
+
+
+#### GET `/ops/merchant-plans/upgrade-signals`
+
+升档信号：一个人名下多个主体 = 他已经在多店经营，只是绕过了额度
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`PlanUpgradeSignal`](#planupgradesignal)\[\]
+
+
+#### POST `/ops/merchant/apply/{applyNo}/accept`
+
+受理：告诉商家「有人在看了」
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `applyNo` | path | `string` | 是 | — |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：`object`
+
+
+#### POST `/ops/merchant/apply/{applyNo}/audit`
+
+审核
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `applyNo` | path | `string` | 是 | — |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：`object`
+
+
+#### GET `/ops/merchant/apply/search`
+
+入驻申请检索
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`object`（见下）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `records` | [`MerchantApply`](#merchantapply)\[\] | 是 | — |
+| `total` | `integer` | 是 | — |
+| `page` | `integer` | 是 | — |
+| `size` | `integer` | 是 | — |
+
 
 #### GET `/ops/merchants`
 
@@ -2717,7 +3356,7 @@ getMerchant
 
 | 参数 | 位置 | 类型 | 必填 | 说明 |
 |---|---|---|:---:|---|
-| `merchantNo` | path | — | 是 | 商家单号 |
+| `merchantNo` | path | `string` | 是 | 商家单号 |
 
 **出参**（`data`）
 
@@ -2729,19 +3368,21 @@ getMerchant
 | `merchantNo` | `string` | 是 | 商家单号 |
 | `name` | `string` | 是 | 店铺名 |
 | `tier` | [`#/definitions/MerchantTier`](#definitionsmerchanttier) | 是 | 商家分层，为引入大商家预留 |
-| `status` | [`#/definitions/MerchantStatus`](#definitionsmerchantstatus) | 是 | 入驻审核状态。合法迁移见 `MERCHANT_TRANSITIONS`，非法迁移抛错 |
-| `communityNo` | `string` | 是 | 归属社区（数据域裁剪键之一） |
-| `communityName` | `string` | 是 | 社区名快照 |
+| `status` | [`#/definitions/MerchantStatus`](#definitionsmerchantstatus) | 是 | **经营状态**（不是审核状态 —— 审核在申请单上）。合法迁移见 `MERCHANT_TRANSITIONS` |
+| `communityNos` | `string`\[\] | 是 | 服务的社区。**是列表不是单个** —— 一家店可以服务多个社区 （后端 `mch_entity_community`，服务范围三档见 ADR-009）。 此前这里是单个 `communityNo`，多社区商家只会显示其中一个。 |
 | `contactName` | `string` | 是 | 联系人姓名 |
 | `contactPhone` | `string` | 是 | 展示一律脱敏（中间四位掩码），完整号码不下发前端 |
 | `categoryCodes` | `string`\[\] | 是 | 经营类目编码，审核通过后即类目授权范围（P-11.1.3） |
 | `verified` | `boolean` | 是 | 认证标（P-11.1.2） |
-| `qualifications` | `string`\[\] | 是 | 已上传并通过的资质名。授权需要资质的类目码时要对照它 |
+| `qualifications` | `string`\[\] | 否 | 已登记的结构化资质名。授权需要资质的类目码时要对照它。 **必须是可选的。** 后端 `MerchantProfileVO` 曾经完全没有这个字段， 而这里声明成必填 `string[]` —— 类型检查过得去，真接口下 `m.qualifications.length` 直接抛 TypeError。只有 mock 有这个字段，所以一直没暴露。 「契约有、后端不发」是字段问题，不是类型问题：**别把 `?` 去掉**。 |
 | `breachCount` | `number` | 是 | 信用档案：毁约次数（P-11.1.5 / ADR-003） |
 | `settleAccountReady` | `boolean` | 是 | 分账接收方报备状态（P-12.1.1，ADR-002） |
 | `createdAt` | `string` | 是 | 入驻申请提交时间 |
 | `auditRemark` | `string` | 否 | 最近一次审核意见（驳回原因/补交项） |
 | `asPickupPoint` | `boolean` | 否 | 申请人是否愿意承接自提点（ADR-005）。 **只是意愿，通过审核不会自动建点** —— 自提点的服务费口径是逐点线下谈的， 没有一个默认值能覆盖。放在审核页上是为了让运营**看见有人在等**： 不显示的话，申请人勾了这一项、通过后什么也没发生，而中间没有任何一处会报错。 |
+| `legalForm` | [`#/definitions/LegalForm`](#definitionslegalform) \| `null` | 否 | 主体档位。**准入档位完全由它决定** —— 保证金、限额、禁售品类都按它取策略。 此前档案里没有它：运营看得到「这家被限额 500」，看不到「因为它是无照自然人」， 于是只会来问为什么。 |
+| `fundsMode` | [`#/definitions/FundsMode`](#definitionsfundsmode) | 否 | 资金路径（轴②）：钱先进谁的账户。 **与经营模式（`StoreMode.businessMode`，轴③）是两件事** —— 这个说钱先进谁的账户，那个说谁是销售主体。两者正交： 「直连 + 自营」（钱进商家户却说平台是卖方）是非法组合，要拦。 而「要不要给积分补差」判的是**这一列** —— 钱在商家账户才需要补进去。 |
+| `agriProducer` | `boolean` | 否 | 农业生产者。**无照主体走归集的唯一例外** —— 平台可自开农产品收购发票，成本有合法凭证。 |
 
 
 #### POST `/ops/merchants/{merchantNo}/archive`
@@ -2752,7 +3393,7 @@ archiveMerchant
 
 | 参数 | 位置 | 类型 | 必填 | 说明 |
 |---|---|---|:---:|---|
-| `merchantNo` | path | — | 是 | 商家单号 |
+| `merchantNo` | path | `string` | 是 | 商家单号 |
 
 _无字段_
 
@@ -2766,19 +3407,21 @@ _无字段_
 | `merchantNo` | `string` | 是 | 商家单号 |
 | `name` | `string` | 是 | 店铺名 |
 | `tier` | [`#/definitions/MerchantTier`](#definitionsmerchanttier) | 是 | 商家分层，为引入大商家预留 |
-| `status` | [`#/definitions/MerchantStatus`](#definitionsmerchantstatus) | 是 | 入驻审核状态。合法迁移见 `MERCHANT_TRANSITIONS`，非法迁移抛错 |
-| `communityNo` | `string` | 是 | 归属社区（数据域裁剪键之一） |
-| `communityName` | `string` | 是 | 社区名快照 |
+| `status` | [`#/definitions/MerchantStatus`](#definitionsmerchantstatus) | 是 | **经营状态**（不是审核状态 —— 审核在申请单上）。合法迁移见 `MERCHANT_TRANSITIONS` |
+| `communityNos` | `string`\[\] | 是 | 服务的社区。**是列表不是单个** —— 一家店可以服务多个社区 （后端 `mch_entity_community`，服务范围三档见 ADR-009）。 此前这里是单个 `communityNo`，多社区商家只会显示其中一个。 |
 | `contactName` | `string` | 是 | 联系人姓名 |
 | `contactPhone` | `string` | 是 | 展示一律脱敏（中间四位掩码），完整号码不下发前端 |
 | `categoryCodes` | `string`\[\] | 是 | 经营类目编码，审核通过后即类目授权范围（P-11.1.3） |
 | `verified` | `boolean` | 是 | 认证标（P-11.1.2） |
-| `qualifications` | `string`\[\] | 是 | 已上传并通过的资质名。授权需要资质的类目码时要对照它 |
+| `qualifications` | `string`\[\] | 否 | 已登记的结构化资质名。授权需要资质的类目码时要对照它。 **必须是可选的。** 后端 `MerchantProfileVO` 曾经完全没有这个字段， 而这里声明成必填 `string[]` —— 类型检查过得去，真接口下 `m.qualifications.length` 直接抛 TypeError。只有 mock 有这个字段，所以一直没暴露。 「契约有、后端不发」是字段问题，不是类型问题：**别把 `?` 去掉**。 |
 | `breachCount` | `number` | 是 | 信用档案：毁约次数（P-11.1.5 / ADR-003） |
 | `settleAccountReady` | `boolean` | 是 | 分账接收方报备状态（P-12.1.1，ADR-002） |
 | `createdAt` | `string` | 是 | 入驻申请提交时间 |
 | `auditRemark` | `string` | 否 | 最近一次审核意见（驳回原因/补交项） |
 | `asPickupPoint` | `boolean` | 否 | 申请人是否愿意承接自提点（ADR-005）。 **只是意愿，通过审核不会自动建点** —— 自提点的服务费口径是逐点线下谈的， 没有一个默认值能覆盖。放在审核页上是为了让运营**看见有人在等**： 不显示的话，申请人勾了这一项、通过后什么也没发生，而中间没有任何一处会报错。 |
+| `legalForm` | [`#/definitions/LegalForm`](#definitionslegalform) \| `null` | 否 | 主体档位。**准入档位完全由它决定** —— 保证金、限额、禁售品类都按它取策略。 此前档案里没有它：运营看得到「这家被限额 500」，看不到「因为它是无照自然人」， 于是只会来问为什么。 |
+| `fundsMode` | [`#/definitions/FundsMode`](#definitionsfundsmode) | 否 | 资金路径（轴②）：钱先进谁的账户。 **与经营模式（`StoreMode.businessMode`，轴③）是两件事** —— 这个说钱先进谁的账户，那个说谁是销售主体。两者正交： 「直连 + 自营」（钱进商家户却说平台是卖方）是非法组合，要拦。 而「要不要给积分补差」判的是**这一列** —— 钱在商家账户才需要补进去。 |
+| `agriProducer` | `boolean` | 否 | 农业生产者。**无照主体走归集的唯一例外** —— 平台可自开农产品收购发票，成本有合法凭证。 |
 
 
 #### PUT `/ops/merchants/{merchantNo}/auth-codes`
@@ -2789,7 +3432,7 @@ _无字段_
 
 | 参数 | 位置 | 类型 | 必填 | 说明 |
 |---|---|---|:---:|---|
-| `merchantNo` | path | — | 是 | 商家单号 |
+| `merchantNo` | path | `string` | 是 | 商家单号 |
 
 _无字段_
 
@@ -2803,19 +3446,122 @@ _无字段_
 | `merchantNo` | `string` | 是 | 商家单号 |
 | `name` | `string` | 是 | 店铺名 |
 | `tier` | [`#/definitions/MerchantTier`](#definitionsmerchanttier) | 是 | 商家分层，为引入大商家预留 |
-| `status` | [`#/definitions/MerchantStatus`](#definitionsmerchantstatus) | 是 | 入驻审核状态。合法迁移见 `MERCHANT_TRANSITIONS`，非法迁移抛错 |
-| `communityNo` | `string` | 是 | 归属社区（数据域裁剪键之一） |
-| `communityName` | `string` | 是 | 社区名快照 |
+| `status` | [`#/definitions/MerchantStatus`](#definitionsmerchantstatus) | 是 | **经营状态**（不是审核状态 —— 审核在申请单上）。合法迁移见 `MERCHANT_TRANSITIONS` |
+| `communityNos` | `string`\[\] | 是 | 服务的社区。**是列表不是单个** —— 一家店可以服务多个社区 （后端 `mch_entity_community`，服务范围三档见 ADR-009）。 此前这里是单个 `communityNo`，多社区商家只会显示其中一个。 |
 | `contactName` | `string` | 是 | 联系人姓名 |
 | `contactPhone` | `string` | 是 | 展示一律脱敏（中间四位掩码），完整号码不下发前端 |
 | `categoryCodes` | `string`\[\] | 是 | 经营类目编码，审核通过后即类目授权范围（P-11.1.3） |
 | `verified` | `boolean` | 是 | 认证标（P-11.1.2） |
-| `qualifications` | `string`\[\] | 是 | 已上传并通过的资质名。授权需要资质的类目码时要对照它 |
+| `qualifications` | `string`\[\] | 否 | 已登记的结构化资质名。授权需要资质的类目码时要对照它。 **必须是可选的。** 后端 `MerchantProfileVO` 曾经完全没有这个字段， 而这里声明成必填 `string[]` —— 类型检查过得去，真接口下 `m.qualifications.length` 直接抛 TypeError。只有 mock 有这个字段，所以一直没暴露。 「契约有、后端不发」是字段问题，不是类型问题：**别把 `?` 去掉**。 |
 | `breachCount` | `number` | 是 | 信用档案：毁约次数（P-11.1.5 / ADR-003） |
 | `settleAccountReady` | `boolean` | 是 | 分账接收方报备状态（P-12.1.1，ADR-002） |
 | `createdAt` | `string` | 是 | 入驻申请提交时间 |
 | `auditRemark` | `string` | 否 | 最近一次审核意见（驳回原因/补交项） |
 | `asPickupPoint` | `boolean` | 否 | 申请人是否愿意承接自提点（ADR-005）。 **只是意愿，通过审核不会自动建点** —— 自提点的服务费口径是逐点线下谈的， 没有一个默认值能覆盖。放在审核页上是为了让运营**看见有人在等**： 不显示的话，申请人勾了这一项、通过后什么也没发生，而中间没有任何一处会报错。 |
+| `legalForm` | [`#/definitions/LegalForm`](#definitionslegalform) \| `null` | 否 | 主体档位。**准入档位完全由它决定** —— 保证金、限额、禁售品类都按它取策略。 此前档案里没有它：运营看得到「这家被限额 500」，看不到「因为它是无照自然人」， 于是只会来问为什么。 |
+| `fundsMode` | [`#/definitions/FundsMode`](#definitionsfundsmode) | 否 | 资金路径（轴②）：钱先进谁的账户。 **与经营模式（`StoreMode.businessMode`，轴③）是两件事** —— 这个说钱先进谁的账户，那个说谁是销售主体。两者正交： 「直连 + 自营」（钱进商家户却说平台是卖方）是非法组合，要拦。 而「要不要给积分补差」判的是**这一列** —— 钱在商家账户才需要补进去。 |
+| `agriProducer` | `boolean` | 否 | 农业生产者。**无照主体走归集的唯一例外** —— 平台可自开农产品收购发票，成本有合法凭证。 |
+
+
+#### PUT `/ops/merchants/{merchantNo}/funds-mode`
+
+改资金路径
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `merchantNo` | path | `string` | 是 | 商家单号 |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`Merchant`](#merchant)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `archivedAt` | `string,null` | 否 | 归档时间。**软删除标记** —— 有值即视为已删除，列表默认不返回。 契约禁止 `delete*`，一律 `archive*` / `unarchive*`（工程约定 §10.6）。 |
+| `merchantNo` | `string` | 是 | 商家单号 |
+| `name` | `string` | 是 | 店铺名 |
+| `tier` | [`#/definitions/MerchantTier`](#definitionsmerchanttier) | 是 | 商家分层，为引入大商家预留 |
+| `status` | [`#/definitions/MerchantStatus`](#definitionsmerchantstatus) | 是 | **经营状态**（不是审核状态 —— 审核在申请单上）。合法迁移见 `MERCHANT_TRANSITIONS` |
+| `communityNos` | `string`\[\] | 是 | 服务的社区。**是列表不是单个** —— 一家店可以服务多个社区 （后端 `mch_entity_community`，服务范围三档见 ADR-009）。 此前这里是单个 `communityNo`，多社区商家只会显示其中一个。 |
+| `contactName` | `string` | 是 | 联系人姓名 |
+| `contactPhone` | `string` | 是 | 展示一律脱敏（中间四位掩码），完整号码不下发前端 |
+| `categoryCodes` | `string`\[\] | 是 | 经营类目编码，审核通过后即类目授权范围（P-11.1.3） |
+| `verified` | `boolean` | 是 | 认证标（P-11.1.2） |
+| `qualifications` | `string`\[\] | 否 | 已登记的结构化资质名。授权需要资质的类目码时要对照它。 **必须是可选的。** 后端 `MerchantProfileVO` 曾经完全没有这个字段， 而这里声明成必填 `string[]` —— 类型检查过得去，真接口下 `m.qualifications.length` 直接抛 TypeError。只有 mock 有这个字段，所以一直没暴露。 「契约有、后端不发」是字段问题，不是类型问题：**别把 `?` 去掉**。 |
+| `breachCount` | `number` | 是 | 信用档案：毁约次数（P-11.1.5 / ADR-003） |
+| `settleAccountReady` | `boolean` | 是 | 分账接收方报备状态（P-12.1.1，ADR-002） |
+| `createdAt` | `string` | 是 | 入驻申请提交时间 |
+| `auditRemark` | `string` | 否 | 最近一次审核意见（驳回原因/补交项） |
+| `asPickupPoint` | `boolean` | 否 | 申请人是否愿意承接自提点（ADR-005）。 **只是意愿，通过审核不会自动建点** —— 自提点的服务费口径是逐点线下谈的， 没有一个默认值能覆盖。放在审核页上是为了让运营**看见有人在等**： 不显示的话，申请人勾了这一项、通过后什么也没发生，而中间没有任何一处会报错。 |
+| `legalForm` | [`#/definitions/LegalForm`](#definitionslegalform) \| `null` | 否 | 主体档位。**准入档位完全由它决定** —— 保证金、限额、禁售品类都按它取策略。 此前档案里没有它：运营看得到「这家被限额 500」，看不到「因为它是无照自然人」， 于是只会来问为什么。 |
+| `fundsMode` | [`#/definitions/FundsMode`](#definitionsfundsmode) | 否 | 资金路径（轴②）：钱先进谁的账户。 **与经营模式（`StoreMode.businessMode`，轴③）是两件事** —— 这个说钱先进谁的账户，那个说谁是销售主体。两者正交： 「直连 + 自营」（钱进商家户却说平台是卖方）是非法组合，要拦。 而「要不要给积分补差」判的是**这一列** —— 钱在商家账户才需要补进去。 |
+| `agriProducer` | `boolean` | 否 | 农业生产者。**无照主体走归集的唯一例外** —— 平台可自开农产品收购发票，成本有合法凭证。 |
+
+
+#### GET `/ops/merchants/{merchantNo}/qualifications`
+
+某商家已登记的资质
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `merchantNo` | path | `string` | 是 | 商家单号 |
+
+**出参**（`data`）
+
+类型：[`Qualification`](#qualification)\[\]
+
+
+#### POST `/ops/merchants/{merchantNo}/qualifications`
+
+登记或更新
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `merchantNo` | path | `string` | 是 | 商家单号 |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`Qualification`](#qualification)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `qualNo` | `string` | 是 | — |
+| `entityNo` | `string` | 是 | — |
+| `qualType` | `string` | 是 | — |
+| `qualName` | `string` | 是 | 证件名。**要与 sys_auth_code.required_qualification 同一套字面量** —— 类目授权按名字比对 |
+| `qualNumber` | `string` | 否 | — |
+| `imageUrl` | `string` | 否 | — |
+| `expireAt` | `number,null` | 否 | null = 长期有效。与「已过期」是两回事，扫描任务不碰它 |
+| `status` | `string` | 是 | VALID / EXPIRED / REVOKED |
+
+
+#### GET `/ops/merchants/{merchantNo}/staff`
+
+这家商家的员工与门店授权（**只读**）
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `merchantNo` | path | `string` | 是 | 商家单号 |
+
+**出参**（`data`）
+
+类型：[`MerchantStaffRow`](#merchantstaffrow)\[\]
 
 
 #### POST `/ops/merchants/{merchantNo}/status`
@@ -2826,7 +3572,7 @@ _无字段_
 
 | 参数 | 位置 | 类型 | 必填 | 说明 |
 |---|---|---|:---:|---|
-| `merchantNo` | path | — | 是 | 商家单号 |
+| `merchantNo` | path | `string` | 是 | 商家单号 |
 
 _无字段_
 
@@ -2840,19 +3586,38 @@ _无字段_
 | `merchantNo` | `string` | 是 | 商家单号 |
 | `name` | `string` | 是 | 店铺名 |
 | `tier` | [`#/definitions/MerchantTier`](#definitionsmerchanttier) | 是 | 商家分层，为引入大商家预留 |
-| `status` | [`#/definitions/MerchantStatus`](#definitionsmerchantstatus) | 是 | 入驻审核状态。合法迁移见 `MERCHANT_TRANSITIONS`，非法迁移抛错 |
-| `communityNo` | `string` | 是 | 归属社区（数据域裁剪键之一） |
-| `communityName` | `string` | 是 | 社区名快照 |
+| `status` | [`#/definitions/MerchantStatus`](#definitionsmerchantstatus) | 是 | **经营状态**（不是审核状态 —— 审核在申请单上）。合法迁移见 `MERCHANT_TRANSITIONS` |
+| `communityNos` | `string`\[\] | 是 | 服务的社区。**是列表不是单个** —— 一家店可以服务多个社区 （后端 `mch_entity_community`，服务范围三档见 ADR-009）。 此前这里是单个 `communityNo`，多社区商家只会显示其中一个。 |
 | `contactName` | `string` | 是 | 联系人姓名 |
 | `contactPhone` | `string` | 是 | 展示一律脱敏（中间四位掩码），完整号码不下发前端 |
 | `categoryCodes` | `string`\[\] | 是 | 经营类目编码，审核通过后即类目授权范围（P-11.1.3） |
 | `verified` | `boolean` | 是 | 认证标（P-11.1.2） |
-| `qualifications` | `string`\[\] | 是 | 已上传并通过的资质名。授权需要资质的类目码时要对照它 |
+| `qualifications` | `string`\[\] | 否 | 已登记的结构化资质名。授权需要资质的类目码时要对照它。 **必须是可选的。** 后端 `MerchantProfileVO` 曾经完全没有这个字段， 而这里声明成必填 `string[]` —— 类型检查过得去，真接口下 `m.qualifications.length` 直接抛 TypeError。只有 mock 有这个字段，所以一直没暴露。 「契约有、后端不发」是字段问题，不是类型问题：**别把 `?` 去掉**。 |
 | `breachCount` | `number` | 是 | 信用档案：毁约次数（P-11.1.5 / ADR-003） |
 | `settleAccountReady` | `boolean` | 是 | 分账接收方报备状态（P-12.1.1，ADR-002） |
 | `createdAt` | `string` | 是 | 入驻申请提交时间 |
 | `auditRemark` | `string` | 否 | 最近一次审核意见（驳回原因/补交项） |
 | `asPickupPoint` | `boolean` | 否 | 申请人是否愿意承接自提点（ADR-005）。 **只是意愿，通过审核不会自动建点** —— 自提点的服务费口径是逐点线下谈的， 没有一个默认值能覆盖。放在审核页上是为了让运营**看见有人在等**： 不显示的话，申请人勾了这一项、通过后什么也没发生，而中间没有任何一处会报错。 |
+| `legalForm` | [`#/definitions/LegalForm`](#definitionslegalform) \| `null` | 否 | 主体档位。**准入档位完全由它决定** —— 保证金、限额、禁售品类都按它取策略。 此前档案里没有它：运营看得到「这家被限额 500」，看不到「因为它是无照自然人」， 于是只会来问为什么。 |
+| `fundsMode` | [`#/definitions/FundsMode`](#definitionsfundsmode) | 否 | 资金路径（轴②）：钱先进谁的账户。 **与经营模式（`StoreMode.businessMode`，轴③）是两件事** —— 这个说钱先进谁的账户，那个说谁是销售主体。两者正交： 「直连 + 自营」（钱进商家户却说平台是卖方）是非法组合，要拦。 而「要不要给积分补差」判的是**这一列** —— 钱在商家账户才需要补进去。 |
+| `agriProducer` | `boolean` | 否 | 农业生产者。**无照主体走归集的唯一例外** —— 平台可自开农产品收购发票，成本有合法凭证。 |
+
+
+#### GET `/ops/merchants/{merchantNo}/store-modes`
+
+storeModes
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `merchantNo` | path | `string` | 是 | 商家单号 |
+
+**出参**（`data`）
+
+类型：[`StoreMode`](#storemode)\[\]
 
 
 #### POST `/ops/merchants/{merchantNo}/unarchive`
@@ -2863,7 +3628,7 @@ unarchiveMerchant
 
 | 参数 | 位置 | 类型 | 必填 | 说明 |
 |---|---|---|:---:|---|
-| `merchantNo` | path | — | 是 | 商家单号 |
+| `merchantNo` | path | `string` | 是 | 商家单号 |
 
 _无字段_
 
@@ -2877,19 +3642,21 @@ _无字段_
 | `merchantNo` | `string` | 是 | 商家单号 |
 | `name` | `string` | 是 | 店铺名 |
 | `tier` | [`#/definitions/MerchantTier`](#definitionsmerchanttier) | 是 | 商家分层，为引入大商家预留 |
-| `status` | [`#/definitions/MerchantStatus`](#definitionsmerchantstatus) | 是 | 入驻审核状态。合法迁移见 `MERCHANT_TRANSITIONS`，非法迁移抛错 |
-| `communityNo` | `string` | 是 | 归属社区（数据域裁剪键之一） |
-| `communityName` | `string` | 是 | 社区名快照 |
+| `status` | [`#/definitions/MerchantStatus`](#definitionsmerchantstatus) | 是 | **经营状态**（不是审核状态 —— 审核在申请单上）。合法迁移见 `MERCHANT_TRANSITIONS` |
+| `communityNos` | `string`\[\] | 是 | 服务的社区。**是列表不是单个** —— 一家店可以服务多个社区 （后端 `mch_entity_community`，服务范围三档见 ADR-009）。 此前这里是单个 `communityNo`，多社区商家只会显示其中一个。 |
 | `contactName` | `string` | 是 | 联系人姓名 |
 | `contactPhone` | `string` | 是 | 展示一律脱敏（中间四位掩码），完整号码不下发前端 |
 | `categoryCodes` | `string`\[\] | 是 | 经营类目编码，审核通过后即类目授权范围（P-11.1.3） |
 | `verified` | `boolean` | 是 | 认证标（P-11.1.2） |
-| `qualifications` | `string`\[\] | 是 | 已上传并通过的资质名。授权需要资质的类目码时要对照它 |
+| `qualifications` | `string`\[\] | 否 | 已登记的结构化资质名。授权需要资质的类目码时要对照它。 **必须是可选的。** 后端 `MerchantProfileVO` 曾经完全没有这个字段， 而这里声明成必填 `string[]` —— 类型检查过得去，真接口下 `m.qualifications.length` 直接抛 TypeError。只有 mock 有这个字段，所以一直没暴露。 「契约有、后端不发」是字段问题，不是类型问题：**别把 `?` 去掉**。 |
 | `breachCount` | `number` | 是 | 信用档案：毁约次数（P-11.1.5 / ADR-003） |
 | `settleAccountReady` | `boolean` | 是 | 分账接收方报备状态（P-12.1.1，ADR-002） |
 | `createdAt` | `string` | 是 | 入驻申请提交时间 |
 | `auditRemark` | `string` | 否 | 最近一次审核意见（驳回原因/补交项） |
 | `asPickupPoint` | `boolean` | 否 | 申请人是否愿意承接自提点（ADR-005）。 **只是意愿，通过审核不会自动建点** —— 自提点的服务费口径是逐点线下谈的， 没有一个默认值能覆盖。放在审核页上是为了让运营**看见有人在等**： 不显示的话，申请人勾了这一项、通过后什么也没发生，而中间没有任何一处会报错。 |
+| `legalForm` | [`#/definitions/LegalForm`](#definitionslegalform) \| `null` | 否 | 主体档位。**准入档位完全由它决定** —— 保证金、限额、禁售品类都按它取策略。 此前档案里没有它：运营看得到「这家被限额 500」，看不到「因为它是无照自然人」， 于是只会来问为什么。 |
+| `fundsMode` | [`#/definitions/FundsMode`](#definitionsfundsmode) | 否 | 资金路径（轴②）：钱先进谁的账户。 **与经营模式（`StoreMode.businessMode`，轴③）是两件事** —— 这个说钱先进谁的账户，那个说谁是销售主体。两者正交： 「直连 + 自营」（钱进商家户却说平台是卖方）是非法组合，要拦。 而「要不要给积分补差」判的是**这一列** —— 钱在商家账户才需要补进去。 |
+| `agriProducer` | `boolean` | 否 | 农业生产者。**无照主体走归集的唯一例外** —— 平台可自开农产品收购发票，成本有合法凭证。 |
 
 
 #### POST `/ops/merchants/{merchantNo}/verified`
@@ -2900,7 +3667,7 @@ _无字段_
 
 | 参数 | 位置 | 类型 | 必填 | 说明 |
 |---|---|---|:---:|---|
-| `merchantNo` | path | — | 是 | 商家单号 |
+| `merchantNo` | path | `string` | 是 | 商家单号 |
 
 _无字段_
 
@@ -2914,19 +3681,21 @@ _无字段_
 | `merchantNo` | `string` | 是 | 商家单号 |
 | `name` | `string` | 是 | 店铺名 |
 | `tier` | [`#/definitions/MerchantTier`](#definitionsmerchanttier) | 是 | 商家分层，为引入大商家预留 |
-| `status` | [`#/definitions/MerchantStatus`](#definitionsmerchantstatus) | 是 | 入驻审核状态。合法迁移见 `MERCHANT_TRANSITIONS`，非法迁移抛错 |
-| `communityNo` | `string` | 是 | 归属社区（数据域裁剪键之一） |
-| `communityName` | `string` | 是 | 社区名快照 |
+| `status` | [`#/definitions/MerchantStatus`](#definitionsmerchantstatus) | 是 | **经营状态**（不是审核状态 —— 审核在申请单上）。合法迁移见 `MERCHANT_TRANSITIONS` |
+| `communityNos` | `string`\[\] | 是 | 服务的社区。**是列表不是单个** —— 一家店可以服务多个社区 （后端 `mch_entity_community`，服务范围三档见 ADR-009）。 此前这里是单个 `communityNo`，多社区商家只会显示其中一个。 |
 | `contactName` | `string` | 是 | 联系人姓名 |
 | `contactPhone` | `string` | 是 | 展示一律脱敏（中间四位掩码），完整号码不下发前端 |
 | `categoryCodes` | `string`\[\] | 是 | 经营类目编码，审核通过后即类目授权范围（P-11.1.3） |
 | `verified` | `boolean` | 是 | 认证标（P-11.1.2） |
-| `qualifications` | `string`\[\] | 是 | 已上传并通过的资质名。授权需要资质的类目码时要对照它 |
+| `qualifications` | `string`\[\] | 否 | 已登记的结构化资质名。授权需要资质的类目码时要对照它。 **必须是可选的。** 后端 `MerchantProfileVO` 曾经完全没有这个字段， 而这里声明成必填 `string[]` —— 类型检查过得去，真接口下 `m.qualifications.length` 直接抛 TypeError。只有 mock 有这个字段，所以一直没暴露。 「契约有、后端不发」是字段问题，不是类型问题：**别把 `?` 去掉**。 |
 | `breachCount` | `number` | 是 | 信用档案：毁约次数（P-11.1.5 / ADR-003） |
 | `settleAccountReady` | `boolean` | 是 | 分账接收方报备状态（P-12.1.1，ADR-002） |
 | `createdAt` | `string` | 是 | 入驻申请提交时间 |
 | `auditRemark` | `string` | 否 | 最近一次审核意见（驳回原因/补交项） |
 | `asPickupPoint` | `boolean` | 否 | 申请人是否愿意承接自提点（ADR-005）。 **只是意愿，通过审核不会自动建点** —— 自提点的服务费口径是逐点线下谈的， 没有一个默认值能覆盖。放在审核页上是为了让运营**看见有人在等**： 不显示的话，申请人勾了这一项、通过后什么也没发生，而中间没有任何一处会报错。 |
+| `legalForm` | [`#/definitions/LegalForm`](#definitionslegalform) \| `null` | 否 | 主体档位。**准入档位完全由它决定** —— 保证金、限额、禁售品类都按它取策略。 此前档案里没有它：运营看得到「这家被限额 500」，看不到「因为它是无照自然人」， 于是只会来问为什么。 |
+| `fundsMode` | [`#/definitions/FundsMode`](#definitionsfundsmode) | 否 | 资金路径（轴②）：钱先进谁的账户。 **与经营模式（`StoreMode.businessMode`，轴③）是两件事** —— 这个说钱先进谁的账户，那个说谁是销售主体。两者正交： 「直连 + 自营」（钱进商家户却说平台是卖方）是非法组合，要拦。 而「要不要给积分补差」判的是**这一列** —— 钱在商家账户才需要补进去。 |
+| `agriProducer` | `boolean` | 否 | 农业生产者。**无照主体走归集的唯一例外** —— 平台可自开农产品收购发票，成本有合法凭证。 |
 
 
 #### POST `/ops/merchants/{merchantNo}/violations`
@@ -2937,7 +3706,7 @@ _无字段_
 
 | 参数 | 位置 | 类型 | 必填 | 说明 |
 |---|---|---|:---:|---|
-| `merchantNo` | path | — | 是 | 商家单号 |
+| `merchantNo` | path | `string` | 是 | 商家单号 |
 
 _无字段_
 
@@ -2952,6 +3721,7 @@ _无字段_
 | `merchantName` | `string` | 是 | 商家名快照 |
 | `type` | [`#/definitions/ViolationType`](#definitionsviolationtype) | 是 | 违规类型。**只有 `BREACH` 计入 breachCount** |
 | `action` | [`#/definitions/ViolationAction`](#definitionsviolationaction) | 是 | 处置动作。`SUSPEND` 会真的把商家状态推到 SUSPENDED |
+| `storeNo` | `string,null` | 否 | 门店级处置的对象门店。**`STORE_OFFLINE` 必有、其余动作必空** —— 主体级处置带上门店号会让人以为只压了那一家。 |
 | `detail` | `string` | 是 | 事实描述与证据出处。必填 —— 没有事实的处置在申诉时站不住 |
 | `operator` | `string` | 是 | 处置人（STAFF 账号） |
 | `at` | `string` | 是 | 处置时间 |
@@ -2970,6 +3740,19 @@ _无字段_
 类型：[`AuthCode`](#authcode)\[\]
 
 
+#### GET `/ops/merchants/mode-risk`
+
+无照主体 × 自营门店的税务敞口清单
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`ModeRisk`](#moderisk)\[\]
+
+
 #### GET `/ops/merchants/violations`
 
 listViolations
@@ -2983,7 +3766,119 @@ listViolations
 类型：[`Violation`](#violation)\[\]
 
 
+#### GET `/ops/plan-defs`
+
+档位定义
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`PlanDef`](#plandef)\[\]
+
+
+#### PUT `/ops/plan-defs/{planCode}`
+
+改档位定义
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `planCode` | path | `string` | 是 | — |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`PlanDef`](#plandef)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `planCode` | `string` | 是 | — |
+| `name` | `string` | 是 | — |
+| `storeQuota` | `number` | 是 | — |
+| `staffQuota` | `number` | 是 | — |
+| `crossStoreStats` | `boolean` | 是 | — |
+| `trialDays` | `number` | 是 | — |
+| `enabled` | `boolean` | 是 | — |
+| `subscriberCount` | `number` | 是 | 当前有几家在用这一档。 **改定义的人必须看得到这个数** —— 它是「只影响之后新订阅的人」那句话的具体量。 不给这个数，改档位的人只能凭感觉判断影响面。 |
+
+
+#### POST `/ops/qualifications/{qualNo}/revoke`
+
+撤销
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `qualNo` | path | `string` | 是 | — |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`Qualification`](#qualification)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `qualNo` | `string` | 是 | — |
+| `entityNo` | `string` | 是 | — |
+| `qualType` | `string` | 是 | — |
+| `qualName` | `string` | 是 | 证件名。**要与 sys_auth_code.required_qualification 同一套字面量** —— 类目授权按名字比对 |
+| `qualNumber` | `string` | 否 | — |
+| `imageUrl` | `string` | 否 | — |
+| `expireAt` | `number,null` | 否 | null = 长期有效。与「已过期」是两回事，扫描任务不碰它 |
+| `status` | `string` | 是 | VALID / EXPIRED / REVOKED |
+
+
+#### PUT `/ops/stores/{storeNo}/business-mode`
+
+改门店经营模式
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `storeNo` | path | `string` | 是 | — |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`StoreMode`](#storemode)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | 门店号 |
+| `storeName` | `string` | 是 | 门店名，展示用 |
+| `merchantNo` | `string` | 是 | 所属商家主体 |
+| `businessMode` | [`#/definitions/BusinessMode`](#definitionsbusinessmode) \| `null` | 是 | 自营 / 第三方；空 = 尚未设置 |
+| `payMerchantNo` | `string,null` | 是 | 该店实际可用的收款号（本店专属号优先，回落到主体默认号）。**空 = 不能切第三方** |
+
+
 ### message
+
+#### GET `/ops/captcha`
+
+取一张图形验证码
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`Captcha`](#captcha)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `captchaId` | `string` | 是 | — |
+| `imageBase64` | `string` | 是 | — |
+
 
 #### GET `/ops/faqs`
 
@@ -3035,7 +3930,7 @@ setFaqPublished
 
 | 参数 | 位置 | 类型 | 必填 | 说明 |
 |---|---|---|:---:|---|
-| `no` | path | — | 是 | 该资源的业务单号 |
+| `no` | path | `string` | 是 | 该资源的业务单号 |
 
 _无字段_
 
@@ -3051,6 +3946,82 @@ _无字段_
 | `category` | `string` | 是 | 所属分类，用于帮助中心分组 |
 | `published` | `boolean` | 是 | 是否已发布。未发布的用户看不到 |
 | `views` | `number` | 是 | 浏览量，用来发现「大家其实在问什么」 |
+
+
+#### GET `/ops/inapp-messages`
+
+站内信记录
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`object`（见下）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `records` | [`InAppLog`](#inapplog)\[\] | 是 | — |
+| `total` | `integer` | 是 | — |
+| `page` | `integer` | 是 | — |
+| `size` | `integer` | 是 | — |
+
+
+#### GET `/ops/message`
+
+listInbox
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`InboxMessage`](#inboxmessage)\[\]
+
+
+#### POST `/ops/message/{no}/read`
+
+readInbox
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`InboxMessage`](#inboxmessage)\[\]
+
+
+#### POST `/ops/message/read-all`
+
+readAllInbox
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`InboxMessage`](#inboxmessage)\[\]
+
+
+#### GET `/ops/message/unread-count`
+
+未读数
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`integer`
 
 
 #### GET `/ops/msg-templates`
@@ -3081,7 +4052,7 @@ setTemplateEnabled
 
 | 参数 | 位置 | 类型 | 必填 | 说明 |
 |---|---|---|:---:|---|
-| `no` | path | — | 是 | 该资源的业务单号 |
+| `no` | path | `string` | 是 | 该资源的业务单号 |
 
 _无字段_
 
@@ -3093,15 +4064,151 @@ _无字段_
 |---|---|:---:|---|
 | `templateNo` | `string` | 是 | 模板单号 |
 | `name` | `string` | 是 | 模板名 |
-| `channel` | [`#/definitions/MsgChannel`](#definitionsmsgchannel) | 是 | 触达渠道：订阅消息 / App 推送 / 站内信 |
-| `content` | `string` | 是 | 模板正文，含 {占位符} |
+| `channel` | [`#/definitions/MsgChannel`](#definitionsmsgchannel) | 是 | 触达渠道 |
+| `lang` | `string` | 否 | 语言（zh-CN / en / ar）。 <p>同一个 templateNo 每种语言一行（V145）——**列表上必须显示它**， 否则运营看到的是两条一模一样的模板，改了其中一条还发现"没生效"。 |
+| `content` | `string` | 是 | 模板正文，含 {占位符}。**模拟发送靠它展示「会发出什么」并做预览** |
+| `providerTemplateId` | `string,null` | 否 | 渠道侧模板 ID（阿里云 `SMS_xxx` / 微信模板号）。站内信为空。 <p>后端 `TemplateVO` 一直有这个字段，端上类型此前漏了 —— 于是页面拿不到它， 而它正是运营核对「我们发的是哪个报备模板」的唯一凭据。 |
 | `enabled` | `boolean` | 是 | 是否启用。停用后引用它的推送任务发不出去 |
 | `sentCount` | `number` | 是 | 近 30 天发送量 |
 
 
+#### GET `/ops/notify-channels`
+
+四条通道的体检：开没开、凭据齐不齐、今天发了多少
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`NotifyChannelHealth`](#notifychannelhealth)\[\]
+
+
+#### GET `/ops/notify-channels/default-lang`
+
+getDefaultLang
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`object`
+
+
+#### POST `/ops/notify-channels/default-lang`
+
+saveDefaultLang
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：`object`
+
+
+#### GET `/ops/notify-channels/wx-templates`
+
+getWxTemplates
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`WxTemplates`](#wxtemplates)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `orderArrived` | `string` | 是 | — |
+| `refunded` | `string` | 是 | — |
+
+
+#### POST `/ops/notify-channels/wx-templates`
+
+保存微信模板号
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`WxTemplates`](#wxtemplates)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `orderArrived` | `string` | 是 | — |
+| `refunded` | `string` | 是 | — |
+
+
+#### GET `/ops/notify-logs`
+
+发送记录（P-14.3）
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`object`（见下）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `records` | [`NotifyLog`](#notifylog)\[\] | 是 | — |
+| `total` | `integer` | 是 | — |
+| `page` | `integer` | 是 | — |
+| `size` | `integer` | 是 | — |
+
+
+#### POST `/ops/notify-logs/precheck`
+
+收件人预检
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：`object`
+
+
+#### POST `/ops/notify-logs/test-inapp`
+
+站内信的模拟发送：往某个收件箱塞一条
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：`object`
+
+
+#### POST `/ops/notify-logs/test-send`
+
+测试发送
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：`object`
+
+
 #### GET `/ops/notify-quota`
 
-getNotifyQuota
+发送推送（P-14.1.2）
 
 > 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
 
@@ -3139,82 +4246,6 @@ _无字段_
 | `updatedBy` | `string` | 是 | 最后修改人（STAFF 账号） |
 
 
-#### GET `/ops/push-tasks`
-
-listPushTasks
-
-> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
-
-**入参**：无
-
-**出参**（`data`）
-
-类型：`object`（见下）
-
-| 字段 | 类型 | 必填 | 说明 |
-|---|---|:---:|---|
-| `records` | [`PushTask`](#pushtask)\[\] | 是 | — |
-| `total` | `integer` | 是 | — |
-| `page` | `integer` | 是 | — |
-| `size` | `integer` | 是 | — |
-
-
-#### POST `/ops/push-tasks/{no}/cancel`
-
-cancelPushTask
-
-**入参**
-
-| 参数 | 位置 | 类型 | 必填 | 说明 |
-|---|---|---|:---:|---|
-| `no` | path | — | 是 | 该资源的业务单号 |
-
-_无字段_
-
-**出参**（`data`）
-
-类型：[`PushTask`](#pushtask)
-
-| 字段 | 类型 | 必填 | 说明 |
-|---|---|:---:|---|
-| `taskNo` | `string` | 是 | 任务单号 |
-| `name` | `string` | 是 | 任务名 |
-| `templateNo` | `string` | 是 | 使用的消息模板 |
-| `audience` | `string` | 是 | 人群描述，如「近 7 日未下单的老客」 |
-| `estimatedReach` | `number` | 是 | 预估触达数。为 0 说明人群是空的，发了等于白发 |
-| `status` | [`#/definitions/PushStatus`](#definitionspushstatus) | 是 | 任务状态 |
-| `scheduledAt` | `string` | 否 | 计划发送时间。`status=SCHEDULED` 时有值 |
-| `createdAt` | `string` | 是 | 创建时间 |
-
-
-#### POST `/ops/push-tasks/{no}/send`
-
-发送推送（P-14.1.2）
-
-**入参**
-
-| 参数 | 位置 | 类型 | 必填 | 说明 |
-|---|---|---|:---:|---|
-| `no` | path | — | 是 | 该资源的业务单号 |
-
-_无字段_
-
-**出参**（`data`）
-
-类型：[`PushTask`](#pushtask)
-
-| 字段 | 类型 | 必填 | 说明 |
-|---|---|:---:|---|
-| `taskNo` | `string` | 是 | 任务单号 |
-| `name` | `string` | 是 | 任务名 |
-| `templateNo` | `string` | 是 | 使用的消息模板 |
-| `audience` | `string` | 是 | 人群描述，如「近 7 日未下单的老客」 |
-| `estimatedReach` | `number` | 是 | 预估触达数。为 0 说明人群是空的，发了等于白发 |
-| `status` | [`#/definitions/PushStatus`](#definitionspushstatus) | 是 | 任务状态 |
-| `scheduledAt` | `string` | 否 | 计划发送时间。`status=SCHEDULED` 时有值 |
-| `createdAt` | `string` | 是 | 创建时间 |
-
-
 #### GET `/ops/tickets`
 
 listTickets
@@ -3243,7 +4274,7 @@ listTickets
 
 | 参数 | 位置 | 类型 | 必填 | 说明 |
 |---|---|---|:---:|---|
-| `no` | path | — | 是 | 该资源的业务单号 |
+| `no` | path | `string` | 是 | 该资源的业务单号 |
 
 _无字段_
 
@@ -3259,8 +4290,11 @@ _无字段_
 | `orderNo` | `string` | 否 | 关联订单，可空 |
 | `status` | [`#/definitions/TicketStatus`](#definitionsticketstatus) | 是 | 工单状态。允许的流转见 `TICKET_TRANSITIONS` |
 | `assignee` | `string` | 否 | 处理人（员工登录名）；未分派为空 |
-| `proxyActions` | `string`\[\] | 是 | 代客操作留痕（P-14.2.3）：谁、对什么、做了什么 |
+| `proxyActions` | `string`\[\] | 否 | 代客操作留痕（P-14.2.3）：谁、对什么、做了什么。 **可选，不要去掉 `?`。** 后端 `TicketVO` 目前不下发这个字段 （`MessageVOs.java` 里只有 ticketNo/subject/content/orderNo/status/reply/createdAt/repliedAt）， 只有 mock 有。声明成必填数组 + `page.tsx` 直接 `.length` = 真接口下抛 TypeError。 与 `Merchant.qualifications` 同一形状，由 `ops-contract-fields` 守卫抓出。 |
 | `createdAt` | `string` | 是 | 提单时间 |
+| `reply` | `string` | 否 | 客服回复正文。**用户在 C 端工单详情页看的就是这个字段**。 此前它在三层上各缺一处：后端 `msg_ticket` 建表就留了 `reply`/`replied_at`/`replied_by` 且注释写明「代客操作要能追到人」，但没有任何代码写过它们； 契约里也从没定义过「回复」这个动作（只有分派、关闭、代客留痕）。 于是用户提单后反复点开详情，看到的永远是空的，而且不报任何错。 |
+| `repliedAt` | `string` | 否 | 回复时间；未回复为空 |
+| `repliedBy` | `string` | 否 | 回复人（员工登录名）。回复署的是平台的名，必须能追到人 |
 
 
 #### POST `/ops/tickets/{no}/close`
@@ -3271,7 +4305,7 @@ closeTicket
 
 | 参数 | 位置 | 类型 | 必填 | 说明 |
 |---|---|---|:---:|---|
-| `no` | path | — | 是 | 该资源的业务单号 |
+| `no` | path | `string` | 是 | 该资源的业务单号 |
 
 _无字段_
 
@@ -3287,8 +4321,11 @@ _无字段_
 | `orderNo` | `string` | 否 | 关联订单，可空 |
 | `status` | [`#/definitions/TicketStatus`](#definitionsticketstatus) | 是 | 工单状态。允许的流转见 `TICKET_TRANSITIONS` |
 | `assignee` | `string` | 否 | 处理人（员工登录名）；未分派为空 |
-| `proxyActions` | `string`\[\] | 是 | 代客操作留痕（P-14.2.3）：谁、对什么、做了什么 |
+| `proxyActions` | `string`\[\] | 否 | 代客操作留痕（P-14.2.3）：谁、对什么、做了什么。 **可选，不要去掉 `?`。** 后端 `TicketVO` 目前不下发这个字段 （`MessageVOs.java` 里只有 ticketNo/subject/content/orderNo/status/reply/createdAt/repliedAt）， 只有 mock 有。声明成必填数组 + `page.tsx` 直接 `.length` = 真接口下抛 TypeError。 与 `Merchant.qualifications` 同一形状，由 `ops-contract-fields` 守卫抓出。 |
 | `createdAt` | `string` | 是 | 提单时间 |
+| `reply` | `string` | 否 | 客服回复正文。**用户在 C 端工单详情页看的就是这个字段**。 此前它在三层上各缺一处：后端 `msg_ticket` 建表就留了 `reply`/`replied_at`/`replied_by` 且注释写明「代客操作要能追到人」，但没有任何代码写过它们； 契约里也从没定义过「回复」这个动作（只有分派、关闭、代客留痕）。 于是用户提单后反复点开详情，看到的永远是空的，而且不报任何错。 |
+| `repliedAt` | `string` | 否 | 回复时间；未回复为空 |
+| `repliedBy` | `string` | 否 | 回复人（员工登录名）。回复署的是平台的名，必须能追到人 |
 
 
 #### POST `/ops/tickets/{no}/proxy-actions`
@@ -3299,7 +4336,7 @@ _无字段_
 
 | 参数 | 位置 | 类型 | 必填 | 说明 |
 |---|---|---|:---:|---|
-| `no` | path | — | 是 | 该资源的业务单号 |
+| `no` | path | `string` | 是 | 该资源的业务单号 |
 
 _无字段_
 
@@ -3315,8 +4352,42 @@ _无字段_
 | `orderNo` | `string` | 否 | 关联订单，可空 |
 | `status` | [`#/definitions/TicketStatus`](#definitionsticketstatus) | 是 | 工单状态。允许的流转见 `TICKET_TRANSITIONS` |
 | `assignee` | `string` | 否 | 处理人（员工登录名）；未分派为空 |
-| `proxyActions` | `string`\[\] | 是 | 代客操作留痕（P-14.2.3）：谁、对什么、做了什么 |
+| `proxyActions` | `string`\[\] | 否 | 代客操作留痕（P-14.2.3）：谁、对什么、做了什么。 **可选，不要去掉 `?`。** 后端 `TicketVO` 目前不下发这个字段 （`MessageVOs.java` 里只有 ticketNo/subject/content/orderNo/status/reply/createdAt/repliedAt）， 只有 mock 有。声明成必填数组 + `page.tsx` 直接 `.length` = 真接口下抛 TypeError。 与 `Merchant.qualifications` 同一形状，由 `ops-contract-fields` 守卫抓出。 |
 | `createdAt` | `string` | 是 | 提单时间 |
+| `reply` | `string` | 否 | 客服回复正文。**用户在 C 端工单详情页看的就是这个字段**。 此前它在三层上各缺一处：后端 `msg_ticket` 建表就留了 `reply`/`replied_at`/`replied_by` 且注释写明「代客操作要能追到人」，但没有任何代码写过它们； 契约里也从没定义过「回复」这个动作（只有分派、关闭、代客留痕）。 于是用户提单后反复点开详情，看到的永远是空的，而且不报任何错。 |
+| `repliedAt` | `string` | 否 | 回复时间；未回复为空 |
+| `repliedBy` | `string` | 否 | 回复人（员工登录名）。回复署的是平台的名，必须能追到人 |
+
+
+#### POST `/ops/tickets/{no}/reply`
+
+客服回复（P-14.2.2）
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`Ticket`](#ticket)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `ticketNo` | `string` | 是 | 工单号 |
+| `title` | `string` | 是 | 工单标题 |
+| `userNickname` | `string` | 是 | 提单用户昵称 |
+| `orderNo` | `string` | 否 | 关联订单，可空 |
+| `status` | [`#/definitions/TicketStatus`](#definitionsticketstatus) | 是 | 工单状态。允许的流转见 `TICKET_TRANSITIONS` |
+| `assignee` | `string` | 否 | 处理人（员工登录名）；未分派为空 |
+| `proxyActions` | `string`\[\] | 否 | 代客操作留痕（P-14.2.3）：谁、对什么、做了什么。 **可选，不要去掉 `?`。** 后端 `TicketVO` 目前不下发这个字段 （`MessageVOs.java` 里只有 ticketNo/subject/content/orderNo/status/reply/createdAt/repliedAt）， 只有 mock 有。声明成必填数组 + `page.tsx` 直接 `.length` = 真接口下抛 TypeError。 与 `Merchant.qualifications` 同一形状，由 `ops-contract-fields` 守卫抓出。 |
+| `createdAt` | `string` | 是 | 提单时间 |
+| `reply` | `string` | 否 | 客服回复正文。**用户在 C 端工单详情页看的就是这个字段**。 此前它在三层上各缺一处：后端 `msg_ticket` 建表就留了 `reply`/`replied_at`/`replied_by` 且注释写明「代客操作要能追到人」，但没有任何代码写过它们； 契约里也从没定义过「回复」这个动作（只有分派、关闭、代客留痕）。 于是用户提单后反复点开详情，看到的永远是空的，而且不报任何错。 |
+| `repliedAt` | `string` | 否 | 回复时间；未回复为空 |
+| `repliedBy` | `string` | 否 | 回复人（员工登录名）。回复署的是平台的名，必须能追到人 |
 
 
 ### order
@@ -3351,7 +4422,7 @@ getOrder
 
 | 参数 | 位置 | 类型 | 必填 | 说明 |
 |---|---|---|:---:|---|
-| `orderNo` | path | — | 是 | 订单单号（按商家拆单后的子订单） |
+| `orderNo` | path | `string` | 是 | 订单单号（按商家拆单后的子订单） |
 
 **出参**（`data`）
 
@@ -3367,7 +4438,7 @@ getOrder
 | `communityNo` | `string` | 是 | 归属社区。运营按社区做数据域隔离 |
 | `communityName` | `string` | 是 | 社区名快照 |
 | `pickupNo` | `string` | 否 | 自提点编号；配送/快递单为空 |
-| `fulfillType` | [`#/definitions/FulfillType`](#definitionsfulfilltype) | 是 | 履约方式 |
+| `fulfillType` | [`#/definitions/FulfillmentType`](#definitionsfulfillmenttype) | 是 | 履约方式 |
 | `trafficSource` | [`#/definitions/TrafficSource`](#definitionstrafficsource) | 是 | 流量来源。**决定平台费率档**（P-12.1.7） |
 | `buyerNickname` | `string` | 是 | 买家昵称 |
 | `items` | [`#/definitions/OrderItem`](#definitionsorderitem)\[\] | 是 | 订单行 |
@@ -3385,7 +4456,7 @@ getOrder
 
 | 参数 | 位置 | 类型 | 必填 | 说明 |
 |---|---|---|:---:|---|
-| `orderNo` | path | — | 是 | 订单单号（按商家拆单后的子订单） |
+| `orderNo` | path | `string` | 是 | 订单单号（按商家拆单后的子订单） |
 
 _无字段_
 
@@ -3403,7 +4474,7 @@ _无字段_
 | `communityNo` | `string` | 是 | 归属社区。运营按社区做数据域隔离 |
 | `communityName` | `string` | 是 | 社区名快照 |
 | `pickupNo` | `string` | 否 | 自提点编号；配送/快递单为空 |
-| `fulfillType` | [`#/definitions/FulfillType`](#definitionsfulfilltype) | 是 | 履约方式 |
+| `fulfillType` | [`#/definitions/FulfillmentType`](#definitionsfulfillmenttype) | 是 | 履约方式 |
 | `trafficSource` | [`#/definitions/TrafficSource`](#definitionstrafficsource) | 是 | 流量来源。**决定平台费率档**（P-12.1.7） |
 | `buyerNickname` | `string` | 是 | 买家昵称 |
 | `items` | [`#/definitions/OrderItem`](#definitionsorderitem)\[\] | 是 | 订单行 |
@@ -3423,7 +4494,7 @@ _无字段_
 
 | 参数 | 位置 | 类型 | 必填 | 说明 |
 |---|---|---|:---:|---|
-| `orderNo` | path | — | 是 | 订单单号（按商家拆单后的子订单） |
+| `orderNo` | path | `string` | 是 | 订单单号（按商家拆单后的子订单） |
 
 **出参**（`data`）
 
@@ -3438,7 +4509,7 @@ _无字段_
 
 | 参数 | 位置 | 类型 | 必填 | 说明 |
 |---|---|---|:---:|---|
-| `orderNo` | path | — | 是 | 订单单号（按商家拆单后的子订单） |
+| `orderNo` | path | `string` | 是 | 订单单号（按商家拆单后的子订单） |
 
 _无字段_
 
@@ -3456,7 +4527,7 @@ _无字段_
 | `communityNo` | `string` | 是 | 归属社区。运营按社区做数据域隔离 |
 | `communityName` | `string` | 是 | 社区名快照 |
 | `pickupNo` | `string` | 否 | 自提点编号；配送/快递单为空 |
-| `fulfillType` | [`#/definitions/FulfillType`](#definitionsfulfilltype) | 是 | 履约方式 |
+| `fulfillType` | [`#/definitions/FulfillmentType`](#definitionsfulfillmenttype) | 是 | 履约方式 |
 | `trafficSource` | [`#/definitions/TrafficSource`](#definitionstrafficsource) | 是 | 流量来源。**决定平台费率档**（P-12.1.7） |
 | `buyerNickname` | `string` | 是 | 买家昵称 |
 | `items` | [`#/definitions/OrderItem`](#definitionsorderitem)\[\] | 是 | 订单行 |
@@ -3496,7 +4567,7 @@ _无字段_
 
 | 参数 | 位置 | 类型 | 必填 | 说明 |
 |---|---|---|:---:|---|
-| `parentNo` | path | — | 是 | 父单号（同一次结算拆出的子订单共享） |
+| `parentNo` | path | `string` | 是 | 父单号（同一次结算拆出的子订单共享） |
 
 **出参**（`data`）
 
@@ -3525,7 +4596,7 @@ _无字段_
 | `communityNo` | `string` | 是 | 归属社区。运营按社区做数据域隔离 |
 | `communityName` | `string` | 是 | 社区名快照 |
 | `pickupNo` | `string` | 否 | 自提点编号；配送/快递单为空 |
-| `fulfillType` | [`#/definitions/FulfillType`](#definitionsfulfilltype) | 是 | 履约方式 |
+| `fulfillType` | [`#/definitions/FulfillmentType`](#definitionsfulfillmenttype) | 是 | 履约方式 |
 | `trafficSource` | [`#/definitions/TrafficSource`](#definitionstrafficsource) | 是 | 流量来源。**决定平台费率档**（P-12.1.7） |
 | `buyerNickname` | `string` | 是 | 买家昵称 |
 | `items` | [`#/definitions/OrderItem`](#definitionsorderitem)\[\] | 是 | 订单行 |
@@ -3607,7 +4678,7 @@ _无字段_
 
 | 参数 | 位置 | 类型 | 必填 | 说明 |
 |---|---|---|:---:|---|
-| `diffNo` | path | — | 是 | 对账差异单号 |
+| `diffNo` | path | `string` | 是 | 对账差异单号 |
 
 _无字段_
 
@@ -3641,7 +4712,7 @@ _无字段_
 
 | 参数 | 位置 | 类型 | 必填 | 说明 |
 |---|---|---|:---:|---|
-| `diffNo` | path | — | 是 | 对账差异单号 |
+| `diffNo` | path | `string` | 是 | 对账差异单号 |
 
 _无字段_
 
@@ -3716,7 +4787,7 @@ _无字段_
 
 | 参数 | 位置 | 类型 | 必填 | 说明 |
 |---|---|---|:---:|---|
-| `no` | path | — | 是 | 该资源的业务单号 |
+| `no` | path | `string` | 是 | 该资源的业务单号 |
 
 _无字段_
 
@@ -3746,7 +4817,7 @@ unarchiveCategory
 
 | 参数 | 位置 | 类型 | 必填 | 说明 |
 |---|---|---|:---:|---|
-| `no` | path | — | 是 | 该资源的业务单号 |
+| `no` | path | `string` | 是 | 该资源的业务单号 |
 
 _无字段_
 
@@ -3768,9 +4839,184 @@ _无字段_
 | `skuCount` | `number` | 是 | 该类目下的在售商品数（归档校验要用） |
 
 
+#### GET `/ops/goods`
+
+商品池：按商家/类目/关键词/状态筛，goods 粒度（每行一个商品，SKU 嵌在 `skus[]` 里）
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`object`（见下）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `records` | [`ProductGoods`](#productgoods)\[\] | 是 | — |
+| `total` | `integer` | 是 | — |
+| `page` | `integer` | 是 | — |
+| `size` | `integer` | 是 | — |
+
+
+#### GET `/ops/goods/{goodsNo}`
+
+商品详情：三语文案、SKU 矩阵、规格组、驳回原因，审核抽屉读的就是它
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `goodsNo` | path | `string` | 是 | 商品单号 |
+
+**出参**（`data`）
+
+类型：[`GoodsDetail`](#goodsdetail)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `goodsNo` | `string` | 是 | 商品单号 |
+| `title` | `string` | 是 | 标题（按当前语言拍平后的那一份） |
+| `subtitle` | `string` | 否 | 副标题 / 卖点 |
+| `cover` | `string` | 否 | 封面图 |
+| `images` | `string`\[\] | 是 | 详情图。后端必发（可能是空数组） |
+| `type` | `string` | 是 | 商品形态 NORMAL/FRESH/SERVICE/VIRTUAL/CARD |
+| `categoryNo` | `string` | 否 | 平台类目 |
+| `merchant` | `object`（见下） | 否 | 归属商家 brief —— 审核要看得到是谁上的架 |
+| `titleI18n` | [`#/definitions/Partial<Record<("zh"|"en"|"ar"),string>>`](#definitionspartialrecordzhenarstring) | 否 | 三语标题原文（`prd_goods.title_i18n`）。 运营审文案看的是它，而不是拍平后的 `title` —— 拍平那份看不出缺译。 |
+| `subtitleI18n` | [`#/definitions/Partial<Record<("zh"|"en"|"ar"),string>>`](#definitionspartialrecordzhenarstring) | 否 | 三语副标题原文，同  {@link  titleI18n } |
+| `specGroups` | `object`（见下）\[\] | 是 | 规格组（如「重量」→「500g / 1kg」）。后端必发 |
+| `skus` | [`#/definitions/GoodsDetailSku`](#definitionsgoodsdetailsku)\[\] | 是 | SKU 矩阵。后端必发 |
+| `fulfillments` | `string`\[\] | 是 | 支持的履约方式（自提 / 配送 …）。后端必发 |
+| `price` | `number` | 否 | 展示价 = 最低 SKU 价（分） |
+| `status` | `string` | 否 | 商品状态：AUDITING / ON_SALE / OFF_SALE / REJECTED |
+| `auditReason` | `string,null` | 否 | 最近一次驳回 / 强制下架的原因。 **它是商家能看到的那半边** —— 审计日志只有运营看得到， 没有它商家面对 REJECTED 只能猜要改什么。过审时清空。 |
+
+`merchant` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `merchantNo` | `string` | 是 | — |
+| `name` | `string` | 是 | — |
+
+`specGroups[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `name` | `string` | 是 | — |
+| `options` | `string`\[\] | 是 | — |
+
+
+#### POST `/ops/goods/{goodsNo}/audit`
+
+审核商品
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `goodsNo` | path | `string` | 是 | 商品单号 |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`GoodsAudit`](#goodsaudit)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `goodsNo` | `string` | 是 | 商品单号。审核动作打在它上面 |
+| `title` | `string` | 是 | 标题。审核先看它 —— 违规多半从标题就能看出来 |
+| `subtitle` | `string` | 否 | 副标题/卖点 |
+| `cover` | `string` | 否 | 封面图。图文不符是驳回的主因之一，所以要能看到图 |
+| `type` | `string` | 是 | 商品形态 NORMAL/FRESH/SERVICE/VIRTUAL/CARD |
+| `categoryNo` | `string` | 否 | 平台类目。**当前恒为空** —— 商品编辑页还没有选类目这一步 |
+| `merchant` | `object`（见下） | 否 | 归属商家（后端下发的是一个 brief 对象，不是裸的 merchantNo）—— 审核时要看得到是谁上的架：同一个商家反复交同类违规品是有信号的。 |
+| `status` | `string` | 否 | 商品状态。**字段名是 `status` 不是 `auditStatus`** —— 后端 `GoodsVO` 里它同时承载审核态与上下架态：AUDITING / ON_SALE / OFF_SALE / REJECTED。 |
+
+`merchant` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `merchantNo` | `string` | 是 | — |
+| `name` | `string` | 是 | — |
+
+
+#### POST `/ops/goods/{goodsNo}/force-off`
+
+平台强制下架（P-3.2.3），goods 粒度 = **撤销过审**：商品回到 `REJECTED`
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `goodsNo` | path | `string` | 是 | 商品单号 |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`GoodsDetail`](#goodsdetail)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `goodsNo` | `string` | 是 | 商品单号 |
+| `title` | `string` | 是 | 标题（按当前语言拍平后的那一份） |
+| `subtitle` | `string` | 否 | 副标题 / 卖点 |
+| `cover` | `string` | 否 | 封面图 |
+| `images` | `string`\[\] | 是 | 详情图。后端必发（可能是空数组） |
+| `type` | `string` | 是 | 商品形态 NORMAL/FRESH/SERVICE/VIRTUAL/CARD |
+| `categoryNo` | `string` | 否 | 平台类目 |
+| `merchant` | `object`（见下） | 否 | 归属商家 brief —— 审核要看得到是谁上的架 |
+| `titleI18n` | [`#/definitions/Partial<Record<("zh"|"en"|"ar"),string>>`](#definitionspartialrecordzhenarstring) | 否 | 三语标题原文（`prd_goods.title_i18n`）。 运营审文案看的是它，而不是拍平后的 `title` —— 拍平那份看不出缺译。 |
+| `subtitleI18n` | [`#/definitions/Partial<Record<("zh"|"en"|"ar"),string>>`](#definitionspartialrecordzhenarstring) | 否 | 三语副标题原文，同  {@link  titleI18n } |
+| `specGroups` | `object`（见下）\[\] | 是 | 规格组（如「重量」→「500g / 1kg」）。后端必发 |
+| `skus` | [`#/definitions/GoodsDetailSku`](#definitionsgoodsdetailsku)\[\] | 是 | SKU 矩阵。后端必发 |
+| `fulfillments` | `string`\[\] | 是 | 支持的履约方式（自提 / 配送 …）。后端必发 |
+| `price` | `number` | 否 | 展示价 = 最低 SKU 价（分） |
+| `status` | `string` | 否 | 商品状态：AUDITING / ON_SALE / OFF_SALE / REJECTED |
+| `auditReason` | `string,null` | 否 | 最近一次驳回 / 强制下架的原因。 **它是商家能看到的那半边** —— 审计日志只有运营看得到， 没有它商家面对 REJECTED 只能猜要改什么。过审时清空。 |
+
+`merchant` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `merchantNo` | `string` | 是 | — |
+| `name` | `string` | 是 | — |
+
+`specGroups[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `name` | `string` | 是 | — |
+| `options` | `string`\[\] | 是 | — |
+
+
+#### GET `/ops/goods/audit-queue`
+
+待审队列
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`object`（见下）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `records` | [`GoodsAudit`](#goodsaudit)\[\] | 是 | — |
+| `total` | `integer` | 是 | — |
+| `page` | `integer` | 是 | — |
+| `size` | `integer` | 是 | — |
+
+
 #### GET `/ops/skus`
 
-listSkus
+sku 粒度全量查询
 
 > 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
 
@@ -3790,13 +5036,13 @@ listSkus
 
 #### POST `/ops/skus/{no}/audit`
 
-商品审核（P-3.2.2）
+商品审核（P-3.2.2），sku 粒度入口
 
 **入参**
 
 | 参数 | 位置 | 类型 | 必填 | 说明 |
 |---|---|---|:---:|---|
-| `no` | path | — | 是 | 该资源的业务单号 |
+| `no` | path | `string` | 是 | 该资源的业务单号 |
 
 _无字段_
 
@@ -3825,13 +5071,13 @@ _无字段_
 
 #### POST `/ops/skus/{no}/force-off`
 
-强制下架（P-3.2.3）：必须带原因，原样进商家 B 端
+平台**压下架**（P-3.2.3）：必须带原因，原样进商家 B 端
 
 **入参**
 
 | 参数 | 位置 | 类型 | 必填 | 说明 |
 |---|---|---|:---:|---|
-| `no` | path | — | 是 | 该资源的业务单号 |
+| `no` | path | `string` | 是 | 该资源的业务单号 |
 
 _无字段_
 
@@ -3866,7 +5112,7 @@ _无字段_
 
 | 参数 | 位置 | 类型 | 必填 | 说明 |
 |---|---|---|:---:|---|
-| `no` | path | — | 是 | 该资源的业务单号 |
+| `no` | path | `string` | 是 | 该资源的业务单号 |
 
 _无字段_
 
@@ -3906,6 +5152,103 @@ _无字段_
 类型：[`Sku`](#sku)\[\]
 
 
+#### GET `/ops/spec-templates`
+
+平台模板列表
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`object`（见下）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `records` | [`SpecTemplate`](#spectemplate)\[\] | 是 | — |
+| `total` | `integer` | 是 | — |
+| `page` | `integer` | 是 | — |
+| `size` | `integer` | 是 | — |
+
+
+#### POST `/ops/spec-templates`
+
+新建或更新（`templateNo` 为空即新建）
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`SpecTemplate`](#spectemplate)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `archivedAt` | `string,null` | 否 | 归档时间。**软删除标记** —— 有值即视为已删除，列表默认不返回。 契约禁止 `delete*`，一律 `archive*` / `unarchive*`（工程约定 §10.6）。 |
+| `templateNo` | `string` | 是 | 模板单号 |
+| `scope` | `string` | 是 | 恒为 `PLATFORM`。后端写死，请求体里传什么都忽略 |
+| `categoryType` | [`#/definitions/CategoryTemplate`](#definitionscategorytemplate) \| `null` | 否 | 按五品类预置（与 `CategoryTemplate` 同一套取值）。**空 = 不限品类**。 商家建品时按这个轴筛（`GET /biz/goods/spec-templates?categoryType=`）。 |
+| `name` | `string` | 是 | 规格维度名，如「重量」「香型」 |
+| `options` | [`#/definitions/SpecTemplateOption`](#definitionsspectemplateoption)\[\] | 是 | 选项。整体替换，不做逐项 diff |
+| `createdAt` | `string` | 否 | — |
+
+
+#### POST `/ops/spec-templates/{no}/archive`
+
+归档：商家侧立刻不再下发
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`SpecTemplate`](#spectemplate)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `archivedAt` | `string,null` | 否 | 归档时间。**软删除标记** —— 有值即视为已删除，列表默认不返回。 契约禁止 `delete*`，一律 `archive*` / `unarchive*`（工程约定 §10.6）。 |
+| `templateNo` | `string` | 是 | 模板单号 |
+| `scope` | `string` | 是 | 恒为 `PLATFORM`。后端写死，请求体里传什么都忽略 |
+| `categoryType` | [`#/definitions/CategoryTemplate`](#definitionscategorytemplate) \| `null` | 否 | 按五品类预置（与 `CategoryTemplate` 同一套取值）。**空 = 不限品类**。 商家建品时按这个轴筛（`GET /biz/goods/spec-templates?categoryType=`）。 |
+| `name` | `string` | 是 | 规格维度名，如「重量」「香型」 |
+| `options` | [`#/definitions/SpecTemplateOption`](#definitionsspectemplateoption)\[\] | 是 | 选项。整体替换，不做逐项 diff |
+| `createdAt` | `string` | 否 | — |
+
+
+#### POST `/ops/spec-templates/{no}/unarchive`
+
+unarchiveSpecTemplate
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`SpecTemplate`](#spectemplate)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `archivedAt` | `string,null` | 否 | 归档时间。**软删除标记** —— 有值即视为已删除，列表默认不返回。 契约禁止 `delete*`，一律 `archive*` / `unarchive*`（工程约定 §10.6）。 |
+| `templateNo` | `string` | 是 | 模板单号 |
+| `scope` | `string` | 是 | 恒为 `PLATFORM`。后端写死，请求体里传什么都忽略 |
+| `categoryType` | [`#/definitions/CategoryTemplate`](#definitionscategorytemplate) \| `null` | 否 | 按五品类预置（与 `CategoryTemplate` 同一套取值）。**空 = 不限品类**。 商家建品时按这个轴筛（`GET /biz/goods/spec-templates?categoryType=`）。 |
+| `name` | `string` | 是 | 规格维度名，如「重量」「香型」 |
+| `options` | [`#/definitions/SpecTemplateOption`](#definitionsspectemplateoption)\[\] | 是 | 选项。整体替换，不做逐项 diff |
+| `createdAt` | `string` | 否 | — |
+
+
 ### review
 
 #### GET `/ops/review-appeals`
@@ -3936,7 +5279,7 @@ listReviewAppeals
 
 | 参数 | 位置 | 类型 | 必填 | 说明 |
 |---|---|---|:---:|---|
-| `no` | path | — | 是 | 该资源的业务单号 |
+| `no` | path | `string` | 是 | 该资源的业务单号 |
 
 _无字段_
 
@@ -3950,9 +5293,11 @@ _无字段_
 | `reviewNo` | `string` | 是 | 被申诉的评价 |
 | `merchantNo` | `string` | 是 | 申诉方商家 |
 | `merchantName` | `string` | 是 | 商家名快照 |
+| `reviewRating` | `number` | 是 | 被申诉那条评价的星级与正文。 **裁决台必须显示它们** —— 要判断「这条差评是不是恶意的」， 而屏幕上只有单号和商家自己写的申诉理由的话，裁的是一面之词。 |
+| `reviewContent` | `string` | 是 | — |
 | `reason` | `string` | 是 | 商家的申诉理由 |
 | `evidenceCount` | `number` | 是 | 举证材料数量（截图/聊天记录） |
-| `status` | [`#/definitions/AppealStatus`](#definitionsappealstatus) | 是 | 裁决状态。UPHELD = 支持商家（差评下架），DISMISSED = 驳回申诉（差评保留） |
+| `status` | [`#/definitions/AppealStatus`](#definitionsappealstatus) | 是 | 裁决状态。UPHELD = 支持商家（差评下架），REJECTED = 驳回申诉（差评保留） |
 | `submittedAt` | `string` | 是 | 申诉提交时间 |
 | `verdict` | `string` | 否 | 裁决说明：无论支持还是驳回都必须写，商家会看到 |
 
@@ -4031,7 +5376,7 @@ listReviews
 
 | 参数 | 位置 | 类型 | 必填 | 说明 |
 |---|---|---|:---:|---|
-| `no` | path | — | 是 | 该资源的业务单号 |
+| `no` | path | `string` | 是 | 该资源的业务单号 |
 
 _无字段_
 
@@ -4114,7 +5459,7 @@ _无字段_
 
 | 参数 | 位置 | 类型 | 必填 | 说明 |
 |---|---|---|:---:|---|
-| `no` | path | — | 是 | 该资源的业务单号 |
+| `no` | path | `string` | 是 | 该资源的业务单号 |
 
 _无字段_
 
@@ -4164,7 +5509,7 @@ listRiskEvents
 
 | 参数 | 位置 | 类型 | 必填 | 说明 |
 |---|---|---|:---:|---|
-| `no` | path | — | 是 | 该资源的业务单号 |
+| `no` | path | `string` | 是 | 该资源的业务单号 |
 
 _无字段_
 
@@ -4177,7 +5522,7 @@ _无字段_
 | `eventNo` | `string` | 是 | 风险事件单号 |
 | `type` | [`#/definitions/RiskType`](#definitionsrisktype) | 是 | 风险类型。**三类同表用 type 区分** —— 拆表就看不出「同时命中几类」 |
 | `subject` | `string` | 是 | 主体：用户昵称 / 商家名 / 设备号 |
-| `subjectType` | `USER` \| `MERCHANT` \| `DEVICE` | 是 | 主体类型，决定 `subject` 是昵称、店名还是设备号 |
+| `subjectType` | [`#/definitions/SubjectType`](#definitionssubjecttype) | 是 | 主体类型，决定 `subject` 是昵称、店名还是设备号 |
 | `signals` | `string`\[\] | 是 | 命中的信号。**不给分值** —— 分值口径要等有真实样本后由风控定， 现在编一个看起来很准的分数，只会让人照着它做决定。 |
 | `refs` | `string`\[\] | 是 | 关联证据：订单号 / 归因链路号 |
 | `status` | [`#/definitions/RiskStatus`](#definitionsriskstatus) | 是 | 处置状态 |
@@ -4206,7 +5551,7 @@ listRiskRules
 
 | 参数 | 位置 | 类型 | 必填 | 说明 |
 |---|---|---|:---:|---|
-| `type` | path | — | 是 | 类型筛选，取值见对应枚举 |
+| `type` | path | `string` | 是 | 类型筛选，取值见对应枚举 |
 
 _无字段_
 
@@ -4223,6 +5568,126 @@ _无字段_
 
 
 ### store
+
+#### GET `/ops/stores`
+
+跨主体门店检索
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`object`（见下）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `records` | [`StoreGovern`](#storegovern)\[\] | 是 | — |
+| `total` | `integer` | 是 | — |
+| `page` | `integer` | 是 | — |
+| `size` | `integer` | 是 | — |
+
+
+#### GET `/ops/stores/{storeNo}`
+
+门店档案详情：门面 + 配送规则 + 经营模式 + 收款商户号
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `storeNo` | path | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`StoreGovern`](#storegovern)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | 门店号 |
+| `name` | `string` | 是 | 门店名 |
+| `address` | `string` | 是 | 门店地址 |
+| `merchantNo` | `string` | 是 | 所属商家主体 |
+| `merchantName` | `string` | 是 | 商家名快照 |
+| `isDefault` | `boolean` | 是 | 是否主体的默认门店。默认店承接「没指定门店」的那些流量 |
+| `status` | [`#/definitions/StoreGovernStatus`](#definitionsstoregovernstatus) | 是 | 经营状态，见  {@link  StoreGovernStatus } |
+| `businessMode` | [`#/definitions/BusinessMode`](#definitionsbusinessmode) | 是 | 自营 / 第三方。决定这家店的钱怎么走、票怎么开 |
+| `payMerchantNo` | `string,null` | 是 | 本店专属收款商户号。 **`null` 不是「没配」，是「用主体默认收款号」** —— 显示成空白会被读成前者。 |
+| `announcement` | `string` | 是 | 门店公告（走 P-10.1 的机审 + 人审） |
+| `openHours` | `string` | 是 | 营业时间，展示串 |
+| `deliveryRadiusM` | `number` | 是 | 配送半径（米） |
+| `deliveryMinOrderMinor` | `number` | 是 | 起送价（分） |
+| `deliveryFeeMinor` | `number` | 是 | 配送费（分） |
+| `deliveryFreeThresholdMinor` | `number` | 是 | 免配送费门槛（分） |
+
+
+#### POST `/ops/stores/{storeNo}/restore`
+
+解除门店强制下线，恢复被平台压下的货架行
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `storeNo` | path | `string` | 是 | — |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`StoreGovern`](#storegovern)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | 门店号 |
+| `name` | `string` | 是 | 门店名 |
+| `address` | `string` | 是 | 门店地址 |
+| `merchantNo` | `string` | 是 | 所属商家主体 |
+| `merchantName` | `string` | 是 | 商家名快照 |
+| `isDefault` | `boolean` | 是 | 是否主体的默认门店。默认店承接「没指定门店」的那些流量 |
+| `status` | [`#/definitions/StoreGovernStatus`](#definitionsstoregovernstatus) | 是 | 经营状态，见  {@link  StoreGovernStatus } |
+| `businessMode` | [`#/definitions/BusinessMode`](#definitionsbusinessmode) | 是 | 自营 / 第三方。决定这家店的钱怎么走、票怎么开 |
+| `payMerchantNo` | `string,null` | 是 | 本店专属收款商户号。 **`null` 不是「没配」，是「用主体默认收款号」** —— 显示成空白会被读成前者。 |
+| `announcement` | `string` | 是 | 门店公告（走 P-10.1 的机审 + 人审） |
+| `openHours` | `string` | 是 | 营业时间，展示串 |
+| `deliveryRadiusM` | `number` | 是 | 配送半径（米） |
+| `deliveryMinOrderMinor` | `number` | 是 | 起送价（分） |
+| `deliveryFeeMinor` | `number` | 是 | 配送费（分） |
+| `deliveryFreeThresholdMinor` | `number` | 是 | 免配送费门槛（分） |
+
+
+#### GET `/ops/stores/{storeNo}/stats`
+
+门店经营状况：今日/本月订单与 GMV，外加待发货/待自送/缺货三项待办堆积
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `storeNo` | path | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`StoreStats`](#storestats)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | 门店号 |
+| `merchantNo` | `string` | 是 | 所属商家主体 |
+| `todayOrders` | `number` | 是 | 今日订单数 |
+| `todayGmvMinor` | `number` | 是 | 今日 GMV（分） |
+| `monthOrders` | `number` | 是 | 本月订单数 |
+| `monthGmvMinor` | `number` | 是 | 本月 GMV（分） |
+| `ownedTrafficRate` | `number` | 是 | 自带客流占比，0–1。**直接对应这家店少付的佣金**（ADR-004） |
+| `toShip` | `number` | 是 | 待发货 |
+| `toDeliver` | `number` | 是 | 待自送 |
+| `toStock` | `number` | 是 | 缺货待补。运营看它判断「这家店是不是没人管了」 |
+
 
 #### GET `/ops/stores/acquisition`
 
@@ -4272,7 +5737,7 @@ listStoreAudits
 
 | 参数 | 位置 | 类型 | 必填 | 说明 |
 |---|---|---|:---:|---|
-| `auditNo` | path | — | 是 | 审核单号 |
+| `auditNo` | path | `string` | 是 | 审核单号 |
 
 _无字段_
 
@@ -4286,7 +5751,8 @@ _无字段_
 | `merchantNo` | `string` | 是 | 提审商家 |
 | `merchantName` | `string` | 是 | 商家名快照 |
 | `kind` | [`#/definitions/StoreAuditKind`](#definitionsstoreauditkind) | 是 | 待审内容类型：店招图 / 公告文本 |
-| `content` | `string` | 是 | 待审内容：店招图 URL 或公告文本 |
+| `content` | `string` | 是 | 待审内容：店招图 URL、公告文本，或 `DISTRICT:330106` 这样的覆盖项定位串 |
+| `display` | `string` | 否 | 人话版的 content。`SERVICE_AREA` 时是「浙江省 / 杭州市 / 西湖区」，其余与 content 相同。 **列表与详情一律显示它**：让运营对着 `DISTRICT:330106` 判断 「这家菜摊该不该覆盖整个西湖区」，等于让他去别处查一次再回来。 |
 | `status` | [`#/definitions/StoreAuditStatus`](#definitionsstoreauditstatus) | 是 | 审核状态 |
 | `hits` | `string`\[\] | 是 | 机审命中的敏感词/风险项，随数据下发。 人审要看到「机器为什么标它」，否则只能凭感觉判，同一类内容两个人两个结论。 |
 | `submittedAt` | `string` | 是 | 提审时间 |
@@ -4342,7 +5808,7 @@ _无字段_
 |---|---|:---:|---|
 | `templateNo` | `string` | 是 | 模板单号 |
 | `name` | `string` | 是 | 模板名 |
-| `layout` | `GRID` \| `LIST` \| `FEATURE` | 是 | 商品区排布 |
+| `layout` | [`#/definitions/SectionLayout`](#definitionssectionlayout) | 是 | 商品区排布 |
 | `sections` | [`#/definitions/TemplateSection`](#definitionstemplatesection)\[\] | 是 | 板块开关列表 |
 | `enabled` | `boolean` | 是 | 是否可选用。**停用前要看 `usedByCount`** —— 正在被使用的模板停不得 |
 | `isDefault` | `boolean` | 是 | 默认模板：新店开出来就用它，所以停用不了 |
@@ -4359,7 +5825,7 @@ _无字段_
 
 | 参数 | 位置 | 类型 | 必填 | 说明 |
 |---|---|---|:---:|---|
-| `templateNo` | path | — | 是 | 模板单号 |
+| `templateNo` | path | `string` | 是 | 模板单号 |
 
 _无字段_
 
@@ -4371,7 +5837,7 @@ _无字段_
 |---|---|:---:|---|
 | `templateNo` | `string` | 是 | 模板单号 |
 | `name` | `string` | 是 | 模板名 |
-| `layout` | `GRID` \| `LIST` \| `FEATURE` | 是 | 商品区排布 |
+| `layout` | [`#/definitions/SectionLayout`](#definitionssectionlayout) | 是 | 商品区排布 |
 | `sections` | [`#/definitions/TemplateSection`](#definitionstemplatesection)\[\] | 是 | 板块开关列表 |
 | `enabled` | `boolean` | 是 | 是否可选用。**停用前要看 `usedByCount`** —— 正在被使用的模板停不得 |
 | `isDefault` | `boolean` | 是 | 默认模板：新店开出来就用它，所以停用不了 |
@@ -4428,6 +5894,69 @@ _无字段_
 | `updatedBy` | `string` | 是 | 最后修改人（STAFF 账号） |
 
 
+#### GET `/ops/auth-codes`
+
+<b>全量，含停用</b>，带商家数与类目引用数
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`AuthCodeAdmin`](#authcodeadmin)\[\]
+
+
+#### POST `/ops/auth-codes`
+
+新建或更新
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`AuthCodeAdmin`](#authcodeadmin)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `code` | `string` | 是 | 授权码，如 `FRESH_VEG`。**建成之后不可改** —— 改它等于换一张证 |
+| `name` | `string` | 是 | 展示名，运营给商家发证时看到的就是它 |
+| `requiredQualification` | `string` | 否 | 需要的资质证件名。空 = 无证件要求（不是「漏填」） |
+| `sort` | `number` | 是 | 列表里的排序权重，小的在前。同值按 code 兜底，保证顺序稳定 |
+| `enabled` | `boolean` | 是 | 是否可发放。停用**不撤销**存量商家已持有的授权 |
+| `merchantCount` | `number` | 是 | 持有该码的商家数 —— 停之前要知道影响面 |
+| `categoryCount` | `number` | 是 | 引用该码的在用类目数。> 0 时停用会被拒（那些类目会变成永远拒绝所有人） |
+
+
+#### POST `/ops/auth-codes/{code}/enabled`
+
+启停
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `code` | path | `string` | 是 | 取货码 / 核销码 |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`AuthCodeAdmin`](#authcodeadmin)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `code` | `string` | 是 | 授权码，如 `FRESH_VEG`。**建成之后不可改** —— 改它等于换一张证 |
+| `name` | `string` | 是 | 展示名，运营给商家发证时看到的就是它 |
+| `requiredQualification` | `string` | 否 | 需要的资质证件名。空 = 无证件要求（不是「漏填」） |
+| `sort` | `number` | 是 | 列表里的排序权重，小的在前。同值按 code 兜底，保证顺序稳定 |
+| `enabled` | `boolean` | 是 | 是否可发放。停用**不撤销**存量商家已持有的授权 |
+| `merchantCount` | `number` | 是 | 持有该码的商家数 —— 停之前要知道影响面 |
+| `categoryCount` | `number` | 是 | 引用该码的在用类目数。> 0 时停用会被拒（那些类目会变成永远拒绝所有人） |
+
+
 #### GET `/ops/feature-flags`
 
 listFeatureFlags
@@ -4449,7 +5978,7 @@ listFeatureFlags
 
 | 参数 | 位置 | 类型 | 必填 | 说明 |
 |---|---|---|:---:|---|
-| `key` | path | — | 是 | 开关标识（FeatureFlag.key） |
+| `key` | path | `string` | 是 | 开关标识（FeatureFlag.key） |
 
 _无字段_
 
@@ -4464,6 +5993,103 @@ _无字段_
 | `enabled` | `boolean` | 是 | 总开关。关掉时 `rolloutPercent` 不生效 |
 | `rolloutPercent` | `number` | 是 | 灰度比例 0–100 |
 | `updatedAt` | `string` | 是 | 最后修改时间 |
+
+
+#### GET `/ops/industries`
+
+listIndustries
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`Industry`](#industry)\[\]
+
+
+#### POST `/ops/industries/{industry}/enabled`
+
+停用后入驻表单里不再出现这个行业
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `industry` | path | `string` | 是 | — |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`Industry`](#industry)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `industry` | `string` | 是 | 行业码，入驻申请回传的就是它 |
+| `name` | `string` | 是 | 展示名。三端都取服务端的，不各自维护翻译 |
+| `sort` | `number` | 是 | 排序 |
+| `enabled` | `boolean` | 是 | 是否启用。关掉后入驻表单里不再出现这个行业 |
+| `wechatMicroAllowed` | `boolean` | 是 | 微信是否允许该行业以小微进件 |
+| `alipayMicroAllowed` | `boolean` | 是 | 支付宝是否允许 |
+| `pointsForced` | `boolean` | 是 | 是否**强制开启积分**（商家不可自行关闭）。 它是 `mch_entity.points_forced` 的来源 —— 高毛利行业平台会要求让利。 |
+| `remark` | `string` | 否 | 备注：为什么这么配。改白名单是会被商家追问的操作 |
+
+
+#### POST `/ops/industries/{industry}/micro-allowed`
+
+改某通道的小微白名单
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `industry` | path | `string` | 是 | — |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`Industry`](#industry)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `industry` | `string` | 是 | 行业码，入驻申请回传的就是它 |
+| `name` | `string` | 是 | 展示名。三端都取服务端的，不各自维护翻译 |
+| `sort` | `number` | 是 | 排序 |
+| `enabled` | `boolean` | 是 | 是否启用。关掉后入驻表单里不再出现这个行业 |
+| `wechatMicroAllowed` | `boolean` | 是 | 微信是否允许该行业以小微进件 |
+| `alipayMicroAllowed` | `boolean` | 是 | 支付宝是否允许 |
+| `pointsForced` | `boolean` | 是 | 是否**强制开启积分**（商家不可自行关闭）。 它是 `mch_entity.points_forced` 的来源 —— 高毛利行业平台会要求让利。 |
+| `remark` | `string` | 否 | 备注：为什么这么配。改白名单是会被商家追问的操作 |
+
+
+#### POST `/ops/industries/{industry}/points-forced`
+
+强制开启积分：商家不可自行关闭 */
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `industry` | path | `string` | 是 | — |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`Industry`](#industry)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `industry` | `string` | 是 | 行业码，入驻申请回传的就是它 |
+| `name` | `string` | 是 | 展示名。三端都取服务端的，不各自维护翻译 |
+| `sort` | `number` | 是 | 排序 |
+| `enabled` | `boolean` | 是 | 是否启用。关掉后入驻表单里不再出现这个行业 |
+| `wechatMicroAllowed` | `boolean` | 是 | 微信是否允许该行业以小微进件 |
+| `alipayMicroAllowed` | `boolean` | 是 | 支付宝是否允许 |
+| `pointsForced` | `boolean` | 是 | 是否**强制开启积分**（商家不可自行关闭）。 它是 `mch_entity.points_forced` 的来源 —— 高毛利行业平台会要求让利。 |
+| `remark` | `string` | 否 | 备注：为什么这么配。改白名单是会被商家追问的操作 |
 
 
 #### GET `/ops/markets`
@@ -4487,7 +6113,7 @@ listMarkets
 
 | 参数 | 位置 | 类型 | 必填 | 说明 |
 |---|---|---|:---:|---|
-| `code` | path | — | 是 | 取货码 / 核销码 |
+| `code` | path | `string` | 是 | 取货码 / 核销码 |
 
 _无字段_
 
@@ -4503,6 +6129,169 @@ _无字段_
 | `timezone` | `string` | 是 | 时区标识，如 `Asia/Shanghai`。截单时间按它切分自然日 |
 | `rate` | `number` | 是 | 对基准货币的汇率。 ⚠️ 基准货币（CNY）恒为 1 且**不可改** —— 改了整套价格换算的原点就没了。 |
 | `enabled` | `boolean` | 是 | 是否开放该市场。关掉后该市场的商品不再售卖 |
+
+
+#### POST `/ops/media/backfill`
+
+磁盘对账：把「磁盘上有、库里没有」的文件补录进来
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`MediaBackfillResult`](#mediabackfillresult)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `scanned` | `number` | 是 | — |
+| `inserted` | `number` | 是 | — |
+| `skipped` | `number` | 是 | — |
+
+
+#### GET `/ops/media/batches`
+
+listMediaBatches
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`MediaPurgeBatch`](#mediapurgebatch)\[\]
+
+
+#### GET `/ops/media/batches/{batchNo}`
+
+getMediaBatch
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `batchNo` | path | `string` | 是 | 到货批次号 |
+
+**出参**（`data`）
+
+类型：[`MediaBatchDetail`](#mediabatchdetail)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `batch` | [`#/definitions/MediaPurgeBatch`](#definitionsmediapurgebatch) | 是 | — |
+| `items` | [`#/definitions/MediaReclaimable`](#definitionsmediareclaimable)\[\] | 是 | — |
+
+
+#### GET `/ops/media/overview`
+
+getMediaOverview
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`MediaOverview`](#mediaoverview)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `totalBytes` | `number` | 是 | — |
+| `totalCount` | `number` | 是 | — |
+| `activeBytes` | `number` | 是 | — |
+| `activeCount` | `number` | 是 | — |
+| `reclaimableBytes` | `number` | 是 | — |
+| `reclaimableCount` | `number` | 是 | — |
+| `abnormal` | `boolean` | 是 | 可回收占比 > 50%。多半是有图片列没登记进 MediaRefSource —— 先查，别照删 |
+
+
+#### POST `/ops/media/purge`
+
+提交回收
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：`object`
+
+
+#### POST `/ops/media/purge/preview`
+
+预览这一票有多少张、多少字节
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`MediaPurgePreview`](#mediapurgepreview)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `count` | `number` | 是 | — |
+| `bytes` | `number` | 是 | — |
+| `sample` | `string`\[\] | 是 | — |
+
+
+#### GET `/ops/media/reclaimable`
+
+listMediaReclaimable
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`object`（见下）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `records` | [`MediaReclaimable`](#mediareclaimable)\[\] | 是 | — |
+| `total` | `integer` | 是 | — |
+| `page` | `integer` | 是 | — |
+| `size` | `integer` | 是 | — |
+
+
+#### POST `/ops/media/scan`
+
+重扫
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`MediaScanResult`](#mediascanresult)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `total` | `number` | 是 | — |
+| `referenced` | `number` | 是 | — |
+| `marked` | `number` | 是 | — |
+| `rescued` | `number` | 是 | — |
+| `abnormal` | `boolean` | 是 | — |
+
+
+#### GET `/ops/media/stores`
+
+门店占用
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`MediaStoreUsage`](#mediastoreusage)\[\]
 
 
 #### GET `/ops/rule-texts`
@@ -4547,28 +6336,72 @@ _无字段_
 | `updatedBy` | `string` | 是 | 最后修改人（STAFF 账号） |
 
 
+#### GET `/ops/service-scopes`
+
+listServiceScopes
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`ServiceScopeConfig`](#servicescopeconfig)\[\]
+
+
+#### POST `/ops/service-scopes/{scope}/enabled`
+
+开关某一档，返回最新的三档全量
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `scope` | path | `string` | 是 | — |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`ServiceScopeConfig`](#servicescopeconfig)\[\]
+
+
 ---
 
 ## 数据模型
+
+### AdmissionPolicy
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `legalForm` | [`#/definitions/LegalForm`](#definitionslegalform) | 是 | 主体档位，三档锁定 |
+| `requiredDepositMinor` | `number` | 是 | 应缴保证金（分）；0 = 免缴 |
+| `singleOrderLimitMinor` | `number` | 是 | 单笔限额（分）；0 = 不限 |
+| `dailyAmountLimitMinor` | `number` | 是 | 日累计限额（分）；0 = 不限 |
+| `banQualifiedCategory` | `number` | 是 | 1 = 禁止经营任何「需资质」品类 |
+| `bannedCategoryCodes` | `string,null` | 否 | 额外禁售类目编码，JSON 数组字符串；空 = 无额外禁售 |
+| `enabled` | `number` | 是 | 1 = 该档位的限制生效；0 = 该档位不做任何限制 |
+| `remark` | `string,null` | 否 | 为什么这么定 —— 回查时这句话比数字更有用 |
 
 ### AfterSale
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `asNo` | `string` | 是 | 售后单号 |
-| `orderNo` | `string` | 是 | 关联的子订单 |
+| `afterSaleNo` | `string` | 是 | 售后单号 |
+| `subOrderNo` | `string` | 是 | 关联的子订单 |
+| `orderNo` | `string` | 是 | 关联的主订单 |
 | `merchantNo` | `string` | 是 | 涉事商家 |
 | `merchantName` | `string` | 是 | 商家名快照 |
 | `buyerNickname` | `string` | 是 | 申请人昵称 |
 | `type` | [`#/definitions/AfterSaleType`](#definitionsaftersaletype) | 是 | 售后类型：仅退款 / 退货退款 / 换货 |
 | `status` | [`#/definitions/AfterSaleStatus`](#definitionsaftersalestatus) | 是 | 售后单状态。允许的流转见 `AFTERSALE_TRANSITIONS` |
-| `amount` | `number` | 是 | 申请退款金额（分）。**不得超过订单实付** —— 校验要跨域查订单。 |
+| `refundMinor` | `number` | 是 | 申请退款金额（分）。裁决只决定退不退，不改这个数 |
 | `reason` | `string` | 是 | 用户填写的售后原因 |
-| `evidenceCount` | `number` | 是 | 举证材料数量（照片/聊天记录） |
+| `images` | `string`\[\] | 是 | 举证材料（照片） |
 | `liability` | [`#/definitions/Liability`](#definitionsliability) | 否 | 裁定的责任方。平台介入后才有值 |
-| `share` | [`#/definitions/LiabilityShare`](#definitionsliabilityshare) | 否 | 赔付出资比例。口径未定（M4），先存结构 |
+| `share` | [`#/definitions/LiabilityShare`](#definitionsliabilityshare) | 否 | 赔付出资比例。**仅 finance 域 mock 队列使用**，真实后端未接（见上方说明） |
 | `verdict` | `string` | 否 | 裁决说明：用户与商家都会看到 |
-| `refundSplitPending` | `boolean` | 否 | E4 退款回退分账待办：裁决完成但资金域（P-12）尚未接。 留这个标记而不是假装已完成 —— 接资金域时按它补跑。 |
+| `refundSplitPending` | `boolean` | 否 | E4 退款回退分账待办：finance 域「退款回退分账」mock 队列专用字段， 真实后端未接（见上方说明），售后本身的裁决流程不读写它。 |
 | `createdAt` | `string` | 是 | 售后发起时间 |
 
 ### AppearanceConfig
@@ -4641,6 +6474,10 @@ _无字段_
 | `target` | `string` | 是 | 操作对象，如员工号 / 角色名 |
 | `detail` | `string` | 是 | 详细内容，含变更前后值 |
 | `critical` | `boolean` | 是 | 是否涉及高危权限（矩阵 §2.3 的那批码） |
+| `ip` | `string` | 否 | 操作者 IP。后端拿不到（非请求线程）时为空，不是所有旧数据都有 |
+| `clientType` | `string` | 否 | 操作端，如 WEB_OPS。同上，可能没有 |
+| `before` | `string` | 否 | 变更前结构化快照（JSON 字符串）。只有员工与权限域的部分动作有，其余为空——不伪造 |
+| `after` | `string` | 否 | 变更后结构化快照，同上 |
 
 ### AuthCode
 
@@ -4651,6 +6488,20 @@ _无字段_
 | `code` | `string` | 是 | 授权码，如 `FRESH_VEG`。**按码授权而不是按类目节点** —— 类目树会重构，能不能卖菜不会 |
 | `name` | `string` | 是 | 授权码展示名 |
 | `requiredQualification` | `string` | 否 | 需要的资质名。为空表示无门槛类目 |
+
+### AuthCodeAdmin
+
+授权码字典（运营视图）。 ⚠️ 与 `AuthCode`（给商家发证时的可选项，见 types/merchant.ts）**是两个口径**： 那个只给启用的，这个含停用的并带影响面计数。合并的话，停用过的码就再也 恢复不了 —— 页面上根本看不见它。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `code` | `string` | 是 | 授权码，如 `FRESH_VEG`。**建成之后不可改** —— 改它等于换一张证 |
+| `name` | `string` | 是 | 展示名，运营给商家发证时看到的就是它 |
+| `requiredQualification` | `string` | 否 | 需要的资质证件名。空 = 无证件要求（不是「漏填」） |
+| `sort` | `number` | 是 | 列表里的排序权重，小的在前。同值按 code 兜底，保证顺序稳定 |
+| `enabled` | `boolean` | 是 | 是否可发放。停用**不撤销**存量商家已持有的授权 |
+| `merchantCount` | `number` | 是 | 持有该码的商家数 —— 停之前要知道影响面 |
+| `categoryCount` | `number` | 是 | 引用该码的在用类目数。> 0 时停用会被拒（那些类目会变成永远拒绝所有人） |
 
 ### BlacklistEntry
 
@@ -4667,20 +6518,14 @@ _无字段_
 | `active` | `boolean` | 是 | 是否生效中。到期或申诉通过后置 false，记录保留 |
 | `createdAt` | `string` | 是 | 拉黑时间 |
 
-### Campaign
+### Captcha
+
+图形验证码挑战。`imageBase64` 不带 data: 前缀，端上自己拼
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `archivedAt` | `string,null` | 否 | 归档时间。**软删除标记** —— 有值即视为已删除，列表默认不返回。 契约禁止 `delete*`，一律 `archive*` / `unarchive*`（工程约定 §10.6）。 |
-| `campaignNo` | `string` | 是 | 活动单号 |
-| `name` | `string` | 是 | 活动名 |
-| `type` | [`#/definitions/CampaignType`](#definitionscampaigntype) | 是 | 活动类型 |
-| `status` | [`#/definitions/CampaignStatus`](#definitionscampaignstatus) | 是 | 活动状态 |
-| `startAt` | `string` | 是 | 开始时间 |
-| `endAt` | `string` | 是 | 结束时间。须晚于 startAt |
-| `position` | `string` | 是 | 投放位置：秒杀场次的重叠校验按位置分组（跨位置可并行） |
-| `skuCount` | `number` | 是 | 参与商品数 |
-| `createdAt` | `string` | 是 | 创建时间 |
+| `captchaId` | `string` | 是 | — |
+| `imageBase64` | `string` | 是 | — |
 
 ### CarrierConfig
 
@@ -4739,6 +6584,27 @@ _无字段_
 | `fenceRadius` | `number` | 是 | 覆盖围栏半径，米（P-2.1.3） |
 | `pickupCount` | `number` | 是 | 本社区的自提点数量（列表直接给，避免逐行再查一次） |
 | `createdAt` | `string` | 是 | 建档时间 |
+| `regionCode` | `string` | 否 | 所属行政区划码（`sys_region.region_code`），空 = 尚未归属。 挂上之后「按区/按街道覆盖」才能命中这个社区（ADR-013）。 **空着不代表配错了** —— 平台不按名字猜归属：猜错不报错，只会让这个社区 悄悄出现在别人的经营范围里。 |
+| `regionPath` | `string` | 否 | 从省到自身的中文路径，如「浙江省 / 杭州市 / 西湖区 / 北山街道」。 **后端拼好给的**：只给一个 330106002 的话，端上要么显示一串数字， 要么自己按码长切片再逐级查 —— 而国标编码规则不是端该知道的事。 |
+
+### CommunityApply
+
+商家提报的新社区（ADR-013 阶段三）。 **它不是社区**：审过之后平台才建出来，`communityNo` 这时才有值。 待审的小区不在任何选点列表里 —— 进了主表就会出现在用户面前，而点进去什么都没有。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `applyNo` | `string` | 是 | 提报单业务键。裁决按它定位，**不用自增 id** —— 那个不对外，重建库就变 |
+| `merchantNo` | `string` | 是 | 提报的商家 |
+| `merchantName` | `string` | 是 | 商家名。运营看着一串 M20260811… 判断不了任何事 |
+| `name` | `string` | 是 | 小区名，商家填 |
+| `address` | `string` | 否 | 地址。运营靠它判断这是不是已有社区的另一个叫法 —— 同一个小区两条记录，商家会分不清该勾哪个 |
+| `regionCode` | `string` | 否 | 商家选的区划，**只是建议**：最终以裁决时填的为准 |
+| `regionPath` | `string` | 否 | 区划整条路径名。「北山街道」全国有好几个，光末级判断不了是不是同一个地方 |
+| `note` | `string` | 否 | 商家的补充说明：为什么要开这个点 |
+| `status` | [`#/definitions/CommunityApplyStatus`](#definitionscommunityapplystatus) | 是 | 待审 / 已建社区 / 已驳回。**只有 PENDING 能裁**：裁完就是终态，再裁一次意味着同一条提报有两个结论 |
+| `communityNo` | `string` | 否 | 通过后建出来的社区号；待审与驳回时为空 |
+| `reason` | `string` | 否 | 驳回原因。**原样出现在商家 B 端**，所以驳回必须填 |
+| `submittedAt` | `number` | 是 | 提报时间 |
 
 ### ContentSlot
 
@@ -4765,13 +6631,16 @@ _无字段_
 | `status` | [`#/definitions/CouponStatus`](#definitionscouponstatus) | 是 | 券状态。允许的流转见 `COUPON_TRANSITIONS`；**ENDED 不影响已发出的券** |
 | `value` | `number` | 是 | 面额（满减/新人/定向）或折扣万分比（DISCOUNT，如 8500 = 85 折） |
 | `threshold` | `number` | 是 | 使用门槛，0 表示无门槛 |
-| `validFrom` | `string` | 是 | 生效开始时间 |
-| `validTo` | `string` | 是 | 生效结束时间 |
-| `budget` | `number` | 是 | 预算（分）。**已发放金额不得超过它** —— 这是唯一挡住"发着发着超支"的地方， 且必须在服务端校验：客服也持有发券权限（矩阵 §2.3 补偿券）。 |
-| `issuedAmount` | `number` | 是 | 已发放金额（分） |
+| `validFrom` | `number` | 是 | 生效开始时间（毫秒时间戳，后端全域口径） |
+| `validTo` | `number` | 是 | 生效结束时间（毫秒时间戳） |
+| `budget` | `number` | 是 | 预算（分）。**已发放金额不得超过它** —— 这是唯一挡住"发着发着超支"的地方， 且必须在服务端校验：客服也持有发券权限（矩阵 §2.3 补偿券）。 `0` = 不限。存量券全是这样：加预算列的迁移不改变已在跑的券的行为。 服务端的校验在领券那条 UPDATE 里与张数一起判（原子）， 见 `CouponMappers.tryReceive`。⚠️ 折扣券挡不住 —— 它的实际支出 取决于用券那一单的金额，发放时算不出来。 |
+| `issuedAmount` | `number` | 是 | 已发放金额（分）= 已领张数 × 面额。折扣券算不出来，恒为 0 |
 | `issued` | `number` | 是 | 已发放张数 |
 | `redeemed` | `number` | 是 | 已核销张数（P-7.1.4 效果） |
-| `createdAt` | `string` | 是 | 创建时间 |
+| `createdAt` | `number` | 是 | 创建时间（毫秒时间戳） |
+| `totalCount` | `number` | 是 | 发行量。**建券时敞口 = totalCount × 单张最大优惠**（TDD-营销预算前置）， 是预算前置校验的另一半——只有它和面额/封顶一起，敞口才算得出来。 |
+| `perUserLimit` | `number` | 是 | 每人限领张数 |
+| `maxDiscountMinor` | `number` | 是 | 折扣券封顶（分）。仅 `type=DISCOUNT` 有意义，其余类型恒为 0。 **建券时必填 >0**——0 = 不封顶已取消，敞口在建券那一刻就必须算得出来。 与 `value`（折扣万分比）分开：一个决定打几折，一个决定最多减多少。 |
 
 ### CouponIssue
 
@@ -4816,6 +6685,26 @@ KPI 卡（金额为最小货币单位整数）。
 | `quoteCount` | `number` | 是 | 已收到的报价数 |
 | `createdAt` | `string` | 是 | 发起时间 |
 
+### DepositTxn
+
+保证金流水。**只有余额字段的账户是不可审计的** —— 说不清这笔钱什么时候少的、谁扣的。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `txnNo` | `string` | 是 | 流水号 |
+| `txnType` | [`#/definitions/DepositTxnType`](#definitionsdeposittxntype) | 是 | 变动类型 |
+| `amountMinor` | `number` | 是 | 有符号：扣划为负 |
+| `balanceAfterMinor` | `number` | 是 | 变动后实缴余额（分），对账用 |
+| `reason` | `string,null` | 否 | 变动原因 |
+| `operator` | `string,null` | 否 | 操作人 |
+| `createdAt` | `string,null` | 否 | 发生时间 |
+
+### EffectiveFeeRates
+
+某时刻实际生效的费率表，键为 `${businessMode}\|${trafficSource}`。
+
+类型：`#/definitions/Record<string,number>`
+
 ### FaqEntry
 
 帮助中心条目（P-14.2.4）。
@@ -4854,17 +6743,21 @@ KPI 卡（金额为最小货币单位整数）。
 | `rolloutPercent` | `number` | 是 | 灰度比例 0–100 |
 | `updatedAt` | `string` | 是 | 最后修改时间 |
 
-### FeeRule
+### FeeRuleVersion
 
-费率配置（P-12.1.7 / 12.1.8 / 12.1.4）。全部万分比。
+费率的一个版本（后端 `stl_fee_rule`）。 ⚠️ 这里与旧的 `FeeRule` 形状完全不同，是有意的。旧那个是一维（只按流量来源）、 单值、原地改；**后端从未实现过它**（守卫清单里 `fee-rule` 一直挂在「整域未开工」）。 真正落地的是二维 + 版本化： - **二维**：经营模式 × 流量来源。两者正交 —— 只按经营模式分档，   等哪天想给自营也区分客流就要改表结构，而费率表最不该改结构（历史行要一直可读）。 - **版本化**：调费率是**插新版本**，旧版本永久保留。原地改只能回答「现在是多少」，   而真正会被问到的是「上个月那批单当时按什么费率算的」。
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `byTrafficSource` | [`#/definitions/Record<TrafficSource,number>`](#definitionsrecordtrafficsourcenumber) | 是 | 按流量来源分档的平台佣金费率（R16）。 ⚠️ `MERCHANT_OWNED`（商家自带客流）**建议 0** —— 商家自己把客人带来的单还抽佣， 商家就会把客人带去别处成交（ADR-004 的增长模型立不住）。口径未定，故可配。 |
-| `pickupServiceFeeRate` | `number` | 是 | 自提点履约服务费默认费率（R15）；自提点自己配了就用它自己的 |
-| `freezeDays` | `number` | 是 | 超时兜底天数（12.1.4）：冻结超过它仍未分账成功，解冻回平台 |
-| `updatedAt` | `string` | 是 | 最后修改时间。**改费率不影响已生成的结算单** |
-| `updatedBy` | `string` | 是 | 最后修改人（STAFF 账号） |
+| `ruleNo` | `string` | 是 | 规则版本号 |
+| `businessMode` | [`#/definitions/BusinessMode`](#definitionsbusinessmode) | 是 | 经营模式，费率的第一个维度 |
+| `trafficSource` | [`#/definitions/FeeTrafficSource`](#definitionsfeetrafficsource) | 是 | 适用的流量来源，费率的第二个维度 |
+| `rateBp` | `number` | 是 | 万分比。500 = 5% |
+| `effectiveFrom` | `number` | 是 | 生效时刻（毫秒）。**填未来时刻 = 预约生效** |
+| `enabled` | `number` | 是 | 1 = 该版本生效；0 = 已停用（回退到上一版） |
+| `remark` | `string,null` | 否 | 为什么调这一次 —— 回查时这句话比数字更有用 |
+| `createdAt` | `string` | 否 | 创建时间 |
+| `createdBy` | `string` | 否 | 创建人 |
 
 ### FissionCampaign
 
@@ -4900,14 +6793,73 @@ KPI 卡（金额为最小货币单位整数）。
 | `updatedAt` | `string` | 是 | 最后修改时间 |
 | `updatedBy` | `string` | 是 | 最后修改人（STAFF 账号） |
 
-### FunnelStep
+### FunnelRow
 
-获客漏斗（P-16.1.4 扫码→进店→注册→首单）。
+获客漏斗的一行（P-16.1.4 扫码→进店→注册→首单）。 ⚠️ 此前 interface 与环节枚举撞名叫 FunnelStep，字段写成 `step: FunnelStep` —— 自我引用
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `step` | `SCAN` \| `ENTER_STORE` \| `REGISTER` \| `FIRST_ORDER` | 是 | 漏斗环节：扫码 → 进店 → 注册 → 首单 |
+| `step` | [`#/definitions/FunnelStep`](#definitionsfunnelstep) | 是 | 漏斗环节：扫码 → 进店 → 注册 → 首单 |
 | `count` | `number` | 是 | 该环节人数 |
+
+### GoodsAudit
+
+待审商品（后端 `prd_goods`，**goods 粒度不是 sku 粒度**）。 <p>与本文件里 `Sku` 的差别：审核判的是「这件商品能不能卖」—— 标题、图、类目、资质都在 goods 上；sku 只是规格与价格。 拿 sku 粒度去审，同一件商品会被审好几遍。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `goodsNo` | `string` | 是 | 商品单号。审核动作打在它上面 |
+| `title` | `string` | 是 | 标题。审核先看它 —— 违规多半从标题就能看出来 |
+| `subtitle` | `string` | 否 | 副标题/卖点 |
+| `cover` | `string` | 否 | 封面图。图文不符是驳回的主因之一，所以要能看到图 |
+| `type` | `string` | 是 | 商品形态 NORMAL/FRESH/SERVICE/VIRTUAL/CARD |
+| `categoryNo` | `string` | 否 | 平台类目。**当前恒为空** —— 商品编辑页还没有选类目这一步 |
+| `merchant` | `object`（见下） | 否 | 归属商家（后端下发的是一个 brief 对象，不是裸的 merchantNo）—— 审核时要看得到是谁上的架：同一个商家反复交同类违规品是有信号的。 |
+| `status` | `string` | 否 | 商品状态。**字段名是 `status` 不是 `auditStatus`** —— 后端 `GoodsVO` 里它同时承载审核态与上下架态：AUDITING / ON_SALE / OFF_SALE / REJECTED。 |
+
+`merchant` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `merchantNo` | `string` | 是 | — |
+| `name` | `string` | 是 | — |
+
+### GoodsDetail
+
+商品详情（后端 `GoodsVO`，`GET /ops/goods/{goodsNo}`）。 <p>**只声明运营端抽屉真的会读的字段** —— 后端那份 VO 是 C 端契约， 有近三十个字段（评分、销量、拼团配置、称重克重…），照抄一遍等于在前端 维护一份"我们从不显示"的清单，而它每次后端调整都会假性变更。 <p>与  {@link  ProductGoods }  的关系：那是**列表行**（一次给一页，字段窄）， 这是**单条详情**（一次一件，字段全）。两者故意不是同一个类型： 列表塞进详情的字段会让分页响应大一个量级。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `goodsNo` | `string` | 是 | 商品单号 |
+| `title` | `string` | 是 | 标题（按当前语言拍平后的那一份） |
+| `subtitle` | `string` | 否 | 副标题 / 卖点 |
+| `cover` | `string` | 否 | 封面图 |
+| `images` | `string`\[\] | 是 | 详情图。后端必发（可能是空数组） |
+| `type` | `string` | 是 | 商品形态 NORMAL/FRESH/SERVICE/VIRTUAL/CARD |
+| `categoryNo` | `string` | 否 | 平台类目 |
+| `merchant` | `object`（见下） | 否 | 归属商家 brief —— 审核要看得到是谁上的架 |
+| `titleI18n` | [`#/definitions/Partial<Record<("zh"|"en"|"ar"),string>>`](#definitionspartialrecordzhenarstring) | 否 | 三语标题原文（`prd_goods.title_i18n`）。 运营审文案看的是它，而不是拍平后的 `title` —— 拍平那份看不出缺译。 |
+| `subtitleI18n` | [`#/definitions/Partial<Record<("zh"|"en"|"ar"),string>>`](#definitionspartialrecordzhenarstring) | 否 | 三语副标题原文，同  {@link  titleI18n } |
+| `specGroups` | `object`（见下）\[\] | 是 | 规格组（如「重量」→「500g / 1kg」）。后端必发 |
+| `skus` | [`#/definitions/GoodsDetailSku`](#definitionsgoodsdetailsku)\[\] | 是 | SKU 矩阵。后端必发 |
+| `fulfillments` | `string`\[\] | 是 | 支持的履约方式（自提 / 配送 …）。后端必发 |
+| `price` | `number` | 否 | 展示价 = 最低 SKU 价（分） |
+| `status` | `string` | 否 | 商品状态：AUDITING / ON_SALE / OFF_SALE / REJECTED |
+| `auditReason` | `string,null` | 否 | 最近一次驳回 / 强制下架的原因。 **它是商家能看到的那半边** —— 审计日志只有运营看得到， 没有它商家面对 REJECTED 只能猜要改什么。过审时清空。 |
+
+`merchant` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `merchantNo` | `string` | 是 | — |
+| `name` | `string` | 是 | — |
+
+`specGroups[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `name` | `string` | 是 | — |
+| `options` | `string`\[\] | 是 | — |
 
 ### GroupCampaign
 
@@ -4924,8 +6876,52 @@ KPI 卡（金额为最小货币单位整数）。
 | `minCount` | `number` | 是 | 起团人数，必须 ≥ 2（1 个人不叫团） |
 | `joined` | `number` | 是 | 已参团人数 |
 | `status` | [`#/definitions/GroupStatus`](#definitionsgroupstatus) | 是 | 团状态。允许的流转见 `GROUP_TRANSITIONS` |
-| `endAt` | `string` | 是 | 成团截止时间 |
-| `createdAt` | `string` | 是 | 开团时间 |
+| `endAt` | `number` | 是 | 成团截止时间（毫秒时间戳） |
+| `createdAt` | `number` | 是 | 开团时间（毫秒时间戳） |
+
+### InAppLog
+
+站内信的平台侧记录（发送记录页第二个 tab）。 <p><b>没有 status</b>：站内信入库即到达，不存在「发送中/失败」—— 这正是它与 NotifyLog 不能合成一张表的原因。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `messageNo` | `string` | 是 | — |
+| `receiverType` | `string` | 是 | USER / STAFF / OPS |
+| `receiverNo` | `string` | 是 | 收件人编号。**不掩码**：它是平台内部标识（userNo），不是手机号邮箱 |
+| `type` | [`#/definitions/InboxMessageType`](#definitionsinboxmessagetype) | 是 | — |
+| `title` | `string` | 是 | — |
+| `templateNo` | `string,null` | 否 | — |
+| `read` | `boolean` | 是 | — |
+| `at` | `number` | 是 | — |
+
+### InboxMessage
+
+运营自己的通知收件箱（顶栏铃铛）。 与 NotifyLog 是两回事：这个是**发给运营的待办**（新工单/待审核/告警）， 那个是**平台发给用户**的触达留痕。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `messageNo` | `string` | 是 | — |
+| `type` | [`#/definitions/InboxMessageType`](#definitionsinboxmessagetype) | 是 | — |
+| `title` | `string` | 是 | — |
+| `body` | `string` | 是 | — |
+| `link` | `string,null` | 否 | — |
+| `read` | `boolean` | 是 | — |
+| `at` | `number` | 是 | — |
+
+### Industry
+
+行业主数据（后端 `sys_industry`）。**已接真后端。** <p>它不是一张普通的字典表：**行业决定商家能不能以小微主体进件** —— 微信的小微白名单按行业给，判错一次商家就是进件被拒，而那时他已经开完店、上完架。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `industry` | `string` | 是 | 行业码，入驻申请回传的就是它 |
+| `name` | `string` | 是 | 展示名。三端都取服务端的，不各自维护翻译 |
+| `sort` | `number` | 是 | 排序 |
+| `enabled` | `boolean` | 是 | 是否启用。关掉后入驻表单里不再出现这个行业 |
+| `wechatMicroAllowed` | `boolean` | 是 | 微信是否允许该行业以小微进件 |
+| `alipayMicroAllowed` | `boolean` | 是 | 支付宝是否允许 |
+| `pointsForced` | `boolean` | 是 | 是否**强制开启积分**（商家不可自行关闭）。 它是 `mch_entity.points_forced` 的来源 —— 高毛利行业平台会要求让利。 |
+| `remark` | `string` | 否 | 备注：为什么这么配。改白名单是会被商家追问的操作 |
 
 ### InvoiceRequest
 
@@ -4953,6 +6949,7 @@ KPI 卡（金额为最小货币单位整数）。
 | `username` | `string` | 是 | 登录名 |
 | `role` | [`#/definitions/Role`](#definitionsrole) | 是 | 角色。**权限判定以后端为准**，前端只做菜单裁剪 |
 | `token` | `string` | 是 | 访问令牌。STAFF 池，与 C 端、B 端账号不通用 |
+| `perms` | `string`\[\] | 是 | **后端下发的权限码**（`staff.perms`）。判权以它为准。 `["*"]` = 超管通配。前端的 UI 码要先经 `UI_PERM_MAP` 翻译成后端码 再来这里查 —— 两边的粒度不同（前端 45 个、后端 14 个）， 直接比会全判 false。 |
 | `merchantNo` | `string` | 否 | 商家运营（BD）等受限角色的数据域；平台全量角色为空 |
 | `communityNo` | `string` | 否 | 受限角色的社区数据域 |
 
@@ -4984,6 +6981,98 @@ KPI 卡（金额为最小货币单位整数）。
 | `downloads` | `number` | 是 | 被下载次数，衡量素材有没有人用 |
 | `createdAt` | `string` | 是 | 创建时间 |
 
+### MediaBackfillResult
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `scanned` | `number` | 是 | — |
+| `inserted` | `number` | 是 | — |
+| `skipped` | `number` | 是 | — |
+
+### MediaBatchDetail
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `batch` | [`#/definitions/MediaPurgeBatch`](#definitionsmediapurgebatch) | 是 | — |
+| `items` | [`#/definitions/MediaReclaimable`](#definitionsmediareclaimable)\[\] | 是 | — |
+
+### MediaOverview
+
+顶部四张卡。`abnormal` 为真时页面置顶红条并禁用批量回收。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `totalBytes` | `number` | 是 | — |
+| `totalCount` | `number` | 是 | — |
+| `activeBytes` | `number` | 是 | — |
+| `activeCount` | `number` | 是 | — |
+| `reclaimableBytes` | `number` | 是 | — |
+| `reclaimableCount` | `number` | 是 | — |
+| `abnormal` | `boolean` | 是 | 可回收占比 > 50%。多半是有图片列没登记进 MediaRefSource —— 先查，别照删 |
+
+### MediaPurgeBatch
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `batchNo` | `string` | 是 | — |
+| `operator` | `string` | 是 | — |
+| `operatorName` | `string,null` | 否 | 发起时的显示名快照 —— 人离职改名之后这条记录还得说得清是谁 |
+| `status` | `QUEUED` \| `RUNNING` \| `DONE` \| `PARTIAL` | 是 | — |
+| `totalCount` | `number` | 是 | — |
+| `totalBytes` | `number` | 是 | — |
+| `purgedCount` | `number` | 是 | — |
+| `failedCount` | `number` | 是 | — |
+| `startedAt` | `string,null` | 否 | — |
+| `finishedAt` | `string,null` | 否 | — |
+| `createdAt` | `string,null` | 否 | — |
+
+### MediaPurgePreview
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `count` | `number` | 是 | — |
+| `bytes` | `number` | 是 | — |
+| `sample` | `string`\[\] | 是 | — |
+
+### MediaReclaimable
+
+待回收的一行。`reason` 是这一列的全部意义 —— 运营靠它判断「这张能不能删」。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `assetKey` | `string` | 是 | — |
+| `entityNo` | `string` | 是 | — |
+| `storeNo` | `string` | 是 | — |
+| `bizType` | `GOODS` \| `QUAL` \| `AFTERSALE` | 是 | — |
+| `bytes` | `number` | 是 | — |
+| `width` | `number,null` | 否 | — |
+| `height` | `number,null` | 否 | — |
+| `uploadedBy` | `string,null` | 否 | — |
+| `createdAt` | `string,null` | 否 | — |
+| `markedAt` | `string,null` | 否 | — |
+| `reason` | `string` | 是 | 「从未被引用」或「曾被『商品 G0012 · 主图』引用，… 后失去引用」 |
+| `status` | `string` | 是 | — |
+
+### MediaScanResult
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `total` | `number` | 是 | — |
+| `referenced` | `number` | 是 | — |
+| `marked` | `number` | 是 | — |
+| `rescued` | `number` | 是 | — |
+| `abnormal` | `boolean` | 是 | — |
+
+### MediaStoreUsage
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | `_ENTITY` = 主体级（证件，以及门店维度出现之前的存量图） |
+| `entityNo` | `string` | 是 | — |
+| `count` | `number` | 是 | — |
+| `activeBytes` | `number` | 是 | — |
+| `reclaimableBytes` | `number` | 是 | — |
+
 ### MemberCard
 
 | 字段 | 类型 | 必填 | 说明 |
@@ -5000,6 +7089,19 @@ KPI 卡（金额为最小货币单位整数）。
 | `updatedAt` | `string` | 是 | 最后修改时间 |
 | `updatedBy` | `string` | 是 | 最后修改人（STAFF 账号） |
 
+### MenuFunction
+
+服务端下发的菜单分区（`GET /ops/menu`）。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `functionCode` | `string` | 是 | 功能点编码，菜单树的一级节点 |
+| `name` | `string` | 是 | 菜单显示名 |
+| `icon` | `string,null` | 否 | 图标名；为空由前端按 functionCode 兜底 |
+| `href` | `string,null` | 否 | 一级节点自身的落地路径；为空表示它只是个分组 |
+| `sort` | `number` | 是 | 同级排序，小的在前 |
+| `points` | [`#/definitions/MenuPoint`](#definitionsmenupoint)\[\] | 是 | 这个功能点下的二级菜单/按钮 |
+
 ### Merchant
 
 | 字段 | 类型 | 必填 | 说明 |
@@ -5008,19 +7110,149 @@ KPI 卡（金额为最小货币单位整数）。
 | `merchantNo` | `string` | 是 | 商家单号 |
 | `name` | `string` | 是 | 店铺名 |
 | `tier` | [`#/definitions/MerchantTier`](#definitionsmerchanttier) | 是 | 商家分层，为引入大商家预留 |
-| `status` | [`#/definitions/MerchantStatus`](#definitionsmerchantstatus) | 是 | 入驻审核状态。合法迁移见 `MERCHANT_TRANSITIONS`，非法迁移抛错 |
-| `communityNo` | `string` | 是 | 归属社区（数据域裁剪键之一） |
-| `communityName` | `string` | 是 | 社区名快照 |
+| `status` | [`#/definitions/MerchantStatus`](#definitionsmerchantstatus) | 是 | **经营状态**（不是审核状态 —— 审核在申请单上）。合法迁移见 `MERCHANT_TRANSITIONS` |
+| `communityNos` | `string`\[\] | 是 | 服务的社区。**是列表不是单个** —— 一家店可以服务多个社区 （后端 `mch_entity_community`，服务范围三档见 ADR-009）。 此前这里是单个 `communityNo`，多社区商家只会显示其中一个。 |
 | `contactName` | `string` | 是 | 联系人姓名 |
 | `contactPhone` | `string` | 是 | 展示一律脱敏（中间四位掩码），完整号码不下发前端 |
 | `categoryCodes` | `string`\[\] | 是 | 经营类目编码，审核通过后即类目授权范围（P-11.1.3） |
 | `verified` | `boolean` | 是 | 认证标（P-11.1.2） |
-| `qualifications` | `string`\[\] | 是 | 已上传并通过的资质名。授权需要资质的类目码时要对照它 |
+| `qualifications` | `string`\[\] | 否 | 已登记的结构化资质名。授权需要资质的类目码时要对照它。 **必须是可选的。** 后端 `MerchantProfileVO` 曾经完全没有这个字段， 而这里声明成必填 `string[]` —— 类型检查过得去，真接口下 `m.qualifications.length` 直接抛 TypeError。只有 mock 有这个字段，所以一直没暴露。 「契约有、后端不发」是字段问题，不是类型问题：**别把 `?` 去掉**。 |
 | `breachCount` | `number` | 是 | 信用档案：毁约次数（P-11.1.5 / ADR-003） |
 | `settleAccountReady` | `boolean` | 是 | 分账接收方报备状态（P-12.1.1，ADR-002） |
 | `createdAt` | `string` | 是 | 入驻申请提交时间 |
 | `auditRemark` | `string` | 否 | 最近一次审核意见（驳回原因/补交项） |
 | `asPickupPoint` | `boolean` | 否 | 申请人是否愿意承接自提点（ADR-005）。 **只是意愿，通过审核不会自动建点** —— 自提点的服务费口径是逐点线下谈的， 没有一个默认值能覆盖。放在审核页上是为了让运营**看见有人在等**： 不显示的话，申请人勾了这一项、通过后什么也没发生，而中间没有任何一处会报错。 |
+| `legalForm` | [`#/definitions/LegalForm`](#definitionslegalform) \| `null` | 否 | 主体档位。**准入档位完全由它决定** —— 保证金、限额、禁售品类都按它取策略。 此前档案里没有它：运营看得到「这家被限额 500」，看不到「因为它是无照自然人」， 于是只会来问为什么。 |
+| `fundsMode` | [`#/definitions/FundsMode`](#definitionsfundsmode) | 否 | 资金路径（轴②）：钱先进谁的账户。 **与经营模式（`StoreMode.businessMode`，轴③）是两件事** —— 这个说钱先进谁的账户，那个说谁是销售主体。两者正交： 「直连 + 自营」（钱进商家户却说平台是卖方）是非法组合，要拦。 而「要不要给积分补差」判的是**这一列** —— 钱在商家账户才需要补进去。 |
+| `agriProducer` | `boolean` | 否 | 农业生产者。**无照主体走归集的唯一例外** —— 平台可自开农产品收购发票，成本有合法凭证。 |
+
+### MerchantApply
+
+入驻申请单（后端 `mch_entity_apply`）。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `applyNo` | `string` | 是 | 申请单号。审核动作都打在它上面，不是商家号 |
+| `merchantNo` | `string` | 否 | 通过后生成的主体号。**未通过时为空** —— 商家在通过之前根本不存在 |
+| `name` | `string` | 是 | 拟用店铺名。**存快照** —— 后来改名不该让历史申请跟着变 |
+| `subject` | `string` | 是 | 法律形态 NATURAL_PERSON / INDIVIDUAL / ENTERPRISE |
+| `contactName` | `string` | 是 | 联系人姓名。审核要打电话找人 |
+| `contactPhone` | `string` | 是 | 联系手机号（申请人自己填的，不一定是登录号）。**通过后它就是商家账号的登录号** |
+| `category` | `string` | 是 | 主营类目 |
+| `desc` | `string` | 是 | 店铺简介。通过后会写进主体档案，C 端门店页读的就是它 |
+| `industry` | `string` | 否 | 行业。**决定这家店能不能以小微进件** —— 审核页要看得到它， 否则运营批了一个行业不允许小微的小微商家，通道那边才会拒。 |
+| `serviceScope` | `string` | 否 | 期望服务范围。**商家可以留空，但通过时必须确定** —— 空的后果是商家上着架却对谁都不可见，且没有任何报错。 |
+| `communityNos` | `string`\[\] | 否 | 覆盖的小区。scope=COMMUNITY 时**空 = 通过之后对谁都不可见** |
+| `licenses` | `string`\[\] | 否 | 已传的资质图。个体户/企业必传，自然人免 —— 缺它正是驳回的主因 |
+| `qualificationItems` | [`#/definitions/QualificationItem`](#definitionsqualificationitem)\[\] | 否 | 结构化资质（V79）。**审核台看的是这一份** —— 上面的 licenses 只有图片 URL，审核员看不出「这是执照还是食品证」「什么时候过期」。 而通过之后转存进 mch_qualification 的正是它。 |
+| `asPickupPoint` | `boolean` | 是 | 是否愿意承接自提点（ADR-005）。**只是意愿，不代表点已建立** |
+| `status` | [`#/definitions/ApplyStatus`](#definitionsapplystatus) | 是 | 审核状态 |
+| `rejectReason` | `string` | 否 | 驳回原因。**驳回必写** —— 不写对方只能猜着改 |
+| `createdAt` | `number` | 是 | 提交时间 |
+| `auditedAt` | `number` | 否 | 审核完成时间。待审期间为空 |
+
+### MerchantCampaign
+
+**商家自建的店铺活动**（`GET /ops/campaigns` 真正返回的东西）。 <p>平台对它只有治理权：看得见、能停、能归档，**不能建也不能改内容** —— 那是商家自己的经营决定（矩阵 §2.3「平台停券与停活动」）。 <p>字段对齐后端 `CampaignVO`。与  {@link  PlatformSlot }  是两个领域对象， 曾经被一根 HTTP 路径连着，见 `docs/technical/运营端营销列表契约错配.md`。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `archivedAt` | `string,null` | 否 | 归档时间。**软删除标记** —— 有值即视为已删除，列表默认不返回。 契约禁止 `delete*`，一律 `archive*` / `unarchive*`（工程约定 §10.6）。 |
+| `campaignNo` | `string` | 是 | 活动号。跨端唯一，平台治理与商家自己看到的是同一个 |
+| `merchantNo` | `string` | 是 | 所属商家（主体号）。平台视角要按它归堆 |
+| `name` | `string` | 是 | 活动名，商家自己填的。C 端会原样展示，平台治理时也按它认人 |
+| `type` | [`#/definitions/MerchantCampaignType`](#definitionsmerchantcampaigntype) | 是 | COUPON / FULL_CUT / FLASH / BUY_GIFT —— 商家能建的四种 |
+| `status` | `string` | 是 | RUNNING / ENDED / PAUSED |
+| `startAt` | `number` | 是 | 开始时间（毫秒时间戳） |
+| `endAt` | `number` | 是 | 结束时间（毫秒时间戳） |
+| `goodsNos` | `string`\[\] \| `null` | 否 | 参与的商品号。**列表上只显示条数**，明细进详情看 |
+
+### MerchantDeposit
+
+商家保证金账户。**可用余额 = 实缴 − 冻结**，判「够不够」用可用而非实缴。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `merchantNo` | `string` | 是 | 商家主体 |
+| `paidMinor` | `number` | 是 | 实缴（分） |
+| `frozenMinor` | `number` | 是 | 理赔冻结中（分） |
+| `availableMinor` | `number` | 是 | 可用（分）= 实缴 − 冻结。**判够不够用它，不用实缴** |
+| `requiredMinor` | `number` | 是 | 本档位应缴（分）；0 = 免缴 |
+| `sufficient` | `boolean` | 是 | 可用是否已达应缴。不足则该商家不能上架 |
+| `singleOrderLimitMinor` | `number` | 是 | 单笔限额（分）；0 = 不限 |
+| `dailyAmountLimitMinor` | `number` | 是 | 日累计限额（分）；0 = 不限 |
+
+### MerchantPlanRow
+
+到期看板的一行（`GET /ops/merchant-plans`）。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `merchantNo` | `string` | 是 | — |
+| `merchantName` | `string` | 是 | — |
+| `planCode` | `string` | 是 | — |
+| `storeQuota` | `number` | 是 | 生效额度（覆盖值优先于快照）。与 storeUsed 一起显示成 2/3 |
+| `staffQuota` | `number` | 是 | — |
+| `storeUsed` | `number` | 是 | 已用门店数。**只数 ACTIVE**，与建店时那道额度闸同一口径 |
+| `staffUsed` | `number` | 是 | — |
+| `crossStoreStats` | `boolean` | 是 | — |
+| `status` | [`#/definitions/PlanStatus`](#definitionsplanstatus) | 是 | — |
+| `startAt` | `number,null` | 否 | — |
+| `expireAt` | `number,null` | 否 | — |
+| `grantedBy` | `string,null` | 否 | PLATFORM（运营授予）/ SELF（一期没有这条路） |
+| `trialUsed` | `boolean` | 是 | — |
+| `downgradedAt` | `number,null` | 否 | 降级发生的时间。非空 = 已经压过店了（扫描靠它保证幂等） |
+| `quotaSource` | [`#/definitions/PlanQuotaSource`](#definitionsplanquotasource) | 是 | — |
+
+### MerchantRankRow
+
+商家经营排行的一行（P-16.1.2 / P-16.1.3）—— 大盘之下的第一层下钻。 大盘回答「平台整体怎么样」，运营下一句必然是「哪几家在拉高、哪几家在拖后腿」。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `merchantNo` | `string` | 是 | — |
+| `merchantName` | `string` | 是 | 商家名。**必须有** —— 只给编号的话运营还要再查一次「这家是谁」 |
+| `gmv` | `number` | 是 | 成交额（最小货币单位整数） |
+| `orderCount` | `number` | 是 | — |
+| `avgOrderValue` | `number` | 是 | 客单价（最小货币单位整数） |
+| `afterSaleCount` | `number` | 是 | — |
+| `afterSaleRate` | `number` | 是 | 售后率 0–1。与 GMV 并列才看得出「卖得多」是不是「赔得也多」 |
+
+### MerchantStaffRow
+
+商家的一个员工，以及他在各门店的角色（**运营端只读**）。 为什么运营要看得到：客服接到「我们店的配送员看不到订单」时， 在此之前只能让老板自己截图 —— 而问题往往正是「他以为授了、其实没授」， 截图里看不出这一点。 平台**不能改**这些授权：谁能进这家店是商家的雇佣关系。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `mchAccountNo` | `string` | 是 | 商家账号号 |
+| `displayName` | `string,null` | 否 | 姓名（老板自己写的）。认人靠它；可能为空 |
+| `loginPhone` | `string` | 是 | 登录手机号。**它就是这个员工的登录用户名**（手机号 + 验证码，没有密码） |
+| `isOwner` | `boolean` | 是 | 老板。**不受门店授权限制**，所以 roles 为空不代表他没权限 |
+| `status` | `string` | 是 | ACTIVE / DISABLED |
+| `roles` | `object`（见下）\[\] | 是 | 他在各门店的角色。一人一店可多角色，权限取并集 |
+
+`roles[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | — |
+| `storeName` | `string` | 是 | — |
+| `role` | `string` | 是 | — |
+
+### ModeRisk
+
+无营业执照的主体 × 自营门店 —— **税务敞口清单**。 自营下平台是销售主体，列支成本要进项发票，而无照主体开不出票 —— 这笔支出**不得在企业所得税前扣除**，不是「多交一点税」， 是账面上凭空多出等额利润。 而这个组合**是默认会发生的**：`mch_store.business_mode` 默认就是自营， 且后端没有任何一处校验「无照不得自营」。所以这份清单不是异常报表， 是**现状盘点**。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `merchantNo` | `string` | 是 | — |
+| `merchantName` | `string` | 是 | — |
+| `legalForm` | `string` | 是 | 主体档位（免执照的那一档） |
+| `storeNo` | `string` | 是 | — |
+| `storeName` | `string` | 是 | — |
+| `businessMode` | `string` | 是 | — |
+| `settledBills` | `number` | 是 | 已产生的自营结算单数。**0 表示「查过了，没有」** —— 与「还没查」在界面上要分开 |
+| `settledMinor` | `number` | 是 | 累计商家实得（分）。**这就是不可税前扣除的成本规模** |
 
 ### MsgTemplate
 
@@ -5030,10 +7262,56 @@ KPI 卡（金额为最小货币单位整数）。
 |---|---|:---:|---|
 | `templateNo` | `string` | 是 | 模板单号 |
 | `name` | `string` | 是 | 模板名 |
-| `channel` | [`#/definitions/MsgChannel`](#definitionsmsgchannel) | 是 | 触达渠道：订阅消息 / App 推送 / 站内信 |
-| `content` | `string` | 是 | 模板正文，含 {占位符} |
+| `channel` | [`#/definitions/MsgChannel`](#definitionsmsgchannel) | 是 | 触达渠道 |
+| `lang` | `string` | 否 | 语言（zh-CN / en / ar）。 <p>同一个 templateNo 每种语言一行（V145）——**列表上必须显示它**， 否则运营看到的是两条一模一样的模板，改了其中一条还发现"没生效"。 |
+| `content` | `string` | 是 | 模板正文，含 {占位符}。**模拟发送靠它展示「会发出什么」并做预览** |
+| `providerTemplateId` | `string,null` | 否 | 渠道侧模板 ID（阿里云 `SMS_xxx` / 微信模板号）。站内信为空。 <p>后端 `TemplateVO` 一直有这个字段，端上类型此前漏了 —— 于是页面拿不到它， 而它正是运营核对「我们发的是哪个报备模板」的唯一凭据。 |
 | `enabled` | `boolean` | 是 | 是否启用。停用后引用它的推送任务发不出去 |
 | `sentCount` | `number` | 是 | 近 30 天发送量 |
+
+### NotifyChannelHealth
+
+通道体检（TDD-运营端触达中心 §4.1）。 <p><b>凭据只有「配没配」，没有值</b>：一个能在 Web 上读出生产短信密钥的接口， 泄漏一次就是全平台可群发。要改密钥去改环境变量并重启，不在这个页面上改。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `channel` | [`#/definitions/NotifyChannel`](#definitionsnotifychannel) | 是 | — |
+| `stub` | `boolean` | 是 | 走桩：不真发，只记日志 |
+| `enabled` | `boolean` | 是 | 真实通道已启用（!stub） |
+| `credentials` | `object`（见下）\[\] | 是 | — |
+| `params` | `object`（见下）\[\] | 是 | 非密业务参数，可回显（模板号、endpoint 这类本就印在短信里的东西） |
+| `todaySent` | `number` | 是 | — |
+| `todayFailed` | `number` | 是 | — |
+
+`credentials[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `envVar` | `string` | 是 | — |
+| `present` | `boolean` | 是 | — |
+| `required` | `boolean` | 是 | — |
+
+`params[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `key` | `string` | 是 | — |
+| `value` | `string` | 是 | — |
+
+### NotifyLog
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `notifyNo` | `string` | 是 | — |
+| `channel` | [`#/definitions/NotifyChannel`](#definitionsnotifychannel) | 是 | — |
+| `bizType` | `string` | 是 | OTP / OPS_INIT_PASSWORD / OPS_RESET_PASSWORD / TEST |
+| `target` | `string` | 是 | — |
+| `templateCode` | `string,null` | 否 | 短信是阿里云模板号；邮件是主题 |
+| `status` | [`#/definitions/NotifyStatus`](#definitionsnotifystatus) | 是 | — |
+| `error` | `string,null` | 否 | 失败时通道返回的原文。**排查第一眼看它** |
+| `providerMsgId` | `string,null` | 否 | 阿里云 BizId / 邮件 Message-ID |
+| `operatorNo` | `string,null` | 否 | — |
+| `createdAt` | `string` | 是 | — |
 
 ### NotifyQuota
 
@@ -5058,7 +7336,7 @@ KPI 卡（金额为最小货币单位整数）。
 | `communityNo` | `string` | 是 | 归属社区。运营按社区做数据域隔离 |
 | `communityName` | `string` | 是 | 社区名快照 |
 | `pickupNo` | `string` | 否 | 自提点编号；配送/快递单为空 |
-| `fulfillType` | [`#/definitions/FulfillType`](#definitionsfulfilltype) | 是 | 履约方式 |
+| `fulfillType` | [`#/definitions/FulfillmentType`](#definitionsfulfillmenttype) | 是 | 履约方式 |
 | `trafficSource` | [`#/definitions/TrafficSource`](#definitionstrafficsource) | 是 | 流量来源。**决定平台费率档**（P-12.1.7） |
 | `buyerNickname` | `string` | 是 | 买家昵称 |
 | `items` | [`#/definitions/OrderItem`](#definitionsorderitem)\[\] | 是 | 订单行 |
@@ -5106,18 +7384,57 @@ KPI 卡（金额为最小货币单位整数）。
 | `archivedAt` | `string,null` | 否 | 归档时间。**软删除标记** —— 有值即视为已删除，列表默认不返回。 契约禁止 `delete*`，一律 `archive*` / `unarchive*`（工程约定 §10.6）。 |
 | `pickupNo` | `string` | 是 | 自提点单号 |
 | `name` | `string` | 是 | 自提点名称 |
-| `type` | [`#/definitions/PickupType`](#definitionspickuptype) | 是 | 自提点类型。**STORE 与 NEIGHBOR 的报酬、脱敏、作用域规则完全不同**（ADR-005） |
+| `type` | [`#/definitions/PickupPointType`](#definitionspickuppointtype) | 是 | 自提点类型（ADR-005）。三类的报酬、脱敏、作用域规则完全不同。 ⚠️ 这里此前只有 STORE\|NEIGHBOR 两类，而后端还有 **PLATFORM**（平台提供、 线下协商费率）—— 少一类的后果是平台点在列表里渲染成 undefined 或被当成常驻点， 而它的费率规则与常驻点完全不同。 |
+| `feeMode` | [`#/definitions/PickupFeeMode`](#definitionspickupfeemode) | 是 | 计费口径。目前只有 PLATFORM 有值，见 `PickupFeeMode` 的说明 |
 | `status` | [`#/definitions/PickupStatus`](#definitionspickupstatus) | 是 | 自提点状态。`MIGRATING` = 不再接新单，存量单仍在本点核销完 |
 | `communityNo` | `string` | 是 | 归属社区 |
 | `communityName` | `string` | 是 | 社区名快照 |
-| `merchantNo` | `string` | 否 | 承接商家；NEIGHBOR 点为空（承接方是 C 端用户，不是商家） |
-| `merchantName` | `string` | 否 | 承接商家名快照；NEIGHBOR 点为空 |
+| `storeNo` | `string` | 否 | 承接**门店**；NEIGHBOR 点为空（承接方是 C 端用户，不是商家）。 此前叫 `merchantNo` 且装的是主体号。自提点归属改到门店之后（后端 V16）， 名字与内容就对不上了 —— 一并改名，而不是让下一个人以为它还是主体号。 |
+| `merchantName` | `string` | 否 | 承接商家名快照；NEIGHBOR 点为空。名字仍挂在主体上，不是门店名 |
 | `address` | `string` | 是 | 自提点地址。NEIGHBOR 点**成团前只到楼栋**，付款后才给完整门牌 |
 | `openHours` | `string` | 是 | 营业/可取货时段，形如 "09:00-21:00" |
 | `arriveTime` | `string` | 是 | 到货时间（运营排车依据） |
-| `serviceFeeRate` | `number` | 是 | 履约服务费费率，万分比（P-2.2.4）。**仅 STORE 有意义**，NEIGHBOR 恒为 0。 存费率不存金额：R15 口径（按单/按件/保底）未定，等定了只改结算不改主数据。 |
+| `serviceFeeRate` | `number` | 是 | 履约服务费费率，万分比（P-2.2.4）。**NEIGHBOR 恒为 0**（库上有 CHECK 约束兜底）。 目前有值的只有 PLATFORM 点（线下逐点协商）；STORE 要等 B9 定口径。 存费率不存金额：口径（按单/按件/保底）未定，等定了只改结算不改主数据。 |
+| `serviceFeePerItemMinor` | `number` | 是 | 按件履约服务费（分）。与 serviceFeeRate 二选一，由 feeMode 决定用哪个 |
 | `acceptCount30d` | `number` | 是 | 近 30 天承接次数（P-2.2.5 职业化风控依据） |
 | `createdAt` | `string` | 是 | 建档时间 |
+
+### PlanDef
+
+档位定义（`GET /ops/plan-defs`）。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `planCode` | `string` | 是 | — |
+| `name` | `string` | 是 | — |
+| `storeQuota` | `number` | 是 | — |
+| `staffQuota` | `number` | 是 | — |
+| `crossStoreStats` | `boolean` | 是 | — |
+| `trialDays` | `number` | 是 | — |
+| `enabled` | `boolean` | 是 | — |
+| `subscriberCount` | `number` | 是 | 当前有几家在用这一档。 **改定义的人必须看得到这个数** —— 它是「只影响之后新订阅的人」那句话的具体量。 不给这个数，改档位的人只能凭感觉判断影响面。 |
+
+### PlanUpgradeSignal
+
+升档信号的一行（`GET /ops/merchant-plans/upgrade-signals`）。 **按 owner 分组而不是按主体**：「同一个人开了两个主体」正是要找的人 —— 他已经在多店经营，只是绕过了额度。主体表上没有联系电话（那在申请单上）， 所以这里只给 owner 号，销售拿它去后台查人。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `ownerUserNo` | `string` | 是 | — |
+| `entityNos` | `string`\[\] | 是 | — |
+| `entityNames` | `string`\[\] | 是 | — |
+| `entityCount` | `number` | 是 | — |
+
+### PointsOverview
+
+积分资金总览。 **三个数摆在一起是刻意的** —— 恒等式是「流通中的积分 == 池子里的钱」， 分开看的话，失衡要等到有人主动比对才会发现。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `circulatingPoints` | `number` | 是 | 流通中的积分（用户可用 + 待生效） |
+| `poolBalanceMinor` | `number` | 是 | 池子余额（分）。与上一个数对不上就是失衡 |
+| `periodRedeemMinor` | `number` | 是 | 本期兑付（分）：补给商家的钱 |
+| `byChannel` | [`#/definitions/PoolByChannel`](#definitionspoolbychannel)\[\] | 是 | 按通道分的账本。**不能只看总数** —— 账面是一个池子，钱实际分散在两个通道账户； 一个溢一个空的时候，总数仍然是平的。 |
 
 ### Post
 
@@ -5139,20 +7456,37 @@ KPI 卡（金额为最小货币单位整数）。
 | `decidedAt` | `string,null` | 否 | 审核完成时间。未审为 null |
 | `decidedBy` | `string,null` | 否 | 审核人（STAFF 账号）。未审为 null |
 
-### PushTask
+### ProductGoods
 
-推送任务（P-14.1.2）。
+商品池里的一行（goods 粒度，SKU 收在 `skus` 里）——**不是**  {@link  Sku }  的复数形式。 <p>后端 `prd_goods`/`prd_sku` 本来就是一对多：标题、图、类目、审核状态都在 goods 上， 价格/库存/规格才是 sku 的。商品池按 goods 展示、审核/强制下架/预售这几个动作 仍然打在具体某个 sku 上（见 `skus[].skuNo`）——两者granularity 不同，别混用。
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `taskNo` | `string` | 是 | 任务单号 |
-| `name` | `string` | 是 | 任务名 |
-| `templateNo` | `string` | 是 | 使用的消息模板 |
-| `audience` | `string` | 是 | 人群描述，如「近 7 日未下单的老客」 |
-| `estimatedReach` | `number` | 是 | 预估触达数。为 0 说明人群是空的，发了等于白发 |
-| `status` | [`#/definitions/PushStatus`](#definitionspushstatus) | 是 | 任务状态 |
-| `scheduledAt` | `string` | 否 | 计划发送时间。`status=SCHEDULED` 时有值 |
-| `createdAt` | `string` | 是 | 创建时间 |
+| `goodsNo` | `string` | 是 | 商品单号 |
+| `title` | [`#/definitions/I18nText`](#definitionsi18ntext) | 是 | 标题（三语） |
+| `cover` | `string` | 否 | 封面图 |
+| `merchantNo` | `string` | 是 | 归属商家 |
+| `merchantName` | `string` | 是 | 商家名快照 |
+| `categoryNo` | `string` | 否 | 归属类目 |
+| `categoryName` | `string` | 否 | 类目名快照 |
+| `status` | `string` | 是 | 商品状态：AUDITING / ON_SALE / OFF_SALE / REJECTED |
+| `skus` | [`#/definitions/GoodsSkuRow`](#definitionsgoodsskurow)\[\] | 是 | 这件商品下的所有规格 |
+| `storeOnSale` | `boolean,null` | 否 | 门店投影（列表查询带 `storeNo` 时才有值）：这件商品在**那家店**上不上架。 `null`/缺失 = 未按店管理，跟随主体级 `status` —— 与「在那家店下架了」是两回事， 显示成同一个「否」会让运营去催商家上架一件其实全店都在卖的商品。 |
+
+### Qualification
+
+主体档案上**已登记**的一条资质（mch_qualification）。上架闸门读的就是它
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `qualNo` | `string` | 是 | — |
+| `entityNo` | `string` | 是 | — |
+| `qualType` | `string` | 是 | — |
+| `qualName` | `string` | 是 | 证件名。**要与 sys_auth_code.required_qualification 同一套字面量** —— 类目授权按名字比对 |
+| `qualNumber` | `string` | 否 | — |
+| `imageUrl` | `string` | 否 | — |
+| `expireAt` | `number,null` | 否 | null = 长期有效。与「已过期」是两回事，扫描任务不碰它 |
+| `status` | `string` | 是 | VALID / EXPIRED / REVOKED |
 
 ### Question
 
@@ -5183,10 +7517,10 @@ KPI 卡（金额为最小货币单位整数）。
 | `merchantName` | `string` | 是 | 商家名快照 |
 | `price` | `number` | 是 | 单价（分） |
 | `minQty` | `number` | 是 | 起订量 |
-| `validTo` | `string` | 是 | 报价有效期。过期不可被选定 —— 报价不能无限期挂着 |
+| `validTo` | `number` | 是 | 报价有效期（毫秒时间戳）。过期不可被选定 —— 报价不能无限期挂着 |
 | `priceChanges` | `number` | 是 | 改价次数（P-8.2.4 改价留痕）。ADR-003：不禁止改价，但**每次都公示**， 超过阈值禁止再改 —— 频繁改价本身就是信号。 |
 | `breached` | `boolean` | 是 | 是否毁约（P-8.2.5）。毁约累计影响商家信用档案（P-11.1.5） |
-| `createdAt` | `string` | 是 | 报价时间 |
+| `createdAt` | `number` | 是 | 报价时间（毫秒时间戳） |
 
 ### Ranking
 
@@ -5234,6 +7568,19 @@ KPI 卡（金额为最小货币单位整数）。
 | `overdue` | `number` | 是 | 逾期未取单数 |
 | `rate` | `number` | 是 | 已核销 /（已核销 + 待核销 + 逾期），0–1 |
 
+### Region
+
+行政区划节点（ADR-013）。四级：省 / 市 / 区县 / 街道。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `regionCode` | `string` | 是 | 统计用区划代码：省 2 位 / 市 4 位 / 区县 6 位 / 街道 9 位 |
+| `parentCode` | `string` | 否 | 上级区划码。省级为空 —— 逐级选择器据此判断自己是不是在顶层 |
+| `level` | `string` | 是 | PROVINCE / CITY / DISTRICT / STREET |
+| `name` | `string` | 是 | 本级名称，**不含上级**（「西湖区」不是「杭州市 / 西湖区」）。要整条路径的地方自己拼，见 CommunityApply.regionPath |
+| `enabled` | `boolean` | 是 | 开城开关：停用只影响新的选择，存量商家不动 |
+| `hasChild` | `boolean` | 是 | 下面还有没有下级。**据此决定还要不要再选一层**，而不是点进去才发现是空的 |
+
 ### Review
 
 | 字段 | 类型 | 必填 | 说明 |
@@ -5256,7 +7603,7 @@ KPI 卡（金额为最小货币单位整数）。
 
 ### ReviewAppeal
 
-恶意差评申诉（P-13.1.3）。UPHELD = 支持商家（差评下架），DISMISSED = 驳回申诉（差评保留）。
+恶意差评申诉（P-13.1.3）。UPHELD = 支持商家（差评下架），REJECTED = 驳回申诉（差评保留）。
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
@@ -5264,9 +7611,11 @@ KPI 卡（金额为最小货币单位整数）。
 | `reviewNo` | `string` | 是 | 被申诉的评价 |
 | `merchantNo` | `string` | 是 | 申诉方商家 |
 | `merchantName` | `string` | 是 | 商家名快照 |
+| `reviewRating` | `number` | 是 | 被申诉那条评价的星级与正文。 **裁决台必须显示它们** —— 要判断「这条差评是不是恶意的」， 而屏幕上只有单号和商家自己写的申诉理由的话，裁的是一面之词。 |
+| `reviewContent` | `string` | 是 | — |
 | `reason` | `string` | 是 | 商家的申诉理由 |
 | `evidenceCount` | `number` | 是 | 举证材料数量（截图/聊天记录） |
-| `status` | [`#/definitions/AppealStatus`](#definitionsappealstatus) | 是 | 裁决状态。UPHELD = 支持商家（差评下架），DISMISSED = 驳回申诉（差评保留） |
+| `status` | [`#/definitions/AppealStatus`](#definitionsappealstatus) | 是 | 裁决状态。UPHELD = 支持商家（差评下架），REJECTED = 驳回申诉（差评保留） |
 | `submittedAt` | `string` | 是 | 申诉提交时间 |
 | `verdict` | `string` | 否 | 裁决说明：无论支持还是驳回都必须写，商家会看到 |
 
@@ -5277,7 +7626,7 @@ KPI 卡（金额为最小货币单位整数）。
 | `eventNo` | `string` | 是 | 风险事件单号 |
 | `type` | [`#/definitions/RiskType`](#definitionsrisktype) | 是 | 风险类型。**三类同表用 type 区分** —— 拆表就看不出「同时命中几类」 |
 | `subject` | `string` | 是 | 主体：用户昵称 / 商家名 / 设备号 |
-| `subjectType` | `USER` \| `MERCHANT` \| `DEVICE` | 是 | 主体类型，决定 `subject` 是昵称、店名还是设备号 |
+| `subjectType` | [`#/definitions/SubjectType`](#definitionssubjecttype) | 是 | 主体类型，决定 `subject` 是昵称、店名还是设备号 |
 | `signals` | `string`\[\] | 是 | 命中的信号。**不给分值** —— 分值口径要等有真实样本后由风控定， 现在编一个看起来很准的分数，只会让人照着它做决定。 |
 | `refs` | `string`\[\] | 是 | 关联证据：订单号 / 归因链路号 |
 | `status` | [`#/definitions/RiskStatus`](#definitionsriskstatus) | 是 | 处置状态 |
@@ -5297,13 +7646,16 @@ KPI 卡（金额为最小货币单位整数）。
 
 ### RoleDef
 
+角色定义（`GET /ops/perm/roles`）。 **2026-08-12 换形**：原来带 `perms: string[]`（权限码集合）， 现在授权的单位是**功能点**（`sys_role_point`）—— 与后端存的东西一致。 为什么不继续用权限码：库里存功能点，界面勾权限码的话，保存时要把码反向 翻译成功能点集合，而一个码对应多个功能点，反向只能「全给」。 **那就是翻译层**，而这个仓库里绝大多数跨端缺陷都出自翻译层两边各写一套。
+
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `role` | [`#/definitions/Role`](#definitionsrole) | 是 | 角色码 |
-| `label` | `string` | 是 | 角色展示名 |
-| `builtin` | `boolean` | 是 | 内置角色（超管）：定义就是"全部"，不可编辑 —— 可编辑意味着能把自己降权 |
-| `perms` | `string`\[\] | 是 | 权限码集合；'*' 表示全部 |
-| `staffCount` | `number` | 是 | 持有该角色的账号数 |
+| `roleCode` | `string` | 是 | 角色码。自定义角色不在 `Role` 联合类型里，所以是 string |
+| `name` | `string` | 是 | 角色展示名 |
+| `endCode` | `string` | 是 | 端。运营端固定 OPS |
+| `builtin` | `boolean` | 是 | 内置角色：是 `Perms.java` 的镜像，改了会与回落表分叉 —— 渲染但禁用 |
+| `pointCount` | `number` | 是 | 已授予的功能点数 |
+| `staffCount` | `number` | 是 | 持有该角色的账号数。 **删角色前唯一能看出「会影响谁」的信息** —— 后端也拦（10441），但那是拦在点下去之后。 |
 
 ### RuleTexts
 
@@ -5331,26 +7683,38 @@ KPI 卡（金额为最小货币单位整数）。
 | `updatedAt` | `string` | 是 | 最后修改时间。改参数会**改变历史评价的呈现**，必须留痕 |
 | `updatedBy` | `string` | 是 | 最后修改人（STAFF 账号） |
 
-### Settlement
+### ServiceScopeConfig
 
-结算单：一个商家一个周期一张。 ⚠️ **对账恒等式**：gross = platformFee + serviceFee + net。 这三个数分别来自三处（费率表、自提点配置、余数），不校验就会出现"分完了还差几分钱"。
+经营范围档位的启用状态（ADR-009 三档）。 档位本身是枚举，永远是那三个；这里配的是**这一期开放哪几档**。 一期自营模式关掉了 PLATFORM —— 没有虚拟商品/卡券/自营快递品支撑它。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `scope` | `string` | 是 | COMMUNITY / CITY / PLATFORM |
+| `enabled` | `boolean` | 是 | 这一期是否开放这一档。关掉**不影响已经是这一档的存量商家**，只是不能再选 |
+| `merchantCount` | `number` | 是 | 当前在用的商家数。不带计数的开关是盲操作 |
+
+### Settlement
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `settleNo` | `string` | 是 | 结算单号 |
+| `subOrderNo` | `string` | 是 | 对应的子订单，**一条 = 一个子订单** |
+| `orderNo` | `string` | 是 | 所属主单 |
 | `merchantNo` | `string` | 是 | 结算对象商家 |
-| `merchantName` | `string` | 是 | 商家名快照 |
-| `period` | `string` | 是 | 结算周期，如 2026-08-上 |
-| `orderCount` | `number` | 是 | 本期结算的子订单笔数 |
-| `grossAmount` | `number` | 是 | 应结总额（分）= 子订单实付合计 |
-| `platformFee` | `number` | 是 | 平台佣金（分）。按「分账内扣」实现（12.1.6 口径待定） |
-| `serviceFee` | `number` | 是 | 自提点履约服务费（分，R15） |
-| `netAmount` | `number` | 是 | 实付商家（分） |
-| `status` | [`#/definitions/SettleStatus`](#definitionssettlestatus) | 是 | 结算状态。允许的流转见 `SETTLE_TRANSITIONS` |
-| `retryCount` | `number` | 是 | 分账指令重试次数（上限见 lib/constants.ts） |
-| `failReason` | `string` | 否 | 失败原因。`status=FAILED` 时有值，人工介入据此判断 |
-| `frozenAt` | `string` | 是 | 冻结开始时间：超过 freezeDays 未成功就解冻回平台 |
-| `createdAt` | `string` | 是 | 结算单生成时间 |
+| `grossMinor` | `number` | 是 | 结算基数（分）= 实付 + 平台补贴 + 积分抵扣 |
+| `commissionMinor` | `number` | 是 | 平台佣金（分） |
+| `serviceFeeMinor` | `number` | 是 | 自提点履约服务费（分） |
+| `netMinor` | `number` | 是 | 实付商家（分） |
+| `trafficSource` | `string` | 是 | 该单的流量来源，决定适用哪一档费率 |
+| `commissionRate` | `number` | 是 | 本单快照的佣金费率（万分比）。**费率改了历史单不跟着变** |
+| `status` | [`#/definitions/SettleStatus`](#definitionssettlestatus) | 是 | 结算状态，两条轨道各走各的 |
+| `createdAt` | `number` | 是 | 生成时刻（毫秒） |
+| `splitAt` | `number,null` | 否 | 分账成功时刻；空 = 未分账 |
+| `storeNo` | `string,null` | 否 | 哪家店挣的（统计维度） |
+| `payMerchantNo` | `string,null` | 否 | 打给哪个收款号（结算维度） |
+| `businessMode` | [`#/definitions/BusinessMode`](#definitionsbusinessmode) \| `null` | 否 | 自营 / 第三方 |
+| `invoiceStatus` | `string,null` | 否 | 自营：进项票状态。第三方恒为 NO_INVOICE |
+| `paymentRef` | `string,null` | 否 | 自营：付款凭证号。空 = 尚未付款 |
 
 ### Shipment
 
@@ -5401,23 +7765,35 @@ KPI 卡（金额为最小货币单位整数）。
 | `qty` | `number` | 是 | 应分拣数量 |
 | `shortQty` | `number` | 是 | 缺货标记回传（P-5.1.2 / B-10.3.4）：自提点上报的缺件数 |
 
-### SplitRecord
+### SpecTemplate
 
-分账明细：一条 = 一个子订单。费率按 trafficSource 分档（R16）。
+平台规格模板（P-3.4 / E27，后端 `prd_spec_template` 里 `scope=PLATFORM` 的那些）。 <p>B-4.4 商家建品时能选它，而平台端此前**没有维护入口** —— 表里只有初始化时 塞进去的几行，谁也改不了、加不了。三端联动表把这条记成「❌ 断裂：模板是死的」。 <p>与商家自存的模板（`scope=MERCHANT`）不是同一批数据：那些归商家， 平台端一条都不该列出来，更不该改 —— 改了那家店的历史规格就对不上了。
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `splitNo` | `string` | 是 | 分账明细单号 |
+| `archivedAt` | `string,null` | 否 | 归档时间。**软删除标记** —— 有值即视为已删除，列表默认不返回。 契约禁止 `delete*`，一律 `archive*` / `unarchive*`（工程约定 §10.6）。 |
+| `templateNo` | `string` | 是 | 模板单号 |
+| `scope` | `string` | 是 | 恒为 `PLATFORM`。后端写死，请求体里传什么都忽略 |
+| `categoryType` | [`#/definitions/CategoryTemplate`](#definitionscategorytemplate) \| `null` | 否 | 按五品类预置（与 `CategoryTemplate` 同一套取值）。**空 = 不限品类**。 商家建品时按这个轴筛（`GET /biz/goods/spec-templates?categoryType=`）。 |
+| `name` | `string` | 是 | 规格维度名，如「重量」「香型」 |
+| `options` | [`#/definitions/SpecTemplateOption`](#definitionsspectemplateoption)\[\] | 是 | 选项。整体替换，不做逐项 diff |
+| `createdAt` | `string` | 否 | — |
+
+### SplitLog
+
+分账指令流水（后端 `stl_split_log`）。 <b>结算单说的是「该给多少」，这里说的是「发了几条指令、成没成、失败在哪」</b>—— 出问题时要看的是后者。失败的记录也在这里。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
 | `settleNo` | `string` | 是 | 所属结算单 |
-| `orderNo` | `string` | 是 | 对应的子订单。**一条明细 = 一个子订单** |
-| `merchantName` | `string` | 是 | 商家名快照 |
-| `trafficSource` | [`#/definitions/TrafficSource`](#definitionstrafficsource) | 是 | 该订单的流量来源，决定适用哪一档费率（R16） |
-| `grossAmount` | `number` | 是 | 该订单实付金额（分） |
-| `feeRate` | `number` | 是 | 本条实际适用的平台佣金费率（万分比），来自费率表 |
-| `platformFee` | `number` | 是 | 本条的平台佣金（分） |
-| `pickupNo` | `string` | 否 | 履约自提点。非自提单为空 |
-| `serviceFee` | `number` | 是 | 自提点履约服务费（分）；非自提单为 0 |
-| `netAmount` | `number` | 是 | 实付商家（分）。**恒等式**：grossAmount = platformFee + serviceFee + netAmount |
+| `subOrderNo` | `string` | 是 | 对应的子订单 |
+| `splitAction` | `string` | 是 | SPLIT / REVERSE / SUBSIDY / SUBSIDY_RETURN |
+| `amountMinor` | `number` | 是 | 该指令的金额。**补差与分账口径不同** |
+| `result` | `string` | 是 | SUCCESS / FAIL |
+| `requestNo` | `string` | 是 | 平台侧幂等号 |
+| `providerNo` | `string,null` | 否 | 通道返回的单号；失败时为空 |
+| `message` | `string,null` | 否 | 失败原因。**这一列是这张表存在的意义** |
+| `createdAt` | `number` | 是 | 指令时刻（毫秒） |
 
 ### Staff
 
@@ -5426,11 +7802,12 @@ KPI 卡（金额为最小货币单位整数）。
 | `staffNo` | `string` | 是 | 员工单号 |
 | `username` | `string` | 是 | 登录名 |
 | `name` | `string` | 是 | 姓名 |
-| `role` | [`#/definitions/Role`](#definitionsrole) | 是 | 角色。决定权限码集合，见 `RoleDef` |
+| `roles` | `string`\[\] | 是 | 角色（**可多个**）。权限码取所有角色的并集。 <p>2026-08-12 从单值 `role` 换成数组：库早就支持多角色 （`sys_role_member` 唯一键含 role_code、`Perms.of` 取并集）， 是写接口把它压成了单值。 |
 | `merchantNo` | `string` | 否 | 数据域（P-1.1.3）。只对**受限角色**有意义： 社区运营 → communityNo、商家运营 → merchantNo。 给全量角色（超管等）配数据域是配置错误 —— 会让人以为它被限制了，实际没有。 |
 | `communityNo` | `string` | 否 | 社区运营的社区数据域 |
 | `pickupNo` | `string` | 否 | 自提点数据域 |
 | `enabled` | `boolean` | 是 | 是否启用。停用后立即无法登录，历史操作留痕保留 |
+| `mustChangePassword` | `boolean` | 否 | 首登必须改密。 建号时后端生成的一次性初始密码只是「拿到账号」的凭据，不是长期口令。 |
 | `lastLoginAt` | `string` | 否 | 最近登录时间。从未登录为空 |
 | `createdAt` | `string` | 是 | 建档时间 |
 
@@ -5448,6 +7825,40 @@ KPI 卡（金额为最小货币单位整数）。
 | `firstOrder` | `number` | 是 | 首单人数 |
 | `convRate` | `number` | 是 | 首单转化率 = firstOrder / scan，0–1 |
 
+### StoreGovern
+
+平台视角的门店档案（后端 `mch_store`，`GET /ops/stores`）。 **只读为主**：门店资料、价格、库存运营一律不改 —— 平台的边界是「裁、定、兜」， 不替商家运营。这份类型里唯一会被写回的是 `status`（解除强制下线）。 与  {@link  StoreMode  }  的关系：那份是「准入与保证金」页里**只关心经营模式与收款号** 的窄投影，这份是门店档案的全貌。两者共用 storeNo，故意不合并 —— 合并会让那一页凭空多出十个它不该关心的字段。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | 门店号 |
+| `name` | `string` | 是 | 门店名 |
+| `address` | `string` | 是 | 门店地址 |
+| `merchantNo` | `string` | 是 | 所属商家主体 |
+| `merchantName` | `string` | 是 | 商家名快照 |
+| `isDefault` | `boolean` | 是 | 是否主体的默认门店。默认店承接「没指定门店」的那些流量 |
+| `status` | [`#/definitions/StoreGovernStatus`](#definitionsstoregovernstatus) | 是 | 经营状态，见  {@link  StoreGovernStatus } |
+| `businessMode` | [`#/definitions/BusinessMode`](#definitionsbusinessmode) | 是 | 自营 / 第三方。决定这家店的钱怎么走、票怎么开 |
+| `payMerchantNo` | `string,null` | 是 | 本店专属收款商户号。 **`null` 不是「没配」，是「用主体默认收款号」** —— 显示成空白会被读成前者。 |
+| `announcement` | `string` | 是 | 门店公告（走 P-10.1 的机审 + 人审） |
+| `openHours` | `string` | 是 | 营业时间，展示串 |
+| `deliveryRadiusM` | `number` | 是 | 配送半径（米） |
+| `deliveryMinOrderMinor` | `number` | 是 | 起送价（分） |
+| `deliveryFeeMinor` | `number` | 是 | 配送费（分） |
+| `deliveryFreeThresholdMinor` | `number` | 是 | 免配送费门槛（分） |
+
+### StoreMode
+
+门店经营模式。 自营 = 平台是法律上的销售主体，承担全部产品责任。 **这个身份不能由商家自己勾选**，所以只有运营端能改。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | 门店号 |
+| `storeName` | `string` | 是 | 门店名，展示用 |
+| `merchantNo` | `string` | 是 | 所属商家主体 |
+| `businessMode` | [`#/definitions/BusinessMode`](#definitionsbusinessmode) \| `null` | 是 | 自营 / 第三方；空 = 尚未设置 |
+| `payMerchantNo` | `string,null` | 是 | 该店实际可用的收款号（本店专属号优先，回落到主体默认号）。**空 = 不能切第三方** |
+
 ### StorePageAudit
 
 | 字段 | 类型 | 必填 | 说明 |
@@ -5456,7 +7867,8 @@ KPI 卡（金额为最小货币单位整数）。
 | `merchantNo` | `string` | 是 | 提审商家 |
 | `merchantName` | `string` | 是 | 商家名快照 |
 | `kind` | [`#/definitions/StoreAuditKind`](#definitionsstoreauditkind) | 是 | 待审内容类型：店招图 / 公告文本 |
-| `content` | `string` | 是 | 待审内容：店招图 URL 或公告文本 |
+| `content` | `string` | 是 | 待审内容：店招图 URL、公告文本，或 `DISTRICT:330106` 这样的覆盖项定位串 |
+| `display` | `string` | 否 | 人话版的 content。`SERVICE_AREA` 时是「浙江省 / 杭州市 / 西湖区」，其余与 content 相同。 **列表与详情一律显示它**：让运营对着 `DISTRICT:330106` 判断 「这家菜摊该不该覆盖整个西湖区」，等于让他去别处查一次再回来。 |
 | `status` | [`#/definitions/StoreAuditStatus`](#definitionsstoreauditstatus) | 是 | 审核状态 |
 | `hits` | `string`\[\] | 是 | 机审命中的敏感词/风险项，随数据下发。 人审要看到「机器为什么标它」，否则只能凭感觉判，同一类内容两个人两个结论。 |
 | `submittedAt` | `string` | 是 | 提审时间 |
@@ -5476,6 +7888,23 @@ KPI 卡（金额为最小货币单位整数）。
 | `printed` | `number` | 是 | 已印数量，用于对账印刷成本 |
 | `scanCount` | `number` | 是 | 累计扫码次数 |
 
+### StoreStats
+
+门店经营状况（`GET /ops/stores/{storeNo}/stats`）。 后端复用商家自己在 B 端看的那套统计，不另存计数器 —— 另存的迟早出现「总览说 3 单、点进去只有 2 单」。 待办只有**门店维度**三项：核销与分拣是自提点维度且不限商家， 摆进门店页会被读成「这家店的活」。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | 门店号 |
+| `merchantNo` | `string` | 是 | 所属商家主体 |
+| `todayOrders` | `number` | 是 | 今日订单数 |
+| `todayGmvMinor` | `number` | 是 | 今日 GMV（分） |
+| `monthOrders` | `number` | 是 | 本月订单数 |
+| `monthGmvMinor` | `number` | 是 | 本月 GMV（分） |
+| `ownedTrafficRate` | `number` | 是 | 自带客流占比，0–1。**直接对应这家店少付的佣金**（ADR-004） |
+| `toShip` | `number` | 是 | 待发货 |
+| `toDeliver` | `number` | 是 | 待自送 |
+| `toStock` | `number` | 是 | 缺货待补。运营看它判断「这家店是不是没人管了」 |
+
 ### StoreTemplate
 
 店铺主页模板。 ⚠️ `usedByCount` 是**只读的引用计数**，不是配置项 —— 它存在的唯一理由是 拦住"停用一个正在被 12 家店用着的模板"这件事。
@@ -5484,7 +7913,7 @@ KPI 卡（金额为最小货币单位整数）。
 |---|---|:---:|---|
 | `templateNo` | `string` | 是 | 模板单号 |
 | `name` | `string` | 是 | 模板名 |
-| `layout` | `GRID` \| `LIST` \| `FEATURE` | 是 | 商品区排布 |
+| `layout` | [`#/definitions/SectionLayout`](#definitionssectionlayout) | 是 | 商品区排布 |
 | `sections` | [`#/definitions/TemplateSection`](#definitionstemplatesection)\[\] | 是 | 板块开关列表 |
 | `enabled` | `boolean` | 是 | 是否可选用。**停用前要看 `usedByCount`** —— 正在被使用的模板停不得 |
 | `isDefault` | `boolean` | 是 | 默认模板：新店开出来就用它，所以停用不了 |
@@ -5515,8 +7944,11 @@ KPI 卡（金额为最小货币单位整数）。
 | `orderNo` | `string` | 否 | 关联订单，可空 |
 | `status` | [`#/definitions/TicketStatus`](#definitionsticketstatus) | 是 | 工单状态。允许的流转见 `TICKET_TRANSITIONS` |
 | `assignee` | `string` | 否 | 处理人（员工登录名）；未分派为空 |
-| `proxyActions` | `string`\[\] | 是 | 代客操作留痕（P-14.2.3）：谁、对什么、做了什么 |
+| `proxyActions` | `string`\[\] | 否 | 代客操作留痕（P-14.2.3）：谁、对什么、做了什么。 **可选，不要去掉 `?`。** 后端 `TicketVO` 目前不下发这个字段 （`MessageVOs.java` 里只有 ticketNo/subject/content/orderNo/status/reply/createdAt/repliedAt）， 只有 mock 有。声明成必填数组 + `page.tsx` 直接 `.length` = 真接口下抛 TypeError。 与 `Merchant.qualifications` 同一形状，由 `ops-contract-fields` 守卫抓出。 |
 | `createdAt` | `string` | 是 | 提单时间 |
+| `reply` | `string` | 否 | 客服回复正文。**用户在 C 端工单详情页看的就是这个字段**。 此前它在三层上各缺一处：后端 `msg_ticket` 建表就留了 `reply`/`replied_at`/`replied_by` 且注释写明「代客操作要能追到人」，但没有任何代码写过它们； 契约里也从没定义过「回复」这个动作（只有分派、关闭、代客留痕）。 于是用户提单后反复点开详情，看到的永远是空的，而且不报任何错。 |
+| `repliedAt` | `string` | 否 | 回复时间；未回复为空 |
+| `repliedBy` | `string` | 否 | 回复人（员工登录名）。回复署的是平台的名，必须能追到人 |
 
 ### TrendPoint
 
@@ -5535,6 +7967,7 @@ KPI 卡（金额为最小货币单位整数）。
 | `merchantName` | `string` | 是 | 商家名快照 |
 | `type` | [`#/definitions/ViolationType`](#definitionsviolationtype) | 是 | 违规类型。**只有 `BREACH` 计入 breachCount** |
 | `action` | [`#/definitions/ViolationAction`](#definitionsviolationaction) | 是 | 处置动作。`SUSPEND` 会真的把商家状态推到 SUSPENDED |
+| `storeNo` | `string,null` | 否 | 门店级处置的对象门店。**`STORE_OFFLINE` 必有、其余动作必空** —— 主体级处置带上门店号会让人以为只压了那一家。 |
 | `detail` | `string` | 是 | 事实描述与证据出处。必填 —— 没有事实的处置在申诉时站不住 |
 | `operator` | `string` | 是 | 处置人（STAFF 账号） |
 | `at` | `string` | 是 | 处置时间 |
@@ -5554,3 +7987,12 @@ KPI 卡（金额为最小货币单位整数）。
 | `decidedAt` | `string,null` | 否 | 审批时间。未审为 null |
 | `decidedBy` | `string,null` | 否 | 审批人（STAFF 账号）。未审为 null |
 | `remark` | `string,null` | 否 | 驳回原因 / 大额复核说明。原样回商家 B 端 |
+
+### WxTemplates
+
+微信订阅消息的模板号映射。**唯一一项开放到运营端的通道参数**（模板号不是凭据）。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `orderArrived` | `string` | 是 | — |
+| `refunded` | `string` | 是 | — |

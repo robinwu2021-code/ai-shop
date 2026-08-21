@@ -122,6 +122,11 @@ class M8MessageFlowTest {
         buyAndPay(token, "m8-pickup");
         String biz = loginAsOwnerOf("M0001", "12700127003");
 
+        // 先登记到货 —— 核销要求货已经在点上（NOT_ARRIVED），这也是店员真实走的两步
+        mvc().perform(post("/biz/pickup/arrived").header("Authorization", "Bearer " + biz)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"orderNos\":[\"" + latestSubOrderNo(token) + "\"]}"));
+
         String verifyCode = verifyCodeOf(token);
         mvc().perform(post("/biz/pickup/verify").header("Authorization", "Bearer " + biz)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -314,6 +319,13 @@ class M8MessageFlowTest {
             }
         }
         return n;
+    }
+
+    /** 最新一张子单的单号（C 端列表按子单发，`orderNo` 就是子单号）。 */
+    private String latestSubOrderNo(String token) throws Exception {
+        String body = mvc().perform(get("/mp/order").header("Authorization", "Bearer " + token))
+                .andReturn().getResponse().getContentAsString();
+        return json.readTree(body).get("data").get("records").get(0).get("orderNo").asString();
     }
 
     private String verifyCodeOf(String token) throws Exception {

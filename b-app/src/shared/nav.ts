@@ -15,6 +15,7 @@ export const ROUTES = {
   store: "/pages/store/index",
   payment: "/pages/payment/index",
   stores: "/pages/stores/index",
+  storeCategories: "/pages/store-categories/index",
   staff: "/pages/staff/index",
   staffDetail: "/pages/staff-detail/index",
   roleDetail: "/pages/role-detail/index",

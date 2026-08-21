@@ -2,7 +2,12 @@ pluginManagement {
     repositories { google(); mavenCentral(); gradlePluginPortal() }
 }
 dependencyResolutionManagement {
-    repositories { google(); mavenCentral() }
+    repositories {
+        google(); mavenCentral()
+        // 个推 SDK（com.getui:*）只在个推自己的 Nexus。全局 init 用 PREFER_SETTINGS，
+        // 所以要加在 settings 级 —— 加到项目 build.gradle 会被忽略。
+        maven { url 'https://mvn.getui.com/nexus/content/repositories/releases/' }
+    }
 }
 rootProject.name = "ai-shop-c"
 include ":app"

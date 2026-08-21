@@ -671,7 +671,7 @@ CREATE TABLE IF NOT EXISTS prd_goods
     sales INT(11) NOT NULL DEFAULT 0,
     limit_per_user INT(11) NOT NULL DEFAULT 0,
     on_sale TINYINT(4) NOT NULL DEFAULT 0,
-    audit_status VARCHAR(16) NOT NULL DEFAULT 'AUDITING',
+    audit_status VARCHAR(16) NOT NULL DEFAULT 'DRAFT',
     cutoff_at BIGINT(20) DEFAULT NULL,
     arrival_desc VARCHAR(128) DEFAULT NULL,
     weighed TINYINT(4) DEFAULT NULL,
@@ -692,6 +692,8 @@ CREATE TABLE IF NOT EXISTS prd_goods
     title_i18n TEXT DEFAULT NULL,
     subtitle_i18n TEXT DEFAULT NULL,
     audit_reason VARCHAR(512) DEFAULT NULL,
+    std_no VARCHAR(64) DEFAULT NULL,
+    detail TEXT DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_goods_no UNIQUE (goods_no)
 );
@@ -1285,6 +1287,7 @@ CREATE TABLE IF NOT EXISTS mch_entity
     is_agri_producer TINYINT NOT NULL DEFAULT 0,
     biz_qualification VARCHAR(16) NOT NULL DEFAULT 'UNREGISTERED',
     exempt_type VARCHAR(24) DEFAULT NULL,
+    acode_base64 MEDIUMTEXT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_entity_no UNIQUE (entity_no),
     CONSTRAINT uk_store_code UNIQUE (store_code)
@@ -1320,6 +1323,7 @@ CREATE TABLE IF NOT EXISTS mch_entity_apply
     as_pickup_point TINYINT(4) NOT NULL DEFAULT 0,
     industry VARCHAR(24) DEFAULT NULL,
     qualification_items TEXT DEFAULT NULL,
+    category_codes TEXT DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_apply_no UNIQUE (apply_no),
     CONSTRAINT uk_apply_active_owner UNIQUE (active_owner)
@@ -1655,7 +1659,7 @@ CREATE TABLE IF NOT EXISTS notify_template
     version BIGINT(20) NOT NULL DEFAULT 0,
     deleted TINYINT(4) NOT NULL DEFAULT 0,
     lang VARCHAR(16) NOT NULL DEFAULT 'zh-CN',
-    CONSTRAINT uk_notify_template_template_no_lang UNIQUE (template_no, lang),
+    CONSTRAINT uk_msg_template_template_no_lang UNIQUE (template_no, lang),
     PRIMARY KEY (id)
 );
 
@@ -2163,17 +2167,17 @@ CREATE TABLE IF NOT EXISTS sys_notify_log
     id              BIGINT       NOT NULL AUTO_INCREMENT,
     notify_no       VARCHAR(32)  NOT NULL,
     channel         VARCHAR(16)  NOT NULL,
-    provider        VARCHAR(16),
     biz_type        VARCHAR(32)  NOT NULL,
     target          VARCHAR(64)  NOT NULL,
     template_code   VARCHAR(64),
-    template_no     VARCHAR(64),
     status          VARCHAR(16)  NOT NULL,
     error           VARCHAR(512),
     provider_msg_id VARCHAR(64),
     operator_no     VARCHAR(32),
     client_ip       VARCHAR(64),
     created_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    template_no VARCHAR(64) DEFAULT NULL,
+    provider VARCHAR(16) DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_notify_no UNIQUE (notify_no)
 );
@@ -2238,7 +2242,6 @@ CREATE TABLE IF NOT EXISTS notify_push_token
     receiver_type VARCHAR(16) NOT NULL,
     receiver_no VARCHAR(64) NOT NULL,
     platform VARCHAR(16) NOT NULL,
-    provider VARCHAR(16) NOT NULL DEFAULT 'GETUI',
     client_id VARCHAR(128) NOT NULL,
     tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
     created_at DATETIME NOT NULL,
@@ -2247,81 +2250,9 @@ CREATE TABLE IF NOT EXISTS notify_push_token
     updated_by VARCHAR(64) DEFAULT NULL,
     version BIGINT(20) NOT NULL DEFAULT 0,
     deleted TINYINT(4) NOT NULL DEFAULT 0,
-    PRIMARY KEY (id),
-    CONSTRAINT uk_push_token_receiver UNIQUE (receiver_type, receiver_no, platform, provider)
-);
-
--- 场景×通道触达配置（对应 V156）。H2 建表 + 种子与迁移逐格一致。
-CREATE TABLE IF NOT EXISTS notify_scene_channel
-(
-    id BIGINT(20) NOT NULL AUTO_INCREMENT,
-    scene_code VARCHAR(48) NOT NULL,
-    audience VARCHAR(16) NOT NULL,
-    channel VARCHAR(16) NOT NULL,
-    enabled TINYINT(4) NOT NULL DEFAULT 1,
-    push_level VARCHAR(8) NOT NULL DEFAULT 'NORMAL',
-    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
-    created_at DATETIME NOT NULL,
-    created_by VARCHAR(64) DEFAULT NULL,
-    updated_at DATETIME NOT NULL,
-    updated_by VARCHAR(64) DEFAULT NULL,
-    version BIGINT(20) NOT NULL DEFAULT 0,
-    deleted TINYINT(4) NOT NULL DEFAULT 0,
-    PRIMARY KEY (id),
-    CONSTRAINT uk_scene_channel UNIQUE (scene_code, audience, channel)
-);
-
--- 触达渠道注册表（对应 V158）。
-CREATE TABLE IF NOT EXISTS notify_channel
-(
-    id BIGINT(20) NOT NULL AUTO_INCREMENT,
-    channel_no VARCHAR(48) NOT NULL,
-    channel_type VARCHAR(16) NOT NULL,
-    provider VARCHAR(16) NOT NULL,
-    scope VARCHAR(16) NOT NULL,
-    owner_no VARCHAR(64) NOT NULL DEFAULT '',
-    enabled TINYINT(4) NOT NULL DEFAULT 1,
-    priority INT(11) NOT NULL DEFAULT 100,
-    cred_ref VARCHAR(64) DEFAULT NULL,
-    config_json VARCHAR(1024) NOT NULL DEFAULT '{}',
-    secret_cipher VARCHAR(2048) DEFAULT NULL,
-    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
-    created_at DATETIME NOT NULL,
-    created_by VARCHAR(64) DEFAULT NULL,
-    updated_at DATETIME NOT NULL,
-    updated_by VARCHAR(64) DEFAULT NULL,
-    version BIGINT(20) NOT NULL DEFAULT 0,
-    deleted TINYINT(4) NOT NULL DEFAULT 0,
-    PRIMARY KEY (id),
-    CONSTRAINT uk_notify_channel UNIQUE (channel_type, provider, scope, owner_no),
-    CONSTRAINT uk_notify_channel_no UNIQUE (channel_no)
-);
-
--- 平台营销广播推送任务（对应 V161）。
-CREATE TABLE IF NOT EXISTS notify_push_task
-(
-    id BIGINT(20) NOT NULL AUTO_INCREMENT,
-    task_no VARCHAR(48) NOT NULL,
-    name VARCHAR(128) NOT NULL,
-    audience_type VARCHAR(32) NOT NULL,
-    channel VARCHAR(16) NOT NULL DEFAULT 'PUSH',
-    title VARCHAR(128) NOT NULL,
-    body VARCHAR(512) NOT NULL,
-    link VARCHAR(256) DEFAULT NULL,
-    scheduled_at DATETIME DEFAULT NULL,
-    status VARCHAR(16) NOT NULL DEFAULT 'QUEUED',
-    estimated_count INT(11) NOT NULL DEFAULT 0,
-    sent_count INT(11) NOT NULL DEFAULT 0,
-    finished_at DATETIME DEFAULT NULL,
-    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
-    created_at DATETIME NOT NULL,
-    created_by VARCHAR(64) DEFAULT NULL,
-    updated_at DATETIME NOT NULL,
-    updated_by VARCHAR(64) DEFAULT NULL,
-    version BIGINT(20) NOT NULL DEFAULT 0,
-    deleted TINYINT(4) NOT NULL DEFAULT 0,
-    PRIMARY KEY (id),
-    CONSTRAINT uk_push_task_no UNIQUE (task_no)
+    provider VARCHAR(16) NOT NULL DEFAULT 'GETUI',
+    CONSTRAINT uk_push_token_receiver UNIQUE (receiver_type, receiver_no, platform, provider),
+    PRIMARY KEY (id)
 );
 
 CREATE TABLE IF NOT EXISTS stl_withdraw
@@ -2726,6 +2657,181 @@ CREATE TABLE IF NOT EXISTS sys_media_purge_batch
     updated_at    DATETIME     NOT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_media_batch_no UNIQUE (batch_no)
+);
+
+CREATE TABLE IF NOT EXISTS notify_scene_channel
+(
+    id BIGINT(20) NOT NULL AUTO_INCREMENT,
+    scene_code VARCHAR(48) NOT NULL,
+    audience VARCHAR(16) NOT NULL,
+    channel VARCHAR(16) NOT NULL,
+    enabled TINYINT(4) NOT NULL DEFAULT 1,
+    push_level VARCHAR(8) NOT NULL DEFAULT 'NORMAL',
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT(20) NOT NULL DEFAULT 0,
+    deleted TINYINT(4) NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_scene_channel UNIQUE (scene_code, audience, channel)
+);
+
+CREATE TABLE IF NOT EXISTS notify_channel
+(
+    id BIGINT(20) NOT NULL AUTO_INCREMENT,
+    channel_no VARCHAR(48) NOT NULL,
+    channel_type VARCHAR(16) NOT NULL,
+    provider VARCHAR(16) NOT NULL,
+    scope VARCHAR(16) NOT NULL,
+    owner_no VARCHAR(64) NOT NULL DEFAULT '',
+    enabled TINYINT(4) NOT NULL DEFAULT 1,
+    priority INT(11) NOT NULL DEFAULT 100,
+    cred_ref VARCHAR(64) DEFAULT NULL,
+    config_json VARCHAR(1024) NOT NULL DEFAULT '{}',
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT(20) NOT NULL DEFAULT 0,
+    deleted TINYINT(4) NOT NULL DEFAULT 0,
+    secret_cipher VARCHAR(2048) DEFAULT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_notify_channel UNIQUE (channel_type, provider, scope, owner_no),
+    CONSTRAINT uk_notify_channel_no UNIQUE (channel_no)
+);
+
+CREATE TABLE IF NOT EXISTS notify_push_task
+(
+    id BIGINT(20) NOT NULL AUTO_INCREMENT,
+    task_no VARCHAR(48) NOT NULL,
+    name VARCHAR(128) NOT NULL,
+    audience_type VARCHAR(32) NOT NULL,
+    channel VARCHAR(16) NOT NULL DEFAULT 'PUSH',
+    title VARCHAR(128) NOT NULL,
+    body VARCHAR(512) NOT NULL,
+    link VARCHAR(256) DEFAULT NULL,
+    scheduled_at DATETIME DEFAULT NULL,
+    status VARCHAR(16) NOT NULL DEFAULT 'QUEUED',
+    estimated_count INT(11) NOT NULL DEFAULT 0,
+    sent_count INT(11) NOT NULL DEFAULT 0,
+    finished_at DATETIME DEFAULT NULL,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT(20) NOT NULL DEFAULT 0,
+    deleted TINYINT(4) NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_push_task_no UNIQUE (task_no)
+);
+
+CREATE TABLE IF NOT EXISTS prd_spu_std
+(
+    id            BIGINT       NOT NULL AUTO_INCREMENT,
+    std_no        VARCHAR(64)  NOT NULL,
+    category_no   VARCHAR(64)  NOT NULL,
+    title         VARCHAR(255) NOT NULL,
+    title_i18n    TEXT                  DEFAULT NULL,
+    subtitle      VARCHAR(255)          DEFAULT NULL,
+    cover         VARCHAR(512)          DEFAULT NULL,
+    images        TEXT                  DEFAULT NULL,
+    spec_groups   TEXT                  DEFAULT NULL,
+    keywords      VARCHAR(512)          DEFAULT NULL,
+    status        VARCHAR(16)  NOT NULL DEFAULT 'ACTIVE',
+    ref_count     INT          NOT NULL DEFAULT 0,
+    tenant_no     VARCHAR(32)  NOT NULL DEFAULT 'MAIN',
+    created_at    DATETIME     NOT NULL,
+    created_by    VARCHAR(64)           DEFAULT NULL,
+    updated_at    DATETIME     NOT NULL,
+    updated_by    VARCHAR(64)           DEFAULT NULL,
+    version       BIGINT       NOT NULL DEFAULT 0,
+    deleted       TINYINT      NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_spu_std_no UNIQUE (std_no)
+);
+
+CREATE TABLE IF NOT EXISTS mch_store_category
+(
+    id           BIGINT      NOT NULL AUTO_INCREMENT,
+    store_no     VARCHAR(64) NOT NULL,
+    entity_no    VARCHAR(64) NOT NULL,
+    category_no  VARCHAR(64) NOT NULL,
+    display_name VARCHAR(64)          DEFAULT NULL,
+    sort         INT         NOT NULL DEFAULT 0,
+    enabled      TINYINT     NOT NULL DEFAULT 1,
+    tenant_no    VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at   DATETIME    NOT NULL,
+    created_by   VARCHAR(64)          DEFAULT NULL,
+    updated_at   DATETIME    NOT NULL,
+    updated_by   VARCHAR(64)          DEFAULT NULL,
+    version      BIGINT      NOT NULL DEFAULT 0,
+    deleted      TINYINT     NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_store_category UNIQUE (store_no, category_no)
+);
+
+CREATE TABLE IF NOT EXISTS prd_store_price
+(
+    id            BIGINT       NOT NULL AUTO_INCREMENT,
+    store_no      VARCHAR(64)  NOT NULL,
+    sku_no        VARCHAR(64)  NOT NULL,
+    entity_no     VARCHAR(64)  NOT NULL,
+    market        VARCHAR(8)   NOT NULL DEFAULT 'CN',
+    price         BIGINT       NOT NULL,
+    origin_price  BIGINT       DEFAULT NULL,
+    tenant_no     VARCHAR(32)  NOT NULL DEFAULT 'MAIN',
+    created_by    VARCHAR(64)  DEFAULT NULL,
+    updated_by    VARCHAR(64)  DEFAULT NULL,
+    version       BIGINT       NOT NULL DEFAULT 0,
+    created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted       TINYINT      NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_store_sku_market UNIQUE (store_no, sku_no, market)
+);
+
+CREATE TABLE IF NOT EXISTS prd_topic
+(
+    id         BIGINT       NOT NULL AUTO_INCREMENT,
+    topic_no   VARCHAR(64)  NOT NULL,
+    title      VARCHAR(64)  NOT NULL,
+    subtitle   VARCHAR(128) DEFAULT NULL,
+    cover      VARCHAR(512) DEFAULT NULL,
+    sort       INT          NOT NULL DEFAULT 0,
+    start_at   DATETIME     DEFAULT NULL,
+    end_at     DATETIME     DEFAULT NULL,
+    status     VARCHAR(16)  NOT NULL DEFAULT 'ACTIVE',
+    tenant_no  VARCHAR(32)  NOT NULL DEFAULT 'MAIN',
+    created_by VARCHAR(64)  DEFAULT NULL,
+    updated_by VARCHAR(64)  DEFAULT NULL,
+    version    BIGINT       NOT NULL DEFAULT 0,
+    created_at DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted    TINYINT      NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_topic_no UNIQUE (topic_no)
+);
+
+CREATE TABLE IF NOT EXISTS prd_topic_goods
+(
+    id         BIGINT      NOT NULL AUTO_INCREMENT,
+    topic_no   VARCHAR(64) NOT NULL,
+    goods_no   VARCHAR(64) NOT NULL,
+    entity_no  VARCHAR(64) NOT NULL,
+    sort       INT         NOT NULL DEFAULT 0,
+    tenant_no  VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version    BIGINT      NOT NULL DEFAULT 0,
+    created_at DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted    TINYINT     NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_topic_goods UNIQUE (topic_no, goods_no)
 );
 
 -- 种子数据
@@ -4439,16 +4545,6 @@ SELECT 'SUPER_ADMIN', 'OPS_MESSAGE__TAB_NOTIFYLOG', 'OPS', NOW(), NOW() FROM DUA
 INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
 SELECT 'SUPPORT', 'OPS_MESSAGE__TAB_NOTIFYLOG', 'OPS', NOW(), NOW() FROM DUAL
  WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPPORT' AND x.point_code='OPS_MESSAGE__TAB_NOTIFYLOG');
--- 营销广播菜单项（对应 V163）
-INSERT INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at)
-SELECT 'OPS_MESSAGE__TAB_BROADCAST', 'OPS_MESSAGE', '营销广播', '触达', '/messages?tab=broadcast', 'message:template:read', 'message:template:read', 'IMPLEMENTED', 1, 'P-14.1', 'MENU', 26, NOW(), NOW() FROM DUAL
- WHERE NOT EXISTS (SELECT 1 FROM sys_function_point x WHERE x.point_code='OPS_MESSAGE__TAB_BROADCAST');
-INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
-SELECT 'SUPER_ADMIN', 'OPS_MESSAGE__TAB_BROADCAST', 'OPS', NOW(), NOW() FROM DUAL
- WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPER_ADMIN' AND x.point_code='OPS_MESSAGE__TAB_BROADCAST');
-INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
-SELECT 'SUPPORT', 'OPS_MESSAGE__TAB_BROADCAST', 'OPS', NOW(), NOW() FROM DUAL
- WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPPORT' AND x.point_code='OPS_MESSAGE__TAB_BROADCAST');
 UPDATE sys_legal_form SET wechat_code = 'INDIVIDUAL' WHERE legal_form = 'INDIVIDUAL';
 UPDATE sys_legal_form SET settle_account_type = 'PERSONAL_BANK_CARD'
  WHERE settle_account_type = 'PERSONAL_OPENID';
@@ -4833,11 +4929,10 @@ INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated
 VALUES ('TECH_OPS', 'OPS_SYSTEM__TAB_STORAGE', 'OPS', NOW(), NOW());
 INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
 VALUES ('TECH_OPS', 'ACT__SYSTEM_MEDIA_PURGE', 'OPS', NOW(), NOW());
-
--- 场景×通道种子（对应 V156，逐格照搬 NotificationConsumer 搬迁前规则）。
 INSERT INTO notify_scene_channel (scene_code, audience, channel, enabled, push_level, created_at, updated_at)
 SELECT t.scene_code, t.audience, t.channel, t.enabled, t.push_level, NOW(), NOW()
 FROM (
+    
     SELECT 'ORDER_PAID' AS scene_code, 'C_USER' AS audience, 'INAPP' AS channel, 1 AS enabled, 'NORMAL' AS push_level UNION ALL
     SELECT 'ORDER_PAID', 'C_USER', 'PUSH', 0, 'NORMAL' UNION ALL
     SELECT 'ORDER_ARRIVED', 'C_USER', 'INAPP', 1, 'NORMAL' UNION ALL
@@ -4848,6 +4943,7 @@ FROM (
     SELECT 'AFTER_SALE_REFUNDED', 'C_USER', 'INAPP', 1, 'NORMAL' UNION ALL
     SELECT 'AFTER_SALE_REFUNDED', 'C_USER', 'WXSUB', 1, 'NORMAL' UNION ALL
     SELECT 'AFTER_SALE_REFUNDED', 'C_USER', 'PUSH', 0, 'NORMAL' UNION ALL
+    
     SELECT 'SUB_ORDER_PAID', 'B_STAFF', 'INAPP', 1, 'NORMAL' UNION ALL
     SELECT 'SUB_ORDER_PAID', 'B_STAFF', 'PUSH', 1, 'RING' UNION ALL
     SELECT 'AFTER_SALE_APPLIED', 'B_STAFF', 'INAPP', 1, 'NORMAL' UNION ALL
@@ -4859,8 +4955,6 @@ WHERE NOT EXISTS (
     SELECT 1 FROM notify_scene_channel m
     WHERE m.scene_code = t.scene_code AND m.audience = t.audience AND m.channel = t.channel
 );
-
--- 触达渠道注册表种子（对应 V158）。
 INSERT INTO notify_channel (channel_no, channel_type, provider, scope, cred_ref, created_at, updated_at)
 SELECT t.channel_no, t.channel_type, t.provider, t.scope, t.cred_ref, NOW(), NOW()
 FROM (
@@ -4881,3 +4975,74 @@ WHERE NOT EXISTS (
     WHERE m.channel_type = t.channel_type AND m.provider = t.provider
       AND m.scope = t.scope AND m.owner_no = ''
 );
+INSERT INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at)
+SELECT 'OPS_MESSAGE__TAB_BROADCAST', 'OPS_MESSAGE', '营销广播', '触达', '/messages?tab=broadcast', 'message:template:read', 'message:template:read', 'IMPLEMENTED', 1, 'P-14.1', 'MENU', 26, NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_function_point x WHERE x.point_code='OPS_MESSAGE__TAB_BROADCAST');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'SUPER_ADMIN', 'OPS_MESSAGE__TAB_BROADCAST', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPER_ADMIN' AND x.point_code='OPS_MESSAGE__TAB_BROADCAST');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'SUPPORT', 'OPS_MESSAGE__TAB_BROADCAST', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPPORT' AND x.point_code='OPS_MESSAGE__TAB_BROADCAST');
+INSERT INTO prd_category
+(category_no, parent_no, level, name, name_en, icon, sort, template,
+ attr_template, qualification_required, required_code, status,
+ tenant_no, created_at, created_by, updated_at, updated_by, version, deleted)
+VALUES
+('CAT500', NULL,     1, '虚拟商品', 'Virtual Goods', NULL, 50, 'VIRTUAL', NULL, NULL, NULL, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('CAT510', 'CAT500', 2, '话费充值', 'Mobile Top-up', NULL, 10, 'VIRTUAL', NULL, NULL, NULL, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('CAT520', 'CAT500', 2, '会员充值', 'Memberships',   NULL, 20, 'VIRTUAL', NULL, NULL, NULL, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0);
+UPDATE prd_goods SET category_no = 'CAT100' WHERE (category_no IS NULL OR category_no = '') AND type = 'FRESH';
+UPDATE prd_goods SET category_no = 'CAT300' WHERE (category_no IS NULL OR category_no = '') AND type = 'SERVICE';
+UPDATE prd_goods SET category_no = 'CAT400' WHERE (category_no IS NULL OR category_no = '') AND type = 'CARD';
+UPDATE prd_goods SET category_no = 'CAT500' WHERE (category_no IS NULL OR category_no = '') AND type = 'VIRTUAL';
+UPDATE prd_goods SET category_no = 'CAT200' WHERE category_no IS NULL OR category_no = '';
+UPDATE prd_goods SET type = 'FRESH'   WHERE category_no IN ('CAT100','CAT110','CAT120','CAT111','CAT112','CAT121') AND type <> 'FRESH';
+UPDATE prd_goods SET type = 'NORMAL'  WHERE category_no IN ('CAT200','CAT210') AND type <> 'NORMAL';
+UPDATE prd_goods SET type = 'SERVICE' WHERE category_no IN ('CAT300') AND type <> 'SERVICE';
+UPDATE prd_goods SET type = 'CARD'    WHERE category_no IN ('CAT400') AND type <> 'CARD';
+UPDATE prd_goods SET type = 'VIRTUAL' WHERE category_no IN ('CAT500','CAT510','CAT520') AND type <> 'VIRTUAL';
+INSERT INTO prd_spu_std
+(std_no, category_no, title, title_i18n, subtitle, cover, images, spec_groups, keywords,
+ status, ref_count, tenant_no, created_at, created_by, updated_at, updated_by, version, deleted)
+VALUES
+('STD1001', 'CAT111', '本地菠菜', '{"en":"Local Spinach"}', '当季叶菜', NULL, NULL, '[{"name":"重量","options":["500g","1斤","2斤"],"optionCodes":["W500G","W1JIN","W2JIN"]}]', '菠菜 波斯菜 叶菜', 'ACTIVE', 0, 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('STD1002', 'CAT111', '小白菜', '{"en":"Baby Bok Choy"}', '当季叶菜', NULL, NULL, '[{"name":"重量","options":["500g","1斤","2斤"],"optionCodes":["W500G","W1JIN","W2JIN"]}]', '小白菜 青菜 叶菜', 'ACTIVE', 0, 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('STD1003', 'CAT111', '生菜', '{"en":"Lettuce"}', '当季叶菜', NULL, NULL, '[{"name":"重量","options":["500g","1斤"],"optionCodes":["W500G","W1JIN"]}]', '生菜 莴苣 叶菜', 'ACTIVE', 0, 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('STD1011', 'CAT112', '土豆', '{"en":"Potato"}', '根茎菜', NULL, NULL, '[{"name":"重量","options":["1斤","2斤","5斤"],"optionCodes":["W1JIN","W2JIN","W5JIN"]}]', '土豆 马铃薯 洋芋', 'ACTIVE', 0, 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('STD1012', 'CAT112', '胡萝卜', '{"en":"Carrot"}', '根茎菜', NULL, NULL, '[{"name":"重量","options":["1斤","2斤"],"optionCodes":["W1JIN","W2JIN"]}]', '胡萝卜 红萝卜', 'ACTIVE', 0, 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('STD1013', 'CAT112', '白萝卜', '{"en":"Daikon"}', '根茎菜', NULL, NULL, '[{"name":"重量","options":["1斤","2斤"],"optionCodes":["W1JIN","W2JIN"]}]', '白萝卜 萝卜', 'ACTIVE', 0, 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('STD1021', 'CAT121', '蓝莓', '{"en":"Blueberry"}', '当季浆果', NULL, NULL, '[{"name":"规格","options":["125g/盒","250g/盒"],"optionCodes":["P125G","P250G"]}]', '蓝莓 浆果', 'ACTIVE', 0, 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('STD1022', 'CAT121', '草莓', '{"en":"Strawberry"}', '当季浆果', NULL, NULL, '[{"name":"规格","options":["250g/盒","500g/盒"],"optionCodes":["P250G","P500G"]}]', '草莓 浆果', 'ACTIVE', 0, 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('STD1031', 'CAT120', '苹果', '{"en":"Apple"}', '常温水果', NULL, NULL, '[{"name":"重量","options":["2斤","5斤"],"optionCodes":["W2JIN","W5JIN"]}]', '苹果 富士', 'ACTIVE', 0, 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('STD1032', 'CAT120', '香蕉', '{"en":"Banana"}', '常温水果', NULL, NULL, '[{"name":"重量","options":["2斤","5斤"],"optionCodes":["W2JIN","W5JIN"]}]', '香蕉', 'ACTIVE', 0, 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('STD2001', 'CAT210', '抽纸', '{"en":"Facial Tissue"}', '家用抽取式面巾纸', NULL, NULL, '[{"name":"规格","options":["3包","6包","12包"],"optionCodes":["B3","B6","B12"]}]', '抽纸 面巾纸 纸巾', 'ACTIVE', 0, 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('STD2002', 'CAT210', '卷纸', '{"en":"Toilet Roll"}', '家用卫生卷纸', NULL, NULL, '[{"name":"规格","options":["6卷","12卷"],"optionCodes":["B6","B12"]}]', '卷纸 卫生纸 手纸', 'ACTIVE', 0, 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('STD2003', 'CAT210', '洗洁精', '{"en":"Dish Soap"}', '厨房清洁', NULL, NULL, '[{"name":"规格","options":["500ml","1L"],"optionCodes":["V500ML","V1L"]}]', '洗洁精 洗涤灵', 'ACTIVE', 0, 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('STD2004', 'CAT210', '洗衣液', '{"en":"Laundry Detergent"}', '衣物清洁', NULL, NULL, '[{"name":"规格","options":["1L","2L","3L"],"optionCodes":["V1L","V2L","V3L"]}]', '洗衣液 洗涤剂', 'ACTIVE', 0, 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0);
+INSERT INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at) VALUES ('OPS_PRODUCT__TAB_SPU_STD', 'OPS_PRODUCT', '标准品库', '标准品', '/products?tab=spu-std', 'product:std:read', 'product:std:read', 'IMPLEMENTED', 1, 'P-3.5', 'MENU', 60, NOW(), NOW());
+INSERT INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at) VALUES ('ACT__PRODUCT_STD_UPDATE', 'OPS_PRODUCT', 'product:std:update', '页面内操作', NULL, 'product:std:update', 'product:std:update', 'IMPLEMENTED', 1, NULL, 'ACTION', 902, NOW(), NOW());
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at) VALUES ('SUPER_ADMIN', 'OPS_PRODUCT__TAB_SPU_STD', 'OPS', NOW(), NOW());
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at) VALUES ('SUPER_ADMIN', 'ACT__PRODUCT_STD_UPDATE', 'OPS', NOW(), NOW());
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at) VALUES ('GOODS_OPS', 'OPS_PRODUCT__TAB_SPU_STD', 'OPS', NOW(), NOW());
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at) VALUES ('GOODS_OPS', 'ACT__PRODUCT_STD_UPDATE', 'OPS', NOW(), NOW());
+UPDATE prd_category SET required_code = 'FRESH_VEG',
+       qualification_required = '["食品经营许可证"]' WHERE category_no = 'CAT110';
+UPDATE prd_category SET required_code = 'FRESH_FRUIT',
+       qualification_required = '["食品经营许可证"]' WHERE category_no = 'CAT120';
+UPDATE prd_goods   SET category_no = 'CAT110' WHERE category_no IN ('CAT111', 'CAT112');
+UPDATE prd_goods   SET category_no = 'CAT120' WHERE category_no = 'CAT121';
+UPDATE prd_spu_std SET category_no = 'CAT110' WHERE category_no IN ('CAT111', 'CAT112');
+UPDATE prd_spu_std SET category_no = 'CAT120' WHERE category_no = 'CAT121';
+UPDATE prd_category SET status = 'ARCHIVED' WHERE level = 3;
+INSERT INTO prd_topic
+(topic_no, title, subtitle, cover, sort, status, tenant_no, created_at, created_by, updated_at, updated_by, version, deleted)
+VALUES
+('TP0001', '早餐必备', '7 点前送到楼下', '', 10, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('TP0002', '本地时令', '当季当地，今天到货', '', 20, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0);
+INSERT INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at) VALUES ('OPS_PRODUCT__TAB_TOPICS', 'OPS_PRODUCT', '主题分类', '陈列', '/products?tab=topics', 'product:topic:read', 'product:topic:read', 'IMPLEMENTED', 1, 'P-3.6', 'MENU', 70, NOW(), NOW());
+INSERT INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at) VALUES ('ACT__PRODUCT_TOPIC_UPDATE', 'OPS_PRODUCT', 'product:topic:update', '页面内操作', NULL, 'product:topic:update', 'product:topic:update', 'IMPLEMENTED', 1, NULL, 'ACTION', 903, NOW(), NOW());
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at) VALUES ('SUPER_ADMIN', 'OPS_PRODUCT__TAB_TOPICS', 'OPS', NOW(), NOW());
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at) VALUES ('SUPER_ADMIN', 'ACT__PRODUCT_TOPIC_UPDATE', 'OPS', NOW(), NOW());
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at) VALUES ('GOODS_OPS', 'OPS_PRODUCT__TAB_TOPICS', 'OPS', NOW(), NOW());
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at) VALUES ('GOODS_OPS', 'ACT__PRODUCT_TOPIC_UPDATE', 'OPS', NOW(), NOW());

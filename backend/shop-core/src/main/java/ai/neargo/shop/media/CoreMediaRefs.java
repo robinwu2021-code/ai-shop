@@ -22,6 +22,14 @@ public class CoreMediaRefs implements MediaRefSource {
                 // —— 商品 ——
                 of("prd_goods", "cover", "商品 · 主图", "goods_no"),
                 of("prd_goods", "images", "商品 · 图集", "goods_no"),
+                /*
+                 * 标准品的图（TDD-标准品库）。**必须算引用**：商家引用建品时会把这几张
+                 * 复制进自己的商品，但标准品这一行自己也一直指着它们 —— 不登记的话，
+                 * 一张还没被任何商家取用过的标准品图会被判成孤儿回收掉，
+                 * 而运营在标准品库里看到的是一个空图框，且查不出谁删的。
+                 */
+                of("prd_spu_std", "cover", "标准品 · 主图", "std_no"),
+                of("prd_spu_std", "images", "标准品 · 图集", "std_no"),
 
                 /*
                  * 订单项的封面是**下单那一刻的快照**，指向的仍是商品图那张文件。

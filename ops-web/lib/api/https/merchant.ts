@@ -26,12 +26,13 @@ export const merchantHttp: MerchantApi = {
    */
   listApplies: (q) => client.get("/ops/merchant/apply/search", q),
   acceptApply: (applyNo) => client.post(`/ops/merchant/apply/${applyNo}/accept`),
-  auditApply: (applyNo, approved, reason, serviceScope, communityNos) =>
+  auditApply: (applyNo, approved, reason, serviceScope, communityNos, grantCodes) =>
     client.post(`/ops/merchant/apply/${applyNo}/audit`, {
       approved,
       reason,
       serviceScope,
       communityNos,
+      grantCodes,
     }),
 
   listMerchants: (q) => client.get("/ops/merchants", q),

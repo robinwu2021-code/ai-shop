@@ -100,7 +100,18 @@ public class PlatformProductServiceImpl implements PlatformProductService {
                 // 不在第一页，前端过滤会让「库存与预售」tab 长期显示为空，且接口 200
                 .gt(presaleOnly, PrdSku::getPresaleQuota, 0)
                 .orderByDesc(PrdSku::getId);
-        Page<PrdSku> p = DataScopeContext.executeWithoutScope(() -> skuMapper.selectPage(Page.of(page, size), w));
+        /*
+         * ★ **接数据域**（商品域优化清单 P2-4）。
+         *
+         * 这里原先是 executeWithoutScope，而 prd_sku 当时压根没登记 —— 于是
+         * <b>不带任何过滤条件的 `GET /ops/skus` 是全平台可见</b>，配了商家域的运营
+         * 看到的和超管一样多，页面上没有任何线索。上面那句
+         * 「matchingGoodsNos 只补上了带过滤的那一半」说的就是这个口子。
+         *
+         * 现在 prd_sku 按 MERCHANT/entity_no 登记了，这一句去掉绕过即可。
+         * 会话不带任何维度（超管）时 DataScopeHandler 直接放行，与今天一致。
+         */
+        Page<PrdSku> p = skuMapper.selectPage(Page.of(page, size), w);
         return PageData.of(toVOs(p.getRecords()), p.getTotal(), page, size);
     }
 
@@ -118,7 +129,8 @@ public class PlatformProductServiceImpl implements PlatformProductService {
                 .gt(PrdSku::getPresaleQuota, 0)
                 .apply("sold_count > presale_quota")
                 .orderByDesc(PrdSku::getId);
-        return toVOs(DataScopeContext.executeWithoutScope(() -> skuMapper.selectList(w)));
+        // ★ 同 listSkus：接数据域。超卖告警同样不该让商家域运营看到别家的行
+        return toVOs(skuMapper.selectList(w));
     }
 
     // ---------------------------------------------------------------- P-3.3 处置

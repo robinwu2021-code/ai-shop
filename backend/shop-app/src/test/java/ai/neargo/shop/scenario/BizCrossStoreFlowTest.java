@@ -495,7 +495,7 @@ class BizCrossStoreFlowTest {
     private String listedGoods(String token, String title, long price, int stock) throws Exception {
         String body = mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"title\":\"" + title + "\",\"type\":\"NORMAL\","
+                        .content("{\"categoryNo\":\"CAT210\",\"title\":\"" + title + "\",\"type\":\"NORMAL\","
                                 + "\"skus\":[{\"optionValues\":[],\"price\":" + price
                                 + ",\"stock\":" + stock + "}]}"))
                 .andExpect(jsonPath("$.code").value(0))

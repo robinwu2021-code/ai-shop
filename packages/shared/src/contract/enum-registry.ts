@@ -129,7 +129,17 @@ export const ENUM_REGISTRY: EnumEntry[] = [
     note: "资质证件类型，与后端 MchQualification 的四个常量逐字一致（V79 结构化资质）。**BUSINESS_LICENSE 是入驻校验的判据** —— 需要执照的档位必须含它，改名会让那条校验静默失效：找不到就当没传，然后放行" },
   { decl: "shared:ReviewAppealStatus", dom: "core", shape: "STATUS", verdict: "OK" },
   { decl: "shared:OrderStatus", dom: "core", shape: "STATUS", verdict: "OK",
-    words: ["WAIT_PAY", "PAID", "ARRIVED", "SHIPPED", "COMPLETED", "REFUNDED"] },
+    // FULFILLING 是领域特有词：L1 表里没有能表达「交付方已行动、等交接完成」的通用词。
+    // 它替下了 ARRIVED/SHIPPED —— 那两个是「状态 × 履约」的组合，不是状态
+    words: ["WAIT_PAY", "PAID", "FULFILLING", "COMPLETED", "REFUNDED"] },
+  { decl: "shared:DELIVERY_SHAPE", dom: "trade", shape: "CLASS", verdict: "OK",
+    note: "履约方式的**交付形态**（自己去取 / 送到手上 / 去消费服务 / 服务上门 / 即时发放）。"
+      + "它是订单状态与履约方式之间的中间层：状态集合封闭，履约集合开放，"
+      + "页签谓词与状态文案都按形态分组 —— 加一种履约只需归入某一形态，不动状态枚举。"
+      + "纯端上概念，后端只存具体履约值，故无对应后端枚举" },
+  { decl: "shared:NEXT_ACTION", dom: "trade", shape: "CLASS", verdict: "OK",
+    note: "买家的下一步动作（等 / 去 / 到点在场 / 已结束）。由 (状态 × 交付形态) 推出，"
+      + "决定页签怎么归并、要不要给按钮。纯端上派生，不来自后端" },
   { decl: "shared:GrantType", dom: "core", shape: "CLASS", verdict: "PLANNED",
     note: "端上按微信三种登录场景拆成 WX_MINI/WX_PHONE/WX_OPEN，后端 AuthService 只有一个 GRANT_WECHAT_MP；PHONE_OTP 与 APPLE 两端一致。微信登录本身还没接（code2Session 是 TODO），接的时候两边一起定名" },
   { decl: "shared:MerchantStatus", dom: "core", shape: "STATUS", verdict: "RENAME",
@@ -295,7 +305,8 @@ export const ENUM_REGISTRY: EnumEntry[] = [
   { decl: "ops-web:TrafficSource", dom: "order", shape: "CLASS", verdict: "MERGE",
     note: "与 growth 的 AttrSource 同义：STORE_CODE↔MERCHANT_OWNED、INVITER↔INVITE" },
   { decl: "ops-web:OrderStatus", dom: "order", shape: "STATUS", verdict: "OK",
-    words: ["WAIT_PAY", "PAID", "SHIPPED", "ARRIVED", "COMPLETED", "REFUNDED"] },
+    // 与 shared:OrderStatus 同一套抽象状态（2026-08-17 三端统一）
+    words: ["WAIT_PAY", "PAID", "FULFILLING", "COMPLETED", "REFUNDED"] },
   { decl: "ops-web:PayChannel", dom: "payment", shape: "CLASS", verdict: "PLANNED",
     note: "多一个 BALANCE，后端未实现" },
   { decl: "ops-web:ReconDiffType", dom: "payment", shape: "CLASS", verdict: "PLANNED",

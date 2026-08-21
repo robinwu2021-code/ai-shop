@@ -5,7 +5,7 @@
 
 ## 一、总览
 
-全库 **109** 张表、**160** 条引用关系，分 **14** 个域。
+全库 **117** 张表、**171** 条引用关系，分 **13** 个域。
 按「被引用次数」分三条带 —— **不是有向无环图**：域之间存在环
 （`cmt → mkt → usr → cmt`），强行分层会画错。
 
@@ -14,9 +14,9 @@
 | 域 | 前缀 | 表数 | 被几个域引用 |
 |---|---|---:|---:|
 | 消费者账号 | `usr_*` | 4 | 10 |
-| 商家主体与门店 | `mch_*` | 17 | 9 |
+| 商家主体与门店 | `mch_*` | 18 | 9 |
 | 社区与自提点 | `cmt_*` | 3 | 8 |
-| 商品与类目 | `prd_*` | 8 | 6 |
+| 商品与类目 | `prd_*` | 12 | 7 |
 | 购物车 | `trd_*` | 1 | 0 |
 | 交易 | `ord_*` | 6 | 6 |
 | 履约 | `ful_*` | 8 | 0 |
@@ -24,9 +24,8 @@
 | 积分 | `pts_*` | 2 | 0 |
 | 结算 | `stl_*` | 9 | 0 |
 | 评价 | `rvw_*` | 3 | 0 |
-| 消息与客服 | `msg_*` | 5 | 0 |
 | 内容 | `cnt_*` | 4 | 0 |
-| 系统 | `sys_*` | 19 | 0 |
+| 系统 | `sys_*` | 20 | 0 |
 
 > `usr` 被 10 个域引用 —— 它是全库的锚点。改它的主键或语义，影响面是全局的。
 
@@ -45,7 +44,7 @@
 
 **跨域引用**：`usr_store_favorite.entity_no` → `mch_entity`、`usr_account.community_no` → `cmt_community`、`usr_account.pickup_no` → `cmt_pickup_point`、`usr_account.entity_no` → `mch_entity`
 
-### 商家主体与门店 `mch_*`（17 张）
+### 商家主体与门店 `mch_*`（18 张）
 
 ![商家主体与门店表关系](../diagrams/db-mch.svg)
 
@@ -68,8 +67,9 @@
 | `mch_staff_log` | 员工与授权的操作日志：谁在什么时候把谁的角色改成了什么 |
 | `mch_role` | 商家角色：6 个平台预置（只读）+ 商家自定义 |
 | `mch_entity_plan` | 主体的增值包订阅 |
+| `mch_store_category` | 门店经营类目：这家店打算卖哪几类 |
 
-**跨域引用**：`mch_entity_apply.user_no` → `usr_account`、`mch_entity_community.community_no` → `cmt_community`、`mch_account.user_no` → `usr_account`
+**跨域引用**：`mch_entity_apply.user_no` → `usr_account`、`mch_entity_community.community_no` → `cmt_community`、`mch_account.user_no` → `usr_account`、`mch_store_category.category_no` → `prd_category`
 
 ### 社区与自提点 `cmt_*`（3 张）
 
@@ -83,7 +83,7 @@
 
 **跨域引用**：`cmt_pickup_point.group_no` → `mkt_group_buy`、`cmt_community_apply.entity_no` → `mch_entity`
 
-### 商品与类目 `prd_*`（8 张）
+### 商品与类目 `prd_*`（12 张）
 
 ![商品与类目表关系](../diagrams/db-prd.svg)
 
@@ -97,8 +97,12 @@
 | `prd_stock_lock` | 库存锁定明细：释放与确认据此幂等 |
 | `prd_store_stock` | 门店级库存：有行则按店算，一条都没有则回退主体总量 |
 | `prd_store_goods` | 门店级上架关系：有行则按店算，一条都没有则回退主体级 on_sale |
+| `prd_spu_std` | 平台标准品：商家引用建品的模子，无价无库存 |
+| `prd_store_price` | 门店级售价：有行按店算，无行回退主体价（与库存相反，视为 0 就是白送） |
+| `prd_topic` | 主题分类（陈列）。与类目正交，与活动分开：摆到一起 ≠ 降价 |
+| `prd_topic_goods` | 主题 × 商品，多对多。与类目正交：一件豆浆既是预包装食品，也是早餐必备 |
 
-**跨域引用**：`prd_community_pool.community_no` → `cmt_community`、`prd_community_pool.entity_no` → `mch_entity`、`prd_goods.entity_no` → `mch_entity`、`prd_sku.entity_no` → `mch_entity`、`prd_spec_template.entity_no` → `mch_entity`、`prd_stock_lock.store_no` → `mch_store`、`prd_store_stock.store_no` → `mch_store`、`prd_store_stock.entity_no` → `mch_entity`、`prd_store_goods.store_no` → `mch_store`、`prd_store_goods.entity_no` → `mch_entity`
+**跨域引用**：`prd_community_pool.community_no` → `cmt_community`、`prd_community_pool.entity_no` → `mch_entity`、`prd_goods.entity_no` → `mch_entity`、`prd_sku.entity_no` → `mch_entity`、`prd_spec_template.entity_no` → `mch_entity`、`prd_stock_lock.store_no` → `mch_store`、`prd_store_stock.store_no` → `mch_store`、`prd_store_stock.entity_no` → `mch_entity`、`prd_store_goods.store_no` → `mch_store`、`prd_store_goods.entity_no` → `mch_entity`、`prd_store_price.store_no` → `mch_store`、`prd_store_price.entity_no` → `mch_entity`、`prd_topic_goods.entity_no` → `mch_entity`
 
 ### 购物车 `trd_*`（1 张）
 
@@ -207,20 +211,6 @@
 
 **跨域引用**：`rvw_appeal.entity_no` → `mch_entity`、`rvw_review.sub_order_no` → `ord_sub_order`、`rvw_review.order_no` → `ord_order`、`rvw_review.goods_no` → `prd_goods`、`rvw_review.sku_no` → `prd_sku`、`rvw_review.entity_no` → `mch_entity`、`rvw_review.user_no` → `usr_account`、`rvw_review.store_no` → `mch_store`、`rvw_review_like.user_no` → `usr_account`
 
-### 消息与客服 `msg_*`（5 张）
-
-![消息与客服表关系](../diagrams/db-msg.svg)
-
-| 表 | 说明 |
-|---|---|
-| `msg_message` | 站内消息 |
-| `msg_subscribe` | 订阅消息授权 |
-| `msg_ticket` | 客服工单 |
-| `msg_template` | 消息模板。停用即刻生效，引用它的推送发不出去 |
-| `msg_push_token` | App 推送设备绑定 |
-
-**跨域引用**：`msg_subscribe.user_no` → `usr_account`、`msg_ticket.user_no` → `usr_account`、`msg_ticket.order_no` → `ord_order`
-
 ### 内容 `cnt_*`（4 张）
 
 ![内容表关系](../diagrams/db-cnt.svg)
@@ -234,7 +224,7 @@
 
 **跨域引用**：`cnt_post.community_no` → `cmt_community`、`cnt_post.sku_no` → `prd_sku`、`cnt_question.sku_no` → `prd_sku`
 
-### 系统 `sys_*`（19 张）
+### 系统 `sys_*`（20 张）
 
 ![系统表关系](../diagrams/db-sys.svg)
 
@@ -259,8 +249,9 @@
 | `sys_notify_log` | 短信/邮件发送记录 |
 | `sys_job_run` | 定时任务运行记录（一个任务一行） |
 | `sys_merchant_plan_def` | 增值包档位定义 |
+| `sys_media_asset` | 场景×通道触达配置 |
 
-**跨域引用**：`sys_idempotent.user_no` → `usr_account`、`sys_ops_staff.merchant_no` → `mch_entity`、`sys_ops_staff.community_no` → `cmt_community`、`sys_ops_staff.pickup_no` → `cmt_pickup_point`、`sys_role.entity_no` → `mch_entity`、`sys_role_point.entity_no` → `mch_entity`
+**跨域引用**：`sys_idempotent.user_no` → `usr_account`、`sys_ops_staff.merchant_no` → `mch_entity`、`sys_ops_staff.community_no` → `cmt_community`、`sys_ops_staff.pickup_no` → `cmt_pickup_point`、`sys_role.entity_no` → `mch_entity`、`sys_role_point.entity_no` → `mch_entity`、`sys_media_asset.entity_no` → `mch_entity`、`sys_media_asset.store_no` → `mch_store`
 
 ## 三、逐表详情
 

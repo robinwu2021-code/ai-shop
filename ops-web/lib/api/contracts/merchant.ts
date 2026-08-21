@@ -7,7 +7,7 @@ import type {
   MerchantPlanRow,
   PlanDef,
   PlanUpgradeSignal,
-  AdmissionPolicy, AuthCode, LegalForm, DepositTxn, DepositTxnType, Merchant, MerchantApply, MerchantDeposit, MerchantStaffRow, MerchantStatus, Page, StoreMode, Violation, ViolationAction, ViolationType } from "@/lib/types";
+  AdmissionPolicy, AuthCode, AuthCodeSetResult, LegalForm, DepositTxn, DepositTxnType, Merchant, MerchantApply, MerchantDeposit, MerchantStaffRow, MerchantStatus, Page, StoreMode, Violation, ViolationAction, ViolationType } from "@/lib/types";
 import type { ApplyQ, MerchantQ } from "../query";
 
 export interface MerchantApi {
@@ -82,6 +82,10 @@ export interface MerchantApi {
    * @param serviceScope 通过时补/改服务范围；不传沿用申请单上的值
    * @param communityNos 同上。**商家没填时运营必须在这里补** ——
    *   否则商家通过审核、上完架，却对谁都不可见，而这个故障不报错
+   * @param grantCodes   通过时授予的经营类目码。**与通过同一个事务** ——
+   *   分两步做会留下「通过了但一个码都没授」的状态：商家收到通过通知、
+   *   进去建品、上架被拒，而错误说的是「你还没有资质授权」。
+   *   空 = 只经营无门槛类目（合法，不是漏填）
    */
   auditApply(
     applyNo: string,
@@ -89,6 +93,7 @@ export interface MerchantApi {
     reason?: string,
     serviceScope?: string,
     communityNos?: string[],
+    grantCodes?: string[],
   ): Promise<void>;
 
   listMerchants(q?: MerchantQ): Promise<Page<Merchant>>;
@@ -133,7 +138,18 @@ export interface MerchantApi {
    * - **不能把授权撤空**：商家会静默失去上架能力，要停就走封禁/归档，那是明示的动作；
    * - **该码下还有在售商品的不能撤**：撤了架上还挂着那类商品，谁也说不清它算不算违规。
    */
-  setMerchantAuthCodes(v: { merchantNo: string; codes: string[]; reason: string }): Promise<Merchant>;
+  /**
+   * 全量覆盖经营授权码。
+   *
+   * <p>响应里带 `revoked` 与 `affected`：**撤码时运营要看得见代价** ——
+   * 那些在架商品下次上架就会被闸门拒。看不见的话，一次「顺手收紧」会在几天后
+   * 变成商家的「我的货怎么上不去了」，而两件事没人会联系起来。
+   */
+  setMerchantAuthCodes(v: {
+    merchantNo: string;
+    codes: string[];
+    reason: string;
+  }): Promise<AuthCodeSetResult>;
 
   // ── 违规处置与信用档案（P-11.1.4 / 11.1.5）─────────────────────
 

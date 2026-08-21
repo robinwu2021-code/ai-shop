@@ -170,7 +170,10 @@ class BizNotifyFlowTest {
         dispatcher.dispatchPending();
         String subOrderNo = latestSubOrderNo(buyer);
 
-        // 核销完成（评价开放的前提）
+        // 核销完成（评价开放的前提）。**先到货再核销** —— 货没到点上时核销会被拒
+        mvc().perform(post("/biz/pickup/arrived").header("Authorization", "Bearer " + owner)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"orderNos\":[\"" + subOrderNo + "\"]}"));
         String verifyCode = verifyCodeOf(buyer);
         mvc().perform(post("/biz/pickup/verify").header("Authorization", "Bearer " + owner)
                         .contentType(MediaType.APPLICATION_JSON)

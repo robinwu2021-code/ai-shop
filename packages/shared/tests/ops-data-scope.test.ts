@@ -63,6 +63,34 @@ const SCOPE_BYPASS_OK: Record<string, string> = {
   "MerchantOrderServiceImpl#scan":
     "同 #todo：ops 门店统计与 B 端共用的扫描口径。批④ 拆口径",
 
+  // ── 商品域批⑤（2026-08-21）：列表批量化之后新出现的两处 ──
+  //
+  // 两处都**只是拿已经被数据域裁过的 goodsNo 再读一遍那几行**，不扩大可见范围：
+  // 分页查询（auditQueue）本身是接数据域的，detailAll 收到的 id 集合已经是授权结果。
+  // 去掉绕过反而会坏事 —— detailAll 与 list 同时服务 B 端（SELF 维度），
+  // 而 prd_goods 只有 MERCHANT 锚点，接上就是 1=0，商家商品列表当场全空。
+  "GoodsServiceImpl#detailAll":
+    "按已授权的 goodsNo 批量回读商品行，组装 VO 用。id 集合来自上一步已接数据域的分页查询；"
+    + "再裁一次不增加安全性，却会让 B 端（SELF 维度）的同一条路径拼出 1=0",
+  // 读 SKU 的三处：输入都是**已经被数据域裁过的 goodsNo**（或 B 端自己的 merchantNo），
+  // 拿它们去补价、补库存。再裁一次不增加安全性，却会让 B 端（SELF 维度）拼出 1=0。
+  //
+  // ⚠️ 真正的口子不在这三处，而在 `PlatformProductServiceImpl#listSkus` /
+  // `#listOversellSkus` —— 那两条是**直接检索 prd_sku**，2026-08-21 已去掉绕过接上数据域。
+  "GoodsServiceImpl#loadSkus":
+    "按 goodsNo 批量取 SKU 组装展示价。goodsNo 集合来自已接数据域的商品查询；"
+    + "且这是买家侧公共目录的同一条路径（C 端会话是 SELF 维度），接上就是 1=0",
+  "MerchantGoodsServiceImpl#withMarketPrices":
+    "按 goodsNo 补各市场价（商家侧编辑页整份回填要用）。同上：id 已授权，再裁只会把 B 端清空",
+  "MerchantGoodsServiceImpl#outOfStockGoodsNos":
+    "按 merchantNo 算「所有 SKU 都缺货」的商品号，只服务 B 端的缺货页签。"
+    + "B 端会话是 SELF 维度，接上数据域这一筛恒为空 —— 商家的缺货页签会永远显示没有缺货",
+
+  "MerchantGoodsServiceImpl#list":
+    "B 端商家商品列表与运营审核队列共用的读口径。B 端会话是 SELF 维度，"
+    + "而 prd_goods 只有 MERCHANT 锚点 —— 去掉绕过，商家的商品列表当场全空。"
+    + "运营侧真正接数据域的是 auditQueue 与 listForOps 那两条",
+
   // ── 批②（2026-08-14）：主查询已接数据域，剩下的是**装饰性取名** ──
   //
   // 这几处的输入是**已经过数据域裁剪的主查询的结果**（商家号/门店号），
@@ -134,6 +162,14 @@ const ANCHOR_WAIVED: Record<string, string> = {
     + "代价：配了社区域的运营打开商品池是空白。批③ 要正面解决，现在 prd_goods 上的 ops 查询"
     + "仍全部绕过数据域（SCOPE_BYPASS_OK），所以这条暂时不产生实际影响",
   "prd_goods:PICKUP": "同上：商品不属于自提点",
+
+  // prd_sku 于 2026-08-21 补登记（商品域优化清单 P2-4）：此前它**根本没注册**，
+  // 于是不带过滤条件的 `GET /ops/skus` 是全平台可见，配了商家域的运营也一样。
+  // 两个维度的豁免理由与 prd_goods 同源 —— SKU 挂在商品上，商品挂在商家上。
+  "prd_sku:COMMUNITY":
+    "SKU 属于商品、商品属于商家，与社区无关（可售社区在 prd_community_pool，多值）。"
+    + "代价：配了社区域的运营打开「库存与预售」tab 是空白 —— 与商品池同一批人、同一天暴露",
+  "prd_sku:PICKUP": "同上：SKU 不属于自提点",
 
   "stl_bill:COMMUNITY": "结算单按商家出账，与社区无关。代价：配了社区域的运营打开结算页空白（批④）",
   "stl_bill:PICKUP": "同上",

@@ -65,6 +65,14 @@ public class PrdSku extends BaseEntity {
      * 截单时间（P-3.3.2）。{@code null} = 不设截单，只靠额度封顶。
      * <b>必须早于 {@link #arriveAt}</b>：否则货到了还能继续下单，而那批订单没有对应的采购。
      */
+    /**
+ * <b>预售截单</b>：这批预售额度什么时候停止收单。<b>只有运营能设</b>
+ * （{@code POST /ops/skus/{no}/presale}），是 {@code lockPresale} 的 WHERE 条件之一 ——
+ * 少了它，次日现采的采购单已经下了还在继续进新订单。
+ *
+ * <p>⚠️ 与 {@code prd_goods.cutoff_at}（BIGINT，商家填的生鲜日常截单）
+ * <b>同名不同物</b>，责任人也不同。见 {@code PrdGoods#cutoffAt} 的说明。
+ */
     private java.time.LocalDateTime cutoffAt;
 
     /** 到货时间。一期只做「截单必须早于到货」的校验基准，不驱动履约批次。 */

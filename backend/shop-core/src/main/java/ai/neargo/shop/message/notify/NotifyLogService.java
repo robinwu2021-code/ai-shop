@@ -74,7 +74,21 @@ public interface NotifyLogService {
      * @param code      用户输入的图形验证码
      */
     void testSend(String channel, String target, String level, TestContent content,
-                  String captchaId, String code, String operatorNo);
+                  String clientId, String captchaId, String code, String operatorNo);
+
+    /**
+     * 某收件人（userNo）绑定的**推送终端设备**列表，供运营端「选择终端发起测试」。
+     * 同时含 USER 与 STAFF 两个收件箱 —— 一个人可能只在其中一端登录过 App。
+     */
+    java.util.List<PushDeviceVO> pushDevices(String userNo);
+
+    /**
+     * @param clientId    设备标识（个推 cid / FCM/APNs token）。运营授权可见，用于定向发送
+     * @param clientIdMask 展示用掩码
+     */
+    record PushDeviceVO(String receiverType, String platform, String provider,
+                        String clientId, String clientIdMask, String updatedAt) {
+    }
 
     /**
      * 模拟发送的自定义内容。**一个通道只认其中几项**，其余忽略：

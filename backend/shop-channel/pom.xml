@@ -32,6 +32,13 @@
             <version>${project.version}</version>
         </dependency>
 
+        <!-- 腾讯云 COS：对象存储（CosMediaStore，生产用；本地磁盘作兜底）。 -->
+        <dependency>
+            <groupId>com.qcloud</groupId>
+            <artifactId>cos_api</artifactId>
+            <version>5.6.245</version>
+        </dependency>
+
         <!-- 短信/邮件/微信订阅/推送 通道已迁至 shop-notify（触达中台）；此处只留支付/进件/上传/登录凭证适配。 -->
     </dependencies>
 

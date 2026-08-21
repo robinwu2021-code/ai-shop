@@ -2,12 +2,14 @@
 // 我的（复用 C 端的外观面板：4 皮肤 × 明暗 × 三语 × 多市场）。
 import { computed, ref } from "vue";
 import { onShow } from "@dcloudio/uni-app";
+import { useI18n } from "vue-i18n";
 import { useMerchantStore } from "@/stores/merchant";
 import { refreshUnread, unreadCount } from "@/stores/messages";
 import { ROUTES } from "@/shared/nav";
 import { api } from "@/api";
 import type { MerchantPlan } from "@shared/types";
 
+const { t } = useI18n();
 const merchant = useMerchantStore();
 const sheetOpen = ref(false);
 const plan = ref<MerchantPlan | null>(null);
@@ -46,6 +48,46 @@ async function loadPlan() {
   plan.value = await api.mMyPlan().catch(() => null);
 }
 
+/**
+ * 登录密码。**设过与没设过是两种心理动作**（修改 / 设置），文案要分开。
+ * 拿不到就当没设过：这一行只影响文案，不值得为它弹错。
+ */
+const hasPassword = ref(false);
+
+async function loadHasPassword() {
+  if (!merchant.isLogin) return;
+  hasPassword.value = (await api.mHasPassword().catch(() => null))?.hasPassword ?? false;
+}
+
+/**
+ * 设置 / 修改密码。用系统输入框而不是单开一页：这是一个字段的表单，
+ * 为它建一页要连带处理返回、校验、键盘遮挡三件事，收益不抵成本。
+ */
+async function editPassword() {
+  const pwd = await new Promise<string>((resolve) => {
+    uni.showModal({
+      title: t(hasPassword.value ? "me.passwordSet" : "me.passwordUnset"),
+      editable: true,
+      placeholderText: t("login.passwordPh"),
+      success: (r) => resolve(r.confirm ? (r.content ?? "") : ""),
+      fail: () => resolve(""),
+    });
+  });
+  if (!pwd.trim()) return;
+  // 与后端 PWD_MIN_LEN 一致；端上先挡一道是为了少一次必失败的往返
+  if (pwd.trim().length < 6) {
+    uni.showToast({ title: t("me.passwordTooShort"), icon: "none" });
+    return;
+  }
+  try {
+    await api.mSetPassword(pwd.trim());
+    hasPassword.value = true;
+    uni.showToast({ title: t("me.passwordSaved"), icon: "none" });
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: "none" });
+  }
+}
+
 async function logout() {
   // 解绑要在清令牌**之前** —— 之后就没有可用的令牌了。
   // 门店共用一台手机换班时，上一班的人不该继续收到这家店的订单推送
@@ -57,6 +99,7 @@ async function logout() {
 onShow(() => {
   void merchant.loadProfile().catch(() => null);
   void loadPlan();
+  void loadHasPassword();
   // 从消息页返回时角标要立即回落，不等下一轮 30s 轮询
   void refreshUnread();
 });
@@ -128,6 +171,15 @@ onShow(() => {
         </text>
         <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
       </view>
+      <!-- 登录密码：设过就是「修改」，没设过是「设置」——
+           两个词对应的心理动作不同，含糊成一个「密码」会让人不知道点进去会发生什么 -->
+      <view v-if="merchant.isLogin" class="cell" @tap="editPassword">
+        <text class="cell__label">{{ $t("me.password") }}</text>
+        <text class="cell__value">
+          {{ hasPassword ? $t("me.passwordSet") : $t("me.passwordUnset") }}
+        </text>
+        <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
+      </view>
       <view class="cell" @tap="sheetOpen = true">
         <text class="cell__label">{{ $t("me.appearance") }}</text>
         <text class="cell__value">{{ $t("me.appearanceValue") }}</text>
@@ -154,7 +206,7 @@ onShow(() => {
   display: flex;
   align-items: center;
   gap: 24rpx;
-  margin-bottom: 24rpx;
+  margin-bottom: 16rpx;
 }
 .head__logo {
   font-size: 64rpx;
@@ -211,7 +263,7 @@ onShow(() => {
   text-align: center;
 }
 .cell__value {
-  font-size: 26rpx;
+  font-size: 24rpx;
   color: var(--sh-sub);
   min-width: 0;
   overflow: hidden;
@@ -220,6 +272,6 @@ onShow(() => {
 }
 /* 额度用完：这一行的数字要看得出来不对劲，但不是报错 —— 他没做错任何事 */
 .cell__value--warn {
-  color: var(--sh-warning, #d46b08);
+  color: var(--sh-warning);
 }
 </style>

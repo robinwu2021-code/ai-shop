@@ -50,6 +50,18 @@
       "autoPort": false
     },
     {
+      "_comment": "hxmall.top 官网。纯静态、不连后端 —— 起它只为看页面，后端起没起都不影响。端口挑 3200 是为了与 ops-web 的 3100 隔开一档。",
+      "name": "site",
+      "runtimeExecutable": "/bin/zsh",
+      "runtimeArgs": [
+        "-lc",
+        "PORT=3200 npm run dev"
+      ],
+      "cwd": "site",
+      "port": 3200,
+      "autoPort": false
+    },
+    {
       "_comment": "C 端 H5。连 8081（见 c-app/.env 的 VITE_API_BASE）。",
       "name": "c-app-h5",
       "runtimeExecutable": "/bin/zsh",

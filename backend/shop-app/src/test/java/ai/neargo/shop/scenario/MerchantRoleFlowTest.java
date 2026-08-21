@@ -59,19 +59,24 @@ class MerchantRoleFlowTest {
         mvc().perform(post("/biz/roles").header("Authorization", "Bearer " + owner)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\":\"副老板\",\"perms\":[\"biz:order:view\",\"biz:store:admin\"]}"))
-                .andExpect(jsonPath("$.code").value(70006));
+                /*
+                 * **70015 ROLE_PERM_NOT_ASSIGNABLE**，不是通用的 70006「权限不足」。
+                 * 两者的区别在店主看到的那句话：70006 说「你没权限」——而他是店主，
+                 * 他有；真正的原因是「这一项谁都不能授出去」。用专用码才说得清。
+                 */
+                .andExpect(jsonPath("$.code").value(70015));
 
         // 单独一个也不行 —— 不是「混在里面才拦」
         mvc().perform(post("/biz/roles").header("Authorization", "Bearer " + owner)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\":\"管人的\",\"perms\":[\"biz:store:admin\"]}"))
-                .andExpect(jsonPath("$.code").value(70006));
+                .andExpect(jsonPath("$.code").value(70015));
 
         // 通配同理：它只属于 OWNER，而 OWNER 不走这张表
         mvc().perform(post("/biz/roles").header("Authorization", "Bearer " + owner)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\":\"全能\",\"perms\":[\"*\"]}"))
-                .andExpect(jsonPath("$.code").value(70006));
+                .andExpect(jsonPath("$.code").value(70015));
     }
 
     @Test

@@ -19,6 +19,7 @@ import ai.neargo.shop.spi.user.MerchantQueryPort;
 import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
+import ai.neargo.shop.common.Fulfillments;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.event.OutboxEventBus;
@@ -239,19 +240,27 @@ public class OrderServiceImpl implements OrderService {
      * 订单却记在 B 店」—— 那种错不报错，只会在对账时表现成三本账互相对不上。
      */
     private Map<String, String> storesOf(CreateOrderCommand cmd, Split split) {
+        return storesOfEntities(cmd, split.groups.stream().map(Group::merchantNo).toList());
+    }
+
+    /**
+     * 同一套解析，但只要主体号 —— <b>拆单前就要用它取门店价</b>，
+     * 而那时 {@link Split} 还没建出来。
+     */
+    private Map<String, String> storesOfEntities(CreateOrderCommand cmd, List<String> merchantNos) {
         Map<String, String> out = new HashMap<>();
         String pickupStoreNo = pickupPort.find(cmd.pickupNo())
                 .map(ai.neargo.shop.spi.user.PickupQueryPort.PickupBrief::ownerStoreNo)
                 .filter(no -> no != null && !no.isBlank())
                 .orElse(null);
-        for (Group g : split.groups) {
+        for (String merchantNo : merchantNos) {
             // 一次订单可以拆给多家商家，自提点只可能属于其中一家（或谁都不属于）
             boolean mine = pickupStoreNo != null
-                    && merchantPort.storeNos(g.merchantNo).contains(pickupStoreNo);
+                    && merchantPort.storeNos(merchantNo).contains(pickupStoreNo);
             if (mine) {
-                out.put(g.merchantNo, pickupStoreNo);
+                out.put(merchantNo, pickupStoreNo);
             } else {
-                merchantPort.defaultStoreNo(g.merchantNo).ifPresent(no -> out.put(g.merchantNo, no));
+                merchantPort.defaultStoreNo(merchantNo).ifPresent(no -> out.put(merchantNo, no));
             }
         }
         return out;
@@ -341,6 +350,8 @@ public class OrderServiceImpl implements OrderService {
         }
         requireFulfillmentSupported(cmd.fulfillment(), split);
         requireReceiverWhenShipped(cmd, userNo);
+        requirePickupPointWhenPickup(cmd);
+        requireAppointmentWhenNeeded(cmd);
 
         String orderNo = BizKey.next(BizKey.ORDER);
         long now = System.currentTimeMillis();
@@ -513,6 +524,11 @@ public class OrderServiceImpl implements OrderService {
             sub.setStoreNo(storeOfMerchant.get(g.merchantNo));
             sub.setEntityName(g.merchantName);
             sub.setFulfillment(cmd.fulfillment());
+            // 预约时段落到子单：商家的待服务列表按它排，买家的订单卡按它显示「几点」。
+            // 只在预约类履约上写，其余留空 —— 一个不需要预约的单带着时间是噪音
+            if (Fulfillments.NEEDS_APPOINTMENT.contains(cmd.fulfillment())) {
+                sub.setAppointmentAt(cmd.appointmentAt());
+            }
             sub.setPickupNo(cmd.pickupNo());
             // 自提点名称快照（C6）：页面要显示名字，且自提点改名不该影响历史订单
             sub.setPickupName(pickupPort.find(cmd.pickupNo()).map(p -> p.name()).orElse(null));
@@ -652,13 +668,24 @@ public class OrderServiceImpl implements OrderService {
         stockPort.confirm(orderNo);
 
         for (OrdSubOrder sub : subOrders(orderNo)) {
-            OrderStateMachine.assertSubOrderTransit(sub.getStatus(), OrdSubOrder.WAIT_FULFILL);
-            sub.setStatus(OrdSubOrder.WAIT_FULFILL);
+            /*
+             * **支付成功后落哪个状态，由履约方式决定**（《订单状态-统一整理》§2.2）。
+             *
+             * 实物类落 WAIT_FULFILL：商家要备货、要发货，得先动手。
+             * 服务类（到店核销）落 FULFILLING：码已出，买家立刻能去用，
+             * 商家没有任何前置动作 —— 把它丢进「待发货」，
+             * 界面会说「待发货」而根本没有东西要发。**不是文案错，是状态落错了。**
+             */
+            boolean serviceLike = Fulfillments.SERVICE_LIKE.contains(sub.getFulfillment());
+            String next = serviceLike ? OrdSubOrder.FULFILLING : OrdSubOrder.WAIT_FULFILL;
+            OrderStateMachine.assertSubOrderTransit(sub.getStatus(), next);
+            sub.setStatus(next);
             // 核销码在支付成功后生成：未付款的订单不该有能核销的码。
             // 全局唯一由 uk_verify_code 兜底 —— 撞码时插入失败总比核销台扫出两单强
             sub.setVerifyCode(newVerifyCode());
             subOrderMapper.updateById(sub);
-            appendStatusLog(sub.getSubOrderNo(), OrdSubOrder.WAIT_FULFILL, "支付成功，待备货",
+            appendStatusLog(sub.getSubOrderNo(), next,
+                    serviceLike ? "支付成功，凭码到店使用" : "支付成功，待备货",
                     OrdStatusLog.BY_SYSTEM, null);
 
             /*
@@ -739,21 +766,25 @@ public class OrderServiceImpl implements OrderService {
             List.of("STORE_PICKUP", "NEIGHBOR_PICKUP");
 
     @Override
-    public PageData<OrderVO> list(String status, long page, long size) {
+    public PageData<OrderVO> list(String status, List<String> fulfillments, long page, long size) {
         // Q6：列表是子单粒度
         var w = Wrappers.<OrdSubOrder>lambdaQuery()
                 .eq(OrdSubOrder::getUserNo, SecurityUtils.currentUserNo());
-        // 同 B 端：端上传的是展示状态（PAID / SHIPPED / ARRIVED），库里存的是 WAIT_FULFILL / FULFILLING
+        /*
+         * **两个正交的筛选条件**，不是一个。
+         *
+         * 此前端上传的是「状态 × 履约」的组合词（ARRIVED / SHIPPED），后端再拆回去 ——
+         * 于是「待取货」这种页签是一个**状态值**，加一种履约就得加一个值。
+         * 现在端上传抽象状态 + 想要的履约集合，页签变成**谓词**：
+         * 「待取货」= FULFILLING ∧ 自提类，「待使用」= FULFILLING ∧ 服务类，
+         * 想合并两个页签只改端上传的集合，后端一行不动。
+         */
         List<String> stored = OrderStatusView.toStored(status);
         if (!stored.isEmpty()) {
             w.in(OrdSubOrder::getStatus, stored);
-            Boolean pickupOnly = OrderStatusView.pickupOnly(status);
-            if (Boolean.TRUE.equals(pickupOnly)) {
-                w.in(OrdSubOrder::getFulfillment, PICKUP_FULFILLMENTS);
-            } else if (Boolean.FALSE.equals(pickupOnly)) {
-                w.and(x -> x.notIn(OrdSubOrder::getFulfillment, PICKUP_FULFILLMENTS)
-                        .or().isNull(OrdSubOrder::getFulfillment));
-            }
+        }
+        if (fulfillments != null && !fulfillments.isEmpty()) {
+            w.in(OrdSubOrder::getFulfillment, fulfillments);
         }
         w.orderByDesc(OrdSubOrder::getId);
 
@@ -884,8 +915,24 @@ public class OrderServiceImpl implements OrderService {
             return new Split(List.of(), List.of());
         }
 
-        Map<String, GoodsQueryPort.SkuSnapshot> snapshots =
-                goodsPort.snapshot(requested.stream().map(CreateOrderCommand.Item::skuNo).toList());
+        List<String> skuNos = requested.stream().map(CreateOrderCommand.Item::skuNo).toList();
+        Map<String, GoodsQueryPort.SkuSnapshot> snapshots = goodsPort.snapshot(skuNos);
+
+        /*
+         * **门店价：预览与下单在这里一起拿到，不在别处各算一次**（批 C）。
+         *
+         * 两处各算一次的下场是「购物车/预览显示门店价、扣款按主体价」——
+         * 与限时特价那条注释记的是同一个形状，也是同一个理由：
+         * split() 是预览与下单唯一共用的入口，覆盖层只能落在这里。
+         *
+         * 先按主体价算一遍再决定要不要重算：绝大多数商家不分店定价，
+         * 无条件走门店分支等于给每次下单加两条查询。
+         */
+        Map<String, String> storeByEntity = storesOfEntities(cmd,
+                snapshots.values().stream().map(GoodsQueryPort.SkuSnapshot::merchantNo).distinct().toList());
+        if (!goodsPort.storePrices(storeByEntity, skuNos).isEmpty()) {
+            snapshots = goodsPort.snapshot(skuNos, storeByEntity);
+        }
 
         List<Line> lines = new ArrayList<>();
         for (CreateOrderCommand.Item item : requested) {
@@ -958,8 +1005,8 @@ public class OrderServiceImpl implements OrderService {
                             l.amount(), l.snapshot.categoryType(), false)).toList(),
                     OrderVO.Amount.of(g.goodsAmount(), g.freight,
                             discounts.of(g.merchantNo), 0L, CURRENCY_CNY),
-                    // 预览还没有单，收件人自然也没有
-                    null, null, null, null, 0L, null, null, null, null, List.of(), null,
+                    // 预览还没有单，收件人与预约时间自然也没有
+                    null, null, null, null, 0L, null, null, null, null, null, List.of(), null,
                 // 买家昵称只在商家侧下发（B12）——C 端自己就是买家，不需要
                 null)).toList();
 
@@ -967,7 +1014,7 @@ public class OrderServiceImpl implements OrderService {
                     children.stream().flatMap(c -> c.items().stream()).toList(),
                     OrderVO.Amount.of(goodsAmount(), freightAmount(),
                             discounts.total(), 0L, CURRENCY_CNY),
-                    null, null, null, null, 0L, null, null, null, null, List.of(), children,
+                    null, null, null, null, 0L, null, null, null, null, null, List.of(), children,
                 // 买家昵称只在商家侧下发（B12）——C 端自己就是买家，不需要
                 null);
         }
@@ -1009,9 +1056,17 @@ public class OrderServiceImpl implements OrderService {
     /** 订单视角（Q6）：单商家，有履约方式、核销码与时间线。 */
     private OrderVO orderView(OrdSubOrder s, OrdOrder order) {
         return new OrderVO(
-                // 下发**展示状态**而不是库状态：端上的标签页按前者筛（见 OrderStatusView 的注释）
+                /*
+                 * 下发**抽象状态**：`WAIT_FULFILL` 归一成契约的 `PAID`，`FULFILLING` 原样。
+                 *
+                 * 此前这里下发的是「状态 × 履约」的组合（`ARRIVED` / `SHIPPED`）——
+                 * 那不是状态，是组合冒充状态，代价是**每加一种履约就要加一批状态**
+                 * （服务类差点又加了 TO_USE / TO_SERVE）。
+                 * 现在履约方式单独下发（`fulfillment` 字段本来就在），
+                 * 由端上的 `orderView(status, fulfillment, info)` 决定显示什么。
+                 */
                 s.getSubOrderNo(), s.getOrderNo(),
-                OrderStatusView.of(s.getStatus(), s.getFulfillment()), s.getFulfillment(),
+                OrderStatusView.toContract(s.getStatus()), s.getFulfillment(),
                 s.getEntityNo(), s.getEntityName(),
                 itemsOf(s.getSubOrderNo()).stream().map(this::toItemVO).toList(),
                 OrderVO.Amount.of(nz(s.getGoodsAmount()), nz(s.getFreightAmount()),
@@ -1029,6 +1084,7 @@ public class OrderServiceImpl implements OrderService {
                 // 买家要靠它查物流；此前库里有这一列而 VO 里没有，发货对买家不可见
                 s.getExpressNo(),
                 s.getTrafficSource(),
+                s.getAppointmentAt(),
                 // 买家看自己的单：完整地址与完整手机号，那本来就是他填的
                 receiverOf(s),
                 timelineOf(s.getSubOrderNo()),
@@ -1063,8 +1119,8 @@ public class OrderServiceImpl implements OrderService {
                         order.getCurrency()),
                 null, null, null,
                 order.getPayDeadlineAt(), millis(order.getCreatedAt()), order.getPaidAt(),
-                // 支付视角跨商家，没有单一快递号 —— 它在每个子单上。收件人同理
-                null, null, null, List.of(), children,
+                // 支付视角跨商家，没有单一快递号 —— 它在每个子单上。收件人与预约时间同理
+                null, null, null, null, List.of(), children,
                 // 买家昵称只在商家侧下发（B12）——C 端自己就是买家，不需要
                 null);
     }
@@ -1128,9 +1184,15 @@ public class OrderServiceImpl implements OrderService {
      * <p>快照里履约方式为空的商品放行——那是存量数据，
      * 不能因为补了这道校验就把一批老商品变成不可下单。
      */
-    /** 送到人手上的两种履约方式 —— 它们必须有地址，自提不需要 */
-    private static final java.util.Set<String> SHIPPED_FULFILLMENTS =
-            java.util.Set.of("EXPRESS", "MERCHANT_DELIVERY");
+    /**
+     * 送到人手上的履约方式 —— 它们必须有地址，自提不需要。
+     *
+     * <p><b>上门预约也在里面</b>：师傅要知道去哪。它与快递/自送的差别在「送的是货还是人」，
+     * 而「必须有地址」这件事三者一样 —— 按需要不需要地址分组，
+     * 比按实物/服务分组更贴近这道闸真正要判的东西。
+     */
+    private static final java.util.Set<String> SHIPPED_FULFILLMENTS = java.util.Set.of(
+            Fulfillments.EXPRESS, Fulfillments.MERCHANT_DELIVERY, Fulfillments.APPOINTMENT);
 
     /**
      * 快递 / 自送必须有**能解析出来**的收货地址。
@@ -1154,6 +1216,53 @@ public class OrderServiceImpl implements OrderService {
         if (cmd.addressId() == null || cmd.addressId().isBlank()
                 || userPort.receiverOf(userNo, cmd.addressId()).isEmpty()) {
             throw BizException.of(ErrorCode.RECEIVER_REQUIRED);
+        }
+    }
+
+    /**
+     * 自提单<b>必须带自提点</b>，而且那个点得真的存在。
+     *
+     * <p><b>与上面「快递必须有地址」是同一形状的另一半</b>：送到人手上的要地址，
+     * 去点上取的要点 —— 两者都是「不给就履约不了」的信息，所以都拦在创建这一步。
+     *
+     * <p>缺了它<b>不会在下单时报错</b>，而是让后面每一步都失败、且原因都指错：
+     * <ul>
+     *   <li>到货登记 {@code /biz/pickup/arrived} → 返回空列表，看着像「没有这单」</li>
+     *   <li>核销 {@code /biz/pickup/verify} → {@code NOT_THIS_PICKUP}，
+     *       看着像「顾客走错店了」—— 店员会让他去别的自提点，
+     *       <b>而那单根本不属于任何自提点</b></li>
+     * </ul>
+     * 2026-08-17 B 端第二轮实测抓到（用例 TB-B-6-2）。
+     *
+     * <p>连「点存不存在」一起校：只判空的话，传一个不存在的点号照样落到同一个坑里，
+     * 而那种请求恰恰是端上传错参数时最常见的样子。
+     */
+    private void requirePickupPointWhenPickup(CreateOrderCommand cmd) {
+        if (cmd.fulfillment() == null || !Fulfillments.isPickup(cmd.fulfillment())) {
+            return;
+        }
+        if (cmd.pickupNo() == null || cmd.pickupNo().isBlank()
+                || pickupPort.find(cmd.pickupNo()).isEmpty()) {
+            throw BizException.of(ErrorCode.PICKUP_POINT_REQUIRED);
+        }
+    }
+
+    /**
+     * 预约类履约<b>必须带预约时间</b>。
+     *
+     * <p>缺了不是「稍后再约」——订单会直接进商家的待服务列表，
+     * 而商家不知道该几点去，买家也不知道自己约了没有。两边都只能打电话。
+     * 与收货地址那道闸同理：**下得成的单必须是履约得了的单**。
+     */
+    private void requireAppointmentWhenNeeded(CreateOrderCommand cmd) {
+        if (cmd.fulfillment() == null
+                || !Fulfillments.NEEDS_APPOINTMENT.contains(cmd.fulfillment())) {
+            return;
+        }
+        Long at = cmd.appointmentAt();
+        // 过去的时间点与没填一样没用 —— 商家没法回到昨天上门
+        if (at == null || at <= System.currentTimeMillis()) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
         }
     }
 

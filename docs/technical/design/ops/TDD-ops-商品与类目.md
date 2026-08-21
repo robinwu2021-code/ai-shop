@@ -36,9 +36,16 @@
 **product.ts**
 - `Category`：三级树（`parentNo` + `level`）、`template` 品类属性模板（标品/生鲜/服务/虚拟/卡券）、
   `qualifications` 类目资质要求、`i18n` 多语言名称、`skuCount`
-- `Sku`：状态机 `DRAFT → PENDING → ON_SALE ⇄ OFF_SALE`，`REJECTED` 可回到 `PENDING`；
-  `prices: Record<Market, number>`（**B6：多市场必须分别定价**）、`i18n` 三语文案、
-  `presaleQuota` / `soldCount` / `cutoffAt`
+- `Sku`：⚠️ **没有独立状态机**（2026-08-21 更正）。这里原先写着
+  `DRAFT → PENDING → ON_SALE ⇄ OFF_SALE`，那是 **mock 层的模型** ——
+  真库 `prd_sku` 没有状态列，审核态、上下架都在父商品 `prd_goods` 上。
+  `POST /ops/skus/{no}/audit` 与 `/force-off` 后端都**解析到父商品再执行**
+  （审的是「这件商品能不能卖」，标题/图/类目/资质全在 goods 上）。
+  <br>**代价要说清楚**：运营在「库存与预售」tab 对某一行点驳回，
+  **整件商品连同其他规格一起被打回**。路径保持 SKU 粒度是刻意的（不改端上这一层），
+  但 UI 上必须把作用域说出来，否则运营以为自己只压了一个规格。
+  <br>SKU 上真实存在的是：`prices: Record<Market, number>`（**B6：多市场必须分别定价**）、
+  `i18n` 三语文案、`presaleQuota` / `soldCount` / `cutoffAt`
 
 ### 2.3 关键规则（mock 层强制）
 

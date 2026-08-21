@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="680" height="680" viewBox="0 0 680 680" role="img" font-family="system-ui,-apple-system,'PingFang SC',sans-serif">
-<title>系统 表关系</title><desc>19 张表，箭头由引用方指向被引用方。</desc>
+<title>系统 表关系</title><desc>20 张表，箭头由引用方指向被引用方。</desc>
 <defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
 <path d="M2 1L8 5L2 9" fill="none" stroke="#8A94A2" stroke-width="1.4" stroke-linecap="round"/></marker>
 <style>.n{font-weight:500;fill:#161A21}.s{font-size:11px;fill:#5A6472}
@@ -53,12 +53,15 @@
 <rect x="511" y="378" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
 <text class="n" x="580" y="398" text-anchor="middle" font-size="13">sys_notify_log</text>
 <text class="s" x="580" y="413" text-anchor="middle">短信/邮件发送记录</text>
-<rect x="159" y="494" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="244" y="514" text-anchor="middle" font-size="13">sys_job_run</text>
-<text class="s" x="244" y="529" text-anchor="middle">定时任务运行记录（一个任务一…</text>
-<rect x="351" y="494" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="436" y="514" text-anchor="middle" font-size="13">sys_merchant_plan_def</text>
-<text class="s" x="436" y="529" text-anchor="middle">增值包档位定义</text>
+<rect x="63" y="494" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
+<text class="n" x="148" y="514" text-anchor="middle" font-size="13">sys_job_run</text>
+<text class="s" x="148" y="529" text-anchor="middle">定时任务运行记录（一个任务一…</text>
+<rect x="255" y="494" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
+<text class="n" x="340" y="514" text-anchor="middle" font-size="13">sys_merchant_plan_def</text>
+<text class="s" x="340" y="529" text-anchor="middle">增值包档位定义</text>
+<rect x="447" y="494" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
+<text class="n" x="532" y="514" text-anchor="middle" font-size="13">sys_media_asset</text>
+<text class="s" x="532" y="529" text-anchor="middle">场景×通道触达配置</text>
 <rect x="255" y="610" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
 <text class="n" x="340" y="630" text-anchor="middle" font-size="13">sys_audit_log</text>
 <text class="s" x="340" y="645" text-anchor="middle">操作审计（append-only）</text>

@@ -91,6 +91,14 @@ public final class MerchantMappers {
     }
 
     /** 门店（mch_store）。V44 起一主体可有多行。 */
+    /**
+     * 门店经营类目。**声明语义不是覆盖语义** —— 见
+     * {@link ai.neargo.shop.merchant.entity.MchStoreCategory} 的类注释。
+     */
+    public interface MchStoreCategoryMapper
+            extends BaseMapper<ai.neargo.shop.merchant.entity.MchStoreCategory> {
+    }
+
     public interface MchStoreMapper extends BaseMapper<MchStore> {
     }
 

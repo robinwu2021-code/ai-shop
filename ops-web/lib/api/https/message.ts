@@ -22,6 +22,7 @@ export const messageHttp: MessageApi = {
   getCaptcha: () => client.get("/ops/captcha"),
   testSendNotify: (v) => client.post("/ops/notify-logs/test-send", v),
   precheckNotifyTarget: (v) => client.post("/ops/notify-logs/precheck", v),
+  listPushDevices: (userNo) => client.get("/ops/notify-logs/push-devices", { userNo }),
   listInAppMessages: (q) => client.get("/ops/inapp-messages", q),
   getDefaultLang: () => client.get("/ops/notify-channels/default-lang"),
   saveDefaultLang: (lang) => client.post("/ops/notify-channels/default-lang", { lang }),

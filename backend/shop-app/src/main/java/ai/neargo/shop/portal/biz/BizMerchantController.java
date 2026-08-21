@@ -15,6 +15,7 @@ import ai.neargo.shop.merchant.dto.StoreProfileVO;
 import ai.neargo.shop.merchant.service.MerchantPaymentService;
 import ai.neargo.shop.merchant.service.MerchantStaffService;
 import ai.neargo.shop.merchant.service.StoreAdminService;
+import ai.neargo.shop.merchant.service.StoreCategoryService;
 import ai.neargo.shop.merchant.service.MerchantStoreService;
 import ai.neargo.shop.merchant.service.MerchantService;
 import ai.neargo.shop.community.service.CommunityAdminService;
@@ -53,6 +54,8 @@ public class BizMerchantController {
     private final MerchantStoreService storeService;
     private final MerchantPaymentService paymentService;
     private final StoreAdminService storeAdminService;
+    /** 门店货架 —— 建店时一并摆上，之后商家自己调 */
+    private final StoreCategoryService storeCategoryService;
     private final MerchantStaffService staffService;
     private final ai.neargo.shop.merchant.service.MerchantRoleService roleService;
     /** 提报新社区（ADR-013 阶段三）：社区是 community 域的主数据，商家只是提报方 */
@@ -68,7 +71,9 @@ public class BizMerchantController {
                                  MerchantStaffService staffService,
                                  ai.neargo.shop.merchant.service.MerchantRoleService roleService,
                                  ai.neargo.shop.community.service.CommunityAdminService communityAdminService,
-                                 MerchantQueryPort merchantQueryPort) {
+                                 MerchantQueryPort merchantQueryPort,
+                                 StoreCategoryService storeCategoryService) {
+        this.storeCategoryService = storeCategoryService;
         this.merchantQueryPort = merchantQueryPort;
         this.communityAdminService = communityAdminService;
         this.roleService = roleService;
@@ -349,7 +354,51 @@ public class BizMerchantController {
     @PreAuthorize("@perm.canBiz('" + BizPerms.STORE_ADMIN + "')")
     @PostMapping("/biz/store/create")
     public StoreVO createStore(@RequestBody StoreCreateReq req) {
-        return storeAdminService.create(BizContext.requireMerchantNo(), req.name(), req.address());
+        String merchantNo = BizContext.requireMerchantNo();
+        StoreVO store = storeAdminService.create(merchantNo, req.name(), req.address());
+        /*
+         * 建店时把货架也摆上（TDD-品类约束全链路 §3.2）。
+         *
+         * **一个都不选是合法的** —— 这家店还没想好卖什么，建品时会自动加入。
+         * 不勾时复制默认店的：多门店商家开分店卖的多半是同一批货，从零勾选是纯负担。
+         */
+        String defaultStore = storeAdminService.list(merchantNo).stream()
+                .filter(s -> !s.storeNo().equals(store.storeNo()))
+                .findFirst().map(StoreVO::storeNo).orElse(null);
+        storeCategoryService.initForNewStore(merchantNo, store.storeNo(),
+                req.categoryNos(), defaultStore);
+        return store;
+    }
+
+    /**
+     * 这家店的经营类目（货架）。
+     *
+     * <p>与 {@code mch_entity.category_codes} 是两件事：那是<b>平台批的证</b>
+     * （能不能卖这类），这是<b>商家的货架</b>（店里怎么摆）。
+     */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.STORE + "')")
+    @GetMapping("/biz/store/{storeNo}/categories")
+    public List<StoreCategoryService.StoreCategoryVO> storeCategories(
+            @PathVariable String storeNo) {
+        return storeCategoryService.list(BizContext.requireMerchantNo(), storeNo);
+    }
+
+    /**
+     * 整份替换这家店的类目 —— 勾选式界面的天然形状。
+     *
+     * <p><b>删掉一个底下还有商品的类目会被拒</b>：不拦的话那些商品会挂在一个
+     * 这家店已经不存在的货架上，店铺页里就此消失，而商家在商品列表里还看得到它们。
+     */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.STORE_ADMIN + "')")
+    @PostMapping("/biz/store/{storeNo}/categories")
+    public List<StoreCategoryService.StoreCategoryVO> saveStoreCategories(
+            @PathVariable String storeNo, @RequestBody StoreCategoriesReq req) {
+        var items = req.items() == null ? List.<StoreCategoryService.Item>of()
+                : req.items().stream()
+                        .map(i -> new StoreCategoryService.Item(
+                                i.categoryNo(), i.displayName(), i.sort()))
+                        .toList();
+        return storeCategoryService.replace(BizContext.requireMerchantNo(), storeNo, items);
     }
 
     /** 改门店名与地址。门面其余部分（公告/营业时间/主推）走 {@code POST /biz/store}。 */
@@ -387,7 +436,17 @@ public class BizMerchantController {
                 req.payMerchantNo());
     }
 
-    public record StoreCreateReq(String name, String address) {
+    /**
+     * @param categoryNos 这家店摆哪些货架；<b>为空 = 复制默认店的</b>（多门店商家开分店
+     *                    卖的多半是同一批货），没有默认店则先空着，建品时自动加入
+     */
+    public record StoreCreateReq(String name, String address, List<String> categoryNos) {
+    }
+
+    public record StoreCategoriesReq(List<StoreCategoryItemReq> items) {
+    }
+
+    public record StoreCategoryItemReq(String categoryNo, String displayName, Integer sort) {
     }
 
     public record StatusReq(Boolean active) {

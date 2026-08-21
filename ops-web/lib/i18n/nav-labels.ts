@@ -38,6 +38,11 @@ const OVERLAY: Record<string, Record<string, string>> = {
   商品池与审核: { en: "Product pool & review" },
   预售额度与超卖: { en: "Presale quota & oversell" },
   规格模板维护: { en: "Spec templates" },
+  标准品库: { en: "Standard products" },
+  主题分类: { en: "Topics" },
+  // group 名也要译：漏一条，切到 EN 时分组标题夹一行中文
+  标准品: { en: "Standard products" },
+  陈列: { en: "Merchandising" },
 
   交易订单: { en: "Orders" },
   订单检索: { en: "Order search" },

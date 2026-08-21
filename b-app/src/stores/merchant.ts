@@ -58,6 +58,16 @@ export const useMerchantStore = defineStore("merchant", {
   actions: {
     restore() {
       this.token = (uni.getStorageSync(STORAGE.token) as string) || "";
+      // 有令牌就凭它把 profile 拉回来。persist 只是「秒开」的缓存（可能缺失/过期），
+      // **会话能不能续，取决于令牌**——不补这一步，冷启后 profile 为 null 就成了游客
+      // （令牌失效则 loadProfile 走 401 兜底登出，行为正确）。
+      if (this.token) {
+        void this.loadProfile();
+        // **恢复的会话也要重新登记推送 cid**。老用户每次都是自动恢复、从不走 login，
+        // 不在这里绑一次，bindPushDevice 就永远不触发 → 新订单响铃收不到。
+        // cid 每次启动可能变，重登记也顺带保鲜（后端 register 是幂等 upsert）。
+        void this.bindPushDevice();
+      }
     },
 
     /**

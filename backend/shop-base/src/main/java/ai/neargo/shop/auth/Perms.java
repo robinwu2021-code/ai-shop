@@ -255,6 +255,26 @@ public final class Perms {
     public static final String PRODUCT_CATEGORY_READ = "product:category:read";
 
     /**
+     * 标准品库（TDD-标准品库）。
+     *
+     * <p><b>与类目分开而不是复用 {@code product:category:*}</b>：类目决定「这类货要什么资质」，
+     * 标准品决定「这件货长什么样」。前者是准入门槛，后者是录入模板 ——
+     * 让能改准入的人才能录标准品，会把一件运营日常挡在一个很高的门后面。
+     */
+    public static final String PRODUCT_STD_READ = "product:std:read";
+    public static final String PRODUCT_STD_UPDATE = "product:std:update";
+
+    /**
+     * 主题分类（陈列）。
+     *
+     * <p><b>与类目、标准品都分开</b>：类目是准入门槛、标准品是录入模板，
+     * 而主题只是「这周首页摆什么」—— 它是改动最频繁、后果最轻的一档，
+     * 挂在类目那个高门槛下面等于让一件运营日常天天找人开权限。
+     */
+    public static final String PRODUCT_TOPIC_READ = "product:topic:read";
+    public static final String PRODUCT_TOPIC_UPDATE = "product:topic:update";
+
+    /**
      * 类目树与资质码字典的维护。
      *
      * <p>与审单件商品分开：类目上挂着 {@code required_code}（经营准入的判据），
@@ -408,7 +428,8 @@ public final class Perms {
                     MARKETING_CAMPAIGN_READ, MARKETING_CAMPAIGN_UPDATE, MARKETING_COUPON_ISSUE,
                     MARKETING_COUPON_READ, MARKETING_COUPON_UPDATE, ORDER_READ,
                     PRODUCT_CATEGORY_READ, PRODUCT_CATEGORY_UPDATE, PRODUCT_SKU_AUDIT,
-                    PRODUCT_SKU_READ)),
+                    PRODUCT_SKU_READ, PRODUCT_STD_READ, PRODUCT_STD_UPDATE,
+                    PRODUCT_TOPIC_READ, PRODUCT_TOPIC_UPDATE)),
 
             Map.entry("SUPPORT", List.of(AFTERSALE_REFUND_APPROVE, AFTERSALE_REFUND_READ,
                     AFTERSALE_TICKET_HANDLE, AFTERSALE_TICKET_READ, COMMUNITY_READ,

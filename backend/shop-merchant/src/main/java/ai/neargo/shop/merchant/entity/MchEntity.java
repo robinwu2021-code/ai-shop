@@ -102,6 +102,15 @@ public class MchEntity extends BaseEntity {
      */
     private String storeCode;
 
+    /**
+     * 店铺小程序码的 PNG base64（V164）。
+     *
+     * <p><b>生成一次就存着</b>：{@code wxacode.getUnlimited} 是永久码且每个 appid
+     * 总量有限（十万级），每次请求现调会把额度耗在刷新页面上 ——
+     * 而额度用尽之后，新入驻的商家再也拿不到码。
+     */
+    private String acodeBase64;
+
     private Long joinedAt;
 
     /** APPLYING / ACTIVE / SUSPENDED / BANNED —— 只有 ACTIVE 能上架与收款。 */

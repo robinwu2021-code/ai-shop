@@ -53,6 +53,8 @@ class PushNotifyFlowTest {
     @Autowired
     private PushTokenMapper tokenMapper;
     @Autowired
+    private ai.neargo.shop.message.notify.NotifyLogService notifyLogService;
+    @Autowired
     private NotifyLogMapper notifyLogMapper;
     @Autowired
     private MchEntityMapper merchantMapper;
@@ -217,6 +219,25 @@ class PushNotifyFlowTest {
         assertThat(sent).hasSize(1);
         assertThat(sent.getFirst().title()).contains("到货");
         assertThat(sent.getFirst().level()).isEqualTo("NORMAL");
+    }
+
+    @Test
+    @DisplayName("★ 运营端「选择终端」：列出某人绑定的设备，cid 只回掩码不吐全量")
+    void pushDevicesListsBoundDevicesMasked() throws Exception {
+        String owner = loginAsOwnerOf("M0001", "12700127412");
+        bindBiz(owner, "cid-pick-verify-01");
+        String userNo = profileUserNo(owner);
+
+        List<ai.neargo.shop.message.notify.NotifyLogService.PushDeviceVO> devices =
+                notifyLogService.pushDevices(userNo);
+
+        var d = devices.stream().filter(x -> "cid-pick-verify-01".equals(x.clientId()))
+                .findFirst().orElseThrow(() -> new AssertionError("绑定的设备没出现在列表里"));
+        assertThat(d.platform()).isEqualTo("APP_ANDROID");
+        // 掩码只露尾部：这份列表是给人挑的，不该把完整 cid 摊在运营眼前
+        assertThat(d.clientIdMask()).startsWith("****").doesNotContain("cid-pick-verify-01");
+        // 没绑设备的人拿到的是空列表，不是报错（多数用户从没装过 App）
+        assertThat(notifyLogService.pushDevices("U-NOBODY-XYZ")).isEmpty();
     }
 
     // ---------------------------------------------------------------- helpers

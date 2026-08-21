@@ -2,13 +2,14 @@
 // 商家详情：资质与评分 → 在售商品 → 全部评价。
 // 一期平台方是唯一入驻方，页面照样按「多商家」写 —— 二期开放入驻只是数据变多。
 import { ref } from "vue";
-import { onLoad } from "@dcloudio/uni-app";
+import { onLoad, onShareAppMessage } from "@dcloudio/uni-app";
 import { api } from "@/api";
 import { useCartStore } from "@/stores/cart";
 import { ROUTES } from "@shared/utils/constants";
 import { isoDate } from "@shared/utils/format";
 import { firstSku } from "@shared/utils/goods";
 import { flyToCart, tapPoint } from "@/shared/fly";
+import { buildShareMessage } from "@shared/ports/share";
 import type { Goods, Merchant, Review } from "@shared/types";
 
 const cart = useCartStore();
@@ -49,10 +50,31 @@ async function like(r: Review) {
   if (i >= 0) reviews.value[i] = updated;
 }
 
+const currentNo = ref("");
+
 onLoad((q) => {
   const no = (q?.merchantNo as string) || "";
+  currentNo.value = no;
   if (no) load(no);
 });
+
+/*
+ * 分享商家。**门店主页有这个、商家页此前没有** —— 而分享商家是 C-ST-05，
+ * 与扫码同属 ADR-004 的主获客路径。
+ *
+ * 落点给门店主页而不是本页：门店主页是为「老客直达下单」设计的
+ * （第一屏是常买、有再来一单），商家页是介绍页。把人分享到介绍页，
+ * 他还要多点一次才能买。
+ *
+ * `merchantNo` 必须带上，否则进店归因断掉、费率分档判不出来（ADR-004 §5.4）。
+ */
+onShareAppMessage(() =>
+  buildShareMessage({
+    title: merchant.value?.name ?? "",
+    path: `${ROUTES.store}?from=SHARE`,
+    merchantNo: currentNo.value,
+  }),
+);
 </script>
 
 <template>

@@ -598,6 +598,36 @@ export interface Category {
   children: Category[];
 }
 
+/**
+ * 平台标准品（TDD-标准品库）：商家引用建品的**模子**。
+ *
+ * <p>**无价、无库存、无履约** —— 那些永远是商家的。它存在的理由是 `specGroups`
+ * 里的 `optionCode`：没有标准品，三家店各自录「本地菠菜」得到三个毫无关系的商品，
+ * 聚合、比价、统计全都无从谈起。
+ *
+ * <p>取用时端上只是把字段**填进表单**，商家可以改标题与图；但**类目与 optionCode
+ * 由服务端强制以标准品为准** —— 能改掉的话，标准品就退化成一个填表助手。
+ */
+export interface SpuStd {
+  stdNo: string;
+  /** 所属类目。取用后**改不掉**：类目决定形态（生鲜要截单、服务不发货） */
+  categoryNo: string;
+  /** 类目名，展示用 */
+  categoryName?: string;
+  title: string;
+  titleI18n?: Record<string, string>;
+  subtitle?: string;
+  cover?: string;
+  images?: string[];
+  /** 每个选项都带 `optionCode` —— 跨店可比靠的就是它 */
+  specGroups: SpecGroup[];
+  /** 别名/品牌/俗称，搜索用。端上可以不展示 */
+  keywords?: string;
+  status?: string;
+  /** 被引用次数，只给运营排序用 */
+  refCount?: number;
+}
+
 /** 规格维度，例：{ name: "重量", options: ["约5斤", "约10斤"] } */
 export interface SpecGroup {
   /** 规格维度名，如「重量」「包装」 */
@@ -631,6 +661,21 @@ export interface Sku {
   stock: number;
   /** FRESH 且按重计价：标称重量（克） */
   nominalGram?: number;
+  /**
+   * 各市场价（市场码 → 最小货币单位）。**只有商家侧 `/biz/goods/{no}` 下发，C 端恒空。**
+   *
+   * <p>编辑页按市场逐格填，而保存是**整份覆盖** —— 拿不到整张表就只能回填当前
+   * 那一格，于是改一次标题，其余市场的价格行就被删了，且不报错：
+   * 那两个市场的买家从此看不到这件商品。与 `titleI18n` 是同一个形状的故障。
+   */
+  priceByMarket?: Record<string, number>;
+  /**
+   * 本店单独定的价（最小货币单位）。**只在 B 端下发，空 = 同主体价**，不是 0。
+   *
+   * <p>与门店库存回退方向相反：没设过价的店按主体价卖，没设过库存的店按 0 卖 ——
+   * 价格视为 0 就是白送。
+   */
+  storePrice?: number;
 }
 
 /** 预约可选时段（SERVICE + APPOINTMENT） */
@@ -720,17 +765,31 @@ export interface Goods {
   durationMin?: number;
   /** SERVICE：可核销门店 */
   storeName?: string;
-  /** SERVICE + APPOINTMENT：可预约时段 */
+  /**
+   * ⚠️ **以下四个字段后端从不下发**：`slots` / `card` / `virtual` / `promotions`。
+   *
+   * `GoodsVO` 里一个都没有 —— c-app 的分类/首页/搜索/商品/店铺五个页面按契约
+   * 写完了渲染，接真后端后永远拿到 `undefined`，落进兜底分支，**不报错**。
+   * mock 下它们有值，所以这条差异在开发期完全看不出来。
+   *
+   * 与「五品类差异字段没有写入路径」是同一个洞的两侧：一侧没有写入，一侧没有下发。
+   * **不在这一轮删**：删掉要同时改五个页面的渲染，而「卡券与虚拟商品是不是
+   * 商家自助能建的东西」还没有产品结论 —— 见 `商品域-优化清单` P3-5。
+   */
+  /** SERVICE + APPOINTMENT：可预约时段。**后端未下发** */
   slots?: AppointmentSlot[];
-  /** CARD */
+  /** CARD。**后端未下发** */
   card?: CardSpec;
-  /** VIRTUAL */
+  /** VIRTUAL。**后端未下发** */
   virtual?: VirtualSpec;
-  /** 促销（一期只有买 N 送 M） */
+  /** 促销（一期只有买 N 送 M）。**后端未下发** */
   promotions?: Promotion[];
   /** 商家为本商品开放的拼团档：够 minCount 人享 price。不配则本商品不能发起团 */
   groupBuy?: { minCount: number; price: number };
-  /** 本商品每件赠送的积分。不同商品可以给不同积分，不配则按成交额比例默认发放 */
+  /**
+   * 本商品每件赠送的积分。**后端未下发**：库里有 `prd_goods.points_config` 这一列，
+   * 但全仓没有任何读写。等积分域接上再兑现。
+   */
   points?: number;
   /** 每人限购，0 = 不限 */
   limitPerUser: number;
@@ -746,6 +805,11 @@ export interface Goods {
    * 待审是 `PENDING`（词典 §11 的通用状态词表；库里那列仍叫 AUDITING，
    * 但那是审核结果那一轴的列名，不出现在契约里）。
    */
+  /**
+   * 图文详情正文（纯文本）。空 = 商家没写 —— 端上整段不渲染，
+   * 别拿一个空白区块占着详情页。
+   */
+  detail?: string;
   status?: GoodsStatus;
   /**
    * 最近一次驳回 / 平台强制下架的原因（**只在商家侧与运营端下发，C 端恒空**）。
@@ -769,6 +833,14 @@ export interface Goods {
   titleI18n?: Record<string, string>;
   /** 三语副标题原文，同 `titleI18n` */
   subtitleI18n?: Record<string, string>;
+  /**
+   * 引用的平台标准品；空 = 自建品。**只有商家侧与运营端下发，C 端恒空。**
+   *
+   * <p>必须下发：编辑页保存是整份覆盖，拿不到它就等于
+   * **打开编辑页再保存一次就自动脱离了标准品** —— 商品从此不再被收敛，
+   * 而界面上没有任何变化。与 `titleI18n` / `priceByMarket` 是同一个形状的故障。
+   */
+  stdNo?: string;
 }
 
 
@@ -1882,6 +1954,27 @@ export interface PaymentApplyment {
  * <p><b>门店与主体是关联不是归属</b>：换执照店照开。所以 `storeNo` 一旦生成就不再变 ——
  * 评价、订单、顾客的「我常逛的店」都挂在它上面。
  */
+/**
+ * 门店经营类目 —— 商家给自己的店摆的<b>货架</b>。
+ *
+ * <p>与「主体已获授权的类目」是两件事：那是<b>平台批的证</b>（能不能卖这一类），
+ * 这是<b>商家的货架</b>（店里怎么摆）。责任人不同，所以不合成一个字段。
+ */
+export interface StoreCategory {
+  /** 平台类目号。**改显示名不动它** —— 跨店聚合与比价都认这个 */
+  categoryNo: string;
+  /** 展示名：`displayName` 有就用它，否则是平台类目名。直接照它渲染 */
+  name: string;
+  /** 平台类目名。改名时要让商家看得见自己改的是谁 */
+  platformName: string;
+  /** 商家改的名。空 = 用平台名，不是「叫空字符串」 */
+  displayName?: string;
+  /** 店内展示顺序，小的在前。商家拖出来的顺序 */
+  sort: number;
+  /** 这个货架上有几件商品 —— **撤架之前商家要看得见代价**（有货就撤不掉） */
+  goodsCount: number;
+}
+
 export interface Store {
   /** 门店号。一旦生成不再变 —— 换主体只换归属，不换它 */
   storeNo: string;
@@ -2018,7 +2111,13 @@ export interface StoreRole {
  * ⚠️ 待审用 `PENDING` 不用 `AUDITING` —— ops-web 的 `SkuStatus` 一直用
  * `PENDING`，同一件事两个词。词典 §11 的通用状态词表规定「已提交待处理」= `PENDING`。
  */
-export type GoodsStatus = "ON_SALE" | "OFF_SALE" | "PENDING" | "REJECTED";
+/**
+ * 商家侧商品状态。
+ *
+ * <p><b>DRAFT 与 PENDING 是两件事</b>：草稿是「还没提交，等你」，待审是「已提交，等平台」——
+ * 说错了商家的下一步就错了。也与 OFF_SALE（点一下就能卖）分开。
+ */
+export type GoodsStatus = "DRAFT" | "ON_SALE" | "OFF_SALE" | "PENDING" | "REJECTED";
 
 /** 商家自送规则（ADR-005 §5：不做骑手系统，只有范围与门槛） */
 export interface DeliveryRule {

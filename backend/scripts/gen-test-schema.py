@@ -56,6 +56,7 @@ def main():
     tables = {}   # name -> list[str] 列/约束定义，保持顺序
     order = []
     seeds = []    # INSERT 种子数据，原样保留
+    renames = {}  # 旧表名 -> 新表名（ALTER ... RENAME TO）。种子里的旧名要按它回填
 
     # **按版本号数字排序**，不是字典序。字典序把 V15 排在 V2 前面，
     # 于是 V15 的 ALTER 在建表之前重放 —— alter_table() 里 tables.get() 拿到 None
@@ -63,14 +64,20 @@ def main():
     # 缺的列只有等某个测试恰好用到它才会暴露，而多数测试用不到。
     for f in sorted(MIGRATION_DIR.glob("V*.sql"),
                     key=lambda p: int(re.match(r"V(\d+)", p.name).group(1))):
-        replay(f.read_text(), tables, order, seeds)
+        replay(f.read_text(), tables, order, seeds, renames)
 
     out = [HEADER]
     for name in order:
         out.append(f"CREATE TABLE IF NOT EXISTS {name}\n(\n"
                    + ",\n".join(tables[name]) + "\n);\n")
     if seeds:
-        out.append("-- 种子数据\n" + "\n".join(seeds) + "\n")
+        # 种子里的旧表名回填成改名后的新名（见 alter_table 里 RENAME TO 那段）
+        fixed = []
+        for stmt in seeds:
+            for old, new in renames.items():
+                stmt = re.sub(rf"\b{re.escape(old)}\b", new, stmt)
+            fixed.append(stmt)
+        out.append("-- 种子数据\n" + "\n".join(fixed) + "\n")
     out_path.write_text("\n".join(out))
     try:
         shown = out_path.relative_to(ROOT)
@@ -111,7 +118,7 @@ def strip_comments(sql):
     return "\n".join(out)
 
 
-def replay(sql, tables, order, seeds):
+def replay(sql, tables, order, seeds, renames):
     # 逐语句切分（本项目的迁移脚本里没有存储过程，分号切分是安全的）
     for stmt in [s.strip() for s in strip_comments(sql).split(";") if s.strip()]:
         if not stmt:
@@ -120,7 +127,7 @@ def replay(sql, tables, order, seeds):
         if low.startswith("create table"):
             create_table(stmt, tables, order)
         elif low.startswith("alter table"):
-            alter_table(stmt, tables, order)
+            alter_table(stmt, tables, order, renames)
         elif low.startswith("create unique index"):
             create_unique_index(stmt, tables)
         elif low.startswith("drop table"):
@@ -163,6 +170,19 @@ def replay(sql, tables, order, seeds):
                 # 只有 82 个功能点而代码期望 104，OpsPermConfigFlowTest 直接红，
                 # 而报错看起来像「权限配置写错了」，与生成器毫无关系。
                 # H2 跑在 MODE=MySQL 下，认识 FROM DUAL。
+                seeds.append(stmt + ";")
+            elif _reads_only(low, stmt):
+                # **常量派生表也是种子**，与上面 FROM DUAL 同一条理由 ——
+                # 数据源是 `FROM (SELECT … UNION ALL …) t`，不读任何存量表；
+                # 末尾的 `WHERE NOT EXISTS (SELECT 1 FROM 自己)` 只是可重入判据。
+                #
+                # 不认它的后果**已经发生过**：V156 那批「场景×通道」种子被当成回填跳掉，
+                # 于是有人把整段 H2 等价物**手工抄进产物**（产物开头明明写着「勿手改」）。
+                # 下一个人重新生成 → 手抄的那段被冲掉 → 站内信照发、微信订阅消息一条不出，
+                # 而报错是 `Expected size: 1 but was: 0`，和 schema 看不出任何关系。
+                #
+                # 判据用「除目标表外不读任何表」，不用「长得像不像」：
+                # 回填语句一定要读别的表（那才是它存在的意义），种子一定不读。
                 seeds.append(stmt + ";")
             elif re.search(r"\bselect\b", low):
                 # **INSERT ... SELECT 是数据回填，不是种子。**
@@ -235,7 +255,7 @@ def create_table(stmt, tables, order):
         order.append(name)
 
 
-def alter_table(stmt, tables, order):
+def alter_table(stmt, tables, order, renames):
     m = re.match(r"ALTER TABLE\s+(\w+)\s+(.*)", stmt, re.S | re.I)
     if not m:
         return
@@ -250,6 +270,16 @@ def alter_table(stmt, tables, order):
             raise SystemExit(f"✗ RENAME TO：源表 {table} 不存在\n  {stmt[:80]}")
         tables[new_name] = tables.pop(table)
         order[order.index(table)] = new_name
+        # **种子里的旧表名也要跟着改**。
+        #
+        # 这个脚本把所有迁移压平成一份最终 schema：建表按最终名生成，
+        # 而**更早的 INSERT 用的是改名前的表名** —— 真实数据库按顺序重放没问题
+        # （那时表还叫旧名），压平之后就变成「往一张不存在的表插数据」。
+        #
+        # 症状极难认：Spring 上下文起不来，报错指向一个毫不相干的 Controller。
+        # 2026-08-17 撞到一次（msg_template → notify_template），
+        # 而 SchemaGeneratorTest 的报错文案早就预言了这个形状。
+        renames[table] = new_name
         return
 
     cols = tables.get(table)
@@ -415,6 +445,25 @@ def create_unique_index(stmt, tables):
     name, table, cols_expr = m.group(1), m.group(2), m.group(3)
     if table in tables:
         tables[table].append(f"    CONSTRAINT {name} UNIQUE ({cols_expr.strip()})")
+
+
+def _reads_only(low: str, stmt: str) -> bool:
+    """`INSERT INTO t … SELECT …` 是否**只读它自己**（= 常量种子，不是回填）。
+
+    真表引用取 `FROM x` / `JOIN x` 中 x 不是左括号的那些。`FROM (` 是派生表，
+    里面全是常量 SELECT；`FROM t`（目标表自己）出现在可重入的 NOT EXISTS 里。
+    只要出现**第三张表**，它就是在搬运存量数据 —— 那种语句重放到最终 schema 上
+    会报「列不存在」（读的是中间态结构），且 H2 测试库本来就没有存量可搬。
+    """
+    if not re.search(r"\bselect\b", low):
+        return False
+    target = re.match(r"insert\s+(?:ignore\s+)?into\s+([\w.]+)", low)
+    if not target:
+        return False
+    refs = re.findall(r"\b(?:from|join)\s+([\w.]+)", low)
+    # 一个真表引用都没有（纯常量 SELECT）同样是种子 —— all([]) 为真，正是要的语义
+    return all(r == target.group(1) for r in refs)
+
 
 
 if __name__ == "__main__":

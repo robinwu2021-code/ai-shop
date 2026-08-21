@@ -119,7 +119,7 @@ onShow(load);
 <style scoped>
 .sum {
   display: flex;
-  margin-top: 24rpx;
+  margin-top: 16rpx;
 }
 .sum__i {
   flex: 1;

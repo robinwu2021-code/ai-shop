@@ -4,6 +4,38 @@ import { api } from "@/api";
 import { STORAGE } from "@shared/utils/constants";
 import type { CartItem, FulfillmentType } from "@shared/types";
 
+/** 履约组内的商家段。一段 = 结算后的一笔子订单 */
+export interface MerchantSegment {
+  merchantNo: string;
+  merchantName: string;
+  items: CartItem[];
+}
+
+export interface CartGroup {
+  fulfillment: FulfillmentType;
+  /** 结算入口吃的还是它，分段只是视图 */
+  items: CartItem[];
+  merchants: MerchantSegment[];
+}
+
+/**
+ * 按商家聚段，**保持首次出现的顺序**。
+ *
+ * 不排序是刻意的：用户加购的先后是他自己的心智顺序，
+ * 按店名或单号重排会让「我刚加的那件」跳到别处。
+ */
+export function segmentByMerchant(items: CartItem[]): MerchantSegment[] {
+  const map = new Map<string, MerchantSegment>();
+  for (const it of items) {
+    const key = it.merchantNo || "";
+    const seg = map.get(key)
+      ?? { merchantNo: key, merchantName: it.merchantName || "", items: [] };
+    seg.items.push(it);
+    map.set(key, seg);
+  }
+  return [...map.values()];
+}
+
 export const useCartStore = defineStore("cart", {
   state: () => ({
     items: [] as CartItem[],
@@ -16,15 +48,29 @@ export const useCartStore = defineStore("cart", {
     totalFen(): number {
       return this.validItems.reduce((n, it) => n + it.price * it.qty, 0);
     },
-    /** 按履约方式分组 —— 结算时一组一单 */
-    groups(): { fulfillment: FulfillmentType; items: CartItem[] }[] {
+    /**
+     * 按履约方式分组 —— **结算单位**，一组一次确认页。
+     *
+     * 外层必须是履约方式而不是商家：不同履约方式的收货信息根本不同
+     * （自提选自提点、快递填地址、上门选时段），同一家店的自提商品与快递商品
+     * 塞不进同一个确认页。
+     *
+     * 商家是**组内的第二层**（`merchants`）：它决定拆出几笔子订单，
+     * 用户要在提交前看见。`items` 保持原样不动，`merchants` 是它的视图投影 ——
+     * 结算入口 `go(fulfillment, items)` 因此一行都不用改。
+     */
+    groups(): CartGroup[] {
       const map = new Map<FulfillmentType, CartItem[]>();
       for (const it of this.validItems) {
         const arr = map.get(it.fulfillment) ?? [];
         arr.push(it);
         map.set(it.fulfillment, arr);
       }
-      return [...map.entries()].map(([fulfillment, items]) => ({ fulfillment, items }));
+      return [...map.entries()].map(([fulfillment, items]) => ({
+        fulfillment,
+        items,
+        merchants: segmentByMerchant(items),
+      }));
     },
   },
 

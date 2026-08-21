@@ -15,6 +15,11 @@ public record GoodsVO(String goodsNo,
                       String subtitle,
                       String cover,
                       List<String> images,
+                      /**
+                       * 图文详情正文（纯文本）。空 = 商家没写 —— 端上整段不渲染，
+                       * 别拿一个空白区块占着详情页。
+                       */
+                      String detail,
                       String type,
                       String categoryNo,
                       MerchantBriefVO merchant,
@@ -60,6 +65,15 @@ public record GoodsVO(String goodsNo,
                       /** 三语副标题原文，同 {@link #titleI18n} */
                       java.util.Map<String, String> subtitleI18n,
                       /**
+                       * 引用的平台标准品；空 = 自建品。<b>只在商家侧与 ops 下发，C 端恒空。</b>
+                       *
+                       * <p>必须下发：编辑页保存是整份覆盖，拿不到它就等于
+                       * <b>打开编辑页再保存一次就自动脱离了标准品</b> ——
+                       * 商品从此不再被收敛，而界面上没有任何变化。
+                       * 与 titleI18n / priceByMarket 是同一个形状的故障。
+                       */
+                      String stdNo,
+                      /**
                        * 最近一次驳回/强制下架的原因（V96）。
                        *
                        * <p><b>只在 B 端与运营端下发，C 端恒为 null</b>。它是审核结论里
@@ -99,12 +113,32 @@ public record GoodsVO(String goodsNo,
                               List<String> optionCodes, String templateNo) {
     }
 
+    /**
+     * @param priceByMarket 各市场价（市场码 → 最小货币单位）。
+     *
+     *                      <p><b>只在商家侧 {@code /biz/goods/{no}} 下发，C 端恒空</b> ——
+     *                      买家只看自己那个市场的价，给他整张表没有用处。
+     *
+     *                      <p>为什么必须下发：编辑页按市场逐格填，而<b>保存是整份覆盖</b>。
+     *                      拿不到整张表它就只能回填当前市场那一格，于是
+     *                      <b>商家改一次标题，其余市场的价格行就被删了</b>，且不报错。
+     *                      与 {@code titleI18n} 是逐字同款的形状 —— 那个当年补了下发，这个没补。
+     */
     public record SkuVO(String skuNo,
                         List<String> optionValues,
                         String spec,
                         long price,
                         Long originPrice,
                         int stock,
-                        Integer nominalGram) {
+                        Integer nominalGram,
+                        java.util.Map<String, Long> priceByMarket,
+                        /**
+                         * 本店单独定的价（批 C）。<b>只在 B 端下发</b>，且**空 = 同主体价**，
+                         * 不是 0 —— 端上据此显示「同总部」还是一个具体数字。
+                         *
+                         * <p>与门店库存回退方向相反：没设过价的店按主体价卖，
+                         * 没设过库存的店按 0 卖。
+                         */
+                        Long storePrice) {
     }
 }

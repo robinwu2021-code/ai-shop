@@ -3,12 +3,21 @@
 
     <!-- 连本地后端要联网；模拟器里后端在 10.0.2.2 -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- 个推推送所需 -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- Android 13+ 弹通知横幅要运行时授权 -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
+        android:name=".ShellApplication"
         android:allowBackup="false"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
         android:label="@string/app_name"
         android:supportsRtl="true"
-        android:theme="@style/Theme.AppCompat.NoActionBar"
+        android:theme="@style/Theme.Shell.Splash"
+        android:usesCleartextTraffic="true"
         android:networkSecurityConfig="@xml/network_security_config">
         <activity
             android:name=".MainActivity"
@@ -19,5 +28,15 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- 个推 APPID（由 build.gradle 的 manifestPlaceholder 注入） -->
+        <meta-data android:name="GETUI_APPID" android:value="${GETUI_APPID}" />
+        <!-- 接收 cid / 推送消息 / 点击回调 -->
+        <service android:name=".PushIntentService" android:exported="false" />
+        <!-- 个推常驻服务，空实现即可 -->
+        <service
+            android:name=".ShellPushService"
+            android:exported="false"
+            android:process=":pushservice" />
     </application>
 </manifest>

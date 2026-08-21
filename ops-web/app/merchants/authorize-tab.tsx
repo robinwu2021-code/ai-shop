@@ -44,12 +44,23 @@ export function CategoryTab({ c, canGrant }: { c: MerchantsCopy; canGrant: boole
 
   const save = useMutation({
     mutationFn: () => api.setMerchantAuthCodes({ merchantNo: current!.merchantNo, codes, reason }),
-    onSuccess: () => {
+    onSuccess: (r) => {
       qc.invalidateQueries({ queryKey: ["merchants"] });
       setCurrent(null);
-      notify.success(c.toastAuthSaved);
+      /*
+       * 撤了码且有在架商品受影响时，提示要**带上那个数**。
+       * 一句「已保存」会让运营以为这次改动只影响未来 —— 而那些货下次上架就会被拒。
+       */
+      if (r.affected > 0) {
+        notify.info(fill(c.toastAuthRevoked, { n: r.affected }));
+      } else {
+        notify.success(c.toastAuthSaved);
+      }
     },
   });
+
+  /** 这次会撤掉哪些码 —— 在按下保存**之前**就要说清楚 */
+  const willRevoke = (current?.categoryCodes ?? []).filter((x) => !codes.includes(x));
 
   const open = (m: Merchant) => { setCurrent(m); setCodes([...m.categoryCodes]); setReason(""); };
   const nameOf = (code: string) => authCodes.data?.find((a) => a.code === code)?.name ?? code;
@@ -139,6 +150,11 @@ export function CategoryTab({ c, canGrant }: { c: MerchantsCopy; canGrant: boole
                   );
                 })}
               </div>
+              {willRevoke.length > 0 && (
+                <Notice tone="warning" className="mt-3">
+                  {fill(c.authRevokeWarn, { s: willRevoke.map(nameOf).join("、") })}
+                </Notice>
+              )}
               <p className="mt-3 txt-caption text-muted-foreground">{c.authCodesHint}</p>
             </DrawerSection>
 

@@ -312,7 +312,7 @@ class OpsDashboardRankingFlowTest {
     private String listedGoods(String token, int priceMinor, int stock) throws Exception {
         String body = mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"title\":\"排行测试品\",\"type\":\"NORMAL\","
+                        .content("{\"categoryNo\":\"CAT210\",\"title\":\"排行测试品\",\"type\":\"NORMAL\","
                                 + "\"skus\":[{\"optionValues\":[],\"price\":" + priceMinor
                                 + ",\"stock\":" + stock + "}]}"))
                 .andExpect(jsonPath("$.code").value(0))

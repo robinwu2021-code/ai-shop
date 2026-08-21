@@ -18,7 +18,7 @@ import type { MerchantStatus, OrderStatus, FulfillmentType, TrafficSource } from
 // 经营状态只有三个（审核状态在申请单上，不在这里）
 const MERCHANT_STATES: MerchantStatus[] = ["ACTIVE", "SUSPENDED", "FROZEN"];
 const ORDER_STATES: OrderStatus[] = [
-  "WAIT_PAY", "PAID", "PAID", "SHIPPED", "ARRIVED", "COMPLETED", "CANCELLED", "REFUNDED",
+  "WAIT_PAY", "PAID", "FULFILLING", "COMPLETED", "CANCELLED", "REFUNDED",
 ];
 const FULFILL_TYPES: FulfillmentType[] = [
   "STORE_PICKUP", "NEIGHBOR_PICKUP", "MERCHANT_DELIVERY", "EXPRESS", "STORE_VERIFY",

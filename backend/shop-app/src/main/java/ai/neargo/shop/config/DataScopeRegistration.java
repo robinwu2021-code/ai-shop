@@ -50,6 +50,19 @@ public class DataScopeRegistration implements DataScopeRegistrar {
         // —— 商品：商家只能改自己的货 ——
         registry.register("prd_goods", Map.of(
                 ScopeDim.MERCHANT, "entity_no"));
+        /*
+         * SKU（批⑤ P2-4）。**此前是登记表里的一个口子**：`prd_sku` 未注册 = 未注册表放行，
+         * 于是不带过滤条件的 `GET /ops/skus` 是全平台可见 —— 配了商家域的运营也一样。
+         * `PlatformProductServiceImpl.matchingGoodsNos` 只补上了「带过滤」的那一半。
+         *
+         * ⚠️ 注册它的**前置**是把所有买家侧读写显式豁免（fail-closed：C 端会话的维度是
+         * SELF，在 SKU 的锚点里找不到，拼出的是 1=0 而不是放行）。已经做了：
+         * `GoodsServiceImpl.loadSkus/skuPrice`、`GoodsQueryPortImpl.snapshot`、
+         * `StockPortImpl` 的五处原子扣减。少豁免一处的症状是
+         * <b>商品显示 ¥0 / 购物车空 / 下单说库存不足</b>，且日志干净。
+         */
+        registry.register("prd_sku", Map.of(
+                ScopeDim.MERCHANT, "entity_no"));
 
         /*
          * 履约任务表 `ful_pickup_task` 这里曾经登记着，而**这张表从来没有建过** ——
@@ -95,6 +108,25 @@ public class DataScopeRegistration implements DataScopeRegistrar {
                 ScopeDim.MERCHANT, "entity_no"));
 
         registry.register("mch_store", Map.of(
+                ScopeDim.MERCHANT, "entity_no"));
+
+        /*
+         * 门店货架。登记 MERCHANT 是给运营端看的（「这家店摆了哪几类」）；
+         * B 端自己读写走 executeWithoutScope —— B 端会话是 SELF 维度，
+         * 接上就是 1=0，商家自己的货架当场全空。归属由 requireMerchantNo + storeNos 保证。
+         */
+        registry.register("mch_store_category", Map.of(
+                ScopeDim.MERCHANT, "entity_no"));
+
+        /*
+         * 门店价。登记 MERCHANT 是给运营端看的；取价链路全程 executeWithoutScope
+         * （调用方是 C 端会话，SELF 维度）。
+         *
+         * **万一哪条路径忘了豁免，后果是回退主体价而不是 0** —— 与库存那张表相反，
+         * 那边漏豁免会把货变成「没货」，这边最多是「没享受到本店价」。
+         * 这个方向差别正是 prd_store_price 与 prd_store_stock 回退语义相反的延伸。
+         */
+        registry.register("prd_store_price", Map.of(
                 ScopeDim.MERCHANT, "entity_no"));
 
         /*

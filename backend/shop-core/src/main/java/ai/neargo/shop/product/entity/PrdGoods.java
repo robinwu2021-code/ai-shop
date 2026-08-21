@@ -22,6 +22,17 @@ public class PrdGoods extends BaseEntity {
     private String goodsNo;
     private String entityNo;
 
+    /**
+     * 引用的平台标准品；<b>为空 = 自建品</b>。
+     *
+     * <p>它是**溯源**不是外键：标准品归档了，已经引用它的商品照常在售、照常可编辑。
+     *
+     * <p>有值时，{@code category_no} 与 {@code spec_groups} 里的 optionCode
+     * <b>以标准品为准</b>（服务端覆盖请求值，见 {@code MerchantGoodsServiceImpl#applyStd}）——
+     * code 能被商家改掉的话，跨店可比就没了，标准品退化成一个填表助手。
+     */
+    private String stdNo;
+
     /** <b>中文权威</b>：C 端搜索、列表、订单快照都读它，所以必须是一个确定的字符串。 */
     private String title;
     private String subtitle;
@@ -33,6 +44,14 @@ public class PrdGoods extends BaseEntity {
 
     /** JSON 数组。 */
     private String images;
+
+    /**
+     * 图文详情正文（纯文本）。轮播图仍在 {@link #images}。
+     *
+     * <p>存文本不存 HTML：商家侧是手机端输入，而收 HTML 就要在三端各做一次消毒，
+     * 漏一处就是 XSS。
+     */
+    private String detail;
 
     /** NORMAL / FRESH / SERVICE / VIRTUAL / CARD */
     private String type;
@@ -74,6 +93,22 @@ public class PrdGoods extends BaseEntity {
     private String auditReason;
 
     // ---- FRESH ----
+    /**
+     * <b>生鲜截单</b>：当天几点前下单（毫秒时间戳）。商家自己填（{@code SaveCommand.fresh}）。
+     *
+     * <p>⚠️ <b>与 {@code prd_sku.cutoff_at} 同名不同物，别混</b>：
+     * <ul>
+     *   <li>这一列 = 商家对<b>这件商品</b>的日常截单承诺，展示给买家（「今天 18:00 前下单」）</li>
+     *   <li>{@code prd_sku.cutoff_at}（DATETIME）= <b>平台配的预售截单</b>，
+     *       是下单闸门的一部分（{@code lockPresale} 的 WHERE 条件），运营在
+     *       {@code POST /ops/skus/{no}/presale} 里设</li>
+     * </ul>
+     *
+     * <p>两者曾经**只有 SKU 那一列有人写**，商品这一列有读无写 —— 当时的处置意见是合并。
+     * 补上写入路径（2026-08-21）之后它们是两件真实存在的不同事情，
+     * 合并反而会把「商家的承诺」与「平台的采购闸门」揉成一个，
+     * 而这两者的<b>责任人不同</b>：前者商家改，后者只有运营能改。
+     */
     private Long cutoffAt;
     private String arrivalDesc;
     private Boolean weighed;

@@ -15,30 +15,34 @@ export type FulfillmentType =
   | "MERCHANT_DELIVERY"
   | "EXPRESS"
   /**
-   * 到店核销（SERVICE 商品）。**后端未实现** ——
-   * 与 shared 的 `FULFILLMENT.STORE_VERIFY` 是同一个值，
+   * 到店核销（SERVICE 商品）。2026-08-17 接通。
    * 此前这里叫 `SERVICE`：同一个概念的第二个名字，且后端两个都不下发。
    */
-  | "STORE_VERIFY";
+  | "STORE_VERIFY"
+  /** 上门预约（SERVICE 商品）。2026-08-17 接通，带预约时段与上门地址 */
+  | "APPOINTMENT";
 
 /** 流量来源（矩阵 P-12.1.7 按 trafficSource 分档计费）。 */
 export type TrafficSource = "MERCHANT_OWNED" | "PLATFORM" | "INVITE" | "CHANNEL";
 
 /**
- * 订单状态。**取值与后端下发的展示状态一致**（`OrderStatusView`）。
+ * 订单状态。**抽象状态，与履约方式无关**，三端同一套。
  *
  * ⚠️ 这里曾经是另一套：`PENDING_PAY` / `PREPARING` / `DELIVERING` / `AFTER_SALE`。
  * 同一条订单，运营端叫一个名字、C/B 端叫另一个、库里又是第三个 ——
  * 而 ops-web 只跑 mock，所以三套并存了很久没人发现。
  *
- * 后端的口径：库里存 WAIT_FULFILL / FULFILLING（粗，三种履约一视同仁），
- * 下发时按履约方式展开成下面这些词。运营端按它筛、按它判断可迁移。
+ * ⚠️ 后来又有过 `SHIPPED` / `ARRIVED` 两个值。它们**不是状态**，
+ * 是「状态 × 履约方式」的组合冒充状态 —— 代价是每加一种履约就要加一批状态。
+ * 现在下发抽象状态 + 履约方式，显示成什么由展示层决定
+ * （见《订单状态-统一整理》与 shared 的 `orderView`）。
  */
 export type OrderStatus =
   | "WAIT_PAY"
+  /** 已付款，交付方还没行动。库里那一列存的是 WAIT_FULFILL */
   | "PAID"
-  | "SHIPPED"
-  | "ARRIVED"
+  /** 交付方已行动，等交接完成。自提说「已到点」、快递说「已发货」，同一个状态 */
+  | "FULFILLING"
   | "COMPLETED"
   | "CANCELLED"
   | "REFUNDED";
@@ -53,9 +57,8 @@ export type OrderStatus =
  */
 export const ORDER_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   WAIT_PAY: ["PAID", "CANCELLED"],
-  PAID: ["SHIPPED", "ARRIVED", "COMPLETED", "REFUNDED", "CANCELLED"],
-  SHIPPED: ["COMPLETED", "REFUNDED"],
-  ARRIVED: ["COMPLETED", "REFUNDED"],
+  PAID: ["FULFILLING", "COMPLETED", "REFUNDED", "CANCELLED"],
+  FULFILLING: ["COMPLETED", "REFUNDED"],
   COMPLETED: ["REFUNDED"],
   CANCELLED: [],
   REFUNDED: [],

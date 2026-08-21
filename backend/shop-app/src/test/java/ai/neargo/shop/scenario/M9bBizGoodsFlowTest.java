@@ -51,8 +51,83 @@ class M9bBizGoodsFlowTest {
     }
 
     @Test
-    @DisplayName("★ 新建商品落到待审核且不在售 —— 录完就能卖等于没有审核")
-    void newGoodsStartsAuditing() throws Exception {
+    @DisplayName("★ 草稿不进运营的待审队列 —— 队列里混着半成品，运营分不出哪些真要审")
+    void draftStaysOutOfTheQueue() throws Exception {
+        String token = merchant("12600127020", "草稿队列测试店");
+        String body = mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(goodsBody(null, "只写了一半的货", 800, 5)))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        String goodsNo = json.readTree(body).get("data").get("goodsNo").asString();
+
+        String ops = opsLogin();
+        assertThat(inQueue(ops, goodsNo)).as("草稿不该出现在队列里").isFalse();
+
+        mvc().perform(post("/biz/goods/" + goodsNo + "/submit")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.code").value(0));
+        assertThat(inQueue(ops, goodsNo)).as("提交之后才进队列").isTrue();
+    }
+
+    @Test
+    @DisplayName("★★ 改截单不触发重审 —— 走 save 的话改一次截单等于停一天生意")
+    void changingCutoffKeepsTheListingLive() throws Exception {
+        String token = merchant("12600127021", "截单测试·菜摊");
+        // CAT110 蔬菜要 FRESH_VEG，先把码授了，否则卡在上架准入而不是本条要测的东西
+        String merchantNo = merchantNoOf(token);
+        mvc().perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .put("/ops/merchants/" + merchantNo + "/auth-codes")
+                        .header("Authorization", "Bearer " + opsLogin("bd", "bd123"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"codes\":[\"FRESH_VEG\"],\"reason\":\"已核验\"}"))
+                .andExpect(jsonPath("$.code").value(0));
+
+        String body = mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"小白菜\",\"subtitle\":\"当季\",\"categoryNo\":\"CAT110\","
+                                + "\"cover\":\"c.jpg\",\"specGroups\":[],"
+                                + "\"skus\":[{\"optionValues\":[],\"price\":500,\"stock\":10}]}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        String goodsNo = json.readTree(body).get("data").get("goodsNo").asString();
+        approveGoods(goodsNo);
+        mvc().perform(post("/biz/goods/" + goodsNo + "/toggle").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"onSale\":true}"))
+                .andExpect(jsonPath("$.data.status").value("ON_SALE"));
+
+        // ★ 只改截单：仍在售，没有回到待审
+        mvc().perform(post("/biz/goods/" + goodsNo + "/presale").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"cutoffAt\":1800000000000,\"arrivalDesc\":\"次日 17:00 前到点\"}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.status").value("ON_SALE"))
+                .andExpect(jsonPath("$.data.cutoffAt").value(1800000000000L));
+    }
+
+    private boolean inQueue(String opsToken, String goodsNo) throws Exception {
+        String body = mvc().perform(get("/ops/goods/audit-queue?size=100")
+                        .header("Authorization", "Bearer " + opsToken))
+                .andReturn().getResponse().getContentAsString();
+        for (JsonNode g : json.readTree(body).get("data").get("records")) {
+            if (goodsNo.equals(g.get("goodsNo").asString())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** 按状态取商家自己的商品列表 */
+    private JsonNode records(String token, String status) throws Exception {
+        String body = mvc().perform(get("/biz/goods").header("Authorization", "Bearer " + token)
+                        .param("status", status))
+                .andReturn().getResponse().getContentAsString();
+        return json.readTree(body).get("data").get("records");
+    }
+
+    @Test
+    @DisplayName("★★ 新建落草稿、显式提交才进队列 —— 保存即提审会让队列里全是半成品")
+    void newGoodsStartsAsDraft() throws Exception {
         String token = merchant("12600127001", "商品测试店A");
 
         String body = mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + token)
@@ -60,10 +135,22 @@ class M9bBizGoodsFlowTest {
                         .content(goodsBody(null, "手工辣椒酱", 1580, 20)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(0))
-                .andExpect(jsonPath("$.data.status").value("PENDING"))
+                // ★ 草稿，不是待审：填一半点保存不该进运营的队列，
+                // 而商家看到「审核中」会以为自己在等结论
+                .andExpect(jsonPath("$.data.status").value("DRAFT"))
                 .andExpect(jsonPath("$.data.onSale").value(false))
                 .andReturn().getResponse().getContentAsString();
         String goodsNo = json.readTree(body).get("data").get("goodsNo").asString();
+
+        // 显式提交才进待审
+        mvc().perform(post("/biz/goods/" + goodsNo + "/submit")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.data.status").value("PENDING"));
+        // 重复提交无副作用 —— 端上重复点击是常态，报错只会让他以为提交失败
+        mvc().perform(post("/biz/goods/" + goodsNo + "/submit")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.status").value("PENDING"));
 
         // ★ 未过审时自己按上架必须被拒。这是商家自己能点的按钮，
         // 能把待审商品推到 C 端的话，审核这道关就不存在了
@@ -92,6 +179,261 @@ class M9bBizGoodsFlowTest {
                         .content(goodsBody(goodsNo, "进口红酒", 39900, 5)))
                 .andExpect(jsonPath("$.data.status").value("PENDING"))
                 .andExpect(jsonPath("$.data.onSale").value(false));
+    }
+
+    /**
+     * <b>「不传 = 不改」与「传空数组 = 清空」必须分开。</b>
+     *
+     * <p>这里原先是无条件覆盖，而 {@code writeJson(null)} 返回 {@code "[]"} ——
+     * 于是「端上没带 images」被当成了「把轮播图全删掉」。b-app 的提交体里恰好
+     * 从来没有这一项，所以**每改一次标题，详情页的轮播图就全没了**，
+     * 且不报错：C 端只剩封面，看着像商家本来就没传图。
+     *
+     * <p>紧邻的 fulfillments 一直是判空的，两者相差一个 if —— 这类
+     * 「同一个方法里两种写法」的缺陷，读代码时最容易滑过去。
+     */
+    @Test
+    @DisplayName("★ 保存不带 images 不清空轮播图；显式传空数组才清空")
+    void omittedImagesAreKept() throws Exception {
+        String token = merchant("12600127013", "轮播图测试店");
+
+        String body = mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"categoryNo\":\"CAT210\",\"title\":\"三图商品\",\"subtitle\":\"测试\",\"type\":\"NORMAL\","
+                                + "\"cover\":\"c.jpg\",\"images\":[\"a.jpg\",\"b.jpg\",\"c.jpg\"],"
+                                + "\"specGroups\":[],"
+                                + "\"skus\":[{\"optionValues\":[],\"price\":1000,\"stock\":5}]}"))
+                .andExpect(jsonPath("$.data.images.length()").value(3))
+                .andReturn().getResponse().getContentAsString();
+        String goodsNo = json.readTree(body).get("data").get("goodsNo").asString();
+
+        // ★ 只改标题、提交体里没有 images —— 三张图必须还在
+        mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"goodsNo\":\"" + goodsNo + "\",\"title\":\"改过标题\","
+                                + "\"subtitle\":\"测试\",\"categoryNo\":\"CAT210\",\"cover\":\"c.jpg\","
+                                + "\"specGroups\":[],"
+                                + "\"skus\":[{\"optionValues\":[],\"price\":1000,\"stock\":5}]}"))
+                .andExpect(jsonPath("$.code").value(0));
+        mvc().perform(get("/biz/goods/" + goodsNo).header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.data.images.length()").value(3));
+
+        // 显式传空数组才是「清空」—— 两者分开，否则商家没有删图的路径
+        mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"goodsNo\":\"" + goodsNo + "\",\"title\":\"改过标题\","
+                        + "\"subtitle\":\"测试\",\"categoryNo\":\"CAT210\",\"cover\":\"c.jpg\","
+                        + "\"images\":[],\"specGroups\":[],"
+                        + "\"skus\":[{\"optionValues\":[],\"price\":1000,\"stock\":5}]}"));
+        mvc().perform(get("/biz/goods/" + goodsNo).header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.data.images.length()").value(0));
+    }
+
+    /**
+     * <b>品类由类目派生，请求里的 type 一律不采信。</b>
+     *
+     * <p>此前建品页有两个并列的分类控件，商家把同一件事填两遍，而且填得出
+     * 「叶菜类目 + 日用品品类」这种组合 —— 页面只提示不阻断，没有一处会拦。
+     * 代价要到下单那一刻才显形：生鲜要截单、按约重结算，而这件商品声称自己是日用品。
+     *
+     * <p>这条测的是**结构上不可能**，不是「端上会记得填对」：直接构造一个矛盾的
+     * 请求体打进去，看库里落的是哪一个。
+     */
+    @Test
+    @DisplayName("★ 品类由类目派生 —— 请求里塞一个矛盾的 type 也没用")
+    void categoryDrivesType() throws Exception {
+        String token = merchant("12600127014", "派生品类测试店");
+
+        // CAT110 蔬菜 = FRESH；请求里故意写 NORMAL
+        String body = mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"矛盾的菜\",\"subtitle\":\"测试\",\"type\":\"NORMAL\","
+                                + "\"categoryNo\":\"CAT110\",\"cover\":\"c.jpg\",\"specGroups\":[],"
+                                + "\"skus\":[{\"optionValues\":[],\"price\":500,\"stock\":10}]}"))
+                .andExpect(jsonPath("$.code").value(0))
+                // ★ 落库的是类目带出来的 FRESH，不是请求里那个 NORMAL
+                .andExpect(jsonPath("$.data.type").value("FRESH"))
+                .andReturn().getResponse().getContentAsString();
+        String goodsNo = json.readTree(body).get("data").get("goodsNo").asString();
+
+        /*
+         * 改到一个 STANDARD 的类目，品类要跟着变 —— 否则「改类目」只改了归类，
+         * 而履约仍按旧品类走，这正是两个输入点时代那个矛盾换了个方向重演。
+         */
+        mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"goodsNo\":\"" + goodsNo + "\",\"title\":\"矛盾的菜\","
+                                + "\"subtitle\":\"测试\",\"categoryNo\":\"CAT210\",\"cover\":\"c.jpg\","
+                                + "\"specGroups\":[],"
+                                + "\"skus\":[{\"optionValues\":[],\"price\":500,\"stock\":10}]}"))
+                .andExpect(jsonPath("$.data.type").value("NORMAL"));
+
+        /*
+         * 不带 categoryNo 的编辑**直接拒**（类目必填，P1-1 收尾）。
+         *
+         * 这条原先断言的是「不带类目就保留原品类」—— 那是类目还选填时的兜底。
+         * 类目变必填之后，兜底本身就是要消掉的东西：留着它，一个漏传 categoryNo 的
+         * 客户端就能让商品悄悄落进「默认日用品」，而商家以为自己建的是生鲜。
+         * **宁可让保存报错，也不要一次静默的形态漂移。**
+         */
+        mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"goodsNo\":\"" + goodsNo + "\",\"title\":\"改个名\","
+                                + "\"subtitle\":\"测试\",\"cover\":\"c.jpg\",\"specGroups\":[],"
+                                + "\"skus\":[{\"optionValues\":[],\"price\":500,\"stock\":10}]}"))
+                .andExpect(jsonPath("$.code").value(10400));
+
+        // 查无此项的类目号也要拒，**不能兜底成日用品** —— 那是把一条错误数据
+        // 静默转成一条合法数据（专用码 80004，让端上说得出「重新选一个类目」）
+        mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"查无此类目\",\"subtitle\":\"测试\","
+                                + "\"categoryNo\":\"CAT_NOPE\",\"cover\":\"c.jpg\",\"specGroups\":[],"
+                                + "\"skus\":[{\"optionValues\":[],\"price\":500,\"stock\":10}]}"))
+                .andExpect(jsonPath("$.code").value(80007));
+    }
+
+    /**
+     * 子类目的 {@code template} 一律继承父节点 —— 运营传什么都忽略。
+     *
+     * <p>品类改成派生之后，这棵树就承载了履约与合规判定：父节点是 FRESH、
+     * 子节点被填成 STANDARD 的话，同一支上的商品会走两套履约，而树渲染出来
+     * 看不出任何异常。此前没有任何一处拦这个。
+     */
+    @Test
+    @DisplayName("★ 子类目的形态继承父节点 —— 运营改不了，形态锁在根这一层")
+    void childCategoryInheritsTemplate() throws Exception {
+        String ops = opsLogin("goods", "goods123");
+        // 挂在 CAT100（食品生鲜，FRESH）下，却声称自己是 STANDARD
+        mvc().perform(post("/ops/categories").header("Authorization", "Bearer " + ops)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"继承测试子类目\",\"parentNo\":\"CAT100\","
+                                + "\"template\":\"STANDARD\"}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.template").value("FRESH"));
+    }
+
+    /**
+     * <b>编辑一次商品，其余市场的价格行不能消失。</b>
+     *
+     * <p>上一版是按 {@code skuNo@market} 逐行比对：端上只回填得了当前市场那一格
+     * （SkuVO 当时不下发 priceByMarket），提交上来的价格表只有 {CN}，
+     * 于是 AE/US 两行被逻辑删 —— 那两个市场的买家从此看不到这件商品，
+     * 而商家在 B 端看不出任何异常。与 titleI18n 是逐字同款的形状。
+     *
+     * <p>两头都测：① 保存后三行还在 ② 详情把整张价格表发回来（否则下次保存照样丢）。
+     */
+    @Test
+    @DisplayName("★ 多市场定价：只改标题不该删掉其余市场的价，且详情要发回整张表")
+    void otherMarketsSurviveAnEdit() throws Exception {
+        String token = merchant("12600127015", "多市场定价店");
+
+        String body = mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"三市场商品\",\"subtitle\":\"测试\","
+                                + "\"categoryNo\":\"CAT210\",\"cover\":\"c.jpg\",\"specGroups\":[],"
+                                + "\"skus\":[{\"optionValues\":[],\"price\":1000,\"stock\":5,"
+                                + "\"priceByMarket\":{\"CN\":1000,\"AE\":60,\"US\":15}}]}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        String goodsNo = json.readTree(body).get("data").get("goodsNo").asString();
+
+        // ★ 详情必须把整张价格表发回来 —— 拿不到它，端上下次保存只能提交当前市场那一格
+        mvc().perform(get("/biz/goods/" + goodsNo).header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.data.skus[0].priceByMarket.CN").value(1000))
+                .andExpect(jsonPath("$.data.skus[0].priceByMarket.AE").value(60))
+                .andExpect(jsonPath("$.data.skus[0].priceByMarket.US").value(15));
+
+        String skuNo = json.readTree(mvc().perform(get("/biz/goods/" + goodsNo)
+                        .header("Authorization", "Bearer " + token))
+                .andReturn().getResponse().getContentAsString())
+                .get("data").get("skus").get(0).get("skuNo").asString();
+
+        // ★ 模拟老客户端：只提交 CN 一格（这正是上一版删掉另两行的那个请求）
+        mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"goodsNo\":\"" + goodsNo + "\",\"title\":\"改了个标题\","
+                                + "\"subtitle\":\"测试\",\"categoryNo\":\"CAT210\",\"cover\":\"c.jpg\","
+                                + "\"specGroups\":[],"
+                                + "\"skus\":[{\"skuNo\":\"" + skuNo + "\",\"optionValues\":[],"
+                                + "\"price\":1000,\"stock\":5}]}"))
+                .andExpect(jsonPath("$.code").value(0));
+
+        mvc().perform(get("/biz/goods/" + goodsNo).header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.data.skus[0].priceByMarket.AE").value(60))
+                .andExpect(jsonPath("$.data.skus[0].priceByMarket.US").value(15));
+    }
+
+    /**
+     * <b>标准品库的核心断言</b>（TDD-标准品库 §3.2）。
+     *
+     * <p>端上「从标准品开始」只是把字段**填进表单**，而填充过的表单商家能随便改。
+     * 标题、图、规格文案改了没关系；但**类目与 optionCode 不能改** ——
+     * 前者决定形态（生鲜要截单、服务不发货），后者是跨店可比的唯一依据。
+     * code 能被改掉的话，标准品退化成一个填表助手，而 `optionCode`（B-4.5）
+     * 「一期只写入不消费」要消费的那个前提又落空了。
+     *
+     * <p>所以这条测的是**结构上不可能**：直接构造一个把两样都改掉的请求打进去，
+     * 看库里落的是哪一个。
+     */
+    @Test
+    @DisplayName("★★ 引用标准品：类目与 optionCode 以标准品为准，改不掉")
+    void stdConvergesCategoryAndCodes() throws Exception {
+        String token = merchant("12600127016", "标准品测试店");
+
+        // STD1001 本地菠菜：类目 CAT110（蔬菜 / FRESH —— V168 降二级后从叶菜上移），
+        // 规格 code = W500G/W1JIN/W2JIN
+        // 请求里故意把类目改成日用百货，把 code 改成自己编的
+        String body = mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"stdNo\":\"STD1001\",\"categoryNo\":\"CAT210\","
+                                + "\"title\":\"李婶家的菠菜\",\"subtitle\":\"今早现摘\",\"cover\":\"c.jpg\","
+                                + "\"specGroups\":[{\"name\":\"份量\",\"options\":[\"500g\",\"1斤\"],"
+                                + "\"optionCodes\":[\"MY_OWN_1\",\"MY_OWN_2\"]}],"
+                                + "\"skus\":[{\"optionValues\":[\"500g\"],\"price\":500,\"stock\":10},"
+                                + "{\"optionValues\":[\"1斤\"],\"price\":900,\"stock\":10}]}"))
+                .andExpect(jsonPath("$.code").value(0))
+                // ★ 类目回到标准品那一档 —— 形态因此也跟着回到 FRESH
+                .andExpect(jsonPath("$.data.categoryNo").value("CAT110"))
+                .andExpect(jsonPath("$.data.type").value("FRESH"))
+                // ★ code 以标准品为准，商家编的那两个没写进去
+                .andExpect(jsonPath("$.data.specGroups[0].optionCodes[0]").value("W500G"))
+                .andExpect(jsonPath("$.data.specGroups[0].optionCodes[1]").value("W1JIN"))
+                // 展示文案是商家自己的 —— 「份量」不参与聚合，改了没关系
+                .andExpect(jsonPath("$.data.specGroups[0].name").value("份量"))
+                .andExpect(jsonPath("$.data.title").value("李婶家的菠菜"))
+                .andReturn().getResponse().getContentAsString();
+        String goodsNo = json.readTree(body).get("data").get("goodsNo").asString();
+        assertThat(goodsNo).isNotBlank();
+
+        // 查无此标准品要拒，**不能忽略**：忽略的话商品照样建出来、只是没了收敛，
+        // 而 std_no 那一列还写着它 —— 一条自称「来自标准品」却不受约束的数据
+        mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"stdNo\":\"STD_NOPE\",\"categoryNo\":\"CAT210\","
+                                + "\"title\":\"查无此标准品\",\"subtitle\":\"测试\",\"cover\":\"c.jpg\","
+                                + "\"specGroups\":[],"
+                                + "\"skus\":[{\"optionValues\":[],\"price\":500,\"stock\":10}]}"))
+                .andExpect(jsonPath("$.code").value(10404));
+    }
+
+    @Test
+    @DisplayName("★ 标准品搜索：按别名也搜得到；搜不到不是错误")
+    void stdSearchMatchesAlias() throws Exception {
+        String token = merchant("12600127017", "标准品搜索店");
+
+        // 「洋芋」只出现在 keywords 里，标题是「土豆」—— 对不上的结果不是报错，
+        // 是商家以为标准库里没有，然后自建一个，跨店可比在这一次就丢了
+        mvc().perform(get("/biz/spu-std").header("Authorization", "Bearer " + token)
+                        .param("keyword", "洋芋"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data[?(@.title=='土豆')]").exists());
+
+        // 搜不到返回空列表，不是 404 —— 端上要能顺畅地转去自建品
+        mvc().perform(get("/biz/spu-std").header("Authorization", "Bearer " + token)
+                        .param("keyword", "张姐家的酱菜"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.length()").value(0));
     }
 
     @Test
@@ -143,6 +485,14 @@ class M9bBizGoodsFlowTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.records.length()")
                         .value(org.hamcrest.Matchers.greaterThan(0)));
+        // 新建落的是草稿，要提交之后才筛得到「待审」
+        mvc().perform(get("/biz/goods").header("Authorization", "Bearer " + token)
+                        .param("status", "DRAFT"))
+                .andExpect(jsonPath("$.data.records[0].status").value("DRAFT"));
+        for (JsonNode g : records(token, "DRAFT")) {
+            mvc().perform(post("/biz/goods/" + g.get("goodsNo").asString() + "/submit")
+                    .header("Authorization", "Bearer " + token));
+        }
         mvc().perform(get("/biz/goods").header("Authorization", "Bearer " + token)
                         .param("status", "PENDING"))
                 .andExpect(jsonPath("$.data.records[0].status").value("PENDING"));
@@ -416,7 +766,7 @@ class M9bBizGoodsFlowTest {
     @DisplayName("★★★ 详情要带回三语原文 —— 否则用中文编辑一次，英文与阿语就被清空了")
     void detailCarriesI18nSoEditingKeepsTranslations() throws Exception {
         String token = merchant("13500135090", "三语店");
-        String body = "{\"title\":\"叶菜\",\"subtitle\":\"当季\",\"type\":\"NORMAL\","
+        String body = "{\"categoryNo\":\"CAT210\",\"title\":\"叶菜\",\"subtitle\":\"当季\",\"type\":\"NORMAL\","
                 + "\"titleI18n\":{\"en\":\"Leafy Greens\",\"ar\":\"خضار ورقية\"},"
                 + "\"subtitleI18n\":{\"en\":\"In season\"},"
                 + "\"cover\":\"🥬\",\"images\":[],\"specGroups\":[],"
@@ -465,7 +815,7 @@ class M9bBizGoodsFlowTest {
                 + "\"titleI18n\":{\"en\":\"Round Trip\",\"ar\":\"ذهاب وإياب\"},"
                 + "\"subtitleI18n\":{\"en\":\"Sub\"},"
                 + "\"cover\":\"🥬\",\"images\":[\"img-a\",\"img-b\"],"
-                + "\"categoryNo\":\"CAT111\","
+                + "\"categoryNo\":\"CAT110\","
                 + "\"specGroups\":[{\"name\":\"规格\",\"options\":[\"大\",\"小\"]}],"
                 + "\"skus\":[{\"optionValues\":[\"大\"],\"price\":800,\"stock\":7},"
                 + "{\"optionValues\":[\"小\"],\"price\":500,\"stock\":9}]}";
@@ -487,7 +837,7 @@ class M9bBizGoodsFlowTest {
          * **能被「两边都没有」满足的断言，等于没有断言。**
          */
         assertThat(first.get("cover").asString()).as("详情必须回传主图").isEqualTo("🥬");
-        assertThat(first.get("categoryNo").asString()).as("详情必须回传类目").isEqualTo("CAT111");
+        assertThat(first.get("categoryNo").asString()).as("详情必须回传类目").isEqualTo("CAT110");
         assertThat(first.get("images").size()).as("详情必须回传图集").isEqualTo(2);
         assertThat(first.get("titleI18n")).as("详情必须回传三语标题").isNotNull();
         assertThat(first.get("titleI18n").get("en").asString()).isEqualTo("Round Trip");
@@ -561,7 +911,9 @@ class M9bBizGoodsFlowTest {
     }
 
     private String goodsBody(String goodsNo, String title, long price, int stock) {
+        // 类目必填（P1-1 收尾）：CAT210 纸品清洁 —— 无 required_code，不会卡在资质准入上
         return "{" + (goodsNo == null ? "" : "\"goodsNo\":\"" + goodsNo + "\",")
+                + "\"categoryNo\":\"CAT210\","
                 + "\"title\":\"" + title + "\",\"subtitle\":\"测试\",\"type\":\"NORMAL\","
                 + "\"cover\":\"🥫\",\"images\":[],\"specGroups\":[],"
                 + "\"skus\":[{\"optionValues\":[],\"price\":" + price + ",\"stock\":" + stock + "}]}";
@@ -583,6 +935,23 @@ class M9bBizGoodsFlowTest {
         mvc().perform(post("/ops/goods/" + goodsNo + "/audit").header("Authorization", "Bearer " + ops)
                 .contentType(MediaType.APPLICATION_JSON).content("{\"approved\":true}"));
         return goodsNo;
+    }
+
+    private String opsLogin() throws Exception {
+        return opsLogin("goods", "goods123");
+    }
+
+    private void approveGoods(String goodsNo) throws Exception {
+        mvc().perform(post("/ops/goods/" + goodsNo + "/audit")
+                        .header("Authorization", "Bearer " + opsLogin())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"approved\":true}"))
+                .andExpect(jsonPath("$.code").value(0));
+    }
+
+    private String merchantNoOf(String token) throws Exception {
+        String body = mvc().perform(get("/biz/merchant/profile").header("Authorization", "Bearer " + token))
+                .andReturn().getResponse().getContentAsString();
+        return json.readTree(body).get("data").get("merchantNo").asString();
     }
 
     /** 走完「入驻 → 通过 → 重新登录」，返回可用于 /biz/** 的 token。 */

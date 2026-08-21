@@ -65,13 +65,24 @@ export interface GoodsListQuery {
   page?: number;
   /** 每页条数 */
   size?: number;
-  /** 按商品状态过滤。B 端能看到全部状态，C 端只看得到 ON_SALE */
-  status?: GoodsStatus;
+  /**
+   * 按商品状态过滤。B 端能看到全部状态，C 端只看得到 ON_SALE。
+   *
+   * <p>`OUT_OF_STOCK` **不是 `GoodsStatus` 的一员**：库里没有这个状态列，
+   * 它按「所有 SKU 可用量都 ≤ 0」算出来，且与在售**不互斥**
+   * —— 一件在售商品照样能全规格断货。B-4.1 一直写着这一筛，代码里此前没有。
+   */
+  status?: GoodsStatus | "OUT_OF_STOCK";
   /**
    * 按标题模糊搜。**服务层一直支持，端点此前写死传 null** ——
    * 于是商品页没有搜索，而商品一多这一页就只能靠滚。
    */
   keyword?: string;
+  /**
+   * 按三级类目筛。与 `keyword` 是同一种遗漏：服务层一直支持，
+   * 端点写死传 null。类目变必填之后，按类目找货是商家的主路径。
+   */
+  categoryNo?: string;
 }
 
 /**
@@ -93,20 +104,36 @@ export interface SaveGoodsReqBody {
   titleI18n: Record<string, string>;
   /** 副标题的三语原文，同上 */
   subtitleI18n: Record<string, string>;
-  /** 商品形态，决定履约与合规（生鲜要截单、服务不发货、iOS 可售规则） */
-  type: GoodsDraft["type"];
-  /** 类目单号。选填，决定归类与经营准入 —— 与 `type` 是两个正交维度 */
-  categoryNo?: string;
+  /**
+   * 类目单号。**必填，且是唯一的分类输入** ——
+   * 商品形态（生鲜要截单、服务不发货、iOS 可售规则）由它派生，请求体里不再有 `type`。
+   */
+  categoryNo: string;
   /** 封面图 URL（来自 mUploadImage）。漏传的话 C 端列表里是一块留白，且不报错 */
   cover?: string;
   /** 详情轮播图 */
   images?: string[];
+  /** 图文详情正文（纯文本）。**空串也要发** —— 后端「不传 = 不改」，删光了不发就删不掉 */
+  detail?: string;
   /** 空数组 = 单规格。非空则 skus 必须是各组选项的笛卡尔积 */
   specGroups: GoodsDraft["specGroups"];
   /** 支持的履约方式；不传 = 不改（新建默认四种全支持） */
   fulfillments?: string[];
   /** SKU 列表。单规格商品也有且仅有一条 */
   skus: GoodsDraft["skus"];
+  /** 每人限购，0 = 不限。不传 = 不改 */
+  limitPerUser?: number;
+  /** 生鲜段：截单 / 到货描述 / 是否按实称 / 产地。不传 = 不改 */
+  fresh?: GoodsDraft["fresh"];
+  /** 服务段：时长 / 可核销门店。不传 = 不改 */
+  service?: GoodsDraft["service"];
+  /** 拼团档：起团人数 + 团价，要么都给要么都不给 */
+  groupBuy?: GoodsDraft["groupBuy"];
+  /**
+   * 引用的平台标准品。传了它，服务端会用标准品的 categoryNo 与 optionCode
+   * **覆盖**请求里的值；不传 = 自建品 / 脱离标准品。
+   */
+  stdNo?: string;
 }
 
 export interface ToggleGoodsReq {
@@ -333,6 +360,13 @@ export interface StoreEditReq {
   name: string;
   /** 门店地址 */
   address?: string;
+  /**
+   * 这家店摆哪些货架（**只有新建时有意义**，改名时后端忽略）。
+   *
+   * <p><b>不传 = 复制默认店的</b>：多门店商家开分店卖的多半是同一批货，
+   * 从零勾选是纯负担。一个都没有也合法 —— 建品时会自动加入。
+   */
+  categoryNos?: string[];
 }
 
 /** 停用/启用（门店与员工共用同一个形状） */

@@ -35,6 +35,10 @@ public final class BizKey {
     public static final String GOODS = "G";
     public static final String SKU = "SK";
     public static final String SPEC_TEMPLATE = "SPT";
+    /** 平台标准品（TDD-标准品库）。种子用的是 STD1xxx/STD2xxx，新建走这个前缀 */
+    public static final String SPU_STD = "STD";
+    /** 主题分类（陈列）。与活动的 CP 分开：摆到一起 ≠ 降价 */
+    public static final String TOPIC = "TP";
     public static final String STORE = "ST";
     public static final String MERCHANT_STAFF = "SF";
     public static final String GROUP_BUY = "GB";

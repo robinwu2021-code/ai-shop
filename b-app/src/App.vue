@@ -18,7 +18,13 @@ import { ensureDemoMerchant, ensureDemoOrders } from "@/api/demo-orders";
 onLaunch(() => {
   // B 端外壳的角标只有一个：「我的」上的未读消息数（新订单/售后/评价的落点）。
   // 切语言后各页 onShow 自然重取服务端文案，不需要额外副作用
-  configureShell({ tabs: TABS, badge: (key) => (key === "me" ? unreadCount.value : 0) });
+  // defaultSkin=brand：B 端第一次打开就是品牌红（虹选）。已经切过皮肤的用户不受影响 ——
+  // 存过的值优先级更高。C 端不传这一项，仍是 fresh。
+  configureShell({
+    tabs: TABS,
+    defaultSkin: "brand",
+    badge: (key) => (key === "me" ? unreadCount.value : 0),
+  });
 
   // mock 的种子数据与 C 端同源（@shared/mock/db）；运行时状态按 origin 隔离，
   // 两端各持一份（见 TDD-b-app §4.4）。
@@ -124,6 +130,35 @@ onHide(stopUnreadPolling);
 @import "@ai-shop/ui/styles/base.css";
 
 /* ============================================================================
+   B 端密度：比 C 端紧一档
+
+   **为什么只在 B 端**：设计语言原本定的是「留白偏松（西式），信息密度低于国内
+   电商惯例」（见 base.css 顶部）—— 那个取舍对 C 端成立：顾客逛店，松一点显精致。
+   但 B 端是**作业台**：店主一天要扫几十次订单与商品列表，一屏多一行就少滚一次，
+   密度直接等于效率。同一套原语、两种密度，靠变量分开，不复制样式。
+
+   数值只动这四个总开关，不逐页去调 —— 页面里的间距是各写各的，
+   改总开关能一次覆盖 28 个页面，且以后再调只改这一处。
+   ============================================================================ */
+:root,
+.sh-root {
+  /* 卡片内边距 32→24rpx：375pt 版心里，32rpx(16px) 左右各吃掉 16px，
+     加上页边距后内容可用宽只剩 315pt。降一档每张卡横向多出 8pt */
+  --sh-pad-card: 24rpx;
+  /* 页面左右边距 28→24rpx，与卡片内边距取同值：两个数不一致时，
+     卡片边缘与页面边缘会形成一道看不出规律的错位 */
+  --sh-pad-page: 24rpx;
+  /* 空态 72→48rpx：「没东西可看」的状态本就不该再占掉大半屏 */
+  --sh-pad-empty: 48rpx;
+  /* 分栏与内容的距离 20→16rpx：chip 自带内边距，20rpx 之后是第二道留白 */
+  --sh-gap-tabs: 16rpx;
+  /* 次要文字 26→24rpx。正文是 page 默认的 28rpx —— 26 与它只差 1px，
+     「商品名」和「下单时间」看着一样重；降到 24 拉开 2px，主次一眼分得出。
+     24rpx(12px) 是这套界面的最小字号下限（见 .sh-chip 注释），不再往下。 */
+  --sh-fs-sub: 24rpx;
+}
+
+/* ============================================================================
    B 端表单件（label + 控件 + 提示）
 
    为什么是全局而不是组件：这套类名原先在 **11 个页面**里各写一份，且已经开始漂移 ——
@@ -139,36 +174,5 @@ onHide(stopUnreadPolling);
 .field {
   margin-top: 20rpx;
 }
-.field__label {
-  display: block;
-  font-size: 24rpx;
-  color: var(--sh-sub);
-  margin-bottom: 12rpx;
-}
 /* 88rpx ≈ 44pt，是点按目标的下限；缩到 84 省不出什么，却贴着下限走 */
-.field__input {
-  height: 88rpx;
-  padding: 0 24rpx;
-  border-radius: 24rpx;
-  background: var(--sh-faint);
-  font-size: 30rpx;
-  color: var(--sh-ink);
-}
-.field__area {
-  width: 100%;
-  box-sizing: border-box;
-  height: 140rpx;
-  padding: 20rpx 24rpx;
-  border-radius: 24rpx;
-  background: var(--sh-faint);
-  font-size: 28rpx;
-  color: var(--sh-ink);
-}
-.field__hint {
-  display: block;
-  margin-top: 10rpx;
-  font-size: 24rpx;
-  color: var(--sh-sub);
-  line-height: 1.5;
-}
 </style>

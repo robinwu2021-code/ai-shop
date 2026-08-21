@@ -89,6 +89,8 @@ export default {
     empty: "购物车是空的",
     total: "合计",
     checkout: "去结算",
+    unknownMerchant: "其他",
+    splitNote: "来自 {n} 家店，结算时会生成 {n} 笔订单，一次付清",
   },
   theme: {
     skinPure: "纯白底 · 只换主色与字色",
@@ -99,6 +101,8 @@ export default {
     language: "语言",
   },
   skin: {
+    brand: "虹选红",
+    brandDesc: "品牌默认",
     crimson: "赤金红",
     crimsonDesc: "年货节庆",
     amber: "琥珀黄",
@@ -134,6 +138,8 @@ export default {
     fulfillHint: "到店自提免运费；送货上门满 50 元免配送费，3 公里内当天送到。",
     faved: "已收藏，可在「我的 → 常去的店」找到",
     unfaved: "已取消收藏",
+    closed: "这家店已停业，暂时不能下单",
+    closedTip: "这家店已停业",
     myStores: "常去的店",
     myStoresHint: "扫码或收藏过的店",
     noStores: "还没有常去的店",
@@ -388,6 +394,10 @@ export default {
     giftItem: "{title} ×{n}（0 元）",
   },
   confirm: {
+    splitNote: "这些商品来自 {n} 家店，将生成 {n} 笔订单，一次付清",
+    appointmentSlot: "上门时段",
+    pick: "去选",
+    pickSlotHint: "请选择上门时段，师傅按这个时间到",
     capNoInvoice: "以下商家无法开具发票：{names}。下单前请确认。",
     capNoPayMethod: "这一车商品没有共同支持的支付方式，请分开下单或移除部分商品。",
     capQuotaBlocked: "以下商家本期收款额度不足，暂时无法下单：{names}。",
@@ -419,6 +429,7 @@ export default {
   pay: {
     title: "收银台",
     payable: "应付金额",
+    covers: "本次付款覆盖 {n} 笔订单",
     remain: "剩余 {t} 自动关闭",
     expired: "支付超时，订单已关闭",
     wechat: "微信支付",
@@ -441,7 +452,14 @@ export default {
   orders: {
     title: "我的订单",
     entryHint: "全部订单",
-    tab: { all: "全部", toPay: "待付款", toPick: "待取货", done: "已完成", afterSale: "退款/售后" },
+    // toPick=自提类到点了要去取；toReceive=配送类在路上要等。两者在库里是同一个
+    // FULFILLING，靠履约方式分开（后端 OrderStatusView）—— 合成一个页签会让
+    // 买快递的用户在「待取货」下看到自己的单
+    tab: {
+      all: "全部", toPay: "待付款", toShip: "待发货",
+      toPick: "待取货", toReceive: "待收货", done: "已完成", afterSale: "退款/售后",
+    },
+    hiddenCount: "还有 {n} 笔更早的订单未显示",
     total: "合计 {p}",
     pay: "去支付",
     moreItems: "等共 {n} 件其他商品",
@@ -466,8 +484,25 @@ export default {
   orderStatus: {
     WAIT_PAY: "待付款",
     PAID: "已支付",
-    ARRIVED: "已到自提点",
-    SHIPPED: "已发货",
+    FULFILLING: "履约中",
+    COMPLETED: "已完成",
+    CANCELLED: "已取消",
+    REFUNDED: "已退款",
+  },
+  /*
+   * 状态文案按 `(状态 × 交付形态)` 分化 —— 同一个 FULFILLING，自提说「已到自提点」、
+   * 快递说「已发货」、到店核销说「待使用」、上门预约说「待服务 · 时间」。
+   * key 由 orderView() 给出，加一种履约方式在这里加一行，不动状态枚举。
+   */
+  orderView: {
+    WAIT_PAY: "待付款",
+    PAID: "备货中",
+    PAID_SHIP_TO_BUYER: "待发货",
+    FULFILLING_SELF_PICKUP: "已到自提点",
+    FULFILLING_SHIP_TO_BUYER: "已发货",
+    FULFILLING_SELF_SERVE: "待使用 · 凭码到店",
+    FULFILLING_SERVE_TO_BUYER: "待服务",
+    FULFILLING_SERVE_AT: "待服务 · {t}",
     COMPLETED: "已完成",
     CANCELLED: "已取消",
     REFUNDED: "已退款",

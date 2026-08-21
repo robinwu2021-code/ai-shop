@@ -25,6 +25,18 @@ public interface MerchantAdminPort {
     String activate(ActivateCommand cmd);
 
     /**
+     * 授予经营类目编码。**与审核通过同一个事务**（商品域-优化总方案 批 B）。
+     *
+     * <p>拆成两步的后果不是「少一步」，是多出一个状态：<b>通过了，但一个码都没授</b>。
+     * 商家收到通过通知、进去建品、点上架被拒，看到的是「你还没有资质授权」——
+     * 去哪申请没人告诉他。这与「有门槛没有发证机关」是同一个形状。
+     *
+     * <p>码为空是合法的：只卖无门槛类目的商家本来就不需要任何码。
+     * 认不出的码<b>直接抛</b> —— 写进去一个不存在的码等于一个永不命中的授权，静默失效。
+     */
+    void grantCategoryCodes(String entityNo, java.util.List<String> codes);
+
+    /**
      * @param serviceScope   COMMUNITY / CITY / PLATFORM（ADR-009）
      * @param communityNos   scope=COMMUNITY 时<b>必须非空</b>，否则该商家对谁都不可见
      * @param settleAccountType 分账账户类型（ADR-002）。为空表示申请时没填，

@@ -75,11 +75,19 @@ public class OpsMerchantAuthController {
 
     @PutMapping("/ops/merchants/{merchantNo}/auth-codes")
     @PreAuthorize("@perm.can('" + Perms.MERCHANT_CATEGORY_GRANT + "')")
-    public List<String> setCodes(@PathVariable String merchantNo, @RequestBody SetReq req) {
-        var codes = authCodeService.setCodes(merchantNo, req.codes(), req.reason());
+    public MerchantAuthCodeService.SetResult setCodes(@PathVariable String merchantNo,
+                                                      @RequestBody SetReq req) {
+        var result = authCodeService.setCodes(merchantNo, req.codes(), req.reason());
+        /*
+         * 撤了码就把**影响面一并记进审计**：事后追「这家店的货为什么突然上不去了」，
+         * 从日志里就能直接答，不必再去比对当时的商品快照。
+         */
+        String impact = result.revoked().isEmpty() ? ""
+                : "｜撤销：" + String.join(",", result.revoked())
+                + "，影响在架商品 " + result.affected() + " 件";
         auditLogPort.record("MERCHANT_AUTH_CODES", merchantNo,
-                String.join(",", codes) + "｜原因：" + req.reason());
-        return codes;
+                String.join(",", result.codes()) + "｜原因：" + req.reason() + impact);
+        return result;
     }
 
     /** @param reason 改动原因，必填 —— 它决定商家能上架什么 */

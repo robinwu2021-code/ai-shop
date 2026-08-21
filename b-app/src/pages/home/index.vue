@@ -297,6 +297,15 @@ onShow(load);
         <text class="sh-muted">{{ $t("home.storesEntryHint") }}</text>
       </view>
 
+      <!--
+        我的类目：与「门店管理」并列而不是塞进去 —— 那一页管「有几家店」，
+        这一页管「这家店摆哪几类」，改动频率与责任人都不同。
+      -->
+      <view v-if="merchant.can('biz:store:admin')" class="sh-card entry" @tap="open(ROUTES.storeCategories)">
+        <text class="sh-h2">{{ $t("home.storeCategoriesEntry") }}</text>
+        <text class="sh-muted">{{ $t("home.storeCategoriesEntryHint") }}</text>
+      </view>
+
       <view v-if="merchant.can('biz:store:admin')" class="sh-card entry" @tap="open(ROUTES.staff)">
         <text class="sh-h2">{{ $t("home.staffEntry") }}</text>
         <text class="sh-muted">{{ $t("home.staffEntryHint") }}</text>

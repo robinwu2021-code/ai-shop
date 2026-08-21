@@ -260,12 +260,20 @@
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `couponNo` | `string` | 是 | 券单号 |
-| `name` | `string` | 是 | 券名，如「满 50 减 5」 |
+| `title` | `string` | 是 | 券名，如「满 50 减 5」 |
+| `type` | [`CouponType`](#coupontype) | 是 | — |
+| `faceMinor` | `number` | 是 | 满减面额（最小货币单位）。`DISCOUNT` 券为 0 |
+| `discountRate` | `number` | 是 | 折扣**万分比**，8500 = 八五折。`FULL_CUT` 券为 0 |
 | `thresholdMinor` | `number` | 是 | 使用门槛（最小货币单位）。0 表示无门槛 |
-| `discountMinor` | `number` | 是 | 抵扣金额（最小货币单位） |
-| `expireAt` | `number` | 是 | 过期时间 |
+| `maxDiscountMinor` | `number` | 是 | 折扣券封顶（最小货币单位）。仅 `DISCOUNT` 有意义 |
+| `funder` | [`CouponFunder`](#couponfunder) | 是 | — |
+| `merchantNo` | `string` | 是 | 商家券的归属商家；平台券为空 |
+| `startAt` | `number` | 是 | 可领取/可用的时间窗 |
+| `endAt` | `number` | 是 | — |
+| `remain` | `number` | 是 | 剩余可领数量 |
 | `received` | `boolean` | 是 | 当前用户是否已领取。列表页据此显示「领取」还是「去使用」 |
-| `scopeDesc` | `string` | 是 | 适用范围文案，如「仅限张记生鲜」。展示用，实际校验在服务端 |
+| `status` | [`CouponStatus`](#couponstatus) | 是 | — |
+| `scopeDesc` | `string` | 是 | 适用范围文案，如「仅限张记粮油店」。展示用，实际校验在服务端 |
 
 
 ### goods
@@ -418,6 +426,7 @@
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `groupNo` | `string` | 是 | 团单号 |
+| `status` | [`GroupBuyStatus`](#groupbuystatus) | 是 | 团的状态 |
 | `goodsNo` | `string` | 是 | 开团的商品 |
 | `title` | `string` | 是 | 商品标题快照 |
 | `cover` | `string` | 是 | 商品封面快照 |
@@ -433,7 +442,7 @@
 | `reached` | `boolean` | 是 | 已成团 |
 | `need` | `number` | 是 | 还差几人 |
 | `expireAt` | `number` | 是 | 截止时间：发起后 validHours 与商品截单时间取更早 |
-| `members` | `object`（见下）\[\] | 是 | 已参团的人及各自件数，展示用 |
+| `members` | `object`（见下）\[\] | 是 | 已参团的邻居，展示用。 **没有件数**：参团是一人一份 —— 成团判断、「还差 N 人」的文案、`joinedCount` 全部按人算，库里也没存过件数。这里原先有个 `qty`，页面照着渲染 `×{qty}`， 而它从来没有值。 |
 | `joined` | `boolean` | 是 | 当前用户是否已参团 |
 | `neighborPickup` | [`PickupPoint`](#pickuppoint) | 否 | 邻里自提点（C-GB-06）：发起人勾选「送到我家」时有值。 参团者在这里取货，发起人负责签收与逐单核销 —— **零报酬**（ADR-005 §3）。 |
 | `isOwner` | `boolean` | 否 | 我是不是这个团的发起人 —— 决定是否显示轻核销入口 |
@@ -444,7 +453,6 @@
 |---|---|:---:|---|
 | `avatar` | `string` | 是 | — |
 | `nickname` | `string` | 是 | — |
-| `qty` | `number` | 是 | — |
 
 
 #### GET `/mp/group-buy/{groupNo}`
@@ -464,6 +472,7 @@
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `groupNo` | `string` | 是 | 团单号 |
+| `status` | [`GroupBuyStatus`](#groupbuystatus) | 是 | 团的状态 |
 | `goodsNo` | `string` | 是 | 开团的商品 |
 | `title` | `string` | 是 | 商品标题快照 |
 | `cover` | `string` | 是 | 商品封面快照 |
@@ -479,7 +488,7 @@
 | `reached` | `boolean` | 是 | 已成团 |
 | `need` | `number` | 是 | 还差几人 |
 | `expireAt` | `number` | 是 | 截止时间：发起后 validHours 与商品截单时间取更早 |
-| `members` | `object`（见下）\[\] | 是 | 已参团的人及各自件数，展示用 |
+| `members` | `object`（见下）\[\] | 是 | 已参团的邻居，展示用。 **没有件数**：参团是一人一份 —— 成团判断、「还差 N 人」的文案、`joinedCount` 全部按人算，库里也没存过件数。这里原先有个 `qty`，页面照着渲染 `×{qty}`， 而它从来没有值。 |
 | `joined` | `boolean` | 是 | 当前用户是否已参团 |
 | `neighborPickup` | [`PickupPoint`](#pickuppoint) | 否 | 邻里自提点（C-GB-06）：发起人勾选「送到我家」时有值。 参团者在这里取货，发起人负责签收与逐单核销 —— **零报酬**（ADR-005 §3）。 |
 | `isOwner` | `boolean` | 否 | 我是不是这个团的发起人 —— 决定是否显示轻核销入口 |
@@ -490,7 +499,6 @@
 |---|---|:---:|---|
 | `avatar` | `string` | 是 | — |
 | `nickname` | `string` | 是 | — |
-| `qty` | `number` | 是 | — |
 
 
 #### POST `/mp/group-buy/{groupNo}/join`
@@ -516,6 +524,7 @@
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `groupNo` | `string` | 是 | 团单号 |
+| `status` | [`GroupBuyStatus`](#groupbuystatus) | 是 | 团的状态 |
 | `goodsNo` | `string` | 是 | 开团的商品 |
 | `title` | `string` | 是 | 商品标题快照 |
 | `cover` | `string` | 是 | 商品封面快照 |
@@ -531,7 +540,7 @@
 | `reached` | `boolean` | 是 | 已成团 |
 | `need` | `number` | 是 | 还差几人 |
 | `expireAt` | `number` | 是 | 截止时间：发起后 validHours 与商品截单时间取更早 |
-| `members` | `object`（见下）\[\] | 是 | 已参团的人及各自件数，展示用 |
+| `members` | `object`（见下）\[\] | 是 | 已参团的邻居，展示用。 **没有件数**：参团是一人一份 —— 成团判断、「还差 N 人」的文案、`joinedCount` 全部按人算，库里也没存过件数。这里原先有个 `qty`，页面照着渲染 `×{qty}`， 而它从来没有值。 |
 | `joined` | `boolean` | 是 | 当前用户是否已参团 |
 | `neighborPickup` | [`PickupPoint`](#pickuppoint) | 否 | 邻里自提点（C-GB-06）：发起人勾选「送到我家」时有值。 参团者在这里取货，发起人负责签收与逐单核销 —— **零报酬**（ADR-005 §3）。 |
 | `isOwner` | `boolean` | 否 | 我是不是这个团的发起人 —— 决定是否显示轻核销入口 |
@@ -542,7 +551,6 @@
 |---|---|:---:|---|
 | `avatar` | `string` | 是 | — |
 | `nickname` | `string` | 是 | — |
-| `qty` | `number` | 是 | — |
 
 
 #### GET `/mp/group-buy/{groupNo}/orders`
@@ -685,7 +693,7 @@
 | `quotes` | [`Quote`](#quote)\[\] | 是 | 收到的报价。一个需求单可多家报价，由发起人挑 |
 | `createdAt` | `number` | 是 | 发起时间 |
 | `expireAt` | `number` | 是 | 需求单过期时间。过期即 EXPIRED，不再接受报价 |
-| `groupNo` | `string` | 否 | MATCHED 后指向生成的正式团 |
+| `groupNo` | `string` | 否 | LOCKED 之后指向生成的正式团 |
 | `lockedPriceMinor` | `number` | 否 | 选定的报价快照。转成正式团后下单用这个价，**不读商家当前价** —— 这是防加价最硬的一层：加价在技术上做不到，不需要审核。 |
 | `confirmed` | `boolean` | 否 | 我（+1 的邻居）是否已二次确认下单。+1 不等于承诺，必须各自确认 |
 | `confirmedCount` | `number` | 否 | 已确认下单的人数 |
@@ -731,7 +739,7 @@
 | `quotes` | [`Quote`](#quote)\[\] | 是 | 收到的报价。一个需求单可多家报价，由发起人挑 |
 | `createdAt` | `number` | 是 | 发起时间 |
 | `expireAt` | `number` | 是 | 需求单过期时间。过期即 EXPIRED，不再接受报价 |
-| `groupNo` | `string` | 否 | MATCHED 后指向生成的正式团 |
+| `groupNo` | `string` | 否 | LOCKED 之后指向生成的正式团 |
 | `lockedPriceMinor` | `number` | 否 | 选定的报价快照。转成正式团后下单用这个价，**不读商家当前价** —— 这是防加价最硬的一层：加价在技术上做不到，不需要审核。 |
 | `confirmed` | `boolean` | 否 | 我（+1 的邻居）是否已二次确认下单。+1 不等于承诺，必须各自确认 |
 | `confirmedCount` | `number` | 否 | 已确认下单的人数 |
@@ -783,7 +791,7 @@
 | `quotes` | [`Quote`](#quote)\[\] | 是 | 收到的报价。一个需求单可多家报价，由发起人挑 |
 | `createdAt` | `number` | 是 | 发起时间 |
 | `expireAt` | `number` | 是 | 需求单过期时间。过期即 EXPIRED，不再接受报价 |
-| `groupNo` | `string` | 否 | MATCHED 后指向生成的正式团 |
+| `groupNo` | `string` | 否 | LOCKED 之后指向生成的正式团 |
 | `lockedPriceMinor` | `number` | 否 | 选定的报价快照。转成正式团后下单用这个价，**不读商家当前价** —— 这是防加价最硬的一层：加价在技术上做不到，不需要审核。 |
 | `confirmed` | `boolean` | 否 | 我（+1 的邻居）是否已二次确认下单。+1 不等于承诺，必须各自确认 |
 | `confirmedCount` | `number` | 否 | 已确认下单的人数 |
@@ -829,7 +837,7 @@
 | `quotes` | [`Quote`](#quote)\[\] | 是 | 收到的报价。一个需求单可多家报价，由发起人挑 |
 | `createdAt` | `number` | 是 | 发起时间 |
 | `expireAt` | `number` | 是 | 需求单过期时间。过期即 EXPIRED，不再接受报价 |
-| `groupNo` | `string` | 否 | MATCHED 后指向生成的正式团 |
+| `groupNo` | `string` | 否 | LOCKED 之后指向生成的正式团 |
 | `lockedPriceMinor` | `number` | 否 | 选定的报价快照。转成正式团后下单用这个价，**不读商家当前价** —— 这是防加价最硬的一层：加价在技术上做不到，不需要审核。 |
 | `confirmed` | `boolean` | 否 | 我（+1 的邻居）是否已二次确认下单。+1 不等于承诺，必须各自确认 |
 | `confirmedCount` | `number` | 否 | 已确认下单的人数 |
@@ -875,7 +883,7 @@
 | `quotes` | [`Quote`](#quote)\[\] | 是 | 收到的报价。一个需求单可多家报价，由发起人挑 |
 | `createdAt` | `number` | 是 | 发起时间 |
 | `expireAt` | `number` | 是 | 需求单过期时间。过期即 EXPIRED，不再接受报价 |
-| `groupNo` | `string` | 否 | MATCHED 后指向生成的正式团 |
+| `groupNo` | `string` | 否 | LOCKED 之后指向生成的正式团 |
 | `lockedPriceMinor` | `number` | 否 | 选定的报价快照。转成正式团后下单用这个价，**不读商家当前价** —— 这是防加价最硬的一层：加价在技术上做不到，不需要审核。 |
 | `confirmed` | `boolean` | 否 | 我（+1 的邻居）是否已二次确认下单。+1 不等于承诺，必须各自确认 |
 | `confirmedCount` | `number` | 否 | 已确认下单的人数 |
@@ -886,6 +894,75 @@
 |---|---|:---:|---|
 | `avatar` | `string` | 是 | — |
 | `nickname` | `string` | 是 | — |
+
+
+### invoice
+
+#### POST `/mp/invoice/apply`
+
+申请开票　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`InvoiceRequest`](#invoicerequest)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `requestNo` | `string` | 是 | — |
+| `orderNo` | `string` | 是 | 按**主单**申请，不按子单 —— 消费者眼里那是一次购买，票也该是一张 |
+| `titleType` | [`InvoiceTitleType`](#invoicetitletype) | 是 | — |
+| `title` | `string` | 是 | — |
+| `taxNo` | `string` | 否 | 单位抬头必填 |
+| `email` | `string` | 是 | 电子票只能发到这里，填错就是开了也收不到 |
+| `amountMinor` | `number` | 是 | 开票金额快照。**不实时读订单** —— 退款会改订单金额，已开的票不会跟着变 |
+| `status` | [`InvoiceRequestStatus`](#invoicerequeststatus) | 是 | — |
+| `invoiceNo` | `string` | 否 | — |
+| `issuedAt` | `number` | 否 | — |
+| `rejectReason` | `string` | 否 | 驳回原因。不写原因的驳回等于让消费者再猜一遍 |
+| `createdAt` | `number` | 否 | — |
+
+
+#### GET `/mp/invoice/mine`
+
+我的开票申请　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`InvoiceRequest`](#invoicerequest)\[\]
+
+
+#### GET `/mp/invoice/order/{orderNo}`
+
+某单的开票状态　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `orderNo` | path | `string` | 是 | 订单单号（按商家拆单后的子订单） |
+
+**出参**（`data`）
+
+类型：[`InvoiceRequest`](#invoicerequest)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `requestNo` | `string` | 是 | — |
+| `orderNo` | `string` | 是 | 按**主单**申请，不按子单 —— 消费者眼里那是一次购买，票也该是一张 |
+| `titleType` | [`InvoiceTitleType`](#invoicetitletype) | 是 | — |
+| `title` | `string` | 是 | — |
+| `taxNo` | `string` | 否 | 单位抬头必填 |
+| `email` | `string` | 是 | 电子票只能发到这里，填错就是开了也收不到 |
+| `amountMinor` | `number` | 是 | 开票金额快照。**不实时读订单** —— 退款会改订单金额，已开的票不会跟着变 |
+| `status` | [`InvoiceRequestStatus`](#invoicerequeststatus) | 是 | — |
+| `invoiceNo` | `string` | 否 | — |
+| `issuedAt` | `number` | 否 | — |
+| `rejectReason` | `string` | 否 | 驳回原因。不写原因的驳回等于让消费者再猜一遍 |
+| `createdAt` | `number` | 否 | — |
 
 
 ### master-data
@@ -943,9 +1020,11 @@
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `merchantNo` | `string` | 是 | 商家单号。贯穿商品/订单/评价/结算，是多商家模型的主线（ADR-001） |
+| `selfOperated` | `boolean` | 否 | 这单是不是**平台自营**（销售主体是平台）。 **必须显示出来 —— 电商法 §37 要求平台以显著方式区分标记自营业务， 不得误导消费者。这是法定义务，不是产品选择。** 而它同时是资金模式合法性的一部分：归集路径下平台是销售主体， 页面上却让消费者以为在跟商家交易，四流就不一致了（ADR-017 §3.4）。 ⚠️ 自营时**商家信息照常展示**（供货商、产地、门店、评分）—— 要禁的是把销售方指给商家的**表述**，不是商家信息本身。 见 `packages/shared/tests/seller-statement.test.ts` 的禁用词表。 |
 | `name` | `string` | 是 | 店铺名 |
 | `logo` | `string` | 是 | 店铺 logo URL |
-| `rating` | `number` | 是 | 综合评分，0–5，保留一位小数 |
+| `rating` | `number` | 是 | 综合评分，0–5，保留一位小数。**0 分要配合 `ratingCount` 一起看** |
+| `ratingCount` | `number` | 是 | 参与评分的评价条数 |
 | `verified` | `boolean` | 是 | 是否通过资质认证 |
 | `breachCount` | `number` | 是 | 选定报价后不履约的次数。>0 会在报价卡上公示 —— 事后信用替代事前审核 |
 | `type` | [`MerchantType`](#merchanttype) | 是 | 商家类型：平台自营 / 企业 / 个体 |
@@ -955,7 +1034,6 @@
 | `serviceCityCode` | `string` | 否 | 覆盖哪个城市。**仅 scope=CITY 时有意义** |
 | `distance` | `number` | 否 | 距当前社区的距离（米）。由服务端按用户当前社区算好下发，端上不自己算 |
 | `salesCount` | `number` | 是 | 累计订单量（评分权重之一） |
-| `ratingCount` | `number` | 是 | 参与评分的评价条数 |
 | `goodsCount` | `number` | 是 | 在售商品数 |
 | `address` | `string` | 否 | 店铺地址。纯线上商家可能没有 |
 | `openHours` | `string` | 否 | 营业时间文案 |
@@ -989,6 +1067,7 @@
 | `category` | `string` | 是 | 主营类目 |
 | `desc` | `string` | 是 | 店铺简介 |
 | `asPickupPoint` | `boolean` | 否 | 承接自提点：小店既是供给方也是取货点（ADR-005 type=STORE） |
+| `qualificationItems` | [`QualificationItem`](#qualificationitem)\[\] | 否 | 结构化资质。**可选**：老版本端上还在只传 `licenses`， 后端对未传该字段的请求跳过执照校验（见 `OpsServiceImpl.requireLicenseIfNeeded`）—— 校验必须晚于能满足它的 UI 上线，否则拦的不是坏商家，是所有人。 |
 | `serviceScope` | [`ServiceScope`](#servicescope) | 否 | 期望经营范围（ADR-009）。申请时可空，<b>审核通过时必须确定</b> —— 否则商家上着架却对谁都不可见，且没有任何报错。 |
 | `communityNos` | `string`\[\] | 否 | 期望覆盖的社区。scope=COMMUNITY 时审核通过必须非空 |
 | `licenses` | `string`\[\] | 否 | 资质图片（营业执照/身份证）。**选填** —— 一期 EDI 不强制。 与下面的结算账户一样，属于**分账主体开户**而不是入驻申请本身（ADR-002）： `usr_merchant_payment` 是独立一张表、有自己的 `apply_status`，就是这个道理。 申请时能传就传，通过后在 B 端补也行 —— 逼一个还没通过审核的人先传营业执照， 只会把人挡在门外。 |
@@ -1115,6 +1194,28 @@
 **出参**（`data`）
 
 类型：[`Message`](#message)\[\]
+
+
+#### POST `/mp/message/subscribe`
+
+订阅消息授权上报（同意与拒绝都报：后端记额度 + 防反复弹窗）　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`any`
+
+
+#### GET `/mp/message/unread-count`
+
+未读数（角标用，只给一个数）　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`number`
 
 
 ### order
@@ -1492,6 +1593,30 @@
 类型：[`PointRecord`](#pointrecord)\[\]
 
 
+### push-token
+
+#### POST `/mp/push-token`
+
+绑定 App 推送设备（登录后）　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`any`
+
+
+#### POST `/mp/push-token/unregister`
+
+解绑推送设备（登出前，共用设备换人必须解）　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`any`
+
+
 ### review
 
 #### GET `/mp/review`
@@ -1601,8 +1726,8 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `merchant` | [`Merchant`](#merchant) | 是 | 平台建档的商家主数据（名称/资质/评分），店主改不了 |
-| `store` | [`StoreProfile`](#storeprofile) | 是 | 店主自己维护的门面内容（公告/营业时间/地址） |
+| `merchant` | [`MerchantBrief`](#merchantbrief) | 是 | 平台建档的商家主数据（名称/资质/评分），店主改不了 |
+| `store` | [`StoreFront`](#storefront) | 是 | 店主自己维护的门面内容 |
 | `goods` | [`Goods`](#goods)\[\] | 是 | 在售商品。首屏展示，分页靠单独的商品列表接口 |
 | `favorited` | `boolean` | 是 | 我是否收藏了这家店 |
 
@@ -1776,7 +1901,7 @@
 
 **出参**（`data`）
 
-类型：[`void`](#void)
+类型：`any`
 
 
 #### POST `/mp/user/otp/send`
@@ -1787,7 +1912,7 @@
 
 **出参**（`data`）
 
-类型：[`void`](#void)
+类型：`any`
 
 
 #### GET `/mp/user/profile`
@@ -1838,6 +1963,8 @@
 | `status` | [`AfterSaleStatus`](#aftersalestatus) | 是 | 售后单状态，独立于订单状态流转 |
 | `reason` | `string` | 是 | 用户填写的售后原因 |
 | `images` | `string`\[\] | 是 | 举证图（破损、少件的照片）。是否必填由售后类型决定 |
+| `refundMinor` | `number` | 是 | 这张售后单要退的钱（分）。**不等于订单金额** —— 一张子订单可以只退其中一件，也可以先后发起多次。 <p>后端一直在发（`AfterSaleVO.refundMinor`），只是契约里漏了声明， 于是 B 端售后页拿不到它，只能退而求其次显示**整张子订单的应付**。 单件单品的单子上两个数恰好相等，所以这个错在联调环境里看不出来 —— 直到有人退三件里的一件。 |
+| `instant` | `boolean` | 否 | 极速退：金额在阈值内的仅退款，系统自动通过。 **商家只可见不可拒**，所以这类单上不该出现同意/驳回按钮。 |
 | `merchantReply` | `string` | 否 | 商家同意/驳回时的说明 |
 | `returnExpressNo` | `string` | 否 | 用户寄回的运单号（RETURN_REFUND） |
 | `disputeReason` | `string` | 否 | 上升平台时用户的申诉理由 |
@@ -1914,22 +2041,6 @@
 |---|---|:---:|---|
 | `time` | `string` | 是 | — |
 | `left` | `number` | 是 | — |
-
-### AreaLevel
-
-枚举取值：
-
-- `COMMUNITY`
-- `STREET`
-- `DISTRICT`
-- `CITY`
-
-### AreaStatus
-
-枚举取值：
-
-- `ACTIVE`
-- `PENDING`
 
 ### BindCommunityReq
 
@@ -2025,15 +2136,53 @@
 
 ### Coupon
 
+优惠券模板。**字段与后端 `CouponVO` 一一对应**。 这里原先是一个被简化过的形状（`name` / `discountMinor` / `expireAt`）， 与后端一个都对不上，后果不是「少显示一块」而是**领券中心永远是空的**： 页面按 `c.expireAt > now` 过滤，而后端发的是 `endAt` —— `undefined > now` 恒 false，于是商家配好的券一张都露不出来，两边都不报错。 <b>而且那个简化本身是错的</b>：`discountMinor` 一个数表达不了折扣券 —— 折扣券要的是「打几折 + 最多减多少」。后端的形状才是对的，端上跟它。
+
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `couponNo` | `string` | 是 | 券单号 |
-| `name` | `string` | 是 | 券名，如「满 50 减 5」 |
+| `title` | `string` | 是 | 券名，如「满 50 减 5」 |
+| `type` | [`CouponType`](#coupontype) | 是 | — |
+| `faceMinor` | `number` | 是 | 满减面额（最小货币单位）。`DISCOUNT` 券为 0 |
+| `discountRate` | `number` | 是 | 折扣**万分比**，8500 = 八五折。`FULL_CUT` 券为 0 |
 | `thresholdMinor` | `number` | 是 | 使用门槛（最小货币单位）。0 表示无门槛 |
-| `discountMinor` | `number` | 是 | 抵扣金额（最小货币单位） |
-| `expireAt` | `number` | 是 | 过期时间 |
+| `maxDiscountMinor` | `number` | 是 | 折扣券封顶（最小货币单位）。仅 `DISCOUNT` 有意义 |
+| `funder` | [`CouponFunder`](#couponfunder) | 是 | — |
+| `merchantNo` | `string` | 是 | 商家券的归属商家；平台券为空 |
+| `startAt` | `number` | 是 | 可领取/可用的时间窗 |
+| `endAt` | `number` | 是 | — |
+| `remain` | `number` | 是 | 剩余可领数量 |
 | `received` | `boolean` | 是 | 当前用户是否已领取。列表页据此显示「领取」还是「去使用」 |
-| `scopeDesc` | `string` | 是 | 适用范围文案，如「仅限张记生鲜」。展示用，实际校验在服务端 |
+| `status` | [`CouponStatus`](#couponstatus) | 是 | — |
+| `scopeDesc` | `string` | 是 | 适用范围文案，如「仅限张记粮油店」。展示用，实际校验在服务端 |
+
+### CouponFunder
+
+券的出资方。决定这张券的钱最后从谁账上扣 —— 平台券走平台预算，商家券从结算里扣
+
+枚举取值：
+
+- `PLATFORM`
+- `MERCHANT`
+
+### CouponStatus
+
+券状态。与后端 `MktCoupon` 一致；平台列表要靠它筛出被停的券
+
+枚举取值：
+
+- `ACTIVE`
+- `PAUSED`
+- `ENDED`
+
+### CouponType
+
+券类型。与后端 `MktCoupon` 的常量逐字一致
+
+枚举取值：
+
+- `FULL_CUT`
+- `DISCOUNT`
 
 ### CreateGroupBuyReq
 
@@ -2120,14 +2269,6 @@
 | `lastAt` | `number` | 是 | 上次购买时间 |
 | `invalid` | `boolean` | 否 | 已下架/无库存 —— 一键再来一单时要显式标出，不能静默丢掉 |
 
-### FulfillmentReach
-
-枚举取值：
-
-- `PICKUP`
-- `ONSITE`
-- `SHIPPING`
-
 ### FulfillmentType
 
 枚举取值：
@@ -2210,11 +2351,10 @@
 
 ### GroupBuy
 
-商家团 —— 商家在已上架商品上开的团，用户可参与或自己开一桌。 定位：**只是一种活动**，不是平台核心机制。所以单档成团，不做阶梯价。，不是运营配置的活动位。 成团单位是自提点（拼的是一车送到一个点的成本），单档成团，不做阶梯。
-
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `groupNo` | `string` | 是 | 团单号 |
+| `status` | [`GroupBuyStatus`](#groupbuystatus) | 是 | 团的状态 |
 | `goodsNo` | `string` | 是 | 开团的商品 |
 | `title` | `string` | 是 | 商品标题快照 |
 | `cover` | `string` | 是 | 商品封面快照 |
@@ -2230,7 +2370,7 @@
 | `reached` | `boolean` | 是 | 已成团 |
 | `need` | `number` | 是 | 还差几人 |
 | `expireAt` | `number` | 是 | 截止时间：发起后 validHours 与商品截单时间取更早 |
-| `members` | `object`（见下）\[\] | 是 | 已参团的人及各自件数，展示用 |
+| `members` | `object`（见下）\[\] | 是 | 已参团的邻居，展示用。 **没有件数**：参团是一人一份 —— 成团判断、「还差 N 人」的文案、`joinedCount` 全部按人算，库里也没存过件数。这里原先有个 `qty`，页面照着渲染 `×{qty}`， 而它从来没有值。 |
 | `joined` | `boolean` | 是 | 当前用户是否已参团 |
 | `neighborPickup` | [`PickupPoint`](#pickuppoint) | 否 | 邻里自提点（C-GB-06）：发起人勾选「送到我家」时有值。 参团者在这里取货，发起人负责签收与逐单核销 —— **零报酬**（ADR-005 §3）。 |
 | `isOwner` | `boolean` | 否 | 我是不是这个团的发起人 —— 决定是否显示轻核销入口 |
@@ -2241,7 +2381,16 @@
 |---|---|:---:|---|
 | `avatar` | `string` | 是 | — |
 | `nickname` | `string` | 是 | — |
-| `qty` | `number` | 是 | — |
+
+### GroupBuyStatus
+
+商家团 / 邻里团的状态。**与库 `mkt_group_buy.status` 逐字一致**。 契约上原先没有这个字段，端上只能拿 `reached` 判断 —— 而**平台中止的团 人数可能已经够了**，只看 reached 会把一个已经作废的团显示成正常可参的团。
+
+枚举取值：
+
+- `OPEN`
+- `FORMED`
+- `FAILED`
 
 ### GroupRequest
 
@@ -2264,7 +2413,7 @@
 | `quotes` | [`Quote`](#quote)\[\] | 是 | 收到的报价。一个需求单可多家报价，由发起人挑 |
 | `createdAt` | `number` | 是 | 发起时间 |
 | `expireAt` | `number` | 是 | 需求单过期时间。过期即 EXPIRED，不再接受报价 |
-| `groupNo` | `string` | 否 | MATCHED 后指向生成的正式团 |
+| `groupNo` | `string` | 否 | LOCKED 之后指向生成的正式团 |
 | `lockedPriceMinor` | `number` | 否 | 选定的报价快照。转成正式团后下单用这个价，**不读商家当前价** —— 这是防加价最硬的一层：加价在技术上做不到，不需要审核。 |
 | `confirmed` | `boolean` | 否 | 我（+1 的邻居）是否已二次确认下单。+1 不等于承诺，必须各自确认 |
 | `confirmedCount` | `number` | 否 | 已确认下单的人数 |
@@ -2278,15 +2427,53 @@
 
 ### GroupRequestStatus
 
-邻里求团：**需求先于供给**。 与「商家团」是两条完全不同的线，刻意不复用一个模型：   商家团 —— 商品已上架、价格已定、库存已备，用户只是参与；适合生鲜日用这类高频标品。   求团   —— 发起时**商品还不存在，甚至没有商家**，用户只有一句「想买儿童床垫」；            适合床垫、校服、家电这类低频高单价、有议价空间的非标品。 关键约束：**意向 ≠ 订单**。求团阶段不收钱、不锁库存 —— 商品还不存在时收钱是给自己找麻烦。 只有发起人选定报价、转成正式商家团之后，才进入交易链路。
+求团需求单的状态。**取值以库里存的为准**（`mkt_request.status`）。 这里原先是另一套词：OPEN / QUOTING / MATCHED / EXPIRED —— 与后端一个都对不上， 于是页面上 `status === "MATCHED"` 恒 false（已选定报价那一块、二次确认按钮 永远不出现），而 `status !== "MATCHED"` 恒真（锁价之后「选定」按钮仍然挂着）。 两边各写各的，谁也没报错。 枚举对账守卫当时也是绿的：它拿端上的取值去全后端的大写字面量里搜， 而 MATCHED / OPEN / EXPIRED 恰好在别的域里存在（团购、优惠券…）—— **同名异义把缺口盖住了**。词袋比对不了「这个字段的取值」。
 
 枚举取值：
 
-- `OPEN`
-- `QUOTING`
-- `MATCHED`
+- `COLLECTING`
+- `QUOTED`
+- `LOCKED`
+- `CONFIRMED`
 - `CLOSED`
-- `EXPIRED`
+
+### InvoiceRequest
+
+开票申请：**平台开给消费者**的销项票。 与结算侧的采购发票（`stl_purchase_invoice`）是两回事： 那是**进项**（供应商开给平台，决定平台能不能列支成本）， 这是**销项**（平台开给消费者，决定归集资金模式成不成立）。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `requestNo` | `string` | 是 | — |
+| `orderNo` | `string` | 是 | 按**主单**申请，不按子单 —— 消费者眼里那是一次购买，票也该是一张 |
+| `titleType` | [`InvoiceTitleType`](#invoicetitletype) | 是 | — |
+| `title` | `string` | 是 | — |
+| `taxNo` | `string` | 否 | 单位抬头必填 |
+| `email` | `string` | 是 | 电子票只能发到这里，填错就是开了也收不到 |
+| `amountMinor` | `number` | 是 | 开票金额快照。**不实时读订单** —— 退款会改订单金额，已开的票不会跟着变 |
+| `status` | [`InvoiceRequestStatus`](#invoicerequeststatus) | 是 | — |
+| `invoiceNo` | `string` | 否 | — |
+| `issuedAt` | `number` | 否 | — |
+| `rejectReason` | `string` | 否 | 驳回原因。不写原因的驳回等于让消费者再猜一遍 |
+| `createdAt` | `number` | 否 | — |
+
+### InvoiceRequestStatus
+
+开票申请的状态（ADR-017 §3.4 条件 2）。 本版是**手工开票**：运营在票据系统里开完，回来回填票号。 接票据系统是第二步，届时在 `ISSUED` 之后延长状态机，不改前面的。
+
+枚举取值：
+
+- `REQUESTED`
+- `ISSUED`
+- `REJECTED`
+
+### InvoiceTitleType
+
+抬头类型。单位抬头必须有税号，否则对方入不了账 —— 票开出来等于白开
+
+枚举取值：
+
+- `PERSONAL`
+- `COMPANY`
 
 ### JoinGroupBuyReq
 
@@ -2356,9 +2543,11 @@
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `merchantNo` | `string` | 是 | 商家单号。贯穿商品/订单/评价/结算，是多商家模型的主线（ADR-001） |
+| `selfOperated` | `boolean` | 否 | 这单是不是**平台自营**（销售主体是平台）。 **必须显示出来 —— 电商法 §37 要求平台以显著方式区分标记自营业务， 不得误导消费者。这是法定义务，不是产品选择。** 而它同时是资金模式合法性的一部分：归集路径下平台是销售主体， 页面上却让消费者以为在跟商家交易，四流就不一致了（ADR-017 §3.4）。 ⚠️ 自营时**商家信息照常展示**（供货商、产地、门店、评分）—— 要禁的是把销售方指给商家的**表述**，不是商家信息本身。 见 `packages/shared/tests/seller-statement.test.ts` 的禁用词表。 |
 | `name` | `string` | 是 | 店铺名 |
 | `logo` | `string` | 是 | 店铺 logo URL |
-| `rating` | `number` | 是 | 综合评分，0–5，保留一位小数 |
+| `rating` | `number` | 是 | 综合评分，0–5，保留一位小数。**0 分要配合 `ratingCount` 一起看** |
+| `ratingCount` | `number` | 是 | 参与评分的评价条数 |
 | `verified` | `boolean` | 是 | 是否通过资质认证 |
 | `breachCount` | `number` | 是 | 选定报价后不履约的次数。>0 会在报价卡上公示 —— 事后信用替代事前审核 |
 | `type` | [`MerchantType`](#merchanttype) | 是 | 商家类型：平台自营 / 企业 / 个体 |
@@ -2368,7 +2557,6 @@
 | `serviceCityCode` | `string` | 否 | 覆盖哪个城市。**仅 scope=CITY 时有意义** |
 | `distance` | `number` | 否 | 距当前社区的距离（米）。由服务端按用户当前社区算好下发，端上不自己算 |
 | `salesCount` | `number` | 是 | 累计订单量（评分权重之一） |
-| `ratingCount` | `number` | 是 | 参与评分的评价条数 |
 | `goodsCount` | `number` | 是 | 在售商品数 |
 | `address` | `string` | 否 | 店铺地址。纯线上商家可能没有 |
 | `openHours` | `string` | 否 | 营业时间文案 |
@@ -2395,6 +2583,7 @@
 | `category` | `string` | 是 | 主营类目 |
 | `desc` | `string` | 是 | 店铺简介 |
 | `asPickupPoint` | `boolean` | 否 | 承接自提点：小店既是供给方也是取货点（ADR-005 type=STORE） |
+| `qualificationItems` | [`QualificationItem`](#qualificationitem)\[\] | 否 | 结构化资质。**可选**：老版本端上还在只传 `licenses`， 后端对未传该字段的请求跳过执照校验（见 `OpsServiceImpl.requireLicenseIfNeeded`）—— 校验必须晚于能满足它的 UI 上线，否则拦的不是坏商家，是所有人。 |
 | `serviceScope` | [`ServiceScope`](#servicescope) | 否 | 期望经营范围（ADR-009）。申请时可空，<b>审核通过时必须确定</b> —— 否则商家上着架却对谁都不可见，且没有任何报错。 |
 | `communityNos` | `string`\[\] | 否 | 期望覆盖的社区。scope=COMMUNITY 时审核通过必须非空 |
 | `licenses` | `string`\[\] | 否 | 资质图片（营业执照/身份证）。**选填** —— 一期 EDI 不强制。 与下面的结算账户一样，属于**分账主体开户**而不是入驻申请本身（ADR-002）： `usr_merchant_payment` 是独立一张表、有自己的 `apply_status`，就是这个道理。 申请时能传就传，通过后在 B 端补也行 —— 逼一个还没通过审核的人先传营业执照， 只会把人挡在门外。 |
@@ -2443,9 +2632,11 @@
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `merchantNo` | `string` | 是 | 商家单号。贯穿商品/订单/评价/结算，是多商家模型的主线（ADR-001） |
+| `selfOperated` | `boolean` | 否 | 这单是不是**平台自营**（销售主体是平台）。 **必须显示出来 —— 电商法 §37 要求平台以显著方式区分标记自营业务， 不得误导消费者。这是法定义务，不是产品选择。** 而它同时是资金模式合法性的一部分：归集路径下平台是销售主体， 页面上却让消费者以为在跟商家交易，四流就不一致了（ADR-017 §3.4）。 ⚠️ 自营时**商家信息照常展示**（供货商、产地、门店、评分）—— 要禁的是把销售方指给商家的**表述**，不是商家信息本身。 见 `packages/shared/tests/seller-statement.test.ts` 的禁用词表。 |
 | `name` | `string` | 是 | 店铺名 |
 | `logo` | `string` | 是 | 店铺 logo URL |
-| `rating` | `number` | 是 | 综合评分，0–5，保留一位小数 |
+| `rating` | `number` | 是 | 综合评分，0–5，保留一位小数。**0 分要配合 `ratingCount` 一起看** |
+| `ratingCount` | `number` | 是 | 计入评分的评价条数。 **没有它就分不清「0 分」和「还没人评过」** —— 而这两件事对买家是相反的信号： 一家 0 分的店是被人打差评打出来的，一家没人评过的店只是新开的。 端上按 `ratingCount === 0` 显示「暂无评价」，不要显示 0 颗星。 |
 | `verified` | `boolean` | 是 | 是否通过资质认证 |
 | `breachCount` | `number` | 是 | 选定报价后不履约的次数。>0 会在报价卡上公示 —— 事后信用替代事前审核 |
 
@@ -2462,11 +2653,9 @@
 
 ### MerchantSubject
 
-商家主体类型 —— **权威口径取通道侧**（ADR-010）。 主体类型的唯一硬约束来自支付通道：能不能进件、要什么资质、钱打到个人还是对公。 展示名反而可以随便改。让权威贴着约束走，映射就只需要一个方向。 规则（要不要执照、受不受行业白名单限制、结算账户形态）在 `sys_merchant_subject` 表里，随通道调整；**这里只管取值域**。 端上取 `GET /common/master-data`，不要在页面里写死。 <p><b>不叫 `SubjectType`</b>：那个名字在平台端已经是**风控主体** （DEVICE/MERCHANT/USER）。两个不同的概念同名，读代码的人迟早会把 一个当成另一个 —— 类型对齐守卫正是为此存在的。
-
 枚举取值：
 
-- `MICRO`
+- `NATURAL_PERSON`
 - `INDIVIDUAL`
 - `ENTERPRISE`
 
@@ -2730,6 +2919,27 @@
 | `giftGoodsNo` | `string` | 否 | 赠品商品号；不填则赠同款 |
 | `giftTitle` | `string` | 否 | 赠品展示名（后端下发已本地化） |
 
+### QualificationItem
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `type` | [`QualificationType`](#qualificationtype) | 是 | 资质类型码 |
+| `code` | `string` | 是 | 证照编号 |
+| `imageUrl` | `string` | 是 | — |
+| `expireAt` | `number,null` | 是 | 有效期截止（毫秒）。**长期有效传 `null`** —— 不要用 0 或一个很大的数字冒充：过期扫描会把前者当成已过期、 后者当成永不过期，两种都错且都不报错。 |
+| `issuer` | `string` | 否 | — |
+
+### QualificationType
+
+资质类型码。取值同后端 `mch_qualification.qual_type`。 ⚠️ **`BUSINESS_LICENSE` 是入驻校验的判据** —— 需要执照的档位必须含它， 改名会让那条校验静默失效（找不到就当没传，然后放行）。
+
+枚举取值：
+
+- `BUSINESS_LICENSE`
+- `FOOD_PERMIT`
+- `FOOD_WORKSHOP`
+- `OTHER`
+
 ### Quote
 
 商家对某个需求单的报价。一个需求单可多家报价，由发起人挑。 **报价不做事前审核，防加价靠三层机制**（见 docs/technical/ADR/ADR-003）：   1. 锁价 —— 被选定后 `locked`，下单一律用快照价，系统层面加不了价   2. 公示 —— 每次改价都写进 `revisions` 并对所有邻居可见，谁涨价谁被看见   3. 信用 —— 选定后不履约计入商家 `breachCount` 与评分，累计则限制报价资格
@@ -2833,17 +3043,6 @@
 | `isDefault` | `boolean` | 是 | 设为默认。置 true 会把原默认地址改为 false |
 | `tag` | `string` | 否 | 标签：家 / 公司 / 其他 |
 
-### ServiceArea
-
-一条地理覆盖项。名字由后端拼好下发 —— 端上只拿到 330106 的话，要么显示一串数字，要么自己再查一次
-
-| 字段 | 类型 | 必填 | 说明 |
-|---|---|:---:|---|
-| `level` | [`AreaLevel`](#arealevel) | 是 | 粒度：社区 / 街道 / 区县 / 城市。**可跨粒度组合** —— 三个小区 + 一个区是四条 |
-| `refCode` | `string` | 是 | level=COMMUNITY 时是社区号，否则是区划码 |
-| `name` | `string` | 是 | 展示名。区级以上是「浙江省 / 杭州市 / 西湖区」整条路径 —— 光一个「西湖区」全国有好几个，商家分不出删哪条 |
-| `status` | [`AreaStatus`](#areastatus) | 否 | `ACTIVE` 已生效 / `PENDING` 待运营审核。 勾已有社区自助生效；勾区、街道要审 —— 一家菜摊声称覆盖整个西湖区， 影响面差一个量级（ADR-013 §4.2）。**端上必须把待审标出来**： 待审的不参与展开，商家看着它在清单里却一个订单也不来， 而这是他自己永远查不出来的那类故障。 |
-
 ### ServiceScope
 
 枚举取值：
@@ -2858,7 +3057,7 @@
 
 枚举取值：
 
-- `PERSONAL_OPENID`
+- `PERSONAL_BANK_CARD`
 - `MERCHANT_ID`
 
 ### Sku
@@ -2884,32 +3083,22 @@
 | `optionCodes` | `string` \| `any`\[\] | 否 | 与 options 一一对应的模板编码。来自模板的选项有值，自由输入的为空。 一期只写入不消费 —— 但不留位的话，二期做规格聚合要刷全部历史商品。 |
 | `templateNo` | `string` | 否 | 该规格组来自哪个模板（便于「用的人多不多」这类平台侧统计） |
 
-### StoreHome
-
-门店主页数据（C-ST-01）。 ⚠️ 这是**交易页不是介绍页**：登录用户第一屏是「我买过的」，不是店招 Banner。 粮油副食的复购路径必须压到三步 —— 打开 → 常买 → 下单（ADR-004 §3.3）。
-
-| 字段 | 类型 | 必填 | 说明 |
-|---|---|:---:|---|
-| `merchant` | [`Merchant`](#merchant) | 是 | 平台建档的商家主数据（名称/资质/评分），店主改不了 |
-| `store` | [`StoreProfile`](#storeprofile) | 是 | 店主自己维护的门面内容（公告/营业时间/地址） |
-| `goods` | [`Goods`](#goods)\[\] | 是 | 在售商品。首屏展示，分页靠单独的商品列表接口 |
-| `favorited` | `boolean` | 是 | 我是否收藏了这家店 |
-
-### StoreProfile
-
-店铺门面（B-11.2 店铺装修 → C 端门店主页的数据源）。 与 Merchant 分开：Merchant 是平台建档的商家主数据（名称/资质/评分，商家改不了）， 这里是**店主自己能改的门面内容**。混在一起的话，改公告要走审核就荒谬了。
+### StoreFront
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `announcement` | `string` | 是 | 店铺公告：「今日到货」「今天有土鸡蛋」，店主自发（C-ST-04） |
 | `openHours` | `string` | 是 | 营业时间文案，店主自填 |
 | `address` | `string` | 是 | 店铺地址，店主自填 |
-| `featured` | `string`\[\] | 是 | 主推商品，按顺序展示在门店主页首屏 |
-| `serviceScope` | [`ServiceScope`](#servicescope) | 是 | 经营范围（B 端自选）。**决定这家店的货在 C 端能被谁看到** —— 选错不是展示问题：选大了会卖到送不到的地方（下单后提不了货 → 退款）， 选小了则整片小区的人都搜不到这家店。所以 B 端要给出后果说明，不能只给三个单选。 |
-| `serviceCommunityNos` | `string`\[\] | 是 | scope=COMMUNITY 时覆盖的社区。空表示还没谈下任何小区，此时 C 端一律不可见 |
-| `serviceCityCode` | `string` | 否 | scope=CITY 时覆盖的城市 |
-| `fulfillmentReach` | [`FulfillmentReach`](#fulfillmentreach) | 否 | 履约能力（ADR-013 阶段二）。**只说「怎么送到你手上」**，送得到哪儿看  {@link  serviceAreas } 。 与上面两个 `@deprecated` 字段的关系：新旧两套并存期间，端上**只传一套** —— 传了 `serviceAreas` 就走新模型，后端不再看 `serviceScope`。 |
-| `serviceAreas` | [`ServiceArea`](#servicearea)\[\] | 否 | 地理覆盖项，可跨粒度组合（三个小区 + 一个区）。 **空的含义由 `fulfillmentReach` 决定**，这是这个字段最容易踩的地方： PICKUP 空 = 谁也看不到（没配自提点就没法履约）； ONSITE / SHIPPING 空 = 不限。同一个空数组两种意思，所以别拿它判「有没有设置过」。 |
+
+### StoreHome
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `merchant` | [`MerchantBrief`](#merchantbrief) | 是 | 平台建档的商家主数据（名称/资质/评分），店主改不了 |
+| `store` | [`StoreFront`](#storefront) | 是 | 店主自己维护的门面内容 |
+| `goods` | [`Goods`](#goods)\[\] | 是 | 在售商品。首屏展示，分页靠单独的商品列表接口 |
+| `favorited` | `boolean` | 是 | 我是否收藏了这家店 |
 
 ### TrafficSource
 
@@ -2960,9 +3149,11 @@
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `merchantNo` | `string` | 是 | 商家单号。贯穿商品/订单/评价/结算，是多商家模型的主线（ADR-001） |
+| `selfOperated` | `boolean` | 否 | 这单是不是**平台自营**（销售主体是平台）。 **必须显示出来 —— 电商法 §37 要求平台以显著方式区分标记自营业务， 不得误导消费者。这是法定义务，不是产品选择。** 而它同时是资金模式合法性的一部分：归集路径下平台是销售主体， 页面上却让消费者以为在跟商家交易，四流就不一致了（ADR-017 §3.4）。 ⚠️ 自营时**商家信息照常展示**（供货商、产地、门店、评分）—— 要禁的是把销售方指给商家的**表述**，不是商家信息本身。 见 `packages/shared/tests/seller-statement.test.ts` 的禁用词表。 |
 | `name` | `string` | 是 | 店铺名 |
 | `logo` | `string` | 是 | 店铺 logo URL |
-| `rating` | `number` | 是 | 综合评分，0–5，保留一位小数 |
+| `rating` | `number` | 是 | 综合评分，0–5，保留一位小数。**0 分要配合 `ratingCount` 一起看** |
+| `ratingCount` | `number` | 是 | 参与评分的评价条数 |
 | `verified` | `boolean` | 是 | 是否通过资质认证 |
 | `breachCount` | `number` | 是 | 选定报价后不履约的次数。>0 会在报价卡上公示 —— 事后信用替代事前审核 |
 | `type` | [`MerchantType`](#merchanttype) | 是 | 商家类型：平台自营 / 企业 / 个体 |
@@ -2972,7 +3163,6 @@
 | `serviceCityCode` | `string` | 否 | 覆盖哪个城市。**仅 scope=CITY 时有意义** |
 | `distance` | `number` | 否 | 距当前社区的距离（米）。由服务端按用户当前社区算好下发，端上不自己算 |
 | `salesCount` | `number` | 是 | 累计订单量（评分权重之一） |
-| `ratingCount` | `number` | 是 | 参与评分的评价条数 |
 | `goodsCount` | `number` | 是 | 在售商品数 |
 | `address` | `string` | 否 | 店铺地址。纯线上商家可能没有 |
 | `openHours` | `string` | 否 | 营业时间文案 |

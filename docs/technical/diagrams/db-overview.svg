@@ -11,13 +11,13 @@
 <text class="s" x="94" y="85" text-anchor="middle">usr_* · 4 表</text>
 <rect x="160.5" y="50" width="113" height="46" rx="6" fill="#EDEFF2" stroke="#B3B9C2"/>
 <text class="n" x="217" y="70" text-anchor="middle" font-size="13">商家主体与门店</text>
-<text class="s" x="217" y="85" text-anchor="middle">mch_* · 17 表</text>
+<text class="s" x="217" y="85" text-anchor="middle">mch_* · 18 表</text>
 <rect x="283.5" y="50" width="113" height="46" rx="6" fill="#EDEFF2" stroke="#B3B9C2"/>
 <text class="n" x="340" y="70" text-anchor="middle" font-size="13">社区与自提点</text>
 <text class="s" x="340" y="85" text-anchor="middle">cmt_* · 3 表</text>
 <rect x="406.5" y="50" width="113" height="46" rx="6" fill="#EDEFF2" stroke="#B3B9C2"/>
 <text class="n" x="463" y="70" text-anchor="middle" font-size="13">商品与类目</text>
-<text class="s" x="463" y="85" text-anchor="middle">prd_* · 8 表</text>
+<text class="s" x="463" y="85" text-anchor="middle">prd_* · 12 表</text>
 <rect x="529.5" y="50" width="113" height="46" rx="6" fill="#EDEFF2" stroke="#B3B9C2"/>
 <text class="n" x="586" y="70" text-anchor="middle" font-size="13">交易</text>
 <text class="s" x="586" y="85" text-anchor="middle">ord_* · 6 表</text>
@@ -32,27 +32,24 @@
 <text class="l" x="348" y="216">依赖</text>
 <line x1="36" y1="222" x2="644" y2="222" stroke="#D8DEE6"/>
 <text class="b" x="36" y="236">派生与记账</text>
-<rect x="37" y="246" width="67" height="46" rx="6" fill="#E6F2F0" stroke="#8FC2BA"/>
-<text class="n" x="70.5" y="266" text-anchor="middle" font-size="13">购物车</text>
-<text class="s" x="70.5" y="281" text-anchor="middle">trd_* ·…</text>
-<rect x="114" y="246" width="67" height="46" rx="6" fill="#E6F2F0" stroke="#8FC2BA"/>
-<text class="n" x="147.5" y="266" text-anchor="middle" font-size="13">履约</text>
-<text class="s" x="147.5" y="281" text-anchor="middle">ful_* ·…</text>
-<rect x="191" y="246" width="67" height="46" rx="6" fill="#E6F2F0" stroke="#8FC2BA"/>
-<text class="n" x="224.5" y="266" text-anchor="middle" font-size="13">积分</text>
-<text class="s" x="224.5" y="281" text-anchor="middle">pts_* ·…</text>
-<rect x="268" y="246" width="67" height="46" rx="6" fill="#E6F2F0" stroke="#8FC2BA"/>
-<text class="n" x="301.5" y="266" text-anchor="middle" font-size="13">结算</text>
-<text class="s" x="301.5" y="281" text-anchor="middle">stl_* ·…</text>
-<rect x="345" y="246" width="67" height="46" rx="6" fill="#E6F2F0" stroke="#8FC2BA"/>
-<text class="n" x="378.5" y="266" text-anchor="middle" font-size="13">评价</text>
-<text class="s" x="378.5" y="281" text-anchor="middle">rvw_* ·…</text>
-<rect x="422" y="246" width="67" height="46" rx="6" fill="#E6F2F0" stroke="#8FC2BA"/>
-<text class="n" x="455.5" y="266" text-anchor="middle" font-size="11">消息与客服</text>
-<text class="s" x="455.5" y="281" text-anchor="middle">msg_* ·…</text>
-<rect x="499" y="246" width="67" height="46" rx="6" fill="#E6F2F0" stroke="#8FC2BA"/>
-<text class="n" x="532.5" y="266" text-anchor="middle" font-size="13">内容</text>
-<text class="s" x="532.5" y="281" text-anchor="middle">cnt_* ·…</text>
-<rect x="576" y="246" width="67" height="46" rx="6" fill="#E6F2F0" stroke="#8FC2BA"/>
-<text class="n" x="609.5" y="266" text-anchor="middle" font-size="13">系统</text>
-<text class="s" x="609.5" y="281" text-anchor="middle">sys_* ·…</text></svg>
+<rect x="37" y="246" width="78" height="46" rx="6" fill="#E6F2F0" stroke="#8FC2BA"/>
+<text class="n" x="76" y="266" text-anchor="middle" font-size="13">购物车</text>
+<text class="s" x="76" y="281" text-anchor="middle">trd_* · 1…</text>
+<rect x="125" y="246" width="78" height="46" rx="6" fill="#E6F2F0" stroke="#8FC2BA"/>
+<text class="n" x="164" y="266" text-anchor="middle" font-size="13">履约</text>
+<text class="s" x="164" y="281" text-anchor="middle">ful_* · 8…</text>
+<rect x="213" y="246" width="78" height="46" rx="6" fill="#E6F2F0" stroke="#8FC2BA"/>
+<text class="n" x="252" y="266" text-anchor="middle" font-size="13">积分</text>
+<text class="s" x="252" y="281" text-anchor="middle">pts_* · 2…</text>
+<rect x="301" y="246" width="78" height="46" rx="6" fill="#E6F2F0" stroke="#8FC2BA"/>
+<text class="n" x="340" y="266" text-anchor="middle" font-size="13">结算</text>
+<text class="s" x="340" y="281" text-anchor="middle">stl_* · 9…</text>
+<rect x="389" y="246" width="78" height="46" rx="6" fill="#E6F2F0" stroke="#8FC2BA"/>
+<text class="n" x="428" y="266" text-anchor="middle" font-size="13">评价</text>
+<text class="s" x="428" y="281" text-anchor="middle">rvw_* · 3…</text>
+<rect x="477" y="246" width="78" height="46" rx="6" fill="#E6F2F0" stroke="#8FC2BA"/>
+<text class="n" x="516" y="266" text-anchor="middle" font-size="13">内容</text>
+<text class="s" x="516" y="281" text-anchor="middle">cnt_* · 4…</text>
+<rect x="565" y="246" width="78" height="46" rx="6" fill="#E6F2F0" stroke="#8FC2BA"/>
+<text class="n" x="604" y="266" text-anchor="middle" font-size="13">系统</text>
+<text class="s" x="604" y="281" text-anchor="middle">sys_* · 2…</text></svg>

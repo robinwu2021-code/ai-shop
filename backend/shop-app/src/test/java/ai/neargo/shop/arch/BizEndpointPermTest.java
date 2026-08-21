@@ -54,7 +54,7 @@ class BizEndpointPermTest {
             // 行政区划与 /biz/communities 同性质：主数据，不含任何一家店的数据。
             // 要 biz:store 的话，还没建店的申请人就挑不了经营范围
             "/biz/category/tree", "/biz/communities", "/biz/regions",
-            "/biz/spec-templates", "/biz/upload/image",
+            "/biz/upload/image",
             // 消息收件箱：按当前 userNo 隔离，别人的本来就查不到。
             // 要 biz 权限的话，收到「新订单」通知的店员反而打不开消息中心
             "/biz/message", "/biz/message/unread-count",
@@ -99,9 +99,29 @@ class BizEndpointPermTest {
         put("/biz/goods/{goodsNo}", BizPerms.STOCK);
         put("/biz/goods/{goodsNo}/stock", BizPerms.STOCK);
         put("/biz/goods/{goodsNo}/store-stock", BizPerms.STOCK);
+        // 改价是定价权，与补货不是一回事 —— 挂 biz:goods 而不是 biz:stock
+        put("/biz/goods/{goodsNo}/store-price", BizPerms.GOODS);
+        // 提交审核与改截单都是「商品」这一档：能建品的人才谈得上提交与改截单
+        put("/biz/goods/{goodsNo}/submit", BizPerms.GOODS);
+        put("/biz/goods/{goodsNo}/presale", BizPerms.GOODS);
         put("/biz/goods/save", BizPerms.GOODS);
         put("/biz/goods/{goodsNo}/toggle", BizPerms.GOODS);
         put("/biz/goods/recognize", BizPerms.GOODS);
+        /*
+         * 规格模板：**从 PUBLIC 移过来的**（2026-08-21）。
+         *
+         * 它此前与类目树、行政区划放在一起，理由是「主数据，不含任何一家店的数据」——
+         * 那句话只对 GET 成立。POST 写的是 `scope=MERCHANT` + `entity_no=当前商家` 的行，
+         * 是这家店的数据；而这张表按路径判权，两个方法只能同进同退。
+         *
+         * 同进同退选 GOODS 而不是留在 PUBLIC：规格模板是建品链路的一环，
+         * 只能改库存的角色（配送员、客服）本来就建不了品，读不到模板没有损失；
+         * 反过来留在 PUBLIC，任何持有 B 端会话的子账号都能给这家店塞模板。
+         */
+        put("/biz/spec-templates", BizPerms.GOODS);
+        // 标准品搜索（TDD-标准品库）：建品链路的一环，与规格模板同一档 ——
+        // 只能改库存的角色（配送员、客服）建不了品，也就用不上标准品
+        put("/biz/spu-std", BizPerms.GOODS);
 
         // ---- 营销与报价：都是对钱的承诺 ----
         put("/biz/campaign", BizPerms.CAMPAIGN);
@@ -136,6 +156,8 @@ class BizEndpointPermTest {
         put("/biz/store/{storeNo}/status", BizPerms.STORE_ADMIN);
         put("/biz/store/{storeNo}/default", BizPerms.STORE_ADMIN);
         put("/biz/store/{storeNo}/payment", BizPerms.STORE_ADMIN);
+        // 货架读：店长要看得见本店卖哪几类；改货架是店铺配置，收紧到 STORE_ADMIN
+        put("/biz/store/{storeNo}/categories", BizPerms.STORE);
         put("/biz/staff", BizPerms.STORE_ADMIN);
         put("/biz/staff/{mchAccountNo}/status", BizPerms.STORE_ADMIN);
         put("/biz/staff/{mchAccountNo}/store", BizPerms.STORE_ADMIN);

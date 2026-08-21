@@ -243,7 +243,7 @@ public class OpsPlatformController {
     @PreAuthorize("@perm.can('" + Perms.MERCHANT_APPLY_AUDIT + "')")
     public void auditApply(@PathVariable String applyNo, @RequestBody AuditReq req) {
         opsService.auditApply(applyNo, Boolean.TRUE.equals(req.approved()), req.reason(),
-                req.serviceScope(), req.communityNos());
+                req.serviceScope(), req.communityNos(), req.grantCodes());
     }
 
     /**
@@ -367,7 +367,12 @@ public class OpsPlatformController {
      *                     <p><b>为什么审核时要能改</b>：商家申请时允许留空（ADR-009），
      *                     但通过时不能空 —— 空的后果是上着架却对谁都不可见，且不报错。
      */
+    /**
+     * @param grantCodes 通过时授予的经营类目编码。空 = 沿用申请单上已定下的那份；
+     *                   两边都空 = 只经营无门槛类目（合法）
+     */
     public record AuditReq(Boolean approved, String reason,
-                           String serviceScope, List<String> communityNos) {
+                           String serviceScope, List<String> communityNos,
+                           List<String> grantCodes) {
     }
 }

@@ -50,10 +50,24 @@ public class AuthServiceImpl implements AuthService {
 
     private static final SecureRandom RANDOM = new SecureRandom();
 
+    /** 密码最短长度。与端上的校验保持一致；服务端也判，因为端上那道挡不住直接打接口的人 */
+    private static final int PWD_MIN_LEN = 6;
+    /**
+     * 密码尝试限流：同一手机号 15 分钟内最多 10 次。
+     *
+     * <p>比发码限流宽一点（那条是 60 秒一次）—— 密码是人自己记的，输错很常见，
+     * 卡太死会把真用户挡在门外；但 10 次/15 分钟足以让在线撞库变得没有意义。
+     */
+    private static final ai.neargo.shop.common.ratelimit.RateRule PWD_TRY_RULE =
+            new ai.neargo.shop.common.ratelimit.RateRule(
+                    "pwd-login", java.time.Duration.ofMinutes(15), 10);
+
     private final UserMapper userMapper;
     private final IdentityMapper identityMapper;
     private final TokenStore tokenStore;
     private final OtpStore otpStore;
+    private final ai.neargo.shop.auth.PasswordHasher passwordHasher;
+    private final ai.neargo.shop.common.ratelimit.RateLimiter rateLimiter;
 
     /**
      * 固定验证码（**只给本地联调与 E2E**）。
@@ -79,6 +93,8 @@ public class AuthServiceImpl implements AuthService {
                            OtpSendGuard sendGuard,
                            SmsPort smsPort,
                            ai.neargo.shop.spi.user.WxAuthPort wxAuthPort,
+                           ai.neargo.shop.auth.PasswordHasher passwordHasher,
+                           ai.neargo.shop.common.ratelimit.RateLimiter rateLimiter,
                            @org.springframework.beans.factory.annotation.Value(
                                    "${shop.auth.otp.fixed:}") String fixedOtp) {
         this.userMapper = userMapper;
@@ -88,6 +104,8 @@ public class AuthServiceImpl implements AuthService {
         this.sendGuard = sendGuard;
         this.smsPort = smsPort;
         this.wxAuthPort = wxAuthPort;
+        this.passwordHasher = passwordHasher;
+        this.rateLimiter = rateLimiter;
         this.fixedOtp = fixedOtp;
         if (usingFixedOtp()) {
             /*
@@ -159,8 +177,14 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public LoginResult login(LoginCommand cmd) {
-        List<Credential> credentials = resolveCredentials(cmd);
-        UsrAccount user = findOrCreate(credentials, cmd);
+        /*
+         * 密码登录**单独一条路，不进 findOrCreate** —— 那个方法的语义是「登录即注册」，
+         * 找不到人就建户。密码走它的话，输错手机号会**当场给他开一个空账号**，
+         * 而用户看到的是「登录成功，但我的店没了」。
+         */
+        UsrAccount user = GRANT_PASSWORD.equals(cmd.grantType())
+                ? loginByPassword(cmd)
+                : findOrCreate(resolveCredentials(cmd), cmd);
 
         if ("BANNED".equals(user.getStatus())) {
             throw BizException.of(ErrorCode.RISK_BLOCKED);
@@ -169,6 +193,107 @@ public class AuthServiceImpl implements AuthService {
         String token = tokenStore.issue(TokenStore.SessionData.of(
                 LoginUser.consumer(user.getUserNo(), user.getNickname())));
         return new LoginResult(token, UserVO.of(user));
+    }
+
+    /**
+     * 手机号 + 密码登录。
+     *
+     * <p><b>只认人，不建户</b>（理由见 {@link AuthService#GRANT_PASSWORD}）。
+     * 三步：手机号找人 → 取他的 PASSWORD 凭证 → 比对哈希。
+     *
+     * <p><b>防撞库</b>：按手机号限流。密码登录与验证码登录的风险形状不同 ——
+     * 验证码那条路攻击者要先收到短信，而这条只要有个号码就能无限试。
+     * 限流键带 {@code pwd:} 前缀，与发码限流各算各的：
+     * 共用一个键的话，一次撞库会把真用户的发码额度也耗光。
+     */
+    private UsrAccount loginByPassword(LoginCommand cmd) {
+        String phone = cmd.principal() == null ? "" : cmd.principal().trim();
+        String raw = cmd.credential() == null ? "" : cmd.credential();
+        if (phone.isBlank() || raw.isBlank()) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        ai.neargo.shop.common.ratelimit.RateLimiter.Decision d =
+                rateLimiter.tryAcquire("pwd:login:" + phone, PWD_TRY_RULE);
+        if (!d.allowed()) {
+            log.warn("[auth] 密码登录触发限流 phone={} —— 撞库的典型形状", mask(phone));
+            throw BizException.of(ErrorCode.TOO_MANY_REQUESTS);
+        }
+
+        UsrIdentity phoneId = findIdentity(new Credential(IdentityType.PHONE, phone, null));
+        if (phoneId == null) {
+            // 查无此人也报 10456：分开说等于送一个账号探测接口（见 ErrorCode 注释）
+            throw BizException.of(ErrorCode.PASSWORD_INVALID);
+        }
+        UsrIdentity pwd = identityMapper.selectOne(Wrappers.<UsrIdentity>lambdaQuery()
+                .eq(UsrIdentity::getUserNo, phoneId.getUserNo())
+                .eq(UsrIdentity::getIdentityType, IdentityType.PASSWORD)
+                .last("limit 1"));
+        if (pwd == null) {
+            throw BizException.of(ErrorCode.PASSWORD_NOT_SET);
+        }
+        if (!passwordHasher.matches(raw, pwd.getIdentityValue())) {
+            throw BizException.of(ErrorCode.PASSWORD_INVALID);
+        }
+        /*
+         * 密码算法升级（如 bcrypt 轮数提高）时就地重写一次 —— 与运营端同一套做法。
+         * 不做的话老用户的哈希永远停在旧强度上，而他们恰恰是存在最久的那批账号。
+         */
+        if (passwordHasher.needsUpgrade(pwd.getIdentityValue())) {
+            pwd.setIdentityValue(passwordHasher.encode(raw));
+            identityMapper.updateById(pwd);
+        }
+        // 登录成功清掉失败计数：否则真用户输错几次再输对，仍会被之前的计数挡住
+        rateLimiter.reset("pwd:login:" + phone);
+
+        UsrAccount user = userMapper.selectOne(Wrappers.<UsrAccount>lambdaQuery()
+                .eq(UsrAccount::getUserNo, phoneId.getUserNo()).last("limit 1"));
+        if (user == null) {
+            // 凭证在、账号没了：数据不一致，不能当成「密码错」糊弄过去
+            log.error("[auth] usr_identity 指向的 user_no={} 在 usr_account 里不存在", phoneId.getUserNo());
+            throw BizException.of(ErrorCode.PASSWORD_INVALID);
+        }
+        return user;
+    }
+
+    /**
+     * 设置 / 修改登录密码。<b>调用方必须已经登录</b>（当前会话即授权）。
+     *
+     * <p>没有「旧密码」这一步：能走到这里说明他此刻已经通过验证码或微信登录了，
+     * 那比旧密码更强。要求旧密码只会把「忘了密码」变成死路 ——
+     * 而重设密码的正路本来就是「用验证码登录进来再设」。
+     */
+    @Override
+    @Transactional
+    public void setPassword(String userNo, String rawPassword) {
+        String raw = rawPassword == null ? "" : rawPassword;
+        // 长度下限在服务端也要判：端上的校验挡不住直接打接口的人
+        if (raw.length() < PWD_MIN_LEN) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        UsrIdentity existing = identityMapper.selectOne(Wrappers.<UsrIdentity>lambdaQuery()
+                .eq(UsrIdentity::getUserNo, userNo)
+                .eq(UsrIdentity::getIdentityType, IdentityType.PASSWORD)
+                .last("limit 1"));
+        String hash = passwordHasher.encode(raw);
+        if (existing != null) {
+            existing.setIdentityValue(hash);
+            existing.setVerifiedAt(LocalDateTime.now());
+            identityMapper.updateById(existing);
+            return;
+        }
+        UsrIdentity row = new UsrIdentity();
+        row.setUserNo(userNo);
+        row.setIdentityType(IdentityType.PASSWORD);
+        row.setIdentityValue(hash);
+        row.setVerifiedAt(LocalDateTime.now());
+        identityMapper.insert(row);
+    }
+
+    @Override
+    public boolean hasPassword(String userNo) {
+        return identityMapper.selectCount(Wrappers.<UsrIdentity>lambdaQuery()
+                .eq(UsrIdentity::getUserNo, userNo)
+                .eq(UsrIdentity::getIdentityType, IdentityType.PASSWORD)) > 0;
     }
 
     /**

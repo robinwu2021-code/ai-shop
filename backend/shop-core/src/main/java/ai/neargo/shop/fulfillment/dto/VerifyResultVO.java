@@ -14,6 +14,17 @@ public record VerifyResultVO(boolean success, String subOrderNo, String reason) 
     public static final String REFUNDED = "REFUNDED";
     public static final String NOT_FOUND = "CODE_NOT_FOUND";
     public static final String NOT_PAID = "NOT_PAID";
+    /**
+     * 货还没送到这个点上（子单仍在 {@code WAIT_FULFILL}）。
+     *
+     * <p><b>与 NOT_THIS_PICKUP 分开</b>：那个是「这单不归你」，店员该让顾客换个点；
+     * 这个是「这单归你，但货还没到」，他该让顾客等通知 —— 下一步动作不同。
+     *
+     * <p>此前没有这一条，未到货的码**核销成功**：邻居代收点上，
+     * 货还在路上就被记成「已取货」，之后没有任何人知道它没到
+     * （2026-08-17 B 端第二轮实测，用例 TB-B-6-2）。
+     */
+    public static final String NOT_ARRIVED = "NOT_ARRIVED";
 
     public static VerifyResultVO ok(String subOrderNo) {
         return new VerifyResultVO(true, subOrderNo, null);

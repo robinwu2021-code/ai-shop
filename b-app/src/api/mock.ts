@@ -27,7 +27,14 @@ import {
 import { currentCurrency, money } from "@shared/utils/money";
 // 能力位被拒要抛**带业务码**的错（70023），页面据此渲染示例态而不是错误页
 import { ApiError } from "@shared/net/http-client";
-import { CATEGORY_TYPE, MARKETS, POINTS, SETTLE, REVIEW_RULES } from "@shared/utils/constants";
+import {
+  CATEGORY_TYPE,
+  MARKETS,
+  POINTS,
+  SETTLE,
+  REVIEW_RULES,
+  TEMPLATE_TO_TYPE,
+} from "@shared/utils/constants";
 import { ensureDemoOrders } from "./demo-orders";
 import { DELIVERY_SHAPE, fulfillmentsOf } from "@shared/strategies/order-view";
 
@@ -87,6 +94,8 @@ import type {
   StaffRole,
   Store,
   VerifyBatchResult,
+  Category,
+  CategoryType,
 } from "@shared/types";
 
 /** 当前登录商家；未入驻时抛错，页面据此引导去入驻 */
@@ -469,7 +478,37 @@ function maskPhone(phone: string) {
   return phone.length < 7 ? phone : `${phone.slice(0, 3)}****${phone.slice(-4)}`;
 }
 
+/**
+ * 类目节点上的 `template`（形态的另一套码）。**深度优先找，找不到返回 undefined。**
+ *
+ * <p>建品时用它把形态算出来，与真后端的 `CategoryServiceImpl.categoryTypeOf` 同一条规则。
+ * mock 自己算而不是抄请求体：请求体里已经没有 `type` 了，而「mock 上建出来是生鲜、
+ * 连真后端变成日用品」正是这套 mock 最该防的那类错配。
+ */
+function findCategoryTemplate(categoryNo: string | undefined): string | undefined {
+  if (!categoryNo) return undefined;
+  const walk = (nodes: Category[]): string | undefined => {
+    for (const n of nodes) {
+      if (n.categoryNo === categoryNo) return n.template;
+      const hit = walk(n.children ?? []);
+      if (hit) return hit;
+    }
+    return undefined;
+  };
+  return walk(db.categories as unknown as Category[]);
+}
+
 let mockPassword = "";
+
+/** 类目树压平成 categoryNo → 节点。两处要按编号取名字，各写一遍迟早会分叉 */
+function flatCategories(nodes: Category[], into = new Map<string, Category>()) {
+  for (const n of nodes) {
+    into.set(n.categoryNo, n);
+    if (n.children?.length) flatCategories(n.children, into);
+  }
+  return into;
+}
+
 
 export const mockApi: MerchantApi = {
   // ---------------------------------------------------------------- 账号与入驻
@@ -611,6 +650,38 @@ export const mockApi: MerchantApi = {
 
   async mRefreshPayment() {
     return delay({ ...db.payment });
+  },
+
+  async mStoreCategories(storeNo) {
+    return delay((db.storeCategories[storeNo] ?? []).map((c) => ({ ...c })));
+  },
+
+  async mSaveStoreCategories(storeNo, items) {
+    const before = db.storeCategories[storeNo] ?? [];
+    /*
+     * mock 也照真库拒：**撤掉一个底下还有商品的货架**要报错。
+     * 恒成功的 mock 会让这条最常被触发的拒绝在开发期永远走不到 ——
+     * 而它正是「店铺页里消失、商品列表里还在」那种状态的唯一防线。
+     */
+    const kept = new Set(items.map((i) => i.categoryNo));
+    const blocked = before.find((c) => !kept.has(c.categoryNo) && c.goodsCount > 0);
+    if (blocked) throw new Error(`「${blocked.name}」下还有 ${blocked.goodsCount} 件商品，请先移走`);
+
+    const flat = flatCategories(db.categories);
+    const next = items.map((i, idx) => {
+      const platformName = flat.get(i.categoryNo)?.name ?? i.categoryNo;
+      const old = before.find((c) => c.categoryNo === i.categoryNo);
+      return {
+        categoryNo: i.categoryNo,
+        name: i.displayName?.trim() || platformName,
+        platformName,
+        displayName: i.displayName?.trim() || undefined,
+        sort: i.sort ?? idx,
+        goodsCount: old?.goodsCount ?? 0,
+      };
+    });
+    db.storeCategories[storeNo] = next;
+    return delay(next.map((c) => ({ ...c })));
   },
 
   async mStoreList() {
@@ -1105,7 +1176,26 @@ export const mockApi: MerchantApi = {
       if (vals.length) acc[m.currency] = Math.min(...vals);
       return acc;
     }, {});
-    const specGroups = payload.specGroups.map((g) => ({
+    /*
+     * **标准品收敛：mock 也要做一遍**（TDD-标准品库 §3.2）。
+     *
+     * 真后端在 `save()` 里用标准品的 categoryNo 与 optionCode 覆盖请求值。
+     * mock 不做的话就是「mock 上改得掉、连真后端改不掉」—— 而 mock 是开发期
+     * 唯一看得见的那份数据，这种错配最难查。
+     */
+    const std = payload.stdNo ? db.spuStds.find((t) => t.stdNo === payload.stdNo) : undefined;
+    if (payload.stdNo && !std) throw new Error("所选标准品不存在");
+    const effectiveCategoryNo = std ? std.categoryNo : payload.categoryNo;
+    const specSource = std
+      ? payload.specGroups.map((g, i) => {
+          const sg = std.specGroups[i];
+          if (!sg) return g; // 商家追加的规格组：没有对应的标准组，原样保留
+          const codes = sg.optionCodes ?? [];
+          return { ...g, optionCodes: g.options.map((_, j) => codes[j]) };
+        })
+      : payload.specGroups;
+
+    const specGroups = specSource.map((g) => ({
       name: toI18n(g.name),
       options: g.options.map(toI18n),
       // 模板编码要跟着落库：不存就等于没做模板 ——
@@ -1128,38 +1218,113 @@ export const mockApi: MerchantApi = {
         // 契约按市场码来，mock 库按币种存 —— 在这里换码（见上方 toCurrency 的说明）
         priceByMarket: skuPricesByCurrency(k),
         stock: k.stock,
+        // 划线价与标称重量：**不传 = 不改**，与真后端同一条规矩。
+        // 不落盘的话「mock 上填了、保存后消失」—— 正是这轮在修的那类故障，
+        // 只不过发生在 mock 里，而 mock 恰恰是开发期唯一看得见的那一份
+        originPrice: k.originPrice,
+        nominalGram: k.nominalGram,
       }));
+
+    /**
+     * 商品级的可选字段。**「不传 = 不改」逐个字段判空**，与后端 `applyOptional` 同形状。
+     *
+     * <p>生鲜段 / 服务段按**形态**写：一件大米带上「服务时长 90 分钟」不会报错，
+     * 但它会出现在服务类的详情模板里。形态由类目派生，所以两边判的是同一个东西。
+     */
+    const applyOptional = (seed: Record<string, unknown>, formType: string) => {
+      if (payload.limitPerUser !== undefined) seed.limitPerUser = Math.max(payload.limitPerUser, 0);
+      if (payload.fresh && formType === CATEGORY_TYPE.FRESH) {
+        const f = payload.fresh;
+        if (f.cutoffAt !== undefined) seed.cutoffAt = f.cutoffAt;
+        if (f.arrivalDesc !== undefined) seed.arrivalDesc = toI18n(f.arrivalDesc);
+        if (f.weighed !== undefined) seed.weighed = f.weighed;
+        if (f.origin !== undefined) seed.origin = toI18n(f.origin);
+      }
+      if (payload.service && formType === CATEGORY_TYPE.SERVICE) {
+        const sv = payload.service;
+        if (sv.durationMin !== undefined) seed.durationMin = sv.durationMin;
+        if (sv.storeName !== undefined) seed.storeName = toI18n(sv.storeName);
+      }
+      if (payload.groupBuy) {
+        const gb = payload.groupBuy;
+        // 两个都空 = 显式关掉拼团；只填一个后端会拒，这里跟着拒，
+        // 否则「mock 上存得下、连真后端报错」
+        if (gb.minCount === undefined && gb.price === undefined) {
+          seed.groupBuy = undefined;
+        } else if (gb.minCount === undefined || gb.price === undefined) {
+          throw new Error("起团人数与团购价要一起填");
+        } else {
+          if (gb.minCount < 2) throw new Error("一个人不叫团，起团人数至少 2");
+          seed.groupBuy = { minCount: gb.minCount, price: gb.price };
+        }
+      }
+    };
 
     if (payload.goodsNo) {
       const seed = findGoodsSeed(payload.goodsNo);
       seed.title = fillI18n(payload.title);
       seed.subtitle = fillI18n(payload.subtitle);
+      // 不传 = 不改，与 images 同一口径：无条件覆盖会让「只改标题」把详情清空
+      if (payload.detail !== undefined) seed.detail = payload.detail;
       seed.price = price;
       seed.priceByMarket = priceByMarket;
       seed.specGroups = specGroups as (typeof seed.specGroups);
       seed.skus = buildSkus(seed.skus) as (typeof seed.skus);
+      /*
+       * 形态跟着类目重算 —— 改类目而形态不跟，就又出现了这轮消掉的那种矛盾，
+       * 只是换到了 mock 这一侧（而 mock 是开发期唯一看得见的那份数据）。
+       */
+      const editedType = TEMPLATE_TO_TYPE[findCategoryTemplate(effectiveCategoryNo) ?? ""];
+      if (editedType) seed.type = editedType as CategoryType;
+      seed.categoryNo = effectiveCategoryNo;
+      // 溯源：不传 = 脱离标准品（与真后端一致，不是「不改」）
+      seed.stdNo = payload.stdNo;
+      // 「不传 = 不改」，与后端一致：不判空的话，改一次标题就把轮播图/履约方式清空
+      if (payload.images !== undefined) seed.images = payload.images;
+      if (payload.fulfillments !== undefined) {
+        if (!payload.fulfillments.length) throw new Error("至少选一种履约方式");
+        seed.fulfillments = payload.fulfillments as (typeof seed.fulfillments);
+      }
+      applyOptional(seed as unknown as Record<string, unknown>, seed.type);
       persist();
       return delay(toGoods(seed));
     }
 
     const goodsNo = nextNo("G");
-    db.goodsSeeds.unshift({
+    const newType = (TEMPLATE_TO_TYPE[findCategoryTemplate(effectiveCategoryNo) ?? ""] ??
+      CATEGORY_TYPE.NORMAL) as CategoryType;
+    const seed = {
       goodsNo,
       merchantNo,
-      type: payload.type,
-      categoryNo: "",
+      // 形态由类目派生，与真后端同一条规则（P1-1）—— mock 自己算一遍，
+      // 而不是抄 payload：payload 里已经没有 type 了，而「mock 上能建、
+      // 连真后端就变成另一种货」是最难查的一类错配
+      type: newType,
+      categoryNo: effectiveCategoryNo,
+      stdNo: payload.stdNo,
       title: fillI18n(payload.title),
       subtitle: fillI18n(payload.subtitle),
-      cover: "📦",
-      images: ["📦"],
+      cover: payload.cover || "📦",
+      detail: payload.detail,
+      // 端上没传就给一个占位，传了就用他上传的那几张
+      images: payload.images?.length ? payload.images : ["📦"],
+      fulfillments: payload.fulfillments?.length ? payload.fulfillments : ["STORE_PICKUP"],
       price,
       priceByMarket,
-      onSale: true,
+      /*
+       * **新建落草稿、不在售**（批 D）：mock 此前直接给 onSale: true，
+       * 于是「录完就能卖」在开发期看着完全正常，而真后端一直是「录完要过审」。
+       * 两边不同的后果是端上按 mock 的样子做交互，接真后端才发现少了两步。
+       */
+      status: "DRAFT" as const,
+      onSale: false,
       salesCount: 0,
       specGroups,
       skus: buildSkus(),
       promotions: [],
-    } as unknown as (typeof db.goodsSeeds)[number]);
+    } as unknown as (typeof db.goodsSeeds)[number];
+    applyOptional(seed as unknown as Record<string, unknown>, newType);
+    db.goodsSeeds.unshift(seed);
     persist();
     return delay(toGoods(findGoodsSeed(goodsNo)));
   },
@@ -1189,6 +1354,43 @@ export const mockApi: MerchantApi = {
     return this.mSaveStock(goodsNo, skuNo, stock);
   },
 
+  async mSubmitGoods(goodsNo) {
+    const seed = findGoodsSeed(goodsNo);
+    // 只有草稿会动 —— 重复点击是常态，报错只会让商家以为提交失败
+    if (seed.status === "DRAFT") seed.status = "PENDING";
+    persist();
+    return delay(toGoods(seed));
+  },
+
+  async mSavePresale(goodsNo, cutoffAt, arrivalDesc) {
+    const seed = findGoodsSeed(goodsNo);
+    if (seed.type !== "FRESH") throw new Error("只有生鲜有截单时间");
+    if (cutoffAt != null) seed.cutoffAt = cutoffAt;
+    // 种子里这一列是多语言（与 origin 同）—— 商家填的是一句中文，回落到三语
+    if (arrivalDesc != null) seed.arrivalDesc = toI18n(arrivalDesc);
+    /*
+     * ★ **不动 status** —— 这正是它与 mSaveGoods 的分界。
+     * mock 也照此实现：改成回待审的话，「改截单会不会下架」这个最要紧的问题
+     * 在开发期得到的是错误答案。
+     */
+    persist();
+    return delay(toGoods(seed));
+  },
+
+  async mSaveStorePrice(goodsNo, skuNo, price) {
+    const seed = findGoodsSeed(goodsNo);
+    const sku = seed.skus.find((k) => k.skuNo === skuNo);
+    if (!sku) throw new Error("规格不存在");
+    if (price != null && price < 0) throw new Error("价格不能为负");
+    /*
+     * **空 = 取消本店单独定价**，回到主体价 —— 不是改成 0。
+     * mock 也要照此实现：写成 0 的话「取消定价」这条路在开发期看着像「白送」。
+     */
+    sku.storePrice = price ?? undefined;
+    persist();
+    return delay(toGoods(seed));
+  },
+
   // ---------------------------------------------------------------- 图片与识别
   async mUploadImage(tempPath) {
     // mock 直接把端上的临时路径当 URL 用 —— H5 下 blob: 路径能直接显示。
@@ -1209,6 +1411,23 @@ export const mockApi: MerchantApi = {
     ];
     const g = guesses[db.seq % guesses.length]!;
     return delay({ ...g, confidence: 0.72 }, 700);
+  },
+
+  // ---------------------------------------------------------------- 标准品库
+  /**
+   * 标准品搜索。**mock 自己也做一遍收敛**（见 mSaveGoods）——
+   * 「mock 上建出来是这样、连真后端变成那样」是这套 mock 最该防的错配。
+   */
+  async mSpuStdSearch(q) {
+    const kw = (q.keyword ?? "").trim();
+    const rows = db.spuStds
+      .filter((t) => t.status !== "ARCHIVED")
+      .filter((t) => !q.categoryNo || t.categoryNo === q.categoryNo)
+      // 标题与别名一起搜：商家嘴里的「洋芋」与标准品标题「土豆」对不上时，
+      // 结果不是报错，是他以为标准库里没有 —— 然后自建一个，可比性在这一次就丢了
+      .filter((t) => !kw || t.title.includes(kw) || (t.keywords ?? "").includes(kw))
+      .slice(0, q.limit && q.limit > 0 ? q.limit : 20);
+    return delay(rows.map((t) => ({ ...t })));
   },
 
   // ---------------------------------------------------------------- 类目

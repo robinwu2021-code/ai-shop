@@ -151,7 +151,8 @@ class OpsStoreGovernFlowTest {
         mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + biz)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"goodsNo\":\"" + goodsNo + "\",\"title\":\"换了主图的测试品\","
-                                + "\"type\":\"NORMAL\","
+                                // 类目必填（P1-1 收尾）：CAT210 无 required_code，不卡资质
+                                + "\"categoryNo\":\"CAT210\","
                                 + "\"skus\":[{\"skuNo\":\"" + skuNo + "\",\"optionValues\":[],"
                                 + "\"price\":1000,\"stock\":10}]}"))
                 .andExpect(jsonPath("$.code").value(0))
@@ -285,7 +286,7 @@ class OpsStoreGovernFlowTest {
     private String listedGoods(String token, int stock) throws Exception {
         String body = mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"title\":\"门店治理测试品\",\"type\":\"NORMAL\","
+                        .content("{\"categoryNo\":\"CAT210\",\"title\":\"门店治理测试品\",\"type\":\"NORMAL\","
                                 + "\"skus\":[{\"optionValues\":[],\"price\":1000,\"stock\":" + stock + "}]}"))
                 .andExpect(jsonPath("$.code").value(0))
                 .andReturn().getResponse().getContentAsString();

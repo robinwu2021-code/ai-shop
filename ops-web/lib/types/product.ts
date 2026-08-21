@@ -18,7 +18,7 @@ export interface I18nText {
   ar?: string;
 }
 
-export const MAX_CATEGORY_LEVEL = 3;
+export const MAX_CATEGORY_LEVEL = 2;
 
 export interface Category extends Archivable {
   /** 类目单号 */
@@ -294,4 +294,55 @@ export interface GoodsDetailSku {
   originPrice?: number | null;
   /** 可售库存 */
   stock: number;
+}
+
+/**
+ * 平台标准品（TDD-标准品库）：商家引用建品的**模子**。
+ *
+ * <p>**无价、无库存、无履约** —— 那些永远是商家的。标准品一旦带价，
+ * 它就成了平台指导价，那是完全另一件事（且有法律含义）。
+ *
+ * <p>它存在的理由是 `specGroups` 里的 `optionCode`：没有标准品，
+ * 三家店各自录「本地菠菜」得到三个毫无关系的商品，聚合与比价无从谈起。
+ */
+/**
+ * 主题分类（陈列）。
+ *
+ * <p><b>与类目正交、与活动分开</b>：类目回答「这是什么货、要什么资质」，
+ * 活动回答「打几折」，主题只回答「这周首页摆什么」。
+ */
+export interface Topic {
+  topicNo: string;
+  title: string;
+  /** 一句话说明，如「7 点前送到」。空 = 不展示副标题 */
+  subtitle?: string;
+  cover?: string;
+  /** 首页排序，小的在前 */
+  sort: number;
+  /** 生效起止（毫秒）。**都可空 = 常设专题** —— 填一个假的结束时间会让它某天悄悄消失 */
+  startAt?: number;
+  endAt?: number;
+  /** ACTIVE / ARCHIVED。归档不删：分享出去的海报还指着它 */
+  status?: string;
+  /** 专题里有几件商品。**空专题在 C 端是一个点进去什么都没有的入口**，列表要看得见 */
+  goodsCount: number;
+}
+
+export interface SpuStd extends Archivable {
+  stdNo: string;
+  /** 所属类目。商家取用后**改不掉**（服务端覆盖）：类目决定形态 */
+  categoryNo: string;
+  categoryName?: string;
+  title: string;
+  titleI18n?: Record<string, string>;
+  subtitle?: string;
+  cover?: string;
+  images?: string[];
+  /** 每个选项都必须带 `optionCode` —— 这是标准品存在的唯一理由 */
+  specGroups: { name: string; options: string[]; optionCodes?: string[]; templateNo?: string }[];
+  /** 别名/品牌/俗称，空格分隔。商家搜「洋芋」也要能命中标题是「土豆」的那条 */
+  keywords?: string;
+  status?: string;
+  /** 被引用次数。只服务排序与去重判断，不参与任何校验 */
+  refCount?: number;
 }

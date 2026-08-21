@@ -32,13 +32,16 @@ public class BizGoodsController {
     private final MerchantGoodsService goodsService;
     private final ai.neargo.shop.product.service.CategoryService categoryService;
     private final ai.neargo.shop.spi.product.GoodsVisionPort vision;
+    private final ai.neargo.shop.product.service.SpuStdService spuStdService;
 
     public BizGoodsController(MerchantGoodsService goodsService,
                               ai.neargo.shop.product.service.CategoryService categoryService,
-                              ai.neargo.shop.spi.product.GoodsVisionPort vision) {
+                              ai.neargo.shop.spi.product.GoodsVisionPort vision,
+                              ai.neargo.shop.product.service.SpuStdService spuStdService) {
         this.goodsService = goodsService;
         this.categoryService = categoryService;
         this.vision = vision;
+        this.spuStdService = spuStdService;
     }
 
     /**
@@ -64,6 +67,7 @@ public class BizGoodsController {
     @GetMapping("/biz/goods")
     public PageData<GoodsVO> list(@RequestParam(required = false) String status,
                                   @RequestParam(required = false) String keyword,
+                                  @RequestParam(required = false) String categoryNo,
                                   @RequestParam(defaultValue = "1") long page,
                                   @RequestParam(defaultValue = "20") long size) {
         /*
@@ -71,7 +75,12 @@ public class BizGoodsController {
          * 只有这个端点没往下传，于是 B 端商品页没有搜索。
          * 商品少的时候看不出来；实测 194 条的账号，找一个商品要滚三十屏。
          */
-        return goodsService.list(BizContext.requireMerchantNo(), null, keyword, status,
+        /*
+         * `categoryNo` 此前也**写死传 null**（与 keyword 是同一种遗漏，那个已经修过）。
+         * 类目变必填之后按类目找货是商家的主路径 —— 一个卖 200 件货的店，
+         * 没有类目筛就只能靠滚动。
+         */
+        return goodsService.list(BizContext.requireMerchantNo(), categoryNo, keyword, status,
                 page, Math.min(size, 50));
     }
 
@@ -81,13 +90,19 @@ public class BizGoodsController {
         return goodsService.detail(BizContext.requireMerchantNo(), goodsNo);
     }
 
-    /** 新建 / 编辑。<b>保存后回到待审核并强制下架</b> —— 否则「改成别的东西再卖」能绕开审核。 */
+    /**
+     * 新建 / 编辑。<b>保存后回到待审核并强制下架</b> —— 否则「改成别的东西再卖」能绕开审核。
+     *
+     * <p><b>请求体里没有 {@code type}</b>：五品类由 {@code categoryNo} 带出来
+     * （见 {@code CategoryService#categoryTypeOf}）。老客户端还在发的那个值
+     * 由 Jackson 当未知字段忽略，不会 400。
+     */
     @PreAuthorize("@perm.canBiz('" + BizPerms.GOODS + "')")
     @PostMapping("/biz/goods/save")
     public GoodsVO save(@RequestBody SaveGoodsReq req) {
         return goodsService.save(BizContext.requireMerchantNo(), new MerchantGoodsService.SaveCommand(
                 req.goodsNo(), req.title(), req.subtitle(),
-                req.titleI18n(), req.subtitleI18n(), req.type(), req.categoryNo(),
+                req.titleI18n(), req.subtitleI18n(), req.categoryNo(),
                 req.cover(), req.images(),
                 req.specGroups() == null ? List.of() : req.specGroups().stream()
                         .map(g -> new MerchantGoodsService.SpecGroup(
@@ -95,9 +110,19 @@ public class BizGoodsController {
                         .toList(),
                 req.skus() == null ? List.of() : req.skus().stream()
                         .map(s -> new MerchantGoodsService.Sku(
-                                s.skuNo(), s.optionValues(), s.price(), s.priceByMarket(), s.stock()))
+                                s.skuNo(), s.optionValues(), s.price(), s.priceByMarket(), s.stock(),
+                                s.originPrice(), s.nominalGram()))
                         .toList(),
-                req.fulfillments()));
+                req.fulfillments(),
+                req.limitPerUser(),
+                req.fresh() == null ? null : new MerchantGoodsService.FreshSpec(
+                        req.fresh().cutoffAt(), req.fresh().arrivalDesc(),
+                        req.fresh().weighed(), req.fresh().origin()),
+                req.service() == null ? null : new MerchantGoodsService.ServiceSpec(
+                        req.service().durationMin(), req.service().storeName()),
+                req.groupBuy() == null ? null : new MerchantGoodsService.GroupBuySpec(
+                        req.groupBuy().minCount(), req.groupBuy().price()),
+                req.stdNo(), req.detail()));
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.GOODS + "')")
@@ -129,11 +154,85 @@ public class BizGoodsController {
                 req.skuNo(), req.stock() == null ? 0 : req.stock());
     }
 
+    /**
+     * 提交审核：草稿 → 待审（批 D）。
+     *
+     * <p>此前是「保存即提审」，商家填一半点保存就进了运营的待审队列。
+     * 重复点击无副作用 —— 已在审的再点一次不该报错。
+     */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.GOODS + "')")
+    @PostMapping("/biz/goods/{goodsNo}/submit")
+    public GoodsVO submit(@PathVariable String goodsNo) {
+        return goodsService.submitForAudit(BizContext.requireMerchantNo(), goodsNo);
+    }
+
+    /**
+     * 只改截单与到货说明（生鲜）。<b>不触发重审、不下架</b> ——
+     * 生鲜商家每天晚上定明天的截单，走 {@code /save} 的话改一次等于停一天生意。
+     */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.GOODS + "')")
+    @PostMapping("/biz/goods/{goodsNo}/presale")
+    public GoodsVO presale(@PathVariable String goodsNo, @RequestBody PresaleReq req) {
+        return goodsService.savePresaleCutoff(BizContext.requireMerchantNo(), goodsNo,
+                req.cutoffAt(), req.arrivalDesc());
+    }
+
+    /** @param cutoffAt 当天几点前下单（毫秒时间戳）。与「到点」是两件事，见词典 §12 */
+    public record PresaleReq(Long cutoffAt, String arrivalDesc) {
+    }
+
+    /**
+     * 设置**当前门店**的售价（多门店）。门店取 {@code X-Store-No}，不传用默认店。
+     *
+     * <p>与 {@code store-stock} 同形状，但**回退方向相反**：没设过价的门店按主体价卖，
+     * 而没设过库存的门店按 0 卖。挂 {@code biz:goods} 而不是 {@code biz:stock} ——
+     * 改价是定价权，与补货不是一回事。
+     */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.GOODS + "')")
+    @PostMapping("/biz/goods/{goodsNo}/store-price")
+    public GoodsVO storePrice(@PathVariable String goodsNo, @RequestBody StorePriceReq req) {
+        var ctx = BizContext.current();
+        return goodsService.saveStorePrice(ctx.requireMerchantNo(), ctx.currentStoreNo(), goodsNo,
+                req.skuNo(), req.price(), req.originPrice());
+    }
+
+    /** @param price 空 = 取消本店单独定价，回到主体价（合法操作，不是漏填） */
+    public record StorePriceReq(String skuNo, Long price, Long originPrice) {
+    }
+
+    /**
+     * 标准品搜索 —— 建品页「从标准品开始」用（TDD-标准品库）。
+     *
+     * <p>按标题与别名模糊匹配，只返回启用中的。<b>搜不到不是错误</b>：
+     * 标准库对「张姐家的酱菜」永远无效，而那类货正是这个平台的一部分主力 ——
+     * 端上必须让「搜不到 → 直接自建」这条路一样顺，不能因为多了标准品，
+     * 自建品反而变成一个要先失败一次才能走到的分支。
+     *
+     * <p>判 {@code biz:goods}：它是建品链路的一环，只能改库存的角色用不上。
+     */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.GOODS + "')")
+    @GetMapping("/biz/spu-std")
+    public List<ai.neargo.shop.product.dto.SpuStdVO> spuStd(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String categoryNo,
+            @RequestParam(defaultValue = "20") int limit) {
+        return spuStdService.search(keyword, categoryNo, limit);
+    }
+
+    /**
+     * 规格模板。<b>判 {@code biz:goods} 而不是 {@code biz:stock}</b> ——
+     * 它是建品链路的一环，只能改库存的角色（配送员、客服）不该读写它。
+     *
+     * <p>这两条此前**一个权限注解都没有**，而同一个控制器里其余端点都判了 ——
+     * 于是任何持有 B 端会话的子账号都能给这家店建规格模板。
+     */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.GOODS + "')")
     @GetMapping("/biz/spec-templates")
     public List<SpecTemplateVO> specTemplates(@RequestParam(required = false) String categoryType) {
         return goodsService.specTemplates(BizContext.requireMerchantNo(), categoryType);
     }
 
+    @PreAuthorize("@perm.canBiz('" + BizPerms.GOODS + "')")
     @PostMapping("/biz/spec-templates")
     public SpecTemplateVO saveSpecTemplate(@RequestBody SaveTemplateReq req) {
         return goodsService.saveSpecTemplate(BizContext.requireMerchantNo(), req.name(),
@@ -193,19 +292,54 @@ public class BizGoodsController {
                 guess.categoryNo(), guess.confidence());
     }
 
+    /**
+     * <b>没有 {@code type} 字段</b>：五品类由 {@code categoryNo} 派生（P1-1）。
+     *
+     * <p>留一个「收下但忽略」的字段看着更兼容，其实更糟：契约对齐守卫
+     * （{@code wire-alignment.test.ts}）会因为「后端收、前端不发」一直红，
+     * 而下一个人读到它会以为这个值还起作用。老客户端仍在发的那个 {@code type}
+     * 由 Jackson 按未知字段忽略掉（本仓库没开 FAIL_ON_UNKNOWN_PROPERTIES），
+     * 不会 400。
+     */
     public record SaveGoodsReq(String goodsNo, String title, String subtitle,
                                Map<String, String> titleI18n, Map<String, String> subtitleI18n,
-                               String type, String categoryNo, String cover, List<String> images,
+                               String categoryNo, String cover, List<String> images,
                                List<SpecGroupReq> specGroups, List<SkuReq> skus,
-                               List<String> fulfillments) {
+                               List<String> fulfillments,
+                               Integer limitPerUser, FreshReq fresh, ServiceReq service,
+                               GroupBuyReq groupBuy,
+                               /**
+                                * 引用的标准品；不传 = 自建品。
+                                *
+                                * <p>传了它，服务端会用标准品的 {@code categoryNo} 与
+                                * {@code optionCode} <b>覆盖</b>请求里的值 —— 端上只是「填充」，
+                                * 而填充过的表单商家能随便改。
+                                */
+                               String stdNo,
+                               /** 图文详情正文（纯文本）。不传 = 不改，传空串 = 清空 */
+                               String detail) {
+    }
+
+    /** 生鲜段。留空 = 不改；只在品类是 FRESH 时写入 */
+    public record FreshReq(Long cutoffAt, String arrivalDesc, Boolean weighed, String origin) {
+    }
+
+    /** 服务段。留空 = 不改；只在品类是 SERVICE 时写入 */
+    public record ServiceReq(Integer durationMin, String storeName) {
+    }
+
+    /** 拼团档。两个值要么都给要么都不给 —— 缺一个开不出团，而界面上看着是配着的 */
+    public record GroupBuyReq(Integer minCount, Long price) {
     }
 
     public record SpecGroupReq(String name, List<String> options, List<String> optionCodes,
                                String templateNo) {
     }
 
+    /** @param originPrice 划线价；@param nominalGram 标称重量（克）。两者都是「留空 = 不改」 */
     public record SkuReq(String skuNo, List<String> optionValues, long price,
-                         Map<String, Long> priceByMarket, int stock) {
+                         Map<String, Long> priceByMarket, int stock,
+                         Long originPrice, Integer nominalGram) {
     }
 
     public record ToggleReq(Boolean onSale) {

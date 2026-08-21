@@ -63,6 +63,26 @@ const phoneOtp: LoginMethod = {
 };
 
 /**
+ * 手机号 + 密码。**只在 B 端出现**（见 {@link loginMethods}）。
+ *
+ * <p>与 {@link phoneOtp} 共用「手机号 + 一个副凭证」的表单形态，所以 `needsPhone` 同样是
+ * true —— 页面那一格填的是密码而不是验证码，由页面按当前方式换输入框与文案。
+ *
+ * <p><b>它不建户</b>：后端对这条路查无此人也报「手机号或密码不对」，不会像其它方式
+ * 那样「登录即注册」。所以它不能是 `primary` —— 新商家第一次来必须走验证码那条。
+ */
+const password: LoginMethod = {
+  id: "PASSWORD",
+  labelKey: "login.byPassword",
+  primary: false,
+  needsPhone: true,
+  async acquire(phone, pwd) {
+    if (!phone) throw new Error("请输入手机号");
+    return { grantType: "PASSWORD", principal: phone, credential: pwd };
+  },
+};
+
+/**
  * 小程序静默登录：`wx.login` 的 code 交给服务端换 openid/unionid。
  *
  * 拿不到手机号 —— 这是它与 {@link wxPhone} 的全部差别。需要手机号的场景
@@ -113,22 +133,28 @@ const apple: LoginMethod = {
  * 当前端可用的登录方式，按推荐顺序。
  *
  * ⚠️ Apple 只在 iOS 出现 —— 安卓包里放一个 Apple 登录按钮是审核与体验双输。
+ *
+ * @param opts.withPassword 是否提供密码登录。**这一项是 app 的选择，不是端的能力** ——
+ *   密码只有 B 端有（商家高频开合），C 端不传就没有。所以它做成参数而不是
+ *   `#ifdef`：条件编译分的是运行平台，而这里分的是哪一个 app。
  */
-export function loginMethods(): LoginMethod[] {
+export function loginMethods(opts?: { withPassword?: boolean }): LoginMethod[] {
+  const pwd = opts?.withPassword ? [password] : [];
+
   // #ifdef MP-WEIXIN
-  return [wxMini, phoneOtp];
+  return [wxMini, phoneOtp, ...pwd];
   // #endif
 
   // #ifdef APP-PLUS
   // eslint-disable-next-line no-unreachable
-  const list: LoginMethod[] = [phoneOtp, wxOpen];
+  const list: LoginMethod[] = [phoneOtp, ...pwd, wxOpen];
   if (uni.getSystemInfoSync().platform === "ios") list.push(apple);
   return list;
   // #endif
 
   // #ifndef MP-WEIXIN || APP-PLUS
   // eslint-disable-next-line no-unreachable
-  return [phoneOtp];
+  return [phoneOtp, ...pwd];
   // #endif
 }
 

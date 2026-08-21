@@ -70,10 +70,17 @@ export const STUCK_MINUTES: Record<string, number> = {
   WAIT_PAY: 15,
   // 已付款待发货：备货本身要时间，30 分钟一刀切会把正常单刷进异常队列
   PAID: 120,
-  SHIPPED: 240,
-  ARRIVED: 1440,
+  /*
+   * 履约中。**自提与配送的合理时长不同**（等人来取 vs 在途），
+   * 而它们是同一个状态 —— 差别落在履约方式上，由调用方按 fulfillment 取值。
+   * 这里给的是配送档；自提档见 FULFILLING_PICKUP。
+   */
+  FULFILLING: 240,
   REFUNDED: 2880,
 };
+
+/** 履约中·自提类的时限：等买家来取，放一天很正常 */
+export const FULFILLING_PICKUP_MINUTES = 1440;
 
 /** 运费模板首重下限（克）。首重 0 克意味着"拿起来就收首重费"，是配置错误而不是策略。 */
 export const MIN_FIRST_WEIGHT_GRAM = 100;

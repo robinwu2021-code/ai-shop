@@ -130,7 +130,13 @@ const RESPONSE_TYPES = {
   // 漏配一条就整份 spec 不生成（守卫是对的）：/biz/goods/{no}/store-stock 因此
   // 长期不在契约里，而后端实现了 —— 按契约算的覆盖率会凭空少一条。
   mSaveStoreStock: "Goods",
+  mSaveStorePrice: "Goods",
+  mSubmitGoods: "Goods",
+  mSavePresale: "Goods",
   mSendOtp: "void",
+  // 密码登录（并行改动带进来的两条）：设置只回成功与否，查询回一个布尔壳
+  mSetPassword: "void",
+  mHasPassword: "HasPasswordResp",
   mLogin: "MerchantLoginResp",
   mStaffLogin: "MerchantLoginResp",
   mProfile: "MerchantProfile",
@@ -146,6 +152,10 @@ const RESPONSE_TYPES = {
   mSetStoreStatus: "Store",
   mSetDefaultStore: "Store",
   mSetStorePayment: "Store",
+  mStoreCategories: "StoreCategory[]",
+  mSaveStoreCategories: "StoreCategory[]",
+  // 标准品搜索：从标准品建品的入口，一期只读
+  mSpuStdSearch: "SpuStd[]",
   mStaffList: "MerchantStaff[]",
   mStaffLogs: "StaffLog[]",
   mRoles: "MerchantRole[]",

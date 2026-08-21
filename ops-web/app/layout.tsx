@@ -21,6 +21,14 @@ const plex = IBM_Plex_Sans({
 export const metadata: Metadata = {
   title: "邻里购 · 平台运营端",
   description: "社区电商平台运营管理后台（ops-web）",
+  // 图标产物由 brand/build.py 生成到 public/，勿手改单个文件
+  icons: {
+    icon: [
+      { url: "/favicon.svg", type: "image/svg+xml" },
+      { url: "/favicon-32.png", sizes: "32x32" },
+    ],
+    apple: "/apple-touch-icon.png",
+  },
 };
 
 // 首帧前应用持久化主题色 + 语言/方向（避免闪烁）。key 对齐 lib/stores/{theme,locale}.ts。

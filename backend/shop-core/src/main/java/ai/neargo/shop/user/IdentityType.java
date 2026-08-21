@@ -35,10 +35,25 @@ public final class IdentityType {
     public static final String APPLE_SUB = "APPLE_SUB";
 
     /**
+     * 登录密码（bcrypt 哈希存在 {@code identity_value} 里）。
+     *
+     * <p><b>它和上面几种不是一回事</b>：上面是「标识」——拿着它去找人；
+     * 密码是「秘密」——先用手机号找到人，再验这一条对不对。所以它
+     * <b>刻意不进 {@link #RESOLVE_ORDER}</b>：把哈希拿去认人既没有意义
+     * （谁会拿哈希当账号输），又会让「两个人碰巧同哈希」变成串号事故。
+     *
+     * <p>存这里而不是往 {@code usr_account} 加一列，是本模型的既定选择
+     * （见本类与 {@code AuthServiceImpl} 的类注释：凭证一人多条，不平铺成列）。
+     */
+    public static final String PASSWORD = "PASSWORD";
+
+    /**
      * 认人时的尝试顺序。
      *
      * <p>手机号排第一是本项目的决定；其余按「同应用回访」处理，顺序之间无实质差别，
      * 但**必须是确定的顺序**——不确定的话，同一组凭证在并发下可能认到不同的人。
+     *
+     * <p>{@link #PASSWORD} 不在其中，理由见该常量的注释。
      */
     public static final List<String> RESOLVE_ORDER =
             List.of(PHONE, WX_UNIONID, WX_OPENID_MP, WX_OPENID_APP, WX_OPENID_OA, APPLE_SUB);

@@ -53,7 +53,8 @@ public class StockPortImpl implements StockPort {
             boolean perStore = storeNo != null && !storeNo.isBlank() && hasStoreStock(item.skuNo());
             int affected = perStore
                     ? storeStockMapper.lockStock(storeNo, item.skuNo(), item.qty())
-                    : skuMapper.lockStock(item.skuNo(), item.qty());
+                    : DataScopeContext.executeWithoutScope(
+                            () -> skuMapper.lockStock(item.skuNo(), item.qty()));
             /*
              * 现货不足 → **回落到预售额度**（P-3.3.1）。顺序不能反：先吃额度的话，
              * 有现货的时候也在消耗预售额度，而预售额度对应的是次日现采的采购计划 ——
@@ -65,7 +66,8 @@ public class StockPortImpl implements StockPort {
              */
             boolean presale = false;
             if (affected == 0 && !perStore) {
-                presale = skuMapper.lockPresale(item.skuNo(), item.qty()) > 0;
+                presale = DataScopeContext.executeWithoutScope(
+                        () -> skuMapper.lockPresale(item.skuNo(), item.qty())) > 0;
                 affected = presale ? 1 : 0;
             }
             if (affected == 0) {
@@ -103,11 +105,13 @@ public class StockPortImpl implements StockPort {
             if (Boolean.TRUE.equals(lock.getPresale())) {
                 // 预售单取消：额度还回去。不还的话额度会随着取消数一路缩水，
                 // 而那批货其实还没卖出去 —— 表现是「明明没卖多少，却说额度满了」
-                skuMapper.releasePresale(lock.getSkuNo(), lock.getQty());
+                DataScopeContext.executeWithoutScope(
+                        () -> skuMapper.releasePresale(lock.getSkuNo(), lock.getQty()));
             } else if (lock.getStoreNo() != null) {
                 storeStockMapper.releaseStock(lock.getStoreNo(), lock.getSkuNo(), lock.getQty());
             } else {
-                skuMapper.releaseStock(lock.getSkuNo(), lock.getQty());
+                DataScopeContext.executeWithoutScope(
+                        () -> skuMapper.releaseStock(lock.getSkuNo(), lock.getQty()));
             }
             lock.setStatus(PrdStockLock.RELEASED);
             lock.setSettledAt(LocalDateTime.now());
@@ -135,7 +139,8 @@ public class StockPortImpl implements StockPort {
             if (lock.getStoreNo() != null) {
                 storeStockMapper.confirmStock(lock.getStoreNo(), lock.getSkuNo(), lock.getQty());
             } else {
-                skuMapper.confirmStock(lock.getSkuNo(), lock.getQty());
+                DataScopeContext.executeWithoutScope(
+                        () -> skuMapper.confirmStock(lock.getSkuNo(), lock.getQty()));
             }
             lock.setStatus(PrdStockLock.CONFIRMED);
             lock.setSettledAt(LocalDateTime.now());

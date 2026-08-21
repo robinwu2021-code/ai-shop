@@ -42,6 +42,18 @@ export const productHttp: ProductApi = {
   listCategories: (q) => client.get<{ records: Category[] }>("/ops/categories", { ...q, size: q?.size ?? 500 })
     .then((r) => r.records),
   saveCategory: (v) => client.post("/ops/categories", v),
+  // ── 标准品库（TDD-标准品库）——「运营录入」这一步，缺了它整个功能就是锁着的
+  listSpuStd: (q) => client.get("/ops/spu-std", q),
+  saveSpuStd: (v) => client.post("/ops/spu-std", v),
+  listTopics: (q) => client.get("/ops/topics", q),
+  saveTopic: (v) => client.post("/ops/topics", v),
+  setTopicArchived: (topicNo, archived) =>
+    client.post(`/ops/topics/${topicNo}/archived`, { archived }),
+  listTopicGoods: (topicNo, q) => client.get(`/ops/topics/${topicNo}/goods`, q),
+  setTopicGoods: (topicNo, goodsNos) => client.post(`/ops/topics/${topicNo}/goods`, { goodsNos }),
+  archiveSpuStd: (no) => client.post(`/ops/spu-std/${no}/archive`),
+  unarchiveSpuStd: (no) => client.post(`/ops/spu-std/${no}/unarchive`),
+
   archiveCategory: (no) => client.post(`/ops/categories/${no}/archive`),
   unarchiveCategory: (no) => client.post(`/ops/categories/${no}/unarchive`),
 

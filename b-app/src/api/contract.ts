@@ -32,6 +32,7 @@ import type {
   Quote,
   VerifyResult,
   Store,
+  StoreCategory,
   PaymentApplyment,
   MerchantApplyReq,
   MerchantApplyStatus,
@@ -54,6 +55,7 @@ import type {
   SettleBill,
   ShareKit,
   SpecTemplate,
+  SpuStd,
   StoreProfile,
   StoreQrcode,
   LoginReq,
@@ -123,6 +125,20 @@ export interface SkuDraft {
   priceByMarket?: Partial<Record<MarketId, number>>;
   /** 可售库存 */
   stock: number;
+  /**
+   * 划线价（最小货币单位）。**留空 = 不改**，传 0 = 清掉。
+   *
+   * <p>它是派生展示值（标折扣用），不是定价 —— 必须**高于售价**，
+   * 否则渲染出来是个「涨价了」的折扣标，后端会拒。
+   *
+   * <p>此前有列、有契约、**没有写入路径**：折扣标因此永远不出现。
+   */
+  originPrice?: number;
+  /**
+   * 标称重量（克），生鲜按重计价用。**留空 = 不改**，传 0 = 清掉。
+   * 「按标称预扣、称重后多退少补」这条链靠它，没有它整条链跑不起来。
+   */
+  nominalGram?: number;
 }
 
 /**
@@ -139,18 +155,39 @@ export interface GoodsDraft {
   title: I18nText;
   /** 副标题/卖点（多语言） */
   subtitle: I18nText;
-  /** 商品形态，决定详情页用哪套字段。**保存后不建议再改** */
-  type: Goods["type"];
   /**
-   * 类目单号（三级树的任意一级，通常是叶子）。选填。
+   * 图文详情正文（纯文本，非多语言）。**不传 = 不改**，传空串 = 清空。
    *
-   * ⚠️ 与上面的 `type` 是两个维度：`type` 决定履约与合规、平台硬编码；
-   * 类目决定归类与经营准入、运营可维护。
+   * <p>不做多语言：详情是商家自己一段一段敲的长文，逼他填三遍的结果是两遍空着，
+   * 而空着的那两个语种看到的是一整块空白 —— 不如统一回落。
+   */
+  detail?: string;
+  /**
+   * 类目单号（三级树的任意一级，通常是叶子）。**必填，且是唯一的分类输入。**
+   *
+   * <p>商品形态（`Goods["type"]`：NORMAL/FRESH/SERVICE/VIRTUAL/CARD）**由它派生** ——
+   * 类目节点上带着 `template`，两者是同一件事的两套码。草稿里因此**没有 type 字段**：
+   * 后端拿到也会忽略，自己按 categoryNo 查一遍。
+   *
+   * <p>此前两者是两个并列的输入，商家把同一件事填两遍，而且填得出
+   * 「叶菜类目 + 日用品形态」这种组合 —— 页面只提示不阻断，代价要到下单
+   * 那一刻才显形（生鲜要截单、服务不发货）。
    *
    * <p>**保存草稿时不校验资质，上架时才校验** —— 商家可能正准备去申请那张证，
    * 保存这一步就拦住他，等于逼他先把商品归到一个错误的类目下。
    */
-  categoryNo?: string;
+  categoryNo: string;
+  /**
+   * 引用的平台标准品；**不传 = 自建品，也 = 脱离标准品**。
+   *
+   * <p>传了它，服务端会用标准品的 `categoryNo` 与 `optionCode` **覆盖**请求里的值 ——
+   * 端上「从标准品开始」只是把字段填进表单，而填充过的表单商家能随便改。
+   * 标题与图改了没关系；类目与 code 不行：前者决定形态，后者是跨店可比的唯一依据。
+   *
+   * <p>与其余字段的「不传 = 不改」**相反**：商家点「脱离标准品」之后端上就是不再带它，
+   * 而「不改」会让他脱不掉 —— 商品继续被收敛，界面上却已经不显示来源了。
+   */
+  stdNo?: string;
   /**
    * 封面图 URL（来自 `mUploadImage`）。
    *
@@ -175,6 +212,45 @@ export interface GoodsDraft {
    * C 端就选不到被去掉的那几种了。
    */
   fulfillments?: string[];
+  /** 每人限购，0 = 不限。**留空 = 不改** */
+  limitPerUser?: number;
+  /**
+   * 生鲜段。**留空 = 不改**；只在商品形态是 `FRESH` 时生效（形态由类目派生）。
+   *
+   * <p>这几个字段此前只有种子数据写得进去 —— 商家建出来的生鲜没有截单时间、
+   * 没有产地、不按实称，于是「按标称预扣、多退少补」在真实数据上跑不起来。
+   */
+  fresh?: {
+    /** 当天几点前下单（毫秒时间戳）。与「到点」是两件事：截单管下单，到点管到货 */
+    cutoffAt?: number;
+    /** 预计到货描述，如「次日 17:00 前到点」 */
+    arrivalDesc?: string;
+    /** 是否按实称多退少补 */
+    weighed?: boolean;
+    /** 产地 */
+    origin?: string;
+  };
+  /** 服务段。**留空 = 不改**；只在形态是 `SERVICE` 时生效 */
+  service?: {
+    /** 服务时长（分钟） */
+    durationMin?: number;
+    /** 可核销门店名 */
+    storeName?: string;
+  };
+  /**
+   * 拼团档。**留空 = 不改**；两个字段都传 `undefined` 的对象 = 显式关闭拼团。
+   *
+   * <p>两个值要么都给要么都不给 —— 缺一个后端拒。原因是「能不能开团」按两者都齐来判，
+   * 只填一个的话商家在界面上填了团价却开不出团，而没有任何提示。
+   *
+   * <p>此前这两列没有任何写入路径，「可开团的商品」那一栏因此**恒为空**。
+   */
+  groupBuy?: {
+    /** 起团人数，最小 2 —— 一个人不叫团 */
+    minCount?: number;
+    /** 团购价（最小货币单位） */
+    price?: number;
+  };
 }
 
 import type { PointsRecordQuery, StaffLoginReq, StoreEditReq, SubmitPaymentReq, TogglePointsReq } from "./requests";
@@ -272,6 +348,20 @@ export interface MerchantApi {
   mSetDefaultStore(storeNo: string): Promise<Store>;
   /** 换收款号。只能挑本主体已开通的；传空 = 回到主体默认号（合法操作） */
   mSetStorePayment(storeNo: string, payMerchantNo?: string): Promise<Store>;
+
+  /** 本店货架。**空数组是合法状态**（新店还没建过货），不是加载失败 */
+  mStoreCategories(storeNo: string): Promise<StoreCategory[]>;
+  /**
+   * 整份替换 —— 勾选式界面的天然形状。
+   *
+   * <p><b>撤掉一个底下还有商品的类目会被拒（80008）</b>：不拦的话那些商品会挂在
+   * 一个这家店已经不存在的货架上，店铺页里就此消失，而商品列表里还看得到。
+   * 没那张证的类目也会被拒（70002），端上要把「缺哪张证」说出来。
+   */
+  mSaveStoreCategories(
+    storeNo: string,
+    items: { categoryNo: string; displayName?: string; sort?: number }[],
+  ): Promise<StoreCategory[]>;
 
   // ---- 员工与授权（B-11.10）
   /** 含停用的。手机号已脱敏 */
@@ -386,7 +476,25 @@ export interface MerchantApi {
    * @param q.keyword 按标题模糊搜。服务层一直支持，端点此前写死传 null ——
    *                  商品一多，没有搜索的列表就只能靠滚
    */
-  mGoodsList(q: PageQuery & { status?: GoodsStatus; keyword?: string }): Promise<PageResult<Goods>>;
+  /**
+   * @param status 四个状态词 + `OUT_OF_STOCK`（缺货）。
+   *               缺货不是 `GoodsStatus` 的一员 —— 库里没有这个状态，它是按
+   *               「所有 SKU 可用量都 ≤ 0」算出来的，且与在售**不互斥**
+   *               （一件在售商品照样能全规格断货）。
+   * @param categoryNo 按三级类目筛。类目变必填之后，这是商家找货的主路径
+   */
+  /**
+   * 标准品搜索 —— 建品页「从标准品开始」。按标题与别名匹配，只返回启用中的。
+   *
+   * <p>**搜不到不是错误**：标准库对「张姐家的酱菜」永远无效，而那类货是这个平台的
+   * 一部分主力。端上必须让「搜不到 → 直接自建」这条路一样顺。
+   */
+  mSpuStdSearch(q: { keyword?: string; categoryNo?: string; limit?: number }): Promise<SpuStd[]>;
+  mGoodsList(q: PageQuery & {
+    status?: GoodsStatus | "OUT_OF_STOCK";
+    keyword?: string;
+    categoryNo?: string;
+  }): Promise<PageResult<Goods>>;
   mGoodsDetail(goodsNo: string): Promise<Goods>;
   mSaveGoods(payload: GoodsDraft): Promise<Goods>;
   mToggleGoods(goodsNo: string, onSale: boolean): Promise<Goods>;
@@ -399,6 +507,30 @@ export interface MerchantApi {
    * 所以只在商家**确实有多家店**时才用它，单店仍走 mSaveStock。
    */
   mSaveStoreStock(goodsNo: string, skuNo: string, stock: number): Promise<Goods>;
+
+  /**
+   * 改**当前门店**的售价。
+   *
+   * <p>与门店库存回退方向相反：没设过价的门店按主体价卖（设成 0 就是白送）。
+   * `price` 传 `null` = <b>取消本店单独定价</b>，回到主体价 ——
+   * 没有这条，商家给某店定过价之后就再也回不去。
+   */
+  mSaveStorePrice(goodsNo: string, skuNo: string, price: number | null): Promise<Goods>;
+
+  /**
+   * 提交审核：草稿 → 待审。
+   *
+   * <p>新建落的是**草稿**，不进运营的待审队列 —— 此前是「保存即提审」，
+   * 商家填一半点保存就进了队列，而他自己看到「审核中」，既不敢改也不知道在等什么。
+   * <b>重复调用无副作用</b>。
+   */
+  mSubmitGoods(goodsNo: string): Promise<Goods>;
+
+  /**
+   * 只改截单与到货说明（生鲜）。<b>不触发重审、不下架</b> ——
+   * 生鲜商家每天晚上定明天的截单，走 `mSaveGoods` 的话改一次等于停一天生意。
+   */
+  mSavePresale(goodsNo: string, cutoffAt?: number, arrivalDesc?: string): Promise<Goods>;
 
   // ---- 商品图片与拍照建品（B-11.3.7 / E9）
   /** 上传一张图，返回可访问 URL。小程序侧走 uploadFile，域名需在白名单 */

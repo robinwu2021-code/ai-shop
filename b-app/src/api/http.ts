@@ -64,6 +64,7 @@ import type {
   Quote,
   VerifyResult,
   Store,
+  StoreCategory,
   PaymentApplyment,
   MerchantApplyStatus,
   MerchantLoginResp,
@@ -82,6 +83,7 @@ import type {
   SettleBill,
   ShareKit,
   SpecTemplate,
+  SpuStd,
   StoreProfile,
   StoreQrcode,
   LoginReq,
@@ -131,6 +133,10 @@ export const httpApi: MerchantApi = {
   mSetStorePayment: (storeNo, payMerchantNo) =>
     http.post<Store>(buildPath(E.mSetStorePayment.path, { storeNo }),
       { payMerchantNo } satisfies SetStorePaymentReq),
+  mStoreCategories: (storeNo) =>
+    http.get<StoreCategory[]>(buildPath(E.mStoreCategories.path, { storeNo })),
+  mSaveStoreCategories: (storeNo, items) =>
+    http.post<StoreCategory[]>(buildPath(E.mSaveStoreCategories.path, { storeNo }), { items }),
 
   mStaffList: () => http.get<MerchantStaff[]>(E.mStaffList.path),
   mAddStaff: (loginPhone, displayName) =>
@@ -192,12 +198,20 @@ export const httpApi: MerchantApi = {
       subtitle: payload.subtitle["zh-CN"] ?? "",
       titleI18n: { ...payload.title },
       subtitleI18n: { ...payload.subtitle },
-      type: payload.type,
+      // type 不发：五品类由 categoryNo 派生，后端拿到也会忽略（P1-1）
       categoryNo: payload.categoryNo,
       cover: payload.cover,
       images: payload.images,
+      // 图文详情：空串也要发 —— 后端「不传 = 不改」，删光了不发就删不掉
+      detail: payload.detail,
       specGroups: payload.specGroups,
       skus: payload.skus,
+      // 溯源。不传 = 自建品 / 脱离标准品（后端据此清空 std_no）
+      stdNo: payload.stdNo,
+      limitPerUser: payload.limitPerUser,
+      fresh: payload.fresh,
+      service: payload.service,
+      groupBuy: payload.groupBuy,
       fulfillments: payload.fulfillments,
     } satisfies SaveGoodsReqBody),
   mToggleGoods: (goodsNo, onSale) =>
@@ -206,6 +220,11 @@ export const httpApi: MerchantApi = {
     http.post<Goods>(buildPath(E.mSaveStock.path, { goodsNo }), { skuNo, stock } satisfies SaveStockReq),
   mSaveStoreStock: (goodsNo, skuNo, stock) =>
     http.post<Goods>(buildPath(E.mSaveStoreStock.path, { goodsNo }), { skuNo, stock } satisfies SaveStockReq),
+  mSaveStorePrice: (goodsNo, skuNo, price) =>
+    http.post<Goods>(buildPath(E.mSaveStorePrice.path, { goodsNo }), { skuNo, price }),
+  mSubmitGoods: (goodsNo) => http.post<Goods>(buildPath(E.mSubmitGoods.path, { goodsNo })),
+  mSavePresale: (goodsNo, cutoffAt, arrivalDesc) =>
+    http.post<Goods>(buildPath(E.mSavePresale.path, { goodsNo }), { cutoffAt, arrivalDesc }),
 
   // 真上传文件字节（multipart），不是把本地路径当 JSON 发 —— 后端要 MultipartFile
   mUploadImage: (tempPath) =>
@@ -214,6 +233,7 @@ export const httpApi: MerchantApi = {
     http.post<GoodsGuess>(E.mRecognizeGoods.path, { imageUrl } satisfies RecognizeGoodsReq),
 
   mCategoryTree: () => http.get<Category[]>(E.mCategoryTree.path),
+  mSpuStdSearch: (q) => http.get<SpuStd[]>(E.mSpuStdSearch.path, { ...q }),
 
   mSpecTemplates: (categoryType) =>
     http.get<SpecTemplate[]>(E.mSpecTemplates.path, { categoryType } satisfies SpecTemplatesQuery),

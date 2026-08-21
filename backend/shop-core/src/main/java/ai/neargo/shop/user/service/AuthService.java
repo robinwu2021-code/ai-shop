@@ -26,6 +26,15 @@ public interface AuthService {
     String GRANT_WX_MINI = "WX_MINI";
     String GRANT_PHONE_OTP = "PHONE_OTP";
     String GRANT_APPLE = "APPLE";
+    /**
+     * 手机号 + 密码。<b>与其它几种最本质的差别：它不建户</b>。
+     *
+     * <p>其余授权方式都是「登录即注册」——拿到一个稳定标识就给他开账号。
+     * 密码不行：能用密码登录的前提是他<b>已经</b>设过密码，而设密码本身要先登录。
+     * 所以这条路上「查无此人」与「没设过密码」都必须明确报错，
+     * 不能悄悄建一个空账号——那会把「密码打错」变成「你的店不见了」。
+     */
+    String GRANT_PASSWORD = "PASSWORD";
 
     /**
      * @param req 授权凭据 + 归因参数
@@ -43,6 +52,18 @@ public interface AuthService {
     LoginResult refresh(String currentToken);
 
     void logout(String currentToken);
+
+    /**
+     * 设置 / 修改登录密码。<b>调用方必须已登录</b>——当前会话就是授权。
+     *
+     * <p>不收「旧密码」：能调到这里说明他此刻已经用验证码或微信登进来了，
+     * 那比旧密码更强的证明。要旧密码只会让「忘了密码」变成死路，
+     * 而重设密码的正路本来就是「验证码登录进来再设」。
+     */
+    void setPassword(String userNo, String rawPassword);
+
+    /** 这个人设过密码没有 —— 端上据此决定「密码登录」入口给不给、文案说什么 */
+    boolean hasPassword(String userNo);
 
     /**
      * @param grantType  {@link #GRANT_WECHAT_MP} / {@link #GRANT_PHONE_OTP} / {@link #GRANT_APPLE}

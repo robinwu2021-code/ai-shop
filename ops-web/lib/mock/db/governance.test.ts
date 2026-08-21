@@ -68,19 +68,31 @@ describe("类目授权（P-11.1.3）", () => {
     ).rejects.toThrow(/不能把授权撤空/);
   });
 
-  it("**该类目下还有在售商品的不能撤** —— 撤了架上还挂着那类商品", async () => {
-    // M903 有 FRESH_VEG 授权，且 SKU1001（叶菜 → FRESH_VEG）在售
-    await expect(
-      merchantMock.setMerchantAuthCodes({ merchantNo: "M903", codes: ["DAILY"], reason: "收缩经营范围" }),
-    ).rejects.toThrow(/在售商品/);
+  /*
+   * **撤码不拦，但要把代价算出来**（商品域-优化总方案 批 B3）。
+   *
+   * 这里此前断言的是「有在售商品就拒」—— 而真后端不拦：证过期了就得撤，
+   * 拦住的话运营只能先去逐件下架商家的货，那是商家的事不是他的。
+   * mock 比后端严的后果是这条路径在开发期永远走不到，上线才发现两边行为不同。
+   */
+  it("**撤码要回一个影响面** —— 运营按下确认之前要看得见代价", async () => {
+    // M903 有 FRESH_VEG 授权，且 SKU1001（→ FRESH_VEG）在售
+    const r = await merchantMock.setMerchantAuthCodes({
+      merchantNo: "M903", codes: ["DAILY"], reason: "许可证已过期",
+    });
+    expect(r.revoked).toEqual(["FRESH_VEG"]);
+    expect(r.affected).toBeGreaterThan(0);
   });
 
-  it("先下架商品，再撤授权就能通过", async () => {
+  it("商品都下架之后，同样的撤码影响面是 0", async () => {
     for (const s of skus) {
       if (s.merchantNo === "M903" && s.categoryNo.startsWith("CAT11")) s.status = "OFF_SALE";
     }
-    const m = await merchantMock.setMerchantAuthCodes({ merchantNo: "M903", codes: ["DAILY"], reason: "收缩经营范围" });
-    expect(m.categoryCodes).toEqual(["DAILY"]);
+    const r = await merchantMock.setMerchantAuthCodes({
+      merchantNo: "M903", codes: ["DAILY"], reason: "收缩经营范围",
+    });
+    expect(r.codes).toEqual(["DAILY"]);
+    expect(r.affected).toBe(0);
   });
 
   it("改授权必须写原因", async () => {

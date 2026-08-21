@@ -89,6 +89,8 @@ export default {
     empty: "سلتك فارغة",
     total: "الإجمالي",
     checkout: "إتمام الطلب",
+    unknownMerchant: "أخرى",
+    splitNote: "من {n} متاجر — سيُنشئ الدفع {n} طلبات تُدفع دفعة واحدة",
   },
   theme: {
     skinPure: "خلفية بيضاء · اللون والنص فقط",
@@ -99,6 +101,8 @@ export default {
     language: "اللغة",
   },
   skin: {
+    brand: "أحمر هونغشيوان",
+    brandDesc: "الافتراضي للعلامة",
     crimson: "أحمر احتفالي",
     crimsonDesc: "المواسم",
     amber: "كهرماني",
@@ -125,6 +129,8 @@ export default {
     allGoods: "كل المنتجات", searchPh: "ابحث داخل المتجر",
     fulfillHint: "الاستلام من المتجر مجاني. التوصيل مجاني فوق ٥٠ ضمن ٣ كم في اليوم نفسه.",
     faved: "تم الحفظ — تجده في «حسابي ← متاجري»", unfaved: "أُزيل من المحفوظات",
+    closed: "هذا المتجر مغلق ولا يستقبل طلبات",
+    closedTip: "هذا المتجر مغلق",
     myStores: "متاجري", myStoresHint: "متاجر مسحتها أو حفظتها", noStores: "لا متاجر محفوظة بعد",
   },
   groupHost: {
@@ -361,6 +367,10 @@ export default {
     giftItem: "{title} ×{n} (مجانًا)",
   },
   confirm: {
+    splitNote: "هذه المنتجات من {n} متاجر وستُنشئ {n} طلبات تُدفع دفعة واحدة",
+    appointmentSlot: "موعد الزيارة",
+    pick: "اختيار",
+    pickSlotHint: "اختر موعدًا — يصل الفني في هذا الوقت",
     capNoInvoice: "لا يمكن لهؤلاء التجار إصدار فواتير: {names}. يرجى التأكيد قبل الطلب.",
     capNoPayMethod: "لا توجد طريقة دفع مشتركة لهذه المنتجات. يرجى طلبها بشكل منفصل أو إزالة بعضها.",
     capQuotaBlocked: "حد التحصيل غير كافٍ لهؤلاء التجار في هذه الفترة: {names}.",
@@ -392,6 +402,7 @@ export default {
   pay: {
     title: "الدفع",
     payable: "المبلغ المستحق",
+    covers: "تغطي هذه الدفعة {n} طلبات",
     remain: "يُغلق خلال {t}",
     expired: "انتهت مهلة الدفع",
     wechat: "وي تشات باي",
@@ -414,7 +425,11 @@ export default {
   orders: {
     title: "طلباتي",
     entryHint: "كل الطلبات",
-    tab: { all: "الكل", toPay: "بانتظار الدفع", toPick: "للاستلام", done: "مكتملة", afterSale: "الاسترجاع" },
+    tab: {
+      all: "الكل", toPay: "بانتظار الدفع", toShip: "قيد التجهيز",
+      toPick: "للاستلام", toReceive: "في الطريق", done: "مكتملة", afterSale: "الاسترجاع",
+    },
+    hiddenCount: "{n} طلبات أقدم غير معروضة",
     total: "الإجمالي {p}",
     pay: "ادفع",
     moreItems: "و{n} منتجات أخرى",
@@ -439,8 +454,20 @@ export default {
   orderStatus: {
     WAIT_PAY: "بانتظار الدفع",
     PAID: "مدفوع",
-    ARRIVED: "في نقطة الاستلام",
-    SHIPPED: "تم الشحن",
+    FULFILLING: "قيد التنفيذ",
+    COMPLETED: "مكتمل",
+    CANCELLED: "ملغى",
+    REFUNDED: "تم الاسترجاع",
+  },
+  orderView: {
+    WAIT_PAY: "بانتظار الدفع",
+    PAID: "قيد التجهيز",
+    PAID_SHIP_TO_BUYER: "بانتظار الشحن",
+    FULFILLING_SELF_PICKUP: "في نقطة الاستلام",
+    FULFILLING_SHIP_TO_BUYER: "تم الشحن",
+    FULFILLING_SELF_SERVE: "جاهز للاستخدام · أظهر الرمز",
+    FULFILLING_SERVE_TO_BUYER: "بانتظار الخدمة",
+    FULFILLING_SERVE_AT: "الخدمة في {t}",
     COMPLETED: "مكتمل",
     CANCELLED: "ملغى",
     REFUNDED: "تم الاسترجاع",

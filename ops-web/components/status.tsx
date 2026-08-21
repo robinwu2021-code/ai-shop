@@ -40,8 +40,9 @@ export function useOrderStatusMap(): StatusMap<OrderStatus> {
   return {
     WAIT_PAY: { label: t("orderStatus.WAIT_PAY"), tone: "warning" },
     PAID: { label: t("orderStatus.PAID"), tone: "info" },
-    SHIPPED: { label: t("orderStatus.SHIPPED"), tone: "info" },
-    ARRIVED: { label: t("orderStatus.ARRIVED"), tone: "warning" },
+    // 运营端看的是全局态势，不区分自提/配送 —— 那是买卖双方各自关心的事。
+    // 要区分时按 fulfillment 展开，不要再拆状态（见《订单状态-统一整理》）
+    FULFILLING: { label: t("orderStatus.FULFILLING"), tone: "info" },
     COMPLETED: { label: t("orderStatus.COMPLETED"), tone: "success" },
     CANCELLED: { label: t("orderStatus.CANCELLED"), tone: "muted" },
     REFUNDED: { label: t("orderStatus.REFUNDED"), tone: "danger" },
@@ -61,6 +62,7 @@ export function useFulfillmentTypeMap(): StatusMap<FulfillmentType> {
     MERCHANT_DELIVERY: { label: t("fulfillmentType.MERCHANT_DELIVERY"), tone: "muted" },
     EXPRESS: { label: t("fulfillmentType.EXPRESS"), tone: "muted" },
     STORE_VERIFY: { label: t("fulfillmentType.STORE_VERIFY"), tone: "muted" },
+    APPOINTMENT: { label: t("fulfillmentType.APPOINTMENT"), tone: "muted" },
   };
 }
 

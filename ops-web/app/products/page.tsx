@@ -20,6 +20,8 @@ import { SkuStatusBadge, useCategoryTemplateMap, useSkuStatusMap } from "@/compo
 import { ReadOnlyNotice } from "@/components/read-only-notice";
 import { GoodsAuditTab } from "./goods-audit-tab";
 import { SpecTemplateTab } from "./spec-template-tab";
+import { SpuStdTab } from "./spu-std-tab";
+import { TopicsTab } from "./topics-tab";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -38,7 +40,7 @@ import { Tree, type TreeNode } from "@/components/ui/tree";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 
 type Copy = (typeof PRODUCTS_COPY)["zh"];
-const TAB_KEYS = ["categories", "skus", "audit", "stock", "templates"] as const;   // 顺序与 lib/nav.ts 的叶子一致
+const TAB_KEYS = ["categories", "skus", "audit", "stock", "templates", "spu-std", "topics"] as const;   // 顺序与 lib/nav.ts 的叶子一致
 
 const MARKET_LABEL = (c: Copy): Record<Market, string> => ({ CN: c.marketCN, SG: c.marketSG });
 
@@ -128,8 +130,14 @@ function ProductsInner() {
   });
   /*
    * goods 级强制下架 —— **已接真后端** `POST /ops/goods/{goodsNo}/force-off`。
-   * 与上面那个 sku 级的 forceOff 是两件事：这个把商品撤回 REJECTED（撤销过审），
-   * 商家改完走重新提审链路回来；那个只是把一个规格下架，商家自己点一下就能上回去。
+   *
+   * 与上面那个 sku 级的 forceOff 的差别**不在作用范围**（两者都作用于整件商品，
+   * 后端把 skuNo 解析到父商品再执行），而在**撤不撤过审**：
+   *   - 这个：撤销过审 → 商品回到 REJECTED，商家必须改完重新提审
+   *   - sku 级：只压下架、保留过审结论 → 商家处理完自己点一下就能回来
+   *
+   * 上一版注释写的是「那个只是把一个规格下架」—— 那是照着 mock 层那台
+   * 不存在的 SKU 状态机写的，真库 `prd_sku` 没有状态列。
    */
   const forceOffGoods = useMutation({
     mutationFn: () => api.forceOffGoods(current!.goodsNo, reason),
@@ -379,6 +387,10 @@ function ProductsInner() {
       {/* ── 库存与预售 ─────────────────────────────────────────────────── */}
       {/* 商品审核：本页唯一接了真后端的一块（类目/库存仍走 mock） */}
       {tab === "audit" && <GoodsAuditTab c={c} canAudit={canAudit} />}
+      {/* 标准品库：后端 V166 就通了，缺的一直是运营录入这一步 —— 没有它整个功能是锁着的 */}
+      {tab === "spu-std" && <SpuStdTab c={c} canEdit={allow("product:std:update")} />}
+
+      {tab === "topics" && <TopicsTab c={c} canEdit={allow("product:topic:update")} />}
 
       {tab === "stock" && (
         <>
@@ -464,6 +476,12 @@ function ProductsInner() {
             )}
 
             <Field label={c.fieldSkuList}>
+              {/*
+                作用域必须写在动作旁边。运营在这一栏里对某一行点驳回，
+                后端解析到父商品再执行 —— 整件商品连同其他规格一起被打回，
+                而这一栏长得像「逐规格管理」。不说出来就是让人以为自己只压了一个规格。
+              */}
+              <p className="txt-caption text-muted-foreground mb-2">{c.skuScopeWarn}</p>
               <div className="space-y-2">
                 {current.skus.map((s) => (
                   <div key={s.skuNo} className="rounded-field border p-2">

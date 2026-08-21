@@ -128,7 +128,7 @@ class NotifyLogFlowTest {
          * 否则记录里会混进一堆压根没发生过的发送，而这张表的价值全在「它记的是事实」。
          */
         assertThatThrownBy(() -> notifyLogService.testSend("MAIL", "boom@neargo.ai", null,
-                null, "no-such-captcha", "0000", "ST-TEST"))
+                null, null, "no-such-captcha", "0000", "ST-TEST"))
                 .as("图形验证码不对时必须抛 —— 那道闸是这个接口的主要保护")
                 .isInstanceOf(RuntimeException.class);
 

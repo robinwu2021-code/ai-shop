@@ -15,7 +15,7 @@ export { coupons, couponIssues, merchantCampaigns, platformSlots, contentSlots, 
 export { reviews, reviewAppeals, scoreConfig } from "./review";
 export { afterSales, fastRefundRule } from "./aftersale";
 export { groupCampaigns, demandOrders, quotes } from "./group";
-export { categories, skus, goodsAudits, specTemplates } from "./product";
+export { categories, skus, goodsAudits, specTemplates, spuStds, topics, topicGoods } from "./product";
 export { settlements, splitRecords, feeRules, SETTLE_FREEZE_DAYS } from "./finance";
 export { staffs, roleDefs, rolePoints, auditLogs } from "./iam";
 export { attributionRule, attributionTraces, fissionCampaigns } from "./growth";

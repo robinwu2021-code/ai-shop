@@ -66,11 +66,18 @@ class CategoryTreeFlowTest {
         assertThat(fresh).isNotNull();
         assertThat(fresh.get("name").asString()).isEqualTo("食品生鲜");
 
-        // 三级确实挂到了三级，而不是全平铺在一级
+        /*
+         * 二级确实挂到了二级，而不是全平铺在一级。
+         *
+         * **原先这里断言的是三级（CAT111 叶菜）** —— V168 把类目降到两级：
+         * 三级节点归档、资质码上移到二级。降级的理由是「商家选自己卖哪几类」
+         * 这一步在三级树下没法存在，而叶菜/根茎菜的粒度对社区电商没有用。
+         */
         JsonNode veg = find(fresh.get("children"), "CAT110");
         assertThat(veg).isNotNull();
-        assertThat(find(veg.get("children"), "CAT111")).isNotNull();
-        assertThat(find(veg.get("children"), "CAT111").get("level").asInt()).isEqualTo(3);
+        assertThat(veg.get("level").asInt()).isEqualTo(2);
+        // 三级已经全部归档，树里不该再出现它们
+        assertThat(find(veg.get("children"), "CAT111")).isNull();
     }
 
     @Test
@@ -94,11 +101,15 @@ class CategoryTreeFlowTest {
         JsonNode rows = json.readTree(body).get("data").get("records");
         assertThat(rows).isNotEmpty();
 
-        JsonNode leafy = findFlat(rows, "CAT111");
-        assertThat(leafy).isNotNull();
+        /*
+         * 资质门槛现在挂在**二级**（V168 从三级上移）。判据没变，
+         * 只是范围从「叶菜」扩到「蔬菜」—— 两者要的本来就是同一张食品经营许可证。
+         */
+        JsonNode veg = findFlat(rows, "CAT110");
+        assertThat(veg).isNotNull();
         // 挂了资质门槛的类目，requiredCode 必须下发 —— 它是**校验依据**，不是展示文案
-        assertThat(leafy.get("requiredCode").asString()).isEqualTo("FRESH_VEG");
-        assertThat(leafy.get("template").asString()).isEqualTo("FRESH");
+        assertThat(veg.get("requiredCode").asString()).isEqualTo("FRESH_VEG");
+        assertThat(veg.get("template").asString()).isEqualTo("FRESH");
     }
 
     @Test
@@ -200,9 +211,9 @@ class CategoryTreeFlowTest {
     void listingGatedCategoryNeedsAuthorization() throws Exception {
         String token = merchant("12600131001", "准入测试·菜摊");
 
-        // 保存到 CAT111（叶菜，要 FRESH_VEG）—— **这一步必须成功**：
+        // 保存到 CAT110（蔬菜，要 FRESH_VEG —— V168 降二级后门槛上移到这里）—— **这一步必须成功**：
         // 商家可能正准备去申请那张证，保存就拦住等于逼他归到错误的类目下
-        String goodsNo = saveGoods(token, "青菜一把", "CAT111");
+        String goodsNo = saveGoods(token, "青菜一把", "CAT110");
 
         approveGoods(goodsNo);
 
@@ -219,7 +230,7 @@ class CategoryTreeFlowTest {
     void authorizationOpensTheGate() throws Exception {
         String token = merchant("12600131002", "准入测试·授权后");
         String merchantNo = merchantNoOf(token);
-        String goodsNo = saveGoods(token, "菠菜一把", "CAT111");
+        String goodsNo = saveGoods(token, "菠菜一把", "CAT110");
         approveGoods(goodsNo);
 
         String bd = opsLogin("bd", "bd123");
@@ -234,6 +245,73 @@ class CategoryTreeFlowTest {
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON).content("{\"onSale\":true}"))
                 .andExpect(jsonPath("$.code").value(0));
+    }
+
+    @Test
+    @DisplayName("★★ 审核通过时一并授码 —— 不再有「通过了但一个码都没授」这个中间态")
+    void auditGrantsCodesInOneStep() throws Exception {
+        String phone = "12600131010";
+        String user = TestLogin.consumer(mvc(), json, otpStore, phone);
+        String body = mvc().perform(post("/mp/merchant/apply").header("Authorization", "Bearer " + user)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"授码测试·菜摊\",\"subject\":\"INDIVIDUAL_BIZ\","
+                                + "\"contactName\":\"张三\",\"contactPhone\":\"13900000000\","
+                                + "\"category\":\"食品\",\"serviceScope\":\"COMMUNITY\","
+                                + "\"communityNos\":[\"CM001\"]}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        String applyNo = json.readTree(body).get("data").get("applyNo").asString();
+
+        String bd = opsLogin("bd", "bd123");
+        mvc().perform(post("/ops/merchant/apply/" + applyNo + "/audit")
+                        .header("Authorization", "Bearer " + bd)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"approved\":true,\"grantCodes\":[\"FRESH_VEG\"]}"))
+                .andExpect(jsonPath("$.code").value(0));
+
+        /*
+         * ★ 判据不是「接口返回 0」，是**商家当场就能上架带门槛的货**。
+         * 分两步时这里会是 70002：通过通知已经发出，而他一件生鲜都上不了架。
+         */
+        String token = TestLogin.consumer(mvc(), json, otpStore, phone);
+        String goodsNo = saveGoods(token, "小油菜", "CAT110");
+        approveGoods(goodsNo);
+        mvc().perform(post("/biz/goods/" + goodsNo + "/toggle")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"onSale\":true}"))
+                .andExpect(jsonPath("$.code").value(0));
+    }
+
+    @Test
+    @DisplayName("★ 撤码时回一个「影响几件在架商品」—— 运营按确认之前要看得见代价")
+    void revokingCodesReportsImpact() throws Exception {
+        String token = merchant("12600131011", "撤码测试·菜摊");
+        String merchantNo = merchantNoOf(token);
+        String bd = opsLogin("bd", "bd123");
+
+        grantCodes(bd, merchantNo, "[\"FRESH_VEG\",\"DAILY\"]", "已核验");
+        String goodsNo = saveGoods(token, "上海青", "CAT110");
+        approveGoods(goodsNo);
+        mvc().perform(post("/biz/goods/" + goodsNo + "/toggle")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"onSale\":true}"))
+                .andExpect(jsonPath("$.code").value(0));
+
+        String resp = grantCodes(bd, merchantNo, "[\"DAILY\"]", "许可证已过期");
+        JsonNode data = json.readTree(resp).get("data");
+        assertThat(data.get("revoked").get(0).asString()).isEqualTo("FRESH_VEG");
+        assertThat(data.get("affected").asInt()).as("那件在架的生鲜要被数出来").isEqualTo(1);
+    }
+
+    private String grantCodes(String opsToken, String merchantNo, String codesJson, String reason)
+            throws Exception {
+        return mvc().perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .put("/ops/merchants/" + merchantNo + "/auth-codes")
+                        .header("Authorization", "Bearer " + opsToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"codes\":" + codesJson + ",\"reason\":\"" + reason + "\"}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
     }
 
     @Test

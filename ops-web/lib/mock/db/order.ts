@@ -3,7 +3,7 @@ import type { Order } from "@/lib/types";
 
 export const orders: Order[] = [
   {
-    orderNo: "SO2026080501", parentNo: "PO20260805A", status: "ARRIVED",
+    orderNo: "SO2026080501", parentNo: "PO20260805A", status: "FULFILLING",
     merchantNo: "M903", merchantName: "邻家便利",
     communityNo: "C002", communityName: "阳光里", pickupNo: "P002",
     fulfillType: "STORE_PICKUP", trafficSource: "MERCHANT_OWNED",
@@ -27,7 +27,7 @@ export const orders: Order[] = [
     payAmount: 1860, createdAt: "2026-08-05T01:40:00Z", paidAt: null,
   },
   {
-    orderNo: "SO2026080504", parentNo: "PO20260805C", status: "SHIPPED",
+    orderNo: "SO2026080504", parentNo: "PO20260805C", status: "FULFILLING",
     merchantNo: "M903", merchantName: "邻家便利",
     communityNo: "C002", communityName: "阳光里",
     fulfillType: "MERCHANT_DELIVERY", trafficSource: "INVITE",

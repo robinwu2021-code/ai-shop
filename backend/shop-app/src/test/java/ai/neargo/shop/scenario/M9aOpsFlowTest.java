@@ -447,12 +447,21 @@ class M9aOpsFlowTest {
         String applyNo = applyMerchant(user, shopName);
         approve(opsLogin("bd", "bd123"), applyNo);
         String token = login(phone);
-        mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + token)
+        String saved = mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"title\":\"" + goodsTitle + "\",\"subtitle\":\"测试\","
+                        .content("{\"categoryNo\":\"CAT210\",\"title\":\"" + goodsTitle + "\",\"subtitle\":\"测试\","
                                 + "\"type\":\"NORMAL\",\"cover\":\"🥫\",\"images\":[],"
                                 + "\"specGroups\":[],\"skus\":[{\"optionValues\":[],"
                                 + "\"price\":1000,\"stock\":10}]}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        /*
+         * **提交审核是显式的一步**（批 D）：新建落草稿，不进队列。
+         * 少了这一句，这条用例会以「队列恒为 0」的形式失败 —— 而那正是 D2 想要的行为。
+         */
+        String goodsNo = json.readTree(saved).get("data").get("goodsNo").asString();
+        mvc().perform(post("/biz/goods/" + goodsNo + "/submit")
+                        .header("Authorization", "Bearer " + token))
                 .andExpect(jsonPath("$.code").value(0));
         return token;
     }

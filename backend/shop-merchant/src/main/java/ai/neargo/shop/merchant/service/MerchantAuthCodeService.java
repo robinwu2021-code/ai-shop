@@ -19,7 +19,17 @@ public interface MerchantAuthCodeService {
      *
      * @param reason 改动原因，**必填** —— 它决定商家能上架什么，出事要能查到依据
      */
-    List<String> setCodes(String merchantNo, List<String> codes, String reason);
+    SetResult setCodes(String merchantNo, List<String> codes, String reason);
+
+    /**
+     * @param codes    改完之后这家主体持有的码（全量）
+     * @param revoked  这次撤掉的码
+     * @param affected 因这次撤码而<b>下次上架会被拒</b>的在架商品数。
+     *                 运营按下确认之前要看得见它 —— 看不见的话，一次「顺手收紧」
+     *                 会在几天后变成商家的「我的货怎么上不去了」，而两件事没人会联系起来
+     */
+    record SetResult(List<String> codes, List<String> revoked, long affected) {
+    }
 
     /**
      * @param requiredQualification 需要的资质证件名。空 = 无证件要求

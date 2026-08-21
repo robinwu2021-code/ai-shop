@@ -49,6 +49,22 @@ public class PushSender {
         send(receiverType, receiverNo, title, body, link, PushPort.LEVEL_RING);
     }
 
+    /**
+     * 只推**指定一台设备**（运营端「选择终端发起测试」用）：一个人多台设备时，
+     * 要能对着某一台真机验证，而不是广播给他所有设备。失败留痕不抛（同 send）。
+     */
+    public void sendToDevice(String provider, String clientId,
+                             String title, String body, String link, String level) {
+        if (clientId == null || clientId.isBlank()) {
+            return;
+        }
+        try {
+            router.push(PushProvider.normalize(provider), clientId, title, body, link, level);
+        } catch (RuntimeException e) {
+            log.warn("[push] 定向设备发送失败（已留痕，不重试）provider={}: {}", provider, e.getMessage());
+        }
+    }
+
     private void send(String receiverType, String receiverNo,
                       String title, String body, String link, String level) {
         if (receiverNo == null || receiverNo.isBlank()) {

@@ -138,6 +138,40 @@ public interface MerchantGoodsService {
     GoodsVO saveStoreStock(String merchantNo, String storeNo, String goodsNo, String skuNo, int stock);
 
     /**
+     * 设置**这家店**的售价（商品域-优化总方案 批 C）。
+     *
+     * <p>与门店库存<b>回退方向相反</b>：没有行的店按主体价卖（fail-back）。
+     * 照抄库存那套「无行视为 0」的话，一家没配过价的店会把所有货以 ¥0.00 卖出去 ——
+     * 页面上看着像 bug，钱已经出去了。
+     *
+     * @param price 传 {@code null} = <b>取消本店单独定价</b>，回到主体价。
+     *              没有这条，商家给某店定过价之后就再也回不去
+     */
+    GoodsVO saveStorePrice(String merchantNo, String storeNo, String goodsNo,
+                           String skuNo, Long price, Long originPrice);
+
+    /**
+     * 提交审核：{@code DRAFT → AUDITING}（批 D）。
+     *
+     * <p><b>为什么要显式一步</b>：此前是「保存即提审」—— 商家填一半点保存，
+     * 那件半成品立刻进了运营的待审队列，而他自己看到的是「审核中」，
+     * 既不敢改也不知道在等什么。
+     *
+     * <p>已经在审、已过审、已驳回的商品调它<b>无副作用</b>（幂等）：
+     * 端上重复点击是常态，报错只会让商家以为提交失败。
+     */
+    GoodsVO submitForAudit(String merchantNo, String goodsNo);
+
+    /**
+     * 只改截单时间（批 D）。<b>不触发重审</b> ——
+     * 生鲜商家的日常是今晚定明天的截单，走 {@code save()} 的话每天都要重审一次，
+     * 而重审期间商品是下架的：改一次截单等于停一天生意。
+     *
+     * <p>额度、价格、类目一概不动：这个入口只放开这一个字段。
+     */
+    GoodsVO savePresaleCutoff(String merchantNo, String goodsNo, Long cutoffAt, String arrivalDesc);
+
+    /**
      * 各门店的缺货 SKU 数（跨店对比，B-11.12.6）。
      *
      * <p>口径：这家店 {@code prd_store_stock} 里<b>可用量（stock − locked）≤ 0</b> 的行数。
@@ -182,8 +216,10 @@ public interface MerchantGoodsService {
      * @param skus         单规格商品也有且仅有一条
      */
     /**
-     * @param type       五品类，决定履约与合规。平台硬编码
-     * @param categoryNo 三级类目树的节点。选填，决定归类与经营准入 —— <b>两个正交维度</b>
+     * @param categoryNo 三级类目树的节点。<b>唯一的分类输入</b> ——
+     *                   五品类（{@code type}）由它带出来，不再由商家填。
+     *                   两者不是重复：类目是数据（运营可增删），品类是代码分支（恒定五条）；
+     *                   但让商家各填一遍就会出现「叶菜类目 + 日用品品类」这种没人拦得住的矛盾
      */
     /**
      * @param fulfillments 该商品支持的履约方式，取值见
@@ -191,11 +227,63 @@ public interface MerchantGoodsService {
      *                     <b>留空 = 不改</b>（新建时默认到店自提）——
      *                     传空数组与不传要分开：前者是「一种都不支持」，那件商品谁也买不了
      */
+    /**
+     * @param limitPerUser 每人限购，0 = 不限。<b>留空 = 不改</b>
+     * @param fresh        生鲜段。<b>留空 = 不改</b>；只在派生出的品类是 FRESH 时写入
+     * @param service      服务段。同上，只在 SERVICE 时写入
+     * @param groupBuy     拼团档。<b>两个值必须一起给</b>（缺一个开不出团），留空 = 不改
+     * @param stdNo        引用的平台标准品；留空 = 自建品。<b>传了它，类目与 optionCode
+     *                     以标准品为准</b>（服务端覆盖请求值）—— code 能被改掉的话跨店可比就没了
+     */
     record SaveCommand(String goodsNo, String title, String subtitle,
                        Map<String, String> titleI18n, Map<String, String> subtitleI18n,
-                       String type, String categoryNo, String cover, List<String> images,
+                       String categoryNo, String cover, List<String> images,
                        List<SpecGroup> specGroups, List<Sku> skus,
-                       List<String> fulfillments) {
+                       List<String> fulfillments,
+                       Integer limitPerUser, FreshSpec fresh, ServiceSpec service,
+                       GroupBuySpec groupBuy,
+                       String stdNo,
+                       /**
+                        * 图文详情正文（纯文本）。<b>不传 = 不改</b>，与其余可选字段同一口径；
+                        * 传空串 = 清空。
+                        */
+                       String detail) {
+    }
+
+    /**
+     * 生鲜专有属性。<b>此前这几列只有 DevSeeder 写得进去</b> ——
+     * {@code PrdGoods} 的类注释写着「差异字段按 type 各用各的」，而商家一个都填不了：
+     * 建出来的生鲜没有截单时间、没有产地、不按重结算，
+     * 于是「按标称预扣、称重后多退少补」这条链在真实数据上根本跑不起来。
+     *
+     * @param cutoffAt    当天几点前下单（毫秒时间戳）。与「到点」是两件事，见词典 §12
+     * @param arrivalDesc 预计到货描述，如「次日 17:00 前到点」
+     * @param weighed     是否按实称多退少补
+     * @param origin      产地
+     */
+    record FreshSpec(Long cutoffAt, String arrivalDesc, Boolean weighed, String origin) {
+    }
+
+    /**
+     * 服务专有属性。
+     *
+     * @param durationMin 服务时长（分钟）
+     * @param storeName   可核销门店名
+     */
+    record ServiceSpec(Integer durationMin, String storeName) {
+    }
+
+    /**
+     * 拼团档。<b>价格存在商品上而不是让开团人填</b>：开团的是用户，定价的必须是商家。
+     *
+     * <p>配齐两个值才算「能开团」，缺一个都开不出来（{@code GoodsServiceImpl.groupBuyConf}）——
+     * 所以这里也要么两个都给，要么都不给。此前这两列没有任何写入路径，
+     * 「可开团的商品」那一栏因此**恒为空**。
+     *
+     * @param minCount   起团人数；一个人不叫团，最小 2
+     * @param priceMinor 团购价（最小货币单位）
+     */
+    record GroupBuySpec(Integer minCount, Long priceMinor) {
     }
 
     record SpecGroup(String name, List<String> options, List<String> optionCodes,
@@ -207,8 +295,14 @@ public interface MerchantGoodsService {
      * @param priceByMarket 按市场分别定价（B6）。汇率换算出的价没有价格心理学，
      *                      且汇率一动全店价格跟着抖，而商家并没有调价
      */
+    /**
+     * @param originPrice  划线价（最小货币单位）。派生展示值，不是定价 ——
+     *                     此前有列、有契约、**没有写入路径**，于是折扣标永远不出现
+     * @param nominalGram  标称重量（克），生鲜按重计价用。同样是「有列没入口」的一条
+     */
     record Sku(String skuNo, List<String> optionValues, long price,
-               Map<String, Long> priceByMarket, int stock) {
+               Map<String, Long> priceByMarket, int stock,
+               Long originPrice, Integer nominalGram) {
     }
 
     record SpecOption(String code, String label) {

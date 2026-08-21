@@ -32,8 +32,13 @@ public class GoodsQueryPortImpl implements GoodsQueryPort {
     /** 限时特价要覆盖售价。product → marketing 走 Port，不直连（ArchUnit 守着） */
     private final CampaignPort campaignPort;
 
+    /** 门店价：取价入口唯一的覆盖层来源 */
+    private final ai.neargo.shop.product.mapper.ProductMappers.StorePriceMapper storePriceMapper;
+
     public GoodsQueryPortImpl(SkuMapper skuMapper, GoodsMapper goodsMapper, ObjectMapper json,
+                              ai.neargo.shop.product.mapper.ProductMappers.StorePriceMapper storePriceMapper,
                               CampaignPort campaignPort) {
+        this.storePriceMapper = storePriceMapper;
         this.skuMapper = skuMapper;
         this.goodsMapper = goodsMapper;
         this.json = json;
@@ -60,12 +65,53 @@ public class GoodsQueryPortImpl implements GoodsQueryPort {
 
     @Override
     public Map<String, SkuSnapshot> snapshot(List<String> skuNos) {
+        return snapshot(skuNos, Map.of());
+    }
+
+    @Override
+    public Map<String, Long> storePrices(Map<String, String> storeByEntity, List<String> skuNos) {
+        if (storeByEntity == null || storeByEntity.isEmpty() || skuNos == null || skuNos.isEmpty()) {
+            return Map.of();
+        }
+        List<String> storeNos = storeByEntity.values().stream()
+                .filter(no -> no != null && !no.isBlank()).distinct().toList();
+        if (storeNos.isEmpty()) {
+            return Map.of();
+        }
+        /*
+         * 一次查完再按主体过滤，而不是按店逐次查：一单最多几家商家，
+         * 而「多查几行再丢掉」比「多打几次库」便宜得多。
+         */
+        List<ai.neargo.shop.product.entity.PrdStorePrice> rows =
+                DataScopeContext.executeWithoutScope(() -> storePriceMapper.selectList(
+                        Wrappers.<ai.neargo.shop.product.entity.PrdStorePrice>lambdaQuery()
+                                .in(ai.neargo.shop.product.entity.PrdStorePrice::getSkuNo, skuNos)
+                                .in(ai.neargo.shop.product.entity.PrdStorePrice::getStoreNo, storeNos)
+                                .eq(ai.neargo.shop.product.entity.PrdStorePrice::getMarket, MARKET_CN)));
+        Map<String, Long> out = new HashMap<>();
+        for (var r : rows) {
+            // 只认「这家主体这一单要走的那家店」的行：别的店的价不该串进来
+            if (r.getPrice() != null && r.getStoreNo().equals(storeByEntity.get(r.getEntityNo()))) {
+                out.put(r.getSkuNo(), r.getPrice());
+            }
+        }
+        return out;
+    }
+
+    @Override
+    public Map<String, SkuSnapshot> snapshot(List<String> skuNos, Map<String, String> storeByEntity) {
         if (skuNos == null || skuNos.isEmpty()) {
             return Map.of();
         }
-        List<PrdSku> skus = skuMapper.selectList(Wrappers.<PrdSku>lambdaQuery()
-                .in(PrdSku::getSkuNo, skuNos)
-                .eq(PrdSku::getMarket, MARKET_CN));
+        /*
+         * ★ 显式豁免：这是**下单与购物车共用的唯一价格入口**，调用方是 C 端会话（SELF 维度）。
+         * prd_sku 登记 MERCHANT 锚点之后不豁免就是 1=0 —— 症状是「购物车空了、下单说商品不存在」，
+         * 而日志干净。同一个类里 snapshotOfGoods 一直是豁免的，这一条漏了。
+         */
+        List<PrdSku> skus = DataScopeContext.executeWithoutScope(() ->
+                skuMapper.selectList(Wrappers.<PrdSku>lambdaQuery()
+                        .in(PrdSku::getSkuNo, skuNos)
+                        .eq(PrdSku::getMarket, MARKET_CN)));
         if (skus.isEmpty()) {
             return Map.of();
         }
@@ -96,6 +142,15 @@ public class GoodsQueryPortImpl implements GoodsQueryPort {
         Map<String, Long> flash = new HashMap<>(campaignPort.flashPrices(goodsNos));
         flash.keySet().removeIf(no -> counts.getOrDefault(no, 1) > 1);
 
+        /*
+         * 门店价：**基准价的覆盖层，落在特价之前**（批 C）。
+         *
+         * 顺序不能反 —— 反了就是「活动期间按门店价卖」，而活动是平台承诺给买家的。
+         * 没有门店行的 SKU 保持主体价（fail-back），与库存的「无行视为 0」刻意相反：
+         * 价格视为 0 就是白送。
+         */
+        Map<String, Long> storePrice = storePrices(storeByEntity, skuNos);
+
         Map<String, SkuSnapshot> result = new HashMap<>();
         for (PrdSku sku : skus) {
             PrdGoods g = goodsMap.get(sku.getGoodsNo());
@@ -106,7 +161,9 @@ public class GoodsQueryPortImpl implements GoodsQueryPort {
             result.put(sku.getSkuNo(), new SkuSnapshot(
                     sku.getSkuNo(), sku.getGoodsNo(), sku.getEntityNo(),
                     g.getTitle(), g.getCover(), sku.getSpec(), g.getType(),
-                    flash.getOrDefault(sku.getGoodsNo(), sku.getPrice() == null ? 0L : sku.getPrice()),
+                    flash.getOrDefault(sku.getGoodsNo(),
+                            storePrice.getOrDefault(sku.getSkuNo(),
+                                    sku.getPrice() == null ? 0L : sku.getPrice())),
                     Math.max(available, 0),
                     Boolean.TRUE.equals(g.getOnSale()) && "APPROVED".equals(g.getAuditStatus()),
                     readList(g.getFulfillments()),

@@ -89,6 +89,8 @@ export default {
     empty: "Your cart is empty",
     total: "Total",
     checkout: "Checkout",
+    unknownMerchant: "Other",
+    splitNote: "From {n} shops — checkout creates {n} orders, paid in one go",
   },
   theme: {
     skinPure: "White background · accent & text only",
@@ -99,6 +101,8 @@ export default {
     language: "Language",
   },
   skin: {
+    brand: "HX Red",
+    brandDesc: "Brand default",
     crimson: "Festive red",
     crimsonDesc: "New Year",
     amber: "Amber",
@@ -125,6 +129,8 @@ export default {
     allGoods: "All products", searchPh: "Search in this shop",
     fulfillHint: "Free pickup in store. Delivery is free over 50 within 3 km, same day.",
     faved: "Saved — find it under Me → My shops", unfaved: "Removed",
+    closed: "This shop is closed and cannot take orders",
+    closedTip: "This shop is closed",
     myStores: "My shops", myStoresHint: "Shops you scanned or saved", noStores: "No shops saved yet",
   },
   groupHost: {
@@ -361,6 +367,10 @@ export default {
     giftItem: "{title} ×{n} (free)",
   },
   confirm: {
+    splitNote: "These items come from {n} shops and will create {n} orders, paid in one go",
+    appointmentSlot: "Appointment slot",
+    pick: "Choose",
+    pickSlotHint: "Pick a slot — the technician arrives at this time",
     capNoInvoice: "These merchants cannot issue invoices: {names}. Please confirm before ordering.",
     capNoPayMethod: "These items share no common payment method. Please order them separately or remove some.",
     capQuotaBlocked: "These merchants have insufficient collection quota for this period: {names}.",
@@ -392,6 +402,7 @@ export default {
   pay: {
     title: "Checkout",
     payable: "Amount due",
+    covers: "This payment covers {n} orders",
     remain: "Closes in {t}",
     expired: "Payment window closed",
     wechat: "WeChat Pay",
@@ -414,7 +425,11 @@ export default {
   orders: {
     title: "My orders",
     entryHint: "All orders",
-    tab: { all: "All", toPay: "To pay", toPick: "To collect", done: "Completed", afterSale: "Refunds" },
+    tab: {
+      all: "All", toPay: "To pay", toShip: "Preparing",
+      toPick: "To collect", toReceive: "In transit", done: "Completed", afterSale: "Refunds",
+    },
+    hiddenCount: "{n} older orders not shown",
     total: "Total {p}",
     pay: "Pay",
     moreItems: "and {n} more items",
@@ -439,8 +454,20 @@ export default {
   orderStatus: {
     WAIT_PAY: "Awaiting payment",
     PAID: "Paid",
-    ARRIVED: "At pickup point",
-    SHIPPED: "Shipped",
+    FULFILLING: "In fulfilment",
+    COMPLETED: "Completed",
+    CANCELLED: "Cancelled",
+    REFUNDED: "Refunded",
+  },
+  orderView: {
+    WAIT_PAY: "Awaiting payment",
+    PAID: "Preparing",
+    PAID_SHIP_TO_BUYER: "Awaiting dispatch",
+    FULFILLING_SELF_PICKUP: "At pickup point",
+    FULFILLING_SHIP_TO_BUYER: "Shipped",
+    FULFILLING_SELF_SERVE: "Ready to use · show your code",
+    FULFILLING_SERVE_TO_BUYER: "Service pending",
+    FULFILLING_SERVE_AT: "Service at {t}",
     COMPLETED: "Completed",
     CANCELLED: "Cancelled",
     REFUNDED: "Refunded",

@@ -116,11 +116,85 @@ export function request<T>(
   });
 }
 
+/**
+ * 文件上传。**不能用 {@link request}** —— 那是 uni.request（JSON body），
+ * 后端 `/biz/upload/image` 要的是 multipart 文件流（`@RequestParam("file") MultipartFile`）。
+ * 之前 mUploadImage 走 http.post 把**本地临时路径字符串**当 JSON 发过去，
+ * 服务端拿不到文件，真机上「上传图片不能用」就是这么来的（mock 下返假 URL 才看不出）。
+ *
+ * @param filePath uni.chooseImage 给的端上临时路径
+ * @param formData 附加表单字段（如 bizType）。**不要手写 Content-Type** ——
+ *                 uploadFile 自己按 multipart 组 boundary，手设会破坏它。
+ */
+export function uploadFile<T>(
+  path: string,
+  filePath: string,
+  formData?: Record<string, string>,
+): Promise<T> {
+  const token = uni.getStorageSync(STORAGE.token) as string;
+  const storeNo = uni.getStorageSync(STORAGE.storeNo) as string;
+  return new Promise((resolve, reject) => {
+    uni.uploadFile({
+      url: `${BASE}${path}`,
+      filePath,
+      name: "file",
+      formData,
+      header: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(storeNo ? { "X-Store-No": storeNo } : {}),
+      },
+      success(res) {
+        /*
+         * **先看状态码再解析包体** —— 顺序反了就把所有「没有包体的失败」
+         * 说成了「响应格式不符合契约」。最常撞上的是 413：容器在进 Controller
+         * 之前就拒了超大文件，响应体是空的，于是商家传一张 2MB 的商品照片，
+         * 得到的提示是「响应格式不符合契约」，一个字都没说到大小上。
+         */
+        if (res.statusCode === 413) {
+          reject(new ApiError(413, "图片太大，请换一张小一点的（最大 5MB）"));
+          return;
+        }
+        // uploadFile 的响应体是**字符串**，要自己解析
+        let body: Result<T>;
+        try {
+          body = JSON.parse(res.data as string) as Result<T>;
+        } catch {
+          reject(new ApiError(-1, "响应格式不符合契约"));
+          return;
+        }
+        if (res.statusCode === 401) {
+          uni.removeStorageSync(STORAGE.token);
+          if (onUnauthorized && !handling) {
+            handling = true;
+            onUnauthorized();
+            setTimeout(() => (handling = false), 0);
+          }
+          reject(new ApiError(401, "登录已失效，请重新登录"));
+          return;
+        }
+        if (!body || typeof body.code !== "number") {
+          reject(new ApiError(-1, "响应格式不符合契约"));
+          return;
+        }
+        if (body.code !== 0) {
+          reject(new ApiError(body.code, body.msg || "上传失败"));
+          return;
+        }
+        resolve(body.data);
+      },
+      fail(err) {
+        reject(new ApiError(-1, err.errMsg || "上传失败"));
+      },
+    });
+  });
+}
+
 export const http = {
   // 入参用 object 而非 Record<string, unknown>：契约里的 payload 是具名接口
   // （LoginReq / GoodsDraft…），具名接口没有索引签名，用 Record 会在每个调用点报错。
   get: <T>(path: string, params?: object) => request<T>("GET", path, params),
   post: <T>(path: string, data?: object) => request<T>("POST", path, data),
+  uploadFile,
 };
 
 /** 幂等 key：下单等写操作必带，防重复提交 */

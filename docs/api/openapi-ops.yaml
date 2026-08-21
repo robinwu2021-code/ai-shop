@@ -56,6 +56,28 @@ components:
         - "SUSPENDED"
         - "FROZEN"
       description: "商家的**经营状态**。取值与后端 `mch_entity.status` 一致。\n\n⚠️ 它**不是入驻审核状态** —— 审核状态在申请单上（ {@link  ApplyStatus } ， PENDING/REVIEWING/APPROVED/REJECTED），后端刻意分成两张表： `mch_entity_apply` 记「这次申请审到哪了」，`mch_entity` 记「这家店现在能不能做生意」。\n\n这里曾经把两者揉成一个字段（DRAFT/SUBMITTED/REVIEWING/APPROVED/REJECTED/SUSPENDED）， 于是一家已经在正常经营、又提交了第二张执照的商家，status 该填什么无解 —— 而这正是「一人多主体」的常见情形。"
+    AuthCodeSetResult: 
+      type: "object"
+      properties: 
+        codes: 
+          type: "array"
+          items: 
+            type: "string"
+          description: "改完之后持有的码（全量）"
+        revoked: 
+          type: "array"
+          items: 
+            type: "string"
+          description: "这次撤掉的码。空数组 = 只加不减"
+        affected: 
+          type: "number"
+          description: "因撤码而下次上架会被拒的在架商品数"
+      required: 
+        - "codes"
+        - "revoked"
+        - "affected"
+      additionalProperties: false
+      description: "改授权码的结果。\n\n<p>`affected` 是**代价**，不是统计：撤掉一个码，那些在架商品下次上架就会被拒。 运营按下确认之前看不见它的话，一次「顺手收紧」会在几天后变成商家的 「我的货怎么上不去了」，而两件事没人会联系起来。"
     Merchant: 
       type: "object"
       properties: 
@@ -321,7 +343,12 @@ components:
           description: "联系手机号（申请人自己填的，不一定是登录号）。**通过后它就是商家账号的登录号**"
         category: 
           type: "string"
-          description: "主营类目"
+          description: "主营类目。**商家自己的说法**（「食品」），不是权威码"
+        categoryCodes: 
+          type: "array"
+          items: 
+            type: "string"
+          description: "审核通过时授予的经营类目码 —— **平台的裁定**，与 `category` 并存。\n\n<p>两者分开是为了留痕：追溯时要的恰恰是这两者的差 （「他说卖食品，我们批的是预包装食品」）。"
         desc: 
           type: "string"
           description: "店铺简介。通过后会写进主体档案，C 端门店页读的就是它"
@@ -744,6 +771,7 @@ components:
         - "MERCHANT_DELIVERY"
         - "EXPRESS"
         - "STORE_VERIFY"
+        - "APPOINTMENT"
       description: "履约方式。**取值与后端 `ord_sub_order.fulfillment` 一致**。\n\n⚠️ 这里曾经写成 `PICKUP_STORE` / `PICKUP_NEIGHBOR` —— 同一个概念、词序反了， 于是按它筛后端一条也匹配不上。ops-web 只跑 mock，所以从没被真实响应打脸过。"
     TrafficSource: 
       type: "string"
@@ -758,12 +786,11 @@ components:
       enum: 
         - "WAIT_PAY"
         - "PAID"
-        - "SHIPPED"
-        - "ARRIVED"
+        - "FULFILLING"
         - "COMPLETED"
         - "CANCELLED"
         - "REFUNDED"
-      description: "订单状态。**取值与后端下发的展示状态一致**（`OrderStatusView`）。\n\n⚠️ 这里曾经是另一套：`PENDING_PAY` / `PREPARING` / `DELIVERING` / `AFTER_SALE`。 同一条订单，运营端叫一个名字、C/B 端叫另一个、库里又是第三个 —— 而 ops-web 只跑 mock，所以三套并存了很久没人发现。\n\n后端的口径：库里存 WAIT_FULFILL / FULFILLING（粗，三种履约一视同仁）， 下发时按履约方式展开成下面这些词。运营端按它筛、按它判断可迁移。"
+      description: "订单状态。**抽象状态，与履约方式无关**，三端同一套。\n\n⚠️ 这里曾经是另一套：`PENDING_PAY` / `PREPARING` / `DELIVERING` / `AFTER_SALE`。 同一条订单，运营端叫一个名字、C/B 端叫另一个、库里又是第三个 —— 而 ops-web 只跑 mock，所以三套并存了很久没人发现。\n\n⚠️ 后来又有过 `SHIPPED` / `ARRIVED` 两个值。它们**不是状态**， 是「状态 × 履约方式」的组合冒充状态 —— 代价是每加一种履约就要加一批状态。 现在下发抽象状态 + 履约方式，显示成什么由展示层决定 （见《订单状态-统一整理》与 shared 的 `orderView`）。"
     OrderItem: 
       type: "object"
       properties: 
@@ -3559,6 +3586,106 @@ components:
         - "stock"
       additionalProperties: false
       description: "{@link  GoodsDetail }  里的一条 SKU。价格是**单一价**（分），不按市场分列 —— 后端 `SkuVO` 就这一份。"
+    Topic: 
+      type: "object"
+      properties: 
+        topicNo: 
+          type: "string"
+        title: 
+          type: "string"
+        subtitle: 
+          type: "string"
+          description: "一句话说明，如「7 点前送到」。空 = 不展示副标题"
+        cover: 
+          type: "string"
+        sort: 
+          type: "number"
+          description: "首页排序，小的在前"
+        startAt: 
+          type: "number"
+          description: "生效起止（毫秒）。**都可空 = 常设专题** —— 填一个假的结束时间会让它某天悄悄消失"
+        endAt: 
+          type: "number"
+        status: 
+          type: "string"
+          description: "ACTIVE / ARCHIVED。归档不删：分享出去的海报还指着它"
+        goodsCount: 
+          type: "number"
+          description: "专题里有几件商品。**空专题在 C 端是一个点进去什么都没有的入口**，列表要看得见"
+      required: 
+        - "topicNo"
+        - "title"
+        - "sort"
+        - "goodsCount"
+      additionalProperties: false
+      description: "主题分类（陈列）。\n\n<p><b>与类目正交、与活动分开</b>：类目回答「这是什么货、要什么资质」， 活动回答「打几折」，主题只回答「这周首页摆什么」。"
+    SpuStd: 
+      type: "object"
+      properties: 
+        archivedAt: 
+          type: 
+            - "string"
+            - "null"
+          description: "归档时间。**软删除标记** —— 有值即视为已删除，列表默认不返回。 契约禁止 `delete*`，一律 `archive*` / `unarchive*`（工程约定 §10.6）。"
+        stdNo: 
+          type: "string"
+        categoryNo: 
+          type: "string"
+          description: "所属类目。商家取用后**改不掉**（服务端覆盖）：类目决定形态"
+        categoryName: 
+          type: "string"
+        title: 
+          type: "string"
+        titleI18n: 
+          "$ref": "#/definitions/Record%3Cstring%2Cstring%3E"
+        subtitle: 
+          type: "string"
+        cover: 
+          type: "string"
+        images: 
+          type: "array"
+          items: 
+            type: "string"
+        specGroups: 
+          type: "array"
+          items: 
+            type: "object"
+            properties: 
+              name: 
+                type: "string"
+              options: 
+                type: "array"
+                items: 
+                  type: "string"
+              optionCodes: 
+                type: "array"
+                items: 
+                  type: "string"
+              templateNo: 
+                type: "string"
+            required: 
+              - "name"
+              - "options"
+            additionalProperties: false
+          description: "每个选项都必须带 `optionCode` —— 这是标准品存在的唯一理由"
+        keywords: 
+          type: "string"
+          description: "别名/品牌/俗称，空格分隔。商家搜「洋芋」也要能命中标题是「土豆」的那条"
+        status: 
+          type: "string"
+        refCount: 
+          type: "number"
+          description: "被引用次数。只服务排序与去重判断，不参与任何校验"
+      required: 
+        - "stdNo"
+        - "categoryNo"
+        - "title"
+        - "specGroups"
+      additionalProperties: false
+    "Record<string,string>": 
+      type: "object"
+      additionalProperties: 
+        type: "string"
     SettleStatus: 
       type: "string"
       enum: 
@@ -4504,7 +4631,7 @@ components:
           description: "提单时间"
         reply: 
           type: "string"
-          description: "客服回复正文。**用户在 C 端工单详情页看的就是这个字段**。\n\n此前它在三层上各缺一处：后端 `msg_ticket` 建表就留了 `reply`/`replied_at`/`replied_by` 且注释写明「代客操作要能追到人」，但没有任何代码写过它们； 契约里也从没定义过「回复」这个动作（只有分派、关闭、代客留痕）。 于是用户提单后反复点开详情，看到的永远是空的，而且不报任何错。"
+          description: "客服回复正文。**用户在 C 端工单详情页看的就是这个字段**。\n\n此前它在三层上各缺一处：后端 `notify_ticket` 建表就留了 `reply`/`replied_at`/`replied_by` 且注释写明「代客操作要能追到人」，但没有任何代码写过它们； 契约里也从没定义过「回复」这个动作（只有分派、关闭、代客留痕）。 于是用户提单后反复点开详情，看到的永远是空的，而且不报任何错。"
         repliedAt: 
           type: "string"
           description: "回复时间；未回复为空"
@@ -4556,7 +4683,7 @@ components:
         - "MAIL"
         - "WXSUB"
         - "PUSH"
-      description: "外发渠道。**与后端 `SysNotifyLog` 的四个常量逐字一致**。\n\n<p>WXSUB = 微信小程序订阅消息（服务通知），target 是掩码后的 openid； PUSH = App 推送（个推/uni-push，ADR-018），target 是掩码后的 clientId。\n\n<p><b>站内信（INAPP）不在这里</b>：它不进 `sys_notify_log`， 它自己就是一张可查的表（`msg_message`）。混进来会让人以为能在发送记录里查到它。"
+      description: "外发渠道。**与后端 `SysNotifyLog` 的四个常量逐字一致**。\n\n<p>WXSUB = 微信小程序订阅消息（服务通知），target 是掩码后的 openid； PUSH = App 推送（个推/uni-push，ADR-018），target 是掩码后的 clientId。\n\n<p><b>站内信（INAPP）不在这里</b>：它不进 `sys_notify_log`， 它自己就是一张可查的表（`notify_message`）。混进来会让人以为能在发送记录里查到它。"
     NotifyChannelHealth: 
       type: "object"
       properties: 
@@ -4659,12 +4786,156 @@ components:
         - "at"
       additionalProperties: false
       description: "运营自己的通知收件箱（顶栏铃铛）。 与 NotifyLog 是两回事：这个是**发给运营的待办**（新工单/待审核/告警）， 那个是**平台发给用户**的触达留痕。"
+    InAppLog: 
+      type: "object"
+      properties: 
+        messageNo: 
+          type: "string"
+        receiverType: 
+          type: "string"
+          description: "USER / STAFF / OPS"
+        receiverNo: 
+          type: "string"
+          description: "收件人编号。**不掩码**：它是平台内部标识（userNo），不是手机号邮箱"
+        type: 
+          "$ref": "#/definitions/InboxMessageType"
+        title: 
+          type: "string"
+        templateNo: 
+          type: 
+            - "string"
+            - "null"
+        read: 
+          type: "boolean"
+        at: 
+          type: "number"
+      required: 
+        - "messageNo"
+        - "receiverType"
+        - "receiverNo"
+        - "type"
+        - "title"
+        - "read"
+        - "at"
+      additionalProperties: false
+      description: "站内信的平台侧记录（发送记录页第二个 tab）。\n\n<p><b>没有 status</b>：站内信入库即到达，不存在「发送中/失败」—— 这正是它与 NotifyLog 不能合成一张表的原因。"
     NotifyStatus: 
       type: "string"
       enum: 
         - "SENT"
         - "FAILED"
       description: "发送结果。**失败也记**——只记成功的话，这张表回答不了「他为什么没收到」。"
+    NotifyChannelRow: 
+      type: "object"
+      properties: 
+        channelNo: 
+          type: "string"
+          description: "渠道编号（业务主键，启停用它）"
+        channelType: 
+          type: "string"
+          description: "SMS / MAIL / WXSUB / PUSH / INAPP"
+        provider: 
+          type: "string"
+          description: "ALI / SMTP / WECHAT / GETUI / FCM / APNS / INTERNAL"
+        scope: 
+          type: "string"
+          description: "接入范围 PLATFORM / MERCHANT / TEST"
+        ownerNo: 
+          type: "string"
+          description: "scope=MERCHANT 的商家号；平台/测试为空串"
+        enabled: 
+          type: "boolean"
+          description: "软开关（运营即时启停）"
+        status: 
+          type: "string"
+          description: "读时派生 UNCONFIGURED / STUB / READY / DISABLED / DEGRADED"
+        priority: 
+          type: "number"
+          description: "同类型同供应商多实例的选择优先级，小者先"
+        credRef: 
+          type: 
+            - "string"
+            - "null"
+          description: "凭据引用（env 前缀），不含密钥明文；可空"
+        configJson: 
+          type: "string"
+          description: "非密参数（签名/模板号/topic），JSON 串"
+        missingCreds: 
+          type: "array"
+          items: 
+            type: "string"
+          description: "平台接入还缺哪些环境变量（供运维照配）；商家/测试接入为空"
+        locked: 
+          type: "boolean"
+          description: "INAPP 恒锁定：站内信不可关"
+      required: 
+        - "channelNo"
+        - "channelType"
+        - "provider"
+        - "scope"
+        - "ownerNo"
+        - "enabled"
+        - "status"
+        - "priority"
+        - "configJson"
+        - "missingCreds"
+        - "locked"
+      additionalProperties: false
+      description: "渠道注册表一行（触达推送中台 N2/N4）。一条 = 类型×供应商×接入范围×归属。 类型/供应商/接入范围/状态用 string（同 NotifyLog.bizType）：取值随后端演进， 端上不硬编码一份联合类型。"
+    NotifyPushTask: 
+      type: "object"
+      properties: 
+        taskNo: 
+          type: "string"
+          description: "任务号"
+        name: 
+          type: "string"
+          description: "任务名（运营自己看的）"
+        audienceType: 
+          type: "string"
+          description: "人群 ALL_APP_USER（消费者）/ ALL_STAFF（商家员工）"
+        channel: 
+          type: "string"
+          description: "下发通道，一期仅 PUSH"
+        title: 
+          type: "string"
+        body: 
+          type: "string"
+        link: 
+          type: 
+            - "string"
+            - "null"
+          description: "点开落点，可空"
+        scheduledAt: 
+          type: 
+            - "string"
+            - "null"
+          description: "定时下发时刻 ISO；空=尽快发"
+        status: 
+          type: "string"
+          description: "QUEUED / RUNNING / DONE / CANCELLED"
+        estimatedCount: 
+          type: "number"
+          description: "创建时预估触达人数"
+        sentCount: 
+          type: "number"
+          description: "实际发出条数"
+        finishedAt: 
+          type: 
+            - "string"
+            - "null"
+      required: 
+        - "taskNo"
+        - "name"
+        - "audienceType"
+        - "channel"
+        - "title"
+        - "body"
+        - "status"
+        - "estimatedCount"
+        - "sentCount"
+      additionalProperties: false
+      description: "平台营销广播推送任务（触达推送中台 N6）。运营主动发起的群发： 圈人群 → 预估触达 → 定时下发。与事件驱动触达（发给用户的必达通知）分开。"
     NotifyLog: 
       type: "object"
       properties: 
@@ -4672,6 +4943,11 @@ components:
           type: "string"
         channel: 
           "$ref": "#/definitions/NotifyChannel"
+        provider: 
+          type: 
+            - "string"
+            - "null"
+          description: "供应商 ALI/SMTP/WECHAT/GETUI/FCM/APNS（N3）；旧行与单供应商推出为空"
         bizType: 
           type: "string"
           description: "OTP / OPS_INIT_PASSWORD / OPS_RESET_PASSWORD / TEST"
@@ -4720,6 +4996,29 @@ components:
         - "imageBase64"
       additionalProperties: false
       description: "图形验证码挑战。`imageBase64` 不带 data: 前缀，端上自己拼"
+    PushDevice: 
+      type: "object"
+      properties: 
+        receiverType: 
+          type: "string"
+        platform: 
+          type: "string"
+        provider: 
+          type: "string"
+        clientId: 
+          type: "string"
+        clientIdMask: 
+          type: "string"
+        updatedAt: 
+          type: "string"
+      required: 
+        - "receiverType"
+        - "platform"
+        - "provider"
+        - "clientId"
+        - "clientIdMask"
+      additionalProperties: false
+      description: "某收件人绑定的一台推送终端（运营端「选择终端发起测试」用）。 `clientId` 是原始设备标识，发送时回传；`clientIdMask` 只用于展示。"
     MaterialKind: 
       type: "string"
       enum: 
@@ -10748,7 +11047,7 @@ paths:
   "/ops/merchants/{merchantNo}/auth-codes": 
     put: 
       operationId: "setMerchantAuthCodes"
-      summary: "改一个商家的类目授权范围"
+      summary: "全量覆盖经营授权码"
       tags: 
         - "merchant"
       responses: 
@@ -10765,7 +11064,7 @@ paths:
                   msg: 
                     type: "string"
                   data: 
-                    "$ref": "#/components/schemas/Merchant"
+                    "$ref": "#/components/schemas/AuthCodeSetResult"
                 required: 
                   - "code"
                   - "msg"
@@ -11268,6 +11567,209 @@ paths:
                   - "msg"
                   - "data"
       description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/notify-channels/registry": 
+    get: 
+      operationId: "listChannelRegistry"
+      summary: "渠道注册表（触达推送中台 N2）：类型×供应商×接入范围×归属 + 读时派生状态"
+      tags: 
+        - "message"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "array"
+                    items: 
+                      "$ref": "#/components/schemas/NotifyChannelRow"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/notify-channels/registry/{channelNo}/enabled": 
+    post: 
+      operationId: "setChannelEnabled"
+      summary: "软启停某条渠道（N2）"
+      tags: 
+        - "message"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/NotifyChannelRow"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters: 
+        - name: "channelNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/push-tasks": 
+    get: 
+      operationId: "listPushTasks"
+      summary: "营销广播任务列表（N6）"
+      tags: 
+        - "message"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "object"
+                    properties: 
+                      records: 
+                        type: "array"
+                        items: 
+                          "$ref": "#/components/schemas/NotifyPushTask"
+                      total: 
+                        type: "integer"
+                      page: 
+                        type: "integer"
+                      size: 
+                        type: "integer"
+                    required: 
+                      - "records"
+                      - "total"
+                      - "page"
+                      - "size"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+    post: 
+      operationId: "createPushTask"
+      summary: "新建广播（N6）"
+      tags: 
+        - "message"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/NotifyPushTask"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/push-tasks/estimate": 
+    get: 
+      operationId: "estimatePushTask"
+      summary: "预估触达：**建任务前**先看某人群当下覆盖多少人（N6b）"
+      tags: 
+        - "message"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "object"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/push-tasks/{taskNo}/cancel": 
+    post: 
+      operationId: "cancelPushTask"
+      summary: "取消广播（仅 QUEUED 可取消）"
+      tags: 
+        - "message"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/NotifyPushTask"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters: 
+        - name: "taskNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
   "/ops/notify-channels/wx-templates": 
     get: 
       operationId: "getWxTemplates"
@@ -11450,10 +11952,80 @@ paths:
             schema: 
               type: "object"
         description: "请求体字段见对应契约方法的入参。"
+  "/ops/notify-logs/push-devices": 
+    get: 
+      operationId: "listPushDevices"
+      summary: "某收件人绑定的推送终端列表（仅 PUSH 测试用）"
+      tags: 
+        - "message"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "array"
+                    items: 
+                      "$ref": "#/components/schemas/PushDevice"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/inapp-messages": 
+    get: 
+      operationId: "listInAppMessages"
+      summary: "站内信记录"
+      tags: 
+        - "message"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "object"
+                    properties: 
+                      records: 
+                        type: "array"
+                        items: 
+                          "$ref": "#/components/schemas/InAppLog"
+                      total: 
+                        type: "integer"
+                      page: 
+                        type: "integer"
+                      size: 
+                        type: "integer"
+                    required: 
+                      - "records"
+                      - "total"
+                      - "page"
+                      - "size"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
   "/ops/notify-channels/default-lang": 
     get: 
       operationId: "getDefaultLang"
-      summary: "平台默认语言：**收件人语言未知时按哪种发**（不是「所有邮件用哪种语言」）"
+      summary: "getDefaultLang"
       tags: 
         - "message"
       responses: 
@@ -12539,6 +13111,353 @@ paths:
                   - "code"
                   - "msg"
                   - "data"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/spu-std": 
+    get: 
+      operationId: "listSpuStd"
+      summary: "标准品列表"
+      tags: 
+        - "product"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "object"
+                    properties: 
+                      records: 
+                        type: "array"
+                        items: 
+                          "$ref": "#/components/schemas/SpuStd"
+                      total: 
+                        type: "integer"
+                      page: 
+                        type: "integer"
+                      size: 
+                        type: "integer"
+                    required: 
+                      - "records"
+                      - "total"
+                      - "page"
+                      - "size"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+    post: 
+      operationId: "saveSpuStd"
+      summary: "新建 / 更新"
+      tags: 
+        - "product"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/SpuStd"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/topics": 
+    get: 
+      operationId: "listTopics"
+      summary: "专题列表"
+      tags: 
+        - "product"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "array"
+                    items: 
+                      "$ref": "#/components/schemas/Topic"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+    post: 
+      operationId: "saveTopic"
+      summary: "新建 / 改"
+      tags: 
+        - "product"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/Topic"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/topics/{topicNo}/archived": 
+    post: 
+      operationId: "setTopicArchived"
+      summary: "归档 / 取消归档"
+      tags: 
+        - "product"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/Topic"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters: 
+        - name: "topicNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/topics/{topicNo}/goods": 
+    get: 
+      operationId: "listTopicGoods"
+      summary: "专题里的商品，按专题内排序 */"
+      tags: 
+        - "product"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "object"
+                    properties: 
+                      records: 
+                        type: "array"
+                        items: 
+                          "$ref": "#/components/schemas/ProductGoods"
+                      total: 
+                        type: "integer"
+                      page: 
+                        type: "integer"
+                      size: 
+                        type: "integer"
+                    required: 
+                      - "records"
+                      - "total"
+                      - "page"
+                      - "size"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters: 
+        - name: "topicNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+    post: 
+      operationId: "setTopicGoods"
+      summary: "整份替换专题里的商品，顺序即展示顺序"
+      tags: 
+        - "product"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "object"
+                    properties: 
+                      records: 
+                        type: "array"
+                        items: 
+                          "$ref": "#/components/schemas/ProductGoods"
+                      total: 
+                        type: "integer"
+                      page: 
+                        type: "integer"
+                      size: 
+                        type: "integer"
+                    required: 
+                      - "records"
+                      - "total"
+                      - "page"
+                      - "size"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters: 
+        - name: "topicNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/spu-std/{no}/archive": 
+    post: 
+      operationId: "archiveSpuStd"
+      summary: "归档"
+      tags: 
+        - "product"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/SpuStd"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters: 
+        - name: "no"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/spu-std/{no}/unarchive": 
+    post: 
+      operationId: "unarchiveSpuStd"
+      summary: "unarchiveSpuStd"
+      tags: 
+        - "product"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/SpuStd"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters: 
+        - name: "no"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
       requestBody: 
         required: true
         content: 

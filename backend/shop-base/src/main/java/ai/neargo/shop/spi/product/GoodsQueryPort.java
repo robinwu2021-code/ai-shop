@@ -19,6 +19,28 @@ public interface GoodsQueryPort {
     Map<String, SkuSnapshot> snapshot(List<String> skuNos);
 
     /**
+     * 带**门店口径**的批量快照（商品域-优化总方案 批 C）。
+     *
+     * <p>叠加顺序：门店价是<b>基准价</b>，限时特价仍然覆盖它。所以它必须落在
+     * 这里而不是调用方 —— 在外面改价的话会盖掉特价，症状是「活动期间按门店价卖」。
+     *
+     * @param storeByEntity 主体号 → 该主体这一单的履约门店。**缺的主体回退主体价**
+     *                      （fail-back）—— 与库存的「无行视为 0」刻意相反：
+     *                      价格视为 0 就是白送
+     */
+    Map<String, SkuSnapshot> snapshot(List<String> skuNos, Map<String, String> storeByEntity);
+
+    /**
+     * 这些 SKU 在这些门店有没有单独定过价。<b>只回真正存在的行</b>。
+     *
+     * <p>给调用方做「要不要按门店口径重算一遍」的预检：绝大多数商家不分店定价，
+     * 无条件走门店分支等于给每次下单加两条查询。
+     *
+     * @return skuNo → 该店的价；没定过价的 SKU 不出现在结果里
+     */
+    Map<String, Long> storePrices(Map<String, String> storeByEntity, List<String> skuNos);
+
+    /**
      * 按**商品**取一份快照（取它的首个 SKU）。
      *
      * <p>为什么需要它：开团给的是 goodsNo（用户是在商品页点「开团」的），

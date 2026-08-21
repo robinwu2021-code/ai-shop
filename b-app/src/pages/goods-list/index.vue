@@ -8,7 +8,7 @@ import { api } from "@/api";
 import { useMerchantStore } from "@/stores/merchant";
 import { ROUTES } from "@/shared/nav";
 import { money } from "@shared/utils/money";
-import type { Goods, GoodsStatus } from "@shared/types";
+import type { Category, Goods, GoodsStatus } from "@shared/types";
 
 const { t } = useI18n();
 const merchant = useMerchantStore();
@@ -18,12 +18,22 @@ const merchant = useMerchantStore();
  * 被驳回的商品商家筛不出来，只能在「全部」里一条条翻，
  * 而那恰恰是最需要他去处理的一批（改完才能重新提交）。
  */
-const TABS: { key: GoodsStatus | ""; labelKey: string }[] = [
+const TABS: { key: GoodsStatus | "OUT_OF_STOCK" | ""; labelKey: string }[] = [
   { key: "", labelKey: "common.all" },
   { key: "ON_SALE", labelKey: "goods.statusON_SALE" },
+  // 草稿排在待审前面：它是**等商家自己动手**的那一批，而待审是在等平台
+  { key: "DRAFT", labelKey: "goods.statusDRAFT" },
   { key: "PENDING", labelKey: "goods.statusPENDING" },
   { key: "REJECTED", labelKey: "goods.statusREJECTED" },
   { key: "OFF_SALE", labelKey: "goods.statusOFF_SALE" },
+  /*
+   * 缺货（B-4.1 要求的第三筛，一直没实现）。
+   *
+   * **它与上面四个不是同一轴**：那四个是「审核结果 × 上下架」，缺货是库存算出来的，
+   * 一件在售商品照样能全规格断货。放在同一排页签里是因为商家的心智就是
+   * 「我要看哪一批货」，而不是「我要按哪个维度筛」。
+   */
+  { key: "OUT_OF_STOCK", labelKey: "goods.statusOUT_OF_STOCK" },
 ];
 
 /** 切门店。库存是按店的，切完要重新拉 —— 不重拉会显示上一家店的数 */
@@ -97,6 +107,29 @@ function pending(g: Goods) {
 /**
  * @param more true = 追加下一页；false/省略 = 从第一页重来（切页签、切门店、改完数据）
  */
+/**
+ * 一级类目筛。**类目变必填之后，按类目找货是商家的主路径** ——
+ * 一个卖 200 件货的店，没有类目筛就只能靠滚。
+ *
+ * <p>只给一级：三级树在这条工具栏里放不下，而「食品生鲜 / 日用百货 / 生活服务」
+ * 这一层恰好就是商家心里的分堆方式。要更细的用搜索。
+ *
+ * <p>后端 `GET /biz/goods` 一直支持 `categoryNo`，端点此前写死传 null
+ * —— 与已经修过的 `keyword` 是同一种遗漏。
+ */
+const rootCategories = ref<Category[]>([]);
+const categoryNo = ref("");
+
+async function loadCategories() {
+  // 取不到不该挡住列表：筛选是锦上添花，商品列表本身要照常出来
+  rootCategories.value = await api.mCategoryTree().catch(() => []);
+}
+
+function switchCategory(no: string) {
+  categoryNo.value = categoryNo.value === no ? "" : no;
+  void load();
+}
+
 async function load(more = false) {
   if (!merchant.isActive) return;
   if (more && (!hasMore.value || loading.value)) return;
@@ -106,6 +139,7 @@ async function load(more = false) {
     const res = await api.mGoodsList({
       status: tab.value || undefined,
       keyword: keyword.value.trim() || undefined,
+      categoryNo: categoryNo.value || undefined,
       page: next,
       size: PAGE_SIZE,
     });
@@ -191,6 +225,62 @@ async function editStock(g: Goods) {
   }
 }
 
+/**
+ * 改**本店价**（多门店）。
+ *
+ * <p>与改库存同一个形状，但**回退方向相反**：清空 = 回到主体价，而不是 0。
+ * 这条要有 —— 没有它，商家给某店定过价之后就再也回不去，「改成和总部一样」
+ * 只能靠他自己抄一遍数字，而抄错没有任何一处会拦。
+ */
+async function editStorePrice(g: Goods) {
+  if (g.skus.length > 1) {
+    uni.showToast({ title: t("goods.multiSkuStock"), icon: "none" });
+    uni.navigateTo({ url: `${ROUTES.goodsEdit}?goodsNo=${g.goodsNo}` });
+    return;
+  }
+  const sku = g.skus[0];
+  if (!sku) return;
+
+  const current = sku.storePrice ?? sku.price;
+  const value = await new Promise<string>((resolve) => {
+    uni.showModal({
+      title: t("goods.editStorePrice"),
+      content: t("goods.storePriceTip"),
+      editable: true,
+      placeholderText: money(current),
+      success: (r) => resolve(r.confirm ? (r.content ?? "") : ""),
+      fail: () => resolve(""),
+    });
+  });
+  // 取消对话框与「清空输入框再确定」是两件事：前者什么都不做，后者是撤销本店价
+  if (value === "") return;
+
+  const raw = value.trim();
+  const price = raw ? Math.round(Number(raw) * 100) : null;
+  if (price !== null && (!Number.isFinite(price) || price < 0)) {
+    uni.showToast({ title: t("goods.priceInvalid"), icon: "none" });
+    return;
+  }
+  try {
+    await api.mSaveStorePrice(g.goodsNo, sku.skuNo, price);
+    uni.showToast({ title: t("common.saved"), icon: "none" });
+    await load();
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: "none" });
+  }
+}
+
+/** 草稿 → 待审。重复点无副作用，所以不做本地防抖之外的额外拦截 */
+async function submit(g: Goods) {
+  try {
+    await api.mSubmitGoods(g.goodsNo);
+    uni.showToast({ title: t("goods.submitted"), icon: "none" });
+    await load();
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: "none" });
+  }
+}
+
 function edit(g?: Goods) {
   uni.navigateTo({ url: g ? `${ROUTES.goodsEdit}?goodsNo=${g.goodsNo}` : ROUTES.goodsEdit });
 }
@@ -200,7 +290,11 @@ function stockOf(g: Goods) {
   return g.skus.reduce((s, k) => s + k.stock, 0);
 }
 
-onShow(load);
+onShow(() => {
+  // 类目只取一次：它几乎不变，每次回到列表都重拉是白花的一次往返
+  if (!rootCategories.value.length) void loadCategories();
+  void load();
+});
 </script>
 
 <template>
@@ -223,6 +317,21 @@ onShow(load);
       <!-- 建商品/改价属于 biz:goods；店员只有 biz:stock（改库存），不显示这个入口 -->
       <text v-if="merchant.can('biz:goods')" class="add" @tap="edit()">＋ {{ $t("goods.add") }}</text>
     </view>
+
+    <!-- 一级类目筛。只有一个类目时不显示 —— 那时它是个恒真的开关 -->
+    <scroll-view v-if="rootCategories.length > 1" class="cats" scroll-x>
+      <view class="cats__row">
+        <text
+          v-for="c in rootCategories"
+          :key="c.categoryNo"
+          class="sh-chip cats__chip"
+          :class="{ 'sh-chip--primary': categoryNo === c.categoryNo }"
+          @tap="switchCategory(c.categoryNo)"
+        >
+          {{ c.name }}
+        </text>
+      </view>
+    </scroll-view>
 
     <!--
       当前门店。**多店才显示** —— 单店商家看到「当前门店」只会疑惑还有别的店。
@@ -284,13 +393,37 @@ onShow(load);
           <text v-if="merchant.can('biz:goods')" class="mini" @tap="edit(g)">
             {{ $t("goods.edit") }}
           </text>
+          <!-- 草稿只给「提交审核」：上架按钮对它必被拒，而拒绝的理由（还没过审）
+               对一个自己都没提交的商品说不通 -->
+          <text
+            v-if="g.status === 'DRAFT' && merchant.can('biz:goods')"
+            class="mini"
+            @tap="submit(g)"
+          >
+            {{ $t("goods.submit") }}
+          </text>
           <!-- 审核中/已驳回时**不给上架按钮**：后端必拒（70003），
                留着它等于给商家一个永远点不动的按钮，而错在哪一句话都没有 -->
-          <text v-if="merchant.can('biz:goods') && !pending(g)" class="mini" @tap="toggle(g)">
+          <text
+            v-if="merchant.can('biz:goods') && !pending(g) && g.status !== 'DRAFT'"
+            class="mini"
+            @tap="toggle(g)"
+          >
             {{ g.onSale ? $t("goods.offSale") : $t("goods.onSale") }}
           </text>
           <text v-if="merchant.can('biz:stock')" class="mini" @tap="editStock(g)">
             {{ $t("goods.editStock") }}
+          </text>
+          <!--
+            本店价只在多门店时出现：单店商家改的就是主体价（编辑页那个），
+            多给一个入口只会让他分不清自己改的是哪个数。
+          -->
+          <text
+            v-if="merchant.multiStore && merchant.can('biz:goods')"
+            class="mini"
+            @tap="editStorePrice(g)"
+          >
+            {{ $t("goods.editStorePrice") }}
           </text>
         </view>
       </view>
@@ -380,6 +513,19 @@ onShow(load);
  * ⚠️ **不要再加 `overflow: hidden`** —— 试过，那会让 scroll-view 彻底滚不动
  * （裁是裁住了，但用户再也划不到后面的 chip，比溢出更糟）。
  */
+/* 类目 chip 横向滚动：一级类目将来可能有七八个，换行会把工具栏顶成两行 */
+.cats {
+  white-space: nowrap;
+  margin-top: 12rpx;
+}
+.cats__row {
+  display: inline-flex;
+  gap: 12rpx;
+}
+.cats__chip {
+  font-size: 24rpx;
+  padding: 10rpx 20rpx;
+}
 .bar__tabs {
   flex: 1;
   min-width: 0;

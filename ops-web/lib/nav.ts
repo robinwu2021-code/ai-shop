@@ -141,6 +141,14 @@ export const NAV: NavSection[] = [
       // 与类目树、资质码字典是同一拨人在配。此前 B-4.4 商家能选模板而平台没有维护入口 ——
       // 三端联动表把这条记成「❌ 断裂：模板是死的」
       { href: "/products?tab=templates", label: "规格模板维护", perm: "product:category:read", group: "规格模板", matrix: "P-3.4", ready: true },
+      // 标准品库（TDD-标准品库）。**单独一个权限码**而不是复用 product:category:*：
+      // 类目决定「这类货要什么资质」（准入门槛），标准品决定「这件货长什么样」（录入模板）——
+      // 让能改准入的人才能录标准品，会把一件运营日常挡在一个很高的门后面
+      { href: "/products?tab=spu-std", label: "标准品库", perm: "product:std:read", group: "标准品", matrix: "P-3.5", ready: true },
+      // 主题分类（陈列，批 E）。**与商品、类目都分开**：类目是准入门槛、标准品是录入模板，
+      // 而主题只是「这周首页摆什么」—— 改动最频繁、后果最轻的一档，
+      // 挂在类目那个高门槛下面等于让一件运营日常天天找人开权限
+      { href: "/products?tab=topics", label: "主题分类", perm: "product:topic:read", group: "陈列", matrix: "P-3.6", ready: true },
     ],
   },
 

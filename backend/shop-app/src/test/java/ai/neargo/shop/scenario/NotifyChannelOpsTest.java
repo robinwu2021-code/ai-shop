@@ -219,7 +219,7 @@ class NotifyChannelOpsTest {
         String huge = "字".repeat(2001);
         assertThatThrownBy(() -> notifyLogService.testSend("MAIL", "a@b.com", null,
                 new NotifyLogService.TestContent(null, huge, null),
-                "no-captcha", "0000", "ST-TEST"))
+                null, "no-captcha", "0000", "ST-TEST"))
                 .isInstanceOf(RuntimeException.class);
     }
 

@@ -195,6 +195,17 @@ export const messageMock: MessageApi = {
     return wait(undefined as unknown as void, 500);
   },
 
+  // 演示两台设备：一台安卓（个推）、一台 iOS（APNs）。收件人含 no-device 的返回空
+  listPushDevices: (userNo) => {
+    if (/no-?device/i.test(userNo)) return wait([]);
+    return wait([
+      { receiverType: "USER", platform: "APP_ANDROID", provider: "GETUI",
+        clientId: "cid-android-0001", clientIdMask: "****0001", updatedAt: "2026-08-16T10:00:00" },
+      { receiverType: "USER", platform: "APP_IOS", provider: "APNS",
+        clientId: "cid-ios-0002", clientIdMask: "****0002", updatedAt: "2026-08-15T22:30:00" },
+    ]);
+  },
+
   listTickets: (q = {}) =>
     wait(
       db.paginate(db.tickets, q.page, q.size, (t) =>

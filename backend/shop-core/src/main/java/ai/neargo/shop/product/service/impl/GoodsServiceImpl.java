@@ -161,12 +161,38 @@ public class GoodsServiceImpl implements GoodsService {
     }
 
     @Override
+    public Map<String, GoodsVO> detailAll(List<String> goodsNos) {
+        if (goodsNos == null || goodsNos.isEmpty()) {
+            return Map.of();
+        }
+        List<PrdGoods> rows = DataScopeContext.executeWithoutScope(() -> goodsMapper.selectList(
+                Wrappers.<PrdGoods>lambdaQuery().in(PrdGoods::getGoodsNo, goodsNos)));
+        if (rows.isEmpty()) {
+            return Map.of();
+        }
+        /*
+         * 三次批量查代替 N×4 次逐行查：SKU、商家、限时特价各一次。
+         * merchantPort.find / campaignPort.flashPrices 都有批量版，
+         * 逐行调用只是没人把这条路径按 listForOps 的样子重写过。
+         */
+        List<String> nos = rows.stream().map(PrdGoods::getGoodsNo).toList();
+        Map<String, List<PrdSku>> skus = loadSkus(nos);
+        var flash = campaignPort.flashPrices(nos);
+        return rows.stream().collect(Collectors.toMap(PrdGoods::getGoodsNo,
+                g -> toVO(g, skus.getOrDefault(g.getGoodsNo(), List.of()), flash.get(g.getGoodsNo())),
+                (a, b) -> a));
+    }
+
+    @Override
     public ai.neargo.shop.product.dto.SkuPriceVO skuPrice(String goodsNo, String skuNo) {
-        PrdSku sku = skuMapper.selectOne(Wrappers.<PrdSku>lambdaQuery()
-                .eq(PrdSku::getGoodsNo, goodsNo)
-                .eq(PrdSku::getSkuNo, skuNo)
-                .eq(PrdSku::getMarket, MARKET_CN)
-                .last("limit 1"));
+        // ★ 与本类其它公共目录查询同一条规矩：买家侧读 SKU 必须显式豁免数据域。
+        // prd_sku 登记 MERCHANT 锚点之后，不豁免就是 1=0 —— 症状是「规格切换后价格取不到」
+        PrdSku sku = DataScopeContext.executeWithoutScope(() -> skuMapper.selectOne(
+                Wrappers.<PrdSku>lambdaQuery()
+                        .eq(PrdSku::getGoodsNo, goodsNo)
+                        .eq(PrdSku::getSkuNo, skuNo)
+                        .eq(PrdSku::getMarket, MARKET_CN)
+                        .last("limit 1")));
         if (sku == null) {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
@@ -206,9 +232,11 @@ public class GoodsServiceImpl implements GoodsService {
     }
 
     private Map<String, List<PrdSku>> loadSkus(List<String> goodsNos) {
-        return skuMapper.selectList(Wrappers.<PrdSku>lambdaQuery()
-                        .in(PrdSku::getGoodsNo, goodsNos)
-                        .eq(PrdSku::getMarket, MARKET_CN)).stream()
+        // ★ 同上：列表页的 SKU 批量读也是公共目录查询
+        return DataScopeContext.executeWithoutScope(() -> skuMapper.selectList(
+                        Wrappers.<PrdSku>lambdaQuery()
+                                .in(PrdSku::getGoodsNo, goodsNos)
+                                .eq(PrdSku::getMarket, MARKET_CN))).stream()
                 .collect(Collectors.groupingBy(PrdSku::getGoodsNo));
     }
 
@@ -261,7 +289,7 @@ public class GoodsServiceImpl implements GoodsService {
 
         return new GoodsVO(
                 g.getGoodsNo(), g.getTitle(), g.getSubtitle(), g.getCover(),
-                readList(g.getImages()), g.getType(), g.getCategoryNo(), brief,
+                readList(g.getImages()), g.getDetail(), g.getType(), g.getCategoryNo(), brief,
                 g.getRating() == null ? 0d : g.getRating() / 10d,
                 nz(g.getRatingCount()), minPrice, minOrigin,
                 readList(g.getFulfillments()), readSpecGroups(g.getSpecGroups()),
@@ -273,6 +301,8 @@ public class GoodsServiceImpl implements GoodsService {
                 null,
                 // 译文原文同理：这里的 title 已经按当前语言拍平，整份译文只有编辑页才用得上
                 null, null,
+                // 溯源只对商家与运营有意义：买家不关心这件货是不是从标准品建的
+                null,
                 // 驳回原因也是店主和平台之间的事
                 null,
                 groupBuyConf(g));
@@ -299,7 +329,16 @@ public class GoodsServiceImpl implements GoodsService {
         }
         return new GoodsVO.SkuVO(s.getSkuNo(), readList(s.getOptionValues()), s.getSpec(),
                 flashPrice != null ? flashPrice : own, origin,
-                Math.max(available, 0), s.getNominalGram());
+                Math.max(available, 0), s.getNominalGram(),
+                // 买家侧不发多市场价：他只看自己那个市场的价，整张表对他没有用处。
+                // 商家侧由 MerchantGoodsServiceImpl 单独查一次补上（那边才需要整份回填）
+                null,
+                /*
+                 * 门店价同样**不发给买家**：这条路径没有门店上下文（商品挂主体，
+                 * 店是下单时由自提点定的），给一个「某家店的价」只会与他实际付的钱不符。
+                 * 买家侧的门店价在结算那一步生效，见 OrderServiceImpl.split()。
+                 */
+                null);
     }
 
     private List<String> readList(String jsonArray) {

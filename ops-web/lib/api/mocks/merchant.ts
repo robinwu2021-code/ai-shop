@@ -204,7 +204,7 @@ export const merchantMock: MerchantApi = {
     await wait(undefined);
   },
 
-  auditApply: async (applyNo, approved, reason, serviceScope, communityNos) => {
+  auditApply: async (applyNo, approved, reason, serviceScope, communityNos, grantCodes) => {
     const a = findApply(applyNo);
     if (a.status === "APPROVED" || a.status === "REJECTED") {
       fail("这份申请已经审过了", "This application has already been decided");
@@ -226,6 +226,17 @@ export const merchantMock: MerchantApi = {
       }
       a.status = "APPROVED";
       a.merchantNo = `M${applyNo.slice(1)}`;
+      /*
+       * **授码与通过同一步**（批 B2）。分两步做会留下「通过了但一个码都没授」的状态：
+       * 商家收到通过通知、进去建品、上架被拒，而错误说的是「你还没有资质授权」。
+       * 空是合法的：只卖无门槛类目的商家不需要任何码。
+       */
+      if (grantCodes?.length) {
+        for (const code of grantCodes) {
+          if (!db.authCodes.find((x) => x.code === code)) notFound("授权码", "Permission code", code);
+        }
+        a.categoryCodes = [...grantCodes];
+      }
     } else {
       a.status = "REJECTED";
       a.rejectReason = reason;
@@ -307,22 +318,26 @@ export const merchantMock: MerchantApi = {
       }
     }
 
-    // 撤销时：该码下还有在售商品的不能撤 —— 撤了架上还挂着那类商品，
-    // 谁也说不清它算不算违规
-    const removed = m.categoryCodes.filter((c) => !codes.includes(c));
-    for (const code of removed) {
-      const live = db.skus.filter(
-        (s) => s.merchantNo === merchantNo && s.status === "ON_SALE" &&
-          db.categories.find((cat) => cat.categoryNo === s.categoryNo)?.requiredCode === code,
-      );
-      if (live.length) {
-        const ac = db.authCodes.find((x) => x.code === code);
-        fail(`${ac?.name ?? code} 下还有 ${live.length} 个在售商品，请先下架再撤销授权`, `${ac?.name ?? code} still has ${live.length} items on sale — take them down before revoking it`);
-      }
-    }
+    /*
+     * 撤销**不拦，但把代价算出来**（批 B3）。
+     *
+     * 这里此前是硬拒「该码下还有在售商品」—— 而真后端不拦：证过期了就得撤，
+     * 拦住的话运营只能先去逐件下架商家的货，那是商家的事不是他的。
+     * mock 比后端严的后果是这条路径在开发期永远走不到，上线才发现行为不同。
+     *
+     * 改成回一个数：撤了几个码、影响多少件在架商品。运营在按下确认之前看得见它 ——
+     * 看不见的话，一次「顺手收紧」会在几天后变成商家的「我的货怎么上不去了」。
+     */
+    const revoked = m.categoryCodes.filter((c) => !codes.includes(c));
+    const affected = db.skus.filter(
+      (s) => s.merchantNo === merchantNo && s.status === "ON_SALE" &&
+        revoked.includes(
+          db.categories.find((cat) => cat.categoryNo === s.categoryNo)?.requiredCode ?? "",
+        ),
+    ).length;
 
     m.categoryCodes = [...codes];
-    return wait(m, 400);
+    return wait({ codes: [...codes], revoked, affected }, 400);
   },
 
   listViolations: async (q = {}) =>

@@ -30,7 +30,7 @@ class CourierOrderViewTest {
                             990L, 1, 990L, "GOODS", false)),
             OrderVO.Amount.of(2150L, 300L, 0L, 2450L, "CNY"),
             "8812", "PK-1", "小区自提点", null, 1_700_000_000_000L, null,
-            null, "MERCHANT_OWNED",
+            null, "MERCHANT_OWNED", null,
             new OrderVO.Receiver("王先生", "13800001234", "杭州市西湖区文三路 100 号"),
             List.of(), null,
             // 买家昵称（商家侧才有）—— 裁剪逻辑不碰它，但构造要给全
@@ -123,7 +123,7 @@ class CourierOrderViewTest {
     @DisplayName("★ 空明细的单件数为 0，不抛异常")
     void toleratesEmptyItems() {
         OrderVO noItems = new OrderVO("SUB-2", null, "PAID", "MERCHANT_DELIVERY", "M-1", null,
-                null, null, null, null, null, null, 0L, null, null, null, null, List.of(), null,
+                null, null, null, null, null, null, 0L, null, null, null, null, null, List.of(), null,
                 null);
         assertThat(CourierOrderVO.of(noItems).itemQty()).isZero();
     }

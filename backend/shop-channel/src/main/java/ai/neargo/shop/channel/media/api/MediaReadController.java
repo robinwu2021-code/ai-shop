@@ -3,6 +3,7 @@ package ai.neargo.shop.channel.media.api;
 import ai.neargo.shop.channel.media.LocalDiskMediaStore;
 import ai.neargo.shop.media.SysMediaAsset;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Profile;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
@@ -33,6 +34,9 @@ import java.time.Duration;
  * 「这是本地磁盘方案的专属零件」这个事实。
  */
 @Profile({"api", "ops"})
+// 本地磁盘方案的专属零件：切 COS（provider=cos）时 LocalDiskMediaStore 不存在，
+// 这个控制器也随之不加载（否则构造函数注入 LocalDiskMediaStore 会启动失败）。COS 直接出图，不需要它。
+@ConditionalOnProperty(name = "shop.media.provider", havingValue = "local", matchIfMissing = true)
 @RestController
 public class MediaReadController {
 

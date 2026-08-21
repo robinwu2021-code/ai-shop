@@ -284,3 +284,16 @@ export interface Captcha {
   captchaId: string;
   imageBase64: string;
 }
+
+/**
+ * 某收件人绑定的一台推送终端（运营端「选择终端发起测试」用）。
+ * `clientId` 是原始设备标识，发送时回传；`clientIdMask` 只用于展示。
+ */
+export interface PushDevice {
+  receiverType: string;
+  platform: string;
+  provider: string;
+  clientId: string;
+  clientIdMask: string;
+  updatedAt?: string;
+}

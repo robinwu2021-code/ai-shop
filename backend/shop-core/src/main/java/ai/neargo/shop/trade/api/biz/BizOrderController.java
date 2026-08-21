@@ -41,6 +41,7 @@ public class BizOrderController {
     @PreAuthorize("@perm.canBiz('" + BizPerms.ORDER_VIEW + "')")
     @GetMapping("/biz/order")
     public PageData<?> orders(@RequestParam(required = false) String status,
+                              @RequestParam(required = false) java.util.List<String> fulfillments,
                               @RequestParam(required = false) Boolean allStores,
                               @RequestParam(defaultValue = "1") long page,
                               @RequestParam(defaultValue = "10") long size) {
@@ -58,7 +59,7 @@ public class BizOrderController {
                 ? ctx.allowedStoresOrAll()
                 : java.util.List.of(ctx.currentStoreNo() == null ? "" : ctx.currentStoreNo());
         PageData<OrderVO> full = merchantOrderService.list(ctx.requireMerchantNo(), storeNos,
-                status, page, Math.min(size, 50));
+                status, fulfillments, page, Math.min(size, 50));
         return ctx.courierOnlyOrderView() ? narrow(full) : full;
     }
 

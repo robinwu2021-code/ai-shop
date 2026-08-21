@@ -262,7 +262,7 @@ class ReviewStoreAttributionFlowTest {
         String goodsNo = json.readTree(mvc().perform(post("/biz/goods/save")
                         .header("Authorization", "Bearer " + bizToken)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"title\":\"" + title + "\",\"subtitle\":\"测试\",\"type\":\"NORMAL\","
+                        .content("{\"categoryNo\":\"CAT210\",\"title\":\"" + title + "\",\"subtitle\":\"测试\",\"type\":\"NORMAL\","
                                 + "\"cover\":\"📦\",\"images\":[],\"specGroups\":[],"
                                 + "\"skus\":[{\"optionValues\":[],\"price\":1000,\"stock\":50}]}"))
                 .andExpect(jsonPath("$.code").value(0))

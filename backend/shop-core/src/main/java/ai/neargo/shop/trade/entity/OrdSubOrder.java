@@ -77,6 +77,8 @@ public class OrdSubOrder extends BaseEntity {
     public static final String NEIGHBOR_PICKUP = ai.neargo.shop.common.Fulfillments.NEIGHBOR_PICKUP;
     public static final String MERCHANT_DELIVERY = ai.neargo.shop.common.Fulfillments.MERCHANT_DELIVERY;
     public static final String EXPRESS = ai.neargo.shop.common.Fulfillments.EXPRESS;
+    /** 到店核销（服务品类）。付款即出码，支付成功直接落 {@link #FULFILLING} */
+    public static final String STORE_VERIFY = ai.neargo.shop.common.Fulfillments.STORE_VERIFY;
 
     private String subOrderNo;
     private String orderNo;

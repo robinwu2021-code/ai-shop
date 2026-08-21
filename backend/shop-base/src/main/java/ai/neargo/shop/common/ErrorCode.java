@@ -12,6 +12,18 @@ public enum ErrorCode {
     // ---- 1xxxx 通用 ----
     BAD_REQUEST(10400, "err.bad_request"),
     UNAUTHORIZED(10401, "err.unauthorized"),
+    /*
+     * 令牌带了、但会话已经不在（过期或被吊销）。
+     *
+     * **与 10401「未登录」分开**，理由与发码限流那两条一样：端上要做的事不同。
+     *   · 未登录  → 引导去登录页，这是常态（游客逛店）
+     *   · 已过期  → 说「登录已过期，请重新登录」，并**清掉本地那份 token**
+     *
+     * 此前两者都是**空响应体的 401**，端上分不出来 —— 而 B 端联调抓到的原缺陷
+     * 正是把过期说成了「没权限」：一个让人去重登，一个让人去找老板要权限，
+     * 下一步动作完全相反。
+     */
+    TOKEN_EXPIRED(10402, "err.token_expired"),
     FORBIDDEN(10403, "err.forbidden"),
     NOT_FOUND(10404, "err.not_found"),
     CONFLICT(10409, "err.conflict"),
@@ -61,6 +73,22 @@ public enum ErrorCode {
      * 而页面其余文案是端上 i18n 的中文，**同一屏两种语言**。
      */
     OTP_INVALID(10455, "err.otp.invalid"),
+    /**
+     * 手机号或密码不对。
+     *
+     * <p><b>刻意不区分「查无此人」与「密码错」</b>：分开说等于给撞库的人一个
+     * 免费的账号探测接口——他能用它把哪些手机号注册过筛一遍。
+     * 对真用户来说这两种情况的下一步动作也一样（换个号试，或去用验证码登录）。
+     */
+    PASSWORD_INVALID(10456, "err.password.invalid"),
+    /**
+     * 这个账号<b>还没设过密码</b>。
+     *
+     * <p>与 10456 分开是因为下一步动作不同：这条要引导他「先用验证码登录，
+     * 再去设密码」。而这条不泄露账号是否存在——只有确实存在、且确实没设过密码
+     * 的人才会看到它，撞库者拿它探测不到新信息（存在但设过密码的返回 10456）。
+     */
+    PASSWORD_NOT_SET(10457, "err.password.not_set"),
     /**
      * 这条路**还没通**，不是参数错了。
      *
@@ -319,12 +347,27 @@ public enum ErrorCode {
      */
     ROLE_PERM_NOT_ASSIGNABLE(70015, "err.biz.role_perm_not_assignable"),
     /*
+     * 自提单缺自提点。**与 70014「缺收货地址」是同一形状的另一半** ——
+     * 送到人手上的要地址，去点上取的要点，两者都是「履约必需的信息」。
+     *
+     * 这条闸此前不存在，而缺了它**不会在下单时报错**：单能下、能付，
+     * 之后每一步都失败且原因都指错 ——
+     *   到货登记 → 空列表（像是「没有这单」）
+     *   核销     → NOT_THIS_PICKUP（像是「顾客走错店了」，店员会让他去别的点，
+     *              而那单根本不属于任何自提点）
+     * 2026-08-17 B 端第二轮实测抓到。
+     */
+    PICKUP_POINT_REQUIRED(70025, "err.trade.pickup_point_required"),
+    /*
      * 准入矩阵拒绝了这个 (主体档位 × 履约方式) 组合。与 70013 分开：
      * 那个是「这件商品不支持这种送法」（换一种即可），
      * 这个是「这家店不允许用这种送法」（换商品也没用）——
      * 合成一个码，商家会一直换商品试。
      */
-    FULFILLMENT_TIER_DENIED(70014, "err.trade.fulfillment_tier_denied"),
+    // 2026-08-17 从 70014 挪来：那个号已被 RECEIVER_REQUIRED 占着，
+    // 两者撞号意味着「没选地址」与「这家店不能用这种送法」在端上分不开 ——
+    // 前者要把人送去地址簿，后者要让他换一家买。ErrorCodeUniqueTest 守这条
+    FULFILLMENT_TIER_DENIED(70024, "err.trade.fulfillment_tier_denied"),
     /*
      * 该商家的收款额度已用尽。单独一个码，因为它对三方的解法都不同：
      * 买家该换一家买、商家该去升主体、运营该去核对额度口径。
@@ -339,7 +382,7 @@ public enum ErrorCode {
      * <p>不复用 CONFLICT 的理由与 GOODS_NOT_APPROVED 一样：财务看到「操作冲突」
      * 完全不知道该去做什么，而看到「发票未核验」就知道要先去催票或核验。
      */
-    INVOICE_REQUIRED(70015, "err.settle.invoice_required"),
+    INVOICE_REQUIRED(70026, "err.settle.invoice_required"),
     /** 发票金额与应付合计不符。多半是周期选错或漏了几单 */
     INVOICE_AMOUNT_MISMATCH(70016, "err.settle.invoice_amount_mismatch"),
     /** 开票方名称与供应商主体名不一致 —— 三流不一致会被认定虚开风险 */
@@ -442,6 +485,21 @@ public enum ErrorCode {
     CATEGORY_IN_USE(80002, "err.category.in_use"),
     /** 父类目已归档，恢复它会造出一个挂在已删父节点下的孤儿。 */
     CATEGORY_PARENT_ARCHIVED(80003, "err.category.parent_archived"),
+    /**
+     * 建品时传了一个查无此项的类目编号。
+     *
+     * <p>不复用 {@code BAD_REQUEST}，也**不兜底成默认类目**：类目现在是唯一的分类输入，
+     * 商品形态由它派生（生鲜要截单、服务不发货）。兜底等于把一条错误数据
+     * 静默转成一条合法数据 —— 商家以为自己建的是生鲜，而库里那件货是日用品。
+     */
+    CATEGORY_NOT_FOUND(80007, "err.category.not_found"),
+    /**
+     * 删一个底下还有商品的门店经营类目。
+     *
+     * <p>不拦的话那些商品会挂在一个这家店已经不存在的货架上：店铺页里就此消失，
+     * 而商家在商品列表里还看得到它们 —— 两个页面对同一批货给出相反的答案。
+     */
+    STORE_CATEGORY_IN_USE(80008, "err.store_category.in_use"),
 
     /**
      * 截单时间不早于到货时间（P-3.3.2）。

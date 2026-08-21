@@ -155,7 +155,7 @@ const zh = {
   loading: "加载中…",
   emptyApproved: "没有已通过审核的商家。类目授权与认证标都只对过审商家开放 —— 没过审就授权等于提前放行。",
 
-  categoryNotice: "按授权码授权，不是按类目节点：类目树会重构，而「能不能卖菜」这件事不会。撤销授权前要先把该类目下的在售商品下架，否则架上还挂着那类商品，谁也说不清它算不算违规。",
+  categoryNotice: "按授权码授权，不是按类目节点：类目树会重构，而「能不能卖菜」这件事不会。撤销会即时生效，该类目下的在架商品下次上架将被拒 —— 保存前会先告诉你影响多少件。",
   actionGrant: "配置授权",
   grantTitle: "{name} 的类目授权",
   secQualification: "已上传资质",
@@ -168,6 +168,10 @@ const zh = {
   fieldReason: "原因",
   authReasonPlaceholder: "例：商家补交食品经营许可证，扩类目至水果",
   btnSaveAuth: "保存授权",
+  authRevokeWarn: "本次将撤销：{s}。这些类目下的在架商品，下次上架会被拒。",
+  toastAuthRevoked: "授权已更新；{n} 件在架商品下次上架会被拒",
+  applyGrantLabel: "经营类目授权",
+  applyGrantSaid: "商家填写：{s}",
   toastAuthSaved: "授权范围已更新",
 
   verifyNotice: "认证标是平台给用户看的背书。只有已过审、且毁约次数未达 {n} 次的商家能拿标 —— 挂在一个正在毁约的商家身上，赔的是平台的信用。",
@@ -554,7 +558,7 @@ const en: typeof zh = {
   loading: "Loading…",
   emptyApproved: "No approved merchants. Category permissions and verified badges are open to approved merchants only — granting before approval lets them through early.",
 
-  categoryNotice: "Permissions are granted by code, not by category node: the category tree gets restructured, whereas “may they sell vegetables” does not. Take a category’s live listings down before revoking it, or the shelf still carries goods nobody can say are allowed.",
+  categoryNotice: "Permissions are granted by code, not by category node: the category tree gets restructured, whereas “may they sell vegetables” does not. Revoking takes effect at once — listed items in that category will be refused on their next listing, and you are told how many before you save.",
   actionGrant: "Edit permissions",
   grantTitle: "Category permissions for {name}",
   secQualification: "Uploaded credentials",
@@ -567,6 +571,10 @@ const en: typeof zh = {
   fieldReason: "Reason",
   authReasonPlaceholder: "e.g. Food licence resubmitted; extending scope to fruit",
   btnSaveAuth: "Save permissions",
+  authRevokeWarn: "Revoking: {s}. Items in those categories will be refused the next time they are listed.",
+  toastAuthRevoked: "Scope updated; {n} listed item(s) will be refused on the next listing",
+  applyGrantLabel: "Category permissions",
+  applyGrantSaid: "Merchant wrote: {s}",
   toastAuthSaved: "Granted scope updated",
 
   verifyNotice: "The verified badge is the platform’s endorsement to shoppers. Only approved merchants under {n} breaches can hold one — on a merchant who is currently defaulting, it is the platform’s credibility that pays.",

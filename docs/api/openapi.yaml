@@ -912,6 +912,9 @@ components:
         icon: 
           type: "string"
           description: "类目图标 URL。运营没配就是空串，端上按占位渲染"
+        template: 
+          type: "string"
+          description: "该类目的**品类模板**：`STANDARD` / `FRESH` / `SERVICE` / `VOUCHER`。\n\n<p><b>它就是「品类」，只是另一套码</b>（STANDARD↔NORMAL、VOUCHER↔CARD， 见 `TEMPLATE_TO_TYPE`）。选定类目即可推出品类 —— 让商家把同一件事填两遍， 唯一的产出是两者可能互相矛盾，而矛盾没有任何一处会拦。"
         sort: 
           type: "number"
           description: "同级内的展示顺序，小的在前。运营在后台拖动排序改的就是它"
@@ -928,6 +931,49 @@ components:
         - "children"
       additionalProperties: false
       description: "类目树节点（对齐后端 `CategoryVO`）。\n\n<p>⚠️ **不要把它和 `CategoryType` 搞混** —— 那是五品类枚举 （NORMAL/FRESH/SERVICE/VIRTUAL/CARD），挂在商品上、由平台硬编码，决定履约与合规 （冷链、不发货、iOS 可售规则）。这里的类目树是运营可维护的数据，决定归类与经营准入。 两个维度正交，见 `docs/technical/类目树补齐方案.md`。\n\n<p>这个类型此前声明了一个后端根本不返回的 `type` 字段，并写着「仅两级」—— 而后端一直是三级。没人用它，所以错了很久也没暴露。"
+    SpuStd: 
+      type: "object"
+      properties: 
+        stdNo: 
+          type: "string"
+        categoryNo: 
+          type: "string"
+          description: "所属类目。取用后**改不掉**：类目决定形态（生鲜要截单、服务不发货）"
+        categoryName: 
+          type: "string"
+          description: "类目名，展示用"
+        title: 
+          type: "string"
+        titleI18n: 
+          "$ref": "#/components/schemas/Record_string_string"
+        subtitle: 
+          type: "string"
+        cover: 
+          type: "string"
+        images: 
+          type: "array"
+          items: 
+            type: "string"
+        specGroups: 
+          type: "array"
+          items: 
+            "$ref": "#/components/schemas/SpecGroup"
+          description: "每个选项都带 `optionCode` —— 跨店可比靠的就是它"
+        keywords: 
+          type: "string"
+          description: "别名/品牌/俗称，搜索用。端上可以不展示"
+        status: 
+          type: "string"
+        refCount: 
+          type: "number"
+          description: "被引用次数，只给运营排序用"
+      required: 
+        - "stdNo"
+        - "categoryNo"
+        - "title"
+        - "specGroups"
+      additionalProperties: false
+      description: "平台标准品（TDD-标准品库）：商家引用建品的**模子**。\n\n<p>**无价、无库存、无履约** —— 那些永远是商家的。它存在的理由是 `specGroups` 里的 `optionCode`：没有标准品，三家店各自录「本地菠菜」得到三个毫无关系的商品， 聚合、比价、统计全都无从谈起。\n\n<p>取用时端上只是把字段**填进表单**，商家可以改标题与图；但**类目与 optionCode 由服务端强制以标准品为准** —— 能改掉的话，标准品就退化成一个填表助手。"
     SpecGroup: 
       type: "object"
       properties: 
@@ -980,6 +1026,12 @@ components:
         nominalGram: 
           type: "number"
           description: "FRESH 且按重计价：标称重量（克）"
+        priceByMarket: 
+          "$ref": "#/components/schemas/Record_string_number"
+          description: "各市场价（市场码 → 最小货币单位）。**只有商家侧 `/biz/goods/{no}` 下发，C 端恒空。**\n\n<p>编辑页按市场逐格填，而保存是**整份覆盖** —— 拿不到整张表就只能回填当前 那一格，于是改一次标题，其余市场的价格行就被删了，且不报错： 那两个市场的买家从此看不到这件商品。与 `titleI18n` 是同一个形状的故障。"
+        storePrice: 
+          type: "number"
+          description: "本店单独定的价（最小货币单位）。**只在 B 端下发，空 = 同主体价**，不是 0。\n\n<p>与门店库存回退方向相反：没设过价的店按主体价卖，没设过库存的店按 0 卖 —— 价格视为 0 就是白送。"
       required: 
         - "skuNo"
         - "optionValues"
@@ -1144,18 +1196,18 @@ components:
           type: "array"
           items: 
             "$ref": "#/components/schemas/AppointmentSlot"
-          description: "SERVICE + APPOINTMENT：可预约时段"
+          description: "SERVICE + APPOINTMENT：可预约时段。**后端未下发**"
         card: 
           "$ref": "#/components/schemas/CardSpec"
-          description: "CARD"
+          description: "CARD。**后端未下发**"
         virtual: 
           "$ref": "#/components/schemas/VirtualSpec"
-          description: "VIRTUAL"
+          description: "VIRTUAL。**后端未下发**"
         promotions: 
           type: "array"
           items: 
             "$ref": "#/components/schemas/Promotion"
-          description: "促销（一期只有买 N 送 M）"
+          description: "促销（一期只有买 N 送 M）。**后端未下发**"
         groupBuy: 
           type: "object"
           properties: 
@@ -1170,22 +1222,30 @@ components:
           description: "商家为本商品开放的拼团档：够 minCount 人享 price。不配则本商品不能发起团"
         points: 
           type: "number"
-          description: "本商品每件赠送的积分。不同商品可以给不同积分，不配则按成交额比例默认发放"
+          description: "本商品每件赠送的积分。**后端未下发**：库里有 `prd_goods.points_config` 这一列， 但全仓没有任何读写。等积分域接上再兑现。"
         limitPerUser: 
           type: "number"
           description: "每人限购，0 = 不限"
         onSale: 
           type: "boolean"
           description: "是否在售。下架后详情页仍可访问（历史订单要点得进去），但不可下单"
+        detail: 
+          type: "string"
+          description: "图文详情正文（纯文本）。空 = 商家没写 —— 端上整段不渲染， 别拿一个空白区块占着详情页。"
         status: 
           "$ref": "#/components/schemas/GoodsStatus"
-          description: "审核与在售状态（**只有商家侧 `/biz/goods` 下发**，C 端拿不到也不需要）。\n\n为什么不能只看 `onSale`：新建和每次改动都会回到审核中，而那时 `onSale` 是 false —— 界面照着布尔值写就成了「已下架 + 上架按钮」， 点下去后端必然拒（70003「商品还在审核中」）。**商家看到的是一个永远点不动的按钮**。\n\n待审是 `PENDING`（词典 §11 的通用状态词表；库里那列仍叫 AUDITING， 但那是审核结果那一轴的列名，不出现在契约里）。"
+        auditReason: 
+          type: "string"
+          description: "最近一次驳回 / 平台强制下架的原因（**只在商家侧与运营端下发，C 端恒空**）。\n\n**没有它，商家面对 `REJECTED` 只能猜要改什么** —— 审计日志只有运营看得到。 平台强制下架时后端会带「平台强制下架」前缀，商家据此知道是自己被驳 还是被平台下的。过审时清空。\n\n⚠️ 后端 `GoodsVO` 一直在发它，`MerchantGoodsService` 的注释甚至写着 「它会出现在商家 B 端（`auditReason`）」—— 而端上从没声明这个字段。 那句注释描述的是一件**从未发生过**的事。"
         titleI18n: 
           "$ref": "#/components/schemas/Record_string_string"
           description: "三语标题原文，**只有商家侧 `/biz/goods/{no}` 下发**。\n\n编辑页按语言逐格填，而保存是整份覆盖 —— 拿不到原文就只能回填当前那一格， 于是用中文改一次，英文与阿语就被清空了。**这个故障不报错**： C 端缺译文时回落中文，看起来一切正常。"
         subtitleI18n: 
           "$ref": "#/components/schemas/Record_string_string"
           description: "三语副标题原文，同 `titleI18n`"
+        stdNo: 
+          type: "string"
+          description: "引用的平台标准品；空 = 自建品。**只有商家侧与运营端下发，C 端恒空。**\n\n<p>必须下发：编辑页保存是整份覆盖，拿不到它就等于\n**打开编辑页再保存一次就自动脱离了标准品** —— 商品从此不再被收敛， 而界面上没有任何变化。与 `titleI18n` / `priceByMarket` 是同一个形状的故障。"
       required: 
         - "goodsNo"
         - "title"
@@ -1206,11 +1266,12 @@ components:
     GoodsStatus: 
       type: "string"
       enum: 
+        - "DRAFT"
         - "ON_SALE"
         - "OFF_SALE"
         - "PENDING"
         - "REJECTED"
-      description: "商品状态。\n\n⚠️ 待审用 `PENDING` 不用 `AUDITING` —— ops-web 的 `SkuStatus` 一直用 `PENDING`，同一件事两个词。词典 §11 的通用状态词表规定「已提交待处理」= `PENDING`。"
+      description: "商家侧商品状态。\n\n<p><b>DRAFT 与 PENDING 是两件事</b>：草稿是「还没提交，等你」，待审是「已提交，等平台」—— 说错了商家的下一步就错了。也与 OFF_SALE（点一下就能卖）分开。"
     CartItem: 
       type: "object"
       properties: 
@@ -1241,6 +1302,11 @@ components:
         fulfillment: 
           "$ref": "#/components/schemas/FulfillmentType"
           description: "用户选定的履约方式。跨履约方式的商品结算时会拆单"
+        merchantNo: 
+          type: "string"
+          description: "所属商家。**后端 `CartItemVO` 一直在发这两个字段，是这里此前没声明**—— 于是数据到了端上就被丢掉，购物车只能按履约方式分组，店名一个字都显示不出来。\n\n后果不是「少个标签」：用户从头到尾看到「一单」，提交后拿到的是按商家拆出的 N 笔子订单（`ord_sub_order`）。见 TDD-购物车商家可见。"
+        merchantName: 
+          type: "string"
         invalidReason: 
           type: "string"
           description: "失效原因，如「已下架」「库存不足」。有值即不可勾选结算"
@@ -1260,6 +1326,8 @@ components:
         - "qty"
         - "type"
         - "fulfillment"
+        - "merchantNo"
+        - "merchantName"
       additionalProperties: false
     SettleAccountType: 
       type: "string"
@@ -1416,8 +1484,7 @@ components:
       enum: 
         - "WAIT_PAY"
         - "PAID"
-        - "ARRIVED"
-        - "SHIPPED"
+        - "FULFILLING"
         - "COMPLETED"
         - "CANCELLED"
         - "REFUNDED"
@@ -1740,7 +1807,12 @@ components:
           description: "商家名快照"
         payGroupNo: 
           type: "string"
-          description: "支付组号。同一次结算拆出的子订单共享它，**一次支付付掉整组**。 用户感知是「买了一次」，资金与分账感知是「N 笔各归各家」。"
+          description: "支付组号。同一次结算拆出的子订单共享它，**一次支付付掉整组**。 用户感知是「买了一次」，资金与分账感知是「N 笔各归各家」。\n\n⚠️ **后端叫 `payOrderNo`，库里是 `ord_order.order_no`** —— 三处三个名字。 按这个名去后端或库里找会找不到（2026-08-17 人工测试时撞到）。"
+        subOrders: 
+          type: "array"
+          items: 
+            "$ref": "#/components/schemas/Order"
+          description: "**仅支付视角**：这次付款覆盖的各商家订单。订单视角为空。\n\n后端 `OrderVO` 一直在发（同一个结构承担订单/支付两种视角）， 端上此前没声明 —— 于是收银台是整条拆单链路里**唯一哑掉的一屏**： 购物车说会拆 2 单、确认页说会拆 2 单、订单详情各自标着商家， 中间付款那一步却只有一个总额。"
       required: 
         - "orderNo"
         - "status"
@@ -2392,7 +2464,8 @@ components:
         - "WX_OPEN"
         - "PHONE_OTP"
         - "APPLE"
-      description: "登录方式。 · WX_MINI  小程序静默登录（只拿 openid，拿不到手机号） · WX_PHONE 小程序一键取手机号（推荐：一次授权直接拿到号，省掉短信） · WX_OPEN  App 微信开放平台 · APPLE    Apple 登录（iOS 上架硬要求） · PHONE_OTP 手机号 + 短信验证码（全端兜底，也是商家账号的主标识）"
+        - "PASSWORD"
+      description: "登录方式。 · WX_MINI  小程序静默登录（只拿 openid，拿不到手机号） · WX_PHONE 小程序一键取手机号（推荐：一次授权直接拿到号，省掉短信） · WX_OPEN  App 微信开放平台 · APPLE    Apple 登录（iOS 上架硬要求） · PHONE_OTP 手机号 + 短信验证码（全端兜底，也是商家账号的主标识） · PASSWORD  手机号 + 密码（**只有 B 端有**）。商家一天开好几次 App，   每次等一条短信是实打实的摩擦；而它与其它方式最本质的差别是**不建户** ——   能用密码登录的前提是他已经设过密码，而设密码本身要先登录。"
     LoginReq: 
       type: "object"
       properties: 
@@ -2746,6 +2819,35 @@ components:
         - "missing"
       additionalProperties: false
       description: "收款进件状态（每通道一条）。\n\n<p><b>它与入驻审核是两件事</b>：入驻过了店就能开、货能上架， 但通道没批就收不了钱。合成一个「入驻进度」，商家问「我能收钱了吗」就没法回答。"
+    StoreCategory: 
+      type: "object"
+      properties: 
+        categoryNo: 
+          type: "string"
+          description: "平台类目号。**改显示名不动它** —— 跨店聚合与比价都认这个"
+        name: 
+          type: "string"
+          description: "展示名：`displayName` 有就用它，否则是平台类目名。直接照它渲染"
+        platformName: 
+          type: "string"
+          description: "平台类目名。改名时要让商家看得见自己改的是谁"
+        displayName: 
+          type: "string"
+          description: "商家改的名。空 = 用平台名，不是「叫空字符串」"
+        sort: 
+          type: "number"
+          description: "店内展示顺序，小的在前。商家拖出来的顺序"
+        goodsCount: 
+          type: "number"
+          description: "这个货架上有几件商品 —— **撤架之前商家要看得见代价**（有货就撤不掉）"
+      required: 
+        - "categoryNo"
+        - "name"
+        - "platformName"
+        - "sort"
+        - "goodsCount"
+      additionalProperties: false
+      description: "门店经营类目 —— 商家给自己的店摆的<b>货架</b>。\n\n<p>与「主体已获授权的类目」是两件事：那是<b>平台批的证</b>（能不能卖这一类）， 这是<b>商家的货架</b>（店里怎么摆）。责任人不同，所以不合成一个字段。"
     Store: 
       type: "object"
       properties: 
@@ -2790,7 +2892,6 @@ components:
         - "payReady"
         - "staffCount"
       additionalProperties: false
-      description: "门店（商家侧管理用）。\n\n<p><b>门店与主体是关联不是归属</b>：换执照店照开。所以 `storeNo` 一旦生成就不再变 —— 评价、订单、顾客的「我常逛的店」都挂在它上面。"
     MerchantStaff: 
       type: "object"
       properties: 
@@ -3467,7 +3568,7 @@ components:
           type: 
             - "string"
             - "null"
-          description: "CODE_NOT_FOUND / ALREADY_VERIFIED / NOT_THIS_PICKUP / REFUNDED / NOT_PAID"
+          description: "CODE_NOT_FOUND / ALREADY_VERIFIED / NOT_THIS_PICKUP / NOT_ARRIVED / REFUNDED / NOT_PAID"
       required: 
         - "success"
       additionalProperties: false
@@ -3570,11 +3671,25 @@ components:
     StoreQrcode: 
       type: "object"
       properties: 
-        url: 
+        merchantNo: 
           type: "string"
-          description: "扫码后进入的落地页地址，带 merchant_no 归因参数"
-      required: 
-        - "url"
+          description: "商家单号"
+        storeCode: 
+          type: "string"
+          description: "印在贴纸上的短码。**去掉了 0/O/1/I/L**，让人手输时不会认错"
+        url: 
+          type: 
+            - "string"
+            - "null"
+          description: "落地页链接。**未配对外域名时为 null** —— 端上据此不显示链接那一行。\n\n⚠️ 此前后端在两处各写死一个 `https://shop.example.com/s/<code>` 占位域名， 商家复制出去的链接与印出去的贴纸**全都指向一个不存在的地方**， 而这两个功能点在清单上标着「已实现」。不发假链接比发一个点不开的强。"
+        imageBase64: 
+          type: 
+            - "string"
+            - "null"
+          description: "店铺**小程序码**的 PNG base64（不含 `data:` 前缀）。通道未开启时为 null。\n\n用小程序码而不是 H5 链接：ADR-004 的主获客路径是「码印在包装袋上，老客扫码直达」， 而小程序码**不依赖备案域名**（备案要 7–20 个工作日），扫了直接进门店页。"
+        printableHint: 
+          type: "string"
+          description: "打印建议，服务端给的一句话"
       additionalProperties: false
       description: "店铺码（C-ST-08 扫码进店的商家侧）"
     ShareKit: 
@@ -3799,6 +3914,9 @@ components:
         favorited: 
           type: "boolean"
           description: "我是否收藏了这家店"
+        closed: 
+          type: "boolean"
+          description: "已停业（门店非 ACTIVE：商家自助停用或平台强制下线）。\n\n**是标志而不是 404**：扫码进来的老客要知道「店关了」，不是「链接坏了」。 端上据此盖「已停业」并禁掉加购。\n\n⚠️ 后端 `StoreHomeVO` 一直在发这个字段，这里此前没声明 —— 于是**扫码进一家已停业的店，看起来与正常营业毫无区别**， 加购、下单一路走到底，最后在库存或下单闸门上撞一个说不清的错误。"
       required: 
         - "merchant"
         - "store"
@@ -3923,7 +4041,12 @@ components:
           type: "array"
           items: 
             type: "string"
-          description: "已传的资质图"
+          description: "已传的资质图（只有图片 URL，看不出是哪种证、什么时候过期）"
+        qualificationItems: 
+          type: "array"
+          items: 
+            "$ref": "#/components/schemas/QualificationItem"
+          description: "结构化资质（V79）：**哪张证、证件号、有效期**。\n\n⚠️ 这一段的标题写着「用于驳回后回填」，而此前只回填了  {@link  licenses }  ——只有图片。**证件类型、编号、有效期三项全丢**，商家重提时得逐格再填一遍， 而这正是本段注释想避免的那件事：「把补交变成重来」。\n\n后端 `MerchantApplyVO` 一直在发它（审核台就靠它看类型与有效期）， 端上这里没声明。"
         industry: 
           type: "string"
           description: "申请时选的行业。驳回回填要用它 —— 换个行业可能连主体类型都得跟着换"
@@ -4461,6 +4584,10 @@ components:
       type: "object"
       additionalProperties: 
         type: "string"
+    Record_string_number: 
+      type: "object"
+      additionalProperties: 
+        type: "number"
 paths: 
   "/mp/user/otp/send": 
     post: 

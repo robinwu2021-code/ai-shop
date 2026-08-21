@@ -66,8 +66,16 @@ public class MchEntityApply extends BaseEntity {
     /** 联系人姓名。审核要打电话找人，只有号码没有姓名不合适 */
     private String contactName;
 
-    /** 主营类目。决定通过后授予的类目授权范围 */
+    /** 主营类目。**商家自己的说法**（「食品」），不是权威码 */
     private String category;
+
+    /**
+     * 审核通过时授予的经营类目编码，JSON 数组。**平台的裁定**，与 {@link #category} 并存。
+     *
+     * <p>合成一列的话，翻译前后就分不开了 —— 而追溯要的恰恰是这两者的差：
+     * 「他说卖食品，我们批的是预包装食品」。
+     */
+    private String categoryCodes;
 
     /** 店铺简介。C 端门店主页要展示 */
     private String description;

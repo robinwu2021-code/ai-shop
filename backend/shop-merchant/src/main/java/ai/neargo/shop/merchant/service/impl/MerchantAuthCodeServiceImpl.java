@@ -23,9 +23,13 @@ public class MerchantAuthCodeServiceImpl implements MerchantAuthCodeService {
     private final SysAuthCodeMapper authCodeMapper;
     private final MchEntityMapper merchantMapper;
     private final ObjectMapper json;
+    /** 撤码影响面：product → 这边只要一个数（见 CategoryUsagePort 的类注释） */
+    private final ai.neargo.shop.spi.product.CategoryUsagePort categoryUsagePort;
 
     public MerchantAuthCodeServiceImpl(SysAuthCodeMapper authCodeMapper, MchEntityMapper merchantMapper,
+                                       ai.neargo.shop.spi.product.CategoryUsagePort categoryUsagePort,
                                        ObjectMapper json) {
+        this.categoryUsagePort = categoryUsagePort;
         this.authCodeMapper = authCodeMapper;
         this.merchantMapper = merchantMapper;
         this.json = json;
@@ -42,7 +46,7 @@ public class MerchantAuthCodeServiceImpl implements MerchantAuthCodeService {
 
     @Override
     @Transactional
-    public List<String> setCodes(String merchantNo, List<String> codes, String reason) {
+    public SetResult setCodes(String merchantNo, List<String> codes, String reason) {
         // 改的是「这家店能上架什么」，没有理由的改动事后无法复盘
         if (reason == null || reason.isBlank()) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
@@ -86,6 +90,17 @@ public class MerchantAuthCodeServiceImpl implements MerchantAuthCodeService {
          * mch_entity 上根本没有证件字段。ops-web 的 mock 里有这条规则，
          * 等证件表落地后在这里补上。不假装校验过：现在的口径是「运营看着证件放行」。
          */
+        /*
+         * 撤码的**影响面**要在这一步算：算完再写。
+         *
+         * 写完再算的话，撤掉的码已经不在库里了，「哪些商品受影响」就只能靠调用方
+         * 自己记一份 —— 而那份记录迟早与真正写进去的不一致。
+         */
+        List<String> before = readCodes(m.getCategoryCodes());
+        List<String> revoked = before.stream().filter(c -> !codes.contains(c)).toList();
+        long affected = revoked.isEmpty() ? 0
+                : categoryUsagePort.countOnShelfGoodsRequiring(merchantNo, revoked);
+
         m.setCategoryCodes(json.writeValueAsString(codes));
         int updated = ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() ->
                 merchantMapper.updateById(m));
@@ -93,6 +108,19 @@ public class MerchantAuthCodeServiceImpl implements MerchantAuthCodeService {
             // 静默失败在这里是最危险的：接口成功、日志有记录、授权没生效
             throw BizException.of(ErrorCode.CONFLICT);
         }
-        return codes;
+        return new SetResult(codes, revoked, affected);
+    }
+
+    /** 主体上那份码存 JSON。解析失败按空处理 —— 脏数据不该让「改授权」这条路走不通 */
+    private List<String> readCodes(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return List.of();
+        }
+        try {
+            return json.readValue(raw, new tools.jackson.core.type.TypeReference<List<String>>() {
+            });
+        } catch (Exception e) {
+            return List.of();
+        }
     }
 }

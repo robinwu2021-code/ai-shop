@@ -16,6 +16,7 @@ import { useCodeLabel } from "@/lib/api/master-data";
 import { api } from "@/lib/api";
 import { notify } from "@/lib/notify";
 import { fmtTime } from "@/lib/utils";
+import { fill } from "@/lib/use-copy";
 import type { ApplyStatus, MerchantApply } from "@/lib/types";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { Drawer, DrawerSection, Field, FieldGrid } from "@/components/ui/drawer";
@@ -66,6 +67,8 @@ export function ApplyTab({ c, canAudit }: { c: MerchantsCopy; canAudit: boolean 
   const [reason, setReason] = useState("");
   const [scope, setScope] = useState("COMMUNITY");
   const [communityNos, setCommunityNos] = useState<string[]>([]);
+  /** 通过时授予的经营类目码。与通过同一次提交 —— 分两步会留下「批了但没授码」的店 */
+  const [grantCodes, setGrantCodes] = useState<string[]>([]);
 
   const q = { keyword, status, page, size };
   const list = useQuery({ queryKey: ["applies", q], queryFn: () => api.listApplies(q) });
@@ -76,6 +79,9 @@ export function ApplyTab({ c, canAudit }: { c: MerchantsCopy; canAudit: boolean 
     queryFn: () => api.listCommunities({ page: 1, size: 200 }),
   });
 
+  // 授权码字典：通过时在同一屏里勾。只有启用的会下发
+  const authCodes = useQuery({ queryKey: ["auth-codes"], queryFn: () => api.listAuthCodes() });
+
   const invalidate = () => qc.invalidateQueries({ queryKey: ["applies"] });
 
   const accept = useMutation({
@@ -85,7 +91,7 @@ export function ApplyTab({ c, canAudit }: { c: MerchantsCopy; canAudit: boolean 
 
   const audit = useMutation({
     mutationFn: (v: { approved: boolean }) =>
-      api.auditApply(current!.applyNo, v.approved, reason, scope, communityNos),
+      api.auditApply(current!.applyNo, v.approved, reason, scope, communityNos, grantCodes),
     onSuccess: (_, v) => {
       invalidate();
       setCurrent(null);
@@ -98,6 +104,8 @@ export function ApplyTab({ c, canAudit }: { c: MerchantsCopy; canAudit: boolean 
     setReason("");
     setScope(a.serviceScope || "COMMUNITY");
     setCommunityNos([...(a.communityNos ?? [])]);
+    // 上一轮审核已经定过就沿用，别让运营重勾一遍 —— 重勾只会多出「这次忘了勾」
+    setGrantCodes([...(a.categoryCodes ?? [])]);
   }
 
   function toggleCommunity(no: string) {
@@ -288,6 +296,33 @@ export function ApplyTab({ c, canAudit }: { c: MerchantsCopy; canAudit: boolean 
                     )}
                   </div>
                 )}
+
+                {/*
+                  经营类目授权：**与通过同一次提交**。
+                  分两步做会留下一个状态 —— 通过了，但一个码都没授：商家收到通过通知、
+                  进去建品、上架被拒，而错误说的是「你还没有资质授权」，去哪申请没人告诉他。
+                  一个都不勾是合法的：只卖无门槛类目的商家不需要任何码。
+                */}
+                <div className="mt-3">
+                  <Label>{c.applyGrantLabel}</Label>
+                  <p className="mt-1 txt-caption text-muted-foreground">
+                    {fill(c.applyGrantSaid, { s: current.category || "—" })}
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-3">
+                    {(authCodes.data ?? []).map((a) => (
+                      <CheckboxField
+                        key={a.code}
+                        checked={grantCodes.includes(a.code)}
+                        onChange={() =>
+                          setGrantCodes((p) =>
+                            p.includes(a.code) ? p.filter((x) => x !== a.code) : [...p, a.code],
+                          )
+                        }
+                        label={a.name}
+                      />
+                    ))}
+                  </div>
+                </div>
 
                 <div className="mt-4">
                   <Label>{c.applyReasonLabel}</Label>

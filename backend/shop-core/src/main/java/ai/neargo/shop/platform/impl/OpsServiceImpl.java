@@ -258,7 +258,8 @@ public class OpsServiceImpl implements OpsService {
     @Override
     @Transactional
     public void auditApply(String applyNo, boolean approved, String reason,
-                           String serviceScope, List<String> communityNos) {
+                           String serviceScope, List<String> communityNos,
+                           List<String> grantCodes) {
         if (!approved && (reason == null || reason.isBlank())) {
             // 不写理由的驳回等于让对方猜。申请人拿不到理由就只能反复重提
             throw BizException.of(ErrorCode.BAD_REQUEST);
@@ -318,6 +319,23 @@ public class OpsServiceImpl implements OpsService {
              * 放在 activate 之后：主体号要先有。与本方法同一个事务，
              * 转存失败则审核一并回滚 —— 半通过（主体建了、资质没进）是最难查的状态。
              */
+            /*
+             * **授码与建主体同一个事务**（批 B）。
+             *
+             * 运营没勾就沿用申请单上已经定下的那份（V169 回填或上一轮审核写的）——
+             * 让运营在每次重审时重勾一遍，只会多出「这次忘了勾」这一种失败。
+             * 两边都空是合法的：只卖无门槛类目的商家不需要任何码。
+             */
+            List<String> codes = grantCodes != null && !grantCodes.isEmpty()
+                    ? grantCodes : readCategoryCodes(apply.getCategoryCodes());
+            if (!codes.isEmpty()) {
+                merchantAdminPort.grantCategoryCodes(merchantNo, codes);
+                // 写回申请单：**当初批的是什么**，事后要查得出，而主体上那份是会被改的
+                apply.setCategoryCodes(writeCategoryCodes(codes));
+                audit("MERCHANT_AUTH_CODES", merchantNo,
+                        "入驻审核授予 " + String.join(",", codes));
+            }
+
             int saved = merchantAdminPort.saveQualifications(
                     merchantNo, toPortItems(apply.getQualificationItems()));
             if (saved > 0) {
@@ -1104,6 +1122,24 @@ public class OpsServiceImpl implements OpsService {
     }
 
     /** 运营在审核时补的社区列表写回申请单 —— activate 读的就是它，只有一份真源 */
+    /** 授予的经营类目编码存 JSON。与社区列表同一套写法，别再造一种 */
+    private String writeCategoryCodes(List<String> codes) {
+        return objectMapper.writeValueAsString(codes);
+    }
+
+    /** 解析失败按空处理：授码为空是合法状态（只卖无门槛类目），不必为脏数据抛 */
+    private List<String> readCategoryCodes(String json) {
+        if (json == null || json.isBlank()) {
+            return List.of();
+        }
+        try {
+            return objectMapper.readValue(json, new TypeReference<List<String>>() {
+            });
+        } catch (Exception e) {
+            return List.of();
+        }
+    }
+
     private String writeCommunityNos(List<String> nos) {
         return objectMapper.writeValueAsString(nos);
     }

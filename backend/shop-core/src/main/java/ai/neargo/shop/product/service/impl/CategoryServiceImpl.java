@@ -25,8 +25,18 @@ import java.util.stream.Collectors;
 @Service
 public class CategoryServiceImpl implements CategoryService {
 
-    /** 三级封顶：再深一层，C 端的类目导航就没法展示了（也没有第四层的产品定义）。 */
-    private static final int MAX_LEVEL = 3;
+    /**
+     * <b>两级封顶</b>（2026-08-21，TDD-分类模型重构 §1.2）。此前是三级。
+     *
+     * <p>降级的实际收益是**让「商家选自己卖哪几类」这一步成为可能** ——
+     * 三级树把它变成一个要展开两层的操作，而商家心里的答案就是「蔬菜、水果」这一层。
+     * 叶菜 / 根茎菜的粒度服务的是搜索导购与比价，一个社区几十家店用不上它，
+     * 带来的只有录入负担。
+     *
+     * <p>代价是资质粒度变粗：`required_code` 从三级上移到二级（V168）。
+     * 判据没变，只是范围从「叶菜」扩到「蔬菜」—— 两者要的本来就是同一张食品经营许可证。
+     */
+    private static final int MAX_LEVEL = 2;
 
     private static final String ACTIVE = "ACTIVE";
     private static final String ARCHIVED = "ARCHIVED";
@@ -71,6 +81,33 @@ public class CategoryServiceImpl implements CategoryService {
     }
 
     @Override
+    public String categoryTypeOf(String categoryNo) {
+        if (categoryNo == null || categoryNo.isBlank()) {
+            return null;
+        }
+        PrdCategory c = categoryMapper.selectOne(Wrappers.<PrdCategory>lambdaQuery()
+                .select(PrdCategory::getTemplate)
+                .eq(PrdCategory::getCategoryNo, categoryNo).last("limit 1"));
+        /*
+         * 查无此类目返回 null 而不是兜底成 NORMAL：兜底会把「端上传了一个不存在的
+         * 类目号」变成「这是一件日用品」—— 一条错误数据被静默转成了一条合法数据。
+         * 调用方拿到 null 才有机会拒掉。
+         */
+        return c == null ? null : TEMPLATE_TO_TYPE.get(c.getTemplate());
+    }
+
+    @Override
+    public boolean isActive(String categoryNo) {
+        if (categoryNo == null || categoryNo.isBlank()) {
+            return false;
+        }
+        PrdCategory c = categoryMapper.selectOne(Wrappers.<PrdCategory>lambdaQuery()
+                .select(PrdCategory::getStatus)
+                .eq(PrdCategory::getCategoryNo, categoryNo).last("limit 1"));
+        return c != null && ACTIVE.equals(c.getStatus());
+    }
+
+    @Override
     public List<OpsCategoryVO> list(String keyword, String template, boolean showArchived) {
         var q = Wrappers.<PrdCategory>lambdaQuery();
         if (!showArchived) {
@@ -107,12 +144,26 @@ public class CategoryServiceImpl implements CategoryService {
          * 只是它再也不出现在该出现的地方。
          */
         int level = 1;
+        /*
+         * **子节点的 template 一律继承父节点，端上传什么都忽略。**
+         *
+         * 品类改成由类目派生之后，这棵树就承载了履约与合规判定 —— 父节点是 FRESH、
+         * 子节点被填成 STANDARD 的话，同一支上的商品会走两套履约，而树渲染出来
+         * 看不出任何异常。此前没有任何一处拦这个。
+         *
+         * 只有一级类目（无父）才由运营指定 template —— 也就是说
+         * <b>形态实际上锁在根这一层</b>，这是「靠层级治理而不是靠字段互相制衡」的落点。
+         */
+        String template = cmd.template() == null || cmd.template().isBlank()
+                ? "STANDARD" : cmd.template();
         if (cmd.parentNo() != null && !cmd.parentNo().isBlank()) {
             PrdCategory parent = byNo(cmd.parentNo());
             level = nz(parent.getLevel()) + 1;
             if (level > MAX_LEVEL) {
                 throw BizException.of(ErrorCode.CATEGORY_TOO_DEEP);
             }
+            template = parent.getTemplate() == null || parent.getTemplate().isBlank()
+                    ? "STANDARD" : parent.getTemplate();
         }
 
         boolean isNew = cmd.categoryNo() == null || cmd.categoryNo().isBlank();
@@ -122,7 +173,7 @@ public class CategoryServiceImpl implements CategoryService {
         c.setNameEn(blankToNull(cmd.nameEn()));
         c.setParentNo(blankToNull(cmd.parentNo()));
         c.setLevel(level);
-        c.setTemplate(cmd.template() == null || cmd.template().isBlank() ? "STANDARD" : cmd.template());
+        c.setTemplate(template);
         c.setQualificationRequired(writeJson(cmd.qualifications()));
         c.setRequiredCode(blankToNull(cmd.requiredCode()));
         c.setIcon(cmd.icon() == null ? "" : cmd.icon());

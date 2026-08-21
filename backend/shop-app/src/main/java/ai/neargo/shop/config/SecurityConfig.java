@@ -1,5 +1,6 @@
 package ai.neargo.shop.config;
 
+import ai.neargo.shop.auth.ApiAuthEntryPoint;
 import ai.neargo.shop.auth.BizContextFilter;
 import ai.neargo.shop.auth.BizIdentityResolver;
 import ai.neargo.shop.auth.ConsumerTokenAuthFilter;
@@ -114,7 +115,8 @@ public class SecurityConfig {
                 // BizContextFilter 必须在认证之后：它要用登录态去解析经营侧作用域
                 .addFilterAfter(new BizContextFilter(resolver.getIfAvailable(() -> BizIdentityResolver.NONE)),
                         ConsumerTokenAuthFilter.class)
-                .exceptionHandling(e -> e.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
+                // 401 要带包体，且区分「没登录」与「登录过期」—— 见 ApiAuthEntryPoint
+                .exceptionHandling(e -> e.authenticationEntryPoint(new ApiAuthEntryPoint()))
                 .build();
     }
 
@@ -138,7 +140,8 @@ public class SecurityConfig {
                         .anyRequest().authenticated())
                 .addFilterBefore(new OperatorTokenAuthFilter(tokenStore, identityResolver),
                         UsernamePasswordAuthenticationFilter.class)
-                .exceptionHandling(e -> e.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
+                // 401 要带包体，且区分「没登录」与「登录过期」—— 见 ApiAuthEntryPoint
+                .exceptionHandling(e -> e.authenticationEntryPoint(new ApiAuthEntryPoint()))
                 .build();
     }
 

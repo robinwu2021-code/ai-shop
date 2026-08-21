@@ -1,5 +1,5 @@
 // 覆盖范围：消息触达（P-14.1）与客服（P-14.2）。
-import type { Captcha, FaqEntry, InAppLog, InboxMessage, MsgTemplate, NotifyChannel, NotifyChannelHealth, NotifyChannelRow, NotifyLog, NotifyPushTask, NotifyQuota, Page, Ticket, WxTemplates } from "@/lib/types";
+import type { Captcha, FaqEntry, InAppLog, InboxMessage, MsgTemplate, NotifyChannel, NotifyChannelHealth, NotifyChannelRow, NotifyLog, NotifyPushTask, NotifyQuota, Page, PushDevice, Ticket, WxTemplates } from "@/lib/types";
 import type { PageQ, TicketQ } from "../query";
 
 export interface MessageApi {
@@ -72,8 +72,19 @@ export interface MessageApi {
     body?: string;
     /** 模板参数（短信 code、微信 thing2…）。**短信只认这个** */
     params?: Record<string, string>;
+    /**
+     * 指定一台推送终端（仅 PUSH）。为空 = 推给该收件人的**所有**设备。
+     * 后端仍会核对这台确属该收件人，运营不能拿别人的 cid 乱发。
+     */
+    clientId?: string;
     captchaId: string; captchaCode: string;
   }): Promise<void>;
+
+  /**
+   * 某收件人绑定的推送终端列表（仅 PUSH 测试用）。空数组 = 没绑设备。
+   * 运营据此在下拉里挑一台真机验证，而不是广播给他名下所有设备。
+   */
+  listPushDevices(userNo: string): Promise<PushDevice[]>;
 
   /**
    * 收件人预检。**在运营填完 userNo 时调，早于取验证码** ——

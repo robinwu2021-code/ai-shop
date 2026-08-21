@@ -53,7 +53,17 @@ public interface OrderService {
     void closeUnpaid(String orderNo, String reason);
 
     /** 订单列表：**子单粒度**（Q6）—— 用户心智里「订单」就是按店分的。 */
-    PageData<OrderVO> list(String status, long page, long size);
+    /**
+     * 买家订单列表。
+     *
+     * @param status       抽象状态（{@code WAIT_PAY / PAID / FULFILLING / COMPLETED / ...}）。
+     *                     <b>不再接受 ARRIVED / SHIPPED</b> —— 那是「状态 × 履约」的组合，
+     *                     现在由 {@code fulfillments} 单独表达
+     * @param fulfillments 想要的履约方式；空 = 不限。与 {@code status} <b>正交</b>：
+     *                     「待取货」= {@code FULFILLING} + 自提类，
+     *                     「待使用」= {@code FULFILLING} + 服务类
+     */
+    PageData<OrderVO> list(String status, java.util.List<String> fulfillments, long page, long size);
 
     OrderVO cancel(String orderNo, String reason);
 
@@ -70,8 +80,13 @@ public interface OrderService {
      *                    「商家开关 → 抵扣上限 → 账户余额 → 并发」四道闸截断，
      *                    传多少都不会超。null / 0 = 不用积分
      */
+    /**
+     * @param appointmentAt 预约开始时间戳。<b>仅 {@code APPOINTMENT} 履约需要，且必填</b> ——
+     *                      缺了商家不知道该几点上门，买家也不知道自己约了没有
+     */
     record CreateOrderCommand(List<Item> items, String fulfillment, String pickupNo,
-                              String addressId, String couponNo, Long usePoints, String remark) {
+                              String addressId, String couponNo, Long usePoints, String remark,
+                              Long appointmentAt) {
 
         public record Item(String goodsNo, String skuNo, int qty) {
         }

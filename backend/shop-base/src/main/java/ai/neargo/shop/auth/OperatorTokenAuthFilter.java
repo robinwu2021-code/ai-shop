@@ -51,6 +51,10 @@ public class OperatorTokenAuthFilter extends OncePerRequestFilter {
         String token = ConsumerTokenAuthFilter.bearer(req);
         if (token != null) {
             TokenStore.SessionData d = tokenStore.get(token).orElse(null);
+            // 带了令牌却查不到会话 = 已过期/被吊销。与「没带令牌」分开，理由见 ApiAuthEntryPoint
+            if (d == null) {
+                req.setAttribute(ConsumerTokenAuthFilter.TOKEN_EXPIRED_ATTR, Boolean.TRUE);
+            }
             if (d != null && d.user().realm() == Realm.OPERATOR) {
                 /*
                  * **角色与数据域现算，不用会话里那份。**

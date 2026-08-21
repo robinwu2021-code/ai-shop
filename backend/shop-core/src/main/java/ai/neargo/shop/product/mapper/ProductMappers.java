@@ -125,6 +125,19 @@ public final class ProductMappers {
                          @Param("qty") int qty);
     }
 
+    /**
+     * 门店级售价。**没有原子扣减那套** —— 价格不是被并发争抢的资源，
+     * 它只被商家改，读的人只读。
+     */
+    public interface StorePriceMapper extends BaseMapper<ai.neargo.shop.product.entity.PrdStorePrice> {
+    }
+
+    public interface TopicMapper extends BaseMapper<ai.neargo.shop.product.entity.PrdTopic> {
+    }
+
+    public interface TopicGoodsMapper extends BaseMapper<ai.neargo.shop.product.entity.PrdTopicGoods> {
+    }
+
     /** 门店级上架关系。只有增删改查，没有原子扣减那套 —— 它不是并发争抢的资源 */
     public interface StoreGoodsMapper extends BaseMapper<ai.neargo.shop.product.entity.PrdStoreGoods> {
     }
@@ -152,5 +165,12 @@ public final class ProductMappers {
     }
 
     public interface CategoryMapper extends BaseMapper<PrdCategory> {
+    }
+
+    /**
+     * 平台标准品。<b>跨商家共享的主数据，不注册数据域</b> —— 与 prd_category 同类：
+     * 它不属于任何一家商家，按商家维度过滤它只会让所有人都搜不到。
+     */
+    public interface SpuStdMapper extends BaseMapper<ai.neargo.shop.product.entity.PrdSpuStd> {
     }
 }

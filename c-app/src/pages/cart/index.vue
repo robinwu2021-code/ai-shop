@@ -51,14 +51,23 @@ onShow(() => cart.load());
     <view v-for="g in cart.groups" :key="g.fulfillment" class="sh-card group">
       <text class="sh-chip sh-chip--primary">{{ $t(`fulfillment.${g.fulfillment}`) }}</text>
 
-      <biz-sku-row
-        v-for="it in g.items"
-        :key="it.skuNo"
-        :cover="it.cover"
-        :title="it.title"
-        :spec="it.spec"
-        size="lg"
-      >
+      <!--
+        商家段。**一段 = 结算后的一笔子订单** —— 用户要在提交前看见会拆成几单。
+        只有一家店时不画段头：一家店还套个分组框是纯噪音。
+      -->
+      <template v-for="m in g.merchants" :key="m.merchantNo">
+        <view v-if="g.merchants.length > 1" class="seg">
+          <text class="seg__name">{{ m.merchantName || $t("cart.unknownMerchant") }}</text>
+        </view>
+
+        <biz-sku-row
+          v-for="it in m.items"
+          :key="it.skuNo"
+          :cover="it.cover"
+          :title="it.title"
+          :spec="it.spec"
+          size="lg"
+        >
           <view v-if="it.giftQty" class="giftrow">
             <text class="giftrow__tag">{{ $t("promo.gift") }}</text>
             <text class="giftrow__text sh-num">
@@ -74,7 +83,13 @@ onShow(() => cart.load());
               <view class="stepper__btn" @tap="inc(it.skuNo, it.qty)"><text>＋</text></view>
             </view>
           </view>
-      </biz-sku-row>
+        </biz-sku-row>
+      </template>
+
+      <!-- 会拆几单，说在提交之前。放在提交之后就只剩解释作用了（C-OD-06 的意图前移） -->
+      <text v-if="g.merchants.length > 1" class="splitnote">
+        {{ $t("cart.splitNote", { n: g.merchants.length }) }}
+      </text>
     </view>
 
     <sh-empty bare v-if="!cart.items.length" :text='$t("cart.empty")'></sh-empty>
@@ -97,6 +112,23 @@ onShow(() => cart.load());
 <style scoped>
 .group {
   margin-bottom: 20rpx;
+}
+.seg {
+  display: flex;
+  align-items: center;
+  margin: 24rpx 0 8rpx;
+}
+.seg__name {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: var(--sh-ink);
+}
+.splitnote {
+  display: block;
+  margin-top: 16rpx;
+  font-size: 24rpx;
+  color: var(--sh-sub);
+  line-height: 1.5;
 }
 .giftrow {
   display: flex;

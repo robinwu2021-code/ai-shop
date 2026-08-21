@@ -88,12 +88,22 @@
       }
     },
     {
+      "path": "pages/store-categories/index",
+      "style": {
+        "navigationBarTitleText": "我的类目"
+      }
+    },
+    {
       "path": "pages/staff-detail/index",
-      "style": { "navigationBarTitleText": "员工详情" }
+      "style": {
+        "navigationBarTitleText": "员工详情"
+      }
     },
     {
       "path": "pages/role-detail/index",
-      "style": { "navigationBarTitleText": "角色" }
+      "style": {
+        "navigationBarTitleText": "角色"
+      }
     },
     {
       "path": "pages/staff/index",
@@ -184,7 +194,7 @@
   "tabBar": {
     "custom": true,
     "color": "#7B808A",
-    "selectedColor": "#00B578",
+    "selectedColor": "#E1251B",
     "backgroundColor": "#FFFFFF",
     "borderStyle": "white",
     "list": [

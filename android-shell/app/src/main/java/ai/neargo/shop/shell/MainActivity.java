@@ -18,8 +18,9 @@ import androidx.appcompat.app.AppCompatActivity;
  *
  * <p><b>这不是 uni-app 的原生打包</b>：原生打包要 DCloud appid + HBuilderX（GUI）
  * 或离线 SDK，这里都拿不到。所以走 H5 构建产物 + WebView 的路子 ——
- * 页面、路由、样式与真机一致，但**没有原生能力**（微信/支付宝支付 SDK、
- * 扫码、推送都用不了）。用来看界面、走流程够，联调支付不够。
+ * 页面、路由、样式与真机一致。原生能力按需在壳里补：<b>推送已接</b>（个推原生 SDK +
+ * {@link PushBridge} JS 桥，见 ShellApplication/PushIntentService）；微信/支付宝支付、
+ * 扫码仍未接。用来看界面、走流程、验推送够，联调支付不够。
  *
  * <p>资源来自 {@code assets/h5/}，由 {@code npm run build:h5} 产出并拷入。
  * 构建时用 {@code H5_BASE=./}，否则资源引用是绝对路径，{@code file://} 下全 404。
@@ -62,15 +63,22 @@ public class MainActivity extends AppCompatActivity {
         s.setJavaScriptEnabled(true);
         // uni-app 的 H5 产物用 localStorage 存登录态、皮肤、mock 数据库
         s.setDomStorageEnabled(true);
-        // file:// 下加载同目录的 js/css。**只开这一个**，
-        // 不开 setAllowUniversalAccessFromFileURLs —— 那会让本地页面能读任意源
+        // file:// 下加载同目录的 js/css。
         s.setAllowFileAccess(true);
         s.setAllowFileAccessFromFileURLs(true);
+        // release 版：H5 从 assets（file://）加载，但要调 http://<服务器IP>:8081 的 API ——
+        // 跨源。开这个让 file:// 页面能请求其它源（否则 XHR/fetch 被同源策略挡下，页面空转）。
+        // 本壳只加载我们自己打进 assets 的 H5，不加载外部页面，风险可控。
+        s.setAllowUniversalAccessFromFileURLs(true);
         // 页面里有 Google Fonts 的外链，混合内容要允许，否则字体请求被拦
         s.setMixedContentMode(WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE);
         // 按设备宽度渲染，不然会以 980px 桌面宽度缩放
         s.setUseWideViewPort(true);
         s.setLoadWithOverviewMode(true);
+
+        // 原生推送桥：H5 里 window.NativePush.getClientId() 拿本机个推 cid，
+        // 再走 /biz/push-token 注册。cid 由个推异步回调写入 PushBridge（见 PushIntentService）。
+        web.addJavascriptInterface(new PushBridge(), "NativePush");
 
         // 站内跳转留在 WebView 里，不要甩给系统浏览器
         web.setWebViewClient(new WebViewClient());

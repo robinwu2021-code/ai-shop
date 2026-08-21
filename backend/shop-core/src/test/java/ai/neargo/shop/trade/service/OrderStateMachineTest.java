@@ -109,13 +109,44 @@ class OrderStateMachineTest {
         /**
          * 「待付款的单直接发货」在真实世界里发生过：商家看到订单列表就去发货，
          * 而那一单其实还没付款。拦住它是为了别让货先出去。
+         *
+         * <p><b>这条闸从图移到了入口</b>：{@code WAIT_PAY → FULFILLING} 现在是一条合法边，
+         * 因为**支付回调**要用它（服务类履约付款即出码，没有备货发货这一步）。
+         * 同一对状态，系统走得通、商家走不通 —— 差别在发起方，而发起方是图表达不了的，
+         * 所以分成两个断言方法。
          */
         @Test
-        @DisplayName("★ 未支付不能直接进入履约中")
+        @DisplayName("★ 商家不能把未支付的单推进履约 —— 货先出去了，钱还没收")
         void cannotFulfillBeforePaid() {
-            assertThatThrownBy(() -> OrderStateMachine.assertSubOrderTransit(
+            assertThatThrownBy(() -> OrderStateMachine.assertMerchantSubOrderTransit(
                     OrdSubOrder.WAIT_PAY, OrdSubOrder.FULFILLING))
                     .isInstanceOf(BizException.class);
+            // 「标记送达」同理：未付款的单一步跳到已完成，钱就永远收不回来了
+            assertThatThrownBy(() -> OrderStateMachine.assertMerchantSubOrderTransit(
+                    OrdSubOrder.WAIT_PAY, OrdSubOrder.COMPLETED))
+                    .isInstanceOf(BizException.class);
+        }
+
+        /**
+         * 反方向：支付回调**必须**走得通这条边，否则服务类订单付完款卡在「待付款」。
+         *
+         * <p>和上一条一起看才有意义 —— 只留上一条的话，把边删掉也能过。
+         */
+        @Test
+        @DisplayName("★ 但支付回调可以：服务类履约付款即出码，直接进履约中")
+        void paymentCallbackMayFulfillDirectly() {
+            assertThatCode(() -> OrderStateMachine.assertSubOrderTransit(
+                    OrdSubOrder.WAIT_PAY, OrdSubOrder.FULFILLING)).doesNotThrowAnyException();
+        }
+
+        /** 幂等：商家闸不该把「本来就在这个状态」的重放请求也拒了 */
+        @Test
+        @DisplayName("商家闸对 from == to 仍然放行（重复点击是空操作）")
+        void merchantGateStaysIdempotent() {
+            assertThatCode(() -> OrderStateMachine.assertMerchantSubOrderTransit(
+                    OrdSubOrder.WAIT_PAY, OrdSubOrder.WAIT_PAY)).doesNotThrowAnyException();
+            assertThatCode(() -> OrderStateMachine.assertMerchantSubOrderTransit(
+                    OrdSubOrder.WAIT_FULFILL, OrdSubOrder.FULFILLING)).doesNotThrowAnyException();
         }
 
         @Test

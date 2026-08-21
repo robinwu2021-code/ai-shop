@@ -68,6 +68,13 @@ export function TestSendDrawer({
 
   const [target, setTarget] = useState("");
   const [level, setLevel] = useState("NORMAL");
+  /*
+   * 指定终端（仅推送）。`deviceUser` 是**已提交**的收件人（onBlur 时才落定），
+   * 用它当设备查询的 key —— 直接拿 target 会每敲一个字就发一次请求。
+   * clientId 为空表示广播到该收件人的所有设备。
+   */
+  const [clientId, setClientId] = useState("");
+  const [deviceUser, setDeviceUser] = useState("");
   const [receiverType, setReceiverType] = useState("OPS");
   const [link, setLink] = useState("/messages");
   const [values, setValues] = useState<Record<string, string>>({});
@@ -87,9 +94,18 @@ export function TestSendDrawer({
   });
   const refreshCaptcha = () => { setCaptchaCode(""); void captcha.refetch(); };
 
+  // 该收件人绑定的推送终端。只在推送通道、且收件人已提交时查
+  const devices = useQuery({
+    queryKey: ["push-devices", deviceUser],
+    queryFn: () => api.listPushDevices(deviceUser),
+    enabled: open && channel === "PUSH" && !!deviceUser,
+  });
+
   // 换通道/换模板时把上一条的内容清掉 —— 留着会让人以为这次填的就是上次那些
-  useEffect(() => { setValues({}); setTarget(""); setCaptchaCode(""); setPrecheckErr(""); },
-    [channel, open]);
+  useEffect(() => {
+    setValues({}); setTarget(""); setCaptchaCode(""); setPrecheckErr("");
+    setClientId(""); setDeviceUser("");
+  }, [channel, open]);
 
   const keys = tpl ? placeholdersOf(tpl.content) : [];
   const preview = tpl ? renderTemplate(tpl.content, values) : "";
@@ -120,6 +136,8 @@ export function TestSendDrawer({
         // 微信再带一个 scene：一条模板对一个场景，后端据此决定发到货还是退款
         params: channel === "WXSUB"
           ? { ...values, scene: wxSceneOf(tpl?.templateNo) } : values,
+        // 选了某台终端就定向发它一台；没选（空）则后端广播给他所有设备
+        clientId: channel === "PUSH" && clientId ? clientId : undefined,
         captchaId: captcha.data?.captchaId ?? "",
         captchaCode: captchaCode.trim(),
       });
@@ -143,6 +161,8 @@ export function TestSendDrawer({
    */
   const runPrecheck = async () => {
     if ((channel !== "WXSUB" && channel !== "PUSH") || !target.trim()) return;
+    // 收件人一落定就去取他的终端列表；换了人就把上次选的那台清掉
+    if (channel === "PUSH") { setDeviceUser(target.trim()); setClientId(""); }
     try {
       await api.precheckNotifyTarget({
         channel, target: target.trim(),
@@ -192,6 +212,30 @@ export function TestSendDrawer({
         {precheckErr && <Notice tone="danger" className="mt-2">{precheckErr}</Notice>}
         {channel === "WXSUB" && <Notice tone="danger" className="mt-2">{c.chWxQuotaWarn}</Notice>}
         {channel === "PUSH" && <Notice tone="info" className="mt-2">{c.chPushHint}</Notice>}
+        {/*
+          * 指定终端：收件人落定（已查到设备）后才出现。挑一台真机能对着它验证个推，
+          * 而不是广播给他名下所有设备。列表为空说明没绑设备 —— 与预检的「没绑设备」呼应。
+          */}
+        {channel === "PUSH" && !!deviceUser && !precheckErr && (
+          <div className="mt-3 space-y-1.5">
+            <Label>{c.tsPushDevice}</Label>
+            {devices.data && devices.data.length === 0 ? (
+              <Notice tone="warning">{c.tsPushDeviceNone}</Notice>
+            ) : (
+              <>
+                <Select value={clientId} onChange={(e) => setClientId(e.target.value)}>
+                  <option value="">{c.tsPushDeviceAll}</option>
+                  {(devices.data ?? []).map((d) => (
+                    <option key={d.clientId} value={d.clientId}>
+                      {`${d.clientIdMask} · ${d.platform} · ${d.provider}`}
+                    </option>
+                  ))}
+                </Select>
+                <div className="txt-caption text-muted-foreground">{c.tsPushDeviceHint}</div>
+              </>
+            )}
+          </div>
+        )}
       </DrawerSection>
 
       {/* 模板：只读展示 */}

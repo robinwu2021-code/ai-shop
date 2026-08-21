@@ -229,26 +229,34 @@ onShow(load);
 .banner {
   margin-top: 20rpx;
   padding: 20rpx;
-  border-radius: var(--sh-radius, 16rpx);
+  border-radius: 16rpx;
   display: flex;
   flex-direction: column;
   gap: 6rpx;
 }
+/* 语义色的 tint 底（与 .sh-chip--warning/--danger 同一套）。
+   **此前写的是 --sh-warning-bg / --sh-danger-bg，这两个变量不存在** ——
+   于是恒用兜底的 #fff7e6 / #fff1f0，深色皮肤下浅黄浅红底配浅色墨字，对比直接崩。 */
 .banner--warn {
-  background: var(--sh-warning-bg, #fff7e6);
+  background: var(--sh-warning-tint);
 }
 .banner--danger {
-  background: var(--sh-danger-bg, #fff1f0);
+  background: var(--sh-danger-tint);
 }
 .banner__t {
   font-weight: 600;
 }
 .banner__d {
-  font-size: 26rpx;
+  font-size: 24rpx;
   color: var(--sh-sub);
 }
 .sec {
   margin: 28rpx 0 12rpx;
+}
+/* 三档卡片之间要有缝。**此前一条外边距规则都没有** —— 三张 sh-card 上下相贴，
+   看着像一整块被切了两刀，分不出「这是三个可比的档位」。用列表行基准 14rpx。 */
+.tier + .tier {
+  margin-top: 14rpx;
 }
 .tier__head {
   display: flex;
@@ -256,8 +264,10 @@ onShow(load);
   gap: 12rpx;
   margin-bottom: 6rpx;
 }
+/* 34rpx/600 = 字阶的标题档（同 .sh-h2）。原先的 32rpx 不在字阶上：
+   与 34 只差 1px，分不出层级，却让「调整全局标题字号」这类改动漏掉这一处 */
 .tier__name {
-  font-size: 32rpx;
+  font-size: 34rpx;
   font-weight: 600;
 }
 .act {

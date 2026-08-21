@@ -29,6 +29,14 @@ export interface ShellConfig {
   /** 底部菜单项。C 端是消费者视角、B 端是商家视角，两套导航没有共用的意义 */
   tabs: readonly ShellTab[];
   /**
+   * 该端的默认皮肤。不传则用色板里的 `DEFAULT_SKIN`。
+   *
+   * <p>B 端传 `brand`（品牌红）而 C 端不传 —— 默认皮肤是**端的选择**，
+   * 不是色板的属性。写死在 `tokens.ts` 里就没法分端，而两端换不换是两个决定。
+   * 用户自己切过皮肤之后以他存的为准，这里只管「第一次打开看到什么」。
+   */
+  defaultSkin?: string;
+  /**
    * tab 角标数字，返回 0 或 undefined 即不显示。
    * C 端用它挂购物车件数；B 端不传。
    */

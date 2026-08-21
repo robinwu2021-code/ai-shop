@@ -83,32 +83,65 @@ export interface PushDevice {
  */
 export function getPushDevice(): Promise<PushDevice | null> {
   // #ifdef APP-PLUS
+  /*
+   * **个推原生直连**（不走 `uni.getPushClientId`——那是 uni-push/DCloud，要实名认证开通，
+   * 我们没开通，register 会 errorCode 1）。改用 `plus.android` 反射直接调个推 SDK：
+   * `PushManager.initialize()` + 轮询 `getClientid()`。cid 由离线包里的
+   * `top.hxmall.bapp.GetuiIntentService.onReceiveClientId` 接住，SDK 侧同步可取。
+   * appid/appkey/appsecret 走 AndroidManifest 的 PUSH_* meta。
+   */
   return new Promise((resolve) => {
+    // 仅 Android（plus.android 存在）。iOS 走 APNs，另行接入
+    const android = (globalThis as unknown as {
+      plus?: {
+        android?: {
+          importClass: (n: string) => { getInstance: () => Record<string, (...a: unknown[]) => unknown> };
+          runtimeMainActivity: () => { getApplicationContext: () => unknown };
+        };
+      };
+    }).plus?.android;
+    if (!android) {
+      resolve(null);
+      return;
+    }
     try {
-      uni.getPushClientId({
-        success: (res: { cid?: string }) => {
-          const cid = res?.cid;
-          if (!cid) {
-            resolve(null);
-            return;
-          }
+      const PushManager = android.importClass("com.igexin.sdk.PushManager");
+      const pm = PushManager.getInstance();
+      const ctx = android.runtimeMainActivity().getApplicationContext();
+      // initialize 幂等：确保个推已起（cid 是注册成功后异步下发的）
+      (pm.initialize as (c: unknown) => void)(ctx);
+      let tries = 0;
+      const tick = () => {
+        let cid = "";
+        try {
+          cid = ((pm.getClientid as (c: unknown) => string)(ctx) as string) || "";
+        } catch {
+          cid = "";
+        }
+        if (cid) {
           resolve({
             platform: uni.getSystemInfoSync().platform === "ios" ? "APP_IOS" : "APP_ANDROID",
-            // uni-push 底座是个推；海外/直连包将来在各自构建里改这里上报 FCM/APNS
             provider: "GETUI",
             clientId: cid,
           });
-        },
-        fail: () => resolve(null),
-      });
+          return;
+        }
+        // 个推注册约 2~5s 出 cid；轮询到 ~15s 拿不到就放弃（推送是加速通道，不阻塞登录）
+        if (++tries >= 30) {
+          resolve(null);
+          return;
+        }
+        setTimeout(tick, 500);
+      };
+      tick();
     } catch {
-      // uni-push 未配置（本地跑未开推送的自定义基座）时 getPushClientId 直接抛
       resolve(null);
     }
   });
   // #endif
 
   // #ifndef APP-PLUS
+  // H5 / 小程序没有推送通道（走站内信与订阅消息）。推送只在原生 App 构建里有。
   return Promise.resolve(null);
   // #endif
 }
@@ -123,27 +156,71 @@ export function getPushDevice(): Promise<PushDevice | null> {
  * @param navigate 由各端注入（两端的路由栈与 tab 页判定不同）
  */
 export function initPush(navigate: (link: string) => void): void {
+  /*
+   * **不再调 `uni.onPushMessage`** —— 那是 uni-push/DCloud 的 API，我们已切成个推原生直连、
+   * 移除了 DCloud push 模块，再调它会弹「push 没有安装」。
+   *
+   * 通知点击的深链路由统一走全局 `__onPushClick`：
+   * - 个推原生直连（离线包）：`GetuiIntentService.onNotificationMessageClicked` 取出
+   *   payload.link，用 evaluateJavascript 调 `window.__onPushClick(link)`；
+   * - WebView 壳（android-shell）：原生 PushBridge 同样调它；
+   * - 普通浏览器：没人调，挂着无害。
+   */
+  (globalThis as unknown as { __onPushClick?: (link: string) => void }).__onPushClick = (
+    link: string,
+  ) => {
+    if (link) navigate(link);
+  };
+
   // #ifdef APP-PLUS
+  /*
+   * **申请通知权限**（Android 13+ / targetSdk 33 起必须运行时申请 POST_NOTIFICATIONS）。
+   *
+   * 这一步以前是 DCloud push 模块替我们做的；改成个推原生直连、移除那个模块之后
+   * **没人再申请它** —— 症状极具迷惑性：个推回 `successed_online`、
+   * `onNotificationMessageArrived` 也进了，但系统把通知**静默丢弃**
+   * （`dumpsys notification` 里 numEnqueuedByApp=3 / numPostedByApp=0，
+   * appops 显示 POST_NOTIFICATION: ignore），用户一条也看不到。
+   */
+  const plusAndroid = (globalThis as unknown as {
+    plus?: {
+      android?: {
+        requestPermissions?: (
+          list: string[],
+          success: (r: unknown) => void,
+          fail: (e: unknown) => void,
+        ) => void;
+        importClass?: (n: string) => Record<string, (...a: unknown[]) => unknown> | undefined;
+      };
+    };
+  }).plus?.android;
   try {
-    uni.onPushMessage((res: { type?: string; data?: unknown }) => {
-      // type=click 才是用户点了通知；receive 是应用在前台收到，不该抢走当前页面
-      if (res?.type !== "click") return;
-      const data = res.data as { payload?: unknown } | undefined;
-      const payload = data?.payload;
-      const raw = typeof payload === "string" ? safeParse(payload) : payload;
-      const link = (raw as { link?: string } | null)?.link;
-      if (link) navigate(link);
-    });
+    plusAndroid?.requestPermissions?.(
+      ["android.permission.POST_NOTIFICATIONS"],
+      () => {},
+      () => {},
+    );
   } catch {
-    // 同 getPushDevice：未配置推送的基座下静默降级
+    // 低版本 Android 没有这个权限、或非 App 环境：无需申请，静默跳过
   }
+
+  /*
+   * 消费「用户点了通知」留下的深链。原生侧（GetuiIntentService.onNotificationMessageClicked）
+   * 把 link 存进静态字段，这里取走 —— **点击常伴随冷启动**，那时 webview 还没建好，
+   * 让原生直接回调 JS 必丢，所以改成 JS 起来后主动取。
+   * onShow 也取一次：通知点击时应用可能只是从后台唤到前台。
+   */
+  const takePendingLink = () => {
+    try {
+      const svc = plusAndroid?.importClass?.("top.hxmall.bapp.GetuiIntentService");
+      const link = svc?.takePendingLink?.() as string | undefined;
+      if (link) navigate(link);
+    } catch {
+      // 非本离线包（如自定义基座）里没有这个类：忽略
+    }
+  };
+  takePendingLink();
+  uni.onAppShow?.(takePendingLink);
   // #endif
 }
 
-function safeParse(s: string): unknown {
-  try {
-    return JSON.parse(s);
-  } catch {
-    return null;
-  }
-}

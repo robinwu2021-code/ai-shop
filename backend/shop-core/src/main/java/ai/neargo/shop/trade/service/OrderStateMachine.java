@@ -28,7 +28,13 @@ public final class OrderStateMachine {
 
     /** 子单允许的迁移。 */
     private static final Map<String, Set<String>> SUB_ORDER = Map.of(
-            OrdSubOrder.WAIT_PAY, Set.of(OrdSubOrder.WAIT_FULFILL, OrdSubOrder.CANCELLED),
+            /*
+             * 直接到 FULFILLING 是**服务类履约**（到店核销）：付款即出码，
+             * 买家立刻能用，商家没有备货发货这一步。
+             * 实物类仍走 WAIT_FULFILL —— 差别在履约方式，不在状态。
+             */
+            OrdSubOrder.WAIT_PAY,
+            Set.of(OrdSubOrder.WAIT_FULFILL, OrdSubOrder.FULFILLING, OrdSubOrder.CANCELLED),
             OrdSubOrder.WAIT_FULFILL, Set.of(OrdSubOrder.FULFILLING, OrdSubOrder.COMPLETED, OrdSubOrder.REFUNDED),
             OrdSubOrder.FULFILLING, Set.of(OrdSubOrder.COMPLETED, OrdSubOrder.REFUNDED),
             OrdSubOrder.COMPLETED, Set.of(OrdSubOrder.REFUNDED),   // 售后可以发生在完成之后
@@ -61,6 +67,27 @@ public final class OrderStateMachine {
     }
 
     public static void assertSubOrderTransit(String from, String to) {
+        assertTransit(SUB_ORDER, from, to);
+    }
+
+    /**
+     * <b>商家发起</b>的子单迁移。比 {@link #assertSubOrderTransit} 多一条：<b>不能从未付款出发</b>。
+     *
+     * <p>为什么要单开一个方法：{@code WAIT_PAY → FULFILLING} 这条边是**支付回调**要用的
+     * （服务类履约付款即出码，没有备货发货这一步）。但同一条边一旦进了图，
+     * 商家侧「发货」也就能从未付款直接推过去 —— 货先出去了，钱还没收。
+     *
+     * <p>「谁发起」这件事图本身表达不了：同一对 (from, to)，系统走得通、人走不通。
+     * 与其把发起方编进状态名（WAIT_PAY_BY_SYSTEM…），不如在入口分两个断言。
+     *
+     * <p>这条闸是被 {@code OrderStateMachineTest.cannotFulfillBeforePaid} 挡下来的：
+     * 加那条支付边时它立刻变红，而它守的正是「商家看着订单列表就去发货、
+     * 那一单其实没付款」这个在真实世界发生过的事。
+     */
+    public static void assertMerchantSubOrderTransit(String from, String to) {
+        if (OrdSubOrder.WAIT_PAY.equals(from) && !OrdSubOrder.WAIT_PAY.equals(to)) {
+            throw BizException.of(ErrorCode.ORDER_STATE_ILLEGAL);
+        }
         assertTransit(SUB_ORDER, from, to);
     }
 

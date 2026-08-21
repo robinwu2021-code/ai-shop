@@ -84,12 +84,15 @@ export const FIELDS = [
       // OrdSubOrder 那四个常量现在只是引用（= Fulfillments.X），
       // 继续指着它会**提不出任何字面量** —— 那正是这条 fatal 断言拦下来的情况。
       javaConst: "shop-base/src/main/java/ai/neargo/shop/common/Fulfillments.java",
-      only: ["STORE_PICKUP", "NEIGHBOR_PICKUP", "MERCHANT_DELIVERY", "EXPRESS"],
+      // STORE_VERIFY / APPOINTMENT 于 2026-08-17 接通（服务履约一、二期）。
+      // INSTANT 未接，由端上的 PLANNED_FULFILLMENTS 申报，不在这里列
+      only: ["STORE_PICKUP", "NEIGHBOR_PICKUP", "MERCHANT_DELIVERY", "EXPRESS",
+        "STORE_VERIFY", "APPOINTMENT"],
     },
     clients: [
       { file: SHARED_CONST, const: "FULFILLMENT", planned: "PLANNED_FULFILLMENTS" },
       // 漏登过一次：ops-web 因此多了一个后端没有的 SERVICE，而对账一路绿灯
-      { file: "ops-web/lib/types/order.ts", type: "FulfillmentType", plannedValues: ["STORE_VERIFY"] },
+      { file: "ops-web/lib/types/order.ts", type: "FulfillmentType", plannedValues: [] },
     ],
   },
   {

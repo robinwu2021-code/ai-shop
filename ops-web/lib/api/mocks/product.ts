@@ -1,6 +1,6 @@
 // 覆盖范围：商品与类目（P-3）。上架前的三条校验是本域的核心。
 import * as db from "@/lib/mock/db";
-import { MARKETS, MAX_CATEGORY_LEVEL, SKU_TRANSITIONS, type Category, type Sku, type SpecTemplate } from "@/lib/types";
+import { MARKETS, MAX_CATEGORY_LEVEL, SKU_TRANSITIONS, type Category, type Sku, type SpecTemplate, type SpuStd, type Topic, type ProductGoods } from "@/lib/types";
 import type { ProductApi } from "../contracts/product";
 import { fail, notFound } from "@/lib/biz-error";
 import { wait } from "./_wait";
@@ -14,6 +14,26 @@ function findSku(no: string): Sku {
   const s = db.skus.find((x) => x.skuNo === no);
   if (!s) notFound("商品", "Item", no);
   return s;
+}
+
+/**
+ * 商品池那份 mock 是 **SKU 粒度**（`db.skus`），而专题接口回的是**商品粒度**。
+ * 在这条边界上折一次，别让两种粒度混着流进页面 —— 混了之后
+ * 「这一行是一件货还是一个规格」在每个用到的地方都要重新猜一遍。
+ */
+function asGoods(goodsNo: string): ProductGoods | undefined {
+  const s = db.skus.find((x) => x.skuNo === goodsNo);
+  if (!s) return undefined;
+  return {
+    goodsNo: s.skuNo,
+    title: s.title,
+    merchantNo: s.merchantNo,
+    merchantName: s.merchantName,
+    categoryNo: s.categoryNo,
+    categoryName: s.categoryName,
+    status: s.status,
+    skus: [],
+  };
 }
 
 export const productMock: ProductApi = {
@@ -57,6 +77,124 @@ export const productMock: ProductApi = {
     );
     return wait(saved, 400);
   },
+
+  // ── 标准品库（TDD-标准品库）──
+  // ── 主题分类（陈列，批 E）────────────────────────────────────
+  listTopics: async (q = {}) =>
+    wait(
+      db.topics
+        .filter((t) => (q.includeArchived ?? true) || t.status !== "ARCHIVED")
+        .map((t) => ({ ...t, goodsCount: (db.topicGoods[t.topicNo] ?? []).length }))
+        .sort((a, b) => a.sort - b.sort),
+    ),
+
+  saveTopic: async (v) => {
+    if (!v.title?.trim()) fail("专题名必填", "A topic needs a title");
+    /*
+     * 结束早于开始**直接拒**：不拦的话那个专题从建出来的第一秒就不生效，
+     * 而运营端列表里它看着完全正常，只有 C 端什么都不显示。
+     */
+    if (v.startAt && v.endAt && v.endAt < v.startAt) {
+      fail("结束时间早于开始时间", "The end time is before the start time");
+    }
+    const existing = v.topicNo ? db.topics.find((t) => t.topicNo === v.topicNo) : undefined;
+    if (v.topicNo && !existing) notFound("专题", "Topic", v.topicNo);
+    const row: Topic = existing ?? {
+      topicNo: `TP${String(db.topics.length + 1).padStart(4, "0")}`,
+      title: "", sort: 0, status: "ACTIVE", goodsCount: 0,
+    };
+    row.title = v.title.trim();
+    row.subtitle = v.subtitle?.trim() || undefined;
+    row.cover = v.cover;
+    if (v.sort !== undefined) row.sort = v.sort;
+    // 显式传 undefined 是「取消档期」，常设专题正是这样从限时改回长期的
+    row.startAt = v.startAt;
+    row.endAt = v.endAt;
+    if (!existing) {
+      db.topics.push(row);
+      db.topicGoods[row.topicNo] = [];
+    }
+    return wait({ ...row, goodsCount: (db.topicGoods[row.topicNo] ?? []).length });
+  },
+
+  setTopicArchived: async (topicNo, archived) => {
+    const t = db.topics.find((x) => x.topicNo === topicNo);
+    if (!t) notFound("专题", "Topic", topicNo);
+    // 归档不删：分享出去的海报与历史链接都还指着它
+    t.status = archived ? "ARCHIVED" : "ACTIVE";
+    return wait({ ...t, goodsCount: (db.topicGoods[topicNo] ?? []).length });
+  },
+
+  listTopicGoods: async (topicNo, q = {}) => {
+    const nos = db.topicGoods[topicNo] ?? [];
+    return wait(db.paginate(nos.map(asGoods).filter((x) => !!x), q.page, q.size));
+  },
+
+  setTopicGoods: async (topicNo, goodsNos) => {
+    if (!db.topics.find((x) => x.topicNo === topicNo)) notFound("专题", "Topic", topicNo);
+    /*
+     * **只收在架商品**：摆一件下架/待审的货进去，C 端点进去是空位，
+     * 而运营在后台看到它明明在列表里 —— 两个页面对同一件货给出相反的答案。
+     */
+    for (const no of goodsNos) {
+      const g = db.skus.find((s) => s.skuNo === no);
+      if (!g) notFound("商品", "Product", no);
+      if (g.status !== "ON_SALE") {
+        fail(`「${g.title.zh}」不在售，不能摆进专题`, `“${g.title.en}” is not on sale`);
+      }
+    }
+    db.topicGoods[topicNo] = [...goodsNos];
+    return wait(db.paginate(goodsNos.map(asGoods).filter((x) => !!x), 1, 100));
+  },
+
+  listSpuStd: (q = {}) =>
+    wait(
+      db.paginate(
+        // 被引用得多的排前面：那是「别的店都在用这一条」，对录入的人是有效信号
+        [...db.spuStds].sort((a, b) => (b.refCount ?? 0) - (a.refCount ?? 0)),
+        q.page, q.size,
+        (t) =>
+          db.liveHit(t, q.showArchived) &&
+          db.eqHit(q.categoryNo, t.categoryNo) &&
+          // 标题与别名一起搜：商家嘴里的「洋芋」与标题「土豆」对不上时，
+          // 结果不是报错，是他以为标准库里没有 —— 然后自建一个
+          db.kwHit(q.keyword, t.stdNo, t.title, t.keywords ?? ""),
+      ),
+    ),
+
+  saveSpuStd: async (v) => {
+    if (!v.title?.trim()) fail("标准品名称必填", "A title is required");
+    if (!v.categoryNo) fail("类目必填 —— 商品形态由它派生", "A category is required — the product type derives from it");
+    /*
+     * **每个规格选项必须带 code**。前端也拦一道而不是只靠后端：
+     * 录一条标准品要填好几组规格，走到服务端才被拒等于让运营重填一遍。
+     */
+    for (const g of v.specGroups ?? []) {
+      const codes = g.optionCodes ?? [];
+      if (!g.options?.length || codes.length !== g.options.length || codes.some((x) => !x?.trim())) {
+        fail(`规格「${g.name || "?"}」的每个选项都要填编码 —— 没有编码的标准品与手输没有区别`,
+          `Every option in "${g.name || "?"}" needs a code`);
+      }
+      if (new Set(codes).size !== codes.length) {
+        fail(`规格「${g.name}」里有重复的编码`, `Duplicate codes in "${g.name}"`);
+      }
+    }
+    const saved = db.upsert<SpuStd>(
+      db.spuStds,
+      { refCount: 0, status: "ACTIVE", ...v } as SpuStd,
+      "stdNo",
+      () => db.nextNo("STD", db.spuStds, 9000, "stdNo"),
+    );
+    return wait(saved, 400);
+  },
+
+  /*
+   * 归档**不检查有没有商品在引用**，与类目归档相反 —— `stdNo` 是溯源不是外键：
+   * 归档只是「以后别再从这条建品」，已经建出来的商品照常在售。
+   * 拦住反而会让一条录错的标准品因为被引用过就永远撤不下来。
+   */
+  archiveSpuStd: async (no) => wait(db.archiveRow(db.spuStds, "stdNo", no), 400),
+  unarchiveSpuStd: async (no) => wait(db.unarchiveRow(db.spuStds, "stdNo", no), 400),
 
   archiveCategory: async (categoryNo) => {
     const c = findCategory(categoryNo);

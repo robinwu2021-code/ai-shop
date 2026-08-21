@@ -87,7 +87,7 @@ class BizRoleForbiddenFlowTest {
 
         forbidden(s, post("/biz/goods/save")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"title\":\"偷偷改价\",\"type\":\"NORMAL\",\"skus\":[]}"));
+                .content("{\"categoryNo\":\"CAT210\",\"title\":\"偷偷改价\",\"type\":\"NORMAL\",\"skus\":[]}"));
 
         // 改库存是店员的高频日常，不该被挡 —— 它不出钱
         allowed(s, post("/biz/goods/NOT-EXIST/stock")
@@ -119,7 +119,7 @@ class BizRoleForbiddenFlowTest {
         forbidden(s, get("/biz/settle/bills"));
         forbidden(s, post("/biz/goods/save")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"title\":\"x\",\"type\":\"NORMAL\",\"skus\":[]}"));
+                .content("{\"categoryNo\":\"CAT210\",\"title\":\"x\",\"type\":\"NORMAL\",\"skus\":[]}"));
     }
 
     @Test
@@ -425,7 +425,7 @@ class BizRoleForbiddenFlowTest {
         String goodsNo = json.readTree(mvc().perform(post("/biz/goods/save")
                         .header("Authorization", "Bearer " + ownerToken)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"title\":\"裁剪测试商品\",\"type\":\"NORMAL\",\"cover\":\"📦\","
+                        .content("{\"categoryNo\":\"CAT210\",\"title\":\"裁剪测试商品\",\"type\":\"NORMAL\",\"cover\":\"📦\","
                                 + "\"images\":[],\"specGroups\":[],"
                                 + "\"skus\":[{\"optionValues\":[],\"price\":1000,\"stock\":10}]}"))
                 .andExpect(jsonPath("$.code").value(0))

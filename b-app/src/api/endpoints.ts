@@ -16,6 +16,8 @@ export interface EndpointDef {
 /** key 与 MerchantApi 的方法名一一对应，缺一个就编译不过 */
 export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
   mSendOtp: { method: "POST", path: "/biz/auth/otp/send", auth: false, summary: "发送验证码" },
+  mSetPassword: { method: "POST", path: "/biz/auth/password", auth: true, summary: "设置登录密码" },
+  mHasPassword: { method: "GET", path: "/biz/auth/password", auth: true, summary: "是否已设密码" },
   mLogin: { method: "POST", path: "/biz/auth/login", auth: false, summary: "商家登录" },
   mStaffLogin: { method: "POST", path: "/biz/auth/staff-login", auth: false, summary: "员工登录" },
   mProfile: { method: "GET", path: "/biz/merchant/profile", auth: true, summary: "商家资料" },
@@ -46,6 +48,11 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
   mSetStoreStatus: { method: "POST", path: "/biz/store/:storeNo/status", auth: true, summary: "停用/启用门店" },
   mSetDefaultStore: { method: "POST", path: "/biz/store/:storeNo/default", auth: true, summary: "设为默认店" },
   mSetStorePayment: { method: "POST", path: "/biz/store/:storeNo/payment", auth: true, summary: "换门店收款号" },
+
+  // 门店货架（TDD-品类约束全链路）。读挂 biz:store（店长要看得见本店卖哪几类），
+  // 写挂 biz:store:admin —— 摆货架是店铺配置，不是日常经营
+  mStoreCategories: { method: "GET", path: "/biz/store/:storeNo/categories", auth: true, summary: "本店经营类目" },
+  mSaveStoreCategories: { method: "POST", path: "/biz/store/:storeNo/categories", auth: true, summary: "整份替换本店经营类目" },
 
   mStaffList: { method: "GET", path: "/biz/staff", auth: true, summary: "员工列表" },
   mAddStaff: { method: "POST", path: "/biz/staff", auth: true, summary: "加员工" },
@@ -97,11 +104,18 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
   mToggleGoods: { method: "POST", path: "/biz/goods/:goodsNo/toggle", auth: true, summary: "上下架" },
   mSaveStock: { method: "POST", path: "/biz/goods/:goodsNo/stock", auth: true, summary: "改库存" },
   mSaveStoreStock: { method: "POST", path: "/biz/goods/:goodsNo/store-stock", auth: true, summary: "改当前门店库存" },
+  // 挂 biz:goods 而不是 biz:stock —— 改价是定价权，与补货不是一回事
+  mSaveStorePrice: { method: "POST", path: "/biz/goods/:goodsNo/store-price", auth: true, summary: "改当前门店售价" },
+  mSubmitGoods: { method: "POST", path: "/biz/goods/:goodsNo/submit", auth: true, summary: "提交审核（草稿→待审）" },
+  // 只改截单，**不触发重审** —— 走 save 的话生鲜商家改一次截单等于停一天生意
+  mSavePresale: { method: "POST", path: "/biz/goods/:goodsNo/presale", auth: true, summary: "改截单与到货说明" },
 
   mUploadImage: { method: "POST", path: "/biz/upload/image", auth: true, summary: "上传商品图" },
   mRecognizeGoods: { method: "POST", path: "/biz/goods/recognize", auth: true, summary: "拍照识别商品" },
 
   mCategoryTree: { method: "GET", path: "/biz/category/tree", auth: true, summary: "类目树（选类目）" },
+  // ⚠️ 注释放在属性外面：生成器正则是 `\{\s*method:`，夹在中间这个端点就不进 spec
+  mSpuStdSearch: { method: "GET", path: "/biz/spu-std", auth: true, summary: "标准品搜索（建品用）" },
 
   mSpecTemplates: { method: "GET", path: "/biz/spec-templates", auth: true, summary: "规格模板" },
   mSaveSpecTemplate: { method: "POST", path: "/biz/spec-templates", auth: true, summary: "存为常用规格" },

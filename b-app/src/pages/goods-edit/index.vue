@@ -18,12 +18,25 @@ import { useMerchantStore } from "@/stores/merchant";
 import { CATEGORY_TYPE, MARKETS, TEMPLATE_TO_TYPE } from "@shared/utils/constants";
 import { MAX_IMAGE_BYTES, pickImages } from "@shared/ports/media";
 import { toMajor, toMinor } from "@shared/utils/money";
-import type { Category, CategoryType, CurrencyCode, MarketId, I18nText, SpecTemplate } from "@shared/types";
+import type { Category, CategoryType, CurrencyCode, MarketId, I18nText, SpecTemplate, SpuStd } from "@shared/types";
 
 const { t } = useI18n();
 const merchant = useMerchantStore();
 
-const TYPES = Object.values(CATEGORY_TYPE) as CategoryType[];
+/**
+ * 商家自助能建的类目模板。**一期只开三支**（2026-08-20 收窄，08-21 从品类搬到类目）。
+ *
+ * <p>去掉 `VOUCHER`（卡券）与 `VIRTUAL`（虚拟）：这两类牵扯发放、核销与资金，
+ * 走的是运营配置那条路。摆在建品表单里，商家点进去只会得到一个建了也卖不出去的商品。
+ *
+ * <p><b>为什么是模板不是品类</b>：品类现在由类目派生（见 `select`），
+ * 收窄必须落在**输入**那一侧才有意义 —— 收窄输出的话，商家仍然选得到卡券类目，
+ * 只是形态那行写着一个他建不了的词。
+ *
+ * <p>老商品仍然打得开：这里砍的是**可选项**，回填走的是 `findPath`，
+ * 不受这张表影响。
+ */
+const ALLOWED_TEMPLATES = ["STANDARD", "FRESH", "SERVICE"];
 
 /**
  * 多语言 / 多市场的**展示开关**（2026-08-20）。
@@ -52,8 +65,78 @@ function emptyPrices(): Record<CurrencyCode, string> {
 }
 
 const goodsNo = ref("");
+/**
+ * 引用的标准品（TDD-标准品库）。**为空 = 自建品。**
+ *
+ * <p>「从标准品开始」只是把字段**填进表单**，商家照样能改标题与图；
+ * 但类目与 optionCode 由**服务端**强制以标准品为准 —— 端上算错、
+ * 或者有人直接构造请求，都写不进一条破坏跨店可比的数据。
+ *
+ * <p>脱离时置空即可：提交体不带 stdNo，后端据此清掉溯源。
+ */
+const stdNo = ref("");
+const stdTitle = ref("");
+const stdKeyword = ref("");
+const stdResults = ref<SpuStd[]>([]);
+const showStd = ref(false);
+const stdSearching = ref(false);
+
+async function searchStd() {
+  stdSearching.value = true;
+  try {
+    stdResults.value = await api.mSpuStdSearch({ keyword: stdKeyword.value.trim() });
+  } catch {
+    // 搜不出来不该挡住建品：标准品是加速器，不是必经之路
+    stdResults.value = [];
+  } finally {
+    stdSearching.value = false;
+  }
+}
+
+/** 取用标准品：填充表单。**已填的字段不覆盖** —— 商家可能先手打了标题再来搜 */
+function pickStd(t: SpuStd) {
+  stdNo.value = t.stdNo;
+  stdTitle.value = t.title;
+  if (!title.value["zh-CN"].trim()) title.value = { ...title.value, "zh-CN": t.title };
+  if (!subtitle.value["zh-CN"].trim() && t.subtitle) {
+    subtitle.value = { ...subtitle.value, "zh-CN": t.subtitle };
+  }
+  if (!cover.value && t.cover) cover.value = t.cover;
+  if (!images.value.length && t.images?.length) images.value = [...t.images];
+  // 类目直接落定：服务端反正会以标准品为准，端上先对齐，免得他选完又被改回去
+  const path = findPath(categoryTree.value, t.categoryNo);
+  if (path.length) {
+    catPath.value = path;
+    categoryNo.value = t.categoryNo;
+    const inferred = path[path.length - 1]?.template;
+    if (inferred && TEMPLATE_TO_TYPE[inferred]) {
+      type.value = TEMPLATE_TO_TYPE[inferred] as CategoryType;
+      void loadTemplates();
+    }
+  }
+  // 规格组整份取用：code 是它的价值所在，只取文案等于白取
+  if (t.specGroups?.length) {
+    groups.value = t.specGroups.map((g) => ({
+      name: g.name,
+      options: [...g.options],
+      codes: g.optionCodes ? [...g.optionCodes] : undefined,
+      templateNo: g.templateNo,
+    }));
+    // 矩阵由 watch(groups) 自动重建，这里不必手动调
+  }
+  showStd.value = false;
+}
+
+/** 脱离标准品。**只清引用，不清已填的内容** —— 他要的是「这条以后不算标准品」 */
+function detachStd() {
+  stdNo.value = "";
+  stdTitle.value = "";
+}
+
 /** 商品主图。拍一张就有，替掉 emoji 占位（E9） */
 const cover = ref("");
+/** 详情轮播图。与封面分开：封面进列表卡片，这些进详情页的轮播 */
+const images = ref<string[]>([]);
 const uploading = ref(false);
 
 /**
@@ -77,7 +160,59 @@ const subtitle = ref<I18nText>({ "zh-CN": "", en: "", ar: "" });
 const untranslated = computed(() =>
   LANGS.filter((l) => l.id !== "zh-CN" && !title.value[l.id].trim()).map((l) => l.key),
 );
+/**
+ * 商品形态。**派生值，不是输入** —— 由所选类目的 `template` 带出（见 `select`）。
+ * 页面上它只是一行只读文字；后端也不采信请求里的 type，自己按 categoryNo 查一遍。
+ */
 const type = ref<CategoryType>(CATEGORY_TYPE.NORMAL as CategoryType);
+
+/**
+ * 履约方式：这件货**怎么送到买家手上**。
+ *
+ * <p>后端一直支持改（留空=不改、空数组=拒），而端上**从来没给过入口** ——
+ * 于是新建商品默认「实物类全支持」，商家永远收窄不了：一件只能自提的货
+ * 会被下成快递单，而 F-1 的「下单必须支持该履约方式」校验因此形同虚设。
+ *
+ * <p>候选项按形态给：实物类给自提/快递那几种，服务类给到店核销/上门。
+ * 一件大米不该在选项里看到「到店核销」。
+ */
+const PHYSICAL_FULFILLMENTS = ["STORE_PICKUP", "NEIGHBOR_PICKUP", "MERCHANT_DELIVERY", "EXPRESS"];
+const SERVICE_FULFILLMENTS = ["STORE_VERIFY", "APPOINTMENT"];
+const fulfillments = ref<string[]>([]);
+const fulfillmentOptions = computed(() =>
+  type.value === CATEGORY_TYPE.SERVICE ? SERVICE_FULFILLMENTS : PHYSICAL_FULFILLMENTS,
+);
+/**
+ * 履约方式**单选**。
+ *
+ * <p>字段仍是数组（后端与订单侧按数组读），但界面只让选一种 ——
+ * 多选看着更灵活，实际是把「这件货到底怎么交付」推给下单那一刻再决定，
+ * 而那时买家看到的候选项是商家从没想清楚的那几种组合。
+ *
+ * <p>再点一次已选项**不取消**：履约方式必填，允许取消只会多出一个
+ * 「一种都没选」的中间态，而它唯一的用途是让保存按钮变灰。
+ */
+function pickFulfillment(f: string) {
+  fulfillments.value = [f];
+}
+
+/** 每人限购，0/空 = 不限 */
+const limitPerUser = ref("");
+
+/**
+ * 生鲜段与服务段。**按形态显示** —— 形态由类目带出，所以选完类目字段区就跟着换。
+ *
+ * <p>这几个字段此前只有种子数据写得进去（`SaveCommand` 里根本没有对应参数），
+ * 商家建出来的生鲜没有截单时间、不按实称，「按标称预扣、多退少补」这条链
+ * 在真实数据上跑不起来。
+ */
+const fresh = ref({ cutoffAt: "", arrivalDesc: "", weighed: false, origin: "" });
+const service = ref({ durationMin: "", storeName: "" });
+/** 拼团档：两个值要么都填要么都不填 —— 缺一个开不出团，而界面上看着是配着的 */
+const groupBuy = ref({ minCount: "", price: "" });
+
+const isFresh = computed(() => type.value === CATEGORY_TYPE.FRESH);
+const isService = computed(() => type.value === CATEGORY_TYPE.SERVICE);
 
 /**
  * 类目（三级树）。
@@ -87,80 +222,83 @@ const type = ref<CategoryType>(CATEGORY_TYPE.NORMAL as CategoryType);
  * 类目决定归类与经营准入，运营可维护。合成一个控件的话，
  * 商家改一次类目会连带改掉履约方式 —— 而他只是想把货归得更准一点。
  */
+/** 图文详情正文。纯文本、不做多语言 —— 逼商家填三遍的结果是两遍空着 */
+const detail = ref("");
+/**
+ * 这件商品当前是不是草稿（新建时也算）。
+ *
+ * <p>决定底部是一个「保存」还是两个按钮 —— 已过审的商品没有「提交审核」这一步：
+ * 他一保存就自动回到待审，多给一个按钮只会让人以为不点就不用重审。
+ */
+const isDraft = ref(true);
 const categoryTree = ref<Category[]>([]);
 const categoryNo = ref("");
-/** **已选**的三级路径，[一级, 二级, 三级]；只走到二级也允许。面包屑与提交都取它 */
+/** **已选**的路径，[一级, 二级]；只选到一级也允许。面包屑与提交都取它 */
 const catPath = ref<Category[]>([]);
+
 /**
- * **正在浏览**的层级 —— 与 `catPath` 分开的两个状态。
+ * 当前展开的一级类目 —— **与「已选」分开的两个状态**。
  *
- * <p>此前两者共用 `catPath`，于是**选定之后就改不了了**：选到叶子后
- * `catOptions` 取的是叶子的 children（空），再打开弹层只有一句「已是最末级」
- * 和一个返回按钮 —— 商家想换个类目，得先连按返回往上爬。
- * 识别自动填了三级路径时更糟：他没点过任何一级，却要按两次返回才看得到选项。
- *
- * <p>拆开之后：打开弹层从**已选项的同级**开始浏览（`catPath` 去掉最后一级），
- * 也就是「你现在选的是这个，它旁边还有这些」—— 这正是要改类目的人想看的那一屏。
+ * <p>翻着看不等于改了选择：商家点开「食品生鲜」看了一眼又回到「日用百货」，
+ * 已选的那一项不该被清掉。
  */
-const browse = ref<Category[]>([]);
-const showCategory = ref(false);
+const parentNo = ref("");
 
-function openCategory() {
-  browse.value = catPath.value.slice(0, -1);
-  showCategory.value = true;
-}
+/**
+ * 二级候选。平台类目**就两级**（V168），所以这一行永远是最后一行 ——
+ * 此前是逐级下钻的弹层，一次只看得见一层，改个类目要连点返回往上爬；
+ * 两级平铺之后，父与子同屏，改哪一级都是一下。
+ */
+const children = computed<Category[]>(
+  () => categoryTree.value.find((c) => c.categoryNo === parentNo.value)?.children ?? [],
+);
 
-/** 面包屑：「食品生鲜 / 蔬菜 / 叶菜」。没选时给占位，不留空白 */
+/** 面包屑：「食品生鲜 / 蔬菜」。没选时为空，由占位文案顶上 */
 const categoryLabel = computed(() =>
   catPath.value.length ? catPath.value.map((c) => c.name).join(" / ") : "",
 );
 
-/** 当前层可选项：还没选就是一级，选了就是最后一级的子节点 */
-const catOptions = computed<Category[]>(() =>
-  browse.value.length ? (browse.value[browse.value.length - 1]?.children ?? []) : categoryTree.value,
-);
+/**
+ * 选一级。
+ *
+ * <p><b>只展开，不改已选</b> —— 除非这一级底下没有二级（服务类目本来就只有两级，
+ * 硬凑一层是为了对齐而对齐）。那种情况下它自己就是终点，直接选中。
+ */
+function pickParent(c: Category) {
+  parentNo.value = c.categoryNo;
+  if (!c.children?.length) select([c]);
+}
 
-function pickCategory(c: Category) {
-  const next = [...browse.value, c];
-  browse.value = next;
-  // 每一级都是合法的选择（只走到二级也允许），所以每点一下都更新已选
-  catPath.value = next;
-  categoryNo.value = c.categoryNo;
-  /*
-   * **类目带出品类。**
-   *
-   * 类目在库里就带着 `template`（STANDARD/FRESH/SERVICE/VOUCHER），它与品类
-   * 是同一件事的两套码。此前端上拿不到这个字段，于是商家要把同一件事填两遍 ——
-   * 而两者**可以互相矛盾**：选「生鲜」品类配「纸品清洁」类目，没有一处会拦，
-   * 直到下单时才因为履约方式不对而出问题（生鲜要截单、服务不发货）。
-   *
-   * 仍然允许他改：类目树是运营维护的，可能有归类不准的时候，
-   * 而品类决定的是履约，最终解释权该在开店的人手里。改了就提示两者不一致。
-   */
-  const inferred = c.template ? TEMPLATE_TO_TYPE[c.template] : undefined;
-  if (inferred && inferred !== type.value) {
-    type.value = inferred as CategoryType;
-    void loadTemplates();
-  }
-  // 叶子节点即选定；还有下级就留在弹层里继续选
-  if (!c.children?.length) showCategory.value = false;
+/** 选二级。到这里就是终点，不再往下 */
+function pickChild(c: Category) {
+  const parent = categoryTree.value.find((x) => x.categoryNo === parentNo.value);
+  select(parent ? [parent, c] : [c]);
 }
 
 /**
- * 品类与所选类目是否对不上。**只提示不阻断** —— 见 pickCategory 的说明。
- * 类目没选时不提示：那时没有可比的对象，提示只会变成噪音。
+ * 落选 —— **全页唯一一处写 `categoryNo` 与 `type`**。
+ *
+ * <p>类目在库里就带着 `template`（STANDARD/FRESH/SERVICE/VOUCHER/VIRTUAL），
+ * 它与品类是同一件事的两套码。此前页面上另有一排品类 chip，商家把同一件事
+ * 填两遍，而且**可以互相矛盾**：选「叶菜」类目配「日用品」品类，没有一处会拦，
+ * 直到下单时才因为履约方式不对而出问题（生鲜要截单、服务不发货）。
+ *
+ * <p>现在 chip 已经删掉，`type` 只是个**展示值** —— 后端也不采信请求里的 type，
+ * 它自己按 categoryNo 查一遍。两边同源，端上算错也写不进库。
  */
-const typeMismatch = computed(() => {
-  const leaf = catPath.value[catPath.value.length - 1];
-  const inferred = leaf?.template ? TEMPLATE_TO_TYPE[leaf.template] : undefined;
-  return !!inferred && inferred !== type.value;
-});
-
-/** 回退一级。整棵重选比逐级点返回更烦 —— 商家改类目通常只是改最后一级 */
-/** 往上一级。**只动浏览位置，不动已选** —— 翻着看不等于改了选择 */
-function popCategory() {
-  browse.value = browse.value.slice(0, -1);
+function select(path: Category[]) {
+  const leaf = path[path.length - 1];
+  if (!leaf) return;
+  catPath.value = path;
+  categoryNo.value = leaf.categoryNo;
+  const inferred = leaf.template ? TEMPLATE_TO_TYPE[leaf.template] : undefined;
+  if (inferred && inferred !== type.value) {
+    type.value = inferred as CategoryType;
+    // 规格模板按品类推荐，品类变了要重取 —— 否则给生鲜推的还是上一类的模板
+    void loadTemplates();
+  }
 }
+
 
 /** 按 categoryNo 还原选择路径（回显已有商品时用） */
 function findPath(nodes: Category[], target: string, trail: Category[] = []): Category[] {
@@ -205,6 +343,23 @@ const multi = computed(() => groups.value.length > 0);
 const missing = computed<string[]>(() => {
   const out: string[] = [];
   if (!title.value["zh-CN"].trim()) out.push(t("goods.name"));
+  /*
+   * **类目必填**（2026-08-21）。它此前是选填的，而品类是必填的 ——
+   * 现在两者调了个个：品类由类目派生，没类目就没有形态可派生，
+   * 商品会落进「新建默认 NORMAL」那条回落，而商家以为自己建的是生鲜。
+   *
+   * 归类还是经营准入的判据（`required_code`），不填等于绕过那道闸 ——
+   * 只不过它在上架时才校验，保存这一步拦住的是「填了一半就走」。
+   */
+  if (!categoryNo.value) out.push(t("goods.category"));
+  // 一种履约都不选的商品谁也买不了 —— 后端会拒，这里先说出来
+  if (!fulfillments.value.length) out.push(t("goods.fulfillment"));
+  /*
+   * 拼团两个值要么都填要么都不填。**只填一个不是"填了一半"，是配了一个开不出的团** ——
+   * 后端按两者都齐来判「能不能开团」，只填团价的商家会以为自己开了团。
+   */
+  const gbFilled = [groupBuy.value.minCount, groupBuy.value.price].filter((v) => Number(v) > 0);
+  if (gbFilled.length === 1) out.push(t("goods.groupBuyIncomplete"));
   const noPrice = rows.value.filter(
     (r) => !Object.values(r.priceMajor).some((v) => Number(v) > 0),
   );
@@ -256,6 +411,53 @@ const unpricedMarkets = computed(() =>
  *
  * 端差异都在 ports/media 与服务端：小程序不能跑本地模型，所以识别统一在服务端。
  */
+/**
+ * 详情轮播图。**这个入口此前根本不存在** —— 契约里 `GoodsDraft.images` 一直有，
+ * 页面没填，于是提交体里没有这一项；而后端那时是无条件覆盖，
+ * `writeJson(null)` 返回 `"[]"`，结果是<b>改一次标题轮播图就全没了</b>。
+ *
+ * <p>后端已改成「不传 = 不改」（P0-1 第一步），但只修那一半的话，
+ * 轮播图变成了「不会丢，也永远存不进去」—— 一个字段有列、有契约、
+ * 有下发、就是没有写入路径，与这轮修的其余几处是同一个形状。
+ */
+const IMAGE_LIMIT = 6;
+
+async function addImages() {
+  if (uploading.value) return;
+  const room = IMAGE_LIMIT - images.value.length;
+  if (room <= 0) {
+    uni.showToast({ title: t("goods.imageLimit", { n: IMAGE_LIMIT }), icon: "none" });
+    return;
+  }
+  let picked;
+  try {
+    picked = await pickImages(room, ["album", "camera"]);
+  } catch {
+    return; // 用户取消，不是错误
+  }
+  // 与封面同一道端上闸：超限的图走完整个上传才被服务端拒，那几秒是白等的
+  const tooBig = picked.find((p) => p.size > MAX_IMAGE_BYTES);
+  if (tooBig) {
+    uni.showToast({ title: t("goods.imageTooLarge"), icon: "none" });
+    return;
+  }
+  uploading.value = true;
+  try {
+    for (const img of picked) {
+      const { url } = await api.mUploadImage(img.tempPath);
+      images.value = [...images.value, url];
+    }
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: "none" });
+  } finally {
+    uploading.value = false;
+  }
+}
+
+function removeImage(i: number) {
+  images.value = images.value.filter((_, idx) => idx !== i);
+}
+
 async function shoot(source: "camera" | "album") {
   if (uploading.value) return;
   let picked;
@@ -301,8 +503,6 @@ async function shoot(source: "camera" | "album") {
     if (!title.value["zh-CN"].trim() && guess.title) {
       title.value = { ...title.value, "zh-CN": guess.title };
       lang.value = "zh-CN";
-      type.value = guess.type;
-      await loadTemplates();
       filled = true;
     }
     if (!subtitle.value["zh-CN"].trim() && guess.subtitle) {
@@ -319,6 +519,18 @@ async function shoot(source: "camera" | "album") {
       if (path.length) {
         catPath.value = path;
         categoryNo.value = guess.categoryNo;
+        /*
+         * **形态跟着识别出的类目走** —— 而不是跟着 `guess.type`。
+         *
+         * 识别结果里那个 type 现在没人要了（后端按 categoryNo 派生），
+         * 照着它填会出现「类目是叶菜、形态写日用品」，正是这轮要消掉的那种矛盾。
+         * 类目树在候选表里被砍过（prunable），path 找得到就说明这个类目商家建得了。
+         */
+        const inferred = path[path.length - 1]?.template;
+        if (inferred && TEMPLATE_TO_TYPE[inferred]) {
+          type.value = TEMPLATE_TO_TYPE[inferred] as CategoryType;
+          await loadTemplates();
+        }
         filled = true;
       }
     }
@@ -455,8 +667,22 @@ async function saveAsTemplate(gi: number) {
 }
 
 async function loadCategories() {
-  // 取不到不该挡住整个编辑页：类目是选填的，拿不到就退化成「不归类」
-  categoryTree.value = await api.mCategoryTree().catch(() => []);
+  // 取不到不该挡住整个编辑页：拿不到就退化成「不归类」，商品照样存得下
+  categoryTree.value = prunable(await api.mCategoryTree().catch(() => []));
+}
+
+/**
+ * 砍掉商家自助建不了的那几支。
+ *
+ * <p>这条规则原先长在品类 chip 上（"一期只开 NORMAL/FRESH/SERVICE 三个"）——
+ * 品类改成由类目派生之后，它必须跟着搬到**类目树**上：留着虚拟/卡券的类目，
+ * 商家选进去就得到一个建了也卖不出去的商品，而形态那行还会理直气壮地写着「卡券」。
+ *
+ * <p>按 `template` 砍而不是按名字：类目名运营随时可改，模板是判据。
+ * 一级砍掉整支 —— 虚拟与卡券在树上本来就是独立的一级分支。
+ */
+function prunable(tree: Category[]): Category[] {
+  return tree.filter((c) => !c.template || ALLOWED_TEMPLATES.includes(c.template));
 }
 
 async function loadTemplates() {
@@ -532,6 +758,15 @@ onLoad(async (q) => {
    */
   cover.value = g.cover ?? "";
   /*
+   * 轮播图要回显 —— 保存是整份覆盖，不回显就等于「打开编辑页再保存一次就清空」。
+   * 与封面、三语原文、多市场价是同一个形状的故障，这一处是最后补上的。
+   */
+  images.value = [...(g.images ?? [])];
+  // 溯源要回显：不回显的话，编辑一次就等于自动脱离了标准品（提交体不带 stdNo）
+  stdNo.value = g.stdNo ?? "";
+  // 标题在标准品那边，这里只有编号；徽标显示编号即可（要标题得再查一次，不值得）
+  stdTitle.value = g.stdNo ?? "";
+  /*
    * **三语要整份回显**。保存时发的是整个 `title` 三格，
    * 只回填当前那一格的话，用中文改一次就把英文与阿语清空了 ——
    * 而这个故障不报错：C 端缺译文时回落中文，看起来一切正常。
@@ -545,35 +780,111 @@ onLoad(async (q) => {
   subtitle.value = g.subtitleI18n
     ? { ...subtitle.value, ...g.subtitleI18n }
     : { ...subtitle.value, [lang.value]: g.subtitle };
+  detail.value = g.detail ?? "";
+  isDraft.value = g.status === "DRAFT";
   type.value = g.type;
   categoryNo.value = g.categoryNo ?? "";
   catPath.value = categoryNo.value ? findPath(categoryTree.value, categoryNo.value) : [];
+  /*
+   * 履约方式与几段可选字段**都要回显**：保存是整份覆盖，回显不全就等于每保存一次
+   * 清一次 —— 与轮播图、三语原文是同一个形状的故障（都不报错）。
+   */
+  /*
+   * 老数据可能带多种履约方式（此前是多选）。这里**收敛到第一种** ——
+   * 界面已经改成单选，留着多种只会让他看到一屏选中态却只能改掉其中一个，
+   * 而保存写回的仍是收敛后的那一种。
+   */
+  fulfillments.value = (g.fulfillments ?? []).slice(0, 1);
+  limitPerUser.value = g.limitPerUser ? String(g.limitPerUser) : "";
+  fresh.value = {
+    cutoffAt: g.cutoffAt ? new Date(g.cutoffAt).toISOString().slice(0, 16) : "",
+    arrivalDesc: g.arrivalDesc ?? "",
+    weighed: !!g.weighed,
+    origin: g.origin ?? "",
+  };
+  service.value = {
+    durationMin: g.durationMin ? String(g.durationMin) : "",
+    storeName: g.storeName ?? "",
+  };
+  groupBuy.value = {
+    minCount: g.groupBuy ? String(g.groupBuy.minCount) : "",
+    price: g.groupBuy ? toMajor(g.groupBuy.price) : "",
+  };
   groups.value = g.specGroups.map((sg) => ({
     name: sg.name,
     options: [...sg.options],
     codes: sg.optionCodes ? [...sg.optionCodes] : undefined,
     templateNo: sg.templateNo,
   }));
-  rows.value = g.skus.map((k) => ({
-    skuNo: k.skuNo,
-    optionValues: [...k.optionValues],
-    // 详情按当前市场拍平，只能回填当前市场那一格（同三语的局限）
-    priceMajor: { ...emptyPrices(), [market.value]: toMajor(k.price) },
-    stock: String(k.stock),
-  }));
+  rows.value = g.skus.map((k) => {
+    /*
+     * **整份回填各市场价。**
+     *
+     * 这里原先只回填当前市场那一格（后端当时不下发 priceByMarket），
+     * 而保存是整份覆盖 —— 于是改一次标题，AE/US 两行的价就被删了，
+     * 且不报错：那两个市场的买家从此看不到这件商品。
+     * 与三语原文是逐字同款的故障，那边补了下发，这边当时没补。
+     */
+    const priceMajor = emptyPrices();
+    priceMajor[market.value] = toMajor(k.price);
+    for (const m of MARKET_CURRENCIES) {
+      const v = k.priceByMarket?.[m.id];
+      if (v != null) priceMajor[m.currency] = toMajor(v);
+    }
+    return {
+      skuNo: k.skuNo,
+      optionValues: [...k.optionValues],
+      priceMajor,
+      stock: String(k.stock),
+    };
+  });
 });
 
-async function save() {
+async function save(thenSubmit = false) {
   if (!canSave.value || saving.value) return;
   saving.value = true;
   try {
-    await api.mSaveGoods({
+    const saved = await api.mSaveGoods({
       goodsNo: goodsNo.value || undefined,
       title: title.value,
       subtitle: subtitle.value,
-      type: type.value,
-      // 空串要转成 undefined：后端拿到空串会当成「归到一个叫空的类目」，而不是「没归类」
-      categoryNo: categoryNo.value || undefined,
+      // 详情：空串也要发 —— 后端「不传 = 不改」，删光了不发就删不掉
+      detail: detail.value,
+      // type **不再提交**：五品类由 categoryNo 派生，后端拿到也会忽略（P1-1）。
+      // 留着发一个不被采信的值，只会让下一个人以为它还起作用
+      //
+      // 轮播图：**空数组也要发**。后端「不传 = 不改」，所以删光了不发的话删不掉
+      images: images.value,
+      // 溯源。不传 = 自建品 / 已脱离 —— 后端据此清掉 std_no
+      stdNo: stdNo.value || undefined,
+      // 必填由 `missing` 守着（按钮点不动），这里不再兜 undefined ——
+      // 兜的话，一个空类目会被静默送进后端，走「新建默认 NORMAL」那条回落
+      categoryNo: categoryNo.value,
+      // 履约方式：**空数组也要发**，它与「不传」是两件事 —— 后端会拒空数组
+      // （一种履约都不支持的商品谁也买不了），而这正是我们要的报错
+      fulfillments: fulfillments.value,
+      limitPerUser: Number(limitPerUser.value) || 0,
+      // 生鲜段与服务段只在对应形态下提交：一件大米带上「服务时长 90 分钟」
+      // 不会报错，但它会出现在服务类的详情模板里
+      fresh: isFresh.value
+        ? {
+            cutoffAt: fresh.value.cutoffAt ? new Date(fresh.value.cutoffAt).getTime() : undefined,
+            arrivalDesc: fresh.value.arrivalDesc.trim(),
+            weighed: fresh.value.weighed,
+            origin: fresh.value.origin.trim(),
+          }
+        : undefined,
+      service: isService.value
+        ? {
+            durationMin: Number(service.value.durationMin) || undefined,
+            storeName: service.value.storeName.trim(),
+          }
+        : undefined,
+      // 两个都空 = 显式关掉拼团；只填一个后端会拒（`missing` 已经先拦一道）
+      groupBuy: {
+        minCount: Number(groupBuy.value.minCount) || undefined,
+        price: groupBuy.value.price ? toMinor(groupBuy.value.price) : undefined,
+      },
       // 封面必须带上：上传完只存在 ref 里的话，店主看着图在、保存后 C 端却是空白
       cover: cover.value,
       specGroups: groups.value
@@ -611,7 +922,16 @@ async function save() {
         };
       }),
     });
-    uni.showToast({ title: t("common.saved"), icon: "none" });
+    /*
+     * 「保存并提交」是两次调用，不是一个开关：
+     * 保存要能单独成立（填一半先存着），而提交是他另一个决定。
+     * 后端的 submit 对新建返回的 goodsNo 幂等，重复点不会出问题。
+     */
+    if (thenSubmit) {
+      const no = goodsNo.value || saved.goodsNo;
+      if (no) await api.mSubmitGoods(no);
+    }
+    uni.showToast({ title: t(thenSubmit ? "goods.submitted" : "common.saved"), icon: "none" });
     setTimeout(() => uni.navigateBack(), 600);
   } catch (e) {
     uni.showToast({ title: (e as Error).message, icon: "none" });
@@ -650,6 +970,40 @@ async function save() {
         <text class="sh-muted hint">{{ $t("goods.shootHint") }}</text>
       </view>
 
+      <!-- 详情轮播图。此前没有这个入口：契约里有、页面没填、后端当成「清空」 -->
+      <view class="field">
+        <text class="field__label">{{ $t("goods.images") }}</text>
+        <view class="imgs">
+          <view v-for="(img, i) in images" :key="img + i" class="imgs__cell">
+            <sh-cover class="imgs__img" :src="img"></sh-cover>
+            <text class="imgs__del" @tap="removeImage(i)">×</text>
+          </view>
+          <view v-if="images.length < IMAGE_LIMIT" class="imgs__add" @tap="addImages">
+            <text class="imgs__plus">＋</text>
+          </view>
+        </view>
+        <text class="sh-muted hint">{{ $t("goods.imagesHint", { n: IMAGE_LIMIT }) }}</text>
+      </view>
+
+      <!--
+        从标准品开始（TDD-标准品库）。放在标题**之前**：它是「少填几个字段」的入口，
+        填完标题再来搜就没意义了。
+
+        **搜不到必须能直接往下建**，所以这一栏只是一行入口，不是一道必经的步骤 ——
+        标准库对「张姐家的酱菜」永远无效，而那类货是这个平台的一部分主力。
+      -->
+      <view class="field">
+        <view v-if="stdNo" class="std-on">
+          <text class="std-on__txt">{{ $t("goods.fromStd", { s: stdTitle || stdNo }) }}</text>
+          <text class="std-on__off" @tap="detachStd">{{ $t("goods.detachStd") }}</text>
+        </view>
+        <view v-else class="std-pick" @tap="showStd = true">
+          <text class="std-pick__val">{{ $t("goods.pickStd") }}</text>
+          <text class="cat-pick__arrow">›</text>
+        </view>
+        <text class="sh-muted hint">{{ $t(stdNo ? "goods.fromStdHint" : "goods.pickStdHint") }}</text>
+      </view>
+
       <!-- 三语：一个框 + 语言 tab，不给三个框并排 -->
       <view class="field">
         <view class="field__head">
@@ -675,58 +1029,195 @@ async function save() {
       <text v-if="MULTI_LANG_UI && untranslated.length" class="sh-muted hint">
         {{ $t("goods.untranslated", { s: untranslated.map((k) => $t(k)).join("、") }) }}
       </text>
+      <!--
+        分类**只有这一个控件**。
+
+        此前这里是两个并列的控件：一个选「形态」（五品类）、一个选「类目」，
+        而形态本来就写在类目节点上 —— 于是商家把同一件事填两遍，还能填出
+        「叶菜类目 + 日用品形态」这种组合，页面只提示不阻断，代价要到下单
+        那一刻才显形（生鲜要截单、服务不发货）。
+
+        现在形态是选完类目后的一行只读文字：它的作用是让商家确认
+        「系统认为这是生鲜」，不是让他改。真要改，改的是类目。
+      -->
+      <!--
+        图文详情：**纯文本长文**，不做富文本 —— 手机端做不出像样的富文本编辑，
+        而收 HTML 就要在三端各做一次消毒，漏一处就是 XSS。
+      -->
       <view class="field">
-        <text class="field__label">{{ $t("goods.type") }}</text>
+        <text class="field__label">{{ $t("goods.detail") }}</text>
+        <textarea
+          v-model="detail"
+          class="field__area"
+          :placeholder="$t('goods.detailPh')"
+          :maxlength="2000"
+        />
+      </view>
+
+      <view class="field">
+        <text class="field__label">{{ $t("goods.category") }} *</text>
+        <!--
+          **两级平铺，不再逐级下钻。**
+
+          此前是一个弹层，一次只看得见一层：商家要改个类目，先点开、再连点返回
+          往上爬；识别自动填好的路径更糟 —— 他没点过任何一级，却要按两次返回
+          才看得到选项。平台类目降到两级（V168）之后，父与子一屏放得下，
+          那层弹层就只剩成本。
+        -->
+        <view class="cat-lv">
+          <text class="cat-lv__t">{{ $t("goods.categoryL1") }}</text>
+          <view class="cat-lv__opts">
+            <text
+              v-for="c in categoryTree"
+              :key="c.categoryNo"
+              class="sh-chip"
+              :class="{ 'sh-chip--primary': parentNo === c.categoryNo }"
+              @tap="pickParent(c)"
+            >
+              {{ c.name }}
+            </text>
+          </view>
+        </view>
+
+        <!-- 二级只在选了一级之后出现：先摆一排空椅子只会让人以为加载失败 -->
+        <view v-if="parentNo && children.length" class="cat-lv">
+          <text class="cat-lv__t">{{ $t("goods.categoryL2") }}</text>
+          <view class="cat-lv__opts">
+            <text
+              v-for="c in children"
+              :key="c.categoryNo"
+              class="sh-chip"
+              :class="{ 'sh-chip--primary': categoryNo === c.categoryNo }"
+              @tap="pickChild(c)"
+            >
+              {{ c.name }}
+            </text>
+          </view>
+        </view>
+
+        <text v-if="categoryLabel" class="cat-lv__sel">{{ categoryLabel }}</text>
+        <!-- 形态：派生值。没选类目时不显示 —— 那时它是个凭空的默认值，只会误导 -->
+        <text v-if="categoryLabel" class="sh-muted hint">
+          {{ $t("goods.typeDerived", { s: $t(`goods.categoryType.${type}`) }) }}
+        </text>
+      </view>
+
+      <!--
+        履约方式：后端一直收得下，端上从来没给过入口 —— 于是新建商品默认
+        「实物类全支持」，商家永远收窄不了，一件只能自提的货会被下成快递单。
+        候选项跟着形态走：一件大米不该在选项里看到「到店核销」。
+      -->
+      <view class="field">
+        <text class="field__label">{{ $t("goods.fulfillment") }} *</text>
         <view class="chips">
           <text
-            v-for="ty in TYPES"
-            :key="ty"
+            v-for="f in fulfillmentOptions"
+            :key="f"
             class="sh-chip"
-            :class="{ 'sh-chip--primary': type === ty }"
-            @tap="type = ty"
+            :class="{ 'sh-chip--primary': fulfillments.includes(f) }"
+            @tap="pickFulfillment(f)"
           >
-            {{ $t(`goods.categoryType.${ty}`) }}
+            {{ $t(`goods.fulfillmentType.${f}`) }}
           </text>
+        </view>
+        <text class="sh-muted hint">{{ $t("goods.fulfillmentTip") }}</text>
+      </view>
+
+      <!-- 生鲜段：形态由类目带出，所以选完类目这一段自动出现 -->
+      <view v-if="isFresh" class="field">
+        <text class="field__label">{{ $t("goods.freshSection") }}</text>
+        <view class="kv">
+          <text class="kv__k">{{ $t("goods.cutoffAt") }}</text>
+          <input v-model="fresh.cutoffAt" class="field__input" placeholder="2026-08-22T18:00" />
+        </view>
+        <view class="kv">
+          <text class="kv__k">{{ $t("goods.arrivalDesc") }}</text>
+          <input v-model="fresh.arrivalDesc" class="field__input" />
+        </view>
+        <view class="kv">
+          <text class="kv__k">{{ $t("goods.origin") }}</text>
+          <input v-model="fresh.origin" class="field__input" />
+        </view>
+        <!-- 用 chip 而不是 switch：全仓没有第二处 switch，
+             而 uni 的 switch 事件类型在 vue-tsc 下要额外收窄，不值得为一个开关引入 -->
+        <view class="kv">
+          <text class="kv__k">{{ $t("goods.weighed") }}</text>
+          <text
+            class="sh-chip"
+            :class="{ 'sh-chip--primary': fresh.weighed }"
+            @tap="fresh.weighed = !fresh.weighed"
+          >
+            {{ fresh.weighed ? $t("common.yes") : $t("common.no") }}
+          </text>
+        </view>
+        <text class="sh-muted hint">{{ $t("goods.freshTip") }}</text>
+      </view>
+
+      <!-- 服务段 -->
+      <view v-if="isService" class="field">
+        <text class="field__label">{{ $t("goods.serviceSection") }}</text>
+        <view class="kv">
+          <text class="kv__k">{{ $t("goods.durationMin") }}</text>
+          <input v-model="service.durationMin" class="field__input" type="number" />
+        </view>
+        <view class="kv">
+          <text class="kv__k">{{ $t("goods.verifyStore") }}</text>
+          <input v-model="service.storeName" class="field__input" />
         </view>
       </view>
 
-      <!-- 类目：与上面的「形态」分开两个控件（见 script 里 categoryTree 的注释） -->
+      <!-- 限购与拼团：与形态无关，所有商品都有 -->
       <view class="field">
-        <!-- 品类与类目对不上：不阻断，但要说出来 —— 品类决定履约，错了要到下单才显现 -->
-        <text v-if="typeMismatch" class="missing">{{ $t("goods.typeMismatch") }}</text>
-        <text class="field__label">{{ $t("goods.category") }}</text>
-        <view class="cat-pick" @tap="openCategory">
-          <text v-if="categoryLabel" class="cat-pick__val">{{ categoryLabel }}</text>
-          <text v-else class="cat-pick__ph">{{ $t("goods.categoryPh") }}</text>
-          <text class="cat-pick__arrow">›</text>
+        <view class="kv">
+          <text class="kv__k">{{ $t("goods.limitPerUser") }}</text>
+          <input v-model="limitPerUser" class="field__input" type="number" placeholder="0" />
         </view>
-        <text class="sh-muted hint">{{ $t("goods.categoryTip") }}</text>
+        <view class="kv">
+          <text class="kv__k">{{ $t("goods.groupMinCount") }}</text>
+          <input v-model="groupBuy.minCount" class="field__input" type="number" />
+        </view>
+        <view class="kv">
+          <text class="kv__k">{{ $t("goods.groupPrice") }}</text>
+          <input v-model="groupBuy.price" class="field__input" type="digit" />
+        </view>
+        <text class="sh-muted hint">{{ $t("goods.groupBuyTip") }}</text>
+      </view>
+    </view>
+
+    <!-- 标准品搜索弹层。搜不到时给的是「直接自建」而不是一句「没找到」 -->
+    <view v-if="showStd" class="cat-mask" @tap="showStd = false">
+      <view class="cat-sheet" @tap.stop>
+        <view class="cat-sheet__bar">
+          <text class="cat-sheet__title">{{ $t("goods.pickStd") }}</text>
+          <text class="cat-sheet__close" @tap="showStd = false">×</text>
+        </view>
+        <view class="std-search">
+          <input
+            v-model="stdKeyword"
+            class="field__input"
+            :placeholder="$t('goods.stdSearchPh')"
+            @confirm="searchStd"
+          />
+          <text class="mini" @tap="searchStd">{{ $t("common.search") }}</text>
+        </view>
+        <view v-if="!stdResults.length" class="cat-sheet__empty">
+          <text class="sh-muted">
+            {{ stdSearching ? $t("common.loading") : $t("goods.stdEmpty") }}
+          </text>
+        </view>
+        <view
+          v-for="t in stdResults"
+          :key="t.stdNo"
+          class="cat-sheet__row"
+          @tap="pickStd(t)"
+        >
+          <text>{{ t.title }}</text>
+          <text class="sh-muted">{{ t.categoryName || "" }}</text>
+        </view>
       </view>
     </view>
 
     <!-- 类目选择弹层：一次只显示一层，选到叶子自动收起 -->
-    <view v-if="showCategory" class="cat-mask" @tap="showCategory = false">
-      <view class="cat-sheet" @tap.stop>
-        <view class="cat-sheet__bar">
-          <text v-if="browse.length" class="cat-sheet__back" @tap="popCategory">‹ {{ $t("common.back") }}</text>
-          <text class="cat-sheet__title">{{ categoryLabel || $t("goods.category") }}</text>
-          <text class="cat-sheet__close" @tap="showCategory = false">×</text>
-        </view>
-        <view v-if="!catOptions.length" class="cat-sheet__empty">
-          <text class="sh-muted">{{ $t("goods.categoryLeaf") }}</text>
-        </view>
-        <view
-          v-for="c in catOptions"
-          :key="c.categoryNo"
-          class="cat-sheet__row"
-          @tap="pickCategory(c)"
-        >
-          <text>{{ c.name }}</text>
-          <text v-if="c.children?.length" class="cat-pick__arrow">›</text>
-        </view>
-      </view>
-    </view>
-
     <!-- 规格组 -->
     <view class="sh-card mt">
       <view class="sec">
@@ -823,6 +1314,17 @@ async function save() {
         <text class="link" @tap="applyBulk">{{ $t("goods.applyBulk") }}</text>
       </view>
 
+      <!--
+        列头。**只在多规格时画** —— placeholder 一旦填了字就消失，
+        而多规格滚到第 6 行时，两列数字看不出哪列是价、哪列是库存。
+        单规格只有一行，两个 placeholder 一直看得见，不需要列头。
+      -->
+      <view v-if="multi" class="row row--head">
+        <text class="row__spec"></text>
+        <text class="row__col">{{ $t(priceLabel) }}</text>
+        <text class="row__col">{{ $t("goods.stock") }}</text>
+      </view>
+
       <view v-for="(r, i) in rows" :key="i" class="row" :class="{ 'row--single': !multi }">
         <!--
           单规格不画左边这一格。只有一行时「默认规格」是在回答没人问的问题，
@@ -835,9 +1337,11 @@ async function save() {
           type="digit"
           :placeholder="$t(priceLabel)"
         />
+        <!-- 库存 0 = 这个规格顾客买不到。多规格时最容易漏填的就是它 -->
         <input
           v-model="r.stock"
           class="row__input sh-num"
+          :class="{ 'is-out': Number(r.stock) === 0 }"
           type="number"
           :placeholder="$t('goods.stock')"
         />
@@ -859,10 +1363,25 @@ async function save() {
     <text v-if="missing.length" class="missing">
       {{ $t("goods.missing", { s: missing.join("、") }) }}
     </text>
-    <view class="sh-btn save" :class="{ 'sh-btn--muted': !canSave }" @tap="save">
-      {{ $t("common.save") }}
+    <!--
+      草稿给两个按钮：**保存**（填一半先存着，不惊动运营）与**保存并提交**。
+      已过审的商品只给一个 —— 它一保存就自动回到待审，多一个按钮反而让人以为
+      不点就不用重审。
+    -->
+    <view class="acts">
+      <view class="sh-btn save" :class="{ 'sh-btn--muted': !canSave }" @tap="save(false)">
+        {{ isDraft ? $t("goods.saveDraft") : $t("common.save") }}
+      </view>
+      <view
+        v-if="isDraft"
+        class="sh-btn save"
+        :class="{ 'sh-btn--muted': !canSave }"
+        @tap="save(true)"
+      >
+        {{ $t("goods.saveAndSubmit") }}
+      </view>
     </view>
-    <text class="tip">{{ $t("goods.saveTip") }}</text>
+    <text class="tip">{{ $t(isDraft ? "goods.draftTip" : "goods.saveTip") }}</text>
   </sh-scaffold>
 </template>
 
@@ -905,6 +1424,98 @@ async function save() {
 .chips .sh-chip {
   font-size: 24rpx;
   padding: 14rpx 24rpx;
+}
+/* 标准品入口：未取用是一行可点的占位，取用后变成一枚可撤的徽标 */
+.std-pick,
+.std-on {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20rpx 0;
+}
+.std-pick__val {
+  font-size: 28rpx;
+  /* 不用主色当文字色（design-tokens 守卫）：主色留给按钮与选中态，
+     一行可点的入口靠右侧箭头指路就够了 */
+  color: var(--sh-text-1);
+}
+.std-on__txt {
+  font-size: 26rpx;
+  color: var(--sh-text-2);
+}
+.std-on__off {
+  font-size: 24rpx;
+  color: var(--sh-text-3);
+}
+.std-search {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  padding: 16rpx 24rpx;
+}
+.std-search .field__input {
+  flex: 1;
+  margin-top: 0;
+}
+
+/* 轮播图九宫格。固定尺寸方格，删除按钮压在右上角 —— 长按删在小程序上不好发现 */
+.imgs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+  margin-top: 12rpx;
+}
+.imgs__cell {
+  position: relative;
+  width: 150rpx;
+  height: 150rpx;
+}
+.imgs__img {
+  width: 150rpx;
+  height: 150rpx;
+  border-radius: 16rpx;
+}
+.imgs__del {
+  position: absolute;
+  top: -10rpx;
+  right: -10rpx;
+  width: 40rpx;
+  height: 40rpx;
+  line-height: 36rpx;
+  text-align: center;
+  border-radius: 50%;
+  background: var(--sh-text-1);
+  color: var(--sh-bg);
+  font-size: 26rpx;
+}
+.imgs__add {
+  width: 150rpx;
+  height: 150rpx;
+  border: 2rpx dashed var(--sh-border);
+  border-radius: 16rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.imgs__plus {
+  font-size: 40rpx;
+  color: var(--sh-text-3);
+}
+/* 标签 + 输入框一行。标签固定宽度，几行叠起来时冒号后的输入框才对得齐 */
+.kv {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  margin-top: 16rpx;
+}
+.kv__k {
+  flex: 0 0 160rpx;
+  font-size: 26rpx;
+  color: var(--sh-text-2);
+}
+.kv .field__input {
+  flex: 1;
+  margin-top: 0;
 }
 .sec {
   display: flex;
@@ -987,6 +1598,15 @@ async function save() {
   line-height: 1.6;
 }
 /* 差什么：**不是报错**（他还没做错任何事），所以用警示色不用危险色 */
+.acts {
+  display: flex;
+  gap: 16rpx;
+}
+
+.acts .save {
+  flex: 1;
+}
+
 .missing {
   display: block;
   margin: 16rpx 8rpx 0;
@@ -1060,6 +1680,20 @@ async function save() {
   align-items: center;
   gap: 12rpx;
   margin-top: 16rpx;
+}
+/* 列头：不是输入框，弱一档 */
+.row--head {
+  margin-bottom: 4rpx;
+}
+.row__col {
+  flex: 1;
+  font-size: 24rpx;
+  color: var(--sh-sub);
+  text-align: center;
+}
+/* 缺货：这一格要能被扫到，它是「填完还差什么」里最常漏的一项 */
+.row__input.is-out {
+  color: var(--sh-danger);
 }
 /* 单规格：左边那格不画，两个输入框各占一半 */
 .row--single .row__input {
@@ -1142,6 +1776,31 @@ async function save() {
   padding: 28rpx 24rpx;
   border-bottom: 2rpx solid var(--sh-line);
 }
+.cat-lv {
+  margin-top: 12rpx;
+}
+
+.cat-lv__t {
+  display: block;
+  margin-bottom: 8rpx;
+  font-size: 24rpx;
+  color: var(--sh-sub);
+}
+
+.cat-lv__opts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+}
+
+/* 已选那一行：面包屑是**结果确认**，比候选项重一档 */
+.cat-lv__sel {
+  display: block;
+  margin-top: 16rpx;
+  font-size: 26rpx;
+  color: var(--sh-ink);
+}
+
 .cat-sheet__empty {
   padding: 40rpx 24rpx;
   text-align: center;

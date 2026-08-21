@@ -103,9 +103,11 @@ public class MpTradeController {
 
     @GetMapping("/mp/order")
     public PageData<OrderVO> orderList(@RequestParam(required = false) String status,
+                                       // 与 status 正交：页签是「状态 + 履约集合」的谓词，不是一个状态值
+                                       @RequestParam(required = false) java.util.List<String> fulfillments,
                                        @RequestParam(defaultValue = "1") long page,
                                        @RequestParam(defaultValue = "10") long size) {
-        return orderService.list(status, page, Math.min(size, 50));
+        return orderService.list(status, fulfillments, page, Math.min(size, 50));
     }
 
     @GetMapping("/mp/order/{orderNo}")
@@ -190,7 +192,9 @@ public class MpTradeController {
      *                  没人撞上是因为 C 端的 {@code FEATURES.points} 关着
      */
     public record CreateOrderReq(List<Item> items, String fulfillment, String pickupNo, String addressId,
-                                 String couponNo, Long usePoints, String remark, String idempotencyKey) {
+                                 String couponNo, Long usePoints, String remark, String idempotencyKey,
+                                 // 上门预约的时段。APPOINTMENT 履约必填，其余忽略
+                                 Long appointmentAt) {
 
         public record Item(String goodsNo, String skuNo, int qty) {
         }
@@ -200,7 +204,7 @@ public class MpTradeController {
                     items == null ? List.of() : items.stream()
                             .map(i -> new OrderService.CreateOrderCommand.Item(i.goodsNo(), i.skuNo(), i.qty()))
                             .toList(),
-                    fulfillment, pickupNo, addressId, couponNo, usePoints, remark);
+                    fulfillment, pickupNo, addressId, couponNo, usePoints, remark, appointmentAt);
         }
     }
 }

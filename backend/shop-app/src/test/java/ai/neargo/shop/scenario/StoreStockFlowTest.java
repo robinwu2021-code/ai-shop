@@ -122,6 +122,56 @@ class StoreStockFlowTest {
     }
 
     @Test
+    @DisplayName("★★ 已按店管理的 SKU，用主体级改库存**不能是空操作** —— 写要落到读的地方")
+    void mainStockWriteLandsWhereTheReadLooks() throws Exception {
+        String biz = merchant("12600190040", "写读要同一个数");
+        String goodsNo = listedGoods(biz, 100);
+        String skuNo = firstSku(goodsNo);
+        String storeA = defaultStoreNo(biz);
+
+        // 设一次分店库存 → 这个 SKU 整体转为按店管理，读取口径也跟着换
+        setStoreStock(biz, storeA, goodsNo, skuNo, 33);
+        assertThat(merchantSeesStock(biz, goodsNo, skuNo)).isEqualTo(33);
+
+        /*
+         * 关键一步：走**主体级**那条端点。
+         *
+         * 修之前它写的是主体总量，而页面读的是分店那份 ——
+         * `code=0`、页面数字纹丝不动、没有任何提示。
+         * 商家会以为自己改过了，实际货架上的数还是旧的。
+         */
+        setMainStock(biz, goodsNo, skuNo, 99);
+        assertThat(merchantSeesStock(biz, goodsNo, skuNo))
+                .as("主体级改库存返回成功却什么都没变 —— 「不报错、不生效」比报错更贵")
+                .isEqualTo(99);
+
+        // 落点必须是当前门店那一行，不是新造一份主体总量
+        assertThat(storeStock(biz, storeA, skuNo)).isEqualTo(99);
+    }
+
+    /** 主体级改库存（`/stock`）—— b-app 单店模式走的就是它 */
+    private void setMainStock(String token, String goodsNo, String skuNo, int stock)
+            throws Exception {
+        mvc().perform(post("/biz/goods/" + goodsNo + "/stock").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"skuNo\":\"" + skuNo + "\",\"stock\":" + stock + "}"))
+                .andExpect(jsonPath("$.code").value(0));
+    }
+
+    /** 商家在商品详情里看到的那个数（= 当前门店口径） */
+    private int merchantSeesStock(String token, String goodsNo, String skuNo) throws Exception {
+        String body = mvc().perform(get("/biz/goods/" + goodsNo)
+                        .header("Authorization", "Bearer " + token))
+                .andReturn().getResponse().getContentAsString();
+        for (var sku : json.readTree(body).get("data").get("skus")) {
+            if (skuNo.equals(sku.get("skuNo").asString())) {
+                return sku.get("stock").asInt();
+            }
+        }
+        return -1;
+    }
+
+    @Test
     @DisplayName("★ 商家看到的库存 = 当前门店的数，不是主体总量")
     void merchantSeesCurrentStoreStock() throws Exception {
         String biz = merchant("12600190030", "看得见分店库存");
@@ -217,7 +267,7 @@ class StoreStockFlowTest {
     private String listedGoods(String token, int stock) throws Exception {
         String body = mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"title\":\"门店库存测试品\",\"type\":\"NORMAL\","
+                        .content("{\"categoryNo\":\"CAT210\",\"title\":\"门店库存测试品\",\"type\":\"NORMAL\","
                                 + "\"skus\":[{\"optionValues\":[],\"price\":1000,\"stock\":" + stock + "}]}"))
                 .andExpect(jsonPath("$.code").value(0))
                 .andReturn().getResponse().getContentAsString();

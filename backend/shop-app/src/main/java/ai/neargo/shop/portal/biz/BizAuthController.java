@@ -1,5 +1,6 @@
 package ai.neargo.shop.portal.biz;
 
+import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.community.dto.CommunityVO;
 import ai.neargo.shop.user.service.AuthService;
 import ai.neargo.shop.community.service.CommunityService;
@@ -124,6 +125,33 @@ public class BizAuthController {
 
     /** @param phone 收码手机号 */
     public record OtpReq(String phone) {
+    }
+
+    /**
+     * 设置 / 修改登录密码。**要求已登录** —— 当前会话即授权，不收旧密码
+     * （理由见 {@code AuthService#setPassword}：要旧密码会把「忘了密码」变成死路）。
+     *
+     * <p>为什么 B 端要有密码：商家每天开好几次 App，每次都等一条短信是实打实的摩擦；
+     * 而店里那台共用手机换人时，验证码还得找到号主本人。
+     */
+    @PostMapping("/biz/auth/password")
+    public void setPassword(@RequestBody PasswordReq req) {
+        authService.setPassword(SecurityUtils.currentUserNo(), req.password());
+    }
+
+    /** 我设过密码没有 —— 端上据此决定「我的」页里显示「设置密码」还是「修改密码」 */
+    @GetMapping("/biz/auth/password")
+    public HasPasswordResp hasPassword() {
+        return new HasPasswordResp(
+                authService.hasPassword(SecurityUtils.currentUserNo()));
+    }
+
+    /** @param password 新密码明文（HTTPS 传输，服务端 bcrypt 存储，**不回显、不入日志**） */
+    public record PasswordReq(String password) {
+    }
+
+    /** @param hasPassword 是否已设过密码 */
+    public record HasPasswordResp(boolean hasPassword) {
     }
 
     /**

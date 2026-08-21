@@ -144,7 +144,7 @@ public class NotifyLogServiceImpl implements NotifyLogService {
      */
     @Override
     public void testSend(String channel, String target, String level, TestContent content,
-                         String captchaId, String code, String operatorNo) {
+                         String clientId, String captchaId, String code, String operatorNo) {
         if (target == null || target.isBlank()) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
@@ -173,7 +173,7 @@ public class NotifyLogServiceImpl implements NotifyLogService {
                     c.bodyOr("这是一封测试邮件，用于确认邮件通道可用。\n发送时间：" + LocalDateTime.now()),
                     SysNotifyLog.BIZ_TEST, operatorNo);
             case SysNotifyLog.WXSUB -> testWxSubscribe(target, c);
-            case SysNotifyLog.PUSH -> testPush(target, level, c);
+            case SysNotifyLog.PUSH -> testPush(target, level, c, clientId);
             /*
              * 默认短信。**只认模板参数，不认自由文本**：阿里云收的是
              * TemplateCode + TemplateParam，发未报备的内容会被直接拒
@@ -256,12 +256,23 @@ public class NotifyLogServiceImpl implements NotifyLogService {
      * @param level {@code RING} 时按响铃级推 —— B 端新订单就是这个形态，
      *              上线前必须能在真机上验一次它到底响不响（免费档还受厂商配额约束）
      */
-    private void testPush(String userNo, String level, TestContent c) {
+    private void testPush(String userNo, String level, TestContent c, String clientId) {
         precheckTestTarget(SysNotifyLog.PUSH, userNo, null);
         String title = c.subjectOr("通道联通测试");
         String body = c.bodyOr("这是一条测试推送，用于确认推送通道可用。");
         String link = "/pages/message/index";
-        // 两个收件箱都试：一个人可能只在其中一端登录过 App
+        // 指定了终端：只推那一台真机 —— 但先核对这台确实属于该收件人，
+        // 否则运营端传个别人的 cid 就能对任意设备发测试推送
+        if (clientId != null && !clientId.isBlank()) {
+            MsgPushToken t = findOwnedDevice(userNo, clientId);
+            if (t == null) {
+                throw BizException.of(ErrorCode.BAD_REQUEST); // 这台不属于该收件人，或已解绑
+            }
+            String lvl = PushPort.LEVEL_RING.equals(level) ? PushPort.LEVEL_RING : PushPort.LEVEL_NORMAL;
+            pushSender.sendToDevice(t.getProvider(), t.getClientId(), title, body, link, lvl);
+            return;
+        }
+        // 未指定：两个收件箱都试 —— 一个人可能只在其中一端登录过 App
         for (String receiverType : List.of(MsgMessage.RECEIVER_USER, MsgMessage.RECEIVER_STAFF)) {
             if (PushPort.LEVEL_RING.equals(level)) {
                 pushSender.ring(receiverType, userNo, title, body, link);
@@ -269,6 +280,30 @@ public class NotifyLogServiceImpl implements NotifyLogService {
                 pushSender.notify(receiverType, userNo, title, body, link);
             }
         }
+    }
+
+    /** 找出属于该收件人（USER 或 STAFF 收件箱）的某一台设备；找不到返回 null。 */
+    private MsgPushToken findOwnedDevice(String userNo, String clientId) {
+        return DataScopeContext.executeWithoutScope(() ->
+                pushTokenMapper.selectOne(Wrappers.<MsgPushToken>lambdaQuery()
+                        .eq(MsgPushToken::getReceiverNo, userNo)
+                        .eq(MsgPushToken::getClientId, clientId)
+                        .last("limit 1")));
+    }
+
+    @Override
+    public List<PushDeviceVO> pushDevices(String userNo) {
+        if (userNo == null || userNo.isBlank()) {
+            return List.of();
+        }
+        List<MsgPushToken> tokens = DataScopeContext.executeWithoutScope(() ->
+                pushTokenMapper.selectList(Wrappers.<MsgPushToken>lambdaQuery()
+                        .eq(MsgPushToken::getReceiverNo, userNo)
+                        .orderByDesc(MsgPushToken::getUpdatedAt)));
+        return tokens.stream().map(t -> new PushDeviceVO(
+                t.getReceiverType(), t.getPlatform(), t.getProvider(),
+                t.getClientId(), ai.neargo.shop.common.Masks.tail(t.getClientId()),
+                t.getUpdatedAt() == null ? null : t.getUpdatedAt().toString())).toList();
     }
 
     /**

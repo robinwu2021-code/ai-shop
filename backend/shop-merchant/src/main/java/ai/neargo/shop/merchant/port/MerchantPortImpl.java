@@ -58,6 +58,7 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
     private final ai.neargo.shop.spi.platform.MasterDataPort masterDataPort;
     private final ai.neargo.shop.merchant.mapper.MerchantMappers.MchAccountMapper staffMapper;
     private final ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper storeMapper;
+    private final ai.neargo.shop.merchant.service.MerchantAuthCodeService authCodeService;
     private final tools.jackson.databind.ObjectMapper json;
     /** 主体激活时建 FREE 订阅行（V150）—— 与 ensureDefaultStore 同一类动作 */
     private final ai.neargo.shop.merchant.mapper.MerchantMappers.EntityPlanMapper entityPlanMapper;
@@ -75,7 +76,9 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
                             ai.neargo.shop.merchant.mapper.MerchantMappers.ServiceAreaMapper serviceAreaMapper,
                             ai.neargo.shop.merchant.mapper.MerchantMappers.QualificationMapper qualificationMapper,
                             ai.neargo.shop.merchant.mapper.MerchantMappers.EntityPlanMapper entityPlanMapper,
-                            ai.neargo.shop.merchant.mapper.MerchantMappers.PlanDefMapper planDefMapper) {
+                            ai.neargo.shop.merchant.mapper.MerchantMappers.PlanDefMapper planDefMapper,
+                            ai.neargo.shop.merchant.service.MerchantAuthCodeService authCodeService) {
+        this.authCodeService = authCodeService;
         this.entityPlanMapper = entityPlanMapper;
         this.planDefMapper = planDefMapper;
         this.qualificationMapper = qualificationMapper;
@@ -90,6 +93,20 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
         this.merchantPaymentMapper = merchantPaymentMapper;
         this.merchantMapper = merchantMapper;
         this.merchantStoreService = merchantStoreService;
+    }
+
+    @Override
+    public void grantCategoryCodes(String entityNo, List<String> codes) {
+        if (codes == null || codes.isEmpty()) {
+            // 只卖无门槛类目的商家不需要任何码 —— 空不是「忘了填」
+            return;
+        }
+        /*
+         * 走 setCodes 而不是直接写字段：那里有三道校验（主体在营、码存在、写没写进去），
+         * 绕过去的话「审核时授的码」与「事后调整的码」会有两套规则，
+         * 而两套规则里总有一套是错的。
+         */
+        authCodeService.setCodes(entityNo, codes, "入驻审核通过时授予");
     }
 
     @Override

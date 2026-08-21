@@ -1,5 +1,5 @@
 // 覆盖范围：类目（P-3.1）、商品池（P-3.2）、库存与预售（P-3.3）。
-import type { GoodsAudit, GoodsDetail, Category, Page, ProductGoods, Sku, SpecTemplate } from "@/lib/types";
+import type { GoodsAudit, GoodsDetail, Category, Page, ProductGoods, Sku, SpecTemplate, SpuStd, Topic } from "@/lib/types";
 import type { CategoryQ, SkuQ, SpecTemplateQ } from "../query";
 
 export interface ProductApi {
@@ -14,6 +14,40 @@ export interface ProductApi {
    *   而每一次重提都要占一次审核人力
    */
   auditGoods(goodsNo: string, approved: boolean, reason?: string): Promise<GoodsAudit>;
+
+  // ── 标准品库（TDD-标准品库）—— **已接真后端** `/ops/spu-std`
+
+  /** 标准品列表。按 `refCount` 倒序 —— 被引用得多的是「别的店都在用」，对录入的人是有效信号 */
+  listSpuStd(q?: { keyword?: string; categoryNo?: string; showArchived?: boolean; page?: number; size?: number }): Promise<Page<SpuStd>>;
+  /**
+   * 新建 / 更新。**每个规格选项必须填 code** —— 后端会拒，前端也先拦一道：
+   * 没有 code 的标准品与商家手输没有区别，它唯一的作用是让人**以为**规格统一了。
+   */
+  saveSpuStd(v: Partial<SpuStd> & { title: string; categoryNo: string }): Promise<SpuStd>;
+  /**
+   * 归档。**不检查有没有商品在引用**（与类目归档相反）——
+   * `stdNo` 是溯源不是外键：归档只是「以后别再从这条建品」，已经建出来的商品照常在售。
+   */
+  archiveSpuStd(stdNo: string): Promise<SpuStd>;
+  unarchiveSpuStd(stdNo: string): Promise<SpuStd>;
+
+  // ── 主题分类（陈列，批 E）—— **已接真后端** `/ops/topics`
+
+  /** 专题列表。**默认带归档的** —— 看不见归档的，「上周那个专题去哪了」就没有答案 */
+  listTopics(q?: { includeArchived?: boolean }): Promise<Topic[]>;
+  /** 新建 / 改。`topicNo` 为空 = 新建；结束早于开始会被拒 */
+  saveTopic(v: Partial<Topic> & { title: string }): Promise<Topic>;
+  /** 归档 / 取消归档。**没有删除** —— 分享出去的海报与历史链接都还指着它 */
+  setTopicArchived(topicNo: string, archived: boolean): Promise<Topic>;
+  /** 专题里的商品，按专题内排序 */
+  listTopicGoods(topicNo: string, q?: { page?: number; size?: number }): Promise<Page<ProductGoods>>;
+  /**
+   * 整份替换专题里的商品，顺序即展示顺序。
+   *
+   * <p><b>只收在架商品</b>：摆一件下架/待审的货进来，C 端点进去是空位，
+   * 而运营在后台看到它明明在列表里。
+   */
+  setTopicGoods(topicNo: string, goodsNos: string[]): Promise<Page<ProductGoods>>;
 
   /** 类目树：一次给全量（三级树总量有限，前端自己组树比逐层拉更快）。 */
   listCategories(q?: CategoryQ): Promise<Category[]>;

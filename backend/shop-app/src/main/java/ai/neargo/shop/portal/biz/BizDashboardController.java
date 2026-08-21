@@ -40,13 +40,16 @@ public class BizDashboardController {
     private final MerchantQueryPort merchantPort;
     private final MerchantStoreService storeService;
     private final StoreCodeService storeCodeService;
+    private final ai.neargo.shop.merchant.service.StoreLinkService storeLinkService;
 
     public BizDashboardController(MerchantOrderService orderService, AfterSaleService afterSaleService,
                                   ReviewService reviewService, GroupService groupService,
                                   MerchantQueryPort merchantPort, MerchantStoreService storeService,
-                                  StoreCodeService storeCodeService) {
+                                  StoreCodeService storeCodeService,
+                                  ai.neargo.shop.merchant.service.StoreLinkService storeLinkService) {
         this.storeService = storeService;
         this.storeCodeService = storeCodeService;
+        this.storeLinkService = storeLinkService;
         this.orderService = orderService;
         this.afterSaleService = afterSaleService;
         this.reviewService = reviewService;
@@ -144,11 +147,20 @@ public class BizDashboardController {
         String code = storeCodeService.ensureFor(merchantNo);
         String shopName = merchantPort.find(merchantNo)
                 .map(MerchantQueryPort.MerchantBrief::merchantName).orElse("我的小店");
-        String url = "https://shop.example.com/s/" + code
-                + (goodsNo == null || goodsNo.isBlank() ? "" : "?g=" + goodsNo);
-        String text = goodsNo == null || goodsNo.isBlank()
-                ? shopName + "：街坊邻居下单，楼下自提，" + url
-                : shopName + " 上新了，点进来看看：" + url;
+        /*
+         * **没配域名就不发链接**，而不是发一个占位域名。
+         *
+         * 这里原本写死 `https://shop.example.com/s/<code>` —— 商家复制出去的链接、
+         * 印在包装袋上的码，全都指向一个不存在的地方。而功能点在清单上是「已实现」。
+         * 发假的与不发，在商家那边的区别是：**前者他印了 500 张贴纸才发现**。
+         */
+        String url = storeLinkService.linkOf(code, goodsNo);
+        String text = url == null
+                // 没链接时文案也不能带一个空洞 —— 商家会连着那半句一起粘出去
+                ? shopName + "：街坊邻居下单，楼下自提，扫下方小程序码进店"
+                : goodsNo == null || goodsNo.isBlank()
+                        ? shopName + "：街坊邻居下单，楼下自提，" + url
+                        : shopName + " 上新了，点进来看看：" + url;
         return new ShareKitVO(text, url);
     }
 

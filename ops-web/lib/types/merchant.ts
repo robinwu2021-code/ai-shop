@@ -42,6 +42,22 @@ export const MERCHANT_TRANSITIONS: Record<MerchantStatus, MerchantStatus[]> = {
   FROZEN: ["ACTIVE"],
 };
 
+/**
+ * 改授权码的结果。
+ *
+ * <p>`affected` 是**代价**，不是统计：撤掉一个码，那些在架商品下次上架就会被拒。
+ * 运营按下确认之前看不见它的话，一次「顺手收紧」会在几天后变成商家的
+ * 「我的货怎么上不去了」，而两件事没人会联系起来。
+ */
+export interface AuthCodeSetResult {
+  /** 改完之后持有的码（全量） */
+  codes: string[];
+  /** 这次撤掉的码。空数组 = 只加不减 */
+  revoked: string[];
+  /** 因撤码而下次上架会被拒的在架商品数 */
+  affected: number;
+}
+
 export interface Merchant extends Archivable {
   /** 商家单号 */
   merchantNo: string;
@@ -238,8 +254,15 @@ export interface MerchantApply {
   contactName: string;
   /** 联系手机号（申请人自己填的，不一定是登录号）。**通过后它就是商家账号的登录号** */
   contactPhone: string;
-  /** 主营类目 */
+  /** 主营类目。**商家自己的说法**（「食品」），不是权威码 */
   category: string;
+  /**
+   * 审核通过时授予的经营类目码 —— **平台的裁定**，与 `category` 并存。
+   *
+   * <p>两者分开是为了留痕：追溯时要的恰恰是这两者的差
+   * （「他说卖食品，我们批的是预包装食品」）。
+   */
+  categoryCodes?: string[];
   /** 店铺简介。通过后会写进主体档案，C 端门店页读的就是它 */
   desc: string;
   /**

@@ -202,7 +202,7 @@ public class OpsNotifyLogController {
         String operator = SecurityUtils.currentUserNo();
         notifyLogService.testSend(req.channel(), req.target(), req.level(),
                 new NotifyLogService.TestContent(req.subject(), req.body(), req.params()),
-                req.captchaId(), req.captchaCode(), operator);
+                req.clientId(), req.captchaId(), req.captchaCode(), operator);
         // **审计里不写收件人明文**：发送记录那张表已经存了掩码版，这里只记「谁测了哪个渠道」
         auditLogPort.record("NOTIFY_TEST_SEND", operator, req.channel());
     }
@@ -313,6 +313,17 @@ public class OpsNotifyLogController {
      */
     public record TestSendReq(@NotBlank String channel, @NotBlank String target, String level,
                               String subject, String body, java.util.Map<String, String> params,
+                              String clientId,
                               @NotBlank String captchaId, @NotBlank String captchaCode) {
+    }
+
+    /**
+     * 某收件人绑定的推送终端设备列表 —— 运营端「选择终端发起测试」的下拉数据。
+     * 返回掩码 cid（展示）+ 原始 cid（发送时回传，服务端仍会核对归属）。
+     */
+    @GetMapping("/ops/notify-logs/push-devices")
+    @PreAuthorize("@perm.can('" + Perms.MESSAGE_TEMPLATE_UPDATE + "')")
+    public java.util.List<NotifyLogService.PushDeviceVO> pushDevices(@RequestParam String userNo) {
+        return notifyLogService.pushDevices(userNo);
     }
 }

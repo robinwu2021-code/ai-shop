@@ -104,11 +104,11 @@ public class GetuiPushGateway implements PushGateway {
                 + ",\"channel_name\":\"" + (ring ? "订单提醒" : "通知") + "\""
                 + "}}}";
 
-        String resp = post("/v2/push/single/cid", reqBody, token(false));
+        String resp = post("/push/single/cid", reqBody, token(false));
         int code = intField(resp, "code");
         if (code == 10001 || code == 10003) {
             // token 失效/过期：强刷一次再试，只试一次
-            resp = post("/v2/push/single/cid", reqBody, token(true));
+            resp = post("/push/single/cid", reqBody, token(true));
             code = intField(resp, "code");
         }
         if (code != 0) {
@@ -136,7 +136,7 @@ public class GetuiPushGateway implements PushGateway {
             }
             String ts = String.valueOf(System.currentTimeMillis());
             String sign = sha256(appKey + ts + masterSecret);
-            String resp = post("/v2/auth",
+            String resp = post("/auth",
                     "{\"sign\":\"" + sign + "\",\"timestamp\":\"" + ts
                             + "\",\"appkey\":\"" + esc(appKey) + "\"}", null);
             String t = strField(resp, "token");
@@ -158,8 +158,10 @@ public class GetuiPushGateway implements PushGateway {
 
     private String post(String path, String jsonBody, String authToken) {
         try {
+            // 个推 V2 REST 的形状是 /v2/{appId}/xxx —— appId 在 v2 之后。
+            // 早先写成 /{appId}/v2/xxx 会 404（nginx），表现为「个推鉴权失败」。
             HttpRequest.Builder req = HttpRequest
-                    .newBuilder(URI.create(host + "/" + appId + path))
+                    .newBuilder(URI.create(host + "/v2/" + appId + path))
                     .header("Content-Type", "application/json;charset=utf-8")
                     .timeout(Duration.ofSeconds(10))
                     .POST(HttpRequest.BodyPublishers.ofString(jsonBody, StandardCharsets.UTF_8));

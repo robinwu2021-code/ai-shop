@@ -107,7 +107,7 @@ class QualificationChainFlowTest {
         String entityNo = approve(applyNo);
         // 再审一次（真实场景是运营重复点击 / 接口重放）
         try {
-            opsService.auditApply(applyNo, true, null, null, null);
+            opsService.auditApply(applyNo, true, null, null, null, null);
         } catch (RuntimeException ignored) {
             // 已终态的申请再审会被状态机拒 —— 那也是对的，不影响本断言
         }
@@ -141,7 +141,7 @@ class QualificationChainFlowTest {
 
     private String approve(String applyNo) {
         opsService.acceptApply(applyNo);
-        opsService.auditApply(applyNo, true, null, "COMMUNITY", List.of("C001"));
+        opsService.auditApply(applyNo, true, null, "COMMUNITY", List.of("C001"), null);
         MchEntityApply a = applyMapper.selectOne(Wrappers.<MchEntityApply>lambdaQuery()
                 .eq(MchEntityApply::getApplyNo, applyNo).last("LIMIT 1"));
         return a.getEntityNo();

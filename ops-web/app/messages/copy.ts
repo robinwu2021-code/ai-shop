@@ -202,6 +202,10 @@ const zh = {
   chPushLevel: "提醒级别",
   chLevelNormal: "常规（横幅）",
   chLevelRing: "响铃（B 端新订单就是这一档）",
+  tsPushDevice: "指定终端",
+  tsPushDeviceAll: "全部设备（推给他名下每一台）",
+  tsPushDeviceNone: "该用户名下暂无已绑定的推送终端",
+  tsPushDeviceHint: "选一台真机验证个推链路；不选则广播到他所有设备。",
 
   // ── 模拟发送抽屉（TDD-触达中心界面优化 §2）────────────────────────────
   tsOpen: "模拟发送",
@@ -493,6 +497,10 @@ const en: typeof zh = {
   chPushLevel: "Alert level",
   chLevelNormal: "Normal (banner)",
   chLevelRing: "Ring (what a merchant's new-order alert uses)",
+  tsPushDevice: "Target device",
+  tsPushDeviceAll: "All devices (push to every one they own)",
+  tsPushDeviceNone: "This user has no bound push device yet",
+  tsPushDeviceHint: "Pick one real device to verify the push path; leave it to broadcast to all their devices.",
 
   tsOpen: "Test send",
   tsTitle: "Test send · {ch}",

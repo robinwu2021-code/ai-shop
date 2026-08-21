@@ -44,6 +44,14 @@ public record OrderVO(String orderNo,
                       String expressNo,
                       String trafficSource,
                       /**
+                       * 预约开始时间（{@code APPOINTMENT} 履约）。其余履约为 null。
+                       *
+                       * <p><b>没有时间的「待服务」等于没说</b> —— 买家要知道的正是几点，
+                       * 商家的待服务列表也按它排。端上 {@code orderView()} 见到它才会
+                       * 用带时间的文案。
+                       */
+                      Long appointmentAt,
+                      /**
                        * 收件人（V69 快照）。<b>自提单为 null</b>。
                        *
                        * <p>此前这一列在库里有 {@code address_id}、在 VO 里连字段都没有 ——

@@ -43,9 +43,12 @@ const KNOWN_SHARED: Record<string, string> = {
     "覆盖项的 level 直接取自 sys_region.level（V31 灌的国标数据），扫描器看不见库里的值。" +
     "COMMUNITY/CITY 之所以没报，是因为它们恰好与 SERVICE_SCOPE 的取值同名",
   FULFILLMENT:
-    "DELIVERY/STORE_VERIFY/APPOINTMENT/INSTANT 四种履约后端还没实现（库里只有 " +
-    "STORE_PICKUP/NEIGHBOR_PICKUP/MERCHANT_DELIVERY/EXPRESS）—— 接的时候一起定名。" +
-    "（PICKUP 与 STORE_PICKUP 的同物异名已修：常量的值改成了 STORE_PICKUP）",
+    "**STORE_VERIFY 与 APPOINTMENT 已接通**（2026-08-17，服务履约一、二期）：后端取值域、" +
+    "支付后落 FULFILLING（不经「待发货」，因为没有东西要发）、预约时段与上门地址两道必填闸、核销全链路。" +
+    "剩 INSTANT（虚拟即时发放，三期：与卡包耦合）。" +
+    "接通时**不需要新增订单状态** —— 归进 SELF_SERVE / SERVE_TO_BUYER 两个交付形态即可，" +
+    "文案表加一行（见《订单状态-统一整理》）。" +
+    "（DELIVERY 与 MERCHANT_DELIVERY 的同物异名、PICKUP 与 STORE_PICKUP 的同物异名均已修）",
 };
 
 /**

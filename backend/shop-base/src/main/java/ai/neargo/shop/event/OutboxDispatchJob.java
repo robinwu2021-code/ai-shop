@@ -33,7 +33,7 @@ import org.springframework.stereotype.Component;
  * 用户此刻正盯着屏幕 —— 分钟级的延迟会让人以为没成功而重复操作。
  * 代价很低：没有待发事件时这一轮就是一次带 limit 的索引查询。
  *
- * <p><b>投递语义是 at-least-once</b>，消费者自己幂等（{@code msg_message.dedup_key}）。
+ * <p><b>投递语义是 at-least-once</b>，消费者自己幂等（{@code notify_message.dedup_key}）。
  * 所以这个任务重跑、并发跑都不会重复发 —— ShedLock 防的不是重复投递，
  * 是**两个实例同时扫同一批**造成的白工与锁竞争。
  */

@@ -37,6 +37,8 @@ import java.util.Set;
 public class MerchantGoodsServiceImpl implements MerchantGoodsService {
 
     private static final String AUDITING = "AUDITING";
+    /** 草稿：**不进待审队列**，也上不了架。批 D 之前不存在这个状态，保存即提审 */
+    private static final String DRAFT = "DRAFT";
     private static final String APPROVED = "APPROVED";
     private static final String REJECTED = "REJECTED";
     /** 一期只做单市场（CN）；priceByMarket 里的其余市场各写一行 SKU。 */
@@ -52,10 +54,16 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
     private final ObjectMapper json;
 
     private final ai.neargo.shop.product.service.CategoryService categoryService;
+    /** 标准品：引用建品时用它把类目与 optionCode 拉回权威值 */
+    private final ai.neargo.shop.product.service.SpuStdService spuStdService;
     /** 门店级库存。**只有商家显式设置过才有行** —— 见 saveStoreStock 的说明 */
     private final ai.neargo.shop.product.mapper.ProductMappers.StoreStockMapper storeStockMapper;
     /** 门店级上架关系。与库存同一套「有行按店算、无行回退主体」的语义 */
     private final ai.neargo.shop.product.mapper.ProductMappers.StoreGoodsMapper storeGoodsMapper;
+    /** 门店货架。商品域只用它回答两个问题：本店有没有这一类、把这一类加进去 */
+    private final ai.neargo.shop.spi.user.StoreCategoryPort storeCategoryPort;
+    /** 门店级售价。**无行回退主体价**（与库存的「无行视为 0」相反，见 PrdStorePrice） */
+    private final ai.neargo.shop.product.mapper.ProductMappers.StorePriceMapper storePriceMapper;
 
     public MerchantGoodsServiceImpl(GoodsMapper goodsMapper, SkuMapper skuMapper,
                                     SpecTemplateMapper templateMapper,
@@ -63,12 +71,18 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                                     ai.neargo.shop.spi.user.MerchantQueryPort merchantPort,
                                     ai.neargo.shop.spi.user.AdmissionPort admissionPort,
                                     ai.neargo.shop.product.service.CategoryService categoryService,
+                                    ai.neargo.shop.product.service.SpuStdService spuStdService,
                                     ai.neargo.shop.product.mapper.ProductMappers.StoreStockMapper storeStockMapper,
                                     ai.neargo.shop.product.mapper.ProductMappers.StoreGoodsMapper storeGoodsMapper,
+                                    ai.neargo.shop.spi.user.StoreCategoryPort storeCategoryPort,
+                                    ai.neargo.shop.product.mapper.ProductMappers.StorePriceMapper storePriceMapper,
                                     ObjectMapper json) {
+        this.storePriceMapper = storePriceMapper;
+        this.storeCategoryPort = storeCategoryPort;
         this.storeStockMapper = storeStockMapper;
         this.storeGoodsMapper = storeGoodsMapper;
         this.categoryService = categoryService;
+        this.spuStdService = spuStdService;
         this.poolMapper = poolMapper;
         this.merchantPort = merchantPort;
         this.admissionPort = admissionPort;
@@ -92,6 +106,18 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                 .eq(merchantNo != null && !merchantNo.isBlank(), PrdGoods::getEntityNo, merchantNo)
                 .eq(categoryNo != null && !categoryNo.isBlank(), PrdGoods::getCategoryNo, categoryNo)
                 .like(keyword != null && !keyword.isBlank(), PrdGoods::getTitle, keyword);
+        /*
+         * 「缺货」是**第五个筛**（B-4.1 写了三筛：在售/下架/缺货，而代码里一直只有四态
+         * 都不含它）。它落不到 prd_goods 的任何一列上 —— 库存在 SKU 上 ——
+         * 所以先把缺货的 goodsNo 圈出来再拼进 IN。
+         */
+        if (OUT_OF_STOCK.equals(status)) {
+            List<String> nos = outOfStockGoodsNos(merchantNo);
+            if (nos.isEmpty()) {
+                return PageData.empty(page, size);
+            }
+            w.in(PrdGoods::getGoodsNo, nos);
+        }
         applyStatus(w, status);
         // 新建的排在前面：店主刚录完一件商品，第一件事是看它在不在
         w.orderByDesc(PrdGoods::getId);
@@ -104,8 +130,61 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
          */
         Page<PrdGoods> p = DataScopeContext.executeWithoutScope(() ->
                 goodsMapper.selectPage(Page.of(page, size), w));
-        List<GoodsVO> rows = p.getRecords().stream().map(this::toVO).toList();
-        return PageData.of(rows, p.getTotal(), page, size);
+        return PageData.of(toVOs(p.getRecords()), p.getTotal(), page, size);
+    }
+
+    /** 对外的「缺货」筛选值。库里没有这个状态，它是按 SKU 可用量算出来的 */
+    private static final String OUT_OF_STOCK = "OUT_OF_STOCK";
+
+    /**
+     * 缺货商品：<b>所有 SKU 的可用量（stock − locked）都 ≤ 0</b>。
+     *
+     * <p>「有一个规格缺货」不算缺货 —— 那件商品照样卖得出去，把它列进来会让
+     * 一个只是某个规格断货的店看到一屏「缺货」，而店主没有可做的动作。
+     *
+     * <p>⚠️ 口径按**主体总量**，不看门店库存。已转店级管理的 SKU 在某家店可能是 0
+     * 而主体还有货 —— 那属于「这家店没配」，与缺货是两件事（同
+     * {@code outOfStockCountByStore} 的注释）。真要按店筛，得先决定
+     * 「没配过的店算不算这件商品的经营范围」。
+     */
+    private List<String> outOfStockGoodsNos(String merchantNo) {
+        if (merchantNo == null || merchantNo.isBlank()) {
+            return List.of();
+        }
+        List<PrdSku> rows = DataScopeContext.executeWithoutScope(() ->
+                skuMapper.selectList(Wrappers.<PrdSku>lambdaQuery()
+                        .eq(PrdSku::getEntityNo, merchantNo)
+                        .eq(PrdSku::getMarket, HOME_MARKET)));
+        Map<String, Boolean> anyInStock = new LinkedHashMap<>();
+        for (PrdSku s : rows) {
+            boolean has = nz(s.getStock()) - nz(s.getLockedStock()) > 0;
+            anyInStock.merge(s.getGoodsNo(), has, (a, b) -> a || b);
+        }
+        return anyInStock.entrySet().stream().filter(e -> !e.getValue())
+                .map(Map.Entry::getKey).toList();
+    }
+
+    /**
+     * 一批商品行 → VO。<b>批量组装，不逐行 detail()</b>。
+     *
+     * <p>这里原先是 {@code .map(this::toVO)}，而 toVO 每行都要
+     * {@code goodsService.detail()} 重新查一遍商品、SKU、商家、限时特价，
+     * 再加上门店库存投影 —— 一页 20 条接近 100 次往返。同一个类里的
+     * {@code listForOps} 一直是批量写法。
+     */
+    private List<GoodsVO> toVOs(List<PrdGoods> rows) {
+        if (rows.isEmpty()) {
+            return List.of();
+        }
+        Map<String, GoodsVO> base = goodsService.detailAll(
+                rows.stream().map(PrdGoods::getGoodsNo).toList());
+        return rows.stream()
+                .map(g -> {
+                    GoodsVO b = base.get(g.getGoodsNo());
+                    return b == null ? null : merchantView(g, b);
+                })
+                .filter(java.util.Objects::nonNull)
+                .toList();
     }
 
     @Override
@@ -119,8 +198,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         applyStatus(w, "PENDING");
         w.orderByDesc(PrdGoods::getId);
         Page<PrdGoods> p = goodsMapper.selectPage(Page.of(page, size), w);
-        List<GoodsVO> rows = p.getRecords().stream().map(this::toVO).toList();
-        return PageData.of(rows, p.getTotal(), page, size);
+        return PageData.of(toVOs(p.getRecords()), p.getTotal(), page, size);
     }
 
     @Override
@@ -271,6 +349,10 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
      * 这里只看 {@code prd_goods.on_sale} 这个主体级字段，多门店的细分展示留给以后真要做门店维度筛选时再加。
      */
     private String opsStatusOf(PrdGoods g) {
+        // 草稿对运营原样下发：他要能一眼认出「这不是等我审的」
+        if (DRAFT.equals(g.getAuditStatus())) {
+            return DRAFT;
+        }
         if (AUDITING.equals(g.getAuditStatus())) {
             return AUDITING;
         }
@@ -321,6 +403,35 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
             // 没有 SKU 的商品价格无从谈起，上架后 C 端会显示 ¥0
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
+        /*
+         * **类目必填**（P1-1 收尾）。它此前是选填的，而品类是必填的 —— 现在两者调了个个。
+         *
+         * 不强制的后果不是报错，是**静默走回落**：没类目就派生不出形态，
+         * 商品落进「新建默认 NORMAL」，而商家以为自己建的是生鲜。
+         * 端上已经用 `missing` 把按钮灰掉了，但那只挡住了界面这一条路 ——
+         * 判据必须同时在服务端成立，否则下一个接进来的客户端照样能绕。
+         *
+         * 顺带堵掉「查无此类目」：`categoryTypeOf` 对不存在的编号返回 null，
+         * 兜底成 NORMAL 会把一条错误数据静默转成一条合法数据。
+         */
+        if (cmd.categoryNo() == null || cmd.categoryNo().isBlank()) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        /*
+         * ★★ 引用标准品时的**权威收敛** —— 这是整个标准品库存在的理由（TDD-标准品库 §3.2）。
+         *
+         * 端上「从标准品开始」只是把字段**填进表单**，而填充过的表单商家能随便改。
+         * 标题、图、规格文案改了没关系（「李婶家的农夫山泉」是合理的差异化），
+         * 但两样不能改：
+         *   ① **类目** —— 它决定形态（生鲜要截单、服务不发货）。改了就不是这个标准品了，
+         *      而 std_no 还挂着，溯源会说谎；
+         *   ② **optionCode** —— 跨店可比全靠它。能被改掉的话，标准品退化成一个填表助手，
+         *      而 optionCode（B-4.5）「一期只写入不消费」要消费的那个前提又落空了。
+         *
+         * 所以收敛落在**服务端**，不落在端上：端上算错、老客户端不认这个字段、
+         * 或者有人直接构造请求，都写不进一条破坏可比性的数据。
+         */
+        cmd = applyStd(cmd);
         boolean isNew = cmd.goodsNo() == null || cmd.goodsNo().isBlank();
         PrdGoods g = isNew ? newGoods(merchantNo) : mine(merchantNo, cmd.goodsNo());
 
@@ -328,7 +439,41 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         g.setSubtitle(cmd.subtitle());
         g.setTitleI18n(writeMap(cmd.titleI18n()));
         g.setSubtitleI18n(writeMap(cmd.subtitleI18n()));
-        g.setType(cmd.type() == null ? "NORMAL" : cmd.type());
+        /*
+         * **品类由类目派生，商家填不了。**
+         *
+         * 这里原先取的是 cmd.type() —— 于是建品页有两个分类控件，商家把同一件事
+         * 填两遍，而且可以互相矛盾（「叶菜」类目 + NORMAL 品类），只提示不阻断。
+         * 矛盾的代价要到下单那一刻才显形：生鲜要截单、服务不发货，而这件商品
+         * 声称自己是日用品。
+         *
+         * 类目缺省时的两种回落**刻意不同**：
+         *   - 新建：NORMAL。没归类的商品当日用品处理，是最不容易出错的一档
+         *   - 编辑：保留原值。不这么写的话，任何一次「只改标题」的保存
+         *     都会把一件生鲜悄悄变成日用品
+         *
+         * 类目号查无此项时 categoryTypeOf 返回 null，走的也是这条回落 ——
+         * 与「没填类目」同样处理，不把一个错误的编号变成一件合法的日用品。
+         */
+        String derivedType = categoryService.categoryTypeOf(cmd.categoryNo());
+        if (derivedType == null) {
+            // 类目已经必填（见上），走到这里只剩「传了一个查无此项的编号」——
+            // 兜底成 NORMAL 等于把一条错误数据静默转成一条合法数据
+            throw BizException.of(ErrorCode.CATEGORY_NOT_FOUND);
+        }
+        /*
+         * **归档类目不能被新商品选中**（降二级之后这条从理论问题变成了现在就能踩：
+         * 原三级类目整批归档，端上老缓存里还留着它们的编号）。
+         *
+         * 但<b>已经在里面的商品照旧能保存</b> —— 否则运营归档一个类目，
+         * 会把底下所有商品一起变成改不动的死数据，商家连「挪到别的类目」这个
+         * 自救动作都做不了。判据因此是「有没有换到一个归档类目」，不是「类目归没归档」。
+         */
+        boolean categoryChanged = isNew || !cmd.categoryNo().equals(g.getCategoryNo());
+        if (categoryChanged && !categoryService.isActive(cmd.categoryNo())) {
+            throw BizException.of(ErrorCode.CATEGORY_NOT_FOUND);
+        }
+        g.setType(derivedType);
         /*
          * 类目：**空串按「不归类」处理，不是「归到一个叫空的类目」**。
          * 不做这层转换的话，库里会出现 category_no='' 的商品 ——
@@ -357,17 +502,51 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         if (cmd.categoryNo() != null) {
             g.setCategoryNo(cmd.categoryNo().isBlank() ? null : cmd.categoryNo());
         }
+        applyOptional(g, cmd);
         g.setCover(cmd.cover() == null ? "" : cmd.cover());
-        g.setImages(writeJson(cmd.images()));
+        /*
+         * **不传 = 不改**，与紧邻的 fulfillments 同一条规矩。
+         *
+         * 这里原先是无条件覆盖，而 writeJson(null) 返回的是 "[]" —— 于是
+         * 「端上没带 images」被当成了「把轮播图全删掉」。b-app 的提交体里
+         * 恰好从来没有这一项（契约 GoodsDraft.images 是有的，页面没填），
+         * 结果是**改一次标题，详情页的轮播图全没了**，且不报错：
+         * C 端只剩封面，看着像商家本来就没传图。
+         *
+         * 要清空轮播图请显式传空数组 —— 与「不传」分开，理由同 fulfillments。
+         */
+        if (cmd.images() != null) {
+            g.setImages(writeJson(cmd.images()));
+        }
+        /*
+         * 图文详情：**不传 = 不改**，与 images 同一口径 ——
+         * 无条件覆盖的话，任何一次只改标题的保存都会把详情清空，且不报错。
+         */
+        if (cmd.detail() != null) {
+            g.setDetail(cmd.detail().isBlank() ? null : cmd.detail());
+        }
         g.setSpecGroups(writeSpecGroups(cmd.specGroups()));
+        /*
+         * 溯源。**不传 = 脱离标准品**（置空），与其余字段的「不传 = 不改」相反 ——
+         * 商家在编辑页点「脱离标准品」之后，端上就是不再带这个字段，
+         * 而「不改」会让他脱不掉：商品继续被收敛，界面上却已经不显示来源了。
+         */
+        g.setStdNo(cmd.stdNo() == null || cmd.stdNo().isBlank() ? null : cmd.stdNo());
         /*
          * **改动后回到待审核，并强制下架。**
          *
          * 不这样做的话，「上架一件白菜 → 审核通过 → 改成别的东西继续卖」是一条通路，
          * 而审核在这条路上完全不起作用。代价是商家改个错别字也要重审 ——
          * 一期审核是人工的，这个代价由平台承担，不该由买家承担。
+         *
+         * <b>但新建与改草稿不进队列</b>（批 D）：保存即提审的后果是运营队列里
+         * 混着半成品，而商家那边看到「审核中」，既不敢改也不知道在等什么。
+         * 判据是「这件商品此刻在不在审核轴上」：
+         *   - 新建 / 当前是草稿 → 仍是草稿，要商家显式点「提交审核」
+         *   - 已过审、已驳回、在审中 → 照旧回 AUDITING（那条路一个字没动）
          */
-        g.setAuditStatus(AUDITING);
+        boolean stayDraft = isNew || DRAFT.equals(g.getAuditStatus());
+        g.setAuditStatus(stayDraft ? DRAFT : AUDITING);
         g.setOnSale(false);
 
         if (isNew) {
@@ -376,9 +555,142 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
             DataScopeContext.executeWithoutScope(() -> goodsMapper.updateById(g));
         }
         saveSkus(merchantNo, g.getGoodsNo(), cmd.skus(), cmd.specGroups());
+        /*
+         * **建品时把这一类自动加进本店货架**（TDD-品类约束全链路 §4.2）。
+         *
+         * 选一个本店还没摆的类目不是错误，是「他要开始卖这个了」。让商家先去
+         * 「我的类目」勾一遍再回来建品，是把一个系统能自己完成的动作变成了两趟。
+         *
+         * 这里<b>不校验经营资质</b>：那是上架时的事（见 requireCategoryAuthorized），
+         * 草稿归到一个还没批下来的类目下是合法的 —— 他可能正在申请。
+         */
+        String ctxStore = ai.neargo.shop.auth.BizContext.current().currentStoreNo();
+        if (ctxStore != null && !ctxStore.isBlank()) {
+            storeCategoryPort.ensure(merchantNo, ctxStore, g.getCategoryNo());
+        }
         // 改动后强制下架，池要跟着撤 —— 否则改成别的东西之后，旧条目还挂在买家的社区列表里
         syncPool(g, false);
         return toVO(g);
+    }
+
+    /**
+     * 引用标准品时把<b>类目与 optionCode 拉回标准品的值</b>，其余原样。
+     *
+     * <p>不引用（{@code stdNo} 为空）时原样返回，自建品链路一个字节都不变 ——
+     * 标准库对「张姐家的酱菜」永远无效，而那类货是这个平台的一部分主力。
+     *
+     * <p><b>查无此标准品报错而不是忽略</b>：忽略的话，端上传了个失效的 stdNo，
+     * 商品照样建出来、只是没了收敛，而 std_no 那一列还写着它 —— 一条自称
+     * 「来自标准品」却不受标准品约束的数据，比没有标准品更糟。
+     *
+     * <p>规格组按<b>顺序位置</b>对齐：标准品有几组就收敛几组，商家<b>追加</b>的规格组
+     * （比如「是否加冰」）保持原样、没有 code、不参与聚合 —— 这是刻意留的自由度。
+     */
+    private SaveCommand applyStd(SaveCommand cmd) {
+        if (cmd.stdNo() == null || cmd.stdNo().isBlank()) {
+            return cmd;
+        }
+        var std = spuStdService.find(cmd.stdNo());
+        if (std == null) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        List<SpecGroup> merged = new ArrayList<>();
+        List<SpecGroup> given = cmd.specGroups() == null ? List.of() : cmd.specGroups();
+        for (int i = 0; i < given.size(); i++) {
+            SpecGroup g = given.get(i);
+            if (i >= std.specGroups().size()) {
+                // 商家追加的组：没有对应的标准组，原样保留
+                merged.add(g);
+                continue;
+            }
+            var stdGroup = std.specGroups().get(i);
+            /*
+             * 只覆盖 code，不覆盖 name 与 options 文案 —— 后者是展示，
+             * 商家把「重量」叫成「份量」不影响任何聚合。
+             *
+             * 选项数量对不上时以标准品的 code 列表为准截断/补齐：
+             * 商家删掉一个规格选项是合法的（他就是不卖 5 斤装），
+             * 而那一格的 code 也就跟着不需要了。
+             */
+            List<String> codes = stdGroup.optionCodes() == null ? List.of() : stdGroup.optionCodes();
+            int n = g.options() == null ? 0 : g.options().size();
+            List<String> aligned = new ArrayList<>();
+            for (int j = 0; j < n; j++) {
+                aligned.add(j < codes.size() ? codes.get(j) : null);
+            }
+            merged.add(new SpecGroup(g.name(), g.options(), aligned, g.templateNo()));
+        }
+        return new SaveCommand(cmd.goodsNo(), cmd.title(), cmd.subtitle(),
+                cmd.titleI18n(), cmd.subtitleI18n(),
+                // ★ 类目以标准品为准 —— 形态因此也跟着回到标准品那一档
+                std.categoryNo(),
+                cmd.cover(), cmd.images(), merged, cmd.skus(), cmd.fulfillments(),
+                cmd.limitPerUser(), cmd.fresh(), cmd.service(), cmd.groupBuy(), cmd.stdNo(),
+                cmd.detail());
+    }
+
+    /**
+     * 品类差异字段与几个通用可选字段。<b>一律「不传 = 不改」</b>，与 fulfillments / images 同一条规矩。
+     *
+     * <p>这些列此前<b>只有 DevSeeder 和测试写得进去</b>：{@code SaveCommand} 里根本没有对应参数，
+     * 而 {@code PrdGoods} 的类注释写着「五品类共用一张表，差异字段按 type 各用各的」——
+     * 商家能选类目（从而定下品类），却一个差异字段都填不了。后果不是报错，是
+     * <b>生鲜没有截单时间、服务没有时长、「可开团的商品」那一栏恒为空</b>。
+     *
+     * <p><b>按派生出的品类分段写</b>，不是照单全收：一件大米带上「服务时长 90 分钟」
+     * 不会报错，但它会出现在服务类的详情模板里。端上按品类切换字段区，
+     * 服务端再按品类校一次 —— 端上少一次判断不该让库里多一条脏数据。
+     */
+    private void applyOptional(PrdGoods g, SaveCommand cmd) {
+        if (cmd.limitPerUser() != null) {
+            // 负数限购会让「每人限购」变成谁都买不了，而界面上看着是配着的
+            g.setLimitPerUser(Math.max(cmd.limitPerUser(), 0));
+        }
+        if (cmd.fresh() != null && "FRESH".equals(g.getType())) {
+            var f = cmd.fresh();
+            if (f.cutoffAt() != null) {
+                g.setCutoffAt(f.cutoffAt());
+            }
+            if (f.arrivalDesc() != null) {
+                g.setArrivalDesc(f.arrivalDesc());
+            }
+            if (f.weighed() != null) {
+                g.setWeighed(f.weighed());
+            }
+            if (f.origin() != null) {
+                g.setOrigin(f.origin());
+            }
+        }
+        if (cmd.service() != null && "SERVICE".equals(g.getType())) {
+            var s = cmd.service();
+            if (s.durationMin() != null) {
+                g.setDurationMin(s.durationMin());
+            }
+            if (s.storeName() != null) {
+                g.setStoreName(s.storeName());
+            }
+        }
+        if (cmd.groupBuy() != null) {
+            var gb = cmd.groupBuy();
+            /*
+             * 两个值必须一起给 —— `groupBuyConf` 缺一个就返回 null，也就是「不能开团」。
+             * 只给一个的话，商家在界面上填了团价却开不出团，而没有任何提示。
+             * 两个都为空是**显式关闭拼团**，与「不传这一段」（不改）分开。
+             */
+            if (gb.minCount() == null && gb.priceMinor() == null) {
+                g.setGroupMinCount(null);
+                g.setGroupPriceMinor(null);
+            } else if (gb.minCount() == null || gb.priceMinor() == null) {
+                throw BizException.of(ErrorCode.BAD_REQUEST);
+            } else {
+                // 一个人不叫团（词典 §8）
+                if (gb.minCount() < 2 || gb.priceMinor() < 0) {
+                    throw BizException.of(ErrorCode.BAD_REQUEST);
+                }
+                g.setGroupMinCount(gb.minCount());
+                g.setGroupPriceMinor(gb.priceMinor());
+            }
+        }
     }
 
     /**
@@ -395,7 +707,9 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
             byNo.put(s.getSkuNo() + "@" + s.getMarket(), s);
         }
 
-        List<String> kept = new ArrayList<>();
+        // Set 而不是 List：下面每删一行都要 contains 一次，
+        // 而规格矩阵 3×4×3 = 36 个 SKU × 3 市场 = 108 行，List 是 O(n²)
+        Set<String> kept = new java.util.HashSet<>();
         for (Sku sku : skus) {
             String skuNo = sku.skuNo() == null || sku.skuNo().isBlank()
                     ? BizKey.next(BizKey.SKU) : sku.skuNo();
@@ -422,6 +736,23 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                 row.setSpec(String.join(" · ", sku.optionValues() == null ? List.of() : sku.optionValues()));
                 row.setPrice(e.getValue());
                 row.setStock(sku.stock());
+                /*
+                 * 划线价与标称重量：**不传 = 不改**，与商品级那几段同一条规矩。
+                 * 两列此前都是「有列、有契约、没有写入路径」——
+                 * 折扣标永远不出现，生鲜也永远按不了实称。
+                 *
+                 * 划线价不分市场校验（各市场自己的划线价各填各的），但**必须高于售价**：
+                 * 低于售价的划线价会渲染成一个「涨价了」的折扣标。
+                 */
+                if (sku.originPrice() != null) {
+                    if (sku.originPrice() > 0 && sku.originPrice() < e.getValue()) {
+                        throw BizException.of(ErrorCode.BAD_REQUEST);
+                    }
+                    row.setOriginPrice(sku.originPrice() <= 0 ? null : sku.originPrice());
+                }
+                if (sku.nominalGram() != null) {
+                    row.setNominalGram(sku.nominalGram() <= 0 ? null : sku.nominalGram());
+                }
                 PrdSku toSave = row;
                 DataScopeContext.executeWithoutScope(() ->
                         fresh ? skuMapper.insert(toSave) : skuMapper.updateById(toSave));
@@ -429,11 +760,29 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
             }
         }
 
-        // 被删掉的规格行：逻辑删除而不是物理删 —— 历史订单要能查回"当时买的是哪个规格"
+        /*
+         * 被删掉的规格行：逻辑删除而不是物理删 —— 历史订单要能查回「当时买的是哪个规格」。
+         *
+         * ★ <b>只删「这个 skuNo 整个不见了」的行，不删「这次没提交的市场」。</b>
+         *
+         * 上一版是按 {@code skuNo@market} 逐行比对，于是端上只回填得了当前市场那一格
+         * （{@code GoodsVO.SkuVO} 当时不下发 priceByMarket），提交上来的价格表只有
+         * {CN: x} —— <b>商家改一次标题，AE/US 两行就被逻辑删了</b>，而且不报错：
+         * 那两个市场的买家从此看不到这件商品，商家在 B 端也看不出任何异常。
+         *
+         * 与 titleI18n 是逐字同款的形状（编辑页按维度逐格填、保存是整份覆盖），
+         * 那边补了下发，这边没补。现在两头都做：下发补齐（见 {@code GoodsVO.SkuVO.priceByMarket}），
+         * 同时这里把「没提交的市场」按不改处理 —— 两道防线，因为下发补齐防不住
+         * 老版本客户端。
+         */
+        Set<String> keptSkuNos = kept.stream().map(k -> k.substring(0, k.indexOf('@')))
+                .collect(java.util.stream.Collectors.toSet());
         for (var e : byNo.entrySet()) {
-            if (!kept.contains(e.getKey())) {
-                DataScopeContext.executeWithoutScope(() -> skuMapper.deleteById(e.getValue().getId()));
+            String skuNo = e.getKey().substring(0, e.getKey().indexOf('@'));
+            if (keptSkuNos.contains(skuNo)) {
+                continue;
             }
+            DataScopeContext.executeWithoutScope(() -> skuMapper.deleteById(e.getValue().getId()));
         }
         // groups 已写在 goods 上，这里只用于生成 spec 文案，不再单独落库
         if (groups == null) {
@@ -457,6 +806,19 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
             requireCategoryAuthorized(merchantNo, g.getCategoryNo());
         }
         String storeNo = ai.neargo.shop.auth.BizContext.current().currentStoreNo();
+        /*
+         * 闸二：**上架的商品，它的类目必须在这家店的货架上**（TDD-品类约束全链路 §4.3）。
+         *
+         * 走到这里资质已经过了闸一，所以缺的只可能是「这家店还没摆这个货架」——
+         * 那是一次登记，不是一次拒绝，补上即可。硬拒的话，商家会看到一句
+         * 「本店不能卖这一类」，而他明明有资质，也确实想卖。
+         *
+         * 反向的口子（货架被撤而商品还在）由 StoreCategoryService.replace 那侧堵：
+         * 底下还有商品的类目删不掉。两侧合起来，「上架商品 ⊆ 本店货架」才是闭的。
+         */
+        if (onSale && storeNo != null && !storeNo.isBlank()) {
+            storeCategoryPort.ensure(merchantNo, storeNo, g.getCategoryNo());
+        }
         /*
          * 多门店商家的上下架落在**门店行**上，不动主体的 on_sale。
          *
@@ -619,13 +981,14 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
     private GoodsVO toVOWithoutStoreContext(PrdGoods g) {
         GoodsVO base = goodsService.detail(g.getGoodsNo());
         return new GoodsVO(base.goodsNo(), base.title(), base.subtitle(), base.cover(),
-                base.images(), base.type(), base.categoryNo(), base.merchant(),
+                base.images(), base.detail(), base.type(), base.categoryNo(), base.merchant(),
                 base.rating(), base.ratingCount(), base.price(), base.originPrice(),
                 base.fulfillments(), base.specGroups(), base.skus(), base.sales(),
                 base.cutoffAt(), base.arrivalDesc(), base.weighed(), base.origin(),
                 base.durationMin(), base.storeName(), base.limitPerUser(), base.onSale(),
                 opsStatusOf(g),
                 readMap(g.getTitleI18n()), readMap(g.getSubtitleI18n()),
+                g.getStdNo(),
                 g.getAuditReason(),
                 GoodsServiceImpl.groupBuyConf(g));
     }
@@ -935,6 +1298,119 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         return toVO(g);
     }
 
+    @Override
+    @Transactional
+    public GoodsVO submitForAudit(String merchantNo, String goodsNo) {
+        PrdGoods g = mine(merchantNo, goodsNo);
+        /*
+         * 只有草稿会动。已在审 / 已过审 / 已驳回调它**什么都不做**，不报错 ——
+         * 端上重复点击是常态，一个「状态不允许」只会让商家以为提交失败又点一次。
+         */
+        if (DRAFT.equals(g.getAuditStatus())) {
+            g.setAuditStatus(AUDITING);
+            DataScopeContext.executeWithoutScope(() -> goodsMapper.updateById(g));
+        }
+        return toVO(g);
+    }
+
+    @Override
+    @Transactional
+    public GoodsVO savePresaleCutoff(String merchantNo, String goodsNo, Long cutoffAt,
+                                     String arrivalDesc) {
+        PrdGoods g = mine(merchantNo, goodsNo);
+        /*
+         * **只有生鲜有截单**。别的品类改它是无声无息的一次写入 ——
+         * 字段进了库，而没有任何一条链路会读它，商家以为自己设了个什么。
+         */
+        if (!"FRESH".equals(g.getType())) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        if (cutoffAt != null) {
+            g.setCutoffAt(cutoffAt);
+        }
+        if (arrivalDesc != null) {
+            g.setArrivalDesc(arrivalDesc.isBlank() ? null : arrivalDesc);
+        }
+        /*
+         * ★ **不动 auditStatus、不下架** —— 这正是它与 save() 的分界。
+         *
+         * 生鲜商家每天晚上定明天的截单；走 save() 的话每天都要重审一次，
+         * 而重审期间商品是下架的：改一次截单等于停一天生意。
+         * 改的是「今天几点前下单」，不是商品本身 —— 审核结论不该因此失效。
+         */
+        DataScopeContext.executeWithoutScope(() -> goodsMapper.updateById(g));
+        return toVO(g);
+    }
+
+    @Override
+    @Transactional
+    public GoodsVO saveStorePrice(String merchantNo, String storeNo, String goodsNo,
+                                  String skuNo, Long price, Long originPrice) {
+        PrdGoods g = mine(merchantNo, goodsNo);
+        if (storeNo == null || storeNo.isBlank()) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        boolean exists = DataScopeContext.executeWithoutScope(() ->
+                skuMapper.selectCount(Wrappers.<PrdSku>lambdaQuery()
+                        .eq(PrdSku::getGoodsNo, goodsNo).eq(PrdSku::getSkuNo, skuNo))) > 0;
+        if (!exists) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        var existing = DataScopeContext.executeWithoutScope(() ->
+                storePriceMapper.selectOne(Wrappers.<ai.neargo.shop.product.entity.PrdStorePrice>lambdaQuery()
+                        .eq(ai.neargo.shop.product.entity.PrdStorePrice::getStoreNo, storeNo)
+                        .eq(ai.neargo.shop.product.entity.PrdStorePrice::getSkuNo, skuNo)
+                        .eq(ai.neargo.shop.product.entity.PrdStorePrice::getMarket, HOME_MARKET)));
+        /*
+         * **传空 = 取消本店单独定价**，回到主体价。
+         *
+         * 这条要有：没有它，商家一旦给某店定过价就再也回不去 ——
+         * 「改成和总部一样」只能靠他自己抄一遍数字，而抄错没有任何一处会拦。
+         */
+        if (price == null) {
+            if (existing != null) {
+                DataScopeContext.executeWithoutScope(() -> storePriceMapper.deleteById(existing.getId()));
+            }
+            return toVO(g);
+        }
+        if (price < 0 || (originPrice != null && originPrice < 0)) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        if (existing == null) {
+            var row = new ai.neargo.shop.product.entity.PrdStorePrice();
+            row.setStoreNo(storeNo);
+            row.setSkuNo(skuNo);
+            row.setEntityNo(merchantNo);
+            row.setMarket(HOME_MARKET);
+            row.setPrice(price);
+            row.setOriginPrice(originPrice);
+            DataScopeContext.executeWithoutScope(() -> storePriceMapper.insert(row));
+        } else {
+            existing.setPrice(price);
+            existing.setOriginPrice(originPrice);
+            DataScopeContext.executeWithoutScope(() -> storePriceMapper.updateById(existing));
+        }
+        return toVO(g);
+    }
+
+    /** 当前门店给这些 SKU 单独定过的价。没定过的不出现 —— 调用方据此显示「同主体价」 */
+    private java.util.Map<String, Long> storePriceOf(String storeNo, java.util.List<String> skuNos) {
+        if (storeNo == null || storeNo.isBlank() || skuNos == null || skuNos.isEmpty()) {
+            return java.util.Map.of();
+        }
+        java.util.Map<String, Long> out = new java.util.LinkedHashMap<>();
+        for (var r : DataScopeContext.executeWithoutScope(() ->
+                storePriceMapper.selectList(Wrappers.<ai.neargo.shop.product.entity.PrdStorePrice>lambdaQuery()
+                        .eq(ai.neargo.shop.product.entity.PrdStorePrice::getStoreNo, storeNo)
+                        .eq(ai.neargo.shop.product.entity.PrdStorePrice::getMarket, HOME_MARKET)
+                        .in(ai.neargo.shop.product.entity.PrdStorePrice::getSkuNo, skuNos)))) {
+            if (r.getPrice() != null) {
+                out.put(r.getSkuNo(), r.getPrice());
+            }
+        }
+        return out;
+    }
+
     /**
      * 这个 SKU 是否已经切成「按店管理」。判据与 {@code applyStoreStock} 一致：
      * <b>只要存在任何一行分店库存</b>，读取口径就已经换成分店那份了。
@@ -1073,7 +1549,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
          * ⚠️ **是 PHYSICAL 不是 ALL**：服务类履约（到店核销 / 上门预约）
          * 要由商家显式选择 —— 一件大米不该一建出来就声称支持到店核销。
          */
-        g.setFulfillments(writeJson(new java.util.ArrayList<>(Fulfillments.PHYSICAL)));
+        g.setFulfillments(writeJson(new ArrayList<>(Fulfillments.PHYSICAL)));
         return g;
     }
 
@@ -1103,6 +1579,13 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
             // PENDING 是对外口径；AUDITING 是库里的词，老客户端还在传 —— 两个都收
             case "PENDING", "AUDITING" -> w.eq(PrdGoods::getAuditStatus, AUDITING);
             case "REJECTED" -> w.eq(PrdGoods::getAuditStatus, REJECTED);
+            case DRAFT -> w.eq(PrdGoods::getAuditStatus, DRAFT);
+            /*
+             * 缺货：**条件已经在 list() 里按 goodsNo 圈过了**，这里只负责别把它
+             * 落进 default。缺货与在售不互斥（一件在售商品照样能全规格断货），
+             * 所以这里不再叠加 on_sale 条件。
+             */
+            case OUT_OF_STOCK -> { }
             // 未知取值当作不过滤：前端多传一个筛选项不该让列表变空，那看着像"一件商品都没有"
             default -> { }
         }
@@ -1114,6 +1597,13 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
      * <p>不再是 static：在售与否现在要看**当前门店**，那需要读库。
      */
     private String statusOf(PrdGoods g) {
+        /*
+         * 草稿排在最前：它既不是「已下架」（点一下就能卖）也不是「待审」（在等别人）——
+         * 说错了商家的下一步就错了。
+         */
+        if (DRAFT.equals(g.getAuditStatus())) {
+            return DRAFT;
+        }
         if (AUDITING.equals(g.getAuditStatus())) {
             /*
              * **下发 PENDING，不是库里那个 AUDITING**（2026-08-12 收敛）。
@@ -1175,11 +1665,19 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
 
     private GoodsVO toVO(PrdGoods g) {
         // 复用买家侧的组装：同一件商品在两个端展示出两套价格/库存口径是最难查的一类 bug
-        GoodsVO base = goodsService.detail(g.getGoodsNo());
+        return merchantView(g, goodsService.detail(g.getGoodsNo()));
+    }
+
+    /**
+     * 买家侧的组装结果 → 商家视角。<b>与 {@link #toVO} 分开，是为了让列表能批量取 base</b>：
+     * 逐行 {@code detail()} 是这个域最贵的一处 N+1（见 {@link #toVOs}）。
+     */
+    private GoodsVO merchantView(PrdGoods g, GoodsVO base) {
         return new GoodsVO(base.goodsNo(), base.title(), base.subtitle(), base.cover(),
-                base.images(), base.type(), base.categoryNo(), base.merchant(),
+                base.images(), base.detail(), base.type(), base.categoryNo(), base.merchant(),
                 base.rating(), base.ratingCount(), base.price(), base.originPrice(),
-                base.fulfillments(), base.specGroups(), storeSkus(base.skus()), base.sales(),
+                base.fulfillments(), base.specGroups(),
+                withMarketPrices(g.getGoodsNo(), storeSkus(base.skus())), base.sales(),
                 base.cutoffAt(), base.arrivalDesc(), base.weighed(), base.origin(),
                 base.durationMin(), base.storeName(), base.limitPerUser(), base.onSale(),
                 statusOf(g),
@@ -1189,6 +1687,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                  * 英文与阿语的标题被清空，而且不报错（C 端回落中文，看起来一切正常）。
                  */
                 readMap(g.getTitleI18n()), readMap(g.getSubtitleI18n()),
+                g.getStdNo(),
                 g.getAuditReason(),
                 // 「可开团的商品」那一栏就是按它筛的
                 GoodsServiceImpl.groupBuyConf(g));
@@ -1203,12 +1702,47 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
      *
      * <p>没启用分店库存的 SKU 原样返回，单店商家因此看不出任何变化。
      */
+    /**
+     * 给商家侧的 SKU 补上**各市场价**。
+     *
+     * <p>{@code GoodsServiceImpl} 只查基准市场那一行（买家只看自己那个市场），
+     * 而编辑页按市场逐格填、保存是整份覆盖 —— 拿不到整张表就只能回填当前那一格，
+     * 于是<b>改一次标题就把其余市场的价删了</b>。这条与 {@code titleI18n} 同一个形状。
+     */
+    private List<GoodsVO.SkuVO> withMarketPrices(String goodsNo, List<GoodsVO.SkuVO> skus) {
+        if (skus == null || skus.isEmpty()) {
+            return skus;
+        }
+        Map<String, Map<String, Long>> bySku = DataScopeContext.executeWithoutScope(() ->
+                        skuMapper.selectList(Wrappers.<PrdSku>lambdaQuery()
+                                .eq(PrdSku::getGoodsNo, goodsNo))).stream()
+                .filter(r -> r.getPrice() != null)
+                .collect(java.util.stream.Collectors.groupingBy(PrdSku::getSkuNo,
+                        java.util.stream.Collectors.toMap(PrdSku::getMarket, PrdSku::getPrice, (a, b) -> a)));
+        return skus.stream()
+                .map(s -> new GoodsVO.SkuVO(s.skuNo(), s.optionValues(), s.spec(), s.price(),
+                        s.originPrice(), s.stock(), s.nominalGram(),
+                        bySku.getOrDefault(s.skuNo(), Map.of()), s.storePrice()))
+                .toList();
+    }
+
     private List<GoodsVO.SkuVO> storeSkus(List<GoodsVO.SkuVO> skus) {
         String storeNo = ai.neargo.shop.auth.BizContext.current().currentStoreNo();
         if (storeNo == null || storeNo.isBlank() || skus == null || skus.isEmpty()) {
             return skus;
         }
         List<String> skuNos = skus.stream().map(GoodsVO.SkuVO::skuNo).toList();
+        /*
+         * 本店价先贴上 —— **与库存分开算**：库存那段可能整体 early return
+         * （这些 SKU 都没启用分店库存），而门店定价与分店库存是两件独立的事，
+         * 顺手搭在库存那条分支上的话，只定价不分库存的商家永远看不到自己定的价。
+         */
+        Map<String, Long> prices = storePriceOf(storeNo, skuNos);
+        if (!prices.isEmpty()) {
+            skus = skus.stream().map(s -> new GoodsVO.SkuVO(s.skuNo(), s.optionValues(), s.spec(),
+                    s.price(), s.originPrice(), s.stock(), s.nominalGram(), s.priceByMarket(),
+                    prices.get(s.skuNo()))).toList();
+        }
         Map<String, PrdStoreStock> byStore = DataScopeContext.executeWithoutScope(() ->
                         storeStockMapper.selectList(Wrappers.<PrdStoreStock>lambdaQuery()
                                 .in(PrdStoreStock::getSkuNo, skuNos)))
@@ -1233,7 +1767,8 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
             int locked = row == null || row.getLockedStock() == null ? 0 : row.getLockedStock();
             int available = Math.max(stock - locked, 0);
             return new GoodsVO.SkuVO(sku.skuNo(), sku.optionValues(), sku.spec(),
-                    sku.price(), sku.originPrice(), available, sku.nominalGram());
+                    sku.price(), sku.originPrice(), available, sku.nominalGram(),
+                    sku.priceByMarket(), sku.storePrice());
         }).toList();
     }
 

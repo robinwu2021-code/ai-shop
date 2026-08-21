@@ -44,7 +44,8 @@ defineEmits<{ (e: "change", key: string): void }>();
 .tabs {
   display: flex;
   gap: 12rpx;
-  margin-bottom: 20rpx;
+  /* 分栏与下方内容的距离。走变量的理由同 .sh-card（见 base.css） */
+  margin-bottom: var(--sh-gap-tabs, 20rpx);
 }
 .tabs--scroll {
   display: block;

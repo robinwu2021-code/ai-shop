@@ -324,7 +324,7 @@ class OpsProductGovernFlowTest {
         // ★ 拿它建品，商品身上真的带着 optionCode（没有 code 的模板与手输没有区别）
         String body = mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + biz)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"title\":\"按模板建的生鲜\",\"type\":\"NORMAL\","
+                        .content("{\"categoryNo\":\"CAT210\",\"title\":\"按模板建的生鲜\",\"type\":\"NORMAL\","
                                 + "\"specGroups\":[{\"name\":\"净含量\",\"options\":[\"500g\",\"1kg\"],"
                                 + "\"optionCodes\":[\"W500\",\"W1000\"],\"templateNo\":\"" + templateNo + "\"}],"
                                 + "\"skus\":[{\"optionValues\":[\"500g\"],\"price\":1000,\"stock\":5},"
@@ -569,7 +569,7 @@ class OpsProductGovernFlowTest {
     private String pendingGoods(String token, int stock) throws Exception {
         String body = mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"title\":\"商品治理测试品\",\"type\":\"NORMAL\","
+                        .content("{\"categoryNo\":\"CAT210\",\"title\":\"商品治理测试品\",\"type\":\"NORMAL\","
                                 + "\"skus\":[{\"optionValues\":[],\"price\":1000,\"stock\":" + stock + "}]}"))
                 .andExpect(jsonPath("$.code").value(0))
                 .andReturn().getResponse().getContentAsString();

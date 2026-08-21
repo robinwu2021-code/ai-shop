@@ -211,7 +211,7 @@
 
 **出参**（`data`）
 
-类型：[`void`](#void)
+类型：`any`
 
 
 #### POST `/biz/auth/staff-login`
@@ -411,6 +411,47 @@ _无字段_
 | `groupNos` | `string`\[\] | 是 | 我发起了哪些团。**第三个作用域**，与门店 / 自提点正交 |
 | `staffRoles` | [`StaffRole`](#staffrole) \| `string`\[\] | 是 | 我在**当前门店**持有的角色（可多个）。老板恒为 `["OWNER"]` |
 | `perms` | `string`\[\] | 是 | 这些角色合起来的权限码，**已取并集**（老板是 `["*"]`）。 端上照它裁剪入口，**不要自己按角色再推一遍** —— 两处各推一次迟早分岔， 而分岔的表现是「看得见但点了报错」。 |
+
+
+### cross-store
+
+#### GET `/biz/cross-store/compare`
+
+跨店对比（销售额/订单/复购/缺货）　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `days` | query | `number` | 否 | — |
+
+**出参**（`data`）
+
+类型：[`CrossStoreCompare`](#crossstorecompare)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `days` | `number` | 是 | **实际生效**的窗口天数（后端已夹在 1–365）。回显它，端上才知道传 99999 被截成了 365 |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | 统计口径的币种 |
+| `rating` | `number` | 是 | **主体整体评分**（各店的合成，也是 C 端商家卡上显示的那个）。 每家店自己的分在  {@link  CrossStoreCompareRow#rating  }  上（V155 起）。 【历史】V155 之前 `rvw_review` 只有 `entity_no` 没有 `store_no`， 门店维度的评分没有数据源，所以这个数只能放顶层。 <p>渲染成一条「本店铺整体评分」的说明；对比表格里那一列用每行自己的  {@link  CrossStoreCompareRow#rating  } 。**别拿这个数去填表格列** —— 那样三家店会显示同一个数字，而这正是 V155 之前的样子。 |
+| `ratingCount` | `number` | 是 | 计入评分的评价条数。0 = 还没人评过，显示「暂无评价」而不是 0 颗星 |
+| `stores` | [`CrossStoreCompareRow`](#crossstorecomparerow)\[\] | 是 | 按店并列，顺序同门店列表 |
+
+
+#### GET `/biz/cross-store/overview`
+
+跨店总览（按店并列今日/本月/待办）　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`CrossStoreOverview`](#crossstoreoverview)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | 统计口径的币种。与 `/biz/dashboard/stats` 同一个字段 |
+| `stores` | [`CrossStoreRow`](#crossstorerow)\[\] | 是 | 按店并列。顺序与门店列表一致（默认店在前），端上不必自己排 |
 
 
 ### customers
@@ -917,7 +958,7 @@ _无字段_
 | `quotes` | [`Quote`](#quote)\[\] | 是 | 收到的报价。一个需求单可多家报价，由发起人挑 |
 | `createdAt` | `number` | 是 | 发起时间 |
 | `expireAt` | `number` | 是 | 需求单过期时间。过期即 EXPIRED，不再接受报价 |
-| `groupNo` | `string` | 否 | MATCHED 后指向生成的正式团 |
+| `groupNo` | `string` | 否 | LOCKED 之后指向生成的正式团 |
 | `lockedPriceMinor` | `number` | 否 | 选定的报价快照。转成正式团后下单用这个价，**不读商家当前价** —— 这是防加价最硬的一层：加价在技术上做不到，不需要审核。 |
 | `confirmed` | `boolean` | 否 | 我（+1 的邻居）是否已二次确认下单。+1 不等于承诺，必须各自确认 |
 | `confirmedCount` | `number` | 否 | 已确认下单的人数 |
@@ -973,6 +1014,7 @@ _无字段_
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `groupNo` | `string` | 是 | 团单号 |
+| `status` | [`GroupBuyStatus`](#groupbuystatus) | 是 | 团的状态 |
 | `goodsNo` | `string` | 是 | 开团的商品 |
 | `title` | `string` | 是 | 商品标题快照 |
 | `cover` | `string` | 是 | 商品封面快照 |
@@ -988,7 +1030,7 @@ _无字段_
 | `reached` | `boolean` | 是 | 已成团 |
 | `need` | `number` | 是 | 还差几人 |
 | `expireAt` | `number` | 是 | 截止时间：发起后 validHours 与商品截单时间取更早 |
-| `members` | `object`（见下）\[\] | 是 | 已参团的人及各自件数，展示用 |
+| `members` | `object`（见下）\[\] | 是 | 已参团的邻居，展示用。 **没有件数**：参团是一人一份 —— 成团判断、「还差 N 人」的文案、`joinedCount` 全部按人算，库里也没存过件数。这里原先有个 `qty`，页面照着渲染 `×{qty}`， 而它从来没有值。 |
 | `joined` | `boolean` | 是 | 当前用户是否已参团 |
 | `neighborPickup` | [`PickupPoint`](#pickuppoint) | 否 | 邻里自提点（C-GB-06）：发起人勾选「送到我家」时有值。 参团者在这里取货，发起人负责签收与逐单核销 —— **零报酬**（ADR-005 §3）。 |
 | `isOwner` | `boolean` | 否 | 我是不是这个团的发起人 —— 决定是否显示轻核销入口 |
@@ -999,7 +1041,6 @@ _无字段_
 |---|---|:---:|---|
 | `avatar` | `string` | 是 | — |
 | `nickname` | `string` | 是 | — |
-| `qty` | `number` | 是 | — |
 
 
 ### master-data
@@ -1051,6 +1092,7 @@ _无字段_
 | `pickupNo` | `string` | 否 | 承接的自提点单号。`isPickupPoint=true` 时有值 |
 | `rejectReason` | `string` | 否 | 驳回原因，status=REJECTED 时有值 |
 | `loginBy` | [`GrantType`](#granttype) | 否 | 本次会话的登录方式。第三方登录且 phone 为空时，要引导补绑手机号 |
+| `fundsMode` | [`FundsMode`](#fundsmode) | 否 | 资金路径。**B 端价格字段叫什么由它决定** —— 归集（钱进平台账户）下平台是销售主体、最终售价平台定，商家填的是「期望收购价」； 直连下他自己就是销售主体，那就是「售价」。 判据用它而不是门店的 `businessMode`：与积分能力同一根轴 —— **责任跟着钱走**。 还没进件的申请人为空：那时资金路径尚未确定， 猜一个默认值会让他在入驻页看到一个还轮不到他的字段名。 |
 
 
 #### GET `/biz/merchant/apply`
@@ -1072,6 +1114,7 @@ _无字段_
 | `category` | `string` | 是 | 主营类目 |
 | `desc` | `string` | 是 | 店铺简介 |
 | `asPickupPoint` | `boolean` | 否 | 承接自提点：小店既是供给方也是取货点（ADR-005 type=STORE） |
+| `qualificationItems` | [`QualificationItem`](#qualificationitem)\[\] | 否 | 结构化资质。**可选**：老版本端上还在只传 `licenses`， 后端对未传该字段的请求跳过执照校验（见 `OpsServiceImpl.requireLicenseIfNeeded`）—— 校验必须晚于能满足它的 UI 上线，否则拦的不是坏商家，是所有人。 |
 | `serviceScope` | [`ServiceScope`](#servicescope) | 否 | 期望经营范围（ADR-009）。申请时可空，<b>审核通过时必须确定</b> —— 否则商家上着架却对谁都不可见，且没有任何报错。 |
 | `communityNos` | `string`\[\] | 否 | 期望覆盖的社区。scope=COMMUNITY 时审核通过必须非空 |
 | `licenses` | `string`\[\] | 否 | 资质图片（营业执照/身份证）。**选填** —— 一期 EDI 不强制。 与下面的结算账户一样，属于**分账主体开户**而不是入驻申请本身（ADR-002）： `usr_merchant_payment` 是独立一张表、有自己的 `apply_status`，就是这个道理。 申请时能传就传，通过后在 B 端补也行 —— 逼一个还没通过审核的人先传营业执照， 只会把人挡在门外。 |
@@ -1120,7 +1163,7 @@ _无字段_
 | `canReceiveMoney` | `boolean` | 是 | 这个通道现在能不能收钱。 **照着它显示，不要自己去比 applyStatus** —— 比错的表现是 「显示能收钱但收不了」，而这种错要到第一笔订单才暴露。 |
 | `payMerchantNo` | `string` | 否 | 收款商户号业务键，通过后才有。门店挂收款号引用的就是它 |
 | `subMchidMasked` | `string` | 否 | 二级商户号掩码。完整号不回显 |
-| `settleAccountType` | [`SettleAccountType`](#settleaccounttype) | 否 | 结算账户形态：小微打个人（PERSONAL_OPENID），其余打对公（MERCHANT_ID） |
+| `settleAccountType` | [`SettleAccountType`](#settleaccounttype) | 否 | 结算账户形态：小微打个人（PERSONAL_BANK_CARD），其余打对公（MERCHANT_ID） |
 | `settleAccountMasked` | `string` | 否 | 结算账号掩码。**明文永不回显**，包括给商家自己（ADR-002 §5） |
 | `rejectReason` | `string` | 否 | 驳回原因。驳回时必有 —— 没有原因商家只能反复重提 |
 | `missing` | `string`\[\] | 是 | 还缺哪些资料（settleAccount / licenses / settleAccountType）。空 = 资料齐了在等通道 |
@@ -1151,7 +1194,7 @@ _无字段_
 | `canReceiveMoney` | `boolean` | 是 | 这个通道现在能不能收钱。 **照着它显示，不要自己去比 applyStatus** —— 比错的表现是 「显示能收钱但收不了」，而这种错要到第一笔订单才暴露。 |
 | `payMerchantNo` | `string` | 否 | 收款商户号业务键，通过后才有。门店挂收款号引用的就是它 |
 | `subMchidMasked` | `string` | 否 | 二级商户号掩码。完整号不回显 |
-| `settleAccountType` | [`SettleAccountType`](#settleaccounttype) | 否 | 结算账户形态：小微打个人（PERSONAL_OPENID），其余打对公（MERCHANT_ID） |
+| `settleAccountType` | [`SettleAccountType`](#settleaccounttype) | 否 | 结算账户形态：小微打个人（PERSONAL_BANK_CARD），其余打对公（MERCHANT_ID） |
 | `settleAccountMasked` | `string` | 否 | 结算账号掩码。**明文永不回显**，包括给商家自己（ADR-002 §5） |
 | `rejectReason` | `string` | 否 | 驳回原因。驳回时必有 —— 没有原因商家只能反复重提 |
 | `missing` | `string`\[\] | 是 | 还缺哪些资料（settleAccount / licenses / settleAccountType）。空 = 资料齐了在等通道 |
@@ -1183,6 +1226,57 @@ _无字段_
 | `pickupNo` | `string` | 否 | 承接的自提点单号。`isPickupPoint=true` 时有值 |
 | `rejectReason` | `string` | 否 | 驳回原因，status=REJECTED 时有值 |
 | `loginBy` | [`GrantType`](#granttype) | 否 | 本次会话的登录方式。第三方登录且 phone 为空时，要引导补绑手机号 |
+| `fundsMode` | [`FundsMode`](#fundsmode) | 否 | 资金路径。**B 端价格字段叫什么由它决定** —— 归集（钱进平台账户）下平台是销售主体、最终售价平台定，商家填的是「期望收购价」； 直连下他自己就是销售主体，那就是「售价」。 判据用它而不是门店的 `businessMode`：与积分能力同一根轴 —— **责任跟着钱走**。 还没进件的申请人为空：那时资金路径尚未确定， 猜一个默认值会让他在入驻页看到一个还轮不到他的字段名。 |
+
+
+### message
+
+#### GET `/biz/message`
+
+商家消息列表　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`Message`](#message)\[\]
+
+
+#### POST `/biz/message/{messageNo}/read`
+
+标记已读　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `messageNo` | path | `string` | 是 | 站内消息单号 |
+
+**出参**（`data`）
+
+类型：[`Message`](#message)\[\]
+
+
+#### POST `/biz/message/read-all`
+
+全部已读　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`Message`](#message)\[\]
+
+
+#### GET `/biz/message/unread-count`
+
+未读数（红点轮询，只给一个数）　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`number`
 
 
 ### order
@@ -1545,6 +1639,66 @@ _无字段_
 类型：[`Order`](#order)\[\]
 
 
+### plan
+
+#### GET `/biz/plan`
+
+我的套餐（档位/用量/三档对比）　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`MerchantPlan`](#merchantplan)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `planCode` | `string` | 是 | 档位码。**文案用 `planName`，不要按 code 自己映射** —— 运营改了名端上不会跟着变 |
+| `planName` | `string` | 是 | 档位显示名（「成长版」） |
+| `status` | [`PlanStatus`](#planstatus) | 是 | ACTIVE 生效中 / GRACE 宽限期（**能力全保留**，7 天）/ EXPIRED 已过期并降级。 <p>GRACE 要显示成「即将到期，请尽快续费」而**不是**「已失效」： 他的门店、子账号、跨店数据一样都没少，这时候说失效只会让他打客服电话。 |
+| `startAt` | `number,null` | 否 | 订阅起始时间（毫秒）。null = 还没有过任何订阅 |
+| `expireAt` | `number,null` | 否 | 到期时间（毫秒）。null = 不到期（免费档） |
+| `storeQuota` | `number` | 是 | 生效门店额度 |
+| `storeUsed` | `number` | 是 | 已用门店数。**后端算，只数营业中的店** —— 端上自己数会与建店那道闸的口径分岔 |
+| `staffQuota` | `number` | 是 | 生效子账号额度 |
+| `staffUsed` | `number` | 是 | 已用子账号数（不含老板本人） |
+| `crossStoreStats` | `boolean` | 是 | 有没有跨店总览与对比 |
+| `trialUsed` | `boolean` | 是 | 试用是否已用过。**一主体一次，永不回退** |
+| `trialTier` | `string,null` | 否 | 可试用的目标档位码；null = 现在不能试用（已用过 / 已经是付费档 / 平台没配试用）。 <p>端上按它决定要不要显示「免费试用」按钮 —— 不要自己用 `planCode === 'FREE' && !trialUsed` 推：那会漏掉「平台把试用天数配成 0」这种情况。 |
+| `trialDays` | `number,null` | 否 | 试用天数，配合 `trialTier` 显示「免费试用 14 天」 |
+| `suspendedStores` | `string`\[\] | 是 | 因降级被压成只读的门店名。 <p>**只含平台压的那几家**，商家自己停用的不在里面 —— 页面要写明是「哪几家」：只说「部分门店已停用」，他得自己一家家点开去找。 |
+| `tiers` | [`PlanTier`](#plantier)\[\] | 是 | 三档对比，顺序即展示顺序（后端按 sort 排好） |
+
+
+#### POST `/biz/plan/trial`
+
+自助开通试用（一主体一次）　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`MerchantPlan`](#merchantplan)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `planCode` | `string` | 是 | 档位码。**文案用 `planName`，不要按 code 自己映射** —— 运营改了名端上不会跟着变 |
+| `planName` | `string` | 是 | 档位显示名（「成长版」） |
+| `status` | [`PlanStatus`](#planstatus) | 是 | ACTIVE 生效中 / GRACE 宽限期（**能力全保留**，7 天）/ EXPIRED 已过期并降级。 <p>GRACE 要显示成「即将到期，请尽快续费」而**不是**「已失效」： 他的门店、子账号、跨店数据一样都没少，这时候说失效只会让他打客服电话。 |
+| `startAt` | `number,null` | 否 | 订阅起始时间（毫秒）。null = 还没有过任何订阅 |
+| `expireAt` | `number,null` | 否 | 到期时间（毫秒）。null = 不到期（免费档） |
+| `storeQuota` | `number` | 是 | 生效门店额度 |
+| `storeUsed` | `number` | 是 | 已用门店数。**后端算，只数营业中的店** —— 端上自己数会与建店那道闸的口径分岔 |
+| `staffQuota` | `number` | 是 | 生效子账号额度 |
+| `staffUsed` | `number` | 是 | 已用子账号数（不含老板本人） |
+| `crossStoreStats` | `boolean` | 是 | 有没有跨店总览与对比 |
+| `trialUsed` | `boolean` | 是 | 试用是否已用过。**一主体一次，永不回退** |
+| `trialTier` | `string,null` | 否 | 可试用的目标档位码；null = 现在不能试用（已用过 / 已经是付费档 / 平台没配试用）。 <p>端上按它决定要不要显示「免费试用」按钮 —— 不要自己用 `planCode === 'FREE' && !trialUsed` 推：那会漏掉「平台把试用天数配成 0」这种情况。 |
+| `trialDays` | `number,null` | 否 | 试用天数，配合 `trialTier` 显示「免费试用 14 天」 |
+| `suspendedStores` | `string`\[\] | 是 | 因降级被压成只读的门店名。 <p>**只含平台压的那几家**，商家自己停用的不在里面 —— 页面要写明是「哪几家」：只说「部分门店已停用」，他得自己一家家点开去找。 |
+| `tiers` | [`PlanTier`](#plantier)\[\] | 是 | 三档对比，顺序即展示顺序（后端按 sort 排好） |
+
+
 ### points
 
 #### GET `/biz/points/account`
@@ -1594,6 +1748,30 @@ _无字段_
 | `enabled` | `boolean` | 是 | 本店积分是否生效 —— 全局 AND 社区 AND 主体非小微 AND 本店开关 |
 | `disabledReason` | `string` | 否 | 不生效的原因，直接展示给商家。 小微主体要说「升级为个体工商户后可开启」，不能说「本店未开启积分」—— 后者会让商家去开一个他根本开不了的开关。 |
 | `forced` | `boolean` | 是 | 平台按行业强制开，商家不可自行关闭 |
+
+
+### push-token
+
+#### POST `/biz/push-token`
+
+绑定 App 推送设备（登录后）　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`any`
+
+
+#### POST `/biz/push-token/unregister`
+
+解绑推送设备（登出前，共用设备换班必须解）　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`any`
 
 
 ### regions
@@ -1739,7 +1917,7 @@ _无字段_
 
 **出参**（`data`）
 
-类型：[`void`](#void)
+类型：`any`
 
 
 ### role-perms
@@ -2051,6 +2229,9 @@ _无字段_
 | `payMerchantNo` | `string` | 否 | 这家店用哪个收款号。**空 = 用主体的默认收款号**，不是"没配" |
 | `payReady` | `boolean` | 是 | 这家店现在能不能收钱。照它显示，别自己去比状态串 |
 | `staffCount` | `number` | 是 | 授权到这家店的员工数（不含老板）。0 表示只有老板能管这家店 |
+| `rating` | `number` | 否 | 门店评分 ×10（V155）。与主体评分是两个数：主体分是各店的合成，反过来推不回去 |
+| `ratingCount` | `number` | 否 | 计入门店评分的条数。**0 = 暂无评价**，不是 0 分 |
+| `planSuspended` | `boolean` | 否 | 这家店的只读**是套餐降级压下来的**，不是店主自己停的。 <p>两者的 `status` 一模一样（都是 `READONLY`），而端上要给的下一步完全不同： 降级压的要**补缴/升档**，自己停的**点一下启用就开**。 不分开的表现是店主反复点那个对降级店无效的启用按钮。 |
 
 
 #### POST `/biz/store/{storeNo}/payment`
@@ -2083,6 +2264,9 @@ _无字段_
 | `payMerchantNo` | `string` | 否 | 这家店用哪个收款号。**空 = 用主体的默认收款号**，不是"没配" |
 | `payReady` | `boolean` | 是 | 这家店现在能不能收钱。照它显示，别自己去比状态串 |
 | `staffCount` | `number` | 是 | 授权到这家店的员工数（不含老板）。0 表示只有老板能管这家店 |
+| `rating` | `number` | 否 | 门店评分 ×10（V155）。与主体评分是两个数：主体分是各店的合成，反过来推不回去 |
+| `ratingCount` | `number` | 否 | 计入门店评分的条数。**0 = 暂无评价**，不是 0 分 |
+| `planSuspended` | `boolean` | 否 | 这家店的只读**是套餐降级压下来的**，不是店主自己停的。 <p>两者的 `status` 一模一样（都是 `READONLY`），而端上要给的下一步完全不同： 降级压的要**补缴/升档**，自己停的**点一下启用就开**。 不分开的表现是店主反复点那个对降级店无效的启用按钮。 |
 
 
 #### POST `/biz/store/{storeNo}/rename`
@@ -2116,6 +2300,9 @@ _无字段_
 | `payMerchantNo` | `string` | 否 | 这家店用哪个收款号。**空 = 用主体的默认收款号**，不是"没配" |
 | `payReady` | `boolean` | 是 | 这家店现在能不能收钱。照它显示，别自己去比状态串 |
 | `staffCount` | `number` | 是 | 授权到这家店的员工数（不含老板）。0 表示只有老板能管这家店 |
+| `rating` | `number` | 否 | 门店评分 ×10（V155）。与主体评分是两个数：主体分是各店的合成，反过来推不回去 |
+| `ratingCount` | `number` | 否 | 计入门店评分的条数。**0 = 暂无评价**，不是 0 分 |
+| `planSuspended` | `boolean` | 否 | 这家店的只读**是套餐降级压下来的**，不是店主自己停的。 <p>两者的 `status` 一模一样（都是 `READONLY`），而端上要给的下一步完全不同： 降级压的要**补缴/升档**，自己停的**点一下启用就开**。 不分开的表现是店主反复点那个对降级店无效的启用按钮。 |
 
 
 #### POST `/biz/store/{storeNo}/status`
@@ -2148,6 +2335,9 @@ _无字段_
 | `payMerchantNo` | `string` | 否 | 这家店用哪个收款号。**空 = 用主体的默认收款号**，不是"没配" |
 | `payReady` | `boolean` | 是 | 这家店现在能不能收钱。照它显示，别自己去比状态串 |
 | `staffCount` | `number` | 是 | 授权到这家店的员工数（不含老板）。0 表示只有老板能管这家店 |
+| `rating` | `number` | 否 | 门店评分 ×10（V155）。与主体评分是两个数：主体分是各店的合成，反过来推不回去 |
+| `ratingCount` | `number` | 否 | 计入门店评分的条数。**0 = 暂无评价**，不是 0 分 |
+| `planSuspended` | `boolean` | 否 | 这家店的只读**是套餐降级压下来的**，不是店主自己停的。 <p>两者的 `status` 一模一样（都是 `READONLY`），而端上要给的下一步完全不同： 降级压的要**补缴/升档**，自己停的**点一下启用就开**。 不分开的表现是店主反复点那个对降级店无效的启用按钮。 |
 
 
 #### POST `/biz/store/create`
@@ -2177,6 +2367,9 @@ _无字段_
 | `payMerchantNo` | `string` | 否 | 这家店用哪个收款号。**空 = 用主体的默认收款号**，不是"没配" |
 | `payReady` | `boolean` | 是 | 这家店现在能不能收钱。照它显示，别自己去比状态串 |
 | `staffCount` | `number` | 是 | 授权到这家店的员工数（不含老板）。0 表示只有老板能管这家店 |
+| `rating` | `number` | 否 | 门店评分 ×10（V155）。与主体评分是两个数：主体分是各店的合成，反过来推不回去 |
+| `ratingCount` | `number` | 否 | 计入门店评分的条数。**0 = 暂无评价**，不是 0 分 |
+| `planSuspended` | `boolean` | 否 | 这家店的只读**是套餐降级压下来的**，不是店主自己停的。 <p>两者的 `status` 一模一样（都是 `READONLY`），而端上要给的下一步完全不同： 降级压的要**补缴/升档**，自己停的**点一下启用就开**。 不分开的表现是店主反复点那个对降级店无效的启用按钮。 |
 
 
 #### GET `/biz/store/list`
@@ -2203,7 +2396,6 @@ _无字段_
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `url` | `string` | 是 | 扫码后进入的落地页地址，带 merchant_no 归因参数 |
-| `printUrl` | `string` | 是 | 可打印版（贴纸尺寸），真实环境由后端生成小程序码 |
 
 
 #### GET `/biz/store/share-kit`
@@ -2269,6 +2461,8 @@ _无字段_
 | `status` | [`AfterSaleStatus`](#aftersalestatus) | 是 | 售后单状态，独立于订单状态流转 |
 | `reason` | `string` | 是 | 用户填写的售后原因 |
 | `images` | `string`\[\] | 是 | 举证图（破损、少件的照片）。是否必填由售后类型决定 |
+| `refundMinor` | `number` | 是 | 这张售后单要退的钱（分）。**不等于订单金额** —— 一张子订单可以只退其中一件，也可以先后发起多次。 <p>后端一直在发（`AfterSaleVO.refundMinor`），只是契约里漏了声明， 于是 B 端售后页拿不到它，只能退而求其次显示**整张子订单的应付**。 单件单品的单子上两个数恰好相等，所以这个错在联调环境里看不出来 —— 直到有人退三件里的一件。 |
+| `instant` | `boolean` | 否 | 极速退：金额在阈值内的仅退款，系统自动通过。 **商家只可见不可拒**，所以这类单上不该出现同意/驳回按钮。 |
 | `merchantReply` | `string` | 否 | 商家同意/驳回时的说明 |
 | `returnExpressNo` | `string` | 否 | 用户寄回的运单号（RETURN_REFUND） |
 | `disputeReason` | `string` | 否 | 上升平台时用户的申诉理由 |
@@ -2488,6 +2682,64 @@ _无字段_
 |---|---|:---:|---|
 | `goodsNo` | `string` | 是 | 要开团的商品，必须是本店已上架商品 |
 
+### CrossStoreCompare
+
+跨店对比（B-11.12.6）· `GET /biz/cross-store/compare?days=30`。 <p>门禁与  {@link  CrossStoreOverview }  相同（`cross_store_stats` 能力位）。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `days` | `number` | 是 | **实际生效**的窗口天数（后端已夹在 1–365）。回显它，端上才知道传 99999 被截成了 365 |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | 统计口径的币种 |
+| `rating` | `number` | 是 | **主体整体评分**（各店的合成，也是 C 端商家卡上显示的那个）。 每家店自己的分在  {@link  CrossStoreCompareRow#rating  }  上（V155 起）。 【历史】V155 之前 `rvw_review` 只有 `entity_no` 没有 `store_no`， 门店维度的评分没有数据源，所以这个数只能放顶层。 <p>渲染成一条「本店铺整体评分」的说明；对比表格里那一列用每行自己的  {@link  CrossStoreCompareRow#rating  } 。**别拿这个数去填表格列** —— 那样三家店会显示同一个数字，而这正是 V155 之前的样子。 |
+| `ratingCount` | `number` | 是 | 计入评分的评价条数。0 = 还没人评过，显示「暂无评价」而不是 0 颗星 |
+| `stores` | [`CrossStoreCompareRow`](#crossstorecomparerow)\[\] | 是 | 按店并列，顺序同门店列表 |
+
+### CrossStoreCompareRow
+
+跨店对比的一行 —— 窗口内这家店的销售额 / 订单 / 复购 / 缺货（B-11.12.6）。 <p>⚠️ **这里没有评分**，它在  {@link  CrossStoreCompare#rating  }  上，是主体级的。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | 门店号 |
+| `storeName` | `string` | 是 | 门店名 |
+| `isDefault` | `boolean` | 是 | 是否默认店 |
+| `status` | [`StoreStatus`](#storestatus) | 是 | ACTIVE 正常营业 / READONLY 已停用 |
+| `orders` | `number` | 是 | 窗口内订单数（不含已取消） |
+| `gmvMinor` | `number` | 是 | 窗口内成交额（最小货币单位） |
+| `buyers` | `number` | 是 | 窗口内下过单的买家数（去重）。复购率的分母 |
+| `repeatBuyers` | `number` | 是 | 其中下过 ≥2 单的买家数 |
+| `repeatRate` | `number` | 是 | `repeatBuyers / buyers`，0–1。**分母为 0 时是 0**，一家还没开张的店显示 0% |
+| `rating` | `number` | 是 | **这家店自己的**评分（V155，ADR-011：评价归门店）。 ⚠️ 与顶层的  {@link  CrossStoreCompare#rating  }  是两个数：那个是主体整体分 （C 端商家卡上显示的那个），这个是「楼下那家」的分。两个都要显示 —— 商家问「为什么我的店 4.9 而搜索里是 4.6」时，只有并排看得到才解释得通。 |
+| `ratingCount` | `number` | 是 | 计入这家店评分的条数。**0 = 暂无评价**，按条数判空而不是按分值 —— 老评价没有门店归属，所以老店在第一条新评价到来之前也是 0。 |
+| `outOfStockSkus` | `number` | 是 | 该店可用量（stock − locked）≤ 0 的 SKU 数。 **只数已启用分店库存的 SKU** —— 一条店级行都没有的 SKU 走主体总量，不算这家店缺货。 |
+
+### CrossStoreOverview
+
+跨店总览（B-11.12.5）· `GET /biz/cross-store/overview`。 <p>**只有门店维度的三项待办**：工作台上的 `toVerify`（待核销）与 `toPick`（待分拣） 后端刻意不给 —— 那两个数是**自提点**维度且不限商家（一个自提点承接多家商家的货， ADR-005）。摆进「门店」这一列，商家会读成「这家店的活」，点进去却是别人的货。 <p>需要 `cross_store_stats` 能力位（PRO / CHAIN）。FREE 档访问会被后端以 `PLAN_CAPABILITY_REQUIRED`(70023) 拒绝 —— 端上要渲染**示例态 + 升档说明**， 不是空白页也不是红色报错。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | 统计口径的币种。与 `/biz/dashboard/stats` 同一个字段 |
+| `stores` | [`CrossStoreRow`](#crossstorerow)\[\] | 是 | 按店并列。顺序与门店列表一致（默认店在前），端上不必自己排 |
+
+### CrossStoreRow
+
+跨店总览的一行 —— 一家门店的今日 / 本月 / 三项待办（B-11.12.5）。 <p>**没有单的门店也占一行（全零），不会从列表里消失**： 一家今天还没开张的店从总览里不见了，店主的第一反应是「我的店呢」。 零是一个答案，缺席不是。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | 门店号。点进去切门店时用它 |
+| `storeName` | `string` | 是 | 门店名。列表里认店靠它，不要拿门店号显示 |
+| `isDefault` | `boolean` | 是 | 是否默认店。**一个主体恰好一家**，界面上要标出来 |
+| `status` | [`StoreStatus`](#storestatus) | 是 | ACTIVE 正常营业 / READONLY 已停用。停用的店仍在列表里 —— 看不见会被当成「店被删了」 |
+| `todayOrders` | `number` | 是 | 今日订单数（自然日，按市场本地时区切分） |
+| `todayGmvMinor` | `number` | 是 | 今日成交额（最小货币单位） |
+| `monthOrders` | `number` | 是 | 本月订单数 |
+| `monthGmvMinor` | `number` | 是 | 本月成交额（最小货币单位） |
+| `toShip` | `number` | 是 | 待发货单数（快递） |
+| `toDeliver` | `number` | 是 | 待自送单数（商家自送） |
+| `toStock` | `number` | 是 | 待备货单数（自提单已付款、货还没送到自提点）。按**门店**算 |
+
 ### CurrencyCode
 
 枚举取值：
@@ -2526,6 +2778,15 @@ _无字段_
 - `STORE_VERIFY`
 - `APPOINTMENT`
 - `INSTANT`
+
+### FundsMode
+
+资金路径：**钱先进谁的账户**。与 `mch_entity.funds_mode` 同值。 ⚠️ **与「经营模式」（谁是销售主体）正交，不要合并** —— 合成一个枚举后，「直连 + 自营」（钱进商家户却说平台是卖方） 这种非法组合在类型上就是可表达的（同 ADR-013 教训）。 结算侧「要不要给积分补差」判的是**这一个**： 钱在商家二级户才需要补进去，钱在平台户是平台自己少收。
+
+枚举取值：
+
+- `AGGREGATED`
+- `DIRECT`
 
 ### Goods
 
@@ -2607,11 +2868,10 @@ _无字段_
 
 ### GroupBuy
 
-商家团 —— 商家在已上架商品上开的团，用户可参与或自己开一桌。 定位：**只是一种活动**，不是平台核心机制。所以单档成团，不做阶梯价。，不是运营配置的活动位。 成团单位是自提点（拼的是一车送到一个点的成本），单档成团，不做阶梯。
-
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `groupNo` | `string` | 是 | 团单号 |
+| `status` | [`GroupBuyStatus`](#groupbuystatus) | 是 | 团的状态 |
 | `goodsNo` | `string` | 是 | 开团的商品 |
 | `title` | `string` | 是 | 商品标题快照 |
 | `cover` | `string` | 是 | 商品封面快照 |
@@ -2627,7 +2887,7 @@ _无字段_
 | `reached` | `boolean` | 是 | 已成团 |
 | `need` | `number` | 是 | 还差几人 |
 | `expireAt` | `number` | 是 | 截止时间：发起后 validHours 与商品截单时间取更早 |
-| `members` | `object`（见下）\[\] | 是 | 已参团的人及各自件数，展示用 |
+| `members` | `object`（见下）\[\] | 是 | 已参团的邻居，展示用。 **没有件数**：参团是一人一份 —— 成团判断、「还差 N 人」的文案、`joinedCount` 全部按人算，库里也没存过件数。这里原先有个 `qty`，页面照着渲染 `×{qty}`， 而它从来没有值。 |
 | `joined` | `boolean` | 是 | 当前用户是否已参团 |
 | `neighborPickup` | [`PickupPoint`](#pickuppoint) | 否 | 邻里自提点（C-GB-06）：发起人勾选「送到我家」时有值。 参团者在这里取货，发起人负责签收与逐单核销 —— **零报酬**（ADR-005 §3）。 |
 | `isOwner` | `boolean` | 否 | 我是不是这个团的发起人 —— 决定是否显示轻核销入口 |
@@ -2638,7 +2898,16 @@ _无字段_
 |---|---|:---:|---|
 | `avatar` | `string` | 是 | — |
 | `nickname` | `string` | 是 | — |
-| `qty` | `number` | 是 | — |
+
+### GroupBuyStatus
+
+商家团 / 邻里团的状态。**与库 `mkt_group_buy.status` 逐字一致**。 契约上原先没有这个字段，端上只能拿 `reached` 判断 —— 而**平台中止的团 人数可能已经够了**，只看 reached 会把一个已经作废的团显示成正常可参的团。
+
+枚举取值：
+
+- `OPEN`
+- `FORMED`
+- `FAILED`
 
 ### GroupRequest
 
@@ -2661,7 +2930,7 @@ _无字段_
 | `quotes` | [`Quote`](#quote)\[\] | 是 | 收到的报价。一个需求单可多家报价，由发起人挑 |
 | `createdAt` | `number` | 是 | 发起时间 |
 | `expireAt` | `number` | 是 | 需求单过期时间。过期即 EXPIRED，不再接受报价 |
-| `groupNo` | `string` | 否 | MATCHED 后指向生成的正式团 |
+| `groupNo` | `string` | 否 | LOCKED 之后指向生成的正式团 |
 | `lockedPriceMinor` | `number` | 否 | 选定的报价快照。转成正式团后下单用这个价，**不读商家当前价** —— 这是防加价最硬的一层：加价在技术上做不到，不需要审核。 |
 | `confirmed` | `boolean` | 否 | 我（+1 的邻居）是否已二次确认下单。+1 不等于承诺，必须各自确认 |
 | `confirmedCount` | `number` | 否 | 已确认下单的人数 |
@@ -2675,15 +2944,15 @@ _无字段_
 
 ### GroupRequestStatus
 
-邻里求团：**需求先于供给**。 与「商家团」是两条完全不同的线，刻意不复用一个模型：   商家团 —— 商品已上架、价格已定、库存已备，用户只是参与；适合生鲜日用这类高频标品。   求团   —— 发起时**商品还不存在，甚至没有商家**，用户只有一句「想买儿童床垫」；            适合床垫、校服、家电这类低频高单价、有议价空间的非标品。 关键约束：**意向 ≠ 订单**。求团阶段不收钱、不锁库存 —— 商品还不存在时收钱是给自己找麻烦。 只有发起人选定报价、转成正式商家团之后，才进入交易链路。
+求团需求单的状态。**取值以库里存的为准**（`mkt_request.status`）。 这里原先是另一套词：OPEN / QUOTING / MATCHED / EXPIRED —— 与后端一个都对不上， 于是页面上 `status === "MATCHED"` 恒 false（已选定报价那一块、二次确认按钮 永远不出现），而 `status !== "MATCHED"` 恒真（锁价之后「选定」按钮仍然挂着）。 两边各写各的，谁也没报错。 枚举对账守卫当时也是绿的：它拿端上的取值去全后端的大写字面量里搜， 而 MATCHED / OPEN / EXPIRED 恰好在别的域里存在（团购、优惠券…）—— **同名异义把缺口盖住了**。词袋比对不了「这个字段的取值」。
 
 枚举取值：
 
-- `OPEN`
-- `QUOTING`
-- `MATCHED`
+- `COLLECTING`
+- `QUOTED`
+- `LOCKED`
+- `CONFIRMED`
 - `CLOSED`
-- `EXPIRED`
 
 ### HandleAfterSaleReq
 
@@ -2769,6 +3038,7 @@ _无字段_
 | `category` | `string` | 是 | 主营类目 |
 | `desc` | `string` | 是 | 店铺简介 |
 | `asPickupPoint` | `boolean` | 否 | 承接自提点：小店既是供给方也是取货点（ADR-005 type=STORE） |
+| `qualificationItems` | [`QualificationItem`](#qualificationitem)\[\] | 否 | 结构化资质。**可选**：老版本端上还在只传 `licenses`， 后端对未传该字段的请求跳过执照校验（见 `OpsServiceImpl.requireLicenseIfNeeded`）—— 校验必须晚于能满足它的 UI 上线，否则拦的不是坏商家，是所有人。 |
 | `serviceScope` | [`ServiceScope`](#servicescope) | 否 | 期望经营范围（ADR-009）。申请时可空，<b>审核通过时必须确定</b> —— 否则商家上着架却对谁都不可见，且没有任何报错。 |
 | `communityNos` | `string`\[\] | 否 | 期望覆盖的社区。scope=COMMUNITY 时审核通过必须非空 |
 | `licenses` | `string`\[\] | 否 | 资质图片（营业执照/身份证）。**选填** —— 一期 EDI 不强制。 与下面的结算账户一样，属于**分账主体开户**而不是入驻申请本身（ADR-002）： `usr_merchant_payment` 是独立一张表、有自己的 `apply_status`，就是这个道理。 申请时能传就传，通过后在 B 端补也行 —— 逼一个还没通过审核的人先传营业执照， 只会把人挡在门外。 |
@@ -2788,9 +3058,11 @@ _无字段_
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `merchantNo` | `string` | 是 | 商家单号。贯穿商品/订单/评价/结算，是多商家模型的主线（ADR-001） |
+| `selfOperated` | `boolean` | 否 | 这单是不是**平台自营**（销售主体是平台）。 **必须显示出来 —— 电商法 §37 要求平台以显著方式区分标记自营业务， 不得误导消费者。这是法定义务，不是产品选择。** 而它同时是资金模式合法性的一部分：归集路径下平台是销售主体， 页面上却让消费者以为在跟商家交易，四流就不一致了（ADR-017 §3.4）。 ⚠️ 自营时**商家信息照常展示**（供货商、产地、门店、评分）—— 要禁的是把销售方指给商家的**表述**，不是商家信息本身。 见 `packages/shared/tests/seller-statement.test.ts` 的禁用词表。 |
 | `name` | `string` | 是 | 店铺名 |
 | `logo` | `string` | 是 | 店铺 logo URL |
-| `rating` | `number` | 是 | 综合评分，0–5，保留一位小数 |
+| `rating` | `number` | 是 | 综合评分，0–5，保留一位小数。**0 分要配合 `ratingCount` 一起看** |
+| `ratingCount` | `number` | 是 | 计入评分的评价条数。 **没有它就分不清「0 分」和「还没人评过」** —— 而这两件事对买家是相反的信号： 一家 0 分的店是被人打差评打出来的，一家没人评过的店只是新开的。 端上按 `ratingCount === 0` 显示「暂无评价」，不要显示 0 颗星。 |
 | `verified` | `boolean` | 是 | 是否通过资质认证 |
 | `breachCount` | `number` | 是 | 选定报价后不履约的次数。>0 会在报价卡上公示 —— 事后信用替代事前审核 |
 
@@ -2824,6 +3096,28 @@ _无字段_
 |---|---|:---:|---|
 | `token` | `string` | 是 | 访问令牌。**商家池与 C 端用户池是两套账号**，token 不通用 |
 | `merchant` | [`MerchantProfile`](#merchantprofile) | 是 | 商家档案 |
+
+### MerchantPlan
+
+我的增值包（B-11.13，`GET /biz/plan`）。 <p>与运营端那份（`MerchantPlanRow`）刻意是两个类型：运营看的是「这家商家买了什么」， 商家看的是「我有什么、还差什么、能不能试」。挤成一个的结果是商家侧要接一堆 用不上的字段（授予方、降级时间、额度来源），而它们每一个都会被端上误读成给他看的。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `planCode` | `string` | 是 | 档位码。**文案用 `planName`，不要按 code 自己映射** —— 运营改了名端上不会跟着变 |
+| `planName` | `string` | 是 | 档位显示名（「成长版」） |
+| `status` | [`PlanStatus`](#planstatus) | 是 | ACTIVE 生效中 / GRACE 宽限期（**能力全保留**，7 天）/ EXPIRED 已过期并降级。 <p>GRACE 要显示成「即将到期，请尽快续费」而**不是**「已失效」： 他的门店、子账号、跨店数据一样都没少，这时候说失效只会让他打客服电话。 |
+| `startAt` | `number,null` | 否 | 订阅起始时间（毫秒）。null = 还没有过任何订阅 |
+| `expireAt` | `number,null` | 否 | 到期时间（毫秒）。null = 不到期（免费档） |
+| `storeQuota` | `number` | 是 | 生效门店额度 |
+| `storeUsed` | `number` | 是 | 已用门店数。**后端算，只数营业中的店** —— 端上自己数会与建店那道闸的口径分岔 |
+| `staffQuota` | `number` | 是 | 生效子账号额度 |
+| `staffUsed` | `number` | 是 | 已用子账号数（不含老板本人） |
+| `crossStoreStats` | `boolean` | 是 | 有没有跨店总览与对比 |
+| `trialUsed` | `boolean` | 是 | 试用是否已用过。**一主体一次，永不回退** |
+| `trialTier` | `string,null` | 否 | 可试用的目标档位码；null = 现在不能试用（已用过 / 已经是付费档 / 平台没配试用）。 <p>端上按它决定要不要显示「免费试用」按钮 —— 不要自己用 `planCode === 'FREE' && !trialUsed` 推：那会漏掉「平台把试用天数配成 0」这种情况。 |
+| `trialDays` | `number,null` | 否 | 试用天数，配合 `trialTier` 显示「免费试用 14 天」 |
+| `suspendedStores` | `string`\[\] | 是 | 因降级被压成只读的门店名。 <p>**只含平台压的那几家**，商家自己停用的不在里面 —— 页面要写明是「哪几家」：只说「部分门店已停用」，他得自己一家家点开去找。 |
+| `tiers` | [`PlanTier`](#plantier)\[\] | 是 | 三档对比，顺序即展示顺序（后端按 sort 排好） |
 
 ### MerchantPointAccount
 
@@ -2867,6 +3161,7 @@ _无字段_
 | `pickupNo` | `string` | 否 | 承接的自提点单号。`isPickupPoint=true` 时有值 |
 | `rejectReason` | `string` | 否 | 驳回原因，status=REJECTED 时有值 |
 | `loginBy` | [`GrantType`](#granttype) | 否 | 本次会话的登录方式。第三方登录且 phone 为空时，要引导补绑手机号 |
+| `fundsMode` | [`FundsMode`](#fundsmode) | 否 | 资金路径。**B 端价格字段叫什么由它决定** —— 归集（钱进平台账户）下平台是销售主体、最终售价平台定，商家填的是「期望收购价」； 直连下他自己就是销售主体，那就是「售价」。 判据用它而不是门店的 `businessMode`：与积分能力同一根轴 —— **责任跟着钱走**。 还没进件的申请人为空：那时资金路径尚未确定， 猜一个默认值会让他在入驻页看到一个还轮不到他的字段名。 |
 
 ### MerchantRole
 
@@ -2922,11 +3217,9 @@ _无字段_
 
 ### MerchantSubject
 
-商家主体类型 —— **权威口径取通道侧**（ADR-010）。 主体类型的唯一硬约束来自支付通道：能不能进件、要什么资质、钱打到个人还是对公。 展示名反而可以随便改。让权威贴着约束走，映射就只需要一个方向。 规则（要不要执照、受不受行业白名单限制、结算账户形态）在 `sys_merchant_subject` 表里，随通道调整；**这里只管取值域**。 端上取 `GET /common/master-data`，不要在页面里写死。 <p><b>不叫 `SubjectType`</b>：那个名字在平台端已经是**风控主体** （DEVICE/MERCHANT/USER）。两个不同的概念同名，读代码的人迟早会把 一个当成另一个 —— 类型对齐守卫正是为此存在的。
-
 枚举取值：
 
-- `MICRO`
+- `NATURAL_PERSON`
 - `INDIVIDUAL`
 - `ENTERPRISE`
 
@@ -2954,6 +3247,28 @@ _无字段_
 | `afterSale` | `number` | 是 | 待处理售后单数 |
 | `toReply` | `number` | 是 | 待回复的评价数 |
 | `quotable` | `number` | 是 | 可报价的求团需求数 |
+
+### Message
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `messageNo` | `string` | 是 | 消息单号 |
+| `type` | [`MessageType`](#messagetype) | 是 | 消息分类，决定它落在哪个 tab |
+| `title` | `string` | 是 | 标题（列表页展示） |
+| `body` | `string` | 是 | 正文 |
+| `link` | `string` | 否 | 点进去要跳哪（订单详情/商品/团），已是完整页面路径带参 |
+| `read` | `boolean` | 是 | 是否已读。未读数按 type 分别统计 |
+| `at` | `number` | 是 | 消息产生时间 |
+
+### MessageType
+
+站内消息。 三类分开是因为**用户对它们的期待完全不同**：交易类必须看到（到货了要去取）， 活动类可以错过，系统类是通知。混在一个列表里，交易消息会被活动消息淹没。
+
+枚举取值：
+
+- `TRADE`
+- `MARKETING`
+- `SYSTEM`
 
 ### Order
 
@@ -3082,7 +3397,7 @@ _无字段_
 | `canReceiveMoney` | `boolean` | 是 | 这个通道现在能不能收钱。 **照着它显示，不要自己去比 applyStatus** —— 比错的表现是 「显示能收钱但收不了」，而这种错要到第一笔订单才暴露。 |
 | `payMerchantNo` | `string` | 否 | 收款商户号业务键，通过后才有。门店挂收款号引用的就是它 |
 | `subMchidMasked` | `string` | 否 | 二级商户号掩码。完整号不回显 |
-| `settleAccountType` | [`SettleAccountType`](#settleaccounttype) | 否 | 结算账户形态：小微打个人（PERSONAL_OPENID），其余打对公（MERCHANT_ID） |
+| `settleAccountType` | [`SettleAccountType`](#settleaccounttype) | 否 | 结算账户形态：小微打个人（PERSONAL_BANK_CARD），其余打对公（MERCHANT_ID） |
 | `settleAccountMasked` | `string` | 否 | 结算账号掩码。**明文永不回显**，包括给商家自己（ADR-002 §5） |
 | `rejectReason` | `string` | 否 | 驳回原因。驳回时必有 —— 没有原因商家只能反复重提 |
 | `missing` | `string`\[\] | 是 | 还缺哪些资料（settleAccount / licenses / settleAccountType）。空 = 资料齐了在等通道 |
@@ -3203,6 +3518,30 @@ _无字段_
 - `PERMANENT`
 - `GROUP_INSTANCE`
 
+### PlanStatus
+
+增值包订阅状态。 `GRACE`（宽限期，7 天）**能力全保留** —— 到期当天就压店的话， 一次忘记续费等于让他的店在客户面前消失，而他往往正在门店里忙。
+
+枚举取值：
+
+- `ACTIVE`
+- `GRACE`
+- `EXPIRED`
+
+### PlanTier
+
+档位对比的一行。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `planCode` | `string` | 是 | — |
+| `name` | `string` | 是 | — |
+| `storeQuota` | `number` | 是 | — |
+| `staffQuota` | `number` | 是 | — |
+| `crossStoreStats` | `boolean` | 是 | — |
+| `trialDays` | `number` | 是 | 0 = 这一档不提供试用 |
+| `current` | `boolean` | 是 | 是不是他现在用的那一档 |
+
 ### Promotion
 
 促销：买 N 送 M。 语义：购买数量达到 N 件，赠送 M 件 —— 用户**付 N 件的钱，收到 N+M 件**。 赠品不进计价（价格为 0），只作为订单里的独立行存在，履约时随单发出。
@@ -3214,6 +3553,27 @@ _无字段_
 | `giftM` | `number` | 是 | 赠送件数 M |
 | `giftGoodsNo` | `string` | 否 | 赠品商品号；不填则赠同款 |
 | `giftTitle` | `string` | 否 | 赠品展示名（后端下发已本地化） |
+
+### QualificationItem
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `type` | [`QualificationType`](#qualificationtype) | 是 | 资质类型码 |
+| `code` | `string` | 是 | 证照编号 |
+| `imageUrl` | `string` | 是 | — |
+| `expireAt` | `number,null` | 是 | 有效期截止（毫秒）。**长期有效传 `null`** —— 不要用 0 或一个很大的数字冒充：过期扫描会把前者当成已过期、 后者当成永不过期，两种都错且都不报错。 |
+| `issuer` | `string` | 否 | — |
+
+### QualificationType
+
+资质类型码。取值同后端 `mch_qualification.qual_type`。 ⚠️ **`BUSINESS_LICENSE` 是入驻校验的判据** —— 需要执照的档位必须含它， 改名会让那条校验静默失效（找不到就当没传，然后放行）。
+
+枚举取值：
+
+- `BUSINESS_LICENSE`
+- `FOOD_PERMIT`
+- `FOOD_WORKSHOP`
+- `OTHER`
 
 ### Quote
 
@@ -3436,7 +3796,7 @@ _无字段_
 
 枚举取值：
 
-- `PERSONAL_OPENID`
+- `PERSONAL_BANK_CARD`
 - `MERCHANT_ID`
 
 ### SettleBill
@@ -3624,6 +3984,9 @@ SKU 草稿。`optionValues` 的顺序与 `specGroups` 一一对应 —— 这是
 | `payMerchantNo` | `string` | 否 | 这家店用哪个收款号。**空 = 用主体的默认收款号**，不是"没配" |
 | `payReady` | `boolean` | 是 | 这家店现在能不能收钱。照它显示，别自己去比状态串 |
 | `staffCount` | `number` | 是 | 授权到这家店的员工数（不含老板）。0 表示只有老板能管这家店 |
+| `rating` | `number` | 否 | 门店评分 ×10（V155）。与主体评分是两个数：主体分是各店的合成，反过来推不回去 |
+| `ratingCount` | `number` | 否 | 计入门店评分的条数。**0 = 暂无评价**，不是 0 分 |
+| `planSuspended` | `boolean` | 否 | 这家店的只读**是套餐降级压下来的**，不是店主自己停的。 <p>两者的 `status` 一模一样（都是 `READONLY`），而端上要给的下一步完全不同： 降级压的要**补缴/升档**，自己停的**点一下启用就开**。 不分开的表现是店主反复点那个对降级店无效的启用按钮。 |
 
 ### StoreEditReq
 
@@ -3657,7 +4020,6 @@ SKU 草稿。`optionValues` 的顺序与 `specGroups` 一一对应 —— 这是
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `url` | `string` | 是 | 扫码后进入的落地页地址，带 merchant_no 归因参数 |
-| `printUrl` | `string` | 是 | 可打印版（贴纸尺寸），真实环境由后端生成小程序码 |
 
 ### StoreRole
 

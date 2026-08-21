@@ -120,8 +120,15 @@ public interface OpsService {
      *                      此前运营侧没有这个入口，于是这两项**没有任何地方能填**：
      *                      B 端不填、运营补不了，商家开完店等着一个永远不来的订单。
      */
+    /**
+     * @param grantCodes 通过时授予的经营类目编码。<b>与建主体同一个事务</b> ——
+     *                   分两步做会留下「通过了但一个码都没授」的状态：商家收到通过通知、
+     *                   进去建品、上架被拒，而错误说的是「你还没有资质授权」。
+     *                   传空 = 只经营无门槛类目（合法，不是漏填）
+     */
     void auditApply(String applyNo, boolean approved, String reason,
-                    String serviceScope, List<String> communityNos);
+                    String serviceScope, List<String> communityNos,
+                    List<String> grantCodes);
 
     /**
      * 受理申请：PENDING → REVIEWING。

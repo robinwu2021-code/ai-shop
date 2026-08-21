@@ -1,14 +1,32 @@
 plugins { id "com.android.application" }
 
+// 正式证书签名：个推按登记的「包名 + SHA256」校验，签名对不上注册不出 cid。
+// 密码由 gradle 读 signing/keystore.properties，不写进代码。
+def ksPropsFile = rootProject.file("signing/keystore.properties")
+def ksProps = new Properties()
+if (ksPropsFile.exists()) { ksPropsFile.withInputStream { ksProps.load(it) } }
+
 android {
     namespace "ai.neargo.shop.shell"
     compileSdk 34
+
+    signingConfigs {
+        release {
+            def sf = ((ksProps['storeFile'] ?: '') as String).replaceFirst('^~', System.getProperty('user.home'))
+            if (sf) storeFile file(sf)
+            storePassword ksProps['storePassword']
+            keyAlias ksProps['keyAlias']
+            keyPassword ksProps['keyPassword']
+        }
+    }
 
     defaultConfig {
         minSdk 24
         targetSdk 34
         versionCode 1
         versionName "0.1.0"
+        // 个推 APPID（虹选好物）。占位符注入 AndroidManifest 的 GETUI_APPID meta。
+        manifestPlaceholders = [ GETUI_APPID: "ayD7XjKbip61jmm4fUxM45", GT_INSTALL_CHANNEL: "shell" ]
     }
 
     // 两个端一套壳代码，靠 flavor 分开：
@@ -23,7 +41,8 @@ android {
         }
         merchant {
             dimension "endpoint"
-            applicationId "ai.neargo.shop.b"
+            // 个推登记的安卓包名就是这个 —— 必须一致，否则推送校验不过
+            applicationId "top.hxmall.bapp"
             resValue "string", "app_name", "邻里商家"
         }
     }
@@ -38,10 +57,14 @@ android {
         debug {
             applicationIdSuffix ""
             resValue "string", "shell_entry", "http://localhost:5174"
+            // debug 也用正式证书 —— 个推按登记的 SHA256 校验，默认 debug key 对不上
+            signingConfig signingConfigs.release
         }
-        // **不配 release 签名**：签名密钥不该进代码库（见 signing/keystore.properties.example）
         release {
-            resValue "string", "shell_entry", "file:///android_asset/h5/index.html"
+            // 生产：加载 nginx 上的 b-app（http 同源，API 走 /biz 等反代到 8081）——
+            // 不用 file://（避开 uni-app H5 在 file:// 下的黑屏），不用 CORS（同源）。
+            resValue "string", "shell_entry", "http://106.55.27.246/b/"
+            signingConfig signingConfigs.release
         }
     }
 
@@ -59,4 +82,9 @@ dependencies {
     // 1.8 起 jdk7/jdk8 的内容已并入主 stdlib，把它们对齐到同一版本即可 ——
     // 不是 exclude，因为传递依赖里确实有代码引用它们
     implementation platform("org.jetbrains.kotlin:kotlin-bom:1.8.22")
+
+    // 个推推送 SDK（uni-push 2.0 的同一底座）。原生集成，不经 DCloud。
+    implementation "com.getui:gtc:3.3.3.0"
+    implementation "com.getui:gtsdk:3.3.15.0"
+    implementation "com.getui:gsido:1.4.14.0"
 }

@@ -135,10 +135,12 @@ watch(() => props.titleKey, applyTitle);
   padding-bottom: calc(40rpx + constant(safe-area-inset-bottom));
   padding-bottom: calc(40rpx + env(safe-area-inset-bottom));
 }
+/* 页面边距。走变量的理由同 .sh-card（见 base.css）：两端密度诉求不同，
+   默认 28rpx 保持 C 端原样，B 端在自己的 App.vue 里调紧 */
 .sh-scaffold.is-padded {
-  padding-left: 28rpx;
-  padding-right: 28rpx;
-  padding-top: 28rpx;
+  padding-left: var(--sh-pad-page, 28rpx);
+  padding-right: var(--sh-pad-page, 28rpx);
+  padding-top: var(--sh-pad-page, 28rpx);
 }
 /* 自定义 tabBar 是 fixed 的，内容区要留出等高的底部空间 */
 .sh-scaffold.has-tabbar {
