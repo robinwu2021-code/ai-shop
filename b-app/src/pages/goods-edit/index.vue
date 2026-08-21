@@ -464,14 +464,6 @@ async function genDetail() {
 const morePrice = ref(false);
 
 /**
- * 是否画列头。**画了列头就不再给格子里的 placeholder** ——
- * 两者说的是同一件事，而 375 宽下四列并排时，
- * 「标称重量(克)」这种长 placeholder 会被截成「标称重量(克」，
- * 比不写还糟。列头在格子外面，不受列宽挤压。
- */
-const showHead = computed(() => multi.value || morePrice.value);
-
-/**
  * 划线价填得不对。**必须严格高于售价** —— 否则 C 端渲染出来是个
  * 「涨价了」的折扣标，后端也会拒。只在两者都填了的时候判。
  */
@@ -937,8 +929,22 @@ const suggestedSpecs = computed<SpecTemplate[]>(() =>
   templates.value.filter((tpl) => tpl.scope === "PLATFORM"),
 );
 
+/** 推荐规格这一组到底是「谁的常用」：有类目级就报类目名，否则报品类名 */
+const suggestScope = computed(() => {
+  const leaf = catPath.value[catPath.value.length - 1];
+  const hasCatLevel = suggestedSpecs.value.some((t) => t.categoryNo);
+  return hasCatLevel && leaf ? leaf.name : String(t(`goods.categoryType.${type.value}`));
+});
+
+/**
+ * 拉规格模板。**要带上已选类目** —— 只传品类拿到的是兜底那批，
+ * 而品类只有 3 个、二级类目有 32 个，STANDARD 一个就盖住 18 个：
+ * 手机数码与鲜花会共用「包装：袋装/瓶装/罐装」，等于没有推荐。
+ */
 async function loadTemplates() {
-  templates.value = await api.mSpecTemplates(type.value).catch(() => []);
+  templates.value = await api
+    .mSpecTemplates(type.value, categoryNo.value || undefined)
+    .catch(() => []);
 }
 
 function addGroup() {
@@ -1568,8 +1574,14 @@ async function save(thenSubmit = false) {
         只在**还没建过规格组**时显示：已经动手填了的人不需要再被推荐一次。
       -->
       <view v-if="suggestedSpecs.length && !groups.length" class="tplchips">
+        <!--
+          标题跟着**实际给出的是哪一层**走：有类目级模板就说类目名
+          （「休闲零食常用规格」），否则说品类名（「普通实物常用规格」）。
+          恒定说品类的话，商家看到「普通实物常用规格」下面挂着「段位 1/2/3段」
+          会以为推错了 —— 那其实是婴幼儿食品这个类目专属的。
+        -->
         <text class="sh-muted tplchips__t">
-          {{ $t("goods.tplSuggest", { s: $t(`goods.categoryType.${type}`) }) }}
+          {{ $t("goods.tplSuggest", { s: suggestScope }) }}
         </text>
         <view class="tplchips__row">
           <text
@@ -1653,68 +1665,61 @@ async function save(thenSubmit = false) {
         {{ $t("goods.priceAggregatedHint") }}
       </text>
 
-      <view v-if="rows.length > 1" class="bulk">
+      <!--
+        **多规格改成纵向分组，不再是一行一行的表。**
+
+        表的问题不是密度，是「同一份规格名在价格卡与库存卡各画一遍」，
+        而两张卡的行序必须一一对应 —— 商家要改「5斤·袋装」的库存，
+        得先在价格卡数它是第几行。纵向分组之后每组自带标题，两张卡各看各的。
+
+        顺带解决横向拥挤：「更多价格」展开时**纵向追加副字段**，不横向加列。
+        375 宽下三列本来就要靠撤 placeholder 才塞得下。
+      -->
+      <view v-if="multi" class="bulk">
         <input
           v-model="bulk.price"
           class="bulk__input sh-num"
           type="digit"
           :placeholder="$t(aggregated ? 'goods.priceAggregated' : 'goods.bulkPrice')"
         />
-        <text class="link" @tap="applyBulkPrice">{{ $t("goods.applyBulk") }}</text>
+        <text class="link" @tap="applyBulkPrice">{{ $t("goods.applyAll") }}</text>
+      </view>
+
+      <view v-for="(r, i) in rows" :key="i" class="grp" :class="{ 'grp--single': !multi }">
+        <!-- 单规格不画组标题：只有一行时「默认规格」是在回答没人问的问题 -->
+        <text v-if="multi" class="grp__t">{{ r.optionValues.join(" · ") }}</text>
+        <view class="grp__f">
+          <text class="grp__k">{{ $t(priceLabel) }}</text>
+          <input v-model="r.priceMajor[market]" class="grp__v sh-num" type="digit" />
+        </view>
+        <template v-if="morePrice">
+          <view class="grp__f">
+            <text class="grp__k">{{ $t("goods.originPrice") }}</text>
+            <input
+              v-model="r.originMajor"
+              class="grp__v sh-num"
+              :class="{ 'is-bad': badOrigin(r) }"
+              type="digit"
+            />
+          </view>
+          <view v-if="isFresh" class="grp__f">
+            <text class="grp__k">{{ $t("goods.nominalGram") }}</text>
+            <input v-model="r.nominalGram" class="grp__v sh-num" type="number" />
+          </view>
+        </template>
       </view>
 
       <!--
-        列头。**只在多规格时画** —— placeholder 一旦填了字就消失，
-        而多规格滚到第 6 行时，两列数字看不出哪列是价、哪列是库存。
-        单规格只有一行，两个 placeholder 一直看得见，不需要列头。
+        展示价**只在多规格时出现**：单规格时它恒等于上面那个价，
+        是在回答没人问的问题。文案也直接说结果，不解释算法。
       -->
-      <view v-if="showHead" class="row row--head">
-        <text v-if="multi" class="row__spec"></text>
-        <text class="row__col">{{ $t(priceLabel) }}</text>
-        <text v-if="morePrice" class="row__col">{{ $t("goods.originPrice") }}</text>
-        <text v-if="morePrice && isFresh" class="row__col">{{ $t("goods.nominalGram") }}</text>
-      </view>
-
-      <view v-for="(r, i) in rows" :key="i" class="row" :class="{ 'row--single': !multi }">
-        <!--
-          单规格不画左边这一格。只有一行时「默认规格」是在回答没人问的问题，
-          还占掉近半行宽度 —— 而这一行真正要填的只有价与库存两个数。
-        -->
-        <text v-if="multi" class="row__spec">{{ r.optionValues.join(" · ") }}</text>
-        <input
-          v-model="r.priceMajor[market]"
-          class="row__input sh-num"
-          type="digit"
-          :placeholder="showHead ? '' : $t(priceLabel)"
-        />
-        <!--
-          划线价与标称重量：**此前端上完全没有入口。**
-          两者都是有列、有契约、C 端也照着渲染 —— 折扣标因此从来没出现过，
-          生鲜「按标称预扣、称重后多退少补」那条链也一直跑不起来。
-          默认折叠：多数商品不标折扣，常驻两列会让本来就窄的一行更挤。
-        -->
-        <input
-          v-if="morePrice"
-          v-model="r.originMajor"
-          class="row__input sh-num"
-          :class="{ 'is-bad': badOrigin(r) }"
-          type="digit"
-        />
-        <input
-          v-if="morePrice && isFresh"
-          v-model="r.nominalGram"
-          class="row__input sh-num"
-          type="number"
-        />
-      </view>
-
-      <view class="from">
-        <!-- 币种后缀只在多市场下有意义：单市场时「（CNY）」是在回答没人问的问题 -->
-        <text class="sh-muted">
-          {{ $t("goods.fromPrice") }}<text v-if="MULTI_MARKET_UI">（{{ market }}）</text>
-        </text>
-        <text class="sh-num from__v">{{ fromPrice }}</text>
-      </view>
+      <!--
+        一个价都没填时不说这句：那时 fromPrice 是「—」，
+        渲染出来是「C 端显示 ¥— 起」，比不写更糟。
+      -->
+      <text v-if="multi && fromPrice !== '—'" class="sh-muted hint">
+        {{ $t("goods.fromPriceShort", { s: fromPrice }) }}
+      </text>
       <text v-if="MULTI_MARKET_UI && unpricedMarkets.length" class="sh-muted hint">
         {{ $t("goods.unpriced", { s: unpricedMarkets.join("、") }) }}
       </text>
@@ -1768,26 +1773,29 @@ async function save(thenSubmit = false) {
       </view>
       <text class="sh-muted hint">{{ $t("goods.stockHint") }}</text>
 
-      <view v-if="rows.length > 1" class="bulk">
+      <!-- 与价格卡同构：同样的分组、同样的规格名、同样的「统一填入」 -->
+      <view v-if="multi" class="bulk">
         <input
           v-model="bulk.stock"
           class="bulk__input sh-num"
           type="number"
           :placeholder="$t('goods.bulkStock')"
         />
-        <text class="link" @tap="applyBulkStock">{{ $t("goods.applyBulk") }}</text>
+        <text class="link" @tap="applyBulkStock">{{ $t("goods.applyAll") }}</text>
       </view>
 
-      <view v-for="(r, i) in rows" :key="i" class="row" :class="{ 'row--single': !multi }">
-        <text v-if="multi" class="row__spec">{{ r.optionValues.join(" · ") }}</text>
-        <!-- 库存 0 = 这个规格顾客买不到。多规格时最容易漏填的就是它 -->
-        <input
-          v-model="r.stock"
-          class="row__input sh-num"
-          :class="{ 'is-out': Number(r.stock) === 0 }"
-          type="number"
-          :placeholder="$t('goods.stock')"
-        />
+      <view v-for="(r, i) in rows" :key="i" class="grp" :class="{ 'grp--single': !multi }">
+        <text v-if="multi" class="grp__t">{{ r.optionValues.join(" · ") }}</text>
+        <view class="grp__f">
+          <text class="grp__k">{{ $t("goods.stock") }}</text>
+          <!-- 库存 0 = 这个规格顾客买不到。多规格时最容易漏填的就是它 -->
+          <input
+            v-model="r.stock"
+            class="grp__v sh-num"
+            :class="{ 'is-out': Number(r.stock) === 0 }"
+            type="number"
+          />
+        </view>
       </view>
 
       <view class="kv kv--top">
@@ -1928,6 +1936,57 @@ async function save(thenSubmit = false) {
   border-radius: 16rpx;
   /* 老商品的封面是 emoji，走 sh-cover 的文字分支；不给字号会缩成一个点 */
   font-size: 48rpx;
+}
+/*
+ * 规格分组。价格卡与库存卡共用这一套 —— 两张卡长得一样，
+ * 商家不需要在脑子里对齐行号。
+ */
+.grp {
+  margin-top: 20rpx;
+  padding-top: 20rpx;
+  border-top: 2rpx solid var(--sh-line);
+}
+/* 单规格没有组标题，也就不需要那条分隔线与上边距 */
+.grp--single {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+.grp__t {
+  display: block;
+  font-size: 26rpx;
+  color: var(--sh-ink);
+  margin-bottom: 12rpx;
+}
+.grp__f {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  margin-top: 12rpx;
+}
+.grp__k {
+  flex: 0 0 168rpx;
+  font-size: 26rpx;
+  color: var(--sh-sub);
+}
+/*
+ * 缺货：这一格要能被扫到，它是「填完还差什么」里最常漏的一项。
+ * **随分组改版一起换了类名** —— 原来挂在 .row__input 上，
+ * 那个选择器已随表格布局一起删掉；不跟过来的话库存 0 从此不再标红，
+ * 而且不会有任何报错。
+ */
+.grp__v.is-out {
+  color: var(--sh-danger);
+}
+.grp__v {
+  flex: 1;
+  min-width: 0;
+  height: 76rpx;
+  padding: 0 20rpx;
+  border-radius: 16rpx;
+  background: var(--sh-faint);
+  font-size: 28rpx;
+  color: var(--sh-ink);
 }
 /* 划线价填得比售价低时标红 —— 后端会拒，先在这一格说清是哪一行 */
 .is-bad {
@@ -2151,45 +2210,6 @@ async function save(thenSubmit = false) {
 }
 .bulk__input {
   flex: 1;
-  height: 72rpx;
-  padding: 0 20rpx;
-  border-radius: 16rpx;
-  background: var(--sh-faint);
-  font-size: 24rpx;
-  color: var(--sh-ink);
-}
-.row {
-  display: flex;
-  align-items: center;
-  gap: 12rpx;
-  margin-top: 16rpx;
-}
-/* 列头：不是输入框，弱一档 */
-.row--head {
-  margin-bottom: 4rpx;
-}
-.row__col {
-  flex: 1;
-  font-size: 24rpx;
-  color: var(--sh-sub);
-  text-align: center;
-}
-/* 缺货：这一格要能被扫到，它是「填完还差什么」里最常漏的一项 */
-.row__input.is-out {
-  color: var(--sh-danger);
-}
-/* 单规格：左边那格不画，两个输入框各占一半 */
-.row--single .row__input {
-  flex: 1;
-}
-.row__spec {
-  flex: 1;
-  min-width: 0;
-  font-size: 24rpx;
-  color: var(--sh-ink);
-}
-.row__input {
-  width: 150rpx;
   height: 72rpx;
   padding: 0 20rpx;
   border-radius: 16rpx;

@@ -369,6 +369,19 @@ export const mockApi: ShopApi = {
     return delay(db.communitySeeds.map(toCommunity));
   },
 
+  async openRegions() {
+    // 演示数据只有一个区。真后端是从社区的 region_code 聚合出来的
+    return delay([
+      {
+        regionCode: "330106",
+        name: "西湖区",
+        cityCode: "3301",
+        cityName: "杭州市",
+        communityCount: db.communitySeeds.length,
+      },
+    ]);
+  },
+
   // ---------------------------------------------------------------- 商品
   async goodsList(q: GoodsQuery) {
     let list = allGoods().filter((g) => g.onSale);

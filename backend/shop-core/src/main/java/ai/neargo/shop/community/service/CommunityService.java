@@ -1,6 +1,7 @@
 package ai.neargo.shop.community.service;
 
 import ai.neargo.shop.community.dto.CommunityVO;
+import ai.neargo.shop.community.dto.RegionOptionVO;
 
 import java.util.List;
 
@@ -23,6 +24,24 @@ public interface CommunityService {
      * 那是他自己知道的经营半径，与他此刻站在哪儿无关，所以不按定位排序。
      */
     List<CommunityVO> all();
+
+    /**
+     * 全部已开通社区，可按行政区划筛。
+     *
+     * @param regionCode 区划码前缀。国标码本身是层级前缀（省 2 / 市 4 / 区县 6 / 街道 9），
+     *                   所以传「3301」能捞出整个杭州市，传「330106」只捞西湖区 ——
+     *                   不用先查一遍子区划再 IN 一大串
+     */
+    List<CommunityVO> all(String regionCode);
+
+    /**
+     * <b>有已开通社区的</b>区域清单，按「市 → 区」两级聚合。
+     *
+     * <p>为什么不直接给区划全表：库里有 2978 个区县、41352 个街道，
+     * 让用户在里面挑一个，十有八九挑到一个**一家店都没有**的区 ——
+     * 那不是「选区域」，那是抽奖。这里只列真的有货可买的地方，并带上社区数。
+     */
+    List<RegionOptionVO> openRegions();
 
     /** 自提点详情（C-CM-02）：地址、营业时间、到货时间。 */
     CommunityVO.PickupVO pickupDetail(String pickupNo);

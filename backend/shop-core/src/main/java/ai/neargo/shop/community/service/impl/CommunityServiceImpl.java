@@ -1,6 +1,11 @@
 package ai.neargo.shop.community.service.impl;
 
 import ai.neargo.shop.community.service.CommunityService;
+import java.util.Set;
+import java.util.LinkedHashSet;
+import java.util.LinkedHashMap;
+import ai.neargo.shop.spi.platform.MasterDataPort;
+import ai.neargo.shop.community.dto.RegionOptionVO;
 
 import ai.neargo.shop.community.dto.CommunityVO;
 import ai.neargo.shop.community.entity.CmtCommunity;
@@ -33,6 +38,8 @@ public class CommunityServiceImpl implements CommunityService {
      * 改走 Port 之后，社区只拿到它真正需要的两个字段。
      */
     private final MerchantQueryPort merchantQueryPort;
+    /** 区划码 → 名字。走 Port 而不是直接读 sys_region：社区域不该拿到平台域整张表 */
+    private final MasterDataPort masterDataPort;
 
     /**
      * 「附近」的半径（米）。默认 5 公里 —— <b>自提是走过去取的</b>，
@@ -45,10 +52,12 @@ public class CommunityServiceImpl implements CommunityService {
 
     public CommunityServiceImpl(CommunityMapper communityMapper, PickupPointMapper pickupMapper,
                                 MerchantQueryPort merchantQueryPort,
+                                MasterDataPort masterDataPort,
                                 @Value("${shop.community.nearby-radius-m:5000}") int nearbyRadiusM) {
         this.communityMapper = communityMapper;
         this.pickupMapper = pickupMapper;
         this.merchantQueryPort = merchantQueryPort;
+        this.masterDataPort = masterDataPort;
         this.nearbyRadiusM = nearbyRadiusM;
     }
 
@@ -57,6 +66,75 @@ public class CommunityServiceImpl implements CommunityService {
         // 复用 nearby 的组装：不传坐标 → distance 恒 0，排序退化为库序。
         // 单独写一套查询只会让「社区带哪些自提点」在两处各实现一遍
         return nearby(null, null);
+    }
+
+    @Override
+    public List<CommunityVO> all(String regionCode) {
+        List<CommunityVO> list = all();
+        if (regionCode == null || regionCode.isBlank()) {
+            return list;
+        }
+        /*
+         * **按前缀筛。** 国标区划码本身就是层级前缀（省 2 / 市 4 / 区县 6 / 街道 9），
+         * 所以「3301」自然覆盖整个杭州市、「330106」只覆盖西湖区 ——
+         * 不必先查一遍子区划再拼一个 IN 列表（那既慢又会在区划表更新时漏掉新街道）。
+         */
+        Set<String> hit = communityMapper.selectList(Wrappers.<CmtCommunity>lambdaQuery()
+                        .eq(CmtCommunity::getStatus, "OPEN")
+                        .likeRight(CmtCommunity::getRegionCode, regionCode))
+                .stream().map(CmtCommunity::getCommunityNo).collect(Collectors.toSet());
+        return list.stream().filter(v -> hit.contains(v.communityNo())).toList();
+    }
+
+    /** 区县码：社区可能挂在街道级（9 位），聚合到区县要截到前 6 位 */
+    private static String districtOf(String regionCode) {
+        return regionCode.length() >= 6 ? regionCode.substring(0, 6) : regionCode;
+    }
+
+    @Override
+    public List<RegionOptionVO> openRegions() {
+        List<CmtCommunity> open = communityMapper.selectList(Wrappers.<CmtCommunity>lambdaQuery()
+                .eq(CmtCommunity::getStatus, "OPEN")
+                .isNotNull(CmtCommunity::getRegionCode));
+
+        // 区县码 → 社区数
+        Map<String, Integer> countByDistrict = new LinkedHashMap<>();
+        for (CmtCommunity c : open) {
+            String code = c.getRegionCode();
+            if (code == null || code.isBlank()) {
+                continue;
+            }
+            countByDistrict.merge(districtOf(code), 1, Integer::sum);
+        }
+        if (countByDistrict.isEmpty()) {
+            return List.of();
+        }
+
+        // 区名与市名一次查完：一条一查会打出 2N 次查询
+        Set<String> codes = new LinkedHashSet<>(countByDistrict.keySet());
+        countByDistrict.keySet().stream()
+                .filter(d -> d.length() >= 4)
+                .map(d -> d.substring(0, 4))
+                .forEach(codes::add);
+        Map<String, String> names = masterDataPort.regionNames(codes);
+
+        return countByDistrict.entrySet().stream()
+                .map(e -> {
+                    String district = e.getKey();
+                    String city = district.length() >= 4 ? district.substring(0, 4) : district;
+                    return new RegionOptionVO(district, names.get(district),
+                            city, names.get(city), e.getValue());
+                })
+                /*
+                 * **查不到名字的区划直接丢掉**（`names` 里没有这个码）。
+                 * 那是脏数据 —— 社区挂了一个区划表里不存在的码。
+                 * 让它带着空名字出现在选择器里，用户只会看到一行空白，
+                 * 点进去还有社区，然后开始怀疑是自己手机的问题。
+                 */
+                .filter(v -> v.name() != null && !v.name().isBlank())
+                .sorted(Comparator.comparing(RegionOptionVO::cityCode)
+                        .thenComparing(RegionOptionVO::regionCode))
+                .toList();
     }
 
     @Override

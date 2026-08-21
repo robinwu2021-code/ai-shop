@@ -86,4 +86,16 @@ public interface MasterDataPort {
      * @return 查不到时返回码本身，不返回空 —— 空白的覆盖项会被当成坏数据删掉
      */
     String regionPathName(String regionCode);
+
+    /**
+     * 区划码 → <b>末级名</b>（「330106」→「西湖区」）。批量查，一次一条会打出 N 次查询。
+     *
+     * <p>与 {@link #regionPathName} 并存而不是复用：那个给的是整条路径
+     * （「浙江省 / 杭州市 / 西湖区」），适合在覆盖清单里消歧；
+     * 而选区域的界面要把市与区**分两级排版**，需要的是拆开的名字。
+     *
+     * @return 查不到的码<b>不出现在结果里</b>（而不是回落成码本身）——
+     *         调用方据此判断「这个码是脏数据」，回落会让脏数据看起来像正常区划
+     */
+    java.util.Map<String, String> regionNames(java.util.Collection<String> regionCodes);
 }

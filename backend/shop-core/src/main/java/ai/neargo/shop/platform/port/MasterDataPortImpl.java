@@ -63,6 +63,24 @@ public class MasterDataPortImpl implements MasterDataPort {
     }
 
     @Override
+    public java.util.Map<String, String> regionNames(java.util.Collection<String> regionCodes) {
+        if (regionCodes == null || regionCodes.isEmpty()) {
+            return java.util.Map.of();
+        }
+        java.util.Map<String, String> out = new java.util.LinkedHashMap<>();
+        for (String code : regionCodes) {
+            if (code == null || code.isBlank()) {
+                continue;
+            }
+            var path = regionService.path(code);
+            if (!path.isEmpty()) {
+                out.put(code, path.get(path.size() - 1).name());
+            }
+        }
+        return out;
+    }
+
+    @Override
     public String channelName(String payChannel) {
         return masterDataService.channelName(payChannel);
     }

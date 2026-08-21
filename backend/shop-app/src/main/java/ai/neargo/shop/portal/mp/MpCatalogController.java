@@ -9,6 +9,7 @@ import ai.neargo.shop.product.dto.SkuPriceVO;
 import ai.neargo.shop.product.service.CategoryService;
 import ai.neargo.shop.product.service.GoodsService;
 import ai.neargo.shop.community.dto.CommunityVO;
+import ai.neargo.shop.community.dto.RegionOptionVO;
 import ai.neargo.shop.merchant.dto.MerchantScoreVO;
 import ai.neargo.shop.merchant.dto.MerchantVO;
 import ai.neargo.shop.merchant.dto.VisitedMerchantVO;
@@ -69,8 +70,19 @@ public class MpCatalogController {
      * 手动选一个远点是**用户的知情选择** —— 与系统把远点伪装成「附近」是两回事。
      */
     @GetMapping("/mp/community")
-    public List<CommunityVO> allCommunities() {
-        return communityService.all();
+    public List<CommunityVO> allCommunities(@RequestParam(required = false) String regionCode) {
+        return communityService.all(regionCode);
+    }
+
+    /**
+     * 可选的区域清单 —— <b>只列有已开通社区的</b>。
+     *
+     * <p>区划全表有 2978 个区县、41352 个街道。把整棵树扔给用户去挑，
+     * 十有八九挑到一个一家店都没有的区：那不是「选区域」，那是抽奖。
+     */
+    @GetMapping("/mp/community/regions")
+    public List<RegionOptionVO> openRegions() {
+        return communityService.openRegions();
     }
 
     @GetMapping("/mp/community/{communityNo}")

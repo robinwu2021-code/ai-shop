@@ -1525,16 +1525,37 @@ export const mockApi: MerchantApi = {
   },
 
   // ---------------------------------------------------------------- 规格模板
-  async mSpecTemplates(categoryType) {
+  /**
+   * 规格模板。**mock 必须把两层的取舍也做一遍** ——
+   * 「mock 上推荐成这样、连真后端变成那样」是这套 mock 最该防的错配。
+   *
+   * 两层：`categoryNo` 为空的是品类兜底，填了的是类目专属。
+   * 类目专属排前面，并用**同名**规格组顶掉兜底那条
+   * （休闲零食的「重量」应当替代普通实物的「规格」，不是两个都推）。
+   */
+  async mSpecTemplates(categoryType, categoryNo) {
     const merchantNo = db.merchant.merchantNo;
-    return delay(
-      db.specTemplates.filter((tpl) => {
-        // 商家自己存的模板不限类目 —— 他存的时候就是按自己的货存的
-        if (tpl.scope === "MERCHANT") return tpl.merchantNo === merchantNo;
-        // 平台模板按类目推荐；不传类目就全给
-        return !categoryType || tpl.categoryType === categoryType;
-      }),
+    const picked = categoryNo?.trim() || undefined;
+    const usable = db.specTemplates.filter((tpl) => {
+      // 商家自己存的不限品类也不限类目 —— 他存的时候就是按自己的货存的
+      if (tpl.scope === "MERCHANT") return tpl.merchantNo === merchantNo;
+      if (categoryType && tpl.categoryType !== categoryType) return false;
+      /*
+       * 别家类目的专属模板要挡掉。类目级模板的 categoryType 也填着
+       * （不填会变成谁都查不到的孤儿），所以只按品类过滤的话，
+       * 选「休闲零食」会连「手机数码 → 颜色/存储」一起推过来 —— 同属 NORMAL。
+       */
+      if (tpl.categoryNo) return tpl.categoryNo === picked;
+      return true;
+    });
+    if (!picked) return delay(usable);
+
+    const catLevel = usable.filter((t) => t.categoryNo === picked);
+    const shadowed = new Set(catLevel.map((t) => t.name));
+    const rest = usable.filter(
+      (t) => t.categoryNo !== picked && !(t.scope === "PLATFORM" && shadowed.has(t.name)),
     );
+    return delay([...catLevel, ...rest]);
   },
 
   async mSaveSpecTemplate(payload) {

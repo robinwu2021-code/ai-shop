@@ -253,6 +253,8 @@ export default {
     gateBlocked: "ينقص «{s}» — سيُرفض النشر",
     gateTab: "يلزم ترخيص",
     gateCount: "{n} منتجًا لا يمكن نشرها دون الترخيص المطلوب",
+    applyAll: "تطبيق على الكل",
+    fromPriceShort: "يظهر للعملاء «ابتداءً من {s}»",
   },
 
   order: {

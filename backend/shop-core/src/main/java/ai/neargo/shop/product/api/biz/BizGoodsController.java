@@ -228,8 +228,9 @@ public class BizGoodsController {
      */
     @PreAuthorize("@perm.canBiz('" + BizPerms.GOODS + "')")
     @GetMapping("/biz/spec-templates")
-    public List<SpecTemplateVO> specTemplates(@RequestParam(required = false) String categoryType) {
-        return goodsService.specTemplates(BizContext.requireMerchantNo(), categoryType);
+    public List<SpecTemplateVO> specTemplates(@RequestParam(required = false) String categoryType,
+                                              @RequestParam(required = false) String categoryNo) {
+        return goodsService.specTemplates(BizContext.requireMerchantNo(), categoryType, categoryNo);
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.GOODS + "')")

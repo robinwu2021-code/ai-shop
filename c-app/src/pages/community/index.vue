@@ -9,7 +9,7 @@ import { useCartStore } from "@/stores/cart";
 import { getLocation } from "@shared/ports/location";
 import { distance } from "@shared/utils/format";
 import { ROUTES } from "@shared/utils/constants";
-import type { Community, Pickup } from "@shared/types";
+import type { Community, Pickup, RegionOption } from "@shared/types";
 
 const { t } = useI18n();
 const community = useCommunityStore();
@@ -21,6 +21,36 @@ const failed = ref(false);
 const located = ref(true);
 /** 用户主动切到了「全部已开通社区」 */
 const showingAll = ref(false);
+/** 正在选区域（附近没有时的第一步） */
+const pickingRegion = ref(false);
+/** 已选中的区域，用于列表标题与「换个区」 */
+const region = ref<RegionOption | null>(null);
+
+/** 选定一个区 → 只列这个区的社区 */
+async function chooseRegion(r: RegionOption) {
+  locating.value = true;
+  failed.value = false;
+  try {
+    await community.loadAll(r.regionCode);
+    region.value = r;
+    pickingRegion.value = false;
+    showingAll.value = true;
+    expanded.value = community.list[0]?.communityNo ?? "";
+  } catch (e) {
+    failed.value = true;
+    console.error("[community] 加载区域内社区失败", e);
+  } finally {
+    locating.value = false;
+  }
+}
+
+/** 退回区域列表重选 */
+function backToRegions() {
+  region.value = null;
+  keyword.value = "";
+  community.list = [];
+  pickingRegion.value = true;
+}
 
 /**
  * 附近没有 → 看全部。**空不能是死路**：这一页是新用户的第一屏，
@@ -30,7 +60,7 @@ async function browseAll() {
   locating.value = true;
   failed.value = false;
   try {
-    await community.loadAll();
+    await community.loadAll(region.value?.regionCode);
     showingAll.value = true;
     expanded.value = community.list[0]?.communityNo ?? "";
   } catch (e) {
@@ -76,8 +106,20 @@ async function load() {
      * 对后者，那一次点击纯属多余 —— 他要的东西就在按钮后面。
      */
     if (!community.list.length) {
-      await community.loadAll();
-      showingAll.value = true;
+      /*
+       * **附近没有 → 先给区域，而不是把全国的小区一股脑铺开。**
+       *
+       * 手动找一个自提点，用户脑子里的第一层是「哪个区」，不是「哪个小区」。
+       * 直接给社区平铺，在只有两个演示社区时看着还行，
+       * 到几百个小区就是一屏无从下手的名字。
+       */
+      await community.loadRegions();
+      pickingRegion.value = community.regions.length > 0;
+      if (!pickingRegion.value) {
+        // 一个挂了区划的社区都没有（早期数据），那就退回平铺，总比空页面强
+        await community.loadAll();
+        showingAll.value = true;
+      }
     }
     expanded.value = community.list[0]?.communityNo ?? "";
   } catch (e) {
@@ -177,7 +219,28 @@ onLoad(load);
       </view>
     </view>
 
+    <!-- 第一步：选区域。只列有已开通社区的区，并把社区数摆在旁边 -->
+    <view v-else-if="pickingRegion" class="rg">
+      <text class="rg__tip">{{ $t("community.pickRegion") }}</text>
+      <view
+        v-for="r in community.regions"
+        :key="r.regionCode"
+        class="rg__item"
+        @tap="chooseRegion(r)"
+      >
+        <view class="rg__main">
+          <text class="rg__name">{{ r.name }}</text>
+          <text class="rg__city">{{ r.cityName }}</text>
+        </view>
+        <text class="sh-chip">{{ $t("community.nCommunities", { n: r.communityCount }) }}</text>
+      </view>
+    </view>
+
     <view v-else-if="!community.list.length" class="state">
+      <!--
+        走到这里 = 附近没有、**区域清单也是空的**（区域块在上面先命中）。
+        那才是真的什么都没有：一个挂了区划的已开通社区都不存在。
+      -->
       <text class="state__title">{{ $t("community.empty") }}</text>
       <text class="state__tip">{{ $t("community.emptyTip") }}</text>
       <view class="state__btn" @tap="browseAll">
@@ -187,6 +250,10 @@ onLoad(load);
 
     <text v-else-if="showingAll" class="hint">{{ $t("community.allTip") }}</text>
     <text v-else-if="!located" class="hint">{{ $t("community.noLocation") }}</text>
+
+    <view v-if="region" class="rg__back" @tap="backToRegions">
+      <text>{{ region.cityName }} · {{ region.name }} · {{ $t("community.changeRegion") }}</text>
+    </view>
 
     <view v-if="community.list.length" class="search">
       <input
@@ -236,6 +303,39 @@ onLoad(load);
 </template>
 
 <style scoped>
+.rg__tip {
+  display: block;
+  padding: 8rpx 0 24rpx;
+  font-size: 26rpx;
+  color: var(--sh-sub);
+}
+.rg__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 28rpx 24rpx;
+  margin-bottom: 16rpx;
+  border-radius: 24rpx;
+  background: var(--sh-surface);
+}
+.rg__main {
+  display: flex;
+  flex-direction: column;
+}
+.rg__name {
+  font-size: 30rpx;
+  color: var(--sh-ink);
+}
+.rg__city {
+  margin-top: 6rpx;
+  font-size: 24rpx;
+  color: var(--sh-sub);
+}
+.rg__back {
+  padding: 16rpx 0 24rpx;
+  font-size: 26rpx;
+  color: var(--sh-primary-text);
+}
 .search {
   padding: 0 0 24rpx;
 }

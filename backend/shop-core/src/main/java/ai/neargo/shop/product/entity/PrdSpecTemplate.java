@@ -28,6 +28,14 @@ public class PrdSpecTemplate extends BaseEntity {
     /** 平台模板按类目推荐；商家模板不限类目。 */
     private String categoryType;
 
+    /**
+     * 类目级模板的归属类目；<b>NULL = 按 {@link #categoryType} 兜底</b>。
+     *
+     * <p>两层的理由：品类只有 3 个而二级类目有 32 个，STANDARD 一个就盖住 18 个 ——
+     * 手机数码与鲜花共用「包装：袋装/瓶装/罐装」这种推荐等于没有推荐。
+     */
+    private String categoryNo;
+
     /** 规格维度名，如「重量」「香型」。 */
     private String name;
 

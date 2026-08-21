@@ -5,7 +5,7 @@
 import { http } from "@shared/net/http-client";
 import { buildPath, ENDPOINTS } from "./endpoints";
 import type { CreateOrderReq, GoodsQuery, ShopApi } from "./contract";
-import type { InvoiceRequest } from "@shared/types";
+import type { InvoiceRequest, RegionOption} from "@shared/types";
 // 入参的 wire 契约。satisfies 让「实际发出去的 body」在编译期受检 ——
 // 字段写错、少传、多传都编译不过，而不是等联调才发现。
 import type {
@@ -100,7 +100,9 @@ export const httpApi: ShopApi = {
   // ---- 社区
   nearbyCommunities: (lat, lng) =>
     call<Community[]>("nearbyCommunities", undefined, { lat, lng } satisfies NearbyQuery),
-  allCommunities: () => call<Community[]>("allCommunities"),
+  allCommunities: (regionCode) =>
+    call<Community[]>("allCommunities", undefined, { regionCode }),
+  openRegions: () => call<RegionOption[]>("openRegions"),
 
   // ---- 商品
   goodsList: (q: GoodsQuery) => call<PageResult<Goods>>("goodsList", undefined, { ...q } satisfies GoodsListQuery),

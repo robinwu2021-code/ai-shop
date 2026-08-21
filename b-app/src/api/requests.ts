@@ -171,8 +171,13 @@ export interface RecognizeGoodsReq {
 }
 
 export interface SpecTemplatesQuery {
-  /** 按类目过滤平台模板；不传则返回全部 + 商家自存 */
+  /** 按**品类**过滤平台模板（兜底那一层）；不传则返回全部 + 商家自存 */
   categoryType?: string;
+  /**
+   * 已选**类目**。传了才拿得到类目级模板 —— 那是「专门给这一类的」那批，
+   * 且会用同名规格组顶掉品类兜底。
+   */
+  categoryNo?: string;
 }
 
 export interface SaveSpecTemplateReq {

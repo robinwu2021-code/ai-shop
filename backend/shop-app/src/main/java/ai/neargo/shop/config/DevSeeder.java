@@ -356,6 +356,13 @@ public class DevSeeder {
         c.setLatE6(latE6);
         c.setLngE6(lngE6);
         c.setStatus("OPEN");
+        /*
+         * **区划要挂上**：C 端「先选区域再选自提点」的区域列表是从社区身上聚合出来的，
+         * 只列有已开通社区的区。不挂的话区域列表恒为空，那条路在演示数据上走不出来。
+         * 330106 = 杭州市西湖区，与两个演示社区地址里写的一致。
+         */
+        c.setCityCode("3301");
+        c.setRegionCode("330106");
         return c;
     }
 

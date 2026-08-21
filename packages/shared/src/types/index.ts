@@ -78,6 +78,25 @@ export interface User {
   merchantNo?: string;
 }
 
+/**
+ * 一个「可选的区域」——<b>有已开通社区的那种</b>。
+ *
+ * 区划全表有 2978 个区县、41352 个街道。把整棵树扔给用户去挑，
+ * 十有八九挑到一个一家店都没有的区：那不是选区域，那是抽奖。
+ */
+export interface RegionOption {
+  /** 区县级国标码（6 位）。社区可能挂在街道级，聚合时截到区县 */
+  regionCode: string;
+  /** 区县名，如「西湖区」 */
+  name: string;
+  /** 所属市码（4 位） */
+  cityCode: string;
+  /** 所属市名。同名区县全国很多（如「城关区」），不带市名用户分不清是哪一个 */
+  cityName: string;
+  /** 该区县下已开通的社区数。「西湖区 · 2 个小区」比光秃秃一个区名有用得多 */
+  communityCount: number;
+}
+
 export interface Community {
   /** 社区单号 */
   communityNo: string;
@@ -3019,8 +3038,15 @@ export interface SpecTemplate {
   templateNo: string;
   /** 模板归属：平台统一维护 or 商家自存。商家只能改自己的 */
   scope: SpecTemplateScope;
-  /** 平台模板按类目推荐；商家模板不限类目 */
+  /** 平台模板按品类推荐；商家模板不限品类 */
   categoryType?: CategoryType;
+  /**
+   * 类目级模板的归属类目；**空 = 品类兜底**。
+   *
+   * <p>端上靠它区分两层：类目级排在前面并标出来。不下发的话两批混在一起，
+   * 商家分不出哪个是「专门给这一类的」。
+   */
+  categoryNo?: string;
   /** 规格维度名，如「重量」「香型」 */
   name: string;
   /** 该维度的可选项 */

@@ -239,8 +239,8 @@ export const httpApi: MerchantApi = {
   mCategoryTree: () => http.get<Category[]>(E.mCategoryTree.path),
   mSpuStdSearch: (q) => http.get<SpuStd[]>(E.mSpuStdSearch.path, { ...q }),
 
-  mSpecTemplates: (categoryType) =>
-    http.get<SpecTemplate[]>(E.mSpecTemplates.path, { categoryType } satisfies SpecTemplatesQuery),
+  mSpecTemplates: (categoryType, categoryNo) =>
+    http.get<SpecTemplate[]>(E.mSpecTemplates.path, { categoryType, categoryNo } satisfies SpecTemplatesQuery),
   mSaveSpecTemplate: (payload) =>
     http.post<SpecTemplate>(E.mSaveSpecTemplate.path, { ...payload } satisfies SaveSpecTemplateReq),
 

@@ -405,6 +405,48 @@ describe("皮肤对比度：可读性是硬约束，不是审美偏好", () => {
     }
   });
 
+  /*
+   * **拼错的 CSS 变量什么都不会说。**
+   *
+   * `background: var(--sh-card)` —— 这个变量不存在，于是那块背景是透明的：
+   * 不报错、不警告、构建照过，只是看起来「样式没生效」。
+   * 2026-08-21 一次就写出了两个（`--sh-card`、`--sh-brand`），
+   * 而真实的名字是 `--sh-surface` 与 `--sh-primary`。
+   *
+   * **只管没有兜底值的写法**：`var(--sh-pad-card, 32rpx)` 是有意的可选 token
+   * （皮肤可以覆盖，不覆盖就用默认值），那种写法坏不了。
+   * 没有兜底的 `var(--x)` 一旦名字错，就是纯粹的失效。
+   */
+  it("★★ 用到的 --sh-* 变量必须真的定义过（没写兜底值时）", () => {
+    const base = readFileSync(BASE_CSS, "utf8");
+    const defined = new Set(
+      [...base.matchAll(/--(sh-[a-z0-9-]+)\s*:/g)].map((m) => m[1]),
+    );
+
+    const offenders: string[] = [];
+    for (const root of VUE_ROOTS) {
+      for (const f of walk(join(ROOT, root))) {
+        // 去掉注释：踩过这个坑的人会把变量名写进注释说明历史，那不该被算成违规
+        const code = readFileSync(f, "utf8")
+          .replace(/\/\*[\s\S]*?\*\//g, "")
+          .replace(/<!--[\s\S]*?-->/g, "");
+        for (const m of code.matchAll(/var\(\s*--(sh-[a-z0-9-]+)\s*([,)])/g)) {
+          if (m[2] === ")" && !defined.has(m[1])) {
+            offenders.push(`${f.slice(ROOT.length + 1)}: --${m[1]}`);
+          }
+        }
+      }
+    }
+
+    expect(
+      offenders,
+      "这些 CSS 变量没有定义过，用它们的地方是**静默失效**的（透明背景 / 直角 / 没有间距）：\n  "
+        + offenders.join("\n  ")
+        + "\n  改法：查 packages/ui/src/styles/base.css 里真实的名字；"
+        + "确实想要「可选 token」就写兜底值 var(--x, 默认值)。",
+    ).toEqual([]);
+  });
+
   it("SKIN_HEX 的 light 值与 SKINS 预览色一致", () => {
     for (const s of SKINS) {
       expect(s.color.toLowerCase()).toBe(SKIN_HEX[s.id].light.toLowerCase());

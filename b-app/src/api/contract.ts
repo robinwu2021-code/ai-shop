@@ -563,7 +563,15 @@ export interface MerchantApi {
 
   // ---- 规格模板（B-11.3.2）
   /** 按类目取可用模板：平台预置 + 本商家存的常用 */
-  mSpecTemplates(categoryType?: Goods["type"]): Promise<SpecTemplate[]>;
+  /**
+   * 可用规格模板。**两层：类目级优先于品类兜底。**
+   *
+   * <p>只传品类是不够的：品类只有 3 个而二级类目有 32 个，
+   * STANDARD 一个就盖住 18 个 —— 手机数码与鲜花共用「包装：袋装/瓶装/罐装」
+   * 这种推荐等于没有推荐。传上已选类目，后端会把该类目的专属模板排在前面，
+   * 并用同名规格组顶掉兜底那条。
+   */
+  mSpecTemplates(categoryType?: Goods["type"], categoryNo?: string): Promise<SpecTemplate[]>;
   /** 把当前编辑的规格组存为「我的常用」，下次建品直接套 */
   mSaveSpecTemplate(payload: { name: string; options: string[] }): Promise<SpecTemplate>;
 

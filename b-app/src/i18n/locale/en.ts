@@ -253,6 +253,8 @@ export default {
     gateBlocked: "Missing “{s}” — listing will be rejected",
     gateTab: "Cert needed",
     gateCount: "{n} items cannot go on sale without the required licence",
+    applyAll: "Apply to all",
+    fromPriceShort: "Shows as “from {s}” to customers",
   },
 
   order: {

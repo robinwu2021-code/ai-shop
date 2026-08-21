@@ -362,6 +362,8 @@ export default {
     gateBlocked: "缺「{s}」，上架会被拒",
     gateTab: "缺资质",
     gateCount: "{n} 件商品缺资质，无法上架",
+    applyAll: "统一填入",
+    fromPriceShort: "C 端显示 ¥{s} 起",
   },
 
   order: {

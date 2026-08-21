@@ -40,6 +40,7 @@ import type {
   CategoryType,
   FulfillmentType,
   ReviewScores,
+  RegionOption,
 } from "@shared/types";
 
 export interface GoodsQuery extends PageQuery {
@@ -111,7 +112,12 @@ export interface ShopApi {
    * 全部已开通社区。**附近为空时的出路** —— 异地下单是真实场景
    * （给父母下单、出差前囤货），而把用户停在「暂未开通」等于在第一屏劝退。
    */
-  allCommunities(): Promise<Community[]>;
+  allCommunities(regionCode?: string): Promise<Community[]>;
+  /**
+   * 可选区域清单。**只含有已开通社区的区** —— 区划全表 2978 个区县，
+   * 把整棵树给用户挑，十有八九挑到一个一家店都没有的区。
+   */
+  openRegions(): Promise<RegionOption[]>;
 
   // ---- 商品
   goodsList(q: GoodsQuery): Promise<PageResult<Goods>>;

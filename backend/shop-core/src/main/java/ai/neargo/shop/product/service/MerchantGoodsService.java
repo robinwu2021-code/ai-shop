@@ -205,7 +205,15 @@ public interface MerchantGoodsService {
     GoodsVO audit(String goodsNo, boolean approved, String reason);
 
     /** 规格模板：平台模板（按类目推荐）+ 我自己存的。 */
-    List<SpecTemplateVO> specTemplates(String merchantNo, String categoryType);
+    /**
+     * 可用规格模板。<b>两层：类目级优先于品类兜底。</b>
+     *
+     * @param categoryType 品类，兜底那一层的判据
+     * @param categoryNo   已选类目；传了就把该类目的专属模板一并取出，
+     *                     且<b>同名规格组把兜底顶掉</b>（休闲零食的「重量」
+     *                     应当替代普通实物的「规格」，而不是两个都推给商家）
+     */
+    List<SpecTemplateVO> specTemplates(String merchantNo, String categoryType, String categoryNo);
 
     /** 存为常用规格。<b>只能存成自己的</b>，商家改不了平台模板。 */
     SpecTemplateVO saveSpecTemplate(String merchantNo, String name, List<SpecOption> options);

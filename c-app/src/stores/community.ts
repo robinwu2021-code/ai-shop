@@ -5,7 +5,7 @@ import { getLocation } from "@shared/ports/location";
 import { api } from "@/api";
 import { useUserStore } from "./user";
 import { STORAGE } from "@shared/utils/constants";
-import type { Community, Pickup } from "@shared/types";
+import type { Community, Pickup, RegionOption } from "@shared/types";
 
 export const useCommunityStore = defineStore("community", {
   state: () => ({
@@ -17,6 +17,8 @@ export const useCommunityStore = defineStore("community", {
      * 见 {@link probeNearby} —— 它决定未绑定的用户要不要被推去选社区页。
      */
     nearbyProbe: null as boolean | null,
+    /** 可选区域清单。见 {@link loadRegions} */
+    regions: [] as RegionOption[],
   }),
 
   getters: {
@@ -66,9 +68,15 @@ export const useCommunityStore = defineStore("community", {
     },
 
     /** 全部已开通社区 —— 附近为空 / 未定位时的手动选择路径 */
-    async loadAll() {
-      this.list = await api.allCommunities();
+    async loadAll(regionCode?: string) {
+      this.list = await api.allCommunities(regionCode);
       return this.list;
+    },
+
+    /** 可选区域（只含有已开通社区的区）。手动选择的第一步 */
+    async loadRegions() {
+      this.regions = await api.openRegions();
+      return this.regions;
     },
 
     /**

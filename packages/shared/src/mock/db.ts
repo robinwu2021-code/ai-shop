@@ -1280,6 +1280,54 @@ export const db = {
         { code: "D_120", label: "120 分钟" },
       ],
     },
+    /*
+     * 类目级模板（`categoryNo` 不为空）。**mock 必须有这一层**，
+     * 否则「类目级顶掉同名兜底」这条逻辑在 mock 上永远走不到，
+     * 而它恰恰是这个功能的全部价值所在。
+     *
+     * 这里只放三条代表性的，覆盖三种情形：
+     *   · 顶替（休闲零食「重量」顶掉普通实物的「规格」是同名才顶，这里用同名演示）
+     *   · 纯新增（手机数码「存储」，兜底里没有这个维度）
+     *   · 换品类（宠物洗护「体型」，服务类兜底是时长/人数）
+     */
+    {
+      templateNo: "ST_CAT610_STOR",
+      scope: "PLATFORM" as const,
+      categoryType: CATEGORY_TYPE.NORMAL,
+      categoryNo: "CAT610",
+      name: "存储",
+      options: [
+        { code: "S64G", label: "64G" },
+        { code: "S128G", label: "128G" },
+        { code: "S256G", label: "256G" },
+      ],
+    },
+    {
+      templateNo: "ST_CAT610_PACK",
+      scope: "PLATFORM" as const,
+      categoryType: CATEGORY_TYPE.NORMAL,
+      categoryNo: "CAT610",
+      // 与兜底的「包装」同名 —— 用来验「同名顶替」这条：
+      // 手机数码不该被推荐「袋装 / 瓶装 / 罐装」
+      name: "包装",
+      options: [
+        { code: "PBOX", label: "盒装" },
+        { code: "PGIFT", label: "礼盒" },
+      ],
+    },
+    {
+      templateNo: "ST_CAT350_PET",
+      scope: "PLATFORM" as const,
+      categoryType: CATEGORY_TYPE.SERVICE,
+      categoryNo: "CAT350",
+      name: "体型",
+      options: [
+        { code: "PETS", label: "小型犬" },
+        { code: "PETM", label: "中型犬" },
+        { code: "PETL", label: "大型犬" },
+        { code: "PETCAT", label: "猫" },
+      ],
+    },
   ] as SpecTemplate[],
 
   /**

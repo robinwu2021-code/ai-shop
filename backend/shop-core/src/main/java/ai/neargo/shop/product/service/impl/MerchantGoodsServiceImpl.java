@@ -1490,7 +1490,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
     // ---------------------------------------------------------------- 规格模板
 
     @Override
-    public List<SpecTemplateVO> specTemplates(String merchantNo, String categoryType) {
+    public List<SpecTemplateVO> specTemplates(String merchantNo, String categoryType, String categoryNo) {
         var w = Wrappers.<PrdSpecTemplate>lambdaQuery()
                 /*
                  * 归档的不下发（V102）。**归档了商家还能选，等于没归档** ——
@@ -1503,12 +1503,59 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                         .or(o -> o.eq(PrdSpecTemplate::getScope, PrdSpecTemplate.MERCHANT)
                                 .eq(PrdSpecTemplate::getEntityNo, merchantNo)));
         if (categoryType != null && !categoryType.isBlank()) {
-            // 类目过滤只作用于平台模板：商家自存的模板不限类目（他自己知道用在哪）
+            // 品类过滤只作用于平台模板：商家自存的模板不限品类（他自己知道用在哪）
             w.and(q -> q.eq(PrdSpecTemplate::getCategoryType, categoryType)
                     .or(o -> o.isNull(PrdSpecTemplate::getCategoryType)));
         }
-        return DataScopeContext.executeWithoutScope(() -> templateMapper.selectList(w))
+        /*
+         * **别家类目的专属模板要挡掉。**
+         *
+         * 类目级模板的 category_type 也填着（不填会变成谁都查不到的孤儿行），
+         * 所以只按品类过滤的话，选「休闲零食」会连「手机数码 → 颜色/存储」
+         * 一起推过来 —— 它们同属 NORMAL。
+         */
+        String picked = categoryNo == null || categoryNo.isBlank() ? null : categoryNo;
+        w.and(q -> {
+            q.isNull(PrdSpecTemplate::getCategoryNo);
+            if (picked != null) {
+                q.or(o -> o.eq(PrdSpecTemplate::getCategoryNo, picked));
+            }
+        });
+
+        List<SpecTemplateVO> all = DataScopeContext.executeWithoutScope(() -> templateMapper.selectList(w))
                 .stream().map(this::toVO).toList();
+        return preferCategoryLevel(all, picked);
+    }
+
+    /**
+     * 类目级顶掉同名的品类兜底，并把类目级排在前面。
+     *
+     * <p>不去重的话，选「休闲零食」会同时看到类目级的「重量」与兜底的「规格」，
+     * 而商家其实只该看到前者 —— 两个都推给他，他得先判断该用哪个，
+     * 而这正是模板本该替他省掉的那一步。
+     *
+     * <p>只按 <b>name</b> 去重而不按 templateNo：顶掉的判据是「说的是同一个维度」，
+     * 编号本来就不同。商家自存的模板（scope=MERCHANT）不参与顶替，
+     * 那是他自己的东西，平台没有资格覆盖。
+     */
+    private static List<SpecTemplateVO> preferCategoryLevel(List<SpecTemplateVO> all, String picked) {
+        if (picked == null) {
+            return all;
+        }
+        Set<String> catLevelNames = all.stream()
+                .filter(t -> picked.equals(t.categoryNo()))
+                .map(SpecTemplateVO::name)
+                .collect(java.util.stream.Collectors.toSet());
+        List<SpecTemplateVO> out = new java.util.ArrayList<>(
+                all.stream().filter(t -> picked.equals(t.categoryNo())).toList());
+        for (SpecTemplateVO t : all) {
+            boolean isCatLevel = picked.equals(t.categoryNo());
+            boolean shadowed = PrdSpecTemplate.PLATFORM.equals(t.scope()) && catLevelNames.contains(t.name());
+            if (!isCatLevel && !shadowed) {
+                out.add(t);
+            }
+        }
+        return out;
     }
 
     @Override
@@ -1783,7 +1830,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
             options = List.of();
         }
         return new SpecTemplateVO(t.getTemplateNo(), t.getScope(), t.getCategoryType(),
-                t.getName(), options, t.getEntityNo());
+                t.getCategoryNo(), t.getName(), options, t.getEntityNo());
     }
 
     private String writeSpecGroups(List<SpecGroup> groups) {
