@@ -460,8 +460,29 @@ async function genDetail() {
   }
 }
 
-/** 「更多价格」是否展开。默认收着：多数商品不标折扣 */
-const morePrice = ref(false);
+/**
+ * 价格卡此刻在编辑**哪一个字段**。
+ *
+ * <p>上一版是「更多价格」开关，展开后往每个规格下面追加两行 ——
+ * 4 个规格就是 12 行，一屏装不下，翻着找一个数比原来的表格还累。
+ * 改成切换之后，任何时候都只有「一行一个规格、一个数字」这一种形状。
+ */
+const priceField = ref<PriceField>("price");
+
+/**
+ * 可切换的字段。**只有一项时整个切换器不显示** ——
+ * 那时它是个恒定的标签，占一行却什么都不让人选。
+ * 标称重量只对生鲜有意义（按标称预扣、称重后多退少补）。
+ */
+type PriceField = "price" | "origin" | "gram";
+const priceFields = computed<{ key: PriceField; labelKey: string }[]>(() => {
+  const out: { key: PriceField; labelKey: string }[] = [
+    { key: "price", labelKey: "goods.fieldPrice" },
+    { key: "origin", labelKey: "goods.fieldOrigin" },
+  ];
+  if (isFresh.value) out.push({ key: "gram", labelKey: "goods.fieldGram" });
+  return out;
+});
 
 /**
  * 划线价填得不对。**必须严格高于售价** —— 否则 C 端渲染出来是个
@@ -859,7 +880,18 @@ function rebuild() {
       // 而 skuNo 是身份：两行拿同一个编号，历史订单与库存流水就指向了错的规格
       skuNo: prev.get(keyOf(values))?.skuNo,
       optionValues: values,
-      priceMajor: old?.priceMajor ?? emptyPrices(),
+      /*
+       * **必须拷一份，不能直接传引用。**
+       *
+       * `inherit()` 会让多个新组合回落到**同一个** old 行（前缀匹配、
+       * 或单行回落那条）。直接传 `old.priceMajor` 的话，四个规格共用一个对象 ——
+       * 改「袋装」的价，「盒装/桶装/整箱」跟着一起变，而且保存下去就是那样。
+       *
+       * 这个 bug 从初始提交就在，一直没被发现，因为 `stock` 是字符串（值类型）
+       * 不受影响：表面症状只是「价格不对劲」，像操作失误，
+       * 而不像四行绑到了同一份数据。多规格商品因此从来没能分别定价过。
+       */
+      priceMajor: old ? { ...old.priceMajor } : emptyPrices(),
       stock: old?.stock ?? "0",
       originMajor: old?.originMajor ?? "",
       nominalGram: old?.nominalGram ?? "",
@@ -1639,9 +1671,25 @@ async function save(thenSubmit = false) {
     <view class="sh-card mt">
       <view class="sec">
         <text class="sh-h2">{{ $t("goods.skuMatrix") }}</text>
-        <text class="link" @tap="morePrice = !morePrice">
-          {{ $t(morePrice ? "goods.lessPrice" : "goods.morePrice") }}
-        </text>
+        <!--
+          **字段切换，不是展开。**
+
+          上一版「更多价格」是往每个规格下面追加两行，4 个规格就变成 12 行 ——
+          清晰是清晰了，但一屏装不下，翻着找一个数比原来的表格还累。
+          现在切换的是「这一列看哪个字段」，任何时候都只有
+          「一行一个规格、一个数字」这一种形状。
+        -->
+        <view v-if="priceFields.length > 1" class="segs">
+          <text
+            v-for="f in priceFields"
+            :key="f.key"
+            class="seg"
+            :class="{ 'is-on': priceField === f.key }"
+            @tap="priceField = f.key"
+          >
+            {{ $t(f.labelKey) }}
+          </text>
+        </view>
         <view v-if="MULTI_MARKET_UI" class="langs">
           <text
             v-for="m in MARKET_CURRENCIES"
@@ -1685,34 +1733,33 @@ async function save(thenSubmit = false) {
         <text class="link" @tap="applyBulkPrice">{{ $t("goods.applyAll") }}</text>
       </view>
 
-      <view v-for="(r, i) in rows" :key="i" class="grp" :class="{ 'grp--single': !multi }">
-        <!-- 单规格不画组标题：只有一行时「默认规格」是在回答没人问的问题 -->
-        <text v-if="multi" class="grp__t">{{ r.optionValues.join(" · ") }}</text>
-        <view class="grp__f">
-          <text class="grp__k">{{ $t(priceLabel) }}</text>
-          <input v-model="r.priceMajor[market]" class="grp__v sh-num" type="digit" />
-        </view>
-        <template v-if="morePrice">
-          <view class="grp__f">
-            <text class="grp__k">{{ $t("goods.originPrice") }}</text>
-            <input
-              v-model="r.originMajor"
-              class="grp__v sh-num"
-              :class="{ 'is-bad': badOrigin(r) }"
-              type="digit"
-            />
-          </view>
-          <view v-if="isFresh" class="grp__f">
-            <text class="grp__k">{{ $t("goods.nominalGram") }}</text>
-            <input v-model="r.nominalGram" class="grp__v sh-num" type="number" />
-          </view>
-        </template>
+      <view v-for="(r, i) in rows" :key="i" class="pr">
+        <!-- 单规格不画左边这一格：只有一行时「默认规格」是在回答没人问的问题 -->
+        <text v-if="multi" class="pr__k">{{ r.optionValues.join(" · ") }}</text>
+        <input
+          v-if="priceField === 'price'"
+          v-model="r.priceMajor[market]"
+          class="pr__v sh-num"
+          type="digit"
+          :placeholder="multi ? '' : $t(priceLabel)"
+        />
+        <input
+          v-else-if="priceField === 'origin'"
+          v-model="r.originMajor"
+          class="pr__v sh-num"
+          :class="{ 'is-bad': badOrigin(r) }"
+          type="digit"
+          :placeholder="multi ? '' : $t('goods.originPrice')"
+        />
+        <input
+          v-else
+          v-model="r.nominalGram"
+          class="pr__v sh-num"
+          type="number"
+          :placeholder="multi ? '' : $t('goods.nominalGram')"
+        />
       </view>
 
-      <!--
-        展示价**只在多规格时出现**：单规格时它恒等于上面那个价，
-        是在回答没人问的问题。文案也直接说结果，不解释算法。
-      -->
       <!--
         一个价都没填时不说这句：那时 fromPrice 是「—」，
         渲染出来是「C 端显示 ¥— 起」，比不写更糟。
@@ -1784,18 +1831,16 @@ async function save(thenSubmit = false) {
         <text class="link" @tap="applyBulkStock">{{ $t("goods.applyAll") }}</text>
       </view>
 
-      <view v-for="(r, i) in rows" :key="i" class="grp" :class="{ 'grp--single': !multi }">
-        <text v-if="multi" class="grp__t">{{ r.optionValues.join(" · ") }}</text>
-        <view class="grp__f">
-          <text class="grp__k">{{ $t("goods.stock") }}</text>
-          <!-- 库存 0 = 这个规格顾客买不到。多规格时最容易漏填的就是它 -->
-          <input
-            v-model="r.stock"
-            class="grp__v sh-num"
-            :class="{ 'is-out': Number(r.stock) === 0 }"
-            type="number"
-          />
-        </view>
+      <view v-for="(r, i) in rows" :key="i" class="pr">
+        <text v-if="multi" class="pr__k">{{ r.optionValues.join(" · ") }}</text>
+        <!-- 库存 0 = 这个规格顾客买不到。多规格时最容易漏填的就是它 -->
+        <input
+          v-model="r.stock"
+          class="pr__v sh-num"
+          :class="{ 'is-out': Number(r.stock) === 0 }"
+          type="number"
+          :placeholder="multi ? '' : $t('goods.stock')"
+        />
       </view>
 
       <view class="kv kv--top">
@@ -1938,47 +1983,21 @@ async function save(thenSubmit = false) {
   font-size: 48rpx;
 }
 /*
- * 规格分组。价格卡与库存卡共用这一套 —— 两张卡长得一样，
- * 商家不需要在脑子里对齐行号。
+ * 一行一个规格、一个数字。价格卡与库存卡共用这一套 ——
+ * 两张卡长得一样，商家不需要在脑子里对齐行号。
  */
-.grp {
-  margin-top: 20rpx;
-  padding-top: 20rpx;
-  border-top: 2rpx solid var(--sh-line);
-}
-/* 单规格没有组标题，也就不需要那条分隔线与上边距 */
-.grp--single {
-  margin-top: 0;
-  padding-top: 0;
-  border-top: none;
-}
-.grp__t {
-  display: block;
-  font-size: 26rpx;
-  color: var(--sh-ink);
-  margin-bottom: 12rpx;
-}
-.grp__f {
+.pr {
   display: flex;
   align-items: center;
   gap: 16rpx;
   margin-top: 12rpx;
 }
-.grp__k {
-  flex: 0 0 168rpx;
+.pr__k {
+  flex: 0 0 208rpx;
   font-size: 26rpx;
   color: var(--sh-sub);
 }
-/*
- * 缺货：这一格要能被扫到，它是「填完还差什么」里最常漏的一项。
- * **随分组改版一起换了类名** —— 原来挂在 .row__input 上，
- * 那个选择器已随表格布局一起删掉；不跟过来的话库存 0 从此不再标红，
- * 而且不会有任何报错。
- */
-.grp__v.is-out {
-  color: var(--sh-danger);
-}
-.grp__v {
+.pr__v {
   flex: 1;
   min-width: 0;
   height: 76rpx;
@@ -1987,6 +2006,30 @@ async function save(thenSubmit = false) {
   background: var(--sh-faint);
   font-size: 28rpx;
   color: var(--sh-ink);
+}
+/* 字段切换：段落式小开关，不是按钮 —— 它切的是「看哪一列」，不是执行动作 */
+.segs {
+  display: flex;
+  gap: 8rpx;
+}
+.seg {
+  padding: 8rpx 20rpx;
+  border-radius: 16rpx;
+  font-size: 24rpx;
+  color: var(--sh-sub);
+  background: var(--sh-faint);
+}
+.seg.is-on {
+  color: var(--sh-primary-text);
+  background: var(--sh-primary-tint);
+}
+/*
+ * 缺货：这一格要能被扫到，它是「填完还差什么」里最常漏的一项。
+ * **随布局改版换过两次类名**（.row__input → .grp__v → .pr__v）。
+ * 每次都要记得跟过来 —— 不跟的话库存 0 从此不再标红，而且不会有任何报错。
+ */
+.pr__v.is-out {
+  color: var(--sh-danger);
 }
 /* 划线价填得比售价低时标红 —— 后端会拒，先在这一格说清是哪一行 */
 .is-bad {

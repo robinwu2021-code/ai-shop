@@ -238,8 +238,6 @@ export default {
     originPriceInvalid: "يجب أن يزيد السعر قبل الخصم عن سعر البيع وإلا ستظهر البطاقة كزيادة سعر",
     nominalGram: "الوزن الاسمي (غرام)",
     nominalGramHint: "يُحتسب بالوزن الاسمي ويُسوّى بعد الوزن",
-    morePrice: "أسعار أخرى",
-    lessPrice: "طي",
     secStock: "المخزون",
     stockCol: "المخزون",
     bulkStockOnly: "تطبيق على الكل",
@@ -255,6 +253,9 @@ export default {
     gateCount: "{n} منتجًا لا يمكن نشرها دون الترخيص المطلوب",
     applyAll: "تطبيق على الكل",
     fromPriceShort: "يظهر للعملاء «ابتداءً من {s}»",
+    fieldPrice: "السعر",
+    fieldOrigin: "قبل الخصم",
+    fieldGram: "الوزن",
   },
 
   order: {

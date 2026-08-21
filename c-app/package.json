@@ -12,7 +12,8 @@
     "type-check": "vue-tsc --noEmit",
     "gen:api": "node scripts/gen-openapi.mjs",
     "upload:mp": "node scripts/upload-mp.mjs",
-    "release:mp": "bash scripts/release-mp.sh"
+    "release:mp": "bash scripts/release-mp.sh",
+    "test": "vitest run --config vitest.config.mts"
   },
   "dependencies": {
     "@ai-shop/ui": "*",

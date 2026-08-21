@@ -238,8 +238,6 @@ export default {
     originPriceInvalid: "List price must exceed the selling price, otherwise the tag shows a price increase",
     nominalGram: "Nominal weight (g)",
     nominalGramHint: "Charged by nominal weight, settled after weighing",
-    morePrice: "More prices",
-    lessPrice: "Collapse",
     secStock: "Stock",
     stockCol: "Stock",
     bulkStockOnly: "Apply to all",
@@ -255,6 +253,9 @@ export default {
     gateCount: "{n} items cannot go on sale without the required licence",
     applyAll: "Apply to all",
     fromPriceShort: "Shows as “from {s}” to customers",
+    fieldPrice: "Price",
+    fieldOrigin: "List price",
+    fieldGram: "Weight",
   },
 
   order: {

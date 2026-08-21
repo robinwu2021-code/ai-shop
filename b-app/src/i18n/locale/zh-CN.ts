@@ -347,8 +347,6 @@ export default {
     originPriceInvalid: "划线价要高于售价，否则会标出「涨价」的折扣",
     nominalGram: "标称重量(克)",
     nominalGramHint: "按标称预扣款，称重后多退少补",
-    morePrice: "更多价格",
-    lessPrice: "收起",
     secStock: "库存",
     stockCol: "库存",
     bulkStockOnly: "统一填入库存",
@@ -364,6 +362,9 @@ export default {
     gateCount: "{n} 件商品缺资质，无法上架",
     applyAll: "统一填入",
     fromPriceShort: "C 端显示 ¥{s} 起",
+    fieldPrice: "售价",
+    fieldOrigin: "划线价",
+    fieldGram: "标称重量",
   },
 
   order: {
