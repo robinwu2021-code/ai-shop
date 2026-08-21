@@ -16,7 +16,7 @@ beforeEach(() => {
 });
 
 describe("类目树（P-3.1）", () => {
-  it(`最多 ${MAX_CATEGORY_LEVEL} 级：三级类目下不能再建子类目`, async () => {
+  it(`最多 ${MAX_CATEGORY_LEVEL} 级：二级类目下不能再建子类目`, async () => {
     await expect(
       productMock.saveCategory({ categoryNo: "", name: "嫩叶菜", parentNo: "CAT111", template: "FRESH", qualifications: [] }),
     ).rejects.toThrow(new RegExp(String(MAX_CATEGORY_LEVEL)));

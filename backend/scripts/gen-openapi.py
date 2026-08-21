@@ -381,7 +381,7 @@ COMPONENT_SCHEMAS = {
         "categoryNo": STR, "parentNo": STR, "level": {"type": "integer"},
         "name": STR, "icon": STR, "sort": {"type": "integer"},
         "children": dict(arr({"$ref": "#/components/schemas/Category"}),
-                         description="三级类目树，叶子无 children"),
+                         description="平台类目树（两级封顶），叶子无 children"),
     }),
     "CategoryTree": arr(REF("Category")),
     "SkuPrice": obj({

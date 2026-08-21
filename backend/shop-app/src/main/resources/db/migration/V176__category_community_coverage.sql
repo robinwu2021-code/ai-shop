@@ -110,10 +110,3 @@ VALUES
 -- 核销/发码链路做完之后，把这四行 status 改回 ACTIVE 即可重新开放。
 UPDATE prd_category SET status = 'ARCHIVED'
 WHERE category_no IN ('CAT400', 'CAT500', 'CAT510', 'CAT520') AND status = 'ACTIVE';
-
--- ── 8. 菜单名跟着改：类目已经两级封顶（V168），菜单还叫「三级类目树」 ──
---
--- 运营端菜单在库里（sys_function_point），只改 lib/nav.ts 不落迁移，
--- 接真后端时看到的仍是旧名字 —— 而那个名字现在是错的。
-UPDATE sys_function_point SET name = '平台类目树'
-WHERE function_code = 'OPS_PRODUCT' AND name = '三级类目树';

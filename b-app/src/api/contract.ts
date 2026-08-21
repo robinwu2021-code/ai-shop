@@ -253,7 +253,7 @@ export interface GoodsDraft {
   };
 }
 
-import type { PointsRecordQuery, StaffLoginReq, StoreEditReq, SubmitPaymentReq, TogglePointsReq } from "./requests";
+import type { DescribeGoodsReq, PointsRecordQuery, StaffLoginReq, StoreEditReq, SubmitPaymentReq, TogglePointsReq } from "./requests";
 
 export interface MerchantApi {
   // ---- 账号与入驻（B-11.1）
@@ -481,7 +481,7 @@ export interface MerchantApi {
    *               缺货不是 `GoodsStatus` 的一员 —— 库里没有这个状态，它是按
    *               「所有 SKU 可用量都 ≤ 0」算出来的，且与在售**不互斥**
    *               （一件在售商品照样能全规格断货）。
-   * @param categoryNo 按三级类目筛。类目变必填之后，这是商家找货的主路径
+   * @param categoryNo 按类目筛（通常是二级）。类目变必填之后，这是商家找货的主路径
    */
   /**
    * 标准品搜索 —— 建品页「从标准品开始」。按标题与别名匹配，只返回启用中的。
@@ -540,10 +540,20 @@ export interface MerchantApi {
    * ⚠️ 绝不做「一拍就自动上架」—— 识别错了价格也错，货会以错价卖出去。
    */
   mRecognizeGoods(imageUrl: string): Promise<GoodsGuess>;
+  /**
+   * 按商品名与主图生成**图文详情草稿**。
+   *
+   * <p>返回空串 = 没生成出来（模型不可达或写不出来）。这不是错误：
+   * 「自动生成」是省事的捷径，不是必经步骤 —— 端上提示一句，商家照样能自己写。
+   *
+   * <p>结果**只填进输入框，不直接保存**：模型不知道这家店真实的产地与保质期，
+   * 一键写进详情等于替商家做了他没做过的承诺。
+   */
+  mDescribeGoods(req: DescribeGoodsReq): Promise<{ detail: string }>;
 
   // ---- 类目（B-11.3.1）
   /**
-   * 三级类目树 —— 编辑商品时选类目用。
+   * 平台类目树（两级封顶）—— 编辑商品时选类目用。
    *
    * ⚠️ 与 `Goods["type"]`（五品类）**不是一回事**：type 决定履约与合规，平台硬编码；
    * 类目决定归类与经营准入，运营可维护。挂了资质门槛的类目，

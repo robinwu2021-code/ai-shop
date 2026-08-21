@@ -5157,8 +5157,6 @@ VALUES
 ('CAT360', 'CAT300', 2, '跑腿代办', 'Errands',      NULL, 60, 'SERVICE', NULL, NULL, NULL, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0);
 UPDATE prd_category SET status = 'ARCHIVED'
 WHERE category_no IN ('CAT400', 'CAT500', 'CAT510', 'CAT520') AND status = 'ACTIVE';
-UPDATE sys_function_point SET name = '平台类目树'
-WHERE function_code = 'OPS_PRODUCT' AND name = '三级类目树';
 UPDATE prd_category
 SET required_code = 'PACKAGED_FOOD',
     qualification_required = '["仅销售预包装食品备案"]'
@@ -5169,3 +5167,5 @@ UPDATE sys_auth_code
 SET enabled = 1
 WHERE code IN ('FOOD', 'DRUG_RETAIL')
   AND enabled = 0;
+UPDATE sys_function_point SET name = '平台类目树'
+WHERE function_code = 'OPS_PRODUCT' AND name = '三级类目树';

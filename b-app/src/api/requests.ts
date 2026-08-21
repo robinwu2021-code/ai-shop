@@ -79,7 +79,7 @@ export interface GoodsListQuery {
    */
   keyword?: string;
   /**
-   * 按三级类目筛。与 `keyword` 是同一种遗漏：服务层一直支持，
+   * 按类目筛（通常是二级）。与 `keyword` 是同一种遗漏：服务层一直支持，
    * 端点写死传 null。类目变必填之后，按类目找货是商家的主路径。
    */
   categoryNo?: string;
@@ -151,6 +151,18 @@ export interface SaveStockReq {
 export interface UploadImageReq {
   /** 端上的临时文件路径。真实实现走 multipart，这里是 mock 与 H5 的折中 */
   tempPath: string;
+}
+
+/**
+ * 自动生成图文详情。**主图可选** —— 没图时模型只按文字写，
+ * 写出来更泛，但总比让商家对着空白框强。
+ */
+export interface DescribeGoodsReq {
+  imageUrl?: string;
+  /** 商品名。必须有，否则模型只能瞎编 */
+  title: string;
+  subtitle?: string;
+  categoryNo?: string;
 }
 
 export interface RecognizeGoodsReq {

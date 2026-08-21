@@ -6,7 +6,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 /**
- * 三级类目。用 {@code parentNo} 自关联而不是闭包表：类目只有三层且改动极少，
+ * 平台类目（**两级封顶**，V168）。用 {@code parentNo} 自关联而不是闭包表：层级浅且改动极少，
  * 闭包表的维护成本换不来任何查询收益。
  */
 @Getter

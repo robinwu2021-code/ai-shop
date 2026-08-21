@@ -113,7 +113,7 @@ class CategoryTreeFlowTest {
     }
 
     @Test
-    @DisplayName("★ 三级封顶：在三级类目下再建子类目被拒")
+    @DisplayName("★ 两级封顶：在二级类目下再建子类目被拒")
     void cannotGoDeeperThanThreeLevels() throws Exception {
         String token = opsLogin();
         String body = mvc().perform(post("/ops/categories")

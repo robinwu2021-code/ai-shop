@@ -23,7 +23,7 @@ public interface MerchantGoodsService {
      * 商品列表。{@code status} 为空表示全部（含下架与审核中）。
      *
      * @param merchantNo 为空 = 跨商家查，运营端"商品池"用这个口径
-     * @param categoryNo 按三级类目筛，为空不筛
+     * @param categoryNo 按类目筛（通常是二级），为空不筛
      * @param keyword    按标题模糊搜，为空不筛
      */
     PageData<GoodsVO> list(String merchantNo, String categoryNo, String keyword, String status, long page, long size);
@@ -216,7 +216,7 @@ public interface MerchantGoodsService {
      * @param skus         单规格商品也有且仅有一条
      */
     /**
-     * @param categoryNo 三级类目树的节点。<b>唯一的分类输入</b> ——
+     * @param categoryNo 平台类目树的节点（一级或二级）。<b>唯一的分类输入</b> ——
      *                   五品类（{@code type}）由它带出来，不再由商家填。
      *                   两者不是重复：类目是数据（运营可增删），品类是代码分支（恒定五条）；
      *                   但让商家各填一遍就会出现「叶菜类目 + 日用品品类」这种没人拦得住的矛盾

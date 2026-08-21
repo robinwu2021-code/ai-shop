@@ -63,8 +63,9 @@ export const productMock: ProductApi = {
   saveCategory: async (v) => {
     const parent = v.parentNo ? findCategory(v.parentNo) : undefined;
     const level = parent ? parent.level + 1 : 1;
-    // 三级封顶：再深一层，C 端的类目导航就没法展示了（也没有第四层的产品定义）
-    if (level > MAX_CATEGORY_LEVEL) fail(`类目最多 ${MAX_CATEGORY_LEVEL} 级，不能在三级类目下再建子类目`, `Categories go ${MAX_CATEGORY_LEVEL} levels deep — a third-level category cannot take children`);
+    // 两级封顶（V168）：再深一层，端上的两级选择器就渲染不出来 ——
+    // 那种节点查得到、选不到
+    if (level > MAX_CATEGORY_LEVEL) fail(`类目最多 ${MAX_CATEGORY_LEVEL} 级，二级之下不能再建子类目`, `Categories go ${MAX_CATEGORY_LEVEL} levels deep — a second-level category cannot take children`);
     if (!v.name?.trim()) fail("类目名称必填", "A category name is required");
     /*
      * 形态**继承父级**，不采信传上来的值：二级与它的一级形态不同，会让

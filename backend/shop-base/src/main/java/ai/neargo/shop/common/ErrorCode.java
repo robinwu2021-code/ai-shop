@@ -479,7 +479,7 @@ public enum ErrorCode {
     PLAN_CAPABILITY_REQUIRED(70023, "err.merchant.plan_capability_required"),
 
     // ---- 8xxxx 类目维护 ----
-    /** 类目最多三级 —— 再深一层 C 端的类目导航就没法展示，也没有第四层的产品定义。 */
+    /** 类目最多两级（V168 由三级收敛）—— 端上的选择器只渲染两层，更深的节点查得到、选不到。 */
     CATEGORY_TOO_DEEP(80001, "err.category.too_deep"),
     /** 下面还挂着商品或未归档的子类目 —— 直接归档会让那些商品挂在一个不存在的类目上。 */
     CATEGORY_IN_USE(80002, "err.category.in_use"),
