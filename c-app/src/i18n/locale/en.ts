@@ -7,6 +7,8 @@ export default {
     empty: "Nothing here yet",
     retry: "Retry",
     browseAll: "See all open neighbourhoods",
+    searchHint: "Search by name, address or pickup point",
+    searchEmpty: "No matching neighbourhood or pickup point",
     allTip: "All open neighbourhoods — pick the one you need",
     noLocation: "No location — showing all open neighbourhoods",
     farTitle: "That pickup point is far away",
@@ -23,6 +25,9 @@ export default {
   },
   home: {
     noNearbyPickup: "No pickup point near you yet — have a look around; pick one when you order",
+    noNearbyTitle: "Not open here yet",
+    pickManually: "Pick one",
+    browseFirst: "Just browse",
     visited: "Shops you've used",
     visitedN: "{n} shops · buy again",
     visitedNone: "Appears after your first order",

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // 选社区自提点：定位推荐 → 选社区 → 选自提点 → 绑定归属（同时确定团长）。
 // 拒绝定位时降级为列表手动选，不阻塞。
-import { ref } from "vue";
+import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { onLoad } from "@dcloudio/uni-app";
 import { useCommunityStore } from "@/stores/community";
@@ -68,6 +68,17 @@ async function load() {
     const at = await getLocation();
     located.value = !!at;
     await community.loadNearby(at?.lat, at?.lng);
+    /*
+     * **附近没有就直接把全部列出来**，而不是先给一个空页面再让他点一次「查看全部」。
+     *
+     * 能走到这一页有两种人：被系统推来的（附近有，正常选），
+     * 和自己点进来的（多半正是因为附近没有、他要手动挑一个）。
+     * 对后者，那一次点击纯属多余 —— 他要的东西就在按钮后面。
+     */
+    if (!community.list.length) {
+      await community.loadAll();
+      showingAll.value = true;
+    }
     expanded.value = community.list[0]?.communityNo ?? "";
   } catch (e) {
     // 吞掉错误但**在界面上说出来** —— 静默失败是这一页原来的病
@@ -77,6 +88,23 @@ async function load() {
     locating.value = false;
   }
 }
+
+/**
+ * 手动找社区/自提点。**同时按名字、地址与自提点名匹配** ——
+ * 用户嘴里的「区域」多半是「西湖区」「文一西路」，那些字在地址里，不在社区名里；
+ * 而 `cityCode` / `regionCode` 是运营后补的字段，现在大多为空，
+ * 拿它做筛选器只会得到一堆「未分区」。
+ */
+const keyword = ref("");
+const shown = computed(() => {
+  const k = keyword.value.trim().toLowerCase();
+  if (!k) return community.list;
+  return community.list.filter((c) =>
+    [c.name, c.address, ...(c.pickups ?? []).map((p) => p.name)]
+      .filter(Boolean)
+      .some((v) => String(v).toLowerCase().includes(k)),
+  );
+});
 
 /** 与后端 shop.community.nearby-radius-m 同一口径。端上只用来决定「要不要提醒」 */
 const NEARBY_RADIUS_M = 5000;
@@ -160,7 +188,20 @@ onLoad(load);
     <text v-else-if="showingAll" class="hint">{{ $t("community.allTip") }}</text>
     <text v-else-if="!located" class="hint">{{ $t("community.noLocation") }}</text>
 
-    <view v-for="c in community.list" :key="c.communityNo" class="cm">
+    <view v-if="community.list.length" class="search">
+      <input
+        v-model="keyword"
+        class="search__input"
+        :placeholder="String($t('community.searchHint'))"
+        confirm-type="search"
+      />
+    </view>
+
+    <text v-if="community.list.length && !shown.length" class="hint">
+      {{ $t("community.searchEmpty") }}
+    </text>
+
+    <view v-for="c in shown" :key="c.communityNo" class="cm">
       <view
         class="cm__head"
         @tap="expanded = expanded === c.communityNo ? '' : c.communityNo"
@@ -195,6 +236,17 @@ onLoad(load);
 </template>
 
 <style scoped>
+.search {
+  padding: 0 0 24rpx;
+}
+.search__input {
+  height: 76rpx;
+  padding: 0 24rpx;
+  border-radius: 24rpx;
+  background: var(--sh-surface);
+  font-size: 26rpx;
+  color: var(--sh-ink);
+}
 .state {
   padding: 96rpx 48rpx;
   text-align: center;

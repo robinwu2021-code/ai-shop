@@ -98,7 +98,20 @@ async function maybePickCommunity() {
     gotoCommunity();
   } else if (!hintedNoNearby) {
     hintedNoNearby = true; // 一次会话说一次就够，每次回首页都弹是骚扰
-    uni.showToast({ title: String(t("home.noNearbyPickup")), icon: "none", duration: 2600 });
+    /*
+     * **说「还没开通」的同时要给出手动选的路**，否则这句话只是个坏消息：
+     * 用户不知道自己其实可以挑一个别处的自提点（给父母下单、出差前囤货都是这么用的）。
+     * 用 showModal 而不是 toast，正是因为 toast 点不了 —— 它说完就走，什么也不给。
+     */
+    uni.showModal({
+      title: String(t("home.noNearbyTitle")),
+      content: String(t("home.noNearbyPickup")),
+      confirmText: String(t("home.pickManually")),
+      cancelText: String(t("home.browseFirst")),
+      success: (r) => {
+        if (r.confirm) gotoCommunity();
+      },
+    });
   }
 }
 let hintedNoNearby = false;

@@ -7,6 +7,8 @@ export default {
     empty: "这里还没有内容",
     retry: "重试",
     browseAll: "查看全部已开通社区",
+    searchHint: "搜小区名、地址或自提点，如「西湖区」",
+    searchEmpty: "没有匹配的小区或自提点",
     allTip: "以下是全部已开通社区，按需自行选择",
     noLocation: "未获取定位，以下是全部已开通社区",
     farTitle: "这个自提点离你很远",
@@ -23,6 +25,9 @@ export default {
   },
   home: {
     noNearbyPickup: "你这一带还没开通自提点，可以先逛逛；下单自提时再选",
+    noNearbyTitle: "这一带还没开通",
+    pickManually: "手动选一个",
+    browseFirst: "先逛逛",
     visited: "买过的店",
     visitedN: "{n} 家 · 回购老店",
     visitedNone: "下过单就会记下来",

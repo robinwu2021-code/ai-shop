@@ -122,7 +122,7 @@ export default {
     storeStockHint: "المخزون والعرض لكل متجر؛ غير المحدّدة تبيع بـ 0",
     switchStore: "تبديل الفرع ›",
     categoryType: {
-      NORMAL: "سلع يومية",
+      NORMAL: "سلع عادية",
       FRESH: "طازج",
       SERVICE: "خدمة",
       VIRTUAL: "منتج رقمي",
