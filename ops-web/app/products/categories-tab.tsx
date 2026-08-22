@@ -56,7 +56,15 @@ export function CategoriesTab({ c, canEdit }: { c: ProductsCopy; canEdit: boolea
   const [showArchived, setShowArchived] = useState(false);
   const [form, setForm] = useState<Form | null>(null);
 
-  const q = { keyword, template, showArchived };
+  /*
+   * **关键词不进请求**，在前端过滤。
+   *
+   * 后端按关键词过滤会把父级一起筛掉：搜「茶叶」命中的是二级 CAT160，
+   * 而它的父级「食品生鲜」名字不含「茶」→ 不在结果里 → 分组渲染时
+   * 那一条命中项**根本无处可挂，整个页面看着像没搜到**。
+   * 类目总量只有几十条，一次全量在前端过滤更简单也更准。
+   */
+  const q = { template, showArchived };
   const cats = useQuery({ queryKey: ["categories", q], queryFn: () => api.listCategories(q) });
   // 门槛码只列启用中的：挂一个停用码，那个类目就永远拒绝所有人
   const authCodes = useQuery({ queryKey: ["auth-code-dict"], queryFn: () => api.listAuthCodeDict() });
@@ -87,6 +95,24 @@ export function CategoriesTab({ c, canEdit }: { c: ProductsCopy; canEdit: boolea
     },
     onSuccess: (_, v) => { invalidate(); notify.success(v.on ? c.catEnabled : c.catDisabled); },
   });
+
+  /**
+   * 能不能停用 —— **与后端 `archive` 的两道判据一字不差**：
+   * 下面还有商品、下面还有未归档的子类目。
+   *
+   * <p>端上先判是因为这两件事列表上都看得见（商品数、子级开关）。
+   * 让人点一个注定被拒的开关，是最差的一种拒绝 —— 而批量关一棵树时更糟：
+   * 前几个二级关掉了、剩下的连同一级一起报错，界面停在关了一半的状态。
+   *
+   * @return 不能停用的原因（给 tooltip 用）；能停用时为 `null`
+   */
+  function blockedReason(x: Category): string | null {
+    if (x.skuCount > 0) return fill(c.catOffBlockedGoods, { n: x.skuCount });
+    const kids = childrenOf(x.categoryNo).filter((k) => !off(k));
+    const stuck = kids.find((k) => k.skuCount > 0);
+    if (stuck) return fill(c.catOffBlockedChild, { name: stuck.name, n: stuck.skuCount });
+    return null;
+  }
 
   /** 一级的开关：先问清楚要不要连带子级，再发请求 */
   async function toggleTop(top: Category, on: boolean) {
@@ -146,7 +172,20 @@ export function CategoriesTab({ c, canEdit }: { c: ProductsCopy; canEdit: boolea
     onSuccess: () => { invalidate(); setForm(null); notify.success(c.catSaved); },
   });
 
-  const rows = cats.data ?? [];
+  const all = cats.data ?? [];
+  /** 命中：自己名字含关键词，或它的父级命中（父级命中时整组保留） */
+  const rows = useMemo(() => {
+    const kw = keyword.trim().toLowerCase();
+    if (!kw) return all;
+    const hit = (x: Category) =>
+      x.name.toLowerCase().includes(kw) || (x.i18n.en ?? "").toLowerCase().includes(kw)
+      || x.categoryNo.toLowerCase().includes(kw);
+    const hitTops = new Set(all.filter((x) => x.level === 1 && hit(x)).map((x) => x.categoryNo));
+    const keep = all.filter((x) => hit(x) || (x.parentNo && hitTops.has(x.parentNo)));
+    // 命中的二级要把父级带回来，否则它没有可挂的分组
+    const parents = new Set(keep.map((x) => x.parentNo).filter(Boolean) as string[]);
+    return all.filter((x) => keep.includes(x) || parents.has(x.categoryNo));
+  }, [all, keyword]);
   const off = (x: Category) => !!x.archivedAt;
   /**
    * 停用的沉底、其余按 `sort` —— **顺序是这一页的产出之一**：
@@ -202,9 +241,9 @@ export function CategoriesTab({ c, canEdit }: { c: ProductsCopy; canEdit: boolea
         <div className="py-8 text-center text-muted-foreground">{c.emptyTree}</div>
       ) : (
         <div className="grid gap-3 lg:grid-cols-2 2xl:grid-cols-3">
-          {tops.map((top) => (
+          {tops.map((top, ti) => (
             <Card key={top.categoryNo} className={off(top) ? "opacity-55" : undefined}>
-              <CardHeader className="flex-row items-center gap-2 pb-2">
+              <CardHeader className="group flex-row items-center gap-2 pb-2">
                 <CardTitle className="flex min-w-0 items-center gap-2">
                   <span className="truncate">{top.name}</span>
                   <Badge tone="muted">{codeLabel(c, top.template)}</Badge>
@@ -214,6 +253,34 @@ export function CategoriesTab({ c, canEdit }: { c: ProductsCopy; canEdit: boolea
                   {fill(c.catSubCount, { n: childrenOf(top.categoryNo).length })}
                 </span>
                 <span className="flex-1" />
+                {/*
+                  一级之间也要能调顺序：C 端类目栏第一屏就是一级 ——
+                  只给二级排序，等于把最重要的那一层漏掉了。
+                */}
+                {canEdit && !off(top) && (
+                  <span className="flex opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
+                    <Button
+                      size="sm" variant="ghost"
+                      disabled={!neighbour(tops, ti, -1) || move.isPending}
+                      onClick={() => {
+                        const b = neighbour(tops, ti, -1);
+                        if (b) move.mutate({ a: top, b });
+                      }}
+                    >
+                      {c.catMoveUp}
+                    </Button>
+                    <Button
+                      size="sm" variant="ghost"
+                      disabled={!neighbour(tops, ti, 1) || move.isPending}
+                      onClick={() => {
+                        const b = neighbour(tops, ti, 1);
+                        if (b) move.mutate({ a: top, b });
+                      }}
+                    >
+                      {c.catMoveDown}
+                    </Button>
+                  </span>
+                )}
                 {/* 「加二级」收进卡头：放底部会为一个低频动作白占一整行 */}
                 {canEdit && (
                   <Button size="sm" variant="ghost" onClick={() => openNew(top.categoryNo, top.template)}>
@@ -221,7 +288,13 @@ export function CategoriesTab({ c, canEdit }: { c: ProductsCopy; canEdit: boolea
                   </Button>
                 )}
                 {canEdit && (
-                  <Switch checked={!off(top)} onChange={(on) => void toggleTop(top, on)} />
+                  <span title={off(top) ? undefined : blockedReason(top) ?? undefined}>
+                    <Switch
+                      checked={!off(top)}
+                      disabled={!off(top) && !!blockedReason(top)}
+                      onChange={(on) => void toggleTop(top, on)}
+                    />
+                  </span>
                 )}
               </CardHeader>
               <CardContent className="pt-0">
@@ -252,7 +325,7 @@ export function CategoriesTab({ c, canEdit }: { c: ProductsCopy; canEdit: boolea
                         每一行都变成三个可点区域，而行本身（点名字改类目）才是主操作。
                       */}
                       {canEdit && !off(sub) && (
-                        <span className="flex shrink-0 opacity-0 transition-opacity group-hover:opacity-100">
+                        <span className="flex shrink-0 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
                           <Button
                             size="sm" variant="ghost"
                             disabled={!neighbour(list, i, -1) || move.isPending}
@@ -275,6 +348,15 @@ export function CategoriesTab({ c, canEdit }: { c: ProductsCopy; canEdit: boolea
                           </Button>
                         </span>
                       )}
+                      {/*
+                        缺英文名要看得见：类目名按语言下发，缺了会**静默回落中文** ——
+                        运营在这一页看不见，就永远没人补。
+                      */}
+                      {!sub.i18n.en && (
+                        <span title={c.catI18nMissingHint}>
+                          <Badge tone="muted">{c.catI18nMissing}</Badge>
+                        </span>
+                      )}
                       {/* 固定列宽：不给宽度的话，同一列的徽章在两张卡片里会各停在不同位置 */}
                       <span className="w-14 shrink-0 text-right">
                         {sub.requiredCode && (
@@ -290,7 +372,13 @@ export function CategoriesTab({ c, canEdit }: { c: ProductsCopy; canEdit: boolea
                         {sub.skuCount || ""}
                       </span>
                       {canEdit && (
-                        <Switch checked={!off(sub)} onChange={(on) => toggle.mutate({ row: sub, on })} />
+                        <span title={off(sub) ? undefined : blockedReason(sub) ?? undefined}>
+                          <Switch
+                            checked={!off(sub)}
+                            disabled={!off(sub) && !!blockedReason(sub)}
+                            onChange={(on) => toggle.mutate({ row: sub, on })}
+                          />
+                        </span>
                       )}
                     </li>
                   ))}
