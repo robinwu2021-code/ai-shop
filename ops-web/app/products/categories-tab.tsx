@@ -289,8 +289,12 @@ export function CategoriesTab({ c, canEdit }: { c: ProductsCopy; canEdit: boolea
 
   /** 同级里的邻居；停用的不参与换位 —— 它们本来就沉在底部，换过去看不出变化 */
   function neighbour(list: Category[], i: number, dir: -1 | 1) {
-    const j = i + dir;
-    return j >= 0 && j < list.length && !off(list[j]!) ? list[j] : undefined;
+    // **跨过停用的接着找**，不是碰到就停：刚关掉的那条会停在组中间（见 `sunk`），
+    // 碰到就停的话它上下两条的 ↑↓ 会双双变灰 —— 关掉一条类目，顺带把邻居的排序也锁了
+    for (let j = i + dir; j >= 0 && j < list.length; j += dir) {
+      if (!off(list[j]!)) return list[j];
+    }
+    return undefined;
   }
 
   const save = useMutation({
@@ -331,8 +335,15 @@ export function CategoriesTab({ c, canEdit }: { c: ProductsCopy; canEdit: boolea
    * C 端类目栏就按它排，所以看到的顺序必须与买家看到的一致，
    * 否则运营调完顺序在这里看不出变化，只能去 C 端反复刷新验证。
    */
+  /**
+   * 沉底的只有「进来时就停用」的那些。**刚被自己关掉的留在原地** ——
+   * 行虽然还在（见 `touched`），可它要是同时窜到分组末尾，
+   * 看着仍然像「那一条不见了」，只不过换了个地方不见。
+   * 刷新之后 `touched` 清空，它们才按老规矩沉底。
+   */
+  const sunk = (x: Category) => off(x) && !touched.includes(x.categoryNo);
   const byLive = (a: Category, b: Category) =>
-    Number(off(a)) - Number(off(b)) || (a.sort ?? 0) - (b.sort ?? 0);
+    Number(sunk(a)) - Number(sunk(b)) || (a.sort ?? 0) - (b.sort ?? 0);
   const tops = useMemo(() => rows.filter((x) => x.level === 1).sort(byLive), [rows]);
   const childrenOf = (no: string) => rows.filter((x) => x.parentNo === no).sort(byLive);
 
