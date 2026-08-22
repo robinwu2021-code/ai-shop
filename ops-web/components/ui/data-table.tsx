@@ -70,7 +70,7 @@ export function DataTable<T>({
   selectable, selectedKeys, onSelectedChange,
   expandable,
   sortKey, sortDir, onSortChange,
-  rowClassName, rowProps,
+  rowClassName, rowProps, striped = true,
 }: {
   columns: Column<T>[];
   rows: T[] | undefined;
@@ -112,6 +112,8 @@ export function DataTable<T>({
    * ⚠️ 与 `rowClassName` 各管各的：这里再给 className 会**覆盖**它，所以合并在下面做。
    */
   rowProps?: (row: T) => React.HTMLAttributes<HTMLTableRowElement>;
+  /** 关掉隔行底色（行底色已被 `rowClassName` 用来表达语义时）。见 `TBody.striped` */
+  striped?: boolean;
 }) {
   const { t } = useI18n();
   const emptyText = empty ?? t("common.empty");
@@ -202,7 +204,7 @@ export function DataTable<T>({
               {columns.map(headerCell)}
             </TR>
           </THead>
-          <TBody>
+          <TBody striped={striped}>
             {Array.from({ length: 6 }).map((_, r) => (
               <TR key={r}>
                 {selectable && <TD><Skeleton className="size-4" /></TD>}
@@ -237,7 +239,7 @@ export function DataTable<T>({
               {columns.map(headerCell)}
             </TR>
           </THead>
-          <TBody>
+          <TBody striped={striped}>
             {rows.map((row) => {
               const k = rowKey(row);
               const content = expandable?.(row);

@@ -19,13 +19,23 @@ export function THead({ className, ...props }: React.HTMLAttributes<HTMLTableSec
   // - 高度走 --row-h：此前硬写 h-11，与行体的 --row-h 打架，密度切换对列表页近乎无效
   return <thead className={cn("sticky top-0 z-[var(--z-sticky)] bg-muted [&_th]:h-[var(--row-h)] [&_th]:whitespace-nowrap [&_th]:px-3.5 [&_th]:text-left [&_th]:align-middle [&_th]:text-xs [&_th]:font-medium [&_th]:text-muted-foreground", className)} {...props} />;
 }
-export function TBody({ className, ...props }: React.HTMLAttributes<HTMLTableSectionElement>) {
+export function TBody({
+  className, striped = true, ...props
+}: React.HTMLAttributes<HTMLTableSectionElement> & {
+  /**
+   * 隔行浅色块。**行底色本身带语义时要关掉它**（如平台类目树用底色区分一级/二级）：
+   * zebra 是 `tbody tr:nth-child(even)`（特异度 0,2,1），比行上的 `bg-*` 工具类
+   * （0,1,0）更强 —— 于是同一种状态的行**奇偶各一个颜色**，看着像随机的。
+   * 用 `!important` 压过去也能赢，但那是让两条规则继续打架，只不过换我方赢。
+   */
+  striped?: boolean;
+}) {
   // 无行线，隔行浅色块（zebra）分隔。
   // 垂直内边距故意为 0：行高由 --row-h 决定，`py-3` 会与之打架（实际行高变成 max(两者)），
   // 内容靠 align-middle 居中即可。要更松/更紧，改 [data-density] 而不是改这里。
   // whitespace-nowrap 是**默认**：密集台账里列一窄就逐字换行（"商家"竖成两个字一行），
   // 行高翻几倍且完全没法扫。要换行的列（长文案/地址）显式传 className="whitespace-normal"。
-  return <tbody className={cn("[&_td]:h-[var(--row-h)] [&_td]:whitespace-nowrap [&_td]:px-3.5 [&_td]:py-0 [&_td]:align-middle [&_tr:nth-child(even)]:bg-muted/45", className)} {...props} />;
+  return <tbody className={cn("[&_td]:h-[var(--row-h)] [&_td]:whitespace-nowrap [&_td]:px-3.5 [&_td]:py-0 [&_td]:align-middle", striped && "[&_tr:nth-child(even)]:bg-muted/45", className)} {...props} />;
 }
 export function TR({ className, ...props }: React.HTMLAttributes<HTMLTableRowElement>) {
   return <tr className={cn("transition-colors hover:bg-accent/50", className)} {...props} />;

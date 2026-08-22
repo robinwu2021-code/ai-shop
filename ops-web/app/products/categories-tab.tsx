@@ -175,6 +175,28 @@ export function CategoriesTab({ c, canEdit }: { c: ProductsCopy; canEdit: boolea
   }
 
   /**
+   * 二级的开关。**上级关着时不能直接开这一条** —— 后端会拒（「上级类目已归档」），
+   * 而运营看到的是「开关拨过去又弹回来」，像是这一行坏了。
+   *
+   * <p>批量启用那条路早就会**顺手把上级开出来**，单个开关却直接发请求 ——
+   * 同一件事两种行为，这是那个「切不动」的来源。这里对齐成一种：先问，再一起开。
+   */
+  async function toggleChild(r: Category, on: boolean) {
+    const parent = on ? allWithOff.find((x) => x.categoryNo === r.parentNo) : undefined;
+    if (!parent || !off(parent)) {
+      toggle.mutate({ row: r, on });
+      return;
+    }
+    const ok = await confirm({
+      title: fill(c.catEnableParentTitle, { name: parent.name }),
+      desc: c.catEnableParentDesc,
+      confirmText: c.catEnableParentOk,
+    });
+    // 顺序交给 toggle：开时先父后子，正好是后端要的那个顺序
+    if (ok) toggle.mutate({ row: parent, on: true, withChildren: [r] });
+  }
+
+  /**
    * 上下移：**交换相邻两个的 `sort`**，不是给自己 ±1。
    *
    * <p>±1 会撞上已有的值（种子是 10/20/30，但运营手填过的可能是 1、2），
@@ -506,7 +528,7 @@ export function CategoriesTab({ c, canEdit }: { c: ProductsCopy; canEdit: boolea
           <Switch
             checked={!off(r)}
             disabled={!canEdit || (!off(r) && !!blockedReason(r))}
-            onChange={(on) => (r.level === 1 ? void toggleTop(r, on) : toggle.mutate({ row: r, on }))}
+            onChange={(on) => void (r.level === 1 ? toggleTop(r, on) : toggleChild(r, on))}
           />
         </span>
       ),
@@ -584,6 +606,9 @@ export function CategoriesTab({ c, canEdit }: { c: ProductsCopy; canEdit: boolea
         error={cats.error}
         onRetry={() => cats.refetch()}
         empty={c.emptyTree}
+        // 行底色在这张表里是**语义**（一级分组、停用灰显），不能再叠隔行底色 ——
+        // zebra 的特异度更高，会把一级底色按奇偶吃掉一半，同一种状态两个颜色
+        striped={false}
         selectable={canEdit}
         selectedKeys={sel}
         onSelectedChange={setSel}
