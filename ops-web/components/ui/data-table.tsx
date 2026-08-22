@@ -70,7 +70,7 @@ export function DataTable<T>({
   selectable, selectedKeys, onSelectedChange,
   expandable,
   sortKey, sortDir, onSortChange,
-  rowClassName,
+  rowClassName, rowProps,
 }: {
   columns: Column<T>[];
   rows: T[] | undefined;
@@ -104,6 +104,14 @@ export function DataTable<T>({
    * `Column.className` 只能到列级，行级状态表达不了 —— B0 首版遗漏，2026-07-29 补。
    */
   rowClassName?: (row: T) => string | undefined;
+  /**
+   * 行级原生属性（拖拽、data-*、右键菜单）。给的是 `<tr>` 本身的 props ——
+   * 拖放的**放**必须落在整行上：只把 handle 做成放置目标的话，行有 48px 高
+   * 而 handle 只有 16px，八成的下落点会掉进行的空白处、什么都不发生。
+   *
+   * ⚠️ 与 `rowClassName` 各管各的：这里再给 className 会**覆盖**它，所以合并在下面做。
+   */
+  rowProps?: (row: T) => React.HTMLAttributes<HTMLTableRowElement>;
 }) {
   const { t } = useI18n();
   const emptyText = empty ?? t("common.empty");
@@ -236,7 +244,10 @@ export function DataTable<T>({
               const isOpen = expanded.includes(k);
               return (
                 <React.Fragment key={k}>
-                  <TR className={rowClassName?.(row)}>
+                  <TR
+                    {...rowProps?.(row)}
+                    className={cn(rowClassName?.(row), rowProps?.(row)?.className)}
+                  >
                     {selectable && (
                       <TD className="h-[var(--row-h)] w-10">
                         <RowCheckbox

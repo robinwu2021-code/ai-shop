@@ -14,6 +14,7 @@
 // 已经归到这个类目下的商品还在，C 端历史链接也还指着它，删掉之后那些入口进来是 404，
 // 而它本来只需要「这一类我们这期不做」。
 import { useMemo, useState } from "react";
+import { GripVertical } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { notify } from "@/lib/notify";
@@ -79,8 +80,16 @@ export function CategoriesTab({ c, canEdit }: { c: ProductsCopy; canEdit: boolea
    * 那一条命中项**根本无处可挂，整个页面看着像没搜到**。
    * 类目总量只有几十条，一次全量在前端过滤更简单也更准。
    */
-  const q = { template, showArchived };
-  const cats = useQuery({ queryKey: ["categories", q], queryFn: () => api.listCategories(q) });
+  /*
+   * **停用的也一起拉，在前端按开关滤** —— 与关键词同一个理由，外加一条：
+   * 只拉未停用的话，「N 个已停用」这个数**永远是 0**，读起来像「没有停用的类目」，
+   * 而实际上刚刚才关掉两个。要么如实数出来，要么别显示这个数。
+   */
+  const q = { template };
+  const cats = useQuery({
+    queryKey: ["categories", q],
+    queryFn: () => api.listCategories({ ...q, showArchived: true }),
+  });
   // 门槛码只列启用中的：挂一个停用码，那个类目就永远拒绝所有人
   const authCodes = useQuery({ queryKey: ["auth-code-dict"], queryFn: () => api.listAuthCodeDict() });
 
@@ -153,19 +162,88 @@ export function CategoriesTab({ c, canEdit }: { c: ProductsCopy; canEdit: boolea
    * 撞了之后同序的两条谁在前取决于数据库返回顺序 —— 那是「点了没反应」
    * 与「点一下跳两格」这类怪象的来源。交换是唯一稳定的做法。
    */
+  const putSort = (x: Category, sort: number) =>
+    api.saveCategory({
+      categoryNo: x.categoryNo, name: x.name, i18nEn: x.i18n.en,
+      parentNo: x.parentNo, template: x.template,
+      qualifications: x.qualifications, requiredCode: x.requiredCode, sort,
+    } as Parameters<typeof api.saveCategory>[0]);
+
   const move = useMutation({
     mutationFn: async (v: { a: Category; b: Category }) => {
-      const put = (x: Category, sort: number) =>
-        api.saveCategory({
-          categoryNo: x.categoryNo, name: x.name, i18nEn: x.i18n.en,
-          parentNo: x.parentNo, template: x.template,
-          qualifications: x.qualifications, requiredCode: x.requiredCode, sort,
-        } as Parameters<typeof api.saveCategory>[0]);
-      await put(v.a, v.b.sort ?? 0);
-      await put(v.b, v.a.sort ?? 0);
+      await putSort(v.a, v.b.sort ?? 0);
+      await putSort(v.b, v.a.sort ?? 0);
     },
     onSuccess: () => invalidate(),
   });
+
+  /**
+   * 拖到位：把这一组**重排成 10、20、30……**，只写值真的变了的那几条。
+   *
+   * <p>与 ↑↓ 的交换不是同一件事，所以不能复用它：拖是「插到第 k 位」，
+   * 沿途每一条的位次都要挪一格。用交换去模拟，等于在中间来回换 k 次，
+   * 每次都是一个请求，中途失败会停在一个谁都没想要的顺序上。
+   *
+   * <p>重排成整十而不是保留原值，是**顺手把历史脏值抹平**：种子是 10/20/30，
+   * 但手填过的可能是 1、2、甚至并列的 0 —— 并列时谁在前取决于数据库返回顺序。
+   */
+  const reorder = useMutation({
+    mutationFn: async (list: Category[]) => {
+      for (const [i, x] of list.entries()) {
+        const sort = (i + 1) * 10;
+        if ((x.sort ?? 0) !== sort) await putSort(x, sort);
+      }
+    },
+    onSuccess: () => invalidate(),
+  });
+
+  /**
+   * 批量启停。**只作用于二级** —— 一级要连带下面一整组，那件事有确认对话框，
+   * 塞进批量里就成了「勾了十个、弹十个框」。选中的一级会被跳过并计入回执。
+   *
+   * <p>逐条发而不是一个批量接口：后端的拒绝是**一条一条**的（这条还挂着商品），
+   * 一个大接口要么整批回滚（一条挡住九条）、要么部分成功而说不清是哪几条。
+   * 挡得住的在端上就先滤掉了（`blockedReason` 与后端一字不差），剩下的才发。
+   */
+  const bulk = useMutation({
+    mutationFn: async (on: boolean) => {
+      const picked = flat.filter((x) => sel.includes(x.categoryNo));
+      const doable = picked.filter(
+        (x) => x.level === 2 && off(x) === on && (on || !blockedReason(x)),
+      );
+      if (on) {
+        // 父级关着的话先把父级开出来，否则这一条开了也没人看得见
+        const parents = new Set(doable.map((x) => x.parentNo).filter(Boolean) as string[]);
+        for (const no of parents) {
+          const p = all.find((x) => x.categoryNo === no);
+          if (p && off(p)) await api.unarchiveCategory(no);
+        }
+        for (const x of doable) await api.unarchiveCategory(x.categoryNo);
+      } else {
+        for (const x of doable) await api.archiveCategory(x.categoryNo);
+      }
+      return { n: doable.length, m: picked.length - doable.length };
+    },
+    onSuccess: (r) => {
+      invalidate();
+      setSel([]);
+      if (r.n) notify.success(fill(c.catBulkDone, { n: r.n, m: r.m }));
+      else notify.error(c.catBulkNone);
+    },
+  });
+
+  async function bulkOff() {
+    const n = flat.filter(
+      (x) => sel.includes(x.categoryNo) && x.level === 2 && !off(x) && !blockedReason(x),
+    ).length;
+    const ok = await confirm({
+      title: fill(c.catBulkOffTitle, { n }),
+      desc: c.catBulkOffDesc,
+      confirmText: c.catBulkOffOk,
+      danger: true,
+    });
+    if (ok) bulk.mutate(false);
+  }
 
   /** 同级里的邻居；停用的不参与换位 —— 它们本来就沉在底部，换过去看不出变化 */
   function neighbour(list: Category[], i: number, dir: -1 | 1) {
@@ -187,7 +265,8 @@ export function CategoriesTab({ c, canEdit }: { c: ProductsCopy; canEdit: boolea
     onSuccess: () => { invalidate(); setForm(null); notify.success(c.catSaved); },
   });
 
-  const all = cats.data ?? [];
+  const allWithOff = cats.data ?? [];
+  const all = showArchived ? allWithOff : allWithOff.filter((x) => !x.archivedAt);
   /** 命中：自己名字含关键词，或它的父级命中（父级命中时整组保留） */
   const rows = useMemo(() => {
     const kw = keyword.trim().toLowerCase();
@@ -222,7 +301,7 @@ export function CategoriesTab({ c, canEdit }: { c: ProductsCopy; canEdit: boolea
   const stat = {
     tops: tops.length,
     subs: rows.filter((x) => x.level === 2).length,
-    off: rows.filter(off).length,
+    off: allWithOff.filter(off).length,
   };
 
   /**
@@ -238,9 +317,78 @@ export function CategoriesTab({ c, canEdit }: { c: ProductsCopy; canEdit: boolea
     return out;
   }, [tops, rows]);
 
-  /** 同级邻居（排序用）：一级看 tops，二级看它父级下的兄弟 */
-  const siblings = (r: Category) =>
-    r.level === 1 ? tops : childrenOf(r.parentNo ?? "");
+  /**
+   * 同级的一整组（排序用）—— **取的是全量，不是当前筛出来的那几行**。
+   *
+   * <p>按筛选结果排会错得很隐蔽：搜「茶」只剩两条，把第二条拖到第一条，
+   * 重排写的是 10、20，而没显示出来的七条还占着 10~90 —— 清掉搜索一看，
+   * 这两条插进了谁都没想到的位置。
+   *
+   * <p>反过来，只要在筛选态就**不给排序入口**（下面 `sortable`）：
+   * 与看不见的行换位，界面上是「点了没反应」。
+   */
+  const groupOf = (r: Category) =>
+    allWithOff
+      .filter((x) => (r.level === 1 ? x.level === 1 : x.parentNo === r.parentNo))
+      .sort(byLive);
+
+  /** 排序只在「看得见的就是全部」时开放 */
+  const sortable = !keyword.trim() && !template;
+
+  /** 批量选中的编号。批量与开关是两条路：开关管一条，这条管「这一批这期都不做」 */
+  const [sel, setSel] = useState<string[]>([]);
+
+  /** 正在拖的那条 / 当前悬停的落点。两个都要：只有前者的话，人看不出会落到哪 */
+  const [dragNo, setDragNo] = useState<string | null>(null);
+  const [overNo, setOverNo] = useState<string | null>(null);
+  const dragging = () => flat.find((x) => x.categoryNo === dragNo);
+
+  /**
+   * 能不能落在这一行上。**跨级、跨父都不行** —— 顺序只在同一组里有意义，
+   * 把「蔬菜」拖到「日用百货」下面看着像改父级，但它改的其实只有 sort，
+   * 松手之后那一条会跳回原处，像是「拖了没反应」。
+   *
+   * <p>停用的也不做落点：它们本来就沉在底部，排它们等于排一个看不见的顺序。
+   */
+  function canDrop(target: Category) {
+    const src = dragging();
+    return !!src && src.categoryNo !== target.categoryNo
+      && src.level === target.level && (src.parentNo ?? "") === (target.parentNo ?? "")
+      && !off(src) && !off(target);
+  }
+
+  /**
+   * 落点线画在目标行的哪一边。**往下拖画下边、往上拖画上边** ——
+   * 因为「先摘掉自己、再插到目标的下标」这件事，往下拖时天然落在目标**之后**。
+   * 一律画上边的话，往下拖每次都会比线显示的位置多一格；
+   * 而强行把往下拖也改成「插到目标之前」，最后一位就永远排不进去了。
+   */
+  function dropEdge(r: Category): "top" | "bottom" | null {
+    const src = dragging();
+    if (!src || overNo !== r.categoryNo || !canDrop(r)) return null;
+    const list = groupOf(src);
+    const from = list.findIndex((x) => x.categoryNo === src.categoryNo);
+    const to = list.findIndex((x) => x.categoryNo === r.categoryNo);
+    return from < to ? "bottom" : "top";
+  }
+
+  function drop(target: Category) {
+    const src = dragging();
+    setDragNo(null);
+    setOverNo(null);
+    if (!src || !canDrop(target)) return;
+    // 连**停用的**一起重排：它们排在末尾（byLive 已经把它们沉到底），
+    // 于是重新启用时落在这一组的最后 —— 而不是拿着一个没人动过的旧 sort
+    // 插回中间某处，看着像「开了一下顺序就乱了」
+    const list = groupOf(src);
+    const from = list.findIndex((x) => x.categoryNo === src.categoryNo);
+    const to = list.findIndex((x) => x.categoryNo === target.categoryNo);
+    if (from < 0 || to < 0) return;
+    const next = [...list];
+    next.splice(from, 1);
+    next.splice(to, 0, src);
+    reorder.mutate(next);
+  }
 
   const columns: Column<Category>[] = [
     {
@@ -298,11 +446,25 @@ export function CategoriesTab({ c, canEdit }: { c: ProductsCopy; canEdit: boolea
     {
       header: c.catColOrder,
       cell: (r) => {
-        if (!canEdit || off(r)) return null;
-        const list = siblings(r);
+        if (!canEdit || off(r) || !sortable) return null;
+        const list = groupOf(r);
         const i = list.findIndex((x) => x.categoryNo === r.categoryNo);
         return (
-          <span className="flex">
+          <span className="flex items-center">
+            {/*
+              把手只管「抓」，落点是整行（见 rowProps）。
+              ↑↓ 一并留着 —— 原生拖放**键盘上完全够不着**，
+              去掉它等于把排序这件事从键盘用户手里拿走。
+            */}
+            <span
+              draggable
+              title={c.catDragHint}
+              onDragStart={() => setDragNo(r.categoryNo)}
+              onDragEnd={() => { setDragNo(null); setOverNo(null); }}
+              className="cursor-grab px-1 text-muted-foreground active:cursor-grabbing"
+            >
+              <GripVertical className="size-4" />
+            </span>
             <Button size="sm" variant="ghost"
               disabled={!neighbour(list, i, -1) || move.isPending}
               onClick={() => { const b = neighbour(list, i, -1); if (b) move.mutate({ a: r, b }); }}
@@ -370,6 +532,24 @@ export function CategoriesTab({ c, canEdit }: { c: ProductsCopy; canEdit: boolea
       </p>
 
       {/*
+        选中之后才出现的一条。常驻一排禁用的批量按钮，等于让人先猜「选了才能点」；
+        而它一出现，本身就是「你现在选着东西」的提示 —— 表格滚下去之后尤其需要。
+      */}
+      {canEdit && sel.length > 0 && (
+        <div className="mb-3 flex items-center gap-2 rounded-card bg-secondary/50 px-3 py-2">
+          <span className="txt-caption font-medium">{fill(c.catBulkSelected, { n: sel.length })}</span>
+          <Button size="sm" variant="outline" disabled={bulk.isPending} onClick={() => bulk.mutate(true)}>
+            {c.catBulkOn}
+          </Button>
+          <Button size="sm" variant="outline" disabled={bulk.isPending} onClick={bulkOff}>
+            {c.catBulkOff}
+          </Button>
+          <Button size="sm" variant="ghost" onClick={() => setSel([])}>{c.catBulkClear}</Button>
+          <span className="txt-caption text-muted-foreground">{c.catBulkTip}</span>
+        </div>
+      )}
+
+      {/*
         这一页故意比别的表紧一档：它是**配置表**，一屏五十来行、要来回比对同一列，
         而不是「读几条记录」。走既有的 [data-density] 令牌而不是写死行高 ——
         写死的话密度切换在这一页会失效，而且与 --ctl-h 错开、行里的按钮会顶出格。
@@ -383,12 +563,31 @@ export function CategoriesTab({ c, canEdit }: { c: ProductsCopy; canEdit: boolea
         error={cats.error}
         onRetry={() => cats.refetch()}
         empty={c.emptyTree}
+        selectable={canEdit}
+        selectedKeys={sel}
+        onSelectedChange={setSel}
         // 一级行加底色、二级行降一档字重：层级要靠**行本身**表达，
         // 只靠缩进的话滚到中间就分不清自己在哪一组
         rowClassName={(r) =>
-          [r.level === 1 ? "bg-secondary/40 font-medium" : "", off(r) ? "opacity-55" : ""]
-            .filter(Boolean).join(" ")
+          [
+            r.level === 1 ? "bg-secondary/40 font-medium" : "",
+            off(r) ? "opacity-55" : "",
+            // 用一条线而不是整行高亮：高亮会读成「跟这一行换位」，那是另一回事。
+            // 画哪一边见 dropEdge —— 方向不同，落的位置真的不同
+            dropEdge(r) === "top" ? "[&>td]:border-t-2 [&>td]:border-primary" : "",
+            dropEdge(r) === "bottom" ? "[&>td]:border-b-2 [&>td]:border-primary" : "",
+            dragNo === r.categoryNo ? "opacity-40" : "",
+          ].filter(Boolean).join(" ")
         }
+        rowProps={(r) => ({
+          onDragOver: (e) => {
+            if (!canDrop(r)) return;
+            e.preventDefault();          // 不 preventDefault 的话浏览器根本不让放
+            setOverNo(r.categoryNo);
+          },
+          onDragLeave: () => setOverNo((n) => (n === r.categoryNo ? null : n)),
+          onDrop: (e) => { e.preventDefault(); drop(r); },
+        })}
       />
       </div>
 
