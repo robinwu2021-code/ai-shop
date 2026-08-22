@@ -484,6 +484,11 @@ export default {
     copyLink: "نسخ الرابط", printVersion: "نسخة للطباعة",
     shareKit: "مواد المشاركة", shareKitHint: "الصقها في مجموعة عملائك — أفضل من أي إعلان.",
     copyText: "نسخ النص", copied: "تم النسخ",
+    addVillage: "＋ غير مدرج؟ أضف واحدًا",
+    addVillageTitle: "إضافة قرية",
+    addVillageHint: "مرئي لمتجرك فقط حتى تؤكده الإدارة",
+    addVillageDone: "تمت الإضافة — يمكنك اختياره الآن",
+    mine: "أضفته أنت",
   },
   afterSale: {
     agreeReturn: "الموافقة على الإرجاع",

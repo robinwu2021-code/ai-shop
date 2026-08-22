@@ -690,8 +690,18 @@ const regionSeeds: Region[] = [
   { regionCode: "3101", parentCode: "31", level: "CITY", name: "上海市市辖区", enabled: true, hasChild: false },
   { regionCode: "330106", parentCode: "3301", level: "DISTRICT", name: "西湖区", enabled: true, hasChild: true },
   { regionCode: "330102", parentCode: "3301", level: "DISTRICT", name: "上城区", enabled: true, hasChild: false },
-  { regionCode: "330106001", parentCode: "330106", level: "STREET", name: "北山街道", enabled: true, hasChild: false },
+  { regionCode: "330106001", parentCode: "330106", level: "STREET", name: "北山街道", enabled: true, hasChild: true },
   { regionCode: "330106002", parentCode: "330106", level: "STREET", name: "西溪街道", enabled: true, hasChild: false },
+  /*
+   * 村级（第五级）。**mock 必须有这一层**，否则「按村圈经营范围」与
+   * 「补录缺失的村」两个功能在 mock 上都走不到 —— 而 mock 是这个仓库
+   * 唯一能不连后端跑完整交互的地方。
+   *
+   * 只给北山街道配（它的 hasChild 因此是 true），西溪街道故意留空：
+   * 那正是「这一层是空的，商家要补录」的场景，得能演出来。
+   */
+  { regionCode: "330106001001", parentCode: "330106001", level: "VILLAGE", name: "上保社区", enabled: true, hasChild: false, source: "OFFICIAL" },
+  { regionCode: "330106001002", parentCode: "330106001", level: "VILLAGE", name: "宝石社区", enabled: true, hasChild: false, source: "OFFICIAL" },
 ];
 
 const communitySeeds: CommunitySeed[] = [

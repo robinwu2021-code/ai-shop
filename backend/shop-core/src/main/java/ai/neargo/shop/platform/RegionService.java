@@ -25,6 +25,37 @@ public interface RegionService {
     List<RegionVO> children(String parentCode, boolean enabledOnly);
 
     /**
+     * 某区划的直接下级，<b>带上这家商家自己补录的那些</b>。
+     *
+     * <p>与上面那个的差别只在可见范围：商家补录的村在运营确认之前
+     * {@code owner_entity_no} 非空，只有他自己看得到。运营确认后置 NULL，
+     * 走哪个方法都能看到。
+     *
+     * @param entityNo 当前商家；传 null 等价于上面那个方法
+     */
+    List<RegionVO> children(String parentCode, boolean enabledOnly, String entityNo);
+
+    /**
+     * 商家补录一个村/社区（行政区划第五级）。
+     *
+     * <p><b>为什么要给商家这个口子</b>：官方村级数据停在 2023-06-30
+     * （统计局 2024-10 起不再公开），之后新增或改名的村没有任何官方渠道能拿到。
+     * 而缺一个村就等于那一片做不了生意 —— 让他等平台更新，
+     * 而平台的「下次更新」在源头停发之后根本不会到来。
+     *
+     * <p><b>录完立刻可用，但只对他自己可见</b>。运营确认后才转为全网共享 ——
+     * 不这样做只有两条更差的路：立刻全网可见（一家店打错字污染全平台），
+     * 或者压在待审队列里不给用（他今天就做不了这单生意）。
+     *
+     * @param parentStreetCode 上级街道（9 位）。<b>只能挂在街道下</b> ——
+     *                         挂到区县下的话它在按街道覆盖的场景里永远出不来
+     * @param name             村/社区名
+     * @param entityNo         提报的商家
+     * @throws ai.neargo.shop.common.BizException 上级不是街道、或同一街道下同名已存在
+     */
+    RegionVO createVillage(String parentStreetCode, String name, String entityNo);
+
+    /**
      * 从一个区划码回溯到顶层，<b>从省到自身</b>排列。
      *
      * <p>给运营端回显用：拿到一个社区的 {@code region_code=330106001}，
@@ -41,7 +72,12 @@ public interface RegionService {
      * @param hasChild 下面还有没有下级。端上据此决定「还要不要再往下选一层」，
      *                 而不是点进去才发现是空的
      */
+    /**
+     * @param source  {@code OFFICIAL} / {@code MERCHANT}。端上据此标出「我补录的」——
+     *                不标的话商家分不清哪些是自己填的，也就不知道哪些还没被运营确认
+     * @param pending 商家补录且尚未被运营确认（只有自己看得见）
+     */
     record RegionVO(String regionCode, String parentCode, String level, String name,
-                    boolean enabled, boolean hasChild) {
+                    boolean enabled, boolean hasChild, String source, boolean pending) {
     }
 }

@@ -26,7 +26,7 @@ public class MchServiceArea extends BaseEntity {
 
     private String entityNo;
 
-    /** COMMUNITY / STREET / DISTRICT / CITY */
+    /** COMMUNITY / VILLAGE / STREET / DISTRICT / CITY */
     private String level;
 
     /** {@code level=COMMUNITY} 时是 {@code community_no}，否则是 {@code region_code} */

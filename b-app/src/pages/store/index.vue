@@ -180,6 +180,42 @@ async function tapRegion(r: Region) {
   }
 }
 
+/**
+ * 能不能在这一层补录。**只在街道下** —— 再往上是标准行政区划，
+ * 商家补录省市区没有意义；再往下没有第六级。
+ */
+const canAddVillage = computed(() => trail.value[trail.value.length - 1]?.level === "STREET");
+
+/**
+ * 补录一个村/社区。
+ *
+ * <p>录完**立刻刷新当前这一层**，而不是只弹个成功提示 ——
+ * 商家要的是马上能选上它，让他自己退出去再点进来是多余的一步。
+ */
+async function addVillage() {
+  const street = trail.value[trail.value.length - 1];
+  if (!street) return;
+  const res = await new Promise<{ confirm: boolean; content?: string }>((resolve) => {
+    uni.showModal({
+      title: String(t("store.addVillageTitle")),
+      content: String(t("store.addVillageHint")),
+      editable: true,
+      placeholderText: "",
+      success: (r) => resolve({ confirm: Boolean(r.confirm), content: r.content }),
+      fail: () => resolve({ confirm: false }),
+    });
+  });
+  const name = (res.content ?? "").trim();
+  if (!res.confirm || !name) return;
+  try {
+    await api.mAddVillage(street.regionCode, name);
+    await loadRegions(street.regionCode);
+    uni.showToast({ title: t("store.addVillageDone"), icon: "none" });
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: "none" });
+  }
+}
+
 /** 回退到面包屑的第 i 级；i = -1 回省级 */
 async function backTo(i: number) {
   trail.value = trail.value.slice(0, i + 1);
@@ -413,9 +449,20 @@ onShow(load);
             <view v-for="r in regionList" :key="r.regionCode" class="rg__i">
               <text class="rg__n" @tap="tapRegion(r)">
                 {{ r.name }}<text v-if="r.hasChild" class="rg__more"> ›</text>
+                <!-- 标出「我加的」：不标的话商家不知道这条还没共享，
+                     会以为别的店也看得到他补的这个村 -->
+                <text v-if="r.pending" class="rg__mine"> · {{ $t("store.mine") }}</text>
               </text>
               <!-- 有下级的也要能整个选中：「整个西湖区」是最常见的诉求 -->
               <text class="rg__pick" @tap="addRegion(r)">{{ $t("store.pickThis") }}</text>
+            </view>
+            <!--
+              补录入口。**只在街道那一层出现** —— 上面几级是标准行政区划，
+              商家补录省市区没有意义；而村级官方数据停在 2023，
+              之后新增的村没有任何官方渠道，缺一个那一片就做不了生意。
+            -->
+            <view v-if="canAddVillage" class="rg__add" @tap="addVillage">
+              <text class="rg__addt">{{ $t("store.addVillage") }}</text>
             </view>
           </view>
           <text class="mini rg__close" @tap="regionOpen = false">{{ $t("common.cancel") }}</text>
@@ -587,6 +634,20 @@ onShow(load);
 }
 .rg__more {
   color: var(--sh-sub);
+}
+/* 补录入口：虚框，与「选项」区分开 —— 它不是一个可选的地方，是一个动作 */
+.rg__add {
+  padding: 20rpx 0;
+  text-align: center;
+}
+.rg__addt {
+  font-size: 26rpx;
+  color: var(--sh-primary-text);
+}
+/* 「我加的」：警示色而不是主色 —— 它是一个待确认的状态，不是强调 */
+.rg__mine {
+  font-size: 24rpx;
+  color: var(--sh-warning);
 }
 .rg__pick {
   flex-shrink: 0;

@@ -659,6 +659,11 @@ export default {
     shareKitHint: "复制后直接发进你自己的客户群，比任何广告都管用。",
     copyText: "复制文案",
     copied: "已复制",
+    addVillage: "＋ 这里没有？补录一个",
+    addVillageTitle: "补录村/社区",
+    addVillageHint: "仅本店可见，运营确认后其他商家才能用",
+    addVillageDone: "已补录，可直接选用",
+    mine: "我加的",
   },
   afterSale: {
     agreeReturn: "同意退货",

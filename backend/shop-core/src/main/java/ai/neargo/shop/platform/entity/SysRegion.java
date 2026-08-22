@@ -27,6 +27,22 @@ public class SysRegion extends BaseEntity {
     /** 上级区划码。**省级为 NULL 而不是空串** —— 两者并存的话「取顶层」要判两次，漏一处就少半棵树 */
     private String parentCode;
 
+    /**
+     * 数据来源：{@code OFFICIAL}（官方）/ {@code MERCHANT}（商家补录）。
+     *
+     * <p><b>定期更新只能动 OFFICIAL 那批</b> —— 把商家录的当过期数据清掉，
+     * 是把他自己填的东西删了，而他不会收到任何通知。
+     */
+    private String source;
+
+    /**
+     * 待运营确认期间的可见范围：<b>非空 = 只有这家店看得到</b>；确认通过后置 NULL 转为全网共享。
+     *
+     * <p>不这样做只有两条路，都更差：录完立刻全网可见（一家店打错字污染全平台），
+     * 或者压在待审队列里不给用（商家今天就做不了这单生意）。
+     */
+    private String ownerEntityNo;
+
     /** PROVINCE / CITY / DISTRICT / STREET / VILLAGE（村委会·居委会，第五级） */
     private String level;
 

@@ -921,6 +921,43 @@ export const mockApi: MerchantApi = {
     );
   },
 
+  /**
+   * 补录村级。**mock 要把「只对自己可见」这条也做出来** ——
+   * 这是这个功能的核心约束，mock 上直接全局可见的话，
+   * 「录完别的店看不看得到」这个问题永远测不出来。
+   *
+   * mock 只有一个商家，所以可见性表现为 `pending=true` 这个标记本身。
+   */
+  async mAddVillage(parent, name) {
+    requireMerchant();
+    const street = db.regionSeeds.find((r) => r.regionCode === parent);
+    // 与后端同口径：只能挂街道下 —— 挂到区县下的话它在按街道覆盖里永远出不来
+    if (!street || street.level !== "STREET") throw new Error("只能挂在街道下");
+    const nm = name.trim();
+    if (!nm) throw new Error("请填写村/社区名称");
+
+    const exist = db.regionSeeds.find((r) => r.parentCode === parent && r.name === nm);
+    // 同名直接返回既有的：报错的话商家看到「已存在」却在列表里找不到它
+    if (exist) return delay(exist);
+
+    // 自建码：街道码 + M + 2 位。**字母保证与官方纯数字码永不冲突** ——
+    // 用数字续号的话，官方哪天补发到这个号段，撞的是唯一键
+    const n = db.regionSeeds.filter((r) => r.regionCode.startsWith(`${parent}M`)).length + 1;
+    const row = {
+      regionCode: `${parent}M${String(n).padStart(2, "0")}`,
+      parentCode: parent,
+      level: "VILLAGE",
+      name: nm,
+      enabled: true,
+      hasChild: false,
+      source: "MERCHANT",
+      pending: true,
+    };
+    db.regionSeeds.push(row);
+    persist();
+    return delay(row);
+  },
+
   async mApplyCommunity(payload) {
     const merchantNo = requireMerchant();
     if (db.communityApplies.some((a) => a.name === payload.name && a.status === "PENDING")) {

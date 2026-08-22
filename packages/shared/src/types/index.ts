@@ -2549,7 +2549,7 @@ export interface VerifyResult {
 
 /** 一条地理覆盖项。名字由后端拼好下发 —— 端上只拿到 330106 的话，要么显示一串数字，要么自己再查一次 */
 export interface ServiceArea {
-  /** 粒度：社区 / 街道 / 区县 / 城市。**可跨粒度组合** —— 三个小区 + 一个区是四条 */
+  /** 粒度：社区 / 村 / 街道 / 区县 / 城市。**可跨粒度组合** —— 三个小区 + 一个区是四条 */
   level: AreaLevel;
   /** level=COMMUNITY 时是社区号，否则是区划码 */
   refCode: string;
@@ -2610,9 +2610,10 @@ export interface CommunityApplyReq {
   note?: string;
 }
 
-/** 行政区划的一级（`/biz/regions`）。国家统计局统计用区划代码，省 2 / 市 4 / 区 6 / 街道 9 位 */
+/** 行政区划的一级（`/biz/regions`）。省 2 / 市 4 / 区 6 / 街道 9 / 村 12 位 */
 export interface Region {
-  /** 统计用区划代码：省 2 位 / 市 4 位 / 区县 6 位 / 街道 9 位。**前缀即层级**，下级码以上级码开头 */
+  /** 统计用区划代码：省 2 / 市 4 / 区县 6 / 街道 9 / 村 12 位。**前缀即层级**，下级码以上级码开头。
+   *  商家补录的村是 `街道码 + M + 2 位`，字母保证与官方纯数字码永不冲突 */
   regionCode: string;
   /** 上级区划码。省级为空 —— 逐级选择器据此判断自己在不在顶层 */
   parentCode?: string;
@@ -2624,6 +2625,15 @@ export interface Region {
   enabled: boolean;
   /** 下面还有没有下级。端上据此决定「还要不要再往下选一层」，而不是点进去才发现是空的 */
   hasChild: boolean;
+  /** `OFFICIAL`（官方数据）/ `MERCHANT`（本店补录）。端上据此标出「我加的」 */
+  source?: string;
+  /**
+   * 本店补录且运营还没确认 —— **只有自己看得见**。
+   *
+   * <p>要标出来：不标的话商家不知道这条还没共享，
+   * 会以为别的店也能看到他加的这个村。
+   */
+  pending?: boolean;
 }
 
 /** 店铺码（C-ST-08 扫码进店的商家侧） */
