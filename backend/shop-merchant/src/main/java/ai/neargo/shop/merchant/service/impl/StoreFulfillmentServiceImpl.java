@@ -100,7 +100,7 @@ public class StoreFulfillmentServiceImpl implements StoreFulfillmentService {
              * 同样没有任何报错症状（商品在架、订单为零），所以必须在写入口拦。
              * READONLY（套餐降级）的店除外：它本来就不接新单。
              */
-            throw BizException.of(ErrorCode.BAD_REQUEST);
+            throw BizException.of(ErrorCode.FULFILLMENT_NONE_ENABLED);
         }
 
         boolean storePickupOn = byChannel.containsKey(Fulfillments.STORE_PICKUP)
@@ -108,7 +108,7 @@ public class StoreFulfillmentServiceImpl implements StoreFulfillmentService {
         boolean hasAddress = store.getAddress() != null && !store.getAddress().isBlank();
         if (storePickupOn && !hasAddress) {
             // 门店自取的取货地址就是门店地址（刻意不另存一份），没有地址的自取是空承诺
-            throw BizException.of(ErrorCode.BAD_REQUEST);
+            throw BizException.of(ErrorCode.STORE_ADDRESS_REQUIRED);
         }
         /*
          * 社区自提点这一路的取货点引用（P1）：传了就全量替换；每个点都要真的存在，
@@ -139,7 +139,7 @@ public class StoreFulfillmentServiceImpl implements StoreFulfillmentService {
             boolean judging = pickupNos != null || !wasOn;
             int refs = pickupNos != null ? pickupNos.size() : pickupRefsOf(store.getStoreNo()).size();
             if (judging && refs == 0) {
-                throw BizException.of(ErrorCode.BAD_REQUEST);
+                throw BizException.of(ErrorCode.PICKUP_LANDING_REQUIRED);
             }
         }
 
@@ -176,8 +176,11 @@ public class StoreFulfillmentServiceImpl implements StoreFulfillmentService {
                 throw BizException.of(ErrorCode.BAD_REQUEST);
             }
             if (subset) {
-                if (Fulfillments.EXPRESS.equals(cmd.channel()) || cmd.areaNos() == null || cmd.areaNos().isEmpty()) {
+                if (Fulfillments.EXPRESS.equals(cmd.channel())) {
                     throw BizException.of(ErrorCode.BAD_REQUEST);
+                }
+                if (cmd.areaNos() == null || cmd.areaNos().isEmpty()) {
+                    throw BizException.of(ErrorCode.SUBSET_AREAS_REQUIRED);
                 }
                 if (myAreaNos == null) {
                     myAreaNos = new java.util.HashSet<>();

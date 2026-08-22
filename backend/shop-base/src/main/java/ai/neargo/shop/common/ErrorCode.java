@@ -373,6 +373,14 @@ public enum ErrorCode {
     /** 这一路被运营锁了：商家改不了开关。置灰的按钮点不到，这条只挡绕过界面的请求 */
     CHANNEL_LOCKED(70031, "err.merchant.channel_locked"),
     /*
+     * 送货方式写入口的四条硬规则，各给一个码。此前全是 BAD_REQUEST ——
+     * 商家开「门店自取」看到「请求参数有误」，不知道是门店没填地址（真机实测）。
+     */
+    STORE_ADDRESS_REQUIRED(70032, "err.merchant.store_address_required"),
+    PICKUP_LANDING_REQUIRED(70033, "err.merchant.pickup_landing_required"),
+    FULFILLMENT_NONE_ENABLED(70034, "err.merchant.fulfillment_none_enabled"),
+    SUBSET_AREAS_REQUIRED(70035, "err.merchant.subset_areas_required"),
+    /*
      * 微信手机号快速验证没给出号码（通道未开、未认证、或本次换取失败）。
      *
      * **单独一个码，且明确报错、不静默回落到验证码表单**：

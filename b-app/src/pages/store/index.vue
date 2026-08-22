@@ -62,6 +62,11 @@ async function load() {
 }
 
 async function save() {
+  // 地址是买家取货页上要印的，太短的（「南门」）等于没写
+  if (form.value.address && form.value.address.trim().length < 4) {
+    uni.showToast({ title: t("store.addressTooShort"), icon: "none" });
+    return;
+  }
   // 这一页不管范围：serviceAreas 不传 = 不改；旧三档留空 = 不改（存量 PLATFORM 回传会被拒）
   const payload = {
     ...form.value,
@@ -170,7 +175,7 @@ onShow(() => {
 
       <view class="field">
         <text class="field__label">{{ $t("store.openHours") }}</text>
-        <input v-model="form.openHours" class="field__input" placeholder="06:30–21:00" />
+        <biz-time-range v-model="form.openHours"></biz-time-range>
         <view class="quick">
           <text v-for="h in HOURS" :key="h.key" class="mini" @tap="form.openHours = h.value">
             {{ $t(`store.${h.key}`) }}
@@ -181,7 +186,7 @@ onShow(() => {
       <view class="field">
         <text class="field__label">{{ $t("store.address") }}</text>
         <view class="addr">
-          <input v-model="form.address" class="field__input addr__input" placeholder="阳光里小区南门" />
+          <input v-model="form.address" class="field__input addr__input" :maxlength="100" :placeholder="$t('store.addressPh')" />
           <view v-if="geoAvailable" class="addr__locate" @tap="locateAddress">
             <sh-icon name="pin" :size="18" color="var(--sh-primary-text)"></sh-icon>
             <text class="addr__t">{{ locating ? "…" : $t("store.locateAddr") }}</text>

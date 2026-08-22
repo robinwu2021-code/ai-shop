@@ -138,6 +138,16 @@ async function toggleChannel(channel: string) {
     uni.showToast({ title: t("store.fulfillNone"), icon: "none" });
     return;
   }
+  // 门店自取的取货地址就是门店地址：没地址先说清楚、给入口，不把请求打到后端再看一句报错
+  if (channel === "STORE_PICKUP" && !row.enabled && !form.value.address) {
+    uni.showModal({
+      title: t("store.sumNoAddress"),
+      content: t("store.needAddressBody"),
+      confirmText: t("store.goAddress"),
+      success: (r) => { if (r.confirm) goAddress(); },
+    });
+    return;
+  }
   if (row.enabled) {
     // 关路前确认：列出只勾了这一路的在售商品（P1 走真清单），关掉后买家下不了单。
     // 商品不自动改 —— 动在售商品要商家自己点头
@@ -439,15 +449,15 @@ onShow(() => {
             <view class="rate__grid">
               <view class="rate__f">
                 <text class="field__label">{{ $t("store.minOrder") }}</text>
-                <input v-model="ruleForm.minOrder" class="field__input" type="digit" />
+                <input v-model="ruleForm.minOrder" class="field__input" type="digit" :maxlength="8" />
               </view>
               <view class="rate__f">
                 <text class="field__label">{{ $t("store.fee") }}</text>
-                <input v-model="ruleForm.fee" class="field__input" type="digit" />
+                <input v-model="ruleForm.fee" class="field__input" type="digit" :maxlength="8" />
               </view>
               <view class="rate__f">
                 <text class="field__label">{{ $t("store.freeThreshold") }}</text>
-                <input v-model="ruleForm.free" class="field__input" type="digit" />
+                <input v-model="ruleForm.free" class="field__input" type="digit" :maxlength="8" />
               </view>
             </view>
             <text class="hint">{{ $t("store.rateHint") }}</text>

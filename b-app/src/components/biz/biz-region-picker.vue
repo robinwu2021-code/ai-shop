@@ -256,7 +256,7 @@ function close() {
 
       <view class="search">
         <sh-icon name="search" :size="18" color="var(--sh-sub)"></sh-icon>
-        <input v-model="keyword" class="search__input" :placeholder="$t('store.picker.searchPh')" />
+        <input v-model="keyword" class="search__input" :maxlength="20" :placeholder="$t('store.picker.searchPh')" />
       </view>
 
       <!-- 面包屑：当前在哪一级。搜索时不显示 —— 结果是跨级的 -->
@@ -309,7 +309,7 @@ function close() {
             </view>
             <view v-else class="apply">
               <text class="hint">{{ $t("store.applyToStreet", { s: current?.name }) }}</text>
-              <input v-model="applyName" class="field__input" :placeholder="$t('store.dictHint')" />
+              <input v-model="applyName" class="field__input" :maxlength="30" :placeholder="$t('store.dictHint')" />
               <view v-if="dictSuggests.length" class="apply__sug">
                 <text v-for="d in dictSuggests" :key="d.regionCode" class="sh-chip" @tap="pickVillage(d)">{{ d.name }}</text>
               </view>

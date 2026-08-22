@@ -89,6 +89,10 @@ async function submitBuild() {
     uni.showToast({ title: t("store.pickup.needNameAddr"), icon: "none" });
     return;
   }
+  if (name.length < 2 || address.length < 4) {
+    uni.showToast({ title: t("store.pickup.tooShort"), icon: "none" });
+    return;
+  }
   // 坐标必填：没坐标的点买家用定位永远找不到（withinRadius 对空坐标恒 false）
   if (!coords.value) {
     uni.showToast({ title: t("store.pickup.needCoords"), icon: "none" });
@@ -171,9 +175,10 @@ function close() {
           </view>
           <view v-else class="build">
             <text class="hint">{{ $t("store.pickup.buildHint") }}</text>
-            <input v-model="form.name" class="field__input" :placeholder="$t('store.pickup.namePh')" />
-            <input v-model="form.address" class="field__input" :placeholder="$t('store.pickup.addressPh')" />
-            <input v-model="form.openHours" class="field__input" :placeholder="$t('store.pickup.hoursPh')" />
+            <input v-model="form.name" class="field__input" :maxlength="30" :placeholder="$t('store.pickup.namePh')" />
+            <input v-model="form.address" class="field__input" :maxlength="100" :placeholder="$t('store.pickup.addressPh')" />
+            <text class="field__label">{{ $t("store.pickup.hoursPh") }}</text>
+            <biz-time-range v-model="form.openHours" clearable></biz-time-range>
             <view class="locate" :class="{ 'is-ok': !!coords }" @tap="locate">
               <sh-icon name="pin" :size="18" :color="coords ? 'var(--sh-primary-text)' : 'var(--sh-sub)'"></sh-icon>
               <text class="locate__t">{{ locating ? $t("common.loading") : coords ? $t("store.pickup.located") : $t("store.pickup.locate") }}</text>
