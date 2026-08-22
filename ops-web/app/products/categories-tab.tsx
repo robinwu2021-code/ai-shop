@@ -68,6 +68,20 @@ export function CategoriesTab({ c, canEdit }: { c: ProductsCopy; canEdit: boolea
    * 所以它证明的是「配置长这样」，不是「C 端此刻长这样」。这条差别写在面板里，
    * 免得有人拿它当线上验收。
    */
+  /**
+   * 这一轮里**被自己关掉**的类目编号。
+   *
+   * <p>不加它的话，默认视图（不含已停用）下关掉一条 = 那一行**当场消失** ——
+   * 运营看不到自己刚做的事，只看到列表少了一行，会以为点错了或者删掉了。
+   * 「含已停用」这个筛选是给**进来时**用的，不该把你刚动过的那一行也吞掉。
+   *
+   * <p>只在本次停留期间有效：刷新后它就该按筛选条件老实隐藏，
+   * 否则这一页会慢慢变成「哪一条都不肯走」的杂物间。
+   */
+  const [touched, setTouched] = useState<string[]>([]);
+  const remember = (...nos: string[]) =>
+    setTouched((p) => [...new Set([...p, ...nos])]);
+
   const [preview, setPreview] = useState(false);
   /** 预览语言：切到 EN 才看得出缺译回落成中文 */
   const [previewLang, setPreviewLang] = useState<"zh" | "en">("zh");
@@ -118,7 +132,11 @@ export function CategoriesTab({ c, canEdit }: { c: ProductsCopy; canEdit: boolea
         await one(v.row.categoryNo);
       }
     },
-    onSuccess: (_, v) => { invalidate(); notify.success(v.on ? c.catEnabled : c.catDisabled); },
+    onSuccess: (_, v) => {
+      invalidate();
+      remember(v.row.categoryNo, ...(v.withChildren ?? []).map((x) => x.categoryNo));
+      notify.success(v.on ? c.catEnabled : c.catDisabled);
+    },
   });
 
   /**
@@ -223,10 +241,11 @@ export function CategoriesTab({ c, canEdit }: { c: ProductsCopy; canEdit: boolea
       } else {
         for (const x of doable) await api.archiveCategory(x.categoryNo);
       }
-      return { n: doable.length, m: picked.length - doable.length };
+      return { n: doable.length, m: picked.length - doable.length, nos: doable.map((x) => x.categoryNo) };
     },
     onSuccess: (r) => {
       invalidate();
+      remember(...r.nos);
       setSel([]);
       if (r.n) notify.success(fill(c.catBulkDone, { n: r.n, m: r.m }));
       else notify.error(c.catBulkNone);
@@ -267,7 +286,10 @@ export function CategoriesTab({ c, canEdit }: { c: ProductsCopy; canEdit: boolea
   });
 
   const allWithOff = cats.data ?? [];
-  const all = showArchived ? allWithOff : allWithOff.filter((x) => !x.archivedAt);
+  // 停用的按筛选隐藏，**但刚被自己关掉的那几条留在原地**（见 `touched`）
+  const all = showArchived
+    ? allWithOff
+    : allWithOff.filter((x) => !x.archivedAt || touched.includes(x.categoryNo));
   /** 命中：自己名字含关键词，或它的父级命中（父级命中时整组保留） */
   const rows = useMemo(() => {
     const kw = keyword.trim().toLowerCase();
