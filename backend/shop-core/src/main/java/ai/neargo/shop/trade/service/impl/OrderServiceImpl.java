@@ -360,6 +360,7 @@ public class OrderServiceImpl implements OrderService {
         requireFulfillmentSupported(cmd.fulfillment(), split, storeOfMerchant);
         requireReceiverWhenShipped(cmd, userNo);
         requirePickupPointWhenPickup(cmd);
+        requirePickupServed(cmd, split);
         requireAppointmentWhenNeeded(cmd);
 
         String orderNo = BizKey.next(BizKey.ORDER);
@@ -1291,6 +1292,25 @@ public class OrderServiceImpl implements OrderService {
                     g.merchantNo, storeOfMerchant.get(g.merchantNo));
             if (!enabled.isEmpty() && !enabled.contains(fulfillment)) {
                 throw BizException.of(ErrorCode.FULFILLMENT_NOT_SUPPORTED);
+            }
+        }
+    }
+
+    /**
+     * 买家选的自提点这家店送不送（P1）：点 ∈ 门店引用的取货点 ∪ 门店自己的点。
+     *
+     * <p>空集 = 这家店没配过取货点，按兼容期放行 —— 与 {@link #requireFulfillmentSupported}
+     * 同一约定。否则存量商家（只开了自提、从没进过取货点配置）在发布当天一单都下不了。
+     */
+    private void requirePickupServed(CreateOrderCommand cmd, Split split) {
+        if (cmd.fulfillment() == null || !Fulfillments.isPickup(cmd.fulfillment())
+                || cmd.pickupNo() == null || cmd.pickupNo().isBlank()) {
+            return;
+        }
+        for (Group g : split.groups) {
+            java.util.Set<String> allowed = merchantPort.allowedPickupNos(g.merchantNo);
+            if (!allowed.isEmpty() && !allowed.contains(cmd.pickupNo())) {
+                throw BizException.of(ErrorCode.PICKUP_POINT_NOT_SERVED);
             }
         }
     }

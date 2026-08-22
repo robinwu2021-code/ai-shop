@@ -39,6 +39,7 @@ import type {
   VerifyBatchReq,
   VerifyReq,
   StoreFulfillmentSaveReq,
+  PickupSelfBuildReq,
 } from "./requests";
 import type {
   BizScope,
@@ -93,6 +94,8 @@ import type {
   PickupOverview,
   RateCard,
   StoreFulfillment,
+  PickupCandidate,
+  RegionSearchResult,
 } from "@shared/types";
 
 export const httpApi: MerchantApi = {
@@ -134,6 +137,16 @@ export const httpApi: MerchantApi = {
       buildPath(E.mSaveStoreFulfillment.path, { storeNo }),
       payload satisfies StoreFulfillmentSaveReq,
     ),
+  mFulfillmentImpact: (storeNo, channel) =>
+    http.get<Array<{ goodsNo: string; title: string }>>(
+      buildPath(E.mFulfillmentImpact.path, { storeNo, channel }),
+    ),
+  mPickupCandidates: (storeNo) =>
+    http.get<PickupCandidate[]>(E.mPickupCandidates.path, { storeNo }),
+  mSelfBuildPickup: (payload) =>
+    http.post<PickupCandidate>(E.mSelfBuildPickup.path, payload satisfies PickupSelfBuildReq),
+  mRegionSearch: (kw) => http.get<RegionSearchResult>(E.mRegionSearch.path, { kw }),
+  mRegionPath: (code) => http.get<Region[]>(E.mRegionPath.path, { code }),
   mStoreList: () => http.get<Store[]>(E.mStoreList.path),
   mCreateStore: (payload) =>
     http.post<Store>(E.mCreateStore.path, payload satisfies StoreEditReq),

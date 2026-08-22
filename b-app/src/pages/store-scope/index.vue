@@ -101,7 +101,11 @@ async function loadFulfillment() {
   }
 }
 
-async function persistChannels(next: StoreFulfillment["channels"], channel: string) {
+async function persistChannels(
+  next: StoreFulfillment["channels"],
+  channel: string,
+  pickupNos?: string[],
+) {
   savingChannel.value = channel;
   try {
     fulfillment.value = await api.mSaveStoreFulfillment(merchant.storeNo || "default", {
@@ -109,6 +113,8 @@ async function persistChannels(next: StoreFulfillment["channels"], channel: stri
         channel: c.channel,
         enabled: c.enabled,
         templateNo: c.templateNo ?? undefined,
+        // 只在管理取货点时带：不带 = 不改引用
+        pickupNos: pickupNos && c.channel === "NEIGHBOR_PICKUP" ? pickupNos : undefined,
       })),
     });
   } catch (e) {
@@ -129,11 +135,18 @@ async function toggleChannel(channel: string) {
     return;
   }
   if (row.enabled) {
-    // 关路前确认：只勾了这一路的在售商品，关掉后买家下不了单。商品不自动改 —— 动在售商品要商家自己点头
+    // 关路前确认：列出只勾了这一路的在售商品（P1 走真清单），关掉后买家下不了单。
+    // 商品不自动改 —— 动在售商品要商家自己点头
+    const impacted = await api.mFulfillmentImpact(merchant.storeNo || "default", channel).catch(() => []);
+    const names = impacted.slice(0, 5).map((g) => `· ${g.title}`).join("\n");
+    const more = impacted.length > 5 ? "\n" + t("store.offMore", { n: impacted.length - 5 }) : "";
+    const body = impacted.length
+      ? t("store.offConfirmList", { n: impacted.length }) + "\n" + names + more
+      : t("store.offConfirmBody");
     const ok = await new Promise<boolean>((resolve) => {
       uni.showModal({
         title: t("store.offConfirmTitle", { s: t(`channel.${channel}`) }),
-        content: t("store.offConfirmBody"),
+        content: body,
         cancelText: t("store.offKeep"),
         confirmText: t("store.offAnyway"),
         success: (r) => resolve(!!r.confirm),
@@ -143,6 +156,23 @@ async function toggleChannel(channel: string) {
     if (!ok) return;
   }
   await persistChannels(next, channel);
+}
+
+// 取货点（P1）：社区自提点这一路引用了哪些点；管理走弹层，保存与开关同一个 PUT
+const pickupSheetOpen = ref(false);
+const neighborRefs = computed(() =>
+  channelRows.value.find((c) => c.channel === "NEIGHBOR_PICKUP")?.pickups ?? [],
+);
+const neighborSummary = computed(() => {
+  const refs = neighborRefs.value;
+  if (!refs.length) return "";
+  const names = refs.slice(0, 2).map((r) => r.name + (r.status !== "ACTIVE" ? `（${t(`store.pickup.st${r.status}`)}）` : ""));
+  return refs.length > 2 ? t("store.pickup.sumMore", { a: names.join(" · "), n: refs.length - 2 }) : names.join(" · ");
+});
+async function savePickups(pickupNos: string[]) {
+  const cur = fulfillment.value;
+  if (!cur) return;
+  await persistChannels(cur.channels, "NEIGHBOR_PICKUP", pickupNos);
 }
 
 // 自送费率：行内展开编辑，读写既有 deliveryRule 接口（单位分；输入按元）
@@ -345,6 +375,10 @@ onShow(() => {
           <text class="sum__t">{{ form.address ? $t("store.sumPickupAddr", { s: form.address }) : $t("store.sumNoAddress") }}</text>
           <text class="sum__go" @tap.stop="goAddress">{{ $t("store.goAddress") }}</text>
         </view>
+        <view v-if="c.enabled && c.channel === 'NEIGHBOR_PICKUP'" class="sum" :class="{ 'sum--warn': !neighborRefs.length && !form.address }">
+          <text class="sum__t">{{ neighborSummary ? $t("store.pickup.sumRefs", { s: neighborSummary }) : (form.address ? $t("store.pickup.sumNone") : $t("store.pickup.sumNoneNoAddr")) }}</text>
+          <text class="sum__go" @tap.stop="pickupSheetOpen = true">{{ $t("store.pickup.manage") }}</text>
+        </view>
         <view v-if="c.enabled && c.channel === 'MERCHANT_DELIVERY'" class="sum">
           <template v-if="!ruleOpen">
             <text class="sum__t">{{ deliverySummary || $t("store.sumDeliveryUnset") }}</text>
@@ -377,6 +411,13 @@ onShow(() => {
         </view>
       </template>
     </view>
+
+    <biz-pickup-sheet
+      v-model:visible="pickupSheetOpen"
+      :store-no="merchant.storeNo || 'default'"
+      :selected="neighborRefs.map((r) => r.pickupNo)"
+      @done="savePickups"
+    ></biz-pickup-sheet>
 
     <biz-region-picker
       v-model:visible="pickerOpen"

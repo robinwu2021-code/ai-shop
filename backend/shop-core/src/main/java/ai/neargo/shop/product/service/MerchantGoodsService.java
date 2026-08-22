@@ -29,6 +29,15 @@ public interface MerchantGoodsService {
     PageData<GoodsVO> list(String merchantNo, String categoryNo, String keyword, String status, long page, long size);
 
     /**
+     * 关掉某一路送货方式会影响的在售商品（P1）：本店货架上<b>只勾了这一路</b>的。
+     * 商家关路前要看到清单 —— 关完这些货买家就下不了单，而商品不会被自动改动。
+     */
+    List<GoodsBrief> onlyFulfillment(String merchantNo, String storeNo, String channel);
+
+    record GoodsBrief(String goodsNo, String title) {
+    }
+
+    /**
      * 运营端**待审队列**（P-3.2.2）。固定只给 {@code AUDITING}。
      *
      * <p><b>为什么不复用 {@link #list}(null, null, null, "AUDITING", …)</b> ——

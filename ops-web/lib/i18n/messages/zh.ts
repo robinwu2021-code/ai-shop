@@ -184,7 +184,7 @@ export const zh = {
     APPOINTMENT: "上门预约",
   },
   pickupPointType: { PLATFORM: "平台点", STORE: "常驻点", NEIGHBOR: "邻里自提" },
-  pickupStatus: { ACTIVE: "启用中", MIGRATING: "迁移中", SUSPENDED: "已停用" },
+  pickupStatus: { PENDING: "待审核", ACTIVE: "启用中", MIGRATING: "迁移中", SUSPENDED: "已停用", REJECTED: "已驳回" },
   batchStatus: { PLANNED: "计划中", DISPATCHED: "已发车", ARRIVED: "已到货", SIGNED: "已签收" },
   storeAuditStatus: { PENDING: "待审核", PASSED: "已通过", REJECTED: "已驳回" },
   couponType: { FULL_CUT: "满减", DISCOUNT: "折扣", NEWCOMER: "新人", TARGETED: "定向" },

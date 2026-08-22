@@ -19,6 +19,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.Comparator;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -215,6 +216,106 @@ public class CommunityServiceImpl implements CommunityService {
      * 不是「张记杂货·河坊街店」—— 自提点自己已经有名字和地址了，
      * 这里要回答的是「这是谁家的点」。
      */
+    @Override
+    public List<PickupCandidate> pickupCandidates(java.util.Collection<String> communityNos, String ownerStoreNo) {
+        List<CmtPickupPoint> rows = new ArrayList<>();
+        if (communityNos != null && !communityNos.isEmpty()) {
+            rows.addAll(ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() ->
+                    pickupMapper.selectList(Wrappers.<CmtPickupPoint>lambdaQuery()
+                            .in(CmtPickupPoint::getCommunityNo, communityNos)
+                            .in(CmtPickupPoint::getType, List.of("STORE", "PLATFORM"))
+                            .eq(CmtPickupPoint::getScope, "PERMANENT")
+                            .eq(CmtPickupPoint::getStatus, "ACTIVE")
+                            .isNull(CmtPickupPoint::getArchivedAt))));
+        }
+        String owner = ownerStoreNo == null ? "" : ownerStoreNo;
+        if (!owner.isBlank()) {
+            rows.addAll(ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() ->
+                    pickupMapper.selectList(Wrappers.<CmtPickupPoint>lambdaQuery()
+                            .eq(CmtPickupPoint::getOwnerRef, owner)
+                            .eq(CmtPickupPoint::getType, "STORE")
+                            .isNull(CmtPickupPoint::getArchivedAt))));
+        }
+        java.util.LinkedHashMap<String, CmtPickupPoint> dedup = new java.util.LinkedHashMap<>();
+        for (CmtPickupPoint p : rows) {
+            dedup.putIfAbsent(p.getPickupNo(), p);
+        }
+        Map<String, String> communityName = new java.util.HashMap<>();
+        List<String> cnos = dedup.values().stream().map(CmtPickupPoint::getCommunityNo).distinct().toList();
+        if (!cnos.isEmpty()) {
+            for (CmtCommunity c : ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() ->
+                    communityMapper.selectList(Wrappers.<CmtCommunity>lambdaQuery()
+                            .in(CmtCommunity::getCommunityNo, cnos)))) {
+                communityName.put(c.getCommunityNo(), c.getName());
+            }
+        }
+        return dedup.values().stream()
+                .sorted(java.util.Comparator
+                        .comparing((CmtPickupPoint p) -> !owner.equals(p.getOwnerRef()))
+                        .thenComparing(p -> communityName.getOrDefault(p.getCommunityNo(), ""))
+                        .thenComparing(CmtPickupPoint::getName))
+                .map(p -> toCandidate(p, communityName.get(p.getCommunityNo())))
+                .toList();
+    }
+
+    @Override
+    public PickupCandidate selfBuildPickup(SelfBuildCmd cmd) {
+        if (cmd == null || cmd.storeNo() == null || cmd.storeNo().isBlank()
+                || cmd.name() == null || cmd.name().isBlank()
+                || cmd.address() == null || cmd.address().isBlank()
+                || cmd.latE6() == null || cmd.lngE6() == null) {
+            throw ai.neargo.shop.common.BizException.of(ai.neargo.shop.common.ErrorCode.BAD_REQUEST);
+        }
+        String communityNo = cmd.communityNo();
+        if (communityNo == null || communityNo.isBlank()) {
+            // 就近归社区：nearby 已按围栏过滤并按距离排，第一条就是最近的
+            communityNo = nearby(cmd.latE6(), cmd.lngE6()).stream()
+                    .map(CommunityVO::communityNo).findFirst().orElse(null);
+        }
+        if (communityNo == null) {
+            throw ai.neargo.shop.common.BizException.of(ai.neargo.shop.common.ErrorCode.BAD_REQUEST);
+        }
+        String cno = communityNo;
+        CmtCommunity community = ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() ->
+                communityMapper.selectOne(Wrappers.<CmtCommunity>lambdaQuery()
+                        .eq(CmtCommunity::getCommunityNo, cno).last("limit 1")));
+        if (community == null) {
+            throw ai.neargo.shop.common.BizException.of(ai.neargo.shop.common.ErrorCode.NOT_FOUND);
+        }
+        // 同店同名去重：网络抖一下点两次，不该生出两条待审
+        boolean dup = ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() ->
+                pickupMapper.exists(Wrappers.<CmtPickupPoint>lambdaQuery()
+                        .eq(CmtPickupPoint::getOwnerRef, cmd.storeNo())
+                        .eq(CmtPickupPoint::getName, cmd.name().trim())
+                        .isNull(CmtPickupPoint::getArchivedAt)));
+        if (dup) {
+            throw ai.neargo.shop.common.BizException.of(ai.neargo.shop.common.ErrorCode.CONFLICT);
+        }
+        CmtPickupPoint p = new CmtPickupPoint();
+        p.setPickupNo(ai.neargo.shop.common.BizKey.next(ai.neargo.shop.common.BizKey.PICKUP_POINT));
+        p.setCommunityNo(cno);
+        p.setName(cmd.name().trim());
+        p.setAddress(cmd.address().trim());
+        p.setLatE6(cmd.latE6());
+        p.setLngE6(cmd.lngE6());
+        p.setType("STORE");
+        p.setScope("PERMANENT");
+        p.setOwnerRef(cmd.storeNo());
+        p.setOpenHours(cmd.openHours() == null || cmd.openHours().isBlank() ? null : cmd.openHours().trim());
+        p.setServiceFeeRate(0);
+        p.setServiceFeePerItemMinor(0L);
+        p.setFeeMode("NONE");
+        p.setStatus("PENDING");
+        ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() -> pickupMapper.insert(p));
+        return toCandidate(p, community.getName());
+    }
+
+    private static PickupCandidate toCandidate(CmtPickupPoint p, String communityName) {
+        return new PickupCandidate(p.getPickupNo(), p.getName(), p.getAddress(), p.getType(), p.getStatus(),
+                p.getCommunityNo(), communityName,
+                "STORE".equals(p.getType()) ? p.getOwnerRef() : null, p.getRejectReason());
+    }
+
     private Map<String, MerchantBrief> loadOwners(List<CmtPickupPoint> pickups) {
         List<String> storeNos = pickups.stream()
                 .map(CmtPickupPoint::getOwnerRef).filter(java.util.Objects::nonNull).distinct().toList();

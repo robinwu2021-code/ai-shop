@@ -44,6 +44,12 @@ class StoreFulfillmentFlowTest {
     @Autowired
     private ai.neargo.shop.community.mapper.CommunityMappers.CommunityMapper communityMapper;
 
+    @Autowired
+    private ai.neargo.shop.community.service.CommunityService communityService;
+
+    @Autowired
+    private ai.neargo.shop.community.service.CommunityAdminService communityAdminService;
+
     private static int seq = 7000;
 
     /** 造主体 + 默认门店。reach 留空 —— 这组用例只走新模型 */
@@ -92,11 +98,11 @@ class StoreFulfillmentFlowTest {
     void saveTogglesWithoutLosingRows() {
         String m = merchant("文三路 1 号");
         fulfillmentService.save(m, null, List.of(
-                new ChannelCmd(Fulfillments.STORE_PICKUP, true, null),
-                new ChannelCmd(Fulfillments.EXPRESS, true, "FT-X")));
+                new ChannelCmd(Fulfillments.STORE_PICKUP, true, null, null),
+                new ChannelCmd(Fulfillments.EXPRESS, true, "FT-X", null)));
         var vo = fulfillmentService.save(m, null, List.of(
-                new ChannelCmd(Fulfillments.STORE_PICKUP, true, null),
-                new ChannelCmd(Fulfillments.EXPRESS, false, "FT-X")));
+                new ChannelCmd(Fulfillments.STORE_PICKUP, true, null, null),
+                new ChannelCmd(Fulfillments.EXPRESS, false, "FT-X", null)));
         var express = vo.channels().stream()
                 .filter(c -> Fulfillments.EXPRESS.equals(c.channel())).findFirst().orElseThrow();
         assertThat(express.enabled()).isFalse();
@@ -109,7 +115,7 @@ class StoreFulfillmentFlowTest {
     void saveRejectsAllOff() {
         String m = merchant("文三路 1 号");
         assertThatThrownBy(() -> fulfillmentService.save(m, null, List.of(
-                new ChannelCmd(Fulfillments.STORE_PICKUP, false, null))))
+                new ChannelCmd(Fulfillments.STORE_PICKUP, false, null, null))))
                 .isInstanceOf(BizException.class);
     }
 
@@ -118,7 +124,7 @@ class StoreFulfillmentFlowTest {
     void saveRejectsStorePickupWithoutAddress() {
         String m = merchant(null);
         assertThatThrownBy(() -> fulfillmentService.save(m, null, List.of(
-                new ChannelCmd(Fulfillments.STORE_PICKUP, true, null))))
+                new ChannelCmd(Fulfillments.STORE_PICKUP, true, null, null))))
                 .isInstanceOf(BizException.class);
     }
 
@@ -127,7 +133,7 @@ class StoreFulfillmentFlowTest {
     void saveRejectsBadChannel() {
         String m = merchant("文三路 1 号");
         assertThatThrownBy(() -> fulfillmentService.save(m, null, List.of(
-                new ChannelCmd(Fulfillments.STORE_VERIFY, true, null))))
+                new ChannelCmd(Fulfillments.STORE_VERIFY, true, null, null))))
                 .isInstanceOf(BizException.class);
     }
 
@@ -137,7 +143,7 @@ class StoreFulfillmentFlowTest {
         String c = openCommunity();
         String m = merchant("文三路 1 号");
         fulfillmentService.save(m, null, List.of(
-                new ChannelCmd(Fulfillments.EXPRESS, true, null)));
+                new ChannelCmd(Fulfillments.EXPRESS, true, null, null)));
         assertThat(merchantQuery.reachableCommunities(m)).contains(c);
     }
 
@@ -147,7 +153,7 @@ class StoreFulfillmentFlowTest {
         openCommunity();
         String m = merchant("文三路 1 号");
         fulfillmentService.save(m, null, List.of(
-                new ChannelCmd(Fulfillments.STORE_PICKUP, true, null)));
+                new ChannelCmd(Fulfillments.STORE_PICKUP, true, null, null)));
         assertThat(merchantQuery.reachableCommunities(m)).isEmpty();
     }
 
@@ -157,7 +163,7 @@ class StoreFulfillmentFlowTest {
         String c = openCommunity();
         String m = merchant("文三路 1 号");
         fulfillmentService.save(m, null, List.of(
-                new ChannelCmd(Fulfillments.MERCHANT_DELIVERY, true, null)));
+                new ChannelCmd(Fulfillments.MERCHANT_DELIVERY, true, null, null)));
         assertThat(merchantQuery.reachableCommunities(m)).contains(c);
     }
 
@@ -168,9 +174,87 @@ class StoreFulfillmentFlowTest {
         // 未迁移（无行）：空集 —— 调用方按旧口径放行
         assertThat(merchantQuery.enabledFulfillments(m, null)).isEmpty();
         fulfillmentService.save(m, null, List.of(
-                new ChannelCmd(Fulfillments.STORE_PICKUP, true, null),
-                new ChannelCmd(Fulfillments.EXPRESS, false, null)));
+                new ChannelCmd(Fulfillments.STORE_PICKUP, true, null, null),
+                new ChannelCmd(Fulfillments.EXPRESS, false, null, null)));
         assertThat(merchantQuery.enabledFulfillments(m, null))
                 .containsExactly(Fulfillments.STORE_PICKUP);
+    }
+
+    // ---------------------------------------------------------------- 取货点（P1）
+
+    @Test
+    @DisplayName("自建点：落 PENDING，本店可引用；别家的待审点对你不存在")
+    void selfBuiltPickupIsPendingAndOnlyOwnerCanReference() {
+        String m = merchant(null);
+        String store = merchantQuery.defaultStoreNo(m).orElseThrow();
+        String community = openCommunity();
+        var built = communityService.selfBuildPickup(new ai.neargo.shop.community.service.CommunityService.SelfBuildCmd(
+                store, "东门驿站", "东门 12 号", 30_000_000, 120_000_000, "08:00-20:00", community));
+        assertThat(built.status()).isEqualTo("PENDING");
+        assertThat(built.ownerStoreNo()).isEqualTo(store);
+
+        // 本店：没地址、只开社区自提、引用了自建点 → 可以保存，且 get 带出 PENDING 的引用
+        var vo = fulfillmentService.save(m, null, List.of(
+                new ChannelCmd(Fulfillments.NEIGHBOR_PICKUP, true, null, List.of(built.pickupNo()))));
+        var neighbor = vo.channels().stream()
+                .filter(c -> Fulfillments.NEIGHBOR_PICKUP.equals(c.channel())).findFirst().orElseThrow();
+        assertThat(neighbor.pickups()).singleElement()
+                .satisfies(r -> {
+                    assertThat(r.pickupNo()).isEqualTo(built.pickupNo());
+                    assertThat(r.status()).isEqualTo("PENDING");
+                });
+
+        // 别家：引用这个待审点 → 拒
+        String other = merchant(null);
+        assertThatThrownBy(() -> fulfillmentService.save(other, null, List.of(
+                new ChannelCmd(Fulfillments.NEIGHBOR_PICKUP, true, null, List.of(built.pickupNo())))))
+                .isInstanceOf(BizException.class);
+
+        // 同店同名重复提交 → CONFLICT，不生出第二条待审
+        assertThatThrownBy(() -> communityService.selfBuildPickup(new ai.neargo.shop.community.service.CommunityService.SelfBuildCmd(
+                store, "东门驿站", "别处", 30_000_000, 120_000_000, null, community)))
+                .isInstanceOf(BizException.class);
+    }
+
+    @Test
+    @DisplayName("自提开着却一个落点都没有（没地址、没引用）→ 写入口拦")
+    void pickupWithoutAnyLandingIsRejected() {
+        String m = merchant(null);
+        assertThatThrownBy(() -> fulfillmentService.save(m, null, List.of(
+                new ChannelCmd(Fulfillments.NEIGHBOR_PICKUP, true, null, List.of()))))
+                .isInstanceOf(BizException.class);
+        // 有门店地址就行：门店自己就是落点
+        String withAddr = merchant("文三路 1 号");
+        assertThat(fulfillmentService.save(withAddr, null, List.of(
+                new ChannelCmd(Fulfillments.NEIGHBOR_PICKUP, true, null, List.of()))).channels())
+                .anyMatch(c -> Fulfillments.NEIGHBOR_PICKUP.equals(c.channel()) && c.enabled());
+    }
+
+    @Test
+    @DisplayName("运营裁决：通过 → ACTIVE 进候选与下单白名单；驳回要理由；裁完不能再裁")
+    void decidePickupThenCandidatesAndAllowed() {
+        String m = merchant(null);
+        String store = merchantQuery.defaultStoreNo(m).orElseThrow();
+        String community = openCommunity();
+        var built = communityService.selfBuildPickup(new ai.neargo.shop.community.service.CommunityService.SelfBuildCmd(
+                store, "南门驿站", "南门 1 号", 30_000_000, 120_000_000, null, community));
+
+        assertThatThrownBy(() -> communityAdminService.decidePickup(built.pickupNo(), false, " ", "OPS"))
+                .isInstanceOf(BizException.class);
+        var ok = communityAdminService.decidePickup(built.pickupNo(), true, null, "OPS");
+        assertThat(ok.status()).isEqualTo("ACTIVE");
+        assertThatThrownBy(() -> communityAdminService.decidePickup(built.pickupNo(), true, null, "OPS"))
+                .isInstanceOf(BizException.class);
+
+        // 候选：本店自建的排最前
+        var candidates = communityService.pickupCandidates(List.of(community), store);
+        assertThat(candidates).isNotEmpty();
+        assertThat(candidates.get(0).pickupNo()).isEqualTo(built.pickupNo());
+
+        // 下单白名单：门店自己的 STORE 点天然在内；引用之后也在
+        assertThat(merchantQuery.allowedPickupNos(m)).contains(built.pickupNo());
+        fulfillmentService.save(m, null, List.of(
+                new ChannelCmd(Fulfillments.NEIGHBOR_PICKUP, true, null, List.of(built.pickupNo()))));
+        assertThat(merchantQuery.allowedPickupNos(m)).contains(built.pickupNo());
     }
 }

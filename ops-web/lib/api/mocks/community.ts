@@ -205,6 +205,15 @@ export const communityMock: CommunityApi = {
     return wait(created, 400);
   },
 
+  decidePickup: async (pickupNo, pass, reason) => {
+    const p = findPickup(pickupNo);
+    if (p.status !== "PENDING") fail("已经裁过了", "Already decided");
+    if (!pass && !reason?.trim()) fail("驳回要写理由", "A reason is required to reject");
+    p.status = pass ? "ACTIVE" : "REJECTED";
+    p.rejectReason = pass ? null : reason!.trim();
+    return wait(p, 400);
+  },
+
   setPickupStatus: async (pickupNo, status) => {
     const p = findPickup(pickupNo);
     db.assertTransition(PICKUP_TRANSITIONS, p.status, status, "自提点", "Pickup point");

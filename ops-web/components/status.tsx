@@ -119,9 +119,11 @@ export function PickupPointTypeBadge({ value }: { value: PickupPointType }) {
 export function usePickupStatusMap(): StatusMap<PickupStatus> {
   const { t } = useI18n();
   return {
+    PENDING: { label: t("pickupStatus.PENDING"), tone: "warning" },
     ACTIVE: { label: t("pickupStatus.ACTIVE"), tone: "success" },
     MIGRATING: { label: t("pickupStatus.MIGRATING"), tone: "warning" },
     SUSPENDED: { label: t("pickupStatus.SUSPENDED"), tone: "muted" },
+    REJECTED: { label: t("pickupStatus.REJECTED"), tone: "muted" },
   };
 }
 export function PickupStatusBadge({ value }: { value: PickupStatus }) {

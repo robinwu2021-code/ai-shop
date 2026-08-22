@@ -105,6 +105,13 @@ function CommunitiesInner() {
     onSuccess: (x) => { invalidate(); notify.success(fill(x.opened ? cp.toastOpened : cp.toastClosed, { name: x.name })); },
   });
 
+  // 自建点裁决（P1）。通过走普通确认；驳回要理由 —— 它原样回给商家
+  const decidePickupMut = useMutation({
+    mutationFn: (v: { pickupNo: string; pass: boolean; reason?: string }) =>
+      api.decidePickup(v.pickupNo, v.pass, v.reason),
+    onSuccess: (_, v) => { invalidate(); notify.success(v.pass ? cp.toastPickupApproved : cp.toastPickupRejected); },
+  });
+
   const pickupStatusMut = useMutation({
     mutationFn: (v: { pickupNo: string; status: PickupStatus }) => api.setPickupStatus(v.pickupNo, v.status),
     onSuccess: () => { invalidate(); notify.success(cp.toastPickupStatus); },
@@ -236,7 +243,33 @@ function CommunitiesInner() {
           }}
           actions={
             // 只出**当前状态允许**的那一个迁移（合法迁移表见 lib/types/community.ts）
-            p.status === "ACTIVE" ? (
+            p.status === "PENDING" ? (
+              <span className="flex items-center gap-1">
+                <Button
+                  size="sm"
+                  disabled={!canEditPickup}
+                  onClick={() => confirm({
+                    title: cp.pickupApproveTitle.replace("{name}", p.name),
+                    desc: p.latE6 == null ? cp.pickupNoCoords : `${p.address}`,
+                    action: () => decidePickupMut.mutateAsync({ pickupNo: p.pickupNo, pass: true }),
+                  })}
+                >{cp.btnPickupApprove}</Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={!canEditPickup}
+                  onClick={() => confirm({
+                    title: cp.pickupRejectTitle.replace("{name}", p.name),
+                    desc: cp.pickupRejectDesc,
+                    danger: true,
+                    requireReason: true,
+                    action: (reason) => decidePickupMut.mutateAsync({ pickupNo: p.pickupNo, pass: false, reason }),
+                  })}
+                >{cp.btnPickupReject}</Button>
+              </span>
+            ) : p.status === "REJECTED" ? (
+              <span className="txt-caption text-muted-foreground">{p.rejectReason}</span>
+            ) : p.status === "ACTIVE" ? (
               <Button size="sm" variant="outline" onClick={() => pickupStatusMut.mutate({ pickupNo: p.pickupNo, status: "SUSPENDED" })}>{cp.btnSuspend}</Button>
             ) : p.status === "SUSPENDED" ? (
               <Button size="sm" variant="outline" onClick={() => pickupStatusMut.mutate({ pickupNo: p.pickupNo, status: "ACTIVE" })}>{cp.btnActivate}</Button>

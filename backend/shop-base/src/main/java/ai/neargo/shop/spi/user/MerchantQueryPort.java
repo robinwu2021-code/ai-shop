@@ -91,6 +91,14 @@ public interface MerchantQueryPort {
     java.util.Set<String> enabledFulfillments(String merchantNo, String storeNo);
 
     /**
+     * 这家主体<b>配置过的</b>取货点：各门店在「社区自提点」里引用的点 ∪ 各门店自己的 STORE 点（P1）。
+     *
+     * <p>下单闸用它判「买家选的点这家店送不送」。<b>空集 = 没配过，兼容期不限</b>——
+     * 与 {@link #enabledFulfillments} 同一约定；写入口已经拦着「自提开着却一个点都没有」。
+     */
+    java.util.Set<String> allowedPickupNos(String merchantNo);
+
+    /**
      * 这笔钱该打给<b>哪个收款商户号</b>：门店配的号 ?? 主体的默认号。
      *
      * <p><b>只有这一处实现。</b> 两处各写一遍的后果是可预测的：一处按新规则、

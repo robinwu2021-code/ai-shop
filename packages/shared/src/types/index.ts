@@ -36,6 +36,38 @@ export interface StoreFulfillmentChannel {
   denied: boolean;
   /** 仅 EXPRESS：运费模板号；空 = 平台默认模板 */
   templateNo?: string | null;
+  /** 仅 NEIGHBOR_PICKUP（P1）：已引用的取货点，含 PENDING 的自建点（商家要看到「审核中」） */
+  pickups?: PickupRef[];
+}
+
+/** 门店引用的取货点。status 来自 cmt_pickup_point：只有 ACTIVE 参与买家侧 */
+export interface PickupRef {
+  pickupNo: string;
+  name: string;
+  address?: string | null;
+  type: PickupPointType;
+  status: string;
+}
+
+/** 门店可引用的取货点候选（P1）：范围内的常驻点 + 本店自建的点 */
+export interface PickupCandidate {
+  pickupNo: string;
+  name: string;
+  address?: string | null;
+  type: PickupPointType;
+  /** ACTIVE / PENDING / REJECTED …；本店自建的 PENDING 点可引用，别家的不行 */
+  status: string;
+  communityNo: string;
+  communityName?: string | null;
+  /** STORE 点的承接门店；= 本店即「我自建的」 */
+  ownerStoreNo?: string | null;
+  rejectReason?: string | null;
+}
+
+/** 跨级搜索（P1）：区划命中带从省到父级的路径，聚落命中带所在街道路径 */
+export interface RegionSearchResult {
+  regions: Array<{ regionCode: string; level: string; name: string; path: string }>;
+  communities: Array<{ communityNo: string; name: string; regionCode?: string | null; path: string }>;
 }
 
 export interface StoreFulfillment {
@@ -105,6 +137,17 @@ export interface User {
  * 区划全表有 2978 个区县、41352 个街道。把整棵树扔给用户去挑，
  * 十有八九挑到一个一家店都没有的区：那不是选区域，那是抽奖。
  */
+/**
+ * 微信一键取手机号当前可不可用。
+ *
+ * <p>由后端说了算：它取决于小程序认证状态与通道开关，端上判不出来。
+ * 写死在端上的话，认证下来之后还要再发一次版。
+ */
+export interface PhoneCapable {
+  /** true = 显示「微信一键获取」；false = 显示手机号 + 验证码 */
+  capable: boolean;
+}
+
 export interface RegionOption {
   /** 区县级国标码（6 位）。社区可能挂在街道级，聚合时截到区县 */
   regionCode: string;

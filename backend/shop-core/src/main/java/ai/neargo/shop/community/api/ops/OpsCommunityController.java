@@ -54,6 +54,24 @@ public class OpsCommunityController {
         return java.util.Map.of("pickupNo", pickupNo, "archivedAt", at);
     }
 
+    /**
+     * 自建自提点审核（P1）。队列用现有 {@code GET /ops/pickups?status=PENDING}。
+     */
+    @PostMapping("/ops/pickups/{pickupNo}/decide")
+    @PreAuthorize("@perm.can('" + Perms.COMMUNITY_PICKUP_UPDATE + "')")
+    public CommunityAdminService.PickupVO decidePickup(@PathVariable String pickupNo,
+                                                       @RequestBody PickupDecideReq req) {
+        CommunityAdminService.PickupVO vo = adminService.decidePickup(
+                pickupNo, Boolean.TRUE.equals(req.pass()), req.reason(),
+                ai.neargo.shop.auth.SecurityUtils.currentUserNo());
+        auditLogPort.record("PICKUP_DECIDE", pickupNo,
+                Boolean.TRUE.equals(req.pass()) ? "通过，自建点生效" : "驳回：" + req.reason());
+        return vo;
+    }
+
+    public record PickupDecideReq(Boolean pass, String reason) {
+    }
+
     @PostMapping("/ops/pickups/{pickupNo}/unarchive")
     @PreAuthorize("@perm.can('" + Perms.COMMUNITY_PICKUP_UPDATE + "')")
     public java.util.Map<String, Object> unarchivePickup(@PathVariable String pickupNo) {

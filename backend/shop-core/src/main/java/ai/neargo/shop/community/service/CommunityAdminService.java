@@ -162,6 +162,17 @@ public interface CommunityAdminService {
     record PickupVO(String pickupNo, String name, String type, String status, String communityNo,
                     String communityName, String storeNo, String address, String openHours,
                     String arriveTime, int serviceFeeRate, long serviceFeePerItemMinor,
-                    String feeMode, int acceptCount30d, long createdAt) {
+                    String feeMode, int acceptCount30d, long createdAt,
+                    /** 坐标（E6）。自建点审核时要看：没有坐标的点买家用定位找不到 */
+                    Integer latE6, Integer lngE6,
+                    /** 驳回理由（V188），只有 REJECTED 有值 */
+                    String rejectReason) {
     }
+
+    /**
+     * 裁决商家自建的自提点（P1）：PENDING → ACTIVE / REJECTED。
+     * 地址要印在买家取货页上，假地址的信任成本由平台背，所以自建点一律先审。
+     * 驳回必须带理由 —— 不写他只会原样再提一次。
+     */
+    PickupVO decidePickup(String pickupNo, boolean pass, String reason, String operatorNo);
 }

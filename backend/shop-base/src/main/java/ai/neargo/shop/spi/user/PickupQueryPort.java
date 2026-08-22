@@ -56,6 +56,9 @@ public interface PickupQueryPort {
     record PickupBrief(String pickupNo, String name, String address, String type,
                        String communityNo, String feeMode,
                        long serviceFeePerItemMinor, int serviceFeeRate,
-                       String ownerStoreNo, String ownerRef) {
+                       String ownerStoreNo, String ownerRef,
+                       /** ACTIVE / SUSPENDED / MIGRATING / PENDING / REJECTED（V188）。
+                        *  门店引用取货点时要看它：PENDING 的自建点只有本店能引用 */
+                       String status) {
     }
 }

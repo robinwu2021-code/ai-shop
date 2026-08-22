@@ -73,7 +73,13 @@ watch(() => props.visible, (v) => { if (v) void open(); });
 
 async function drill(r: Region) {
   if (!r.hasChild && r.level !== "STREET") return;
-  trail.value = [...trail.value, r];
+  if (kw.value) {
+    // 从搜索结果下钻：面包屑要换成它的真实路径，否则「整个本级」与名字拼接都是错的
+    const chain = await api.mRegionPath(r.regionCode).catch(() => [] as Region[]);
+    trail.value = chain.length ? chain : [...trail.value, r];
+  } else {
+    trail.value = [...trail.value, r];
+  }
   keyword.value = "";
   if (r.level !== "STREET") await loadLevel(r.regionCode);
 }
@@ -96,43 +102,81 @@ function pathName(leafName: string, extra?: Region | null) {
   return [...trail.value.map((x) => x.name), extra?.name, leafName].filter(Boolean).join(" / ");
 }
 
-function toggleRegion(r: Region) {
+function toggleRegion(r: Region & { path?: string }) {
   if (has(r.level, r.regionCode)) {
     emit("update:areas", props.areas.filter((a) => !(a.level === r.level && a.refCode === r.regionCode)));
     return;
   }
-  // 正在这一层里：路径不含自己
+  // 正在这一层里：路径不含自己；搜索命中的用服务端给的路径
   const inTrail = trail.value.some((x) => x.regionCode === r.regionCode);
-  const name = inTrail
-    ? trail.value.slice(0, trail.value.findIndex((x) => x.regionCode === r.regionCode) + 1).map((x) => x.name).join(" / ")
-    : pathName(r.name);
+  const name = r.path
+    ? [r.path, r.name].filter(Boolean).join(" / ")
+    : inTrail
+      ? trail.value.slice(0, trail.value.findIndex((x) => x.regionCode === r.regionCode) + 1).map((x) => x.name).join(" / ")
+      : pathName(r.name);
   emit("update:areas", [...props.areas, { level: r.level as ServiceArea["level"], refCode: r.regionCode, name }]);
 }
 
-function toggleCommunity(c: Community, streetName?: string) {
+function toggleCommunity(c: Community & { path?: string }) {
   if (has("COMMUNITY", c.communityNo)) {
     emit("update:areas", props.areas.filter((a) => !(a.level === "COMMUNITY" && a.refCode === c.communityNo)));
     return;
   }
-  const name = streetName ? [streetName, c.name].join(" / ") : pathName(c.name);
+  const name = c.path ? [c.path, c.name].join(" / ") : pathName(c.name);
   emit("update:areas", [...props.areas, { level: "COMMUNITY", refCode: c.communityNo, name }]);
 }
 
-// ---------------------------------------------------------------- 搜索（任何一级都能搜）
+// ---------------------------------------------------------------- 搜索（任何一级都能搜，P1 走服务端跨级搜索）
 const keyword = ref("");
 const kw = computed(() => keyword.value.trim());
+/** 服务端命中：区划带从省到父级的路径，聚落带所在街道路径 */
+const hitRegions = ref<Array<Region & { path: string }>>([]);
+const hitCommunities = ref<Array<Community & { path: string }>>([]);
+const searching = ref(false);
+let searchTimer: ReturnType<typeof setTimeout> | undefined;
 
-/** 本级区划里匹配的 */
-const levelRows = computed(() =>
-  kw.value ? list.value.filter((r) => r.name.includes(kw.value)) : list.value,
+watch(kw, (q) => {
+  clearTimeout(searchTimer);
+  if (q.length < 2) {
+    hitRegions.value = [];
+    hitCommunities.value = [];
+    return;
+  }
+  searchTimer = setTimeout(async () => {
+    searching.value = true;
+    try {
+      const r = await api.mRegionSearch(q);
+      hitRegions.value = r.regions.map((x) => ({
+        regionCode: x.regionCode, parentCode: "", level: x.level, name: x.name,
+        enabled: true, hasChild: x.level !== "STREET", path: x.path,
+      } as Region & { path: string }));
+      hitCommunities.value = r.communities.map((x) => ({
+        communityNo: x.communityNo, name: x.name, regionCode: x.regionCode ?? undefined, path: x.path,
+      } as unknown as Community & { path: string }));
+    } catch {
+      // 搜索接口不在（老后端）：退回本地过滤，至少当前层还能搜
+      hitRegions.value = list.value.filter((r) => r.name.includes(q)).map((r) => ({ ...r, path: "" }));
+      hitCommunities.value = communities.value.filter((c) => c.name.includes(q)).slice(0, 30)
+        .map((c) => ({ ...c, path: "" }));
+    } finally {
+      searching.value = false;
+    }
+  }, 250);
+});
+
+/** 区划行：搜索时是服务端命中，否则是本级 */
+const levelRows = computed<Array<Region & { path?: string }>>(() =>
+  kw.value ? hitRegions.value : list.value,
 );
-/** 叶子层的聚落：本街道下的；搜索时则全库匹配（跨级搜） */
-const settleRows = computed<Community[]>(() => {
-  if (kw.value) return communities.value.filter((c) => c.name.includes(kw.value)).slice(0, 30);
+/** 聚落行：搜索时是服务端命中；叶子层是本街道下的 */
+const settleRows = computed<Array<Community & { path?: string }>>(() => {
+  if (kw.value) return hitCommunities.value;
   if (!atLeaf.value) return [];
   return communities.value.filter((c) => c.regionCode === current.value?.regionCode);
 });
-const nothing = computed(() => !loading.value && !levelRows.value.length && !settleRows.value.length);
+const nothing = computed(() =>
+  !loading.value && !searching.value && kw.value.length !== 1 && !levelRows.value.length && !settleRows.value.length,
+);
 
 // ---------------------------------------------------------------- 叶子层提报（带官方村名词典）
 const applyOpen = ref(false);
@@ -237,6 +281,7 @@ function close() {
           <view v-for="r in (atLeaf && !kw ? [] : levelRows)" :key="r.regionCode" class="row">
             <view class="row__main" @tap="drill(r)">
               <text class="row__name">{{ r.name }}</text>
+              <text v-if="r.path" class="row__sub">{{ r.path }}</text>
             </view>
             <view class="row__check" :class="{ 'is-on': has(r.level, r.regionCode) }" @tap="toggleRegion(r)">
               <text v-if="has(r.level, r.regionCode)" class="row__tick">✓</text>
@@ -248,7 +293,7 @@ function close() {
           <view v-for="c in settleRows" :key="c.communityNo" class="row" @tap="toggleCommunity(c)">
             <view class="row__main">
               <text class="row__name">{{ c.name }}</text>
-              <text v-if="c.address || kw" class="row__sub">{{ c.address || c.regionCode }}</text>
+              <text v-if="c.path || c.address" class="row__sub">{{ c.path || c.address }}</text>
             </view>
             <view class="row__check" :class="{ 'is-on': has('COMMUNITY', c.communityNo) }">
               <text v-if="has('COMMUNITY', c.communityNo)" class="row__tick">✓</text>

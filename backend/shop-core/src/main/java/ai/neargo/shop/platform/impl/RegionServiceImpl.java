@@ -182,6 +182,27 @@ public class RegionServiceImpl implements RegionService {
         return toVOs(chain);
     }
 
+    @Override
+    public List<RegionVO> search(String keyword, int limit) {
+        String kw = keyword == null ? "" : keyword.trim();
+        if (kw.length() < 2) {
+            // 单字会命中成千上万行（「区」「市」），给人挑的列表不该这么长
+            return List.of();
+        }
+        int cap = Math.max(1, Math.min(limit, 20));
+        List<SysRegion> rows = DataScopeContext.executeWithoutScope(() ->
+                mapper.selectList(Wrappers.<SysRegion>lambdaQuery()
+                        .in(SysRegion::getLevel, List.of("CITY", "DISTRICT", "STREET"))
+                        .eq(SysRegion::getEnabled, true)
+                        .eq(SysRegion::getAuditStatus, "APPROVED")
+                        .like(SysRegion::getName, kw)
+                        // 细的排前面：搜「西湖」多半是要西湖区下的街道，而不是整个区
+                        .orderByDesc(SysRegion::getLevel)
+                        .orderByAsc(SysRegion::getRegionCode)
+                        .last("LIMIT " + cap)));
+        return toVOs(rows);
+    }
+
     private SysRegion find(String code) {
         return DataScopeContext.executeWithoutScope(() ->
                 mapper.selectOne(Wrappers.<SysRegion>lambdaQuery()

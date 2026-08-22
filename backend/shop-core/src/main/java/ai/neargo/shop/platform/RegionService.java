@@ -70,6 +70,13 @@ public interface RegionService {
     List<RegionVO> path(String regionCode);
 
     /**
+     * 按名称搜区划（P1，选择器「任何一级都能搜」）。只搜导航四级里的市/区县/街道，
+     * 不搜省（没人按省框范围）、不搜村级词典（那是提报时用的）。
+     * 只出已开城且已审核通过的；{@code limit} 上限 20 —— 这是给人挑的，不是给机器遍历的。
+     */
+    List<RegionVO> search(String keyword, int limit);
+
+    /**
      * @param level    PROVINCE / CITY / DISTRICT / STREET / VILLAGE（村委会·居委会，第五级）
      * @param hasChild 下面还有没有下级。端上据此决定「还要不要再往下选一层」，
      *                 而不是点进去才发现是空的

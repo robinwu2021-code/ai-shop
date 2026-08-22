@@ -34,6 +34,7 @@ import {
   SETTLE,
   REVIEW_RULES,
   TEMPLATE_TO_TYPE,
+  MERCHANT_LOGO_FALLBACK,
 } from "@shared/utils/constants";
 import { ensureDemoOrders } from "./demo-orders";
 import { DELIVERY_SHAPE, fulfillmentsOf } from "@shared/strategies/order-view";
@@ -512,6 +513,8 @@ function flatCategories(nodes: Category[], into = new Map<string, Category>()) {
 
 /** 门店送货方式的 mock 存储（内存即够：mock 不需要跨会话） */
 const mockFulfillment: Record<string, import("@shared/types").StoreFulfillment> = {};
+/** 本店自建的取货点（P1）：mock 里只活在内存，刷新即清 */
+const mockSelfBuilt: import("@shared/types").PickupCandidate[] = [];
 
 export const mockApi: MerchantApi = {
   // ---------------------------------------------------------------- 账号与入驻
@@ -706,6 +709,7 @@ export const mockApi: MerchantApi = {
 
   async mSaveStoreFulfillment(storeNo, payload) {
     const no = storeNo === "default" ? db.stores[0]?.storeNo ?? "ST-MOCK-1" : storeNo;
+    const saved = mockFulfillment[no];
     // mock 也照写入口的硬规则拒：一路都不开的店等于开不了张
     if (!payload.channels.some((c) => c.enabled)) {
       throw new Error("至少开启一种送货方式");
@@ -717,6 +721,14 @@ export const mockApi: MerchantApi = {
         enabled: c.enabled,
         denied: false,
         templateNo: c.templateNo ?? null,
+        pickups: c.channel === "NEIGHBOR_PICKUP"
+          ? (c.pickupNos
+              ? c.pickupNos.map((no) => {
+                  const own = mockSelfBuilt.find((p) => p.pickupNo === no);
+                  return { pickupNo: no, name: own?.name ?? no, address: own?.address ?? null, type: "STORE" as const, status: own?.status ?? "ACTIVE" };
+                })
+              : saved?.channels.find((x) => x.channel === "NEIGHBOR_PICKUP")?.pickups ?? [])
+          : undefined,
       })),
     };
     mockFulfillment[no] = next;
@@ -964,6 +976,90 @@ export const mockApi: MerchantApi = {
    * 村名词典。mock 里给北山街道配了两条官方村级（regionSeeds），
    * 词典就查它们 —— 与后端同口径：按街道过滤 + 名称包含。
    */
+  // ---- P1：跨级搜索 / 路径 / 关路清单 / 取货点 ----
+  async mRegionSearch(kw) {
+    const q = (kw ?? "").trim();
+    const pathOf = (code?: string): string => {
+      const chain: string[] = [];
+      let cur = code ? db.regionSeeds.find((r) => r.regionCode === code) : undefined;
+      while (cur) {
+        chain.unshift(cur.name);
+        cur = cur.parentCode ? db.regionSeeds.find((r) => r.regionCode === cur!.parentCode) : undefined;
+      }
+      return chain.join(" / ");
+    };
+    const regions = q.length < 2 ? [] : db.regionSeeds
+      .filter((r) => r.enabled && r.level !== "PROVINCE" && r.level !== "VILLAGE" && r.name.includes(q))
+      .slice(0, 20)
+      .map((r) => ({ regionCode: r.regionCode, level: r.level, name: r.name, path: pathOf(r.parentCode) }));
+    const communities = !q ? [] : db.communitySeeds.map(toCommunity)
+      .filter((c) => c.name.includes(q))
+      .slice(0, 30)
+      .map((c) => ({ communityNo: c.communityNo, name: c.name, regionCode: c.regionCode, path: pathOf(c.regionCode) }));
+    return delay({ regions, communities });
+  },
+
+  async mRegionPath(code) {
+    const chain: import("@shared/types").Region[] = [];
+    let cur = db.regionSeeds.find((r) => r.regionCode === code);
+    while (cur) {
+      chain.unshift(cur);
+      cur = cur.parentCode ? db.regionSeeds.find((r) => r.regionCode === cur!.parentCode) : undefined;
+    }
+    return delay(chain.filter((r) => r.level !== "VILLAGE"));
+  },
+
+  async mFulfillmentImpact(_storeNo, channel) {
+    const four = new Set(["STORE_PICKUP", "NEIGHBOR_PICKUP", "MERCHANT_DELIVERY", "EXPRESS"]);
+    return delay(
+      myGoods()
+        .filter((g) => g.onSale)
+        .filter((g) => {
+          const ways = ((g as { fulfillments?: string[] }).fulfillments ?? []).filter((w) => four.has(w));
+          return ways.length === 1 && ways[0] === channel;
+        })
+        .map((g) => ({ goodsNo: g.goodsNo, title: g.title })),
+    );
+  },
+
+  async mPickupCandidates(storeNo) {
+    const no = storeNo === "default" ? db.stores[0]?.storeNo ?? "ST-MOCK-1" : storeNo;
+    const mine = mockSelfBuilt.filter((p) => p.ownerStoreNo === no);
+    const nearby: import("@shared/types").PickupCandidate[] = db.communitySeeds.flatMap((c) => {
+      const vo = toCommunity(c);
+      return (vo.pickups ?? []).map((p) => ({
+        pickupNo: p.pickupNo,
+        name: p.name,
+        address: p.address,
+        type: "STORE" as const,
+        status: "ACTIVE",
+        communityNo: vo.communityNo,
+        communityName: vo.name,
+        ownerStoreNo: null,
+      }));
+    });
+    return delay([...mine, ...nearby]);
+  },
+
+  async mSelfBuildPickup(payload) {
+    const no = payload.storeNo === "default" ? db.stores[0]?.storeNo ?? "ST-MOCK-1" : payload.storeNo;
+    if (mockSelfBuilt.some((p) => p.ownerStoreNo === no && p.name === payload.name.trim())) {
+      throw new Error("这个取货点已经提交过了");
+    }
+    const created: import("@shared/types").PickupCandidate = {
+      pickupNo: `PK${Date.now()}`,
+      name: payload.name.trim(),
+      address: payload.address.trim(),
+      type: "STORE",
+      status: "PENDING",
+      communityNo: payload.communityNo ?? db.communitySeeds[0]!.communityNo,
+      communityName: toCommunity(db.communitySeeds[0]!).name,
+      ownerStoreNo: no,
+    };
+    mockSelfBuilt.unshift(created);
+    return delay(created);
+  },
+
   async mVillageDict(street, keyword) {
     const kw = (keyword ?? "").trim();
     return delay(
@@ -1886,7 +1982,7 @@ export const mockApi: MerchantApi = {
       // 成团单位是自提点：拼的是一车送到一个点的成本，跨点凑人对成本无帮助
       pickupNo: db.merchant.pickupNo ?? db.communitySeeds[0]!.pickups[0]!.pickupNo,
       initiatorNickname: db.merchant.name || "商家",
-      initiatorAvatar: db.merchant.logo || "🏪",
+      initiatorAvatar: db.merchant.logo || MERCHANT_LOGO_FALLBACK,
       createdAt: Date.now(),
       members: [],
       joined: false,

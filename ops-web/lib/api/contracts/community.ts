@@ -74,6 +74,11 @@ export interface CommunityApi {
   createPickup(draft: PickupDraft): Promise<PickupPoint>;
   /** 启停与迁移（P-2.2.2），非法迁移抛错。 */
   setPickupStatus(pickupNo: string, status: PickupStatus): Promise<PickupPoint>;
+  /**
+   * 裁决商家自建的自提点（P1）：PENDING → ACTIVE / REJECTED。
+   * 驳回必须带理由 —— 它原样回给商家，不写他只会原样再提一次。
+   */
+  decidePickup(pickupNo: string, pass: boolean, reason?: string): Promise<PickupPoint>;
   /** 履约服务费费率，万分比（P-2.2.4）。⚠️ 仅 STORE 可配，NEIGHBOR 零报酬（ADR-005 §4）。 */
   setPickupServiceFee(pickupNo: string, serviceFeeRate: number): Promise<PickupPoint>;
   /** 疑似职业化的临时自提点（P-2.2.5）：近 30 天承接次数 ≥ 阈值。 */

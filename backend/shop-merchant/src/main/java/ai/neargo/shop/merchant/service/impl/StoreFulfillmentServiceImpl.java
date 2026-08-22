@@ -34,13 +34,19 @@ public class StoreFulfillmentServiceImpl implements StoreFulfillmentService {
     private final FulfillmentChannelMapper channelMapper;
     private final MchStoreMapper storeMapper;
     private final AdmissionPort admissionPort;
+    private final ai.neargo.shop.merchant.mapper.MerchantMappers.ChannelPickupMapper pickupRefMapper;
+    private final ai.neargo.shop.spi.user.PickupQueryPort pickupQueryPort;
 
     public StoreFulfillmentServiceImpl(FulfillmentChannelMapper channelMapper,
                                        MchStoreMapper storeMapper,
-                                       AdmissionPort admissionPort) {
+                                       AdmissionPort admissionPort,
+                                       ai.neargo.shop.merchant.mapper.MerchantMappers.ChannelPickupMapper pickupRefMapper,
+                                       ai.neargo.shop.spi.user.PickupQueryPort pickupQueryPort) {
         this.channelMapper = channelMapper;
         this.storeMapper = storeMapper;
         this.admissionPort = admissionPort;
+        this.pickupRefMapper = pickupRefMapper;
+        this.pickupQueryPort = pickupQueryPort;
     }
 
     @Override
@@ -53,7 +59,8 @@ public class StoreFulfillmentServiceImpl implements StoreFulfillmentService {
             out.add(new ChannelVO(ch,
                     row != null && Boolean.TRUE.equals(row.getEnabled()),
                     deniedByMatrix(merchantNo, ch),
-                    row == null ? null : templateNoOf(row.getConfig())));
+                    row == null ? null : templateNoOf(row.getConfig()),
+                    Fulfillments.NEIGHBOR_PICKUP.equals(ch) ? pickupRefsOf(store.getStoreNo()) : List.of()));
         }
         return new FulfillmentVO(store.getStoreNo(), out);
     }
@@ -88,9 +95,34 @@ public class StoreFulfillmentServiceImpl implements StoreFulfillmentService {
 
         boolean storePickupOn = byChannel.containsKey(Fulfillments.STORE_PICKUP)
                 && byChannel.get(Fulfillments.STORE_PICKUP).enabled();
-        if (storePickupOn && (store.getAddress() == null || store.getAddress().isBlank())) {
+        boolean hasAddress = store.getAddress() != null && !store.getAddress().isBlank();
+        if (storePickupOn && !hasAddress) {
             // 门店自取的取货地址就是门店地址（刻意不另存一份），没有地址的自取是空承诺
             throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        /*
+         * 社区自提点这一路的取货点引用（P1）：传了就全量替换；每个点都要真的存在，
+         * PENDING 的自建点只有本店能引用（别家的待审点对你而言还不存在）。
+         * 「自提开着却一个落点都没有」在这里拦 —— 这正是上一轮线上「上架即隐身」故障的近亲。
+         */
+        ChannelCmd neighbor = byChannel.get(Fulfillments.NEIGHBOR_PICKUP);
+        List<String> pickupNos = neighbor == null ? null : neighbor.pickupNos();
+        if (pickupNos != null) {
+            for (String no : pickupNos) {
+                var brief = pickupQueryPort.find(no).orElseThrow(() -> BizException.of(ErrorCode.NOT_FOUND));
+                boolean pendingOwn = "PENDING".equals(brief.status())
+                        && store.getStoreNo().equals(brief.ownerStoreNo());
+                if (!"ACTIVE".equals(brief.status()) && !pendingOwn) {
+                    throw BizException.of(ErrorCode.BAD_REQUEST);
+                }
+            }
+        }
+        boolean neighborOn = neighbor != null && neighbor.enabled();
+        if (neighborOn && !hasAddress) {
+            int refs = pickupNos != null ? pickupNos.size() : pickupRefsOf(store.getStoreNo()).size();
+            if (refs == 0) {
+                throw BizException.of(ErrorCode.BAD_REQUEST);
+            }
         }
 
         for (ChannelCmd cmd : byChannel.values()) {
@@ -126,6 +158,19 @@ public class StoreFulfillmentServiceImpl implements StoreFulfillmentService {
                     channelMapper.insert(row);
                 } else {
                     channelMapper.updateById(row);
+                }
+            }
+            if (pickupNos != null) {
+                // 纯关联集合，物理删后重插（照 mch_service_area 先例，不留墓碑）
+                pickupRefMapper.delete(Wrappers.<ai.neargo.shop.merchant.entity.MchChannelPickup>lambdaQuery()
+                        .eq(ai.neargo.shop.merchant.entity.MchChannelPickup::getStoreNo, target.getStoreNo())
+                        .eq(ai.neargo.shop.merchant.entity.MchChannelPickup::getChannel, Fulfillments.NEIGHBOR_PICKUP));
+                for (String no : new java.util.LinkedHashSet<>(pickupNos)) {
+                    var ref = new ai.neargo.shop.merchant.entity.MchChannelPickup();
+                    ref.setStoreNo(target.getStoreNo());
+                    ref.setChannel(Fulfillments.NEIGHBOR_PICKUP);
+                    ref.setPickupNo(no);
+                    pickupRefMapper.insert(ref);
                 }
             }
             return null;
@@ -182,6 +227,22 @@ public class StoreFulfillmentServiceImpl implements StoreFulfillmentService {
                 () -> channelMapper.selectList(Wrappers.<MchFulfillmentChannel>lambdaQuery()
                         .eq(MchFulfillmentChannel::getStoreNo, storeNo)))) {
             out.put(row.getChannel(), row);
+        }
+        return out;
+    }
+
+    /** 这一店引用的取货点。读侧不过滤状态：停用/待审的也展示，商家才知道它现在不算数 */
+    private List<PickupRef> pickupRefsOf(String storeNo) {
+        List<ai.neargo.shop.merchant.entity.MchChannelPickup> rows =
+                ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() ->
+                        pickupRefMapper.selectList(Wrappers.<ai.neargo.shop.merchant.entity.MchChannelPickup>lambdaQuery()
+                                .eq(ai.neargo.shop.merchant.entity.MchChannelPickup::getStoreNo, storeNo)
+                                .eq(ai.neargo.shop.merchant.entity.MchChannelPickup::getChannel, Fulfillments.NEIGHBOR_PICKUP)
+                                .orderByAsc(ai.neargo.shop.merchant.entity.MchChannelPickup::getId)));
+        List<PickupRef> out = new ArrayList<>(rows.size());
+        for (var r : rows) {
+            pickupQueryPort.find(r.getPickupNo()).ifPresent(b ->
+                    out.add(new PickupRef(b.pickupNo(), b.name(), b.address(), b.type(), b.status())));
         }
         return out;
     }

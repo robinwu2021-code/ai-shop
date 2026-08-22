@@ -60,6 +60,7 @@ CREATE TABLE IF NOT EXISTS cmt_pickup_point
     service_fee_per_item_minor BIGINT(20) NOT NULL DEFAULT 0,
     fee_mode VARCHAR(16) NOT NULL DEFAULT 'NONE',
     archived_at DATETIME DEFAULT NULL,
+    reject_reason VARCHAR(255) NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_pickup_no UNIQUE (pickup_no),
     CONSTRAINT ck_neighbor_zero_fee CHECK (type <> 'NEIGHBOR' or service_fee_rate = 0)
@@ -5323,3 +5324,5 @@ UPDATE cmt_community
 UPDATE sys_function_point
    SET name = '区划维护', updated_at = NOW()
  WHERE point_code = 'OPS_COMMUNITY__TAB_REGIONS';
+UPDATE mch_service_area SET status = 'ACTIVE' WHERE level = 'STREET' AND status = 'PENDING';
+UPDATE mch_store_audit SET status = 'PASSED', decided_at = UNIX_TIMESTAMP() * 1000, decided_by = 'SYSTEM' WHERE kind = 'SERVICE_AREA' AND status = 'PENDING' AND content LIKE 'STREET:%';

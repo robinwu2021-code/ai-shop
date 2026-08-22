@@ -126,9 +126,13 @@ export type PickupPointType = "STORE" | "NEIGHBOR" | "PLATFORM";
 export type PickupFeeMode = "NONE" | "PER_ITEM" | "RATE";
 
 /** MIGRATING = 迁移中（P-2.2.2）：不再接新单，存量单仍在本点核销完。 */
-export type PickupStatus = "ACTIVE" | "SUSPENDED" | "MIGRATING";
+/** PENDING/REJECTED（P1）：商家自建点的审核态 —— 先审后用，地址要印在买家取货页上 */
+export type PickupStatus = "ACTIVE" | "SUSPENDED" | "MIGRATING" | "PENDING" | "REJECTED";
 
 export const PICKUP_TRANSITIONS: Record<PickupStatus, PickupStatus[]> = {
+  // 审核态不走启停迁移：裁决端点单独处理（decidePickup）
+  PENDING: [],
+  REJECTED: [],
   ACTIVE: ["SUSPENDED", "MIGRATING"],
   SUSPENDED: ["ACTIVE"],
   // 迁移完成后只能停用（旧点不再启用），新点是另一条记录
@@ -175,8 +179,13 @@ export interface PickupPoint extends Archivable {
   type: PickupPointType;
   /** 计费口径。目前只有 PLATFORM 有值，见 `PickupFeeMode` 的说明 */
   feeMode: PickupFeeMode;
-  /** 自提点状态。`MIGRATING` = 不再接新单，存量单仍在本点核销完 */
+  /** 自提点状态。`MIGRATING` = 不再接新单，存量单仍在本点核销完；`PENDING` = 商家自建待核实 */
   status: PickupStatus;
+  /** 坐标（E6）。审自建点时要看：没坐标的点买家用定位找不到 */
+  latE6?: number | null;
+  lngE6?: number | null;
+  /** 驳回理由，只有 REJECTED 有值 */
+  rejectReason?: string | null;
   /** 归属社区 */
   communityNo: string;
   /** 社区名快照 */

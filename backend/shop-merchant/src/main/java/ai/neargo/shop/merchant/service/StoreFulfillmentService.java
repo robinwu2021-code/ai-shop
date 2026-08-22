@@ -31,14 +31,23 @@ public interface StoreFulfillmentService {
     List<StoreFulfillmentVO> byMerchant(String merchantNo);
 
     /** @param templateNo 仅 EXPRESS 有意义；空 = 平台默认模板 */
-    record ChannelCmd(String channel, boolean enabled, String templateNo) {
+    /**
+     * @param pickupNos 仅 NEIGHBOR_PICKUP：这一路的取货点引用，<b>全量替换</b>；null = 不改
+     */
+    record ChannelCmd(String channel, boolean enabled, String templateNo, List<String> pickupNos) {
     }
 
     /**
      * @param denied 准入矩阵不允许（按主体类型）。端上置灰＋原因，不隐藏
      * @param templateNo 仅 EXPRESS 非空
      */
-    record ChannelVO(String channel, boolean enabled, boolean denied, String templateNo) {
+    record ChannelVO(String channel, boolean enabled, boolean denied, String templateNo,
+                     /** 仅 NEIGHBOR_PICKUP：已引用的取货点，含 PENDING 的自建点（让商家看到「审核中」） */
+                     List<PickupRef> pickups) {
+    }
+
+    /** 取货点引用的展示面。status 来自 cmt_pickup_point：只有 ACTIVE 参与买家侧 */
+    record PickupRef(String pickupNo, String name, String address, String type, String status) {
     }
 
     record FulfillmentVO(String storeNo, List<ChannelVO> channels) {

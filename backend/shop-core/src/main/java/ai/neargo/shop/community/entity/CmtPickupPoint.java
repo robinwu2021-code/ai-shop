@@ -52,8 +52,10 @@ public class CmtPickupPoint extends BaseEntity {
      */
     private Integer serviceFeeRate;
 
-    /** ACTIVE / SUSPENDED */
+    /** ACTIVE / SUSPENDED / MIGRATING；商家自建点先 PENDING，运营核实后 ACTIVE，驳回 REJECTED（V188） */
     private String status;
+    /** 自建点被驳回的理由（V188），原样回给商家 */
+    private String rejectReason;
     /** 约定取货时段：邻居家不能一直堆着货（B15）。 */
     private String timeSlot;
 

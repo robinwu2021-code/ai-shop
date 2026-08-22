@@ -53,6 +53,14 @@ export const regions: Region[] = [
 
 export const pickups: PickupPoint[] = [
   {
+    // 商家自建（P1）：先审后用。有坐标——审核面上要看坐标有没有
+    pickupNo: "P009", name: "阳光里东门驿站", type: "STORE", status: "PENDING",
+    communityNo: "C002", communityName: "阳光里", storeNo: "ST-M902", merchantName: "老张水果店",
+    address: "阳光里东门 2 号商铺", openHours: "08:00-20:00", arriveTime: "",
+    serviceFeeRate: 0, feeMode: "NONE", serviceFeePerItemMinor: 0, acceptCount30d: 0, createdAt: "2026-08-22T06:00:00Z",
+    latE6: 30_180_000, lngE6: 120_090_000,
+  },
+  {
     pickupNo: "P001", name: "邻家便利·锦绣店", type: "STORE", status: "ACTIVE",
     communityNo: "C001", communityName: "锦绣花园", storeNo: "ST-M903", merchantName: "邻家便利",
     address: "锦绣花园 3 幢商铺 102", openHours: "07:30-22:00", arriveTime: "16:00",

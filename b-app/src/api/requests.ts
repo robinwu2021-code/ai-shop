@@ -36,7 +36,21 @@ export interface StoreFulfillmentSaveReq {
     enabled: boolean;
     /** 仅 EXPRESS：运费模板号，空 = 平台默认 */
     templateNo?: string | null;
+    /** 仅 NEIGHBOR_PICKUP：取货点引用，全量替换；不传 = 不改 */
+    pickupNos?: string[];
   }>;
+}
+
+/** 商家自建自提点（P1）。坐标必填：没坐标的点买家用定位永远找不到 */
+export interface PickupSelfBuildReq {
+  storeNo: string;
+  name: string;
+  address: string;
+  latE6: number;
+  lngE6: number;
+  openHours?: string;
+  /** 不传 = 按坐标就近归到已开通社区 */
+  communityNo?: string;
 }
 
 // ---------------------------------------------------------------- 账号与入驻

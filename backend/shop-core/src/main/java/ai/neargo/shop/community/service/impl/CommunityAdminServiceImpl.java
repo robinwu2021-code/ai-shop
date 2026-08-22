@@ -35,6 +35,9 @@ public class CommunityAdminServiceImpl implements CommunityAdminService {
     /** 三类自提点。**PLATFORM 不能漏** —— 它的费率规则与另外两类完全不同 */
     private static final Set<String> PICKUP_TYPES = Set.of(STORE, NEIGHBOR, PLATFORM);
     private static final String ACTIVE = "ACTIVE";
+    /** 商家自建点的初态（P1，V188）；运营核实后 ACTIVE，驳回 REJECTED */
+    private static final String PENDING = "PENDING";
+    private static final String REJECTED = "REJECTED";
     private static final String SUSPENDED = "SUSPENDED";
     private static final String MIGRATING = "MIGRATING";
 
@@ -517,6 +520,24 @@ public class CommunityAdminServiceImpl implements CommunityAdminService {
                 p.getServiceFeePerItemMinor() == null ? 0L : p.getServiceFeePerItemMinor(),
                 p.getFeeMode(), 0,
                 p.getCreatedAt() == null ? 0L
-                        : p.getCreatedAt().atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli());
+                        : p.getCreatedAt().atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli(),
+                p.getLatE6(), p.getLngE6(), p.getRejectReason());
+    }
+
+    @Override
+    @Transactional
+    public PickupVO decidePickup(String pickupNo, boolean pass, String reason, String operatorNo) {
+        CmtPickupPoint p = requirePickup(pickupNo);
+        // 裁完就是终态：再裁一次意味着同一个点有两个结论
+        if (!PENDING.equals(p.getStatus())) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+        if (!pass && blank(reason)) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        p.setStatus(pass ? ACTIVE : REJECTED);
+        p.setRejectReason(pass ? null : reason.trim());
+        DataScopeContext.executeWithoutScope(() -> pickupMapper.updateById(p));
+        return toVO(p);
     }
 }

@@ -173,6 +173,7 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
 
     private static final String PICKUP = "PICKUP";
     private static final String AREA_COMMUNITY = "COMMUNITY";
+    private static final String AREA_STREET = "STREET";
 
     /**
      * 覆盖项：**全量替换**，勾选面板上的就是最终结果。
@@ -231,7 +232,13 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
              * 待审的覆盖项不参与展开，所以商家勾了也不会当场铺开。
              */
             String prior = wasStatus.get(a.level() + ":" + a.refCode());
-            String status = AREA_COMMUNITY.equals(a.level()) ? MchServiceArea.ACTIVE
+            /*
+             * 小区/村、街道/镇自选即生效（方案 v3 §3.1，V188 起）：街道量级与小区同属
+             * 商家自己够得着的范围；只有区/市要运营审 —— 一家菜摊声称覆盖整个西湖区，
+             * 得有履约能力佐证，影响面差一个量级。
+             */
+            boolean selfEffective = AREA_COMMUNITY.equals(a.level()) || AREA_STREET.equals(a.level());
+            String status = selfEffective ? MchServiceArea.ACTIVE
                     : prior != null ? prior : MchServiceArea.PENDING;
             row.setStatus(status);
             DataScopeContext.executeWithoutScope(() -> serviceAreaMapper.insert(row));

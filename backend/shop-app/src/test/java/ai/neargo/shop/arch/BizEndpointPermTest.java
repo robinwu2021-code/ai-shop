@@ -37,6 +37,8 @@ class BizEndpointPermTest {
 
     /** 不需要授权的端点：登录相关，以及「还不是商家的人」也要能用的那几个 */
     private static final Set<String> PUBLIC = Set.of(
+            "/biz/regions/search",
+            "/biz/regions/path",
             "/biz/auth/login", "/biz/auth/otp/send", "/biz/auth/staff-login",
             // 设/查自己的登录密码：作用对象是**调用者本人**（SecurityUtils.currentUserNo），
             // 拿不到别人的。挂 biz 权限码反而错了 —— 店员也该能给自己设密码，
@@ -150,6 +152,8 @@ class BizEndpointPermTest {
         put("/biz/store", BizPerms.STORE);
         // 门店送货方式（方案 v4）：GET/PUT 同路径同进退，都归门店管理面
         put("/biz/stores/{storeNo}/fulfillment", BizPerms.STORE);
+        put("/biz/pickup-points/candidates", BizPerms.STORE);
+        put("/biz/pickup-points", BizPerms.STORE);
         // 提报新社区与设经营范围是同一件事的两半：能决定「我做哪儿」的人，
         // 才该能提「这儿还没开」
         put("/biz/communities/apply", BizPerms.STORE);

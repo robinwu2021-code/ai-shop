@@ -101,6 +101,45 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
     // ---------------------------------------------------------------- 查询
 
     @Override
+    public List<GoodsBrief> onlyFulfillment(String merchantNo, String storeNo, String channel) {
+        if (merchantNo == null || channel == null || channel.isBlank()) {
+            return List.of();
+        }
+        List<PrdGoods> goods = DataScopeContext.executeWithoutScope(() ->
+                goodsMapper.selectList(Wrappers.<PrdGoods>lambdaQuery()
+                        .eq(PrdGoods::getEntityNo, merchantNo)
+                        .eq(PrdGoods::getOnSale, true)
+                        .orderByDesc(PrdGoods::getId)));
+        if (goods.isEmpty()) {
+            return List.of();
+        }
+        // 货架：有本店行且下架的不算（那件货在这家店本来就没卖）
+        java.util.Set<String> offAtStore = new java.util.HashSet<>();
+        if (storeNo != null && !storeNo.isBlank()) {
+            DataScopeContext.executeWithoutScope(() -> storeGoodsMapper.selectList(
+                            Wrappers.<ai.neargo.shop.product.entity.PrdStoreGoods>lambdaQuery()
+                                    .eq(ai.neargo.shop.product.entity.PrdStoreGoods::getStoreNo, storeNo)
+                                    .eq(ai.neargo.shop.product.entity.PrdStoreGoods::getOnSale, false)))
+                    .forEach(r -> offAtStore.add(r.getGoodsNo()));
+        }
+        java.util.Set<String> merchantConfigurable = java.util.Set.of(
+                ai.neargo.shop.common.Fulfillments.STORE_PICKUP, ai.neargo.shop.common.Fulfillments.NEIGHBOR_PICKUP,
+                ai.neargo.shop.common.Fulfillments.MERCHANT_DELIVERY, ai.neargo.shop.common.Fulfillments.EXPRESS);
+        List<GoodsBrief> out = new ArrayList<>();
+        for (PrdGoods g : goods) {
+            if (offAtStore.contains(g.getGoodsNo())) {
+                continue;
+            }
+            // 只看商家可配的四路：服务类两值是商品属性，不受店铺开关影响
+            List<String> ways = readList(g.getFulfillments()).stream().filter(merchantConfigurable::contains).toList();
+            if (ways.size() == 1 && ways.get(0).equals(channel)) {
+                out.add(new GoodsBrief(g.getGoodsNo(), g.getTitle()));
+            }
+        }
+        return out;
+    }
+
+    @Override
     public PageData<GoodsVO> list(String merchantNo, String categoryNo, String keyword, String status, long page, long size) {
         /*
          * merchantNo 为空 = **跨商家查**，给平台审核队列/商品池用。

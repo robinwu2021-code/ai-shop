@@ -29,9 +29,59 @@ import java.util.List;
 public class BizRegionController {
 
     private final RegionService regionService;
+    private final ai.neargo.shop.community.service.CommunityService communityService;
 
-    public BizRegionController(RegionService regionService) {
+    public BizRegionController(RegionService regionService,
+                               ai.neargo.shop.community.service.CommunityService communityService) {
         this.regionService = regionService;
+        this.communityService = communityService;
+    }
+
+    /**
+     * 跨级搜索（P1）：选择器「任何一级都能搜」的正式版。
+     *
+     * <p>一次返回两类命中：区划（市/区县/街道，带从省到父级的路径）与已开通聚落
+     * （小区/村，带所在街道路径）。此前端上只能过滤当前层 + 全部聚落，
+     * 在省级列表里搜「转塘」什么都搜不到。
+     * 路径按区划码去重回溯：同一街道下几十个小区共用一条路径，不该查几十次。
+     */
+    @GetMapping("/biz/regions/search")
+    public SearchVO search(@RequestParam String kw) {
+        java.util.Map<String, String> pathCache = new java.util.HashMap<>();
+        java.util.function.Function<String, String> pathOf = code -> pathCache.computeIfAbsent(code,
+                c -> regionService.path(c).stream()
+                        .map(RegionService.RegionVO::name)
+                        .collect(java.util.stream.Collectors.joining(" / ")));
+        List<RegionHit> regions = regionService.search(kw, 20).stream()
+                .map(r -> new RegionHit(r.regionCode(), r.level(), r.name(),
+                        // 路径不含自己：列表主标题已经是名字
+                        pathOf.apply(r.parentCode() == null ? "" : r.parentCode())))
+                .toList();
+        String q = kw == null ? "" : kw.trim();
+        List<CommunityHit> communities = q.isEmpty() ? List.of() : communityService.all().stream()
+                .filter(c -> c.name() != null && c.name().contains(q))
+                .limit(30)
+                .map(c -> new CommunityHit(c.communityNo(), c.name(), c.regionCode(),
+                        c.regionCode() == null ? "" : pathOf.apply(c.regionCode())))
+                .toList();
+        return new SearchVO(regions, communities);
+    }
+
+    /** 从省到自身的整条链路：选择器从搜索命中下钻时要把面包屑换成真实路径 */
+    @GetMapping("/biz/regions/path")
+    public List<RegionService.RegionVO> path(@RequestParam String code) {
+        return regionService.path(code).stream()
+                .filter(r -> !"VILLAGE".equals(r.level()))
+                .toList();
+    }
+
+    public record RegionHit(String regionCode, String level, String name, String path) {
+    }
+
+    public record CommunityHit(String communityNo, String name, String regionCode, String path) {
+    }
+
+    public record SearchVO(List<RegionHit> regions, List<CommunityHit> communities) {
     }
 
     /**

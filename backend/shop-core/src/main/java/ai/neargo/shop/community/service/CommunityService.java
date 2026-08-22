@@ -45,4 +45,26 @@ public interface CommunityService {
 
     /** 自提点详情（C-CM-02）：地址、营业时间、到货时间。 */
     CommunityVO.PickupVO pickupDetail(String pickupNo);
+
+    /**
+     * 门店可引用的取货点候选（P1）：在这些社区里、ACTIVE、常驻的 STORE/PLATFORM 点，
+     * 再并上本店自己建的点（含 PENDING/REJECTED，商家才知道自己建的点去哪了）。
+     * 不给距离：门店本身没有坐标可算；本店的排最前，其余按社区归组、同组按名字。
+     */
+    List<PickupCandidate> pickupCandidates(java.util.Collection<String> communityNos, String ownerStoreNo);
+
+    /**
+     * 商家自建自提点（P1）：落 STORE 型、owner 为本店、<b>PENDING</b> 待运营核实。
+     * 坐标必填 —— 没坐标的点买家用定位永远找不到；社区不传时按坐标就近归到已开通社区。
+     */
+    PickupCandidate selfBuildPickup(SelfBuildCmd cmd);
+
+    record PickupCandidate(String pickupNo, String name, String address, String type, String status,
+                           String communityNo, String communityName, String ownerStoreNo,
+                           String rejectReason) {
+    }
+
+    record SelfBuildCmd(String storeNo, String name, String address, Integer latE6, Integer lngE6,
+                        String openHours, String communityNo) {
+    }
 }

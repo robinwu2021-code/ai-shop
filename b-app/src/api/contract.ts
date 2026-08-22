@@ -4,6 +4,8 @@
 // 类型全部来自 @shared/types —— **不在这里重复定义**。同一笔订单两端看到的是同一个
 // Order 结构，只是可见字段与可执行动作不同；各定义一份必然漂移。
 import type {
+  PickupCandidate,
+  RegionSearchResult,
   BizScope,
   Region,
   StaffRole,
@@ -254,7 +256,16 @@ export interface GoodsDraft {
   };
 }
 
-import type { DescribeGoodsReq, PointsRecordQuery, StaffLoginReq, StoreEditReq, StoreFulfillmentSaveReq, SubmitPaymentReq, TogglePointsReq } from "./requests";
+import type {
+  DescribeGoodsReq,
+  PickupSelfBuildReq,
+  PointsRecordQuery,
+  StaffLoginReq,
+  StoreEditReq,
+  StoreFulfillmentSaveReq,
+  SubmitPaymentReq,
+  TogglePointsReq,
+} from "./requests";
 
 export interface MerchantApi {
   // ---- 账号与入驻（B-11.1）
@@ -357,6 +368,16 @@ export interface MerchantApi {
 
   /** 全量保存。「关一路」是 enabled=false 不是删配置 */
   mSaveStoreFulfillment(storeNo: string, payload: StoreFulfillmentSaveReq): Promise<StoreFulfillment>;
+  /** 关掉某一路会影响的在售商品：本店货架上只勾了这一路的（P1） */
+  mFulfillmentImpact(storeNo: string, channel: string): Promise<Array<{ goodsNo: string; title: string }>>;
+  /** 门店可引用的取货点候选：范围内的常驻点 + 本店自建的点（P1） */
+  mPickupCandidates(storeNo: string): Promise<PickupCandidate[]>;
+  /** 自建自提点 → PENDING 待运营核实（P1） */
+  mSelfBuildPickup(payload: PickupSelfBuildReq): Promise<PickupCandidate>;
+  /** 跨级搜索区划与聚落（P1） */
+  mRegionSearch(kw: string): Promise<RegionSearchResult>;
+  /** 从省到自身的整条链路（选择器从搜索命中下钻用） */
+  mRegionPath(code: string): Promise<Region[]>;
   /** 新建。**超额直接拒** —— 建出来却打不开的店比拒绝更难解释 */
   mCreateStore(payload: StoreEditReq): Promise<Store>;
   mRenameStore(storeNo: string, payload: StoreEditReq): Promise<Store>;

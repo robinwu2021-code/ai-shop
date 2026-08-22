@@ -45,6 +45,19 @@ public class BizGoodsController {
     }
 
     /**
+     * 关掉某一路送货方式会影响的在售商品（P1）：本店货架上只勾了这一路的。
+     * 端上关路前的确认框用它列清单 —— 商品不会被自动改动，所以要让商家看见名字。
+     */
+    @org.springframework.security.access.prepost.PreAuthorize("@perm.canBiz('" + ai.neargo.shop.auth.BizPerms.STORE + "')")
+    @org.springframework.web.bind.annotation.GetMapping("/biz/stores/{storeNo}/fulfillment/{channel}/impact")
+    public java.util.List<MerchantGoodsService.GoodsBrief> fulfillmentImpact(
+            @org.springframework.web.bind.annotation.PathVariable String storeNo,
+            @org.springframework.web.bind.annotation.PathVariable String channel) {
+        return goodsService.onlyFulfillment(ai.neargo.shop.auth.BizContext.requireMerchantNo(),
+                "default".equals(storeNo) ? null : storeNo, channel);
+    }
+
+    /**
      * 类目树 —— 商家编辑商品时选类目用。
      *
      * <p>与 C 端的 {@code GET /mp/category/tree} 是**同一份数据的两个入口**，

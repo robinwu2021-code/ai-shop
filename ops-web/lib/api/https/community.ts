@@ -22,6 +22,7 @@ export const communityHttp: CommunityApi = {
   listPickups: (q) => client.get("/ops/pickups", q),
   createPickup: (draft) => client.post("/ops/pickups", draft),
   setPickupStatus: (no, status) => client.post(`/ops/pickups/${no}/status`, { status }),
+  decidePickup: (no, pass, reason) => client.post(`/ops/pickups/${no}/decide`, { pass, reason }),
   setPickupServiceFee: (no, serviceFeeRate) => client.post(`/ops/pickups/${no}/service-fee`, { serviceFeeRate }),
   listRiskyNeighborPickups: (q) => client.get("/ops/pickups/risky", q),
   archivePickup: (no) => client.post(`/ops/pickups/${no}/archive`),

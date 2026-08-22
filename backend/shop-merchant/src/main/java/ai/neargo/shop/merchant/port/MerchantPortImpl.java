@@ -65,6 +65,8 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
     private final ai.neargo.shop.merchant.mapper.MerchantMappers.PlanDefMapper planDefMapper;
     /** 门店送货方式（方案 v4）—— 可见性与下单闸的取数口 */
     private final ai.neargo.shop.merchant.mapper.MerchantMappers.FulfillmentChannelMapper fulfillmentChannelMapper;
+    private final ai.neargo.shop.merchant.mapper.MerchantMappers.ChannelPickupMapper channelPickupMapper;
+    private final ai.neargo.shop.spi.user.PickupQueryPort pickupQueryPort;
 
     public MerchantPortImpl(MchEntityMapper merchantMapper, MchEntityCommunityMapper merchantCommunityMapper,
                             MchPaymentMapper merchantPaymentMapper,
@@ -80,8 +82,12 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
                             ai.neargo.shop.merchant.mapper.MerchantMappers.EntityPlanMapper entityPlanMapper,
                             ai.neargo.shop.merchant.mapper.MerchantMappers.PlanDefMapper planDefMapper,
                             ai.neargo.shop.merchant.service.MerchantAuthCodeService authCodeService,
-                            ai.neargo.shop.merchant.mapper.MerchantMappers.FulfillmentChannelMapper fulfillmentChannelMapper) {
+                            ai.neargo.shop.merchant.mapper.MerchantMappers.FulfillmentChannelMapper fulfillmentChannelMapper,
+                            ai.neargo.shop.merchant.mapper.MerchantMappers.ChannelPickupMapper channelPickupMapper,
+                            ai.neargo.shop.spi.user.PickupQueryPort pickupQueryPort) {
         this.fulfillmentChannelMapper = fulfillmentChannelMapper;
+        this.channelPickupMapper = channelPickupMapper;
+        this.pickupQueryPort = pickupQueryPort;
         this.authCodeService = authCodeService;
         this.entityPlanMapper = entityPlanMapper;
         this.planDefMapper = planDefMapper;
@@ -190,6 +196,27 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
             }
         }
         return List.copyOf(out);
+    }
+
+    @Override
+    public java.util.Set<String> allowedPickupNos(String merchantNo) {
+        if (merchantNo == null || merchantNo.isBlank()) {
+            return java.util.Set.of();
+        }
+        java.util.List<String> stores = storeNos(merchantNo);
+        if (stores.isEmpty()) {
+            return java.util.Set.of();
+        }
+        java.util.LinkedHashSet<String> out = new java.util.LinkedHashSet<>();
+        // 门店引用的社区自提点（方案 v4 mch_channel_pickup）——绕域理由同 enabledFulfillments
+        DataScopeContext.executeWithoutScope(() -> channelPickupMapper.selectList(
+                        com.baomidou.mybatisplus.core.toolkit.Wrappers
+                                .<ai.neargo.shop.merchant.entity.MchChannelPickup>lambdaQuery()
+                                .in(ai.neargo.shop.merchant.entity.MchChannelPickup::getStoreNo, stores)))
+                .forEach(r -> out.add(r.getPickupNo()));
+        // 门店自己的 STORE 点：门店自取的落点
+        out.addAll(pickupQueryPort.activeStorePickupNos(stores));
+        return out;
     }
 
     @Override

@@ -188,7 +188,7 @@ export const en: Messages = {
     APPOINTMENT: "Appointment",
   },
   pickupPointType: { PLATFORM: "Platform point", STORE: "Fixed point", NEIGHBOR: "Neighbor point" },
-  pickupStatus: { ACTIVE: "Active", MIGRATING: "Migrating", SUSPENDED: "Suspended" },
+  pickupStatus: { PENDING: "Pending review", ACTIVE: "Active", MIGRATING: "Migrating", SUSPENDED: "Suspended", REJECTED: "Rejected" },
   batchStatus: { PLANNED: "Planned", DISPATCHED: "Dispatched", ARRIVED: "Arrived", SIGNED: "Signed off" },
   storeAuditStatus: { PENDING: "Pending review", PASSED: "Approved", REJECTED: "Rejected" },
   couponType: { FULL_CUT: "Spend & save", DISCOUNT: "Percent off", NEWCOMER: "New customer", TARGETED: "Targeted" },
