@@ -268,12 +268,21 @@ function ProductsInner() {
     },
     {
       header: c.colI18n,
-      // 缺译不拦上架（按 R9 回落到 zh），但要看得见 —— 否则永远没人补
+      /*
+       * 缺译要看得见（否则永远没人补），但**不是警告** ——
+       * 它按 R9 回落到 zh，不拦上架；而同一行右边的「缺价」是真的拦。
+       * 两件事都用徽章的话，一屏十行、二十个徽章，真正卡住上架的那个就淹了。
+       *
+       * 齐全的一格**留空**：这一列存在的意义是「谁还缺」，
+       * 给每一行都写一句「齐全」等于让人在满屏字里找那几个不一样的。
+       */
       cell: (g) => {
         const missing = (["en", "ar"] as const).filter((k) => !g.title[k]);
-        return missing.length
-          ? <Badge tone="warning">{fill(c.i18nMissing, { langs: missing.join(" / ") })}</Badge>
-          : <span className="text-muted-foreground">{c.i18nComplete}</span>;
+        return missing.length ? (
+          <span className="txt-caption text-muted-foreground">
+            {fill(c.i18nMissing, { langs: missing.join(" / ") })}
+          </span>
+        ) : null;
       },
     },
     { header: c.colSkuCount, cell: (g) => g.skus.length, numeric: true },

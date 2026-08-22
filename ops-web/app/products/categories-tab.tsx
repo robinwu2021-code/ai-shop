@@ -20,6 +20,7 @@ import { api } from "@/lib/api";
 import { notify } from "@/lib/notify";
 import { fill } from "@/lib/use-copy";
 import type { Category } from "@/lib/types";
+import { canDrop as sameGroup, reorderWithin, type DragItem } from "@/lib/reorder";
 import { ShowArchivedToggle } from "@/components/archive";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -344,50 +345,48 @@ export function CategoriesTab({ c, canEdit }: { c: ProductsCopy; canEdit: boolea
   const dragging = () => flat.find((x) => x.categoryNo === dragNo);
 
   /**
-   * 能不能落在这一行上。**跨级、跨父都不行** —— 顺序只在同一组里有意义，
-   * 把「蔬菜」拖到「日用百货」下面看着像改父级，但它改的其实只有 sort，
-   * 松手之后那一条会跳回原处，像是「拖了没反应」。
+   * 能不能落在这一行上 —— 同父同级的判断复用 `lib/reorder`（菜单顺序页那套），
+   * 那边的边界（落在自己身上、跨父）已经有单测，重写一遍只会多一处会走样的实现。
    *
-   * <p>停用的也不做落点：它们本来就沉在底部，排它们等于排一个看不见的顺序。
+   * <p>这里额外加一条：**停用的不做落点**。它们本来就沉在底部，
+   * 排它们等于排一个看不见的顺序。
+   *
+   * <p>一级用一个固定的 parentKey，不能用 undefined —— 两个 undefined 会相等，
+   * 于是「一级」和「没有父级的二级」会被判成同一组。
    */
-  function canDrop(target: Category) {
+  const asDragItem = (x: Category): DragItem =>
+    ({ key: x.categoryNo, parentKey: x.level === 1 ? "__root__" : x.parentNo ?? "" });
+
+  function canDropOn(target: Category) {
     const src = dragging();
-    return !!src && src.categoryNo !== target.categoryNo
-      && src.level === target.level && (src.parentNo ?? "") === (target.parentNo ?? "")
-      && !off(src) && !off(target);
+    return !!src && sameGroup(asDragItem(src), asDragItem(target)) && !off(src) && !off(target);
   }
 
   /**
    * 落点线画在目标行的哪一边。**往下拖画下边、往上拖画上边** ——
-   * 因为「先摘掉自己、再插到目标的下标」这件事，往下拖时天然落在目标**之后**。
+   * 因为插入语义是「先摘掉自己、再插到目标的下标」，往下拖时天然落在目标**之后**。
    * 一律画上边的话，往下拖每次都会比线显示的位置多一格；
    * 而强行把往下拖也改成「插到目标之前」，最后一位就永远排不进去了。
    */
   function dropEdge(r: Category): "top" | "bottom" | null {
     const src = dragging();
-    if (!src || overNo !== r.categoryNo || !canDrop(r)) return null;
+    if (!src || overNo !== r.categoryNo || !canDropOn(r)) return null;
     const list = groupOf(src);
-    const from = list.findIndex((x) => x.categoryNo === src.categoryNo);
-    const to = list.findIndex((x) => x.categoryNo === r.categoryNo);
-    return from < to ? "bottom" : "top";
+    return list.indexOf(src) < list.indexOf(r) ? "bottom" : "top";
   }
 
   function drop(target: Category) {
     const src = dragging();
     setDragNo(null);
     setOverNo(null);
-    if (!src || !canDrop(target)) return;
+    if (!src || !canDropOn(target)) return;
     // 连**停用的**一起重排：它们排在末尾（byLive 已经把它们沉到底），
     // 于是重新启用时落在这一组的最后 —— 而不是拿着一个没人动过的旧 sort
     // 插回中间某处，看着像「开了一下顺序就乱了」
     const list = groupOf(src);
-    const from = list.findIndex((x) => x.categoryNo === src.categoryNo);
-    const to = list.findIndex((x) => x.categoryNo === target.categoryNo);
-    if (from < 0 || to < 0) return;
-    const next = [...list];
-    next.splice(from, 1);
-    next.splice(to, 0, src);
-    reorder.mutate(next);
+    const next = reorderWithin(list, list.indexOf(src), list.indexOf(target));
+    // 没动就别发请求 —— reorderWithin 原样返回同一个数组，用 === 判得出来
+    if (next !== list) reorder.mutate([...next]);
   }
 
   const columns: Column<Category>[] = [
@@ -581,7 +580,7 @@ export function CategoriesTab({ c, canEdit }: { c: ProductsCopy; canEdit: boolea
         }
         rowProps={(r) => ({
           onDragOver: (e) => {
-            if (!canDrop(r)) return;
+            if (!canDropOn(r)) return;
             e.preventDefault();          // 不 preventDefault 的话浏览器根本不让放
             setOverNo(r.categoryNo);
           },
