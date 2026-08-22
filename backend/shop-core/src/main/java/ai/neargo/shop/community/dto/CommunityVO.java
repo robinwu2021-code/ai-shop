@@ -17,6 +17,13 @@ public record CommunityVO(String communityNo,
                            * mock 里有、真机上是 undefined，于是那条判断在真机上恒为 false。
                            */
                           String cityCode,
+                          /**
+                           * 所属街道/镇（9 位区划码）。商家框范围时「按街道看聚落」靠它 ——
+                           * 不下发的话端上只能拿到一锅平铺清单，街道视图无从分组。
+                           */
+                          String regionCode,
+                          /** ESTATE 小区 / VILLAGE 村。只是展示标签，不参与匹配 */
+                          String kind,
                           int distance,
                           List<PickupVO> pickups) {
 

@@ -106,6 +106,13 @@ export interface Community {
   address: string;
   /** 所属城市。全市范围的商家靠它判定可达 */
   cityCode: string;
+  /**
+   * 所属街道/镇（9 位区划码）。商家框范围时「按街道看聚落」靠它 ——
+   * 不下发的话端上只能拿到一锅平铺清单，街道视图无从分组。
+   */
+  regionCode?: string;
+  /** ESTATE 小区 / VILLAGE 村。只是展示标签，不参与匹配 */
+  kind?: string;
   /** 米 */
   distance: number;
   /** 本社区可用的自提点 */
@@ -902,6 +909,10 @@ export interface CartItem {
    * N 笔子订单（`ord_sub_order`）。见 TDD-购物车商家可见。
    */
   merchantNo: string;
+  /**
+   * 商家名。**购物车按它分组** —— 一车东西来自几家店，
+   * 结算时会拆成几笔子订单，分组是把这件事提前说清楚（见 TDD-购物车商家可见）。
+   */
   merchantName: string;
   /** 失效原因，如「已下架」「库存不足」。有值即不可勾选结算 */
   invalidReason?: string;

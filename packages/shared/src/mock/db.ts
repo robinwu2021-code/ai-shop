@@ -671,6 +671,10 @@ interface CommunitySeed {
   communityNo: string;
   /** 所属城市。全市范围的商家靠它判定可达 */
   cityCode: string;
+  /** 所属街道/镇（9 位）。商家「按街道看聚落」靠它分组 */
+  regionCode?: string;
+  /** ESTATE 小区 / VILLAGE 村 */
+  kind?: string;
   name: I18nText;
   address: I18nText;
   distance: number;
@@ -708,6 +712,8 @@ const communitySeeds: CommunitySeed[] = [
   {
     communityNo: "CM001",
     cityCode: "330100",
+    regionCode: "330106001",
+    kind: "ESTATE",
     name: t("阳光里小区", "Sunnyside Gardens", "حدائق صني سايد"),
     address: t("杭州市西湖区文三路 100 号", "100 Wensan Rd, West Lake", "١٠٠ شارع ونسان، ويست ليك"),
     distance: 320,
@@ -739,6 +745,8 @@ const communitySeeds: CommunitySeed[] = [
   {
     communityNo: "CM002",
     cityCode: "330100",
+    regionCode: "330106001",
+    kind: "ESTATE",
     name: t("翠苑一区", "Greenpark One", "غرين بارك ١"),
     address: t("杭州市西湖区翠苑街道", "Cuiyuan St, West Lake", "شارع تسوييوان، ويست ليك"),
     distance: 1250,
@@ -762,6 +770,8 @@ export function toCommunity(seed: CommunitySeed): Community {
   return {
     communityNo: seed.communityNo,
     cityCode: seed.cityCode,
+    regionCode: seed.regionCode,
+    kind: seed.kind,
     name: pick(seed.name),
     address: pick(seed.address),
     distance: seed.distance,

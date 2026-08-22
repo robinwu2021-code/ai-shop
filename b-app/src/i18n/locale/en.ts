@@ -486,6 +486,12 @@ export default {
     copyText: "Copy text", copied: "Copied",
     mine: "Added by you",
     vPending: "Pending",
+    settleUnder: "Opened settlements (estates / villages)",
+    settleEmpty: "No opened settlement under this street/town yet",
+    settleApplyEntry: "＋ Not listed? Submit one",
+    applyToStreet: "Submitting under: {s}",
+    dictHint: "Type a name; villages can be picked from the official list",
+    dictPicked: "Linked to official village: {s}",
   },
   afterSale: {
     agreeReturn: "Approve return",

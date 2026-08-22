@@ -486,6 +486,12 @@ export default {
     copyText: "نسخ النص", copied: "تم النسخ",
     mine: "أضفته أنت",
     vPending: "قيد المراجعة",
+    settleUnder: "التجمعات المفتوحة (مجمعات / قرى)",
+    settleEmpty: "لا يوجد تجمع مفتوح تحت هذا الشارع/البلدة بعد",
+    settleApplyEntry: "＋ غير مدرج؟ قدّم واحدًا",
+    applyToStreet: "التقديم ضمن: {s}",
+    dictHint: "اكتب الاسم؛ يمكن اختيار القرى من القائمة الرسمية",
+    dictPicked: "مرتبط بالقرية الرسمية: {s}",
   },
   afterSale: {
     agreeReturn: "الموافقة على الإرجاع",

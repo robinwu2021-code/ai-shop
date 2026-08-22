@@ -661,6 +661,12 @@ export default {
     copied: "已复制",
     mine: "我加的",
     vPending: "待确认",
+    settleUnder: "已开通的聚落（小区/村）",
+    settleEmpty: "这个街道/镇下还没有开通的聚落",
+    settleApplyEntry: "＋ 这里没有？提报一个",
+    applyToStreet: "提报到：{s}",
+    dictHint: "输入名称；村可从官方村名里选，选中会自动关联",
+    dictPicked: "已关联官方村：{s}",
   },
   afterSale: {
     agreeReturn: "同意退货",

@@ -10,7 +10,7 @@ const merchant = useMerchantStore();
 //
 // 设计约束：**极简，店主是在手机上弄的**。不做拖拽布局、不做多模块编排 ——
 // 一个公告 + 营业时间 + 地址就够了，多一个字段就多一个店主填不完的理由。
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import { onShow } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
 import { api } from "@/api";
@@ -165,6 +165,7 @@ const regionLoading = ref(false);
 
 async function openRegions() {
   regionOpen.value = true;
+  streetView.value = null;
   trail.value = [];
   await loadRegions(undefined);
 }
@@ -183,6 +184,11 @@ async function loadRegions(parent?: string) {
 
 /** 点一级：有下级就钻进去，到叶子就直接加成覆盖项 */
 async function tapRegion(r: Region) {
+  // 街道/镇是导航的终点：点它进聚落视图，不再往下钻区划
+  if (r.level === "STREET") {
+    await enterStreet(r);
+    return;
+  }
   if (r.hasChild) {
     trail.value = [...trail.value, r];
     await loadRegions(r.regionCode);
@@ -191,8 +197,118 @@ async function tapRegion(r: Region) {
   }
 }
 
+// ---------------------------------------------------------------- 街道聚落视图
+/**
+ * 点到街道/镇那一层，不再往下钻区划（导航止于 L4），
+ * 而是平铺**这条街道下已开通的聚落**（小区/村）+ 提报入口。
+ * 这正是聚落模型的样子：小区挂街道、村挂镇，两者同列。
+ */
+const streetView = ref<Region | null>(null);
+const streetSettles = ref<Community[]>([]);
+const streetLoading = ref(false);
+
+async function enterStreet(r: Region) {
+  streetView.value = r;
+  streetApplyOpen.value = false;
+  streetLoading.value = true;
+  try {
+    const all = await api.mCommunities();
+    streetSettles.value = all.filter((c) => c.regionCode === r.regionCode);
+  } catch {
+    streetSettles.value = [];
+  } finally {
+    streetLoading.value = false;
+  }
+}
+
+/** 勾一个聚落。名字带上街道前缀 —— 光一个「新桥」全国有好几个 */
+function addSettle(c: Community) {
+  if (hasArea("COMMUNITY", c.communityNo)) {
+    uni.showToast({ title: t("store.areaDup"), icon: "none" });
+    return;
+  }
+  const name = [...trail.value.map((x) => x.name), streetView.value?.name, c.name]
+    .filter(Boolean).join(" / ");
+  form.value.serviceAreas = [...areas.value, { level: "COMMUNITY", refCode: c.communityNo, name }];
+  regionOpen.value = false;
+  streetView.value = null;
+}
+
+// ---------------------------------------------------------------- 街道内提报（带官方村名词典）
+const streetApplyOpen = ref(false);
+const streetApplyName = ref("");
+/** 词典命中并被选中的官方村；名字再被改动就作废（改了名就不再是那个村） */
+const pickedVillage = ref<Region | null>(null);
+const dictSuggests = ref<Region[]>([]);
+let dictTimer: ReturnType<typeof setTimeout> | undefined;
+
+/**
+ * 名称联想。**只在还没选中词典项时查** —— 选中后再查会把提示又顶出来。
+ * 城市小区通常匹配不到词典（词典里是村/居委会），自然落成自由输入 → ESTATE；
+ * 农村输村名会命中 → 选中即 VILLAGE + originCode。商家不需要回答「小区还是村」。
+ */
+watch(streetApplyName, (v: string) => {
+  if (pickedVillage.value && v !== cleanVillageName(pickedVillage.value.name)) {
+    pickedVillage.value = null;
+  }
+  clearTimeout(dictTimer);
+  const kw = v.trim();
+  if (!kw || pickedVillage.value || !streetView.value) {
+    dictSuggests.value = [];
+    return;
+  }
+  dictTimer = setTimeout(async () => {
+    try {
+      const list = await api.mVillageDict(streetView.value!.regionCode, kw);
+      dictSuggests.value = list.slice(0, 5);
+    } catch {
+      dictSuggests.value = [];
+    }
+  }, 300);
+});
+
+/** 「富城村村民委员会」→「富城村」：聚落叫的是地名，不是机构名 */
+function cleanVillageName(official: string): string {
+  return official.replace(/(村民委员会|居民委员会|村委会|居委会|委员会)$/, "") || official;
+}
+
+function pickVillage(r: Region) {
+  pickedVillage.value = r;
+  streetApplyName.value = cleanVillageName(r.name);
+  dictSuggests.value = [];
+}
+
+async function submitStreetApply() {
+  const street = streetView.value;
+  const name = streetApplyName.value.trim();
+  if (!street || !name) {
+    uni.showToast({ title: t("store.applyNeedName"), icon: "none" });
+    return;
+  }
+  try {
+    // 定位尽力而为：裁决通过时聚落的坐标就来自这里
+    const loc = await getLocation();
+    const a = await api.mApplyCommunity({
+      name,
+      regionCode: street.regionCode,
+      kind: pickedVillage.value ? "VILLAGE" : "ESTATE",
+      originCode: pickedVillage.value?.regionCode,
+      latE6: loc ? Math.round(loc.lat * 1e6) : undefined,
+      lngE6: loc ? Math.round(loc.lng * 1e6) : undefined,
+    });
+    applies.value = [a, ...applies.value];
+    streetApplyOpen.value = false;
+    streetApplyName.value = "";
+    pickedVillage.value = null;
+    uni.showToast({ title: t("store.applySubmitted"), icon: "none" });
+  } catch (e) {
+    uni.showToast({ title: (e as Error)?.message || t("store.applyFailed"), icon: "none" });
+  }
+}
+
 /** 回退到面包屑的第 i 级；i = -1 回省级 */
 async function backTo(i: number) {
+  streetView.value = null;
   trail.value = trail.value.slice(0, i + 1);
   await loadRegions(trail.value[i]?.regionCode);
 }
@@ -418,13 +534,63 @@ onShow(load);
             <text v-for="(x, i) in trail" :key="x.regionCode" class="rg__c" @tap="backTo(i)">
               / {{ x.name }}
             </text>
+            <text v-if="streetView" class="rg__c">/ {{ streetView.name }}</text>
           </view>
-          <text v-if="regionLoading" class="hint">{{ $t("common.loading") }}</text>
+          <text v-if="regionLoading || streetLoading" class="hint">{{ $t("common.loading") }}</text>
+
+          <!--
+            街道/镇视图：导航止于 L4，这一层平铺**聚落**（小区/村同列）。
+            街道本身仍可整个选中；聚落逐个勾；没有的提报 —— 三件事一屏说完。
+          -->
+          <view v-else-if="streetView" class="rg__list">
+            <view class="rg__i">
+              <text class="rg__n">{{ streetView.name }}</text>
+              <text class="rg__pick" @tap="addRegion(streetView)">{{ $t("store.pickThis") }}</text>
+            </view>
+            <text class="hint">{{ $t("store.settleUnder") }}</text>
+            <view v-for="c in streetSettles" :key="c.communityNo" class="rg__i">
+              <text class="rg__n" @tap="addSettle(c)">{{ c.name }}</text>
+              <text class="rg__pick" @tap="addSettle(c)">{{ $t("store.pickThis") }}</text>
+            </view>
+            <text v-if="!streetSettles.length" class="hint">{{ $t("store.settleEmpty") }}</text>
+
+            <view v-if="!streetApplyOpen" class="rg__i" @tap="streetApplyOpen = true">
+              <text class="rg__n">{{ $t("store.settleApplyEntry") }}</text>
+            </view>
+            <view v-else class="sapply">
+              <text class="hint">{{ $t("store.applyToStreet", { s: streetView.name }) }}</text>
+              <input
+                v-model="streetApplyName"
+                class="field__input"
+                :placeholder="$t('store.dictHint')"
+              />
+              <!-- 词典联想：命中官方村点一下即关联；城市小区打不出命中，自然落成自由输入 -->
+              <view v-if="dictSuggests.length" class="sapply__sug">
+                <text
+                  v-for="d in dictSuggests"
+                  :key="d.regionCode"
+                  class="sh-chip"
+                  @tap="pickVillage(d)"
+                >
+                  {{ d.name }}
+                </text>
+              </view>
+              <text v-if="pickedVillage" class="hint">
+                {{ $t("store.dictPicked", { s: pickedVillage.name }) }}
+              </text>
+              <view class="btns">
+                <text class="sh-btn sh-btn--soft apply__go" @tap="submitStreetApply">
+                  {{ $t("common.submit") }}
+                </text>
+                <text class="mini" @tap="streetApplyOpen = false">{{ $t("common.cancel") }}</text>
+              </view>
+            </view>
+          </view>
+
           <view v-else class="rg__list">
             <view v-for="r in regionList" :key="r.regionCode" class="rg__i">
               <text class="rg__n" @tap="tapRegion(r)">
-                {{ r.name }}<text v-if="r.hasChild" class="rg__more"> ›</text>
-                <!-- 我提报开出来的聚落与官方建的长得一样 —— 状态在「我的提报」里看 -->
+                {{ r.name }}<text v-if="r.hasChild || r.level === 'STREET'" class="rg__more"> ›</text>
               </text>
               <!-- 有下级的也要能整个选中：「整个西湖区」是最常见的诉求 -->
               <text class="rg__pick" @tap="addRegion(r)">{{ $t("store.pickThis") }}</text>
@@ -599,6 +765,18 @@ onShow(load);
 }
 .rg__more {
   color: var(--sh-sub);
+}
+/* 街道内提报的小表单与联想 chip */
+.sapply {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+  padding: 12rpx 0;
+}
+.sapply__sug {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
 }
 .rg__pick {
   flex-shrink: 0;
