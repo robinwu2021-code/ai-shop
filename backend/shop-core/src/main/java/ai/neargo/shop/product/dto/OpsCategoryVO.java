@@ -21,6 +21,13 @@ public record OpsCategoryVO(String categoryNo,
                             String requiredCode,
                             I18nText i18n,
                             /** 该类目下的商品数 —— 归档校验要用，运营也要据此判断能不能停用 */
+                            /**
+                             * 同级内的展示顺序，小的在前。
+                             *
+                             * <p><b>不下发就等于运营改不了顺序</b> —— 而顺序直接决定 C 端
+                             * 类目栏里谁排第一，那是这一页最该由人决定的东西之一。
+                             */
+                            int sort,
                             int skuCount,
                             /** 归档时间。**软删除标记**，有值即视为已归档 */
                             String archivedAt) {

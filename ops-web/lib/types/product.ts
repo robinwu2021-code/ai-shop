@@ -50,6 +50,11 @@ export interface Category extends Archivable {
   requiredCode?: string;
   /** 类目名的三语文案，下发给 C 端展示 */
   i18n: I18nText;
+  /**
+   * 同级内的展示顺序，小的在前。**C 端类目栏就按它排** ——
+   * 不下发就等于运营改不了顺序，「把生鲜挪到第一个」只能改库。
+   */
+  sort: number;
   /** 该类目下的在售商品数（归档校验要用） */
   skuCount: number;
 }

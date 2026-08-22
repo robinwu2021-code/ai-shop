@@ -88,6 +88,7 @@ export const productMock: ProductApi = {
     const saved = db.upsert<Category>(
       db.categories,
       {
+        // sort 不传就沿用原值；新建给 0 —— 不这么写，改个名字会把顺序清成 0
         ...v, level, template, skuCount: 0,
         i18n: { zh: v.name, ...(v.i18nEn ? { en: v.i18nEn } : {}) },
       },

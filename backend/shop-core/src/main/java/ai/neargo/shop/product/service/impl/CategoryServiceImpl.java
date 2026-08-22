@@ -283,6 +283,7 @@ public class CategoryServiceImpl implements CategoryService {
                 readList(c.getQualificationRequired()),
                 c.getRequiredCode(),
                 new OpsCategoryVO.I18nText(c.getName(), c.getNameEn()),
+                nz(c.getSort()),
                 skuCount,
                 // 归档时间用 updatedAt 顶替：status 才是权威，这里只是给运营看个时间
                 ARCHIVED.equals(c.getStatus()) && c.getUpdatedAt() != null

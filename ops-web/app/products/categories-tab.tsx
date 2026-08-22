@@ -27,6 +27,7 @@ import { Input } from "@/components/ui/input";
 import { Notice } from "@/components/ui/notice";
 import { Switch } from "@/components/ui/switch";
 import { Toolbar } from "@/components/ui/toolbar";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import type { ProductsCopy } from "./copy";
 
 type Form = {
@@ -44,6 +45,7 @@ const TEMPLATES = ["STANDARD", "FRESH", "SERVICE", "VOUCHER", "VIRTUAL"] as cons
 
 export function CategoriesTab({ c, canEdit }: { c: ProductsCopy; canEdit: boolean }) {
   const qc = useQueryClient();
+  const { confirm, dialog } = useConfirm();
   const [keyword, setKeyword] = useState("");
   const [template, setTemplate] = useState("");
   /*
@@ -61,11 +63,74 @@ export function CategoriesTab({ c, canEdit }: { c: ProductsCopy; canEdit: boolea
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ["categories"] });
 
+  /**
+   * 开关。**一级会连带问一句要不要带上它的二级** ——
+   * 「开了一级、底下全关」是个空壳：商家在选择器里点进去空空如也，
+   * 而运营以为自己把这一类放出去了。反过来关一级也一样：
+   * 二级还开着的话，它们在别处（搜索、专题）仍会露出来。
+   *
+   * <p>后端对「还挂着子类目或在售商品」的类目**拒绝归档**（C 端类目树会断枝）。
+   * 那条拒绝要原样说给运营听 —— 通用的「操作失败」会让他反复点同一个开关。
+   */
   const toggle = useMutation({
-    mutationFn: (v: { categoryNo: string; on: boolean }) =>
-      v.on ? api.unarchiveCategory(v.categoryNo) : api.archiveCategory(v.categoryNo),
+    mutationFn: async (v: { row: Category; on: boolean; withChildren?: Category[] }) => {
+      const one = (no: string) => (v.on ? api.unarchiveCategory(no) : api.archiveCategory(no));
+      // 顺序有讲究：开时先开父、再开子；关时先关子、再关父 ——
+      // 反过来会撞上后端「有子类目不能归档」那道校验
+      if (v.on) {
+        await one(v.row.categoryNo);
+        for (const x of v.withChildren ?? []) await one(x.categoryNo);
+      } else {
+        for (const x of v.withChildren ?? []) await one(x.categoryNo);
+        await one(v.row.categoryNo);
+      }
+    },
     onSuccess: (_, v) => { invalidate(); notify.success(v.on ? c.catEnabled : c.catDisabled); },
   });
+
+  /** 一级的开关：先问清楚要不要连带子级，再发请求 */
+  async function toggleTop(top: Category, on: boolean) {
+    const kids = childrenOf(top.categoryNo);
+    const affected = kids.filter((k) => off(k) === on);   // 开时挑关着的，关时挑开着的
+    if (!affected.length) {
+      toggle.mutate({ row: top, on });
+      return;
+    }
+    const ok = await confirm({
+      title: fill(on ? c.catEnableTopTitle : c.catDisableTopTitle, { name: top.name }),
+      desc: fill(on ? c.catEnableTopDesc : c.catDisableTopDesc, { n: affected.length }),
+      confirmText: on ? c.catEnableTopOk : c.catDisableTopOk,
+      danger: !on,
+    });
+    if (ok) toggle.mutate({ row: top, on, withChildren: affected });
+  }
+
+  /**
+   * 上下移：**交换相邻两个的 `sort`**，不是给自己 ±1。
+   *
+   * <p>±1 会撞上已有的值（种子是 10/20/30，但运营手填过的可能是 1、2），
+   * 撞了之后同序的两条谁在前取决于数据库返回顺序 —— 那是「点了没反应」
+   * 与「点一下跳两格」这类怪象的来源。交换是唯一稳定的做法。
+   */
+  const move = useMutation({
+    mutationFn: async (v: { a: Category; b: Category }) => {
+      const put = (x: Category, sort: number) =>
+        api.saveCategory({
+          categoryNo: x.categoryNo, name: x.name, i18nEn: x.i18n.en,
+          parentNo: x.parentNo, template: x.template,
+          qualifications: x.qualifications, requiredCode: x.requiredCode, sort,
+        } as Parameters<typeof api.saveCategory>[0]);
+      await put(v.a, v.b.sort ?? 0);
+      await put(v.b, v.a.sort ?? 0);
+    },
+    onSuccess: () => invalidate(),
+  });
+
+  /** 同级里的邻居；停用的不参与换位 —— 它们本来就沉在底部，换过去看不出变化 */
+  function neighbour(list: Category[], i: number, dir: -1 | 1) {
+    const j = i + dir;
+    return j >= 0 && j < list.length && !off(list[j]!) ? list[j] : undefined;
+  }
 
   const save = useMutation({
     mutationFn: () =>
@@ -83,8 +148,13 @@ export function CategoriesTab({ c, canEdit }: { c: ProductsCopy; canEdit: boolea
 
   const rows = cats.data ?? [];
   const off = (x: Category) => !!x.archivedAt;
-  /** 停用的沉底：它们是「以后可能开」的备选，不该挤在正在用的类目前面 */
-  const byLive = (a: Category, b: Category) => Number(off(a)) - Number(off(b));
+  /**
+   * 停用的沉底、其余按 `sort` —— **顺序是这一页的产出之一**：
+   * C 端类目栏就按它排，所以看到的顺序必须与买家看到的一致，
+   * 否则运营调完顺序在这里看不出变化，只能去 C 端反复刷新验证。
+   */
+  const byLive = (a: Category, b: Category) =>
+    Number(off(a)) - Number(off(b)) || (a.sort ?? 0) - (b.sort ?? 0);
   const tops = useMemo(() => rows.filter((x) => x.level === 1).sort(byLive), [rows]);
   const childrenOf = (no: string) => rows.filter((x) => x.parentNo === no).sort(byLive);
 
@@ -151,18 +221,15 @@ export function CategoriesTab({ c, canEdit }: { c: ProductsCopy; canEdit: boolea
                   </Button>
                 )}
                 {canEdit && (
-                  <Switch
-                    checked={!off(top)}
-                    onChange={(on) => toggle.mutate({ categoryNo: top.categoryNo, on })}
-                  />
+                  <Switch checked={!off(top)} onChange={(on) => void toggleTop(top, on)} />
                 )}
               </CardHeader>
               <CardContent className="pt-0">
                 <ul className="divide-y divide-[var(--border)]">
-                  {childrenOf(top.categoryNo).map((sub) => (
+                  {childrenOf(top.categoryNo).map((sub, i, list) => (
                     <li
                       key={sub.categoryNo}
-                      className={`flex items-center gap-2 py-1.5 ${off(sub) ? "opacity-55" : ""}`}
+                      className={`group flex items-center gap-2 py-1.5 ${off(sub) ? "opacity-55" : ""}`}
                     >
                       <button
                         type="button"
@@ -180,6 +247,34 @@ export function CategoriesTab({ c, canEdit }: { c: ProductsCopy; canEdit: boolea
                         平铺码名会与类目名重复（「蔬菜 · 蔬菜」），一行里挤两遍同一个词。
                         发不出来的码要红：那种类目谁都上不了架，而报错说不清原因。
                       */}
+                      {/*
+                        上下移**只在悬停时出现**：顺序是低频动作，常驻两个箭头会把
+                        每一行都变成三个可点区域，而行本身（点名字改类目）才是主操作。
+                      */}
+                      {canEdit && !off(sub) && (
+                        <span className="flex shrink-0 opacity-0 transition-opacity group-hover:opacity-100">
+                          <Button
+                            size="sm" variant="ghost"
+                            disabled={!neighbour(list, i, -1) || move.isPending}
+                            onClick={() => {
+                              const b = neighbour(list, i, -1);
+                              if (b) move.mutate({ a: sub, b });
+                            }}
+                          >
+                            {c.catMoveUp}
+                          </Button>
+                          <Button
+                            size="sm" variant="ghost"
+                            disabled={!neighbour(list, i, 1) || move.isPending}
+                            onClick={() => {
+                              const b = neighbour(list, i, 1);
+                              if (b) move.mutate({ a: sub, b });
+                            }}
+                          >
+                            {c.catMoveDown}
+                          </Button>
+                        </span>
+                      )}
                       {/* 固定列宽：不给宽度的话，同一列的徽章在两张卡片里会各停在不同位置 */}
                       <span className="w-14 shrink-0 text-right">
                         {sub.requiredCode && (
@@ -195,10 +290,7 @@ export function CategoriesTab({ c, canEdit }: { c: ProductsCopy; canEdit: boolea
                         {sub.skuCount || ""}
                       </span>
                       {canEdit && (
-                        <Switch
-                          checked={!off(sub)}
-                          onChange={(on) => toggle.mutate({ categoryNo: sub.categoryNo, on })}
-                        />
+                        <Switch checked={!off(sub)} onChange={(on) => toggle.mutate({ row: sub, on })} />
                       )}
                     </li>
                   ))}
@@ -281,6 +373,7 @@ export function CategoriesTab({ c, canEdit }: { c: ProductsCopy; canEdit: boolea
           </DrawerSection>
         )}
       </Drawer>
+      {dialog}
     </>
   );
 }
