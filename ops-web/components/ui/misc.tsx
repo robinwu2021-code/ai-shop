@@ -81,6 +81,27 @@ export function PageTitle({ title, desc, action }: { title: string; desc?: strin
 
 // 简易分页。
 /** 可选的每页条数。50 封顶：再多一屏也扫不完，只是把接口拖慢。 */
+/**
+ * 业务单号单元格（商品编码、订单号、申请单号…）。
+ *
+ * <p><b>它是表里最不重要、却最长的一列</b>：21 位的 `G20260817214022000026`
+ * 会把标题、商家、类目一起挤扁，而运营真正要读的是后面那些。
+ * 这里把它压成等宽小字 + 定宽截断，完整值放 `title` —— 需要复制时仍拿得到。
+ *
+ * <p>等宽而不是普通字体：单号是逐位比对的东西，比例字体下 `0/O`、`1/l` 对不齐。
+ */
+export function IdCell({ value, width = "9rem" }: { value: string; width?: string }) {
+  return (
+    <span
+      title={value}
+      style={{ maxWidth: width }}
+      className="block truncate font-mono txt-caption text-muted-foreground"
+    >
+      {value}
+    </span>
+  );
+}
+
 export const PAGE_SIZES = [10, 20, 50] as const;
 
 /** 超过这么多页才出跳页输入框。少于它时输入框只是噪音。 */

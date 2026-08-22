@@ -134,11 +134,22 @@ export function CategoriesTab({ c, canEdit }: { c: ProductsCopy; canEdit: boolea
         <div className="grid gap-3 lg:grid-cols-2 2xl:grid-cols-3">
           {tops.map((top) => (
             <Card key={top.categoryNo} className={off(top) ? "opacity-55" : undefined}>
-              <CardHeader className="flex-row items-center justify-between gap-2 pb-2">
-                <CardTitle className="flex items-center gap-2">
-                  {top.name}
+              <CardHeader className="flex-row items-center gap-2 pb-2">
+                <CardTitle className="flex min-w-0 items-center gap-2">
+                  <span className="truncate">{top.name}</span>
                   <Badge tone="muted">{codeLabel(c, top.template)}</Badge>
                 </CardTitle>
+                {/* 计数放标题旁：扫一眼就知道这一组有多少二级，不用去数行 */}
+                <span className="txt-caption text-muted-foreground">
+                  {fill(c.catSubCount, { n: childrenOf(top.categoryNo).length })}
+                </span>
+                <span className="flex-1" />
+                {/* 「加二级」收进卡头：放底部会为一个低频动作白占一整行 */}
+                {canEdit && (
+                  <Button size="sm" variant="ghost" onClick={() => openNew(top.categoryNo, top.template)}>
+                    {c.catAddChild}
+                  </Button>
+                )}
                 {canEdit && (
                   <Switch
                     checked={!off(top)}
@@ -169,14 +180,18 @@ export function CategoriesTab({ c, canEdit }: { c: ProductsCopy; canEdit: boolea
                         平铺码名会与类目名重复（「蔬菜 · 蔬菜」），一行里挤两遍同一个词。
                         发不出来的码要红：那种类目谁都上不了架，而报错说不清原因。
                       */}
-                      {sub.requiredCode && (
-                        <span title={`${codeName(sub.requiredCode)}（${sub.requiredCode}）${(sub.qualifications ?? []).join("、")}`}>
-                          <Badge tone={codeBroken(sub.requiredCode) ? "danger" : "info"}>
-                            {codeBroken(sub.requiredCode) ? c.catGateBroken : c.catGateNeed}
-                          </Badge>
-                        </span>
-                      )}
-                      <span className="w-12 shrink-0 text-right txt-caption text-muted-foreground">
+                      {/* 固定列宽：不给宽度的话，同一列的徽章在两张卡片里会各停在不同位置 */}
+                      <span className="w-14 shrink-0 text-right">
+                        {sub.requiredCode && (
+                          <span title={`${codeName(sub.requiredCode)}（${sub.requiredCode}）${(sub.qualifications ?? []).join("、")}`}>
+                            <Badge tone={codeBroken(sub.requiredCode) ? "danger" : "info"}>
+                              {codeBroken(sub.requiredCode) ? c.catGateBroken : c.catGateNeed}
+                            </Badge>
+                          </span>
+                        )}
+                      </span>
+                      {/* 0 件不显示数字：一列的「0」会把真正有货的那几行淹掉 */}
+                      <span className="w-10 shrink-0 text-right txt-caption text-muted-foreground">
                         {sub.skuCount || ""}
                       </span>
                       {canEdit && (
@@ -191,14 +206,6 @@ export function CategoriesTab({ c, canEdit }: { c: ProductsCopy; canEdit: boolea
                     <li className="py-1.5 txt-caption text-muted-foreground">{c.catNoChild}</li>
                   )}
                 </ul>
-                {canEdit && (
-                  <Button
-                    size="sm" variant="ghost" className="mt-1 px-0"
-                    onClick={() => openNew(top.categoryNo, top.template)}
-                  >
-                    {c.catAddChild}
-                  </Button>
-                )}
               </CardContent>
             </Card>
           ))}

@@ -32,7 +32,7 @@ import { FilterSelect } from "@/components/ui/filter-select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Notice } from "@/components/ui/notice";
-import { StatRow, Pagination, StatCard } from "@/components/ui/misc";
+import { StatRow, Pagination, StatCard, IdCell } from "@/components/ui/misc";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { TabHeader } from "@/components/ui/tab-header";
 import { Textarea } from "@/components/ui/textarea";
@@ -247,7 +247,7 @@ function ProductsInner() {
   }, [cats.data]);
 
   const goodsColumns: Column<ProductGoods>[] = [
-    { header: c.colSkuNo, cell: (g) => g.goodsNo, numeric: true, align: "start" },
+    { header: c.colSkuNo, cell: (g) => <IdCell value={g.goodsNo} />, numeric: true, align: "start" },
     { header: c.colTitle, cell: (g) => g.title.zh, className: "whitespace-normal", width: "16rem" },
     { header: c.colMerchant, cell: (g) => g.merchantName },
     { header: c.colCategory, cell: (g) => g.categoryName ?? <span className="text-muted-foreground">—</span> },
@@ -291,7 +291,7 @@ function ProductsInner() {
   // 后端已按 presaleOnly 筛过，这里不再二次过滤 —— 再筛一次会让分页总数与行数对不上
   const stockRows = presaleList.data?.records ?? [];
   const stockColumns: Column<Sku>[] = [
-    { header: c.colSkuNo, cell: (s) => s.skuNo, numeric: true, align: "start" },
+    { header: c.colSkuNo, cell: (s) => <IdCell value={s.skuNo} />, numeric: true, align: "start" },
     { header: c.colTitle, cell: (s) => s.title.zh, className: "whitespace-normal", width: "16rem" },
     { header: c.colMerchant, cell: (s) => s.merchantName },
     { header: c.colPresaleQuota, cell: (s) => s.presaleQuota, numeric: true },
