@@ -304,7 +304,7 @@ export const NAV: NavSection[] = [
       // 商家补录的村级区划。与「商家提报」同一类事（提报 → 运营确认 → 全平台可用），
       // 放同一页而不是新开菜单 —— 否则运营要在两个地方找同一件事。
       // 读权限与其它 tab 一致；裁决按钮另判 community:region:update
-      { href: "/communities?tab=regions", label: "区划补录", perm: "community:region:read", group: "社区网格", matrix: "P-2.1", ready: true },
+      { href: "/communities?tab=regions", label: "区划维护", perm: "community:region:read", group: "社区网格", matrix: "P-2.1", ready: true },
       { href: "/communities?tab=pickups", label: "自提点", perm: "community:pickup:read", group: "自提点", matrix: "P-2.2", ready: true },
       { href: "/communities?tab=neighbor", label: "临时点监控", perm: "community:pickup:read", group: "自提点", matrix: "P-2.2", ready: true },
     ],

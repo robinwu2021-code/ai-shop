@@ -38,10 +38,6 @@ const KNOWN_SHARED: Record<string, string> = {
     "是另一个端点，接 App 时再补。两者接通时删掉本条对应的半句",
   MerchantTier:
     "MEDIUM/LARGE 是分层费率的预留档，后端目前只产出 SMALL —— 分层上线时后端补齐",
-  AREA_LEVEL:
-    "STREET/DISTRICT 后端**会下发**，只是不以字面量出现在 Java 源码里 —— " +
-    "覆盖项的 level 直接取自 sys_region.level（V31 灌的国标数据），扫描器看不见库里的值。" +
-    "COMMUNITY/CITY 之所以没报，是因为它们恰好与 SERVICE_SCOPE 的取值同名",
   FULFILLMENT:
     "**STORE_VERIFY 与 APPOINTMENT 已接通**（2026-08-17，服务履约一、二期）：后端取值域、" +
     "支付后落 FULFILLING（不经「待发货」，因为没有东西要发）、预约时段与上门地址两道必填闸、核销全链路。" +

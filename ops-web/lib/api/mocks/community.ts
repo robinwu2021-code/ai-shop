@@ -119,20 +119,38 @@ export const communityMock: CommunityApi = {
   regionPath: async (code) => wait(pathOf(code)),
 
   /**
-   * 商家补录队列。**mock 里也要有真数据** —— 队列是空的话，
-   * 「通过 / 驳回」这两个动作在 mock 上永远点不到。
+   * 区划维护。mock 直接改 db.regions —— 「停用后还能开回来」这条
+   * 必须在 mock 上走得通，否则运营端唯一能演的是把树越停越少。
    */
-  listPendingRegions: async (status = "PENDING") =>
-    wait(db.pendingRegions.filter((r) => r.auditStatus === status)),
+  createRegion: async (parent, name) => {
+    const p = db.regions.find((r) => r.regionCode === parent);
+    if (!p) fail("父级区划不存在", "Parent region does not exist");
+    const dup = db.regions.find((r) => r.parentCode === parent && r.name === name);
+    if (dup) return wait(dup, 300);
+    const n = db.regions.filter((r) => r.regionCode.startsWith(`${parent}X`)).length + 1;
+    const row = {
+      regionCode: `${parent}X${String(n).padStart(2, "0")}`,
+      parentCode: parent,
+      level: p!.level === "DISTRICT" ? "STREET" : p!.level === "CITY" ? "DISTRICT" : "CITY",
+      name, enabled: true, hasChild: false,
+    } as (typeof db.regions)[number];
+    db.regions.push(row);
+    p!.hasChild = true;
+    return wait(row, 300);
+  },
 
-  confirmRegion: async (code, pass, reason) => {
-    const r = db.pendingRegions.find((x) => x.regionCode === code);
-    if (!r) fail("这条补录不存在", "This entry does not exist");
-    // 与后端同口径：驳回必须写原因 —— 它原样回给商家
-    if (!pass && !reason?.trim()) fail("驳回必须写原因", "A reason is required to reject");
-    r.auditStatus = pass ? "APPROVED" : "REJECTED";
-    r.rejectReason = pass ? undefined : reason!.trim();
-    return wait(undefined, 400);
+  toggleRegion: async (code, enabled) => {
+    const r = db.regions.find((x) => x.regionCode === code);
+    if (!r) fail("区划不存在", "Region does not exist");
+    r!.enabled = enabled;
+    return wait(r!, 300);
+  },
+
+  renameRegion: async (code, name) => {
+    const r = db.regions.find((x) => x.regionCode === code);
+    if (!r) fail("区划不存在", "Region does not exist");
+    r!.name = name;
+    return wait(r!, 300);
   },
 
   archiveCommunity: async (no) => wait(db.archiveRow(db.communities, "communityNo", no), 400),

@@ -13,9 +13,9 @@ export const communityHttp: CommunityApi = {
       { pass, regionCode: opts?.regionCode, reason: opts?.reason }),
   listRegions: (parent, enabledOnly) => client.get("/ops/regions", { parent, enabledOnly }),
   regionPath: (code) => client.get("/ops/regions/path", { code }),
-  listPendingRegions: (status) => client.get("/ops/regions/pending", { status }),
-  confirmRegion: (code, pass, reason) =>
-    client.post(`/ops/regions/${code}/confirm`, { pass, reason }),
+  createRegion: (parent, name) => client.post("/ops/regions", { parent, name }),
+  toggleRegion: (code, enabled) => client.post(`/ops/regions/${code}/toggle`, { enabled }),
+  renameRegion: (code, name) => client.post(`/ops/regions/${code}/rename`, { name }),
   archiveCommunity: (no) => client.post(`/ops/communities/${no}/archive`),
   unarchiveCommunity: (no) => client.post(`/ops/communities/${no}/unarchive`),
 

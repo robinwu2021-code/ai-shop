@@ -62,10 +62,19 @@ class CommunityNearbyFlowTest {
         seedRegion("330106", "3301", "DISTRICT", "西湖区");
     }
 
+    /*
+     * **查重与插入都要绕开数据域。**
+     *
+     * 带域跑时 `selectCount` 看不到别的用例插的那一行，于是这里又插一遍 ——
+     * 同一个区划码两行。之后 `RegionService.path()` 用 `selectOne` 去查就炸
+     * （TooManyResults → 500），而报错出现在 `/mp/community/regions` 与
+     * `/ops/regions` 上，跟「谁插了重复数据」一点关系都看不出来。
+     */
     private void seedRegion(String code, String parent, String level, String name) {
-        Long exists = regionMapper.selectCount(com.baomidou.mybatisplus.core.toolkit.Wrappers
+        Long exists = ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() ->
+                regionMapper.selectCount(com.baomidou.mybatisplus.core.toolkit.Wrappers
                 .<ai.neargo.shop.platform.entity.SysRegion>lambdaQuery()
-                .eq(ai.neargo.shop.platform.entity.SysRegion::getRegionCode, code));
+                .eq(ai.neargo.shop.platform.entity.SysRegion::getRegionCode, code)));
         if (exists != null && exists > 0) {
             return;
         }
@@ -76,7 +85,7 @@ class CommunityNearbyFlowTest {
         r.setName(name);
         r.setEnabled(true);
         r.setSort(0);
-        regionMapper.insert(r);
+        ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() -> regionMapper.insert(r));
     }
 
     private JsonNode nearby(String query) throws Exception {

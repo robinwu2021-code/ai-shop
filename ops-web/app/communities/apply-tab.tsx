@@ -23,7 +23,9 @@ import { FilterSelect } from "@/components/ui/filter-select";
 import { Pagination } from "@/components/ui/misc";
 import { StatusBadge, type StatusMap } from "@/components/ui/status-badge";
 import { Toolbar } from "@/components/ui/toolbar";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Notice } from "@/components/ui/notice";
 import { Textarea } from "@/components/ui/textarea";
 import { RegionChooser } from "./region-chooser";
 import type { COMMUNITIES_COPY } from "./copy";
@@ -73,7 +75,18 @@ export function ApplyTab({ c, canDecide }: { c: Copy; canDecide: boolean }) {
   });
 
   const columns: Column<CommunityApply>[] = [
-    { header: c.colApplyName, cell: (a) => <button className="link" onClick={() => open(a)}>{a.name}</button> },
+    {
+      header: c.colApplyName,
+      cell: (a) => (
+        <span className="flex items-center gap-2">
+          <button className="link" onClick={() => open(a)}>{a.name}</button>
+          {/* 聚落模型：裁决的人要一眼看出这是村还是小区 —— 村多半带官方码可查重 */}
+          <Badge tone={a.kind === "VILLAGE" ? "info" : "muted"}>
+            {a.kind === "VILLAGE" ? c.apKindVillage : c.apKindEstate}
+          </Badge>
+        </span>
+      ),
+    },
     { header: c.colApplyMerchant, cell: (a) => a.merchantName },
     // 地址就是判据本身，所以进列表而不是只在详情里
     { header: c.colApplyAddress, cell: (a) => <span className="line-clamp-1 text-muted-foreground">{a.address || c.applyNoValue}</span> },
@@ -138,6 +151,19 @@ export function ApplyTab({ c, canDecide }: { c: Copy; canDecide: boolean }) {
                 <Field className="mb-3" label={c.colApplyTime}>{fmtTime(current.submittedAt)}</Field>
               </FieldGrid>
               <Field className="mb-3" label={c.colApplyAddress}>{current.address || c.applyNoValue}</Field>
+              {current.originCode && (
+                <Field className="mb-3" label={c.apOrigin}>
+                  <span className="font-mono">{current.originCode}</span>
+                </Field>
+              )}
+              {/*
+                没带定位的要在裁决面上喊出来：通过后聚落没有坐标，
+                withinRadius 对空坐标恒 false —— 买家用定位永远找不到它，
+                而界面上它看起来完全正常。
+              */}
+              {current.status === "PENDING" && !current.located && (
+                <Notice tone="warning" className="mb-3">{c.apNoCoords}</Notice>
+              )}
               <Field className="mb-0" label={c.fieldApplyNote}>{current.note || c.applyNoValue}</Field>
               <p className="mt-2 txt-caption text-muted-foreground">{c.applyDupHint}</p>
             </DrawerSection>

@@ -55,34 +55,38 @@ public class OpsRegionController {
     }
 
     /**
-     * 商家补录的村级队列。
+     * 新增一个区划节点（人工维护）。
      *
-     * <p>官方村级数据停在 2023-06-30（统计局已停发），之后新增的村只能靠商家补录。
-     * 补录的先只对提报方可见，运营在这里确认后才转为全平台共享。
-     *
-     * @param status 默认 PENDING；传 REJECTED 可回看驳回过的
+     * <p>官方数据停更后，真实发生的区划调整只能靠运营手工补。
+     * 层级由父级推导，生成码带字母段 —— 与官方纯数字码永不冲突。
      */
-    @GetMapping("/ops/regions/pending")
-    @PreAuthorize("@perm.can('" + Perms.COMMUNITY_REGION_READ + "')")
-    public List<RegionService.PendingVO> pending(
-            @RequestParam(required = false) String status) {
-        return regionService.pendingVillages(status);
+    @PostMapping("/ops/regions")
+    @PreAuthorize("@perm.can('" + Perms.COMMUNITY_REGION_UPDATE + "')")
+    public RegionService.RegionVO create(@RequestBody NodeReq req) {
+        return regionService.createNode(req.parent(), req.name(), SecurityUtils.currentUserNo());
     }
 
     /**
-     * 裁决一条补录。
-     *
-     * <p><b>要 update 权限而不是 read</b>：通过一条会让它对全平台商家可见，
-     * 而读区划几乎人人都有 —— 两者的出错后果不在一个量级。
+     * 停用 / 启用。停用只影响新选择，存量商家的经营范围不动 ——
+     * 与行业停用同一口径。<b>不级联</b>：一次误操作不该波及几十个街道。
      */
-    @PostMapping("/ops/regions/{code}/confirm")
+    @PostMapping("/ops/regions/{code}/toggle")
     @PreAuthorize("@perm.can('" + Perms.COMMUNITY_REGION_UPDATE + "')")
-    public void confirm(@PathVariable String code, @RequestBody ConfirmReq req) {
-        regionService.confirmVillage(code, Boolean.TRUE.equals(req.pass()), req.reason(),
+    public RegionService.RegionVO toggle(@PathVariable String code, @RequestBody ToggleReq req) {
+        return regionService.toggleNode(code, Boolean.TRUE.equals(req.enabled()),
                 SecurityUtils.currentUserNo());
     }
 
-    /** @param reason 驳回原因，驳回时必填 —— 原样回给商家，不写的话他只会原样再提一次 */
-    public record ConfirmReq(Boolean pass, String reason) {
+    /** 改名。撤并更名真实发生；改名不动码，存量引用不受影响 */
+    @PostMapping("/ops/regions/{code}/rename")
+    @PreAuthorize("@perm.can('" + Perms.COMMUNITY_REGION_UPDATE + "')")
+    public RegionService.RegionVO rename(@PathVariable String code, @RequestBody NodeReq req) {
+        return regionService.renameNode(code, req.name(), SecurityUtils.currentUserNo());
+    }
+
+    public record NodeReq(String parent, String name) {
+    }
+
+    public record ToggleReq(Boolean enabled) {
     }
 }

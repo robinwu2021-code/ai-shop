@@ -36,26 +36,26 @@ public interface RegionService {
     List<RegionVO> children(String parentCode, boolean enabledOnly, String entityNo);
 
 
-    /** 待运营确认的补录（PENDING）。给运营队列用 */
-    List<PendingVO> pendingVillages(String status);
-
     /**
-     * 运营裁决。
+     * 运营新增一个区划节点（人工维护）。
      *
-     * @param pass   true 转 APPROVED 全网可见；false 转 REJECTED（<b>不删行</b>，
-     *               提报方要能看到理由，否则他只会原样再提一次）
-     * @param reason 驳回原因，驳回时必填 —— 它原样出现在商家端
+     * <p>官方数据停更（统计局 2024-10 起不再公开），之后真实发生的区划调整
+     * （新设街道/镇、撤并）只能靠运营手工补。生成码 = 父码 + X + 两位序号 ——
+     * 字母段保证与官方纯数字码永不冲突，这条规矩与聚落的 origin 同源。
+     *
+     * @param parentCode 父节点；层级由父级推导（省下是市、区下是街道…），不让人选
      */
-    void confirmVillage(String regionCode, boolean pass, String reason, String operatorNo);
+    RegionVO createNode(String parentCode, String name, String operatorNo);
 
     /**
-     * @param path       从省到这个村的整条路径名。**必须给** ——
-     *                   光一个「新桥社区」全国有好几个，运营判断不了真假
-     * @param entityName 提报商家名，运营要看的是名字不是编号
+     * 停用 / 启用。<b>enabled 的第一个写入口</b> ——
+     * 这一列带着注释上线两年，此前全仓没有任何地方写它，「开城开关」从来没有开关。
+     * 停用只影响新选择，存量商家的经营范围不动（与行业停用同一口径）。
      */
-    record PendingVO(String regionCode, String name, String path, String auditStatus,
-                     String entityNo, String entityName, String rejectReason, long createdAt) {
-    }
+    RegionVO toggleNode(String regionCode, boolean enabled, String operatorNo);
+
+    /** 改名。撤并更名真实发生；改名不动码，存量引用不受影响 */
+    RegionVO renameNode(String regionCode, String name, String operatorNo);
 
     /**
      * 从一个区划码回溯到顶层，<b>从省到自身</b>排列。

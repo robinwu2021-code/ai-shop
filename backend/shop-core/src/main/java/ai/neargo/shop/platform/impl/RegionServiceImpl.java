@@ -4,11 +4,9 @@ import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.platform.RegionService;
-import ai.neargo.shop.spi.user.MerchantQueryPort;
 import ai.neargo.shop.platform.entity.SysRegion;
 import ai.neargo.shop.platform.mapper.PlatformMappers.RegionMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
-import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,18 +24,9 @@ public class RegionServiceImpl implements RegionService {
     private static final int MAX_DEPTH = 8;
 
     private final RegionMapper mapper;
-    private final ObjectProvider<MerchantQueryPort> merchantPort;
 
-    /**
-     * @param merchantPort 只用来把 entity_no 换成商家名给运营看。
-     *                     <b>可选注入</b>（{@code @Autowired(required=false)} 语义靠
-     *                     ObjectProvider）—— ops 部署里这个端口在，api 部署里也在，
-     *                     但区划查询本身不该因为它缺席就起不来
-     */
-    public RegionServiceImpl(RegionMapper mapper,
-                             ObjectProvider<MerchantQueryPort> merchantPort) {
+    public RegionServiceImpl(RegionMapper mapper) {
         this.mapper = mapper;
-        this.merchantPort = merchantPort;
     }
 
     @Override
@@ -75,50 +64,94 @@ public class RegionServiceImpl implements RegionService {
         return toVOs(rows);
     }
 
-    @Override
-    public List<PendingVO> pendingVillages(String status) {
-        String st = status == null || status.isBlank() ? SysRegion.PENDING : status;
-        List<SysRegion> rows = DataScopeContext.executeWithoutScope(() ->
-                mapper.selectList(Wrappers.<SysRegion>lambdaQuery()
-                        .eq(SysRegion::getSource, SysRegion.SOURCE_MERCHANT)
-                        .eq(SysRegion::getAuditStatus, st)
-                        .orderByDesc(SysRegion::getId)));
-        return rows.stream().map(r -> {
-            /*
-             * 整条路径必须给：光一个「新桥社区」全国有好几个 ——
-             * 运营看不到「浙江省 / 杭州市 / 西湖区 / 西溪街道」就判断不了真假，
-             * 只能靠猜或者去库里查，而那时他多半直接通过了。
-             */
-            String path = path(r.getRegionCode()).stream()
-                    .map(RegionVO::name).reduce((a, b) -> a + " / " + b).orElse(r.getName());
-            String entityName = merchantPort.getIfAvailable() == null ? null
-                    : merchantPort.getIfAvailable().find(r.getOwnerEntityNo())
-                            .map(MerchantQueryPort.MerchantBrief::merchantName).orElse(null);
-            return new PendingVO(r.getRegionCode(), r.getName(), path, r.getAuditStatus(),
-                    r.getOwnerEntityNo(),
-                    entityName == null ? r.getOwnerEntityNo() : entityName,
-                    r.getRejectReason(),
-                    r.getCreatedAt() == null ? 0L
-                            : r.getCreatedAt().atZone(java.time.ZoneId.systemDefault())
-                                    .toInstant().toEpochMilli());
-        }).toList();
+    /** 下一级的 level 由父级推导 —— 不让人选，选错的代价是整棵树的层级从此对不上 */
+    private static String childLevel(String parentLevel) {
+        return switch (parentLevel) {
+            case "PROVINCE" -> "CITY";
+            case "CITY" -> "DISTRICT";
+            case "DISTRICT" -> "STREET";
+            default -> throw BizException.of(ErrorCode.BAD_REQUEST);
+        };
     }
 
     @Override
     @Transactional
-    public void confirmVillage(String regionCode, boolean pass, String reason, String operatorNo) {
+    public RegionVO createNode(String parentCode, String name, String operatorNo) {
+        String vname = name == null ? "" : name.trim();
+        SysRegion parent = find(parentCode == null ? "" : parentCode.trim());
+        if (parent == null || vname.isBlank()) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        // 同父下同名直接返回既有的 —— 报错的话运营看到「已存在」还得自己去找它在哪
+        SysRegion dup = DataScopeContext.executeWithoutScope(() ->
+                mapper.selectOne(Wrappers.<SysRegion>lambdaQuery()
+                        .eq(SysRegion::getParentCode, parent.getRegionCode())
+                        .eq(SysRegion::getName, vname).last("limit 1")));
+        if (dup != null) {
+            return toVOs(List.of(dup)).get(0);
+        }
+        /*
+         * 生成码 = 父码 + X + 两位序号。官方码纯数字（62 万条实测过），
+         * 字母段保证官方将来补发号段也撞不上唯一键 —— 用数字续号的话，
+         * 某天官方发出那个号，撞的是 uk_sys_region_code，报出来是「保存失败」
+         * 而根因在两年前的编码方案上。
+         */
+        List<SysRegion> mine = DataScopeContext.executeWithoutScope(() ->
+                mapper.selectList(Wrappers.<SysRegion>lambdaQuery()
+                        .likeRight(SysRegion::getRegionCode, parent.getRegionCode() + "X")));
+        int max = 0;
+        for (SysRegion x : mine) {
+            try {
+                max = Math.max(max, Integer.parseInt(
+                        x.getRegionCode().substring(parent.getRegionCode().length() + 1)));
+            } catch (NumberFormatException ignored) {
+                // 手工写进来的怪码不参与算号，但也不该让新增失败
+            }
+        }
+        if (max >= 99) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        SysRegion row = new SysRegion();
+        row.setRegionCode("%sX%02d".formatted(parent.getRegionCode(), max + 1));
+        row.setParentCode(parent.getRegionCode());
+        row.setLevel(childLevel(parent.getLevel()));
+        row.setName(vname);
+        row.setSource("OPS");
+        row.setAuditStatus(SysRegion.APPROVED);
+        row.setEnabled(true);
+        row.setSort(0);
+        row.setCreatedBy(operatorNo);
+        DataScopeContext.executeWithoutScope(() -> mapper.insert(row));
+        return toVOs(List.of(row)).get(0);
+    }
+
+    @Override
+    @Transactional
+    public RegionVO toggleNode(String regionCode, boolean enabled, String operatorNo) {
         SysRegion row = find(regionCode);
-        if (row == null || !SysRegion.SOURCE_MERCHANT.equals(row.getSource())) {
-            throw BizException.of(ErrorCode.BAD_REQUEST);
+        if (row == null) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
         }
-        // 驳回必须写原因：它原样回给商家，不写的话他只会原样再提一次
-        if (!pass && (reason == null || reason.isBlank())) {
-            throw BizException.of(ErrorCode.BAD_REQUEST);
-        }
-        row.setAuditStatus(pass ? SysRegion.APPROVED : SysRegion.REJECTED);
-        row.setRejectReason(pass ? null : reason.trim());
+        // 不级联：停用「西湖区」只让它自己从选择器消失，底下街道仍可单独选。
+        // 级联会让一次误操作波及几十个街道，而恢复时没人记得原来哪些是停的
+        row.setEnabled(enabled);
         row.setUpdatedBy(operatorNo);
         DataScopeContext.executeWithoutScope(() -> mapper.updateById(row));
+        return toVOs(List.of(row)).get(0);
+    }
+
+    @Override
+    @Transactional
+    public RegionVO renameNode(String regionCode, String name, String operatorNo) {
+        String vname = name == null ? "" : name.trim();
+        SysRegion row = find(regionCode);
+        if (row == null || vname.isBlank()) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        row.setName(vname);
+        row.setUpdatedBy(operatorNo);
+        DataScopeContext.executeWithoutScope(() -> mapper.updateById(row));
+        return toVOs(List.of(row)).get(0);
     }
 
 

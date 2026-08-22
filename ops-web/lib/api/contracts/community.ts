@@ -1,5 +1,5 @@
 // 覆盖范围：社区网格（P-2.1）与自提点主数据（P-2.2）。
-import type { Community, CommunityApply, Page, PickupPoint, PickupStatus, Region, PendingRegion } from "@/lib/types";
+import type { Community, CommunityApply, Page, PickupPoint, PickupStatus, Region } from "@/lib/types";
 import type { PickupDraft } from "@/lib/types";
 import type { CommunityApplyQ, CommunityQ, PickupQ } from "../query";
 
@@ -47,22 +47,16 @@ export interface CommunityApi {
   listRegions(parent?: string, enabledOnly?: boolean): Promise<Region[]>;
 
   /**
-   * 商家补录的村级队列。
+   * 区划人工维护（新增 / 停用 / 改名）。
    *
-   * <p>官方村级数据停在 2023-06-30（统计局已停发），之后新增的村只能靠商家补录。
-   * 补录先只对提报方可见，运营在这里确认后才转为全平台共享。
-   *
-   * @param status 默认 PENDING；传 REJECTED 可回看驳回过的
+   * <p>官方数据停更（统计局 2024-10 起），真实发生的区划调整只能手工补。
+   * enabled 此前上线两年没有任何写入口 ——「开城开关」从来没有开关。
    */
-  listPendingRegions(status?: string): Promise<PendingRegion[]>;
-
-  /**
-   * 裁决一条补录。
-   *
-   * @param reason 驳回原因，驳回时必填 —— 原样回给商家，
-   *               不写的话他只会原样再提一次
-   */
-  confirmRegion(code: string, pass: boolean, reason?: string): Promise<void>;
+  createRegion(parent: string, name: string): Promise<Region>;
+  /** 停用只影响新选择，存量商家的范围不动；不级联 */
+  toggleRegion(code: string, enabled: boolean): Promise<Region>;
+  /** 改名不动码，存量引用不受影响 */
+  renameRegion(code: string, name: string): Promise<Region>;
   /** 从省到自身的整条链路。给选择器回显用 —— 端上不该自己按码长切片 */
   regionPath(code: string): Promise<Region[]>;
   archiveCommunity(communityNo: string): Promise<Community>;

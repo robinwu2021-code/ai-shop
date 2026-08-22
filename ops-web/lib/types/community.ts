@@ -34,6 +34,15 @@ export interface CommunityApply {
   regionPath?: string;
   /** 商家的补充说明：为什么要开这个点 */
   note?: string;
+  /** ESTATE 小区 / VILLAGE 村。裁决的人要一眼看出这是哪种聚落 */
+  kind?: "ESTATE" | "VILLAGE";
+  /** 关联的官方村码；非空 = 从词典选的，重复开通会被后端拦 */
+  originCode?: string;
+  /**
+   * 带没带定位。**没带的要显眼** —— 通过后聚落没有坐标，
+   * 买家用定位永远找不到它，运营得先补坐标再通过。
+   */
+  located?: boolean;
   /** 待审 / 已建社区 / 已驳回。**只有 PENDING 能裁**：裁完就是终态，再裁一次意味着同一条提报有两个结论 */
   status: CommunityApplyStatus;
   /** 通过后建出来的社区号；待审与驳回时为空 */
@@ -202,25 +211,3 @@ export interface PickupPoint extends Archivable {
   createdAt: string;
 }
 
-/**
- * 商家补录的村级区划（待运营确认）。
- *
- * <p>官方村级数据停在 2023-06-30（统计局已停发），之后新增的村只能靠商家补录。
- * 补录先只对提报方可见，运营确认后才转为全平台共享。
- */
-export interface PendingRegion {
-  regionCode: string;
-  name: string;
-  /**
-   * 从省到这个村的整条路径。**判据本身** ——
-   * 光一个「新桥社区」全国有好几个，看不到整条路径就判断不了真假。
-   */
-  path: string;
-  auditStatus: "PENDING" | "APPROVED" | "REJECTED";
-  entityNo: string;
-  /** 提报商家名。运营要看的是名字不是编号 */
-  entityName: string;
-  /** 驳回理由；原样回给商家 */
-  rejectReason?: string;
-  createdAt: number;
-}

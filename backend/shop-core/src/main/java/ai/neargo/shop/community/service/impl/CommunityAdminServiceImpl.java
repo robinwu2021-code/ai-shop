@@ -245,7 +245,10 @@ public class CommunityAdminServiceImpl implements CommunityAdminService {
                 a.getName(), a.getAddress(), a.getRegionCode(),
                 a.getRegionCode() == null ? null : masterDataPort.regionPathName(a.getRegionCode()),
                 a.getNote(), a.getStatus(), a.getCommunityNo(), a.getReason(),
-                a.getSubmittedAt() == null ? 0L : a.getSubmittedAt());
+                a.getSubmittedAt() == null ? 0L : a.getSubmittedAt(),
+                a.getKind() == null ? CmtCommunity.KIND_ESTATE : a.getKind(),
+                a.getOriginCode(),
+                a.getLatE6() != null && a.getLngE6() != null);
     }
 
     @Override

@@ -74,9 +74,16 @@ public interface CommunityAdminService {
      * @param regionPath  区划的整条路径名。运营与商家都靠它判断「是不是同一个地方」——
      *                    光一个「北山街道」，全国有好几个
      */
+    /**
+     * @param kind       ESTATE 小区 / VILLAGE 村。裁决的人要一眼看出这是哪种聚落
+     * @param originCode 关联的官方村码；非空 = 从词典选的，重复开通会被拦
+     * @param located    带没带定位。<b>没带的要显眼</b> —— 通过后聚落没有坐标，
+     *                   买家用定位永远找不到它，运营得先补坐标再通过
+     */
     record ApplyVO(String applyNo, String merchantNo, String merchantName, String name,
                    String address, String regionCode, String regionPath, String note,
-                   String status, String communityNo, String reason, long submittedAt) {
+                   String status, String communityNo, String reason, long submittedAt,
+                   String kind, String originCode, boolean located) {
     }
 
     List<PickupVO> pickups(String communityNo, String type, String status);
