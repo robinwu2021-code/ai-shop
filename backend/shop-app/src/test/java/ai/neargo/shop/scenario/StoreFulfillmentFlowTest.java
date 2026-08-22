@@ -48,6 +48,9 @@ class StoreFulfillmentFlowTest {
     private ai.neargo.shop.community.service.CommunityService communityService;
 
     @Autowired
+    private ai.neargo.shop.merchant.mapper.MerchantMappers.FulfillmentChannelMapper channelMapper;
+
+    @Autowired
     private ai.neargo.shop.community.service.CommunityAdminService communityAdminService;
 
     private static int seq = 7000;
@@ -189,7 +192,7 @@ class StoreFulfillmentFlowTest {
         String store = merchantQuery.defaultStoreNo(m).orElseThrow();
         String community = openCommunity();
         var built = communityService.selfBuildPickup(new ai.neargo.shop.community.service.CommunityService.SelfBuildCmd(
-                store, "东门驿站", "东门 12 号", 30_000_000, 120_000_000, "08:00-20:00", community));
+                store, "东门驿站", "东门 12 号", 30_000_000, 120_000_000, "08:00-20:00", community, null));
         assertThat(built.status()).isEqualTo("PENDING");
         assertThat(built.ownerStoreNo()).isEqualTo(store);
 
@@ -212,7 +215,7 @@ class StoreFulfillmentFlowTest {
 
         // 同店同名重复提交 → CONFLICT，不生出第二条待审
         assertThatThrownBy(() -> communityService.selfBuildPickup(new ai.neargo.shop.community.service.CommunityService.SelfBuildCmd(
-                store, "东门驿站", "别处", 30_000_000, 120_000_000, null, community)))
+                store, "东门驿站", "别处", 30_000_000, 120_000_000, null, community, null)))
                 .isInstanceOf(BizException.class);
     }
 
@@ -223,6 +226,23 @@ class StoreFulfillmentFlowTest {
         assertThatThrownBy(() -> fulfillmentService.save(m, null, List.of(
                 new ChannelCmd(Fulfillments.NEIGHBOR_PICKUP, true, null, List.of()))))
                 .isInstanceOf(BizException.class);
+        // 新开这一路、没带引用、没地址 → 同样拦
+        assertThatThrownBy(() -> fulfillmentService.save(m, null, List.of(
+                new ChannelCmd(Fulfillments.NEIGHBOR_PICKUP, true, null, null))))
+                .isInstanceOf(BizException.class);
+        // 存量已开（播种）、没地址、这次只是重发开关不碰引用 → 放行：否则每次开关保存都被拒
+        var seeded = merchant(null);
+        var row = new ai.neargo.shop.merchant.entity.MchFulfillmentChannel();
+        row.setStoreNo(merchantQuery.defaultStoreNo(seeded).orElseThrow());
+        row.setEntityNo(seeded);
+        row.setChannel(Fulfillments.NEIGHBOR_PICKUP);
+        row.setEnabled(true);
+        row.setScopeMode(ai.neargo.shop.merchant.entity.MchFulfillmentChannel.SCOPE_ALL);
+        channelMapper.insert(row);
+        assertThat(fulfillmentService.save(seeded, null, List.of(
+                new ChannelCmd(Fulfillments.NEIGHBOR_PICKUP, true, null, null),
+                new ChannelCmd(Fulfillments.MERCHANT_DELIVERY, true, null, null))).channels())
+                .anyMatch(c -> Fulfillments.MERCHANT_DELIVERY.equals(c.channel()) && c.enabled());
         // 有门店地址就行：门店自己就是落点
         String withAddr = merchant("文三路 1 号");
         assertThat(fulfillmentService.save(withAddr, null, List.of(
@@ -237,7 +257,7 @@ class StoreFulfillmentFlowTest {
         String store = merchantQuery.defaultStoreNo(m).orElseThrow();
         String community = openCommunity();
         var built = communityService.selfBuildPickup(new ai.neargo.shop.community.service.CommunityService.SelfBuildCmd(
-                store, "南门驿站", "南门 1 号", 30_000_000, 120_000_000, null, community));
+                store, "南门驿站", "南门 1 号", 30_000_000, 120_000_000, null, community, null));
 
         assertThatThrownBy(() -> communityAdminService.decidePickup(built.pickupNo(), false, " ", "OPS"))
                 .isInstanceOf(BizException.class);

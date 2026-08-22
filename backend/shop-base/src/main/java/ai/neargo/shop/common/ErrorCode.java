@@ -366,6 +366,8 @@ public enum ErrorCode {
      * 店里没配过取货点（存量）不触发：空集 = 兼容期不限。
      */
     PICKUP_POINT_NOT_SERVED(70029, "err.trade.pickup_point_not_served"),
+    /** 自建取货点归不到任何社区：没定位到、经营范围也空。要他先框一个小区，而不是一句「参数有误」 */
+    PICKUP_COMMUNITY_REQUIRED(70030, "err.community.pickup_community_required"),
     /*
      * 微信手机号快速验证没给出号码（通道未开、未认证、或本次换取失败）。
      *

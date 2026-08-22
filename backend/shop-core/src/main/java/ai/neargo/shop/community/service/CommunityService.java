@@ -64,7 +64,11 @@ public interface CommunityService {
                            String rejectReason) {
     }
 
+    /**
+     * @param fallbackCommunityNo 按坐标就近归不到社区时（存量社区大多没坐标）退到这个社区——
+     *                            调用方给主体经营范围里的第一个；都没有才拒
+     */
     record SelfBuildCmd(String storeNo, String name, String address, Integer latE6, Integer lngE6,
-                        String openHours, String communityNo) {
+                        String openHours, String communityNo, String fallbackCommunityNo) {
     }
 }

@@ -6,6 +6,7 @@ import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.community.service.CommunityService;
 import ai.neargo.shop.spi.user.MerchantQueryPort;
+import ai.neargo.shop.spi.user.PickupQueryPort;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -30,10 +31,13 @@ public class BizPickupPointController {
 
     private final CommunityService communityService;
     private final MerchantQueryPort merchantPort;
+    private final PickupQueryPort pickupPort;
 
-    public BizPickupPointController(CommunityService communityService, MerchantQueryPort merchantPort) {
+    public BizPickupPointController(CommunityService communityService, MerchantQueryPort merchantPort,
+                                    PickupQueryPort pickupPort) {
         this.communityService = communityService;
         this.merchantPort = merchantPort;
+        this.pickupPort = pickupPort;
     }
 
     /**
@@ -53,8 +57,21 @@ public class BizPickupPointController {
     public CommunityService.PickupCandidate selfBuild(@RequestBody SelfBuildReq req) {
         String merchantNo = BizContext.requireMerchantNo();
         String store = requireOwnStore(merchantNo, req.storeNo());
+        /*
+         * 归社区的退路：就近（服务内）→ 经营范围里的第一个 → 本店已有自提点所在的社区。
+         * 存量社区大多没坐标、存量店常常还没框范围 —— 两级都空时第三级多半还在。
+         */
+        List<String> reachable = merchantPort.reachableCommunities(merchantNo);
+        String fallback = reachable.isEmpty() ? null : reachable.get(0);
+        if (fallback == null) {
+            fallback = pickupPort.activeStorePickupNos(List.of(store)).stream()
+                    .map(no -> pickupPort.find(no).map(PickupQueryPort.PickupBrief::communityNo).orElse(null))
+                    .filter(c -> c != null && !c.isBlank())
+                    .findFirst().orElse(null);
+        }
         return communityService.selfBuildPickup(new CommunityService.SelfBuildCmd(
-                store, req.name(), req.address(), req.latE6(), req.lngE6(), req.openHours(), req.communityNo()));
+                store, req.name(), req.address(), req.latE6(), req.lngE6(), req.openHours(), req.communityNo(),
+                fallback));
     }
 
     /** "default" = 默认门店，与送货方式端点同一约定 */

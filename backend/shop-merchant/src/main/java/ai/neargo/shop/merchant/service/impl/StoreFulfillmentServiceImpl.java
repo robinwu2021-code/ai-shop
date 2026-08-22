@@ -117,10 +117,18 @@ public class StoreFulfillmentServiceImpl implements StoreFulfillmentService {
                 }
             }
         }
+        /*
+         * 只在**显式管理引用**或**新开这一路**时判「无落点」。存量店（播种即开、没地址、没引用）
+         * 每次保存都带着 NEIGHBOR_PICKUP=开 —— 逢 PUT 必判会让他连「开一下自送」都被拒，
+         * 而拒的理由与他这次的动作毫无关系。
+         */
         boolean neighborOn = neighbor != null && neighbor.enabled();
         if (neighborOn && !hasAddress) {
+            MchFulfillmentChannel existing = rowsOf(store.getStoreNo()).get(Fulfillments.NEIGHBOR_PICKUP);
+            boolean wasOn = existing != null && Boolean.TRUE.equals(existing.getEnabled());
+            boolean judging = pickupNos != null || !wasOn;
             int refs = pickupNos != null ? pickupNos.size() : pickupRefsOf(store.getStoreNo()).size();
-            if (refs == 0) {
+            if (judging && refs == 0) {
                 throw BizException.of(ErrorCode.BAD_REQUEST);
             }
         }

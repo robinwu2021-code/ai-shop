@@ -271,9 +271,13 @@ public class CommunityServiceImpl implements CommunityService {
             // 就近归社区：nearby 已按围栏过滤并按距离排，第一条就是最近的
             communityNo = nearby(cmd.latE6(), cmd.lngE6()).stream()
                     .map(CommunityVO::communityNo).findFirst().orElse(null);
+            if (communityNo == null) {
+                // 存量社区大多没坐标，就近归不到 —— 退到商家自己范围里的社区，而不是直接拒
+                communityNo = cmd.fallbackCommunityNo();
+            }
         }
         if (communityNo == null) {
-            throw ai.neargo.shop.common.BizException.of(ai.neargo.shop.common.ErrorCode.BAD_REQUEST);
+            throw ai.neargo.shop.common.BizException.of(ai.neargo.shop.common.ErrorCode.PICKUP_COMMUNITY_REQUIRED);
         }
         String cno = communityNo;
         CmtCommunity community = ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() ->
