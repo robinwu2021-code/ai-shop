@@ -357,7 +357,7 @@ public class OrderServiceImpl implements OrderService {
          */
         Map<String, String> storeOfMerchant = storesOf(cmd, split);
 
-        requireFulfillmentSupported(cmd.fulfillment(), split, storeOfMerchant);
+        requireFulfillmentSupported(cmd.fulfillment(), split, storeOfMerchant, userNo);
         requireReceiverWhenShipped(cmd, userNo);
         requirePickupPointWhenPickup(cmd);
         requirePickupServed(cmd, split);
@@ -1269,7 +1269,9 @@ public class OrderServiceImpl implements OrderService {
     }
 
     private void requireFulfillmentSupported(String fulfillment, Split split,
-                                             Map<String, String> storeOfMerchant) {
+                                             Map<String, String> storeOfMerchant, String userNo) {
+        // 买家所在社区：范围子集（P2）按它裁；取不到就按不限判
+        String communityNo = userPort.communityOf(userNo).orElse(null);
         if (fulfillment == null || fulfillment.isBlank()) {
             return;
         }
@@ -1288,8 +1290,8 @@ public class OrderServiceImpl implements OrderService {
          * 空集 = 该店还没迁移到 channel 模型，按旧口径放行（只读兼容期约定）。
          */
         for (Group g : split.groups) {
-            java.util.Set<String> enabled = merchantPort.enabledFulfillments(
-                    g.merchantNo, storeOfMerchant.get(g.merchantNo));
+            java.util.Set<String> enabled = merchantPort.enabledFulfillmentsFor(
+                    g.merchantNo, storeOfMerchant.get(g.merchantNo), communityNo);
             if (!enabled.isEmpty() && !enabled.contains(fulfillment)) {
                 throw BizException.of(ErrorCode.FULFILLMENT_NOT_SUPPORTED);
             }

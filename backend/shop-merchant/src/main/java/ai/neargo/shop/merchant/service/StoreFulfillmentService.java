@@ -34,7 +34,11 @@ public interface StoreFulfillmentService {
     /**
      * @param pickupNos 仅 NEIGHBOR_PICKUP：这一路的取货点引用，<b>全量替换</b>；null = 不改
      */
-    record ChannelCmd(String channel, boolean enabled, String templateNo, List<String> pickupNos) {
+    record ChannelCmd(String channel, boolean enabled, String templateNo, List<String> pickupNos,
+                      /** P2：ALL / SUBSET；null = 不改。EXPRESS 不允许 SUBSET */
+                      String scopeMode,
+                      /** P2：SUBSET 时适用的范围项 area_no，全量替换；null = 不改 */
+                      List<String> areaNos) {
     }
 
     /**
@@ -43,8 +47,17 @@ public interface StoreFulfillmentService {
      */
     record ChannelVO(String channel, boolean enabled, boolean denied, String templateNo,
                      /** 仅 NEIGHBOR_PICKUP：已引用的取货点，含 PENDING 的自建点（让商家看到「审核中」） */
-                     List<PickupRef> pickups) {
+                     List<PickupRef> pickups,
+                     /** 运营锁路（P2）：买家侧不可选，商家侧置灰不可改 */
+                     boolean locked,
+                     /** ALL / SUBSET（P2） */
+                     String scopeMode,
+                     /** SUBSET 时适用的范围项 area_no（P2） */
+                     List<String> areaNos) {
     }
+
+    /** 运营锁路/解锁（P2）。不存在的 channel 行会先建一行（enabled=0）再锁，锁态不依赖商家配过 */
+    void setLocked(String storeNo, String channel, boolean locked);
 
     /** 取货点引用的展示面。status 来自 cmt_pickup_point：只有 ACTIVE 参与买家侧 */
     record PickupRef(String pickupNo, String name, String address, String type, String status) {

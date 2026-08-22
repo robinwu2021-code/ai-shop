@@ -109,6 +109,7 @@ export const UI_PERM_MAP: Record<string, string | typeof UNIMPLEMENTED> = {
   // 页面上什么也看不到且不报错
   "merchant:category:read": "merchant:category:read",
   "merchant:admission:update": "merchant:admission:update",
+  "merchant:fulfillment:update": "merchant:fulfillment:update",
   "order:order:read": "order:order:read",
   "order:pay:read": "order:order:read",
   "product:sku:read": "product:sku:read",

@@ -39,6 +39,7 @@ class BizEndpointPermTest {
     private static final Set<String> PUBLIC = Set.of(
             "/biz/regions/search",
             "/biz/regions/path",
+            "/biz/geo/reverse",
             "/biz/auth/login", "/biz/auth/otp/send", "/biz/auth/staff-login",
             // 设/查自己的登录密码：作用对象是**调用者本人**（SecurityUtils.currentUserNo），
             // 拿不到别人的。挂 biz 权限码反而错了 —— 店员也该能给自己设密码，

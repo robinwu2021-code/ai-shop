@@ -999,6 +999,10 @@ export const mockApi: MerchantApi = {
     return delay({ regions, communities });
   },
 
+  async mGeoReverse(lat, lng) {
+    return delay({ recommend: `阳光里小区南门（${lat.toFixed(4)}, ${lng.toFixed(4)}）`, address: "浙江省杭州市西湖区阳光里" });
+  },
+
   async mRegionPath(code) {
     const chain: import("@shared/types").Region[] = [];
     let cur = db.regionSeeds.find((r) => r.regionCode === code);

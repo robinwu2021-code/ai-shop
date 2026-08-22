@@ -38,6 +38,18 @@ export interface StoreFulfillmentChannel {
   templateNo?: string | null;
   /** 仅 NEIGHBOR_PICKUP（P1）：已引用的取货点，含 PENDING 的自建点（商家要看到「审核中」） */
   pickups?: PickupRef[];
+  /** 运营锁路（P2）：置灰不可改，文案「平台已暂停，联系运营」 */
+  locked?: boolean;
+  /** ALL / SUBSET（P2）：这一路只送经营范围的一个子集 */
+  scopeMode?: string;
+  /** SUBSET 时适用的范围项 area_no */
+  areaNos?: string[];
+}
+
+/** 逆地理编码结果（P2）：recommend 是带楼盘/门牌的人话版 */
+export interface GeoReverseResult {
+  recommend: string;
+  address: string;
 }
 
 /** 门店引用的取货点。status 来自 cmt_pickup_point：只有 ACTIVE 参与买家侧 */
@@ -2630,6 +2642,8 @@ export interface ServiceArea {
   refCode: string;
   /** 展示名。区级以上是「浙江省 / 杭州市 / 西湖区」整条路径 —— 光一个「西湖区」全国有好几个，商家分不出删哪条 */
   name: string;
+  /** 业务键（服务端回填）。范围子集（P2）按它引用；端上新加的项没有，保存后才有 */
+  areaNo?: string;
   /**
    * `ACTIVE` 已生效 / `PENDING` 待运营审核。
    *

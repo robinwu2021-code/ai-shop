@@ -28,6 +28,8 @@ public enum ErrorCode {
     NOT_FOUND(10404, "err.not_found"),
     CONFLICT(10409, "err.conflict"),
     TOO_MANY_REQUESTS(10429, "err.too_many_requests"),
+    /** 逆地理编码没配地图厂商密钥：端上据此**藏掉**「定位取地址」按钮，而不是报错 */
+    GEO_UNAVAILABLE(10503, "err.geo.unavailable"),
 
     /*
      * 发码限流的两条。**分成两个码而不是共用 10429**：端上要做的事完全不同 ——
@@ -368,6 +370,8 @@ public enum ErrorCode {
     PICKUP_POINT_NOT_SERVED(70029, "err.trade.pickup_point_not_served"),
     /** 自建取货点归不到任何社区：没定位到、经营范围也空。要他先框一个小区，而不是一句「参数有误」 */
     PICKUP_COMMUNITY_REQUIRED(70030, "err.community.pickup_community_required"),
+    /** 这一路被运营锁了：商家改不了开关。置灰的按钮点不到，这条只挡绕过界面的请求 */
+    CHANNEL_LOCKED(70031, "err.merchant.channel_locked"),
     /*
      * 微信手机号快速验证没给出号码（通道未开、未认证、或本次换取失败）。
      *

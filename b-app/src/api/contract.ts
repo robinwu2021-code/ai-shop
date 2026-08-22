@@ -4,6 +4,7 @@
 // 类型全部来自 @shared/types —— **不在这里重复定义**。同一笔订单两端看到的是同一个
 // Order 结构，只是可见字段与可执行动作不同；各定义一份必然漂移。
 import type {
+  GeoReverseResult,
   PickupCandidate,
   RegionSearchResult,
   BizScope,
@@ -378,6 +379,8 @@ export interface MerchantApi {
   mRegionSearch(kw: string): Promise<RegionSearchResult>;
   /** 从省到自身的整条链路（选择器从搜索命中下钻用） */
   mRegionPath(code: string): Promise<Region[]>;
+  /** 坐标转地址（P2）。未开通时抛 10503，端上据此藏按钮 */
+  mGeoReverse(lat: number, lng: number): Promise<GeoReverseResult>;
   /** 新建。**超额直接拒** —— 建出来却打不开的店比拒绝更难解释 */
   mCreateStore(payload: StoreEditReq): Promise<Store>;
   mRenameStore(storeNo: string, payload: StoreEditReq): Promise<Store>;

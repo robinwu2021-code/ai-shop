@@ -41,6 +41,9 @@ public class MchFulfillmentChannel extends BaseEntity {
     /** JSON，按 channel 各取所需：EXPRESS 存 {"templateNo":"…"}。自送费率在 mch_store，不在这里 */
     private String config;
 
+    /** 运营锁路（V189）：买家侧不可选、商家侧置灰不可自行改。解锁只能运营 */
+    private Boolean opsLocked;
+
     public static final String SCOPE_ALL = "ALL";
     public static final String SCOPE_SUBSET = "SUBSET";
 }

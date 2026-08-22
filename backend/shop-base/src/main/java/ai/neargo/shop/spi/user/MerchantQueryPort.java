@@ -99,6 +99,14 @@ public interface MerchantQueryPort {
     java.util.Set<String> allowedPickupNos(String merchantNo);
 
     /**
+     * 按买家所在社区裁剪后的门店可用送货方式（P2 范围子集）：
+     * enabled 且未被运营锁路，且（scope=ALL 或 社区 ∈ 子集展开）。
+     * communityNo 为空时等同 {@link #enabledFulfillments}（子集无从判，按不限）。
+     * 空集约定同 {@link #enabledFulfillments}：没配过 = 兼容期不限。
+     */
+    java.util.Set<String> enabledFulfillmentsFor(String merchantNo, String storeNo, String communityNo);
+
+    /**
      * 这笔钱该打给<b>哪个收款商户号</b>：门店配的号 ?? 主体的默认号。
      *
      * <p><b>只有这一处实现。</b> 两处各写一遍的后果是可预测的：一处按新规则、

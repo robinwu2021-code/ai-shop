@@ -323,6 +323,11 @@ export interface StoreFulfillmentRow {
     denied: boolean;
     /** 仅 EXPRESS：运费模板号 */
     templateNo?: string | null;
+    /** 运营锁路（P2）：买家侧不可选、商家侧置灰。解锁只能运营 */
+    locked?: boolean;
+    /** ALL / SUBSET（P2 范围子集） */
+    scopeMode?: string;
+    areaNos?: string[];
   }>;
 }
 

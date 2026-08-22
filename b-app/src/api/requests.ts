@@ -38,6 +38,10 @@ export interface StoreFulfillmentSaveReq {
     templateNo?: string | null;
     /** 仅 NEIGHBOR_PICKUP：取货点引用，全量替换；不传 = 不改 */
     pickupNos?: string[];
+    /** P2：ALL / SUBSET；不传 = 不改 */
+    scopeMode?: string;
+    /** P2：SUBSET 时适用的范围项 area_no，全量替换 */
+    areaNos?: string[];
   }>;
 }
 

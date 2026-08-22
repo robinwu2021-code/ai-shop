@@ -235,6 +235,9 @@ public final class Perms {
     /** 保证金流水、支付额度、准入策略。**没有界面入口**，今天只能走接口。 */
     public static final String MERCHANT_ADMISSION_UPDATE = "merchant:admission:update";
 
+    /** 锁路/解锁某门店的一条送货方式（方案 v4 §7.3）。投诉处置用，商家配置原样保留 */
+    public static final String MERCHANT_FULFILLMENT_UPDATE = "merchant:fulfillment:update";
+
     // ── 消息与客服 ──────────────────────────────────────────────────────────
     public static final String MESSAGE_TEMPLATE_READ = "message:template:read";
     public static final String MESSAGE_TEMPLATE_UPDATE = "message:template:update";
@@ -426,6 +429,7 @@ public final class Perms {
                     DASHBOARD_OVERVIEW_READ, GROUP_DEMAND_ASSIGN, GROUP_DEMAND_READ,
                     MERCHANT_APPLY_AUDIT, MERCHANT_CATEGORY_GRANT, MERCHANT_CATEGORY_READ,
                     MERCHANT_BAN, MERCHANT_READ, MERCHANT_MODE_READ, MERCHANT_MODE_UPDATE,
+                    MERCHANT_FULFILLMENT_UPDATE,
                     MERCHANT_VERIFY_GRANT, ORDER_READ, STORE_PAGE_AUDIT,
                     // 只读：商家质疑「这单是我带来的」时 BD 要查得到链路，
                     // 但改优先级 = 改一批商家的佣金档，那是增长运营的事

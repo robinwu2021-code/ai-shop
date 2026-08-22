@@ -129,6 +129,10 @@ async function toggleChannel(channel: string) {
   if (!cur || savingChannel.value) return;
   const row = cur.channels.find((c) => c.channel === channel);
   if (!row || row.denied) return;
+  if (row.locked) {
+    uni.showToast({ title: t("store.channelLocked"), icon: "none" });
+    return;
+  }
   const next = cur.channels.map((c) => (c.channel === channel ? { ...c, enabled: !c.enabled } : c));
   if (!next.some((c) => c.enabled)) {
     uni.showToast({ title: t("store.fulfillNone"), icon: "none" });
@@ -173,6 +177,53 @@ async function savePickups(pickupNos: string[]) {
   const cur = fulfillment.value;
   if (!cur) return;
   await persistChannels(cur.channels, "NEIGHBOR_PICKUP", pickupNos);
+}
+
+// 范围子集（P2）：自送默认送整个经营范围，可收窄到其中几项；EXPRESS 不收窄（全国）
+const subsetOpen = ref(false);
+const subsetAll = ref(true);
+const subsetPicked = ref<string[]>([]);
+function subsetSummary(c: StoreFulfillment["channels"][number]) {
+  if (c.scopeMode !== "SUBSET") return t("store.subset.sumAll");
+  return t("store.subset.sumOnly", { n: c.areaNos?.length ?? 0 });
+}
+function openSubset(c: StoreFulfillment["channels"][number]) {
+  subsetAll.value = c.scopeMode !== "SUBSET";
+  subsetPicked.value = [...(c.areaNos ?? [])];
+  subsetOpen.value = true;
+}
+function toggleSubsetArea(a: ServiceArea) {
+  const no = a.areaNo;
+  if (!no) return;
+  subsetPicked.value = subsetPicked.value.includes(no)
+    ? subsetPicked.value.filter((x) => x !== no)
+    : [...subsetPicked.value, no];
+}
+async function saveSubset(c: StoreFulfillment["channels"][number]) {
+  const cur = fulfillment.value;
+  if (!cur) return;
+  if (!subsetAll.value && !subsetPicked.value.length) {
+    uni.showToast({ title: t("store.subset.needOne"), icon: "none" });
+    return;
+  }
+  savingChannel.value = c.channel;
+  try {
+    fulfillment.value = await api.mSaveStoreFulfillment(merchant.storeNo || "default", {
+      channels: cur.channels.map((x) => ({
+        channel: x.channel,
+        enabled: x.enabled,
+        templateNo: x.templateNo ?? undefined,
+        scopeMode: x.channel === c.channel ? (subsetAll.value ? "ALL" : "SUBSET") : undefined,
+        areaNos: x.channel === c.channel && !subsetAll.value ? subsetPicked.value : undefined,
+      })),
+    });
+    subsetOpen.value = false;
+    uni.showToast({ title: t("common.saved"), icon: "none" });
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: "none" });
+  } finally {
+    savingChannel.value = "";
+  }
 }
 
 // 自送费率：行内展开编辑，读写既有 deliveryRule 接口（单位分；输入按元）
@@ -360,10 +411,10 @@ onShow(() => {
       </view>
 
       <template v-for="c in channelRows" :key="c.channel">
-        <view class="ch" :class="{ 'is-off': c.denied }" @tap="toggleChannel(c.channel)">
+        <view class="ch" :class="{ 'is-off': c.denied || c.locked }" @tap="toggleChannel(c.channel)">
           <view class="ch__main">
             <text class="ch__name">{{ $t(`channel.${c.channel}`) }}</text>
-            <text class="ch__desc">{{ c.denied ? $t("store.channelDenied") : $t(`store.channelDesc.${c.channel}`) }}</text>
+            <text class="ch__desc" :class="{ 'ch__desc--warn': c.locked }">{{ c.locked ? $t("store.channelLocked") : c.denied ? $t("store.channelDenied") : $t(`store.channelDesc.${c.channel}`) }}</text>
           </view>
           <view class="switch" :class="{ 'is-on': c.enabled, 'is-busy': savingChannel === c.channel }">
             <view class="switch__knob"></view>
@@ -403,6 +454,36 @@ onShow(() => {
             <view class="rate__btns">
               <text class="sh-btn sh-btn--soft rate__save" @tap="saveRule">{{ $t("store.saveRate") }}</text>
               <text class="mini" @tap="ruleOpen = false">{{ $t("store.collapse") }}</text>
+            </view>
+          </view>
+        </view>
+        <view v-if="c.enabled && c.channel === 'MERCHANT_DELIVERY'" class="sum">
+          <template v-if="!subsetOpen">
+            <text class="sum__t">{{ subsetSummary(c) }}</text>
+            <text class="sum__go" @tap.stop="openSubset(c)">{{ $t("store.subset.edit") }}</text>
+          </template>
+          <view v-else class="rate" @tap.stop>
+            <text class="hint">{{ $t("store.subset.hint") }}</text>
+            <view class="subset__opt" :class="{ 'is-on': subsetAll }" @tap="subsetAll = true">
+              <text class="subset__t">{{ $t("store.subset.all") }}</text>
+              <text v-if="subsetAll" class="subset__tick">✓</text>
+            </view>
+            <view class="subset__opt" :class="{ 'is-on': !subsetAll }" @tap="subsetAll = false">
+              <text class="subset__t">{{ $t("store.subset.only") }}</text>
+              <text v-if="!subsetAll" class="subset__tick">✓</text>
+            </view>
+            <view v-if="!subsetAll" class="subset__list">
+              <view v-for="a in activeAreas" :key="a.areaNo || a.refCode" class="subset__row" @tap="toggleSubsetArea(a)">
+                <text class="subset__name">{{ splitName(a).main }}<text v-if="isWhole(a)" class="item__whole"> {{ $t("store.whole") }}</text></text>
+                <view class="row__check" :class="{ 'is-on': subsetPicked.includes(a.areaNo || '') }">
+                  <text v-if="subsetPicked.includes(a.areaNo || '')" class="row__tick">✓</text>
+                </view>
+              </view>
+              <text v-if="!activeAreas.length" class="hint">{{ $t("store.subset.noAreas") }}</text>
+            </view>
+            <view class="rate__btns">
+              <text class="sh-btn sh-btn--soft rate__save" @tap="saveSubset(c)">{{ $t("common.save") }}</text>
+              <text class="mini" @tap="subsetOpen = false">{{ $t("store.collapse") }}</text>
             </view>
           </view>
         </view>
@@ -583,6 +664,59 @@ onShow(() => {
 }
 .sum--warn {
   background: var(--sh-warning-tint);
+}
+.ch__desc--warn {
+  color: var(--sh-warning);
+}
+.subset__opt {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14rpx 0;
+  border-bottom: 2rpx solid var(--sh-line);
+}
+.subset__t {
+  font-size: 26rpx;
+  color: var(--sh-ink);
+}
+.subset__tick {
+  font-size: 26rpx;
+  color: var(--sh-primary-text);
+}
+.subset__list {
+  margin-top: 8rpx;
+}
+.subset__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+  padding: 12rpx 0;
+}
+.subset__name {
+  flex: 1;
+  min-width: 0;
+  font-size: 26rpx;
+  color: var(--sh-ink);
+}
+.row__check {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44rpx;
+  height: 44rpx;
+  border-radius: 9999px;
+  border: 3rpx solid var(--sh-line);
+  box-sizing: border-box;
+}
+.row__check.is-on {
+  border-color: var(--sh-primary);
+  background: var(--sh-primary);
+}
+.row__tick {
+  font-size: 24rpx;
+  color: var(--sh-on-primary);
 }
 .sum__t {
   flex: 1;

@@ -12,6 +12,7 @@ import { computed, ref } from "vue";
 import { onBackPress, onShow } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
 import { api } from "@/api";
+import { getLocation } from "@shared/ports/location";
 import { useMerchantStore } from "@/stores/merchant";
 import { FULFILLMENT_REACH, SERVICE_SCOPE } from "@shared/utils/constants";
 import type { ShareKit, StoreProfile, StoreQrcode } from "@shared/types";
@@ -80,6 +81,34 @@ async function save() {
 function discard() {
   const [announcement = "", openHours = "", address = ""] = JSON.parse(snapshot.value || "[]") as string[];
   form.value = { ...form.value, announcement, openHours, address };
+}
+
+/**
+ * 定位取地址（P2）：逆地理编码走后端代理。后端没配地图密钥时返回 10501，
+ * 端上据此**藏掉按钮** —— 一个点了只会报错的按钮比没有更糟。
+ */
+const geoAvailable = ref(true);
+const locating = ref(false);
+async function locateAddress() {
+  if (locating.value) return;
+  locating.value = true;
+  try {
+    const loc = await getLocation();
+    if (!loc) {
+      uni.showToast({ title: t("store.pickup.locateFailed"), icon: "none" });
+      return;
+    }
+    const r = await api.mGeoReverse(loc.lat, loc.lng);
+    if (r.recommend) form.value.address = r.recommend;
+  } catch (e) {
+    if ((e as { code?: number }).code === 10503) {
+      geoAvailable.value = false;
+      return;
+    }
+    uni.showToast({ title: t("store.locateAddrFailed"), icon: "none" });
+  } finally {
+    locating.value = false;
+  }
 }
 
 onBackPress(() => {
@@ -151,7 +180,13 @@ onShow(() => {
 
       <view class="field">
         <text class="field__label">{{ $t("store.address") }}</text>
-        <input v-model="form.address" class="field__input" placeholder="阳光里小区南门" />
+        <view class="addr">
+          <input v-model="form.address" class="field__input addr__input" placeholder="阳光里小区南门" />
+          <view v-if="geoAvailable" class="addr__locate" @tap="locateAddress">
+            <sh-icon name="pin" :size="18" color="var(--sh-primary-text)"></sh-icon>
+            <text class="addr__t">{{ locating ? "…" : $t("store.locateAddr") }}</text>
+          </view>
+        </view>
         <text class="hint">{{ $t("store.addressHint") }}</text>
       </view>
     </view>
@@ -217,6 +252,29 @@ onShow(() => {
   display: flex;
   gap: 12rpx;
   margin-top: 12rpx;
+}
+.addr {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+.addr__input {
+  flex: 1;
+  min-width: 0;
+}
+.addr__locate {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 6rpx;
+  height: 88rpx;
+  padding: 0 20rpx;
+  border-radius: 24rpx;
+  background: var(--sh-primary-tint);
+}
+.addr__t {
+  font-size: 24rpx;
+  color: var(--sh-primary-text);
 }
 .mini {
   padding: 12rpx 24rpx;

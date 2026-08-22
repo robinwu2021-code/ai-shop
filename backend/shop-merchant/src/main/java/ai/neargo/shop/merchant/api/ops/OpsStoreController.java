@@ -56,6 +56,31 @@ public class OpsStoreController {
      * 跨主体门店检索。带 {@code merchantNo} 就是「该主体的全部门店」——
      * 商家详情抽屉与独立检索页共用这一条。<b>含停用的</b>：治理视角更不能看不见。
      */
+    /**
+     * 锁路 / 解锁（P2）。**用锁不用删**：商家配置原样保留，处置结束一键恢复。
+     * 锁着时买家侧不可选、商家侧置灰不可自行打开。
+     */
+    @PostMapping("/ops/stores/{storeNo}/channels/{channel}/lock")
+    @PreAuthorize("@perm.can('" + Perms.MERCHANT_FULFILLMENT_UPDATE + "')")
+    public java.util.Map<String, Object> lockChannel(@PathVariable String storeNo, @PathVariable String channel,
+                                                     @org.springframework.web.bind.annotation.RequestBody(required = false) LockReq req) {
+        fulfillmentService.setLocked(storeNo, channel, true);
+        auditLogPort.record("CHANNEL_LOCK", storeNo + ":" + channel,
+                req == null || req.reason() == null ? "锁路" : "锁路：" + req.reason(), true);
+        return java.util.Map.of("storeNo", storeNo, "channel", channel, "locked", true);
+    }
+
+    @PostMapping("/ops/stores/{storeNo}/channels/{channel}/unlock")
+    @PreAuthorize("@perm.can('" + Perms.MERCHANT_FULFILLMENT_UPDATE + "')")
+    public java.util.Map<String, Object> unlockChannel(@PathVariable String storeNo, @PathVariable String channel) {
+        fulfillmentService.setLocked(storeNo, channel, false);
+        auditLogPort.record("CHANNEL_UNLOCK", storeNo + ":" + channel, "解锁", true);
+        return java.util.Map.of("storeNo", storeNo, "channel", channel, "locked", false);
+    }
+
+    public record LockReq(String reason) {
+    }
+
     @GetMapping("/ops/stores")
     @PreAuthorize("@perm.can('" + Perms.MERCHANT_READ + "')")
     public PageData<MerchantGovernService.StoreGovernVO> stores(

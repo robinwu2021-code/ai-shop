@@ -67,6 +67,7 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
     private final ai.neargo.shop.merchant.mapper.MerchantMappers.FulfillmentChannelMapper fulfillmentChannelMapper;
     private final ai.neargo.shop.merchant.mapper.MerchantMappers.ChannelPickupMapper channelPickupMapper;
     private final ai.neargo.shop.spi.user.PickupQueryPort pickupQueryPort;
+    private final ai.neargo.shop.merchant.mapper.MerchantMappers.ChannelAreaMapper channelAreaMapper;
 
     public MerchantPortImpl(MchEntityMapper merchantMapper, MchEntityCommunityMapper merchantCommunityMapper,
                             MchPaymentMapper merchantPaymentMapper,
@@ -84,10 +85,12 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
                             ai.neargo.shop.merchant.service.MerchantAuthCodeService authCodeService,
                             ai.neargo.shop.merchant.mapper.MerchantMappers.FulfillmentChannelMapper fulfillmentChannelMapper,
                             ai.neargo.shop.merchant.mapper.MerchantMappers.ChannelPickupMapper channelPickupMapper,
-                            ai.neargo.shop.spi.user.PickupQueryPort pickupQueryPort) {
+                            ai.neargo.shop.spi.user.PickupQueryPort pickupQueryPort,
+                            ai.neargo.shop.merchant.mapper.MerchantMappers.ChannelAreaMapper channelAreaMapper) {
         this.fulfillmentChannelMapper = fulfillmentChannelMapper;
         this.channelPickupMapper = channelPickupMapper;
         this.pickupQueryPort = pickupQueryPort;
+        this.channelAreaMapper = channelAreaMapper;
         this.authCodeService = authCodeService;
         this.entityPlanMapper = entityPlanMapper;
         this.planDefMapper = planDefMapper;
@@ -220,6 +223,57 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
     }
 
     @Override
+    public java.util.Set<String> enabledFulfillmentsFor(String merchantNo, String storeNo, String communityNo) {
+        java.util.Set<String> enabled = enabledFulfillments(merchantNo, storeNo);
+        if (enabled.isEmpty() || communityNo == null || communityNo.isBlank()) {
+            return enabled;
+        }
+        List<ai.neargo.shop.merchant.entity.MchFulfillmentChannel> rows =
+                DataScopeContext.executeWithoutScope(() -> fulfillmentChannelMapper.selectList(
+                        com.baomidou.mybatisplus.core.toolkit.Wrappers
+                                .<ai.neargo.shop.merchant.entity.MchFulfillmentChannel>lambdaQuery()
+                                .eq(ai.neargo.shop.merchant.entity.MchFulfillmentChannel::getEntityNo, merchantNo)
+                                .eq(storeNo != null && !storeNo.isBlank(),
+                                        ai.neargo.shop.merchant.entity.MchFulfillmentChannel::getStoreNo, storeNo)
+                                .eq(ai.neargo.shop.merchant.entity.MchFulfillmentChannel::getScopeMode, "SUBSET")));
+        if (rows.isEmpty()) {
+            return enabled;
+        }
+        java.util.LinkedHashSet<String> out = new java.util.LinkedHashSet<>(enabled);
+        for (var row : rows) {
+            if (!out.contains(row.getChannel())) {
+                continue;
+            }
+            // 子集展开与可见性同一套规则：COMMUNITY 直选 + 区划前缀展开
+            List<String> areaNos = DataScopeContext.executeWithoutScope(() -> channelAreaMapper.selectList(
+                            com.baomidou.mybatisplus.core.toolkit.Wrappers
+                                    .<ai.neargo.shop.merchant.entity.MchChannelArea>lambdaQuery()
+                                    .eq(ai.neargo.shop.merchant.entity.MchChannelArea::getStoreNo, row.getStoreNo())
+                                    .eq(ai.neargo.shop.merchant.entity.MchChannelArea::getChannel, row.getChannel())))
+                    .stream().map(ai.neargo.shop.merchant.entity.MchChannelArea::getAreaNo).toList();
+            boolean hit = false;
+            if (!areaNos.isEmpty()) {
+                List<MchServiceArea> areas = DataScopeContext.executeWithoutScope(() ->
+                        serviceAreaMapper.selectList(Wrappers.<MchServiceArea>lambdaQuery()
+                                .in(MchServiceArea::getAreaNo, areaNos)
+                                .eq(MchServiceArea::getStatus, AREA_ACTIVE)));
+                for (MchServiceArea a : areas) {
+                    if (AREA_COMMUNITY.equals(a.getLevel())
+                            ? communityNo.equals(a.getRefCode())
+                            : communityQueryPort.openCommunityNosUnderRegion(a.getRefCode()).contains(communityNo)) {
+                        hit = true;
+                        break;
+                    }
+                }
+            }
+            if (!hit) {
+                out.remove(row.getChannel());
+            }
+        }
+        return out;
+    }
+
+    @Override
     public java.util.Set<String> enabledFulfillments(String merchantNo, String storeNo) {
         if (merchantNo == null || merchantNo.isBlank()) {
             return java.util.Set.of();
@@ -237,7 +291,8 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
                                         ai.neargo.shop.merchant.entity.MchFulfillmentChannel::getStoreNo, storeNo)));
         java.util.LinkedHashSet<String> out = new java.util.LinkedHashSet<>();
         for (var row : rows) {
-            if (Boolean.TRUE.equals(row.getEnabled())) {
+            // 运营锁路（P2）：锁着的路买家侧不可选
+            if (Boolean.TRUE.equals(row.getEnabled()) && !Boolean.TRUE.equals(row.getOpsLocked())) {
                 out.add(row.getChannel());
             }
         }

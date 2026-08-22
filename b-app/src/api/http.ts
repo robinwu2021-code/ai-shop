@@ -94,6 +94,7 @@ import type {
   PickupOverview,
   RateCard,
   StoreFulfillment,
+  GeoReverseResult,
   PickupCandidate,
   RegionSearchResult,
 } from "@shared/types";
@@ -147,6 +148,7 @@ export const httpApi: MerchantApi = {
     http.post<PickupCandidate>(E.mSelfBuildPickup.path, payload satisfies PickupSelfBuildReq),
   mRegionSearch: (kw) => http.get<RegionSearchResult>(E.mRegionSearch.path, { kw }),
   mRegionPath: (code) => http.get<Region[]>(E.mRegionPath.path, { code }),
+  mGeoReverse: (lat, lng) => http.get<GeoReverseResult>(E.mGeoReverse.path, { lat, lng }),
   mStoreList: () => http.get<Store[]>(E.mStoreList.path),
   mCreateStore: (payload) =>
     http.post<Store>(E.mCreateStore.path, payload satisfies StoreEditReq),

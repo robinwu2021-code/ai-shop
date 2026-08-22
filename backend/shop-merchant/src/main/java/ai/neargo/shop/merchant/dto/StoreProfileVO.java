@@ -36,6 +36,7 @@ public record StoreProfileVO(String announcement, String openHours, String addre
      *                不告诉端上的话，商家保存完看见它好端端在清单里，
      *                却一个订单也不来，而这是他自己永远查不出来的
      */
-    public record ServiceAreaVO(String level, String refCode, String name, String status) {
+    /** @param areaNo 业务键（P2 范围子集按它引用；审核单也靠它指回） */
+    public record ServiceAreaVO(String level, String refCode, String name, String status, String areaNo) {
     }
 }

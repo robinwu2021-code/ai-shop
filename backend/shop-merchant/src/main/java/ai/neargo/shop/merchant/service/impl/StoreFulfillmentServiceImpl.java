@@ -36,17 +36,23 @@ public class StoreFulfillmentServiceImpl implements StoreFulfillmentService {
     private final AdmissionPort admissionPort;
     private final ai.neargo.shop.merchant.mapper.MerchantMappers.ChannelPickupMapper pickupRefMapper;
     private final ai.neargo.shop.spi.user.PickupQueryPort pickupQueryPort;
+    private final ai.neargo.shop.merchant.mapper.MerchantMappers.ChannelAreaMapper areaRefMapper;
+    private final ai.neargo.shop.merchant.mapper.MerchantMappers.ServiceAreaMapper serviceAreaMapper;
 
     public StoreFulfillmentServiceImpl(FulfillmentChannelMapper channelMapper,
                                        MchStoreMapper storeMapper,
                                        AdmissionPort admissionPort,
                                        ai.neargo.shop.merchant.mapper.MerchantMappers.ChannelPickupMapper pickupRefMapper,
-                                       ai.neargo.shop.spi.user.PickupQueryPort pickupQueryPort) {
+                                       ai.neargo.shop.spi.user.PickupQueryPort pickupQueryPort,
+                                       ai.neargo.shop.merchant.mapper.MerchantMappers.ChannelAreaMapper areaRefMapper,
+                                       ai.neargo.shop.merchant.mapper.MerchantMappers.ServiceAreaMapper serviceAreaMapper) {
         this.channelMapper = channelMapper;
         this.storeMapper = storeMapper;
         this.admissionPort = admissionPort;
         this.pickupRefMapper = pickupRefMapper;
         this.pickupQueryPort = pickupQueryPort;
+        this.areaRefMapper = areaRefMapper;
+        this.serviceAreaMapper = serviceAreaMapper;
     }
 
     @Override
@@ -56,11 +62,15 @@ public class StoreFulfillmentServiceImpl implements StoreFulfillmentService {
         List<ChannelVO> out = new ArrayList<>(CONFIGURABLE.size());
         for (String ch : CONFIGURABLE) {
             MchFulfillmentChannel row = rows.get(ch);
+            boolean subset = row != null && MchFulfillmentChannel.SCOPE_SUBSET.equals(row.getScopeMode());
             out.add(new ChannelVO(ch,
                     row != null && Boolean.TRUE.equals(row.getEnabled()),
                     deniedByMatrix(merchantNo, ch),
                     row == null ? null : templateNoOf(row.getConfig()),
-                    Fulfillments.NEIGHBOR_PICKUP.equals(ch) ? pickupRefsOf(store.getStoreNo()) : List.of()));
+                    Fulfillments.NEIGHBOR_PICKUP.equals(ch) ? pickupRefsOf(store.getStoreNo()) : List.of(),
+                    row != null && Boolean.TRUE.equals(row.getOpsLocked()),
+                    subset ? MchFulfillmentChannel.SCOPE_SUBSET : MchFulfillmentChannel.SCOPE_ALL,
+                    subset ? areaRefsOf(store.getStoreNo(), ch) : List.of()));
         }
         return new FulfillmentVO(store.getStoreNo(), out);
     }
@@ -140,6 +150,48 @@ public class StoreFulfillmentServiceImpl implements StoreFulfillmentService {
                 admissionPort.requireFulfillmentAllowed(merchantNo, cmd.channel(), null);
             }
         }
+        /*
+         * 运营锁路（P2）：锁着的路商家改不了开关。端上置灰点不到，这里挡的是绕过界面的请求；
+         * 但**原样回传**不算改 —— 商家开关别的路时四行一起发，锁着的那行 enabled 没变就放行。
+         */
+        Map<String, MchFulfillmentChannel> before = rowsOf(store.getStoreNo());
+        for (ChannelCmd cmd : byChannel.values()) {
+            MchFulfillmentChannel row = before.get(cmd.channel());
+            if (row != null && Boolean.TRUE.equals(row.getOpsLocked())
+                    && cmd.enabled() != Boolean.TRUE.equals(row.getEnabled())) {
+                throw BizException.of(ErrorCode.CHANNEL_LOCKED);
+            }
+        }
+        /*
+         * 范围子集（P2）：只在主体的范围项里收窄；EXPRESS 天然全国不收窄；
+         * SUBSET 而引用集为空 = 这一路谁也送不了，保存拦截。
+         */
+        java.util.Set<String> myAreaNos = null;
+        for (ChannelCmd cmd : byChannel.values()) {
+            if (cmd.scopeMode() == null) {
+                continue;
+            }
+            boolean subset = MchFulfillmentChannel.SCOPE_SUBSET.equals(cmd.scopeMode());
+            if (!subset && !MchFulfillmentChannel.SCOPE_ALL.equals(cmd.scopeMode())) {
+                throw BizException.of(ErrorCode.BAD_REQUEST);
+            }
+            if (subset) {
+                if (Fulfillments.EXPRESS.equals(cmd.channel()) || cmd.areaNos() == null || cmd.areaNos().isEmpty()) {
+                    throw BizException.of(ErrorCode.BAD_REQUEST);
+                }
+                if (myAreaNos == null) {
+                    myAreaNos = new java.util.HashSet<>();
+                    for (var a : ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(
+                            () -> serviceAreaMapper.selectList(Wrappers.<ai.neargo.shop.merchant.entity.MchServiceArea>lambdaQuery()
+                                    .eq(ai.neargo.shop.merchant.entity.MchServiceArea::getEntityNo, merchantNo)))) {
+                        myAreaNos.add(a.getAreaNo());
+                    }
+                }
+                if (!myAreaNos.containsAll(cmd.areaNos())) {
+                    throw BizException.of(ErrorCode.NOT_FOUND);
+                }
+            }
+        }
 
         /*
          * 写也要绕开数据域：B 端会话（SELF 维度）下 UPDATE 会被拼上 1=0 ——
@@ -162,10 +214,31 @@ public class StoreFulfillmentServiceImpl implements StoreFulfillmentService {
                 if (Fulfillments.EXPRESS.equals(cmd.channel())) {
                     row.setConfig(expressConfig(cmd.templateNo()));
                 }
+                if (cmd.scopeMode() != null) {
+                    row.setScopeMode(cmd.scopeMode());
+                }
                 if (row.getId() == null) {
                     channelMapper.insert(row);
                 } else {
                     channelMapper.updateById(row);
+                }
+            }
+            for (ChannelCmd cmd : byChannel.values()) {
+                if (cmd.scopeMode() == null) {
+                    continue;
+                }
+                // 范围子集引用：纯关联集合，物理删后重插；ALL 时清空
+                areaRefMapper.delete(Wrappers.<ai.neargo.shop.merchant.entity.MchChannelArea>lambdaQuery()
+                        .eq(ai.neargo.shop.merchant.entity.MchChannelArea::getStoreNo, target.getStoreNo())
+                        .eq(ai.neargo.shop.merchant.entity.MchChannelArea::getChannel, cmd.channel()));
+                if (MchFulfillmentChannel.SCOPE_SUBSET.equals(cmd.scopeMode())) {
+                    for (String areaNo : new java.util.LinkedHashSet<>(cmd.areaNos())) {
+                        var ref = new ai.neargo.shop.merchant.entity.MchChannelArea();
+                        ref.setStoreNo(target.getStoreNo());
+                        ref.setChannel(cmd.channel());
+                        ref.setAreaNo(areaNo);
+                        areaRefMapper.insert(ref);
+                    }
                 }
             }
             if (pickupNos != null) {
@@ -237,6 +310,45 @@ public class StoreFulfillmentServiceImpl implements StoreFulfillmentService {
             out.put(row.getChannel(), row);
         }
         return out;
+    }
+
+    @Override
+    @Transactional
+    public void setLocked(String storeNo, String channel, boolean locked) {
+        if (storeNo == null || storeNo.isBlank() || !CONFIGURABLE.contains(channel)) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        MchStore store = ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() ->
+                storeMapper.selectOne(Wrappers.<MchStore>lambdaQuery().eq(MchStore::getStoreNo, storeNo).last("LIMIT 1")));
+        if (store == null) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() -> {
+            MchFulfillmentChannel row = rowsOf(storeNo).get(channel);
+            if (row == null) {
+                row = new MchFulfillmentChannel();
+                row.setStoreNo(storeNo);
+                row.setEntityNo(store.getEntityNo());
+                row.setChannel(channel);
+                row.setEnabled(false);
+                row.setScopeMode(MchFulfillmentChannel.SCOPE_ALL);
+                row.setOpsLocked(locked);
+                channelMapper.insert(row);
+            } else {
+                row.setOpsLocked(locked);
+                channelMapper.updateById(row);
+            }
+            return null;
+        });
+    }
+
+    private List<String> areaRefsOf(String storeNo, String channel) {
+        return ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() ->
+                        areaRefMapper.selectList(Wrappers.<ai.neargo.shop.merchant.entity.MchChannelArea>lambdaQuery()
+                                .eq(ai.neargo.shop.merchant.entity.MchChannelArea::getStoreNo, storeNo)
+                                .eq(ai.neargo.shop.merchant.entity.MchChannelArea::getChannel, channel)
+                                .orderByAsc(ai.neargo.shop.merchant.entity.MchChannelArea::getId)))
+                .stream().map(ai.neargo.shop.merchant.entity.MchChannelArea::getAreaNo).toList();
     }
 
     /** 这一店引用的取货点。读侧不过滤状态：停用/待审的也展示，商家才知道它现在不算数 */

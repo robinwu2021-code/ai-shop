@@ -60,6 +60,8 @@ export interface MerchantApi {
    * 写入口在 B 端；平台的干预走锁路（P2），不在本契约。
    */
   merchantFulfillment(merchantNo: string): Promise<StoreFulfillmentRow[]>;
+  /** 锁路 / 解锁（P2）。用锁不用删：商家配置原样保留，处置结束一键恢复 */
+  lockChannel(storeNo: string, channel: string, locked: boolean, reason?: string): Promise<void>;
 
   merchantDeposit(merchantNo: string): Promise<MerchantDeposit>;
   depositTxns(merchantNo: string): Promise<DepositTxn[]>;
