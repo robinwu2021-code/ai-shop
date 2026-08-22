@@ -18,7 +18,7 @@ beforeEach(() => {
 describe("类目树（P-3.1）", () => {
   it(`最多 ${MAX_CATEGORY_LEVEL} 级：二级类目下不能再建子类目`, async () => {
     await expect(
-      productMock.saveCategory({ categoryNo: "", name: "嫩叶菜", parentNo: "CAT111", template: "FRESH", qualifications: [] }),
+      productMock.saveCategory({ categoryNo: "", name: "嫩叶菜", parentNo: "CAT110", template: "FRESH", qualifications: [] }),
     ).rejects.toThrow(new RegExp(String(MAX_CATEGORY_LEVEL)));
   });
 
@@ -29,11 +29,11 @@ describe("类目树（P-3.1）", () => {
   });
 
   it("有子类目的类目不能归档（归档后 C 端类目树会断枝）", async () => {
-    await expect(productMock.archiveCategory("CAT110")).rejects.toThrow(/子类目/);
+    await expect(productMock.archiveCategory("CAT100")).rejects.toThrow(/子类目/);
   });
 
   it("有在售商品的类目不能归档", async () => {
-    await expect(productMock.archiveCategory("CAT111")).rejects.toThrow(/在售商品/);
+    await expect(productMock.archiveCategory("CAT110")).rejects.toThrow(/在售商品/);
   });
 
   it("空类目可以归档，且默认列表不再出现", async () => {

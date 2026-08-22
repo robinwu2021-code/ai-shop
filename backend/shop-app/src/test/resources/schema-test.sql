@@ -2864,6 +2864,7 @@ CREATE TABLE IF NOT EXISTS mch_fulfillment_channel
     updated_by VARCHAR(64) DEFAULT NULL,
     version BIGINT NOT NULL DEFAULT 0,
     deleted TINYINT NOT NULL DEFAULT 0,
+    ops_locked TINYINT(1) NOT NULL DEFAULT 0,
     PRIMARY KEY (id),
     CONSTRAINT uk_store_channel UNIQUE (tenant_no, store_no, channel)
 );
@@ -5326,3 +5327,46 @@ UPDATE sys_function_point
  WHERE point_code = 'OPS_COMMUNITY__TAB_REGIONS';
 UPDATE mch_service_area SET status = 'ACTIVE' WHERE level = 'STREET' AND status = 'PENDING';
 UPDATE mch_store_audit SET status = 'PASSED', decided_at = UNIX_TIMESTAMP() * 1000, decided_by = 'SYSTEM' WHERE kind = 'SERVICE_AREA' AND status = 'PENDING' AND content LIKE 'STREET:%';
+INSERT INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at)
+SELECT 'ACT__MERCHANT_FULFILLMENT_UPDATE', 'OPS_MERCHANT', 'merchant:fulfillment:update', '仅后端', NULL, 'merchant:fulfillment:update', 'merchant:fulfillment:update', 'IMPLEMENTED', 0, NULL, 'ACTION', 926, NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_function_point x WHERE x.point_code='ACT__MERCHANT_FULFILLMENT_UPDATE');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at) SELECT 'SUPER_ADMIN', 'ACT__MERCHANT_FULFILLMENT_UPDATE', 'OPS', NOW(), NOW() FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPER_ADMIN' AND x.point_code='ACT__MERCHANT_FULFILLMENT_UPDATE' AND x.end_code='OPS');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at) SELECT 'BD', 'ACT__MERCHANT_FULFILLMENT_UPDATE', 'OPS', NOW(), NOW() FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='BD' AND x.point_code='ACT__MERCHANT_FULFILLMENT_UPDATE' AND x.end_code='OPS');
+INSERT INTO sys_auth_code
+(code, name, required_qualification, sort, enabled, tenant_no, created_at, created_by, updated_at, updated_by, version, deleted)
+VALUES
+('FRESH_AQUATIC', '水产海鲜', '食品经营许可证', 18, 1, 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0);
+INSERT INTO prd_category
+(category_no, parent_no, level, name, name_en, icon, sort, template,
+ attr_template, qualification_required, required_code, status,
+ tenant_no, created_at, created_by, updated_at, updated_by, version, deleted)
+SELECT * FROM (SELECT
+ 'CAT140' AS category_no, 'CAT100' AS parent_no, 2 AS level, '熟食卤味' AS name, 'Deli' AS name_en,
+ NULL AS icon, 40 AS sort, 'STANDARD' AS template, NULL AS attr_template,
+ '["食品经营许可证"]' AS qualification_required, 'FOOD' AS required_code, 'ACTIVE' AS status,
+ 'MAIN' AS tenant_no, NOW() AS created_at, 'SYSTEM' AS created_by, NOW() AS updated_at,
+ 'SYSTEM' AS updated_by, 0 AS version, 0 AS deleted) t
+WHERE NOT EXISTS (SELECT 1 FROM prd_category c WHERE c.category_no = 'CAT140');
+INSERT INTO prd_category
+(category_no, parent_no, level, name, name_en, icon, sort, template,
+ attr_template, qualification_required, required_code, status,
+ tenant_no, created_at, created_by, updated_at, updated_by, version, deleted)
+VALUES
+('CAT190', 'CAT100', 2, '水产海鲜', 'Seafood', NULL, 90, 'FRESH', NULL,
+ '["食品经营许可证"]', 'FRESH_AQUATIC', 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('CAT290', 'CAT200', 2, '厨房用具', 'Kitchenware', NULL, 90, 'STANDARD', NULL,
+ NULL, NULL, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0);
+INSERT INTO prd_category
+(category_no, parent_no, level, name, name_en, icon, sort, template,
+ attr_template, qualification_required, required_code, status,
+ tenant_no, created_at, created_by, updated_at, updated_by, version, deleted)
+VALUES
+
+('CAT370', 'CAT300', 2, '洗车养护', 'Car Wash',        NULL, 70, 'SERVICE', NULL, NULL, NULL, 'ARCHIVED', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('CAT380', 'CAT300', 2, '开锁换锁', 'Locksmith',       NULL, 80, 'SERVICE', NULL, NULL, NULL, 'ARCHIVED', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('CAT390', 'CAT300', 2, '家电清洗', 'Appliance Clean', NULL, 90, 'SERVICE', NULL, NULL, NULL, 'ARCHIVED', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+
+('CAT900', NULL,     1, '服饰鞋帽', 'Apparel',      NULL, 90, 'STANDARD', NULL, NULL, NULL, 'ARCHIVED', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('CAT910', 'CAT900', 2, '内衣袜子', 'Underwear',    NULL, 10, 'STANDARD', NULL, NULL, NULL, 'ARCHIVED', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('CAT920', 'CAT900', 2, '鞋类拖鞋', 'Shoes',        NULL, 20, 'STANDARD', NULL, NULL, NULL, 'ARCHIVED', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('CAT930', 'CAT900', 2, '家纺床品', 'Home Textile', NULL, 30, 'STANDARD', NULL, NULL, NULL, 'ARCHIVED', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0);

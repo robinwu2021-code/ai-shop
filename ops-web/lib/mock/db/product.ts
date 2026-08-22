@@ -6,39 +6,71 @@ import type { GoodsAudit, Category, Sku, SpecTemplate, SpuStd, Topic } from "@/l
 // 编号或资质文案与 V22 不一致的话，症状是「mock 上跑得通、连真库就找不到类目」，
 // 而两边各自自洽，谁也不报错。
 export const categories: Category[] = [
+  // 与迁移逐条对齐（V22 → V190）。**两级封顶**，编号或门槛码与真库不一致的话，
+  // 症状是「mock 上跑得通、连真库就找不到类目」，而两边各自自洽，谁也不报错。
+  // 默认停用的那几条（服饰鞋帽整棵、三个服务）在这里也是 archivedAt —— 运营一键开。
   { categoryNo: "CAT100", name: "食品生鲜", level: 1, template: "FRESH", qualifications: [], i18n: { zh: "食品生鲜", en: "Fresh Food" }, skuCount: 0 },
-  { categoryNo: "CAT110", name: "蔬菜", parentNo: "CAT100", level: 2, template: "FRESH", qualifications: [], i18n: { zh: "蔬菜", en: "Vegetables" }, skuCount: 0 },
-  { categoryNo: "CAT111", name: "叶菜", parentNo: "CAT110", level: 3, template: "FRESH", qualifications: ["营业执照（食用农产品）"], requiredCode: "FRESH_VEG", i18n: { zh: "叶菜", en: "Leafy Greens" }, skuCount: 2 },
-  { categoryNo: "CAT112", name: "根茎菜", parentNo: "CAT110", level: 3, template: "FRESH", qualifications: ["营业执照（食用农产品）"], requiredCode: "FRESH_VEG", i18n: { zh: "根茎菜" }, skuCount: 1 },
-  { categoryNo: "CAT120", name: "水果", parentNo: "CAT100", level: 2, template: "FRESH", qualifications: [], i18n: { zh: "水果", en: "Fruits" }, skuCount: 0 },
-  { categoryNo: "CAT121", name: "浆果", parentNo: "CAT120", level: 3, template: "FRESH", qualifications: ["营业执照（食用农产品）"], requiredCode: "FRESH_FRUIT", i18n: { zh: "浆果", en: "Berries" }, skuCount: 1 },
-  { categoryNo: "CAT122", name: "常温水果", parentNo: "CAT120", level: 3, template: "FRESH", qualifications: ["营业执照（食用农产品）"], requiredCode: "FRESH_FRUIT", i18n: { zh: "常温水果", en: "Fruits (Ambient)" }, skuCount: 0 },
-  { categoryNo: "CAT130", name: "预包装食品", parentNo: "CAT100", level: 2, template: "STANDARD", qualifications: [], i18n: { zh: "预包装食品", en: "Packaged Food" }, skuCount: 0 },
-  { categoryNo: "CAT131", name: "粮油调味", parentNo: "CAT130", level: 3, template: "STANDARD", qualifications: ["仅销售预包装食品备案"], requiredCode: "PACKAGED_FOOD", i18n: { zh: "粮油调味", en: "Grain & Oil" }, skuCount: 0 },
-  { categoryNo: "CAT132", name: "休闲零食", parentNo: "CAT130", level: 3, template: "STANDARD", qualifications: ["仅销售预包装食品备案"], requiredCode: "PACKAGED_FOOD", i18n: { zh: "休闲零食", en: "Snacks" }, skuCount: 0 },
-  { categoryNo: "CAT133", name: "茶叶", parentNo: "CAT130", level: 3, template: "STANDARD", qualifications: ["仅销售预包装食品备案"], requiredCode: "PACKAGED_FOOD", i18n: { zh: "茶叶", en: "Tea" }, skuCount: 0 },
+  { categoryNo: "CAT110", name: "蔬菜", parentNo: "CAT100", level: 2, template: "FRESH", qualifications: ["营业执照（食用农产品）"], requiredCode: "FRESH_VEG", i18n: { zh: "蔬菜", en: "Vegetables" }, skuCount: 3 },
+  { categoryNo: "CAT120", name: "水果", parentNo: "CAT100", level: 2, template: "FRESH", qualifications: ["营业执照（食用农产品）"], requiredCode: "FRESH_FRUIT", i18n: { zh: "水果", en: "Fruits" }, skuCount: 1 },
+  { categoryNo: "CAT130", name: "预包装食品", parentNo: "CAT100", level: 2, template: "STANDARD", qualifications: ["仅销售预包装食品备案"], requiredCode: "PACKAGED_FOOD", i18n: { zh: "预包装食品", en: "Packaged Food" }, skuCount: 0 },
+  { categoryNo: "CAT140", name: "熟食卤味", parentNo: "CAT100", level: 2, template: "STANDARD", qualifications: ["食品经营许可证"], requiredCode: "FOOD", i18n: { zh: "熟食卤味", en: "Deli" }, skuCount: 0 },
+  { categoryNo: "CAT150", name: "酒类", parentNo: "CAT100", level: 2, template: "STANDARD", qualifications: ["食品经营许可证（含酒类）"], requiredCode: "ALCOHOL", i18n: { zh: "酒类", en: "Alcohol" }, skuCount: 0 },
+  { categoryNo: "CAT160", name: "茶叶", parentNo: "CAT100", level: 2, template: "STANDARD", qualifications: ["仅销售预包装食品备案"], requiredCode: "PACKAGED_FOOD", i18n: { zh: "茶叶", en: "Tea" }, skuCount: 0 },
+  { categoryNo: "CAT170", name: "肉禽蛋", parentNo: "CAT100", level: 2, template: "FRESH", qualifications: ["食品经营许可证"], requiredCode: "FRESH_MEAT", i18n: { zh: "肉禽蛋", en: "Meat & Eggs" }, skuCount: 0 },
+  { categoryNo: "CAT180", name: "乳制品", parentNo: "CAT100", level: 2, template: "FRESH", qualifications: ["食品经营许可证"], requiredCode: "FRESH_DAIRY", i18n: { zh: "乳制品", en: "Dairy" }, skuCount: 0 },
+  { categoryNo: "CAT190", name: "水产海鲜", parentNo: "CAT100", level: 2, template: "FRESH", qualifications: ["食品经营许可证"], requiredCode: "FRESH_AQUATIC", i18n: { zh: "水产海鲜", en: "Seafood" }, skuCount: 0 },
   { categoryNo: "CAT200", name: "日用百货", level: 1, template: "STANDARD", qualifications: [], i18n: { zh: "日用百货", en: "Household" }, skuCount: 0 },
-  { categoryNo: "CAT210", name: "纸品清洁", parentNo: "CAT200", level: 2, template: "STANDARD", qualifications: [], i18n: { zh: "纸品清洁" }, skuCount: 1 },
+  { categoryNo: "CAT210", name: "纸品清洁", parentNo: "CAT200", level: 2, template: "STANDARD", qualifications: [], i18n: { zh: "纸品清洁", en: "Paper & Cleaning" }, skuCount: 1 },
   { categoryNo: "CAT220", name: "家居用品", parentNo: "CAT200", level: 2, template: "STANDARD", qualifications: [], i18n: { zh: "家居用品", en: "Home" }, skuCount: 0 },
   { categoryNo: "CAT230", name: "个护化妆", parentNo: "CAT200", level: 2, template: "STANDARD", qualifications: [], i18n: { zh: "个护化妆", en: "Personal Care" }, skuCount: 0 },
-  // 一级不挂 requiredCode（V22 修的 D2）：挂在这里会让家政被一张它不需要的维修资质卡住
+  { categoryNo: "CAT250", name: "母婴用品", parentNo: "CAT200", level: 2, template: "STANDARD", qualifications: [], i18n: { zh: "母婴用品", en: "Baby Care" }, skuCount: 0 },
+  { categoryNo: "CAT260", name: "宠物用品", parentNo: "CAT200", level: 2, template: "STANDARD", qualifications: [], i18n: { zh: "宠物用品", en: "Pet Supplies" }, skuCount: 0 },
+  { categoryNo: "CAT270", name: "宠物食品", parentNo: "CAT200", level: 2, template: "STANDARD", qualifications: ["饲料和饲料添加剂经营备案"], requiredCode: "PET_FOOD", i18n: { zh: "宠物食品", en: "Pet Food" }, skuCount: 0 },
+  { categoryNo: "CAT280", name: "文具玩具", parentNo: "CAT200", level: 2, template: "STANDARD", qualifications: [], i18n: { zh: "文具玩具", en: "Stationery & Toys" }, skuCount: 0 },
+  { categoryNo: "CAT290", name: "厨房用具", parentNo: "CAT200", level: 2, template: "STANDARD", qualifications: [], i18n: { zh: "厨房用具", en: "Kitchenware" }, skuCount: 0 },
   { categoryNo: "CAT300", name: "生活服务", level: 1, template: "SERVICE", qualifications: [], i18n: { zh: "生活服务", en: "Services" }, skuCount: 0 },
   { categoryNo: "CAT310", name: "家政保洁", parentNo: "CAT300", level: 2, template: "SERVICE", qualifications: [], requiredCode: "HOUSEKEEPING", i18n: { zh: "家政保洁", en: "Housekeeping" }, skuCount: 1 },
-  // 一期停用：平台执照无预付卡相关项。留着不删 —— 切平台模式后在后台恢复即可
-  { categoryNo: "CAT400", name: "卡券", level: 1, template: "VOUCHER", qualifications: [], i18n: { zh: "卡券" }, skuCount: 0, archivedAt: "2026-08-11T00:00:00Z" },
+  { categoryNo: "CAT330", name: "洗衣洗鞋", parentNo: "CAT300", level: 2, template: "SERVICE", qualifications: [], i18n: { zh: "洗衣洗鞋", en: "Laundry" }, skuCount: 0 },
+  { categoryNo: "CAT340", name: "美容美发", parentNo: "CAT300", level: 2, template: "SERVICE", qualifications: [], i18n: { zh: "美容美发", en: "Beauty & Hair" }, skuCount: 0 },
+  { categoryNo: "CAT350", name: "宠物洗护", parentNo: "CAT300", level: 2, template: "SERVICE", qualifications: [], i18n: { zh: "宠物洗护", en: "Pet Grooming" }, skuCount: 0 },
+  { categoryNo: "CAT360", name: "跑腿代办", parentNo: "CAT300", level: 2, template: "SERVICE", qualifications: [], i18n: { zh: "跑腿代办", en: "Errands" }, skuCount: 0 },
+  { categoryNo: "CAT370", name: "洗车养护", parentNo: "CAT300", level: 2, template: "SERVICE", qualifications: [], i18n: { zh: "洗车养护", en: "Car Wash" }, skuCount: 0, archivedAt: "2026-08-22T00:00:00Z" },
+  { categoryNo: "CAT380", name: "开锁换锁", parentNo: "CAT300", level: 2, template: "SERVICE", qualifications: [], i18n: { zh: "开锁换锁", en: "Locksmith" }, skuCount: 0, archivedAt: "2026-08-22T00:00:00Z" },
+  { categoryNo: "CAT390", name: "家电清洗", parentNo: "CAT300", level: 2, template: "SERVICE", qualifications: [], i18n: { zh: "家电清洗", en: "Appliance Clean" }, skuCount: 0, archivedAt: "2026-08-22T00:00:00Z" },
+  { categoryNo: "CAT600", name: "电子产品", level: 1, template: "STANDARD", qualifications: [], i18n: { zh: "电子产品", en: "Electronics" }, skuCount: 0 },
+  { categoryNo: "CAT610", name: "手机数码", parentNo: "CAT600", level: 2, template: "STANDARD", qualifications: [], i18n: { zh: "手机数码", en: "Phones & Digital" }, skuCount: 0 },
+  { categoryNo: "CAT620", name: "家用电器", parentNo: "CAT600", level: 2, template: "STANDARD", qualifications: [], i18n: { zh: "家用电器", en: "Home Appliances" }, skuCount: 0 },
+  { categoryNo: "CAT630", name: "配件耗材", parentNo: "CAT600", level: 2, template: "STANDARD", qualifications: [], i18n: { zh: "配件耗材", en: "Accessories" }, skuCount: 0 },
+  { categoryNo: "CAT700", name: "食品饮料", level: 1, template: "STANDARD", qualifications: [], i18n: { zh: "食品饮料", en: "Food & Drinks" }, skuCount: 0 },
+  { categoryNo: "CAT710", name: "粮油调味", parentNo: "CAT700", level: 2, template: "STANDARD", qualifications: ["仅销售预包装食品备案"], requiredCode: "PACKAGED_FOOD", i18n: { zh: "粮油调味", en: "Grain & Seasoning" }, skuCount: 0 },
+  { categoryNo: "CAT720", name: "休闲零食", parentNo: "CAT700", level: 2, template: "STANDARD", qualifications: ["仅销售预包装食品备案"], requiredCode: "PACKAGED_FOOD", i18n: { zh: "休闲零食", en: "Snacks" }, skuCount: 0 },
+  { categoryNo: "CAT730", name: "饮料冲调", parentNo: "CAT700", level: 2, template: "STANDARD", qualifications: ["仅销售预包装食品备案"], requiredCode: "PACKAGED_FOOD", i18n: { zh: "饮料冲调", en: "Drinks" }, skuCount: 0 },
+  { categoryNo: "CAT740", name: "烘焙面点", parentNo: "CAT700", level: 2, template: "STANDARD", qualifications: ["食品经营许可证"], requiredCode: "FOOD", i18n: { zh: "烘焙面点", en: "Bakery" }, skuCount: 0 },
+  { categoryNo: "CAT750", name: "婴幼儿食品", parentNo: "CAT700", level: 2, template: "STANDARD", qualifications: ["婴幼儿配方乳粉销售备案"], requiredCode: "INFANT_FORMULA", i18n: { zh: "婴幼儿食品", en: "Baby Food" }, skuCount: 0 },
+  { categoryNo: "CAT800", name: "鲜花绿植", level: 1, template: "STANDARD", qualifications: [], i18n: { zh: "鲜花绿植", en: "Flowers & Plants" }, skuCount: 0 },
+  { categoryNo: "CAT810", name: "鲜花", parentNo: "CAT800", level: 2, template: "STANDARD", qualifications: [], i18n: { zh: "鲜花", en: "Fresh Flowers" }, skuCount: 0 },
+  { categoryNo: "CAT820", name: "绿植盆栽", parentNo: "CAT800", level: 2, template: "STANDARD", qualifications: [], i18n: { zh: "绿植盆栽", en: "Potted Plants" }, skuCount: 0 },
+  // 备着、默认停用：退换率高、尺码复杂，与「楼下拿了就走」的心智不合
+  { categoryNo: "CAT900", name: "服饰鞋帽", level: 1, template: "STANDARD", qualifications: [], i18n: { zh: "服饰鞋帽", en: "Apparel" }, skuCount: 0, archivedAt: "2026-08-22T00:00:00Z" },
+  { categoryNo: "CAT910", name: "内衣袜子", parentNo: "CAT900", level: 2, template: "STANDARD", qualifications: [], i18n: { zh: "内衣袜子", en: "Underwear" }, skuCount: 0, archivedAt: "2026-08-22T00:00:00Z" },
+  { categoryNo: "CAT920", name: "鞋类拖鞋", parentNo: "CAT900", level: 2, template: "STANDARD", qualifications: [], i18n: { zh: "鞋类拖鞋", en: "Shoes" }, skuCount: 0, archivedAt: "2026-08-22T00:00:00Z" },
+  { categoryNo: "CAT930", name: "家纺床品", parentNo: "CAT900", level: 2, template: "STANDARD", qualifications: [], i18n: { zh: "家纺床品", en: "Home Textile" }, skuCount: 0, archivedAt: "2026-08-22T00:00:00Z" },
+  // 卡券与虚拟商品：有类目、没链路（后端无 CARD/VIRTUAL 分支），V176 起停用
+  { categoryNo: "CAT400", name: "卡券", level: 1, template: "VOUCHER", qualifications: [], i18n: { zh: "卡券", en: "Vouchers" }, skuCount: 0, archivedAt: "2026-08-22T00:00:00Z" },
+  { categoryNo: "CAT500", name: "虚拟商品", level: 1, template: "VIRTUAL", qualifications: [], i18n: { zh: "虚拟商品", en: "Virtual" }, skuCount: 0, archivedAt: "2026-08-22T00:00:00Z" },
 ];
 
 export const skus: Sku[] = [
   {
     skuNo: "SKU1001", title: { zh: "本地小番茄 500g", en: "Cherry Tomato 500g" },
-    merchantNo: "M903", merchantName: "邻家便利", categoryNo: "CAT111", categoryName: "叶菜",
+    merchantNo: "M903", merchantName: "邻家便利", categoryNo: "CAT110", categoryName: "蔬菜",
     status: "ON_SALE", prices: { CN: 890, SG: 180 }, stock: 120,
     presaleQuota: 0, soldCount: 0, createdAt: "2026-07-20T02:00:00Z",
   },
   {
     // 待审 + 缺 SG 价：用来验 B6「每个市场都要有价格才能通过」
     skuNo: "SKU1002", title: { zh: "现摘菠菜 400g", en: "Spinach 400g" },
-    merchantNo: "M901", merchantName: "阿姨家的菜摊", categoryNo: "CAT111", categoryName: "叶菜",
+    merchantNo: "M901", merchantName: "阿姨家的菜摊", categoryNo: "CAT110", categoryName: "蔬菜",
     status: "PENDING", prices: { CN: 520 }, stock: 60,
     presaleQuota: 200, soldCount: 0, cutoffAt: "2026-08-07T10:00:00Z", arriveAt: "2026-08-08T00:00:00Z",
     createdAt: "2026-08-05T06:00:00Z",
@@ -46,7 +78,7 @@ export const skus: Sku[] = [
   {
     // 待审 + 缺 en/ar 文案：验「zh 齐全即可，但缺译要看得见」
     skuNo: "SKU1003", title: { zh: "沙地红薯 2kg" },
-    merchantNo: "M901", merchantName: "阿姨家的菜摊", categoryNo: "CAT112", categoryName: "根茎菜",
+    merchantNo: "M901", merchantName: "阿姨家的菜摊", categoryNo: "CAT110", categoryName: "蔬菜",
     status: "PENDING", prices: { CN: 1580, SG: 320 }, stock: 40,
     presaleQuota: 100, soldCount: 0, cutoffAt: "2026-08-07T10:00:00Z", arriveAt: "2026-08-08T00:00:00Z",
     createdAt: "2026-08-05T07:00:00Z",
@@ -54,7 +86,7 @@ export const skus: Sku[] = [
   {
     // 待审 + 商家未持有该类目资质（M906 只申请了 FOOD）：验类目资质校验
     skuNo: "SKU1004", title: { zh: "冰糖心苹果 5 斤", en: "Apple 2.5kg" },
-    merchantNo: "M906", merchantName: "夜市烧烤", categoryNo: "CAT121", categoryName: "浆果",
+    merchantNo: "M906", merchantName: "夜市烧烤", categoryNo: "CAT120", categoryName: "水果",
     status: "PENDING", prices: { CN: 4580, SG: 920 }, stock: 30,
     presaleQuota: 0, soldCount: 0, createdAt: "2026-08-05T08:00:00Z",
   },
@@ -67,7 +99,7 @@ export const skus: Sku[] = [
   {
     // 预售超卖：已售 260 > 额度 200
     skuNo: "SKU2003", title: { zh: "阳光玫瑰 2 斤装", en: "Shine Muscat 1kg" },
-    merchantNo: "M902", merchantName: "老张水果店", categoryNo: "CAT121", categoryName: "浆果",
+    merchantNo: "M902", merchantName: "老张水果店", categoryNo: "CAT120", categoryName: "水果",
     status: "ON_SALE", prices: { CN: 3980, SG: 800 }, stock: 0,
     presaleQuota: 200, soldCount: 260, cutoffAt: "2026-08-06T10:00:00Z", arriveAt: "2026-08-07T00:00:00Z",
     createdAt: "2026-08-01T02:00:00Z",
@@ -81,7 +113,7 @@ export const skus: Sku[] = [
   },
   {
     skuNo: "SKU1005", title: { zh: "小油菜 500g（已驳回）", en: "Baby Bok Choy" },
-    merchantNo: "M901", merchantName: "阿姨家的菜摊", categoryNo: "CAT111", categoryName: "叶菜",
+    merchantNo: "M901", merchantName: "阿姨家的菜摊", categoryNo: "CAT110", categoryName: "蔬菜",
     status: "REJECTED", prices: { CN: 480, SG: 100 }, stock: 0,
     presaleQuota: 0, soldCount: 0, createdAt: "2026-08-02T02:00:00Z",
     reason: "主图含其它平台水印，请换图后重新提交",
@@ -163,9 +195,9 @@ export const topicGoods: Record<string, string[]> = {
 };
 
 export const spuStds: SpuStd[] = [
-  { stdNo: "STD1001", categoryNo: "CAT111", categoryName: "叶菜", title: "本地菠菜", subtitle: "当季叶菜", keywords: "菠菜 波斯菜 叶菜", status: "ACTIVE", refCount: 3,
+  { stdNo: "STD1001", categoryNo: "CAT110", categoryName: "蔬菜", title: "本地菠菜", subtitle: "当季叶菜", keywords: "菠菜 波斯菜 叶菜", status: "ACTIVE", refCount: 3,
     specGroups: [{ name: "重量", options: ["500g", "1斤", "2斤"], optionCodes: ["W500G", "W1JIN", "W2JIN"] }] },
-  { stdNo: "STD1011", categoryNo: "CAT112", categoryName: "根茎菜", title: "土豆", subtitle: "根茎菜", keywords: "土豆 马铃薯 洋芋", status: "ACTIVE", refCount: 5,
+  { stdNo: "STD1011", categoryNo: "CAT110", categoryName: "蔬菜", title: "土豆", subtitle: "根茎菜", keywords: "土豆 马铃薯 洋芋", status: "ACTIVE", refCount: 5,
     specGroups: [{ name: "重量", options: ["1斤", "2斤", "5斤"], optionCodes: ["W1JIN", "W2JIN", "W5JIN"] }] },
   { stdNo: "STD2001", categoryNo: "CAT210", categoryName: "纸品清洁", title: "抽纸", subtitle: "家用抽取式面巾纸", keywords: "抽纸 面巾纸 纸巾", status: "ACTIVE", refCount: 2,
     specGroups: [{ name: "规格", options: ["3包", "6包", "12包"], optionCodes: ["B3", "B6", "B12"] }] },
