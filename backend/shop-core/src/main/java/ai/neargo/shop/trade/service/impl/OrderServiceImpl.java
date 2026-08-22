@@ -348,7 +348,16 @@ public class OrderServiceImpl implements OrderService {
         if (split.items.isEmpty()) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
-        requireFulfillmentSupported(cmd.fulfillment(), split);
+        /*
+         * 履约门店：**在锁库存之前算好，并与写进子单的那个值同一个来源**。
+         *
+         * 两处各算一次的话，迟早会出现「扣了 A 店的库存、订单却记在 B 店」——
+         * 那种错不会报错，只会在盘点时表现成两家店的账都对不上。
+         * 提到校验之前：门店送货方式的闸（方案 v4）要按同一家店判。
+         */
+        Map<String, String> storeOfMerchant = storesOf(cmd, split);
+
+        requireFulfillmentSupported(cmd.fulfillment(), split, storeOfMerchant);
         requireReceiverWhenShipped(cmd, userNo);
         requirePickupPointWhenPickup(cmd);
         requireAppointmentWhenNeeded(cmd);
@@ -364,14 +373,6 @@ public class OrderServiceImpl implements OrderService {
          * 少送几件在订单里看得见（赠品行的 qty），商家侧也能对上。
          */
         Map<String, Integer> gifts = giftQtyOf(split);
-
-        /*
-         * 履约门店：**在锁库存之前算好，并与写进子单的那个值同一个来源**。
-         *
-         * 两处各算一次的话，迟早会出现「扣了 A 店的库存、订单却记在 B 店」——
-         * 那种错不会报错，只会在盘点时表现成两家店的账都对不上。
-         */
-        Map<String, String> storeOfMerchant = storesOf(cmd, split);
 
         // ⑤ 锁库存 —— 放在落库之前：库存不足就整单失败，不留半张订单
         try {
@@ -1266,7 +1267,8 @@ public class OrderServiceImpl implements OrderService {
         }
     }
 
-    private void requireFulfillmentSupported(String fulfillment, Split split) {
+    private void requireFulfillmentSupported(String fulfillment, Split split,
+                                             Map<String, String> storeOfMerchant) {
         if (fulfillment == null || fulfillment.isBlank()) {
             return;
         }
@@ -1276,6 +1278,18 @@ public class OrderServiceImpl implements OrderService {
                 continue;
             }
             if (!supported.contains(fulfillment)) {
+                throw BizException.of(ErrorCode.FULFILLMENT_NOT_SUPPORTED);
+            }
+        }
+        /*
+         * 门店这一路开没开（方案 v4）：商品说支持只是必要条件，
+         * 履约的是**具体那家门店** —— 文三路店只做自提，仓库店才发快递。
+         * 空集 = 该店还没迁移到 channel 模型，按旧口径放行（只读兼容期约定）。
+         */
+        for (Group g : split.groups) {
+            java.util.Set<String> enabled = merchantPort.enabledFulfillments(
+                    g.merchantNo, storeOfMerchant.get(g.merchantNo));
+            if (!enabled.isEmpty() && !enabled.contains(fulfillment)) {
                 throw BizException.of(ErrorCode.FULFILLMENT_NOT_SUPPORTED);
             }
         }

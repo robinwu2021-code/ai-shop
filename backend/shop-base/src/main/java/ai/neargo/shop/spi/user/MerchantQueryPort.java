@@ -78,6 +78,19 @@ public interface MerchantQueryPort {
     }
 
     /**
+     * 门店<b>启用的送货方式</b>集合（方案 v4：channel 挂门店）。
+     *
+     * <p>trade 下单闸与 product 上架校验都从这里取，两处不各查一遍表。
+     *
+     * @param storeNo 为空 = <b>主体级并集</b>（所有门店启用的路取并）。商品挂主体，
+     *                上架校验用并集；下单校验用履约门店那一份
+     * @return <b>空集合表示「未迁移到 channel 模型」</b>（该范围内一行都没有），
+     *         调用方按旧口径放行 —— 与 {@code fulfillment_reach} 只读兼容期的约定。
+     *         迁移后的门店至少有一行（写入口拦着「一路都不开」），空集不会歧义
+     */
+    java.util.Set<String> enabledFulfillments(String merchantNo, String storeNo);
+
+    /**
      * 这笔钱该打给<b>哪个收款商户号</b>：门店配的号 ?? 主体的默认号。
      *
      * <p><b>只有这一处实现。</b> 两处各写一遍的后果是可预测的：一处按新规则、

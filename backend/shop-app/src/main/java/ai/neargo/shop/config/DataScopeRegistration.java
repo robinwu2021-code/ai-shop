@@ -111,6 +111,14 @@ public class DataScopeRegistration implements DataScopeRegistrar {
                 ScopeDim.MERCHANT, "entity_no"));
 
         /*
+         * 门店送货方式（方案 v4）。登记 MERCHANT 是给运营端看的（履约配置视图）；
+         * 可见性/下单闸/B 端配置全走 executeWithoutScope —— 那些调用方是 C 端或
+         * B 端会话（SELF 维度），接上就是 1=0。归属由 Service 的 requireStore 保证。
+         */
+        registry.register("mch_fulfillment_channel", Map.of(
+                ScopeDim.MERCHANT, "entity_no"));
+
+        /*
          * 门店货架。登记 MERCHANT 是给运营端看的（「这家店摆了哪几类」）；
          * B 端自己读写走 executeWithoutScope —— B 端会话是 SELF 维度，
          * 接上就是 1=0，商家自己的货架当场全空。归属由 requireMerchantNo + storeNos 保证。

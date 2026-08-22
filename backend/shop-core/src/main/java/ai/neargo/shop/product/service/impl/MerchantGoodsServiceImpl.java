@@ -502,6 +502,23 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                     throw BizException.of(ErrorCode.BAD_REQUEST);
                 }
             }
+            /*
+             * 商品勾的送货方式 ⊆ 商家启用集（方案 v4 的上架校验）：
+             * 越界的勾选会让商品详情承诺一条店里根本没开的路，下单时才被闸拦 ——
+             * 错要在写入口报，不是让买家替商家发现。
+             *
+             * 用主体级并集（storeNo=null）：商品挂主体，哪家店能履约是下单时按门店判的。
+             * 服务类两值（STORE_VERIFY/APPOINTMENT）不受此限 —— 那不是门店开关管的事。
+             * 空集 = 未迁移到 channel 模型，放行（只读兼容期约定）。
+             */
+            java.util.Set<String> enabled = merchantPort.enabledFulfillments(merchantNo, null);
+            if (!enabled.isEmpty()) {
+                for (String f : cmd.fulfillments()) {
+                    if (!Fulfillments.SERVICE_LIKE.contains(f) && !enabled.contains(f)) {
+                        throw BizException.of(ErrorCode.FULFILLMENT_NOT_SUPPORTED);
+                    }
+                }
+            }
             g.setFulfillments(writeJson(cmd.fulfillments()));
         }
         if (cmd.categoryNo() != null) {

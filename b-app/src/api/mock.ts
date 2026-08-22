@@ -510,6 +510,9 @@ function flatCategories(nodes: Category[], into = new Map<string, Category>()) {
 }
 
 
+/** 门店送货方式的 mock 存储（内存即够：mock 不需要跨会话） */
+const mockFulfillment: Record<string, import("@shared/types").StoreFulfillment> = {};
+
 export const mockApi: MerchantApi = {
   // ---------------------------------------------------------------- 账号与入驻
   async mLogin(req) {
@@ -682,6 +685,42 @@ export const mockApi: MerchantApi = {
     });
     db.storeCategories[storeNo] = next;
     return delay(next.map((c) => ({ ...c })));
+  },
+
+  // 门店送货方式（方案 v4）：mock 里每店一份，默认「自提两路开」——与生产播种同一映射
+  async mStoreFulfillment(storeNo) {
+    const no = storeNo === "default" ? db.stores[0]?.storeNo ?? "ST-MOCK-1" : storeNo;
+    const saved = mockFulfillment[no];
+    return delay(
+      saved ?? {
+        storeNo: no,
+        channels: [
+          { channel: "STORE_PICKUP", enabled: true, denied: false },
+          { channel: "NEIGHBOR_PICKUP", enabled: true, denied: false },
+          { channel: "MERCHANT_DELIVERY", enabled: false, denied: false },
+          { channel: "EXPRESS", enabled: false, denied: false },
+        ],
+      },
+    );
+  },
+
+  async mSaveStoreFulfillment(storeNo, payload) {
+    const no = storeNo === "default" ? db.stores[0]?.storeNo ?? "ST-MOCK-1" : storeNo;
+    // mock 也照写入口的硬规则拒：一路都不开的店等于开不了张
+    if (!payload.channels.some((c) => c.enabled)) {
+      throw new Error("至少开启一种送货方式");
+    }
+    const next = {
+      storeNo: no,
+      channels: payload.channels.map((c) => ({
+        channel: c.channel as import("@shared/types").FulfillmentType,
+        enabled: c.enabled,
+        denied: false,
+        templateNo: c.templateNo ?? null,
+      })),
+    };
+    mockFulfillment[no] = next;
+    return delay({ ...next });
   },
 
   async mStoreList() {

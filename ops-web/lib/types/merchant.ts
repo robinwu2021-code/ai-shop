@@ -308,6 +308,24 @@ import type { BusinessMode } from "./finance";
  * 自营 = 平台是法律上的销售主体，承担全部产品责任。
  * **这个身份不能由商家自己勾选**，所以只有运营端能改。
  */
+/**
+ * 门店送货方式（方案 v4，P0 只读）：每店四路开关的快照。
+ * channel 值域 = STORE_PICKUP / NEIGHBOR_PICKUP / MERCHANT_DELIVERY / EXPRESS。
+ */
+export interface StoreFulfillmentRow {
+  storeNo: string;
+  storeName: string | null;
+  storeStatus: string;
+  channels: Array<{
+    channel: string;
+    enabled: boolean;
+    /** 准入矩阵不允许（按主体类型） */
+    denied: boolean;
+    /** 仅 EXPRESS：运费模板号 */
+    templateNo?: string | null;
+  }>;
+}
+
 export interface StoreMode {
   /** 门店号 */
   storeNo: string;

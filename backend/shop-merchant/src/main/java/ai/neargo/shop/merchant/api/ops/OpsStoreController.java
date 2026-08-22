@@ -32,10 +32,24 @@ public class OpsStoreController {
 
     private final MerchantGovernService governService;
     private final AuditLogPort auditLogPort;
+    private final ai.neargo.shop.merchant.service.StoreFulfillmentService fulfillmentService;
 
-    public OpsStoreController(MerchantGovernService governService, AuditLogPort auditLogPort) {
+    public OpsStoreController(MerchantGovernService governService, AuditLogPort auditLogPort,
+                              ai.neargo.shop.merchant.service.StoreFulfillmentService fulfillmentService) {
         this.governService = governService;
         this.auditLogPort = auditLogPort;
+        this.fulfillmentService = fulfillmentService;
+    }
+
+    /**
+     * 商家履约配置（方案 v4，P0 只读）：门店 × 送货方式矩阵。
+     * 运营接到履约投诉时的第一入口 —— 先看这家店到底开了哪几路，再谈处置。
+     */
+    @GetMapping("/ops/merchants/{merchantNo}/fulfillment")
+    @PreAuthorize("@perm.can('" + Perms.MERCHANT_READ + "')")
+    public java.util.List<ai.neargo.shop.merchant.service.StoreFulfillmentService.StoreFulfillmentVO> fulfillment(
+            @PathVariable String merchantNo) {
+        return fulfillmentService.byMerchant(merchantNo);
     }
 
     /**

@@ -17,6 +17,7 @@ import ai.neargo.shop.merchant.service.MerchantStaffService;
 import ai.neargo.shop.merchant.service.StoreAdminService;
 import ai.neargo.shop.merchant.service.StoreCategoryService;
 import ai.neargo.shop.merchant.service.MerchantStoreService;
+import ai.neargo.shop.merchant.service.StoreFulfillmentService;
 import ai.neargo.shop.merchant.service.MerchantService;
 import ai.neargo.shop.community.service.CommunityAdminService;
 import ai.neargo.shop.spi.user.MerchantQueryPort;
@@ -24,6 +25,7 @@ import ai.neargo.shop.user.service.UserService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.context.annotation.Profile;
@@ -52,6 +54,7 @@ public class BizMerchantController {
     private final UserService userService;
     private final BizIdentityResolver identityResolver;
     private final MerchantStoreService storeService;
+    private final StoreFulfillmentService fulfillmentService;
     private final MerchantPaymentService paymentService;
     private final StoreAdminService storeAdminService;
     /** 门店货架 —— 建店时一并摆上，之后商家自己调 */
@@ -66,6 +69,7 @@ public class BizMerchantController {
     public BizMerchantController(MerchantService merchantService, OpsService opsService,
                                  UserService userService, BizIdentityResolver identityResolver,
                                  MerchantStoreService storeService,
+                                 StoreFulfillmentService fulfillmentService,
                                  MerchantPaymentService paymentService,
                                  StoreAdminService storeAdminService,
                                  MerchantStaffService staffService,
@@ -78,6 +82,7 @@ public class BizMerchantController {
         this.communityAdminService = communityAdminService;
         this.roleService = roleService;
         this.storeService = storeService;
+        this.fulfillmentService = fulfillmentService;
         this.paymentService = paymentService;
         this.storeAdminService = storeAdminService;
         this.staffService = staffService;
@@ -224,6 +229,34 @@ public class BizMerchantController {
                         req.announcement(), req.openHours(), req.address(), req.featured(),
                         req.serviceScope(), req.serviceCommunityNos(), req.serviceCityCode(),
                         req.fulfillmentReach(), req.serviceAreas()));
+    }
+
+    // ---------------------------------------------------------------- 门店送货方式（方案 v4）
+
+    /**
+     * 门店履约全景：四路各一行（开关/置灰原因/快递模板）。
+     * {@code storeNo} 空 = 默认门店 —— 单店商家的端上不用感知门店号。
+     */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.STORE + "')")
+    @GetMapping("/biz/stores/{storeNo}/fulfillment")
+    public StoreFulfillmentService.FulfillmentVO storeFulfillment(@PathVariable String storeNo) {
+        return fulfillmentService.get(BizContext.requireMerchantNo(),
+                "default".equals(storeNo) ? null : storeNo);
+    }
+
+    /**
+     * 全量保存门店送货方式。「关一路」是 enabled=false 不是删行 —— 配置原地保留。
+     */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.STORE + "')")
+    @PutMapping("/biz/stores/{storeNo}/fulfillment")
+    public StoreFulfillmentService.FulfillmentVO saveStoreFulfillment(
+            @PathVariable String storeNo, @RequestBody FulfillmentReq req) {
+        return fulfillmentService.save(BizContext.requireMerchantNo(),
+                "default".equals(storeNo) ? null : storeNo, req.channels());
+    }
+
+    /** 对齐 shared {@code StoreFulfillment}。 */
+    public record FulfillmentReq(java.util.List<StoreFulfillmentService.ChannelCmd> channels) {
     }
 
     // ---------------------------------------------------------------- 提报新社区（ADR-013 阶段三）

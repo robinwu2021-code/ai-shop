@@ -464,6 +464,12 @@ export default {
     noAddress: "这单没有留地址，联系买家确认",
     noRiderHint: "自送不做骑手轨迹：送到了点一下「已送达」即可。需要轨迹的走第三方物流。",
   },
+  channel: {
+    STORE_PICKUP: "门店自取",
+    NEIGHBOR_PICKUP: "社区自提点",
+    MERCHANT_DELIVERY: "商家自送",
+    EXPRESS: "快递发货",
+  },
   fulfillmentReach: {
     PICKUP: "靠自提点",
     ONSITE: "上门 / 同城送",
@@ -607,6 +613,16 @@ export default {
     scope: "经营范围",
     scopeHint: "决定你的商品在买家端能被谁看到 —— 选错直接影响有没有生意",
     scopeCommunities: "覆盖哪些小区",
+    fulfillTitle: "送货方式（可多选，点一下开或关）",
+    channelDesc: {
+      STORE_PICKUP: "买家到你店里取，取货地址就是门店地址",
+      NEIGHBOR_PICKUP: "送到社区自提点，买家就近拿",
+      MERCHANT_DELIVERY: "自己送上门，费用在配送规则里配",
+      EXPRESS: "走快递，承运商由平台调度",
+    },
+    channelDenied: "当前主体类型暂不支持这条送货方式",
+    fulfillNone: "至少开启一种送货方式",
+    fulfillFailed: "保存失败，请重试",
     reach: "你怎么把货送到买家手上",
     reachDesc: {
       PICKUP: "送到自提点，买家自己来拿。出了配的点就送不到 —— 楼下的菜摊、理发店",

@@ -76,6 +76,24 @@ public final class MerchantMappers {
                        @Param("refCode") String refCode);
     }
 
+    /**
+     * 门店送货方式（方案 v4）。物理删除同 {@link ServiceAreaMapper} ——
+     * 但注意日常「关一路」是 {@code enabled=0} 不是删行，删行只发生在门店被删时。
+     */
+    public interface FulfillmentChannelMapper
+            extends BaseMapper<ai.neargo.shop.merchant.entity.MchFulfillmentChannel> {
+    }
+
+    /** 自提路 × 取货点（P1 启用）。 */
+    public interface ChannelPickupMapper
+            extends BaseMapper<ai.neargo.shop.merchant.entity.MchChannelPickup> {
+    }
+
+    /** SUBSET 收窄（P2 启用）。 */
+    public interface ChannelAreaMapper
+            extends BaseMapper<ai.neargo.shop.merchant.entity.MchChannelArea> {
+    }
+
     /** 商家资质。按 expire_at 扫到期，所以那一列有索引。 */
     public interface AdmissionPolicyMapper
             extends BaseMapper<ai.neargo.shop.merchant.entity.MchAdmissionPolicy> {

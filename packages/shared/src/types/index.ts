@@ -22,6 +22,27 @@ export type CurrencyCode = keyof typeof CURRENCIES;
 export type MarketId = (typeof MARKETS)[number]["id"];
 export type ServiceScope = (typeof SERVICE_SCOPE)[keyof typeof SERVICE_SCOPE];
 export type FulfillmentReach = (typeof FULFILLMENT_REACH)[keyof typeof FULFILLMENT_REACH];
+
+/**
+ * 门店送货方式的一行（方案 v4：channel 挂门店，每店每路一行）。
+ *
+ * <p>取代商家级 fulfillmentReach 单选。四路可配：STORE_PICKUP / NEIGHBOR_PICKUP /
+ * MERCHANT_DELIVERY / EXPRESS —— 服务类两值是商品属性，不出现在这里。
+ */
+export interface StoreFulfillmentChannel {
+  channel: FulfillmentType;
+  enabled: boolean;
+  /** 准入矩阵不允许（按主体类型）。端上置灰＋原因，不隐藏 */
+  denied: boolean;
+  /** 仅 EXPRESS：运费模板号；空 = 平台默认模板 */
+  templateNo?: string | null;
+}
+
+export interface StoreFulfillment {
+  storeNo: string;
+  /** 固定四行，顺序即开关顺序 —— 服务端补缺，端上不用自己造 */
+  channels: StoreFulfillmentChannel[];
+}
 export type AreaLevel = (typeof AREA_LEVEL)[keyof typeof AREA_LEVEL];
 export type AreaStatus = (typeof AREA_STATUS)[keyof typeof AREA_STATUS];
 export type CommunityApplyStatus =

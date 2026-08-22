@@ -107,6 +107,11 @@ const SCOPE_BYPASS_OK: Record<string, string> = {
     + "分拣汇总里商家名会是空串（批② 实测）。ops 侧用它同样是装饰性取名，主查询已裁剪",
   "MerchantPortImpl#entityOfStores":
     "同上：门店号 → 主体号的反查，入参来自已授权的查询",
+  // 方案 v4（2026-08-22）：ops 商家履约视图 → 准入矩阵 denied 判定 → 自提点归属比对。
+  // 入参是路径参数 merchantNo（页面上下文已授权的那家），读 mch_entity 只为拿
+  // owner_user_no 做「供货方=自提点运营者」的比对 —— 按已授权主键回捞明细那一类
+  "MerchantPortImpl#ownerUserNoOf":
+    "按已授权的 merchantNo 回捞 owner_user_no，供准入矩阵降级判定；不是检索入口",
   "MerchantGovernServiceImpl#nameOf":
     "同上：违规记录列表补商家名",
   "MerchantStaffServiceImpl#storeNames":
@@ -196,6 +201,10 @@ const ANCHOR_WAIVED: Record<string, string> = {
   "mch_store:COMMUNITY":
     "同 mch_entity；且门店的社区本身是多值的（一店可在多社区挂自提点），单列锚点表达不了",
   "mch_store:PICKUP": "同上",
+  // 方案 v4（2026-08-22）：门店送货方式与门店同一归属逻辑，同一批豁免理由
+  "mch_fulfillment_channel:COMMUNITY":
+    "同 mch_store：没有持社区域的角色能读商家履约配置（merchant:merchant:read 不在 COMMUNITY_OPS）。若将来开了，这里会变成空白页",
+  "mch_fulfillment_channel:PICKUP": "同上：没有持自提点域的角色能读商家履约配置",
 };
 
 // ────────────────────────────────────────────────── 静态扫描

@@ -2,7 +2,7 @@
 // 一处声明，两处消费：http.ts 按表发请求；后端据此生成 controller 骨架。
 import type { MerchantApi } from "./contract";
 
-export type HttpMethod = "GET" | "POST";
+export type HttpMethod = "GET" | "POST" | "PUT";
 
 export interface EndpointDef {
   method: HttpMethod;
@@ -43,6 +43,8 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
   mMyCommunityApplies: { method: "GET", path: "/biz/communities/applies", auth: true, summary: "我提报过的小区" },
   mSaveStore: { method: "POST", path: "/biz/store", auth: true, summary: "保存店铺门面" },
 
+  mStoreFulfillment: { method: "GET", path: "/biz/stores/:storeNo/fulfillment", auth: true, summary: "门店送货方式" },
+  mSaveStoreFulfillment: { method: "PUT", path: "/biz/stores/:storeNo/fulfillment", auth: true, summary: "保存门店送货方式" },
   mStoreList: { method: "GET", path: "/biz/store/list", auth: true, summary: "我的门店" },
   mCreateStore: { method: "POST", path: "/biz/store/create", auth: true, summary: "新建门店" },
   mRenameStore: { method: "POST", path: "/biz/store/:storeNo/rename", auth: true, summary: "改门店名与地址" },

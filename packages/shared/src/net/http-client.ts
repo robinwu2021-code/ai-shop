@@ -194,6 +194,7 @@ export const http = {
   // （LoginReq / GoodsDraft…），具名接口没有索引签名，用 Record 会在每个调用点报错。
   get: <T>(path: string, params?: object) => request<T>("GET", path, params),
   post: <T>(path: string, data?: object) => request<T>("POST", path, data),
+  put: <T>(path: string, data?: object) => request<T>("PUT", path, data),
   uploadFile,
 };
 

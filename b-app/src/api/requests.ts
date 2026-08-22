@@ -27,6 +27,18 @@ import type {
 } from "@shared/types";
 import type { GoodsDraft } from "./contract";
 
+// ---------------------------------------------------------------- 门店送货方式（方案 v4）
+
+export interface StoreFulfillmentSaveReq {
+  /** 全量：四路各一条。channel 值域 = 商家可配四路，服务端在写入口拦越界 */
+  channels: Array<{
+    channel: string;
+    enabled: boolean;
+    /** 仅 EXPRESS：运费模板号，空 = 平台默认 */
+    templateNo?: string | null;
+  }>;
+}
+
 // ---------------------------------------------------------------- 账号与入驻
 
 export interface MerchantLoginReqBody {

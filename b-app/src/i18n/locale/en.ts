@@ -313,6 +313,12 @@ export default {
     noAddress: "No address on this order — check with the buyer",
     noRiderHint: "No rider tracking here — tap Delivered when you drop it off. Use third-party logistics if you need tracking.",
   },
+  channel: {
+    STORE_PICKUP: "In-store pickup",
+    NEIGHBOR_PICKUP: "Community pickup point",
+    MERCHANT_DELIVERY: "Merchant delivery",
+    EXPRESS: "Courier",
+  },
   fulfillmentReach: {
     PICKUP: "Pickup points",
     ONSITE: "On-site / same-city",
@@ -439,6 +445,16 @@ export default {
     scope: "Service area",
     scopeHint: "Decides who can see your goods — get it wrong and you get no orders",
     scopeCommunities: "Which communities",
+    fulfillTitle: "Delivery methods (multi-select, tap to toggle)",
+    channelDesc: {
+      STORE_PICKUP: "Buyers collect at your store — the store address is the pickup address",
+      NEIGHBOR_PICKUP: "Delivered to community pickup points for buyers nearby",
+      MERCHANT_DELIVERY: "You deliver to the door; fees are set in delivery rules",
+      EXPRESS: "Shipped by courier, dispatched by the platform",
+    },
+    channelDenied: "Not available for your current business entity type",
+    fulfillNone: "Enable at least one delivery method",
+    fulfillFailed: "Save failed, please retry",
     reach: "How you get goods to buyers",
     reachDesc: {
       PICKUP: "Dropped at a pickup point, buyers collect. Nothing outside those points — the greengrocer or barber downstairs",

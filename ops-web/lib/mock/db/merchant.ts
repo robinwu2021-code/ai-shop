@@ -181,6 +181,28 @@ export const storeModes: StoreMode[] = [
 ];
 
 /**
+ * 门店送货方式（方案 v4，P0 只读视图的数据源）。
+ * ST001 演「自提+自送都开」，ST002 演「只发快递 + 一路被准入矩阵拒」——
+ * 恒全开的种子会让 denied 置灰与「整店没开某路」两种界面永远走不到。
+ */
+export const storeFulfillments: import("@/lib/types").StoreFulfillmentRow[] = [
+  { storeNo: "ST001", storeName: "张记粮油·文三路店", storeStatus: "ACTIVE",
+    channels: [
+      { channel: "STORE_PICKUP", enabled: true, denied: false },
+      { channel: "NEIGHBOR_PICKUP", enabled: true, denied: false },
+      { channel: "MERCHANT_DELIVERY", enabled: true, denied: false },
+      { channel: "EXPRESS", enabled: false, denied: false, templateNo: "FT001" },
+    ] },
+  { storeNo: "ST002", storeName: "张记粮油·古荡店", storeStatus: "ACTIVE",
+    channels: [
+      { channel: "STORE_PICKUP", enabled: false, denied: false },
+      { channel: "NEIGHBOR_PICKUP", enabled: false, denied: false },
+      { channel: "MERCHANT_DELIVERY", enabled: false, denied: true },
+      { channel: "EXPRESS", enabled: true, denied: false, templateNo: "FT001" },
+    ] },
+];
+
+/**
  * 已登记的资质（后端 `mch_qualification`）。**上架的两个闸门读的就是这张表。**
  *
  * 真库里它此前是空的 —— 入驻收的执照停在申请单，审核通过时没人转存，

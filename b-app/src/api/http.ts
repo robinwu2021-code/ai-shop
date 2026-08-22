@@ -38,6 +38,7 @@ import type {
   ToggleGoodsReq,
   VerifyBatchReq,
   VerifyReq,
+  StoreFulfillmentSaveReq,
 } from "./requests";
 import type {
   BizScope,
@@ -91,6 +92,7 @@ import type {
   VerifyBatchResult,
   PickupOverview,
   RateCard,
+  StoreFulfillment,
 } from "@shared/types";
 
 export const httpApi: MerchantApi = {
@@ -125,6 +127,13 @@ export const httpApi: MerchantApi = {
     http.post<CommunityApply>(E.mApplyCommunity.path, payload satisfies CommunityApplyReq),
   mMyCommunityApplies: () => http.get<CommunityApply[]>(E.mMyCommunityApplies.path),
   mSaveStore: (payload) => http.post<StoreProfile>(E.mSaveStore.path, payload),
+  mStoreFulfillment: (storeNo) =>
+    http.get<StoreFulfillment>(buildPath(E.mStoreFulfillment.path, { storeNo })),
+  mSaveStoreFulfillment: (storeNo, payload) =>
+    http.put<StoreFulfillment>(
+      buildPath(E.mSaveStoreFulfillment.path, { storeNo }),
+      payload satisfies StoreFulfillmentSaveReq,
+    ),
   mStoreList: () => http.get<Store[]>(E.mStoreList.path),
   mCreateStore: (payload) =>
     http.post<Store>(E.mCreateStore.path, payload satisfies StoreEditReq),

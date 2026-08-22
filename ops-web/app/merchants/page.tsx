@@ -27,6 +27,7 @@ import { PlansTab } from "./plans-tab";
 import { ModeRiskTab } from "./mode-risk-tab";
 import { QualificationTab } from "./qualification-tab";
 import { StaffBlock } from "./staff-block";
+import { FulfillmentBlock } from "./fulfillment-block";
 import { ArchiveActions, ShowArchivedToggle, archiveConfirm, archivedRowClass, unarchiveConfirm } from "@/components/archive";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -334,6 +335,8 @@ function MerchantsInner() {
             <Field label={c.fieldRemark}>
               {current.auditRemark || "-"}
             </Field>
+            {/* 履约配置：只读。为什么不给按钮见 fulfillment-block.tsx 顶部 */}
+            <FulfillmentBlock merchantNo={current.merchantNo} />
             {/* 人员与授权：只读。为什么不给按钮见 staff-block.tsx 顶部 */}
             <StaffBlock merchantNo={current.merchantNo} />
           </div>

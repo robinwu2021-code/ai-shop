@@ -63,6 +63,8 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
     /** 主体激活时建 FREE 订阅行（V150）—— 与 ensureDefaultStore 同一类动作 */
     private final ai.neargo.shop.merchant.mapper.MerchantMappers.EntityPlanMapper entityPlanMapper;
     private final ai.neargo.shop.merchant.mapper.MerchantMappers.PlanDefMapper planDefMapper;
+    /** 门店送货方式（方案 v4）—— 可见性与下单闸的取数口 */
+    private final ai.neargo.shop.merchant.mapper.MerchantMappers.FulfillmentChannelMapper fulfillmentChannelMapper;
 
     public MerchantPortImpl(MchEntityMapper merchantMapper, MchEntityCommunityMapper merchantCommunityMapper,
                             MchPaymentMapper merchantPaymentMapper,
@@ -77,7 +79,9 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
                             ai.neargo.shop.merchant.mapper.MerchantMappers.QualificationMapper qualificationMapper,
                             ai.neargo.shop.merchant.mapper.MerchantMappers.EntityPlanMapper entityPlanMapper,
                             ai.neargo.shop.merchant.mapper.MerchantMappers.PlanDefMapper planDefMapper,
-                            ai.neargo.shop.merchant.service.MerchantAuthCodeService authCodeService) {
+                            ai.neargo.shop.merchant.service.MerchantAuthCodeService authCodeService,
+                            ai.neargo.shop.merchant.mapper.MerchantMappers.FulfillmentChannelMapper fulfillmentChannelMapper) {
+        this.fulfillmentChannelMapper = fulfillmentChannelMapper;
         this.authCodeService = authCodeService;
         this.entityPlanMapper = entityPlanMapper;
         this.planDefMapper = planDefMapper;
@@ -122,12 +126,31 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
          *
          * **这个方法是可见性的唯一出口** —— 上架写社区池、商家详情可达性、履约都只认它。
          * 正因为当初收敛到了这一处，换模型才只用改这里，调用方一行不动。
+         *
+         * 方案 v4：履约能力从 fulfillment_reach 单值换成 channel 集合（主体级并集 ——
+         * 可见性是主体级的，任何一家门店送得到就算可达）。语义映射保持迁移前后行为一致：
+         *   EXPRESS ∈ 集合            → 原 SHIPPING：全部开放社区
+         *   范围空 + MERCHANT_DELIVERY → 原 ONSITE 的「没框 = 不限」
+         *   范围空 + 只有自提           → 原 PICKUP 的「没框 = 谁也看不到」
+         * 集合为空 = 该主体还没迁移到 channel 模型，回落旧列 —— 只读兼容期的约定，
+         * 删列那一版一并删掉这个回落。
          */
-        String reach = m.getFulfillmentReach() == null ? PICKUP : m.getFulfillmentReach();
+        java.util.Set<String> channels = enabledFulfillments(merchantNo, null);
+        boolean expressOn;
+        boolean deliveryOn;
+        boolean legacy = channels.isEmpty();
+        if (legacy) {
+            String reach = m.getFulfillmentReach() == null ? PICKUP : m.getFulfillmentReach();
+            expressOn = SHIPPING.equals(reach);
+            deliveryOn = !PICKUP.equals(reach) && !SHIPPING.equals(reach);
+        } else {
+            expressOn = channels.contains(ai.neargo.shop.common.Fulfillments.EXPRESS);
+            deliveryOn = channels.contains(ai.neargo.shop.common.Fulfillments.MERCHANT_DELIVERY);
+        }
 
         // 快递没有履约半径，不该被要求逐个勾社区 —— 那既是无谓劳动，
         // 也会在新开城时漏掉（新社区不会自动出现在别人手工勾的清单里）
-        if (SHIPPING.equals(reach)) {
+        if (expressOn) {
             return communityQueryPort.openCommunityNos();
         }
 
@@ -141,16 +164,16 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
              * **「没框范围」的含义由履约能力决定**（ADR-013 §6.2）——
              * 这是从三档枚举迁过来时保持行为不变的关键一格：
              *
-             *   PICKUP  自提必须有落点，没框就是没有落点 → 谁也看不到
-             *           （原 scope=COMMUNITY 却没配社区就是这个结果，写入口也一直拦着）
-             *   ONSITE  上门没有落点约束，没框 = 不限 → 全部开放社区
-             *           （原 scope=CITY 就是这个结果）
+             *   只有自提          没框就是没有落点 → 谁也看不到
+             *                    （原 PICKUP / scope=COMMUNITY 却没配社区，写入口也一直拦着）
+             *   开了商家自送      上门没有落点约束，没框 = 不限 → 全部开放社区
+             *                    （原 ONSITE / scope=CITY 就是这个结果）
              *
-             * 两者反过来都会出事：把 PICKUP 的空当成「不限」，一家没配社区的菜摊
-             * 会突然铺满全平台；把 ONSITE 的空当成「谁也看不到」，存量的上门商家
+             * 两者反过来都会出事：把自提的空当成「不限」，一家没配社区的菜摊
+             * 会突然铺满全平台；把自送的空当成「谁也看不到」，存量的上门商家
              * 在迁移当天集体从 C 端消失 —— 而且都不报错。
              */
-            return PICKUP.equals(reach) ? List.of() : communityQueryPort.openCommunityNos();
+            return deliveryOn ? communityQueryPort.openCommunityNos() : List.of();
         }
 
         java.util.LinkedHashSet<String> out = new java.util.LinkedHashSet<>();
@@ -167,6 +190,33 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
             }
         }
         return List.copyOf(out);
+    }
+
+    @Override
+    public java.util.Set<String> enabledFulfillments(String merchantNo, String storeNo) {
+        if (merchantNo == null || merchantNo.isBlank()) {
+            return java.util.Set.of();
+        }
+        /*
+         * 绕开数据域：与本类其余读一致 —— 可见性与下单闸是全局判断，
+         * 不该因为调用方带着某个数据域就看不见 channel 行。
+         */
+        List<ai.neargo.shop.merchant.entity.MchFulfillmentChannel> rows =
+                DataScopeContext.executeWithoutScope(() -> fulfillmentChannelMapper.selectList(
+                        com.baomidou.mybatisplus.core.toolkit.Wrappers
+                                .<ai.neargo.shop.merchant.entity.MchFulfillmentChannel>lambdaQuery()
+                                .eq(ai.neargo.shop.merchant.entity.MchFulfillmentChannel::getEntityNo, merchantNo)
+                                .eq(storeNo != null && !storeNo.isBlank(),
+                                        ai.neargo.shop.merchant.entity.MchFulfillmentChannel::getStoreNo, storeNo)));
+        java.util.LinkedHashSet<String> out = new java.util.LinkedHashSet<>();
+        for (var row : rows) {
+            if (Boolean.TRUE.equals(row.getEnabled())) {
+                out.add(row.getChannel());
+            }
+        }
+        // 「有行但全关」与「无行」都返回空集：前者写入口本就拦着（READONLY 门店除外，
+        // 而它不接新单），调用方把空集一律当「未迁移，按旧口径放行」不会放出真单
+        return out;
     }
 
     @Override

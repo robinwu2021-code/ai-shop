@@ -51,6 +51,10 @@ const EXEMPT: Record<string, string> = {
   ord_status_log: "订单状态流水，随订单一起被过滤",
   // 关联表：本身不被直接查，总是从主表 join 进来
   mch_entity_community: "主体×社区关联，从主表进入",
+  // 方案 v4（2026-08-22）：channel 的两张子表。总是随 mch_fulfillment_channel
+  // （已登记 MERCHANT）一起查，自己不当检索入口
+  mch_channel_pickup: "自提路×取货点关联，从 channel 主表进入",
+  mch_channel_area: "channel×范围项关联，从 channel 主表进入",
 };
 
 /** 迁移文件里每张表的列名（不依赖 DDL 解析器 —— 它自己另有守卫） */

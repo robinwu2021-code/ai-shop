@@ -63,6 +63,7 @@ import type {
   VerifyBatchResult,
   PickupOverview,
   RateCard,
+  StoreFulfillment,
 } from "@shared/types";
 
 /** 拍照识别的结果。全部是**建议值**，店主可改可弃 */
@@ -253,7 +254,7 @@ export interface GoodsDraft {
   };
 }
 
-import type { DescribeGoodsReq, PointsRecordQuery, StaffLoginReq, StoreEditReq, SubmitPaymentReq, TogglePointsReq } from "./requests";
+import type { DescribeGoodsReq, PointsRecordQuery, StaffLoginReq, StoreEditReq, StoreFulfillmentSaveReq, SubmitPaymentReq, TogglePointsReq } from "./requests";
 
 export interface MerchantApi {
   // ---- 账号与入驻（B-11.1）
@@ -347,6 +348,15 @@ export interface MerchantApi {
   // ---- 门店管理（M6）—— 与 mStore 的分工：那个管**一家店的门面**，这个管**有几家店**
   /** 含停用的。停用的也要看得见 —— 看不见的话商家会以为店被删了 */
   mStoreList(): Promise<Store[]>;
+
+  /**
+   * 门店送货方式（方案 v4）：四路开关。storeNo 传 "default" = 默认门店 ——
+   * 单店商家不用感知门店号。
+   */
+  mStoreFulfillment(storeNo: string): Promise<StoreFulfillment>;
+
+  /** 全量保存。「关一路」是 enabled=false 不是删配置 */
+  mSaveStoreFulfillment(storeNo: string, payload: StoreFulfillmentSaveReq): Promise<StoreFulfillment>;
   /** 新建。**超额直接拒** —— 建出来却打不开的店比拒绝更难解释 */
   mCreateStore(payload: StoreEditReq): Promise<Store>;
   mRenameStore(storeNo: string, payload: StoreEditReq): Promise<Store>;

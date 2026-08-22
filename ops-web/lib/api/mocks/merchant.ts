@@ -44,6 +44,8 @@ export const merchantMock: MerchantApi = {
   // ── 门店经营模式与弱主体准入 ─────────────────────────────────
 
   storeModes: async (merchantNo) => wait(db.storeModes.filter((s) => s.merchantNo === merchantNo)),
+  // 履约配置只读：mock 数据不区分商家（种子只有 M901 一家有店），照单全返
+  merchantFulfillment: async () => wait(db.storeFulfillments.map((r) => ({ ...r, channels: r.channels.map((c) => ({ ...c })) }))),
   // 无照 × 自营。mock 里从 storeModes 与商家档案现算，**不另建一份数据** ——
   // 另建的话它会和 setStoreBusinessMode 的写入脱节，页面上改完模式清单不变
   modeRisk: async () => wait(

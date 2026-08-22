@@ -148,6 +148,8 @@ class BizEndpointPermTest {
 
         // ---- 门店经营面 ----
         put("/biz/store", BizPerms.STORE);
+        // 门店送货方式（方案 v4）：GET/PUT 同路径同进退，都归门店管理面
+        put("/biz/stores/{storeNo}/fulfillment", BizPerms.STORE);
         // 提报新社区与设经营范围是同一件事的两半：能决定「我做哪儿」的人，
         // 才该能提「这儿还没开」
         put("/biz/communities/apply", BizPerms.STORE);

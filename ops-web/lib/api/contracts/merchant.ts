@@ -7,7 +7,7 @@ import type {
   MerchantPlanRow,
   PlanDef,
   PlanUpgradeSignal,
-  AdmissionPolicy, AuthCode, AuthCodeSetResult, LegalForm, DepositTxn, DepositTxnType, Merchant, MerchantApply, MerchantDeposit, MerchantStaffRow, MerchantStatus, Page, StoreMode, Violation, ViolationAction, ViolationType } from "@/lib/types";
+  AdmissionPolicy, AuthCode, AuthCodeSetResult, LegalForm, DepositTxn, DepositTxnType, Merchant, MerchantApply, MerchantDeposit, MerchantStaffRow, MerchantStatus, Page, StoreMode, Violation, ViolationAction, ViolationType, StoreFulfillmentRow } from "@/lib/types";
 import type { ApplyQ, MerchantQ } from "../query";
 
 export interface MerchantApi {
@@ -53,6 +53,13 @@ export interface MerchantApi {
    * 要处置该商家走封禁，那是另一个层级、另一个权限码。
    */
   merchantStaff(merchantNo: string): Promise<MerchantStaffRow[]>;
+
+  /**
+   * 商家履约配置（方案 v4，**只读**）：门店 × 送货方式矩阵。
+   * 运营接到履约投诉时的第一入口 —— 先看这家店到底开了哪几路，再谈处置。
+   * 写入口在 B 端；平台的干预走锁路（P2），不在本契约。
+   */
+  merchantFulfillment(merchantNo: string): Promise<StoreFulfillmentRow[]>;
 
   merchantDeposit(merchantNo: string): Promise<MerchantDeposit>;
   depositTxns(merchantNo: string): Promise<DepositTxn[]>;

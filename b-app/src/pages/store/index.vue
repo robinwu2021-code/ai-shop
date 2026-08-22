@@ -25,6 +25,7 @@ import type {
   ShareKit,
   StoreProfile,
   StoreQrcode,
+  StoreFulfillment,
 } from "@shared/types";
 
 const { t } = useI18n();
@@ -62,16 +63,69 @@ const master = ref<MasterData | null>(null);
  * 这种再普通不过的诉求没有字段可写 —— 店主只能选「全市」（卖到送不到的地方）
  * 或「仅本社区」（丢掉那个区）。
  */
-const reaches = [
-  FULFILLMENT_REACH.PICKUP,
-  FULFILLMENT_REACH.ONSITE,
-  FULFILLMENT_REACH.SHIPPING,
-] as const;
-
-const reach = computed<FulfillmentReach>(
-  () => form.value.fulfillmentReach ?? FULFILLMENT_REACH.PICKUP,
-);
 const areas = computed<ServiceArea[]>(() => form.value.serviceAreas ?? []);
+
+/**
+ * 门店送货方式（方案 v4）：channel 挂门店、多路开关，取代三档单选。
+ *
+ * 与经营范围是两张卡两个接口：范围是主体级（全店共用），送货是门店级。
+ * 开关**即点即存** —— 它是独立端点，攒到大保存里会出现「范围存了送货没存」
+ * 这种一半一半的状态。
+ */
+const fulfillment = ref<StoreFulfillment | null>(null);
+const fulfillmentStore = ref("default");
+const savingChannel = ref("");
+
+const channelRows = computed(() => fulfillment.value?.channels ?? []);
+const pickupOn = computed(() =>
+  channelRows.value.some(
+    (c) => (c.channel === "STORE_PICKUP" || c.channel === "NEIGHBOR_PICKUP") && c.enabled,
+  ),
+);
+const deliveryOn = computed(() =>
+  channelRows.value.some((c) => c.channel === "MERCHANT_DELIVERY" && c.enabled),
+);
+const expressOn = computed(() =>
+  channelRows.value.some((c) => c.channel === "EXPRESS" && c.enabled),
+);
+
+async function loadFulfillment() {
+  try {
+    fulfillment.value = await api.mStoreFulfillment(fulfillmentStore.value);
+  } catch {
+    // 老后端没有这个端点：卡片整个不渲染（fulfillment 为 null），页面其余功能照常
+    fulfillment.value = null;
+  }
+}
+
+async function toggleChannel(channel: string) {
+  const cur = fulfillment.value;
+  if (!cur || savingChannel.value) return;
+  const row = cur.channels.find((c) => c.channel === channel);
+  if (!row || row.denied) return;
+  const next = cur.channels.map((c) =>
+    c.channel === channel ? { ...c, enabled: !c.enabled } : c,
+  );
+  if (!next.some((c) => c.enabled)) {
+    // 与服务端同一条硬规则，在端上先说人话，而不是让保存报一个笼统的错
+    uni.showToast({ title: t("store.fulfillNone"), icon: "none" });
+    return;
+  }
+  savingChannel.value = channel;
+  try {
+    fulfillment.value = await api.mSaveStoreFulfillment(fulfillmentStore.value, {
+      channels: next.map((c) => ({
+        channel: c.channel,
+        enabled: c.enabled,
+        templateNo: c.templateNo ?? undefined,
+      })),
+    });
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message || t("store.fulfillFailed"), icon: "none" });
+  } finally {
+    savingChannel.value = "";
+  }
+}
 
 /**
  * 覆盖项为空的含义**由履约能力决定** —— 同一个空列表两种意思：
@@ -84,12 +138,8 @@ const activeAreas = computed(() => areas.value.filter((a) => a.status !== "PENDI
  * 按长度判的话，商家勾了一个待审的区就以为万事大吉 —— 而 C 端仍然谁也看不到他。
  */
 const emptyIsBlocking = computed(
-  () => reach.value === FULFILLMENT_REACH.PICKUP && !activeAreas.value.length,
+  () => pickupOn.value && !deliveryOn.value && !expressOn.value && !activeAreas.value.length,
 );
-
-function pickReach(v: FulfillmentReach) {
-  form.value.fulfillmentReach = v;
-}
 
 function hasArea(level: string, refCode: string) {
   return areas.value.some((a) => a.level === level && a.refCode === refCode);
@@ -427,7 +477,10 @@ function copyLink() {
   });
 }
 
-onShow(load);
+onShow(() => {
+  load();
+  loadFulfillment();
+});
 </script>
 
 <template>
@@ -445,20 +498,27 @@ onShow(load);
       <text class="sh-h2">{{ $t("store.scope") }}</text>
       <text class="hint">{{ $t("store.scopeHint") }}</text>
 
-      <text class="field__label sec">{{ $t("store.reach") }}</text>
-      <view
-        v-for="r in reaches"
-        :key="r"
-        class="scope"
-        :class="{ 'is-on': reach === r }"
-        @tap="pickReach(r)"
-      >
-        <view class="scope__main">
-          <text class="scope__name">{{ $t(`fulfillmentReach.${r}`) }}</text>
-          <text class="scope__desc">{{ $t(`store.reachDesc.${r}`) }}</text>
+      <text class="field__label sec">{{ $t("store.fulfillTitle") }}</text>
+      <!-- 多路开关（方案 v4）：即点即存，独立于下面的大保存。denied 的路置灰给原因，不隐藏 -->
+      <template v-if="fulfillment">
+        <view
+          v-for="c in channelRows"
+          :key="c.channel"
+          class="scope"
+          :class="{ 'is-on': c.enabled, 'is-off': c.denied }"
+          @tap="toggleChannel(c.channel)"
+        >
+          <view class="scope__main">
+            <text class="scope__name">{{ $t(`channel.${c.channel}`) }}</text>
+            <text class="scope__desc">{{
+              c.denied ? $t("store.channelDenied") : $t(`store.channelDesc.${c.channel}`)
+            }}</text>
+          </view>
+          <text class="scope__tick">{{
+            savingChannel === c.channel ? "…" : c.enabled ? "✓" : ""
+          }}</text>
         </view>
-        <text class="scope__tick">{{ reach === r ? "✓" : "" }}</text>
-      </view>
+      </template>
 
       <!-- 覆盖项：小区与区划混在一张清单里，因为它们对店主是同一件事 —— 「我做哪儿」 -->
       <view class="cms">
