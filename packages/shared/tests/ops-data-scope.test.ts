@@ -112,6 +112,13 @@ const SCOPE_BYPASS_OK: Record<string, string> = {
   // owner_user_no 做「供货方=自提点运营者」的比对 —— 按已授权主键回捞明细那一类
   "MerchantPortImpl#ownerUserNoOf":
     "按已授权的 merchantNo 回捞 owner_user_no，供准入矩阵降级判定；不是检索入口",
+  // 同一批：履约视图按路径参数 merchantNo 回捞门店与 channel 行。
+  // 这三处必须绕过 —— 同一 Service 同时服务 B 端（SELF 维度），
+  // 接上数据域是 1=0，商家查自己的门店直接 NOT_FOUND（生产实测踩到）
+  "StoreFulfillmentServiceImpl#requireStore":
+    "按已授权的 merchantNo/storeNo 回捞门店行并逐行比对归属；B 端共用，接域即 1=0",
+  "StoreFulfillmentServiceImpl#byMerchant":
+    "按路径参数 merchantNo 列门店（ops 只读视图入口，权限 merchant:merchant:read 已判）",
   "MerchantGovernServiceImpl#nameOf":
     "同上：违规记录列表补商家名",
   "MerchantStaffServiceImpl#storeNames":

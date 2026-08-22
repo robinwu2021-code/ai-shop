@@ -101,34 +101,44 @@ public class StoreFulfillmentServiceImpl implements StoreFulfillmentService {
             }
         }
 
-        Map<String, MchFulfillmentChannel> rows = rowsOf(store.getStoreNo());
-        for (ChannelCmd cmd : byChannel.values()) {
-            MchFulfillmentChannel row = rows.get(cmd.channel());
-            if (row == null) {
-                row = new MchFulfillmentChannel();
-                row.setStoreNo(store.getStoreNo());
-                row.setEntityNo(merchantNo);
-                row.setChannel(cmd.channel());
-                row.setScopeMode(MchFulfillmentChannel.SCOPE_ALL);
+        /*
+         * 写也要绕开数据域：B 端会话（SELF 维度）下 UPDATE 会被拼上 1=0 ——
+         * **0 行、不报错**，表现为「开新路成功（INSERT 不受影响）、改已有行静默丢失」。
+         * 生产实测踩到：模拟器上自送开得上、关不掉。归属已由 requireStore 校验。
+         */
+        MchStore target = store;
+        ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() -> {
+            Map<String, MchFulfillmentChannel> rows = rowsOf(target.getStoreNo());
+            for (ChannelCmd cmd : byChannel.values()) {
+                MchFulfillmentChannel row = rows.get(cmd.channel());
+                if (row == null) {
+                    row = new MchFulfillmentChannel();
+                    row.setStoreNo(target.getStoreNo());
+                    row.setEntityNo(merchantNo);
+                    row.setChannel(cmd.channel());
+                    row.setScopeMode(MchFulfillmentChannel.SCOPE_ALL);
+                }
+                row.setEnabled(cmd.enabled());
+                if (Fulfillments.EXPRESS.equals(cmd.channel())) {
+                    row.setConfig(expressConfig(cmd.templateNo()));
+                }
+                if (row.getId() == null) {
+                    channelMapper.insert(row);
+                } else {
+                    channelMapper.updateById(row);
+                }
             }
-            row.setEnabled(cmd.enabled());
-            if (Fulfillments.EXPRESS.equals(cmd.channel())) {
-                row.setConfig(expressConfig(cmd.templateNo()));
-            }
-            if (row.getId() == null) {
-                channelMapper.insert(row);
-            } else {
-                channelMapper.updateById(row);
-            }
-        }
+            return null;
+        });
         return get(merchantNo, store.getStoreNo());
     }
 
     @Override
     public List<StoreFulfillmentVO> byMerchant(String merchantNo) {
-        List<MchStore> stores = storeMapper.selectList(Wrappers.<MchStore>lambdaQuery()
-                .eq(MchStore::getEntityNo, merchantNo)
-                .orderByDesc(MchStore::getIsDefault).orderByAsc(MchStore::getId));
+        List<MchStore> stores = ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(
+                () -> storeMapper.selectList(Wrappers.<MchStore>lambdaQuery()
+                        .eq(MchStore::getEntityNo, merchantNo)
+                        .orderByDesc(MchStore::getIsDefault).orderByAsc(MchStore::getId)));
         List<StoreFulfillmentVO> out = new ArrayList<>(stores.size());
         for (MchStore store : stores) {
             FulfillmentVO vo = get(merchantNo, store.getStoreNo());
@@ -140,21 +150,26 @@ public class StoreFulfillmentServiceImpl implements StoreFulfillmentService {
 
     // ---------------------------------------------------------------- helpers
 
+    /*
+     * 读一律绕开数据域（照 mch_store_category 的先例）：B 端会话是 SELF 维度，
+     * 而 mch_store / mch_fulfillment_channel 登记的是 MERCHANT 锚点 ——
+     * 不绕的话 DataScopeHandler fail-closed 拼出 1=0，商家查自己的门店直接 NOT_FOUND。
+     * 生产实测踩到（H2 场景测试没有会话维度，暴露不了）。
+     * 归属不靠数据域靠代码：requireStore 按 merchantNo 逐行比对。
+     */
     private MchStore requireStore(String merchantNo, String storeNo) {
-        MchStore store;
-        if (storeNo == null || storeNo.isBlank()) {
-            store = storeMapper.selectOne(Wrappers.<MchStore>lambdaQuery()
-                    .eq(MchStore::getEntityNo, merchantNo)
-                    .eq(MchStore::getIsDefault, true).last("LIMIT 1"));
-        } else {
-            store = storeMapper.selectOne(Wrappers.<MchStore>lambdaQuery()
+        MchStore store = ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() -> {
+            if (storeNo == null || storeNo.isBlank()) {
+                return storeMapper.selectOne(Wrappers.<MchStore>lambdaQuery()
+                        .eq(MchStore::getEntityNo, merchantNo)
+                        .eq(MchStore::getIsDefault, true).last("LIMIT 1"));
+            }
+            MchStore row = storeMapper.selectOne(Wrappers.<MchStore>lambdaQuery()
                     .eq(MchStore::getStoreNo, storeNo).last("LIMIT 1"));
             // 归属校验走 NOT_FOUND 不走 FORBIDDEN：别家门店号对本商家而言就是不存在，
             // 403 会把「存在哪些门店号」泄给猜号的人
-            if (store != null && !merchantNo.equals(store.getEntityNo())) {
-                store = null;
-            }
-        }
+            return row != null && merchantNo.equals(row.getEntityNo()) ? row : null;
+        });
         if (store == null) {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
@@ -163,9 +178,9 @@ public class StoreFulfillmentServiceImpl implements StoreFulfillmentService {
 
     private Map<String, MchFulfillmentChannel> rowsOf(String storeNo) {
         Map<String, MchFulfillmentChannel> out = new LinkedHashMap<>();
-        for (MchFulfillmentChannel row : channelMapper.selectList(
-                Wrappers.<MchFulfillmentChannel>lambdaQuery()
-                        .eq(MchFulfillmentChannel::getStoreNo, storeNo))) {
+        for (MchFulfillmentChannel row : ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(
+                () -> channelMapper.selectList(Wrappers.<MchFulfillmentChannel>lambdaQuery()
+                        .eq(MchFulfillmentChannel::getStoreNo, storeNo)))) {
             out.put(row.getChannel(), row);
         }
         return out;
