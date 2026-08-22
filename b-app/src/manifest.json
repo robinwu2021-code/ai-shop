@@ -2,18 +2,21 @@
   "name": "邻里商家",
   "appid": "__UNI__59E912D",
   "description": "邻里购物平台 B 端（商家端）",
-  "versionName": "0.1.3",
-  "versionCode": "103",
+  "versionName": "0.1.4",
+  "versionCode": "104",
   "transformPx": false,
   "app-plus": {
     "usingComponents": true,
     "nvueStyleCompiler": "uni-app",
     "compilerVersion": 3,
+    "//geolocation": "App 端定位走系统提供方。不声明的话运行时按高德→百度试，离线包里两家 SDK 都没带，logcat 只有一行 `AMapGeoManager exception`，uni.getLocation 静默失败 —— 提报/自建点永远拿不到坐标（真机实测）。",
+    "modules": { "Geolocation": {} },
     "distribute": {
       "//packagename": "三端同一个标识（安卓包名 / iOS BundleId / 鸿蒙 bundleName）。上架后不可改",
       "android": { "packagename": "top.hxmall.bapp", "permissions": [] },
       "ios": { "bundleId": "top.hxmall.bapp" },
       "sdkConfigs": {
+        "geolocation": { "system": { "__platform__": ["android", "ios"] } },
         "//push": "推送改用『个推原生 SDK 直连』，**不声明 uni-push 模块** —— 声明了 DCloud 运行时就会要求 native 带 push 模块，否则启动弹『打包时未添加push模块』。个推集成落在离线包侧：GetuiIntentService 接 cid + AndroidManifest 的 PUSH_* meta，前端经 plus.android 调 PushManager 取 cid（见 packages/shared/src/ports/push.ts）。",
         "//why": "uni-push 2.0 要 DCloud 实名认证开通，未开通时 register 报 errorCode 1；直连绕开这层，只认个推控制台的 appid+包名。"
       }
