@@ -5,7 +5,9 @@
 // 这一页此前是「左树 + 右详情」：一屏只看得到十几行，改一个类目要点三下
 // （选中 → 读详情 → 找按钮），而最高频的动作其实只有一个 —— **这一类这期做不做**。
 //
-// 现在按一级分组铺成卡片网格，每个二级一行：名字、门槛、商品数、一个开关。
+// 现在是**一张带层级的表**：一级行 + 缩进的二级行，列对齐（形态 / 门槛 / 商品数 /
+// 顺序 / 状态）。此前拆成一级一张卡，同一列的值在卡与卡之间对不齐，
+// 想回答「哪些类目还没设门槛」得挨张卡去扫；表格一列扫到底就够了。
 // 开关是立即生效的状态切换（Switch 的语义），不是待提交的表单勾选。
 //
 // 「停用」用的就是归档那套（`status=ARCHIVED`）：**不物理删** ——
@@ -20,7 +22,7 @@ import type { Category } from "@/lib/types";
 import { ShowArchivedToggle } from "@/components/archive";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { DataTable, type Column } from "@/components/ui/data-table";
 import { Drawer, DrawerSection, Field } from "@/components/ui/drawer";
 import { FilterSelect } from "@/components/ui/filter-select";
 import { Input } from "@/components/ui/input";
@@ -55,6 +57,19 @@ export function CategoriesTab({ c, canEdit }: { c: ProductsCopy; canEdit: boolea
    */
   const [showArchived, setShowArchived] = useState(false);
   const [form, setForm] = useState<Form | null>(null);
+  /**
+   * 买家侧预览。**这一页的产出全是「要到别处才看得见效果」的东西** ——
+   * 顺序改了、开关关了，运营在这张管理表上看到的仍是管理表，
+   * 只能去 C 端反复刷新才知道对不对。
+   *
+   * <p>它渲染的是**同一份数据**（这一页已经拉到的类目），不是去抓 C 端页面 ——
+   * 所以它证明的是「配置长这样」，不是「C 端此刻长这样」。这条差别写在面板里，
+   * 免得有人拿它当线上验收。
+   */
+  const [preview, setPreview] = useState(false);
+  /** 预览语言：切到 EN 才看得出缺译回落成中文 */
+  const [previewLang, setPreviewLang] = useState<"zh" | "en">("zh");
+  const [previewTop, setPreviewTop] = useState("");
 
   /*
    * **关键词不进请求**，在前端过滤。
@@ -210,6 +225,113 @@ export function CategoriesTab({ c, canEdit }: { c: ProductsCopy; canEdit: boolea
     off: rows.filter(off).length,
   };
 
+  /**
+   * 拍平成「一级 + 它的二级」一条条行 —— 层级靠行样式与缩进表达，不再拆成卡片。
+   * 一级下面没有二级时仍然出现：那正是需要被看到的状态（买家点进去是空的）。
+   */
+  const flat = useMemo(() => {
+    const out: Category[] = [];
+    for (const t of tops) {
+      out.push(t);
+      out.push(...childrenOf(t.categoryNo));
+    }
+    return out;
+  }, [tops, rows]);
+
+  /** 同级邻居（排序用）：一级看 tops，二级看它父级下的兄弟 */
+  const siblings = (r: Category) =>
+    r.level === 1 ? tops : childrenOf(r.parentNo ?? "");
+
+  const columns: Column<Category>[] = [
+    {
+      header: c.catColName,
+      cell: (r) => (
+        <span className={r.level === 2 ? "pl-5" : ""}>
+          <button
+            type="button"
+            className="text-left hover:underline"
+            onClick={() => canEdit && setForm({
+              categoryNo: r.categoryNo, name: r.name, i18nEn: r.i18n.en ?? "",
+              parentNo: r.parentNo ?? "", template: r.template,
+              requiredCode: r.requiredCode ?? "",
+            })}
+          >
+            {r.name}
+          </button>
+          {/* 缺英文名会在 C 端英文界面静默回落中文 —— 这一页看不见就永远没人补 */}
+          {!r.i18n.en && (
+            <span title={c.catI18nMissingHint} className="ml-2">
+              <Badge tone="muted">{c.catI18nMissing}</Badge>
+            </span>
+          )}
+        </span>
+      ),
+      className: "whitespace-normal",
+      width: "16rem",
+    },
+    { header: c.catColTemplate, cell: (r) => codeLabel(c, r.template) },
+    {
+      header: c.fieldRequiredCode,
+      // 发不出来的码要红：那种类目谁都上不了架，而报错说不清原因
+      cell: (r) =>
+        r.requiredCode ? (
+          <span title={`${codeName(r.requiredCode)}（${r.requiredCode}）${(r.qualifications ?? []).join("、")}`}>
+            <Badge tone={codeBroken(r.requiredCode) ? "danger" : "info"}>
+              {codeBroken(r.requiredCode) ? c.catGateBroken : codeName(r.requiredCode)}
+            </Badge>
+          </span>
+        ) : <span className="text-muted-foreground">{c.catNoGateShort}</span>,
+    },
+    // 0 不显示：一列的「0」会把真正有货的那几行淹掉
+    { header: c.catColGoods, cell: (r) => r.skuCount || "", numeric: true },
+    {
+      header: c.catColOrder,
+      cell: (r) => {
+        if (!canEdit || off(r)) return null;
+        const list = siblings(r);
+        const i = list.findIndex((x) => x.categoryNo === r.categoryNo);
+        return (
+          <span className="flex">
+            <Button size="sm" variant="ghost"
+              disabled={!neighbour(list, i, -1) || move.isPending}
+              onClick={() => { const b = neighbour(list, i, -1); if (b) move.mutate({ a: r, b }); }}
+            >{c.catMoveUp}</Button>
+            <Button size="sm" variant="ghost"
+              disabled={!neighbour(list, i, 1) || move.isPending}
+              onClick={() => { const b = neighbour(list, i, 1); if (b) move.mutate({ a: r, b }); }}
+            >{c.catMoveDown}</Button>
+          </span>
+        );
+      },
+    },
+    {
+      header: c.catColStatus,
+      // 停用被后端拒的两种情况在这里就置灰，别让人点一个注定失败的开关
+      cell: (r) => (
+        <span title={off(r) ? undefined : blockedReason(r) ?? undefined}>
+          <Switch
+            checked={!off(r)}
+            disabled={!canEdit || (!off(r) && !!blockedReason(r))}
+            onChange={(on) => (r.level === 1 ? void toggleTop(r, on) : toggle.mutate({ row: r, on }))}
+          />
+        </span>
+      ),
+    },
+    {
+      header: c.colActions,
+      cell: (r) =>
+        canEdit && r.level === 1 ? (
+          <Button size="sm" variant="ghost" onClick={() => openNew(r.categoryNo, r.template)}>
+            {c.catAddChild}
+          </Button>
+        ) : null,
+    },
+  ];
+
+  /** 预览只看启用中的 —— 停用的不出现，这正是运营要确认的那件事 */
+  const liveTops = tops.filter((x) => !off(x));
+  const liveChildren = childrenOf(previewTop || liveTops[0]?.categoryNo || "").filter((x) => !off(x));
+
   function openNew(parentNo: string, tpl: string) {
     setForm({ ...EMPTY, parentNo, template: tpl });
   }
@@ -228,6 +350,7 @@ export function CategoriesTab({ c, canEdit }: { c: ProductsCopy; canEdit: boolea
           ]}
         />
         <ShowArchivedToggle checked={showArchived} onChange={setShowArchived} label={c.catShowOff} />
+        <Button variant="outline" onClick={() => setPreview(true)}>{c.catPreview}</Button>
         {canEdit && <Button onClick={() => setForm({ ...EMPTY })}>{c.catNew}</Button>}
       </Toolbar>
 
@@ -235,162 +358,21 @@ export function CategoriesTab({ c, canEdit }: { c: ProductsCopy; canEdit: boolea
         {fill(c.catStat, { a: stat.tops, b: stat.subs, c: stat.off })}
       </p>
 
-      {cats.isLoading ? (
-        <div className="py-8 text-center text-muted-foreground">{c.loading}</div>
-      ) : !tops.length ? (
-        <div className="py-8 text-center text-muted-foreground">{c.emptyTree}</div>
-      ) : (
-        <div className="grid gap-3 lg:grid-cols-2 2xl:grid-cols-3">
-          {tops.map((top, ti) => (
-            <Card key={top.categoryNo} className={off(top) ? "opacity-55" : undefined}>
-              <CardHeader className="group flex-row items-center gap-2 pb-2">
-                <CardTitle className="flex min-w-0 items-center gap-2">
-                  <span className="truncate">{top.name}</span>
-                  <Badge tone="muted">{codeLabel(c, top.template)}</Badge>
-                </CardTitle>
-                {/* 计数放标题旁：扫一眼就知道这一组有多少二级，不用去数行 */}
-                <span className="txt-caption text-muted-foreground">
-                  {fill(c.catSubCount, { n: childrenOf(top.categoryNo).length })}
-                </span>
-                <span className="flex-1" />
-                {/*
-                  一级之间也要能调顺序：C 端类目栏第一屏就是一级 ——
-                  只给二级排序，等于把最重要的那一层漏掉了。
-                */}
-                {canEdit && !off(top) && (
-                  <span className="flex opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
-                    <Button
-                      size="sm" variant="ghost"
-                      disabled={!neighbour(tops, ti, -1) || move.isPending}
-                      onClick={() => {
-                        const b = neighbour(tops, ti, -1);
-                        if (b) move.mutate({ a: top, b });
-                      }}
-                    >
-                      {c.catMoveUp}
-                    </Button>
-                    <Button
-                      size="sm" variant="ghost"
-                      disabled={!neighbour(tops, ti, 1) || move.isPending}
-                      onClick={() => {
-                        const b = neighbour(tops, ti, 1);
-                        if (b) move.mutate({ a: top, b });
-                      }}
-                    >
-                      {c.catMoveDown}
-                    </Button>
-                  </span>
-                )}
-                {/* 「加二级」收进卡头：放底部会为一个低频动作白占一整行 */}
-                {canEdit && (
-                  <Button size="sm" variant="ghost" onClick={() => openNew(top.categoryNo, top.template)}>
-                    {c.catAddChild}
-                  </Button>
-                )}
-                {canEdit && (
-                  <span title={off(top) ? undefined : blockedReason(top) ?? undefined}>
-                    <Switch
-                      checked={!off(top)}
-                      disabled={!off(top) && !!blockedReason(top)}
-                      onChange={(on) => void toggleTop(top, on)}
-                    />
-                  </span>
-                )}
-              </CardHeader>
-              <CardContent className="pt-0">
-                <ul className="divide-y divide-[var(--border)]">
-                  {childrenOf(top.categoryNo).map((sub, i, list) => (
-                    <li
-                      key={sub.categoryNo}
-                      className={`group flex items-center gap-2 py-1.5 ${off(sub) ? "opacity-55" : ""}`}
-                    >
-                      <button
-                        type="button"
-                        className="min-w-0 flex-1 truncate text-left txt-body hover:underline"
-                        onClick={() => canEdit && setForm({
-                          categoryNo: sub.categoryNo, name: sub.name,
-                          i18nEn: sub.i18n.en ?? "", parentNo: sub.parentNo ?? "",
-                          template: sub.template, requiredCode: sub.requiredCode ?? "",
-                        })}
-                      >
-                        {sub.name}
-                      </button>
-                      {/*
-                        门槛只用一个小徽章表示「要证」，具体哪张证放 title 里 ——
-                        平铺码名会与类目名重复（「蔬菜 · 蔬菜」），一行里挤两遍同一个词。
-                        发不出来的码要红：那种类目谁都上不了架，而报错说不清原因。
-                      */}
-                      {/*
-                        上下移**只在悬停时出现**：顺序是低频动作，常驻两个箭头会把
-                        每一行都变成三个可点区域，而行本身（点名字改类目）才是主操作。
-                      */}
-                      {canEdit && !off(sub) && (
-                        <span className="flex shrink-0 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
-                          <Button
-                            size="sm" variant="ghost"
-                            disabled={!neighbour(list, i, -1) || move.isPending}
-                            onClick={() => {
-                              const b = neighbour(list, i, -1);
-                              if (b) move.mutate({ a: sub, b });
-                            }}
-                          >
-                            {c.catMoveUp}
-                          </Button>
-                          <Button
-                            size="sm" variant="ghost"
-                            disabled={!neighbour(list, i, 1) || move.isPending}
-                            onClick={() => {
-                              const b = neighbour(list, i, 1);
-                              if (b) move.mutate({ a: sub, b });
-                            }}
-                          >
-                            {c.catMoveDown}
-                          </Button>
-                        </span>
-                      )}
-                      {/*
-                        缺英文名要看得见：类目名按语言下发，缺了会**静默回落中文** ——
-                        运营在这一页看不见，就永远没人补。
-                      */}
-                      {!sub.i18n.en && (
-                        <span title={c.catI18nMissingHint}>
-                          <Badge tone="muted">{c.catI18nMissing}</Badge>
-                        </span>
-                      )}
-                      {/* 固定列宽：不给宽度的话，同一列的徽章在两张卡片里会各停在不同位置 */}
-                      <span className="w-14 shrink-0 text-right">
-                        {sub.requiredCode && (
-                          <span title={`${codeName(sub.requiredCode)}（${sub.requiredCode}）${(sub.qualifications ?? []).join("、")}`}>
-                            <Badge tone={codeBroken(sub.requiredCode) ? "danger" : "info"}>
-                              {codeBroken(sub.requiredCode) ? c.catGateBroken : c.catGateNeed}
-                            </Badge>
-                          </span>
-                        )}
-                      </span>
-                      {/* 0 件不显示数字：一列的「0」会把真正有货的那几行淹掉 */}
-                      <span className="w-10 shrink-0 text-right txt-caption text-muted-foreground">
-                        {sub.skuCount || ""}
-                      </span>
-                      {canEdit && (
-                        <span title={off(sub) ? undefined : blockedReason(sub) ?? undefined}>
-                          <Switch
-                            checked={!off(sub)}
-                            disabled={!off(sub) && !!blockedReason(sub)}
-                            onChange={(on) => toggle.mutate({ row: sub, on })}
-                          />
-                        </span>
-                      )}
-                    </li>
-                  ))}
-                  {!childrenOf(top.categoryNo).length && (
-                    <li className="py-1.5 txt-caption text-muted-foreground">{c.catNoChild}</li>
-                  )}
-                </ul>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
+      <DataTable
+        rows={flat}
+        columns={columns}
+        rowKey={(r) => r.categoryNo}
+        loading={cats.isLoading}
+        error={cats.error}
+        onRetry={() => cats.refetch()}
+        empty={c.emptyTree}
+        // 一级行加底色、二级行降一档字重：层级要靠**行本身**表达，
+        // 只靠缩进的话滚到中间就分不清自己在哪一组
+        rowClassName={(r) =>
+          [r.level === 1 ? "bg-secondary/40 font-medium" : "", off(r) ? "opacity-55" : ""]
+            .filter(Boolean).join(" ")
+        }
+      />
 
       {/*
         编辑抽屉。「形态」与「门槛码」是这里最要紧的两个字段：
@@ -461,9 +443,72 @@ export function CategoriesTab({ c, canEdit }: { c: ProductsCopy; canEdit: boolea
           </DrawerSection>
         )}
       </Drawer>
+      {/*
+        预览：只渲染**启用中的**、按 sort 排 —— 与买家看到的规则一致。
+        停用的不出现，这正是运营要确认的那件事。
+      */}
+      <Drawer open={preview} onOpenChange={setPreview} title={c.catPreview} desc={c.catPreviewDesc}>
+        <DrawerSection first title={c.catPreviewLang}>
+          <div className="flex gap-2">
+            {(["zh", "en"] as const).map((lg) => (
+              <Button
+                key={lg}
+                size="sm"
+                variant={previewLang === lg ? "default" : "outline"}
+                onClick={() => setPreviewLang(lg)}
+              >
+                {lg === "zh" ? c.catPreviewZh : c.catPreviewEn}
+              </Button>
+            ))}
+          </div>
+        </DrawerSection>
+        <DrawerSection title={c.catPreviewPane}>
+          {/* 窄容器：类目栏在手机上就是这个宽度，按桌面宽度预览会看不出换行与截断 */}
+          <div className="mx-auto w-[320px] rounded-card border border-[var(--border)] bg-card p-3">
+            <div className="flex flex-wrap gap-2">
+              {liveTops.map((t) => (
+                <button
+                  key={t.categoryNo}
+                  type="button"
+                  onClick={() => setPreviewTop(t.categoryNo)}
+                  className={`rounded-field px-2.5 py-1 txt-caption ${
+                    (previewTop || liveTops[0]?.categoryNo) === t.categoryNo
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-secondary"
+                  }`}
+                >
+                  {shown(t, previewLang)}
+                </button>
+              ))}
+            </div>
+            <ul className="mt-3 space-y-1">
+              {liveChildren.map((x) => (
+                <li key={x.categoryNo} className="txt-body">
+                  {shown(x, previewLang)}
+                  {previewLang === "en" && !x.i18n.en && (
+                    <span className="ml-2 txt-caption text-[var(--warning)]">{c.catPreviewFallback}</span>
+                  )}
+                </li>
+              ))}
+              {!liveChildren.length && (
+                <li className="txt-caption text-muted-foreground">{c.catPreviewEmptyGroup}</li>
+              )}
+            </ul>
+          </div>
+        </DrawerSection>
+      </Drawer>
+
       {dialog}
     </>
   );
+}
+
+/**
+ * 按预览语言取名字。**缺译回落中文**（R9）—— 预览要如实展示这个回落，
+ * 否则运营会以为英文界面上是空的或是英文。
+ */
+function shown(x: Category, lang: "zh" | "en") {
+  return lang === "en" ? x.i18n.en || x.i18n.zh : x.name;
 }
 
 /** 形态 → 文案。集中一处，避免每个用到的地方各拼一次 */
