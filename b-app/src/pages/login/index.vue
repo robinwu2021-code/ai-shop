@@ -125,7 +125,16 @@ async function doLogin(method: LoginMethod) {
      * 未入驻（status NONE）→ 入驻页；已入驻或店员 → 工作台。
      * 店员的 status 不是 NONE（他所在主体已经开好店了），所以自然走到工作台。
      */
-    if (profile.status === "NONE") uni.redirectTo({ url: ROUTES.apply });
+    if (profile.status === "NONE") {
+      uni.redirectTo({ url: ROUTES.apply });
+      return;
+    }
+    /*
+     * 多店主体先选店（方案 v3）：门店是 App 级上下文，不在工作台上顺手切。
+     * 本地记忆还有效就不问 —— 每天开 App 都被问一遍是骚扰，切换有「我的」兜着。
+     */
+    await merchant.loadStores().catch(() => null);
+    if (merchant.needsStorePick) uni.redirectTo({ url: `${ROUTES.storePick}?entry=1` });
     else uni.switchTab({ url: ROUTES.home });
   } catch (e) {
     uni.showToast({ title: (e as Error).message, icon: "none" });

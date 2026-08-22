@@ -124,6 +124,18 @@
       }
     },
     {
+      "path": "pages/store-scope/index",
+      "style": {
+        "navigationBarTitleText": "经营范围与送货"
+      }
+    },
+    {
+      "path": "pages/store-pick/index",
+      "style": {
+        "navigationBarTitleText": "选择门店"
+      }
+    },
+    {
       "path": "pages/after-sale/index",
       "style": {
         "navigationBarTitleText": "售后处理"

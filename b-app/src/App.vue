@@ -1,10 +1,9 @@
 <script setup lang="ts">
 import { onHide, onLaunch, onShow } from "@dcloudio/uni-app";
 import { configureShell } from "@ai-shop/ui/shell";
-import { TABS } from "@/shared/nav";
 import { startUnreadPolling, stopUnreadPolling, unreadCount } from "@/stores/messages";
 import { initPush } from "@shared/ports/push";
-import { TAB_ROUTES } from "@/shared/nav";
+import { ROUTES, TABS, TAB_ROUTES } from "@/shared/nav";
 import { useThemeStore } from "@ai-shop/ui/stores/theme";
 import { useAppStore } from "@ai-shop/ui/stores/app";
 import { useMarketStore } from "@ai-shop/ui/stores/market";
@@ -87,7 +86,12 @@ onLaunch(() => {
    * multiStore 变 false，门店切换条整条消失，而当前门店号还在本地存着照发。
    * 页面显示的是那家店的库存，界面上却没有一处说明「你在看哪家店」。
    */
-  void merchant.ensureStores();
+  void merchant.ensureStores().then(() => {
+    // 冷启动与登录同一条规则：多店且当前这家不是人选的 → 先去选店页
+    if (merchant.isLogin && merchant.needsStorePick) {
+      uni.reLaunch({ url: `${ROUTES.storePick}?entry=1` });
+    }
+  });
   /*
    * 商家资料同理，而且它不只是店名：`isActive` 从 `profile.status` 推出来，
    * 好几处「能不能操作」看的是它 —— 没拉到的时候，求团报价页一个报价入口都没有。

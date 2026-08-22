@@ -19,6 +19,14 @@ export const useMerchantStore = defineStore("merchant", {
     storeNo: "" as string,
     stores: [] as Store[],
     /**
+     * 当前门店是不是**人选的**（本地记忆命中、或在选店页点过）。
+     *
+     * 多店主体进 App 时靠它决定要不要先去「选择门店」页：loadStores 在记忆失效时
+     * 会兜底落到默认店，那是为了让页面有数据可画，**不等于他选了这家店** ——
+     * 不区分的话，分店店员换了手机登录，看到的是总店的单，而界面上没有任何提示。
+     */
+    storePicked: false as boolean,
+    /**
      * 我在**当前门店**的权限码（后端算好的并集）。老板是 `["*"]`。
      *
      * **切门店后必须重拉** —— 角色跟着门店走，同一个人可能在 A 店是店长、
@@ -42,6 +50,14 @@ export const useMerchantStore = defineStore("merchant", {
     isLogin: (s) => !!s.token,
     /** 只有一家店时不显示切换器 —— 给单店商家一个永远只有一个选项的下拉是纯噪音 */
     multiStore: (s) => s.stores.length > 1,
+    /** 能进的门店（停业的不算）。选店页据它决定要不要出现 */
+    usableStores: (s) => s.stores.filter((x) => x.status === "ACTIVE"),
+    /**
+     * 进 App 要不要先选店：能进的店 > 1 且当前这家不是人选的。
+     * 只有一家店永远 false —— 一个只有一个选项的选择页是纯噪音。
+     */
+    needsStorePick: (s) =>
+      s.stores.filter((x) => x.status === "ACTIVE").length > 1 && !s.storePicked,
     currentStore: (s) => s.stores.find((x) => x.storeNo === s.storeNo) ?? null,
     /** 已入驻且正常经营 —— 未通过审核不能上架、不能收款 */
     isActive: (s) => s.profile?.status === "ACTIVE",
@@ -134,8 +150,15 @@ export const useMerchantStore = defineStore("merchant", {
       const usable = this.stores.filter((s) => s.status === "ACTIVE");
       const saved = (uni.getStorageSync(STORAGE.storeNo) as string) || "";
       const keep = usable.some((s) => s.storeNo === saved) ? saved : "";
+      this.storePicked = !!keep;
       this.switchStore(keep || usable.find((s) => s.isDefault)?.storeNo || usable[0]?.storeNo || "");
       return this.stores;
+    },
+
+    /** 人在选店页点了一家：记下来，进 App 不再追问 */
+    pickStore(storeNo: string) {
+      this.storePicked = true;
+      this.switchStore(storeNo);
     },
 
     switchStore(storeNo: string) {
@@ -275,6 +298,7 @@ export const useMerchantStore = defineStore("merchant", {
       this.stores = [];
       this.perms = [];
       this.staffRoles = [];
+      this.storePicked = false;
       this.switchStore("");
       uni.removeStorageSync(STORAGE.token);
     },

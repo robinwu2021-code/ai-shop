@@ -36,21 +36,6 @@ const TABS: { key: GoodsStatus | "OUT_OF_STOCK" | ""; labelKey: string }[] = [
   { key: "OUT_OF_STOCK", labelKey: "goods.statusOUT_OF_STOCK" },
 ];
 
-/** 切门店。库存是按店的，切完要重新拉 —— 不重拉会显示上一家店的数 */
-function pickStore() {
-  const usable = merchant.stores.filter((x) => x.status === "ACTIVE");
-  if (usable.length < 2) return;
-  uni.showActionSheet({
-    itemList: usable.map((x) => x.name || x.storeNo),
-    success: ({ tapIndex }) => {
-      const target = usable[tapIndex];
-      if (!target || target.storeNo === merchant.storeNo) return;
-      merchant.switchStore(target.storeNo);
-      void load();
-    },
-  });
-}
-
 const tab = ref<GoodsStatus | "">("");
 const list = ref<Goods[]>([]);
 /**
@@ -418,11 +403,8 @@ onShow(() => {
       <text v-if="keyword" class="search__clear" @tap="clearSearch">✕</text>
     </view>
 
-    <view v-if="merchant.multiStore" class="store" @tap="pickStore">
-      <text class="store__name">{{ merchant.currentStore?.name || "—" }}</text>
-      <text class="store__hint">{{ $t("goods.storeStockHint") }}</text>
-      <text class="store__switch">{{ $t("goods.switchStore") }}</text>
-    </view>
+    <!-- 当前门店只读标记（库存按店）：切店在「我的」 -->
+    <biz-store-tag></biz-store-tag>
 
     <sh-empty v-if="empty" :text='$t("goods.empty")'></sh-empty>
 
@@ -554,28 +536,6 @@ onShow(() => {
   line-height: 1.4;
   color: var(--sh-warning);
   background: var(--sh-warning-tint);
-}
-.store {
-  display: flex;
-  align-items: center;
-  gap: 12rpx;
-  padding: 16rpx 24rpx;
-  margin-bottom: 16rpx;
-  background: var(--sh-faint);
-  border-radius: 16rpx;
-}
-.store__name {
-  font-size: 28rpx;
-  color: var(--sh-ink);
-}
-.store__hint {
-  flex: 1;
-  font-size: 24rpx;
-  color: var(--sh-sub);
-}
-.store__switch {
-  font-size: 24rpx;
-  color: var(--sh-primary-text);
 }
 .bar {
   display: flex;

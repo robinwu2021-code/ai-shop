@@ -123,6 +123,21 @@ onShow(() => {
     </view>
 
     <!--
+      当前门店（方案 v3）：**全 App 唯一的切店入口**。多店主体才出现 ——
+      单店商家看到「当前门店」只会疑惑还有别的店。
+    -->
+    <view v-if="merchant.isLogin && merchant.multiStore" class="sh-card cur" @tap="go(ROUTES.storePick)">
+      <sh-icon name="store" :size="22" color="var(--sh-primary-text)"></sh-icon>
+      <view class="cur__main">
+        <text class="cur__label">{{ $t("storePick.current") }}</text>
+        <text class="cur__name">
+          {{ merchant.currentStore?.name || "—" }}<template v-if="merchant.currentStore?.address"> · {{ merchant.currentStore.address }}</template>
+        </text>
+      </view>
+      <text class="cur__switch">{{ $t("me.switchStore") }}</text>
+    </view>
+
+    <!--
       分组密排，不是一行一张卡。
       原先每一行都套 sh-card：卡片自带内边距、圆角与投影，五行就变成五块互不相干的浮起色块，
       中间的留白比行本身还显眼 —— 「看起来像五个功能模块」，而它们其实只是一张设置清单。
@@ -222,6 +237,34 @@ onShow(() => {
 }
 .head__main .sh-chip {
   margin-top: 12rpx;
+}
+.cur {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  margin-top: 16rpx;
+  background: var(--sh-primary-tint);
+}
+.cur__main {
+  flex: 1;
+  min-width: 0;
+}
+.cur__label {
+  display: block;
+  font-size: 24rpx;
+  color: var(--sh-primary-text);
+}
+.cur__name {
+  display: block;
+  font-size: 28rpx;
+  font-weight: 600;
+  color: var(--sh-ink);
+}
+.cur__switch {
+  flex-shrink: 0;
+  font-size: 26rpx;
+  font-weight: 600;
+  color: var(--sh-primary-text);
 }
 /* 组：组间留白，组内不留 —— 归属靠分组表达，不靠每行浮起 */
 .cells {

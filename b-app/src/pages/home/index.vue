@@ -71,7 +71,7 @@ const blockers = computed(() => {
     list.push({ key: "payment", route: ROUTES.payment });
   }
   if (merchant.can("biz:store") && !visible.value) {
-    list.push({ key: "scope", route: ROUTES.store });
+    list.push({ key: "scope", route: ROUTES.storeScope });
   }
   return list;
 });
@@ -148,13 +148,6 @@ async function load() {
   ]);
 }
 
-async function pickStore(storeNo: string) {
-  if (storeNo === merchant.storeNo) return;
-  merchant.switchStore(storeNo);
-  // 切完立刻重取：不重取的话数字还是上一家店的，而人已经在看新店了
-  await load();
-}
-
 function open(route: string) {
   if (!route) {
     // 未交付的格子给明确说法，不做静默无响应 —— 点了没反应会被当成 bug
@@ -183,22 +176,8 @@ onShow(load);
     </view>
 
     <template v-else>
-      <!--
-        门店切换器放在工作台**最上面**：这一屏所有数字都属于某一家店，
-        不先说清是哪家，「今天 3 单」这种话就没有意义。
-        只有一家店时不显示 —— 永远只有一个选项的切换器是纯噪音。
-      -->
-      <view v-if="merchant.multiStore" class="stores">
-        <text
-          v-for="s in merchant.stores"
-          :key="s.storeNo"
-          class="sh-chip stores__i"
-          :class="{ 'is-on': s.storeNo === merchant.storeNo }"
-          @tap="pickStore(s.storeNo)"
-        >
-          {{ s.name }}
-        </text>
-      </view>
+      <!-- 当前门店只读标记：切店在「我的」，这里只说清这一屏数字属于哪家 -->
+      <biz-store-tag></biz-store-tag>
 
       <text class="sh-h1">{{ $t("home.greeting") }}</text>
 
@@ -287,6 +266,11 @@ onShow(load);
         <text class="sh-muted">{{ $t("home.fulfillEntryHint") }}</text>
       </view>
 
+      <!-- 拆两页（方案 v3）：范围与送货是开店的两个决策；装修与获客是日常内容 -->
+      <view v-if="merchant.can('biz:store')" class="sh-card entry" @tap="open(ROUTES.storeScope)">
+        <text class="sh-h2">{{ $t("home.scopeEntry") }}</text>
+        <text class="sh-muted">{{ $t("home.scopeEntryHint") }}</text>
+      </view>
       <view v-if="merchant.can('biz:store')" class="sh-card entry" @tap="open(ROUTES.store)">
         <text class="sh-h2">{{ $t("home.storeEntry") }}</text>
         <text class="sh-muted">{{ $t("home.storeEntryHint") }}</text>
@@ -343,18 +327,6 @@ onShow(load);
 .go {
   /* 48rpx 是一整行字的高度，作为「主按钮与上方内容」的距离过头了 */
   margin-top: 28rpx;
-}
-.stores {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 14rpx;
-  margin-bottom: 16rpx;
-}
-.stores__i.is-on {
-  background: var(--sh-primary);
-  /* 压在主色上的前景必须用 --sh-on-primary：它是按对比度算出来的（守卫断言 ≥4.5）。
-     写死白字的话，fresh（微信绿）这类亮主色上只有 2.27 —— 选中的门店名反而最难认 */
-  color: var(--sh-on-primary);
 }
 .blocker {
   display: flex;
