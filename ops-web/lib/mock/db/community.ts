@@ -1,7 +1,7 @@
 // 社区与网点 mock（P-2.1 / P-2.2）。
 // 自提点刻意覆盖 STORE/NEIGHBOR 两类与三种状态，且留了一个「30 天承接 4 次」的
 // 临时点 —— 职业化风控（P-2.2.5）没有样本数据就永远验不到。
-import type { Community, CommunityApply, PickupPoint, Region } from "@/lib/types";
+import type { Community, CommunityApply, PickupPoint, Region, PendingRegion } from "@/lib/types";
 
 /**
  * 商家提报的新社区（ADR-013 阶段三）。
@@ -45,6 +45,36 @@ export const regions: Region[] = [
   { regionCode: "330105001", parentCode: "330105", level: "STREET", name: "米市巷街道", enabled: true, hasChild: false },
   // 停用一条：运营端要看得见它才能开回来 —— 与行业、授权码同一条规矩
   { regionCode: "330105002", parentCode: "330105", level: "STREET", name: "湖墅街道", enabled: false, hasChild: false },
+];
+
+/**
+ * 商家补录的村级，待运营确认。
+ *
+ * **队列不能是空的** —— 空队列下「通过 / 驳回」两个动作在 mock 上永远点不到，
+ * 而这两个动作正是这一屏的全部内容。
+ *
+ * 三条覆盖三种状态：待确认（能裁决）、已通过（只读）、已驳回（能看到理由）。
+ */
+export const pendingRegions: PendingRegion[] = [
+  {
+    regionCode: "330106003M01", name: "新桥社区",
+    path: "浙江省 / 杭州市 / 西湖区 / 西溪街道 / 新桥社区",
+    auditStatus: "PENDING", entityNo: "M0001", entityName: "老张粮油店",
+    createdAt: Date.now() - 3600_000,
+  },
+  {
+    regionCode: "330106004M01", name: "文华社区",
+    path: "浙江省 / 杭州市 / 西湖区 / 翠苑街道 / 文华社区",
+    auditStatus: "APPROVED", entityNo: "M0002", entityName: "鲜果直供",
+    createdAt: Date.now() - 86400_000,
+  },
+  {
+    regionCode: "330105001M01", name: "米市新村",
+    path: "浙江省 / 杭州市 / 拱墅区 / 米市巷街道 / 米市新村",
+    auditStatus: "REJECTED", entityNo: "M0001", entityName: "老张粮油店",
+    rejectReason: "与既有的「米市巷社区」是同一个地方，直接选那个即可",
+    createdAt: Date.now() - 172800_000,
+  },
 ];
 
 export const pickups: PickupPoint[] = [

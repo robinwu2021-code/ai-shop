@@ -36,12 +36,31 @@ public class SysRegion extends BaseEntity {
     private String source;
 
     /**
-     * 待运营确认期间的可见范围：<b>非空 = 只有这家店看得到</b>；确认通过后置 NULL 转为全网共享。
+     * 谁提报的。<b>永久保留</b> —— 不兼作可见性开关。
      *
-     * <p>不这样做只有两条路，都更差：录完立刻全网可见（一家店打错字污染全平台），
-     * 或者压在待审队列里不给用（商家今天就做不了这单生意）。
+     * <p>V182 曾让它兼任两职（通过即置 NULL），于是<b>通过之后再也查不出是谁报的</b>：
+     * 某个村名写错了要追源头，追不到。可见性改由 {@link #auditStatus} 单独表示。
      */
     private String ownerEntityNo;
+
+    /**
+     * {@code PENDING}（待运营确认）/ {@code APPROVED}（全网可见）/ {@code REJECTED}（已驳回）。
+     *
+     * <p><b>可见性只看这一个字段</b>：APPROVED 全网可见；PENDING 与 REJECTED
+     * 只对提报的那家店可见。官方数据恒为 APPROVED。
+     *
+     * <p>REJECTED 也要让提报方看得见（连同 {@link #rejectReason}）——
+     * 驳回即删行的话，商家那边那个村凭空消失，而他不知道为什么，多半原样再录一遍。
+     */
+    private String auditStatus;
+
+    /** 驳回理由，原样回给商家 —— 不写的话他只会原样再提一次 */
+    private String rejectReason;
+
+    public static final String PENDING = "PENDING";
+    public static final String APPROVED = "APPROVED";
+    public static final String REJECTED = "REJECTED";
+    public static final String SOURCE_MERCHANT = "MERCHANT";
 
     /** PROVINCE / CITY / DISTRICT / STREET / VILLAGE（村委会·居委会，第五级） */
     private String level;

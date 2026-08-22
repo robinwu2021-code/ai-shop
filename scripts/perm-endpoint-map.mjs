@@ -263,6 +263,9 @@ export const RULES = [
   ["*", /^\/ops\/communities/, "community:community:update"],
   ["GET", /^\/ops\/regions/, "community:region:read",
     "行政区划是主数据，读它是选覆盖社区的前置 —— 与「改社区」分开"],
+  ["*", /^\/ops\/regions/, "community:region:update",
+    "裁决商家补录的村：通过一条会让它对全平台商家可见，一个错别字污染的是共享的那棵树 —— "
+    + "与「读区划」（几乎人人有）的出错后果不在一个量级"],
 
   // ── 内容与素材 ─────────────────────────────────────────────────────────
   ["GET", /^\/ops\/materials/, "content:material:read"],

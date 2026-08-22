@@ -8,7 +8,7 @@ export { shipments, freightTemplates, carriers } from "./logistics";
 export { withdrawals, invoiceRequests, taxRule } from "./payout";
 export { posts, rankings, questions } from "./ugc";
 export { kpi, trend, funnel, merchantRanking } from "./dashboard";
-export { communities, communityApplies, pickups, regions } from "./community";
+export { communities, communityApplies, pickups, pendingRegions, regions } from "./community";
 export { batches, sorting, redeemStats, overdueRule } from "./fulfillment";
 export { storeAudits, storeQrcodes, storeAcquisition, storeTemplates, stores } from "./store";
 export { coupons, couponIssues, merchantCampaigns, platformSlots, contentSlots, memberCards } from "./marketing";

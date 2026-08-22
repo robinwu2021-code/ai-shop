@@ -952,8 +952,29 @@ export const mockApi: MerchantApi = {
       hasChild: false,
       source: "MERCHANT",
       pending: true,
+      auditStatus: "PENDING",
+      rejectReason: undefined as string | undefined,
     };
     db.regionSeeds.push(row);
+    persist();
+    return delay(row);
+  },
+
+  /**
+   * 改了再提。**复用同一行** —— 新建一条的话被驳回的那条会一直留着，
+   * 同一个村在运营队列里攒下几条一样的驳回记录。
+   */
+  async mResubmitVillage(regionCode, name) {
+    requireMerchant();
+    const row = db.regionSeeds.find((r) => r.regionCode === regionCode);
+    // 只有被驳回的才谈得上「改了再提」
+    if (!row || row.auditStatus !== "REJECTED") throw new Error("这条不是被驳回的补录");
+    const nm = name.trim();
+    if (!nm) throw new Error("请填写村/社区名称");
+    row.name = nm;
+    row.auditStatus = "PENDING";
+    // 理由要清掉：留着的话他改完再提，界面上还挂着上一次的驳回原因
+    row.rejectReason = undefined;
     persist();
     return delay(row);
   },

@@ -201,3 +201,26 @@ export interface PickupPoint extends Archivable {
   /** 建档时间 */
   createdAt: string;
 }
+
+/**
+ * 商家补录的村级区划（待运营确认）。
+ *
+ * <p>官方村级数据停在 2023-06-30（统计局已停发），之后新增的村只能靠商家补录。
+ * 补录先只对提报方可见，运营确认后才转为全平台共享。
+ */
+export interface PendingRegion {
+  regionCode: string;
+  name: string;
+  /**
+   * 从省到这个村的整条路径。**判据本身** ——
+   * 光一个「新桥社区」全国有好几个，看不到整条路径就判断不了真假。
+   */
+  path: string;
+  auditStatus: "PENDING" | "APPROVED" | "REJECTED";
+  entityNo: string;
+  /** 提报商家名。运营要看的是名字不是编号 */
+  entityName: string;
+  /** 驳回理由；原样回给商家 */
+  rejectReason?: string;
+  createdAt: number;
+}

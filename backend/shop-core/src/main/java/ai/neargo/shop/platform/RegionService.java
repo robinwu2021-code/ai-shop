@@ -56,6 +56,36 @@ public interface RegionService {
     RegionVO createVillage(String parentStreetCode, String name, String entityNo);
 
     /**
+     * 改了再提。<b>驳回理由多半是「名字应该叫 XX」</b> ——
+     * 让他换个名字重录一条的话，被驳回的那条会一直留着，
+     * 同一个村在运营队列里攒下几条一模一样的驳回记录。
+     *
+     * @throws ai.neargo.shop.common.BizException 不是自己提报的、或状态不是 REJECTED
+     */
+    RegionVO resubmitVillage(String regionCode, String name, String entityNo);
+
+    /** 待运营确认的补录（PENDING）。给运营队列用 */
+    List<PendingVO> pendingVillages(String status);
+
+    /**
+     * 运营裁决。
+     *
+     * @param pass   true 转 APPROVED 全网可见；false 转 REJECTED（<b>不删行</b>，
+     *               提报方要能看到理由，否则他只会原样再提一次）
+     * @param reason 驳回原因，驳回时必填 —— 它原样出现在商家端
+     */
+    void confirmVillage(String regionCode, boolean pass, String reason, String operatorNo);
+
+    /**
+     * @param path       从省到这个村的整条路径名。**必须给** ——
+     *                   光一个「新桥社区」全国有好几个，运营判断不了真假
+     * @param entityName 提报商家名，运营要看的是名字不是编号
+     */
+    record PendingVO(String regionCode, String name, String path, String auditStatus,
+                     String entityNo, String entityName, String rejectReason, long createdAt) {
+    }
+
+    /**
      * 从一个区划码回溯到顶层，<b>从省到自身</b>排列。
      *
      * <p>给运营端回显用：拿到一个社区的 {@code region_code=330106001}，
@@ -78,6 +108,7 @@ public interface RegionService {
      * @param pending 商家补录且尚未被运营确认（只有自己看得见）
      */
     record RegionVO(String regionCode, String parentCode, String level, String name,
-                    boolean enabled, boolean hasChild, String source, boolean pending) {
+                    boolean enabled, boolean hasChild, String source, boolean pending,
+                    String auditStatus, String rejectReason) {
     }
 }

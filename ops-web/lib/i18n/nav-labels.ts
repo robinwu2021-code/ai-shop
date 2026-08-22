@@ -111,6 +111,7 @@ const OVERLAY: Record<string, Record<string, string>> = {
   社区与网点: { en: "Communities & points" },
   社区网格: { en: "Community grids" },
   商家提报: { en: "Merchant submissions" },
+  区划补录: { en: "Region entries" },
   自提点: { en: "Pickup points" },
   临时点监控: { en: "Temporary points" },
 

@@ -489,6 +489,9 @@ export default {
     addVillageHint: "مرئي لمتجرك فقط حتى تؤكده الإدارة",
     addVillageDone: "تمت الإضافة — يمكنك اختياره الآن",
     mine: "أضفته أنت",
+    vRejected: "مرفوض",
+    vRejectFix: "عدّل وأعد الإرسال",
+    vPending: "قيد المراجعة",
   },
   afterSale: {
     agreeReturn: "الموافقة على الإرجاع",

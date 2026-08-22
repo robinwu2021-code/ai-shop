@@ -67,7 +67,23 @@ public class BizRegionController {
         return regionService.createVillage(req.parent(), req.name(), BizContext.requireMerchantNo());
     }
 
+    /**
+     * 被驳回的补录**改了再提**。
+     *
+     * <p>驳回理由多半是「名字应该叫 XX」—— 让他换个名字重录一条的话，
+     * 被驳回的那条会一直留着，同一个村在运营队列里攒下几条一样的驳回记录。
+     */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.STORE + "')")
+    @PostMapping("/biz/regions/village/resubmit")
+    public RegionService.RegionVO resubmit(@RequestBody ResubmitReq req) {
+        return regionService.resubmitVillage(req.regionCode(), req.name(),
+                BizContext.requireMerchantNo());
+    }
+
     /** @param parent 上级街道码（9 位）。只能挂街道下，见 createVillage 的说明 */
     public record CreateReq(String parent, String name) {
+    }
+
+    public record ResubmitReq(String regionCode, String name) {
     }
 }

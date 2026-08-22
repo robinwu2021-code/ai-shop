@@ -489,6 +489,9 @@ export default {
     addVillageHint: "Visible only to your shop until ops confirms it",
     addVillageDone: "Added — you can select it now",
     mine: "Added by you",
+    vRejected: "Rejected",
+    vRejectFix: "Edit and resubmit",
+    vPending: "Pending",
   },
   afterSale: {
     agreeReturn: "Approve return",

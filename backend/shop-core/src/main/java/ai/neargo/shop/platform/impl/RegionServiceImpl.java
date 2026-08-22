@@ -4,9 +4,11 @@ import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.platform.RegionService;
+import ai.neargo.shop.spi.user.MerchantQueryPort;
 import ai.neargo.shop.platform.entity.SysRegion;
 import ai.neargo.shop.platform.mapper.PlatformMappers.RegionMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,9 +26,18 @@ public class RegionServiceImpl implements RegionService {
     private static final int MAX_DEPTH = 8;
 
     private final RegionMapper mapper;
+    private final ObjectProvider<MerchantQueryPort> merchantPort;
 
-    public RegionServiceImpl(RegionMapper mapper) {
+    /**
+     * @param merchantPort 只用来把 entity_no 换成商家名给运营看。
+     *                     <b>可选注入</b>（{@code @Autowired(required=false)} 语义靠
+     *                     ObjectProvider）—— ops 部署里这个端口在，api 部署里也在，
+     *                     但区划查询本身不该因为它缺席就起不来
+     */
+    public RegionServiceImpl(RegionMapper mapper,
+                             ObjectProvider<MerchantQueryPort> merchantPort) {
         this.mapper = mapper;
+        this.merchantPort = merchantPort;
     }
 
     @Override
@@ -45,14 +56,17 @@ public class RegionServiceImpl implements RegionService {
                         .eq(parentCode != null && !parentCode.isBlank(),
                                 SysRegion::getParentCode, parentCode)
                         /*
-                         * 可见范围：**已共享的（owner 为空）+ 我自己补录的**。
+                         * 可见范围：**已通过的 + 我自己提报的（含被驳回的）**。
                          *
-                         * 少了这个条件，一家店补录的村会立刻出现在所有商家的选择器里 ——
-                         * 而他可能只是把「XX 新村」打成了「XX 新材」。
-                         * 错别字污染的是全平台共享的那棵树，且没人知道是谁录的。
+                         * 判据是 audit_status 而不是 owner_entity_no ——
+                         * 后者现在只记「谁报的」，通过之后也保留，用它判可见性
+                         * 会让通过后的补录反而只有提报方看得到。
+                         *
+                         * 被驳回的也给提报方看：连同理由。看不到的话那个村在他那里
+                         * 凭空消失，他不知道为什么，多半原样再录一遍。
                          */
                         .and(q -> {
-                            q.isNull(SysRegion::getOwnerEntityNo);
+                            q.eq(SysRegion::getAuditStatus, SysRegion.APPROVED);
                             if (owner != null) {
                                 q.or(o -> o.eq(SysRegion::getOwnerEntityNo, owner));
                             }
@@ -95,7 +109,10 @@ public class RegionServiceImpl implements RegionService {
                         .eq(SysRegion::getParentCode, street)
                         .eq(SysRegion::getName, vname)));
         for (SysRegion x : siblings) {
-            if (x.getOwnerEntityNo() == null || entityNo.equals(x.getOwnerEntityNo())) {
+            // 已通过的（全网可见）或我自己报过的 —— 这两种他都能用上，直接给回去。
+            // 别家店待确认的那条要跳过：他看不见它，返回了反而是个他选不了的编号
+            if (SysRegion.APPROVED.equals(x.getAuditStatus())
+                    || entityNo.equals(x.getOwnerEntityNo())) {
                 return toVOs(List.of(x)).get(0);
             }
         }
@@ -107,11 +124,84 @@ public class RegionServiceImpl implements RegionService {
         row.setLevel("VILLAGE");
         row.setSource("MERCHANT");
         row.setOwnerEntityNo(entityNo);
+        row.setAuditStatus(SysRegion.PENDING);
         row.setName(vname);
         row.setEnabled(true);
         row.setSort(0);
         DataScopeContext.executeWithoutScope(() -> mapper.insert(row));
         return toVOs(List.of(row)).get(0);
+    }
+
+    /**
+     * 改了再提。**复用同一行，不新建** ——
+     * 新建一条的话被驳回的那条会一直留着，同一个村在运营队列里
+     * 攒下几条一模一样的驳回记录，而运营得逐条看才知道哪条是最新的。
+     */
+    @Override
+    @Transactional
+    public RegionVO resubmitVillage(String regionCode, String name, String entityNo) {
+        String vname = name == null ? "" : name.trim();
+        if (vname.isBlank() || entityNo == null || entityNo.isBlank()) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        SysRegion row = find(regionCode);
+        // 只能改自己的，且只有被驳回的才谈得上「改了再提」
+        if (row == null || !entityNo.equals(row.getOwnerEntityNo())
+                || !SysRegion.REJECTED.equals(row.getAuditStatus())) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        row.setName(vname);
+        row.setAuditStatus(SysRegion.PENDING);
+        // 理由要清掉：留着的话他改完再提，界面上还挂着上一次的驳回原因
+        row.setRejectReason(null);
+        DataScopeContext.executeWithoutScope(() -> mapper.updateById(row));
+        return toVOs(List.of(row)).get(0);
+    }
+
+    @Override
+    public List<PendingVO> pendingVillages(String status) {
+        String st = status == null || status.isBlank() ? SysRegion.PENDING : status;
+        List<SysRegion> rows = DataScopeContext.executeWithoutScope(() ->
+                mapper.selectList(Wrappers.<SysRegion>lambdaQuery()
+                        .eq(SysRegion::getSource, SysRegion.SOURCE_MERCHANT)
+                        .eq(SysRegion::getAuditStatus, st)
+                        .orderByDesc(SysRegion::getId)));
+        return rows.stream().map(r -> {
+            /*
+             * 整条路径必须给：光一个「新桥社区」全国有好几个 ——
+             * 运营看不到「浙江省 / 杭州市 / 西湖区 / 西溪街道」就判断不了真假，
+             * 只能靠猜或者去库里查，而那时他多半直接通过了。
+             */
+            String path = path(r.getRegionCode()).stream()
+                    .map(RegionVO::name).reduce((a, b) -> a + " / " + b).orElse(r.getName());
+            String entityName = merchantPort.getIfAvailable() == null ? null
+                    : merchantPort.getIfAvailable().find(r.getOwnerEntityNo())
+                            .map(MerchantQueryPort.MerchantBrief::merchantName).orElse(null);
+            return new PendingVO(r.getRegionCode(), r.getName(), path, r.getAuditStatus(),
+                    r.getOwnerEntityNo(),
+                    entityName == null ? r.getOwnerEntityNo() : entityName,
+                    r.getRejectReason(),
+                    r.getCreatedAt() == null ? 0L
+                            : r.getCreatedAt().atZone(java.time.ZoneId.systemDefault())
+                                    .toInstant().toEpochMilli());
+        }).toList();
+    }
+
+    @Override
+    @Transactional
+    public void confirmVillage(String regionCode, boolean pass, String reason, String operatorNo) {
+        SysRegion row = find(regionCode);
+        if (row == null || !SysRegion.SOURCE_MERCHANT.equals(row.getSource())) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        // 驳回必须写原因：它原样回给商家，不写的话他只会原样再提一次
+        if (!pass && (reason == null || reason.isBlank())) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        row.setAuditStatus(pass ? SysRegion.APPROVED : SysRegion.REJECTED);
+        row.setRejectReason(pass ? null : reason.trim());
+        row.setUpdatedBy(operatorNo);
+        DataScopeContext.executeWithoutScope(() -> mapper.updateById(row));
     }
 
     /** {@code 街道码 + M + 2 位}，M01 起。同一街道最多 99 个补录，够用且看得出是补录的 */
@@ -191,6 +281,7 @@ public class RegionServiceImpl implements RegionService {
                 Boolean.TRUE.equals(r.getEnabled()),
                 withChild.contains(r.getRegionCode()),
                 r.getSource() == null ? "OFFICIAL" : r.getSource(),
-                r.getOwnerEntityNo() != null)).toList();
+                !SysRegion.APPROVED.equals(r.getAuditStatus()),
+                r.getAuditStatus(), r.getRejectReason())).toList();
     }
 }

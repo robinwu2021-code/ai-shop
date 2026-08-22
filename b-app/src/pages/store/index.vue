@@ -216,6 +216,31 @@ async function addVillage() {
   }
 }
 
+/** 被驳回的改了再提。复用同一行，不新建 —— 见 mResubmitVillage 的说明 */
+async function fixVillage(r: Region) {
+  const street = trail.value[trail.value.length - 1];
+  const res = await new Promise<{ confirm: boolean; content?: string }>((resolve) => {
+    uni.showModal({
+      title: String(t("store.vRejectFix")),
+      // 把驳回理由放进弹窗：他要改的正是理由里说的那一点
+      content: r.rejectReason || String(t("store.addVillageHint")),
+      editable: true,
+      placeholderText: r.name,
+      success: (x) => resolve({ confirm: Boolean(x.confirm), content: x.content }),
+      fail: () => resolve({ confirm: false }),
+    });
+  });
+  const name = (res.content ?? "").trim();
+  if (!res.confirm || !name) return;
+  try {
+    await api.mResubmitVillage(r.regionCode, name);
+    if (street) await loadRegions(street.regionCode);
+    uni.showToast({ title: t("store.addVillageDone"), icon: "none" });
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: "none" });
+  }
+}
+
 /** 回退到面包屑的第 i 级；i = -1 回省级 */
 async function backTo(i: number) {
   trail.value = trail.value.slice(0, i + 1);
@@ -449,12 +474,26 @@ onShow(load);
             <view v-for="r in regionList" :key="r.regionCode" class="rg__i">
               <text class="rg__n" @tap="tapRegion(r)">
                 {{ r.name }}<text v-if="r.hasChild" class="rg__more"> ›</text>
-                <!-- 标出「我加的」：不标的话商家不知道这条还没共享，
-                     会以为别的店也看得到他补的这个村 -->
-                <text v-if="r.pending" class="rg__mine"> · {{ $t("store.mine") }}</text>
+                <!--
+                  标出状态：不标的话商家不知道这条还没共享，
+                  会以为别的店也看得到他补的这个村。
+                  被驳回的更要标 —— 否则他只看到一个选不了的选项，不知道为什么。
+                -->
+                <text v-if="r.auditStatus === 'REJECTED'" class="rg__bad">
+                  · {{ $t("store.vRejected") }}{{ r.rejectReason ? "：" + r.rejectReason : "" }}
+                </text>
+                <text v-else-if="r.pending" class="rg__mine"> · {{ $t("store.vPending") }}</text>
+              </text>
+              <!-- 被驳回的不能选，只能改了再提 -->
+              <text
+                v-if="r.auditStatus === 'REJECTED'"
+                class="rg__pick"
+                @tap="fixVillage(r)"
+              >
+                {{ $t("store.vRejectFix") }}
               </text>
               <!-- 有下级的也要能整个选中：「整个西湖区」是最常见的诉求 -->
-              <text class="rg__pick" @tap="addRegion(r)">{{ $t("store.pickThis") }}</text>
+              <text v-else class="rg__pick" @tap="addRegion(r)">{{ $t("store.pickThis") }}</text>
             </view>
             <!--
               补录入口。**只在街道那一层出现** —— 上面几级是标准行政区划，
@@ -643,6 +682,11 @@ onShow(load);
 .rg__addt {
   font-size: 26rpx;
   color: var(--sh-primary-text);
+}
+/* 已驳回：用危险色，它是个选不了的状态 */
+.rg__bad {
+  font-size: 24rpx;
+  color: var(--sh-danger);
 }
 /* 「我加的」：警示色而不是主色 —— 它是一个待确认的状态，不是强调 */
 .rg__mine {

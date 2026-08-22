@@ -340,6 +340,13 @@ export interface MerchantApi {
    */
   mAddVillage(parent: string, name: string): Promise<Region>;
   /**
+   * 被驳回的补录**改了再提**。
+   *
+   * <p>驳回理由多半是「名字应该叫 XX」—— 让他换个名字重录一条的话，
+   * 被驳回的那条会一直留着，同一个村在运营队列里攒下几条一样的驳回记录。
+   */
+  mResubmitVillage(regionCode: string, name: string): Promise<Region>;
+  /**
    * 提报一个平台还没有的小区（ADR-013 阶段三）。
    *
    * 在这之前商家**无路可走**：覆盖项只能从已有社区里勾，而「让平台加一个小区」

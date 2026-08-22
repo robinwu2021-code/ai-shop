@@ -73,6 +73,15 @@ public final class Perms {
     /** 行政区划主数据。读它是「选覆盖社区」的前置，与改社区分开 —— 见类注释规矩 ①。 */
     public static final String COMMUNITY_REGION_READ = "community:region:read";
 
+    /**
+     * 裁决商家补录的村级区划。
+     *
+     * <p><b>与 read 分开</b>：读区划是所有运营挑覆盖范围时的前置（几乎人人有），
+     * 而通过一条补录会让它对**全平台商家**可见 —— 一个错别字污染的是共享的那棵树。
+     * 两者的出错后果不在一个量级。
+     */
+    public static final String COMMUNITY_REGION_UPDATE = "community:region:update";
+
     // ── 内容与素材 ──────────────────────────────────────────────────────────
     public static final String CONTENT_MATERIAL_READ = "content:material:read";
 
@@ -458,7 +467,7 @@ public final class Perms {
             Map.entry("COMMUNITY_OPS", List.of(AFTERSALE_REFUND_READ,
                     AFTERSALE_TICKET_READ, COMMUNITY_READ,
                     COMMUNITY_UPDATE, COMMUNITY_PICKUP_READ, COMMUNITY_PICKUP_UPDATE,
-                    COMMUNITY_REGION_READ, DASHBOARD_OVERVIEW_READ,
+                    COMMUNITY_REGION_READ, COMMUNITY_REGION_UPDATE, DASHBOARD_OVERVIEW_READ,
                     FULFILLMENT_BATCH_READ, FULFILLMENT_LOGISTICS_READ,
                     FULFILLMENT_REDEEM_READ, FULFILLMENT_RULE_UPDATE,
                     ORDER_READ,

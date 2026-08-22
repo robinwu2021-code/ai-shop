@@ -31,11 +31,12 @@ import { Switch } from "@/components/ui/switch";
 import { RegionPicker } from "./region-picker";
 import { TabHeader } from "@/components/ui/tab-header";
 import { ApplyTab } from "./apply-tab";
+import { RegionTab } from "./region-tab";
 import { Toolbar } from "@/components/ui/toolbar";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 
 type Copy = (typeof COMMUNITIES_COPY)["zh"];
-const TAB_KEYS = ["grid", "pickups", "neighbor", "applies"] as const;
+const TAB_KEYS = ["grid", "pickups", "neighbor", "applies", "regions"] as const;
 
 const OPEN_OPTIONS = (c: Copy) => [
   { value: "1", label: c.openedYes },
@@ -287,6 +288,17 @@ function CommunitiesInner() {
 
       {tab === "applies" && !canEditCommunity && (
         <ReadOnlyNotice what={cp.readOnlyApplyWhat} perm="community:community:update" note={cp.readOnlyApplyNote} className="mb-3" />
+      )}
+
+      {/*
+        区划补录：与提报审核同构 —— 自带筛选，与其余 tab 的工具条无关。
+        裁决按 community:region:update 判，而不是复用 community:community:update ——
+        通过一条会让这个村对「全平台商家」可见，与改一个社区不是一回事。
+      */}
+      {tab === "regions" && <RegionTab c={cp} canDecide={allow("community:region:update")} />}
+
+      {tab === "regions" && !allow("community:region:update") && (
+        <ReadOnlyNotice what={cp.readOnlyRegionWhat} perm="community:region:update" note={cp.readOnlyRegionNote} className="mb-3" />
       )}
       {tab === "grid" && !canEditCommunity && (
         <ReadOnlyNotice what={cp.readOnlyCommunityWhat} perm="community:community:update" note={cp.readOnlyCommunityNote} className="mb-3" />

@@ -2634,6 +2634,13 @@ export interface Region {
    * 会以为别的店也能看到他加的这个村。
    */
   pending?: boolean;
+  /** `PENDING` / `APPROVED` / `REJECTED`。官方数据恒为 APPROVED */
+  auditStatus?: string;
+  /**
+   * 驳回理由。**要显示给商家** —— 看不到的话那个村在他那里凭空消失，
+   * 他不知道为什么，多半原样再录一遍。
+   */
+  rejectReason?: string;
 }
 
 /** 店铺码（C-ST-08 扫码进店的商家侧） */

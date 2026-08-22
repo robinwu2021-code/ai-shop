@@ -118,6 +118,23 @@ export const communityMock: CommunityApi = {
 
   regionPath: async (code) => wait(pathOf(code)),
 
+  /**
+   * 商家补录队列。**mock 里也要有真数据** —— 队列是空的话，
+   * 「通过 / 驳回」这两个动作在 mock 上永远点不到。
+   */
+  listPendingRegions: async (status = "PENDING") =>
+    wait(db.pendingRegions.filter((r) => r.auditStatus === status)),
+
+  confirmRegion: async (code, pass, reason) => {
+    const r = db.pendingRegions.find((x) => x.regionCode === code);
+    if (!r) fail("这条补录不存在", "This entry does not exist");
+    // 与后端同口径：驳回必须写原因 —— 它原样回给商家
+    if (!pass && !reason?.trim()) fail("驳回必须写原因", "A reason is required to reject");
+    r.auditStatus = pass ? "APPROVED" : "REJECTED";
+    r.rejectReason = pass ? undefined : reason!.trim();
+    return wait(undefined, 400);
+  },
+
   archiveCommunity: async (no) => wait(db.archiveRow(db.communities, "communityNo", no), 400),
   unarchiveCommunity: async (no) => wait(db.unarchiveRow(db.communities, "communityNo", no), 400),
 

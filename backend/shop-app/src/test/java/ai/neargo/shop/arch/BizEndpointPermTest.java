@@ -113,6 +113,7 @@ class BizEndpointPermTest {
         // 补录村级写的是全平台共享的区划树（虽然确认前只对自己可见），
         // 与「维护门店」同一档权限：能改门店与经营范围的人才谈得上补录区划
         put("/biz/regions/village", BizPerms.STORE);
+        put("/biz/regions/village/resubmit", BizPerms.STORE);
         /*
          * 规格模板：**从 PUBLIC 移过来的**（2026-08-21）。
          *

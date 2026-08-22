@@ -664,6 +664,9 @@ export default {
     addVillageHint: "仅本店可见，运营确认后其他商家才能用",
     addVillageDone: "已补录，可直接选用",
     mine: "我加的",
+    vRejected: "已驳回",
+    vRejectFix: "改一下再提",
+    vPending: "待确认",
   },
   afterSale: {
     agreeReturn: "同意退货",
