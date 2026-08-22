@@ -272,15 +272,26 @@ export function CategoriesTab({ c, canEdit }: { c: ProductsCopy; canEdit: boolea
     { header: c.catColTemplate, cell: (r) => codeLabel(c, r.template) },
     {
       header: c.fieldRequiredCode,
-      // 发不出来的码要红：那种类目谁都上不了架，而报错说不清原因
-      cell: (r) =>
-        r.requiredCode ? (
-          <span title={`${codeName(r.requiredCode)}（${r.requiredCode}）${(r.qualifications ?? []).join("、")}`}>
-            <Badge tone={codeBroken(r.requiredCode) ? "danger" : "info"}>
-              {codeBroken(r.requiredCode) ? c.catGateBroken : codeName(r.requiredCode)}
-            </Badge>
-          </span>
-        ) : <span className="text-muted-foreground">{c.catNoGateShort}</span>,
+      cell: (r) => {
+        if (!r.requiredCode)
+          return <span className="text-muted-foreground">{c.catNoGateShort}</span>;
+        const label = codeName(r.requiredCode);
+        const title = `${label}（${r.requiredCode}）${(r.qualifications ?? []).join("、")}`;
+        // 发不出来的码要红，**而且从不缩写**：那种类目谁都上不了架，报错又说不清原因
+        if (codeBroken(r.requiredCode))
+          return (
+            <span title={title}><Badge tone="danger">{c.catGateBroken}</Badge></span>
+          );
+        // 码名与类目同名（蔬菜→蔬菜、酒类→酒类）时只留一个点：整列把类目名再读一遍，
+        // 真正要在这一列找的「哪几个没门槛、哪个坏了」反而被淹掉。全名留在 title 里。
+        // 用实心点而不是「·」：无门槛那格是「—」，两个细长灰符号并排根本分不出，
+        // 而它们的意思正好相反
+        if (label === r.name)
+          return <span title={title} className="text-info" aria-label={title}>●</span>;
+        return (
+          <span title={title}><Badge tone="info">{label}</Badge></span>
+        );
+      },
     },
     // 0 不显示：一列的「0」会把真正有货的那几行淹掉
     { header: c.catColGoods, cell: (r) => r.skuCount || "", numeric: true },
@@ -358,6 +369,12 @@ export function CategoriesTab({ c, canEdit }: { c: ProductsCopy; canEdit: boolea
         {fill(c.catStat, { a: stat.tops, b: stat.subs, c: stat.off })}
       </p>
 
+      {/*
+        这一页故意比别的表紧一档：它是**配置表**，一屏五十来行、要来回比对同一列，
+        而不是「读几条记录」。走既有的 [data-density] 令牌而不是写死行高 ——
+        写死的话密度切换在这一页会失效，而且与 --ctl-h 错开、行里的按钮会顶出格。
+      */}
+      <div data-density="dense">
       <DataTable
         rows={flat}
         columns={columns}
@@ -373,6 +390,7 @@ export function CategoriesTab({ c, canEdit }: { c: ProductsCopy; canEdit: boolea
             .filter(Boolean).join(" ")
         }
       />
+      </div>
 
       {/*
         编辑抽屉。「形态」与「门槛码」是这里最要紧的两个字段：
