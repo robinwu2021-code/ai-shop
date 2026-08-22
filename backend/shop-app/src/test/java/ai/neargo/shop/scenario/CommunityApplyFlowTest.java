@@ -31,6 +31,30 @@ class CommunityApplyFlowTest {
     @Autowired
     private ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper merchantMapper;
 
+    @Autowired
+    private ai.neargo.shop.platform.mapper.PlatformMappers.RegionMapper regionMapper;
+
+    /**
+     * 造一条街道区划并返回码。
+     *
+     * <p>聚落模型（2026-08-22）起，裁决通过时**必须挂 9 位街道/镇码**，
+     * 且存在性校验会去 sys_region 查 —— H2 测试库没有区划种子，
+     * 不造这一条的话所有「通过」路径都会撞 NOT_FOUND，
+     * 而报错看起来像校验坏了，其实是测试数据缺了。
+     */
+    private String street() {
+        String code = String.valueOf(330106000 + (int) (Math.abs(System.nanoTime()) % 900));
+        var r = new ai.neargo.shop.platform.entity.SysRegion();
+        r.setRegionCode(code);
+        r.setParentCode("330106");
+        r.setLevel("STREET");
+        r.setName("测试街道" + code.substring(6));
+        r.setEnabled(true);
+        r.setSort(0);
+        regionMapper.insert(r);
+        return code;
+    }
+
     private String merchant() {
         var m = new ai.neargo.shop.merchant.entity.MchEntity();
         m.setEntityNo(ai.neargo.shop.common.BizKey.next(ai.neargo.shop.common.BizKey.MERCHANT));
@@ -45,7 +69,7 @@ class CommunityApplyFlowTest {
     @DisplayName("★★ 待审的提报不进社区表 —— 进了就会出现在用户的选点列表里，而点进去什么都没有")
     void pendingApplyDoesNotCreateCommunity() {
         String m = merchant();
-        var vo = adminService.submitApply(m, "还没开的小区", "文一西路 9 号", null, "我的店就在这儿");
+        var vo = adminService.submitApply(m, "还没开的小区", "文一西路 9 号", null, "我的店就在这儿", null, null, null, null);
 
         assertThat(vo.status()).isEqualTo("PENDING");
         assertThat(vo.communityNo()).isNull();
@@ -57,9 +81,9 @@ class CommunityApplyFlowTest {
     @DisplayName("★★ 通过 → 当场建出社区，并回填单号指过去")
     void approveCreatesCommunity() {
         String m = merchant();
-        var vo = adminService.submitApply(m, "批过的小区", "文二西路 8 号", null, null);
+        var vo = adminService.submitApply(m, "批过的小区", "文二西路 8 号", null, null, null, null, null, null);
 
-        var decided = adminService.decideApply(vo.applyNo(), true, null, null, "OPS1");
+        var decided = adminService.decideApply(vo.applyNo(), true, street(), null, "OPS1");
 
         assertThat(decided.status()).isEqualTo("APPROVED");
         assertThat(decided.communityNo()).isNotBlank();
@@ -72,8 +96,8 @@ class CommunityApplyFlowTest {
     @DisplayName("★★ 新建出来的社区没坐标，不能因此挤到选点页第一个 —— 那是离用户最远的那个")
     void newCommunityWithoutCoordsSortsLast() {
         String m = merchant();
-        var vo = adminService.submitApply(m, "没坐标的小区", null, null, null);
-        adminService.decideApply(vo.applyNo(), true, null, null, "OPS1");
+        var vo = adminService.submitApply(m, "没坐标的小区", null, null, null, null, null, null, null);
+        adminService.decideApply(vo.applyNo(), true, street(), null, "OPS1");
 
         String newNo = adminService.appliesOf(m).get(0).communityNo();
 
@@ -105,7 +129,7 @@ class CommunityApplyFlowTest {
     @DisplayName("★ 挂到不存在的区划要拦 —— 挂错不报错，只会让这个社区在按区覆盖里永远出不来")
     void approveRejectsUnknownRegion() {
         String m = merchant();
-        var vo = adminService.submitApply(m, "区划错的小区", null, null, null);
+        var vo = adminService.submitApply(m, "区划错的小区", null, null, null, null, null, null, null);
 
         assertThatThrownBy(() -> adminService.decideApply(vo.applyNo(), true, "999999", null, "OPS1"))
                 .isInstanceOf(ai.neargo.shop.common.BizException.class);
@@ -119,7 +143,7 @@ class CommunityApplyFlowTest {
     @DisplayName("★ 驳回必须写原因 —— 不写的话商家不知道该改什么，只会原样再提一次")
     void rejectNeedsReason() {
         String m = merchant();
-        var vo = adminService.submitApply(m, "要被驳的小区", null, null, null);
+        var vo = adminService.submitApply(m, "要被驳的小区", null, null, null, null, null, null, null);
 
         assertThatThrownBy(() -> adminService.decideApply(vo.applyNo(), false, null, "  ", "OPS1"))
                 .isInstanceOf(ai.neargo.shop.common.BizException.class);
@@ -135,9 +159,9 @@ class CommunityApplyFlowTest {
     @DisplayName("★ 同一家店重复提报同一个名字要拦 —— 两个人各裁一条会建出两个同名社区")
     void duplicatePendingApplyIsRejected() {
         String m = merchant();
-        adminService.submitApply(m, "重复提的小区", null, null, null);
+        adminService.submitApply(m, "重复提的小区", null, null, null, null, null, null, null);
 
-        assertThatThrownBy(() -> adminService.submitApply(m, "重复提的小区", null, null, null))
+        assertThatThrownBy(() -> adminService.submitApply(m, "重复提的小区", null, null, null, null, null, null, null))
                 .isInstanceOf(ai.neargo.shop.common.BizException.class);
     }
 
@@ -145,8 +169,8 @@ class CommunityApplyFlowTest {
     @DisplayName("★ 裁完就是终态 —— 再裁一次意味着同一条提报有两个结论，而通过那次已经建了社区")
     void decidedApplyCannotBeDecidedAgain() {
         String m = merchant();
-        var vo = adminService.submitApply(m, "只裁一次的小区", null, null, null);
-        adminService.decideApply(vo.applyNo(), true, null, null, "OPS1");
+        var vo = adminService.submitApply(m, "只裁一次的小区", null, null, null, null, null, null, null);
+        adminService.decideApply(vo.applyNo(), true, street(), null, "OPS1");
 
         assertThatThrownBy(() -> adminService.decideApply(vo.applyNo(), false, null, "反悔", "OPS2"))
                 .isInstanceOf(ai.neargo.shop.common.BizException.class);

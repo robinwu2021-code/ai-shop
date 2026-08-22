@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useMerchantStore } from "@/stores/merchant";
+import { getLocation } from "@shared/ports/location";
 
 const merchant = useMerchantStore();
 // 店铺装修（B-11.2.5）+ 店铺码（B-11.2.6）+ 分享素材（B-11.2.7）。
@@ -124,10 +125,20 @@ async function submitApply() {
     return;
   }
   try {
+    /*
+     * 提报时带上当前定位（尽力而为，拿不到就不带）。
+     *
+     * **这不是锦上添花**：裁决通过时聚落的坐标就来自这里 ——
+     * 没有坐标的聚落，买家用定位永远找不到（withinRadius 对空坐标恒 false），
+     * 而全仓没有第二个采集坐标的地方：商家正站在那儿，运营在办公室补不出来。
+     */
+    const loc = await getLocation();
     const a = await api.mApplyCommunity({
       name,
       address: applyForm.value.address.trim() || undefined,
       note: applyForm.value.note.trim() || undefined,
+      latE6: loc ? Math.round(loc.lat * 1e6) : undefined,
+      lngE6: loc ? Math.round(loc.lng * 1e6) : undefined,
     });
     applies.value = [a, ...applies.value];
     applyForm.value = { name: "", address: "", note: "" };
@@ -177,67 +188,6 @@ async function tapRegion(r: Region) {
     await loadRegions(r.regionCode);
   } else {
     addRegion(r);
-  }
-}
-
-/**
- * 能不能在这一层补录。**只在街道下** —— 再往上是标准行政区划，
- * 商家补录省市区没有意义；再往下没有第六级。
- */
-const canAddVillage = computed(() => trail.value[trail.value.length - 1]?.level === "STREET");
-
-/**
- * 补录一个村/社区。
- *
- * <p>录完**立刻刷新当前这一层**，而不是只弹个成功提示 ——
- * 商家要的是马上能选上它，让他自己退出去再点进来是多余的一步。
- */
-async function addVillage() {
-  const street = trail.value[trail.value.length - 1];
-  if (!street) return;
-  const res = await new Promise<{ confirm: boolean; content?: string }>((resolve) => {
-    uni.showModal({
-      title: String(t("store.addVillageTitle")),
-      content: String(t("store.addVillageHint")),
-      editable: true,
-      placeholderText: "",
-      success: (r) => resolve({ confirm: Boolean(r.confirm), content: r.content }),
-      fail: () => resolve({ confirm: false }),
-    });
-  });
-  const name = (res.content ?? "").trim();
-  if (!res.confirm || !name) return;
-  try {
-    await api.mAddVillage(street.regionCode, name);
-    await loadRegions(street.regionCode);
-    uni.showToast({ title: t("store.addVillageDone"), icon: "none" });
-  } catch (e) {
-    uni.showToast({ title: (e as Error).message, icon: "none" });
-  }
-}
-
-/** 被驳回的改了再提。复用同一行，不新建 —— 见 mResubmitVillage 的说明 */
-async function fixVillage(r: Region) {
-  const street = trail.value[trail.value.length - 1];
-  const res = await new Promise<{ confirm: boolean; content?: string }>((resolve) => {
-    uni.showModal({
-      title: String(t("store.vRejectFix")),
-      // 把驳回理由放进弹窗：他要改的正是理由里说的那一点
-      content: r.rejectReason || String(t("store.addVillageHint")),
-      editable: true,
-      placeholderText: r.name,
-      success: (x) => resolve({ confirm: Boolean(x.confirm), content: x.content }),
-      fail: () => resolve({ confirm: false }),
-    });
-  });
-  const name = (res.content ?? "").trim();
-  if (!res.confirm || !name) return;
-  try {
-    await api.mResubmitVillage(r.regionCode, name);
-    if (street) await loadRegions(street.regionCode);
-    uni.showToast({ title: t("store.addVillageDone"), icon: "none" });
-  } catch (e) {
-    uni.showToast({ title: (e as Error).message, icon: "none" });
   }
 }
 
@@ -474,34 +424,10 @@ onShow(load);
             <view v-for="r in regionList" :key="r.regionCode" class="rg__i">
               <text class="rg__n" @tap="tapRegion(r)">
                 {{ r.name }}<text v-if="r.hasChild" class="rg__more"> ›</text>
-                <!--
-                  标出状态：不标的话商家不知道这条还没共享，
-                  会以为别的店也看得到他补的这个村。
-                  被驳回的更要标 —— 否则他只看到一个选不了的选项，不知道为什么。
-                -->
-                <text v-if="r.auditStatus === 'REJECTED'" class="rg__bad">
-                  · {{ $t("store.vRejected") }}{{ r.rejectReason ? "：" + r.rejectReason : "" }}
-                </text>
-                <text v-else-if="r.pending" class="rg__mine"> · {{ $t("store.vPending") }}</text>
-              </text>
-              <!-- 被驳回的不能选，只能改了再提 -->
-              <text
-                v-if="r.auditStatus === 'REJECTED'"
-                class="rg__pick"
-                @tap="fixVillage(r)"
-              >
-                {{ $t("store.vRejectFix") }}
+                <!-- 我提报开出来的聚落与官方建的长得一样 —— 状态在「我的提报」里看 -->
               </text>
               <!-- 有下级的也要能整个选中：「整个西湖区」是最常见的诉求 -->
-              <text v-else class="rg__pick" @tap="addRegion(r)">{{ $t("store.pickThis") }}</text>
-            </view>
-            <!--
-              补录入口。**只在街道那一层出现** —— 上面几级是标准行政区划，
-              商家补录省市区没有意义；而村级官方数据停在 2023，
-              之后新增的村没有任何官方渠道，缺一个那一片就做不了生意。
-            -->
-            <view v-if="canAddVillage" class="rg__add" @tap="addVillage">
-              <text class="rg__addt">{{ $t("store.addVillage") }}</text>
+              <text class="rg__pick" @tap="addRegion(r)">{{ $t("store.pickThis") }}</text>
             </view>
           </view>
           <text class="mini rg__close" @tap="regionOpen = false">{{ $t("common.cancel") }}</text>
@@ -673,25 +599,6 @@ onShow(load);
 }
 .rg__more {
   color: var(--sh-sub);
-}
-/* 补录入口：虚框，与「选项」区分开 —— 它不是一个可选的地方，是一个动作 */
-.rg__add {
-  padding: 20rpx 0;
-  text-align: center;
-}
-.rg__addt {
-  font-size: 26rpx;
-  color: var(--sh-primary-text);
-}
-/* 已驳回：用危险色，它是个选不了的状态 */
-.rg__bad {
-  font-size: 24rpx;
-  color: var(--sh-danger);
-}
-/* 「我加的」：警示色而不是主色 —— 它是一个待确认的状态，不是强调 */
-.rg__mine {
-  font-size: 24rpx;
-  color: var(--sh-warning);
 }
 .rg__pick {
   flex-shrink: 0;

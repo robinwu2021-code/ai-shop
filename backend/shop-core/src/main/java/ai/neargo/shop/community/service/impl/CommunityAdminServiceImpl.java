@@ -78,7 +78,8 @@ public class CommunityAdminServiceImpl implements CommunityAdminService {
     @Override
     @org.springframework.transaction.annotation.Transactional
     public ApplyVO submitApply(String merchantNo, String name, String address,
-                               String regionCode, String note) {
+                               String regionCode, String note,
+                               String kind, String originCode, Integer latE6, Integer lngE6) {
         String n = name == null ? "" : name.trim();
         if (n.isEmpty()) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
@@ -106,6 +107,15 @@ public class CommunityAdminServiceImpl implements CommunityAdminService {
         a.setAddress(address == null ? null : address.trim());
         a.setRegionCode(regionCode == null || regionCode.isBlank() ? null : regionCode.trim());
         a.setNote(note);
+        // 聚落模型：小区与村同一条链路，kind 只是标签。不认识的值落回 ESTATE，
+        // 而不是拒——旧客户端不传 kind，拒了等于把存量提报全堵死
+        a.setKind(CmtCommunity.KIND_VILLAGE.equals(kind)
+                ? CmtCommunity.KIND_VILLAGE : CmtCommunity.KIND_ESTATE);
+        a.setOriginCode(originCode == null || originCode.isBlank() ? null : originCode.trim());
+        // 商家提报时的定位。他正站在那儿 —— 运营在办公室补不出坐标。
+        // 可空：H5 拿不到定位权限时提报照样要能走
+        a.setLatE6(latE6);
+        a.setLngE6(lngE6);
         a.setStatus(ai.neargo.shop.community.entity.CmtCommunityApply.PENDING);
         a.setSubmittedAt(System.currentTimeMillis());
         DataScopeContext.executeWithoutScope(() -> applyMapper.insert(a));
@@ -166,11 +176,49 @@ public class CommunityAdminServiceImpl implements CommunityAdminService {
             if (code != null && code.equals(masterDataPort.regionPathName(code))) {
                 throw new BizException(ErrorCode.NOT_FOUND, "区划不存在：" + code);
             }
+            /*
+             * 聚落必须挂在**街道/镇（9 位）**下。
+             *
+             * 挂粗了（6 位区县）不报错，但比它细的经营范围从此永远匹配不到 ——
+             * 存量那两条就是这么废掉「按街道覆盖」的。在裁决这一步拦住，
+             * 比等商家框了街道发现一个聚落都命中不了要便宜得多。
+             */
+            if (code == null || code.length() != 9) {
+                throw new BizException(ErrorCode.BAD_REQUEST,
+                        "聚落要挂在街道/镇（9 位码）下，当前：" + (code == null ? "未填" : code));
+            }
+            /*
+             * 官方村码查重：同一个官方村不能被开成两个聚落。
+             * 唯一键兜底，但这里先查是为了给运营一句能看懂的话 ——
+             * 撞键报出来的是「系统开小差」，而错在提报重复。
+             */
+            if (a.getOriginCode() != null) {
+                boolean opened = DataScopeContext.executeWithoutScope(() -> communityMapper.exists(
+                        com.baomidou.mybatisplus.core.toolkit.Wrappers
+                                .<CmtCommunity>lambdaQuery()
+                                .eq(CmtCommunity::getOriginCode, a.getOriginCode())));
+                if (opened) {
+                    throw new BizException(ErrorCode.CONFLICT,
+                            "这个村已经开通过聚落，驳回本条并让商家直接勾选既有的");
+                }
+            }
             var c = new CmtCommunity();
             c.setCommunityNo(ai.neargo.shop.common.BizKey.next(ai.neargo.shop.common.BizKey.COMMUNITY));
             c.setName(a.getName());
             c.setAddress(a.getAddress());
             c.setRegionCode(code);
+            c.setKind(a.getKind() == null ? CmtCommunity.KIND_ESTATE : a.getKind());
+            c.setOriginCode(a.getOriginCode());
+            /*
+             * 坐标沿用商家提报的定位。**没有这一步，建出来的聚落永远没坐标**，
+             * 而 withinRadius 对空坐标直接 false —— 买家用定位永远找不到它。
+             * 全仓此前唯一写坐标的地方是 DevSeeder。
+             */
+            if (a.getLatE6() != null && a.getLngE6() != null) {
+                c.setLatE6(a.getLatE6());
+                c.setLngE6(a.getLngE6());
+                c.setCoordsSource("MERCHANT");
+            }
             // 审过即开城：运营随时能关，而默认关掉的话商家提报通过了却依然看不到它
             c.setStatus(OPEN);
             // 0 意味着这个社区覆盖不到任何地址，而界面上看起来只是「还没配」

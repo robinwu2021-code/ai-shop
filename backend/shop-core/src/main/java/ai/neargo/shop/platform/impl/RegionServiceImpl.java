@@ -75,89 +75,6 @@ public class RegionServiceImpl implements RegionService {
         return toVOs(rows);
     }
 
-    /**
-     * 商家补录一个村。
-     *
-     * <p><b>自建码用字母，永不与官方码冲突</b>：官方村级码是
-     * {@code 街道码(9) + 3 位数字}（实测 62 万条全为纯数字，后缀 000–599），
-     * 而这里生成 {@code 街道码(9) + M + 2 位序号}。字母保证了以后官方补发数据
-     * 也撞不上 —— 用数字续号的话，某天官方把 600 号发出来，
-     * 撞的是唯一键，报出来是「保存失败」而根因在两年前的编码方案上。
-     */
-    @Override
-    @Transactional
-    public RegionVO createVillage(String parentStreetCode, String name, String entityNo) {
-        String street = parentStreetCode == null ? "" : parentStreetCode.trim();
-        String vname = name == null ? "" : name.trim();
-        if (street.isBlank() || vname.isBlank() || entityNo == null || entityNo.isBlank()) {
-            throw BizException.of(ErrorCode.BAD_REQUEST);
-        }
-        SysRegion parent = find(street);
-        // 只能挂街道下：挂到区县下的话，它在任何「按街道覆盖」的场景里都出不来
-        if (parent == null || !"STREET".equals(parent.getLevel())) {
-            throw BizException.of(ErrorCode.BAD_REQUEST);
-        }
-        /*
-         * 同一街道下同名就直接返回既有的，不报错也不建第二条。
-         *
-         * 报错的话商家看到「已存在」却在选择器里找不到它 —— 因为那条可能是
-         * **别家店**补录的、还没共享，他看不见。建第二条则是让同一个村
-         * 在运营确认后出现两次。返回既有的那条最接近他要的结果：能用上。
-         */
-        List<SysRegion> siblings = DataScopeContext.executeWithoutScope(() ->
-                mapper.selectList(Wrappers.<SysRegion>lambdaQuery()
-                        .eq(SysRegion::getParentCode, street)
-                        .eq(SysRegion::getName, vname)));
-        for (SysRegion x : siblings) {
-            // 已通过的（全网可见）或我自己报过的 —— 这两种他都能用上，直接给回去。
-            // 别家店待确认的那条要跳过：他看不见它，返回了反而是个他选不了的编号
-            if (SysRegion.APPROVED.equals(x.getAuditStatus())
-                    || entityNo.equals(x.getOwnerEntityNo())) {
-                return toVOs(List.of(x)).get(0);
-            }
-        }
-
-        String code = nextMerchantCode(street);
-        SysRegion row = new SysRegion();
-        row.setRegionCode(code);
-        row.setParentCode(street);
-        row.setLevel("VILLAGE");
-        row.setSource("MERCHANT");
-        row.setOwnerEntityNo(entityNo);
-        row.setAuditStatus(SysRegion.PENDING);
-        row.setName(vname);
-        row.setEnabled(true);
-        row.setSort(0);
-        DataScopeContext.executeWithoutScope(() -> mapper.insert(row));
-        return toVOs(List.of(row)).get(0);
-    }
-
-    /**
-     * 改了再提。**复用同一行，不新建** ——
-     * 新建一条的话被驳回的那条会一直留着，同一个村在运营队列里
-     * 攒下几条一模一样的驳回记录，而运营得逐条看才知道哪条是最新的。
-     */
-    @Override
-    @Transactional
-    public RegionVO resubmitVillage(String regionCode, String name, String entityNo) {
-        String vname = name == null ? "" : name.trim();
-        if (vname.isBlank() || entityNo == null || entityNo.isBlank()) {
-            throw BizException.of(ErrorCode.BAD_REQUEST);
-        }
-        SysRegion row = find(regionCode);
-        // 只能改自己的，且只有被驳回的才谈得上「改了再提」
-        if (row == null || !entityNo.equals(row.getOwnerEntityNo())
-                || !SysRegion.REJECTED.equals(row.getAuditStatus())) {
-            throw BizException.of(ErrorCode.BAD_REQUEST);
-        }
-        row.setName(vname);
-        row.setAuditStatus(SysRegion.PENDING);
-        // 理由要清掉：留着的话他改完再提，界面上还挂着上一次的驳回原因
-        row.setRejectReason(null);
-        DataScopeContext.executeWithoutScope(() -> mapper.updateById(row));
-        return toVOs(List.of(row)).get(0);
-    }
-
     @Override
     public List<PendingVO> pendingVillages(String status) {
         String st = status == null || status.isBlank() ? SysRegion.PENDING : status;
@@ -204,26 +121,6 @@ public class RegionServiceImpl implements RegionService {
         DataScopeContext.executeWithoutScope(() -> mapper.updateById(row));
     }
 
-    /** {@code 街道码 + M + 2 位}，M01 起。同一街道最多 99 个补录，够用且看得出是补录的 */
-    private String nextMerchantCode(String street) {
-        List<SysRegion> mine = DataScopeContext.executeWithoutScope(() ->
-                mapper.selectList(Wrappers.<SysRegion>lambdaQuery()
-                        .eq(SysRegion::getParentCode, street)
-                        .likeRight(SysRegion::getRegionCode, street + "M")));
-        int max = 0;
-        for (SysRegion x : mine) {
-            String suffix = x.getRegionCode().substring(street.length() + 1);
-            try {
-                max = Math.max(max, Integer.parseInt(suffix));
-            } catch (NumberFormatException ignored) {
-                // 手工写进来的怪码不参与算序号，但也不该让整个补录失败
-            }
-        }
-        if (max >= 99) {
-            throw BizException.of(ErrorCode.BAD_REQUEST);
-        }
-        return "%sM%02d".formatted(street, max + 1);
-    }
 
     @Override
     public List<RegionVO> path(String regionCode) {

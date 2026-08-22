@@ -24,6 +24,10 @@ CREATE TABLE IF NOT EXISTS cmt_community
     grid VARCHAR(64) DEFAULT NULL,
     fence_radius INT(11) NOT NULL DEFAULT 1000,
     region_code VARCHAR(12) DEFAULT NULL,
+    kind VARCHAR(16) NOT NULL DEFAULT 'ESTATE',
+    coords_source VARCHAR(16) DEFAULT NULL,
+    origin_code VARCHAR(12) DEFAULT NULL,
+    CONSTRAINT uk_community_origin UNIQUE (origin_code),
     PRIMARY KEY (id),
     CONSTRAINT uk_community_no UNIQUE (community_no)
 );
@@ -744,6 +748,7 @@ CREATE TABLE IF NOT EXISTS prd_spec_template
     version BIGINT(20) NOT NULL DEFAULT 0,
     deleted TINYINT(4) NOT NULL DEFAULT 0,
     status VARCHAR(16) NOT NULL DEFAULT 'ACTIVE',
+    category_no VARCHAR(64) DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_template_no UNIQUE (template_no)
 );
@@ -1838,6 +1843,10 @@ CREATE TABLE IF NOT EXISTS sys_region
     updated_by VARCHAR(64) DEFAULT NULL,
     version BIGINT(20) NOT NULL DEFAULT 0,
     deleted TINYINT(4) NOT NULL DEFAULT 0,
+    source VARCHAR(16) NOT NULL DEFAULT 'OFFICIAL',
+    owner_entity_no VARCHAR(64) DEFAULT NULL,
+    audit_status VARCHAR(16) NOT NULL DEFAULT 'APPROVED',
+    reject_reason VARCHAR(255) DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_sys_region_code UNIQUE (region_code)
 );
@@ -1885,6 +1894,10 @@ CREATE TABLE IF NOT EXISTS cmt_community_apply
     updated_by VARCHAR(64) DEFAULT NULL,
     version BIGINT(20) NOT NULL DEFAULT 0,
     deleted TINYINT(4) NOT NULL DEFAULT 0,
+    kind VARCHAR(16) NOT NULL DEFAULT 'ESTATE',
+    origin_code VARCHAR(12) DEFAULT NULL,
+    lat_e6 INT DEFAULT NULL,
+    lng_e6 INT DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_community_apply_no UNIQUE (apply_no)
 );
@@ -5169,3 +5182,87 @@ WHERE code IN ('FOOD', 'DRUG_RETAIL')
   AND enabled = 0;
 UPDATE sys_function_point SET name = '平台类目树'
 WHERE function_code = 'OPS_PRODUCT' AND name = '三级类目树';
+UPDATE cmt_community
+SET region_code = '330106',
+    city_code   = '3301'
+WHERE community_no IN ('C0001', 'C0002')
+  AND region_code IS NULL;
+INSERT INTO prd_spec_template
+(template_no, scope, category_type, category_no, name, options, entity_no, status,
+ tenant_no, created_at, created_by, updated_at, updated_by, version, deleted)
+VALUES
+
+('SPT_CAT150_VOL', 'PLATFORM', 'FRESH', 'CAT150', '容量',
+ '[{"code":"V250ML","label":"250ml"},{"code":"V500ML","label":"500ml"},{"code":"V750ML","label":"750ml"},{"code":"V1L","label":"1L"}]',
+ NULL, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('SPT_CAT160_WT', 'PLATFORM', 'FRESH', 'CAT160', '重量',
+ '[{"code":"W50G","label":"50g"},{"code":"W100G","label":"100g"},{"code":"W250G","label":"250g"},{"code":"W500G","label":"500g"}]',
+ NULL, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('SPT_CAT180_VOL', 'PLATFORM', 'FRESH', 'CAT180', '容量',
+ '[{"code":"V250ML","label":"250ml"},{"code":"V1L","label":"1L"},{"code":"V1500ML","label":"1.5L"}]',
+ NULL, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+
+('SPT_CAT230_VOL', 'PLATFORM', 'NORMAL', 'CAT230', '容量',
+ '[{"code":"V50ML","label":"50ml"},{"code":"V100ML","label":"100ml"},{"code":"V200ML","label":"200ml"},{"code":"V500ML","label":"500ml"}]',
+ NULL, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('SPT_CAT250_SIZE', 'PLATFORM', 'NORMAL', 'CAT250', '尺码',
+ '[{"code":"SZS","label":"S"},{"code":"SZM","label":"M"},{"code":"SZL","label":"L"},{"code":"SZXL","label":"XL"}]',
+ NULL, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('SPT_CAT270_WT', 'PLATFORM', 'NORMAL', 'CAT270', '重量',
+ '[{"code":"W500G","label":"500g"},{"code":"W1500G","label":"1.5kg"},{"code":"W5KG","label":"5kg"},{"code":"W10KG","label":"10kg"}]',
+ NULL, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+
+('SPT_CAT610_COLOR', 'PLATFORM', 'NORMAL', 'CAT610', '颜色',
+ '[{"code":"CLRBLACK","label":"黑色"},{"code":"CLRWHITE","label":"白色"},{"code":"CLRBLUE","label":"蓝色"},{"code":"CLRPINK","label":"粉色"}]',
+ NULL, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('SPT_CAT610_STOR', 'PLATFORM', 'NORMAL', 'CAT610', '存储',
+ '[{"code":"S64G","label":"64G"},{"code":"S128G","label":"128G"},{"code":"S256G","label":"256G"},{"code":"S512G","label":"512G"}]',
+ NULL, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('SPT_CAT630_LEN', 'PLATFORM', 'NORMAL', 'CAT630', '长度',
+ '[{"code":"L05M","label":"0.5m"},{"code":"L1M","label":"1m"},{"code":"L2M","label":"2m"},{"code":"L3M","label":"3m"}]',
+ NULL, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+
+('SPT_CAT720_WT', 'PLATFORM', 'NORMAL', 'CAT720', '重量',
+ '[{"code":"W100G","label":"100g"},{"code":"W250G","label":"250g"},{"code":"W500G","label":"500g"},{"code":"W1KG","label":"1kg"}]',
+ NULL, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('SPT_CAT730_VOL', 'PLATFORM', 'NORMAL', 'CAT730', '容量',
+ '[{"code":"V330ML","label":"330ml"},{"code":"V500ML","label":"500ml"},{"code":"V1L","label":"1L"},{"code":"VCASE","label":"整箱"}]',
+ NULL, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('SPT_CAT750_STAGE', 'PLATFORM', 'NORMAL', 'CAT750', '段位',
+ '[{"code":"ST1","label":"1段"},{"code":"ST2","label":"2段"},{"code":"ST3","label":"3段"},{"code":"ST4","label":"4段"}]',
+ NULL, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+
+('SPT_CAT810_STEM', 'PLATFORM', 'NORMAL', 'CAT810', '支数',
+ '[{"code":"N9","label":"9支"},{"code":"N11","label":"11支"},{"code":"N19","label":"19支"},{"code":"N33","label":"33支"}]',
+ NULL, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('SPT_CAT820_SIZE', 'PLATFORM', 'NORMAL', 'CAT820', '尺寸',
+ '[{"code":"PSMALL","label":"小盆"},{"code":"PMID","label":"中盆"},{"code":"PLARGE","label":"大盆"}]',
+ NULL, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+
+('SPT_CAT310_ROOM', 'PLATFORM', 'SERVICE', 'CAT310', '房型',
+ '[{"code":"R1","label":"一居"},{"code":"R2","label":"两居"},{"code":"R3","label":"三居"},{"code":"R4","label":"四居及以上"}]',
+ NULL, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('SPT_CAT350_PET', 'PLATFORM', 'SERVICE', 'CAT350', '体型',
+ '[{"code":"PETS","label":"小型犬"},{"code":"PETM","label":"中型犬"},{"code":"PETL","label":"大型犬"},{"code":"PETCAT","label":"猫"}]',
+ NULL, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0);
+INSERT INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at)
+SELECT 'OPS_COMMUNITY__TAB_REGIONS', 'OPS_COMMUNITY', '区划补录', '社区网格', '/communities?tab=regions', 'community:region:read', 'community:region:read', 'IMPLEMENTED', 1, 'P-2.1', 'MENU', 50, NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_function_point x WHERE x.point_code='OPS_COMMUNITY__TAB_REGIONS');
+INSERT INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at)
+SELECT 'ACT__COMMUNITY_REGION_UPDATE', 'OPS_COMMUNITY', 'community:region:update', '页面内操作', NULL, 'community:region:update', 'community:region:update', 'IMPLEMENTED', 1, NULL, 'ACTION', 912, NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_function_point x WHERE x.point_code='ACT__COMMUNITY_REGION_UPDATE');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'SUPER_ADMIN', 'OPS_COMMUNITY__TAB_REGIONS', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPER_ADMIN' AND x.point_code='OPS_COMMUNITY__TAB_REGIONS');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'SUPER_ADMIN', 'ACT__COMMUNITY_REGION_UPDATE', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPER_ADMIN' AND x.point_code='ACT__COMMUNITY_REGION_UPDATE');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'COMMUNITY_OPS', 'OPS_COMMUNITY__TAB_REGIONS', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='COMMUNITY_OPS' AND x.point_code='OPS_COMMUNITY__TAB_REGIONS');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'COMMUNITY_OPS', 'ACT__COMMUNITY_REGION_UPDATE', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='COMMUNITY_OPS' AND x.point_code='ACT__COMMUNITY_REGION_UPDATE');
+UPDATE cmt_community
+   SET region_code = '330106002', coords_source = 'SEED'
+ WHERE region_code = '330106' AND deleted = 0;

@@ -326,26 +326,13 @@ export interface MerchantApi {
    */
   mRegions(parent?: string): Promise<Region[]>;
   /**
-   * 补录一个平台还没有的村/社区。
+   * 街道/镇下的官方村名**词典**（提报村时的名称联想）。
    *
-   * <p>官方村级数据停在 2023-06-30（统计局 2024-10 起不再公开），之后新增的村
-   * 没有任何官方渠道能拿到。缺一个村，那一片就做不了生意 ——
-   * 而「等平台更新」在源头停发之后不会到来。
-   *
-   * <p><b>录完立刻能用，但只对本店可见</b>（返回的 `pending=true`）。
-   * 运营确认后才转为全网共享。
-   *
-   * @param parent 上级街道码（9 位）。只能挂街道下 —— 挂到区县下的话，
-   *               它在任何「按街道覆盖」的场景里都出不来
+   * <p>不是导航层级：62 万村级行退出了选择器，但它是全国村名的唯一权威清单 ——
+   * 不用它的话提报村全靠手打，同一个村会被打出三种写法。
+   * 选中词典项的提报带 originCode，运营裁决时据此查重（一村一聚落）。
    */
-  mAddVillage(parent: string, name: string): Promise<Region>;
-  /**
-   * 被驳回的补录**改了再提**。
-   *
-   * <p>驳回理由多半是「名字应该叫 XX」—— 让他换个名字重录一条的话，
-   * 被驳回的那条会一直留着，同一个村在运营队列里攒下几条一样的驳回记录。
-   */
-  mResubmitVillage(regionCode: string, name: string): Promise<Region>;
+  mVillageDict(street: string, keyword?: string): Promise<Region[]>;
   /**
    * 提报一个平台还没有的小区（ADR-013 阶段三）。
    *

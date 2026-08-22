@@ -2608,6 +2608,16 @@ export interface CommunityApplyReq {
   regionCode?: string;
   /** 补充说明：为什么要开这个点 */
   note?: string;
+  /** ESTATE 小区 / VILLAGE 村。不传按 ESTATE —— 聚落模型下两者同一条链路 */
+  kind?: string;
+  /** 提报村时从词典（/biz/regions/villages）选中的官方村码。查重与溯源用 */
+  originCode?: string;
+  /**
+   * 提报时的定位。**尽量带上** —— 通过后聚落的坐标就是它，
+   * 没有坐标的聚落买家用定位永远找不到。拿不到权限时可空，不阻塞提报。
+   */
+  latE6?: number;
+  lngE6?: number;
 }
 
 /** 行政区划的一级（`/biz/regions`）。省 2 / 市 4 / 区 6 / 街道 9 / 村 12 位 */

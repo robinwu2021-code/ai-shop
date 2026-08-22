@@ -1,5 +1,7 @@
 package ai.neargo.shop.product.service.impl;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import ai.neargo.shop.auth.BizContext;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
@@ -36,6 +38,8 @@ import java.util.Set;
 /** {@link MerchantGoodsService} 实现。 */
 @Service
 public class MerchantGoodsServiceImpl implements MerchantGoodsService {
+
+    private static final Logger log = LoggerFactory.getLogger(MerchantGoodsServiceImpl.class);
 
     private static final String AUDITING = "AUDITING";
     /** 草稿：**不进待审队列**，也上不了架。批 D 之前不存在这个状态，保存即提审 */
@@ -1190,6 +1194,19 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
             return;
         }
         List<String> want = merchantPort.reachableCommunities(g.getEntityNo());
+        /*
+         * **空集要喊出来。**上架 + 可达社区为空 = 商品从所有池里撤出，
+         * 而商家侧仍显示「在售」—— 买家在任何地方都搜不到，且不报任何错。
+         *
+         * 空集本身是合法语义（PICKUP 没框范围 = 没有落点），所以不在这里拦，
+         * 但它 99% 是配置缺失而不是本意：线上 6 家商家全是 PICKUP 且
+         * mch_service_area 一行都没有 —— 任何一家重新上架，货就当场隐身。
+         * 日志是运营能看见这件事的唯一通道。
+         */
+        if (onSale && want.isEmpty()) {
+            log.warn("[pool] 商家 {} 上架 {} 但可达社区为空 —— 商品对所有买家不可见。"
+                    + "多半是没配经营范围（PICKUP 必须框范围）", g.getEntityNo(), g.getGoodsNo());
+        }
         List<String> have = existing.stream().map(PrdCommunityPool::getCommunityNo).toList();
         // 差集增删，不是"先全删再全插"：池表有 uk_community_goods 唯一键，
         // 而删除是逻辑删 —— 删完再插同一对会撞键（这个坑在商家社区表上刚踩过）

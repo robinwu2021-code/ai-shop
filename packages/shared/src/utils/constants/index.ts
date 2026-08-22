@@ -207,20 +207,13 @@ export const COMMUNITY_APPLY_STATUS = {
  * 覆盖项的粒度。可跨粒度组合 —— 「三个小区 + 一个区」是两条 COMMUNITY 加一条 DISTRICT。
  */
 export const AREA_LEVEL = {
-  COMMUNITY: "COMMUNITY",
   /**
-   * 村 / 社区居委会（行政区划第五级）。
+   * 聚落：小区或村（cmt_community，kind 区分）。
    *
-   * <p><b>补上它之前，库里 62 万条村级数据一个功能都消费不到</b> ——
-   * 数据灌进去了，而经营范围的粒度枚举里没有这一档，商家在选择器里
-   * 走到街道就到底了。农村一个镇下面十几个村，只服务其中三个村的商家
-   * 此前只能整镇勾上，等于替另外十个村接了做不了的单。
-   *
-   * <p>与 COMMUNITY 的分工：COMMUNITY 是**业务上的小区**（cmt_community，
-   * 商家提报运营审核），VILLAGE 是**行政区划**（sys_region）。
-   * 城里用前者，农村用后者。
+   * <p>聚落模型（2026-08-22）：**村不是区划粒度**，它和小区一样是挂在
+   * 街道/镇（L4）下的聚落 —— 此前短暂加过 VILLAGE 一档，随模型统一撤掉。
    */
-  VILLAGE: "VILLAGE",
+  COMMUNITY: "COMMUNITY",
   STREET: "STREET",
   DISTRICT: "DISTRICT",
   CITY: "CITY",

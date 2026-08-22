@@ -38,6 +38,16 @@ public class CmtCommunityApply extends BaseEntity {
     /** 商家选的区划，<b>只是建议</b>：最终以运营裁决时填的为准 */
     private String regionCode;
 
+    /** 提的是小区(ESTATE)还是村(VILLAGE)。裁决通过时原样带进聚落 */
+    private String kind;
+
+    /** 提报村时从词典选中的官方村码；自由输入则空 */
+    private String originCode;
+
+    /** 商家提报时的定位。他正站在那儿 —— 运营在办公室补不出坐标 */
+    private Integer latE6;
+    private Integer lngE6;
+
     /** 商家的补充说明：为什么要开这个点 */
     private String note;
 

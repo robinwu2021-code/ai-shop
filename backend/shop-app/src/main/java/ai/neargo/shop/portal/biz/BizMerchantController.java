@@ -241,7 +241,8 @@ public class BizMerchantController {
     @PostMapping("/biz/communities/apply")
     public CommunityAdminService.ApplyVO applyCommunity(@RequestBody CommunityApplyReq req) {
         return communityAdminService.submitApply(BizContext.requireMerchantNo(),
-                req.name(), req.address(), req.regionCode(), req.note());
+                req.name(), req.address(), req.regionCode(), req.note(),
+                req.kind(), req.originCode(), req.latE6(), req.lngE6());
     }
 
     /**
@@ -257,7 +258,13 @@ public class BizMerchantController {
     }
 
     /** @param regionCode 商家选的区划，**只是建议** —— 最终以运营裁决时填的为准 */
-    public record CommunityApplyReq(String name, String address, String regionCode, String note) {
+    public record CommunityApplyReq(String name, String address, String regionCode, String note,
+                                    /** ESTATE 小区 / VILLAGE 村。不传按 ESTATE */
+                                    String kind,
+                                    /** 提报村时从词典选中的官方村码 */
+                                    String originCode,
+                                    /** 提报时的定位，可空 —— H5 拿不到权限时照样能提 */
+                                    Integer latE6, Integer lngE6) {
     }
 
     // ---------------------------------------------------------------- 收款进件

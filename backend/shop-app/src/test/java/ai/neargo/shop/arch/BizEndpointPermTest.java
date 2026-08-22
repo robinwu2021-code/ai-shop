@@ -54,6 +54,9 @@ class BizEndpointPermTest {
             // 行政区划与 /biz/communities 同性质：主数据，不含任何一家店的数据。
             // 要 biz:store 的话，还没建店的申请人就挑不了经营范围
             "/biz/category/tree", "/biz/communities", "/biz/regions",
+            // 村级词典（提报村时的名称联想）：与 /biz/regions 同性质的主数据，
+            // 入驻申请人挑经营范围前就可能用到
+            "/biz/regions/villages",
             "/biz/upload/image",
             // 消息收件箱：按当前 userNo 隔离，别人的本来就查不到。
             // 要 biz 权限的话，收到「新订单」通知的店员反而打不开消息中心
@@ -110,10 +113,6 @@ class BizEndpointPermTest {
         // 自动生成图文详情：写的是这家店的商品文案，与建品同一档权限。
         // 店员（只有 biz:stock）不该能改商品文案
         put("/biz/goods/describe", BizPerms.GOODS);
-        // 补录村级写的是全平台共享的区划树（虽然确认前只对自己可见），
-        // 与「维护门店」同一档权限：能改门店与经营范围的人才谈得上补录区划
-        put("/biz/regions/village", BizPerms.STORE);
-        put("/biz/regions/village/resubmit", BizPerms.STORE);
         /*
          * 规格模板：**从 PUBLIC 移过来的**（2026-08-21）。
          *

@@ -119,11 +119,8 @@ export const httpApi: MerchantApi = {
   mRegions: (parent) =>
     http.get<Region[]>(E.mRegions.path, parent ? { parent } : undefined),
 
-  mAddVillage: (parent, name) =>
-    http.post<Region>(E.mAddVillage.path, { parent, name }),
-
-  mResubmitVillage: (regionCode, name) =>
-    http.post<Region>(E.mResubmitVillage.path, { regionCode, name }),
+  mVillageDict: (street, keyword) =>
+    http.get<Region[]>(E.mVillageDict.path, { street, keyword }),
   mApplyCommunity: (payload) =>
     http.post<CommunityApply>(E.mApplyCommunity.path, payload satisfies CommunityApplyReq),
   mMyCommunityApplies: () => http.get<CommunityApply[]>(E.mMyCommunityApplies.path),

@@ -16,6 +16,9 @@ import lombok.Setter;
 @TableName("cmt_community")
 public class CmtCommunity extends BaseEntity {
 
+    public static final String KIND_ESTATE = "ESTATE";
+    public static final String KIND_VILLAGE = "VILLAGE";
+
     private String communityNo;
     private String name;
     private String address;
@@ -48,6 +51,21 @@ public class CmtCommunity extends BaseEntity {
      * 悄悄出现在别人的范围里。宁可空着让运营去补。
      */
     private String regionCode;
+
+    /**
+     * ESTATE 小区 / VILLAGE 村。<b>只用于展示与统计口径，不参与匹配</b> ——
+     * 匹配一律走 regionCode 前缀与 communityNo，避免出现第二套分类维度。
+     */
+    private String kind;
+
+    /**
+     * 村聚落对应的官方村码（12 位，来自 sys_region 村级词典）。
+     * 查重（同一个官方村不能开成两个聚落，唯一键兜底）+ 与国家数据可对账。小区留空。
+     */
+    private String originCode;
+
+    /** MERCHANT 商家提报定位 / OPS 运营补录 / SEED 种子 —— 分清「坐标是空的」与「没人核过」 */
+    private String coordsSource;
 
 
     /** 本社区是否开放积分。四级串联的第二级 —— 上层关，下层一定关。 */

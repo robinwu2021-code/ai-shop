@@ -484,13 +484,7 @@ export default {
     copyLink: "Copy link", printVersion: "Print version",
     shareKit: "Share kit", shareKitHint: "Paste it into your own customer group — beats any ad.",
     copyText: "Copy text", copied: "Copied",
-    addVillage: "＋ Not listed? Add one",
-    addVillageTitle: "Add a village",
-    addVillageHint: "Visible only to your shop until ops confirms it",
-    addVillageDone: "Added — you can select it now",
     mine: "Added by you",
-    vRejected: "Rejected",
-    vRejectFix: "Edit and resubmit",
     vPending: "Pending",
   },
   afterSale: {

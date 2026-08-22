@@ -35,34 +35,6 @@ public interface RegionService {
      */
     List<RegionVO> children(String parentCode, boolean enabledOnly, String entityNo);
 
-    /**
-     * 商家补录一个村/社区（行政区划第五级）。
-     *
-     * <p><b>为什么要给商家这个口子</b>：官方村级数据停在 2023-06-30
-     * （统计局 2024-10 起不再公开），之后新增或改名的村没有任何官方渠道能拿到。
-     * 而缺一个村就等于那一片做不了生意 —— 让他等平台更新，
-     * 而平台的「下次更新」在源头停发之后根本不会到来。
-     *
-     * <p><b>录完立刻可用，但只对他自己可见</b>。运营确认后才转为全网共享 ——
-     * 不这样做只有两条更差的路：立刻全网可见（一家店打错字污染全平台），
-     * 或者压在待审队列里不给用（他今天就做不了这单生意）。
-     *
-     * @param parentStreetCode 上级街道（9 位）。<b>只能挂在街道下</b> ——
-     *                         挂到区县下的话它在按街道覆盖的场景里永远出不来
-     * @param name             村/社区名
-     * @param entityNo         提报的商家
-     * @throws ai.neargo.shop.common.BizException 上级不是街道、或同一街道下同名已存在
-     */
-    RegionVO createVillage(String parentStreetCode, String name, String entityNo);
-
-    /**
-     * 改了再提。<b>驳回理由多半是「名字应该叫 XX」</b> ——
-     * 让他换个名字重录一条的话，被驳回的那条会一直留着，
-     * 同一个村在运营队列里攒下几条一模一样的驳回记录。
-     *
-     * @throws ai.neargo.shop.common.BizException 不是自己提报的、或状态不是 REJECTED
-     */
-    RegionVO resubmitVillage(String regionCode, String name, String entityNo);
 
     /** 待运营确认的补录（PENDING）。给运营队列用 */
     List<PendingVO> pendingVillages(String status);

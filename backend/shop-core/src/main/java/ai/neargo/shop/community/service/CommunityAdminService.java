@@ -47,7 +47,8 @@ public interface CommunityAdminService {
      *         重复提报不会让它更快通过，只会让运营的队列里出现两条一样的
      */
     ApplyVO submitApply(String merchantNo, String name, String address,
-                        String regionCode, String note);
+                        String regionCode, String note,
+                        String kind, String originCode, Integer latE6, Integer lngE6);
 
     /** 某商家自己的提报记录。B 端要看到进展与驳回理由，否则提报出去等于石沉大海 */
     List<ApplyVO> appliesOf(String merchantNo);

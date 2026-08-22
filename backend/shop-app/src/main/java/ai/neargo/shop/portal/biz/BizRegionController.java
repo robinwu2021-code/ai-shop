@@ -42,48 +42,40 @@ public class BizRegionController {
      */
     @GetMapping("/biz/regions")
     public List<RegionService.RegionVO> children(@RequestParam(required = false) String parent) {
-        return regionService.children(parent, true, BizContext.requireMerchantNo());
+        /*
+         * 聚落模型（2026-08-22）：**导航止于街道/镇（L4）**。
+         *
+         * 村级 62 万行退出导航、转为提报时的名称词典 —— 商家在 L4 下看到的是
+         * 「聚落列表 + 提报入口」，不是再往下钻一层行政区划。
+         * 所以这里滤掉 VILLAGE 行，并把街道的 hasChild 压成 false：
+         * 不压的话端上看到 ›，点进去却是空的，像坏了。
+         */
+        return regionService.children(parent, true, null).stream()
+                .filter(r -> !"VILLAGE".equals(r.level()))
+                .map(r -> "STREET".equals(r.level())
+                        ? new RegionService.RegionVO(r.regionCode(), r.parentCode(), r.level(),
+                                r.name(), r.enabled(), false, r.source(), r.pending(),
+                                r.auditStatus(), r.rejectReason())
+                        : r)
+                .toList();
     }
 
     /**
-     * 补录一个平台还没有的村/社区。
+     * 街道/镇下的官方村级<b>词典</b>（提报村时的名称联想与查重）。
      *
-     * <p>官方村级数据停在 2023-06-30（统计局已停发），之后新增的村没有任何官方渠道。
-     * 缺一个村就等于那一片做不了生意，而「等平台更新」在源头停发之后不会到来。
-     *
-     * <p>录完立刻能用，但只对他自己可见；运营确认后才转为全网共享。
+     * <p>不是导航层级：62 万村级行已退出选择器，但它是全国村名的唯一权威清单 ——
+     * 没有它，提报村全靠商家手打，同一个村会被打出三种写法。
+     * 选中词典项的提报带上 origin_code，运营裁决时据此查重（一村一聚落）。
      */
-    /*
-     * **写用独立路径，不复用 GET 那个。**
-     *
-     * 权限表按**路径**判权，同一路径的两个方法只能同进同退 ——
-     * 而 `GET /biz/regions` 必须留在免权限那批：还没建店的入驻申请人
-     * 也要挑经营范围，要 biz:store 的话他一个区划都选不了。
-     * 规格模板当初就是踩了这条才从 PUBLIC 挪出来的（2026-08-21）。
-     */
-    @PreAuthorize("@perm.canBiz('" + BizPerms.STORE + "')")
-    @PostMapping("/biz/regions/village")
-    public RegionService.RegionVO create(@RequestBody CreateReq req) {
-        return regionService.createVillage(req.parent(), req.name(), BizContext.requireMerchantNo());
+    @GetMapping("/biz/regions/villages")
+    public List<RegionService.RegionVO> villageDict(@RequestParam String street,
+                                                    @RequestParam(required = false) String keyword) {
+        String kw = keyword == null ? "" : keyword.trim();
+        return regionService.children(street, true, null).stream()
+                .filter(r -> "VILLAGE".equals(r.level()))
+                .filter(r -> kw.isEmpty() || r.name().contains(kw))
+                .limit(50)
+                .toList();
     }
 
-    /**
-     * 被驳回的补录**改了再提**。
-     *
-     * <p>驳回理由多半是「名字应该叫 XX」—— 让他换个名字重录一条的话，
-     * 被驳回的那条会一直留着，同一个村在运营队列里攒下几条一样的驳回记录。
-     */
-    @PreAuthorize("@perm.canBiz('" + BizPerms.STORE + "')")
-    @PostMapping("/biz/regions/village/resubmit")
-    public RegionService.RegionVO resubmit(@RequestBody ResubmitReq req) {
-        return regionService.resubmitVillage(req.regionCode(), req.name(),
-                BizContext.requireMerchantNo());
-    }
-
-    /** @param parent 上级街道码（9 位）。只能挂街道下，见 createVillage 的说明 */
-    public record CreateReq(String parent, String name) {
-    }
-
-    public record ResubmitReq(String regionCode, String name) {
-    }
 }
