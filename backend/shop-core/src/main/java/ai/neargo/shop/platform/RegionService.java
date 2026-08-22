@@ -5,9 +5,12 @@ import java.util.List;
 /**
  * 行政区划查询（ADR-013 阶段一）。
  *
- * <p><b>只按层级懒加载，不给整棵树</b>：四级共 44703 行，一次性下发是 1.6 MB ——
- * 运营挑一个街道只需要沿着「省 → 市 → 区 → 街道」走四次，每次几十条。
- * 给整棵树的话，每开一次页面都要传一遍全国，而其中 99.9% 是用不到的。
+ * <p><b>只按层级懒加载，不给整棵树</b>：五级共 66 万行 ——
+ * 运营挑一个村只需要沿着「省 → 市 → 区 → 街道 → 村」走五次，每次几十条。
+ * 给整棵树的话，每开一次页面都要传一遍全国，而其中 99.99% 是用不到的。
+ *
+ * <p>补上村级（V181，62 万行）之后这条约束从「建议」变成「前提」：
+ * 四级时代一次性下发是 1.6 MB，还算撑得住；现在是几十 MB。
  */
 public interface RegionService {
 
@@ -34,7 +37,7 @@ public interface RegionService {
     List<RegionVO> path(String regionCode);
 
     /**
-     * @param level    PROVINCE / CITY / DISTRICT / STREET
+     * @param level    PROVINCE / CITY / DISTRICT / STREET / VILLAGE（村委会·居委会，第五级）
      * @param hasChild 下面还有没有下级。端上据此决定「还要不要再往下选一层」，
      *                 而不是点进去才发现是空的
      */

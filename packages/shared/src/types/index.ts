@@ -2616,7 +2616,7 @@ export interface Region {
   regionCode: string;
   /** 上级区划码。省级为空 —— 逐级选择器据此判断自己在不在顶层 */
   parentCode?: string;
-  /** PROVINCE / CITY / DISTRICT / STREET */
+  /** PROVINCE / CITY / DISTRICT / STREET / VILLAGE（村委会·居委会，第五级） */
   level: string;
   /** 本级名称，**不含上级**（「西湖区」不是「杭州市 / 西湖区」）。要整条路径的地方自己拼 */
   name: string;

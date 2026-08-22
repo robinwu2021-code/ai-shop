@@ -21,13 +21,13 @@ import lombok.Setter;
 @TableName("sys_region")
 public class SysRegion extends BaseEntity {
 
-    /** 统计用区划代码：省 2 位 / 市 4 位 / 区县 6 位 / 街道 9 位 */
+    /** 统计用区划代码：省 2 位 / 市 4 位 / 区县 6 位 / 街道 9 位 / 村 12 位 */
     private String regionCode;
 
     /** 上级区划码。**省级为 NULL 而不是空串** —— 两者并存的话「取顶层」要判两次，漏一处就少半棵树 */
     private String parentCode;
 
-    /** PROVINCE / CITY / DISTRICT / STREET */
+    /** PROVINCE / CITY / DISTRICT / STREET / VILLAGE（村委会·居委会，第五级） */
     private String level;
 
     private String name;
