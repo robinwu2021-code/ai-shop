@@ -11,10 +11,10 @@ import type { Community, CommunityApply, PickupPoint, Region } from "@/lib/types
  * 以及一条已经批过的（通过之后长什么样，不留样本就永远没人验）。
  */
 export const communityApplies: CommunityApply[] = [
-  { applyNo: "CA9001", merchantNo: "M901", merchantName: "阿姨家的菜摊", name: "钱塘湾花苑", address: "杭州市西湖区文一西路 1218 号", regionCode: "330106003", regionPath: "浙江省 / 杭州市 / 西湖区 / 西溪街道", note: "我的摊子就在小区南门口，这边住户一直问能不能送", status: "PENDING", submittedAt: 1786100000000, kind: "ESTATE", located: true },
+  { applyNo: "CA9001", merchantNo: "M901", merchantName: "阿姨家的菜摊", name: "钱塘湾花苑", address: "杭州市西湖区文一西路 1218 号", regionCode: "330106003", regionPath: "浙江省 / 杭州市 / 西湖区 / 西溪街道", note: "我的摊子就在小区南门口，这边住户一直问能不能送", status: "PENDING", submittedAt: 1786100000000, kind: "ESTATE", located: true, latE6: 30279000, lngE6: 120131000 },
   // 词典关联的村，**故意没带定位**：演「通过前要先补坐标」那个警示 ——
   // 没坐标的聚落买家用定位永远找不到，这个状态藏起来它就永远不会被处理
-  { applyNo: "CA9002", merchantNo: "M903", merchantName: "邻家便利", name: "米市新村", address: "杭州市拱墅区米市巷街道", regionCode: "330105001", regionPath: "浙江省 / 杭州市 / 拱墅区 / 米市巷街道", note: "", status: "PENDING", submittedAt: 1786050000000, kind: "VILLAGE", originCode: "330105001219", located: false },
+  { applyNo: "CA9002", merchantNo: "M903", merchantName: "邻家便利", name: "米市新村", address: "杭州市拱墅区米市巷街道", regionCode: "330105001", regionPath: "浙江省 / 杭州市 / 拱墅区 / 米市巷街道", note: "", status: "PENDING", submittedAt: 1786050000000, kind: "VILLAGE", originCode: "330105001219", located: false, fallbackLatE6: 30316000, fallbackLngE6: 120152000 },
   { applyNo: "CA9003", merchantNo: "M902", merchantName: "老张水果店", name: "翡翠城", address: "杭州市拱墅区莫干山路 300 号", status: "APPROVED", communityNo: "C005", submittedAt: 1785900000000 },
 ];
 

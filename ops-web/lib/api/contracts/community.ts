@@ -1,5 +1,7 @@
 // 覆盖范围：社区网格（P-2.1）与自提点主数据（P-2.2）。
-import type { Community, CommunityApply, Page, PickupPoint, PickupStatus, Region } from "@/lib/types";
+import type {
+  Community, CommunityApply, NearbyCommunity, Page, PickupPoint, PickupStatus, Region, RegionSuggestion,
+} from "@/lib/types";
 import type { PickupDraft } from "@/lib/types";
 import type { CommunityApplyQ, CommunityQ, PickupQ } from "../query";
 
@@ -59,6 +61,13 @@ export interface CommunityApi {
   renameRegion(code: string, name: string): Promise<Region>;
   /** 从省到自身的整条链路。给选择器回显用 —— 端上不该自己按码长切片 */
   regionPath(code: string): Promise<Region[]>;
+  /**
+   * 按提报单的地址与坐标推断该挂哪个街道。**推不出来返回空数组，不是错误** ——
+   * 端上据此决定显不显示「建议」那一行，退回手选。
+   */
+  resolveRegion(q: { address?: string; latE6?: number | null; lngE6?: number | null }): Promise<RegionSuggestion[]>;
+  /** 一个坐标附近已开通的聚落，按距离升序 —— 裁决时查重用 */
+  communitiesNear(latE6: number, lngE6: number, radiusM?: number): Promise<NearbyCommunity[]>;
   archiveCommunity(communityNo: string): Promise<Community>;
   unarchiveCommunity(communityNo: string): Promise<Community>;
 

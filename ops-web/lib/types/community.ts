@@ -43,6 +43,18 @@ export interface CommunityApply {
    * 买家用定位永远找不到它，运营得先补坐标再通过。
    */
   located?: boolean;
+  /**
+   * 商家提报时带的坐标（gcj02，E6）。**要看得见具体值** ——
+   * 只给一个「有/无」，落点偏到隔壁区也照样显示「有定位」，判不出对错。
+   */
+  latE6?: number | null;
+  lngE6?: number | null;
+  /**
+   * 官方村码在区划表里的坐标（高德批量补录）。没带定位时后端通过这条提报会自动用它兜底 ——
+   * 两个都空，才是真的「通过后无坐标、买家搜不到」。
+   */
+  fallbackLatE6?: number | null;
+  fallbackLngE6?: number | null;
   /** 待审 / 已建社区 / 已驳回。**只有 PENDING 能裁**：裁完就是终态，再裁一次意味着同一条提报有两个结论 */
   status: CommunityApplyStatus;
   /** 通过后建出来的社区号；待审与驳回时为空 */
@@ -88,6 +100,30 @@ export interface Community extends Archivable {
 }
 
 /** 行政区划节点（ADR-013）。四级：省 / 市 / 区县 / 街道。 */
+/**
+ * 区划推断的一条候选。`source` 说明依据：ADDRESS 从地址文本推的、COORDS 按提报坐标找最近的村推的。
+ * **两条线索都给出来让运营挑** —— 地址可能写错，坐标可能是商家在别处点的，互相印证比只信一个稳。
+ */
+/** 附近已开通的聚落。裁决查重用：名字不同、位置只差 50 米的两条，靠文字比对看不出来 */
+export interface NearbyCommunity {
+  communityNo: string;
+  name: string;
+  latE6: number;
+  lngE6: number;
+  /** 距提报坐标的直线距离（米） */
+  distanceM: number;
+  regionPath: string;
+}
+
+export interface RegionSuggestion {
+  region: Region;
+  /** 「广东省 / 深圳市 / 龙华区 / 福城街道」 */
+  path: string;
+  source: "ADDRESS" | "COORDS";
+  /** 依据：匹配到的地址片段，或「茜坑社区 · 320 米」 */
+  detail: string;
+}
+
 export interface Region {
   /** 统计用区划代码：省 2 位 / 市 4 位 / 区县 6 位 / 街道 9 位 */
   regionCode: string;

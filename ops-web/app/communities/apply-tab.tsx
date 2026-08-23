@@ -28,6 +28,8 @@ import { Button } from "@/components/ui/button";
 import { Notice } from "@/components/ui/notice";
 import { Textarea } from "@/components/ui/textarea";
 import { RegionChooser } from "./region-chooser";
+import { RegionSuggest } from "./region-suggest";
+import { ApplyMap } from "./apply-map";
 import type { COMMUNITIES_COPY } from "./copy";
 
 type Copy = (typeof COMMUNITIES_COPY)["zh"];
@@ -161,9 +163,25 @@ export function ApplyTab({ c, canDecide }: { c: Copy; canDecide: boolean }) {
                 withinRadius 对空坐标恒 false —— 买家用定位永远找不到它，
                 而界面上它看起来完全正常。
               */}
-              {current.status === "PENDING" && !current.located && (
-                <Notice tone="warning" className="mb-3">{c.apNoCoords}</Notice>
+              {/* 坐标要给出具体值：只说「有定位」的话，落点偏到隔壁区也看不出来 */}
+              {current.latE6 != null && current.lngE6 != null && (
+                <Field className="mb-2" label={c.fieldApplyCoords}>
+                  <span className="font-mono">
+                    {(current.latE6 / 1e6).toFixed(6)}, {(current.lngE6 / 1e6).toFixed(6)}
+                  </span>
+                </Field>
               )}
+              {current.status === "PENDING" && !current.located
+                && (current.fallbackLatE6 != null
+                  ? (
+                    <Notice tone="info" className="mb-3">
+                      {c.apCoordsFallback}
+                      <span className="ml-1 font-mono">
+                        {(current.fallbackLatE6 / 1e6).toFixed(6)}, {(current.fallbackLngE6! / 1e6).toFixed(6)}
+                      </span>
+                    </Notice>
+                  )
+                  : <Notice tone="warning" className="mb-3">{c.apNoCoords}</Notice>)}
               <Field className="mb-0" label={c.fieldApplyNote}>{current.note || c.applyNoValue}</Field>
               <p className="mt-2 txt-caption text-muted-foreground">{c.applyDupHint}</p>
             </DrawerSection>
@@ -173,7 +191,22 @@ export function ApplyTab({ c, canDecide }: { c: Copy; canDecide: boolean }) {
                 <DrawerSection title={c.secApplyRegion}>
                   {/* 逐级选而不是手敲国标码：330106003 与 330106004 只差一位，
                       而填错的后果是这个社区在任何「按区覆盖」里都出不来。联调时我自己就填错过一次 */}
-                  <RegionChooser c={c} value={current.regionCode} onChange={(r) => setRegionCode(r?.regionCode ?? "")} />
+                  {/* 落点核验 + 附近重名查重 —— 这两件事文字替代不了 */}
+                  <ApplyMap
+                    c={c}
+                    latE6={current.latE6 ?? current.fallbackLatE6}
+                    lngE6={current.lngE6 ?? current.fallbackLngE6}
+                    name={current.name}
+                  />
+                  {/* 机器已经知道的事别让人再点四次：地址与坐标各推一条，点一下就填上 */}
+                  <RegionSuggest
+                    c={c}
+                    address={current.address}
+                    latE6={current.latE6 ?? current.fallbackLatE6}
+                    lngE6={current.lngE6 ?? current.fallbackLngE6}
+                    onPick={setRegionCode}
+                  />
+                  <RegionChooser c={c} value={regionCode || current.regionCode} onChange={(r) => setRegionCode(r?.regionCode ?? "")} />
                   {/* 不挂区划，这个新社区在任何「按区覆盖」里都出不来，而界面上它看起来完全正常 */}
                   <p className="mt-1 txt-caption text-muted-foreground">{c.applyRegionHint}</p>
                 </DrawerSection>

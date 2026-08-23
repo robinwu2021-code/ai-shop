@@ -3,6 +3,7 @@ import * as db from "@/lib/mock/db";
 import { NEIGHBOR_RISK_ACCEPT_COUNT } from "@/lib/constants";
 import { PICKUP_TRANSITIONS, type Community, type PickupPoint } from "@/lib/types";
 import type { CommunityApi } from "../contracts/community";
+import type { RegionSuggestion } from "@/lib/types";
 import { fail, notFound } from "@/lib/biz-error";
 
 /**
@@ -117,6 +118,30 @@ export const communityMock: CommunityApi = {
       (parent ? r.parentCode === parent : !r.parentCode) && (!enabledOnly || r.enabled))),
 
   regionPath: async (code) => wait(pathOf(code)),
+
+  /**
+   * mock 版推断：按地址里出现的区划名做一次朴素匹配，坐标那一路只在有坐标时给一条固定结果。
+   * 真实推断在后端（地址分段 + 坐标最近邻），这里只保证界面上那两种分支都能演到。
+   */
+  communitiesNear: async (latE6, lngE6) =>
+    // mock 里给一条「50 米外的同名小区」—— 查重这条路必须在 mock 上也能演到
+    wait(db.communities.slice(0, 1).map((c) => ({
+      communityNo: c.communityNo, name: c.name, latE6: latE6 + 400, lngE6: lngE6 + 400,
+      distanceM: 58, regionPath: c.regionPath ?? "",
+    }))),
+
+  resolveRegion: async ({ address, latE6 }) => {
+    const out: RegionSuggestion[] = [];
+    const hit = address
+      ? db.regions.filter((r) => r.level === "STREET" && address.includes(r.name))[0]
+      : undefined;
+    if (hit) out.push({ region: hit, path: pathOf(hit.regionCode).map((r) => r.name).join(" / "), source: "ADDRESS", detail: hit.name });
+    if (latE6 != null) {
+      const near = db.regions.find((r) => r.level === "STREET" && r.regionCode !== hit?.regionCode);
+      if (near) out.push({ region: near, path: pathOf(near.regionCode).map((r) => r.name).join(" / "), source: "COORDS", detail: "示例村 · 320 米" });
+    }
+    return wait(out);
+  },
 
   /**
    * 区划维护。mock 直接改 db.regions —— 「停用后还能开回来」这条

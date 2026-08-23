@@ -13,6 +13,8 @@ export const communityHttp: CommunityApi = {
       { pass, regionCode: opts?.regionCode, reason: opts?.reason }),
   listRegions: (parent, enabledOnly) => client.get("/ops/regions", { parent, enabledOnly }),
   regionPath: (code) => client.get("/ops/regions/path", { code }),
+  resolveRegion: (q) => client.get("/ops/regions/resolve", q),
+  communitiesNear: (latE6, lngE6, radiusM) => client.get("/ops/communities/near", { latE6, lngE6, radiusM }),
   createRegion: (parent, name) => client.post("/ops/regions", { parent, name }),
   toggleRegion: (code, enabled) => client.post(`/ops/regions/${code}/toggle`, { enabled }),
   renameRegion: (code, name) => client.post(`/ops/regions/${code}/rename`, { name }),

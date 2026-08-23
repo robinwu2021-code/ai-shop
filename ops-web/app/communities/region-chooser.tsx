@@ -13,8 +13,7 @@ import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import type { Region } from "@/lib/types";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/input";
 import { Notice } from "@/components/ui/notice";
 import type { COMMUNITIES_COPY } from "./copy";
 
@@ -85,18 +84,31 @@ export function RegionChooser({
       {leaf && !leaf.hasChild ? (
         <Notice className="mb-3">{c.regionLeafReached}</Notice>
       ) : (
-        <div className="flex flex-wrap gap-2">
-          {options.data?.map((r) => (
-            <Button key={r.regionCode} size="sm" variant="outline" onClick={() => pick(r)}>
-              {r.name}
-              {/* 停用的也列出来但标出来 —— 看得见才开得回来 */}
-              {!r.enabled && <Badge className="ml-1">{c.regionDisabled}</Badge>}
-            </Button>
-          ))}
-          {options.isLoading && <span className="txt-caption text-muted-foreground">…</span>}
-          {!options.isLoading && !options.data?.length && (
-            <span className="txt-caption text-muted-foreground">{c.regionNoChild}</span>
-          )}
+        /*
+         * 下一级用**下拉**而不是把选项平铺成按钮：顶层是 31 个省，铺开就是半屏按钮墙，
+         * 而运营真正要做的只是「选一个」。下拉还能让四级停在同一行高度上，
+         * 不会因为某一级选项多就把下面的裁决按钮顶出视野。
+         */
+        <div className="flex items-center gap-2">
+          <Select
+            aria-label={c.regionPickNext}
+            value=""
+            disabled={options.isLoading || !options.data?.length}
+            onChange={(e) => {
+              const r = options.data?.find((x) => x.regionCode === e.target.value);
+              if (r) pick(r);
+            }}
+          >
+            <option value="">
+              {options.isLoading ? "…" : options.data?.length ? c.regionPickNext : c.regionNoChild}
+            </option>
+            {options.data?.map((r) => (
+              // 停用的也列出来但标出来 —— 看得见才开得回来
+              <option key={r.regionCode} value={r.regionCode}>
+                {r.name}{!r.enabled ? ` (${c.regionDisabled})` : ""}
+              </option>
+            ))}
+          </Select>
         </div>
       )}
     </>
