@@ -62,6 +62,8 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
   // 门店货架（TDD-品类约束全链路）。读挂 biz:store（店长要看得见本店卖哪几类），
   // 写挂 biz:store:admin —— 摆货架是店铺配置，不是日常经营
   mStoreCategories: { method: "GET", path: "/biz/store/:storeNo/categories", auth: true, summary: "本店经营类目" },
+  mQualifications: { method: "GET", path: "/biz/qualifications", auth: true, summary: "我的资质与已获授权的类目" },
+  mSaveQualification: { method: "POST", path: "/biz/qualifications/save", auth: true, summary: "传一张资质证件" },
   mSaveStoreCategories: { method: "POST", path: "/biz/store/:storeNo/categories", auth: true, summary: "整份替换本店经营类目" },
 
   mStaffList: { method: "GET", path: "/biz/staff", auth: true, summary: "员工列表" },

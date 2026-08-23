@@ -40,7 +40,7 @@ public class MerchantAuthCodeServiceImpl implements MerchantAuthCodeService {
         return authCodeMapper.selectList(Wrappers.<SysAuthCode>lambdaQuery()
                         .eq(SysAuthCode::getEnabled, true)
                         .orderByAsc(SysAuthCode::getSort)).stream()
-                .map(c -> new AuthCodeVO(c.getCode(), c.getName(), c.getRequiredQualification()))
+                .map(c -> new AuthCodeVO(c.getCode(), c.getName(), c.getRequiredQualification(), c.getQualType()))
                 .toList();
     }
 

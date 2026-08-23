@@ -21,7 +21,7 @@ import type { GoodsGuess } from "@/api/contract";
 import { CATEGORY_TYPE, MARKETS, TEMPLATE_TO_TYPE } from "@shared/utils/constants";
 import { MAX_IMAGE_BYTES, pickImages } from "@shared/ports/media";
 import { toMajor, toMinor } from "@shared/utils/money";
-import type { Category, CategoryType, CurrencyCode, MarketId, I18nText, SpecTemplate, SpuStd } from "@shared/types";
+import type { Category, CategoryType, CurrencyCode, MarketId, I18nText, SpecTemplate, SpuStd, StoreCategory } from "@shared/types";
 
 const { t } = useI18n();
 const merchant = useMerchantStore();
@@ -413,6 +413,21 @@ function pickParent(c: Category) {
  * 所以不藏起来，就摆在一级类目上面那一行。
  */
 const RECENT_CATS_KEY = "biz.recentCategories";
+/**
+ * 本店常卖的类目（门店货架 `mch_store_category`）。
+ *
+ * <p><b>建品页此前读的是平台全量类目树</b>：一个只卖粮油的店，建品时要在 31 个
+ * 二级类目里翻 —— 而他真正会用的可能就三个。本店摆过的那几类平铺在最上面，
+ * 其余收进「卖点别的」后面。
+ *
+ * <p>不做成「只能选本店类目」：商家开始卖一类新货是常事，把它做成一道门，
+ * 他就得先去「我的类目」加一条再回来 —— 而后端本来就会在保存时自动把新类目
+ * 加进货架（`storeCategoryPort.ensure`），这一趟纯属多余。
+ */
+const storeCats = ref<StoreCategory[]>([]);
+/** 「其他类目」是否展开。本店有货架时默认收起 —— 那几类才是他日常要选的 */
+const moreCats = ref(false);
+
 const recentCats = ref<{ categoryNo: string; name: string }[]>([]);
 
 function loadRecentCats() {
@@ -527,6 +542,21 @@ function clearAutoSpec() {
   rebuild();
 }
 
+
+/**
+ * 从「本店常卖」里挑一个。走的是与手点两级同一条路（`select`），
+ * 所以形态派生、规格自动预填、门槛提示全都跟着来 —— 两条路各写一遍
+ * 就会出现「从这边选的没自动带规格」这种说不清的差异。
+ */
+function pickStoreCat(no: string) {
+  const path = findPath(categoryTree.value, no);
+  if (!path.length) {
+    // 货架上有、类目树上没有 = 这一类被平台停用了。不静默忽略，说出来
+    uni.showToast({ title: t("goods.storeCatGone"), icon: "none" });
+    return;
+  }
+  select(path);
+}
 
 /** 按 categoryNo 还原选择路径（回显已有商品时用） */
 function findPath(nodes: Category[], target: string, trail: Category[] = []): Category[] {
@@ -1119,6 +1149,30 @@ async function saveAsTemplate(gi: number) {
   }
 }
 
+/** 拉本店货架。取不到不该挡住建品：那时退回全量类目树，与改版前一样 */
+async function loadStoreCats() {
+  /*
+   * **先 ensureScope 再取 storeNo**：深链进来（扫码、通知、外壳恢复）时
+   * 这一页的 onLoad 会早于外壳把门店加载完，那一刻 storeNo 还是空串 ——
+   * 于是「本店常卖」整段不显示，而商家看到的是与改版前一样的 31 个类目，
+   * 没有任何迹象说明少了一段。delivery / me 两页都踩过同一个形状。
+   */
+  await merchant.ensureScope().catch(() => null);
+  // 与列表页同一条判断：货架要 biz:store，而这一页的门禁是 biz:goods —— 两者不是一个码
+  if (!merchant.can("biz:store")) return;
+  /*
+   * **`|| "default"` 不是随手加的兜底**：深链进来（扫码、通知、外壳恢复）时，
+   * 门店列表还没加载完，`merchant.storeNo` 是空串 —— 那一刻直接 return 的话，
+   * 「本店常卖」整段不显示，而商家看到的是与改版前一样的 31 个类目，
+   * 没有任何迹象说明少了一段。后端认 "default" = 默认门店，
+   * 与同一页的 `mStoreFulfillment` 走的是同一个约定。
+   */
+  const storeNo = merchant.storeNo || "default";
+  storeCats.value = await api.mStoreCategories(storeNo).catch(() => []);
+  // 没摆过货架的新店直接展开全量，否则他面对的是一片空白
+  moreCats.value = storeCats.value.length === 0;
+}
+
 async function loadCategories() {
   // 取不到不该挡住整个编辑页：拿不到就退化成「不归类」，商品照样存得下
   categoryTree.value = prunable(await api.mCategoryTree().catch(() => []));
@@ -1308,7 +1362,7 @@ function applyBulkStock() {
 
 onLoad(async (q) => {
   loadRecentCats();
-  await Promise.all([loadTemplates(), loadCategories(), loadStoreChannels()]);
+  await Promise.all([loadTemplates(), loadCategories(), loadStoreChannels(), loadStoreCats()]);
   if (!q?.goodsNo) return;
   goodsNo.value = q.goodsNo;
   const g = await api.mGoodsDetail(q.goodsNo);
@@ -1743,7 +1797,32 @@ async function save(thenSubmit = false) {
           第二次建品要选的那一档多半就在这三五个里，一点就换。
           识别填错了、或者压根没识别出来，这一行都是最快的路。
         -->
-        <view v-if="recentCats.length" class="cat-lv">
+        <!--
+          **本店常卖排在最前**：门店货架上摆过的那几类，是这家店 95% 的建品会选的。
+          此前这一段不存在，商家每次都要在 31 个二级类目里翻。
+        -->
+        <view v-if="storeCats.length" class="cat-lv">
+          <text class="cat-lv__t">{{ $t("goods.storeCats") }}</text>
+          <view class="cat-lv__opts">
+            <text
+              v-for="c in storeCats"
+              :key="c.categoryNo"
+              class="sh-chip"
+              :class="{ 'sh-chip--primary': categoryNo === c.categoryNo }"
+              @tap="pickStoreCat(c.categoryNo)"
+            >
+              {{ c.name }}
+            </text>
+          </view>
+        </view>
+
+        <!-- 其他类目：收起来的是「他今天多半用不到的那 28 个」，不是「不让选」 -->
+        <view v-if="storeCats.length && !moreCats" class="cat-lv">
+          <text class="link" @tap="moreCats = true">{{ $t("goods.moreCats") }}</text>
+        </view>
+
+        <!-- 最近用过：只在没有货架时兜底。两段 chip 叠在一起是三行标签，反而更难挑 -->
+        <view v-if="!storeCats.length && recentCats.length" class="cat-lv">
           <text class="cat-lv__t">{{ $t("goods.recentCats") }}</text>
           <view class="cat-lv__opts">
             <text
@@ -1758,7 +1837,7 @@ async function save(thenSubmit = false) {
           </view>
         </view>
 
-        <view class="cat-lv">
+        <view v-if="moreCats" class="cat-lv">
           <text class="cat-lv__t">{{ $t("goods.categoryL1") }}</text>
           <view class="cat-lv__opts">
             <text
@@ -1773,8 +1852,12 @@ async function save(thenSubmit = false) {
           </view>
         </view>
 
-        <!-- 二级只在选了一级之后出现：先摆一排空椅子只会让人以为加载失败 -->
-        <view v-if="parentNo && children.length" class="cat-lv">
+        <!--
+          二级只在选了一级之后出现：先摆一排空椅子只会让人以为加载失败。
+          **还要跟着「其他类目」一起收**：从「本店常卖」选完之后 parentNo 也会被带上，
+          不跟着收的话，下面会突然冒出一整排二级类目 —— 而商家并没有点开那一段。
+        -->
+        <view v-if="moreCats && parentNo && children.length" class="cat-lv">
           <text class="cat-lv__t">{{ $t("goods.categoryL2") }}</text>
           <view class="cat-lv__opts">
             <text

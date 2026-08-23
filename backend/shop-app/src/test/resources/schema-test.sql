@@ -1671,6 +1671,7 @@ CREATE TABLE IF NOT EXISTS sys_auth_code
     code VARCHAR(32) NOT NULL,
     name VARCHAR(64) NOT NULL,
     required_qualification VARCHAR(64) DEFAULT NULL,
+    qual_type VARCHAR(32) DEFAULT NULL,
     sort INT(11) NOT NULL DEFAULT 0,
     enabled TINYINT(4) NOT NULL DEFAULT 1,
     tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',

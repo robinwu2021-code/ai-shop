@@ -1954,6 +1954,62 @@ export interface QualificationItem {
   issuer?: string;
 }
 
+/**
+ * 已登记的一张资质（`mch_qualification`）。
+ *
+ * 与 {@link QualificationItem} 的差别：那个是**入驻申请时提交的**（还没入库），
+ * 这个是**已经登记在案的**（有编号、有状态、能被上架校验读到）。
+ */
+export interface Qualification {
+  qualNo: string;
+  /** 归属主体。端上其实用不到（只会看自己的），但后端在发 —— 声明出来免得契约守卫把它算成缺口 */
+  entityNo?: string;
+  qualType: QualificationType;
+  /** 证件名，如「食品经营许可证」。上架校验拿它与类目门槛的文案比对 */
+  qualName: string;
+  qualNumber?: string | null;
+  imageUrl?: string | null;
+  /** 有效期截止（毫秒）。**空 = 长期有效**，与「已过期」是两回事 */
+  expireAt?: number | null;
+  /** VALID / EXPIRED / REVOKED */
+  status: string;
+}
+
+/** 传一张证。`qualNo` 为空即新建 */
+export interface QualificationSaveReq {
+  qualNo?: string;
+  qualType: QualificationType;
+  qualName: string;
+  qualNumber?: string;
+  imageUrl?: string;
+  expireAt?: number | null;
+}
+
+/**
+ * 门槛码字典的一条：这个码要哪一类证、对应哪些类目。
+ *
+ * `categoryNames` 由**应用层**拼（商家域不读商品域的类目，见 `CategoryUsagePort`
+ * 的说明）—— 商家看的是「食品经营许可证能解锁：肉禽蛋、乳制品、熟食卤味」，
+ * 而不是三个码。
+ */
+export interface AuthCodeInfo {
+  code: string;
+  name: string;
+  /** 给人读的一句话，如「食品经营许可证」。空 = 这一类不需要证 */
+  requiredQualification?: string | null;
+  /** 机器判的类型，与 {@link QualificationType} 同值域。空 = 无需证件 */
+  qualType?: QualificationType | null;
+  categoryNames: string[];
+}
+
+/** 「我的资质」这一页要的三份数据。 */
+export interface MyQualifications {
+  items: Qualification[];
+  /** 已获授权的类目码。端上据此把「已解锁 / 待授权」标出来 */
+  grantedCodes: string[];
+  catalog: AuthCodeInfo[];
+}
+
 export interface MerchantApplyReq {
   /** 拟用店铺名 */
   name: string;

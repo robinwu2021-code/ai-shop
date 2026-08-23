@@ -120,6 +120,22 @@ public interface MerchantGovernService {
      */
     boolean hasExpiredQualification(String merchantNo);
 
+    /**
+     * 门槛码字典（启用中的）。<b>商家侧要它回答「我传这张证能换来什么」</b> ——
+     * 只列出码与名字的话，他仍旧不知道那张食品经营许可证能解锁哪几个类目。
+     */
+    List<AuthCodeVO> authCodeCatalog();
+
+    /**
+     * @param qualType 这个门槛要哪一类证；{@code null} = 无需证件（日用百货、家政）
+     *
+     * <p><b>这里不带类目</b>：商家域不读商品域的类目（见 {@code CategoryUsagePort} 的说明——
+     * 那条边界立过一次，破了之后商品域改一列就要改两个模块）。
+     * 「这个码对应哪几个类目」由应用层拼：它同时看得见两个域。
+     */
+    record AuthCodeVO(String code, String name, String requiredQualification, String qualType) {
+    }
+
     record QualificationVO(String qualNo, String entityNo, String qualType, String qualName,
                            String qualNumber, String imageUrl, Long expireAt, String status) {
     }

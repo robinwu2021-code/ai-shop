@@ -121,6 +121,26 @@ export function CategoryTab({ c, canGrant }: { c: MerchantsCopy; canGrant: boole
             </DrawerSection>
 
             <DrawerSection title={c.secAuthCodes}>
+              {/*
+                按证一键勾选：把「这家店传了什么证」与「该授哪些码」对上。
+                此前这件事只能靠人逐条比对文案 —— 而没人比过，线上一条授权都没有。
+                **只勾不保存**：授权仍旧要人按下保存，这一步省的是逐个打勾，不是那个决定。
+              */}
+              {canGrant && (current.qualifications?.length ?? 0) > 0 && (
+                <div className="mb-3">
+                  <Button size="sm" variant="secondary" onClick={() => {
+                    const held = new Set(current.qualifications ?? []);
+                    const unlocked = (authCodes.data ?? [])
+                      .filter((a) => !a.requiredQualification || held.has(a.requiredQualification))
+                      .map((a) => a.code);
+                    // 并集而不是替换：他可能已经手工勾了几个不靠证的码
+                    setCodes((p) => Array.from(new Set([...p, ...unlocked])));
+                  }}>
+                    {c.grantByQual}
+                  </Button>
+                  <p className="mt-1 txt-caption text-muted-foreground">{c.grantByQualHint}</p>
+                </div>
+              )}
               <div className="space-y-2">
                 {authCodes.data?.map((a) => {
                   // 缺资质的直接禁掉：勾上再保存报错，等于让人白点一次。

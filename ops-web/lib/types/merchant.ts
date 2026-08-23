@@ -181,6 +181,14 @@ export interface AuthCode {
   name: string;
   /** 需要的资质名。为空表示无门槛类目 */
   requiredQualification?: string;
+  /**
+   * 这个门槛要哪一类证（`BUSINESS_LICENSE` / `FOOD_PERMIT` / …），与 `Qualification.qualType`
+   * 同值域；空 = 无需证件。
+   *
+   * **有了它，「这家店传了什么证」与「该授哪些码」才对得上** —— 在它之前
+   * 只能靠人对着两张表比对文案，而没人比过：线上一条资质、一条授权都没有。
+   */
+  qualType?: string | null;
 }
 
 /** 违规类型。分开是因为**处置尺度不同**，笼统记成"违规"之后没法按类型统计。 */

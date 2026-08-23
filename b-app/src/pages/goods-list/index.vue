@@ -9,7 +9,7 @@ import { useMerchantStore } from "@/stores/merchant";
 import { ROUTES } from "@/shared/nav";
 import { SHOW_CATEGORY_GATE } from "@/shared/flags";
 import { money } from "@shared/utils/money";
-import type { Category, Goods, GoodsStatus } from "@shared/types";
+import type { Category, Goods, GoodsStatus, StoreCategory } from "@shared/types";
 
 const { t } = useI18n();
 const merchant = useMerchantStore();
@@ -94,21 +94,41 @@ function pending(g: Goods) {
  * @param more true = 追加下一页；false/省略 = 从第一页重来（切页签、切门店、改完数据）
  */
 /**
- * 一级类目筛。**类目变必填之后，按类目找货是商家的主路径** ——
- * 一个卖 200 件货的店，没有类目筛就只能靠滚。
+ * 类目筛 = **这家店自己摆的货架**（门店类目），不是平台的全量类目树。
  *
- * <p>只给一级：三级树在这条工具栏里放不下，而「食品生鲜 / 日用百货 / 生活服务」
- * 这一层恰好就是商家心里的分堆方式。要更细的用搜索。
+ * <p><b>此前给的是一级类目，而那样一件也筛不出来</b>：商品挂的是二级类目
+ * （goods-edit 选的就是二级），后端 `GET /biz/goods` 的 categoryNo 是
+ * **精确匹配**（`eq`，不含子级）—— 拿「食品生鲜」去筛挂在「粮油调味」下的货，
+ * 结果恒为空，而界面上看起来只是「这个类目没货」。
  *
- * <p>后端 `GET /biz/goods` 一直支持 `categoryNo`，端点此前写死传 null
- * —— 与已经修过的 `keyword` 是同一种遗漏。
+ * <p>换成门店类目还顺带对齐了商家的心智：他在「我的类目」里摆了几个货架，
+ * 商品列表就按那几个筛。平台有而他没摆的类目，本来就不该出现在他的工具栏里。
  */
-const rootCategories = ref<Category[]>([]);
+const storeCategories = ref<StoreCategory[]>([]);
 const categoryNo = ref("");
+
+/** 平台全量树：只用来判「这件货的类目本店有没有资质」，不进筛选条 */
+const rootCategories = ref<Category[]>([]);
 
 async function loadCategories() {
   // 取不到不该挡住列表：筛选是锦上添花，商品列表本身要照常出来
-  rootCategories.value = await api.mCategoryTree().catch(() => []);
+  const [tree, mine] = await Promise.all([
+    api.mCategoryTree().catch(() => [] as Category[]),
+    /*
+     * **先判 `biz:store` 再发**：这一页的门禁是 `biz:stock`（改库存是店员的日常），
+     * 而门店货架要 `biz:store` —— 店员与理货员进得来，却打不通这个请求。
+     * 不判的话他们每次进商品页都吃一个 70006，而「本店类目」那一段本来就该对他们不存在。
+     */
+    merchant.can("biz:store")
+      ? api.mStoreCategories(merchant.storeNo || "default").catch(() => [] as StoreCategory[])
+      : Promise.resolve([] as StoreCategory[]),
+  ]);
+  rootCategories.value = tree;
+  storeCategories.value = mine;
+  // 切店之后原来的筛选可能已经不在这家店的货架上了，留着它列表会一直是空的
+  if (categoryNo.value && !mine.some((c) => c.categoryNo === categoryNo.value)) {
+    categoryNo.value = "";
+  }
 }
 
 /**
@@ -328,9 +348,15 @@ function stockOf(g: Goods) {
   return g.skus.reduce((s, k) => s + k.stock, 0);
 }
 
+/** 上次拉类目时是哪家店 —— 货架按店走，切店必须重拉，否则筛的是上一家店的货架 */
+const catsOfStore = ref("");
+
 onShow(() => {
-  // 类目只取一次：它几乎不变，每次回到列表都重拉是白花的一次往返
-  if (!rootCategories.value.length) void loadCategories();
+  // 平台树几乎不变，但门店货架会随「我的类目」的编辑与切店而变
+  if (!rootCategories.value.length || catsOfStore.value !== merchant.storeNo) {
+    catsOfStore.value = merchant.storeNo;
+    void loadCategories();
+  }
   void load();
 });
 </script>
@@ -383,10 +409,10 @@ onShow(() => {
     </text>
 
     <!-- 一级类目筛。只有一个类目时不显示 —— 那时它是个恒真的开关 -->
-    <scroll-view v-if="rootCategories.length > 1" class="cats" scroll-x>
+    <scroll-view v-if="storeCategories.length > 1" class="cats" scroll-x>
       <view class="cats__row">
         <text
-          v-for="c in rootCategories"
+          v-for="c in storeCategories"
           :key="c.categoryNo"
           class="sh-chip cats__chip"
           :class="{ 'sh-chip--primary': categoryNo === c.categoryNo }"
@@ -410,11 +436,12 @@ onShow(() => {
     <!-- 当前门店只读标记（库存按店）：切店在「我的」 -->
     <biz-store-tag></biz-store-tag>
 
+    <!--
+      空状态只说事实，不再放「新建第一个商品」——
+      右下角那个常驻悬浮按钮已经是新建入口，同一屏两个一模一样的主色按钮
+      只会让人怀疑它们做的不是同一件事。
+    -->
     <sh-empty v-if="empty" :text='$t("goods.empty")'></sh-empty>
-    <!-- 空列表时那个悬浮按钮孤零零地飘在一片空白上，不如把入口摆在空状态里 -->
-    <view v-if="empty && merchant.can('biz:goods')" class="sh-btn first" @tap="edit()">
-      {{ $t("goods.addFirst") }}
-    </view>
 
     <!--
       **一行商品分成上下两段，不再是「左信息 / 右操作」两栏。**
@@ -638,11 +665,6 @@ onShow(() => {
   white-space: nowrap;
   /* 阴影用 scrim（皮肤里那层半透明黑）：写死 rgba 在深色皮肤下会糊成一团 */
   box-shadow: 0 8rpx 24rpx var(--sh-scrim);
-}
-/* 空列表里的主按钮：悬浮按钮飘在一片空白上没有着落，这里给它一个落点 */
-.first {
-  margin: 24rpx auto 0;
-  max-width: 420rpx;
 }
 /* 列表密度对齐 C 端（平台版式约定）：卡片之间只留一条缝。
    商家一天要扫几十次这类列表，行距每多 10rpx，一屏就少一行。 */

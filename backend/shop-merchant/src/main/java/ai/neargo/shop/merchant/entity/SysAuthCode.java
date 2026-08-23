@@ -23,6 +23,17 @@ public class SysAuthCode extends BaseEntity {
     /** 需要的资质证件名。空 = 无证件要求。 */
     private String requiredQualification;
 
+    /**
+     * 这个门槛要哪一类证：{@code BUSINESS_LICENSE / FOOD_PERMIT / FOOD_WORKSHOP / OTHER}，
+     * 与 {@code mch_qualification.qual_type} 同值域。{@code null} = 无需证件（日用百货、家政）。
+     *
+     * <p>与 {@link #requiredQualification} 的分工：那一列是给人读的一句话
+     * （「食品经营许可证」），这一列是<b>给程序判的类型</b>。只有后者，
+     * 「这家店传了执照能解锁哪几类」才是机器算得出来的 ——
+     * 而在它之前，这个问题只能靠人对着两张表比，于是线上一条资质、一条授权都没有。
+     */
+    private String qualType;
+
     private Integer sort;
     private Boolean enabled;
 }

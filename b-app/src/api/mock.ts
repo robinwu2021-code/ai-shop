@@ -1771,6 +1771,46 @@ export const mockApi: MerchantApi = {
     return delay(created);
   },
 
+  /**
+   * 我的资质。mock 里给一条「已传但还没授码」的样本 ——
+   * 那正是这一页要说清楚的状态：传了 ≠ 解锁了。
+   */
+  async mQualifications() {
+    requireMerchant();
+    return delay({
+      items: db.myQualifications,
+      grantedCodes: ["FRESH_VEG", "FRESH_FRUIT"],
+      catalog: [
+        { code: "FRESH_VEG", name: "蔬菜", requiredQualification: "营业执照（食用农产品）",
+          qualType: "BUSINESS_LICENSE" as const, categoryNames: ["蔬菜"] },
+        { code: "FRESH_FRUIT", name: "水果", requiredQualification: "营业执照（食用农产品）",
+          qualType: "BUSINESS_LICENSE" as const, categoryNames: ["水果"] },
+        { code: "FOOD", name: "熟食加工", requiredQualification: "食品经营许可证",
+          qualType: "FOOD_PERMIT" as const, categoryNames: ["熟食卤味"] },
+        { code: "FRESH_MEAT", name: "肉禽蛋", requiredQualification: "食品经营许可证",
+          qualType: "FOOD_PERMIT" as const, categoryNames: ["肉禽蛋", "水产海鲜"] },
+        { code: "DAILY", name: "日用百货", requiredQualification: null,
+          qualType: null, categoryNames: ["纸品清洁", "家居用品"] },
+      ],
+    });
+  },
+
+  async mSaveQualification(payload) {
+    requireMerchant();
+    if (!payload.qualName?.trim()) throw new Error("先填证件名称");
+    const created = {
+      qualNo: nextNo("QL"),
+      qualType: payload.qualType,
+      qualName: payload.qualName.trim(),
+      qualNumber: payload.qualNumber ?? null,
+      imageUrl: payload.imageUrl ?? null,
+      expireAt: payload.expireAt ?? null,
+      status: "VALID",
+    };
+    db.myQualifications.push(created);
+    return delay(created);
+  },
+
   async mSaveSpecTemplate(payload) {
     const merchantNo = requireMerchant();
     const options = payload.options.map((o) => o.trim()).filter(Boolean);

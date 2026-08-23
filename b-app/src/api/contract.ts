@@ -68,6 +68,9 @@ import type {
   PickupOverview,
   RateCard,
   StoreFulfillment,
+  MyQualifications,
+  Qualification,
+  QualificationSaveReq,
 } from "@shared/types";
 
 /** 拍照识别的结果。全部是**建议值**，店主可改可弃 */
@@ -409,6 +412,16 @@ export interface MerchantApi {
 
   /** 本店货架。**空数组是合法状态**（新店还没建过货），不是加载失败 */
   mStoreCategories(storeNo: string): Promise<StoreCategory[]>;
+  /**
+   * 我的资质 + 已获授权的类目码 + 码字典。
+   *
+   * <p>**此前商家侧没有任何入口**：只有入驻申请那一步能传，传完也看不到。
+   * 于是「上架被拒 → 去哪补证」这条路在 B 端是断的 —— 他看到「你还没有该授权」，
+   * 然后没有下一步（线上资质表 0 条、授权码全 NULL，就是这么来的）。
+   */
+  mQualifications(): Promise<MyQualifications>;
+  /** 传一张证。**传完不自动授码** —— 授权是平台看过证之后的动作，界面要说清楚 */
+  mSaveQualification(payload: QualificationSaveReq): Promise<Qualification>;
   /**
    * 整份替换 —— 勾选式界面的天然形状。
    *

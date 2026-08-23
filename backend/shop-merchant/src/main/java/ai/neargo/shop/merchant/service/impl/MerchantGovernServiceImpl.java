@@ -54,6 +54,8 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
     private final ViolationMapper violationMapper;
     private final MerchantApplyQueryPort applyPort;
     private final ObjectMapper json;
+    /** 门槛码字典：商家侧「我传这张证能换来什么」靠它 */
+    private final ai.neargo.shop.merchant.mapper.MerchantMappers.SysAuthCodeMapper authCodeMapper;
     private final ai.neargo.shop.merchant.mapper.MerchantMappers.StoreAuditMapper storeAuditMapper;
     /** 通过审核时要把内容写回门面表 */
     private final ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper storeProfileMapper;
@@ -90,7 +92,9 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
             ai.neargo.shop.spi.user.CommunityQueryPort communityNamePort,
             ai.neargo.shop.spi.platform.MasterDataPort masterDataPort,
             ai.neargo.shop.spi.settle.SelfOperatedExposurePort exposurePort,
-            org.springframework.beans.factory.ObjectProvider<ai.neargo.shop.spi.product.StoreShelfPort> shelfPort) {
+            org.springframework.beans.factory.ObjectProvider<ai.neargo.shop.spi.product.StoreShelfPort> shelfPort,
+            ai.neargo.shop.merchant.mapper.MerchantMappers.SysAuthCodeMapper authCodeMapper) {
+        this.authCodeMapper = authCodeMapper;
         this.serviceAreaMapper = serviceAreaMapper;
         this.communityNamePort = communityNamePort;
         this.masterDataPort = masterDataPort;
@@ -709,6 +713,18 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
                 : masterDataPort.regionPathName(parts[1]);
     }
     // ---------------------------------------------------------------- 资质（P1-7）
+
+    @Override
+    public List<AuthCodeVO> authCodeCatalog() {
+        return DataScopeContext.executeWithoutScope(() -> authCodeMapper.selectList(
+                        Wrappers.<ai.neargo.shop.merchant.entity.SysAuthCode>lambdaQuery()
+                                .eq(ai.neargo.shop.merchant.entity.SysAuthCode::getEnabled, true)
+                                .orderByAsc(ai.neargo.shop.merchant.entity.SysAuthCode::getSort)))
+                .stream()
+                .map(c -> new AuthCodeVO(c.getCode(), c.getName(),
+                        c.getRequiredQualification(), c.getQualType()))
+                .toList();
+    }
 
     @Override
     public List<QualificationVO> qualifications(String merchantNo) {

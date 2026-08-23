@@ -290,6 +290,15 @@ onShow(load);
         <text class="sh-muted">{{ $t("home.storeCategoriesEntryHint") }}</text>
       </view>
 
+      <!--
+        我的资质：紧挨着「我的类目」——「这一类我卖不了」的下一步就是「去传证」，
+        两页放一起才连得上。此前商家侧根本没有传证的入口。
+      -->
+      <view v-if="merchant.can('biz:store')" class="sh-card entry" @tap="open(ROUTES.qualifications)">
+        <text class="sh-h2">{{ $t("home.qualEntry") }}</text>
+        <text class="sh-muted">{{ $t("home.qualEntryHint") }}</text>
+      </view>
+
       <view v-if="merchant.can('biz:store:admin')" class="sh-card entry" @tap="open(ROUTES.staff)">
         <text class="sh-h2">{{ $t("home.staffEntry") }}</text>
         <text class="sh-muted">{{ $t("home.staffEntryHint") }}</text>

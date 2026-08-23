@@ -34,6 +34,13 @@ public interface MerchantAuthCodeService {
     /**
      * @param requiredQualification 需要的资质证件名。空 = 无证件要求
      */
-    record AuthCodeVO(String code, String name, String requiredQualification) {
+    /**
+     * @param qualType 这个门槛要哪一类证（{@code BUSINESS_LICENSE / FOOD_PERMIT / …}），
+     *                 与 {@code mch_qualification.qual_type} 同值域；{@code null} = 无需证件。
+     *                 <b>运营端按它把「这家店传了什么证」与「该授哪些码」对上</b> ——
+     *                 在它之前，这件事只能靠人对着两张表比，而没人比过：
+     *                 线上一条资质、一条授权都没有。
+     */
+    record AuthCodeVO(String code, String name, String requiredQualification, String qualType) {
     }
 }

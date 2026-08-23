@@ -32,6 +32,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * B 端入驻与商家资料（[API 清单 §3.1]）—— 入驻闭环的第三段。
@@ -65,6 +66,10 @@ public class BizMerchantController {
     private final ai.neargo.shop.community.service.CommunityAdminService communityAdminService;
     /** 资金路径 —— B 端价格字段叫什么由它决定，判据与积分能力同一根轴 */
     private final MerchantQueryPort merchantQueryPort;
+    /** 资质：商家自己传证、看有效期、看这张证能解锁哪几类 */
+    private final ai.neargo.shop.merchant.service.MerchantGovernService governService;
+    /** 类目树：把门槛码翻成商家看得懂的类目名（跨域拼接放应用层） */
+    private final ai.neargo.shop.product.service.CategoryService categoryService;
 
     public BizMerchantController(MerchantService merchantService, OpsService opsService,
                                  UserService userService, BizIdentityResolver identityResolver,
@@ -76,7 +81,11 @@ public class BizMerchantController {
                                  ai.neargo.shop.merchant.service.MerchantRoleService roleService,
                                  ai.neargo.shop.community.service.CommunityAdminService communityAdminService,
                                  MerchantQueryPort merchantQueryPort,
-                                 StoreCategoryService storeCategoryService) {
+                                 StoreCategoryService storeCategoryService,
+                                 ai.neargo.shop.merchant.service.MerchantGovernService governService,
+                                 ai.neargo.shop.product.service.CategoryService categoryService) {
+        this.categoryService = categoryService;
+        this.governService = governService;
         this.storeCategoryService = storeCategoryService;
         this.merchantQueryPort = merchantQueryPort;
         this.communityAdminService = communityAdminService;
@@ -209,6 +218,85 @@ public class BizMerchantController {
     /**
      * 店铺资料。从没保存过时返回空表单而不是 404 —— 新店打开设置页看到的应当是待填的表单。
      */
+    // ---------------------------------------------------------------- 我的资质
+
+    /**
+     * 本店已登记的资质。
+     *
+     * <p><b>此前商家侧没有任何入口</b>：只有入驻申请那一步能传（而线上入驻申请 0 条，
+     * 商家都是直接建的），传完也看不到。于是「上架被拒 → 去哪补证」这条路在
+     * B 端是断的 —— 商家看到「你还没有该授权」，然后没有下一步。
+     *
+     * <p>顺带告诉他<b>这张证能解锁哪几类</b>（按 {@code sys_auth_code.qual_type} 反查），
+     * 否则他传完仍旧不知道自己换来了什么。
+     */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.STORE + "')")
+    @GetMapping("/biz/qualifications")
+    public MyQualificationsVO qualifications() {
+        String merchantNo = BizContext.requireMerchantNo();
+        /*
+         * **码 → 类目名在这一层拼**，不在商家域拼：商家域不读商品域的类目
+         * （见 CategoryUsagePort 的说明，那条边界立过一次）。应用层同时看得见两个域，
+         * 拼接放这里既不破边界，也不用为此新开一个 port。
+         *
+         * 为什么非拼不可：商家看的是「食品经营许可证能解锁：肉禽蛋、水产海鲜、熟食卤味」。
+         * 只给码名的话，四条「食品经营许可证」在界面上一模一样，他分不出自己缺的是哪一类。
+         */
+        Map<String, List<String>> namesByCode = new java.util.LinkedHashMap<>();
+        for (var lv1 : categoryService.tree()) {
+            for (var lv2 : lv1.children()) {
+                String code = lv2.requiredCode();
+                if (code != null && !code.isBlank()) {
+                    namesByCode.computeIfAbsent(code, k -> new java.util.ArrayList<>()).add(lv2.name());
+                }
+            }
+        }
+        List<AuthCodeInfoVO> catalog = governService.authCodeCatalog().stream()
+                .map(a -> new AuthCodeInfoVO(a.code(), a.name(), a.requiredQualification(),
+                        a.qualType(), namesByCode.getOrDefault(a.code(), List.of())))
+                .toList();
+        return new MyQualificationsVO(
+                governService.qualifications(merchantNo),
+                merchantQueryPort.authorizedCategoryCodes(merchantNo).stream().toList(),
+                catalog);
+    }
+
+    /** @param categoryNames 挂着这个码的在售类目名 —— 商家看的是类目，不是码 */
+    public record AuthCodeInfoVO(String code, String name, String requiredQualification,
+                                 String qualType, List<String> categoryNames) {
+    }
+
+    /**
+     * 传一张证。<b>传完不自动授码</b> —— 授权是平台看过证之后的动作。
+     *
+     * <p>这一点要在界面上说清楚：不说的话，商家传完就去上架，撞上同一句拒绝，
+     * 而这一次他会认为是系统坏了。
+     */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.STORE + "')")
+    @PostMapping("/biz/qualifications/save")
+    public ai.neargo.shop.merchant.service.MerchantGovernService.QualificationVO saveQualification(
+            @RequestBody SaveQualReq req) {
+        String merchantNo = BizContext.requireMerchantNo();
+        return governService.saveQualification(merchantNo,
+                new ai.neargo.shop.merchant.service.MerchantGovernService.SaveQualificationCommand(req.qualNo(), req.qualType(),
+                        req.qualName(), req.qualNumber(), req.imageUrl(), req.expireAt()),
+                merchantNo);
+    }
+
+    /**
+     * @param items          已登记的证
+     * @param grantedCodes   已获授权的类目码 —— 端上据此把「已解锁 / 待授权」标出来
+     * @param catalog        码字典：这个码要哪一类证、对应哪些类目
+     */
+    public record MyQualificationsVO(List<ai.neargo.shop.merchant.service.MerchantGovernService.QualificationVO> items,
+                                     List<String> grantedCodes,
+                                     List<AuthCodeInfoVO> catalog) {
+    }
+
+    public record SaveQualReq(String qualNo, String qualType, String qualName,
+                              String qualNumber, String imageUrl, Long expireAt) {
+    }
+
     @PreAuthorize("@perm.canBiz('" + BizPerms.STORE + "')")
     @GetMapping("/biz/store")
     public StoreProfileVO store() {
@@ -420,7 +508,26 @@ public class BizMerchantController {
     @GetMapping("/biz/store/{storeNo}/categories")
     public List<StoreCategoryService.StoreCategoryVO> storeCategories(
             @PathVariable String storeNo) {
-        return storeCategoryService.list(BizContext.requireMerchantNo(), storeNo);
+        /*
+         * **认 "default"**，与同一个控制器里的送货方式那两条一致（见 storeFulfillment）。
+         *
+         * <p>端上深链进来时门店列表还没加载完，那一刻它只知道「我要当前门店的」——
+         * 建品页就是这么撞上的：它按约定发了 default，而这条端点当时不认，
+         * 于是「本店常卖」整段不显示，看起来与改版前一模一样，没有任何迹象说明少了一段。
+         * 一个端点认、另一个不认，是最容易在深链场景下露出来的那种不一致。
+         */
+        String merchantNo = BizContext.requireMerchantNo();
+        String resolved = "default".equals(storeNo) ? defaultStoreNo(merchantNo) : storeNo;
+        return resolved == null ? List.of() : storeCategoryService.list(merchantNo, resolved);
+    }
+
+    /** 这家主体的默认门店号；一家店都没有时返回 null（新入驻的那一刻） */
+    private String defaultStoreNo(String merchantNo) {
+        var stores = storeAdminService.list(merchantNo);
+        return stores.stream().filter(x -> Boolean.TRUE.equals(x.isDefault())).findFirst()
+                .or(() -> stores.stream().findFirst())
+                .map(StoreVO::storeNo)
+                .orElse(null);
     }
 
     /**

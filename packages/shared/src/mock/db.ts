@@ -1241,6 +1241,22 @@ export const db = {
    * 规格模板。平台预置的按类目给，商家存的常用模板追加在后面。
    * 平台模板的 code 是**跨商家统一**的 —— 这正是它能做聚合而自由输入不能的原因。
    */
+  /**
+   * 商家自己传的资质。**样本刻意只有一条已传、还没换来授权的证** ——
+   * 那正是「我的资质」这一页要说清楚的状态：传了 ≠ 解锁了，授权是平台看过证之后的动作。
+   */
+  myQualifications: [
+    {
+      qualNo: "QL0001",
+      qualType: "BUSINESS_LICENSE",
+      qualName: "营业执照",
+      qualNumber: "91330106MA2xxxxxxx",
+      imageUrl: "",
+      expireAt: null,
+      status: "VALID",
+    },
+  ] as Array<import("../types").Qualification>,
+
   specTemplates: [
     {
       templateNo: "ST_FRESH_WEIGHT",

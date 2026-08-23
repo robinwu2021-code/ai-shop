@@ -63,6 +63,9 @@ const EXEMPT: Record<string, string> = {
     "「还不能收数」这张 blocker 卡只给能处理它的人看，调用前先 can('biz:finance')",
   "home/biz:store":
     "「没选社区」这张 blocker 卡同上，调用前先 can('biz:store')",
+  "goods-list/biz:store":
+    "「本店类目」筛选那一段的 mStoreCategories 用 can('biz:store') 包住并单独 catch —— "
+    + "店员与理货员进得来这一页（门禁是 biz:stock），但货架不是他们的事，那一段对他们不画",
   "goods-list/biz:goods":
     "列表本身要 biz:stock（已是门禁）；新建/编辑/上下架三个按钮各自 v-if=can('biz:goods')",
   "order/biz:ship":

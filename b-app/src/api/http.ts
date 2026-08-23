@@ -98,6 +98,8 @@ import type {
   GeoTip,
   PickupCandidate,
   RegionSearchResult,
+  MyQualifications,
+  Qualification,
 } from "@shared/types";
 
 export const httpApi: MerchantApi = {
@@ -163,6 +165,9 @@ export const httpApi: MerchantApi = {
   mSetStorePayment: (storeNo, payMerchantNo) =>
     http.post<Store>(buildPath(E.mSetStorePayment.path, { storeNo }),
       { payMerchantNo } satisfies SetStorePaymentReq),
+  mQualifications: () => http.get<MyQualifications>(E.mQualifications.path),
+  mSaveQualification: (payload) =>
+    http.post<Qualification>(E.mSaveQualification.path, { ...payload }),
   mStoreCategories: (storeNo) =>
     http.get<StoreCategory[]>(buildPath(E.mStoreCategories.path, { storeNo })),
   mSaveStoreCategories: (storeNo, items) =>
