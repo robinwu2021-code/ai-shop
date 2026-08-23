@@ -590,6 +590,24 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
         if (platform != null) {
             return toDimVO(platform, List.of(), 0);
         }
+        /*
+         * **与自己已建的重名时也直接复用**，不再造一个。
+         *
+         * <p>实测踩到：商家点两次「自定义规格」、两次都输「辣度」，库里就有两个同名维度，
+         * 而建品页的规格推荐里会并排出现两个「辣度」—— 他分不出该选哪个，
+         * 选错了的那批货又与另一个维度对不上。与上面那条「与平台重名用平台的」同一个道理：
+         * 他要的是「按这个维度分规格」，不是「再拥有一个」。
+         */
+        PrdSpecDim self = DataScopeContext.executeWithoutScope(() ->
+                dimMapper.selectOne(Wrappers.<PrdSpecDim>lambdaQuery()
+                        .eq(PrdSpecDim::getScope, PrdSpecDim.MERCHANT)
+                        .eq(PrdSpecDim::getEntityNo, merchantNo)
+                        .eq(PrdSpecDim::getName, norm)
+                        .eq(PrdSpecDim::getStatus, PrdSpecDim.ACTIVE).last("limit 1")));
+        if (self != null) {
+            return toDimVO(self, valuesOf(merchantNo, self.getDimNo()).stream()
+                    .map(SpecLibraryServiceImpl::toValueVO).toList(), 0);
+        }
 
         PrdSpecDim dim = new PrdSpecDim();
         String suffix = BizKey.next(BizKey.SPEC_TEMPLATE);
