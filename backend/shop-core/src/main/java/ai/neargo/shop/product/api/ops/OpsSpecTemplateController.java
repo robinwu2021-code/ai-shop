@@ -36,11 +36,29 @@ public class OpsSpecTemplateController {
 
     private final PlatformProductService platformProductService;
     private final AuditLogPort auditLogPort;
+    private final ai.neargo.shop.product.service.SpecLibraryService specLibrary;
 
     public OpsSpecTemplateController(PlatformProductService platformProductService,
-                                     AuditLogPort auditLogPort) {
+                                     AuditLogPort auditLogPort,
+                                     ai.neargo.shop.product.service.SpecLibraryService specLibrary) {
         this.platformProductService = platformProductService;
         this.auditLogPort = auditLogPort;
+        this.specLibrary = specLibrary;
+    }
+
+    /**
+     * <b>类目 × 规格总览</b>（规格库 V195）：所有在售二级类目、各自支持哪些规格、每个规格有哪些取值。
+     *
+     * <p>为什么连<b>一条规格都没绑的类目也返回</b>：这张表真正要回答的是「哪些类目还没配」——
+     * 只列已配的，缺口就永远看不见，而缺口的代价是那一类商家建品时只能手打，
+     * 手打的选项没有 code，跨店聚合就此断掉。
+     *
+     * <p>不分页：29 个类目 × 各几个维度，一次拿全比翻页好用 —— 运营看这张表是为了横向比较。
+     */
+    @GetMapping("/ops/category-specs")
+    @PreAuthorize("@perm.can('" + Perms.PRODUCT_CATEGORY_READ + "')")
+    public List<ai.neargo.shop.product.dto.CategorySpecVO> categorySpecs() {
+        return specLibrary.catalog();
     }
 
     @GetMapping("/ops/spec-templates")

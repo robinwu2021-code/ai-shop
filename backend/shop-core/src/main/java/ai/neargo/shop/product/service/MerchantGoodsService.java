@@ -264,7 +264,12 @@ public interface MerchantGoodsService {
                         * 图文详情正文（纯文本）。<b>不传 = 不改</b>，与其余可选字段同一口径；
                         * 传空串 = 清空。
                         */
-                       String detail) {
+                       String detail,
+                       /**
+                        * 图文详情区的长图（与顶部轮播 {@code images} 分开）。
+                        * <b>不传 = 不改</b>，传空数组 = 清空。
+                        */
+                       List<String> detailImages) {
     }
 
     /**
@@ -317,9 +322,13 @@ public interface MerchantGoodsService {
      *                     此前有列、有契约、**没有写入路径**，于是折扣标永远不出现
      * @param nominalGram  标称重量（克），生鲜按重计价用。同样是「有列没入口」的一条
      */
+    /**
+     * @param costPrice 成本价（最小货币单位）。{@code null} = 不改，{@code <= 0} = 清空。
+     *                  只用来给商家算毛利，不参与任何对外计价。
+     */
     record Sku(String skuNo, List<String> optionValues, long price,
                Map<String, Long> priceByMarket, int stock,
-               Long originPrice, Integer nominalGram) {
+               Long originPrice, Integer nominalGram, Long costPrice) {
     }
 
     record SpecOption(String code, String label) {

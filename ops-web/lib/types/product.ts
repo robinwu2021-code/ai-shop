@@ -188,6 +188,54 @@ export interface SpecTemplate extends Archivable {
   createdAt?: string;
 }
 
+/**
+ * 类目 × 规格总览的一行（规格库 V195，`GET /ops/category-specs`）。
+ *
+ * **一条规格都没绑的类目也会返回**：这张表真正要回答的是「哪些类目还没配」——
+ * 只列已配的，缺口就永远看不见，而缺口的代价是那一类商家建品只能手打，
+ * 手打的选项没有 code，跨店聚合就此断掉。
+ */
+export interface CategorySpec {
+  categoryNo: string;
+  categoryName: string;
+  /** 一级类目名，用来分组 */
+  parentName: string;
+  categoryType?: CategoryTemplate | null;
+  /** 已绑维度数。0 就是缺口 */
+  dimCount: number;
+  dims: CategorySpecDim[];
+}
+
+/** 类目下的一个规格维度。 */
+export interface CategorySpecDim {
+  dimNo: string;
+  /** 语义码 COLOR / WEIGHT。值编号与 optionCode 都以它为前缀 */
+  code: string;
+  name: string;
+  /** ENUM 枚举 / QUANT 数值+单位 */
+  valueType: string;
+  unit?: string | null;
+  /** SALE 进 SKU 笛卡尔积 / PROP 只是描述，不生成规格 */
+  usage: string;
+  /** 通用维度：值的含义跨类目一致（颜色、重量）。与只在本类目成立的专用维度相对 */
+  universal: boolean;
+  /** 主维度：商家建品选完类目，自动预填的就是它。每个类目至多一个 */
+  primary: boolean;
+  valueCount: number;
+  values: CategorySpecValue[];
+}
+
+/** 维度下的一个取值。 */
+export interface CategorySpecValue {
+  valueNo: string;
+  code: string;
+  /** 该类目下的展示文案，可能被类目级换名换过（500g → 约1斤） */
+  label: string;
+  /** 归一量：500g / 半斤 / 0.5kg 都是 500。排序与同规格比价靠它 */
+  numericValue?: number | null;
+  numericUnit?: string | null;
+}
+
 /** {@link SpecTemplate} 的一个选项。 */
 export interface SpecTemplateOption {
   /**

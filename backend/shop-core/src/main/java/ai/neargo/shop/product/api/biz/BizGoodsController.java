@@ -124,7 +124,7 @@ public class BizGoodsController {
                 req.skus() == null ? List.of() : req.skus().stream()
                         .map(s -> new MerchantGoodsService.Sku(
                                 s.skuNo(), s.optionValues(), s.price(), s.priceByMarket(), s.stock(),
-                                s.originPrice(), s.nominalGram()))
+                                s.originPrice(), s.nominalGram(), s.costPrice()))
                         .toList(),
                 req.fulfillments(),
                 req.limitPerUser(),
@@ -135,7 +135,7 @@ public class BizGoodsController {
                         req.service().durationMin(), req.service().storeName()),
                 req.groupBuy() == null ? null : new MerchantGoodsService.GroupBuySpec(
                         req.groupBuy().minCount(), req.groupBuy().price()),
-                req.stdNo(), req.detail()));
+                req.stdNo(), req.detail(), req.detailImages()));
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.GOODS + "')")
@@ -371,7 +371,9 @@ public class BizGoodsController {
                                 */
                                String stdNo,
                                /** 图文详情正文（纯文本）。不传 = 不改，传空串 = 清空 */
-                               String detail) {
+                               String detail,
+                               /** 详情区长图。不传 = 不改，传空数组 = 清空 */
+                               List<String> detailImages) {
     }
 
     /** 生鲜段。留空 = 不改；只在品类是 FRESH 时写入 */
@@ -393,7 +395,9 @@ public class BizGoodsController {
     /** @param originPrice 划线价；@param nominalGram 标称重量（克）。两者都是「留空 = 不改」 */
     public record SkuReq(String skuNo, List<String> optionValues, long price,
                          Map<String, Long> priceByMarket, int stock,
-                         Long originPrice, Integer nominalGram) {
+                         Long originPrice, Integer nominalGram,
+                         /** 成本价（最小货币单位）。不传 = 不改，&lt;= 0 = 清空 */
+                         Long costPrice) {
     }
 
     public record ToggleReq(Boolean onSale) {

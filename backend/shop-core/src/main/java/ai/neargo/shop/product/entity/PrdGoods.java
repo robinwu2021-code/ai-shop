@@ -53,6 +53,14 @@ public class PrdGoods extends BaseEntity {
      */
     private String detail;
 
+    /**
+     * JSON 数组：图文详情区的长图，按顺序全宽竖排。
+     *
+     * <p>与 {@link #images}（详情页顶部轮播，方图）<b>分开存</b>：两者形状与位置都不同，
+     * 合成一个数组之后端上只能靠宽高比猜哪几张该轮播、哪几张该竖排。
+     */
+    private String detailImages;
+
     /** NORMAL / FRESH / SERVICE / VIRTUAL / CARD */
     private String type;
     private String categoryNo;

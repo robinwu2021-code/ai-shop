@@ -7,6 +7,7 @@ import { onReachBottom, onShow } from "@dcloudio/uni-app";
 import { api } from "@/api";
 import { useMerchantStore } from "@/stores/merchant";
 import { ROUTES } from "@/shared/nav";
+import { SHOW_CATEGORY_GATE } from "@/shared/flags";
 import { money } from "@shared/utils/money";
 import type { Category, Goods, GoodsStatus } from "@shared/types";
 
@@ -341,6 +342,26 @@ onShow(() => {
     而页内那几个按钮反倒早就按 can() 裁好了。门禁漏的偏偏是列表这一件必做的事。
   -->
   <sh-scaffold title-key="goods.title" tab="goods" :denied="!merchant.can('biz:stock')">
+    <!--
+      **搜索提到第一行，状态页签独占整宽。**
+
+      此前这两者挤在同一行：六个状态页签本来就要横滚，右边那截「＋ 新建商品」
+      又固定占掉约 96rpx —— 两个都不舒服，而最后一个状态常常划不到。
+      新建改成右下悬浮按钮（见 .fab）之后，这一行就还给了页签。
+
+      搜索排在最前，是因为商品一多，「找某一个」比「筛一批」高频得多。
+    -->
+    <view class="search">
+      <input
+        class="search__input"
+        :value="keyword"
+        :placeholder="$t('goods.searchPh')"
+        confirm-type="search"
+        @input="onSearch(String(($event as any).detail.value ?? ''))"
+      />
+      <text v-if="keyword" class="search__clear" @tap="clearSearch">✕</text>
+    </view>
+
     <view class="bar">
       <!-- 必须套一层容器：sh-tabs 是**多根组件**（v-if/v-else 两个根），
            Vue 3 下 class 无法透传到 fragment 根上，写在组件标签上会被静默丢弃 -->
@@ -351,15 +372,13 @@ onShow(() => {
           @change="switchTab"
         ></sh-tabs>
       </view>
-      <!-- 建商品/改价属于 biz:goods；店员只有 biz:stock（改库存），不显示这个入口 -->
-      <text v-if="merchant.can('biz:goods')" class="add" @tap="edit()">＋ {{ $t("goods.add") }}</text>
     </view>
 
     <!--
       缺资质汇总。**只在真有的时候出现**，且说清是「当前列表里」的数 ——
       分页只加载了一部分，把它说成全店总数是在编一个自己也不知道的数字。
     -->
-    <text v-if="gatedCount" class="gate-sum">
+    <text v-if="SHOW_CATEGORY_GATE && gatedCount" class="gate-sum">
       {{ $t("goods.gateCount", { n: gatedCount }) }}
     </text>
 
@@ -388,42 +407,44 @@ onShow(() => {
       没设的店按 0 —— 少卖可恢复，超卖不可）。真实链路上验过：
       在新店设了 5 件，主店那 80 件当场变成 0 —— **不写出来的话没人能预料到**。
     -->
-    <!--
-      搜索。**商品一多，筛选页签解决不了「找某一个」** —— 五个状态页签是分类，
-      而商家的真实动作是「涨价的那袋米在哪」。194 条商品时，没有它这一页只能靠滚。
-    -->
-    <view class="search">
-      <input
-        class="search__input"
-        :value="keyword"
-        :placeholder="$t('goods.searchPh')"
-        confirm-type="search"
-        @input="onSearch(String(($event as any).detail.value ?? ''))"
-      />
-      <text v-if="keyword" class="search__clear" @tap="clearSearch">✕</text>
-    </view>
-
     <!-- 当前门店只读标记（库存按店）：切店在「我的」 -->
     <biz-store-tag></biz-store-tag>
 
     <sh-empty v-if="empty" :text='$t("goods.empty")'></sh-empty>
+    <!-- 空列表时那个悬浮按钮孤零零地飘在一片空白上，不如把入口摆在空状态里 -->
+    <view v-if="empty && merchant.can('biz:goods')" class="sh-btn first" @tap="edit()">
+      {{ $t("goods.addFirst") }}
+    </view>
 
+    <!--
+      **一行商品分成上下两段，不再是「左信息 / 右操作」两栏。**
+
+      两栏在真实数据上塌了：多门店时右栏有四个按钮（编辑/上架/改库存/本店价），
+      按钮把左栏挤到几十 px 宽 —— 商品名只剩一个字、价格与库存换行叠在一起，
+      而这正是这一页唯一需要一眼看清的东西。实测 375 宽下「五常大米 10斤装」
+      显示成「五」。
+
+      现在：上段是「图 + 名 + 价/库存 + 状态」，下段整宽放按钮并允许换行。
+      按钮多一个少一个都不再影响上面那行的可读性。
+    -->
     <view v-for="g in list" :key="g.goodsNo" class="sh-card row">
-      <sh-cover class="row__cover" :src="g.cover"></sh-cover>
-      <view class="row__main">
-        <text class="row__title">{{ g.title }}</text>
-        <view class="row__meta">
-          <text class="row__price sh-num">{{ money(g.price) }}</text>
-          <text class="row__stock sh-num" :class="{ 'is-out': stockOf(g) === 0 }">
-            {{ $t("goods.stock") }} {{ stockOf(g) }}
-          </text>
+      <view class="row__top">
+        <sh-cover class="row__cover" :src="g.cover"></sh-cover>
+        <view class="row__main">
+          <text class="row__title">{{ g.title }}</text>
+          <view class="row__meta">
+            <text class="row__price sh-num">{{ money(g.price) }}</text>
+            <text class="row__stock sh-num" :class="{ 'is-out': stockOf(g) === 0 }">
+              {{ $t("goods.stock") }} {{ stockOf(g) }}
+            </text>
+          </view>
         </view>
-      </view>
-      <view class="row__ops">
         <view class="state" :class="'state--' + stateOf(g)">
           <text class="state__dot"></text>
           <text class="state__txt">{{ $t(`goods.status${stateOf(g)}`) }}</text>
         </view>
+      </view>
+      <view class="row__ops">
         <!--
           驳回 / 强制下架的理由。**没有它，商家面对「已驳回」只能猜要改什么** ——
           审计日志只有运营看得到。后端一直在发这个字段，端上此前连声明都没有。
@@ -433,7 +454,7 @@ onShow(() => {
           缺资质。放在状态那一列而不是标题旁边：它回答的是
           「这件货为什么上不了架」，属于状态，不是商品属性。
         -->
-        <text v-if="gateOf(g)" class="reason reason--gate">
+        <text v-if="SHOW_CATEGORY_GATE && gateOf(g)" class="reason reason--gate">
           {{ $t("goods.gateRow") }}
         </text>
         <view class="row__btns">
@@ -484,6 +505,18 @@ onShow(() => {
     -->
     <text v-if="loading && list.length" class="more">{{ $t("common.loading") }}</text>
     <text v-else-if="list.length && !hasMore" class="more">{{ $t("goods.noMore") }}</text>
+
+    <!--
+      新建商品。**建商品/改价属于 biz:goods**；店员只有 biz:stock，不显示这个入口。
+
+      悬浮而不是嵌在顶部工具条里：那里的宽度要留给六个状态页签（它们本来就得横滚），
+      而新建是低频高价值的动作 —— 拇指够得到、是全页唯一的主色实心块就够了。
+      不放在导航栏右上：`sh-scaffold` 的标题栏在原生包里是系统导航栏，
+      那个位置在 App / 小程序 / H5 三端不一致。
+    -->
+    <view v-if="merchant.can('biz:goods')" class="fab" @tap="edit()">
+      ＋ {{ $t("goods.add") }}
+    </view>
   </sh-scaffold>
 </template>
 
@@ -519,7 +552,7 @@ onShow(() => {
 }
 .reason {
   display: block;
-  margin-top: 8rpx;
+  margin-top: 12rpx;
   font-size: 24rpx;
   color: var(--sh-sub);
   line-height: 1.4;
@@ -579,22 +612,48 @@ onShow(() => {
   flex: 1;
   min-width: 0;
 }
-.add {
-  font-size: 24rpx;
+/*
+ * 新建商品：右下悬浮。
+ *
+ * `position: fixed` 在 uni 的三端一致（小程序里也生效），
+ * 底部留 128rpx 是给 tabBar 让位 —— 压在 tabBar 上的话，
+ * 「商品」那个 tab 就点不着了。
+ */
+.fab {
+  position: fixed;
+  right: 32rpx;
+  /*
+   * 抬到 tabBar 上方一指宽。128rpx 时它几乎贴着菜单，拇指落点与「商品」那个
+   * tab 只差几毫米 —— 想点新建却切了页。tabBar 自身高度约 130rpx（含安全区），
+   * 再留 60rpx 的空当。
+   */
+  bottom: calc(190rpx + env(safe-area-inset-bottom));
+  z-index: 10;
+  padding: 20rpx 36rpx;
+  border-radius: 9999px;
+  background: var(--sh-primary);
+  color: var(--sh-on-primary);
+  font-size: 28rpx;
   font-weight: 600;
-  color: var(--sh-primary-text);
-  /* 头部是 flex + space-between，被 tabs 挤窄会把「＋ 新建商品」折成两行 —— 锁死不换行、不被压缩 */
   white-space: nowrap;
-  flex-shrink: 0;
-  margin-left: 16rpx;
+  /* 阴影用 scrim（皮肤里那层半透明黑）：写死 rgba 在深色皮肤下会糊成一团 */
+  box-shadow: 0 8rpx 24rpx var(--sh-scrim);
+}
+/* 空列表里的主按钮：悬浮按钮飘在一片空白上没有着落，这里给它一个落点 */
+.first {
+  margin: 24rpx auto 0;
+  max-width: 420rpx;
 }
 /* 列表密度对齐 C 端（平台版式约定）：卡片之间只留一条缝。
    商家一天要扫几十次这类列表，行距每多 10rpx，一屏就少一行。 */
 .row {
+  margin-bottom: 14rpx;
+}
+/* 上段：图 + 名/价 + 状态。状态贴右，名字吃掉中间所有剩余宽度 */
+.row__top {
   display: flex;
   gap: 20rpx;
   align-items: center;
-  margin-bottom: 14rpx;
 }
 .row__cover {
   font-size: 60rpx;
@@ -655,6 +714,7 @@ onShow(() => {
   display: flex;
   align-items: center;
   gap: 8rpx;
+  flex: none;
 }
 .state__dot {
   width: 12rpx;
@@ -684,9 +744,13 @@ onShow(() => {
 .row__ops {
   text-align: end;
 }
+/* 按钮整宽一行、允许换行：四个按钮在 375 宽下正好排得下，
+   五个（将来再加）就换行，而不是把上面那行挤没 */
 .row__btns {
   display: flex;
-  gap: 16rpx;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 12rpx;
   margin-top: 16rpx;
 }
 .mini {

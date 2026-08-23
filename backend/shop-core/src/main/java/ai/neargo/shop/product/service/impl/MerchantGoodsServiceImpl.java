@@ -69,6 +69,8 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
     private final ai.neargo.shop.spi.user.StoreCategoryPort storeCategoryPort;
     /** 门店级售价。**无行回退主体价**（与库存的「无行视为 0」相反，见 PrdStorePrice） */
     private final ai.neargo.shop.product.mapper.ProductMappers.StorePriceMapper storePriceMapper;
+    /** 规格库（V195）：类目级规格从这里来，SKU 的值编号也靠它反查 */
+    private final ai.neargo.shop.product.service.SpecLibraryService specLibrary;
 
     public MerchantGoodsServiceImpl(GoodsMapper goodsMapper, SkuMapper skuMapper,
                                     SpecTemplateMapper templateMapper,
@@ -81,7 +83,9 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                                     ai.neargo.shop.product.mapper.ProductMappers.StoreGoodsMapper storeGoodsMapper,
                                     ai.neargo.shop.spi.user.StoreCategoryPort storeCategoryPort,
                                     ai.neargo.shop.product.mapper.ProductMappers.StorePriceMapper storePriceMapper,
+                                    ai.neargo.shop.product.service.SpecLibraryService specLibrary,
                                     ObjectMapper json) {
+        this.specLibrary = specLibrary;
         this.storePriceMapper = storePriceMapper;
         this.storeCategoryPort = storeCategoryPort;
         this.storeStockMapper = storeStockMapper;
@@ -586,6 +590,13 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         if (cmd.detail() != null) {
             g.setDetail(cmd.detail().isBlank() ? null : cmd.detail());
         }
+        /*
+         * 详情图，与 detail 同一口径：**不传 = 不改**，传空数组 = 清空。
+         * 无条件覆盖的话，任何一次只改标题的保存都会把详情图清空，且不报错。
+         */
+        if (cmd.detailImages() != null) {
+            g.setDetailImages(cmd.detailImages().isEmpty() ? null : writeJson(cmd.detailImages()));
+        }
         g.setSpecGroups(writeSpecGroups(cmd.specGroups()));
         /*
          * 溯源。**不传 = 脱离标准品**（置空），与其余字段的「不传 = 不改」相反 ——
@@ -687,7 +698,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                 std.categoryNo(),
                 cmd.cover(), cmd.images(), merged, cmd.skus(), cmd.fulfillments(),
                 cmd.limitPerUser(), cmd.fresh(), cmd.service(), cmd.groupBuy(), cmd.stdNo(),
-                cmd.detail());
+                cmd.detail(), cmd.detailImages());
     }
 
     /**
@@ -760,12 +771,43 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
      */
     private void saveSkus(String merchantNo, String goodsNo, List<Sku> skus,
                           List<SpecGroup> groups) {
+        /*
+         * **SKU 数量上限**。端上限制 3 个规格维度，但那是界面的事 ——
+         * 接口层此前一条都不拦，3 维 × 各 8 个选项 = 512 行 × 3 市场可以直接灌进来，
+         * 而每一行都会进商品详情、进 C 端选规格面板。这是防呆，不是业务限制。
+         */
+        if (skus.size() > MAX_SKUS) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
         List<PrdSku> existing = DataScopeContext.executeWithoutScope(() ->
                 skuMapper.selectList(Wrappers.<PrdSku>lambdaQuery()
                         .eq(PrdSku::getGoodsNo, goodsNo)));
         Map<String, PrdSku> byNo = new LinkedHashMap<>();
         for (PrdSku s : existing) {
             byNo.put(s.getSkuNo() + "@" + s.getMarket(), s);
+        }
+
+        /*
+         * **把选项文案反查成规格值编号**，落进 SKU 快照（V195）。
+         *
+         * 每个规格组带着它的维度（端上原样回传的 templateNo = dimNo），
+         * 于是「第 i 个维度上的这个文案」能定位到唯一一个值。查不到就留 null ——
+         * 商家手打的规格本来就没有值编号，造一个假的比留空更糟。
+         *
+         * 这一层是「跨店可比」真正的落点：此前 spec_groups 里存的只有文案，
+         * 三家店的「500g」「五百克」「0.5kg」永远聚不到一起（线上 378 件商品，
+         * 带 optionCode 的 0 件）。
+         */
+        Map<Integer, Map<String, String>> valueNoByDim = new LinkedHashMap<>();
+        if (groups != null) {
+            for (int i = 0; i < groups.size(); i++) {
+                SpecGroup g = groups.get(i);
+                if (g == null || g.templateNo() == null || g.templateNo().isBlank()) {
+                    continue;
+                }
+                valueNoByDim.put(i,
+                        specLibrary.resolveValueNos(merchantNo, g.templateNo(), g.options()));
+            }
         }
 
         // Set 而不是 List：下面每删一行都要 contains 一次，
@@ -794,6 +836,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                     row.setLockedStock(0);
                 }
                 row.setOptionValues(writeJson(sku.optionValues()));
+                row.setOptionValueNos(writeJson(valueNos(sku.optionValues(), valueNoByDim)));
                 row.setSpec(String.join(" · ", sku.optionValues() == null ? List.of() : sku.optionValues()));
                 row.setPrice(e.getValue());
                 row.setStock(sku.stock());
@@ -813,6 +856,15 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                 }
                 if (sku.nominalGram() != null) {
                     row.setNominalGram(sku.nominalGram() <= 0 ? null : sku.nominalGram());
+                }
+                /*
+                 * 成本价：不传 = 不改，<= 0 = 清空。**不校验与售价的大小关系** ——
+                 * 引流款本来就可能亏本卖，拦住它是替商家做生意。
+                 * 它只写基准市场那一行也说得通（进价不随售卖市场变），但按行写更省事，
+                 * 且读回时取的是 skuNo 维度的任意一行（见 withMarketPrices）。
+                 */
+                if (sku.costPrice() != null) {
+                    row.setCostPrice(sku.costPrice() <= 0 ? null : sku.costPrice());
                 }
                 PrdSku toSave = row;
                 DataScopeContext.executeWithoutScope(() ->
@@ -845,9 +897,75 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
             }
             DataScopeContext.executeWithoutScope(() -> skuMapper.deleteById(e.getValue().getId()));
         }
+        ensureStoreStockRows(merchantNo, keptSkuNos);
         // groups 已写在 goods 上，这里只用于生成 spec 文案，不再单独落库
         if (groups == null) {
             return;
+        }
+    }
+
+    /** 一件商品最多几个规格组合。3×4×3=36 是端上摸得到的上界，留三倍余量 */
+    private static final int MAX_SKUS = 100;
+
+    /**
+     * 与 optionValues 一一对应的值编号，归不了一的位置是 null。
+     *
+     * <p><b>位置必须对齐</b>：第 i 个取值属于第 i 个规格组，也就是第 i 个维度。
+     * 错位的话「黑色」会被归成一个重量值，而这种错不会有任何一处报出来。
+     */
+    private static List<String> valueNos(List<String> optionValues,
+                                         Map<Integer, Map<String, String>> byDim) {
+        if (optionValues == null || optionValues.isEmpty()) {
+            return List.of();
+        }
+        List<String> out = new ArrayList<>(optionValues.size());
+        for (int i = 0; i < optionValues.size(); i++) {
+            Map<String, String> m = byDim.get(i);
+            out.add(m == null ? null : m.get(optionValues.get(i)));
+        }
+        return out;
+    }
+
+    /**
+     * 新加的规格要跟上<b>分店库存</b>这条口径。
+     *
+     * <p>{@code StockPortImpl.hasStoreStock(skuNo)} 是<b>按 SKU</b> 判「有没有启用分店库存」：
+     * 给一个已经按店管库存的多规格商品新加一个规格，新 SKU 一条门店行都没有，
+     * 于是它<b>回落到主体总量</b>——同一张商品页上，老规格按店卖、新规格按主体卖，
+     * 两套口径并存，而界面上完全看不出来。
+     *
+     * <p>做法是给每家已经管过这件商品的门店补一行 {@code stock=0}：
+     * <b>少卖可恢复，超卖不可</b>（与 {@code hasStoreStock} 的注释同一条判据）。
+     * 商家在编辑页看到新规格库存是 0，是正确的提示 —— 他确实还没给任何一家店备货。
+     */
+    private void ensureStoreStockRows(String merchantNo, Set<String> skuNos) {
+        if (skuNos.isEmpty()) {
+            return;
+        }
+        List<PrdStoreStock> rows = DataScopeContext.executeWithoutScope(() ->
+                storeStockMapper.selectList(Wrappers.<PrdStoreStock>lambdaQuery()
+                        .in(PrdStoreStock::getSkuNo, skuNos)));
+        if (rows.isEmpty()) {
+            // 这件商品还没有任何门店库存行 = 没启用分店库存，什么都不用做
+            return;
+        }
+        Set<String> stores = rows.stream().map(PrdStoreStock::getStoreNo)
+                .collect(java.util.stream.Collectors.toCollection(java.util.LinkedHashSet::new));
+        Set<String> have = rows.stream().map(r -> r.getSkuNo() + "@" + r.getStoreNo())
+                .collect(java.util.stream.Collectors.toSet());
+        for (String skuNo : skuNos) {
+            for (String storeNo : stores) {
+                if (have.contains(skuNo + "@" + storeNo)) {
+                    continue;
+                }
+                PrdStoreStock row = new PrdStoreStock();
+                row.setStoreNo(storeNo);
+                row.setSkuNo(skuNo);
+                row.setEntityNo(merchantNo);
+                row.setStock(0);
+                row.setLockedStock(0);
+                DataScopeContext.executeWithoutScope(() -> storeStockMapper.insert(row));
+            }
         }
     }
 
@@ -1042,7 +1160,8 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
     private GoodsVO toVOWithoutStoreContext(PrdGoods g) {
         GoodsVO base = goodsService.detail(g.getGoodsNo());
         return new GoodsVO(base.goodsNo(), base.title(), base.subtitle(), base.cover(),
-                base.images(), base.detail(), base.type(), base.categoryNo(), base.merchant(),
+                base.images(), base.detail(), base.detailImages(),
+                base.type(), base.categoryNo(), base.merchant(),
                 base.rating(), base.ratingCount(), base.price(), base.originPrice(),
                 base.fulfillments(), base.specGroups(), base.skus(), base.sales(),
                 base.cutoffAt(), base.arrivalDesc(), base.weighed(), base.origin(),
@@ -1595,9 +1714,35 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
             }
         });
 
-        List<SpecTemplateVO> all = DataScopeContext.executeWithoutScope(() -> templateMapper.selectList(w))
+        List<SpecTemplateVO> legacy = DataScopeContext.executeWithoutScope(() -> templateMapper.selectList(w))
                 .stream().map(this::toVO).toList();
-        return preferCategoryLevel(all, picked);
+        /*
+         * **类目级规格来自规格库（V195），品类兜底与商家自存仍来自老表。**
+         *
+         * 规格库那边一个类目能给出 3–5 个维度、值有编号也有归一量；老表那 22 条里
+         * 类目级只覆盖 13 个类目，且值只是 JSON 里的字符串。所以类目一确定就以新库为准，
+         * 老库只剩两件事：没配规格的类目还能拿到品类兜底，商家自存的常用还在。
+         *
+         * 契约形状一个字没变（SpecTemplate[]），b-app 因此不用改。
+         */
+        List<SpecTemplateVO> fromLibrary = picked == null ? List.of()
+                : specLibrary.templatesForCategory(merchantNo, picked);
+        if (fromLibrary.isEmpty()) {
+            return preferCategoryLevel(legacy, picked);
+        }
+        // 新库给了这一类目的维度，老表里同名的那几条（兜底或旧类目级）就别再推一遍
+        Set<String> libNames = fromLibrary.stream().map(SpecTemplateVO::name)
+                .collect(java.util.stream.Collectors.toSet());
+        List<SpecTemplateVO> merged = new java.util.ArrayList<>(fromLibrary);
+        for (SpecTemplateVO t : legacy) {
+            boolean sameName = libNames.contains(t.name());
+            boolean mine = PrdSpecTemplate.MERCHANT.equals(t.scope());
+            // 商家自存的即便同名也留着 —— 那是他自己的东西，平台没有资格顶掉
+            if (mine || !sameName) {
+                merged.add(t);
+            }
+        }
+        return merged;
     }
 
     /**
@@ -1795,7 +1940,8 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
      */
     private GoodsVO merchantView(PrdGoods g, GoodsVO base) {
         return new GoodsVO(base.goodsNo(), base.title(), base.subtitle(), base.cover(),
-                base.images(), base.detail(), base.type(), base.categoryNo(), base.merchant(),
+                base.images(), base.detail(), base.detailImages(),
+                base.type(), base.categoryNo(), base.merchant(),
                 base.rating(), base.ratingCount(), base.price(), base.originPrice(),
                 base.fulfillments(), base.specGroups(),
                 withMarketPrices(g.getGoodsNo(), storeSkus(base.skus())), base.sales(),
@@ -1834,16 +1980,28 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         if (skus == null || skus.isEmpty()) {
             return skus;
         }
-        Map<String, Map<String, Long>> bySku = DataScopeContext.executeWithoutScope(() ->
-                        skuMapper.selectList(Wrappers.<PrdSku>lambdaQuery()
-                                .eq(PrdSku::getGoodsNo, goodsNo))).stream()
+        List<PrdSku> rows = DataScopeContext.executeWithoutScope(() ->
+                skuMapper.selectList(Wrappers.<PrdSku>lambdaQuery()
+                        .eq(PrdSku::getGoodsNo, goodsNo)));
+        Map<String, Map<String, Long>> bySku = rows.stream()
                 .filter(r -> r.getPrice() != null)
                 .collect(java.util.stream.Collectors.groupingBy(PrdSku::getSkuNo,
                         java.util.stream.Collectors.toMap(PrdSku::getMarket, PrdSku::getPrice, (a, b) -> a)));
+        /*
+         * 成本价**只在这条路径补**（商家侧）。买家侧的 toSkuVO 恒发 null ——
+         * 进货价是商家的经营秘密，从买家端的响应里能读到就等于公开了。
+         *
+         * 按 skuNo 取基准市场那一行：成本是同一件货的进价，不随售卖市场变。
+         */
+        Map<String, Long> costBySku = rows.stream()
+                .filter(r -> r.getCostPrice() != null)
+                .collect(java.util.stream.Collectors.toMap(PrdSku::getSkuNo, PrdSku::getCostPrice,
+                        (a, b) -> a));
         return skus.stream()
                 .map(s -> new GoodsVO.SkuVO(s.skuNo(), s.optionValues(), s.spec(), s.price(),
                         s.originPrice(), s.stock(), s.nominalGram(),
-                        bySku.getOrDefault(s.skuNo(), Map.of()), s.storePrice()))
+                        bySku.getOrDefault(s.skuNo(), Map.of()), s.storePrice(),
+                        costBySku.get(s.skuNo())))
                 .toList();
     }
 
@@ -1862,7 +2020,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         if (!prices.isEmpty()) {
             skus = skus.stream().map(s -> new GoodsVO.SkuVO(s.skuNo(), s.optionValues(), s.spec(),
                     s.price(), s.originPrice(), s.stock(), s.nominalGram(), s.priceByMarket(),
-                    prices.get(s.skuNo()))).toList();
+                    prices.get(s.skuNo()), s.costPrice())).toList();
         }
         Map<String, PrdStoreStock> byStore = DataScopeContext.executeWithoutScope(() ->
                         storeStockMapper.selectList(Wrappers.<PrdStoreStock>lambdaQuery()
@@ -1889,7 +2047,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
             int available = Math.max(stock - locked, 0);
             return new GoodsVO.SkuVO(sku.skuNo(), sku.optionValues(), sku.spec(),
                     sku.price(), sku.originPrice(), available, sku.nominalGram(),
-                    sku.priceByMarket(), sku.storePrice());
+                    sku.priceByMarket(), sku.storePrice(), sku.costPrice());
         }).toList();
     }
 

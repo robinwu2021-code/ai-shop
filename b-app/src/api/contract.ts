@@ -143,6 +143,13 @@ export interface SkuDraft {
    * 「按标称预扣、称重后多退少补」这条链靠它，没有它整条链跑不起来。
    */
   nominalGram?: number;
+  /**
+   * 成本价（最小货币单位）。**留空 = 不改**，传 0 = 清掉。
+   *
+   * <p>只用来在编辑页实时算毛利，不参与任何对外计价，也**不下发买家端**。
+   * 不校验与售价的大小关系 —— 引流款本来就可能亏本卖。
+   */
+  costPrice?: number;
 }
 
 /**
@@ -201,6 +208,12 @@ export interface GoodsDraft {
   cover?: string;
   /** 详情轮播图 */
   images?: string[];
+  /**
+   * 详情区长图，按顺序全宽竖排。**不传 = 不改**，传空数组 = 清空。
+   *
+   * <p>与 `images` 分开：那是详情页顶部可左右滑的方图，这些是正文下方一张接一张的长图。
+   */
+  detailImages?: string[];
   /** 空数组 = 单规格。非空则 skus 必须是各组选项的笛卡尔积 */
   specGroups: SpecGroupDraft[];
   /** SKU 列表。单规格商品也有且仅有一条 */

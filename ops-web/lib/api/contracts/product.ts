@@ -1,5 +1,5 @@
 // 覆盖范围：类目（P-3.1）、商品池（P-3.2）、库存与预售（P-3.3）。
-import type { GoodsAudit, GoodsDetail, Category, Page, ProductGoods, Sku, SpecTemplate, SpuStd, Topic } from "@/lib/types";
+import type { GoodsAudit, GoodsDetail, Category, CategorySpec, Page, ProductGoods, Sku, SpecTemplate, SpuStd, Topic } from "@/lib/types";
 import type { CategoryQ, SkuQ, SpecTemplateQ } from "../query";
 
 export interface ProductApi {
@@ -133,6 +133,11 @@ export interface ProductApi {
    * 商家自存的模板归商家，平台端列出来就会有人去改，而改了那家店的历史规格就对不上了。
    */
   listSpecTemplates(q?: SpecTemplateQ): Promise<Page<SpecTemplate>>;
+  /**
+   * 类目 × 规格总览（规格库 V195）。**不分页** —— 29 个类目一次拿全，
+   * 运营看这张表是为了横向比较「哪一类配得全、哪一类还空着」，翻页只会碍事。
+   */
+  listCategorySpecs(): Promise<CategorySpec[]>;
   /**
    * 新建或更新（`templateNo` 为空即新建）。
    *

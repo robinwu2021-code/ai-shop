@@ -1,7 +1,7 @@
 // 覆盖范围：商品与类目（P-3）。
 import { client } from "../http-client";
 import type { ProductApi } from "../contracts/product";
-import type { Category, Page, ProductGoods, Sku, SpecTemplate } from "@/lib/types";
+import type { Category, CategorySpec, Page, ProductGoods, Sku, SpecTemplate } from "@/lib/types";
 
 /** `GET /ops/goods` 的原样返回形状（`OpsGoodsListVO`，见后端 product/dto）。 */
 interface BackendGoodsPage {
@@ -115,6 +115,7 @@ export const productHttp: ProductApi = {
   listSpecTemplates: (q) =>
     client.get<Page<BackendSpecTemplate>>("/ops/spec-templates", q)
       .then((p) => ({ ...p, records: p.records.map(toSpecTemplate) })),
+  listCategorySpecs: () => client.get<CategorySpec[]>("/ops/category-specs"),
   saveSpecTemplate: (v) => client.post<BackendSpecTemplate>("/ops/spec-templates", v).then(toSpecTemplate),
   archiveSpecTemplate: (no) =>
     client.post<BackendSpecTemplate>(`/ops/spec-templates/${no}/archive`).then(toSpecTemplate),

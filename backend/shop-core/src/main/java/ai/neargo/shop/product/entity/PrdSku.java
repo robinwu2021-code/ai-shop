@@ -34,12 +34,34 @@ public class PrdSku extends BaseEntity {
     /** JSON 数组，各规格维度上的取值，顺序与 {@code PrdGoods.specGroups} 一一对应。 */
     private String optionValues;
 
+    /**
+     * JSON 数组：与 {@link #optionValues} 一一对应的<b>规格值编号</b>（{@code prd_spec_value.value_no}）。
+     *
+     * <p><b>是快照，不是外键。</b>值改名（黑色 → 曜石黑）不能改写历史订单里那件货当时的样子，
+     * 所以文案照旧留在 {@code optionValues}；这一列只用于聚合与比价 ——
+     * 三家店的「500g」只有都指向 {@code SV_WEIGHT_W500G} 才比得起来。
+     *
+     * <p>商家手打、没落到任何值上的那一格是 {@code null}：于是「有多少规格还没归一」
+     * 第一次变成可查的，而不是像此前那样查都查不出来（线上 378 件商品，带 optionCode 的 0 件）。
+     */
+    private String optionValueNos;
+
     /** 展示用拼接文案，后端下发 —— 端上自己拼会在多语言分隔符上出岔子。 */
     private String spec;
 
     /** 最小货币单位（分）。整数，绝不用浮点。 */
     private Long price;
     private Long originPrice;
+
+    /**
+     * 成本价（最小货币单位）。{@code null} = 商家没填。
+     *
+     * <p><b>只在商家侧下发</b>（{@code /biz/goods/**}），买家端与运营端都拿不到 ——
+     * 进货价是商家的经营秘密，平台没有理由把它转发给别人。
+     *
+     * <p>不校验「必须低于售价」：引流款本来就可能亏本卖，拦住它等于替商家做生意。
+     */
+    private Long costPrice;
 
     private Integer stock;
 

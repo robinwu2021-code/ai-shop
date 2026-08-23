@@ -257,6 +257,24 @@ const zh = {
   fieldArrive: "到货时间（ISO）",
   arriveHint: "留空表示不改。它是「截单必须早于到货」这条校验的基准 —— 不填的话那条校验校不到东西。",
 
+  // ── 类目 × 规格总览（规格库 V195）
+  csTitle: "类目 × 规格",
+  csNotice:
+    "商家建品时能选到什么规格，取决于这张表。一条都没配的类目会标红 —— 那一类的商家只能手输，而手输的选项没有规格编码，三家店的「500g」「五百克」「0.5kg」永远聚不到一起。主维度是选完类目自动预填的那一个。",
+  csColCategory: "类目",
+  csColType: "品类",
+  csColDims: "已配规格",
+  csColDetail: "维度与取值",
+  csPrimary: "主",
+  csUniversal: "通用",
+  csDedicated: "专用",
+  csProp: "属性",
+  csNone: "未配置",
+  csExpand: "展开取值",
+  csCollapse: "收起",
+  csSummary: "{total} 个在售类目，{configured} 个已配规格，{gap} 个还空着",
+  csEmpty: "还没有任何类目绑定规格。",
+
   // ── 规格模板（P-3.4 / E27）
   tplNotice:
     "平台模板是跨店可比的基础：商家建品时选它，选项上的规格编码决定了三家店写的「5 斤」「五斤」「2.5kg」能不能聚合到一起。归档不是删除 —— 历史商品还靠模板号解释它当初用的编码。",
@@ -571,6 +589,23 @@ const en: typeof zh = {
   cutoffHint: "Must be before the arrival time, otherwise orders keep coming in after the goods land.",
   fieldArrive: "Arrival time (ISO)",
   arriveHint: "Leave blank to keep the current value. It is what the cut-off is checked against — without it that check has nothing to compare.",
+
+  csTitle: "Categories × specs",
+  csNotice:
+    "What a merchant can pick when creating a product comes from this table. Categories with nothing configured are flagged — merchants there can only type freely, and free text has no option code, so “500g”, “half a jin” and “0.5kg” never group together. The primary dimension is the one pre-filled once a category is chosen.",
+  csColCategory: "Category",
+  csColType: "Type",
+  csColDims: "Specs",
+  csColDetail: "Dimensions & values",
+  csPrimary: "Primary",
+  csUniversal: "Universal",
+  csDedicated: "Dedicated",
+  csProp: "Attribute",
+  csNone: "Not configured",
+  csExpand: "Show values",
+  csCollapse: "Hide",
+  csSummary: "{total} live categories · {configured} configured · {gap} still empty",
+  csEmpty: "No category has specs bound yet.",
 
   tplNotice:
     "Platform templates are what makes specs comparable across shops: merchants pick one when creating a product, and the option code decides whether “5 jin”, “five jin” and “2.5kg” group together. Archiving is not deleting — past products still need the template to explain the codes they used.",

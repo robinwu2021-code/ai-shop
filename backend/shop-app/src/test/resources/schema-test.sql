@@ -699,6 +699,7 @@ CREATE TABLE IF NOT EXISTS prd_goods
     audit_reason VARCHAR(512) DEFAULT NULL,
     std_no VARCHAR(64) DEFAULT NULL,
     detail TEXT DEFAULT NULL,
+    detail_images TEXT DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_goods_no UNIQUE (goods_no)
 );
@@ -728,8 +729,137 @@ CREATE TABLE IF NOT EXISTS prd_sku
     sold_count INT(11) NOT NULL DEFAULT 0,
     cutoff_at DATETIME DEFAULT NULL,
     arrive_at DATETIME DEFAULT NULL,
+    cost_price BIGINT(20) DEFAULT NULL,
+    option_value_nos VARCHAR(512) DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_entity_sku_market UNIQUE (entity_no,sku_no,market)
+);
+
+CREATE TABLE IF NOT EXISTS prd_spec_dim
+(
+    id BIGINT(20) NOT NULL AUTO_INCREMENT,
+    dim_no VARCHAR(64) NOT NULL,
+    code VARCHAR(32) NOT NULL,
+    name VARCHAR(64) NOT NULL,
+    name_i18n TEXT DEFAULT NULL,
+    value_type VARCHAR(16) NOT NULL DEFAULT 'ENUM',
+    unit VARCHAR(16) DEFAULT NULL,
+    usage_type VARCHAR(16) NOT NULL DEFAULT 'SALE',
+    universal TINYINT(4) NOT NULL DEFAULT 0,
+    scope VARCHAR(16) NOT NULL DEFAULT 'PLATFORM',
+    entity_no VARCHAR(64) DEFAULT NULL,
+    sort INT(11) NOT NULL DEFAULT 100,
+    status VARCHAR(16) NOT NULL DEFAULT 'ACTIVE',
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT(20) NOT NULL DEFAULT 0,
+    deleted TINYINT(4) NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_spec_dim_no UNIQUE (dim_no)
+);
+
+CREATE TABLE IF NOT EXISTS prd_spec_value
+(
+    id BIGINT(20) NOT NULL AUTO_INCREMENT,
+    value_no VARCHAR(64) NOT NULL,
+    dim_no VARCHAR(64) NOT NULL,
+    code VARCHAR(32) NOT NULL,
+    label VARCHAR(64) NOT NULL,
+    label_i18n TEXT DEFAULT NULL,
+    numeric_value DECIMAL(14,4) DEFAULT NULL,
+    numeric_unit VARCHAR(16) DEFAULT NULL,
+    aliases TEXT DEFAULT NULL,
+    scope VARCHAR(16) NOT NULL DEFAULT 'PLATFORM',
+    entity_no VARCHAR(64) DEFAULT NULL,
+    sort INT(11) NOT NULL DEFAULT 100,
+    status VARCHAR(16) NOT NULL DEFAULT 'ACTIVE',
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT(20) NOT NULL DEFAULT 0,
+    deleted TINYINT(4) NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_spec_value_no UNIQUE (value_no)
+);
+
+CREATE TABLE IF NOT EXISTS prd_category_spec
+(
+    id BIGINT(20) NOT NULL AUTO_INCREMENT,
+    category_no VARCHAR(64) NOT NULL,
+    dim_no VARCHAR(64) NOT NULL,
+    usage_type VARCHAR(16) DEFAULT NULL,
+    is_primary TINYINT(4) NOT NULL DEFAULT 0,
+    required TINYINT(4) NOT NULL DEFAULT 0,
+    sort INT(11) NOT NULL DEFAULT 100,
+    status VARCHAR(16) NOT NULL DEFAULT 'ACTIVE',
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT(20) NOT NULL DEFAULT 0,
+    deleted TINYINT(4) NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_cat_spec UNIQUE (tenant_no, category_no, dim_no)
+);
+
+CREATE TABLE IF NOT EXISTS prd_category_spec_value
+(
+    id BIGINT(20) NOT NULL AUTO_INCREMENT,
+    category_no VARCHAR(64) NOT NULL,
+    dim_no VARCHAR(64) NOT NULL,
+    value_no VARCHAR(64) NOT NULL,
+    label_override VARCHAR(64) DEFAULT NULL,
+    sort INT(11) NOT NULL DEFAULT 100,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT(20) NOT NULL DEFAULT 0,
+    deleted TINYINT(4) NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_cat_spec_value UNIQUE (tenant_no, category_no, dim_no, value_no)
+);
+
+CREATE TABLE IF NOT EXISTS prd_merchant_spec
+(
+    id BIGINT(20) NOT NULL AUTO_INCREMENT,
+    entity_no VARCHAR(64) NOT NULL,
+    dim_no VARCHAR(64) NOT NULL,
+    sort INT(11) NOT NULL DEFAULT 100,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT(20) NOT NULL DEFAULT 0,
+    deleted TINYINT(4) NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_mch_spec UNIQUE (tenant_no, entity_no, dim_no)
+);
+
+CREATE TABLE IF NOT EXISTS prd_merchant_spec_value
+(
+    id BIGINT(20) NOT NULL AUTO_INCREMENT,
+    entity_no VARCHAR(64) NOT NULL,
+    dim_no VARCHAR(64) NOT NULL,
+    value_no VARCHAR(64) NOT NULL,
+    sort INT(11) NOT NULL DEFAULT 100,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT(20) NOT NULL DEFAULT 0,
+    deleted TINYINT(4) NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_mch_spec_value UNIQUE (tenant_no, entity_no, dim_no, value_no)
 );
 
 CREATE TABLE IF NOT EXISTS prd_spec_template
@@ -1848,6 +1978,10 @@ CREATE TABLE IF NOT EXISTS sys_region
     owner_entity_no VARCHAR(64) DEFAULT NULL,
     audit_status VARCHAR(16) NOT NULL DEFAULT 'APPROVED',
     reject_reason VARCHAR(255) DEFAULT NULL,
+    lat_e6 INT NULL,
+    lng_e6 INT NULL,
+    coords_source VARCHAR(16) NULL,
+    coords_at DATETIME NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_sys_region_code UNIQUE (region_code)
 );

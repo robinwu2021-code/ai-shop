@@ -289,7 +289,8 @@ public class GoodsServiceImpl implements GoodsService {
 
         return new GoodsVO(
                 g.getGoodsNo(), g.getTitle(), g.getSubtitle(), g.getCover(),
-                readList(g.getImages()), g.getDetail(), g.getType(), g.getCategoryNo(), brief,
+                readList(g.getImages()), g.getDetail(), readList(g.getDetailImages()),
+                g.getType(), g.getCategoryNo(), brief,
                 g.getRating() == null ? 0d : g.getRating() / 10d,
                 nz(g.getRatingCount()), minPrice, minOrigin,
                 readList(g.getFulfillments()), readSpecGroups(g.getSpecGroups()),
@@ -338,6 +339,8 @@ public class GoodsServiceImpl implements GoodsService {
                  * 店是下单时由自提点定的），给一个「某家店的价」只会与他实际付的钱不符。
                  * 买家侧的门店价在结算那一步生效，见 OrderServiceImpl.split()。
                  */
+                null,
+                // 成本价同理：进货价是商家的经营秘密，买家端恒空
                 null);
     }
 

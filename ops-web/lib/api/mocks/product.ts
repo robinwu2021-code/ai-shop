@@ -1,9 +1,107 @@
 // 覆盖范围：商品与类目（P-3）。上架前的三条校验是本域的核心。
 import * as db from "@/lib/mock/db";
-import { MARKETS, MAX_CATEGORY_LEVEL, SKU_TRANSITIONS, type Category, type Sku, type SpecTemplate, type SpuStd, type Topic, type ProductGoods } from "@/lib/types";
+import { MARKETS, MAX_CATEGORY_LEVEL, SKU_TRANSITIONS, type Category, type CategorySpecDim, type Sku, type SpecTemplate, type SpuStd, type Topic, type ProductGoods } from "@/lib/types";
 import type { ProductApi } from "../contracts/product";
 import { fail, notFound } from "@/lib/biz-error";
 import { wait } from "./_wait";
+
+/**
+ * mock 的类目规格绑定：只覆盖六个类目，其余留空。
+ *
+ * 真库里是 116 条绑定（V196 种子），这里不抄一份 —— mock 的用途是让界面的
+ * 两种状态都走得到：配好的（含主维度、通用/专用、PROP、归一量）与空着的（标红计数）。
+ */
+const MOCK_CATEGORY_SPECS: Record<string, CategorySpecDim[]> = {
+  CAT110: [
+    { dimNo: "SD_WEIGHT", code: "WEIGHT", name: "重量", valueType: "QUANT", unit: "g",
+      usage: "SALE", universal: true, primary: true, valueCount: 4, values: [
+        { valueNo: "SV_WEIGHT_W250G", code: "W250G", label: "约半斤", numericValue: 250, numericUnit: "g" },
+        { valueNo: "SV_WEIGHT_W500G", code: "W500G", label: "约1斤", numericValue: 500, numericUnit: "g" },
+        { valueNo: "SV_WEIGHT_W1KG", code: "W1KG", label: "约2斤", numericValue: 1000, numericUnit: "g" },
+        { valueNo: "SV_WEIGHT_W1500G", code: "W1500G", label: "约3斤", numericValue: 1500, numericUnit: "g" },
+      ] },
+    { dimNo: "SD_PACK", code: "PACK", name: "包装", valueType: "ENUM", usage: "SALE",
+      universal: true, primary: false, valueCount: 3, values: [
+        { valueNo: "SV_PACK_PBULK", code: "PBULK", label: "散装" },
+        { valueNo: "SV_PACK_PBAG", code: "PBAG", label: "袋装" },
+        { valueNo: "SV_PACK_PBOX", code: "PBOX", label: "盒装" },
+      ] },
+    { dimNo: "SD_ORIGIN", code: "ORIGIN", name: "产地", valueType: "ENUM", usage: "PROP",
+      universal: true, primary: false, valueCount: 3, values: [
+        { valueNo: "SV_ORIGIN_ORGLOCAL", code: "ORGLOCAL", label: "本地" },
+        { valueNo: "SV_ORIGIN_ORGCN", code: "ORGCN", label: "国产" },
+        { valueNo: "SV_ORIGIN_ORGIMP", code: "ORGIMP", label: "进口" },
+      ] },
+  ],
+  CAT170: [
+    { dimNo: "SD_WEIGHT", code: "WEIGHT", name: "重量", valueType: "QUANT", unit: "g",
+      usage: "SALE", universal: true, primary: true, valueCount: 3, values: [
+        { valueNo: "SV_WEIGHT_W500G", code: "W500G", label: "1斤", numericValue: 500, numericUnit: "g" },
+        { valueNo: "SV_WEIGHT_W1KG", code: "W1KG", label: "2斤", numericValue: 1000, numericUnit: "g" },
+        { valueNo: "SV_WEIGHT_W2KG", code: "W2KG", label: "4斤", numericValue: 2000, numericUnit: "g" },
+      ] },
+    { dimNo: "SD_CUT", code: "CUT", name: "处理方式", valueType: "ENUM", usage: "SALE",
+      universal: false, primary: false, valueCount: 4, values: [
+        { valueNo: "SV_CUT_CUTWHOLE", code: "CUTWHOLE", label: "整只" },
+        { valueNo: "SV_CUT_CUTCHUNK", code: "CUTCHUNK", label: "切块" },
+        { valueNo: "SV_CUT_CUTSLICE", code: "CUTSLICE", label: "切片" },
+        { valueNo: "SV_CUT_CUTMINCE", code: "CUTMINCE", label: "绞馅" },
+      ] },
+  ],
+  CAT290: [
+    { dimNo: "SD_DIAMETER", code: "DIAMETER", name: "口径", valueType: "QUANT", unit: "cm",
+      usage: "SALE", universal: true, primary: true, valueCount: 4, values: [
+        { valueNo: "SV_DIAMETER_DM16", code: "DM16", label: "16cm", numericValue: 16, numericUnit: "cm" },
+        { valueNo: "SV_DIAMETER_DM20", code: "DM20", label: "20cm", numericValue: 20, numericUnit: "cm" },
+        { valueNo: "SV_DIAMETER_DM24", code: "DM24", label: "24cm", numericValue: 24, numericUnit: "cm" },
+        { valueNo: "SV_DIAMETER_DM28", code: "DM28", label: "28cm", numericValue: 28, numericUnit: "cm" },
+      ] },
+    // 锅具的材质是分价的那一维，所以这一类目把它覆盖成 SALE
+    { dimNo: "SD_MATERIAL", code: "MATERIAL", name: "材质", valueType: "ENUM", usage: "SALE",
+      universal: true, primary: false, valueCount: 3, values: [
+        { valueNo: "SV_MATERIAL_MATSTEEL", code: "MATSTEEL", label: "不锈钢" },
+        { valueNo: "SV_MATERIAL_MATIRON", code: "MATIRON", label: "铸铁" },
+        { valueNo: "SV_MATERIAL_MATCERAMIC", code: "MATCERAMIC", label: "陶瓷" },
+      ] },
+  ],
+  CAT610: [
+    { dimNo: "SD_COLOR", code: "COLOR", name: "颜色", valueType: "ENUM", usage: "SALE",
+      universal: true, primary: true, valueCount: 3, values: [
+        { valueNo: "SV_COLOR_CLRBLACK", code: "CLRBLACK", label: "黑色" },
+        { valueNo: "SV_COLOR_CLRWHITE", code: "CLRWHITE", label: "白色" },
+        { valueNo: "SV_COLOR_CLRSILVER", code: "CLRSILVER", label: "银色" },
+      ] },
+    { dimNo: "SD_STORAGE", code: "STORAGE", name: "存储", valueType: "ENUM", usage: "SALE",
+      universal: false, primary: false, valueCount: 3, values: [
+        { valueNo: "SV_STORAGE_S128G", code: "S128G", label: "128G", numericValue: 128 },
+        { valueNo: "SV_STORAGE_S256G", code: "S256G", label: "256G", numericValue: 256 },
+        { valueNo: "SV_STORAGE_S512G", code: "S512G", label: "512G", numericValue: 512 },
+      ] },
+  ],
+  CAT310: [
+    { dimNo: "SD_ROOM", code: "ROOM", name: "房型", valueType: "ENUM", usage: "SALE",
+      universal: false, primary: true, valueCount: 4, values: [
+        { valueNo: "SV_ROOM_R1", code: "R1", label: "一居", numericValue: 1 },
+        { valueNo: "SV_ROOM_R2", code: "R2", label: "两居", numericValue: 2 },
+        { valueNo: "SV_ROOM_R3", code: "R3", label: "三居", numericValue: 3 },
+        { valueNo: "SV_ROOM_R4", code: "R4", label: "四居及以上", numericValue: 4 },
+      ] },
+  ],
+  CAT720: [
+    { dimNo: "SD_WEIGHT", code: "WEIGHT", name: "重量", valueType: "QUANT", unit: "g",
+      usage: "SALE", universal: true, primary: true, valueCount: 3, values: [
+        { valueNo: "SV_WEIGHT_W100G", code: "W100G", label: "100g", numericValue: 100, numericUnit: "g" },
+        { valueNo: "SV_WEIGHT_W250G", code: "W250G", label: "250g", numericValue: 250, numericUnit: "g" },
+        { valueNo: "SV_WEIGHT_W500G", code: "W500G", label: "500g", numericValue: 500, numericUnit: "g" },
+      ] },
+    { dimNo: "SD_FLAVOR", code: "FLAVOR", name: "口味", valueType: "ENUM", usage: "SALE",
+      universal: true, primary: false, valueCount: 3, values: [
+        { valueNo: "SV_FLAVOR_FLVPLAIN", code: "FLVPLAIN", label: "原味" },
+        { valueNo: "SV_FLAVOR_FLVSPICY", code: "FLVSPICY", label: "香辣" },
+        { valueNo: "SV_FLAVOR_FLVSWEET", code: "FLVSWEET", label: "甜味" },
+      ] },
+  ],
+};
 
 function findCategory(no: string): Category {
   const c = db.categories.find((x) => x.categoryNo === no);
@@ -379,6 +477,28 @@ export const productMock: ProductApi = {
     wait(db.skus.filter((s) => s.presaleQuota > 0 && s.soldCount > s.presaleQuota)),
 
   // ── 规格模板（P-3.4 / E27）
+
+  /*
+   * 类目 × 规格（规格库 V195）。mock 只绑六个类目 —— **刻意留出缺口**：
+   * 这张表的第一职责就是把「还没配规格的类目」顶到眼前，样本里全配满的话，
+   * 那半边界面（标红的缺口、缺口计数）在开发期永远走不到。
+   */
+  listCategorySpecs: () =>
+    wait(
+      db.categories
+        .filter((cat) => cat.level === 2 && !cat.archivedAt)
+        .map((cat) => {
+          const dims = MOCK_CATEGORY_SPECS[cat.categoryNo] ?? [];
+          return {
+            categoryNo: cat.categoryNo,
+            categoryName: cat.name,
+            parentName: db.categories.find((p) => p.categoryNo === cat.parentNo)?.name ?? "",
+            categoryType: cat.template,
+            dimCount: dims.length,
+            dims,
+          };
+        }),
+    ),
 
   listSpecTemplates: (q = {}) =>
     wait(

@@ -23,6 +23,35 @@ public final class ProductMappers {
     public interface SpecTemplateMapper extends BaseMapper<PrdSpecTemplate> {
     }
 
+    // ---------------------------------------------------------------- 规格库（V195）
+    //
+    // 四层：规格项 / 规格值 / 类目绑定 / 类目取值子集，另加两张商家覆盖表。
+    // 商家侧的「套用模板」读的是这几张表组装出来的结果，契约形状不变。
+
+    public interface SpecDimMapper
+            extends BaseMapper<ai.neargo.shop.product.entity.PrdSpecDim> {
+    }
+
+    public interface SpecValueMapper
+            extends BaseMapper<ai.neargo.shop.product.entity.PrdSpecValue> {
+    }
+
+    public interface CategorySpecMapper
+            extends BaseMapper<ai.neargo.shop.product.entity.PrdCategorySpec> {
+    }
+
+    public interface CategorySpecValueMapper
+            extends BaseMapper<ai.neargo.shop.product.entity.PrdCategorySpecValue> {
+    }
+
+    public interface MerchantSpecMapper
+            extends BaseMapper<ai.neargo.shop.product.entity.PrdMerchantSpec> {
+    }
+
+    public interface MerchantSpecValueMapper
+            extends BaseMapper<ai.neargo.shop.product.entity.PrdMerchantSpecValue> {
+    }
+
     public interface SkuMapper extends BaseMapper<PrdSku> {
 
         /**

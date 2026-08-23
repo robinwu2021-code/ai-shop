@@ -230,6 +230,8 @@ export const httpApi: MerchantApi = {
       categoryNo: payload.categoryNo,
       cover: payload.cover,
       images: payload.images,
+      // 详情图：空数组也要发，理由同 images
+      detailImages: payload.detailImages,
       // 图文详情：空串也要发 —— 后端「不传 = 不改」，删光了不发就删不掉
       detail: payload.detail,
       specGroups: payload.specGroups,

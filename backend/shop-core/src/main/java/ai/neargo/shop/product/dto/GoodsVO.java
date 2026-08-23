@@ -20,6 +20,11 @@ public record GoodsVO(String goodsNo,
                        * 别拿一个空白区块占着详情页。
                        */
                       String detail,
+                      /**
+                       * 图文详情区的长图，按顺序全宽竖排（与 {@link #images} 的顶部轮播分开）。
+                       * 空数组 = 没传过，端上不渲染这一段。
+                       */
+                      List<String> detailImages,
                       String type,
                       String categoryNo,
                       MerchantBriefVO merchant,
@@ -139,6 +144,13 @@ public record GoodsVO(String goodsNo,
                          * <p>与门店库存回退方向相反：没设过价的店按主体价卖，
                          * 没设过库存的店按 0 卖。
                          */
-                        Long storePrice) {
+                        Long storePrice,
+                        /**
+                         * 成本价（最小货币单位）。<b>只在商家侧下发，买家端与运营端恒空</b> ——
+                         * 进货价是商家的经营秘密，平台没有理由转发给别人。
+                         *
+                         * <p>空 = 没填过。端上据此决定要不要显示毛利那一行。
+                         */
+                        Long costPrice) {
     }
 }

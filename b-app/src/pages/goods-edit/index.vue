@@ -15,6 +15,8 @@ import { onLoad } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
 import { api } from "@/api";
 import { useMerchantStore } from "@/stores/merchant";
+import { ROUTES } from "@/shared/nav";
+import { SHOW_CATEGORY_GATE, SHOW_FRESH_FIELDS } from "@/shared/flags";
 import type { GoodsGuess } from "@/api/contract";
 import { CATEGORY_TYPE, MARKETS, TEMPLATE_TO_TYPE } from "@shared/utils/constants";
 import { MAX_IMAGE_BYTES, pickImages } from "@shared/ports/media";
@@ -70,6 +72,11 @@ interface Row {
    * 同样是有列、有契约、无入口。非生鲜不显示这一格。
    */
   nominalGram: string;
+  /**
+   * 成本价（主单位字符串）。**只有商家自己看得到** —— 不下发买家端。
+   * 填了就在售价旁边实时算毛利；不填这一行就不出现。
+   */
+  costMajor: string;
 }
 
 /** 空价格表：三个市场各一格 */
@@ -150,6 +157,14 @@ function detachStd() {
 const cover = ref("");
 /** 详情轮播图。与封面分开：封面进列表卡片，这些进详情页的轮播 */
 const images = ref<string[]>([]);
+/**
+ * 详情图：图文详情正文**下方**按顺序全宽竖排的长图。
+ *
+ * <p>与轮播图分成两组存、两组传：轮播是顶部可左右滑的方图，详情图是 1:3 的长图。
+ * 混在一个数组里的话，端上只能靠宽高比猜哪几张该轮播 —— 猜错就是一张长图
+ * 被塞进方形轮播里，而这件事没有任何一处会报错。
+ */
+const detailImages = ref<string[]>([]);
 const uploading = ref(false);
 
 /**
@@ -195,6 +210,57 @@ const fulfillments = ref<string[]>([]);
 const fulfillmentOptions = computed(() =>
   type.value === CATEGORY_TYPE.SERVICE ? SERVICE_FULFILLMENTS : PHYSICAL_FULFILLMENTS,
 );
+
+/**
+ * 本店**实际开通**的送货方式（`mch_fulfillment_channel`）。
+ *
+ * <p>此前这一栏的候选项是四个写死的常量，**与门店开没开通无关** ——
+ * 门店没开快递，商品照样勾得上快递，而错要到买家下单那一刻才显形
+ * （F-1「下单必须支持该履约方式」在商品这一侧从来没有对齐过）。
+ *
+ * <p>取不到就退回四个常量：这一栏是必填项，因为一次网络失败让人建不了商品，
+ * 比多给两个选项糟得多。
+ */
+const storeChannels = ref<string[]>([]);
+const channelsLoaded = ref(false);
+
+/** 这一路本店开了吗。服务类的两种不归门店送货方式管，恒为可选 */
+function channelOpen(f: string): boolean {
+  if (SERVICE_FULFILLMENTS.includes(f)) return true;
+  if (!channelsLoaded.value || !storeChannels.value.length) return true;
+  return storeChannels.value.includes(f);
+}
+
+/**
+ * 默认选中哪一路。
+ *
+ * <p>只开了一路 → 就是它；开了多路 → 按固定优先级取第一条。
+ * 优先级不是拍脑袋：**自送与到店自提是社区店的日常**，快递是少数商家才走的一路。
+ * （二期给 `mch_fulfillment_channel` 加「默认路」让商家自己指，那之前用这个。）
+ */
+const FULFILLMENT_PRIORITY = ["MERCHANT_DELIVERY", "STORE_PICKUP", "NEIGHBOR_PICKUP", "EXPRESS"];
+
+async function loadStoreChannels() {
+  const res = await api.mStoreFulfillment(merchant.storeNo || "default").catch(() => null);
+  channelsLoaded.value = true;
+  if (!res) return;
+  storeChannels.value = res.channels.filter((c) => c.enabled).map((c) => c.channel);
+  /*
+   * **只给新建商品预选**。编辑已有商品时一律不动他选过的那一路 ——
+   * 那是已经在卖的事实，替他改掉等于悄悄换了这件货的交付方式。
+   */
+  if (isEdit.value || fulfillments.value.length) return;
+  const pick = FULFILLMENT_PRIORITY.find((f) => storeChannels.value.includes(f));
+  if (pick) fulfillments.value = [pick];
+}
+
+/** 编辑时：原来那一路已经被门店关掉了 —— 说出来，但不替他改 */
+const fulfillmentClosed = computed(
+  () =>
+    channelsLoaded.value &&
+    storeChannels.value.length > 0 &&
+    fulfillments.value.some((f) => !SERVICE_FULFILLMENTS.includes(f) && !storeChannels.value.includes(f)),
+);
 /**
  * 履约方式**单选**。
  *
@@ -206,7 +272,20 @@ const fulfillmentOptions = computed(() =>
  * 「一种都没选」的中间态，而它唯一的用途是让保存按钮变灰。
  */
 function pickFulfillment(f: string) {
+  /*
+   * 没开通的那一路**点不动**，并且说清去哪开 —— 直接让他勾上的话，
+   * 商品保存得下去，买家却下不了单，而两处都不报错。
+   */
+  if (!channelOpen(f)) {
+    uni.showToast({ title: t("goods.fulfillmentClosedTip"), icon: "none" });
+    return;
+  }
   fulfillments.value = [f];
+}
+
+/** 去门店设置开这一路。回来时 onShow 会重拉一次开通状态 */
+function toStoreScope() {
+  uni.navigateTo({ url: ROUTES.storeScope });
 }
 
 /** 每人限购，0/空 = 不限 */
@@ -222,44 +301,6 @@ const limitPerUser = ref("");
 const fresh = ref({ cutoffAt: "", arrivalDesc: "", weighed: false, origin: "" });
 const service = ref({ durationMin: "", storeName: "" });
 /** 拼团档：两个值要么都填要么都不填 —— 缺一个开不出团，而界面上看着是配着的 */
-/**
- * 识别候选。**不是第二份数据**，只是「识别到了但没替你填」的暂存：
- * 采用即写进正式字段并清空，忽略即清空。
- */
-interface Suggest {
-  title?: string;
-  subtitle?: string;
-  categoryNo?: string;
-  catLabel?: string;
-  /** 低置信度：整份都只是候选，一个字段都没预填过 */
-  low: boolean;
-}
-const suggest = ref<Suggest | null>(null);
-
-/** 采用候选。类目要连面包屑与形态一起落，理由同 applyGuess 里那段 */
-async function takeSuggest() {
-  const g = suggest.value;
-  if (!g) return;
-  if (g.title) {
-    title.value = { ...title.value, "zh-CN": g.title };
-    lang.value = "zh-CN";
-  }
-  if (g.subtitle) subtitle.value = { ...subtitle.value, "zh-CN": g.subtitle };
-  if (g.categoryNo) {
-    const path = findPath(categoryTree.value, g.categoryNo);
-    if (path.length) {
-      catPath.value = path;
-      categoryNo.value = g.categoryNo;
-      const inferred = path[path.length - 1]?.template;
-      if (inferred && TEMPLATE_TO_TYPE[inferred]) {
-        type.value = TEMPLATE_TO_TYPE[inferred] as CategoryType;
-        await loadTemplates();
-      }
-    }
-  }
-  suggest.value = null;
-}
-
 const groupBuy = ref({ minCount: "", price: "" });
 /**
  * 拼团开关。**不是新字段** —— 它只是「这两个框填不填」的可见表示：
@@ -361,13 +402,59 @@ const categoryLabel = computed(() =>
  */
 function pickParent(c: Category) {
   parentNo.value = c.categoryNo;
-  if (!c.children?.length) select([c]);
+  if (!c.children?.length) void select([c]);
+}
+
+/**
+ * 「最近用过」的类目。**本地记录，不占后端**：一家店的货高度集中，
+ * 建第二个商品时要选的那一档多半就在这三五个里 —— 一点就换。
+ *
+ * <p>它同时是「识别没填对」和「压根没识别出来」两种情况下最快的入口，
+ * 所以不藏起来，就摆在一级类目上面那一行。
+ */
+const RECENT_CATS_KEY = "biz.recentCategories";
+const recentCats = ref<{ categoryNo: string; name: string }[]>([]);
+
+function loadRecentCats() {
+  try {
+    const raw = uni.getStorageSync(RECENT_CATS_KEY);
+    recentCats.value = Array.isArray(raw) ? raw.slice(0, 5) : [];
+  } catch {
+    recentCats.value = [];
+  }
+}
+
+/** 保存成功后记一笔。同一个类目再选只是提前，不重复入列 */
+function rememberCat() {
+  const leaf = catPath.value[catPath.value.length - 1];
+  if (!leaf) return;
+  const next = [
+    { categoryNo: leaf.categoryNo, name: leaf.name },
+    ...recentCats.value.filter((c) => c.categoryNo !== leaf.categoryNo),
+  ].slice(0, 5);
+  recentCats.value = next;
+  try {
+    uni.setStorageSync(RECENT_CATS_KEY, next);
+  } catch {
+    // 存不进去不影响建品，最近用过下次不显示而已
+  }
+}
+
+/** 点「最近用过」：按编号回原树找路径，连面包屑与形态一起落 */
+function pickRecent(no: string) {
+  const path = findPath(categoryTree.value, no);
+  if (!path.length) {
+    // 类目被运营下架了：静默从最近列表里摘掉，不给一个点了没反应的 chip
+    recentCats.value = recentCats.value.filter((c) => c.categoryNo !== no);
+    return;
+  }
+  void select(path);
 }
 
 /** 选二级。到这里就是终点，不再往下 */
 function pickChild(c: Category) {
   const parent = categoryTree.value.find((x) => x.categoryNo === parentNo.value);
-  select(parent ? [parent, c] : [c]);
+  void select(parent ? [parent, c] : [c]);
 }
 
 /**
@@ -381,17 +468,63 @@ function pickChild(c: Category) {
  * <p>现在 chip 已经删掉，`type` 只是个**展示值** —— 后端也不采信请求里的 type，
  * 它自己按 categoryNo 查一遍。两边同源，端上算错也写不进库。
  */
-function select(path: Category[]) {
+async function select(path: Category[]) {
   const leaf = path[path.length - 1];
   if (!leaf) return;
   catPath.value = path;
+  parentNo.value = path[0]?.categoryNo ?? leaf.categoryNo;
   categoryNo.value = leaf.categoryNo;
   const inferred = leaf.template ? TEMPLATE_TO_TYPE[leaf.template] : undefined;
   if (inferred && inferred !== type.value) {
     type.value = inferred as CategoryType;
-    // 规格模板按品类推荐，品类变了要重取 —— 否则给生鲜推的还是上一类的模板
-    void loadTemplates();
   }
+  /*
+   * **类目一确定就重取模板** —— 不再只在品类变了的时候取。
+   *
+   * 只传品类拿回来的是兜底那批（STANDARD 一个盖住 18 个二级类目：手机数码
+   * 与鲜花共用「包装：袋装/瓶装/罐装」，等于没有推荐）。类目级模板才有信息量，
+   * 而它只有带上 categoryNo 才拿得到。
+   */
+  await loadTemplates();
+  autoApplyDefaultSpec();
+}
+
+/**
+ * 按类目铺开**默认规格**。
+ *
+ * <p>只在**类目级**模板（`tpl.categoryNo` 有值）上做：品类兜底模板太泛，
+ * 自动套给一件手机是帮倒忙。没有类目级模板时维持原来的 chip 推荐，
+ * 商家点一下才成组。
+ *
+ * <p>三条边界：
+ * <ul>
+ *   <li><b>编辑已有商品永不自动套</b> —— 他的规格是已经卖过的事实，不是待填的空白
+ *   <li>已经建过规格组就不动，除非那组正是上一次自动套出来、且他一个字没改
+ *   <li>套出来的每个选项都可勾掉（见模板 chip 那一段），矩阵按选项组合保值
+ * </ul>
+ */
+function autoApplyDefaultSpec() {
+  if (isEdit.value) return;
+  const tpl = templates.value.find((x) => x.scope === "PLATFORM" && x.categoryNo);
+  if (!tpl) return;
+  // 手动建过组就不覆盖；自动套过的那一组（autoSpecNo 记着）可以换成新类目的
+  const only = groups.value.length === 1 ? groups.value[0] : undefined;
+  const replaceable = !groups.value.length || (only && only.templateNo === autoSpecNo.value);
+  if (!replaceable) return;
+  if (only?.templateNo === tpl.templateNo) return;
+  groups.value = [];
+  applyTemplate(tpl);
+  autoSpecNo.value = tpl.templateNo;
+}
+
+/** 上一次**自动**套上的模板号。手点的不算 —— 手点过的规格组不该被换类目冲掉 */
+const autoSpecNo = ref("");
+
+/** 撤销自动套上的规格组：回到单规格 */
+function clearAutoSpec() {
+  groups.value = [];
+  autoSpecNo.value = "";
+  rebuild();
 }
 
 
@@ -474,14 +607,44 @@ const priceField = ref<PriceField>("price");
  * 那时它是个恒定的标签，占一行却什么都不让人选。
  * 标称重量只对生鲜有意义（按标称预扣、称重后多退少补）。
  */
-type PriceField = "price" | "origin" | "gram";
+type PriceField = "price" | "cost" | "origin" | "gram";
 const priceFields = computed<{ key: PriceField; labelKey: string }[]>(() => {
   const out: { key: PriceField; labelKey: string }[] = [
     { key: "price", labelKey: "goods.fieldPrice" },
+    // 成本价紧挨着售价：填价的时候看的就是这两个数之差
+    { key: "cost", labelKey: "goods.fieldCost" },
     { key: "origin", labelKey: "goods.fieldOrigin" },
   ];
-  if (isFresh.value) out.push({ key: "gram", labelKey: "goods.fieldGram" });
+  // 标称重量属于「按标称预扣」那条链，与生鲜段一起收着（见 flags.ts）
+  if (SHOW_FRESH_FIELDS && isFresh.value) out.push({ key: "gram", labelKey: "goods.fieldGram" });
   return out;
+});
+
+/**
+ * 毛利。**填了成本才算** —— 没填时这一行整个不出现，
+ * 而不是显示「毛利 100%」（那是在替商家宣布他零成本）。
+ *
+ * @returns null = 算不出来（缺售价或缺成本）
+ */
+function marginOf(r: Row): { amount: string; rate: number } | null {
+  const price = Number(r.priceMajor[market.value]);
+  const cost = Number(r.costMajor);
+  if (!(price > 0) || !(cost > 0)) return null;
+  return { amount: (price - cost).toFixed(2), rate: Math.round(((price - cost) / price) * 100) };
+}
+
+/** 成本高于售价：这一单亏钱。**提示但不拦** —— 引流款本来就可能亏本卖 */
+function belowCost(r: Row): boolean {
+  const price = Number(r.priceMajor[market.value]);
+  const cost = Number(r.costMajor);
+  return price > 0 && cost > 0 && cost >= price;
+}
+
+/** 多规格时把毛利率汇总成一句话：逐行看毛利在 8 行的表上没人看得过来 */
+const avgMargin = computed<number | null>(() => {
+  const rates = rows.value.map(marginOf).filter((m): m is { amount: string; rate: number } => !!m);
+  if (!rates.length) return null;
+  return Math.round(rates.reduce((sum, m) => sum + m.rate, 0) / rates.length);
 });
 
 /**
@@ -494,7 +657,14 @@ function badOrigin(r: Row): boolean {
   return r.originMajor.trim() !== "" && o > 0 && p > 0 && o <= p;
 }
 const rows = ref<Row[]>([
-  { optionValues: [], priceMajor: emptyPrices(), stock: "0", originMajor: "", nominalGram: "" },
+  {
+    optionValues: [],
+    priceMajor: emptyPrices(),
+    stock: "0",
+    originMajor: "",
+    nominalGram: "",
+    costMajor: "",
+  },
 ]);
 
 /**
@@ -506,7 +676,7 @@ const MARKET_CURRENCIES = MARKETS.map((m) => ({ id: m.id, currency: m.currency }
 const market = ref<CurrencyCode>(MARKET_CURRENCIES[0]!.currency);
 const saving = ref(false);
 /** 批量填充 */
-const bulk = ref({ price: "", stock: "" });
+const bulk = ref({ price: "", stock: "", cost: "" });
 
 const isEdit = computed(() => !!goodsNo.value);
 const multi = computed(() => groups.value.length > 0);
@@ -655,6 +825,62 @@ function removeImage(i: number) {
   images.value = images.value.filter((_, idx) => idx !== i);
 }
 
+/** 详情图上限。比轮播多：长图是「参数页 / 实拍页 / 售后页」这么一张张摞上去的 */
+const DETAIL_IMAGE_LIMIT = 10;
+
+async function addDetailImages() {
+  if (uploading.value) return;
+  const room = DETAIL_IMAGE_LIMIT - detailImages.value.length;
+  if (room <= 0) {
+    uni.showToast({ title: t("goods.imageLimit", { n: DETAIL_IMAGE_LIMIT }), icon: "none" });
+    return;
+  }
+  let picked;
+  try {
+    picked = await pickImages(room, ["album", "camera"]);
+  } catch {
+    return; // 用户取消，不是错误
+  }
+  const tooBig = picked.find((img) => img.size > MAX_IMAGE_BYTES);
+  if (tooBig) {
+    uni.showToast({ title: t("goods.imageTooLarge"), icon: "none" });
+    return;
+  }
+  uploading.value = true;
+  try {
+    for (const img of picked) {
+      const { url } = await api.mUploadImage(img.tempPath);
+      detailImages.value = [...detailImages.value, url];
+    }
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: "none" });
+  } finally {
+    uploading.value = false;
+  }
+}
+
+function removeDetailImage(i: number) {
+  detailImages.value = detailImages.value.filter((_, idx) => idx !== i);
+}
+
+/**
+ * 详情图**换顺序**。长图是有次序的（封面页 → 参数页 → 售后页），
+ * 传错了只能全删重传就太贵了。
+ *
+ * <p>用两个箭头而不是长按拖拽：拖拽在 uni 的三端各有各的手势冲突
+ * （小程序里 movable-view 与页面滚动打架），而这里最多 10 张、
+ * 实际多半 2–3 张 —— 点两下就到位。
+ */
+function moveDetailImage(i: number, delta: number) {
+  const to = i + delta;
+  const list = [...detailImages.value];
+  if (to < 0 || to >= list.length) return;
+  const [row] = list.splice(i, 1);
+  if (!row) return;
+  list.splice(to, 0, row);
+  detailImages.value = list;
+}
+
 /**
  * 选主图。**不再分「拍照」与「相册」两个按钮** —— 交给系统的选择器，
  * 它本来就会问一次。两个常驻按钮占着位置，却只在没图时有用。
@@ -706,91 +932,47 @@ async function pickCover() {
 async function recognizeInto(url: string) {
   const guess = await api.mRecognizeGoods(url).catch(() => null);
   if (!guess) return;
-
-  // 低置信度整份转候选：不预填，但也不藏起来
-  if (guess.confidence < 0.6) {
-    const path = guess.categoryNo ? findPath(categoryTree.value, guess.categoryNo) : [];
-    suggest.value = {
-      title: guess.title || undefined,
-      subtitle: guess.subtitle || undefined,
-      categoryNo: path.length ? guess.categoryNo : undefined,
-      catLabel: path.map((c) => c.name).join(" / ") || undefined,
-      low: true,
-    };
-    if (!suggest.value.title && !suggest.value.categoryNo) {
-      suggest.value = null;
-      uni.showToast({ title: t("goods.guessLow"), icon: "none" });
-    }
-    return;
-  }
-  applyGuess(guess);
+  await applyGuess(guess);
 }
 
+/**
+ * 把识别结果**当成表单的默认值填进去** —— 与「新建门店时带出上次的地址」同一性质。
+ *
+ * <p>界面上因此没有「AI」「识别」「置信度」这类字眼，也没有采用/忽略的候选条：
+ * 识别本来就不准，把它包装成一件需要商家判断的事，等于每建一个商品多一道判断题。
+ * 换来的是把**改的成本**压到最低 —— 名称一键清空、类目一步可换、最近用过就摆在外面。
+ *
+ * <p>三条规矩：
+ * <ol>
+ *   <li><b>只填空位</b>：先手打了标题再拍照的人，写的东西不会被顶掉
+ *   <li><b>不分置信度</b>：低分同样预填。分档要么让人多想一次，要么被无视
+ *   <li><b>识别不到什么也不发生</b>：不弹「未能识别」——那句提示除了打断没有用处
+ * </ol>
+ */
 async function applyGuess(guess: GoodsGuess) {
   try {
-    /*
-     * **逐个字段判空后再填，不整体覆盖**：店主可能先手打了标题再去拍照，
-     * 那时副标题与类目仍是空的 —— 整体覆盖会抹掉他写的，整体跳过又浪费了识别结果。
-     *
-     * 识别结果只写进**中文**那一格：识别本身是中文的，塞进英文格是假装翻译过。
-     */
-    let filled = false;
-    // 填不进去的攒起来 —— 目标字段已有值时，此前是直接跳过，
-    // 于是「先手打了标题再拍照」的人根本不知道识别出了别的东西
-    const rest: Suggest = { low: false };
-    if (guess.title) {
-      if (!title.value["zh-CN"].trim()) {
-        title.value = { ...title.value, "zh-CN": guess.title };
-        lang.value = "zh-CN";
-        filled = true;
-      } else if (title.value["zh-CN"].trim() !== guess.title) {
-        rest.title = guess.title;
-      }
+    if (guess.title && !title.value["zh-CN"].trim()) {
+      title.value = { ...title.value, "zh-CN": guess.title };
+      lang.value = "zh-CN";
     }
-    if (guess.subtitle) {
-      if (!subtitle.value["zh-CN"].trim()) {
-        subtitle.value = { ...subtitle.value, "zh-CN": guess.subtitle };
-        filled = true;
-      } else if (subtitle.value["zh-CN"].trim() !== guess.subtitle) {
-        rest.subtitle = guess.subtitle;
-      }
+    if (guess.subtitle && !subtitle.value["zh-CN"].trim()) {
+      subtitle.value = { ...subtitle.value, "zh-CN": guess.subtitle };
     }
     /*
      * 类目要连**面包屑**一起还原，不能只塞编号：只设 categoryNo 的话，
-     * 页面上那一栏仍显示「选择类目（选填）」，而提交时却带着一个类目 ——
+     * 页面上那一栏仍显示「选择类目」，而提交时却带着一个类目 ——
      * 商家看到的和将要保存的不是一回事。
+     *
+     * `findPath` 找不到就不填：后端喂给模型的候选表只含二级与三级，
+     * 但类目树在端上还被 `prunable` 砍过（虚拟/卡券建不了），
+     * 落在被砍掉那一支上的编号在这棵树里不存在。
+     * 只到一级也不填 —— 一级类目挂不住商品，填了反而让人以为已经选好了。
      */
-    if (guess.categoryNo && categoryNo.value && categoryNo.value !== guess.categoryNo) {
-      // 类目已选且与识别结果不同：不覆盖，但要让他看得见另一个可能
-      const p = findPath(categoryTree.value, guess.categoryNo);
-      if (p.length) {
-        rest.categoryNo = guess.categoryNo;
-        rest.catLabel = p.map((c) => c.name).join(" / ");
-      }
-    }
     if (!categoryNo.value && guess.categoryNo) {
       const path = findPath(categoryTree.value, guess.categoryNo);
-      if (path.length) {
-        catPath.value = path;
-        categoryNo.value = guess.categoryNo;
-        /*
-         * **形态跟着识别出的类目走** —— 而不是跟着 `guess.type`。
-         *
-         * 识别结果里那个 type 现在没人要了（后端按 categoryNo 派生），
-         * 照着它填会出现「类目是叶菜、形态写日用品」，正是这轮要消掉的那种矛盾。
-         * 类目树在候选表里被砍过（prunable），path 找得到就说明这个类目商家建得了。
-         */
-        const inferred = path[path.length - 1]?.template;
-        if (inferred && TEMPLATE_TO_TYPE[inferred]) {
-          type.value = TEMPLATE_TO_TYPE[inferred] as CategoryType;
-          await loadTemplates();
-        }
-        filled = true;
+      if (path.length > 1 || (path.length === 1 && !path[0]?.children?.length)) {
+        await select(path);
       }
-    }
-    suggest.value = rest.title || rest.subtitle || rest.categoryNo ? rest : null;
-    if (filled) {
-      uni.showToast({ title: t("goods.guessed"), icon: "none" });
     }
   } catch (e) {
     uni.showToast({ title: (e as Error).message, icon: "none" });
@@ -833,6 +1015,7 @@ function rebuild() {
         stock: rows.value[0]?.stock ?? "0",
         originMajor: rows.value[0]?.originMajor ?? "",
         nominalGram: rows.value[0]?.nominalGram ?? "",
+        costMajor: rows.value[0]?.costMajor ?? "",
       },
     ];
     return;
@@ -895,6 +1078,8 @@ function rebuild() {
       stock: old?.stock ?? "0",
       originMajor: old?.originMajor ?? "",
       nominalGram: old?.nominalGram ?? "",
+      // 成本跟着价一起继承：加一个包装规格，进价多半还是那个进价
+      costMajor: old?.costMajor ?? "",
     };
   });
 }
@@ -1038,6 +1223,23 @@ function applyBulkPrice() {
   uni.showToast({ title: t("goods.bulkDone"), icon: "none" });
 }
 
+/**
+ * 库存加减。**库存是每天都在动的数**，最常见的改动是「卖掉两袋」——
+ * 点两下比调出键盘、全选、重打快得多；数字仍然可以直接键入。
+ *
+ * <p>不许减到负数：库存写成 -5 之后 C 端的置灰与到货提醒逻辑全乱。
+ */
+function stepStock(r: Row, delta: number) {
+  const next = Math.max(0, (Number(r.stock) || 0) + delta);
+  r.stock = String(next);
+}
+
+/** 批量填成本。与批量填价分开，同一个理由：两张卡各管各的 */
+function applyBulkCost() {
+  if (!bulk.value.cost) return;
+  rows.value = rows.value.map((r) => ({ ...r, costMajor: bulk.value.cost }));
+}
+
 function applyBulkStock() {
   if (!bulk.value.stock) return;
   rows.value = rows.value.map((r) => ({ ...r, stock: bulk.value.stock }));
@@ -1045,7 +1247,8 @@ function applyBulkStock() {
 }
 
 onLoad(async (q) => {
-  await Promise.all([loadTemplates(), loadCategories()]);
+  loadRecentCats();
+  await Promise.all([loadTemplates(), loadCategories(), loadStoreChannels()]);
   if (!q?.goodsNo) return;
   goodsNo.value = q.goodsNo;
   const g = await api.mGoodsDetail(q.goodsNo);
@@ -1079,6 +1282,8 @@ onLoad(async (q) => {
     ? { ...subtitle.value, ...g.subtitleI18n }
     : { ...subtitle.value, [lang.value]: g.subtitle };
   detail.value = g.detail ?? "";
+  // 详情图与轮播图同理：保存整份覆盖，不回显就等于「打开编辑页再保存一次就清空」
+  detailImages.value = [...(g.detailImages ?? [])];
   isDraft.value = g.status === "DRAFT";
   type.value = g.type;
   categoryNo.value = g.categoryNo ?? "";
@@ -1138,6 +1343,7 @@ onLoad(async (q) => {
       stock: String(k.stock),
       originMajor: k.originPrice ? toMajor(k.originPrice) : "",
       nominalGram: k.nominalGram ? String(k.nominalGram) : "",
+      costMajor: k.costPrice ? toMajor(k.costPrice) : "",
     };
   });
 });
@@ -1157,6 +1363,8 @@ async function save(thenSubmit = false) {
       //
       // 轮播图：**空数组也要发**。后端「不传 = 不改」，所以删光了不发的话删不掉
       images: images.value,
+      // 详情图同理：空数组 = 清空，不传 = 不改。删光了不发就删不掉
+      detailImages: detailImages.value,
       // 溯源。不传 = 自建品 / 已脱离 —— 后端据此清掉 std_no
       stdNo: stdNo.value || undefined,
       // 必填由 `missing` 守着（按钮点不动），这里不再兜 undefined ——
@@ -1168,7 +1376,12 @@ async function save(thenSubmit = false) {
       limitPerUser: Number(limitPerUser.value) || 0,
       // 生鲜段与服务段只在对应形态下提交：一件大米带上「服务时长 90 分钟」
       // 不会报错，但它会出现在服务类的详情模板里
-      fresh: isFresh.value
+      /*
+       * 生鲜段入口关着的时候**一个字段都不发**（`undefined` = 不改）。
+       * 发一份空值上去会把老商品已有的截单时间与产地清掉，而界面上
+       * 那几行根本没显示过 —— 商家不会知道是自己保存时抹掉的。
+       */
+      fresh: SHOW_FRESH_FIELDS && isFresh.value
         ? {
             cutoffAt: fresh.value.cutoffAt ? new Date(fresh.value.cutoffAt).getTime() : undefined,
             arrivalDesc: fresh.value.arrivalDesc.trim(),
@@ -1228,6 +1441,8 @@ async function save(thenSubmit = false) {
            */
           originPrice: r.originMajor.trim() ? toMinor(r.originMajor) : undefined,
           nominalGram: r.nominalGram.trim() ? Number(r.nominalGram) || 0 : undefined,
+          // 成本价同一口径：空串 = 不改（他没碰这一格），填 0 = 清掉
+          costPrice: r.costMajor.trim() ? toMinor(r.costMajor) : undefined,
         };
       }),
     });
@@ -1240,6 +1455,8 @@ async function save(thenSubmit = false) {
       const no = goodsNo.value || saved.goodsNo;
       if (no) await api.mSubmitGoods(no);
     }
+    // 记一笔类目：下次建品「最近用过」里就有它，一点就选中
+    rememberCat();
     uni.showToast({ title: t(thenSubmit ? "goods.submitted" : "common.saved"), icon: "none" });
     setTimeout(() => uni.navigateBack(), 600);
   } catch (e) {
@@ -1290,25 +1507,6 @@ async function save(thenSubmit = false) {
         </view>
         <text class="sh-muted hint">{{ $t("goods.coverRole") }}</text>
 
-        <!--
-          识别候选。**只在有话可说时出现**：识别到了、但没替他填的那部分
-          （把握不大，或者目标字段已经有值）。
-
-          此前这两种情况都是静默丢弃 —— 模型给了结果，店主一个字也看不到。
-        -->
-        <view v-if="suggest" class="sug">
-          <view class="sug__head">
-            <text class="sug__t">{{ $t("goods.suggestTitle") }}</text>
-            <view class="sug__ops">
-              <text class="mini" @tap="takeSuggest">{{ $t("goods.suggestTake") }}</text>
-              <text class="sug__skip" @tap="suggest = null">{{ $t("goods.suggestSkip") }}</text>
-            </view>
-          </view>
-          <text v-if="suggest.title" class="sug__l">{{ $t("goods.suggestName", { s: suggest.title }) }}</text>
-          <text v-if="suggest.subtitle" class="sug__l">{{ $t("goods.suggestSub", { s: suggest.subtitle }) }}</text>
-          <text v-if="suggest.catLabel" class="sug__l">{{ $t("goods.suggestCat", { s: suggest.catLabel }) }}</text>
-          <text v-if="suggest.low" class="sh-muted hint">{{ $t("goods.suggestLow") }}</text>
-        </view>
       </view>
 
       <!--
@@ -1375,11 +1573,22 @@ async function save(thenSubmit = false) {
             </text>
           </view>
         </view>
-        <input v-model="title[lang]" class="field__input" />
+        <!--
+          **预填的名称就是一个普通输入框** —— 不标来源、不加确认步骤。
+          识别本来就不准，把它包装成一件要商家判断的事，等于每建一个商品多一道判断题。
+          换来的是把改的成本压到最低：右边那个 ✕ 一下清空，长名不用逐字删。
+        -->
+        <view class="inline">
+          <input v-model="title[lang]" class="field__input flex1" :placeholder="$t('goods.namePh')" />
+          <text v-if="title[lang]" class="inline__clear" @tap="title[lang] = ''">✕</text>
+        </view>
       </view>
       <view class="field">
         <text class="field__label">{{ $t("goods.subtitle") }}</text>
-        <input v-model="subtitle[lang]" class="field__input" />
+        <view class="inline">
+          <input v-model="subtitle[lang]" class="field__input flex1" :placeholder="$t('goods.subtitlePh')" />
+          <text v-if="subtitle[lang]" class="inline__clear" @tap="subtitle[lang] = ''">✕</text>
+        </view>
       </view>
       <text v-if="MULTI_LANG_UI && untranslated.length" class="sh-muted hint">
         {{ $t("goods.untranslated", { s: untranslated.map((k) => $t(k)).join("、") }) }}
@@ -1419,6 +1628,41 @@ async function save(thenSubmit = false) {
         />
       </view>
 
+      <!--
+        详情图：正文**下面**那一段长图，与顶部轮播是两回事。
+
+        <p>形状上也分开：轮播是一排方格，详情图是一列窄高的格子并带上下箭头 ——
+        长图是有次序的（封面页 → 参数页 → 售后页），传错了要能换，
+        而不是只能全删重传。
+      -->
+      <view class="field">
+        <view class="field__head">
+          <text class="field__label">{{ $t("goods.detailImages") }}</text>
+          <text class="sh-muted imgs__n">
+            {{ $t("goods.imagesCount", { n: detailImages.length, m: DETAIL_IMAGE_LIMIT }) }}
+          </text>
+        </view>
+        <view class="dimgs">
+          <view v-for="(img, i) in detailImages" :key="img + i" class="dimgs__row">
+            <sh-cover class="dimgs__img" :src="img"></sh-cover>
+            <text class="dimgs__i">{{ i + 1 }}</text>
+            <view class="dimgs__ops">
+              <text class="mini" @tap="moveDetailImage(i, -1)">↑</text>
+              <text class="mini" @tap="moveDetailImage(i, 1)">↓</text>
+              <text class="mini" @tap="removeDetailImage(i)">✕</text>
+            </view>
+          </view>
+          <view
+            v-if="detailImages.length < DETAIL_IMAGE_LIMIT"
+            class="imgs__add"
+            @tap="addDetailImages"
+          >
+            <text class="imgs__plus">{{ uploading ? "…" : "＋" }}</text>
+          </view>
+        </view>
+        <text class="sh-muted hint">{{ $t("goods.detailImagesHint") }}</text>
+      </view>
+
     </view>
 
     <view class="sh-card mt">
@@ -1434,6 +1678,26 @@ async function save(thenSubmit = false) {
           才看得到选项。平台类目降到两级（V168）之后，父与子一屏放得下，
           那层弹层就只剩成本。
         -->
+        <!--
+          最近用过。**摆在最外面而不是藏进类目列表** —— 一家店的货高度集中，
+          第二次建品要选的那一档多半就在这三五个里，一点就换。
+          识别填错了、或者压根没识别出来，这一行都是最快的路。
+        -->
+        <view v-if="recentCats.length" class="cat-lv">
+          <text class="cat-lv__t">{{ $t("goods.recentCats") }}</text>
+          <view class="cat-lv__opts">
+            <text
+              v-for="c in recentCats"
+              :key="c.categoryNo"
+              class="sh-chip"
+              :class="{ 'sh-chip--primary': categoryNo === c.categoryNo }"
+              @tap="pickRecent(c.categoryNo)"
+            >
+              {{ c.name }}
+            </text>
+          </view>
+        </view>
+
         <view class="cat-lv">
           <text class="cat-lv__t">{{ $t("goods.categoryL1") }}</text>
           <view class="cat-lv__opts">
@@ -1459,11 +1723,13 @@ async function save(thenSubmit = false) {
               class="sh-chip"
               :class="{
                 'sh-chip--primary': categoryNo === c.categoryNo,
-                'sh-chip--warning': gateOf(c) && !gateOf(c)?.granted,
+                'sh-chip--warning': SHOW_CATEGORY_GATE && gateOf(c) && !gateOf(c)?.granted,
               }"
               @tap="pickChild(c)"
             >
-              {{ c.name }}<template v-if="gateOf(c) && !gateOf(c)?.granted"> · {{ $t("goods.needCert") }}</template>
+              {{ c.name
+              }}<template v-if="SHOW_CATEGORY_GATE && gateOf(c) && !gateOf(c)?.granted">
+                · {{ $t("goods.needCert") }}</template>
             </text>
           </view>
         </view>
@@ -1473,7 +1739,7 @@ async function save(thenSubmit = false) {
           缺证的提示放在**选完之后**、而不是拦住不让选：草稿归到一个还没批下来的
           类目下是合法的，他可能正准备去申请。真正拦在上架那一刻。
         -->
-        <text v-if="pickedGate && !pickedGate.granted" class="cat-lv__gate">
+        <text v-if="SHOW_CATEGORY_GATE && pickedGate && !pickedGate.granted" class="cat-lv__gate">
           {{ $t("goods.gateMissing", { s: pickedGate.qualification || $t("goods.gateCert") }) }}
         </text>
         <!-- 形态：派生值。没选类目时不显示 —— 那时它是个凭空的默认值，只会误导 -->
@@ -1490,21 +1756,37 @@ async function save(thenSubmit = false) {
       <view class="field">
         <text class="field__label">{{ $t("goods.fulfillment") }} *</text>
         <view class="chips">
+          <!--
+            **没开通的那一路置灰，不隐藏** —— 隐藏的话商家会以为平台不支持快递，
+            而其实只是他自己没开。灰着并写明「未开」，右边给一条去开的路。
+          -->
           <text
             v-for="f in fulfillmentOptions"
             :key="f"
             class="sh-chip"
-            :class="{ 'sh-chip--primary': fulfillments.includes(f) }"
+            :class="{
+              'sh-chip--primary': fulfillments.includes(f),
+              'is-off': !channelOpen(f),
+            }"
             @tap="pickFulfillment(f)"
           >
-            {{ $t(`goods.fulfillmentType.${f}`) }}
+            {{ $t(`goods.fulfillmentType.${f}`)
+            }}<template v-if="!channelOpen(f)"> · {{ $t("goods.channelOff") }}</template>
           </text>
         </view>
         <text class="sh-muted hint">{{ $t("goods.fulfillmentTip") }}</text>
+        <view v-if="storeChannels.length" class="inline">
+          <text class="sh-muted hint flex1">{{ $t("goods.fulfillmentFromStore") }}</text>
+          <text class="link" @tap="toStoreScope">{{ $t("goods.toStoreScope") }}</text>
+        </view>
+        <!-- 编辑老商品：原来那一路被门店关掉了。**不替他改**，只说出来 -->
+        <text v-if="fulfillmentClosed" class="cat-lv__gate">
+          {{ $t("goods.fulfillmentClosedWarn") }}
+        </text>
       </view>
 
       <!-- 生鲜段：形态由类目带出，所以选完类目这一段自动出现 -->
-      <view v-if="isFresh" class="field">
+      <view v-if="SHOW_FRESH_FIELDS && isFresh" class="field">
         <text class="field__label">{{ $t("goods.freshSection") }}</text>
         <view class="kv">
           <text class="kv__k">{{ $t("goods.cutoffAt") }}</text>
@@ -1594,6 +1876,16 @@ async function save(thenSubmit = false) {
         </view>
       </view>
       <text class="sh-muted hint">{{ $t("goods.specHint") }}</text>
+      <!--
+        自动套上的默认规格要**说清是谁替他填的、并且能一键撤销**：
+        不说的话，商家会以为这几个规格是系统强加的，而它其实只是个起点。
+      -->
+      <view v-if="autoSpecNo && groups.length" class="inline">
+        <text class="sh-muted hint flex1">
+          {{ $t("goods.specAuto", { s: catPath[catPath.length - 1]?.name || "" }) }}
+        </text>
+        <text class="link" @tap="clearAutoSpec">{{ $t("goods.specAutoUndo") }}</text>
+      </view>
 
       <!--
         **跟着品类走的推荐规格，直接摊开成 chip。**
@@ -1679,7 +1971,8 @@ async function save(thenSubmit = false) {
           现在切换的是「这一列看哪个字段」，任何时候都只有
           「一行一个规格、一个数字」这一种形状。
         -->
-        <view v-if="priceFields.length > 1" class="segs">
+        <!-- 单规格不需要字段切换：总共两三个数，直接排开比切来切去快 -->
+        <view v-if="multi && priceFields.length > 1" class="segs">
           <text
             v-for="f in priceFields"
             :key="f.key"
@@ -1723,7 +2016,7 @@ async function save(thenSubmit = false) {
         顺带解决横向拥挤：「更多价格」展开时**纵向追加副字段**，不横向加列。
         375 宽下三列本来就要靠撤 placeholder 才塞得下。
       -->
-      <view v-if="multi" class="bulk">
+      <view v-if="multi && priceField === 'price'" class="bulk">
         <input
           v-model="bulk.price"
           class="bulk__input sh-num"
@@ -1732,33 +2025,98 @@ async function save(thenSubmit = false) {
         />
         <text class="link" @tap="applyBulkPrice">{{ $t("goods.applyAll") }}</text>
       </view>
-
-      <view v-for="(r, i) in rows" :key="i" class="pr">
-        <!-- 单规格不画左边这一格：只有一行时「默认规格」是在回答没人问的问题 -->
-        <text v-if="multi" class="pr__k">{{ r.optionValues.join(" · ") }}</text>
+      <!-- 成本多半各规格一个数，但「都填同一个」也常见（同一箱货拆规格卖） -->
+      <view v-if="multi && priceField === 'cost'" class="bulk">
         <input
-          v-if="priceField === 'price'"
-          v-model="r.priceMajor[market]"
-          class="pr__v sh-num"
+          v-model="bulk.cost"
+          class="bulk__input sh-num"
           type="digit"
-          :placeholder="multi ? '' : $t(priceLabel)"
+          :placeholder="$t('goods.bulkCost')"
         />
-        <input
-          v-else-if="priceField === 'origin'"
-          v-model="r.originMajor"
-          class="pr__v sh-num"
-          :class="{ 'is-bad': badOrigin(r) }"
-          type="digit"
-          :placeholder="multi ? '' : $t('goods.originPrice')"
-        />
-        <input
-          v-else
-          v-model="r.nominalGram"
-          class="pr__v sh-num"
-          type="number"
-          :placeholder="multi ? '' : $t('goods.nominalGram')"
-        />
+        <text class="link" @tap="applyBulkCost">{{ $t("goods.applyAll") }}</text>
       </view>
+
+      <!--
+        **单规格：一行一个字段，全部排开。**
+
+        输入框此前是 `flex:1`，一个四位数占掉两百多 px，左边一大片空白，
+        而同一列的数字还对不齐。现在定宽右对齐 + 前缀符号，四个字段并成一叠，
+        扫一眼就知道这件货卖多少、进多少、划线多少。
+      -->
+      <template v-if="!multi">
+        <view class="pr">
+          <text class="pr__k">{{ $t(priceLabel) }}</text>
+          <text class="pr__cur">￥</text>
+          <input v-model="rows[0]!.priceMajor[market]" class="pr__v sh-num" type="digit" />
+        </view>
+        <!-- 毛利跟在售价下面：填价那一刻要看的就是这个数 -->
+        <text v-if="marginOf(rows[0]!)" class="pr__margin">
+          {{ $t("goods.margin", { a: marginOf(rows[0]!)!.amount, r: marginOf(rows[0]!)!.rate }) }}
+        </text>
+        <view class="pr">
+          <text class="pr__k">{{ $t("goods.costPrice") }}</text>
+          <text class="pr__cur">￥</text>
+          <input
+            v-model="rows[0]!.costMajor"
+            class="pr__v sh-num"
+            :class="{ 'is-bad': belowCost(rows[0]!) }"
+            type="digit"
+          />
+        </view>
+        <text v-if="belowCost(rows[0]!)" class="pr__warn">{{ $t("goods.belowCost") }}</text>
+        <text class="sh-muted hint">{{ $t("goods.costHint") }}</text>
+        <view class="pr">
+          <text class="pr__k">{{ $t("goods.originPrice") }}</text>
+          <text class="pr__cur">￥</text>
+          <input
+            v-model="rows[0]!.originMajor"
+            class="pr__v sh-num"
+            :class="{ 'is-bad': badOrigin(rows[0]!) }"
+            type="digit"
+          />
+        </view>
+        <view v-if="SHOW_FRESH_FIELDS && isFresh" class="pr">
+          <text class="pr__k">{{ $t("goods.nominalGram") }}</text>
+          <text class="pr__cur">g</text>
+          <input v-model="rows[0]!.nominalGram" class="pr__v sh-num" type="number" />
+        </view>
+      </template>
+
+      <!--
+        **多规格：一次看一列。** 8 个规格 × 4 个字段同屏没法填，
+        所以切的是「这一列看哪个字段」，任何时候都只有「一行一个规格、一个数字」。
+      -->
+      <template v-else>
+        <view v-for="(r, i) in rows" :key="i" class="pr">
+          <text class="pr__k">{{ r.optionValues.join(" · ") }}</text>
+          <text class="pr__cur">{{ priceField === "gram" ? "g" : "￥" }}</text>
+          <input
+            v-if="priceField === 'price'"
+            v-model="r.priceMajor[market]"
+            class="pr__v sh-num"
+            type="digit"
+          />
+          <input
+            v-else-if="priceField === 'cost'"
+            v-model="r.costMajor"
+            class="pr__v sh-num"
+            :class="{ 'is-bad': belowCost(r) }"
+            type="digit"
+          />
+          <input
+            v-else-if="priceField === 'origin'"
+            v-model="r.originMajor"
+            class="pr__v sh-num"
+            :class="{ 'is-bad': badOrigin(r) }"
+            type="digit"
+          />
+          <input v-else v-model="r.nominalGram" class="pr__v sh-num" type="number" />
+        </view>
+        <!-- 逐行看毛利在 8 行的表上没人看得过来，汇成一句 -->
+        <text v-if="avgMargin !== null" class="pr__margin">
+          {{ $t("goods.avgMargin", { r: avgMargin }) }}
+        </text>
+      </template>
 
       <!--
         一个价都没填时不说这句：那时 fromPrice 是「—」，
@@ -1832,20 +2190,30 @@ async function save(thenSubmit = false) {
       </view>
 
       <view v-for="(r, i) in rows" :key="i" class="pr">
-        <text v-if="multi" class="pr__k">{{ r.optionValues.join(" · ") }}</text>
+        <text class="pr__k">{{ multi ? r.optionValues.join(" · ") : $t("goods.stock") }}</text>
+        <!--
+          −／＋ 步进。**库存是每天都在动的数**，最常见的改动是「卖掉两袋」——
+          点两下比调出键盘、全选、重打快得多。数字仍然可以直接键入。
+        -->
+        <text class="step" @tap="stepStock(r, -1)">−</text>
         <!-- 库存 0 = 这个规格顾客买不到。多规格时最容易漏填的就是它 -->
         <input
           v-model="r.stock"
-          class="pr__v sh-num"
+          class="pr__v pr__v--n sh-num"
           :class="{ 'is-out': Number(r.stock) === 0 }"
           type="number"
-          :placeholder="multi ? '' : $t('goods.stock')"
         />
+        <text class="step" @tap="stepStock(r, 1)">＋</text>
       </view>
+      <!-- 多店：改的是哪家店的库存必须写出来。主体总量与门店库存是两个数 -->
+      <text v-if="merchant.multiStore" class="sh-muted hint">
+        {{ $t("goods.stockStoreScope", { s: merchant.currentStore?.name || "" }) }}
+      </text>
 
-      <view class="kv kv--top">
-        <text class="kv__k">{{ $t("goods.limitPerUser") }}</text>
-        <input v-model="limitPerUser" class="field__input" type="number" />
+      <view class="pr">
+        <text class="pr__k">{{ $t("goods.limitPerUser") }}</text>
+        <!-- 右侧留出 −／＋ 那两格的宽度，两行的输入框才在同一竖列上 -->
+        <input v-model="limitPerUser" class="pr__v pr__v--n pr__v--pad sh-num" type="number" />
       </view>
     </view>
 
@@ -1993,19 +2361,116 @@ async function save(thenSubmit = false) {
   margin-top: 12rpx;
 }
 .pr__k {
-  flex: 0 0 208rpx;
-  font-size: 26rpx;
-  color: var(--sh-sub);
-}
-.pr__v {
+  /* 标签吃掉剩余宽度，控件一律贴右 —— 一列数字对齐比标签对齐重要 */
   flex: 1;
   min-width: 0;
+  font-size: 26rpx;
+  color: var(--sh-sub);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+/*
+ * 数字输入框**定宽右对齐**，不再 `flex:1`。
+ *
+ * 铺满整行的输入框里躺着一个四位数，左边两百多 px 全是空白，而同一列的数字
+ * 还各自从左边起排、对不齐。220rpx 装得下 999999.99，再宽只是白占地方。
+ */
+.pr__v {
+  flex: none;
+  width: 220rpx;
   height: 76rpx;
   padding: 0 20rpx;
   border-radius: 16rpx;
   background: var(--sh-faint);
   font-size: 28rpx;
   color: var(--sh-ink);
+  text-align: right;
+}
+/* 库存与限购是整数，比金额短一截 */
+.pr__v--n {
+  width: 150rpx;
+}
+/* 让开右边那个 ＋（64rpx）加一道 gap（16rpx）：两行的输入框右缘才在同一竖线上 */
+.pr__v--pad {
+  margin-inline-end: 80rpx;
+}
+/* 货币符号贴着输入框左侧，不进框里 —— 进框里会被输入法当成待编辑内容 */
+.pr__cur {
+  font-size: 26rpx;
+  color: var(--sh-sub);
+  flex: none;
+}
+/* 毛利：跟在售价下面右对齐，与数字同一竖列 */
+.pr__margin {
+  display: block;
+  margin-top: 8rpx;
+  text-align: right;
+  font-size: 24rpx;
+  color: var(--sh-success);
+}
+.pr__warn {
+  display: block;
+  margin-top: 8rpx;
+  text-align: right;
+  font-size: 24rpx;
+  color: var(--sh-warning);
+}
+/* 库存 −／＋：与输入框同高，形状上是按钮不是文字 */
+.step {
+  width: 64rpx;
+  height: 64rpx;
+  line-height: 64rpx;
+  text-align: center;
+  border-radius: 16rpx;
+  background: var(--sh-faint);
+  color: var(--sh-sub);
+  font-size: 30rpx;
+  flex: none;
+}
+/* 一行里「输入框 + 一个小动作」的通用排布 */
+.inline {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+.inline__clear {
+  padding: 0 10rpx;
+  font-size: 26rpx;
+  color: var(--sh-sub);
+  flex: none;
+}
+/* 未开通的履约方式：灰着并可见，不隐藏 —— 隐藏会让人以为平台不支持 */
+.sh-chip.is-off {
+  opacity: 0.5;
+}
+/* 详情图：一列窄高的格子，形状上就与上面那排方形轮播图分开 */
+.dimgs {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+  margin-top: 12rpx;
+}
+.dimgs__row {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+.dimgs__img {
+  width: 96rpx;
+  height: 128rpx;
+  border-radius: 16rpx;
+  background: var(--sh-faint);
+  font-size: 40rpx;
+}
+.dimgs__i {
+  font-size: 24rpx;
+  color: var(--sh-sub);
+  flex: 1;
+}
+.dimgs__ops {
+  display: flex;
+  gap: 12rpx;
 }
 /* 字段切换：段落式小开关，不是按钮 —— 它切的是「看哪一列」，不是执行动作 */
 .segs {

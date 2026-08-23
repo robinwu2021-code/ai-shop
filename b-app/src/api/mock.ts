@@ -1451,6 +1451,9 @@ export const mockApi: MerchantApi = {
         // 只不过发生在 mock 里，而 mock 恰恰是开发期唯一看得见的那一份
         originPrice: k.originPrice,
         nominalGram: k.nominalGram,
+        // 成本价同一条规矩：mock 不落盘的话「填了、保存后消失」，
+        // 而毛利那行会跟着一起不见 —— 看着像算错了，其实是没存
+        costPrice: k.costPrice,
       }));
 
     /**
@@ -1494,6 +1497,8 @@ export const mockApi: MerchantApi = {
       seed.subtitle = fillI18n(payload.subtitle);
       // 不传 = 不改，与 images 同一口径：无条件覆盖会让「只改标题」把详情清空
       if (payload.detail !== undefined) seed.detail = payload.detail;
+      // 详情图与 images 同一口径：不判空的话，只改标题就把详情图清空
+      if (payload.detailImages !== undefined) seed.detailImages = payload.detailImages;
       seed.price = price;
       seed.priceByMarket = priceByMarket;
       seed.specGroups = specGroups as (typeof seed.specGroups);
@@ -1534,6 +1539,7 @@ export const mockApi: MerchantApi = {
       subtitle: fillI18n(payload.subtitle),
       cover: payload.cover || "📦",
       detail: payload.detail,
+      detailImages: payload.detailImages ?? [],
       // 端上没传就给一个占位，传了就用他上传的那几张
       images: payload.images?.length ? payload.images : ["📦"],
       fulfillments: payload.fulfillments?.length ? payload.fulfillments : ["STORE_PICKUP"],

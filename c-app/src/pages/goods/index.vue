@@ -30,6 +30,18 @@ const community = useCommunityStore();
 
 const goods = ref<Goods | null>(null);
 const reviews = ref<Review[]>([]);
+
+/**
+ * 顶部轮播的图。**封面排第一** —— 它是买家在列表里点进来时看到的那张，
+ * 详情页第一屏换成另一张会让人怀疑点错了。
+ *
+ * <p>去重：商家常把封面也放进详情图里，不去重就会连着出现两张一样的。
+ */
+const gallery = computed<string[]>(() => {
+  const g = goods.value;
+  if (!g) return [];
+  return [g.cover, ...(g.images ?? [])].filter((x, i, arr) => x && arr.indexOf(x) === i);
+});
 /** 各规格维度上当前选中的取值，下标与 specGroups 对齐 */
 const chosen = ref<string[]>([]);
 const qty = ref(1);
@@ -220,9 +232,24 @@ onShareAppMessage(() =>
 <template>
   <sh-scaffold v-if="goods">
     <!-- 主视觉 -->
-    <view class="hero">
+    <!--
+      主视觉。**此前只画 cover 一张** —— `goods.images` 后端一直在发、
+      商家在 B 端也一直传得进去，而这个页面里一次都没引用过：
+      店主传了五张详情图，买家一张也看不到，两侧都不报错。
+
+      只有一张时不套 swiper：一个滑不动的轮播还带着一个指示点，
+      看着像坏了。
+    -->
+    <swiper v-if="gallery.length > 1" class="hero" :indicator-dots="true" circular>
+      <swiper-item v-for="(img, i) in gallery" :key="img + i" class="hero__item">
+        <sh-cover class="hero__emoji" :src="img"></sh-cover>
+      </swiper-item>
+    </swiper>
+    <view v-else class="hero">
       <sh-cover class="hero__emoji" :src="goods.cover"></sh-cover>
-      <text v-if="off" class="hero__off sh-num">-{{ off }}%</text>
+    </view>
+    <view v-if="off" class="hero__wrap">
+      <text class="hero__off sh-num">-{{ off }}%</text>
     </view>
 
     <!-- 标题与价格 -->
@@ -387,6 +414,29 @@ onShareAppMessage(() =>
       </view>
     </view>
 
+    <!--
+      图文详情。**这一段此前整个不存在** —— `detail`（正文）与 `detailImages`（长图）
+      后端都在发，页面一个字都没渲染。商家写的产地、保质期、售后说明，
+      买家从来没看到过。
+
+      正文是**纯文本**：后端存的就是纯文本而不是 HTML（收 HTML 要在三端各消毒一次，
+      漏一处就是 XSS），所以这里也不做富文本解析，按段落原样排。
+      两样都没有时整段不渲染，不拿一个空白区块占着详情页。
+    -->
+    <view v-if="goods.detail || goods.detailImages?.length" class="sh-card block">
+      <text class="sh-h2 dt__h">{{ $t("goods.detailTitle") }}</text>
+      <text v-if="goods.detail" class="dt__text">{{ goods.detail }}</text>
+      <!-- 长图按顺序全宽竖排。mode="widthFix" 是关键：不给的话
+           1:3 的长图会被压进默认的 320×240 里 -->
+      <image
+        v-for="(img, i) in goods.detailImages ?? []"
+        :key="img + i"
+        class="dt__img"
+        :src="img"
+        mode="widthFix"
+      />
+    </view>
+
     <!-- 评价 -->
     <view class="sh-card block">
       <view class="rvhead">
@@ -456,9 +506,20 @@ onShareAppMessage(() =>
   font-size: 200rpx;
   line-height: 1;
 }
+.hero__item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+/* 折扣标原先绝对定位在 hero 里；换成 swiper 之后它会跟着页面一起滑走，
+   所以拎出来单独定位在轮播上方一层 */
+.hero__wrap {
+  position: relative;
+  height: 0;
+}
 .hero__off {
   position: absolute;
-  top: 28rpx;
+  top: -412rpx;
   inset-inline-start: 28rpx;
   background: var(--sh-danger);
   color: #fff;
@@ -738,5 +799,23 @@ onShareAppMessage(() =>
   color: var(--sh-sub);
   font-size: 24rpx;
   padding: 40rpx 0;
+}
+/* 图文详情：正文与长图 */
+.dt__h {
+  display: block;
+  margin-bottom: 16rpx;
+}
+.dt__text {
+  display: block;
+  font-size: 28rpx;
+  line-height: 1.7;
+  color: var(--sh-ink);
+  white-space: pre-wrap;
+}
+.dt__img {
+  display: block;
+  width: 100%;
+  margin-top: 16rpx;
+  border-radius: 16rpx;
 }
 </style>
