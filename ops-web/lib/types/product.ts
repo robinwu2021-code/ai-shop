@@ -189,6 +189,76 @@ export interface SpecTemplate extends Archivable {
 }
 
 /**
+ * 规格项（规格库 V195）。**通用与专用是运营端的两个页面**：
+ * 通用维度改一条全站生效，专用维度只影响一个类目 ——
+ * 混在一张表里，改的人不知道自己动了多大范围。
+ */
+export interface SpecDim {
+  dimNo: string;
+  /** 语义码 COLOR / WEIGHT。值编号与 optionCode 都以它为前缀，**改码等于换一根聚合轴** */
+  code: string;
+  name: string;
+  /** ENUM 枚举 / QUANT 数值+单位。QUANT 的值必须有归一量 */
+  valueType: string;
+  unit?: string | null;
+  /** SALE 进 SKU 笛卡尔积 / PROP 只是描述 */
+  usageType: string;
+  universal: boolean;
+  scope: string;
+  entityNo?: string | null;
+  sort: number;
+  status: string;
+  valueCount: number;
+  /** 被几个类目绑着 —— 归档前要知道自己在动多大范围 */
+  inUse: number;
+  values: SpecValue[];
+}
+
+/** 规格值。**有编号有归一量**，才谈得上聚合、排序与比价。 */
+export interface SpecValue {
+  valueNo: string;
+  dimNo: string;
+  code: string;
+  label: string;
+  /** 归一量：500g / 半斤 / 0.5kg 都是 500 */
+  numericValue?: number | null;
+  numericUnit?: string | null;
+  /** 别名：识别、搜索与自动归一用 */
+  aliases: string[];
+  /** PLATFORM / MERCHANT。商家自有值挂在平台维度下，仍在同一根轴上 */
+  scope: string;
+  entityNo?: string | null;
+  sort: number;
+  status: string;
+  merchantCount: number;
+}
+
+/** 类目绑定的整份替换体。顺序即排序，主维度只能有一个 */
+export interface CategorySpecBinding {
+  dimNo: string;
+  usageType?: string | null;
+  primary: boolean;
+  required: boolean;
+  /** 这一类目开放的取值；空 = 不裁剪 */
+  valueNos: string[];
+  /** valueNo → 类目内换名（500g 在蔬菜下叫「约1斤」） */
+  labels: Record<string, string>;
+}
+
+/**
+ * 停用一个类目的影响面（`GET /ops/categories/{no}/archive-impact`）。
+ *
+ * **有在售商品不再是拦截**：运营停一个类目多半是政策要求（这一类这期不做、
+ * 资质链路没接上），拦住他并不能让那批商品消失。界面把后果说清楚，由他决定。
+ */
+export interface CategoryArchiveImpact {
+  goodsCount: number;
+  onSaleCount: number;
+  /** 还开着的子类目数。**大于 0 时后端仍会拒** —— 会冒出渲染不出来的孤儿节点 */
+  activeChildren: number;
+}
+
+/**
  * 类目 × 规格总览的一行（规格库 V195，`GET /ops/category-specs`）。
  *
  * **一条规格都没绑的类目也会返回**：这张表真正要回答的是「哪些类目还没配」——

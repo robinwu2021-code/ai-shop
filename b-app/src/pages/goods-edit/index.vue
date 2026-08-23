@@ -1193,13 +1193,73 @@ function addOption(gi: number) {
   if (g.codes) g.codes.push(undefined);
 }
 
-/** 手改了模板带来的选项文字 → 该位置的 code 作废（值已经不是模板那个值了） */
-function onOptionEdited(gi: number, oi: number) {
+/**
+ * 手改了模板带来的选项文字。
+ *
+ * <p>两件事：该位置原来的 code 作废（值已经不是模板那个值了），
+ * 以及 —— **如果这一组是平台维度，把新写的这一档注册成自有值**。
+ *
+ * <p>为什么要注册：不注册的话它只是一个字符串，这件货的这个规格从此不参与
+ * 跨店比价（线上 378 件商品 0 个 optionCode 就是这么来的）。注册之后它挂在
+ * 平台的那根轴上，「谁家 750g 的米更便宜」才成立。
+ *
+ * <p>撞上平台已有的那一档时后端不新建，直接把那一档返回来 ——
+ * 于是「自定义」不会变成制造重复值的机器。
+ */
+async function onOptionEdited(gi: number, oi: number) {
   const g = groups.value[gi]!;
   const tpl = templates.value.find((x) => x.templateNo === g.templateNo);
   const original = tpl?.options[oi]?.label;
-  if (g.codes && original !== undefined && g.options[oi] !== original) g.codes[oi] = undefined;
+  const text = (g.options[oi] ?? "").trim();
+  if (g.codes && original !== undefined && text !== original) g.codes[oi] = undefined;
   rebuild();
+
+  // 平台维度（templateNo 是 dimNo）下的新档才注册；自建维度里的选项在建维度时一起落
+  const known = tpl?.options.some((o) => o.label === text);
+  if (!text || !g.templateNo || !g.templateNo.startsWith("SD_") || known) return;
+  try {
+    const v = await api.mAddSpecValue(g.templateNo, text);
+    // 后端可能把它归到平台已有的那一档：以返回的文案为准，省得两处不一致
+    g.options[oi] = v.label;
+    if (g.codes) g.codes[oi] = v.code || undefined;
+    // 值池里多出来的这一档要能马上再选到
+    await loadTemplates();
+    rebuild();
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: "none" });
+  }
+}
+
+/**
+ * 自建一个规格维度：平台没有的那种（「辣度」）。
+ *
+ * <p>与「＋规格组」的差别是**它会落进规格库**（scope=MERCHANT），
+ * 于是这家店下次建品还能选到它。代价要说清楚：不参与跨店比价。
+ */
+async function addCustomGroup() {
+  if (groups.value.length >= 3) {
+    uni.showToast({ title: t("goods.groupLimit"), icon: "none" });
+    return;
+  }
+  const name = await new Promise<string>((resolve) => {
+    uni.showModal({
+      title: t("goods.customDim"),
+      content: t("goods.customDimHint"),
+      editable: true,
+      placeholderText: t("goods.groupNamePh"),
+      success: (r) => resolve(r.confirm ? (r.content ?? "") : ""),
+      fail: () => resolve(""),
+    });
+  });
+  if (!name.trim()) return;
+  try {
+    const dim = await api.mAddSpecDim(name.trim(), []);
+    groups.value.push({ name: dim.name, options: [""], templateNo: dim.templateNo });
+    await loadTemplates();
+    rebuild();
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: "none" });
+  }
 }
 
 function removeOption(gi: number, oi: number) {
@@ -1873,6 +1933,8 @@ async function save(thenSubmit = false) {
             {{ $t("goods.useTemplate") }}
           </text>
           <text class="link" @tap="addGroup">{{ $t("goods.addGroup") }}</text>
+          <!-- 自建维度：落进规格库，下次还能选到；代价（不参与跨店比价）在弹窗里说清 -->
+          <text class="link" @tap="addCustomGroup">{{ $t("goods.customDim") }}</text>
         </view>
       </view>
       <text class="sh-muted hint">{{ $t("goods.specHint") }}</text>

@@ -140,21 +140,40 @@ export function CategoriesTab({ c, canEdit }: { c: ProductsCopy; canEdit: boolea
   });
 
   /**
-   * 能不能停用 —— **与后端 `archive` 的两道判据一字不差**：
-   * 下面还有商品、下面还有未归档的子类目。
+   * 能不能停用 —— **与后端 `archive` 现在的唯一一道判据一字不差**：下面还有开着的子类目。
    *
-   * <p>端上先判是因为这两件事列表上都看得见（商品数、子级开关）。
-   * 让人点一个注定被拒的开关，是最差的一种拒绝 —— 而批量关一棵树时更糟：
-   * 前几个二级关掉了、剩下的连同一级一起报错，界面停在关了一半的状态。
+   * <p>「还有商品」<b>不再是拦截</b>（2026-08-23）：运营停一个类目多半是政策要求
+   * （这一类这期不做、资质链路没接上），拦住他并不能让那批商品消失，只会让他去别处
+   * 想办法。改成停用前把后果摆出来（见 {@link confirmDisable}），由他决定。
+   *
+   * <p>子类目那条留着：它拦的是「渲染不出来的孤儿节点」，而这一条端上有现成的
+   * 「连子级一起关」的流程，不是死路。
    *
    * @return 不能停用的原因（给 tooltip 用）；能停用时为 `null`
    */
   function blockedReason(x: Category): string | null {
-    if (x.skuCount > 0) return fill(c.catOffBlockedGoods, { n: x.skuCount });
     const kids = childrenOf(x.categoryNo).filter((k) => !off(k));
-    const stuck = kids.find((k) => k.skuCount > 0);
-    if (stuck) return fill(c.catOffBlockedChild, { name: stuck.name, n: stuck.skuCount });
-    return null;
+    // 一级的子级由 toggleTop 连带关掉，所以这里只在「不打算连带」时才算拦
+    if (x.level === 1 && kids.length) return null;
+    return kids.length ? fill(c.catOffBlockedChild, { name: kids[0]!.name, n: kids.length }) : null;
+  }
+
+  /**
+   * 停用前把后果摆出来。**只在这一类下面真的还有商品时才问** ——
+   * 空类目上再弹一个确认框，是在为一件没有后果的事索要一次确认。
+   *
+   * <p>问的是影响面（还有几件、其中几件在售），不是「你确定吗」：
+   * 后者除了多一次点击什么都没给。
+   */
+  async function confirmDisable(x: Category): Promise<boolean> {
+    const impact = await api.categoryArchiveImpact(x.categoryNo).catch(() => null);
+    if (!impact || impact.goodsCount === 0) return true;
+    return confirm({
+      title: fill(c.catDisableImpactTitle, { name: x.name }),
+      desc: fill(c.catDisableImpactDesc, { n: impact.goodsCount, on: impact.onSaleCount }),
+      confirmText: c.catDisableImpactOk,
+      danger: true,
+    });
   }
 
   /** 一级的开关：先问清楚要不要连带子级，再发请求 */
@@ -182,6 +201,7 @@ export function CategoriesTab({ c, canEdit }: { c: ProductsCopy; canEdit: boolea
    * 同一件事两种行为，这是那个「切不动」的来源。这里对齐成一种：先问，再一起开。
    */
   async function toggleChild(r: Category, on: boolean) {
+    if (!on && !(await confirmDisable(r))) return;
     const parent = on ? allWithOff.find((x) => x.categoryNo === r.parentNo) : undefined;
     if (!parent || !off(parent)) {
       toggle.mutate({ row: r, on });

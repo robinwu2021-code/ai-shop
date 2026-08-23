@@ -1,6 +1,6 @@
 // 覆盖范围：商品与类目（P-3）。上架前的三条校验是本域的核心。
 import * as db from "@/lib/mock/db";
-import { MARKETS, MAX_CATEGORY_LEVEL, SKU_TRANSITIONS, type Category, type CategorySpecDim, type Sku, type SpecTemplate, type SpuStd, type Topic, type ProductGoods } from "@/lib/types";
+import { MARKETS, MAX_CATEGORY_LEVEL, SKU_TRANSITIONS, type Category, type CategorySpecDim, type SpecDim, type SpecValue, type Sku, type SpecTemplate, type SpuStd, type Topic, type ProductGoods } from "@/lib/types";
 import type { ProductApi } from "../contracts/product";
 import { fail, notFound } from "@/lib/biz-error";
 import { wait } from "./_wait";
@@ -102,6 +102,53 @@ const MOCK_CATEGORY_SPECS: Record<string, CategorySpecDim[]> = {
       ] },
   ],
 };
+
+/** mock 的规格库：从上面那份类目绑定里反推出来，够把两个页面的交互走通 */
+const MOCK_SPEC_DIMS: SpecDim[] = [];
+function seedMockDims() {
+  if (MOCK_SPEC_DIMS.length) return;
+  const seen = new Map<string, SpecDim>();
+  for (const dims of Object.values(MOCK_CATEGORY_SPECS)) {
+    for (const d of dims) {
+      const row = seen.get(d.dimNo) ?? {
+        dimNo: d.dimNo, code: d.code, name: d.name, valueType: d.valueType,
+        unit: d.unit ?? null, usageType: d.usage, universal: d.universal,
+        scope: "PLATFORM", sort: 100, status: "ACTIVE",
+        valueCount: 0, inUse: 0, values: [],
+      };
+      for (const v of d.values) {
+        if (!row.values.some((x) => x.valueNo === v.valueNo)) {
+          row.values.push({
+            valueNo: v.valueNo, dimNo: d.dimNo, code: v.code, label: v.label,
+            numericValue: v.numericValue ?? null, numericUnit: v.numericUnit ?? null,
+            aliases: [], scope: "PLATFORM", sort: row.values.length * 10 + 10,
+            status: "ACTIVE", merchantCount: 0,
+          });
+        }
+      }
+      row.valueCount = row.values.length;
+      row.inUse += 1;
+      seen.set(d.dimNo, row);
+    }
+  }
+  // 一条商家自建值：没有它，「提升为平台值」那半边界面开发期永远走不到
+  const weight = seen.get("SD_WEIGHT");
+  if (weight) {
+    weight.values.push({
+      valueNo: "SV_WEIGHT_M750", dimNo: "SD_WEIGHT", code: "M750", label: "750g",
+      numericValue: 750, numericUnit: "g", aliases: ["1.5斤"], scope: "MERCHANT",
+      entityNo: "M0001", sort: 900, status: "ACTIVE", merchantCount: 3,
+    });
+    weight.valueCount = weight.values.length;
+  }
+  MOCK_SPEC_DIMS.push(...seen.values());
+}
+const allMockValues = () => MOCK_SPEC_DIMS.flatMap((d) => d.values);
+function setValueStatus(valueNo: string, status: string): SpecValue {
+  const v = allMockValues().find((x) => x.valueNo === valueNo)!;
+  v.status = status;
+  return v;
+}
 
 function findCategory(no: string): Category {
   const c = db.categories.find((x) => x.categoryNo === no);
@@ -483,6 +530,105 @@ export const productMock: ProductApi = {
    * 这张表的第一职责就是把「还没配规格的类目」顶到眼前，样本里全配满的话，
    * 那半边界面（标红的缺口、缺口计数）在开发期永远走不到。
    */
+  categoryArchiveImpact: (no) => {
+    const goods = db.skus.filter((s) => s.categoryNo === no);
+    return wait({
+      goodsCount: goods.length,
+      onSaleCount: goods.filter((s) => s.status === "ON_SALE").length,
+      activeChildren: db.categories.filter((x) => x.parentNo === no && !x.archivedAt).length,
+    });
+  },
+
+  // ── 规格库（V195）。mock 里只有一份内存副本，够把两个页面的交互走通
+  listSpecDims: (q = {}) => {
+    seedMockDims();
+    return wait(
+      MOCK_SPEC_DIMS
+        .filter((d) => q.universal === undefined || d.universal === q.universal)
+        .filter((d) => q.showArchived || d.status === "ACTIVE")
+        .filter((d) => !q.keyword || d.name.includes(q.keyword) || d.code.includes(q.keyword)),
+    );
+  },
+  saveSpecDim: async (v) => {
+    const name = (v.name ?? "").trim();
+    // 与后端同一条规范：万能词不能当维度名 —— 它什么都不说
+    if (["规格", "型号", "类型", "属性", "参数"].includes(name)) {
+      fail("「" + name + "」太泛，换一个说清楚是什么的名字", "Too generic a dimension name");
+    }
+    const found = MOCK_SPEC_DIMS.find((d) => d.dimNo === v.dimNo);
+    if (found) {
+      Object.assign(found, v, { name });
+      return wait(found);
+    }
+    const row: SpecDim = {
+      dimNo: "SD_" + v.code, code: v.code!, name, valueType: v.valueType ?? "ENUM",
+      unit: v.unit ?? null, usageType: v.usageType ?? "SALE",
+      universal: v.universal ?? true, scope: "PLATFORM", sort: v.sort ?? 100,
+      status: "ACTIVE", valueCount: 0, inUse: 0, values: [],
+    };
+    MOCK_SPEC_DIMS.push(row);
+    return wait(row);
+  },
+  archiveSpecDim: (no) => {
+    const d = MOCK_SPEC_DIMS.find((x) => x.dimNo === no)!;
+    d.status = "ARCHIVED";
+    return wait(d);
+  },
+  unarchiveSpecDim: (no) => {
+    const d = MOCK_SPEC_DIMS.find((x) => x.dimNo === no)!;
+    d.status = "ACTIVE";
+    return wait(d);
+  },
+  saveSpecValue: async (v) => {
+    const dim = MOCK_SPEC_DIMS.find((d) => d.dimNo === v.dimNo);
+    if (!dim) notFound("规格项", "Dimension", v.dimNo);
+    // QUANT 维度下没有归一量的值排不了序也比不了价 —— 与后端同一条判据
+    if (dim!.valueType === "QUANT" && !v.numericValue) {
+      fail("这是量纲维度，要填归一后的数值", "Quantitative dimension needs a numeric value");
+    }
+    const found = dim!.values.find((x) => x.valueNo === v.valueNo);
+    if (found) {
+      Object.assign(found, v);
+      return wait(found);
+    }
+    const row: SpecValue = {
+      valueNo: "SV_" + dim!.code + "_" + v.code, dimNo: dim!.dimNo, code: v.code!,
+      label: v.label!, numericValue: v.numericValue ?? null,
+      numericUnit: v.numericValue ? dim!.unit ?? null : null,
+      aliases: v.aliases ?? [], scope: "PLATFORM", sort: v.sort ?? 100,
+      status: "ACTIVE", merchantCount: 0,
+    };
+    dim!.values.push(row);
+    dim!.valueCount = dim!.values.length;
+    return wait(row);
+  },
+  archiveSpecValue: (no) => wait(setValueStatus(no, "ARCHIVED")),
+  unarchiveSpecValue: (no) => wait(setValueStatus(no, "ACTIVE")),
+  promoteSpecValue: (no) => {
+    const v = allMockValues().find((x) => x.valueNo === no)!;
+    v.scope = "PLATFORM";
+    v.entityNo = null;
+    return wait(v);
+  },
+  saveCategorySpecs: (categoryNo, bindings) => {
+    MOCK_CATEGORY_SPECS[categoryNo] = bindings.map((b) => {
+      const dim = MOCK_SPEC_DIMS.find((d) => d.dimNo === b.dimNo)!;
+      const values = b.valueNos.length
+        ? b.valueNos.map((no) => dim.values.find((v) => v.valueNo === no)!).filter(Boolean)
+        : dim.values;
+      return {
+        dimNo: dim.dimNo, code: dim.code, name: dim.name, valueType: dim.valueType,
+        unit: dim.unit, usage: b.usageType ?? dim.usageType, universal: dim.universal,
+        primary: b.primary, valueCount: values.length,
+        values: values.map((v) => ({
+          valueNo: v.valueNo, code: v.code, label: b.labels[v.valueNo] ?? v.label,
+          numericValue: v.numericValue, numericUnit: v.numericUnit,
+        })),
+      };
+    });
+    return productMock.listCategorySpecs();
+  },
+
   listCategorySpecs: () =>
     wait(
       db.categories

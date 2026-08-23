@@ -1727,8 +1727,24 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
          */
         List<SpecTemplateVO> fromLibrary = picked == null ? List.of()
                 : specLibrary.templatesForCategory(merchantNo, picked);
+        /*
+         * **类目选定之后，没配规格就是没有规格 —— 不再回落品类兜底。**
+         *
+         * 那条回落有两个后果：运营端看到的「缺口」在商家这边被兜底盖住了，于是没人急着补；
+         * 而兜底给出的是「包装：袋装/瓶装/罐装」这种推给谁都不对题的东西，商家照样全删了手打。
+         * 删掉之后三件事同时成立：缺口计数是真的、商家看到的推荐一定对题、老模板表能退役。
+         *
+         * 商家仍有出路：手输，或者自建规格（POST /biz/spec-dims、/biz/spec-values）。
+         */
+        if (picked != null) {
+            List<SpecTemplateVO> merged0 = new java.util.ArrayList<>(fromLibrary);
+            // 商家自存的常用仍旧给他 —— 那是他自己的东西，与运营配没配无关
+            legacy.stream().filter(t -> PrdSpecTemplate.MERCHANT.equals(t.scope())).forEach(merged0::add);
+            return merged0;
+        }
         if (fromLibrary.isEmpty()) {
-            return preferCategoryLevel(legacy, picked);
+            // 还没选类目：只给他自己的常用，平台的兜底不再推（选完类目才知道该推什么）
+            return legacy.stream().filter(t -> PrdSpecTemplate.MERCHANT.equals(t.scope())).toList();
         }
         // 新库给了这一类目的维度，老表里同名的那几条（兜底或旧类目级）就别再推一遍
         Set<String> libNames = fromLibrary.stream().map(SpecTemplateVO::name)

@@ -303,6 +303,8 @@ export default {
     noMore: "已加载全部",
     specs: "规格",
     specHint: "未添加规格视为单规格，最多 3 组",
+    customDim: "＋ 自定义规格",
+    customDimHint: "平台没有的规格维度（如「辣度」）。只在本店可用，不参与跨店比价；平台已有的同名维度会直接给你用平台那个。",
     addGroup: "+ 规格组",
     useTemplate: "套用模板",
     templateHint: "平台模板选项全平台口径一致，修改文字后不再计为模板值",

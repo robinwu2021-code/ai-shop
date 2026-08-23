@@ -128,6 +128,10 @@ class BizEndpointPermTest {
          * 反过来留在 PUBLIC，任何持有 B 端会话的子账号都能给这家店塞模板。
          */
         put("/biz/spec-templates", BizPerms.GOODS);
+        // 自定义规格（V195 的商家覆盖层）：与建品同一个码 —— 能建商品就能给它加一档规格，
+        // 单独开一个码只会让「建品」这件事需要两个授权
+        put("/biz/spec-values", BizPerms.GOODS);
+        put("/biz/spec-dims", BizPerms.GOODS);
         // 标准品搜索（TDD-标准品库）：建品链路的一环，与规格模板同一档 ——
         // 只能改库存的角色（配送员、客服）建不了品，也就用不上标准品
         put("/biz/spu-std", BizPerms.GOODS);

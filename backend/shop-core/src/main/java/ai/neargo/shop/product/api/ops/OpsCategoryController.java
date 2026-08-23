@@ -66,11 +66,25 @@ public class OpsCategoryController {
         return vo;
     }
 
+    /**
+     * 停用前的影响面。**先看后果再决定** —— 停用本身不再被商品数拦住（见 archive 的说明）。
+     */
+    @GetMapping("/ops/categories/{categoryNo}/archive-impact")
+    @PreAuthorize("@perm.can('" + Perms.PRODUCT_CATEGORY_READ + "')")
+    public CategoryService.ArchiveImpact archiveImpact(@PathVariable String categoryNo) {
+        return categoryService.archiveImpact(categoryNo);
+    }
+
     @PostMapping("/ops/categories/{categoryNo}/archive")
     @PreAuthorize("@perm.can('" + Perms.PRODUCT_CATEGORY_UPDATE + "')")
     public OpsCategoryVO archive(@PathVariable String categoryNo) {
         var vo = categoryService.archive(categoryNo);
-        auditLogPort.record("CATEGORY_ARCHIVE", categoryNo, vo.name());
+        /*
+         * 审计要带上影响面：停用一个还挂着在售商品的类目是允许的（政策要求常常如此），
+         * 但「当时下面还有几件货」是事后唯一说得清的依据。
+         */
+        auditLogPort.record("CATEGORY_ARCHIVE", categoryNo,
+                vo.name() + "（停用时下面还有 " + vo.skuCount() + " 件商品）");
         return vo;
     }
 

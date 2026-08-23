@@ -1733,6 +1733,44 @@ export const mockApi: MerchantApi = {
     return delay([...catLevel, ...rest]);
   },
 
+  /**
+   * 在平台维度下加一个自有值。mock 里只做两件真会影响界面的事：
+   * 撞车直接回平台那一档、量纲维度抽不出数字就拒。
+   */
+  async mAddSpecValue(dimNo, label) {
+    requireMerchant();
+    const text = label.trim();
+    if (!text) throw new Error("先填规格值");
+    const tpl = db.specTemplates.find((t) => t.templateNo === dimNo);
+    const hit = tpl?.options.find((o) => o.label === text);
+    if (hit) return delay({ valueNo: dimNo + "_" + (hit.code ?? text), code: hit.code ?? "", label: hit.label });
+    // 量纲维度：文案里得写着数量，否则这一档排不了序也比不了价
+    if (/重量|容量|长度|口径/.test(tpl?.name ?? "") && !/\d/.test(text)) {
+      throw new Error("这一档要写清数量，例如 750g");
+    }
+    tpl?.options.push({ label: text });
+    return delay({ valueNo: dimNo + "_M" + db.specTemplates.length, code: "", label: text });
+  },
+
+  /** 自建维度：只在本店可用，不参与跨店比价 */
+  async mAddSpecDim(name, labels) {
+    const merchantNo = requireMerchant();
+    const nm = name.trim();
+    if (!nm) throw new Error("先填规格名");
+    if (["规格", "型号", "类型", "属性", "参数"].includes(nm)) {
+      throw new Error("「" + nm + "」太泛，换一个说清楚是什么的名字");
+    }
+    const created: SpecTemplate = {
+      templateNo: nextNo("SD"),
+      scope: "MERCHANT",
+      merchantNo,
+      name: nm,
+      options: labels.map((l) => l.trim()).filter(Boolean).map((label) => ({ label })),
+    };
+    db.specTemplates.push(created);
+    return delay(created);
+  },
+
   async mSaveSpecTemplate(payload) {
     const merchantNo = requireMerchant();
     const options = payload.options.map((o) => o.trim()).filter(Boolean);

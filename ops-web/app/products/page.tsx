@@ -20,6 +20,8 @@ import { SkuStatusBadge, useCategoryTemplateMap, useSkuStatusMap } from "@/compo
 import { ReadOnlyNotice } from "@/components/read-only-notice";
 import { GoodsAuditTab } from "./goods-audit-tab";
 import { SpecTemplateTab } from "./spec-template-tab";
+import { SpecLibraryTab } from "./spec-library-tab";
+import { CategorySpecTab } from "./category-spec-tab";
 import { CategoriesTab } from "./categories-tab";
 import { SpuStdTab } from "./spu-std-tab";
 import { TopicsTab } from "./topics-tab";
@@ -41,7 +43,10 @@ import { Tree, type TreeNode } from "@/components/ui/tree";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 
 type Copy = (typeof PRODUCTS_COPY)["zh"];
-const TAB_KEYS = ["categories", "skus", "audit", "stock", "templates", "spu-std", "topics"] as const;   // 顺序与 lib/nav.ts 的叶子一致
+const TAB_KEYS = ["categories", "skus", "audit", "stock", "templates",
+  // 规格库（V195）：通用 / 专用 / 类目×规格 —— 三件事分成三页，见 lib/nav.ts 的说明
+  "spec-common", "spec-special", "category-spec",
+  "spu-std", "topics"] as const;   // 顺序与 lib/nav.ts 的叶子一致
 
 const MARKET_LABEL = (c: Copy): Record<Market, string> => ({ CN: c.marketCN, SG: c.marketSG });
 
@@ -83,6 +88,8 @@ function ProductsInner() {
 
   const canAudit = allow("product:sku:audit");
   const canEditCategory = allow("product:category:update");
+  // 规格库是另一对码：类目权限还兼着资质门槛，而改规格影响所有商家的建品页
+  const canEditSpec = allow("product:spec:update");
   const canEditStock = allow("product:stock:update");
 
   const templateMap = useCategoryTemplateMap();
@@ -387,6 +394,11 @@ function ProductsInner() {
 
       {/* 规格模板（P-3.4 / E27）：平台侧终于有了维护入口 —— B-4.4 商家选到的不再是一张空表 */}
       {tab === "templates" && <SpecTemplateTab c={c} canEdit={canEditCategory} />}
+      {/* 通用与专用是同一个组件的两个分区：判据是「值的含义是否跨类目一致」，
+          而不是两套数据 —— 拆成两个组件只会让两边的编辑逻辑各漂各的 */}
+      {tab === "spec-common" && <SpecLibraryTab c={c} universal canEdit={canEditSpec} />}
+      {tab === "spec-special" && <SpecLibraryTab c={c} universal={false} canEdit={canEditSpec} />}
+      {tab === "category-spec" && <CategorySpecTab c={c} canEdit={canEditSpec} />}
 
       {/* 商品详情 / 审核。一个商品可能有好几个规格，通过/驳回/强制下架都是打在具体某个 sku 上的 */}
       <Drawer

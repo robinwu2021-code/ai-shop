@@ -277,6 +277,17 @@ public final class Perms {
     public static final String PRODUCT_STD_UPDATE = "product:std:update";
 
     /**
+     * 规格库（维度 / 值 / 类目绑定）。
+     *
+     * <p><b>与类目分开而不是复用 {@code product:category:*}</b>：类目权限还兼着
+     * 资质门槛（{@code required_code} 决定一整类商品的准入），而规格库改一条
+     * <b>会影响所有商家的建品页</b>——两件事的授权范围不该绑在一起：
+     * 配规格的人不必有权放宽准入，改准入的人也不必天天进规格库。
+     */
+    public static final String PRODUCT_SPEC_READ = "product:spec:read";
+    public static final String PRODUCT_SPEC_UPDATE = "product:spec:update";
+
+    /**
      * 主题分类（陈列）。
      *
      * <p><b>与类目、标准品都分开</b>：类目是准入门槛、标准品是录入模板，
@@ -441,7 +452,8 @@ public final class Perms {
                     MARKETING_CAMPAIGN_READ, MARKETING_CAMPAIGN_UPDATE, MARKETING_COUPON_ISSUE,
                     MARKETING_COUPON_READ, MARKETING_COUPON_UPDATE, ORDER_READ,
                     PRODUCT_CATEGORY_READ, PRODUCT_CATEGORY_UPDATE, PRODUCT_SKU_AUDIT,
-                    PRODUCT_SKU_READ, PRODUCT_STD_READ, PRODUCT_STD_UPDATE,
+                    PRODUCT_SKU_READ, PRODUCT_SPEC_READ, PRODUCT_SPEC_UPDATE,
+                    PRODUCT_STD_READ, PRODUCT_STD_UPDATE,
                     PRODUCT_TOPIC_READ, PRODUCT_TOPIC_UPDATE)),
 
             Map.entry("SUPPORT", List.of(AFTERSALE_REFUND_APPROVE, AFTERSALE_REFUND_READ,

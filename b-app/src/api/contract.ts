@@ -630,6 +630,24 @@ export interface MerchantApi {
    * 并用同名规格组顶掉兜底那条。
    */
   mSpecTemplates(categoryType?: Goods["type"], categoryNo?: string): Promise<SpecTemplate[]>;
+  /**
+   * 在**平台维度**下加一个自己的规格值：「我这袋是 750g，平台没这一档」。
+   *
+   * <p>它挂在平台维度上，所以与平台值天然同轴 —— 跨店比价照样成立。
+   * 撞上平台已有的那一档时后端不新建，直接把那一档返回来（端上按返回的 label 用）。
+   *
+   * <p>量纲维度（重量、容量…）会从文案里抽数字并换算（「1.5kg」→ 1500g）；
+   * 抽不出来会拒，端上提示商家把数量写清楚。
+   */
+  mAddSpecValue(dimNo: string, label: string): Promise<{ valueNo: string; code: string; label: string }>;
+  /**
+   * 自建一个规格维度（平台没有的，如「辣度」）。
+   *
+   * <p>**只在本店可用，不参与跨店比价** —— 这是它的定义，不是缺陷，界面上要说出来。
+   * 与平台维度重名时后端直接返回平台那个：他要的是「按这个维度分规格」，
+   * 而不是拥有一个自己的颜色维度。
+   */
+  mAddSpecDim(name: string, labels: string[]): Promise<SpecTemplate>;
   /** 把当前编辑的规格组存为「我的常用」，下次建品直接套 */
   mSaveSpecTemplate(payload: { name: string; options: string[] }): Promise<SpecTemplate>;
 

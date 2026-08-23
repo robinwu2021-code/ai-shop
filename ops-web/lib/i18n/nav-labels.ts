@@ -38,6 +38,9 @@ const OVERLAY: Record<string, Record<string, string>> = {
   商品池与审核: { en: "Product pool & review" },
   预售额度与超卖: { en: "Presale quota & oversell" },
   规格模板维护: { en: "Spec templates" },
+  通用规格: { en: "Universal specs" },
+  专用规格: { en: "Dedicated specs" },
+  "类目 × 规格": { en: "Categories × specs" },
   标准品库: { en: "Standard products" },
   主题分类: { en: "Topics" },
   // group 名也要译：漏一条，切到 EN 时分组标题夹一行中文
@@ -152,6 +155,7 @@ const OVERLAY: Record<string, Record<string, string>> = {
   商品: { en: "Products" },
   库存与预售: { en: "Stock & presale" },
   规格模板: { en: "Spec templates" },
+  规格: { en: "Specs" },
   订单: { en: "Orders" },
   支付: { en: "Payments" },
   到货与分拣: { en: "Arrival & sorting" },

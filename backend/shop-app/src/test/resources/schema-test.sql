@@ -774,6 +774,7 @@ CREATE TABLE IF NOT EXISTS prd_spec_value
     numeric_value DECIMAL(14,4) DEFAULT NULL,
     numeric_unit VARCHAR(16) DEFAULT NULL,
     aliases TEXT DEFAULT NULL,
+    merged_into VARCHAR(64) DEFAULT NULL,
     scope VARCHAR(16) NOT NULL DEFAULT 'PLATFORM',
     entity_no VARCHAR(64) DEFAULT NULL,
     sort INT(11) NOT NULL DEFAULT 100,

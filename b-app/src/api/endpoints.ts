@@ -129,6 +129,8 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
   mSpuStdSearch: { method: "GET", path: "/biz/spu-std", auth: true, summary: "标准品搜索（建品用）" },
 
   mSpecTemplates: { method: "GET", path: "/biz/spec-templates", auth: true, summary: "规格模板" },
+  mAddSpecValue: { method: "POST", path: "/biz/spec-values", auth: true, summary: "在平台维度下加一个自有规格值" },
+  mAddSpecDim: { method: "POST", path: "/biz/spec-dims", auth: true, summary: "自建规格维度（只本店可用）" },
   mSaveSpecTemplate: { method: "POST", path: "/biz/spec-templates", auth: true, summary: "存为常用规格" },
 
   mOrderList: { method: "GET", path: "/biz/order", auth: true, summary: "订单列表" },

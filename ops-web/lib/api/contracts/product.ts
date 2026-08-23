@@ -1,5 +1,5 @@
 // 覆盖范围：类目（P-3.1）、商品池（P-3.2）、库存与预售（P-3.3）。
-import type { GoodsAudit, GoodsDetail, Category, CategorySpec, Page, ProductGoods, Sku, SpecTemplate, SpuStd, Topic } from "@/lib/types";
+import type { GoodsAudit, GoodsDetail, Category, CategoryArchiveImpact, CategorySpec, CategorySpecBinding, SpecDim, SpecValue, Page, ProductGoods, Sku, SpecTemplate, SpuStd, Topic } from "@/lib/types";
 import type { CategoryQ, SkuQ, SpecTemplateQ } from "../query";
 
 export interface ProductApi {
@@ -138,6 +138,21 @@ export interface ProductApi {
    * 运营看这张表是为了横向比较「哪一类配得全、哪一类还空着」，翻页只会碍事。
    */
   listCategorySpecs(): Promise<CategorySpec[]>;
+
+  // ── 规格库（V195）—— 与类目分开的一套 `product:spec:*`
+
+  /** @param universal true 只看通用、false 只看专用、undefined 全部 */
+  listSpecDims(q?: { universal?: boolean; keyword?: string; showArchived?: boolean }): Promise<SpecDim[]>;
+  saveSpecDim(v: Partial<SpecDim> & { code: string; name: string }): Promise<SpecDim>;
+  archiveSpecDim(dimNo: string): Promise<SpecDim>;
+  unarchiveSpecDim(dimNo: string): Promise<SpecDim>;
+  saveSpecValue(v: Partial<SpecValue> & { dimNo: string; code: string; label: string }): Promise<SpecValue>;
+  archiveSpecValue(valueNo: string): Promise<SpecValue>;
+  unarchiveSpecValue(valueNo: string): Promise<SpecValue>;
+  /** 商家自有值 → 平台值。**编号不变**，已建好的商品不用重建 */
+  promoteSpecValue(valueNo: string): Promise<SpecValue>;
+  /** 整份替换一个类目的绑定 */
+  saveCategorySpecs(categoryNo: string, bindings: CategorySpecBinding[]): Promise<CategorySpec[]>;
   /**
    * 新建或更新（`templateNo` 为空即新建）。
    *
@@ -147,6 +162,11 @@ export interface ProductApi {
   saveSpecTemplate(
     v: Pick<SpecTemplate, "name" | "options"> & { templateNo?: string; categoryType?: string },
   ): Promise<SpecTemplate>;
+  /**
+   * 停用一个类目会影响什么。**停用前拿它渲染确认框** ——
+   * 有在售商品不再拦着不许停（政策要求常常就是要停），但后果要说清楚。
+   */
+  categoryArchiveImpact(categoryNo: string): Promise<CategoryArchiveImpact>;
   /** 归档：商家侧立刻不再下发。**不是删除** —— 历史商品还要靠 templateNo 解释它的 optionCode。 */
   archiveSpecTemplate(templateNo: string): Promise<SpecTemplate>;
   unarchiveSpecTemplate(templateNo: string): Promise<SpecTemplate>;

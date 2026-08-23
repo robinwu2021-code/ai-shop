@@ -79,6 +79,18 @@ public interface CategoryService {
     OpsCategoryVO unarchive(String categoryNo);
 
     /**
+     * 停用前的影响面。端上拿它渲染确认框里的那句话。
+     *
+     * @param goodsCount    这一类下面的商品总数
+     * @param onSaleCount   其中在售的
+     * @param activeChildren 还开着的子类目数 —— 大于 0 时后端会拒（孤儿节点）
+     */
+    ArchiveImpact archiveImpact(String categoryNo);
+
+    record ArchiveImpact(int goodsCount, int onSaleCount, int activeChildren) {
+    }
+
+    /**
      * @param categoryNo    空 = 新建
      * @param qualifications 人读的资质名称
      * @param requiredCode   校验依据，空 = 无门槛

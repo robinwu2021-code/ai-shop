@@ -114,6 +114,10 @@ export const UI_PERM_MAP: Record<string, string | typeof UNIMPLEMENTED> = {
   "order:pay:read": "order:order:read",
   "product:sku:read": "product:sku:read",
   "product:category:read": "product:category:read",
+  // 规格库（V195）：与类目分开的一对码 —— 类目权限还兼着资质门槛，
+  // 而规格库改一条会影响所有商家的建品页
+  "product:spec:read": "product:spec:read",
+  "product:spec:update": "product:spec:update",
   "product:std:read": "product:std:read",
   "product:topic:read": "product:topic:read",
   "community:community:read": "community:community:read",

@@ -29,7 +29,6 @@ import { Pagination } from "@/components/ui/misc";
 import { Toolbar } from "@/components/ui/toolbar";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import type { ProductsCopy } from "./copy";
-import { CategorySpecPanel } from "./category-spec-panel";
 
 /** 抽屉里的表单态。选项是**整组替换**的，所以直接持有一个数组，不做逐项 diff。 */
 type Form = {
@@ -156,12 +155,9 @@ export function SpecTemplateTab({ c, canEdit }: { c: ProductsCopy; canEdit: bool
   return (
     <>
       {/*
-        类目 × 规格排在模板列表**前面**：商家实际看到的规格来自类目绑定（规格库 V195），
-        下面那张模板表是它的前身，现在只剩品类兜底与商家自存两件事。
-        顺序反过来的话，运营会以为改模板就能改商家看到的规格。
+        类目 × 规格已经搬到自己的页面（并变成可编辑的），这里不再寄居一份只读副本 ——
+        两处显示同一件事，改了一处另一处不动，是最容易让人以为「没保存成功」的形状。
       */}
-      <CategorySpecPanel c={c} />
-
       <Notice className="mb-3">{c.tplNotice}</Notice>
 
       <Toolbar search={keyword} onSearch={(v) => { setKeyword(v); setPage(1); }} searchPlaceholder={c.tplSearch}>

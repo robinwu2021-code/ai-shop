@@ -203,6 +203,8 @@ export default {
     searchPh: "Search by name",
     noMore: "No more items",
     specs: "Variants", specHint: "No variants means one default variant, up to 3 groups",
+    customDim: "+ Custom spec",
+    customDimHint: "A dimension the platform does not have (e.g. spiciness). Usable only in your shop and excluded from cross-shop comparison; if the platform already has one by that name you get that one instead.",
     addGroup: "+ Group",
     useTemplate: "Use a template",
     templateHint: "Platform template options are comparable across stores; edited text no longer counts",

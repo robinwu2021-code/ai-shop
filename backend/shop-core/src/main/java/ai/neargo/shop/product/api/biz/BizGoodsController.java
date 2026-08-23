@@ -30,6 +30,8 @@ import java.util.Map;
 public class BizGoodsController {
 
     private final MerchantGoodsService goodsService;
+    /** 规格库：商家自定义规格落在这里（V195 的 MERCHANT 覆盖层） */
+    private final ai.neargo.shop.product.service.SpecLibraryService specLibrary;
     private final ai.neargo.shop.product.service.CategoryService categoryService;
     private final ai.neargo.shop.spi.product.GoodsVisionPort vision;
     private final ai.neargo.shop.product.service.SpuStdService spuStdService;
@@ -37,7 +39,9 @@ public class BizGoodsController {
     public BizGoodsController(MerchantGoodsService goodsService,
                               ai.neargo.shop.product.service.CategoryService categoryService,
                               ai.neargo.shop.spi.product.GoodsVisionPort vision,
-                              ai.neargo.shop.product.service.SpuStdService spuStdService) {
+                              ai.neargo.shop.product.service.SpuStdService spuStdService,
+                              ai.neargo.shop.product.service.SpecLibraryService specLibrary) {
+        this.specLibrary = specLibrary;
         this.goodsService = goodsService;
         this.categoryService = categoryService;
         this.vision = vision;
@@ -244,6 +248,59 @@ public class BizGoodsController {
     public List<SpecTemplateVO> specTemplates(@RequestParam(required = false) String categoryType,
                                               @RequestParam(required = false) String categoryNo) {
         return goodsService.specTemplates(BizContext.requireMerchantNo(), categoryType, categoryNo);
+    }
+
+    /**
+     * 在某个维度下加一个<b>自己的</b>规格值：「我这袋是 750g，平台没这一档」。
+     *
+     * <p>它挂在<b>平台维度</b>上，所以与平台值天然同轴 —— 于是「谁家 750g 的米更便宜」
+     * 这种问题第一次成立。撞上平台已有的那一档时不新建，直接把那一档返回给他。
+     */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.GOODS + "')")
+    @PostMapping("/biz/spec-values")
+    public AddSpecValueResp addSpecValue(@RequestBody AddSpecValueReq req) {
+        var v = specLibrary.addMerchantValue(BizContext.requireMerchantNo(), req.dimNo(),
+                req.label(), req.numericValue());
+        /*
+         * **只回端上真用得着的三样。**把 ops 那个胖 VO（scope/entityNo/sort/status/
+         * merchantCount…）原样发给商家端，等于让契约去接一堆它永远不读的字段 ——
+         * 而契约守卫数的正是这个差集。
+         */
+        return new AddSpecValueResp(v.valueNo(), v.code(), v.label());
+    }
+
+    /**
+     * 自建一个规格维度（平台没有的，如「辣度」）。
+     *
+     * <p><b>只在这家店可见，不参与跨店聚合</b> —— 端上要把这句话说给商家听。
+     * 与平台维度重名时直接返回平台那个：他要的是「按这个维度分规格」，
+     * 而不是拥有一个自己的颜色维度 —— 后者只会让他的货从聚合里掉出去。
+     */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.GOODS + "')")
+    @PostMapping("/biz/spec-dims")
+    public ai.neargo.shop.product.dto.SpecTemplateVO addSpecDim(@RequestBody AddSpecDimReq req) {
+        var d = specLibrary.addMerchantDim(BizContext.requireMerchantNo(), req.name(), req.labels());
+        /*
+         * 回**规格模板**的形状而不是规格库的胖 VO：端上拿到它就往规格组里塞，
+         * 与「套用模板」走的是同一段代码 —— 两种形状会让那段代码分叉。
+         */
+        return new ai.neargo.shop.product.dto.SpecTemplateVO(d.dimNo(),
+                ai.neargo.shop.product.entity.PrdSpecDim.MERCHANT, null, null, d.name(),
+                d.values().stream()
+                        .map(v -> new ai.neargo.shop.product.dto.SpecTemplateVO.Option(v.code(), v.label()))
+                        .toList(),
+                BizContext.requireMerchantNo());
+    }
+
+    /** @param code 平台值有码，自有值暂时没有（提升为平台值时才发） */
+    public record AddSpecValueResp(String valueNo, String code, String label) {
+    }
+
+    public record AddSpecValueReq(String dimNo, String label, java.math.BigDecimal numericValue) {
+    }
+
+    /** @param labels 首批取值，可为空 —— 建完维度再一个个加也行 */
+    public record AddSpecDimReq(String name, List<String> labels) {
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.GOODS + "')")

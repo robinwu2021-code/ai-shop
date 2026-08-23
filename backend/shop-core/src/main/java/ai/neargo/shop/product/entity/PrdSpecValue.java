@@ -49,6 +49,17 @@ public class PrdSpecValue extends BaseEntity {
      * （dimNo 指平台的维度），所以「谁家 750g 的米更便宜」照样成立。
      * 用的人多了，运营可以把它提升为平台值 —— 改 scope，编号不变，商品不用重建。
      */
+    /**
+     * 被合并到哪个值。<b>非空即表示这一条已退役</b>（{@code status=MERGED}）。
+     *
+     * <p>合并不是删除：历史商品的 SKU 快照里存着被合并的那个编号，
+     * 删掉之后那件货的规格就再也解释不出来了。顺着这一列还能找回保留的那一条。
+     */
+    private String mergedInto;
+
+    /** 已被合并进别的值，读侧不再下发 */
+    public static final String MERGED = "MERGED";
+
     private String scope;
     private String entityNo;
     private Integer sort;

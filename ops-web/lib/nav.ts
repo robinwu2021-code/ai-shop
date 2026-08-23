@@ -141,6 +141,15 @@ export const NAV: NavSection[] = [
       // 与类目树、资质码字典是同一拨人在配。此前 B-4.4 商家能选模板而平台没有维护入口 ——
       // 三端联动表把这条记成「❌ 断裂：模板是死的」
       { href: "/products?tab=templates", label: "规格模板维护", perm: "product:category:read", group: "规格模板", matrix: "P-3.4", ready: true },
+      // 规格库（V195 四层模型的维护面）。**与类目分成两件事**：类目回答「卖什么」，
+      // 这里回答「有哪些规格」，类目 × 规格回答「谁用哪些」——
+      // 此前三件事挤在「规格模板维护」一个页面里，而那张模板表已经退化成兜底。
+      //
+      // 通用与专用分成两页而不是一页两个筛选：通用维度改一条**全站生效**，
+      // 专用维度只影响一个类目 —— 混在一起，改的人不知道自己动了多大范围。
+      { href: "/products?tab=spec-common", label: "通用规格", perm: "product:spec:read", group: "规格", matrix: "P-3.4", ready: true },
+      { href: "/products?tab=spec-special", label: "专用规格", perm: "product:spec:read", group: "规格", matrix: "P-3.4", ready: true },
+      { href: "/products?tab=category-spec", label: "类目 × 规格", perm: "product:spec:read", group: "规格", matrix: "P-3.4", ready: true },
       // 标准品库（TDD-标准品库）。**单独一个权限码**而不是复用 product:category:*：
       // 类目决定「这类货要什么资质」（准入门槛），标准品决定「这件货长什么样」（录入模板）——
       // 让能改准入的人才能录标准品，会把一件运营日常挡在一个很高的门后面

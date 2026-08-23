@@ -195,13 +195,19 @@ public class CategoryServiceImpl implements CategoryService {
         PrdCategory c = byNo(categoryNo);
 
         /*
-         * 挡两件事：下面还有商品、下面还有未归档的子类目。
-         * 不挡的话，那些商品会挂在一个已经不存在的类目上 —— 商家看不出异常
-         * （商品还在架上卖），但类目筛选、资质校验、C 端导购全部漏掉它们。
+         * **有商品不再是拦截，是提示。**
+         *
+         * <p>运营停一个类目通常是政策要求（这一类我们这期不做了、资质链路没接上）——
+         * 拦住他并不能让那批商品消失，只会让他去别处想办法，而「别处」多半是直接改库。
+         * 现在的做法是把后果说清楚（{@link #archiveImpact}：还有几件在售、几家店摆着货架），
+         * 由他决定是先下架、改类目，还是照样停用。
+         *
+         * <p>停用后那批商品会怎样：商家仍看得到、仍能编辑，但**上架会被类目校验挡下**，
+         * C 端导购与类目筛选也不再命中它们 —— 这正是运营停用一个类目时想要的效果。
+         *
+         * <p>子类目那道判据留着：停一个还有在售子类目的一级，会冒出挂在已归档父节点下的
+         * 孤儿，它在树里根本渲染不出来。而这一条端上有现成的「连子级一起关」的流程。
          */
-        if (counts(categoryNo) > 0) {
-            throw BizException.of(ErrorCode.CATEGORY_IN_USE);
-        }
         Long children = categoryMapper.selectCount(Wrappers.<PrdCategory>lambdaQuery()
                 .eq(PrdCategory::getParentNo, categoryNo)
                 .eq(PrdCategory::getStatus, ACTIVE));
@@ -211,7 +217,27 @@ public class CategoryServiceImpl implements CategoryService {
 
         c.setStatus(ARCHIVED);
         categoryMapper.updateById(c);
-        return toOpsVO(c, 0);
+        // 商品数照实返回：停用不改变「这一类下面还挂着多少货」这个事实
+        return toOpsVO(c, counts(categoryNo));
+    }
+
+    /**
+     * 停用这个类目会影响什么。**停用前给运营看的那句话。**
+     *
+     * <p>只回答两个数：这一类下面还有几件商品（其中几件在售）、几家店的货架上摆着这一类。
+     * 不回答「要不要停」—— 那是运营的判断，界面把后果说清楚就够了。
+     */
+    @Override
+    public ArchiveImpact archiveImpact(String categoryNo) {
+        int total = counts(categoryNo);
+        Long onSale = goodsMapper.selectCount(Wrappers.<PrdGoods>lambdaQuery()
+                .eq(PrdGoods::getCategoryNo, categoryNo)
+                .eq(PrdGoods::getOnSale, true));
+        Long kids = categoryMapper.selectCount(Wrappers.<PrdCategory>lambdaQuery()
+                .eq(PrdCategory::getParentNo, categoryNo)
+                .eq(PrdCategory::getStatus, ACTIVE));
+        return new ArchiveImpact(total, onSale == null ? 0 : onSale.intValue(),
+                kids == null ? 0 : kids.intValue());
     }
 
     @Override
