@@ -223,7 +223,7 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
             DataScopeContext.executeWithoutScope(() ->
                     serviceAreaMapper.hardDelete(merchantNo, old.getLevel(), old.getRefCode()));
         }
-        for (AreaCommand a : areas) {
+        for (AreaCommand a : normalize(areas)) {
             if (a == null || a.level() == null || a.refCode() == null || a.refCode().isBlank()) {
                 continue;
             }
@@ -257,6 +257,32 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
                 submitAreaForAudit(merchantNo, row);
             }
         }
+    }
+
+
+    /**
+     * 父子归一：**同时勾了「浙江省」和「西湖区」时只留省**。
+     *
+     * <p>为什么必须在服务端也做一遍（端上已经做了一次）：
+     * 老版本的 b-app 会原样回传它那份集合，而覆盖展开走的是国标码前缀 ——
+     * 留着子项不会算错范围，但会在运营的待审队列里多出一条永远无意义的
+     * 「整个西湖区」（省已经盖住它了），运营点通过或驳回都不改变任何事实。
+     *
+     * <p>只归一区划之间的父子。聚落（COMMUNITY）在这里留着：
+     * 它的归属是 {@code cmt_community.region_code}，这一层拿不到，
+     * 而多留一条聚落覆盖项与父项同时存在时，展开结果仍然正确（并集）。
+     */
+    private static List<AreaCommand> normalize(List<AreaCommand> areas) {
+        List<String> regionCodes = areas.stream()
+                .filter(a -> a != null && a.level() != null && a.refCode() != null && !a.refCode().isBlank())
+                .filter(a -> !AREA_COMMUNITY.equals(a.level()))
+                .map(AreaCommand::refCode)
+                .toList();
+        return areas.stream()
+                .filter(a -> a == null || a.refCode() == null || AREA_COMMUNITY.equals(a.level())
+                        || regionCodes.stream().noneMatch(
+                                p -> !p.equals(a.refCode()) && a.refCode().startsWith(p)))
+                .toList();
     }
 
     /**

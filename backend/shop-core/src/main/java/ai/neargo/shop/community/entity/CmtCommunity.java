@@ -67,6 +67,33 @@ public class CmtCommunity extends BaseEntity {
     /** MERCHANT 商家提报定位 / OPS 运营补录 / SEED 种子 —— 分清「坐标是空的」与「没人核过」 */
     private String coordsSource;
 
+    /**
+     * 这一条是<b>谁按什么依据</b>建出来的：{@code MAP} 地图 POI / {@code OFFICIAL} 官方名录 /
+     * {@code MERCHANT} 商家提报 / {@code OPS} 运营录入。
+     *
+     * <p>与 {@link #coordsSource} 不是一回事：那个说「坐标是谁标的」，这个说「这个地方是怎么进库的」。
+     * 分开的理由是策略：将来要收紧成「地图来源也要人审」，或者按来源做数据刷新，
+     * 判据只能是它 —— 此前只能反查 {@code cmt_community_apply.decided_by}，
+     * 而那张表只在有提报单时才有行。
+     */
+    private String source;
+
+    /** 地图 POI —— 商家在选择器里点了一条地图地点，系统当场建档 */
+    public static final String SOURCE_MAP = "MAP";
+    /** 官方名录（统计局村级第五级）—— 免审直开的那一类 */
+    public static final String SOURCE_OFFICIAL = "OFFICIAL";
+    /** 商家自己填的名字，走人工裁决 */
+    public static final String SOURCE_MERCHANT = "MERCHANT";
+    /** 运营在后台直接录入 */
+    public static final String SOURCE_OPS = "OPS";
+
+    /**
+     * 曾用名，逗号分隔。**为合并准备**：同一个小区改名（「阳光花园」→「阳光花园(北区)」）后，
+     * 旧名还要参与查重 —— 不留的话，下一次地图联想会把它当成一个新地方再建一条，
+     * 而两条都「看着正常」，只有买家会发现自己搜到的那个小区里没有商家。
+     */
+    private String alias;
+
 
     /** 本社区是否开放积分。四级串联的第二级 —— 上层关，下层一定关。 */
     private Boolean pointsEnabled;

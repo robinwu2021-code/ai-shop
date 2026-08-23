@@ -264,6 +264,62 @@ class ServiceAreaFlowTest {
     }
 
     @Test
+    @DisplayName("★★ 按省覆盖：省码是 2 位前缀，整省的社区都命中，且要运营审")
+    void provinceAreaExpandsAndNeedsReview() {
+        String m = merchant("SHIPPING");
+        store(m);
+        String inProvince = community("330106002");   // 浙江 → 杭州 → 西湖 → 街道
+        String otherProvince = community("140802001"); // 山西 → 运城
+
+        storeService.save(m, new ai.neargo.shop.merchant.service.MerchantStoreService.SaveCommand(
+                "营业中", "08:00-20:00", "文一西路 1 号", java.util.List.of(),
+                null, null, null, "ONSITE",
+                java.util.List.of(new ai.neargo.shop.merchant.service.MerchantStoreService
+                        .AreaCommand("PROVINCE", "33"))));
+
+        var rows = areaMapper.selectList(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                .<ai.neargo.shop.merchant.entity.MchServiceArea>lambdaQuery()
+                .eq(ai.neargo.shop.merchant.entity.MchServiceArea::getEntityNo, m));
+        /*
+         * 省这一档是新加的（AREA_LEVEL.PROVINCE）。后端没有为它写过任何分支 ——
+         * 这条用例守的正是「不写分支也对」：审核归入「非社区非街道 → 待审」，
+         * 展开归入「国标码前缀」。哪天有人给 selfEffective 加一档，这里会红。
+         */
+        assertThat(rows).singleElement()
+                .satisfies(r -> assertThat(r.getStatus()).isEqualTo("PENDING"));
+
+        // 审过之后才展开，而且只展开这个省
+        governService.decideStoreAudit(auditNoOf(rows.get(0).getAreaNo()), true, null, "OPS1");
+        var reachable = merchantQuery.reachableCommunities(m);
+        assertThat(reachable).contains(inProvince);
+        assertThat(reachable).doesNotContain(otherProvince);
+    }
+
+    @Test
+    @DisplayName("★★ 同时勾了省与省下面的区 → 只留省。留着子项会在运营队列里多一条永远没意义的待审")
+    void parentSwallowsChild() {
+        String m = merchant("ONSITE");
+        store(m);
+        String c = community("330106002");
+
+        storeService.save(m, new ai.neargo.shop.merchant.service.MerchantStoreService.SaveCommand(
+                "营业中", "08:00-20:00", "文一西路 1 号", java.util.List.of(),
+                null, null, null, "ONSITE",
+                java.util.List.of(
+                        new ai.neargo.shop.merchant.service.MerchantStoreService.AreaCommand("PROVINCE", "33"),
+                        new ai.neargo.shop.merchant.service.MerchantStoreService.AreaCommand("CITY", "3301"),
+                        new ai.neargo.shop.merchant.service.MerchantStoreService.AreaCommand("DISTRICT", "330106"),
+                        // 聚落不参与归一：它的归属挂在 cmt_community.region_code 上，这一层看不见
+                        new ai.neargo.shop.merchant.service.MerchantStoreService.AreaCommand("COMMUNITY", c))));
+
+        var rows = areaMapper.selectList(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                .<ai.neargo.shop.merchant.entity.MchServiceArea>lambdaQuery()
+                .eq(ai.neargo.shop.merchant.entity.MchServiceArea::getEntityNo, m));
+        assertThat(rows).extracting(ai.neargo.shop.merchant.entity.MchServiceArea::getLevel)
+                .containsExactlyInAnyOrder("PROVINCE", "COMMUNITY");
+    }
+
+    @Test
     @DisplayName("★ 勾社区自助生效，勾区要审 —— 影响面差一个量级")
     void districtAreaNeedsReview() {
         String m = merchant("ONSITE");

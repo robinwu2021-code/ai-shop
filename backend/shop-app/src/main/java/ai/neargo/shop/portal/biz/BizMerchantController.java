@@ -64,6 +64,8 @@ public class BizMerchantController {
     private final ai.neargo.shop.merchant.service.MerchantRoleService roleService;
     /** 提报新社区（ADR-013 阶段三）：社区是 community 域的主数据，商家只是提报方 */
     private final ai.neargo.shop.community.service.CommunityAdminService communityAdminService;
+    /** 读侧：地图直开之后要按 `/biz/communities` 的同一个形状把它回给端上 */
+    private final ai.neargo.shop.community.service.CommunityService communityService;
     /** 资金路径 —— B 端价格字段叫什么由它决定，判据与积分能力同一根轴 */
     private final MerchantQueryPort merchantQueryPort;
     /** 资质：商家自己传证、看有效期、看这张证能解锁哪几类 */
@@ -80,6 +82,7 @@ public class BizMerchantController {
                                  MerchantStaffService staffService,
                                  ai.neargo.shop.merchant.service.MerchantRoleService roleService,
                                  ai.neargo.shop.community.service.CommunityAdminService communityAdminService,
+                                 ai.neargo.shop.community.service.CommunityService communityService,
                                  MerchantQueryPort merchantQueryPort,
                                  StoreCategoryService storeCategoryService,
                                  ai.neargo.shop.merchant.service.MerchantGovernService governService,
@@ -89,6 +92,7 @@ public class BizMerchantController {
         this.storeCategoryService = storeCategoryService;
         this.merchantQueryPort = merchantQueryPort;
         this.communityAdminService = communityAdminService;
+        this.communityService = communityService;
         this.roleService = roleService;
         this.storeService = storeService;
         this.fulfillmentService = fulfillmentService;
@@ -364,6 +368,33 @@ public class BizMerchantController {
         return communityAdminService.submitApply(BizContext.requireMerchantNo(),
                 req.name(), req.address(), req.regionCode(), req.note(),
                 req.kind(), req.originCode(), req.latE6(), req.lngE6());
+    }
+
+    /**
+     * 从地图上选中一个点，**直接开通聚落并返回**（不再提报、不用等）。
+     *
+     * <p>与 {@code /biz/communities/apply} 的关系：那条留给「地图上查无此地」的手动补录；
+     * 正常路径是搜到即用 —— 数据来自高德（名字、门牌、坐标都是它给的），
+     * 落哪个街道由逆地理定夺，重复由三道闸挡住（见 openFromMap 的注释）。
+     */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.STORE + "')")
+    @PostMapping("/biz/communities/from-map")
+    public ai.neargo.shop.community.dto.CommunityVO openCommunityFromMap(@RequestBody FromMapReq req) {
+        var opened = communityAdminService.openFromMap(BizContext.requireMerchantNo(),
+                req.name(), req.address(), req.latE6(), req.lngE6(), req.streetCode());
+        /*
+         * **回的是与 `/biz/communities` 同一个形状**，不是运营端那个 VO。
+         * 端上拿到它就直接塞进「可选聚落」那份列表 —— 两个形状不一样的话，
+         * 新开的这条会缺 address/pickups，在列表里长得与其它条目不同，
+         * 而这种差异只在「刚加完那一瞬间」出现，最难复现。
+         */
+        return communityService.detail(opened.communityNo());
+    }
+
+    /**
+     * @param streetCode 端上已知的街道码（9 位），只在服务端逆地理不可用时兜底
+     */
+    public record FromMapReq(String name, String address, int latE6, int lngE6, String streetCode) {
     }
 
     /**

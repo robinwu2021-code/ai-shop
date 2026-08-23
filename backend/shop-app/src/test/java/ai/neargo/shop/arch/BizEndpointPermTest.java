@@ -168,6 +168,9 @@ class BizEndpointPermTest {
         // 才该能提「这儿还没开」
         put("/biz/communities/apply", BizPerms.STORE);
         put("/biz/communities/applies", BizPerms.STORE);
+        // 地图上点中的小区直接开通：它写的是主数据（建一条聚落），
+        // 但触发它的动作就是「设经营范围」—— 与提报同一半，权限也该同一个
+        put("/biz/communities/from-map", BizPerms.STORE);
         put("/biz/store/qrcode", BizPerms.STORE);
         put("/biz/store/share-kit", BizPerms.STORE);
         put("/biz/delivery/rule", BizPerms.STORE);

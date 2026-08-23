@@ -32,6 +32,7 @@ import { RegionPicker } from "./region-picker";
 import { TabHeader } from "@/components/ui/tab-header";
 import { ApplyTab } from "./apply-tab";
 import { RegionTab } from "./region-tab";
+import { DuplicatesPanel } from "./duplicates-panel";
 import { Toolbar } from "@/components/ui/toolbar";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 
@@ -333,6 +334,13 @@ function CommunitiesInner() {
       {tab === "regions" && !allow("community:region:update") && (
         <ReadOnlyNotice what={cp.readOnlyRegionWhat} perm="community:region:update" note={cp.readOnlyRegionNote} className="mb-3" />
       )}
+      {/*
+        疑似重复：放在社区 tab 的顶部，而不是再开一个 tab。
+        它是「这一屏的例外情况」，不是一类新对象 —— 单开 tab 的话，
+        运营只有想起来才会去点，而这件事的性质是「有就得处理」。
+      */}
+      {tab === "grid" && <DuplicatesPanel c={cp} canMerge={canEditCommunity} />}
+
       {tab === "grid" && !canEditCommunity && (
         <ReadOnlyNotice what={cp.readOnlyCommunityWhat} perm="community:community:update" note={cp.readOnlyCommunityNote} className="mb-3" />
       )}

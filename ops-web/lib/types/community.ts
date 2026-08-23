@@ -115,8 +115,26 @@ export interface NearbyCommunity {
   regionPath: string;
 }
 
+/**
+ * 疑似重复的一对聚落。
+ *
+ * `reason` 是**判据不是结论**：SAME_NAME 归一名相同、NEARBY 坐标很近且名字相似。
+ * 两条都可能是误报（同一条街道里真有「一期」「二期」两个小区），
+ * 所以界面上给的是「合并」按钮而不是自动合并 —— 合并会改一批商家的可见范围，
+ * 错了要一条条捞回来。
+ */
+export interface CommunityDuplicate {
+  left: Community;
+  right: Community;
+  reason: "SAME_NAME" | "NEARBY";
+  /** 两点直线距离（米）。有一方没坐标时为空 */
+  distanceM?: number | null;
+}
+
 export interface RegionSuggestion {
-  region: Region;
+  regionCode: string;
+  level: string;
+  name: string;
   /** 「广东省 / 深圳市 / 龙华区 / 福城街道」 */
   path: string;
   source: "ADDRESS" | "COORDS";

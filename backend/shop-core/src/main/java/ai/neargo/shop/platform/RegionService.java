@@ -70,11 +70,39 @@ public interface RegionService {
     List<RegionVO> path(String regionCode);
 
     /**
-     * 按名称搜区划（P1，选择器「任何一级都能搜」）。只搜导航四级里的市/区县/街道，
-     * 不搜省（没人按省框范围）、不搜村级词典（那是提报时用的）。
-     * 只出已开城且已审核通过的；{@code limit} 上限 20 —— 这是给人挑的，不是给机器遍历的。
+     * 按名称搜区划（选择器「任何一级都能搜」）。<b>四级都搜：省 / 市 / 区县 / 街道镇</b>。
+     *
+     * <p>此前不搜省，理由写的是「没人按省框范围」—— 而经营范围本来就是
+     * 「任意一级的并集」：快递发货的商家框的就是省，搜「山西」一条也搜不到时，
+     * 他只能从全国列表一级一级点。同一处还有第二个坑：曾经是
+     * 「一个 LIMIT 20 + 按 level 字符串降序」，而降序是 STREET &gt; PROVINCE &gt; DISTRICT &gt; CITY，
+     * 于是街道把整份配额吃光 —— 搜「运城」时「运城市」根本进不了列表。
+     *
+     * <p>现在按<b>每级配额</b>取（省 3 / 市 5 / 区 8 / 街道 8），保证每一级都有代表；
+     * 组内排序按命中强度：完全相同 &gt; 前缀命中 &gt; 包含；同强度时给了坐标就近的排前面
+     * （同名的「城关街道」全国上百个，不按距离排等于让人从一堆同名里猜）。
+     *
+     * @param limit      总条数上限（&le; 30）。这是给人挑的，不是给机器遍历的
+     * @param nearLatE6  门店坐标，可空；给了就参与同名排序
      */
-    List<RegionVO> search(String keyword, int limit);
+    List<RegionVO> search(String keyword, int limit, Integer nearLatE6, Integer nearLngE6);
+
+    /** 不带坐标的老签名。存量调用方（运营端）没有「门店位置」这个概念 */
+    default List<RegionVO> search(String keyword, int limit) {
+        return search(keyword, limit, null, null);
+    }
+
+    /**
+     * 按名称搜**村级**（第五级，62 万条那份）。与 {@link #search} 分开是因为口径不同：
+     * 那个搜的是导航层级（市/区/街道），这个搜的是终点。
+     *
+     * <p>为什么要有：商家心里的「我做哪儿」就是一个村名或小区名，
+     * 而此前搜索框只认市/区/街道与**已开通**的聚落 —— 他打「狮径」什么也搜不到，
+     * 只能自己一级级点到街道才发现名录里有。
+     *
+     * <p>命中的村多数还没开通；官方村现在提报即开通，所以端上点一条就能直接用。
+     */
+    List<RegionVO> searchVillages(String keyword, int limit, Integer nearLatE6, Integer nearLngE6);
 
     /**
      * 从「地址文本 + 坐标」推断这条提报该挂哪个街道。

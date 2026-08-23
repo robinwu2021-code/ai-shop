@@ -26,6 +26,8 @@ CREATE TABLE IF NOT EXISTS cmt_community
     region_code VARCHAR(12) DEFAULT NULL,
     kind VARCHAR(16) NOT NULL DEFAULT 'ESTATE',
     coords_source VARCHAR(16) DEFAULT NULL,
+    source VARCHAR(16) DEFAULT NULL,
+    alias VARCHAR(128) DEFAULT NULL,
     origin_code VARCHAR(12) DEFAULT NULL,
     CONSTRAINT uk_community_origin UNIQUE (origin_code),
     PRIMARY KEY (id),

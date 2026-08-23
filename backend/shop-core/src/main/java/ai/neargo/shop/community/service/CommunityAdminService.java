@@ -149,6 +149,37 @@ public interface CommunityAdminService {
      * @param latE6 聚落中心（gcj02，E6）。<b>可能为空</b> —— 存量是手工建的。
      *              运营裁决要在地图上核落点、查附近重名，靠的就是它
      */
+    /**
+     * 疑似重复的两条聚落。
+     *
+     * <p><b>为什么现在必须有</b>：商家在选择器里点一条地图 POI 就能直接建档（from-map），
+     * 于是「同一个小区被建成两条」的概率比人工提报时代高得多 —— 高德对同一个小区常给出
+     * 「XX花园」「XX花园A区」「XX花园(南门)」。建档时那三道查重只在**当场**比一次，
+     * 而改名、补坐标、隔壁街道误挂都会让两条事后才撞上。
+     *
+     * <p>后果不报错：两条都「看着正常」，商家甲选了 A、商家乙选了 B，
+     * 买家在 B 里搜不到甲的货 —— 而甲乙都以为自己上架了。
+     *
+     * @param reason SAME_NAME 归一名相同 / NEARBY 坐标很近且名字相似
+     */
+    record DuplicateVO(CommunityVO left, CommunityVO right, String reason, Integer distanceM) {
+    }
+
+    /** 疑似重复清单。只在**已开通**的聚落之间找 —— 关掉的那条已经不参与任何事 */
+    List<DuplicateVO> duplicates(int limit);
+
+    /**
+     * 合并：把 {@code fromNo} 并进 {@code intoNo}。
+     *
+     * <p>**改写的是「还会再用」的引用**：商家经营范围、商家社区池、商品社区池、
+     * 自提点、渠道覆盖 —— 这些决定「以后谁看得到什么」。
+     * 订单、批次、帖子这些**历史数据不动**：那条聚落行还在（置为关闭），
+     * 历史单据指着它是对的，改写反而会让对账时的口径变了。
+     *
+     * @return 合并后的目标聚落
+     */
+    CommunityVO merge(String fromNo, String intoNo, String operatorNo);
+
     record CommunityVO(String communityNo, String name, String city, String grid, boolean opened,
                        int fenceRadius, int pickupCount, long createdAt,
                        String regionCode, String regionPath,
@@ -165,6 +196,32 @@ public interface CommunityAdminService {
      * @param radiusM 搜索半径（米）
      */
     List<NearbyVO> communitiesNear(int latE6, int lngE6, int radiusM);
+
+    /**
+     * 从地图上选中的一个点**直接开通聚落**，商家当场就能用 —— 不再走「提报 → 等运营核实」。
+     *
+     * <p><b>为什么敢不审</b>：数据来自高德 POI（名字、门牌、坐标都是它给的），
+     * 落哪个街道由逆地理定夺，而重复由下面三道闸挡住。运营审这一类基本是走过场，
+     * 而那道等待按天算 —— 期间商家的货对这个小区一个人也看不见。
+     *
+     * <p><b>街道靠「adcode + township 名字」定，不能用高德的 towncode</b>：
+     * 两套编码不同源 —— 实测福城街道的 towncode 是 440309006000，
+     * 去掉后三位是 440309006，而那在统计局口径里是**观澜街道**。
+     * 按码挂会把聚落挂到隔壁街道，且没有任何报错。
+     *
+     * <p>三道查重，任一命中就复用既有聚落、不新建：
+     * ① 官方村码；② 同街道且名字归一后同名/互为前缀；③ 坐标 150 米内且名字相近
+     * （高德对同一个小区常给出「XX花园」「XX花园A区」「XX花园(南门)」几条）。
+     *
+     * <p><b>只收带坐标的</b>：没坐标的聚落 withinRadius 恒 false，买家用定位永远搜不到它，
+     * 而这件事没有任何报错。
+     *
+     * @param streetHint 端上已知的街道码（9 位）。**只在逆地理不可用时兜底** ——
+     *                   没配 AMAP_WEB_KEY 的环境（含单测）走这一路
+     * @return 新建或复用的聚落
+     */
+    CommunityVO openFromMap(String merchantNo, String name, String address,
+                            int latE6, int lngE6, String streetHint);
 
     /** @param distanceM 距给定坐标的直线距离（米） */
     record NearbyVO(String communityNo, String name, int latE6, int lngE6,

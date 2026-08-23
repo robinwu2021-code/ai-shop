@@ -65,16 +65,50 @@ public class CommunityAdminServiceImpl implements CommunityAdminService {
     /** 只为把提报队列里的商家号显示成店名 —— 运营看着一串 M20260811… 判断不了任何事 */
     private final ai.neargo.shop.spi.user.MerchantQueryPort merchantQueryPort;
 
+    /** 逆地理：从坐标定出区县码与街道名。走 spi Port，不直连 platform.GeoService（ArchUnit 第 1 条） */
+    private final ai.neargo.shop.spi.platform.GeoPort geoPort;
+
     public CommunityAdminServiceImpl(CommunityMapper communityMapper, PickupPointMapper pickupMapper,
                                      ai.neargo.shop.spi.platform.MasterDataPort masterDataPort,
                                      ai.neargo.shop.community.mapper.CommunityMappers
                                              .CommunityApplyMapper applyMapper,
-                                     ai.neargo.shop.spi.user.MerchantQueryPort merchantQueryPort) {
+                                     ai.neargo.shop.spi.user.MerchantQueryPort merchantQueryPort,
+                                     ai.neargo.shop.spi.platform.GeoPort geoPort,
+                                     java.util.List<ai.neargo.shop.spi.user.SettlementRefPort> refPorts,
+                                     @org.springframework.beans.factory.annotation.Value(
+                                             "${shop.community.auto-open:MAP,OFFICIAL}") String autoOpen) {
+        this.refPorts = refPorts;
+        this.autoOpenSources = java.util.Arrays.stream(autoOpen.split(","))
+                .map(String::trim).filter(x -> !x.isEmpty()).map(String::toUpperCase)
+                .collect(java.util.stream.Collectors.toSet());
+        this.geoPort = geoPort;
         this.masterDataPort = masterDataPort;
         this.communityMapper = communityMapper;
         this.pickupMapper = pickupMapper;
         this.applyMapper = applyMapper;
         this.merchantQueryPort = merchantQueryPort;
+    }
+
+    /**
+     * 哪些来源**免人审直接开通**。默认 `MAP,OFFICIAL` —— 地图 POI 与官方名录都有外部权威作依据，
+     * 而人工审这两类基本是走过场，那道等待却按天算（期间商家的货在那个地方一个人也看不见）。
+     *
+     * <p>做成配置而不是写死的 if：将来要收紧成「地图来源也得人审」，改一行配置即可，
+     * 端上一个字都不用动 —— 商家那边的表现自动从「已加入」变成「已提交，等审核」，
+     * 两套文案本来就都在。反过来也一样：某个城市数据质量好，可以把 MERCHANT 也放开。
+     */
+    private final java.util.Set<String> autoOpenSources;
+
+    /**
+     * 各域自己实现的「引用改写」。**注入一个列表而不是逐个 Port**：
+     * 以后哪个域新增了指向聚落的表，它自己加一个实现就接进来了，
+     * 合并这边一行都不用改 —— 反过来（这里逐个列举）必然会漏，而漏掉不报错。
+     */
+    private final java.util.List<ai.neargo.shop.spi.user.SettlementRefPort> refPorts;
+
+    /** 这一类来源现在允不允许免审直开 */
+    private boolean autoOpens(String source) {
+        return source != null && autoOpenSources.contains(source);
     }
 
     // ------------------------------------------------------------ 商家提报新社区（阶段三）
@@ -94,6 +128,32 @@ public class CommunityAdminServiceImpl implements CommunityAdminService {
          * 重复提报不会让它更快通过，只会让运营的队列里出现两条一模一样的 ——
          * 而两个人各裁一条的结果是**建出两个同名社区**，商家勾选时分不清该勾哪个。
          */
+        /*
+         * **系统里已经有的小区不必提报**。
+         *
+         * 端上已经把已开通的聚落摆在同一屏（直接勾），但地图那一组和官方名录那一组
+         * 仍可能出现同一个地方的另一种写法（「阳光花园」vs「阳光花园小区」）。
+         * 不在写入口拦一道的话，运营队列里会出现一条注定被驳回的单，
+         * 而商家要等上几天才知道「它本来就有」。
+         *
+         * 判据：同一个街道下已开通、且名字互为前缀（去掉「小区/花园/苑」这类后缀之后同名）。
+         * 宁可漏拦也不误拦 —— 拦错的代价是一个真的新小区提不上来。
+         */
+        String streetCode = regionCode == null ? null : regionCode.trim();
+        if (streetCode != null && !streetCode.isBlank()) {
+            var exist = DataScopeContext.executeWithoutScope(() -> communityMapper.selectList(
+                    Wrappers.<CmtCommunity>lambdaQuery()
+                            .eq(CmtCommunity::getRegionCode, streetCode)
+                            .eq(CmtCommunity::getStatus, OPEN)
+                            .last("limit 200"))).stream()
+                    .filter(c -> sameSettlement(c.getName(), n))
+                    .findFirst().orElse(null);
+            if (exist != null) {
+                throw new BizException(ErrorCode.CONFLICT,
+                        "「" + exist.getName() + "」已经开通了，直接在列表里勾选即可，不用提报");
+            }
+        }
+
         boolean dup = DataScopeContext.executeWithoutScope(() -> applyMapper.exists(
                 com.baomidou.mybatisplus.core.toolkit.Wrappers
                         .<ai.neargo.shop.community.entity.CmtCommunityApply>lambdaQuery()
@@ -137,7 +197,7 @@ public class CommunityAdminServiceImpl implements CommunityAdminService {
          * 撞上「这个村已经开通过」时**让异常抛出去**：这条提报会随事务一起回滚，
          * 商家当场看到「已经有了，直接勾选」，比留一条几天后被驳回的待审有用得多。
          */
-        if (a.getOriginCode() != null) {
+        if (a.getOriginCode() != null && autoOpens(CmtCommunity.SOURCE_OFFICIAL)) {
             var street = masterDataPort.officialVillageStreet(a.getOriginCode());
             if (street.isPresent()) {
                 return decideApply(a.getApplyNo(), true, street.get(), null, "SYSTEM");
@@ -234,6 +294,12 @@ public class CommunityAdminServiceImpl implements CommunityAdminService {
             c.setKind(a.getKind() == null ? CmtCommunity.KIND_ESTATE : a.getKind());
             c.setOriginCode(a.getOriginCode());
             /*
+             * 来源按**依据**而不是按谁点的按钮：带官方村码的依据是统计局名录（OFFICIAL），
+             * 没有的依据只是商家自己填的名字（MERCHANT）—— 后者才是将来要收紧的那一类。
+             */
+            c.setSource(a.getOriginCode() != null && !a.getOriginCode().isBlank()
+                    ? CmtCommunity.SOURCE_OFFICIAL : CmtCommunity.SOURCE_MERCHANT);
+            /*
              * 坐标沿用商家提报的定位。**没有这一步，建出来的聚落永远没坐标**，
              * 而 withinRadius 对空坐标直接 false —— 买家用定位永远找不到它。
              * 全仓此前唯一写坐标的地方是 DevSeeder。
@@ -272,6 +338,26 @@ public class CommunityAdminServiceImpl implements CommunityAdminService {
         a.setDecidedBy(operatorNo);
         DataScopeContext.executeWithoutScope(() -> applyMapper.updateById(a));
         return toApplyVO(a);
+    }
+
+    /**
+     * 两个名字是不是同一个聚落。去掉常见后缀再比 —— 「阳光花园」「阳光花园小区」「阳光花园(北区)」
+     * 在商家嘴里是同一个地方，而它们只要写法不同就会各开一个聚落，买家侧就此分裂成两个圈。
+     */
+    private static boolean sameSettlement(String a, String b) {
+        String x = normalizeName(a);
+        String y = normalizeName(b);
+        return !x.isEmpty() && !y.isEmpty() && (x.equals(y) || x.startsWith(y) || y.startsWith(x));
+    }
+
+    private static String normalizeName(String s) {
+        if (s == null) {
+            return "";
+        }
+        return s.trim()
+                .replaceAll("[（(].*?[）)]", "")
+                .replaceAll("(小区|花园|家园|新村|苑|园|村|社区|居委会|村民委员会|居民委员会)+$", "")
+                .trim();
     }
 
     private ApplyVO toApplyVO(ai.neargo.shop.community.entity.CmtCommunityApply a) {
@@ -343,6 +429,93 @@ public class CommunityAdminServiceImpl implements CommunityAdminService {
         c.setFenceRadius(fenceRadius);
         DataScopeContext.executeWithoutScope(() -> communityMapper.updateById(c));
         return toVO(c, pickupCountOf(communityNo));
+    }
+
+    // ------------------------------------------------------------ 疑似重复与合并
+
+    /** 疑似重复只在同一条街道里找：跨街道同名（全国有几百个「幸福小区」）不是重复，是重名 */
+    private static final int NEARBY_DUP_METERS = 300;
+
+    @Override
+    public List<DuplicateVO> duplicates(int limit) {
+        int cap = Math.max(1, Math.min(limit, 200));
+        List<CmtCommunity> open = DataScopeContext.executeWithoutScope(() -> communityMapper.selectList(
+                Wrappers.<CmtCommunity>lambdaQuery()
+                        .eq(CmtCommunity::getStatus, OPEN)
+                        .orderByAsc(CmtCommunity::getRegionCode)));
+        // 按街道分组后两两比 —— 全表两两比是 O(n²)，而同一条街道下最多几十条
+        Map<String, List<CmtCommunity>> byStreet = open.stream()
+                .filter(c -> c.getRegionCode() != null && !c.getRegionCode().isBlank())
+                .collect(Collectors.groupingBy(CmtCommunity::getRegionCode));
+        List<DuplicateVO> out = new java.util.ArrayList<>();
+        for (List<CmtCommunity> group : byStreet.values()) {
+            for (int i = 0; i < group.size() && out.size() < cap; i++) {
+                for (int j = i + 1; j < group.size() && out.size() < cap; j++) {
+                    CmtCommunity a = group.get(i);
+                    CmtCommunity b = group.get(j);
+                    Integer dist = distanceOrNull(a, b);
+                    if (sameSettlement(a.getName(), b.getName())) {
+                        out.add(new DuplicateVO(toVO(a, 0), toVO(b, 0), "SAME_NAME", dist));
+                    } else if (dist != null && dist <= NEARBY_DUP_METERS && nameLooksClose(a.getName(), b.getName())) {
+                        // 高德对同一个小区常给出「XX花园」「XX花园A区」—— 名字比不出来，位置骗不了人
+                        out.add(new DuplicateVO(toVO(a, 0), toVO(b, 0), "NEARBY", dist));
+                    }
+                }
+            }
+        }
+        return out;
+    }
+
+    private static Integer distanceOrNull(CmtCommunity a, CmtCommunity b) {
+        if (a.getLatE6() == null || a.getLngE6() == null || b.getLatE6() == null || b.getLngE6() == null) {
+            return null;
+        }
+        return (int) Math.round(meters(a.getLatE6(), a.getLngE6(), b.getLatE6(), b.getLngE6()));
+    }
+
+    @Override
+    @Transactional
+    public CommunityVO merge(String fromNo, String intoNo, String operatorNo) {
+        if (fromNo == null || intoNo == null || fromNo.equals(intoNo)) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        CmtCommunity from = requireCommunity(fromNo);
+        CmtCommunity into = requireCommunity(intoNo);
+
+        /*
+         * **名字要留下来**：被并掉的那条叫「阳光花园A区」，留下的叫「阳光花园」——
+         * 不记 alias 的话，下一次地图联想拿着「阳光花园A区」来查重，
+         * 三道查重全都比不上，于是又建出一条一模一样的。合并就白做了。
+         */
+        String alias = java.util.stream.Stream.of(into.getAlias(), from.getName(), from.getAlias())
+                .filter(x -> x != null && !x.isBlank())
+                .flatMap(x -> java.util.Arrays.stream(x.split(",")))
+                .map(String::trim).filter(x -> !x.isEmpty() && !x.equals(into.getName()))
+                .distinct().collect(Collectors.joining(","));
+        into.setAlias(alias.isEmpty() ? null : alias);
+        // 坐标缺一个补一个：被并掉的那条常常是「地图点出来的那条」，坐标反而更准
+        if (into.getLatE6() == null && from.getLatE6() != null) {
+            into.setLatE6(from.getLatE6());
+            into.setLngE6(from.getLngE6());
+            into.setCoordsSource(from.getCoordsSource());
+        }
+        into.setUpdatedBy(operatorNo);
+        DataScopeContext.executeWithoutScope(() -> communityMapper.updateById(into));
+
+        // 各域自己改写「以后还会用」的引用；漏一处的后果是商家的货在这个小区悄悄消失
+        for (var port : refPorts) {
+            port.repointSettlement(fromNo, intoNo);
+        }
+
+        /*
+         * 被并掉的那条**关掉而不是删掉**：历史订单、批次、帖子都还指着它，
+         * 删了那些单据的社区名就查不出来了。关掉之后它不参与任何新的可见性计算。
+         */
+        from.setStatus("CLOSED");
+        from.setUpdatedBy(operatorNo);
+        DataScopeContext.executeWithoutScope(() -> communityMapper.updateById(from));
+
+        return toVO(into, pickupCountOf(intoNo));
     }
 
     @Override
@@ -533,6 +706,121 @@ public class CommunityAdminServiceImpl implements CommunityAdminService {
                         : c.getCreatedAt().atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli(),
                 c.getRegionCode(), regionPathOf(c.getRegionCode()),
                 c.getLatE6(), c.getLngE6());
+    }
+
+    @Override
+    @org.springframework.transaction.annotation.Transactional
+    public CommunityVO openFromMap(String merchantNo, String name, String address,
+                                   int latE6, int lngE6, String streetHint) {
+        String n = name == null ? "" : name.trim();
+        if (n.isEmpty()) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        String street = resolveStreet(latE6, lngE6, streetHint);
+        if (street == null) {
+            throw new BizException(ErrorCode.BAD_REQUEST,
+                    "定不出这个位置属于哪个街道，换个点或从行政区划里选");
+        }
+
+        // 三道查重：撞上就复用，别让同一个小区在库里长出第二条
+        var existing = DataScopeContext.executeWithoutScope(() -> communityMapper.selectList(
+                Wrappers.<CmtCommunity>lambdaQuery()
+                        .eq(CmtCommunity::getStatus, OPEN)
+                        .eq(CmtCommunity::getRegionCode, street)
+                        .last("limit 300")));
+        var hit = existing.stream().filter(c -> sameSettlement(c.getName(), n)).findFirst()
+                .or(() -> existing.stream()
+                        // 高德对同一个小区常给出「XX花园」「XX花园A区」「XX花园(南门)」几条 ——
+                        // 名字比不出来，但它们必然挨在一起
+                        .filter(c -> c.getLatE6() != null && c.getLngE6() != null
+                                && meters(latE6, lngE6, c.getLatE6(), c.getLngE6()) <= 150
+                                && nameLooksClose(c.getName(), n))
+                        .findFirst());
+        if (hit.isPresent()) {
+            return toVO(hit.get(), pickupCountOf(hit.get().getCommunityNo()));
+        }
+
+        /*
+         * **策略收紧时走提报**（shop.community.auto-open 去掉 MAP）：建一条待审单，
+         * 把「等运营」这句话原样抛给商家 —— 端上本来就把错误消息当提示显示。
+         * 不静默建一个 CLOSED 聚落：那会让他在列表里看见一个永远没有订单的地方。
+         */
+        if (!autoOpens(CmtCommunity.SOURCE_MAP)) {
+            submitApply(merchantNo, n, address, street, "该地点已提交，等运营核对后即可加入",
+                    CmtCommunity.KIND_ESTATE, null, latE6, lngE6);
+            throw new BizException(ErrorCode.CONFLICT, "已提交，等运营核对后就能加入");
+        }
+
+        var c = new CmtCommunity();
+        c.setCommunityNo(ai.neargo.shop.common.BizKey.next(ai.neargo.shop.common.BizKey.COMMUNITY));
+        c.setName(n);
+        c.setAddress(address == null || address.isBlank() ? null : address.trim());
+        c.setRegionCode(street);
+        c.setKind(CmtCommunity.KIND_ESTATE);
+        c.setLatE6(latE6);
+        c.setLngE6(lngE6);
+        c.setCoordsSource("AMAP");
+        c.setSource(CmtCommunity.SOURCE_MAP);
+        c.setStatus(OPEN);
+        c.setFenceRadius(DEFAULT_FENCE_RADIUS);
+        c.setCreatedBy(merchantNo);
+        DataScopeContext.executeWithoutScope(() -> communityMapper.insert(c));
+
+        /*
+         * **台账仍然要留**：商家侧没有「提报」这件事了，但半年后发现某个聚落坐标偏了 800 米，
+         * 得追得到是谁、凭哪条地图记录建的。直接记成已通过（决策人 SYSTEM），
+         * 运营端那条队列因此变成「事后治理」的入口，而不是事前闸门。
+         */
+        var a = new ai.neargo.shop.community.entity.CmtCommunityApply();
+        a.setApplyNo(ai.neargo.shop.common.BizKey.next(ai.neargo.shop.common.BizKey.COMMUNITY_APPLY));
+        a.setEntityNo(merchantNo);
+        a.setName(n);
+        a.setAddress(c.getAddress());
+        a.setRegionCode(street);
+        a.setKind(CmtCommunity.KIND_ESTATE);
+        a.setLatE6(latE6);
+        a.setLngE6(lngE6);
+        a.setStatus(ai.neargo.shop.community.entity.CmtCommunityApply.APPROVED);
+        a.setCommunityNo(c.getCommunityNo());
+        a.setSubmittedAt(System.currentTimeMillis());
+        a.setDecidedAt(System.currentTimeMillis());
+        a.setDecidedBy("SYSTEM");
+        DataScopeContext.executeWithoutScope(() -> applyMapper.insert(a));
+
+        return toVO(c, 0);
+    }
+
+    /**
+     * 坐标 → 街道码。**先逆地理（权威），拿不到才用端上给的提示**。
+     *
+     * <p>逆地理给的是「区县码 + 街道名」，两者组合才定得准 ——
+     * 高德自己的 towncode 与统计局口径不同源，直接用会挂到隔壁街道（见接口注释）。
+     */
+    private String resolveStreet(int latE6, int lngE6, String hint) {
+        if (geoPort.available()) {
+            var r = geoPort.reverse(latE6, lngE6).orElse(null);
+            if (r != null) {
+                var byName = masterDataPort.streetByDistrictAndName(r.adcode(), r.township());
+                if (byName.isPresent()) {
+                    return byName.get();
+                }
+            }
+        }
+        String h = hint == null ? "" : hint.trim();
+        // 只认 9 位：挂粗了（6 位区县）不报错，但比它细的经营范围从此永远匹配不到
+        return h.length() == 9 ? h : null;
+    }
+
+    /** 名字「像不像」：去掉后缀之后有一方包含另一方的前两个字，够挡住 A 区/南门这类切分 */
+    private static boolean nameLooksClose(String a, String b) {
+        String x = normalizeName(a);
+        String y = normalizeName(b);
+        if (x.isEmpty() || y.isEmpty()) {
+            return false;
+        }
+        String shorter = x.length() <= y.length() ? x : y;
+        String longer = x.length() <= y.length() ? y : x;
+        return shorter.length() >= 2 && longer.contains(shorter.substring(0, Math.min(3, shorter.length())));
     }
 
     @Override

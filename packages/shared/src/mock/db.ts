@@ -766,6 +766,11 @@ const communitySeeds: CommunitySeed[] = [
   },
 ];
 
+/** 全部聚落 = 代码里的种子 + 运行时开通的。**所有读取都要走它**，否则新开的那条在这一处看不见 */
+export function allCommunitySeeds(): CommunitySeed[] {
+  return [...db.communitySeeds, ...db.communityOpened];
+}
+
 export function toCommunity(seed: CommunitySeed): Community {
   return {
     communityNo: seed.communityNo,
@@ -1394,6 +1399,14 @@ export const db = {
   goodsSeeds,
   merchantSeeds,
   communitySeeds,
+  /**
+   * **运行时开通出来的聚落**（商家在选择器里点地图小区/官方村直接加入的那些）。
+   *
+   * 为什么不能塞进 `communitySeeds`：那份是纯种子，在 TRANSIENT_KEYS 里 —— 刷新即回到代码里的样子。
+   * 而经营范围（`store.serviceAreas`）是**存的**，于是刷新之后范围里挂着一个查不到的社区号，
+   * 界面上表现为一条没有名字的范围，商家删不掉也看不懂。分成两份，这一份跟着落盘。
+   */
+  communityOpened: [] as CommunitySeed[],
   regionSeeds,
   /**
    * 提报单。**一条已驳回的样本**：只有待审的话，B 端「被驳回长什么样」

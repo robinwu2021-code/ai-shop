@@ -1,5 +1,6 @@
 package ai.neargo.shop.community.api.ops;
 
+import ai.neargo.shop.spi.platform.MasterDataPort;
 import ai.neargo.shop.auth.Perms;
 import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.community.service.CommunityAdminService;
@@ -30,15 +31,16 @@ public class OpsCommunityController {
     private final CommunityAdminService adminService;
     private final AuditLogPort auditLogPort;
 
-    private final ai.neargo.shop.platform.RegionService regionService;
+    /** 区划推断走 spi Port —— community 域不直连 platform（ArchUnit 第 1 条） */
+    private final MasterDataPort masterDataPort;
 
     public OpsCommunityController(CommunityAdminService adminService, AuditLogPort auditLogPort,
                                   ai.neargo.shop.archive.ArchiveService archiveService,
-                                  ai.neargo.shop.platform.RegionService regionService) {
+                                  MasterDataPort masterDataPort) {
         this.adminService = adminService;
         this.auditLogPort = auditLogPort;
         this.archiveService = archiveService;
-        this.regionService = regionService;
+        this.masterDataPort = masterDataPort;
     }
 
     private final ai.neargo.shop.archive.ArchiveService archiveService;
@@ -128,6 +130,36 @@ public class OpsCommunityController {
     }
 
     /**
+     * 疑似重复的聚落清单。
+     *
+     * <p><b>from-map 上线之后这条队列才真正需要</b>：商家在选择器里点一条地图地点就直接建档，
+     * 建档时的三道查重只在当场比一次 —— 而改名、补坐标、误挂到隔壁街道都会让两条事后才撞上。
+     * 撞上的后果不报错：商家甲选了 A、乙选了 B，买家在 B 里搜不到甲的货，两边都以为自己上架了。
+     */
+    @GetMapping("/ops/communities/duplicates")
+    @PreAuthorize("@perm.can('" + Perms.COMMUNITY_READ + "')")
+    public java.util.List<CommunityAdminService.DuplicateVO> duplicates(
+            @RequestParam(defaultValue = "50") int limit) {
+        return adminService.duplicates(limit);
+    }
+
+    /**
+     * 合并两条聚落：把 {@code fromNo} 并进 {@code intoNo}。
+     *
+     * <p>写权限用 {@code COMMUNITY_UPDATE}：它改的是主数据与一批商家的可见范围，
+     * 与开城、改归属同一量级；看队列的人不该有这个权。
+     */
+    @PostMapping("/ops/communities/merge")
+    @PreAuthorize("@perm.can('" + Perms.COMMUNITY_UPDATE + "')")
+    public CommunityAdminService.CommunityVO merge(@RequestBody MergeReq req) {
+        return adminService.merge(req.fromNo(), req.intoNo(), SecurityUtils.currentUserNo());
+    }
+
+    /** @param intoNo 留下来的那条。运营要挑名字更规范的那个，被并的名字会进 alias */
+    public record MergeReq(String fromNo, String intoNo) {
+    }
+
+    /**
      * 按提报单上的地址与坐标推断该挂哪个街道。
      *
      * <p>裁决那一屏原本要从 31 个省点到街道 —— 而单子上明明写着
@@ -135,11 +167,11 @@ public class OpsCommunityController {
      */
     @GetMapping("/ops/regions/resolve")
     @PreAuthorize("@perm.can('" + Perms.COMMUNITY_READ + "')")
-    public java.util.List<ai.neargo.shop.platform.RegionService.Suggestion> resolveRegion(
+    public java.util.List<MasterDataPort.RegionSuggestion> resolveRegion(
             @RequestParam(required = false) String address,
             @RequestParam(required = false) Integer latE6,
             @RequestParam(required = false) Integer lngE6) {
-        return regionService.resolve(address, latE6, lngE6);
+        return masterDataPort.resolveRegion(address, latE6, lngE6);
     }
 
     /**

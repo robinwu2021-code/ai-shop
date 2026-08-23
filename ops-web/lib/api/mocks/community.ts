@@ -130,15 +130,36 @@ export const communityMock: CommunityApi = {
       distanceM: 58, regionPath: c.regionPath ?? "",
     }))),
 
+  /**
+   * mock 的疑似重复：拿库里前两条凑一对。
+   * **要能演到**，否则「发现 N 组疑似重复」这一段在开发期永远是空的，
+   * 而它正是 from-map 直开之后最需要设计的一屏。
+   */
+  duplicateCommunities: async () => {
+    const [a, b] = db.communities;
+    if (!a || !b) return wait([]);
+    return wait([{ left: a, right: b, reason: "NEARBY" as const, distanceM: 46 }]);
+  },
+
+  mergeCommunities: async (fromNo, intoNo) => {
+    const from = db.communities.find((c) => c.communityNo === fromNo);
+    const into = db.communities.find((c) => c.communityNo === intoNo);
+    if (!from || !into) fail("聚落不存在", "Settlement not found");
+    // 与真库同口径：被并掉的那条**关掉**而不是删掉 —— 历史订单还指着它
+    from.opened = false;
+    from.archivedAt = new Date().toISOString();
+    return wait(into);
+  },
+
   resolveRegion: async ({ address, latE6 }) => {
     const out: RegionSuggestion[] = [];
     const hit = address
       ? db.regions.filter((r) => r.level === "STREET" && address.includes(r.name))[0]
       : undefined;
-    if (hit) out.push({ region: hit, path: pathOf(hit.regionCode).map((r) => r.name).join(" / "), source: "ADDRESS", detail: hit.name });
+    if (hit) out.push({ regionCode: hit.regionCode, level: hit.level, name: hit.name, path: pathOf(hit.regionCode).map((r) => r.name).join(" / "), source: "ADDRESS", detail: hit.name });
     if (latE6 != null) {
       const near = db.regions.find((r) => r.level === "STREET" && r.regionCode !== hit?.regionCode);
-      if (near) out.push({ region: near, path: pathOf(near.regionCode).map((r) => r.name).join(" / "), source: "COORDS", detail: "示例村 · 320 米" });
+      if (near) out.push({ regionCode: near.regionCode, level: near.level, name: near.name, path: pathOf(near.regionCode).map((r) => r.name).join(" / "), source: "COORDS", detail: "示例村 · 320 米" });
     }
     return wait(out);
   },

@@ -44,7 +44,19 @@ const loaded = ref(false);
 const snapshot = ref("");
 
 const areas = computed<ServiceArea[]>(() => form.value.serviceAreas ?? []);
-const activeAreas = computed(() => areas.value.filter((a) => a.status !== "PENDING"));
+const activeAreas = computed(() => areas.value.filter((a) => !areaPending(a)));
+
+/**
+ * 这一条要不要等运营。**判据与后端同一句话**：小区/村、街道自助生效，区/市/省要审
+ * （MerchantStoreServiceImpl#selfEffective）。
+ *
+ * 为什么不能只看 `status`：那是服务端回显的，**刚勾上还没保存的那几条没有** ——
+ * 而那正是最需要提示的时刻：商家勾完整个市、关掉面板，以为立刻就能卖。
+ */
+function areaPending(a: ServiceArea) {
+  if (a.status) return a.status === "PENDING";
+  return a.level !== "COMMUNITY" && a.level !== "STREET";
+}
 const dirty = computed(() => loaded.value && JSON.stringify(areas.value) !== snapshot.value);
 
 /**
@@ -384,12 +396,12 @@ onShow(() => {
       <view v-if="areas.length" class="list">
         <view v-for="a in areas" :key="`${a.level}:${a.refCode}`" class="item">
           <view class="item__main">
-            <text class="item__name" :class="{ 'is-pending': a.status === 'PENDING' }">
+            <text class="item__name" :class="{ 'is-pending': areaPending(a) }">
               {{ splitName(a).main }}<text v-if="isWhole(a)" class="item__whole"> {{ $t("store.whole") }}</text>
             </text>
             <text v-if="splitName(a).path" class="item__path">{{ splitName(a).path }}</text>
           </view>
-          <text v-if="a.status === 'PENDING'" class="sh-chip sh-chip--warning">{{ $t("store.areaPending") }}</text>
+          <text v-if="areaPending(a)" class="sh-chip sh-chip--warning">{{ $t("store.areaPending") }}</text>
           <text class="item__x" @tap="removeArea(a)">×</text>
         </view>
       </view>

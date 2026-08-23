@@ -125,6 +125,74 @@ class CommunityApplyFlowTest {
         return code;
     }
 
+    @Test
+    @DisplayName("★★ 合并两条重复聚落：商家的经营范围跟着换过去，被并掉的那条关掉而不是删掉")
+    void mergeRepointsServiceAreas() {
+        String m = merchant();
+        String st = street();
+        // 同一条街道下两条名字相近、位置只差几十米的 —— 高德给「XX花园」和「XX花园A区」就是这个形状
+        var a = adminService.openFromMap(m, "合并测试花园", "测试路 1 号", 22_695_293, 114_027_370, st);
+        var b = adminService.openFromMap(m, "另一个名字苑", "测试路 3 号", 22_695_299, 114_027_380, st);
+
+        // 商家把两条都框进了经营范围（他自己也分不清那是同一个地方）
+        area(m, a.communityNo());
+        area(m, b.communityNo());
+
+        adminService.merge(b.communityNo(), a.communityNo(), "OPS1");
+
+        /*
+         * 合并的成败**不看聚落表，看可见性**：商家在这个地方还卖不卖得出去。
+         * 只把 cmt_community 关掉而不改 mch_service_area 的话，
+         * 他的货在这个小区悄悄消失，而他的设置页看上去一切正常。
+         */
+        assertThat(merchantQuery.reachableCommunities(m))
+                .contains(a.communityNo())
+                .doesNotContain(b.communityNo());
+
+        // 被并掉的那条关掉即可：历史订单还指着它，删了那些单据的社区名就查不出来了
+        assertThat(communityService.all().stream().map(c -> c.communityNo()).toList())
+                .doesNotContain(b.communityNo());
+
+        // 名字要留下来，否则下一次地图联想拿「另一个名字苑」来查重又会建出一条
+        assertThat(adminService.communities(null, true).stream()
+                .filter(c -> c.communityNo().equals(a.communityNo())).findFirst().orElseThrow().name())
+                .isEqualTo("合并测试花园");
+    }
+
+    @Test
+    @DisplayName("★ 疑似重复清单只在同一条街道里比 —— 全国几百个「幸福小区」不是重复，是重名")
+    void duplicatesStayWithinStreet() {
+        String m = merchant();
+        String st1 = street();
+        String st2 = street();
+        var a = adminService.openFromMap(m, "同名小区", null, 22_695_293, 114_027_370, st1);
+        var b = adminService.openFromMap(m, "同名小区", null, 30_279_000, 120_131_000, st2);
+
+        var dups = adminService.duplicates(50);
+        assertThat(dups).noneSatisfy(d -> {
+            assertThat(d.left().communityNo()).isEqualTo(a.communityNo());
+            assertThat(d.right().communityNo()).isEqualTo(b.communityNo());
+        });
+    }
+
+    @Autowired
+    private ai.neargo.shop.spi.user.MerchantQueryPort merchantQuery;
+
+    @Autowired
+    private ai.neargo.shop.merchant.mapper.MerchantMappers.ServiceAreaMapper serviceAreaMapper;
+
+    /** 给商家框一条社区级经营范围（自助生效那一档） */
+    private void area(String entityNo, String communityNo) {
+        var x = new ai.neargo.shop.merchant.entity.MchServiceArea();
+        x.setAreaNo(ai.neargo.shop.common.BizKey.next(ai.neargo.shop.common.BizKey.SERVICE_AREA));
+        x.setEntityNo(entityNo);
+        x.setLevel("COMMUNITY");
+        x.setRefCode(communityNo);
+        x.setSource("SELF");
+        x.setStatus("ACTIVE");
+        serviceAreaMapper.insert(x);
+    }
+
     private String merchant() {
         var m = new ai.neargo.shop.merchant.entity.MchEntity();
         m.setEntityNo(ai.neargo.shop.common.BizKey.next(ai.neargo.shop.common.BizKey.MERCHANT));

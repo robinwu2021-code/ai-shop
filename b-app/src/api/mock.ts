@@ -23,6 +23,7 @@ import {
   pushMessage,
   toGoods,
   toCommunity,
+  allCommunitySeeds,
 } from "@shared/mock/db";
 import { currentCurrency, money } from "@shared/utils/money";
 // 能力位被拒要抛**带业务码**的错（70023），页面据此渲染示例态而不是错误页
@@ -516,6 +517,28 @@ const mockFulfillment: Record<string, import("@shared/types").StoreFulfillment> 
 /** 本店自建的取货点（P1）：mock 里只活在内存，刷新即清 */
 const mockSelfBuilt: import("@shared/types").PickupCandidate[] = [];
 
+/**
+ * 运行时新建一条聚落种子。
+ *
+ * <p><b>名字与地址必须是 I18nText</b>（`{ "zh-CN", en, ar }`）—— 种子里所有文案都是这个形状，
+ * `toCommunity` 用 `pick()` 取值。这里塞裸字符串不会报错，但取出来是 `undefined`：
+ * 顶部清单显示成一串社区号、查重按名字比对永远不相等（于是同一个小区能加进去两次）、
+ * 跨级搜索里 `name.includes()` 直接抛异常 —— 三个症状没有一个指向真正的原因。
+ */
+function newCommunitySeed(name: string, address?: string, streetCode?: string, kind = "ESTATE") {
+  const i18n = (v: string) => ({ "zh-CN": v, en: v, ar: v });
+  return {
+    communityNo: `C${Date.now()}`,
+    cityCode: "3301",
+    regionCode: streetCode ?? "330106002",
+    kind,
+    name: i18n(name),
+    address: i18n(address ?? ""),
+    distance: 0,
+    pickups: [],
+  } as unknown as (typeof db.communitySeeds)[number];
+}
+
 export const mockApi: MerchantApi = {
   // ---------------------------------------------------------------- 账号与入驻
   async mLogin(req) {
@@ -962,7 +985,7 @@ export const mockApi: MerchantApi = {
   },
 
   async mCommunities() {
-    return delay(db.communitySeeds.map(toCommunity));
+    return delay(allCommunitySeeds().map(toCommunity));
   },
 
   async mRegions(parent) {
@@ -988,15 +1011,33 @@ export const mockApi: MerchantApi = {
       }
       return chain.join(" / ");
     };
-    const regions = q.length < 2 ? [] : db.regionSeeds
-      .filter((r) => r.enabled && r.level !== "PROVINCE" && r.level !== "VILLAGE" && r.name.includes(q))
-      .slice(0, 20)
-      .map((r) => ({ regionCode: r.regionCode, level: r.level, name: r.name, path: pathOf(r.parentCode) }));
-    const communities = !q ? [] : db.communitySeeds.map(toCommunity)
+    /*
+     * **四级都搜（省也搜），并且按级配额** —— 与后端 RegionService#search 同一口径。
+     * 曾经这里和后端都把省排除在外、又共用一份 LIMIT，于是搜「山西」一条也没有、
+     * 搜「运城」被街道占满；mock 不跟着改的话，开发期永远复现不出这两件事。
+     */
+    const QUOTA: Record<string, number> = { PROVINCE: 3, CITY: 5, DISTRICT: 8, STREET: 8 };
+    const strength = (name: string) => (name === q ? 0 : name.startsWith(q) ? 1 : 2);
+    const regions = !q ? [] : Object.keys(QUOTA).flatMap((level) => db.regionSeeds
+      .filter((r) => r.enabled && r.level === level && r.name.includes(q))
+      .sort((a, b) => strength(a.name) - strength(b.name) || a.regionCode.localeCompare(b.regionCode))
+      .slice(0, QUOTA[level])
+      .map((r) => ({ regionCode: r.regionCode, level: r.level, name: r.name, path: pathOf(r.parentCode) })));
+    const communities = q.length < 2 ? [] : allCommunitySeeds().map(toCommunity)
       .filter((c) => c.name.includes(q))
       .slice(0, 30)
       .map((c) => ({ communityNo: c.communityNo, name: c.name, regionCode: c.regionCode, path: pathOf(c.regionCode) }));
-    return delay({ regions, communities });
+    // 还没开通的官方村：与后端同口径 —— 已开通的走 communities，这里不重复出
+    const openedNames = new Set(communities.map((c) => c.name));
+    const villages = q.length < 2 ? [] : db.regionSeeds
+      .filter((r) => r.level === "VILLAGE" && r.enabled && r.name.includes(q) && !openedNames.has(r.name))
+      .slice(0, 20)
+      .map((r) => ({
+        regionCode: r.regionCode, name: r.name,
+        streetCode: r.parentCode ?? "", path: pathOf(r.parentCode),
+        latE6: null, lngE6: null,
+      }));
+    return delay({ regions, communities, villages });
   },
 
   async mGeoReverse(lat, lng) {
@@ -1040,7 +1081,7 @@ export const mockApi: MerchantApi = {
   async mPickupCandidates(storeNo) {
     const no = storeNo === "default" ? db.stores[0]?.storeNo ?? "ST-MOCK-1" : storeNo;
     const mine = mockSelfBuilt.filter((p) => p.ownerStoreNo === no);
-    const nearby: import("@shared/types").PickupCandidate[] = db.communitySeeds.flatMap((c) => {
+    const nearby: import("@shared/types").PickupCandidate[] = allCommunitySeeds().flatMap((c) => {
       const vo = toCommunity(c);
       return (vo.pickups ?? []).map((p) => ({
         pickupNo: p.pickupNo,
@@ -1067,8 +1108,8 @@ export const mockApi: MerchantApi = {
       address: payload.address.trim(),
       type: "STORE",
       status: "PENDING",
-      communityNo: payload.communityNo ?? db.communitySeeds[0]!.communityNo,
-      communityName: toCommunity(db.communitySeeds[0]!).name,
+      communityNo: payload.communityNo ?? allCommunitySeeds()[0]!.communityNo,
+      communityName: toCommunity(allCommunitySeeds()[0]!).name,
       ownerStoreNo: no,
     };
     mockSelfBuilt.unshift(created);
@@ -1083,6 +1124,20 @@ export const mockApi: MerchantApi = {
         .filter((r) => !kw || r.name.includes(kw))
         .slice(0, 50),
     );
+  },
+
+  async mOpenCommunityFromMap(payload) {
+    /*
+     * mock 也照真库查重：**同名就复用，不新建**。
+     * 恒新建的 mock 会让「同一个小区被建成两条」这个最要命的后果在开发期永远走不到。
+     * （坐标那道闸在真库里跑，mock 的种子没有坐标，比不了。）
+     */
+    const exist = allCommunitySeeds().map(toCommunity).find((c) => c.name === payload.name);
+    if (exist) return delay(exist);
+    const seed = newCommunitySeed(payload.name, payload.address, payload.streetCode, "ESTATE");
+    db.communityOpened.push(seed);
+    persist();
+    return delay(toCommunity(seed));
   },
 
   async mApplyCommunity(payload) {
@@ -1107,6 +1162,19 @@ export const mockApi: MerchantApi = {
       status: "PENDING" as const,
       submittedAt: Date.now(),
     };
+    /*
+     * **官方名录里的村免审直开**（与后端 submitApply 同口径）：名录本身就是权威，
+     * 再让运营点一次「通过」只是把商家晾在那儿等一天。台账仍然留一条 APPROVED 的记录。
+     * mock 不照做的话，端上「点一下村＝加入范围」这条路在开发期永远停在「等运营处理」。
+     */
+    if (payload.originCode) {
+      const seed = newCommunitySeed(payload.name, payload.address, payload.regionCode, "VILLAGE");
+      db.communityOpened.push(seed);
+      const opened = { ...apply, status: "APPROVED" as const, communityNo: seed.communityNo };
+      db.communityApplies.unshift(opened);
+      persist();
+      return delay({ ...opened });
+    }
     db.communityApplies.unshift(apply);
     persist();
     return delay({ ...apply });
@@ -1118,7 +1186,13 @@ export const mockApi: MerchantApi = {
   },
 
   async mSaveStore(payload) {
-    db.store = { ...payload };
+    /*
+     * 先脱响应式外壳（同 mSaveGoods）：`serviceAreas` 是页面 `form.value` 里的
+     * reactive 代理数组，而 `delay()` 用 structuredClone 返回副本 —— Chrome **拒绝克隆 Proxy**，
+     * 于是保存经营范围会弹一句「Failed to execute 'structuredClone'…」，
+     * 商家看到的是保存失败，而他什么也没做错。深拷贝一次＝HTTP 上的 JSON 往返。
+     */
+    db.store = JSON.parse(JSON.stringify(payload)) as typeof db.store;
     persist();
     return delay({ ...db.store });
   },
@@ -2079,7 +2153,7 @@ export const mockApi: MerchantApi = {
       groupNo: nextNo("GB"),
       goodsNo,
       // 成团单位是自提点：拼的是一车送到一个点的成本，跨点凑人对成本无帮助
-      pickupNo: db.merchant.pickupNo ?? db.communitySeeds[0]!.pickups[0]!.pickupNo,
+      pickupNo: db.merchant.pickupNo ?? allCommunitySeeds()[0]!.pickups[0]!.pickupNo,
       initiatorNickname: db.merchant.name || "商家",
       initiatorAvatar: db.merchant.logo || MERCHANT_LOGO_FALLBACK,
       createdAt: Date.now(),

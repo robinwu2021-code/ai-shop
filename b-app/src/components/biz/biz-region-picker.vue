@@ -15,8 +15,9 @@ import {
   composeAddress, looksLikeEstate, pickOnMap, regionCenter, searchPlaces, searchPlacesNear, streetOf,
 } from "@/utils/geo";
 import type { PickedLocation } from "@shared/ports/location";
+import { getLocation } from "@shared/ports/location";
 import type { PlaceHit } from "@shared/ports/geo-search";
-import type { Community, CommunityApply, GeoTip, Region, ServiceArea } from "@shared/types";
+import type { Community, CommunityApply, GeoTip, Region, RegionSearchResult, ServiceArea } from "@shared/types";
 
 const props = defineProps<{
   visible: boolean;
@@ -76,7 +77,13 @@ async function loadEstates(streetName: string) {
     scopeCenter.value = await regionCenter(trail.value.map((r) => r.name));
     // 「街道名 + 住宅小区」比单给街道名准得多：后者返回的全是办事处、社区工作站
     const hits = await searchPlaces(`${streetName} 住宅小区`, cityName.value);
-    estates.value = hits.filter((h) => !NOT_ESTATE.test(h.name) && looksLikeEstate(h.name)).slice(0, 10);
+    /*
+     * **系统里已经有的小区不出现在这一组**：它已经在上面的聚落清单里可以直接勾，
+     * 在这儿再出一条「提报 ›」，商家多半会点那条 —— 然后等来一条注定被驳回的单。
+     */
+    estates.value = hits
+      .filter((h) => !NOT_ESTATE.test(h.name) && looksLikeEstate(h.name) && !isOpened(h.name))
+      .slice(0, 10);
   } finally {
     estatesLoading.value = false;
   }
@@ -98,9 +105,25 @@ async function loadVillages(street: string) {
 const openedNames = computed(
   () => new Set(communities.value.filter((c) => c.regionCode === current.value?.regionCode).map((c) => c.name)),
 );
-const villageRows = computed(() =>
-  villages.value.filter((v) => !openedNames.value.has(cleanVillageName(v.name))),
-);
+/** 「阳光花园」「阳光花园小区」「阳光花园(北区)」在商家嘴里是同一个地方 —— 与后端同一套归一 */
+function normalizeName(s: string) {
+  return s.replace(/[（(].*?[）)]/g, "")
+    .replace(/(小区|花园|家园|新村|苑|园|村|社区|居委会|村民委员会|居民委员会)+$/g, "")
+    .trim();
+}
+
+/** 这个名字在系统里是不是已经有了。**有就不该再出现「提报」入口** —— 直接勾就是了 */
+function isOpened(name: string) {
+  const x = normalizeName(name);
+  if (!x) return false;
+  for (const n of openedNames.value) {
+    const y = normalizeName(n);
+    if (y && (x === y || x.startsWith(y) || y.startsWith(x))) return true;
+  }
+  return false;
+}
+
+const villageRows = computed(() => villages.value.filter((v) => !isOpened(v.name)));
 
 /** 全部已开通聚落。搜索与叶子层都用它；一次拉、按需过滤（当前量级是个位数到几百） */
 const communities = ref<Community[]>([]);
@@ -138,7 +161,14 @@ async function loadLevel(parent?: string) {
 async function open() {
   trail.value = [];
   keyword.value = "";
+  browsing.value = false;
+  levelFilter.value = "";
+  chosenOpen.value = false;
+  nearby.value = [];
   resetApply();
+  // 「门店附近」是空输入时的默认内容；它顺带把 storeCenter 填上，
+  // 而搜索要用同一个坐标给村级排距离 —— 先起它，别等用户开口才去要位置
+  void loadNearby();
   await Promise.all([loadLevel(undefined), ensureCommunities()]);
 }
 
@@ -162,6 +192,10 @@ function resetApply() {
 watch(() => props.visible, (v) => { if (v) void open(); });
 
 async function drill(r: Region) {
+  levelFilter.value = "";
+  // 点进一级就是在浏览了：空输入时那份省级列表也走这条路，
+  // 不切过去的话「整个浙江省」那一行不出现，而它正是这一级最该有的选项
+  browsing.value = true;
   if (!r.hasChild && r.level !== "STREET") return;
   if (kw.value) {
     // 从搜索结果下钻：面包屑要换成它的真实路径，否则「整个本级」与名字拼接都是错的
@@ -181,8 +215,11 @@ async function drill(r: Region) {
 }
 
 async function backTo(i: number) {
+  levelFilter.value = "";
   trail.value = trail.value.slice(0, i + 1);
   keyword.value = "";
+  // 面包屑常驻，搜索态点它就是「回到这一级继续浏览」
+  browsing.value = true;
   // 往回走就是换提报目标：把上一层填了一半的提报清掉，别让它跟着漂到别的街道
   resetApply();
   const cur = trail.value[i];
@@ -203,9 +240,76 @@ function pathName(leafName: string, extra?: Region | null) {
   return [...trail.value.map((x) => x.name), extra?.name, leafName].filter(Boolean).join(" / ");
 }
 
-function toggleRegion(r: Region & { path?: string }) {
+/** 覆盖项上限。到顶时要说清是哪一条加不进去，而不是静默丢掉 */
+const MAX_AREAS = 200;
+
+/**
+ * 区划码是**层级前缀码**：省 2 位、市 4、区 6、街道 9、村 12。
+ * 「这条被那条覆盖了吗」因此就是一次前缀判断 —— 与后端展开覆盖范围用的是同一条规则
+ * （`openCommunityNosUnderRegion` 走 `LIKE '前缀%'`）。两边口径必须一致，
+ * 否则端上显示「已覆盖」而后端并没有展开进去，或者反过来。
+ */
+function isRegionLevel(level: string) {
+  return level === "PROVINCE" || level === "CITY" || level === "DISTRICT" || level === "STREET";
+}
+
+/**
+ * 已选里**盖住这个区划码**的那一条（不含自己）。返回它是为了把话说全：
+ * 「已被『浙江省』覆盖」比一个灰掉的勾有用得多 —— 后者只让人以为坏了。
+ */
+function coveredBy(regionCode: string): ServiceArea | null {
+  if (!regionCode) return null;
+  return props.areas.find(
+    (a) => isRegionLevel(a.level) && a.refCode !== regionCode && regionCode.startsWith(a.refCode),
+  ) ?? null;
+}
+
+/**
+ * 聚落被哪条区划盖住。聚落自己没有区划码，靠它挂的街道码判断 ——
+ * 拿不到街道码时**宁可认为没被覆盖**：错报「已覆盖」会让人以为已经选上了，
+ * 而漏报最多是多勾一条，后端保存时还会再归一一次。
+ */
+function communityCoveredBy(regionCode?: string): ServiceArea | null {
+  return regionCode ? coveredBy(regionCode) : null;
+}
+
+/** 加一条覆盖项，顺手把**被它盖住的子项**收掉（R3/R5：父子只留父） */
+function addArea(next: ServiceArea) {
+  const kept = props.areas.filter((a) => {
+    if (!isRegionLevel(next.level)) return true;
+    // 子区划：码以父码开头即被覆盖
+    if (isRegionLevel(a.level)) return !(a.refCode !== next.refCode && a.refCode.startsWith(next.refCode));
+    // 子聚落：靠 areaRegion 记下的街道码判断，记不到就留着（见 communityCoveredBy）
+    const rc = areaRegion.value[a.refCode];
+    return !(rc && rc.startsWith(next.refCode));
+  });
+  const dropped = props.areas.length - kept.length;
+  if (kept.length >= MAX_AREAS) {
+    uni.showToast({ title: t("store.picker.tooMany", { n: MAX_AREAS }), icon: "none" });
+    return;
+  }
+  emit("update:areas", [...kept, next]);
+  if (dropped > 0) {
+    // 合并要说出来：不说的话商家会以为自己刚勾的那几个小区被系统弄丢了
+    uni.showToast({ title: t("store.picker.merged", { n: dropped, s: next.name.split(" / ").pop() ?? next.name }), icon: "none" });
+  }
+}
+
+/**
+ * 聚落 → 它挂的街道码。**只活在这一次会话里**：用于「勾了整个街道，把它底下已勾的小区收掉」。
+ * 不进 ServiceArea 是因为那是要回传给后端的形状，多一个字段就要改契约、改表、改 ops ——
+ * 而这件事只在选择器里发生。
+ */
+const areaRegion = ref<Record<string, string>>({});
+
+async function toggleRegion(r: Region & { path?: string }) {
   if (has(r.level, r.regionCode)) {
     emit("update:areas", props.areas.filter((a) => !(a.level === r.level && a.refCode === r.regionCode)));
+    return;
+  }
+  const cover = coveredBy(r.regionCode);
+  if (cover) {
+    uni.showToast({ title: t("store.picker.coveredBy", { s: cover.name.split(" / ").pop() ?? cover.name }), icon: "none" });
     return;
   }
   // 正在这一层里：路径不含自己；搜索命中的用服务端给的路径
@@ -215,7 +319,31 @@ function toggleRegion(r: Region & { path?: string }) {
     : inTrail
       ? trail.value.slice(0, trail.value.findIndex((x) => x.regionCode === r.regionCode) + 1).map((x) => x.name).join(" / ")
       : pathName(r.name);
-  emit("update:areas", [...props.areas, { level: r.level as ServiceArea["level"], refCode: r.regionCode, name }]);
+  /*
+   * **省/市/区要先问一句**（R13）：这三级要运营审核、影响面差着量级，
+   * 而它与「勾一个小区」在界面上只差一个位置 —— 手一滑就勾上了，
+   * 而后果（一条待审记录、买家侧什么也没变）要过几天才看得出来。
+   */
+  if (r.level !== "STREET") {
+    const ok = await confirmWide(r.level, name);
+    if (!ok) return;
+  }
+  addArea({ level: r.level as ServiceArea["level"], refCode: r.regionCode, name });
+}
+
+/** 整片加入前的确认。街道不问 —— 它自助生效，量级与小区同档 */
+function confirmWide(level: string, name: string): Promise<boolean> {
+  const scope = level === "PROVINCE" ? t("store.picker.levelProvince")
+    : level === "CITY" ? t("store.picker.levelCity") : t("store.picker.levelDistrict");
+  return new Promise((resolve) => {
+    uni.showModal({
+      title: t("store.picker.wideTitle", { s: scope }),
+      content: t("store.picker.wideBody", { s: name.split(" / ").pop() ?? name }),
+      confirmText: t("store.picker.wideOk"),
+      success: (res) => resolve(Boolean(res.confirm)),
+      fail: () => resolve(false),
+    });
+  });
 }
 
 function toggleCommunity(c: Community & { path?: string }) {
@@ -223,8 +351,14 @@ function toggleCommunity(c: Community & { path?: string }) {
     emit("update:areas", props.areas.filter((a) => !(a.level === "COMMUNITY" && a.refCode === c.communityNo)));
     return;
   }
+  const cover = communityCoveredBy(c.regionCode);
+  if (cover) {
+    uni.showToast({ title: t("store.picker.coveredBy", { s: cover.name.split(" / ").pop() ?? cover.name }), icon: "none" });
+    return;
+  }
+  if (c.regionCode) areaRegion.value[c.communityNo] = c.regionCode;
   const name = c.path ? [c.path, c.name].join(" / ") : pathName(c.name);
-  emit("update:areas", [...props.areas, { level: "COMMUNITY", refCode: c.communityNo, name }]);
+  addArea({ level: "COMMUNITY", refCode: c.communityNo, name });
 }
 
 // ---------------------------------------------------------------- 搜索（任何一级都能搜，P1 走服务端跨级搜索）
@@ -233,14 +367,32 @@ const kw = computed(() => keyword.value.trim());
 /** 服务端命中：区划带从省到父级的路径，聚落带所在街道路径 */
 const hitRegions = ref<Array<Region & { path: string }>>([]);
 const hitCommunities = ref<Array<Community & { path: string }>>([]);
+/**
+ * 搜到的**还没开通的官方村**。此前搜索只认市/区/街道与已开通聚落 ——
+ * 商家打「狮径」什么也搜不到，只能自己一级级点到街道才发现名录里一直有这一条。
+ * 点一条即挂到它的街道并直接开通（官方村免审），不用先把面包屑走一遍。
+ */
+const hitVillages = ref<NonNullable<RegionSearchResult["villages"]>>([]);
 const searching = ref(false);
 let searchTimer: ReturnType<typeof setTimeout> | undefined;
 
+/**
+ * 门槛分两档：**区划一个字就搜，聚落两个字**。
+ *
+ * 「京」「沪」「渝」本身就是一个完整的省级简称，卡两个字等于告诉他「搜不到」；
+ * 而村级 62 万行，一个字（「新」「东」）能命中上万条，那不是给人挑的列表。
+ */
 watch(kw, (q) => {
   clearTimeout(searchTimer);
-  if (q.length < 2) {
+  /*
+   * 一开口就切出浏览态。**面包屑留着**（它说明「回去之后落在哪一级」），
+   * 但列表必须换成搜索结果 —— 否则打了字什么也没变，看着像搜索坏了。
+   */
+  if (q) browsing.value = false;
+  if (!q) {
     hitRegions.value = [];
     hitCommunities.value = [];
+    hitVillages.value = [];
     // 地点列表也要跟着清，并作废在途的那次查询 —— 否则清空搜索框后
     // 上一轮的候选还挂在那儿，看着像「这就是当前结果」
     placeSeq++;
@@ -250,20 +402,31 @@ watch(kw, (q) => {
   }
   // 地图地点与区划搜索并行：前者是「深圳市龙华区福城街道」这种整串的唯一出路 ——
   // 区划搜索按单级名字匹配，整串一个字也匹配不上
-  void searchPlacesFor(q);
+  if (q.length >= 2) {
+    void searchPlacesFor(q);
+  } else {
+    placeSeq++;
+    placeHits.value = [];
+    placeSearching.value = false;
+  }
   searchTimer = setTimeout(async () => {
     searching.value = true;
     try {
-      const r = await api.mRegionSearch(q);
+      // 带上门店（或设备）位置：同名的村全国到处都是，不带位置搜「福城」会先给新疆的
+      const c = storeCenter.value;
+      const r = await api.mRegionSearch(q,
+        c ? { latE6: Math.round(c.lat * 1e6), lngE6: Math.round(c.lng * 1e6) } : undefined);
       hitRegions.value = r.regions.map((x) => ({
         regionCode: x.regionCode, parentCode: "", level: x.level, name: x.name,
         enabled: true, hasChild: x.level !== "STREET", path: x.path,
       } as Region & { path: string }));
+      hitVillages.value = r.villages ?? [];
       hitCommunities.value = r.communities.map((x) => ({
         communityNo: x.communityNo, name: x.name, regionCode: x.regionCode ?? undefined, path: x.path,
       } as unknown as Community & { path: string }));
     } catch {
       // 搜索接口不在（老后端）：退回本地过滤，至少当前层还能搜
+      hitVillages.value = [];
       hitRegions.value = list.value.filter((r) => r.name.includes(q)).map((r) => ({ ...r, path: "" }));
       hitCommunities.value = communities.value.filter((c) => c.name.includes(q)).slice(0, 30)
         .map((c) => ({ ...c, path: "" }));
@@ -348,6 +511,29 @@ const settleRows = computed<Array<Community & { path?: string }>>(() => {
 const nothing = computed(() =>
   !loading.value && !searching.value && kw.value.length !== 1 && !levelRows.value.length && !settleRows.value.length,
 );
+
+/**
+ * 本级筛选（R11）。**只过滤当前这一屏，不发全局搜索** ——
+ * 一个区几十个街道、一个街道上百个村，翻到底找一个名字比打两个字慢得多；
+ * 而走全局搜索又会把人从「我正在广东省深圳市里挑」的上下文里踢出去。
+ */
+const levelFilter = ref("");
+/** 行数少的时候不出这个框：三条街道还给个搜索框，只是多一行噪音 */
+const FILTER_FROM = 12;
+const levelFilterUseful = computed(() => {
+  const n = atLeaf.value
+    ? settleRows.value.length + villageRows.value.length + estates.value.length
+    : list.value.length;
+  return n >= FILTER_FROM || Boolean(levelFilter.value);
+});
+function matchFilter(name: string) {
+  const f = levelFilter.value.trim();
+  return !f || name.includes(f);
+}
+const levelRowsFiltered = computed(() => list.value.filter((r) => matchFilter(r.name)));
+const settleRowsFiltered = computed(() => settleRows.value.filter((c) => matchFilter(c.name)));
+const villageRowsFiltered = computed(() => villageRows.value.filter((v) => matchFilter(v.name)));
+const estateRowsFiltered = computed(() => estates.value.filter((p) => matchFilter(p.name)));
 
 // ---------------------------------------------------------------- 叶子层提报（带官方村名词典）
 const applyOpen = ref(false);
@@ -466,23 +652,66 @@ async function useVillage(v: Region) {
 }
 
 /**
- * 点一个小区：直接进提报表单，名字/门牌地址/坐标都填好。
+ * 点一个小区：**当场开通并勾上**，没有提报、没有等待。
  *
- * 与官方村不同，这一类**仍然要运营审**：名字是地图上的叫法，
- * 同一个小区可能有「XX 花园」「XX 花园 A 区」几种写法，免审会长出几个重复聚落，
- * 而商家勾选时分不清该勾哪个。带着地址与坐标去审，运营几秒就能判完。
+ * 数据是高德给的（名字、门牌、坐标齐全），落哪个街道由服务端逆地理定夺 ——
+ * 用「adcode + 街道名」而不是高德的 towncode：两套编码不同源，实测福城街道的
+ * towncode 去掉后三位在统计局口径里是**观澜街道**，按码挂会静默挂错。
+ *
+ * 重复由服务端三道闸挡（官方村码 / 同街道归一名 / 坐标 150 米内且名字相近），
+ * 撞上返回既有那条 —— 所以重复点同一个小区不会长出第二条。
  */
-function useEstate(p: PlaceHit) {
-  applyOpen.value = true;
-  revealApply();
-  pickedGeo.value = { lat: p.lat, lng: p.lng, name: p.name, address: p.address };
-  pickedPoi.value = null;
-  pickedVillage.value = null;
-  applyName.value = p.name.slice(0, 30);
-  applyDetail.value = "";
-  dictSuggests.value = [];
-  poiSuggests.value = [];
-  placeSuggests.value = [];
+const opening = ref("");
+async function useEstate(p: PlaceHit) {
+  if (opening.value) return;
+  opening.value = p.name;
+  try {
+    const c = await api.mOpenCommunityFromMap({
+      name: p.name.slice(0, 30),
+      address: p.address || undefined,
+      latE6: Math.round(p.lat * 1e6),
+      lngE6: Math.round(p.lng * 1e6),
+      streetCode: atLeaf.value ? current.value?.regionCode : undefined,
+    });
+    if (!has("COMMUNITY", c.communityNo)) {
+      emit("update:areas", [...props.areas, {
+        level: "COMMUNITY" as ServiceArea["level"],
+        refCode: c.communityNo,
+        name: pathName(c.name),
+      }]);
+    }
+    await ensureCommunitiesRefresh();
+    uni.showToast({ title: t("store.picker.estateAdded"), icon: "none" });
+  } catch (e) {
+    uni.showToast({ title: (e as Error)?.message || t("store.applyFailed"), icon: "none" });
+  } finally {
+    opening.value = "";
+  }
+}
+
+/**
+ * 点一条搜出来的官方村：**不用先把面包屑走一遍**。
+ *
+ * 先把当前层挪到它所属的街道（提报单要挂在街道下），再走与街道内点村同一条路 ——
+ * 名字去后缀、带上村码与坐标、官方村免审直接开通并自动勾上。
+ */
+async function useVillageHit(v: NonNullable<RegionSearchResult["villages"]>[number]) {
+  keyword.value = "";
+  const chain = await api.mRegionPath(v.streetCode).catch(() => [] as Region[]);
+  if (chain.length) {
+    trail.value = chain;
+    await loadVillages(v.streetCode);
+    void loadEstates(chain[chain.length - 1]?.name ?? "");
+  }
+  await useVillage({
+    regionCode: v.regionCode,
+    parentCode: v.streetCode,
+    level: "VILLAGE",
+    name: v.name,
+    enabled: true,
+    latE6: v.latE6,
+    lngE6: v.lngE6,
+  } as Region);
 }
 
 /** 选中一条地图联想：名字照抄，坐标与门牌地址一起带上 */
@@ -616,6 +845,258 @@ async function submitApply() {
   }
 }
 
+/* ================================================================
+ * 统一结果列表（2026-08-23 重构）
+ *
+ * 此前这个面板长出了 8 类东西，而**同一个「福安雅园」从搜索框点和从街道列表点，
+ * 行为还不一样**：前者提示「先走到这个地点所在的街道」再打开提报表单，后者直接加入。
+ * 根源是把「街道」当成了用户必须先走到的地方 —— 可街道是行政编码，
+ * 商家不知道也不需要知道，而系统能从坐标反查出来（adcode + 街道名）。
+ * 系统自己有的信息，不该问用户要。
+ *
+ * 现在：**搜到什么，点一下就加什么**。三个来源（已开通聚落 / 官方村名录 / 地图 POI）
+ * 合并成一个列表、同一种行样式 —— 来源差异对商家没有意义，他要的是「我做这个地方」。
+ * 层级浏览降为「按行政区找」的次入口，它仍是「整个街道/整个区」的唯一入口。
+ * ================================================================ */
+
+type HitKind = "COMMUNITY" | "VILLAGE" | "POI" | "REGION";
+interface Hit {
+  key: string;
+  kind: HitKind;
+  name: string;
+  /** 副标题：门牌地址或行政路径 */
+  sub: string;
+  communityNo?: string;
+  regionCode?: string;
+  streetCode?: string;
+  level?: string;
+  latE6?: number | null;
+  lngE6?: number | null;
+  address?: string;
+  /** 区/市级覆盖要运营审核（街道自选即生效）—— 勾之前就要说清楚 */
+  needsAudit?: boolean;
+}
+
+/** 层级浏览：默认关着，主路径是搜 */
+const browsing = ref(false);
+
+/** 门店附近的小区：空输入时的默认内容 —— 多数商家做的就是店周边那几个圈 */
+const nearby = ref<PlaceHit[]>([]);
+const nearbyLoading = ref(false);
+const storeCenter = ref<{ lat: number; lng: number } | null>(null);
+
+async function loadNearby() {
+  if (nearbyLoading.value || nearby.value.length) return;
+  nearbyLoading.value = true;
+  try {
+    // 门店坐标优先（他在店里给店周边配范围）；没标过点就退回设备定位
+    if (!storeCenter.value) {
+      const profile = await api.mStore().catch(() => null);
+      if (profile?.latE6 != null && profile?.lngE6 != null) {
+        storeCenter.value = { lat: profile.latE6 / 1e6, lng: profile.lngE6 / 1e6 };
+      } else {
+        const loc = await getLocation();
+        if (loc) storeCenter.value = loc;
+      }
+    }
+    const c = storeCenter.value;
+    if (!c) return;
+    const hits = await searchPlacesNear("小区", c, 3000);
+    nearby.value = hits.filter((h) => looksLikeEstate(h.name) && !isOpened(h.name)).slice(0, 12);
+  } finally {
+    nearbyLoading.value = false;
+  }
+}
+
+/** 已加入的（顶部清单用）。搜索时不过滤 —— 他要看的是「我已经选了什么」 */
+const chosen = computed(() => props.areas);
+
+/** 「浙江省 / 杭州市 / 西湖区」→「西湖区」。提示语里只需要末级，整条路径会把话挤没 */
+function shortName(name?: string) {
+  return (name ?? "").split(" / ").pop() ?? "";
+}
+
+/**
+ * 这条覆盖项要不要等运营（R12）。**判据与后端保持同一句话**：
+ * 小区/村、街道自助生效，区/市/省要审（MerchantStoreServiceImpl#selfEffective）。
+ *
+ * 后端回显时会带 `status`，但**新勾上还没保存的那几条没有** —— 那正是最需要提示的时刻：
+ * 商家勾完整个市、关掉面板、以为立刻就能卖，实际要等审核。
+ */
+function areaPending(a: ServiceArea) {
+  if (a.status) return a.status === "PENDING";
+  return a.level !== "COMMUNITY" && a.level !== "STREET";
+}
+
+/**
+ * 三路合并。**已经加入的不重复出现在候选里**，也不再按来源分组 ——
+ * 对商家来说「库里有的」和「地图上找到的」是同一件事。
+ */
+const settleHits = computed<Hit[]>(() => {
+  const out: Hit[] = [];
+  const seen = new Set<string>();
+  const push = (h: Hit) => {
+    const k = normalizeName(h.name);
+    if (!k || seen.has(k)) return;
+    seen.add(k);
+    out.push(h);
+  };
+  if (kw.value) {
+    for (const c of hitCommunities.value) {
+      push({ key: `c${c.communityNo}`, kind: "COMMUNITY", name: c.name,
+        sub: c.path || c.address || "", communityNo: c.communityNo });
+    }
+    for (const v of hitVillages.value) {
+      push({ key: `v${v.regionCode}`, kind: "VILLAGE", name: v.name, sub: v.path,
+        regionCode: v.regionCode, streetCode: v.streetCode, latE6: v.latE6, lngE6: v.lngE6 });
+    }
+    for (const p of placeHits.value) {
+      if (!looksLikeEstate(p.name)) continue;
+      push({ key: `p${p.name}${p.address}`, kind: "POI", name: p.name, sub: p.address,
+        latE6: Math.round(p.lat * 1e6), lngE6: Math.round(p.lng * 1e6), address: p.address });
+    }
+  } else {
+    for (const c of communities.value) {
+      push({ key: `c${c.communityNo}`, kind: "COMMUNITY", name: c.name,
+        sub: c.address ?? "", communityNo: c.communityNo });
+    }
+    for (const p of nearby.value) {
+      push({ key: `p${p.name}${p.address}`, kind: "POI", name: p.name, sub: p.address,
+        latE6: Math.round(p.lat * 1e6), lngE6: Math.round(p.lng * 1e6), address: p.address });
+    }
+  }
+  return out.filter((h) => !(h.kind === "COMMUNITY" && has("COMMUNITY", h.communityNo!)));
+});
+
+/**
+ * 整片区域：省 / 市 / 区 / 街道。**排在小区之前**（R6）。
+ *
+ * 曾经排在后面，而上面那一段能出三十多条聚落 —— 手机上要滚很久才看得见它，
+ * 于是「搜不到行政区」的结论就是这么来的（其实一直搜得到，只是在屏幕外）。
+ */
+const regionHits = computed<Hit[]>(() =>
+  !kw.value ? [] : hitRegions.value.map((r) => ({
+    key: `r${r.regionCode}`, kind: "REGION" as const, name: r.name, sub: r.path,
+    regionCode: r.regionCode, level: r.level,
+    // 街道自助生效；省/市/区要运营审 —— 差着量级，行上就得写明白
+    needsAudit: r.level !== "STREET",
+  })),
+);
+
+/**
+ * 每段限高（R7）。一段吃掉整屏时，下面那几段就等于不存在 ——
+ * 这正是上一版的病根，所以宁可先各露一点，再由人点开。
+ */
+const REGION_ROWS = 6;
+const SETTLE_ROWS = 8;
+const regionsOpen = ref(false);
+const settlesOpen = ref(false);
+watch(kw, () => {
+  regionsOpen.value = false;
+  settlesOpen.value = false;
+});
+const regionRows = computed(() => (regionsOpen.value ? regionHits.value : regionHits.value.slice(0, REGION_ROWS)));
+const settleRowsHit = computed(() => (settlesOpen.value ? settleHits.value : settleHits.value.slice(0, SETTLE_ROWS)));
+
+const adding = ref("");
+
+/**
+ * 点一行 = 立刻加入。**不弹表单、不跳页、不问街道**。
+ *
+ * 三种来源各自该做的事系统自己知道：库里有的直接勾；官方村与地图 POI 先开通再勾，
+ * 而「开通」这一步商家看不见 —— 他要的只是「我做这个地方」。
+ */
+async function addHit(h: Hit) {
+  if (adding.value) return;
+  if (h.kind === "REGION") {
+    // 区划不该被「点一下就整片加入」——那是另一个量级的决定。点它＝进去看下级
+    void drillHit(h);
+    return;
+  }
+  /*
+   * 已经被某条区划盖住的聚落**不该再开一遍**：开通是有副作用的（建档、写台账），
+   * 而加进去也是白加 —— 保存时会被父项吸收掉。先说清楚，别让人白点。
+   */
+  const cover = communityCoveredBy(h.streetCode ?? h.regionCode);
+  if (cover) {
+    uni.showToast({ title: t("store.picker.coveredBy", { s: cover.name.split(" / ").pop() ?? cover.name }), icon: "none" });
+    return;
+  }
+  adding.value = h.key;
+  try {
+    let no = h.communityNo;
+    let name = h.name;
+    if (h.kind === "VILLAGE") {
+      const a = await api.mApplyCommunity({
+        name: cleanVillageName(h.name),
+        regionCode: h.streetCode,
+        kind: "VILLAGE",
+        originCode: h.regionCode,
+        latE6: h.latE6 ?? undefined,
+        lngE6: h.lngE6 ?? undefined,
+      });
+      no = a.communityNo;
+      name = a.name;
+    } else if (h.kind === "POI") {
+      const c = await api.mOpenCommunityFromMap({
+        name: h.name.slice(0, 30),
+        address: h.address || undefined,
+        latE6: h.latE6!,
+        lngE6: h.lngE6!,
+      });
+      no = c.communityNo;
+      name = c.name;
+    }
+    if (!no) {
+      uni.showToast({ title: t("store.applyFailed"), icon: "none" });
+      return;
+    }
+    if (!has("COMMUNITY", no)) {
+      // 记下它挂的街道码：将来勾「整个这条街道」时要靠它把这条收掉
+      const street = h.streetCode ?? h.regionCode;
+      if (street) areaRegion.value[no] = street;
+      addArea({ level: "COMMUNITY" as ServiceArea["level"], refCode: no, name });
+    }
+    await ensureCommunitiesRefresh();
+    uni.showToast({ title: t("store.picker.estateAdded"), icon: "none" });
+  } catch (e) {
+    // 失败原因要原样说出来：「已经开通了，直接勾选即可」这类提示比一句「失败」有用得多
+    uni.showToast({ title: (e as Error)?.message || t("store.applyFailed"), icon: "none" });
+  } finally {
+    adding.value = "";
+  }
+}
+
+/**
+ * 点搜索结果里的一条**区划**：进到那一级的列表里去，与逐级点下来的结果一致。
+ *
+ * <p><b>不是「整片加入」</b>：搜「福城」多半是想看这个街道底下有哪些小区，
+ * 而不是把整条街道一次性框进经营范围 —— 后者动辄几十个小区、还要运营审。
+ * 整片加入留给行右侧那个勾选框，是个明确的、第二位的动作。
+ */
+async function drillHit(h: Hit) {
+  levelFilter.value = "";
+  const chain = await api.mRegionPath(h.regionCode!).catch(() => [] as Region[]);
+  keyword.value = "";
+  browsing.value = true;
+  trail.value = chain.length ? chain : trail.value;
+  const cur = trail.value[trail.value.length - 1];
+  if (!cur) return;
+  if (cur.level === "STREET") {
+    await loadVillages(cur.regionCode);
+    void loadEstates(cur.name);
+  } else {
+    await loadLevel(cur.regionCode);
+  }
+}
+
+/** 从顶部清单里删一条。地图/搜索误点很容易，必须有后悔的地方 */
+function removeArea(a: ServiceArea) {
+  emit("update:areas", props.areas.filter((x) => !(x.level === a.level && x.refCode === a.refCode)));
+}
+
+const chosenOpen = ref(false);
+
 function close() {
   emit("update:visible", false);
 }
@@ -624,151 +1105,210 @@ function close() {
 <template>
   <view v-if="visible" class="mask" @tap="close">
     <view class="sheet" @tap.stop>
+      <!--
+        已选摘要在**标题栏右侧**而不是面板里单独占一行：那一行会被列表挤出视野，
+        而「我到底选了几条」是这一屏从头到尾都要能看见的东西。
+      -->
       <view class="sheet__head">
         <text class="sheet__title">{{ $t("store.picker.title") }}</text>
-        <text class="sheet__count">{{ $t("store.picker.selected", { n: areas.length }) }}</text>
+        <view v-if="chosen.length" class="sheet__sel" @tap="chosenOpen = !chosenOpen">
+          <text class="sheet__selT">{{ $t("store.picker.selected", { n: areas.length }) }}</text>
+          <text class="sheet__selM">{{ chosenOpen ? $t("store.picker.collapse") : $t("store.picker.expand") }}</text>
+        </view>
+        <text v-else class="sheet__count">{{ $t("store.picker.selected", { n: areas.length }) }}</text>
       </view>
 
       <view class="search">
         <sh-icon name="search" :size="18" color="var(--sh-sub)"></sh-icon>
-        <input v-model="keyword" class="search__input" :maxlength="20" :placeholder="$t('store.picker.searchPh')" />
+        <input v-model="keyword" class="search__input" :maxlength="20" :placeholder="$t('store.picker.searchPh2')" />
       </view>
 
-      <!-- 面包屑：当前在哪一级。搜索时不显示 —— 结果是跨级的 -->
-      <view v-if="!kw" class="crumb">
-        <text class="crumb__i" @tap="backTo(-1)">{{ $t("store.regionRoot") }}</text>
-        <text v-for="(x, i) in trail" :key="x.regionCode" class="crumb__i" :class="{ 'is-cur': i === trail.length - 1 }" @tap="backTo(i)">
+      <!-- 已选清单：误点很容易，必须有个当场能删的地方。开关在标题栏右侧 -->
+      <view v-if="chosen.length && chosenOpen" class="chosen">
+        <view class="chosen__list">
+          <view v-for="a in chosen" :key="a.level + a.refCode" class="chosen__row">
+            <text class="chosen__name">{{ a.name }}</text>
+            <!-- 待审的要在**已选清单里**看得见：只写在搜索行上的话，勾完就再也看不到了 -->
+            <text v-if="areaPending(a)" class="chosen__audit">{{ $t("store.picker.pendingTag") }}</text>
+            <text class="chosen__del" @tap="removeArea(a)">{{ $t("common.remove") }}</text>
+          </view>
+        </view>
+      </view>
+
+      <!--
+        面包屑**常驻**（搜索时也在）：不然搜索一开口就不知道自己站在哪一级，
+        而「我正在深圳市里挑」正是这一屏最要紧的上下文。
+      -->
+      <view class="crumb">
+        <text class="crumb__i" :class="{ 'is-cur': browsing && !trail.length }" @tap="backTo(-1)">{{ $t("store.regionRoot") }}</text>
+        <text v-for="(x, i) in trail" :key="x.regionCode" class="crumb__i" :class="{ 'is-cur': browsing && i === trail.length - 1 }" @tap="backTo(i)">
           › {{ x.name }}
         </text>
+        <!-- 搜索时路径灰着（它说明的是「回去之后会落在哪」），点一下就回到浏览 -->
+        <text v-if="!browsing && (kw || trail.length)" class="crumb__back" @tap="backTo(trail.length - 1)">{{ $t("store.picker.browseHere") }}</text>
       </view>
 
-      <!-- 整个本级：中间层级也要能整个选，否则框一个区要点开十几个街道 -->
-      <view v-if="!kw && current" class="whole" :class="{ 'is-on': has(current.level, current.regionCode) }" @tap="toggleRegion(current)">
+      <!--
+        「整个 XX」是每一级的第一行，固定在列表上方：
+        它让「我就要这一整片」与「我进去挑几个」在同一屏里并列，不用先决定走哪条路。
+        搜索态不出现 —— 那时列表里不是本级的下级，一个「整个」会指错对象。
+      -->
+      <view v-if="browsing && current" class="whole" :class="{ 'is-on': has(current.level, current.regionCode) }" @tap="toggleRegion(current)">
         <text class="whole__t">{{ $t("store.picker.wholeLevel", { s: current.name }) }}</text>
         <text v-if="has(current.level, current.regionCode)" class="whole__on">{{ $t("store.picker.picked") }}</text>
-        <text v-else-if="current.level === 'DISTRICT' || current.level === 'CITY'" class="whole__audit">{{ $t("store.picker.needAudit") }}</text>
+        <text v-else-if="current.level !== 'STREET'" class="whole__audit">{{ $t("store.picker.needAudit") }}</text>
       </view>
 
       <scroll-view scroll-y class="body" :scroll-into-view="scrollInto" scroll-with-animation>
-        <text v-if="loading" class="hint">{{ $t("common.loading") }}</text>
+        <!-- ---------------- 层级浏览态 ---------------- -->
+        <template v-if="browsing">
+          <text v-if="loading" class="hint">{{ $t("common.loading") }}</text>
+          <template v-else>
+            <!-- 本级筛选（R11）：一个区几十个街道、一个街道上百个村，翻不如打两个字 -->
+            <view v-if="!loading && levelFilterUseful" class="filter">
+              <input
+                v-model="levelFilter"
+                class="filter__i"
+                :placeholder="$t('store.picker.filterHere', { s: current ? current.name : $t('store.regionRoot') })"
+                confirm-type="search"
+              />
+              <text v-if="levelFilter" class="filter__x" @tap="levelFilter = ''">✕</text>
+            </view>
+
+            <view v-for="r in (atLeaf ? [] : levelRowsFiltered)" :key="r.regionCode" class="row"
+                  :class="{ 'is-covered': coveredBy(r.regionCode) }">
+              <view class="row__main" @tap="drill(r)">
+                <text class="row__name">{{ r.name }}</text>
+                <text v-if="coveredBy(r.regionCode)" class="row__sub">
+                  {{ $t("store.picker.coveredTag", { s: shortName(coveredBy(r.regionCode)?.name) }) }}
+                </text>
+              </view>
+              <view class="row__check" :class="{ 'is-on': has(r.level, r.regionCode), 'is-off': !!coveredBy(r.regionCode) }" @tap="toggleRegion(r)">
+                <text v-if="has(r.level, r.regionCode)" class="row__tick">✓</text>
+              </view>
+              <!--
+                竖线把两个点击区分开。**这不是装饰**：左边是「把整片加进来」（勾一个市影响几千个小区），
+                右边只是「换一屏」—— 后果差着量级的两个动作挨在一起，手一滑就是一条待审记录。
+              -->
+              <view v-if="r.hasChild || r.level === 'STREET'" class="row__sep"></view>
+              <sh-icon v-if="r.hasChild || r.level === 'STREET'" name="chevronRight" :size="18" color="var(--sh-sub)" @tap="drill(r)"></sh-icon>
+            </view>
+
+            <!-- 街道里的聚落与小区：点击行为与搜索结果**完全一致** -->
+            <template v-if="atLeaf">
+              <view v-for="c in settleRowsFiltered" :key="c.communityNo" class="row"
+                    :class="{ 'is-covered': communityCoveredBy(c.regionCode) }" @tap="toggleCommunity(c)">
+                <view class="row__main">
+                  <text class="row__name">{{ c.name }}</text>
+                  <text v-if="communityCoveredBy(c.regionCode)" class="row__sub">
+                    {{ $t("store.picker.coveredTag", { s: shortName(communityCoveredBy(c.regionCode)?.name) }) }}
+                  </text>
+                  <text v-else-if="c.address" class="row__sub">{{ c.address }}</text>
+                </view>
+                <view class="row__check" :class="{ 'is-on': has('COMMUNITY', c.communityNo) }">
+                  <text v-if="has('COMMUNITY', c.communityNo)" class="row__tick">✓</text>
+                </view>
+              </view>
+              <view v-for="v in villageRowsFiltered" :key="v.regionCode" class="place"
+                    @tap="addHit({ key: 'v' + v.regionCode, kind: 'VILLAGE', name: v.name, sub: '', regionCode: v.regionCode, streetCode: current?.regionCode, latE6: v.latE6, lngE6: v.lngE6 })">
+                <view class="place__main">
+                  <text class="place__name">{{ v.name }}</text>
+                  <text class="place__addr">{{ v.latE6 != null ? $t("store.picker.villageLocated") : $t("store.picker.villageHint") }}</text>
+                </view>
+                <text class="place__go">{{ adding === 'v' + v.regionCode ? "…" : $t("store.picker.estateAdd") }}</text>
+              </view>
+              <view v-for="p in estateRowsFiltered" :key="p.name + p.address" class="place"
+                    @tap="addHit({ key: 'p' + p.name + p.address, kind: 'POI', name: p.name, sub: p.address, latE6: Math.round(p.lat * 1e6), lngE6: Math.round(p.lng * 1e6), address: p.address })">
+                <view class="place__main">
+                  <text class="place__name">{{ p.name }}</text>
+                  <text v-if="p.address" class="place__addr">{{ p.address }}</text>
+                </view>
+                <text class="place__go">{{ adding === 'p' + p.name + p.address ? "…" : $t("store.picker.estateAdd") }}</text>
+              </view>
+            </template>
+          </template>
+        </template>
+
+        <!-- ---------------- 搜索 / 附近（主路径） ---------------- -->
         <template v-else>
-          <!-- 区划行：同一种形状，有下级的带 › -->
-          <view v-for="r in (atLeaf && !kw ? [] : levelRows)" :key="r.regionCode" class="row">
-            <view class="row__main" @tap="drill(r)">
-              <text class="row__name">{{ r.name }}</text>
-              <text v-if="r.path" class="row__sub">{{ r.path }}</text>
-            </view>
-            <view class="row__check" :class="{ 'is-on': has(r.level, r.regionCode) }" @tap="toggleRegion(r)">
-              <text v-if="has(r.level, r.regionCode)" class="row__tick">✓</text>
-            </view>
-            <sh-icon v-if="r.hasChild || r.level === 'STREET'" name="chevronRight" :size="18" color="var(--sh-sub)" @tap="drill(r)"></sh-icon>
-          </view>
-
-          <!-- 聚落行（小区/村同列）：叶子直接勾 -->
-          <view v-for="c in settleRows" :key="c.communityNo" class="row" @tap="toggleCommunity(c)">
-            <view class="row__main">
-              <text class="row__name">{{ c.name }}</text>
-              <text v-if="c.path || c.address" class="row__sub">{{ c.path || c.address }}</text>
-            </view>
-            <view class="row__check" :class="{ 'is-on': has('COMMUNITY', c.communityNo) }">
-              <text v-if="has('COMMUNITY', c.communityNo)" class="row__tick">✓</text>
-            </view>
-          </view>
-
-          <!-- 地图地点：整串地名与小区名的唯一出路，每条都带坐标 -->
-          <template v-if="kw && placeHits.length">
-            <text class="group">{{ $t("store.picker.placeGroup") }}</text>
-            <view v-for="p in placeHits" :key="p.name + p.address" class="place" @tap="usePlace(p)">
-              <view class="place__main">
-                <text class="place__name">{{ p.name }}</text>
-                <text v-if="p.address" class="place__addr">{{ p.address }}</text>
-              </view>
-              <sh-icon name="pin" :size="16" color="var(--sh-sub)"></sh-icon>
-            </view>
-          </template>
-
-          <text v-if="nothing && !placeHits.length && !placeSearching" class="hint">{{ $t("store.picker.searchEmpty") }}</text>
-
-          <!-- 街道下的小区（地图）：名录里没有这一层，而它才是商家心里的「我做哪儿」 -->
-          <template v-if="atLeaf && !kw && estates.length">
-            <text class="group">{{ $t("store.picker.estateGroup") }}</text>
-            <view v-for="p in estates" :key="p.name + p.address" class="place" @tap="useEstate(p)">
-              <view class="place__main">
-                <text class="place__name">{{ p.name }}</text>
-                <text v-if="p.address" class="place__addr">{{ p.address }}</text>
-              </view>
-              <text class="place__go">{{ $t("store.picker.villageGo") }}</text>
-            </view>
-          </template>
-
-          <!-- 街道下的官方村/社区：点一条即带村码与坐标去提报，不用打字 -->
-          <template v-if="atLeaf && !kw && villageRows.length">
-            <text class="group">{{ $t("store.picker.villageGroup") }}</text>
-            <view v-for="v in villageRows" :key="v.regionCode" class="place" @tap="useVillage(v)">
-              <view class="place__main">
-                <text class="place__name">{{ v.name }}</text>
+          <!-- 整片区域排在最前：省 / 市 / 区 / 街道。点行进下级，点勾整片加入 -->
+          <template v-if="regionHits.length">
+            <text class="group">{{ $t("store.picker.regionGroup") }}</text>
+            <view v-for="h in regionRows" :key="h.key" class="place" :class="{ 'is-covered': coveredBy(h.regionCode ?? '') }">
+              <view class="place__main" @tap="drillHit(h)">
+                <text class="place__name">{{ h.name }}</text>
                 <text class="place__addr">
-                  {{ v.latE6 != null ? $t("store.picker.villageLocated") : $t("store.picker.villageHint") }}
+                  {{ h.sub }}{{ coveredBy(h.regionCode ?? '')
+                    ? " · " + $t("store.picker.coveredTag", { s: shortName(coveredBy(h.regionCode ?? '')?.name) })
+                    : h.needsAudit ? " · " + $t("store.picker.needAudit") : "" }}
                 </text>
               </view>
-              <text class="place__go">{{ $t("store.picker.villageGo") }}</text>
+              <!-- 主动作是「进去看下级」；整片加入是右边这个勾，第二位的动作 -->
+              <view
+                class="row__check"
+                :class="{ 'is-on': has(h.level ?? '', h.regionCode ?? ''), 'is-off': !!coveredBy(h.regionCode ?? '') }"
+                @tap.stop="toggleRegion({ regionCode: h.regionCode ?? '', level: h.level ?? '', name: h.name, parentCode: '', enabled: true, hasChild: true, path: h.sub })"
+              >
+                <text v-if="has(h.level ?? '', h.regionCode ?? '')" class="row__tick">✓</text>
+              </view>
+              <view class="row__sep"></view>
+              <sh-icon name="chevronRight" :size="18" color="var(--sh-sub)" @tap="drillHit(h)"></sh-icon>
+            </view>
+            <view v-if="!regionsOpen && regionHits.length > regionRows.length" class="more" @tap="regionsOpen = true">
+              <text class="more__t">{{ $t("store.picker.more", { n: regionHits.length - regionRows.length }) }}</text>
             </view>
           </template>
 
-          <!-- 叶子层末尾：提报 -->
-          <template v-if="atLeaf && !kw">
-            <view v-if="!applyOpen" class="row row--apply" @tap="applyOpen = true; revealApply()">
-              <text class="row__apply">{{ $t("store.picker.applyEntry") }}</text>
+          <text v-if="!kw && nearbyLoading" class="hint">{{ $t("common.loading") }}</text>
+          <text v-else-if="!kw && !settleHits.length" class="hint">{{ $t("store.picker.nearbyEmpty") }}</text>
+          <text v-else-if="!kw" class="group">{{ $t("store.picker.nearbyTitle") }}</text>
+
+          <!-- 小区 / 村：三个来源同一种行样式。来源差异对商家没有意义 -->
+          <template v-if="kw && settleHits.length">
+            <text class="group">{{ $t("store.picker.settleGroup") }}</text>
+          </template>
+          <view v-for="h in settleRowsHit" :key="h.key" class="place" @tap="addHit(h)">
+            <view class="place__main">
+              <text class="place__name">{{ h.name }}</text>
+              <text v-if="h.sub" class="place__addr">{{ h.sub }}</text>
             </view>
-            <view v-else id="apply-block" class="apply">
-              <text class="hint">{{ $t("store.applyToStreet", { s: current?.name }) }}</text>
-              <input
-                v-model="applyName"
-                class="field__input"
-                :maxlength="30"
-                :cursor-spacing="160"
-                :placeholder="$t('store.dictHint')"
-                @focus="revealApply"
-              />
-              <view v-if="dictSuggests.length" class="apply__sug">
-                <text v-for="d in dictSuggests" :key="d.regionCode" class="sh-chip" @tap="pickVillage(d)">{{ d.name }}</text>
+            <text class="place__go">{{ adding === h.key ? "…" : $t("store.picker.estateAdd") }}</text>
+          </view>
+          <view v-if="!settlesOpen && settleHits.length > settleRowsHit.length" class="more" @tap="settlesOpen = true">
+            <text class="more__t">{{ $t("store.picker.more", { n: settleHits.length - settleRowsHit.length }) }}</text>
+          </view>
+
+          <!--
+            空输入时**两条路并列**：上面是门店附近的小区（多数商家要的就是这几个），
+            下面直接给省级列表 —— 走快递、做全省的那批人不用先去找一行小字入口。
+          -->
+          <template v-if="!kw && list.length">
+            <text class="group">{{ $t("store.picker.fromRegion") }}</text>
+            <view v-for="r in list" :key="'top' + r.regionCode" class="row" @tap="drill(r)">
+              <view class="row__main">
+                <text class="row__name">{{ r.name }}</text>
               </view>
-              <view v-if="placeSuggests.length" class="apply__poi">
-                <view v-for="p in placeSuggests" :key="p.name + p.address" class="apply__poi-row" @tap="pickPlace(p)">
-                  <text class="apply__poi-name">{{ p.name }}</text>
-                  <text v-if="p.address" class="apply__poi-addr">{{ p.address }}</text>
-                </view>
+              <view class="row__check" :class="{ 'is-on': has(r.level, r.regionCode) }" @tap.stop="toggleRegion(r)">
+                <text v-if="has(r.level, r.regionCode)" class="row__tick">✓</text>
               </view>
-              <text v-if="pickedVillage" class="hint">{{ $t("store.dictPicked", { s: pickedVillage.name }) }}</text>
-              <text v-if="pickedVillage" class="hint">{{ $t("store.villageToEstate") }}</text>
-              <view v-if="poiSuggests.length" class="apply__poi">
-                <view v-for="p in poiSuggests" :key="p.name + p.address" class="apply__poi-row" @tap="pickPoi(p)">
-                  <text class="apply__poi-name">{{ p.name }}</text>
-                  <text v-if="p.address" class="apply__poi-addr">{{ p.address }}</text>
-                </view>
-              </view>
-              <text v-if="pickedPoi" class="hint">{{ $t("store.poiPicked", { s: pickedPoi.address || pickedPoi.name }) }}</text>
-              <view class="apply__map" :class="{ 'is-ok': !!pickedGeo }" @tap="pickOnMapForApply">
-                <sh-icon name="pin" :size="18" :color="pickedGeo ? 'var(--sh-primary-text)' : 'var(--sh-sub)'"></sh-icon>
-                <text class="apply__map-t">
-                  {{ picking ? $t("common.loading") : pickedGeo ? $t("store.applyRepick") : $t("store.applyPick") }}
-                </text>
-              </view>
-              <text v-if="pickedGeo" class="hint">{{ $t("store.poiPicked", { s: applyGeo?.address || pickedGeo.name }) }}</text>
-              <input
-                v-model="applyDetail"
-                class="field__input"
-                :maxlength="40"
-                :cursor-spacing="160"
-                :placeholder="$t('store.applyDetailPh')"
-                @focus="revealApply"
-              />
-              <view class="apply__btns">
-                <text class="sh-btn sh-btn--soft apply__go" @tap="submitApply">{{ $t("common.submit") }}</text>
-                <text class="mini" @tap="applyOpen = false">{{ $t("common.cancel") }}</text>
-              </view>
+              <view class="row__sep"></view>
+              <sh-icon name="chevronRight" :size="18" color="var(--sh-sub)"></sh-icon>
             </view>
           </template>
+
+          <!-- 一个字时只搜得到区划：说清楚，别让人以为「这地方没有」 -->
+          <text v-if="kw.length === 1 && !searching" class="hint">{{ $t("store.picker.oneCharHint") }}</text>
+          <text v-else-if="kw && !settleHits.length && !regionHits.length && !searching && !placeSearching" class="hint">
+            {{ $t("store.picker.searchEmpty") }}
+          </text>
+
+          <!--
+            「按行政区找」的入口**只在搜不到时留着**：空输入时省级列表就在上面那一段，
+            再放一行小字等于同一件事说两遍。
+          -->
+          <view v-if="kw && !settleHits.length && !regionHits.length" class="row row--apply" @tap="browsing = true">
+            <text class="row__apply">{{ $t("store.picker.browseEntry") }}</text>
+          </view>
         </template>
       </scroll-view>
 
@@ -952,10 +1492,10 @@ function close() {
 }
 .place__name {
   font-size: 30rpx;
-  color: var(--sh-text);
+  color: var(--sh-ink);
 }
 .place__addr {
-  font-size: 22rpx;
+  font-size: 24rpx;
   color: var(--sh-sub);
 }
 .place__go {
@@ -1001,10 +1541,10 @@ function close() {
 }
 .apply__poi-name {
   font-size: 28rpx;
-  color: var(--sh-text);
+  color: var(--sh-ink);
 }
 .apply__poi-addr {
-  font-size: 22rpx;
+  font-size: 24rpx;
   color: var(--sh-sub);
 }
 .apply__btns {
@@ -1032,5 +1572,76 @@ function close() {
   padding: 16rpx 24rpx;
   padding-bottom: calc(16rpx + env(safe-area-inset-bottom));
   border-top: 2rpx solid var(--sh-line);
+}
+
+/* 被上级覆盖的行：能看见、点得动（点了会说明原因），但明显是「不用再选」的样子 */
+.row.is-covered,
+.place.is-covered {
+  opacity: 0.55;
+}
+.row__check.is-off {
+  border-color: var(--sh-line);
+  background: var(--sh-faint);
+}
+
+/* 每段的「还有 N 条」。不是分页 —— 一次点开全部，商家不需要理解页码 */
+.more {
+  padding: 20rpx 24rpx;
+}
+.more__t {
+  font-size: 26rpx;
+  color: var(--sh-primary-text);
+}
+
+/* 本级筛选框：只过滤当前这一屏 */
+.filter {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin: 8rpx 24rpx 4rpx;
+  padding: 0 20rpx;
+  height: 68rpx;
+  border-radius: 44rpx;
+  background: var(--sh-faint);
+}
+.filter__i {
+  flex: 1;
+  font-size: 26rpx;
+  color: var(--sh-ink);
+}
+.filter__x {
+  font-size: 24rpx;
+  color: var(--sh-sub);
+  padding: 0 8rpx;
+}
+
+/* 已选清单里的待审标：与行内那句「选中后需运营审核」是同一件事的两个时刻 */
+.chosen__audit {
+  margin-right: 16rpx;
+  font-size: 24rpx;
+  color: var(--sh-warning);
+}
+
+/* 两个点击区之间的竖线。左＝整片加入、右＝进下级，后果差着量级，不能挨着 */
+.row__sep {
+  width: 1rpx;
+  height: 36rpx;
+  margin: 0 20rpx 0 12rpx;
+  background: var(--sh-line);
+}
+
+/* 已选摘要挪到标题栏右侧：滚多远都看得见「我选了几条」，点一下就地展开 */
+.sheet__sel {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+}
+.sheet__selT {
+  font-size: 26rpx;
+  color: var(--sh-primary-text);
+}
+.sheet__selM {
+  font-size: 24rpx;
+  color: var(--sh-sub);
 }
 </style>

@@ -1,6 +1,7 @@
 // 覆盖范围：社区网格（P-2.1）与自提点主数据（P-2.2）。
 import type {
-  Community, CommunityApply, NearbyCommunity, Page, PickupPoint, PickupStatus, Region, RegionSuggestion,
+  Community, CommunityApply, CommunityDuplicate, NearbyCommunity, Page, PickupPoint, PickupStatus,
+  Region, RegionSuggestion,
 } from "@/lib/types";
 import type { PickupDraft } from "@/lib/types";
 import type { CommunityApplyQ, CommunityQ, PickupQ } from "../query";
@@ -68,6 +69,16 @@ export interface CommunityApi {
   resolveRegion(q: { address?: string; latE6?: number | null; lngE6?: number | null }): Promise<RegionSuggestion[]>;
   /** 一个坐标附近已开通的聚落，按距离升序 —— 裁决时查重用 */
   communitiesNear(latE6: number, lngE6: number, radiusM?: number): Promise<NearbyCommunity[]>;
+  /**
+   * 疑似重复的聚落两两清单。
+   *
+   * **from-map 上线之后才真正需要**：商家点一条地图地点就直接建档，建档时的查重只在当场比一次，
+   * 而改名、补坐标、误挂到隔壁街道都会让两条事后才撞上 —— 撞上不报错，
+   * 表现为「商家甲选了 A、乙选了 B，买家在 B 里搜不到甲的货」。
+   */
+  duplicateCommunities(limit?: number): Promise<CommunityDuplicate[]>;
+  /** 合并：把 fromNo 并进 intoNo。经营范围、货架等「以后还会用」的引用一并改写 */
+  mergeCommunities(fromNo: string, intoNo: string): Promise<Community>;
   archiveCommunity(communityNo: string): Promise<Community>;
   unarchiveCommunity(communityNo: string): Promise<Community>;
 

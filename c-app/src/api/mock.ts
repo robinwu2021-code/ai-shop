@@ -14,6 +14,7 @@ import {
   pushMessage,
   pushPoint,
   toCommunity,
+  allCommunitySeeds,
   buildGroupBuy,
   toGoods,
   toGroupRequest,
@@ -243,7 +244,7 @@ function reaches(merchantNo: string, communityNo?: string): boolean {
     case SERVICE_SCOPE.PLATFORM:
       return true;
     case SERVICE_SCOPE.CITY: {
-      const city = db.communitySeeds.find((c) => c.communityNo === communityNo)?.cityCode;
+      const city = allCommunitySeeds().find((c) => c.communityNo === communityNo)?.cityCode;
       return !!city && seed.serviceCityCode === city;
     }
     case SERVICE_SCOPE.COMMUNITY:
@@ -309,7 +310,7 @@ export const mockApi: ShopApi = {
   },
 
   async bindCommunity(communityNo, pickupNo) {
-    const seed = db.communitySeeds.find((c) => c.communityNo === communityNo);
+    const seed = allCommunitySeeds().find((c) => c.communityNo === communityNo);
     if (!seed) throw new Error("社区不存在");
     const pk = seed.pickups.find((p) => p.pickupNo === pickupNo);
     if (!pk) throw new Error("自提点不存在");
@@ -361,12 +362,12 @@ export const mockApi: ShopApi = {
 
   // ---------------------------------------------------------------- 社区
   async nearbyCommunities() {
-    return delay(db.communitySeeds.map(toCommunity));
+    return delay(allCommunitySeeds().map(toCommunity));
   },
 
   async allCommunities() {
     // mock 侧两者同源：真后端的差别是 nearby 带半径过滤，而 mock 只有一个城市的种子
-    return delay(db.communitySeeds.map(toCommunity));
+    return delay(allCommunitySeeds().map(toCommunity));
   },
 
   async openRegions() {
@@ -377,7 +378,7 @@ export const mockApi: ShopApi = {
         name: "西湖区",
         cityCode: "3301",
         cityName: "杭州市",
-        communityCount: db.communitySeeds.length,
+        communityCount: allCommunitySeeds().length,
       },
     ]);
   },
@@ -556,7 +557,7 @@ export const mockApi: ShopApi = {
 
     const plan = fulfillmentFor(req.fulfillment).plan({
       pickupNo: req.pickupNo,
-      communities: db.communitySeeds.map(toCommunity),
+      communities: allCommunitySeeds().map(toCommunity),
       appointmentAt: req.appointmentAt,
     });
 

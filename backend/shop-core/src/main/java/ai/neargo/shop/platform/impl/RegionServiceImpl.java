@@ -12,7 +12,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -338,24 +341,138 @@ public class RegionServiceImpl implements RegionService {
     }
 
     @Override
-    public List<RegionVO> search(String keyword, int limit) {
+    public List<RegionVO> searchVillages(String keyword, int limit, Integer nearLatE6, Integer nearLngE6) {
         String kw = keyword == null ? "" : keyword.trim();
+        // 两个字以下会命中上万行（「新村」「东村」），给人挑的列表不该这么长
         if (kw.length() < 2) {
-            // 单字会命中成千上万行（「区」「市」），给人挑的列表不该这么长
             return List.of();
         }
         int cap = Math.max(1, Math.min(limit, 20));
-        List<SysRegion> rows = DataScopeContext.executeWithoutScope(() ->
+        /*
+         * **按距离排，不是按码排**。同名的村全国到处都是 —— 深圳的商家搜「福城」，
+         * 排在最前的却是新疆的「同和幸福城」，那条列表对他毫无用处（真机上就是这么撞到的）。
+         *
+         * 给了位置就先用外接矩形把候选缩到方圆 ~110 公里，不够再放开到全国：
+         * 商家的经营范围不会跨省，而「一条都搜不到」比「排序不理想」更糟。
+         */
+        int wide = 1_000_000; // 1 度 ≈ 111 公里
+        List<SysRegion> rows = List.of();
+        if (nearLatE6 != null && nearLngE6 != null) {
+            rows = DataScopeContext.executeWithoutScope(() ->
+                    mapper.selectList(Wrappers.<SysRegion>lambdaQuery()
+                            .eq(SysRegion::getLevel, "VILLAGE")
+                            .eq(SysRegion::getEnabled, true)
+                            .eq(SysRegion::getAuditStatus, "APPROVED")
+                            .like(SysRegion::getName, kw)
+                            .between(SysRegion::getLatE6, nearLatE6 - wide, nearLatE6 + wide)
+                            .between(SysRegion::getLngE6, nearLngE6 - wide, nearLngE6 + wide)
+                            .last("LIMIT 200")));
+            rows = rows.stream()
+                    .sorted(java.util.Comparator.comparingDouble(
+                            r -> meters(nearLatE6, nearLngE6, r.getLatE6(), r.getLngE6())))
+                    .limit(cap)
+                    .toList();
+        }
+        if (rows.isEmpty()) {
+            rows = DataScopeContext.executeWithoutScope(() ->
+                    mapper.selectList(Wrappers.<SysRegion>lambdaQuery()
+                            .eq(SysRegion::getLevel, "VILLAGE")
+                            .eq(SysRegion::getEnabled, true)
+                            .eq(SysRegion::getAuditStatus, "APPROVED")
+                            .like(SysRegion::getName, kw)
+                            // 有坐标的排前面：没坐标的开出来买家用定位也搜不到
+                            .orderByDesc(SysRegion::getLatE6)
+                            .last("LIMIT " + cap)));
+        }
+        return toVOs(rows);
+    }
+
+    /**
+     * 每级配额。省少而粗、街道多而细，各留各的位置 ——
+     * 共用一份配额时细的那一级永远把粗的挤掉（这正是「搜运城出不来运城市」的原因）。
+     */
+    private static final List<String> SEARCH_LEVELS = List.of("PROVINCE", "CITY", "DISTRICT", "STREET");
+    private static final Map<String, Integer> SEARCH_QUOTA =
+            Map.of("PROVINCE", 3, "CITY", 5, "DISTRICT", 8, "STREET", 8);
+    /** 每级先捞多少候选再在内存里排序。前缀命中通常远少于这个数，兜底防「新华」「城关」这种烂大街的名字 */
+    private static final int CANDIDATES_PER_LEVEL = 200;
+
+    @Override
+    public List<RegionVO> search(String keyword, int limit, Integer nearLatE6, Integer nearLngE6) {
+        String kw = keyword == null ? "" : keyword.trim();
+        if (kw.isEmpty()) {
+            return List.of();
+        }
+        /*
+         * **区划一个字就能搜，聚落仍是两个字**（searchVillages）。
+         * 「京」「沪」「渝」本身就是完整的省级简称，而区划表只有 4.4 万行、
+         * 又按级配额取，一个字不会把列表撑爆；村级 62 万行则不然。
+         */
+        int cap = Math.max(1, Math.min(limit, 30));
+        List<SysRegion> picked = new ArrayList<>();
+        for (String level : SEARCH_LEVELS) {
+            picked.addAll(searchOneLevel(level, kw, SEARCH_QUOTA.getOrDefault(level, 5), nearLatE6, nearLngE6));
+        }
+        return toVOs(picked.size() > cap ? picked.subList(0, cap) : picked);
+    }
+
+    /**
+     * 一级之内的候选与排序。
+     *
+     * <p>先按<b>前缀</b>捞（可走索引、也最像人要找的东西：搜「运城」要的是「运城市」，
+     * 不是「同和幸福城」），不够配额再按包含补。排序在内存里做而不是写进 SQL：
+     * ORDER BY 里拼 CASE WHEN 要把关键词塞进 SQL 文本，而它来自用户输入。
+     */
+    private List<SysRegion> searchOneLevel(String level, String kw, int quota,
+                                           Integer nearLatE6, Integer nearLngE6) {
+        List<SysRegion> prefix = DataScopeContext.executeWithoutScope(() ->
                 mapper.selectList(Wrappers.<SysRegion>lambdaQuery()
-                        .in(SysRegion::getLevel, List.of("CITY", "DISTRICT", "STREET"))
+                        .eq(SysRegion::getLevel, level)
                         .eq(SysRegion::getEnabled, true)
                         .eq(SysRegion::getAuditStatus, "APPROVED")
-                        .like(SysRegion::getName, kw)
-                        // 细的排前面：搜「西湖」多半是要西湖区下的街道，而不是整个区
-                        .orderByDesc(SysRegion::getLevel)
-                        .orderByAsc(SysRegion::getRegionCode)
-                        .last("LIMIT " + cap)));
-        return toVOs(rows);
+                        .likeRight(SysRegion::getName, kw)
+                        .last("LIMIT " + CANDIDATES_PER_LEVEL)));
+        Map<String, SysRegion> byCode = new LinkedHashMap<>();
+        prefix.forEach(r -> byCode.put(r.getRegionCode(), r));
+        if (byCode.size() < quota) {
+            List<SysRegion> contains = DataScopeContext.executeWithoutScope(() ->
+                    mapper.selectList(Wrappers.<SysRegion>lambdaQuery()
+                            .eq(SysRegion::getLevel, level)
+                            .eq(SysRegion::getEnabled, true)
+                            .eq(SysRegion::getAuditStatus, "APPROVED")
+                            .like(SysRegion::getName, kw)
+                            .last("LIMIT " + CANDIDATES_PER_LEVEL)));
+            contains.forEach(r -> byCode.putIfAbsent(r.getRegionCode(), r));
+        }
+        return byCode.values().stream()
+                .sorted(Comparator
+                        .comparingInt((SysRegion r) -> strength(r.getName(), kw))
+                        .thenComparingDouble(r -> distanceRank(r, nearLatE6, nearLngE6))
+                        .thenComparing(SysRegion::getRegionCode))
+                .limit(quota)
+                .toList();
+    }
+
+    /** 0 完全相同 / 1 前缀命中 / 2 只是包含。「运城市」对「运城」算 1，「同和幸福城」算 2 */
+    private static int strength(String name, String kw) {
+        String n = name == null ? "" : name;
+        if (n.equals(kw)) {
+            return 0;
+        }
+        return n.startsWith(kw) ? 1 : 2;
+    }
+
+    /**
+     * 同强度时的第二排序键：离门店多远。
+     *
+     * <p>没坐标的区划排在有坐标的后面而不是最前 —— 坐标是 V192 补的，
+     * 补到哪儿是哪儿；让没补的插队会把「本地那一条」压下去。
+     */
+    private static double distanceRank(SysRegion r, Integer nearLatE6, Integer nearLngE6) {
+        if (nearLatE6 == null || nearLngE6 == null || r.getLatE6() == null || r.getLngE6() == null) {
+            return Double.MAX_VALUE;
+        }
+        return meters(nearLatE6, nearLngE6, r.getLatE6(), r.getLngE6());
     }
 
     private SysRegion find(String code) {
