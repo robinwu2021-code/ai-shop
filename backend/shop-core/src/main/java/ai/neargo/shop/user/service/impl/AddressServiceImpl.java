@@ -37,10 +37,16 @@ public class AddressServiceImpl implements AddressService {
 
         row.setName(cmd.name());
         row.setPhone(cmd.phone());
+        row.setRegion(cmd.region());
         row.setProvince(cmd.province());
         row.setCity(cmd.city());
         row.setDistrict(cmd.district());
         row.setDetail(cmd.detail());
+        // 两个都给才写：只来一半是端上的 bug，写进去会得到一个落在赤道或本初子午线上的收货地址
+        if (cmd.latE6() != null && cmd.lngE6() != null) {
+            row.setLatE6(cmd.latE6());
+            row.setLngE6(cmd.lngE6());
+        }
         row.setTag(cmd.tag());
 
         // 首个地址自动成为默认：否则用户加完第一个地址去下单，还要回来手动设一次

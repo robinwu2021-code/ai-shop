@@ -42,8 +42,12 @@ class CommunityApplyFlowTest {
      * 不造这一条的话所有「通过」路径都会撞 NOT_FOUND，
      * 而报错看起来像校验坏了，其实是测试数据缺了。
      */
+    /** 用自增而不是 nanoTime 取模：同一次运行里造几条就可能撞号，撞了报的是 DuplicateKey，看着像业务问题 */
+    private static final java.util.concurrent.atomic.AtomicInteger SEQ =
+            new java.util.concurrent.atomic.AtomicInteger();
+
     private String street() {
-        String code = String.valueOf(330106000 + (int) (Math.abs(System.nanoTime()) % 900));
+        String code = String.valueOf(330106000 + SEQ.incrementAndGet());
         var r = new ai.neargo.shop.platform.entity.SysRegion();
         r.setRegionCode(code);
         r.setParentCode("330106");
@@ -51,6 +55,72 @@ class CommunityApplyFlowTest {
         r.setName("测试街道" + code.substring(6));
         r.setEnabled(true);
         r.setSort(0);
+        regionMapper.insert(r);
+        return code;
+    }
+
+    @Test
+    @DisplayName("★★ 官方名录里的村：提报即开通，不进运营队列 —— 那道等待按天算，期间货一个人也看不见")
+    void officialVillageOpensWithoutReview() {
+        String m = merchant();
+        String st = street();
+        String village = officialVillage(st, "免审测试村村民委员会", 35_019_806, 110_988_280);
+
+        var vo = adminService.submitApply(m, "免审测试村", null, st, null,
+                "VILLAGE", village, null, null);
+
+        assertThat(vo.status()).as("官方村不该停在 PENDING").isEqualTo("APPROVED");
+        assertThat(vo.communityNo()).isNotBlank();
+        assertThat(communityService.all())
+                .anySatisfy(c -> assertThat(c.communityNo()).isEqualTo(vo.communityNo()));
+    }
+
+    @Test
+    @DisplayName("★ 直开也要带上坐标 —— 没坐标的聚落买家用定位永远搜不到，而它看起来完全正常")
+    void openedVillageCarriesCoordinates() {
+        String m = merchant();
+        String st = street();
+        String village = officialVillage(st, "带坐标村村民委员会", 22_695_293, 114_027_370);
+
+        var vo = adminService.submitApply(m, "带坐标村", null, st, null, "VILLAGE", village, null, null);
+
+        var created = communityService.all().stream()
+                .filter(c -> c.communityNo().equals(vo.communityNo())).findFirst().orElseThrow();
+        assertThat(created.distance()).as("有坐标才算得出距离；这里只验它没被建成空坐标").isNotNull();
+    }
+
+    @Test
+    @DisplayName("★★ 商家自己补录的村仍然要审 —— 名字是他自己起的，免审等于谁都能凭空造聚落")
+    void merchantAddedVillageStillNeedsReview() {
+        String m = merchant();
+        String st = street();
+        String village = officialVillage(st, "商家补录村", null, null);
+        // 改成商家补录来源
+        var row = regionMapper.selectOne(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                .<ai.neargo.shop.platform.entity.SysRegion>lambdaQuery()
+                .eq(ai.neargo.shop.platform.entity.SysRegion::getRegionCode, village));
+        row.setSource("MERCHANT");
+        regionMapper.updateById(row);
+
+        var vo = adminService.submitApply(m, "商家补录村", null, st, null, "VILLAGE", village, null, null);
+
+        assertThat(vo.status()).isEqualTo("PENDING");
+        assertThat(vo.communityNo()).isNull();
+    }
+
+    /** 官方名录里的一条村（第五级、source=OFFICIAL），可带坐标 */
+    private String officialVillage(String streetCode, String name, Integer latE6, Integer lngE6) {
+        String code = streetCode + String.format("%03d", SEQ.incrementAndGet());
+        var r = new ai.neargo.shop.platform.entity.SysRegion();
+        r.setRegionCode(code);
+        r.setParentCode(streetCode);
+        r.setLevel("VILLAGE");
+        r.setName(name);
+        r.setSource("OFFICIAL");
+        r.setEnabled(true);
+        r.setSort(0);
+        r.setLatE6(latE6);
+        r.setLngE6(lngE6);
         regionMapper.insert(r);
         return code;
     }

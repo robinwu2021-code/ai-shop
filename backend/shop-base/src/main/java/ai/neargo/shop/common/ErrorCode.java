@@ -152,6 +152,14 @@ public enum ErrorCode {
     // ---- 2xxxx 交易 ----
     STOCK_NOT_ENOUGH(20001, "err.trade.stock_not_enough"),
     PRICE_CHANGED(20002, "err.trade.price_changed"),
+    /**
+     * 收货地址超出这家店的自送半径（下单时拦）。
+     *
+     * <p><b>这个码定义了很久却一直没有消费方</b> —— 与它要表达的那条规则一样：
+     * `mch_store.delivery_radius_m` 有存有取，但全仓没有一处拿它算过距离。
+     * 商家以为自己限定了配送范围，实际多远的单都会进来，等他准备送货才发现送不到，
+     * 那时钱已经收了。判定只在**门店与收货地址两边都有坐标**时生效（见 OrderServiceImpl）。
+     */
     OUT_OF_DELIVERY_RANGE(20003, "err.trade.out_of_delivery_range"),
     ORDER_STATE_ILLEGAL(20004, "err.trade.order_state_illegal"),
 
@@ -380,6 +388,8 @@ public enum ErrorCode {
     PICKUP_LANDING_REQUIRED(70033, "err.merchant.pickup_landing_required"),
     FULFILLMENT_NONE_ENABLED(70034, "err.merchant.fulfillment_none_enabled"),
     SUBSET_AREAS_REQUIRED(70035, "err.merchant.subset_areas_required"),
+    /** 地址地理编码解析不到门牌/小区级（G1）。只在地图能力开通时才会抛 */
+    ADDRESS_UNRESOLVED(70036, "err.geo.address_unresolved"),
     /*
      * 微信手机号快速验证没给出号码（通道未开、未认证、或本次换取失败）。
      *

@@ -30,11 +30,15 @@ public class OpsCommunityController {
     private final CommunityAdminService adminService;
     private final AuditLogPort auditLogPort;
 
+    private final ai.neargo.shop.platform.RegionService regionService;
+
     public OpsCommunityController(CommunityAdminService adminService, AuditLogPort auditLogPort,
-                                  ai.neargo.shop.archive.ArchiveService archiveService) {
+                                  ai.neargo.shop.archive.ArchiveService archiveService,
+                                  ai.neargo.shop.platform.RegionService regionService) {
         this.adminService = adminService;
         this.auditLogPort = auditLogPort;
         this.archiveService = archiveService;
+        this.regionService = regionService;
     }
 
     private final ai.neargo.shop.archive.ArchiveService archiveService;
@@ -110,6 +114,32 @@ public class OpsCommunityController {
             @RequestParam(defaultValue = "20") long size) {
         String s = "ALL".equalsIgnoreCase(status) ? null : status;
         return ai.neargo.shop.common.PageData.ofAll(adminService.applies(s), page, size);
+    }
+
+    /**
+     * 一个坐标附近已开通的聚落。裁决时查重用 —— 名字不同、位置只差 50 米的，靠文字比对看不出来。
+     */
+    @GetMapping("/ops/communities/near")
+    @PreAuthorize("@perm.can('" + Perms.COMMUNITY_READ + "')")
+    public java.util.List<CommunityAdminService.NearbyVO> communitiesNear(
+            @RequestParam int latE6, @RequestParam int lngE6,
+            @RequestParam(defaultValue = "2000") int radiusM) {
+        return adminService.communitiesNear(latE6, lngE6, radiusM);
+    }
+
+    /**
+     * 按提报单上的地址与坐标推断该挂哪个街道。
+     *
+     * <p>裁决那一屏原本要从 31 个省点到街道 —— 而单子上明明写着
+     * 「广东省深圳市龙华区福城街道…」，坐标也在。推不出来就返回空，端上退回手选，不拦。
+     */
+    @GetMapping("/ops/regions/resolve")
+    @PreAuthorize("@perm.can('" + Perms.COMMUNITY_READ + "')")
+    public java.util.List<ai.neargo.shop.platform.RegionService.Suggestion> resolveRegion(
+            @RequestParam(required = false) String address,
+            @RequestParam(required = false) Integer latE6,
+            @RequestParam(required = false) Integer lngE6) {
+        return regionService.resolve(address, latE6, lngE6);
     }
 
     /**

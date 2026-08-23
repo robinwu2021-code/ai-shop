@@ -54,10 +54,24 @@ public interface MerchantStoreService {
      * @param fulfillmentReach    履约能力（ADR-013）。为空按 PICKUP
      * @param serviceAreas        地理覆盖项，**全量替换**：勾选面板上的就是最终结果
      */
+    /**
+     * @param latE6 门店坐标（gcj02，E6）。<b>null = 这次不改</b> —— 老版本端上不传这个字段，
+     *              缺省当清空会把已标好的点抹掉，且保存那一下看不出来
+     */
     record SaveCommand(String announcement, String openHours, String address,
                        List<String> featured, String serviceScope,
                        List<String> serviceCommunityNos, String serviceCityCode,
-                       String fulfillmentReach, List<AreaCommand> serviceAreas) {
+                       String fulfillmentReach, List<AreaCommand> serviceAreas,
+                       Integer latE6, Integer lngE6) {
+
+        /** 不带坐标的老形状（= 这次不改坐标） */
+        public SaveCommand(String announcement, String openHours, String address,
+                           List<String> featured, String serviceScope,
+                           List<String> serviceCommunityNos, String serviceCityCode,
+                           String fulfillmentReach, List<AreaCommand> serviceAreas) {
+            this(announcement, openHours, address, featured, serviceScope, serviceCommunityNos,
+                    serviceCityCode, fulfillmentReach, serviceAreas, null, null);
+        }
     }
 
     /** 一条覆盖项的入参。名字由后端补，端上不用传 */

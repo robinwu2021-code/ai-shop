@@ -63,6 +63,40 @@ public class MasterDataPortImpl implements MasterDataPort {
     }
 
     @Override
+    public java.util.Optional<String> officialVillageStreet(String regionCode) {
+        if (regionCode == null || regionCode.isBlank()) {
+            return java.util.Optional.empty();
+        }
+        var path = regionService.path(regionCode);
+        if (path.size() < 2) {
+            return java.util.Optional.empty();
+        }
+        var self = path.get(path.size() - 1);
+        var parent = path.get(path.size() - 2);
+        boolean official = "VILLAGE".equals(self.level())
+                && (self.source() == null || "OFFICIAL".equals(self.source()));
+        // 街道码是 9 位：聚落必须挂在街道/镇下，挂粗了按街道覆盖永远匹配不到
+        return official && parent.regionCode() != null && parent.regionCode().length() == 9
+                ? java.util.Optional.of(parent.regionCode())
+                : java.util.Optional.empty();
+    }
+
+    @Override
+    public java.util.Optional<RegionCoords> regionCoords(String regionCode) {
+        if (regionCode == null || regionCode.isBlank()) {
+            return java.util.Optional.empty();
+        }
+        var path = regionService.path(regionCode);
+        if (path.isEmpty()) {
+            return java.util.Optional.empty();
+        }
+        var self = path.get(path.size() - 1);
+        return self.latE6() == null || self.lngE6() == null
+                ? java.util.Optional.empty()
+                : java.util.Optional.of(new RegionCoords(self.latE6(), self.lngE6()));
+    }
+
+    @Override
     public java.util.Map<String, String> regionNames(java.util.Collection<String> regionCodes) {
         if (regionCodes == null || regionCodes.isEmpty()) {
             return java.util.Map.of();

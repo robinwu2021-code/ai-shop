@@ -76,4 +76,16 @@ public class SysRegion extends BaseEntity {
     private Boolean enabled;
 
     private Integer sort;
+
+    /**
+     * 中心点（gcj02，E6，V192）。**这张表原本没有坐标** —— 于是「把区域名换成坐标」
+     * 只能在端上实时搜、内存缓存，重启即失；村级聚落没坐标时 withinRadius 恒 false。
+     * 由高德批量补录（先跑运城与深圳），命中不了的留空，靠商家提报时纠正。
+     */
+    private Integer latE6;
+    private Integer lngE6;
+
+    /** AMAP 批量补录 / MERCHANT 商家纠正 / OPS 运营录入。重跑批量时据此决定要不要覆盖 */
+    private String coordsSource;
+    private java.time.LocalDateTime coordsAt;
 }

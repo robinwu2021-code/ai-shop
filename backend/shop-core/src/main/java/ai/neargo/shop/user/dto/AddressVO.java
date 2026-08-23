@@ -12,12 +12,16 @@ import ai.neargo.shop.user.entity.UsrAddress;
 public record AddressVO(String addressId,
                         String name,
                         String phone,
+                        String region,
                         String province,
                         String city,
                         String district,
                         String detail,
                         boolean isDefault,
-                        String tag) {
+                        String tag,
+                        /** 坐标（gcj02，E6）。可能为 null —— 存量地址是纯手填的，没有坐标 */
+                        Integer latE6,
+                        Integer lngE6) {
 
     /** 属主视角：完整手机号。 */
     public static AddressVO forOwner(UsrAddress a) {
@@ -32,7 +36,8 @@ public record AddressVO(String addressId,
 
     private static AddressVO build(UsrAddress a, String phone) {
         return new AddressVO(a.getAddressId(), a.getName(), phone,
-                a.getProvince(), a.getCity(), a.getDistrict(), a.getDetail(),
-                Boolean.TRUE.equals(a.getIsDefault()), a.getTag());
+                a.getRegion(), a.getProvince(), a.getCity(), a.getDistrict(), a.getDetail(),
+                Boolean.TRUE.equals(a.getIsDefault()), a.getTag(),
+                a.getLatE6(), a.getLngE6());
     }
 }

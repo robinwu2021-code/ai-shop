@@ -56,6 +56,10 @@ public class CmtPickupPoint extends BaseEntity {
     private String status;
     /** 自建点被驳回的理由（V188），原样回给商家 */
     private String rejectReason;
+    /** 地理编码给的区县码（V190） */
+    private String adcode;
+    /** 地址经地理编码校验（V190） */
+    private Boolean addressVerified;
     /** 约定取货时段：邻居家不能一直堆着货（B15）。 */
     private String timeSlot;
 

@@ -127,4 +127,12 @@ public class MchStore extends BaseEntity {
     private Integer scoreGoods;
     private Integer scoreService;
     private Integer scoreSpeed;
+
+    /** 门店坐标（gcj02，E6，V190）。地理编码或定位回填；候选取货点按它排距离 */
+    private Integer latE6;
+    private Integer lngE6;
+    /** 地理编码给的区县码（国标 6 位），与 sys_region 同口径 */
+    private String adcode;
+    /** 地址经地理编码校验并标准化（V190）。没配地图密钥时保持 0，不拦保存 */
+    private Boolean addressVerified;
 }

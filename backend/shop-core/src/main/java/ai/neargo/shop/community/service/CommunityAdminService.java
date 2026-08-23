@@ -80,10 +80,21 @@ public interface CommunityAdminService {
      * @param located    带没带定位。<b>没带的要显眼</b> —— 通过后聚落没有坐标，
      *                   买家用定位永远找不到它，运营得先补坐标再通过
      */
+    /**
+     * @param located    带没带定位。<b>保留</b>：端上已有一批判空逻辑读它
+     * @param latE6      商家提报时带的坐标（gcj02，E6），没带为 null。
+     *                   <b>运营要看得见具体值</b> —— 只给一个「有/无」，
+     *                   落点偏到隔壁区也照样显示「有定位」，判不出对错
+     * @param fallbackLatE6 官方村码在区划表里的坐标（V192 批量补录）。
+     *                   商家没带定位时，通过这条提报会自动用它兜底；
+     *                   两个都为空才是真的「通过后无坐标、买家搜不到」
+     */
     record ApplyVO(String applyNo, String merchantNo, String merchantName, String name,
                    String address, String regionCode, String regionPath, String note,
                    String status, String communityNo, String reason, long submittedAt,
-                   String kind, String originCode, boolean located) {
+                   String kind, String originCode, boolean located,
+                   Integer latE6, Integer lngE6,
+                   Integer fallbackLatE6, Integer fallbackLngE6) {
     }
 
     List<PickupVO> pickups(String communityNo, String type, String status);
@@ -134,9 +145,30 @@ public interface CommunityAdminService {
      *                   **后端拼好给端上**：光给一个 330106001 的话，端上要么显示一串数字，
      *                   要么自己按码长切片再逐级查 —— 那等于把国标编码规则复制到端上
      */
+    /**
+     * @param latE6 聚落中心（gcj02，E6）。<b>可能为空</b> —— 存量是手工建的。
+     *              运营裁决要在地图上核落点、查附近重名，靠的就是它
+     */
     record CommunityVO(String communityNo, String name, String city, String grid, boolean opened,
                        int fenceRadius, int pickupCount, long createdAt,
-                       String regionCode, String regionPath) {
+                       String regionCode, String regionPath,
+                       Integer latE6, Integer lngE6) {
+    }
+
+    /**
+     * 一个坐标附近**已开通**的聚落，按距离升序。
+     *
+     * <p>给裁决那一屏查重用：「同一个小区常有两个叫法」这句提示一直写在界面上，
+     * 但运营此前只能拿文字比对 —— 两条名字不同、位置只差 50 米的提报，
+     * 靠肉眼是看不出来的，批重了商家勾选时分不清该勾哪个。
+     *
+     * @param radiusM 搜索半径（米）
+     */
+    List<NearbyVO> communitiesNear(int latE6, int lngE6, int radiusM);
+
+    /** @param distanceM 距给定坐标的直线距离（米） */
+    record NearbyVO(String communityNo, String name, int latE6, int lngE6,
+                    int distanceM, String regionPath) {
     }
 
     /**

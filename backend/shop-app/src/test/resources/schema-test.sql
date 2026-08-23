@@ -61,6 +61,8 @@ CREATE TABLE IF NOT EXISTS cmt_pickup_point
     fee_mode VARCHAR(16) NOT NULL DEFAULT 'NONE',
     archived_at DATETIME DEFAULT NULL,
     reject_reason VARCHAR(255) NULL,
+    adcode VARCHAR(12) NULL,
+    address_verified TINYINT(1) NOT NULL DEFAULT 0,
     PRIMARY KEY (id),
     CONSTRAINT uk_pickup_no UNIQUE (pickup_no),
     CONSTRAINT ck_neighbor_zero_fee CHECK (type <> 'NEIGHBOR' or service_fee_rate = 0)
@@ -1377,6 +1379,7 @@ CREATE TABLE IF NOT EXISTS usr_address
     updated_by VARCHAR(64) DEFAULT NULL,
     version BIGINT(20) NOT NULL DEFAULT 0,
     deleted TINYINT(4) NOT NULL DEFAULT 0,
+    region VARCHAR(96) NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_address_id UNIQUE (address_id)
 );
@@ -1590,6 +1593,10 @@ CREATE TABLE IF NOT EXISTS mch_store
     score_goods INT(11) NOT NULL DEFAULT 0,
     score_service INT(11) NOT NULL DEFAULT 0,
     score_speed INT(11) NOT NULL DEFAULT 0,
+    lat_e6 INT NULL,
+    lng_e6 INT NULL,
+    adcode VARCHAR(12) NULL,
+    address_verified TINYINT(1) NOT NULL DEFAULT 0,
     PRIMARY KEY (id),
     CONSTRAINT uk_store_no UNIQUE (store_no)
 );
@@ -2033,6 +2040,8 @@ CREATE TABLE IF NOT EXISTS cmt_community_apply
     origin_code VARCHAR(12) DEFAULT NULL,
     lat_e6 INT DEFAULT NULL,
     lng_e6 INT DEFAULT NULL,
+    adcode VARCHAR(12) NULL,
+    township VARCHAR(64) NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_community_apply_no UNIQUE (apply_no)
 );

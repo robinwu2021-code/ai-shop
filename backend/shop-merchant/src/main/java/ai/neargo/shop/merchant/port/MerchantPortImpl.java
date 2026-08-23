@@ -331,7 +331,25 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
         return store == null ? Optional.empty()
                 : Optional.of(new StoreFront(nvl(store.getAnnouncement()),
                         nvl(store.getOpenHours()), nvl(store.getAddress()),
-                        nvl(store.getStatus())));
+                        nvl(store.getStatus()), store.getLatE6(), store.getLngE6()));
+    }
+
+    @Override
+    public Optional<DeliveryOrigin> deliveryOrigin(String merchantNo) {
+        if (merchantNo == null || merchantNo.isBlank()) {
+            return Optional.empty();
+        }
+        var store = DataScopeContext.executeWithoutScope(() ->
+                storeMapper.selectOne(Wrappers.<ai.neargo.shop.merchant.entity.MchStore>lambdaQuery()
+                        .eq(ai.neargo.shop.merchant.entity.MchStore::getEntityNo, merchantNo)
+                        .orderByDesc(ai.neargo.shop.merchant.entity.MchStore::getIsDefault)
+                        .last("limit 1")));
+        // 没标过点 = 这条规则不成立，返回空让调用方放行
+        if (store == null || store.getLatE6() == null || store.getLngE6() == null) {
+            return Optional.empty();
+        }
+        return Optional.of(new DeliveryOrigin(store.getLatE6(), store.getLngE6(),
+                store.getDeliveryRadiusM() == null ? 0 : store.getDeliveryRadiusM()));
     }
 
     /** 空字符串而不是 null：端上直接渲染，null 会变成屏幕上的「null」 */

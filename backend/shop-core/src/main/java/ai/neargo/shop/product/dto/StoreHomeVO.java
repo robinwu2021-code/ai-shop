@@ -31,7 +31,12 @@ public record StoreHomeVO(Merchant merchant,
                           boolean closed) {
 
     /** 门面文案。三个字段都不会是 null：端上直接渲染，null 会变成屏幕上的「null」 */
-    public record StoreFront(String announcement, String openHours, String address) {
+    /**
+     * @param latE6 门店坐标（gcj02，E6）。<b>可能为 null</b> —— 商家没在地图上标过点。
+     *              买家侧据此决定「导航到这里」显不显示：没有坐标时导航按钮点了只会打开一片空白
+     */
+    public record StoreFront(String announcement, String openHours, String address,
+                             Integer latE6, Integer lngE6) {
     }
 
     /** 门店主页只需要商家的展示信息，不需要完整详情（那是商家详情页的事）。 */

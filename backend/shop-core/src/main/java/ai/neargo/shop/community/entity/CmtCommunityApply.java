@@ -47,6 +47,9 @@ public class CmtCommunityApply extends BaseEntity {
     /** 商家提报时的定位。他正站在那儿 —— 运营在办公室补不出坐标 */
     private Integer latE6;
     private Integer lngE6;
+    /** 逆地理给的区县码 / 街道名（V190），自动归属街道用 */
+    private String adcode;
+    private String township;
 
     /** 商家的补充说明：为什么要开这个点 */
     private String note;

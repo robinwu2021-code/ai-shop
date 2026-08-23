@@ -20,6 +20,161 @@ import java.util.stream.Collectors;
 @Service
 public class RegionServiceImpl implements RegionService {
 
+    /** 单条实体 → VO。与列表那处同一口径，别在两个地方各写一份 */
+    private RegionVO toVO(SysRegion r) {
+        boolean hasChild = mapper.exists(Wrappers.<SysRegion>lambdaQuery()
+                .eq(SysRegion::getParentCode, r.getRegionCode()));
+        return new RegionVO(r.getRegionCode(), r.getParentCode(), r.getLevel(), r.getName(),
+                Boolean.TRUE.equals(r.getEnabled()), hasChild,
+                r.getSource() == null ? "OFFICIAL" : r.getSource(),
+                !SysRegion.APPROVED.equals(r.getAuditStatus()),
+                r.getAuditStatus(), r.getRejectReason(), r.getLatE6(), r.getLngE6());
+    }
+
+    /** 地址里的四段名字。非贪婪 + 限长：「广东省深圳市龙华区福城街道福庆路1号」要切成四段，不是一整串 */
+    private static final java.util.regex.Pattern P_PROVINCE =
+            java.util.regex.Pattern.compile("([\\u4e00-\\u9fa5]{2,8}?(?:省|自治区|特别行政区))|(北京|天津|上海|重庆)市");
+    private static final java.util.regex.Pattern P_CITY =
+            java.util.regex.Pattern.compile("([\\u4e00-\\u9fa5]{2,10}?(?:市|自治州|地区|盟))");
+    private static final java.util.regex.Pattern P_DISTRICT =
+            java.util.regex.Pattern.compile("([\\u4e00-\\u9fa5]{2,10}?(?:区|县|旗|市))");
+    private static final java.util.regex.Pattern P_STREET =
+            java.util.regex.Pattern.compile("([\\u4e00-\\u9fa5]{2,10}?(?:街道|镇|乡))");
+
+    /** 坐标最近邻的搜索窗口（度）。0.05° ≈ 5.5 公里 —— 再大就会把隔壁街道的村也算进来 */
+    private static final double NEAR_WINDOW_DEG = 0.05;
+
+    @Override
+    public List<Suggestion> resolve(String address, Integer latE6, Integer lngE6) {
+        var out = new java.util.LinkedHashMap<String, Suggestion>();
+        byAddress(address).ifPresent(s -> out.put(s.region().regionCode(), s));
+        byCoords(latE6, lngE6).ifPresent(s -> out.putIfAbsent(s.region().regionCode(), s));
+        return List.copyOf(out.values());
+    }
+
+    /**
+     * 地址文本 → 街道。逐级按名字前缀匹配往下走，走到哪一级算哪一级 ——
+     * 走不到街道也把区县给出去，运营从那儿接着点比从全国点起省事得多。
+     */
+    private java.util.Optional<Suggestion> byAddress(String address) {
+        String addr = address == null ? "" : address.trim();
+        if (addr.length() < 4) {
+            return java.util.Optional.empty();
+        }
+        /*
+         * 逐段往后切，**不要各自在整串上找**：非贪婪 2–10 字的街道模式在整串上会从中间截出
+         * 「江省杭州市西湖区北山街道」这种跨级的垃圾（实测），于是街道那一级永远匹配不上，
+         * 推断只能停在区县。切成「省之后找市、市之后找区、区之后找街道」才对得上。
+         */
+        String rest = addr;
+        String province = firstMatch(P_PROVINCE, rest);
+        rest = after(rest, province);
+        String city = firstMatch(P_CITY, rest);
+        rest = after(rest, city);
+        String district = firstMatch(P_DISTRICT, rest);
+        rest = after(rest, district);
+        String street = firstMatch(P_STREET, rest);
+
+        SysRegion cur = null;
+        StringBuilder hit = new StringBuilder();
+        for (String token : new String[]{province, city, district, street}) {
+            if (token == null) {
+                continue;
+            }
+            SysRegion next = childByName(cur == null ? null : cur.getRegionCode(), token);
+            if (next == null) {
+                break;
+            }
+            cur = next;
+            hit.append(token);
+        }
+        // 只匹配到省没有意义（一个省几千个街道），至少要到区县
+        if (cur == null || "PROVINCE".equals(cur.getLevel())) {
+            return java.util.Optional.empty();
+        }
+        return java.util.Optional.of(new Suggestion(toVO(cur), pathName(cur.getRegionCode()),
+                "ADDRESS", hit.toString()));
+    }
+
+    /**
+     * 坐标 → 街道：在**已补录坐标**的村级区划里找最近的一条，取它的父街道。
+     *
+     * <p>不做逆地理编码 —— 那要高德 Web 服务 key，而这条用的是库里已有的数据。
+     * 代价是只在补过坐标的城市有效（当前运城、深圳），别的地方直接不出这个候选，
+     * 而不是给一个瞎猜的答案。
+     */
+    private java.util.Optional<Suggestion> byCoords(Integer latE6, Integer lngE6) {
+        if (latE6 == null || lngE6 == null) {
+            return java.util.Optional.empty();
+        }
+        int win = (int) (NEAR_WINDOW_DEG * 1e6);
+        var rows = mapper.selectList(Wrappers.<SysRegion>lambdaQuery()
+                .eq(SysRegion::getLevel, "VILLAGE")
+                .isNotNull(SysRegion::getLatE6)
+                .between(SysRegion::getLatE6, latE6 - win, latE6 + win)
+                .between(SysRegion::getLngE6, lngE6 - win, lngE6 + win)
+                .last("limit 500"));
+        SysRegion best = null;
+        double bestM = Double.MAX_VALUE;
+        for (SysRegion r : rows) {
+            double m = meters(latE6, lngE6, r.getLatE6(), r.getLngE6());
+            if (m < bestM) {
+                bestM = m;
+                best = r;
+            }
+        }
+        if (best == null || best.getParentCode() == null) {
+            return java.util.Optional.empty();
+        }
+        SysRegion street = mapper.selectOne(Wrappers.<SysRegion>lambdaQuery()
+                .eq(SysRegion::getRegionCode, best.getParentCode()).last("limit 1"));
+        if (street == null) {
+            return java.util.Optional.empty();
+        }
+        return java.util.Optional.of(new Suggestion(toVO(street), pathName(street.getRegionCode()),
+                "COORDS", best.getName() + " · " + Math.round(bestM) + " 米"));
+    }
+
+    /** 切掉已经匹配的那一段，继续往后找下一级 */
+    private static String after(String s, String token) {
+        if (token == null) {
+            return s;
+        }
+        int i = s.indexOf(token);
+        return i < 0 ? s : s.substring(i + token.length());
+    }
+
+    private static String firstMatch(java.util.regex.Pattern p, String s) {
+        var m = p.matcher(s);
+        return m.find() ? m.group() : null;
+    }
+
+    /** 某一级下按名字找一条。名字可能带后缀差异（「福城街道」vs「福城街道办事处」），用前缀匹配兜一手 */
+    private SysRegion childByName(String parentCode, String name) {
+        var w = Wrappers.<SysRegion>lambdaQuery();
+        if (parentCode == null) {
+            w.isNull(SysRegion::getParentCode);
+        } else {
+            w.eq(SysRegion::getParentCode, parentCode);
+        }
+        w.and(q -> q.eq(SysRegion::getName, name).or().likeRight(SysRegion::getName, name));
+        return mapper.selectList(w.last("limit 5")).stream()
+                .min(java.util.Comparator.comparingInt(r -> r.getName().length()))
+                .orElse(null);
+    }
+
+    private String pathName(String code) {
+        return path(code).stream().map(RegionVO::name).collect(Collectors.joining(" / "));
+    }
+
+    private static double meters(int latE6, int lngE6, int otherLatE6, int otherLngE6) {
+        double perDeg = 111_320d;
+        double dLat = (latE6 - otherLatE6) / 1e6 * perDeg;
+        double midLat = Math.toRadians((latE6 + otherLatE6) / 2e6);
+        double dLng = (lngE6 - otherLngE6) / 1e6 * perDeg * Math.cos(midLat);
+        return Math.sqrt(dLat * dLat + dLng * dLng);
+    }
+
     /** 回溯深度上限。四级树最多走 4 步，给 8 是为了让**坏数据不会变成死循环** */
     private static final int MAX_DEPTH = 8;
 
@@ -233,6 +388,7 @@ public class RegionServiceImpl implements RegionService {
                 withChild.contains(r.getRegionCode()),
                 r.getSource() == null ? "OFFICIAL" : r.getSource(),
                 !SysRegion.APPROVED.equals(r.getAuditStatus()),
-                r.getAuditStatus(), r.getRejectReason())).toList();
+                r.getAuditStatus(), r.getRejectReason(),
+                r.getLatE6(), r.getLngE6())).toList();
     }
 }

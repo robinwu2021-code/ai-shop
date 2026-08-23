@@ -359,6 +359,7 @@ public class OrderServiceImpl implements OrderService {
 
         requireFulfillmentSupported(cmd.fulfillment(), split, storeOfMerchant, userNo);
         requireReceiverWhenShipped(cmd, userNo);
+        requireWithinDeliveryRadius(cmd, split, userNo);
         requirePickupPointWhenPickup(cmd);
         requirePickupServed(cmd, split);
         requireAppointmentWhenNeeded(cmd);
@@ -1219,6 +1220,58 @@ public class OrderServiceImpl implements OrderService {
                 || userPort.receiverOf(userNo, cmd.addressId()).isEmpty()) {
             throw BizException.of(ErrorCode.RECEIVER_REQUIRED);
         }
+    }
+
+    /**
+     * 自送单的收货地址要落在这家店的自送半径内。
+     *
+     * <p><b>这条闸此前不存在</b>：商家在「送货方式 › 商家自送」里填的半径
+     * （`mch_store.delivery_radius_m`，默认 3000 米）全仓没有任何消费方 ——
+     * 他以为自己限定了范围，实际上多远的单都会进来，等他准备送货时才发现送不到，
+     * 那时钱已经收了，只能退款并向买家解释。
+     *
+     * <p><b>只在两边都有坐标时才判</b>：门店没在地图上标过点、或买家地址是手填的，
+     * 一律放行 —— 拿缺失的数据去拦，会把本来正常的单挡在门外。
+     * 半径 ≤ 0 也放行：那是「不限距离」的表达。
+     *
+     * <p>拦在**创建**这一步而不是支付后：付过钱再告诉他「超出范围」，他要先退款才能重下。
+     */
+    private void requireWithinDeliveryRadius(CreateOrderCommand cmd, Split split, String userNo) {
+        if (!Fulfillments.MERCHANT_DELIVERY.equals(cmd.fulfillment())
+                || cmd.addressId() == null || cmd.addressId().isBlank()) {
+            return;
+        }
+        var receiver = userPort.receiverOf(userNo, cmd.addressId()).orElse(null);
+        if (receiver == null || receiver.latE6() == null || receiver.lngE6() == null) {
+            return;
+        }
+        /*
+         * 逐商家判：购物车跨商家时会拆成多张子单，各家的圆心与半径都不同。
+         * 只要有一家送不到，这一单就下不成 —— 让他先拆开或换送货方式，
+         * 比下成之后由那一家单独退款要好解释。
+         */
+        for (var g : split.groups) {
+            var origin = merchantPort.deliveryOrigin(g.merchantNo()).orElse(null);
+            if (origin == null || origin.radiusM() <= 0) {
+                continue;
+            }
+            if (metersBetween(origin.latE6(), origin.lngE6(), receiver.latE6(), receiver.lngE6())
+                    > origin.radiusM()) {
+                throw BizException.of(ErrorCode.OUT_OF_DELIVERY_RANGE);
+            }
+        }
+    }
+
+    /**
+     * 两点间距离（米）。与社区围栏判定同一套算法：经度间距随纬度收缩，
+     * 不乘 cos 会让高纬度地区多算出几百米 —— 那正好是「送得到」与「送不到」的分界。
+     */
+    private static int metersBetween(int latE6, int lngE6, int otherLatE6, int otherLngE6) {
+        double metersPerDegree = 111_320d;
+        double dLat = (latE6 - otherLatE6) / 1e6 * metersPerDegree;
+        double midLat = Math.toRadians((latE6 + otherLatE6) / 2e6);
+        double dLng = (lngE6 - otherLngE6) / 1e6 * metersPerDegree * Math.cos(midLat);
+        return (int) Math.round(Math.sqrt(dLat * dLat + dLng * dLng));
     }
 
     /**

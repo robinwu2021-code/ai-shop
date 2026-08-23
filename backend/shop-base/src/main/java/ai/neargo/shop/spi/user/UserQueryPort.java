@@ -41,7 +41,13 @@ public interface UserQueryPort {
      * @param phone   <b>完整手机号</b>，仅用于写进订单快照
      * @param address 省市区 + 详细，拼好的一行
      */
-    record Receiver(String name, String phone, String address) {
+    /** @param latE6 收货点坐标（gcj02，E6）。手填的地址没有坐标，为 null —— 自送范围判定据此放行 */
+    record Receiver(String name, String phone, String address, Integer latE6, Integer lngE6) {
+
+        /** 不带坐标的老形状 */
+        public Receiver(String name, String phone, String address) {
+            this(name, phone, address, null, null);
+        }
     }
 
     /**

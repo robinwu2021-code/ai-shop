@@ -98,4 +98,30 @@ public interface MasterDataPort {
      *         调用方据此判断「这个码是脏数据」，回落会让脏数据看起来像正常区划
      */
     java.util.Map<String, String> regionNames(java.util.Collection<String> regionCodes);
+
+    /**
+     * 区划中心点（gcj02，E6，V192 起由高德批量补录）。
+     *
+     * <p>裁决提报时用它兜底：商家没带定位的提报，只要关联了官方村码，就能从这里取到坐标 ——
+     * 否则建出来的聚落坐标为空，而 {@code withinRadius} 对空坐标恒 false，买家永远搜不到它，
+     * 且这件事没有任何报错，运营与商家都看不出来。
+     *
+     * @return 没补录到坐标的区划返回空
+     */
+    java.util.Optional<RegionCoords> regionCoords(String regionCode);
+
+    record RegionCoords(int latE6, int lngE6) {
+    }
+
+    /**
+     * 这个码是不是**官方名录里的村**（第五级、source=OFFICIAL），是的话给出它所属街道码。
+     *
+     * <p>用途：官方村的提报免运营裁决直接开通 —— 数据源是统计局名录、`origin_code` 天然唯一、
+     * 后端已有一村一聚落的查重，运营审它基本是走过场，而那道等待要按天算，
+     * 期间商家的货对这个村一个人也看不见。
+     *
+     * <p><b>只认官方那批</b>：商家自己补录的村（source=MERCHANT）仍要审 ——
+     * 名字是他自己起的，免审等于谁都能凭空造聚落。
+     */
+    java.util.Optional<String> officialVillageStreet(String regionCode);
 }

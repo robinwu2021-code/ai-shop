@@ -34,6 +34,10 @@ public record CommunityVO(String communityNo,
      * 后端填的是**承接商家**的信息，语义已经是「谁在这儿帮你收货」，只是名字还没改。
      * E10 完成后同步改成 {@code ownerNo/ownerName/ownerAvatar}。
      */
+    /**
+     * @param latE6 取货点坐标（gcj02，E6）。<b>可能为 null</b>：存量点是手填地址建的，没有坐标。
+     *              买家侧「导航到这里」按它决定显不显示 —— 没坐标就只展示地址文本
+     */
     public record PickupVO(String pickupNo,
                            String name,
                            String address,
@@ -42,6 +46,8 @@ public record CommunityVO(String communityNo,
                            String leaderName,
                            String leaderAvatar,
                            String openHours,
-                           String arrivalDesc) {
+                           String arrivalDesc,
+                           Integer latE6,
+                           Integer lngE6) {
     }
 }

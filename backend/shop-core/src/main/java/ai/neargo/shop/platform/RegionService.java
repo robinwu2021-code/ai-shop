@@ -77,6 +77,32 @@ public interface RegionService {
     List<RegionVO> search(String keyword, int limit);
 
     /**
+     * 从「地址文本 + 坐标」推断这条提报该挂哪个街道。
+     *
+     * <p>裁决那一屏原本要运营从 31 个省一路点到街道 —— 而提报单上明明写着
+     * 「广东省深圳市龙华区福城街道福庆路1号」，坐标也在。让人把机器已经知道的事再点四次，
+     * 是把系统的活推给人做，还容易点错：330106003 与 330106004 只差一位，
+     * 而挂错的后果是这个社区在任何「按区覆盖」里都出不来。
+     *
+     * <p>两条线索各出一个候选，都给出来让运营挑：
+     * <ul>
+     *   <li><b>地址文本</b>：抠出省/市/区/街道四段名字，沿树走下去；</li>
+     *   <li><b>坐标最近邻</b>：在<b>已补录坐标</b>的村级区划里找最近的一条，取它的父街道 ——
+     *       这条只在补过坐标的城市有效（当前是运城、深圳），没有就不出。</li>
+     * </ul>
+     *
+     * @return 候选街道，最多几条，按可信度排；推不出来给空列表（端上退回手选，不拦）
+     */
+    List<Suggestion> resolve(String address, Integer latE6, Integer lngE6);
+
+    /**
+     * @param source ADDRESS 地址文本推断 / COORDS 坐标最近邻
+     * @param detail 给运营看的依据（匹配到的地址片段，或「距提报坐标 320 米」）
+     */
+    record Suggestion(RegionVO region, String path, String source, String detail) {
+    }
+
+    /**
      * @param level    PROVINCE / CITY / DISTRICT / STREET / VILLAGE（村委会·居委会，第五级）
      * @param hasChild 下面还有没有下级。端上据此决定「还要不要再往下选一层」，
      *                 而不是点进去才发现是空的
@@ -86,8 +112,13 @@ public interface RegionService {
      *                不标的话商家分不清哪些是自己填的，也就不知道哪些还没被运营确认
      * @param pending 商家补录且尚未被运营确认（只有自己看得见）
      */
+    /**
+     * @param latE6 中心点（gcj02，E6）。<b>可能为 null</b>：批量补录没命中的区划就是空的，
+     *              端上据此决定是直接用还是临时去地图上搜
+     */
     record RegionVO(String regionCode, String parentCode, String level, String name,
                     boolean enabled, boolean hasChild, String source, boolean pending,
-                    String auditStatus, String rejectReason) {
+                    String auditStatus, String rejectReason,
+                    Integer latE6, Integer lngE6) {
     }
 }

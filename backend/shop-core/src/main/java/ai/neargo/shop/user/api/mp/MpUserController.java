@@ -1,5 +1,8 @@
 package ai.neargo.shop.user.api.mp;
 
+import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.spi.user.WxPhonePort;
 import ai.neargo.shop.user.dto.AddressVO;
 import ai.neargo.shop.user.dto.UserVO;
 import ai.neargo.shop.user.service.AddressService;
@@ -30,12 +33,15 @@ public class MpUserController {
     private final AuthService authService;
     private final UserService userService;
     private final AddressService addressService;
+    /** 手机号快速验证通道。桩实现恒 false，端上据此回落到验证码 */
+    private final WxPhonePort wxPhonePort;
 
     public MpUserController(AuthService authService, UserService userService,
-                            AddressService addressService) {
+                            AddressService addressService, WxPhonePort wxPhonePort) {
         this.authService = authService;
         this.userService = userService;
         this.addressService = addressService;
+        this.wxPhonePort = wxPhonePort;
     }
 
     /** 登录建户。游客端点。 */
@@ -68,6 +74,17 @@ public class MpUserController {
         return authService.refresh(bearer(authorization));
     }
 
+    /**
+     * 注销账号。**微信对有账号体系的小程序要求提供这个入口**（上架审核会查）。
+     *
+     * <p>做的是匿名化 + 解绑凭证，不是删行 —— 订单、结算、发票有留存义务。
+     * 解绑之后同一个微信再进来是一个全新账号，那才是「注销」。
+     */
+    @PostMapping("/deregister")
+    public void deregister() {
+        userService.deregister();
+    }
+
     @PostMapping("/logout")
     public void logout(@RequestHeader("Authorization") String authorization) {
         authService.logout(bearer(authorization));
@@ -76,6 +93,45 @@ public class MpUserController {
     @PostMapping("/phone/bind")
     public UserVO bindPhone(@RequestBody BindPhoneReq req) {
         return userService.bindPhone(req.phone(), req.code());
+    }
+
+    /**
+     * 一键授权当前可不可用。
+     *
+     * <p>端上据此决定弹层里显示「微信一键获取」还是「手机号 + 验证码」。
+     * <b>让后端说了算，不要在端上判</b>：这条通道的可用性取决于小程序认证状态与配置开关，
+     * 端上判不出来，写死则认证下来之后还要发一次版。
+     */
+    @GetMapping("/phone/capable")
+    public PhoneCapableResp phoneCapable() {
+        return new PhoneCapableResp(wxPhonePort.enabled());
+    }
+
+    /**
+     * 微信一键授权拿手机号并绑定。
+     *
+     * <p>与 {@code /phone/bind} 同一个出口：都落到 {@code usr_identity} 的 PHONE 凭证，
+     * 冲突处理也一致（属于别人时报 CONFLICT，不自动合并）。
+     */
+    @PostMapping("/phone/wx")
+    public UserVO bindPhoneByWx(@RequestBody WxPhoneReq req) {
+        String phone = wxPhonePort.phoneOf(req.code());
+        if (phone == null || phone.isBlank()) {
+            /*
+             * **通道没给出号码时明确报错，不要静默回落到验证码。**
+             * 静默回落的话，用户点了「一键获取」却看到验证码表单，
+             * 会以为自己点错了 —— 而真正发生的是通道没通。
+             */
+            throw BizException.of(ErrorCode.WX_PHONE_UNAVAILABLE);
+        }
+        return userService.bindPhoneTrusted(phone);
+    }
+
+    /** @param capable true = 显示一键按钮；false = 显示验证码表单 */
+    public record PhoneCapableResp(boolean capable) {
+    }
+
+    public record WxPhoneReq(String code) {
     }
 
     @PostMapping("/profile")
@@ -93,8 +149,9 @@ public class MpUserController {
     @PostMapping("/address")
     public List<AddressVO> saveAddress(@RequestBody SaveAddressReq req) {
         return addressService.save(new AddressService.SaveCommand(
-                req.addressId(), req.name(), req.phone(), req.province(), req.city(),
-                req.district(), req.detail(), req.isDefault(), req.tag()));
+                req.addressId(), req.name(), req.phone(), req.region(), req.province(), req.city(),
+                req.district(), req.detail(), req.isDefault(), req.tag(),
+                req.latE6(), req.lngE6()));
     }
 
     @PostMapping("/address/{addressId}/archive")
@@ -118,9 +175,12 @@ public class MpUserController {
     public record UpdateProfileReq(String nickname, String avatar) {
     }
 
+    /** @param latE6 地图选点给的坐标（gcj02，E6）；不传 = 不改 */
     public record SaveAddressReq(String addressId, @NotBlank String name, @NotBlank String phone,
+                                 String region,
                                  String province, String city, String district,
-                                 @NotBlank String detail, Boolean isDefault, String tag) {
+                                 @NotBlank String detail, Boolean isDefault, String tag,
+                                 Integer latE6, Integer lngE6) {
     }
 
     public record LoginReq(@NotBlank String grantType, @NotBlank String principal, String credential,

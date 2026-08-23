@@ -69,12 +69,26 @@ public interface MerchantQueryPort {
     java.util.Optional<StoreFront> storeFront(String merchantNo);
 
     /**
+     * 自送的「圆心 + 半径」。<b>两者缺一这条规则就不成立</b> ——
+     * 没有圆心的半径算不出任何东西，而那正是这个设置此前的状态。
+     *
+     * @return 门店不存在、或没标过点时返回空（调用方据此放行，不拿缺失数据拦单）
+     */
+    java.util.Optional<DeliveryOrigin> deliveryOrigin(String merchantNo);
+
+    /** @param radiusM 0 或负数表示商家没限制距离 */
+    record DeliveryOrigin(int latE6, int lngE6, int radiusM) {
+    }
+
+    /**
      * 门面文案。字段与契约 `StoreFront` 一一对应。
      *
      * @param status 门店状态 ACTIVE / READONLY / SUSPENDED（V96）——
      *               门店主页要据此显示「已停业」，而不是让停用的店照常收单
      */
-    record StoreFront(String announcement, String openHours, String address, String status) {
+    /** @param latE6 门店坐标（gcj02，E6，V191）。没标过点为 null —— 买家侧据此决定显不显示「导航」 */
+    record StoreFront(String announcement, String openHours, String address, String status,
+                      Integer latE6, Integer lngE6) {
     }
 
     /**

@@ -23,8 +23,22 @@ public interface AddressService {
 
     List<AddressVO> setDefault(String addressId);
 
-    record SaveCommand(String addressId, String name, String phone,
+    /**
+     * @param latE6 收货地址坐标（gcj02，E6）。<b>null = 这次不改</b> ——
+     *              老版本端上不传这两个字段，把缺省当清空会把已标好的点抹掉。
+     *              这两列 V1 就建了（注释写着「配送范围校验用」），但在此之前<b>全链路无人写入</b>，
+     *              于是「商家自送半径」这个设置一直算不出任何东西
+     */
+    record SaveCommand(String addressId, String name, String phone, String region,
                        String province, String city, String district, String detail,
-                       Boolean isDefault, String tag) {
+                       Boolean isDefault, String tag,
+                       Integer latE6, Integer lngE6) {
+
+        /** 不带坐标的老形状 */
+        public SaveCommand(String addressId, String name, String phone, String region,
+                           String province, String city, String district, String detail,
+                           Boolean isDefault, String tag) {
+            this(addressId, name, phone, region, province, city, district, detail, isDefault, tag, null, null);
+        }
     }
 }

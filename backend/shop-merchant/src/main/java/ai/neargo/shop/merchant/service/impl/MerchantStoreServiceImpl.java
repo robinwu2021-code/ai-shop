@@ -78,7 +78,9 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
                 merchant == null ? null : merchant.getServiceCityCode(),
                 merchant == null || merchant.getFulfillmentReach() == null
                         ? PICKUP : merchant.getFulfillmentReach(),
-                areasOf(merchantNo));
+                areasOf(merchantNo),
+                store == null ? null : store.getLatE6(),
+                store == null ? null : store.getLngE6());
     }
 
     @Override
@@ -139,6 +141,11 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
         store.setOpenHours(cmd.openHours());
         store.setAddress(cmd.address());
         store.setFeatured(writeJson(cmd.featured()));
+        // 坐标两个都给才写：只来一半是端上的 bug，写进去会得到一个在赤道或本初子午线上的门店
+        if (cmd.latE6() != null && cmd.lngE6() != null) {
+            store.setLatE6(cmd.latE6());
+            store.setLngE6(cmd.lngE6());
+        }
         MchStore toSave = store;
         DataScopeContext.executeWithoutScope(() ->
                 toSave.getId() == null ? storeMapper.insert(toSave) : storeMapper.updateById(toSave));

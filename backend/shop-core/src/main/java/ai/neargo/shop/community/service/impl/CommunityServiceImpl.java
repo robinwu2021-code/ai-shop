@@ -202,7 +202,8 @@ public class CommunityServiceImpl implements CommunityService {
         MerchantBrief owner = loadOwners(List.of(p)).get(p.getOwnerRef());
         return new CommunityVO.PickupVO(p.getPickupNo(), p.getName(), p.getAddress(), 0,
                 p.getOwnerRef(), owner == null ? p.getName() : owner.merchantName(),
-                owner == null ? "" : owner.logo(), p.getOpenHours(), p.getArrivalDesc());
+                owner == null ? "" : owner.logo(), p.getOpenHours(), p.getArrivalDesc(),
+                p.getLatE6(), p.getLngE6());
     }
 
     /**
@@ -352,7 +353,8 @@ public class CommunityServiceImpl implements CommunityService {
                             p.getOwnerRef(),
                             owner == null ? p.getName() : owner.merchantName(),
                             owner == null ? "" : owner.logo(),
-                            p.getOpenHours(), p.getArrivalDesc());
+                            p.getOpenHours(), p.getArrivalDesc(),
+                            p.getLatE6(), p.getLngE6());
                 }).toList());
     }
 

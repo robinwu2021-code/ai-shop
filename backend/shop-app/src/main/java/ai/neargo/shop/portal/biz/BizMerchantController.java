@@ -228,7 +228,7 @@ public class BizMerchantController {
                 new MerchantStoreService.SaveCommand(
                         req.announcement(), req.openHours(), req.address(), req.featured(),
                         req.serviceScope(), req.serviceCommunityNos(), req.serviceCityCode(),
-                        req.fulfillmentReach(), req.serviceAreas()));
+                        req.fulfillmentReach(), req.serviceAreas(), req.latE6(), req.lngE6()));
     }
 
     // ---------------------------------------------------------------- 门店送货方式（方案 v4）
@@ -629,11 +629,13 @@ public class BizMerchantController {
     }
 
     /** 对齐 shared {@code StoreProfile}。 */
+    /** @param latE6 门店坐标（gcj02，E6）；不传 = 不改 */
     public record StoreReq(String announcement, String openHours, String address,
                            List<String> featured, String serviceScope,
                            List<String> serviceCommunityNos, String serviceCityCode,
                            String fulfillmentReach,
-                           List<MerchantStoreService.AreaCommand> serviceAreas) {
+                           List<MerchantStoreService.AreaCommand> serviceAreas,
+                           Integer latE6, Integer lngE6) {
     }
 
     /** 申请单状态 → B 端口径。PENDING 在端上叫 APPLYING（「已提交，等着」）。 */

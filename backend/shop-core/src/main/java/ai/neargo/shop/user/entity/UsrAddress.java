@@ -24,6 +24,12 @@ public class UsrAddress extends BaseEntity {
     /** 收件人手机号。一期明文存储，**出参按视角脱敏**（db-design §6）。 */
     private String phone;
 
+    /**
+     * 省市区整串（V193）。端上就是一个输入框/一次地图选点，拆不出三段来。
+     * 下面三列保留给将来的结构化地址，现阶段不写。
+     */
+    private String region;
+
     private String province;
     private String city;
     private String district;

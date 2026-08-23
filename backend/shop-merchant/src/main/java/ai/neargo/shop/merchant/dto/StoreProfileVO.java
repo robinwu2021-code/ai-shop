@@ -18,11 +18,13 @@ import java.util.List;
  * @param serviceAreas        地理覆盖项，可跨粒度组合（三个小区 + 一个区）。
  *                            <b>空的含义由 fulfillmentReach 决定</b>：PICKUP 空 = 谁也看不到，
  *                            ONSITE/SHIPPING 空 = 不限（ADR-013 §6.2）
+ * @param latE6               门店坐标（gcj02，E6），端上地图选点回填；没标过为 null
  */
 public record StoreProfileVO(String announcement, String openHours, String address,
                              List<String> featured, String serviceScope,
                              List<String> serviceCommunityNos, String serviceCityCode,
-                             String fulfillmentReach, List<ServiceAreaVO> serviceAreas) {
+                             String fulfillmentReach, List<ServiceAreaVO> serviceAreas,
+                             Integer latE6, Integer lngE6) {
 
     /**
      * 一条覆盖项。

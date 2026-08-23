@@ -1,5 +1,6 @@
 package ai.neargo.shop.community.service.impl;
 
+import ai.neargo.shop.spi.platform.MasterDataPort;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
@@ -122,6 +123,26 @@ public class CommunityAdminServiceImpl implements CommunityAdminService {
         a.setStatus(ai.neargo.shop.community.entity.CmtCommunityApply.PENDING);
         a.setSubmittedAt(System.currentTimeMillis());
         DataScopeContext.executeWithoutScope(() -> applyMapper.insert(a));
+
+        /*
+         * 官方名录里的村：**免裁决直接开通**。
+         *
+         * 数据源是统计局名录、origin_code 天然唯一、下面 decideApply 里已有一村一聚落的查重 ——
+         * 运营审这一类基本是走过场，而那道等待按天算，期间商家的货对这个村一个人也看不见。
+         *
+         * 走 decideApply 而不是自己插一条社区：区划 9 位校验、查重、坐标兜底、
+         * 开城状态与围栏半径的默认值全在那里，另写一份迟早两边不一致。
+         * 商家自己补录的村（source=MERCHANT）与小区仍然要审 —— 名字是他自己起的。
+         *
+         * 撞上「这个村已经开通过」时**让异常抛出去**：这条提报会随事务一起回滚，
+         * 商家当场看到「已经有了，直接勾选」，比留一条几天后被驳回的待审有用得多。
+         */
+        if (a.getOriginCode() != null) {
+            var street = masterDataPort.officialVillageStreet(a.getOriginCode());
+            if (street.isPresent()) {
+                return decideApply(a.getApplyNo(), true, street.get(), null, "SYSTEM");
+            }
+        }
         return toApplyVO(a);
     }
 
@@ -221,6 +242,19 @@ public class CommunityAdminServiceImpl implements CommunityAdminService {
                 c.setLatE6(a.getLatE6());
                 c.setLngE6(a.getLngE6());
                 c.setCoordsSource("MERCHANT");
+            } else {
+                /*
+                 * 商家没带定位时，用官方村码从区划表兜底（V192 起村级有坐标）。
+                 *
+                 * 不兜的话建出来的聚落坐标为空，withinRadius 恒 false ——
+                 * 买家用定位永远搜不到它，而运营界面上这条提报是「已通过」，没有任何异常。
+                 * 运营端此前提示「通过前先补坐标」，但既没有入口也没有接口，等于一句空话。
+                 */
+                masterDataPort.regionCoords(a.getOriginCode()).ifPresent(rc -> {
+                    c.setLatE6(rc.latE6());
+                    c.setLngE6(rc.lngE6());
+                    c.setCoordsSource("AMAP");
+                });
             }
             // 审过即开城：运营随时能关，而默认关掉的话商家提报通过了却依然看不到它
             c.setStatus(OPEN);
@@ -241,6 +275,10 @@ public class CommunityAdminServiceImpl implements CommunityAdminService {
     }
 
     private ApplyVO toApplyVO(ai.neargo.shop.community.entity.CmtCommunityApply a) {
+        // 没带定位时，官方村码在区划表里的坐标就是兜底来源 —— 运营要看得到「补不补得上」
+        var fb = a.getLatE6() != null && a.getLngE6() != null
+                ? java.util.Optional.<MasterDataPort.RegionCoords>empty()
+                : masterDataPort.regionCoords(a.getOriginCode());
         return new ApplyVO(a.getApplyNo(), a.getEntityNo(),
                 merchantQueryPort.find(a.getEntityNo())
                         .map(ai.neargo.shop.spi.user.MerchantQueryPort.MerchantBrief::merchantName)
@@ -251,7 +289,10 @@ public class CommunityAdminServiceImpl implements CommunityAdminService {
                 a.getSubmittedAt() == null ? 0L : a.getSubmittedAt(),
                 a.getKind() == null ? CmtCommunity.KIND_ESTATE : a.getKind(),
                 a.getOriginCode(),
-                a.getLatE6() != null && a.getLngE6() != null);
+                a.getLatE6() != null && a.getLngE6() != null,
+                a.getLatE6(), a.getLngE6(),
+                fb.map(MasterDataPort.RegionCoords::latE6).orElse(null),
+                fb.map(MasterDataPort.RegionCoords::lngE6).orElse(null));
     }
 
     @Override
@@ -490,7 +531,39 @@ public class CommunityAdminServiceImpl implements CommunityAdminService {
                 c.getFenceRadius() == null ? 0 : c.getFenceRadius(), pickupCount,
                 c.getCreatedAt() == null ? 0L
                         : c.getCreatedAt().atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli(),
-                c.getRegionCode(), regionPathOf(c.getRegionCode()));
+                c.getRegionCode(), regionPathOf(c.getRegionCode()),
+                c.getLatE6(), c.getLngE6());
+    }
+
+    @Override
+    public List<NearbyVO> communitiesNear(int latE6, int lngE6, int radiusM) {
+        // 先用外接矩形把候选压到几十条，再在内存里算真距离 —— 库里没有空间索引，
+        // 全表算距离在 62 万级的邻表上会很难看（这里只有聚落表，但口径要一致）
+        int win = (int) (radiusM / 111_320d * 1e6) + 1;
+        var rows = DataScopeContext.executeWithoutScope(() -> communityMapper.selectList(
+                Wrappers.<CmtCommunity>lambdaQuery()
+                        .eq(CmtCommunity::getStatus, OPEN)
+                        .isNotNull(CmtCommunity::getLatE6)
+                        .between(CmtCommunity::getLatE6, latE6 - win, latE6 + win)
+                        .between(CmtCommunity::getLngE6, lngE6 - win, lngE6 + win)
+                        .last("limit 200")));
+        return rows.stream()
+                .map(c -> new NearbyVO(c.getCommunityNo(), c.getName(), c.getLatE6(), c.getLngE6(),
+                        (int) Math.round(meters(latE6, lngE6, c.getLatE6(), c.getLngE6())),
+                        regionPathOf(c.getRegionCode())))
+                .filter(v -> v.distanceM() <= radiusM)
+                .sorted(java.util.Comparator.comparingInt(NearbyVO::distanceM))
+                .limit(20)
+                .toList();
+    }
+
+    /** 与围栏判定同一套算法：经度间距随纬度收缩，不乘 cos 高纬度会多算出几百米 */
+    private static double meters(int latE6, int lngE6, int otherLatE6, int otherLngE6) {
+        double perDeg = 111_320d;
+        double dLat = (latE6 - otherLatE6) / 1e6 * perDeg;
+        double midLat = Math.toRadians((latE6 + otherLatE6) / 2e6);
+        double dLng = (lngE6 - otherLngE6) / 1e6 * perDeg * Math.cos(midLat);
+        return Math.sqrt(dLat * dLat + dLng * dLng);
     }
 
     /**
