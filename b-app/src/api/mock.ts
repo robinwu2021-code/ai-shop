@@ -1003,6 +1003,17 @@ export const mockApi: MerchantApi = {
     return delay({ recommend: `阳光里小区南门（${lat.toFixed(4)}, ${lng.toFixed(4)}）`, address: "浙江省杭州市西湖区阳光里" });
   },
 
+  async mGeoTips(kw) {
+    const q = kw.trim();
+    if (!q) return delay([]);
+    // 两条带坐标、一条不带：端上要把没坐标的提示过滤掉
+    return delay([
+      { name: `${q}花园`, address: "西湖区文三路 88 号", adcode: "330106", latE6: 30279000, lngE6: 120131000, typecode: "120302" },
+      { name: `${q}公寓`, address: "西湖区文二路 12 号", adcode: "330106", latE6: 30281000, lngE6: 120128000, typecode: "120302" },
+      { name: `${q}路`, address: "西湖区", adcode: "330106", latE6: null, lngE6: null, typecode: "190301" },
+    ]);
+  },
+
   async mRegionPath(code) {
     const chain: import("@shared/types").Region[] = [];
     let cur = db.regionSeeds.find((r) => r.regionCode === code);

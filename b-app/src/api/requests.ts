@@ -143,6 +143,8 @@ export interface SaveGoodsReqBody {
   cover?: string;
   /** 详情轮播图 */
   images?: string[];
+  /** 详情区长图。**空数组也要发** —— 与 images 同一口径，不发就删不掉 */
+  detailImages?: string[];
   /** 图文详情正文（纯文本）。**空串也要发** —— 后端「不传 = 不改」，删光了不发就删不掉 */
   detail?: string;
   /** 空数组 = 单规格。非空则 skus 必须是各组选项的笛卡尔积 */

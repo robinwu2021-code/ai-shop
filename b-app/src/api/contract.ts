@@ -5,6 +5,7 @@
 // Order 结构，只是可见字段与可执行动作不同；各定义一份必然漂移。
 import type {
   GeoReverseResult,
+  GeoTip,
   PickupCandidate,
   RegionSearchResult,
   BizScope,
@@ -394,6 +395,8 @@ export interface MerchantApi {
   mRegionPath(code: string): Promise<Region[]>;
   /** 坐标转地址（P2）。未开通时抛 10503，端上据此藏按钮 */
   mGeoReverse(lat: number, lng: number): Promise<GeoReverseResult>;
+  /** 地点输入提示。未开通（后端没配 Web 服务 key）返回空数组，端上退回自由输入 */
+  mGeoTips(kw: string, city?: string): Promise<GeoTip[]>;
   /** 新建。**超额直接拒** —— 建出来却打不开的店比拒绝更难解释 */
   mCreateStore(payload: StoreEditReq): Promise<Store>;
   mRenameStore(storeNo: string, payload: StoreEditReq): Promise<Store>;

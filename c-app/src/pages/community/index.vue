@@ -6,12 +6,21 @@ import { useI18n } from "vue-i18n";
 import { onLoad } from "@dcloudio/uni-app";
 import { useCommunityStore } from "@/stores/community";
 import { useCartStore } from "@/stores/cart";
-import { getLocation } from "@shared/ports/location";
+import { fromE6, getLocation, openLocation } from "@shared/ports/location";
 import { distance } from "@shared/utils/format";
 import { ROUTES } from "@shared/utils/constants";
 import type { Community, Pickup, RegionOption } from "@shared/types";
 
 const { t } = useI18n();
+
+/**
+ * 导航到这个取货点。**只有带坐标的点才显示这个入口** —— 存量点是手填地址建的，
+ * 没有坐标；给它一个按钮，点了会打开一片空白，比没有更糟。
+ */
+function navTo(p: Pickup) {
+  const c = fromE6(p.latE6, p.lngE6);
+  if (c) openLocation({ ...c, name: p.name, address: p.address });
+}
 const community = useCommunityStore();
 const cart = useCartStore();
 const expanded = ref("");
@@ -294,8 +303,12 @@ onLoad(load);
             <text class="pk__sub">
               {{ p.hostName }} · {{ p.openHours }} · {{ p.arrivalDesc }}
             </text>
+            <text v-if="p.address" class="pk__addr">{{ p.address }}</text>
           </view>
-          <text class="pk__dist sh-num">{{ distance(p.distance) }}</text>
+          <view class="pk__right">
+            <text class="pk__dist sh-num">{{ distance(p.distance) }}</text>
+            <text v-if="p.latE6 != null" class="pk__nav" @tap.stop="navTo(p)">{{ $t("community.navigate") }}</text>
+          </view>
         </view>
       </view>
     </view>
@@ -449,6 +462,23 @@ onLoad(load);
   font-size: 24rpx;
   color: var(--sh-sub);
   margin-top: 6rpx;
+}
+.pk__addr {
+  font-size: 22rpx;
+  color: var(--sh-sub);
+}
+.pk__right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8rpx;
+}
+.pk__nav {
+  padding: 6rpx 16rpx;
+  border-radius: 999px;
+  background: var(--sh-primary-tint);
+  color: var(--sh-primary-text);
+  font-size: 22rpx;
 }
 .pk__dist {
   font-size: 24rpx;

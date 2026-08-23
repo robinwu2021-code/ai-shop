@@ -6,6 +6,7 @@ import { useI18n } from "vue-i18n";
 import { onLoad } from "@dcloudio/uni-app";
 import { api } from "@/api";
 import type { Address } from "@shared/types";
+import { chooseLocation } from "@shared/ports/location";
 
 const { t } = useI18n();
 
@@ -20,7 +21,32 @@ const draft = ref<Omit<Address, "addressId"> & { addressId?: string }>({
   detail: "",
   isDefault: false,
   tag: "",
+  latE6: null,
+  lngE6: null,
 });
+
+/**
+ * 地图选点。一次拿到省市区、门牌与**坐标** —— 手填出来的地址只是一串字，
+ * 商家的自送半径、骑手导航、按位置找店全都用不上它。
+ * 不支持选点的端（H5 没配 JS key）静默不显示这个入口，手填照旧。
+ */
+const picked = computed(() => draft.value.latE6 != null && draft.value.lngE6 != null);
+async function pickOnMap() {
+  const init = picked.value
+    ? { lat: draft.value.latE6! / 1e6, lng: draft.value.lngE6! / 1e6 }
+    : undefined;
+  const r = await chooseLocation(init);
+  if (!r.ok) {
+    if (r.reason === "unsupported") uni.showToast({ title: String(t("address.mapUnsupported")), icon: "none" });
+    return;
+  }
+  const p = r.picked;
+  draft.value.latE6 = Math.round(p.lat * 1e6);
+  draft.value.lngE6 = Math.round(p.lng * 1e6);
+  // 地图给的 address 是「省市区 + 路名门牌」一整串，region 留给它，门牌与楼栋让用户自己补
+  if (p.address) draft.value.region = p.address.slice(0, 96);
+  if (!draft.value.detail.trim() && p.name) draft.value.detail = p.name.slice(0, 60);
+}
 
 const valid = computed(
   () =>
@@ -35,7 +61,7 @@ async function load() {
 }
 
 function openNew() {
-  draft.value = { name: "", phone: "", region: "", detail: "", isDefault: !list.value.length, tag: "" };
+  draft.value = { name: "", phone: "", region: "", detail: "", isDefault: !list.value.length, tag: "", latE6: null, lngE6: null };
   editing.value = true;
 }
 
@@ -127,7 +153,12 @@ onLoad((q) => {
           maxlength="11"
           :placeholder="$t('address.phone')"
         />
-        <input v-model="draft.region" class="field" :placeholder="$t('address.region')" />
+        <view class="regionrow">
+          <input v-model="draft.region" class="field regionrow__in" :placeholder="$t('address.region')" />
+          <text class="regionrow__pick" :class="{ 'is-ok': picked }" @tap="pickOnMap">
+            {{ picked ? $t("address.repick") : $t("address.pick") }}
+          </text>
+        </view>
         <input v-model="draft.detail" class="field" :placeholder="$t('address.detail')" />
         <input v-model="draft.tag" class="field" :placeholder="$t('address.tagPh')" />
 
@@ -145,6 +176,27 @@ onLoad((q) => {
 </template>
 
 <style scoped>
+.regionrow {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+.regionrow__in {
+  flex: 1;
+  min-width: 0;
+}
+.regionrow__pick {
+  flex-shrink: 0;
+  padding: 12rpx 20rpx;
+  border-radius: 16rpx;
+  background: var(--sh-faint);
+  color: var(--sh-sub);
+  font-size: 24rpx;
+}
+.regionrow__pick.is-ok {
+  background: var(--sh-primary-tint);
+  color: var(--sh-primary-text);
+}
 .card {
   margin-bottom: 20rpx;
 }

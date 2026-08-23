@@ -11,10 +11,11 @@
 import { computed, ref } from "vue";
 import { onLoad, onShareAppMessage } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
+import { fromE6, openLocation } from "@shared/ports/location";
 import { api } from "@/api";
 import { useCartStore } from "@/stores/cart";
 import { useUserStore } from "@/stores/user";
-import { ROUTES } from "@shared/utils/constants";
+import { ROUTES, MERCHANT_LOGO_FALLBACK } from "@shared/utils/constants";
 import { firstSku } from "@shared/utils/goods";
 import { flyToCart, tapPoint } from "@/shared/fly";
 import { money } from "@shared/utils/money";
@@ -175,6 +176,13 @@ onShareAppMessage(() =>
     merchantNo: merchantNo.value,
   }),
 );
+
+/** 导航到门店。没坐标（商家还没在地图上标点）时按钮本身不渲染 */
+function navToStore() {
+  const f = data.value?.store;
+  const c = fromE6(f?.latE6, f?.lngE6);
+  if (c) openLocation({ ...c, name: data.value?.merchant?.name ?? "", address: f?.address ?? "" });
+}
 </script>
 
 <template>
@@ -189,7 +197,7 @@ onShareAppMessage(() =>
 
     <!-- 店招：登录用户看到的是「常买」优先，这里只占一行 -->
     <view class="store">
-      <text class="store__logo">{{ data.merchant.logo }}</text>
+      <text class="store__logo">{{ data.merchant.logo || MERCHANT_LOGO_FALLBACK }}</text>
       <view class="store__main">
         <view class="store__row">
           <text class="store__name">{{ data.merchant.name }}</text>
@@ -197,9 +205,14 @@ onShareAppMessage(() =>
             {{ $t("merchant.verified") }}
           </text>
         </view>
-        <text class="sh-muted">
-          {{ data.store.openHours }} · {{ data.store.address }}
-        </text>
+        <view class="addr">
+          <text class="sh-muted addr__t">
+            {{ data.store.openHours }} · {{ data.store.address }}
+          </text>
+          <text v-if="data.store.latE6 != null" class="addr__nav" @tap="navToStore">
+            {{ $t("community.navigate") }}
+          </text>
+        </view>
       </view>
       <text class="fav" :class="{ 'is-on': data.favorited }" @tap="toggleFav">
         {{ data.favorited ? "★" : "☆" }}
@@ -280,6 +293,23 @@ onShareAppMessage(() =>
 </template>
 
 <style scoped>
+.addr {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+.addr__t {
+  flex: 1;
+  min-width: 0;
+}
+.addr__nav {
+  flex-shrink: 0;
+  padding: 6rpx 18rpx;
+  border-radius: 999px;
+  background: var(--sh-primary-tint);
+  color: var(--sh-primary-text);
+  font-size: 22rpx;
+}
 .closed {
   padding: 20rpx 24rpx;
   margin-bottom: 16rpx;

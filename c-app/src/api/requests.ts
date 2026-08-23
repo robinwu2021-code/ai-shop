@@ -51,6 +51,17 @@ export interface LoginReqBody {
   merchantNo?: string;
 }
 
+/** 绑定手机号（验证码）。号码要以**字符串**传 —— 见 phone-gate.vue 里那段注释 */
+export interface BindPhoneReq {
+  phone: string;
+  code: string;
+}
+
+/** 微信一键授权：端上只拿得到 code，换号在后端做 */
+export interface WxPhoneReq {
+  code: string;
+}
+
 export interface BindCommunityReq {
   /** 要绑定的社区。**商品可见范围依赖它**，绑错了首页就是别的小区的货 */
   communityNo: string;
@@ -75,6 +86,9 @@ export interface SaveAddressReq {
   isDefault: boolean;
   /** 标签：家 / 公司 / 其他 */
   tag?: string;
+  /** 地图选点给的坐标（gcj02，E6）；不传 = 不改 */
+  latE6?: number | null;
+  lngE6?: number | null;
 }
 
 // ---------------------------------------------------------------- 社区 / 商品（query）

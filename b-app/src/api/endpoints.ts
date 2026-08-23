@@ -42,6 +42,7 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
   mRegionSearch: { method: "GET", path: "/biz/regions/search", auth: true, summary: "跨级搜区划与聚落（选择器搜索）" },
   mRegionPath: { method: "GET", path: "/biz/regions/path", auth: true, summary: "区划从省到自身的路径" },
   mGeoReverse: { method: "GET", path: "/biz/geo/reverse", auth: true, summary: "坐标转地址（门店地址定位）" },
+  mGeoTips: { method: "GET", path: "/biz/geo/tips", auth: true, summary: "地点输入提示（提报小区按名搜 POI）" },
   mApplyCommunity: { method: "POST", path: "/biz/communities/apply", auth: true, summary: "提报平台还没有的小区" },
   mMyCommunityApplies: { method: "GET", path: "/biz/communities/applies", auth: true, summary: "我提报过的小区" },
   mSaveStore: { method: "POST", path: "/biz/store", auth: true, summary: "保存店铺门面" },

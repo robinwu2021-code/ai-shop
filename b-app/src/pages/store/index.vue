@@ -12,7 +12,7 @@ import { computed, ref } from "vue";
 import { onBackPress, onShow } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
 import { api } from "@/api";
-import { getLocation } from "@shared/ports/location";
+import { composeAddress, locateWithFeedback, pickOnMap } from "@/utils/geo";
 import { useMerchantStore } from "@/stores/merchant";
 import { FULFILLMENT_REACH, SERVICE_SCOPE } from "@shared/utils/constants";
 import type { ShareKit, StoreProfile, StoreQrcode } from "@shared/types";
@@ -32,7 +32,7 @@ const form = ref<StoreProfile>({
 });
 const loaded = ref(false);
 const snapshot = ref("");
-const pick = (p: StoreProfile) => JSON.stringify([p.announcement, p.openHours, p.address]);
+const pick = (p: StoreProfile) => JSON.stringify([p.announcement, p.openHours, p.address, p.latE6 ?? null, p.lngE6 ?? null]);
 const dirty = computed(() => loaded.value && pick(form.value) !== snapshot.value);
 
 /** 营业时间快捷模板：早市摊位与全天店是两种最常见的作息，点一下填上再改 */
@@ -84,13 +84,21 @@ async function save() {
 }
 
 function discard() {
-  const [announcement = "", openHours = "", address = ""] = JSON.parse(snapshot.value || "[]") as string[];
-  form.value = { ...form.value, announcement, openHours, address };
+  const [announcement = "", openHours = "", address = "", latE6 = null, lngE6 = null] = JSON.parse(
+    snapshot.value || "[]",
+  ) as [string, string, string, number | null, number | null];
+  form.value = { ...form.value, announcement, openHours, address, latE6, lngE6 };
 }
 
+/** 已标过点（坐标随门店保存；买家侧导航/排距离靠它） */
+const pinned = computed(() => form.value.latE6 != null && form.value.lngE6 != null);
+
 /**
- * 定位取地址（P2）：逆地理编码走后端代理。后端没配地图密钥时返回 10501，
- * 端上据此**藏掉按钮** —— 一个点了只会报错的按钮比没有更糟。
+ * 地图选点取地址：App/小程序走原生选点页（搜索 + 拖图钉），一次拿到门牌地址和坐标。
+ *
+ * 之前是「定位一次 → 逆地理」：店主没法纠偏，定位偏几十米门店点就偏几十米，
+ * 而且坐标根本没存 —— 买家端导航到的是一串文字。
+ * 不支持选点的端（H5）退回旧路：定位一次 + 后端逆地理；后端没配 key 返回 10503 就藏按钮。
  */
 const geoAvailable = ref(true);
 const locating = ref(false);
@@ -98,12 +106,18 @@ async function locateAddress() {
   if (locating.value) return;
   locating.value = true;
   try {
-    const loc = await getLocation();
-    if (!loc) {
-      uni.showToast({ title: t("store.pickup.locateFailed"), icon: "none" });
+    const cur = pinned.value ? { lat: form.value.latE6! / 1e6, lng: form.value.lngE6! / 1e6 } : null;
+    const p = await pickOnMap(t, cur);
+    if (!p) return;
+    form.value.latE6 = Math.round(p.lat * 1e6);
+    form.value.lngE6 = Math.round(p.lng * 1e6);
+    const composed = composeAddress(p);
+    if (composed) {
+      form.value.address = composed.slice(0, 100);
       return;
     }
-    const r = await api.mGeoReverse(loc.lat, loc.lng);
+    // 退回路：只有坐标，地址让后端逆地理给
+    const r = await api.mGeoReverse(p.lat, p.lng);
     if (r.recommend) form.value.address = r.recommend;
   } catch (e) {
     if ((e as { code?: number }).code === 10503) {
@@ -115,6 +129,8 @@ async function locateAddress() {
     locating.value = false;
   }
 }
+// 保留给「只定位不选点」的场景引用，避免 tree-shake 后 util 里那条分支没人测
+void locateWithFeedback;
 
 onBackPress(() => {
   if (!dirty.value) return false;
@@ -189,10 +205,10 @@ onShow(() => {
           <input v-model="form.address" class="field__input addr__input" :maxlength="100" :placeholder="$t('store.addressPh')" />
           <view v-if="geoAvailable" class="addr__locate" @tap="locateAddress">
             <sh-icon name="pin" :size="18" color="var(--sh-primary-text)"></sh-icon>
-            <text class="addr__t">{{ locating ? "…" : $t("store.locateAddr") }}</text>
+            <text class="addr__t">{{ locating ? "…" : pinned ? $t("store.repinAddr") : $t("store.pickAddr") }}</text>
           </view>
         </view>
-        <text class="hint">{{ $t("store.addressHint") }}</text>
+        <text class="hint">{{ pinned ? $t("store.addressPinned") : $t("store.addressHint") }}</text>
       </view>
     </view>
 

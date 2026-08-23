@@ -52,6 +52,21 @@ export interface GeoReverseResult {
   address: string;
 }
 
+/**
+ * 地点输入提示（高德 inputtips 经后端代理）。提报小区时按名搜 POI，选中就带上坐标 ——
+ * 否则坐标只能是「提交那一刻商家站的地方」，多半不在那个小区里。
+ * 后端没配 Web 服务 key 时返回空数组，端上就当没有这个功能。
+ */
+export interface GeoTip {
+  name: string;
+  address?: string | null;
+  adcode?: string | null;
+  /** 有些提示（纯地名、公交线）没坐标，这种不值得选 */
+  latE6?: number | null;
+  lngE6?: number | null;
+  typecode?: string | null;
+}
+
 /** 门店引用的取货点。status 来自 cmt_pickup_point：只有 ACTIVE 参与买家侧 */
 export interface PickupRef {
   pickupNo: string;
@@ -214,6 +229,12 @@ export interface Pickup {
   openHours: string;
   /** 到货时间说明，如「次日 18:00 后到」。影响用户选不选这个点 */
   arrivalDesc: string;
+  /**
+   * 取货点坐标（gcj02，E6）。**可能为空** —— 存量点是手填地址建的。
+   * 买家要拿着它导航过去，没有就只能显示地址文本。
+   */
+  latE6?: number | null;
+  lngE6?: number | null;
 }
 
 // ---------------------------------------------------------------- 积分
@@ -382,6 +403,12 @@ export interface Address {
   isDefault: boolean;
   /** 标签：家 / 公司 / 其他 */
   tag?: string;
+  /**
+   * 收货点坐标（gcj02，E6）。地图选点回填；**可能为空** —— 存量地址是纯手填的。
+   * 商家的「自送半径」要拿它跟门店坐标算距离，没有坐标那条规则就永远算不出结果。
+   */
+  latE6?: number | null;
+  lngE6?: number | null;
 }
 
 // ---------------------------------------------------------------- 售后
@@ -2589,6 +2616,12 @@ export interface StoreProfile {
    * ONSITE / SHIPPING 空 = 不限。同一个空数组两种意思，所以别拿它判「有没有设置过」。
    */
   serviceAreas?: ServiceArea[];
+  /**
+   * 门店坐标（gcj02，E6）。地图选点回填；买家侧「门店自取」导航与候选取货点排距离靠它。
+   * 不传 = 这次不改；老版本端上不知道这个字段，后端不能把缺省当成清空。
+   */
+  latE6?: number | null;
+  lngE6?: number | null;
 }
 
 /**
@@ -2733,6 +2766,12 @@ export interface Region {
   parentCode?: string;
   /** PROVINCE / CITY / DISTRICT / STREET / VILLAGE（村委会·居委会，第五级） */
   level: string;
+  /**
+   * 中心点（gcj02，E6）。**可能为空** —— 全国 62 万条村级里只有批量补录命中的那部分有坐标，
+   * 端上据此决定是直接用，还是临时去地图上搜一次。
+   */
+  latE6?: number | null;
+  lngE6?: number | null;
   /** 本级名称，**不含上级**（「西湖区」不是「杭州市 / 西湖区」）。要整条路径的地方自己拼 */
   name: string;
   /** 是否启用。B 端只会拿到启用的 —— 停用的区划是运营的维护对象，不该出现在商家的选择器里 */
@@ -2923,6 +2962,12 @@ export interface StoreFront {
   openHours: string;
   /** 店铺地址，店主自填 */
   address: string;
+  /**
+   * 门店坐标（gcj02，E6）。**可能为空** —— 商家没在地图上标过点。
+   * 买家侧据此决定「导航到这里」显不显示：没坐标的导航按钮点了只会打开一片空白。
+   */
+  latE6?: number | null;
+  lngE6?: number | null;
 }
 
 export interface StoreHome {

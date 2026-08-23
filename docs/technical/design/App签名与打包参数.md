@@ -59,7 +59,7 @@ sha1   5405630ce3383f00cacf168f09d2667ebaee944d
 sha256 75b87cc9f6d09a76c33c0cb024dabd4a4080d6b51b5a554f65189d30d72e6cd4
 ```
 
-**哪个后台要哪一个**：个推要 SHA256；微信开放平台要 MD5；
+**哪个后台要哪一个**：个推要 SHA256；微信开放平台要 MD5；高德开放平台（Android Key）要 SHA1；
 App Links 的 `assetlinks.json` 要 SHA256；华为/荣耀推送要 SHA256。
 
 ### 密钥与密码
@@ -124,3 +124,19 @@ SHA256: 2D:33:A1:46:12:BE:AF:22:E9:F7:DD:45:06:C9:8A:C0:3D:CA:41:18:78:5A:A9:2E:
 **不要把个推 SDK 手写进 `android-shell/`。** 那个壳自述是开发预览用的 WebView 壳
 （见 `MainActivity` 类注释），没有原生能力，注定不是上架的那个包 ——
 写进去的集成代码会连壳一起丢掉。
+
+## 6. 高德地图 Key（2026-08-22 接入）
+
+高德开放平台 → 应用管理 → 添加 Key，**按平台各一个**：Android 填包名 `top.hxmall.bapp` + §2 的 SHA1
+（可把 debug SHA1 用 `;` 一并填上），iOS 填 BundleID `top.hxmall.bapp`，H5/小程序另申请 Web 端 Key。
+
+Key 不进仓库：写在 `b-app/.env.local`（根 `.gitignore` 已挡）的
+`VITE_AMAP_KEY_ANDROID` / `VITE_AMAP_KEY_IOS` / `VITE_AMAP_KEY_WEB` / `VITE_AMAP_SECURITY_JS_CODE`。
+离线包侧 `simpleDemo/build.gradle` 读同一份文件，经 `manifestPlaceholders` 注入
+AndroidManifest 的 `com.amap.api.v2.apikey`（DCloud 的 Maps / Geolocation amap 实现都读这一个 meta）；
+`b-app/src/manifest.json` 的 `sdkConfigs.geolocation.amap` / `maps.amap` 只负责选提供方，`appkey_*` 留空。
+
+Key 不对的表现：定位 fail 且原生错误码 **7（KEY 鉴权失败）**；地图白屏。
+模拟器上另有两条与 key 无关的假阴性：SIM 为美国运营商（MCC 310）时高德 SDK 走海外链路报错误码 4「网络连接异常」，
+关掉蜂窝后变错误码 2「WIFI信息不足」（模拟器没有真实 AP/基站，且高德默认丢弃 mock GPS）——地图瓦片能正常渲染即说明 key 已通过，定位要真机验。
+

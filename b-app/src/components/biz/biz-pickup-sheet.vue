@@ -9,7 +9,7 @@
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { api } from "@/api";
-import { getLocation } from "@shared/ports/location";
+import { composeAddress, pickOnMap } from "@/utils/geo";
 import type { PickupCandidate } from "@shared/types";
 
 const props = defineProps<{
@@ -71,12 +71,19 @@ const coords = ref<{ lat: number; lng: number } | null>(null);
 const locating = ref(false);
 const submitting = ref(false);
 
+/**
+ * 在地图上标这个点。之前是「定位一次」—— 商家通常在店里填表，不是站在取货点上，
+ * 存下来的是商家当时的位置，而 withinRadius 判定全靠这个坐标。
+ * 选点页默认停在上次标的点（没有就当前位置）；地址栏空着就用选点给的地址填上。
+ */
 async function locate() {
+  if (locating.value) return;
   locating.value = true;
   try {
-    const loc = await getLocation();
-    coords.value = loc ? { lat: loc.lat, lng: loc.lng } : null;
-    if (!loc) uni.showToast({ title: t("store.pickup.locateFailed"), icon: "none" });
+    const p = await pickOnMap(t, coords.value);
+    if (!p) return;
+    coords.value = { lat: p.lat, lng: p.lng };
+    if (!form.value.address.trim()) form.value.address = composeAddress(p).slice(0, 100);
   } finally {
     locating.value = false;
   }
@@ -181,7 +188,7 @@ function close() {
             <biz-time-range v-model="form.openHours" clearable></biz-time-range>
             <view class="locate" :class="{ 'is-ok': !!coords }" @tap="locate">
               <sh-icon name="pin" :size="18" :color="coords ? 'var(--sh-primary-text)' : 'var(--sh-sub)'"></sh-icon>
-              <text class="locate__t">{{ locating ? $t("common.loading") : coords ? $t("store.pickup.located") : $t("store.pickup.locate") }}</text>
+              <text class="locate__t">{{ locating ? $t("common.loading") : coords ? $t("store.pickup.pinned") : $t("store.pickup.pin") }}</text>
             </view>
             <view class="build__btns">
               <text class="sh-btn sh-btn--soft build__go" @tap="submitBuild">{{ submitting ? "…" : $t("common.submit") }}</text>
