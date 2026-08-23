@@ -126,6 +126,8 @@ export default {
     mine: "Uploaded",
     emptyMine: "No licence uploaded yet",
     unlocked: "Categories you can sell",
+    notGranted: "Not yet approved",
+    notGrantedHint: "You can already list in these categories — uploading is just to complete your paperwork. Once reviewed they move up to the list above.",
     locked: "Categories still locked",
     lockedHint: "Access opens after the platform has seen the licence — uploading does not unlock it instantly, a person reviews it.",
     waiting: "Under review",

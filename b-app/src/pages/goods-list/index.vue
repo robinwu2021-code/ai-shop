@@ -7,7 +7,7 @@ import { onReachBottom, onShow } from "@dcloudio/uni-app";
 import { api } from "@/api";
 import { useMerchantStore } from "@/stores/merchant";
 import { ROUTES } from "@/shared/nav";
-import { SHOW_CATEGORY_GATE } from "@/shared/flags";
+import { ENFORCE_CATEGORY_GATE, SHOW_CATEGORY_GATE } from "@/shared/flags";
 import { money } from "@shared/utils/money";
 import type { Category, Goods, GoodsStatus, StoreCategory } from "@shared/types";
 
@@ -216,8 +216,11 @@ async function toggle(g: Goods) {
    *
    * 不这样做的话商家看到的是后端那句通用错误，既说不出缺哪张证，
    * 也说不出是类目的问题 —— 他会反复回去改商品信息，而问题不在商品上。
+   *
+   * **闸门关着时这一段整个不走**（ENFORCE_CATEGORY_GATE=false）：后端此刻会放行，
+   * 端上再拦就成了「点不动一个其实能按的按钮」，而且他无从知道为什么。
    */
-  const need = !g.onSale ? gateOf(g) : null;
+  const need = ENFORCE_CATEGORY_GATE && !g.onSale ? gateOf(g) : null;
   if (need) {
     uni.showToast({ title: t("goods.gateBlocked", { s: need }), icon: "none" });
     return;

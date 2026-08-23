@@ -198,6 +198,8 @@ export default {
     mine: "已传的证",
     emptyMine: "还没传过任何证件",
     unlocked: "已经能卖的类目",
+    notGranted: "还没授权的类目",
+    notGrantedHint: "这几类现在也能上架，传证只是为了把资质补齐；平台核过之后这一栏会变成「已经能卖」。",
     locked: "还不能卖的类目",
     lockedHint: "平台看过证之后才会开通 —— 传完不会立刻解锁，这一步是人工核的。",
     waiting: "等平台核",

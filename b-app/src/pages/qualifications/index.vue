@@ -17,6 +17,7 @@ import { api } from "@/api";
 import { useMerchantStore } from "@/stores/merchant";
 import { pickImages } from "@shared/ports/media";
 import type { AuthCodeInfo, MyQualifications, QualificationType } from "@shared/types";
+import { ENFORCE_CATEGORY_GATE } from "@/shared/flags";
 
 const { t } = useI18n();
 const merchant = useMerchantStore();
@@ -164,7 +165,12 @@ onShow(() => void load());
       对每一类说清「要哪张证」与「现在轮到谁动」—— 传过了是等平台核，没传是去传。
     -->
     <view v-if="locked.length" class="sh-card mt">
-      <text class="sh-h2">{{ $t("qual.locked") }}</text>
+      <!--
+        闸门关着的时候这一段的**语气要跟着变**：它此刻描述的不是「卖不了」，
+        而是「还没授权」。照旧说「还不能卖」是在制造一个不存在的障碍 ——
+        商家会以为要先等平台核完才能上架，而他其实现在就能上。
+      -->
+      <text class="sh-h2">{{ $t(ENFORCE_CATEGORY_GATE ? "qual.locked" : "qual.notGranted") }}</text>
       <view v-for="c in locked" :key="c.code" class="lock">
         <view class="lock__main">
           <text class="lock__cats">
@@ -177,7 +183,9 @@ onShow(() => void load());
           {{ $t("qual.goUpload") }}
         </text>
       </view>
-      <text class="sh-muted hint">{{ $t("qual.lockedHint") }}</text>
+      <text class="sh-muted hint">
+        {{ $t(ENFORCE_CATEGORY_GATE ? "qual.lockedHint" : "qual.notGrantedHint") }}
+      </text>
     </view>
 
     <!-- 上传表单 -->

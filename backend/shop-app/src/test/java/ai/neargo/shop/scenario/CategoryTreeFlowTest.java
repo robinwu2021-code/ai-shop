@@ -30,6 +30,22 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @ActiveProfiles("test")
 class CategoryTreeFlowTest {
 
+    /*
+     * **闸门在这里显式打开。**生产默认 `shop.category.gate.enforce=false`
+     * （只展示、不限制，见 MerchantGoodsServiceImpl#gateEnforced）——
+     * 而本类里那两条准入用例测的正是「拦得对不对」与「授权后能不能开」，
+     * 跟着默认值走的话它们会在闸门关着时静静地"通过"，什么都没验到。
+     *
+     * <p>用 @DynamicPropertySource 而不是 @TestPropertySource：后者会另起一个
+     * Spring 上下文，而 H2 是同一个内存库，建表脚本跑第二遍会让整套测试
+     * 成片挂在主键冲突上（application-testcfg.yml 里记着同一个坑）。
+     */
+    @org.springframework.test.context.DynamicPropertySource
+    static void enforceGate(org.springframework.test.context.DynamicPropertyRegistry r) {
+        r.add("shop.category.gate.enforce", () -> "true");
+    }
+
+
     @Autowired
     private ai.neargo.shop.common.OtpStore otpStore;
 

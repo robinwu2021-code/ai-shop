@@ -41,6 +41,21 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
 
     private static final Logger log = LoggerFactory.getLogger(MerchantGoodsServiceImpl.class);
 
+    /**
+     * 类目资质闸门是否**真的拦人**。默认 {@code false} —— 只展示、不限制。
+     *
+     * <p>为什么默认关：受理入口（B 端传证 + 运营按证授码）刚铺，存量商家的授权码
+     * 还没补齐。这时候闸门拦住的不是无证经营，是平台自己还没建好的那条路 ——
+     * 线上 379 件商品里 267 件落在带门槛的类目下，闸门开着等于让它们全都上不了架。
+     *
+     * <p>关掉的只是「拦」，不是「判」：判据照跑，命中时打一条 WARN，
+     * 那是开闸前估影响面的唯一依据。要开就把 {@code SHOP_CATEGORY_GATE_ENFORCE}
+     * 设成 true，**同时**把 b-app 的 {@code ENFORCE_CATEGORY_GATE} 打开 ——
+     * 两边不同步的话，端上要么拦一个后端会放的，要么放一个后端会拒的。
+     */
+    @org.springframework.beans.factory.annotation.Value("${shop.category.gate.enforce:false}")
+    private boolean gateEnforced;
+
     private static final String AUDITING = "AUDITING";
     /** 草稿：**不进待审队列**，也上不了架。批 D 之前不存在这个状态，保存即提审 */
     private static final String DRAFT = "DRAFT";
@@ -1328,6 +1343,25 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
             return;
         }
         if (!merchantPort.authorizedCategoryCodes(merchantNo).contains(required)) {
+            /*
+             * **暂时只记不拦**（2026-08-23，shop.category.gate.enforce=false）。
+             *
+             * <p>决定的背景：线上 379 件商品里 267 件落在带门槛的类目下，而在受理入口
+             * （B 端传证 + 运营按证授码）铺开之前，这道闸对所有人都是关着的 ——
+             * 拦住的不是无证经营，是平台自己还没建好的那条路。
+             *
+             * <p>打开它的前提有两个，缺一个都不该开：商家侧能传证（已有「我的资质」），
+             * 运营侧有人在按证授码（已有一键勾选）。等这两件事跑起来、
+             * 存量商家的码补齐了，把 enforce 打成 true 就是一行配置。
+             *
+             * <p>记 WARN 而不是静默放行：它是「本该被拦下的一次上架」的唯一痕迹，
+             * 开闸之前要拿这个数判断影响面。
+             */
+            if (!gateEnforced) {
+                log.warn("[类目闸] 放行未授权上架：merchant={} category={} 需要码={}（enforce=false）",
+                        merchantNo, categoryNo, required);
+                return;
+            }
             throw BizException.of(ErrorCode.CATEGORY_NOT_AUTHORIZED);
         }
         /*
@@ -1342,6 +1376,12 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
          * 这里覆盖「正要上架的」—— 任务有间隔，上架随时发生。
          */
         if (merchantPort.hasExpiredQualification(merchantNo)) {
+            // 同上：闸关着的时候，过期也只记不拦 —— 两条一起开、一起关，
+            // 否则会出现「没证的能上、证过期的不能上」这种解释不通的中间态
+            if (!gateEnforced) {
+                log.warn("[类目闸] 放行资质过期的上架：merchant={}（enforce=false）", merchantNo);
+                return;
+            }
             throw BizException.of(ErrorCode.QUALIFICATION_EXPIRED);
         }
     }

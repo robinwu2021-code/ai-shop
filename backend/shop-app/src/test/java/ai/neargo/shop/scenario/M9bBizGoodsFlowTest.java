@@ -51,6 +51,39 @@ class M9bBizGoodsFlowTest {
     }
 
     @Test
+    @DisplayName("★★ 闸门关着时（生产默认）缺资质照样能上架 —— 只展示、不限制")
+    void listingIsNotBlockedWhileGateIsOff() throws Exception {
+        /*
+         * 这一条守的是**默认值本身**：`shop.category.gate.enforce` 默认 false，
+         * 于是缺授权码的商品照样上得了架（判据仍在跑、命中打 WARN，见
+         * MerchantGoodsServiceImpl#requireCategoryAuthorized）。
+         *
+         * <p>为什么值得单独测：受理入口铺开之前，这是线上 267 件商品能不能卖的开关。
+         * 有人把默认值改回 true 的话，症状不是报错而是**商家突然全线上不了架** ——
+         * 而那时没人会想到是一行配置。CategoryTreeFlowTest 测的是相反那一半（开着时拦得对）。
+         */
+        String token = merchant("12600199001", "闸门关着·菜摊");
+        // CAT110 蔬菜挂着 FRESH_VEG 门槛，而这家新店一个授权码都没有
+        String body0 = mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"categoryNo\":\"CAT110\",\"title\":\"青菜一把（闸门关）\","
+                                + "\"subtitle\":\"测试\",\"cover\":\"🥬\",\"images\":[],"
+                                + "\"specGroups\":[],\"skus\":[{\"optionValues\":[],\"price\":500,\"stock\":9}]}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        String goodsNo = json.readTree(body0).get("data").get("goodsNo").asString();
+        approveGoods(goodsNo);
+
+        String body = mvc().perform(post("/biz/goods/" + goodsNo + "/toggle")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"onSale\":true}"))
+                .andReturn().getResponse().getContentAsString();
+        assertThat(json.readTree(body).get("code").asInt())
+                .as("闸门关着时缺资质不该拦 —— 拦了就是把 267 件商品挡在架下")
+                .isZero();
+    }
+
+    @Test
     @DisplayName("★ 草稿不进运营的待审队列 —— 队列里混着半成品，运营分不出哪些真要审")
     void draftStaysOutOfTheQueue() throws Exception {
         String token = merchant("12600127020", "草稿队列测试店");

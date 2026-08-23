@@ -41,7 +41,21 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @SpringBootTest
 @ActiveProfiles("test")
+/*
+ * **闸门在这里显式打开。**生产默认 `shop.category.gate.enforce=false`（只展示、不限制，
+ * 见 MerchantGoodsServiceImpl#gateEnforced 的说明），但这个类测的正是「闸门拦得对不对」——
+ * 跟着默认值走的话，这几条用例会在闸门关着时"通过"，而它们什么都没验到。
+ *
+ * <p>⚠️ 用 @TestPropertySource 会另起一个 Spring 上下文，而 H2 是同一个内存库：
+ * 建表脚本跑第二遍，整套测试会成片挂在主键冲突上（application-testcfg.yml 里
+ * 那段 store.max-per-entity 的注释记着同一个坑）。所以这里用 @DynamicPropertySource。
+ */
 class Phase1MasterDataTest {
+
+    @org.springframework.test.context.DynamicPropertySource
+    static void enforceGate(org.springframework.test.context.DynamicPropertyRegistry r) {
+        r.add("shop.category.gate.enforce", () -> "true");
+    }
 
     @Autowired
     private ai.neargo.shop.common.OtpStore otpStore;
