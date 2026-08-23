@@ -146,6 +146,7 @@ export default {
     reorderAdded: "{n} items added to cart", reorderDropped: "Unavailable, skipped: {s}",
     reorderPriceUp: "Price went up: {s}", noHistory: "You have not ordered here yet",
     times: "bought {n}×", priceUp: "was {p}", invalid: "Out of stock", itemInvalid: "Out of stock right now",
+    allCats: "All",
     allGoods: "All products", searchPh: "Search in this shop",
     fulfillHint: "Free pickup in store. Delivery is free over 50 within 3 km, same day.",
     faved: "Saved — find it under Me → My shops", unfaved: "Removed",

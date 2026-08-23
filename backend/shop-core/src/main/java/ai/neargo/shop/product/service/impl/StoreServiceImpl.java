@@ -36,10 +36,18 @@ public class StoreServiceImpl implements StoreService {
     private final GoodsService goodsService;
     private final StoreHistoryPort historyPort;
     private final CartWritePort cartPort;
+    /** 门店货架：店主排的顺序与改的名字，买家侧的类目行按它来 */
+    private final ai.neargo.shop.spi.user.StoreCategoryPort storeCategoryPort;
+    /** 类目名兜底：店主没改显示名时用平台类目名 */
+    private final ai.neargo.shop.product.service.CategoryService categoryService;
 
     public StoreServiceImpl(MerchantQueryPort merchantPort, GoodsQueryPort goodsPort,
                             GoodsService goodsService, StoreHistoryPort historyPort,
-                            CartWritePort cartPort) {
+                            CartWritePort cartPort,
+                            ai.neargo.shop.spi.user.StoreCategoryPort storeCategoryPort,
+                            ai.neargo.shop.product.service.CategoryService categoryService) {
+        this.storeCategoryPort = storeCategoryPort;
+        this.categoryService = categoryService;
         this.merchantPort = merchantPort;
         this.goodsPort = goodsPort;
         this.goodsService = goodsService;
@@ -52,9 +60,18 @@ public class StoreServiceImpl implements StoreService {
         var merchant = merchantPort.find(merchantNo)
                 .orElseThrow(() -> BizException.of(ErrorCode.NOT_FOUND));
 
-        // 热销前 6 个：门店主页不做分页，店主的货本来就不多
+        /*
+         * **不再只给 6 个。**页面上这一段叫「全部商品」，而店内搜索与新加的类目筛选
+         * 都只在这份列表里做 —— 只给 6 个的话，那句「全部」是假的，
+         * 搜索也只搜得到前 6 件。
+         *
+         * <p>一次拿全的依据是真实量级：线上在售商品最多的店也只有个位数
+         * （2026-08-23 实测 M0001/M0002 各 2 件。⚠️ 数的时候要带 `deleted=0` ——
+         * 不带会数出 24 件，其中 22 件是软删的，照那个数做判断会得出错误的结论）。
+         * 上限 200 是防呆：真有店铺到那个量级时，这一页要改成分页，而不是继续放大这个数。
+         */
         var hot = goodsService.list(new GoodsService.GoodsQuery(
-                null, merchantNo, null, null, null, 1, 6));
+                null, merchantNo, null, null, null, 1, 200));
 
         // 门面文案取店主自己填的那份 —— 没有门店时给空文案，页面按空串不渲染那两块
         var frontOpt = merchantPort.storeFront(merchantNo);
@@ -75,7 +92,73 @@ public class StoreServiceImpl implements StoreService {
                 new StoreHomeVO.Merchant(merchant.merchantNo(), merchant.merchantName(),
                         merchant.logo(), merchant.rating(), merchant.ratingCount(),
                         merchant.verified(), merchant.breachCount()),
-                front, favorited, hot.records(), closed);
+                front, favorited, hot.records(), shelvesOf(merchantNo, hot.records()), closed);
+    }
+
+    /**
+     * 本店货架 → 买家看到的类目行。
+     *
+     * <p>三条规则，每一条都对应一种「摆出来反而更糟」的情形：
+     * <ul>
+     *   <li><b>只列真的有货的类目</b>：货架上摆着却一件在售都没有的，点进去空手而归</li>
+     *   <li><b>店主没排过的排在后面</b>：建品时自动加进货架的那些 sort=999，
+     *       让它们跟在店主亲手排过的后面，而不是打乱他排的顺序</li>
+     *   <li><b>没改名就用平台类目名</b>：显示名是店主的自由（「本地时鲜」），
+     *       但没改时不能显示空串 —— 那会是一个点得动却没有字的 chip</li>
+     * </ul>
+     */
+    private List<StoreHomeVO.ShelfVO> shelvesOf(String merchantNo, List<ai.neargo.shop.product.dto.GoodsVO> goods) {
+        if (goods == null || goods.isEmpty()) {
+            return List.of();
+        }
+        Map<String, Long> countByCat = goods.stream()
+                .filter(g -> g.categoryNo() != null && !g.categoryNo().isBlank())
+                .collect(java.util.stream.Collectors.groupingBy(
+                        ai.neargo.shop.product.dto.GoodsVO::categoryNo,
+                        java.util.stream.Collectors.counting()));
+        if (countByCat.isEmpty()) {
+            return List.of();
+        }
+        String storeNo = merchantPort.defaultStoreNo(merchantNo).orElse(null);
+        List<ai.neargo.shop.spi.user.StoreCategoryPort.Shelf> shelves =
+                storeNo == null ? List.of() : storeCategoryPort.shelvesOf(storeNo);
+
+        Map<String, String> platformNames = new java.util.LinkedHashMap<>();
+        for (var lv1 : categoryService.tree()) {
+            for (var lv2 : lv1.children()) {
+                platformNames.put(lv2.categoryNo(), lv2.name());
+            }
+        }
+
+        List<StoreHomeVO.ShelfVO> out = new java.util.ArrayList<>();
+        java.util.Set<String> listed = new java.util.LinkedHashSet<>();
+        for (var sh : shelves) {
+            Long n = countByCat.get(sh.categoryNo());
+            if (n == null) {
+                continue;
+            }
+            String name = sh.displayName() != null && !sh.displayName().isBlank()
+                    ? sh.displayName()
+                    : platformNames.getOrDefault(sh.categoryNo(), "");
+            if (!name.isBlank()) {
+                out.add(new StoreHomeVO.ShelfVO(sh.categoryNo(), name, n.intValue()));
+                listed.add(sh.categoryNo());
+            }
+        }
+        /*
+         * 货架上没有、但确实有货的类目也要列出来（老店的存量商品早于货架这套东西）。
+         * 不列的话买家会看到「类目行加起来 12 件，实际列表 24 件」，而没有任何解释。
+         */
+        for (var e : countByCat.entrySet()) {
+            if (listed.contains(e.getKey())) {
+                continue;
+            }
+            String name = platformNames.getOrDefault(e.getKey(), "");
+            if (!name.isBlank()) {
+                out.add(new StoreHomeVO.ShelfVO(e.getKey(), name, e.getValue().intValue()));
+            }
+        }
+        return out;
     }
 
     @Override

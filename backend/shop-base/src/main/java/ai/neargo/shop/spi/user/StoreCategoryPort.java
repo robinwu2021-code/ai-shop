@@ -24,6 +24,26 @@ public interface StoreCategoryPort {
     List<String> categoryNosOf(String storeNo);
 
     /**
+     * 这家店的货架**连同店主排的顺序与改的名字**。
+     *
+     * <p>与 {@link #categoryNosOf} 分成两个方法而不是加字段：那一个是上架闸门在用的，
+     * 每次上架都要跑，只需要一组编号；这一个是买家侧店铺页在用的，要的是
+     * 「店主怎么摆的」—— 两个调用的频率与形状都不同，合成一个会让闸门顺带背上两列。
+     *
+     * <p>为什么买家侧非要它不可：店主在 B 端「我的类目」里排的顺序、改的显示名
+     * （「本地时鲜」而不是「蔬菜」），此前<b>一处都到不了买家眼前</b> ——
+     * 那一页的存在感因此接近于零。
+     */
+    List<Shelf> shelvesOf(String storeNo);
+
+    /**
+     * @param displayName 店主改的名；<b>空 = 用平台类目名</b>（由调用方补，商家域不读类目表）
+     * @param sort        店主排的序，小的在前
+     */
+    record Shelf(String categoryNo, String displayName, int sort) {
+    }
+
+    /**
      * 把一个类目加进这家店的货架；已经有了就什么都不做。
      *
      * <p><b>幂等</b>：建品是高频动作，每次都先查再插会写出竞态；

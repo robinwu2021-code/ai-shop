@@ -38,6 +38,27 @@ public class StoreCategoryPortImpl implements StoreCategoryPort {
     }
 
     @Override
+    public List<Shelf> shelvesOf(String storeNo) {
+        if (storeNo == null || storeNo.isBlank()) {
+            return List.of();
+        }
+        /*
+         * 同样豁免数据域，理由与 categoryNosOf 一样 —— 但这一条的调用方是**买家侧**
+         * （门店主页，游客也能进）：那时根本没有商家会话，接上数据域就是 1=0，
+         * 店铺页的类目行会永远为空，而页面照常渲染，没有任何报错。
+         */
+        return DataScopeContext.executeWithoutScope(() -> mapper.selectList(
+                        Wrappers.<MchStoreCategory>lambdaQuery()
+                                .eq(MchStoreCategory::getStoreNo, storeNo)
+                                .eq(MchStoreCategory::getEnabled, true)
+                                .orderByAsc(MchStoreCategory::getSort)))
+                .stream()
+                .map(r -> new Shelf(r.getCategoryNo(), r.getDisplayName(),
+                        r.getSort() == null ? 999 : r.getSort()))
+                .toList();
+    }
+
+    @Override
     public void ensure(String entityNo, String storeNo, String categoryNo) {
         if (storeNo == null || storeNo.isBlank() || categoryNo == null || categoryNo.isBlank()) {
             return;

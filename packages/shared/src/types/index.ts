@@ -3026,6 +3026,13 @@ export interface StoreFront {
   lngE6?: number | null;
 }
 
+/** 店铺页上的一类。`count` 直接显示，省得买家点进去数 */
+export interface StoreShelf {
+  categoryNo: string;
+  name: string;
+  count: number;
+}
+
 export interface StoreHome {
   /** 平台建档的商家主数据（名称/资质/评分），店主改不了 */
   merchant: MerchantBrief;
@@ -3033,6 +3040,13 @@ export interface StoreHome {
   store: StoreFront;
   /** 在售商品。首屏展示，分页靠单独的商品列表接口 */
   goods: Goods[];
+  /**
+   * 本店货架：**店主自己排的顺序、自己改的名字**（「本地时鲜」而不是「蔬菜」）。
+   *
+   * 只含真的有在售商品的类目 —— 摆着却一件货都没有的类目，点进去空手而归。
+   * 少于两条时端上不画这一行：一个恒真的筛选开关只是占地方。
+   */
+  categories: StoreShelf[];
   /** 我是否收藏了这家店 */
   favorited: boolean;
   /**

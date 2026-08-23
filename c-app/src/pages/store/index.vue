@@ -38,9 +38,31 @@ const busy = ref(false);
  */
 const closed = computed(() => !!data.value?.closed);
 
-/** 店内搜索：只在本店范围内找，与全平台搜索分开（C-ST-06） */
+/**
+ * 本店货架 —— **店主自己排的顺序、自己改的名字**。
+ *
+ * <p>此前买家侧一处都用不到它：店主在 B 端「我的类目」里摆哪几类、叫什么、什么顺序，
+ * 到了这一页全被拍平成一个「全部商品」的长列表。
+ *
+ * <p>少于两条不画这一行：一个类目时它是个恒真的开关，占一行却什么都不让人选。
+ */
+const shelves = computed(() => data.value?.categories ?? []);
+const showShelves = computed(() => shelves.value.length > 1);
+
+/** 当前选中的类目；空 = 全部 */
+const pickedCat = ref("");
+
+/**
+ * 店内搜索 + 类目筛选（C-ST-06）。
+ *
+ * <p>两者叠加而不是二选一：买家先点「本地时鲜」再搜「番茄」是最自然的路径，
+ * 而互斥的话第二步会把第一步悄悄清掉。
+ */
 const goods = computed(() => {
-  const list = data.value?.goods ?? [];
+  let list = data.value?.goods ?? [];
+  if (pickedCat.value) {
+    list = list.filter((g) => g.categoryNo === pickedCat.value);
+  }
   const k = keyword.value.trim().toLowerCase();
   if (!k) return list;
   return list.filter(
@@ -281,6 +303,31 @@ function navToStore() {
         :placeholder="$t('store.searchPh')"
       />
 
+      <!--
+        类目行：店主排的顺序、店主起的名字。
+        横滚而不是换行 —— 一家店摆七八类是常事，换行会把商品列表推到屏幕外。
+      -->
+      <scroll-view v-if="showShelves" class="cats" scroll-x>
+        <view class="cats__row">
+          <text
+            class="pb-tag cats__chip"
+            :class="{ 'is-on': !pickedCat }"
+            @tap="pickedCat = ''"
+          >
+            {{ $t("store.allCats") }}
+          </text>
+          <text
+            v-for="c in shelves"
+            :key="c.categoryNo"
+            class="pb-tag cats__chip"
+            :class="{ 'is-on': pickedCat === c.categoryNo }"
+            @tap="pickedCat = pickedCat === c.categoryNo ? '' : c.categoryNo"
+          >
+            {{ c.name }} {{ c.count }}
+          </text>
+        </view>
+      </scroll-view>
+
       <biz-goods-card
         v-for="g in goods"
         :key="g.goodsNo"
@@ -293,6 +340,28 @@ function navToStore() {
 </template>
 
 <style scoped>
+/* 类目行：横滚。两条都要 —— 见 b-app 商品列表里那段同样的注释：
+   uni 的 <text> 自带 pre-line 会盖掉父级 nowrap，flex 子项默认会被压缩而不是溢出滚动 */
+.cats {
+  white-space: nowrap;
+  margin: 12rpx 0 4rpx;
+}
+.cats__row {
+  display: inline-flex;
+  gap: 12rpx;
+}
+.cats__chip {
+  white-space: nowrap;
+  flex-shrink: 0;
+  font-size: 24rpx;
+  padding: 10rpx 20rpx;
+}
+.cats__chip.is-on {
+  background: var(--sh-primary-tint);
+  color: var(--sh-primary-text);
+  font-weight: 600;
+}
+
 .addr {
   display: flex;
   align-items: center;

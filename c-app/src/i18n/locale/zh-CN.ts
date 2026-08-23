@@ -153,6 +153,7 @@ export default {
     priceUp: "上次 {p}",
     invalid: "无货",
     itemInvalid: "这个暂时没货了",
+    allCats: "全部",
     allGoods: "全部商品",
     searchPh: "在本店找东西",
     fulfillHint: "到店自提免运费；送货上门满 50 元免配送费，3 公里内当天送到。",

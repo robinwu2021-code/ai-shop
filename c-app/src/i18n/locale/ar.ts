@@ -146,6 +146,7 @@ export default {
     reorderAdded: "أُضيف {n} صنفًا إلى السلة", reorderDropped: "غير متوفر ولم يُضف: {s}",
     reorderPriceUp: "ارتفع سعرها: {s}", noHistory: "لم تطلب من هنا بعد",
     times: "اشتريته {n} مرات", priceUp: "كان {p}", invalid: "نفد", itemInvalid: "نفد حاليًا",
+    allCats: "الكل",
     allGoods: "كل المنتجات", searchPh: "ابحث داخل المتجر",
     fulfillHint: "الاستلام من المتجر مجاني. التوصيل مجاني فوق ٥٠ ضمن ٣ كم في اليوم نفسه.",
     faved: "تم الحفظ — تجده في «حسابي ← متاجري»", unfaved: "أُزيل من المحفوظات",

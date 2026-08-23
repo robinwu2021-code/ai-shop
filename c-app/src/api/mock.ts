@@ -1146,10 +1146,25 @@ export const mockApi: ShopApi = {
     // 扫码/分享进店即写归因：这决定后续订单的 trafficSource 与商家费率档（ADR-004 §6）。
     // **最近一次进店覆盖前一次**，不设窗口 —— 用户此刻在谁家买，就算谁带来的
     if (from === "QR" || from === "SHARE") db.user.merchantNo = merchantNo;
+    const onSale = allGoods().filter((g) => g.onSale && g.merchant.merchantNo === merchantNo);
+    /*
+     * 本店货架。mock 里按在售商品的类目现算 —— 真后端那边还会叠一层店主排的顺序与
+     * 改过的显示名，但 mock 没有货架表，硬造一份会让「店主改名」这件事在 mock 上
+     * 看着已经生效，而真库里其实没配。这里只保证**形状**对，不假装数据也对。
+     */
+    const catName = (no: string) =>
+      db.categories.find((c) => c.categoryNo === no)?.name ?? "";
+    const counted = new Map<string, number>();
+    for (const g of onSale) {
+      if (g.categoryNo) counted.set(g.categoryNo, (counted.get(g.categoryNo) ?? 0) + 1);
+    }
     return delay({
       merchant,
       store: { ...db.store },
-      goods: allGoods().filter((g) => g.onSale && g.merchant.merchantNo === merchantNo),
+      goods: onSale,
+      categories: [...counted.entries()]
+        .map(([categoryNo, count]) => ({ categoryNo, name: catName(categoryNo), count }))
+        .filter((c) => !!c.name),
       favorited: db.favoriteStores.includes(merchantNo),
       /*
        * 停业标志。mock 里由商家种子的 status 推出 —— **不能恒为 false**：
