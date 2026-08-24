@@ -917,6 +917,7 @@ entryHint: "Who buys · who lapsed", total: "Customers", repeatRate: "Repeat rat
     blockedBody: "{name} allows up to {quota} stores. You can upgrade, or pause a store you no longer run.",
     blockedTrial: "Try free for {n} days",
     blockedView: "View plan",
+    switch: "Switch ›",
   },
   storePick: {
     title: "Choose store",

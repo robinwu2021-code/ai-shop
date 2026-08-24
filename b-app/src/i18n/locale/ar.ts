@@ -917,6 +917,7 @@ entryHint: "من يشتري · من توقف", total: "العملاء", repeatRa
     blockedBody: "تسمح {name} بـ {quota} متجر كحد أقصى. يمكنك الترقية أو إيقاف متجر لم تعد تديره.",
     blockedTrial: "تجربة مجانية {n} يوم",
     blockedView: "عرض الباقة",
+    switch: "تبديل ›",
   },
   storePick: {
     title: "اختيار الفرع",
