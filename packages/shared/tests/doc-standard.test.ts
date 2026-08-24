@@ -136,9 +136,23 @@ describe("文档规范", () => {
    * 存量慢慢补，新增的一篇都跑不掉。
    */
   it("没有状态行的文档不许再增加（基线只降不升）", () => {
-    const NO_STATUS_BASELINE = 56;
+    /*
+     * 基线从 56 降到 27。两件事一起做的，缺一条都不成立：
+     *
+     * ① **范围收回到 `design/`。** 规范 §四的原话是「**方案类**文档的标准骨架」，
+     *    而这里原先扫的是整个 technical —— 把 `reference/`（真源投影）和
+     *    带「勿手改」抬头的生成物也算了进去。给一份自动生成的投影写「状态：已落地」
+     *    没有意义，它的状态就是「上次生成的时间」。**守卫要得比规范多，
+     *    多出来的那部分永远补不完**，而一条常年红着的断言等于没有断言。
+     * ② 官网文案的 19 篇旧稿补了状态行 —— 那不是判断，它们就在名为
+     *    「历史」的目录里，且已被现行稿取代，写「已归档」是陈述事实。
+     *
+     * 剩下的 27 篇要逐篇确认「到底落地没有」，那是评审的事，脚本编不出来 ——
+     * 所以仍然是**基线只降不升**，不是一次性清零。
+     */
+    const NO_STATUS_BASELINE = 27;
     const n = FILES
-      .filter((f) => rel(f).startsWith("docs/technical/") && !rel(f).includes("/ADR/"))
+      .filter((f) => rel(f).startsWith("docs/technical/design/"))
       // 索引自己不是方案文档，不要求状态行
       .filter((f) => !f.endsWith("README.md"))
       .filter((f) => !/状态[：:]/.test(readFileSync(f, "utf8").split("\n").slice(0, 8).join("\n")))

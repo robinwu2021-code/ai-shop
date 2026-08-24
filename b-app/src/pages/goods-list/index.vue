@@ -10,10 +10,60 @@ import { ROUTES } from "@/shared/nav";
 import { takeGoodsCategory } from "@/shared/handoff";
 import { SHOW_CATEGORY_GATE } from "@/shared/flags";
 import { money } from "@shared/utils/money";
-import type { Category, Goods, GoodsStatus, StoreCategory } from "@shared/types";
+import { saveBase64Image } from "@/utils/image";
+import type { Category, Goods, GoodsStatus, Poster, StoreCategory } from "@shared/types";
 
 const { t } = useI18n();
 const merchant = useMerchantStore();
+
+/**
+ * 分享单品（P1，2026-08-24）。
+ *
+ * <p>「获客工具」原来只有整店分享 —— 但后端 `share-kit` 接口一直支持 `goodsNo`
+ * （文案会变成「XX 上新了，点进来看看」），B 端却没有一个入口去用它。
+ * 分享单品比分享整店更容易促成转化：老客收到的是一件具体的货，不是一句泛泛的「来看看」。
+ *
+ * <p>只给在售商品：分享一件还在审核/已下架的货，买家点进去要么看不见、要么下不了单，
+ * 那条链接等于白发。
+ */
+const sharing = ref<Goods | null>(null);
+const shareText = ref("");
+const poster = ref<Poster | null>(null);
+const shareLoading = ref(false);
+async function shareGoods(g: Goods) {
+  sharing.value = g;
+  shareText.value = "";
+  poster.value = null;
+  shareLoading.value = true;
+  try {
+    // allSettled：海报是锦上添花，它抖一下不该连文案也弹不出来
+    const [kit, p] = await Promise.allSettled([api.mShareKit(g.goodsNo), api.mPoster(g.goodsNo)]);
+    if (kit.status === "fulfilled") {
+      shareText.value = kit.value.text;
+    } else {
+      throw kit.reason;
+    }
+    poster.value = p.status === "fulfilled" ? p.value : null;
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: "none" });
+    sharing.value = null;
+  } finally {
+    shareLoading.value = false;
+  }
+}
+function closeShare() {
+  sharing.value = null;
+}
+function copyShareText() {
+  if (!shareText.value) return;
+  uni.setClipboardData({
+    data: shareText.value,
+    success: () => uni.showToast({ title: t("store.copied"), icon: "none" }),
+  });
+}
+function savePosterImage() {
+  saveBase64Image(poster.value?.imageBase64, "goods-poster", t);
+}
 
 /*
  * 页签。**此前只有三个** —— 而 `status` 是四态：
@@ -527,6 +577,14 @@ onShow(() => {
           <text v-if="merchant.can('biz:stock')" class="mini" @tap="editStock(g)">
             {{ $t("goods.editStock") }}
           </text>
+          <!-- 只给在售商品：分享一件审核中/已下架的货，买家点进去要么看不见要么下不了单 -->
+          <text
+            v-if="stateOf(g) === 'ON_SALE' && merchant.can('biz:store')"
+            class="mini"
+            @tap="shareGoods(g)"
+          >
+            {{ $t("goods.share") }}
+          </text>
           <!--
             本店价只在多门店时出现：单店商家改的就是主体价（编辑页那个），
             多给一个入口只会让他分不清自己改的是哪个数。
@@ -559,6 +617,25 @@ onShow(() => {
     -->
     <view v-if="merchant.can('biz:goods')" class="fab" @tap="edit()">
       ＋ {{ $t("goods.add") }}
+    </view>
+
+    <!--
+      分享单品浮层。**不做成新页面**：这是「顺手转发一下」的动作，跳一页再跳回来
+      比弹一层重得多，而且要重新加载列表（跳页会触发 onShow）。
+    -->
+    <view v-if="sharing" class="mask" @tap="closeShare">
+      <view class="sheet" @tap.stop>
+        <text class="sheet__t">{{ $t("goods.shareTitle", { s: sharing.title }) }}</text>
+        <text v-if="shareLoading" class="hint">{{ $t("common.loading") }}</text>
+        <view v-else class="kit">{{ shareText }}</view>
+        <view v-if="!shareLoading" class="sh-btn" @tap="copyShareText">{{ $t("store.copyKit") }}</view>
+
+        <!-- 真海报：合成好的一张图。生不出来（极端情况）就不占地方 -->
+        <view v-if="poster?.imageBase64" class="poster">
+          <image class="poster__img" :src="`data:image/png;base64,${poster.imageBase64}`" mode="widthFix" />
+          <view class="sh-btn poster__save" @tap="savePosterImage">{{ $t("store.saveImage") }}</view>
+        </view>
+      </view>
     </view>
   </sh-scaffold>
 </template>
@@ -797,5 +874,52 @@ onShow(() => {
   padding: 8rpx 16rpx;
   border-radius: 16rpx;
   background: var(--sh-faint);
+}
+
+/* 分享单品浮层：底部弹出，与 biz-region-picker 的 .sheet 同一形态，商家不用重新学 */
+.mask {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: var(--sh-scrim);
+}
+.sheet {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  max-height: 85vh;
+  overflow-y: auto;
+  padding: 32rpx 32rpx calc(32rpx + env(safe-area-inset-bottom));
+  border-radius: 32rpx 32rpx 0 0;
+  background: var(--sh-surface);
+  box-sizing: border-box;
+}
+.poster {
+  margin-top: 20rpx;
+}
+.poster__img {
+  width: 100%;
+  border-radius: 24rpx;
+  border: 2rpx solid var(--sh-line);
+}
+.poster__save {
+  margin-top: 16rpx;
+}
+.sheet__t {
+  display: block;
+  margin-bottom: 20rpx;
+  font-size: 32rpx;
+  font-weight: 600;
+  color: var(--sh-ink);
+}
+.kit {
+  margin-bottom: 24rpx;
+  padding: 24rpx;
+  border-radius: 24rpx;
+  background: var(--sh-faint);
+  font-size: 26rpx;
+  line-height: 1.7;
+  color: var(--sh-ink);
 }
 </style>

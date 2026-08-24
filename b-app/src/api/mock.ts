@@ -1278,12 +1278,6 @@ export const mockApi: MerchantApi = {
     return delay(out as typeof db.store);
   },
 
-  async mStoreQrcode() {
-    const merchantNo = requireMerchant();
-    // 落地页必须带 merchant_no —— 扫码进店的归因就靠它，进而决定费率档（ADR-004 §6）
-    const url = `/pages/store/index?merchantNo=${merchantNo}&from=QR`;
-    return delay({ url });
-  },
   async mDropNoticeRecent(text) {
     const st = db.store as typeof db.store & { announcementRecent?: string[] };
     st.announcementRecent = (st.announcementRecent ?? []).filter((x) => x && x !== text);
@@ -1291,6 +1285,12 @@ export const mockApi: MerchantApi = {
     return delay({ ...st } as typeof db.store);
   },
 
+  async mStoreQrcode() {
+    const merchantNo = requireMerchant();
+    // 落地页必须带 merchant_no —— 扫码进店的归因就靠它，进而决定费率档（ADR-004 §6）
+    const url = `/pages/store/index?merchantNo=${merchantNo}&from=QR`;
+    return delay({ url });
+  },
 
   async mShareKit(goodsNo) {
     const merchantNo = requireMerchant();
@@ -1305,6 +1305,16 @@ export const mockApi: MerchantApi = {
     return delay({
       text: `【${name}】开在你家楼下，常买的东西点两下就能再来一单：/pages/store/index?merchantNo=${merchantNo}`,
       posterUrl: "",
+    });
+  },
+
+  async mPoster() {
+    requireMerchant();
+    // 品牌色占位块，只为了让「真海报」这条 UI 分支在 mock 下也有图可看——
+    // 真实合成（封面/店名/价格/小程序码）只在后端 PosterService 里发生
+    return delay({
+      imageBase64:
+        "iVBORw0KGgoAAAANSUhEUgAAAHgAAAC0CAIAAADQLH9KAAAA/UlEQVR42u3QMQ0AAAgDsPngxr8mnOACniZV0EwXB6JAtGhEixZtQbRoRIsWbUG0aESLFo1o0YgWLRrRohEtWjSiRSNatGhEi0a0aNGIFo1o0aIRLRrRokUjWjSiRYtGtGhEixaNaNGIFi0a0aIRLVo0okUjWrRoRItGtGjRiBaNaNGiES0a0aJFI1o0okWLRrRoRIsWjWjRiBYtGtGiES1aNKJFI1q0aESLRrRo0YgWjWjRohEtGtGiRSNaNKJFi0a0aESLFo1o0YgWLRrRohEtWjSiRSNatGhEi0a0aNGIFo1o0aIRLRrRokUjWjSiRYtGtGhEixaNaNGI/rHYbkXySmIOegAAAABJRU5ErkJggg==",
     });
   },
 

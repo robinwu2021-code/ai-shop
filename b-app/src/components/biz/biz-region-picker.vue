@@ -104,6 +104,17 @@ async function loadEstateCounts(parentCode: string) {
   }
 }
 
+/**
+ * 这一片是不是**已经问过、且确定是空的**。
+ *
+ * 只有这个成立才把 › 收回去 —— 第一次谁也不知道有没有，drill 一下是唯一的了解方式；
+ * 但已经知道是 0 条之后再给一个 ›，就是逼人点一次「已知是空」的按钮，见一次空列表，
+ * 才后知后觉地明白「原来没有」。已经知道的事不该让人重新走一遍才能确认。
+ */
+function knownEmpty(code: string) {
+  return estateCounts.value[code] === 0;
+}
+
 function estateNote(code: string) {
   const n = estateCounts.value[code];
   if (n == null) return t("store.picker.villageDrill");
@@ -129,8 +140,15 @@ function estateScope(v: Region, container?: Community | null) {
  */
 async function fetchScopedEstates(scopeCode: string, parentCode: string,
                                   known?: { latE6?: number | null; lngE6?: number | null; rural?: boolean }): Promise<PlaceHit[]> {
-  const latE6 = known?.latE6 ?? (scopeCenter.value ? Math.round(scopeCenter.value.lat * 1e6) : undefined);
-  const lngE6 = known?.lngE6 ?? (scopeCenter.value ? Math.round(scopeCenter.value.lng * 1e6) : undefined);
+  /*
+   * **不拿设备定位当这一片的圆心**。`scopeCenter` 是「我这台测试手机现在在哪儿」，
+   * 跟「牛杜镇在哪儿」毫无关系 —— 真机上撞过：牛杜镇（山西）自己没有坐标，
+   * 一旦拿设备定位顶上去，搜出来的是测试手机所在的成都的小区。
+   * 没有已知坐标就把 `addressPath` 留给服务端地理编码（山西省 / 运城市 / … / 牛杜镇），
+   * 那才是这一片真正的位置。scopeCenter 只用于 mRegionSearch 排序和地图选点的初始位置。
+   */
+  const latE6 = known?.latE6 ?? undefined;
+  const lngE6 = known?.lngE6 ?? undefined;
   try {
     const res = await api.mEstates(scopeCode, {
       parentCode,
@@ -150,12 +168,19 @@ async function fetchScopedEstates(scopeCode: string, parentCode: string,
   }
 }
 
-async function loadEstates(streetCode: string) {
+/**
+ * 街道这一片的小区。**必须把街道自己的已知坐标带上**（若有）——
+ * 漏了这一步的话，服务端「有坐标就不查」那条近路永远用不上：查过一次、
+ * 服务端也顺手把坐标存回了 `sys_region`，但这里不传，下次进同一条街道还是会
+ * 老老实实走一遍地址地理编码（方案二：坐标按需补全）。
+ */
+async function loadEstates(street: Region) {
   estatesLoading.value = true;
   estates.value = [];
   try {
     const parent = trail.value[trail.value.length - 2]?.regionCode ?? "";
-    estates.value = await fetchScopedEstates(streetCode, parent);
+    estates.value = await fetchScopedEstates(street.regionCode, parent,
+      { latE6: street.latE6, lngE6: street.lngE6 });
   } finally {
     estatesLoading.value = false;
   }
@@ -168,11 +193,12 @@ async function loadVillageEstates(v: Region, container?: Community | null) {
     const scope = estateScope(v, container);
     const parent = (container ? container.regionCode : trail.value[trail.value.length - 2]?.regionCode) ?? "";
     /*
-     * 城乡搜法不一样（见后端 EstateCacheService#resolve 的注释）。判据：
-     * 已开通的容器看 `originName`（原始官方名，含「村委会」后缀）；
-     * 还没开通的官方村行看 `v.name` 本身 —— 那时候后缀还在，还没被清理掉。
+     * 城乡搜法不一样（见后端 EstateCacheService#resolve 的注释），判据读服务端存的
+     * `rural` 字段（sys_region.rural），不解析名字——**这一行理论上不会被村委会
+     * 触发**：hasChild 已经把村委会挡在了外面，drill 不到这里；这里的 rural 多半
+     * 总是 false（社区/居委会），留着只是为了服务端逻辑与「万一以后有例外」兜底。
      */
-    const rural = isRural(container?.originName ?? v.name);
+    const rural = !!(container?.rural ?? v.rural);
     villageEstates.value = await fetchScopedEstates(scope, parent, { latE6: v.latE6, lngE6: v.lngE6, rural });
   } finally {
     villageEstatesLoading.value = false;
@@ -199,19 +225,6 @@ async function loadVillages(street: string) {
  */
 function looksLikeContainer(name: string, kind?: string) {
   return kind === "VILLAGE" || /(社区|居委会|村委会|村)$/.test(name);
-}
-
-/**
- * 这个容器是城区（社区/居委会）还是农村（村委会）—— **只有原始官方名的后缀能分辨**。
- *
- * 官方名录里的行（还没开通）自带完整后缀，直接看名字；已经开通过的那些
- * `name` 是商家起的口语名（「景滑」，早就不是「景滑村委会」了），
- * 只能从 `originName`（服务端按 origin_code 反查回来的原始机构名）判断。
- * 两边判不出来时按城区处理——「住宅小区」搜不出结果只是白问一次地图，
- * 而把城区错判成农村会让「小区」这个最常见的词从来不被搜。
- */
-function isRural(officialName: string) {
-  return /(村委会|村)$/.test(officialName);
 }
 
 /**
@@ -338,7 +351,7 @@ async function enterLevel(r: Region, container?: Community | null) {
   if (r.level === "STREET") {
     void loadEstateCounts(r.regionCode);
     await loadVillages(r.regionCode);
-    void loadEstates(r.name);
+    void loadEstates(r);
   } else if (r.level === "VILLAGE") {
     await loadVillageEstates(r, container);
   } else {
@@ -449,30 +462,12 @@ async function toggleRegion(r: Region & { path?: string }) {
       ? trail.value.slice(0, trail.value.findIndex((x) => x.regionCode === r.regionCode) + 1).map((x) => x.name).join(" / ")
       : pathName(r.name);
   /*
-   * **省/市/区要先问一句**（R13）：这三级要运营审核、影响面差着量级，
-   * 而它与「勾一个小区」在界面上只差一个位置 —— 手一滑就勾上了，
-   * 而后果（一条待审记录、买家侧什么也没变）要过几天才看得出来。
+   * **所有粒度自选即生效**（2026-08-24 起，取代 R13 的「省/市/区先问一句」）。
+   * 后端同一天把 ADR-013 §4.2 的审核闸拿掉了（MerchantStoreServiceImpl#replaceAreas）——
+   * 两边必须同步：只拿掉这边的确认框、后端还在走 PENDING 的话，商家会以为
+   * 「已经生效」而实际上买家端看不到，比留着确认框更糟。
    */
-  if (r.level !== "STREET") {
-    const ok = await confirmWide(r.level, name);
-    if (!ok) return;
-  }
   addArea({ level: r.level as ServiceArea["level"], refCode: r.regionCode, name });
-}
-
-/** 整片加入前的确认。街道不问 —— 它自助生效，量级与小区同档 */
-function confirmWide(level: string, name: string): Promise<boolean> {
-  const scope = level === "PROVINCE" ? t("store.picker.levelProvince")
-    : level === "CITY" ? t("store.picker.levelCity") : t("store.picker.levelDistrict");
-  return new Promise((resolve) => {
-    uni.showModal({
-      title: t("store.picker.wideTitle", { s: scope }),
-      content: t("store.picker.wideBody", { s: name.split(" / ").pop() ?? name }),
-      confirmText: t("store.picker.wideOk"),
-      success: (res) => resolve(Boolean(res.confirm)),
-      fail: () => resolve(false),
-    });
-  });
 }
 
 function toggleCommunity(c: Community & { path?: string }) {
@@ -610,15 +605,16 @@ function shortName(name?: string) {
 }
 
 /**
- * 这条覆盖项要不要等运营（R12）。**判据与后端保持同一句话**：
- * 小区/村、街道自助生效，区/市/省要审（MerchantStoreServiceImpl#selfEffective）。
+ * 这条覆盖项是不是还挂着旧的待审状态。
  *
- * 后端回显时会带 `status`，但**新勾上还没保存的那几条没有** —— 那正是最需要提示的时刻：
- * 商家勾完整个市、关掉面板、以为立刻就能卖，实际要等审核。
+ * **2026-08-24 起所有粒度自选即生效**，新勾上的（还没有 `status`）不再当成待审——
+ * 之前这里会把没有 `status` 的省/市/区猜成待审，那是给「新勾的条目还没保存」兜底；
+ * 现在新勾的条目本来就不需要审，猜的意义没了。留着只读 `status === PENDING`，
+ * 是为了兼容审核闸拿掉之前就已经存在的存量待审记录——那些要等商家自己重新保存一次
+ * （后端会把它们一并转成 ACTIVE），或者运营那边处理完，标签才会消失。
  */
 function areaPending(a: ServiceArea) {
-  if (a.status) return a.status === "PENDING";
-  return a.level !== "COMMUNITY" && a.level !== "STREET";
+  return a.status === "PENDING";
 }
 
 /**
@@ -697,12 +693,19 @@ const rows = computed<Row[]>(() => {
   for (const c of settleRows.value) {
     // 没有 originCode 就下钻不到具体是哪个村/社区（见下），干脆不给 ›，不给一个点了没反应的箭头
     const container = looksLikeContainer(c.name, c.kind) && !!c.originCode;
+    /*
+     * **村委会（rural=true）永远不给 ›，压根不发起地图查询**——这是服务端存的
+     * 判定（sys_region.rural），不是端上猜的。社区/居委会（rural=false）走原来那套：
+     * 先给 ›，问过一次确定是空的（knownEmpty）才收回去。两种「不给 ›」的原因不一样：
+     * 村委会是结构性的（这一级本来就是终点），社区是数据性的（这次搜到的恰好是空）。
+     */
+    const drillable = container && !c.rural && !knownEmpty(`C${c.communityNo}`);
     out.push({
       key: `c${c.communityNo}`,
       name: c.name,
-      sub: container ? estateNote(`C${c.communityNo}`) : (c.address ?? ""),
-      // 已开通的社区/村底下照样有小区 —— 它开通过，不代表商家要的就是整片
-      hasChild: container,
+      sub: container && !c.rural ? estateNote(`C${c.communityNo}`) : (c.address ?? ""),
+      // 已开通的社区底下照样有小区 —— 它开通过，不代表商家要的就是整片（村委会不适用，见上）
+      hasChild: drillable,
       picked: has("COMMUNITY", c.communityNo),
       covered: communityCoveredBy(c.regionCode),
       community: c,
@@ -712,8 +715,8 @@ const rows = computed<Row[]>(() => {
        * 「牛杜镇」下钻，列表出来的是同一条街道下所有村委会，而不是这个村底下的自然村。
        * 没有 originCode（地图开通的小区，没有官方村血统）时，本来就不该给 ›。
        */
-      region: container && c.originCode
-        ? { regionCode: c.originCode, level: "VILLAGE", name: c.name, enabled: true, hasChild: true,
+      region: drillable
+        ? { regionCode: c.originCode!, level: "VILLAGE", name: c.name, enabled: true, hasChild: true,
             latE6: c.latE6, lngE6: c.lngE6 } as Region
         : undefined,
     });
@@ -724,14 +727,16 @@ const rows = computed<Row[]>(() => {
    * 只在副标题上说明它是哪来的。
    */
   for (const v of villageRows.value) {
+    // 同一条规则：村委会（rural）永远不给 ›；居委会/社区先给，问过是空的再收回去
+    const drillable = VILLAGE_DRILLABLE && !v.rural && !knownEmpty(v.regionCode);
     out.push({
       key: `v${v.regionCode}`,
       name: cleanVillageName(v.name),
-      sub: estateNote(v.regionCode),
-      hasChild: VILLAGE_DRILLABLE,
+      sub: v.rural ? "" : estateNote(v.regionCode),
+      hasChild: drillable,
       picked: hitPicked(`v${v.regionCode}`),
       covered: communityCoveredBy(street),
-      region: v,
+      region: drillable ? v : undefined,
       hit: { key: `v${v.regionCode}`, kind: "VILLAGE", name: v.name, sub: "",
         regionCode: v.regionCode, streetCode: street, latE6: v.latE6, lngE6: v.lngE6 },
     });
@@ -854,7 +859,8 @@ const groups = computed<Group[]>(() => {
   const settle: Row[] = [];
   for (const c of h.communities) {
     // 没有 originCode 下钻不到具体是哪个村/社区（同一条判据见「按区划」那一支）
-    const container = looksLikeContainer(c.name, c.kind ?? undefined) && !!c.originCode;
+    // 村委会（rural）永远不给 ›，跟「按区划」那一支同一条规则
+    const container = looksLikeContainer(c.name, c.kind ?? undefined) && !!c.originCode && !c.rural;
     settle.push({
       key: `sc${c.communityNo}`,
       name: c.name,
@@ -864,7 +870,7 @@ const groups = computed<Group[]>(() => {
       covered: communityCoveredBy(c.regionCode ?? undefined),
       community: {
         communityNo: c.communityNo, name: c.name, regionCode: c.regionCode ?? undefined, path: c.path,
-        originCode: c.originCode, originName: c.originName, latE6: c.latE6, lngE6: c.lngE6,
+        originCode: c.originCode, originName: c.originName, rural: c.rural, latE6: c.latE6, lngE6: c.lngE6,
       } as unknown as Community & { path?: string },
       // 下钻用 originCode（它自己的村码），breadcrumb 靠 mRegionPath 从这个码往上走补齐
       region: container
@@ -877,17 +883,20 @@ const groups = computed<Group[]>(() => {
   for (const v of h.villages ?? []) {
     // 同一个地方已经在上面以「已开通」的样子出现过，就不再出一条「还没开通」的
     if (isOpened(v.name)) continue;
+    // 与层级列表里的村行同一条规则：村委会（rural）永远不给 ›
+    const drillable = VILLAGE_DRILLABLE && !v.rural;
     settle.push({
       key: `sv${v.regionCode}`,
       name: cleanVillageName(v.name),
       sub: v.path,
-      // 与层级列表里的村行同一条规则
-      hasChild: VILLAGE_DRILLABLE,
+      hasChild: drillable,
       picked: hitPicked(`v${v.regionCode}`),
       covered: communityCoveredBy(v.streetCode),
-      region: { regionCode: v.regionCode, level: "VILLAGE", name: v.name, enabled: true,
-        hasChild: true, latE6: v.latE6, lngE6: v.lngE6 } as Region,
-      fromSearch: true,
+      region: drillable
+        ? { regionCode: v.regionCode, level: "VILLAGE", name: v.name, enabled: true,
+            hasChild: true, latE6: v.latE6, lngE6: v.lngE6 } as Region
+        : undefined,
+      fromSearch: drillable,
       hit: { key: `v${v.regionCode}`, kind: "VILLAGE", name: v.name, sub: v.path,
         regionCode: v.regionCode, streetCode: v.streetCode, latE6: v.latE6, lngE6: v.lngE6 },
     });
@@ -1014,8 +1023,10 @@ async function addHit(h: Hit) {
     let no = h.communityNo;
     let name = h.name;
     if (h.kind === "VILLAGE") {
+      // 存原始官方名（「景滑村委会」），不再存清理过的短名 —— 与国标区划的名字保持一致，
+      // 界面上仍然显示清理过的短名（Row.name 那一层已经做了），两件事分开管
       const a = await api.mApplyCommunity({
-        name: cleanVillageName(h.name),
+        name: h.name,
         regionCode: h.streetCode,
         kind: "VILLAGE",
         originCode: h.regionCode,
@@ -1158,7 +1169,6 @@ function close() {
         <view v-if="current" class="whole" :class="{ 'is-on': wholePicked }" @tap="toggleWhole">
           <text class="whole__t">{{ $t("store.picker.wholeLevel", { s: current.name }) }}</text>
           <text v-if="wholePicked" class="whole__on">{{ $t("store.picker.picked") }}</text>
-          <text v-else-if="current.level !== 'STREET' && current.level !== 'VILLAGE'" class="whole__audit">{{ $t("store.picker.needAudit") }}</text>
         </view>
       </template>
 
@@ -1268,28 +1278,13 @@ function close() {
   font-size: 26rpx;
   color: var(--sh-sub);
 }
-.search {
-  display: flex;
-  align-items: center;
-  gap: 12rpx;
-  margin: 0 24rpx;
-  height: 80rpx;
-  padding: 0 24rpx;
-  border-radius: 24rpx;
-  background: var(--sh-faint);
-}
-.search__input {
-  flex: 1;
-  font-size: 28rpx;
-  color: var(--sh-ink);
-}
 .crumb {
   display: flex;
   flex-wrap: wrap;
   gap: 8rpx;
   margin: 20rpx 32rpx 0;
   font-size: 24rpx;
-  color: var(--sh-primary-text);
+  color: var(--sh-sub);
 }
 .crumb__i.is-cur {
   color: var(--sh-ink);
@@ -1302,14 +1297,12 @@ function close() {
   margin: 16rpx 24rpx 0;
   padding: 20rpx 24rpx;
   border-radius: 16rpx;
-  background: var(--sh-faint);
-}
-.whole.is-on {
   background: var(--sh-primary-tint);
 }
 .whole__t {
   font-size: 26rpx;
-  color: var(--sh-ink);
+  font-weight: 600;
+  color: var(--sh-primary-text);
 }
 .whole__on {
   padding: 4rpx 16rpx;
@@ -1317,10 +1310,6 @@ function close() {
   background: var(--sh-primary);
   color: var(--sh-on-primary);
   font-size: 24rpx;
-}
-.whole__audit {
-  font-size: 24rpx;
-  color: var(--sh-warning);
 }
 .body {
   flex: 1;
@@ -1331,7 +1320,7 @@ function close() {
   display: flex;
   align-items: center;
   gap: 20rpx;
-  padding: 24rpx 32rpx;
+  padding: 20rpx 32rpx;
   border-bottom: 2rpx solid var(--sh-line);
 }
 .row__main {
@@ -1341,7 +1330,6 @@ function close() {
 .row__name {
   display: block;
   font-size: 28rpx;
-  font-weight: 600;
   color: var(--sh-ink);
 }
 .row__sub {
@@ -1388,9 +1376,11 @@ function close() {
   gap: 12rpx;
 }
 .group {
-  padding: 16rpx 8rpx 8rpx;
-  font-size: 24rpx;
+  padding: 20rpx 32rpx 8rpx;
+  font-size: 22rpx;
+  letter-spacing: 0.06em;
   color: var(--sh-sub);
+  background: var(--sh-bg);
 }
 .place {
   display: flex;
@@ -1514,10 +1504,10 @@ function close() {
   display: flex;
   align-items: center;
   gap: 12rpx;
-  margin: 8rpx 24rpx 4rpx;
-  padding: 0 20rpx;
-  height: 68rpx;
-  border-radius: 44rpx;
+  margin: 20rpx 24rpx 4rpx;
+  padding: 0 24rpx;
+  height: 72rpx;
+  border-radius: 24rpx;
   background: var(--sh-faint);
 }
 .filter__i {
@@ -1531,10 +1521,44 @@ function close() {
   padding: 0 8rpx;
 }
 
+/* 已选清单：标题栏右侧「展开」出来的那个浮层，误点很容易，要有个当场能删的地方 */
+.chosen {
+  margin: 0 24rpx 16rpx;
+  padding: 8rpx 0;
+  border-radius: 24rpx;
+  background: var(--sh-faint);
+}
+.chosen__row {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  padding: 16rpx 24rpx;
+  font-size: 26rpx;
+  color: var(--sh-ink);
+}
+.chosen__row + .chosen__row {
+  border-top: 2rpx solid var(--sh-line);
+}
+.chosen__name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.chosen__del {
+  flex-shrink: 0;
+  font-size: 24rpx;
+  color: var(--sh-sub);
+}
+
 /* 已选清单里的待审标：与行内那句「选中后需运营审核」是同一件事的两个时刻 */
 .chosen__audit {
-  margin-right: 16rpx;
-  font-size: 24rpx;
+  flex-shrink: 0;
+  padding: 2rpx 12rpx;
+  border-radius: 12rpx;
+  font-size: 22rpx;
+  background: var(--sh-warning-tint);
   color: var(--sh-warning);
 }
 

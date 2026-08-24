@@ -90,10 +90,26 @@ management:
       enabled: false   # token-store=memory 时没有 Redis，开着会让 readiness 常绿变常红
 
 shop:
+  category:
+    gate:
+      # 类目资质闸门是否真的拦人。**暂时 false —— 只展示、不限制**（2026-08-23）。
+      #
+      # 受理入口刚铺（B 端「我的资质」传证 + 运营端「按已传的证勾选」授码），
+      # 存量商家的 category_codes 还在补。这时候闸门拦住的不是无证经营，
+      # 是平台自己还没建好的那条路：线上 267 件商品落在带门槛的类目下，
+      # 开着闸它们一件都上不了架。
+      #
+      # 判据照跑、命中打 WARN（「[类目闸] 放行未授权上架」），那是开闸前估影响面的依据。
+      # 打开时**必须同时**把 b-app 的 ENFORCE_CATEGORY_GATE 打开，见 b-app/src/shared/flags.ts。
+      enforce: ${SHOP_CATEGORY_GATE_ENFORCE:false}
   # 图片/媒体存储：local = 本地磁盘（默认，兜底）；cos = 腾讯云对象存储（生产）。
   media:
     provider: ${SHOP_MEDIA_PROVIDER:local}
   # 腾讯云 COS。provider=cos 时必填（缺任一项直接起不来）。密钥走 env，不入库不入镜像。
+  # 逆地理编码（店铺地址「定位」按钮）。腾讯位置服务 WebService key；空 = 功能关闭，端上藏按钮
+  geo:
+    # 高德 Web 服务 key（后端代理，密钥不落端）。空 = 地图能力关闭：定位取地址按钮隐藏、地址校验跳过
+    amap-key: ${AMAP_WEB_KEY:}
   cos:
     secret-id: ${COS_SECRET_ID:}
     secret-key: ${COS_SECRET_KEY:}
@@ -192,6 +208,10 @@ shop:
       stub: ${SHOP_WX_ACODE_STUB:${SHOP_WX_STUB:true}}
       # 小程序**还没发布过任何版本**时必须 false，否则微信校验 page 是否存在于已发布版本
       check-path: ${SHOP_WX_ACODE_CHECK_PATH:false}
+    # 手机号快速验证（phonenumber.getPhoneNumber）。**要已认证 + 非个人主体，且按次计费** ——
+    # 所以它默认关着，而验证码那条路必须一直在（端上按 /mp/user/phone/capable 决定显示哪个）
+    phone:
+      stub: ${SHOP_WX_PHONE_STUB:${SHOP_WX_STUB:true}}
     appid: ${WX_APPID:}
     secret: ${WX_SECRET:}
     # developer / trial / formal。联调切 trial，免得打扰真实用户

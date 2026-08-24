@@ -943,6 +943,71 @@ class M9bBizGoodsFlowTest {
         return n == null || n.isNull() ? "{}" : n.toString();
     }
 
+    @Test
+    @DisplayName("★★ 成本价与详情图往返 —— 有列没有写入路径，等于这两个字段不存在")
+    void costPriceAndDetailImagesRoundTrip() throws Exception {
+        String token = merchant("12600127040", "成本价测试店");
+        String body = "{\"categoryNo\":\"CAT210\",\"title\":\"带成本的货\",\"subtitle\":\"测试\","
+                + "\"cover\":\"🥫\",\"images\":[],\"detailImages\":[\"/img/d1.jpg\",\"/img/d2.jpg\"],"
+                + "\"specGroups\":[],"
+                + "\"skus\":[{\"optionValues\":[],\"price\":1200,\"stock\":5,\"costPrice\":800}]}";
+        String saved = mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        JsonNode savedData = json.readTree(saved).get("data");
+        String goodsNo = savedData.get("goodsNo").asString();
+        String skuNo = savedData.get("skus").get(0).get("skuNo").asString();
+
+        // 商家侧读得回来：编辑页要用它算毛利
+        mvc().perform(get("/biz/goods/" + goodsNo).header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.data.skus[0].costPrice").value(800))
+                .andExpect(jsonPath("$.data.detailImages.length()").value(2));
+
+        /*
+         * **买家侧恒空**。进货价是商家的经营秘密 —— 出现在买家端的响应里就等于公开了，
+         * 而这种泄露不会有任何一处报错。详情图相反：它本来就是给买家看的。
+         */
+        String pub = mvc().perform(get("/mp/goods/" + goodsNo)).andReturn().getResponse().getContentAsString();
+        JsonNode data = json.readTree(pub).get("data");
+        if (data != null && !data.isNull()) {
+            assertThat(data.get("skus").get(0).get("costPrice").isNull())
+                    .as("成本价不能下发给买家").isTrue();
+            assertThat(data.get("detailImages").size()).as("详情图要发给买家").isEqualTo(2);
+        }
+
+        // 只改标题时不带这两个字段 = 不改（与 images / detail 同一口径）
+        mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"goodsNo\":\"" + goodsNo + "\",\"categoryNo\":\"CAT210\","
+                                + "\"title\":\"改个名字\",\"subtitle\":\"测试\",\"cover\":\"🥫\","
+                                + "\"specGroups\":[],"
+                                // 带原 skuNo：不带就是「这是一条新规格」，旧行连同成本一起作废
+                                + "\"skus\":[{\"skuNo\":\"" + skuNo + "\",\"optionValues\":[],"
+                                + "\"price\":1200,\"stock\":5}]}"))
+                .andExpect(jsonPath("$.code").value(0));
+        mvc().perform(get("/biz/goods/" + goodsNo).header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.data.skus[0].costPrice").value(800))
+                .andExpect(jsonPath("$.data.detailImages.length()").value(2));
+    }
+
+    @Test
+    @DisplayName("★★★ SKU 数量上限 —— 接口层不拦的话，512 行规格能直接灌进商品详情")
+    void tooManySkusAreRejected() throws Exception {
+        String token = merchant("12600127041", "规格上限测试店");
+        StringBuilder skus = new StringBuilder();
+        for (int i = 0; i < 120; i++) {
+            if (i > 0) skus.append(",");
+            skus.append("{\"optionValues\":[\"v").append(i).append("\"],\"price\":100,\"stock\":1}");
+        }
+        mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"categoryNo\":\"CAT210\",\"title\":\"规格爆炸\",\"subtitle\":\"测试\","
+                                + "\"cover\":\"🥫\",\"specGroups\":[{\"name\":\"型号\",\"options\":[\"v0\"]}],"
+                                + "\"skus\":[" + skus + "]}"))
+                .andExpect(jsonPath("$.code").value(org.hamcrest.Matchers.not(0)));
+    }
+
     private String goodsBody(String goodsNo, String title, long price, int stock) {
         // 类目必填（P1-1 收尾）：CAT210 纸品清洁 —— 无 required_code，不会卡在资质准入上
         return "{" + (goodsNo == null ? "" : "\"goodsNo\":\"" + goodsNo + "\",")

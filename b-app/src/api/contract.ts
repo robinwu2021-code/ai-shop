@@ -55,6 +55,7 @@ import type {
   GroupRequest,
   CampaignDraft,
   MarketingCampaign,
+  Poster,
   Review,
   SettleBill,
   ShareKit,
@@ -282,7 +283,26 @@ import type {
   StoreFulfillmentSaveReq,
   SubmitPaymentReq,
   TogglePointsReq,
+  OpenFromMapReq,
 } from "./requests";
+
+/** 缓存里的一条小区。坐标必有 —— 没坐标的在服务端就被滤掉了（买家定位落不进去） */
+export interface EstateItem {
+  name: string;
+  address?: string;
+  latE6?: number | null;
+  lngE6?: number | null;
+  poiId?: string | null;
+}
+
+export interface EstateList {
+  scopeCode: string;
+  items: EstateItem[];
+  /** 这一片抓过没有。false = 从没抓过（不是「抓过但是空的」） */
+  cached: boolean;
+  /** 抓过但超过 TTL：先用着，同时再问一次地图 */
+  stale: boolean;
+}
 
 export interface MerchantApi {
   // ---- 账号与入驻（B-11.1）
@@ -369,9 +389,30 @@ export interface MerchantApi {
    * 没有入口 —— 只能找 BD 口头说，说完没人知道进展。
    */
   mApplyCommunity(payload: CommunityApplyReq): Promise<CommunityApply>;
+  /**
+   * 地图上选中的小区**直接开通并返回**，商家当场就能勾。
+   * 重复由后端三道闸挡（村码 / 同街道归一名 / 坐标 150 米内），撞上返回既有那条。
+   */
+  mOpenCommunityFromMap(payload: OpenFromMapReq): Promise<Community>;
   /** 我提报过的。没有它，提报出去等于石沉大海，商家只会隔几天再提一次同样的 */
   mMyCommunityApplies(): Promise<CommunityApply[]>;
   mSaveStore(payload: StoreProfile): Promise<StoreProfile>;
+  /**
+   * 只改公告。与 mSaveStore 分开的一条路 —— 公告一天可能改两次，
+   * 混在整份门面里保存，改一句话要连带提交地址与营业时间。
+   */
+  /**
+   * 只改公告。
+   *
+   * @param payload.alsoStoreNos 同时发到这些门店（多店主体）。**默认不带** ——
+   *                             「南门店今天停电」只对一家店成立；而「今天到货」
+   *                             三家都成立时，让他进三次店发三遍是纯粹的重复劳动
+   */
+  mSaveAnnouncement(payload: {
+    announcement: string; announcementUntil: number | null; alsoStoreNos?: string[];
+  }): Promise<StoreProfile>;
+  /** 从「常用」里删掉一条（按原文匹配）。删候选不动当前公告 */
+  mDropNoticeRecent(text: string): Promise<StoreProfile>;
 
   // ---- 门店管理（M6）—— 与 mStore 的分工：那个管**一家店的门面**，这个管**有几家店**
   /** 含停用的。停用的也要看得见 —— 看不见的话商家会以为店被删了 */
@@ -392,29 +433,33 @@ export interface MerchantApi {
   /** 自建自提点 → PENDING 待运营核实（P1） */
   mSelfBuildPickup(payload: PickupSelfBuildReq): Promise<PickupCandidate>;
   /** 跨级搜索区划与聚落（P1） */
-  mRegionSearch(kw: string): Promise<RegionSearchResult>;
+  /**
+   * 跨级搜区划与聚落。带上位置时**村级按距离排** —— 同名的村全国到处都是，
+   * 深圳的商家搜「福城」，不带位置排在最前的是新疆的「同和幸福城」。
+   */
+  mRegionSearch(kw: string, near?: { latE6: number; lngE6: number }): Promise<RegionSearchResult>;
   /** 从省到自身的整条链路（选择器从搜索命中下钻用） */
   mRegionPath(code: string): Promise<Region[]>;
   /** 坐标转地址（P2）。未开通时抛 10503，端上据此藏按钮 */
   mGeoReverse(lat: number, lng: number): Promise<GeoReverseResult>;
-  /**
-   * 只改公告。与 mSaveStore 分开的一条路 —— 公告一天可能改两次，
-   * 混在整份门面里保存，改一句话要连带提交地址与营业时间。
-   */
-  /**
-   * 只改公告。
-   *
-   * @param payload.alsoStoreNos 同时发到这些门店（多店主体）。**默认不带** ——
-   *                             「南门店今天停电」只对一家店成立；而「今天到货」
-   *                             三家都成立时，让他进三次店发三遍是纯粹的重复劳动
-   */
-  mSaveAnnouncement(payload: {
-    announcement: string; announcementUntil: number | null; alsoStoreNos?: string[];
-  }): Promise<StoreProfile>;
-  /** 从「常用」里删掉一条（按原文匹配）。删候选不动当前公告 */
-  mDropNoticeRecent(text: string): Promise<StoreProfile>;
   /** 地点输入提示。未开通（后端没配 Web 服务 key）返回空数组，端上退回自由输入 */
   mGeoTips(kw: string, city?: string): Promise<GeoTip[]>;
+  /**
+   * 一片地方（街道 / 村·社区）里的小区。**服务端读穿透**：缓存新鲜直接给；
+   * 缺失或过期，且给得出圆心（坐标，或一条能被地理编码的地址），就服务端自己
+   * 现问地图、写回缓存、再返回。App 不用再自己调原生 SDK、也不用把结果传回来写缓存。
+   *
+   * @param opts.latE6/lngE6 已知坐标时给，省一次服务端地理编码
+   * @param opts.addressPath 没坐标时用它地理编码（如「浙江省 / 杭州市 / 西湖区 / 北山街道 / 宝石社区」）
+   * @param opts.city 高德 city 偏好（可选）
+   * @param opts.rural 这一片是村委会还是社区/居委会。城乡搜法不一样：城区搜「住宅小区」，
+   *                   农村搜「村」——沿用城区那套在农村会一条都搜不到
+   */
+  mEstates(regionCode: string, opts?: {
+    parentCode?: string; latE6?: number; lngE6?: number; addressPath?: string; city?: string; rural?: boolean;
+  }): Promise<EstateList>;
+  /** 下辖各片的小区条数：列表要在每一行上预告「12 个小区 / 暂无小区」 */
+  mEstateCounts(parentCode: string): Promise<Record<string, number>>;
   /** 新建。**超额直接拒** —— 建出来却打不开的店比拒绝更难解释 */
   mCreateStore(payload: StoreEditReq): Promise<Store>;
   mRenameStore(storeNo: string, payload: StoreEditReq): Promise<Store>;
@@ -510,6 +555,8 @@ export interface MerchantApi {
   mStoreQrcode(): Promise<StoreQrcode>;
   /** 分享素材：整店或单品。文案要带「还差 N 人」这类可直接转发的内容 */
   mShareKit(goodsNo?: string): Promise<ShareKit>;
+  /** 真海报：封面/店名/价格/小程序码合成的一张图。整店或单品，取决于传不传 goodsNo */
+  mPoster(goodsNo?: string): Promise<Poster>;
 
   // ---- 工作台（B-10.1 + B-11 汇总）
   mTodo(): Promise<MerchantTodo>;
@@ -659,6 +706,18 @@ export interface MerchantApi {
    */
   mSpecTemplates(categoryType?: Goods["type"], categoryNo?: string): Promise<SpecTemplate[]>;
   /**
+   * 「加一个规格组」能挑的维度。**顺序即建议顺序**：
+   * 本类目已配的（`categoryNo` 有值）→ 平台通用（`categoryNo` 为空、`scope=PLATFORM`）
+   * → 这家店自建的（`scope=MERCHANT`）。
+   *
+   * <p>与 {@link mSpecTemplates} 的差别是范围：那个只给本类目配好的几条（自动预填用它），
+   * 这个多给平台通用维度 —— 让商家**先看后挑**。此前他点「自定义规格」是对着一个
+   * 空输入框凭记忆敲维度名：后端有「与平台重名就用平台那个」的兜底，
+   * 但那要他恰好敲对字，敲「味道」而平台叫「口味」就撞不上，
+   * 于是多出一个只有他一家能用的维度，他的货从此掉出跨店聚合。
+   */
+  mPickableDims(categoryNo?: string): Promise<SpecTemplate[]>;
+  /**
    * 在**平台维度**下加一个自己的规格值：「我这袋是 750g，平台没这一档」。
    *
    * <p>它挂在平台维度上，所以与平台值天然同轴 —— 跨店比价照样成立。
@@ -676,62 +735,6 @@ export interface MerchantApi {
    * 而不是拥有一个自己的颜色维度。
    */
   mAddSpecDim(name: string, labels: string[]): Promise<SpecTemplate>;
-  /** 把当前编辑的规格组存为「我的常用」，下次建品直接套 */
-  mSaveSpecTemplate(payload: { name: string; options: string[] }): Promise<SpecTemplate>;
-
-  // ---- 订单与配送（B-11.4）
-  /** `status` 用 `OrderStatus` 而不是 `string` —— 松成 string 后，前端传个 "toShip"
-   *  这种 tab key 上去也编译得过，而服务端只认状态枚举（由 requests.ts 的 satisfies 抓出）
-   *
-   *  ⚠️ **配送员拿到的是裁剪档**：只有 `COURIER` 一个角色的人，后端返回
-   *  `CourierOrderVO`（`orderNo` / `status` / `fulfillment` / `itemQty` / `createdAt`），
-   *  **没有 `amount`、没有 `verifyCode`、没有 `items`**（需求 §4.4：他送的是货不是钱）。
-   *  类型这里仍声明为 `Order` —— 收窄成联合类型会让每个用到订单的页面都要分支，
-   *  而只有配送页会遇到裁剪档。**用到金额的地方按字段有无渲染**，别按角色判。 */
-  /** `status` 与 `fulfillments` 正交，见 c-app 的 orderList 注释 */
-  mOrderList(
-    q: PageQuery & { status?: OrderStatus; fulfillments?: string[]; allStores?: boolean },
-  ): Promise<PageResult<Order>>;
-  mOrderDetail(orderNo: string): Promise<Order>;
-  /** 快递发货：回填运单号 */
-  mShip(orderNo: string, expressNo: string): Promise<Order>;
-  /** 商家自送：老板点一下「已送达」。不做骑手轨迹（ADR-005 §5） */
-  mDelivered(orderNo: string): Promise<Order>;
-  /**
-   * 「加一个规格组」能挑的维度。**顺序即建议顺序**：
-   * 本类目已配的（`categoryNo` 有值）→ 平台通用（`categoryNo` 为空、`scope=PLATFORM`）
-   * → 这家店自建的（`scope=MERCHANT`）。
-   *
-   * <p>与 {@link mSpecTemplates} 的差别是范围：那个只给本类目配好的几条（自动预填用它），
-   * 这个多给平台通用维度 —— 让商家**先看后挑**。此前他点「自定义规格」是对着一个
-   * 空输入框凭记忆敲维度名：后端有「与平台重名就用平台那个」的兜底，
-   * 但那要他恰好敲对字，敲「味道」而平台叫「口味」就撞不上，
-   * 于是多出一个只有他一家能用的维度，他的货从此掉出跨店聚合。
-   */
-  mPickableDims(categoryNo?: string): Promise<SpecTemplate[]>;
-  mDeliveryRule(): Promise<DeliveryRule>;
-  mSaveDeliveryRule(rule: DeliveryRule): Promise<DeliveryRule>;
-
-  // ---- 自提点履约（B-10）
-  /** 本自提点的订单 —— 含别家商家的货，字段已按履约必需裁剪（B12） */
-  /** 自提点履约总览（后端已实现）。承接方进履约台第一眼要看的三个数 */
-  mPickupOverview(): Promise<PickupOverview>;
-  /**
-   * 本自提点的待履约单。**返回的是 `PickupOrder`，不是 `Order`** ——
-   * 承接方可能替别家收货，字段按履约必需裁到最小（B12），
-   * 状态也是子单那一套（`WAIT_FULFILL`…），不是主单的。
-   */
-  mPickupOrders(): Promise<PickupOrder[]>;
-  mPickingList(): Promise<PickingRow[]>;
-  /**
-   * 到货登记。
-   *
-   * @param pickupNo 给哪个自提点登记；不传 = 当前门店的那个点。
-   *                 多点商家必须能指定 —— 否则另一个点的货永远登记不上
-   */
-  mMarkArrived(subOrderNos: string[], pickupNo?: string): Promise<PickupOrder[]>;
-  /**
-   * 核销自提码。核销成功 → C 端该订单立刻变已完成。
 
   /**
    * 「我的规格」：这家店自己建的维度 + 用量 + 配额。
@@ -772,89 +775,50 @@ export interface MerchantApi {
    * 停用后只是建品时挑不到。
    */
   mArchiveSpecDim(dimNo: string, archived: boolean): Promise<void>;
+  /** 把当前编辑的规格组存为「我的常用」，下次建品直接套 */
+  mSaveSpecTemplate(payload: { name: string; options: string[] }): Promise<SpecTemplate>;
 
-  /**
-   * 「我的规格」：这家店自己建的维度 + 用量 + 配额。
+  // ---- 订单与配送（B-11.4）
+  /** `status` 用 `OrderStatus` 而不是 `string` —— 松成 string 后，前端传个 "toShip"
+   *  这种 tab key 上去也编译得过，而服务端只认状态枚举（由 requests.ts 的 satisfies 抓出）
    *
-   * <p>此前商家**只能建、不能管** —— 建品页里输一个名字就落进规格库，
-   * 之后没有任何地方看得到它。建错了只能一直留着，还占着配额，
-   * 而配额用完那句报错也说不清是被什么占了。
-   */
-  mMySpecDims(): Promise<MerchantSpecDim[]>;
-  /**
-   * 本店货架类目各自能用的规格。**「我的规格」那一页的主体** ——
-   * 自建规格线上是 0 条，只列自建的话这一页对所有商家都是空的，
-   * 而它该回答的是「我能用哪些」。
-   */
-  mStoreSpecDims(storeNo?: string): Promise<StoreCategorySpecs[]>;
-  /**
-   * 保存本店对某个类目规格的覆盖。**返回合并后的最新结果** ——
-   * 端上照它重渲染，省一次往返，也免得两边各算一遍合并规则。
-   */
-  mSaveSpecOverride(categoryNo: string, dims: SpecOverride[]): Promise<SpecTemplate[]>;
-  /**
-   * 改名。**不影响已建商品** —— 商品存的是规格快照。
-   *
-   * <p>不声明返回值：改完之后配额没变但用量可能变（改名会让老商品对不上，
-   * 那是有意的 —— 历史不该被改名波及），就地更新反而容易与服务端不一致。
-   * 页面整份重拉，一次请求换一个准确的界面。
-   */
-  mRenameSpecDim(dimNo: string, name: string): Promise<void>;
-  /**
-   * 停用 / 启用。**停用不是删除**：历史商品的规格组要靠它解释自己是什么。
-   * 停用后只是建品时挑不到。
-   */
-  mArchiveSpecDim(dimNo: string, archived: boolean): Promise<void>;
+   *  ⚠️ **配送员拿到的是裁剪档**：只有 `COURIER` 一个角色的人，后端返回
+   *  `CourierOrderVO`（`orderNo` / `status` / `fulfillment` / `itemQty` / `createdAt`），
+   *  **没有 `amount`、没有 `verifyCode`、没有 `items`**（需求 §4.4：他送的是货不是钱）。
+   *  类型这里仍声明为 `Order` —— 收窄成联合类型会让每个用到订单的页面都要分支，
+   *  而只有配送页会遇到裁剪档。**用到金额的地方按字段有无渲染**，别按角色判。 */
+  /** `status` 与 `fulfillments` 正交，见 c-app 的 orderList 注释 */
+  mOrderList(
+    q: PageQuery & { status?: OrderStatus; fulfillments?: string[]; allStores?: boolean },
+  ): Promise<PageResult<Order>>;
+  mOrderDetail(orderNo: string): Promise<Order>;
+  /** 快递发货：回填运单号 */
+  mShip(orderNo: string, expressNo: string): Promise<Order>;
+  /** 商家自送：老板点一下「已送达」。不做骑手轨迹（ADR-005 §5） */
+  mDelivered(orderNo: string): Promise<Order>;
+  mDeliveryRule(): Promise<DeliveryRule>;
+  mSaveDeliveryRule(rule: DeliveryRule): Promise<DeliveryRule>;
 
+  // ---- 自提点履约（B-10）
+  /** 本自提点的订单 —— 含别家商家的货，字段已按履约必需裁剪（B12） */
+  /** 自提点履约总览（后端已实现）。承接方进履约台第一眼要看的三个数 */
+  mPickupOverview(): Promise<PickupOverview>;
   /**
-   * 「我的规格」：这家店自己建的维度 + 用量 + 配额。
+   * 本自提点的待履约单。**返回的是 `PickupOrder`，不是 `Order`** ——
+   * 承接方可能替别家收货，字段按履约必需裁到最小（B12），
+   * 状态也是子单那一套（`WAIT_FULFILL`…），不是主单的。
+   */
+  mPickupOrders(): Promise<PickupOrder[]>;
+  mPickingList(): Promise<PickingRow[]>;
+  /**
+   * 到货登记。
    *
-   * <p>此前商家**只能建、不能管** —— 建品页里输一个名字就落进规格库，
-   * 之后没有任何地方看得到它。建错了只能一直留着，还占着配额，
-   * 而配额用完那句报错也说不清是被什么占了。
+   * @param pickupNo 给哪个自提点登记；不传 = 当前门店的那个点。
+   *                 多点商家必须能指定 —— 否则另一个点的货永远登记不上
    */
-  mMySpecDims(): Promise<MerchantSpecDim[]>;
+  mMarkArrived(subOrderNos: string[], pickupNo?: string): Promise<PickupOrder[]>;
   /**
-   * 本店货架类目各自能用的规格。**「我的规格」那一页的主体** ——
-   * 自建规格线上是 0 条，只列自建的话这一页对所有商家都是空的，
-   * 而它该回答的是「我能用哪些」。
-   */
-  mStoreSpecDims(storeNo?: string): Promise<StoreCategorySpecs[]>;
-  /**
-   * 改名。**不影响已建商品** —— 商品存的是规格快照。
-   *
-   * <p>不声明返回值：改完之后配额没变但用量可能变（改名会让老商品对不上，
-   * 那是有意的 —— 历史不该被改名波及），就地更新反而容易与服务端不一致。
-   * 页面整份重拉，一次请求换一个准确的界面。
-   */
-  mRenameSpecDim(dimNo: string, name: string): Promise<void>;
-  /**
-   * 停用 / 启用。**停用不是删除**：历史商品的规格组要靠它解释自己是什么。
-   * 停用后只是建品时挑不到。
-   */
-  mArchiveSpecDim(dimNo: string, archived: boolean): Promise<void>;
-
-  /**
-   * 「我的规格」：这家店自己建的维度 + 用量 + 配额。
-   *
-   * <p>此前商家**只能建、不能管** —— 建品页里输一个名字就落进规格库，
-   * 之后没有任何地方看得到它。建错了只能一直留着，还占着配额，
-   * 而配额用完那句报错也说不清是被什么占了。
-   */
-  mMySpecDims(): Promise<MerchantSpecDim[]>;
-  /**
-   * 改名。**不影响已建商品** —— 商品存的是规格快照。
-   *
-   * <p>不声明返回值：改完之后配额没变但用量可能变（改名会让老商品对不上，
-   * 那是有意的 —— 历史不该被改名波及），就地更新反而容易与服务端不一致。
-   * 页面整份重拉，一次请求换一个准确的界面。
-   */
-  mRenameSpecDim(dimNo: string, name: string): Promise<void>;
-  /**
-   * 停用 / 启用。**停用不是删除**：历史商品的规格组要靠它解释自己是什么。
-   * 停用后只是建品时挑不到。
-   */
-  mArchiveSpecDim(dimNo: string, archived: boolean): Promise<void>;
+   * 核销自提码。核销成功 → C 端该订单立刻变已完成。
    *
    * ⚠️ **失败也是 code 0**，靠返回体的 `success` 判 —— 不要只看有没有抛异常。
    * 码无效、已核销、不是本点这三种都会带 `reason` 回来，

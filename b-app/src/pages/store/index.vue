@@ -13,9 +13,10 @@ import { onBackPress, onShow } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
 import { api } from "@/api";
 import { composeAddress, locateWithFeedback, pickOnMap } from "@/utils/geo";
+import { saveBase64Image } from "@/utils/image";
 import { useMerchantStore } from "@/stores/merchant";
 import { FULFILLMENT_REACH, SERVICE_SCOPE } from "@shared/utils/constants";
-import type { ShareKit, StoreProfile, StoreQrcode } from "@shared/types";
+import type { Poster, ShareKit, StoreProfile, StoreQrcode } from "@shared/types";
 
 const { t } = useI18n();
 const merchant = useMerchantStore();
@@ -46,13 +47,17 @@ const HOURS = [
 
 const qrcode = ref<StoreQrcode | null>(null);
 const kit = ref<ShareKit | null>(null);
+/** 真海报（P2）：封面/店名/价格/小程序码合成的一张图，不是 kit.posterUrl 那句假话 */
+const poster = ref<Poster | null>(null);
 
 async function load() {
   /*
    * allSettled 而不是 all：店铺码还没生成、分享素材抖一下，不该让门面字段
    * 静默退回初始值 —— 店主照着空白点保存，就把默认值覆盖到真实数据上去了。
    */
-  const [s, q, k] = await Promise.allSettled([api.mStore(), api.mStoreQrcode(), api.mShareKit()]);
+  const [s, q, k, p] = await Promise.allSettled(
+    [api.mStore(), api.mStoreQrcode(), api.mShareKit(), api.mPoster()],
+  );
   if (s.status === "fulfilled") {
     form.value = { ...s.value, serviceAreas: s.value.serviceAreas ?? [] };
     snapshot.value = pick(form.value);
@@ -62,6 +67,7 @@ async function load() {
   }
   qrcode.value = q.status === "fulfilled" ? q.value : null;
   kit.value = k.status === "fulfilled" ? k.value : null;
+  poster.value = p.status === "fulfilled" ? p.value : null;
 }
 
 async function save() {
@@ -167,6 +173,21 @@ function copyLink() {
   });
 }
 
+/**
+ * 把店铺码存到相册。**这才是本地生活场景里真正会用的分享方式**——
+ * 「复制链接」要接收方点开，「存图发群/发朋友圈」直接扫，前者在这个场景里几乎没人用。
+ *
+ * App/小程序走 `saveImageToPhotosAlbum`（先落一份临时文件，这两个平台都不接受直接传 base64）；
+ * H5 存不了相册，退回「新开一个图片页」，交给用户自己长按保存 —— 不是最好的体验，
+ * 但比一个假装能用的按钮强（这正是这张卡片原来那个「可打印版」按钮的问题：点了没反应）。
+ */
+function saveQrImage() {
+  saveBase64Image(qrcode.value?.imageBase64, "store-qrcode", t);
+}
+function savePosterImage() {
+  saveBase64Image(poster.value?.imageBase64, "store-poster", t);
+}
+
 onShow(() => {
   void load();
 });
@@ -231,11 +252,13 @@ onShow(() => {
         </view>
         <view class="qr__main">
           <text class="qr__t">{{ $t("store.qrcode") }}</text>
-          <text class="hint">{{ qrcode?.imageBase64 ? $t("store.qrcodeDesc") : $t("store.qrcodePending") }}</text>
+          <text class="hint">
+            {{ qrcode?.imageBase64 ? (qrcode.printableHint || $t("store.qrcodeDesc")) : $t("store.qrcodePending") }}
+          </text>
           <text v-if="qrcode?.storeCode" class="qr__code sh-num">{{ qrcode.storeCode }}</text>
           <view class="btns">
+            <text v-if="qrcode?.imageBase64" class="mini" @tap="saveQrImage">{{ $t("store.saveImage") }}</text>
             <text v-if="qrcode?.url" class="mini" @tap="copyLink">{{ $t("store.copyLink") }}</text>
-            <text class="mini">{{ $t("store.printVersion") }}</text>
           </view>
         </view>
       </view>
@@ -246,6 +269,15 @@ onShow(() => {
         <view class="kit">{{ kit?.text }}</view>
         <view class="sh-btn" @tap="copyText">{{ $t("store.copyKit") }}</view>
         <text class="hint">{{ $t("store.shareKitHint") }}</text>
+
+        <!--
+          真海报：封面/店名/价格/小程序码合成的一张图，不是上面那句话再配一个假 URL。
+          没生成出来（商家异常/极端情况）就不占地方——不摆一张加载不出来的坏图。
+        -->
+        <view v-if="poster?.imageBase64" class="poster">
+          <image class="poster__img" :src="`data:image/png;base64,${poster.imageBase64}`" mode="widthFix" />
+          <view class="sh-btn poster__save" @tap="savePosterImage">{{ $t("store.saveImage") }}</view>
+        </view>
       </view>
     </view>
 
@@ -356,6 +388,17 @@ onShow(() => {
   margin-top: 24rpx;
   padding-top: 24rpx;
   border-top: 2rpx solid var(--sh-line);
+}
+.poster {
+  margin-top: 20rpx;
+}
+.poster__img {
+  width: 100%;
+  border-radius: 24rpx;
+  border: 2rpx solid var(--sh-line);
+}
+.poster__save {
+  margin-top: 16rpx;
 }
 .kit {
   margin: 12rpx 0 16rpx;

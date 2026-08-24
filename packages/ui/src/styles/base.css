@@ -449,6 +449,16 @@ uni-page-wrapper[style*="--window-bottom"] {
   font-size: 28rpx;
   color: var(--sh-ink);
 }
+/* 输入框占位文字。**必须显式给色**：各端的默认占位色不一样（iOS 偏浅、
+   Android WebView 偏深、H5 又是另一档），同一个页面在三个端上看着是三种灰。
+   用 `placeholder-class="sh-ph"` 挂上它 —— placeholder 是原生元素，
+   scoped 样式选不到，只能是全局类。**再配一条 `placeholder-style`**：
+   uni 自己的 `.uni-input-placeholder` 与这条同权重且后加载，光靠类名压不过它
+   （H5 上实测仍是 rgb(128,128,128)），而行内样式一定赢。 */
+.sh-ph {
+  color: var(--sh-sub);
+}
+
 /* 说明文字：**最弱的一档**。它解释规则，不承载操作 */
 .field__hint {
   display: block;

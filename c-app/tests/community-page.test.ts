@@ -63,12 +63,23 @@ async function render() {
       mocks: { $t: (k: string) => k },
     },
   });
-  // load() 里有两到三个 await，逐个 flush
-  for (let i = 0; i < 6; i++) {
+  await settle(w);
+  return w;
+}
+
+/**
+ * 等页面把 load() 里那串 await 走完。
+ *
+ * <p>次数给够而不是刚好：不同分支的 await 数量不同
+ * （附近有 = 2 个；附近没有 → 查区域 → 再回落查全部 = 4 个），
+ * 给刚好的次数会让某一条分支「测出来还停在定位中」，
+ * 而那看起来像页面卡住了 —— 实际只是测试没等完。
+ */
+async function settle(w: { vm: { $nextTick: () => Promise<unknown> } }) {
+  for (let i = 0; i < 12; i++) {
     await Promise.resolve();
     await w.vm.$nextTick();
   }
-  return w;
 }
 
 vi.mock("vue-i18n", () => ({ useI18n: () => ({ t: (k: string) => k }) }));
@@ -129,10 +140,7 @@ describe("选社区自提点页", () => {
     const w = await render();
 
     await w.find(".rg__item").trigger("tap");
-    for (let i = 0; i < 4; i++) {
-      await Promise.resolve();
-      await w.vm.$nextTick();
-    }
+    await settle(w);
 
     expect(allCommunities).toHaveBeenCalledWith("330106");
     expect(w.text()).toContain("阳光花园");

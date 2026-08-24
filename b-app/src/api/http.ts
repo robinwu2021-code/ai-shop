@@ -2,7 +2,7 @@
 // 迁移时这个文件基本不用改，改的是 .env 里的开关。
 import { http } from "@shared/net/http-client";
 import { buildPath, ENDPOINTS as E } from "./endpoints";
-import type { GoodsDraft, GoodsGuess, MerchantApi } from "./contract";
+import type { EstateList, GoodsDraft, GoodsGuess, MerchantApi } from "./contract";
 // 入参的 wire 契约。`satisfies` 让「实际发出去的 body」在编译期受检 ——
 // 字段写错、少传、多传都编译不过，而不是等联调才发现（与 C 端同一套做法）
 import type {
@@ -40,6 +40,7 @@ import type {
   VerifyReq,
   StoreFulfillmentSaveReq,
   PickupSelfBuildReq,
+  OpenFromMapReq,
 } from "./requests";
 import type {
   BizScope,
@@ -82,6 +83,7 @@ import type {
   GroupRequest,
   CampaignDraft,
   MarketingCampaign,
+  Poster,
   Review,
   SettleBill,
   ShareKit,
@@ -129,6 +131,8 @@ export const httpApi: MerchantApi = {
 
   mVillageDict: (street, keyword) =>
     http.get<Region[]>(E.mVillageDict.path, { street, keyword }),
+  mOpenCommunityFromMap: (payload) =>
+    http.post<Community>(E.mOpenCommunityFromMap.path, payload satisfies OpenFromMapReq),
   mApplyCommunity: (payload) =>
     http.post<CommunityApply>(E.mApplyCommunity.path, payload satisfies CommunityApplyReq),
   mMyCommunityApplies: () => http.get<CommunityApply[]>(E.mMyCommunityApplies.path),
@@ -150,10 +154,14 @@ export const httpApi: MerchantApi = {
     http.get<PickupCandidate[]>(E.mPickupCandidates.path, { storeNo }),
   mSelfBuildPickup: (payload) =>
     http.post<PickupCandidate>(E.mSelfBuildPickup.path, payload satisfies PickupSelfBuildReq),
-  mRegionSearch: (kw) => http.get<RegionSearchResult>(E.mRegionSearch.path, { kw }),
+  mRegionSearch: (kw, near) =>
+    http.get<RegionSearchResult>(E.mRegionSearch.path,
+      near ? { kw, latE6: near.latE6, lngE6: near.lngE6 } : { kw }),
   mRegionPath: (code) => http.get<Region[]>(E.mRegionPath.path, { code }),
   mGeoReverse: (lat, lng) => http.get<GeoReverseResult>(E.mGeoReverse.path, { lat, lng }),
   mGeoTips: (kw, city) => http.get<GeoTip[]>(E.mGeoTips.path, city ? { kw, city } : { kw }),
+  mEstates: (regionCode, opts) => http.get<EstateList>(E.mEstates.path, { regionCode, ...opts }),
+  mEstateCounts: (parentCode) => http.get<Record<string, number>>(E.mEstateCounts.path, { parentCode }),
   mStoreList: () => http.get<Store[]>(E.mStoreList.path),
   mCreateStore: (payload) =>
     http.post<Store>(E.mCreateStore.path, payload satisfies StoreEditReq),
@@ -200,6 +208,8 @@ export const httpApi: MerchantApi = {
   mStoreQrcode: () => http.get<StoreQrcode>(E.mStoreQrcode.path),
   mShareKit: (goodsNo) =>
     http.get<ShareKit>(E.mShareKit.path, { goodsNo } satisfies ShareKitQuery),
+  mPoster: (goodsNo) =>
+    http.get<Poster>(E.mPoster.path, { goodsNo } satisfies ShareKitQuery),
 
   mTodo: () => http.get<MerchantTodo>(E.mTodo.path),
   mStats: () => http.get<MerchantStats>(E.mStats.path),
@@ -278,17 +288,11 @@ export const httpApi: MerchantApi = {
 
   mSpecTemplates: (categoryType, categoryNo) =>
     http.get<SpecTemplate[]>(E.mSpecTemplates.path, { categoryType, categoryNo } satisfies SpecTemplatesQuery),
+  mPickableDims: (categoryNo) => http.get<SpecTemplate[]>(E.mPickableDims.path, { categoryNo }),
   mAddSpecValue: (dimNo, label) =>
     http.post<{ valueNo: string; code: string; label: string }>(E.mAddSpecValue.path, { dimNo, label }),
   mAddSpecDim: (name, labels) => http.post<SpecTemplate>(E.mAddSpecDim.path, { name, labels }),
-  mSaveSpecTemplate: (payload) =>
-    http.post<SpecTemplate>(E.mSaveSpecTemplate.path, { ...payload } satisfies SaveSpecTemplateReq),
-
-  mOrderList: (q) => http.get<PageResult<Order>>(E.mOrderList.path, { ...q } satisfies OrderListQuery),
-  mOrderDetail: (orderNo) => http.get<Order>(buildPath(E.mOrderDetail.path, { orderNo })),
-  mPickableDims: (categoryNo) => http.get<SpecTemplate[]>(E.mPickableDims.path, { categoryNo }),
-  mShip: (orderNo, expressNo) =>
-    http.post<Order>(buildPath(E.mShip.path, { orderNo }), { expressNo } satisfies ShipReq),
+  mMySpecDims: () => http.get<MerchantSpecDim[]>(E.mMySpecDims.path),
   mStoreSpecDims: (storeNo) => http.get<StoreCategorySpecs[]>(E.mStoreSpecDims.path, { storeNo }),
   mDimValues: (dimNo) => http.get<SpecOption[]>(E.mDimValues.path.replace("{dimNo}", dimNo)),
   mSaveSpecOverride: (categoryNo, dims) =>
@@ -297,8 +301,13 @@ export const httpApi: MerchantApi = {
     http.post<void>(E.mRenameSpecDim.path.replace("{dimNo}", dimNo), { name }),
   mArchiveSpecDim: (dimNo, archived) =>
     http.post<void>(E.mArchiveSpecDim.path.replace("{dimNo}", dimNo), { archived }),
-  mMySpecDims: () => http.get<MerchantSpecDim[]>(E.mMySpecDims.path),
-  mStoreSpecDims: (storeNo) => http.get<StoreCategorySpecs[]>(E.mStoreSpecDims.path, { storeNo }),
+  mSaveSpecTemplate: (payload) =>
+    http.post<SpecTemplate>(E.mSaveSpecTemplate.path, { ...payload } satisfies SaveSpecTemplateReq),
+
+  mOrderList: (q) => http.get<PageResult<Order>>(E.mOrderList.path, { ...q } satisfies OrderListQuery),
+  mOrderDetail: (orderNo) => http.get<Order>(buildPath(E.mOrderDetail.path, { orderNo })),
+  mShip: (orderNo, expressNo) =>
+    http.post<Order>(buildPath(E.mShip.path, { orderNo }), { expressNo } satisfies ShipReq),
   mDelivered: (orderNo) => http.post<Order>(buildPath(E.mDelivered.path, { orderNo }), {}),
   mDeliveryRule: () => http.get<DeliveryRule>(E.mDeliveryRule.path),
   mSaveDeliveryRule: (rule) => http.post<DeliveryRule>(E.mSaveDeliveryRule.path, rule),

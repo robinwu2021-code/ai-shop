@@ -5,7 +5,7 @@
 
 ## 一、总览
 
-全库 **117** 张表、**172** 条引用关系，分 **13** 个域。
+全库 **128** 张表、**186** 条引用关系，分 **13** 个域。
 按「被引用次数」分三条带 —— **不是有向无环图**：域之间存在环
 （`cmt → mkt → usr → cmt`），强行分层会画错。
 
@@ -14,9 +14,9 @@
 | 域 | 前缀 | 表数 | 被几个域引用 |
 |---|---|---:|---:|
 | 消费者账号 | `usr_*` | 4 | 10 |
-| 商家主体与门店 | `mch_*` | 18 | 9 |
+| 商家主体与门店 | `mch_*` | 21 | 9 |
 | 社区与自提点 | `cmt_*` | 3 | 8 |
-| 商品与类目 | `prd_*` | 12 | 7 |
+| 商品与类目 | `prd_*` | 19 | 7 |
 | 购物车 | `trd_*` | 1 | 0 |
 | 交易 | `ord_*` | 6 | 6 |
 | 履约 | `ful_*` | 8 | 0 |
@@ -44,7 +44,7 @@
 
 **跨域引用**：`usr_store_favorite.entity_no` → `mch_entity`、`usr_account.community_no` → `cmt_community`、`usr_account.pickup_no` → `cmt_pickup_point`、`usr_account.entity_no` → `mch_entity`
 
-### 商家主体与门店 `mch_*`（18 张）
+### 商家主体与门店 `mch_*`（21 张）
 
 ![商家主体与门店表关系](../diagrams/db-mch.svg)
 
@@ -68,8 +68,11 @@
 | `mch_role` | 商家角色：6 个平台预置（只读）+ 商家自定义 |
 | `mch_entity_plan` | 主体的增值包订阅 |
 | `mch_store_category` | 门店经营类目：这家店打算卖哪几类 |
+| `mch_fulfillment_channel` | 门店送货方式：每店每路一行的开关与配置 |
+| `mch_channel_pickup` | 自提路×取货点（P1 启用）。本店地址刻意不落行：门店地址天然是取货地址，存两份是漂移的起点 |
+| `mch_channel_area` | SUBSET 收窄：某店某路只适用哪些范围项（P2 启用） |
 
-**跨域引用**：`mch_entity_apply.user_no` → `usr_account`、`mch_entity_community.community_no` → `cmt_community`、`mch_account.user_no` → `usr_account`、`mch_store_category.category_no` → `prd_category`
+**跨域引用**：`mch_entity_apply.user_no` → `usr_account`、`mch_entity_community.community_no` → `cmt_community`、`mch_account.user_no` → `usr_account`、`mch_store_category.category_no` → `prd_category`、`mch_channel_pickup.pickup_no` → `cmt_pickup_point`
 
 ### 社区与自提点 `cmt_*`（3 张）
 
@@ -83,7 +86,7 @@
 
 **跨域引用**：`cmt_pickup_point.group_no` → `mkt_group_buy`、`cmt_community_apply.entity_no` → `mch_entity`
 
-### 商品与类目 `prd_*`（12 张）
+### 商品与类目 `prd_*`（19 张）
 
 ![商品与类目表关系](../diagrams/db-prd.svg)
 
@@ -101,8 +104,15 @@
 | `prd_store_price` | 门店级售价：有行按店算，无行回退主体价（与库存相反，视为 0 就是白送） |
 | `prd_topic` | 主题分类（陈列）。与类目正交，与活动分开：摆到一起 ≠ 降价 |
 | `prd_topic_goods` | 主题 × 商品，多对多。与类目正交：一件豆浆既是预包装食品，也是早餐必备 |
+| `prd_spec_dim` | 规格项：一个维度一行，通用维度全站只有这一份 |
+| `prd_spec_value` | 规格值：值有身份，才谈得上聚合、排序与比价 |
+| `prd_category_spec` | 类目 × 规格项：这一类目用哪些维度、谁是主维度 |
+| `prd_category_spec_value` | 类目下的取值子集：没有行 = 该维度全部值都能选 |
+| `prd_merchant_spec` | 商家常用维度：引用，不是副本 |
+| `prd_merchant_spec_value` | 商家常用取值：他上次挑过的那几档，下次建品排在前面 |
+| `prd_merchant_spec_override` | 商家对平台规格的覆盖（用哪几个/什么顺序/叫什么） |
 
-**跨域引用**：`prd_community_pool.community_no` → `cmt_community`、`prd_community_pool.entity_no` → `mch_entity`、`prd_goods.entity_no` → `mch_entity`、`prd_sku.entity_no` → `mch_entity`、`prd_spec_template.entity_no` → `mch_entity`、`prd_stock_lock.store_no` → `mch_store`、`prd_store_stock.store_no` → `mch_store`、`prd_store_stock.entity_no` → `mch_entity`、`prd_store_goods.store_no` → `mch_store`、`prd_store_goods.entity_no` → `mch_entity`、`prd_store_price.store_no` → `mch_store`、`prd_store_price.entity_no` → `mch_entity`、`prd_topic_goods.entity_no` → `mch_entity`
+**跨域引用**：`prd_community_pool.community_no` → `cmt_community`、`prd_community_pool.entity_no` → `mch_entity`、`prd_goods.entity_no` → `mch_entity`、`prd_sku.entity_no` → `mch_entity`、`prd_spec_template.entity_no` → `mch_entity`、`prd_stock_lock.store_no` → `mch_store`、`prd_store_stock.store_no` → `mch_store`、`prd_store_stock.entity_no` → `mch_entity`、`prd_store_goods.store_no` → `mch_store`、`prd_store_goods.entity_no` → `mch_entity`、`prd_store_price.store_no` → `mch_store`、`prd_store_price.entity_no` → `mch_entity`、`prd_topic_goods.entity_no` → `mch_entity`、`prd_spec_dim.entity_no` → `mch_entity`、`prd_spec_value.entity_no` → `mch_entity`、`prd_merchant_spec.entity_no` → `mch_entity`、`prd_merchant_spec_value.entity_no` → `mch_entity`、`prd_merchant_spec_override.merchant_no` → `mch_entity`
 
 ### 购物车 `trd_*`（1 张）
 

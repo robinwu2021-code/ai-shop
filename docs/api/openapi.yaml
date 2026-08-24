@@ -125,6 +125,41 @@ components:
         - "avatar"
         - "phone"
       additionalProperties: false
+    PhoneCapable: 
+      type: "object"
+      properties: 
+        capable: 
+          type: "boolean"
+          description: "true = 显示「微信一键获取」；false = 显示手机号 + 验证码"
+      required: 
+        - "capable"
+      additionalProperties: false
+      description: "微信一键取手机号当前可不可用。\n\n<p>由后端说了算：它取决于小程序认证状态与通道开关，端上判不出来。 写死在端上的话，认证下来之后还要再发一次版。"
+    RegionOption: 
+      type: "object"
+      properties: 
+        regionCode: 
+          type: "string"
+          description: "区县级国标码（6 位）。社区可能挂在街道级，聚合时截到区县"
+        name: 
+          type: "string"
+          description: "区县名，如「西湖区」"
+        cityCode: 
+          type: "string"
+          description: "所属市码（4 位）"
+        cityName: 
+          type: "string"
+          description: "所属市名。同名区县全国很多（如「城关区」），不带市名用户分不清是哪一个"
+        communityCount: 
+          type: "number"
+          description: "该区县下已开通的社区数。「西湖区 · 2 个小区」比光秃秃一个区名有用得多"
+      required: 
+        - "regionCode"
+        - "name"
+        - "cityCode"
+        - "cityName"
+        - "communityCount"
+      additionalProperties: false
     Community: 
       type: "object"
       properties: 
@@ -140,6 +175,12 @@ components:
         cityCode: 
           type: "string"
           description: "所属城市。全市范围的商家靠它判定可达"
+        regionCode: 
+          type: "string"
+          description: "所属街道/镇（9 位区划码）。商家框范围时「按街道看聚落」靠它 —— 不下发的话端上只能拿到一锅平铺清单，街道视图无从分组。"
+        kind: 
+          type: "string"
+          description: "ESTATE 小区 / VILLAGE 村。只是展示标签，不参与匹配"
         distance: 
           type: "number"
           description: "米"
@@ -1315,6 +1356,7 @@ components:
           description: "所属商家。**后端 `CartItemVO` 一直在发这两个字段，是这里此前没声明**—— 于是数据到了端上就被丢掉，购物车只能按履约方式分组，店名一个字都显示不出来。\n\n后果不是「少个标签」：用户从头到尾看到「一单」，提交后拿到的是按商家拆出的 N 笔子订单（`ord_sub_order`）。见 TDD-购物车商家可见。"
         merchantName: 
           type: "string"
+          description: "商家名。**购物车按它分组** —— 一车东西来自几家店， 结算时会拆成几笔子订单，分组是把这件事提前说清楚（见 TDD-购物车商家可见）。"
         invalidReason: 
           type: "string"
           description: "失效原因，如「已下架」「库存不足」。有值即不可勾选结算"
@@ -3490,7 +3532,7 @@ components:
       properties: 
         level: 
           "$ref": "#/components/schemas/AreaLevel"
-          description: "粒度：社区 / 街道 / 区县 / 城市。**可跨粒度组合** —— 三个小区 + 一个区是四条"
+          description: "粒度：社区 / 村 / 街道 / 区县 / 城市。**可跨粒度组合** —— 三个小区 + 一个区是四条"
         refCode: 
           type: "string"
           description: "level=COMMUNITY 时是社区号，否则是区划码"
@@ -3649,6 +3691,17 @@ components:
         note: 
           type: "string"
           description: "补充说明：为什么要开这个点"
+        kind: 
+          type: "string"
+          description: "ESTATE 小区 / VILLAGE 村。不传按 ESTATE —— 聚落模型下两者同一条链路"
+        originCode: 
+          type: "string"
+          description: "提报村时从词典（/biz/regions/villages）选中的官方村码。查重与溯源用"
+        latE6: 
+          type: "number"
+          description: "提报时的定位。**尽量带上** —— 通过后聚落的坐标就是它， 没有坐标的聚落买家用定位永远找不到。拿不到权限时可空，不阻塞提报。"
+        lngE6: 
+          type: "number"
       required: 
         - "name"
       additionalProperties: false
@@ -3657,13 +3710,13 @@ components:
       properties: 
         regionCode: 
           type: "string"
-          description: "统计用区划代码：省 2 位 / 市 4 位 / 区县 6 位 / 街道 9 位。**前缀即层级**，下级码以上级码开头"
+          description: "统计用区划代码：省 2 / 市 4 / 区县 6 / 街道 9 / 村 12 位。**前缀即层级**，下级码以上级码开头。 商家补录的村是 `街道码 + M + 2 位`，字母保证与官方纯数字码永不冲突"
         parentCode: 
           type: "string"
           description: "上级区划码。省级为空 —— 逐级选择器据此判断自己在不在顶层"
         level: 
           type: "string"
-          description: "PROVINCE / CITY / DISTRICT / STREET"
+          description: "PROVINCE / CITY / DISTRICT / STREET / VILLAGE（村委会·居委会，第五级）"
         name: 
           type: "string"
           description: "本级名称，**不含上级**（「西湖区」不是「杭州市 / 西湖区」）。要整条路径的地方自己拼"
@@ -3673,6 +3726,18 @@ components:
         hasChild: 
           type: "boolean"
           description: "下面还有没有下级。端上据此决定「还要不要再往下选一层」，而不是点进去才发现是空的"
+        source: 
+          type: "string"
+          description: "`OFFICIAL`（官方数据）/ `MERCHANT`（本店补录）。端上据此标出「我加的」"
+        pending: 
+          type: "boolean"
+          description: "本店补录且运营还没确认 —— **只有自己看得见**。\n\n<p>要标出来：不标的话商家不知道这条还没共享， 会以为别的店也能看到他加的这个村。"
+        auditStatus: 
+          type: "string"
+          description: "`PENDING` / `APPROVED` / `REJECTED`。官方数据恒为 APPROVED"
+        rejectReason: 
+          type: "string"
+          description: "驳回理由。**要显示给商家** —— 看不到的话那个村在他那里凭空消失， 他不知道为什么，多半原样再录一遍。"
       required: 
         - "regionCode"
         - "level"
@@ -3680,7 +3745,7 @@ components:
         - "enabled"
         - "hasChild"
       additionalProperties: false
-      description: "行政区划的一级（`/biz/regions`）。国家统计局统计用区划代码，省 2 / 市 4 / 区 6 / 街道 9 位"
+      description: "行政区划的一级（`/biz/regions`）。省 2 / 市 4 / 区 6 / 街道 9 / 村 12 位"
     StoreQrcode: 
       type: "object"
       properties: 
@@ -4140,7 +4205,10 @@ components:
           description: "模板归属：平台统一维护 or 商家自存。商家只能改自己的"
         categoryType: 
           "$ref": "#/components/schemas/CategoryType"
-          description: "平台模板按类目推荐；商家模板不限类目"
+          description: "平台模板按品类推荐；商家模板不限品类"
+        categoryNo: 
+          type: "string"
+          description: "类目级模板的归属类目；**空 = 品类兜底**。\n\n<p>端上靠它区分两层：类目级排在前面并标出来。不下发的话两批混在一起， 商家分不出哪个是「专门给这一类的」。"
         name: 
           type: "string"
           description: "规格维度名，如「重量」「香型」"
@@ -4182,6 +4250,27 @@ components:
         - "principal"
       additionalProperties: false
       description: "入驻申请可选的商家类型。 不用 `Extract<MerchantType, ...>` —— 生成 schema 时它的名字会变成 `Extract<MerchantType,(\"COMPANY\"|\"INDIVIDUAL\")>`，不符合 OpenAPI 的组件命名规则。 契约类型要能干净地映射成 DTO 名，所以这里写成直白的联合。"
+    BindPhoneReq: 
+      type: "object"
+      properties: 
+        phone: 
+          type: "string"
+        code: 
+          type: "string"
+      required: 
+        - "phone"
+        - "code"
+      additionalProperties: false
+      description: "绑定手机号（验证码）。号码要以**字符串**传 —— 见 phone-gate.vue 里那段注释"
+    WxPhoneReq: 
+      type: "object"
+      properties: 
+        code: 
+          type: "string"
+      required: 
+        - "code"
+      additionalProperties: false
+      description: "微信一键授权：端上只拿得到 code，换号在后端做"
     BindCommunityReq: 
       type: "object"
       properties: 
@@ -4720,6 +4809,130 @@ paths:
                   - "code"
                   - "msg"
                   - "data"
+  "/mp/user/phone/bind": 
+    post: 
+      operationId: "bindPhone"
+      summary: "绑定手机号（验证码）"
+      tags: 
+        - "user"
+      security: 
+        - bearerAuth: []
+      parameters: []
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/User"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              "$ref": "#/components/schemas/BindPhoneReq"
+  "/mp/user/phone/wx": 
+    post: 
+      operationId: "bindPhoneByWx"
+      summary: "微信一键授权绑定手机号"
+      tags: 
+        - "user"
+      security: 
+        - bearerAuth: []
+      parameters: []
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/User"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              "$ref": "#/components/schemas/WxPhoneReq"
+  "/mp/user/phone/capable": 
+    get: 
+      operationId: "phoneCapable"
+      summary: "一键授权当前可不可用（游客可读）"
+      tags: 
+        - "user"
+      security: []
+      parameters: []
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/PhoneCapable"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/mp/user/deregister": 
+    post: 
+      operationId: "deregister"
+      summary: "注销账号（匿名化 + 解绑凭证，交易记录留存）"
+      tags: 
+        - "user"
+      security: 
+        - bearerAuth: []
+      parameters: []
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    description: "无返回体（data 恒为 null）"
+                    nullable: true
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
   "/mp/user/community": 
     post: 
       operationId: "bindCommunity"
@@ -4926,6 +5139,64 @@ paths:
                     type: "array"
                     items: 
                       "$ref": "#/components/schemas/Community"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/mp/community": 
+    get: 
+      operationId: "allCommunities"
+      summary: "全部已开通社区（附近为空时的出路）"
+      tags: 
+        - "community"
+      security: []
+      parameters: []
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "array"
+                    items: 
+                      "$ref": "#/components/schemas/Community"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/mp/community/regions": 
+    get: 
+      operationId: "openRegions"
+      summary: "有已开通社区的区域清单"
+      tags: 
+        - "community"
+      security: []
+      parameters: []
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "array"
+                    items: 
+                      "$ref": "#/components/schemas/RegionOption"
                 required: 
                   - "code"
                   - "msg"

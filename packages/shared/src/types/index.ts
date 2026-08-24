@@ -94,7 +94,40 @@ export interface PickupCandidate {
 /** 跨级搜索（P1）：区划命中带从省到父级的路径，聚落命中带所在街道路径 */
 export interface RegionSearchResult {
   regions: Array<{ regionCode: string; level: string; name: string; path: string }>;
-  communities: Array<{ communityNo: string; name: string; regionCode?: string | null; path: string }>;
+  communities: Array<{
+    communityNo: string; name: string; regionCode?: string | null; path: string;
+    /** ESTATE 小区 / VILLAGE 村。判「这一条底下还有没有下一级」用它，名字这时已经是口语名了 */
+    kind?: string | null;
+    /** 下钻要用它，不是 regionCode（那是它挂的街道/镇）。没有它就是地图开通的小区，没有下一级 */
+    originCode?: string | null;
+    /** 原始官方名（如「景滑村委会」），仅供展示/追溯 —— 判城乡用下面的 rural */
+    originName?: string | null;
+    /** 是不是村委会（服务端存的）。判「这一条给不给 ›」用它，不要解析 originName */
+    rural?: boolean;
+    latE6?: number | null;
+    lngE6?: number | null;
+  }>;
+  /**
+   * 还没开通的**官方村**（第五级名录）。已开通的那些走 `communities`（能直接勾），
+   * 这里只出没开通的 —— 同一个地方不该在两组里各出现一次。
+   * 官方村提报即开通，所以端上点一条就能直接用。
+   */
+  villages?: Array<{
+    regionCode: string;
+    name: string;
+    /** 它挂的街道码（9 位）。提报要挂到这下面 */
+    streetCode: string;
+    path: string;
+    latE6?: number | null;
+    lngE6?: number | null;
+    /** 是不是村委会（服务端存的）。判「这一条给不给 ›」用它 */
+    rural?: boolean;
+  }>;
+  /**
+   * 地图上的地点（v5）。**只在库里没有村/小区命中时才有值** —— 服务端先查库，
+   * 库里没有才现问高德；App 不用再自己调原生 SDK 兜底了。
+   */
+  places?: GeoTip[];
 }
 
 export interface StoreFulfillment {
@@ -208,6 +241,25 @@ export interface Community {
   distance: number;
   /** 本社区可用的自提点 */
   pickups: Pickup[];
+  /**
+   * 官方村码，只有 `kind=VILLAGE` 且经官方名录开通的才有。**`regionCode` 是它挂的
+   * 街道/镇，不是它自己** —— 经营范围选择器再往下钻一层要用这个码，不能用 regionCode，
+   * 否则「牛杜村」会被当成「牛杜镇」去下钻。
+   */
+  originCode?: string | null;
+  /**
+   * `originCode` 对应的原始官方名（「景滑村委会」，未清理）——仅供展示/追溯，
+   * 判「是不是村委会」不要解析它，用下面的 `rural` 字段（服务端存的，不是端上猜的）。
+   */
+  originName?: string | null;
+  /**
+   * 是不是村委会（`sys_region.rural`，经 origin_code 反查）。只对 kind=VILLAGE 有意义：
+   * 村委会到此为止、不再下钻；居委会/社区还能再挑具体小区。
+   */
+  rural?: boolean;
+  /** 官方村名录批量补录过的坐标，可能为空 */
+  latE6?: number | null;
+  lngE6?: number | null;
 }
 
 export interface Pickup {
@@ -1142,6 +1194,19 @@ export interface BizScope {
    */
   categoryCodes?: string[];
   /**
+   * 平台开关里与商家侧有关的那几个（后端 `/biz/context` 下发）。
+   *
+   * <p>`categoryGate`：类目资质校验**是否真的拦人**。
+   *
+   * <p>此前这是 `b-app/src/shared/flags.ts` 里的编译期常量，运营改一次开关要重新
+   * 打包发版；更糟的是它与后端那份不同步时，症状是「点不动一个其实能按的按钮」
+   * 或者「点下去吃一句说不清缘由的报错」—— 两种都难查，因为界面与后端各自看起来都对。
+   *
+   * <p>取不到时按 **false（不拦）** 处理：与后端默认值一致，且宁可放行也不要
+   * 凭一个拿不到的开关把商家挡在门外。
+   */
+  switches?: Record<string, boolean>;
+  /**
    * 这些角色合起来的权限码，**已取并集**（老板是 `["*"]`）。
    *
    * 端上照它裁剪入口，**不要自己按角色再推一遍** —— 两处各推一次迟早分岔，
@@ -1184,19 +1249,6 @@ export type PickupScope = "PERMANENT" | "GROUP_INSTANCE";
 /** 自提点计费方式。**与 ops-web 的 `PickupFeeMode` 同值** —— 费率线下逐点协商，故两种都留 */
 export type PickupFeeMode = "NONE" | "PER_ITEM" | "RATE";
 
-  /**
-   * 平台开关里与商家侧有关的那几个（后端 `/biz/context` 下发）。
-   *
-   * <p>`categoryGate`：类目资质校验**是否真的拦人**。
-   *
-   * <p>此前这是 `b-app/src/shared/flags.ts` 里的编译期常量，运营改一次开关要重新
-   * 打包发版；更糟的是它与后端那份不同步时，症状是「点不动一个其实能按的按钮」
-   * 或者「点下去吃一句说不清缘由的报错」—— 两种都难查，因为界面与后端各自看起来都对。
-   *
-   * <p>取不到时按 **false（不拦）** 处理：与后端默认值一致，且宁可放行也不要
-   * 凭一个拿不到的开关把商家挡在门外。
-   */
-  switches?: Record<string, boolean>;
 /** 到货异常类型：缺件 / 破损。B 端到货登记时上报（ADR-005 履约链路） */
 export type ArrivalIssueKind = "SHORTAGE" | "DAMAGE";
 
@@ -2207,6 +2259,13 @@ export interface StoreCategory {
   sort: number;
   /** 这个货架上有几件商品 —— **撤架之前商家要看得见代价**（有货就撤不掉） */
   goodsCount: number;
+  /**
+   * 正在卖的件数。**与 goodsCount 分开**：商家问「这一类卖得怎么样」时要的是它，
+   * 问「能不能撤架」时要的是上面那个（含下架与待审的全部）。
+   */
+  onSaleCount: number;
+  /** 待审的件数。它常常是「这一类为什么看起来没货」的答案 */
+  pendingCount: number;
 }
 
 export interface Store {
@@ -2259,13 +2318,6 @@ export interface MerchantStaff {
    *
    * 它**就是这个员工的登录用户名**（手机号 + 验证码，没有密码）——
    * 老板要能核对「他用哪个号登录」、人换号时要能改，脱敏之后这两件事都做不了。
-  /**
-   * 正在卖的件数。**与 goodsCount 分开**：商家问「这一类卖得怎么样」时要的是它，
-   * 问「能不能撤架」时要的是上面那个（含下架与待审的全部）。
-   */
-  onSaleCount: number;
-  /** 待审的件数。它常常是「这一类为什么看起来没货」的答案 */
-  pendingCount: number;
    */
   loginPhone: string;
   /** 老板。**不受门店授权限制**，他的店都归他管 */
@@ -2661,6 +2713,24 @@ export interface PlanTier {
 export interface StoreProfile {
   /** 店铺公告：「今日到货」「今天有土鸡蛋」，店主自发（C-ST-04） */
   announcement: string;
+  /**
+   * 公告失效时刻（epoch 毫秒）。**空 = 长期有效**。
+   *
+   * 过期由服务端读时判断，端上拿到的 `announcement` 已经是「此刻该显示的」——
+   * 端上不要自己再判一次：两处判断迟早会不一致，而不一致的表现是
+   * 「商家看是空的、买家看到的是昨天的货」。
+   */
+  announcementUntil?: number | null;
+  /** 最近用过的公告，最多 5 条，按最近使用排序。服务端维护，端上只读 */
+  announcementRecent?: string[];
+  /**
+   * 正卡在人审里的那条公告（机审命中转的），没有就是 null。
+   *
+   * **必须读它**：命中期间后端保留旧公告并返回旧资料 —— 端上不看这个字段的话，
+   * 会照旧提示「已发布」，而输入框还原成上一条，商家只会以为自己手滑，
+   * 反复再发一次，队列里堆出一串同样的单子。
+   */
+  noticePending?: { content: string; submittedAt: number } | null;
   /** 营业时间文案，店主自填 */
   openHours: string;
   /**
@@ -2668,6 +2738,14 @@ export interface StoreProfile {
    * 与 {@link addressDetail} 分开：重新选点只覆盖这一条。
    */
   address: string;
+  /**
+   * 门牌号 / 楼栋（「3 栋 2 单元 501」），店主手填。
+   *
+   * 为什么单独一格：地图给的地址只到小区门口，而买家照着找门缺的正是这一截；
+   * 合成一格的话，商家补完再点一次选点就被整条覆盖 —— 补的那截无声消失，
+   * 地址看着还是对的，只是又回到了小区门口。
+   */
+  addressDetail?: string;
   /** 主推商品，按顺序展示在门店主页首屏 */
   featured: string[];
   /**
@@ -2713,34 +2791,6 @@ export interface StoreProfile {
 export type SubOrderStatus =
   | "WAIT_PAY"
   | "WAIT_FULFILL"
-  /**
-   * 公告失效时刻（epoch 毫秒）。**空 = 长期有效**。
-   *
-   * 过期由服务端读时判断，端上拿到的 `announcement` 已经是「此刻该显示的」——
-   * 端上不要自己再判一次：两处判断迟早会不一致，而不一致的表现是
-   * 「商家看是空的、买家看到的是昨天的货」。
-   */
-  announcementUntil?: number | null;
-  /** 最近用过的公告，最多 5 条，按最近使用排序。服务端维护，端上只读 */
-  announcementRecent?: string[];
-  /**
-   * 正卡在人审里的那条公告（机审命中转的），没有就是 null。
-   *
-   * **必须读它**：命中期间后端保留旧公告并返回旧资料 —— 端上不看这个字段的话，
-   * 会照旧提示「已发布」，而输入框还原成上一条，商家只会以为自己手滑，
-   * 反复再发一次，队列里堆出一串同样的单子。
-   */
-  noticePending?: { content: string; submittedAt: number } | null;
-  /**
-   * 公告失效时刻（epoch 毫秒）。**空 = 长期有效**。
-   *
-   * 过期由服务端读时判断，端上拿到的 `announcement` 已经是「此刻该显示的」——
-   * 端上不要自己再判一次：两处判断迟早会不一致，而不一致的表现是
-   * 「商家看是空的、买家看到的是昨天的货」。
-   */
-  announcementUntil?: number | null;
-  /** 最近用过的公告，最多 5 条，按最近使用排序。服务端维护，端上只读 */
-  announcementRecent?: string[];
   | "FULFILLING"
   | "COMPLETED"
   | "CANCELLED"
@@ -2755,14 +2805,6 @@ export type SubOrderStatus =
  * 真实后端返回 `WAIT_FULFILL`，**列表因此永远是空的**。
  */
 export interface PickupOrder {
-  /**
-   * 门牌号 / 楼栋（「3 栋 2 单元 501」），店主手填。
-   *
-   * 为什么单独一格：地图给的地址只到小区门口，而买家照着找门缺的正是这一截；
-   * 合成一格的话，商家补完再点一次选点就被整条覆盖 —— 补的那截无声消失，
-   * 地址看着还是对的，只是又回到了小区门口。
-   */
-  addressDetail?: string;
   /** 子单号 —— 履约的最小单位是子单，不是主单 */
   subOrderNo: string;
   /** 取货码 */
@@ -2909,6 +2951,12 @@ export interface Region {
    * 他不知道为什么，多半原样再录一遍。
    */
   rejectReason?: string;
+  /**
+   * 只对 level=VILLAGE 有意义：是不是村委会（`sys_region.rural`，服务端存的，
+   * 不是端上按名字猜的）。`true` = 到此为止，选择器不再往下钻（自然村数据地图上
+   * 本来就搜不全）；`false` = 居委会/社区，或非第五级，底下还能再挑具体小区。
+   */
+  rural?: boolean;
 }
 
 /** 店铺码（C-ST-08 扫码进店的商家侧） */
@@ -2936,12 +2984,21 @@ export interface StoreQrcode {
   printableHint?: string;
 }
 
-/** 分享素材（B-11.2.7）。文案与海报由服务端按当前语言与市场生成 */
+/** 分享素材（B-11.2.7）。文案由服务端按当前语言与市场生成 */
 export interface ShareKit {
   /** 分享文案，已按当前语言与市场生成 */
   text: string;
-  /** 分享海报图 URL */
+  /** 落地页链接，文案里已经拼过一次；未配对外域名时为空串。真正的海报图走 {@link Poster} */
   posterUrl: string;
+}
+
+/**
+ * 真海报（B-11.11 补，2026-08-24）：封面图/店名/价格/小程序码合成的一张 PNG，
+ * 能直接发朋友圈——`ShareKit.posterUrl` 一期只是落地页链接，不是图。
+ */
+export interface Poster {
+  /** PNG 的 base64（不含 data: 前缀）。生不出来（商家异常）时为 null */
+  imageBase64: string | null;
 }
 
 // ================================================================ 营销（B 端配置侧）
@@ -3338,64 +3395,28 @@ export interface SpecOption {
  *
  * ⚠️ **模板是建议不是强制**：卖手工酱菜的没有匹配模板，硬要他选就只能瞎选。
  */
-export interface SpecTemplate {
-  /** 模板单号 */
-  templateNo: string;
-  /** 模板归属：平台统一维护 or 商家自存。商家只能改自己的 */
-  scope: SpecTemplateScope;
-  /** 平台模板按品类推荐；商家模板不限品类 */
-  categoryType?: CategoryType;
+/**
+ * 商家对平台规格的覆盖：**本店用哪几个、什么顺序、叫什么**。
+ *
+ * <p><b>改名只改展示</b>：`dimNo` 一个字不变，所以跨店聚合照常成立。
+ * 与「我的类目」的 `displayName` 是同一个模式 —— 那里已经证明过这条边界站得住。
+ *
+ * <p>传空数组 = 清掉覆盖、完全跟平台走。**与平台一致的不落行**：
+ * 这样运营给类目加了新维度，没动过手的商家会自动获得它。
+ */
+export interface SpecOverride {
+  dimNo: string;
+  /** false = 本店不用它。移除掉的在界面上收在下面，能加回来 */
+  enabled: boolean;
   /**
-   * 类目级模板的归属类目；**空 = 品类兜底**。
-   *
-   * <p>端上靠它区分两层：类目级排在前面并标出来。不下发的话两批混在一起，
-   * 商家分不出哪个是「专门给这一类的」。
+   * **本店叫法**；空 = 用平台的。只换展示，`dimNo` 一个字不变 ——
+   * 所以三家店的同一个规格照样聚得到一起。与「我的类目」的 displayName 同一个模式。
    */
-  categoryNo?: string;
-  /** 规格维度名，如「重量」「香型」 */
-  name: string;
-  /** 该维度的可选项 */
-  options: SpecOption[];
-  /** scope=MERCHANT 时归属的商家 */
-  merchantNo?: string;
+  label?: string;
+  /** 用哪几档。商家自己输入的档位也在这里（它已经落进规格库，与平台值同轴） */
+  values?: { code: string; enabled: boolean }[];
 }
 
-// ================================================================ 售后（完整状态机）
-
-/**
- * 售后类型。**仅退款与退货退款的流程根本不同** ——
- * 仅退款同意即退；退货退款必须**先收到货再退款**，否则「退款了货没回来」。
- * 此前两者走同一条路，是售后闭环缺的后半段（B-7.3）。
- */
-export type AfterSaleType = "REFUND_ONLY" | "RETURN_REFUND";
-
-/**
- * 售后单状态。**这是后端 `OrdAfterSale` 真实存的取值。**
- *
-  /**
-   * **主维度**：选完类目该自动建出来的就是这一组（每个类目至多一个，守卫测住）。
-   *
-   * <p>不下发的话端上只能靠「数组第一个」猜 —— 后端确实那么排，但那是巧合而非契约：
-   * 排序一改端上跟着错，症状是「自动建出来的是包装不是重量」，没有一处会报错。
-   *
-   * <p>商家自存模板与品类兜底模板恒为 false：主维度是**类目绑定**上的判据，
-   * 那两条路不经过绑定表。
-   */
-/**
- * 「我的规格」里的一条自建维度。
- *
- * <p>与 {@link SpecTemplate} 的差别是**视角**：那个回答「建品时能挑什么」，
- * 这个回答「我拥有什么、能改什么、动它会影响多少」。
- */
-export interface MerchantSpecDim {
-  dimNo: string;
-  name: string;
-  /** 这个维度下的取值数（含平台档位 + 自己加的） */
-  valueCount: number;
-  /**
-   * 用在几件商品上。**按规格组名统计** —— 存量商品的规格快照里只有名字，
-   * 没有维度编号（那个字段是后加的），按编号统计的话老商品一件都算不进来，
-   * 而「停用它会影响什么」问的恰恰是历史。
 /**
  * 「我的规格」里的一组：**这家店的一个货架类目**，以及它能用到的规格。
  *
@@ -3417,20 +3438,15 @@ export interface StoreCategorySpecs {
  * <p>与 {@link SpecTemplate} 的差别是**视角**：那个回答「建品时能挑什么」，
  * 这个回答「我拥有什么、能改什么、动它会影响多少」。
  */
-export interface SpecOverride {
+export interface MerchantSpecDim {
   dimNo: string;
   name: string;
   /** 这个维度下的取值数（含平台档位 + 自己加的） */
   valueCount: number;
   /**
-   * **本店叫法**；空 = 用平台的。只换展示，`dimNo` 一个字不变 ——
-   * 所以三家店的同一个规格照样聚得到一起。与「我的类目」的 displayName 同一个模式。
-   */
-  label?: string;
-  /** 用哪几档。商家自己输入的档位也在这里（它已经落进规格库，与平台值同轴） */
-  values?: { code: string; enabled: boolean }[];
-}
-
+   * 用在几件商品上。**按规格组名统计** —— 存量商品的规格快照里只有名字，
+   * 没有维度编号（那个字段是后加的），按编号统计的话老商品一件都算不进来，
+   * 而「停用它会影响什么」问的恰恰是历史。
    */
   usedCount: number;
   status: "ACTIVE" | "ARCHIVED";
@@ -3441,17 +3457,50 @@ export interface SpecOverride {
   values: SpecOption[];
 }
 
+export interface SpecTemplate {
+  /** 模板单号 */
+  templateNo: string;
+  /** 模板归属：平台统一维护 or 商家自存。商家只能改自己的 */
+  scope: SpecTemplateScope;
+  /** 平台模板按品类推荐；商家模板不限品类 */
+  categoryType?: CategoryType;
+  /**
+   * 类目级模板的归属类目；**空 = 品类兜底**。
+   *
+   * <p>端上靠它区分两层：类目级排在前面并标出来。不下发的话两批混在一起，
+   * 商家分不出哪个是「专门给这一类的」。
    */
-  usedCount: number;
-  status: "ACTIVE" | "ARCHIVED";
-  /** 已建 / 上限。摆出来，而不是等他建到第 11 个才被拒 */
-  dimUsed: number;
-  dimQuota: number;
-  valueQuota: number;
-  values: SpecOption[];
-}
-
+  categoryNo?: string;
+  /** 规格维度名，如「重量」「香型」 */
+  name: string;
+  /** 该维度的可选项 */
+  options: SpecOption[];
+  /** scope=MERCHANT 时归属的商家 */
+  merchantNo?: string;
+  /**
+   * **主维度**：选完类目该自动建出来的就是这一组（每个类目至多一个，守卫测住）。
+   *
+   * <p>不下发的话端上只能靠「数组第一个」猜 —— 后端确实那么排，但那是巧合而非契约：
+   * 排序一改端上跟着错，症状是「自动建出来的是包装不是重量」，没有一处会报错。
+   *
+   * <p>商家自存模板与品类兜底模板恒为 false：主维度是**类目绑定**上的判据，
+   * 那两条路不经过绑定表。
+   */
   primary?: boolean;
+}
+
+// ================================================================ 售后（完整状态机）
+
+/**
+ * 售后类型。**仅退款与退货退款的流程根本不同** ——
+ * 仅退款同意即退；退货退款必须**先收到货再退款**，否则「退款了货没回来」。
+ * 此前两者走同一条路，是售后闭环缺的后半段（B-7.3）。
+ */
+export type AfterSaleType = "REFUND_ONLY" | "RETURN_REFUND";
+
+/**
+ * 售后单状态。**这是后端 `OrdAfterSale` 真实存的取值。**
+ *
  * ⚠️ 这里此前是完全另一套：`PENDING`/`AGREED`/`RETURNING`/`RECEIVED`/`DONE`/`DISPUTED`，
  * 与后端**只有 `REJECTED` 一个词重合**。c/b 两端按它判断、按它建 i18n 词条，
  * 于是售后详情页的状态永远落进兜底分支，「填退货单号」按钮永远不出现

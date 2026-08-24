@@ -20,7 +20,7 @@
     "dev:site": "npm run dev -w ai-shop-site",
     "build:site": "npm run build -w ai-shop-site",
     "check:site": "npm run check -w ai-shop-site",
-    "test": "npm run test -w @ai-shop/shared",
+    "test": "npm run test -w @ai-shop/shared; s=$?; npm run test -w ai-shop-c-app; c=$?; exit $(( s > c ? s : c ))",
     "gen:api": "npm run gen:api -w ai-shop-c-app && npm run gen:api -w ai-shop-b-app && npm run gen:api -w ai-shop-ops-web",
     "check:api": "npm run gen:api && python3 backend/scripts/api-align.py",
     "gen:skins": "npm run gen:skins -w @ai-shop/shared",

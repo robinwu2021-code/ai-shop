@@ -567,17 +567,26 @@ def build_splash():
 
 
 def build_miniprogram():
-    """小程序：方形 HX + 中文双字版。微信端会自动裁圆，源不预切。"""
+    """小程序：方形 HX + 中文双字版。微信端会自动裁圆，源**不预切圆角**。
+
+    出 144 / 512 / 1024 三档：144 是微信头像的最低要求，但上传大图由平台自己压
+    比我们先缩再传清楚 —— 缩过一次的图再被平台缩一次，笔画边缘会糊。
+    """
+    SIZES = (144, 512, 1024)
     n = 0
     for k, a in APPS.items():
-        render_png(icon_svg(a["plate"], a["glyph"], a["arc"]), 144,
-                   ROOT / "store" / f"mp-{k}-hx-144.png")
-        n += 1
-    # 中文版只出 C 端（面向消费者；商家侧没有中文图标的场景）
+        for px in SIZES:
+            render_png(icon_svg(a["plate"], a["glyph"], a["arc"]), px,
+                       ROOT / "store" / f"mp-{k}-hx-{px}.png")
+            n += 1
+    # 中文版只出 C 端（面向消费者；商家侧没有中文图标的场景）。
+    # 甲 = 弧只压「虹」（守规范 §04）；乙 = 弧横跨两字（与 HX 方章同构）。
+    # 两版并存到定案为止 —— 定了就删掉没选的那个，别让人拿错。
     for tag, span in (("a", "虹"), ("b", "虹选")):
-        render_png(cn_icon_svg(RED, PAPER, text="虹选", span=span), 144,
-                   ROOT / "store" / f"mp-c-cn-{tag}-144.png")
-        n += 1
+        for px in SIZES:
+            render_png(cn_icon_svg(RED, PAPER, text="虹选", span=span), px,
+                       ROOT / "store" / f"mp-c-cn-{tag}-{px}.png")
+            n += 1
     return n
 
 

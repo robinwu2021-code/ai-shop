@@ -404,6 +404,19 @@ export interface SubmitPaymentReq {
 }
 
 /** 新建/改名门店。门面其余部分（公告/营业时间/主推）走 SaveStoreReqBody */
+/**
+ * 从地图上选中的点直接开通聚落 —— 商家侧没有「提报/等审核」这一步了。
+ * 重复由后端三道闸挡（村码 / 同街道归一名 / 坐标 150 米内），撞上返回既有那条。
+ */
+export interface OpenFromMapReq {
+  name: string;
+  address?: string;
+  latE6: number;
+  lngE6: number;
+  /** 端上已知的街道码（9 位），只在服务端逆地理不可用时兜底 */
+  streetCode?: string;
+}
+
 export interface StoreEditReq {
   /** 门店名 */
   name: string;
