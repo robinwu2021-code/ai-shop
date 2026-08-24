@@ -11,7 +11,7 @@
 //
 // 价格用主单位输入、最小单位存储 —— 店主输 12.5，存 1250。
 import { computed, ref, watch } from "vue";
-import { onLoad } from "@dcloudio/uni-app";
+import { onLoad, onShow } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
 import { api } from "@/api";
 import { useMerchantStore } from "@/stores/merchant";
@@ -323,7 +323,7 @@ function pickFulfillment(f: string) {
   fulfillments.value = [f];
 }
 
-/** 去门店设置开这一路。回来时 onShow 会重拉一次开通状态 */
+/** 去门店设置开这一路。回来时 `onShow` 会重拉一次开通状态（见页尾的 onShow） */
 function toStoreScope() {
   uni.navigateTo({ url: ROUTES.storeScope });
 }
@@ -1581,6 +1581,21 @@ function applyBulkStock() {
   rows.value = rows.value.map((r) => ({ ...r, stock: bulk.value.stock }));
   uni.showToast({ title: t("goods.bulkDone"), icon: "none" });
 }
+
+/**
+ * 从门店设置回来时**重拉一次开通状态**。
+ *
+ * <p>此前这一句只写在 `toStoreScope` 的注释里，页面**根本没有 onShow**：
+ * 商家点「商家自送 · 未开」→ 去开通 → 回来一看还是「未开」，再点还是那句话。
+ * 他做对了每一步，界面却告诉他没做过 —— 只能怀疑是开通没生效，
+ * 而实际上开通早就成功了，只是这一页手里还攥着进来那一刻的旧名单。
+ *
+ * <p>首次进入时 onLoad 已经拉过一遍，这里会再拉一次；多一次请求换掉这个死角，
+ * 值。加载中不清空旧值，所以不会闪。
+ */
+onShow(() => {
+  if (channelsLoaded.value) void loadStoreChannels();
+});
 
 onLoad(async (q) => {
   loadRecentCats();
