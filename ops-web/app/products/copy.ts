@@ -312,6 +312,11 @@ const zh = {
   csPickValues: "取值",
   // 取值这一层：顺序 = 商家建品时看到的先后。**排在前面的会被选中得多** ——
   // 常用档位排前面，商家少翻少手输，而手输的值没有规格编码、参与不了聚合
+  // 类目树上的规格列。**红色的「未配」是这一列的全部意义** ——
+  // 配了几个是次要信息，没配才是要人动手的那一行
+  catColSpecs: "规格",
+  catSpecsNone: "未配",
+  catSpecsGo: "去配「{name}」的规格",
   csValsPicked: "已选取值（这个顺序就是商家看到的顺序）",
   csValsRest: "还没选的取值",
   csValsAllHint: "一个都不选 = 这个维度的取值全都能用（不裁剪）",
@@ -707,6 +712,9 @@ const en: typeof zh = {
   csSetPrimary: "Make primary",
   csUnbind: "Remove",
   csPickValues: "Values",
+  catColSpecs: "Specs",
+  catSpecsNone: "None",
+  catSpecsGo: "Configure specs for “{name}”",
   csValsPicked: "Selected values (this is the order merchants see)",
   csValsRest: "Not selected",
   csValsAllHint: "Selecting none means every value of this dimension is available",

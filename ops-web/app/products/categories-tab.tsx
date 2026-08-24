@@ -14,6 +14,7 @@
 // 已经归到这个类目下的商品还在，C 端历史链接也还指着它，删掉之后那些入口进来是 404，
 // 而它本来只需要「这一类我们这期不做」。
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { GripVertical } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
@@ -48,6 +49,16 @@ const EMPTY: Form = { name: "", i18nEn: "", parentNo: "", template: "STANDARD", 
 const TEMPLATES = ["STANDARD", "FRESH", "SERVICE", "VOUCHER", "VIRTUAL"] as const;
 
 export function CategoriesTab({ c, canEdit }: { c: ProductsCopy; canEdit: boolean }) {
+  const router = useRouter();
+  /*
+   * 与「类目 × 规格」tab **共用同一个 queryKey** —— 那边已经拉过就直接命中缓存，
+   * 不为了一列数字多打一次接口。
+   */
+  const specs = useQuery({ queryKey: ["category-specs"], queryFn: () => api.listCategorySpecs() });
+  const specCount = useMemo(
+    () => new Map((specs.data ?? []).map((r) => [r.categoryNo, r.dimCount])),
+    [specs.data],
+  );
   const qc = useQueryClient();
   const { confirm, dialog } = useConfirm();
   const [keyword, setKeyword] = useState("");
@@ -517,6 +528,31 @@ export function CategoriesTab({ c, canEdit }: { c: ProductsCopy; canEdit: boolea
     },
     // 0 不显示：一列的「0」会把真正有货的那几行淹掉
     { header: c.catColGoods, cell: (r) => r.skuCount || "", numeric: true },
+    {
+      /*
+       * **规格在这里露个头。**从前它只活在另一个 tab 里：运营在类目树上
+       * 看不出这一类配没配规格，得先知道「类目 × 规格」那个 tab 存在、
+       * 再去那边找同一行 —— 于是「新建了类目却没配规格」成了最常见的缺口，
+       * 而那一类的商家只能手输规格，手输的选项没有编码、聚合不了。
+       *
+       * 只对二级类目有意义：规格绑在叶子上，一级类目不承载商品。
+       */
+      header: c.catColSpecs,
+      cell: (r) => {
+        if (r.level === 1) return null;
+        const n = specCount.get(r.categoryNo) ?? 0;
+        return (
+          <button type="button" className="hover:underline"
+            title={fill(c.catSpecsGo, { name: r.name })}
+            onClick={() => router.push(`/products/?tab=category-spec&cat=${r.categoryNo}`)}>
+            {n > 0
+              ? <span>{n}</span>
+              : <Badge tone="danger">{c.catSpecsNone}</Badge>}
+          </button>
+        );
+      },
+      numeric: true,
+    },
     {
       header: c.catColOrder,
       cell: (r) => {

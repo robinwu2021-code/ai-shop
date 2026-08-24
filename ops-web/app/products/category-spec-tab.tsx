@@ -8,7 +8,8 @@
 // 这张表的第一职责是**把缺口顶到眼前**：一条规格都没配的类目标红并计数。
 // 没配的后果不是「少个推荐」——商家侧不再有品类兜底（去掉那条回落是这一版的决定），
 // 那一类的商家只能手输，而手输的选项没有规格编码，跨店聚合就此断掉。
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { notify } from "@/lib/notify";
@@ -28,6 +29,16 @@ type Editing = {
 };
 
 export function CategorySpecTab({ c, canEdit }: { c: ProductsCopy; canEdit: boolean }) {
+  /*
+   * **`?cat=` 深链直接打开那一行的抽屉。**从类目树点「未配」跳过来的人，
+   * 目标是「配这一类」而不是「看这张表」—— 落在表上还要自己在 31 行里
+   * 重新找一遍，那一跳就白跳了。
+   *
+   * 只自动开一次（openedFor 记住已经开过的那个类目号）：否则关掉抽屉后
+   * 任何一次重渲染都会把它弹回来，而 URL 上的参数还在。
+   */
+  const catParam = useSearchParams().get("cat");
+  const openedFor = useRef<string | null>(null);
   const qc = useQueryClient();
   const [openKey, setOpenKey] = useState<string | null>(null);
   const [editing, setEditing] = useState<Editing | null>(null);
@@ -48,6 +59,16 @@ export function CategorySpecTab({ c, canEdit }: { c: ProductsCopy; canEdit: bool
 
   const rows = list.data ?? [];
   const configured = rows.filter((r) => r.dimCount > 0).length;
+
+  useEffect(() => {
+    if (!catParam || openedFor.current === catParam) return;
+    const row = rows.find((r) => r.categoryNo === catParam);
+    if (!row) return;   // 数据还没到，下一次渲染再试
+    openedFor.current = catParam;
+    startEdit(row);
+    // startEdit 依赖 dims 数据（换名要与规格库原值比对），进依赖会反复触发
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [catParam, rows]);
   const summary = c.csSummary
     .replace("{total}", String(rows.length))
     .replace("{configured}", String(configured))
