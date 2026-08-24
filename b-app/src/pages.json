@@ -94,6 +94,12 @@
       }
     },
     {
+      "path": "pages/my-specs/index",
+      "style": {
+        "navigationBarTitleText": "我的规格"
+      }
+    },
+    {
       "path": "pages/qualifications/index",
       "style": {
         "navigationBarTitleText": "我的资质"

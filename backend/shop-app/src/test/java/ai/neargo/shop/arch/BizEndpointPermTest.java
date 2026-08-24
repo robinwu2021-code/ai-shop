@@ -42,6 +42,10 @@ class BizEndpointPermTest {
             "/biz/geo/reverse",
             "/biz/geo/geocode",
             "/biz/geo/tips",
+            // 小区缓存：与 tips 同性质的主数据 —— 一片地方有哪些小区，不含任何一家店的数据。
+            // 写入那条也放这里：它写的是**地图返回的公共事实**，不是商家自己的东西，
+            // 而还没建店的申请人正需要它来挑经营范围
+            "/biz/geo/estates", "/biz/geo/estates/counts",
             "/biz/auth/login", "/biz/auth/otp/send", "/biz/auth/staff-login",
             // 设/查自己的登录密码：作用对象是**调用者本人**（SecurityUtils.currentUserNo），
             // 拿不到别人的。挂 biz 权限码反而错了 —— 店员也该能给自己设密码，
@@ -137,6 +141,10 @@ class BizEndpointPermTest {
         put("/biz/qualifications/save", BizPerms.STORE);
         put("/biz/spec-values", BizPerms.GOODS);
         put("/biz/spec-dims", BizPerms.GOODS);
+        // 「我的规格」：看自己建的维度、改名、停用。都是商品域的事，同一档权限
+        put("/biz/my-spec-dims", BizPerms.GOODS);
+        put("/biz/my-spec-dims/{dimNo}/rename", BizPerms.GOODS);
+        put("/biz/my-spec-dims/{dimNo}/archive", BizPerms.GOODS);
         // 标准品搜索（TDD-标准品库）：建品链路的一环，与规格模板同一档 ——
         // 只能改库存的角色（配送员、客服）建不了品，也就用不上标准品
         put("/biz/spu-std", BizPerms.GOODS);

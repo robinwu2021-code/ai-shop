@@ -49,13 +49,17 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
     private final CategoryService categoryService;
     /** 合并值时要改写 SKU 快照 —— 那是「跨店可比」真正的落点 */
     private final SkuMapper skuMapper;
+    /** 统计「这个维度用在几件商品上」—— 停用前要知道自己在动多大范围 */
+    private final ai.neargo.shop.product.mapper.ProductMappers.GoodsMapper goodsMapper;
 
     public SpecLibraryServiceImpl(SpecDimMapper dimMapper, SpecValueMapper valueMapper,
                                   CategorySpecMapper catSpecMapper,
                                   CategorySpecValueMapper catValueMapper,
                                   CategoryService categoryService,
-                                  SkuMapper skuMapper) {
+                                  SkuMapper skuMapper,
+                                  ai.neargo.shop.product.mapper.ProductMappers.GoodsMapper goodsMapper) {
         this.skuMapper = skuMapper;
+        this.goodsMapper = goodsMapper;
         this.dimMapper = dimMapper;
         this.valueMapper = valueMapper;
         this.catSpecMapper = catSpecMapper;
@@ -624,6 +628,121 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
         row.setSort(900);
         DataScopeContext.executeWithoutScope(() -> valueMapper.insert(row));
         return toValueVO(row);
+    }
+
+    @Override
+    public List<MerchantDimVO> myDims(String merchantNo) {
+        List<PrdSpecDim> mine = DataScopeContext.executeWithoutScope(() ->
+                dimMapper.selectList(Wrappers.<PrdSpecDim>lambdaQuery()
+                        .eq(PrdSpecDim::getScope, PrdSpecDim.MERCHANT)
+                        .eq(PrdSpecDim::getEntityNo, merchantNo)
+                        .orderByAsc(PrdSpecDim::getId)));
+        if (mine.isEmpty()) {
+            return List.of();
+        }
+        int active = (int) mine.stream().filter(d -> PrdSpecDim.ACTIVE.equals(d.getStatus())).count();
+        Map<String, Integer> used = usageByDimName(merchantNo);
+
+        List<MerchantDimVO> out = new ArrayList<>();
+        for (PrdSpecDim d : mine) {
+            List<SpecValueVO> vs = valuesOf(merchantNo, d.getDimNo()).stream()
+                    .map(SpecLibraryServiceImpl::toValueVO).toList();
+            out.add(new MerchantDimVO(d.getDimNo(), d.getName(), vs.size(),
+                    used.getOrDefault(d.getName(), 0), d.getStatus(),
+                    active, MERCHANT_DIM_LIMIT, MERCHANT_VALUE_LIMIT, vs));
+        }
+        return out;
+    }
+
+    /**
+     * 「这个维度用在几件商品上」，**按规格组名统计**。
+     *
+     * <p>为什么不用 templateNo（= dimNo）：那个字段是后来才加的，
+     * <b>存量商品的 spec_groups 里只有 name 与 options</b>
+     * （线上真实数据长这样：{@code [{"name":"规格","options":["10斤装","20斤装"]}]}）。
+     * 按 templateNo 统计的话，老商品一件都算不进来，而那正是商家最在意的那批 ——
+     * 「我停用它会影响什么」问的就是历史。
+     *
+     * <p>代价是改名之后对不上：改完「辣度」→「辣味」，老商品仍记着「辣度」。
+     * 这与商品存快照的语义一致（历史不该被改名波及），所以是可接受的不精确。
+     */
+    private Map<String, Integer> usageByDimName(String merchantNo) {
+        Map<String, Integer> out = new java.util.HashMap<>();
+        List<ai.neargo.shop.product.entity.PrdGoods> goods = DataScopeContext.executeWithoutScope(() ->
+                goodsMapper.selectList(Wrappers.<ai.neargo.shop.product.entity.PrdGoods>lambdaQuery()
+                        .eq(ai.neargo.shop.product.entity.PrdGoods::getEntityNo, merchantNo)
+                        .isNotNull(ai.neargo.shop.product.entity.PrdGoods::getSpecGroups)));
+        for (var g : goods) {
+            String raw = g.getSpecGroups();
+            if (raw == null || raw.length() < 4) {
+                continue;
+            }
+            /*
+             * 只找 "name":"X" 这一段，不整份反序列化：这里要的是计数，
+             * 而 spec_groups 的历史形状不止一种（早期没有 optionCodes、更早没有 templateNo）。
+             * 反序列化会因为某一件老商品的字段对不上而整个抛掉，
+             * 那时页面上所有维度的用量都变成 0 —— 一个看起来「就是没人用」的假象。
+             */
+            java.util.regex.Matcher m = SPEC_GROUP_NAME.matcher(raw);
+            java.util.Set<String> names = new java.util.LinkedHashSet<>();
+            while (m.find()) {
+                names.add(m.group(1));
+            }
+            for (String n : names) {
+                out.merge(n, 1, Integer::sum);
+            }
+        }
+        return out;
+    }
+
+    private static final java.util.regex.Pattern SPEC_GROUP_NAME =
+            java.util.regex.Pattern.compile("\"name\"\\s*:\\s*\"([^\"]+)\"");
+
+    @Override
+    @Transactional
+    public SpecDimVO renameMerchantDim(String merchantNo, String dimNo, String name) {
+        PrdSpecDim dim = requireMine(merchantNo, dimNo);
+        String norm = SpecNormalizer.label(name);
+        if (norm == null || norm.isBlank() || BANNED_DIM_NAMES.contains(norm)) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        /*
+         * 改成与平台维度同名时**不给改**，而不是默默改掉：那样他会以为自己的
+         * 「口味」从此与平台的「口味」是一回事（能跨店聚合），其实不是 ——
+         * 自建维度换个名字仍旧是自建维度。想用平台那个，该在建品页里挑它。
+         */
+        boolean clash = DataScopeContext.executeWithoutScope(() ->
+                dimMapper.selectCount(Wrappers.<PrdSpecDim>lambdaQuery()
+                        .eq(PrdSpecDim::getScope, PrdSpecDim.PLATFORM)
+                        .eq(PrdSpecDim::getName, norm)
+                        .eq(PrdSpecDim::getStatus, PrdSpecDim.ACTIVE))) > 0;
+        if (clash) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        dim.setName(norm);
+        DataScopeContext.executeWithoutScope(() -> dimMapper.updateById(dim));
+        return toDimVO(dim, List.of(), 0);
+    }
+
+    @Override
+    @Transactional
+    public SpecDimVO archiveMerchantDim(String merchantNo, String dimNo, boolean archived) {
+        PrdSpecDim dim = requireMine(merchantNo, dimNo);
+        dim.setStatus(archived ? PrdSpecDim.ARCHIVED : PrdSpecDim.ACTIVE);
+        DataScopeContext.executeWithoutScope(() -> dimMapper.updateById(dim));
+        return toDimVO(dim, List.of(), 0);
+    }
+
+    /** 只能动自己建的：平台维度与别家自建的都不是他的东西 */
+    private PrdSpecDim requireMine(String merchantNo, String dimNo) {
+        PrdSpecDim dim = DataScopeContext.executeWithoutScope(() ->
+                dimMapper.selectOne(Wrappers.<PrdSpecDim>lambdaQuery()
+                        .eq(PrdSpecDim::getDimNo, dimNo).last("limit 1")));
+        if (dim == null || !PrdSpecDim.MERCHANT.equals(dim.getScope())
+                || !merchantNo.equals(dim.getEntityNo())) {
+            throw BizException.of(ErrorCode.FORBIDDEN);
+        }
+        return dim;
     }
 
     @Override

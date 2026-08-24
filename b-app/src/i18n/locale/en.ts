@@ -107,6 +107,9 @@ export default {
     },
     blockerGo: "Fix it",
     storeCategoriesEntry: "My Shelves",
+    qualEntry: "My licences",
+    qualEntryHint: "Upload your licences to unlock the categories that need them",
+    mySpecsEntry: "My specs", mySpecsEntryHint: "Rename or disable the specs you built",
     storeCategoriesEntryHint: "Which categories this store puts on display",
     storesEntry: "Stores",
     storesEntryHint: "How many shops, and which one gets paid where",
@@ -121,6 +124,16 @@ export default {
   },
 
   qual: {
+    mySpecs: {
+      title: "My specs", intro: "Build your own when the platform has none. Here you can see what you built and where it is used.",
+      quota: "used / limit", empty: "Nothing built yet. You can create one while adding a product.",
+      used: "used by {n} products", noValues: "No values yet",
+      rename: "Rename", archive: "Disable", unarchive: "Enable",
+      renameTitle: "New name", archiveTitle: "Disable this spec",
+      archiveConfirm: "The {n} existing products are unaffected — you just cannot pick it for new ones.",
+      archivedTitle: "Disabled",
+      foot: "Your own specs are store-only and stay out of cross-store comparison — prefer platform specs where they exist.",
+    },
     title: "My licences",
     intro: "A rejected listing is usually not about the product — that category needs a licence you have not uploaded yet. Upload it, the platform reviews it, and those categories open up.",
     mine: "Uploaded",

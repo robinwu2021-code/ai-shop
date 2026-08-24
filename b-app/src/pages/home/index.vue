@@ -291,6 +291,16 @@ onShow(load);
       </view>
 
       <!--
+        我的规格：跟着「我的类目」—— 类目决定「能卖什么」，规格决定「怎么分档」，
+        两件事都在建品之前定，放一起商家才不用到处找。
+        权限用 biz:goods 而不是 store:admin：自建规格是商品的事，店长也该能管。
+      -->
+      <view v-if="merchant.can('biz:goods')" class="sh-card entry" @tap="open(ROUTES.mySpecs)">
+        <text class="sh-h2">{{ $t("home.mySpecsEntry") }}</text>
+        <text class="sh-muted">{{ $t("home.mySpecsEntryHint") }}</text>
+      </view>
+
+      <!--
         我的资质：紧挨着「我的类目」——「这一类我卖不了」的下一步就是「去传证」，
         两页放一起才连得上。此前商家侧根本没有传证的入口。
       -->

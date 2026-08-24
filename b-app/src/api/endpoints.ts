@@ -137,6 +137,9 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
 
   mPickableDims: { method: "GET", path: "/biz/spec-dims", auth: true, summary: "加规格组时能挑的维度（本类目已配 + 平台通用 + 自建）" },
   mOrderList: { method: "GET", path: "/biz/order", auth: true, summary: "订单列表" },
+  mMySpecDims: { method: "GET", path: "/biz/my-spec-dims", auth: true, summary: "我建的规格维度（含用量与配额）" },
+  mRenameSpecDim: { method: "POST", path: "/biz/my-spec-dims/{dimNo}/rename", auth: true, summary: "给自建维度改名" },
+  mArchiveSpecDim: { method: "POST", path: "/biz/my-spec-dims/{dimNo}/archive", auth: true, summary: "停用/启用自建维度" },
   mOrderDetail: { method: "GET", path: "/biz/order/:orderNo", auth: true, summary: "订单详情" },
   mShip: { method: "POST", path: "/biz/order/:orderNo/ship", auth: true, summary: "快递发货" },
   mDelivered: { method: "POST", path: "/biz/order/:orderNo/delivered", auth: true, summary: "自送已送达" },

@@ -1849,6 +1849,67 @@ export const mockApi: MerchantApi = {
     );
     universal.forEach((t) => seen.add(t.templateNo));
     const mine = db.specTemplates.filter(
+  /**
+   * 「我的规格」。mock 里没有真的规格库，就拿商家自存的模板当自建维度 ——
+   * **用量按规格组名从 db.goods 里数**，与真后端同一条判据（存量商品的
+   * 规格快照里只有名字，没有维度编号）。
+   */
+  async mMySpecDims() {
+    const merchantNo = db.merchant.merchantNo;
+    const mine = db.specTemplates.filter((t) => t.scope === "MERCHANT" && t.merchantNo === merchantNo);
+    const used = (name: string) =>
+      myGoods().filter((g) => (g.specGroups ?? []).some((x) => x.name === name)).length;
+    return delay(mine.map((t) => ({
+      dimNo: t.templateNo,
+      name: t.name,
+      valueCount: t.options.length,
+      usedCount: used(t.name),
+      status: "ACTIVE" as const,
+      dimUsed: mine.length,
+      dimQuota: 10,
+      valueQuota: 20,
+      values: t.options,
+    })));
+  },
+
+  async mRenameSpecDim(dimNo, name) {
+    const t = db.specTemplates.find((x) => x.templateNo === dimNo);
+    if (!t) throw new Error("规格不存在");
+    // 与真后端同一条：撞平台维度名不给改 —— 换个名字也不会让它变成平台维度
+    if (db.specTemplates.some((x) => x.scope === "PLATFORM" && x.name === name.trim())) {
+      throw new Error("平台已有同名规格，直接在建品页里挑它");
+    }
+    t.name = name.trim();
+    return delay(undefined);
+  },
+
+  async mArchiveSpecDim(dimNo, archived) {
+    const t = db.specTemplates.find((x) => x.templateNo === dimNo);
+    if (!t) throw new Error("规格不存在");
+    // mock 的模板表没有 status 字段：停用就从可挑清单里摘掉，效果与真后端一致
+    if (archived) db.specTemplates = db.specTemplates.filter((x) => x.templateNo !== dimNo);
+    return delay(undefined);
+  },
+
+  /**
+   * 能挑的维度。mock 里的规格库只有模板表这一份，所以分组的判据与真后端一致：
+   * 本类目的（categoryNo 命中）→ 平台通用（无 categoryNo）→ 自建（scope=MERCHANT）。
+   */
+  async mPickableDims(categoryNo) {
+    const merchantNo = db.merchant.merchantNo;
+    const picked = categoryNo?.trim() || undefined;
+    const cat = picked ? db.specTemplates.filter((t) => t.categoryNo === picked) : [];
+    const seen = new Set(cat.map((t) => t.templateNo));
+    const universal = db.specTemplates.filter(
+      (t) => t.scope === "PLATFORM" && !t.categoryNo && !seen.has(t.templateNo),
+    );
+    universal.forEach((t) => seen.add(t.templateNo));
+    const mine = db.specTemplates.filter(
+      (t) => t.scope === "MERCHANT" && t.merchantNo === merchantNo && !seen.has(t.templateNo),
+    );
+    return delay([...cat, ...universal, ...mine]);
+  },
+
       (t) => t.scope === "MERCHANT" && t.merchantNo === merchantNo && !seen.has(t.templateNo),
     );
     return delay([...cat, ...universal, ...mine]);

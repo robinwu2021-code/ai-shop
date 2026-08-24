@@ -70,8 +70,7 @@ import type {
   StoreFulfillment,
   MyQualifications,
   Qualification,
-  QualificationSaveReq,
-} from "@shared/types";
+  QualificationSaveReq, MerchantSpecDim,} from "@shared/types";
 
 /** 拍照识别的结果。全部是**建议值**，店主可改可弃 */
 export interface GoodsGuess {
@@ -717,6 +716,28 @@ export interface MerchantApi {
   mMarkArrived(subOrderNos: string[], pickupNo?: string): Promise<PickupOrder[]>;
   /**
    * 核销自提码。核销成功 → C 端该订单立刻变已完成。
+
+  /**
+   * 「我的规格」：这家店自己建的维度 + 用量 + 配额。
+   *
+   * <p>此前商家**只能建、不能管** —— 建品页里输一个名字就落进规格库，
+   * 之后没有任何地方看得到它。建错了只能一直留着，还占着配额，
+   * 而配额用完那句报错也说不清是被什么占了。
+   */
+  mMySpecDims(): Promise<MerchantSpecDim[]>;
+  /**
+   * 改名。**不影响已建商品** —— 商品存的是规格快照。
+   *
+   * <p>不声明返回值：改完之后配额没变但用量可能变（改名会让老商品对不上，
+   * 那是有意的 —— 历史不该被改名波及），就地更新反而容易与服务端不一致。
+   * 页面整份重拉，一次请求换一个准确的界面。
+   */
+  mRenameSpecDim(dimNo: string, name: string): Promise<void>;
+  /**
+   * 停用 / 启用。**停用不是删除**：历史商品的规格组要靠它解释自己是什么。
+   * 停用后只是建品时挑不到。
+   */
+  mArchiveSpecDim(dimNo: string, archived: boolean): Promise<void>;
    *
    * ⚠️ **失败也是 code 0**，靠返回体的 `success` 判 —— 不要只看有没有抛异常。
    * 码无效、已核销、不是本点这三种都会带 `reason` 回来，

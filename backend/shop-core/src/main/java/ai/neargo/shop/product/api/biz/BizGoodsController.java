@@ -284,6 +284,45 @@ public class BizGoodsController {
     }
 
     /**
+     * 「我的规格」：这家店自己建的维度 + 用量 + 配额。
+     *
+     * <p>此前商家<b>只能建、不能管</b> —— 建品页里输一个名字就落进规格库，
+     * 之后没有任何地方看得到它。建错了（打错字、想换个叫法）只能一直留着，
+     * 还占着配额，而配额用完那句报错也说不清是被什么占了。
+     */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.GOODS + "')")
+    @GetMapping("/biz/my-spec-dims")
+    public List<ai.neargo.shop.product.service.SpecLibraryService.MerchantDimVO> myDims() {
+        return specLibrary.myDims(BizContext.requireMerchantNo());
+    }
+
+    /** 改名。**不影响已建商品** —— 商品存的是规格快照 */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.GOODS + "')")
+    @PostMapping("/biz/my-spec-dims/{dimNo}/rename")
+    public ai.neargo.shop.product.service.SpecLibraryService.SpecDimVO renameMyDim(
+            @PathVariable String dimNo, @RequestBody RenameDimReq req) {
+        return specLibrary.renameMerchantDim(BizContext.requireMerchantNo(), dimNo, req.name());
+    }
+
+    /**
+     * 停用 / 启用。**停用不是删除** —— 历史商品的规格组要靠它解释自己是什么，
+     * 真删之后那些规格就成了没有出处的字符串。停用后只是建品时挑不到。
+     */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.GOODS + "')")
+    @PostMapping("/biz/my-spec-dims/{dimNo}/archive")
+    public ai.neargo.shop.product.service.SpecLibraryService.SpecDimVO archiveMyDim(
+            @PathVariable String dimNo, @RequestBody ArchiveDimReq req) {
+        return specLibrary.archiveMerchantDim(BizContext.requireMerchantNo(), dimNo,
+                Boolean.TRUE.equals(req.archived()));
+    }
+
+    public record RenameDimReq(String name) {
+    }
+
+    public record ArchiveDimReq(Boolean archived) {
+    }
+
+    /**
      * 自建一个规格维度（平台没有的，如「辣度」）。
      *
      * <p><b>只在这家店可见，不参与跨店聚合</b> —— 端上要把这句话说给商家听。

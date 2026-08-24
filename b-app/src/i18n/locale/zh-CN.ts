@@ -176,6 +176,8 @@ export default {
     qualEntry: "我的资质",
     qualEntryHint: "传营业执照与许可证，解锁需要资质的类目",
     storeCategoriesEntry: "我的类目",
+    mySpecsEntry: "我的规格",
+    mySpecsEntryHint: "自己建的规格，改名、停用",
     storeCategoriesEntryHint: "本店摆哪几类货、叫什么名",
     storesEntry: "门店管理",
     storesEntryHint: "有几家店、哪家收哪个款",
@@ -193,6 +195,23 @@ export default {
   },
 
   qual: {
+    mySpecs: {
+      title: "我的规格",
+      intro: "平台没有的规格，你可以自己建。这里能看到建过哪些、用在多少商品上。",
+      quota: "已建 / 上限",
+      empty: "还没自建过规格。建品时选不到合适的，可以在那里现建一个。",
+      used: "用在 {n} 件商品",
+      noValues: "还没有取值",
+      rename: "改名",
+      archive: "停用",
+      unarchive: "启用",
+      renameTitle: "改成什么名字",
+      archiveTitle: "停用这个规格",
+      // 说清后果比拦着他更有用：停用不动历史商品，只是以后挑不到
+      archiveConfirm: "已建好的 {n} 件商品不受影响，只是以后建品时挑不到它。",
+      archivedTitle: "已停用",
+      foot: "自建规格只有本店能用，不参与跨店比价 —— 平台有的尽量用平台的。",
+    },
     title: "我的资质",
     intro: "上架被拒多半不是商品的问题，是这一类需要一张你还没传的证。传完由平台核，核过之后那几类就能上架了。",
     mine: "已传的证",

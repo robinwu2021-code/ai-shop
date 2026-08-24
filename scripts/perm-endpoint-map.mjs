@@ -334,6 +334,10 @@ export const NEAREST_CODE = {
   "order:pay:repair": "order:order:modify",      // 掉单补偿 / 关单策略：走订单干预
   "product:stock:update": "product:sku:audit",   // 预售额度与超卖：改的是商品
   "category:manage": "product:category:update",  // 历史遗留的 ACTION 码
+  // 「开关与灰度」的写码。UI 沿用 env:switch（CRITICAL_PERMS 与角色矩阵里都用着，
+  // 改名要动的地方比接一条映射多得多），后端真有的是 system:param:update。
+  // 此前 perm-map 里它标着 UNIMPLEMENTED，于是那一页对所有人只读、开关拨不动。
+  "system:env:switch": "system:param:update",
 };
 
 /** 端点 → 码；命中不了返回 null（守卫会把它报出来） */

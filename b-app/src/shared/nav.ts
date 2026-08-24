@@ -18,6 +18,7 @@ export const ROUTES = {
   payment: "/pages/payment/index",
   stores: "/pages/stores/index",
   storeCategories: "/pages/store-categories/index",
+  mySpecs: "/pages/my-specs/index",
   qualifications: "/pages/qualifications/index",
   staff: "/pages/staff/index",
   staffDetail: "/pages/staff-detail/index",

@@ -130,6 +130,39 @@ public interface SpecLibraryService {
      */
     SpecDimVO addMerchantDim(String merchantNo, String name, List<String> labels);
 
+    /**
+     * 这家店<b>自己建的</b>规格维度，给「我的规格」那一页用。
+     *
+     * <p>与 {@link #pickableDims} 的差别：那个是「建品时能挑什么」（平台的也在里面），
+     * 这个是「我拥有什么、能改什么」。此前商家<b>只能建、不能管</b> ——
+     * 建品页里输一个名字就落进规格库，之后没有任何地方看得到它，
+     * 建错了（打错字、想改叫法）只能一直留着，还占着配额。
+     *
+     * @return 带用量（用在几件商品上）与配额，按创建顺序
+     */
+    List<MerchantDimVO> myDims(String merchantNo);
+
+    /**
+     * 改名。**不影响已经建好的商品** —— 商品存的是规格快照，
+     * 改维度名不会把历史订单里的「辣度」变成别的字。
+     */
+    SpecDimVO renameMerchantDim(String merchantNo, String dimNo, String name);
+
+    /**
+     * 停用 / 启用。<b>停用不是删除</b>：历史商品的规格组要靠它解释自己是什么，
+     * 真删之后那些商品的规格就成了没有出处的字符串。停用后只是建品时挑不到。
+     */
+    SpecDimVO archiveMerchantDim(String merchantNo, String dimNo, boolean archived);
+
+    /**
+     * @param usedCount 用在几件商品上 —— 停用前要知道自己在动多大范围
+     * @param dimQuota  维度配额（已用 / 上限）。**摆出来而不是等他建到第 11 个才被拒**
+     */
+    record MerchantDimVO(String dimNo, String name, int valueCount, int usedCount,
+                         String status, int dimUsed, int dimQuota, int valueQuota,
+                         List<SpecValueVO> values) {
+    }
+
     /** 商家自建配额：维度上限 */
     int MERCHANT_DIM_LIMIT = 10;
     /** 商家自建配额：同一维度下的自有值上限 */

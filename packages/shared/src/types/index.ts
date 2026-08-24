@@ -3346,6 +3346,31 @@ export type AfterSaleType = "REFUND_ONLY" | "RETURN_REFUND";
    * <p>商家自存模板与品类兜底模板恒为 false：主维度是**类目绑定**上的判据，
    * 那两条路不经过绑定表。
    */
+/**
+ * 「我的规格」里的一条自建维度。
+ *
+ * <p>与 {@link SpecTemplate} 的差别是**视角**：那个回答「建品时能挑什么」，
+ * 这个回答「我拥有什么、能改什么、动它会影响多少」。
+ */
+export interface MerchantSpecDim {
+  dimNo: string;
+  name: string;
+  /** 这个维度下的取值数（含平台档位 + 自己加的） */
+  valueCount: number;
+  /**
+   * 用在几件商品上。**按规格组名统计** —— 存量商品的规格快照里只有名字，
+   * 没有维度编号（那个字段是后加的），按编号统计的话老商品一件都算不进来，
+   * 而「停用它会影响什么」问的恰恰是历史。
+   */
+  usedCount: number;
+  status: "ACTIVE" | "ARCHIVED";
+  /** 已建 / 上限。摆出来，而不是等他建到第 11 个才被拒 */
+  dimUsed: number;
+  dimQuota: number;
+  valueQuota: number;
+  values: SpecOption[];
+}
+
   primary?: boolean;
  * ⚠️ 这里此前是完全另一套：`PENDING`/`AGREED`/`RETURNING`/`RECEIVED`/`DONE`/`DISPUTED`，
  * 与后端**只有 `REJECTED` 一个词重合**。c/b 两端按它判断、按它建 i18n 词条，
