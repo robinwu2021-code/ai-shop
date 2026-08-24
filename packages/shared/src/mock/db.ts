@@ -1043,8 +1043,11 @@ export const db = {
    */
   storeCategories: {
     "ST-MOCK-1": [
-      { categoryNo: "CAT210", name: "纸品清洁", platformName: "纸品清洁", sort: 0, goodsCount: 2 },
-      { categoryNo: "CAT130", name: "米面粮油", platformName: "预包装食品", displayName: "米面粮油", sort: 1, goodsCount: 3 },
+      { categoryNo: "CAT210", name: "纸品清洁", platformName: "纸品清洁", sort: 0,
+        goodsCount: 2, onSaleCount: 2, pendingCount: 0 },
+      // 3 件里 2 件在卖、1 件待审 —— 让 mock 上就能看出这三个数不是同一个数
+      { categoryNo: "CAT130", name: "米面粮油", platformName: "预包装食品", displayName: "米面粮油",
+        sort: 1, goodsCount: 3, onSaleCount: 2, pendingCount: 1 },
     ],
   } as Record<string, StoreCategory[]>,
 

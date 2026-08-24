@@ -433,6 +433,7 @@ export default {
     refreshed: "تم التحديث",
   },
   storeCategories: {
+      onSale: "{n} معروضة", pending: "{n} قيد المراجعة", total: "{n} إجمالاً",
     title: "أرففي",
     hint: "الفئات التي يعرضها هذا المتجر وأسماؤها. نشر منتج يضيف فئته تلقائياً.",
     mine: "معروضة",

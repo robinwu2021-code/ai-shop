@@ -433,6 +433,7 @@ export default {
     refreshed: "Refreshed",
   },
   storeCategories: {
+      onSale: "{n} on sale", pending: "{n} pending", total: "{n} total",
     title: "My Shelves",
     hint: "Which categories this store puts on display, and what to call them. Publishing a product adds its category automatically.",
     mine: "On display",

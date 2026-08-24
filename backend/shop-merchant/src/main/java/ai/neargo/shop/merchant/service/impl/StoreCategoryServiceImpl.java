@@ -44,7 +44,11 @@ public class StoreCategoryServiceImpl implements StoreCategoryService {
 
     @Override
     public List<StoreCategoryVO> list(String merchantNo, String storeNo) {
-        return rows(storeNo).stream().map(r -> toVO(merchantNo, r)).toList();
+        List<MchStoreCategory> rows = rows(storeNo);
+        // 一次把这些类目的商品情况查完 —— 逐个 count 是 N 次往返，而一页正常十几个类目
+        var stats = categoryPort.statsOf(merchantNo,
+                rows.stream().map(MchStoreCategory::getCategoryNo).toList());
+        return rows.stream().map(r -> toVO(r, stats)).toList();
     }
 
     @Override
@@ -192,8 +196,12 @@ public class StoreCategoryServiceImpl implements StoreCategoryService {
                         .orderByAsc(MchStoreCategory::getSort)));
     }
 
-    private StoreCategoryVO toVO(String merchantNo, MchStoreCategory r) {
+    private StoreCategoryVO toVO(MchStoreCategory r,
+                                 java.util.Map<String, CategoryUsagePort.CategoryStat> stats) {
         String platform = categoryPort.nameOf(r.getCategoryNo());
+        // 没有商品的类目不在 map 里 —— 按 0 处理，而不是让它变成 null 打到端上
+        var st = stats.getOrDefault(r.getCategoryNo(),
+                new CategoryUsagePort.CategoryStat(0, 0, 0));
         return new StoreCategoryVO(
                 r.getCategoryNo(),
                 // 显示名有就用它 —— 它只是皮，categoryNo 不变，跨店聚合照常成立
@@ -201,6 +209,6 @@ public class StoreCategoryServiceImpl implements StoreCategoryService {
                         ? r.getDisplayName() : platform,
                 platform, r.getDisplayName(),
                 r.getSort() == null ? 0 : r.getSort(),
-                (int) categoryPort.countGoodsInCategory(merchantNo, r.getCategoryNo()));
+                st.total(), st.onSale(), st.pending());
     }
 }

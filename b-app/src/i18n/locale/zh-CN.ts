@@ -594,6 +594,9 @@ export default {
     refresh: "刷新状态",
     refreshed: "已刷新",
   },
+      onSale: "在售 {n}",
+      pending: "待审 {n}",
+      total: "共 {n}",
   storeCategories: {
     title: "我的类目",
     hint: "这里管本店把哪几类摆出来、叫什么名。商品建好会自动加进来，一个都没摆也能正常卖",

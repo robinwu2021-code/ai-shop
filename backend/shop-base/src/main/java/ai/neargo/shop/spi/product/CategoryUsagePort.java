@@ -32,6 +32,28 @@ public interface CategoryUsagePort {
     long countGoodsInCategory(String entityNo, String categoryNo);
 
     /**
+     * 这几个类目各自的商品情况，<b>一次查完</b>。
+     *
+     * <p>「我的类目」那一页要给每一类显示在售/待审多少 —— 逐个调
+     * {@link #countGoodsInCategory} 就是 N 次查询，而这一页正常有十几个类目。
+     *
+     * <p>为什么值得下发这三个数：那一页从前只是个勾选框，商家看不出这一类
+     * 卖得怎么样；撤架被拒（还有商品占着）也只有点了才知道。
+     *
+     * @return categoryNo → 统计；没有商品的类目**不在 map 里**（调用方按 0 处理）
+     */
+    java.util.Map<String, CategoryStat> statsOf(String entityNo,
+                                                java.util.Collection<String> categoryNos);
+
+    /**
+     * @param total   这一类下的全部商品（含下架、待审）—— 撤架前要看的就是它
+     * @param onSale  正在卖
+     * @param pending 待审（库里 auditStatus=AUDITING，对外叫 PENDING）
+     */
+    record CategoryStat(int total, int onSale, int pending) {
+    }
+
+    /**
      * 这家主体<b>在架</b>商品里，有几件的类目要求这些码之一。
      *
      * <p>撤码时用它算代价：撤掉一个码，那些商品下次上架就会被闸门拒 ——

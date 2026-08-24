@@ -12,6 +12,8 @@ import { onShow } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
 import { api } from "@/api";
 import { useMerchantStore } from "@/stores/merchant";
+import { ROUTES } from "@/shared/nav";
+import { handOffGoodsCategory } from "@/shared/handoff";
 import type { Category, StoreCategory } from "@shared/types";
 
 /**
@@ -42,6 +44,21 @@ const ungranted = (c: Category) =>
 
 const countOf = (no: string) =>
   picked.value.find((c) => c.categoryNo === no)?.goodsCount ?? 0;
+
+/** 已摆的那一类的经营情况，用来在勾选行右边显示「在售 N · 待审 M」 */
+const statOf = (no: string) => picked.value.find((c) => c.categoryNo === no);
+
+/**
+ * 点一类直接去商品列表，**并且落在这一类上**。
+ *
+ * <p>这一页从前只是个勾选框：商家看不出这一类卖得怎么样，
+ * 也无从从这里走到那批货 —— 他得回首页、进商品、再在筛选条里选同一个类目。
+ */
+function openGoods(no: string) {
+  // 商品列表是 tabBar 页，switchTab 不能带参数 —— 参数走交接位（见 shared/handoff）
+  handOffGoodsCategory(no);
+  uni.switchTab({ url: ROUTES.goods });
+}
 
 onShow(load);
 
@@ -153,11 +170,32 @@ async function save(items: { categoryNo: string; displayName?: string; sort: num
     <view v-if="picked.length" class="sh-card">
       <text class="sh-h2">{{ $t("storeCategories.mine") }}</text>
       <text class="sh-muted mt">{{ $t("storeCategories.renameHint") }}</text>
-      <view v-for="c in picked" :key="c.categoryNo" class="row" @tap="rename(c)">
-        <text class="row__name">{{ c.name }}</text>
-        <!-- 改过名的要标出来：只显示新名字的话，商家找不回平台原来叫什么 -->
-        <text v-if="c.displayName" class="row__from">{{ c.platformName }}</text>
-        <text class="row__act">{{ $t("storeCategories.rename") }}</text>
+      <view v-for="c in picked" :key="c.categoryNo" class="row">
+        <!--
+          点名字进商品（落在这一类上），点右边「改名」才是改名。
+          从前整行都是改名 —— 而商家在这一页最常想做的其实是
+          「看看这一类的货」，那条路从这里根本走不通。
+        -->
+        <view class="row__main" @tap="openGoods(c.categoryNo)">
+          <text class="row__name">{{ c.name }}</text>
+          <!-- 改过名的要标出来：只显示新名字的话，商家找不回平台原来叫什么 -->
+          <text v-if="c.displayName" class="row__from">{{ c.platformName }}</text>
+          <!--
+            三个数分开给，因为它们回答的是不同问题：在售 = 卖得怎么样，
+            待审 = 「为什么这一类看起来没货」的常见答案，
+            而括号里的总数才是「能不能撤架」看的那个。
+          -->
+          <text class="sh-muted row__stat">
+            {{ $t("storeCategories.onSale", { n: c.onSaleCount }) }}
+            <template v-if="c.pendingCount">
+              · {{ $t("storeCategories.pending", { n: c.pendingCount }) }}
+            </template>
+            <template v-if="c.goodsCount > c.onSaleCount + c.pendingCount">
+              · {{ $t("storeCategories.total", { n: c.goodsCount }) }}
+            </template>
+          </text>
+        </view>
+        <text class="row__act" @tap.stop="rename(c)">{{ $t("storeCategories.rename") }}</text>
       </view>
     </view>
 
@@ -221,6 +259,16 @@ async function save(items: { categoryNo: string; displayName?: string; sort: num
   gap: 16rpx;
   padding: 20rpx 0;
   border-top: 2rpx solid var(--sh-line);
+}
+
+.row__main {
+  flex: 1;
+}
+
+.row__stat {
+  display: block;
+  margin-top: 4rpx;
+  font-size: 22rpx;
 }
 
 .row__name {

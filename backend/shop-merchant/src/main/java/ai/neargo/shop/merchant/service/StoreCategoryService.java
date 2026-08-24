@@ -45,7 +45,14 @@ public interface StoreCategoryService {
      * @param name         展示名：`displayName` 有就用它，否则用平台类目名
      * @param goodsCount   这个货架上有几件商品 —— 删之前商家要看得见代价
      */
+    /**
+     * @param goodsCount 这一类下的全部商品（含下架、待审）—— 撤架前要看的就是它
+     * @param onSaleCount 正在卖的。**与 goodsCount 分开给**：商家问「这一类卖得怎么样」
+     *                    时要的是这个数，而问「能不能撤架」时要的是上面那个
+     * @param pendingCount 待审的。它常常是「为什么这一类看起来没货」的答案
+     */
     record StoreCategoryVO(String categoryNo, String name, String platformName,
-                           String displayName, int sort, int goodsCount) {
+                           String displayName, int sort, int goodsCount,
+                           int onSaleCount, int pendingCount) {
     }
 }

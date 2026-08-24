@@ -713,6 +713,9 @@ export const mockApi: MerchantApi = {
     return delay(next.map((c) => ({ ...c })));
   },
 
+        // 三个数分开：在售/待审是「卖得怎么样」，goodsCount 是「能不能撤架」
+        onSaleCount: old?.onSaleCount ?? 0,
+        pendingCount: old?.pendingCount ?? 0,
   // 门店送货方式（方案 v4）：mock 里每店一份，默认「自提两路开」——与生产播种同一映射
   async mStoreFulfillment(storeNo) {
     const no = storeNo === "default" ? db.stores[0]?.storeNo ?? "ST-MOCK-1" : storeNo;

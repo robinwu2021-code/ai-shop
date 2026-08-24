@@ -7,6 +7,7 @@ import { onReachBottom, onShow } from "@dcloudio/uni-app";
 import { api } from "@/api";
 import { useMerchantStore } from "@/stores/merchant";
 import { ROUTES } from "@/shared/nav";
+import { takeGoodsCategory } from "@/shared/handoff";
 import { SHOW_CATEGORY_GATE } from "@/shared/flags";
 import { money } from "@shared/utils/money";
 import type { Category, Goods, GoodsStatus, StoreCategory } from "@shared/types";
@@ -355,6 +356,18 @@ function stockOf(g: Goods) {
 const catsOfStore = ref("");
 
 onShow(() => {
+  /*
+   * 从「我的类目」点某一类过来时，**带着那一类落地**。
+   *
+   * 不带的话他看到的是全部商品，得自己在筛选条里再选一次刚点过的那个类目 ——
+   * 这一跳的意义正在于省掉那一次。
+   *
+   * 取完即清（takeGoodsCategory 一次性）：留着的话，下次从 tab 图标进来
+   * 还会莫名停在上次那个类目上，而界面上没有任何东西解释为什么。
+   */
+  const handed = takeGoodsCategory();
+  if (handed) categoryNo.value = handed;
+
   // 平台树几乎不变，但门店货架会随「我的类目」的编辑与切店而变
   if (!rootCategories.value.length || catsOfStore.value !== merchant.storeNo) {
     catsOfStore.value = merchant.storeNo;
