@@ -31,6 +31,23 @@ const pending = ref<{ content: string; submittedAt: number } | null>(null);
 const live = ref("");
 
 /**
+ * 这两样要等后端。
+ *
+ * <p>「同时发到」与「常用里删一条」都依赖 2026-08-24 新增的端点，而线上后端还没有那一版
+ * （`??` 的定义文件卡着，HEAD 编不过，见当天的部署记录）。**在那之前先藏起来**：
+ * <ul>
+ *   <li>同时发到：老后端会把 `alsoStoreNos` 静默丢掉 —— 商家勾了三家店、以为发出去了，
+ *       没有任何信号告诉他只发了一家。<b>静默给出错误结果没有自愈路径</b>，最坏的一种。</li>
+ *   <li>常用的 ✕：调过去 404，弹一句错误 toast。虽然不沉默，但点了删不掉、连点几次仍在，
+ *       同样说不清原因。</li>
+ * </ul>
+ *
+ * <p>后端上线后把这里改成 true，一行的事 —— 代码留着而不是删掉，是因为它们已经验过、
+ * 也已经有后端用例守着（ServiceAreaFlowTest）。
+ */
+const BACKEND_READY = false;
+
+/**
  * 「同时发到」勾中的门店号。**默认空** —— 公告里有相当一部分只对一家店成立
  * （「南门店今天停电」），默认勾上会把它发得到处都是，而这种错要等买家白跑一趟才发现。
  * 反过来「今天到货」三家都成立时，进三次店发三遍是纯粹的重复劳动，所以要有这个。
@@ -236,7 +253,7 @@ onShow(load);
       </view>
 
       <!-- 同时发到：只有多店主体看得到。默认不勾 —— 见 alsoStoreNos 上的说明 -->
-      <view v-if="otherStores.length" class="also">
+      <view v-if="BACKEND_READY && otherStores.length" class="also">
         <text class="also__label">{{ $t("store.noticeAlso") }}</text>
         <view class="also__opts">
           <text
@@ -276,7 +293,7 @@ onShow(load);
       <view class="recent">
         <view v-for="(r, i) in recent" :key="i" class="recent__row">
           <text class="recent__i" @tap="text = r">{{ r }}</text>
-          <text class="recent__x" @tap.stop="dropRecent(r)">✕</text>
+          <text v-if="BACKEND_READY" class="recent__x" @tap.stop="dropRecent(r)">✕</text>
         </view>
       </view>
     </view>
