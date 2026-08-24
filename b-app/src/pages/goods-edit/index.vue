@@ -2097,11 +2097,7 @@ async function save(thenSubmit = false) {
           </view>
         </view>
 
-        <!--
-          二级只在选了一级之后出现：先摆一排空椅子只会让人以为加载失败。
-          **还要跟着「其他类目」一起收**：从「本店常卖」选完之后 parentNo 也会被带上，
-          不跟着收的话，下面会突然冒出一整排二级类目 —— 而商家并没有点开那一段。
-        -->
+        <!-- 二级只在选了一级之后出现：先摆一排空椅子只会让人以为加载失败 -->
         <view v-if="parentNo && children.length" class="cat-lv">
           <text class="cat-lv__t">{{ $t("goods.categoryL2") }}</text>
           <view class="cat-lv__opts">
