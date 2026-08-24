@@ -84,10 +84,6 @@ function setAreas(v: ServiceArea[]) {
 const applies = ref<CommunityApply[]>([]);
 const pendingApplies = computed(() => applies.value.filter((a) => a.status === "PENDING"));
 const rejectedApplies = computed(() => applies.value.filter((a) => a.status === "REJECTED"));
-function onApplied(a: CommunityApply) {
-  applies.value = [a, ...applies.value];
-}
-
 // ---------------------------------------------------------------- 送货方式（门店级）
 const fulfillment = ref<StoreFulfillment | null>(null);
 const savingChannel = ref("");
@@ -450,12 +446,12 @@ onShow(() => {
         </view>
         <view v-if="c.enabled && c.channel === 'NEIGHBOR_PICKUP'" class="sum" :class="{ 'sum--warn': !neighborRefs.length && !form.address }">
           <text class="sum__t">{{ neighborSummary ? $t("store.pickup.sumRefs", { s: neighborSummary }) : (form.address ? $t("store.pickup.sumNone") : $t("store.pickup.sumNoneNoAddr")) }}</text>
-          <text class="sum__go" @tap.stop="pickupSheetOpen = true">{{ $t("store.pickup.manage") }}</text>
+          <text class="sum__go" @tap.stop="pickupSheetOpen = true">{{ $t("store.pickup.manage") }} ›</text>
         </view>
         <view v-if="c.enabled && c.channel === 'MERCHANT_DELIVERY'" class="sum">
           <template v-if="!ruleOpen">
             <text class="sum__t">{{ deliverySummary || $t("store.sumDeliveryUnset") }}</text>
-            <text class="sum__go" @tap.stop="openRule">{{ $t("store.edit") }}</text>
+            <text class="sum__go" @tap.stop="openRule">{{ $t("store.edit") }} ›</text>
           </template>
           <view v-else class="rate" @tap.stop>
             <view class="rate__grid">
@@ -526,7 +522,6 @@ onShow(() => {
       v-model:visible="pickerOpen"
       :areas="areas"
       @update:areas="setAreas"
-      @applied="onApplied"
     ></biz-region-picker>
 
     <!-- 吸底保存条：范围有未保存改动时才浮现 -->
@@ -674,18 +669,28 @@ onShow(() => {
 .switch.is-busy {
   opacity: 0.6;
 }
+/*
+ * 开着的那一路下面的配置摘要。**与上面的开关行同构**：白底、同一条细分隔线、
+ * 同样的左右结构（左说明 / 右动作）—— 此前它是一个灰底圆角胶囊，
+ * 整页都是「白卡 + 行 + 分隔线」，就它一个是另一套组件，看着像别处贴过来的。
+ *
+ * 缩进 24rpx 表达从属关系：它说的是上面那一路的事，不是并列的第五路。
+ */
 .sum {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16rpx;
-  margin: 12rpx 0 4rpx;
-  padding: 14rpx 20rpx;
-  border-radius: 16rpx;
-  background: var(--sh-faint);
+  padding: 16rpx 0 16rpx 24rpx;
+  border-bottom: 2rpx solid var(--sh-line);
 }
+/* 缺配置是**状态**不是装饰：左侧一条竖杠 + 文字变色，不换整块底色 */
 .sum--warn {
-  background: var(--sh-warning-tint);
+  border-left: 4rpx solid var(--sh-warning);
+  padding-left: 20rpx;
+}
+.sum--warn .sum__t {
+  color: var(--sh-warning);
 }
 .ch__desc--warn {
   color: var(--sh-warning);
@@ -746,9 +751,6 @@ onShow(() => {
   font-size: 24rpx;
   line-height: 1.5;
   color: var(--sh-sub);
-}
-.sum--warn .sum__t {
-  color: var(--sh-ink);
 }
 .sum__go {
   flex-shrink: 0;

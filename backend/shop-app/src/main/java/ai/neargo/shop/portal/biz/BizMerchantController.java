@@ -304,7 +304,10 @@ public class BizMerchantController {
     @PreAuthorize("@perm.canBiz('" + BizPerms.STORE + "')")
     @GetMapping("/biz/store")
     public StoreProfileVO store() {
-        return storeService.profile(BizContext.requireMerchantNo());
+        // 门面（公告/营业时间/地址/坐标）是**门店级**的，跟着 X-Store-No 走。
+        // 不带门店号时后端取默认店 —— 单店商家的端上不用感知门店号
+        return storeService.profile(BizContext.requireMerchantNo(),
+                BizContext.current().currentStoreNo());
     }
 
     /**
@@ -317,6 +320,7 @@ public class BizMerchantController {
     @PostMapping("/biz/store")
     public StoreProfileVO saveStore(@RequestBody StoreReq req) {
         return storeService.save(BizContext.requireMerchantNo(),
+                BizContext.current().currentStoreNo(),
                 new MerchantStoreService.SaveCommand(
                         req.announcement(), req.openHours(), req.address(), req.featured(),
                         req.serviceScope(), req.serviceCommunityNos(), req.serviceCityCode(),

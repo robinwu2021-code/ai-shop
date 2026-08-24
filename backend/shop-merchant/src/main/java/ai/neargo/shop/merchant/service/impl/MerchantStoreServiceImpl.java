@@ -65,7 +65,12 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
 
     @Override
     public StoreProfileVO profile(String merchantNo) {
-        MchStore store = row(merchantNo);
+        return profile(merchantNo, null);
+    }
+
+    @Override
+    public StoreProfileVO profile(String merchantNo, String storeNo) {
+        MchStore store = row(merchantNo, storeNo);
         MchEntity merchant = merchant(merchantNo);
         return new StoreProfileVO(
                 store == null ? "" : nz(store.getAnnouncement()),
@@ -86,6 +91,12 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
     @Override
     @Transactional
     public StoreProfileVO save(String merchantNo, SaveCommand cmd) {
+        return save(merchantNo, null, cmd);
+    }
+
+    @Override
+    @Transactional
+    public StoreProfileVO save(String merchantNo, String storeNo, SaveCommand cmd) {
         /*
          * 先过值域与一期启用白名单，再谈默认值。
          *
@@ -118,7 +129,7 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
 
-        MchStore store = row(merchantNo);
+        MchStore store = row(merchantNo, storeNo);
         if (store == null) {
             store = new MchStore();
             store.setEntityNo(merchantNo);
@@ -448,10 +459,25 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
         return v == null ? 0L : v;
     }
 
-    private MchStore row(String merchantNo) {
+    /**
+     * 这次读写落在哪一行门店。
+     *
+     * <p><b>不能是「随便一行」</b>：`limit 1` 不带排序时，多门店商家的门面资料
+     * 落到哪家由数据库返回顺序决定 —— 线上 M0001 有三家店，地址填在第二家，
+     * 而「门店自取」读到第一家（空地址），于是提示「还没填地址」，
+     * 商家反复去填也没用，因为他填的和系统读的不是同一行。
+     *
+     * @param storeNo 请求头 `X-Store-No` 指定的当前门店；为空时取默认店
+     */
+    private MchStore row(String merchantNo, String storeNo) {
         return DataScopeContext.executeWithoutScope(() ->
                 storeMapper.selectOne(Wrappers.<MchStore>lambdaQuery()
-                        .eq(MchStore::getEntityNo, merchantNo).last("limit 1")));
+                        .eq(MchStore::getEntityNo, merchantNo)
+                        .eq(storeNo != null && !storeNo.isBlank(), MchStore::getStoreNo, storeNo)
+                        // 没指定就按默认店；同为默认时按建店顺序，保证每次都是同一行
+                        .orderByDesc(MchStore::getIsDefault)
+                        .orderByAsc(MchStore::getId)
+                        .last("limit 1")));
     }
 
     private MchEntity merchant(String merchantNo) {

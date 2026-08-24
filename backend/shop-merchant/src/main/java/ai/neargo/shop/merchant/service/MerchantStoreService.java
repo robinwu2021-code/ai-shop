@@ -16,6 +16,19 @@ public interface MerchantStoreService {
     StoreProfileVO profile(String merchantNo);
 
     /**
+     * 门面资料，**按指定门店**。
+     *
+     * <p>为什么必须带门店号：公告、营业时间、<b>地址</b>、坐标都存在 {@code mch_store} 上，
+     * 是门店级的。此前这两个方法只按 {@code entity_no} 取「第一行」——
+     * 多门店商家在「店铺与获客」里填的地址落到哪一行由数据库的返回顺序决定，
+     * 而「门店自取」读的又是同一个方法：线上实测的表现是
+     * <b>地址明明填了，开自取仍然提示「还没填地址」</b>（M0001 三家店，地址在第二家）。
+     *
+     * @param storeNo 空 = 默认店（{@code is_default} 优先，其次建店顺序），不再是「随便一行」
+     */
+    StoreProfileVO profile(String merchantNo, String storeNo);
+
+    /**
      * 保存。
      *
      * <p><b>scope=COMMUNITY 且覆盖社区为空时拒绝保存</b>（ADR-009）。
@@ -23,6 +36,9 @@ public interface MerchantStoreService {
      * 转头在店铺设置里把社区清空，然后货就对谁都不可见了，而这中间没有任何提示。
      */
     StoreProfileVO save(String merchantNo, SaveCommand cmd);
+
+    /** 保存门面资料，**写到指定门店**。空 = 默认店。见 {@link #profile(String, String)} */
+    StoreProfileVO save(String merchantNo, String storeNo, SaveCommand cmd);
 
     /**
      * 覆盖社区全量替换。审核与店铺设置<b>共用这一处实现</b> ——

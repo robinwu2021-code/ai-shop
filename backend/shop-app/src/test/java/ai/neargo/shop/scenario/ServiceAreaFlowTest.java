@@ -240,6 +240,42 @@ class ServiceAreaFlowTest {
         storeMapper.insert(st);
     }
 
+    /** 再开一家非默认店，返回它的门店号 */
+    private String extraStore(String merchantNo, String name) {
+        var st = new ai.neargo.shop.merchant.entity.MchStore();
+        st.setStoreNo("ST" + seq++);
+        st.setEntityNo(merchantNo);
+        st.setName(name);
+        st.setIsDefault(false);
+        storeMapper.insert(st);
+        return st.getStoreNo();
+    }
+
+    @Test
+    @DisplayName("★★ 门面资料是**门店级**的：地址填在哪家店，就只从哪家店读回来")
+    void profileFollowsCurrentStore() {
+        String m = merchant("PICKUP");
+        store(m);                                   // 默认店，没地址
+        String second = extraStore(m, "第二家店");
+        String c = community("330106002");
+
+        var cmd = new ai.neargo.shop.merchant.service.MerchantStoreService.SaveCommand(
+                "营业中", "08:00-20:00", "龙澜大道 441 号", java.util.List.of(),
+                null, null, null, "PICKUP",
+                java.util.List.of(new ai.neargo.shop.merchant.service.MerchantStoreService
+                        .AreaCommand("COMMUNITY", c)));
+        storeService.save(m, second, cmd);
+
+        /*
+         * 线上就是这个形状：M0001 三家店，地址填在第二家，而 profile 用
+         * `limit 1`（不排序、不看默认店）读到第一家 —— 于是「门店自取」一直提示
+         * 「还没填地址」，商家反复去填也没用，他填的和系统读的不是同一行。
+         */
+        assertThat(storeService.profile(m, second).address()).isEqualTo("龙澜大道 441 号");
+        assertThat(storeService.profile(m, null).address())
+                .as("默认店没填过地址，不该把别家的读过来").isEmpty();
+    }
+
     @Test
     @DisplayName("★ 商家保存「一个社区 + 一个区」—— 三档枚举做不到的组合，从端上真的能存进来")
     void merchantSavesMixedAreas() {
