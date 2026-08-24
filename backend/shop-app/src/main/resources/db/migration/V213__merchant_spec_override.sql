@@ -3,10 +3,11 @@
 -- 三件商家一直想做而做不了的事，共用这一张表：
 --   ① 本店只用其中几个（平台给蔬菜配了重量/包装/等级，我只用前两个）
 --   ② 调顺序（我这儿「包装」比「等级」重要）
+--   ③ 换个叫法（「重量」在我店里就叫「分量」）
 --
--- **不含改名。**名字是跨店可比的锚：三家店把「重量」各叫一个名字，界面上看着是
--- 三种东西，聚合时才发现是同一个 —— 那种错比「没得改」难查得多。商家要别的说法，
--- 该去建自定义规格（prd_spec_dim 里 scope=MERCHANT 那条路），它从一开始就在。
+-- **③ 改的是显示名，不是平台的规格。**这条边界是这张表存在的前提：
+-- dim_no 一个字不变，所以三家店的同一个规格照样聚得到一起。
+-- 与「我的类目」的 display_name 是同一个模式（那里已经证明过这条边界站得住）。
 --
 -- 商家自己输入的**档位**也不落这张表：它走 prd_spec_value（scope=MERCHANT），
 -- 挂在同一个平台维度下并带归一量（「750g」→ 750+g），所以与平台的 500g 同轴、
@@ -30,9 +31,7 @@ CREATE TABLE prd_merchant_spec_override (
   value_no VARCHAR(64) NOT NULL DEFAULT '',
   enabled TINYINT NOT NULL DEFAULT 1 COMMENT '0 = 本店不用它。停用维度会连带它下面的取值一起不出现',
   sort INT DEFAULT NULL COMMENT '本店顺序，小的在前。NULL = 跟平台的顺序',
-  -- 预留：当前版本**不写它**（不给改名，见表头说明）。留列不留功能是有意的 ——
-  -- 将来真要「本店叫法」时不必再加一次迁移，而现在写它会让人以为这功能已经有了
-  label_override VARCHAR(64) DEFAULT NULL COMMENT '预留，当前不写',
+  label_override VARCHAR(64) DEFAULT NULL COMMENT '本店叫法。空 = 用平台的',
   tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
   created_at DATETIME NOT NULL,
   created_by VARCHAR(64) DEFAULT NULL,

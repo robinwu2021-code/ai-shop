@@ -3405,9 +3405,14 @@ export interface SpecOverride {
   /** 这个维度下的取值数（含平台档位 + 自己加的） */
   valueCount: number;
   /**
-   * 用在几件商品上。**按规格组名统计** —— 存量商品的规格快照里只有名字，
-   * 没有维度编号（那个字段是后加的），按编号统计的话老商品一件都算不进来，
-   * 而「停用它会影响什么」问的恰恰是历史。
+   * **本店叫法**；空 = 用平台的。只换展示，`dimNo` 一个字不变 ——
+   * 所以三家店的同一个规格照样聚得到一起。与「我的类目」的 displayName 同一个模式。
+   */
+  label?: string;
+  /** 用哪几档。商家自己输入的档位也在这里（它已经落进规格库，与平台值同轴） */
+  values?: { code: string; enabled: boolean }[];
+}
+
    */
   usedCount: number;
   status: "ACTIVE" | "ARCHIVED";

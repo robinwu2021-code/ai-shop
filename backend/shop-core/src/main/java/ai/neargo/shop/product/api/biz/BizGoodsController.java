@@ -326,7 +326,7 @@ public class BizGoodsController {
     /**
      * 保存本店对某个类目规格的覆盖：**用哪几个、什么顺序、叫什么**。
      *
-     * <p><b>只管取舍与顺序，不改名字</b> —— 名字是跨店可比的锚。
+     * <p>改名只改展示（dimNo 不变），所以跨店比价照常成立。
      * 传空数组 = 清掉覆盖、完全跟平台走。
      */
     @PreAuthorize("@perm.canBiz('" + BizPerms.GOODS + "')")
@@ -337,7 +337,7 @@ public class BizGoodsController {
         specLibrary.saveOverrides(merchantNo, categoryNo,
                 req.dims() == null ? List.of() : req.dims().stream()
                         .map(d -> new ai.neargo.shop.product.service.SpecLibraryService.OverrideCommand(
-                                d.dimNo(), !Boolean.FALSE.equals(d.enabled()),
+                                d.dimNo(), !Boolean.FALSE.equals(d.enabled()), d.label(),
                                 d.values() == null ? List.of() : d.values().stream()
                                         .map(v -> new ai.neargo.shop.product.service.SpecLibraryService
                                                 .ValueOverrideCommand(v.code(),
@@ -351,7 +351,7 @@ public class BizGoodsController {
     public record SpecOverrideReq(List<DimOverrideReq> dims) {
     }
 
-    public record DimOverrideReq(String dimNo, Boolean enabled,
+    public record DimOverrideReq(String dimNo, Boolean enabled, String label,
                                  List<ValueOverrideReq> values) {
     }
 

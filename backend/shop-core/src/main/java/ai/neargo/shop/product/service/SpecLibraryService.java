@@ -172,8 +172,8 @@ public interface SpecLibraryService {
      *
      * <p>整份替换该类目的覆盖行 —— 覆盖是一组有序的偏好，逐条 diff 没有收益。
      *
-     * <p><b>只管取舍与顺序，不改名字</b> —— 名字是跨店可比的锚。要别的说法
-     * 就去建自定义规格（{@link #addMerchantDim}），那条路本来就在。
+     * <p><b>改名只改展示</b>：`dim_no` 一个字不变，所以跨店聚合照常成立。
+     * 与「我的类目」的 display_name 同一个模式 —— 那里已经证明过这条边界站得住。
      *
      * <p><b>只写与平台不同的那些</b>：跟平台一样的不落行。这样运营给类目加了新维度，
      * 没动过手的商家自动获得它；而灌一份全量副本的话，新维度永远到不了他们那儿，
@@ -184,9 +184,11 @@ public interface SpecLibraryService {
     /**
      * @param dimNo   平台维度编号
      * @param enabled 本店用不用它
+     * @param label   <b>本店叫法</b>；空 = 用平台的。只换展示，dimNo 不变 ——
+     *                所以三家店的同一个规格照样聚得到一起
      * @param values  用哪几档，按**平台值编码**（Option.code）索引
      */
-    record OverrideCommand(String dimNo, boolean enabled,
+    record OverrideCommand(String dimNo, boolean enabled, String label,
                            List<ValueOverrideCommand> values) {
     }
 

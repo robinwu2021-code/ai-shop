@@ -1920,8 +1920,11 @@ export const mockApi: MerchantApi = {
     return delay(on.map((d) => {
       const tpl = db.specTemplates.find((t) => t.templateNo === d.dimNo);
       const off = new Set((d.values ?? []).filter((v) => !v.enabled).map((v) => v.code));
-      // 只做取舍与顺序 —— 名字不给改，所以这里也不改
-      return { ...tpl!, options: (tpl?.options ?? []).filter((o) => !off.has(o.code ?? "")) };
+      return {
+        ...tpl!,
+        name: d.label || tpl!.name,   // 本店叫法优先，templateNo 不变
+        options: (tpl?.options ?? []).filter((o) => !off.has(o.code ?? "")),
+      };
     }));
   },
 

@@ -137,7 +137,9 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
              */
             out.add(new SpecTemplateVO(dim.getDimNo(), PrdSpecDim.PLATFORM,
                     categoryService.categoryTypeOf(categoryNo), categoryNo,
-                    dim.getName(), options, null, Boolean.TRUE.equals(b.getIsPrimary())));
+                    // 本店叫法优先 —— 只换展示，dimNo 不变，跨店聚合照常
+                    ov.dimLabel(dim.getDimNo(), dim.getName()),
+                    options, null, Boolean.TRUE.equals(b.getIsPrimary())));
         }
         /*
          * 本店排过序的排前面（按商家给的 sort），没排过的**保持平台顺序跟在后面**。
@@ -189,6 +191,12 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
                     values.put(r.getDimNo() + "\u0000" + r.getValueNo(), r);
                 }
             }
+        }
+
+        String dimLabel(String dimNo, String fallback) {
+            PrdMerchantSpecOverride r = dims.get(dimNo);
+            return r != null && r.getLabelOverride() != null && !r.getLabelOverride().isBlank()
+                    ? r.getLabelOverride() : fallback;
         }
 
         boolean dimEnabled(String dimNo) {
@@ -814,6 +822,7 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
                 row.setValueNo(PrdMerchantSpecOverride.DIM_LEVEL);
                 row.setEnabled(d.enabled());
                 row.setSort(i);
+                row.setLabelOverride(notBlank(d.label()) ? d.label().trim() : null);
                 DataScopeContext.executeWithoutScope(() -> overrideMapper.insert(row));
             }
             java.util.Set<String> inSubset = subsetCodes.getOrDefault(d.dimNo(), java.util.Set.of());
