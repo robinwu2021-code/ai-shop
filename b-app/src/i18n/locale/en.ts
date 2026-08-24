@@ -327,6 +327,7 @@ export default {
     bulkCost: "Cost for all",
     stockStoreScope: "Editing stock for {s}. Other stores are unaffected",
     tplSuggest: "Common specs for {s}",
+    tplAsk: "Split by {s}?",
     tplSuggestEmpty: "No recommended specs for this category",
     originPrice: "List price",
     originPriceHint: "Drives the discount tag; must exceed the selling price. Blank means no tag",

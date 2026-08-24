@@ -447,6 +447,7 @@ export default {
     bulkCost: "统一成本价",
     stockStoreScope: "改的是「{s}」的库存，其他门店不受影响",
     tplSuggest: "{s}常用规格",
+    tplAsk: "按{s}分规格？",
     tplSuggestEmpty: "该品类暂无推荐规格",
     originPrice: "划线价",
     originPriceHint: "C 端按它标折扣，必须高于售价；留空则不标",

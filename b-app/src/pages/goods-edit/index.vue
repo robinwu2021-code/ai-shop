@@ -1151,12 +1151,15 @@ function rebuild() {
 function applyTemplate(tpl: SpecTemplate) {
   // 已有同名规格组就替换，避免点两次出来两个「重量」
   const exist = groups.value.findIndex((g) => g.name === tpl.name);
-  const row = {
-    name: tpl.name,
-    options: tpl.options.map((o) => o.label),
-    codes: tpl.options.map((o) => o.code),
-    templateNo: tpl.templateNo,
-  };
+  // 空 options = 只填组名：留一个空档位给他自己写（与主维度预填同形）
+  const row = tpl.options.length
+    ? {
+      name: tpl.name,
+      options: tpl.options.map((o) => o.label),
+      codes: tpl.options.map((o) => o.code),
+      templateNo: tpl.templateNo,
+    }
+    : { name: tpl.name, options: [""], codes: [undefined], templateNo: tpl.templateNo };
   if (exist >= 0) groups.value[exist] = row;
   else if (groups.value.length >= 3) {
     uni.showToast({ title: t("goods.groupLimit"), icon: "none" });
@@ -1164,6 +1167,22 @@ function applyTemplate(tpl: SpecTemplate) {
   } else groups.value.push(row);
   showTemplates.value = false;
   rebuild();
+}
+
+/**
+ * 推荐条的两个入口。
+ *
+ * <p>`applyTemplateEmpty` 只建组名 —— 与主维度预填同一条规矩：
+ * **不替他填取值**。`applyTemplateWith` 带上他点的那一档，因为那是他自己选的，
+ * 不是平台猜的；一步到位比「先建组、再进组里点档位」少一半动作，
+ * 而多规格商品的第一档往往就是他要的那一档。
+ */
+function applyTemplateEmpty(tpl: SpecTemplate) {
+  applyTemplate({ ...tpl, options: [] });
+}
+
+function applyTemplateWith(tpl: SpecTemplate, o: { code?: string; label: string }) {
+  applyTemplate({ ...tpl, options: [o] });
 }
 
 /** 把当前规格组存为「我的常用」，下次建品直接套 */
@@ -1253,16 +1272,22 @@ function primeMainGroup() {
    */
   if (groups.value.length || !categoryNo.value) return;
   /*
-   * 主维度优先；**没有标主维度就取这一类的第一条**。
+   * **只认主维度，不拿兜底模板顶上。**
    *
-   * <p>平台给每个类目标主维度是理想情况，实际上大多数类目还没标
-   * （mock 与线上都是：31 个二级类目里只有两三个配了类目级模板）。
-   * 只认 `primary` 的话，这个功能对九成类目**什么都不做** ——
-   * 而「这袋货该按什么分规格」恰恰是建品最难的一步，兜底模板的第一条
-   * （生鲜→重量、标品→包装、服务→时长）已经是个像样的答案。
+   * <p>试过放宽成「没有主维度就取这一类的第一条」，为的是覆盖那些还没配
+   * 类目级模板的类目 —— 但那么做等于**每件新商品都从一个规格组开始**，
+   * 价格与库存随之进入按 SKU 逐行填的模式。而社区店的货多半就是单规格
+   * （一袋米、一瓶油、张姐的酱菜），等于为少数多规格商品给所有人加税。
+   *
+   * <p>更要紧的是兜底模板**不是平台对这一类的回答，只是对「标品/生鲜/服务」
+   * 这个大类的猜测**：「包装」盖着 18 个二级类目，手机数码与鲜花共用
+   * 「袋装/盒装/桶装/整箱」。拿猜测去代劳，会在库里留下一批
+   * 「包装：（空）」的规格组，而平台养这个规格库全为了同规格比价。
+   *
+   * <p>覆盖率的问题在**数据侧**解决（给类目配模板），不在端上拿泛答案补。
+   * 没配的类目走下面那条推荐 chip：一点即成组，代价一次点击。
    */
-  const main = templates.value.find((t) => t.primary && t.scope === "PLATFORM")
-    ?? templates.value.find((t) => t.scope === "PLATFORM");
+  const main = templates.value.find((t) => t.primary && t.scope === "PLATFORM");
   if (!main || groups.value.some((g) => g.name === main.name)) return;
   groups.value.push({
     name: main.name,
@@ -2282,18 +2307,28 @@ async function save(thenSubmit = false) {
           恒定说品类的话，商家看到「普通实物常用规格」下面挂着「段位 1/2/3段」
           会以为推错了 —— 那其实是婴幼儿食品这个类目专属的。
         -->
-        <text class="sh-muted tplchips__t">
-          {{ $t("goods.tplSuggest", { s: suggestScope }) }}
-        </text>
-        <view class="tplchips__row">
-          <text
-            v-for="tpl in suggestedSpecs"
-            :key="tpl.templateNo"
-            class="sh-chip"
-            @tap="applyTemplate(tpl)"
-          >
-            {{ tpl.name }}
+        <!--
+          **一行一个维度，问句 + 前三档**，不是「标题 + 一排名字」。
+
+          <p>此前这里是「普通实物常用规格：包装 · 香型」—— 读起来像个分区标题，
+          看不出点了会发生什么；而且点完只建出一个空组，取值还要在组里再点一轮。
+          现在每个维度自己一行：左边问「按包装分规格？」，右边摆前三档，
+          **点档位一步到位**（建组并带上这一档），点问句只建组不带值。
+        -->
+        <view v-for="tpl in suggestedSpecs" :key="tpl.templateNo" class="tplsug">
+          <text class="tplsug__q" @tap="applyTemplateEmpty(tpl)">
+            {{ $t("goods.tplAsk", { s: tpl.name }) }}
           </text>
+          <view class="tplsug__opts">
+            <text
+              v-for="o in tpl.options.slice(0, 3)"
+              :key="o.label"
+              class="sh-chip"
+              @tap="applyTemplateWith(tpl, o)"
+            >
+              {{ o.label }}
+            </text>
+          </view>
         </view>
       </view>
 
@@ -2666,6 +2701,25 @@ async function save(thenSubmit = false) {
 </template>
 
 <style scoped>
+/* 推荐规格：一行一个维度 —— 左边问句、右边前三档，点档位一步成组 */
+.tplsug {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  padding: 12rpx 0;
+}
+
+.tplsug__q {
+  font-size: 26rpx;
+  color: var(--sh-sub);
+}
+
+.tplsug__opts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+}
+
 /*
   字段标签在这一页改成**深色半粗**。
 
