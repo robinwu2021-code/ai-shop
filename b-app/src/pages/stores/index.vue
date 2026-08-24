@@ -12,7 +12,8 @@ import { onShow } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
 import { api, ApiError } from "@/api";
 import { ROUTES } from "@/shared/nav";
-import type { MerchantPlan, PaymentApplyment, Store } from "@shared/types";
+import { money } from "@shared/utils/money";
+import type { CrossStoreOverview, MerchantPlan, PaymentApplyment, Store } from "@shared/types";
 
 /**
  * 门店额度用尽（后端 `ErrorCode.STORE_QUOTA_EXCEEDED`）。
@@ -28,6 +29,8 @@ const { t } = useI18n();
 const stores = ref<Store[]>([]);
 const plan = ref<MerchantPlan | null>(null);
 const payments = ref<PaymentApplyment[]>([]);
+/** 每家店今天怎么样。多店才取 —— 一家店的数字工作台上已经有了 */
+const overview = ref<CrossStoreOverview | null>(null);
 const busy = ref(false);
 
 /** 新建表单：默认收起 —— 大多数商家只有一家店，天天看到一个空表单是噪音 */
@@ -46,7 +49,42 @@ async function load() {
   payments.value = await api.mPayments().catch(() => []);
   // 静默失败：拿不到套餐只是少一句额度提示，不该让这一页报错
   plan.value = await api.mMyPlan().catch(() => null);
+  await loadOverview();
 }
+
+/**
+ * 把「今天各店怎么样」取回来贴到门店卡上。
+ *
+ * <p>**列表就是总览**：原先这一页顶上还有一张「跨店总览」卡，下面才是门店列表 ——
+ * 同一批门店在一屏里排了两遍，上面那张只是把人送去另一页再看一遍名字。
+ * 现在数字直接长在卡上：想切店的人顺手就看见哪家忙，不必先决定「我是要切还是要看」。
+ *
+ * <p>没买跨店数据（70023）时**静默留白**：门店列表与套餐无关，
+ * 少的只是几个数字，不该把这一页变成一张付费墙。想看的人点底部那行进详细对比，
+ * 那一页有示例态和升档说明。
+ */
+async function loadOverview() {
+  overview.value = null;
+  if (stores.value.length < 2 || !merchant.can("biz:customer")) return;
+  try {
+    overview.value = await api.mCrossStoreOverview();
+  } catch {
+    // 没买（70023）与真的取不到（网络/500）在这一页是同一种后果：少几个数字。
+    // 切店、改名、开新店都还能做，所以既不提示也不报错。
+  }
+}
+
+/**
+ * 门店 + 它今天的数。**在这里拼好再交给模板**：模板里反复调函数取同一行，
+ * 既读不清也每次渲染都重算一遍。没有数的店 `stat` 为 null，那一块整个不画 ——
+ * 一排「—」比留白更像坏了。
+ */
+const rows = computed(() =>
+  stores.value.map((s) => ({
+    ...s,
+    stat: overview.value?.stores.find((x) => x.storeNo === s.storeNo) ?? null,
+    currency: overview.value?.currency ?? "CNY",
+  })));
 
 async function run(fn: () => Promise<unknown>) {
   if (busy.value) return;
@@ -183,34 +221,24 @@ function pickPayment(s: Store, payMerchantNo?: string) {
   run(() => api.mSetStorePayment(s.storeNo, payMerchantNo));
 }
 
-function goCrossStore() {
-  uni.navigateTo({ url: ROUTES.crossStore });
-}
-
-function goQualifications() {
-  uni.navigateTo({ url: "/pages/qualifications/index" });
+/**
+ * 跨店对比。**指名去「对比」那个 tab** —— 总览这一页已经有了，
+ * 再送他去看一遍同样的东西，就又变回「两个入口一件事」。
+ * 对比答的是另一个问题：这个月哪家店更好。
+ */
+function goCompare() {
+  uni.navigateTo({ url: `${ROUTES.crossStore}?tab=compare` });
 }
 </script>
 
 <template>
   <sh-scaffold title-key="stores.title" :denied="!merchant.can('biz:store:admin')">
     <!--
-      切店不再是单独一页：**在哪家店上做事，就在管理这家店的地方选**。
-      下面每张门店卡自己带「切到这家」，当前那张挂「当前」标 ——
-      原先「当前门店 + 切换 ›」一行只是把人再送去一个长得一样的列表页，白多一跳。
+      一张列表答两个问题：哪家在做什么（数字长在卡上），以及我要切到哪家。
+      顶上那两张卡（跨店总览、资质证照）撤掉 —— 前者与下面是同一批门店排了两遍，
+      后者一年动一次，已经挪到「我的」。
     -->
-    <view v-if="merchant.can('biz:customer')" class="sh-card hub" @tap="goCrossStore">
-      <text class="sh-h2">{{ $t("home.crossStoreEntry") }}</text>
-      <sh-icon name="chevronRight" :size="18" color="var(--sh-sub)"></sh-icon>
-    </view>
-
-    <!-- 资质证照挂在门店入口下：传证是开店资产的一部分，跟着门店走 -->
-    <view class="sh-card qual" @tap="goQualifications">
-      <text class="sh-h2">{{ $t("stores.qualEntry") }}</text>
-      <sh-icon name="chevronRight" :size="18" color="var(--sh-sub)"></sh-icon>
-    </view>
-
-    <view v-for="s in stores" :key="s.storeNo" class="sh-card st">
+    <view v-for="s in rows" :key="s.storeNo" class="sh-card st">
       <view class="st__top">
         <text class="sh-h2">{{ s.name }}</text>
         <view class="tags">
@@ -230,6 +258,40 @@ function goQualifications() {
 
       <text v-if="s.address" class="addr">{{ s.address }}</text>
       <text class="meta">{{ $t("stores.staffCount", { n: s.staffCount }) }}</text>
+
+      <!--
+        今天这家店怎么样。**待办三项照抄跨店总览的口径**（待发货/待自送/待备货）：
+        待核销与待分拣是自提点维度、不限本商家，摆进门店卡会被读成「这家店的活」。
+        为 0 的也留着，位置固定才形成肌肉记忆。
+      -->
+      <view v-if="s.stat" class="today">
+        <text class="today__line">
+          {{ $t("stores.todayLine", {
+            n: s.stat.todayOrders,
+            gmv: money(s.stat.todayGmvMinor, s.currency),
+          }) }}
+        </text>
+        <view class="todo">
+          <view class="todo__i">
+            <text class="todo__v sh-num" :class="{ 'is-zero': !s.stat.toShip }">
+              {{ s.stat.toShip }}
+            </text>
+            <text class="todo__l">{{ $t("crossStore.toShip") }}</text>
+          </view>
+          <view class="todo__i">
+            <text class="todo__v sh-num" :class="{ 'is-zero': !s.stat.toDeliver }">
+              {{ s.stat.toDeliver }}
+            </text>
+            <text class="todo__l">{{ $t("crossStore.toDeliver") }}</text>
+          </view>
+          <view class="todo__i">
+            <text class="todo__v sh-num" :class="{ 'is-zero': !s.stat.toStock }">
+              {{ s.stat.toStock }}
+            </text>
+            <text class="todo__l">{{ $t("crossStore.toStock") }}</text>
+          </view>
+        </view>
+      </view>
 
       <!-- 收款号：空 = 用主体默认号，这是常态不是缺配置 -->
       <view class="pay">
@@ -282,6 +344,15 @@ function goQualifications() {
           {{ s.status === "ACTIVE" ? $t("stores.disable") : $t("stores.enable") }}
         </text>
       </view>
+    </view>
+
+    <!--
+      对比放在列表**之后**：先看见各店今天怎么样，才会想问「这个月哪家更好」。
+      放到顶上就又成了一个与列表抢位置的入口。
+    -->
+    <view v-if="stores.length > 1 && merchant.can('biz:customer')" class="sh-card cmp" @tap="goCompare">
+      <text class="sh-h2">{{ $t("stores.compareEntry") }}</text>
+      <sh-icon name="chevronRight" :size="18" color="var(--sh-sub)"></sh-icon>
     </view>
 
     <view v-if="!adding" class="sh-btn sh-btn--soft add" @tap="adding = true">
@@ -406,18 +477,46 @@ function goQualifications() {
   margin-top: 16rpx;
 }
 
-/* 资质入口：一行卡，与门店卡同宽同缘 */
-.qual {
+/* 对比入口：一行卡，与门店卡同宽同缘 */
+.cmp {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  margin-top: 14rpx;
 }
 
-/* 跨店总览一行：与门店卡同宽，左右结构 */
-.hub {
+/* 今日一行 + 待办三格：与跨店总览同一套口径，也同一套样式 */
+.today {
+  margin-top: 16rpx;
+  padding-top: 16rpx;
+  border-top: 2rpx solid var(--sh-faint);
+}
+.today__line {
+  display: block;
+  font-size: 26rpx;
+  color: var(--sh-ink);
+}
+.todo {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16rpx;
+  margin-top: 16rpx;
+}
+.todo__i {
+  flex: 1;
+  text-align: center;
+}
+.todo__v {
+  display: block;
+  font-size: 34rpx;
+  font-weight: 600;
+  color: var(--sh-primary-text);
+}
+.todo__v.is-zero {
+  color: var(--sh-faint);
+}
+.todo__l {
+  display: block;
+  margin-top: 6rpx;
+  font-size: 24rpx;
+  color: var(--sh-sub);
 }
 </style>

@@ -1,10 +1,12 @@
 <script setup lang="ts">
-// 跨店总览与跨店对比（B-11.12.5 / 11.12.6 · 增值包 P2）。
+// 跨店对比（B-11.12.6 · 增值包 P2）。
 //
 // 这一页是增值包**真正卖的那样东西**：卖的不是「允许你开第二家店」（开两个主体
-// 就能有，只是麻烦），是「一个手机管完，并且能横着比」。所以两个视角放在同一页的
-// 两个 tab 里，而不是两个入口 —— 商家的问题是连着问的：
-// 「今天哪家店忙？」→「那这个月哪家店更好？」
+// 就能有，只是麻烦），是「一个手机管完，并且能横着比」。
+//
+// **原先这里还有一个「总览」tab**（各店今天几单、几个待办）。那份数字现在长在
+// 门店管理的门店卡上 —— 想切店的人顺手就看见哪家忙。留着这个 tab，等于点进来
+// 又能翻回刚看过的同一张列表。这一页只答后半个问题：这一段时间谁更好。
 //
 // ─────────────────────────────────────────────────────────────────────────────
 // 三件在这一页上很容易做错的事
@@ -29,7 +31,7 @@ import { api, ApiError } from "@/api";
 import { useMerchantStore } from "@/stores/merchant";
 import { ROUTES } from "@/shared/nav";
 import { money } from "@shared/utils/money";
-import type { CrossStoreCompare, CrossStoreOverview } from "@shared/types";
+import type { CrossStoreCompare } from "@shared/types";
 
 /**
  * 能力位不足（后端 `ErrorCode.PLAN_CAPABILITY_REQUIRED`）。
@@ -40,17 +42,13 @@ import type { CrossStoreCompare, CrossStoreOverview } from "@shared/types";
  */
 const PLAN_REQUIRED = 70023;
 
-const TABS = ["overview", "compare"] as const;
-type Tab = (typeof TABS)[number];
 /** 可选窗口。只给 7 / 30 两档 —— 再多的选择对「哪家店最近更好」没有增量 */
 const WINDOWS = [7, 30] as const;
 
 const { t } = useI18n();
 const merchant = useMerchantStore();
 
-const tab = ref<Tab>("overview");
 const days = ref<number>(30);
-const overview = ref<CrossStoreOverview | null>(null);
 const compare = ref<CrossStoreCompare | null>(null);
 
 /**
@@ -71,32 +69,6 @@ const failed = ref(false);
 // 不带标记的假数据是最坏的一种：商家会当真，并据此做决定（比如以为分店在亏）。
 // 三家店而不是两家：默认店、正常分店、停用店三种行各占一行，
 // 这一页的全部形状都在里面。
-
-function demoOverview(): CrossStoreOverview {
-  return {
-    currency: "CNY",
-    stores: [
-      {
-        storeNo: "DEMO-1", storeName: String(t("crossStore.demo.s1")),
-        isDefault: true, status: "ACTIVE",
-        todayOrders: 23, todayGmvMinor: 128_600, monthOrders: 412, monthGmvMinor: 2_356_000,
-        toShip: 4, toDeliver: 2, toStock: 6,
-      },
-      {
-        storeNo: "DEMO-2", storeName: String(t("crossStore.demo.s2")),
-        isDefault: false, status: "ACTIVE",
-        todayOrders: 9, todayGmvMinor: 47_200, monthOrders: 168, monthGmvMinor: 903_500,
-        toShip: 1, toDeliver: 3, toStock: 2,
-      },
-      {
-        storeNo: "DEMO-3", storeName: String(t("crossStore.demo.s3")),
-        isDefault: false, status: "READONLY",
-        todayOrders: 0, todayGmvMinor: 0, monthOrders: 37, monthGmvMinor: 186_400,
-        toShip: 0, toDeliver: 0, toStock: 0,
-      },
-    ],
-  };
-}
 
 function demoCompare(window: number): CrossStoreCompare {
   const k = window / 30;
@@ -133,7 +105,6 @@ function demoCompare(window: number): CrossStoreCompare {
 }
 
 /** 画出来的那一份：锁着就是示例，否则是真数据 */
-const shownOverview = computed(() => (locked.value ? demoOverview() : overview.value));
 const shownCompare = computed(() =>
   locked.value ? demoCompare(days.value) : compare.value,
 );
@@ -151,26 +122,10 @@ function pct(v: number): string {
 
 // ---------------------------------------------------------------- 取数
 
-/**
- * 两个请求分开发、各自 catch。
- *
- * 合成一个 Promise.all 的话，对比接口的一次网络抖动会把已经拿到的总览一起清空 ——
- * 而那两块在屏幕上是各自独立的，少一块比整屏没了强得多（工作台踩过这个形状）。
- */
-async function loadOverview() {
-  try {
-    overview.value = await api.mCrossStoreOverview();
-    locked.value = false;
-  } catch (e) {
-    applyError(e);
-  }
-}
-
 async function loadCompare() {
-  // 已知没有能力位就不再问一次：答案不会变，只是多一条必被拒的请求
-  if (locked.value) return;
   try {
     compare.value = await api.mCrossStoreCompare(days.value);
+    locked.value = false;
   } catch (e) {
     applyError(e);
   }
@@ -198,14 +153,7 @@ async function load() {
   // 门禁已经把整页挡掉了，这里不再发一个注定 70006 的请求
   if (!merchant.can("biz:customer")) return;
   failed.value = false;
-  await loadOverview();
-  if (tab.value === "compare") await loadCompare();
-}
-
-function switchTab(k: string) {
-  tab.value = k as Tab;
-  // 对比按需取：进来就发两个请求，而多数人只看总览
-  if (tab.value === "compare" && !compare.value && !locked.value) void loadCompare();
+  await loadCompare();
 }
 
 function pickWindow(d: number) {
@@ -271,83 +219,14 @@ onShow(load);
       <view class="sh-btn lock__go" @tap="upgrade">{{ $t("crossStore.learnPlan") }}</view>
     </view>
 
-    <sh-tabs
-      :items="TABS.map((k) => ({ key: k, label: String($t(`crossStore.tab.${k}`)) }))"
-      :active="tab"
-      @change="switchTab"
-    ></sh-tabs>
-
     <!-- 真的拿不到数（网络/500）：这是故障，给重试，不给营销 -->
     <view v-if="failed && !locked" class="sh-card fail">
       <text class="sh-h2">{{ $t("crossStore.failed") }}</text>
       <view class="sh-btn fail__go" @tap="load">{{ $t("common.retry") }}</view>
     </view>
 
-    <!-- ---------------------------------------------------------- 总览 -->
-    <template v-if="tab === 'overview' && shownOverview">
-      <view
-        v-for="s in shownOverview.stores"
-        :key="s.storeNo"
-        class="sh-card store"
-        :class="{ 'is-demo': locked }"
-      >
-        <view class="store__head">
-          <text class="store__name">{{ s.storeName }}</text>
-          <!-- 默认店与停用店都要一眼可辨：前者是「找不到门店时去哪」，后者不再接新单 -->
-          <text v-if="s.isDefault" class="sh-chip tag">{{ $t("crossStore.default") }}</text>
-          <text v-if="s.status !== 'ACTIVE'" class="sh-chip tag tag--off">
-            {{ $t("crossStore.disabled") }}
-          </text>
-          <text v-if="locked" class="sh-chip tag tag--demo">{{ $t("crossStore.demoTag") }}</text>
-        </view>
-
-        <view class="grid">
-          <view class="grid__i">
-            <text class="grid__v sh-num">{{ s.todayOrders }}</text>
-            <text class="sh-muted">{{ $t("crossStore.todayOrders") }}</text>
-          </view>
-          <view class="grid__i">
-            <text class="grid__v sh-num">
-              {{ money(s.todayGmvMinor, shownOverview.currency) }}
-            </text>
-            <text class="sh-muted">{{ $t("crossStore.todayGmv") }}</text>
-          </view>
-        </view>
-
-        <view class="month">
-          <text class="sh-muted">
-            {{ $t("crossStore.monthLine", {
-              n: s.monthOrders,
-              gmv: money(s.monthGmvMinor, shownOverview.currency),
-            }) }}
-          </text>
-        </view>
-
-        <!-- 待办三项。数字为 0 的也留着 —— 位置固定才能形成肌肉记忆 -->
-        <view class="todo">
-          <view class="todo__i">
-            <text class="todo__v sh-num" :class="{ 'is-zero': !s.toShip }">{{ s.toShip }}</text>
-            <text class="todo__l">{{ $t("crossStore.toShip") }}</text>
-          </view>
-          <view class="todo__i">
-            <text class="todo__v sh-num" :class="{ 'is-zero': !s.toDeliver }">
-              {{ s.toDeliver }}
-            </text>
-            <text class="todo__l">{{ $t("crossStore.toDeliver") }}</text>
-          </view>
-          <view class="todo__i">
-            <text class="todo__v sh-num" :class="{ 'is-zero': !s.toStock }">{{ s.toStock }}</text>
-            <text class="todo__l">{{ $t("crossStore.toStock") }}</text>
-          </view>
-        </view>
-      </view>
-
-      <text class="sh-muted note">{{ $t("crossStore.todoNote") }}</text>
-      <text class="sh-muted note">{{ $t("crossStore.legacyNote") }}</text>
-    </template>
-
     <!-- ---------------------------------------------------------- 对比 -->
-    <template v-if="tab === 'compare' && shownCompare">
+    <template v-if="shownCompare">
       <!--
         ★ 主体评分单独一行，**不进下面的对比卡片**。
         `rvw_review` 只有 entity_no —— 按店给会让三家店显示同一个数。
@@ -440,7 +319,7 @@ onShow(load);
 
     <!-- 拿到了但一家店都没有（授权被收回时会这样）：说清楚，别画一张空表 -->
     <sh-empty
-      v-if="!failed && !locked && tab === 'overview' && overview && !overview.stores.length"
+      v-if="!failed && !locked && compare && !compare.stores.length"
       :text="String($t('crossStore.noStores'))"
     ></sh-empty>
   </sh-scaffold>

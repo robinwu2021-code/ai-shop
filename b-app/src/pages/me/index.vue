@@ -139,7 +139,6 @@ onShow(() => {
         员工与授权。**唯一入口原先在工作台第二屏**，用户实际反馈是「没看到添加员工的功能」。
         放这里而不是往工作台上提：工作台按「今天要干的活」排，加员工不是每天干的事。
       -->
-      <!-- 门店管理是主体资产的总入口：几家店、谁收款、资质都从这进 -->
       <!--
         这里**没有门店入口**：门店从工作台顶部那颗店名胶囊进（切店、改名、开新店都在那一页）。
         「我的」是账号维度的东西 —— 密码、语言、套餐；门店是经营维度的，
@@ -152,6 +151,15 @@ onShow(() => {
       <!-- 收款设置：商户维度的钱袋子。「我的」本身就是商户视角，不必再造一层「商户」 -->
       <view v-if="merchant.can('biz:finance')" class="cell" @tap="go(ROUTES.payment)">
         <text class="cell__label">{{ $t("me.payment") }}</text>
+        <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
+      </view>
+      <!--
+        资质证照与收款设置同属主体档案：一套照片管所有门店，不按店分。
+        原先挂在门店管理页里 —— 那一页现在只答「哪家店、今天怎么样」，
+        一年动一次的执照摆在那儿只会把每天要看的数字往下挤。
+      -->
+      <view v-if="merchant.can('biz:store')" class="cell" @tap="go(ROUTES.qualifications)">
+        <text class="cell__label">{{ $t("stores.qualEntry") }}</text>
         <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
       </view>
       <!--
