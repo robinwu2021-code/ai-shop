@@ -1337,11 +1337,70 @@ export const db = {
      *   · 纯新增（手机数码「存储」，兜底里没有这个维度）
      *   · 换品类（宠物洗护「体型」，服务类兜底是时长/人数）
      */
+    /*
+     * 常用类目的绑定。**线上 30 个在用的二级类目一个不缺地配着**（实测 0 缺口），
+     * mock 只配两三个的话，多数类目在这里看着像「平台没配规格」——
+     * 与线上正相反，而人是照着 mock 判断功能做没做的。
+     */
+    {
+      templateNo: "ST_CAT110_WEIGHT",
+      scope: "PLATFORM" as const,
+      categoryType: CATEGORY_TYPE.FRESH,
+      categoryNo: "CAT110",
+      primary: true,
+      name: "重量",
+      options: [
+        { code: "W500G", label: "500g" },
+        { code: "W1JIN", label: "1 斤" },
+        { code: "W2JIN", label: "2 斤" },
+      ],
+    },
+    {
+      templateNo: "ST_CAT120_WEIGHT",
+      scope: "PLATFORM" as const,
+      categoryType: CATEGORY_TYPE.FRESH,
+      categoryNo: "CAT120",
+      primary: true,
+      name: "重量",
+      options: [
+        { code: "W1JIN", label: "1 斤" },
+        { code: "W2JIN", label: "2 斤" },
+        { code: "W5JIN", label: "5 斤" },
+      ],
+    },
+    {
+      templateNo: "ST_CAT210_PACK",
+      scope: "PLATFORM" as const,
+      categoryType: CATEGORY_TYPE.NORMAL,
+      categoryNo: "CAT210",
+      primary: true,
+      name: "规格",
+      options: [
+        { code: "P_10", label: "10 卷" },
+        { code: "P_20", label: "20 卷" },
+        { code: "P_30", label: "30 卷" },
+      ],
+    },
+    {
+      templateNo: "ST_CAT130_NET",
+      scope: "PLATFORM" as const,
+      categoryType: CATEGORY_TYPE.NORMAL,
+      categoryNo: "CAT130",
+      primary: true,
+      name: "净含量",
+      options: [
+        { code: "N5JIN", label: "5 斤" },
+        { code: "N10JIN", label: "10 斤" },
+        { code: "N25JIN", label: "25 斤" },
+      ],
+    },
     {
       templateNo: "ST_CAT610_STOR",
       scope: "PLATFORM" as const,
       categoryType: CATEGORY_TYPE.NORMAL,
       categoryNo: "CAT610",
+      // 主维度：建品选完类目自动预填的就是它（对应 prd_category_spec.is_primary）
+      primary: true,
       name: "存储",
       options: [
         { code: "S64G", label: "64G" },

@@ -549,6 +549,19 @@ function newCommunitySeed(name: string, address?: string, streetCode?: string, k
  */
 const mockEstateCache = new Map<string, { parentCode: string; items: import("./contract").EstateItem[] }>();
 
+/**
+ * 本店规格覆盖的 mock（对应 `prd_merchant_spec_override`）。
+ *
+ * <p>**此前这里什么都不存** —— `mSaveSpecOverride` 只把提交的内容原样回一份，
+ * 刷新就没了，而 `mSpecTemplates` 从来不看它。于是「本店叫法」「停掉的档位」
+ * 这两件事**在 mock 上永远看不出做没做**，只有连真后端才验得到。
+ * 这一层补上之前，我自己在 mock 上判断过三次「联动没做」，三次都是错的。
+ */
+const mockSpecOverride = new Map<string, {
+  dimNo: string; enabled: boolean; label?: string;
+  values: { code: string; enabled: boolean }[];
+}[]>();
+
 export const mockApi: MerchantApi = {
   // ---------------------------------------------------------------- 账号与入驻
   async mLogin(req) {
@@ -1880,29 +1893,69 @@ export const mockApi: MerchantApi = {
    * 类目专属排前面，并用**同名**规格组顶掉兜底那条
    * （休闲零食的「重量」应当替代普通实物的「规格」，不是两个都推）。
    */
+  /**
+   * 规格模板。**与后端 `MerchantGoodsServiceImpl.specTemplates` 同一条规矩**：
+   *
+   * <ul>
+   *   <li>选了类目 → 只给这一类配好的（类目级）+ 商家自存的常用，
+   *       <b>不回落品类兜底</b> —— 兜底会把运营端的缺口盖住，而且推给谁都不对题
+   *   <li>还没选类目 → 只给商家自存的常用（选完才知道该推什么）
+   *   <li>本店覆盖当场生效：停用的维度整条不下发、本店叫法换过、停掉的档位剔掉
+   * </ul>
+   */
   async mSpecTemplates(categoryType, categoryNo) {
     const merchantNo = db.merchant.merchantNo;
     const picked = categoryNo?.trim() || undefined;
-    const usable = db.specTemplates.filter((tpl) => {
-      // 商家自己存的不限品类也不限类目 —— 他存的时候就是按自己的货存的
-      if (tpl.scope === "MERCHANT") return tpl.merchantNo === merchantNo;
-      if (categoryType && tpl.categoryType !== categoryType) return false;
-      /*
-       * 别家类目的专属模板要挡掉。类目级模板的 categoryType 也填着
-       * （不填会变成谁都查不到的孤儿），所以只按品类过滤的话，
-       * 选「休闲零食」会连「手机数码 → 颜色/存储」一起推过来 —— 同属 NORMAL。
-       */
-      if (tpl.categoryNo) return tpl.categoryNo === picked;
-      return true;
-    });
-    if (!picked) return delay(usable);
-
-    const catLevel = usable.filter((t) => t.categoryNo === picked);
-    const shadowed = new Set(catLevel.map((t) => t.name));
-    const rest = usable.filter(
-      (t) => t.categoryNo !== picked && !(t.scope === "PLATFORM" && shadowed.has(t.name)),
+    const mine = db.specTemplates.filter(
+      (tpl) => tpl.scope === "MERCHANT" && tpl.merchantNo === merchantNo,
     );
-    return delay([...catLevel, ...rest]);
+    if (!picked) return delay(mine);
+
+    const ov = mockSpecOverride.get(picked) ?? [];
+    const catLevel = db.specTemplates
+      .filter((tpl) => tpl.scope === "PLATFORM" && tpl.categoryNo === picked)
+      .filter((tpl) => {
+        const o = ov.find((x) => x.dimNo === tpl.templateNo);
+        // 本店停用的维度：整条不下发（连带它下面的档位一起消失）
+        return !o || o.enabled;
+      })
+      .map((tpl) => {
+        const o = ov.find((x) => x.dimNo === tpl.templateNo);
+        if (!o) return tpl;
+        const offCodes = new Set(o.values.filter((v) => !v.enabled).map((v) => v.code));
+        return {
+          ...tpl,
+          // 本店叫法优先 —— 只换展示，templateNo 不变，跨店聚合照常
+          name: o.label?.trim() || tpl.name,
+          // 停掉的档位**不下发**，而不是带个 false 让端上过滤：下发了就有可能显示出来
+          options: tpl.options.filter((x) => !offCodes.has(x.code ?? x.label)),
+        };
+      })
+      .filter((tpl) => tpl.options.length > 0);
+
+    /*
+     * **他自己加进来的规格**：类目没绑，但他在「商品规格」页里加了。
+     * 与后端 `templatesForCategory` 的最后一段同一件事 ——
+     * 不看这一段的话，「＋ 加规格」加完什么都不会发生（读侧根本不看它），
+     * 而那正是 4119ae84 在后端修掉的那个形状。
+     */
+    const shown = new Set(catLevel.map((t) => t.templateNo));
+    const added = ov
+      .filter((o) => o.enabled && !shown.has(o.dimNo))
+      .map((o) => {
+        const tpl = db.specTemplates.find((t) => t.templateNo === o.dimNo);
+        if (!tpl) return undefined;
+        const offCodes = new Set(o.values.filter((v) => !v.enabled).map((v) => v.code));
+        return {
+          ...tpl,
+          categoryNo: picked,
+          name: o.label?.trim() || tpl.name,
+          options: tpl.options.filter((x) => !offCodes.has(x.code ?? x.label)),
+        };
+      })
+      .filter((x): x is NonNullable<typeof x> => !!x && x.options.length > 0);
+
+    return delay([...catLevel, ...added, ...mine]);
   },
 
   /**
@@ -1998,16 +2051,19 @@ export const mockApi: MerchantApi = {
   },
 
   async mSaveSpecOverride(categoryNo, dims) {
-    const on = dims.filter((d) => d.enabled);
-    return delay(on.map((d) => {
-      const tpl = db.specTemplates.find((t) => t.templateNo === d.dimNo);
-      const off = new Set((d.values ?? []).filter((v) => !v.enabled).map((v) => v.code));
-      return {
-        ...tpl!,
-        name: d.label || tpl!.name,   // 本店叫法优先，templateNo 不变
-        options: (tpl?.options ?? []).filter((o) => !off.has(o.code ?? "")),
-      };
-    }));
+    /*
+     * **真的存下来**（此前只把提交内容原样回一份，刷新即失）。
+     * 存了之后 `mSpecTemplates` 才看得到它 —— 而「建品页跟着本店口径变」
+     * 正是这条链路的全部意义，不落库就等于在 mock 上把它藏起来了。
+     */
+    mockSpecOverride.set(categoryNo, dims.map((d) => ({
+      dimNo: d.dimNo,
+      enabled: d.enabled !== false,
+      label: d.label,
+      values: (d.values ?? []).map((v) => ({ code: v.code, enabled: v.enabled !== false })),
+    })));
+    // 回最新的合并结果：端上照它重渲染，与真后端同一个约定
+    return this.mSpecTemplates(undefined, categoryNo);
   },
 
   async mRenameSpecDim(dimNo, name) {
