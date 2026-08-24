@@ -18,7 +18,16 @@ public record SpecTemplateVO(String templateNo, String scope, String categoryTyp
                               * 商家分不出哪个是「专门给这一类的」。
                               */
                              String categoryNo,
-                             String name, List<Option> options, String merchantNo) {
+                             String name, List<Option> options, String merchantNo,
+                             /**
+                              * <b>主维度</b>：商家选完类目该自动建出来的就是这一组。
+                              *
+                              * <p>不下发的话端上只能靠「数组第一个」去猜 —— 后端确实是那么排的
+                              * （主维度优先、其余按 sort），但那是一个不该被依赖的巧合：
+                              * 排序规则一改，端上跟着错，而症状是「自动建出来的是包装不是重量」，
+                              * 没有任何一处会报错。判据在哪就从哪下发。
+                              */
+                             boolean primary) {
 
     /** @param code 来自平台模板的有值，手输的没有。一期只存不用，二期做规格聚合要靠它 */
     public record Option(String code, String label) {

@@ -31,18 +31,37 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class CategoryTreeFlowTest {
 
     /*
-     * **闸门在这里显式打开。**生产默认 `shop.category.gate.enforce=false`
-     * （只展示、不限制，见 MerchantGoodsServiceImpl#gateEnforced）——
-     * 而本类里那两条准入用例测的正是「拦得对不对」与「授权后能不能开」，
-     * 跟着默认值走的话它们会在闸门关着时静静地"通过"，什么都没验到。
+     * **闸门在这里显式打开**，用改字段而不是改配置。
      *
-     * <p>用 @DynamicPropertySource 而不是 @TestPropertySource：后者会另起一个
-     * Spring 上下文，而 H2 是同一个内存库，建表脚本跑第二遍会让整套测试
-     * 成片挂在主键冲突上（application-testcfg.yml 里记着同一个坑）。
+     * <p>生产默认 `shop.category.gate.enforce=false`（只展示、不限制，见
+     * MerchantGoodsServiceImpl#gateEnforced），而本类里那几条准入用例测的正是
+     * 「拦得对不对」「授权后能不能开」—— 跟着默认值走的话它们会在闸门关着时
+     * 静静地"通过"，什么都没验到。
+     *
+     * <p><b>不能用 @DynamicPropertySource，也不能用 @TestPropertySource。</b>
+     * 两者都会让这个类拿到一份**独立的 Spring 上下文**，而测试库是同一个 H2 内存库：
+     * 建表脚本 schema-test.sql 跑第二遍，整套用例成片挂在
+     * `INSERT INTO sys_industry` 的主键冲突上。
+     *
+     * <p>阴险的地方是**单独跑这个类永远是绿的**（只有一个上下文），
+     * 只有和别的测试类一起跑才炸 —— 上一轮就是这么漏过去的。
      */
-    @org.springframework.test.context.DynamicPropertySource
-    static void enforceGate(org.springframework.test.context.DynamicPropertyRegistry r) {
-        r.add("shop.category.gate.enforce", () -> "true");
+    @org.springframework.beans.factory.annotation.Autowired
+    private ai.neargo.shop.product.service.MerchantGoodsService merchantGoodsService;
+
+    @org.junit.jupiter.api.BeforeEach
+    void openGate() {
+        setGate(true);
+    }
+
+    @org.junit.jupiter.api.AfterEach
+    void restoreGate() {
+        setGate(false);
+    }
+
+    private void setGate(boolean on) {
+        Object target = org.springframework.test.util.AopTestUtils.getUltimateTargetObject(merchantGoodsService);
+        org.springframework.test.util.ReflectionTestUtils.setField(target, "gateEnforced", on);
     }
 
 
@@ -837,6 +856,82 @@ class CategoryTreeFlowTest {
                 .andExpect(jsonPath("$.code").value(0));
         // 商家身份是登录时解析进 BizContext 的，旧 token 上还没有
         return login(phone);
+    }
+
+    @Test
+    @DisplayName("★★★ 类目规格绑定能改第二次 —— 软删挡住重插，运营改一次就 500")
+    void categoryBindingsCanBeSavedTwice() throws Exception {
+        String ops = opsLogin("admin", "admin123");
+
+        // 自己造维度与取值：测试库走 schema-test.sql 不跑 Flyway，没有 V196 那份种子
+        String dimBody = mvc().perform(post("/ops/spec-dims")
+                        .header("Authorization", "Bearer " + ops)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"code\":\"TWICE\",\"name\":\"存两遍\",\"valueType\":\"ENUM\","
+                                + "\"usageType\":\"SALE\",\"universal\":true}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        String dimNo = json.readTree(dimBody).get("data").get("dimNo").asString();
+
+        String v1 = newValue(ops, dimNo, "A");
+        String v2 = newValue(ops, dimNo, "B");
+
+        /*
+         * **自己建一个类目**，不借用 CAT110。整份替换会把那个类目原有的绑定冲掉，
+         * 而测试库是同一个 H2：SpecLibraryCoverageTest 紧接着就在同一份数据上
+         * 验「每个类目恰好一个主维度」，被冲掉的话它会红在一个与自己毫无关系的地方。
+         */
+        String catBody = mvc().perform(post("/ops/categories")
+                        .header("Authorization", "Bearer " + ops)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"存两遍专用\",\"parentNo\":\"CAT100\"}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        String categoryNo = json.readTree(catBody).get("data").get("categoryNo").asString();
+        String body = "[{\"dimNo\":\"" + dimNo + "\",\"primary\":true,\"required\":false,"
+                + "\"valueNos\":[\"" + v1 + "\",\"" + v2 + "\"],\"labels\":{}}]";
+
+        /*
+         * 存两遍，第二遍一个字段都没改。**就这样也会炸**：
+         * 「整份替换」先删后插，而删若走 @TableLogic 的软删（UPDATE deleted=1），
+         * 唯一键 uk_cat_spec(tenant_no, category_no, dim_no) 不含 deleted ——
+         * 第二步 INSERT 立刻撞上刚软删的那一行，报 Duplicate entry。
+         *
+         * 第一遍从不报错，所以这个缺陷一直躲在「运营点第二次保存」背后：
+         * 种子是迁移直接 INSERT 的，压根不走这条路。
+         */
+        for (int round = 1; round <= 2; round++) {
+            String r = mvc().perform(post("/ops/category-specs/" + categoryNo)
+                            .header("Authorization", "Bearer " + ops)
+                            .contentType(MediaType.APPLICATION_JSON).content(body))
+                    .andReturn().getResponse().getContentAsString();
+            assertThat(json.readTree(r).get("code").asInt())
+                    .as("第 %d 次保存失败：%s", round, r)
+                    .isEqualTo(0);
+        }
+
+        // 存两遍不该存成两份 —— 那是「没删干净」的另一种死法
+        String after = mvc().perform(get("/ops/category-specs")
+                        .header("Authorization", "Bearer " + ops))
+                .andReturn().getResponse().getContentAsString();
+        for (JsonNode r : json.readTree(after).get("data")) {
+            if (categoryNo.equals(r.get("categoryNo").asString())) {
+                assertThat(r.get("dims").size())
+                        .as("存两遍之后维度数不是 1：整份替换没替干净")
+                        .isEqualTo(1);
+            }
+        }
+    }
+
+    private String newValue(String ops, String dimNo, String label) throws Exception {
+        String b = mvc().perform(post("/ops/spec-values")
+                        .header("Authorization", "Bearer " + ops)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"dimNo\":\"" + dimNo + "\",\"code\":\"" + label
+                                + "\",\"label\":\"" + label + "\"}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        return json.readTree(b).get("data").get("valueNo").asString();
     }
 
     private String login(String phone) throws Exception {

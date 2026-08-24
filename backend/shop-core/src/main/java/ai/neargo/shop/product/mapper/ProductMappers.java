@@ -38,10 +38,34 @@ public final class ProductMappers {
 
     public interface CategorySpecMapper
             extends BaseMapper<ai.neargo.shop.product.entity.PrdCategorySpec> {
+
+        /**
+         * <b>真删</b>这个类目的全部绑定。
+         *
+         * <p>不能用 {@code delete(...)}：{@link ai.neargo.shop.common.BaseEntity} 上挂着
+         * {@code @TableLogic}，那条路是 {@code UPDATE deleted=1}，而唯一键
+         * {@code uk_cat_spec(tenant_no, category_no, dim_no)} <b>不含 deleted</b> ——
+         * 于是「整份替换」的第二步 INSERT 撞上第一步留下的软删行，
+         * 报 {@code Duplicate entry 'MAIN-CAT110-SD_WEIGHT'}。
+         *
+         * <p>症状是运营在「类目 × 规格」里改任何一次绑定都 500，而**第一次配置不会**：
+         * 种子是迁移直接 INSERT 的，从没走过这条路。
+         *
+         * <p>绑定是配置、不是凭证：没有「历史要靠它解释」的需求（那是
+         * {@code prd_spec_value} 的事 —— SKU 快照记着它的编号）。所以真删是对的语义。
+         */
+        @org.apache.ibatis.annotations.Delete(
+                "DELETE FROM prd_category_spec WHERE category_no = #{categoryNo}")
+        int purgeByCategory(@org.apache.ibatis.annotations.Param("categoryNo") String categoryNo);
     }
 
     public interface CategorySpecValueMapper
             extends BaseMapper<ai.neargo.shop.product.entity.PrdCategorySpecValue> {
+
+        /** 同上：{@code uk_cat_spec_value} 同样不含 deleted，软删会挡住重新插入 */
+        @org.apache.ibatis.annotations.Delete(
+                "DELETE FROM prd_category_spec_value WHERE category_no = #{categoryNo}")
+        int purgeByCategory(@org.apache.ibatis.annotations.Param("categoryNo") String categoryNo);
     }
 
     public interface MerchantSpecMapper

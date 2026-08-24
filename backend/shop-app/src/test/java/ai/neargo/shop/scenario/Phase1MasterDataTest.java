@@ -41,20 +41,40 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @SpringBootTest
 @ActiveProfiles("test")
-/*
- * **闸门在这里显式打开。**生产默认 `shop.category.gate.enforce=false`（只展示、不限制，
- * 见 MerchantGoodsServiceImpl#gateEnforced 的说明），但这个类测的正是「闸门拦得对不对」——
- * 跟着默认值走的话，这几条用例会在闸门关着时"通过"，而它们什么都没验到。
- *
- * <p>⚠️ 用 @TestPropertySource 会另起一个 Spring 上下文，而 H2 是同一个内存库：
- * 建表脚本跑第二遍，整套测试会成片挂在主键冲突上（application-testcfg.yml 里
- * 那段 store.max-per-entity 的注释记着同一个坑）。所以这里用 @DynamicPropertySource。
- */
 class Phase1MasterDataTest {
 
-    @org.springframework.test.context.DynamicPropertySource
-    static void enforceGate(org.springframework.test.context.DynamicPropertyRegistry r) {
-        r.add("shop.category.gate.enforce", () -> "true");
+    /*
+     * **闸门在这里显式打开**，用改字段而不是改配置。
+     *
+     * <p>生产默认 `shop.category.gate.enforce=false`（只展示、不限制，见
+     * MerchantGoodsServiceImpl#gateEnforced），而本类里那几条准入用例测的正是
+     * 「拦得对不对」「授权后能不能开」—— 跟着默认值走的话它们会在闸门关着时
+     * 静静地"通过"，什么都没验到。
+     *
+     * <p><b>不能用 @DynamicPropertySource，也不能用 @TestPropertySource。</b>
+     * 两者都会让这个类拿到一份**独立的 Spring 上下文**，而测试库是同一个 H2 内存库：
+     * 建表脚本 schema-test.sql 跑第二遍，整套用例成片挂在
+     * `INSERT INTO sys_industry` 的主键冲突上。
+     *
+     * <p>阴险的地方是**单独跑这个类永远是绿的**（只有一个上下文），
+     * 只有和别的测试类一起跑才炸 —— 上一轮就是这么漏过去的。
+     */
+    @org.springframework.beans.factory.annotation.Autowired
+    private ai.neargo.shop.product.service.MerchantGoodsService merchantGoodsService;
+
+    @org.junit.jupiter.api.BeforeEach
+    void openGate() {
+        setGate(true);
+    }
+
+    @org.junit.jupiter.api.AfterEach
+    void restoreGate() {
+        setGate(false);
+    }
+
+    private void setGate(boolean on) {
+        Object target = org.springframework.test.util.AopTestUtils.getUltimateTargetObject(merchantGoodsService);
+        org.springframework.test.util.ReflectionTestUtils.setField(target, "gateEnforced", on);
     }
 
     @Autowired

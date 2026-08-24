@@ -14,7 +14,7 @@
     "dev:c": "npm run dev:h5 -w ai-shop-c-app",
     "dev:b": "npm run dev:h5 -w ai-shop-b-app",
     "type-check": "npm run type-check -w ai-shop-c-app && npm run type-check -w ai-shop-b-app",
-    "dev:p": "npm run dev -w ai-shop-ops-web",
+    "dev:p": "npm run dev -w ai-shop-ops-web -- --port 3100",
     "build:p": "npm run build -w ai-shop-ops-web",
     "check:p": "npm run check -w ai-shop-ops-web",
     "dev:site": "npm run dev -w ai-shop-site",

@@ -246,37 +246,78 @@ function BindingEditor({ c, all, editing, onChange }: {
                     </Button>
                   </span>
                 </div>
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  {d.values.filter((v) => v.status === "ACTIVE").map((v) => {
-                    const on = b.valueNos.includes(v.valueNo);
-                    const shown = b.labels[v.valueNo] ?? v.label;
+                {/*
+                  取值分成两排：**上排是已选的、按商家实际看到的顺序**，下排是还没选的。
+                  从前两者混在一排靠高亮区分，于是「顺序」这件事既看不见也调不了 ——
+                  而它一直在生效（保存时按数组下标写 sort，商家侧就按 sort 展示）。
+                  一个默默生效、界面上却不存在的东西，比没有更难查。
+                */}
+                <div className="mt-2 txt-label text-muted-foreground">{c.csValsPicked}</div>
+                <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                  {b.valueNos.map((vn, vi) => {
+                    const v = d.values.find((x) => x.valueNo === vn);
+                    if (!v) return null;
+                    const shown = b.labels[vn] ?? v.label;
+                    const setVals = (valueNos: string[]) =>
+                      onChange(picked.map((x) => x.dimNo === b.dimNo ? { ...x, valueNos } : x));
+                    const moveVal = (to: number) => {
+                      if (to < 0 || to >= b.valueNos.length) return;
+                      const next = [...b.valueNos];
+                      const [x] = next.splice(vi, 1);
+                      next.splice(to, 0, x!);
+                      setVals(next);
+                    };
                     return (
-                      <button key={v.valueNo} type="button"
-                        onClick={() => {
-                          const valueNos = on
-                            ? b.valueNos.filter((x) => x !== v.valueNo)
-                            : [...b.valueNos, v.valueNo];
-                          onChange(picked.map((x) => x.dimNo === b.dimNo ? { ...x, valueNos } : x));
-                        }}
-                        onDoubleClick={() => {
-                          // 双击换名：500g 在蔬菜下叫「约1斤」，归一量不变
-                          const next = window.prompt(
-                            fill(c.csRenamePrompt, { cat: editing.category.categoryName, label: v.label }),
-                            shown,
-                          );
-                          if (next == null) return;
-                          const labels = { ...b.labels };
-                          if (next.trim() && next.trim() !== v.label) labels[v.valueNo] = next.trim();
-                          else delete labels[v.valueNo];
-                          onChange(picked.map((x) => x.dimNo === b.dimNo ? { ...x, labels } : x));
-                        }}
-                        className={`rounded-chip px-2 py-0.5 text-[12px] ${
-                          on ? "bg-[var(--primary)] text-white" : "bg-muted text-muted-foreground"}`}>
-                        {shown}
-                        {b.labels[v.valueNo] && <span className="opacity-70"> ← {v.label}</span>}
-                      </button>
+                      <span key={vn}
+                        className="inline-flex items-center gap-0.5 rounded-chip
+                                   bg-[var(--primary)] px-1 py-0.5 text-[12px] text-white">
+                        <button type="button" title={c.csValMoveL} disabled={vi === 0}
+                          onClick={() => moveVal(vi - 1)}
+                          className="px-0.5 leading-none opacity-70 hover:opacity-100
+                                     disabled:cursor-default disabled:opacity-25">‹</button>
+                        <span className="px-0.5" title={c.csRenameHint}
+                          onDoubleClick={() => {
+                            // 双击换名：500g 在蔬菜下叫「约1斤」，归一量不变
+                            const next = window.prompt(
+                              fill(c.csRenamePrompt, { cat: editing.category.categoryName, label: v.label }),
+                              shown,
+                            );
+                            if (next == null) return;
+                            const labels = { ...b.labels };
+                            if (next.trim() && next.trim() !== v.label) labels[v.valueNo] = next.trim();
+                            else delete labels[v.valueNo];
+                            onChange(picked.map((x) => x.dimNo === b.dimNo ? { ...x, labels } : x));
+                          }}>
+                          {shown}
+                          {b.labels[vn] && <span className="opacity-70"> ← {v.label}</span>}
+                        </span>
+                        <button type="button" title={c.csValMoveR} disabled={vi === b.valueNos.length - 1}
+                          onClick={() => moveVal(vi + 1)}
+                          className="px-0.5 leading-none opacity-70 hover:opacity-100
+                                     disabled:cursor-default disabled:opacity-25">›</button>
+                        <button type="button" title={c.csValDrop}
+                          onClick={() => setVals(b.valueNos.filter((x) => x !== vn))}
+                          className="ml-0.5 px-0.5 leading-none opacity-70 hover:opacity-100">×</button>
+                      </span>
                     );
                   })}
+                  {!b.valueNos.length && (
+                    <span className="text-[12px] text-muted-foreground">{c.csValsAllHint}</span>
+                  )}
+                </div>
+
+                <div className="mt-2.5 txt-label text-muted-foreground">{c.csValsRest}</div>
+                <div className="mt-1 flex flex-wrap gap-1.5">
+                  {d.values.filter((v) => v.status === "ACTIVE" && !b.valueNos.includes(v.valueNo))
+                    .map((v) => (
+                      <button key={v.valueNo} type="button"
+                        onClick={() => onChange(picked.map((x) => x.dimNo === b.dimNo
+                          ? { ...x, valueNos: [...x.valueNos, v.valueNo] } : x))}
+                        className="rounded-chip bg-muted px-2 py-0.5 text-[12px] text-muted-foreground
+                                   hover:bg-border">
+                        {v.label}
+                      </button>
+                    ))}
                 </div>
                 <p className="mt-1.5 text-[11.5px] text-muted-foreground">{c.csRenameHint}</p>
               </div>

@@ -21,7 +21,7 @@ import type { GoodsGuess } from "@/api/contract";
 import { CATEGORY_TYPE, MARKETS, TEMPLATE_TO_TYPE } from "@shared/utils/constants";
 import { MAX_IMAGE_BYTES, pickImages } from "@shared/ports/media";
 import { toMajor, toMinor } from "@shared/utils/money";
-import type { Category, CategoryType, CurrencyCode, MarketId, I18nText, SpecTemplate, SpuStd, StoreCategory } from "@shared/types";
+import type { Category, CategoryType, CurrencyCode, MarketId, I18nText, SpecOption, SpecTemplate, SpuStd, StoreCategory } from "@shared/types";
 
 const { t } = useI18n();
 const merchant = useMerchantStore();
@@ -1216,6 +1216,36 @@ async function loadTemplates() {
   templates.value = await api
     .mSpecTemplates(type.value, categoryNo.value || undefined)
     .catch(() => []);
+  primeMainGroup();
+}
+
+/**
+ * 选完类目，**把主维度那一组先建出来**（组名填好，取值留空）。
+ *
+ * <p>此前平台配好的绑定只走到「摊开给他看」：模板卡片展开，他还得点一下才进规格组。
+ * 而规格组名恰恰是建品最难的一步 —— 「这袋青菜该按什么分规格」比「有哪几档」难得多，
+ * 平台已经替每个类目回答过了（主维度），却要商家自己再想一遍。
+ *
+ * <p><b>只填名，不预选取值。</b>预选「500g」的后果不是他发现填错，是他不假思索地留着：
+ * 库里三千件商品整整齐齐写着 500g，而真实袋重是 400g、480g、一斤。
+ * 那比空着更糟 —— 空着至少诚实，而「同规格比价」建立在这些数字真实的前提上，
+ * 那正是平台养这个规格库的全部理由。规格名填错了他一眼看得出（「颜色」出现在
+ * 一袋青菜上很刺眼），取值填错了没有任何视觉信号。
+ *
+ * <p>三条不动手的情形：已经有组了（他知道自己在干什么，或这是在编辑老商品）、
+ * 没有主维度、这一组已经在了。
+ */
+function primeMainGroup() {
+  if (groups.value.length) return;
+  const main = templates.value.find((t) => t.primary && t.scope === "PLATFORM");
+  if (!main || groups.value.some((g) => g.name === main.name)) return;
+  groups.value.push({
+    name: main.name,
+    options: [""],
+    codes: [undefined],
+    templateNo: main.templateNo,
+  });
+  rebuild();
 }
 
 function addGroup() {
@@ -1314,6 +1344,43 @@ async function addCustomGroup() {
   } catch (e) {
     uni.showToast({ title: (e as Error).message, icon: "none" });
   }
+}
+
+/**
+ * 这一组还能点进来的平台档位。
+ *
+ * <p>按 `templateNo`（= dimNo）找回模板，扣掉已经填进去的 —— 平台维护的顺序
+ * 就是运营在「类目 × 规格」里排的那个顺序，常用档位排在前面。
+ *
+ * <p>自建维度（`SD_` 之外）和手建的组没有模板，返回空：这里不该猜。
+ */
+function pickableFor(gi: number): SpecOption[] {
+  const g = groups.value[gi];
+  if (!g?.templateNo) return [];
+  const tpl = templates.value.find((t) => t.templateNo === g.templateNo);
+  if (!tpl) return [];
+  const used = new Set(g.options.map((o) => o.trim()).filter(Boolean));
+  return tpl.options.filter((o) => !used.has(o.label));
+}
+
+/**
+ * 点一个档位填进去。**优先填进第一个空格子**，没有空格子才追加 ——
+ * 否则自动建组留下的那个空输入框会一直杵在列表最上面，
+ * 而他点了三下之后要回过头去删它。
+ */
+function pickValue(gi: number, o: SpecOption) {
+  const g = groups.value[gi];
+  if (!g) return;
+  const slot = g.options.findIndex((x) => !x.trim());
+  if (slot >= 0) {
+    g.options[slot] = o.label;
+    if (g.codes) g.codes[slot] = o.code || undefined;
+    else g.codes = g.options.map((_, i) => (i === slot ? o.code || undefined : undefined));
+  } else {
+    g.options.push(o.label);
+    if (g.codes) g.codes.push(o.code || undefined);
+  }
+  rebuild();
 }
 
 function removeOption(gi: number, oi: number) {
@@ -2101,6 +2168,23 @@ async function save(thenSubmit = false) {
           </view>
           <text class="link" @tap="addOption(gi)">{{ $t("goods.addOption") }}</text>
         </view>
+        <!--
+          平台给这一维度配好的档位，点一下就进去。**从「打字」降到「点一下」** ——
+          手输的值没有规格编码，参与不了跨店聚合（三家店的「500g」「五百克」「0.5kg」
+          永远聚不到一起），而这个代价在输入框里是完全看不见的。
+          已经选进去的不再出现在这里：留着只会让他点出重复项。
+        -->
+        <view v-if="pickableFor(gi).length" class="picks">
+          <text class="sh-muted picks__hint">{{ $t("goods.pickValueHint") }}</text>
+          <view class="picks__row">
+            <text
+              v-for="o in pickableFor(gi)"
+              :key="o.code || o.label"
+              class="sh-chip picks__chip"
+              @tap="pickValue(gi, o)"
+            >{{ o.label }}</text>
+          </view>
+        </view>
       </view>
     </view>
 
@@ -2849,6 +2933,23 @@ async function save(thenSubmit = false) {
   border-radius: 16rpx;
   padding: 0 8rpx 0 16rpx;
 }
+/* 平台档位点选区：贴在选项输入下面，和输入框拉开一点但仍在同一组里 */
+.picks {
+  margin-top: 12rpx;
+}
+.picks__hint {
+  font-size: 24rpx;
+}
+.picks__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+  margin-top: 8rpx;
+}
+.picks__chip {
+  font-size: 24rpx;
+}
+
 .opt__input {
   width: 150rpx;
   height: 64rpx;

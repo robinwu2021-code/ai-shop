@@ -289,7 +289,8 @@ public class BizGoodsController {
                 d.values().stream()
                         .map(v -> new ai.neargo.shop.product.dto.SpecTemplateVO.Option(v.code(), v.label()))
                         .toList(),
-                BizContext.requireMerchantNo());
+                // 自建维度不是主维度：主维度是类目绑定上的判据，商家自建的没有绑定
+                BizContext.requireMerchantNo(), false);
     }
 
     /** @param code 平台值有码，自有值暂时没有（提升为平台值时才发） */

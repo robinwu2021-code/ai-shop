@@ -242,6 +242,7 @@ export default {
     groupNamePh: "e.g. Weight / Packaging", optionPh: "e.g. 2.5 kg",
     groupLimit: "Up to 3 variant groups", skuMatrix: "Price", singleSpec: "Default",
     bulkPrice: "Price for all", bulkStock: "Stock for all", applyBulk: "Apply to all", bulkDone: "Applied",
+    pickValueHint: "Common options — tap to fill in:",
     fromPrice: "Shown price (lowest variant)",
     marketPriceHint: "Switch currency to price each market. No FX conversion",
     unpriced: "{s} unpriced — not sold in those markets",

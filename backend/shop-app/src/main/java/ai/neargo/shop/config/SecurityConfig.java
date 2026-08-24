@@ -50,8 +50,17 @@ public class SecurityConfig {
             // 第二个 ops-web 开发端口：**并行开发时两个会话各起一份**，
             // 共用 3100 的结果是后起的那个静默失败（端口被占，页面连的还是别人的后端）
             "http://localhost:3101", "http://127.0.0.1:3101",
-            "http://localhost:5173", "http://127.0.0.1:5173",   // c-app dev
-            "http://localhost:5174", "http://127.0.0.1:5174");  // b-app dev
+            /*
+             * c-app / b-app dev。**列到 5177**，理由与上面 3101 那条相同：
+             * vite 端口被占就自动往后顺延，而并行会话同时开着两三个 dev server
+             * 是常态 —— 顺延到白名单之外的那一刻，页面看到的只是「网络异常」，
+             * 没有任何一处会说是 CORS。
+             */
+            "http://localhost:5173", "http://127.0.0.1:5173",
+            "http://localhost:5174", "http://127.0.0.1:5174",
+            "http://localhost:5175", "http://127.0.0.1:5175",
+            "http://localhost:5176", "http://127.0.0.1:5176",
+            "http://localhost:5177", "http://127.0.0.1:5177");
 
     @Bean
     org.springframework.web.cors.CorsConfigurationSource corsSource() {

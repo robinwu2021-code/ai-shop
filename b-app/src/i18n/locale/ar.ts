@@ -242,6 +242,7 @@ export default {
     groupNamePh: "مثل الوزن / التغليف", optionPh: "مثل ٢٫٥ كجم",
     groupLimit: "٣ مجموعات كحد أقصى", skuMatrix: "السعر", singleSpec: "افتراضي",
     bulkPrice: "سعر موحّد", bulkStock: "مخزون موحّد", applyBulk: "تطبيق على الكل", bulkDone: "تم التطبيق",
+    pickValueHint: "الخيارات الشائعة — انقر للإضافة:",
     fromPrice: "السعر المعروض (الأدنى)",
     marketPriceHint: "بدّل العملة لتسعير كل سوق. بلا تحويل صرف",
     unpriced: "{s} بلا سعر — لن تُباع في تلك الأسواق",

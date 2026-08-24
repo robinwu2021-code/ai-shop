@@ -345,6 +345,8 @@ export default {
     templateSaved: "已存为我的常用",
     addOption: "+ 选项",
     groupNamePh: "规格组名称",
+    // 点选比手输多的那样东西是规格编码 —— 没有它这一档参与不了跨店聚合
+    pickValueHint: "常用档位，点一下就填进去：",
     optionPh: "选项名称",
     groupLimit: "最多 3 个规格组",
     skuMatrix: "价格",

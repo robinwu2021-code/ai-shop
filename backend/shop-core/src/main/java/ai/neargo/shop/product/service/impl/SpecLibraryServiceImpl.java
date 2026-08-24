@@ -105,7 +105,7 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
              */
             out.add(new SpecTemplateVO(dim.getDimNo(), PrdSpecDim.PLATFORM,
                     categoryService.categoryTypeOf(categoryNo), categoryNo,
-                    dim.getName(), options, null));
+                    dim.getName(), options, null, Boolean.TRUE.equals(b.getIsPrimary())));
         }
         return out;
     }
@@ -452,11 +452,16 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
         if (list.stream().filter(BindingCommand::primary).count() > 1) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
-        // 整份替换：绑定是一组有序的东西，逐条 diff 出增删改没有收益
-        DataScopeContext.executeWithoutScope(() -> catSpecMapper.delete(
-                Wrappers.<PrdCategorySpec>lambdaQuery().eq(PrdCategorySpec::getCategoryNo, categoryNo)));
-        DataScopeContext.executeWithoutScope(() -> catValueMapper.delete(
-                Wrappers.<PrdCategorySpecValue>lambdaQuery().eq(PrdCategorySpecValue::getCategoryNo, categoryNo)));
+        /*
+         * 整份替换：绑定是一组有序的东西，逐条 diff 出增删改没有收益。
+         *
+         * **真删，不是软删**（purgeByCategory）。软删走 UPDATE deleted=1，而唯一键
+         * uk_cat_spec(tenant_no, category_no, dim_no) 不含 deleted —— 下面那圈 INSERT
+         * 会撞上刚软删的那几行，报 Duplicate entry。症状是运营改任何一次绑定都 500，
+         * 而第一次配置好好的：种子是迁移直接 INSERT 的，从没走过这条路。
+         */
+        DataScopeContext.executeWithoutScope(() -> catSpecMapper.purgeByCategory(categoryNo));
+        DataScopeContext.executeWithoutScope(() -> catValueMapper.purgeByCategory(categoryNo));
 
         int i = 0;
         for (BindingCommand b : list) {
