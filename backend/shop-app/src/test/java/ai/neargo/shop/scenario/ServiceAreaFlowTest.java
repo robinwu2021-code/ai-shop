@@ -252,6 +252,39 @@ class ServiceAreaFlowTest {
     }
 
     @Test
+    @DisplayName("★★ 重选地图不冲掉门牌号 —— 两截分开存，老版本端上不传时也不许被抹掉")
+    void addressDetailSurvivesRepick() {
+        String m = merchant("PICKUP");
+        store(m);
+        String c = community("330106002");
+        var areas = java.util.List.of(new ai.neargo.shop.merchant.service.MerchantStoreService
+                .AreaCommand("COMMUNITY", c));
+
+        // 先选点 + 填门牌号
+        storeService.save(m, null, new ai.neargo.shop.merchant.service.MerchantStoreService.SaveCommand(
+                "营业中", "08:00-20:00", "龙澜大道 441 号招商锦绣观园", "3 栋 2 单元 501",
+                java.util.List.of(), null, null, null, "PICKUP", areas, 22_695_293, 114_027_370));
+        assertThat(storeService.profile(m).addressDetail()).isEqualTo("3 栋 2 单元 501");
+
+        /*
+         * 再点一次地图选点：端上只重写 address。**门牌号必须留着** ——
+         * 合成一格的年代，这一步会把商家补的那截无声抹掉，而地址看着还是对的，
+         * 只是又回到了小区门口。
+         */
+        storeService.save(m, null, new ai.neargo.shop.merchant.service.MerchantStoreService.SaveCommand(
+                "营业中", "08:00-20:00", "龙澜大道 441 号招商锦绣观园东门", null,
+                java.util.List.of(), null, null, null, "PICKUP", areas, 22_695_300, 114_027_380));
+        assertThat(storeService.profile(m).addressDetail())
+                .as("null = 这次不改门牌号（老版本端上就不传这个字段）").isEqualTo("3 栋 2 单元 501");
+
+        // 空串才是「清掉」
+        storeService.save(m, null, new ai.neargo.shop.merchant.service.MerchantStoreService.SaveCommand(
+                "营业中", "08:00-20:00", "龙澜大道 441 号招商锦绣观园东门", "",
+                java.util.List.of(), null, null, null, "PICKUP", areas, 22_695_300, 114_027_380));
+        assertThat(storeService.profile(m).addressDetail()).isEmpty();
+    }
+
+    @Test
     @DisplayName("★★ 门面资料是**门店级**的：地址填在哪家店，就只从哪家店读回来")
     void profileFollowsCurrentStore() {
         String m = merchant("PICKUP");

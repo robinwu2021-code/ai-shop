@@ -92,6 +92,17 @@ public class MchStore extends BaseEntity {
     private String openHours;
     private String address;
 
+    /**
+     * 门牌号 / 楼栋，商家手填（「3 栋 2 单元 501」）。
+     *
+     * <p><b>与 {@link #address} 分开</b>：那条来自地图选点，只到小区或路名；
+     * 买家照着找门缺的就是这一截。合成一格的话，商家补完门牌号再点一次选点，
+     * 整条被覆盖 —— 他补的那截无声消失，而地址看着还是对的。
+     */
+    @com.baomidou.mybatisplus.annotation.TableField(
+            updateStrategy = com.baomidou.mybatisplus.annotation.FieldStrategy.ALWAYS)
+    private String addressDetail;
+
     /** JSON 数组：主推商品 goods_no，<b>有序</b>。顺序是门面的编排，不是商品自身属性。 */
     private String featured;
 

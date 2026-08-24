@@ -76,6 +76,7 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
                 store == null ? "" : nz(store.getAnnouncement()),
                 store == null ? "" : nz(store.getOpenHours()),
                 store == null ? "" : nz(store.getAddress()),
+                store == null ? "" : nz(store.getAddressDetail()),
                 store == null ? List.of() : readList(store.getFeatured()),
                 merchant == null || merchant.getServiceScope() == null
                         ? COMMUNITY : merchant.getServiceScope(),
@@ -151,6 +152,13 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
         }
         store.setOpenHours(cmd.openHours());
         store.setAddress(cmd.address());
+        /*
+         * 门牌号 **null = 这次不改**（老版本端上不传这个字段），空串才是「清掉」。
+         * 不分开的话，老 App 保存一次公告就会把商家填的门牌号抹掉，且那一下看不出来。
+         */
+        if (cmd.addressDetail() != null) {
+            store.setAddressDetail(cmd.addressDetail().isBlank() ? null : cmd.addressDetail().trim());
+        }
         store.setFeatured(writeJson(cmd.featured()));
         // 坐标两个都给才写：只来一半是端上的 bug，写进去会得到一个在赤道或本初子午线上的门店
         if (cmd.latE6() != null && cmd.lngE6() != null) {

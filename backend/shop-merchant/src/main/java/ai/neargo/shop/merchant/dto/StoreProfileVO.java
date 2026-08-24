@@ -20,7 +20,7 @@ import java.util.List;
  *                            ONSITE/SHIPPING 空 = 不限（ADR-013 §6.2）
  * @param latE6               门店坐标（gcj02，E6），端上地图选点回填；没标过为 null
  */
-public record StoreProfileVO(String announcement, String openHours, String address,
+public record StoreProfileVO(String announcement, String openHours, String address, String addressDetail,
                              List<String> featured, String serviceScope,
                              List<String> serviceCommunityNos, String serviceCityCode,
                              String fulfillmentReach, List<ServiceAreaVO> serviceAreas,

@@ -2643,7 +2643,10 @@ export interface StoreProfile {
   announcement: string;
   /** 营业时间文案，店主自填 */
   openHours: string;
-  /** 店铺地址，店主自填 */
+  /**
+   * 店铺地址。**来自地图选点**（省市区 + 小区/路名），店主可改但一般不用改。
+   * 与 {@link addressDetail} 分开：重新选点只覆盖这一条。
+   */
   address: string;
   /** 主推商品，按顺序展示在门店主页首屏 */
   featured: string[];
@@ -2704,6 +2707,14 @@ export type SubOrderStatus =
  * 真实后端返回 `WAIT_FULFILL`，**列表因此永远是空的**。
  */
 export interface PickupOrder {
+  /**
+   * 门牌号 / 楼栋（「3 栋 2 单元 501」），店主手填。
+   *
+   * 为什么单独一格：地图给的地址只到小区门口，而买家照着找门缺的正是这一截；
+   * 合成一格的话，商家补完再点一次选点就被整条覆盖 —— 补的那截无声消失，
+   * 地址看着还是对的，只是又回到了小区门口。
+   */
+  addressDetail?: string;
   /** 子单号 —— 履约的最小单位是子单，不是主单 */
   subOrderNo: string;
   /** 取货码 */

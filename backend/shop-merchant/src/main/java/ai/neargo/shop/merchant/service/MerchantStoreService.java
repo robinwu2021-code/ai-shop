@@ -74,18 +74,28 @@ public interface MerchantStoreService {
      * @param latE6 门店坐标（gcj02，E6）。<b>null = 这次不改</b> —— 老版本端上不传这个字段，
      *              缺省当清空会把已标好的点抹掉，且保存那一下看不出来
      */
-    record SaveCommand(String announcement, String openHours, String address,
+    record SaveCommand(String announcement, String openHours, String address, String addressDetail,
                        List<String> featured, String serviceScope,
                        List<String> serviceCommunityNos, String serviceCityCode,
                        String fulfillmentReach, List<AreaCommand> serviceAreas,
                        Integer latE6, Integer lngE6) {
+
+        /** 不带门牌号的老形状（= 这次不改门牌号，null 与空串要分开：空串是「清掉」） */
+        public SaveCommand(String announcement, String openHours, String address,
+                           List<String> featured, String serviceScope,
+                           List<String> serviceCommunityNos, String serviceCityCode,
+                           String fulfillmentReach, List<AreaCommand> serviceAreas,
+                           Integer latE6, Integer lngE6) {
+            this(announcement, openHours, address, null, featured, serviceScope, serviceCommunityNos,
+                    serviceCityCode, fulfillmentReach, serviceAreas, latE6, lngE6);
+        }
 
         /** 不带坐标的老形状（= 这次不改坐标） */
         public SaveCommand(String announcement, String openHours, String address,
                            List<String> featured, String serviceScope,
                            List<String> serviceCommunityNos, String serviceCityCode,
                            String fulfillmentReach, List<AreaCommand> serviceAreas) {
-            this(announcement, openHours, address, featured, serviceScope, serviceCommunityNos,
+            this(announcement, openHours, address, null, featured, serviceScope, serviceCommunityNos,
                     serviceCityCode, fulfillmentReach, serviceAreas, null, null);
         }
     }

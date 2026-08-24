@@ -728,6 +728,7 @@ export default {
     addressPinned: "已在地图上标点，买家导航到的就是这里",
     locateAddrFailed: "没拿到地址，手动填写",
     timeRange: { startPh: "开始", endPh: "结束", endAfterStart: "结束时间要晚于开始时间", clear: "清空" },
+    addressDetailPh: "门牌号 / 几号楼（买家照着找门）",
     addressPh: "门牌上的正式地址",
     addressTooShort: "地址太短，买家找不到门",
     needAddressBody: "门店自取的取货地址就是门店地址。先填好地址，再回来开这一路。",

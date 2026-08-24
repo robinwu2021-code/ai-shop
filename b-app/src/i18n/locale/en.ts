@@ -558,6 +558,7 @@ export default {
     addressPh: "Official address on the signboard",
     addressTooShort: "Address is too short for buyers to find the door",
     needAddressBody: "In-store pickup uses the store address as the pickup address. Add the address first, then come back and turn it on.",
+    addressDetailPh: "Unit or building number — buyers use it to find the door",
     scopeTitle: "Coverage & delivery",
     scopeAll: "Shared by all stores",
     scopeLead: "Decides who can see your goods. Pick coverage first, then delivery methods.",

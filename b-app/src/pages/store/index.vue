@@ -32,7 +32,9 @@ const form = ref<StoreProfile>({
 });
 const loaded = ref(false);
 const snapshot = ref("");
-const pick = (p: StoreProfile) => JSON.stringify([p.announcement, p.openHours, p.address, p.latE6 ?? null, p.lngE6 ?? null]);
+const pick = (p: StoreProfile) => JSON.stringify([
+  p.announcement, p.openHours, p.address, p.addressDetail ?? "", p.latE6 ?? null, p.lngE6 ?? null,
+]);
 const dirty = computed(() => loaded.value && pick(form.value) !== snapshot.value);
 
 /** 营业时间快捷模板：早市摊位与全天店是两种最常见的作息，点一下填上再改 */
@@ -84,10 +86,10 @@ async function save() {
 }
 
 function discard() {
-  const [announcement = "", openHours = "", address = "", latE6 = null, lngE6 = null] = JSON.parse(
-    snapshot.value || "[]",
-  ) as [string, string, string, number | null, number | null];
-  form.value = { ...form.value, announcement, openHours, address, latE6, lngE6 };
+  const [announcement = "", openHours = "", address = "", addressDetail = "", latE6 = null, lngE6 = null] =
+    JSON.parse(snapshot.value || "[]") as
+      [string, string, string, string, number | null, number | null];
+  form.value = { ...form.value, announcement, openHours, address, addressDetail, latE6, lngE6 };
 }
 
 /** 已标过点（坐标随门店保存；买家侧导航/排距离靠它） */
@@ -208,6 +210,16 @@ onShow(() => {
             <text class="addr__t">{{ locating ? "…" : pinned ? $t("store.repinAddr") : $t("store.pickAddr") }}</text>
           </view>
         </view>
+        <!--
+          门牌号单独一格。地图选点只能给到小区门口，而买家照着找门缺的正是这一截；
+          放在同一个输入框里的话，商家补完再点一次选点就被整条覆盖 —— 补的那截无声消失。
+        -->
+        <input
+          v-model="form.addressDetail"
+          class="field__input addr__detail"
+          :maxlength="40"
+          :placeholder="$t('store.addressDetailPh')"
+        />
         <text class="hint">{{ pinned ? $t("store.addressPinned") : $t("store.addressHint") }}</text>
       </view>
     </view>
@@ -385,5 +397,10 @@ onShow(() => {
 }
 .savebar__save {
   padding: 20rpx 48rpx;
+}
+
+/* 门牌号：接在地址下面，视觉上属于同一格 */
+.addr__detail {
+  margin-top: 12rpx;
 }
 </style>

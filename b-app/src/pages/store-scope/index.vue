@@ -43,6 +43,16 @@ const loaded = ref(false);
 /** 打开页面时的快照，用来判「有没有改」 */
 const snapshot = ref("");
 
+/**
+ * 展示用的整条门店地址 = 地图给的那截 + 商家手填的门牌号。
+ *
+ * 两截分开存（重选地图不会冲掉门牌号），但**给人看的时候必须是一整条** ——
+ * 只显示前半截的话，商家填了门牌号却在这儿看不见，会以为没保存上。
+ */
+const fullAddress = computed(() =>
+  [form.value.address, form.value.addressDetail].filter((x) => x && x.trim()).join(" "),
+);
+
 const areas = computed<ServiceArea[]>(() => form.value.serviceAreas ?? []);
 const activeAreas = computed(() => areas.value.filter((a) => !areaPending(a)));
 
@@ -440,7 +450,7 @@ onShow(() => {
 
         <!-- 开着的路：一行配置摘要 -->
         <view v-if="c.enabled && c.channel === 'STORE_PICKUP'" class="sum" :class="{ 'sum--warn': !form.address }">
-          <text class="sum__t">{{ form.address ? $t("store.sumPickupAddr", { s: form.address }) : $t("store.sumNoAddress") }}</text>
+          <text class="sum__t">{{ fullAddress ? $t("store.sumPickupAddr", { s: fullAddress }) : $t("store.sumNoAddress") }}</text>
           <text class="sum__go" @tap.stop="goAddress">{{ $t("store.goAddress") }}</text>
         </view>
         <view v-if="c.enabled && c.channel === 'NEIGHBOR_PICKUP'" class="sum" :class="{ 'sum--warn': !neighborRefs.length && !form.address }">
