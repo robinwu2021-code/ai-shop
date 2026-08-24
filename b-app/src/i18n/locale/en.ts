@@ -608,7 +608,6 @@ export default {
       levelDistrict: "district",
     },
     fulfillCard: "Delivery methods",
-    fulfillSub: "This store · saves on tap",
     sumPickupAddr: "Pickup address: {s}",
     sumNoAddress: "No store address yet — buyers won't know where to collect",
     goAddress: "Add address ›",

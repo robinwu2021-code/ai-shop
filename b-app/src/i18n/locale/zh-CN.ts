@@ -781,7 +781,6 @@ export default {
       levelDistrict: "区",
     },
     fulfillCard: "送货方式",
-    fulfillSub: "本店 · 点一下即保存",
     sumPickupAddr: "取货地址：{s}",
     sumNoAddress: "门店还没填地址，买家不知道去哪取",
     goAddress: "去填地址 ›",

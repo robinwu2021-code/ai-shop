@@ -425,7 +425,6 @@ onShow(() => {
     <view v-if="fulfillment" class="sh-card mt">
       <view class="head">
         <text class="sh-h2">{{ $t("store.fulfillCard") }}</text>
-        <text class="head__sub">{{ $t("store.fulfillSub") }}</text>
       </view>
 
       <template v-for="c in channelRows" :key="c.channel">
@@ -471,14 +470,14 @@ onShow(() => {
             <text class="hint">{{ $t("store.rateHint") }}</text>
             <view class="rate__btns">
               <text class="sh-btn sh-btn--soft rate__save" @tap="saveRule">{{ $t("store.saveRate") }}</text>
-              <text class="mini" @tap="ruleOpen = false">{{ $t("store.collapse") }}</text>
+              <text class="sh-btn sh-btn--muted rate__cancel" @tap="ruleOpen = false">{{ $t("store.collapse") }}</text>
             </view>
           </view>
         </view>
         <view v-if="c.enabled && c.channel === 'MERCHANT_DELIVERY'" class="sum">
           <template v-if="!subsetOpen">
             <text class="sum__t">{{ subsetSummary(c) }}</text>
-            <text class="sum__go" @tap.stop="openSubset(c)">{{ $t("store.subset.edit") }}</text>
+            <text class="sum__go" @tap.stop="openSubset(c)">{{ $t("store.subset.edit") }} ›</text>
           </template>
           <view v-else class="rate" @tap.stop>
             <text class="hint">{{ $t("store.subset.hint") }}</text>
@@ -501,7 +500,7 @@ onShow(() => {
             </view>
             <view class="rate__btns">
               <text class="sh-btn sh-btn--soft rate__save" @tap="saveSubset(c)">{{ $t("common.save") }}</text>
-              <text class="mini" @tap="subsetOpen = false">{{ $t("store.collapse") }}</text>
+              <text class="sh-btn sh-btn--muted rate__cancel" @tap="subsetOpen = false">{{ $t("store.collapse") }}</text>
             </view>
           </view>
         </view>
@@ -527,7 +526,7 @@ onShow(() => {
     <!-- 吸底保存条：范围有未保存改动时才浮现 -->
     <view v-if="dirty" class="savebar">
       <text class="savebar__t">{{ $t("store.unsaved") }}</text>
-      <text class="mini" @tap="discard">{{ $t("store.discard") }}</text>
+      <text class="sh-btn sh-btn--muted savebar__discard" @tap="discard">{{ $t("store.discard") }}</text>
       <view class="sh-btn savebar__save" @tap="save">{{ $t("common.save") }}</view>
     </view>
   </sh-scaffold>
@@ -776,12 +775,18 @@ onShow(() => {
 .rate__save {
   flex: 1;
 }
-.mini {
-  padding: 16rpx 28rpx;
-  border-radius: 16rpx;
-  background: var(--sh-faint);
-  color: var(--sh-sub);
-  font-size: 24rpx;
+/*
+ * 展开态里的两个按钮：主操作 soft、次操作 muted，**都是 .sh-btn**。
+ * 此前次操作是本页自造的 `.mini`（16rpx 圆角的小灰块）—— 与旁边的胶囊按钮
+ * 既不同形也不同高，并排时基线都对不齐。收窄内边距是为了不让它在一行里占太满，
+ * 形状与配色仍走设计系统。
+ */
+.rate__cancel,
+.savebar__discard {
+  flex-shrink: 0;
+  padding: 24rpx 32rpx;
+  font-size: 26rpx;
+  font-weight: 400;
 }
 /* 吸底保存条：transform 框内 fixed 会跟着窄栏收窄（见 sh-scaffold） */
 .savebar {

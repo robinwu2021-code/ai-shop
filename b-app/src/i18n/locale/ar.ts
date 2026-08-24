@@ -608,7 +608,6 @@ export default {
       levelDistrict: "منطقة",
     },
     fulfillCard: "طرق التوصيل",
-    fulfillSub: "هذا الفرع · يُحفظ عند النقر",
     sumPickupAddr: "عنوان الاستلام: {s}",
     sumNoAddress: "لم يُدخل عنوان الفرع بعد — لن يعرف المشتري أين يستلم",
     goAddress: "أضف العنوان ›",
