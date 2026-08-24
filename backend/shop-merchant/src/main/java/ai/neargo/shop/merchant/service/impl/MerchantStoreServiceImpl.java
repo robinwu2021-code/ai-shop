@@ -77,6 +77,7 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
                 store == null ? "" : store.effectiveAnnouncement(),
                 store == null ? null : store.getAnnouncementUntil(),
                 store == null ? List.of() : readList(store.getAnnouncementRecent()),
+                pendingNotice(merchantNo, store == null ? null : store.getStoreNo()),
                 store == null ? "" : nz(store.getOpenHours()),
                 store == null ? "" : nz(store.getAddress()),
                 store == null ? "" : nz(store.getAddressDetail()),
@@ -106,7 +107,7 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
          */
         List<String> hits = screen(announcement);
         if (!hits.isEmpty()) {
-            submitForAudit(merchantNo, MchStoreAudit.NOTICE, announcement, hits);
+            submitForAudit(merchantNo, store.getStoreNo(), MchStoreAudit.NOTICE, announcement, hits, until);
             return profile(merchantNo, storeNo);
         }
         store.setAnnouncement(announcement);
@@ -172,7 +173,8 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
          */
         List<String> hits = screen(cmd.announcement());
         if (!hits.isEmpty()) {
-            submitForAudit(merchantNo, MchStoreAudit.NOTICE, cmd.announcement(), hits);
+            submitForAudit(merchantNo, store.getStoreNo(), MchStoreAudit.NOTICE, cmd.announcement(), hits,
+                    cmd.announcementUntil());
             // 命中期间**保留旧公告**：把它清空的话，店铺页会突然变白，
             // 而店主以为自己"改坏了"，只会反复再改一遍
         } else {
@@ -300,6 +302,33 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
     }
 
 
+
+    /**
+     * 这家店有没有一条公告正卡在人审里。
+     *
+     * <p><b>不下发的后果是「说了发布其实没发布」</b>：命中敏感词时后端保留旧公告，
+     * 而端上拿到的仍是旧资料 —— 它照样弹「已发布」，输入框还原成上一条。
+     * 商家只会以为自己手滑，再改一遍、再送审一次，队列里堆出一串同样的单子。
+     *
+     * <p>只看最近一条：同一家店重复提交时，人审看的是最后那条，
+     * 商家要知道的也是「我最后发的那句在等」。
+     */
+    private StoreProfileVO.NoticePending pendingNotice(String merchantNo, String storeNo) {
+        if (merchantNo == null) {
+            return null;
+        }
+        var q = Wrappers.<MchStoreAudit>lambdaQuery()
+                .eq(MchStoreAudit::getEntityNo, merchantNo)
+                .eq(MchStoreAudit::getKind, MchStoreAudit.NOTICE)
+                .eq(MchStoreAudit::getStatus, MchStoreAudit.PENDING);
+        if (storeNo != null && !storeNo.isBlank()) {
+            // 存量单没有门店号：它属于哪家说不清，一并显示给这家店也好过瞒着
+            q.and(w -> w.isNull(MchStoreAudit::getStoreNo).or().eq(MchStoreAudit::getStoreNo, storeNo));
+        }
+        q.orderByDesc(MchStoreAudit::getSubmittedAt).last("limit 1");
+        MchStoreAudit a = DataScopeContext.executeWithoutScope(() -> storeAuditMapper.selectOne(q));
+        return a == null ? null : new StoreProfileVO.NoticePending(a.getContent(), a.getSubmittedAt());
+    }
 
     /** 常用公告最多留几条。5 条覆盖得住轮换，再多这一排就要换行、也要开始滚动 */
     private static final int RECENT_MAX = 5;
@@ -570,10 +599,20 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
         return words.stream().filter(w -> w != null && !w.isBlank() && text.contains(w)).toList();
     }
 
-    private void submitForAudit(String merchantNo, String kind, String content, List<String> hits) {
+    private void submitForAudit(String merchantNo, String storeNo, String kind, String content,
+                                List<String> hits, Long noticeUntil) {
         MchStoreAudit a = new MchStoreAudit();
         a.setAuditNo(BizKey.next(BizKey.STORE_AUDIT));
         a.setEntityNo(merchantNo);
+        /*
+         * 门店与有效期都要跟着单子走。
+         *
+         * 只记商户号的时候，通过之后按商户取第一家店写回 ——
+         * 「南门店今天停电」会落到总店的公告上；而有效期没地方存，
+         * 审出来的「今日到货」就一直挂着。两个错都不报错，也就都没人发现。
+         */
+        a.setStoreNo(storeNo);
+        a.setNoticeUntil(noticeUntil);
         a.setKind(kind);
         a.setContent(content);
         a.setStatus(MchStoreAudit.PENDING);

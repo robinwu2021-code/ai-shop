@@ -2723,6 +2723,24 @@ export type SubOrderStatus =
   announcementUntil?: number | null;
   /** 最近用过的公告，最多 5 条，按最近使用排序。服务端维护，端上只读 */
   announcementRecent?: string[];
+  /**
+   * 正卡在人审里的那条公告（机审命中转的），没有就是 null。
+   *
+   * **必须读它**：命中期间后端保留旧公告并返回旧资料 —— 端上不看这个字段的话，
+   * 会照旧提示「已发布」，而输入框还原成上一条，商家只会以为自己手滑，
+   * 反复再发一次，队列里堆出一串同样的单子。
+   */
+  noticePending?: { content: string; submittedAt: number } | null;
+  /**
+   * 公告失效时刻（epoch 毫秒）。**空 = 长期有效**。
+   *
+   * 过期由服务端读时判断，端上拿到的 `announcement` 已经是「此刻该显示的」——
+   * 端上不要自己再判一次：两处判断迟早会不一致，而不一致的表现是
+   * 「商家看是空的、买家看到的是昨天的货」。
+   */
+  announcementUntil?: number | null;
+  /** 最近用过的公告，最多 5 条，按最近使用排序。服务端维护，端上只读 */
+  announcementRecent?: string[];
   | "FULFILLING"
   | "COMPLETED"
   | "CANCELLED"

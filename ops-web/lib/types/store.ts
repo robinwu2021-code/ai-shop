@@ -21,6 +21,13 @@ export interface StorePageAudit {
   merchantNo: string;
   /** 商家名快照 */
   merchantName: string;
+  /**
+   * 这条内容发给哪家店。存量单（后端 V214 之前）没记，为空。
+   *
+   * 多店商家只看商家名判断不了「南门店今天停电」该不该放行 ——
+   * 而通过之后正是写回那家店。
+   */
+  storeName?: string | null;
   /** 待审内容类型：店招图 / 公告文本 */
   kind: StoreAuditKind;
   /** 待审内容：店招图 URL、公告文本，或 `DISTRICT:330106` 这样的覆盖项定位串 */
@@ -51,6 +58,13 @@ export interface StoreQrcode {
   merchantNo: string;
   /** 商家名快照 */
   merchantName: string;
+  /**
+   * 这条内容发给哪家店。存量单（后端 V214 之前）没记，为空。
+   *
+   * 多店商家只看商家名判断不了「南门店今天停电」该不该放行 ——
+   * 而通过之后正是写回那家店。
+   */
+  storeName?: string | null;
   /** 所属社区名，BD 按社区领码地推 */
   communityName: string;
   /** 码值（C 端扫码进店的深链参数），导出时给 BD 去印刷 */
@@ -69,6 +83,13 @@ export interface StoreAcquisition {
   merchantNo: string;
   /** 商家名快照 */
   merchantName: string;
+  /**
+   * 这条内容发给哪家店。存量单（后端 V214 之前）没记，为空。
+   *
+   * 多店商家只看商家名判断不了「南门店今天停电」该不该放行 ——
+   * 而通过之后正是写回那家店。
+   */
+  storeName?: string | null;
   /** 扫码次数 */
   scan: number;
   /** 进店人数 */
@@ -164,6 +185,13 @@ export interface StoreGovern {
   merchantNo: string;
   /** 商家名快照 */
   merchantName: string;
+  /**
+   * 这条内容发给哪家店。存量单（后端 V214 之前）没记，为空。
+   *
+   * 多店商家只看商家名判断不了「南门店今天停电」该不该放行 ——
+   * 而通过之后正是写回那家店。
+   */
+  storeName?: string | null;
   /** 是否主体的默认门店。默认店承接「没指定门店」的那些流量 */
   isDefault: boolean;
   /** 经营状态，见 {@link StoreGovernStatus} */

@@ -18,10 +18,15 @@ import java.util.List;
  * @param serviceAreas        地理覆盖项，可跨粒度组合（三个小区 + 一个区）。
  *                            <b>空的含义由 fulfillmentReach 决定</b>：PICKUP 空 = 谁也看不到，
  *                            ONSITE/SHIPPING 空 = 不限（ADR-013 §6.2）
+ * @param noticePending       正卡在人审里的那条公告（机审命中转的），没有就是 null。
+ *                            <b>必须下发</b>：命中期间后端保留旧公告，端上不知道的话
+ *                            会照旧提示「已发布」，而商家看到输入框还原成上一条，
+ *                            只会以为自己手滑，反复再发一次
  * @param latE6               门店坐标（gcj02，E6），端上地图选点回填；没标过为 null
  */
 public record StoreProfileVO(String announcement, Long announcementUntil,
                              List<String> announcementRecent,
+                             NoticePending noticePending,
                              String openHours, String address, String addressDetail,
                              List<String> featured, String serviceScope,
                              List<String> serviceCommunityNos, String serviceCityCode,
@@ -42,5 +47,15 @@ public record StoreProfileVO(String announcement, Long announcementUntil,
      */
     /** @param areaNo 业务键（P2 范围子集按它引用；审核单也靠它指回） */
     public record ServiceAreaVO(String level, String refCode, String name, String status, String areaNo) {
+    }
+
+    /**
+     * 待人审的公告。
+     *
+     * @param content     商家提交的原文。<b>要原样显示</b> —— 只说一句「审核中」的话，
+     *                    商家不知道等的是哪一条（他这会儿可能已经又改了两遍）
+     * @param submittedAt 提交时刻（epoch 毫秒）。端上据此说「10 分钟前提交」
+     */
+    public record NoticePending(String content, Long submittedAt) {
     }
 }

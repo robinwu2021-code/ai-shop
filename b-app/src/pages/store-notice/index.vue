@@ -19,6 +19,16 @@ const merchant = useMerchantStore();
 const text = ref("");
 const until = ref<number | null>(null);
 const recentAll = ref<string[]>([]);
+/** 正卡在人审里的那条。有它的时候，屏幕上「现在挂着的」和「我刚发的」不是同一句 */
+const pending = ref<{ content: string; submittedAt: number } | null>(null);
+/**
+ * 店铺页上此刻真的挂着的那句。
+ *
+ * <p>**「撤下」按它判，不按输入框判**：有待审时输入框里是送审的那句，
+ * 而店铺页上挂的仍是上一条 —— 两者不是同一件东西，混用会出现
+ * 「什么都没挂却给撤下按钮」和「挂着却没有撤下」两种错。
+ */
+const live = ref("");
 /** 服务端那份（判「改没改」）。没改动时发布键是灰的 */
 const savedText = ref("");
 const savedUntil = ref<number | null>(null);
@@ -65,6 +75,17 @@ const untilText = computed(() => {
   });
 });
 
+/** 送审时刻的人话。与到期时刻同一套写法（今天只给时分） */
+const pendingAt = computed(() => {
+  const at = pending.value?.submittedAt;
+  if (!at) return "";
+  const d = new Date(at);
+  const hh = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  return d.toDateString() === new Date().toDateString()
+    ? `${t("store.ttl.todayAt")} ${hh}`
+    : `${d.getMonth() + 1}/${d.getDate()} ${hh}`;
+});
+
 /** 常用里不重复列正在编辑的这条 */
 const recent = computed(() => recentAll.value.filter((x) => x && x !== text.value));
 
@@ -74,6 +95,11 @@ async function load() {
     text.value = s.announcement ?? "";
     until.value = s.announcementUntil ?? null;
     recentAll.value = s.announcementRecent ?? [];
+    pending.value = s.noticePending ?? null;
+    live.value = s.announcement ?? "";
+    // 有待审时输入框显示的是**送审的那句**，不是店铺页上还挂着的旧公告 ——
+    // 显示旧的，商家会以为自己刚才什么都没改
+    if (pending.value) text.value = pending.value.content;
     savedText.value = text.value;
     savedUntil.value = until.value;
     const at = until.value;
@@ -94,16 +120,54 @@ async function publish() {
       announcement: text.value,
       announcementUntil: until.value,
     });
-    text.value = saved.announcement ?? text.value;
-    recentAll.value = saved.announcementRecent ?? recentAll.value;
+    pending.value = saved.noticePending ?? null;
+    /*
+     * ★ 送审与发布是两个结果，必须分开说。
+     *
+     * 命中机审时后端**保留旧公告**并返回旧资料。此前这里无条件回填 `saved.announcement`
+     * 并弹「已发布」—— 于是商家看到输入框换回上一条、提示说发布成功，
+     * 只会以为自己手滑，再改一遍再送一次，队列里堆出一串同样的单子。
+     */
+    live.value = saved.announcement ?? "";
+    if (!pending.value) {
+      text.value = saved.announcement ?? text.value;
+      recentAll.value = saved.announcementRecent ?? recentAll.value;
+    }
     savedText.value = text.value;
     savedUntil.value = until.value;
-    uni.showToast({ title: t("store.noticeSaved"), icon: "none" });
+    uni.showToast({
+      title: pending.value ? t("store.noticeSubmitted") : t("store.noticeSaved"),
+      icon: "none",
+    });
   } catch (e) {
     uni.showToast({ title: (e as Error).message, icon: "none" });
   } finally {
     saving.value = false;
   }
+}
+
+/**
+ * 撤下：把公告清空。
+ *
+ * <p>没有这个按钮时，「今天卖完了」要靠手动全选删字再点发布 ——
+ * 而撤下是这一页仅次于发布的第二常用动作（挂上去的东西总要拿下来）。
+ * 给一次确认：清空之后店铺页那一行就没了，而买家可能正照着它来。
+ */
+async function withdraw() {
+  if (saving.value) return;
+  const ok = await new Promise<boolean>((resolve) => {
+    uni.showModal({
+      title: String(t("store.noticeWithdraw")),
+      content: String(t("store.noticeWithdrawAsk")),
+      success: (r) => resolve(!!r.confirm),
+      fail: () => resolve(false),
+    });
+  });
+  if (!ok) return;
+  text.value = "";
+  until.value = null;
+  ttlKey.value = "forever";
+  await publish();
 }
 
 onShow(load);
@@ -133,6 +197,22 @@ onShow(load);
       <view class="sh-btn go" :class="{ 'is-off': !dirty || saving }" @tap="publish">
         {{ saving ? "…" : $t("store.noticePublish") }}
       </view>
+
+      <!-- 撤下：只在店铺页上真的挂着东西时出现 -->
+      <text v-if="live" class="withdraw" @tap="withdraw">{{ $t("store.noticeWithdraw") }}</text>
+    </view>
+
+    <!--
+      审核中。**摆在发布区下面、常用上面**：它说的是「你刚发的那句还没上」，
+      看不到它的话，商家读到的是「已发布」而店铺页上什么都没变。
+    -->
+    <view v-if="pending" class="sh-card mt pend">
+      <view class="pend__top">
+        <text class="pend__tag">{{ $t("store.noticeAuditing") }}</text>
+        <text class="pend__at">{{ pendingAt }}</text>
+      </view>
+      <text class="pend__text">{{ pending.content }}</text>
+      <text class="pend__hint">{{ $t("store.noticeAuditingHint") }}</text>
     </view>
 
     <!-- 常用：店主的公告是在几句话之间轮换，不是每次都写新的。点一下换上，再点发布 -->
@@ -178,6 +258,45 @@ onShow(load);
 }
 .go.is-off {
   background: var(--sh-faint);
+  color: var(--sh-sub);
+}
+/* 撤下：文字链，不做成按钮 —— 它与发布不是一对平级动作 */
+.withdraw {
+  display: block;
+  margin-top: 20rpx;
+  text-align: center;
+  font-size: 26rpx;
+  color: var(--sh-sub);
+}
+/* 审核中：主色浅底，不用警示红 —— 这不是错误，是还没轮到 */
+.pend {
+  background: var(--sh-primary-tint);
+}
+.pend__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.pend__tag {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: var(--sh-primary-text);
+}
+.pend__at {
+  font-size: 24rpx;
+  color: var(--sh-sub);
+}
+.pend__text {
+  display: block;
+  margin-top: 12rpx;
+  font-size: 28rpx;
+  line-height: 1.5;
+  color: var(--sh-ink);
+}
+.pend__hint {
+  display: block;
+  margin-top: 12rpx;
+  font-size: 24rpx;
   color: var(--sh-sub);
 }
 .field__label {

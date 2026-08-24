@@ -645,13 +645,24 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
              * 通过之后内容**这时才真正生效**。
              * 提交时不写门面表是有意的：命中期间店铺页保留旧公告 ——
              * 清空的话页面会突然变白，店主以为自己改坏了，只会反复再改一遍。
+             *
+             * ★ 写回哪一家、写回什么有效期，都按单子上记的来（V214）。
+             * 此前这里取的是这个商户的第一家店、且只写正文：
+             * 多店商家的「南门店今天停电」会落到总店，而「今日到货」审出来之后
+             * 因为沿用旧有效期（多半是长期）就一直挂着。
+             * 存量单没有门店号 —— 那时确实不知道是哪家，仍按默认店兜底。
              */
             var store = storeProfileMapper.selectOne(
                     Wrappers.<ai.neargo.shop.merchant.entity.MchStore>lambdaQuery()
                             .eq(ai.neargo.shop.merchant.entity.MchStore::getEntityNo, a.getEntityNo())
+                            .eq(a.getStoreNo() != null && !a.getStoreNo().isBlank(),
+                                    ai.neargo.shop.merchant.entity.MchStore::getStoreNo, a.getStoreNo())
+                            .orderByDesc(ai.neargo.shop.merchant.entity.MchStore::getIsDefault)
+                            .orderByAsc(ai.neargo.shop.merchant.entity.MchStore::getId)
                             .last("limit 1"));
             if (store != null) {
                 store.setAnnouncement(a.getContent());
+                store.setAnnouncementUntil(a.getNoticeUntil());
                 var toSave = store;
                 DataScopeContext.executeWithoutScope(() -> storeProfileMapper.updateById(toSave));
             }
@@ -691,9 +702,26 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
 
     private StoreAuditVO toAuditVO(ai.neargo.shop.merchant.entity.MchStoreAudit a) {
         return new StoreAuditVO(a.getAuditNo(), a.getEntityNo(), nameOf(a.getEntityNo()),
-                a.getKind(), a.getContent(), a.getStatus(), readList(a.getHits()),
+                storeNameOf(a), a.getKind(), a.getContent(), a.getStatus(), readList(a.getHits()),
                 a.getSubmittedAt() == null ? 0L : a.getSubmittedAt(), a.getReason(),
                 displayOf(a));
+    }
+
+    /**
+     * 这条单子是哪家店提的。存量单（V214 之前）没记，返回 null。
+     *
+     * <p>多店商家只给商家名的话，运营判不了「南门店今天停电」该不该放行 ——
+     * 而这条通过之后正是写回那家店。
+     */
+    private String storeNameOf(ai.neargo.shop.merchant.entity.MchStoreAudit a) {
+        if (a.getStoreNo() == null || a.getStoreNo().isBlank()) {
+            return null;
+        }
+        var s = DataScopeContext.executeWithoutScope(() -> storeProfileMapper.selectOne(
+                Wrappers.<ai.neargo.shop.merchant.entity.MchStore>lambdaQuery()
+                        .eq(ai.neargo.shop.merchant.entity.MchStore::getStoreNo, a.getStoreNo())
+                        .last("limit 1")));
+        return s == null ? null : s.getName();
     }
 
     /**

@@ -34,6 +34,16 @@ public class MchStoreAudit extends BaseEntity {
 
     private String auditNo;
     private String entityNo;
+
+    /**
+     * 这条内容是发给哪家店的。
+     *
+     * <p><b>存量单为空</b>：以前只记商户号，通过时按商户取第一家店写回 ——
+     * 多店商家因此会把「南门店今天停电」写到总店去，两边都看不出错。
+     * 空值仍按默认店兜底，不猜一个门店号补进去。
+     */
+    private String storeNo;
+
     private String kind;
 
     /** 指向的业务记录（kind=SERVICE_AREA 时是 {@code mch_service_area.area_no}）。NOTICE/BANNER 为空 */
@@ -48,6 +58,14 @@ public class MchStoreAudit extends BaseEntity {
     private String hits;
 
     private Long submittedAt;
+
+    /**
+     * 提交时选的公告失效时刻（epoch 毫秒）。空 = 长期。kind=NOTICE 才有意义。
+     *
+     * <p>不存的话，「今日到货」审出来之后会沿用门面表里的旧有效期（多半是长期），
+     * 于是一直挂着 —— 而有效期这件事本来就是为了防这个。
+     */
+    private Long noticeUntil;
 
     /** 驳回原因。**原样出现在商家 B 端**，所以驳回必须填。 */
     private String reason;

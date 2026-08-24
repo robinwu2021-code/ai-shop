@@ -245,6 +245,55 @@ class ServiceAreaFlowTest {
         return st.getStoreNo();
     }
 
+    @Autowired
+    private ai.neargo.shop.merchant.service.MerchantGovernService governService;
+
+    @Test
+    @DisplayName("★★ 公告命中机审：旧公告照常挂着，而商家看得到「我那条在等审」")
+    void noticeInReviewIsVisibleToMerchant() {
+        String m = merchant("PICKUP");
+        store(m);
+        storeService.saveAnnouncement(m, null, "今天到了新米", null);
+
+        // 「最低价」在 V10 种下的词表里
+        storeService.saveAnnouncement(m, null, "全场最低价", null);
+
+        var vo = storeService.profile(m);
+        assertThat(vo.announcement()).as("命中期间保留旧公告").isEqualTo("今天到了新米");
+        /*
+         * 这一条是「说了发布其实没发布」的守卫：不下发待审的话，端上照旧提示
+         * 「已发布」而输入框还原成上一句，商家只会以为自己手滑，反复再发一次。
+         */
+        assertThat(vo.noticePending()).as("待审要下发").isNotNull();
+        assertThat(vo.noticePending().content()).isEqualTo("全场最低价");
+    }
+
+    @Test
+    @DisplayName("★★ 审核通过写回**提交它的那家店**，并带上当时选的有效期")
+    void approvedNoticeLandsOnTheRightStore() {
+        String m = merchant("PICKUP");
+        store(m);                                   // 默认店
+        String second = extraStore(m, "南门店");
+        long until = System.currentTimeMillis() + 3600_000L;
+
+        storeService.saveAnnouncement(m, second, "全场最低价，速来", until);
+
+        var pending = governService.storeAudits("PENDING").stream()
+                .filter(a -> a.merchantNo().equals(m)).findFirst().orElseThrow();
+        assertThat(pending.storeName()).as("运营要看得出是哪家店").isEqualTo("南门店");
+        governService.decideStoreAudit(pending.auditNo(), true, null, "OPS-TEST");
+
+        /*
+         * 两个错各守一条：
+         *  ① 此前按商户取 `limit 1` 写回 —— 「南门店今天停电」会落到默认店上；
+         *  ② 此前只写正文 —— 提交时选的「今天有效」丢了，审出来之后就一直挂着。
+         */
+        assertThat(storeService.profile(m, second).announcement()).isEqualTo("全场最低价，速来");
+        assertThat(storeService.profile(m, second).announcementUntil()).isEqualTo(until);
+        assertThat(storeService.profile(m, null).announcement())
+                .as("别家店的公告不该被改").isEmpty();
+    }
+
     @Test
     @DisplayName("★★ 公告过期即空 —— 「昨天到货」不该挂到今天，而且两条读路径要一致")
     void announcementExpires() {

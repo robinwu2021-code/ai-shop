@@ -105,7 +105,16 @@ function StoresInner() {
 
   const auditColumns: Column<StorePageAudit>[] = [
     { header: c.colAuditNo, cell: (a) => a.auditNo, numeric: true, align: "start" },
-    { header: c.colMerchant, cell: (a) => a.merchantName },
+    {
+      header: c.colMerchant,
+      // 门店名跟在商家名后面，不单开一列：多数商家只有一家店，那一列会常年空着
+      cell: (a) => (
+        <span>
+          {a.merchantName}
+          {a.storeName ? <span className="text-muted-foreground"> · {a.storeName}</span> : null}
+        </span>
+      ),
+    },
     { header: c.colKind, cell: (a) => kindLabel(a.kind, c) },
     {
       header: c.colContent,

@@ -175,6 +175,9 @@ function myGoods(): Goods[] {
  * 切档位：控制台里 `uni.setStorageSync("mock:plan", "PRO")` 然后刷新。
  */
 const MOCK_PLAN_KEY = "mock:plan";
+
+/** 机审词表，取自 V10 种进 sys_setting 的那份前几条。命中即转人审，不是直接拒 */
+const SENSITIVE_WORDS = ["最低价", "全网第一", "国家级", "微信", "加V"];
 type MockPlan = "FREE" | "PRO" | "CHAIN";
 
 function mockPlan(): MockPlan {
@@ -1218,6 +1221,18 @@ export const mockApi: MerchantApi = {
       announcementUntil?: number | null; announcementRecent?: string[];
     };
     const now = (payload.announcement ?? "").trim();
+    /*
+     * 机审：**命中不是拒绝，是转人审**（与真库同一条判断）。
+     * 命中期间旧公告原样留着 —— 清空的话店铺页会突然变白，
+     * 店主以为自己改坏了，只会反复再改一遍。
+     */
+    const hit = SENSITIVE_WORDS.find((w) => now.includes(w));
+    if (hit) {
+      (st as { noticePending?: unknown }).noticePending = { content: now, submittedAt: Date.now() };
+      persist();
+      return delay({ ...st } as typeof db.store);
+    }
+    (st as { noticePending?: unknown }).noticePending = null;
     st.announcementRecent = [now, ...(st.announcementRecent ?? []).filter((x) => x && x !== now)]
       .filter(Boolean).slice(0, 5);
     st.announcement = now;

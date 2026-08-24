@@ -278,13 +278,15 @@ public interface MerchantGovernService {
     /**
      * @param hits    机审命中的词。人审要看到「机器为什么标它」——
      *                否则只能凭感觉判，同一类内容两个人两个结论
+     * @param storeName 这条内容发给哪家店（V214 起随单记）。多店商家看商家名判断不了
+     *                  「南门店今天停电」该不该放行；存量单没有门店号，为 null
      * @param display 人话版的 content。kind=SERVICE_AREA 时是「浙江省 / 杭州市 / 西湖区」，
      *                其余 kind 与 content 相同。
      *                <b>读的时候拼，不在提交时定死</b>：区划改名之后，
      *                单据要显示当前的名字 —— 而运营是照着这个名字做判断的
      */
-    record StoreAuditVO(String auditNo, String merchantNo, String merchantName, String kind,
-                        String content, String status, List<String> hits, long submittedAt,
+    record StoreAuditVO(String auditNo, String merchantNo, String merchantName, String storeName,
+                        String kind, String content, String status, List<String> hits, long submittedAt,
                         String reason, String display) {
     }
 }
