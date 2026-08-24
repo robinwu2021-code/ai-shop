@@ -124,6 +124,7 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
 
     /** 写一家店的公告：正文、有效期、常用三样一起，别处不动 */
     private void applyAnnouncement(MchStore store, String announcement, Long until) {
+        stampAnnouncedAt(store, announcement);
         store.setAnnouncement(announcement);
         store.setAnnouncementUntil(until);
         store.setAnnouncementRecent(writeJson(pushRecent(store.getAnnouncementRecent(), announcement)));
@@ -226,6 +227,7 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
             // 命中期间**保留旧公告**：把它清空的话，店铺页会突然变白，
             // 而店主以为自己"改坏了"，只会反复再改一遍
         } else {
+            stampAnnouncedAt(store, cmd.announcement());
             store.setAnnouncement(cmd.announcement());
             /*
              * 有效期跟着公告走：**换了内容就换有效期**，包括「这次没给 = 长期」。
@@ -376,6 +378,23 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
         q.orderByDesc(MchStoreAudit::getSubmittedAt).last("limit 1");
         MchStoreAudit a = DataScopeContext.executeWithoutScope(() -> storeAuditMapper.selectOne(q));
         return a == null ? null : new StoreProfileVO.NoticePending(a.getContent(), a.getSubmittedAt());
+    }
+
+    /**
+     * 记下「这句公告是什么时候发的」。
+     *
+     * <p><b>正文没变就不动它</b>：店主改有效期、改营业时间、换收款号都会走到写库这一步，
+     * 顺手刷新时间的话，一句三周前的公告会在买家那边显示成「刚刚更新」——
+     * 比不显示时间更糟，因为那是**假的新鲜**。
+     *
+     * <p>清空公告也不记：那一刻没有公告，时间无处可挂；下次再发时自然会重记。
+     */
+    private void stampAnnouncedAt(MchStore store, String next) {
+        String now = next == null ? "" : next.trim();
+        if (now.isEmpty() || now.equals(nz(store.getAnnouncement()).trim())) {
+            return;
+        }
+        store.setAnnouncementAt(System.currentTimeMillis());
     }
 
     /**

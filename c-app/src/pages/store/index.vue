@@ -19,6 +19,7 @@ import { ROUTES, MERCHANT_LOGO_FALLBACK } from "@shared/utils/constants";
 import { firstSku } from "@shared/utils/goods";
 import { flyToCart, tapPoint } from "@/shared/fly";
 import { money } from "@shared/utils/money";
+import { hourMinute, isoDate } from "@shared/utils/datetime";
 import { buildShareMessage } from "@shared/ports/share";
 import type { FrequentItem, Goods, StoreHome } from "@shared/types";
 
@@ -188,6 +189,23 @@ function gotoGoods(goodsNo: string) {
 }
 
 // 分享出去的链接必须带 merchantNo，否则进店归因断掉（ADR-004 §5.4）
+/**
+ * 公告的更新时间，人话版。
+ *
+ * <p>只给到「今天 09:12 / 昨天 / 08-20」这个精度：更细没有意义（老客要判断的是
+ * 「这句话还算不算数」），更粗又回到了「不知道是不是上个月的」。
+ * 过期的公告服务端连时间都不下发 —— 那一行整个不该出现。
+ */
+const noticeAt = computed(() => {
+  const at = data.value?.store.announcementAt;
+  if (!at) return "";
+  const today = isoDate(Date.now());
+  const day = isoDate(at);
+  if (day === today) return t("store.noticeAt", { s: `${t("store.noticeToday")} ${hourMinute(at)}` });
+  if (day === isoDate(Date.now() - 86_400_000)) return t("store.noticeAt", { s: t("store.noticeYesterday") });
+  return t("store.noticeAt", { s: day.slice(5) });
+});
+
 onShareAppMessage(() =>
   buildShareMessage({
     title: data.value
@@ -241,9 +259,14 @@ function navToStore() {
       </text>
     </view>
 
-    <!-- 店铺公告：店主自发，老客一进来就看到 -->
+    <!--
+      店铺公告：店主自发，老客一进来就看到。
+      **带更新时间**：一句没有时间的「今天到了新米」，既可能是今早写的、
+      也可能是上个月忘了撤的 —— 分不出来就不会照着它跑一趟，而那正是这行字的用处。
+    -->
     <view v-if="data.store.announcement" class="notice">
       <text>{{ data.store.announcement }}</text>
+      <text v-if="noticeAt" class="notice__at">{{ noticeAt }}</text>
     </view>
 
     <!-- 第一屏：我买过的。这是本页存在的理由 -->
@@ -424,6 +447,12 @@ function navToStore() {
 }
 .fav.is-on {
   color: var(--sh-warning);
+}
+.notice__at {
+  display: block;
+  margin-top: 8rpx;
+  font-size: 24rpx;
+  opacity: 0.75;
 }
 .notice {
   padding: 20rpx 24rpx;

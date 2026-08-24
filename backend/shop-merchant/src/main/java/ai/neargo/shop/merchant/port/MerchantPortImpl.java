@@ -331,6 +331,8 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
         return store == null ? Optional.empty()
                 // 过期即空：与 B 端 profile() 同一个判断，只写在实体上那一处
                 : Optional.of(new StoreFront(store.effectiveAnnouncement(),
+                        // 过期的公告连时间也不给：那一行整个不该出现，给了时间反而像它还在
+                        store.effectiveAnnouncement().isEmpty() ? null : store.getAnnouncementAt(),
                         nvl(store.getOpenHours()), nvl(store.getAddress()),
                         nvl(store.getStatus()), store.getLatE6(), store.getLngE6()));
     }

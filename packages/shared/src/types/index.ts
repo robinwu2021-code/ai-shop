@@ -3130,6 +3130,14 @@ export interface GroupPickupOrder {
 export interface StoreFront {
   /** 店铺公告：「今日到货」「今天有土鸡蛋」，店主自发（C-ST-04） */
   announcement: string;
+  /**
+   * 公告最后一次发布的时刻（epoch 毫秒）。没发过、或已过期时为空。
+   *
+   * **这一行必须带时间**：一句没有时间的「今天到了新米」，既可能是今早写的，
+   * 也可能是上个月忘了撤的 —— 老客分不出来就不会再照着它跑一趟，
+   * 而「照着公告来一趟」正是这行字存在的全部理由。
+   */
+  announcementAt?: number | null;
   /** 营业时间文案，店主自填 */
   openHours: string;
   /** 店铺地址，店主自填 */

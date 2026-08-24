@@ -76,9 +76,9 @@ public class StoreServiceImpl implements StoreService {
         // 门面文案取店主自己填的那份 —— 没有门店时给空文案，页面按空串不渲染那两块
         var frontOpt = merchantPort.storeFront(merchantNo);
         var front = frontOpt
-                .map(f -> new StoreHomeVO.StoreFront(f.announcement(), f.openHours(), f.address(),
-                        f.latE6(), f.lngE6()))
-                .orElseGet(() -> new StoreHomeVO.StoreFront("", "", "", null, null));
+                .map(f -> new StoreHomeVO.StoreFront(f.announcement(), f.announcementAt(),
+                        f.openHours(), f.address(), f.latE6(), f.lngE6()))
+                .orElseGet(() -> new StoreHomeVO.StoreFront("", null, "", "", null, null));
         /*
          * 已停业 = 门店非 ACTIVE（商家自助停用 READONLY / 平台强制下线 SUSPENDED，V96）。
          * 给标志而不是 404：扫码进来的老客要知道是店关了，不是链接坏了。

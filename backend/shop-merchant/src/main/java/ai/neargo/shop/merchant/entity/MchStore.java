@@ -100,6 +100,15 @@ public class MchStore extends BaseEntity {
     private Long announcementUntil;
 
     /**
+     * 公告最后一次发布的时刻（epoch 毫秒）。
+     *
+     * <p><b>只在正文真的变了的时候写</b>：改有效期、改营业时间、换收款号都不动它。
+     * 用 {@code updated_at} 代替的话，一句三周前的公告会因为店主今天改了营业时间
+     * 而显示成「刚刚更新」—— 那比不显示时间更糟。
+     */
+    private Long announcementAt;
+
+    /**
      * 最近用过的公告，JSON 数组最多 5 条，按最近使用排序。
      *
      * <p>店主的公告是在几句话之间轮换（「今天到货」「今日售罄」「下午半价」），

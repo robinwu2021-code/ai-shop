@@ -159,6 +159,9 @@ export default {
   },
   mode: { light: "Light", dark: "Dark", auto: "System" },
   store: {
+    noticeAt: "updated {s}",
+    noticeToday: "today",
+    noticeYesterday: "yesterday",
     frequent: "Bought before", hot: "In this shop", reorder: "Reorder last",
     reorderAdded: "{n} items added to cart", reorderDropped: "Unavailable, skipped: {s}",
     reorderPriceUp: "Price went up: {s}", noHistory: "You have not ordered here yet",

@@ -1475,6 +1475,7 @@ CREATE TABLE IF NOT EXISTS mch_store
     address_detail VARCHAR(64) NULL,
     announcement_until BIGINT(20) NULL,
     announcement_recent VARCHAR(512) NULL,
+    announcement_at BIGINT(20) NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_store_no UNIQUE (store_no)
 );

@@ -87,8 +87,13 @@ public interface MerchantQueryPort {
      *               门店主页要据此显示「已停业」，而不是让停用的店照常收单
      */
     /** @param latE6 门店坐标（gcj02，E6，V191）。没标过点为 null —— 买家侧据此决定显不显示「导航」 */
-    record StoreFront(String announcement, String openHours, String address, String status,
-                      Integer latE6, Integer lngE6) {
+    /**
+     * @param announcementAt 公告最后一次发布的时刻（epoch 毫秒），没发过为 null。
+     *                       <b>买家要靠它判断这句话新不新</b> —— 一行没有时间的
+     *                       「今天到了新米」，既可能是今早写的也可能是上个月忘了撤的
+     */
+    record StoreFront(String announcement, Long announcementAt, String openHours, String address,
+                      String status, Integer latE6, Integer lngE6) {
     }
 
     /**

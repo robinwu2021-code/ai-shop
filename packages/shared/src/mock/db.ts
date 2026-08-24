@@ -1000,6 +1000,9 @@ export const db = {
   /** 店铺门面（店主可改的部分）。C 端门店主页读的就是它 */
   store: {
     announcement: "今天到了新米和土鸡蛋，来早的挑得好",
+    // 演示数据给「今天早上」：这一行在 C 端要显示成「今天 07:20 更新」，
+    // 而 mock 里给一个死日期的话，明天再看就成了「08-24 更新」—— 演示会自己变旧
+    announcementAt: todayAtLocal("07:20"),
     openHours: "06:30–21:00",
     address: "阳光里小区南门 · 张记粮油",
     featured: [] as string[],

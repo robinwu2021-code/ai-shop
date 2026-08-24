@@ -159,6 +159,9 @@ export default {
   },
   mode: { light: "فاتح", dark: "داكن", auto: "حسب النظام" },
   store: {
+    noticeAt: "حُدّث {s}",
+    noticeToday: "اليوم",
+    noticeYesterday: "أمس",
     frequent: "اشتريته سابقًا", hot: "متوفر في المتجر", reorder: "إعادة الطلب السابق",
     reorderAdded: "أُضيف {n} صنفًا إلى السلة", reorderDropped: "غير متوفر ولم يُضف: {s}",
     reorderPriceUp: "ارتفع سعرها: {s}", noHistory: "لم تطلب من هنا بعد",

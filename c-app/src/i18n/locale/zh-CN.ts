@@ -159,6 +159,9 @@ export default {
   },
   mode: { light: "浅色", dark: "深色", auto: "跟随系统" },
   store: {
+    noticeAt: "{s} 更新",
+    noticeToday: "今天",
+    noticeYesterday: "昨天",
     frequent: "我买过的",
     hot: "店里在卖",
     reorder: "一键再来一单",

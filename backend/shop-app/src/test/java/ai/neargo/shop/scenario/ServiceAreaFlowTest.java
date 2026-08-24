@@ -273,6 +273,53 @@ class ServiceAreaFlowTest {
     }
 
     @Test
+    @DisplayName("★★ 公告带发布时间，而且**只在正文真的变了**的时候刷新")
+    void announcementCarriesItsOwnTimestamp() throws Exception {
+        String m = merchant("PICKUP");
+        store(m);
+        String c = community("330106002");
+
+        storeService.saveAnnouncement(m, null, "今天到了新米", null, java.util.List.of());
+        Long first = merchantQuery.storeFront(m).orElseThrow().announcementAt();
+        assertThat(first).as("发过就该有时间").isNotNull();
+
+        Thread.sleep(5);
+        // 只改有效期：正文没变
+        storeService.saveAnnouncement(m, null, "今天到了新米", System.currentTimeMillis() + 3600_000L,
+                java.util.List.of());
+        assertThat(merchantQuery.storeFront(m).orElseThrow().announcementAt())
+                .as("正文没变，时间不该刷新").isEqualTo(first);
+
+        Thread.sleep(5);
+        // 改别的门面字段：更不该动它
+        storeService.save(m, null, new ai.neargo.shop.merchant.service.MerchantStoreService.SaveCommand(
+                "今天到了新米", null, "07:00-21:00", "文一西路 1 号", null,
+                java.util.List.of(), null, null, null, "PICKUP",
+                java.util.List.of(new ai.neargo.shop.merchant.service.MerchantStoreService
+                        .AreaCommand("COMMUNITY", c)), null, null));
+        assertThat(merchantQuery.storeFront(m).orElseThrow().announcementAt())
+                .as("改营业时间不该把三周前的公告变成「刚刚更新」").isEqualTo(first);
+
+        Thread.sleep(5);
+        storeService.saveAnnouncement(m, null, "土鸡蛋还有两筐", null, java.util.List.of());
+        assertThat(merchantQuery.storeFront(m).orElseThrow().announcementAt())
+                .as("换了一句话才刷新").isGreaterThan(first);
+    }
+
+    @Test
+    @DisplayName("★ 公告过期时连时间也不下发 —— 那一行整个不该出现")
+    void expiredAnnouncementHasNoTimestamp() {
+        String m = merchant("PICKUP");
+        store(m);
+        storeService.saveAnnouncement(m, null, "昨天到的货", System.currentTimeMillis() - 1000,
+                java.util.List.of());
+
+        var front = merchantQuery.storeFront(m).orElseThrow();
+        assertThat(front.announcement()).isEmpty();
+        assertThat(front.announcementAt()).as("给了时间反而像它还在").isNull();
+    }
+
+    @Test
     @DisplayName("★ 常用能一条条删 —— 写错一次的那句不该赖着不走")
     void recentAnnouncementCanBeDropped() {
         String m = merchant("PICKUP");

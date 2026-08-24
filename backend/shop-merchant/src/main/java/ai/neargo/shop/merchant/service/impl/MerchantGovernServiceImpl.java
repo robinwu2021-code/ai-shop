@@ -663,6 +663,8 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
             if (store != null) {
                 store.setAnnouncement(a.getContent());
                 store.setAnnouncementUntil(a.getNoticeUntil());
+                // 生效的是**此刻**，不是提交那一刻：买家看到的「刚刚更新」要对得上店铺页真的变了的时间
+                store.setAnnouncementAt(System.currentTimeMillis());
                 var toSave = store;
                 DataScopeContext.executeWithoutScope(() -> storeProfileMapper.updateById(toSave));
             }
