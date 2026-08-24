@@ -180,7 +180,7 @@ onShow(() => void load());
   font-size: 28rpx;
 }
 .pf__vals {
-  font-size: 22rpx;
+  font-size: 24rpx;
 }
 .dim__head {
   display: flex;
@@ -217,6 +217,6 @@ onShow(() => void load());
 .foot {
   display: block;
   margin: 24rpx 0;
-  font-size: 22rpx;
+  font-size: 24rpx;
 }
 </style>

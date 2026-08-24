@@ -3110,7 +3110,7 @@ async function save(thenSubmit = false) {
 .picker__hint {
   display: block;
   margin-top: 8rpx;
-  font-size: 22rpx;
+  font-size: 24rpx;
 }
 
 /* 平台档位点选区：贴在选项输入下面，和输入框拉开一点但仍在同一组里 */

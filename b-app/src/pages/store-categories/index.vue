@@ -280,7 +280,7 @@ async function save(items: { categoryNo: string; displayName?: string; sort: num
 .row__stat {
   display: block;
   margin-top: 4rpx;
-  font-size: 22rpx;
+  font-size: 24rpx;
 }
 
 .row__name {
