@@ -917,6 +917,80 @@ class CategoryTreeFlowTest {
         }
     }
 
+    @Test
+    @DisplayName("★★★ 建品页的规格来自规格库 —— 本店叫法与停用的档位当场生效")
+    void goodsPageReadsSpecLibraryWithMerchantOverride() throws Exception {
+        String ops = opsLogin("admin", "admin123");
+
+        // 自己造一套维度/取值/类目：测试库走 schema-test.sql 不跑 Flyway，没有 V196 的种子
+        String dimBody = mvc().perform(post("/ops/spec-dims")
+                        .header("Authorization", "Bearer " + ops)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"code\":\"LNKPORT\",\"name\":\"联动份量\",\"valueType\":\"ENUM\","
+                                + "\"usageType\":\"SALE\",\"universal\":true}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        String dimNo = json.readTree(dimBody).get("data").get("dimNo").asString();
+        String half = newValue(ops, dimNo, "500g");
+        String jin = newValue(ops, dimNo, "1斤");
+
+        String catBody = mvc().perform(post("/ops/categories")
+                        .header("Authorization", "Bearer " + ops)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"规格联动专用\",\"parentNo\":\"CAT100\"}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        String categoryNo = json.readTree(catBody).get("data").get("categoryNo").asString();
+
+        mvc().perform(post("/ops/category-specs/" + categoryNo)
+                        .header("Authorization", "Bearer " + ops)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("[{\"dimNo\":\"" + dimNo + "\",\"primary\":true,\"required\":false,"
+                                + "\"valueNos\":[\"" + half + "\",\"" + jin + "\"],\"labels\":{}}]"))
+                .andExpect(jsonPath("$.code").value(0));
+
+        String biz = merchant("13700001234", "规格联动店");
+
+        /*
+         * 第一次读：应当拿到**规格库**那一份 —— 带主维度标记、两个档位。
+         * 走旧模板表的话这里是空的（那张表里没有这个类目的模板），
+         * 而建品页会退回按品类的泛推荐 —— 正是这次要修的。
+         */
+        String first = mvc().perform(get("/biz/spec-templates?categoryNo=" + categoryNo)
+                        .header("Authorization", "Bearer " + biz))
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.length()").value(1))
+                .andExpect(jsonPath("$.data[0].templateNo").value(dimNo))
+                .andExpect(jsonPath("$.data[0].primary").value(true))
+                .andExpect(jsonPath("$.data[0].name").value("联动份量"))
+                .andExpect(jsonPath("$.data[0].options.length()").value(2))
+                .andReturn().getResponse().getContentAsString();
+        org.junit.jupiter.api.Assertions.assertTrue(first.contains("500g"));
+
+        /*
+         * 本店改口径：叫「份量」，并且不卖 500g 这一档。
+         * **这两件事此前只影响「我的规格」那一页** —— 建品页照旧显示平台原样，
+         * 商家会以为自己白设了。
+         */
+        mvc().perform(post("/biz/spec-override/" + categoryNo)
+                        .header("Authorization", "Bearer " + biz)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"dims\":[{\"dimNo\":\"" + dimNo + "\",\"enabled\":true,"
+                                + "\"label\":\"份量\",\"values\":[{\"code\":\"500g\",\"enabled\":false},"
+                                + "{\"code\":\"1斤\",\"enabled\":true}]}]}"))
+                .andExpect(jsonPath("$.code").value(0));
+
+        // 再读一次：名字换成本店叫法，停掉的那一档整个不下发（不是带个 false 让端上滤）
+        String after = mvc().perform(get("/biz/spec-templates?categoryNo=" + categoryNo)
+                        .header("Authorization", "Bearer " + biz))
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data[0].name").value("份量"))
+                .andExpect(jsonPath("$.data[0].options.length()").value(1))
+                .andReturn().getResponse().getContentAsString();
+        org.junit.jupiter.api.Assertions.assertFalse(after.contains("500g"),
+                "本店停掉的档位不该再下发到建品页");
+    }
+
     private String newValue(String ops, String dimNo, String label) throws Exception {
         String b = mvc().perform(post("/ops/spec-values")
                         .header("Authorization", "Bearer " + ops)
