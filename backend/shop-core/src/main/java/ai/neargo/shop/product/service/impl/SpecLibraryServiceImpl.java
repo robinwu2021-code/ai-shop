@@ -825,11 +825,42 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
                 row.setLabelOverride(notBlank(d.label()) ? d.label().trim() : null);
                 DataScopeContext.executeWithoutScope(() -> overrideMapper.insert(row));
             }
+            /*
+             * **提交上来的 values 是一份完整声明**：「这个规格在本店用哪几档」。
+             * 所以类目子集里有、而他没提交的，就是他去掉的 —— 这里补一条 enabled=false。
+             *
+             * 从前要端上显式提交 enabled=false 才算数，于是出现过这样的 bug：
+             * 他在 A 规格里删了一档，接着挪了下 B 规格的位置（那次提交里 A 只带了
+             * 「在用的」），删掉的那档就悄悄回来了 —— 因为「没提交」被当成了「跟平台走」。
+             * 判据放在后端，端上只说「我用哪几档」，说不漏。
+             */
             java.util.Set<String> inSubset = subsetCodes.getOrDefault(d.dimNo(), java.util.Set.of());
-            for (ValueOverrideCommand v : d.values() == null ? List.<ValueOverrideCommand>of() : d.values()) {
+            List<ValueOverrideCommand> vals = d.values() == null
+                    ? List.<ValueOverrideCommand>of() : d.values();
+            java.util.Set<String> declared = vals.stream()
+                    .filter(ValueOverrideCommand::enabled)
+                    .map(ValueOverrideCommand::code)
+                    .collect(Collectors.toCollection(java.util.LinkedHashSet::new));
+            if (!vals.isEmpty()) {
+                for (String code : inSubset) {
+                    if (!declared.contains(code)) {
+                        PrdMerchantSpecOverride off = new PrdMerchantSpecOverride();
+                        off.setMerchantNo(merchantNo);
+                        off.setCategoryNo(categoryNo);
+                        off.setDimNo(d.dimNo());
+                        off.setValueNo(code);
+                        off.setEnabled(false);
+                        DataScopeContext.executeWithoutScope(() -> overrideMapper.insert(off));
+                    }
+                }
+            }
+            for (ValueOverrideCommand v : vals) {
                 boolean defaultOn = inSubset.isEmpty() || inSubset.contains(v.code());
                 if (v.enabled() == defaultOn) {
                     continue;   // 与类目默认一致：不落行
+                }
+                if (!v.enabled()) {
+                    continue;   // 去掉的上面已经按「没声明」补过了，别落两行
                 }
                 PrdMerchantSpecOverride row = new PrdMerchantSpecOverride();
                 row.setMerchantNo(merchantNo);

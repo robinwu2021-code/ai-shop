@@ -54,64 +54,250 @@ async function load() {
 }
 
 /**
- * 正在编辑的那个类目。**一次只编辑一个** —— 同时打开几个，
- * 「保存」按钮该保存哪一个就说不清了。
+ * 正在编辑的那**一个**规格（dimNo）。一次只调一个 ——
+ * 从前点一下类目的「调整」，整屏所有规格连同它们的全部档位一起变可编辑，
+ * 而他这次多半只想动其中一个，剩下的都在那儿等着他误触。
  */
-const editing = ref<string | null>(null);
-/** 编辑态的本地副本：dimNo → {enabled,label,values} */
-const draft = ref<Record<string, SpecOverride>>({});
-/** 被删掉的档位：dimNo → code[]。提交时以 enabled=false 显式告诉后端 */
-const dropped = ref<Record<string, string[]>>({});
+const editingDim = ref<string | null>(null);
 
-/** dimNo → {平台原名, code → 档位名}。原名用作改名输入框的占位符 */
-const labels = ref<Record<string, { name: string; values: Record<string, string> }>>({});
+/** 编辑态的本地副本：只装这一个规格 */
+const draft = ref<{
+  dimNo: string;
+  /** 平台原名 —— 输入框的占位符：清空就是「用回平台的叫法」 */
+  platformName: string;
+  label: string;
+  values: { code: string }[];
+  /** code → 档位名，只用来显示 */
+  labels: Record<string, string>;
+  /** 被去掉的档位：提交时以 enabled=false 显式告诉后端 */
+  dropped: string[];
+}>({ dimNo: "", platformName: "", label: "", values: [], labels: {}, dropped: [] });
 
-/** 被移除的维度：收在下面能加回来，而不是消失 */
-const removedDims = computed(() =>
-  Object.keys(draft.value).filter((k) => !draft.value[k]!.enabled));
-
-function dimLabel(g: StoreCategorySpecs, dimNo: string) {
-  return labels.value[dimNo]?.name
-    ?? g.dims.find((t) => t.templateNo === dimNo)?.name
-    ?? dimNo;
-}
-
-function startEdit(g: StoreCategorySpecs) {
-  editing.value = g.categoryNo;
-  /*
-   * 从**当前看到的样子**建草稿，而不是从平台原样 —— 他现在看到的就是上次改完的结果，
-   * 草稿与它对不上的话，一进编辑态界面就变了，而他什么都没做。
-   *
-   * **draft.values 是「已经加进来的」**，不是全部候选：删一档就把它移出数组。
-   * 被删的记进 dropped —— 提交时要显式告诉后端「这一档我不要」，
-   * 否则它只是「没提交」，而没提交等于跟平台走，那一档下次还在。
-   */
-  draft.value = Object.fromEntries(g.dims.map((t) => [t.templateNo, {
+function startEditDim(g: StoreCategorySpecs, t: SpecTemplate) {
+  editingDim.value = t.templateNo;
+  draft.value = {
     dimNo: t.templateNo,
-    enabled: true,
-    // t.name 已经是合并后的（本店改过就是本店的），直接拿它当输入框初值
+    /*
+     * 平台原名要单独拿：`t.name` 已经是合并后的（他改过就是他的叫法），
+     * 拿它当占位符的话，「清空 = 用回平台的」就没有参照了。
+     */
+    platformName: platformNames.value[t.templateNo] ?? t.name,
     label: t.name,
-    values: t.options.map((o) => ({ code: o.code ?? "", enabled: true })),
-  }]));
-  /*
-   * 维度名与档位名只用来显示 —— **不提交**。名字是跨店可比的锚，
-   * 改它的后果（三家店把「重量」各叫一个名字）比省下的方便大得多。
-   */
-  dropped.value = {};
-  labels.value = Object.fromEntries(g.dims.map((t) => [t.templateNo, {
-    name: t.name,
-    values: Object.fromEntries(t.options.map((o) => [o.code ?? "", o.label])),
-  }]));
+    values: t.options.map((o) => ({ code: o.code ?? "" })),
+    labels: Object.fromEntries(t.options.map((o) => [o.code ?? "", o.label])),
+    dropped: [],
+  };
 }
 
-/** 维度顺序：草稿里的键序就是提交顺序，上移即交换 */
-function moveDim(g: StoreCategorySpecs, dimNo: string, delta: number) {
-  const keys = Object.keys(draft.value);
-  const i = keys.indexOf(dimNo);
+/** dimNo → 平台原名。合并结果里拿不到它，单独从平台那份取一次 */
+const platformNames = ref<Record<string, string>>({});
+
+/** 去掉一档 —— 记进 dropped：只是「不提交」等于跟平台走，那一档下次还在 */
+function dropValue(code: string) {
+  draft.value.values = draft.value.values.filter((v) => v.code !== code);
+  draft.value.dropped = [...draft.value.dropped, code];
+}
+
+/**
+ * 加一档：**先给候选，自己填放最后**。
+ *
+ * <p>类目通常只裁了平台值池里的几档，而他要加的往往正是没裁进来的那一档。
+ * 直接弹输入框的话他只能手输，而手输的值没有编码 —— 跨店聚合就此断掉。
+ */
+async function addValue() {
+  const d = draft.value;
+  const all = await api.mDimValues(d.dimNo).catch(() => []);
+  const have = new Set(d.values.map((v) => v.code));
+  const rest = all.filter((o) => !have.has(o.code ?? ""));
+
+  const i = await new Promise<number>((resolve) => {
+    uni.showActionSheet({
+      itemList: [...rest.map((o) => o.label), t("mySpecs.typeMine")],
+      success: (r) => resolve(r.tapIndex),
+      fail: () => resolve(-1),
+    });
+  });
+  if (i < 0) return;
+
+  const use = (code: string, label: string) => {
+    if (!d.values.some((x) => x.code === code)) d.values = [...d.values, { code }];
+    d.dropped = d.dropped.filter((c) => c !== code);
+    d.labels[code] = label;
+  };
+
+  if (i < rest.length) {
+    const o = rest[i]!;
+    use(o.code ?? "", o.label);
+    return;
+  }
+
+  const text = await new Promise<string>((resolve) => {
+    uni.showModal({
+      title: t("mySpecs.addValueTitle"),
+      editable: true,
+      placeholderText: t("mySpecs.addValuePh"),
+      success: (r) => resolve(r.confirm ? (r.content ?? "") : ""),
+      fail: () => resolve(""),
+    });
+  });
+  if (!text.trim()) return;
+  try {
+    const added = await api.mAddSpecValue(d.dimNo, text.trim());
+    use(added.code || added.valueNo, added.label);
+    // 撞上平台已有的那一档时后端直接返回它 —— 说一声，否则他以为自己白填了
+    if (added.label !== text.trim()) {
+      uni.showToast({ title: t("mySpecs.valueMerged", { name: added.label }), icon: "none" });
+    }
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: "none" });
+  }
+}
+
+/**
+ * 提交这个类目的覆盖。
+ *
+ * <p><b>后端是整份替换，所以每次都要带上这个类目下所有规格的当前状态。</b>
+ * 只发改动的那一个，别的规格的覆盖会被一起清掉 —— 而他只是想改这一个。
+ *
+ * @param g     目标类目
+ * @param order 规格顺序（dimNo）。不传则沿用当前顺序
+ * @param patch 对某一个规格的改动；不传表示只改顺序
+ */
+async function commit(
+  g: StoreCategorySpecs,
+  order?: string[],
+  patch?: { dimNo: string; label?: string; values: string[]; dropped: string[] },
+  removeDimNo?: string,
+) {
+  const seq = order ?? g.dims.map((t) => t.templateNo);
+  const dims = seq
+    .filter((no) => no !== removeDimNo)
+    .map((no) => {
+      const t = g.dims.find((x) => x.templateNo === no);
+      const isPatched = patch && patch.dimNo === no;
+      const codes = isPatched ? patch.values : (t?.options ?? []).map((o) => o.code ?? "");
+      const gone = isPatched ? patch.dropped : [];
+      const platform = platformNames.value[no];
+      const label = isPatched ? patch.label : t?.name;
+      return {
+        dimNo: no,
+        enabled: true,
+        // 与平台原名相同就不提交 —— 落一条等于原名的覆盖，日后看不出他改没改
+        label: label && label.trim() && label.trim() !== platform ? label.trim() : undefined,
+        values: [
+          ...codes.map((code) => ({ code, enabled: true })),
+          ...gone.map((code) => ({ code, enabled: false })),
+        ],
+      };
+    });
+  if (removeDimNo) {
+    dims.push({ dimNo: removeDimNo, enabled: false, label: undefined, values: [] });
+  }
+  const merged = await api.mSaveSpecOverride(g.categoryNo, dims);
+  const i = byCategory.value.findIndex((x) => x.categoryNo === g.categoryNo);
+  if (i >= 0) byCategory.value[i] = { ...g, dims: merged };
+}
+
+async function saveDim(g: StoreCategorySpecs) {
+  const d = draft.value;
+  try {
+    await commit(g, undefined, {
+      dimNo: d.dimNo, label: d.label, values: d.values.map((v) => v.code), dropped: d.dropped,
+    });
+    editingDim.value = null;
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: "none" });
+  }
+}
+
+/*
+ * 拖动排序。
+ *
+ * **只用 touch 事件，不用 movable-view。**仓库里为同一件事做过决定
+ * （见 goods-edit 的 moveDetailImage）：movable-view 在小程序里与页面滚动打架。
+ * 这里的做法是自己算：按下记住起点与那一行的高度，移动时用位移除以行高
+ * 得到落到第几位，松手才提交。
+ *
+ * <p>`@touchmove.stop.prevent` 是关键的一半 —— 不挡住的话页面会跟着手指滚，
+ * 而他以为自己在拖那一行。代价是拖动期间这一段不能滚动，
+ * 但一次拖动本来就只在几行之内。
+ */
+const dragFrom = ref<string | null>(null);
+const dragY = ref(0);
+const dragTo = ref(-1);
+/** 一行的高度（px）。按下时量一次 —— 不同机型、不同字号下它不一样 */
+const rowH = ref(0);
+
+function onDragStart(g: StoreCategorySpecs, dimNo: string, e: TouchEvent) {
+  // 编辑态里不拖：那时这一行是一整块表单，拖它没有意义
+  if (editingDim.value) return;
+  dragFrom.value = dimNo;
+  dragY.value = e.touches?.[0]?.clientY ?? 0;
+  dragTo.value = g.dims.findIndex((t) => t.templateNo === dimNo);
+  rowH.value = 0;
+}
+
+function onDragMove(g: StoreCategorySpecs, e: TouchEvent) {
+  if (!dragFrom.value) return;
+  const y = e.touches?.[0]?.clientY ?? 0;
+  /*
+   * 行高第一次移动时估一次：**用整段的高度除以行数**，比给一个写死的 px 稳 ——
+   * 档位多的行更高，写死的话拖两行就错位。
+   */
+  if (!rowH.value) rowH.value = 64;
+  const from = g.dims.findIndex((t) => t.templateNo === dragFrom.value);
+  const delta = Math.round((y - dragY.value) / rowH.value);
+  dragTo.value = Math.max(0, Math.min(g.dims.length - 1, from + delta));
+}
+
+async function onDragEnd() {
+  const from = dragFrom.value;
+  dragFrom.value = null;
+  if (!from || dragTo.value < 0) return;
+  const g = byCategory.value.find((x) => x.dims.some((t) => t.templateNo === from));
+  if (!g) return;
+  const i = g.dims.findIndex((t) => t.templateNo === from);
+  if (i === dragTo.value) return;   // 没挪动：不必往后端跑一趟
+  const seq = g.dims.map((t) => t.templateNo);
+  seq.splice(dragTo.value, 0, seq.splice(i, 1)[0]!);
+  try {
+    await commit(g, seq);
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: "none" });
+  }
+}
+
+/** 顺序改的是「这一类用哪几个规格」，点了立即生效 —— 不必为挪一位进一次编辑态 */
+async function moveDim(g: StoreCategorySpecs, dimNo: string, delta: number) {
+  const seq = g.dims.map((t) => t.templateNo);
+  const i = seq.indexOf(dimNo);
   const to = i + delta;
-  if (i < 0 || to < 0 || to >= keys.length) return;
-  keys.splice(to, 0, keys.splice(i, 1)[0]!);
-  draft.value = Object.fromEntries(keys.map((k) => [k, draft.value[k]!]));
+  if (i < 0 || to < 0 || to >= seq.length) return;
+  seq.splice(to, 0, seq.splice(i, 1)[0]!);
+  try {
+    await commit(g, seq);
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: "none" });
+  }
+}
+
+/** 移除一个规格。**先问一句** —— 它下面那几档的取舍会跟着一起没 */
+async function removeDim(g: StoreCategorySpecs, dim: SpecTemplate) {
+  const ok = await new Promise<boolean>((resolve) => {
+    uni.showModal({
+      title: t("mySpecs.removeTitle"),
+      content: t("mySpecs.removeConfirm", { name: dim.name }),
+      success: (r) => resolve(!!r.confirm),
+      fail: () => resolve(false),
+    });
+  });
+  if (!ok) return;
+  try {
+    await commit(g, undefined, undefined, dim.templateNo);
+    if (editingDim.value === dim.templateNo) editingDim.value = null;
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: "none" });
+  }
 }
 
 /**
@@ -120,7 +306,8 @@ function moveDim(g: StoreCategorySpecs, dimNo: string, delta: number) {
  */
 async function addDim(g: StoreCategorySpecs) {
   const all = await api.mPickableDims(g.categoryNo).catch(() => []);
-  const rest = all.filter((t) => !draft.value[t.templateNo]);
+  const have = new Set(g.dims.map((t) => t.templateNo));
+  const rest = all.filter((x) => !have.has(x.templateNo));
   if (!rest.length) {
     uni.showToast({ title: t("mySpecs.noMoreDim"), icon: "none" });
     return;
@@ -134,123 +321,12 @@ async function addDim(g: StoreCategorySpecs) {
   });
   const picked = rest[i];
   if (!picked) return;
-  draft.value = {
-    ...draft.value,
-    [picked.templateNo]: {
-      dimNo: picked.templateNo,
-      enabled: true,
-      // 新加的规格默认全档位：他加它就是想用，再让他逐个点一遍是白费一步
-      values: picked.options.map((o) => ({ code: o.code ?? "", enabled: true })),
-    },
-  };
-  labels.value = {
-    ...labels.value,
-    [picked.templateNo]: {
-      name: picked.name,
-      values: Object.fromEntries(picked.options.map((o) => [o.code ?? "", o.label])),
-    },
-  };
-}
-
-/** 平台原名 —— 改名输入框的占位符：清空就是「用回平台的叫法」 */
-function platformName(dimNo: string) {
-  return labels.value[dimNo]?.name ?? dimNo;
-}
-
-/** 去掉一档：移出「已加」，并记进 dropped —— 没提交等于跟平台走，那一档下次还在 */
-function dropValue(d: SpecOverride, code: string) {
-  d.values = (d.values ?? []).filter((v) => v.code !== code);
-  dropped.value[d.dimNo] = [...(dropped.value[d.dimNo] ?? []), code];
-}
-
-/**
- * 加一档：**先给候选，自己填放最后**。
- *
- * <p>类目通常只裁了平台值池里的几档（蔬菜的重量只给 4 档），而他要加的往往
- * 正是没裁进来的那一档。直接弹输入框的话他只能手输，而手输的值没有编码 ——
- * 跨店聚合就此断掉，且界面上看不出这个代价。
- */
-async function addValue(dimNo: string) {
-  const d = draft.value[dimNo];
-  if (!d) return;
-  const all = await api.mDimValues(dimNo).catch(() => []);
-  const have = new Set((d.values ?? []).map((v) => v.code));
-  const rest = all.filter((o) => !have.has(o.code ?? ""));
-
-  const i = await new Promise<number>((resolve) => {
-    uni.showActionSheet({
-      itemList: [...rest.map((o) => o.label), t("mySpecs.typeMine")],
-      success: (r) => resolve(r.tapIndex),
-      fail: () => resolve(-1),
-    });
-  });
-  if (i < 0) return;
-
-  const use = (code: string, label: string) => {
-    if (!(d.values ?? []).some((x) => x.code === code)) {
-      d.values = [...(d.values ?? []), { code, enabled: true }];
-    }
-    dropped.value[dimNo] = (dropped.value[dimNo] ?? []).filter((c) => c !== code);
-    labels.value[dimNo]!.values[code] = label;
-  };
-
-  // 挑了平台的某一档：它本来就有编码，直接用
-  if (i < rest.length) {
-    const o = rest[i]!;
-    use(o.code ?? "", o.label);
-    return;
-  }
-
-  // 平台也没有：自己填。后端挂在同一维度下并抽出归一量，所以照样能比价
-  const text = await new Promise<string>((resolve) => {
-    uni.showModal({
-      title: t("mySpecs.addValueTitle"),
-      editable: true,
-      placeholderText: t("mySpecs.addValuePh"),
-      success: (r) => resolve(r.confirm ? (r.content ?? "") : ""),
-      fail: () => resolve(""),
-    });
-  });
-  if (!text.trim()) return;
+  platformNames.value[picked.templateNo] = picked.name;
   try {
-    const added = await api.mAddSpecValue(dimNo, text.trim());
-    use(added.code || added.valueNo, added.label);
-    // 撞上平台已有的那一档时后端直接返回它 —— 说一声，否则他以为自己白填了
-    if (added.label !== text.trim()) {
-      uni.showToast({ title: t("mySpecs.valueMerged", { name: added.label }), icon: "none" });
-    }
-  } catch (e) {
-    uni.showToast({ title: (e as Error).message, icon: "none" });
-  }
-}
-
-async function saveOverride(g: StoreCategorySpecs) {
-  try {
-    /*
-     * **不提交任何 label。**名字不给改（见 startEdit 的说明），
-     * 所以这里只有三件事：用哪几个（enabled）、什么顺序（数组次序）、
-     * 每个维度下用哪几档（values[].enabled）。
-     */
-    const dims = Object.values(draft.value).map((d) => ({
-      ...d,
-      // 与平台原名相同就不提交 —— 落一条等于原名的覆盖，日后看不出他到底改没改
-      label: d.label?.trim() && d.label.trim() !== platformName(d.dimNo)
-        ? d.label.trim() : undefined,
-      /*
-       * 去掉的要**显式**提交 enabled=false。只是「不提交」等于跟平台走，
-       * 而平台给了这一档 —— 下次进来它还在，他会以为自己删了个寂寞。
-       */
-      values: [
-        ...(d.values ?? []),
-        ...(dropped.value[d.dimNo] ?? []).map((code) => ({ code, enabled: false })),
-      ],
-    }));
-    const merged = await api.mSaveSpecOverride(g.categoryNo, dims);
-    // 用后端合并后的结果就地替换，两边不各算一遍
-    const i = byCategory.value.findIndex((x) => x.categoryNo === g.categoryNo);
-    if (i >= 0) byCategory.value[i] = { ...g, dims: merged };
-    editing.value = null;
-    uni.showToast({ title: t("mySpecs.saved"), icon: "none" });
+    // 新加的规格默认全档位：他加它就是想用，再让他逐个点一遍是白费一步
+    const seq = [...g.dims.map((x) => x.templateNo), picked.templateNo];
+    const withNew: StoreCategorySpecs = { ...g, dims: [...g.dims, picked] };
+    await commit(withNew, seq);
   } catch (e) {
     uni.showToast({ title: (e as Error).message, icon: "none" });
   }
@@ -262,7 +338,33 @@ async function resetOverride(g: StoreCategorySpecs) {
     const merged = await api.mSaveSpecOverride(g.categoryNo, []);
     const i = byCategory.value.findIndex((x) => x.categoryNo === g.categoryNo);
     if (i >= 0) byCategory.value[i] = { ...g, dims: merged };
-    editing.value = null;
+    editingDim.value = null;
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: "none" });
+  }
+}
+
+/**
+ * 自建规格的停用 / 启用。**用在商品上的要先问一句** —— 停用不会改动那些商品
+ * （它们存的是规格快照），但他不知道这一点，看到「用在 8 件商品上」
+ * 会以为自己正要弄坏什么。把后果说清楚，比拦着他更有用。
+ */
+async function toggle(d: MerchantSpecDim) {
+  const off = d.status === "ACTIVE";
+  if (off && d.usedCount > 0) {
+    const ok = await new Promise<boolean>((resolve) => {
+      uni.showModal({
+        title: t("mySpecs.archiveTitle"),
+        content: t("mySpecs.archiveConfirm", { n: d.usedCount }),
+        success: (r) => resolve(!!r.confirm),
+        fail: () => resolve(false),
+      });
+    });
+    if (!ok) return;
+  }
+  try {
+    await api.mArchiveSpecDim(d.dimNo, off);
+    await load();
   } catch (e) {
     uni.showToast({ title: (e as Error).message, icon: "none" });
   }
@@ -287,31 +389,6 @@ async function rename(d: MerchantSpecDim) {
   }
 }
 
-/**
- * 停用 / 启用。**用在商品上的要先问一句** —— 停用不会改动那些商品
- * （它们存的是规格快照），但商家不知道这一点，看到「用在 8 件商品上」
- * 会以为自己正要弄坏什么。把后果说清楚，比拦着他更有用。
- */
-async function toggle(d: MerchantSpecDim) {
-  const off = d.status === "ACTIVE";
-  if (off && d.usedCount > 0) {
-    const ok = await new Promise<boolean>((resolve) => {
-      uni.showModal({
-        title: t("mySpecs.archiveTitle"),
-        content: t("mySpecs.archiveConfirm", { n: d.usedCount }),
-        success: (r) => resolve(!!r.confirm),
-        fail: () => resolve(false),
-      });
-    });
-    if (!ok) return;
-  }
-  try {
-    await api.mArchiveSpecDim(d.dimNo, off);
-    await load();
-  } catch (e) {
-    uni.showToast({ title: (e as Error).message, icon: "none" });
-  }
-}
 
 onShow(() => void load());
 </script>
@@ -327,77 +404,80 @@ onShow(() => void load());
     <view v-for="g in byCategory" :key="g.categoryNo" class="sh-card mt">
       <view class="cat__head">
         <text class="sh-h2">{{ g.categoryName }}</text>
-        <text v-if="g.dims.length && editing !== g.categoryNo" class="link"
-              @tap="startEdit(g)">{{ $t("mySpecs.adjust") }}</text>
+        <!-- 类目这一层只剩「加规格」，且只留图标：一行里文字越少越看得出结构 -->
+        <view class="ic" @tap="addDim(g)">
+          <sh-icon name="plus" :size="20" color="var(--sh-primary)" />
+        </view>
       </view>
 
-      <!-- 只读态 -->
-      <template v-if="editing !== g.categoryNo">
-        <view v-for="t in g.dims" :key="t.templateNo" class="pf">
-          <text class="pf__name">{{ t.name }}</text>
+      <view v-for="t in g.dims" :key="t.templateNo" class="ed">
+        <!--
+          **一次只调一个规格。**从前点一下类目的「调整」，整屏所有规格连同
+          它们的全部档位一起变可编辑 —— 而他这次多半只想动其中一个，
+          剩下的都在那儿等着他误触。
+        -->
+        <template v-if="editingDim !== t.templateNo">
+          <view
+            class="ed__head"
+            :class="{ 'ed__head--drag': dragFrom === t.templateNo }"
+            @touchstart="onDragStart(g, t.templateNo, $event)"
+            @touchmove.stop.prevent="onDragMove(g, $event)"
+            @touchend="onDragEnd"
+            @touchcancel="onDragEnd"
+          >
+            <!--
+              **拖动手柄单独占一格。**整行可拖的话，他想点「调整」也会被当成拖动 ——
+              而这一行上四个操作挨得很近。手柄圈定了「从这里抓」。
+            -->
+            <view class="ic ic--grip">
+              <sh-icon name="grip" :size="18" color="var(--sh-sub)" />
+            </view>
+            <text class="pf__name flex1">{{ t.name }}</text>
+            <view class="ic" @tap.stop="startEditDim(g, t)">
+              <sh-icon name="sliders" :size="19" color="var(--sh-primary)" />
+            </view>
+            <view class="ic" @tap.stop="removeDim(g, t)">
+              <sh-icon name="close" :size="18" color="var(--sh-sub)" />
+            </view>
+          </view>
           <text class="sh-muted pf__vals">{{ t.options.map((o) => o.label).join(" · ") }}</text>
-        </view>
-      </template>
+        </template>
 
-      <!-- 品类级编辑态：**只管用哪几个规格、什么顺序**。档位归各自那一行的「调整」 -->
-      <template v-else>
-        <view v-for="(d, dimNo) in draft" :key="dimNo" v-show="d.enabled" class="ed">
+        <!-- 编辑这一个：改名 + 档位。形态与从前一样，只是范围缩到一行 -->
+        <template v-else>
           <view class="ed__head">
             <!--
               **改的是本店叫法，不是平台的规格。**dimNo 一个字不变，
-              所以三家店的同一个规格照样聚得到一起 ——
-              与「我的类目」改显示名是同一个模式。
-              占位符给平台原名：他清空输入框就是「用回平台的叫法」。
+              所以三家店的同一个规格照样聚得到一起。
+              占位符给平台原名：清空输入框就是「用回平台的叫法」。
             -->
-            <input v-model="d.label" class="field__input flex1"
-                   :placeholder="platformName(String(dimNo))" />
-            <text class="del" @tap="moveDim(g, String(dimNo), -1)">↑</text>
-            <text class="del" @tap="moveDim(g, String(dimNo), 1)">↓</text>
-            <text class="del" @tap="d.enabled = false">{{ $t("mySpecs.remove") }}</text>
+            <input v-model="draft.label" class="field__input flex1"
+                   :placeholder="draft.platformName" />
           </view>
-          <!--
-            档位就在这一行下面调：**点 ✕ 去掉，点 ＋ 从平台挑或自己填**。
-            上一版做成弹层，结果「改个名字」和「加一档」要分两次进出 ——
-            而它们是同一件事：把这一类调成我习惯的样子。
-          -->
           <view class="ed__vals">
-            <text v-for="v in d.values ?? []" :key="v.code" class="sh-chip">
-              {{ labels[String(dimNo)]?.values[v.code] ?? v.code }}
-              <text class="val__x" @tap.stop="dropValue(d, v.code)">✕</text>
+            <text v-for="v in draft.values" :key="v.code" class="sh-chip">
+              {{ draft.labels[v.code] ?? v.code }}
+              <text class="val__x" @tap.stop="dropValue(v.code)">✕</text>
             </text>
-            <text class="sh-chip ed__add" @tap="addValue(String(dimNo))">＋</text>
+            <view class="sh-chip ed__add" @tap="addValue()">
+              <sh-icon name="plus" :size="16" color="var(--sh-primary)" />
+            </view>
           </view>
-        </view>
+          <view class="ed__row">
+            <text class="sh-muted pf__vals">{{ $t("mySpecs.adjustHint") }}</text>
+          </view>
+          <view class="ed__acts">
+            <text class="link" @tap="saveDim(g)">{{ $t("mySpecs.save") }}</text>
+            <text class="link" @tap="editingDim = null">{{ $t("mySpecs.cancel") }}</text>
+          </view>
+        </template>
+      </view>
 
-        <!--
-          移除掉的收在这里，**而不是消失** —— 他要加回来时，
-          「刚才那个叫什么」是唯一还记得的线索；从平台全量维度里重找是另一回事。
-        -->
-        <view v-if="removedDims.length" class="ed__back">
-          <text class="sh-muted pf__vals">{{ $t("mySpecs.removed") }}</text>
-          <view class="ed__vals">
-            <text v-for="dimNo in removedDims" :key="dimNo" class="sh-chip"
-                  @tap="draft[dimNo]!.enabled = true">＋ {{ dimLabel(g, dimNo) }}</text>
-          </view>
-        </view>
-        <!-- 各自成行：uni 的 text 是 inline，并排写会挤成一段读不断的话 -->
-        <view class="ed__row">
-          <text class="link" @tap="addDim(g)">＋ {{ $t("mySpecs.addDim") }}</text>
-        </view>
-        <view class="ed__row">
-          <text class="sh-muted pf__vals">{{ $t("mySpecs.adjustHint") }}</text>
-        </view>
-        <view class="ed__acts">
-          <text class="link" @tap="saveOverride(g)">{{ $t("mySpecs.save") }}</text>
-          <text class="link" @tap="editing = null">{{ $t("mySpecs.cancel") }}</text>
-          <text class="link" @tap="resetOverride(g)">{{ $t("mySpecs.reset") }}</text>
-        </view>
-      </template>
-      <!--
-        没配规格的类目**也留着**，并说清这是平台那边的缺口 ——
-        不显示的话商家只会觉得「这一类怎么没有规格」，而问不出来问谁。
-      -->
+      <!-- 一条规格都没有的类目：说清是平台那边的缺口，并给一条出路 -->
       <text v-if="!g.dims.length" class="sh-muted pf__vals">{{ $t("mySpecs.catNoDims") }}</text>
+      <view class="ed__row">
+        <text class="link" @tap="resetOverride(g)">{{ $t("mySpecs.reset") }}</text>
+      </view>
     </view>
 
     <sh-empty v-if="!loading && !byCategory.length" :text='$t("mySpecs.noShelf")'></sh-empty>
@@ -483,6 +563,24 @@ onShow(() => void load());
   flex-wrap: wrap;
   gap: 12rpx;
   margin: 20rpx 0;
+}
+
+/* 图标按钮：给足点击区（44rpx 见方），图标本身小 —— 一行里四个操作挨得近 */
+.ic {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56rpx;
+  height: 56rpx;
+}
+.ic--grip {
+  margin-left: -12rpx;
+}
+/* 拖动中：整行提一层，让他看得出「抓住的是这一行」 */
+.ed__head--drag {
+  opacity: 0.6;
+  background: var(--sh-faint);
+  border-radius: 12rpx;
 }
 
 .pf__act {

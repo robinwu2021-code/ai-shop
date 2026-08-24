@@ -181,7 +181,10 @@ export default {
       intro: "建品时能用的规格都在这里。平台没有的可以自己建。",
       quota: "已建 / 上限",
       adjust: "调整",
-      remove: "移除", addDim: "加一个规格", removed: "已移除（点一下加回来）",
+      remove: "移除",
+      removeTitle: "不用这个规格了？",
+      // 说清连带后果：他对这个规格做过的档位取舍会一起没
+      removeConfirm: "「{name}」以及你在它下面留的档位都会从这一类里去掉。已建好的商品不受影响。", addDim: "加一个规格", removed: "已移除（点一下加回来）",
       noMoreDim: "这一类的规格都在用了",
       typeMine: "自己填",
       pickHint: "点一下决定本店用不用这一档。平台没有的可以自己填。",
