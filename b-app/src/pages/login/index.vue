@@ -212,27 +212,31 @@ async function doLogin(method: LoginMethod) {
       <view class="sh-btn submit" :class="{ 'is-off': !canSubmit }" @tap="doLogin(phoneMethod)">
         {{ $t("login.submit") }}
       </view>
+
+      <!--
+        快捷登录**放在同一张卡里**：它和上面那套是「登录的几种方式」，不是另一件事。
+        原来它被协议勾选行隔在卡片外面，读起来像是页面的第二段内容 ——
+        而协议是**管所有方式**的那一条，理应在全部方式之后、只出现一次。
+
+        （微信/Apple 拿到的是消费者身份，后端仍按手机号判身份：店员多半没有消费者账号，
+        第三方登录后要补绑手机号才认得出他是谁 —— 这条路对店员是绕远，不是不通。）
+      -->
+      <template v-if="quickMethods.length">
+        <view class="divider">
+          <text class="sh-muted">{{ $t("login.orQuick") }}</text>
+        </view>
+        <view
+          v-for="m in quickMethods"
+          :key="m.id"
+          class="sh-btn quick"
+          :class="{ 'sh-btn--soft': !m.primary }"
+          @tap="doLogin(m)"
+        >
+          {{ $t(m.labelKey) }}
+        </view>
+      </template>
     </view>
 
-    <!--
-      快捷登录（微信/Apple）拿到的是**消费者身份**，后端仍按手机号判身份 ——
-      但店员多半没有消费者账号，第三方登录后要补绑手机号才认得出他是谁。
-      所以这条路对店员是绕远，不是不通。
-    -->
-    <template v-if="quickMethods.length">
-      <view class="divider">
-        <text class="sh-muted">{{ $t("login.orQuick") }}</text>
-      </view>
-      <view
-        v-for="m in quickMethods"
-        :key="m.id"
-        class="sh-btn quick"
-        :class="{ 'sh-btn--soft': !m.primary }"
-        @tap="doLogin(m)"
-      >
-        {{ $t(m.labelKey) }}
-      </view>
-    </template>
 
     <!-- 协议勾选：注册的合规前置，默认不勾 -->
     <view class="agree" @tap="agreed = !agreed">
@@ -318,12 +322,25 @@ async function doLogin(method: LoginMethod) {
   background: var(--sh-faint);
   color: var(--sh-sub);
 }
+/* 卡内分隔：一条细线穿过「或使用快捷登录」，把两种方式分开又不割断 */
 .divider {
-  text-align: center;
-  margin: 40rpx 0 24rpx;
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  margin: 32rpx 0 20rpx;
+}
+.divider::before,
+.divider::after {
+  content: "";
+  flex: 1;
+  height: 2rpx;
+  background: var(--sh-line);
 }
 .quick {
-  margin-bottom: 20rpx;
+  margin-bottom: 16rpx;
+}
+.quick:last-child {
+  margin-bottom: 0;
 }
 .agree {
   display: flex;
