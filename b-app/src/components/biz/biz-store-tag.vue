@@ -1,33 +1,51 @@
 <script setup lang="ts">
 /**
- * 页头的「当前门店」胶囊：显示在看哪家店，点一下直达「选择门店」。
+ * 页头的「当前门店」胶囊。
  *
- * 门店是 App 级上下文，**切换动作只发生在选择门店那一页** ——
- * 这里只是它的入口。曾经做成右对齐的一行小字、点了先跳「我的」再找入口，
- * 实际反馈是「没看到门店切换在哪」：长得不像能点的东西，就等于没有。
- * 单店主体不渲染。
+ * <b>两种形态，一个组件</b>：
+ * - 工作台（可点）：门店这件事的**唯一入口** —— 点进门店管理，在那里切店、改名、开新店。
+ * - 门店维度的作业页（`readonly`）：只说清「这一屏属于哪家店」，不带切换动作。
+ *   曾经每页都能切，结果是人在商品页切了店、回工作台看的是另一家的数字。
+ *   这里保留店名是因为改错门店的成本很高（改的是价格、送货范围这类东西）。
+ *
+ * 单店主体只在可点形态下渲染 —— 那时它是「门店管理」的门，不是上下文提示。
  */
-import { onMounted } from "vue";
+import { computed, onMounted } from "vue";
 import { useMerchantStore } from "@/stores/merchant";
 import { ROUTES } from "@/shared/nav";
 
+const props = defineProps<{ readonly?: boolean }>();
 const merchant = useMerchantStore();
 
 onMounted(() => {
   void merchant.ensureStores();
 });
 
+/** 只读形态只为消歧义：一家店没有歧义可消 */
+const show = computed(() =>
+  props.readonly
+    ? merchant.multiStore
+    : merchant.multiStore || merchant.can("biz:store:admin"));
+
+/** 一家店的人点进去是「管理」（在那里开第二家），多店的人点进去是「切换」 */
+const actionKey = computed(() =>
+  merchant.multiStore ? "storePick.switch" : "storePick.manage");
+
 function go() {
-  // 直达选择门店页。此前是先跳「我的」再找入口 —— 多一跳，而且反馈是「没看到切换在哪」
-  uni.navigateTo({ url: ROUTES.storePick });
+  if (props.readonly) return;
+  uni.navigateTo({ url: ROUTES.stores });
 }
 </script>
 
 <template>
-  <view v-if="merchant.multiStore" class="tag" @tap="go">
-    <sh-icon name="store" :size="18" color="var(--sh-primary-text)"></sh-icon>
+  <view v-if="show" class="tag" :class="{ 'tag--flat': readonly }" @tap="go">
+    <sh-icon
+      name="store"
+      :size="18"
+      :color="readonly ? 'var(--sh-sub)' : 'var(--sh-primary-text)'"
+    ></sh-icon>
     <text class="tag__name">{{ merchant.currentStore?.name || "—" }}</text>
-    <text class="tag__switch">{{ $t("storePick.switch") }}</text>
+    <text v-if="!readonly" class="tag__switch">{{ $t(actionKey) }}</text>
   </view>
 </template>
 
@@ -42,10 +60,19 @@ function go() {
   border-radius: 44rpx;
   background: var(--sh-primary-tint);
 }
+/* 只读：褪成灰底，长得不像能点 —— 点了没反应的控件比没有控件更糟 */
+.tag--flat {
+  padding: 8rpx 0;
+  background: transparent;
+}
 .tag__name {
   font-size: 26rpx;
   font-weight: 600;
   color: var(--sh-ink);
+}
+.tag--flat .tag__name {
+  font-weight: 400;
+  color: var(--sh-sub);
 }
 .tag__switch {
   font-size: 24rpx;

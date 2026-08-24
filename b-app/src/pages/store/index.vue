@@ -174,7 +174,7 @@ onShow(() => {
 
 <template>
   <sh-scaffold title-key="store.title" :denied="!merchant.can('biz:store')">
-    <biz-store-tag></biz-store-tag>
+    <biz-store-tag readonly></biz-store-tag>
 
     <!-- 门面：只有三个字段。公告在自己的页（pages/store-notice）里，即改即发 -->
     <view class="sh-card">

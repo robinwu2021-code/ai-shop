@@ -389,7 +389,7 @@ onShow(() => {
 
 <template>
   <sh-scaffold title-key="store.scopeTitle" :denied="!merchant.can('biz:store')">
-    <biz-store-tag></biz-store-tag>
+    <biz-store-tag readonly></biz-store-tag>
 
     <!-- ① 经营范围（主体级） -->
     <view class="sh-card">

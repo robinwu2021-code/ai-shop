@@ -169,13 +169,18 @@ function goPlan() {
   uni.navigateTo({ url: ROUTES.plan });
 }
 
+/**
+ * 切到这家店。**留在本页**而不是跳走：切完常常还要顺手看这家的收款号、
+ * 员工数对不对。工作台等页面回来时按 onShow 重取，拿到的就是新店的数字。
+ */
+function switchTo(s: Store) {
+  merchant.pickStore(s.storeNo);
+  uni.showToast({ title: t("stores.switched", { name: s.name }), icon: "none" });
+}
+
 /** 传空 = 回到主体默认收款号，是合法操作 */
 function pickPayment(s: Store, payMerchantNo?: string) {
   run(() => api.mSetStorePayment(s.storeNo, payMerchantNo));
-}
-
-function goPick() {
-  uni.navigateTo({ url: ROUTES.storePick });
 }
 
 function goCrossStore() {
@@ -190,18 +195,10 @@ function goQualifications() {
 <template>
   <sh-scaffold title-key="stores.title" :denied="!merchant.can('biz:store:admin')">
     <!--
-      多店中枢的两行：切当前店、看跨店对比。
-      三个门（我的顶部切店卡、工作台跨店卡、这一页）合成一个 ——
-      同一件事有三个入口时，人记不住该从哪进，也就不会用其中任何一个。
+      切店不再是单独一页：**在哪家店上做事，就在管理这家店的地方选**。
+      下面每张门店卡自己带「切到这家」，当前那张挂「当前」标 ——
+      原先「当前门店 + 切换 ›」一行只是把人再送去一个长得一样的列表页，白多一跳。
     -->
-    <view v-if="merchant.multiStore" class="sh-card hub" @tap="goPick">
-      <view class="hub__main">
-        <text class="hub__label">{{ $t("storePick.current") }}</text>
-        <text class="hub__name">{{ merchant.currentStore?.name || "—" }}</text>
-      </view>
-      <text class="hub__go">{{ $t("storePick.switch") }}</text>
-    </view>
-
     <view v-if="merchant.can('biz:customer')" class="sh-card hub" @tap="goCrossStore">
       <text class="sh-h2">{{ $t("home.crossStoreEntry") }}</text>
       <sh-icon name="chevronRight" :size="18" color="var(--sh-sub)"></sh-icon>
@@ -217,7 +214,8 @@ function goQualifications() {
       <view class="st__top">
         <text class="sh-h2">{{ s.name }}</text>
         <view class="tags">
-          <text v-if="s.isDefault" class="tag tag--primary">{{ $t("stores.default") }}</text>
+          <text v-if="s.storeNo === merchant.storeNo" class="tag tag--primary">{{ $t("stores.currentTag") }}</text>
+          <text v-if="s.isDefault" class="tag">{{ $t("stores.default") }}</text>
           <!--
             ★ 两种只读必须分开显示：`status` 一模一样，而下一步完全不同 ——
             平台压的要补缴/升档，自己停的点一下启用就开。
@@ -257,6 +255,15 @@ function goQualifications() {
       </view>
 
       <view class="acts">
+        <!--
+          切当前店。**只对能进的店给**：停业店切过去，每一页都查出空数据，
+          而人只会觉得「今天没单」。当前那家不给 —— 点了什么都不会发生。
+        -->
+        <text
+          v-if="s.storeNo !== merchant.storeNo && s.status === 'ACTIVE'"
+          class="act act--go"
+          @tap="switchTo(s)"
+        >{{ $t("stores.switchTo") }}</text>
         <!--
           改名。后端与契约一直都在，**这一页却只有建店/停用/设默认/挂收款号四个动作** ——
           于是开错一个字的店名只能停用重建，而重建会丢掉这家店的历史。
@@ -375,6 +382,10 @@ function goQualifications() {
   font-size: 24rpx;
   color: var(--sh-primary-text);
 }
+/* 切店是这一页最常用的一下：加重，与「改名/设默认」这类偶发动作拉开 */
+.act--go {
+  font-weight: 600;
+}
 .field {
   margin-top: 20rpx;
 }
@@ -402,31 +413,11 @@ function goQualifications() {
   justify-content: space-between;
 }
 
-/* 中枢两行：与门店卡同宽，左右结构 */
+/* 跨店总览一行：与门店卡同宽，左右结构 */
 .hub {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16rpx;
-}
-.hub__main {
-  min-width: 0;
-}
-.hub__label {
-  display: block;
-  font-size: 24rpx;
-  color: var(--sh-sub);
-}
-.hub__name {
-  display: block;
-  margin-top: 4rpx;
-  font-size: 30rpx;
-  font-weight: 600;
-  color: var(--sh-ink);
-}
-.hub__go {
-  flex-shrink: 0;
-  font-size: 26rpx;
-  color: var(--sh-primary-text);
 }
 </style>

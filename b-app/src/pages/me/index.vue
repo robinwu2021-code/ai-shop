@@ -141,14 +141,10 @@ onShow(() => {
       -->
       <!-- 门店管理是主体资产的总入口：几家店、谁收款、资质都从这进 -->
       <!--
-        门店管理是多店唯一的中枢：切换当前店、跨店对比、各店配置都从这一行进去。
-        右侧显示当前店名 —— 不进去也知道自己在看哪家，顶部那张切店卡因此可以撤掉。
+        这里**没有门店入口**：门店从工作台顶部那颗店名胶囊进（切店、改名、开新店都在那一页）。
+        「我的」是账号维度的东西 —— 密码、语言、套餐；门店是经营维度的，
+        两处都摆一个门就又回到「同一件事三个入口，人记不住走哪个」。
       -->
-      <view v-if="merchant.can('biz:store:admin')" class="cell" @tap="go(ROUTES.stores)">
-        <text class="cell__label">{{ $t("me.stores") }}</text>
-        <text v-if="merchant.multiStore" class="cell__value">{{ merchant.currentStore?.name || "—" }}</text>
-        <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
-      </view>
       <view v-if="merchant.can('biz:store:admin')" class="cell" @tap="go(ROUTES.staff)">
         <text class="cell__label">{{ $t("me.staff") }}</text>
         <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
