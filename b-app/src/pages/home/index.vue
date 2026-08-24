@@ -260,9 +260,20 @@ onShow(load);
         <text class="sh-h2">{{ $t("home.storeEntry") }}</text>
       </view>
 
-      <!-- 类目与规格合并成一个入口：分类页里已经带着规格配置，不再各设一页 -->
+      <!--
+        **类目与规格并排两个入口。**它们曾经合成一个（「规格配置在分类页里」），
+        那时规格页确实只是类目页的附属；现在它已经长成独立的一块 ——
+        每个类目用哪几个规格、每个规格用哪几档、还能自己建，都在那一页。
+        埋在二级的结果是「找不到」：进类目页、再找一张卡、才到得了。
+      -->
       <view v-if="merchant.can('biz:store:admin')" class="sh-card entry" @tap="open(ROUTES.storeCategories)">
         <text class="sh-h2">{{ $t("home.catalogEntry") }}</text>
+        <text class="sh-muted">{{ $t("home.catalogEntryHint") }}</text>
+      </view>
+
+      <view v-if="merchant.can('biz:goods')" class="sh-card entry" @tap="open(ROUTES.mySpecs)">
+        <text class="sh-h2">{{ $t("home.specsEntry") }}</text>
+        <text class="sh-muted">{{ $t("home.specsEntryHint") }}</text>
       </view>
 
 
