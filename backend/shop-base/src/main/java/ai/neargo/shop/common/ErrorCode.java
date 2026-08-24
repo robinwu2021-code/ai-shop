@@ -574,6 +574,19 @@ public enum ErrorCode {
      */
     SPEC_TEMPLATE_DUPLICATE(80006, "err.spec_template.duplicate"),
 
+    /**
+     * 量纲维度（QUANT）下新加的档位里抽不出数量。
+     *
+     * <p><b>不复用 BAD_REQUEST</b>：商家看到「请求参数有误」只会以为系统坏了，
+     * 而他要做的其实很具体 —— 把数量写进文案里（「大袋」→「750g」）。
+     * 服务端本来就会从文案里抽数字（「750g」「1.5kg」都认），
+     * 抽不出来才走到这里，所以这句话必须说清该怎么写。
+     *
+     * <p>没有归一量的值在一个专门用来归一的库里就是一个字符串：
+     * 排不了序，也比不了价。
+     */
+    SPEC_VALUE_NEEDS_QUANTITY(80009, "err.spec_value.needs_quantity"),
+
     /*
      * 触达通道的模拟发送（P-14.1 / TDD-运营端触达中心 §5）。
      *

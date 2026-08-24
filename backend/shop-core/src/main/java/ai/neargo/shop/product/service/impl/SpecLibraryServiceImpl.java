@@ -792,7 +792,9 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
         if (PrdSpecDim.QUANT.equals(dim.getValueType()) && (num == null || num.signum() <= 0)) {
             num = parseQuantity(norm, dim.getUnit());
             if (num == null) {
-                throw BizException.of(ErrorCode.BAD_REQUEST);
+                // **不用 BAD_REQUEST**：「请求参数有误」只会让商家以为系统坏了，
+                // 而他要做的很具体 —— 把数量写进文案里。见 SPEC_VALUE_NEEDS_QUANTITY
+                throw BizException.of(ErrorCode.SPEC_VALUE_NEEDS_QUANTITY);
             }
         }
 

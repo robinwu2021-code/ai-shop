@@ -1969,9 +1969,13 @@ export const mockApi: MerchantApi = {
     const tpl = db.specTemplates.find((t) => t.templateNo === dimNo);
     const hit = tpl?.options.find((o) => o.label === text);
     if (hit) return delay({ valueNo: dimNo + "_" + (hit.code ?? text), code: hit.code ?? "", label: hit.label });
-    // 量纲维度：文案里得写着数量，否则这一档排不了序也比不了价
-    if (/重量|容量|长度|口径/.test(tpl?.name ?? "") && !/\d/.test(text)) {
-      throw new Error("这一档要写清数量，例如 750g");
+    /*
+     * 量纲维度：文案里得写着数量，否则这一档排不了序也比不了价。
+     * 措辞与后端 `SPEC_VALUE_NEEDS_QUANTITY` 对齐 —— 两处不一致的话，
+     * 在 mock 上验过的提示到真机上会变成另一句（此前真机上是「请求参数有误」）。
+     */
+    if (/重量|容量|长度|口径|净含量/.test(tpl?.name ?? "") && !/\d/.test(text)) {
+      throw new Error("这一档要写清数量，例如 750g 或 1.5kg");
     }
     tpl?.options.push({ label: text });
     return delay({ valueNo: dimNo + "_M" + db.specTemplates.length, code: "", label: text });
