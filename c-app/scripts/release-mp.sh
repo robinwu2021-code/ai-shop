@@ -28,7 +28,32 @@ echo "▶ 2/4 校验产物里的 API 地址"
 if grep -rqa "127\.0\.0\.1\|localhost" "$DIST"; then
   echo "✗ 产物里有 127.0.0.1/localhost —— 检查 c-app/.env.production 的 VITE_API_BASE"; exit 1
 fi
-grep -rhoa "https://[a-zA-Z0-9._-]*hxmall[a-zA-Z0-9._-]*" "$DIST" | sort -u | sed 's/^/  ✓ /'
+# **这一句只是报告，不许它决定成败。** 原先写死了找 hxmall 域名，
+# 而 .env.production 后来换成了服务器 IP —— grep 找不到就返回 1，
+# 在 set -e 下把整个发布掐掉，且它本身不打印任何东西：
+# 屏幕上只剩上一行「校验 API 地址」，看起来像校验没通过。
+# 排查方向被带到「产物里是不是真有 localhost」，而那一条明明是过的。
+BASES="$(grep -rhoaE "https?://[a-zA-Z0-9._:-]+" "$DIST" \
+  | grep -vE "w3\.org|weixin\.qq\.com|qq\.com|schema" | sort -u || true)"
+if [ -n "$BASES" ]; then
+  echo "$BASES" | sed 's/^/  · /'
+else
+  echo "  · 产物里没有任何外部地址（同源部署时正常）"
+fi
+
+# **真机的硬门槛：HTTPS + 已备案域名。**
+# HTTP 或裸 IP 在模拟器里一切正常（关掉 urlCheck 就行），到真机上是
+# **每一个请求都失败**：首页空白、自提点「加载不出来」，而包已经传上去了。
+# 那个开关恰好盖住了真机上唯一致命的问题，所以这里必须自己喊一声。
+# 只警告不拦截 —— 用 IP 打包给「开了调试的手机」做内部测试是正当用法。
+if echo "$BASES" | grep -qE "^  *· *http://|https?://[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+"; then
+  echo ""
+  echo "  ⚠ API 地址不是 HTTPS 域名。真机上**所有请求都会被拒**（首页空白、"
+  echo "    自提点加载不出来），除非在手机上「⋯ → 打开调试」跳过域名校验。"
+  echo "    要发体验版给普通用户，得先备案通过、后台配好服务器域名，"
+  echo "    再把 c-app/.env.production 的 VITE_API_BASE 换成 https 域名。"
+  echo ""
+fi
 
 echo "▶ 3/4 传到 $HOST"
 # COPYFILE_DISABLE=1 不能省：macOS 的 tar 会带出 ._* 资源叉文件，

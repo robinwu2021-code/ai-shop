@@ -6,3 +6,6 @@ dist
 unpackage
 android/app/build
 ios/App/Pods
+
+# e2e 截图：失败时用来看「页面当时长什么样」，属跑测的产物，不入库
+tests/e2e/out/
