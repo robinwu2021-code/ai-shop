@@ -21,10 +21,15 @@ import static org.assertj.core.api.Assertions.assertThatCode;
  */
 class FixedOtpGuardTest {
 
+    /** 默认按「短信是桩」跑 —— 那是本地开发的形状 */
     private static void run(String fixed, String... profiles) {
+        run(fixed, true, profiles);
+    }
+
+    private static void run(String fixed, boolean smsStub, String... profiles) {
         MockEnvironment env = new MockEnvironment();
         env.setActiveProfiles(profiles);
-        new FixedOtpGuard(fixed, env).check();
+        new FixedOtpGuard(fixed, smsStub, env).check();
     }
 
     @Test
@@ -50,6 +55,38 @@ class FixedOtpGuardTest {
     void nonProdStartsFine() {
         assertThatCode(() -> run("123456", "api")).doesNotThrowAnyException();
         assertThatCode(() -> run("123456", "api", "h2db")).doesNotThrowAnyException();
+    }
+
+    /*
+     * ↓ 下面三条是这道闸真正的判据。
+     *
+     * 上面那条 `run("123456", "api")` 曾经是**唯一**描述「生产」的方式，
+     * 而它写的是「照常启动」—— 因为写测试时以为生产叫 prod。
+     * 实际生产跑的就是 api,ops：**这个断言当时是绿的，而线上是敞开的**。
+     */
+
+    @Test
+    @DisplayName("★★★ 短信通道是真的 → 拒绝启动（这才是生产的形状，profile 叫什么都一样）")
+    void realSmsChannelRefusesToStart() {
+        // 本项目生产实际就是这一组：profile=api,ops + 真短信
+        assertThatThrownBy(() -> run("123456", false, "api", "ops"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("拒绝启动")
+                .hasMessageContaining("shop.sms.stub=false");
+    }
+
+    @Test
+    @DisplayName("★★★ profile 完全不设、只有真短信 → 照样拒绝 —— 不许靠名字兜底")
+    void realSmsRefusesEvenWithoutAnyProfile() {
+        assertThatThrownBy(() -> run("123456", false))
+                .isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    @DisplayName("★★ 真短信但没设预设码 → 必须能起（生产的正常形态）")
+    void realSmsWithoutFixedCodeIsFine() {
+        assertThatCode(() -> run("", false, "api", "ops")).doesNotThrowAnyException();
+        assertThatCode(() -> run(null, false, "api", "ops")).doesNotThrowAnyException();
     }
 
     @Test
