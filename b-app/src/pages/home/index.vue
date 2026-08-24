@@ -274,6 +274,11 @@ onShow(load);
         <text class="sh-h2">{{ $t("home.storeEntry") }}</text>
       </view>
 
+      <!-- 类目与规格合并成一个入口：分类页里已经带着规格配置，不再各设一页 -->
+      <view v-if="merchant.can('biz:store:admin')" class="sh-card entry" @tap="open(ROUTES.storeCategories)">
+        <text class="sh-h2">{{ $t("home.catalogEntry") }}</text>
+      </view>
+
 
 
 

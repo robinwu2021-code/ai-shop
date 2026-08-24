@@ -90,7 +90,7 @@
     {
       "path": "pages/store-categories/index",
       "style": {
-        "navigationBarTitleText": "货架分类"
+        "navigationBarTitleText": "类目与规格"
       }
     },
     {
@@ -144,7 +144,7 @@
     {
       "path": "pages/store-scope/index",
       "style": {
-        "navigationBarTitleText": "经营范围"
+        "navigationBarTitleText": "经营范围与送货"
       }
     },
     {

@@ -167,10 +167,6 @@ function copyLink() {
   });
 }
 
-function goShelf() {
-  uni.navigateTo({ url: "/pages/store-categories/index" });
-}
-
 onShow(() => {
   void load();
 });
@@ -217,11 +213,6 @@ onShow(() => {
       </view>
     </view>
 
-    <!-- 货架分类从这进：它决定店铺页摆哪几类。规格配置已长在分类页里，不再单列 -->
-    <view v-if="merchant.can('biz:store:admin')" class="sh-card mt shelf" @tap="goShelf">
-      <text class="sh-h2">{{ $t("store.shelfEntry") }}</text>
-      <sh-icon name="chevronRight" :size="18" color="var(--sh-sub)"></sh-icon>
-    </view>
 
     <!-- 获客工具：店铺码 + 分享文案合一卡。一期主获客路径的商家侧（ADR-004 决策 3） -->
     <view class="sh-card mt">
@@ -418,9 +409,4 @@ onShow(() => {
   color: var(--sh-sub);
 }
 
-.shelf {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
 </style>
