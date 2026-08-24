@@ -290,7 +290,6 @@ export const httpApi: MerchantApi = {
   mPickableDims: (categoryNo) => http.get<SpecTemplate[]>(E.mPickableDims.path, { categoryNo }),
   mShip: (orderNo, expressNo) =>
     http.post<Order>(buildPath(E.mShip.path, { orderNo }), { expressNo } satisfies ShipReq),
-  mMySpecDims: () => http.get<MerchantSpecDim[]>(E.mMySpecDims.path),
   mStoreSpecDims: (storeNo) => http.get<StoreCategorySpecs[]>(E.mStoreSpecDims.path, { storeNo }),
   mDimValues: (dimNo) => http.get<SpecOption[]>(E.mDimValues.path.replace("{dimNo}", dimNo)),
   mSaveSpecOverride: (categoryNo, dims) =>
@@ -301,15 +300,6 @@ export const httpApi: MerchantApi = {
     http.post<void>(E.mArchiveSpecDim.path.replace("{dimNo}", dimNo), { archived }),
   mMySpecDims: () => http.get<MerchantSpecDim[]>(E.mMySpecDims.path),
   mStoreSpecDims: (storeNo) => http.get<StoreCategorySpecs[]>(E.mStoreSpecDims.path, { storeNo }),
-  mRenameSpecDim: (dimNo, name) =>
-    http.post<void>(E.mRenameSpecDim.path.replace("{dimNo}", dimNo), { name }),
-  mArchiveSpecDim: (dimNo, archived) =>
-    http.post<void>(E.mArchiveSpecDim.path.replace("{dimNo}", dimNo), { archived }),
-  mMySpecDims: () => http.get<MerchantSpecDim[]>(E.mMySpecDims.path),
-  mRenameSpecDim: (dimNo, name) =>
-    http.post<void>(E.mRenameSpecDim.path.replace("{dimNo}", dimNo), { name }),
-  mArchiveSpecDim: (dimNo, archived) =>
-    http.post<void>(E.mArchiveSpecDim.path.replace("{dimNo}", dimNo), { archived }),
   mDelivered: (orderNo) => http.post<Order>(buildPath(E.mDelivered.path, { orderNo }), {}),
   mDeliveryRule: () => http.get<DeliveryRule>(E.mDeliveryRule.path),
   mSaveDeliveryRule: (rule) => http.post<DeliveryRule>(E.mSaveDeliveryRule.path, rule),
