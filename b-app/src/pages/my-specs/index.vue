@@ -89,7 +89,12 @@ function startEditDim(g: StoreCategorySpecs, t: SpecTemplate) {
   };
 }
 
-/** dimNo → 平台原名。合并结果里拿不到它，单独从平台那份取一次 */
+/**
+ * dimNo → 平台原名，**只用作改名输入框的占位符**（「清空 = 用回平台的叫法」）。
+ * 合并结果里拿不到它，所以只在「刚加进来的规格」那条路上顺手记一下；
+ * 拿不到就退回当前叫法 —— 占位符差一点不影响正确性，
+ * 而「改没改」的判据在后端（那里有平台原名）。
+ */
 const platformNames = ref<Record<string, string>>({});
 
 /** 去掉一档 —— 记进 dropped：只是「不提交」等于跟平台走，那一档下次还在 */
@@ -177,13 +182,17 @@ async function commit(
       const isPatched = patch && patch.dimNo === no;
       const codes = isPatched ? patch.values : (t?.options ?? []).map((o) => o.code ?? "");
       const gone = isPatched ? patch.dropped : [];
-      const platform = platformNames.value[no];
       const label = isPatched ? patch.label : t?.name;
       return {
         dimNo: no,
         enabled: true,
-        // 与平台原名相同就不提交 —— 落一条等于原名的覆盖，日后看不出他改没改
-        label: label && label.trim() && label.trim() !== platform ? label.trim() : undefined,
+        /*
+         * **原样提交，不在这里判「改没改」。**端上手里的 name 已经是合并后的，
+         * 要比对得另外拿一份平台原名，而那个值只在部分路径上才有 ——
+         * 判漏了就落一堆等于原名的覆盖，而那会让运营以后的改名到不了这家店。
+         * 后端有平台原名，让它去比。
+         */
+        label: label?.trim() || undefined,
         values: [
           ...codes.map((code) => ({ code, enabled: true })),
           ...gone.map((code) => ({ code, enabled: false })),
@@ -401,7 +410,7 @@ onShow(() => void load());
       平台规格摆在前面：**它才是大多数人该用的那些**。
       放在自建后面的话，一个自建为空的商家先看到的仍是一片空白。
     -->
-    <view v-for="g in byCategory" :key="g.categoryNo" class="sh-card mt">
+    <view v-for="g in byCategory" :key="g.categoryNo" class="cat">
       <view class="cat__head">
         <text class="sh-h2">{{ g.categoryName }}</text>
         <!-- 类目这一层只剩「加规格」，且只留图标：一行里文字越少越看得出结构 -->
@@ -410,7 +419,8 @@ onShow(() => void load());
         </view>
       </view>
 
-      <view v-for="t in g.dims" :key="t.templateNo" class="ed">
+      <view v-for="t in g.dims" :key="t.templateNo" class="spec"
+            :class="{ 'spec--drag': dragFrom === t.templateNo }">
         <!--
           **一次只调一个规格。**从前点一下类目的「调整」，整屏所有规格连同
           它们的全部档位一起变可编辑 —— 而他这次多半只想动其中一个，
@@ -418,8 +428,7 @@ onShow(() => void load());
         -->
         <template v-if="editingDim !== t.templateNo">
           <view
-            class="ed__head"
-            :class="{ 'ed__head--drag': dragFrom === t.templateNo }"
+            class="spec__head"
             @touchstart="onDragStart(g, t.templateNo, $event)"
             @touchmove.stop.prevent="onDragMove(g, $event)"
             @touchend="onDragEnd"
@@ -432,7 +441,7 @@ onShow(() => void load());
             <view class="ic ic--grip">
               <sh-icon name="grip" :size="18" color="var(--sh-sub)" />
             </view>
-            <text class="pf__name flex1">{{ t.name }}</text>
+            <text class="spec__name">{{ t.name }}</text>
             <view class="ic" @tap.stop="startEditDim(g, t)">
               <sh-icon name="sliders" :size="19" color="var(--sh-primary)" />
             </view>
@@ -440,12 +449,12 @@ onShow(() => void load());
               <sh-icon name="close" :size="18" color="var(--sh-sub)" />
             </view>
           </view>
-          <text class="sh-muted pf__vals">{{ t.options.map((o) => o.label).join(" · ") }}</text>
+          <text class="spec__vals">{{ t.options.map((o) => o.label).join(" · ") }}</text>
         </template>
 
         <!-- 编辑这一个：改名 + 档位。形态与从前一样，只是范围缩到一行 -->
         <template v-else>
-          <view class="ed__head">
+          <view class="spec__head">
             <!--
               **改的是本店叫法，不是平台的规格。**dimNo 一个字不变，
               所以三家店的同一个规格照样聚得到一起。
@@ -464,7 +473,7 @@ onShow(() => void load());
             </view>
           </view>
           <view class="ed__row">
-            <text class="sh-muted pf__vals">{{ $t("mySpecs.adjustHint") }}</text>
+            <text class="sh-muted hint">{{ $t("mySpecs.adjustHint") }}</text>
           </view>
           <view class="ed__acts">
             <text class="link" @tap="saveDim(g)">{{ $t("mySpecs.save") }}</text>
@@ -474,8 +483,8 @@ onShow(() => void load());
       </view>
 
       <!-- 一条规格都没有的类目：说清是平台那边的缺口，并给一条出路 -->
-      <text v-if="!g.dims.length" class="sh-muted pf__vals">{{ $t("mySpecs.catNoDims") }}</text>
-      <view class="ed__row">
+      <text v-if="!g.dims.length" class="spec__vals">{{ $t("mySpecs.catNoDims") }}</text>
+      <view class="cat__foot">
         <text class="link" @tap="resetOverride(g)">{{ $t("mySpecs.reset") }}</text>
       </view>
     </view>
@@ -484,9 +493,7 @@ onShow(() => void load());
 
     <view class="sh-card mt">
       <text class="sh-h2">{{ $t("mySpecs.mineTitle") }}</text>
-      <text v-if="quota" class="sh-muted pf__vals">
-        {{ quota.dimUsed }} / {{ quota.dimQuota }}
-      </text>
+      <text v-if="quota" class="sh-muted hint">{{ quota.dimUsed }} / {{ quota.dimQuota }}</text>
       <sh-empty v-if="!loading && !dims.length" :text='$t("mySpecs.empty")'></sh-empty>
     </view>
 
@@ -520,52 +527,60 @@ onShow(() => void load());
 </template>
 
 <style scoped>
+/*
+ * 与「我的」那一页同一套行范式（cells/cell）：**组内密排，间距只在组与组之间**。
+ * 每行都套一张卡的话，一个类目下三四个规格就变成三四块互不相干的浮起色块，
+ * 中间的留白比行本身还显眼 —— 看着像四个功能模块，而它们只是一份清单。
+ */
 .intro {
   display: block;
+  padding: 0 8rpx;
   font-size: 24rpx;
 }
-.mt {
-  margin-top: 20rpx;
+
+.cat {
+  margin-top: 24rpx;
+  background: var(--sh-surface);
+  border-radius: 24rpx;
+  overflow: hidden;
 }
 .cat__head {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-}
-.ed {
-  padding: 12rpx 0;
-  border-bottom: 1rpx solid var(--sh-line, transparent);
-}
-.ed__head {
-  display: flex;
   align-items: center;
-  gap: 12rpx;
-}
-/* 档位弹层：压在页面上，点外面不关 —— 误触关掉会把他刚勾的一串丢掉 */
-.sheet {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  top: 0;
-  background: var(--sh-scrim);
-  display: flex;
-  align-items: flex-end;
-}
-.sheet__box {
-  width: 100%;
-  padding: 32rpx;
-  border-radius: 24rpx 24rpx 0 0;
-  background: var(--sh-surface);
-}
-.sheet__vals {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12rpx;
-  margin: 20rpx 0;
+  justify-content: space-between;
+  padding: 24rpx 26rpx 12rpx;
 }
 
-/* 图标按钮：给足点击区（44rpx 见方），图标本身小 —— 一行里四个操作挨得近 */
+/* 一个规格 = 一行主件 + 一行档位。它们是同一条，所以中间不留间距 */
+.spec {
+  padding: 18rpx 26rpx;
+}
+.spec + .spec {
+  border-top: 1rpx solid var(--sh-line);
+}
+.spec__head {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+}
+.spec__name {
+  flex: 1;
+  font-size: 28rpx;
+  color: var(--sh-ink);
+}
+.spec__vals {
+  margin-top: 6rpx;
+  padding-left: 56rpx;   /* 与手柄对齐 —— 让「这些档位属于上面那个规格」看得出来 */
+  font-size: 24rpx;
+  color: var(--sh-sub);
+}
+
+/* 拖动中：整行提一层，让他看得出「抓住的是这一行」 */
+.spec--drag {
+  background: var(--sh-faint);
+}
+
+/* 图标按钮：给足点击区，图标本身小 —— 一行里三个操作挨得近 */
 .ic {
   display: flex;
   align-items: center;
@@ -574,65 +589,50 @@ onShow(() => void load());
   height: 56rpx;
 }
 .ic--grip {
-  margin-left: -12rpx;
-}
-/* 拖动中：整行提一层，让他看得出「抓住的是这一行」 */
-.ed__head--drag {
-  opacity: 0.6;
-  background: var(--sh-faint);
-  border-radius: 12rpx;
+  width: 48rpx;
 }
 
-.pf__act {
-  margin-left: 16rpx;
+/* 编辑态：与只读行同一个左边距，展开时不跳位 */
+.ed__vals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+  margin-top: 16rpx;
 }
-
 .ed__row {
   margin-top: 12rpx;
 }
-
-/*
- * 档位：**这里的每一条都是「已经在用的」**，所以是正常颜色 ——
- * 之前做成灰色候选态是上一版的残留（那时一排里混着用和不用的），
- * 现在不用的根本不显示，再压暗就成了「全都不重要」。
- */
+.ed__acts {
+  display: flex;
+  gap: 32rpx;
+  margin-top: 20rpx;
+}
+.ed__add {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 64rpx;
+}
 .val__x {
   margin-left: 6rpx;
   opacity: 0.45;
 }
 
-.ed__on {
-  min-width: 44rpx;
-  text-align: center;
-}
-.ed__vals {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12rpx;
-  margin-top: 12rpx;
-  padding-left: 60rpx;
-}
-.ed__acts {
-  display: flex;
-  gap: 28rpx;
-  margin-top: 20rpx;
-}
-.flex1 {
-  flex: 1;
+/* 类目底部的「恢复平台默认」：弱化 —— 它是退路，不是日常操作 */
+.cat__foot {
+  padding: 18rpx 26rpx 24rpx;
+  border-top: 1rpx solid var(--sh-line);
+  font-size: 24rpx;
 }
 
-.pf {
+.hint {
+  display: block;
+  font-size: 24rpx;
+}
+.quota {
   display: flex;
   align-items: baseline;
-  gap: 16rpx;
-  padding: 10rpx 0;
-}
-.pf__name {
-  min-width: 120rpx;
-  font-size: 28rpx;
-}
-.pf__vals {
-  font-size: 24rpx;
+  gap: 12rpx;
 }
 .dim__head {
   display: flex;
@@ -668,7 +668,13 @@ onShow(() => void load());
 }
 .foot {
   display: block;
-  margin: 24rpx 0;
+  margin: 24rpx 8rpx;
   font-size: 24rpx;
+}
+.flex1 {
+  flex: 1;
+}
+.mt {
+  margin-top: 20rpx;
 }
 </style>

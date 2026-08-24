@@ -806,6 +806,33 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
          */
         Map<String, java.util.Set<String>> subsetCodes = subsetCodesOf(categoryNo);
 
+        /*
+         * **提交上来的 dims 是一份完整声明**：「这一类用哪几个规格」。
+         * 所以类目绑定里有、而他没提交的，就是他移除掉的 —— 这里补一条 enabled=false。
+         *
+         * 不这样做的话会出现：他移除了「等级」，接着挪了下别的规格的位置
+         * （那次提交里自然没有「等级」），**等级就回来了** ——「没提交」被当成
+         * 「跟平台走」。与取值那一层是同一个病，判据同样只能放在后端：
+         * 端上手里就没有「平台给了哪几个规格」这份底。
+         */
+        java.util.Set<String> declaredDims = dims.stream()
+                .filter(OverrideCommand::enabled)
+                .map(OverrideCommand::dimNo)
+                .collect(Collectors.toCollection(java.util.LinkedHashSet::new));
+        for (PrdCategorySpec b : activeBindings(categoryNo)) {
+            if (declaredDims.contains(b.getDimNo())
+                    || dims.stream().anyMatch(d -> d.dimNo().equals(b.getDimNo()))) {
+                continue;   // 声明用它、或显式说了不用 —— 两种都在下面那圈里处理
+            }
+            PrdMerchantSpecOverride off = new PrdMerchantSpecOverride();
+            off.setMerchantNo(merchantNo);
+            off.setCategoryNo(categoryNo);
+            off.setDimNo(b.getDimNo());
+            off.setValueNo(PrdMerchantSpecOverride.DIM_LEVEL);
+            off.setEnabled(false);
+            DataScopeContext.executeWithoutScope(() -> overrideMapper.insert(off));
+        }
+
         int i = 0;
         for (OverrideCommand d : dims) {
             i += 10;
@@ -822,7 +849,21 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
                 row.setValueNo(PrdMerchantSpecOverride.DIM_LEVEL);
                 row.setEnabled(d.enabled());
                 row.setSort(i);
-                row.setLabelOverride(notBlank(d.label()) ? d.label().trim() : null);
+                /*
+                 * **与平台原名相同就不算改名。**判据放在这里而不是端上：
+                 * 端上手里的 name 已经是合并后的（他改过就是他的叫法），
+                 * 要判断「改没改」得另外拿一份平台原名 —— 而那个值只在
+                 * 「刚打开编辑」「刚加进来」这两条路上才有，其余情况一律为空，
+                 * 于是每个规格都被当成改过，落一堆等于原名的 override。
+                 *
+                 * 后果不是表变大：运营以后改了规格名，这些商家**永远收不到** ——
+                 * 因为他们"覆盖"了一个自己从没动过的东西。
+                 */
+                String label = notBlank(d.label()) ? d.label().trim() : null;
+                PrdSpecDim dim = DataScopeContext.executeWithoutScope(() ->
+                        dimMapper.selectOne(Wrappers.<PrdSpecDim>lambdaQuery()
+                                .eq(PrdSpecDim::getDimNo, d.dimNo()).last("limit 1")));
+                row.setLabelOverride(dim != null && dim.getName().equals(label) ? null : label);
                 DataScopeContext.executeWithoutScope(() -> overrideMapper.insert(row));
             }
             /*
