@@ -180,6 +180,9 @@ const photos = computed(() =>
     ? [cover.value, ...images.value.filter((x) => x !== cover.value)]
     : [...images.value],
 );
+/** 勾了本店没开通的送货方式（后端 `FULFILLMENT_NOT_SUPPORTED`）。出路是去开通，不是改这一页 */
+const FULFILLMENT_NOT_SUPPORTED = 70013;
+
 /** 一组图的上限 = 封面 1 + 轮播 6。存的时候两个字段各自的上限没变 */
 const PHOTO_LIMIT = 7;
 /**
@@ -247,12 +250,29 @@ const fulfillmentOptions = computed(() =>
  * 比多给两个选项糟得多。
  */
 const storeChannels = ref<string[]>([]);
-const channelsLoaded = ref(false);
+/**
+ * 这份名单的状态。**分三档，不是一个 boolean** ——
+ * 「还没读到」与「读失败了」在界面上要说不同的话：前者等一下就好，
+ * 后者要给一个「重试」。此前两者都退回「四路全开」，于是**网络抖一下，
+ * 商家就能勾上一条本店没开的路**，商品存得下去、买家下不了单，
+ * 而错要到结算那一刻才显形。
+ */
+const channelsState = ref<"loading" | "ok" | "error">("loading");
+const channelsLoaded = computed(() => channelsState.value === "ok");
 
-/** 这一路本店开了吗。服务类的两种不归门店送货方式管，恒为可选 */
+/**
+ * 这一路本店开了吗。**以后端为准**（`mch_fulfillment_channel`）。
+ *
+ * <p>服务类两种不归门店送货方式管，恒为可选。
+ *
+ * <p>名单为空时放行：与后端 `MerchantGoodsServiceImpl` 那句
+ * 「空集 = 未迁移到 channel 模型，放行」**一字对齐** ——
+ * 老商家一行 channel 记录都没有，前端在这里拦死的话，他连商品都建不了，
+ * 而后端本来是让他过的。两侧规则必须同一条，否则一边说能、一边说不能。
+ */
 function channelOpen(f: string): boolean {
   if (SERVICE_FULFILLMENTS.includes(f)) return true;
-  if (!channelsLoaded.value || !storeChannels.value.length) return true;
+  if (channelsState.value !== "ok" || !storeChannels.value.length) return true;
   return storeChannels.value.includes(f);
 }
 
@@ -267,8 +287,12 @@ const FULFILLMENT_PRIORITY = ["MERCHANT_DELIVERY", "STORE_PICKUP", "NEIGHBOR_PIC
 
 async function loadStoreChannels() {
   const res = await api.mStoreFulfillment(merchant.storeNo || "default").catch(() => null);
-  channelsLoaded.value = true;
-  if (!res) return;
+  if (!res) {
+    // 失败**不清空已有名单**：从门店页回来重拉时抖一下，不该让整排 chip 跳一下
+    channelsState.value = storeChannels.value.length ? "ok" : "error";
+    return;
+  }
+  channelsState.value = "ok";
   storeChannels.value = res.channels.filter((c) => c.enabled).map((c) => c.channel);
   /*
    * **只给新建商品预选**。编辑已有商品时一律不动他选过的那一路 ——
@@ -1811,6 +1835,21 @@ async function save(thenSubmit = false) {
     uni.showToast({ title: t(thenSubmit ? "goods.submitted" : "common.saved"), icon: "none" });
     setTimeout(() => uni.navigateBack(), 600);
   } catch (e) {
+    /*
+     * 后端对「勾了本店没开的送货方式」是**硬拒**（70013，方案 v4 的上架校验）。
+     * 端上那份名单可能已经过时（他在别的设备上关掉了这一路），所以这一条要
+     * 单独说清楚：通用的「操作失败」会让他反复点保存，而该做的是去开通。
+     */
+    if ((e as { code?: number }).code === FULFILLMENT_NOT_SUPPORTED) {
+      void loadStoreChannels();   // 顺手把名单刷新到最新，chip 上立刻能看出是哪一路
+      uni.showModal({
+        title: String(t("goods.fulfillmentRejected")),
+        content: String(t("goods.fulfillmentRejectedHint")),
+        confirmText: String(t("goods.toStoreScope")),
+        success: (r) => { if (r.confirm) toStoreScope(); },
+      });
+      return;
+    }
     uni.showToast({ title: (e as Error).message, icon: "none" });
   } finally {
     saving.value = false;
@@ -2152,6 +2191,20 @@ async function save(thenSubmit = false) {
             }}<template v-if="!channelOpen(f)"> · {{ $t("goods.channelOff") }}</template>
           </text>
         </view>
+        <!--
+          名单没读到时**如实说**，别装作四路全开。
+          读取中：一行浅字；读失败：一行 + 「重试」。
+          此前这两种都退回「全开」，于是网络抖一下，商家就能勾上一条本店没开的路 ——
+          商品存得下去、买家下不了单，而错要到结算那一刻才显形。
+        -->
+        <text v-if="channelsState === 'loading'" class="sh-muted hint">
+          {{ $t("goods.channelsLoading") }}
+        </text>
+        <view v-else-if="channelsState === 'error'" class="inline">
+          <text class="sh-muted hint flex1">{{ $t("goods.channelsFailed") }}</text>
+          <text class="link" @tap="loadStoreChannels">{{ $t("common.retry") }}</text>
+        </view>
+
         <!-- 编辑老商品：原来那一路被门店关掉了。**不替他改**，只说出来 -->
         <text v-if="fulfillmentClosed" class="cat-lv__gate">
           {{ $t("goods.fulfillmentClosedWarn") }}
