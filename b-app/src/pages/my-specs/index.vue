@@ -60,6 +60,13 @@ async function load() {
  */
 const editingDim = ref<string | null>(null);
 
+/**
+ * 编辑态的键要**连类目一起**：同一个规格（SD_PACK「包装」）会出现在好几个类目下，
+ * 只记 dimNo 的话，点开「好菜 · 包装」时「肉禽蛋 · 包装」也跟着展开 ——
+ * 而他只想改一个。
+ */
+const editKey = (categoryNo: string, dimNo: string) => `${categoryNo}\u0000${dimNo}`;
+
 /** 编辑态的本地副本：只装这一个规格 */
 const draft = ref<{
   dimNo: string;
@@ -74,7 +81,7 @@ const draft = ref<{
 }>({ dimNo: "", platformName: "", label: "", values: [], labels: {}, dropped: [] });
 
 function startEditDim(g: StoreCategorySpecs, t: SpecTemplate) {
-  editingDim.value = t.templateNo;
+  editingDim.value = editKey(g.categoryNo, t.templateNo);
   draft.value = {
     dimNo: t.templateNo,
     /*
@@ -303,7 +310,7 @@ async function removeDim(g: StoreCategorySpecs, dim: SpecTemplate) {
   if (!ok) return;
   try {
     await commit(g, undefined, undefined, dim.templateNo);
-    if (editingDim.value === dim.templateNo) editingDim.value = null;
+    if (editingDim.value === editKey(g.categoryNo, dim.templateNo)) editingDim.value = null;
   } catch (e) {
     uni.showToast({ title: (e as Error).message, icon: "none" });
   }
@@ -476,7 +483,7 @@ onShow(() => void load());
           它们的全部档位一起变可编辑 —— 而他这次多半只想动其中一个，
           剩下的都在那儿等着他误触。
         -->
-        <template v-if="editingDim !== t.templateNo">
+        <template v-if="editingDim !== editKey(g.categoryNo, t.templateNo)">
           <view
             class="spec__head"
             @touchstart="onDragStart(g, t.templateNo, $event)"
@@ -518,24 +525,35 @@ onShow(() => void load());
               {{ draft.labels[v.code] ?? v.code }}
               <text class="val__x" @tap.stop="dropValue(v.code)">✕</text>
             </text>
-            <view class="sh-chip ed__add" @tap="addValue()">
-              <sh-icon name="plus" :size="16" color="var(--sh-primary)" />
-            </view>
+            <!--
+              与档位 chip 同一个形状：在 chip 里塞 sh-icon 会塌成一个小圆点
+              （chip 有自己的行高与内边距，图标是绝对定位的 mask）。
+              这里要的只是「再加一个」，一个 ＋ 字就够。
+            -->
+            <text class="sh-chip ed__add" @tap="addValue()">＋</text>
           </view>
           <view class="ed__row">
             <text class="sh-muted hint">{{ $t("mySpecs.adjustHint") }}</text>
           </view>
+          <!-- 与 delivery / goods-edit 同一套按钮范式：主操作实心，次操作 soft -->
           <view class="ed__acts">
-            <text class="link" @tap="saveDim(g)">{{ $t("mySpecs.save") }}</text>
-            <text class="link" @tap="editingDim = null">{{ $t("mySpecs.cancel") }}</text>
+            <view class="sh-btn sh-btn--soft ed__btn" @tap="editingDim = null">
+              {{ $t("mySpecs.cancel") }}
+            </view>
+            <view class="sh-btn ed__btn" @tap="saveDim(g)">{{ $t("mySpecs.save") }}</view>
           </view>
         </template>
       </view>
 
       <!-- 一条规格都没有的类目：说清是平台那边的缺口，并给一条出路 -->
       <text v-if="!g.dims.length" class="spec__vals">{{ $t("mySpecs.catNoDims") }}</text>
+      <!--
+        「恢复平台默认」= 撤销这一类目下的**全部**调整。放在卡片最后并压到最轻：
+        它与上面每一行的操作不是一个量级，长得一样重的话，
+        手指下滑时很容易顺手点掉自己刚调好的一切。
+      -->
       <view class="cat__foot">
-        <text class="link" @tap="resetOverride(g)">{{ $t("mySpecs.reset") }}</text>
+        <text class="cat__reset" @tap="resetOverride(g)">{{ $t("mySpecs.reset") }}</text>
       </view>
     </view>
 
@@ -654,8 +672,11 @@ onShow(() => void load());
 }
 .ed__acts {
   display: flex;
-  gap: 32rpx;
-  margin-top: 20rpx;
+  gap: 20rpx;
+  margin-top: 24rpx;
+}
+.ed__btn {
+  flex: 1;
 }
 .ed__add {
   display: flex;
@@ -669,6 +690,10 @@ onShow(() => void load());
 }
 
 /* 类目底部的「恢复平台默认」：弱化 —— 它是退路，不是日常操作 */
+.cat__reset {
+  font-size: 24rpx;
+  color: var(--sh-sub);
+}
 .cat__foot {
   padding: 18rpx 26rpx 24rpx;
   border-top: 1rpx solid var(--sh-line);
