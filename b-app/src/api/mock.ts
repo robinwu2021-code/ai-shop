@@ -542,6 +542,13 @@ function newCommunitySeed(name: string, address?: string, streetCode?: string, k
   } as unknown as (typeof db.communitySeeds)[number];
 }
 
+/**
+ * 小区缓存的 mock：一片一条，进程内存着就够验端上那条「读→补→写回」的流程。
+ * 按 parentCode 归属（与后端同口径）—— 已开通社区的 scope 是 `C<号>`，
+ * 不是区划码前缀，靠前缀匹配的写法会把它漏掉。
+ */
+const mockEstateCache = new Map<string, { parentCode: string; items: import("./contract").EstateItem[] }>();
+
 export const mockApi: MerchantApi = {
   // ---------------------------------------------------------------- 账号与入驻
   async mLogin(req) {
@@ -720,6 +727,28 @@ export const mockApi: MerchantApi = {
     });
     db.storeCategories[storeNo] = next;
     return delay(next.map((c) => ({ ...c })));
+  },
+
+  async mEstates(regionCode, opts) {
+    const hit = mockEstateCache.get(regionCode);
+    if (hit) return delay({ scopeCode: regionCode, items: hit.items, cached: true, stale: false });
+    if (opts?.latE6 == null && opts?.lngE6 == null && !opts?.addressPath) {
+      return delay({ scopeCode: regionCode, items: [], cached: false, stale: false });
+    }
+    const items: import("./contract").EstateItem[] = [
+      { name: "模拟花园A区", address: "示例路 1 号", latE6: (opts?.latE6 ?? 22710000) + 200, lngE6: (opts?.lngE6 ?? 114030000) + 200 },
+      { name: "模拟花园B区", address: "示例路 3 号", latE6: (opts?.latE6 ?? 22710000) - 200, lngE6: (opts?.lngE6 ?? 114030000) - 200 },
+    ];
+    mockEstateCache.set(regionCode, { parentCode: opts?.parentCode ?? "", items });
+    return delay({ scopeCode: regionCode, items, cached: true, stale: false });
+  },
+
+  async mEstateCounts(parentCode) {
+    const out: Record<string, number> = {};
+    for (const [code, v] of mockEstateCache) {
+      if (v.parentCode === parentCode) out[code] = v.items.length;
+    }
+    return delay(out);
   },
 
   // 门店送货方式（方案 v4）：mock 里每店一份，默认「自提两路开」——与生产播种同一映射
@@ -1881,7 +1910,6 @@ export const mockApi: MerchantApi = {
       throw new Error("「" + nm + "」太泛，换一个说清楚是什么的名字");
     }
     const created: SpecTemplate = {
-
       templateNo: nextNo("SD"),
       scope: "MERCHANT",
       merchantNo,
