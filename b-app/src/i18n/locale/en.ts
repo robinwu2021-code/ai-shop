@@ -29,7 +29,7 @@ export default {
     passwordTip: "No password yet? Sign in with a code first, then set one under Me",
     otpSent: "Code sent",
     title: "Merchant sign-in",
-    hint: "Signing in registers you. Owners are taken straight to opening a shop; staff sign in with the number their boss added.",
+    hint: "Signing in registers you; staff use the number their boss added.",
     phone: "Phone", phonePh: "11-digit number", code: "Code", codePh: "6-digit code",
     sendCode: "Send code", resend: "Resend in {s}s", mockCode: "Demo code is 1234",
     submit: "Sign in / register", phoneInvalid: "Enter an 11-digit phone number",
@@ -40,7 +40,7 @@ export default {
     agreementTitle: "Merchant Terms & Privacy Policy",
     agreementBody: "Placeholder for the demo. The real version must cover: operator liability, settlement and split rules, withholding tax, data and privacy handling, violations and dispute resolution.",
     needAgree: "Please accept the terms first",
-    phoneIsIdentity: "Your phone number is the shop's primary identity — it carries the shop through new phones, new staff and handovers. Third-party sign-in still needs it bound.",
+    phoneIsIdentity: "WeChat sign-in still needs a phone number bound — it is the shop's primary identity.",
   },
 
   apply: {

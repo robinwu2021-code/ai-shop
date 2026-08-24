@@ -146,13 +146,31 @@ async function doLogin(method: LoginMethod) {
 
 <template>
   <sh-scaffold title-key="login.title">
+    <!--
+      **不再重复标题**：导航栏已经写着「商家登录」，页面里再来一个 h1 是同一句话说两遍。
+      说明也压成一句 —— 原来那段把「登录即注册」「店员怎么进」「个人主体免资质」
+      三件事塞进两行小字，而人在登录页只想知道「我该填什么」。
+    -->
     <view class="head">
-      <text class="sh-h1">{{ $t("login.title") }}</text>
-      <text class="sh-muted mt">{{ $t("login.hint") }}</text>
+      <text class="sh-muted">{{ $t("login.hint") }}</text>
     </view>
 
     <!-- 手机号 OTP：所有端都有，且是商家账号的主标识 -->
     <view v-if="phoneMethod" class="sh-card">
+      <!--
+        登录方式放在**卡片最上面**：它决定下面那格填验证码还是密码。
+        原来夹在手机号与验证码中间，读起来像是手机号的附属项，
+        而它其实是这张表单的开关。
+      -->
+      <view v-if="pwdMethod" class="modes">
+        <text class="modes__i" :class="{ 'is-on': !byPwd }" @tap="switchMode(false)">
+          {{ $t("login.byOtp") }}
+        </text>
+        <text class="modes__i" :class="{ 'is-on': byPwd }" @tap="switchMode(true)">
+          {{ $t("login.byPassword") }}
+        </text>
+      </view>
+
       <view class="field">
         <text class="field__label">{{ $t("login.phone") }}</text>
         <input
@@ -162,20 +180,6 @@ async function doLogin(method: LoginMethod) {
           maxlength="11"
           :placeholder="$t('login.phonePh')"
         />
-      </view>
-
-      <!--
-        验证码 / 密码二选一。**默认验证码** —— 密码登录不建户，
-        新商家第一次来没有密码，默认到那一栏他会卡在一个填不出的框上。
-        用文字 tab 而不是两个按钮：这是「同一件事的两种方式」，不是两个动作。
-      -->
-      <view v-if="pwdMethod" class="modes">
-        <text class="modes__i" :class="{ 'is-on': !byPwd }" @tap="switchMode(false)">
-          {{ $t("login.byOtp") }}
-        </text>
-        <text class="modes__i" :class="{ 'is-on': byPwd }" @tap="switchMode(true)">
-          {{ $t("login.byPassword") }}
-        </text>
       </view>
 
       <view class="field">
@@ -197,7 +201,7 @@ async function doLogin(method: LoginMethod) {
             maxlength="6"
             :placeholder="$t('login.codePh')"
           />
-          <text v-if="!byPwd" class="send" :class="{ 'is-off': left > 0 }" @tap="sendCode">
+          <text v-if="!byPwd" class="sh-btn sh-btn--soft send" :class="{ 'is-off': left > 0 }" @tap="sendCode">
             {{ left > 0 ? $t("login.resend", { s: left }) : $t("login.sendCode") }}
           </text>
         </view>
@@ -239,7 +243,12 @@ async function doLogin(method: LoginMethod) {
       </text>
     </view>
 
-    <text class="tip">{{ $t("login.phoneIsIdentity") }}</text>
+    <!--
+      「手机号是店铺的主标识」原来是一整段解释（换手机、换店员、店铺转让、第三方补绑）。
+      **只在快捷登录出现时留一句**：那时它才有用（微信进来要补绑手机号）；
+      纯手机号登录的人正在填的就是手机号，这段话对他是纯噪音。
+    -->
+    <text v-if="quickMethods.length" class="tip">{{ $t("login.phoneIsIdentity") }}</text>
   </sh-scaffold>
 </template>
 
@@ -260,32 +269,43 @@ async function doLogin(method: LoginMethod) {
 .flex1 {
   flex: 1;
 }
-/* 方式切换：文字 tab，选中靠主色 + 字重，不做成按钮 ——
-   它是「同一件事的两种方式」，做成按钮会读作两个可执行的动作 */
+/*
+ * 方式切换：**分段控件**，两项等宽、选中带下划线。
+ * 不做成按钮 —— 它是「同一件事的两种方式」，按钮会读作两个可执行的动作；
+ * 但也不能是两段挤在字段之间的散文字：那样看不出它是个开关。
+ */
 .modes {
   display: flex;
-  gap: 28rpx;
-  margin-top: 20rpx;
+  margin-bottom: 8rpx;
+  border-bottom: 2rpx solid var(--sh-line);
 }
 .modes__i {
-  font-size: 26rpx;
+  flex: 1;
+  padding: 20rpx 0;
+  text-align: center;
+  font-size: 28rpx;
   color: var(--sh-sub);
+  border-bottom: 4rpx solid transparent;
 }
 .modes__i.is-on {
   color: var(--sh-primary-text);
   font-weight: 600;
+  border-bottom-color: var(--sh-primary);
 }
 .pwd-tip {
   display: block;
   margin-top: 12rpx;
 }
+/*
+ * 「获取验证码」用设计系统的按钮，只收窄内边距 —— 原来是本页自造的圆角小块。
+ * 高度对齐 `.field__input`（88rpx）：它和输入框并排站一行，差几像素就是歪的。
+ */
 .send {
-  padding: 22rpx 28rpx;
-  border-radius: 24rpx;
-  background: var(--sh-primary-tint);
-  color: var(--sh-primary-text);
-  font-size: 24rpx;
-  font-weight: 600;
+  flex-shrink: 0;
+  height: 88rpx;
+  line-height: 88rpx;
+  padding: 0 28rpx;
+  font-size: 26rpx;
 }
 .send.is-off {
   background: var(--sh-faint);
