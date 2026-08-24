@@ -1,0 +1,77 @@
+name: backend
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+# 同一分支上新的推送取消旧的跑：多会话同时推的时候不排长队
+concurrency:
+  group: backend-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ────────────────────────────────────────────────────────────────────────
+  # 闸一：编译（含测试源码）。**这一条必须一直是绿的。**
+  #
+  # 2026-08-24 的教训：调用方进了提交、定义还躺在某个会话的工作区里，
+  # 于是任何人从干净检出编译都失败 —— 持续 30 小时没人发现，因为大家都在
+  # 各自的工作目录里编，而工作目录里有那份未提交的定义。
+  # CI 天然就是「干净检出」，这正是它最不可替代的地方。
+  #
+  # 必须是 test-compile 不是 compile：那次红的恰恰是测试源码
+  # （改了记录的构造器，漏掉一个调用方），只编主源码等于没编。
+  # ────────────────────────────────────────────────────────────────────────
+  compile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: temurin
+          cache: maven
+      - name: mvn test-compile
+        working-directory: backend
+        run: mvn -B -ntp -DskipTests test-compile
+
+  # ────────────────────────────────────────────────────────────────────────
+  # 闸二：全量测试，但只拦**新增**的失败。
+  #
+  # 闸门立起来时全量有一批历史欠账（其中相当一部分比这次改动还老）。
+  # 要求全绿的闸门会从第一天起就是红的，而恒红的闸门等于没有闸门 ——
+  # 所有人学会的第一件事就是无视它。所以锁的是差集，清单只能变短：
+  # backend/known-failures.txt 删空那天，把这一步换成「必须全绿」。
+  # ────────────────────────────────────────────────────────────────────────
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    needs: compile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: temurin
+          cache: maven
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # 失败也继续 —— 差集由下一步判定，这一步的红绿本身不是结论
+      - name: mvn test
+        working-directory: backend
+        continue-on-error: true
+        run: mvn -B -ntp -pl shop-app -am test
+
+      - name: 只拦新增的失败
+        run: node scripts/check-new-test-failures.mjs
+
+      - name: 留存测试报告
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: surefire-reports
+          path: backend/*/target/surefire-reports/
+          retention-days: 7
