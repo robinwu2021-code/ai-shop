@@ -176,7 +176,6 @@ export default {
     category: "Category",
     categoryTip: "Sets placement, required licences and the product form",
     fulfillment: "Fulfilment",
-    fulfillmentTip: "Pick one; greyed ones are not enabled for this store",
     fulfillmentType: {
       STORE_PICKUP: "Pickup point",
       NEIGHBOR_PICKUP: "Neighbour pickup",
@@ -443,8 +442,8 @@ export default {
   },
   storeCategories: {
       onSale: "{n} on sale", pending: "{n} pending", total: "{n} total",
-    title: "My Shelves",
-    hint: "Which categories this store puts on display, and what to call them. Publishing a product adds its category automatically.",
+    title: "Categories & specs",
+    specsEntry: "Product specs",
     mine: "On display",
     empty: "No shelves yet. Publish a product and its category shows up here.",
     rename: "Rename",
@@ -462,7 +461,6 @@ export default {
     currentTag: "Current",
     switchTo: "Switch to this",
     todayLine: "Today {n} orders · {gmv}",
-    compareEntry: "Compare stores",
     switched: "Now on {name}",
     disabled: "Disabled",
     payNotReady: "Cannot receive",
@@ -811,6 +809,7 @@ export default {
     pendingHint: "⚠️ Commission and fulfilment fee rates are placeholders pending publication (B9 / B10). Refunded orders are already deducted.",
   },
   stats: {
+    compareEntry: "Compare stores",
     title: "Business data", today: "Today", month: "This month", orders: "Orders", gmv: "GMV",
     rating: "Rating", ratingBasis: "{n} reviews",
     ownedTraffic: "Own-customer share",

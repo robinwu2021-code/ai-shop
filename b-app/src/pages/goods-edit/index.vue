@@ -2117,18 +2117,15 @@ async function save(thenSubmit = false) {
           </text>
         </view>
         <!--
-          原来这里是两行：「单选」和「按本店已开通的送货方式给出」。
+          这里原本有一行说明（先是「单选」+「按本店已开通的送货方式给出」两行，
+          后来并成一句「只能选一种；灰掉的是本店还没开通的」），**现在整行去掉**。
 
-          <p>两句都**只说了结论、没说这跟你有什么关系**：「单选」孤零零挂在一排
-          看着像多选的 chip 下面；「按本店已开通的送货方式给出」是从后端视角
-          描述这份候选是怎么来的 —— 而商家看到的现象是「有几个是灰的点不动」，
-          他要知道的是那几个灰的**是他自己没开**，不是平台不支持。
+          <p>两件事都已经写在控件自己身上：点第二个 chip 时第一个会松开，
+          单选一次就学会；没开通的那几个灰着并带「· 未开」，
+          「未开」二字已经说明了是本店没开。剩下的只是那条出路 —— 「去开启」。
         -->
-        <view class="inline">
-          <text class="sh-muted hint flex1">{{ $t("goods.fulfillmentTip") }}</text>
-          <text v-if="storeChannels.length" class="link" @tap="toStoreScope">
-            {{ $t("goods.toStoreScope") }}
-          </text>
+        <view v-if="storeChannels.length" class="inline inline--end">
+          <text class="link" @tap="toStoreScope">{{ $t("goods.toStoreScope") }}</text>
         </view>
         <!-- 编辑老商品：原来那一路被门店关掉了。**不替他改**，只说出来 -->
         <text v-if="fulfillmentClosed" class="cat-lv__gate">
@@ -2702,6 +2699,10 @@ async function save(thenSubmit = false) {
 .field__area--grow :deep(.uni-textarea-textarea) {
   max-height: 60vh;
   overflow-y: auto !important;
+}
+
+.inline--end {
+  justify-content: flex-end;
 }
 
 .std-link {

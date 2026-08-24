@@ -271,7 +271,6 @@ export default {
     categoryL2: "二级类目",
     categoryLeaf: "已至最末级",
     fulfillment: "履约方式",
-    fulfillmentTip: "只能选一种；灰掉的是本店还没开通的",
     fulfillmentType: {
       STORE_PICKUP: "自提点自提",
       NEIGHBOR_PICKUP: "邻居家自提",
@@ -606,7 +605,7 @@ export default {
       pending: "待审 {n}",
       total: "共 {n}",
     title: "类目与规格",
-    hint: "这里管本店把哪几类摆出来、叫什么名。商品建好会自动加进来，一个都没摆也能正常卖",
+    specsEntry: "商品规格",
     mine: "本店货架",
     empty: "还没摆货架。建一件商品，它的类目会自动加进来",
     rename: "改显示名",
@@ -624,7 +623,6 @@ export default {
     currentTag: "当前",
     switchTo: "切到这家",
     todayLine: "今日 {n} 单 · {gmv}",
-    compareEntry: "跨店对比",
     switched: "已切换到 {name}",
     disabled: "已停用",
     payNotReady: "收不了钱",
@@ -1044,6 +1042,7 @@ export default {
     pendingHint: "⚠️ 费率与履约服务费口径待平台公示（B9 / B10），当前为占位值；退款订单已从应结中扣回。",
   },
   stats: {
+    compareEntry: "跨店对比",
     title: "经营数据",
     today: "今日",
     month: "本月",

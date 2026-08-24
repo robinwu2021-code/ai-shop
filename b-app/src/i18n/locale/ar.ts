@@ -176,7 +176,6 @@ export default {
     category: "الفئة",
     categoryTip: "تحدّد التصنيف والتراخيص المطلوبة ونوع المنتج",
     fulfillment: "طريقة التسليم",
-    fulfillmentTip: "اختر واحدة؛ الرمادية غير مفعّلة في هذا المتجر",
     fulfillmentType: {
       STORE_PICKUP: "نقطة استلام",
       NEIGHBOR_PICKUP: "استلام من الجار",
@@ -443,8 +442,8 @@ export default {
   },
   storeCategories: {
       onSale: "{n} معروضة", pending: "{n} قيد المراجعة", total: "{n} إجمالاً",
-    title: "أرففي",
-    hint: "الفئات التي يعرضها هذا المتجر وأسماؤها. نشر منتج يضيف فئته تلقائياً.",
+    title: "الفئات والمواصفات",
+    specsEntry: "مواصفات المنتجات",
     mine: "معروضة",
     empty: "لا توجد أرفف بعد. انشر منتجاً وستظهر فئته هنا.",
     rename: "إعادة تسمية",
@@ -462,7 +461,6 @@ export default {
     currentTag: "الحالي",
     switchTo: "التبديل إلى هذا",
     todayLine: "اليوم {n} طلبات · {gmv}",
-    compareEntry: "مقارنة الفروع",
     switched: "أنت الآن في {name}",
     disabled: "موقوف",
     payNotReady: "لا يمكن التحصيل",
@@ -811,6 +809,7 @@ export default {
     pendingHint: "⚠️ نسب العمولة ورسوم التنفيذ قيم مؤقتة بانتظار الإعلان (B9 / B10). الطلبات المستردة مخصومة بالفعل.",
   },
   stats: {
+    compareEntry: "مقارنة الفروع",
     title: "بيانات الأعمال", today: "اليوم", month: "هذا الشهر", orders: "الطلبات", gmv: "المبيعات",
     rating: "تقييم المتجر", ratingBasis: "{n} تقييمًا",
     ownedTraffic: "نسبة عملائك الخاصين",
