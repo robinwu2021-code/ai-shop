@@ -1910,6 +1910,11 @@ export const mockApi: MerchantApi = {
    * mock 的覆盖只做到「看得出生效」：按提交的顺序与启用重排模板的 options。
    * 不落库 —— mock 没有覆盖表，而这一步真正要验的是端上提交的形状对不对。
    */
+  async mDimValues(dimNo) {
+    // mock 里模板表就是值池：这个维度的全部档位
+    return delay(db.specTemplates.find((t) => t.templateNo === dimNo)?.options ?? []);
+  },
+
   async mSaveSpecOverride(categoryNo, dims) {
     const on = dims.filter((d) => d.enabled);
     return delay(on.map((d) => {

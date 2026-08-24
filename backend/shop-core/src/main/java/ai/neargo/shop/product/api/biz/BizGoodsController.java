@@ -312,6 +312,18 @@ public class BizGoodsController {
     }
 
     /**
+     * 某个维度下平台有的全部档位 —— 给「＋」那个弹框做候选。
+     *
+     * <p>类目通常只裁了其中几档，而商家要加的往往正是没裁进来的那一档。
+     */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.GOODS + "')")
+    @GetMapping("/biz/spec-dims/{dimNo}/values")
+    public List<ai.neargo.shop.product.dto.SpecTemplateVO.Option> valuesOfDim(
+            @PathVariable String dimNo) {
+        return specLibrary.valuesOfDim(BizContext.requireMerchantNo(), dimNo);
+    }
+
+    /**
      * 保存本店对某个类目规格的覆盖：**用哪几个、什么顺序、叫什么**。
      *
      * <p><b>只管取舍与顺序，不改名字</b> —— 名字是跨店可比的锚。

@@ -767,6 +767,18 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
     }
 
     @Override
+    public List<SpecTemplateVO.Option> valuesOfDim(String merchantNo, String dimNo) {
+        if (dimNo == null || dimNo.isBlank()) {
+            return List.of();
+        }
+        PrdSpecDim dim = DataScopeContext.executeWithoutScope(() ->
+                dimMapper.selectOne(Wrappers.<PrdSpecDim>lambdaQuery()
+                        .eq(PrdSpecDim::getDimNo, dimNo).last("limit 1")));
+        // 子集传空 = 不裁剪，拿这个维度的全量（含他自己在该维度下加的那几档）
+        return dim == null ? List.of() : optionsOf(merchantNo, dim, List.of());
+    }
+
+    @Override
     @Transactional
     public void saveOverrides(String merchantNo, String categoryNo,
                               List<OverrideCommand> dims) {

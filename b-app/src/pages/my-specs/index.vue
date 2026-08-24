@@ -20,7 +20,7 @@ import { useI18n } from "vue-i18n";
 import { onShow } from "@dcloudio/uni-app";
 import { api } from "@/api";
 import { useMerchantStore } from "@/stores/merchant";
-import type { MerchantSpecDim, SpecOverride, StoreCategorySpecs } from "@shared/types";
+import type { MerchantSpecDim, SpecOverride, SpecTemplate, StoreCategorySpecs } from "@shared/types";
 
 const { t } = useI18n();
 const merchant = useMerchantStore();
@@ -73,90 +73,15 @@ function dimLabel(g: StoreCategorySpecs, dimNo: string) {
     ?? dimNo;
 }
 
-/**
- * 加一个平台维度进来。**只列这一类目还没用的** ——
- * 已经在上面的再列一遍，他点了不知道发生了什么。
- */
-async function addDim(g: StoreCategorySpecs) {
-  const all = await api.mPickableDims(g.categoryNo).catch(() => []);
-  const rest = all.filter((t) => !draft.value[t.templateNo]);
-  if (!rest.length) {
-    uni.showToast({ title: t("mySpecs.noMoreDim"), icon: "none" });
-    return;
-  }
-  const i = await new Promise<number>((resolve) => {
-    uni.showActionSheet({
-      itemList: rest.map((t) => t.name),
-      success: (r) => resolve(r.tapIndex),
-      fail: () => resolve(-1),
-    });
-  });
-  const pickedDim = rest[i];
-  if (!pickedDim) return;
-  draft.value = {
-    ...draft.value,
-    [pickedDim.templateNo]: {
-      dimNo: pickedDim.templateNo,
-      enabled: true,
-      // 新加的维度默认全选：他加它就是想用，再让他逐个点一遍是白费一步
-      values: pickedDim.options.map((o) => ({ code: o.code ?? "", enabled: true })),
-    },
-  };
-  labels.value = {
-    ...labels.value,
-    [pickedDim.templateNo]: {
-      name: pickedDim.name,
-      values: Object.fromEntries(pickedDim.options.map((o) => [o.code ?? "", o.label])),
-    },
-  };
-}
-
-/**
- * 自己输入一个档位（「我这袋 750g」）。
- *
- * <p><b>落进规格库，不是落进覆盖表。</b>后端会把它挂在同一个平台维度下
- * 并抽出归一量（750g → 750 + g），于是它与平台的 500g 在同一根轴上 ——
- * 跨店比价照样成立。存进覆盖表的话它只是一个字符串，谁也比不了。
- *
- * <p>撞上平台已有的那一档时后端不新建、直接把那一档返回来，所以这里
- * 按返回的 code 去重 —— 否则他输「500g」会在界面上看到两个。
- */
-async function addValue(g: StoreCategorySpecs, dimNo: string) {
-  const text = await new Promise<string>((resolve) => {
-    uni.showModal({
-      title: t("mySpecs.addValueTitle"),
-      content: t("mySpecs.addValueHint"),
-      editable: true,
-      placeholderText: t("mySpecs.addValuePh"),
-      success: (r) => resolve(r.confirm ? (r.content ?? "") : ""),
-      fail: () => resolve(""),
-    });
-  });
-  if (!text.trim()) return;
-  try {
-    const v = await api.mAddSpecValue(dimNo, text.trim());
-    const code = v.code || v.valueNo;
-    const d = draft.value[dimNo];
-    if (!d) return;
-    const hit = (d.values ?? []).find((x) => x.code === code);
-    if (hit) {
-      hit.enabled = true;   // 撞上平台已有的那一档：勾上它，不新增
-      uni.showToast({ title: t("mySpecs.valueMerged", { name: v.label }), icon: "none" });
-    } else {
-      d.values = [...(d.values ?? []), { code, enabled: true }];
-      labels.value[dimNo]!.values[code] = v.label;
-    }
-  } catch (e) {
-    uni.showToast({ title: (e as Error).message, icon: "none" });
-  }
-}
-
 function startEdit(g: StoreCategorySpecs) {
   editing.value = g.categoryNo;
   /*
-   * 从**当前看到的样子**建草稿，而不是从平台原样 —— 他现在看到的就是
-   * 上次改完的结果，草稿与它对不上的话，一进编辑态界面就变了，
-   * 而他没做任何事。
+   * 从**当前看到的样子**建草稿，而不是从平台原样 —— 他现在看到的就是上次改完的结果，
+   * 草稿与它对不上的话，一进编辑态界面就变了，而他什么都没做。
+   *
+   * **draft.values 是「已经加进来的」**，不是全部候选：删一档就把它移出数组。
+   * 被删的记进 dropped —— 提交时要显式告诉后端「这一档我不要」，
+   * 否则它只是「没提交」，而没提交等于跟平台走，那一档下次还在。
    */
   draft.value = Object.fromEntries(g.dims.map((t) => [t.templateNo, {
     dimNo: t.templateNo,
@@ -165,8 +90,7 @@ function startEdit(g: StoreCategorySpecs) {
   }]));
   /*
    * 维度名与档位名只用来显示 —— **不提交**。名字是跨店可比的锚，
-   * 改它的后果（三家店把「重量」各叫一个名字）比省下的方便大得多；
-   * 要别的说法就去建自定义规格，那条路本来就在。
+   * 改它的后果（三家店把「重量」各叫一个名字）比省下的方便大得多。
    */
   labels.value = Object.fromEntries(g.dims.map((t) => [t.templateNo, {
     name: t.name,
@@ -184,6 +108,155 @@ function moveDim(g: StoreCategorySpecs, dimNo: string, delta: number) {
   draft.value = Object.fromEntries(keys.map((k) => [k, draft.value[k]!]));
 }
 
+/**
+ * 加一个平台规格进来。**只列这一类目还没用的** ——
+ * 已经在上面的再列一遍，他点了不知道发生了什么。
+ */
+async function addDim(g: StoreCategorySpecs) {
+  const all = await api.mPickableDims(g.categoryNo).catch(() => []);
+  const rest = all.filter((t) => !draft.value[t.templateNo]);
+  if (!rest.length) {
+    uni.showToast({ title: t("mySpecs.noMoreDim"), icon: "none" });
+    return;
+  }
+  const i = await new Promise<number>((resolve) => {
+    uni.showActionSheet({
+      itemList: rest.map((x) => x.name),
+      success: (r) => resolve(r.tapIndex),
+      fail: () => resolve(-1),
+    });
+  });
+  const picked = rest[i];
+  if (!picked) return;
+  draft.value = {
+    ...draft.value,
+    [picked.templateNo]: {
+      dimNo: picked.templateNo,
+      enabled: true,
+      // 新加的规格默认全档位：他加它就是想用，再让他逐个点一遍是白费一步
+      values: picked.options.map((o) => ({ code: o.code ?? "", enabled: true })),
+    },
+  };
+  labels.value = {
+    ...labels.value,
+    [picked.templateNo]: {
+      name: picked.name,
+      values: Object.fromEntries(picked.options.map((o) => [o.code ?? "", o.label])),
+    },
+  };
+}
+
+/** 正在调档位的那个规格。一次只调一个 —— 弹层本来就是为「专注这一件」而存在 */
+const valueEdit = ref<{
+  categoryNo: string;
+  dimNo: string;
+  dimName: string;
+  all: { code: string; label: string }[];
+  picked: string[];
+} | null>(null);
+
+/**
+ * 打开某个规格的档位弹层。**候选一次全给** —— 这个规格下平台有的全部档位，
+ * 在用的高亮。他要做的是勾掉/勾上，而不是先记住自己有哪些再去别处找剩下的。
+ */
+async function openValueEdit(g: StoreCategorySpecs, t: SpecTemplate) {
+  const all = await api.mDimValues(t.templateNo).catch(() => []);
+  const inUse = t.options.map((o) => o.code ?? "");
+  /*
+   * 候选 = 平台全量 ∪ 他正在用的。取并集是因为**他自建的那几档不在平台值池里**，
+   * 只取平台的话，弹层一打开他自己加的就消失了 —— 而那是最容易被当成 bug 的一种。
+   */
+  const merged = [...all.map((o) => ({ code: o.code ?? "", label: o.label }))];
+  t.options.forEach((o) => {
+    const code = o.code ?? "";
+    if (!merged.some((x) => x.code === code)) merged.push({ code, label: o.label });
+  });
+  valueEdit.value = {
+    categoryNo: g.categoryNo, dimNo: t.templateNo, dimName: t.name,
+    all: merged, picked: inUse,
+  };
+}
+
+function toggleValue(code: string) {
+  const v = valueEdit.value;
+  if (!v) return;
+  v.picked = v.picked.includes(code)
+    ? v.picked.filter((c) => c !== code)
+    : [...v.picked, code];
+}
+
+/**
+ * 平台也没有的档位：自己填。
+ *
+ * <p>后端把它挂在同一个平台维度下并抽出归一量（「750g」→ 750+g），
+ * 于是它与平台的 500g 同轴、照样能比价。**量纲维度抽不出数字会被拒** ——
+ * 那句错要说清该怎么写，否则他只会反复试。
+ */
+async function typeOwnValue() {
+  const v = valueEdit.value;
+  if (!v) return;
+  const text = await new Promise<string>((resolve) => {
+    uni.showModal({
+      title: t("mySpecs.addValueTitle"),
+      editable: true,
+      placeholderText: t("mySpecs.addValuePh"),
+      success: (r) => resolve(r.confirm ? (r.content ?? "") : ""),
+      fail: () => resolve(""),
+    });
+  });
+  if (!text.trim()) return;
+  try {
+    const added = await api.mAddSpecValue(v.dimNo, text.trim());
+    const code = added.code || added.valueNo;
+    if (!v.all.some((x) => x.code === code)) {
+      v.all = [...v.all, { code, label: added.label }];
+    }
+    if (!v.picked.includes(code)) v.picked = [...v.picked, code];
+    // 撞上平台已有的那一档时后端直接返回它 —— 说一声，否则他以为自己白填了
+    if (added.label !== text.trim()) {
+      uni.showToast({ title: t("mySpecs.valueMerged", { name: added.label }), icon: "none" });
+    }
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: "none" });
+  }
+}
+
+/**
+ * 保存这一个规格的档位。
+ *
+ * <p><b>要连着提交这个类目下所有规格的当前状态</b>：后端是整份替换，
+ * 只发这一个的话，别的规格的覆盖会被一起清掉 —— 而他只是想改这一个。
+ */
+async function saveValueEdit() {
+  const v = valueEdit.value;
+  if (!v) return;
+  const g = byCategory.value.find((x) => x.categoryNo === v.categoryNo);
+  if (!g) return;
+  try {
+    const dims = g.dims.map((t) => {
+      const cur = t.templateNo === v.dimNo
+        ? v.picked
+        : t.options.map((o) => o.code ?? "");
+      const was = t.options.map((o) => o.code ?? "");
+      return {
+        dimNo: t.templateNo,
+        enabled: true,
+        values: [
+          ...cur.map((code) => ({ code, enabled: true })),
+          // 去掉的要显式说 —— 只是「没提交」等于跟平台走，那一档下次还在
+          ...was.filter((c) => !cur.includes(c)).map((code) => ({ code, enabled: false })),
+        ],
+      };
+    });
+    const merged = await api.mSaveSpecOverride(g.categoryNo, dims);
+    const i = byCategory.value.findIndex((x) => x.categoryNo === g.categoryNo);
+    if (i >= 0) byCategory.value[i] = { ...g, dims: merged };
+    valueEdit.value = null;
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: "none" });
+  }
+}
+
 async function saveOverride(g: StoreCategorySpecs) {
   try {
     /*
@@ -191,6 +264,7 @@ async function saveOverride(g: StoreCategorySpecs) {
      * 所以这里只有三件事：用哪几个（enabled）、什么顺序（数组次序）、
      * 每个维度下用哪几档（values[].enabled）。
      */
+    // 品类级只管「用哪几个规格、什么顺序」；档位原样带回去，别把规格级改过的冲掉
     const dims = Object.values(draft.value);
     const merged = await api.mSaveSpecOverride(g.categoryNo, dims);
     // 用后端合并后的结果就地替换，两边不各算一遍
@@ -280,17 +354,20 @@ onShow(() => void load());
 
       <!-- 只读态 -->
       <template v-if="editing !== g.categoryNo">
+        <!--
+          **两层各管各的**：这一行的「调整」只调这一个规格的档位；
+          类目标题旁那个「调整」管的是「用哪几个规格、什么顺序」。
+          混成一个大编辑态的话，他想加一档也要进整屏的编辑，
+          而那一屏里九成的东西他这次并不打算动。
+        -->
         <view v-for="t in g.dims" :key="t.templateNo" class="pf">
           <text class="pf__name">{{ t.name }}</text>
-          <text class="sh-muted pf__vals">{{ t.options.map((o) => o.label).join(" · ") }}</text>
+          <text class="sh-muted pf__vals flex1">{{ t.options.map((o) => o.label).join(" · ") }}</text>
+          <text class="link pf__act" @tap="openValueEdit(g, t)">{{ $t("mySpecs.adjust") }}</text>
         </view>
       </template>
 
-      <!--
-        编辑态。三件事在同一屏：用不用（开关）、什么顺序（↑↓）、叫什么（输入框）。
-        分成三步走的话，他改完顺序还要再进两次才能改名 —— 而这三件本来就是
-        「把这一类调成我习惯的样子」这一件事。
-      -->
+      <!-- 品类级编辑态：**只管用哪几个规格、什么顺序**。档位归各自那一行的「调整」 -->
       <template v-else>
         <view v-for="(d, dimNo) in draft" :key="dimNo" v-show="d.enabled" class="ed">
           <view class="ed__head">
@@ -304,26 +381,8 @@ onShow(() => void load());
             <text class="del" @tap="moveDim(g, String(dimNo), 1)">↓</text>
             <text class="del" @tap="d.enabled = false">{{ $t("mySpecs.remove") }}</text>
           </view>
-          <view class="ed__vals">
-            <!-- 平台档位：点一下决定本店用不用 -->
-            <text
-              v-for="v in d.values ?? []"
-              :key="v.code"
-              class="sh-chip"
-              :class="{ 'sh-chip--primary': v.enabled }"
-              @tap="v.enabled = !v.enabled"
-            >{{ labels[String(dimNo)]?.values[v.code] ?? v.code }}</text>
-            <!--
-              **自己输入的值落进规格库，不是落进这张覆盖表。**
-              后端会把它挂在同一个平台维度下并抽出归一量（「我这袋 750g」→ 750+g），
-              于是它与平台的 500g 在同一根轴上 —— 跨店比价照样成立。
-              存进覆盖表的话它就只是一个字符串，谁也比不了。
-            -->
-            <text class="sh-chip ed__add" @tap="addValue(g, String(dimNo))">
-              ＋ {{ $t("mySpecs.addValue") }}
-            </text>
-          </view>
         </view>
+
         <!--
           移除掉的收在这里，**而不是消失** —— 他要加回来时，
           「刚才那个叫什么」是唯一还记得的线索；从平台全量维度里重找是另一回事。
@@ -335,8 +394,13 @@ onShow(() => void load());
                   @tap="draft[dimNo]!.enabled = true">＋ {{ dimLabel(g, dimNo) }}</text>
           </view>
         </view>
-        <text class="link" @tap="addDim(g)">＋ {{ $t("mySpecs.addDim") }}</text>
-        <text class="sh-muted pf__vals">{{ $t("mySpecs.adjustHint") }}</text>
+        <!-- 各自成行：uni 的 text 是 inline，并排写会挤成一段读不断的话 -->
+        <view class="ed__row">
+          <text class="link" @tap="addDim(g)">＋ {{ $t("mySpecs.addDim") }}</text>
+        </view>
+        <view class="ed__row">
+          <text class="sh-muted pf__vals">{{ $t("mySpecs.adjustHint") }}</text>
+        </view>
         <view class="ed__acts">
           <text class="link" @tap="saveOverride(g)">{{ $t("mySpecs.save") }}</text>
           <text class="link" @tap="editing = null">{{ $t("mySpecs.cancel") }}</text>
@@ -385,6 +449,32 @@ onShow(() => void load());
       </view>
     </view>
 
+    <!--
+      规格级的档位弹层。**候选一次全给**（这个规格下平台有的全部档位），
+      在用的高亮 —— 他要做的是「勾掉不用的、勾上要用的」，
+      而不是先记住自己有哪些、再去别处找剩下的。
+    -->
+    <view v-if="valueEdit" class="sheet">
+      <view class="sheet__box">
+        <text class="sh-h2">{{ valueEdit.dimName }}</text>
+        <text class="sh-muted pf__vals">{{ $t("mySpecs.pickHint") }}</text>
+        <view class="sheet__vals">
+          <text
+            v-for="o in valueEdit.all"
+            :key="o.code"
+            class="sh-chip"
+            :class="{ 'sh-chip--primary': valueEdit.picked.includes(o.code) }"
+            @tap="toggleValue(o.code)"
+          >{{ o.label }}</text>
+        </view>
+        <text class="link" @tap="typeOwnValue">＋ {{ $t("mySpecs.typeMine") }}</text>
+        <view class="ed__acts">
+          <text class="link" @tap="saveValueEdit">{{ $t("mySpecs.save") }}</text>
+          <text class="link" @tap="valueEdit = null">{{ $t("mySpecs.cancel") }}</text>
+        </view>
+      </view>
+    </view>
+
     <text class="sh-muted foot">{{ $t("mySpecs.foot") }}</text>
   </sh-scaffold>
 </template>
@@ -411,6 +501,48 @@ onShow(() => void load());
   align-items: center;
   gap: 12rpx;
 }
+/* 档位弹层：压在页面上，点外面不关 —— 误触关掉会把他刚勾的一串丢掉 */
+.sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  top: 0;
+  background: var(--sh-scrim);
+  display: flex;
+  align-items: flex-end;
+}
+.sheet__box {
+  width: 100%;
+  padding: 32rpx;
+  border-radius: 24rpx 24rpx 0 0;
+  background: var(--sh-surface);
+}
+.sheet__vals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+  margin: 20rpx 0;
+}
+
+.pf__act {
+  margin-left: 16rpx;
+}
+
+.ed__row {
+  margin-top: 12rpx;
+}
+
+/*
+ * 档位：**这里的每一条都是「已经在用的」**，所以是正常颜色 ——
+ * 之前做成灰色候选态是上一版的残留（那时一排里混着用和不用的），
+ * 现在不用的根本不显示，再压暗就成了「全都不重要」。
+ */
+.val__x {
+  margin-left: 6rpx;
+  opacity: 0.45;
+}
+
 .ed__on {
   min-width: 44rpx;
   text-align: center;

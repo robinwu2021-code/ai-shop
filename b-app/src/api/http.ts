@@ -99,7 +99,7 @@ import type {
   PickupCandidate,
   RegionSearchResult,
   MyQualifications,
-  Qualification, MerchantSpecDim, StoreCategorySpecs, SpecOverride,} from "@shared/types";
+  Qualification, MerchantSpecDim, StoreCategorySpecs, SpecOverride, SpecOption,} from "@shared/types";
 
 export const httpApi: MerchantApi = {
   mSendOtp: (phone) => http.post<void>(E.mSendOtp.path, { phone }),
@@ -290,6 +290,7 @@ export const httpApi: MerchantApi = {
     http.post<Order>(buildPath(E.mShip.path, { orderNo }), { expressNo } satisfies ShipReq),
   mMySpecDims: () => http.get<MerchantSpecDim[]>(E.mMySpecDims.path),
   mStoreSpecDims: (storeNo) => http.get<StoreCategorySpecs[]>(E.mStoreSpecDims.path, { storeNo }),
+  mDimValues: (dimNo) => http.get<SpecOption[]>(E.mDimValues.path.replace("{dimNo}", dimNo)),
   mSaveSpecOverride: (categoryNo, dims) =>
     http.post<SpecTemplate[]>(E.mSaveSpecOverride.path.replace("{categoryNo}", categoryNo), { dims }),
   mRenameSpecDim: (dimNo, name) =>

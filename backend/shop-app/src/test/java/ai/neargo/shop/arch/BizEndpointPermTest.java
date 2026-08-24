@@ -145,6 +145,7 @@ class BizEndpointPermTest {
         put("/biz/my-spec-dims", BizPerms.GOODS);
         put("/biz/store-spec-dims", BizPerms.GOODS);
         put("/biz/spec-override/{categoryNo}", BizPerms.GOODS);
+        put("/biz/spec-dims/{dimNo}/values", BizPerms.GOODS);
         put("/biz/my-spec-dims/{dimNo}/rename", BizPerms.GOODS);
         put("/biz/my-spec-dims/{dimNo}/archive", BizPerms.GOODS);
         // 标准品搜索（TDD-标准品库）：建品链路的一环，与规格模板同一档 ——

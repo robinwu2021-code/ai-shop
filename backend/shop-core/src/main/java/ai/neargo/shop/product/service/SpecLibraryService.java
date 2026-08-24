@@ -159,6 +159,15 @@ public interface SpecLibraryService {
     List<StoreCategorySpecVO> dimsByStore(String merchantNo, String storeNo);
 
     /**
+     * 某个维度下<b>平台有的全部档位</b>（含这家店在该维度下自建的）。
+     *
+     * <p>给「＋」那个弹框做候选：类目通常只裁了其中几档（蔬菜的重量只给 4 档），
+     * 而商家要加的往往正是没裁进来的那一档（「平台重量有 750g，只是这一类没配」）。
+     * 不给候选的话他只剩手输一条路 —— 手输的值没有编码，跨店聚合就断了。
+     */
+    List<SpecTemplateVO.Option> valuesOfDim(String merchantNo, String dimNo);
+
+    /**
      * 保存这家店对某个类目规格的覆盖：**用哪几个、什么顺序、叫什么**。
      *
      * <p>整份替换该类目的覆盖行 —— 覆盖是一组有序的偏好，逐条 diff 没有收益。
