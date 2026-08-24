@@ -1306,6 +1306,37 @@ async function addCustomGroup() {
     });
   });
   if (!name.trim()) return;
+
+  /*
+   * **先问一句：是不是平台已经有的那个？**
+   *
+   * 后端有「与平台维度完全同名就直接用平台那个」的兜底，但它要商家恰好敲对字：
+   * 敲「味道」而平台叫「口味」就撞不上，于是多出一个只有他一家能用的维度，
+   * 他的货从此掉出跨店聚合 —— 而这个代价在界面上完全看不见。
+   *
+   * 判据放在端上：面板里那份 pickableDims 已经拿到了全部可选维度名，
+   * 不必为一次确认多打一个接口。近似只认两条最不会误判的
+   * （互相包含、只差一个字），宁可漏问也不要频繁地问错 ——
+   * 每次都弹的确认框，第三次起就没人读了。
+   */
+  const near = nearestDimName(name.trim());
+  if (near) {
+    const usePlatform = await new Promise<boolean>((resolve) => {
+      uni.showModal({
+        title: t("goods.dimNearTitle"),
+        content: t("goods.dimNearHint", { name: near.name }),
+        confirmText: t("goods.dimNearUse"),
+        cancelText: t("goods.dimNearKeep"),
+        success: (r) => resolve(!!r.confirm),
+        fail: () => resolve(false),
+      });
+    });
+    if (usePlatform) {
+      pickDim(near);
+      return;
+    }
+  }
+
   try {
     const dim = await api.mAddSpecDim(name.trim(), []);
     /*
@@ -1381,6 +1412,30 @@ async function onOptionEdited(gi: number, oi: number) {
  * <p>与「＋规格组」的差别是**它会落进规格库**（scope=MERCHANT），
  * 于是这家店下次建品还能选到它。代价要说清楚：不参与跨店比价。
  */
+/**
+ * 与输入的名字**近似**的既有维度。没有就返回 null。
+ *
+ * <p>只认两条：一方包含另一方（「辣」vs「辣度」）、长度相同且只差一个字
+ * （「口味」vs「口感」）。**故意不做模糊匹配** —— 编辑距离放宽一格，
+ * 「颜色」和「颜值」就会互相命中，而一个问错的确认框比不问更烦人：
+ * 每次都弹的框，第三次起就没人读了。
+ */
+function nearestDimName(input: string): SpecTemplate | null {
+  const a = input.trim();
+  if (a.length < 2) return null;
+  for (const d of pickableDims.value) {
+    const b = d.name.trim();
+    if (b === a) return d;                      // 完全同名：后端也会复用，但先问更清楚
+    if (a.includes(b) || b.includes(a)) return d;
+    if (a.length === b.length) {
+      let diff = 0;
+      for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) diff++;
+      if (diff === 1) return d;
+    }
+  }
+  return null;
+}
+
 /**
  * 面板里的三段。**顺序就是建议顺序**：这一类目平台配好的最该选，
  * 通用维度次之，自己建过的放最后（它们不参与跨店聚合）。

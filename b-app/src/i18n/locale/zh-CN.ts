@@ -373,6 +373,11 @@ export default {
     dimUniversal: "通用规格",
     dimMine: "我建过的",
     dimAlready: "这个规格组已经加过了",
+    dimNearTitle: "是不是这个？",
+    // 说清代价，而不是只说「有个像的」—— 他要判断的是值不值得自己建
+    dimNearHint: "平台已有「{name}」。用平台的能和别家比价，自己建的只有本店能用。",
+    dimNearUse: "用平台的",
+    dimNearKeep: "还是自己建",
     customDimCost: "只本店可用，不参与跨店比价",
     groupNamePh: "规格组名称",
     optionPh: "选项名称",

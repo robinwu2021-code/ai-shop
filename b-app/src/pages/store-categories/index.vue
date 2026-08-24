@@ -14,6 +14,7 @@ import { api } from "@/api";
 import { useMerchantStore } from "@/stores/merchant";
 import { ROUTES } from "@/shared/nav";
 import { handOffGoodsCategory } from "@/shared/handoff";
+import { SHOW_CATEGORY_GATE } from "@/shared/flags";
 import type { Category, StoreCategory } from "@shared/types";
 
 /**
@@ -38,9 +39,20 @@ const storeNo = computed(() => merchant.storeNo);
 
 /** 已摆的编号集合，勾选态与「撤架代价」都读它 */
 const pickedNos = computed(() => new Set(picked.value.map((c) => c.categoryNo)));
-/** 这个类目要证、而主体还没有 —— 与后端 requireSelectable 同一条判据 */
+/**
+ * 这个类目要证、而主体还没有 —— 与后端 requireSelectable 同一条判据。
+ *
+ * <p>**闸门关着时不标。**它此刻描述的不是事实：后端会放行，他摆得上去，
+ * 而界面却说「需资质」—— 那是在制造一个不存在的障碍，比不提示更糟。
+ *
+ * <p>两个开关的分工：`categoryGateEnforced`（运营端可拨）管「拦不拦」，
+ * 拦着就必须标，否则他点下去会吃一句说不清缘由的报错；
+ * `SHOW_CATEGORY_GATE` 管「要不要善意提醒」—— 闸门关着时也可以提示
+ * 「你还没这张证」，但那是另一回事，现在关着。
+ */
 const ungranted = (c: Category) =>
-  !!c.requiredCode && !merchant.categoryCodes.includes(c.requiredCode);
+  (merchant.categoryGateEnforced || SHOW_CATEGORY_GATE)
+  && !!c.requiredCode && !merchant.categoryCodes.includes(c.requiredCode);
 
 const countOf = (no: string) =>
   picked.value.find((c) => c.categoryNo === no)?.goodsCount ?? 0;
