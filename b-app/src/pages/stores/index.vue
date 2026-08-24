@@ -174,6 +174,14 @@ function pickPayment(s: Store, payMerchantNo?: string) {
   run(() => api.mSetStorePayment(s.storeNo, payMerchantNo));
 }
 
+function goPick() {
+  uni.navigateTo({ url: ROUTES.storePick });
+}
+
+function goCrossStore() {
+  uni.navigateTo({ url: ROUTES.crossStore });
+}
+
 function goQualifications() {
   uni.navigateTo({ url: "/pages/qualifications/index" });
 }
@@ -181,9 +189,22 @@ function goQualifications() {
 
 <template>
   <sh-scaffold title-key="stores.title" :denied="!merchant.can('biz:store:admin')">
-    <view class="head">
-      <text class="sh-h1">{{ $t("stores.title") }}</text>
-      <text class="sh-muted mt">{{ $t("stores.hint") }}</text>
+    <!--
+      多店中枢的两行：切当前店、看跨店对比。
+      三个门（我的顶部切店卡、工作台跨店卡、这一页）合成一个 ——
+      同一件事有三个入口时，人记不住该从哪进，也就不会用其中任何一个。
+    -->
+    <view v-if="merchant.multiStore" class="sh-card hub" @tap="goPick">
+      <view class="hub__main">
+        <text class="hub__label">{{ $t("storePick.current") }}</text>
+        <text class="hub__name">{{ merchant.currentStore?.name || "—" }}</text>
+      </view>
+      <text class="hub__go">{{ $t("storePick.switch") }}</text>
+    </view>
+
+    <view v-if="merchant.can('biz:customer')" class="sh-card hub" @tap="goCrossStore">
+      <text class="sh-h2">{{ $t("home.crossStoreEntry") }}</text>
+      <sh-icon name="chevronRight" :size="18" color="var(--sh-sub)"></sh-icon>
     </view>
 
     <!-- 资质证照挂在门店入口下：传证是开店资产的一部分，跟着门店走 -->
@@ -291,16 +312,9 @@ function goQualifications() {
 <style scoped>
 /* 横向不再自己加内边距：页面边距由 sh-scaffold 统一给，这里再加一道，
    标题就比下方卡片多缩进一截（同一屏里两条左边界，看着像没对齐） */
-.head {
-  padding: 8rpx 0 16rpx;
-}
 /* `<text>` 默认 inline —— 不给 block，标题与这行说明会**挤在同一行**
    （「门店管理这里管有几家店…」），而 margin-top 对 inline 元素也不起作用。
    apply / login 两页早就是这么写的，payment / stores 漏了。 */
-.mt {
-  display: block;
-  margin-top: 12rpx;
-}
 .mt-card {
   margin-top: 16rpx;
 }
@@ -386,5 +400,33 @@ function goQualifications() {
   display: flex;
   align-items: center;
   justify-content: space-between;
+}
+
+/* 中枢两行：与门店卡同宽，左右结构 */
+.hub {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+}
+.hub__main {
+  min-width: 0;
+}
+.hub__label {
+  display: block;
+  font-size: 24rpx;
+  color: var(--sh-sub);
+}
+.hub__name {
+  display: block;
+  margin-top: 4rpx;
+  font-size: 30rpx;
+  font-weight: 600;
+  color: var(--sh-ink);
+}
+.hub__go {
+  flex-shrink: 0;
+  font-size: 26rpx;
+  color: var(--sh-primary-text);
 }
 </style>

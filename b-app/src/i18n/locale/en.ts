@@ -883,7 +883,7 @@ entryHint: "Who buys · who lapsed", total: "Customers", repeatRate: "Repeat rat
   },
   plan: {
     title: "My plan",
-    meCell: "My plan",
+    meCell: "Plan",
     meSub: "{name} · {used}/{quota} stores",
     statusACTIVE: "Active",
     statusGRACE: "Expiring",

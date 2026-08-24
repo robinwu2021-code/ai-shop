@@ -883,7 +883,7 @@ entryHint: "من يشتري · من توقف", total: "العملاء", repeatRa
   },
   plan: {
     title: "باقتي",
-    meCell: "باقتي",
+    meCell: "الباقة",
     meSub: "{name} · {used}/{quota} متجر",
     statusACTIVE: "سارية",
     statusGRACE: "قاربت على الانتهاء",

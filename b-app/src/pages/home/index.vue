@@ -216,20 +216,6 @@ onShow(load);
         </view>
       </view>
 
-      <!--
-        跨店总览（增值包 P2）。**入口对 FREE 档也照常显示** ——
-        计划原文：「FREE 商家也要看得到这一页的入口与样子（打码/示例态），
-        否则他不知道自己缺什么」。藏起来的结果是商家不知道有这个东西，
-        而运营还得靠电话去讲。点进去命中 70023 的那一页会渲染示例态。
-
-        判的是 `biz:customer`（与经营数据同一个码，后端没另造 biz:cross-store）——
-        店员进不去那一页，就不该在这里看到一个点了报 70006 的入口。
-        **不判门店数**：单店商家点进去看到的就是他那一家，多门店是渐进的，
-        第二家店建起来的前一天这个入口就该在。
-      -->
-      <view v-if="merchant.can('biz:customer')" class="sh-card entry" @tap="open(ROUTES.crossStore)">
-        <text class="sh-h2">{{ $t("home.crossStoreEntry") }}</text>
-      </view>
 
       <!-- 自带客流占比：这是商家最该关心的数字，它直接决定费率档（ADR-004 §6） -->
       <view v-if="stats" class="sh-card owned">
