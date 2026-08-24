@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+#
+# 推之前从 HEAD 拉一份干净副本编一遍。
+#
+# 为什么是 pre-push 而不是 CI：后端的父 POM（ai.neargo:neargo-parent）和整套
+# neargo-common-* 只存在于开发机的 ~/.m2，公网仓库里没有 —— GitHub 托管的 runner
+# 拿不到，所以云端 CI 目前编不了后端（见 .github/workflows/backend.yml 顶部）。
+# 而这台机器上有 .m2，闸门就该立在这里。
+#
+# 跳过（仅限确知不涉及后端的推送）：SKIP_COMPILE_GATE=1 git push
+set -euo pipefail
+
+if [ "${SKIP_COMPILE_GATE:-}" = "1" ]; then
+  echo "⚠ 已跳过编译闸门（SKIP_COMPILE_GATE=1）"
+  exit 0
+fi
+
+ROOT="$(git rev-parse --show-toplevel)"
+# 后端没动过就不必编 —— 别为改一行文案等两分钟
+if git diff --quiet "@{u}" HEAD -- backend 2>/dev/null; then
+  echo "→ 本次推送未触及 backend/，跳过编译闸门"
+  exit 0
+fi
+
+exec "$ROOT/scripts/check-head-compiles.sh"

@@ -1,5 +1,19 @@
 name: backend
 
+# ⚠ 后端的云端 CI 目前**跑不了**，原因不是配置错，是依赖拿不到：
+# 父 POM `ai.neargo:neargo-parent` 与整套 `neargo-common-*` 只存在于开发机的
+# ~/.m2（另一个私有工程的产物），公网仓库和本仓库里都没有。
+# GitHub 托管的 runner 一开始 `Scanning for projects` 就 FATAL: Non-resolvable parent POM。
+#
+# 所以这两个 job 默认**不跑** —— 一个恒红的闸门等于没有闸门，所有人学会的
+# 第一件事就是无视它。真正在拦的是 `.githooks/pre-push`（本机有 .m2，编得动）。
+#
+# 要打开云端 CI，先解决依赖来源，二选一：
+#   a) 私有 Maven 仓库：配 settings.xml + secrets，然后把仓库变量
+#      BACKEND_CI_ENABLED 设为 true
+#   b) 自建 runner：跑在一台 ~/.m2 已装好 neargo-* 的机器上，
+#      把 runs-on 换成该 runner 的标签，同样设 BACKEND_CI_ENABLED=true
+
 on:
   push:
     branches: ['**']
@@ -23,6 +37,7 @@ jobs:
   # （改了记录的构造器，漏掉一个调用方），只编主源码等于没编。
   # ────────────────────────────────────────────────────────────────────────
   compile:
+    if: vars.BACKEND_CI_ENABLED == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -45,6 +60,7 @@ jobs:
   # backend/known-failures.txt 删空那天，把这一步换成「必须全绿」。
   # ────────────────────────────────────────────────────────────────────────
   test:
+    if: vars.BACKEND_CI_ENABLED == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     needs: compile
