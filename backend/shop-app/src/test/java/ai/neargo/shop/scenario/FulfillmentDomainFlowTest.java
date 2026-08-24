@@ -190,10 +190,10 @@ class FulfillmentDomainFlowTest {
         return new MerchantGoodsService.SaveCommand(
                 goodsNo, "履约测试商品", null, null, null, "CAT210", null, List.of(),
                 List.of(),
-                List.of(new MerchantGoodsService.Sku(null, List.of(), 1000L, null, 10, null, null)),
+                List.of(new MerchantGoodsService.Sku(null, List.of(), 1000L, null, 10, null, null, null)),
                 fulfillments,
                 // 限购 / 生鲜 / 服务 / 拼团四段都不传 = 不改；stdNo 不传 = 自建品，
-                // detail 不传 = 不改 —— 本组只测履约方式
-                null, null, null, null, null, null);
+                // detail / detailImages 不传 = 不改 —— 本组只测履约方式
+                null, null, null, null, null, null, null);
     }
 }
