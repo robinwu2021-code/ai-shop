@@ -14,7 +14,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.jdbc.Sql;
 
 import java.util.List;
 import java.util.Map;
@@ -35,13 +34,12 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 那是一个会天天变的运行时事实，不是 CI 能知道的常量。它的守卫在运营端那张
  * 「类目 × 规格」表上：没配的类目标红并计数，缺口每天有人看得见。
  *
- * <p>用 {@code @Sql} 把种子灌进 H2：测试库走 schema-test.sql 不跑 Flyway，
- * 而这一组要测的恰恰是<b>迁移里那份数据</b>本身。
+ * <p>种子从哪来：测试库走 schema-test.sql 不跑 Flyway，而这一组要测的恰恰是
+ * <b>迁移里那份数据</b>本身，所以 schema-test.sql 里带着 V196 的那份种子。
+ * <b>不要再加 {@code @Sql} 去灌一遍 V196</b> —— 会撞 uk_spec_dim_no 主键。
  */
 @SpringBootTest
 @ActiveProfiles("test")
-@Sql(scripts = "classpath:db/migration/V196__spec_catalog_seed.sql",
-        executionPhase = Sql.ExecutionPhase.BEFORE_TEST_CLASS)
 class SpecLibraryCoverageTest {
 
     @Autowired
