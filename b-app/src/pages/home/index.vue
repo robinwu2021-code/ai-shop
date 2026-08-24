@@ -179,8 +179,6 @@ onShow(load);
       <!-- 当前门店只读标记：切店在「我的」，这里只说清这一屏数字属于哪家 -->
       <biz-store-tag></biz-store-tag>
 
-      <text class="sh-h1">{{ $t("home.greeting") }}</text>
-
       <!--
         开张之后卡在哪，这里直说。**只在有问题时出现** ——
         全通过还挂一张绿卡，是每天都要划过去的噪音。
@@ -231,7 +229,6 @@ onShow(load);
       -->
       <view v-if="merchant.can('biz:customer')" class="sh-card entry" @tap="open(ROUTES.crossStore)">
         <text class="sh-h2">{{ $t("home.crossStoreEntry") }}</text>
-        <text class="sh-muted">{{ $t("home.crossStoreEntryHint") }}</text>
       </view>
 
       <!-- 自带客流占比：这是商家最该关心的数字，它直接决定费率档（ADR-004 §6） -->
@@ -263,76 +260,36 @@ onShow(load);
         @tap="open(merchant.can('biz:verify') ? ROUTES.verify : ROUTES.picking)"
       >
         <text class="sh-h2">{{ $t("home.fulfillEntry") }}</text>
-        <text class="sh-muted">{{ $t("home.fulfillEntryHint") }}</text>
       </view>
 
       <!-- 拆两页（方案 v3）：范围与送货是开店的两个决策；装修与获客是日常内容 -->
+      <view v-if="merchant.can('biz:store')" class="sh-card entry" @tap="open(ROUTES.storeNotice)">
+        <text class="sh-h2">{{ $t("home.noticeEntry") }}</text>
+      </view>
+
       <view v-if="merchant.can('biz:store')" class="sh-card entry" @tap="open(ROUTES.storeScope)">
         <text class="sh-h2">{{ $t("home.scopeEntry") }}</text>
-        <text class="sh-muted">{{ $t("home.scopeEntryHint") }}</text>
       </view>
       <view v-if="merchant.can('biz:store')" class="sh-card entry" @tap="open(ROUTES.store)">
         <text class="sh-h2">{{ $t("home.storeEntry") }}</text>
-        <text class="sh-muted">{{ $t("home.storeEntryHint") }}</text>
       </view>
 
-      <view v-if="merchant.can('biz:store:admin')" class="sh-card entry" @tap="open(ROUTES.stores)">
-        <text class="sh-h2">{{ $t("home.storesEntry") }}</text>
-        <text class="sh-muted">{{ $t("home.storesEntryHint") }}</text>
-      </view>
 
-      <!--
-        我的类目：与「门店管理」并列而不是塞进去 —— 那一页管「有几家店」，
-        这一页管「这家店摆哪几类」，改动频率与责任人都不同。
-      -->
-      <view v-if="merchant.can('biz:store:admin')" class="sh-card entry" @tap="open(ROUTES.storeCategories)">
-        <text class="sh-h2">{{ $t("home.storeCategoriesEntry") }}</text>
-        <text class="sh-muted">{{ $t("home.storeCategoriesEntryHint") }}</text>
-      </view>
 
-      <!--
-        我的规格：跟着「我的类目」—— 类目决定「能卖什么」，规格决定「怎么分档」，
-        两件事都在建品之前定，放一起商家才不用到处找。
-        权限用 biz:goods 而不是 store:admin：自建规格是商品的事，店长也该能管。
-      -->
-      <view v-if="merchant.can('biz:goods')" class="sh-card entry" @tap="open(ROUTES.mySpecs)">
-        <text class="sh-h2">{{ $t("home.mySpecsEntry") }}</text>
-        <text class="sh-muted">{{ $t("home.mySpecsEntryHint") }}</text>
-      </view>
 
-      <!--
-        我的资质：紧挨着「我的类目」——「这一类我卖不了」的下一步就是「去传证」，
-        两页放一起才连得上。此前商家侧根本没有传证的入口。
-      -->
-      <view v-if="merchant.can('biz:store')" class="sh-card entry" @tap="open(ROUTES.qualifications)">
-        <text class="sh-h2">{{ $t("home.qualEntry") }}</text>
-        <text class="sh-muted">{{ $t("home.qualEntryHint") }}</text>
-      </view>
 
-      <view v-if="merchant.can('biz:store:admin')" class="sh-card entry" @tap="open(ROUTES.staff)">
-        <text class="sh-h2">{{ $t("home.staffEntry") }}</text>
-        <text class="sh-muted">{{ $t("home.staffEntryHint") }}</text>
-      </view>
 
-      <!-- 收款设置：与店铺设置并列而不是塞在里面 —— 「店能开」与「钱能收」是两件事 -->
-      <view v-if="merchant.can('biz:finance')" class="sh-card entry" @tap="open(ROUTES.payment)">
-        <text class="sh-h2">{{ $t("home.paymentEntry") }}</text>
-        <text class="sh-muted">{{ $t("home.paymentEntryHint") }}</text>
-      </view>
 
       <view v-if="merchant.can('biz:campaign')" class="sh-card entry" @tap="open(ROUTES.marketing)">
         <text class="sh-h2">{{ $t("home.marketingEntry") }}</text>
-        <text class="sh-muted">{{ $t("home.marketingEntryHint") }}</text>
       </view>
 
       <view v-if="merchant.can('biz:campaign')" class="sh-card entry" @tap="open(ROUTES.groups)">
         <text class="sh-h2">{{ $t("home.groupEntry") }}</text>
-        <text class="sh-muted">{{ $t("home.groupEntryHint") }}</text>
       </view>
 
       <view v-if="merchant.can('biz:campaign')" class="sh-card entry" @tap="open(ROUTES.quotes)">
         <text class="sh-h2">{{ $t("home.quoteEntry") }}</text>
-        <text class="sh-muted">{{ $t("home.quoteEntryHint") }}</text>
       </view>
     </template>
   </sh-scaffold>

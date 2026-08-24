@@ -1242,9 +1242,6 @@ export const mockApi: MerchantApi = {
       : [];
     return delay({
       toShip: mine.filter((o) => o.fulfillment === "EXPRESS" && o.status === "PAID").length,
-      toDeliver: mine.filter((o) => o.fulfillment === "MERCHANT_DELIVERY" && o.status === "PAID").length,
-      // 待备货按**我的单**算（mine），不是按我的自提点（atMyPoint）——
-      // 买家常常选别家的点，两个数因此不相等。后端也是这个口径
     /*
      * 「常用公告」由**服务端**维护（去重 + 最近的排最前 + 最多 5 条），端上只读 ——
      * mock 不照做的话，这一段在开发期永远是空的，而它正是这次改版的主角。
@@ -1253,6 +1250,9 @@ export const mockApi: MerchantApi = {
     const prev = (before as { announcementRecent?: string[] }).announcementRecent ?? [];
     (db.store as { announcementRecent?: string[] }).announcementRecent =
       [now, ...prev.filter((x) => x && x !== now)].filter(Boolean).slice(0, 5);
+      toDeliver: mine.filter((o) => o.fulfillment === "MERCHANT_DELIVERY" && o.status === "PAID").length,
+      // 待备货按**我的单**算（mine），不是按我的自提点（atMyPoint）——
+      // 买家常常选别家的点，两个数因此不相等。后端也是这个口径
       toStock: mine.filter((o) => o.fulfillment === "STORE_PICKUP" && o.status === "PAID").length,
       toVerify: atMyPoint.filter((o) => o.status === "FULFILLING").length,
       toPick: atMyPoint.filter((o) => o.status === "PAID").length,
@@ -1268,6 +1268,25 @@ export const mockApi: MerchantApi = {
       (o) => belongsToMerchant(o, merchantNo) && o.status !== "CANCELLED",
     );
     const dayStart = new Date().setHours(0, 0, 0, 0);
+  async mSaveAnnouncement(payload) {
+    /*
+     * 与真库同口径：只动公告与有效期，**不碰门面其它字段**；
+     * 「常用」由服务端维护（去重 + 最近的排最前 + 最多 5 条）。
+     */
+    const st = db.store as typeof db.store & {
+      announcementUntil?: number | null; announcementRecent?: string[];
+    };
+    const now = (payload.announcement ?? "").trim();
+    st.announcementRecent = [now, ...(st.announcementRecent ?? []).filter((x) => x && x !== now)]
+      .filter(Boolean).slice(0, 5);
+    st.announcement = now;
+    st.announcementUntil = payload.announcementUntil ?? null;
+    persist();
+    const out = { ...st };
+    if (out.announcementUntil && out.announcementUntil < Date.now()) out.announcement = "";
+    return delay(out as typeof db.store);
+  },
+
     const today = mine.filter((o) => o.createdAt >= dayStart);
     const sum = (list: Order[]) => list.reduce((s, o) => s + o.amount.payableMinor, 0);
     const rs = db.reviews.filter((r) => r.merchantNo === merchantNo);

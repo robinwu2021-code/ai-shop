@@ -144,6 +144,7 @@ class BizEndpointPermTest {
         // 「我的规格」：看自己建的维度、改名、停用。都是商品域的事，同一档权限
         put("/biz/my-spec-dims", BizPerms.GOODS);
         put("/biz/store-spec-dims", BizPerms.GOODS);
+        put("/biz/spec-override/{categoryNo}", BizPerms.GOODS);
         put("/biz/my-spec-dims/{dimNo}/rename", BizPerms.GOODS);
         put("/biz/my-spec-dims/{dimNo}/archive", BizPerms.GOODS);
         // 标准品搜索（TDD-标准品库）：建品链路的一环，与规格模板同一档 ——

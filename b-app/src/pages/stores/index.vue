@@ -173,6 +173,10 @@ function goPlan() {
 function pickPayment(s: Store, payMerchantNo?: string) {
   run(() => api.mSetStorePayment(s.storeNo, payMerchantNo));
 }
+
+function goQualifications() {
+  uni.navigateTo({ url: "/pages/qualifications/index" });
+}
 </script>
 
 <template>
@@ -180,6 +184,12 @@ function pickPayment(s: Store, payMerchantNo?: string) {
     <view class="head">
       <text class="sh-h1">{{ $t("stores.title") }}</text>
       <text class="sh-muted mt">{{ $t("stores.hint") }}</text>
+    </view>
+
+    <!-- 资质证照挂在门店入口下：传证是开店资产的一部分，跟着门店走 -->
+    <view class="sh-card qual" @tap="goQualifications">
+      <text class="sh-h2">{{ $t("stores.qualEntry") }}</text>
+      <sh-icon name="chevronRight" :size="18" color="var(--sh-sub)"></sh-icon>
     </view>
 
     <view v-for="s in stores" :key="s.storeNo" class="sh-card st">
@@ -369,5 +379,12 @@ function pickPayment(s: Store, payMerchantNo?: string) {
 }
 .cancel {
   margin-top: 16rpx;
+}
+
+/* 资质入口：一行卡，与门店卡同宽同缘 */
+.qual {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 </style>

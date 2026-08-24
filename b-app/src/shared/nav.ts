@@ -13,6 +13,7 @@ export const ROUTES = {
   picking: "/pages/picking/index",
   delivery: "/pages/delivery/index",
   store: "/pages/store/index",
+  storeNotice: "/pages/store-notice/index",
   storeScope: "/pages/store-scope/index",
   storePick: "/pages/store-pick/index",
   payment: "/pages/payment/index",

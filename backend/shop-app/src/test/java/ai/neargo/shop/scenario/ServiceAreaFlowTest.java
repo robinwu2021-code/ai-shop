@@ -36,12 +36,6 @@ class ServiceAreaFlowTest {
     @Autowired
     private ai.neargo.shop.community.mapper.CommunityMappers.CommunityMapper communityMapper;
 
-    @Autowired
-    private ai.neargo.shop.merchant.service.MerchantGovernService governService;
-
-    @Autowired
-    private ai.neargo.shop.merchant.mapper.MerchantMappers.StoreAuditMapper auditMapper;
-
     /** 社区号自增：BizKey 没有社区这一档，测试里自己造就够 */
     private static int seq = 9000;
 
@@ -245,6 +239,12 @@ class ServiceAreaFlowTest {
         var st = new ai.neargo.shop.merchant.entity.MchStore();
         st.setStoreNo("ST" + seq++);
         st.setEntityNo(merchantNo);
+        st.setName(name);
+        st.setIsDefault(false);
+        storeMapper.insert(st);
+        return st.getStoreNo();
+    }
+
     @Test
     @DisplayName("★★ 公告过期即空 —— 「昨天到货」不该挂到今天，而且两条读路径要一致")
     void announcementExpires() {
@@ -274,6 +274,33 @@ class ServiceAreaFlowTest {
     }
 
     @Test
+    @DisplayName("★★ 只改公告不碰门面 —— 高频与低频拆成两条路，改一句话不该重写地址")
+    void saveAnnouncementLeavesTheRestAlone() {
+        String m = merchant("PICKUP");
+        store(m);
+        String c = community("330106002");
+        storeService.save(m, null, new ai.neargo.shop.merchant.service.MerchantStoreService.SaveCommand(
+                "旧公告", null, "06:30-21:00", "龙澜大道 441 号", "3 栋 501",
+                java.util.List.of(), null, null, null, "PICKUP",
+                java.util.List.of(new ai.neargo.shop.merchant.service.MerchantStoreService
+                        .AreaCommand("COMMUNITY", c)), 22_695_293, 114_027_370));
+
+        storeService.saveAnnouncement(m, null, "今天到了新米", null);
+
+        var vo = storeService.profile(m);
+        assertThat(vo.announcement()).isEqualTo("今天到了新米");
+        /*
+         * 这几条是这个口子存在的**全部理由**：混在一份全量保存里时，端上少传一个字段
+         * 就会把它写回空 —— 而「地址没了」这种事商家要等到有人来取货才发现。
+         */
+        assertThat(vo.openHours()).isEqualTo("06:30-21:00");
+        assertThat(vo.address()).isEqualTo("龙澜大道 441 号");
+        assertThat(vo.addressDetail()).isEqualTo("3 栋 501");
+        assertThat(vo.latE6()).isEqualTo(22_695_293);
+        assertThat(vo.serviceAreas()).hasSize(1);
+    }
+
+    @Test
     @DisplayName("★ 常用公告：最近用过的排最前、不重复、最多 5 条")
     void recentAnnouncementsAreDeduped() {
         String m = merchant("PICKUP");
@@ -292,12 +319,6 @@ class ServiceAreaFlowTest {
         assertThat(recent).hasSize(5);
         assertThat(recent.get(0)).as("刚用过的排最前").isEqualTo("六");
         assertThat(recent).as("同一句只留一条").containsExactly("六", "五", "四", "一", "三");
-    }
-
-        st.setName(name);
-        st.setIsDefault(false);
-        storeMapper.insert(st);
-        return st.getStoreNo();
     }
 
     @Test
@@ -382,8 +403,8 @@ class ServiceAreaFlowTest {
     }
 
     @Test
-    @DisplayName("★★ 按省覆盖：省码是 2 位前缀，整省的社区都命中，且要运营审")
-    void provinceAreaExpandsAndNeedsReview() {
+    @DisplayName("★★ 按省覆盖：省码是 2 位前缀，整省的社区都命中，勾完当场生效（2026-08-24 起不再要审）")
+    void provinceAreaExpandsImmediately() {
         String m = merchant("SHIPPING");
         store(m);
         String inProvince = community("330106002");   // 浙江 → 杭州 → 西湖 → 街道
@@ -400,14 +421,13 @@ class ServiceAreaFlowTest {
                 .eq(ai.neargo.shop.merchant.entity.MchServiceArea::getEntityNo, m));
         /*
          * 省这一档是新加的（AREA_LEVEL.PROVINCE）。后端没有为它写过任何分支 ——
-         * 这条用例守的正是「不写分支也对」：审核归入「非社区非街道 → 待审」，
-         * 展开归入「国标码前缀」。哪天有人给 selfEffective 加一档，这里会红。
+         * 这条用例守的正是「不写分支也对」：展开归入「国标码前缀」，
+         * 状态一律 ACTIVE，不再走待审队列。
          */
         assertThat(rows).singleElement()
-                .satisfies(r -> assertThat(r.getStatus()).isEqualTo("PENDING"));
+                .satisfies(r -> assertThat(r.getStatus()).isEqualTo("ACTIVE"));
 
-        // 审过之后才展开，而且只展开这个省
-        governService.decideStoreAudit(auditNoOf(rows.get(0).getAreaNo()), true, null, "OPS1");
+        // 保存当场就展开，而且只展开这个省
         var reachable = merchantQuery.reachableCommunities(m);
         assertThat(reachable).contains(inProvince);
         assertThat(reachable).doesNotContain(otherProvince);
@@ -438,8 +458,8 @@ class ServiceAreaFlowTest {
     }
 
     @Test
-    @DisplayName("★ 勾社区自助生效，勾区要审 —— 影响面差一个量级")
-    void districtAreaNeedsReview() {
+    @DisplayName("★ 勾社区、勾区，保存后都是同一句话：当场生效")
+    void districtAreaIsSelfEffectiveToo() {
         String m = merchant("ONSITE");
         store(m);
         String c = community("330106002");
@@ -453,17 +473,7 @@ class ServiceAreaFlowTest {
         var rows = areaMapper.selectList(com.baomidou.mybatisplus.core.toolkit.Wrappers
                 .<ai.neargo.shop.merchant.entity.MchServiceArea>lambdaQuery()
                 .eq(ai.neargo.shop.merchant.entity.MchServiceArea::getEntityNo, m));
-        assertThat(rows).anySatisfy(r -> {
-            if ("COMMUNITY".equals(r.getLevel())) {
-                assertThat(r.getStatus()).isEqualTo("ACTIVE");
-            }
-        });
-        assertThat(rows).anySatisfy(r -> {
-            if ("DISTRICT".equals(r.getLevel())) {
-                // 一家菜摊声称覆盖整个西湖区，得有履约能力佐证 —— 待审期间不参与展开
-                assertThat(r.getStatus()).isEqualTo("PENDING");
-            }
-        });
+        assertThat(rows).allSatisfy(r -> assertThat(r.getStatus()).isEqualTo("ACTIVE"));
     }
 
     @Test
@@ -477,11 +487,6 @@ class ServiceAreaFlowTest {
                 java.util.List.of(new ai.neargo.shop.merchant.service.MerchantStoreService
                         .AreaCommand("DISTRICT", "330106")));
         storeService.save(m, cmd);
-        // 运营审过了
-        var row = areaMapper.selectOne(com.baomidou.mybatisplus.core.toolkit.Wrappers
-                .<ai.neargo.shop.merchant.entity.MchServiceArea>lambdaQuery()
-                .eq(ai.neargo.shop.merchant.entity.MchServiceArea::getEntityNo, m).last("limit 1"));
-        governService.decideStoreAudit(auditNoOf(row.getAreaNo()), true, null, "OPS1");
 
         // 商家回来只改了一句公告，覆盖项原样再传一遍
         storeService.save(m, cmd);
@@ -489,64 +494,13 @@ class ServiceAreaFlowTest {
         var after = areaMapper.selectList(com.baomidou.mybatisplus.core.toolkit.Wrappers
                 .<ai.neargo.shop.merchant.entity.MchServiceArea>lambdaQuery()
                 .eq(ai.neargo.shop.merchant.entity.MchServiceArea::getEntityNo, m));
-        // 打回待审的话，他早已审过的覆盖当场失效，而页面上什么都不会提示
         assertThat(after).singleElement()
                 .satisfies(r -> assertThat(r.getStatus()).isEqualTo("ACTIVE"));
     }
 
     @Test
-    @DisplayName("★ 运营通过 → 覆盖项生效；驳回 → 行删掉（不留墓碑，否则重提撞唯一键）")
-    void opsDecisionLandsOnTheArea() {
-        String m = merchant("ONSITE");
-        store(m);
-        var cmd = new ai.neargo.shop.merchant.service.MerchantStoreService.SaveCommand(
-                "营业中", "08:00-20:00", "文一西路 1 号", java.util.List.of(),
-                null, null, null, "ONSITE",
-                java.util.List.of(new ai.neargo.shop.merchant.service.MerchantStoreService
-                        .AreaCommand("DISTRICT", "330106")));
-        storeService.save(m, cmd);
-        var row = areaMapper.selectOne(com.baomidou.mybatisplus.core.toolkit.Wrappers
-                .<ai.neargo.shop.merchant.entity.MchServiceArea>lambdaQuery()
-                .eq(ai.neargo.shop.merchant.entity.MchServiceArea::getEntityNo, m).last("limit 1"));
-        String auditNo = auditNoOf(row.getAreaNo());
-
-        // 队列里看得到，且显示的是人话不是「DISTRICT:330106」
-        assertThat(governService.storeAudits("PENDING"))
-                .filteredOn(a -> auditNo.equals(a.auditNo()))
-                .singleElement()
-                .satisfies(a -> assertThat(a.display()).doesNotContain("DISTRICT:"));
-
-        governService.decideStoreAudit(auditNo, false, "没有同城配送能力", "OPS1");
-        assertThat(areaMapper.selectList(com.baomidou.mybatisplus.core.toolkit.Wrappers
-                .<ai.neargo.shop.merchant.entity.MchServiceArea>lambdaQuery()
-                .eq(ai.neargo.shop.merchant.entity.MchServiceArea::getEntityNo, m))).isEmpty();
-
-        // 补齐材料后重提同一个区 —— 留墓碑的话这里撞唯一键，商家看到「系统开小差了」
-        storeService.save(m, cmd);
-        assertThat(areaMapper.selectList(com.baomidou.mybatisplus.core.toolkit.Wrappers
-                .<ai.neargo.shop.merchant.entity.MchServiceArea>lambdaQuery()
-                .eq(ai.neargo.shop.merchant.entity.MchServiceArea::getEntityNo, m)))
-                .singleElement().satisfies(r -> assertThat(r.getStatus()).isEqualTo("PENDING"));
-    }
-
-    /** 覆盖项 → 它的审核单号。一条覆盖只该有一张待审单 */
-    private String auditNoOf(String areaNo) {
-        return governService.storeAudits("PENDING").stream()
-                .filter(a -> "SERVICE_AREA".equals(a.kind()))
-                .filter(a -> auditRefIs(a.auditNo(), areaNo))
-                .findFirst().orElseThrow().auditNo();
-    }
-
-    private boolean auditRefIs(String auditNo, String areaNo) {
-        var a = auditMapper.selectOne(com.baomidou.mybatisplus.core.toolkit.Wrappers
-                .<ai.neargo.shop.merchant.entity.MchStoreAudit>lambdaQuery()
-                .eq(ai.neargo.shop.merchant.entity.MchStoreAudit::getAuditNo, auditNo).last("limit 1"));
-        return a != null && areaNo.equals(a.getRefNo());
-    }
-
-    @Test
-    @DisplayName("★ 待审状态必须回显给端上 —— 不然商家看着它在清单里，却一个订单也不来")
-    void pendingStatusIsReturnedToClient() {
+    @DisplayName("★ 状态必须回显给端上 —— 商家看清单里的每一条是不是真已经生效")
+    void statusIsReturnedToClient() {
         String m = merchant("ONSITE");
         store(m);
         String c = community("330106002");
@@ -557,14 +511,8 @@ class ServiceAreaFlowTest {
                         new ai.neargo.shop.merchant.service.MerchantStoreService.AreaCommand("COMMUNITY", c),
                         new ai.neargo.shop.merchant.service.MerchantStoreService.AreaCommand("DISTRICT", "330106"))));
 
-        // 不下发 status 的后果不是少个标签：待审的覆盖项不参与展开，
-        // 而端上无从知道 —— 那是商家自己永远查不出来的一类故障
         assertThat(profile.serviceAreas())
-                .filteredOn(a -> "COMMUNITY".equals(a.level()))
                 .allSatisfy(a -> assertThat(a.status()).isEqualTo("ACTIVE"));
-        assertThat(profile.serviceAreas())
-                .filteredOn(a -> "DISTRICT".equals(a.level()))
-                .allSatisfy(a -> assertThat(a.status()).isEqualTo("PENDING"));
     }
 
     @Test

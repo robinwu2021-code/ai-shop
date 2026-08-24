@@ -41,6 +41,18 @@ public interface MerchantStoreService {
     StoreProfileVO save(String merchantNo, String storeNo, SaveCommand cmd);
 
     /**
+     * 只改公告（含有效期）。
+     *
+     * <p><b>为什么单独一个口子而不是复用 {@link #save}</b>：公告是这一屏唯一的高频内容
+     * （一天可能改两次），而 save 是「整份门面资料全量替换」—— 只想换一句话却要连
+     * 地址、营业时间、主推商品一起提交，端上稍有不同步就会把别的字段写回旧值。
+     * 拆开之后，改公告这条路上**不可能**误伤其它字段。
+     *
+     * @param until 失效时刻（epoch 毫秒），空 = 长期
+     */
+    StoreProfileVO saveAnnouncement(String merchantNo, String storeNo, String announcement, Long until);
+
+    /**
      * 覆盖社区全量替换。审核与店铺设置<b>共用这一处实现</b> ——
      * 「空覆盖 = 对谁都不可见」这条规则只有一份代码，才不会两条路径各写各的。
      */

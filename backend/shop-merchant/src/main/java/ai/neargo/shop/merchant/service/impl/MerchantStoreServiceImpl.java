@@ -94,6 +94,31 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
 
     @Override
     @Transactional
+    public StoreProfileVO saveAnnouncement(String merchantNo, String storeNo, String announcement, Long until) {
+        MchStore store = row(merchantNo, storeNo);
+        if (store == null) {
+            // 还没建过门店就改公告：这条路只在异常状态下走得到，直接拒比默默建一行安全
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        /*
+         * 机审同 save()：命中转人审并**保留旧公告** —— 清空的话店铺页会突然变白，
+         * 而店主以为自己改坏了，只会反复再改一遍。
+         */
+        List<String> hits = screen(announcement);
+        if (!hits.isEmpty()) {
+            submitForAudit(merchantNo, MchStoreAudit.NOTICE, announcement, hits);
+            return profile(merchantNo, storeNo);
+        }
+        store.setAnnouncement(announcement);
+        store.setAnnouncementUntil(until);
+        store.setAnnouncementRecent(writeJson(pushRecent(store.getAnnouncementRecent(), announcement)));
+        MchStore toSave = store;
+        DataScopeContext.executeWithoutScope(() -> storeMapper.updateById(toSave));
+        return profile(merchantNo, storeNo);
+    }
+
+    @Override
+    @Transactional
     public StoreProfileVO save(String merchantNo, SaveCommand cmd) {
         return save(merchantNo, null, cmd);
     }
@@ -152,9 +177,6 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
             // 而店主以为自己"改坏了"，只会反复再改一遍
         } else {
             store.setAnnouncement(cmd.announcement());
-        }
-        store.setOpenHours(cmd.openHours());
-        store.setAddress(cmd.address());
             /*
              * 有效期跟着公告走：**换了内容就换有效期**，包括「这次没给 = 长期」。
              * 不这么做的话，上一条「今天有效」的到期时间会跟着新公告一起留下来，
@@ -162,6 +184,9 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
              */
             store.setAnnouncementUntil(cmd.announcementUntil());
             store.setAnnouncementRecent(writeJson(pushRecent(store.getAnnouncementRecent(), cmd.announcement())));
+        }
+        store.setOpenHours(cmd.openHours());
+        store.setAddress(cmd.address());
         /*
          * 门牌号 **null = 这次不改**（老版本端上不传这个字段），空串才是「清掉」。
          * 不分开的话，老 App 保存一次公告就会把商家填的门牌号抹掉，且那一下看不出来。
@@ -239,14 +264,10 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
                         .eq(MchServiceArea::getEntityNo, merchantNo)
                         .eq(onlyLevel != null, MchServiceArea::getLevel, onlyLevel)));
         /*
-         * **保住已经审过的状态。**
-         *
          * 这里是全量删重插（唯一键在 entity+level+ref 上，改动最少的写法）。
          * 曾经要在这里保住旧的审核状态（PENDING/REJECTED 不能被删重插抹掉）——
          * 现在所有粒度都自选即生效，新插入的一律是 ACTIVE，不再需要记这份旧状态。
          */
-        java.util.Map<String, String> wasStatus = current.stream().collect(java.util.stream.Collectors
-                .toMap(a -> a.getLevel() + ":" + a.getRefCode(), MchServiceArea::getStatus, (a, b) -> a));
         for (MchServiceArea old : current) {
             DataScopeContext.executeWithoutScope(() ->
                     serviceAreaMapper.hardDelete(merchantNo, old.getLevel(), old.getRefCode()));
@@ -262,21 +283,23 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
             row.setRefCode(a.refCode());
             row.setSource("SELF");
             /*
-             * 勾**已有社区**自助生效；勾**区/市**要审 —— 一家菜摊声称覆盖整个西湖区，
-             * 得有履约能力佐证，影响面差一个量级（ADR-013 §4.2）。
-             * 待审的覆盖项不参与展开，所以商家勾了也不会当场铺开。
+             * **所有粒度自选即生效**（2026-08-24 起，取代 ADR-013 §4.2 的区/市送审规则）。
+             *
+             * 旧规则是「小区/村/街道自助，区/市/省要运营审」，理由是「一家菜摊声称
+             * 覆盖整个西湖区，得有履约能力佐证」——这道闸现在拿掉了：拿掉之后，
+             * 商家勾一个省会立刻对省内所有买家可见，履约能力不再有人工兜底核实，
+             * 这是产品侧权衡后的决定，不是这段代码本身能挽回的取舍。
+             *
+             * 拿掉旧 PENDING 记录里可能还没处理完的那批：这次保存起，一律按 ACTIVE 写，
+             * 旧的待审队列（MchStoreAudit，kind=SERVICE_AREA）不会再收到新记录；
+             * 已经在队列里的历史记录不受影响，运营该怎么处理还怎么处理。
              */
-            String prior = wasStatus.get(a.level() + ":" + a.refCode());
-            /*
-             * 小区/村、街道/镇自选即生效（方案 v3 §3.1，V188 起）：街道量级与小区同属
-             * 商家自己够得着的范围；只有区/市要运营审 —— 一家菜摊声称覆盖整个西湖区，
-             * 得有履约能力佐证，影响面差一个量级。
-             */
-            boolean selfEffective = AREA_COMMUNITY.equals(a.level()) || AREA_STREET.equals(a.level());
-            String status = selfEffective ? MchServiceArea.ACTIVE
-                    : prior != null ? prior : MchServiceArea.PENDING;
-            row.setStatus(status);
+            row.setStatus(MchServiceArea.ACTIVE);
             DataScopeContext.executeWithoutScope(() -> serviceAreaMapper.insert(row));
+        }
+    }
+
+
 
     /** 常用公告最多留几条。5 条覆盖得住轮换，再多这一排就要换行、也要开始滚动 */
     private static final int RECENT_MAX = 5;
@@ -303,10 +326,6 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
         return kept;
     }
 
-        }
-    }
-
-
     /**
      * 父子归一：**同时勾了「浙江省」和「西湖区」时只留省**。
      *
@@ -330,28 +349,6 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
                         || regionCodes.stream().noneMatch(
                                 p -> !p.equals(a.refCode()) && a.refCode().startsWith(p)))
                 .toList();
-    }
-
-    /**
-     * 覆盖项进人审队列（ADR-013 阶段三）。
-     *
-     * <p>复用门面审核的那张表，而不是另造一套：运营的工作台上不该有两个
-     * 长得一样、入口不同的「待审列表」。差别只在 {@code refNo} ——
-     * 那两种审的是单据自带的 content，这一种审的是另一张表里的一行。
-     *
-     * <p>content 只写「层级:码」，展示名读的时候再拼：区划改名之后，
-     * 单据要显示当前的名字，而不是提交那天的。
-     */
-    private void submitAreaForAudit(String merchantNo, MchServiceArea row) {
-        MchStoreAudit a = new MchStoreAudit();
-        a.setAuditNo(BizKey.next(BizKey.STORE_AUDIT));
-        a.setEntityNo(merchantNo);
-        a.setKind(MchStoreAudit.SERVICE_AREA);
-        a.setRefNo(row.getAreaNo());
-        a.setContent(row.getLevel() + ":" + row.getRefCode());
-        a.setStatus(MchStoreAudit.PENDING);
-        a.setSubmittedAt(System.currentTimeMillis());
-        DataScopeContext.executeWithoutScope(() -> storeAuditMapper.insert(a));
     }
 
     /** 回显覆盖项，名字由后端补 —— 端上只拿到 330106 的话要么显示数字要么再查一次 */

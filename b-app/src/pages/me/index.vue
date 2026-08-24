@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { MERCHANT_LOGO_FALLBACK } from "@shared/utils/constants";
 // 我的（复用 C 端的外观面板：4 皮肤 × 明暗 × 三语 × 多市场）。
 import { computed, ref } from "vue";
 import { onShow } from "@dcloudio/uni-app";
@@ -113,7 +114,7 @@ onShow(() => {
     </view>
 
     <view v-else class="sh-card head">
-      <text class="head__logo">{{ merchant.profile?.logo || "🏪" }}</text>
+      <text class="head__logo">{{ merchant.profile?.logo || MERCHANT_LOGO_FALLBACK }}</text>
       <view class="head__main">
         <text class="sh-h2">{{ merchant.profile?.name || $t("me.store") }}</text>
         <text class="sh-chip" :class="merchant.isActive ? 'sh-chip--primary' : 'sh-chip--warning'">
@@ -153,8 +154,19 @@ onShow(() => {
         员工与授权。**唯一入口原先在工作台第二屏**，用户实际反馈是「没看到添加员工的功能」。
         放这里而不是往工作台上提：工作台按「今天要干的活」排，加员工不是每天干的事。
       -->
+      <!-- 门店管理是主体资产的总入口：几家店、谁收款、资质都从这进 -->
+      <view v-if="merchant.can('biz:store:admin')" class="cell" @tap="go(ROUTES.stores)">
+        <text class="cell__label">{{ $t("me.stores") }}</text>
+        <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
+      </view>
       <view v-if="merchant.can('biz:store:admin')" class="cell" @tap="go(ROUTES.staff)">
         <text class="cell__label">{{ $t("me.staff") }}</text>
+        <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
+      </view>
+      <!-- 收款设置：商户维度的钱袋子。「我的」本身就是商户视角，不必再造一层「商户」 -->
+      <view v-if="merchant.can('biz:finance')" class="cell" @tap="go(ROUTES.payment)">
+        <text class="cell__label">{{ $t("me.payment") }}</text>
+        <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
       </view>
       <!--
         我的套餐。**副标题带数字**（「成长版 · 门店 2/3」）——

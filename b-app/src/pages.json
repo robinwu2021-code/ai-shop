@@ -90,19 +90,19 @@
     {
       "path": "pages/store-categories/index",
       "style": {
-        "navigationBarTitleText": "我的类目"
+        "navigationBarTitleText": "货架分类"
       }
     },
     {
       "path": "pages/my-specs/index",
       "style": {
-        "navigationBarTitleText": "我的规格"
+        "navigationBarTitleText": "商品规格"
       }
     },
     {
       "path": "pages/qualifications/index",
       "style": {
-        "navigationBarTitleText": "我的资质"
+        "navigationBarTitleText": "资质证照"
       }
     },
     {
@@ -120,7 +120,7 @@
     {
       "path": "pages/staff/index",
       "style": {
-        "navigationBarTitleText": "员工与授权"
+        "navigationBarTitleText": "员工"
       }
     },
     {
@@ -132,13 +132,19 @@
     {
       "path": "pages/store/index",
       "style": {
-        "navigationBarTitleText": "店铺与获客"
+        "navigationBarTitleText": "店铺设置"
+      }
+    },
+    {
+      "path": "pages/store-notice/index",
+      "style": {
+        "navigationBarTitleText": "公告"
       }
     },
     {
       "path": "pages/store-scope/index",
       "style": {
-        "navigationBarTitleText": "经营范围与送货"
+        "navigationBarTitleText": "经营范围"
       }
     },
     {

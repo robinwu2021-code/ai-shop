@@ -329,6 +329,21 @@ public class BizMerchantController {
                         req.fulfillmentReach(), req.serviceAreas(), req.latE6(), req.lngE6()));
     }
 
+    /**
+     * 只改公告。**与整份门面资料分开的一条路** —— 公告一天可能改两次，
+     * 而地址、营业时间一年改几次；混在一个保存里，改一句话要连带提交全部字段。
+     */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.STORE + "')")
+    @PostMapping("/biz/store/announcement")
+    public StoreProfileVO saveAnnouncement(@RequestBody AnnouncementReq req) {
+        return storeService.saveAnnouncement(BizContext.requireMerchantNo(),
+                BizContext.current().currentStoreNo(), req.announcement(), req.announcementUntil());
+    }
+
+    /** @param announcementUntil 失效时刻（epoch 毫秒），空 = 长期 */
+    public record AnnouncementReq(String announcement, Long announcementUntil) {
+    }
+
     // ---------------------------------------------------------------- 门店送货方式（方案 v4）
 
     /**
