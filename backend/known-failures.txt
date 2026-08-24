@@ -9,7 +9,6 @@
 # 「只拦新增的失败」换成「必须全绿」。
 
 ai.neargo.shop.arch.ArchitectureTest.implsMustLiveInDedicatedPackage
-ai.neargo.shop.arch.ArchitectureTest.noFullyQualifiedReferences
 ai.neargo.shop.arch.ArchitectureTest.serviceMustBeInterface
 ai.neargo.shop.arch.ArchitectureTest.svcModulesMustNotDependOnEachOther
 ai.neargo.shop.arch.BizEndpointPermTest.everyBizEndpointHasADecision
@@ -102,8 +101,6 @@ ai.neargo.shop.scenario.OpsLogisticsFlowTest.waybillGates
 ai.neargo.shop.scenario.OpsMerchantPlanFlowTest.downgradeDoesNotTouchExistingOrders
 ai.neargo.shop.scenario.OpsPermConfigFlowTest.superAdminHasEveryPoint
 ai.neargo.shop.scenario.OpsPlatformConfigFlowTest.featureFlagRollout
-ai.neargo.shop.scenario.OpsProductGovernFlowTest.archiveHidesTemplateFromMerchantsImmediately
-ai.neargo.shop.scenario.OpsProductGovernFlowTest.platformTemplateReachesMerchantAndCarriesCodes
 ai.neargo.shop.scenario.OrderCloseRuleFlowTest.configActuallyDrivesClosing
 ai.neargo.shop.scenario.OrderCloseRuleFlowTest.jobOnlyClosesExpiredUnpaidOrders
 ai.neargo.shop.scenario.OrderReceiverRequiredTest.expressNeedsNoPickupPoint

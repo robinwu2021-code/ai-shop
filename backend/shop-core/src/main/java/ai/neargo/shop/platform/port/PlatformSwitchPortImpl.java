@@ -1,4 +1,4 @@
-package ai.neargo.shop.platform.service;
+package ai.neargo.shop.platform.port;
 
 import ai.neargo.shop.platform.PlatformConfigService;
 import ai.neargo.shop.platform.PlatformConfigService.FeatureFlagVO;
@@ -24,13 +24,13 @@ import org.springframework.stereotype.Service;
  * 这一类「规则型」开关只认 enabled。
  */
 @Service
-public class PlatformSwitchService implements PlatformSwitchPort {
+public class PlatformSwitchPortImpl implements PlatformSwitchPort {
 
-    private static final Logger log = LoggerFactory.getLogger(PlatformSwitchService.class);
+    private static final Logger log = LoggerFactory.getLogger(PlatformSwitchPortImpl.class);
 
     private final PlatformConfigService configService;
 
-    public PlatformSwitchService(PlatformConfigService configService) {
+    public PlatformSwitchPortImpl(PlatformConfigService configService) {
         this.configService = configService;
     }
 

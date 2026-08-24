@@ -9,6 +9,8 @@ import ai.neargo.shop.fulfillment.dto.PickingRowVO;
 import ai.neargo.shop.fulfillment.dto.PickupOverviewVO;
 import ai.neargo.shop.fulfillment.dto.VerifyResultVO;
 import ai.neargo.shop.fulfillment.service.PickupService;
+import ai.neargo.shop.spi.platform.PlatformSwitchPort;
+import ai.neargo.shop.spi.user.MerchantQueryPort;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import ai.neargo.shop.fulfillment.dto.PickupOrderVO;
@@ -35,15 +37,15 @@ public class BizPickupController {
     private final ai.neargo.shop.merchant.service.StoreCodeService storeCodeService;
     private final ai.neargo.shop.merchant.service.StoreLinkService storeLinkService;
     /** 主体已授权的经营类目码 —— /biz/context 要把它带给端上 */
-    private final ai.neargo.shop.spi.user.MerchantQueryPort merchantPort;
+    private final MerchantQueryPort merchantPort;
     /** 平台开关：类目闸门开不开，端上要跟着变文案与拦不拦 */
-    private final ai.neargo.shop.spi.platform.PlatformSwitchPort switchPort;
+    private final PlatformSwitchPort switchPort;
 
     public BizPickupController(PickupService pickupService,
                                ai.neargo.shop.merchant.service.StoreCodeService storeCodeService,
                                ai.neargo.shop.merchant.service.StoreLinkService storeLinkService,
-                               ai.neargo.shop.spi.user.MerchantQueryPort merchantPort,
-                               ai.neargo.shop.spi.platform.PlatformSwitchPort switchPort) {
+                               MerchantQueryPort merchantPort,
+                               PlatformSwitchPort switchPort) {
         this.merchantPort = merchantPort;
         this.switchPort = switchPort;
         this.pickupService = pickupService;

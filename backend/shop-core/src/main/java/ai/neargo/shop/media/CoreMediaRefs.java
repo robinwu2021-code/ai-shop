@@ -23,6 +23,12 @@ public class CoreMediaRefs implements MediaRefSource {
                 of("prd_goods", "cover", "商品 · 主图", "goods_no"),
                 of("prd_goods", "images", "商品 · 图集", "goods_no"),
                 /*
+                 * 详情图（V194 加的列）。加列时漏了这一行 —— 那一列从加进来的那天起
+                 * 就不被回收扫描算作引用，于是商家上传的详情图会被判成孤儿。
+                 * 症状要等到回收真跑一次才出现，而那时图已经没了、也查不出谁删的。
+                 */
+                of("prd_goods", "detail_images", "商品 · 详情图", "goods_no"),
+                /*
                  * 标准品的图（TDD-标准品库）。**必须算引用**：商家引用建品时会把这几张
                  * 复制进自己的商品，但标准品这一行自己也一直指着它们 —— 不登记的话，
                  * 一张还没被任何商家取用过的标准品图会被判成孤儿回收掉，

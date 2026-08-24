@@ -1795,8 +1795,16 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
             return merged0;
         }
         if (fromLibrary.isEmpty()) {
-            // 还没选类目：只给他自己的常用，平台的兜底不再推（选完类目才知道该推什么）
-            return legacy.stream().filter(t -> PrdSpecTemplate.MERCHANT.equals(t.scope())).toList();
+            /*
+             * **还没选类目：平台模板照给。**
+             *
+             * 我上一版在这里只留了商家自存的，理由是「选完类目才知道该推什么」——
+             * 那句话对的是上面 picked != null 那条（选了类目就不该再回落品类兜底），
+             * 搬到这里就错了：运营端 /ops/spec-templates 仍旧往老表写，
+             * 而商家侧只认新库的话，**运营建的模板商家永远查不到** ——
+             * 「模板是死的」那条断裂原样回来了，且运营那边看不出任何异常。
+             */
+            return legacy;
         }
         // 新库给了这一类目的维度，老表里同名的那几条（兜底或旧类目级）就别再推一遍
         Set<String> libNames = fromLibrary.stream().map(SpecTemplateVO::name)
