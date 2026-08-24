@@ -133,12 +133,11 @@ export const httpApi: MerchantApi = {
     http.post<CommunityApply>(E.mApplyCommunity.path, payload satisfies CommunityApplyReq),
   mMyCommunityApplies: () => http.get<CommunityApply[]>(E.mMyCommunityApplies.path),
   mSaveStore: (payload) => http.post<StoreProfile>(E.mSaveStore.path, payload),
-  mStoreFulfillment: (storeNo) =>
-    http.get<StoreFulfillment>(buildPath(E.mStoreFulfillment.path, { storeNo })),
-  mSaveAnnouncement: (payload) => http.post<StoreProfile>(E.mSaveAnnouncement.path, payload),
-  mSaveStoreFulfillment: (storeNo, payload) =>
   mSaveAnnouncement: (payload) => http.post<StoreProfile>(E.mSaveAnnouncement.path, payload),
   mDropNoticeRecent: (text) => http.post<StoreProfile>(E.mDropNoticeRecent.path, { text }),
+  mStoreFulfillment: (storeNo) =>
+    http.get<StoreFulfillment>(buildPath(E.mStoreFulfillment.path, { storeNo })),
+  mSaveStoreFulfillment: (storeNo, payload) =>
     http.put<StoreFulfillment>(
       buildPath(E.mSaveStoreFulfillment.path, { storeNo }),
       payload satisfies StoreFulfillmentSaveReq,
