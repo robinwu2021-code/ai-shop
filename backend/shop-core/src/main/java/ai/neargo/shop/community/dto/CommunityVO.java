@@ -25,7 +25,29 @@ public record CommunityVO(String communityNo,
                           /** ESTATE 小区 / VILLAGE 村。只是展示标签，不参与匹配 */
                           String kind,
                           int distance,
-                          List<PickupVO> pickups) {
+                          List<PickupVO> pickups,
+                          /**
+                           * 官方村码（{@code sys_region} 第五级），只有 {@code kind=VILLAGE} 且经由
+                           * 官方名录开通的才有。<b>{@link #regionCode} 是它挂的街道/镇，不是它自己</b>——
+                           * B 端经营范围选择器再往下钻一层（看这个村底下的自然村）时，要下钻的是
+                           * 这个村自己的码，不是父级街道的码，两者混用会把「牛杜村」下钻成「牛杜镇」。
+                           */
+                          String originCode,
+                          /**
+                           * origin_code 对应的**原始官方名**（「景滑村委会」，未经清理）。
+                           * 只有它的后缀能分辨「这是城区社区/居委会」还是「农村村委会」——
+                           * {@link #name} 是商家起的口语名，开通那一刻就把这个信息丢了。
+                           */
+                          String originName,
+                          /**
+                           * 是不是村委会（{@code sys_region.rural}，经 origin_code 反查）。
+                           * 只对 kind=VILLAGE 有意义——选择器据此决定这一条还给不给下钻：
+                           * 村委会到此为止，社区/居委会还能再挑具体小区。
+                           */
+                          boolean rural,
+                          /** 官方村名录批量补录过的坐标，可能为空。有它才能省一次服务端地理编码 */
+                          Integer latE6,
+                          Integer lngE6) {
 
     /**
      * 自提点（对齐 c-app {@code Pickup}）。

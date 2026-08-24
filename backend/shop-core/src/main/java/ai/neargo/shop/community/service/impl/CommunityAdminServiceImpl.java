@@ -350,14 +350,10 @@ public class CommunityAdminServiceImpl implements CommunityAdminService {
         return !x.isEmpty() && !y.isEmpty() && (x.equals(y) || x.startsWith(y) || y.startsWith(x));
     }
 
+    /** 委托共享的那份（见 PlaceNames）—— 这里此前独立一份，漏了「村委会」这个后缀，
+     *  搜「景滑村」出两条的同一类问题在这条查重路径上也存在过 */
     private static String normalizeName(String s) {
-        if (s == null) {
-            return "";
-        }
-        return s.trim()
-                .replaceAll("[（(].*?[）)]", "")
-                .replaceAll("(小区|花园|家园|新村|苑|园|村|社区|居委会|村民委员会|居民委员会)+$", "")
-                .trim();
+        return ai.neargo.shop.platform.PlaceNames.norm(s);
     }
 
     private ApplyVO toApplyVO(ai.neargo.shop.community.entity.CmtCommunityApply a) {

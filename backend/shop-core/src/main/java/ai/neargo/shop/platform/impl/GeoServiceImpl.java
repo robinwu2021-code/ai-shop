@@ -145,6 +145,34 @@ public class GeoServiceImpl implements GeoService {
     }
 
     @Override
+    public List<Tip> around(String keyword, int latE6, int lngE6, int radiusM, String types) {
+        String kw = keyword == null ? "" : keyword.trim();
+        if (!available() || kw.isEmpty()) {
+            return List.of();
+        }
+        String q = "/place/around?keywords=" + enc(kw)
+                + (types == null || types.isBlank() ? "" : "&types=" + enc(types))
+                + "&location=" + lnglat(latE6, lngE6) + "&radius=" + Math.max(1, radiusM)
+                + "&offset=25&extensions=base";
+        JsonNode r = call(q);
+        if (r == null) {
+            return List.of();
+        }
+        List<Tip> out = new ArrayList<>();
+        for (JsonNode p : r.path("pois")) {
+            String name = p.path("name").asText("");
+            if (name.isBlank()) {
+                continue;
+            }
+            int[] loc = parseLngLat(p.path("location").isTextual() ? p.path("location").asText("") : "");
+            out.add(new Tip(name, p.path("address").isTextual() ? p.path("address").asText("") : "",
+                    p.path("adcode").asText(""), loc == null ? null : loc[0], loc == null ? null : loc[1],
+                    p.path("typecode").asText("")));
+        }
+        return out;
+    }
+
+    @Override
     public ReverseVO reverse(double lat, double lng, String coordSys) {
         if (!available()) {
             throw BizException.of(ErrorCode.GEO_UNAVAILABLE);

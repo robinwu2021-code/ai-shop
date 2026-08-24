@@ -156,6 +156,16 @@ public class CommunityServiceImpl implements CommunityService {
         Map<String, MerchantBrief> owners = loadOwners(pickups);
         Map<String, List<CmtPickupPoint>> byCommunity = pickups.stream()
                 .collect(Collectors.groupingBy(CmtPickupPoint::getCommunityNo));
+        /*
+         * **原始机构名，批量取**。已开通聚落存的是商家起的口语名（「景滑」），
+         * 而经营范围选择器要按「是社区/居委会还是村委会」分开搜法（住宅小区 vs 村，
+         * 见 EstateCacheService#resolve）——这个判据只有原始官方名（「景滑村委会」）
+         * 的后缀能给，开通之后就丢了，只能从 origin_code 反查回去。
+         */
+        List<String> originCodes = communities.stream()
+                .map(CmtCommunity::getOriginCode).filter(java.util.Objects::nonNull).toList();
+        Map<String, String> originNames = masterDataPort.regionNames(originCodes);
+        Map<String, Boolean> originRural = masterDataPort.regionRural(originCodes);
 
         /*
          * **算不出距离的排最后，不是最前。**
@@ -172,7 +182,9 @@ public class CommunityServiceImpl implements CommunityService {
         boolean located = latE6 != null && lngE6 != null;
         return communities.stream()
                 .filter(c -> !located || withinRadius(c, latE6, lngE6))
-                .map(c -> toVO(c, byCommunity.getOrDefault(c.getCommunityNo(), List.of()), owners, latE6, lngE6))
+                .map(c -> toVO(c, byCommunity.getOrDefault(c.getCommunityNo(), List.of()), owners, latE6, lngE6,
+                        c.getOriginCode() == null ? null : originNames.get(c.getOriginCode()),
+                        c.getOriginCode() != null && Boolean.TRUE.equals(originRural.get(c.getOriginCode()))))
                 .sorted(Comparator.comparingInt(
                         v -> located && v.distance() == 0 ? Integer.MAX_VALUE : v.distance()))
                 .toList();
@@ -189,7 +201,11 @@ public class CommunityServiceImpl implements CommunityService {
                 .eq(CmtPickupPoint::getCommunityNo, communityNo)
                 .eq(CmtPickupPoint::getType, "STORE")
                 .eq(CmtPickupPoint::getStatus, "ACTIVE"));
-        return toVO(c, pickups, loadOwners(pickups), null, null);
+        String originName = c.getOriginCode() == null ? null
+                : masterDataPort.regionNames(java.util.List.of(c.getOriginCode())).get(c.getOriginCode());
+        boolean rural = c.getOriginCode() != null
+                && Boolean.TRUE.equals(masterDataPort.regionRural(java.util.List.of(c.getOriginCode())).get(c.getOriginCode()));
+        return toVO(c, pickups, loadOwners(pickups), null, null, originName, rural);
     }
 
     @Override
@@ -341,7 +357,7 @@ public class CommunityServiceImpl implements CommunityService {
     }
 
     private CommunityVO toVO(CmtCommunity c, List<CmtPickupPoint> pickups, Map<String, MerchantBrief> owners,
-                             Integer latE6, Integer lngE6) {
+                             Integer latE6, Integer lngE6, String originName, boolean rural) {
         return new CommunityVO(c.getCommunityNo(), c.getName(), c.getAddress(), c.getCityCode(),
                 c.getRegionCode(), c.getKind() == null ? "ESTATE" : c.getKind(),
                 distance(c.getLatE6(), c.getLngE6(), latE6, lngE6),
@@ -355,7 +371,8 @@ public class CommunityServiceImpl implements CommunityService {
                             owner == null ? "" : owner.logo(),
                             p.getOpenHours(), p.getArrivalDesc(),
                             p.getLatE6(), p.getLngE6());
-                }).toList());
+                }).toList(),
+                c.getOriginCode(), originName, rural, c.getLatE6(), c.getLngE6());
     }
 
     /** 未传定位返回 0：端上按 0 隐藏距离展示，比编一个假距离诚实。 */

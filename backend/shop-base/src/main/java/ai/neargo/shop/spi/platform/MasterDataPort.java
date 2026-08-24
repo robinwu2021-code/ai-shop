@@ -100,6 +100,17 @@ public interface MasterDataPort {
     java.util.Map<String, String> regionNames(java.util.Collection<String> regionCodes);
 
     /**
+     * 区划码 → 是不是村委会（{@code sys_region.rural}）。只对第五级有意义。
+     *
+     * <p>与 {@link #regionNames} 同一个用途分开成两个方法，而不是塞进一个 DTO——
+     * 大多数调用点只要名字，不要这个判据；不拆开会让不需要它的调用方也背上一次
+     * 额外的列读取与序列化。
+     *
+     * @return 查不到的码不出现在结果里，与 {@link #regionNames} 同一个约定
+     */
+    java.util.Map<String, Boolean> regionRural(java.util.Collection<String> regionCodes);
+
+    /**
      * 区划中心点（gcj02，E6，V192 起由高德批量补录）。
      *
      * <p>裁决提报时用它兜底：商家没带定位的提报，只要关联了官方村码，就能从这里取到坐标 ——
@@ -124,4 +135,34 @@ public interface MasterDataPort {
      * 名字是他自己起的，免审等于谁都能凭空造聚落。
      */
     java.util.Optional<String> officialVillageStreet(String regionCode);
+
+    /**
+     * 按「区县码 + 街道名」定位街道（9 位码）。
+     *
+     * <p><b>为什么不能用高德的 towncode</b>：两套编码不同源 —— 实测福城街道的
+     * towncode 是 440309006000，去掉后三位是 440309006，而那在统计局口径里是**观澜街道**。
+     * 按码挂会把聚落挂到隔壁街道，且没有任何报错，等到商家发现「货对那边可见、这边不可见」
+     * 已经过去很久。区县码两边一致，街道按名字找才对得上。
+     *
+     * @return 找不到返回空 —— 调用方据此拒绝，而不是挂到一个猜出来的街道上
+     */
+    java.util.Optional<String> streetByDistrictAndName(String adcode, String townshipName);
+
+    /**
+     * 从「地址文本 + 坐标」推断该挂哪个街道。运营裁决那一屏用它免去从 31 个省点起。
+     *
+     * <p><b>走 Port 而不是让 community 域直连 platform.RegionService</b> ——
+     * 后者是跨域直连，ArchUnit 第 1 条会拦（我第一版就是这么写的，被拦了）。
+     * 规则拦的正是这种「为了一个查询捅穿一层边界」：捅一次之后，
+     * 下一个人会顺手用上 RegionService 的别的方法，两个域就再也拆不开了。
+     */
+    java.util.List<RegionSuggestion> resolveRegion(String address, Integer latE6, Integer lngE6);
+
+    /**
+     * @param source ADDRESS 地址文本推断 / COORDS 坐标最近邻
+     * @param detail 给运营看的依据（匹配到的地址片段，或「茜坑社区 · 320 米」）
+     */
+    record RegionSuggestion(String regionCode, String level, String name, String path,
+                            String source, String detail) {
+    }
 }

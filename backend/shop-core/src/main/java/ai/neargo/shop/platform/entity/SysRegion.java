@@ -88,4 +88,15 @@ public class SysRegion extends BaseEntity {
     /** AMAP 批量补录 / MERCHANT 商家纠正 / OPS 运营录入。重跑批量时据此决定要不要覆盖 */
     private String coordsSource;
     private java.time.LocalDateTime coordsAt;
+
+    /**
+     * 只对第五级（VILLAGE）有意义：是不是「村委会」类型。民政部给这一级的官方名称
+     * 本身带着法定类型（村民委员会 / 居民委员会），导入时按名称后缀分类一次、
+     * 落这一列，之后全系统只读它，不再解析名字 —— 判断「是不是终点」只有这一处。
+     *
+     * <p>{@code true}：村委会，选择器到这一级为止，不再往下钻（自然村数据地图上
+     * 本来就搜不全，钻下去大概率是空的）。{@code false}：居委会/社区，或非第五级，
+     * 底下还要再挑具体小区。
+     */
+    private Boolean rural;
 }

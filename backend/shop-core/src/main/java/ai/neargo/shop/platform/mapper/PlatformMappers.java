@@ -33,6 +33,11 @@ public final class PlatformMappers {
     public interface IndustryMapper extends BaseMapper<SysIndustry> {
     }
 
+    /** 地图地点缓存（一片一行，结果存 JSON）。 */
+    public interface GeoPoiCacheMapper
+            extends BaseMapper<ai.neargo.shop.platform.entity.GeoPoiCache> {
+    }
+
     /** 商家主体类型注册表。 */
     public interface MerchantSubjectMapper
             extends BaseMapper<ai.neargo.shop.platform.entity.SysLegalForm> {

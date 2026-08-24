@@ -8,6 +8,7 @@ import ai.neargo.shop.product.review.ReviewService;
 import ai.neargo.shop.spi.user.MerchantQueryPort;
 import ai.neargo.shop.trade.service.AfterSaleService;
 import ai.neargo.shop.merchant.service.MerchantStoreService;
+import ai.neargo.shop.merchant.service.PosterService;
 import ai.neargo.shop.merchant.service.StoreCodeService;
 import ai.neargo.shop.trade.service.MerchantOrderService;
 import org.springframework.context.annotation.Profile;
@@ -41,15 +42,18 @@ public class BizDashboardController {
     private final MerchantStoreService storeService;
     private final StoreCodeService storeCodeService;
     private final ai.neargo.shop.merchant.service.StoreLinkService storeLinkService;
+    private final PosterService posterService;
 
     public BizDashboardController(MerchantOrderService orderService, AfterSaleService afterSaleService,
                                   ReviewService reviewService, GroupService groupService,
                                   MerchantQueryPort merchantPort, MerchantStoreService storeService,
                                   StoreCodeService storeCodeService,
-                                  ai.neargo.shop.merchant.service.StoreLinkService storeLinkService) {
+                                  ai.neargo.shop.merchant.service.StoreLinkService storeLinkService,
+                                  PosterService posterService) {
         this.storeService = storeService;
         this.storeCodeService = storeCodeService;
         this.storeLinkService = storeLinkService;
+        this.posterService = posterService;
         this.orderService = orderService;
         this.afterSaleService = afterSaleService;
         this.reviewService = reviewService;
@@ -164,12 +168,36 @@ public class BizDashboardController {
         return new ShareKitVO(text, url);
     }
 
+    /**
+     * 真·海报（B-11.11 补，2026-08-24）：封面图/店名/价格/小程序码合成的一张 PNG，
+     * 能直接发朋友圈，不是一句文案。
+     *
+     * <p><b>回 base64 JSON，不是图片 URL</b>：这条路由跟其余 {@code /biz/**} 一样要带
+     * {@code Authorization: Bearer} 才能过 {@code @PreAuthorize}，而 {@code <image src>}
+     * 这类标签发不出自定义请求头——直接给 URL 的话端上一加载就是 401。与店铺码
+     * （{@code StoreQrcode.imageBase64}）走的是同一条路。
+     */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.STORE + "')")
+    @GetMapping("/biz/store/poster")
+    public PosterVO poster(@RequestParam(required = false) String goodsNo) {
+        String merchantNo = BizContext.requireMerchantNo();
+        byte[] png = posterService.render(merchantNo, goodsNo);
+        if (png == null) {
+            return new PosterVO(null);
+        }
+        return new PosterVO(java.util.Base64.getEncoder().encodeToString(png));
+    }
+
     public record DeliveryRuleReq(int radius, long minOrderMinor, long feeMinor,
                                   long freeThresholdMinor) {
     }
 
-    /** @param posterUrl 海报图。一期直接用落地页地址，海报渲染服务未接 */
+    /** @param posterUrl 落地页链接，海报文字用；真正的海报图走 {@code /biz/store/poster} */
     public record ShareKitVO(String text, String posterUrl) {
+    }
+
+    /** @param imageBase64 海报 PNG 的 base64（不含 data: 前缀）。生成不出来时为 null */
+    public record PosterVO(String imageBase64) {
     }
 
     /**

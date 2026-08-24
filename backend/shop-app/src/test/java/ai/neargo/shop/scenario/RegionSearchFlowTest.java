@@ -92,6 +92,28 @@ class RegionSearchFlowTest {
     }
 
     @Test
+    @DisplayName("★★ 带上级的写法搜得到 —— 「运城市盐湖区」与「盐湖区」是同一个诉求")
+    void compositeKeywordFindsChild() {
+        List<RegionService.RegionVO> hits = regionService.search("运城市盐湖区", 24, null, null);
+
+        assertThat(hits).extracting(RegionService.RegionVO::name).contains("盐湖区");
+        // 祖先不对的同名区必须被筛掉：另一个省也有「盐湖区」时，多打的那三个字正是用来分辨的
+        region("63", null, "PROVINCE", "青海省");
+        region("6302", "63", "CITY", "海西市");
+        region("630222", "6302", "DISTRICT", "盐湖区");
+        assertThat(regionService.search("运城市盐湖区", 24, null, null))
+                .extracting(RegionService.RegionVO::regionCode).contains("140802").doesNotContain("630222");
+    }
+
+    @Test
+    @DisplayName("★ 多打的字不该让人一条都拿不到 —— 祖先对不上时退回按原词搜")
+    void compositeFallsBackWhenAncestorMissing() {
+        // 「杭州市」下没有盐湖区，但人已经打出来了 —— 空列表比「排序不理想」更糟
+        assertThat(regionService.search("杭州市盐湖区", 24, null, null))
+                .extracting(RegionService.RegionVO::name).contains("盐湖区");
+    }
+
+    @Test
     @DisplayName("★ 空关键词不返回全表 —— 那会让选择器在没输入时就下发几万行")
     void blankReturnsNothing() {
         assertThat(regionService.search("", 24, null, null)).isEmpty();
@@ -111,6 +133,10 @@ class RegionSearchFlowTest {
 
     /** 幂等造行：同一个码再来一次就更新，免得每个用例各自清表 */
     private void region(String code, String parent, String level, String name) {
+        region(code, parent, level, name, false);
+    }
+
+    private void region(String code, String parent, String level, String name, boolean rural) {
         DataScopeContext.executeWithoutScope(() -> {
             SysRegion exist = regionMapper.selectOne(com.baomidou.mybatisplus.core.toolkit.Wrappers
                     .<SysRegion>lambdaQuery().eq(SysRegion::getRegionCode, code).last("limit 1"));
@@ -121,7 +147,21 @@ class RegionSearchFlowTest {
             row.setName(name);
             row.setEnabled(true);
             row.setAuditStatus("APPROVED");
+            row.setRural(rural);
             return exist == null ? regionMapper.insert(row) : regionMapper.updateById(row);
         });
+    }
+
+    @Test
+    @DisplayName("★★ rural 标志随搜索命中一起传出去 —— 村委会 true，社区/居委会 false")
+    void ruralFlagIsCarriedThroughSearch() {
+        region("140802001300", "140802", "VILLAGE", "旧城村委会", true);
+        region("140802001301", "140802", "VILLAGE", "新苑社区居委会", false);
+
+        List<RegionService.RegionVO> villages = regionService.searchVillages("旧城村委会", 20, null, null);
+        assertThat(villages).extracting(RegionService.RegionVO::rural).containsExactly(true);
+
+        List<RegionService.RegionVO> communities = regionService.searchVillages("新苑社区居委会", 20, null, null);
+        assertThat(communities).extracting(RegionService.RegionVO::rural).containsExactly(false);
     }
 }

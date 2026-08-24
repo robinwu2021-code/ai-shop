@@ -144,9 +144,13 @@ public interface RegionService {
      * @param latE6 中心点（gcj02，E6）。<b>可能为 null</b>：批量补录没命中的区划就是空的，
      *              端上据此决定是直接用还是临时去地图上搜
      */
+    /**
+     * @param rural 只对 level=VILLAGE 有意义：是不是村委会。true=到此为止不再往下钻，
+     *              false=居委会/社区，底下还能再挑具体小区（见 SysRegion#rural 的注释）
+     */
     record RegionVO(String regionCode, String parentCode, String level, String name,
                     boolean enabled, boolean hasChild, String source, boolean pending,
                     String auditStatus, String rejectReason,
-                    Integer latE6, Integer lngE6) {
+                    Integer latE6, Integer lngE6, boolean rural) {
     }
 }

@@ -494,6 +494,56 @@ class BizDashboardAndReviewFlowTest {
         assertThat(json.readTree(single).get("data").get("posterUrl").asString()).contains("g=G-XYZ");
     }
 
+    // ---------------------------------------------------------------- 真海报（P2，2026-08-24）
+
+    @Test
+    @DisplayName("★★ 整店海报：生得出一张 750×1200 的真 PNG，不是回落地页链接那半句假话")
+    void storePosterRendersRealPng() throws Exception {
+        String token = merchant("12600147001", "海报测试·整店");
+
+        String body = mvc().perform(get("/biz/store/poster").header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        String b64 = json.readTree(body).get("data").get("imageBase64").asString();
+        assertThat(b64).isNotBlank();
+
+        var img = javax.imageio.ImageIO.read(new java.io.ByteArrayInputStream(
+                java.util.Base64.getDecoder().decode(b64)));
+        assertThat(img).as("解得出来才是真 PNG，不是一串占位字符串").isNotNull();
+        assertThat(img.getWidth()).isEqualTo(750);
+        assertThat(img.getHeight()).isEqualTo(1200);
+    }
+
+    @Test
+    @DisplayName("★★ 单品海报：带 goodsNo 也照样出图——字体缺失/取不到码都不该让接口整个报错")
+    void goodsPosterRendersRealPng() throws Exception {
+        String token = merchant("12600147002", "海报测试·单品");
+        String goodsNo = saveGoods(token, "海报测试·苹果");
+
+        String body = mvc().perform(get("/biz/store/poster").param("goodsNo", goodsNo)
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        String b64 = json.readTree(body).get("data").get("imageBase64").asString();
+
+        var img = javax.imageio.ImageIO.read(new java.io.ByteArrayInputStream(
+                java.util.Base64.getDecoder().decode(b64)));
+        assertThat(img).isNotNull();
+        assertThat(img.getWidth()).isEqualTo(750);
+        assertThat(img.getHeight()).isEqualTo(1200);
+    }
+
+    @Test
+    @DisplayName("不存在的商品：退化成整店海报，不是 500")
+    void posterWithUnknownGoodsFallsBackToStorePoster() throws Exception {
+        String token = merchant("12600147003", "海报测试·商品不存在");
+
+        mvc().perform(get("/biz/store/poster").param("goodsNo", "G-NOT-EXIST")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.imageBase64").isNotEmpty());
+    }
+
     // ---------------------------------------------------------------- 平台裁决台（P-13.1）
 
     @Test

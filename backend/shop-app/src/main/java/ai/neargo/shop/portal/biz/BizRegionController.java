@@ -1,6 +1,9 @@
 package ai.neargo.shop.portal.biz;
 
+import ai.neargo.shop.platform.AddressHints;
+import ai.neargo.shop.platform.GeoService;
 import ai.neargo.shop.platform.RegionService;
+import ai.neargo.shop.spi.platform.GeoPort;
 import ai.neargo.shop.auth.BizContext;
 import ai.neargo.shop.auth.BizPerms;
 import org.springframework.context.annotation.Profile;
@@ -30,11 +33,14 @@ public class BizRegionController {
 
     private final RegionService regionService;
     private final ai.neargo.shop.community.service.CommunityService communityService;
+    private final GeoService geoService;
 
     public BizRegionController(RegionService regionService,
-                               ai.neargo.shop.community.service.CommunityService communityService) {
+                               ai.neargo.shop.community.service.CommunityService communityService,
+                               GeoService geoService) {
         this.regionService = regionService;
         this.communityService = communityService;
+        this.geoService = geoService;
     }
 
     /**
@@ -65,7 +71,8 @@ public class BizRegionController {
                 .filter(c -> c.name() != null && c.name().contains(q))
                 .limit(30)
                 .map(c -> new CommunityHit(c.communityNo(), c.name(), c.regionCode(),
-                        c.regionCode() == null ? "" : pathOf.apply(c.regionCode())))
+                        c.regionCode() == null ? "" : pathOf.apply(c.regionCode()),
+                        c.kind(), c.originCode(), c.originName(), c.rural(), c.latE6(), c.lngE6()))
                 .toList();
         /*
          * **村也要能直接搜到**。此前搜索只认市/区/街道与已开通的聚落 ——
@@ -75,17 +82,37 @@ public class BizRegionController {
          * 已开通的那条走上面的 communities（能直接勾），这里只出还没开通的，
          * 避免同一个地方在两组里各出现一次。
          */
+        /*
+         * **按归一化名字去重，不按原字符串**。已开通的聚落存的是商家随手起的名
+         * （「景滑」），官方村名录里是原始机构名（「景滑村委会」）——两个字符串
+         * 精确比对永远不相等，这正是搜「景滑村」出两条的根因（PlaceNames 类注释里写了）。
+         */
         java.util.Set<String> openedNames = communities.stream()
-                .map(CommunityHit::name).collect(java.util.stream.Collectors.toSet());
+                .map(c -> ai.neargo.shop.platform.PlaceNames.norm(c.name()))
+                .collect(java.util.stream.Collectors.toSet());
         List<VillageHit> villages = q.isEmpty() ? List.of()
                 : regionService.searchVillages(q, 20, latE6, lngE6).stream()
-                .filter(v -> !openedNames.contains(v.name()))
+                .filter(v -> !openedNames.contains(ai.neargo.shop.platform.PlaceNames.norm(v.name())))
                 .map(v -> new VillageHit(v.regionCode(), v.name(),
                         v.parentCode() == null ? "" : v.parentCode(),
                         v.parentCode() == null ? "" : pathOf.apply(v.parentCode()),
-                        v.latE6(), v.lngE6()))
+                        v.latE6(), v.lngE6(), v.rural()))
                 .toList();
-        return new SearchVO(regions, communities, villages);
+        /*
+         * **本地没有才问地图**（v5：搜索框统一走服务端，App 不再自己调原生 SDK）。
+         *
+         * 「本地没有」按村/小区这一类命中数为 0 判 —— 省市区街道这类行政区划命中不算，
+         * 那不是商家真正要落的点。「福安雅园」「嘉怡花园」这类地图上真实存在、
+         * 库里还没人开过的小区，就是从这条路径出现在搜索结果里的。
+         */
+        List<GeoPort.Tip> places = List.of();
+        if (communities.isEmpty() && villages.isEmpty() && !q.isEmpty() && geoService.available()) {
+            List<String> segs = AddressHints.segments(q);
+            String target = AddressHints.target(segs);
+            String city = AddressHints.cityHint(segs);
+            places = geoService.tips(target, city);
+        }
+        return new SearchVO(regions, communities, villages, places);
     }
 
     /** 从省到自身的整条链路：选择器从搜索命中下钻时要把面包屑换成真实路径 */
@@ -99,7 +126,14 @@ public class BizRegionController {
     public record RegionHit(String regionCode, String level, String name, String path) {
     }
 
-    public record CommunityHit(String communityNo, String name, String regionCode, String path) {
+    /**
+     * @param originCode 官方村码，只有 kind=VILLAGE 且经官方名录开通的才有。**下钻要用它**，
+     *                   不能用 {@link #regionCode}（那是它挂的街道/镇，不是它自己）
+     * @param originName origin_code 对应的原始官方名（如「景滑村委会」）。判「城区还是农村」用它
+     */
+    public record CommunityHit(String communityNo, String name, String regionCode, String path,
+                               String kind, String originCode, String originName, boolean rural,
+                               Integer latE6, Integer lngE6) {
     }
 
     /**
@@ -107,11 +141,11 @@ public class BizRegionController {
      * @param latE6      村中心坐标，可能为空（只有补录过的城市有）
      */
     public record VillageHit(String regionCode, String name, String streetCode, String path,
-                             Integer latE6, Integer lngE6) {
+                             Integer latE6, Integer lngE6, boolean rural) {
     }
 
     public record SearchVO(List<RegionHit> regions, List<CommunityHit> communities,
-                           List<VillageHit> villages) {
+                           List<VillageHit> villages, List<GeoPort.Tip> places) {
     }
 
     /**
@@ -135,7 +169,7 @@ public class BizRegionController {
                 .map(r -> "STREET".equals(r.level())
                         ? new RegionService.RegionVO(r.regionCode(), r.parentCode(), r.level(),
                                 r.name(), r.enabled(), false, r.source(), r.pending(),
-                                r.auditStatus(), r.rejectReason(), r.latE6(), r.lngE6())
+                                r.auditStatus(), r.rejectReason(), r.latE6(), r.lngE6(), r.rural())
                         : r)
                 .toList();
     }

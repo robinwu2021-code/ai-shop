@@ -82,6 +82,29 @@ public class MasterDataPortImpl implements MasterDataPort {
     }
 
     @Override
+    public java.util.List<RegionSuggestion> resolveRegion(String address, Integer latE6, Integer lngE6) {
+        return regionService.resolve(address, latE6, lngE6).stream()
+                .map(s -> new RegionSuggestion(s.region().regionCode(), s.region().level(),
+                        s.region().name(), s.path(), s.source(), s.detail()))
+                .toList();
+    }
+
+    @Override
+    public java.util.Optional<String> streetByDistrictAndName(String adcode, String townshipName) {
+        String d = adcode == null ? "" : adcode.trim();
+        String t = townshipName == null ? "" : townshipName.trim();
+        if (d.isEmpty() || t.isEmpty()) {
+            return java.util.Optional.empty();
+        }
+        return regionService.children(d, false, null).stream()
+                .filter(r -> "STREET".equals(r.level()))
+                // 名字可能带后缀差异（「福城街道」vs「福城街道办事处」），前缀匹配兜一手
+                .filter(r -> r.name().equals(t) || r.name().startsWith(t) || t.startsWith(r.name()))
+                .map(ai.neargo.shop.platform.RegionService.RegionVO::regionCode)
+                .findFirst();
+    }
+
+    @Override
     public java.util.Optional<RegionCoords> regionCoords(String regionCode) {
         if (regionCode == null || regionCode.isBlank()) {
             return java.util.Optional.empty();
@@ -109,6 +132,24 @@ public class MasterDataPortImpl implements MasterDataPort {
             var path = regionService.path(code);
             if (!path.isEmpty()) {
                 out.put(code, path.get(path.size() - 1).name());
+            }
+        }
+        return out;
+    }
+
+    @Override
+    public java.util.Map<String, Boolean> regionRural(java.util.Collection<String> regionCodes) {
+        if (regionCodes == null || regionCodes.isEmpty()) {
+            return java.util.Map.of();
+        }
+        java.util.Map<String, Boolean> out = new java.util.LinkedHashMap<>();
+        for (String code : regionCodes) {
+            if (code == null || code.isBlank()) {
+                continue;
+            }
+            var path = regionService.path(code);
+            if (!path.isEmpty()) {
+                out.put(code, path.get(path.size() - 1).rural());
             }
         }
         return out;

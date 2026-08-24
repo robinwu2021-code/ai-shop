@@ -31,7 +31,8 @@ public class RegionServiceImpl implements RegionService {
                 Boolean.TRUE.equals(r.getEnabled()), hasChild,
                 r.getSource() == null ? "OFFICIAL" : r.getSource(),
                 !SysRegion.APPROVED.equals(r.getAuditStatus()),
-                r.getAuditStatus(), r.getRejectReason(), r.getLatE6(), r.getLngE6());
+                r.getAuditStatus(), r.getRejectReason(), r.getLatE6(), r.getLngE6(),
+                Boolean.TRUE.equals(r.getRural()));
     }
 
     /** 地址里的四段名字。非贪婪 + 限长：「广东省深圳市龙华区福城街道福庆路1号」要切成四段，不是一整串 */
@@ -343,10 +344,20 @@ public class RegionServiceImpl implements RegionService {
     @Override
     public List<RegionVO> searchVillages(String keyword, int limit, Integer nearLatE6, Integer nearLngE6) {
         String kw = keyword == null ? "" : keyword.trim();
+        /*
+         * 「深圳市龙华区西坑社区」与「西坑社区」是同一个诉求 —— 末段当目标搜，
+         * 前面几段留作祖先约束（同名的「西坑」全国有好几个，这几个字正好用来分辨）。
+         */
+        List<String> segs = segments(kw);
+        List<String> ancestors = segs.size() > 1 ? segs.subList(0, segs.size() - 1) : List.of();
+        if (segs.size() > 1) {
+            kw = segs.get(segs.size() - 1);
+        }
         // 两个字以下会命中上万行（「新村」「东村」），给人挑的列表不该这么长
         if (kw.length() < 2) {
             return List.of();
         }
+        final String key = kw;
         int cap = Math.max(1, Math.min(limit, 20));
         /*
          * **按距离排，不是按码排**。同名的村全国到处都是 —— 深圳的商家搜「福城」，
@@ -363,7 +374,7 @@ public class RegionServiceImpl implements RegionService {
                             .eq(SysRegion::getLevel, "VILLAGE")
                             .eq(SysRegion::getEnabled, true)
                             .eq(SysRegion::getAuditStatus, "APPROVED")
-                            .like(SysRegion::getName, kw)
+                            .like(SysRegion::getName, key)
                             .between(SysRegion::getLatE6, nearLatE6 - wide, nearLatE6 + wide)
                             .between(SysRegion::getLngE6, nearLngE6 - wide, nearLngE6 + wide)
                             .last("LIMIT 200")));
@@ -373,16 +384,40 @@ public class RegionServiceImpl implements RegionService {
                     .limit(cap)
                     .toList();
         }
+        /*
+         * **前缀优先**：`name LIKE '福城%'` 能走 (level, name) 索引的范围扫，
+         * 而 `LIKE '%福城%'` 只能把 62 万行村级挨个取出来比 —— 线上实测 2.3 秒，
+         * 而这条查询是每次输入都要跑的。人的打法绝大多数是前缀（「西坑」找「西坑社区」），
+         * 所以先走快的那条，取不满配额才退到包含。
+         */
         if (rows.isEmpty()) {
             rows = DataScopeContext.executeWithoutScope(() ->
                     mapper.selectList(Wrappers.<SysRegion>lambdaQuery()
                             .eq(SysRegion::getLevel, "VILLAGE")
                             .eq(SysRegion::getEnabled, true)
                             .eq(SysRegion::getAuditStatus, "APPROVED")
-                            .like(SysRegion::getName, kw)
+                            .likeRight(SysRegion::getName, key)
                             // 有坐标的排前面：没坐标的开出来买家用定位也搜不到
                             .orderByDesc(SysRegion::getLatE6)
                             .last("LIMIT " + cap)));
+        }
+        if (rows.isEmpty()) {
+            rows = DataScopeContext.executeWithoutScope(() ->
+                    mapper.selectList(Wrappers.<SysRegion>lambdaQuery()
+                            .eq(SysRegion::getLevel, "VILLAGE")
+                            .eq(SysRegion::getEnabled, true)
+                            .eq(SysRegion::getAuditStatus, "APPROVED")
+                            .like(SysRegion::getName, key)
+                            .orderByDesc(SysRegion::getLatE6)
+                            .last("LIMIT " + cap)));
+        }
+        /*
+         * 祖先约束在**取完之后**筛：村级 62 万行，先按名字命中再逐条回溯父链，
+         * 回溯的只是这几十条；反过来（先按祖先圈范围）要对整表做前缀扫描。
+         */
+        if (!ancestors.isEmpty()) {
+            Map<String, String> names = ancestorNames(rows);
+            rows = rows.stream().filter(r -> matchesAncestors(r, ancestors, names)).toList();
         }
         return toVOs(rows);
     }
@@ -397,11 +432,43 @@ public class RegionServiceImpl implements RegionService {
     /** 每级先捞多少候选再在内存里排序。前缀命中通常远少于这个数，兜底防「新华」「城关」这种烂大街的名字 */
     private static final int CANDIDATES_PER_LEVEL = 200;
 
+    /**
+     * 「深圳市龙华区」这种<b>带上级的写法</b>切成 ["深圳市", "龙华区"]。
+     *
+     * <p>人打字时习惯从大到小写全，而区划表里没有任何一行叫「深圳市龙华区」——
+     * 于是 `LIKE '%深圳市龙华区%'` 一条也搜不到，而单独打「龙华区」就有。
+     * 商家看到的是「这个系统时灵时不灵」，没人会想到是自己多打了两个字。
+     *
+     * <p>只按<b>行政后缀</b>切，不做分词：后缀是区划名自带的，切错的代价（多一段约束）
+     * 远小于分词切错（把「龙华」切成「龙」「华」，一条都对不上）。
+     */
+    /** 切分本身挪到 {@link ai.neargo.shop.platform.AddressHints}：问地图（inputtips/around）要同一套切法 */
+    static List<String> segments(String kw) {
+        return ai.neargo.shop.platform.AddressHints.segments(kw);
+    }
+
     @Override
     public List<RegionVO> search(String keyword, int limit, Integer nearLatE6, Integer nearLngE6) {
         String kw = keyword == null ? "" : keyword.trim();
         if (kw.isEmpty()) {
             return List.of();
+        }
+        /*
+         * 带上级的写法先走一遍「末段当目标、前面几段当祖先约束」。
+         * 搜不到就**照原样再搜一次**：多打的那几个字不该让人一条结果都拿不到。
+         */
+        List<String> segs = segments(kw);
+        if (segs.size() > 1) {
+            List<RegionVO> byPath = searchWithAncestors(segs, limit, nearLatE6, nearLngE6);
+            if (!byPath.isEmpty()) {
+                return byPath;
+            }
+            /*
+             * 祖先对不上（打错了上级、或那一级在库里叫别的名字）时**只按末段搜**，
+             * 而不是拿整串「杭州市盐湖区」再去 LIKE 一次 —— 后者必然一条也没有，
+             * 而人要找的那个区其实就在库里。
+             */
+            kw = segs.get(segs.size() - 1);
         }
         /*
          * **区划一个字就能搜，聚落仍是两个字**（searchVillages）。
@@ -451,6 +518,77 @@ public class RegionServiceImpl implements RegionService {
                         .thenComparing(SysRegion::getRegionCode))
                 .limit(quota)
                 .toList();
+    }
+
+    /**
+     * 末段当目标搜，再用前面几段筛祖先。
+     *
+     * <p>祖先判定走<b>父链上的名字</b>而不是路径字符串拼接：拼接要先把每条命中的路径查出来，
+     * 而这里筛掉的正是大多数 —— 先筛后查，省的是那几十次回溯。
+     */
+    private List<RegionVO> searchWithAncestors(List<String> segs, int limit,
+                                               Integer nearLatE6, Integer nearLngE6) {
+        String target = segs.get(segs.size() - 1);
+        List<String> ancestors = segs.subList(0, segs.size() - 1);
+        int cap = Math.max(1, Math.min(limit, 30));
+        List<SysRegion> picked = new ArrayList<>();
+        for (String level : SEARCH_LEVELS) {
+            // 配额放宽一档：祖先约束会筛掉大部分，按原配额取会把对的那条挡在候选之外
+            picked.addAll(searchOneLevel(level, target, SEARCH_QUOTA.getOrDefault(level, 5) * 4,
+                    nearLatE6, nearLngE6));
+        }
+        Map<String, String> names = ancestorNames(picked);
+        List<SysRegion> kept = picked.stream()
+                .filter(r -> matchesAncestors(r, ancestors, names))
+                .limit(cap)
+                .toList();
+        return toVOs(kept);
+    }
+
+    /**
+     * 祖先码由**区划码前缀**推出来：省 2 / 市 4 / 区 6 / 街道 9 位，下级码以上级码开头。
+     *
+     * <p>不逐条回溯 `parent_code` 是因为那是 N+1：三十条候选 × 四级 = 一百多次点查，
+     * 每次都要过连接池。前缀是编码规则本身给的，一次 `IN` 就能把所有祖先名取回来。
+     */
+    private static List<String> ancestorCodes(String code) {
+        if (code == null) {
+            return List.of();
+        }
+        List<String> out = new ArrayList<>();
+        for (int len : new int[]{2, 4, 6, 9}) {
+            if (code.length() > len) {
+                out.add(code.substring(0, len));
+            }
+        }
+        return out;
+    }
+
+    /** 一批候选的祖先名字：code → name，一次查完 */
+    private Map<String, String> ancestorNames(List<SysRegion> rows) {
+        Set<String> codes = new java.util.LinkedHashSet<>();
+        rows.forEach(r -> codes.addAll(ancestorCodes(r.getRegionCode())));
+        if (codes.isEmpty()) {
+            return Map.of();
+        }
+        List<SysRegion> found = DataScopeContext.executeWithoutScope(() ->
+                mapper.selectList(Wrappers.<SysRegion>lambdaQuery()
+                        .select(SysRegion::getRegionCode, SysRegion::getName)
+                        .in(SysRegion::getRegionCode, codes)));
+        Map<String, String> out = new LinkedHashMap<>();
+        found.forEach(r -> out.put(r.getRegionCode(), r.getName() == null ? "" : r.getName()));
+        return out;
+    }
+
+    /** 这一条的祖先里，是不是每一段都能对上（按名字前缀，「深圳市」对「深圳市」） */
+    private static boolean matchesAncestors(SysRegion row, List<String> ancestors,
+                                            Map<String, String> names) {
+        List<String> mine = ancestorCodes(row.getRegionCode()).stream()
+                .map(c -> names.getOrDefault(c, ""))
+                .filter(n -> !n.isEmpty())
+                .toList();
+        return ancestors.stream().allMatch(a -> mine.stream()
+                .anyMatch(n -> n.startsWith(a) || a.startsWith(n) || n.contains(a)));
     }
 
     /** 0 完全相同 / 1 前缀命中 / 2 只是包含。「运城市」对「运城」算 1，「同和幸福城」算 2 */
@@ -506,6 +644,6 @@ public class RegionServiceImpl implements RegionService {
                 r.getSource() == null ? "OFFICIAL" : r.getSource(),
                 !SysRegion.APPROVED.equals(r.getAuditStatus()),
                 r.getAuditStatus(), r.getRejectReason(),
-                r.getLatE6(), r.getLngE6())).toList();
+                r.getLatE6(), r.getLngE6(), Boolean.TRUE.equals(r.getRural()))).toList();
     }
 }
