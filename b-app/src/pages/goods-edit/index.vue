@@ -173,7 +173,13 @@ const images = ref<string[]>([]);
  *
  * <p>只合并**界面**：存的时候照旧拆回两个字段，后端与 C 端零改动。
  */
-const photos = computed(() => (cover.value ? [cover.value, ...images.value] : [...images.value]));
+const photos = computed(() =>
+  cover.value
+    // **去重**：第一张上传时既写进 cover 又留在 images（存储照旧，C 端轮播里
+    // 本来就该有封面那一张）。不去重的话，传一张图界面上冒出两个一模一样的格子。
+    ? [cover.value, ...images.value.filter((x) => x !== cover.value)]
+    : [...images.value],
+);
 /** 一组图的上限 = 封面 1 + 轮播 6。存的时候两个字段各自的上限没变 */
 const PHOTO_LIMIT = 7;
 /**
@@ -893,12 +899,12 @@ async function addImages() {
  * 而商家明明看见这个商品有四张图。
  */
 function removePhoto(i: number) {
-  if (i > 0) {
-    images.value = images.value.filter((_, idx) => idx !== i - 1);
-    return;
-  }
-  cover.value = images.value[0] ?? "";
-  images.value = images.value.slice(1);
+  const list = photos.value;
+  const url = list[i];
+  if (!url) return;
+  // 按 url 删，不按下标 —— photos 是去重后的视图，下标与 images 的下标对不上
+  images.value = images.value.filter((x) => x !== url);
+  if (i === 0) cover.value = list[1] ?? "";
 }
 
 /**
@@ -909,11 +915,11 @@ function removePhoto(i: number) {
  * 也不会把「顺序」这件他并不关心的事塞给他。
  */
 function setCoverAt(i: number) {
-  if (i <= 0) return;
-  const picked = images.value[i - 1]!;
-  const old = cover.value;
+  const picked = photos.value[i];
+  if (!picked || i <= 0) return;
+  // 只改封面指针。images 原样不动 —— 它是 C 端轮播的顺序，
+  // 换个封面不该顺带把轮播重排一遍
   cover.value = picked;
-  images.value = images.value.map((x, idx) => (idx === i - 1 ? old : x)).filter(Boolean);
 }
 
 /** 点非首张的图：只给「设为主图」一件事，删除仍走格子右上角的 ✕ */
@@ -2687,6 +2693,14 @@ async function save(thenSubmit = false) {
 
 /*
   图文详情正文：起步 3 行，随内容长高，长到屏高六成为止。
+
+  ⚠️ **H5 下「自动生成」填进来的正文不会把框撑高**（App / 小程序是原生实现，没这问题）：
+  uni 的 auto-height 只跟着用户的输入事件走。试过四种自己算高度的办法
+  （nextTick / rAF / 定时重量 / 影子元素量文本），量到的分别是 75、75、120、120px，
+  而实际需要 140 —— 差的那一行来自「长高之后才出现的滚动条」，
+  它把可用宽度又缩了十几像素。继续追下去要么改成常驻滚动条（难看），
+  要么把 uni 的组件重写一遍。**不值这个价**：填完之后框内可以正常滚动、
+  光标进去打一个字就会长开，代价只是「一屏少看一行」。
 
   上限要落在**里面那个真正的 textarea 上**：uni 的 auto-height 是给内层元素写
   内联 height，只给外壳设 max-height 的话，内层照样一路长下去 ——

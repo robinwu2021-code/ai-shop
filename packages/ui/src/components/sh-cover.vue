@@ -20,7 +20,7 @@ const props = withDefaults(defineProps<{ src?: string; mode?: string }>(), {
 });
 
 /** data: 也算 —— 拍照预览阶段给的是本地临时路径或 base64，同样不能当文字排 */
-const isImg = (s: string): boolean => /^(https?:)?\/\//.test(s) || s.startsWith("data:") || s.startsWith("file://") || s.startsWith("/");
+const isImg = (s: string): boolean => /^(https?:)?\/\//.test(s) || s.startsWith("data:") || s.startsWith("blob:") || s.startsWith("file://") || s.startsWith("/");
 </script>
 
 <template>
