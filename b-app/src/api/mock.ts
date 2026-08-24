@@ -1909,6 +1909,19 @@ export const mockApi: MerchantApi = {
     if (["规格", "型号", "类型", "属性", "参数"].includes(nm)) {
       throw new Error("「" + nm + "」太泛，换一个说清楚是什么的名字");
     }
+    /*
+     * 与真后端同两条兜底：
+     *   · **与平台维度重名 → 直接给平台那个**。他要的是「按这个维度分规格」，
+     *     不是「拥有一个自己的颜色」—— 后者只会让他的货从跨店聚合里掉出去。
+     *   · **与自己已建的重名 → 复用**。实测踩过：点两次「自定义规格」都输「辣度」，
+     *     库里就有两个同名维度，而建品页会并排列出两个，他分不出该选哪个。
+     * mock 不照做的话，开发期永远看不到这两种合并，而它们正是这条路最容易撞上的。
+     */
+    const hit = db.specTemplates.find(
+      (t) => t.name === nm && (t.scope === "PLATFORM" || t.merchantNo === merchantNo),
+    );
+    if (hit) return delay(hit);
+
     const created: SpecTemplate = {
       templateNo: nextNo("SD"),
       scope: "MERCHANT",
@@ -1919,7 +1932,6 @@ export const mockApi: MerchantApi = {
     db.specTemplates.push(created);
     return delay(created);
   },
-
 
   /**
    * 「我建的规格」。**这一页已经不直接用它了**（自建规格现在并进类目卡显示），

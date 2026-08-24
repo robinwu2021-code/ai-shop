@@ -172,9 +172,15 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
              * 平台维度不会走到这里没档位：类目绑定那圈里的空维度仍然跳过
              * （那是运营配错了，不该让商家看见一个点进去空白的规格）。
              */
-            out.add(new SpecTemplateVO(dim.getDimNo(), PrdSpecDim.PLATFORM,
+            /*
+             * **scope 照实给**，不要一律写 PLATFORM：他自己建的规格也走这条路进来，
+             * 而端上要靠 scope 给它标一个「本店」—— 少了这个标记，
+             * 「辣度」和「重量」在他眼里就是一回事，而前者不参与跨店比价。
+             */
+            out.add(new SpecTemplateVO(dim.getDimNo(), dim.getScope(),
                     categoryService.categoryTypeOf(categoryNo), categoryNo,
-                    ov.dimLabel(dim.getDimNo(), dim.getName()), options, null, false));
+                    ov.dimLabel(dim.getDimNo(), dim.getName()), options,
+                    PrdSpecDim.MERCHANT.equals(dim.getScope()) ? merchantNo : null, false));
         }
 
         /*
@@ -296,7 +302,17 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
                     }
                 }
             }
+            /*
+             * 他排过的按 sort 在前，没排过的（运营后加的）保持原顺序跟在后面。
+             * 不给没排过的编号：那样新档位会插进他排好的中间，而他不知道何时动过它。
+             */
+            out.sort(Comparator.comparingInt(o -> valueSort(dimNo, o.code() == null ? "" : o.code())));
             return out;
+        }
+
+        private int valueSort(String dimNo, String code) {
+            PrdMerchantSpecOverride r = values.get(dimNo + "\u0000" + code);
+            return r != null && r.getSort() != null ? r.getSort() : 10_000;
         }
 
         /*
@@ -942,20 +958,27 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
                     }
                 }
             }
+            /*
+             * **在用的档位逐条落行，带 sort。**顺序是一份完整排列 ——
+             * 只落「与默认不同的」那几条，剩下的读回来仍按平台顺序，
+             * 他拖过的次序就丢了（保存后一切照旧，像是没生效）。
+             *
+             * 「稀疏」在这一层由**读侧**保证：没有覆盖行的档位（运营后加的）
+             * 排在他排过的那些后面，而不是消失。
+             */
+            int vi = 0;
             for (ValueOverrideCommand v : vals) {
-                boolean defaultOn = inSubset.isEmpty() || inSubset.contains(v.code());
-                if (v.enabled() == defaultOn) {
-                    continue;   // 与类目默认一致：不落行
-                }
                 if (!v.enabled()) {
                     continue;   // 去掉的上面已经按「没声明」补过了，别落两行
                 }
+                vi += 10;
                 PrdMerchantSpecOverride row = new PrdMerchantSpecOverride();
                 row.setMerchantNo(merchantNo);
                 row.setCategoryNo(categoryNo);
                 row.setDimNo(d.dimNo());
                 row.setValueNo(v.code());
                 row.setEnabled(v.enabled());
+                row.setSort(vi);
                 DataScopeContext.executeWithoutScope(() -> overrideMapper.insert(row));
             }
         }

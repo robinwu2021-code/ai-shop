@@ -15,7 +15,7 @@
 // 自建这条路此前是单向的：建品页里输个名字就落进规格库，之后没有任何地方
 // 看得到它。建错了只能一直留着，还占着配额，而配额用完那句「不能再建了」
 // 也说不清是被什么占了。
-import { computed, ref } from "vue";
+import { computed, getCurrentInstance, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { onShow } from "@dcloudio/uni-app";
 import { api } from "@/api";
@@ -25,27 +25,21 @@ import type { MerchantSpecDim, SpecOverride, SpecTemplate, StoreCategorySpecs } 
 const { t } = useI18n();
 const merchant = useMerchantStore();
 
-const dims = ref<MerchantSpecDim[]>([]);
 /** 本店货架类目各自能用的规格。只读，但它让这一页永远不空 */
 const byCategory = ref<StoreCategorySpecs[]>([]);
 const loading = ref(false);
 
-/** 配额用量取第一条就够 —— 三个配额字段对同一家店是同一份 */
-const quota = computed(() => dims.value[0]);
-const active = computed(() => dims.value.filter((d) => d.status === "ACTIVE"));
-const archived = computed(() => dims.value.filter((d) => d.status !== "ACTIVE"));
 
 async function load() {
   loading.value = true;
   try {
     // 两段一起拉。平台那段取不到不该让整页空着，所以各自兜底
-    const [mine, byCat] = await Promise.all([
-      api.mMySpecDims(),
-      // 取不到不该让整页空着 —— 自建那段还有内容
-      api.mStoreSpecDims(merchant.storeNo || undefined).catch(() => []),
-    ]);
-    dims.value = mine;
-    byCategory.value = byCat;
+    /*
+     * **只拉按类目分组的那一份。**自建规格现在也在这份里（它加进哪个类目
+     * 就出现在哪张卡），所以不必再单独拉「我建的」—— 那一段已经删掉，
+     * 它按规格组织，与这一页按类目组织的模型对不上。
+     */
+    byCategory.value = await api.mStoreSpecDims(merchant.storeNo || undefined);
   } catch (e) {
     uni.showToast({ title: (e as Error).message, icon: "none" });
   } finally {
@@ -103,6 +97,70 @@ function startEditDim(g: StoreCategorySpecs, t: SpecTemplate) {
  * 而「改没改」的判据在后端（那里有平台原名）。
  */
 const platformNames = ref<Record<string, string>>({});
+
+/*
+ * 档位的拖动排序。
+ *
+ * **落点按 chip 的中心点算**，不复用规格行那套「位移 ÷ 行高」——
+ * chip 是横向换行的二维排列：同一行里左右挪一格与换到下一行，
+ * 手指的位移可能完全一样，除法在这里得不出他想放哪。
+ *
+ * 顺序落库靠 values 数组的次序（后端按下标写 sort），所以只要重排数组。
+ */
+const instance = getCurrentInstance();
+const valDragFrom = ref(-1);
+/** 拖动中每个 chip 的中心点，按下时量一次 —— 拖动过程中布局不变，不必反复量 */
+const valBoxes = ref<{ x: number; y: number }[]>([]);
+
+function onValDragStart(i: number) {
+  valDragFrom.value = i;
+  valBoxes.value = [];
+  /*
+   * **用 uni 的 createSelectorQuery 量位置，不从事件对象拿 DOM。**
+   * uni 把事件包装过：`currentTarget` 在 H5 上不是 HTMLElement，
+   * 在小程序上更没有 getBoundingClientRect —— 照 DOM 那样写，
+   * 表现是「按下去什么都不发生」，而不会报错，很难看出原因。
+   * createSelectorQuery 是三端都有的量尺。
+   */
+  uni.createSelectorQuery()
+    .in(instance)
+    .selectAll(".vals .val")
+    .boundingClientRect((res) => {
+      const rects = (Array.isArray(res) ? res : [res]) as UniApp.NodeInfo[];
+      valBoxes.value = rects
+        .slice(0, draft.value.values.length)
+        .map((r) => ({
+          x: (r.left ?? 0) + (r.width ?? 0) / 2,
+          y: (r.top ?? 0) + (r.height ?? 0) / 2,
+        }));
+    })
+    .exec();
+}
+
+function onValDragMove(e: TouchEvent) {
+  if (valDragFrom.value < 0 || !valBoxes.value.length) return;
+  const t = e.touches?.[0];
+  if (!t) return;
+  // 离手指最近的那个 chip 就是落点
+  let best = valDragFrom.value;
+  let bestD = Infinity;
+  valBoxes.value.forEach((b, i) => {
+    const d = (b.x - t.clientX) ** 2 + (b.y - t.clientY) ** 2;
+    if (d < bestD) { bestD = d; best = i; }
+  });
+  if (best !== valDragFrom.value) {
+    const next = [...draft.value.values];
+    next.splice(best, 0, next.splice(valDragFrom.value, 1)[0]!);
+    draft.value.values = next;
+    // 数组变了，位置跟着变 —— 把「我是谁」更新到新下标，否则下一次移动会算错
+    valDragFrom.value = best;
+  }
+}
+
+function onValDragEnd() {
+  valDragFrom.value = -1;
+  valBoxes.value = [];
+}
 
 /** 去掉一档 —— 记进 dropped：只是「不提交」等于跟平台走，那一档下次还在 */
 function dropValue(code: string) {
@@ -245,8 +303,6 @@ const dragTo = ref(-1);
 const rowH = ref(0);
 
 function onDragStart(g: StoreCategorySpecs, dimNo: string, e: TouchEvent) {
-  // 编辑态里不拖：那时这一行是一整块表单，拖它没有意义
-  if (editingDim.value) return;
   dragFrom.value = dimNo;
   dragY.value = e.touches?.[0]?.clientY ?? 0;
   dragTo.value = g.dims.findIndex((t) => t.templateNo === dimNo);
@@ -317,45 +373,43 @@ async function removeDim(g: StoreCategorySpecs, dim: SpecTemplate) {
 }
 
 /**
- * 加一个平台规格进来。**只列这一类目还没用的** ——
- * 已经在上面的再列一遍，他点了不知道发生了什么。
+ * 加规格：**页内展开一段候选，不弹层**。
+ *
+ * <p>候选有多少条取决于平台配了多少规格（现在 12 个，运营再加就更多），
+ * 而弹层的高度由屏幕决定、不由内容决定 —— 它迟早会截断，
+ * 且截断在小屏上没有任何提示（实测「颜色」与「自己建一个」都看不见）。
  */
-async function addDim(g: StoreCategorySpecs) {
-  const all = await api.mPickableDims(g.categoryNo).catch(() => []);
+const picking = ref<string | null>(null);
+/** 这一类还能加的规格（已在用的不再列 —— 再列一遍他点了不知道发生了什么） */
+const pickable = ref<SpecTemplate[]>([]);
+/** 自建配额。只在「加规格」这一刻有意义，所以放在面板里而不是页面顶部 */
+const ownUsed = ref(0);
+const ownMax = ref(10);
+
+async function togglePick(g: StoreCategorySpecs) {
+  if (picking.value === g.categoryNo) {
+    picking.value = null;
+    return;
+  }
+  picking.value = g.categoryNo;
+  pickable.value = [];
+  const [all, mine] = await Promise.all([
+    api.mPickableDims(g.categoryNo).catch(() => []),
+    api.mMySpecDims().catch(() => []),
+  ]);
   const have = new Set(g.dims.map((t) => t.templateNo));
-  const rest = all.filter((x) => !have.has(x.templateNo));
-  if (!rest.length) {
-    uni.showToast({ title: t("mySpecs.noMoreDim"), icon: "none" });
-    return;
-  }
-  /*
-   * **「自己建一个」放在候选最后**，与加档位那里同一个次序：
-   * 先看平台有没有现成的，实在没有才自己建。反过来的话他会习惯性地自己建 ——
-   * 而自建规格不参与跨店聚合，那个代价在界面上看不出来。
-   */
-  const i = await new Promise<number>((resolve) => {
-    uni.showActionSheet({
-      itemList: [...rest.map((x) => x.name), t("mySpecs.buildOwnDim")],
-      success: (r) => resolve(r.tapIndex),
-      fail: () => resolve(-1),
-    });
-  });
-  if (i < 0) return;
+  pickable.value = all.filter((x) => !have.has(x.templateNo));
+  ownUsed.value = mine.filter((d) => d.status === "ACTIVE").length;
+  ownMax.value = mine[0]?.dimQuota ?? 10;
+}
 
-  // 平台也没有：自己建一个（落进规格库，下次别的类目也挑得到）
-  if (i >= rest.length) {
-    await buildOwnDim(g);
-    return;
-  }
-
-  const picked = rest[i];
-  if (!picked) return;
+async function pickDim(g: StoreCategorySpecs, picked: SpecTemplate) {
   platformNames.value[picked.templateNo] = picked.name;
   try {
     // 新加的规格默认全档位：他加它就是想用，再让他逐个点一遍是白费一步
     const seq = [...g.dims.map((x) => x.templateNo), picked.templateNo];
-    const withNew: StoreCategorySpecs = { ...g, dims: [...g.dims, picked] };
-    await commit(withNew, seq);
+    await commit({ ...g, dims: [...g.dims, picked] }, seq);
+    picking.value = null;
   } catch (e) {
     uni.showToast({ title: (e as Error).message, icon: "none" });
   }
@@ -364,17 +418,23 @@ async function addDim(g: StoreCategorySpecs) {
 /**
  * 自己建一个平台没有的规格（「辣度」「打磨程度」）。
  *
- * <p>它落进规格库（scope=MERCHANT），所以**下次在别的类目也挑得到** ——
- * 与「我建的」那一段是同一批东西，在那里能改名、能停用。
+ * <p>它落进规格库（scope=MERCHANT），所以**下次在别的类目也挑得到**；
+ * 加进哪个类目就在哪张卡里显示，带一个「本店」标记 —— 它不参与跨店比价，
+ * 而那是看不见的差别。
  *
  * <p>后端有两道兜底：与平台维度重名直接给平台那个（他要的是「按这个分规格」，
  * 不是「拥有一个自己的颜色」）；与自己已建的重名则复用，不会造出两个「辣度」。
  */
 async function buildOwnDim(g: StoreCategorySpecs) {
   const name = await new Promise<string>((resolve) => {
+    /*
+     * **editable 的弹框不能带 content。**uni 在 editable=true 时把 content
+     * 当成输入框的**预填值**，不是说明文字 —— 于是那段解释被塞进输入框，
+     * 他打开就看到一框字，还得先全删掉才能打自己的名字。
+     * 该说的话在面板上（「只本店可用，不参与跨店比价」），那里不会挡着他输入。
+     */
     uni.showModal({
       title: t("mySpecs.buildOwnDim"),
-      content: t("mySpecs.buildOwnHint"),
       editable: true,
       placeholderText: t("mySpecs.buildOwnPh"),
       success: (r) => resolve(r.confirm ? (r.content ?? "") : ""),
@@ -384,21 +444,22 @@ async function buildOwnDim(g: StoreCategorySpecs) {
   if (!name.trim()) return;
   try {
     const dim = await api.mAddSpecDim(name.trim(), []);
-    if (g.dims.some((t2) => t2.templateNo === dim.templateNo)) {
+    if (g.dims.some((x) => x.templateNo === dim.templateNo)) {
       uni.showToast({ title: t("mySpecs.dimAlready"), icon: "none" });
       return;
     }
     platformNames.value[dim.templateNo] = dim.name;
     const seq = [...g.dims.map((x) => x.templateNo), dim.templateNo];
     await commit({ ...g, dims: [...g.dims, dim] }, seq);
-    // 自建维度刚建出来时一个取值都没有，直接把「加档位」推到他面前
+    picking.value = null;
+    // 刚建出来时一个档位都没有，那一行会显示「还没加档位」，把下一步推到他面前
     await load();
   } catch (e) {
     uni.showToast({ title: (e as Error).message, icon: "none" });
   }
 }
 
-/** 恢复成平台原样：清掉这一类目的全部覆盖 */
+/** 恢复成平台原样：清掉这一类目的全部覆盖 *//** 恢复成平台原样：清掉这一类目的全部覆盖 */
 async function resetOverride(g: StoreCategorySpecs) {
   try {
     const merged = await api.mSaveSpecOverride(g.categoryNo, []);
@@ -410,50 +471,6 @@ async function resetOverride(g: StoreCategorySpecs) {
   }
 }
 
-/**
- * 自建规格的停用 / 启用。**用在商品上的要先问一句** —— 停用不会改动那些商品
- * （它们存的是规格快照），但他不知道这一点，看到「用在 8 件商品上」
- * 会以为自己正要弄坏什么。把后果说清楚，比拦着他更有用。
- */
-async function toggle(d: MerchantSpecDim) {
-  const off = d.status === "ACTIVE";
-  if (off && d.usedCount > 0) {
-    const ok = await new Promise<boolean>((resolve) => {
-      uni.showModal({
-        title: t("mySpecs.archiveTitle"),
-        content: t("mySpecs.archiveConfirm", { n: d.usedCount }),
-        success: (r) => resolve(!!r.confirm),
-        fail: () => resolve(false),
-      });
-    });
-    if (!ok) return;
-  }
-  try {
-    await api.mArchiveSpecDim(d.dimNo, off);
-    await load();
-  } catch (e) {
-    uni.showToast({ title: (e as Error).message, icon: "none" });
-  }
-}
-
-async function rename(d: MerchantSpecDim) {
-  const name = await new Promise<string>((resolve) => {
-    uni.showModal({
-      title: t("mySpecs.renameTitle"),
-      editable: true,
-      placeholderText: d.name,
-      success: (r) => resolve(r.confirm ? (r.content ?? "") : ""),
-      fail: () => resolve(""),
-    });
-  });
-  if (!name.trim() || name.trim() === d.name) return;
-  try {
-    await api.mRenameSpecDim(d.dimNo, name.trim());
-    await load();
-  } catch (e) {
-    uni.showToast({ title: (e as Error).message, icon: "none" });
-  }
-}
 
 
 onShow(() => void load());
@@ -463,26 +480,48 @@ onShow(() => void load());
   <sh-scaffold title-key="mySpecs.title" :denied="!merchant.can('biz:goods')">
     <text class="sh-muted intro">{{ $t("mySpecs.intro") }}</text>
 
-    <!--
-      平台规格摆在前面：**它才是大多数人该用的那些**。
-      放在自建后面的话，一个自建为空的商家先看到的仍是一片空白。
-    -->
     <view v-for="g in byCategory" :key="g.categoryNo" class="cat">
       <view class="cat__head">
-        <text class="sh-h2">{{ g.categoryName }}</text>
-        <!-- 类目这一层只剩「加规格」，且只留图标：一行里文字越少越看得出结构 -->
-        <view class="ic" @tap="addDim(g)">
-          <sh-icon name="plus" :size="20" color="var(--sh-primary)" />
+        <text class="cat__name">{{ g.categoryName }}</text>
+        <!--
+          **带字的按钮，不是裸图标。**一个 ＋ 摆在标题栏里认不出是加什么 ——
+          这一页上「加规格」与「加档位」是两件事，各自的入口离得不远。
+          展开后同一个位置变「收起」：同一个按钮管开合，不必再找关掉它的地方。
+        -->
+        <view class="btn-add" :class="{ 'btn-add--on': picking === g.categoryNo }"
+              @tap="togglePick(g)">
+          <sh-icon :name="picking === g.categoryNo ? 'close' : 'plus'" :size="24"
+                   :color="picking === g.categoryNo ? 'var(--sh-on-primary)' : 'var(--sh-primary)'" />
+          <text class="btn-add__t">{{ picking === g.categoryNo ? $t("mySpecs.collapse") : $t("mySpecs.addDim") }}</text>
+        </view>
+      </view>
+
+      <!--
+        加规格：**页内展开一段，不弹层**。
+        候选有多少条取决于平台配了多少规格（现在 12 个，运营再加就更多），
+        而弹层的高度由屏幕决定、不由内容决定 —— 它迟早会截断，
+        且截断在小屏上没有任何提示（实测「颜色」与「自己建一个」都看不见）。
+      -->
+      <view v-if="picking === g.categoryNo" class="picker">
+        <view class="picker__head">
+          <text class="sh-muted">{{ $t("mySpecs.pickHint") }}</text>
+          <text class="sh-muted picker__quota">{{ $t("mySpecs.quotaShort", { used: ownUsed, max: ownMax }) }}</text>
+        </view>
+        <view v-if="pickable.length" class="chips">
+          <text v-for="p in pickable" :key="p.templateNo" class="sh-chip chip"
+                @tap="pickDim(g, p)">{{ p.name }}</text>
+        </view>
+        <text v-else class="sh-muted picker__empty">{{ $t("mySpecs.noMoreDim") }}</text>
+        <!-- 自己建放最后：顺序即建议，先看平台有没有现成的 -->
+        <view class="picker__own" @tap="buildOwnDim(g)">
+          <text class="picker__own-t">＋ {{ $t("mySpecs.buildOwnDim") }}</text>
+          <text class="sh-muted picker__own-s">{{ $t("mySpecs.buildOwnCost") }}</text>
         </view>
       </view>
 
       <view v-for="t in g.dims" :key="t.templateNo" class="spec"
             :class="{ 'spec--drag': dragFrom === t.templateNo }">
-        <!--
-          **一次只调一个规格。**从前点一下类目的「调整」，整屏所有规格连同
-          它们的全部档位一起变可编辑 —— 而他这次多半只想动其中一个，
-          剩下的都在那儿等着他误触。
-        -->
+        <!-- 只读：一次只调一个规格，其余保持这一行的样子 -->
         <template v-if="editingDim !== editKey(g.categoryNo, t.templateNo)">
           <view
             class="spec__head"
@@ -491,66 +530,83 @@ onShow(() => void load());
             @touchend="onDragEnd"
             @touchcancel="onDragEnd"
           >
-            <!--
-              **拖动手柄单独占一格。**整行可拖的话，他想点「调整」也会被当成拖动 ——
-              而这一行上四个操作挨得很近。手柄圈定了「从这里抓」。
-            -->
+            <!-- 手柄单独占一格：整行可拖的话，他想点右边的图标也会被当成拖动 -->
+            <!-- size 的单位是 rpx（见 sh-icon）—— 原型里手柄 14px ≈ 28rpx -->
             <view class="ic ic--grip">
-              <sh-icon name="grip" :size="18" color="var(--sh-sub)" />
+              <sh-icon name="grip" :size="28" color="var(--sh-sub)" />
             </view>
             <text class="spec__name">{{ t.name }}</text>
-            <view class="ic" @tap.stop="startEditDim(g, t)">
-              <sh-icon name="sliders" :size="19" color="var(--sh-primary)" />
+            <!-- 自建的标出来：它不参与跨店比价，而那是看不见的差别 -->
+            <text v-if="t.scope === 'MERCHANT'" class="spec__own">{{ $t("mySpecs.own") }}</text>
+            <view class="spec__spacer"></view>
+            <view class="ic ic--act" @tap.stop="startEditDim(g, t)">
+              <sh-icon name="sliders" :size="36" color="var(--sh-primary)" />
             </view>
             <view class="ic" @tap.stop="removeDim(g, t)">
-              <sh-icon name="close" :size="18" color="var(--sh-sub)" />
+              <sh-icon name="close" :size="34" color="var(--sh-ink)" />
             </view>
           </view>
-          <text class="spec__vals">{{ t.options.map((o) => o.label).join(" · ") }}</text>
+          <!-- 单行省略：换行撑高的话，一屏就少看两个规格 -->
+          <text class="spec__vals">{{ t.options.map((o) => o.label).join(" · ") || $t("mySpecs.noValueYet") }}</text>
         </template>
 
-        <!-- 编辑这一个：改名 + 档位。形态与从前一样，只是范围缩到一行 -->
+        <!-- 编辑这一个：整块浅色底，滚动时看得出「我在改哪一行」 -->
         <template v-else>
-          <view class="spec__head">
+          <view class="edit">
             <!--
-              **改的是本店叫法，不是平台的规格。**dimNo 一个字不变，
-              所以三家店的同一个规格照样聚得到一起。
-              占位符给平台原名：清空输入框就是「用回平台的叫法」。
+              **编辑态里也能拖。**他常常是「改着改着发现这一个该排前面」——
+              为挪一位而先保存、再拖、再点回来，是三步做一件事。
             -->
-            <input v-model="draft.label" class="field__input flex1"
-                   :placeholder="draft.platformName" />
-          </view>
-          <view class="ed__vals">
-            <text v-for="v in draft.values" :key="v.code" class="sh-chip">
-              {{ draft.labels[v.code] ?? v.code }}
-              <text class="val__x" @tap.stop="dropValue(v.code)">✕</text>
-            </text>
-            <!--
-              与档位 chip 同一个形状：在 chip 里塞 sh-icon 会塌成一个小圆点
-              （chip 有自己的行高与内边距，图标是绝对定位的 mask）。
-              这里要的只是「再加一个」，一个 ＋ 字就够。
-            -->
-            <text class="sh-chip ed__add" @tap="addValue()">＋</text>
-          </view>
-          <view class="ed__row">
-            <text class="sh-muted hint">{{ $t("mySpecs.adjustHint") }}</text>
-          </view>
-          <!-- 与 delivery / goods-edit 同一套按钮范式：主操作实心，次操作 soft -->
-          <view class="ed__acts">
-            <view class="sh-btn sh-btn--soft ed__btn" @tap="editingDim = null">
-              {{ $t("mySpecs.cancel") }}
+            <view
+              class="edit__row"
+              @touchstart="onDragStart(g, t.templateNo, $event)"
+              @touchmove.stop.prevent="onDragMove(g, $event)"
+              @touchend="onDragEnd"
+              @touchcancel="onDragEnd"
+            >
+              <view class="ic ic--grip"><sh-icon name="grip" :size="28" color="var(--sh-sub)" /></view>
+              <input v-model="draft.label" class="edit__input" :placeholder="draft.platformName" />
             </view>
-            <view class="sh-btn ed__btn" @tap="saveDim(g)">{{ $t("mySpecs.save") }}</view>
+            <!--
+              档位也能拖。**落点按 chip 的中心点算**，不像规格行那样按行高除 ——
+              chip 是横向换行的二维排列，"位移 ÷ 行高" 在这里没有意义：
+              同一行里左右挪一格与换到下一行，位移可能完全一样。
+            -->
+            <view class="vals">
+              <text
+                v-for="(v, vi) in draft.values"
+                :key="v.code"
+                class="sh-chip val"
+                :class="{ 'val--drag': valDragFrom === vi }"
+                @touchstart="onValDragStart(vi)"
+                @touchmove.stop.prevent="onValDragMove($event)"
+                @touchend="onValDragEnd"
+                @touchcancel="onValDragEnd"
+              >
+                {{ draft.labels[v.code] ?? v.code }}
+                <text class="val__x" @tap.stop="dropValue(v.code)">✕</text>
+              </text>
+              <text class="sh-chip val val--add" @tap="addValue()">＋ {{ $t("mySpecs.addValue") }}</text>
+            </view>
+            <text class="sh-muted edit__tip">{{ $t("mySpecs.renameTip") }}</text>
+            <view class="edit__acts">
+              <view class="sh-btn sh-btn--soft edit__btn" @tap="editingDim = null">
+                {{ $t("mySpecs.cancel") }}
+              </view>
+              <view class="sh-btn edit__btn" @tap="saveDim(g)">{{ $t("mySpecs.save") }}</view>
+            </view>
           </view>
         </template>
       </view>
 
-      <!-- 一条规格都没有的类目：说清是平台那边的缺口，并给一条出路 -->
-      <text v-if="!g.dims.length" class="spec__vals">{{ $t("mySpecs.catNoDims") }}</text>
+      <text v-if="!g.dims.length && picking !== g.categoryNo" class="cat__empty">
+        {{ $t("mySpecs.catNoDims") }}
+      </text>
+
       <!--
-        「恢复平台默认」= 撤销这一类目下的**全部**调整。放在卡片最后并压到最轻：
+        「恢复平台默认」= 撤销这一类目下的全部调整。压到最轻并放在最后：
         它与上面每一行的操作不是一个量级，长得一样重的话，
-        手指下滑时很容易顺手点掉自己刚调好的一切。
+        手指下滑很容易顺手点掉自己刚调好的一切。
       -->
       <view class="cat__foot">
         <text class="cat__reset" @tap="resetOverride(g)">{{ $t("mySpecs.reset") }}</text>
@@ -559,44 +615,21 @@ onShow(() => void load());
 
     <sh-empty v-if="!loading && !byCategory.length" :text='$t("mySpecs.noShelf")'></sh-empty>
 
-    <view class="sh-card mt">
-      <text class="sh-h2">{{ $t("mySpecs.mineTitle") }}</text>
-      <text v-if="quota" class="sh-muted hint">{{ quota.dimUsed }} / {{ quota.dimQuota }}</text>
-      <sh-empty v-if="!loading && !dims.length" :text='$t("mySpecs.empty")'></sh-empty>
-    </view>
-
-    <view v-for="d in active" :key="d.dimNo" class="sh-card mt dim">
-      <view class="dim__head">
-        <text class="dim__name">{{ d.name }}</text>
-        <!-- 用量是这一页的重点：它回答「动它会影响多少」 -->
-        <text class="sh-muted dim__used">{{ $t("mySpecs.used", { n: d.usedCount }) }}</text>
-      </view>
-      <view class="dim__vals">
-        <text v-for="v in d.values" :key="v.code || v.label" class="sh-chip">{{ v.label }}</text>
-        <text v-if="!d.values.length" class="sh-muted">{{ $t("mySpecs.noValues") }}</text>
-      </view>
-      <view class="dim__acts">
-        <text class="link" @tap="rename(d)">{{ $t("mySpecs.rename") }}</text>
-        <text class="link" @tap="toggle(d)">{{ $t("mySpecs.archive") }}</text>
-      </view>
-    </view>
-
-    <!-- 停用的收在下面：它们不该和在用的抢注意力，但要看得到（能启用回来） -->
-    <view v-if="archived.length" class="sh-card mt">
-      <text class="sh-h2">{{ $t("mySpecs.archivedTitle") }}</text>
-      <view v-for="d in archived" :key="d.dimNo" class="row">
-        <text class="row__name">{{ d.name }}</text>
-        <text class="link" @tap="toggle(d)">{{ $t("mySpecs.unarchive") }}</text>
-      </view>
-    </view>
-
+    <!--
+      【已移除】页面底部原来那一段「我建的」。
+      它按**规格**组织，而上面的卡按**类目**组织 —— 两个模型摞在一起，
+      于是它落在整页第 662 字符（全页 728），7 张卡之后：不是没入口，是没人滚得到，
+      滚到了也不知道它与上面什么关系。
+      现在自建规格回到它所属的类目卡里，带「本店」标记，改名/停用就是那一行的两个图标；
+      配额挪进了「加规格」面板 —— 那是唯一需要知道它的时刻。
+    -->
     <text class="sh-muted foot">{{ $t("mySpecs.foot") }}</text>
   </sh-scaffold>
 </template>
 
 <style scoped>
 /*
- * 与「我的」那一页同一套行范式（cells/cell）：**组内密排，间距只在组与组之间**。
+ * 与「我的」那一页同一套行范式：**组内密排，间距只在组与组之间**。
  * 每行都套一张卡的话，一个类目下三四个规格就变成三四块互不相干的浮起色块，
  * 中间的留白比行本身还显眼 —— 看着像四个功能模块，而它们只是一份清单。
  */
@@ -616,15 +649,107 @@ onShow(() => void load());
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 24rpx 26rpx 12rpx;
+  padding: 24rpx 26rpx 16rpx;
+}
+.cat__name {
+  /* 字阶是 24/26/28/30/34/40/48 —— 32 不在上面，取 34 */
+  font-size: 34rpx;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--sh-ink);
+}
+.cat__empty,
+.cat__foot {
+  display: block;
+  padding: 18rpx 26rpx;
+  border-top: 1rpx solid var(--sh-line);
+}
+.cat__empty {
+  font-size: 24rpx;
+  color: var(--sh-sub);
+}
+.cat__reset {
+  font-size: 24rpx;
+  color: var(--sh-sub);
+}
+
+/* 加规格按钮：带字，展开后同一位置变「收起」 */
+.btn-add {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  padding: 10rpx 22rpx;
+  border-radius: 9999px;
+  background: var(--sh-primary-tint);
+}
+.btn-add--on {
+  background: var(--sh-primary);
+}
+.btn-add__t {
+  font-size: 24rpx;
+  font-weight: 600;
+  color: var(--sh-primary-text);
+}
+.btn-add--on .btn-add__t {
+  color: var(--sh-on-primary);
+}
+
+/* 加规格面板：页内一段，不是弹层 */
+.picker {
+  margin: 0 26rpx 20rpx;
+  padding: 20rpx 22rpx;
+  /* 圆角五档：16/24/32/44/full —— 20 不在其中 */
+  border-radius: 24rpx;
+  background: var(--sh-faint);
+}
+.picker__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  font-size: 24rpx;
+  margin-bottom: 16rpx;
+}
+.picker__quota {
+  font-size: 24rpx;
+}
+.picker__empty {
+  display: block;
+  font-size: 24rpx;
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14rpx;
+}
+.chip {
+  font-size: 24rpx;
+}
+.picker__own {
+  margin-top: 18rpx;
+  padding-top: 16rpx;
+  border-top: 1rpx solid var(--sh-line);
+}
+.picker__own-t {
+  display: block;
+  font-size: 26rpx;
+  font-weight: 600;
+  color: var(--sh-primary-text);
+}
+.picker__own-s {
+  display: block;
+  margin-top: 4rpx;
+  font-size: 24rpx;
 }
 
 /* 一个规格 = 一行主件 + 一行档位。它们是同一条，所以中间不留间距 */
 .spec {
-  padding: 18rpx 26rpx;
+  padding: 14rpx 26rpx;
 }
 .spec + .spec {
   border-top: 1rpx solid var(--sh-line);
+}
+.spec--drag {
+  background: var(--sh-faint);
 }
 .spec__head {
   display: flex;
@@ -632,124 +757,111 @@ onShow(() => void load());
   gap: 8rpx;
 }
 .spec__name {
-  flex: 1;
   font-size: 28rpx;
+  /* 一行里它是主角，用 400 会被下面那行档位拉成同一层。
+     字阶只给 400/600/700 三档（守卫测住），所以取 600 而不是原型里的 500 */
+  font-weight: 600;
   color: var(--sh-ink);
 }
-.spec__vals {
-  margin-top: 6rpx;
-  padding-left: 56rpx;   /* 与手柄对齐 —— 让「这些档位属于上面那个规格」看得出来 */
+/* 自建的标出来 —— 它不参与跨店比价，而那是看不见的差别 */
+.spec__own {
+  margin-left: 8rpx;
+  padding: 2rpx 10rpx;
+  border-radius: 16rpx;
+  background: var(--sh-faint);
+  /* 20 不在字阶上；24 是最小的一档 */
   font-size: 24rpx;
   color: var(--sh-sub);
 }
-
-/* 拖动中：整行提一层，让他看得出「抓住的是这一行」 */
-.spec--drag {
-  background: var(--sh-faint);
+.spec__spacer {
+  flex: 1;
+}
+/* 单行省略：换行撑高的话，一屏就少看两个规格 */
+.spec__vals {
+  display: block;
+  margin-top: 4rpx;
+  line-height: 1.5;
+  padding-left: 52rpx;
+  font-size: 24rpx;
+  color: var(--sh-sub);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-/* 图标按钮：给足点击区，图标本身小 —— 一行里三个操作挨得近 */
+/* 图标按钮：命中区 52rpx，图标 20rpx —— 手指够得着，眼睛不觉得挤 */
 .ic {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 56rpx;
-  height: 56rpx;
+  width: 52rpx;
+  height: 52rpx;
+  flex: none;
 }
 .ic--grip {
-  width: 48rpx;
+  width: 40rpx;
+  margin-left: -10rpx;
 }
 
-/* 编辑态：与只读行同一个左边距，展开时不跳位 */
-.ed__vals {
+/* 编辑态：整块浅色底 —— 滚动时看得出「我正在改哪一行」 */
+.edit {
+  margin: -14rpx -26rpx;
+  padding: 20rpx 26rpx 24rpx;
+  background: var(--sh-primary-tint);
+}
+.edit__row {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+}
+.edit__input {
+  flex: 1;
+  padding: 14rpx 20rpx;
+  border-radius: 16rpx;
+  border: 1rpx solid var(--sh-line);
+  background: var(--sh-surface);
+  font-size: 28rpx;
+  color: var(--sh-ink);
+}
+.vals {
   display: flex;
   flex-wrap: wrap;
-  gap: 12rpx;
+  gap: 14rpx;
+  margin-top: 20rpx;
+}
+.val {
+  font-size: 24rpx;
+}
+/* 拖动中的那一档：提一层，让他看得出抓住的是哪个 */
+.val--drag {
+  opacity: 0.5;
+}
+.val--add {
+  color: var(--sh-primary-text);
+  border: 1rpx dashed var(--sh-primary);
+}
+.val__x {
+  margin-left: 8rpx;
+  font-size: 24rpx;
+  color: var(--sh-sub);
+}
+.edit__tip {
+  display: block;
   margin-top: 16rpx;
+  font-size: 24rpx;
 }
-.ed__row {
-  margin-top: 12rpx;
-}
-.ed__acts {
+.edit__acts {
   display: flex;
   gap: 20rpx;
   margin-top: 24rpx;
 }
-.ed__btn {
+.edit__btn {
   flex: 1;
 }
-.ed__add {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 64rpx;
-}
-.val__x {
-  margin-left: 6rpx;
-  opacity: 0.45;
-}
 
-/* 类目底部的「恢复平台默认」：弱化 —— 它是退路，不是日常操作 */
-.cat__reset {
-  font-size: 24rpx;
-  color: var(--sh-sub);
-}
-.cat__foot {
-  padding: 18rpx 26rpx 24rpx;
-  border-top: 1rpx solid var(--sh-line);
-  font-size: 24rpx;
-}
-
-.hint {
-  display: block;
-  font-size: 24rpx;
-}
-.quota {
-  display: flex;
-  align-items: baseline;
-  gap: 12rpx;
-}
-.dim__head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-}
-.dim__name {
-  font-size: 30rpx;
-  font-weight: 600;
-}
-.dim__used {
-  font-size: 24rpx;
-}
-.dim__vals {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12rpx;
-  margin-top: 12rpx;
-}
-.dim__acts {
-  display: flex;
-  gap: 28rpx;
-  margin-top: 16rpx;
-}
-.row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12rpx 0;
-}
-.row__name {
-  font-size: 28rpx;
-}
 .foot {
   display: block;
-  margin: 24rpx 8rpx;
+  margin: 28rpx 8rpx;
   font-size: 24rpx;
-}
-.flex1 {
-  flex: 1;
-}
-.mt {
-  margin-top: 20rpx;
 }
 </style>
