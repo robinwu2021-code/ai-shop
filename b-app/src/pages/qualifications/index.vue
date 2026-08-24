@@ -17,7 +17,6 @@ import { api } from "@/api";
 import { useMerchantStore } from "@/stores/merchant";
 import { pickImages } from "@shared/ports/media";
 import type { AuthCodeInfo, MyQualifications, QualificationType } from "@shared/types";
-import { ENFORCE_CATEGORY_GATE } from "@/shared/flags";
 
 const { t } = useI18n();
 const merchant = useMerchantStore();
@@ -170,7 +169,7 @@ onShow(() => void load());
         而是「还没授权」。照旧说「还不能卖」是在制造一个不存在的障碍 ——
         商家会以为要先等平台核完才能上架，而他其实现在就能上。
       -->
-      <text class="sh-h2">{{ $t(ENFORCE_CATEGORY_GATE ? "qual.locked" : "qual.notGranted") }}</text>
+      <text class="sh-h2">{{ $t(merchant.categoryGateEnforced ? "qual.locked" : "qual.notGranted") }}</text>
       <view v-for="c in locked" :key="c.code" class="lock">
         <view class="lock__main">
           <text class="lock__cats">
@@ -184,7 +183,7 @@ onShow(() => void load());
         </text>
       </view>
       <text class="sh-muted hint">
-        {{ $t(ENFORCE_CATEGORY_GATE ? "qual.lockedHint" : "qual.notGrantedHint") }}
+        {{ $t(merchant.categoryGateEnforced ? "qual.lockedHint" : "qual.notGrantedHint") }}
       </text>
     </view>
 

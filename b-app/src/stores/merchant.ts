@@ -36,6 +36,11 @@ export const useMerchantStore = defineStore("merchant", {
     perms: [] as string[],
     /** 主体已获批的经营类目码。类目选择器据它标出「你还不能卖这一类」 */
     categoryCodes: [] as string[],
+    /**
+     * 平台开关（后端 `/biz/context` 下发）。**空 = 全部按关处理** ——
+     * 与后端默认值一致，且宁可放行也不要凭一个拿不到的开关把商家挡在门外。
+     */
+    switches: {} as Record<string, boolean>,
     /** 我在当前门店持有的角色，只用于展示（「你是这家店的店员」）。判权一律看 perms */
     staffRoles: [] as string[],
     /** 进行中的 scope 请求，供 ensureScope 去重。不持久化 */
@@ -48,6 +53,16 @@ export const useMerchantStore = defineStore("merchant", {
 
   getters: {
     isLogin: (s) => !!s.token,
+    /**
+     * 类目资质校验**是否真的拦人**（运营端可开关，走 `/biz/context`）。
+     *
+     * <p>与「要不要提醒」是两件事：那个仍是 `SHOW_CATEGORY_GATE`（界面开关，
+     * 提醒早了让人焦虑）；这个管「要不要拦」（拦早了让人卖不了货）。
+     *
+     * <p>它与后端读的是同一个值，所以不会再出现两边不同步那两种难查的症状：
+     * 端上拦、后端放 → 点不动一个其实能按的按钮；反过来 → 吃一句说不清缘由的报错。
+     */
+    categoryGateEnforced: (s) => s.switches.categoryGate === true,
     /** 只有一家店时不显示切换器 —— 给单店商家一个永远只有一个选项的下拉是纯噪音 */
     multiStore: (s) => s.stores.length > 1,
     /** 能进的门店（停业的不算）。选店页据它决定要不要出现 */
@@ -241,6 +256,7 @@ export const useMerchantStore = defineStore("merchant", {
         this.perms = scope.perms ?? [];
         this.staffRoles = scope.staffRoles ?? [];
         this.categoryCodes = scope.categoryCodes ?? [];
+        this.switches = scope.switches ?? {};
         return scope;
       } catch (e) {
         this.perms = [];

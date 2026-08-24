@@ -89,7 +89,18 @@ export const UI_PERM_MAP: Record<string, string | typeof UNIMPLEMENTED> = {
   "store:qrcode:export": UNIMPLEMENTED,
   "system:theme:update": "system:theme:update",
   "system:param:read": "system:param:read",
-  "system:env:switch": UNIMPLEMENTED,
+  // env:switch 映到它（见下），而映射目标自己也要登记 —— 守卫会检查这一点
+  "system:param:update": "system:param:update",
+  /*
+   * 开关与灰度的写码。**后端叫 system:param:update** ——
+   * 这里此前标着 UNIMPLEMENTED，于是那一页对所有人都是只读的，
+   * 开关永远拨不动。而它一直没被发现，是因为后端的默认开关清单是空的：
+   * 一个没有任何行的表格，看不出它的按钮是不是灰的。
+   *
+   * 端上这个名字（env:switch）保留：它在 CRITICAL_PERMS 与角色矩阵里都用着，
+   * 改名要动的地方比接一条映射多得多，而这张表存在的理由正是「翻译」。
+   */
+  "system:env:switch": "system:param:update",
   // 存储空间治理：看清单与发起回收是两个码，页面按后者显隐勾选框与批量条
   "system:media:read": "system:media:read",
   "system:media:purge": "system:media:purge",

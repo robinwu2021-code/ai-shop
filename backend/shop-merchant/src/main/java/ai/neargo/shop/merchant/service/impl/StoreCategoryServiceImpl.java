@@ -21,16 +21,25 @@ import java.util.Set;
 @Service
 public class StoreCategoryServiceImpl implements StoreCategoryService {
 
+    private static final org.slf4j.Logger log =
+            org.slf4j.LoggerFactory.getLogger(StoreCategoryServiceImpl.class);
+
+    /** 与 {@code SysConfig.CATEGORY_GATE_ENFORCE} 同值。常量在平台域，这里不跨域引它 */
+    private static final String SWITCH_CATEGORY_GATE = "category.gate.enforce";
+
     private final MchStoreCategoryMapper mapper;
     private final CategoryUsagePort categoryPort;
     private final MerchantQueryPort merchantPort;
+    private final ai.neargo.shop.spi.platform.PlatformSwitchPort switchPort;
 
     public StoreCategoryServiceImpl(MchStoreCategoryMapper mapper,
                                     CategoryUsagePort categoryPort,
-                                    MerchantQueryPort merchantPort) {
+                                    MerchantQueryPort merchantPort,
+                                    ai.neargo.shop.spi.platform.PlatformSwitchPort switchPort) {
         this.mapper = mapper;
         this.categoryPort = categoryPort;
         this.merchantPort = merchantPort;
+        this.switchPort = switchPort;
     }
 
     @Override
@@ -151,6 +160,20 @@ public class StoreCategoryServiceImpl implements StoreCategoryService {
             return;   // 无门槛类目：谁都能摆
         }
         if (!merchantPort.authorizedCategoryCodes(merchantNo).contains(required)) {
+            /*
+             * **这条路此前不受任何开关控制。**上一轮把「暂时别拦资质」做成
+             * shop.category.gate.enforce 时只接了商品上架，漏了摆货架 ——
+             * 于是出现过「同一个类目，商品能上架却摆不上货架」这种说不通的状态，
+             * 而两条报错分别来自两个域，看日志也对不起来。
+             *
+             * 现在两条读同一个开关（sys_config 的 category.gate.enforce）。
+             * 关着时判据照跑、命中打 WARN —— 那是开闸前估影响面的依据。
+             */
+            if (!switchPort.bool(SWITCH_CATEGORY_GATE, false)) {
+                log.warn("[类目闸] 放行未授权的货架：merchant={} category={} 需要码={}（enforce=false）",
+                        merchantNo, categoryNo, required);
+                return;
+            }
             throw BizException.of(ErrorCode.CATEGORY_NOT_AUTHORIZED);
         }
     }

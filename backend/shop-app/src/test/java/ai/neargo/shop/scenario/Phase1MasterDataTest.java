@@ -44,23 +44,18 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class Phase1MasterDataTest {
 
     /*
-     * **闸门在这里显式打开**，用改字段而不是改配置。
+     * **闸门在这里显式打开**，拨的是真开关（平台 feature flag `category.gate.enforce`）。
      *
-     * <p>生产默认 `shop.category.gate.enforce=false`（只展示、不限制，见
-     * MerchantGoodsServiceImpl#gateEnforced），而本类里那几条准入用例测的正是
-     * 「拦得对不对」「授权后能不能开」—— 跟着默认值走的话它们会在闸门关着时
-     * 静静地"通过"，什么都没验到。
+     * <p>生产默认关（只展示、不限制），而本类里那几条准入用例测的正是「拦得对不对」——
+     * 跟着默认值走的话它们会在闸门关着时静静地"通过"，什么都没验到。
      *
-     * <p><b>不能用 @DynamicPropertySource，也不能用 @TestPropertySource。</b>
-     * 两者都会让这个类拿到一份**独立的 Spring 上下文**，而测试库是同一个 H2 内存库：
-     * 建表脚本 schema-test.sql 跑第二遍，整套用例成片挂在
-     * `INSERT INTO sys_industry` 的主键冲突上。
-     *
-     * <p>阴险的地方是**单独跑这个类永远是绿的**（只有一个上下文），
-     * 只有和别的测试类一起跑才炸 —— 上一轮就是这么漏过去的。
+     * <p>从前这里改的是 MerchantGoodsServiceImpl 的私有字段 gateEnforced，
+     * 开关搬进 sys_setting 之后那个字段不存在了 —— **反射改字段的写法本来就脆**：
+     * 它绕过了真实读取路径，字段一改名测试就崩，而崩的信息（找不到字段）
+     * 与被测的业务毫无关系。现在拨的就是业务读的那一个。
      */
     @org.springframework.beans.factory.annotation.Autowired
-    private ai.neargo.shop.product.service.MerchantGoodsService merchantGoodsService;
+    private ai.neargo.shop.platform.PlatformConfigService platformConfig;
 
     @org.junit.jupiter.api.BeforeEach
     void openGate() {
@@ -69,12 +64,11 @@ class Phase1MasterDataTest {
 
     @org.junit.jupiter.api.AfterEach
     void restoreGate() {
-        setGate(false);
+        setGate(false);   // 复位成生产默认
     }
 
     private void setGate(boolean on) {
-        Object target = org.springframework.test.util.AopTestUtils.getUltimateTargetObject(merchantGoodsService);
-        org.springframework.test.util.ReflectionTestUtils.setField(target, "gateEnforced", on);
+        platformConfig.saveFeatureFlag("category.gate.enforce", on, 0, "TEST");
     }
 
     @Autowired

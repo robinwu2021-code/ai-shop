@@ -102,11 +102,54 @@ class StoreCategoryFlowTest {
         assertThat(codeOf(body)).isEqualTo(80007);
     }
 
+    /**
+     * 平台开关：类目闸门开不开。**默认关**（只展示、不限制），所以要测「拦得对不对」
+     * 就得在用例里显式打开 —— 跟着默认值走的话，这条用例会在闸门关着时静静地
+     * "通过"，而它什么都没验到。
+     */
+    @Autowired
+    private ai.neargo.shop.platform.PlatformConfigService platformConfig;
+
+    private void gate(boolean on) {
+        platformConfig.saveFeatureFlag("category.gate.enforce", on, 0, "TEST");
+    }
+
+    @org.junit.jupiter.api.AfterEach
+    void closeGate() {
+        gate(false);   // 复位成生产默认，免得影响同一个上下文里的别的用例
+    }
+
+    @Test
+    @DisplayName("★★★ 闸门关着时照样能摆 —— 这是生产默认，改回 true 会让商家全线摆不上货架")
+    void shelfIsNotBlockedWhileGateIsOff() throws Exception {
+        String token = merchant("12600141007", "货架测试·闸门关");
+        String storeNo = defaultStore(token);
+
+        /*
+         * CAT110 蔬菜要 FRESH_VEG，这个新商家一张证都没有。**闸门关着就该放行** ——
+         * 受理入口刚铺开，存量商家的授权码还在补，这时候拦住的不是无证经营，
+         * 是平台自己还没建好的那条路。
+         *
+         * 有人把默认改回 true 的话，症状不是报错，是**商家突然全线摆不上货架**，
+         * 而那时没人会想到是一个开关。
+         */
+        gate(false);
+        assertThat(codeOf(replace(token, storeNo,
+                "{\"items\":[{\"categoryNo\":\"CAT110\"}]}"))).isZero();
+    }
+
     @Test
     @DisplayName("★ 没那张证就摆不上带门槛的货架 —— 而且要在勾选那一刻拒，不是等到上架")
     void gatedCategoryNeedsTheCode() throws Exception {
         String token = merchant("12600141004", "货架测试·门槛");
         String storeNo = defaultStore(token);
+
+        /*
+         * **摆货架这条路此前不受任何开关控制。**「暂时别拦资质」那一轮只接了商品上架，
+         * 漏了这里 —— 于是出现过「同一个类目，商品能上架却摆不上货架」这种说不通的状态。
+         * 现在两条读同一个开关，所以这条用例要自己打开它。
+         */
+        gate(true);
 
         // CAT110 蔬菜要 FRESH_VEG（V168 把门槛从三级上移到了这里）
         assertThat(codeOf(replace(token, storeNo,

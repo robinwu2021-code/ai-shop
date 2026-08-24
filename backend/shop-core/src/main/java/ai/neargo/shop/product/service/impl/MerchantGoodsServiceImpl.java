@@ -53,8 +53,16 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
      * 设成 true，**同时**把 b-app 的 {@code ENFORCE_CATEGORY_GATE} 打开 ——
      * 两边不同步的话，端上要么拦一个后端会放的，要么放一个后端会拒的。
      */
-    @org.springframework.beans.factory.annotation.Value("${shop.category.gate.enforce:false}")
-    private boolean gateEnforced;
+    /**
+     * 类目资质校验是否真的拦人。
+     *
+     * <p><b>从 @Value 换成读 sys_config</b>（V209）：配置项要重启才生效，而这是一个
+     * 运营决定 —— 「暂时别拦」不该变成一次发版。同一个开关也管着门店摆货架那条路
+     * （StoreCategoryServiceImpl），此前那条不受任何开关控制，一直在拦。
+     */
+    private boolean gateEnforced() {
+        return switchPort.bool("category.gate.enforce", false);
+    }
 
     private static final String AUDITING = "AUDITING";
     /** 草稿：**不进待审队列**，也上不了架。批 D 之前不存在这个状态，保存即提审 */
@@ -70,6 +78,8 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
     private final GoodsService goodsService;
     private final CommunityPoolMapper poolMapper;
     private final ai.neargo.shop.spi.user.MerchantQueryPort merchantPort;
+    /** 平台开关（V209）—— 类目闸门开不开由运营在界面上定，不再是一条配置 */
+    private final ai.neargo.shop.spi.platform.PlatformSwitchPort switchPort;
     private final ai.neargo.shop.spi.user.AdmissionPort admissionPort;
     private final ObjectMapper json;
 
@@ -91,6 +101,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                                     SpecTemplateMapper templateMapper,
                                     GoodsService goodsService, CommunityPoolMapper poolMapper,
                                     ai.neargo.shop.spi.user.MerchantQueryPort merchantPort,
+                                    ai.neargo.shop.spi.platform.PlatformSwitchPort switchPort,
                                     ai.neargo.shop.spi.user.AdmissionPort admissionPort,
                                     ai.neargo.shop.product.service.CategoryService categoryService,
                                     ai.neargo.shop.product.service.SpuStdService spuStdService,
@@ -109,6 +120,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         this.spuStdService = spuStdService;
         this.poolMapper = poolMapper;
         this.merchantPort = merchantPort;
+        this.switchPort = switchPort;
         this.admissionPort = admissionPort;
         this.goodsMapper = goodsMapper;
         this.skuMapper = skuMapper;
@@ -1357,7 +1369,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
              * <p>记 WARN 而不是静默放行：它是「本该被拦下的一次上架」的唯一痕迹，
              * 开闸之前要拿这个数判断影响面。
              */
-            if (!gateEnforced) {
+            if (!gateEnforced()) {
                 log.warn("[类目闸] 放行未授权上架：merchant={} category={} 需要码={}（enforce=false）",
                         merchantNo, categoryNo, required);
                 return;
@@ -1378,7 +1390,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         if (merchantPort.hasExpiredQualification(merchantNo)) {
             // 同上：闸关着的时候，过期也只记不拦 —— 两条一起开、一起关，
             // 否则会出现「没证的能上、证过期的不能上」这种解释不通的中间态
-            if (!gateEnforced) {
+            if (!gateEnforced()) {
                 log.warn("[类目闸] 放行资质过期的上架：merchant={}（enforce=false）", merchantNo);
                 return;
             }

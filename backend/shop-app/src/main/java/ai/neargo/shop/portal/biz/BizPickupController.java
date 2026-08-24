@@ -19,6 +19,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * B 端自提点履约台（[API 清单 §3.5]）。
@@ -35,12 +36,16 @@ public class BizPickupController {
     private final ai.neargo.shop.merchant.service.StoreLinkService storeLinkService;
     /** 主体已授权的经营类目码 —— /biz/context 要把它带给端上 */
     private final ai.neargo.shop.spi.user.MerchantQueryPort merchantPort;
+    /** 平台开关：类目闸门开不开，端上要跟着变文案与拦不拦 */
+    private final ai.neargo.shop.spi.platform.PlatformSwitchPort switchPort;
 
     public BizPickupController(PickupService pickupService,
                                ai.neargo.shop.merchant.service.StoreCodeService storeCodeService,
                                ai.neargo.shop.merchant.service.StoreLinkService storeLinkService,
-                               ai.neargo.shop.spi.user.MerchantQueryPort merchantPort) {
+                               ai.neargo.shop.spi.user.MerchantQueryPort merchantPort,
+                               ai.neargo.shop.spi.platform.PlatformSwitchPort switchPort) {
         this.merchantPort = merchantPort;
+        this.switchPort = switchPort;
         this.pickupService = pickupService;
         this.storeCodeService = storeCodeService;
         this.storeLinkService = storeLinkService;
@@ -74,7 +79,13 @@ public class BizPickupController {
                  * 不下发的话，商家只能靠「选了、保存、被拒」这条路才知道自己不能卖，
                  * 而那句报错既说不出缺哪张证，也说不出去哪申请。
                  */
-                List.copyOf(merchantPort.authorizedCategoryCodes(ctx.merchantNo())));
+                List.copyOf(merchantPort.authorizedCategoryCodes(ctx.merchantNo())),
+                /*
+                 * 只下发商家侧真的会读的那几个。**不整份倒给端上** ——
+                 * 平台开关里有运营专用的项，端上拿到也没用，而多下发一个字段
+                 * 就多一处将来会被误读的地方。
+                 */
+                Map.of("categoryGate", switchPort.bool("category.gate.enforce", false)));
     }
 
     /**
@@ -93,7 +104,20 @@ public class BizPickupController {
                                 * 与 {@code prd_category.requiredCode} 比对 —— 端上用它
                                 * 在类目选择器里把「你还不能卖」标出来，而不是等保存被拒。
                                 */
-                               List<String> categoryCodes) {
+                               List<String> categoryCodes,
+                               /**
+                                * 平台开关里与商家侧有关的那几个。
+                                *
+                                * <p><b>不再用端上的编译期常量。</b>此前
+                                * {@code b-app/src/shared/flags.ts} 的 ENFORCE_CATEGORY_GATE
+                                * 是构建期烧进去的，运营改一次开关要重新打包发版；
+                                * 更糟的是它与后端那份不同步时，症状是
+                                * 「点不动一个其实能按的按钮」或「点下去吃一句说不清缘由的报错」。
+                                *
+                                * <p>搭这个接口的车而不是新开一个：它启动就拉、切门店重拉，
+                                * 而开关一年动不了几次 —— 为它单开一次请求不值。
+                                */
+                               Map<String, Boolean> switches) {
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.VERIFY + "')")

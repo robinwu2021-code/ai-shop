@@ -1184,6 +1184,19 @@ export type PickupScope = "PERMANENT" | "GROUP_INSTANCE";
 /** 自提点计费方式。**与 ops-web 的 `PickupFeeMode` 同值** —— 费率线下逐点协商，故两种都留 */
 export type PickupFeeMode = "NONE" | "PER_ITEM" | "RATE";
 
+  /**
+   * 平台开关里与商家侧有关的那几个（后端 `/biz/context` 下发）。
+   *
+   * <p>`categoryGate`：类目资质校验**是否真的拦人**。
+   *
+   * <p>此前这是 `b-app/src/shared/flags.ts` 里的编译期常量，运营改一次开关要重新
+   * 打包发版；更糟的是它与后端那份不同步时，症状是「点不动一个其实能按的按钮」
+   * 或者「点下去吃一句说不清缘由的报错」—— 两种都难查，因为界面与后端各自看起来都对。
+   *
+   * <p>取不到时按 **false（不拦）** 处理：与后端默认值一致，且宁可放行也不要
+   * 凭一个拿不到的开关把商家挡在门外。
+   */
+  switches?: Record<string, boolean>;
 /** 到货异常类型：缺件 / 破损。B 端到货登记时上报（ADR-005 履约链路） */
 export type ArrivalIssueKind = "SHORTAGE" | "DAMAGE";
 

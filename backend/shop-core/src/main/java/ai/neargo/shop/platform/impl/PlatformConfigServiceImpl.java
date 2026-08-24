@@ -45,7 +45,21 @@ public class PlatformConfigServiceImpl implements PlatformConfigService {
     private static final String DEFAULT_APPEARANCE =
             "{\"defaultSkin\":\"fresh\",\"fallbackLang\":\"zh-CN\"}";
 
-    private static final String DEFAULT_FLAGS = "[]";
+    /**
+     * 没配过时的开关清单。
+     *
+     * <p><b>从 `[]` 改成带默认项</b>：空清单意味着运营端那一页什么都没有，
+     * 于是这套机制建好之后一直没人用过。开关是**代码里读的东西** ——
+     * 代码里读哪几个，这里就该列哪几个，运营才知道有什么可开。
+     *
+     * <p>`category.gate.enforce` 默认 **false（只展示、不限制）**：受理入口刚铺开
+     * （B 端传证 + 运营按证授码），存量商家的授权码还在补。这时候闸门拦住的
+     * 不是无证经营，是平台自己还没建好的那条路。它同时管两条路：
+     * 商品上架、门店摆货架。
+     */
+    private static final String DEFAULT_FLAGS = """
+            [{"key":"category.gate.enforce","name":"类目资质校验",\
+            "enabled":false,"rolloutPercent":0,"updatedAt":null}]""";
 
     private static final String DEFAULT_RULE_TEXTS =
             "{\"refund\":\"\",\"pickup\":\"\",\"weighDiff\":\"\",\"version\":0}";
