@@ -346,7 +346,7 @@ export default {
     addOption: "+ 选项",
     groupNamePh: "规格组名称",
     // 点选比手输多的那样东西是规格编码 —— 没有它这一档参与不了跨店聚合
-    pickValueHint: "常用档位，点一下就填进去：",
+    pickValueHint: "常用档位",
     // 「先看后挑」那一屏。顺序即建议顺序：类目配好的 → 通用 → 自建
     pickDim: "按什么分规格？",
     pickDimClose: "收起",
@@ -354,7 +354,7 @@ export default {
     dimUniversal: "通用规格",
     dimMine: "我建过的",
     dimAlready: "这个规格组已经加过了",
-    customDimCost: "平台没有的才自己建 —— 自建的只有本店能用，不参与跨店比价",
+    customDimCost: "只本店可用，不参与跨店比价",
     groupNamePh: "规格组名称",
     optionPh: "选项名称",
     groupLimit: "最多 3 个规格组",

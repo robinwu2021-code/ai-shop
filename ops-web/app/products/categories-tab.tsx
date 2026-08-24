@@ -14,7 +14,7 @@
 // 已经归到这个类目下的商品还在，C 端历史链接也还指着它，删掉之后那些入口进来是 404，
 // 而它本来只需要「这一类我们这期不做」。
 import { useMemo, useState } from "react";
-import { GripVertical } from "lucide-react";
+import { GripVertical, Settings2 } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { notify } from "@/lib/notify";
@@ -29,7 +29,6 @@ import { CategorySpecDrawer } from "./category-spec-drawer";
 import { Drawer, DrawerSection, Field } from "@/components/ui/drawer";
 import { FilterSelect } from "@/components/ui/filter-select";
 import { Input } from "@/components/ui/input";
-import { Notice } from "@/components/ui/notice";
 import { Switch } from "@/components/ui/switch";
 import { Toolbar } from "@/components/ui/toolbar";
 import { useConfirm } from "@/components/ui/confirm-dialog";
@@ -546,14 +545,21 @@ export function CategoriesTab({ c, canEdit }: { c: ProductsCopy; canEdit: boolea
       cell: (r) => {
         if (r.level === 1) return null;
         const n = specCount.get(r.categoryNo) ?? 0;
-        return (
-          <button type="button" className="hover:underline"
-            title={fill(c.catSpecsGo, { name: r.name })}
+        /*
+         * **看得出这里能点。**从前已配的显示一个裸数字、没配的显示一枚
+         * 只读样式的角标 —— 两者都不像按钮，于是「规格在哪配」这个问题
+         * 界面自己回答不了。现在两种状态都是按钮：
+         * 没配 = 一个动作（「配规格」），已配 = 数字 + 齿轮。
+         */
+        return n > 0 ? (
+          <Button size="sm" variant="outline" className="gap-1 tabular-nums"
             onClick={() => setSpecFor(r.categoryNo)}>
-            {n > 0
-              ? <span>{n}</span>
-              : <Badge tone="danger">{c.catSpecsNone}</Badge>}
-          </button>
+            {n}<Settings2 className="size-3.5 opacity-60" />
+          </Button>
+        ) : (
+          <Button size="sm" variant="destructive" onClick={() => setSpecFor(r.categoryNo)}>
+            {c.catSpecsNone}
+          </Button>
         );
       },
       numeric: true,
@@ -626,7 +632,6 @@ export function CategoriesTab({ c, canEdit }: { c: ProductsCopy; canEdit: boolea
 
   return (
     <>
-      <Notice className="mb-3">{c.catTreeNotice}</Notice>
 
       <Toolbar search={keyword} onSearch={setKeyword} searchPlaceholder={c.catSearchPh}>
         <FilterSelect

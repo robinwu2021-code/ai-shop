@@ -108,10 +108,17 @@ export function CategorySpecDrawer({
     >
       {editing && (
         <>
-          <CopyFrom
-            c={c} rows={list.data ?? []} all={dims.data ?? []} self={editing.category.categoryNo}
-            onPick={(bindings) => setEditing({ ...editing, bindings })}
-          />
+          {/*
+            **只在一条都没配的时候出现。**已配好的类目打开抽屉先看到
+            「照哪个类目配」是纯噪音 —— 他要改的是眼前这几个维度，
+            而照抄会把它们整份冲掉。空类目才是需要它的那一刻。
+          */}
+          {!editing.bindings.length && (
+            <CopyFrom
+              c={c} rows={list.data ?? []} all={dims.data ?? []} self={editing.category.categoryNo}
+              onPick={(bindings) => setEditing({ ...editing, bindings })}
+            />
+          )}
           <BindingEditor
             c={c}
             all={dims.data ?? []}
@@ -143,9 +150,7 @@ function CopyFrom({ c, rows, all, self, onPick }: {
   const sources = rows.filter((r) => r.categoryNo !== self && r.dimCount > 0);
   if (!sources.length) return null;
   return (
-    <div className="mb-5 rounded-card border border-border p-3">
-      <div className="mb-1.5 txt-label text-muted-foreground">{c.csCopyFrom}</div>
-      <div className="flex items-center gap-2">
+    <div className="mb-5 flex items-center gap-2">
         <FilterSelect
           value={from} onChange={setFrom}
           options={[{ value: "", label: c.csCopyFromPh },
@@ -154,15 +159,13 @@ function CopyFrom({ c, rows, all, self, onPick }: {
               label: `${r.parentName} · ${r.categoryName}（${r.dimCount}）`,
             }))]}
         />
-        <Button size="sm" variant="secondary" disabled={!from}
-          onClick={() => {
-            const src = sources.find((r) => r.categoryNo === from);
-            if (src) onPick(toEditing(src, all).bindings);
-          }}>
-          {c.csCopyDo}
-        </Button>
-      </div>
-      <p className="mt-1.5 txt-caption text-muted-foreground">{c.csCopyHint}</p>
+      <Button size="sm" variant="secondary" disabled={!from}
+        onClick={() => {
+          const src = sources.find((r) => r.categoryNo === from);
+          if (src) onPick(toEditing(src, all).bindings);
+        }}>
+        {c.csCopyDo}
+      </Button>
     </div>
   );
 }
@@ -193,8 +196,6 @@ function BindingEditor({ c, all, editing, onChange }: {
 
   return (
     <div className="space-y-5">
-      <p className="text-[13px] text-muted-foreground">{c.csEditHint}</p>
-
       <div>
         <div className="mb-2 txt-label text-muted-foreground">{c.csPicked}</div>
         <div className="space-y-2">
@@ -225,8 +226,12 @@ function BindingEditor({ c, all, editing, onChange }: {
                   而它一直在生效（保存时按数组下标写 sort，商家侧就按 sort 展示）。
                   一个默默生效、界面上却不存在的东西，比没有更难查。
                 */}
-                <div className="mt-2 txt-label text-muted-foreground">{c.csValsPicked}</div>
-                <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                {/*
+                  **不写「已选取值」这行标签。**蓝底 + ‹ › + × 本身就是「选中且可排序」，
+                  再加一行字是把界面已经说清的事又说一遍 —— 而它在每个维度下重复一次，
+                  五个维度就是五行噪音。
+                */}
+                <div className="mt-2 flex flex-wrap items-center gap-1.5">
                   {b.valueNos.map((vn, vi) => {
                     const v = d.values.find((x) => x.valueNo === vn);
                     if (!v) return null;
@@ -292,7 +297,6 @@ function BindingEditor({ c, all, editing, onChange }: {
                       </button>
                     ))}
                 </div>
-                <p className="mt-1.5 text-[11.5px] text-muted-foreground">{c.csRenameHint}</p>
               </div>
             );
           })}
