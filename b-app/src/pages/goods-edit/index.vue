@@ -296,7 +296,22 @@ function pickFulfillment(f: string) {
    * 商品保存得下去，买家却下不了单，而两处都不报错。
    */
   if (!channelOpen(f)) {
-    uni.showToast({ title: t("goods.fulfillmentClosedTip"), icon: "none" });
+    /*
+     * 出路给在**他伸手要这一路的那一刻**，不常驻在页面上。
+     *
+     * <p>此前是页面底下常挂一条「去开启」链接：它服务的是一个**难得出现一次**
+     * 的需求（这家店要新开一种送货方式），却一直占着一行，
+     * 而且挂在那儿时谁都看不出它要开的是哪一路。
+     * 现在点灰掉的那一路就问他去不去开，问句里带着这一路的名字。
+     */
+    uni.showModal({
+      title: String(t("goods.fulfillmentClosedTip")),
+      content: String(t("goods.fulfillmentClosedAsk", {
+        s: String(t(`goods.fulfillmentType.${f}`)),
+      })),
+      confirmText: String(t("goods.toStoreScope")),
+      success: (r) => { if (r.confirm) toStoreScope(); },
+    });
     return;
   }
   fulfillments.value = [f];
@@ -2116,17 +2131,6 @@ async function save(thenSubmit = false) {
             }}<template v-if="!channelOpen(f)"> · {{ $t("goods.channelOff") }}</template>
           </text>
         </view>
-        <!--
-          这里原本有一行说明（先是「单选」+「按本店已开通的送货方式给出」两行，
-          后来并成一句「只能选一种；灰掉的是本店还没开通的」），**现在整行去掉**。
-
-          <p>两件事都已经写在控件自己身上：点第二个 chip 时第一个会松开，
-          单选一次就学会；没开通的那几个灰着并带「· 未开」，
-          「未开」二字已经说明了是本店没开。剩下的只是那条出路 —— 「去开启」。
-        -->
-        <view v-if="storeChannels.length" class="inline inline--end">
-          <text class="link" @tap="toStoreScope">{{ $t("goods.toStoreScope") }}</text>
-        </view>
         <!-- 编辑老商品：原来那一路被门店关掉了。**不替他改**，只说出来 -->
         <text v-if="fulfillmentClosed" class="cat-lv__gate">
           {{ $t("goods.fulfillmentClosedWarn") }}
@@ -2699,10 +2703,6 @@ async function save(thenSubmit = false) {
 .field__area--grow :deep(.uni-textarea-textarea) {
   max-height: 60vh;
   overflow-y: auto !important;
-}
-
-.inline--end {
-  justify-content: flex-end;
 }
 
 .std-link {
