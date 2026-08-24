@@ -143,6 +143,27 @@ public interface SpecLibraryService {
     List<MerchantDimVO> myDims(String merchantNo);
 
     /**
+     * 这家店<b>按货架类目</b>能用到的规格。
+     *
+     * <p>与 {@link #pickableDims} 的差别是**范围来自哪里**：那个按「当前正在建的商品
+     * 属于哪个类目」给，这个按「这家店摆了哪几类」给 —— 「我的规格」那一页不在
+     * 任何一个类目下，它要回答的是整店的问题。
+     *
+     * <p>为什么不直接给平台的 13 个通用维度：一家只卖蔬菜和肉的店，
+     * 看到「尺码」「口径」「时长」是纯噪音，而噪音会让他觉得这一页与自己无关。
+     * 按他真正摆出来的类目给，每一行他都认得。
+     *
+     * @return 按货架顺序；没配规格的类目**也在列表里**（dims 为空）——
+     *         那是运营侧的缺口，商家看得见才问得出来
+     */
+    List<StoreCategorySpecVO> dimsByStore(String merchantNo, String storeNo);
+
+    /** @param categoryName 店主改过名的用店主的叫法 —— 这一页是给他看的 */
+    record StoreCategorySpecVO(String categoryNo, String categoryName,
+                               List<SpecTemplateVO> dims) {
+    }
+
+    /**
      * 改名。**不影响已经建好的商品** —— 商品存的是规格快照，
      * 改维度名不会把历史订单里的「辣度」变成别的字。
      */

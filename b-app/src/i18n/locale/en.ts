@@ -125,8 +125,11 @@ export default {
 
   qual: {
     mySpecs: {
-      title: "My specs", intro: "Build your own when the platform has none. Here you can see what you built and where it is used.",
-      quota: "used / limit", empty: "Nothing built yet. You can create one while adding a product.",
+      title: "My specs", intro: "Every spec you can use when adding a product. Build your own if the platform has none.",
+      quota: "used / limit",
+      catNoDims: "No specs configured for this category yet — ask ops to add them",
+      noShelf: "No categories on your shelf yet. Pick some in “My categories”.",
+      mineTitle: "Mine", empty: "Nothing built yet. You can create one while adding a product.",
       used: "used by {n} products", noValues: "No values yet",
       rename: "Rename", archive: "Disable", unarchive: "Enable",
       renameTitle: "New name", archiveTitle: "Disable this spec",

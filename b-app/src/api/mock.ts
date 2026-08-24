@@ -1875,6 +1875,18 @@ export const mockApi: MerchantApi = {
    * 规格快照里只有名字，没有维度编号）。
    */
   async mMySpecDims() {
+  async mStoreSpecDims(storeNo) {
+    // mock 里按门店货架分组：与真后端同一个形状，值取该类目的模板
+    // 不传就用第一家店 —— mock 的演示会话只有一家在用
+    const key = storeNo || db.stores[0]?.storeNo || "";
+    const cats = db.storeCategories[key] ?? [];
+    return delay(cats.map((c) => ({
+      categoryNo: c.categoryNo,
+      categoryName: c.name,
+      dims: db.specTemplates.filter((t) => t.categoryNo === c.categoryNo),
+    })));
+  },
+
     const merchantNo = db.merchant.merchantNo;
     const mine = db.specTemplates.filter((t) => t.scope === "MERCHANT" && t.merchantNo === merchantNo);
     const used = (name: string) =>

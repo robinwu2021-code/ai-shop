@@ -51,13 +51,17 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
     private final SkuMapper skuMapper;
     /** 统计「这个维度用在几件商品上」—— 停用前要知道自己在动多大范围 */
     private final ai.neargo.shop.product.mapper.ProductMappers.GoodsMapper goodsMapper;
+    /** 「我的规格」按货架类目分组 —— 这家店摆了哪几类，只有商家域知道 */
+    private final ai.neargo.shop.spi.user.StoreCategoryPort storeCategoryPort;
 
     public SpecLibraryServiceImpl(SpecDimMapper dimMapper, SpecValueMapper valueMapper,
                                   CategorySpecMapper catSpecMapper,
                                   CategorySpecValueMapper catValueMapper,
                                   CategoryService categoryService,
                                   SkuMapper skuMapper,
-                                  ai.neargo.shop.product.mapper.ProductMappers.GoodsMapper goodsMapper) {
+                                  ai.neargo.shop.product.mapper.ProductMappers.GoodsMapper goodsMapper,
+                                  ai.neargo.shop.spi.user.StoreCategoryPort storeCategoryPort) {
+        this.storeCategoryPort = storeCategoryPort;
         this.skuMapper = skuMapper;
         this.goodsMapper = goodsMapper;
         this.dimMapper = dimMapper;
@@ -628,6 +632,41 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
         row.setSort(900);
         DataScopeContext.executeWithoutScope(() -> valueMapper.insert(row));
         return toValueVO(row);
+    }
+
+    @Override
+    public List<StoreCategorySpecVO> dimsByStore(String merchantNo, String storeNo) {
+        if (storeNo == null || storeNo.isBlank()) {
+            return List.of();
+        }
+        List<StoreCategorySpecVO> out = new ArrayList<>();
+        for (var shelf : storeCategoryPort.shelvesOf(storeNo)) {
+            /*
+             * 店主改过名的用店主的叫法：这一页是给他看的，而他记得的是自己起的名字
+             * （「好菜」而不是「蔬菜」）。categoryNo 不变，所以聚合与比价不受影响。
+             */
+            String name = shelf.displayName() != null && !shelf.displayName().isBlank()
+                    ? shelf.displayName() : categoryNameOf(shelf.categoryNo());
+            // 没配规格的类目也留在列表里（dims 空）—— 那是运营侧的缺口，看得见才问得出来
+            out.add(new StoreCategorySpecVO(shelf.categoryNo(), name,
+                    templatesForCategory(merchantNo, shelf.categoryNo())));
+        }
+        return out;
+    }
+
+    /** 平台类目名。树是缓存友好的读，一次遍历比为一个名字多开一条 mapper 路径干净 */
+    private String categoryNameOf(String categoryNo) {
+        for (CategoryVO lv1 : categoryService.tree()) {
+            if (lv1.categoryNo().equals(categoryNo)) {
+                return lv1.name();
+            }
+            for (CategoryVO lv2 : lv1.children()) {
+                if (lv2.categoryNo().equals(categoryNo)) {
+                    return lv2.name();
+                }
+            }
+        }
+        return categoryNo;   // 归档/已删的类目：回落成编号，总比显示空白强
     }
 
     @Override

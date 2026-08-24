@@ -99,7 +99,7 @@ import type {
   PickupCandidate,
   RegionSearchResult,
   MyQualifications,
-  Qualification, MerchantSpecDim,} from "@shared/types";
+  Qualification, MerchantSpecDim, StoreCategorySpecs,} from "@shared/types";
 
 export const httpApi: MerchantApi = {
   mSendOtp: (phone) => http.post<void>(E.mSendOtp.path, { phone }),
@@ -287,6 +287,12 @@ export const httpApi: MerchantApi = {
   mPickableDims: (categoryNo) => http.get<SpecTemplate[]>(E.mPickableDims.path, { categoryNo }),
   mShip: (orderNo, expressNo) =>
     http.post<Order>(buildPath(E.mShip.path, { orderNo }), { expressNo } satisfies ShipReq),
+  mMySpecDims: () => http.get<MerchantSpecDim[]>(E.mMySpecDims.path),
+  mStoreSpecDims: (storeNo) => http.get<StoreCategorySpecs[]>(E.mStoreSpecDims.path, { storeNo }),
+  mRenameSpecDim: (dimNo, name) =>
+    http.post<void>(E.mRenameSpecDim.path.replace("{dimNo}", dimNo), { name }),
+  mArchiveSpecDim: (dimNo, archived) =>
+    http.post<void>(E.mArchiveSpecDim.path.replace("{dimNo}", dimNo), { archived }),
   mMySpecDims: () => http.get<MerchantSpecDim[]>(E.mMySpecDims.path),
   mRenameSpecDim: (dimNo, name) =>
     http.post<void>(E.mRenameSpecDim.path.replace("{dimNo}", dimNo), { name }),

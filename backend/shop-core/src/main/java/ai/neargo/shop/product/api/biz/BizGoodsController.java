@@ -296,6 +296,21 @@ public class BizGoodsController {
         return specLibrary.myDims(BizContext.requireMerchantNo());
     }
 
+    /**
+     * 这家店按**货架类目**能用到的规格 —— 「我的规格」那一页的主体。
+     *
+     * <p>不给平台那 13 个通用维度：一家只卖蔬菜和肉的店看到「尺码」「口径」「时长」
+     * 是纯噪音，而噪音会让他觉得这一页与自己无关。按他真正摆出来的类目给，
+     * 每一行他都认得。
+     */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.GOODS + "')")
+    @GetMapping("/biz/store-spec-dims")
+    public List<ai.neargo.shop.product.service.SpecLibraryService.StoreCategorySpecVO> dimsByStore(
+            @RequestParam(required = false) String storeNo) {
+        return specLibrary.dimsByStore(BizContext.requireMerchantNo(),
+                storeNo == null || storeNo.isBlank() ? BizContext.current().currentStoreNo() : storeNo);
+    }
+
     /** 改名。**不影响已建商品** —— 商品存的是规格快照 */
     @PreAuthorize("@perm.canBiz('" + BizPerms.GOODS + "')")
     @PostMapping("/biz/my-spec-dims/{dimNo}/rename")

@@ -3378,6 +3378,46 @@ export interface MerchantSpecDim {
    * 用在几件商品上。**按规格组名统计** —— 存量商品的规格快照里只有名字，
    * 没有维度编号（那个字段是后加的），按编号统计的话老商品一件都算不进来，
    * 而「停用它会影响什么」问的恰恰是历史。
+/**
+ * 「我的规格」里的一组：**这家店的一个货架类目**，以及它能用到的规格。
+ *
+ * <p>按货架类目给而不是给平台的全部通用维度：一家只卖蔬菜和肉的店，
+ * 看到「尺码」「口径」「时长」是纯噪音，而噪音会让他觉得这一页与自己无关。
+ *
+ * <p>`dims` 可能是空的 —— 那是运营还没给这个类目配规格，**商家看得见才问得出来**。
+ */
+export interface StoreCategorySpecs {
+  categoryNo: string;
+  /** 店主改过名的用店主的叫法（「好菜」而不是「蔬菜」）—— 这一页是给他看的 */
+  categoryName: string;
+  dims: SpecTemplate[];
+}
+
+/**
+ * 「我的规格」里的一条自建维度。
+ *
+ * <p>与 {@link SpecTemplate} 的差别是**视角**：那个回答「建品时能挑什么」，
+ * 这个回答「我拥有什么、能改什么、动它会影响多少」。
+ */
+export interface MerchantSpecDim {
+  dimNo: string;
+  name: string;
+  /** 这个维度下的取值数（含平台档位 + 自己加的） */
+  valueCount: number;
+  /**
+   * 用在几件商品上。**按规格组名统计** —— 存量商品的规格快照里只有名字，
+   * 没有维度编号（那个字段是后加的），按编号统计的话老商品一件都算不进来，
+   * 而「停用它会影响什么」问的恰恰是历史。
+   */
+  usedCount: number;
+  status: "ACTIVE" | "ARCHIVED";
+  /** 已建 / 上限。摆出来，而不是等他建到第 11 个才被拒 */
+  dimUsed: number;
+  dimQuota: number;
+  valueQuota: number;
+  values: SpecOption[];
+}
+
    */
   usedCount: number;
   status: "ACTIVE" | "ARCHIVED";

@@ -143,6 +143,7 @@ class BizEndpointPermTest {
         put("/biz/spec-dims", BizPerms.GOODS);
         // 「我的规格」：看自己建的维度、改名、停用。都是商品域的事，同一档权限
         put("/biz/my-spec-dims", BizPerms.GOODS);
+        put("/biz/store-spec-dims", BizPerms.GOODS);
         put("/biz/my-spec-dims/{dimNo}/rename", BizPerms.GOODS);
         put("/biz/my-spec-dims/{dimNo}/archive", BizPerms.GOODS);
         // 标准品搜索（TDD-标准品库）：建品链路的一环，与规格模板同一档 ——
@@ -168,6 +169,8 @@ class BizEndpointPermTest {
 
         // ---- 门店经营面 ----
         put("/biz/store", BizPerms.STORE);
+        // 只改公告：与整份门面同一个码 —— 它写的是同一张表的同一家店
+        put("/biz/store/announcement", BizPerms.STORE);
         // 门店送货方式（方案 v4）：GET/PUT 同路径同进退，都归门店管理面
         put("/biz/stores/{storeNo}/fulfillment", BizPerms.STORE);
         put("/biz/pickup-points/candidates", BizPerms.STORE);
