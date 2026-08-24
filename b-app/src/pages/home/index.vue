@@ -77,6 +77,32 @@ const blockers = computed(() => {
 });
 
 /**
+ * 公告入口右侧那一句：现在挂着什么、什么时候没。
+ *
+ * <p><b>为什么值得占这一行</b>：公告是这一屏唯一的日频内容，最常见的故障是
+ * 「早上挂的今日到货，晚上忘了撤」。此前工作台上只有「公告」两个字，
+ * 挂没挂、挂的是哪句，只有点进去才知道 —— 于是没人会去点，也就没人会去撤。
+ *
+ * <p>审核中优先于正文：那时店铺页上挂的和他以为的不是同一句，这件事更要紧。
+ * `store` 是这一页本来就要拉的（三条开张告警都读它），不多发请求。
+ */
+const noticeValue = computed(() => {
+  const st = store.value;
+  if (!st) return "";
+  if (st.noticePending) return String(t("store.noticeAuditing"));
+  const text = (st.announcement ?? "").trim();
+  if (!text) return String(t("home.noticeNone"));
+  const head = text.length > 10 ? `${text.slice(0, 10)}…` : text;
+  const at = st.announcementUntil;
+  if (!at) return head;
+  const d = new Date(at);
+  const sameDay = d.toDateString() === new Date().toDateString();
+  return `${head} · ${t("home.noticeUntil", {
+    s: sameDay ? String(t("store.ttl.todayAt")) : `${d.getMonth() + 1}/${d.getDate()}`,
+  })}`;
+});
+
+/**
  * 待办格子。数字为 0 的也留着 —— 位置固定，商家才能形成肌肉记忆。
  *
  * <b>每个格子跟着它自己的权限走</b>，不是整块一起给。这 7 个数分属 5 个权限，
@@ -249,8 +275,9 @@ onShow(load);
       </view>
 
       <!-- 拆两页（方案 v3）：范围与送货是开店的两个决策；装修与获客是日常内容 -->
-      <view v-if="merchant.can('biz:store')" class="sh-card entry" @tap="open(ROUTES.storeNotice)">
+      <view v-if="merchant.can('biz:store')" class="sh-card entry entry--kv" @tap="open(ROUTES.storeNotice)">
         <text class="sh-h2">{{ $t("home.noticeEntry") }}</text>
+        <text v-if="noticeValue" class="entry__v">{{ noticeValue }}</text>
       </view>
 
       <view v-if="merchant.can('biz:store')" class="sh-card entry" @tap="open(ROUTES.storeScope)">
@@ -404,6 +431,23 @@ onShow(load);
 /* 入口卡之间只留一条缝：这一列有 6+ 张卡，每张多 12rpx 就少露大半张 */
 .entry {
   margin-bottom: 12rpx;
+}
+/* 带右值的入口：标题在左、现状在右。右边那句可能被挤，所以给它单独收缩 */
+.entry--kv {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+}
+.entry__v {
+  flex: 1;
+  min-width: 0;
+  text-align: right;
+  font-size: 24rpx;
+  color: var(--sh-sub);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 .entry .sh-muted {
   display: block;

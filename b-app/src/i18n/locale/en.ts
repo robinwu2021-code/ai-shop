@@ -90,6 +90,8 @@ export default {
     required: "Please fill in the required fields",
   },
   home: {
+    noticeNone: "Not posted",
+    noticeUntil: "until {s}",
     scopeEntry: "Coverage & delivery",
     noticeEntry: "Notice",
     catalogEntry: "My categories", catalogEntryHint: "What you stock and what to call it",

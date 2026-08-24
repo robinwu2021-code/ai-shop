@@ -140,6 +140,8 @@ export default {
   },
 
   home: {
+    noticeNone: "未发布",
+    noticeUntil: "{s}到期",
     scopeEntry: "经营范围与送货",
     noticeEntry: "公告",
     catalogEntry: "我的类目",

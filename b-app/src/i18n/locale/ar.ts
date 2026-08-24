@@ -90,6 +90,8 @@ export default {
     required: "يرجى إكمال الحقول المطلوبة",
   },
   home: {
+    noticeNone: "غير منشور",
+    noticeUntil: "حتى {s}",
     scopeEntry: "نطاق التغطية والتوصيل",
     noticeEntry: "الإعلان",
     catalogEntry: "فئاتي", catalogEntryHint: "ما تعرضه وكيف تسمّيه",
