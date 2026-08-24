@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { MERCHANT_LOGO_FALLBACK } from "@shared/utils/constants";
 // 商品/服务上的商家信息条。点进商家详情。
 import type { MerchantBrief } from "@shared/types";
 
@@ -8,7 +9,7 @@ defineEmits<{ (e: "tap"): void }>();
 
 <template>
   <view class="bar" @tap="$emit('tap')">
-    <text class="bar__logo">{{ merchant.logo }}</text>
+    <text class="bar__logo">{{ merchant.logo || MERCHANT_LOGO_FALLBACK }}</text>
     <view class="bar__main">
       <view class="bar__title">
         <!--

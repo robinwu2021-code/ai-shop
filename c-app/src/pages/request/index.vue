@@ -10,7 +10,7 @@ import { api } from "@/api";
 import { useUserStore } from "@/stores/user";
 import { useCommunityStore } from "@/stores/community";
 import { buildShareMessage } from "@shared/ports/share";
-import { ROUTES } from "@shared/utils/constants";
+import { ROUTES, MERCHANT_LOGO_FALLBACK } from "@shared/utils/constants";
 import { isoDate, money } from "@shared/utils/format";
 import type { GroupRequest, Quote } from "@shared/types";
 
@@ -145,7 +145,7 @@ onShareAppMessage(() => {
 
       <view v-for="(q, i) in request.quotes" :key="q.quoteNo" class="quote" :class="{ 'is-chosen': q.chosen }">
         <view class="quote__head">
-          <text class="quote__logo">{{ q.merchant.logo }}</text>
+          <text class="quote__logo">{{ q.merchant.logo || MERCHANT_LOGO_FALLBACK }}</text>
           <view class="quote__who">
             <view class="quote__name-row">
               <text class="quote__name">{{ q.merchant.name }}</text>
@@ -169,7 +169,17 @@ onShareAppMessage(() => {
                 {{ $t("request.breach", { n: q.merchant.breachCount }) }}
               </text>
             </view>
-            <sh-rating :value="q.merchant.rating" :size="22"></sh-rating>
+            <!--
+              **没人评过就别显示分数。** 后端对零评价的商家回 `rating: 5.0`，
+              裸显示出来就是「五星好评」—— 而它其实只是个默认值。
+              商家报价这一屏正是买家挑人的地方，一个假的满分会直接影响他选谁。
+            -->
+            <sh-rating
+              v-if="q.merchant.ratingCount > 0"
+              :value="q.merchant.rating"
+              :size="22"
+            ></sh-rating>
+            <text v-else class="quote__norating">{{ $t("merchant.noRating") }}</text>
           </view>
           <text class="quote__price sh-num">{{ money(q.priceMinor) }}</text>
         </view>
@@ -238,6 +248,11 @@ onShareAppMessage(() => {
 </template>
 
 <style scoped>
+.quote__norating {
+  font-size: 22rpx;
+  color: var(--sh-sub);
+}
+
 .head {
   display: flex;
   gap: 20rpx;

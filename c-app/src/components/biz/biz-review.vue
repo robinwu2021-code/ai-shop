@@ -13,6 +13,7 @@ defineEmits<{ (e: "like"): void }>();
       <text class="rv__avatar">{{ review.avatar }}</text>
       <view class="rv__who">
         <text class="rv__name">{{ review.nickname }}</text>
+        <!-- single-review：这是**某个人给的星数**，不是聚合评分，不需要 ratingCount 护栏 -->
         <sh-rating :value="review.rating" :size="22" :show-value="false"></sh-rating>
       </view>
       <text class="rv__date sh-num">{{ monthDay(review.createdAt) }}</text>

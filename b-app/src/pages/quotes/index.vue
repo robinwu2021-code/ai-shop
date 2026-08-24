@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { MERCHANT_LOGO_FALLBACK } from "@shared/utils/constants";
 // 邻里求团报价（B-11.6.3~6.5）。
 //
 // 这是平台区别于社区团购的那条线：需求先于供给，邻居先发「想买床垫」，商家再来报价。
@@ -102,7 +103,7 @@ onShow(load);
         >
           <view class="quote__l">
             <text class="quote__name">
-              {{ q.merchant.logo }} {{ q.merchant.name }}
+              {{ q.merchant.logo || MERCHANT_LOGO_FALLBACK }} {{ q.merchant.name }}
               <text v-if="q.merchant.merchantNo === merchant.profile?.merchantNo" class="mine-tag">
                 {{ $t("quotes.mine") }}
               </text>

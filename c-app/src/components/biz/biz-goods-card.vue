@@ -2,7 +2,7 @@
 // 商品卡（扁平色块）：图占位是纯色块，信息用 chip 色块，价格不用红色堆砌 —— 靠字重与留白分层。
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
-import { GOODS_COVER_FALLBACK, CATEGORY_TYPE } from "@shared/utils/constants";
+import { GOODS_COVER_FALLBACK, CATEGORY_TYPE, MERCHANT_LOGO_FALLBACK } from "@shared/utils/constants";
 import { money } from "@shared/utils/format";
 import type { Goods } from "@shared/types";
 
@@ -74,7 +74,7 @@ const off = computed(() => {
       <view class="card__merchant">
         <!-- 自营标识（电商法 §37）。放在店名前 —— 「谁在卖」先于「货是谁供的」 -->
         <text v-if="goods.merchant.selfOperated" class="card__self">{{ $t("merchant.selfOperated") }}</text>
-        <text class="card__shop">{{ goods.merchant.logo }} {{ goods.merchant.name }}</text>
+        <text class="card__shop">{{ goods.merchant.logo || MERCHANT_LOGO_FALLBACK }} {{ goods.merchant.name }}</text>
         <text class="card__sales sh-num">{{ $t("common.sold", { n: goods.sales }) }}</text>
       </view>
     </view>

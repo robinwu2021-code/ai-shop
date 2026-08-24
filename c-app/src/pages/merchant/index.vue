@@ -5,7 +5,7 @@ import { ref } from "vue";
 import { onLoad, onShareAppMessage } from "@dcloudio/uni-app";
 import { api } from "@/api";
 import { useCartStore } from "@/stores/cart";
-import { ROUTES } from "@shared/utils/constants";
+import { ROUTES, MERCHANT_LOGO_FALLBACK } from "@shared/utils/constants";
 import { isoDate } from "@shared/utils/format";
 import { firstSku } from "@shared/utils/goods";
 import { flyToCart, tapPoint } from "@/shared/fly";
@@ -82,7 +82,7 @@ onShareAppMessage(() =>
     <!-- 商家头部 -->
     <view class="sh-card head">
       <view class="head__top">
-        <text class="head__logo">{{ merchant.logo }}</text>
+        <text class="head__logo">{{ merchant.logo || MERCHANT_LOGO_FALLBACK }}</text>
         <view class="head__main">
           <view class="head__title">
             <text class="sh-h2">{{ merchant.name }}</text>
@@ -115,10 +115,17 @@ onShareAppMessage(() =>
       <!-- 评分区：总分 + 分维度 + 依据 -->
       <view class="score">
         <view class="score__main">
-          <text class="score__num sh-num">{{
+          <!--
+            **零评价时不给分数也不给星。** 后端对没人评过的商家回 5.0 ——
+            那是默认值，不是「大家都给了满分」。下面「基于 0 条评价」那句
+            虽然自证了，但先看到的是大大的 5.0，人不会往下读。
+          -->
+          <text v-if="merchant.ratingCount > 0" class="score__num sh-num">{{
             merchant.rating.toFixed(1)
           }}</text>
+          <text v-else class="score__num score__num--none">{{ $t("merchant.noRating") }}</text>
           <sh-rating
+            v-if="merchant.ratingCount > 0"
             :value="merchant.rating"
             :size="24"
             :show-value="false"
@@ -217,6 +224,11 @@ onShareAppMessage(() =>
 </template>
 
 <style scoped>
+.score__num--none {
+  font-size: 28rpx;
+  color: var(--sh-sub);
+}
+
 .head__top {
   display: flex;
   align-items: center;

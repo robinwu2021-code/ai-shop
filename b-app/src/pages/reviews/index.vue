@@ -107,6 +107,7 @@ onShow(load);
     <view v-for="r in sorted" :key="r.reviewNo" class="sh-card item">
       <view class="item__head">
         <text class="item__who">{{ r.avatar }} {{ r.nickname }}</text>
+        <!-- single-review：这是**某个人给的星数**，不是聚合评分，不需要 ratingCount 护栏 -->
         <sh-rating :value="r.rating" :size="24"></sh-rating>
       </view>
       <text class="sh-muted item__meta">{{ r.spec }} · {{ datetime(r.createdAt) }}</text>
