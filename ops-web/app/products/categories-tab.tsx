@@ -721,6 +721,14 @@ export function CategoriesTab({ c, canEdit }: { c: ProductsCopy; canEdit: boolea
             </Field>
             <Field label={c.fieldCatNameEn}>
               <Input value={form.i18nEn} onChange={(e) => setForm({ ...form, i18nEn: e.target.value })} />
+              {/*
+                **留空的后果要写在他正在填的地方。**不填不会报错，C 端英文界面
+                就静默回落成中文 —— 英文用户看到的类目列表里夹着几个汉字词，
+                而没有任何一处提示这件事出了岔。表格上那枚「缺译」角标是事后
+                才看得见的，这一行是事前。
+                不设成必填：挡住「先把类目建起来再说」会更糟，缺译至少还有角标追。
+              */}
+              <p className="mt-1 txt-caption text-muted-foreground">{c.fieldCatNameEnHint}</p>
             </Field>
             <Field label={c.fieldParent}>
               <FilterSelect

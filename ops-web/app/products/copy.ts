@@ -314,6 +314,7 @@ const zh = {
   // 常用档位排前面，商家少翻少手输，而手输的值没有规格编码、参与不了聚合
   // 类目树上的规格列。**红色的「未配」是这一列的全部意义** ——
   // 配了几个是次要信息，没配才是要人动手的那一行
+  fieldCatNameEnHint: "留空不会报错，但 C 端英文界面会显示中文名 —— 表格里会标成「缺译」",
   catColSpecs: "规格",
   catSpecsNone: "未配",
   catSpecsGo: "去配「{name}」的规格",
@@ -712,6 +713,7 @@ const en: typeof zh = {
   csSetPrimary: "Make primary",
   csUnbind: "Remove",
   csPickValues: "Values",
+  fieldCatNameEnHint: "Leaving this empty is allowed, but the English storefront falls back to the Chinese name — the table marks it “no EN”",
   catColSpecs: "Specs",
   catSpecsNone: "None",
   catSpecsGo: "Configure specs for “{name}”",
