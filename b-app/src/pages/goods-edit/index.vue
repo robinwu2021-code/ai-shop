@@ -2116,10 +2116,19 @@ async function save(thenSubmit = false) {
             }}<template v-if="!channelOpen(f)"> · {{ $t("goods.channelOff") }}</template>
           </text>
         </view>
-        <text class="sh-muted hint">{{ $t("goods.fulfillmentTip") }}</text>
-        <view v-if="storeChannels.length" class="inline">
-          <text class="sh-muted hint flex1">{{ $t("goods.fulfillmentFromStore") }}</text>
-          <text class="link" @tap="toStoreScope">{{ $t("goods.toStoreScope") }}</text>
+        <!--
+          原来这里是两行：「单选」和「按本店已开通的送货方式给出」。
+
+          <p>两句都**只说了结论、没说这跟你有什么关系**：「单选」孤零零挂在一排
+          看着像多选的 chip 下面；「按本店已开通的送货方式给出」是从后端视角
+          描述这份候选是怎么来的 —— 而商家看到的现象是「有几个是灰的点不动」，
+          他要知道的是那几个灰的**是他自己没开**，不是平台不支持。
+        -->
+        <view class="inline">
+          <text class="sh-muted hint flex1">{{ $t("goods.fulfillmentTip") }}</text>
+          <text v-if="storeChannels.length" class="link" @tap="toStoreScope">
+            {{ $t("goods.toStoreScope") }}
+          </text>
         </view>
         <!-- 编辑老商品：原来那一路被门店关掉了。**不替他改**，只说出来 -->
         <text v-if="fulfillmentClosed" class="cat-lv__gate">
@@ -2676,7 +2685,7 @@ async function save(thenSubmit = false) {
 }
 
 /*
-  图文详情正文：起步 4 行，随内容长高，长到屏高六成为止。
+  图文详情正文：起步 3 行，随内容长高，长到屏高六成为止。
 
   上限要落在**里面那个真正的 textarea 上**：uni 的 auto-height 是给内层元素写
   内联 height，只给外壳设 max-height 的话，内层照样一路长下去 ——
@@ -2684,7 +2693,7 @@ async function save(thenSubmit = false) {
   超过之后框内自己滚，不再把下面的分区一路顶走。
 */
 .field__area--grow {
-  min-height: 200rpx;
+  min-height: 150rpx;
   max-height: 60vh;
 }
 /* uni 把内联 height 写在 .uni-textarea-wrapper 上，textarea 还带内联 overflow:hidden ——
