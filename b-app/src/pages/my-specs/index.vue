@@ -321,13 +321,26 @@ async function addDim(g: StoreCategorySpecs) {
     uni.showToast({ title: t("mySpecs.noMoreDim"), icon: "none" });
     return;
   }
+  /*
+   * **「自己建一个」放在候选最后**，与加档位那里同一个次序：
+   * 先看平台有没有现成的，实在没有才自己建。反过来的话他会习惯性地自己建 ——
+   * 而自建规格不参与跨店聚合，那个代价在界面上看不出来。
+   */
   const i = await new Promise<number>((resolve) => {
     uni.showActionSheet({
-      itemList: rest.map((x) => x.name),
+      itemList: [...rest.map((x) => x.name), t("mySpecs.buildOwnDim")],
       success: (r) => resolve(r.tapIndex),
       fail: () => resolve(-1),
     });
   });
+  if (i < 0) return;
+
+  // 平台也没有：自己建一个（落进规格库，下次别的类目也挑得到）
+  if (i >= rest.length) {
+    await buildOwnDim(g);
+    return;
+  }
+
   const picked = rest[i];
   if (!picked) return;
   platformNames.value[picked.templateNo] = picked.name;
@@ -336,6 +349,43 @@ async function addDim(g: StoreCategorySpecs) {
     const seq = [...g.dims.map((x) => x.templateNo), picked.templateNo];
     const withNew: StoreCategorySpecs = { ...g, dims: [...g.dims, picked] };
     await commit(withNew, seq);
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: "none" });
+  }
+}
+
+/**
+ * 自己建一个平台没有的规格（「辣度」「打磨程度」）。
+ *
+ * <p>它落进规格库（scope=MERCHANT），所以**下次在别的类目也挑得到** ——
+ * 与「我建的」那一段是同一批东西，在那里能改名、能停用。
+ *
+ * <p>后端有两道兜底：与平台维度重名直接给平台那个（他要的是「按这个分规格」，
+ * 不是「拥有一个自己的颜色」）；与自己已建的重名则复用，不会造出两个「辣度」。
+ */
+async function buildOwnDim(g: StoreCategorySpecs) {
+  const name = await new Promise<string>((resolve) => {
+    uni.showModal({
+      title: t("mySpecs.buildOwnDim"),
+      content: t("mySpecs.buildOwnHint"),
+      editable: true,
+      placeholderText: t("mySpecs.buildOwnPh"),
+      success: (r) => resolve(r.confirm ? (r.content ?? "") : ""),
+      fail: () => resolve(""),
+    });
+  });
+  if (!name.trim()) return;
+  try {
+    const dim = await api.mAddSpecDim(name.trim(), []);
+    if (g.dims.some((t2) => t2.templateNo === dim.templateNo)) {
+      uni.showToast({ title: t("mySpecs.dimAlready"), icon: "none" });
+      return;
+    }
+    platformNames.value[dim.templateNo] = dim.name;
+    const seq = [...g.dims.map((x) => x.templateNo), dim.templateNo];
+    await commit({ ...g, dims: [...g.dims, dim] }, seq);
+    // 自建维度刚建出来时一个取值都没有，直接把「加档位」推到他面前
+    await load();
   } catch (e) {
     uni.showToast({ title: (e as Error).message, icon: "none" });
   }

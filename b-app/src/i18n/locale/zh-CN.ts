@@ -185,6 +185,9 @@ export default {
       removeTitle: "不用这个规格了？",
       // 说清连带后果：他对这个规格做过的档位取舍会一起没
       removeConfirm: "「{name}」以及你在它下面留的档位都会从这一类里去掉。已建好的商品不受影响。", addDim: "加一个规格", removed: "已移除（点一下加回来）",
+      buildOwnDim: "自己建一个",
+      buildOwnHint: "平台没有的规格，比如「辣度」。只有本店能用，不参与跨店比价；建好后在下面「我建的」里能改。",
+      buildOwnPh: "如 辣度",
       noMoreDim: "这一类的规格都在用了",
       typeMine: "自己填",
       pickHint: "点一下决定本店用不用这一档。平台没有的可以自己填。",

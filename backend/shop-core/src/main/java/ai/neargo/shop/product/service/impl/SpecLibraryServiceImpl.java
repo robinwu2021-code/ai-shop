@@ -142,6 +142,42 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
                     options, null, Boolean.TRUE.equals(b.getIsPrimary())));
         }
         /*
+         * **他自己加进来的规格**：类目没绑，但他在「我的规格」里加了。
+         *
+         * 只遍历类目绑定的话，加进来的规格落了库却永远不显示 —— 界面上就是
+         * 「点了 ＋ 选了一个，什么都没发生」。与档位那层的「加」是同一件事：
+         * 平台给的那份是起点，不是上限。
+         */
+        Set<String> shown = out.stream().map(SpecTemplateVO::templateNo).collect(Collectors.toSet());
+        for (String dimNo : ov.addedDims()) {
+            if (shown.contains(dimNo)) {
+                continue;
+            }
+            PrdSpecDim dim = DataScopeContext.executeWithoutScope(() ->
+                    dimMapper.selectOne(Wrappers.<PrdSpecDim>lambdaQuery()
+                            .eq(PrdSpecDim::getDimNo, dimNo)
+                            .eq(PrdSpecDim::getStatus, PrdSpecDim.ACTIVE).last("limit 1")));
+            if (dim == null || !PrdSpecDim.SALE.equals(dim.getUsageType())) {
+                continue;   // 归档了或是 PROP：跳过而不是抛，理由同上面那条悬空绑定
+            }
+            // 类目没给子集，所以给全量值池，再让他自己的取舍去裁
+            List<SpecTemplateVO.Option> options = ov.applyToValues(dimNo,
+                    optionsOf(merchantNo, dim, List.of()),
+                    () -> optionsOf(merchantNo, dim, List.of()));
+            /*
+             * **一个档位都没有也要给出来。**刚自建的规格必然是这个样子
+             * （建的时候只填了名字），跳过它的话商家看到的是「我建了个规格，
+             * 但它没出现」—— 而他要做的下一步恰恰是进去给它加档位。
+             *
+             * 平台维度不会走到这里没档位：类目绑定那圈里的空维度仍然跳过
+             * （那是运营配错了，不该让商家看见一个点进去空白的规格）。
+             */
+            out.add(new SpecTemplateVO(dim.getDimNo(), PrdSpecDim.PLATFORM,
+                    categoryService.categoryTypeOf(categoryNo), categoryNo,
+                    ov.dimLabel(dim.getDimNo(), dim.getName()), options, null, false));
+        }
+
+        /*
          * 本店排过序的排前面（按商家给的 sort），没排过的**保持平台顺序跟在后面**。
          * 不给没排过的编一个号：那样运营新加的维度会插到他排好的中间去，
          * 而他不知道自己什么时候动过它。
@@ -197,6 +233,17 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
             PrdMerchantSpecOverride r = dims.get(dimNo);
             return r != null && r.getLabelOverride() != null && !r.getLabelOverride().isBlank()
                     ? r.getLabelOverride() : fallback;
+        }
+
+        /** 他显式声明要用、而类目没绑的那几个规格 —— 读侧要把它们补进来 */
+        java.util.Set<String> addedDims() {
+            java.util.Set<String> out = new java.util.LinkedHashSet<>();
+            dims.forEach((dimNo, r) -> {
+                if (!Boolean.FALSE.equals(r.getEnabled())) {
+                    out.add(dimNo);
+                }
+            });
+            return out;
         }
 
         boolean dimEnabled(String dimNo) {
