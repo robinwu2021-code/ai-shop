@@ -337,11 +337,32 @@ public class BizMerchantController {
     @PostMapping("/biz/store/announcement")
     public StoreProfileVO saveAnnouncement(@RequestBody AnnouncementReq req) {
         return storeService.saveAnnouncement(BizContext.requireMerchantNo(),
-                BizContext.current().currentStoreNo(), req.announcement(), req.announcementUntil());
+                BizContext.current().currentStoreNo(), req.announcement(), req.announcementUntil(),
+                req.alsoStoreNos());
     }
 
-    /** @param announcementUntil 失效时刻（epoch 毫秒），空 = 长期 */
-    public record AnnouncementReq(String announcement, Long announcementUntil) {
+    /**
+     * 从「常用」里删一条。**独立一条路而不是塞进保存** ——
+     * 删掉一句候选语不该顺带把当前公告改掉。
+     */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.STORE + "')")
+    @PostMapping("/biz/store/announcement/recent/remove")
+    public StoreProfileVO dropRecentAnnouncement(@RequestBody RecentReq req) {
+        return storeService.dropRecentAnnouncement(BizContext.requireMerchantNo(),
+                BizContext.current().currentStoreNo(), req.text());
+    }
+
+    /**
+     * @param announcementUntil 失效时刻（epoch 毫秒），空 = 长期
+     * @param alsoStoreNos      同时发到这些门店（多店主体）。空 = 只发当前店 ——
+     *                          「南门店今天停电」只对一家成立，所以默认不带
+     */
+    public record AnnouncementReq(String announcement, Long announcementUntil,
+                                  java.util.List<String> alsoStoreNos) {
+    }
+
+    /** @param text 要从常用里删掉的那一句，按原文匹配 */
+    public record RecentReq(String text) {
     }
 
     // ---------------------------------------------------------------- 门店送货方式（方案 v4）

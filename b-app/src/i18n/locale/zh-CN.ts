@@ -734,6 +734,7 @@ export default {
     unavailable: "暂时定位不到，可以手动填或稍后再试",
   },
   store: {
+    noticeAlso: "同时发到",
     noticeSubmitted: "已提交审核",
     noticeAuditing: "审核中",
     noticeAuditingHint: "通过后自动替换现在挂着的那条",

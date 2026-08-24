@@ -553,6 +553,7 @@ export default {
     unavailable: "تعذر تحديد الموقع الآن — اكتبه يدوياً أو حاول لاحقاً",
   },
   store: {
+    noticeAlso: "انشر أيضاً في",
     noticeSubmitted: "أُرسل للمراجعة",
     noticeAuditing: "قيد المراجعة",
     noticeAuditingHint: "سيحل محل الإعلان الحالي بعد الموافقة",

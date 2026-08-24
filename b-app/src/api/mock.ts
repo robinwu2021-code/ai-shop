@@ -1263,9 +1263,15 @@ export const mockApi: MerchantApi = {
     }
     (st as { noticePending?: unknown }).noticePending = null;
     st.announcementRecent = [now, ...(st.announcementRecent ?? []).filter((x) => x && x !== now)]
-      .filter(Boolean).slice(0, 5);
+      .filter(Boolean).slice(0, 8);
     st.announcement = now;
     st.announcementUntil = payload.announcementUntil ?? null;
+    /*
+     * 「同时发到」别的门店：mock 只有一份 db.store，写不出多店的效果 ——
+     * 这里只把它记下来，让端上的勾选有个回声。多店的真实行为由后端用例守
+     * （ServiceAreaFlowTest.announcementFansOutToPickedStores）。
+     */
+    (st as { alsoStoreNos?: string[] }).alsoStoreNos = payload.alsoStoreNos ?? [];
     persist();
     const out = { ...st };
     if (out.announcementUntil && out.announcementUntil < Date.now()) out.announcement = "";
@@ -1278,6 +1284,13 @@ export const mockApi: MerchantApi = {
     const url = `/pages/store/index?merchantNo=${merchantNo}&from=QR`;
     return delay({ url });
   },
+  async mDropNoticeRecent(text) {
+    const st = db.store as typeof db.store & { announcementRecent?: string[] };
+    st.announcementRecent = (st.announcementRecent ?? []).filter((x) => x && x !== text);
+    persist();
+    return delay({ ...st } as typeof db.store);
+  },
+
 
   async mShareKit(goodsNo) {
     const merchantNo = requireMerchant();

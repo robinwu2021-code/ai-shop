@@ -396,12 +396,23 @@ export interface MerchantApi {
   /** 从省到自身的整条链路（选择器从搜索命中下钻用） */
   mRegionPath(code: string): Promise<Region[]>;
   /** 坐标转地址（P2）。未开通时抛 10503，端上据此藏按钮 */
+  mGeoReverse(lat: number, lng: number): Promise<GeoReverseResult>;
   /**
    * 只改公告。与 mSaveStore 分开的一条路 —— 公告一天可能改两次，
    * 混在整份门面里保存，改一句话要连带提交地址与营业时间。
    */
-  mSaveAnnouncement(payload: { announcement: string; announcementUntil: number | null }): Promise<StoreProfile>;
-  mGeoReverse(lat: number, lng: number): Promise<GeoReverseResult>;
+  /**
+   * 只改公告。
+   *
+   * @param payload.alsoStoreNos 同时发到这些门店（多店主体）。**默认不带** ——
+   *                             「南门店今天停电」只对一家店成立；而「今天到货」
+   *                             三家都成立时，让他进三次店发三遍是纯粹的重复劳动
+   */
+  mSaveAnnouncement(payload: {
+    announcement: string; announcementUntil: number | null; alsoStoreNos?: string[];
+  }): Promise<StoreProfile>;
+  /** 从「常用」里删掉一条（按原文匹配）。删候选不动当前公告 */
+  mDropNoticeRecent(text: string): Promise<StoreProfile>;
   /** 地点输入提示。未开通（后端没配 Web 服务 key）返回空数组，端上退回自由输入 */
   mGeoTips(kw: string, city?: string): Promise<GeoTip[]>;
   /** 新建。**超额直接拒** —— 建出来却打不开的店比拒绝更难解释 */

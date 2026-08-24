@@ -50,7 +50,24 @@ public interface MerchantStoreService {
      *
      * @param until 失效时刻（epoch 毫秒），空 = 长期
      */
-    StoreProfileVO saveAnnouncement(String merchantNo, String storeNo, String announcement, Long until);
+    /**
+     * 只改公告。
+     *
+     * @param alsoStoreNos 同一句话顺带发给这些门店（多店主体的「同时发到」）。
+     *                     <b>不含当前店</b>，重复与不属于本主体的会被忽略 ——
+     *                     一句「今天到货」在三家店都成立时，让他进三次店发三遍是纯粹的重复劳动；
+     *                     而默认不勾，因为「南门店今天停电」只对一家成立
+     */
+    StoreProfileVO saveAnnouncement(String merchantNo, String storeNo, String announcement, Long until,
+                                    java.util.List<String> alsoStoreNos);
+
+    /**
+     * 从「常用」里删掉一条。
+     *
+     * <p>常用是服务端按最近使用维护的，此前<b>只进不出</b>：写错一次的那句
+     * 会一直待在候选里，每次发公告都要绕过它。
+     */
+    StoreProfileVO dropRecentAnnouncement(String merchantNo, String storeNo, String text);
 
     /**
      * 覆盖社区全量替换。审核与店铺设置<b>共用这一处实现</b> ——

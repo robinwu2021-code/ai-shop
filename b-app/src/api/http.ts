@@ -137,6 +137,8 @@ export const httpApi: MerchantApi = {
     http.get<StoreFulfillment>(buildPath(E.mStoreFulfillment.path, { storeNo })),
   mSaveAnnouncement: (payload) => http.post<StoreProfile>(E.mSaveAnnouncement.path, payload),
   mSaveStoreFulfillment: (storeNo, payload) =>
+  mSaveAnnouncement: (payload) => http.post<StoreProfile>(E.mSaveAnnouncement.path, payload),
+  mDropNoticeRecent: (text) => http.post<StoreProfile>(E.mDropNoticeRecent.path, { text }),
     http.put<StoreFulfillment>(
       buildPath(E.mSaveStoreFulfillment.path, { storeNo }),
       payload satisfies StoreFulfillmentSaveReq,

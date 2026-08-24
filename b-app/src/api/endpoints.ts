@@ -49,7 +49,8 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
 
   mStoreFulfillment: { method: "GET", path: "/biz/stores/:storeNo/fulfillment", auth: true, summary: "门店送货方式" },
   mSaveStoreFulfillment: { method: "PUT", path: "/biz/stores/:storeNo/fulfillment", auth: true, summary: "保存门店送货方式" },
-  mSaveAnnouncement: { method: "POST", path: "/biz/store/announcement", auth: true, summary: "只改公告（含有效期）" },
+  mSaveAnnouncement: { method: "POST", path: "/biz/store/announcement", auth: true, summary: "只改公告（含有效期，可同时发到别的门店）" },
+  mDropNoticeRecent: { method: "POST", path: "/biz/store/announcement/recent/remove", auth: true, summary: "从常用里删一条" },
   mFulfillmentImpact: { method: "GET", path: "/biz/stores/:storeNo/fulfillment/:channel/impact", auth: true, summary: "关掉这一路会影响的在售商品" },
   mPickupCandidates: { method: "GET", path: "/biz/pickup-points/candidates", auth: true, summary: "门店可引用的取货点候选" },
   mSelfBuildPickup: { method: "POST", path: "/biz/pickup-points", auth: true, summary: "自建自提点（待运营核实）" },

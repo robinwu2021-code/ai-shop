@@ -249,14 +249,55 @@ class ServiceAreaFlowTest {
     private ai.neargo.shop.merchant.service.MerchantGovernService governService;
 
     @Test
+    @DisplayName("★★ 「同时发到」把同一句发进选中的店，别家不动、每家的常用各是各的")
+    void announcementFansOutToPickedStores() {
+        String m = merchant("PICKUP");
+        store(m);                                   // 默认店
+        String b = extraStore(m, "南门店");
+        String c = extraStore(m, "文三店");
+        String other = merchant("PICKUP");          // 另一个主体
+        store(other);
+        String outsider = extraStore(other, "别人家的店");
+
+        storeService.saveAnnouncement(m, null, "今天到了新米", null, java.util.List.of(b, outsider));
+
+        assertThat(storeService.profile(m, null).announcement()).isEqualTo("今天到了新米");
+        assertThat(storeService.profile(m, b).announcement()).as("勾了的店").isEqualTo("今天到了新米");
+        assertThat(storeService.profile(m, c).announcement()).as("没勾的店不动").isEmpty();
+        /*
+         * 端上传来的门店号可能不属于本主体 —— 那会把一句公告写进别人店里，
+         * 而两边都不会报错。所以目标店要从库里按主体查一遍，不信端上给的。
+         */
+        assertThat(storeService.profile(other, outsider).announcement())
+                .as("别家主体的店，写不进去").isEmpty();
+    }
+
+    @Test
+    @DisplayName("★ 常用能一条条删 —— 写错一次的那句不该赖着不走")
+    void recentAnnouncementCanBeDropped() {
+        String m = merchant("PICKUP");
+        store(m);
+        storeService.saveAnnouncement(m, null, "今天到了新米", null, java.util.List.of());
+        storeService.saveAnnouncement(m, null, "土鸡蛋还有两筐", null, java.util.List.of());
+
+        var before = storeService.profile(m).announcementRecent();
+        assertThat(before).containsExactly("土鸡蛋还有两筐", "今天到了新米");
+
+        var after = storeService.dropRecentAnnouncement(m, null, "今天到了新米");
+        assertThat(after.announcementRecent()).containsExactly("土鸡蛋还有两筐");
+        // 删候选不该顺带改当前公告
+        assertThat(after.announcement()).isEqualTo("土鸡蛋还有两筐");
+    }
+
+    @Test
     @DisplayName("★★ 公告命中机审：旧公告照常挂着，而商家看得到「我那条在等审」")
     void noticeInReviewIsVisibleToMerchant() {
         String m = merchant("PICKUP");
         store(m);
-        storeService.saveAnnouncement(m, null, "今天到了新米", null);
+        storeService.saveAnnouncement(m, null, "今天到了新米", null, java.util.List.of());
 
         // 「最低价」在 V10 种下的词表里
-        storeService.saveAnnouncement(m, null, "全场最低价", null);
+        storeService.saveAnnouncement(m, null, "全场最低价", null, java.util.List.of());
 
         var vo = storeService.profile(m);
         assertThat(vo.announcement()).as("命中期间保留旧公告").isEqualTo("今天到了新米");
@@ -276,7 +317,7 @@ class ServiceAreaFlowTest {
         String second = extraStore(m, "南门店");
         long until = System.currentTimeMillis() + 3600_000L;
 
-        storeService.saveAnnouncement(m, second, "全场最低价，速来", until);
+        storeService.saveAnnouncement(m, second, "全场最低价，速来", until, java.util.List.of());
 
         var pending = governService.storeAudits("PENDING").stream()
                 .filter(a -> a.merchantNo().equals(m)).findFirst().orElseThrow();
@@ -334,7 +375,7 @@ class ServiceAreaFlowTest {
                 java.util.List.of(new ai.neargo.shop.merchant.service.MerchantStoreService
                         .AreaCommand("COMMUNITY", c)), 22_695_293, 114_027_370));
 
-        storeService.saveAnnouncement(m, null, "今天到了新米", null);
+        storeService.saveAnnouncement(m, null, "今天到了新米", null, java.util.List.of());
 
         var vo = storeService.profile(m);
         assertThat(vo.announcement()).isEqualTo("今天到了新米");
@@ -350,7 +391,7 @@ class ServiceAreaFlowTest {
     }
 
     @Test
-    @DisplayName("★ 常用公告：最近用过的排最前、不重复、最多 5 条")
+    @DisplayName("★ 常用公告：最近用过的排最前、不重复、最多 8 条")
     void recentAnnouncementsAreDeduped() {
         String m = merchant("PICKUP");
         store(m);
@@ -358,16 +399,18 @@ class ServiceAreaFlowTest {
         var areas = java.util.List.of(new ai.neargo.shop.merchant.service.MerchantStoreService
                 .AreaCommand("COMMUNITY", c));
 
-        for (String text : java.util.List.of("一", "二", "三", "一", "四", "五", "六")) {
+        for (String text : java.util.List.of("一", "二", "三", "一", "四", "五", "六", "七", "八", "九")) {
             storeService.save(m, null, new ai.neargo.shop.merchant.service.MerchantStoreService.SaveCommand(
                     text, null, "08:00-20:00", "文一西路 1 号", null,
                     java.util.List.of(), null, null, null, "PICKUP", areas, null, null));
         }
 
         var recent = storeService.profile(m).announcementRecent();
-        assertThat(recent).hasSize(5);
-        assertThat(recent.get(0)).as("刚用过的排最前").isEqualTo("六");
-        assertThat(recent).as("同一句只留一条").containsExactly("六", "五", "四", "一", "三");
+        assertThat(recent).hasSize(8);
+        assertThat(recent.get(0)).as("刚用过的排最前").isEqualTo("九");
+        // 「一」用过两次，只留最近那一次的位置（第 4 次发的，排在「三」前面）
+        assertThat(recent).as("同一句只留一条")
+                .containsExactly("九", "八", "七", "六", "五", "四", "一", "三");
     }
 
     @Test

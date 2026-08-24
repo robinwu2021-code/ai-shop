@@ -95,7 +95,8 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
 
     @Override
     @Transactional
-    public StoreProfileVO saveAnnouncement(String merchantNo, String storeNo, String announcement, Long until) {
+    public StoreProfileVO saveAnnouncement(String merchantNo, String storeNo, String announcement, Long until,
+                                           List<String> alsoStoreNos) {
         MchStore store = row(merchantNo, storeNo);
         if (store == null) {
             // 还没建过门店就改公告：这条路只在异常状态下走得到，直接拒比默默建一行安全
@@ -110,9 +111,56 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
             submitForAudit(merchantNo, store.getStoreNo(), MchStoreAudit.NOTICE, announcement, hits, until);
             return profile(merchantNo, storeNo);
         }
+        applyAnnouncement(store, announcement, until);
+        /*
+         * 顺带发给别的店。**逐店写，不是一条 UPDATE 扫全主体** ——
+         * 「常用」是每家店各自的（各店发的话本来就不一样），一把梭会把三家店的常用抹成同一份。
+         */
+        for (MchStore other : alsoStores(merchantNo, storeNo, alsoStoreNos)) {
+            applyAnnouncement(other, announcement, until);
+        }
+        return profile(merchantNo, storeNo);
+    }
+
+    /** 写一家店的公告：正文、有效期、常用三样一起，别处不动 */
+    private void applyAnnouncement(MchStore store, String announcement, Long until) {
         store.setAnnouncement(announcement);
         store.setAnnouncementUntil(until);
         store.setAnnouncementRecent(writeJson(pushRecent(store.getAnnouncementRecent(), announcement)));
+        DataScopeContext.executeWithoutScope(() -> storeMapper.updateById(store));
+    }
+
+    /**
+     * 「同时发到」的目标店。
+     *
+     * <p><b>从库里查一遍，不信端上给的号</b>：端上传来的可能是别家主体的门店号 ——
+     * 那会把一句公告写到别人店里，而两边都不会报错。当前店与重复项也在这里滤掉。
+     */
+    private List<MchStore> alsoStores(String merchantNo, String storeNo, List<String> asked) {
+        if (asked == null || asked.isEmpty()) {
+            return List.of();
+        }
+        java.util.Set<String> want = new java.util.LinkedHashSet<>(asked);
+        want.remove(storeNo);
+        if (want.isEmpty()) {
+            return List.of();
+        }
+        return DataScopeContext.executeWithoutScope(() -> storeMapper.selectList(
+                Wrappers.<MchStore>lambdaQuery()
+                        .eq(MchStore::getEntityNo, merchantNo)
+                        .in(MchStore::getStoreNo, want)));
+    }
+
+    @Override
+    @Transactional
+    public StoreProfileVO dropRecentAnnouncement(String merchantNo, String storeNo, String text) {
+        MchStore store = row(merchantNo, storeNo);
+        if (store == null || text == null || text.isBlank()) {
+            return profile(merchantNo, storeNo);
+        }
+        List<String> kept = readList(store.getAnnouncementRecent()).stream()
+                .filter(x -> !text.equals(x)).toList();
+        store.setAnnouncementRecent(writeJson(kept));
         MchStore toSave = store;
         DataScopeContext.executeWithoutScope(() -> storeMapper.updateById(toSave));
         return profile(merchantNo, storeNo);
@@ -330,8 +378,14 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
         return a == null ? null : new StoreProfileVO.NoticePending(a.getContent(), a.getSubmittedAt());
     }
 
-    /** 常用公告最多留几条。5 条覆盖得住轮换，再多这一排就要换行、也要开始滚动 */
-    private static final int RECENT_MAX = 5;
+    /**
+     * 常用公告最多留几条。
+     *
+     * <p>原先是 5：那时列表只进不出，留多了就是一排删不掉的旧句子。
+     * 现在能一条条删，多留几条的成本降下来了 —— 8 条大致覆盖一个店主的全部轮换
+     * （到货、售罄、放假、活动各两句），再多这一排要开始滚动。
+     */
+    private static final int RECENT_MAX = 8;
 
     /**
      * 把这次用的公告推进「常用」：去重、移到最前、截到 5 条。

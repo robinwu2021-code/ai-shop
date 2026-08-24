@@ -29,12 +29,35 @@ const pending = ref<{ content: string; submittedAt: number } | null>(null);
  * 「什么都没挂却给撤下按钮」和「挂着却没有撤下」两种错。
  */
 const live = ref("");
+
+/**
+ * 「同时发到」勾中的门店号。**默认空** —— 公告里有相当一部分只对一家店成立
+ * （「南门店今天停电」），默认勾上会把它发得到处都是，而这种错要等买家白跑一趟才发现。
+ * 反过来「今天到货」三家都成立时，进三次店发三遍是纯粹的重复劳动，所以要有这个。
+ */
+const alsoStoreNos = ref<string[]>([]);
+/** 可选的：本主体除当前店以外还在营业的店 */
+const otherStores = computed(() =>
+  merchant.stores.filter((x) => x.storeNo !== merchant.storeNo && x.status === "ACTIVE"));
+function toggleAlso(storeNo: string) {
+  const i = alsoStoreNos.value.indexOf(storeNo);
+  if (i >= 0) alsoStoreNos.value.splice(i, 1);
+  else alsoStoreNos.value.push(storeNo);
+}
 /** 服务端那份（判「改没改」）。没改动时发布键是灰的 */
 const savedText = ref("");
 const savedUntil = ref<number | null>(null);
 const loaded = ref(false);
+/**
+ * 有没有可发布的改动。
+ *
+ * <p>**勾了「同时发到」也算**：同一句话原样发给另外几家店是一次真的发布，
+ * 而正文没动。只看正文与有效期的话，勾完店发现按钮还是灰的 ——
+ * 点不动的按钮不会让人去改正文，只会让人以为这功能坏了。
+ */
 const dirty = computed(() =>
-  loaded.value && (text.value !== savedText.value || until.value !== savedUntil.value));
+  loaded.value && (text.value !== savedText.value || until.value !== savedUntil.value
+    || alsoStoreNos.value.length > 0));
 
 /**
  * 有效期三档。**存失效时刻**（epoch 毫秒）而不是「几天」——
@@ -91,6 +114,7 @@ const recent = computed(() => recentAll.value.filter((x) => x && x !== text.valu
 
 async function load() {
   try {
+    await merchant.ensureStores().catch(() => null);
     const s = await api.mStore();
     text.value = s.announcement ?? "";
     until.value = s.announcementUntil ?? null;
@@ -119,6 +143,7 @@ async function publish() {
     const saved = await api.mSaveAnnouncement({
       announcement: text.value,
       announcementUntil: until.value,
+      alsoStoreNos: alsoStoreNos.value.length ? [...alsoStoreNos.value] : undefined,
     });
     pending.value = saved.noticePending ?? null;
     /*
@@ -135,6 +160,8 @@ async function publish() {
     }
     savedText.value = text.value;
     savedUntil.value = until.value;
+    // 勾选不留到下一条：分发范围是「这一句发给谁」，不是一项设置
+    alsoStoreNos.value = [];
     uni.showToast({
       title: pending.value ? t("store.noticeSubmitted") : t("store.noticeSaved"),
       icon: "none",
@@ -170,6 +197,20 @@ async function withdraw() {
   await publish();
 }
 
+/** 从常用里删一条。写错一次的那句不该赖在候选里，每次发公告都要绕过它 */
+async function dropRecent(x: string) {
+  if (saving.value) return;
+  saving.value = true;
+  try {
+    const saved = await api.mDropNoticeRecent(x);
+    recentAll.value = saved.announcementRecent ?? recentAll.value.filter((r) => r !== x);
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: "none" });
+  } finally {
+    saving.value = false;
+  }
+}
+
 onShow(load);
 </script>
 
@@ -192,6 +233,20 @@ onShow(load);
           @tap="pickTtl(o.key)"
         >{{ $t(`store.ttl.${o.key}`) }}</text>
         <text v-if="untilText" class="ttl__at">{{ untilText }}</text>
+      </view>
+
+      <!-- 同时发到：只有多店主体看得到。默认不勾 —— 见 alsoStoreNos 上的说明 -->
+      <view v-if="otherStores.length" class="also">
+        <text class="also__label">{{ $t("store.noticeAlso") }}</text>
+        <view class="also__opts">
+          <text
+            v-for="o in otherStores"
+            :key="o.storeNo"
+            class="sh-chip"
+            :class="{ 'sh-chip--primary': alsoStoreNos.includes(o.storeNo) }"
+            @tap="toggleAlso(o.storeNo)"
+          >{{ o.name }}</text>
+        </view>
       </view>
 
       <view class="sh-btn go" :class="{ 'is-off': !dirty || saving }" @tap="publish">
@@ -219,7 +274,10 @@ onShow(load);
     <view v-if="recent.length" class="sh-card mt">
       <text class="field__label">{{ $t("store.noticeRecent") }}</text>
       <view class="recent">
-        <text v-for="(r, i) in recent" :key="i" class="recent__i" @tap="text = r">{{ r }}</text>
+        <view v-for="(r, i) in recent" :key="i" class="recent__row">
+          <text class="recent__i" @tap="text = r">{{ r }}</text>
+          <text class="recent__x" @tap.stop="dropRecent(r)">✕</text>
+        </view>
       </view>
     </view>
   </sh-scaffold>
@@ -228,6 +286,21 @@ onShow(load);
 <style scoped>
 .mt {
   margin-top: 24rpx;
+}
+/* 同时发到：与有效期同一档视觉，因为它们是同一件事的两个维度（多久、给谁） */
+.also {
+  margin-top: 24rpx;
+}
+.also__label {
+  display: block;
+  font-size: 24rpx;
+  color: var(--sh-sub);
+}
+.also__opts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+  margin-top: 12rpx;
 }
 /* 有效期三档：分段小胶囊，选中靠主色底 —— 不做成按钮，它是「同一件事的三种时长」 */
 .ttl {
@@ -311,7 +384,21 @@ onShow(load);
   flex-direction: column;
   gap: 12rpx;
 }
+.recent__row {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+/* ✕ 只占一小格，且与文字分开点：整行都是「换上这句」，删除是那一小块 */
+.recent__x {
+  flex-shrink: 0;
+  padding: 12rpx 16rpx;
+  font-size: 24rpx;
+  color: var(--sh-sub);
+}
 .recent__i {
+  flex: 1;
+  min-width: 0;
   padding: 16rpx 20rpx;
   border-radius: 16rpx;
   background: var(--sh-faint);

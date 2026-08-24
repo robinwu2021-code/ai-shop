@@ -173,6 +173,8 @@ class BizEndpointPermTest {
         put("/biz/store", BizPerms.STORE);
         // 只改公告：与整份门面同一个码 —— 它写的是同一张表的同一家店
         put("/biz/store/announcement", BizPerms.STORE);
+        // 删一条常用语：还是那张表那一家店，同一个码
+        put("/biz/store/announcement/recent/remove", BizPerms.STORE);
         // 门店送货方式（方案 v4）：GET/PUT 同路径同进退，都归门店管理面
         put("/biz/stores/{storeNo}/fulfillment", BizPerms.STORE);
         put("/biz/pickup-points/candidates", BizPerms.STORE);

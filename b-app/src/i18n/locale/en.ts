@@ -553,6 +553,7 @@ export default {
     unavailable: "Can’t get a location right now — type it in or try later",
   },
   store: {
+    noticeAlso: "Also post to",
     noticeSubmitted: "Sent for review",
     noticeAuditing: "In review",
     noticeAuditingHint: "Replaces the live notice once approved",
