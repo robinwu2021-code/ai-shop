@@ -125,7 +125,7 @@ export default {
       adjustHint: "✕ removes an option, ＋ picks one from the platform or adds your own. Renaming only affects your store — comparison still works.",
       save: "Save", cancel: "Cancel", reset: "Reset to platform", saved: "Saved",
       catNoDims: "No specs configured for this category yet — ask ops to add them",
-      noShelf: "No categories on your shelf yet. Pick some in “My categories”.",
+      noShelf: "No categories on your shelf yet. Pick some in “Categories & specs”.",
       mineTitle: "Mine", empty: "Nothing built yet. You can create one while adding a product.",
       used: "used by {n} products", noValues: "No values yet",
       rename: "Rename", archive: "Disable", unarchive: "Enable",

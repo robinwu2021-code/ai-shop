@@ -221,22 +221,15 @@ function pickPayment(s: Store, payMerchantNo?: string) {
   run(() => api.mSetStorePayment(s.storeNo, payMerchantNo));
 }
 
-/**
- * 跨店对比。**指名去「对比」那个 tab** —— 总览这一页已经有了，
- * 再送他去看一遍同样的东西，就又变回「两个入口一件事」。
- * 对比答的是另一个问题：这个月哪家店更好。
- */
-function goCompare() {
-  uni.navigateTo({ url: `${ROUTES.crossStore}?tab=compare` });
-}
+
 </script>
 
 <template>
   <sh-scaffold title-key="stores.title" :denied="!merchant.can('biz:store:admin')">
     <!--
-      一张列表答两个问题：哪家在做什么（数字长在卡上），以及我要切到哪家。
-      顶上那两张卡（跨店总览、资质证照）撤掉 —— 前者与下面是同一批门店排了两遍，
-      后者一年动一次，已经挪到「我的」。
+      这一页只答**此刻**的两个问题：哪家在做什么（数字长在卡上），我要切到哪家。
+      一段时间里谁更好是另一类问题，在「经营数据 › 跨店对比」——
+      同一屏里既摆今天又摆近 30 天，两个数会被读成互相矛盾。
     -->
     <view v-for="s in rows" :key="s.storeNo" class="sh-card st">
       <view class="st__top">
@@ -344,15 +337,6 @@ function goCompare() {
           {{ s.status === "ACTIVE" ? $t("stores.disable") : $t("stores.enable") }}
         </text>
       </view>
-    </view>
-
-    <!--
-      对比放在列表**之后**：先看见各店今天怎么样，才会想问「这个月哪家更好」。
-      放到顶上就又成了一个与列表抢位置的入口。
-    -->
-    <view v-if="stores.length > 1 && merchant.can('biz:customer')" class="sh-card cmp" @tap="goCompare">
-      <text class="sh-h2">{{ $t("stores.compareEntry") }}</text>
-      <sh-icon name="chevronRight" :size="18" color="var(--sh-sub)"></sh-icon>
     </view>
 
     <view v-if="!adding" class="sh-btn sh-btn--soft add" @tap="adding = true">
@@ -477,13 +461,6 @@ function goCompare() {
   margin-top: 16rpx;
 }
 
-/* 对比入口：一行卡，与门店卡同宽同缘 */
-.cmp {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: 14rpx;
-}
 
 /* 今日一行 + 待办三格：与跨店总览同一套口径，也同一套样式 */
 .today {

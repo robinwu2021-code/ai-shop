@@ -66,6 +66,11 @@ const statOf = (no: string) => picked.value.find((c) => c.categoryNo === no);
  * <p>这一页从前只是个勾选框：商家看不出这一类卖得怎么样，
  * 也无从从这里走到那批货 —— 他得回首页、进商品、再在筛选条里选同一个类目。
  */
+/** 商品规格：本店在用哪些规格、各有哪些档位。按类目分组，所以挂在这一页 */
+function goSpecs() {
+  uni.navigateTo({ url: ROUTES.mySpecs });
+}
+
 function openGoods(no: string) {
   // 商品列表是 tabBar 页，switchTab 不能带参数 —— 参数走交接位（见 shared/handoff）
   handOffGoodsCategory(no);
@@ -145,11 +150,6 @@ async function save(items: { categoryNo: string; displayName?: string; sort: num
 
 <template>
   <sh-scaffold title-key="storeCategories.title" :denied="!merchant.can('biz:store:admin')">
-    <view class="head">
-      <text class="sh-h1">{{ $t("storeCategories.title") }}</text>
-      <text class="sh-muted mt">{{ $t("storeCategories.hint") }}</text>
-    </view>
-
     <view v-for="top in tree" :key="top.categoryNo" class="sh-card grp">
       <text class="sh-h2">{{ top.name }}</text>
       <view class="opts">
@@ -212,10 +212,26 @@ async function save(items: { categoryNo: string; displayName?: string; sort: num
     </view>
 
     <sh-empty v-else :text='$t("storeCategories.empty")'></sh-empty>
+
+    <!--
+      商品规格。**这一页叫「类目与规格」，规格却一直没有门** ——
+      合并入口那一轮只合了名字，`/pages/my-specs/index` 从此没有任何地方能进去。
+      放在类目之后：规格是按本店摆出来的类目分组的，先有类目才谈得上规格。
+    -->
+    <view v-if="merchant.can('biz:goods')" class="sh-card specs" @tap="goSpecs">
+      <text class="sh-h2">{{ $t("storeCategories.specsEntry") }}</text>
+      <sh-icon name="chevronRight" :size="18" color="var(--sh-sub)"></sh-icon>
+    </view>
   </sh-scaffold>
 </template>
 
 <style scoped>
+/* 规格入口：与类目卡同宽同缘 */
+.specs {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
 .head {
   padding: 24rpx 32rpx 8rpx;
 }

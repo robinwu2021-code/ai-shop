@@ -10,6 +10,7 @@ import { computed, ref } from "vue";
 import { onShow } from "@dcloudio/uni-app";
 import { api } from "@/api";
 import { useMerchantStore } from "@/stores/merchant";
+import { ROUTES } from "@/shared/nav";
 import { money } from "@shared/utils/money";
 import type { MerchantStats } from "@shared/types";
 
@@ -22,6 +23,18 @@ const ownedPct = computed(() =>
 
 async function load() {
   stats.value = await api.mStats();
+  // 门店数决定要不要给跨店入口 —— 深链进来时 stores 还是空的
+  await merchant.ensureStores().catch(() => null);
+}
+
+/**
+ * 跨店对比。**入口在这里而不是门店管理**：那一页答的是「此刻切到哪家、这家怎么管」，
+ * 卡上给的是今天的数；「近 30 天哪家更好」与本店这几组数字是同一类问题，
+ * 摆在一起才有可比性。两处都放的话，商家会在同一屏里读到今天和近 30 天两个数，
+ * 而它们看起来互相矛盾。
+ */
+function goCompare() {
+  uni.navigateTo({ url: ROUTES.crossStore });
 }
 
 onShow(load);
@@ -30,8 +43,6 @@ onShow(load);
 <template>
   <!-- 经营数据属于客户资产（`biz:customer`）；「我的」页的入口已判过，这里给深链兜底 -->
   <sh-scaffold title-key="stats.title" :denied="!merchant.can('biz:customer')">
-    <text class="sh-h1">{{ $t("stats.title") }}</text>
-
     <template v-if="stats">
       <view class="sh-card block">
         <text class="sh-h2">{{ $t("stats.today") }}</text>
@@ -76,15 +87,28 @@ onShow(load);
       <view class="sh-card block">
         <view class="rate">
           <text class="sh-h2">{{ $t("stats.rating") }}</text>
-          <sh-rating :value="stats.rating"></sh-rating>
+          <!-- 零评价时不画星：给商家看一个凭空的 5.0，他会以为真有人评过 -->
+          <sh-rating v-if="stats.ratingCount > 0" :value="stats.rating"></sh-rating>
         </view>
         <text class="sh-muted">{{ $t("stats.ratingBasis", { n: stats.ratingCount }) }}</text>
       </view>
     </template>
+    <!-- 多店才有「比」这回事。一家店时这一行是纯噪音 -->
+    <view v-if="merchant.multiStore" class="sh-card cmp" @tap="goCompare">
+      <text class="sh-h2">{{ $t("stats.compareEntry") }}</text>
+      <sh-icon name="chevronRight" :size="18" color="var(--sh-sub)"></sh-icon>
+    </view>
   </sh-scaffold>
 </template>
 
 <style scoped>
+/* 跨店入口：与上面几张数据卡同宽同缘，排在最后 —— 先看本店，再想到比 */
+.cmp {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 14rpx;
+}
 .block {
   margin-top: 16rpx;
 }
