@@ -8,11 +8,12 @@
  * 入口留在「我的」。首页主体是社区商品流：先按覆盖范围滤掉送不到我这儿的商家，
  * 再按距离近的在前。附近的店排在商品流之前 —— 邻里购物里「谁在卖」常常先于「卖什么」。
  */
-import { onUnmounted, ref } from "vue";
+import { onUnmounted, ref, watch} from "vue";
 import { useI18n } from "vue-i18n";
 import { onShow, onShareAppMessage } from "@dcloudio/uni-app";
 import { api } from "@/api";
 import { useCommunityStore } from "@/stores/community";
+import PhoneGate from "@/components/phone-gate.vue";
 import { useCartStore } from "@/stores/cart";
 import { useUserStore } from "@/stores/user";
 import { buildShareMessage } from "@shared/ports/share";
@@ -24,6 +25,8 @@ import type { Goods, GroupBuy } from "@shared/types";
 
 const { t } = useI18n();
 const community = useCommunityStore();
+/** 「留个手机号」弹层。打开小程序、认出身份之后立刻问一次 */
+const phoneGate = ref(false);
 const cart = useCartStore();
 const user = useUserStore();
 
@@ -120,10 +123,66 @@ function gotoSearch() {
   uni.navigateTo({ url: ROUTES.search });
 }
 
+/**
+ * 打开小程序后的身份三步：**先认人，认不出就静默拿 openid，拿到了没手机号就要一个。**
+ *
+ * <p>顺序不能颠倒：先静默登录，是因为绑手机号要挂在一个账号上；
+ * 没有账号就弹绑定，绑完不知道该记在谁名下。
+ *
+ * <p><b>一次会话只弹一次。</b> 他点了「以后再说」就是明确表态了，
+ * 每次回首页再弹一遍会把它从「提示」变成「骚扰」——
+ * 而入口一直在（「我的」页那行「绑定手机号 ›」），想绑随时能绑。
+ */
+let askedPhone = false;
+
+async function ensureIdentity() {
+  // 1) 已登录？没有就静默拿 openid（微信侧不需要用户确认，无感）
+  if (!user.isLogin) {
+    await user.silentLogin();
+  }
+  if (!user.isLogin) return; // 静默失败：不拦他，逛照样逛
+
+  /*
+   * 2) **每次都核对一遍 profile，不能「缓存里有就跳过」。**
+   *
+   * 缓存下来的资料是给首屏立刻有东西看的，不是事实来源。
+   * 只在缺失时才拉的话，账号在服务端已经没了（被删、被封、已注销）时，
+   * 端上会一直显示那个**并不存在的身份**，而且**一个需要鉴权的请求都不发** ——
+   * 连 401 都触发不了，自愈机制永远不会启动。
+   *
+   * 真机实测撞到：库里把账号删了，小程序重开仍然「是」那个人，
+   * 而按设计此刻应当重新注册一个（2026-08-22）。
+   */
+  await user.loadProfile().catch(() => {});
+}
+
+/*
+ * **「该不该要手机号」用 watch，不在 onShow 里判一次就算。**
+ *
+ * onShow 那一刻状态常常还没就绪：App 的静默登录、这一页的 profile 拉取
+ * 都是飞行中的请求，谁先到不确定。判一次的后果是「大多数时候不弹」——
+ * 而它不报错，看起来就像这个功能没做（2026-08-22 真机自动化实测：
+ * token 有了、账号也建了、profile 里 phone 是 null，弹层就是不出来）。
+ *
+ * watch 则是「状态一到就判」，与顺序无关。`askedPhone` 保证一次会话只弹一次：
+ * 他点过「以后再说」就是表态了，再弹是骚扰。
+ */
+watch(
+  () => [user.isLogin, user.user?.phone] as const,
+  ([login, phone]) => {
+    if (login && !phone && !askedPhone) {
+      askedPhone = true;
+      phoneGate.value = true;
+    }
+  },
+  { immediate: true },
+);
+
 onShow(() => {
   load();
   cart.load();
   maybePickCommunity();
+  void ensureIdentity();
   timer = setInterval(() => (now.value = Date.now()), 1000);
 });
 
@@ -238,6 +297,15 @@ onShareAppMessage(() =>
         @tap="openGoods(g)"
       ></biz-goods-card>
     </view>
+    <!--
+      **必须留在 sh-scaffold 里面。** 这套 `--sh-*` 变量声明在 `:root, .sh-root` 上，
+      而**小程序里没有 `:root`** —— 根节点叫 `page`，那条选择器一个节点都不匹配，
+      全靠 scaffold 根节点上的 `.sh-root`。挂到 scaffold 外面就一个变量都继承不到：
+      遮罩和卡片背景 `var(--sh-scrim)` / `var(--sh-surface)` 双双落空变透明，
+      弹层文字直接浮在商品列表上，**看起来像页面串了行，而不像弹窗坏了**。
+      H5 上不会露：浏览器里 `:root` 是匹配的。见 shared/tests/scaffold-scope.test.ts
+    -->
+    <phone-gate class="sh-phone-gate" :show="phoneGate" @done="phoneGate = false" @close="phoneGate = false" />
   </sh-scaffold>
 </template>
 

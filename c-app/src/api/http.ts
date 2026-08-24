@@ -5,12 +5,16 @@
 import { http } from "@shared/net/http-client";
 import { buildPath, ENDPOINTS } from "./endpoints";
 import type { CreateOrderReq, GoodsQuery, ShopApi } from "./contract";
-import type { InvoiceRequest, RegionOption} from "@shared/types";
+import type { InvoiceRequest, RegionOption,
+  PhoneCapable,
+} from "@shared/types";
 // 入参的 wire 契约。satisfies 让「实际发出去的 body」在编译期受检 ——
 // 字段写错、少传、多传都编译不过，而不是等联调才发现。
 import type {
   AfterSaleReq,
   BindCommunityReq,
+  BindPhoneReq,
+  WxPhoneReq,
   CartAddReq,
   CartRemoveReq,
   CartUpdateReq,
@@ -88,6 +92,11 @@ export const httpApi: ShopApi = {
   login: (req: LoginReq) => call<LoginResp>("login", undefined, { ...req } satisfies LoginReqBody),
   profile: () => call<User>("profile"),
   logout: () => call<void>("logout"),
+  bindPhone: (phone, code) =>
+    call<User>("bindPhone", undefined, { phone, code } satisfies BindPhoneReq),
+  bindPhoneByWx: (code) => call<User>("bindPhoneByWx", undefined, { code } satisfies WxPhoneReq),
+  phoneCapable: () => call<PhoneCapable>("phoneCapable"),
+  deregister: () => call<void>("deregister"),
   bindCommunity: (communityNo, pickupNo) =>
     call<User>("bindCommunity", undefined, { communityNo, pickupNo } satisfies BindCommunityReq),
 

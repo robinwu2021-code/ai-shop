@@ -40,6 +40,7 @@ import type {
   CategoryType,
   FulfillmentType,
   ReviewScores,
+  PhoneCapable,
   RegionOption,
 } from "@shared/types";
 
@@ -98,6 +99,22 @@ export interface ShopApi {
    * 社区电商大量是家庭共用手机的场景，这不是理论风险。
    */
   logout(): Promise<void>;
+  /**
+   * 绑定手机号（验证码）。**静默登录建出来的账号没有手机号**，
+   * 而履约要联系买家：自提发到货通知、配送打电话。
+   */
+  bindPhone(phone: string, code: string): Promise<User>;
+  /** 微信一键授权绑定。通道不可用时后端报 70027，端上据此切回验证码 */
+  bindPhoneByWx(code: string): Promise<User>;
+  /** 一键授权当前可不可用 —— 由后端说了算，端上判不出来 */
+  phoneCapable(): Promise<PhoneCapable>;
+  /**
+   * 注销账号。**微信对有账号体系的小程序要求提供这个入口**。
+   *
+   * 做的是匿名化 + 解绑凭证：交易记录留存（有留存义务），
+   * 而同一个微信再进来是一个全新账号。
+   */
+  deregister(): Promise<void>;
   bindCommunity(communityNo: string, pickupNo: string): Promise<User>;
 
   // ---- 地址簿（送货上门 / 快递的前置）

@@ -1,5 +1,6 @@
 package ai.neargo.shop.common;
 
+import ai.neargo.shop.auth.ConsumerTokenAuthFilter;
 import jakarta.validation.ConstraintViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -60,10 +61,31 @@ public class GlobalExceptionHandler {
     }
 
     /** 未登录：唯一发真状态码的分支，前端据此清 token（见类注释）。 */
+    /**
+     * 401。**分「没登录」与「登录过期」两种** —— 端上要做的事不同：
+     * 前者引导去登录页（游客逛店是常态），后者要说「登录已过期」<b>并清掉本地那份 token</b>。
+     *
+     * <p>为什么这里也要判一次：{@code ApiAuthEntryPoint} 只管得到需要认证的链（`/biz`、`/ops`）。
+     * <b>`/mp/**` 是 permitAll</b>，请求会一路走到控制器、由 `currentUser()` 抛这个异常 ——
+     * 于是同一个「会话没了」在 C 端说成 10401、在 B 端说成 10402。
+     * 当初那条修复写的是「两条链一起改」，而 C 端这一半漏在了 permitAll 后面。
+     */
     @ExceptionHandler(UnauthorizedException.class)
     @ResponseStatus(HttpStatus.UNAUTHORIZED)
     public ApiResult<Void> onUnauthorized(UnauthorizedException e) {
-        return ApiResult.error(ErrorCode.UNAUTHORIZED.code(), Messages.get(ErrorCode.UNAUTHORIZED.msgKey()));
+        Boolean expired = currentRequestAttr(ConsumerTokenAuthFilter.TOKEN_EXPIRED_ATTR);
+        ErrorCode code = Boolean.TRUE.equals(expired) ? ErrorCode.TOKEN_EXPIRED : ErrorCode.UNAUTHORIZED;
+        return ApiResult.error(code.code(), Messages.get(code.msgKey()));
+    }
+
+    /** 取当前请求上的属性。拿不到请求（异步线程、单测直调）时返回 null，不抛 */
+    @SuppressWarnings("unchecked")
+    private static <T> T currentRequestAttr(String name) {
+        var attrs = org.springframework.web.context.request.RequestContextHolder.getRequestAttributes();
+        if (!(attrs instanceof org.springframework.web.context.request.ServletRequestAttributes sra)) {
+            return null;
+        }
+        return (T) sra.getRequest().getAttribute(name);
     }
 
     @ExceptionHandler(Exception.class)

@@ -24,6 +24,21 @@ public final class UserMappers {
 
     /** 登录凭证。一个人多条，唯一键 (identity_type, identity_value)。 */
     public interface IdentityMapper extends BaseMapper<UsrIdentity> {
+
+        /**
+         * <b>物理</b>删除某人的全部凭证 —— 注销账号专用。
+         *
+         * <p>不能用 `delete()`：`BaseEntity` 上有 `@TableLogic`，那条会变成
+         * `update ... set deleted = 1`，而 <b>{@code uk_identity} 唯一键里没有 deleted</b>，
+         * 软删掉的行仍然占着 (type, value)。后果是**同一个微信永远注册不回来** ——
+         * 注销之后再进小程序，建号那一步撞唯一键、整个登录 500，
+         * 而报错是「系统开小差」，跟注销一点关系都看不出来。
+         *
+         * <p>这也是注销该做的事：凭证要真的还回去，不是留着占位。
+         */
+        @org.apache.ibatis.annotations.Delete(
+                "DELETE FROM usr_identity WHERE user_no = #{userNo}")
+        int deleteAllByUserPhysically(@org.apache.ibatis.annotations.Param("userNo") String userNo);
     }
 
     public interface AddressMapper extends BaseMapper<UsrAddress> {

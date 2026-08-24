@@ -59,6 +59,32 @@ export function setForbiddenHandler(fn: () => void): void {
   onForbidden = fn;
 }
 
+/**
+ * 丢掉值为 `undefined` / `null` 的字段。
+ *
+ * <p><b>GET 时这不是洁癖，是正确性。</b> `uni.request` 把 `data` 拼进查询串，
+ * 而 `undefined` 会被拼成**字面量字符串** `"undefined"`：
+ * 未绑社区的游客请求 `/mp/merchant?communityNo=undefined`，
+ * 后端把它当成一个真实社区去过滤，于是**返回 1 家而不是 6 家** ——
+ * 不报错、不空白，只是少了五家店，而谁也不会怀疑「没传的参数」。
+ * 2026-08-22 在小程序真机链路上抓到（nginx 日志里那行 `communityNo=undefined`）。
+ *
+ * <p>POST 时丢掉它们也对：JSON 里 `undefined` 本来就不该出现。
+ * 只处理普通对象 —— 数组与 FormData 原样透传。
+ */
+function pruneUndefined(data?: object): Record<string, unknown> | undefined {
+  if (!data || Array.isArray(data) || Object.getPrototypeOf(data) !== Object.prototype) {
+    return data as Record<string, unknown> | undefined;
+  }
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(data)) {
+    if (v !== undefined && v !== null) {
+      out[k] = v;
+    }
+  }
+  return out;
+}
+
 export function request<T>(
   method: Method,
   path: string,
@@ -75,7 +101,7 @@ export function request<T>(
     uni.request({
       url: `${BASE}${path}`,
       method,
-      data: data as Record<string, unknown> | undefined,
+      data: pruneUndefined(data),
       header: {
         "Content-Type": "application/json",
         ...(token ? { Authorization: `Bearer ${token}` } : {}),

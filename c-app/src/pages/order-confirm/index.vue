@@ -15,6 +15,8 @@ import { onLoad } from "@dcloudio/uni-app";
 import { api, idempotencyKey } from "@/api";
 import { segmentByMerchant, useCartStore } from "@/stores/cart";
 import { useCommunityStore } from "@/stores/community";
+import { useUserStore } from "@/stores/user";
+import PhoneGate from "@/components/phone-gate.vue";
 import { FEATURES, FULFILLMENT, POINTS, ROUTES, TRADE_RULES } from "@shared/utils/constants";
 import { datetime, money } from "@shared/utils/format";
 import { earnPointsFor, pricingFor } from "@shared/strategies/pricing";
@@ -26,6 +28,9 @@ import type { Address, CartItem, CheckoutCapability, Coupon, FulfillmentType, Or
 const { t } = useI18n();
 const cart = useCartStore();
 const community = useCommunityStore();
+const user = useUserStore();
+/** 「先留个手机号」弹层。绑完自动继续提交，不用他再点一次 */
+const phoneGate = ref(false);
 
 const fulfillment = ref<FulfillmentType>(FULFILLMENT.PICKUP);
 const items = ref<CartItem[]>([]);
@@ -307,6 +312,19 @@ async function submit() {
     setTimeout(() => uni.navigateTo({ url: ROUTES.community }), 800);
     return;
   }
+  /*
+   * **没有手机号就先要一个。**
+   *
+   * 静默登录建出来的账号没有手机号，而这一单之后要联系他：
+   * 自提点到货发通知、配送打电话。等到那时候才发现没号，货已经在路上了。
+   *
+   * 弹在这一刻而不是启动时：现在他手里有一车东西、正要付钱，
+   * 「为什么要我的号」不用解释 —— 而启动时问是最典型的劝退。
+   */
+  if (!user.user?.phone) {
+    phoneGate.value = true;
+    return;
+  }
   submitting.value = true;
   try {
     const order = await api.createOrder({
@@ -535,6 +553,23 @@ onMounted(async () => {
       </view>
     </view>
     <view class="spacer" />
+    <!--
+      **必须留在 sh-scaffold 里面。** 这套 `--sh-*` 变量声明在 `:root, .sh-root` 上，
+      而**小程序里没有 `:root`** —— 根节点叫 `page`，那条选择器一个节点都不匹配，
+      全靠 scaffold 根节点上的 `.sh-root`。挂到 scaffold 外面就一个变量都继承不到：
+      遮罩和卡片背景 `var(--sh-scrim)` / `var(--sh-surface)` 双双落空变透明，
+      弹层文字直接浮在商品列表上，**看起来像页面串了行，而不像弹窗坏了**。
+      H5 上不会露：浏览器里 `:root` 是匹配的。见 shared/tests/scaffold-scope.test.ts
+    -->
+    <!--
+      绑完手机号**自动继续提交**，不让他再点一次「提交订单」——
+      多那一次点击，人会以为刚才那下没生效。
+    -->
+    <phone-gate
+      :show="phoneGate"
+      @done="((phoneGate = false), submit())"
+      @close="phoneGate = false"
+    />
   </sh-scaffold>
 </template>
 

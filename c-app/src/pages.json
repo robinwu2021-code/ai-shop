@@ -170,6 +170,12 @@
       "style": {
         "navigationBarTitleText": "我发起的团"
       }
+    },
+    {
+      "path": "pages/legal/index",
+      "style": {
+        "navigationBarTitleText": ""
+      }
     }
   ],
   "globalStyle": {

@@ -1,10 +1,18 @@
 // 登录态 + 用户资料。token 走 uni storage（请求层直接读），资料走 pinia persist。
 import { defineStore } from "pinia";
 import { api } from "@/api";
+import { silentLoginPayload } from "@shared/ports/auth";
 import { STORAGE } from "@shared/utils/constants";
 import { getPushDevice } from "@shared/ports/push";
 import { useCommunityStore } from "./community";
 import type { LoginReq, User } from "@shared/types";
+
+/**
+ * 正在进行的静默登录。**模块级而不是 state**：它是一个 promise，
+ * 放进 pinia state 会被持久化插件序列化（存进去的是 `{}`），
+ * 而这里要的是「能 await 的那个东西」。
+ */
+let silentInFlight: Promise<boolean> | null = null;
 
 export const useUserStore = defineStore("user", {
   state: () => ({
@@ -20,6 +28,54 @@ export const useUserStore = defineStore("user", {
   actions: {
     restore() {
       this.token = (uni.getStorageSync(STORAGE.token) as string) || "";
+    },
+
+    /**
+     * 打开小程序即登录，**不需要任何点击**。
+     *
+     * <p>`wx.login` 换 openid 这一步微信侧不要用户确认，所以「静默」名副其实。
+     * 命中已有 openid 就是老用户，没命中就建号（登录即注册）——
+     * 两种情况用户都不知道发生过什么，这正是想要的。
+     *
+     * <p><b>三条边界</b>：
+     * <ul>
+     *   <li>已有 token 就不做 —— 会话 30 天，每次打开都换一次 token 是白费</li>
+     *   <li>失败静默 —— 这只是「顺手认出他」，失败了他照样能逛</li>
+     *   <li>只在小程序生效 —— 其它端 `silentLoginPayload()` 返回 null</li>
+     * </ul>
+     *
+     * @return 登录成功返回 true（含「本来就登录着」）
+     */
+    /**
+     * @param force 忽略手里那个 token，强制换一个新的。
+     *   401 处理器要用它 —— 那时候「有 token」恰恰不代表「登录着」。
+     */
+    async silentLogin(force = false) {
+      if (this.token && !force) return true;
+      /*
+       * **把飞行中的那次登录暴露出去**（`silentInFlight`）。
+       *
+       * 启动时的请求（购物车、资料）会与它赛跑：谁先谁后不确定，
+       * 而先跑的那个会拿到 401 —— 然后 401 处理器把人 reLaunch 到登录页，
+       * 尽管一秒之后静默登录就成功了。真机实测就是这个样子：
+       * **token 已经拿到、账号也建了，用户看到的却是登录页。**
+       *
+       * 有了这个 promise，401 处理器就能先等一等再决定要不要跳。
+       */
+      if (silentInFlight) return silentInFlight;
+      silentInFlight = (async () => {
+        const payload = await silentLoginPayload();
+        if (!payload) return false;
+        try {
+          await this.login(payload as LoginReq);
+          return true;
+        } catch {
+          return false;
+        } finally {
+          silentInFlight = null;
+        }
+      })();
+      return silentInFlight;
     },
 
     async login(req: LoginReq) {

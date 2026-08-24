@@ -309,6 +309,27 @@ export const mockApi: ShopApi = {
     return delay(undefined as void);
   },
 
+  async deregister() {
+    db.user.phone = "";
+    db.user.nickname = "已注销用户";
+    return delay(undefined as unknown as void);
+  },
+
+  async bindPhone(phone: string) {
+    db.user.phone = phone;
+    return delay({ ...db.user });
+  },
+
+  async bindPhoneByWx() {
+    // mock 侧一键授权恒可用，且给一个固定号 —— 真后端桩通道是**返回 null 并报 70027**
+    db.user.phone = "13800138000";
+    return delay({ ...db.user });
+  },
+
+  async phoneCapable() {
+    return delay({ capable: true });
+  },
+
   async bindCommunity(communityNo, pickupNo) {
     const seed = allCommunitySeeds().find((c) => c.communityNo === communityNo);
     if (!seed) throw new Error("社区不存在");

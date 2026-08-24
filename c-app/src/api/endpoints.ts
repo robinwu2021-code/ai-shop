@@ -33,6 +33,38 @@ export const ENDPOINTS: Record<keyof ShopApi, EndpointDef> = {
   login: { method: "POST", path: "/mp/user/login", auth: false, summary: "登录建户" },
   profile: { method: "GET", path: "/mp/user/profile", auth: true, summary: "我的资料" },
   logout: { method: "POST", path: "/mp/user/logout", auth: true, summary: "登出（作废服务端会话）" },
+  bindPhone: {
+    method: "POST",
+    path: "/mp/user/phone/bind",
+    auth: true,
+    summary: "绑定手机号（验证码）",
+  },
+  bindPhoneByWx: {
+    method: "POST",
+    path: "/mp/user/phone/wx",
+    auth: true,
+    summary: "微信一键授权绑定手机号",
+  },
+  /*
+   * **游客可读**。它只回一个布尔值，而登录页在用户还没登录时就要用它
+   * 决定显示「微信一键」还是「验证码」—— 标成 auth:true 的话，
+   * 那一屏永远拿不到答案，只能盲猜一个默认值。
+   *
+   * ⚠️ 注释必须写在条目**上方**：夹在 `{` 与 `method:` 之间的话，
+   * 端点表的解析器会静默跳过这一条（生成器随后报「不是端点表中的端点」）。
+   */
+  phoneCapable: {
+    method: "GET",
+    path: "/mp/user/phone/capable",
+    auth: false,
+    summary: "一键授权当前可不可用（游客可读）",
+  },
+  deregister: {
+    method: "POST",
+    path: "/mp/user/deregister",
+    auth: true,
+    summary: "注销账号（匿名化 + 解绑凭证，交易记录留存）",
+  },
   bindCommunity: {
     method: "POST",
     path: "/mp/user/community",

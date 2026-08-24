@@ -88,6 +88,32 @@ const password: LoginMethod = {
  * 拿不到手机号 —— 这是它与 {@link wxPhone} 的全部差别。需要手机号的场景
  * （下单联系人、商家账号主标识）走绑定流程另说，不是登录这一步的事。
  */
+/**
+ * 小程序**打开即登录**：不需要任何点击。
+ *
+ * <p>只在小程序端有意义 —— `wx.login` 拿到的 code 换 openid，
+ * 微信侧不需要用户确认，所以「静默」是名副其实的，不是绕过授权。
+ * 其它端返回 null：H5/App 没有这种能力，那里必须由用户主动登录。
+ *
+ * <p><b>失败要静默</b>：网络不好、微信侧抽风都会让它失败，
+ * 而这只是一次「顺手把身份认出来」的尝试 —— 失败了他照样能逛，
+ * 到需要身份的那一步再走正常登录。为此报个错弹窗是本末倒置。
+ */
+export async function silentLoginPayload(): Promise<
+  { grantType: string; principal: string } | null
+> {
+  // #ifdef MP-WEIXIN
+  try {
+    const code = await wxLoginCode();
+    return code ? { grantType: "WX_MINI", principal: code } : null;
+  } catch {
+    return null;
+  }
+  // #endif
+  // eslint-disable-next-line no-unreachable
+  return null;
+}
+
 const wxMini: LoginMethod = {
   id: "WX_MINI",
   labelKey: "login.byWxMini",

@@ -7,11 +7,14 @@ import { useI18n } from "vue-i18n";
 import { onShow } from "@dcloudio/uni-app";
 import { api } from "@/api";
 import { useUserStore } from "@/stores/user";
+import PhoneGate from "@/components/phone-gate.vue";
 import { useCommunityStore } from "@/stores/community";
 import { FEATURES, ROUTES } from "@shared/utils/constants";
 
 const { t } = useI18n();
 const user = useUserStore();
+/** 「我的」页的绑定入口。静默登录之后「有账号没手机号」是常态 */
+const phoneGate = ref(false);
 const community = useCommunityStore();
 const themeVisible = ref(false);
 const points = ref(0);
@@ -38,6 +41,53 @@ async function onLogout() {
   if (!ok) return;
   await user.logout();
   uni.reLaunch({ url: "/pages/home/index" });
+}
+
+/**
+ * 注销账号。**微信对有账号体系的小程序要求提供这个入口**（上架审核会查）。
+ *
+ * <p>与「退出登录」隔开一段距离并用弱化的样式：两者一字之差、后果天差地别 ——
+ * 退出登录再登回来就是；注销之后同一个微信进来是**一个全新账号**，
+ * 旧账号的订单、卡券、积分他都再也看不到。
+ *
+ * <p>确认框把后果逐条说出来，而不是「确定要注销吗？」——
+ * 那句话没有给他任何判断依据。
+ */
+async function onDeregister() {
+  const ok = await new Promise<boolean>((resolve) => {
+    uni.showModal({
+      title: String(t("me.deregister")),
+      content: String(t("me.deregisterConfirm")),
+      confirmText: String(t("me.deregisterYes")),
+      confirmColor: "#B31710",
+      success: (r) => resolve(!!r.confirm),
+      fail: () => resolve(false),
+    });
+  });
+  if (!ok) return;
+  try {
+    await api.deregister();
+    await user.logout();
+    uni.showToast({ title: String(t("me.deregisterDone")), icon: "none" });
+    setTimeout(() => uni.reLaunch({ url: "/pages/home/index" }), 1200);
+  } catch (e) {
+    /*
+     * 有未完成订单时后端回 70028。**要把他送到订单列表去** ——
+     * 只说「还有未完成的订单」而不给入口，他得自己翻。
+     */
+    if ((e as { code?: number }).code === 70028) {
+      uni.showModal({
+        title: String(t("me.deregisterBlocked")),
+        content: String(t("me.deregisterBlockedTip")),
+        confirmText: String(t("me.viewOrders")),
+        success: (r) => {
+          if (r.confirm) uni.switchTab({ url: "/pages/order/index" });
+        },
+      });
+      return;
+    }
+    uni.showToast({ title: (e as Error).message, icon: "none" });
+  }
 }
 
 function gotoCommunity() {
@@ -168,8 +218,15 @@ onShow(() => {
         <text class="head__name">
           {{ user.isLogin ? user.user?.nickname : $t("me.login") }}
         </text>
-        <text class="head__sub">
-          {{ user.isLogin ? user.user?.phone : $t("me.loginHint") }}
+        <!--
+          静默登录之后**有账号但没手机号**是常态，此时旧写法显示的是一片空白 ——
+          用户不知道那一行为什么空着，更不知道能点。
+          现在空着的时候直接说「去绑定」，它就是入口。
+        -->
+        <text v-if="!user.isLogin" class="head__sub">{{ $t("me.loginHint") }}</text>
+        <text v-else-if="user.user?.phone" class="head__sub">{{ user.user.phone }}</text>
+        <text v-else class="head__sub head__sub--action" @tap.stop="phoneGate = true">
+          {{ $t("me.bindPhone") }}
         </text>
       </view>
     </view>
@@ -257,6 +314,15 @@ onShow(() => {
       </view>
     </view>
 
+    <!--
+      注销单独一块、离「退出登录」远一点。两者一字之差、后果天差地别：
+      退出登录再登回来就是；注销之后同一个微信进来是一个全新账号。
+      微信要求有这个入口（上架审核会查），但不该让它看起来像个常用操作。
+    -->
+    <view v-if="user.isLogin" class="danger" @tap="onDeregister">
+      <text class="danger__text">{{ $t("me.deregister") }}</text>
+    </view>
+
     <sh-theme-sheet v-model:visible="themeVisible"></sh-theme-sheet>
 
     <!-- 商家入驻申请 -->
@@ -316,10 +382,23 @@ onShow(() => {
         </view>
       </view>
     </view>
+    <!--
+      **必须留在 sh-scaffold 里面。** 这套 `--sh-*` 变量声明在 `:root, .sh-root` 上，
+      而**小程序里没有 `:root`** —— 根节点叫 `page`，那条选择器一个节点都不匹配，
+      全靠 scaffold 根节点上的 `.sh-root`。挂到 scaffold 外面就一个变量都继承不到：
+      遮罩和卡片背景 `var(--sh-scrim)` / `var(--sh-surface)` 双双落空变透明，
+      弹层文字直接浮在商品列表上，**看起来像页面串了行，而不像弹窗坏了**。
+      H5 上不会露：浏览器里 `:root` 是匹配的。见 shared/tests/scaffold-scope.test.ts
+    -->
+    <phone-gate :show="phoneGate" @done="phoneGate = false" @close="phoneGate = false" />
   </sh-scaffold>
 </template>
 
 <style scoped>
+.head__sub--action {
+  color: var(--sh-primary-text);
+}
+
 .sheet {
   position: fixed;
   inset: 0;
@@ -448,6 +527,15 @@ onShow(() => {
   justify-content: space-between;
   gap: 24rpx;
   padding: 24rpx 26rpx;
+}
+.danger {
+  margin: 48rpx 0 24rpx;
+  padding: 24rpx;
+  text-align: center;
+}
+.danger__text {
+  font-size: 26rpx;
+  color: var(--sh-sub);
 }
 .cell__label {
   font-size: 28rpx;
