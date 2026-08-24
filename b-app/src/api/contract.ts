@@ -70,7 +70,7 @@ import type {
   StoreFulfillment,
   MyQualifications,
   Qualification,
-  QualificationSaveReq, MerchantSpecDim, StoreCategorySpecs,} from "@shared/types";
+  QualificationSaveReq, MerchantSpecDim, StoreCategorySpecs, SpecOverride,} from "@shared/types";
 
 /** 拍照识别的结果。全部是**建议值**，店主可改可弃 */
 export interface GoodsGuess {
@@ -721,6 +721,39 @@ export interface MerchantApi {
   mMarkArrived(subOrderNos: string[], pickupNo?: string): Promise<PickupOrder[]>;
   /**
    * 核销自提码。核销成功 → C 端该订单立刻变已完成。
+
+  /**
+   * 「我的规格」：这家店自己建的维度 + 用量 + 配额。
+   *
+   * <p>此前商家**只能建、不能管** —— 建品页里输一个名字就落进规格库，
+   * 之后没有任何地方看得到它。建错了只能一直留着，还占着配额，
+   * 而配额用完那句报错也说不清是被什么占了。
+   */
+  mMySpecDims(): Promise<MerchantSpecDim[]>;
+  /**
+   * 本店货架类目各自能用的规格。**「我的规格」那一页的主体** ——
+   * 自建规格线上是 0 条，只列自建的话这一页对所有商家都是空的，
+   * 而它该回答的是「我能用哪些」。
+   */
+  mStoreSpecDims(storeNo?: string): Promise<StoreCategorySpecs[]>;
+  /**
+   * 保存本店对某个类目规格的覆盖。**返回合并后的最新结果** ——
+   * 端上照它重渲染，省一次往返，也免得两边各算一遍合并规则。
+   */
+  mSaveSpecOverride(categoryNo: string, dims: SpecOverride[]): Promise<SpecTemplate[]>;
+  /**
+   * 改名。**不影响已建商品** —— 商品存的是规格快照。
+   *
+   * <p>不声明返回值：改完之后配额没变但用量可能变（改名会让老商品对不上，
+   * 那是有意的 —— 历史不该被改名波及），就地更新反而容易与服务端不一致。
+   * 页面整份重拉，一次请求换一个准确的界面。
+   */
+  mRenameSpecDim(dimNo: string, name: string): Promise<void>;
+  /**
+   * 停用 / 启用。**停用不是删除**：历史商品的规格组要靠它解释自己是什么。
+   * 停用后只是建品时挑不到。
+   */
+  mArchiveSpecDim(dimNo: string, archived: boolean): Promise<void>;
 
   /**
    * 「我的规格」：这家店自己建的维度 + 用量 + 配额。

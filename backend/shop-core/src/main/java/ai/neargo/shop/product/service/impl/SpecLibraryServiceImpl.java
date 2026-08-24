@@ -6,6 +6,7 @@ import ai.neargo.shop.product.dto.CategoryVO;
 import ai.neargo.shop.product.dto.SpecTemplateVO;
 import ai.neargo.shop.product.entity.PrdCategorySpec;
 import ai.neargo.shop.product.entity.PrdCategorySpecValue;
+import ai.neargo.shop.product.entity.PrdMerchantSpecOverride;
 import ai.neargo.shop.product.entity.PrdSpecDim;
 import ai.neargo.shop.product.entity.PrdSku;
 import ai.neargo.shop.product.entity.PrdSpecValue;
@@ -42,6 +43,9 @@ import java.util.stream.Collectors;
 @Service
 public class SpecLibraryServiceImpl implements SpecLibraryService {
 
+    private static final org.slf4j.Logger log =
+            org.slf4j.LoggerFactory.getLogger(SpecLibraryServiceImpl.class);
+
     private final SpecDimMapper dimMapper;
     private final SpecValueMapper valueMapper;
     private final CategorySpecMapper catSpecMapper;
@@ -53,6 +57,8 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
     private final ai.neargo.shop.product.mapper.ProductMappers.GoodsMapper goodsMapper;
     /** 「我的规格」按货架类目分组 —— 这家店摆了哪几类，只有商家域知道 */
     private final ai.neargo.shop.spi.user.StoreCategoryPort storeCategoryPort;
+    /** 商家对平台规格的覆盖（V213）：本店用哪几个、什么顺序、叫什么 */
+    private final ai.neargo.shop.product.mapper.ProductMappers.MerchantSpecOverrideMapper overrideMapper;
 
     public SpecLibraryServiceImpl(SpecDimMapper dimMapper, SpecValueMapper valueMapper,
                                   CategorySpecMapper catSpecMapper,
@@ -60,8 +66,10 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
                                   CategoryService categoryService,
                                   SkuMapper skuMapper,
                                   ai.neargo.shop.product.mapper.ProductMappers.GoodsMapper goodsMapper,
-                                  ai.neargo.shop.spi.user.StoreCategoryPort storeCategoryPort) {
+                                  ai.neargo.shop.spi.user.StoreCategoryPort storeCategoryPort,
+                                  ai.neargo.shop.product.mapper.ProductMappers.MerchantSpecOverrideMapper overrideMapper) {
         this.storeCategoryPort = storeCategoryPort;
+        this.overrideMapper = overrideMapper;
         this.skuMapper = skuMapper;
         this.goodsMapper = goodsMapper;
         this.dimMapper = dimMapper;
@@ -82,6 +90,11 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
         }
         Map<String, PrdSpecDim> dims = dimsOf(binds.stream().map(PrdCategorySpec::getDimNo).toList());
         Map<String, List<PrdCategorySpecValue>> subsets = subsetsOf(categoryNo);
+        /*
+         * 商家的覆盖（V213）：本店用哪几个、什么顺序、叫什么。
+         * **稀疏** —— 没有行就完全跟平台走，所以运营新加的维度会自动到达没动过手的商家。
+         */
+        Overrides ov = overridesOf(merchantNo, categoryNo);
 
         List<SpecTemplateVO> out = new ArrayList<>();
         for (PrdCategorySpec b : binds) {
@@ -101,8 +114,19 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
             if (!PrdSpecDim.SALE.equals(usage)) {
                 continue;
             }
-            List<SpecTemplateVO.Option> options = optionsOf(merchantNo, dim,
-                    subsets.getOrDefault(b.getDimNo(), List.of()));
+            // 本店停用的维度：整条不下发。停用维度会连带它下面的取值一起消失
+            if (!ov.dimEnabled(dim.getDimNo())) {
+                continue;
+            }
+            /*
+             * **先减后加。**减 = 他移除的那几档；加 = 类目没给、但他从平台值池里挑来的
+             * （「平台重量有 750g，只是蔬菜这一类没配它，而我这袋就是 750g」）。
+             * 只能减的话，商家碰到类目子集里没有的档位就只剩手输一条路 ——
+             * 而手输的值没有编码，跨店聚合就断了。
+             */
+            List<SpecTemplateVO.Option> options = ov.applyToValues(dim.getDimNo(),
+                    optionsOf(merchantNo, dim, subsets.getOrDefault(b.getDimNo(), List.of())),
+                    () -> optionsOf(merchantNo, dim, List.of()));
             if (options.isEmpty()) {
                 continue;
             }
@@ -115,7 +139,115 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
                     categoryService.categoryTypeOf(categoryNo), categoryNo,
                     dim.getName(), options, null, Boolean.TRUE.equals(b.getIsPrimary())));
         }
+        /*
+         * 本店排过序的排前面（按商家给的 sort），没排过的**保持平台顺序跟在后面**。
+         * 不给没排过的编一个号：那样运营新加的维度会插到他排好的中间去，
+         * 而他不知道自己什么时候动过它。
+         */
+        out.sort(Comparator.comparingInt(t -> ov.dimSort(t.templateNo())));
         return out;
+    }
+
+    /**
+     * 一个商家在一个类目下的全部覆盖，按维度/取值索引好。
+     *
+     * <p>取不到就当没有覆盖（全跟平台）—— 覆盖是偏好，不是数据：
+     * 读失败让整个建品页 500 是不成比例的。
+     */
+    private Overrides overridesOf(String merchantNo, String categoryNo) {
+        if (merchantNo == null || merchantNo.isBlank()) {
+            return Overrides.EMPTY;
+        }
+        try {
+            List<PrdMerchantSpecOverride> rows = DataScopeContext.executeWithoutScope(() ->
+                    overrideMapper.selectList(Wrappers.<PrdMerchantSpecOverride>lambdaQuery()
+                            .eq(PrdMerchantSpecOverride::getMerchantNo, merchantNo)
+                            .eq(PrdMerchantSpecOverride::getCategoryNo, categoryNo)));
+            return rows.isEmpty() ? Overrides.EMPTY : new Overrides(rows);
+        } catch (Exception e) {
+            log.warn("[规格覆盖] 读失败，本次按无覆盖处理：merchant={} category={}",
+                    merchantNo, categoryNo, e);
+            return Overrides.EMPTY;
+        }
+    }
+
+    /** 覆盖的合并规则集中在这里 —— 散在读侧各处的话，四条规则迟早会各走各的 */
+    private static final class Overrides {
+
+        static final Overrides EMPTY = new Overrides(List.of());
+
+        /** dimNo → 维度级覆盖 */
+        private final Map<String, PrdMerchantSpecOverride> dims = new java.util.HashMap<>();
+        /** dimNo + "\u0000" + valueNo → 取值级覆盖 */
+        private final Map<String, PrdMerchantSpecOverride> values = new java.util.HashMap<>();
+
+        Overrides(List<PrdMerchantSpecOverride> rows) {
+            for (PrdMerchantSpecOverride r : rows) {
+                if (PrdMerchantSpecOverride.DIM_LEVEL.equals(r.getValueNo())) {
+                    dims.put(r.getDimNo(), r);
+                } else {
+                    values.put(r.getDimNo() + "\u0000" + r.getValueNo(), r);
+                }
+            }
+        }
+
+        boolean dimEnabled(String dimNo) {
+            PrdMerchantSpecOverride r = dims.get(dimNo);
+            return r == null || !Boolean.FALSE.equals(r.getEnabled());
+        }
+
+        /** 没排过的给一个大数 —— 排前面的是他动过手的那几个，其余保持平台顺序跟在后面 */
+        int dimSort(String dimNo) {
+            PrdMerchantSpecOverride r = dims.get(dimNo);
+            return r != null && r.getSort() != null ? r.getSort() : 10_000;
+        }
+
+        /**
+         * 去掉本店移除的那几档，再补上他从平台值池挑来的。
+         *
+         * @param wholePool 懒取的全量值池 —— 没有「加」的覆盖时不查它
+         */
+        List<SpecTemplateVO.Option> applyToValues(String dimNo, List<SpecTemplateVO.Option> src,
+                                                  java.util.function.Supplier<List<SpecTemplateVO.Option>> wholePool) {
+            if (values.isEmpty()) {
+                return src;
+            }
+            List<SpecTemplateVO.Option> out = new ArrayList<>();
+            java.util.Set<String> have = new java.util.LinkedHashSet<>();
+            for (SpecTemplateVO.Option o : src) {
+                String code = o.code() == null ? "" : o.code();
+                PrdMerchantSpecOverride r = values.get(dimNo + "\u0000" + code);
+                if (r != null && Boolean.FALSE.equals(r.getEnabled())) {
+                    continue;
+                }
+                out.add(o);
+                have.add(code);
+            }
+            // 他挑进来的：类目子集里没有，但平台值池里有
+            java.util.Set<String> wanted = new java.util.LinkedHashSet<>();
+            for (var e : values.entrySet()) {
+                if (!e.getKey().startsWith(dimNo + "\u0000") || Boolean.FALSE.equals(e.getValue().getEnabled())) {
+                    continue;
+                }
+                String code = e.getKey().substring(dimNo.length() + 1);
+                if (!have.contains(code)) {
+                    wanted.add(code);
+                }
+            }
+            if (!wanted.isEmpty()) {
+                for (SpecTemplateVO.Option o : wholePool.get()) {
+                    if (wanted.contains(o.code() == null ? "" : o.code())) {
+                        out.add(o);
+                    }
+                }
+            }
+            return out;
+        }
+
+        /*
+         * 键用 **code** 而不是 valueNo：Option 里只有 code + label（契约如此），
+         * 而 code 在一个维度内唯一。改 Option 加 valueNo 要连着动三端，不值。
+         */
     }
 
     @Override
@@ -632,6 +764,90 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
         row.setSort(900);
         DataScopeContext.executeWithoutScope(() -> valueMapper.insert(row));
         return toValueVO(row);
+    }
+
+    @Override
+    @Transactional
+    public void saveOverrides(String merchantNo, String categoryNo,
+                              List<OverrideCommand> dims) {
+        if (merchantNo == null || merchantNo.isBlank() || categoryNo == null || categoryNo.isBlank()) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        // 整份替换。真删而不是软删 —— 唯一键不含 deleted，软删会挡住重新插入（V195 那个坑）
+        DataScopeContext.executeWithoutScope(() -> overrideMapper.purge(merchantNo, categoryNo));
+        if (dims == null || dims.isEmpty()) {
+            return;   // 清空 = 完全跟平台走，这是个合法状态
+        }
+        /*
+         * 类目给每个维度裁的那份子集 —— 判断「他这一档是加还是减」要靠它：
+         * 子集里有而他没勾 = 减；子集里没有而他勾了 = 从平台值池挑来的。
+         * 两种都要落行，而**与子集一致的不落** —— 那样运营给类目加了新档位，
+         * 没动过手的商家自动获得它。
+         */
+        Map<String, java.util.Set<String>> subsetCodes = subsetCodesOf(categoryNo);
+
+        int i = 0;
+        for (OverrideCommand d : dims) {
+            i += 10;
+            /*
+             * **只写与平台不同的那些。**顺序永远写（它整体是一份排列，
+             * 少写一条就乱），但「启用且没改名」的维度不落行 ——
+             * 那样运营新加的维度才能自动到达没动过手的商家。
+             */
+            {
+                PrdMerchantSpecOverride row = new PrdMerchantSpecOverride();
+                row.setMerchantNo(merchantNo);
+                row.setCategoryNo(categoryNo);
+                row.setDimNo(d.dimNo());
+                row.setValueNo(PrdMerchantSpecOverride.DIM_LEVEL);
+                row.setEnabled(d.enabled());
+                row.setSort(i);
+                DataScopeContext.executeWithoutScope(() -> overrideMapper.insert(row));
+            }
+            java.util.Set<String> inSubset = subsetCodes.getOrDefault(d.dimNo(), java.util.Set.of());
+            for (ValueOverrideCommand v : d.values() == null ? List.<ValueOverrideCommand>of() : d.values()) {
+                boolean defaultOn = inSubset.isEmpty() || inSubset.contains(v.code());
+                if (v.enabled() == defaultOn) {
+                    continue;   // 与类目默认一致：不落行
+                }
+                PrdMerchantSpecOverride row = new PrdMerchantSpecOverride();
+                row.setMerchantNo(merchantNo);
+                row.setCategoryNo(categoryNo);
+                row.setDimNo(d.dimNo());
+                row.setValueNo(v.code());
+                row.setEnabled(v.enabled());
+                DataScopeContext.executeWithoutScope(() -> overrideMapper.insert(row));
+            }
+        }
+    }
+
+    /**
+     * 类目给每个维度裁的子集，按 <b>code</b> 索引（覆盖表用的就是 code）。
+     * 某个维度没有子集行 = 不裁剪，返回空集合，调用方按「全都默认开」处理。
+     */
+    private Map<String, java.util.Set<String>> subsetCodesOf(String categoryNo) {
+        Map<String, List<PrdCategorySpecValue>> subsets = subsetsOf(categoryNo);
+        if (subsets.isEmpty()) {
+            return Map.of();
+        }
+        // valueNo → code 要查值表：子集存的是 valueNo，而端上回传的是 code
+        Map<String, String> codeOf = DataScopeContext.executeWithoutScope(() ->
+                        valueMapper.selectList(Wrappers.<PrdSpecValue>lambdaQuery()
+                                .in(PrdSpecValue::getValueNo, subsets.values().stream()
+                                        .flatMap(List::stream)
+                                        .map(PrdCategorySpecValue::getValueNo).toList())))
+                .stream().collect(Collectors.toMap(PrdSpecValue::getValueNo, PrdSpecValue::getCode,
+                        (a, b) -> a));
+        Map<String, java.util.Set<String>> out = new LinkedHashMap<>();
+        subsets.forEach((dimNo, rows) -> out.put(dimNo, rows.stream()
+                .map(r -> codeOf.get(r.getValueNo()))
+                .filter(java.util.Objects::nonNull)
+                .collect(Collectors.toCollection(java.util.LinkedHashSet::new))));
+        return out;
+    }
+
+    private static boolean notBlank(String s) {
+        return s != null && !s.isBlank();
     }
 
     @Override

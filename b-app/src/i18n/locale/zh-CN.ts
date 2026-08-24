@@ -2,6 +2,7 @@
 // 同一笔订单两端说法不同，强行共用一套词条只会互相将就。
 export default {
   common: {
+    remove: "移除",
     yes: "是",
     no: "否",
     back: "返回",
@@ -180,6 +181,18 @@ export default {
     mySpecs: {
       title: "商品规格",
       intro: "建品时能用的规格都在这里。平台没有的可以自己建。",
+      adjust: "调整",
+      remove: "移除", addDim: "加一个规格", removed: "已移除（点一下加回来）",
+      noMoreDim: "这一类的规格都在用了",
+      addValue: "自己填",
+      addValueTitle: "加一个档位",
+      // 说清它落在哪：不是本店的私有字符串，而是挂在同一个平台规格下
+      addValueHint: "比如平台只有 500g、1kg，而你这袋是 750g。填进去后它和平台那几档在同一根轴上，比价照常。",
+      addValuePh: "如 750g",
+      valueMerged: "平台已经有「{name}」，直接用它",
+      // 三件事在一屏：用不用、什么顺序、叫什么
+      adjustHint: "点档位决定本店用不用它。规格名不给改 —— 那是各家店能比价的前提。",
+      save: "保存", cancel: "取消", reset: "恢复平台默认", saved: "已保存",
       quota: "已建 / 上限",
       catNoDims: "平台还没给这一类配规格，建品时只能手输 —— 可以找运营补",
       noShelf: "还没摆过类目。去「货架分类」勾几类，这里就会列出它们能用的规格。",

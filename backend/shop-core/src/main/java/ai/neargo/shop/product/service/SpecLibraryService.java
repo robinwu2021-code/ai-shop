@@ -158,6 +158,33 @@ public interface SpecLibraryService {
      */
     List<StoreCategorySpecVO> dimsByStore(String merchantNo, String storeNo);
 
+    /**
+     * 保存这家店对某个类目规格的覆盖：**用哪几个、什么顺序、叫什么**。
+     *
+     * <p>整份替换该类目的覆盖行 —— 覆盖是一组有序的偏好，逐条 diff 没有收益。
+     *
+     * <p><b>只管取舍与顺序，不改名字</b> —— 名字是跨店可比的锚。要别的说法
+     * 就去建自定义规格（{@link #addMerchantDim}），那条路本来就在。
+     *
+     * <p><b>只写与平台不同的那些</b>：跟平台一样的不落行。这样运营给类目加了新维度，
+     * 没动过手的商家自动获得它；而灌一份全量副本的话，新维度永远到不了他们那儿，
+     * 且没有任何一处会提示。
+     */
+    void saveOverrides(String merchantNo, String categoryNo, List<OverrideCommand> dims);
+
+    /**
+     * @param dimNo   平台维度编号
+     * @param enabled 本店用不用它
+     * @param values  用哪几档，按**平台值编码**（Option.code）索引
+     */
+    record OverrideCommand(String dimNo, boolean enabled,
+                           List<ValueOverrideCommand> values) {
+    }
+
+    /** @param code 平台值编码（与端上拿到的 Option.code 同一个） */
+    record ValueOverrideCommand(String code, boolean enabled) {
+    }
+
     /** @param categoryName 店主改过名的用店主的叫法 —— 这一页是给他看的 */
     record StoreCategorySpecVO(String categoryNo, String categoryName,
                                List<SpecTemplateVO> dims) {

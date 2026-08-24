@@ -140,6 +140,7 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
   mOrderList: { method: "GET", path: "/biz/order", auth: true, summary: "订单列表" },
   mMySpecDims: { method: "GET", path: "/biz/my-spec-dims", auth: true, summary: "我建的规格维度（含用量与配额）" },
   mStoreSpecDims: { method: "GET", path: "/biz/store-spec-dims", auth: true, summary: "本店货架类目各自能用的规格" },
+  mSaveSpecOverride: { method: "POST", path: "/biz/spec-override/{categoryNo}", auth: true, summary: "本店用哪几个规格、什么顺序、叫什么" },
   mRenameSpecDim: { method: "POST", path: "/biz/my-spec-dims/{dimNo}/rename", auth: true, summary: "给自建维度改名" },
   mArchiveSpecDim: { method: "POST", path: "/biz/my-spec-dims/{dimNo}/archive", auth: true, summary: "停用/启用自建维度" },
   mOrderDetail: { method: "GET", path: "/biz/order/:orderNo", auth: true, summary: "订单详情" },

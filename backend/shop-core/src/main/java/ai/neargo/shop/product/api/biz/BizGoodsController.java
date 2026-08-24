@@ -311,6 +311,41 @@ public class BizGoodsController {
                 storeNo == null || storeNo.isBlank() ? BizContext.current().currentStoreNo() : storeNo);
     }
 
+    /**
+     * 保存本店对某个类目规格的覆盖：**用哪几个、什么顺序、叫什么**。
+     *
+     * <p><b>只管取舍与顺序，不改名字</b> —— 名字是跨店可比的锚。
+     * 传空数组 = 清掉覆盖、完全跟平台走。
+     */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.GOODS + "')")
+    @PostMapping("/biz/spec-override/{categoryNo}")
+    public List<ai.neargo.shop.product.dto.SpecTemplateVO> saveOverrides(
+            @PathVariable String categoryNo, @RequestBody SpecOverrideReq req) {
+        String merchantNo = BizContext.requireMerchantNo();
+        specLibrary.saveOverrides(merchantNo, categoryNo,
+                req.dims() == null ? List.of() : req.dims().stream()
+                        .map(d -> new ai.neargo.shop.product.service.SpecLibraryService.OverrideCommand(
+                                d.dimNo(), !Boolean.FALSE.equals(d.enabled()),
+                                d.values() == null ? List.of() : d.values().stream()
+                                        .map(v -> new ai.neargo.shop.product.service.SpecLibraryService
+                                                .ValueOverrideCommand(v.code(),
+                                                !Boolean.FALSE.equals(v.enabled())))
+                                        .toList()))
+                        .toList());
+        // 回最新的合并结果：端上照它重渲染，省一次往返，也免得两边各算一遍合并规则
+        return specLibrary.templatesForCategory(merchantNo, categoryNo);
+    }
+
+    public record SpecOverrideReq(List<DimOverrideReq> dims) {
+    }
+
+    public record DimOverrideReq(String dimNo, Boolean enabled,
+                                 List<ValueOverrideReq> values) {
+    }
+
+    public record ValueOverrideReq(String code, Boolean enabled) {
+    }
+
     /** 改名。**不影响已建商品** —— 商品存的是规格快照 */
     @PreAuthorize("@perm.canBiz('" + BizPerms.GOODS + "')")
     @PostMapping("/biz/my-spec-dims/{dimNo}/rename")

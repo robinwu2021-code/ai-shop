@@ -36,6 +36,17 @@ public final class ProductMappers {
             extends BaseMapper<ai.neargo.shop.product.entity.PrdSpecValue> {
     }
 
+    /** 商家对平台规格的覆盖（V213）。整份替换时要真删，理由同 CategorySpecMapper */
+    public interface MerchantSpecOverrideMapper
+            extends BaseMapper<ai.neargo.shop.product.entity.PrdMerchantSpecOverride> {
+
+        @org.apache.ibatis.annotations.Delete(
+                "DELETE FROM prd_merchant_spec_override "
+                        + "WHERE merchant_no = #{merchantNo} AND category_no = #{categoryNo}")
+        int purge(@org.apache.ibatis.annotations.Param("merchantNo") String merchantNo,
+                  @org.apache.ibatis.annotations.Param("categoryNo") String categoryNo);
+    }
+
     public interface CategorySpecMapper
             extends BaseMapper<ai.neargo.shop.product.entity.PrdCategorySpec> {
 

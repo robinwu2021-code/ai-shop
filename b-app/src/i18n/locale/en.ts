@@ -1,5 +1,6 @@
 export default {
-  common: { search: "Search", yes: "Yes", no: "No", back: "Back", confirm: "OK", cancel: "Cancel", done: "Done", save: "Save", loading: "Loading…", empty: "Nothing here yet", retry: "Retry", saved: "Saved", all: "All",
+  common: {
+    remove: "Remove", search: "Search", yes: "Yes", no: "No", back: "Back", confirm: "OK", cancel: "Cancel", done: "Done", save: "Save", loading: "Loading…", empty: "Nothing here yet", retry: "Retry", saved: "Saved", all: "All",
     submit: "Submit",
     noPermTitle: "Not your page",
     noPermHint: "Your role at this store cannot open it. Ask the owner to grant you a role." },
@@ -115,6 +116,14 @@ export default {
   qual: {
     mySpecs: {
       title: "My specs", intro: "Every spec you can use when adding a product. Build your own if the platform has none.",
+      adjust: "Adjust",
+      remove: "Remove", addDim: "Add a spec", removed: "Removed (tap to add back)",
+      noMoreDim: "All specs for this category are in use",
+      addValue: "Add mine", addValueTitle: "Add an option",
+      addValueHint: "e.g. the platform has 500g and 1kg, but your bag is 750g. It lands on the same axis, so comparison still works.",
+      addValuePh: "e.g. 750g", valueMerged: "The platform already has “{name}” — using it",
+      adjustHint: "Tap a value to include or exclude it. Spec names cannot be changed — that is what makes cross-store comparison work.",
+      save: "Save", cancel: "Cancel", reset: "Reset to platform", saved: "Saved",
       quota: "used / limit",
       catNoDims: "No specs configured for this category yet — ask ops to add them",
       noShelf: "No categories on your shelf yet. Pick some in “My categories”.",

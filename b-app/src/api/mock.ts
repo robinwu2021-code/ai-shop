@@ -1906,6 +1906,21 @@ export const mockApi: MerchantApi = {
     })));
   },
 
+  /**
+   * mock 的覆盖只做到「看得出生效」：按提交的顺序与启用重排模板的 options。
+   * 不落库 —— mock 没有覆盖表，而这一步真正要验的是端上提交的形状对不对。
+   */
+  async mSaveSpecOverride(categoryNo, dims) {
+    const on = dims.filter((d) => d.enabled);
+    return delay(on.map((d) => {
+      const tpl = db.specTemplates.find((t) => t.templateNo === d.dimNo);
+      const off = new Set((d.values ?? []).filter((v) => !v.enabled).map((v) => v.code));
+      // 只做取舍与顺序 —— 名字不给改，所以这里也不改
+      return { ...tpl!, options: (tpl?.options ?? []).filter((o) => !off.has(o.code ?? "")) };
+    }));
+  },
+
+  async mMySpecDims() {
     const merchantNo = db.merchant.merchantNo;
     const mine = db.specTemplates.filter((t) => t.scope === "MERCHANT" && t.merchantNo === merchantNo);
     const used = (name: string) =>

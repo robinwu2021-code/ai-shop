@@ -2926,6 +2926,27 @@ CREATE TABLE IF NOT EXISTS mch_store_category
     display_name VARCHAR(64)          DEFAULT NULL,
     sort         INT         NOT NULL DEFAULT 0,
     enabled      TINYINT     NOT NULL DEFAULT 1,
+CREATE TABLE IF NOT EXISTS prd_merchant_spec_override
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    merchant_no VARCHAR(64) NOT NULL,
+    category_no VARCHAR(64) NOT NULL,
+    dim_no VARCHAR(64) NOT NULL,
+    -- 空串 = 维度级；非空 = 取值级。用空串不用 NULL：唯一键里的 NULL 互不相等
+    value_no VARCHAR(64) NOT NULL DEFAULT '',
+    enabled TINYINT NOT NULL DEFAULT 1,
+    sort INT DEFAULT NULL,
+    label_override VARCHAR(64) DEFAULT NULL,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_mch_spec_override UNIQUE (tenant_no, merchant_no, category_no, dim_no, value_no)
+);
     tenant_no    VARCHAR(32) NOT NULL DEFAULT 'MAIN',
     created_at   DATETIME    NOT NULL,
     created_by   VARCHAR(64)          DEFAULT NULL,

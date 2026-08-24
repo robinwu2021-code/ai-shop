@@ -3399,7 +3399,7 @@ export interface StoreCategorySpecs {
  * <p>与 {@link SpecTemplate} 的差别是**视角**：那个回答「建品时能挑什么」，
  * 这个回答「我拥有什么、能改什么、动它会影响多少」。
  */
-export interface MerchantSpecDim {
+export interface SpecOverride {
   dimNo: string;
   name: string;
   /** 这个维度下的取值数（含平台档位 + 自己加的） */
