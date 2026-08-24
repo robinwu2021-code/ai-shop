@@ -264,14 +264,28 @@ onShow(load);
         履约台把核销、分拣、到货确认放在一起，而这三件事是**三个权限**。
         入口只判 biz:verify 的话，理货员（只有 biz:receive）一个入口都看不到 ——
         而分拣正是他今天唯一要干的活。有权限没有入口，和没权限一样。
-        落地页也要跟着挑：他打不开核销页。
+
+        **两道工序、两个数字、两个去处，不是一张卡赌一个目的地**：
+        分拣（备货中→标到货）在前、核销（等人来取）在后，是同一条流水线上
+        前后相邻的两步。此前这张卡不管点谁都固定跳核销页——同时有分拣活
+        没有核销活时，点进去正好是句"当前没有待核销的订单"，分拣入口
+        反而要回首页从待办格子里单独找。数字复用 `todo`（已经在拉了，不多发请求）。
       -->
       <view
         v-if="merchant.isPickupPoint && (merchant.can('biz:verify') || merchant.can('biz:receive'))"
-        class="sh-card entry"
-        @tap="open(merchant.can('biz:verify') ? ROUTES.verify : ROUTES.picking)"
+        class="sh-card entry fulfill"
       >
-        <text class="sh-h2">{{ $t("home.fulfillEntry") }}</text>
+        <text class="sh-h2 fulfill__title">{{ $t("home.fulfillEntry") }}</text>
+        <view class="fulfill__row">
+          <view v-if="merchant.can('biz:receive')" class="fulfill__half" @tap="open(ROUTES.picking)">
+            <text class="fulfill__n sh-num" :class="{ 'is-zero': !todo?.toPick }">{{ todo?.toPick ?? 0 }}</text>
+            <text class="sh-muted">{{ $t("home.toPick") }}</text>
+          </view>
+          <view v-if="merchant.can('biz:verify')" class="fulfill__half" @tap="open(ROUTES.verify)">
+            <text class="fulfill__n sh-num" :class="{ 'is-zero': !todo?.toVerify }">{{ todo?.toVerify ?? 0 }}</text>
+            <text class="sh-muted">{{ $t("home.toVerify") }}</text>
+          </view>
+        </view>
       </view>
 
       <!-- 拆两页（方案 v3）：范围与送货是开店的两个决策；装修与获客是日常内容 -->
@@ -438,6 +452,27 @@ onShow(load);
   align-items: center;
   justify-content: space-between;
   gap: 16rpx;
+}
+.fulfill__title {
+  display: block;
+}
+.fulfill__row {
+  display: flex;
+  margin-top: 16rpx;
+}
+.fulfill__half {
+  flex: 1;
+  text-align: center;
+}
+.fulfill__n {
+  display: block;
+  font-size: 40rpx;
+  font-weight: 600;
+  color: var(--sh-primary-text);
+  margin-bottom: 6rpx;
+}
+.fulfill__n.is-zero {
+  color: var(--sh-sub);
 }
 .entry__v {
   flex: 1;

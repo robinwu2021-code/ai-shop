@@ -2623,7 +2623,7 @@ export const mockApi: MerchantApi = {
   async mReportShortage(subOrderNo, payload) {
     const o = findOrder(subOrderNo);
     const label = payload.kind === "SHORTAGE" ? "短少" : "破损";
-    pushTimeline(o, `自提点上报${label}：${payload.note}`);
+    pushTimeline(o, `自提点上报${label} ${payload.qty} 件：${payload.note}`);
     // 只留痕、通知用户，**不自动退款** —— 责任在供货方还是承接方尚未定（矩阵 M4），
     // 自动退等于默认平台兜底
     pushMessage(

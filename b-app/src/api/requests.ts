@@ -297,6 +297,8 @@ export interface ReportShortageReq {
   skuNo: string;
   /** 问题类型：少件 / 破损。两者的售后责任判定不同 */
   kind: ArrivalIssueKind;
+  /** 缺/坏了几件。此前端上不收集这个数，后端落库恒为 1，分拣汇总的短缺数字从设计上就是错的 */
+  qty: number;
   /** 情况说明。承接方填，供货方与平台据此定责 */
   note: string;
 }

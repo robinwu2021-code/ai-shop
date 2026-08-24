@@ -46,9 +46,12 @@ public interface PickupService {
      * （矩阵 M4），自动退款等于默认平台兜底。买家看到时间线后可以自己走售后。
      *
      * <p>已核销的单不能报：货已交到买家手上，那时的短少是售后问题，责任认定路径不同。
+     *
+     * @param qty 缺/坏了几件。**不是可选项**——此前端上只报「缺了」不报数量，
+     *            落库恒为 1，分拣汇总的短缺数字从设计上就是错的
      */
     PickupOrderVO reportShortage(String pickupNo, String subOrderNo, String kind,
-                                 String skuNo, String note);
+                                 String skuNo, int qty, String note);
 
     record BatchResult(int successCount, List<VerifyResultVO> failed) {
     }

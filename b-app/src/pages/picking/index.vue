@@ -11,6 +11,7 @@ import { computed, ref } from "vue";
 import { onShow } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
 import { api } from "@/api";
+import { ROUTES } from "@/shared/nav";
 import type { Order, PickingRow, PickupOrder } from "@shared/types";
 
 const { t } = useI18n();
@@ -72,8 +73,12 @@ async function load() {
  * 破损 / 短少上报（B-10.4.2）。
  * **只留痕并通知用户，不自动退款** —— 责任在供货方还是自提点承接方尚未定（矩阵 M4），
  * 自动退等于默认平台兜底。
+ *
+ * **数量必须真的问一句**：此前这里没有数量输入，后端不管缺 1 件还是 5 件都落成 1 ——
+ * 分拣汇总的短缺数字从设计上就是错的。`expectedQty` 预填这个人这个规格订的量，
+ * 大多数情况是"这一份全没了"，直接确认就行，不用每次都手输。
  */
-async function report(orderNo: string, skuNo: string) {
+async function report(orderNo: string, skuNo: string, expectedQty: number) {
   const kinds = [t("picking.shortage"), t("picking.damage")] as const;
   const res = await new Promise<number>((resolve) => {
     uni.showActionSheet({
@@ -83,6 +88,23 @@ async function report(orderNo: string, skuNo: string) {
     });
   });
   if (res < 0) return;
+
+  const qtyInput = await new Promise<string>((resolve) => {
+    uni.showModal({
+      title: t("picking.qtyTitle", { s: kinds[res]! }),
+      editable: true,
+      placeholderText: String(expectedQty),
+      content: String(expectedQty),
+      success: (r) => resolve(r.confirm ? (r.content ?? "") : ""),
+      fail: () => resolve(""),
+    });
+  });
+  if (!qtyInput.trim()) return;
+  const qty = Number(qtyInput.trim());
+  if (!Number.isFinite(qty) || qty < 1 || !Number.isInteger(qty)) {
+    uni.showToast({ title: t("picking.qtyInvalid"), icon: "none" });
+    return;
+  }
 
   const note = await new Promise<string>((resolve) => {
     uni.showModal({
@@ -98,17 +120,35 @@ async function report(orderNo: string, skuNo: string) {
   await api.mReportShortage(orderNo, {
     skuNo,
     kind: res === 0 ? "SHORTAGE" : "DAMAGE",
+    qty,
     note: note.trim(),
   });
   uni.showToast({ title: t("picking.reported"), icon: "none" });
 }
 
+/**
+ * 标记到货之后引导去核销台——这两步是同一条流水线上前后相邻的两道工序
+ * （分拣理货 → 标到货 → 核销交付），此前标完到货只弹个 toast，商家要自己
+ * 退回首页再找核销入口，多走两三步。**只在他有核销权限时才弹**：
+ * 理货员（只有 receive）打不开核销台，弹一个他点不动的按钮比不弹更糟。
+ */
 async function markAllArrived() {
   if (!preparing.value.length) return;
   // 到货登记按**子单号**：后端 markArrived 收的就是子单号（一张主单可能拆给几家）
   const changed = await api.mMarkArrived(preparing.value.map((o) => o.subOrderNo));
-  uni.showToast({ title: `已通知 ${changed.length} 位邻居`, icon: "none" });
   await load();
+  if (!merchant.can("biz:verify")) {
+    uni.showToast({ title: t("picking.arrivedDoneTitle", { n: changed.length }), icon: "none" });
+    return;
+  }
+  uni.showModal({
+    title: t("picking.arrivedDoneTitle", { n: changed.length }),
+    content: t("picking.arrivedDoneBody"),
+    confirmText: t("picking.goVerify"),
+    success: (r) => {
+      if (r.confirm) uni.navigateTo({ url: ROUTES.verify });
+    },
+  });
 }
 
 onShow(load);
@@ -158,7 +198,7 @@ onShow(load);
             v-for="b in r.buyers"
             :key="b.orderNo"
             class="sh-chip"
-            @tap="report(b.orderNo, r.skuNo)"
+            @tap="report(b.orderNo, r.skuNo, b.qty)"
           >
             {{ b.nickname }} ×{{ b.qty }}
           </text>

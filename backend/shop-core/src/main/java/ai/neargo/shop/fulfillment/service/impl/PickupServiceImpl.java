@@ -47,10 +47,17 @@ public class PickupServiceImpl implements PickupService {
     @Override
     public PickupOverviewVO overview(String pickupNo) {
         String scope = requireScope(pickupNo);
-        int pending = orderPort.ordersOfPickup(scope, "WAIT_FULFILL").size();
+        /*
+         * **此前这里算错了**：`pendingVerify`（字段名与文档都写着「到货了还没人来取的」）
+         * 拿的却是 `WAIT_FULFILL`（备货中，还没到货）的数量 —— 与 `FULFILLING`
+         * （已到点、真正待核销）刚好是流水线上前后相邻的两段。核销页自己没敢信这个数
+         * （改成了拿列表现算），但字段本身一直是错的，谁直接用它就会被误导。
+         */
+        int pendingVerify = orderPort.ordersOfPickup(scope, "FULFILLING").size();
         String name = pickupPort.find(scope).map(PickupQueryPort.PickupBrief::name).orElse("");
-        // 履约服务费口径未定（R15/B9），一期恒 0 —— 编一个数字比给 0 更糟，店主会拿它去对账
-        return new PickupOverviewVO(scope, name, pending, 0, 0L);
+        // 「今日到货批次」「履约服务费」口径未定（R15/B9），一期恒 0 —— 编一个数字比给 0 更糟，
+        // 店主会拿它去对账；端上据此把这两格隐藏，而不是常驻显示一个看起来像真数据的 0
+        return new PickupOverviewVO(scope, name, pendingVerify, 0, 0L);
     }
 
     @Override
@@ -201,7 +208,7 @@ public class PickupServiceImpl implements PickupService {
     @Override
     @Transactional
     public PickupOrderVO reportShortage(String pickupNo, String subOrderNo, String kind,
-                                        String skuNo, String note) {
+                                        String skuNo, int qty, String note) {
         String scope = requireScope(pickupNo);
         PickupOrder target = ofThisPickup(scope, subOrderNo, null);
         if (target == null) {
@@ -247,9 +254,8 @@ public class PickupServiceImpl implements PickupService {
         report.setPickupNo(scope);
         report.setSkuNo(skuNo == null || skuNo.isBlank() ? null : skuNo.trim());
         report.setKind(normalizedKind);
-        // 端上今天只报「缺了」不报「缺几件」，落 1 —— 给 0 会让汇总恒为 0，
-        // 与「表在、数字永远是 0」是同一种坏法
-        report.setQty(1);
+        // 端上现在会报具体数量；兜个底防止传 0 或负数把汇总算错
+        report.setQty(Math.max(1, qty));
         report.setNote(note == null || note.isBlank() ? null : note.trim());
         report.setReporterNo(SecurityUtils.currentUserNo());
         report.setAt(System.currentTimeMillis());

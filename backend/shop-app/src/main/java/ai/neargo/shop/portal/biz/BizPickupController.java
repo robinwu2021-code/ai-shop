@@ -219,7 +219,8 @@ public class BizPickupController {
     @PostMapping("/biz/pickup/{orderNo}/report")
     public PickupOrderVO reportShortage(
             @PathVariable String orderNo, @RequestBody ReportReq req) {
-        return pickupService.reportShortage(null, orderNo, req.kind(), req.skuNo(), req.note());
+        int qty = req.qty() == null ? 1 : req.qty();
+        return pickupService.reportShortage(null, orderNo, req.kind(), req.skuNo(), qty, req.note());
     }
 
     /**
@@ -229,7 +230,10 @@ public class BizPickupController {
     public record ArrivedReq(List<String> orderNos, String pickupNo) {
     }
 
-    /** @param kind SHORTAGE（短少）/ DAMAGE（破损） */
-    public record ReportReq(String skuNo, String kind, String note) {
+    /**
+     * @param kind SHORTAGE（短少）/ DAMAGE（破损）
+     * @param qty  缺/坏了几件。**不传按 1 处理**（兼容还没升级的老版本 App）
+     */
+    public record ReportReq(String skuNo, String kind, Integer qty, String note) {
     }
 }

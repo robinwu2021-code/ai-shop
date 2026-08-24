@@ -901,7 +901,7 @@ export interface MerchantApi {
   /** 破损 / 短少上报。下游是售后责任判定（平台 / 供货商家 / 自提点商家，M4 待定） */
   mReportShortage(
     subOrderNo: string,
-    payload: { skuNo: string; kind: ArrivalIssueKind; note: string },
+    payload: { skuNo: string; kind: ArrivalIssueKind; qty: number; note: string },
   ): Promise<PickupOrder>;
 
   // ---- 积分（商家侧只有成本与开关，看不到抵扣与补差）

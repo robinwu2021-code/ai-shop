@@ -11,6 +11,7 @@ import { computed, ref } from "vue";
 import { onShow } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
 import { api } from "@/api";
+import { ROUTES } from "@/shared/nav";
 import { scanCode } from "@shared/ports/scan";
 import { money } from "@shared/utils/money";
 import type { Order, PickupOrder, PickupOverview, VerifyBatchResult } from "@shared/types";
@@ -33,9 +34,23 @@ const error = ref("");
  * （mock 用主单状态），真实后端发的是子单状态 `WAIT_FULFILL`，
  * 于是这张列表在真机上**永远是空的**，而头部计数是对的：
  * 同一屏上「1 待核销」与「当前没有待核销的订单」并排。
+ *
+ * **`WAIT_FULFILL`（备货中，还没标到货）也要排除**——此前排除表漏了这一档，
+ * 于是这张"待核销"列表里混着还没到货的单：点它核销，后端会用 `NOT_ARRIVED`
+ * 拒掉，商家搞不清"明明列在这儿怎么核不了"。备货中的单归分拣页管，见 `preparing`。
  */
-const NOT_VERIFIABLE = ["COMPLETED", "CANCELLED", "REFUNDED", "WAIT_PAY"];
+const NOT_VERIFIABLE = ["COMPLETED", "CANCELLED", "REFUNDED", "WAIT_PAY", "WAIT_FULFILL"];
 const waiting = computed(() => orders.value.filter((o) => !NOT_VERIFIABLE.includes(o.status)));
+
+/**
+ * 还在分拣中（没标到货）的单数。**核销台空、分拣台有货**是最容易让商家困惑的一刻——
+ * "怎么一个待核销的都没有"，答案往往是"还没点标到货"，这里直接说穿，
+ * 不用他自己猜或者跑一趟分拣页才发现。
+ */
+const preparingCount = computed(() => orders.value.filter((o) => o.status === "WAIT_FULFILL").length);
+function goToPicking() {
+  uni.navigateTo({ url: ROUTES.picking });
+}
 
 async function load() {
   // 重新进页面时清掉上次的失败提示 —— 否则「该订单已核销」会一直挂在那里，
@@ -152,11 +167,15 @@ onShow(load);
   <sh-scaffold title-key="verify.title" :denied="!merchant.can('biz:verify')">
     <text class="sh-h1">{{ $t("verify.title") }}</text>
 
-    <!-- 承接方一进来最关心的三个数：还有几单没人取、今天到了几批、这些活挣了多少。
-         都从同一份订单数据算出来，不另存计数器 —— 否则迟早「总览说 3 单、点进去只有 2 单」 -->
+    <!--
+      承接方一进来最关心的数：还有几单没人取。**只留这一个**——
+      「今日到货批次」「履约服务费」两格口径未定（R15/B9），后端一期恒发 0，
+      跟真实的待核销数字并排显示会被当成"今天真没到货/没收入"长期误读。
+      口径定了再放出来，现在藏起来，不是造一个假 0。
+    -->
     <view v-if="overview" class="sh-card overview">
       <text class="overview__name">{{ overview.pickupName }}</text>
-      <view class="overview__grid">
+      <view class="overview__grid overview__grid--single">
         <view class="overview__i">
           <text class="overview__n sh-num" :class="{ 'is-on': overview.pendingVerify }">
             <!-- 用列表算，不用后端那个计数：两处各算一次就会出现
@@ -164,14 +183,6 @@ onShow(load);
             {{ waiting.length }}
           </text>
           <text class="sh-muted">{{ $t("verify.ovPending") }}</text>
-        </view>
-        <view class="overview__i">
-          <text class="overview__n sh-num">{{ overview.arrivedBatches }}</text>
-          <text class="sh-muted">{{ $t("verify.ovBatches") }}</text>
-        </view>
-        <view class="overview__i">
-          <text class="overview__n sh-num">{{ money(overview.serviceFeeMinor) }}</text>
-          <text class="sh-muted">{{ $t("verify.ovFee") }}</text>
         </view>
       </view>
     </view>
@@ -265,7 +276,19 @@ onShow(load);
       <text class="sh-muted sh-num">{{ waiting.length }}</text>
     </view>
 
-    <sh-empty v-if="!waiting.length" :text='$t("verify.empty")'></sh-empty>
+    <!--
+      核销台空、分拣台有货，是最容易让商家困惑的一刻——直接说穿原因，
+      不用他自己猜或者跑一趟分拣页才发现是"还没标到货"。
+    -->
+    <view
+      v-if="!waiting.length && preparingCount && merchant.can('biz:receive')"
+      class="prep-hint"
+      @tap="goToPicking"
+    >
+      <text>{{ $t("picking.verifyPrepHint", { n: preparingCount }) }}</text>
+      <text class="prep-hint__go">›</text>
+    </view>
+    <sh-empty v-else-if="!waiting.length" :text='$t("verify.empty")'></sh-empty>
 
     <view
       v-for="o in waiting"
@@ -298,6 +321,14 @@ onShow(load);
 .overview__i {
   flex: 1;
   text-align: center;
+}
+/* 只剩一格时不用撑满整行居中——那样看着像在藏什么，靠左更像"这里本来就只有一个数" */
+.overview__grid--single {
+  justify-content: flex-start;
+}
+.overview__grid--single .overview__i {
+  flex: none;
+  text-align: left;
 }
 .overview__n {
   display: block;
@@ -408,6 +439,22 @@ onShow(load);
   align-items: baseline;
   justify-content: space-between;
   margin: 32rpx 8rpx 16rpx;
+}
+.prep-hint {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+  padding: 20rpx 24rpx;
+  margin: 0 8rpx;
+  border-radius: 20rpx;
+  background: var(--sh-warning-tint);
+  color: var(--sh-warning);
+  font-size: 26rpx;
+}
+.prep-hint__go {
+  flex-shrink: 0;
+  font-size: 28rpx;
 }
 /* 列表密度对齐 C 端（平台版式约定）：卡片之间只留一条缝、正文行高 1.35。
    商家一天要扫几十次这类列表，行距每多 10rpx，一屏就少一行。 */

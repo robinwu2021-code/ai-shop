@@ -428,6 +428,48 @@ class M4FulfillmentFlowTest {
         assertThat(order.toString()).contains("少了两袋");
     }
 
+    @Autowired
+    private ai.neargo.shop.fulfillment.mapper.FulfillmentMappers.ShortageReportMapper shortageReportMapper;
+
+    @Test
+    @DisplayName("★★ 短少数量要落端上真传的那个数，不是恒为 1 —— 分拣汇总的短缺数据源就是这张表")
+    void reportShortageCarriesTheActualQty() throws Exception {
+        Ordered o = placeAndPay("13300134012", "G0002", "SK0003");
+        String biz = loginAsOwnerOf("M0001", "13300134013");
+
+        mvc().perform(post("/biz/pickup/" + o.subOrderNo + "/report")
+                        .header("Authorization", "Bearer " + biz)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"skuNo\":\"SK0003\",\"kind\":\"SHORTAGE\",\"qty\":3,\"note\":\"少了三袋\"}"))
+                .andExpect(jsonPath("$.code").value(0));
+
+        var saved = shortageReportMapper.selectOne(Wrappers
+                .<ai.neargo.shop.fulfillment.entity.FulShortageReport>lambdaQuery()
+                .eq(ai.neargo.shop.fulfillment.entity.FulShortageReport::getSubOrderNo, o.subOrderNo)
+                .last("limit 1"));
+        assertThat(saved).as("上报要落一行结构化记录，不能只写进订单时间线的一句话").isNotNull();
+        assertThat(saved.getQty()).as("端上传了 3，落库就该是 3，不是写死的 1").isEqualTo(3);
+    }
+
+    @Test
+    @DisplayName("不传 qty 时按 1 处理 —— 兼容还没升级的老版本 App")
+    void reportShortageDefaultsQtyToOneWhenOmitted() throws Exception {
+        Ordered o = placeAndPay("13300134014", "G0002", "SK0003");
+        String biz = loginAsOwnerOf("M0001", "13300134015");
+
+        mvc().perform(post("/biz/pickup/" + o.subOrderNo + "/report")
+                        .header("Authorization", "Bearer " + biz)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"skuNo\":\"SK0003\",\"kind\":\"DAMAGE\",\"note\":\"压坏了\"}"))
+                .andExpect(jsonPath("$.code").value(0));
+
+        var saved = shortageReportMapper.selectOne(Wrappers
+                .<ai.neargo.shop.fulfillment.entity.FulShortageReport>lambdaQuery()
+                .eq(ai.neargo.shop.fulfillment.entity.FulShortageReport::getSubOrderNo, o.subOrderNo)
+                .last("limit 1"));
+        assertThat(saved.getQty()).isEqualTo(1);
+    }
+
     @Test
     @DisplayName("★ 已核销的单不能再报短少 —— 那时是售后问题，责任认定路径不同")
     void cannotReportAfterVerified() throws Exception {
