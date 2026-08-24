@@ -27,9 +27,16 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class SchemaDriftTest {
 
+    /*
+     * `IF NOT EXISTS` 必须可选，缩进必须宽松 —— 否则**整张表被静默漏掉**，
+     * 症状却伪装成下游某支迁移「ALTER 了一张不存在的表」（V187/V195/V213 就是这么炸的：
+     * 它们写的是裸 `CREATE TABLE` + 2 空格缩进，而 120 份用 4 空格 + IF NOT EXISTS）。
+     * gen-test-schema.py 一直是 `CREATE TABLE(?: IF NOT EXISTS)?` 且不挑缩进 ——
+     * **两个重放器必须同口径**，这里严于生成器就等于凭空造出一份差异。
+     */
     private static final Pattern TABLE = Pattern.compile(
-            "CREATE TABLE IF NOT EXISTS\\s+(\\w+)\\s*\\((.*?)\\n\\)", Pattern.DOTALL);
-    private static final Pattern COLUMN = Pattern.compile("^\\s{4}(\\w+)\\s+[A-Z]", Pattern.MULTILINE);
+            "CREATE TABLE\\s+(?:IF NOT EXISTS\\s+)?(\\w+)\\s*\\((.*?)\\n\\)", Pattern.DOTALL);
+    private static final Pattern COLUMN = Pattern.compile("^\\s{2,}(\\w+)\\s+[A-Z]", Pattern.MULTILINE);
     private static final Set<String> NOT_COLUMNS = Set.of("UNIQUE", "KEY", "CONSTRAINT", "PRIMARY", "INDEX");
     private static final Pattern RENAME = Pattern.compile(
             "ALTER TABLE\\s+(\\w+)\\s+RENAME COLUMN\\s+(\\w+)\\s+TO\\s+(\\w+)", Pattern.CASE_INSENSITIVE);
