@@ -323,8 +323,13 @@ async function doLogin(method: LoginMethod) {
 .field + .field {
   margin-top: 32rpx;
 }
+/*
+ * 主按钮与最后一格之间要**明显大于字段间距**：字段之间是「同一件事的下一格」，
+ * 而这里是「填完了，去执行」—— 间距相同的话，按钮读起来像是第三个输入框。
+ * 主流 App（支付宝/京东/美团商家）都在 48–64rpx 这一档，取 64rpx。
+ */
 .submit {
-  margin-top: 32rpx;
+  margin-top: 64rpx;
 }
 .submit.is-off {
   background: var(--sh-faint);
@@ -335,7 +340,7 @@ async function doLogin(method: LoginMethod) {
   display: flex;
   align-items: center;
   gap: 20rpx;
-  margin: 32rpx 0 20rpx;
+  margin: 40rpx 0 24rpx;
 }
 .divider::before,
 .divider::after {
