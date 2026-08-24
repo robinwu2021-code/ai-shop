@@ -153,10 +153,29 @@ function detachStd() {
   stdTitle.value = "";
 }
 
-/** 商品主图。拍一张就有，替掉 emoji 占位（E9） */
+/**
+ * 商品主图。拍一张就有，替掉 emoji 占位（E9）。
+ *
+ * <p>**存储上仍与轮播分开**（契约 `cover` / `images` 两个字段没动），
+ * 但界面上已经合成一组「商品图」—— 见 `photos`。
+ */
 const cover = ref("");
 /** 详情轮播图。与封面分开：封面进列表卡片，这些进详情页的轮播 */
 const images = ref<string[]>([]);
+
+/**
+ * 界面上的「商品图」：**主图就是第一张**。
+ *
+ * <p>此前主图与轮播是两个控件，于是商家每传一张图都要先回答
+ * 「这张算主图还是轮播」—— 那个问题来自数据表（`cover` 与 `images` 是两列），
+ * 不来自他要做的事：他心里只有「这个商品长什么样」。
+ * 合并之后第一张即封面，是电商 App 的通行约定，不用教。
+ *
+ * <p>只合并**界面**：存的时候照旧拆回两个字段，后端与 C 端零改动。
+ */
+const photos = computed(() => (cover.value ? [cover.value, ...images.value] : [...images.value]));
+/** 一组图的上限 = 封面 1 + 轮播 6。存的时候两个字段各自的上限没变 */
+const PHOTO_LIMIT = 7;
 /**
  * 详情图：图文详情正文**下方**按顺序全宽竖排的长图。
  *
@@ -808,13 +827,12 @@ const unpricedMarkets = computed(() =>
  * 轮播图变成了「不会丢，也永远存不进去」—— 一个字段有列、有契约、
  * 有下发、就是没有写入路径，与这轮修的其余几处是同一个形状。
  */
-const IMAGE_LIMIT = 6;
-
 async function addImages() {
   if (uploading.value) return;
-  const room = IMAGE_LIMIT - images.value.length;
+  // 余量按**合并后的总数**算：界面上是一组，弹「最多 6 张」而格子有 7 个说不通
+  const room = PHOTO_LIMIT - photos.value.length;
   if (room <= 0) {
-    uni.showToast({ title: t("goods.imageLimit", { n: IMAGE_LIMIT }), icon: "none" });
+    uni.showToast({ title: t("goods.imageLimit", { n: PHOTO_LIMIT }), icon: "none" });
     return;
   }
   let picked;
@@ -854,8 +872,43 @@ async function addImages() {
   }
 }
 
-function removeImage(i: number) {
-  images.value = images.value.filter((_, idx) => idx !== i);
+/**
+ * 删一张商品图。**删掉第一张时下一张顶上来当封面** ——
+ * 不能留下「有图但没封面」的状态：那样列表页会退回 emoji 占位，
+ * 而商家明明看见这个商品有四张图。
+ */
+function removePhoto(i: number) {
+  if (i > 0) {
+    images.value = images.value.filter((_, idx) => idx !== i - 1);
+    return;
+  }
+  cover.value = images.value[0] ?? "";
+  images.value = images.value.slice(1);
+}
+
+/**
+ * 把第 i 张设为主图（与当前封面对调）。
+ *
+ * <p>**没做拖拽**：uni 的可拖网格要靠 movable-view 重写整块，
+ * 而商家在这里真正要做的只有一件事 —— 换封面。对调一步到位，
+ * 也不会把「顺序」这件他并不关心的事塞给他。
+ */
+function setCoverAt(i: number) {
+  if (i <= 0) return;
+  const picked = images.value[i - 1]!;
+  const old = cover.value;
+  cover.value = picked;
+  images.value = images.value.map((x, idx) => (idx === i - 1 ? old : x)).filter(Boolean);
+}
+
+/** 点非首张的图：只给「设为主图」一件事，删除仍走格子右上角的 ✕ */
+function tapPhoto(i: number) {
+  if (i <= 0) return;
+  uni.showActionSheet({
+    itemList: [String(t("goods.setCover"))],
+    success: (r) => { if (r.tapIndex === 0) setCoverAt(i); },
+    fail: () => {},
+  });
 }
 
 /** 详情图上限。比轮播多：长图是「参数页 / 实拍页 / 售后页」这么一张张摞上去的 */
@@ -912,44 +965,6 @@ function moveDetailImage(i: number, delta: number) {
   if (!row) return;
   list.splice(to, 0, row);
   detailImages.value = list;
-}
-
-/**
- * 选主图。**不再分「拍照」与「相册」两个按钮** —— 交给系统的选择器，
- * 它本来就会问一次。两个常驻按钮占着位置，却只在没图时有用。
- */
-async function pickCover() {
-  if (uploading.value) return;
-  let picked;
-  try {
-    picked = await pickImages(1, ["camera", "album"]);
-  } catch {
-    return; // 用户取消，不是错误
-  }
-  const img = picked[0];
-  if (!img) return;
-
-  /*
-   * 先在端上挡一道。`pickImages` 一直把 `size` 带回来，却从来没人比过 ——
-   * 于是一张超限的图要走完整个上传才在服务端被拒，商家等的那几秒是白等的，
-   * 流量也是白花的（他多半正用着移动网络）。与后端 MAX_BYTES 同一个数。
-   */
-  if (img.size > MAX_IMAGE_BYTES) {
-    uni.showToast({ title: t("goods.imageTooLarge"), icon: "none" });
-    return;
-  }
-
-  uploading.value = true;
-  try {
-    const { url } = await api.mUploadImage(img.tempPath);
-    cover.value = url;
-
-    await recognizeInto(url);
-  } catch (e) {
-    uni.showToast({ title: (e as Error).message, icon: "none" });
-  } finally {
-    uploading.value = false;
-  }
 }
 
 /**
@@ -1785,76 +1800,34 @@ async function save(thenSubmit = false) {
       <text class="sh-h2 sec__h">{{ $t("goods.secBasic") }}</text>
 
       <!--
-        主图。**与下面的详情图同一套方案**：同尺寸的方格，点空格子就选图，
-        拍照还是相册交给系统的选择器。
+        商品图。**主图就是第一张** —— 此前主图与轮播图是两个相邻的图片控件，
+        商家每传一张都要先回答「这张算主图还是轮播」，而那个问题来自数据表
+        （契约里 `cover` 与 `images` 是两列），不来自他要做的事。
 
-        此前这里是「预览框 + 两个常驻按钮（拍照识别 / 从相册选择）」，
-        与详情图那排方格完全是两种东西 —— 两个相邻的图片控件长得不一样，
-        而且那两个按钮一直占着位置，可它们只在**没图**时才有用。
-      -->
-      <view class="field">
-        <text class="field__label">{{ $t("goods.cover") }}</text>
-        <view class="imgs">
-          <view v-if="cover" class="imgs__cell" @tap="pickCover">
-            <!-- 老商品的封面是 emoji，只画 <image> 会显示空灰框，看着像图丢了。
-                 sh-cover 按值分流，两种都画得出来 -->
-            <sh-cover class="imgs__img" :src="cover"></sh-cover>
-            <text class="imgs__del" @tap.stop="cover = ''">×</text>
-          </view>
-          <view v-else class="imgs__add" @tap="pickCover">
-            <text class="imgs__plus">{{ uploading ? "…" : "＋" }}</text>
-          </view>
-        </view>
-        <text class="sh-muted hint">{{ $t("goods.coverRole") }}</text>
-
-      </view>
-
-      <!--
-        详情轮播图。此前没有这个入口：契约里有、页面没填、后端当成「清空」。
-
-        **与主图靠形状区分，不靠标签**：两者相邻、都是图片控件，此前只差一行
-        26rpx 灰标签 —— 扫一眼分不出哪个是哪个。现在主图是单个大方框，
-        详情图是一排小格子并带计数，形状本身就说明了「一张」与「多张」。
+        <p>合并的只是**界面**：保存时照旧拆回两个字段（见 `photos`），
+        后端与 C 端零改动。老商品的 emoji 封面照常显示在第一格 ——
+        `sh-cover` 按值分流，不必逼商家先换实拍图才能改别的。
       -->
       <view class="field">
         <view class="field__head">
-          <text class="field__label">{{ $t("goods.images") }}</text>
+          <text class="field__label">{{ $t("goods.photos") }}</text>
           <text class="sh-muted imgs__n">
-            {{ $t("goods.imagesCount", { n: images.length, m: IMAGE_LIMIT }) }}
+            {{ $t("goods.imagesCount", { n: photos.length, m: PHOTO_LIMIT }) }}
           </text>
         </view>
         <view class="imgs">
-          <view v-for="(img, i) in images" :key="img + i" class="imgs__cell">
+          <view v-for="(img, i) in photos" :key="img + i" class="imgs__cell" @tap="tapPhoto(i)">
             <sh-cover class="imgs__img" :src="img"></sh-cover>
-            <text class="imgs__del" @tap="removeImage(i)">×</text>
+            <!-- 角标而不是另起一行说明：哪张是封面必须**看图就知道**，
+                 靠位置约定（"第一张"）的话，滑动之后没人数得清自己在第几张 -->
+            <text v-if="i === 0" class="imgs__badge">{{ $t("goods.coverBadge") }}</text>
+            <text class="imgs__del" @tap.stop="removePhoto(i)">×</text>
           </view>
-          <view v-if="images.length < IMAGE_LIMIT" class="imgs__add" @tap="addImages">
-            <text class="imgs__plus">＋</text>
+          <view v-if="photos.length < PHOTO_LIMIT" class="imgs__add" @tap="addImages">
+            <text class="imgs__plus">{{ uploading ? "…" : "＋" }}</text>
           </view>
         </view>
-        <text class="sh-muted hint">{{ $t("goods.imagesHint", { n: IMAGE_LIMIT }) }}</text>
-      </view>
-
-      <!--
-        从标准品开始（TDD-标准品库）。放在标题**之前**：它是「少填几个字段」的入口，
-        填完标题再来搜就没意义了。
-
-        **搜不到必须能直接往下建**，所以这一栏只是一行入口，不是一道必经的步骤 ——
-        标准库对「张姐家的酱菜」永远无效，而那类货是这个平台的一部分主力。
-      -->
-      <view class="field">
-        <!-- 补标签：此前这一栏是**没有标签的整行**，加了真正的分区标题之后，
-             它就成了页面上第二大的深色文字，读起来像又一个分区 -->
-        <text class="field__label">{{ $t("goods.stdLabel") }}</text>
-        <view v-if="stdNo" class="std-on">
-          <text class="std-on__txt">{{ $t("goods.fromStd", { s: stdTitle || stdNo }) }}</text>
-          <text class="std-on__off" @tap="detachStd">{{ $t("goods.detachStd") }}</text>
-        </view>
-        <view v-else class="std-pick" @tap="showStd = true">
-          <text class="std-pick__val">{{ $t("goods.pickStd") }}</text>
-          <text class="cat-pick__arrow">›</text>
-        </view>
-        <text class="sh-muted hint">{{ $t(stdNo ? "goods.fromStdHint" : "goods.pickStdHint") }}</text>
+        <text class="sh-muted hint">{{ $t("goods.photosHint") }}</text>
       </view>
 
       <!-- 三语：一个框 + 语言 tab，不给三个框并排 -->
@@ -1879,14 +1852,34 @@ async function save(thenSubmit = false) {
           换来的是把改的成本压到最低：右边那个 ✕ 一下清空，长名不用逐字删。
         -->
         <view class="inline">
-          <input v-model="title[lang]" class="field__input flex1" :placeholder="$t('goods.namePh')" />
+          <input v-model="title[lang]" class="field__input flex1" />
           <text v-if="title[lang]" class="inline__clear" @tap="title[lang] = ''">✕</text>
         </view>
+        <!--
+          标准品降成名称下面的**一行入口**（TDD-标准品库）。
+
+          <p>此前它是与「商品名称」平级的一个字段，带标签、带说明，占了三行 ——
+          可它既不是要填的内容，也不是必经的步骤：标准库对「张姐家的酱菜」
+          永远无效，而那类货是这个平台的一部分主力。
+          现在它挨着名称（正是它要替你填的那一栏），搜不到就直接往下打字。
+        -->
+        <view v-if="stdNo" class="std-on">
+          <text class="std-on__txt">{{ $t("goods.fromStd", { s: stdTitle || stdNo }) }}</text>
+          <text class="std-on__off" @tap="detachStd">{{ $t("goods.detachStd") }}</text>
+        </view>
+        <text v-else class="link std-link" @tap="showStd = true">{{ $t("goods.pickStd") }}</text>
       </view>
       <view class="field">
-        <text class="field__label">{{ $t("goods.subtitle") }}</text>
+        <!--
+          去掉 placeholder：标签已经是深色半粗，框里再写一遍就是同一句话说两次；
+          而 placeholder 一打字就消失 —— 「选填」这种**始终成立**的事实不该放在那里。
+        -->
+        <view class="field__head">
+          <text class="field__label">{{ $t("goods.subtitle") }}</text>
+          <text class="sh-muted">{{ $t("goods.optional") }}</text>
+        </view>
         <view class="inline">
-          <input v-model="subtitle[lang]" class="field__input flex1" :placeholder="$t('goods.subtitlePh')" />
+          <input v-model="subtitle[lang]" class="field__input flex1" />
           <text v-if="subtitle[lang]" class="inline__clear" @tap="subtitle[lang] = ''">✕</text>
         </view>
       </view>
@@ -1904,13 +1897,25 @@ async function save(thenSubmit = false) {
         现在形态是选完类目后的一行只读文字：它的作用是让商家确认
         「系统认为这是生鲜」，不是让他改。真要改，改的是类目。
       -->
+    </view>
+
+    <!--
+      图文详情独立成卡：正文与**详情图**说的是同一件事（这个商品详细长什么样），
+      此前它们跟在「商品信息」里名称、副标题后面，中间还隔着标准品入口 ——
+      商家要在两处描述同一件事，而两处都不像是同一节。
+    -->
+    <view class="sh-card mt">
+      <text class="sh-h2 sec__h">{{ $t("goods.detail") }}</text>
+
       <!--
         图文详情：**纯文本长文**，不做富文本 —— 手机端做不出像样的富文本编辑，
         而收 HTML 就要在三端各做一次消毒，漏一处就是 XSS。
       -->
       <view class="field">
         <view class="field__head">
-          <text class="field__label">{{ $t("goods.detail") }}</text>
+          <!-- 卡片标题已经是「图文详情」，这里再写一遍就是同一句话连着出现两次；
+               叫「正文」才说清它与同卡里的「详情图」是什么关系 -->
+          <text class="field__label">{{ $t("goods.detailBody") }}</text>
           <!--
             自动生成。**结果只填进这个框，不直接保存** ——
             模型不知道这家店真实的产地与保质期，一键写进详情
@@ -1920,12 +1925,20 @@ async function save(thenSubmit = false) {
             {{ generating ? $t("goods.genDetailing") : $t("goods.genDetail") }}
           </text>
         </view>
+        <!--
+          **随内容长高**。此前框高写死 140rpx，扣掉内边距只看得见两行半，
+          而这个字段收 2000 字 —— 写到第三行就看不见上一句，校对只能往回滚。
+          起步 6 行、随字数长，长到屏高六成为止（再长就该翻页了，不该继续吃屏）。
+        -->
         <textarea
           v-model="detail"
-          class="field__area"
+          class="field__area field__area--grow"
           :placeholder="$t('goods.detailPh')"
           :maxlength="2000"
+          auto-height
         />
+        <!-- 字数常驻。不写的话，商家要一直写到第 2000 字才知道有上限 -->
+        <text class="sh-muted area-len">{{ $t("goods.detailLen", { n: detail.length, m: 2000 }) }}</text>
       </view>
 
       <!--
@@ -2623,6 +2636,76 @@ async function save(thenSubmit = false) {
 </template>
 
 <style scoped>
+/*
+  字段标签在这一页改成**深色半粗**。
+
+  `.field__label` 原本是 26rpx / 常规 / 灰，与它下面那行说明（.sh-muted 24rpx 灰）
+  几乎一样重 —— 一屏灰字里看不出哪句是要你填的、哪句只是解释。
+  这里升到 28rpx / 600 / 深，说明维持 24rpx 灰，一屏三档：
+  节标题 > 字段标签 > 说明。
+
+  ⚠️ **只在这一页覆盖**，没有直接改 packages/ui 里的 `.field__label` ——
+  那个类 b-app 与 c-app 全站共用，一改是全站换档，要连带看一遍别的页有没有被挤开。
+  这一页确认好了再提上去，是一次改一个变量。
+*/
+.field__label {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: var(--sh-ink);
+}
+
+/*
+  原型里我把节标题提到 700，**被字阶守卫拦下了**（tests/typography.test.ts：
+  700 只给价格，别的东西要突出靠颜色与留白，不靠再加一道粗体）。
+  这条规则是对的：这一页已经有 34rpx 深色的节标题，
+  与 28rpx 的字段标签差着 6rpx 与一整个卡片间距，够分。
+  所以只加粗字段标签，节标题维持 .sh-h2 的 600。
+*/
+
+/* 主图角标：压在第一格左下角，看图就知道哪张是封面 */
+.imgs__badge {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  padding: 4px 8rpx;
+  border-top-right-radius: 8rpx;
+  background: var(--sh-primary);
+  color: var(--sh-on-primary);
+  font-size: 24rpx;
+  line-height: 1.1;
+}
+
+/*
+  图文详情正文：起步 4 行，随内容长高，长到屏高六成为止。
+
+  上限要落在**里面那个真正的 textarea 上**：uni 的 auto-height 是给内层元素写
+  内联 height，只给外壳设 max-height 的话，内层照样一路长下去 ——
+  实测 452 字时长到 560px，而 60vh 是 487px，等于没有上限。
+  超过之后框内自己滚，不再把下面的分区一路顶走。
+*/
+.field__area--grow {
+  min-height: 200rpx;
+  max-height: 60vh;
+}
+/* uni 把内联 height 写在 .uni-textarea-wrapper 上，textarea 还带内联 overflow:hidden ——
+   两处都要压，只压外壳的话内容会从外壳里溢出去（外壳 487、里面 800） */
+.field__area--grow :deep(.uni-textarea-wrapper),
+.field__area--grow :deep(.uni-textarea-textarea) {
+  max-height: 60vh;
+  overflow-y: auto !important;
+}
+
+.std-link {
+  display: block;
+  margin-top: 12rpx;
+}
+
+.area-len {
+  display: block;
+  margin-top: 8rpx;
+  text-align: right;
+}
+
 .mt {
   margin-top: 16rpx;
 }
