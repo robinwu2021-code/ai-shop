@@ -62,8 +62,16 @@ function onUnauthorized(): void {
   notify.error(translate(curLocale(), "error.unauthorized"));
   // 下一个宏任务放开：这一屏的并发请求算同一轮
   setTimeout(() => (handlingUnauthorized = false), 0);
-  if (!window.location.pathname.startsWith("/login")) {
-    window.location.href = "/login";
+  /*
+   * **要带 basePath。** 这是整页跳转，不走 Next 路由，所以 next.config 里的
+   * basePath 不会替我们加上去 —— 子路径部署（/ops-web/）下写死 "/login"
+   * 会跳到站点根目录，那是官网，用户看到的是一个毫不相干的页面而不是登录框。
+   * 同源部署时 BASE 为空串，行为与从前一致。
+   */
+  const BASE = process.env.NEXT_PUBLIC_BASE_PATH || "";
+  const login = `${BASE}/login`;
+  if (!window.location.pathname.startsWith(login)) {
+    window.location.href = login;
   }
 }
 

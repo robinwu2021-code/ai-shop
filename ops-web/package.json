@@ -11,7 +11,8 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "check": "npm run typecheck && npm run test",
-    "gen:api": "node scripts/gen-openapi.mjs"
+    "gen:api": "node scripts/gen-openapi.mjs",
+    "build:prod": "NEXT_PUBLIC_API_BASE= NEXT_PUBLIC_USE_MOCK=0 NEXT_PUBLIC_BASE_PATH=/ops-web next build && node scripts/assert-prod-build.mjs"
   },
   "dependencies": {
     "@radix-ui/react-checkbox": "^1.3.11",
