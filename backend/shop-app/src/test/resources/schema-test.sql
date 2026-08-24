@@ -1441,6 +1441,8 @@ CREATE TABLE IF NOT EXISTS mch_entity_apply
     apply_no VARCHAR(64) NOT NULL,
     user_no VARCHAR(64) NOT NULL,
     entity_no VARCHAR(64) DEFAULT NULL,
+    announcement_until BIGINT(20) DEFAULT NULL,
+    announcement_recent VARCHAR(512) DEFAULT NULL,
     name VARCHAR(128) NOT NULL,
     legal_form VARCHAR(16) DEFAULT NULL,
     contact_phone VARCHAR(32) DEFAULT NULL,

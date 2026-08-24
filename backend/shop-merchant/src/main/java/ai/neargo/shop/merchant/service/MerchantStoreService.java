@@ -74,11 +74,22 @@ public interface MerchantStoreService {
      * @param latE6 门店坐标（gcj02，E6）。<b>null = 这次不改</b> —— 老版本端上不传这个字段，
      *              缺省当清空会把已标好的点抹掉，且保存那一下看不出来
      */
-    record SaveCommand(String announcement, String openHours, String address, String addressDetail,
+    record SaveCommand(String announcement, Long announcementUntil,
+                       String openHours, String address, String addressDetail,
                        List<String> featured, String serviceScope,
                        List<String> serviceCommunityNos, String serviceCityCode,
                        String fulfillmentReach, List<AreaCommand> serviceAreas,
                        Integer latE6, Integer lngE6) {
+
+        /** 带门牌号、不带公告有效期（= 长期）。端上老版本不传这个字段 */
+        public SaveCommand(String announcement, String openHours, String address, String addressDetail,
+                           List<String> featured, String serviceScope,
+                           List<String> serviceCommunityNos, String serviceCityCode,
+                           String fulfillmentReach, List<AreaCommand> serviceAreas,
+                           Integer latE6, Integer lngE6) {
+            this(announcement, null, openHours, address, addressDetail, featured, serviceScope,
+                    serviceCommunityNos, serviceCityCode, fulfillmentReach, serviceAreas, latE6, lngE6);
+        }
 
         /** 不带门牌号的老形状（= 这次不改门牌号，null 与空串要分开：空串是「清掉」） */
         public SaveCommand(String announcement, String openHours, String address,
@@ -86,7 +97,7 @@ public interface MerchantStoreService {
                            List<String> serviceCommunityNos, String serviceCityCode,
                            String fulfillmentReach, List<AreaCommand> serviceAreas,
                            Integer latE6, Integer lngE6) {
-            this(announcement, openHours, address, null, featured, serviceScope, serviceCommunityNos,
+            this(announcement, null, openHours, address, null, featured, serviceScope, serviceCommunityNos,
                     serviceCityCode, fulfillmentReach, serviceAreas, latE6, lngE6);
         }
 
@@ -95,7 +106,7 @@ public interface MerchantStoreService {
                            List<String> featured, String serviceScope,
                            List<String> serviceCommunityNos, String serviceCityCode,
                            String fulfillmentReach, List<AreaCommand> serviceAreas) {
-            this(announcement, openHours, address, null, featured, serviceScope, serviceCommunityNos,
+            this(announcement, null, openHours, address, null, featured, serviceScope, serviceCommunityNos,
                     serviceCityCode, fulfillmentReach, serviceAreas, null, null);
         }
     }

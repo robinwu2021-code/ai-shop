@@ -2713,6 +2713,16 @@ export interface StoreProfile {
 export type SubOrderStatus =
   | "WAIT_PAY"
   | "WAIT_FULFILL"
+  /**
+   * 公告失效时刻（epoch 毫秒）。**空 = 长期有效**。
+   *
+   * 过期由服务端读时判断，端上拿到的 `announcement` 已经是「此刻该显示的」——
+   * 端上不要自己再判一次：两处判断迟早会不一致，而不一致的表现是
+   * 「商家看是空的、买家看到的是昨天的货」。
+   */
+  announcementUntil?: number | null;
+  /** 最近用过的公告，最多 5 条，按最近使用排序。服务端维护，端上只读 */
+  announcementRecent?: string[];
   | "FULFILLING"
   | "COMPLETED"
   | "CANCELLED"

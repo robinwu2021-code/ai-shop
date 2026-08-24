@@ -33,7 +33,8 @@ const form = ref<StoreProfile>({
 const loaded = ref(false);
 const snapshot = ref("");
 const pick = (p: StoreProfile) => JSON.stringify([
-  p.announcement, p.openHours, p.address, p.addressDetail ?? "", p.latE6 ?? null, p.lngE6 ?? null,
+  p.announcement, p.announcementUntil ?? null, p.openHours, p.address, p.addressDetail ?? "",
+  p.latE6 ?? null, p.lngE6 ?? null,
 ]);
 const dirty = computed(() => loaded.value && pick(form.value) !== snapshot.value);
 
@@ -55,6 +56,9 @@ async function load() {
   if (s.status === "fulfilled") {
     form.value = { ...s.value, serviceAreas: s.value.serviceAreas ?? [] };
     snapshot.value = pick(form.value);
+    // 回显有效期那三档：有到期时刻就看它是不是今天，否则是长期
+    const at = form.value.announcementUntil;
+    ttlKey.value = !at ? "forever" : new Date(at).toDateString() === new Date().toDateString() ? "today" : "d3";
     loaded.value = true;
   } else {
     uni.showToast({ title: t("store.loadFailed"), icon: "none" });
@@ -86,11 +90,50 @@ async function save() {
 }
 
 function discard() {
-  const [announcement = "", openHours = "", address = "", addressDetail = "", latE6 = null, lngE6 = null] =
-    JSON.parse(snapshot.value || "[]") as
-      [string, string, string, string, number | null, number | null];
-  form.value = { ...form.value, announcement, openHours, address, addressDetail, latE6, lngE6 };
+  const [announcement = "", announcementUntil = null, openHours = "", address = "", addressDetail = "",
+    latE6 = null, lngE6 = null] = JSON.parse(snapshot.value || "[]") as
+      [string, number | null, string, string, string, number | null, number | null];
+  form.value = { ...form.value, announcement, announcementUntil, openHours, address, addressDetail, latE6, lngE6 };
 }
+
+/**
+ * 公告有效期三档。**存的是失效时刻**（epoch 毫秒），不是「几天」——
+ * 存天数的话，同一条公告在不同时刻保存会得到不同的到期时间，
+ * 而店主以为自己没动过它。
+ */
+const TTL_OPTIONS = [
+  { key: "today", ms: () => endOfToday() },
+  { key: "d3", ms: () => Date.now() + 3 * 24 * 3600 * 1000 },
+  { key: "forever", ms: () => null },
+] as const;
+type TtlKey = (typeof TTL_OPTIONS)[number]["key"];
+
+/** 今天 23:59:59 —— 「今天有效」说的是今天结束，不是「24 小时后」 */
+function endOfToday() {
+  const d = new Date();
+  d.setHours(23, 59, 59, 999);
+  return d.getTime();
+}
+
+const ttlKey = ref<TtlKey>("forever");
+function pickTtl(k: TtlKey) {
+  ttlKey.value = k;
+  const opt = TTL_OPTIONS.find((o) => o.key === k);
+  form.value.announcementUntil = opt ? opt.ms() : null;
+}
+
+/** 到期时刻的人话。只在设了有效期时出现 —— 「长期」没有到期这回事 */
+const untilText = computed(() => {
+  const at = form.value.announcementUntil;
+  if (!at) return "";
+  const d = new Date(at);
+  const today = new Date();
+  const sameDay = d.toDateString() === today.toDateString();
+  const hh = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  return t("store.ttl.until", { s: sameDay ? `${t("store.ttl.todayAt")} ${hh}` : `${d.getMonth() + 1}/${d.getDate()} ${hh}` });
+});
+
+const recent = computed(() => (form.value.announcementRecent ?? []).filter((x) => x && x !== form.value.announcement));
 
 /** 已标过点（坐标随门店保存；买家侧导航/排距离靠它） */
 const pinned = computed(() => form.value.latE6 != null && form.value.lngE6 != null);
@@ -177,19 +220,55 @@ onShow(() => {
     <biz-store-tag></biz-store-tag>
 
     <!-- 装修：只有三个字段 -->
+    <!--
+      公告单独一张卡、排在最前：它是这一屏**唯一的高频内容**（一天可能改两次），
+      而地址、营业时间一年改几次。此前它们并排在「店铺装修」里，
+      改一次公告要进设置页、找到那一格、全选删掉、重打一遍。
+    -->
     <view class="sh-card">
-      <text class="sh-h2">{{ $t("store.decorate") }}</text>
-
-      <view class="field">
-        <text class="field__label">{{ $t("store.announcement") }}</text>
-        <textarea
-          v-model="form.announcement"
-          class="field__area"
-          :placeholder="$t('store.announcementPh')"
-          maxlength="60"
-        />
-        <text class="hint">{{ $t("store.announcementHint") }}</text>
+      <view class="head">
+        <text class="sh-h2">{{ $t("store.noticeCard") }}</text>
+        <text class="head__sub">{{ $t("store.noticeCardSub") }}</text>
       </view>
+
+      <textarea
+        v-model="form.announcement"
+        class="field__area"
+        :placeholder="$t('store.announcementPh')"
+        maxlength="60"
+      />
+
+      <!--
+        有效期三档。**到期由服务端读时判断**，不跑定时任务 ——
+        最常见的故障是「昨天到货」挂了一周，比没有公告更伤信任：买家是照着它来的。
+      -->
+      <view class="ttl">
+        <text
+          v-for="o in TTL_OPTIONS"
+          :key="o.key"
+          class="ttl__i"
+          :class="{ 'is-on': ttlKey === o.key }"
+          @tap="pickTtl(o.key)"
+        >{{ $t(`store.ttl.${o.key}`) }}</text>
+        <text v-if="untilText" class="ttl__at">{{ untilText }}</text>
+      </view>
+
+      <!-- 常用：店主的公告是在几句话之间轮换，不是每次都写新的 -->
+      <template v-if="recent.length">
+        <text class="field__label mt">{{ $t("store.noticeRecent") }}</text>
+        <view class="recent">
+          <text
+            v-for="(r, i) in recent"
+            :key="i"
+            class="recent__i"
+            @tap="form.announcement = r"
+          >{{ r }}</text>
+        </view>
+      </template>
+    </view>
+
+    <view class="sh-card mt">
+      <text class="sh-h2">{{ $t("store.decorate") }}</text>
 
       <view class="field">
         <text class="field__label">{{ $t("store.openHours") }}</text>
@@ -402,5 +481,57 @@ onShow(() => {
 /* 门牌号：接在地址下面，视觉上属于同一格 */
 .addr__detail {
   margin-top: 12rpx;
+}
+
+/* 有效期三档：与登录页的分段控件同一手法 —— 选中靠主色 + 底色，不做成按钮 */
+.ttl {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-top: 16rpx;
+}
+.ttl__i {
+  padding: 10rpx 20rpx;
+  border-radius: 24rpx;
+  background: var(--sh-faint);
+  color: var(--sh-sub);
+  font-size: 24rpx;
+}
+.ttl__i.is-on {
+  background: var(--sh-primary-tint);
+  color: var(--sh-primary-text);
+}
+.ttl__at {
+  margin-left: auto;
+  font-size: 24rpx;
+  color: var(--sh-sub);
+}
+/* 常用公告：一点即换。**是内容不是标签**，所以不截断、允许换行 */
+.recent {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+}
+.recent__i {
+  padding: 16rpx 20rpx;
+  border-radius: 16rpx;
+  background: var(--sh-faint);
+  font-size: 26rpx;
+  color: var(--sh-ink);
+  line-height: 1.5;
+}
+
+/* 卡头：标题 + 右侧一句副标题。这一页此前没有这个块，两段文字会黏成一行 */
+.head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16rpx;
+  margin-bottom: 16rpx;
+}
+.head__sub {
+  flex-shrink: 0;
+  font-size: 24rpx;
+  color: var(--sh-sub);
 }
 </style>

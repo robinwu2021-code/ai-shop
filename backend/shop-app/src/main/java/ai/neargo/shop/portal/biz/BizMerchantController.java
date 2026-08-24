@@ -322,7 +322,8 @@ public class BizMerchantController {
         return storeService.save(BizContext.requireMerchantNo(),
                 BizContext.current().currentStoreNo(),
                 new MerchantStoreService.SaveCommand(
-                        req.announcement(), req.openHours(), req.address(), req.addressDetail(),
+                        req.announcement(), req.announcementUntil(),
+                        req.openHours(), req.address(), req.addressDetail(),
                         req.featured(),
                         req.serviceScope(), req.serviceCommunityNos(), req.serviceCityCode(),
                         req.fulfillmentReach(), req.serviceAreas(), req.latE6(), req.lngE6()));
@@ -773,7 +774,8 @@ public class BizMerchantController {
 
     /** 对齐 shared {@code StoreProfile}。 */
     /** @param latE6 门店坐标（gcj02，E6）；不传 = 不改 */
-    public record StoreReq(String announcement, String openHours, String address, String addressDetail,
+    public record StoreReq(String announcement, Long announcementUntil,
+                           String openHours, String address, String addressDetail,
                            List<String> featured, String serviceScope,
                            List<String> serviceCommunityNos, String serviceCityCode,
                            String fulfillmentReach,

@@ -73,7 +73,10 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
         MchStore store = row(merchantNo, storeNo);
         MchEntity merchant = merchant(merchantNo);
         return new StoreProfileVO(
-                store == null ? "" : nz(store.getAnnouncement()),
+                // 过期即空：两条读路径（B 端这里、C 端 storeFront）走同一个判断
+                store == null ? "" : store.effectiveAnnouncement(),
+                store == null ? null : store.getAnnouncementUntil(),
+                store == null ? List.of() : readList(store.getAnnouncementRecent()),
                 store == null ? "" : nz(store.getOpenHours()),
                 store == null ? "" : nz(store.getAddress()),
                 store == null ? "" : nz(store.getAddressDetail()),
@@ -152,6 +155,13 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
         }
         store.setOpenHours(cmd.openHours());
         store.setAddress(cmd.address());
+            /*
+             * 有效期跟着公告走：**换了内容就换有效期**，包括「这次没给 = 长期」。
+             * 不这么做的话，上一条「今天有效」的到期时间会跟着新公告一起留下来，
+             * 于是他刚发的长期公告在今晚零点悄悄消失。
+             */
+            store.setAnnouncementUntil(cmd.announcementUntil());
+            store.setAnnouncementRecent(writeJson(pushRecent(store.getAnnouncementRecent(), cmd.announcement())));
         /*
          * 门牌号 **null = 这次不改**（老版本端上不传这个字段），空串才是「清掉」。
          * 不分开的话，老 App 保存一次公告就会把商家填的门牌号抹掉，且那一下看不出来。
@@ -232,9 +242,8 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
          * **保住已经审过的状态。**
          *
          * 这里是全量删重插（唯一键在 entity+level+ref 上，改动最少的写法）。
-         * 不记住旧状态的话，商家下次进来只改一句公告，他早已审过的「整个西湖区」
-         * 会被重建成 PENDING —— 覆盖当场失效，而页面上什么都没提示。
-         * 一条审过的覆盖只该因为**他自己删掉它**而消失。
+         * 曾经要在这里保住旧的审核状态（PENDING/REJECTED 不能被删重插抹掉）——
+         * 现在所有粒度都自选即生效，新插入的一律是 ACTIVE，不再需要记这份旧状态。
          */
         java.util.Map<String, String> wasStatus = current.stream().collect(java.util.stream.Collectors
                 .toMap(a -> a.getLevel() + ":" + a.getRefCode(), MchServiceArea::getStatus, (a, b) -> a));
@@ -268,13 +277,32 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
                     : prior != null ? prior : MchServiceArea.PENDING;
             row.setStatus(status);
             DataScopeContext.executeWithoutScope(() -> serviceAreaMapper.insert(row));
-            /*
-             * 只给**这次新出现的**待审项建单：沿用旧 PENDING 的不再建，
-             * 否则商家每保存一次公告，运营的队列里就多一条一模一样的待审。
-             */
-            if (MchServiceArea.PENDING.equals(status) && prior == null) {
-                submitAreaForAudit(merchantNo, row);
+
+    /** 常用公告最多留几条。5 条覆盖得住轮换，再多这一排就要换行、也要开始滚动 */
+    private static final int RECENT_MAX = 5;
+
+    /**
+     * 把这次用的公告推进「常用」：去重、移到最前、截到 5 条。
+     *
+     * <p>空公告不进列表 —— 清空公告是个动作，不是一句「常用语」。
+     */
+    private List<String> pushRecent(String rawJson, String announcement) {
+        String now = announcement == null ? "" : announcement.trim();
+        List<String> kept = new java.util.ArrayList<>();
+        if (!now.isEmpty()) {
+            kept.add(now);
+        }
+        for (String old : readList(rawJson)) {
+            if (kept.size() >= RECENT_MAX) {
+                break;
             }
+            if (old != null && !old.isBlank() && !old.equals(now)) {
+                kept.add(old);
+            }
+        }
+        return kept;
+    }
+
         }
     }
 

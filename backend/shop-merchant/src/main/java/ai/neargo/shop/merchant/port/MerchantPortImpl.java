@@ -329,7 +329,8 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
                         .orderByDesc(ai.neargo.shop.merchant.entity.MchStore::getIsDefault)
                         .last("limit 1")));
         return store == null ? Optional.empty()
-                : Optional.of(new StoreFront(nvl(store.getAnnouncement()),
+                // 过期即空：与 B 端 profile() 同一个判断，只写在实体上那一处
+                : Optional.of(new StoreFront(store.effectiveAnnouncement(),
                         nvl(store.getOpenHours()), nvl(store.getAddress()),
                         nvl(store.getStatus()), store.getLatE6(), store.getLngE6()));
     }

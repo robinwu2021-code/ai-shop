@@ -615,7 +615,10 @@ export const mockApi: MerchantApi = {
 
   // ---------------------------------------------------------------- 店铺与获客
   async mStore() {
-    return delay({ ...db.store });
+    const out = { ...db.store } as typeof db.store & { announcementUntil?: number | null };
+    // 与保存那一处同一条判断：过期的公告读出来就是空的
+    if (out.announcementUntil && out.announcementUntil < Date.now()) out.announcement = "";
+    return delay(out);
   },
 
   async mMasterData() {
@@ -1197,7 +1200,13 @@ export const mockApi: MerchantApi = {
      */
     db.store = JSON.parse(JSON.stringify(payload)) as typeof db.store;
     persist();
-    return delay({ ...db.store });
+    /*
+     * **过期即空**：与后端 `MchStore.effectiveAnnouncement()` 同一条判断。
+     * 只在真库里做的话，「昨天到货挂到今天」这个最要紧的后果在 mock 上看不见。
+     */
+    const out = { ...db.store } as typeof db.store & { announcementUntil?: number | null };
+    if (out.announcementUntil && out.announcementUntil < Date.now()) out.announcement = "";
+    return delay(out);
   },
 
   async mStoreQrcode() {
@@ -1236,6 +1245,14 @@ export const mockApi: MerchantApi = {
       toDeliver: mine.filter((o) => o.fulfillment === "MERCHANT_DELIVERY" && o.status === "PAID").length,
       // 待备货按**我的单**算（mine），不是按我的自提点（atMyPoint）——
       // 买家常常选别家的点，两个数因此不相等。后端也是这个口径
+    /*
+     * 「常用公告」由**服务端**维护（去重 + 最近的排最前 + 最多 5 条），端上只读 ——
+     * mock 不照做的话，这一段在开发期永远是空的，而它正是这次改版的主角。
+     */
+    const now = (payload.announcement ?? "").trim();
+    const prev = (before as { announcementRecent?: string[] }).announcementRecent ?? [];
+    (db.store as { announcementRecent?: string[] }).announcementRecent =
+      [now, ...prev.filter((x) => x && x !== now)].filter(Boolean).slice(0, 5);
       toStock: mine.filter((o) => o.fulfillment === "STORE_PICKUP" && o.status === "PAID").length,
       toVerify: atMyPoint.filter((o) => o.status === "FULFILLING").length,
       toPick: atMyPoint.filter((o) => o.status === "PAID").length,

@@ -245,6 +245,55 @@ class ServiceAreaFlowTest {
         var st = new ai.neargo.shop.merchant.entity.MchStore();
         st.setStoreNo("ST" + seq++);
         st.setEntityNo(merchantNo);
+    @Test
+    @DisplayName("★★ 公告过期即空 —— 「昨天到货」不该挂到今天，而且两条读路径要一致")
+    void announcementExpires() {
+        String m = merchant("PICKUP");
+        store(m);
+        String c = community("330106002");
+        var areas = java.util.List.of(new ai.neargo.shop.merchant.service.MerchantStoreService
+                .AreaCommand("COMMUNITY", c));
+
+        long past = System.currentTimeMillis() - 3600_000L;
+        storeService.save(m, null, new ai.neargo.shop.merchant.service.MerchantStoreService.SaveCommand(
+                "今天到了新米", past, "08:00-20:00", "文一西路 1 号", null,
+                java.util.List.of(), null, null, null, "PICKUP", areas, null, null));
+
+        /*
+         * **B 端与 C 端必须给出同一个答案**。只在一处判过期的话，
+         * 商家自己看是空的、买家看到的却是昨天的货 —— 而这种不一致
+         * 没有任何报错，只有买家白跑一趟才会暴露。
+         */
+        assertThat(storeService.profile(m).announcement()).as("B 端").isEmpty();
+        assertThat(merchantQuery.storeFront(m).orElseThrow().announcement()).as("C 端").isEmpty();
+
+        storeService.save(m, null, new ai.neargo.shop.merchant.service.MerchantStoreService.SaveCommand(
+                "今天到了新米", System.currentTimeMillis() + 3600_000L, "08:00-20:00", "文一西路 1 号", null,
+                java.util.List.of(), null, null, null, "PICKUP", areas, null, null));
+        assertThat(storeService.profile(m).announcement()).isEqualTo("今天到了新米");
+    }
+
+    @Test
+    @DisplayName("★ 常用公告：最近用过的排最前、不重复、最多 5 条")
+    void recentAnnouncementsAreDeduped() {
+        String m = merchant("PICKUP");
+        store(m);
+        String c = community("330106002");
+        var areas = java.util.List.of(new ai.neargo.shop.merchant.service.MerchantStoreService
+                .AreaCommand("COMMUNITY", c));
+
+        for (String text : java.util.List.of("一", "二", "三", "一", "四", "五", "六")) {
+            storeService.save(m, null, new ai.neargo.shop.merchant.service.MerchantStoreService.SaveCommand(
+                    text, null, "08:00-20:00", "文一西路 1 号", null,
+                    java.util.List.of(), null, null, null, "PICKUP", areas, null, null));
+        }
+
+        var recent = storeService.profile(m).announcementRecent();
+        assertThat(recent).hasSize(5);
+        assertThat(recent.get(0)).as("刚用过的排最前").isEqualTo("六");
+        assertThat(recent).as("同一句只留一条").containsExactly("六", "五", "四", "一", "三");
+    }
+
         st.setName(name);
         st.setIsDefault(false);
         storeMapper.insert(st);
@@ -418,7 +467,7 @@ class ServiceAreaFlowTest {
     }
 
     @Test
-    @DisplayName("★ 审过的覆盖不会因为商家改了句公告就打回待审")
+    @DisplayName("★ 已经生效的覆盖不会因为商家改了句公告就被打回")
     void approvedAreaSurvivesLaterSave() {
         String m = merchant("ONSITE");
         store(m);

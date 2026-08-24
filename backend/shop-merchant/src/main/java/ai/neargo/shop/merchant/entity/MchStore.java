@@ -89,6 +89,40 @@ public class MchStore extends BaseEntity {
     /** 最近一次切换收款商户号的时间。换商户号会改变钱的去向，要能追。 */
     private Long paymentChangedAt;
     private String announcement;
+
+    /**
+     * 公告失效时刻（epoch 毫秒）。<b>空 = 长期有效</b>。
+     *
+     * <p>过期**由读时判断**（见 {@link #effectiveAnnouncement()}），不跑定时任务：
+     * 定时会在重启、时区、漏跑上出问题，而这件事经不起漏一次 ——
+     * 「昨天到货」挂一周比没有公告更伤信任，买家是照着它来的。
+     */
+    private Long announcementUntil;
+
+    /**
+     * 最近用过的公告，JSON 数组最多 5 条，按最近使用排序。
+     *
+     * <p>店主的公告是在几句话之间轮换（「今天到货」「今日售罄」「下午半价」），
+     * 不是每次都写新的 —— 存下来点一下即换，比每次重打一遍快一个量级。
+     */
+    private String announcementRecent;
+
+    /**
+     * 此刻**对外该显示的**公告：过期即空。
+     *
+     * <p>两条读路径都要走它 —— B 端的 `profile()` 与 C 端的 `storeFront()`。
+     * 只在一处判过期的话，另一处会继续显示已经过期的那条，
+     * 而这种不一致最难被发现：商家自己看是空的，买家看到的却是昨天的货。
+     */
+    public String effectiveAnnouncement() {
+        if (announcement == null || announcement.isBlank()) {
+            return "";
+        }
+        if (announcementUntil != null && announcementUntil < System.currentTimeMillis()) {
+            return "";
+        }
+        return announcement;
+    }
     private String openHours;
     private String address;
 
