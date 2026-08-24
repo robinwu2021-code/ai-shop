@@ -470,6 +470,17 @@ export const PAGE = {
  */
 export const GOODS_COVER_FALLBACK = "🛒";
 
+/**
+ * 商家头像兜底。和 {@link GOODS_COVER_FALLBACK} 是同一个毛病的另一半：
+ * `logo` 在后端是可空字段，**商家不上传是常态**，而 mock 里每家都带 emoji，
+ * 所以接真后端之前一次都没露过。
+ *
+ * <p>空字符串渲染出来是一个 80rpx 的**灰色空方块** —— 不报错、不塌版，
+ * 看着像头像正在加载，人会等一会儿才反应过来它就是这样。
+ * 端上一律走 `merchant.logo || MERCHANT_LOGO_FALLBACK`，不许各页面各写各的。
+ */
+export const MERCHANT_LOGO_FALLBACK = "🏪";
+
 export const ROUTES = {
   goods: "/pages/goods/index",
   merchant: "/pages/merchant/index",
