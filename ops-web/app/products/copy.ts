@@ -315,6 +315,12 @@ const zh = {
   // 类目树上的规格列。**红色的「未配」是这一列的全部意义** ——
   // 配了几个是次要信息，没配才是要人动手的那一行
   fieldCatNameEnHint: "留空不会报错，但 C 端英文界面会显示中文名 —— 表格里会标成「缺译」",
+  // 「照某个类目配」。从零挑 4 个维度、每个再挑 3–5 个取值是二十来次点击，
+  // 而新类目往往和某个同级几乎一样
+  csCopyFrom: "照哪个类目配",
+  csCopyFromPh: "选一个已配好的类目",
+  csCopyDo: "照它配",
+  csCopyHint: "把那个类目的维度、取值与换名整份搬过来，再改不合适的几处 —— 从零配的人常漏掉「保质期」这种不显眼但该有的维度",
   catColSpecs: "规格",
   catSpecsNone: "未配",
   catSpecsGo: "去配「{name}」的规格",
@@ -714,6 +720,10 @@ const en: typeof zh = {
   csUnbind: "Remove",
   csPickValues: "Values",
   fieldCatNameEnHint: "Leaving this empty is allowed, but the English storefront falls back to the Chinese name — the table marks it “no EN”",
+  csCopyFrom: "Copy from",
+  csCopyFromPh: "Pick a configured category",
+  csCopyDo: "Copy",
+  csCopyHint: "Brings over its dimensions, values and renames — then fix the few that do not fit",
   catColSpecs: "Specs",
   catSpecsNone: "None",
   catSpecsGo: "Configure specs for “{name}”",

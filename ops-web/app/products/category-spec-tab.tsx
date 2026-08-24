@@ -8,25 +8,18 @@
 // 这张表的第一职责是**把缺口顶到眼前**：一条规格都没配的类目标红并计数。
 // 没配的后果不是「少个推荐」——商家侧不再有品类兜底（去掉那条回落是这一版的决定），
 // 那一类的商家只能手输，而手输的选项没有规格编码，跨店聚合就此断掉。
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import { notify } from "@/lib/notify";
 import { fill } from "@/lib/use-copy";
-import type { CategorySpec, CategorySpecBinding, SpecDim } from "@/lib/types";
+import type { CategorySpec } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DataTable, type Column } from "@/components/ui/data-table";
-import { Drawer } from "@/components/ui/drawer";
+import { CategorySpecDrawer } from "./category-spec-drawer";
 import { Notice } from "@/components/ui/notice";
 import type { ProductsCopy } from "./copy";
-
-/** 抽屉里的编辑态：一个类目的绑定是一组**有序**的东西，所以用数组不用 Set */
-type Editing = {
-  category: CategorySpec;
-  bindings: CategorySpecBinding[];
-};
 
 export function CategorySpecTab({ c, canEdit }: { c: ProductsCopy; canEdit: boolean }) {
   /*
@@ -38,65 +31,27 @@ export function CategorySpecTab({ c, canEdit }: { c: ProductsCopy; canEdit: bool
    * 任何一次重渲染都会把它弹回来，而 URL 上的参数还在。
    */
   const catParam = useSearchParams().get("cat");
-  const openedFor = useRef<string | null>(null);
-  const qc = useQueryClient();
+  const [openNo, setOpenNo] = useState<string | null>(null);
+  /** 表格里「点一个维度看它的取值」—— 与抽屉无关，`类目号:维度号` 做键 */
   const [openKey, setOpenKey] = useState<string | null>(null);
-  const [editing, setEditing] = useState<Editing | null>(null);
 
   const list = useQuery({ queryKey: ["category-specs"], queryFn: () => api.listCategorySpecs() });
-  // 抽屉里要能从全量维度里挑，所以两个分区都拉
-  const dims = useQuery({ queryKey: ["spec-dims", "all"], queryFn: () => api.listSpecDims({}) });
-
-  const save = useMutation({
-    mutationFn: () => api.saveCategorySpecs(editing!.category.categoryNo, editing!.bindings),
-    onSuccess: () => {
-      setEditing(null);
-      qc.invalidateQueries({ queryKey: ["category-specs"] });
-      qc.invalidateQueries({ queryKey: ["spec-dims"] });
-      notify.success(c.save);
-    },
-  });
 
   const rows = list.data ?? [];
   const configured = rows.filter((r) => r.dimCount > 0).length;
 
+  /*
+   * `?cat=` 深链：**旧地址还得能用**（有人存了书签、有人从别处链过来）。
+   * 类目树现在是就地开抽屉、不跳过来了，所以这条只剩兼容作用。
+   * 只跟 catParam 变化 —— 否则关掉抽屉后任何一次重渲染都会把它弹回来。
+   */
   useEffect(() => {
-    if (!catParam || openedFor.current === catParam) return;
-    const row = rows.find((r) => r.categoryNo === catParam);
-    if (!row) return;   // 数据还没到，下一次渲染再试
-    openedFor.current = catParam;
-    startEdit(row);
-    // startEdit 依赖 dims 数据（换名要与规格库原值比对），进依赖会反复触发
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [catParam, rows]);
+    if (catParam) setOpenNo(catParam);
+  }, [catParam]);
   const summary = c.csSummary
     .replace("{total}", String(rows.length))
     .replace("{configured}", String(configured))
     .replace("{gap}", String(rows.length - configured));
-
-  /** 把一行的现状翻成可编辑的绑定 —— 抽屉打开时做一次，之后只改本地态 */
-  function startEdit(r: CategorySpec) {
-    setEditing({
-      category: r,
-      bindings: r.dims.map((d) => ({
-        dimNo: d.dimNo,
-        usageType: d.usage,
-        primary: d.primary,
-        required: false,
-        valueNos: d.values.map((v) => v.valueNo),
-        labels: Object.fromEntries(
-          d.values
-            .map((v) => {
-              const src = dims.data?.find((x) => x.dimNo === d.dimNo)
-                ?.values.find((x) => x.valueNo === v.valueNo);
-              // 只有真的换过名才回填 —— 否则保存时会把一堆等于原名的「换名」写进去
-              return src && src.label !== v.label ? [v.valueNo, v.label] : null;
-            })
-            .filter(Boolean) as [string, string][],
-        ),
-      })),
-    });
-  }
 
   const columns: Column<CategorySpec>[] = [
     {
@@ -171,7 +126,7 @@ export function CategorySpecTab({ c, canEdit }: { c: ProductsCopy; canEdit: bool
     {
       header: "",
       cell: (r) => canEdit
-        ? <Button size="sm" variant="secondary" onClick={() => startEdit(r)}>{c.csEdit}</Button>
+        ? <Button size="sm" variant="secondary" onClick={() => setOpenNo(r.categoryNo)}>{c.csEdit}</Button>
         : null,
       width: "6rem",
     },
@@ -193,180 +148,7 @@ export function CategorySpecTab({ c, canEdit }: { c: ProductsCopy; canEdit: bool
         empty={c.csEmpty}
       />
 
-      <Drawer
-        open={!!editing} onOpenChange={(o) => !o && setEditing(null)}
-        title={editing ? fill(c.csEditTitle, { name: editing.category.categoryName }) : ""}
-        desc={editing?.category.categoryNo}
-        width="w-[680px]"
-        footer={editing ? (
-          <Button loading={save.isPending} onClick={() => save.mutate()}>{c.csEditOk}</Button>
-        ) : null}
-      >
-        {editing && (
-          <BindingEditor
-            c={c}
-            all={dims.data ?? []}
-            editing={editing}
-            onChange={(bindings) => setEditing({ ...editing, bindings })}
-          />
-        )}
-      </Drawer>
+      <CategorySpecDrawer c={c} canEdit={canEdit} categoryNo={openNo} onClose={() => setOpenNo(null)} />
     </>
-  );
-}
-
-/**
- * 绑定编辑器：左边是已选（有序，第一个是主维度），右边是可选。
- *
- * <p>「主维度」用<b>顺序</b>表达而不是一个单选钮：它就是「排第一的那个」——
- * 两种表示并存的话，用户会遇到「排在第二却标着主」的状态，而那时预填哪一个说不清。
- */
-function BindingEditor({ c, all, editing, onChange }: {
-  c: ProductsCopy; all: SpecDim[]; editing: Editing;
-  onChange: (b: CategorySpecBinding[]) => void;
-}) {
-  const picked = editing.bindings;
-  const pickedNos = new Set(picked.map((b) => b.dimNo));
-  const rest = all.filter((d) => !pickedNos.has(d.dimNo) && d.status === "ACTIVE");
-  const dimOf = (no: string) => all.find((d) => d.dimNo === no);
-
-  const move = (i: number, to: number) => {
-    if (to < 0 || to >= picked.length) return;
-    const next = [...picked];
-    const [x] = next.splice(i, 1);
-    next.splice(to, 0, x!);
-    // 主维度 = 排第一的那个，位置一变就跟着变
-    onChange(next.map((b, k) => ({ ...b, primary: k === 0 })));
-  };
-
-  return (
-    <div className="space-y-5">
-      <p className="text-[13px] text-muted-foreground">{c.csEditHint}</p>
-
-      <div>
-        <div className="mb-2 txt-label text-muted-foreground">{c.csPicked}</div>
-        <div className="space-y-2">
-          {picked.map((b, i) => {
-            const d = dimOf(b.dimNo);
-            if (!d) return null;
-            return (
-              <div key={b.dimNo} className="rounded-card border border-border p-3">
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold">{d.name}</span>
-                  {i === 0 && <Badge tone="default">{c.csPrimary}</Badge>}
-                  <Badge tone={d.universal ? "info" : "muted"}>
-                    {d.universal ? c.csUniversal : c.csDedicated}
-                  </Badge>
-                  <span className="ml-auto flex gap-1">
-                    <Button size="sm" variant="ghost" onClick={() => move(i, i - 1)}>↑</Button>
-                    <Button size="sm" variant="ghost" onClick={() => move(i, i + 1)}>↓</Button>
-                    <Button size="sm" variant="ghost"
-                      onClick={() => onChange(picked.filter((x) => x.dimNo !== b.dimNo)
-                        .map((x, k) => ({ ...x, primary: k === 0 })))}>
-                      {c.csUnbind}
-                    </Button>
-                  </span>
-                </div>
-                {/*
-                  取值分成两排：**上排是已选的、按商家实际看到的顺序**，下排是还没选的。
-                  从前两者混在一排靠高亮区分，于是「顺序」这件事既看不见也调不了 ——
-                  而它一直在生效（保存时按数组下标写 sort，商家侧就按 sort 展示）。
-                  一个默默生效、界面上却不存在的东西，比没有更难查。
-                */}
-                <div className="mt-2 txt-label text-muted-foreground">{c.csValsPicked}</div>
-                <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                  {b.valueNos.map((vn, vi) => {
-                    const v = d.values.find((x) => x.valueNo === vn);
-                    if (!v) return null;
-                    const shown = b.labels[vn] ?? v.label;
-                    const setVals = (valueNos: string[]) =>
-                      onChange(picked.map((x) => x.dimNo === b.dimNo ? { ...x, valueNos } : x));
-                    const moveVal = (to: number) => {
-                      if (to < 0 || to >= b.valueNos.length) return;
-                      const next = [...b.valueNos];
-                      const [x] = next.splice(vi, 1);
-                      next.splice(to, 0, x!);
-                      setVals(next);
-                    };
-                    return (
-                      <span key={vn}
-                        className="inline-flex items-center gap-0.5 rounded-chip
-                                   bg-[var(--primary)] px-1 py-0.5 text-[12px] text-white">
-                        <button type="button" title={c.csValMoveL} disabled={vi === 0}
-                          onClick={() => moveVal(vi - 1)}
-                          className="px-0.5 leading-none opacity-70 hover:opacity-100
-                                     disabled:cursor-default disabled:opacity-25">‹</button>
-                        <span className="px-0.5" title={c.csRenameHint}
-                          onDoubleClick={() => {
-                            // 双击换名：500g 在蔬菜下叫「约1斤」，归一量不变
-                            const next = window.prompt(
-                              fill(c.csRenamePrompt, { cat: editing.category.categoryName, label: v.label }),
-                              shown,
-                            );
-                            if (next == null) return;
-                            const labels = { ...b.labels };
-                            if (next.trim() && next.trim() !== v.label) labels[v.valueNo] = next.trim();
-                            else delete labels[v.valueNo];
-                            onChange(picked.map((x) => x.dimNo === b.dimNo ? { ...x, labels } : x));
-                          }}>
-                          {shown}
-                          {b.labels[vn] && <span className="opacity-70"> ← {v.label}</span>}
-                        </span>
-                        <button type="button" title={c.csValMoveR} disabled={vi === b.valueNos.length - 1}
-                          onClick={() => moveVal(vi + 1)}
-                          className="px-0.5 leading-none opacity-70 hover:opacity-100
-                                     disabled:cursor-default disabled:opacity-25">›</button>
-                        <button type="button" title={c.csValDrop}
-                          onClick={() => setVals(b.valueNos.filter((x) => x !== vn))}
-                          className="ml-0.5 px-0.5 leading-none opacity-70 hover:opacity-100">×</button>
-                      </span>
-                    );
-                  })}
-                  {!b.valueNos.length && (
-                    <span className="text-[12px] text-muted-foreground">{c.csValsAllHint}</span>
-                  )}
-                </div>
-
-                <div className="mt-2.5 txt-label text-muted-foreground">{c.csValsRest}</div>
-                <div className="mt-1 flex flex-wrap gap-1.5">
-                  {d.values.filter((v) => v.status === "ACTIVE" && !b.valueNos.includes(v.valueNo))
-                    .map((v) => (
-                      <button key={v.valueNo} type="button"
-                        onClick={() => onChange(picked.map((x) => x.dimNo === b.dimNo
-                          ? { ...x, valueNos: [...x.valueNos, v.valueNo] } : x))}
-                        className="rounded-chip bg-muted px-2 py-0.5 text-[12px] text-muted-foreground
-                                   hover:bg-border">
-                        {v.label}
-                      </button>
-                    ))}
-                </div>
-                <p className="mt-1.5 text-[11.5px] text-muted-foreground">{c.csRenameHint}</p>
-              </div>
-            );
-          })}
-          {!picked.length && <p className="text-[13px] text-muted-foreground">{c.csNone}</p>}
-        </div>
-      </div>
-
-      <div>
-        <div className="mb-2 txt-label text-muted-foreground">{c.csPickDims}</div>
-        <div className="flex flex-wrap gap-1.5">
-          {rest.map((d) => (
-            <button key={d.dimNo} type="button"
-              onClick={() => onChange([...picked, {
-                dimNo: d.dimNo, usageType: d.usageType, primary: picked.length === 0,
-                required: false, valueNos: [], labels: {},
-              }])}
-              className="inline-flex items-center gap-1.5 rounded-chip border border-border
-                         px-2.5 py-1 text-[12px] hover:bg-muted">
-              {d.name}
-              <Badge tone={d.universal ? "info" : "muted"}>
-                {d.universal ? c.csUniversal : c.csDedicated}
-              </Badge>
-            </button>
-          ))}
-        </div>
-      </div>
-    </div>
   );
 }

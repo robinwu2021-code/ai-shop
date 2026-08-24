@@ -14,7 +14,6 @@
 // 已经归到这个类目下的商品还在，C 端历史链接也还指着它，删掉之后那些入口进来是 404，
 // 而它本来只需要「这一类我们这期不做」。
 import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import { GripVertical } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
@@ -26,6 +25,7 @@ import { ShowArchivedToggle } from "@/components/archive";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DataTable, type Column } from "@/components/ui/data-table";
+import { CategorySpecDrawer } from "./category-spec-drawer";
 import { Drawer, DrawerSection, Field } from "@/components/ui/drawer";
 import { FilterSelect } from "@/components/ui/filter-select";
 import { Input } from "@/components/ui/input";
@@ -49,7 +49,12 @@ const EMPTY: Form = { name: "", i18nEn: "", parentNo: "", template: "STANDARD", 
 const TEMPLATES = ["STANDARD", "FRESH", "SERVICE", "VOUCHER", "VIRTUAL"] as const;
 
 export function CategoriesTab({ c, canEdit }: { c: ProductsCopy; canEdit: boolean }) {
-  const router = useRouter();
+  /*
+   * **就地开抽屉，不跳 tab。**从前点这一格会跳到「类目 × 规格」那个 tab ——
+   * 而配规格时最需要的参照恰恰是类目树上的东西：父子关系、同级类目配了什么。
+   * 跳走等于把那份上下文丢掉，回来还要重新找到自己刚才在看哪一行。
+   */
+  const [specFor, setSpecFor] = useState<string | null>(null);
   /*
    * 与「类目 × 规格」tab **共用同一个 queryKey** —— 那边已经拉过就直接命中缓存，
    * 不为了一列数字多打一次接口。
@@ -544,7 +549,7 @@ export function CategoriesTab({ c, canEdit }: { c: ProductsCopy; canEdit: boolea
         return (
           <button type="button" className="hover:underline"
             title={fill(c.catSpecsGo, { name: r.name })}
-            onClick={() => router.push(`/products/?tab=category-spec&cat=${r.categoryNo}`)}>
+            onClick={() => setSpecFor(r.categoryNo)}>
             {n > 0
               ? <span>{n}</span>
               : <Badge tone="danger">{c.catSpecsNone}</Badge>}
@@ -837,6 +842,8 @@ export function CategoriesTab({ c, canEdit }: { c: ProductsCopy; canEdit: boolea
       </Drawer>
 
       {dialog}
+      <CategorySpecDrawer c={c} canEdit={canEdit} categoryNo={specFor}
+        onClose={() => setSpecFor(null)} />
     </>
   );
 }
