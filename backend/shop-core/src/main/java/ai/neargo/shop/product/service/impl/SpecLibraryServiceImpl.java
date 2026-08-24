@@ -111,6 +111,64 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
     }
 
     @Override
+    public List<SpecTemplateVO> pickableDims(String merchantNo, String categoryNo) {
+        /*
+         * 本类目已配的那几条排最前 —— 它们是平台针对这一类目的判断，
+         * 比通用维度更该被选中。复用 templatesForCategory，连主维度标记一起带出来。
+         */
+        List<SpecTemplateVO> out = new ArrayList<>(
+                categoryNo == null || categoryNo.isBlank()
+                        ? List.<SpecTemplateVO>of()
+                        : templatesForCategory(merchantNo, categoryNo));
+        Set<String> seen = out.stream().map(SpecTemplateVO::templateNo).collect(Collectors.toSet());
+
+        /*
+         * 再给平台维度池里剩下的。**通用的（universal）才给**：
+         * 专用维度（房型、体型、衣物类型）是给特定几类用的，摆在别的类目下
+         * 只会让他选中一个牛头不对马嘴的维度 —— 而那比没得选更糟。
+         */
+        List<PrdSpecDim> platform = DataScopeContext.executeWithoutScope(() ->
+                dimMapper.selectList(Wrappers.<PrdSpecDim>lambdaQuery()
+                        .eq(PrdSpecDim::getScope, PrdSpecDim.PLATFORM)
+                        .eq(PrdSpecDim::getStatus, PrdSpecDim.ACTIVE)
+                        .eq(PrdSpecDim::getUniversal, true)
+                        .orderByAsc(PrdSpecDim::getSort)));
+        for (PrdSpecDim dim : platform) {
+            if (seen.contains(dim.getDimNo()) || !PrdSpecDim.SALE.equals(dim.getUsageType())) {
+                continue;
+            }
+            List<SpecTemplateVO.Option> options = optionsOf(merchantNo, dim, List.of());
+            if (options.isEmpty()) {
+                continue;
+            }
+            // categoryNo 传 null：它不是「这一类目的」，端上靠这个分组
+            out.add(new SpecTemplateVO(dim.getDimNo(), PrdSpecDim.PLATFORM, null, null,
+                    dim.getName(), options, null, false));
+            seen.add(dim.getDimNo());
+        }
+
+        /*
+         * 最后是这家店自己建过的。**摆出来是为了让他复用而不是再建一个** ——
+         * 后端有「与自己重名就复用」的兜底，但那同样要他敲对字；
+         * 上次输「辣度」这次输「辣味」，库里就是两个维度。
+         */
+        List<PrdSpecDim> mine = DataScopeContext.executeWithoutScope(() ->
+                dimMapper.selectList(Wrappers.<PrdSpecDim>lambdaQuery()
+                        .eq(PrdSpecDim::getScope, PrdSpecDim.MERCHANT)
+                        .eq(PrdSpecDim::getEntityNo, merchantNo)
+                        .eq(PrdSpecDim::getStatus, PrdSpecDim.ACTIVE)
+                        .orderByAsc(PrdSpecDim::getSort)));
+        for (PrdSpecDim dim : mine) {
+            if (seen.contains(dim.getDimNo())) {
+                continue;
+            }
+            out.add(new SpecTemplateVO(dim.getDimNo(), PrdSpecDim.MERCHANT, null, null,
+                    dim.getName(), optionsOf(merchantNo, dim, List.of()), merchantNo, false));
+        }
+        return out;
+    }
+
+    @Override
     public Map<String, String> resolveValueNos(String merchantNo, String dimNo, List<String> labels) {
         if (dimNo == null || dimNo.isBlank() || labels == null || labels.isEmpty()) {
             return Map.of();

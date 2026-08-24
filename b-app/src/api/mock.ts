@@ -1835,6 +1835,25 @@ export const mockApi: MerchantApi = {
       throw new Error("「" + nm + "」太泛，换一个说清楚是什么的名字");
     }
     const created: SpecTemplate = {
+  /**
+   * 能挑的维度。mock 里的规格库只有模板表这一份，所以分组的判据与真后端一致：
+   * 本类目的（categoryNo 命中）→ 平台通用（无 categoryNo）→ 自建（scope=MERCHANT）。
+   */
+  async mPickableDims(categoryNo) {
+    const merchantNo = db.merchant.merchantNo;
+    const picked = categoryNo?.trim() || undefined;
+    const cat = picked ? db.specTemplates.filter((t) => t.categoryNo === picked) : [];
+    const seen = new Set(cat.map((t) => t.templateNo));
+    const universal = db.specTemplates.filter(
+      (t) => t.scope === "PLATFORM" && !t.categoryNo && !seen.has(t.templateNo),
+    );
+    universal.forEach((t) => seen.add(t.templateNo));
+    const mine = db.specTemplates.filter(
+      (t) => t.scope === "MERCHANT" && t.merchantNo === merchantNo && !seen.has(t.templateNo),
+    );
+    return delay([...cat, ...universal, ...mine]);
+  },
+
       templateNo: nextNo("SD"),
       scope: "MERCHANT",
       merchantNo,

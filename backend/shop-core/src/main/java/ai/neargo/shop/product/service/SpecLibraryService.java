@@ -29,6 +29,26 @@ public interface SpecLibraryService {
     List<SpecTemplateVO> templatesForCategory(String merchantNo, String categoryNo);
 
     /**
+     * 这家店<b>能用的全部规格维度</b>，给「加一个规格组」那个入口挑。
+     *
+     * <p>与 {@link #templatesForCategory} 的差别是**范围**：那个只给本类目配好的几条
+     * （选完类目自动预填用它），这个还要把<b>平台通用维度</b>（颜色、尺码、口味……）
+     * 和这家店已经建过的一并给出。
+     *
+     * <p>为什么需要它：此前商家点「自定义规格」是<b>盲输</b> —— 界面上从没出现过
+     * 平台有哪些维度，他只能凭记忆敲一个名字。后端确实有「与平台重名就用平台那个」
+     * 的兜底，但那要他<b>恰好敲对字</b>：敲「味道」而平台叫「口味」就撞不上，
+     * 于是库里多一个只有他一家能用的维度，他的货从此掉出跨店聚合。
+     * 先看后挑，比敲对字可靠得多。
+     *
+     * <p>同样只给 SALE：PROP（材质、产地、保质期）不进 SKU 矩阵。
+     *
+     * @param categoryNo 当前类目，可空。给了就把这一类目已配的排在最前并标出来
+     * @return 顺序即建议顺序：本类目已配的 → 平台通用 → 这家店自建的
+     */
+    List<SpecTemplateVO> pickableDims(String merchantNo, String categoryNo);
+
+    /**
      * 把商家提交的规格选项<b>反查成值编号</b>，供 SKU 快照使用。
      *
      * @param dimNo  规格组对应的维度（端上原样回传的 templateNo）；空 = 这一组不是模板来的

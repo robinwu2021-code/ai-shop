@@ -135,6 +135,7 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
   mAddSpecDim: { method: "POST", path: "/biz/spec-dims", auth: true, summary: "自建规格维度（只本店可用）" },
   mSaveSpecTemplate: { method: "POST", path: "/biz/spec-templates", auth: true, summary: "存为常用规格" },
 
+  mPickableDims: { method: "GET", path: "/biz/spec-dims", auth: true, summary: "加规格组时能挑的维度（本类目已配 + 平台通用 + 自建）" },
   mOrderList: { method: "GET", path: "/biz/order", auth: true, summary: "订单列表" },
   mOrderDetail: { method: "GET", path: "/biz/order/:orderNo", auth: true, summary: "订单详情" },
   mShip: { method: "POST", path: "/biz/order/:orderNo/ship", auth: true, summary: "快递发货" },

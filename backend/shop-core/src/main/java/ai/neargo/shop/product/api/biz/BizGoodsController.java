@@ -270,6 +270,20 @@ public class BizGoodsController {
     }
 
     /**
+     * 「加一个规格组」能挑的维度：本类目已配的 → 平台通用 → 这家店自建的。
+     *
+     * <p>与 {@code /biz/spec-templates} 的差别是范围：那个只给本类目配好的几条
+     * （选完类目自动预填用它），这个多给平台通用维度 —— 让商家<b>先看后挑</b>，
+     * 而不是像从前那样对着一个空输入框凭记忆敲维度名。
+     */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.GOODS + "')")
+    @GetMapping("/biz/spec-dims")
+    public List<ai.neargo.shop.product.dto.SpecTemplateVO> pickableDims(
+            @RequestParam(required = false) String categoryNo) {
+        return specLibrary.pickableDims(BizContext.requireMerchantNo(), categoryNo);
+    }
+
+    /**
      * 自建一个规格维度（平台没有的，如「辣度」）。
      *
      * <p><b>只在这家店可见，不参与跨店聚合</b> —— 端上要把这句话说给商家听。

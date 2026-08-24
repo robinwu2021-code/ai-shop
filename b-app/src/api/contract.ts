@@ -682,6 +682,18 @@ export interface MerchantApi {
   mShip(orderNo: string, expressNo: string): Promise<Order>;
   /** 商家自送：老板点一下「已送达」。不做骑手轨迹（ADR-005 §5） */
   mDelivered(orderNo: string): Promise<Order>;
+  /**
+   * 「加一个规格组」能挑的维度。**顺序即建议顺序**：
+   * 本类目已配的（`categoryNo` 有值）→ 平台通用（`categoryNo` 为空、`scope=PLATFORM`）
+   * → 这家店自建的（`scope=MERCHANT`）。
+   *
+   * <p>与 {@link mSpecTemplates} 的差别是范围：那个只给本类目配好的几条（自动预填用它），
+   * 这个多给平台通用维度 —— 让商家**先看后挑**。此前他点「自定义规格」是对着一个
+   * 空输入框凭记忆敲维度名：后端有「与平台重名就用平台那个」的兜底，
+   * 但那要他恰好敲对字，敲「味道」而平台叫「口味」就撞不上，
+   * 于是多出一个只有他一家能用的维度，他的货从此掉出跨店聚合。
+   */
+  mPickableDims(categoryNo?: string): Promise<SpecTemplate[]>;
   mDeliveryRule(): Promise<DeliveryRule>;
   mSaveDeliveryRule(rule: DeliveryRule): Promise<DeliveryRule>;
 

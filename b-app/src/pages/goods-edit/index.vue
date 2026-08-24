@@ -573,6 +573,9 @@ const groups = ref<{ name: string; options: string[]; codes?: (string | undefine
 /** 可用模板：平台按类目预置 + 本商家存的常用 */
 const templates = ref<SpecTemplate[]>([]);
 const showTemplates = ref(false);
+/** 「加规格组」时的维度选择面板：本类目已配 → 平台通用 → 自建 */
+const showDimPicker = ref(false);
+const pickableDims = ref<SpecTemplate[]>([]);
 /** 正在生成图文详情 */
 const generating = ref(false);
 
@@ -1248,20 +1251,78 @@ function primeMainGroup() {
   rebuild();
 }
 
-function addGroup() {
+/**
+ * 「加一个规格组」—— **先看平台有什么，再挑**。
+ *
+ * <p>从前这里直接塞一个空组：两个空输入框，而「规格名该填什么」恰恰是此刻最难的一步。
+ * 旁边还有个「自定义规格」，点开是个空对话框，让他凭记忆敲一个维度名。
+ * 两条路都是<b>盲输</b>，而盲输的代价看不见：手输的规格组没有维度编号，
+ * 值也没有值编号 —— 这件货从此不参与任何跨店聚合，界面上却毫无区别。
+ *
+ * <p>后端本来有「与平台维度重名就用平台那个」的兜底，但它要商家<b>恰好敲对字</b>：
+ * 敲「味道」而平台叫「口味」就撞不上。先看后挑，比敲对字可靠得多。
+ */
+async function openDimPicker() {
   // 三个维度已经是 3×3×3=27 个 SKU，手机上再多就没法维护了
   if (groups.value.length >= 3) {
     uni.showToast({ title: t("goods.groupLimit"), icon: "none" });
     return;
   }
-  groups.value.push({ name: "", options: [""] });
-  /*
-   * 有模板就顺手摊开。加完组，商家面对的是两个空框，而「规格名该填什么」
-   * 恰恰是此刻最难的一步 —— 平台模板就在同一张卡片里，却要再点一次才看得到。
-   * 已经有组了就不摊开：那时他多半知道自己在干什么。
-   */
-  if (templates.value.length && groups.value.length === 1) {
-    showTemplates.value = true;
+  showDimPicker.value = true;
+  if (!pickableDims.value.length) {
+    pickableDims.value = await api.mPickableDims(categoryNo.value || undefined).catch(() => []);
+  }
+}
+
+/** 挑中一个平台/自建维度：连同它的取值一起进来，值编号跟着走 */
+function pickDim(tpl: SpecTemplate) {
+  if (groups.value.some((g) => g.templateNo === tpl.templateNo)) {
+    uni.showToast({ title: t("goods.dimAlready"), icon: "none" });
+    return;
+  }
+  groups.value.push({ name: tpl.name, options: [""], codes: [undefined], templateNo: tpl.templateNo });
+  showDimPicker.value = false;
+  rebuild();
+}
+
+/**
+ * 都不是，自己起一个名。**留着这条路，但把它放在最后** ——
+ * 商家确实会有平台没想到的维度（「辣度」「打磨程度」），
+ * 堵死它的结果是他退回「＋ 规格组」手输，那才是真正掉出聚合的那条路。
+ */
+async function addCustomGroup() {
+  if (groups.value.length >= 3) {
+    uni.showToast({ title: t("goods.groupLimit"), icon: "none" });
+    return;
+  }
+  const name = await new Promise<string>((resolve) => {
+    uni.showModal({
+      title: t("goods.customDim"),
+      content: t("goods.customDimHint"),
+      editable: true,
+      placeholderText: t("goods.groupNamePh"),
+      success: (r) => resolve(r.confirm ? (r.content ?? "") : ""),
+      fail: () => resolve(""),
+    });
+  });
+  if (!name.trim()) return;
+  try {
+    const dim = await api.mAddSpecDim(name.trim(), []);
+    /*
+     * 后端可能把它归到平台已有的维度上（重名兜底）。**那时不该再加一组** ——
+     * 他要的维度已经在页面上了，再加一个同名组只会让两组抢同一批 SKU 轴。
+     */
+    if (groups.value.some((g) => g.templateNo === dim.templateNo)) {
+      uni.showToast({ title: t("goods.dimAlready"), icon: "none" });
+    } else {
+      groups.value.push({ name: dim.name, options: [""], templateNo: dim.templateNo });
+      rebuild();
+    }
+    showDimPicker.value = false;
+    pickableDims.value = [];
+    await loadTemplates();
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: "none" });
   }
 }
 
@@ -1320,31 +1381,27 @@ async function onOptionEdited(gi: number, oi: number) {
  * <p>与「＋规格组」的差别是**它会落进规格库**（scope=MERCHANT），
  * 于是这家店下次建品还能选到它。代价要说清楚：不参与跨店比价。
  */
-async function addCustomGroup() {
-  if (groups.value.length >= 3) {
-    uni.showToast({ title: t("goods.groupLimit"), icon: "none" });
-    return;
-  }
-  const name = await new Promise<string>((resolve) => {
-    uni.showModal({
-      title: t("goods.customDim"),
-      content: t("goods.customDimHint"),
-      editable: true,
-      placeholderText: t("goods.groupNamePh"),
-      success: (r) => resolve(r.confirm ? (r.content ?? "") : ""),
-      fail: () => resolve(""),
-    });
-  });
-  if (!name.trim()) return;
-  try {
-    const dim = await api.mAddSpecDim(name.trim(), []);
-    groups.value.push({ name: dim.name, options: [""], templateNo: dim.templateNo });
-    await loadTemplates();
-    rebuild();
-  } catch (e) {
-    uni.showToast({ title: (e as Error).message, icon: "none" });
-  }
-}
+/**
+ * 面板里的三段。**顺序就是建议顺序**：这一类目平台配好的最该选，
+ * 通用维度次之，自己建过的放最后（它们不参与跨店聚合）。
+ */
+const dimGroups = computed(() => [
+  {
+    key: "cat",
+    labelKey: "goods.dimFromCategory",
+    items: pickableDims.value.filter((d) => d.categoryNo),
+  },
+  {
+    key: "universal",
+    labelKey: "goods.dimUniversal",
+    items: pickableDims.value.filter((d) => !d.categoryNo && d.scope === "PLATFORM"),
+  },
+  {
+    key: "mine",
+    labelKey: "goods.dimMine",
+    items: pickableDims.value.filter((d) => d.scope === "MERCHANT"),
+  },
+]);
 
 /**
  * 这一组还能点进来的平台档位。
@@ -1357,7 +1414,14 @@ async function addCustomGroup() {
 function pickableFor(gi: number): SpecOption[] {
   const g = groups.value[gi];
   if (!g?.templateNo) return [];
-  const tpl = templates.value.find((t) => t.templateNo === g.templateNo);
+  /*
+   * **两处都要找。** `templates` 只有本类目配好的那几条，而从选择面板挑来的
+   * 通用维度（口味、颜色）在 `pickableDims` 里 —— 只查前者的话，
+   * 他挑完通用维度反倒回到手输，而手输的值没有值编号，参与不了聚合：
+   * 「先看后挑」这一步的收益到这里就漏光了。
+   */
+  const tpl = templates.value.find((t) => t.templateNo === g.templateNo)
+    ?? pickableDims.value.find((t) => t.templateNo === g.templateNo);
   if (!tpl) return [];
   const used = new Set(g.options.map((o) => o.trim()).filter(Boolean));
   return tpl.options.filter((o) => !used.has(o.label));
@@ -2082,9 +2146,13 @@ async function save(thenSubmit = false) {
           <text v-if="templates.length" class="link" @tap="showTemplates = !showTemplates">
             {{ $t("goods.useTemplate") }}
           </text>
-          <text class="link" @tap="addGroup">{{ $t("goods.addGroup") }}</text>
-          <!-- 自建维度：落进规格库，下次还能选到；代价（不参与跨店比价）在弹窗里说清 -->
-          <text class="link" @tap="addCustomGroup">{{ $t("goods.customDim") }}</text>
+          <!--
+            **一个入口，不是两个。** 从前「＋ 规格组」（空框手输）与「＋ 自定义规格」
+            （空对话框凭记忆敲名字）并排摆着，两条都是盲输，而盲输的代价看不见：
+            没有维度编号也没有值编号，这件货从此不参与跨店聚合。
+            现在点进去先看平台有什么，「自己起个名」在面板最下面。
+          -->
+          <text class="link" @tap="openDimPicker">{{ $t("goods.addGroup") }}</text>
         </view>
       </view>
       <text class="sh-muted hint">{{ $t("goods.specHint") }}</text>
@@ -2142,6 +2210,33 @@ async function save(thenSubmit = false) {
             </text>
           </view>
           <text class="sh-muted">{{ tpl.options.map((o) => o.label).join(" · ") }}</text>
+        </view>
+      </view>
+
+      <!-- 维度选择面板：顺序即建议顺序，越靠前越该被选中 -->
+      <view v-if="showDimPicker" class="picker">
+        <view class="picker__head">
+          <text class="sh-h2">{{ $t("goods.pickDim") }}</text>
+          <text class="link" @tap="showDimPicker = false">{{ $t("goods.pickDimClose") }}</text>
+        </view>
+        <view v-for="grp in dimGroups" :key="grp.key">
+          <view v-if="grp.items.length" class="picker__sec">
+            <text class="sh-muted picker__label">{{ $t(grp.labelKey) }}</text>
+            <view class="picker__row">
+              <text
+                v-for="d in grp.items"
+                :key="d.templateNo"
+                class="sh-chip"
+                :class="{ 'sh-chip--primary': grp.key === 'cat' }"
+                @tap="pickDim(d)"
+              >{{ d.name }}</text>
+            </view>
+          </view>
+        </view>
+        <view class="picker__sec">
+          <!-- 最后一条路：平台真的没有的维度（辣度、打磨程度）。堵死它他只会退回手输 -->
+          <text class="link" @tap="addCustomGroup">{{ $t("goods.customDim") }}</text>
+          <text class="sh-muted picker__hint">{{ $t("goods.customDimCost") }}</text>
         </view>
       </view>
 
@@ -2933,6 +3028,36 @@ async function save(thenSubmit = false) {
   border-radius: 16rpx;
   padding: 0 8rpx 0 16rpx;
 }
+/* 维度选择面板：三段分开，顺序即建议顺序 */
+.picker {
+  margin-top: 16rpx;
+  padding: 20rpx;
+  border-radius: 16rpx;
+  background: var(--sh-faint);
+}
+.picker__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.picker__sec {
+  margin-top: 20rpx;
+}
+.picker__label {
+  font-size: 24rpx;
+}
+.picker__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+  margin-top: 10rpx;
+}
+.picker__hint {
+  display: block;
+  margin-top: 8rpx;
+  font-size: 22rpx;
+}
+
 /* 平台档位点选区：贴在选项输入下面，和输入框拉开一点但仍在同一组里 */
 .picks {
   margin-top: 12rpx;
