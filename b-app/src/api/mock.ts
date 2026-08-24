@@ -709,16 +709,16 @@ export const mockApi: MerchantApi = {
         platformName,
         displayName: i.displayName?.trim() || undefined,
         sort: i.sort ?? idx,
+        // 三个数分开：在售/待审是「卖得怎么样」，goodsCount 是「能不能撤架」
         goodsCount: old?.goodsCount ?? 0,
+        onSaleCount: old?.onSaleCount ?? 0,
+        pendingCount: old?.pendingCount ?? 0,
       };
     });
     db.storeCategories[storeNo] = next;
     return delay(next.map((c) => ({ ...c })));
   },
 
-        // 三个数分开：在售/待审是「卖得怎么样」，goodsCount 是「能不能撤架」
-        onSaleCount: old?.onSaleCount ?? 0,
-        pendingCount: old?.pendingCount ?? 0,
   // 门店送货方式（方案 v4）：mock 里每店一份，默认「自提两路开」——与生产播种同一映射
   async mStoreFulfillment(storeNo) {
     const no = storeNo === "default" ? db.stores[0]?.storeNo ?? "ST-MOCK-1" : storeNo;
@@ -1209,6 +1209,25 @@ export const mockApi: MerchantApi = {
     return delay(out);
   },
 
+  async mSaveAnnouncement(payload) {
+    /*
+     * 与真库同口径：只动公告与有效期，**不碰门面其它字段**；
+     * 「常用」由服务端维护（去重 + 最近的排最前 + 最多 5 条）。
+     */
+    const st = db.store as typeof db.store & {
+      announcementUntil?: number | null; announcementRecent?: string[];
+    };
+    const now = (payload.announcement ?? "").trim();
+    st.announcementRecent = [now, ...(st.announcementRecent ?? []).filter((x) => x && x !== now)]
+      .filter(Boolean).slice(0, 5);
+    st.announcement = now;
+    st.announcementUntil = payload.announcementUntil ?? null;
+    persist();
+    const out = { ...st };
+    if (out.announcementUntil && out.announcementUntil < Date.now()) out.announcement = "";
+    return delay(out as typeof db.store);
+  },
+
   async mStoreQrcode() {
     const merchantNo = requireMerchant();
     // 落地页必须带 merchant_no —— 扫码进店的归因就靠它，进而决定费率档（ADR-004 §6）
@@ -1242,14 +1261,6 @@ export const mockApi: MerchantApi = {
       : [];
     return delay({
       toShip: mine.filter((o) => o.fulfillment === "EXPRESS" && o.status === "PAID").length,
-    /*
-     * 「常用公告」由**服务端**维护（去重 + 最近的排最前 + 最多 5 条），端上只读 ——
-     * mock 不照做的话，这一段在开发期永远是空的，而它正是这次改版的主角。
-     */
-    const now = (payload.announcement ?? "").trim();
-    const prev = (before as { announcementRecent?: string[] }).announcementRecent ?? [];
-    (db.store as { announcementRecent?: string[] }).announcementRecent =
-      [now, ...prev.filter((x) => x && x !== now)].filter(Boolean).slice(0, 5);
       toDeliver: mine.filter((o) => o.fulfillment === "MERCHANT_DELIVERY" && o.status === "PAID").length,
       // 待备货按**我的单**算（mine），不是按我的自提点（atMyPoint）——
       // 买家常常选别家的点，两个数因此不相等。后端也是这个口径
@@ -1268,25 +1279,6 @@ export const mockApi: MerchantApi = {
       (o) => belongsToMerchant(o, merchantNo) && o.status !== "CANCELLED",
     );
     const dayStart = new Date().setHours(0, 0, 0, 0);
-  async mSaveAnnouncement(payload) {
-    /*
-     * 与真库同口径：只动公告与有效期，**不碰门面其它字段**；
-     * 「常用」由服务端维护（去重 + 最近的排最前 + 最多 5 条）。
-     */
-    const st = db.store as typeof db.store & {
-      announcementUntil?: number | null; announcementRecent?: string[];
-    };
-    const now = (payload.announcement ?? "").trim();
-    st.announcementRecent = [now, ...(st.announcementRecent ?? []).filter((x) => x && x !== now)]
-      .filter(Boolean).slice(0, 5);
-    st.announcement = now;
-    st.announcementUntil = payload.announcementUntil ?? null;
-    persist();
-    const out = { ...st };
-    if (out.announcementUntil && out.announcementUntil < Date.now()) out.announcement = "";
-    return delay(out as typeof db.store);
-  },
-
     const today = mine.filter((o) => o.createdAt >= dayStart);
     const sum = (list: Order[]) => list.reduce((s, o) => s + o.amount.payableMinor, 0);
     const rs = db.reviews.filter((r) => r.merchantNo === merchantNo);
@@ -1874,26 +1866,38 @@ export const mockApi: MerchantApi = {
       throw new Error("「" + nm + "」太泛，换一个说清楚是什么的名字");
     }
     const created: SpecTemplate = {
+
+      templateNo: nextNo("SD"),
+      scope: "MERCHANT",
+      merchantNo,
+      name: nm,
+      options: labels.map((l) => l.trim()).filter(Boolean).map((label) => ({ label })),
+    };
+    db.specTemplates.push(created);
+    return delay(created);
+  },
+
+
   /**
-   * 能挑的维度。mock 里的规格库只有模板表这一份，所以分组的判据与真后端一致：
-   * 本类目的（categoryNo 命中）→ 平台通用（无 categoryNo）→ 自建（scope=MERCHANT）。
-   */
-  async mPickableDims(categoryNo) {
-    const merchantNo = db.merchant.merchantNo;
-    const picked = categoryNo?.trim() || undefined;
-    const cat = picked ? db.specTemplates.filter((t) => t.categoryNo === picked) : [];
-    const seen = new Set(cat.map((t) => t.templateNo));
-    const universal = db.specTemplates.filter(
-      (t) => t.scope === "PLATFORM" && !t.categoryNo && !seen.has(t.templateNo),
-    );
-    universal.forEach((t) => seen.add(t.templateNo));
-    const mine = db.specTemplates.filter(
-  /**
-   * 「我的规格」。mock 里没有真的规格库，就拿商家自存的模板当自建维度 ——
-   * **用量按规格组名从 db.goods 里数**，与真后端同一条判据（存量商品的
-   * 规格快照里只有名字，没有维度编号）。
+   * 「我建的规格」。**这一页已经不直接用它了**（自建规格现在并进类目卡显示），
+   * 留着是因为「加规格」面板要拿它算配额：已建几个 / 上限几个。
    */
   async mMySpecDims() {
+    const merchantNo = db.merchant.merchantNo;
+    const own = db.specTemplates.filter((t) => t.scope === "MERCHANT" && t.merchantNo === merchantNo);
+    return delay(own.map((t) => ({
+      dimNo: t.templateNo,
+      name: t.name,
+      valueCount: t.options.length,
+      usedCount: myGoods().filter((g) => (g.specGroups ?? []).some((x) => x.name === t.name)).length,
+      status: "ACTIVE" as const,
+      dimUsed: own.length,
+      dimQuota: 10,
+      valueQuota: 20,
+      values: t.options,
+    })));
+  },
+
   async mStoreSpecDims(storeNo) {
     // mock 里按门店货架分组：与真后端同一个形状，值取该类目的模板
     // 不传就用第一家店 —— mock 的演示会话只有一家在用
@@ -1926,24 +1930,6 @@ export const mockApi: MerchantApi = {
         options: (tpl?.options ?? []).filter((o) => !off.has(o.code ?? "")),
       };
     }));
-  },
-
-  async mMySpecDims() {
-    const merchantNo = db.merchant.merchantNo;
-    const mine = db.specTemplates.filter((t) => t.scope === "MERCHANT" && t.merchantNo === merchantNo);
-    const used = (name: string) =>
-      myGoods().filter((g) => (g.specGroups ?? []).some((x) => x.name === name)).length;
-    return delay(mine.map((t) => ({
-      dimNo: t.templateNo,
-      name: t.name,
-      valueCount: t.options.length,
-      usedCount: used(t.name),
-      status: "ACTIVE" as const,
-      dimUsed: mine.length,
-      dimQuota: 10,
-      valueQuota: 20,
-      values: t.options,
-    })));
   },
 
   async mRenameSpecDim(dimNo, name) {
@@ -1982,21 +1968,6 @@ export const mockApi: MerchantApi = {
       (t) => t.scope === "MERCHANT" && t.merchantNo === merchantNo && !seen.has(t.templateNo),
     );
     return delay([...cat, ...universal, ...mine]);
-  },
-
-      (t) => t.scope === "MERCHANT" && t.merchantNo === merchantNo && !seen.has(t.templateNo),
-    );
-    return delay([...cat, ...universal, ...mine]);
-  },
-
-      templateNo: nextNo("SD"),
-      scope: "MERCHANT",
-      merchantNo,
-      name: nm,
-      options: labels.map((l) => l.trim()).filter(Boolean).map((label) => ({ label })),
-    };
-    db.specTemplates.push(created);
-    return delay(created);
   },
 
   /**
