@@ -258,7 +258,7 @@ async function doLogin(method: LoginMethod) {
 
 <style scoped>
 .head {
-  padding: 40rpx 8rpx 32rpx;
+  padding: 32rpx 8rpx;
 }
 .mt {
   display: block;
@@ -280,7 +280,7 @@ async function doLogin(method: LoginMethod) {
  */
 .modes {
   display: flex;
-  margin-bottom: 8rpx;
+  margin-bottom: 32rpx;
   border-bottom: 2rpx solid var(--sh-line);
 }
 .modes__i {
@@ -315,8 +315,16 @@ async function doLogin(method: LoginMethod) {
   background: var(--sh-faint);
   color: var(--sh-sub);
 }
+/*
+ * 卡内竖向节奏统一到一套刻度：字段与块之间一律 32rpx。
+ * 实测原来是 18 / 22 / 8rpx —— 主按钮几乎贴着验证码那一格，
+ * 而字段之间反而更松；没有节奏，看着就是「不协调」。
+ */
+.field + .field {
+  margin-top: 32rpx;
+}
 .submit {
-  margin-top: 8rpx;
+  margin-top: 32rpx;
 }
 .submit.is-off {
   background: var(--sh-faint);
@@ -344,7 +352,7 @@ async function doLogin(method: LoginMethod) {
 }
 .agree {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 16rpx;
   margin: 32rpx 8rpx 0;
 }
