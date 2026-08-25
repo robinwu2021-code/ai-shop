@@ -25,14 +25,20 @@
 
 ## 1. 表与表之间的关系
 
-**共 17 张**：会员 9（setting / member / member_store / member_source / tag / member_tag /
-tag_merge_log / segment / reach_log）、营销 8（activity / activity_audience / activity_goods /
-coupon / coupon_scope / user_coupon / coupon_issue / apply）。
+**共 18 张**：user 域 1（**person 平台人档**）、会员 9（setting / member / member_store /
+member_source / tag / member_tag / tag_merge_log / segment / reach_log）、
+营销 8（activity / activity_audience / activity_goods / coupon / coupon_scope /
+user_coupon / coupon_issue / apply）。
+
+**层次是三层**：`usr_person`（平台身份：这个人）→ `mbr_member`（他与某家主体的会员关系）
+→ `mbr_member_store`（他在这家主体某家门店的往来）。
 
 ### 1.1 全景
 
 ```mermaid
 erDiagram
+    usr_person      ||--o{ mbr_member        : "一个人在多家商家各有一条会员"
+    usr_person      |o--|| usr_account        : "注册后绑定（可空 1:1）"
     mbr_setting     ||--|| MERCHANT       : "每个主体一行：会员按主体还是按门店"
     mbr_member      ||--o{ mbr_member_store  : "他在每家店的往来"
     mbr_member      ||--o{ mbr_member_source : "每一次来源留一行"
@@ -57,6 +63,7 @@ erDiagram
 
 | 表 | 一句话 | 为什么必须独立 |
 |---|---|---|
+| `usr_person` | **平台人档：这个自然人**（不要求注册过）。手机号只在这里存一份密文 | 会员是"人 × 商家"的关系，先得有"人"；线索与正式会员因此不再需要事后合并 |
 | `mbr_setting` | 这个主体的会员按主体经营还是按门店经营 | 开关要能随时切；放在主体表上会与商家资料的读写混在一起 |
 | `mbr_member` | **一个人 × 一家主体**的关系（主表） | 名单、分层、可触达状态的唯一真源 |
 | `mbr_member_store` | 他在**某一家门店**的往来与分层 | 十公里外那家店要按自己的口径看人；两级数据一直都算，开关只决定展示哪级 |
@@ -117,6 +124,60 @@ erDiagram
 
 ## 2. 会员域逐表
 
+### 2.0 `usr_person` —— 先有平台身份，再谈会员（user 域）
+
+**会员是"某个自然人与某家商家的关系"，所以必须先有"这个自然人"。**
+
+平台今天有两张身份相关的表，都不够用：
+
+| 表 | 是什么 | 为什么不够 |
+|---|---|---|
+| `usr_account` | 账号（昵称/头像/openid/手机号） | **要注册才有**。商家录入的手机号还没有账号 |
+| `usr_identity` | 登录身份映射（PHONE/OPENID/… → user_no） | `user_no` 非空，同样要先有账号 |
+
+所以在 user 域新增一张**人档**：它表示"这个人"，不要求他注册过。
+
+```sql
+CREATE TABLE IF NOT EXISTS usr_person
+(
+    id BIGINT(20) NOT NULL AUTO_INCREMENT,
+    person_no VARCHAR(64) NOT NULL COMMENT '平台唯一身份。所有域引用它，而不是各存一份手机号',
+    phone_hash VARCHAR(64) DEFAULT NULL COMMENT '手机号的哈希，用来匹配同一个人。**不可逆**',
+    phone_enc VARCHAR(255) DEFAULT NULL COMMENT '手机号密文，只有平台能解。商家侧永远只拿得到后四位',
+    user_no VARCHAR(64) DEFAULT NULL COMMENT '他注册之后绑定的账号。没注册就是空 —— 人先于账号存在',
+    merged_into VARCHAR(64) DEFAULT NULL COMMENT '换号/重复人档合并后指向的目标 person_no，保留不删',
+    status VARCHAR(16) NOT NULL DEFAULT 'ACTIVE' COMMENT 'ACTIVE / MERGED',
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT(20) NOT NULL DEFAULT 0,
+    deleted TINYINT(4) NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_person_no (person_no),
+    UNIQUE KEY uk_person_phone (tenant_no, phone_hash),
+    UNIQUE KEY uk_person_user (tenant_no, user_no)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci COMMENT='平台人档：这个自然人。不要求注册过';
+```
+
+**这张表把三个麻烦一次解决**：
+
+1. **线索与正式会员不再需要"合并两行"**。之前 `mbr_member` 上挂两个唯一键
+   （`user_no` 一个、`phone` 一个），同一个人可能先被商家录入、后又自己下单，
+   变成两行、事后要合并。现在一开始就是同一个 `person_no`，**从头到尾一行**。
+2. **一个人被三家商家录入 = 一个人档、三条会员关系**。他注册那天，
+   只回填一次 `user_no`，三家的会员同时转正 —— 而不是三次认领。
+3. **手机号只存一份**（还是密文）。`mbr_member` 上不再有 `phone` 列 ——
+   商家库里散着一堆手机号，本身就是最容易出事的那种数据。
+
+**与账号的关系**：`usr_person.user_no` 是**可空的 1:1**。
+人先于账号存在；注册/登录拿到手机号后，按 `phone_hash` 找到人档、绑定账号，
+`usr_identity` 那条登录映射照旧由账号体系维护，两者互不干扰。
+
+**换号与重复**：同一个人换了手机号会产生第二个人档。提供合并（`merged_into`），
+规则与标签合并同形：关系行改指目标、源档保留、留一条合并日志。
+
 ### 2.1 `mbr_setting` —— 主体的会员经营口径
 
 ```sql
@@ -146,8 +207,7 @@ CREATE TABLE IF NOT EXISTS mbr_member
     id BIGINT(20) NOT NULL AUTO_INCREMENT,
     member_no VARCHAR(64) NOT NULL,
     entity_no VARCHAR(64) NOT NULL COMMENT '商家主体。会员挂主体 —— 同一个人在三家店不该各算一次',
-    user_no VARCHAR(64) DEFAULT NULL COMMENT '平台用户。线索会员为空，本人注册后回填',
-    phone VARCHAR(32) DEFAULT NULL COMMENT '手工录入的手机号。线索靠它去重与认领',
+    person_no VARCHAR(64) NOT NULL COMMENT '平台人档（usr_person）。**不存 user_no、不存手机号** —— 那两样都从人档取',
     status VARCHAR(16) NOT NULL DEFAULT 'ACTIVE' COMMENT 'LEAD 线索（不可触达、不进受众）/ ACTIVE / BLOCKED 商家拉黑',
     source VARCHAR(16) NOT NULL COMMENT '首次来源 ORDER/SHARE/SCAN/MANUAL/FAVORITE/SEARCH。明细见 mbr_member_source',
     first_store_no VARCHAR(64) DEFAULT NULL COMMENT '从哪家门店进来的。冗余自 source 明细，列表不回表',
@@ -171,16 +231,18 @@ CREATE TABLE IF NOT EXISTS mbr_member
     deleted TINYINT(4) NOT NULL DEFAULT 0,
     PRIMARY KEY (id),
     UNIQUE KEY uk_mbr_member_no (member_no),
-    UNIQUE KEY uk_mbr_member_user (tenant_no, entity_no, user_no),
-    UNIQUE KEY uk_mbr_member_phone (tenant_no, entity_no, phone),
+    UNIQUE KEY uk_mbr_member_person (tenant_no, entity_no, person_no),
     KEY idx_mbr_member_last (entity_no, last_order_at),
     KEY idx_mbr_member_level (entity_no, level),
     KEY idx_mbr_member_store (entity_no, first_store_no)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci COMMENT='会员：一个人与一家主体的关系';
 ```
 
-**两个唯一键并存**：正式会员按 `user_no` 去重、线索按 `phone` 去重（唯一键允许多行 NULL）。
-认领时若两行都存在则**合并**：保留更早的 `joined_at` 与首次来源，标签与备注并入，另一行软删。
+**只剩一个唯一键**（`entity_no + person_no`）：一个自然人在一家主体永远只有一行。
+线索转正不再是"合并两行"，而是**人档上绑定账号**那一步的自然结果 ——
+`mbr_member` 一行都不用动，只把 `status` 从 `LEAD` 改成 `ACTIVE`、记下 `claimed_at`。
+
+> 这是引入 `usr_person` 最直接的收益：把一类需要事后对账的合并逻辑，从根上消掉了。
 
 ### 2.3 `mbr_member_store` —— 他在每家店的往来
 
@@ -673,11 +735,18 @@ CREATE TABLE IF NOT EXISTS pmt_apply
 
 ```mermaid
 classDiagram
+    class Person {
+        +PersonNo no
+        +PhoneHash phoneHash
+        +UserNo user
+        +PersonNo mergedInto
+        +void bind(UserNo)
+        +void mergeInto(Person)
+    }
     class Member {
         +MemberNo no
         +EntityNo entity
-        +UserNo user
-        +Phone phone
+        +PersonNo person
         +MemberStatus status
         +Level level
         +Metrics metrics
@@ -765,6 +834,7 @@ classDiagram
     class CouponIssue
     class PromotionApply
 
+    Person "1" o-- "0..*" Member
     Member "1" *-- "0..*" MemberStore
     Member "1" *-- "0..*" MemberSource
     Member "1" *-- "0..*" MemberTag
@@ -785,7 +855,8 @@ classDiagram
 
 | 聚合根 | 边界内 | 不变量（由它自己守） |
 |---|---|---|
-| **Member** | MemberStore / MemberSource / MemberTag | 一个人在一家主体只有一条；线索不可触达；主体级与门店级指标一起更新 |
+| **Person**（user 域） | 自己 + 人档合并 | 一个手机号一份人档；账号是可空的 1:1；合并后源档保留 |
+| **Member** | MemberStore / MemberSource / MemberTag | **一个 person 在一家主体只有一条**；线索不可触达；主体级与门店级指标一起更新 |
 | **Tag** | 自己 + 合并关系 | `tag_no` 不可变；SYS 标签不可改名不可合并；MERGED 后不可再被打上 |
 | **Segment** | 规则 | 规则里只存号（标签号/门店号），解析出人群时才落到具体 member |
 | **Activity** | Audience / GoodsScope | 排期与限量的判断只在 `isActiveAt` 与 `quota`；受众为空即全体 |
@@ -796,10 +867,28 @@ classDiagram
 > 模板是商家的东西，券是用户的资产。改模板、停发、活动结束，
 > 都不许动已经发到人手上的那一张 —— 只有它自己的有效期与核销次数说了算。
 
+### 4.2b 三条入会路径，落到同一个 person
+
+```
+① 下单 / 扫码 / 收藏 / 主动加入（已登录）
+   user_no ──PersonPort──► 找人档（没有就按账号手机号建）──► upsert member(entity, person)
+
+② 商家手工录入手机号（本人可能还没注册）
+   phone ──hash──► 找人档（没有就建，user_no 留空）──► member.status = LEAD
+
+③ 他注册/登录了
+   phone ──hash──► 找到人档 ──► 绑定 user_no
+                                └─► 该人档下**所有** LEAD 会员一次性转 ACTIVE，记 claimed_at
+```
+
+第 ③ 步是这套设计的关键：**一次绑定，三家商家的会员同时转正**。
+如果身份散在各商家的 member 行上（旧设计的 `phone` 列），这里就得逐家认领、逐家去重。
+
 ### 4.3 跨域端口（沿用现有形状）
 
 | Port | 方向 | 用途 |
 |---|---|---|
+| `PersonPort` | member → user | 按手机号/账号解析或创建人档；绑定账号；脱敏后四位 |
 | `MemberQueryPort` | marketing → member | 「这个买家命中活动受众吗」「这批条件命中哪些人」 |
 | `MemberEventPort` | trade → member | 支付成功 → 入会 / 更新指标 |
 | `ActivityPort` | trade → promotion | 下单算价：自动优惠、活动价、买赠 |
