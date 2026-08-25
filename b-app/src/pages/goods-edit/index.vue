@@ -602,6 +602,14 @@ function findPath(nodes: Category[], target: string, trail: Category[] = []): Ca
   }
   return [];
 }
+/**
+ * 正在把已有商品回填进表单。
+ *
+ * <p>只在**编辑**时为真。新建没有这一步 —— 一进来空表单本来就是对的，
+ * 那时候的「待填写」是真话。
+ */
+const hydrating = ref(false);
+
 /** 规格组。空 = 单规格商品 */
 const groups = ref<{ name: string; options: string[]; codes?: (string | undefined)[]; templateNo?: string }[]>([]);
 /** 可用模板：平台按类目预置 + 本商家存的常用 */
@@ -1629,10 +1637,33 @@ onShow(() => {
 
 onLoad(async (q) => {
   loadRecentCats();
-  await Promise.all([loadTemplates(), loadCategories(), loadStoreChannels()]);
-  if (!q?.goodsNo) return;
+  if (!q?.goodsNo) {
+    await Promise.all([loadTemplates(), loadCategories(), loadStoreChannels()]);
+    return;
+  }
+  /*
+   * **商品详情要与三个预载并行取，而不是排在它们后面。**
+   *
+   * 此前是先 `await` 类目树 / 模板 / 门店通道，再去拿这件商品 —— 于是打开
+   * 「编辑」之后有一秒多，页面上是一张**空表单**：标题空、类目空、价格空，
+   * 底下红字写着「待填写：商品名称、类目、价格」，两个按钮都是灰的，
+   * 连按钮文案都误判成「保存草稿」（isDraft 还是默认值）。
+   * 商家看到的就是「改商品，保存并提交按钮是灰的」—— 他不会知道那是加载中，
+   * 因为页面没有任何一处说自己在加载。
+   *
+   * 并行之后这段时间少一半；剩下的那一半用 `hydrating` 盖住（见 `missing` 与按钮），
+   * 让它显示「读取中」而不是一份假的待填清单。**说错话比不说话更糟。**
+   */
+  hydrating.value = true;
   goodsNo.value = q.goodsNo;
-  const g = await api.mGoodsDetail(q.goodsNo);
+  // finally 而不是 try 包住整段：下面的回填全是同步赋值，中间不会渲染，
+  // 而 `.finally` 让失败时也不会把页面永远卡在「读取中」
+  const [g] = await Promise.all([
+    api.mGoodsDetail(q.goodsNo),
+    loadTemplates(),
+    loadCategories(),
+    loadStoreChannels(),
+  ]).finally(() => { hydrating.value = false; });
   /*
    * **主图要回显**。保存时无条件带 `cover: cover.value`，而这里不回填的话
    * 它是空串 —— 于是「编辑一次商品，主图就没了」，且页面上那个 📷 占位
@@ -2696,8 +2727,13 @@ async function save(thenSubmit = false) {
       </view>
     </view>
 
-    <!-- 差什么就说什么 —— 灰按钮只说明「不行」，不说明「下一步做什么」 -->
-    <text v-if="missing.length" class="missing">
+    <!--
+      差什么就说什么 —— 灰按钮只说明「不行」，不说明「下一步做什么」。
+      **但加载中不能说**：那时表单还是空的，这行会列出一份假的待填清单
+      （「商品名称、类目、价格」全在里面，而它们其实都填着）。
+    -->
+    <text v-if="hydrating" class="missing">{{ $t("common.loading") }}</text>
+    <text v-else-if="missing.length" class="missing">
       {{ $t("goods.missing", { s: missing.join("、") }) }}
     </text>
     <!--
@@ -2705,7 +2741,12 @@ async function save(thenSubmit = false) {
       已过审的商品只给一个 —— 它一保存就自动回到待审，多一个按钮反而让人以为
       不点就不用重审。
     -->
-    <view class="acts">
+    <!--
+      **加载中整块不渲染**，而不是渲染成灰的。
+      灰按钮在商家眼里是「我哪里填得不对」，他会去一格格找 —— 而真相是还没读完。
+      一个都不显示反而诚实：上面那行写着「读取中」。
+    -->
+    <view v-if="!hydrating" class="acts">
       <view class="sh-btn save" :class="{ 'sh-btn--muted': !canSave }" @tap="save(false)">
         {{ isDraft ? $t("goods.saveDraft") : $t("common.save") }}
       </view>

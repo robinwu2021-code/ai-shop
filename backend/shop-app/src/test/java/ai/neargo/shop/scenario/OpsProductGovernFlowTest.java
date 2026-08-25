@@ -554,6 +554,56 @@ class OpsProductGovernFlowTest {
         return json.readTree(body).get("data").get("orderNo").asString();
     }
 
+    @Test
+    @DisplayName("★★ 过审即在售 —— 商家提交完还要再点一次上架，等于这件货一直没在卖")
+    void approvalPutsGoodsOnSaleWithoutASecondClick() throws Exception {
+        String biz = merchant("12600400100", "过审即上架店");
+        String goodsNo = pendingGoods(biz, 10);
+
+        // 提交审核 = 「我要卖它」
+        mvc().perform(post("/biz/goods/" + goodsNo + "/submit").header("Authorization", "Bearer " + biz))
+                .andExpect(jsonPath("$.code").value(0));
+        // 运营点通过 = 平台同意。到这里两边都表过态，不该再要第三次点击
+        mvc().perform(post("/ops/goods/" + goodsNo + "/audit")
+                        .header("Authorization", "Bearer " + opsLogin())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"approved\":true}"))
+                .andExpect(jsonPath("$.code").value(0));
+
+        mvc().perform(get("/biz/goods/" + goodsNo).header("Authorization", "Bearer " + biz))
+                // status 是派生的展示态：过审且在售 = ON_SALE。这一条正是商家要的结果
+                .andExpect(jsonPath("$.data.status").value("ON_SALE"))
+                .andExpect(jsonPath("$.data.onSale").value(true));
+    }
+
+    @Test
+    @DisplayName("★★★ 改一个在售商品的错别字，它不该就此永远下架")
+    void editingAnOnSaleGoodsComesBackOnSaleAfterReaudit() throws Exception {
+        String biz = merchant("12600400110", "改字不掉架店");
+        String goodsNo = listedGoods(biz, 10);
+
+        // 只改标题 —— 保存会把它送回重审并下架（这一步是对的，审核期间不该在卖）
+        mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + biz)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"goodsNo\":\"" + goodsNo + "\",\"categoryNo\":\"CAT210\","
+                                + "\"title\":\"商品治理测试品（改过错别字）\",\"type\":\"NORMAL\","
+                                + "\"skus\":[{\"optionValues\":[],\"price\":1000,\"stock\":10}]}"))
+                .andExpect(jsonPath("$.code").value(0));
+        mvc().perform(get("/biz/goods/" + goodsNo).header("Authorization", "Bearer " + biz))
+                .andExpect(jsonPath("$.data.onSale").value(false));
+
+        mvc().perform(post("/ops/goods/" + goodsNo + "/audit")
+                        .header("Authorization", "Bearer " + opsLogin())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"approved\":true}"))
+                .andExpect(jsonPath("$.code").value(0));
+
+        /*
+         * **过审后必须回到在售。** 少了这一步，商家改个错别字就把自己的货下架了 ——
+         * 而列表里它写着「已过审」，看不出还差一步，直到他发现这件货再也没有单。
+         */
+        mvc().perform(get("/biz/goods/" + goodsNo).header("Authorization", "Bearer " + biz))
+                .andExpect(jsonPath("$.data.onSale").value(true));
+    }
+
     /** 建品并过审上架。 */
     private String listedGoods(String token, int stock) throws Exception {
         String goodsNo = pendingGoods(token, stock);

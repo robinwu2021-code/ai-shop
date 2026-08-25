@@ -1870,11 +1870,26 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
             // 驳回同时强制下架**并撤出社区池**：只改 on_sale 不撤池的话，
             // 被驳回的商品在 C 端还搜得到 —— 审核结论没有落到买家看得见的地方
             g.setOnSale(false);
+        } else {
+            /*
+             * **过审即上架。**
+             *
+             * 此前过审只改 audit_status，on_sale 停在 false（`save` 每次都置 false），
+             * 于是商家提交完还要再点一次「上架」才卖得出去。两个后果：
+             *
+             *   1. 新品提交后他以为在卖了，其实一件也卖不出去 ——
+             *      而商品列表里它显示「已过审」，看不出还差一步；
+             *   2. 更常见的一种：**改一个在售商品的错别字，它就永远下架了** ——
+             *      保存把 on_sale 置 false 送去重审，过审后没人把它放回去。
+             *      商家不会想到「改个字要重新上架一次」，直到发现这件货没单。
+             *
+             * 提交审核本身就是「我要卖它」的表达，过审是平台同意 —— 两边都点过头了，
+             * 再要一次点击不增加任何信息。真要下架他有现成的下架按钮。
+             */
+            g.setOnSale(true);
         }
         DataScopeContext.executeWithoutScope(() -> goodsMapper.updateById(g));
-        if (!approved) {
-            syncPool(g, false);
-        }
+        syncPool(g, approved);
         return toVO(g);
     }
 
