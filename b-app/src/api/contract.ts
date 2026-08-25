@@ -45,6 +45,9 @@ import type {
   MerchantLoginResp,
   MerchantProfile,
   MerchantCustomer,
+  Member,
+  MemberDetail,
+  MemberStats,
   MerchantStats,
   MerchantTodo,
   Order,
@@ -897,6 +900,24 @@ export interface MerchantApi {
   // ---- 结算（B-11.9）
   /**
    * 结算流水。**一笔子订单一行**，不是周期账单。
+  /**
+   * 会员列表。
+   *
+   * @param q.phone **完整手机号才匹配** —— 前缀模糊会把会员库变成一本通讯录，
+   *                所以给一半查不到人，这是设计不是 bug
+   * @param q.storeNo 主体开了「按门店经营会员」时必填；按主体经营时留空
+   */
+  mMembers(q?: {
+    storeNo?: string; level?: string; source?: string; status?: string; phone?: string;
+    lastOrderBefore?: number; lastOrderAfter?: number; spentMin?: number; spentMax?: number;
+    page?: number; size?: number;
+  }): Promise<PageResult<Member>>;
+
+  /** 四层人数 + 可触达 + 本月新增 + **未绑手机号因此未计入的买家数** */
+  mMemberStats(storeNo?: string): Promise<MemberStats>;
+
+  mMemberDetail(memberNo: string): Promise<MemberDetail>;
+
    *
    * @param allStores 是否看全部门店。默认（false）只看当前门店 ——
    *                  与订单页同一套惯例；「全部」对老板和店员不是一回事，后端按授权收窄

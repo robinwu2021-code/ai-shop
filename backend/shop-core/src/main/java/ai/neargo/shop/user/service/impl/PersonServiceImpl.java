@@ -102,6 +102,19 @@ public class PersonServiceImpl implements PersonService {
 
     @Override
     public Optional<UsrPerson> bindOnLogin(String userNo, String phone) {
+        return bind(userNo, phone, false);
+    }
+
+    @Override
+    public Optional<UsrPerson> bindPhone(String userNo, String phone) {
+        return bind(userNo, phone, true);
+    }
+
+    /**
+     * @param explicit 用户主动发起的绑定。冲突时抛；隐式（登录）时只告警并跳过 ——
+     *                 登录是他要进门，不是他要绑号，不该为此把人关在外面
+     */
+    private Optional<UsrPerson> bind(String userNo, String phone, boolean explicit) {
         String hash = crypto.hash(phone);
         if (userNo == null || userNo.isBlank() || hash == null) {
             // 微信登录没授权手机号：没有人档，也就不是任何商家的会员。这不是错误
@@ -133,9 +146,12 @@ public class PersonServiceImpl implements PersonService {
                 personMapper.updateById(byPhone);
                 return Optional.of(byPhone);
             }
-            log.warn("[person] 手机号已绑账号 {}，另一个账号 {} 想绑同一个号 —— 拒绝，走人工",
-                    byPhone.getUserNo(), userNo);
-            throw BizException.of(ErrorCode.PERSON_PHONE_TAKEN);
+            log.warn("[person] 手机号已绑账号 {}，账号 {} 想绑同一个号 —— 不改绑{}",
+                    byPhone.getUserNo(), userNo, explicit ? "，告知用户" : "，跳过（登录不受影响）");
+            if (explicit) {
+                throw BizException.of(ErrorCode.PERSON_PHONE_TAKEN);
+            }
+            return Optional.empty();
         }
         // B 有人档、没绑过账号（商家早就录过他）：直接绑，**不需要合并任何会员关系**
         byPhone.setUserNo(userNo);

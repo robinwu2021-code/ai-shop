@@ -3368,6 +3368,84 @@ export interface PickupPoint {
  * 这是「商家自带客流」定位下最该给店主看的东西：**谁在买、谁不来了**。
  * 平台电商给商家看的是流量与转化；小店老板要的是「张阿姨上个月每周都来，这半个月没来」。
  */
+/**
+ * 会员：一个人与这家商家的关系（P1）。
+ *
+ * <p>与 {@link MerchantCustomer} 的分工：那个是按订单实时聚合出来的「谁来过」，
+ * 这个是**沉淀下来的关系** —— 有来源、有分层、能挂标签、能被筛出来做活动。
+ * 客户页升级为会员页之后，前者只剩跨店总览还在用。
+ */
+export interface Member {
+  memberNo: string;
+  /** 平台人档号。会员挂人不挂账号 —— 商家看不到，但详情页要用它取来源轨迹 */
+  personNo: string;
+  /** 手机号后四位。**永远不会有完整号** —— 需要它的只有平台申诉处置 */
+  phoneTail?: string | null;
+  /** `LEAD` 线索（商家录的、本人还没注册，不可触达）/ `ACTIVE` / `BLOCKED` */
+  status: string;
+  /** 首次来源 `ORDER`/`SHARE`/`SCAN`/`MANUAL`/`FAVORITE`/`SEARCH` */
+  source: string;
+  /** `NEW`/`REGULAR`/`LOYAL`/`SLEEPING`。按主体还是按门店算，取决于主体的经营口径 */
+  level?: string | null;
+  /** 他从哪家门店进来的 */
+  firstStoreNo?: string | null;
+  orderCount: number;
+  totalSpentMinor: number;
+  d90OrderCount: number;
+  lastOrderAt?: number | null;
+  daysSinceLast?: number | null;
+  /** 买家关掉了这家店的消息。商家看得到状态，看不到原因 */
+  reachOptOut: boolean;
+  remark?: string | null;
+  joinedAt: number;
+}
+
+/**
+ * 会员四层人数 + 两个提醒数。
+ *
+ * @remarks `unlinkedBuyers` 要显示在页面顶部：商家一定会拿订单数与会员数对，
+ * 对不上时他的第一反应是数据丢了。**先说，比等他问强。**
+ */
+export interface MemberStats {
+  newCount: number;
+  regularCount: number;
+  loyalCount: number;
+  sleepingCount: number;
+  /** 可触达人数（排除线索、拉黑、已退订） */
+  reachable: number;
+  newThisMonth: number;
+  /** 未绑手机号、因此没计进会员的买家数 */
+  unlinkedBuyers: number;
+}
+
+/** 他在某一家门店的往来。单店主体没有这一段 */
+export interface MemberStoreStat {
+  storeNo: string;
+  orderCount: number;
+  totalSpentMinor: number;
+  lastOrderAt?: number | null;
+  isFirstStore: boolean;
+}
+
+/** 一次来源。**谁发的链接**要写出来，否则分享激励没法结算，商家也不知道该谢谁 */
+export interface MemberSourceItem {
+  sourceType: string;
+  storeNo?: string | null;
+  linkNo?: string | null;
+  inviterUserNo?: string | null;
+  inviterRole?: string | null;
+  operatorNo?: string | null;
+  activityNo?: string | null;
+  isFirst: boolean;
+  occurredAt: number;
+}
+
+export interface MemberDetail {
+  member: Member;
+  stores: MemberStoreStat[];
+  sources: MemberSourceItem[];
+}
+
 export interface MerchantCustomer {
   /** 脱敏昵称，不给完整手机号（B12） */
   /** 客户昵称 */

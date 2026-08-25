@@ -210,7 +210,13 @@
     {
       "path": "pages/customers/index",
       "style": {
-        "navigationBarTitleText": "我的客户"
+        "navigationBarTitleText": "会员"
+      }
+    },
+    {
+      "path": "pages/member-detail/index",
+      "style": {
+        "navigationBarTitleText": "会员详情"
       }
     }
   ],

@@ -74,6 +74,9 @@ import type {
   MerchantLoginResp,
   MerchantProfile,
   MerchantCustomer,
+  Member,
+  MemberDetail,
+  MemberStats,
   MerchantStats,
   MerchantTodo,
   Order,
@@ -372,6 +375,10 @@ export const httpApi: MerchantApi = {
 
   mSettleList: (allStores) =>
     http.get<SettleBill[]>(E.mSettleList.path, allStores ? { allStores: true } : undefined),
+  mMembers: (q) => http.get<PageResult<Member>>(E.mMembers.path, { ...(q ?? {}) }),
+  mMemberStats: (storeNo) => http.get<MemberStats>(E.mMemberStats.path, { storeNo }),
+  mMemberDetail: (memberNo) =>
+    http.get<MemberDetail>(buildPath(E.mMemberDetail.path, { memberNo })),
   mRateCard: () => http.get<RateCard>(E.mRateCard.path),
   mReportShortage: (subOrderNo, payload) =>
     http.post<PickupOrder>(buildPath(E.mReportShortage.path, { orderNo: subOrderNo }), {

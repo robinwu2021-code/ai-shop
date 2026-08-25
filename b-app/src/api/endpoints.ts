@@ -190,7 +190,11 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
   mSaveCampaign: { method: "POST", path: "/biz/campaign", auth: true, summary: "新建/编辑活动" },
   mToggleCampaign: { method: "POST", path: "/biz/campaign/:campaignNo/toggle", auth: true, summary: "活动启停" },
 
-  mCustomers: { method: "GET", path: "/biz/customers", auth: true, summary: "客户与复购" },
+  mCustomers: { method: "GET", path: "/biz/customers", auth: true, summary: "客户与复购（跨店总览在用）" },
+  // 会员（P1）：客户页的升级版。沿用 biz:customer，不新造权限码
+  mMembers: { method: "GET", path: "/biz/members", auth: true, summary: "会员列表（筛选+分页）" },
+  mMemberStats: { method: "GET", path: "/biz/members/stats", auth: true, summary: "四层人数与未计入买家" },
+  mMemberDetail: { method: "GET", path: "/biz/members/{memberNo}", auth: true, summary: "会员详情：各店往来与来源轨迹" },
 
   mRateCard: { method: "GET", path: "/biz/settle/rate-card", auth: true, summary: "费率卡" },
   mSettleList: { method: "GET", path: "/biz/settle/bills", auth: true, summary: "结算单列表" },

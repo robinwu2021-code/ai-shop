@@ -206,20 +206,16 @@ public class AuthServiceImpl implements AuthService {
         /*
          * 平台人档（P0）：登录成功之后把账号绑到「这个自然人」上。
          *
-         * <p><b>放在发 token 之前，但失败不阻塞登录</b> —— 除了手机号已绑别的账号那一种：
-         * 那是用户必须知道的事实，闷掉的话他会一直纳闷为什么会员权益没生效。
-         * 其余异常（库抖动、并发）只记日志：人档补不上明天再补，登录挡住是事故。
+         * <p><b>失败一律不阻塞登录</b>。绑人档是登录的副作用，不是他此刻要做的事；
+         * 为一个他没发起的动作把他关在门外，是拿会员关系的完整性去换可用性。
+         * 手机号已绑别的账号时也只跳过并告警（见 PersonService.bindOnLogin 的说明）——
+         * 要让用户知道冲突的是他<b>主动</b>绑号那条路，走 bindPhone。
          *
          * <p>微信登录没授权手机号时 {@code phoneOf} 取不到号，这里什么也不做 ——
          * 他照常能逛能下单，只是还不能成为任何商家的会员。
          */
         try {
             personService.bindOnLogin(user.getUserNo(), phoneOf(user.getUserNo()));
-        } catch (BizException e) {
-            if (ErrorCode.PERSON_PHONE_TAKEN == e.errorCode()) {
-                throw e;
-            }
-            log.warn("[person] 登录时绑定人档失败 user={}：{}", user.getUserNo(), e.getMessage());
         } catch (RuntimeException e) {
             log.warn("[person] 登录时绑定人档失败 user={}", user.getUserNo(), e);
         }

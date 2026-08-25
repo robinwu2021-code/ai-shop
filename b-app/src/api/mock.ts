@@ -176,6 +176,54 @@ function myGoods(): Goods[] {
  */
 const MOCK_PLAN_KEY = "mock:plan";
 
+/**
+ * 由订单聚合出会员名单（mock 专用）。
+ *
+ * <p>分层口径与后端一致：**先判沉睡（60 天没来）再判活跃**，
+ * 否则一个三个月没来的熟客会显示成「熟客」，商家照着给他发熟客专享。
+ */
+function mockMembers() {
+  const DAY = 86400_000;
+  const map = new Map<string, { count: number; spent: number; last: number; owned: number }>();
+  for (const o of db.orders) {
+    if (o.status === "CANCELLED" || !belongsToMerchant(o, db.merchant.merchantNo)) continue;
+    const key = o.buyerNickname ?? db.user.nickname;
+    const cur = map.get(key) ?? { count: 0, spent: 0, last: 0, owned: 0 };
+    cur.count += 1;
+    cur.spent += o.amount.payableMinor;
+    cur.last = Math.max(cur.last, o.createdAt);
+    if (o.trafficSource === "MERCHANT_OWNED") cur.owned += 1;
+    map.set(key, cur);
+  }
+  const rows = [...map.entries()].map(([name, v], i) => {
+    const days = Math.floor((Date.now() - v.last) / DAY);
+    const d90 = days <= 90 ? v.count : 0;
+    const level = days > 60 ? "SLEEPING" : d90 >= 6 ? "LOYAL" : d90 >= 2 ? "REGULAR" : "NEW";
+    return {
+      memberNo: `MB-MOCK-${i + 1}`,
+      personNo: `PS-MOCK-${i + 1}`,
+      phoneTail: String(1000 + ((name.length * 37 + i * 13) % 9000)),
+      status: "ACTIVE",
+      source: v.owned > v.count / 2 ? "SHARE" : "ORDER",
+      level,
+      firstStoreNo: db.stores[0]?.storeNo ?? null,
+      orderCount: v.count,
+      totalSpentMinor: v.spent,
+      d90OrderCount: d90,
+      lastOrderAt: v.last,
+      daysSinceLast: days,
+      reachOptOut: false,
+      remark: null,
+      joinedAt: v.last - v.count * DAY,
+      nickname: name,
+    };
+  });
+  // 沉睡置顶：那是店主唯一能立刻行动的信号，埋在列表底部等于没有
+  rows.sort((a, b) =>
+    Number(b.level === "SLEEPING") - Number(a.level === "SLEEPING") || b.orderCount - a.orderCount);
+  return rows;
+}
+
 /** 机审词表，取自 V10 种进 sys_setting 的那份前几条。命中即转人审，不是直接拒 */
 const SENSITIVE_WORDS = ["最低价", "全网第一", "国家级", "微信", "加V"];
 type MockPlan = "FREE" | "PRO" | "CHAIN";
@@ -2680,6 +2728,75 @@ export const mockApi: MerchantApi = {
             grossMinor: gross,
             commissionMinor: commission,
             serviceFeeMinor: serviceFee,
+  // ---------------------------------------------------------------- 会员（P1）
+  /**
+   * 会员名单。mock 里由订单聚合出来，与真库同一口径（**分层先判沉睡**）。
+   *
+   * <p>没有真的人档，所以手机号后四位由昵称派生 —— 只为让界面有东西显示；
+   * 真实环境里它来自 `usr_person.phone_tail`。
+   */
+  async mMembers(q) {
+    const rows = mockMembers();
+    const f = q ?? {};
+    let out = rows;
+    if (f.level) out = out.filter((m) => m.level === f.level);
+    if (f.source) out = out.filter((m) => m.source === f.source);
+    if (f.status) out = out.filter((m) => m.status === f.status);
+    if (f.phone) {
+      // 与真库同一条规矩：**完整号才匹配**，给一半查不到人
+      const full = f.phone;
+      out = full.length >= 11 ? out.filter((m) => m.phoneTail === full.slice(-4)) : [];
+    }
+    const page = f.page ?? 1;
+    const size = f.size ?? 20;
+    return delay({
+      records: out.slice((page - 1) * size, page * size),
+      total: out.length,
+      page,
+      size,
+    });
+  },
+
+  async mMemberStats() {
+    const rows = mockMembers();
+    const by = (lv: string) => rows.filter((m) => m.level === lv).length;
+    return delay({
+      newCount: by("NEW"),
+      regularCount: by("REGULAR"),
+      loyalCount: by("LOYAL"),
+      sleepingCount: by("SLEEPING"),
+      reachable: rows.filter((m) => m.status === "ACTIVE" && !m.reachOptOut).length,
+      newThisMonth: rows.filter((m) => m.joinedAt >= Date.now() - 30 * 86400_000).length,
+      // 演示一个非零值：商家一定会拿订单数与会员数对，这一行就是解释差额的地方
+      unlinkedBuyers: 3,
+    });
+  },
+
+  async mMemberDetail(memberNo) {
+    const m = mockMembers().find((x) => x.memberNo === memberNo);
+    if (!m) throw new ApiError(10404, "会员不存在");
+    const stores = db.stores.slice(0, 2).map((s, i) => ({
+      storeNo: s.storeNo,
+      orderCount: Math.max(1, m.orderCount - i),
+      totalSpentMinor: Math.round(m.totalSpentMinor / (i + 1)),
+      lastOrderAt: m.lastOrderAt ?? Date.now(),
+      isFirstStore: i === 0,
+    }));
+    return delay({
+      member: m,
+      stores,
+      sources: [
+        {
+          sourceType: m.source, storeNo: stores[0]?.storeNo ?? null, linkNo: null,
+          inviterUserNo: m.source === "SHARE" ? "李姐" : null,
+          inviterRole: m.source === "SHARE" ? "CUSTOMER" : null,
+          operatorNo: null, activityNo: null, isFirst: true,
+          occurredAt: m.joinedAt,
+        },
+      ],
+    });
+  },
+
             netMinor: gross - commission - serviceFee,
             trafficSource: o.trafficSource ?? "PLATFORM",
             commissionRate: Math.round(rate * 10000),

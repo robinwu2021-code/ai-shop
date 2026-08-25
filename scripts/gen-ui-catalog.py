@@ -30,6 +30,7 @@ DOMAINS = [
     ("商品", ["goods", "goods-list", "goods-edit", "goods-detail", "search", "category", "my-specs", "store-categories"]),
     ("门店", ["stores", "store", "store-notice", "store-scope", "store-pick", "qualifications"]),
     ("会员与营销", ["customers", "marketing", "coupons", "member", "cards", "members",
+                    "member-detail",
                     "member-tags", "member-settings", "segments", "coupon-edit", "coupon-issue", "member-card"]),
     ("团购与求团", ["groups", "quotes", "requests", "group", "request", "request-create", "group-host"]),
     ("钱", ["settle", "payment", "plan", "wallet", "points", "invoice"]),
@@ -170,8 +171,9 @@ PROTO_URL = "https://claude.ai/code/artifact/459462f5-e7f7-485a-85b0-096ba9918b1
 PROTO_ANCHORS = {
     "b-app": {
         "pages/me/index": "s01",
-        "pages/members/index": "s02", "pages/members/filter": "s03",
-        "pages/members/detail": "s04", "pages/members/add": "s05",
+        # 会员页落地了：路由沿用 pages/customers（它是「我的客户」的升级版）
+        "pages/customers/index": "s02", "pages/members/filter": "s03",
+        "pages/member-detail/index": "s04", "pages/members/add": "s05",
         "pages/member-tags/index": "s06", "pages/member-settings/index": "s07",
         "pages/marketing/index": "s08", "pages/marketing/new": "s09",
         "pages/marketing/audience": "s10", "pages/coupons/index": "s11",
@@ -191,8 +193,6 @@ DEV_ORIGIN = {"b-app": "http://localhost:5175/#", "c-app": "http://localhost:517
 
 # 还没有页面、只有设计的：落地之后从这里删掉，它就会从 nav/pages.json 里自然出现
 PROTOTYPES = [
-    ("b-app", "/pages/members/index", "会员总览", "会员与营销"),
-    ("b-app", "/pages/members/detail", "会员详情", "会员与营销"),
     ("b-app", "/pages/members/add", "手工录入会员", "会员与营销"),
     ("b-app", "/pages/member-tags/index", "标签与合并", "会员与营销"),
     ("b-app", "/pages/member-settings/index", "会员口径设置", "会员与营销"),

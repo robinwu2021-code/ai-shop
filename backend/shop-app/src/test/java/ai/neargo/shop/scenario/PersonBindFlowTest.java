@@ -107,16 +107,32 @@ class PersonBindFlowTest {
     }
 
     @Test
-    @DisplayName("★★ C 这个号绑着别人的账号 —— 一律拒绝，绝不自动合并")
-    void bindRefusesWhenPhoneBelongsToAnotherAccount() {
+    @DisplayName("★★ C 这个号绑着别人的账号 —— **显式**绑定时拒绝，绝不自动改绑")
+    void explicitBindRefusesWhenPhoneBelongsToAnotherAccount() {
         String p = phone();
         personService.bindOnLogin(account("C1"), p);
         String other = account("C2");
 
-        assertThatThrownBy(() -> personService.bindOnLogin(other, p))
+        assertThatThrownBy(() -> personService.bindPhone(other, p))
                 .isInstanceOf(BizException.class)
                 .satisfies(e -> assertThat(((BizException) e).errorCode())
                         .isEqualTo(ErrorCode.PERSON_PHONE_TAKEN));
+    }
+
+    @Test
+    @DisplayName("★★ 同样的冲突发生在**登录**时：跳过，不抛 —— 登录不能被会员关系挡住")
+    void loginBindSkipsConflictInsteadOfBlocking() {
+        String p = phone();
+        personService.bindOnLogin(account("C3"), p);
+        String other = account("C4");
+
+        /*
+         * 这条是 uk_identity 的形状决定的：它的唯一键是 (identity_type, identity_value)，
+         * 不是手机号单列 —— 同一个号落在两种 type 下就会撞到这里。
+         * 那时抛异常等于把人关在登录之外，而他只是想进门，并没有要绑号。
+         */
+        assertThat(personService.bindOnLogin(other, p)).isEmpty();
+        assertThat(personService.findByUser(other)).as("没给他建档，但也没拦住他").isEmpty();
     }
 
     @Test
