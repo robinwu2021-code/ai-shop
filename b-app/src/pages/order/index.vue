@@ -35,6 +35,40 @@ const canDeliver = computed(
     && merchant.can("biz:ship"),
 );
 
+/**
+ * 线下收款。**权限是 `biz:receive` 不是 `biz:order:view`** ——
+ * 后者是只读权限，配送员（COURIER）也持有；让他能点等于让送货的人替商家宣布已收款。
+ */
+const canConfirmOffline = computed(
+  () => order.value?.status === "WAIT_OFFLINE_PAY" && merchant.can("biz:receive"),
+);
+const offlineAsking = ref(false);
+
+/**
+ * 应收金额 = 抵扣后的实付。
+ *
+ * ⚠️ **这是整条链路上唯一一处「抵扣」离开系统、落到人当面执行的地方。**
+ * 顾客用积分抵掉的那部分，平台没有任何资金动作 —— 商家当面少收即是抵扣。
+ * 所以这个数必须大字显示，而且要把「已抵扣多少」摆在旁边：
+ * 老板按订单原价收钱的话，顾客的积分就白花了，而系统里查不出这件事。
+ */
+const dueMinor = computed(() => order.value?.amount.payableMinor ?? 0);
+const deductedMinor = computed(() => order.value?.amount.pointsDeductMinor ?? 0);
+
+async function confirmOffline() {
+  if (!order.value || busy.value) return;
+  busy.value = true;
+  try {
+    order.value = await api.mConfirmOfflinePay(order.value.orderNo);
+    offlineAsking.value = false;
+    uni.showToast({ title: t("order.offlinePaid"), icon: "none" });
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: "none" });
+  } finally {
+    busy.value = false;
+  }
+}
+
 async function load(orderNo: string) {
   order.value = await api.mOrderDetail(orderNo);
 }
@@ -134,6 +168,16 @@ onLoad((q) => {
         </view>
       </view>
 
+      <!--
+        线下收款。**入口是一个按钮，动作在弹窗里** —— 收钱这件事不该一点就成，
+        中间要有一屏让老板核对金额。
+      -->
+      <view v-if="canConfirmOffline" class="sh-card mt">
+        <text class="sh-h2">{{ $t("order.offlinePay") }}</text>
+        <text class="sh-muted due__hint">{{ $t("order.offlineNotCustodied") }}</text>
+        <view class="sh-btn mt-s" @tap="offlineAsking = true">{{ $t("order.offlinePay") }}</view>
+      </view>
+
       <!-- 快递发货：运单号回填（B-11.4.3） -->
       <view v-if="canShip" class="sh-card mt">
         <text class="sh-h2">{{ $t("order.ship") }}</text>
@@ -157,6 +201,30 @@ onLoad((q) => {
         <view class="line">
           <text class="sh-muted">{{ $t("order.expressNo") }}</text>
           <text class="sh-num">{{ order.expressNo }}</text>
+        </view>
+      </view>
+
+      <!--
+        确认收款弹窗。三样东西缺一不可：
+          · **大字应收金额** —— 老板照着这个数收，不是照订单原价
+          · **已抵扣多少**   —— 少了它，顾客的积分会被当成没用过
+          · **平台不代收**   —— 说清楚这笔钱不经平台，出纠纷时双方对这一点没有分歧
+      -->
+      <view v-if="offlineAsking" class="mask" @tap="offlineAsking = false">
+        <view class="dlg" @tap.stop>
+          <text class="dlg__title">{{ $t("order.offlinePayTitle") }}</text>
+          <text class="sh-muted">{{ $t("order.offlineDue") }}</text>
+          <text class="due sh-num">{{ money(dueMinor, order.amount.currency) }}</text>
+          <text v-if="deductedMinor > 0" class="due__deducted">
+            {{ $t("order.offlineDeducted", { v: money(deductedMinor, order.amount.currency) }) }}
+          </text>
+          <text class="due__hint">{{ $t("order.offlineNotCustodied") }}</text>
+          <view class="dlg__acts">
+            <view class="sh-btn sh-btn--muted dlg__act" @tap="offlineAsking = false">
+              {{ $t("order.offlineCancel") }}
+            </view>
+            <view class="sh-btn dlg__act" @tap="confirmOffline">{{ $t("order.offlinePay") }}</view>
+          </view>
         </view>
       </view>
     </template>
@@ -224,6 +292,57 @@ onLoad((q) => {
 }
 .total {
   margin-top: 16rpx;
+}
+.mask {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+.dlg {
+  width: 600rpx;
+  padding: 40rpx;
+  border-radius: 28rpx;
+  background: var(--sh-bg);
+}
+.dlg__title {
+  display: block;
+  font-size: 32rpx;
+  font-weight: 600;
+  color: var(--sh-ink);
+  margin-bottom: 20rpx;
+}
+/* 应收金额是这一屏唯一要一眼看清的东西 —— 老板照着它收钱 */
+.due {
+  display: block;
+  font-size: 72rpx;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--sh-ink);
+}
+.due__deducted {
+  display: block;
+  margin-top: 8rpx;
+  font-size: 26rpx;
+  color: var(--sh-primary-text);
+}
+.due__hint {
+  display: block;
+  margin-top: 16rpx;
+  font-size: 24rpx;
+  line-height: 1.5;
+  color: var(--sh-sub);
+}
+.dlg__acts {
+  display: flex;
+  gap: 20rpx;
+  margin-top: 32rpx;
+}
+.dlg__act {
+  flex: 1;
 }
 .total__v {
   font-size: 34rpx;

@@ -39,6 +39,13 @@ export type TrafficSource = "MERCHANT_OWNED" | "PLATFORM" | "INVITE" | "CHANNEL"
  */
 export type OrderStatus =
   | "WAIT_PAY"
+  /**
+   * 等商家当面收款（线下支付）。**库里没有这个子单状态** ——
+   * 线下单的子单停在 WAIT_PAY，这是后端下发口径上由主单推出的值。
+   * 运营看订单列表要能一眼分出「还没付钱」和「等当面收钱」：
+   * 后者催不了款，只能催商家去收。
+   */
+  | "WAIT_OFFLINE_PAY"
   /** 已付款，交付方还没行动。库里那一列存的是 WAIT_FULFILL */
   | "PAID"
   /** 交付方已行动，等交接完成。自提说「已到点」、快递说「已发货」，同一个状态 */
@@ -57,6 +64,9 @@ export type OrderStatus =
  */
 export const ORDER_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   WAIT_PAY: ["PAID", "CANCELLED"],
+  // 与后端 OrderStateMachine 一致：**没有回到 WAIT_PAY 的边**。
+  // 改主意想线上付要重新下单，否则「收没收到钱」有两个真源
+  WAIT_OFFLINE_PAY: ["PAID", "CANCELLED"],
   PAID: ["FULFILLING", "COMPLETED", "REFUNDED", "CANCELLED"],
   FULFILLING: ["COMPLETED", "REFUNDED"],
   COMPLETED: ["REFUNDED"],

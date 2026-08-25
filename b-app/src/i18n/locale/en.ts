@@ -292,8 +292,8 @@ export default {
     useTemplate: "Use a template",
     templateHint: "Platform template options are comparable across stores; edited text no longer counts",
     tplPlatform: "Platform", tplMine: "Mine",
-    templateNeedName: "Name the variant group first", templateSaved: "Saved to my templates", addOption: "+ Option",
-    pickValueHint: "Common options",
+    templateNeedName: "Name the variant group first", templateSaved: "Saved to my templates", addOption: "+ Variant",
+    pickValueHint: "Common for this category",
     pickDim: "Split by which spec?",
     pickDimClose: "Close",
     dimFromCategory: "Common in this category",
@@ -381,12 +381,54 @@ export default {
     statusREFUNDING: "After-sales",
     statusREFUNDED: "Refunded",
     statusCANCELLED: "Cancelled",
-    title: "Orders", tabAll: "All", tabToShip: "To ship", tabShipped: "Shipped", tabToVerify: "To redeem", tabDone: "Done", tabAfterSale: "After-sales",
+    title: "Orders", tabAll: "All", tabToShip: "To ship", tabToReceive: "To collect", statusWAIT_OFFLINE_PAY: "Awaiting cash", tabShipped: "Shipped", tabToVerify: "To redeem", tabDone: "Done", tabAfterSale: "After-sales",
     no: "Order", createdAt: "Placed", amount: "Amount", fulfillment: "Fulfilment", buyer: "Buyer", receiver: "Ship to",
     ship: "Ship", expressNo: "Tracking no.", delivered: "Delivered", detail: "Detail", empty: "No orders yet",
     trafficMERCHANT_OWNED: "Own customer", trafficPLATFORM: "Platform",
     items: "Items", shipped: "Shipped", deliveredDone: "Marked delivered",
+    offlinePay: "Confirm payment", offlinePayTitle: "Confirm cash received on site", offlineDue: "Amount due", offlineDeducted: "{v} already covered by points — collect only the amount above", offlineNotCustodied: "The platform does not hold this money — the customer pays you directly; we only record this confirmation", offlinePaid: "Payment confirmed", offlineCancel: "Not yet received", waitOfflinePay: "Awaiting cash on site",
   },
+
+  schedule: {
+
+    title: "Schedule",
+
+    newSlot: "Open a slot",
+
+    day: "Days ahead",
+
+    dayUnit: "d",
+
+    hour: "Hour",
+
+    hours: "Length (h)",
+
+    capacity: "Capacity",
+
+    open: "Open slot",
+
+    capacityHint: "Capacity = how many jobs this slot can take. Once open it can only be closed, never resized — shrinking it turns already-booked jobs into overselling, silently. To adjust, close it and open a new one.",
+
+    list: "Open slots",
+
+    empty: "No slots yet. With none open, buyers pick a time themselves as before",
+
+    booked: "{b} of {c} booked",
+
+    remaining: "{n} left",
+
+    full: "Full",
+
+    closed: "Closed",
+
+    close: "Close",
+
+    opened: "Slot opened",
+
+    pastSlot: "A slot in the past cannot be booked",
+
+  },
+
 
   verify: {
     tabPickup: "Pickup",

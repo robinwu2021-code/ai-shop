@@ -381,12 +381,54 @@ export default {
     statusREFUNDING: "خدمة ما بعد البيع",
     statusREFUNDED: "تم الاسترجاع",
     statusCANCELLED: "ملغي",
-    title: "الطلبات", tabAll: "الكل", tabToShip: "بانتظار الشحن", tabShipped: "تم الشحن", tabToVerify: "بانتظار الاستلام", tabDone: "مكتمل", tabAfterSale: "ما بعد البيع",
+    title: "الطلبات", tabAll: "الكل", tabToShip: "بانتظار الشحن", tabToReceive: "بانتظار التحصيل", statusWAIT_OFFLINE_PAY: "بانتظار الدفع نقدًا", tabShipped: "تم الشحن", tabToVerify: "بانتظار الاستلام", tabDone: "مكتمل", tabAfterSale: "ما بعد البيع",
     no: "رقم الطلب", createdAt: "وقت الطلب", amount: "المبلغ", fulfillment: "طريقة التنفيذ", buyer: "المشتري", receiver: "المستلم",
     ship: "شحن", expressNo: "رقم التتبع", delivered: "تم التوصيل", detail: "التفاصيل", empty: "لا طلبات بعد",
     trafficMERCHANT_OWNED: "عميلك", trafficPLATFORM: "من المنصة",
     items: "المنتجات", shipped: "تم الشحن", deliveredDone: "تم وضع علامة التوصيل",
+    offlinePay: "تأكيد الاستلام", offlinePayTitle: "تأكيد استلام المبلغ نقدًا", offlineDue: "المبلغ المستحق", offlineDeducted: "تم خصم {v} بالنقاط — حصّل المبلغ أعلاه فقط", offlineNotCustodied: "المنصة لا تحتفظ بهذا المبلغ — يدفع العميل لك مباشرة، ونحن نسجّل هذا التأكيد فقط", offlinePaid: "تم تأكيد الاستلام", offlineCancel: "لم يُستلم بعد", waitOfflinePay: "بانتظار الدفع نقدًا",
   },
+
+  schedule: {
+
+    title: "جدول المواعيد",
+
+    newSlot: "فتح موعد",
+
+    day: "بعد كم يوم",
+
+    dayUnit: "ي",
+
+    hour: "الساعة",
+
+    hours: "المدة (س)",
+
+    capacity: "السعة",
+
+    open: "فتح الموعد",
+
+    capacityHint: "السعة = عدد الطلبات التي يستوعبها هذا الموعد. بعد الفتح يمكن الإغلاق فقط لا التعديل — تصغيرها يحوّل الحجوزات القائمة إلى بيع زائد دون أي تنبيه. للتعديل أغلقه وافتح موعدًا جديدًا.",
+
+    list: "المواعيد المفتوحة",
+
+    empty: "لا توجد مواعيد بعد. بدونها يختار المشتري الوقت بنفسه كالسابق",
+
+    booked: "محجوز {b} من {c}",
+
+    remaining: "متبقٍ {n}",
+
+    full: "مكتمل",
+
+    closed: "مغلق",
+
+    close: "إغلاق",
+
+    opened: "تم الفتح",
+
+    pastSlot: "لا يمكن حجز موعد في الماضي",
+
+  },
+
 
   verify: {
     tabPickup: "الاستلام",

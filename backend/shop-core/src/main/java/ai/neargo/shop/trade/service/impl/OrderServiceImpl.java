@@ -1274,7 +1274,8 @@ public class OrderServiceImpl implements OrderService {
                  * 由端上的 `orderView(status, fulfillment, info)` 决定显示什么。
                  */
                 s.getSubOrderNo(), s.getOrderNo(),
-                OrderStatusView.toContract(s.getStatus()), s.getFulfillment(),
+                OrderStatusView.toContract(s.getStatus(), order == null ? null : order.getStatus()),
+                s.getFulfillment(),
                 s.getEntityNo(), s.getEntityName(),
                 itemsOf(s.getSubOrderNo()).stream().map(this::toItemVO).toList(),
                 OrderVO.Amount.of(nz(s.getGoodsAmount()), nz(s.getFreightAmount()),

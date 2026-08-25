@@ -31,6 +31,8 @@ const { t } = useI18n();
 /** 状态色：要动手的用主色、售后用警示色、终态保持中性 —— 一眼能挑出「该我做的」 */
 function statusChip(o: Order): string {
   // 「该我做的」= 待履约，或已履约但还要我核销的（自提/到店核销）
+  // 待收款也是「该我做的」—— 而且是这一批里唯一一件不做就收不到钱的事
+  if (o.status === "WAIT_OFFLINE_PAY") return "sh-chip--primary";
   if (o.status === "PAID") return "sh-chip--primary";
   if (o.status === "FULFILLING" && PICKUP_LIKE.has(o.fulfillment)) return "sh-chip--primary";
   return "";
@@ -70,6 +72,13 @@ function statusText(o: Order): string {
  */
 const ALL_TABS: (OrderTabSpec & { labelKey: string; perm?: string })[] = [
   { key: "all", labelKey: "order.tabAll" },
+  /*
+   * 待收款单独一个页签，**排在待发货前面**。
+   *
+   * 不并进「待发货」：那一组的动作是「把货交出去」，这一组是「把钱收进来」，
+   * 而线下单在收到钱之前根本不该发货 —— 混在一起，店员会照着列表先发后收。
+   */
+  { key: "toReceive", status: "WAIT_OFFLINE_PAY", labelKey: "order.tabToReceive" },
   { key: "toShip", status: "PAID", labelKey: "order.tabToShip" },
   {
     key: "shipped",

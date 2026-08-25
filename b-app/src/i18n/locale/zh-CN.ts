@@ -504,7 +504,7 @@ export default {
     statusCANCELLED: "已取消",
     title: "订单",
     tabAll: "全部",
-    tabToShip: "待发货",
+    tabToShip: "待发货", tabToReceive: "待收款", statusWAIT_OFFLINE_PAY: "待当面收款",
     tabShipped: "已发货",
     tabToVerify: "待核销",
     tabDone: "已完成",
@@ -525,7 +525,56 @@ export default {
     items: "商品",
     shipped: "已发货",
     deliveredDone: "已标记送达",
+    offlinePay: "确认收款",
+    offlinePayTitle: "确认已当面收到货款",
+    offlineDue: "应收金额",
+    offlineDeducted: "已用积分抵扣 {v}，顾客只需支付上方金额",
+    offlineNotCustodied: "平台不代收此款 —— 钱由顾客直接付给你，平台只记录这一次确认",
+    offlinePaid: "已确认收款",
+    offlineCancel: "还没收到",
+    waitOfflinePay: "待当面收款",
   },
+
+  schedule: {
+
+    title: "预约排期",
+
+    newSlot: "开一个时段",
+
+    day: "几天后",
+
+    dayUnit: "天",
+
+    hour: "几点",
+
+    hours: "时长(小时)",
+
+    capacity: "名额",
+
+    open: "开出时段",
+
+    capacityHint: "名额 = 这个时段能同时接几单。开出后**只能停约、不能改名额** —— 调小会让已经约上的单变成超卖，而系统不会报错。要调整就停掉旧的、开一个新的。",
+
+    list: "已开时段",
+
+    empty: "还没开过时段。一个都没开时，买家按老办法自己填时间",
+
+    booked: "已约 {b} / 共 {c}",
+
+    remaining: "剩 {n}",
+
+    full: "已约满",
+
+    closed: "已停约",
+
+    close: "停约",
+
+    opened: "已开出",
+
+    pastSlot: "过去的时段开出来也没人约得上",
+
+  },
+
 
   verify: {
     tabPickup: "取货核销",

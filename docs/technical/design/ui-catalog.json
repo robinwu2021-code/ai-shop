@@ -3,7 +3,7 @@
     {
       "key": "b-app",
       "label": "商家 App",
-      "count": 54,
+      "count": 55,
       "domains": [
         {
           "name": "工作台",
@@ -221,6 +221,101 @@
           ]
         },
         {
+          "name": "其它",
+          "pages": [
+            {
+              "app": "b-app",
+              "route": "/pages/schedule/index",
+              "title": "预约排期",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "preview": "http://localhost:5175/#/pages/schedule/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/entities/index",
+              "title": "证照与账户",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "preview": "http://localhost:5175/#/pages/entities/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/entity-detail/index",
+              "title": "证照详情",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "preview": "http://localhost:5175/#/pages/entity-detail/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/member-add/index",
+              "title": "添加会员",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "preview": "http://localhost:5175/#/pages/member-add/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/member-segments/index",
+              "title": "人群",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "preview": "http://localhost:5175/#/pages/member-segments/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/coupon-issues/index",
+              "title": "发放记录",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "preview": "http://localhost:5175/#/pages/coupon-issues/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/activities/index",
+              "title": "店铺活动",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "preview": "http://localhost:5175/#/pages/activities/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/activity-edit/index",
+              "title": "新建活动",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "preview": "http://localhost:5175/#/pages/activity-edit/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/member-reach/index",
+              "title": "给会员发消息",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "preview": "http://localhost:5175/#/pages/member-reach/index"
+            }
+          ]
+        },
+        {
           "name": "门店",
           "pages": [
             {
@@ -317,91 +412,6 @@
               "status": "已实现",
               "proto": null,
               "preview": "http://localhost:5175/#/pages/plan/index"
-            }
-          ]
-        },
-        {
-          "name": "其它",
-          "pages": [
-            {
-              "app": "b-app",
-              "route": "/pages/entities/index",
-              "title": "证照与账户",
-              "domain": "其它",
-              "tab": false,
-              "status": "已实现",
-              "proto": null,
-              "preview": "http://localhost:5175/#/pages/entities/index"
-            },
-            {
-              "app": "b-app",
-              "route": "/pages/entity-detail/index",
-              "title": "证照详情",
-              "domain": "其它",
-              "tab": false,
-              "status": "已实现",
-              "proto": null,
-              "preview": "http://localhost:5175/#/pages/entity-detail/index"
-            },
-            {
-              "app": "b-app",
-              "route": "/pages/member-add/index",
-              "title": "添加会员",
-              "domain": "其它",
-              "tab": false,
-              "status": "已实现",
-              "proto": null,
-              "preview": "http://localhost:5175/#/pages/member-add/index"
-            },
-            {
-              "app": "b-app",
-              "route": "/pages/member-segments/index",
-              "title": "人群",
-              "domain": "其它",
-              "tab": false,
-              "status": "已实现",
-              "proto": null,
-              "preview": "http://localhost:5175/#/pages/member-segments/index"
-            },
-            {
-              "app": "b-app",
-              "route": "/pages/coupon-issues/index",
-              "title": "发放记录",
-              "domain": "其它",
-              "tab": false,
-              "status": "已实现",
-              "proto": null,
-              "preview": "http://localhost:5175/#/pages/coupon-issues/index"
-            },
-            {
-              "app": "b-app",
-              "route": "/pages/activities/index",
-              "title": "店铺活动",
-              "domain": "其它",
-              "tab": false,
-              "status": "已实现",
-              "proto": null,
-              "preview": "http://localhost:5175/#/pages/activities/index"
-            },
-            {
-              "app": "b-app",
-              "route": "/pages/activity-edit/index",
-              "title": "新建活动",
-              "domain": "其它",
-              "tab": false,
-              "status": "已实现",
-              "proto": null,
-              "preview": "http://localhost:5175/#/pages/activity-edit/index"
-            },
-            {
-              "app": "b-app",
-              "route": "/pages/member-reach/index",
-              "title": "给会员发消息",
-              "domain": "其它",
-              "tab": false,
-              "status": "已实现",
-              "proto": null,
-              "preview": "http://localhost:5175/#/pages/member-reach/index"
             }
           ]
         },
@@ -2502,5 +2512,5 @@
       ]
     }
   ],
-  "total": 207
+  "total": 208
 }

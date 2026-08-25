@@ -6,6 +6,7 @@ import type { EstateList, GoodsDraft, GoodsGuess, MerchantApi } from "./contract
 // 入参的 wire 契约。`satisfies` 让「实际发出去的 body」在编译期受检 ——
 // 字段写错、少传、多传都编译不过，而不是等联调才发现（与 C 端同一套做法）
 import type {
+  AppointmentSlotOpenReq,
   AppealReviewReq,
   SaveGoodsReqBody,
   CreateGroupReq,
@@ -43,6 +44,7 @@ import type {
   OpenFromMapReq,
 } from "./requests";
 import type {
+  AppointmentSlot,
   BizScope,
   AfterSale,
   Category,
@@ -333,6 +335,17 @@ export const httpApi: MerchantApi = {
   mShip: (orderNo, expressNo) =>
     http.post<Order>(buildPath(E.mShip.path, { orderNo }), { expressNo } satisfies ShipReq),
   mDelivered: (orderNo) => http.post<Order>(buildPath(E.mDelivered.path, { orderNo }), {}),
+  mConfirmOfflinePay: (subOrderNo) =>
+    http.post<Order>(buildPath(E.mConfirmOfflinePay.path, { orderNo: subOrderNo }), {}),
+  mAppointmentSlots: (storeNo, from, to) =>
+    http.get<AppointmentSlot[]>(buildPath(E.mAppointmentSlots.path, { storeNo }), { from, to }),
+  mOpenAppointmentSlot: (storeNo, slot) =>
+    http.post<AppointmentSlot>(
+      buildPath(E.mOpenAppointmentSlot.path, { storeNo }),
+      slot satisfies AppointmentSlotOpenReq,
+    ),
+  mCloseAppointmentSlot: (slotNo) =>
+    http.post<AppointmentSlot>(buildPath(E.mCloseAppointmentSlot.path, { slotNo }), {}),
   mDeliveryRule: () => http.get<DeliveryRule>(E.mDeliveryRule.path),
   mSaveDeliveryRule: (rule) => http.post<DeliveryRule>(E.mSaveDeliveryRule.path, rule),
 

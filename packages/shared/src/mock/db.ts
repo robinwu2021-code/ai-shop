@@ -38,6 +38,7 @@ import type {
   Address,
   Message,
   PointRecord,
+  AppointmentDaySlots,
   AppointmentSlot,
   CartItem,
   Community,
@@ -110,8 +111,8 @@ function todayCutoff(): number {
 }
 
 /** 未来 N 天的预约时段 */
-function buildSlots(times: string[]): AppointmentSlot[] {
-  const out: AppointmentSlot[] = [];
+function buildSlots(times: string[]): AppointmentDaySlots[] {
+  const out: AppointmentDaySlots[] = [];
   for (let i = 1; i <= TRADE_RULES.appointmentWindowDays; i += 1) {
     out.push({
       date: isoDate(Date.now() + i * DAY),
@@ -1733,6 +1734,33 @@ export const db = {
   /** 商家配的营销活动（B-11.8） */
   campaigns: [] as MarketingCampaign[],
 
+  /**
+   * 门店预约时段。**种子给两个档**：一个还有余量、一个已经约满 ——
+   * 排期页最要紧的是「满了的长什么样」，全是空档的话那条分支永远看不见。
+   */
+  appointmentSlots: [
+    {
+      slotNo: "APS-SEED-1",
+      storeNo: "ST0001",
+      startAt: Date.now() + 86_400_000,
+      endAt: Date.now() + 86_400_000 + 3_600_000,
+      capacity: 3,
+      booked: 1,
+      remaining: 2,
+      status: "OPEN",
+    },
+    {
+      slotNo: "APS-SEED-2",
+      storeNo: "ST0001",
+      startAt: Date.now() + 90_000_000,
+      endAt: Date.now() + 90_000_000 + 3_600_000,
+      capacity: 1,
+      booked: 1,
+      remaining: 0,
+      status: "OPEN",
+    },
+  ] as AppointmentSlot[],
+
   /** 商家自送规则（按当前登录商家，一期单商家够用） */
   deliveryRule: {
     radius: 3000,
@@ -2265,6 +2293,9 @@ export function pointBalance(ledger: PointRecord[]): number {
  */
 const TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   WAIT_PAY: ["PAID", "CANCELLED"],
+  // 没有回到 WAIT_PAY 的边：改主意想线上付要重新下单，
+  // 否则「收没收到钱」有两个真源（商家确认 与 支付回调），而它们可能同时到达
+  WAIT_OFFLINE_PAY: ["PAID", "CANCELLED"],
   /*
    * **付款之后只有一个「正在履约」**。
    *

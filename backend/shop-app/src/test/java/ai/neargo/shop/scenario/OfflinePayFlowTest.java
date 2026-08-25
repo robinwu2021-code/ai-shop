@@ -227,6 +227,39 @@ class OfflinePayFlowTest {
     }
 
     @Test
+    @DisplayName("★★★ 买家列表上线下单不能显示成「待付款」—— 端上会给它画一个点了没用的支付按钮")
+    void buyerListShowsWaitOfflinePay() throws Exception {
+        String token = login("13400188007");
+        addToCart(token, "G0001", "SK0001", 1);
+        String orderNo = createOffline(token, "offline-listview");
+
+        String body = mvc().perform(org.springframework.test.web.servlet.request
+                        .MockMvcRequestBuilders.get("/mp/order")
+                        .header("Authorization", "Bearer " + token))
+                .andReturn().getResponse().getContentAsString();
+        JsonNode row = null;
+        for (JsonNode r : json.readTree(body).get("data").get("records")) {
+            if (orderNo.equals(r.path("payOrderNo").asString())) {
+                row = r;
+            }
+        }
+        assertThat(row).isNotNull();
+        /*
+         * ⚠️ 这一条钉的是一个**真实缺陷**，第 4 步埋下、第 8 步接界面时才暴露：
+         * 订单视角的 status 取自**子单**，而线下单的子单刻意停在 WAIT_PAY
+         * （给子单也加一个新状态的话，商家待办、售后入口、履约台三处都要各判一次）。
+         * 于是买家列表把它显示成「待付款」，端上据此画「去支付」——
+         * 而这单只能当面把钱给商家。
+         *
+         * 修法是**下发口径由主单推出**，子单那一列不动：读它的三处关心的是
+         * 「货走到哪了」，与钱怎么收无关。
+         */
+        assertThat(row.path("status").asString())
+                .as("子单列不用改，改的是下发口径")
+                .isEqualTo("WAIT_OFFLINE_PAY");
+    }
+
+    @Test
     @DisplayName("★ 下单端快照进 pay_scene —— 积分发放的端判定读它")
     void paySceneIsSnapshotted() throws Exception {
         String token = login("13400188006");

@@ -27,6 +27,15 @@ import type {
 } from "@shared/types";
 import type { GoodsDraft } from "./contract";
 
+// ---------------------------------------------------------------- 预约排期
+
+/** 开一个时段。容量必须 ≥ 1 —— 0 等于开了个约不上的档，而它在列表里看着正常 */
+export interface AppointmentSlotOpenReq {
+  startAt: number;
+  endAt: number;
+  capacity: number;
+}
+
 // ---------------------------------------------------------------- 门店送货方式（方案 v4）
 
 export interface StoreFulfillmentSaveReq {

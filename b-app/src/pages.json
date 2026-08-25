@@ -82,6 +82,12 @@
       }
     },
     {
+      "path": "pages/schedule/index",
+      "style": {
+        "navigationBarTitleText": "预约排期"
+      }
+    },
+    {
       "path": "pages/stores/index",
       "style": {
         "navigationBarTitleText": "门店管理"

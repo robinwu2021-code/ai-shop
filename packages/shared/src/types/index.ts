@@ -883,8 +883,17 @@ export interface Sku {
   storePrice?: number;
 }
 
-/** 预约可选时段（SERVICE + APPOINTMENT） */
-export interface AppointmentSlot {
+/**
+ * 预约时段的**按天展示分组**（SERVICE + APPOINTMENT）。
+ *
+ * ⚠️ <b>与 {@link AppointmentSlot} 不是一回事</b>，别混：
+ *   · 这个是「一天 × 若干时间点」的**展示结构**，给选择器分组用
+ *   · 那个是排期的**一行**（有 slotNo，下单占的就是它）
+ *
+ * 它此前就叫 AppointmentSlot，而唯一的使用处是 `GoodsVO.slots?` ——
+ * 一个注释里明写着「后端从不下发」的幽灵字段。真排期落地时把名字让了出来。
+ */
+export interface AppointmentDaySlots {
   /** YYYY-MM-DD（市场本地时区） */
   date: string;
   /** 当天各时段的余量。`time` 形如 `14:00`，`left` 为剩余可约数，0 表示约满 */
@@ -990,7 +999,7 @@ export interface Goods {
    * 商家自助能建的东西」还没有产品结论 —— 见 `商品域-优化清单` P3-5。
    */
   /** SERVICE + APPOINTMENT：可预约时段。**后端未下发** */
-  slots?: AppointmentSlot[];
+  slots?: AppointmentDaySlots[];
   /** CARD。**后端未下发** */
   card?: CardSpec;
   /** VIRTUAL。**后端未下发** */
@@ -1281,8 +1290,44 @@ export type TrafficSource = "MERCHANT_OWNED" | "PLATFORM";
  * 做成互斥的状态就必须二选一，而那是表达不了的。售后要从 `/mp/after-sale`
  * 与 `/biz/after-sale` 单独查。
  */
+/**
+ * 门店的预约时段与名额。
+ *
+ * **归属是门店不是商品**：能同时上几单取决于这家店有几个师傅，
+ * 与卖的是保洁还是维修无关。
+ *
+ * `remaining` 是**派生值**（capacity - booked），后端算好下发 ——
+ * 端上自己减的话就成了第三个可能与前两个对不上的数。
+ *
+ * ⚠️ 列表只是**那一刻**的快照，不是承诺：真正的判定在下单那条带条件的
+ * UPDATE 里。两个人同时看到同一个「剩 1」，只有一个抢得到。
+ */
+export interface AppointmentSlot {
+  slotNo: string;
+  storeNo: string;
+  startAt: number;
+  endAt: number;
+  capacity: number;
+  booked: number;
+  remaining: number;
+  /** OPEN 可约 / CLOSED 停约。停约**不删行也不赶人** */
+  status: "OPEN" | "CLOSED";
+}
+
 export type OrderStatus =
   | "WAIT_PAY"
+  /**
+   * 等商家当面收款（线下支付）。
+   *
+   * <p>**与 WAIT_PAY 分开是必须的**：那个的下一步是「去付款页」，
+   * 这个的下一步是「见到商家/师傅时把钱给他」——
+   * 合成一个的话，端上会给线下单画一个点不动的支付按钮。
+   *
+   * <p>也没有回到 WAIT_PAY 的边：改主意想线上付要重新下单。
+   * 否则「这单收没收到钱」就有了两个真源（商家确认 与 支付回调），
+   * 而它们可能同时到达。
+   */
+  | "WAIT_OFFLINE_PAY"
   /** 已付款，交付方还没行动。库里叫 `WAIT_FULFILL`，同一件事 */
   | "PAID"
   /**

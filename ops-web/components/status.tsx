@@ -39,6 +39,7 @@ export function useOrderStatusMap(): StatusMap<OrderStatus> {
   const { t } = useI18n();
   return {
     WAIT_PAY: { label: t("orderStatus.WAIT_PAY"), tone: "warning" },
+    WAIT_OFFLINE_PAY: { label: t("orderStatus.WAIT_OFFLINE_PAY"), tone: "warning" },
     PAID: { label: t("orderStatus.PAID"), tone: "info" },
     // 运营端看的是全局态势，不区分自提/配送 —— 那是买卖双方各自关心的事。
     // 要区分时按 fulfillment 展开，不要再拆状态（见《订单状态-统一整理》）

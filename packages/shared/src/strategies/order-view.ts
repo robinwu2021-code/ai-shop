@@ -90,6 +90,20 @@ export function orderView(
 ): OrderView {
   const shape = shapeOf(fulfillment);
 
+  if (status === "WAIT_OFFLINE_PAY") {
+    /*
+     * 线下支付：钱要当面给。**下一步动作按形态分** ——
+     *   自提 / 到店核销 → 去（到店时一起付）
+     *   上门服务 / 送货  → 到点在场（师傅来的时候付）
+     * 落到默认的 NONE 是错的：这单明明还需要买家做一件事，
+     * 而 NONE 会让页签把它归进「没我事了」那一组。
+     */
+    const next = shape === DELIVERY_SHAPE.SELF_PICKUP || shape === DELIVERY_SHAPE.SELF_SERVE
+      ? NEXT_ACTION.GO
+      : NEXT_ACTION.BE_THERE;
+    return { labelKey: "orderView.WAIT_OFFLINE_PAY", next, needsTime: false };
+  }
+
   if (status === "PAID") {
     // 交付方还没行动。四种形态下用户都只能等 —— 差别只在文案叫「备货」还是「待发货」
     return {

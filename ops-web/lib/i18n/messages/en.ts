@@ -173,6 +173,7 @@ export const en: Messages = {
   merchantTier: { SMALL: "Small", MEDIUM: "Medium", LARGE: "Large" },
   orderStatus: {
     WAIT_PAY: "Awaiting payment",
+    WAIT_OFFLINE_PAY: "Awaiting cash on site",
     PAID: "Awaiting fulfilment",
     FULFILLING: "In fulfilment",
     COMPLETED: "Completed",

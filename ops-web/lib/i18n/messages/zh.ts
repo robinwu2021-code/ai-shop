@@ -169,6 +169,7 @@ export const zh = {
   merchantTier: { SMALL: "小商家", MEDIUM: "中等商家", LARGE: "大商家" },
   orderStatus: {
     WAIT_PAY: "待支付",
+    WAIT_OFFLINE_PAY: "待当面收款",
     PAID: "待履约",
     FULFILLING: "履约中",
     COMPLETED: "已完成",

@@ -83,6 +83,7 @@ function pointsAccount() {
 }
 import type { StaffLogRow } from "@shared/mock/db";
 import type {
+  AppointmentSlot,
   ActivityConflict,
   CouponIssueBatch,
   MemberSegmentRule,
@@ -2410,6 +2411,54 @@ export const mockApi: MerchantApi = {
     );
     persist();
     return delay(o);
+  },
+
+  async mConfirmOfflinePay(subOrderNo) {
+    const o = findOrder(subOrderNo);
+    // 商家当面收到钱 → 与支付回调走到同一个状态。**平台不碰这笔钱**，
+    // 所以这里没有任何「入账」动作，只有状态与留痕
+    assertTransition(o.status, "PAID");
+    o.status = "PAID";
+    pushTimeline(o, "商家已确认收款");
+    persist();
+    return delay(o);
+  },
+
+  // ---------------------------------------------------------------- 预约排期
+
+  async mAppointmentSlots(storeNo, from, to) {
+    return delay(
+      db.appointmentSlots
+        .filter((s) => s.storeNo === storeNo && s.startAt >= from && s.startAt < to)
+        .sort((a, b) => a.startAt - b.startAt)
+        .map((s) => ({ ...s })),
+    );
+  },
+
+  async mOpenAppointmentSlot(storeNo, slot) {
+    const row: AppointmentSlot = {
+      slotNo: `APS${Date.now()}`,
+      storeNo,
+      startAt: slot.startAt,
+      endAt: slot.endAt,
+      capacity: slot.capacity,
+      booked: 0,
+      remaining: slot.capacity,
+      status: "OPEN",
+    };
+    db.appointmentSlots.push(row);
+    persist();
+    return delay({ ...row });
+  },
+
+  async mCloseAppointmentSlot(slotNo) {
+    const row = db.appointmentSlots.find((s) => s.slotNo === slotNo);
+    if (!row) throw new Error("时段不存在");
+    // 停约**不删行也不赶人**：已经约进来的单还指着它，删掉的话取消时
+    // 不知道该把名额还给谁，商家也查不到那天到底接了几单
+    row.status = "CLOSED";
+    persist();
+    return delay({ ...row });
   },
 
   async mDeliveryRule() {

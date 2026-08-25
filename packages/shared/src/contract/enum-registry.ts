@@ -131,7 +131,7 @@ export const ENUM_REGISTRY: EnumEntry[] = [
   { decl: "shared:OrderStatus", dom: "core", shape: "STATUS", verdict: "OK",
     // FULFILLING 是领域特有词：L1 表里没有能表达「交付方已行动、等交接完成」的通用词。
     // 它替下了 ARRIVED/SHIPPED —— 那两个是「状态 × 履约」的组合，不是状态
-    words: ["WAIT_PAY", "PAID", "FULFILLING", "COMPLETED", "REFUNDED"] },
+    words: ["WAIT_PAY", "WAIT_OFFLINE_PAY", "PAID", "FULFILLING", "COMPLETED", "REFUNDED"] },
   { decl: "shared:DELIVERY_SHAPE", dom: "trade", shape: "CLASS", verdict: "OK",
     note: "履约方式的**交付形态**（自己去取 / 送到手上 / 去消费服务 / 服务上门 / 即时发放）。"
       + "它是订单状态与履约方式之间的中间层：状态集合封闭，履约集合开放，"

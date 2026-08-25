@@ -23,6 +23,18 @@ public final class OrderStatusView {
 
     /** 待付款 */
     public static final String WAIT_PAY = "WAIT_PAY";
+    /**
+     * 等商家当面收款（线下支付）。
+     *
+     * <p><b>库里没有这个子单状态</b> —— 线下单的子单停在 {@code WAIT_PAY}，
+     * 与线上单一致（刻意如此：给子单也加一个的话，商家待办、售后入口、履约台
+     * 三处都要各判一次「这个新状态算不算已付」）。
+     *
+     * <p>它是**下发口径**上的值，由主单的状态推出（见 {@link #toContract(String, String)}）。
+     * 不推的话，买家的订单列表会把线下单显示成「待付款」，
+     * 端上据此画一个「去支付」按钮 —— 而这单只能当面把钱给商家，那个按钮点了没用。
+     */
+    public static final String WAIT_OFFLINE_PAY = "WAIT_OFFLINE_PAY";
     /** 已付款、等交付方行动。库里叫 {@code WAIT_FULFILL}，同一件事 */
     public static final String PAID = "PAID";
     /**
@@ -56,6 +68,19 @@ public final class OrderStatusView {
      * <p>展示由端上的 {@code orderView(status, fulfillment, info)} 决定，
      * 三端共用一份映射。见《订单状态-统一整理》。
      */
+    /**
+     * 带主单状态的重载：<b>主单说「等当面收款」时，下发口径跟着它</b>。
+     *
+     * <p>子单那一列不动 —— 读它的那三处（商家待办、售后入口、履约台）
+     * 关心的是「货走到哪了」，与钱怎么收无关。
+     */
+    public static String toContract(String subStatus, String mainStatus) {
+        if ("WAIT_OFFLINE_PAY".equals(mainStatus) && WAIT_PAY.equals(toContract(subStatus))) {
+            return WAIT_OFFLINE_PAY;
+        }
+        return toContract(subStatus);
+    }
+
     public static String toContract(String status) {
         if (status == null) {
             return WAIT_PAY;

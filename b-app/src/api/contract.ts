@@ -4,6 +4,7 @@
 // 类型全部来自 @shared/types —— **不在这里重复定义**。同一笔订单两端看到的是同一个
 // Order 结构，只是可见字段与可执行动作不同；各定义一份必然漂移。
 import type {
+  AppointmentSlot,
   Entity,
   EntityStores,
   GeoReverseResult,
@@ -845,6 +846,22 @@ export interface MerchantApi {
   mShip(orderNo: string, expressNo: string): Promise<Order>;
   /** 商家自送：老板点一下「已送达」。不做骑手轨迹（ADR-005 §5） */
   mDelivered(orderNo: string): Promise<Order>;
+  /**
+   * 确认线下收款。**这是整条链路上唯一一处「钱」离开系统、落到人当面执行的动作** ——
+   * 平台不代收这笔款，能提供的只有一条留痕（谁在什么时候点的）。
+   * 权限用 `biz:receive` 不是 `biz:order:view`：后者是只读权限，配送员也持有。
+   */
+  mConfirmOfflinePay(subOrderNo: string): Promise<Order>;
+
+  // ---- 预约排期（B-11.5）
+  /** 本店时段。**连约满的和停掉的一起列** —— 只给「还能约的」，商家看不出为什么没人约 */
+  mAppointmentSlots(storeNo: string, from: number, to: number): Promise<AppointmentSlot[]>;
+  mOpenAppointmentSlot(
+    storeNo: string,
+    slot: { startAt: number; endAt: number; capacity: number },
+  ): Promise<AppointmentSlot>;
+  /** 停约。**不删行也不赶人** —— 语义是「别再往里放人」 */
+  mCloseAppointmentSlot(slotNo: string): Promise<AppointmentSlot>;
   mDeliveryRule(): Promise<DeliveryRule>;
   mSaveDeliveryRule(rule: DeliveryRule): Promise<DeliveryRule>;
 
