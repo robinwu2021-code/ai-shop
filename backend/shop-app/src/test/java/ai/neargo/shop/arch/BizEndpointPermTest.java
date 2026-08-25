@@ -109,6 +109,7 @@ class BizEndpointPermTest {
         put("/biz/pickup/overview", BizPerms.VERIFY);
         put("/biz/order/{subOrderNo}/ship", BizPerms.SHIP);
         put("/biz/order/{subOrderNo}/delivered", BizPerms.SHIP);
+        put("/biz/order/{subOrderNo}/confirm-offline-pay", BizPerms.RECEIVE);
 
         // ---- 订单与经营数据 ----
         put("/biz/order", BizPerms.ORDER_VIEW);
