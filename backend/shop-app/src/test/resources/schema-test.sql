@@ -619,6 +619,8 @@ CREATE TABLE IF NOT EXISTS ord_sub_order
     receiver_phone VARCHAR(32) DEFAULT NULL,
     receiver_address VARCHAR(255) DEFAULT NULL,
     community_no VARCHAR(64) DEFAULT NULL,
+    appointment_slot_no VARCHAR(64) DEFAULT NULL,
+    appointment_released_at BIGINT DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_sub_order_no UNIQUE (sub_order_no),
     CONSTRAINT uk_verify_code UNIQUE (verify_code)
@@ -3629,6 +3631,28 @@ CREATE TABLE IF NOT EXISTS msg_faq
     deleted     TINYINT(4)   NOT NULL DEFAULT 0,
     PRIMARY KEY (id),
     CONSTRAINT uk_faq_no UNIQUE (faq_no)
+);
+
+CREATE TABLE IF NOT EXISTS mch_appointment_slot
+(
+    id         BIGINT      NOT NULL AUTO_INCREMENT,
+    slot_no    VARCHAR(64) NOT NULL,
+    entity_no  VARCHAR(64) NOT NULL,
+    store_no   VARCHAR(64) NOT NULL,
+    start_at   BIGINT      NOT NULL,
+    end_at     BIGINT      NOT NULL,
+    capacity   INT         NOT NULL DEFAULT 1,
+    booked     INT         NOT NULL DEFAULT 0,
+    status     VARCHAR(16) NOT NULL DEFAULT 'OPEN',
+    tenant_no  VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME    NOT NULL,
+    created_by VARCHAR(64)          DEFAULT NULL,
+    updated_at DATETIME    NOT NULL,
+    updated_by VARCHAR(64)          DEFAULT NULL,
+    version    BIGINT      NOT NULL DEFAULT 0,
+    deleted    TINYINT     NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_slot_no UNIQUE (slot_no)
 );
 
 -- 种子数据

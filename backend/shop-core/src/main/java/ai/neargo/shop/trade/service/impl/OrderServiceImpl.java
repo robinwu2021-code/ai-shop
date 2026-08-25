@@ -113,8 +113,10 @@ public class OrderServiceImpl implements OrderService {
     private final ai.neargo.shop.spi.member.MemberEventPort memberEventPort;
     /** 买家的人档号。没有（微信登录未授权手机号）就不入会 */
     private final ai.neargo.shop.spi.user.PersonPort personPort;
+    private final ai.neargo.shop.spi.user.AppointmentSlotPort appointmentSlotPort;
 
-    public OrderServiceImpl(OrderMapper orderMapper, SubOrderMapper subOrderMapper, OrderItemMapper itemMapper,
+    public OrderServiceImpl(ai.neargo.shop.spi.user.AppointmentSlotPort appointmentSlotPort,
+                            OrderMapper orderMapper, SubOrderMapper subOrderMapper, OrderItemMapper itemMapper,
                             ai.neargo.shop.product.service.PayModeService payModeService,
                             CartItemMapper cartMapper, GoodsQueryPort goodsPort, StockPort stockPort,
                             MerchantQueryPort merchantPort,
@@ -132,6 +134,7 @@ public class OrderServiceImpl implements OrderService {
                             ai.neargo.shop.spi.user.PersonPort personPort,
                             CloseRuleService closeRuleService) {
         this.payModeService = payModeService;
+        this.appointmentSlotPort = appointmentSlotPort;
         this.orderMapper = orderMapper;
         this.subOrderMapper = subOrderMapper;
         this.admissionPort = admissionPort;
@@ -478,7 +481,13 @@ public class OrderServiceImpl implements OrderService {
         requireWithinDeliveryRadius(cmd, split, userNo);
         requirePickupPointWhenPickup(cmd);
         requirePickupServed(cmd, split);
-        requireAppointmentWhenNeeded(cmd);
+        requireAppointmentWhenNeeded(cmd, split, storeOfMerchant);
+
+        /*
+         * 占预约名额。**一单一次**，不在建子单的循环里 —— 带时段的单只有一个商家
+         * （前置校验保证），循环里调会在将来某次放宽限制时变成重复占位。
+         */
+        var slot = bookAppointmentSlot(cmd, split, storeOfMerchant);
 
         String orderNo = BizKey.next(BizKey.ORDER);
         long now = System.currentTimeMillis();
@@ -678,7 +687,13 @@ public class OrderServiceImpl implements OrderService {
             // 预约时段落到子单：商家的待服务列表按它排，买家的订单卡按它显示「几点」。
             // 只在预约类履约上写，其余留空 —— 一个不需要预约的单带着时间是噪音
             if (Fulfillments.NEEDS_APPOINTMENT.contains(cmd.fulfillment())) {
-                sub.setAppointmentAt(cmd.appointmentAt());
+                /*
+                 * 抢到时段的话，appointment_at **由时段推出**，不信端上传的那个。
+                 * 两个来源写同一列的话，买家可以约 9 点的档、把 appointmentAt 传成 15 点 ——
+                 * 商家的待服务列表按 15 点排，而名额扣在 9 点那一格。
+                 */
+                sub.setAppointmentAt(slot != null ? slot.startAt() : cmd.appointmentAt());
+                sub.setAppointmentSlotNo(slot == null ? null : cmd.appointmentSlotNo());
             }
             sub.setPickupNo(cmd.pickupNo());
             // 自提点名称快照（C6）：页面要显示名字，且自提点改名不该影响历史订单
@@ -1017,6 +1032,8 @@ public class OrderServiceImpl implements OrderService {
         // 所以这里逐个子单退，而不是像券那样传 orderNo
         for (OrdSubOrder sub : subOrders(order.getOrderNo())) {
             pointsPort.reverse(sub.getSubOrderNo(), "订单已取消");
+            // 名额还回去。幂等标记在子单上 —— 与超时关闭那条路同时到达也只还一次
+            releaseAppointmentSlot(sub);
         }
         return detail(order.getOrderNo());
     }
@@ -1062,6 +1079,7 @@ public class OrderServiceImpl implements OrderService {
         // 同上，积分逐子单退。reverse 只认 PENDING 的 USE 流水，重复跑不会退两次
         for (OrdSubOrder sub : subOrders(order.getOrderNo())) {
             pointsPort.reverse(sub.getSubOrderNo(), reason + "，订单关闭");
+            releaseAppointmentSlot(sub);
         }
     }
 
@@ -1549,15 +1567,98 @@ public class OrderServiceImpl implements OrderService {
      * 而商家不知道该几点去，买家也不知道自己约了没有。两边都只能打电话。
      * 与收货地址那道闸同理：**下得成的单必须是履约得了的单**。
      */
-    private void requireAppointmentWhenNeeded(CreateOrderCommand cmd) {
+    private void requireAppointmentWhenNeeded(CreateOrderCommand cmd, Split split,
+                                              Map<String, String> storeOfMerchant) {
         if (cmd.fulfillment() == null
                 || !Fulfillments.NEEDS_APPOINTMENT.contains(cmd.fulfillment())) {
+            return;
+        }
+        /*
+         * 这家店开了时段就必须挑一个。**没开时段的照旧按老路走** ——
+         * 与门店渠道「一行都没有 = 还没迁过来，按旧口径放行」同一条兼容规矩。
+         * 不留这条后路的话，这批代码一上线，所有做上门服务的商家
+         * 在开出时段之前一单都接不了，而他们不会收到任何提示。
+         */
+        if (anyStoreHasSlots(split, storeOfMerchant)) {
+            if (cmd.appointmentSlotNo() == null || cmd.appointmentSlotNo().isBlank()) {
+                throw BizException.of(ErrorCode.APPOINTMENT_SLOT_UNAVAILABLE);
+            }
+            /*
+             * 一个时段只属于一家店，所以带时段的单只能有一个商家。
+             * 放行的话，另外那几家的子单会挂着一个**不属于自己**的时段号 ——
+             * 名额扣在别人头上，而他们的待服务列表里什么都没有。
+             * 现实中跨商家的上门服务本来也约不到一起去。
+             */
+            if (split.groups.size() > 1) {
+                throw BizException.of(ErrorCode.BAD_REQUEST);
+            }
             return;
         }
         Long at = cmd.appointmentAt();
         // 过去的时间点与没填一样没用 —— 商家没法回到昨天上门
         if (at == null || at <= System.currentTimeMillis()) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+    }
+
+    private boolean anyStoreHasSlots(Split split, Map<String, String> storeOfMerchant) {
+        for (Group g : split.groups) {
+            if (appointmentSlotPort.hasOpenSlots(storeOfMerchant.get(g.merchantNo))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * 真正抢名额。<b>放在建子单这一步，不放进前面那段前置校验</b> ——
+     * 那一段的约定是「全部前置且只读」，而这是一次写。
+     *
+     * <p>整个 create 在一个事务里，所以后面任何一步抛异常，这次占位会一起回滚。
+     *
+     * @return 抢到的时段，没走时段这条路时返回 null
+     */
+    private ai.neargo.shop.spi.user.AppointmentSlotPort.BookResult bookAppointmentSlot(
+            CreateOrderCommand cmd, Split split, Map<String, String> storeOfMerchant) {
+        if (cmd.fulfillment() == null
+                || !Fulfillments.NEEDS_APPOINTMENT.contains(cmd.fulfillment())
+                || cmd.appointmentSlotNo() == null || cmd.appointmentSlotNo().isBlank()
+                || !anyStoreHasSlots(split, storeOfMerchant)) {
+            return null;
+        }
+        String storeNo = storeOfMerchant.get(split.groups.get(0).merchantNo);
+        var r = appointmentSlotPort.tryBook(cmd.appointmentSlotNo(), storeNo);
+        /*
+         * 两种失败分开报，因为**给买家看的话不一样**：
+         *   FULL        这一档满了 → 换个时间
+         *   UNAVAILABLE 不存在/已停约/不是这家店的 → 重新挑一个
+         * 合成一个码的话，端上只能说「约不了」，而用户不知道下一步该做什么。
+         */
+        if (r.outcome() == ai.neargo.shop.spi.user.AppointmentSlotPort.BookOutcome.FULL) {
+            throw BizException.of(ErrorCode.APPOINTMENT_SLOT_FULL);
+        }
+        if (!r.booked()) {
+            throw BizException.of(ErrorCode.APPOINTMENT_SLOT_UNAVAILABLE);
+        }
+        return r;
+    }
+
+    /**
+     * 还名额。<b>先条件 UPDATE 打标记，打上了才减</b>。
+     *
+     * <p>取消会被重放：超时关闭与用户手动取消可能同时到达，两条路都走这里。
+     * 顺序反过来（先减再打标记）的话，两个并发线程可能都先减成功，
+     * 互斥就白做了 —— booked 减成负数，此后这个时段能卖出比 capacity 更多的单，
+     * 而且不会有任何报错。
+     */
+    private void releaseAppointmentSlot(OrdSubOrder sub) {
+        if (sub.getAppointmentSlotNo() == null || sub.getAppointmentSlotNo().isBlank()) {
+            return;
+        }
+        int mine = subOrderMapper.markAppointmentReleased(
+                sub.getSubOrderNo(), System.currentTimeMillis());
+        if (mine == 1) {
+            appointmentSlotPort.release(sub.getAppointmentSlotNo());
         }
     }
 

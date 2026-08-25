@@ -230,6 +230,9 @@ class BizEndpointPermTest {
         put("/biz/store/announcement/recent/remove", BizPerms.STORE);
         // 门店送货方式（方案 v4）：GET/PUT 同路径同进退，都归门店管理面
         put("/biz/stores/{storeNo}/fulfillment", BizPerms.STORE);
+        // 预约排期与送货方式同类：都是「这家店怎么履约」的配置，所以共用 STORE
+        put("/biz/stores/{storeNo}/appointment-slots", BizPerms.STORE);
+        put("/biz/appointment-slots/{slotNo}/close", BizPerms.STORE);
         put("/biz/pickup-points/candidates", BizPerms.STORE);
         put("/biz/pickup-points", BizPerms.STORE);
         // 提报新社区与设经营范围是同一件事的两半：能决定「我做哪儿」的人，

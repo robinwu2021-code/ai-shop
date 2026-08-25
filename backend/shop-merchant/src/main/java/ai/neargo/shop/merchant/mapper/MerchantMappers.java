@@ -28,6 +28,53 @@ public final class MerchantMappers {
     public interface MchEntityMapper extends BaseMapper<MchEntity> {
     }
 
+    /**
+     * 预约时段。<b>占位与释放只走这里的两条带条件 UPDATE</b>，不要用 Wrapper 或
+     * {@code updateById} —— 那两条路都是「先查再改」，并发下必然超约。
+     * 与库存锁定（{@code SkuMapper.lockStock}）是同一套手法。
+     */
+    public interface AppointmentSlotMapper
+            extends BaseMapper<ai.neargo.shop.merchant.entity.MchAppointmentSlot> {
+
+        /**
+         * 抢一个名额。
+         *
+         * <p>条件全写在 WHERE 里：<b>时段属于这家店</b>、还没约满、可约、没被逻辑删。
+         *
+         * <p>{@code store_no} 这一条是**越权闸不是筛选**：时段编号由端上传，
+         * 不比对归属的话，买家可以拿别家店的时段号来下单 ——
+         * 占的是别人的名额，而那家店的师傅那天根本不知道有这一单。
+         * <b>返回 0 不等于「满了」</b> —— 也可能是停约或这一行压根不存在，
+         * 所以调用方要区分「行不存在/已停约」（80015）与「已约满」（80014）：
+         * 前者要让买家换一个时段，后者要让他换一个时间，两句话不一样。
+         *
+         * @return 影响行数；1 = 抢到，0 = 没抢到
+         */
+        @Update("""
+                UPDATE mch_appointment_slot SET booked = booked + 1, version = version + 1
+                WHERE slot_no = #{slotNo} AND store_no = #{storeNo} AND deleted = 0
+                  AND status = 'OPEN' AND booked < capacity
+                """)
+        int tryBook(@Param("slotNo") String slotNo, @Param("storeNo") String storeNo);
+
+        /**
+         * 还一个名额。
+         *
+         * <p>{@code booked > 0} 是防线不是装饰：少了它，一次重复释放就能把
+         * booked 减成负数，此后这个时段能卖出比 capacity 更多的单，
+         * <b>而且不会有任何报错</b>。与 {@code SkuMapper.releaseStock} 的
+         * {@code locked_stock >= qty} 同一个位置、同一个理由。
+         *
+         * <p><b>停约的时段照样能还</b>（WHERE 里不判 status）：商家停约之后，
+         * 那些已经约进来的单取消时还得把名额退回去，否则数字永远对不上。
+         */
+        @Update("""
+                UPDATE mch_appointment_slot SET booked = booked - 1, version = version + 1
+                WHERE slot_no = #{slotNo} AND deleted = 0 AND booked > 0
+                """)
+        int release(@Param("slotNo") String slotNo);
+    }
+
     /** 商家覆盖的社区：C 端「本社区可见商家」的反查索引所在。 */
     public interface MchEntityCommunityMapper extends BaseMapper<MchEntityCommunity> {
 

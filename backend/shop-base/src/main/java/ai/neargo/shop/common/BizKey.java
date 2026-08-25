@@ -20,6 +20,8 @@ public final class BizKey {
     public static final String ORDER = "SO";
     public static final String SUB_ORDER = "SUB";
     public static final String AFTER_SALE = "AS";
+    /** 预约时段（{@code mch_appointment_slot}）。门店的服务容量，不是商品的 */
+    public static final String APPOINTMENT_SLOT = "APS";
     public static final String USER = "U";
     /**
      * 平台人档（{@code usr_person}）。

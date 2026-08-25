@@ -205,7 +205,12 @@ public class MpTradeController {
                                   * 支付方式（PayModes）。**不传按 ONLINE**：
                                   * 存量端上没有这个字段，不能因为补了它就让老版本下不了单。
                                   */
-                                 String payMode) {
+                                 String payMode,
+                                 /*
+                                  * 预约时段编号。这家店开了时段就必填 —— 没开则忽略，
+                                  * 走 appointmentAt 那条旧路（存量端上没有这个字段）。
+                                  */
+                                 String appointmentSlotNo) {
 
         public record Item(String goodsNo, String skuNo, int qty) {
         }
@@ -216,7 +221,7 @@ public class MpTradeController {
                             .map(i -> new OrderService.CreateOrderCommand.Item(i.goodsNo(), i.skuNo(), i.qty()))
                             .toList(),
                     fulfillment, pickupNo, addressId, couponNo, usePoints, remark, appointmentAt,
-                    payMode, payScene);
+                    payMode, payScene, appointmentSlotNo);
         }
     }
 }

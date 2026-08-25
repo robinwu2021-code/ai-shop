@@ -35,14 +35,17 @@ public class MpStoreController {
     private final StoreFavoriteService favoriteService;
     private final StoreCodeService storeCodeService;
     private final AttributionService attributionService;
+    private final ai.neargo.shop.merchant.service.AppointmentSlotService appointmentSlotService;
 
     public MpStoreController(StoreService storeService, StoreFavoriteService favoriteService,
                              StoreCodeService storeCodeService,
-                             AttributionService attributionService) {
+                             AttributionService attributionService,
+                             ai.neargo.shop.merchant.service.AppointmentSlotService appointmentSlotService) {
         this.storeService = storeService;
         this.favoriteService = favoriteService;
         this.storeCodeService = storeCodeService;
         this.attributionService = attributionService;
+        this.appointmentSlotService = appointmentSlotService;
     }
 
     @GetMapping("/mp/store/mine")
@@ -106,5 +109,24 @@ public class MpStoreController {
     }
 
     public record AttributionReportReq(String merchantNo, String inviterNo, String channel) {
+    }
+
+    // ---------------------------------------------------------------- 预约时段
+
+    /**
+     * 这家店还约得上的时段。
+     *
+     * <p><b>只列可约且没满的</b>：买家看见一个约不上的档只会去点它，然后拿到一句错误。
+     * 商家侧的接口相反 —— 那边要连约满的和停掉的一起看，否则不知道
+     * 「没人约」是「没开时段」还是「开的都满了」。
+     *
+     * <p>⚠️ 列表只是**那一刻**的快照，不是承诺。真正的判定在下单那条带条件的
+     * UPDATE 里 —— 两个人同时看到同一个「剩 1」，只有一个抢得到。
+     */
+    @GetMapping("/mp/stores/{storeNo}/appointment-slots")
+    public java.util.List<ai.neargo.shop.merchant.service.AppointmentSlotService.SlotVO> appointmentSlots(
+            @PathVariable String storeNo,
+            @RequestParam long from, @RequestParam long to) {
+        return appointmentSlotService.list(storeNo, from, to, true);
     }
 }

@@ -90,9 +90,15 @@ public interface OrderService {
      * @param payScene  下单端（{@link ai.neargo.shop.common.PayScenes}），由网关从
      *                  {@code X-Client} 头解析。<b>快照进订单</b>，积分发放的端判定读它
      */
+    /**
+     * @param appointmentSlotNo 预约时段编号。<b>这家店开了时段就必填</b>，
+     *                          没开则忽略（走 {@code appointmentAt} 的旧路）。
+     *                          归属会在占位那条 SQL 里比对 —— 端上传别家店的时段号占不到
+     */
     record CreateOrderCommand(List<Item> items, String fulfillment, String pickupNo,
                               String addressId, String couponNo, Long usePoints, String remark,
-                              Long appointmentAt, String payMode, String payScene) {
+                              Long appointmentAt, String payMode, String payScene,
+                              String appointmentSlotNo) {
 
         public record Item(String goodsNo, String skuNo, int qty) {
         }

@@ -163,6 +163,10 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
   mDeliveryRule: { method: "GET", path: "/biz/delivery/rule", auth: true, summary: "自送规则" },
   mSaveDeliveryRule: { method: "POST", path: "/biz/delivery/rule", auth: true, summary: "保存自送规则" },
 
+  mAppointmentSlots: { method: "GET", path: "/biz/stores/:storeNo/appointment-slots", auth: true, summary: "预约时段列表" },
+  mOpenAppointmentSlot: { method: "POST", path: "/biz/stores/:storeNo/appointment-slots", auth: true, summary: "开预约时段" },
+  mCloseAppointmentSlot: { method: "POST", path: "/biz/appointment-slots/:slotNo/close", auth: true, summary: "停约" },
+
   mPickupOverview: { method: "GET", path: "/biz/pickup/overview", auth: true, summary: "自提点履约总览" },
   mPickupOrders: { method: "GET", path: "/biz/pickup/orders", auth: true, summary: "本自提点订单" },
   mPickingList: { method: "GET", path: "/biz/pickup/picking", auth: true, summary: "分拣单" },

@@ -172,6 +172,23 @@ public class OrdSubOrder extends BaseEntity {
     private Long appointmentAt;
 
     /**
+     * 占用的预约时段；空 = 这家店没开时段，走 {@link #appointmentAt} 的旧路。
+     *
+     * <p>取消时靠它知道该把名额还给谁，也是出纠纷时「他到底约的哪一档」的凭据。
+     */
+    private String appointmentSlotNo;
+
+    /**
+     * 名额释放时刻。<b>幂等标记</b> —— 非空即已还过，不许再减 booked。
+     *
+     * <p>取消会被重放：超时关闭与用户手动取消可能同时到达。没有这个标记就会
+     * 把名额还两次，于是 booked 减成负数、这个时段能卖出比 capacity 更多的单。
+     * <b>释放要先条件 UPDATE 打这个标记，打上了才去减</b> ——
+     * 反过来（先减再打）在并发重放下仍然会多减一次。
+     */
+    private Long appointmentReleasedAt;
+
+    /**
      * 参团下单时的团号。
      * 此前契约里有、库里没有，接上去是**静默丢数据**：参团单变普通单，不报错。
      * 邻里自提的核销作用域也靠它裁剪（E16）。
