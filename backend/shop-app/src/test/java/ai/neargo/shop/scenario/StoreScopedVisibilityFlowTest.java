@@ -97,6 +97,19 @@ class StoreScopedVisibilityFlowTest {
          * 该商品转为店级管理，没有行的店视为未上架）。
          */
         String goodsNo = onSaleGoodsAt(biz, storeA, "只在 A 店卖的抽纸");
+        /*
+         * ★ **必须显式把 B 店关掉**，不能指望「过审后默认不在售」。
+         *
+         * 2026-08-25 的 d614cb30「过审即在售」改了这个前提：过审那一刻实体级 on_sale
+         * 就是 true 了，而 setStoreOnSale 第一次转店级管理时会**把其他门店按当时的
+         * 实体级状态固化下来**（它注释里讲的那个坑：不固化的话在 A 店点下架会把
+         * B 店的货一起弄没）。于是 toggle A 店之后，B 店被固化成「在卖」。
+         *
+         * 那个行为是对的 —— 过审后两家店都在卖，符合「保持现状」。
+         * 错的是这条用例原来的写法：它靠「过审后不在售」这个副作用来表达
+         * 「这货只在 A 店」，而那从来不是它该依赖的东西。
+         */
+        offShelfAt(biz, storeB, goodsNo);
 
         /*
          * ★ 本类的核心断言。改造之前可见性取主体并集，这件货会同时进 CM001 与 CM002 的池 ——
@@ -323,6 +336,15 @@ class StoreScopedVisibilityFlowTest {
                         .eq(ai.neargo.shop.merchant.entity.MchServiceArea::getEntityNo, merchantNo)
                         .eq(ai.neargo.shop.merchant.entity.MchServiceArea::getRefCode, communityNo))
                 .get(0).getAreaNo();
+    }
+
+    /** 在指定门店下架一件货 —— 用来表达「这家店不卖它」 */
+    private void offShelfAt(String token, String storeNo, String goodsNo) throws Exception {
+        mvc().perform(post("/biz/goods/" + goodsNo + "/toggle")
+                        .header("Authorization", "Bearer " + token)
+                        .header("X-Store-No", storeNo)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"onSale\":false}"))
+                .andExpect(jsonPath("$.code").value(0));
     }
 
     /** 建一件货、过审、在**指定门店**上架 */
