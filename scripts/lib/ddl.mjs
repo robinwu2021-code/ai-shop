@@ -25,8 +25,14 @@ export const AUDIT = new Set([
   "id", "tenant_no", "created_at", "created_by", "updated_at", "updated_by", "version", "deleted",
 ]);
 
+// 长的写在前面：`INT` 排在 `INTEGER` 前会先匹配掉前三个字母，类型就记成了 int。
+// **少一种类型 = 那一列被静默丢掉**（不是报错，是解析器眼里它不存在）——
+// `geo_poi_cache.payload` 是 MEDIUMTEXT，于是实体对齐守卫报「实体多出 payload」，
+// 而库里明明有这一列。加类型时顺手想一想：漏掉的那种会以「多出一个字段」的面目出现。
 const COL_TYPES =
-  "BIGINT|VARCHAR|INT|TINYINT|SMALLINT|DATETIME|TIMESTAMP|TEXT|JSON|DECIMAL|CHAR|DOUBLE";
+  "BIGINT|MEDIUMINT|SMALLINT|TINYINT|INTEGER|INT|VARCHAR|CHAR|DATETIME|TIMESTAMP|DATE|TIME"
+  + "|MEDIUMTEXT|LONGTEXT|TINYTEXT|TEXT|JSON|DECIMAL|NUMERIC|DOUBLE|FLOAT"
+  + "|MEDIUMBLOB|LONGBLOB|BLOB";
 const NOT_A_COLUMN = /^(KEY|UNIQUE|PRIMARY|INDEX|CONSTRAINT|FULLTEXT)$/i;
 
 /** 把迁移按**版本号数字**拼成一条时间线。字典序会把 V15 排在 V2 前面。 */
@@ -61,10 +67,24 @@ export function readSchema(root) {
     // 把别人的列算到它头上。V27 那三张表就是这么消失的。
     // 建表的收尾写法不该由解析器来规定 —— 它的职责是读，不是立规矩。
     //
-    // 表选项限定**不跨行**（`[^;\n]*`）。写成 `[^;]*` 会让匹配失败时
-    // 一路回溯扫到文件末尾：几十个迁移拼起来是 O(n²)，实测跑到分钟级不出结果 ——
-    // 而那不是「慢」，是看着像卡死。
-    /CREATE TABLE(?: IF NOT EXISTS)? (\w+)\s*\(([\s\S]*?)\n\)([^;\n]*);/g,
+    // 表选项**允许跨行，但有上界**（`[^;]{0,300}`）。
+    //
+    // 无界的 `[^;]*` 会让匹配失败时一路回溯扫到文件末尾：几十个迁移拼起来是
+    // O(n²)，实测跑到分钟级不出结果 —— 而那不是「慢」，是看着像卡死。
+    // 但完全不许跨行（`[^;\n]*`）也有代价，而且这个代价已经付过了：
+    // V152 里两处写成
+    //     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci
+    //         COMMENT='…';
+    // 于是那两张表**整张匹配不上**，解析器一路吃到下一张单行收尾的表，
+    // 把中间所有列（连同三条 INSERT 语句里的词）都算到 `sys_media_asset` 头上。
+    // 症状是实体对齐守卫报「sys_media_asset 缺 17 列，其中三列叫 INSERT」——
+    // 一条看不懂的报错，于是那条守卫就一直红着，而红着的守卫等于没有守卫。
+    //
+    // 加上界是第三条路：允许跨行，同时没有回溯爆炸的空间。300 字符足够放下
+    // 任何合理的表选项（V152 那两处最长 110），放不下就该怀疑是漏了分号。
+    // **不能改 V152 本身**：它早就在生产上应用过，改文件会改掉 Flyway 校验和，
+    // 线上重启会以 checksum mismatch 起不来（2026-08 已经因此停过约 4 分钟）。
+    /CREATE TABLE(?: IF NOT EXISTS)? (\w+)\s*\(([\s\S]*?)\n\)([^;]{0,300});/g,
   )) {
     const [, name, body, tail] = m;
     const cols = [];

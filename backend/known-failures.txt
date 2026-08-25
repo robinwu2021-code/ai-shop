@@ -11,7 +11,6 @@
 ai.neargo.shop.arch.ArchitectureTest.implsMustLiveInDedicatedPackage
 ai.neargo.shop.arch.ArchitectureTest.serviceMustBeInterface
 ai.neargo.shop.arch.ArchitectureTest.svcModulesMustNotDependOnEachOther
-ai.neargo.shop.arch.BizEndpointPermTest.everyBizEndpointHasADecision
 ai.neargo.shop.arch.MediaRefCoverageTest.everyImageColumnIsClaimed
 ai.neargo.shop.scenario.BizDashboardAndReviewFlowTest.appealDecisionNeedsVerdictAndIsFinal
 ai.neargo.shop.scenario.BizDashboardAndReviewFlowTest.appealDismissedKeepsTheReview

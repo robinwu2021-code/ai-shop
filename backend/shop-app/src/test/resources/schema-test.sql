@@ -3329,6 +3329,145 @@ CREATE TABLE IF NOT EXISTS mbr_segment
     CONSTRAINT uk_mbr_segment_name UNIQUE (tenant_no, entity_no, name)
 );
 
+CREATE TABLE IF NOT EXISTS pmt_coupon
+(
+    id BIGINT(20) NOT NULL AUTO_INCREMENT,
+    coupon_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(64) DEFAULT NULL,
+    funder VARCHAR(16) NOT NULL DEFAULT 'MERCHANT',
+    title VARCHAR(128) NOT NULL,
+    benefit_mode VARCHAR(16) NOT NULL DEFAULT 'CASH',
+    benefit_value BIGINT(20) NOT NULL DEFAULT 0,
+    benefit_cap_minor BIGINT(20) DEFAULT NULL,
+    benefit_ref VARCHAR(64) DEFAULT NULL,
+    min_amount_minor BIGINT(20) DEFAULT NULL,
+    min_qty INT(11) DEFAULT NULL,
+    scope_type VARCHAR(16) NOT NULL DEFAULT 'ALL',
+    scope_desc VARCHAR(128) DEFAULT NULL,
+    validity_mode VARCHAR(16) NOT NULL DEFAULT 'ABSOLUTE',
+    start_at BIGINT(20) DEFAULT NULL,
+    end_at BIGINT(20) DEFAULT NULL,
+    valid_days INT(11) DEFAULT NULL,
+    issue_mode VARCHAR(16) NOT NULL DEFAULT 'CENTER',
+    redeem_mode VARCHAR(16) NOT NULL DEFAULT 'ORDER',
+    times_total INT(11) NOT NULL DEFAULT 1,
+    total_count INT(11) DEFAULT NULL,
+    received_count INT(11) NOT NULL DEFAULT 0,
+    per_user_limit INT(11) NOT NULL DEFAULT 1,
+    budget_minor BIGINT(20) DEFAULT NULL,
+    status VARCHAR(16) NOT NULL DEFAULT 'ACTIVE',
+    archived_at DATETIME DEFAULT NULL,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT(20) NOT NULL DEFAULT 0,
+    deleted TINYINT(4) NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_pmt_coupon_no UNIQUE (coupon_no)
+);
+
+CREATE TABLE IF NOT EXISTS pmt_coupon_scope
+(
+    id BIGINT(20) NOT NULL AUTO_INCREMENT,
+    coupon_no VARCHAR(64) NOT NULL,
+    scope_type VARCHAR(16) NOT NULL,
+    ref_no VARCHAR(64) NOT NULL,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT(20) NOT NULL DEFAULT 0,
+    deleted TINYINT(4) NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_pmt_coupon_scope UNIQUE (tenant_no, coupon_no, scope_type, ref_no)
+);
+
+CREATE TABLE IF NOT EXISTS pmt_user_coupon
+(
+    id BIGINT(20) NOT NULL AUTO_INCREMENT,
+    user_coupon_no VARCHAR(64) NOT NULL,
+    coupon_no VARCHAR(64) NOT NULL,
+    user_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(64) DEFAULT NULL,
+    issue_no VARCHAR(64) DEFAULT NULL,
+    status VARCHAR(16) NOT NULL DEFAULT 'UNUSED',
+    times_used INT(11) NOT NULL DEFAULT 0,
+    order_no VARCHAR(64) DEFAULT NULL,
+    used_at BIGINT(20) DEFAULT NULL,
+    received_at BIGINT(20) NOT NULL,
+    expire_at BIGINT(20) NOT NULL,
+    redeem_code VARCHAR(32) DEFAULT NULL,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT(20) NOT NULL DEFAULT 0,
+    deleted TINYINT(4) NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_pmt_user_coupon_no UNIQUE (user_coupon_no),
+    CONSTRAINT uk_pmt_redeem_code UNIQUE (tenant_no, redeem_code)
+);
+
+CREATE TABLE IF NOT EXISTS pmt_coupon_issue
+(
+    id BIGINT(20) NOT NULL AUTO_INCREMENT,
+    issue_no VARCHAR(64) NOT NULL,
+    coupon_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(64) DEFAULT NULL,
+    issue_mode VARCHAR(16) NOT NULL,
+    segment_no VARCHAR(64) DEFAULT NULL,
+    activity_no VARCHAR(64) DEFAULT NULL,
+    rule_snapshot TEXT DEFAULT NULL,
+    planned_count INT(11) NOT NULL DEFAULT 0,
+    issued_count INT(11) NOT NULL DEFAULT 0,
+    skipped_count INT(11) NOT NULL DEFAULT 0,
+    skip_detail VARCHAR(255) DEFAULT NULL,
+    amount_minor BIGINT(20) NOT NULL DEFAULT 0,
+    operator_no VARCHAR(64) DEFAULT NULL,
+    issued_at BIGINT(20) NOT NULL,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT(20) NOT NULL DEFAULT 0,
+    deleted TINYINT(4) NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_pmt_issue_no UNIQUE (issue_no)
+);
+
+CREATE TABLE IF NOT EXISTS pmt_apply
+(
+    id BIGINT(20) NOT NULL AUTO_INCREMENT,
+    apply_no VARCHAR(64) NOT NULL,
+    promo_type VARCHAR(16) NOT NULL,
+    promo_no VARCHAR(64) NOT NULL,
+    user_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(64) DEFAULT NULL,
+    store_no VARCHAR(64) DEFAULT NULL,
+    order_no VARCHAR(64) DEFAULT NULL,
+    sub_order_no VARCHAR(64) DEFAULT NULL,
+    redeem_mode VARCHAR(16) NOT NULL DEFAULT 'ORDER',
+    operator_no VARCHAR(64) DEFAULT NULL,
+    amount_minor BIGINT(20) NOT NULL DEFAULT 0,
+    funder VARCHAR(16) NOT NULL DEFAULT 'MERCHANT',
+    applied_at BIGINT(20) NOT NULL,
+    reverted_at BIGINT(20) DEFAULT NULL,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT(20) NOT NULL DEFAULT 0,
+    deleted TINYINT(4) NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_pmt_apply_no UNIQUE (apply_no)
+);
+
 -- 种子数据
 INSERT INTO sys_industry VALUES
 (1,'CATERING','餐饮',10,1,1,0,0,'微信小微白名单内','MAIN','2026-08-09 12:49:36','SYSTEM','2026-08-09 12:49:36',NULL,0,0),
