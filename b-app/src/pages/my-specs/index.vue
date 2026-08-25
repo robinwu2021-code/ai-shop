@@ -99,28 +99,74 @@ function startEditDim(g: StoreCategorySpecs, t: SpecTemplate) {
 const platformNames = ref<Record<string, string>>({});
 
 /*
- * 档位的拖动排序。
+ * 拖动排序（规格行与档位共用同一套规矩）。
  *
- * **落点按 chip 的中心点算**，不复用规格行那套「位移 ÷ 行高」——
- * chip 是横向换行的二维排列：同一行里左右挪一格与换到下一行，
- * 手指的位移可能完全一样，除法在这里得不出他想放哪。
+ * **长按才进入拖动，松手才提交。** 上一版是「按下即拖 + 边拖边重排数组」，
+ * 两个后果都被商家撞到了：
  *
- * 顺序落库靠 values 数组的次序（后端按下标写 sort），所以只要重排数组。
+ *   1. 误触 —— 点那一行的 ✕ 或齿轮时手指总会微动几像素，于是变成一次拖动，
+ *      而他以为自己点的是按钮；
+ *   2. **整排档位消失** —— 先点掉一档、手指还没抬起又动了一下，
+ *      数组变短而拖动下标没跟着变，`splice(越界)` 返回空数组，
+ *      `[0]` 是 undefined 被插进 values，整个 v-for 连「＋ 加档位」一起渲染不出来。
+ *      不报错，只是空白一片。
+ *
+ * 现在：按住 ~180ms 才认，期间手指移动超过阈值就当滚动放弃；拖动中只有被拖的那个
+ * 元素在动（translate），数组一个字不改，松手才提交一次。于是越界那条路不存在了，
+ * 也才有地方放动效 —— 边拖边重排的话，元素每帧都在换位置，没有可动画的稳定态。
  */
+
+/** 长按多久算「他要拖」。太短会把点击吞掉，太长会让人以为没反应 */
+const HOLD_MS = 180;
+/** 认定之前手指移动超过这么多 px 就当他在滚页面，放弃这次拖动 */
+const SLOP = 10;
+
+/**
+ * 把 from 挪到 to，**越界就原样返回**。
+ *
+ * 上一版少的就是这个判断：`arr.splice(越界, 1)` 返回 `[]`，
+ * 取 `[0]` 得到 undefined，再插回数组 —— 于是渲染整个塌掉。
+ */
+function moveItem<T>(arr: T[], from: number, to: number): T[] {
+  if (from < 0 || from >= arr.length) return arr;
+  const next = [...arr];
+  const item = next.splice(from, 1)[0];
+  if (item === undefined) return arr;
+  next.splice(Math.max(0, Math.min(next.length, to)), 0, item);
+  return next;
+}
+
 const instance = getCurrentInstance();
+
+/** 正在拖的档位下标；-1 = 没在拖 */
 const valDragFrom = ref(-1);
-/** 拖动中每个 chip 的中心点，按下时量一次 —— 拖动过程中布局不变，不必反复量 */
+/** 手指按着但还没到 HOLD_MS —— 这个阶段什么都不做，抬手就是一次普通点击 */
+const valPending = ref(-1);
+/** 落点：拖动中只用来画插入位，不动数组 */
+const valDragTo = ref(-1);
+/** 被拖的 chip 相对起点的位移，直接喂给 transform */
+const valShift = ref({ x: 0, y: 0 });
+const valOrigin = ref({ x: 0, y: 0 });
+let valTimer: ReturnType<typeof setTimeout> | null = null;
+/** 每个 chip 的中心点，按下时量一次 */
 const valBoxes = ref<{ x: number; y: number }[]>([]);
 
-function onValDragStart(i: number) {
-  valDragFrom.value = i;
+function clearValTimer() {
+  if (valTimer) { clearTimeout(valTimer); valTimer = null; }
+}
+
+function onValDragStart(i: number, e: TouchEvent) {
+  const t = e.touches?.[0];
+  if (!t) return;
+  valPending.value = i;
+  valOrigin.value = { x: t.clientX, y: t.clientY };
+  valShift.value = { x: 0, y: 0 };
   valBoxes.value = [];
   /*
    * **用 uni 的 createSelectorQuery 量位置，不从事件对象拿 DOM。**
    * uni 把事件包装过：`currentTarget` 在 H5 上不是 HTMLElement，
    * 在小程序上更没有 getBoundingClientRect —— 照 DOM 那样写，
    * 表现是「按下去什么都不发生」，而不会报错，很难看出原因。
-   * createSelectorQuery 是三端都有的量尺。
    */
   uni.createSelectorQuery()
     .in(instance)
@@ -135,35 +181,64 @@ function onValDragStart(i: number) {
         }));
     })
     .exec();
+  clearValTimer();
+  valTimer = setTimeout(() => {
+    // 手指还在原地按着 → 这是一次拖动。震一下告诉他「拿起来了」
+    if (valPending.value !== i) return;
+    valDragFrom.value = i;
+    valDragTo.value = i;
+    uni.vibrateShort?.({ success: () => {}, fail: () => {} });
+  }, HOLD_MS);
 }
 
 function onValDragMove(e: TouchEvent) {
-  if (valDragFrom.value < 0 || !valBoxes.value.length) return;
   const t = e.touches?.[0];
   if (!t) return;
-  // 离手指最近的那个 chip 就是落点
+  if (valDragFrom.value < 0) {
+    // 还没认定：动得太多就是在滚页面，放弃（否则点 ✕ 时手抖也会变成拖动）
+    const dx = t.clientX - valOrigin.value.x;
+    const dy = t.clientY - valOrigin.value.y;
+    if (dx * dx + dy * dy > SLOP * SLOP) { clearValTimer(); valPending.value = -1; }
+    return;
+  }
+  valShift.value = { x: t.clientX - valOrigin.value.x, y: t.clientY - valOrigin.value.y };
+  if (!valBoxes.value.length) return;
+  // 离手指最近的那个 chip 就是落点。**只记下来，不动数组**
   let best = valDragFrom.value;
   let bestD = Infinity;
   valBoxes.value.forEach((b, i) => {
     const d = (b.x - t.clientX) ** 2 + (b.y - t.clientY) ** 2;
     if (d < bestD) { bestD = d; best = i; }
   });
-  if (best !== valDragFrom.value) {
-    const next = [...draft.value.values];
-    next.splice(best, 0, next.splice(valDragFrom.value, 1)[0]!);
-    draft.value.values = next;
-    // 数组变了，位置跟着变 —— 把「我是谁」更新到新下标，否则下一次移动会算错
-    valDragFrom.value = best;
-  }
+  valDragTo.value = best;
 }
 
 function onValDragEnd() {
+  clearValTimer();
+  const from = valDragFrom.value;
+  const to = valDragTo.value;
+  valPending.value = -1;
   valDragFrom.value = -1;
+  valDragTo.value = -1;
+  valShift.value = { x: 0, y: 0 };
   valBoxes.value = [];
+  if (from < 0 || to < 0 || from === to) return;
+  draft.value.values = moveItem(draft.value.values, from, to);
+  // 落位后闪一下：不给反馈的话，松手瞬间元素归位，看不出到底有没有生效
+  valLanded.value = draft.value.values[to]?.code ?? "";
+  setTimeout(() => { valLanded.value = ""; }, 320);
 }
+
+/** 刚落位的那一档，用来放一次「落定」动效 */
+const valLanded = ref("");
 
 /** 去掉一档 —— 记进 dropped：只是「不提交」等于跟平台走，那一档下次还在 */
 function dropValue(code: string) {
+  // 取消可能正在计时的那次长按：不取消的话，删完手指还没抬起，
+  // 计时器照样把「拖动」点着，而它记的下标已经指不到东西了
+  clearValTimer();
+  valPending.value = -1;
+  valDragFrom.value = -1;
   draft.value.values = draft.value.values.filter((v) => v.code !== code);
   draft.value.dropped = [...draft.value.dropped, code];
 }
@@ -297,47 +372,80 @@ async function saveDim(g: StoreCategorySpecs) {
  * 但一次拖动本来就只在几行之内。
  */
 const dragFrom = ref<string | null>(null);
-const dragY = ref(0);
+/** 手指按着但还没到 HOLD_MS。这个阶段抬手 = 一次普通点击，不会重排 */
+const dragPending = ref<string | null>(null);
+const dragOriginY = ref(0);
+const dragShift = ref(0);
 const dragTo = ref(-1);
 /** 一行的高度（px）。按下时量一次 —— 不同机型、不同字号下它不一样 */
-const rowH = ref(0);
+const rowH = ref(64);
+let rowTimer: ReturnType<typeof setTimeout> | null = null;
+
+function clearRowTimer() {
+  if (rowTimer) { clearTimeout(rowTimer); rowTimer = null; }
+}
 
 function onDragStart(g: StoreCategorySpecs, dimNo: string, e: TouchEvent) {
-  dragFrom.value = dimNo;
-  dragY.value = e.touches?.[0]?.clientY ?? 0;
-  dragTo.value = g.dims.findIndex((t) => t.templateNo === dimNo);
-  rowH.value = 0;
+  const t = e.touches?.[0];
+  if (!t) return;
+  dragPending.value = dimNo;
+  dragOriginY.value = t.clientY;
+  dragShift.value = 0;
+  dragTo.value = g.dims.findIndex((x) => x.templateNo === dimNo);
+  // 行高按下时量一次：档位多的行更高，写死的话拖两行就错位
+  uni.createSelectorQuery().in(instance).select(".spec")
+    .boundingClientRect((r) => {
+      const h = (r as UniApp.NodeInfo | null)?.height;
+      if (h) rowH.value = h;
+    })
+    .exec();
+  clearRowTimer();
+  rowTimer = setTimeout(() => {
+    if (dragPending.value !== dimNo) return;
+    dragFrom.value = dimNo;
+    uni.vibrateShort?.({ success: () => {}, fail: () => {} });
+  }, HOLD_MS);
 }
 
 function onDragMove(g: StoreCategorySpecs, e: TouchEvent) {
-  if (!dragFrom.value) return;
-  const y = e.touches?.[0]?.clientY ?? 0;
-  /*
-   * 行高第一次移动时估一次：**用整段的高度除以行数**，比给一个写死的 px 稳 ——
-   * 档位多的行更高，写死的话拖两行就错位。
-   */
-  if (!rowH.value) rowH.value = 64;
-  const from = g.dims.findIndex((t) => t.templateNo === dragFrom.value);
-  const delta = Math.round((y - dragY.value) / rowH.value);
+  const t = e.touches?.[0];
+  if (!t) return;
+  if (!dragFrom.value) {
+    // 还没认定就动了这么多 —— 他在滚页面，不是在拖这一行
+    if (Math.abs(t.clientY - dragOriginY.value) > SLOP) { clearRowTimer(); dragPending.value = null; }
+    return;
+  }
+  dragShift.value = t.clientY - dragOriginY.value;
+  const from = g.dims.findIndex((x) => x.templateNo === dragFrom.value);
+  const delta = Math.round(dragShift.value / (rowH.value || 64));
   dragTo.value = Math.max(0, Math.min(g.dims.length - 1, from + delta));
 }
 
 async function onDragEnd() {
+  clearRowTimer();
   const from = dragFrom.value;
+  const to = dragTo.value;
+  dragPending.value = null;
   dragFrom.value = null;
-  if (!from || dragTo.value < 0) return;
+  dragShift.value = 0;
+  dragTo.value = -1;
+  if (!from || to < 0) return;
   const g = byCategory.value.find((x) => x.dims.some((t) => t.templateNo === from));
   if (!g) return;
   const i = g.dims.findIndex((t) => t.templateNo === from);
-  if (i === dragTo.value) return;   // 没挪动：不必往后端跑一趟
-  const seq = g.dims.map((t) => t.templateNo);
-  seq.splice(dragTo.value, 0, seq.splice(i, 1)[0]!);
+  if (i === to) return;   // 没挪动：不必往后端跑一趟
+  const seq = moveItem(g.dims.map((t) => t.templateNo), i, to);
+  dimLanded.value = from;
+  setTimeout(() => { dimLanded.value = ""; }, 320);
   try {
     await commit(g, seq);
   } catch (e) {
     uni.showToast({ title: (e as Error).message, icon: "none" });
   }
 }
+
+/** 刚落位的那一行，用来放一次「落定」动效 */
+const dimLanded = ref("");
 
 /** 顺序改的是「这一类用哪几个规格」，点了立即生效 —— 不必为挪一位进一次编辑态 */
 async function moveDim(g: StoreCategorySpecs, dimNo: string, delta: number) {
@@ -550,19 +658,27 @@ onShow(() => void load());
       </view>
 
       <view v-for="t in g.dims" :key="t.templateNo" class="spec"
-            :class="{ 'spec--drag': dragFrom === t.templateNo }">
+            :class="{
+              'spec--drag': dragFrom === t.templateNo,
+              'spec--land': dimLanded === t.templateNo,
+            }"
+            :style="dragFrom === t.templateNo ? { transform: `translateY(${dragShift}px)` } : ''">
         <!-- 只读：一次只调一个规格，其余保持这一行的样子 -->
         <template v-if="editingDim !== editKey(g.categoryNo, t.templateNo)">
-          <view
-            class="spec__head"
-            @touchstart="onDragStart(g, t.templateNo, $event)"
-            @touchmove.stop.prevent="onDragMove(g, $event)"
-            @touchend="onDragEnd"
-            @touchcancel="onDragEnd"
-          >
-            <!-- 手柄单独占一格：整行可拖的话，他想点右边的图标也会被当成拖动 -->
+          <view class="spec__head">
+            <!--
+              **拖动只认手柄这一格。** 事件此前挂在整行上，与它上面那句注释正好相反 ——
+              于是点右边的齿轮或 ✕ 时手指微动几像素就变成一次拖动，
+              而他以为自己点的是按钮。这是「很容易误触」的全部原因。
+            -->
             <!-- size 的单位是 rpx（见 sh-icon）—— 原型里手柄 14px ≈ 28rpx -->
-            <view class="ic ic--grip">
+            <view
+              class="ic ic--grip"
+              @touchstart="onDragStart(g, t.templateNo, $event)"
+              @touchmove.stop.prevent="onDragMove(g, $event)"
+              @touchend="onDragEnd"
+              @touchcancel="onDragEnd"
+            >
               <sh-icon name="grip" :size="28" color="var(--sh-sub)" />
             </view>
             <text class="spec__name">{{ t.name }}</text>
@@ -587,14 +703,17 @@ onShow(() => void load());
               **编辑态里也能拖。**他常常是「改着改着发现这一个该排前面」——
               为挪一位而先保存、再拖、再点回来，是三步做一件事。
             -->
-            <view
-              class="edit__row"
-              @touchstart="onDragStart(g, t.templateNo, $event)"
-              @touchmove.stop.prevent="onDragMove(g, $event)"
-              @touchend="onDragEnd"
-              @touchcancel="onDragEnd"
-            >
-              <view class="ic ic--grip"><sh-icon name="grip" :size="28" color="var(--sh-sub)" /></view>
+            <!-- 同样只认手柄：挂在整行上的话，他点改名输入框就会被当成拖动 -->
+            <view class="edit__row">
+              <view
+                class="ic ic--grip"
+                @touchstart="onDragStart(g, t.templateNo, $event)"
+                @touchmove.stop.prevent="onDragMove(g, $event)"
+                @touchend="onDragEnd"
+                @touchcancel="onDragEnd"
+              >
+                <sh-icon name="grip" :size="28" color="var(--sh-sub)" />
+              </view>
               <input v-model="draft.label" class="edit__input" :placeholder="draft.platformName" />
             </view>
             <!--
@@ -607,8 +726,15 @@ onShow(() => void load());
                 v-for="(v, vi) in draft.values"
                 :key="v.code"
                 class="sh-chip val"
-                :class="{ 'val--drag': valDragFrom === vi }"
-                @touchstart="onValDragStart(vi)"
+                :class="{
+                  'val--drag': valDragFrom === vi,
+                  'val--slot': valDragFrom >= 0 && valDragTo === vi && valDragFrom !== vi,
+                  'val--land': valLanded === v.code,
+                }"
+                :style="valDragFrom === vi
+                  ? { transform: `translate(${valShift.x}px, ${valShift.y}px)` }
+                  : ''"
+                @touchstart="onValDragStart(vi, $event)"
                 @touchmove.stop.prevent="onValDragMove($event)"
                 @touchend="onValDragEnd"
                 @touchcancel="onValDragEnd"
@@ -778,12 +904,39 @@ onShow(() => void load());
 /* 一个规格 = 一行主件 + 一行档位。它们是同一条，所以中间不留间距 */
 .spec {
   padding: 14rpx 26rpx;
+  /*
+    拖动中被拖的那一行走 transform，其余行位置不变（数组松手才改）——
+    所以这里的过渡只负责「拿起来/放下去」两个瞬间，不会与手指位移打架。
+  */
+  transition: transform 0.18s ease, background-color 0.18s ease, box-shadow 0.18s ease;
 }
 .spec + .spec {
   border-top: 1rpx solid var(--sh-line);
 }
+/*
+  拿起来的样子：抬一层 + 底色 + 轻微放大。
+  **拖动中不再降透明度** —— 上一版把被拖的元素调到 0.5，
+  在浅色底上看起来就是「字没了」，而那正是商家报的现象之一。
+  要表达「这个被拿起来了」，抬阴影比抹掉它自己更准。
+*/
 .spec--drag {
   background: var(--sh-faint);
+  box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.14);
+  border-radius: 16rpx;
+  /* 拖动中不要过渡 transform：否则元素追不上手指，像在拖一根皮筋 */
+  transition: background-color 0.18s ease, box-shadow 0.18s ease;
+  position: relative;
+  z-index: 2;
+}
+
+/* 落定：松手后轻轻弹一下，否则看不出这次拖动到底有没有生效 */
+.spec--land {
+  animation: sh-land 0.32s ease;
+}
+
+@keyframes sh-land {
+  0% { background-color: var(--sh-faint); }
+  100% { background-color: transparent; }
 }
 .spec__head {
   display: flex;
@@ -865,10 +1018,32 @@ onShow(() => void load());
 }
 .val {
   font-size: 24rpx;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease;
 }
-/* 拖动中的那一档：提一层，让他看得出抓住的是哪个 */
+
+/* 同上：抬起来，而不是变透明 */
 .val--drag {
-  opacity: 0.5;
+  box-shadow: 0 6rpx 18rpx rgba(0, 0, 0, 0.18);
+  /* 跟手期间关掉 transform 过渡 */
+  transition: box-shadow 0.18s ease, background-color 0.18s ease;
+  position: relative;
+  z-index: 2;
+}
+
+/* 落点提示：松手会插到这一档的位置上 —— 拖动中数组不变，只能靠它告诉他要落哪 */
+.val--slot {
+  background: var(--sh-faint);
+  transform: translateX(8rpx);
+}
+
+.val--land {
+  animation: sh-land-chip 0.32s ease;
+}
+
+@keyframes sh-land-chip {
+  0% { transform: scale(1.12); }
+  60% { transform: scale(0.97); }
+  100% { transform: scale(1); }
 }
 .val--add {
   color: var(--sh-primary-text);
