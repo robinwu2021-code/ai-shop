@@ -106,8 +106,12 @@ public interface CampaignPort {
      * 扣量失败要能连订单一起回滚，否则会出现「量扣了、单没成」。
      *
      * <p>老实现是空的：{@code mkt_campaign} 没有限量这个概念。
+     *
+     * @param userNo 下单人。<b>显式传，不从会话里掏</b> —— 掏的话，
+     *               测试里与异步线程里都没有会话，写出去的是 null，
+     *               而那一列非空，报的是「数据库约束」，看不出根因在这儿
      */
-    void commit(String orderNo, Discount discount);
+    void commit(String userNo, String orderNo, Discount discount);
 
     /**
      * 活动优惠的分摊结果。

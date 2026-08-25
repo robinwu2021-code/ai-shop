@@ -1,12 +1,15 @@
 package ai.neargo.shop.promotion.service.impl;
 
 import ai.neargo.common.data.scope.DataScopeContext;
+import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.promotion.entity.PmtActivity;
+import ai.neargo.shop.promotion.entity.PmtApply;
 import ai.neargo.shop.promotion.entity.PmtActivityAudience;
 import ai.neargo.shop.promotion.entity.PmtActivityGoods;
 import ai.neargo.shop.promotion.mapper.PromotionMappers.ActivityAudienceMapper;
 import ai.neargo.shop.promotion.mapper.PromotionMappers.ActivityGoodsMapper;
 import ai.neargo.shop.promotion.mapper.PromotionMappers.ActivityMapper;
+import ai.neargo.shop.promotion.mapper.PromotionMappers.ApplyMapper;
 import ai.neargo.shop.promotion.service.ActivityPricingService;
 import ai.neargo.shop.spi.marketing.CampaignPort;
 import ai.neargo.shop.spi.member.MemberQueryPort;
@@ -33,11 +36,15 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
     private final ActivityAudienceMapper audienceMapper;
     private final ActivityGoodsMapper goodsMapper;
     private final MemberQueryPort memberPort;
+    /** 活动效果按 promo_no 聚合，读的就是这张表 —— 与券的每一次使用同一张 */
+    private final ApplyMapper applyMapper;
 
     public ActivityPricingServiceImpl(ActivityMapper activityMapper,
                                       ActivityAudienceMapper audienceMapper,
                                       ActivityGoodsMapper goodsMapper,
-                                      MemberQueryPort memberPort) {
+                                      MemberQueryPort memberPort,
+                                      ApplyMapper applyMapper) {
+        this.applyMapper = applyMapper;
         this.activityMapper = activityMapper;
         this.audienceMapper = audienceMapper;
         this.goodsMapper = goodsMapper;
@@ -141,7 +148,7 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
 
     @Override
     @Transactional
-    public void commit(String orderNo, CampaignPort.Discount discount) {
+    public void commit(String userNo, String orderNo, CampaignPort.Discount discount) {
         if (discount == null || discount.applied().isEmpty()) {
             return;
         }
@@ -166,6 +173,25 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
                         it.activityNo(), orderNo, it.qty());
                 continue;
             }
+            /*
+             * 记一行优惠发生记录。**与券共用 pmt_apply** ——
+             * 「这一单命中了什么」只有一处答案，活动效果与券对账才不会各算各的。
+             * 金额是算价时的结果，不在这里重算（重算依赖的规则会变）。
+             */
+            PmtApply row = new PmtApply();
+            row.setApplyNo(BizKey.next(BizKey.PROMO_APPLY));
+            row.setPromoType(PmtApply.ACTIVITY);
+            row.setPromoNo(it.activityNo());
+            row.setUserNo(userNo);
+            row.setEntityNo(it.merchantNo());
+            row.setOrderNo(orderNo);
+            row.setRedeemMode(ai.neargo.shop.promotion.entity.PmtCoupon.REDEEM_ORDER);
+            row.setAmountMinor(it.amountMinor());
+            // 店铺活动的出资方恒为商家 —— 平台不出这个钱
+            row.setFunder(ai.neargo.shop.promotion.entity.PmtCoupon.BY_MERCHANT);
+            row.setAppliedAt(System.currentTimeMillis());
+            DataScopeContext.executeWithoutScope(() -> applyMapper.insert(row));
+
             // 扣完正好到量：把活动收尾，并说清为什么停 —— 商家问「怎么停了」要有答案
             PmtActivity a = DataScopeContext.executeWithoutScope(() ->
                     activityMapper.selectOne(Wrappers.<PmtActivity>lambdaQuery()

@@ -77,10 +77,10 @@ public class CampaignPortRouter implements CampaignPort {
     }
 
     @Override
-    public void commit(String orderNo, Discount discount) {
+    public void commit(String userNo, String orderNo, Discount discount) {
         // 老实现是空的；新实现按 applied 扣限量。applied 里只有真正用上的那些
-        legacy.commit(orderNo, discount);
-        promo.commit(orderNo, discount);
+        legacy.commit(userNo, orderNo, discount);
+        promo.commit(userNo, orderNo, discount);
     }
 
     @Override

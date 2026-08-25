@@ -56,7 +56,7 @@ public class CampaignPortImpl implements CampaignPort {
     }
 
     @Override
-    public void commit(String orderNo, Discount discount) {
+    public void commit(String userNo, String orderNo, Discount discount) {
         // 老模型没有限量的概念（mkt_campaign 只有 total_count，且那是给券用的），
         // 所以这里没有东西可扣。P9 老表退场时这个空实现一起消失
     }

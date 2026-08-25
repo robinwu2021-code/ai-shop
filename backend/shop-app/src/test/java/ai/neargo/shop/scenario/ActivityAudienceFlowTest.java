@@ -137,7 +137,7 @@ class ActivityAudienceFlowTest {
         for (int i = 1; i <= 2; i++) {
             CampaignPort.Discount d = pricing.autoDiscount("U-ANY", basket(e, 9_000));
             assertThat(d.total()).as("第 %d 单", i).isEqualTo(500);
-            pricing.commit("O-" + seq + "-" + i, d);
+            pricing.commit("U-ANY", "O-" + seq + "-" + i, d);
         }
 
         ActivityVO after = activityService.detail(e, a.activityNo());

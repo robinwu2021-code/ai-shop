@@ -40,5 +40,5 @@ public interface ActivityPricingService {
      * 付了钱却下不成单。记一条 WARN，让运营看到「超发了几份」——
      * 那是限量与并发之间必然存在的一点点重叠，而不是错误。
      */
-    void commit(String orderNo, CampaignPort.Discount discount);
+    void commit(String userNo, String orderNo, CampaignPort.Discount discount);
 }
