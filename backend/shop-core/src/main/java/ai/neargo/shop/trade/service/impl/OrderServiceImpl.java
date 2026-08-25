@@ -292,29 +292,43 @@ public class OrderServiceImpl implements OrderService {
                 continue;
             }
             /*
-             * ★ **挑真的服务这个社区的那家店**，而不是一律默认店。
+             * ★ **默认店服务得了就还用默认店；服务不了才挑别家。**
              *
-             * 可见性已经按门店算了（第 3 步）：买家能看到这件货，是因为**某一家**店
-             * 既摆着它又服务他所在的社区。单却落到默认店的话，可见性与履约对不上 ——
-             * 页面上一切正常，而单发给了一家既没有这件货、也不送这个小区的店。
+             * 要解决的问题是：可见性按门店算之后（第 3 步），买家能看到这件货是因为
+             * **某一家**店既摆着它又服务他所在的社区 —— 而单一律落到默认店的话，
+             * 可见性与履约对不上：页面上一切正常，单却发给了一家既没有这件货、
+             * 也不送这个小区的店。
              *
-             * 多家都服务时取**最近**的那家（与 C 端列表展示的是同一家，
-             * 池里的 sort_weight 装的就是这个距离）。一家都不服务时回落默认店：
-             * 那多半是买家没设地址，或者货是从商家主页直接进来的 —— 拒单太重。
+             * <p><b>但修法刻意是「兜底」而不是「择优」</b>。一开始写的是「取最近的那家」，
+             * 查生产数据时发现那样不行：线上那个多门店主体三家店全是 ALL 范围，
+             * 也就是**三家都服务任何社区** —— 于是「取最近」会把单从默认店挪到另一家，
+             * 而订单的 store_no 决定**结算归属、门店级活动匹配、跨店报表**。
+             * 更糟的是那三家里两家坐标相同、一家没坐标，最后是靠 storeNo 字符串排序
+             * 才碰巧仍然选中默认店 —— 依赖这种巧合的东西迟早会安静地变。
+             *
+             * <p>改成兜底之后：默认店服务得了（今天所有商家都是这样）→ 行为与改造前
+             * 逐字相同；只有默认店真的不服务这个社区时才挑别家，而那正是原先会出错的场合。
+             * 这一批的行为变化面因此缩到只剩那一种情况。
              */
+            String defaultStore = merchantPort.defaultStoreNo(merchantNo).orElse(null);
+            if (defaultStore != null && (communityNo == null
+                    || merchantPort.reachableCommunities(merchantNo, defaultStore).contains(communityNo))) {
+                out.put(merchantNo, defaultStore);
+                continue;
+            }
+            // 默认店服务不了：挑一家真的服务这个社区的（多家都行时取最近，理由见方法注释）
             String served = communityNo == null ? null
                     : nearestServingStore(merchantNo, communityNo);
-            if (served != null) {
-                out.put(merchantNo, served);
-            } else {
-                merchantPort.defaultStoreNo(merchantNo).ifPresent(no -> out.put(merchantNo, no));
-            }
+            out.put(merchantNo, served != null ? served : defaultStore);
         }
         return out;
     }
 
     /**
      * 这个主体名下**服务该社区**的门店里离得最近的那家；一家都没有时返回 null。
+     *
+     * <p><b>只在默认店服务不了时才会走到这里</b>（见调用处）—— 所以「取最近」
+     * 影响的是一个原先必然出错的场合，不会去动本来就正确的那些单。
      *
      * <p>「服务」的判据与可见性同一个出口（{@code reachableCommunities(entityNo, storeNo)}）——
      * 另写一套迟早分岔，而分岔的表现是「他看得见却下不了单」或者反过来。

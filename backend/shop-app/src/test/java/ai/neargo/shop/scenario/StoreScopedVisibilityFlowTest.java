@@ -109,6 +109,56 @@ class StoreScopedVisibilityFlowTest {
     }
 
     @Test
+    @DisplayName("★★★ 挑门店是兜底不是择优：默认店服务得了就不动它")
+    void defaultStoreKeepsTheOrderWhenItServes() throws Exception {
+        /*
+         * 用一个**真的存在于 cmt_community 的社区**，而不是 CM001 ——
+         * CM001 只是申请单里的一个字符串，库里没有那一行，也就没有坐标可设。
+         */
+        String cm = openCommunityWithCoords("SVC-NEAR", 30_000_000, 120_000_000);
+        String biz = merchant("12600180003", "两家店都送同一片区", cm);
+        String merchantNo = merchantNoOf(biz);
+        TestPlan.grantQuota(planMapper, merchantNo, 3);
+        String defaultStore = defaultStoreNo(biz);
+        String other = createStore(biz, "另一家也送这儿");
+
+        /*
+         * 两家店都是 ALL 范围（默认），也就是**两家都服务 CM001** ——
+         * 这正是线上那个多门店主体今天的样子（三家店全 ALL）。
+         *
+         * ★ 一开始我写的是「取最近的那家」，那样这一单会从默认店挪到另一家，
+         * 而订单的 store_no 决定结算归属、门店级活动匹配、跨店报表。
+         * 线上那三家里两家坐标相同、一家没坐标，最后是靠 storeNo 字符串排序
+         * 才碰巧仍然选中默认店 —— 这条用例把「不许靠巧合」钉住。
+         */
+        // 两家店都开商家自送、都是 ALL 范围 —— 也就是两家都服务 CM001
+        for (String st : List.of(defaultStore, other)) {
+            fulfillmentService.save(merchantNo, st, List.of(
+                    new ChannelCmd(Fulfillments.MERCHANT_DELIVERY, true, null, null, "ALL", null)));
+        }
+
+        /*
+         * ★ **坐标要摆成「最近的不是默认店」**，否则这条用例分辨不出两种实现。
+         *
+         * 第一版我没设坐标，结果两家店都算不出距离、回落到 storeNo 排序，
+         * 而默认店恰好排在前面 —— 用例绿着，但把「一律取最近」改回去它也绿。
+         * 那正是这条用例要消除的那个巧合，反倒让它通过了。
+         *
+         * 现在：另一家店与社区**同一个点**（距离 0），默认店在 ~110 公里外。
+         * 「取最近」会选另一家，只有「默认店优先」才会选默认店。
+         */
+        setStoreCoords(defaultStore, 31_000_000, 120_000_000);   // ~110 公里外
+        setStoreCoords(other, 30_000_000, 120_000_000);          // 与社区同一个点
+        assertThat(merchantQuery.reachableCommunities(merchantNo, defaultStore)).contains(cm);
+        assertThat(merchantQuery.reachableCommunities(merchantNo, other)).contains(cm);
+
+        String storeNo = orderedStoreNo(biz, "12600180013", cm);
+        assertThat(storeNo)
+                .as("默认店服务得了这个社区，单就该还落在它身上 —— 与改造前逐字相同")
+                .isEqualTo(defaultStore);
+    }
+
+    @Test
     @DisplayName("★★ 运营端一次性重建：把池删空之后，跑一次就该全回来")
     void opsResyncRebuildsEverything() throws Exception {
         String biz = merchant("12600180002", "要重建池的店");
@@ -139,7 +189,126 @@ class StoreScopedVisibilityFlowTest {
     @Autowired
     private ai.neargo.shop.product.mapper.ProductMappers.CommunityPoolMapper poolMapper;
 
+    @Autowired
+    private ai.neargo.shop.trade.mapper.TradeMappers.SubOrderMapper subOrderMapper;
+
+    @Autowired
+    private ai.neargo.shop.community.mapper.CommunityMappers.CommunityMapper communityMapper;
+
+    @Autowired
+    private ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper storeMapper;
+
+    @Autowired
+    private ai.neargo.shop.user.mapper.UserMappers.UserMapper userMapper;
+
     // ------------------------------------------------------------ 脚手架
+
+    /**
+     * 让一个买家下一单，返回子单落在哪家门店。
+     *
+     * <p>走真实链路（建货 → 上架 → 买家设社区 → 下单），因为「单落到哪家店」
+     * 是 {@code storesOfEntities} 在下单那一刻算的 —— 直接调服务测不到它。
+     * 买家的社区必须先设：挑店那一步正是按它找「谁服务这儿」。
+     */
+    private String orderedStoreNo(String bizToken, String buyerPhone, String communityNo) throws Exception {
+        String goodsNo = onSaleGoods(bizToken, "定门店用的抽纸 " + buyerPhone);
+        String buyer = login(buyerPhone);
+        /*
+         * 直接写买家的社区，**不走 /mp/user/community** —— 那个接口要求自提点属于该社区
+         * （防「按社区取货、按自提点履约」的错配），而这条用例既不用自提点也不测绑定接口。
+         *
+         * <p>这一步必须真的生效：买家社区为空的话，挑门店那一段整个走兜底，
+         * 用例绿着却什么都没验到 —— 第一版就是这样，把实现改回「一律取最近」它照样绿。
+         * 所以下面回读一次确认。
+         */
+        setBuyerCommunity(buyer, communityNo);
+        // 自送要有收货地址（70014）
+        String addressId = json.readTree(mvc().perform(post("/mp/user/address")
+                        .header("Authorization", "Bearer " + buyer)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"买家\",\"phone\":\"" + buyerPhone + "\",\"province\":\"浙江省\","
+                                + "\"city\":\"杭州市\",\"district\":\"西湖区\",\"detail\":\"文三路 1 号\","
+                                + "\"isDefault\":true,\"tag\":\"家\"}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString())
+                // /mp/user/address 返回的是**整份地址列表**，不是刚存的那一条。
+                // 这个买家只有这一条，取第一条即可
+                .get("data").get(0).get("addressId").asString();
+        String skuNo = json.readTree(mvc().perform(get("/mp/goods/" + goodsNo))
+                        .andReturn().getResponse().getContentAsString())
+                .get("data").get("skus").get(0).get("skuNo").asString();
+        String body = mvc().perform(post("/mp/order")
+                        .header("Authorization", "Bearer " + buyer)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        /*
+                         * **必须用商家自送，不能用门店自取**：自提点所属门店在
+                         * storesOfEntities 里是**第一分支**，会先于「默认店服务得了吗」定下门店 ——
+                         * 用自提就把这条用例要验的那一段整个跳过了。
+                         * 自送没有落点约束，门店由买家社区决定，正是要测的那条路。
+                         */
+                        .content("{\"fulfillment\":\"MERCHANT_DELIVERY\",\"addressId\":\"" + addressId + "\","
+                                + "\"items\":[{\"goodsNo\":\""
+                                + goodsNo + "\",\"skuNo\":\"" + skuNo + "\",\"qty\":1}]}"))
+                .andReturn().getResponse().getContentAsString();
+        var data = json.readTree(body).get("data");
+        assertThat(data).as("下单没成功：%s", body).isNotNull();
+        assertThat(data.get("orderNo")).as("下单响应里没有 orderNo：%s", body).isNotNull();
+        String orderNo = data.get("orderNo").asString();
+        /*
+         * **直接查子单表**：OrderVO 不含 storeNo（C 端本来就不该看到从哪家店发货），
+         * 而「单落在哪家店」正是这条用例要断的事实。
+         */
+        var subs = ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() ->
+                subOrderMapper.selectList(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                        .<ai.neargo.shop.trade.entity.OrdSubOrder>lambdaQuery()
+                        .eq(ai.neargo.shop.trade.entity.OrdSubOrder::getOrderNo, orderNo)));
+        assertThat(subs).as("下单了却没有子单？orderNo=%s", orderNo).isNotEmpty();
+        return subs.get(0).getStoreNo();
+    }
+
+    /** 建一个开放中的社区并给上坐标 —— 距离要算得出来，社区这一端也得有点 */
+    private String openCommunityWithCoords(String communityNo, int latE6, int lngE6) {
+        ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() -> {
+            var c = new ai.neargo.shop.community.entity.CmtCommunity();
+            c.setCommunityNo(communityNo);
+            c.setName("按门店算可见性测试小区");
+            c.setStatus("OPEN");
+            c.setFenceRadius(1000);
+            c.setLatE6(latE6);
+            c.setLngE6(lngE6);
+            return communityMapper.insert(c);
+        });
+        return communityNo;
+    }
+
+    /** 直接写买家的默认社区，并回读确认 —— 这一步悄悄失败会让整条用例失去意义 */
+    private void setBuyerCommunity(String buyerToken, String communityNo) throws Exception {
+        String userNo = json.readTree(mvc().perform(get("/mp/user/profile")
+                        .header("Authorization", "Bearer " + buyerToken))
+                .andReturn().getResponse().getContentAsString())
+                .get("data").get("userNo").asString();
+        ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() -> {
+            var u = userMapper.selectOne(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                    .<ai.neargo.shop.user.entity.UsrAccount>lambdaQuery()
+                    .eq(ai.neargo.shop.user.entity.UsrAccount::getUserNo, userNo).last("limit 1"));
+            assertThat(u).as("买家 %s 不存在", userNo).isNotNull();
+            u.setCommunityNo(communityNo);
+            return userMapper.updateById(u);
+        });
+    }
+
+    private void setStoreCoords(String storeNo, int latE6, int lngE6) {
+        ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() -> {
+            var st = storeMapper.selectOne(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                    .<ai.neargo.shop.merchant.entity.MchStore>lambdaQuery()
+                    .eq(ai.neargo.shop.merchant.entity.MchStore::getStoreNo, storeNo)
+                    .last("limit 1"));
+            assertThat(st).as("门店 %s 不存在", storeNo).isNotNull();
+            st.setLatE6(latE6);
+            st.setLngE6(lngE6);
+            return storeMapper.updateById(st);
+        });
+    }
 
     private boolean buyerSees(String communityNo, String goodsNo) throws Exception {
         String body = mvc().perform(get("/mp/goods")
@@ -221,6 +390,10 @@ class StoreScopedVisibilityFlowTest {
     }
 
     private String merchant(String phone, String name) throws Exception {
+        return merchant(phone, name, "CM001");
+    }
+
+    private String merchant(String phone, String name, String communityNo) throws Exception {
         String user = login(phone);
         String applyNo = json.readTree(mvc().perform(post("/mp/merchant/apply")
                         .header("Authorization", "Bearer " + user)
@@ -228,7 +401,7 @@ class StoreScopedVisibilityFlowTest {
                         .content("{\"name\":\"" + name + "\",\"subject\":\"INDIVIDUAL_BIZ\","
                                 + "\"contactName\":\"张三\",\"contactPhone\":\"13900000000\","
                                 + "\"category\":\"食品\",\"serviceScope\":\"COMMUNITY\","
-                                + "\"communityNos\":[\"CM001\"]}"))
+                                + "\"communityNos\":[\"" + communityNo + "\"]}"))
                 .andExpect(jsonPath("$.code").value(0))
                 .andReturn().getResponse().getContentAsString())
                 .get("data").get("applyNo").asString();
