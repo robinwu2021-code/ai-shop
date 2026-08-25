@@ -1,6 +1,8 @@
 package ai.neargo.shop.settle.impl;
 
 import ai.neargo.shop.common.BizKey;
+import ai.neargo.shop.common.PayScenes;
+import ai.neargo.shop.common.PayModes;
 import ai.neargo.shop.settle.PointsConfig;
 import ai.neargo.shop.settle.PointsService;
 import ai.neargo.shop.settle.dto.PointsVOs.MerchantPointAccountVO;
@@ -66,6 +68,7 @@ public class PointsServiceImpl implements PointsService {
     private final MerchantQueryPort merchantQuery;
     private final MerchantAdminPort merchantAdmin;
     private final SettingPort settingPort;
+    private final ai.neargo.shop.spi.trade.OrderSceneQueryPort orderSceneQueryPort;
     private final ObjectMapper json = new ObjectMapper();
 
     public PointsServiceImpl(PointsAccountMapper accountMapper,
@@ -74,7 +77,9 @@ public class PointsServiceImpl implements PointsService {
                              BillMapper billMapper,
                              MerchantQueryPort merchantQuery,
                              MerchantAdminPort merchantAdmin,
-                             SettingPort settingPort, ai.neargo.shop.spi.product.PointsRulePort pointsRulePort) {
+                             SettingPort settingPort,
+                             ai.neargo.shop.spi.product.PointsRulePort pointsRulePort,
+                             ai.neargo.shop.spi.trade.OrderSceneQueryPort orderSceneQueryPort) {
         this.pointsRulePort = pointsRulePort;
         this.accountMapper = accountMapper;
         this.ledgerMapper = ledgerMapper;
@@ -83,6 +88,7 @@ public class PointsServiceImpl implements PointsService {
         this.merchantQuery = merchantQuery;
         this.merchantAdmin = merchantAdmin;
         this.settingPort = settingPort;
+        this.orderSceneQueryPort = orderSceneQueryPort;
     }
 
     /**
@@ -150,10 +156,16 @@ public class PointsServiceImpl implements PointsService {
     }
 
     @Override
-    public PointsDeductibleVO deductible(String userNo, String merchantNo, long payableMinor) {
-        String denied = pointsDenyReason(merchantNo);
-        if (denied != null) {
-            return new PointsDeductibleVO(0, 0, loadAccount(userNo).getBalance(), denied);
+    public PointsDeductibleVO deductible(String userNo, String merchantNo, long payableMinor,
+                                        String payMode, String clientType) {
+        /*
+         * 与下单时**调同一个方法**。分成两处判的话，
+         * 「结算页说能抵 30、下单只抵了 25」是迟早的事 ——
+         * 而这次多了端与支付方式两个维度，两处走岔的机会只会更多。
+         */
+        PointsAvailability av = canRedeem(userNo, merchantNo, payMode, clientType);
+        if (!av.allowed()) {
+            return new PointsDeductibleVO(0, 0, loadAccount(userNo).getBalance(), av.reason());
         }
         long balance = loadAccount(userNo).getBalance();
         // 三者取小，顺序与下单时一致：开关 → 上限 → 余额。
@@ -328,6 +340,71 @@ public class PointsServiceImpl implements PointsService {
         return merchantQuery.pointsDenyReason(merchantNo);
     }
 
+    // ------------------------------------------------------------ 端开关
+
+    /** 平台端策略的存放键。与积分参数分开：改端策略不该动汇率与上限。 */
+    private static final String POLICY_KEY = "points.client.policy";
+    /** 默认<b>什么都不禁</b>：这一批上线不改变任何现有行为。 */
+    private static final String POLICY_DEFAULT =
+            "{\"earnDeny\":[],\"redeemDeny\":[],\"offlineRedeem\":true}";
+
+    @Override
+    public PointsAvailability canRedeem(String userNo, String merchantNo,
+                                        String payMode, String clientType) {
+        // ① 商家 / 社区 / 主体那一串既有判定，原样复用
+        String denied = pointsDenyReason(merchantNo);
+        if (denied != null) {
+            return PointsAvailability.no(denied);
+        }
+        ClientPointsPolicy p = policy();
+        // ② 线下支付。**默认允许** —— 积分成本本来就在商家（ADR-006），
+        //    线下反而比线上简单：商家当面少收即是抵扣，平台零动作
+        if (PayModes.OFFLINE.equals(payMode) && !p.offlineRedeem()) {
+            return PointsAvailability.no("当面付款暂不支持积分抵扣");
+        }
+        // ③ 端。认不出来即放行 —— 见 ClientPointsPolicy 的注释
+        String scene = PayScenes.normalize(clientType);
+        if (scene != null && p.redeemDeny().contains(scene)) {
+            return PointsAvailability.no("当前端暂不支持积分抵扣");
+        }
+        return PointsAvailability.ok();
+    }
+
+    @Override
+    public PointsAvailability canEarn(String subOrderNo) {
+        /*
+         * ⚠️ 这里读的是**订单快照**，不是当前请求。
+         *
+         * 发放发生在支付/完成那一刻，而那时用户可能已经换了端，
+         * 更常见的是根本没有用户在场（超时自动确认收货是系统动作）。
+         * 读当前端会让「这单发不发积分」取决于谁在哪个端点的确认、
+         * 甚至取决于是不是定时任务跑的 —— 不可复现也无法对账。
+         */
+        String scene = PayScenes.normalize(orderSceneQueryPort.paySceneOfSubOrder(subOrderNo));
+        if (scene != null && policy().earnDeny().contains(scene)) {
+            return PointsAvailability.no("当前端暂不发放积分");
+        }
+        return PointsAvailability.ok();
+    }
+
+    /**
+     * 读端策略。**解析不了就当没配**：参数表里一行脏数据不该让全站积分停摆，
+     * 也不该让它反过来全开 —— 默认值恰好是「什么都不禁」，两种取向在这里重合。
+     */
+    private ClientPointsPolicy policy() {
+        try {
+            ClientPointsPolicy p = json.readValue(
+                    settingPort.get(POLICY_KEY, POLICY_DEFAULT), ClientPointsPolicy.class);
+            return new ClientPointsPolicy(
+                    p.earnDeny() == null ? List.of() : p.earnDeny(),
+                    p.redeemDeny() == null ? List.of() : p.redeemDeny(),
+                    p.offlineRedeem());
+        } catch (Exception e) {
+            log.warn("端策略解析失败，按「什么都不禁」处理：{}", e.toString());
+            return new ClientPointsPolicy(List.of(), List.of(), true);
+        }
+    }
+
     private boolean isForced(String merchantNo) {
         return merchantQuery.isPointsForced(merchantNo);
     }
@@ -376,7 +453,8 @@ public class PointsServiceImpl implements PointsService {
 
     @Override
     @Transactional
-    public DeductResult deductOnPlace(String userNo, long wantPoints, List<DeductTarget> targets) {
+    public DeductResult deductOnPlace(String userNo, long wantPoints, List<DeductTarget> targets,
+                                     String payMode, String clientType) {
         if (wantPoints <= 0 || targets == null || targets.isEmpty()) {
             return DeductResult.none();
         }
@@ -390,10 +468,11 @@ public class PointsServiceImpl implements PointsService {
         if (total <= 0) {
             return DeductResult.none();
         }
-        // 闸一：商家开关。有一家关着就整单不抵 —— 分摊到关着的那家会让它凭空少收钱。
-        // 一期自营模式下一单只有一家，这条是给将来兜底的
+        // 闸一：商家开关 + 端 + 支付方式。有一家不可用就整单不抵 ——
+        // 分摊到不可用的那家会让它凭空少收钱。
+        // **与 deductible 同一个 canRedeem**：两处走岔就会出现「说能抵 30、只抵了 25」
         for (DeductTarget t : targets) {
-            if (pointsDenyReason(t.merchantNo()) != null) {
+            if (!canRedeem(userNo, t.merchantNo(), payMode, clientType).allowed()) {
                 return DeductResult.none();
             }
         }
@@ -679,6 +758,15 @@ public class PointsServiceImpl implements PointsService {
             String userNo, String merchantNo,
             java.util.List<ai.neargo.shop.spi.settle.PointsPort.EarnLine> lines, String subOrderNo) {
         if (lines == null || lines.isEmpty() || pointsDenyReason(merchantNo) != null) {
+            return ai.neargo.shop.spi.settle.PointsPort.GrantResult.none();
+        }
+        /*
+         * 端闸。**读订单快照，不读当前请求** —— canEarn 的参数只有子单号，
+         * 想读错也读不到（见 OrderSceneQueryPort 的类注释）。
+         *
+         * 位置在商家开关之后：那一道更便宜，也更常命中。
+         */
+        if (!canEarn(subOrderNo).allowed()) {
             return ai.neargo.shop.spi.settle.PointsPort.GrantResult.none();
         }
         PointsConfig cfg = config();

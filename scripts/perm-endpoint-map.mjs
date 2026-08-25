@@ -54,6 +54,10 @@ export const RULES = [
   ["GET", /^\/ops\/merchants\/mode-risk$/, "merchant:mode:read"],
   // 积分资金看板。**是资金表不是营销表** —— 读它的是财务
   ["GET", /^\/ops\/points\/overview$/, "finance:settle:read"],
+  // 积分端策略（哪个端不发放/不核销、线下能不能抵）。挂在结算码下而不是营销码下：
+  // 关掉一个端的发放，减少的是**平台对用户的负债**，那是资金决定不是活动决定
+  ["GET", /^\/ops\/points\/client-policy$/, "finance:settle:read"],
+  ["POST", /^\/ops\/points\/client-policy$/, "finance:settle:execute"],
   ["GET", /^\/ops\/merchants/, "merchant:merchant:read"],
 
   // 店招公告审核。**后端其实有**，而 P-10.1 在三方对齐里被记成「后端零实现」——

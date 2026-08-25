@@ -41,4 +41,19 @@ public final class PayScenes {
     public static boolean isValid(String value) {
         return value != null && ALL.contains(value);
     }
+
+    /**
+     * 归一化请求头里的端标识：认不出来的一律返回 {@code null}。
+     *
+     * <p>返回 null 而不是抛异常，是因为这个值<b>只用于平台策略</b>：
+     * 端上传了个没见过的词，最坏的结果应该是「这条策略对他不生效」，
+     * 而不是「他下不了单」。
+     */
+    public static String normalize(String raw) {
+        if (raw == null) {
+            return null;
+        }
+        String v = raw.trim().toUpperCase(java.util.Locale.ROOT);
+        return ALL.contains(v) ? v : null;
+    }
 }

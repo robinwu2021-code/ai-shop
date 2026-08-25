@@ -30,7 +30,16 @@ public interface PointsPort {
      * @return 实际扣减结果；抵不了返回 {@link Deduction#none()} ——
      *         <b>不抛异常</b>：积分抵不了不该让整单下不去
      */
-    Deduction deduct(String userNo, long wantPoints, List<Target> targets);
+    /**
+     * @param payMode    {@code PayModes} 取值 —— 线下能否用积分由平台开关控制
+     * @param clientType {@code PayScenes} 取值，取自<b>当前请求</b>的 {@code X-Client}。
+     *                   核销是用户当场发起的动作，当前端就是判定对象；
+     *                   <b>发放恰好相反</b>（读订单快照），别把两者的口径写混。
+     *                   <p>⚠️ 这个值来自客户端、天然可伪造，
+     *                   <b>只许用于平台策略，绝不能用于权限或资金判定</b>
+     */
+    Deduction deduct(String userNo, long wantPoints, List<Target> targets,
+                     String payMode, String clientType);
 
     /**
      * 退回积分。订单取消、超时关闭、退款时调用。

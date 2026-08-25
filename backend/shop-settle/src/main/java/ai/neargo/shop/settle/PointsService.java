@@ -34,7 +34,8 @@ public interface PointsService {
      * <p>判据顺序与下单时<b>完全一致</b>：四级开关 → 抵扣上限 → 账户余额，三者取小。
      * 顺序或口径不一致的话，用户会看到「结算页说能抵 30，下单后只抵了 25」。
      */
-    PointsDeductibleVO deductible(String userNo, String merchantNo, long payableMinor);
+    PointsDeductibleVO deductible(String userNo, String merchantNo, long payableMinor,
+                                  String payMode, String clientType);
 
     /** 商家的积分成本视图：本期发分服务费 + 开关状态。 */
     MerchantPointAccountVO merchantAccount(String merchantNo);
@@ -73,7 +74,8 @@ public interface PointsService {
      * @param wantPoints 用户意愿值，服务端截断
      * @return 实际扣减的分数与金额；抵不了返回零值，<b>不抛异常</b>
      */
-    DeductResult deductOnPlace(String userNo, long wantPoints, List<DeductTarget> targets);
+    DeductResult deductOnPlace(String userNo, long wantPoints, List<DeductTarget> targets,
+                               String payMode, String clientType);
 
     /**
      * 退回积分：把 USE 流水置 {@code REVERSED}，余额加回去。
@@ -211,6 +213,65 @@ public interface PointsService {
     ai.neargo.shop.spi.settle.PointsPort.GrantResult grantOnPay(
             String userNo, String merchantNo,
             java.util.List<ai.neargo.shop.spi.settle.PointsPort.EarnLine> lines, String subOrderNo);
+
+    // ------------------------------------------------------------ 端开关
+
+    /**
+     * 能不能<b>核销</b>（用积分抵扣）。读<b>当前请求</b>的端。
+     *
+     * <p>核销是用户当场发起的动作，「当前端」就是判定对象 ——
+     * 与 {@link #canEarn} 恰好相反，别把两者的口径写混。
+     *
+     * @param payMode    {@code PayModes} 取值。线下是否可用积分由平台一个开关控制：
+     *                   成本本来就在商家（ADR-006），线下反而<b>比线上简单</b> ——
+     *                   商家当面少收即是抵扣，平台零动作
+     * @param clientType {@code PayScenes} 取值。<b>认不出来即放行</b>
+     */
+    PointsAvailability canRedeem(String userNo, String merchantNo, String payMode, String clientType);
+
+    /**
+     * 能不能<b>发放</b>。读<b>订单快照</b>上的端，不是当前请求。
+     *
+     * <p>参数只有子单号，是刻意的：见
+     * {@link ai.neargo.shop.spi.trade.OrderSceneQueryPort} ——
+     * 没有端这个参数，「读了当前端」这个错就没有地方可写。
+     */
+    PointsAvailability canEarn(String subOrderNo);
+
+    /**
+     * 一次端策略判定的结果。
+     *
+     * @param reason 不可用的原因，<b>可以直接渲染给用户看</b>。
+     *               可用时为 {@code null}。与 {@code pointsDenyReason} 同一形态：
+     *               只给 false 而不给原因的话，端上只能显示「积分不可用」，
+     *               而客服接到的每一通电话都得靠猜
+     */
+    record PointsAvailability(boolean allowed, String reason) {
+
+        public static PointsAvailability ok() {
+            return new PointsAvailability(true, null);
+        }
+
+        public static PointsAvailability no(String reason) {
+            return new PointsAvailability(false, reason);
+        }
+    }
+
+    /**
+     * 端策略。<b>存的是禁用名单，不是允许名单。</b>
+     *
+     * <p>理由是现实：{@code X-Client} 头<b>今天还没有哪个端全量在发</b>
+     * （本批才开始接）。用允许名单的话，没带头的请求一律落到「不在名单里」，
+     * 于是开关一上线就把全站积分关掉了 —— 而且是静默的。
+     * 禁用名单下，一条策略只约束<b>自报家门的那些端</b>，
+     * 认不出来的照旧放行；代价是它<b>不能当合规硬闸用</b>（伪造头即可绕开），
+     * 而端标识本来就只许用于平台策略。
+     *
+     * @param offlineRedeem 线下支付能不能用积分抵扣。默认 {@code true}
+     */
+    record ClientPointsPolicy(List<String> earnDeny, List<String> redeemDeny,
+                              boolean offlineRedeem) {
+    }
 
     /**
      * 一个子单的抵扣目标。

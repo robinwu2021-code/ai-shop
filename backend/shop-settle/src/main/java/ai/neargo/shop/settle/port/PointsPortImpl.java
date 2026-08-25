@@ -21,7 +21,8 @@ public class PointsPortImpl implements PointsPort {
     }
 
     @Override
-    public Deduction deduct(String userNo, long wantPoints, List<Target> targets) {
+    public Deduction deduct(String userNo, long wantPoints, List<Target> targets,
+                            String payMode, String clientType) {
         if (targets == null || targets.isEmpty()) {
             return Deduction.none();
         }
@@ -29,7 +30,8 @@ public class PointsPortImpl implements PointsPort {
                 targets.stream()
                         .map(t -> new PointsService.DeductTarget(
                                 t.merchantNo(), t.payableMinor(), t.subOrderNo()))
-                        .toList());
+                        .toList(),
+                payMode, clientType);
         if (r.points() <= 0) {
             return Deduction.none();
         }

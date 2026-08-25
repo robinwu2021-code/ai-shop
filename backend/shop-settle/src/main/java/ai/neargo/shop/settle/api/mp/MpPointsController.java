@@ -9,6 +9,7 @@ import jakarta.validation.constraints.NotBlank;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.context.annotation.Profile;
 import org.springframework.web.bind.annotation.RestController;
@@ -63,8 +64,12 @@ public class MpPointsController {
      * 两处算法只要有一点不同，用户就会看到「结算页说能抵 30，下单后只抵了 25」。
      */
     @GetMapping("/deductible")
-    public PointsDeductibleVO deductible(@RequestParam @NotBlank String merchantNo,
-                                         @RequestParam long payableMinor) {
-        return pointsService.deductible(SecurityUtils.requireUser().userNo(), merchantNo, payableMinor);
+    public PointsDeductibleVO deductible(
+            @RequestParam @NotBlank String merchantNo,
+            @RequestParam long payableMinor,
+            @RequestParam(required = false) String payMode,
+            @RequestHeader(value = "X-Client", required = false) String client) {
+        return pointsService.deductible(SecurityUtils.requireUser().userNo(),
+                merchantNo, payableMinor, payMode, client);
     }
 }

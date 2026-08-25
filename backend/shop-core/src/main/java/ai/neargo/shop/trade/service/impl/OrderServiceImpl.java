@@ -554,7 +554,13 @@ public class OrderServiceImpl implements OrderService {
                         .map(g -> new PointsPort.Target(g.merchantNo,
                                 g.goodsAmount() - discounts.of(g.merchantNo),
                                 subOrderNoOf.get(g.merchantNo)))
-                        .toList());
+                        /*
+                         * 端与支付方式一起传进去：能不能用积分抵扣是平台策略，
+                         * 判定收在积分域一处。**传的是本次请求的端**（cmd.payScene()
+                         * 来自 X-Client），核销判定的对象就是当前端 ——
+                         * 发放那边恰好相反，读的是订单快照，别把两者写混。
+                         */
+                        .toList(), payMode, cmd.payScene());
 
         /*
          * 线下支付**不能用平台券** —— 券要按出资方拆开看：
