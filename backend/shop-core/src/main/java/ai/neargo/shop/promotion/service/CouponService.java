@@ -3,6 +3,7 @@ package ai.neargo.shop.promotion.service;
 import ai.neargo.shop.promotion.dto.CouponVOs.CouponIssueVO;
 import ai.neargo.shop.promotion.dto.CouponVOs.CouponSaveCmd;
 import ai.neargo.shop.promotion.dto.CouponVOs.CouponVO;
+import ai.neargo.shop.promotion.dto.CouponVOs.MyCouponVO;
 
 import java.util.List;
 
@@ -38,4 +39,12 @@ public interface CouponService {
     CouponIssueVO issue(String entityNo, String couponNo, String segmentNo, String operatorNo);
 
     List<CouponIssueVO> issues(String entityNo, String couponNo);
+
+    /**
+     * 买家自己的券包（C 端）。
+     *
+     * <p><b>过期的也返回</b>，由端上折叠显示：券包里突然少一张，用户的第一反应是
+     * 「平台把我的券吞了」——那是券功能第二大客诉。让它带着「已过期」留在那儿。
+     */
+    List<MyCouponVO> myCoupons(String userNo);
 }

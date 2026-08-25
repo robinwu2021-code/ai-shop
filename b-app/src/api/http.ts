@@ -79,6 +79,8 @@ import type {
   Member,
   MemberDetail,
   CouponIssueBatch,
+  CouponRedeemResult,
+  CouponRedeemView,
   MerchantCoupon,
   MemberMergePreview,
   MemberSegment,
@@ -422,6 +424,9 @@ export const httpApi: MerchantApi = {
     http.post<CouponIssueBatch>(buildPath(E.mIssueCoupon.path, { couponNo }), { segmentNo }),
   mCouponIssues: (couponNo) =>
     http.get<CouponIssueBatch[]>(E.mCouponIssues.path, couponNo ? { couponNo } : undefined),
+  mPeekCouponCode: (code) =>
+    http.get<CouponRedeemView>(buildPath(E.mPeekCouponCode.path, { code })),
+  mRedeemCoupon: (code) => http.post<CouponRedeemResult>(E.mRedeemCoupon.path, { code }),
 
   mSettleList: (allStores) =>
     http.get<SettleBill[]>(E.mSettleList.path, allStores ? { allStores: true } : undefined),

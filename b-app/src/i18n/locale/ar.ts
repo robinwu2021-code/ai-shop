@@ -385,6 +385,27 @@ export default {
   },
 
   verify: {
+    tabPickup: "الاستلام",
+    tabCoupon: "القسيمة",
+    couponCodePh: "أدخل الرمز الذي يعرضه العميل",
+    couponPeek: "بحث",
+    couponHolder: "العميل ···{tail}",
+    couponRemaining: "متبقٍ {n} من {m}",
+    couponRedeem: "استبدال (لا يمكن التراجع)",
+    couponConfirmTitle: "استبدال «{title}»",
+    couponConfirmOnce: "تُستهلك القسيمة بعد ذلك ولا يمكن التراجع — ما يُسلَّم لا يُسترد.",
+    couponConfirmTimes: "سيتبقى {n} مرات. هذه العملية لا يمكن التراجع عنها.",
+    couponConfirmBtn: "استبدال",
+    couponUsedUp: "تم الاستبدال، استُهلكت القسيمة بالكامل",
+    couponLeft: "تم الاستبدال، متبقٍ {n}",
+    couponDuplicated: "تمت العملية السابقة بنجاح — لم يُخصم مرتين",
+    couponReason: {
+      EXPIRED: "انتهت صلاحية هذه القسيمة",
+      USED_UP: "استُهلكت هذه القسيمة بالكامل",
+      REVOKED: "تم سحب هذه القسيمة",
+      NOT_STORE_CODE: "هذه قسيمة دفع، لا تُستبدل هنا",
+      COUPON_INACTIVE: "هذه القسيمة موقوفة أو منتهية",
+    },
     reason: {
       CODE_NOT_FOUND: "هذا الرمز غير موجود — اطلب منه التحقق",
       ALREADY_VERIFIED: "تم تسليم هذا الطلب من قبل",

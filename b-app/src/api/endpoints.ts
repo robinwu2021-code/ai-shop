@@ -221,6 +221,8 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
   mSetCouponStatus: { method: "PUT", path: "/biz/coupons/{couponNo}/status", auth: true, summary: "暂停 / 恢复 / 结束" },
   mIssueCoupon: { method: "POST", path: "/biz/coupons/{couponNo}/issue", auth: true, summary: "按人群定向发券" },
   mCouponIssues: { method: "GET", path: "/biz/coupon-issues", auth: true, summary: "发放记录（含跳过明细）" },
+  mPeekCouponCode: { method: "GET", path: "/biz/coupon-redeem/{code}", auth: true, summary: "先看：这张券能不能核" },
+  mRedeemCoupon: { method: "POST", path: "/biz/coupon-redeem", auth: true, summary: "到店核销一次（不可撤销）" },
 
   mRateCard: { method: "GET", path: "/biz/settle/rate-card", auth: true, summary: "费率卡" },
   mSettleList: { method: "GET", path: "/biz/settle/bills", auth: true, summary: "结算单列表" },

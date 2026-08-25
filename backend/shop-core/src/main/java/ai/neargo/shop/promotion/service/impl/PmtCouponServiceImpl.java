@@ -7,6 +7,7 @@ import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.promotion.dto.CouponVOs.CouponIssueVO;
 import ai.neargo.shop.promotion.dto.CouponVOs.CouponSaveCmd;
 import ai.neargo.shop.promotion.dto.CouponVOs.CouponVO;
+import ai.neargo.shop.promotion.dto.CouponVOs.MyCouponVO;
 import ai.neargo.shop.promotion.entity.PmtCoupon;
 import ai.neargo.shop.promotion.entity.PmtCouponIssue;
 import ai.neargo.shop.promotion.entity.PmtCouponScope;
@@ -76,6 +77,55 @@ public class PmtCouponServiceImpl implements CouponService {
     @Override
     public CouponVO detail(String entityNo, String couponNo) {
         return vo(require(entityNo, couponNo));
+    }
+
+    @Override
+    public List<MyCouponVO> myCoupons(String userNo) {
+        long now = System.currentTimeMillis();
+        /*
+         * **绕开数据域**：这一刻的会话是买家（SELF），而 `pmt_user_coupon` 同时按
+         * SELF 与 MERCHANT 登记 —— 两条锚点都能命中，本来不必绕。
+         * 但券模板 `pmt_coupon` 只按 entity_no 登记，读它会被判 1=0。
+         * 券包读不出模板就没有标题、没有面额，整页空白而不报错。
+         */
+        List<PmtUserCoupon> rows = DataScopeContext.executeWithoutScope(() ->
+                userCouponMapper.selectList(Wrappers.<PmtUserCoupon>lambdaQuery()
+                        .eq(PmtUserCoupon::getUserNo, userNo)
+                        .ne(PmtUserCoupon::getStatus, PmtUserCoupon.REVOKED)
+                        .orderByDesc(PmtUserCoupon::getId)));
+        List<MyCouponVO> out = new ArrayList<>();
+        for (PmtUserCoupon uc : rows) {
+            PmtCoupon c = DataScopeContext.executeWithoutScope(() ->
+                    couponMapper.selectOne(Wrappers.<PmtCoupon>lambdaQuery()
+                            .eq(PmtCoupon::getCouponNo, uc.getCouponNo()).last("limit 1")));
+            if (c == null) {
+                continue;
+            }
+            int total = c.timesTotalOrOne();
+            int used = nz(uc.getTimesUsed());
+            boolean usable = PmtUserCoupon.UNUSED.equals(uc.getStatus())
+                    && used < total
+                    && (nz(uc.getExpireAt()) == 0 || nz(uc.getExpireAt()) >= now)
+                    && PmtCoupon.ACTIVE.equals(c.getStatus());
+            out.add(new MyCouponVO(uc.getUserCouponNo(), c.getCouponNo(), c.getTitle(),
+                    benefitText(c), c.getEntityNo(), c.getRedeemMode(),
+                    // 码只在到店券上给：下单抵扣的券显示一个码，顾客会拿着它去店里问
+                    PmtCoupon.REDEEM_STORE_CODE.equals(c.getRedeemMode())
+                            ? uc.getRedeemCode() : null,
+                    c.getMinAmountMinor(), total, used, Math.max(0, total - used),
+                    nz(uc.getExpireAt()), uc.getStatus(), usable));
+        }
+        return out;
+    }
+
+    /** 券面上那句人话。**折扣券要把「几折」说出来** —— 一个金额字段表达不了它 */
+    private String benefitText(PmtCoupon c) {
+        return switch (c.getBenefitMode()) {
+            case PmtCoupon.GIFT -> "凭券兑换";
+            case PmtCoupon.PERCENT -> (nz(c.getBenefitValue()) / 1000.0) + " 折";
+            case PmtCoupon.FREE_SHIP -> "免运费";
+            default -> "减 " + (nz(c.getBenefitValue()) / 100.0) + " 元";
+        };
     }
 
     // ---------------------------------------------------------------- 建券

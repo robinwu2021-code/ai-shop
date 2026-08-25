@@ -48,6 +48,8 @@ import type {
   MerchantProfile,
   MerchantCustomer,
   CouponIssueBatch,
+  CouponRedeemResult,
+  CouponRedeemView,
   MerchantCoupon,
   MerchantCouponDraft,
   Member,
@@ -1050,6 +1052,18 @@ export interface MerchantApi {
   mIssueCoupon(couponNo: string, segmentNo: string): Promise<CouponIssueBatch>;
 
   mCouponIssues(couponNo?: string): Promise<CouponIssueBatch[]>;
+
+  /**
+   * 到店核销「先看」那一步。**不要跳过它** ——
+   * 扫完直接核的话，扫错一张没有回头路（线下核销不可撤销）。
+   */
+  mPeekCouponCode(code: string): Promise<CouponRedeemView>;
+
+  /**
+   * 核销一次。返回 `duplicated=true` 表示 3 秒内重复提交（店员连点），
+   * **这不是失败**：要提示「刚才那次已经成功」，而不是报错让他再按一次。
+   */
+  mRedeemCoupon(code: string): Promise<CouponRedeemResult>;
 
   // ---- 结算（B-11.9）
   /**

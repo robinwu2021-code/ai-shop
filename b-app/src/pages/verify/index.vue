@@ -14,9 +14,89 @@ import { api } from "@/api";
 import { ROUTES } from "@/shared/nav";
 import { scanCode } from "@shared/ports/scan";
 import { money } from "@shared/utils/money";
-import type { Order, PickupOrder, PickupOverview, VerifyBatchResult } from "@shared/types";
+import type {
+  CouponRedeemView,
+  Order,
+  PickupOrder,
+  PickupOverview,
+  VerifyBatchResult,
+} from "@shared/types";
 
 const { t } = useI18n();
+
+/*
+ * 核销台上两件事共用一个台子：**取货核销**与**券核销**。
+ *
+ * 合成一页而不是新开一页，是因为它们发生在同一个人、同一张收银台前：
+ * 顾客把手机递过来，店员不该先判断「这是取货码还是券码」再决定去哪一页。
+ * 但两者**不能自动识别**：码长得像，认错的代价是核销掉不该核的东西，
+ * 而线下核销不可撤销。所以给一个显式的切换，由店员说出他在核什么。
+ */
+const tab = ref<"pickup" | "coupon">("pickup");
+
+/** 券核销：先看到的那一张（peek 的结果）。**没看到之前不给核销按钮** */
+const couponCode = ref("");
+const couponView = ref<CouponRedeemView | null>(null);
+const couponError = ref("");
+const couponDone = ref("");
+
+async function peekCoupon(input?: string) {
+  const c = (input ?? couponCode.value).trim();
+  if (!c || busy.value) return;
+  busy.value = true;
+  couponError.value = "";
+  couponView.value = null;
+  couponDone.value = "";
+  try {
+    couponView.value = await api.mPeekCouponCode(c);
+    couponCode.value = c;
+  } catch (e) {
+    couponError.value = (e as Error).message;
+  } finally {
+    busy.value = false;
+  }
+}
+
+async function scanCoupon() {
+  const c = await scanCode();
+  if (c) void peekCoupon(c);
+}
+
+/**
+ * 核销。**先二次确认** —— 线下核销不可撤销，东西给出去就收不回来。
+ * 确认框里要写清核的是哪一张、核完还剩几次。
+ */
+async function redeemCoupon() {
+  const v = couponView.value;
+  if (!v || !v.redeemable || busy.value) return;
+  const ok = await new Promise<boolean>((resolve) => {
+    uni.showModal({
+      title: t("verify.couponConfirmTitle", { title: v.title }),
+      content: v.timesTotal > 1
+        ? t("verify.couponConfirmTimes", { n: v.remaining - 1 })
+        : t("verify.couponConfirmOnce"),
+      confirmText: String(t("verify.couponConfirmBtn")),
+      success: (r) => resolve(!!r.confirm),
+      fail: () => resolve(false),
+    });
+  });
+  if (!ok) return;
+
+  busy.value = true;
+  try {
+    const r = await api.mRedeemCoupon(couponCode.value);
+    // duplicated **不是失败**：店员连点了两下，告诉他刚才那次已经成功
+    couponDone.value = r.duplicated
+      ? String(t("verify.couponDuplicated"))
+      : String(t(r.usedUp ? "verify.couponUsedUp" : "verify.couponLeft", { n: r.remaining }));
+    couponView.value = { ...v, timesUsed: r.timesUsed, remaining: r.remaining,
+      redeemable: r.remaining > 0 };
+  } catch (e) {
+    couponError.value = (e as Error).message;
+  } finally {
+    busy.value = false;
+  }
+}
 
 const overview = ref<PickupOverview | null>(null);
 const code = ref("");
@@ -168,6 +248,67 @@ onShow(load);
     <text class="sh-h1">{{ $t("verify.title") }}</text>
 
     <!--
+      两种核销并排。**不自动识别码的类型**：码长得像，认错的代价是
+      核销掉不该核的东西，而线下核销不可撤销 —— 让店员说出他在核什么。
+    -->
+    <view class="tabs">
+      <text
+        class="sh-chip"
+        :class="{ 'sh-chip--primary': tab === 'pickup' }"
+        @tap="tab = 'pickup'"
+      >{{ $t("verify.tabPickup") }}</text>
+      <text
+        class="sh-chip"
+        :class="{ 'sh-chip--primary': tab === 'coupon' }"
+        @tap="tab = 'coupon'"
+      >{{ $t("verify.tabCoupon") }}</text>
+    </view>
+
+    <!-- 券核销：先看后核 -->
+    <view v-if="tab === 'coupon'" class="sh-card entry">
+      <view class="row">
+        <input
+          v-model="couponCode"
+          class="field__input sh-num"
+          :placeholder="$t('verify.couponCodePh')"
+          confirm-type="done"
+          @confirm="peekCoupon()"
+        />
+        <text class="btn" @tap="peekCoupon()">{{ $t("verify.couponPeek") }}</text>
+      </view>
+      <view class="sh-btn sh-btn--soft scan" @tap="scanCoupon">{{ $t("verify.scan") }}</view>
+      <text v-if="couponError" class="err">{{ couponError }}</text>
+
+      <view v-if="couponView" class="peek">
+        <text class="peek__t">{{ couponView.title }}</text>
+        <text class="peek__b">{{ couponView.benefitText }}</text>
+        <text class="sh-muted peek__d">
+          {{ $t("verify.couponHolder", { tail: couponView.phoneTail || "----" }) }}
+          <template v-if="couponView.timesTotal > 1">
+            · {{ $t("verify.couponRemaining", { n: couponView.remaining, m: couponView.timesTotal }) }}
+          </template>
+        </text>
+        <text v-if="!couponView.redeemable" class="err">
+          {{ $t(`verify.couponReason.${couponView.reason}`) }}
+        </text>
+
+        <!-- 按钮上就写「不可撤销」：确认框里再写一遍已经晚了半步 -->
+        <button
+          v-if="couponView.redeemable"
+          class="sh-btn sh-btn--primary redeem"
+          :disabled="busy"
+          @tap="redeemCoupon"
+        >
+          {{ $t("verify.couponRedeem") }}
+        </button>
+      </view>
+
+      <view v-if="couponDone" class="done">{{ couponDone }}</view>
+    </view>
+
+    <template v-if="tab === 'pickup'">
+
+    <!--
       承接方一进来最关心的数：还有几单没人取。**只留这一个**——
       「今日到货批次」「履约服务费」两格口径未定（R15/B9），后端一期恒发 0，
       跟真实的待核销数字并排显示会被当成"今天真没到货/没收入"长期误读。
@@ -302,10 +443,48 @@ onShow(load);
       </view>
       <text class="btn" @tap="verify(o.verifyCode)">{{ $t("verify.doIt") }}</text>
     </view>
+    </template>
   </sh-scaffold>
 </template>
 
 <style scoped>
+.tabs {
+  display: flex;
+  gap: 12rpx;
+  margin: 16rpx 0;
+}
+.peek {
+  margin-top: 20rpx;
+  padding-top: 20rpx;
+  border-top: 2rpx solid var(--sh-faint);
+}
+.peek__t {
+  display: block;
+  font-size: 30rpx;
+  font-weight: 600;
+}
+.peek__b {
+  display: block;
+  margin-top: 6rpx;
+  font-size: 26rpx;
+  color: var(--sh-primary-text);
+}
+.peek__d {
+  display: block;
+  margin-top: 6rpx;
+  font-size: 24rpx;
+}
+.redeem {
+  margin-top: 20rpx;
+}
+.done {
+  margin-top: 16rpx;
+  padding: 16rpx;
+  border-radius: 12rpx;
+  background: var(--sh-success-tint);
+  font-size: 26rpx;
+}
+
 .overview {
   margin-bottom: 14rpx;
 }

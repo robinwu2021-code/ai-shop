@@ -1070,7 +1070,39 @@ export const db = {
       maxExposureMinor: 100000,
       status: "ACTIVE",
     },
+    {
+      couponNo: "PC-DEMO-2",
+      title: "豆浆五杯卡 · 到店出示",
+      benefitMode: "GIFT",
+      benefitValue: 0,
+      benefitCapMinor: null,
+      benefitRef: "G-DOUJIANG",
+      minAmountMinor: null,
+      minQty: null,
+      scopeType: "ALL",
+      scopeRefs: [],
+      scopeDesc: null,
+      validityMode: "RELATIVE",
+      startAt: null,
+      endAt: null,
+      validDays: 30,
+      issueMode: "TARGETED",
+      // 到店核销：**不参与下单抵扣**，一张券两条路一定会被用两次
+      redeemMode: "STORE_CODE",
+      timesTotal: 5,
+      totalCount: 100,
+      receivedCount: 1,
+      perUserLimit: 1,
+      budgetMinor: null,
+      maxExposureMinor: 0,
+      status: "ACTIVE",
+    },
   ] as MerchantCoupon[],
+
+  /** 到店核销：券号 → 已核几次。次卡演示要看得见「还剩几次」 */
+  couponRedeemed: {} as Record<string, number>,
+  /** 券号 → 上次核销时刻。3 秒连点窗口靠它 */
+  couponRedeemedAt: {} as Record<string, number>,
 
   /** 发放批次。**跳过明细存在这里** —— 结果页要能说出「12 跳过：9 人已达上限」 */
   couponIssues: [] as CouponIssueBatch[],

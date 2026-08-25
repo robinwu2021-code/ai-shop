@@ -385,6 +385,27 @@ export default {
   },
 
   verify: {
+    tabPickup: "Pickup",
+    tabCoupon: "Coupon",
+    couponCodePh: "Enter the code the customer shows",
+    couponPeek: "Look up",
+    couponHolder: "Customer ···{tail}",
+    couponRemaining: "{n} of {m} redemptions left",
+    couponRedeem: "Redeem (cannot be undone)",
+    couponConfirmTitle: "Redeem “{title}”",
+    couponConfirmOnce: "The coupon is spent after this and cannot be undone — what you hand over cannot be taken back.",
+    couponConfirmTimes: "{n} redemptions will remain. This one cannot be undone.",
+    couponConfirmBtn: "Redeem",
+    couponUsedUp: "Redeemed; this coupon is now fully used",
+    couponLeft: "Redeemed; {n} left",
+    couponDuplicated: "That one already went through — nothing was charged twice",
+    couponReason: {
+      EXPIRED: "This coupon has expired",
+      USED_UP: "This coupon is fully used",
+      REVOKED: "This coupon was withdrawn",
+      NOT_STORE_CODE: "This is a checkout coupon, not redeemed here",
+      COUPON_INACTIVE: "This coupon is paused or ended",
+    },
     reason: {
       CODE_NOT_FOUND: "No such code — ask them to check it again",
       ALREADY_VERIFIED: "This one was already redeemed",

@@ -3614,6 +3614,44 @@ export interface CouponIssueBatch {
 }
 
 /**
+ * 到店核销：先看后核里「看」的那一步（P6）。
+ *
+ * @remarks 店员要先看到「什么券、还剩几次、能不能核」再按 ——
+ * 扫完直接扣的话，扫错一张没有回头路（**线下核销不可撤销**）。
+ */
+export interface CouponRedeemView {
+  userCouponNo: string;
+  couponNo: string;
+  title: string;
+  /** 「减 3 元」「8.5 折」「兑换」这种人话，后端拼好 */
+  benefitText: string;
+  phoneTail?: string | null;
+  expireAt: number;
+  timesTotal: number;
+  timesUsed: number;
+  /** 还能核几次。次卡看这个数 */
+  remaining: number;
+  redeemable: boolean;
+  /** 不能核销时的原因码：`EXPIRED` / `USED_UP` / `REVOKED` / `NOT_STORE_CODE` / `COUPON_INACTIVE` */
+  reason?: string | null;
+}
+
+/**
+ * 核销结果。
+ *
+ * @remarks `duplicated` 为真 = **店员连点了两下**（3 秒窗口内），不是第二次核销。
+ * 这时要提示「刚才那次已经核销成功」而不是报错 ——
+ * 报错会让他以为没成功，于是再按一次。
+ */
+export interface CouponRedeemResult {
+  userCouponNo: string;
+  timesUsed: number;
+  remaining: number;
+  usedUp: boolean;
+  duplicated: boolean;
+}
+
+/**
  * 会员经营口径（P3）。
  *
  * @remarks 切换 `memberScope` 会**改变「新客」的含义**：按门店时，

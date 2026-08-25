@@ -3204,6 +3204,64 @@ export const mockApi: MerchantApi = {
     return delay({ ...batch });
   },
 
+  /**
+   * 到店核销「先看」。mock 里给顾客发的券带一个固定码，方便演示：
+   * 真实链路里码在发放时生成（去掉了 0/O/1/I/L —— 店员是手输的）。
+   */
+  async mPeekCouponCode(code) {
+    const hit = db.merchantCoupons.find((c) => c.redeemMode === "STORE_CODE");
+    if (!hit || code.trim().toUpperCase() !== "DEMO2345") {
+      throw new ApiError(40016, "没找到这张券，确认一下码有没有输错");
+    }
+    const used = db.couponRedeemed[hit.couponNo] ?? 0;
+    const remaining = Math.max(0, hit.timesTotal - used);
+    return delay({
+      userCouponNo: `PU-DEMO-${hit.couponNo}`,
+      couponNo: hit.couponNo,
+      title: hit.title,
+      benefitText: hit.benefitMode === "CASH" ? `减 ${hit.benefitValue / 100} 元` : "兑换",
+      phoneTail: "1148",
+      expireAt: Date.now() + 7 * 86400_000,
+      timesTotal: hit.timesTotal,
+      timesUsed: used,
+      remaining,
+      redeemable: remaining > 0,
+      reason: remaining > 0 ? null : "USED_UP",
+    });
+  },
+
+  async mRedeemCoupon(code) {
+    const view = await this.mPeekCouponCode(code);
+    if (!view.redeemable) throw new ApiError(40002, "这张券不能核销了");
+    const hit = db.merchantCoupons.find((c) => c.couponNo === view.couponNo)!;
+    /*
+     * 3 秒窗口：连点的第二下返回上一次的结果，不扣第二次、也不报错 ——
+     * 报错会让店员以为刚才那下没成功，于是再按一次。
+     */
+    const last = db.couponRedeemedAt[hit.couponNo] ?? 0;
+    if (Date.now() - last < 3000) {
+      const used = db.couponRedeemed[hit.couponNo] ?? 0;
+      return delay({
+        userCouponNo: view.userCouponNo,
+        timesUsed: used,
+        remaining: Math.max(0, hit.timesTotal - used),
+        usedUp: used >= hit.timesTotal,
+        duplicated: true,
+      });
+    }
+    const used = (db.couponRedeemed[hit.couponNo] ?? 0) + 1;
+    db.couponRedeemed[hit.couponNo] = used;
+    db.couponRedeemedAt[hit.couponNo] = Date.now();
+    persist();
+    return delay({
+      userCouponNo: view.userCouponNo,
+      timesUsed: used,
+      remaining: Math.max(0, hit.timesTotal - used),
+      usedUp: used >= hit.timesTotal,
+      duplicated: false,
+    });
+  },
+
   async mCouponIssues(couponNo) {
     return delay(db.couponIssues
         .filter((b) => !couponNo || b.couponNo === couponNo)

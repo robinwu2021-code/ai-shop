@@ -41,6 +41,21 @@ public final class CouponVOs {
     }
 
     /**
+     * 买家券包里的一张（C 端，P6）。
+     *
+     * @param redeemCode 到店出示的码。<b>只有 {@code STORE_CODE} 券有</b> ——
+     *                   下单抵扣的券没有码，给它显示一个码会让顾客拿着手机去店里问
+     * @param remaining  次卡还剩几次。一次性券是 1 或 0
+     * @param usableNow  现在能不能用（没过期、没用完、券没被暂停）
+     */
+    public record MyCouponVO(String userCouponNo, String couponNo, String title,
+                             String benefitText, String entityNo, String redeemMode,
+                             String redeemCode, Long minAmountMinor,
+                             int timesTotal, int timesUsed, int remaining,
+                             long expireAt, String status, boolean usableNow) {
+    }
+
+    /**
      * 一次发放的结果。
      *
      * @param skipped     跳过多少人。<b>它必须显示出来</b> ——
