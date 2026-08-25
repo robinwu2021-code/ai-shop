@@ -13,6 +13,7 @@ import { onShow } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
 import { api } from "@/api";
 import { useMerchantStore } from "@/stores/merchant";
+import { FEATURES } from "@shared/utils/constants";
 import { money } from "@shared/utils/money";
 import type { Member, MemberStats, MemberTag } from "@shared/types";
 
@@ -175,7 +176,15 @@ onShow(load);
       <text class="sh-chip" @tap="go('/pages/member-segments/index')">
         {{ $t("memberSegments.title") }}
       </text>
-      <text class="sh-chip" @tap="go('/pages/member-reach/index')">
+      <!--
+        群发入口按开关显示。**代码在包里，入口先不露出来** ——
+        灰度对象没定之前不该让任何商家点得到它（见 FEATURES.memberReach）。
+      -->
+      <text
+        v-if="FEATURES.memberReach"
+        class="sh-chip"
+        @tap="go('/pages/member-reach/index')"
+      >
         {{ $t("reach.entry") }}
       </text>
       <text class="sh-chip sh-chip--primary" @tap="go('/pages/member-add/index')">
