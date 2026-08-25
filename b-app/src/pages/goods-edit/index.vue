@@ -614,7 +614,8 @@ const hydrating = ref(false);
 const groups = ref<{ name: string; options: string[]; codes?: (string | undefined)[]; templateNo?: string }[]>([]);
 /** 可用模板：平台按类目预置 + 本商家存的常用 */
 const templates = ref<SpecTemplate[]>([]);
-const showTemplates = ref(false);
+/** 他自己存过的规格组（带档位）。平台那批已经由选类目自动预填，不必再列一遍 */
+const myTemplates = computed(() => templates.value.filter((t) => t.scope === "MERCHANT"));
 /** 「加规格组」时的维度选择面板：本类目已配 → 平台通用 → 自建 */
 const showDimPicker = ref(false);
 const pickableDims = ref<SpecTemplate[]>([]);
@@ -1173,7 +1174,7 @@ function applyTemplate(tpl: SpecTemplate) {
     uni.showToast({ title: t("goods.groupLimit"), icon: "none" });
     return;
   } else groups.value.push(row);
-  showTemplates.value = false;
+  showDimPicker.value = false;
   rebuild();
 }
 
@@ -1297,10 +1298,26 @@ function primeMainGroup() {
    */
   const main = templates.value.find((t) => t.primary && t.scope === "PLATFORM");
   if (!main || groups.value.some((g) => g.name === main.name)) return;
+  /*
+   * **档位跟着一起带出来，不再只填组名。**
+   *
+   * 此前这里只填名、取值留空，理由写在上面那段注释里：预选「500g」会让商家
+   * 不假思索地留着，于是库里三千件商品整整齐齐写着 500g，而真实袋重是 400g、
+   * 一斤。那个判断针对的是**平台的猜测** —— 那时档位是平台按类目配死的，
+   * 商家没有任何地方表达过「我这店卖哪几档」。
+   *
+   * 现在有了：「商品规格」页里他为每个类目**逐档确认过**留哪些、去掉哪些、
+   * 叫什么名字（prd_merchant_spec_override）。带出来的是**他自己刚说过的话**，
+   * 不是平台替他猜的。让他在建品页再点一遍，等于不认他刚才做的事。
+   *
+   * 不合适的那一档他一眼看得出（他自己删的那些根本不会出现在这里），
+   * 而「撤销」就在旁边，整组去掉是一次点击。
+   */
   groups.value.push({
     name: main.name,
-    options: [""],
-    codes: [undefined],
+    options: main.options.length ? main.options.map((o) => o.label) : [""],
+    // code 一起带 —— 没有它这一组就掉出跨店比价，那是平台养这个规格库的全部理由
+    codes: main.options.length ? main.options.map((o) => o.code) : [undefined],
     templateNo: main.templateNo,
   });
   /*
@@ -2306,10 +2323,14 @@ async function save(thenSubmit = false) {
     <view class="sh-card mt">
       <view class="sec">
         <text class="sh-h2">{{ $t("goods.specs") }}</text>
+        <!--
+          **「套用模板」这个入口没了。** 选完类目已经把本店确认过的那一组
+          （名字 + 档位 + code）直接预填进来了，而它展开后列出的第一条
+          恰恰就是刚预填的那一组 —— 同一件事出现两次，第二次没有新信息。
+          它唯一还独占的是「我的常用」，已经折进下面的「＋ 规格组」面板里，
+          与本类目 / 平台通用 / 自己起名摆在一处：**一个入口，一次选择。**
+        -->
         <view class="sec__ops">
-          <text v-if="templates.length" class="link" @tap="showTemplates = !showTemplates">
-            {{ $t("goods.useTemplate") }}
-          </text>
           <!--
             **一个入口，不是两个。** 从前「＋ 规格组」（空框手输）与「＋ 自定义规格」
             （空对话框凭记忆敲名字）并排摆着，两条都是盲输，而盲输的代价看不见：
@@ -2374,19 +2395,6 @@ async function save(thenSubmit = false) {
       </view>
 
       <!-- 模板：点一下替代逐个手输。平台模板带 code，商家自存的只有文字 -->
-      <view v-if="showTemplates" class="tpls">
-        <text class="sh-muted tpls__hint">{{ $t("goods.templateHint") }}</text>
-        <view v-for="tpl in templates" :key="tpl.templateNo" class="tpl" @tap="applyTemplate(tpl)">
-          <view class="tpl__head">
-            <text class="tpl__name">{{ tpl.name }}</text>
-            <text class="sh-chip" :class="tpl.scope === 'PLATFORM' ? 'sh-chip--primary' : ''">
-              {{ tpl.scope === "PLATFORM" ? $t("goods.tplPlatform") : $t("goods.tplMine") }}
-            </text>
-          </view>
-          <text class="sh-muted">{{ tpl.options.map((o) => o.label).join(" · ") }}</text>
-        </view>
-      </view>
-
       <!-- 维度选择面板：顺序即建议顺序，越靠前越该被选中 -->
       <view v-if="showDimPicker" class="picker">
         <view class="picker__head">
@@ -2417,6 +2425,17 @@ async function save(thenSubmit = false) {
                 @tap="pickDim(d)"
               >{{ d.name }}</text>
             </view>
+          </view>
+        </view>
+        <!--
+          我的常用：他自己存过的整组（带档位）。原来挂在「套用模板」下面，
+          与这里的维度是同一类选择 —— 摆在一处才看得出「先看现成的，再自己起名」。
+        -->
+        <view v-if="myTemplates.length" class="picker__sec">
+          <text class="sh-muted picker__label">{{ $t("goods.tplMine") }}</text>
+          <view class="picker__row">
+            <text v-for="tpl in myTemplates" :key="tpl.templateNo" class="sh-chip"
+                  @tap="applyTemplate(tpl)">{{ tpl.name }}</text>
           </view>
         </view>
         <view class="picker__sec">
