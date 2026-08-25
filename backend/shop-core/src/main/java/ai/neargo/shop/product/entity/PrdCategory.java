@@ -36,7 +36,24 @@ public class PrdCategory extends BaseEntity {
      */
     private String template;
 
-    /** JSON：五品类属性模板（P-3.1.2）。 */
+    /**
+     * JSON：五品类属性模板（P-3.1.2）。<b>@deprecated 从未启用，建议不要再往上加东西。</b>
+     *
+     * <p>2026-08-25 核查：**全仓零读者**，生产库 73 个类目**一个有值的都没有**，
+     * 而且 {@code prd_goods} 上根本没有存放这些属性值的地方 —— 也就是说它只是一列空的 JSON。
+     *
+     * <p><b>它想解决的问题已经被解决了两次</b>：
+     * <ul>
+     *   <li>{@link #template}（五品类）决定建品页的形态与字段集 —— 线上 73 个类目全部有值，
+     *       {@code CategoryServiceImpl.TEMPLATE_TO_TYPE} 把它映射成 {@code prd_goods.type}，
+     *       b-app 的 goods-edit 据它渲染</li>
+     *   <li>规格库四层模型（V195，{@code /ops/category-specs}）决定规格维度</li>
+     * </ul>
+     *
+     * <p>列先留着不删：删列不可回退，而留着不花任何代价。**但不要再往它上面建东西** ——
+     * 第三套同类机制只会让「建品页字段从哪来」变成一个没人答得清的问题。
+     */
+    @Deprecated
     private String attrTemplate;
 
     /** JSON：经营该类目需要的资质（P-3.1.4）。**给人看的文案，不是校验依据**。 */
