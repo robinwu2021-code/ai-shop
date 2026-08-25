@@ -115,7 +115,10 @@ def read_uni(app: str) -> list[dict]:
             "domain": domain_of(path),
             "tab": path in tabs,
             "status": "已实现",
-            "proto": PROTO_ANCHORS.get(app, {}).get(path),
+            # proto 仍是锚点（JSON 形状不变，外部消费者不受影响）；
+            # protoUrl 是新增的一列，只在指到非默认那份时才不同
+            "proto": proto_of(app, path)[0],
+            "protoUrl": proto_of(app, path)[1],
             "preview": DEV_ORIGIN[app] + "/" + path,
         })
     return out
@@ -167,6 +170,24 @@ def read_ops() -> list[dict]:
 # 原型稿（Artifact）。清单里每一条能点进去看那一屏长什么样。
 PROTO_URL = "https://claude.ai/code/artifact/459462f5-e7f7-485a-85b0-096ba9918b15"
 
+# **原型不止一份**。会员与营销那批在上面那个 artifact 里，后来的各自成篇 ——
+# 一份文档塞进所有域，读的人要先滚过八屏无关的才看到自己那一屏。
+# 这里按路由指到各自的那一份；没登记的仍走 PROTO_URL。
+PROTO_URL_BY_ROUTE = {
+    "b-app": {
+        "pages/goods-edit/index": "https://claude.ai/code/artifact/9eb1a32a-a74b-40d2-b6c3-1a4cb394f02e",
+        "pages/my-specs/index": "https://claude.ai/code/artifact/9eb1a32a-a74b-40d2-b6c3-1a4cb394f02e",
+    },
+}
+
+
+def proto_of(app, path):
+    """→ (锚点, 原型地址)。没有原型时两个都是 None。"""
+    anchor = PROTO_ANCHORS.get(app, {}).get(path)
+    if not anchor:
+        return None, None
+    return anchor, PROTO_URL_BY_ROUTE.get(app, {}).get(path, PROTO_URL)
+
 # 路由 → 原型里的锚点。已经有页面的也可以挂 —— 它们同样有原型稿
 PROTO_ANCHORS = {
     "b-app": {
@@ -179,6 +200,9 @@ PROTO_ANCHORS = {
         "pages/marketing/audience": "s10", "pages/coupons/index": "s11",
         "pages/coupon-edit/index": "s12", "pages/coupon-issue/index": "s13",
         "pages/verify/index": "s14",
+        # 规格原型（另一份 artifact，见 PROTO_URL_BY_ROUTE）
+        "pages/goods-edit/index": "s19",
+        "pages/my-specs/index": "s23",
     },
     "c-app": {
         "pages/store/index": "s15", "pages/member-card/index": "s16",
@@ -212,7 +236,8 @@ def main() -> None:
     check = "--check" in sys.argv
     rows = read_uni("b-app") + read_uni("c-app") + read_ops()
     rows += [{"app": a, "route": r, "title": t, "domain": d, "tab": False, "status": "原型",
-              "proto": PROTO_ANCHORS.get(a, {}).get(r.lstrip("/")),
+              "proto": proto_of(a, r.lstrip("/"))[0],
+              "protoUrl": proto_of(a, r.lstrip("/"))[1],
               "preview": None}
              for a, r, t, d in PROTOTYPES]
 
@@ -274,8 +299,9 @@ def render(cat: dict) -> str:
                 badge = {"已实现": "ok", "原型": "proto", "待建": "soon"}[p["status"]]
                 extra = " · ".join(x for x in [p.get("group"), p.get("matrix")] if x)
                 links = ""
+                proto_href = p.get("protoUrl") or PROTO_URL
                 if p.get("proto"):
-                    links += (f'<a class="lk proto-lk" href="{PROTO_URL}#{p["proto"]}" '
+                    links += (f'<a class="lk proto-lk" href="{proto_href}#{p["proto"]}" '
                               f'target="_blank" rel="noopener">原型</a>')
                 if p.get("preview"):
                     links += (f'<a class="lk" href="{escape(p["preview"])}" '

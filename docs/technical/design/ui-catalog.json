@@ -16,6 +16,7 @@
               "tab": true,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:5175/#/pages/home/index"
             }
           ]
@@ -31,6 +32,7 @@
               "tab": true,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:5175/#/pages/orders/index"
             },
             {
@@ -41,6 +43,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:5175/#/pages/order/index"
             },
             {
@@ -51,6 +54,7 @@
               "tab": false,
               "status": "已实现",
               "proto": "s14",
+              "protoUrl": "https://claude.ai/code/artifact/459462f5-e7f7-485a-85b0-096ba9918b15",
               "preview": "http://localhost:5175/#/pages/verify/index"
             },
             {
@@ -61,6 +65,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:5175/#/pages/picking/index"
             },
             {
@@ -71,6 +76,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:5175/#/pages/delivery/index"
             },
             {
@@ -81,6 +87,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:5175/#/pages/after-sale/index"
             }
           ]
@@ -96,6 +103,7 @@
               "tab": true,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:5175/#/pages/goods-list/index"
             },
             {
@@ -105,7 +113,8 @@
               "domain": "商品",
               "tab": false,
               "status": "已实现",
-              "proto": null,
+              "proto": "s19",
+              "protoUrl": "https://claude.ai/code/artifact/9eb1a32a-a74b-40d2-b6c3-1a4cb394f02e",
               "preview": "http://localhost:5175/#/pages/goods-edit/index"
             },
             {
@@ -116,6 +125,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:5175/#/pages/store-categories/index"
             },
             {
@@ -125,7 +135,8 @@
               "domain": "商品",
               "tab": false,
               "status": "已实现",
-              "proto": null,
+              "proto": "s23",
+              "protoUrl": "https://claude.ai/code/artifact/9eb1a32a-a74b-40d2-b6c3-1a4cb394f02e",
               "preview": "http://localhost:5175/#/pages/my-specs/index"
             }
           ]
@@ -141,6 +152,7 @@
               "tab": true,
               "status": "已实现",
               "proto": "s01",
+              "protoUrl": "https://claude.ai/code/artifact/459462f5-e7f7-485a-85b0-096ba9918b15",
               "preview": "http://localhost:5175/#/pages/me/index"
             },
             {
@@ -151,6 +163,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:5175/#/pages/login/index"
             },
             {
@@ -161,6 +174,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:5175/#/pages/apply/index"
             },
             {
@@ -171,6 +185,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:5175/#/pages/staff-detail/index"
             },
             {
@@ -181,6 +196,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:5175/#/pages/role-detail/index"
             },
             {
@@ -191,6 +207,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:5175/#/pages/staff/index"
             }
           ]
@@ -206,6 +223,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:5175/#/pages/messages/index"
             },
             {
@@ -216,6 +234,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:5175/#/pages/reviews/index"
             }
           ]
@@ -231,6 +250,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:5175/#/pages/schedule/index"
             },
             {
@@ -241,6 +261,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:5175/#/pages/entities/index"
             },
             {
@@ -251,6 +272,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:5175/#/pages/entity-detail/index"
             },
             {
@@ -261,6 +283,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:5175/#/pages/member-add/index"
             },
             {
@@ -271,6 +294,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:5175/#/pages/member-segments/index"
             },
             {
@@ -281,6 +305,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:5175/#/pages/coupon-issues/index"
             },
             {
@@ -291,6 +316,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:5175/#/pages/activities/index"
             },
             {
@@ -301,6 +327,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:5175/#/pages/activity-edit/index"
             },
             {
@@ -311,6 +338,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:5175/#/pages/member-reach/index"
             }
           ]
@@ -326,6 +354,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:5175/#/pages/stores/index"
             },
             {
@@ -336,6 +365,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:5175/#/pages/qualifications/index"
             },
             {
@@ -346,6 +376,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:5175/#/pages/store/index"
             },
             {
@@ -356,6 +387,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:5175/#/pages/store-notice/index"
             },
             {
@@ -366,6 +398,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:5175/#/pages/store-scope/index"
             },
             {
@@ -376,6 +409,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:5175/#/pages/store-pick/index"
             }
           ]
@@ -391,6 +425,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:5175/#/pages/payment/index"
             },
             {
@@ -401,6 +436,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:5175/#/pages/settle/index"
             },
             {
@@ -411,6 +447,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:5175/#/pages/plan/index"
             }
           ]
@@ -426,6 +463,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:5175/#/pages/quotes/index"
             },
             {
@@ -436,6 +474,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:5175/#/pages/groups/index"
             }
           ]
@@ -451,6 +490,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:5175/#/pages/stats/index"
             },
             {
@@ -461,6 +501,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:5175/#/pages/cross-store/index"
             }
           ]
@@ -476,6 +517,7 @@
               "tab": false,
               "status": "已实现",
               "proto": "s08",
+              "protoUrl": "https://claude.ai/code/artifact/459462f5-e7f7-485a-85b0-096ba9918b15",
               "preview": "http://localhost:5175/#/pages/marketing/index"
             },
             {
@@ -486,6 +528,7 @@
               "tab": false,
               "status": "已实现",
               "proto": "s02",
+              "protoUrl": "https://claude.ai/code/artifact/459462f5-e7f7-485a-85b0-096ba9918b15",
               "preview": "http://localhost:5175/#/pages/customers/index"
             },
             {
@@ -496,6 +539,7 @@
               "tab": false,
               "status": "已实现",
               "proto": "s04",
+              "protoUrl": "https://claude.ai/code/artifact/459462f5-e7f7-485a-85b0-096ba9918b15",
               "preview": "http://localhost:5175/#/pages/member-detail/index"
             },
             {
@@ -506,6 +550,7 @@
               "tab": false,
               "status": "已实现",
               "proto": "s06",
+              "protoUrl": "https://claude.ai/code/artifact/459462f5-e7f7-485a-85b0-096ba9918b15",
               "preview": "http://localhost:5175/#/pages/member-tags/index"
             },
             {
@@ -516,6 +561,7 @@
               "tab": false,
               "status": "已实现",
               "proto": "s07",
+              "protoUrl": "https://claude.ai/code/artifact/459462f5-e7f7-485a-85b0-096ba9918b15",
               "preview": "http://localhost:5175/#/pages/member-settings/index"
             },
             {
@@ -526,6 +572,7 @@
               "tab": false,
               "status": "已实现",
               "proto": "s11",
+              "protoUrl": "https://claude.ai/code/artifact/459462f5-e7f7-485a-85b0-096ba9918b15",
               "preview": "http://localhost:5175/#/pages/coupons/index"
             },
             {
@@ -536,6 +583,7 @@
               "tab": false,
               "status": "已实现",
               "proto": "s12",
+              "protoUrl": "https://claude.ai/code/artifact/459462f5-e7f7-485a-85b0-096ba9918b15",
               "preview": "http://localhost:5175/#/pages/coupon-edit/index"
             },
             {
@@ -546,6 +594,7 @@
               "tab": false,
               "status": "原型",
               "proto": "s05",
+              "protoUrl": "https://claude.ai/code/artifact/459462f5-e7f7-485a-85b0-096ba9918b15",
               "preview": null
             },
             {
@@ -556,6 +605,7 @@
               "tab": false,
               "status": "原型",
               "proto": "s06",
+              "protoUrl": "https://claude.ai/code/artifact/459462f5-e7f7-485a-85b0-096ba9918b15",
               "preview": null
             },
             {
@@ -566,6 +616,7 @@
               "tab": false,
               "status": "原型",
               "proto": "s07",
+              "protoUrl": "https://claude.ai/code/artifact/459462f5-e7f7-485a-85b0-096ba9918b15",
               "preview": null
             },
             {
@@ -576,6 +627,7 @@
               "tab": false,
               "status": "原型",
               "proto": null,
+              "protoUrl": null,
               "preview": null
             },
             {
@@ -586,6 +638,7 @@
               "tab": false,
               "status": "原型",
               "proto": "s11",
+              "protoUrl": "https://claude.ai/code/artifact/459462f5-e7f7-485a-85b0-096ba9918b15",
               "preview": null
             },
             {
@@ -596,6 +649,7 @@
               "tab": false,
               "status": "原型",
               "proto": "s12",
+              "protoUrl": "https://claude.ai/code/artifact/459462f5-e7f7-485a-85b0-096ba9918b15",
               "preview": null
             },
             {
@@ -606,6 +660,7 @@
               "tab": false,
               "status": "原型",
               "proto": "s13",
+              "protoUrl": "https://claude.ai/code/artifact/459462f5-e7f7-485a-85b0-096ba9918b15",
               "preview": null
             }
           ]
@@ -628,6 +683,7 @@
               "tab": true,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:5176/#/pages/home/index"
             }
           ]
@@ -643,6 +699,7 @@
               "tab": true,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:5176/#/pages/category/index"
             },
             {
@@ -653,6 +710,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:5176/#/pages/goods/index"
             },
             {
@@ -663,6 +721,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:5176/#/pages/search/index"
             }
           ]
@@ -678,6 +737,7 @@
               "tab": true,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:5176/#/pages/cart/index"
             },
             {
@@ -688,6 +748,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:5176/#/pages/order-confirm/index"
             },
             {
@@ -698,6 +759,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:5176/#/pages/pay/index"
             },
             {
@@ -708,6 +770,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:5176/#/pages/orders/index"
             },
             {
@@ -718,6 +781,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:5176/#/pages/order/index"
             },
             {
@@ -728,6 +792,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:5176/#/pages/after-sale/index"
             }
           ]
@@ -743,6 +808,7 @@
               "tab": true,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:5176/#/pages/me/index"
             },
             {
@@ -753,6 +819,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:5176/#/pages/address/index"
             },
             {
@@ -763,6 +830,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:5176/#/pages/login/index"
             },
             {
@@ -773,6 +841,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:5176/#/pages/legal/index"
             }
           ]
@@ -788,6 +857,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:5176/#/pages/merchant/index"
             },
             {
@@ -798,6 +868,7 @@
               "tab": true,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:5176/#/pages/merchants/index"
             },
             {
@@ -808,6 +879,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:5176/#/pages/community/index"
             }
           ]
@@ -823,6 +895,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:5176/#/pages/group/index"
             },
             {
@@ -833,6 +906,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:5176/#/pages/groups/index"
             },
             {
@@ -843,6 +917,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:5176/#/pages/request/index"
             },
             {
@@ -853,6 +928,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:5176/#/pages/request-create/index"
             },
             {
@@ -863,6 +939,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:5176/#/pages/group-host/index"
             }
           ]
@@ -878,6 +955,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:5176/#/pages/review-write/index"
             },
             {
@@ -888,6 +966,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:5176/#/pages/messages/index"
             }
           ]
@@ -903,6 +982,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:5176/#/pages/points/index"
             }
           ]
@@ -918,6 +998,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:5176/#/pages/my-memberships/index"
             }
           ]
@@ -933,6 +1014,7 @@
               "tab": false,
               "status": "已实现",
               "proto": "s17",
+              "protoUrl": "https://claude.ai/code/artifact/459462f5-e7f7-485a-85b0-096ba9918b15",
               "preview": "http://localhost:5176/#/pages/coupons/index"
             },
             {
@@ -943,6 +1025,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:5176/#/pages/cards/index"
             },
             {
@@ -953,6 +1036,7 @@
               "tab": false,
               "status": "原型",
               "proto": "s16",
+              "protoUrl": "https://claude.ai/code/artifact/459462f5-e7f7-485a-85b0-096ba9918b15",
               "preview": null
             },
             {
@@ -963,6 +1047,7 @@
               "tab": false,
               "status": "原型",
               "proto": "s17",
+              "protoUrl": "https://claude.ai/code/artifact/459462f5-e7f7-485a-85b0-096ba9918b15",
               "preview": null
             }
           ]
@@ -978,6 +1063,7 @@
               "tab": false,
               "status": "已实现",
               "proto": "s15",
+              "protoUrl": "https://claude.ai/code/artifact/459462f5-e7f7-485a-85b0-096ba9918b15",
               "preview": "http://localhost:5176/#/pages/store/index"
             }
           ]
@@ -2485,6 +2571,7 @@
               "tab": false,
               "status": "原型",
               "proto": null,
+              "protoUrl": null,
               "preview": null
             },
             {
@@ -2495,6 +2582,7 @@
               "tab": false,
               "status": "原型",
               "proto": null,
+              "protoUrl": null,
               "preview": null
             },
             {
@@ -2505,6 +2593,7 @@
               "tab": false,
               "status": "原型",
               "proto": null,
+              "protoUrl": null,
               "preview": null
             }
           ]
