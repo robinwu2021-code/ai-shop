@@ -26,6 +26,16 @@ if ! python3 "$ROOT/scripts/gen-ui-catalog.py" --check; then
   exit 1
 fi
 
+# ── ops-web 契约闸门 ────────────────────────────────────────────────────────
+# 运营端默认走 mock（`NEXT_PUBLIC_USE_MOCK !== "0"`），所以「前端调了一个后端
+# 根本没有的接口」这件事在界面上看不出来 —— 页面有数据、点得动、不报错，
+# 一直到真正连后端的那天才集体爆出来。这一条锁的是差集：已知欠账放行，
+# 新写的空接口拦下。清单在 ops-web/known-mock-endpoints.txt。
+# 0.14 秒，纯读文件，同样不做「没动过就跳过」的判断。
+if ! node "$ROOT/scripts/check-ops-contract.mjs" --check; then
+  exit 1
+fi
+
 # 后端没动过就不必编 —— 别为改一行文案等两分钟
 if git diff --quiet "@{u}" HEAD -- backend 2>/dev/null; then
   echo "→ 本次推送未触及 backend/，跳过编译闸门"
