@@ -52,6 +52,20 @@ const slotTime = ref("");
 let timer: ReturnType<typeof setInterval> | undefined;
 
 const isFresh = computed(() => goods.value?.type === CATEGORY_TYPE.FRESH);
+
+/**
+ * 商品参数里是否已经有产地。
+ *
+ * <p>有的话就不再显示 `prd_goods.origin` 那一列 —— 那是参数落地之前的老字段
+ * （建品页里那个自由输入框已经撤掉了）。两处都显示的话，
+ * 买家会看到两个产地，而谁也说不清哪个算数。
+ *
+ * <p>按**维度名**判而不是按 dimNo：平台的产地维度在不同类目下是不同的 dimNo
+ * （SD_ORIGIN / SD_ORIGIN_F …），认编号会漏。
+ */
+const hasOriginParam = computed(
+  () => (goods.value?.params ?? []).some((p) => p.name === "产地" || p.dimNo.includes("ORIGIN")),
+);
 const isService = computed(() => goods.value?.type === CATEGORY_TYPE.SERVICE);
 const isVirtual = computed(() => goods.value?.type === CATEGORY_TYPE.VIRTUAL);
 const isCard = computed(() => goods.value?.type === CATEGORY_TYPE.CARD);
@@ -385,7 +399,24 @@ onShareAppMessage(() =>
         <text class="fact__label">{{ $t("goods.arrival") }}</text>
         <text class="fact__value">{{ goods.arrivalDesc }}</text>
       </view>
-      <view v-if="isFresh && goods.origin" class="fact">
+      <!--
+        **商品参数**（产地 / 保质期 / 材质…）。商家在建品页填的就是这些。
+        没有这一段的话，他填了买家看不见 —— 等于白填，而他不会知道。
+
+        <p>接在既有的「事实区」里而不是另起一张卡：买家心里这些和履约方式、
+        到货时间是同一类信息（「这货是什么样的」），分成两块只是把一件事拆散。
+      -->
+      <view v-for="p in goods.params ?? []" :key="p.dimNo" class="fact">
+        <text class="fact__label">{{ p.name || p.dimNo }}</text>
+        <text class="fact__value">{{ p.label }}</text>
+      </view>
+      <!--
+        旧的 `origin` 列：**参数里已经有产地就不再重复显示**。
+        两处都显示的话，商家在新的参数里填了「本地」、老列里还留着
+        早年填的「山东」—— 买家看到两个产地，而谁也说不清哪个算数。
+        存量商品（只有老列、没有参数）仍旧照常显示。
+      -->
+      <view v-if="isFresh && goods.origin && !hasOriginParam" class="fact">
         <text class="fact__label">{{ $t("goods.origin") }}</text>
         <text class="fact__value">{{ goods.origin }}</text>
       </view>

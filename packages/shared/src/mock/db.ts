@@ -436,6 +436,12 @@ const goodsSeeds: GoodsSeed[] = [
   // ---------------------------------------------------------------- 生鲜
   {
     goodsNo: "G001",
+    /* 商品参数：买家详情页的「事实区」要显示它 —— 种子里不给的话那一段永远是空的，
+       而人是照着 mock 判断功能做没做的 */
+    params: [
+      { dimNo: "SD_ORIGIN_F", name: "产地", code: "ORGCN", label: "山东" },
+      { dimNo: "SD_SHELF_LIFE", name: "保质期", code: "SL7D", label: "7 天" },
+    ],
     points: 30,
     merchantNo: "M002",
     title: t("山东烟台红富士苹果", "Yantai Fuji Apples", "تفاح فوجي من يانتاي"),

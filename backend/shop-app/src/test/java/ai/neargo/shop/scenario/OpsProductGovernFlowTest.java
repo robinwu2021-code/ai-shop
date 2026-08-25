@@ -640,7 +640,8 @@ class OpsProductGovernFlowTest {
         String body = mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + biz)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"categoryNo\":\"CAT110\",\"title\":\"本地菠菜\",\"type\":\"NORMAL\","
-                                + "\"params\":[{\"dimNo\":\"SD_ORIGIN\",\"valueNo\":\"SV_ORGLOCAL\","
+                                + "\"params\":[{\"dimNo\":\"SD_ORIGIN\",\"name\":\"产地\","
+                                + "\"valueNo\":\"SV_ORGLOCAL\","
                                 + "\"code\":\"ORGLOCAL\",\"label\":\"本地\"}],"
                                 + "\"skus\":[{\"optionValues\":[],\"price\":350,\"stock\":20}]}"))
                 .andExpect(jsonPath("$.code").value(0))
@@ -650,6 +651,11 @@ class OpsProductGovernFlowTest {
         mvc().perform(get("/biz/goods/" + goodsNo).header("Authorization", "Bearer " + biz))
                 .andExpect(jsonPath("$.data.params[0].label").value("本地"))
                 .andExpect(jsonPath("$.data.params[0].code").value("ORGLOCAL"))
+                /*
+                 * **维度名也要回来。** 买家页显示的是「产地：本地」——
+                 * 没有 name 的话那一行是 `SD_ORIGIN: 本地`，而它是给买家看的。
+                 */
+                .andExpect(jsonPath("$.data.params[0].name").value("产地"))
                 /*
                  * **参数一条也不进 SKU。** 少了这一条断言，「参数混进笛卡尔积」
                  * 这个回归不会有任何地方报错 —— 只是价格表凭空多出几倍行。

@@ -324,7 +324,7 @@ public interface MerchantGoodsService {
      * <p>{@code valueNo} 是平台值池里的编号，**有它才参与筛选与跨店比较**；
      * 量纲型（功率、净重）平台不枚举值，那时只有 {@code label}。
      */
-    record GoodsParam(String dimNo, String valueNo, String code, String label) {
+    record GoodsParam(String dimNo, String name, String valueNo, String code, String label) {
     }
 
     /**

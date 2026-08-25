@@ -104,7 +104,12 @@ public record GoodsVO(String goodsNo,
                       List<GoodsParamVO> params) {
 
     /** 一条商品参数。量纲型（功率、净重）平台不枚举值，那时只有 label */
-    public record GoodsParamVO(String dimNo, String valueNo, String code, String label) {
+    /**
+     * @param name 维度名（「产地」「保质期」）。**买家页要显示它** ——
+     *             只有 dimNo 的话详情页上是一行 {@code SD_ORIGIN: 本地}。
+     *             它是下单那一刻的快照，商家事后改本店叫法不影响已卖出的商品。
+     */
+    public record GoodsParamVO(String dimNo, String name, String valueNo, String code, String label) {
     }
 
     /** 商品上配好的拼团设置。开团那一步不能临时定价，价与人数都取自这里 */

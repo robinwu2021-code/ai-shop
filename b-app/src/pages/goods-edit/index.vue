@@ -1575,7 +1575,9 @@ function pickParam(dim: SpecTemplate, o: SpecOption) {
      * valueNo 是库里的行号。伪造一个行号发上去，后端存下来就是一条对不上的引用。
      * 真要它的话该由后端按 dimNo + code 反查（与规格值那侧的 resolveValueNos 同一条路）。
      */
-    [dim.templateNo]: { dimNo: dim.templateNo, code: o.code, label: o.label },
+    // name 一起存：买家页要显示「产地：本地」，只有 dimNo 的话那一行是 `SD_ORIGIN: 本地`。
+    // 与 specGroups 的组名同一口径 —— 快照，商家事后改本店叫法不影响已建好的商品
+    [dim.templateNo]: { dimNo: dim.templateNo, name: dim.name, code: o.code, label: o.label },
   };
 }
 

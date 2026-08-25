@@ -943,6 +943,14 @@ export interface VirtualSpec {
 export interface GoodsParam {
   /** 所属规格维度（`usage_type=PROP`） */
   dimNo: string;
+  /**
+   * 维度名（「产地」「保质期」）。**买家页要显示它** ——
+   * 只有 dimNo 的话详情页上是一行 `SD_ORIGIN: 本地`。
+   *
+   * <p>存在商品身上而不是每次去规格库查：它是**下单那一刻的快照**，
+   * 与规格组同一口径 —— 商家事后把本店叫法改了，已卖出的商品不该跟着变。
+   */
+  name?: string;
   /** 平台值编号。量纲型没有 */
   valueNo?: string;
   /** 平台值编码，跨店可比 */

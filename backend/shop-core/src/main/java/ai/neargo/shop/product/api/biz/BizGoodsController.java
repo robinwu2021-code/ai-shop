@@ -142,7 +142,7 @@ public class BizGoodsController {
                 req.stdNo(), req.detail(), req.detailImages(),
                 req.params() == null ? null : req.params().stream()
                         .map(x -> new MerchantGoodsService.GoodsParam(
-                                x.dimNo(), x.valueNo(), x.code(), x.label()))
+                                x.dimNo(), x.name(), x.valueNo(), x.code(), x.label()))
                         .toList()));
     }
 
@@ -587,7 +587,12 @@ public class BizGoodsController {
     }
 
     /** 一条商品参数。量纲型（功率、净重）平台不枚举值，那时只有 label */
-    public record GoodsParamReq(String dimNo, String valueNo, String code, String label) {
+    /**
+     * @param name 维度名（「产地」）。**端上原样带上来当快照存** ——
+     *             与 specGroups 里的组名同一口径：商家事后改本店叫法，
+     *             已经建好的商品不该跟着变。
+     */
+    public record GoodsParamReq(String dimNo, String name, String valueNo, String code, String label) {
     }
 
     /** 生鲜段。留空 = 不改；只在品类是 FRESH 时写入 */
