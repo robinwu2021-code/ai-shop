@@ -22,6 +22,20 @@ public final class UserMappers {
     public interface UserMapper extends BaseMapper<UsrAccount> {
     }
 
+    /**
+     * 平台人档。唯一键：手机号哈希、账号号各一把。
+     *
+     * <p>只做单表读写 —— 「按手机号找人、找不到就建」那段逻辑有分支与并发，
+     * 属于 Service。
+     */
+    public interface PersonMapper extends BaseMapper<ai.neargo.shop.user.entity.UsrPerson> {
+    }
+
+    /** 人档合并留痕。常年应该是空的 */
+    public interface PersonMergeLogMapper
+            extends BaseMapper<ai.neargo.shop.user.entity.UsrPersonMergeLog> {
+    }
+
     /** 登录凭证。一个人多条，唯一键 (identity_type, identity_value)。 */
     public interface IdentityMapper extends BaseMapper<UsrIdentity> {
 

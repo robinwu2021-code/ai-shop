@@ -87,6 +87,8 @@ public class AuthServiceImpl implements AuthService {
     private final OtpSendGuard sendGuard;
     private final SmsPort smsPort;
     private final ai.neargo.shop.spi.user.WxAuthPort wxAuthPort;
+    /** 平台人档（P0）。登录成功后把账号绑到「这个自然人」上 —— 会员挂的是它，不是账号 */
+    private final ai.neargo.shop.user.service.PersonService personService;
 
     public AuthServiceImpl(UserMapper userMapper, IdentityMapper identityMapper,
                            TokenStore tokenStore, OtpStore otpStore,
@@ -95,6 +97,7 @@ public class AuthServiceImpl implements AuthService {
                            ai.neargo.shop.spi.user.WxAuthPort wxAuthPort,
                            ai.neargo.shop.auth.PasswordHasher passwordHasher,
                            ai.neargo.shop.common.ratelimit.RateLimiter rateLimiter,
+                           ai.neargo.shop.user.service.PersonService personService,
                            @org.springframework.beans.factory.annotation.Value(
                                    "${shop.auth.otp.fixed:}") String fixedOtp) {
         this.userMapper = userMapper;
@@ -106,6 +109,7 @@ public class AuthServiceImpl implements AuthService {
         this.wxAuthPort = wxAuthPort;
         this.passwordHasher = passwordHasher;
         this.rateLimiter = rateLimiter;
+        this.personService = personService;
         this.fixedOtp = fixedOtp;
         if (usingFixedOtp()) {
             /*
@@ -148,6 +152,15 @@ public class AuthServiceImpl implements AuthService {
     }
 
     /** 日志里的手机号一律打码：日志会被收集、被转发，它不该成为一份号码库 */
+    /** 这个账号已验证的手机号。微信登录没授权手机号时为 null —— 那时他没有人档 */
+    private String phoneOf(String userNo) {
+        UsrIdentity id = identityMapper.selectOne(Wrappers.<UsrIdentity>lambdaQuery()
+                .eq(UsrIdentity::getUserNo, userNo)
+                .eq(UsrIdentity::getIdentityType, IdentityType.PHONE)
+                .last("limit 1"));
+        return id == null ? null : id.getIdentityValue();
+    }
+
     private static String mask(String phone) {
         return phone == null || phone.length() < 11
                 ? "***"
@@ -188,6 +201,27 @@ public class AuthServiceImpl implements AuthService {
 
         if ("BANNED".equals(user.getStatus())) {
             throw BizException.of(ErrorCode.RISK_BLOCKED);
+        }
+
+        /*
+         * 平台人档（P0）：登录成功之后把账号绑到「这个自然人」上。
+         *
+         * <p><b>放在发 token 之前，但失败不阻塞登录</b> —— 除了手机号已绑别的账号那一种：
+         * 那是用户必须知道的事实，闷掉的话他会一直纳闷为什么会员权益没生效。
+         * 其余异常（库抖动、并发）只记日志：人档补不上明天再补，登录挡住是事故。
+         *
+         * <p>微信登录没授权手机号时 {@code phoneOf} 取不到号，这里什么也不做 ——
+         * 他照常能逛能下单，只是还不能成为任何商家的会员。
+         */
+        try {
+            personService.bindOnLogin(user.getUserNo(), phoneOf(user.getUserNo()));
+        } catch (BizException e) {
+            if (ErrorCode.PERSON_PHONE_TAKEN == e.errorCode()) {
+                throw e;
+            }
+            log.warn("[person] 登录时绑定人档失败 user={}：{}", user.getUserNo(), e.getMessage());
+        } catch (RuntimeException e) {
+            log.warn("[person] 登录时绑定人档失败 user={}", user.getUserNo(), e);
         }
 
         String token = tokenStore.issue(TokenStore.SessionData.of(

@@ -35,16 +35,20 @@ public class UserServiceImpl implements UserService {
 
     private final OpenOrderPort openOrderPort;
     private final TokenStore tokenStore;
+    /** 注销要连人档一起解绑（P0）—— 与删凭证是同一件事的两半 */
+    private final ai.neargo.shop.user.service.PersonService personService;
 
     public UserServiceImpl(UserMapper userMapper, IdentityMapper identityMapper,
                            PickupQueryPort pickupQueryPort, OtpStore otpStore,
-                           OpenOrderPort openOrderPort, TokenStore tokenStore) {
+                           OpenOrderPort openOrderPort, TokenStore tokenStore,
+                           ai.neargo.shop.user.service.PersonService personService) {
         this.identityMapper = identityMapper;
         this.userMapper = userMapper;
         this.pickupQueryPort = pickupQueryPort;
         this.otpStore = otpStore;
         this.openOrderPort = openOrderPort;
         this.tokenStore = tokenStore;
+        this.personService = personService;
     }
 
     @Override
@@ -74,6 +78,13 @@ public class UserServiceImpl implements UserService {
          * 留着行就必须在每一处查询都记得排除已注销的 —— 少一处就是「注销了还能登回去」。
          */
         identityMapper.deleteAllByUserPhysically(user.getUserNo());
+
+        /*
+         * 人档同样要解绑并让出手机号（P0）。
+         * 不做的话，他用同一个号回来会撞人档的唯一键 —— 而那个错误长得像「系统开小差」，
+         * 跟注销一点关系都看不出来。与上面删凭证是同一件事的两半。
+         */
+        personService.deregister(user.getUserNo());
 
         /*
          * **匿名化，不删行。** 订单、结算、发票有留存义务，

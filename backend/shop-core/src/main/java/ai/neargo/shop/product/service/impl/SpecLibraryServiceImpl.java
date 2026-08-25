@@ -387,9 +387,15 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
         List<PrdSpecValue> values = valuesOf(merchantNo, dimNo);
         Map<String, String> byLabel = new LinkedHashMap<>();
         for (PrdSpecValue v : values) {
-            byLabel.putIfAbsent(v.getLabel(), v.getValueNo());
+            /*
+             * **两侧都过 SpecNormalizer**。库里的 label 是写入时规范化过的（见 addValue），
+             * 而商家提交的是手打的原文：「500 g」「五百克」「500G」都该落到同一个 500g 上。
+             * 此前这里直接 `label.trim()` 比对，于是本类注释里自陈的那个毛病
+             * ——「三家店的 500g / 五百克 / 0.5kg 永远聚不到一起」—— 在归一这一步原样复发。
+             */
+            putValueKey(byLabel, v.getLabel(), v.getValueNo());
             // 码也认：端上有时回传的是 code（走模板那条路），认两种比认一种稳
-            byLabel.putIfAbsent(v.getCode(), v.getValueNo());
+            putValueKey(byLabel, v.getCode(), v.getValueNo());
         }
         /*
          * 类目级的换名也要认得回来：500g 在蔬菜下显示成「约1斤」，商家提交的就是「约1斤」。
@@ -399,13 +405,38 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
                 catValueMapper.selectList(Wrappers.<PrdCategorySpecValue>lambdaQuery()
                         .eq(PrdCategorySpecValue::getDimNo, dimNo)
                         .isNotNull(PrdCategorySpecValue::getLabelOverride)))) {
-            byLabel.putIfAbsent(cv.getLabelOverride(), cv.getValueNo());
+            putValueKey(byLabel, cv.getLabelOverride(), cv.getValueNo());
+        }
+        /*
+         * **别名走最后一轮**，不能跟正式标签挤在同一个循环里。
+         * 表是先到先得，同一轮的话「排在前面那个值的别名」会顶掉
+         * 「排在后面那个值的正式标签」—— 比如某值别名写了「单包」，
+         * 而另有一个值的正式标签就叫「单包」，谁赢取决于 sort 顺序，纯属碰运气。
+         * 分轮之后规则是确定的：**正式标签、码、类目级换名，三者都永远赢别名**。
+         */
+        for (PrdSpecValue v : values) {
+            /*
+             * **别名也要认**。这一列不是摆设：C1「单件」挂着「单个 / 单包 / 1件」，
+             * C6「6件装」挂着「6只装 / 6卷」，合并值时还会把被并掉那条的标签收进来
+             * （见 mergeValues）。而此前这条路径根本不查它 ——
+             * 于是运营辛苦维护的别名对「跨店可比」一点贡献都没有，
+             * 商家写「单个」就是归不了一。
+             *
+             * 同一个类里的 ensureValue 早就是按「规范化后的 label + aliases」比对的，
+             * 两条路径认的东西不一样，本身就是个要命的不一致：
+             * 商家自助加值时认得出重复，系统给 SKU 盖编号时却认不出同一个值。
+             */
+            for (String alias : readAliases(v.getAliases())) {
+                putValueKey(byLabel, alias, v.getValueNo());
+            }
         }
 
         Map<String, String> out = new LinkedHashMap<>();
         for (String label : labels) {
-            String no = label == null ? null : byLabel.get(label.trim());
+            String norm = SpecNormalizer.label(label);
+            String no = norm == null || norm.isBlank() ? null : byLabel.get(norm);
             if (no != null) {
+                // 键回原文：调用方拿它跟 optionValues 里的文案对位，换成规范化后的会对不上
                 out.put(label, no);
             }
         }
@@ -1314,6 +1345,20 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
                 v.getNumericValue(), v.getNumericUnit(), readAliases(v.getAliases()),
                 v.getScope(), v.getEntityNo(), v.getSort() == null ? 100 : v.getSort(),
                 v.getStatus(), 0);
+    }
+
+    /**
+     * 往「文案 → 值编号」表里塞一个键，键一律取 {@link SpecNormalizer#label} 规范化后的形式。
+     *
+     * <p><b>先到先得</b>：调用方分三轮灌 —— 正式标签与码、类目级换名、别名。
+     * 于是别名撞上任何一个值的正式说法时都是正式说法赢，与值的排序无关；
+     * 别名之间互撞则先出现的赢（同一个说法指向两个值，本来就得靠运营去重）。
+     */
+    private static void putValueKey(Map<String, String> byLabel, String raw, String valueNo) {
+        String norm = SpecNormalizer.label(raw);
+        if (norm != null && !norm.isBlank()) {
+            byLabel.putIfAbsent(norm, valueNo);
+        }
     }
 
     private static List<String> readAliases(String json) {

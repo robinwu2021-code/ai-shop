@@ -21,6 +21,13 @@ public final class BizKey {
     public static final String SUB_ORDER = "SUB";
     public static final String AFTER_SALE = "AS";
     public static final String USER = "U";
+    /**
+     * 平台人档（{@code usr_person}）。
+     *
+     * <p><b>与 {@link #USER} 分开是有意的</b>：账号要注册才有，人档不用 ——
+     * 商家录进来的手机号，本人可能还没在平台出现过。会员挂在人档上，不挂账号上。
+     */
+    public static final String PERSON = "PS";
     public static final String ADDRESS = "AD";
     public static final String TICKET = "TK";
     public static final String MESSAGE = "MSG";

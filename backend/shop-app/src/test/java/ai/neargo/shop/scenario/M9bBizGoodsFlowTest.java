@@ -41,6 +41,9 @@ class M9bBizGoodsFlowTest {
     private ObjectMapper json;
 
     @Autowired
+    private ai.neargo.shop.product.mapper.ProductMappers.SkuMapper skuMapper;
+
+    @Autowired
     private ai.neargo.shop.merchant.mapper.MerchantMappers.EntityPlanMapper planMapper;
 
     private MockMvc mvc() {
@@ -81,6 +84,72 @@ class M9bBizGoodsFlowTest {
         assertThat(json.readTree(body).get("code").asInt())
                 .as("闸门关着时缺资质不该拦 —— 拦了就是把 267 件商品挡在架下")
                 .isZero();
+    }
+
+    @Test
+    @DisplayName("★★ 商家手打的规格要能归到库里：别名与写法差异都得认")
+    void handTypedSpecStillLandsOnTheLibrary() throws Exception {
+        /*
+         * 守的是「跨店可比」那条链的最后一环：SKU 落库时要盖上 option_value_nos。
+         * 盖不上的话三家店的同一档规格永远聚不到一起 —— 比不了价、排不了序，
+         * 规格库辛苦维护的档位与别名全部白费。
+         *
+         * <p>两个用例都是**商家真会那么打**的写法，而且各自只有一条路能认出来：
+         * <ul>
+         *   <li>{@code 10斤} —— 正式标签是「5kg」，「10斤」只存在于**别名**里
+         *       （既不是任何值的标签，也不是任何类目的改名，我核过全库）。
+         *       此前 resolveValueNos 压根不查别名那一列，于是这一档必然归不了一。
+         *       而线上真有商家这么写：10斤、20斤、5斤、3斤 —— 生鲜按斤卖是常态。</li>
+         *   <li>{@code 500 ML} —— 库里是「500ml」。中间一个空格、单位大写，
+         *       此前直接 `label.trim()` 比对，差一个字符就分家。</li>
+         * </ul>
+         *
+         * <p><b>别拿「单个」这类做用例</b>：CAT280/CAT740 把 C1 改名叫「单个」，
+         * 而类目改名那一轮只按维度查、不按类目筛，于是它从改名那条路也能解出来 ——
+         * 别名坏了测试照样绿。我第一版就踩了这个，特此记下。
+         *
+         * <p>线上实测：394 个 SKU 里带 option_value_nos 的是 0 个。
+         * 这条测试就是拿来钉住那个 0 不再回来的。
+         */
+        String token = merchant("12600199077", "手打规格·杂货铺");
+        String body = mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"categoryNo\":\"CAT110\",\"title\":\"手打规格测试\","
+                                + "\"subtitle\":\"测试\",\"cover\":\"📦\",\"images\":[],"
+                                + "\"specGroups\":["
+                                + "{\"name\":\"重量\",\"templateNo\":\"SD_WEIGHT\",\"options\":[\"10斤\"]},"
+                                + "{\"name\":\"容量\",\"templateNo\":\"SD_VOLUME\",\"options\":[\"500 ML\"]}],"
+                                + "\"skus\":[{\"optionValues\":[\"10斤\",\"500 ML\"],"
+                                + "\"price\":500,\"stock\":9}]}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        String goodsNo = json.readTree(body).get("data").get("goodsNo").asString();
+
+        java.util.List<ai.neargo.shop.product.entity.PrdSku> rows =
+                ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() ->
+                        skuMapper.selectList(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                                .<ai.neargo.shop.product.entity.PrdSku>lambdaQuery()
+                                .eq(ai.neargo.shop.product.entity.PrdSku::getGoodsNo, goodsNo)));
+        assertThat(rows).as("商品存下来了就该有 SKU 行").isNotEmpty();
+
+        String nos = rows.get(0).getOptionValueNos();
+        assertThat(nos)
+                .as("两个规格都该盖上值编号 —— 空的话这件商品跟别家永远比不了价")
+                .isNotNull();
+        JsonNode arr = json.readTree(nos);
+        assertThat(arr.size()).as("两个规格组就该有两个值编号").isEqualTo(2);
+        /*
+         * **断到确切编号，不能只断「非空」**。只断非空的话，商家自助建值那条路
+         * （ensureValue 会给本店造一个新值）也能让它变绿 —— 而那恰恰是要防的：
+         * 每家店各造一个「单个」，跨店比价照样比不了，测试却是绿的。
+         * 要的是落到**平台库里那一条**。
+         */
+        assertThat(arr.get(0).asString())
+                .as("「10斤」只在 5kg 的别名里 —— 认不出来就说明别名那一列还是没人查")
+                .isEqualTo("SV_WEIGHT_W5KG");
+        assertThat(arr.get(1).asString())
+                .as("「500 ML」跟库里的「500ml」是同一档 —— 差一个空格、一个大小写都不该分家")
+                .isEqualTo("SV_VOLUME_V500ML");
     }
 
     @Test

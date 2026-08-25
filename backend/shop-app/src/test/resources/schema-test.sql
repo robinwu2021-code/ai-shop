@@ -3104,6 +3104,48 @@ CREATE TABLE IF NOT EXISTS prd_merchant_spec_override
     CONSTRAINT uk_mch_spec_override UNIQUE (tenant_no, merchant_no, category_no, dim_no, value_no)
 );
 
+CREATE TABLE IF NOT EXISTS usr_person
+(
+    id BIGINT(20) NOT NULL AUTO_INCREMENT,
+    person_no VARCHAR(64) NOT NULL,
+    phone_hash VARCHAR(64) NOT NULL,
+    phone_enc VARCHAR(255) DEFAULT NULL,
+    phone_tail VARCHAR(8) DEFAULT NULL,
+    user_no VARCHAR(64) DEFAULT NULL,
+    merged_into VARCHAR(64) DEFAULT NULL,
+    status VARCHAR(16) NOT NULL DEFAULT 'ACTIVE',
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT(20) NOT NULL DEFAULT 0,
+    deleted TINYINT(4) NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_person_no UNIQUE (person_no),
+    CONSTRAINT uk_person_phone UNIQUE (tenant_no, phone_hash),
+    CONSTRAINT uk_person_user UNIQUE (tenant_no, user_no)
+);
+
+CREATE TABLE IF NOT EXISTS usr_person_merge_log
+(
+    id BIGINT(20) NOT NULL AUTO_INCREMENT,
+    from_person_no VARCHAR(64) NOT NULL,
+    to_person_no VARCHAR(64) NOT NULL,
+    reason VARCHAR(32) NOT NULL,
+    affected_members INT(11) NOT NULL DEFAULT 0,
+    operator_no VARCHAR(64) DEFAULT NULL,
+    merged_at BIGINT(20) NOT NULL,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT(20) NOT NULL DEFAULT 0,
+    deleted TINYINT(4) NOT NULL DEFAULT 0,
+    PRIMARY KEY (id)
+);
+
 -- 种子数据
 INSERT INTO sys_industry VALUES
 (1,'CATERING','餐饮',10,1,1,0,0,'微信小微白名单内','MAIN','2026-08-09 12:49:36','SYSTEM','2026-08-09 12:49:36',NULL,0,0),
