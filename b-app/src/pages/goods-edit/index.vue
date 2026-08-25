@@ -477,6 +477,52 @@ function pickParent(c: Category) {
  * 所以不藏起来，就摆在一级类目上面那一行。
  */
 const RECENT_CATS_KEY = "biz.recentCategories";
+
+/*
+ * 「这个类目上次展没展开规格」记在本机。
+ *
+ * <p><b>不同商家的管理方式，由他自己的历史表达 —— 不由平台判断他是谁。</b>
+ * 张姐第一次上菠菜时点开又收起了，下次她的蔬菜就默认收起；
+ * 老陈每次上大米都展开重量，下次直接给他展开。**没有人需要配置任何东西。**
+ *
+ * <p>为什么不上后端：一张表、一次迁移、一条接口，换来的是同一件事。
+ * 与同一页的「最近用过的类目」（{@link RECENT_CATS_KEY}）同一套机制。
+ *
+ * <p>为什么不按类目在平台侧配一个默认值：那要有人先过一遍 73 个类目表，
+ * 而配错了商家还不知道能改。他自己点过的那一次，比任何人的猜测都准。
+ */
+const SPEC_OPEN_KEY = "biz.specOpenByCategory";
+
+/** 规格区是否展开。收起时只剩一行「这件货要分档卖？」 */
+const specOpen = ref(false);
+
+function specOpenMap(): Record<string, boolean> {
+  try {
+    return (uni.getStorageSync(SPEC_OPEN_KEY) as Record<string, boolean>) || {};
+  } catch {
+    return {};
+  }
+}
+
+/** 选完类目时取上次的选择；没记录过就按「有没有带出规格组」定 */
+function restoreSpecOpen() {
+  const no = categoryNo.value;
+  if (!no) return;
+  const remembered = specOpenMap()[no];
+  specOpen.value = remembered === undefined ? groups.value.length > 0 : remembered;
+}
+
+/** 他每次开合都记一笔 —— 记的是**这一类**，不是全局 */
+function rememberSpecOpen(open: boolean) {
+  specOpen.value = open;
+  const no = categoryNo.value;
+  if (!no) return;
+  try {
+    uni.setStorageSync(SPEC_OPEN_KEY, { ...specOpenMap(), [no]: open });
+  } catch {
+    /* 存不下就算了：下次按默认走，不影响这次操作 */
+  }
+}
 const recentCats = ref<{ categoryNo: string; name: string }[]>([]);
 
 function loadRecentCats() {
@@ -551,6 +597,8 @@ async function select(path: Category[]) {
    */
   await loadTemplates();
   autoApplyDefaultSpec();
+  // 展不展开取他上次在这一类的选择；没记录过就看有没有带出规格组
+  restoreSpecOpen();
 }
 
 /**
@@ -756,6 +804,22 @@ const bulk = ref({ price: "", stock: "", cost: "" });
 
 const isEdit = computed(() => !!goodsNo.value);
 const multi = computed(() => groups.value.length > 0);
+
+/**
+ * 加一个规格维度要多填几行 —— **当场说出来**。
+ *
+ * <p>「3 × 2 = 6 个规格，要填 6 个价和库存」。此前页面从不提这件事，
+ * 商家加完第二个维度才发现要填一屏，而那时他已经填了一半。
+ * 只在**两个维度起**才显示：一个维度时「3 个档位 = 3 行」是自明的。
+ */
+const skuCost = computed(() => {
+  const counts = groups.value
+    .map((g) => g.options.filter((o) => o.trim()).length)
+    .filter((n) => n > 0);
+  if (counts.length < 2) return "";
+  const n = counts.reduce((a, b) => a * b, 1);
+  return t("goods.skuCost", { s: counts.join(" × "), n });
+});
 /**
  * 还差什么才能保存。**把判据说出来，而不是只把按钮灰掉。**
  *
@@ -1718,6 +1782,12 @@ onLoad(async (q) => {
   categoryNo.value = g.categoryNo ?? "";
   catPath.value = categoryNo.value ? findPath(categoryTree.value, categoryNo.value) : [];
   /*
+   * 编辑已有商品：**它本来就有规格组就一定展开** —— 收起会让他以为规格丢了。
+   * 没有规格组的才落回「他上次在这一类的选择」。
+   */
+  specOpen.value = (g.specGroups?.length ?? 0) > 0;
+  if (!specOpen.value) restoreSpecOpen();
+  /*
    * 履约方式与几段可选字段**都要回显**：保存是整份覆盖，回显不全就等于每保存一次
    * 清一次 —— 与轮播图、三语原文是同一个形状的故障（都不报错）。
    */
@@ -2330,7 +2400,7 @@ async function save(thenSubmit = false) {
           它唯一还独占的是「我的常用」，已经折进下面的「＋ 规格组」面板里，
           与本类目 / 平台通用 / 自己起名摆在一处：**一个入口，一次选择。**
         -->
-        <view class="sec__ops">
+        <view v-if="specOpen" class="sec__ops">
           <!--
             **一个入口，不是两个。** 从前「＋ 规格组」（空框手输）与「＋ 自定义规格」
             （空对话框凭记忆敲名字）并排摆着，两条都是盲输，而盲输的代价看不见：
@@ -2338,9 +2408,36 @@ async function save(thenSubmit = false) {
             现在点进去先看平台有什么，「自己起个名」在面板最下面。
           -->
           <text class="link" @tap="openDimPicker">{{ $t("goods.addGroup") }}</text>
+          <text class="link link--quiet" @tap="rememberSpecOpen(false)">{{ $t("goods.specFold") }}</text>
         </view>
       </view>
+
+      <!--
+        **不分规格的货，这一整块是收起的。**
+
+        <p>社区店大半的货没有规格 —— 菠菜就是菠菜，称重卖。
+        对这些货，「规格组」「最多 3 组」这些词一个都不成立，却占着屏幕最显眼的一段。
+        收起之后只剩一句问话，他点或不点就是答案 —— 不必判断他是专业还是业余，
+        而且判断错了的代价只是多点一次。
+
+        <p>展开与否记在**这个类目**上（见 SPEC_OPEN_KEY）：同一个商家卖菠菜和卖电子秤
+        本来就该是两种默认。
+      -->
+      <view v-if="!specOpen" class="askspec" @tap="rememberSpecOpen(true)">
+        <view class="askspec__l">
+          <text class="askspec__t">{{ $t("goods.specAsk") }}</text>
+          <text class="sh-muted askspec__s">{{ $t("goods.specAskHint") }}</text>
+        </view>
+        <text class="askspec__go">›</text>
+      </view>
+
+      <template v-if="specOpen">
       <text class="sh-muted hint">{{ $t("goods.specHint") }}</text>
+      <!--
+        **代价当场可见。** 「3 × 2 = 6 个规格，要填 6 个价和库存」——
+        此前页面从不提这件事，商家加完第二个维度才发现要填一屏，而那时已经填了一半。
+      -->
+      <text v-if="skuCost" class="skucost">{{ skuCost }}</text>
       <!--
         自动套上的默认规格要**说清是谁替他填的、并且能一键撤销**：
         不说的话，商家会以为这几个规格是系统强加的，而它其实只是个起点。
@@ -2486,6 +2583,7 @@ async function save(thenSubmit = false) {
           </view>
         </view>
       </view>
+      </template>
     </view>
 
     <!-- SKU 矩阵 -->
@@ -2783,6 +2881,57 @@ async function save(thenSubmit = false) {
 </template>
 
 <style scoped>
+/*
+  「这件货要分档卖？」—— 收起态的整块。
+  做成一行可点的问句而不是一个链接：它此刻是这一段唯一的操作，
+  给足点击面积比省地方重要。
+*/
+.askspec {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  padding: 20rpx 0 4rpx;
+}
+
+.askspec__l {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4rpx;
+}
+
+.askspec__t {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: var(--sh-ink);
+}
+
+.askspec__s {
+  font-size: 24rpx;
+}
+
+.askspec__go {
+  font-size: 34rpx;
+  color: var(--sh-sub);
+}
+
+/*
+  加一维要多填几行，当场说出来。用主色是因为它是**代价**不是提示 ——
+  灰字会被当成又一句说明，而这一句正是他最该看见的。
+*/
+.skucost {
+  display: block;
+  font-size: 24rpx;
+  font-weight: 600;
+  color: var(--sh-primary);
+  margin-top: 8rpx;
+}
+
+/* 「收起」压在「更多规格」旁边：同一行两个链接，主次要分得出来 */
+.link--quiet {
+  color: var(--sh-sub);
+}
+
 /* 推荐规格：一行一个维度 —— 左边问句、右边前三档，点档位一步成组 */
 .tplsug {
   display: flex;
