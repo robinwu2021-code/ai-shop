@@ -34,6 +34,8 @@ public final class BizKey {
     public static final String MEMBER_SOURCE = "MS";
     /** 会员标签。号不可变，名字可改 —— 关系表存的是它 */
     public static final String MEMBER_TAG = "MT";
+    /** 人群：一组筛选条件。发券、活动受众、触达共用它，避免同一群人算出三个数 */
+    public static final String MEMBER_SEGMENT = "SG";
     public static final String ADDRESS = "AD";
     public static final String TICKET = "TK";
     public static final String MESSAGE = "MSG";

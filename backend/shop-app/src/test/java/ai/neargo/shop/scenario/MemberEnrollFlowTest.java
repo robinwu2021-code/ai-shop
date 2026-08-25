@@ -151,11 +151,12 @@ class MemberEnrollFlowTest {
                 System.currentTimeMillis());
 
         var hit = memberService.list(e, new ai.neargo.shop.member.dto.MemberVOs.MemberQuery(
-                null, null, null, null, phone, null, null, null, null, 1, 20));
+                null, null, null, null, phone, java.util.List.of(), null, null, null, null, 1, 20));
         assertThat(hit.records()).hasSize(1);
 
         var prefix = memberService.list(e, new ai.neargo.shop.member.dto.MemberVOs.MemberQuery(
-                null, null, null, null, phone.substring(0, 6), null, null, null, null, 1, 20));
+                null, null, null, null, phone.substring(0, 6), java.util.List.of(),
+                null, null, null, null, 1, 20));
         assertThat(prefix.records()).as("前缀查不到人").isEmpty();
     }
 }

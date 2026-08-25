@@ -196,6 +196,12 @@ class BizEndpointPermTest {
         put("/biz/member-tags", BizPerms.CUSTOMER);
         put("/biz/member-tags/{tagNo}", BizPerms.CUSTOMER);
         put("/biz/member-tags/{tagNo}/merge", BizPerms.CUSTOMER);
+        put("/biz/member-segments", BizPerms.CUSTOMER);
+        put("/biz/member-segments/{segmentNo}", BizPerms.CUSTOMER);
+        put("/biz/member-segments/preview", BizPerms.CUSTOMER);
+        // 同一路径两个方法两种权限：读是 biz:customer，改是 biz:store:admin
+        // （改口径会改变全主体「新客」的含义）。表里按更严的那个记
+        put("/biz/member-settings", BizPerms.STORE_ADMIN);
         // 只改公告：与整份门面同一个码 —— 它写的是同一张表的同一家店
         put("/biz/store/announcement", BizPerms.STORE);
         // 删一条常用语：还是那张表那一家店，同一个码

@@ -18,10 +18,20 @@ public final class MemberVOs {
      *
      * @param storeNo 空 = 按主体口径；主体开了「按门店经营」时**必填**
      * @param phone   <b>完整手机号才匹配</b>。前缀模糊查询会把会员库变成通讯录
+     * @param tagNos  <b>取交集</b>：选两个标签是「都要满足」，不是「任一」。
+     *                并集会算出比单选任何一个都大的人群 —— 商家点第二个标签是想收窄，
+     *                结果人数反而涨了，没人看得懂。界面上写「同时含以下标签」
      */
     public record MemberQuery(String storeNo, String level, String source, String status,
-                              String phone, Long lastOrderBefore, Long lastOrderAfter,
+                              String phone, java.util.List<String> tagNos,
+                              Long lastOrderBefore, Long lastOrderAfter,
                               Long spentMin, Long spentMax, long page, long size) {
+
+        /** 人群条件里不带分页 —— 试算与解析都是全量 */
+        public MemberQuery unpaged() {
+            return new MemberQuery(storeNo, level, source, status, phone, tagNos,
+                    lastOrderBefore, lastOrderAfter, spentMin, spentMax, 1, 0);
+        }
     }
 
     /**
@@ -55,6 +65,37 @@ public final class MemberVOs {
 
     public record MemberDetailVO(MemberVO member, List<MemberStoreVO> stores,
                                  List<MemberSourceVO> sources, List<TagVO> tags) {
+    }
+
+    /**
+     * 人群：一组条件 + 上次算出的人数。
+     *
+     * @param lastCount 上次算的人数，**只是展示** —— 发券与触达前会当场重算。
+     *                  界面上要把「上次算于 X 时」写出来，否则商家会拿它当此刻的人数
+     */
+    public record SegmentVO(String segmentNo, String name, String scopeStoreNo,
+                            MemberQuery rule, int lastCount, Long countedAt) {
+    }
+
+    /**
+     * 会员经营口径。
+     *
+     * @param memberScope ENTITY 按主体（默认）/ STORE 按门店。
+     *                    <b>只改展示与分层口径，不改存储</b> —— 两级指标一直都在算，
+     *                    所以随时可切、切回来也不丢
+     */
+    /**
+     * 人群试算结果。
+     *
+     * @param count     条件命中多少人
+     * @param reachable 其中<b>能真正收到东西</b>的有多少（排除线索会员与退订的人）。
+     *                  只报 count 的话，商家在人群页看到 120、发放页发出 96，
+     *                  他会以为发漏了 —— 而实际上那 24 个人从一开始就进不了受众
+     */
+    public record SegmentPreviewVO(int count, int reachable) {
+    }
+
+    public record MemberSettingVO(String memberScope, boolean autoJoinOnOrder) {
     }
 
     /**

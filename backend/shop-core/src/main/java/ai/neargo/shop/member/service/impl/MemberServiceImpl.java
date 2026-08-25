@@ -7,12 +7,14 @@ import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.member.dto.MemberVOs.MemberDetailVO;
 import ai.neargo.shop.member.dto.MemberVOs.MemberQuery;
 import ai.neargo.shop.member.dto.MemberVOs.MemberSourceVO;
+import ai.neargo.shop.member.dto.MemberVOs.MemberSettingVO;
 import ai.neargo.shop.member.dto.MemberVOs.MemberStatsVO;
 import ai.neargo.shop.member.dto.MemberVOs.MemberStoreVO;
 import ai.neargo.shop.member.dto.MemberVOs.MemberVO;
 import ai.neargo.shop.member.entity.MbrMember;
 import ai.neargo.shop.member.entity.MbrMemberSource;
 import ai.neargo.shop.member.entity.MbrMemberStore;
+import ai.neargo.shop.member.entity.MbrMemberTag;
 import ai.neargo.shop.member.entity.MbrSetting;
 import ai.neargo.shop.member.mapper.MemberMappers.MemberMapper;
 import ai.neargo.shop.member.mapper.MemberMappers.MemberSourceMapper;
@@ -51,10 +53,16 @@ public class MemberServiceImpl implements MemberService {
     /** 详情页要显示他身上的标签。同域直接依赖，不必绕 Port */
     private final ai.neargo.shop.member.service.MemberTagService tagService;
 
+    /** 按标签筛人要读关系表。判 tagNo 存不存在是标签服务的事，这里只做交集 */
+    private final ai.neargo.shop.member.mapper.MemberMappers.MemberTagMapper memberTagMapper;
+
     public MemberServiceImpl(MemberMapper memberMapper, MemberStoreMapper storeMapper,
                              MemberSourceMapper sourceMapper, SettingMapper settingMapper,
                              PersonPort personPort,
-                             ai.neargo.shop.member.service.MemberTagService tagService) {
+                             ai.neargo.shop.member.service.MemberTagService tagService,
+                             ai.neargo.shop.member.mapper.MemberMappers.MemberTagMapper
+                                     memberTagMapper) {
+        this.memberTagMapper = memberTagMapper;
         this.memberMapper = memberMapper;
         this.storeMapper = storeMapper;
         this.sourceMapper = sourceMapper;
@@ -206,10 +214,43 @@ public class MemberServiceImpl implements MemberService {
 
     @Override
     public PageData<MemberVO> list(String entityNo, MemberQuery q) {
+        LambdaQueryWrapper<MbrMember> w = baseQuery(entityNo, q);
+        // 沉睡的排最前：那是店主唯一能立刻行动的信号，埋在列表底部等于没有
+        w.last("order by case when level = 'SLEEPING' then 0 else 1 end, last_order_at desc");
+
+        long pageNo = Math.max(q.page(), 1);
+        long size = q.size() <= 0 ? 20 : Math.min(q.size(), 100);
+        Page<MbrMember> page = memberMapper.selectPage(Page.of(pageNo, size), w);
+        return PageData.of(page.getRecords().stream().map(m -> vo(m, q.storeNo())).toList(),
+                page.getTotal(), pageNo, size);
+    }
+
+    @Override
+    public List<String> match(String entityNo, MemberQuery q) {
+        return memberMapper.selectList(baseQuery(entityNo, q)).stream()
+                .map(MbrMember::getMemberNo).toList();
+    }
+
+    @Override
+    public List<String> matchReachable(String entityNo, MemberQuery q) {
+        return memberMapper.selectList(baseQuery(entityNo, q)).stream()
+                .filter(MbrMember::reachable).map(MbrMember::getMemberNo).toList();
+    }
+
+    /**
+     * 筛选条件 → 查询。<b>列表、人群试算、发放共用这一处</b> ——
+     * 三处各写一遍，同一群人会算出三个数，而商家分不清哪个对。
+     *
+     * <p><b>按门店筛时走的是门店行</b>（{@code mbr_member_store}）：
+     * 「南门店的沉睡老客」问的是他在南门店的往来，不是他在整个主体的往来。
+     */
+    private LambdaQueryWrapper<MbrMember> baseQuery(String entityNo, MemberQuery q) {
         LambdaQueryWrapper<MbrMember> w = Wrappers.<MbrMember>lambdaQuery()
                 .eq(MbrMember::getEntityNo, entityNo)
                 .eq(q.status() != null, MbrMember::getStatus, q.status())
-                .eq(q.level() != null, MbrMember::getLevel, q.level())
+                // 门店口径下 level 由门店行判（见下），主表这条只在按主体时生效
+                .eq(q.level() != null && (q.storeNo() == null || q.storeNo().isBlank()),
+                        MbrMember::getLevel, q.level())
                 .eq(q.source() != null, MbrMember::getSource, q.source())
                 .le(q.lastOrderBefore() != null, MbrMember::getLastOrderAt, q.lastOrderBefore())
                 .ge(q.lastOrderAfter() != null, MbrMember::getLastOrderAt, q.lastOrderAfter())
@@ -225,18 +266,54 @@ public class MemberServiceImpl implements MemberService {
             String personNo = personPort.resolveOrCreateByPhone(q.phone()).personNo();
             w.eq(MbrMember::getPersonNo, personNo);
         }
-        // 沉睡的排最前：那是店主唯一能立刻行动的信号，埋在列表底部等于没有
-        w.last("order by case when level = 'SLEEPING' then 0 else 1 end, last_order_at desc");
+        /*
+         * 标签取交集：选两个标签是「都要满足」。并集会算出比单选任何一个都大的人群 ——
+         * 商家点第二个标签本意是收窄，人数反而涨了，没人看得懂。
+         *
+         * 用「按会员号分组、数够个数」而不是 N 次 in：标签少（每人最多十几个），
+         * 一次取回来在内存里数比拼 N 个子查询清楚，也不用写 XML。
+         */
+        if (q.tagNos() != null && !q.tagNos().isEmpty()) {
+            List<String> nos = memberTagMapper.selectList(Wrappers.<MbrMemberTag>lambdaQuery()
+                            .eq(MbrMemberTag::getEntityNo, entityNo)
+                            .in(MbrMemberTag::getTagNo, q.tagNos()))
+                    .stream().collect(java.util.stream.Collectors.groupingBy(
+                            MbrMemberTag::getMemberNo, java.util.stream.Collectors.counting()))
+                    .entrySet().stream()
+                    .filter(e -> e.getValue() >= q.tagNos().size())
+                    .map(java.util.Map.Entry::getKey).toList();
+            w.in(MbrMember::getMemberNo, nos.isEmpty() ? List.of("__none__") : nos);
+        }
 
-        long pageNo = Math.max(q.page(), 1);
-        long size = q.size() <= 0 ? 20 : Math.min(q.size(), 100);
-        Page<MbrMember> page = memberMapper.selectPage(Page.of(pageNo, size), w);
-        return PageData.of(page.getRecords().stream().map(this::vo).toList(),
-                page.getTotal(), pageNo, size);
+        /*
+         * 门店口径：先按门店行筛出人，再用他们的会员号收窄主表查询。
+         * 门店行里没有身份字段（状态、来源、标签都在主表），所以两边各筛各的那部分。
+         */
+        if (q.storeNo() != null && !q.storeNo().isBlank()) {
+            var storeRows = storeMapper.selectList(Wrappers.<MbrMemberStore>lambdaQuery()
+                    .eq(MbrMemberStore::getEntityNo, entityNo)
+                    .eq(MbrMemberStore::getStoreNo, q.storeNo())
+                    .eq(q.level() != null, MbrMemberStore::getLevel, q.level())
+                    .le(q.lastOrderBefore() != null, MbrMemberStore::getLastOrderAt, q.lastOrderBefore())
+                    .ge(q.lastOrderAfter() != null, MbrMemberStore::getLastOrderAt, q.lastOrderAfter()));
+            List<String> nos = storeRows.stream().map(MbrMemberStore::getMemberNo).toList();
+            // 一个都没有时给一个不可能命中的值，否则 in() 空集合会被 MyBatis-Plus 忽略掉，
+            // 变成「整个主体的会员」—— 那正好是反的
+            w.in(MbrMember::getMemberNo, nos.isEmpty() ? List.of("__none__") : nos);
+        }
+        return w;
     }
 
     @Override
     public MemberStatsVO stats(String entityNo, String storeNo) {
+        /*
+         * 按门店经营时，四个数字要按门店行算 —— 「新客」的含义随之变成
+         * **对这家店第一次买**（在别的店买过也算）。这正是十公里外那家店要的判断，
+         * 而按主体口径下那个人会被算成熟客、漏在新客活动之外。
+         */
+        if (storeNo != null && !storeNo.isBlank()) {
+            return storeStats(entityNo, storeNo);
+        }
         List<MbrMember> all = memberMapper.selectList(Wrappers.<MbrMember>lambdaQuery()
                 .eq(MbrMember::getEntityNo, entityNo));
         long monthStart = LocalDate.now(ZoneOffset.UTC).withDayOfMonth(1)
@@ -263,6 +340,79 @@ public class MemberServiceImpl implements MemberService {
         }
         // unlinkedBuyers 由应用层用订单数与会员数的差额算（会员域不认识订单表），这里给 0
         return new MemberStatsVO(neu, regular, loyal, sleeping, reachable, newThisMonth, 0);
+    }
+
+    /** 门店口径的四个数字。可触达与本月新增仍按人算 —— 那两个与门店无关 */
+    private MemberStatsVO storeStats(String entityNo, String storeNo) {
+        List<MbrMemberStore> rows = storeMapper.selectList(Wrappers.<MbrMemberStore>lambdaQuery()
+                .eq(MbrMemberStore::getEntityNo, entityNo)
+                .eq(MbrMemberStore::getStoreNo, storeNo));
+        int neu = 0;
+        int regular = 0;
+        int loyal = 0;
+        int sleeping = 0;
+        for (MbrMemberStore r : rows) {
+            switch (nzs(r.getLevel())) {
+                case MbrMember.LEVEL_REGULAR -> regular++;
+                case MbrMember.LEVEL_LOYAL -> loyal++;
+                case MbrMember.LEVEL_SLEEPING -> sleeping++;
+                default -> neu++;
+            }
+        }
+        long monthStart = LocalDate.now(ZoneOffset.UTC).withDayOfMonth(1)
+                .atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli();
+        int reachable = 0;
+        int newThisMonth = 0;
+        for (MbrMemberStore r : rows) {
+            MbrMember m = memberMapper.selectOne(Wrappers.<MbrMember>lambdaQuery()
+                    .eq(MbrMember::getMemberNo, r.getMemberNo()).last("limit 1"));
+            if (m == null) {
+                continue;
+            }
+            if (m.reachable()) {
+                reachable++;
+            }
+            if (nz(m.getJoinedAt()) >= monthStart) {
+                newThisMonth++;
+            }
+        }
+        return new MemberStatsVO(neu, regular, loyal, sleeping, reachable, newThisMonth, 0);
+    }
+
+    @Override
+    public MemberSettingVO settings(String entityNo) {
+        MbrSetting s = settingRow(entityNo);
+        return new MemberSettingVO(
+                s == null || s.getMemberScope() == null ? MbrSetting.ENTITY : s.getMemberScope(),
+                s == null || s.getAutoJoinOnOrder() == null || s.getAutoJoinOnOrder() == 1);
+    }
+
+    @Override
+    @Transactional
+    public MemberSettingVO saveSettings(String entityNo, String memberScope,
+                                        Boolean autoJoinOnOrder) {
+        MbrSetting s = settingRow(entityNo);
+        if (s == null) {
+            s = new MbrSetting();
+            s.setEntityNo(entityNo);
+            s.setMemberScope(MbrSetting.ENTITY);
+            s.setAutoJoinOnOrder(1);
+            settingMapper.insert(s);
+        }
+        if (memberScope != null
+                && (MbrSetting.ENTITY.equals(memberScope) || MbrSetting.STORE.equals(memberScope))) {
+            s.setMemberScope(memberScope);
+        }
+        if (autoJoinOnOrder != null) {
+            s.setAutoJoinOnOrder(autoJoinOnOrder ? 1 : 0);
+        }
+        settingMapper.updateById(s);
+        return new MemberSettingVO(s.getMemberScope(), nz(s.getAutoJoinOnOrder()) == 1);
+    }
+
+    private MbrSetting settingRow(String entityNo) {
+        return settingMapper.selectOne(Wrappers.<MbrSetting>lambdaQuery()
+                .eq(MbrSetting::getEntityNo, entityNo).last("limit 1"));
     }
 
     @Override
@@ -412,21 +562,38 @@ public class MemberServiceImpl implements MemberService {
     }
 
     private MemberVO vo(MbrMember m) {
-        String tail = personPort.find(m.getPersonNo()).map(PersonPort.PersonView::phoneTail)
-                .orElse(null);
-        Integer days = m.getLastOrderAt() == null ? null
-                : (int) ((System.currentTimeMillis() - m.getLastOrderAt()) / DAY);
-        return new MemberVO(m.getMemberNo(), m.getPersonNo(), tail, m.getStatus(), m.getSource(),
-                m.getLevel(), m.getFirstStoreNo(), m.getOrderCount(), m.getTotalSpentMinor(),
-                m.getD90OrderCount(), m.getLastOrderAt(), days,
-                nz(m.getReachOptOut()) == 1, m.getRemark(), nz(m.getJoinedAt()));
+        return vo(m, null);
     }
 
-    /** 主体的经营口径。没配过就是按主体 —— 多数商家只有一家店，那也是对的默认 */
-    public String scopeOf(String entityNo) {
-        MbrSetting s = settingMapper.selectOne(Wrappers.<MbrSetting>lambdaQuery()
-                .eq(MbrSetting::getEntityNo, entityNo).last("limit 1"));
-        return s == null || s.getMemberScope() == null ? MbrSetting.ENTITY : s.getMemberScope();
+    /**
+     * @param storeNo 非空时，<b>数字与分层都取这家店的</b> ——
+     *                按门店经营的商家看的是「他在我这家店买过几次」，
+     *                而不是「他在这个主体买过几次」。这两个数在多店主体上差得很远
+     */
+    private MemberVO vo(MbrMember m, String storeNo) {
+        String tail = personPort.find(m.getPersonNo()).map(PersonPort.PersonView::phoneTail)
+                .orElse(null);
+        String level = m.getLevel();
+        Integer orders = m.getOrderCount();
+        Long spent = m.getTotalSpentMinor();
+        Integer d90 = m.getD90OrderCount();
+        Long last = m.getLastOrderAt();
+        if (storeNo != null && !storeNo.isBlank()) {
+            MbrMemberStore st = storeMapper.selectOne(Wrappers.<MbrMemberStore>lambdaQuery()
+                    .eq(MbrMemberStore::getMemberNo, m.getMemberNo())
+                    .eq(MbrMemberStore::getStoreNo, storeNo).last("limit 1"));
+            if (st != null) {
+                level = st.getLevel();
+                orders = st.getOrderCount();
+                spent = st.getTotalSpentMinor();
+                d90 = st.getD90OrderCount();
+                last = st.getLastOrderAt();
+            }
+        }
+        Integer days = last == null ? null : (int) ((System.currentTimeMillis() - last) / DAY);
+        return new MemberVO(m.getMemberNo(), m.getPersonNo(), tail, m.getStatus(), m.getSource(),
+                level, m.getFirstStoreNo(), orders, spent, d90, last, days,
+                nz(m.getReachOptOut()) == 1, m.getRemark(), nz(m.getJoinedAt()));
     }
 
     private static int nz(Integer v) {

@@ -38,6 +38,10 @@ public final class MemberMappers {
     public interface MemberTagMapper extends BaseMapper<ai.neargo.shop.member.entity.MbrMemberTag> {
     }
 
+    /** 人群：一组条件。发券、活动受众、触达都引用它 */
+    public interface SegmentMapper extends BaseMapper<ai.neargo.shop.member.entity.MbrSegment> {
+    }
+
     public interface TagMergeLogMapper
             extends BaseMapper<ai.neargo.shop.member.entity.MbrTagMergeLog> {
     }

@@ -16,6 +16,10 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import ai.neargo.shop.member.dto.MemberVOs.MergePreviewVO;
 import ai.neargo.shop.member.dto.MemberVOs.TagVO;
 import ai.neargo.shop.member.service.MemberTagService;
+import ai.neargo.shop.member.dto.MemberVOs;
+import ai.neargo.shop.member.dto.MemberVOs.MemberSettingVO;
+import ai.neargo.shop.member.dto.MemberVOs.SegmentVO;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -42,7 +46,11 @@ public class BizMemberController {
     private final MemberService memberService;
     private final MemberTagService tagService;
 
-    public BizMemberController(MemberService memberService, MemberTagService tagService) {
+    private final ai.neargo.shop.member.service.MemberSegmentService segmentService;
+
+    public BizMemberController(MemberService memberService, MemberTagService tagService,
+                               ai.neargo.shop.member.service.MemberSegmentService segmentService) {
+        this.segmentService = segmentService;
         this.memberService = memberService;
         this.tagService = tagService;
     }
@@ -61,6 +69,7 @@ public class BizMemberController {
                                       @RequestParam(required = false) String source,
                                       @RequestParam(required = false) String status,
                                       @RequestParam(required = false) String phone,
+                                      @RequestParam(required = false) String tagNos,
                                       @RequestParam(required = false) Long lastOrderBefore,
                                       @RequestParam(required = false) Long lastOrderAfter,
                                       @RequestParam(required = false) Long spentMin,
@@ -68,7 +77,7 @@ public class BizMemberController {
                                       @RequestParam(defaultValue = "1") long page,
                                       @RequestParam(defaultValue = "20") long size) {
         return memberService.list(BizContext.requireMerchantNo(),
-                new MemberQuery(storeNo, level, source, status, phone,
+                new MemberQuery(storeNo, level, source, status, phone, split(tagNos),
                         lastOrderBefore, lastOrderAfter, spentMin, spentMax, page, size));
     }
 
@@ -173,6 +182,84 @@ public class BizMemberController {
     }
 
     /** @param tagNos 录入时顺手打上的标签 */
+    /**
+     * 逗号分隔 → 列表。<b>GET 上不用重复参数</b>（{@code tagNos=a&tagNos=b}）：
+     * 端上那个 http 客户端把 `data` 直接拼查询串，数组会被拼成 `[object Object]`。
+     */
+    private static List<String> split(String csv) {
+        if (csv == null || csv.isBlank()) {
+            return List.of();
+        }
+        return java.util.Arrays.stream(csv.split(",")).map(String::trim)
+                .filter(x -> !x.isEmpty()).toList();
+    }
+
+    // ------------------------------------------------------------------ 人群（P3）
+
+    /**
+     * 会员经营口径。<b>改它会改变「新客」的含义</b> ——
+     * 按门店时，在别的店买过的人在这家店仍算新客。端上必须把这句话写出来。
+     */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.CUSTOMER + "')")
+    @GetMapping("/biz/member-settings")
+    public MemberSettingVO settings() {
+        return memberService.settings(BizContext.requireMerchantNo());
+    }
+
+    /**
+     * 改口径要 {@code biz:store:admin} 而不是 {@code biz:customer}：
+     * 它一改，全主体的分层与所有活动受众跟着变 —— 那是主体结构，不是店员该按的开关。
+     * 看会员的人（店员）都有 customer 码，挂在那个码上等于人人可改。
+     */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.STORE_ADMIN + "')")
+    @PutMapping("/biz/member-settings")
+    public MemberSettingVO saveSettings(@RequestBody SettingReq req) {
+        return memberService.saveSettings(BizContext.requireMerchantNo(),
+                req.memberScope(), req.autoJoinOnOrder());
+    }
+
+    @PreAuthorize("@perm.canBiz('" + BizPerms.CUSTOMER + "')")
+    @GetMapping("/biz/member-segments")
+    public List<SegmentVO> segments() {
+        return segmentService.list(BizContext.requireMerchantNo());
+    }
+
+    /**
+     * 存人群。<b>存的是条件不是名单</b> —— 名单每天都在变，
+     * 发券那一刻会重算（那一刻命中了谁记在发放记录里）。
+     */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.CUSTOMER + "')")
+    @PostMapping("/biz/member-segments")
+    public SegmentVO saveSegment(@RequestBody SegmentReq req) {
+        return segmentService.save(BizContext.requireMerchantNo(), req.segmentNo(), req.name(),
+                req.scopeStoreNo(), req.rule() == null ? emptyRule() : req.rule());
+    }
+
+    @PreAuthorize("@perm.canBiz('" + BizPerms.CUSTOMER + "')")
+    @DeleteMapping("/biz/member-segments/{segmentNo}")
+    public void removeSegment(@PathVariable String segmentNo) {
+        segmentService.remove(BizContext.requireMerchantNo(), segmentNo);
+    }
+
+    /** 试算：这组条件此刻命中多少人。发券前那句「命中 N 人」就是它 */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.CUSTOMER + "')")
+    @PostMapping("/biz/member-segments/preview")
+    public MemberVOs.SegmentPreviewVO previewSegment(@RequestBody SegmentReq req) {
+        return segmentService.preview(BizContext.requireMerchantNo(), req.scopeStoreNo(),
+                req.rule() == null ? emptyRule() : req.rule());
+    }
+
+    private static MemberQuery emptyRule() {
+        return new MemberQuery(null, null, null, null, null, List.of(),
+                null, null, null, null, 1, 0);
+    }
+
+    public record SettingReq(String memberScope, Boolean autoJoinOnOrder) {
+    }
+
+    public record SegmentReq(String segmentNo, String name, String scopeStoreNo, MemberQuery rule) {
+    }
+
     public record EnrollReq(String phone, String remark, List<String> tagNos, String storeNo) {
     }
 

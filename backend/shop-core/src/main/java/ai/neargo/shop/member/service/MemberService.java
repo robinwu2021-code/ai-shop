@@ -64,4 +64,29 @@ public interface MemberService {
 
     /** 这个人在这家店是不是会员（C 端店铺页那张卡、营销的受众判断都读它） */
     Optional<MbrMember> find(String entityNo, String personNo);
+
+    /** 这个主体的会员经营口径。没配过就是按主体 —— 多数商家只有一家店，那也是对的默认 */
+    ai.neargo.shop.member.dto.MemberVOs.MemberSettingVO settings(String entityNo);
+
+    /**
+     * 改经营口径。
+     *
+     * <p><b>只改展示与分层口径，不改存储</b>：主体级与门店级两份指标一直都在算，
+     * 所以商家随时可以切、切回来也不丢。界面上必须写这句，否则没人敢点。
+     */
+    ai.neargo.shop.member.dto.MemberVOs.MemberSettingVO saveSettings(
+            String entityNo, String memberScope, Boolean autoJoinOnOrder);
+
+    /** 按条件筛出会员号。人群与发放共用它 —— 三处各写一遍会算出三个数 */
+    java.util.List<String> match(String entityNo,
+                                 ai.neargo.shop.member.dto.MemberVOs.MemberQuery q);
+
+    /**
+     * 同 {@link #match}，但只留<b>能真正收到东西</b>的人。
+     *
+     * <p>发券与触达一律走这条：线索会员（商家手录的号，本人还没在平台出现）
+     * 与退订的人进不了受众 —— <b>录入手机号不等于拿到推送许可</b>。
+     */
+    java.util.List<String> matchReachable(String entityNo,
+                                          ai.neargo.shop.member.dto.MemberVOs.MemberQuery q);
 }
