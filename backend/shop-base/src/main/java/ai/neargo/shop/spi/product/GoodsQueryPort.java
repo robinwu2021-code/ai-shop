@@ -74,8 +74,14 @@ public interface GoodsQueryPort {
      *                        C 端开团时据此拒绝。定价权在商家，开团人只是把它开出来
      * @param groupMinCount   起团人数；未配时按 2 人起（一个人不叫团）
      */
+    /**
+     * @param categoryNo 二级类目。<b>与 categoryType 是两件事</b> —— 那个只有三档，
+     *                   而积分规则按二级类目配（生鲜里蔬菜和水果的毛利就不一样）。
+     *                   下单时快照进 {@code ord_item.category_no}
+     */
     record SkuSnapshot(String skuNo, String goodsNo, String merchantNo,
-                       String title, String cover, String spec, String categoryType,
+                       String title, String cover, String spec,
+                       String categoryType, String categoryNo,
                        long price, int available, boolean onSale, List<String> fulfillments,
                        Long groupPriceMinor, Integer groupMinCount) {
     }

@@ -48,10 +48,26 @@ public interface PointsPort {
      *
      * <p>幂等靠 {@code ord_sub_order.points_granted} 标记，由调用方保证只调一次。
      *
-     * @param baseMinor 计分基数：<b>实付金额</b>，不含运费、不含积分抵扣部分
+     * @param lines 按行拆开的计分输入 —— 规则按类目配，而一个子单可以跨多个类目
      * @return 实际发放的分数，0 = 商家未开启或基数太小
      */
-    GrantResult grant(String userNo, String merchantNo, long baseMinor, String subOrderNo);
+    GrantResult grant(String userNo, String merchantNo, List<EarnLine> lines, String subOrderNo);
+
+    /**
+     * 一行商品的计分输入。
+     *
+     * <p><b>为什么按行不按子单</b>：积分规则按<b>二级类目</b>配，而一个子单可以有
+     * 多件不同类目的商品（{@code ord_item} 是多行）。按子单取一个类目算整单，
+     * 在多类目子单上必然算错 —— 而且错得看不出来：总数看着是合理的。
+     *
+     * <p><b>类目取的是下单时的快照</b>（{@code ord_item.category_no}），
+     * 不是现查商品：商品可以改类目，改完不该让历史订单的口径跟着变。
+     *
+     * @param baseMinor 这一行分到的计分基数。由调用方按行金额比例分摊子单基数，
+     *                  <b>各行之和必须等于子单基数</b>（分摊余数补给最大的一行）
+     */
+    record EarnLine(String goodsNo, String categoryNo, long baseMinor) {
+    }
 
     /**
      * @param points   实际发放的分数

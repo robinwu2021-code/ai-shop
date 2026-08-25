@@ -209,7 +209,8 @@ public interface PointsService {
                         String refNo, String payChannel, String market);
 
     ai.neargo.shop.spi.settle.PointsPort.GrantResult grantOnPay(
-            String userNo, String merchantNo, long baseMinor, String subOrderNo);
+            String userNo, String merchantNo,
+            java.util.List<ai.neargo.shop.spi.settle.PointsPort.EarnLine> lines, String subOrderNo);
 
     /**
      * 一个子单的抵扣目标。

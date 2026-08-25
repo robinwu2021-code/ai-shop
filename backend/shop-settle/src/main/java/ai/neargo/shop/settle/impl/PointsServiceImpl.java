@@ -54,6 +54,12 @@ public class PointsServiceImpl implements PointsService {
 
 
     private final PointsAccountMapper accountMapper;
+    /**
+     * 「配了什么规则」的唯一来源（product 域）。
+     * <b>别在本类里再实现一遍那个优先级</b> —— 守卫测试会拦。
+     * 本类只负责「没配时用平台兜底」与「把规则换算成分」。
+     */
+    private final ai.neargo.shop.spi.product.PointsRulePort pointsRulePort;
     private final PointsLedgerMapper ledgerMapper;
     private final PointsPoolMapper poolMapper;
     private final BillMapper billMapper;
@@ -68,7 +74,8 @@ public class PointsServiceImpl implements PointsService {
                              BillMapper billMapper,
                              MerchantQueryPort merchantQuery,
                              MerchantAdminPort merchantAdmin,
-                             SettingPort settingPort) {
+                             SettingPort settingPort, ai.neargo.shop.spi.product.PointsRulePort pointsRulePort) {
+        this.pointsRulePort = pointsRulePort;
         this.accountMapper = accountMapper;
         this.ledgerMapper = ledgerMapper;
         this.poolMapper = poolMapper;
@@ -192,6 +199,29 @@ public class PointsServiceImpl implements PointsService {
         // 否则关一次开关就是一次资金事故
         merchantAdmin.setPointsEnabled(merchantNo, enabled);
         return merchantAccount(merchantNo);
+    }
+
+    /**
+     * 一行该发多少分。<b>规则从 product 域取，兜底在本域</b>。
+     *
+     * <p>「配了 0」与「没配」是两件事：前者 Port 会返回 {@code EarnRule(FIXED, 0)}，
+     * 这里如实发 0；后者返回空，才落到平台兜底比例。
+     * 把两者混为一谈的话，储值卡那种「明确要发 0 分」的商品会拿到兜底的非 0 值。
+     */
+    private long pointsForLine(ai.neargo.shop.spi.settle.PointsPort.EarnLine line, PointsConfig cfg) {
+        if (line.baseMinor() <= 0) {
+            return 0;
+        }
+        var rule = pointsRulePort.ruleFor(line.goodsNo(), line.categoryNo());
+        if (rule.isEmpty()) {
+            return cfg.earnFor(line.baseMinor());
+        }
+        var r = rule.get();
+        if (ai.neargo.shop.spi.product.PointsRulePort.FIXED.equals(r.mode())) {
+            return Math.max(0, r.value());
+        }
+        // 万分比：**整数运算**，不用浮点 —— 对账时的分位差没人说得清
+        return r.value() <= 0 ? 0 : Math.max(0, line.baseMinor() * r.value() / 10_000);
     }
 
     @Override
@@ -646,12 +676,27 @@ public class PointsServiceImpl implements PointsService {
     @Override
     @Transactional
     public ai.neargo.shop.spi.settle.PointsPort.GrantResult grantOnPay(
-            String userNo, String merchantNo, long baseMinor, String subOrderNo) {
-        if (baseMinor <= 0 || pointsDenyReason(merchantNo) != null) {
+            String userNo, String merchantNo,
+            java.util.List<ai.neargo.shop.spi.settle.PointsPort.EarnLine> lines, String subOrderNo) {
+        if (lines == null || lines.isEmpty() || pointsDenyReason(merchantNo) != null) {
             return ai.neargo.shop.spi.settle.PointsPort.GrantResult.none();
         }
         PointsConfig cfg = config();
-        long points = cfg.earnFor(baseMinor);
+        /*
+         * **按行算再汇总，不是按子单取一个类目算整单。**
+         *
+         * 积分规则按二级类目配，而一个子单可以有多件不同类目的商品。
+         * 按整单取一个类目在多类目子单上必然算错 —— 而且错得看不出来：
+         * 总数看着永远是个合理的数字，只有逐行对账才发现口径不对。
+         *
+         * 逐行取规则走 PointsRuleResolver（三层优先级的唯一入口）。
+         */
+        long points = 0;
+        for (var line : lines) {
+            points += pointsForLine(line, cfg);
+        }
+        long baseMinor = lines.stream()
+                .mapToLong(ai.neargo.shop.spi.settle.PointsPort.EarnLine::baseMinor).sum();
         if (points <= 0) {
             return ai.neargo.shop.spi.settle.PointsPort.GrantResult.none();
         }

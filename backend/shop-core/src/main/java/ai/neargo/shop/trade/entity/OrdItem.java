@@ -32,6 +32,19 @@ public class OrdItem extends BaseEntity {
     private Long amount;
 
     private String categoryType;
+
+    /**
+     * 下单时的<b>二级类目</b>快照。
+     *
+     * <p>与 {@link #categoryType} 是两件事：那个只有三档（标品/生鲜/服务），
+     * 而积分规则按二级类目配 —— 生鲜里蔬菜和水果的毛利就不一样。
+     *
+     * <p><b>快照而不是发分时现查商品</b>：商品可以改类目，改完不该让历史订单的
+     * 积分口径跟着变。事后查「这单当初为什么发 30 分」要能原样复现。
+     *
+     * <p>存量行为空：那些单的分早就发完了。
+     */
+    private String categoryNo;
     /** FRESH 按重计价：下单时锁定的标称克重。 */
     private Integer nominalGram;
 

@@ -138,8 +138,21 @@ public class PrdGoods extends BaseEntity {
     private Integer durationMin;
     private String storeName;
 
-    /** 单品积分配置（JSON）。为空时按平台兜底比例发放。 */
-    private String pointsConfig;
+    /**
+     * 本商品固定发放的积分数。<b>NULL = 没配</b>，走类目规则或平台兜底。
+     *
+     * <p>⚠️ 这里原本声明成 {@code String} 且注释写着「（JSON）」，
+     * 而库里是 {@code points_config INT(11)}（V1 baseline 的注释原文：
+     * 「本商品发放积分数；NULL 走成交额兜底比例」）。<b>类型与语义都写反了</b> ——
+     * 因为这一列从来没有任何代码读写过，谁也没撞上。2026-08-25 接积分规则时才发现。
+     *
+     * <p><b>「配了 0」与「没配」由 NULL 区分</b>，这正合适：
+     * 储值卡配 0 分是一个明确决定（充 100 送分等于双倍返利），
+     * 它必须压过类目规则；而 NULL 才是「这件商品没特殊要求」。
+     *
+     * <p>只有<b>运营</b>能配，b 端不给入口（平台统一按类目管理，这一列是例外口子）。
+     */
+    private Integer pointsConfig;
 
     /** 按端的可售覆盖（JSON），如 iOS 屏蔽某些品类。为空时走 sys_channel_category_rule。 */
     private String sellableOverride;

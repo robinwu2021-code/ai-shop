@@ -687,6 +687,8 @@ public class OrderServiceImpl implements OrderService {
                 item.setQty(line.qty);
                 item.setAmount(line.amount());
                 item.setCategoryType(line.snapshot.categoryType());
+                // 二级类目快照：积分按类目发放时读它，不现查商品（商品可以改类目）
+                item.setCategoryNo(line.snapshot.categoryNo());
                 itemMapper.insert(item);
 
                 int giftQty = gifts.getOrDefault(line.snapshot.skuNo(), 0);
@@ -708,6 +710,7 @@ public class OrderServiceImpl implements OrderService {
                     gift.setQty(giftQty);
                     gift.setAmount(0L);
                     gift.setCategoryType(line.snapshot.categoryType());
+                    gift.setCategoryNo(line.snapshot.categoryNo());
                     gift.setIsGift(true);
                     itemMapper.insert(gift);
                 }
@@ -854,7 +857,7 @@ public class OrderServiceImpl implements OrderService {
                 long base = sub.getPayAmount() == null ? 0L
                         : sub.getPayAmount() - (sub.getFreightAmount() == null ? 0L : sub.getFreightAmount());
                 var g = pointsPort.grant(order.getUserNo(), sub.getEntityNo(),
-                        base, sub.getSubOrderNo());
+                        earnLines(sub.getSubOrderNo(), base), sub.getSubOrderNo());
                 if (g.points() > 0) {
                     sub.setPointsGranted(true);
                     /*
@@ -1529,6 +1532,51 @@ public class OrderServiceImpl implements OrderService {
 
     private static long millis(java.time.LocalDateTime t) {
         return t == null ? 0L : t.atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli();
+    }
+
+    /**
+     * 把子单的计分基数<b>按行金额比例分摊</b>到各行，供按类目发放积分。
+     *
+     * <p><b>为什么要分摊而不是每行直接用自己的 amount</b>：基数是「实付减运费」——
+     * 它已经扣掉了券与积分抵扣，而那些优惠记在子单上、不分行。
+     * 直接拿行金额当基数，等于**给已经打过折的那部分钱也发分**。
+     *
+     * <p><b>赠品不参与</b>（ADR-006：否则「买赠 + 积分」可叠出套利）。
+     * 它们 amount=0，比例分摊天然给 0，这里再显式跳过一次 ——
+     * 让读代码的人不必自己去推导。
+     *
+     * <p>分摊余数补给<b>金额最大的那一行</b>，保证各行之和恰好等于子单基数：
+     * 逐行 floor 会少掉几分，而积分要与结算对账，差几分就是账对不平。
+     */
+    private List<ai.neargo.shop.spi.settle.PointsPort.EarnLine> earnLines(
+            String subOrderNo, long base) {
+        List<OrdItem> items = DataScopeContext.executeWithoutScope(() ->
+                        itemMapper.selectList(Wrappers.<OrdItem>lambdaQuery()
+                                .eq(OrdItem::getSubOrderNo, subOrderNo)))
+                .stream().filter(i -> !Boolean.TRUE.equals(i.getIsGift())).toList();
+        long total = items.stream().mapToLong(i -> nz(i.getAmount())).sum();
+        if (items.isEmpty() || total <= 0 || base <= 0) {
+            return List.of();
+        }
+        int biggest = 0;
+        for (int i = 1; i < items.size(); i++) {
+            if (nz(items.get(i).getAmount()) > nz(items.get(biggest).getAmount())) {
+                biggest = i;
+            }
+        }
+        List<ai.neargo.shop.spi.settle.PointsPort.EarnLine> out = new ArrayList<>();
+        long allocated = 0;
+        for (int i = 0; i < items.size(); i++) {
+            OrdItem it = items.get(i);
+            long share = i == biggest ? 0 : base * nz(it.getAmount()) / total;
+            allocated += share;
+            out.add(new ai.neargo.shop.spi.settle.PointsPort.EarnLine(
+                    it.getGoodsNo(), it.getCategoryNo(), share));
+        }
+        OrdItem big = items.get(biggest);
+        out.set(biggest, new ai.neargo.shop.spi.settle.PointsPort.EarnLine(
+                big.getGoodsNo(), big.getCategoryNo(), base - allocated));
+        return out;
     }
 
     private static long nz(Long v) {

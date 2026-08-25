@@ -518,6 +518,7 @@ CREATE TABLE IF NOT EXISTS ord_item
     weighed TINYINT(4) NOT NULL DEFAULT 0,
     is_gift TINYINT(4) NOT NULL DEFAULT 0,
     weigh_adjust_minor BIGINT(20) NOT NULL DEFAULT 0,
+    category_no VARCHAR(64) DEFAULT NULL,
     PRIMARY KEY (id)
 );
 
