@@ -68,7 +68,7 @@ class OpsSpuStdBulkFlowTest {
                 .andReturn().getResponse().getContentAsString();
         assertThat(json.readTree(r1).get("data").get("changed").asInt())
                 .as("两条里只有一条是归档态，改动数就该是 1")
-                .isEqualTo(1);
+                .isEqualTo(999);  // 临时：验证闸门挡不挡得住
 
         /*
          * **再点一次是 0**。运营看不到「刚才那次到底成没成」时会再点一遍，
