@@ -195,6 +195,14 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
   mMembers: { method: "GET", path: "/biz/members", auth: true, summary: "会员列表（筛选+分页）" },
   mMemberStats: { method: "GET", path: "/biz/members/stats", auth: true, summary: "四层人数与未计入买家" },
   mMemberDetail: { method: "GET", path: "/biz/members/{memberNo}", auth: true, summary: "会员详情：各店往来与来源轨迹" },
+  // 录入与标签（P2）
+  mEnrollMember: { method: "POST", path: "/biz/members", auth: true, summary: "手工录入（未注册记为线索）" },
+  mPatchMember: { method: "PUT", path: "/biz/members/{memberNo}", auth: true, summary: "改备注 / 拉黑" },
+  mTagMembers: { method: "POST", path: "/biz/members/tags", auth: true, summary: "批量打标 / 去标" },
+  mMemberTags: { method: "GET", path: "/biz/member-tags", auth: true, summary: "标签字典（含人数）" },
+  mCreateMemberTag: { method: "POST", path: "/biz/member-tags", auth: true, summary: "新建标签" },
+  mEditMemberTag: { method: "PUT", path: "/biz/member-tags/{tagNo}", auth: true, summary: "改名 / 停用" },
+  mMergeMemberTag: { method: "POST", path: "/biz/member-tags/{tagNo}/merge", auth: true, summary: "合并（confirm=false 只试算）" },
 
   mRateCard: { method: "GET", path: "/biz/settle/rate-card", auth: true, summary: "费率卡" },
   mSettleList: { method: "GET", path: "/biz/settle/bills", auth: true, summary: "结算单列表" },

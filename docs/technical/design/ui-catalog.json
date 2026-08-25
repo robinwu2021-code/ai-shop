@@ -3,7 +3,7 @@
     {
       "key": "b-app",
       "label": "商家 App",
-      "count": 42,
+      "count": 44,
       "domains": [
         {
           "name": "工作台",
@@ -405,6 +405,16 @@
             },
             {
               "app": "b-app",
+              "route": "/pages/member-tags/index",
+              "title": "标签",
+              "domain": "会员与营销",
+              "tab": false,
+              "status": "已实现",
+              "proto": "s06",
+              "preview": "http://localhost:5175/#/pages/member-tags/index"
+            },
+            {
+              "app": "b-app",
               "route": "/pages/members/add",
               "title": "手工录入会员",
               "domain": "会员与营销",
@@ -472,6 +482,21 @@
               "status": "原型",
               "proto": "s13",
               "preview": null
+            }
+          ]
+        },
+        {
+          "name": "其它",
+          "pages": [
+            {
+              "app": "b-app",
+              "route": "/pages/member-add/index",
+              "title": "添加会员",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "preview": "http://localhost:5175/#/pages/member-add/index"
             }
           ]
         }
@@ -2287,5 +2312,5 @@
       ]
     }
   ],
-  "total": 188
+  "total": 190
 }

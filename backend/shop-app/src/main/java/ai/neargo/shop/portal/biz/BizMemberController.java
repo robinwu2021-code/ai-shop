@@ -17,7 +17,7 @@ import ai.neargo.shop.member.dto.MemberVOs.MergePreviewVO;
 import ai.neargo.shop.member.dto.MemberVOs.TagVO;
 import ai.neargo.shop.member.service.MemberTagService;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -110,9 +110,15 @@ public class BizMemberController {
                 .orElseThrow(() -> BizException.of(ErrorCode.NOT_FOUND));
     }
 
-    /** 改备注 / 拉黑与恢复。**线索不能被商家点一下转正** —— 那只能由本人绑定账号触发 */
+    /**
+     * 改备注 / 拉黑与恢复。**线索不能被商家点一下转正** —— 那只能由本人绑定账号触发。
+     *
+     * <p><b>用 PUT 不用 PATCH</b>：微信小程序的 {@code wx.request} 不支持 PATCH
+     * （uni 的类型里也没有），端上根本发不出去。语义上这里确实是局部更新，
+     * 但可移植性优先 —— 一个发不出去的动词没有意义。
+     */
     @PreAuthorize("@perm.canBiz('" + BizPerms.CUSTOMER + "')")
-    @PatchMapping("/biz/members/{memberNo}")
+    @PutMapping("/biz/members/{memberNo}")
     public MemberVO patch(@PathVariable String memberNo, @RequestBody PatchReq req) {
         memberService.patch(BizContext.requireMerchantNo(), memberNo, req.remark(), req.status());
         return memberService.detail(BizContext.requireMerchantNo(), memberNo)
@@ -144,7 +150,7 @@ public class BizMemberController {
 
     /** 改名或停用。**系统标签两样都不许** —— 它的名字就是口径 */
     @PreAuthorize("@perm.canBiz('" + BizPerms.CUSTOMER + "')")
-    @PatchMapping("/biz/member-tags/{tagNo}")
+    @PutMapping("/biz/member-tags/{tagNo}")
     public TagVO editTag(@PathVariable String tagNo, @RequestBody TagEditReq req) {
         String entityNo = BizContext.requireMerchantNo();
         if (req.enabled() != null) {

@@ -3444,6 +3444,36 @@ export interface MemberDetail {
   member: Member;
   stores: MemberStoreStat[];
   sources: MemberSourceItem[];
+  tags: MemberTag[];
+}
+
+/**
+ * 会员标签。
+ *
+ * @remarks `tagType` 为 `SYS` 时**只读**：系统标签的名字就是口径（「沉睡」= 60 天没来），
+ * 允许改名之后两个商家对同一个词会有两种理解，按它筛出来的人群从此不可比。
+ */
+export interface MemberTag {
+  tagNo: string;
+  name: string;
+  /** `SYS` 系统算的（只读）/ `MCH` 商家自己的 */
+  tagType: string;
+  /** `ACTIVE` / `DISABLED` 停用（老的还在、新的打不上）/ `MERGED` 已并入别的标签 */
+  status: string;
+  /** 打了多少人。服务端 COUNT 出来的，不是冗余列 */
+  count: number;
+}
+
+/**
+ * 合并标签的影响面。**先给商家看这几个数，再让他按** —— 合并不可逆。
+ */
+export interface MemberMergePreview {
+  affectedMembers: number;
+  /** 两个标签都有的人。合并后只保留一条 */
+  bothTagged: number;
+  referencedActivities: number;
+  /** false = 这只是试算，没有落库 */
+  applied: boolean;
 }
 
 export interface MerchantCustomer {

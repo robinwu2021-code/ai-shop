@@ -47,8 +47,10 @@ import type {
   MerchantCustomer,
   Member,
   MemberDetail,
+  MemberMergePreview,
   MemberStats,
   MerchantStats,
+  MemberTag,
   MerchantTodo,
   Order,
   PageQuery,
@@ -917,6 +919,46 @@ export interface MerchantApi {
   mMemberStats(storeNo?: string): Promise<MemberStats>;
 
   mMemberDetail(memberNo: string): Promise<MemberDetail>;
+  /**
+   * 手工录入一个手机号。
+   *
+   * 本人还没在平台出现过时返回的会员 `status` 是 `LEAD`（线索）——
+   * **不可触达、不进任何受众**。这句话要在**保存之前**告诉商家，
+   * 否则他会以为「发不出去」是功能坏了。
+   *
+   * 已存在就返回那一条并把备注并进去，不报错：店员重复录入是常态。
+   */
+  mEnrollMember(payload: {
+    phone: string; remark?: string; tagNos?: string[]; storeNo?: string;
+  }): Promise<Member>;
+
+  /** 改备注 / 拉黑与恢复。**线索不能被商家点成正式会员** —— 那只能由本人绑号触发 */
+  mPatchMember(memberNo: string, payload: { remark?: string; status?: string }): Promise<Member>;
+
+  /** 批量打标 / 去标。先筛出人再一次性打 —— 一个个点是这一页最没必要的重复劳动 */
+  mTagMembers(payload: { memberNos: string[]; add?: string[]; remove?: string[] }): Promise<void>;
+
+  /** 标签字典 + 每个标签多少人 */
+  mMemberTags(): Promise<MemberTag[]>;
+
+  mCreateMemberTag(name: string): Promise<MemberTag>;
+
+  /** `enabled` 非空 = 停用/恢复；否则按 `name` 改名。**系统标签两样都不许** */
+  mEditMemberTag(tagNo: string, payload: { name?: string; enabled?: boolean }): Promise<MemberTag>;
+
+  /**
+   * 合并两个标签。
+   *
+   * `confirm` 不传或 false = **只试算**：返回影响面不落库。
+   * 界面必须先把「多少人会改、其中多少人两个都有」摆出来再让他按 —— 合并不可逆。
+   */
+  mMergeMemberTag(tagNo: string, payload: {
+    intoTagNo: string; confirm?: boolean;
+  }): Promise<MemberMergePreview>;
+
+  // ---- 结算（B-11.9）
+  /**
+   * 结算流水。**一笔子订单一行**，不是周期账单。
 
    *
    * @param allStores 是否看全部门店。默认（false）只看当前门店 ——

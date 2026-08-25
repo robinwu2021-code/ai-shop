@@ -224,6 +224,26 @@ function mockMembers() {
   return rows;
 }
 
+/** 手工录入的线索 + 订单聚合出来的会员，合在一起就是这家店的名单 */
+function allMockMembers() {
+  return [...db.memberLeads, ...mockMembers()];
+}
+
+function mockMemberTags(): Record<string, string[]> {
+  return db.memberTagRel;
+}
+
+function countTag(tagNo: string) {
+  return Object.values(db.memberTagRel).filter((tags) => tags.includes(tagNo)).length;
+}
+
+/** 字典 + 人数。**人数是数出来的**，与真库一样不存冗余列 */
+function mockTags() {
+  return db.memberTags
+    .filter((t) => t.status !== "MERGED")
+    .map((t) => ({ ...t, count: countTag(t.tagNo) }));
+}
+
 /** 机审词表，取自 V10 种进 sys_setting 的那份前几条。命中即转人审，不是直接拒 */
 const SENSITIVE_WORDS = ["最低价", "全网第一", "国家级", "微信", "加V"];
 type MockPlan = "FREE" | "PRO" | "CHAIN";
@@ -2736,7 +2756,7 @@ export const mockApi: MerchantApi = {
    * 真实环境里它来自 `usr_person.phone_tail`。
    */
   async mMembers(q) {
-    const rows = mockMembers();
+    const rows = allMockMembers();
     const f = q ?? {};
     let out = rows;
     if (f.level) out = out.filter((m) => m.level === f.level);
@@ -2757,8 +2777,9 @@ export const mockApi: MerchantApi = {
     });
   },
 
+      tags: mockTags().filter((t) => (mockMemberTags()[memberNo] ?? []).includes(t.tagNo)),
   async mMemberStats() {
-    const rows = mockMembers();
+    const rows = allMockMembers();
     const by = (lv: string) => rows.filter((m) => m.level === lv).length;
     return delay({
       newCount: by("NEW"),
@@ -2770,10 +2791,160 @@ export const mockApi: MerchantApi = {
       // 演示一个非零值：商家一定会拿订单数与会员数对，这一行就是解释差额的地方
       unlinkedBuyers: 3,
     });
+  async mEnrollMember(payload) {
+    const tail = (payload.phone ?? "").slice(-4);
+    const exist = mockMembers().find((m) => m.phoneTail === tail);
+    if (exist) {
+      // 与真库同一口径：重复录入不报错，把备注并进去
+      return delay({ ...exist, remark: payload.remark ?? exist.remark ?? null });
+    }
+    const m = {
+      memberNo: `MB-LEAD-${db.memberLeads.length + 1}`,
+      personNo: `PS-LEAD-${db.memberLeads.length + 1}`,
+      phoneTail: tail,
+      // mock 里没有真的人档，一律当成「本人还没注册」= 线索。
+      // 线索**不可触达、不进受众**，这一点端上必须看得出来
+      status: "LEAD",
+      source: "MANUAL",
+      level: "NEW",
+      firstStoreNo: payload.storeNo ?? db.stores[0]?.storeNo ?? null,
+      orderCount: 0,
+      totalSpentMinor: 0,
+      d90OrderCount: 0,
+      lastOrderAt: null as number | null,
+      daysSinceLast: null as number | null,
+      reachOptOut: false,
+      remark: payload.remark ?? null,
+      joinedAt: Date.now(),
+    };
+    db.memberLeads.push(m);
+    if (payload.tagNos?.length) db.memberTagRel[m.memberNo] = [...payload.tagNos];
+    persist();
+    return delay({ ...m });
+  },
+
+  async mPatchMember(memberNo, payload) {
+    const m = allMockMembers().find((x) => x.memberNo === memberNo);
+    if (!m) throw new ApiError(10404, "会员不存在");
+    if (payload.remark !== undefined) m.remark = payload.remark;
+    // 线索不能被商家点成正式会员 —— 转正只能由本人绑号触发
+    if (payload.status && m.status !== "LEAD") m.status = payload.status;
+    persist();
+    return delay({ ...m });
+  },
+
+  async mTagMembers(payload) {
+    for (const no of payload.memberNos) {
+      const cur = new Set(db.memberTagRel[no] ?? []);
+      for (const t of payload.add ?? []) cur.add(t);
+      for (const t of payload.remove ?? []) cur.delete(t);
+      db.memberTagRel[no] = [...cur];
+    }
+    persist();
+    return delay(undefined as unknown as void);
+  },
+
+  async mMemberTags() {
+    return delay(mockTags());
+  },
+
+  async mCreateMemberTag(name) {
+    const exist = db.memberTags.find((t) => t.name === name);
+    if (exist) return delay({ ...exist, count: countTag(exist.tagNo) });
+    const t = { tagNo: `MT-${db.memberTags.length + 1}`, name, tagType: "MCH", status: "ACTIVE" };
+    db.memberTags.push(t);
+    persist();
+    return delay({ ...t, count: 0 });
+  },
+
+  async mEditMemberTag(tagNo, payload) {
+    const t = db.memberTags.find((x) => x.tagNo === tagNo);
+    if (!t) throw new ApiError(10404, "标签不存在");
+    if (t.tagType === "SYS") throw new ApiError(70041, "系统标签不能改名或手动打");
+    if (payload.enabled !== undefined) t.status = payload.enabled ? "ACTIVE" : "DISABLED";
+    else if (payload.name) t.name = payload.name;
+    persist();
+    return delay({ ...t, count: countTag(tagNo) });
+  },
+
+  async mMergeMemberTag(tagNo, payload) {
+    const from = db.memberTags.find((x) => x.tagNo === tagNo);
+    const into = db.memberTags.find((x) => x.tagNo === payload.intoTagNo);
+    if (!from || !into) throw new ApiError(10404, "标签不存在");
+    if (from.tagType === "SYS" || into.tagType === "SYS") {
+      throw new ApiError(70041, "系统标签不能合并");
+    }
+    const holders = Object.entries(db.memberTagRel)
+      .filter(([, tags]) => tags.includes(tagNo));
+    const both = holders.filter(([, tags]) => tags.includes(payload.intoTagNo)).length;
+    if (!payload.confirm) {
+      // 试算：把影响面摆出来再让他按 —— 合并不可逆
+      return delay({ affectedMembers: holders.length, bothTagged: both,
+        referencedActivities: 0, applied: false });
+    }
+    for (const [memberNo, tags] of holders) {
+      const next = new Set(tags.filter((x) => x !== tagNo));
+      next.add(payload.intoTagNo);
+      db.memberTagRel[memberNo] = [...next];
+    }
+    from.status = "MERGED";
+    persist();
+    return delay({ affectedMembers: holders.length, bothTagged: both,
+      referencedActivities: 0, applied: true });
+  },
+
+  // ---------------------------------------------------------------- 结算
+  /**
+   * 费率卡。**费率是万分比整数**（与后端 RateCardVO 一致）：2% 存成 200。
+   * 直接当百分数显示会把 2% 显示成 200%，这种错在界面上看着还挺"合理"。
+   */
+  async mRateCard() {
+    const pct = (r: number) => Math.round(r * 10000);
+    return delay({
+      merchantOwnedRate: pct(SETTLE.commissionRate.MERCHANT_OWNED),
+      platformRate: pct(SETTLE.commissionRate.PLATFORM),
+      note: "自带客流（扫店铺码进店）零佣金；平台客流按公示费率收取。费率以下单时快照为准，调整不影响历史订单。",
+    });
+  },
+
+  async mSettleList(allStores) {
+    const merchantNo = db.merchant.merchantNo;
+    /*
+     * **一个子订单一行**，与后端 stl_bill 同形 —— 这里此前造的是一套「按周聚合的账单」
+     * （billNo / periodStart / orderCount），后端从来没有过那个模型。
+     * 页面照着 mock 写，于是连真后端时字段整片 undefined，而 mock 下一直是绿的。
+     */
+    const settled = db.orders.filter(
+      (o) => belongsToMerchant(o, merchantNo) && ["COMPLETED", "REFUNDED"].includes(o.status),
+    );
+    const home = db.stores.find((s) => s.isDefault) ?? db.stores[0];
+    const scope = allStores ? null : home?.storeNo;
+
+    return delay(
+      settled
+        .filter(() => !scope || Boolean(home))
+        .map((o) => {
+          const gross = o.amount.payableMinor;
+          // 佣金按客流来源分档：自带客流零佣金（ADR-004 §6）
+          const rate = SETTLE.commissionRate[o.trafficSource ?? "PLATFORM"];
+          const commission = Math.round(gross * rate);
+          // 自提点履约服务费按件。供货方付、承接方收，两个角色都是自己时账面抵消
+          const serviceFee =
+            o.fulfillment === "STORE_PICKUP"
+              ? o.items.reduce((n, it) => n + it.qty, 0) * SETTLE.fulfillFeePerItemMinor
+              : 0;
+          return {
+            settleNo: `SB${o.orderNo}`,
+            subOrderNo: o.orderNo,
+            orderNo: o.orderNo,
+            merchantNo,
+            grossMinor: gross,
+            commissionMinor: commission,
+            serviceFeeMinor: serviceFee,
   },
 
   async mMemberDetail(memberNo) {
-    const m = mockMembers().find((x) => x.memberNo === memberNo);
+    const m = allMockMembers().find((x) => x.memberNo === memberNo);
     if (!m) throw new ApiError(10404, "会员不存在");
     const stores = db.stores.slice(0, 2).map((s, i) => ({
       storeNo: s.storeNo,

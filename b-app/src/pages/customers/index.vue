@@ -86,6 +86,10 @@ function storeName(no: string) {
   return merchant.stores.find((s) => s.storeNo === no)?.name || no;
 }
 
+function go(url: string) {
+  uni.navigateTo({ url });
+}
+
 function open(m: Member) {
   uni.navigateTo({ url: `/pages/member-detail/index?memberNo=${m.memberNo}` });
 }
@@ -100,10 +104,17 @@ onShow(load);
 
 <template>
   <sh-scaffold title-key="members.title" :denied="!merchant.can('biz:customer')">
-    <!-- 多店主体才有门店切换。按门店经营时这里必须选一家，否则数字与列表口径对不上 -->
-    <view v-if="merchant.multiStore" class="bar">
-      <text class="sh-chip sh-chip--primary" @tap="pickStore">
+    <!--
+      顶部一行：门店切换（多店才有）+ 两个入口。
+      录入与标签放在这里而不是详情里 —— 它们作用在**整份名单**上，不是某一个人身上。
+    -->
+    <view class="bar">
+      <text v-if="merchant.multiStore" class="sh-chip sh-chip--primary" @tap="pickStore">
         {{ storeNo ? storeName(storeNo) : $t("members.allStores") }} ▾
+      </text>
+      <text class="sh-chip" @tap="go('/pages/member-tags/index')">{{ $t("memberTags.title") }}</text>
+      <text class="sh-chip sh-chip--primary" @tap="go('/pages/member-add/index')">
+        ＋ {{ $t("memberAdd.title") }}
       </text>
     </view>
 
@@ -176,6 +187,9 @@ onShow(load);
 
 <style scoped>
 .bar {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
   margin-bottom: 12rpx;
 }
 /* 四格数字：点得动，所以要有可点的样子（选中时主色底） */

@@ -218,6 +218,18 @@
       "style": {
         "navigationBarTitleText": "会员详情"
       }
+    },
+    {
+      "path": "pages/member-add/index",
+      "style": {
+        "navigationBarTitleText": "添加会员"
+      }
+    },
+    {
+      "path": "pages/member-tags/index",
+      "style": {
+        "navigationBarTitleText": "标签"
+      }
     }
   ],
   "globalStyle": {

@@ -76,8 +76,10 @@ import type {
   MerchantCustomer,
   Member,
   MemberDetail,
+  MemberMergePreview,
   MemberStats,
   MerchantStats,
+  MemberTag,
   MerchantTodo,
   Order,
   PageResult,
@@ -378,6 +380,19 @@ export const httpApi: MerchantApi = {
   mMembers: (q) => http.get<PageResult<Member>>(E.mMembers.path, { ...(q ?? {}) }),
   mMemberStats: (storeNo) => http.get<MemberStats>(E.mMemberStats.path, { storeNo }),
   mMemberDetail: (memberNo) =>
+  mEnrollMember: (payload) => http.post<Member>(E.mEnrollMember.path, payload),
+  mPatchMember: (memberNo, payload) =>
+    http.put<Member>(buildPath(E.mPatchMember.path, { memberNo }), payload),
+  mTagMembers: (payload) => http.post<void>(E.mTagMembers.path, payload),
+  mMemberTags: () => http.get<MemberTag[]>(E.mMemberTags.path),
+  mCreateMemberTag: (name) => http.post<MemberTag>(E.mCreateMemberTag.path, { name }),
+  mEditMemberTag: (tagNo, payload) =>
+    http.put<MemberTag>(buildPath(E.mEditMemberTag.path, { tagNo }), payload),
+  mMergeMemberTag: (tagNo, payload) =>
+    http.post<MemberMergePreview>(buildPath(E.mMergeMemberTag.path, { tagNo }), payload),
+
+  mSettleList: (allStores) =>
+    http.get<SettleBill[]>(E.mSettleList.path, allStores ? { allStores: true } : undefined),
     http.get<MemberDetail>(buildPath(E.mMemberDetail.path, { memberNo })),
   mRateCard: () => http.get<RateCard>(E.mRateCard.path),
   mReportShortage: (subOrderNo, payload) =>

@@ -9,6 +9,7 @@ import { currentLang } from "@shared/utils/locale";
 import { currentCurrency } from "@shared/utils/money";
 import { isoDate, todayAtLocal } from "@shared/utils/datetime";
 import type {
+  Member,
   InvoiceRequest,
   OrderItem,
   Region,
@@ -996,6 +997,24 @@ export const db = {
     phone: "",
     isPickupPoint: false,
   } as MerchantProfile,
+
+  /**
+   * 手工录入的线索会员（P2）。
+   *
+   * <p>与订单聚合出来的那批分开存：那批是**派生**的（订单一变就重算），
+   * 这批是**录进来的事实**，不能被重算冲掉。
+   */
+  memberLeads: [] as Member[],
+
+  /** 商家自己建的标签。`SYS` 的那两个是演示用，界面上应当是只读的 */
+  memberTags: [
+    { tagNo: "MT-SYS-1", name: "沉睡", tagType: "SYS", status: "ACTIVE" },
+    { tagNo: "MT-1", name: "爱囤货", tagType: "MCH", status: "ACTIVE" },
+    { tagNo: "MT-2", name: "不要辣", tagType: "MCH", status: "ACTIVE" },
+  ] as Array<{ tagNo: string; name: string; tagType: string; status: string }>,
+
+  /** 会员号 → 标签号。**存号不存文本**，与真库同一条规矩：改名不动这里 */
+  memberTagRel: {} as Record<string, string[]>,
 
   /** 店铺门面（店主可改的部分）。C 端门店主页读的就是它 */
   store: {
