@@ -20,6 +20,7 @@ import ai.neargo.shop.merchant.service.MerchantStoreService;
 import ai.neargo.shop.merchant.service.StoreFulfillmentService;
 import ai.neargo.shop.merchant.service.MerchantService;
 import ai.neargo.shop.community.service.CommunityAdminService;
+import ai.neargo.shop.spi.user.MerchantAdminPort;
 import ai.neargo.shop.spi.user.MerchantQueryPort;
 import ai.neargo.shop.user.service.UserService;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -72,6 +73,8 @@ public class BizMerchantController {
     private final ai.neargo.shop.merchant.service.MerchantGovernService governService;
     /** 类目树：把门槛码翻成商家看得懂的类目名（跨域拼接放应用层） */
     private final ai.neargo.shop.product.service.CategoryService categoryService;
+    /** 无证照快速开店：建占位主体 + 默认门店，不进审核队列 */
+    private final MerchantAdminPort merchantAdminPort;
 
     public BizMerchantController(MerchantService merchantService, OpsService opsService,
                                  UserService userService, BizIdentityResolver identityResolver,
@@ -86,8 +89,10 @@ public class BizMerchantController {
                                  MerchantQueryPort merchantQueryPort,
                                  StoreCategoryService storeCategoryService,
                                  ai.neargo.shop.merchant.service.MerchantGovernService governService,
-                                 ai.neargo.shop.product.service.CategoryService categoryService) {
+                                 ai.neargo.shop.product.service.CategoryService categoryService,
+                                 MerchantAdminPort merchantAdminPort) {
         this.categoryService = categoryService;
+        this.merchantAdminPort = merchantAdminPort;
         this.governService = governService;
         this.storeCategoryService = storeCategoryService;
         this.merchantQueryPort = merchantQueryPort;
@@ -215,6 +220,40 @@ public class BizMerchantController {
                 Boolean.TRUE.equals(req.asPickupPoint()), req.industry(),
                 req.qualificationItems()));
         return profile();
+    }
+
+    /**
+     * 无证照快速开店：填个店名就把店开起来，<b>不进审核队列</b>。
+     *
+     * <p>与 {@code /biz/merchant/apply} 是两条路：那条要交执照、等平台审；
+     * 这条让老板先把准备工作做完（录商品、配范围、加员工），
+     * <b>补齐证照之前买家看不到、也下不了单</b>。
+     *
+     * <p><b>刻意不要求 {@code BizContext}</b>：还没有任何主体的账号，
+     * {@code BizContext.merchantNo} 是空的，所有需要它的接口都会 403 ——
+     * 那正是「第一家店」的处境。这里与入驻申请一样只认登录身份
+     * （{@code SecurityUtils.currentUserNo()}）。
+     *
+     * <p>已经有待补证照的占位主体时原样返回它，不建第二个（防连点，见 Port 注释）。
+     */
+    @PostMapping("/biz/merchant/quick-start")
+    public MerchantProfileVO quickStart(@RequestBody QuickStartReq req) {
+        String userNo = SecurityUtils.currentUserNo();
+        merchantAdminPort.quickStart(new MerchantAdminPort.QuickStartCommand(
+                userNo, req.storeName(), req.address()));
+        /*
+         * **不能用 profile()** —— 它读的是 BizContext，而那是过滤器在<b>请求进来那一刻</b>
+         * 解析的：那时这个人还没有任何主体，merchantNo 是空的。主体是刚刚在这个请求里
+         * 建出来的，ThreadLocal 里那份不会跟着变，于是端上拿到一个「建成功了但没有主体号」
+         * 的响应，只能靠再刷一次才看得到自己的店。
+         *
+         * 走 profileOf 现算一次作用域 —— 与登录接口同一条路（那里 BizContext 也还是空的）。
+         */
+        return profileOf(userNo, phoneOf(userNo));
+    }
+
+    /** @param storeName 店名，必填；<b>同时用作主体名</b>，补证照时再被执照上的正式名称覆盖 */
+    public record QuickStartReq(String storeName, String address) {
     }
 
     // ---------------------------------------------------------------- 店铺资料

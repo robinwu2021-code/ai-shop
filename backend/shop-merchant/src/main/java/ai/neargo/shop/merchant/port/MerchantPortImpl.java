@@ -131,6 +131,24 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
             return List.of();
         }
         /*
+         * **没激活的主体对谁都不可见。**
+         *
+         * 此前这里只算「履约能力 × 地理覆盖」，完全不看主体状态 —— 于是进件还没走完、
+         * 甚至还没交证照的商家，货照样进社区池、照样被买家搜到、照样能走到下单，
+         * 只在最后付款那一步失败。首页那句「商品能上架，但顾客付不了钱」描述的正是这个状态。
+         *
+         * 放开「无证照先开店」（PENDING_LICENSE 占位主体）之后这个洞会被放大成
+         * 「谁都能建一家能卖货的店」，所以闸门必须在这里补上 —— 而正因为可见性当初
+         * 收敛到了这一个出口，补它只要这一个 if，调用方一行不动。
+         *
+         * ⚠️ 这一行同时会挡掉所有非 ACTIVE 的存量主体。2026-08-25 上线前查过生产库：
+         * 6 个主体全部 ACTIVE，无人受影响；将来若新增别的中间态，要重查一遍再发布，
+         * 否则就是一次没有任何通知的批量下架。
+         */
+        if (!ACTIVE.equals(m.getStatus())) {
+            return List.of();
+        }
+        /*
          * ADR-013 阶段二：履约能力 × 地理覆盖，两者正交。
          *
          * **这个方法是可见性的唯一出口** —— 上架写社区池、商家详情可达性、履约都只认它。
@@ -665,6 +683,79 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
         return m.getEntityNo();
     }
 
+    @Override
+    @Transactional
+    public String quickStart(QuickStartCommand cmd) {
+        String ownerUserNo = cmd.ownerUserNo();
+        if (ownerUserNo == null || ownerUserNo.isBlank()
+                || cmd.storeName() == null || cmd.storeName().isBlank()) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+
+        /*
+         * **一个账号最多一个待补证照的占位主体**：已经有就原样返回它。
+         *
+         * 这一条同时兜住两件事：连点两次不会建出两个空壳；账号里也不会堆出一串
+         * 永远补不齐的占位主体。想在这个占位主体下再开一家店，走正常建店接口
+         * （那时 BizContext 已经有了，不需要走这条路）。
+         */
+        List<String> ownedEntityNos = DataScopeContext.executeWithoutScope(() ->
+                staffMapper.selectList(Wrappers.<ai.neargo.shop.merchant.entity.MchAccount>lambdaQuery()
+                        .eq(ai.neargo.shop.merchant.entity.MchAccount::getUserNo, ownerUserNo)
+                        .eq(ai.neargo.shop.merchant.entity.MchAccount::getIsOwner, true))
+                .stream().map(ai.neargo.shop.merchant.entity.MchAccount::getEntityNo).toList());
+        if (!ownedEntityNos.isEmpty()) {
+            MchEntity shell = DataScopeContext.executeWithoutScope(() ->
+                    merchantMapper.selectOne(Wrappers.<MchEntity>lambdaQuery()
+                            .in(MchEntity::getEntityNo, ownedEntityNos)
+                            .eq(MchEntity::getStatus, MchEntity.PENDING_LICENSE)
+                            .last("limit 1")));
+            if (shell != null) {
+                return shell.getEntityNo();
+            }
+        }
+
+        String name = cmd.storeName().trim();
+        MchEntity m = new MchEntity();
+        m.setEntityNo(BizKey.next(BizKey.MERCHANT));
+        m.setName(name);
+        m.setLogo("");
+        /*
+         * 证照还没交，所以这几项与 activate() 刻意不同：
+         *   legal_form  留空 —— 还不知道是个体户还是公司，进件那一步才需要它
+         *   verified    false —— 「已认证」标是审核给的，不能自己开店就带上
+         *   status      PENDING_LICENSE —— 可见性闸门认的就是它
+         * 其余（评分初值、计数器）与 activate() 保持一致，避免两条路建出来的主体
+         * 在别处表现不同。
+         */
+        m.setRating(RATING_INIT);
+        m.setRatingCount(0);
+        m.setSalesCount(0);
+        m.setGoodsCount(0);
+        m.setScoreGoods(RATING_INIT);
+        m.setScoreService(RATING_INIT);
+        m.setScoreSpeed(RATING_INIT);
+        m.setVerified(false);
+        m.setBreachCount(0);
+        m.setTags("[]");
+        m.setOwnerUserNo(ownerUserNo);
+        m.setJoinedAt(System.currentTimeMillis());
+        m.setStatus(MchEntity.PENDING_LICENSE);
+        m.setServiceScope(AREA_COMMUNITY);
+        merchantMapper.insert(m);
+
+        /*
+         * 与 activate() 同样是一个事务，但**少两件**：
+         *   覆盖范围 不配 —— 反正对谁都不可见，等他补证照时在申请单里一起填
+         *   分账主体 不建 —— 没证照没法进件，建个空占位只会让「收款设置」页
+         *                   显示一条永远推不动的记录
+         */
+        ensureOwnerStaff(m.getEntityNo(), ownerUserNo);
+        ensureDefaultStore(m.getEntityNo(), name, cmd.address());
+        ensureFreePlan(m.getEntityNo());
+        return m.getEntityNo();
+    }
+
     /**
      * 建 owner 成员行。<b>身份来源</b>（M1 起取代 {@code owner_user_no}）。
      *
@@ -734,6 +825,11 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
 
     /** 建默认门店。一主体恰好一个，删不掉 —— 它是单店商家的全部。 */
     private void ensureDefaultStore(String merchantNo, String name) {
+        ensureDefaultStore(merchantNo, name, null);
+    }
+
+    /** @param address 门店地址，可空 —— 走审核那条路时地址在店铺资料里单独填，只有快速开店会带进来 */
+    private void ensureDefaultStore(String merchantNo, String name, String address) {
         boolean exists = DataScopeContext.executeWithoutScope(() ->
                 storeMapper.exists(Wrappers.<ai.neargo.shop.merchant.entity.MchStore>lambdaQuery()
                         .eq(ai.neargo.shop.merchant.entity.MchStore::getEntityNo, merchantNo)));
@@ -744,6 +840,9 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
         store.setStoreNo(BizKey.next(BizKey.STORE));
         store.setEntityNo(merchantNo);
         store.setName(name);
+        if (address != null && !address.isBlank()) {
+            store.setAddress(address.trim());
+        }
         store.setIsDefault(true);
         store.setStatus(ai.neargo.shop.merchant.entity.MchStore.ACTIVE);
         store.setFeatured("[]");

@@ -142,10 +142,25 @@ public class BizIdentityResolverImpl implements BizIdentityResolver {
          * （实测：注册那一刻 54 个 B 端用例同时红。这正是 DataScopeRegistration
          * 类注释第 2 条说的 fail-closed，只是这次踩在 B 端而不是 C 端。）
          */
+        /*
+         * **能干活的状态有两个，不是一个。**
+         *
+         * ACTIVE          审核通过、正常经营
+         * PENDING_LICENSE 无证照快速开店建出来的占位主体 —— 他要能进经营台
+         *                 录商品、配范围、加员工，把准备工作做完；
+         *                 <b>拦他的是可见性，不是身份</b>（reachableCommunities 返回空，
+         *                 货进不了任何人的可见范围）。这里若一并挡掉，
+         *                 「先开店后补证照」整条路就不成立了 —— 他建完店登录进去，
+         *                 所有 /biz/** 都 403，看到的只是「打不开」。
+         *
+         * 其余状态（SUSPENDED / BANNED）继续 fail-closed —— 那是「这家店被停了」，
+         * 与「还没交执照」是两回事，不能因为放开后者而把前者一起放进来。
+         */
         MchEntity merchant = DataScopeContext.executeWithoutScope(() ->
                 merchantMapper.selectOne(Wrappers.<MchEntity>lambdaQuery()
                         .eq(MchEntity::getEntityNo, memberships.get(0).getEntityNo())
-                        .eq(MchEntity::getStatus, "ACTIVE").last("limit 1")));
+                        .in(MchEntity::getStatus, MchEntity.ACTIVE, MchEntity.PENDING_LICENSE)
+                        .last("limit 1")));
         if (merchant == null) {
             // 成员行在但主体被封 —— 同样 fail-closed
             return BizContext.NONE;

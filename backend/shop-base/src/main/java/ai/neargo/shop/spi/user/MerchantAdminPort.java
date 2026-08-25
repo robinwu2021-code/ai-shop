@@ -3,10 +3,17 @@ package ai.neargo.shop.spi.user;
 import java.util.List;
 
 /**
- * platform → user：审核通过后创建/激活商家主体。
+ * platform → user：创建/激活商家主体。
  *
- * <p><b>审核通过才创建</b>：驳回的申请不该在库里留下一个「僵尸商家」——
- * 那些记录会出现在商家列表、报表、分账接收方清单里，谁也说不清它算不算数。
+ * <p>两条路进来：
+ * <ul>
+ *   <li>{@link #activate} —— 交执照、平台审过之后激活成 {@code ACTIVE}，能被买家看到、能收款</li>
+ *   <li>{@link #quickStart} —— 无证照先开店，落成 {@code PENDING_LICENSE} 占位主体，
+ *       补齐证照前对买家不可见</li>
+ * </ul>
+ *
+ * <p><b>驳回的申请不该在库里留下「僵尸商家」</b>：那些记录会出现在商家列表、报表、
+ * 分账接收方清单里，谁也说不清它算不算数。所以走审核那条路的，必须审过才建。
  */
 public interface MerchantAdminPort {
 
@@ -23,6 +30,34 @@ public interface MerchantAdminPort {
      * @return merchantNo
      */
     String activate(ActivateCommand cmd);
+
+    /**
+     * 无证照快速开店：<b>不经审核</b>，当场建出一个「待补证照」的主体与它的默认门店。
+     *
+     * <p>与 {@link #activate} 是同一件事的两条路：那条要先交执照、等平台审；
+     * 这条让老板先把店开起来（录商品、配范围、加员工），
+     * <b>补齐证照之前买家看不到、也下不了单</b>（闸门在
+     * {@code MerchantQueryPort.reachableCommunities}：非 ACTIVE 主体一律返回空）。
+     *
+     * <p>为什么要建一个占位主体而不是让门店没有主体：{@code mch_store.entity_no} 是
+     * NOT NULL，且整个 B 端权限模型都挂在 {@code BizContext.merchantNo} 上 ——
+     * 真让它可空的话，{@code merchantNo} 为 null，所有 {@code /biz/**} 直接 403。
+     *
+     * <p><b>一个账号最多一个待补证照的占位主体</b>：已经有就原样返回它，不建第二个。
+     * 这既是防连点，也避免账号里堆出一串永远补不齐的空壳。
+     * 想在这个占位主体下再开一家店，走正常的建店接口即可（那时已经有 BizContext）。
+     *
+     * @return merchantNo；已有占位主体时返回既有的那个
+     */
+    String quickStart(QuickStartCommand cmd);
+
+    /**
+     * @param ownerUserNo 发起人（当前登录账号）
+     * @param storeName   老板填的店名。<b>同时用作主体名</b> —— 补证照时再被执照上的正式名称覆盖
+     * @param address     门店地址，可空（之后在店铺资料里补）
+     */
+    record QuickStartCommand(String ownerUserNo, String storeName, String address) {
+    }
 
     /**
      * 授予经营类目编码。**与审核通过同一个事务**（商品域-优化总方案 批 B）。

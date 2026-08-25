@@ -113,8 +113,25 @@ public class MchEntity extends BaseEntity {
 
     private Long joinedAt;
 
-    /** APPLYING / ACTIVE / SUSPENDED / BANNED —— 只有 ACTIVE 能上架与收款。 */
+    /**
+     * PENDING_LICENSE / APPLYING / ACTIVE / SUSPENDED / BANNED。
+     *
+     * <p><b>只有 ACTIVE 对买家可见</b>（闸门在 {@code reachableCommunities}：
+     * 非 ACTIVE 一律返回空社区列表，货因此进不了任何人的可见范围）。
+     */
     private String status;
+
+    /**
+     * 待补证照：无证照快速开店建出来的占位主体。
+     *
+     * <p>老板可以在它下面建店、录商品、配范围、加员工，把准备工作做完，
+     * <b>只是买家看不到、也下不了单</b>。补齐证照并审核通过后升级为 {@link #ACTIVE}，
+     * 同一批商品立刻可见，不需要重新上架。
+     */
+    public static final String PENDING_LICENSE = "PENDING_LICENSE";
+
+    /** 审核通过、正常经营。**唯一对买家可见的状态**。 */
+    public static final String ACTIVE = "ACTIVE";
     /**
      * 经营范围 COMMUNITY/CITY/ALL —— **决定这家店的货在 C 端能被谁看到**。
      * 选错不是展示问题：选大了会卖到送不到的地方（下单后提不了货 → 退款），

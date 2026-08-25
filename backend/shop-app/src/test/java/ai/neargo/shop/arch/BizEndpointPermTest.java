@@ -54,6 +54,10 @@ class BizEndpointPermTest {
             // 入驻链路：申请人此刻还没有 merchantNo，一律 403 的话被驳回的人
             // 就永远看不到驳回原因，闭环在这里断掉
             "/biz/merchant/apply", "/biz/merchant/profile",
+            // 无证照快速开店：**这条路存在的意义就是给「还没有任何主体的人」用的** ——
+            // 那时 BizContext.merchantNo 是空的，挂任何 biz:* 码都等于永远 403。
+            // 作用对象是调用者本人（SecurityUtils.currentUserNo），建出来的主体归他自己
+            "/biz/merchant/quick-start",
             // 自查作用域：端上据此决定展示哪些入口，本身不含业务数据
             "/biz/context",
             // 「我能进哪几家店」——门店切换器要用，结果按 storeNos 裁剪。
@@ -188,6 +192,8 @@ class BizEndpointPermTest {
         put("/biz/communities/from-map", BizPerms.STORE);
         put("/biz/store/qrcode", BizPerms.STORE);
         put("/biz/store/share-kit", BizPerms.STORE);
+        // 分享海报：与 share-kit 是同一件事的两种载体（一句文案 / 一张图），权限同档
+        put("/biz/store/poster", BizPerms.STORE);
         put("/biz/delivery/rule", BizPerms.STORE);
 
         // ---- 门店结构：改的是主体 ----
