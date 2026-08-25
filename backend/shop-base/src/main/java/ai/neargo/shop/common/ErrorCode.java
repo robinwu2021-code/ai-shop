@@ -437,7 +437,18 @@ public enum ErrorCode {
      * <p>会员必须有手机号这条准入规则换来的是：商家先录号、他后来才注册时，
      * 两边指向同一份人档，转正只是一次 UPDATE —— 不需要合并任何会员关系。
      */
-    MEMBER_PHONE_REQUIRED(70030, "err.member.phone_required"),
+    MEMBER_PHONE_REQUIRED(70039, "err.member.phone_required"),
+
+    /** 标签超限：每店最多多少个标签、每人最多几个。口径在 sys_setting，代码里只有 key */
+    MEMBER_TAG_LIMIT(70040, "err.member.tag_limit"),
+
+    /**
+     * 系统标签是只读的。
+     *
+     * <p><b>它的名字就是口径</b>（「沉睡」= 60 天没来）—— 允许改名或手动打，
+     * 两个商家对同一个词就会有两种理解，而按它筛出来的人群从此不可比。
+     */
+    MEMBER_TAG_SYSTEM_READONLY(70041, "err.member.tag_system_readonly"),
     /*
      * 准入矩阵拒绝了这个 (主体档位 × 履约方式) 组合。与 70013 分开：
      * 那个是「这件商品不支持这种送法」（换一种即可），

@@ -17,6 +17,11 @@ public class MemberEventPortImpl implements MemberEventPort {
     }
 
     @Override
+    public int onPersonBound(String personNo) {
+        return memberService.claimByPerson(personNo);
+    }
+
+    @Override
     public void onOrderPaid(OrderPaid e) {
         memberService.onOrderPaid(e.subOrderNo(), e.userNo(), e.personNo(),
                 e.entityNo(), e.storeNo(), e.amountMinor(), e.paidAt());

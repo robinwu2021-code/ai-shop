@@ -29,4 +29,16 @@ public final class MemberMappers {
 
     public interface SettingMapper extends BaseMapper<MbrSetting> {
     }
+
+    /** 标签字典。改名只动这里一行 */
+    public interface TagMapper extends BaseMapper<ai.neargo.shop.member.entity.MbrTag> {
+    }
+
+    /** 标签关系。合并时整批改指目标（唯一键会挡住重复） */
+    public interface MemberTagMapper extends BaseMapper<ai.neargo.shop.member.entity.MbrMemberTag> {
+    }
+
+    public interface TagMergeLogMapper
+            extends BaseMapper<ai.neargo.shop.member.entity.MbrTagMergeLog> {
+    }
 }

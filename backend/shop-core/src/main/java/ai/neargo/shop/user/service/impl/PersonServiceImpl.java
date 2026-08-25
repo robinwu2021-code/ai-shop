@@ -28,6 +28,14 @@ public class PersonServiceImpl implements PersonService {
     private final PersonMergeLogMapper mergeLogMapper;
     private final PhoneCrypto crypto;
     private final ai.neargo.shop.user.mapper.UserMappers.UserMapper userMapper;
+    /**
+     * 绑定成功后通知会员域把线索转正。
+     *
+     * <p>走 spi 而不是直接依赖 member 包 —— 域间不得互相 import，这条由 ArchitectureTest 守着。
+     * 用 ObjectProvider 是因为它可能还没实现（分阶段上线），缺了也不该让登录挂掉。
+     */
+    private final org.springframework.beans.factory.ObjectProvider<
+            ai.neargo.shop.spi.member.MemberEventPort> memberEvents;
 
     /** 人档随账号注销一起作废。取值与 {@code UserServiceImpl.STATUS_DEREGISTERED} 一致 */
     private static final String DEREGISTERED_ACCOUNT = "DEREGISTERED";
@@ -36,11 +44,14 @@ public class PersonServiceImpl implements PersonService {
 
     public PersonServiceImpl(PersonMapper personMapper, PersonMergeLogMapper mergeLogMapper,
                              PhoneCrypto crypto,
-                             ai.neargo.shop.user.mapper.UserMappers.UserMapper userMapper) {
+                             ai.neargo.shop.user.mapper.UserMappers.UserMapper userMapper,
+                             org.springframework.beans.factory.ObjectProvider<
+                                     ai.neargo.shop.spi.member.MemberEventPort> memberEvents) {
         this.personMapper = personMapper;
         this.mergeLogMapper = mergeLogMapper;
         this.crypto = crypto;
         this.userMapper = userMapper;
+        this.memberEvents = memberEvents;
     }
 
     /**
@@ -127,6 +138,7 @@ public class PersonServiceImpl implements PersonService {
             UsrPerson p = resolveOrCreateByPhone(phone);
             p.setUserNo(userNo);
             personMapper.updateById(p);
+            claimMembers(p.getPersonNo());
             return Optional.of(p);
         }
         // 已经是他自己的：什么都不用做（每次登录都会走到这里）
@@ -157,6 +169,7 @@ public class PersonServiceImpl implements PersonService {
         byPhone.setUserNo(userNo);
         personMapper.updateById(byPhone);
         log.info("[person] 线索档 {} 被本人认领（账号 {}）", byPhone.getPersonNo(), userNo);
+        claimMembers(byPhone.getPersonNo());
         return Optional.of(byPhone);
     }
 
@@ -183,6 +196,23 @@ public class PersonServiceImpl implements PersonService {
                     .set(UsrPerson::getStatus, DEREGISTERED));
             log.info("[person] 账号 {} 注销，人档 {} 解绑并让出手机号", userNo, p.getPersonNo());
         });
+    }
+
+    /**
+     * 通知会员域把这份人档下的线索会员转正。
+     *
+     * <p><b>失败只记日志</b>：转正是派生动作，而这里在登录链路上 ——
+     * 会员没转正明天还能补，登录挂掉是事故。
+     */
+    private void claimMembers(String personNo) {
+        try {
+            var port = memberEvents.getIfAvailable();
+            if (port != null) {
+                port.onPersonBound(personNo);
+            }
+        } catch (RuntimeException e) {
+            log.warn("[person] 线索转正失败 person={}：{}", personNo, e.toString());
+        }
     }
 
     /** 那个账号还在不在、是不是已注销。查不到也当「没了」—— 兜底而不是纠结 */

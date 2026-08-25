@@ -1,6 +1,8 @@
 package ai.neargo.shop.portal.biz;
 
 import ai.neargo.shop.auth.BizContext;
+import ai.neargo.shop.auth.SecurityUtils;
+import org.springframework.context.annotation.Profile;
 import ai.neargo.shop.auth.BizPerms;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
@@ -11,10 +13,18 @@ import ai.neargo.shop.member.dto.MemberVOs.MemberStatsVO;
 import ai.neargo.shop.member.dto.MemberVOs.MemberVO;
 import ai.neargo.shop.member.service.MemberService;
 import org.springframework.security.access.prepost.PreAuthorize;
+import ai.neargo.shop.member.dto.MemberVOs.MergePreviewVO;
+import ai.neargo.shop.member.dto.MemberVOs.TagVO;
+import ai.neargo.shop.member.service.MemberTagService;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
 
 /**
  * 商家侧会员（P1：名单 / 统计 / 详情）。
@@ -25,13 +35,16 @@ import org.springframework.web.bind.annotation.RestController;
  * <p>控制器只做「取参数、判权、调 service、拼 VO」。会员、标签、人群、口径都在同一屏里操作，
  * 所以它们在同一个控制器（按权限与使用者切，不按资源切）。
  */
+@Profile("api")
 @RestController
 public class BizMemberController {
 
     private final MemberService memberService;
+    private final MemberTagService tagService;
 
-    public BizMemberController(MemberService memberService) {
+    public BizMemberController(MemberService memberService, MemberTagService tagService) {
         this.memberService = memberService;
+        this.tagService = tagService;
     }
 
     /**
@@ -72,5 +85,102 @@ public class BizMemberController {
     public MemberDetailVO detail(@PathVariable String memberNo) {
         return memberService.detail(BizContext.requireMerchantNo(), memberNo)
                 .orElseThrow(() -> BizException.of(ErrorCode.NOT_FOUND));
+    }
+
+    // ---------------------------------------------------------------- 录入与标签（P2）
+
+    /**
+     * 手工录入一个手机号。
+     *
+     * <p>本人还没在平台出现过时记为**线索**：<b>不可触达、不进任何受众</b> ——
+     * 录入手机号不等于拿到推送许可。端上要在**保存之前**把这句说清楚，
+     * 否则他会以为发不出去是功能坏了。
+     *
+     * <p>已存在就返回那一条并把备注并进去，不报错 —— 店员重复录入是常态。
+     */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.CUSTOMER + "')")
+    @PostMapping("/biz/members")
+    public MemberVO enroll(@RequestBody EnrollReq req) {
+        BizContext ctx = BizContext.current();
+        var m = memberService.enroll(BizContext.requireMerchantNo(), req.phone(), req.remark(),
+                req.tagNos(), req.storeNo() != null ? req.storeNo() : ctx.currentStoreNo(),
+                SecurityUtils.currentUserNo());
+        return memberService.detail(BizContext.requireMerchantNo(), m.getMemberNo())
+                .map(d -> d.member())
+                .orElseThrow(() -> BizException.of(ErrorCode.NOT_FOUND));
+    }
+
+    /** 改备注 / 拉黑与恢复。**线索不能被商家点一下转正** —— 那只能由本人绑定账号触发 */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.CUSTOMER + "')")
+    @PatchMapping("/biz/members/{memberNo}")
+    public MemberVO patch(@PathVariable String memberNo, @RequestBody PatchReq req) {
+        memberService.patch(BizContext.requireMerchantNo(), memberNo, req.remark(), req.status());
+        return memberService.detail(BizContext.requireMerchantNo(), memberNo)
+                .map(d -> d.member())
+                .orElseThrow(() -> BizException.of(ErrorCode.NOT_FOUND));
+    }
+
+    /** 批量打标 / 去标。先筛出人，再一次性打 —— 一个一个点是这一页最没必要的重复劳动 */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.CUSTOMER + "')")
+    @PostMapping("/biz/members/tags")
+    public void tag(@RequestBody TagReq req) {
+        tagService.tag(BizContext.requireMerchantNo(), req.memberNos(), req.add(), req.remove(),
+                SecurityUtils.currentUserNo());
+    }
+
+    /** 标签字典 + 每个标签多少人（COUNT 出来的，不存冗余列） */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.CUSTOMER + "')")
+    @GetMapping("/biz/member-tags")
+    public List<TagVO> tags() {
+        return tagService.tags(BizContext.requireMerchantNo());
+    }
+
+    @PreAuthorize("@perm.canBiz('" + BizPerms.CUSTOMER + "')")
+    @PostMapping("/biz/member-tags")
+    public TagVO createTag(@RequestBody TagEditReq req) {
+        return tagService.create(BizContext.requireMerchantNo(), req.name(),
+                SecurityUtils.currentUserNo());
+    }
+
+    /** 改名或停用。**系统标签两样都不许** —— 它的名字就是口径 */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.CUSTOMER + "')")
+    @PatchMapping("/biz/member-tags/{tagNo}")
+    public TagVO editTag(@PathVariable String tagNo, @RequestBody TagEditReq req) {
+        String entityNo = BizContext.requireMerchantNo();
+        if (req.enabled() != null) {
+            return tagService.setEnabled(entityNo, tagNo, req.enabled());
+        }
+        return tagService.rename(entityNo, tagNo, req.name());
+    }
+
+    /**
+     * 合并两个标签。
+     *
+     * <p><b>{@code confirm=false} 是试算</b>：返回影响面不落库。
+     * 界面必须先把「多少人会改、其中多少人两个都有」摆出来再让他按 —— 合并不可逆。
+     */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.CUSTOMER + "')")
+    @PostMapping("/biz/member-tags/{tagNo}/merge")
+    public MergePreviewVO mergeTag(@PathVariable String tagNo, @RequestBody MergeReq req) {
+        return tagService.merge(BizContext.requireMerchantNo(), tagNo, req.intoTagNo(),
+                Boolean.TRUE.equals(req.confirm()), SecurityUtils.currentUserNo());
+    }
+
+    /** @param tagNos 录入时顺手打上的标签 */
+    public record EnrollReq(String phone, String remark, List<String> tagNos, String storeNo) {
+    }
+
+    public record PatchReq(String remark, String status) {
+    }
+
+    public record TagReq(List<String> memberNos, List<String> add, List<String> remove) {
+    }
+
+    /** {@code enabled} 非空 = 停用/恢复；否则按 {@code name} 改名 */
+    public record TagEditReq(String name, Boolean enabled) {
+    }
+
+    /** @param confirm 空或 false = 只试算，返回影响面不落库 */
+    public record MergeReq(String intoTagNo, Boolean confirm) {
     }
 }

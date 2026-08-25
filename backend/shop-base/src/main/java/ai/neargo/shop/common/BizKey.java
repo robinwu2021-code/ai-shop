@@ -32,6 +32,8 @@ public final class BizKey {
     public static final String MEMBER = "MB";
     /** 会员来源明细。每一次来源一行 */
     public static final String MEMBER_SOURCE = "MS";
+    /** 会员标签。号不可变，名字可改 —— 关系表存的是它 */
+    public static final String MEMBER_TAG = "MT";
     public static final String ADDRESS = "AD";
     public static final String TICKET = "TK";
     public static final String MESSAGE = "MSG";

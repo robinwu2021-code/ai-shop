@@ -3247,6 +3247,66 @@ CREATE TABLE IF NOT EXISTS mbr_member_source
     CONSTRAINT uk_mbr_source_no UNIQUE (source_no)
 );
 
+CREATE TABLE IF NOT EXISTS mbr_tag
+(
+    id BIGINT(20) NOT NULL AUTO_INCREMENT,
+    tag_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    name VARCHAR(32) NOT NULL,
+    tag_type VARCHAR(8) NOT NULL DEFAULT 'MCH',
+    status VARCHAR(16) NOT NULL DEFAULT 'ACTIVE',
+    merged_into VARCHAR(64) DEFAULT NULL,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT(20) NOT NULL DEFAULT 0,
+    deleted TINYINT(4) NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_mbr_tag_no UNIQUE (tag_no),
+    CONSTRAINT uk_mbr_tag_name UNIQUE (tenant_no, entity_no, name)
+);
+
+CREATE TABLE IF NOT EXISTS mbr_member_tag
+(
+    id BIGINT(20) NOT NULL AUTO_INCREMENT,
+    entity_no VARCHAR(64) NOT NULL,
+    member_no VARCHAR(64) NOT NULL,
+    tag_no VARCHAR(64) NOT NULL,
+    tag_type VARCHAR(8) NOT NULL,
+    tagged_by VARCHAR(64) DEFAULT NULL,
+    tagged_at BIGINT(20) NOT NULL,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT(20) NOT NULL DEFAULT 0,
+    deleted TINYINT(4) NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_mbr_member_tag UNIQUE (tenant_no, member_no, tag_no)
+);
+
+CREATE TABLE IF NOT EXISTS mbr_tag_merge_log
+(
+    id BIGINT(20) NOT NULL AUTO_INCREMENT,
+    entity_no VARCHAR(64) NOT NULL,
+    from_tag_no VARCHAR(64) NOT NULL,
+    to_tag_no VARCHAR(64) NOT NULL,
+    affected_count INT(11) NOT NULL DEFAULT 0,
+    operator_no VARCHAR(64) DEFAULT NULL,
+    merged_at BIGINT(20) NOT NULL,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT(20) NOT NULL DEFAULT 0,
+    deleted TINYINT(4) NOT NULL DEFAULT 0,
+    PRIMARY KEY (id)
+);
+
 -- 种子数据
 INSERT INTO sys_industry VALUES
 (1,'CATERING','餐饮',10,1,1,0,0,'微信小微白名单内','MAIN','2026-08-09 12:49:36','SYSTEM','2026-08-09 12:49:36',NULL,0,0),

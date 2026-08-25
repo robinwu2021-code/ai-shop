@@ -48,15 +48,19 @@ public class MemberServiceImpl implements MemberService {
     private final MemberSourceMapper sourceMapper;
     private final SettingMapper settingMapper;
     private final PersonPort personPort;
+    /** 详情页要显示他身上的标签。同域直接依赖，不必绕 Port */
+    private final ai.neargo.shop.member.service.MemberTagService tagService;
 
     public MemberServiceImpl(MemberMapper memberMapper, MemberStoreMapper storeMapper,
                              MemberSourceMapper sourceMapper, SettingMapper settingMapper,
-                             PersonPort personPort) {
+                             PersonPort personPort,
+                             ai.neargo.shop.member.service.MemberTagService tagService) {
         this.memberMapper = memberMapper;
         this.storeMapper = storeMapper;
         this.sourceMapper = sourceMapper;
         this.settingMapper = settingMapper;
         this.personPort = personPort;
+        this.tagService = tagService;
     }
 
     // ---------------------------------------------------------------- 写
@@ -114,6 +118,87 @@ public class MemberServiceImpl implements MemberService {
         long now = System.currentTimeMillis();
         MbrMember m = create(entityNo, personNo, MbrMember.SOURCE_SEARCH, storeNo, now);
         recordSource(m, MbrMember.SOURCE_SEARCH, storeNo, true, now, null, null, null, null, null);
+        return m;
+    }
+
+    @Override
+    @Transactional
+    public MbrMember enroll(String entityNo, String phone, String remark, List<String> tagNos,
+                            String storeNo, String operatorNo) {
+        if (phone == null || phone.isBlank()) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        // 人档以手机号为准：本人还没注册也照样有一份，这正是线索能落地的原因
+        var person = personPort.resolveOrCreateByPhone(phone);
+        boolean registered = person.userNo() != null && !person.userNo().isBlank();
+
+        MbrMember m = find(entityNo, person.personNo()).orElse(null);
+        long now = System.currentTimeMillis();
+        if (m == null) {
+            m = create(entityNo, person.personNo(), MbrMember.SOURCE_MANUAL, storeNo, now);
+            /*
+             * 本人还没绑账号 = 线索。**不可触达、不进受众** ——
+             * 录入手机号不等于拿到推送许可，这条是合规边界，不是产品取舍。
+             */
+            m.setStatus(registered ? MbrMember.ACTIVE : MbrMember.LEAD);
+            recordSource(m, MbrMember.SOURCE_MANUAL, storeNo, true, now,
+                    null, null, null, operatorNo, null);
+        }
+        // 已存在就把备注并进去，不报错 —— 店员重复录入是常态
+        if (remark != null && !remark.isBlank()) {
+            m.setRemark(remark.trim());
+        }
+        memberMapper.updateById(m);
+        if (tagNos != null && !tagNos.isEmpty()) {
+            tagService.tag(entityNo, List.of(m.getMemberNo()), tagNos, List.of(), operatorNo);
+        }
+        return m;
+    }
+
+    @Override
+    @Transactional
+    public int claimByPerson(String personNo) {
+        if (personNo == null || personNo.isBlank()) {
+            return 0;
+        }
+        List<MbrMember> leads = memberMapper.selectList(Wrappers.<MbrMember>lambdaQuery()
+                .eq(MbrMember::getPersonNo, personNo)
+                .eq(MbrMember::getStatus, MbrMember.LEAD));
+        long now = System.currentTimeMillis();
+        for (MbrMember m : leads) {
+            m.setStatus(MbrMember.ACTIVE);
+            m.setClaimedAt(now);
+            memberMapper.updateById(m);
+        }
+        if (!leads.isEmpty()) {
+            log.info("[member] 人档 {} 绑定账号，{} 条线索会员转正", personNo, leads.size());
+        }
+        return leads.size();
+    }
+
+    @Override
+    @Transactional
+    public MbrMember patch(String entityNo, String memberNo, String remark, String status) {
+        MbrMember m = memberMapper.selectOne(Wrappers.<MbrMember>lambdaQuery()
+                .eq(MbrMember::getEntityNo, entityNo)
+                .eq(MbrMember::getMemberNo, memberNo).last("limit 1"));
+        if (m == null) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        if (remark != null) {
+            m.setRemark(remark.isBlank() ? null : remark.trim());
+        }
+        if (status != null && (MbrMember.ACTIVE.equals(status) || MbrMember.BLOCKED.equals(status))) {
+            // 线索不能被改成 ACTIVE：转正只能由本人绑定账号触发，不能由商家点一下完成
+            if (!MbrMember.LEAD.equals(m.getStatus())) {
+                m.setStatus(status);
+            }
+        }
+        memberMapper.update(null, Wrappers.<MbrMember>lambdaUpdate()
+                .eq(MbrMember::getMemberNo, memberNo)
+                // 显式 set：updateById 默认跳过 null，清空备注那一下会静默失败
+                .set(MbrMember::getRemark, m.getRemark())
+                .set(MbrMember::getStatus, m.getStatus()));
         return m;
     }
 
@@ -201,7 +286,8 @@ public class MemberServiceImpl implements MemberService {
                         s.getInviterUserNo(), s.getInviterRole(), s.getOperatorNo(),
                         s.getActivityNo(), nz(s.getIsFirst()) == 1, nz(s.getOccurredAt())))
                 .toList();
-        return Optional.of(new MemberDetailVO(vo(m), stores, sources));
+        return Optional.of(new MemberDetailVO(vo(m), stores, sources,
+                tagService.tagsOf(entityNo, memberNo)));
     }
 
     @Override

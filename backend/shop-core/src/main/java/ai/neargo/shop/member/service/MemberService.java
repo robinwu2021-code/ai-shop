@@ -31,6 +31,31 @@ public interface MemberService {
     /** 主动加入（C 端店铺页那个按钮）。没有人档时抛 {@code MEMBER_PHONE_REQUIRED} */
     MbrMember join(String entityNo, String personNo, String storeNo);
 
+    /**
+     * 商家手工录入一个手机号（P2）。
+     *
+     * <p>本人还没在平台出现过时，这条记为 <b>{@code LEAD} 线索</b>：
+     * <b>不可触达、不进任何受众</b> —— 录入手机号不等于拿到推送许可。
+     *
+     * <p><b>已存在就返回那一条并把备注与标签并进去，不报错</b>：
+     * 店员重复录入是常态，报错只会让他再录一次。
+     */
+    MbrMember enroll(String entityNo, String phone, String remark, java.util.List<String> tagNos,
+                     String storeNo, String operatorNo);
+
+    /**
+     * 这份人档绑定账号了 —— 把它名下所有线索会员转正。
+     *
+     * <p><b>一次绑定，几家商家的会员同时生效</b>。这正是「会员必须有已验证手机号」
+     * 那条准入规则换来的：不需要合并任何东西，只是把 status 从 LEAD 改成 ACTIVE。
+     *
+     * @return 转正了几条
+     */
+    int claimByPerson(String personNo);
+
+    /** 改备注 / 拉黑与恢复。拉黑的人仍在名单里（历史成交是事实），但不再进可发放的人群 */
+    MbrMember patch(String entityNo, String memberNo, String remark, String status);
+
     PageData<MemberVO> list(String entityNo, MemberQuery q);
 
     MemberStatsVO stats(String entityNo, String storeNo);

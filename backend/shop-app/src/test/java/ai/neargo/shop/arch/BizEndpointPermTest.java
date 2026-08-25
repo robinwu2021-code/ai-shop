@@ -191,6 +191,11 @@ class BizEndpointPermTest {
         put("/biz/members", BizPerms.CUSTOMER);
         put("/biz/members/stats", BizPerms.CUSTOMER);
         put("/biz/members/{memberNo}", BizPerms.CUSTOMER);
+        // 录入与标签（P2）：同一屏、同一批人、同一个码
+        put("/biz/members/tags", BizPerms.CUSTOMER);
+        put("/biz/member-tags", BizPerms.CUSTOMER);
+        put("/biz/member-tags/{tagNo}", BizPerms.CUSTOMER);
+        put("/biz/member-tags/{tagNo}/merge", BizPerms.CUSTOMER);
         // 只改公告：与整份门面同一个码 —— 它写的是同一张表的同一家店
         put("/biz/store/announcement", BizPerms.STORE);
         // 删一条常用语：还是那张表那一家店，同一个码
@@ -270,8 +275,14 @@ class BizEndpointPermTest {
      */
     private static final Set<String> ANY_OF = Set.of("/biz/dashboard/todo");
 
+    /**
+     * ⚠️ <b>Patch 是 2026-08-25 补进来的</b>：此前这个正则只认 Get/Post/Put/Delete，
+     * 于是任何 {@code @PatchMapping} 的 /biz 端点都会**整个绕过权限决策检查** ——
+     * 表里没有它、这条用例也不报，而它在线上是真的能被调用的。
+     * 加一种 HTTP 方法就要来这里加一次，否则守卫看着绿、洞开着。
+     */
     private static final Pattern MAPPING = Pattern.compile(
-            "@(?:Get|Post|Put|Delete)Mapping\\(\\s*(?:value\\s*=\\s*)?\"([^\"]*)\"");
+            "@(?:Get|Post|Put|Patch|Delete)Mapping\\(\\s*(?:value\\s*=\\s*)?\"([^\"]*)\"");
     private static final Pattern CLASS_BASE = Pattern.compile(
             "@RequestMapping\\(\\s*\"([^\"]+)\"\\s*\\)");
 

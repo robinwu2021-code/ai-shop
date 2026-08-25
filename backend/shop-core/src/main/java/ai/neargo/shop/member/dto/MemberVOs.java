@@ -54,6 +54,23 @@ public final class MemberVOs {
     }
 
     public record MemberDetailVO(MemberVO member, List<MemberStoreVO> stores,
-                                 List<MemberSourceVO> sources) {
+                                 List<MemberSourceVO> sources, List<TagVO> tags) {
+    }
+
+    /**
+     * @param tagType SYS 系统算的（只读）/ MCH 商家的
+     * @param count   打了多少人。COUNT 出来的 —— 不存冗余列，标签总量只有几十个
+     */
+    public record TagVO(String tagNo, String name, String tagType, String status, int count) {
+    }
+
+    /**
+     * 合并的影响面。<b>先给商家看这三个数，再让他按</b> —— 合并不可逆。
+     *
+     * @param bothTagged           两个标签都有的人。他们合并后只保留一条
+     * @param referencedActivities 引用了源标签的活动数。它们会被一起改写
+     */
+    public record MergePreviewVO(int affectedMembers, int bothTagged, int referencedActivities,
+                                 boolean applied) {
     }
 }
