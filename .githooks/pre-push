@@ -17,22 +17,38 @@ fi
 
 ROOT="$(git rev-parse --show-toplevel)"
 
-# ── 界面清单闸门 ────────────────────────────────────────────────────────────
-# 谁加了一页而没更新清单，就在这里被挡住。清单是三端 UI 的唯一索引
-# （docs/technical/design/ui-catalog.json），由 pages.json 与 nav.ts 生成 ——
-# 只要有人改了路由/标题/导航而没重跑生成器，这一条就会红。
-# 它很快（几十毫秒，纯读文件），所以不做「没动过就跳过」的判断。
-if ! python3 "$ROOT/scripts/gen-ui-catalog.py" --check; then
+# ── 下面两道闸都在 HEAD 的干净副本里跑 ──────────────────────────────────────
+#
+# ⚠️ **它们此前读的是工作区**，而这个目录常有多个会话同时在改。后果是：
+# 任何人手上有一个**未提交**的新页面，全员都推不动 —— 而被挡住的人看到的是
+# 「+ 新增 b-app/pages/schedule/index」，一个跟他毫不相干的页面名。
+# 他既不知道是谁的，也不该替对方跑生成器（跑了就等于把别人的半成品
+# 烘进一个已提交的产物）。2026-08-25 真的挡住了一个只改前端文案的会话。
+#
+# 与编译闸门是同一条教训：**闸门要判的是「推出去的那份对不对」，
+# 判据必须取自 HEAD，不是谁的工作区。** check-head-compiles.sh 一直是这么做的，
+# 这两道快闸漏了。
+#
+# 代价是一次 worktree（几百毫秒）。两道闸本身仍是纯读文件、几十毫秒，
+# 所以仍不做「没动过就跳过」的判断 —— 那种判断会漏掉「改了生成器本身」这一类。
+GATE_WT="$(mktemp -d)/head-gates"
+cleanup() { git worktree remove --force "$GATE_WT" >/dev/null 2>&1 || true; }
+trap cleanup EXIT
+git worktree add -q --detach "$GATE_WT" HEAD
+
+# 界面清单闸门：清单是三端 UI 的唯一索引（docs/technical/design/ui-catalog.json），
+# 由 pages.json 与 nav.ts 生成。改了路由/标题/导航而没重跑生成器，这一条就红。
+# 纯 python、不需要依赖，所以在 worktree 里能直接跑（那里没有 node_modules）。
+if ! python3 "$GATE_WT/scripts/gen-ui-catalog.py" --check; then
+  echo "  ↑ 判据取自 HEAD。工作区里未提交的页面不会让你被挡住，也不会替别人放行。"
   exit 1
 fi
 
-# ── ops-web 契约闸门 ────────────────────────────────────────────────────────
-# 运营端默认走 mock（`NEXT_PUBLIC_USE_MOCK !== "0"`），所以「前端调了一个后端
-# 根本没有的接口」这件事在界面上看不出来 —— 页面有数据、点得动、不报错，
-# 一直到真正连后端的那天才集体爆出来。这一条锁的是差集：已知欠账放行，
-# 新写的空接口拦下。清单在 ops-web/known-mock-endpoints.txt。
-# 0.14 秒，纯读文件，同样不做「没动过就跳过」的判断。
-if ! node "$ROOT/scripts/check-ops-contract.mjs" --check; then
+# ops-web 契约闸门：运营端默认走 mock，所以「前端调了一个后端根本没有的接口」
+# 在界面上看不出来 —— 页面有数据、点得动、不报错，一直到真连后端那天才集体爆出来。
+# 锁的是差集：已知欠账放行（ops-web/known-mock-endpoints.txt），新写的空接口拦下。
+# 只用 node 内置模块，同样不需要 node_modules。
+if ! node "$GATE_WT/scripts/check-ops-contract.mjs" --check; then
   exit 1
 fi
 
