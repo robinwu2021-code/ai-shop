@@ -422,6 +422,15 @@ export default {
     gift: "FREE",
     giftItem: "{title} ×{n} (free)",
   },
+  payMode: {
+    ONLINE: "Pay online",
+    OFFLINE: "Pay on site",
+  },
+  payModeDesc: {
+    ONLINE: "WeChat / Alipay, order placed on payment",
+    OFFLINE: "Pay the merchant in person; the platform does not hold this money",
+  },
+
   confirm: {
     pickPickupFirst: "Choose a pickup point first",
     splitNote: "These items come from {n} shops and will create {n} orders, paid in one go",
@@ -443,7 +452,7 @@ export default {
     pickAddress: "Choose a delivery address",
     appointmentAt: "Booked for {t}",
     coupon: "Voucher",
-    couponAvailable: "{n} available",
+    couponAvailable: "{n} available", payMode: "Payment", offlineNoPlatformCoupon: "Platform coupons cannot be used when paying on site — the platform reimburses merchants for them, and this money never passes through the platform. Merchant coupons and points still apply.",
     noCouponAvailable: "None available",
     noCoupon: "Don't use a voucher",
     remark: "Note",

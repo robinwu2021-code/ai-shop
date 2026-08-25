@@ -17,13 +17,13 @@ import { segmentByMerchant, useCartStore } from "@/stores/cart";
 import { useCommunityStore } from "@/stores/community";
 import { useUserStore } from "@/stores/user";
 import PhoneGate from "@/components/phone-gate.vue";
-import { FEATURES, FULFILLMENT, POINTS, ROUTES, TRADE_RULES } from "@shared/utils/constants";
+import { FEATURES, FULFILLMENT, PAY_MODE, POINTS, ROUTES, TRADE_RULES } from "@shared/utils/constants";
 import { datetime, money } from "@shared/utils/format";
 import { earnPointsFor, pricingFor } from "@shared/strategies/pricing";
 // 券能减多少与后端同一套算法算 —— 两处各写一遍就会出现「页面说减 8，付完只减 5」
 import { couponDiscount } from "@shared/strategies/pricing/types";
 import { currentCurrency } from "@shared/utils/money";
-import type { Address, CartItem, CheckoutCapability, Coupon, FulfillmentType, OrderItem, OrderAmount } from "@shared/types";
+import type { Address, CartItem, CheckoutCapability, Coupon, FulfillmentType, OrderItem, OrderAmount, PointsDeductible } from "@shared/types";
 
 const { t } = useI18n();
 const cart = useCartStore();
@@ -104,7 +104,9 @@ const coupon = computed(() => coupons.value.find((c) => c.couponNo === couponNo.
 /** 可用券：已领取、未过期、且达到门槛 */
 const usableCoupons = computed(() =>
   coupons.value.filter(
-    (c) => c.received && c.endAt > Date.now() && goodsMinor.value >= c.thresholdMinor,
+    (c) => c.received && c.endAt > Date.now() && goodsMinor.value >= c.thresholdMinor
+      // 当面付下平台券用不了 —— 列表里就不该出现，否则他选完才被摘掉
+      && !(payMode.value === PAY_MODE.OFFLINE && c.funder === "PLATFORM"),
   ),
 );
 
@@ -183,6 +185,55 @@ const noPayMethod = computed(
     && capability.value.usablePayMethods.length === 0,
 );
 
+/**
+ * 支付方式：线上 / 当面付。
+ *
+ * ⚠️ **与 usablePayMethods 是两根轴**：那个是通道（微信/支付宝），
+ * 这个是「线上付还是当面付」。一笔订单要同时确定两者。
+ *
+ * `ONLINE` 永远在后端给的集合里（四层判定的约定），所以这里不需要「没配过」那一档。
+ * 拿不到 capability 时按只支持线上处理 —— 那是最保守的一档：
+ * 用户照常线上付，而不是看到一个可能下不了单的选项。
+ */
+const payModes = computed<string[]>(
+  () => capability.value?.usablePayModes ?? [PAY_MODE.ONLINE],
+);
+const canPayOffline = computed(() => payModes.value.includes(PAY_MODE.OFFLINE));
+const payMode = ref<string>(PAY_MODE.ONLINE);
+/*
+ * 后端不再给线下时**当场退回线上**。
+ * 不退的话，用户先选了当面付、再把履约改成快递，选项已经消失而 payMode 还是 OFFLINE ——
+ * 下单被 80011 拒，而屏幕上看不出他选了什么。
+ */
+watch(canPayOffline, (ok) => {
+  if (!ok) payMode.value = PAY_MODE.ONLINE;
+});
+
+/**
+ * 平台券在当面付下用不了。
+ *
+ * **不是「不想给」，是没有资金流可补**：平台券的钱最终要由平台补给商家，
+ * 而当面付这笔钱从没进过平台。硬发就是白送且无处对账。
+ * 商家券不受影响 —— 那是商家自己少收，与平台无关。
+ */
+const platformCouponBlocked = computed(
+  () => payMode.value === PAY_MODE.OFFLINE && coupon.value?.funder === "PLATFORM",
+);
+watch(platformCouponBlocked, (blocked) => {
+  // 已经选了平台券又改成当面付 → 把券摘掉，别让他带着一张用不了的券去下单
+  if (blocked) couponNo.value = "";
+});
+
+/**
+ * 积分为什么不可用。**判据来自后端**（`deductible.disabledReason`），端上不再造一套 ——
+ * 四级开关、端策略、线下开关加起来有五六条，任何一条在端上重写一遍都会走岔，
+ * 而走岔的表现是「结算页说能抵、下单没抵」。
+ *
+ * 空 = 可用。**不可用时也要显示余额**，见模板里那段注释。
+ */
+const pointsDeductible = ref<PointsDeductible | null>(null);
+const pointsBlockedReason = computed(() => pointsDeductible.value?.disabledReason || "");
+
 /** 额度已用尽或本单会超的商家：这家的货现在下不了单。 */
 const quotaBlocked = computed(
   () => capability.value?.merchants.filter((m) => m.quotaExhausted || m.quotaWouldExceed) ?? [],
@@ -215,6 +266,7 @@ async function refreshAmount() {
       pickupNo: needPickup.value ? community.pickup?.pickupNo : undefined,
       addressId: needAddress.value ? addressId.value : undefined,
       couponNo: couponNo.value || undefined,
+      payMode: payMode.value,
       usePoints: FEATURES.points && usePoints.value ? pointBalance.value : 0,
       appointmentAt: appointmentAt.value,
     });
@@ -246,16 +298,56 @@ async function refreshCapability() {
   }
 }
 
+/**
+ * 积分能不能抵、抵多少、不能抵是为什么 —— **一次问清，判据全在后端**。
+ *
+ * 与能力提示分开问：这个随支付方式与金额变（线下是否可抵是平台开关，
+ * 上限按券后金额算），而能力只随车里有谁变。
+ */
+async function refreshPoints() {
+  const merchantNo = items.value[0]?.merchantNo;
+  if (!FEATURES.points || !merchantNo) {
+    pointsDeductible.value = null;
+    return;
+  }
+  try {
+    pointsDeductible.value = await api.pointsDeductible({
+      merchantNo,
+      payableMinor: goodsMinor.value - (coupon.value ? couponDiscount(coupon.value, goodsMinor.value) : 0),
+      payMode: payMode.value,
+    });
+  } catch {
+    // 同上：问不到就不显示原因，但不拦 —— 后端下单时还会再判一次
+    pointsDeductible.value = null;
+  }
+}
+
 watch(
-  () => [items.value.length, fulfillment.value, couponNo.value, usePoints.value, addressId.value, appointmentAt.value],
+  () => [items.value.length, fulfillment.value, couponNo.value, usePoints.value, addressId.value,
+    appointmentAt.value, payMode.value],
   () => void refreshAmount(),
   { immediate: true },
 );
 
-// 只跟车里的商品变化 —— 改地址、换券都不影响「这家能不能开票」
+/*
+ * 跟车里的商品**与履约方式**变。
+ *
+ * 原先只跟商品 —— 那时能力提示只有开票与额度，改地址换券确实不影响。
+ * 现在多了 `usablePayModes`，而它跟履约方式走（快递没有当面收款的那一刻，
+ * 自提点自提也不行 —— 自提点不是卖家）。漏掉这个依赖的表现是：
+ * 用户从自提改成快递，「当面付」那个选项还留在屏幕上，点下去被 80011 拒。
+ * 换券与改地址仍然不影响，所以它们不在这里。
+ */
 watch(
-  () => items.value.map((it) => it.skuNo).join(","),
+  () => [items.value.map((it) => it.skuNo).join(","), fulfillment.value],
   () => void refreshCapability(),
+  { immediate: true },
+);
+
+// 积分试算跟支付方式与券走 —— 线下能否抵是平台开关，上限按券后金额算
+watch(
+  () => [items.value.map((it) => it.skuNo).join(","), payMode.value, couponNo.value],
+  () => void refreshPoints(),
   { immediate: true },
 );
 
@@ -337,6 +429,7 @@ async function submit() {
       pickupNo: needPickup.value ? community.pickup?.pickupNo : undefined,
       addressId: needAddress.value ? addressId.value : undefined,
       couponNo: couponNo.value || undefined,
+      payMode: payMode.value,
       usePoints: FEATURES.points && usePoints.value ? pointBalance.value : 0,
       remark: remark.value || undefined,
       appointmentAt: appointmentAt.value,
@@ -482,6 +575,34 @@ onMounted(async () => {
       </view>
     </view>
 
+    <!--
+      支付方式。**只在真的有得选时才画** —— 只支持线上时多一行「在线支付」
+      是纯噪声，而结算页每多一行就少一分「一眼看清要付多少」。
+    -->
+    <view v-if="canPayOffline" class="sh-card block">
+      <text class="block__t">{{ $t("confirm.payMode") }}</text>
+      <view class="modes">
+        <view
+          v-for="m in payModes"
+          :key="m"
+          class="mode"
+          :class="{ 'is-on': payMode === m }"
+          @tap="payMode = m"
+        >
+          <text class="mode__t">{{ $t(`payMode.${m}`) }}</text>
+          <text class="mode__d">{{ $t(`payModeDesc.${m}`) }}</text>
+        </view>
+      </view>
+      <!--
+        当面付的两句话都不能省：
+          · 平台不代收 —— 出纠纷时双方对这一点没有分歧
+          · 平台券用不了 —— 而且要说**为什么**，否则看着像故障
+      -->
+      <text v-if="payMode === PAY_MODE.OFFLINE" class="mode__note">
+        {{ $t("confirm.offlineNoPlatformCoupon") }}
+      </text>
+    </view>
+
     <!-- 券 + 备注 -->
     <view class="sh-card block">
       <view class="cell" @tap="pickCoupon">
@@ -495,15 +616,27 @@ onMounted(async () => {
         </text>
       </view>
       <!-- 积分抵扣：上限是「券后金额」的固定比例，说清楚为什么抵不满 -->
-      <view v-if="FEATURES.points && pointBalance > 0" class="cell" @tap="usePoints = !usePoints">
+      <view
+        v-if="FEATURES.points && pointBalance > 0"
+        class="cell"
+        @tap="pointsBlockedReason ? undefined : (usePoints = !usePoints)"
+      >
         <text class="cell__k">{{ $t("confirm.points") }}</text>
         <view class="pointsline">
-          <text class="cell__v" :class="{ 'is-on': usePoints && !!amount?.pointsUsed }">
+          <!--
+            ⚠️ **不可用时也要显示余额，并说明原因** —— 不能静默把入口藏起来。
+            用户知道自己有 500 分，界面上却没有抵扣入口，他会当成 bug 来投诉，
+            而客服看不出是哪一条策略关掉的。
+          -->
+          <text v-if="pointsBlockedReason" class="cell__v">
+            {{ $t("confirm.pointsHave", { n: pointBalance }) }}　{{ pointsBlockedReason }}
+          </text>
+          <text v-else class="cell__v" :class="{ 'is-on': usePoints && !!amount?.pointsUsed }">
             {{ usePoints && amount?.pointsUsed
               ? $t("confirm.pointsUsed", { n: amount.pointsUsed, p: money(amount.pointsDeductMinor) })
               : $t("confirm.pointsHave", { n: pointBalance }) }}
           </text>
-          <view class="dot" :class="{ 'is-on': usePoints }" />
+          <view v-if="!pointsBlockedReason" class="dot" :class="{ 'is-on': usePoints }" />
         </view>
       </view>
 
@@ -574,6 +707,41 @@ onMounted(async () => {
 </template>
 
 <style scoped>
+.modes {
+  display: flex;
+  gap: 16rpx;
+  margin-top: 16rpx;
+}
+.mode {
+  flex: 1;
+  padding: 20rpx;
+  border-radius: 20rpx;
+  border: 2rpx solid var(--sh-line);
+  background: var(--sh-bg);
+}
+.mode.is-on {
+  border-color: var(--sh-primary);
+  background: var(--sh-faint);
+}
+.mode__t {
+  display: block;
+  font-size: 28rpx;
+  color: var(--sh-ink);
+}
+.mode__d {
+  display: block;
+  margin-top: 6rpx;
+  font-size: 22rpx;
+  line-height: 1.4;
+  color: var(--sh-sub);
+}
+.mode__note {
+  display: block;
+  margin-top: 16rpx;
+  font-size: 24rpx;
+  line-height: 1.5;
+  color: var(--sh-sub);
+}
 .recv {
   margin-top: 24rpx;
 }

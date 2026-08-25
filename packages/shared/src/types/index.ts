@@ -1392,6 +1392,18 @@ export interface CheckoutCapability {
   anyNotInvoiceCapable: boolean;
   /** 逐商家的能力，端上据此在对应的商家分组上打标 */
   merchants: MerchantCapability[];
+  /**
+   * 整单可用的**支付方式**（`PAY_MODE`：ONLINE / OFFLINE）。
+   *
+   * ⚠️ **与 `usablePayMethods` 是两根轴，别混**：那个是**通道**
+   * （WECHAT / ALIPAY / H5…），这个是**线上付还是当面付**。
+   * 一笔订单要同时确定两者。
+   *
+   * 同样取交集（一笔支付覆盖整单）。**ONLINE 永远在里面**，
+   * 所以不会是空集，也就不需要 `null` 那一档 —— 与 `usablePayMethods`
+   * 的取舍不同，因为那边真的可能「没配过」。
+   */
+  usablePayModes: string[];
 }
 
 export interface MerchantCapability {

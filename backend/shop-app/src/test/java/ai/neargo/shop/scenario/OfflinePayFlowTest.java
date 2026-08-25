@@ -69,6 +69,8 @@ class OfflinePayFlowTest {
     private MerchantMappers.MchAccountMapper staffMapper;
     @Autowired
     private StoreFulfillmentService fulfillmentService;
+    @Autowired
+    private org.springframework.jdbc.core.JdbcTemplate jdbc;
 
     private MockMvc mvc() {
         return MockMvcBuilders.webAppContextSetup(context)
@@ -146,6 +148,21 @@ class OfflinePayFlowTest {
                 new StoreFulfillmentService.ChannelCmd(Fulfillments.NEIGHBOR_PICKUP, true, null, null, null, null),
                 new StoreFulfillmentService.ChannelCmd(Fulfillments.MERCHANT_DELIVERY, true, null, null, null, null),
                 new StoreFulfillmentService.ChannelCmd(Fulfillments.EXPRESS, true, null, null, null, null)));
+    }
+
+    /**
+     * ⚠️ **渠道行要还原。** 本类在 @BeforeEach 里给门店存了渠道，而
+     * 「一行都没有 = 按旧口径全放行」是别的用例赖以成立的前提 ——
+     * 留着的话，此后走别的履约方式的用例会拿到 70013，
+     * 而它们的失败信息里不会有任何一个字提到线下支付。
+     *
+     * 用 SQL 而不是 mapper.delete：MchFulfillmentChannel 带 @TableLogic，
+     * 逻辑删只置 deleted=1，而唯一键里没有 deleted —— 下一个用例再开同一路会撞键。
+     */
+    @org.junit.jupiter.api.AfterEach
+    void restoreChannels() {
+        DataScopeContext.executeWithoutScope(() -> jdbc.update(
+                "DELETE FROM mch_fulfillment_channel WHERE entity_no = ?", SEED_ENTITY));
     }
 
     @Test
@@ -257,6 +274,54 @@ class OfflinePayFlowTest {
         assertThat(row.path("status").asString())
                 .as("子单列不用改，改的是下发口径")
                 .isEqualTo("WAIT_OFFLINE_PAY");
+    }
+
+    @Test
+    @DisplayName("★★★ 结算页的能力提示与下单判定必须一致 —— 否则「说能当面付、点下去说不能」")
+    void capabilityAgreesWithCreate() throws Exception {
+        String token = login("13400188008");
+        addToCart(token, "G0001", "SK0001", 1);
+
+        String body = mvc().perform(post("/mp/order/capability")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"items\":[{\"goodsNo\":\"G0001\",\"skuNo\":\"SK0001\",\"qty\":1}],"
+                                + "\"fulfillment\":\"STORE_PICKUP\",\"pickupNo\":\"PP0001\"}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        var modes = json.readTree(body).get("data").get("usablePayModes");
+        boolean offlineOffered = false;
+        for (JsonNode m : modes) {
+            if (PayModes.OFFLINE.equals(m.asString())) {
+                offlineOffered = true;
+            }
+        }
+        assertThat(offlineOffered)
+                .as("前置都开着（有证、门店开关开、商品支持），能力提示就该给出线下")
+                .isTrue();
+
+        /*
+         * 关键是**反向也要对得上**：把门店开关关掉，能力提示要立刻不再给线下。
+         * 两处各判一次的话，结算页会继续画那个选项，而 create 已经开始拒 ——
+         * 用户看到的是「明明选得中，一下单就报错」，且每次都能复现。
+         */
+        DataScopeContext.executeWithoutScope(() -> {
+            for (MchStore st : storeMapper.selectList(Wrappers.<MchStore>lambdaQuery()
+                    .eq(MchStore::getEntityNo, SEED_ENTITY))) {
+                st.setOfflinePayEnabled(0);
+                storeMapper.updateById(st);
+            }
+            return null;
+        });
+        String after = mvc().perform(post("/mp/order/capability")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"items\":[{\"goodsNo\":\"G0001\",\"skuNo\":\"SK0001\",\"qty\":1}],"
+                                + "\"fulfillment\":\"STORE_PICKUP\",\"pickupNo\":\"PP0001\"}"))
+                .andReturn().getResponse().getContentAsString();
+        for (JsonNode m : json.readTree(after).get("data").get("usablePayModes")) {
+            assertThat(m.asString()).isNotEqualTo(PayModes.OFFLINE);
+        }
     }
 
     @Test

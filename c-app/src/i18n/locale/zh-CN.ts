@@ -449,6 +449,15 @@ export default {
     gift: "赠品",
     giftItem: "{title} ×{n}（0 元）",
   },
+  payMode: {
+    ONLINE: "在线支付",
+    OFFLINE: "当面付款",
+  },
+  payModeDesc: {
+    ONLINE: "微信/支付宝，付完即下单",
+    OFFLINE: "见到商家时把钱给他，平台不代收",
+  },
+
   confirm: {
     pickPickupFirst: "先选一个自提点",
     splitNote: "这些商品来自 {n} 家店，将生成 {n} 笔订单，一次付清",
@@ -470,7 +479,7 @@ export default {
     pickAddress: "请选择收货地址",
     appointmentAt: "预约时段 {t}",
     coupon: "优惠券",
-    couponAvailable: "{n} 张可用",
+    couponAvailable: "{n} 张可用", payMode: "支付方式", offlineNoPlatformCoupon: "当面付款时平台券用不了 —— 平台券的钱要由平台补给商家，而这笔钱不经过平台。商家券照常可用，积分也照常抵扣。",
     noCouponAvailable: "无可用",
     noCoupon: "不使用优惠券",
     remark: "备注",

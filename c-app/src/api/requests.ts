@@ -182,6 +182,19 @@ export interface CreateOrderReqBody {
   groupNo?: string;
   /** APPOINTMENT：预约开始时间戳 */
   appointmentAt?: number;
+  /**
+   * 支付方式（`PAY_MODE`）。**不传按 ONLINE** —— 存量端上没有这个字段，
+   * 不能因为补了它就让老版本下不了单。
+   *
+   * 能不能选 OFFLINE 由 `orderCapability` 的 `usablePayModes` 说了算，
+   * 而后端在 create 里会**再判一次**：端上不该是唯一的闸。
+   */
+  payMode?: string;
+  /**
+   * APPOINTMENT：选定的**预约时段**。这家店开了时段就必填 ——
+   * 没开则忽略，走 `appointmentAt` 那条旧路（兼容期）。
+   */
+  appointmentSlotNo?: string;
   /** 幂等 key，防重复提交 */
   idempotencyKey: string;
 }
@@ -319,4 +332,9 @@ export interface PointsDeductibleQuery {
   merchantNo: string;
   /** 券后金额（分）。抵扣上限按它算，**运费不参与** */
   payableMinor: number;
+  /**
+   * 支付方式（`PAY_MODE`）。线下能否用积分由平台一个开关控制 ——
+   * 不传的话试算按线上算，而下单时按真实支付方式算，两处会给出不同的数。
+   */
+  payMode?: string;
 }

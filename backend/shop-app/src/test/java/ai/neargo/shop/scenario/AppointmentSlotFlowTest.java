@@ -6,6 +6,7 @@ import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.Fulfillments;
 import ai.neargo.shop.merchant.entity.MchAppointmentSlot;
 import ai.neargo.shop.merchant.mapper.MerchantMappers;
+import ai.neargo.shop.merchant.service.StoreFulfillmentService;
 import ai.neargo.shop.merchant.service.AppointmentSlotService;
 import ai.neargo.shop.product.entity.PrdGoods;
 import ai.neargo.shop.product.mapper.ProductMappers;
@@ -71,6 +72,10 @@ class AppointmentSlotFlowTest {
     @Autowired
     private MerchantMappers.MchStoreMapper storeMapper;
     @Autowired
+    private StoreFulfillmentService fulfillmentService;
+    @Autowired
+    private org.springframework.jdbc.core.JdbcTemplate jdbc;
+    @Autowired
     private MerchantMappers.AppointmentSlotMapper slotMapper;
     @Autowired
     private ProductMappers.GoodsMapper goodsMapper;
@@ -81,6 +86,8 @@ class AppointmentSlotFlowTest {
 
     private String storeNo;
     private String addressId;
+    /** G0001 的原始履约集合，@AfterEach 放回去 */
+    private String goodsFulfillmentsBackup;
 
     @BeforeEach
     void setUp() {
@@ -94,6 +101,10 @@ class AppointmentSlotFlowTest {
         DataScopeContext.executeWithoutScope(() -> {
             PrdGoods g = goodsMapper.selectOne(Wrappers.<PrdGoods>lambdaQuery()
                     .eq(PrdGoods::getGoodsNo, "G0001").last("LIMIT 1"));
+            // 先记下原样 —— 这是全局种子，@AfterEach 要放回去
+            if (goodsFulfillmentsBackup == null) {
+                goodsFulfillmentsBackup = g.getFulfillments();
+            }
             g.setFulfillments("[\"STORE_PICKUP\",\"NEIGHBOR_PICKUP\",\"MERCHANT_DELIVERY\","
                     + "\"EXPRESS\",\"APPOINTMENT\"]");
             return goodsMapper.updateById(g);
@@ -123,8 +134,32 @@ class AppointmentSlotFlowTest {
     @AfterEach
     void cleanUp() {
         SecurityContextHolder.clearContext();
-        DataScopeContext.executeWithoutScope(() -> slotMapper.delete(
-                Wrappers.<MchAppointmentSlot>lambdaQuery().eq(MchAppointmentSlot::getStoreNo, storeNo)));
+        DataScopeContext.executeWithoutScope(() -> {
+            slotMapper.delete(Wrappers.<MchAppointmentSlot>lambdaQuery()
+                    .eq(MchAppointmentSlot::getStoreNo, storeNo));
+            /*
+             * ⚠️ **渠道行必须物理删掉**，而且必须删 —— 本类有一条用例会存渠道
+             * （serviceFulfillmentSurvivesChannelConfig，那是它的前提）。
+             * 不还原的话，此后所有走快递/邻里自提的用例都会拿到 70013：
+             * 集合从空变非空，闸二开始生效，而它们并不知道这件事。
+             * OrderReceiverRequiredTest 的 6 条就是这么被我弄红的。
+             *
+             * 用 SQL 而不是 mapper.delete：MchFulfillmentChannel 带 @TableLogic，
+             * 逻辑删只置 deleted=1，而 uk_store_channel 里没有 deleted ——
+             * 下一个用例再开同一路会撞唯一键。
+             */
+            jdbc.update("DELETE FROM mch_fulfillment_channel WHERE entity_no = ?", MERCHANT);
+            if (goodsFulfillmentsBackup != null) {
+                PrdGoods g = goodsMapper.selectOne(Wrappers.<PrdGoods>lambdaQuery()
+                        .eq(PrdGoods::getGoodsNo, "G0001").last("LIMIT 1"));
+                if (g != null) {
+                    g.setFulfillments(goodsFulfillmentsBackup);
+                    goodsMapper.updateById(g);
+                }
+            }
+            return null;
+        });
+        goodsFulfillmentsBackup = null;
     }
 
     @Test
@@ -303,6 +338,32 @@ class AppointmentSlotFlowTest {
         assertThat(slot(slotNo).getBooked())
                 .as("还两次就会减成负数，此后这个时段能卖出比 capacity 更多的单")
                 .isZero();
+    }
+
+    @Test
+    @DisplayName("★★★ 门店配过送货方式之后，上门预约仍要卖得出去 —— 这是条线上真缺陷")
+    void serviceFulfillmentSurvivesChannelConfig() {
+        /*
+         * mch_fulfillment_channel 只覆盖四条**实体配送**线，服务类（到店核销 / 上门预约）
+         * 永远不会有行。而下单那道闸的规则是「集合非空就要求命中」——
+         * 于是商家只要保存过一次送货方式配置，集合不再为空，
+         * **他的服务类商品从此一单也卖不出去**，而买家看到的是
+         * 「所选商品不支持该配送方式」，与真实原因毫无关系。
+         *
+         * 这条用例把「配过渠道」这个前提摆在明面上：它就是触发条件。
+         */
+        fulfillmentService.save(MERCHANT, storeNo, List.of(
+                new StoreFulfillmentService.ChannelCmd(
+                        Fulfillments.MERCHANT_DELIVERY, true, null, null, null, null)));
+        asBuyer();
+
+        try {
+            orderService.create(appointmentOrder(null), key("svc"));
+        } catch (BizException e) {
+            assertThat(e.errorCode())
+                    .as("服务类不在渠道表里 ≠ 这家店不提供服务 —— 那张表压根不表达它")
+                    .isNotEqualTo(ErrorCode.FULFILLMENT_NOT_SUPPORTED);
+        }
     }
 
     // ── helpers ──────────────────────────────────────────────

@@ -204,8 +204,27 @@ public class OrderServiceImpl implements OrderService {
          * 而端上对空数组的正确动作是**拦住下单**：于是一个完全正常的订单被拦死。
          * 这个错是在浏览器里跑真实数据时才现形的，单测和类型都拦不住。
          */
+        /*
+         * 支付方式（线上/线下）也取交集，理由与通道相同：一笔支付覆盖整单。
+         *
+         * **按行取而不是按商家**：四层判定里最里面一层是商品自己的 pay_modes，
+         * 同一家店可以一件支持当面付、一件不支持。按商家取会让不支持的那件
+         * 跟着支持的一起放行 —— 而下单时 create 会再判一次并拒掉，
+         * 于是结算页说能当面付、点下去说不能。
+         *
+         * ONLINE 永远在集合里（四层判定的约定），所以交集不会空。
+         */
+        java.util.Set<String> payModes = null;
+        for (Line line : split.items) {
+            var modes = payModeService.availablePayModes(
+                    line.snapshot.goodsNo(), stores.get(line.snapshot.merchantNo()));
+            payModes = payModes == null ? new java.util.LinkedHashSet<>(modes)
+                    : intersect(payModes, modes);
+        }
         return new ai.neargo.shop.trade.dto.CheckoutCapabilityVO(
-                usable == null ? null : new ArrayList<>(usable), anyNoInvoice, rows);
+                usable == null ? null : new ArrayList<>(usable), anyNoInvoice, rows,
+                payModes == null ? List.of(ai.neargo.shop.common.PayModes.ONLINE)
+                        : new ArrayList<>(payModes));
     }
 
     private static java.util.Set<String> intersect(java.util.Set<String> a,
@@ -1684,6 +1703,24 @@ public class OrderServiceImpl implements OrderService {
          * 履约的是**具体那家门店** —— 文三路店只做自提，仓库店才发快递。
          * 空集 = 该店还没迁移到 channel 模型，按旧口径放行（只读兼容期约定）。
          */
+        /*
+         * ⚠️ **服务类履约不受门店渠道表约束**（到店核销 / 上门预约）。
+         *
+         * `mch_fulfillment_channel` 只覆盖四条**实体配送**线（自提、邻里自提、
+         * 自送、快递）—— `StoreFulfillmentServiceImpl.CONFIGURABLE` 就是那四个，
+         * 服务类**永远不会有行**。而这里的规则是「集合非空就要求命中」，
+         * 于是一旦商家保存过任何一次送货方式配置，集合不再为空，
+         * **他的服务类商品从此一单也卖不出去** —— 买家看到的是
+         * 「所选商品不支持该配送方式」，与真实原因毫无关系。
+         *
+         * 空集 = 该店还没迁到 channel 模型（兼容期放行），
+         * 服务类不在集合里 = **这张表压根不表达它**，两者不是一回事。
+         * 2026-08-25 接预约排期时撞出来：种子店被别的用例配过渠道之后，
+         * 所有 APPOINTMENT 单一律 70013。
+         */
+        if (Fulfillments.SERVICE_LIKE.contains(fulfillment)) {
+            return;
+        }
         for (Group g : split.groups) {
             java.util.Set<String> enabled = merchantPort.enabledFulfillmentsFor(
                     g.merchantNo, storeOfMerchant.get(g.merchantNo), communityNo);

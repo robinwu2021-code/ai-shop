@@ -69,6 +69,19 @@ export interface CreateOrderReq {
   groupNo?: string;
   /** APPOINTMENT：用户选定的预约开始时间戳 */
   appointmentAt?: number;
+  /**
+   * 支付方式（`PAY_MODE`）。**不传按 ONLINE** —— 存量端上没有这个字段，
+   * 不能因为补了它就让老版本下不了单。
+   *
+   * 能不能选 OFFLINE 由 `orderCapability` 的 `usablePayModes` 说了算，
+   * 而后端在 create 里会**再判一次**：端上不该是唯一的闸。
+   */
+  payMode?: string;
+  /**
+   * APPOINTMENT：选定的**预约时段**。这家店开了时段就必填 ——
+   * 没开则忽略，走 `appointmentAt` 那条旧路（兼容期）。
+   */
+  appointmentSlotNo?: string;
 }
 
 import type { PointsDeductibleQuery } from "./requests";

@@ -422,6 +422,15 @@ export default {
     gift: "مجانًا",
     giftItem: "{title} ×{n} (مجانًا)",
   },
+  payMode: {
+    ONLINE: "الدفع أونلاين",
+    OFFLINE: "الدفع نقدًا",
+  },
+  payModeDesc: {
+    ONLINE: "وي‑تشات / علي‑باي، يتم الطلب فور الدفع",
+    OFFLINE: "ادفع للتاجر مباشرة؛ المنصة لا تحتفظ بهذا المبلغ",
+  },
+
   confirm: {
     pickPickupFirst: "اختر نقطة استلام أولاً",
     splitNote: "هذه المنتجات من {n} متاجر وستُنشئ {n} طلبات تُدفع دفعة واحدة",
@@ -443,7 +452,7 @@ export default {
     pickAddress: "اختر عنوان التوصيل",
     appointmentAt: "الموعد {t}",
     coupon: "قسيمة",
-    couponAvailable: "{n} متاحة",
+    couponAvailable: "{n} متاحة", payMode: "طريقة الدفع", offlineNoPlatformCoupon: "لا يمكن استخدام قسائم المنصة عند الدفع نقدًا — فالمنصة تعوّض التاجر عنها، وهذا المبلغ لا يمر عبر المنصة. قسائم التاجر والنقاط تعمل كالمعتاد.",
     noCouponAvailable: "لا يوجد",
     noCoupon: "بدون قسيمة",
     remark: "ملاحظة",

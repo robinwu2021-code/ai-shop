@@ -23,7 +23,7 @@ import {
 } from "@shared/mock/db";
 import { earnPointsFor, pricingFor } from "@shared/strategies/pricing";
 import { fulfillmentFor } from "@shared/strategies/fulfillment";
-import { CATEGORY_TYPE, FULFILLMENT, POINTS, SERVICE_SCOPE, TRADE_RULES } from "@shared/utils/constants";
+import { CATEGORY_TYPE, FULFILLMENT, PAY_MODE, POINTS, SERVICE_SCOPE, TRADE_RULES } from "@shared/utils/constants";
 import { currentCurrency } from "@shared/utils/money";
 import { pointsExpireAt } from "@shared/utils/datetime";
 import { defaultFulfillment } from "@shared/utils/goods";
@@ -901,10 +901,21 @@ export const mockApi: ShopApi = {
     const usable = configured.length
       ? configured.map((m) => m.payMethods).reduce((a, b) => a.filter((x) => b.includes(x)))
       : null;
+    /*
+     * 支付方式（线上/当面）。mock 里的约定：**自提与到店核销给当面付**，
+     * 快递不给 —— 与后端那道闸同口径（货已寄出，没有当面收款的那一刻）。
+     *
+     * 不是「全都给」：开发期看不见「这一单只能线上付」长什么样的话，
+     * 那个分支等于没做。这与上面造两种小微形态是同一个理由。
+     */
+    const offlineOk = req.fulfillment === FULFILLMENT.PICKUP
+      || req.fulfillment === FULFILLMENT.STORE_VERIFY
+      || req.fulfillment === FULFILLMENT.DELIVERY;
     return delay({
       usablePayMethods: usable,
       anyNotInvoiceCapable: merchants.some((m) => !m.invoiceCapable),
       merchants,
+      usablePayModes: offlineOk ? [PAY_MODE.ONLINE, PAY_MODE.OFFLINE] : [PAY_MODE.ONLINE],
     });
   },
 

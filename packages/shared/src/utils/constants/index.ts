@@ -242,6 +242,22 @@ export const AREA_LEVEL = {
  * `IMPLEMENTED` 里的值后端此刻就会下发，必须与库严格一致；
  * `PLANNED` 里的后端还没有，对账时不该报「端上编了个不存在的词」。
  */
+/**
+ * 支付方式。**与「支付通道」是两根轴**，别混：
+ *   · 这个是「线上付还是当面付」
+ *   · 通道是 WECHAT / ALIPAY / H5 —— 见 CheckoutCapability.usablePayMethods
+ * 一笔订单要同时确定两者。
+ *
+ * ⚠️ **ONLINE 永远可用**：四层判定（商品 → 类目 → 主体资质 → 门店）只收窄 OFFLINE。
+ * 不这么定的话，配错任何一层都会出现「这件商品谁也买不了」——
+ * 那比多开一种支付方式糟得多：前者是收入归零，后者只是多一个选项。
+ */
+export const PAY_MODE = {
+  ONLINE: "ONLINE",
+  /** 当面付。**平台不代收这笔钱** —— 平台券因此用不了（没有资金流可补） */
+  OFFLINE: "OFFLINE",
+} as const;
+
 export const FULFILLMENT = {
   /** 到店自提：商家门店（PickupPoint.type=STORE） */
   PICKUP: "STORE_PICKUP",

@@ -21,10 +21,19 @@ import java.util.List;
  *                         <b>null = 未配置</b>（进件还没走完），端上<b>不要拦</b> ——
  *                         两者混成空数组的话，一个完全正常的订单会被拦死
  * @param merchants        逐商家的能力，端上据此在对应的商家分组上打标
+ * @param usablePayModes   整单可用的<b>支付方式</b>（{@code PayModes}：ONLINE / OFFLINE）。
+ *                         <p>⚠️ <b>与 {@code usablePayMethods} 是两根轴，别混</b>：
+ *                         那个是<b>通道</b>（WECHAT / ALIPAY / H5…），这个是
+ *                         <b>线上付还是当面付</b>。一笔订单要同时确定两者。
+ *                         <p>同样取<b>交集</b>，同样因为一笔支付覆盖整单。
+ *                         <b>ONLINE 永远在里面</b>（四层判定的约定），
+ *                         所以这里不会是空集，也就不需要 null 那一档 ——
+ *                         与 usablePayMethods 的取舍不同，因为那边真的可能「没配过」。
  */
 public record CheckoutCapabilityVO(List<String> usablePayMethods,
                                    boolean anyNotInvoiceCapable,
-                                   List<MerchantCapability> merchants) {
+                                   List<MerchantCapability> merchants,
+                                   List<String> usablePayModes) {
 
     /**
      * @param quotaExhausted   本期额度已用尽 —— 这家的货现在下不了单
