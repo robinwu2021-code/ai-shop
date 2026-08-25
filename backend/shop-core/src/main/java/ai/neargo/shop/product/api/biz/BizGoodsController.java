@@ -262,6 +262,18 @@ public class BizGoodsController {
      * 合成一条的话端上每次都要先过滤一遍，而漏过滤的后果是
      * 「产地」被当成规格建出来 —— 那正是这一期要消灭的东西。
      */
+    /**
+     * 能加进这一类的**商品参数**候选（本类目已配 + 平台通用 + 自建）。
+     *
+     * <p>与 {@code /biz/spec-props} 的差别是视角：那个回答「这一类有哪些参数」，
+     * 这个回答「还能加哪些」—— 与销售规格那侧的 spec-templates / spec-dims 同一对关系。
+     */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.GOODS + "')")
+    @GetMapping("/biz/pickable-props")
+    public List<SpecTemplateVO> pickableProps(@RequestParam(required = false) String categoryNo) {
+        return specLibrary.pickableProps(BizContext.requireMerchantNo(), categoryNo);
+    }
+
     @PreAuthorize("@perm.canBiz('" + BizPerms.GOODS + "')")
     @GetMapping("/biz/spec-props")
     public List<SpecTemplateVO> specProps(@RequestParam(required = false) String categoryNo) {
@@ -412,7 +424,8 @@ public class BizGoodsController {
     @PreAuthorize("@perm.canBiz('" + BizPerms.GOODS + "')")
     @PostMapping("/biz/spec-dims")
     public ai.neargo.shop.product.dto.SpecTemplateVO addSpecDim(@RequestBody AddSpecDimReq req) {
-        var d = specLibrary.addMerchantDim(BizContext.requireMerchantNo(), req.name(), req.labels());
+        var d = specLibrary.addMerchantDim(BizContext.requireMerchantNo(),
+                req.name(), req.labels(), req.usageType());
         /*
          * 回**规格模板**的形状而不是规格库的胖 VO：端上拿到它就往规格组里塞，
          * 与「套用模板」走的是同一段代码 —— 两种形状会让那段代码分叉。
@@ -434,7 +447,11 @@ public class BizGoodsController {
     }
 
     /** @param labels 首批取值，可为空 —— 建完维度再一个个加也行 */
-    public record AddSpecDimReq(String name, List<String> labels) {
+    /**
+     * @param usageType {@code SALE}（默认，销售规格）/ {@code PROP}（商品参数）。
+     *                  不传按 SALE —— 老客户端建的一直是销售规格，行为不变。
+     */
+    public record AddSpecDimReq(String name, List<String> labels, String usageType) {
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.GOODS + "')")

@@ -62,6 +62,14 @@ public interface SpecLibraryService {
     List<SpecTemplateVO> pickableDims(String merchantNo, String categoryNo);
 
     /**
+     * 能加进来的**商品参数**。与 {@link #pickableDims} 同一条路，只换 usage 判据。
+     *
+     * <p>参数也要能加：平台给这一类配的几条是起点不是上限 ——
+     * 卖山货的想标「海拔」，平台没配，他该有地方把它加进来。
+     */
+    List<SpecTemplateVO> pickableProps(String merchantNo, String categoryNo);
+
+    /**
      * 把商家提交的规格选项<b>反查成值编号</b>，供 SKU 快照使用。
      *
      * @param dimNo  规格组对应的维度（端上原样回传的 templateNo）；空 = 这一组不是模板来的
@@ -141,7 +149,7 @@ public interface SpecLibraryService {
      * <p><b>只在这家店可见，且不参与跨店聚合</b> —— 这是它的定义，不是缺陷。
      * 界面上要把这句话说出来，否则商家会以为自己建的规格能跟别家比价。
      */
-    SpecDimVO addMerchantDim(String merchantNo, String name, List<String> labels);
+    SpecDimVO addMerchantDim(String merchantNo, String name, List<String> labels, String usageType);
 
     /**
      * 这家店<b>自己建的</b>规格维度，给「我的规格」那一页用。
@@ -209,9 +217,18 @@ public interface SpecLibraryService {
     record ValueOverrideCommand(String code, boolean enabled) {
     }
 
-    /** @param categoryName 店主改过名的用店主的叫法 —— 这一页是给他看的 */
+    /**
+     * @param categoryName 店主改过名的用店主的叫法 —— 这一页是给他看的
+     * @param dims  销售规格：买家要挑一档，每档单独定价、单独算库存
+     * @param props 商品参数：只描述，不分 SKU、不影响价格与库存
+     *
+     * <p><b>两列并排而不是合成一列加个字段</b>：它们在界面上是两块，
+     * 端上合成一列就得每处都先过滤一遍，而漏过滤一次就是「产地」被当成规格 ——
+     * 那正是这一整期要消灭的东西。
+     */
     record StoreCategorySpecVO(String categoryNo, String categoryName,
-                               List<SpecTemplateVO> dims) {
+                               List<SpecTemplateVO> dims,
+                               List<SpecTemplateVO> props) {
     }
 
     /**

@@ -377,6 +377,21 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
 
     @Override
     public List<SpecTemplateVO> pickableDims(String merchantNo, String categoryNo) {
+        return pickable(merchantNo, categoryNo, PrdSpecDim.SALE);
+    }
+
+    /**
+     * 能加进来的**商品参数**。与 {@link #pickableDims} 同一条路，只换 usage 判据。
+     *
+     * <p>参数也要能加：平台给这一类配的那几条是起点不是上限 ——
+     * 卖山货的想标「海拔」，平台没配，他该有地方把它加进来。
+     */
+    @Override
+    public List<SpecTemplateVO> pickableProps(String merchantNo, String categoryNo) {
+        return pickable(merchantNo, categoryNo, PrdSpecDim.PROP);
+    }
+
+    private List<SpecTemplateVO> pickable(String merchantNo, String categoryNo, String wantUsage) {
         /*
          * 本类目已配的那几条排最前 —— 它们是平台针对这一类目的判断，
          * 比通用维度更该被选中。复用 templatesForCategory，连主维度标记一起带出来。
@@ -384,7 +399,7 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
         List<SpecTemplateVO> out = new ArrayList<>(
                 categoryNo == null || categoryNo.isBlank()
                         ? List.<SpecTemplateVO>of()
-                        : templatesForCategory(merchantNo, categoryNo));
+                        : forCategory(merchantNo, categoryNo, wantUsage));
         Set<String> seen = out.stream().map(SpecTemplateVO::templateNo).collect(Collectors.toSet());
 
         /*
@@ -399,11 +414,12 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
                         .eq(PrdSpecDim::getUniversal, true)
                         .orderByAsc(PrdSpecDim::getSort)));
         for (PrdSpecDim dim : platform) {
-            if (seen.contains(dim.getDimNo()) || !PrdSpecDim.SALE.equals(dim.getUsageType())) {
+            if (seen.contains(dim.getDimNo()) || !wantUsage.equals(dim.getUsageType())) {
                 continue;
             }
             List<SpecTemplateVO.Option> options = optionsOf(merchantNo, dim, List.of());
-            if (options.isEmpty()) {
+            // 空候选值：销售规格跳过（分不了 SKU），参数照给（量纲型本来就没有枚举值）
+            if (options.isEmpty() && PrdSpecDim.SALE.equals(wantUsage)) {
                 continue;
             }
             // categoryNo 传 null：它不是「这一类目的」，端上靠这个分组
@@ -1115,7 +1131,8 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
                     ? shelf.displayName() : categoryNameOf(shelf.categoryNo());
             // 没配规格的类目也留在列表里（dims 空）—— 那是运营侧的缺口，看得见才问得出来
             out.add(new StoreCategorySpecVO(shelf.categoryNo(), name,
-                    templatesForCategory(merchantNo, shelf.categoryNo())));
+                    templatesForCategory(merchantNo, shelf.categoryNo()),
+                    propsForCategory(merchantNo, shelf.categoryNo())));
         }
         return out;
     }
@@ -1252,7 +1269,7 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
 
     @Override
     @Transactional
-    public SpecDimVO addMerchantDim(String merchantNo, String name, List<String> labels) {
+    public SpecDimVO addMerchantDim(String merchantNo, String name, List<String> labels, String usageType) {
         String norm = SpecNormalizer.label(name);
         if (norm == null || norm.isBlank() || BANNED_DIM_NAMES.contains(norm)) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
@@ -1304,7 +1321,11 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
         // 自建维度一律枚举：让商家在建品页里同时定义「这是个量纲」与它的单位，
         // 是把一个建模问题推给了正在录商品的人
         dim.setValueType(PrdSpecDim.ENUM);
-        dim.setUsageType(PrdSpecDim.SALE);
+        /*
+         * 自建的也分销售规格与商品参数。**默认 SALE** —— 老调用方不传这个参数，
+         * 而它们建的一直是销售规格，行为逐字不变。
+         */
+        dim.setUsageType(PrdSpecDim.PROP.equals(usageType) ? PrdSpecDim.PROP : PrdSpecDim.SALE);
         dim.setUniversal(false);
         dim.setScope(PrdSpecDim.MERCHANT);
         dim.setEntityNo(merchantNo);
