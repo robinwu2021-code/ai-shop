@@ -36,6 +36,14 @@ public final class BizKey {
     public static final String MEMBER_TAG = "MT";
     /** 人群：一组筛选条件。发券、活动受众、触达共用它，避免同一群人算出三个数 */
     public static final String MEMBER_SEGMENT = "SG";
+    /** 券模板（新模型 pmt_coupon）。与老 mkt_coupon 的号分开 —— 两套表并存期间要一眼看出是哪一套 */
+    public static final String PROMO_COUPON = "PC";
+    /** 用户券（新模型）。发到某个人手上的那一张 */
+    public static final String PROMO_USER_COUPON = "PU";
+    /** 发放批次：一次定向发券 */
+    public static final String PROMO_ISSUE = "PI";
+    /** 优惠发生记录：一单命中了什么、一张券被用了第几次 */
+    public static final String PROMO_APPLY = "PA";
     public static final String ADDRESS = "AD";
     public static final String TICKET = "TK";
     public static final String MESSAGE = "MSG";
