@@ -390,6 +390,16 @@ public enum ErrorCode {
     SUBSET_AREAS_REQUIRED(70035, "err.merchant.subset_areas_required"),
     /** 地址地理编码解析不到门牌/小区级（G1）。只在地图能力开通时才会抛 */
     ADDRESS_UNRESOLVED(70036, "err.geo.address_unresolved"),
+
+    /**
+     * 一个账号持有的证照（经营主体）数量到上限了。
+     *
+     * <p>与 {@link #STORE_QUOTA_EXCEEDED} 分成两个码：那个是「这张证照下的店太多」，
+     * 解法是升档或停用一家；这个是「你名下的证照太多」，解法是<b>没有</b> ——
+     * 它是一道防滥用的硬闸（防止把平台当批量注册工具），要升只能找平台单独开。
+     * 共用一个码的话，商家会照着「去看套餐」的提示点进去，而那里没有他要的东西。
+     */
+    ENTITY_QUOTA_EXCEEDED(70037, "err.merchant.entity_quota_exceeded"),
     /*
      * 微信手机号快速验证没给出号码（通道未开、未认证、或本次换取失败）。
      *

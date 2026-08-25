@@ -50,6 +50,9 @@ class QuickStartFlowTest {
     @Autowired
     private ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper entityMapper;
 
+    @Autowired
+    private ai.neargo.shop.merchant.mapper.MerchantMappers.MchAccountMapper accountMapper;
+
     private MockMvc mvc() {
         return MockMvcBuilders.webAppContextSetup(context)
                 .apply(org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers
@@ -230,6 +233,41 @@ class QuickStartFlowTest {
         assertThat(upgraded.getName()).isEqualTo("先开着的店（有限公司）");
         assertThat(upgraded.getLegalForm()).as("进件要用它，不能留空").isNotBlank();
         assertThat(upgraded.getVerified()).as("审核通过才带认证标").isTrue();
+    }
+
+    @Test
+    @DisplayName("★★ 证照数量上限：到顶之后建不出第 6 个主体")
+    void entityQuotaIsEnforced() throws Exception {
+        String token = login("12600160007");
+        String userNo = userNoOf(token);
+
+        /*
+         * 直接造 5 个 owner 成员行 + 主体 —— 走真实入驻链路要五轮「申请 → 审核」，
+         * 而这条用例验的是**数量闸本身**，不是入驻流程。
+         */
+        for (int i = 0; i < 5; i++) {
+            var e = new ai.neargo.shop.merchant.entity.MchEntity();
+            e.setEntityNo("E-QUOTA-" + i + "-" + System.nanoTime());
+            e.setName("已有证照 " + i);
+            e.setStatus("ACTIVE");
+            e.setOwnerUserNo(userNo);
+            entityMapper.insert(e);
+
+            var a = new ai.neargo.shop.merchant.entity.MchAccount();
+            a.setMchAccountNo("MA-QUOTA-" + i + "-" + System.nanoTime());
+            a.setEntityNo(e.getEntityNo());
+            a.setUserNo(userNo);
+            a.setIsOwner(true);
+            a.setIsPrimary(false);
+            a.setStatus(ai.neargo.shop.merchant.entity.MchAccount.ACTIVE);
+            accountMapper.insert(a);
+        }
+
+        mvc().perform(post("/biz/merchant/quick-start")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"storeName\":\"第六张证照\"}"))
+                .andExpect(jsonPath("$.code").value(70037));
     }
 
     // ---------------------------------------------------------------- helpers

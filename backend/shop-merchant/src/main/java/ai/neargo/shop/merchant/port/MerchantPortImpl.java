@@ -46,6 +46,15 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
     private static final int RATING_SCALE = 10;
     private static final int RATING_INIT = 50;
 
+    /**
+     * 一个账号最多持有几张证照（经营主体）。
+     *
+     * <p><b>这是防滥用的硬闸，不是可售的额度</b>：门店数量按套餐卖（{@code mch_entity_plan}），
+     * 证照数量不卖 —— 它挡的是「把平台当批量注册工具」。所以写成常量而不是配置项：
+     * 配置项会被当成一个可以调的旋钮，而这个数只该由平台按个案单独放开。
+     */
+    private static final int MAX_ENTITIES_PER_ACCOUNT = 5;
+
     private final MchEntityMapper merchantMapper;
     private final ai.neargo.shop.merchant.service.MerchantGovernService governService;
     /** 转存入驻资质时用来查重 —— 写侧仍走 governService，这里只读 */
@@ -657,6 +666,8 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
             return existing.getEntityNo();
         }
 
+        requireEntityQuota(ownerUserNo);
+
         MchEntity m = new MchEntity();
         m.setEntityNo(BizKey.next(BizKey.MERCHANT));
         m.setName(name);
@@ -723,6 +734,8 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
             return shell.get();
         }
 
+        requireEntityQuota(ownerUserNo);
+
         String name = cmd.storeName().trim();
         MchEntity m = new MchEntity();
         m.setEntityNo(BizKey.next(BizKey.MERCHANT));
@@ -783,6 +796,30 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
                         .eq(MchEntity::getStatus, MchEntity.PENDING_LICENSE)
                         .last("limit 1")));
         return java.util.Optional.ofNullable(shell).map(MchEntity::getEntityNo);
+    }
+
+    /**
+     * 建新主体前的数量闸。
+     *
+     * <p><b>两条建主体的路都要过它</b>：快速开店（{@link #quickStart}）与
+     * 审核通过（{@link #activate} 的新建分支）。只拦一条的话，另一条就是绕过去的口子。
+     *
+     * <p>只数 owner 行 —— 被邀请去别人店里当店员不占自己的名额，
+     * 那不是他的证照。
+     */
+    private void requireEntityQuota(String ownerUserNo) {
+        if (ownerUserNo == null || ownerUserNo.isBlank()) {
+            return;
+        }
+        long owned = DataScopeContext.executeWithoutScope(() ->
+                staffMapper.selectList(Wrappers.<ai.neargo.shop.merchant.entity.MchAccount>lambdaQuery()
+                        .eq(ai.neargo.shop.merchant.entity.MchAccount::getUserNo, ownerUserNo)
+                        .eq(ai.neargo.shop.merchant.entity.MchAccount::getIsOwner, true))
+                .stream().map(ai.neargo.shop.merchant.entity.MchAccount::getEntityNo)
+                .distinct().count());
+        if (owned >= MAX_ENTITIES_PER_ACCOUNT) {
+            throw BizException.of(ErrorCode.ENTITY_QUOTA_EXCEEDED, MAX_ENTITIES_PER_ACCOUNT);
+        }
     }
 
     /**
