@@ -29,7 +29,16 @@ public final class MessageVOs {
                            String status, String reply, long createdAt, Long repliedAt) {
     }
 
-    public record FaqVO(String question, String answer, String category) {
+    /**
+     * @param faqNo     null means C 端快照（无需 id）；ops 端总是有值
+     * @param published null means C 端快照
+     */
+    public record FaqVO(String faqNo, String question, String answer, String category,
+                        Integer sort, Boolean published) {
+        /** C 端 VO —— faqNo 与 published 对外无意义，省略 */
+        public static FaqVO forC(String question, String answer, String category) {
+            return new FaqVO(null, question, answer, category, null, null);
+        }
     }
     /** 消息模板（P-14.1.1）。sentCount 取近 30 天。 */
     public record TemplateVO(String templateNo, String name, String channel, String lang,

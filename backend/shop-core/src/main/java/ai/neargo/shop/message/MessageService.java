@@ -68,6 +68,43 @@ public interface MessageService {
 
     List<FaqVO> faq();
 
+    // ---------------------------------------------------------------- 运营侧 FAQ（P-14.2.4）
+
+    /**
+     * 所有 FAQ（含草稿）。C 端的 {@link #faq()} 只看 published=true，
+     * 这一条是运营编辑视图，要看到所有条目。
+     */
+    ai.neargo.shop.common.PageData<FaqVO> opsFaqs(long page, long size);
+
+    /**
+     * 新建或更新 FAQ。{@code faqNo} 为空时新建，否则按号更新。
+     *
+     * <p>上架前答案不能为空 —— 空答案比没有条目更糟：
+     * 用户点进去只看到一个空白页，而他以为自己找到了答案。
+     */
+    FaqVO saveFaq(SaveFaqCommand cmd, String operatorNo);
+
+    /** 上架/下架。下架 = published 置 false；上架时验证 answer 非空。 */
+    FaqVO setFaqPublished(String faqNo, boolean published, String operatorNo);
+
+    record SaveFaqCommand(String faqNo, String question, String answer,
+                          String category, Integer sort) {
+    }
+
+    // ---------------------------------------------------------------- 运营侧工单（补齐）
+
+    /**
+     * 指派工单给客服。把 {@code assigned_to} 写进工单，不改 status ——
+     * 指派是「谁来处理」，status 是「处理到哪一步」，两者正交。
+     */
+    TicketVO assignTicket(String ticketNo, String assigneeNo, String operatorNo);
+
+    /**
+     * 记录代客操作。只写审计日志，不修改工单状态 ——
+     * 操作本身已在对应的业务端点完成，这里只是留痕「是谁在工单上下文里做的」。
+     */
+    TicketVO addProxyAction(String ticketNo, String action, String operatorNo);
+
     /**
      * 平台侧的站内信记录（运营端·发送记录页的「站内信」tab）。
      *

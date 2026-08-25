@@ -6,6 +6,8 @@ import ai.neargo.shop.auth.Perms;
 import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.marketing.group.GroupService;
 import ai.neargo.shop.marketing.group.dto.GroupVOs.GroupBuyVO;
+import ai.neargo.shop.marketing.group.dto.GroupVOs.RequestVO;
+import ai.neargo.shop.marketing.group.dto.GroupVOs.QuoteVO;
 import ai.neargo.shop.spi.platform.AuditLogPort;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -68,5 +70,42 @@ public class OpsGroupController {
     }
 
     public record AbortReq(String reason) {
+    }
+
+    /**
+     * 需求单池（平台视角）。运营监控：哪个邻居在等什么货、报价进展。
+     *
+     * @param status 为空给全部；{@code COLLECTING}/{@code QUOTED}/{@code CLOSED}
+     */
+    @GetMapping("/ops/demands")
+    @PreAuthorize("@perm.can('" + Perms.GROUP_DEMAND_READ + "')")
+    public PageData<RequestVO> demands(@RequestParam(required = false) String status,
+                                      @RequestParam(defaultValue = "1") long page,
+                                      @RequestParam(defaultValue = "50") long size) {
+        return PageData.ofAll(groupService.opsDemands(status), page, size);
+    }
+
+    /**
+     * 运营人肉指派商家报价（P-8.2.2）。
+     *
+     * <p>初期靠运营撮合：需求单有了就通知相关商家，商家联系不上时由运营代理报价。
+     * 信用约束（毁约 ≥3 次禁止报价）在 GroupService.quote() 里执行，
+     * 这里不另设 —— 不在一处就迟早分岔。
+     *
+     * @param demandNo 需求单号（路径）
+     */
+    @PostMapping("/ops/demands/{demandNo}/quotes")
+    @PreAuthorize("@perm.can('" + Perms.GROUP_DEMAND_ASSIGN + "')")
+    public QuoteVO assignQuote(@PathVariable String demandNo, @RequestBody AssignQuoteReq req) {
+        String operator = SecurityUtils.currentUserNo();
+        QuoteVO vo = groupService.quote(req.merchantNo(), demandNo,
+                new GroupService.QuoteCommand(req.price(), req.minQty(), req.note(), req.validDays()));
+        auditLogPort.record("DEMAND_QUOTE_ASSIGN", demandNo,
+                "为 " + req.merchantNo() + " 指派报价，单价 " + req.price());
+        return vo;
+    }
+
+    public record AssignQuoteReq(String merchantNo, long price, int minQty,
+                                 String note, int validDays) {
     }
 }

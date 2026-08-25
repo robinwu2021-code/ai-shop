@@ -87,6 +87,16 @@ public interface GroupService {
     // ---------------------------------------------------------------- 平台侧（P-8.2）
 
     /**
+     * 所有需求单（平台视角，不按用户过滤）。
+     *
+     * <p>{@link #requestList()} 按当前登录者过滤——只看自己的；
+     * 这一条是运营端全量视图：哪个邻居在等什么货、报价到了哪一步。
+     *
+     * @param status 为空给全部；传 {@code COLLECTING} / {@code QUOTED} / {@code CLOSED}
+     */
+    List<RequestVO> opsDemands(String status);
+
+    /**
      * 平台报价列表。**不按 merchantNo 过滤**——平台要看到所有商家的报价。
      *
      * @param status 为空给全部；传 {@code BREACH} 就是毁约档

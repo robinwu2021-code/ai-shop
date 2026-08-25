@@ -9,6 +9,10 @@ import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 /** message 域的 Mapper 集合。 */
 public final class MessageMappers {
 
+    public interface FaqMapper extends BaseMapper<ai.neargo.shop.message.entity.MsgFaq> {
+    }
+
+
     private MessageMappers() {
     }
 

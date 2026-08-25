@@ -87,4 +87,34 @@ public class OpsTicketController {
 
     public record ReplyReq(String reply) {
     }
+
+    /**
+     * 指派工单。把工单分给某个客服；不改 status，因为指派与处理进度正交 ——
+     * 一张待处理的工单可以先指派，再回复，最后关闭，三步独立。
+     */
+    @PostMapping("/ops/tickets/{ticketNo}/assign")
+    @PreAuthorize("@perm.can('" + Perms.MESSAGE_TICKET_HANDLE + "')")
+    public TicketVO assign(@PathVariable String ticketNo, @RequestBody AssignReq req) {
+        String operator = SecurityUtils.currentUserNo();
+        return messageService.assignTicket(ticketNo, req.assignee(), operator);
+    }
+
+    /**
+     * 记录代客操作。只写审计日志；代客操作本身已在对应业务端点完成。
+     *
+     * <p>代客操作不改工单状态 ——「我替用户下了一单」不等于「工单处理完了」，
+     * 他后续还可能需要跟进：取货、发票、差评处理。
+     */
+    @PostMapping("/ops/tickets/{ticketNo}/proxy-actions")
+    @PreAuthorize("@perm.can('" + Perms.MESSAGE_TICKET_HANDLE + "')")
+    public TicketVO proxyAction(@PathVariable String ticketNo, @RequestBody ProxyActionReq req) {
+        String operator = SecurityUtils.currentUserNo();
+        return messageService.addProxyAction(ticketNo, req.action(), operator);
+    }
+
+    public record AssignReq(String assignee) {
+    }
+
+    public record ProxyActionReq(String action) {
+    }
 }

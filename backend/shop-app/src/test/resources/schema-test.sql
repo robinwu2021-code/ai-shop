@@ -29,6 +29,7 @@ CREATE TABLE IF NOT EXISTS cmt_community
     origin_code VARCHAR(12) DEFAULT NULL,
     source VARCHAR(16) NULL,
     alias VARCHAR(128) NULL,
+    archived_at DATETIME DEFAULT NULL,
     CONSTRAINT uk_community_origin UNIQUE (origin_code),
     PRIMARY KEY (id),
     CONSTRAINT uk_community_no UNIQUE (community_no)
@@ -455,6 +456,8 @@ CREATE TABLE IF NOT EXISTS notify_ticket
     updated_by VARCHAR(64) DEFAULT NULL,
     version BIGINT(20) NOT NULL DEFAULT 0,
     deleted TINYINT(4) NOT NULL DEFAULT 0,
+    assigned_to  VARCHAR(64)  DEFAULT NULL,
+    assigned_at  BIGINT(20)   DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_ticket_no UNIQUE (ticket_no)
 );
@@ -3606,6 +3609,26 @@ CREATE TABLE IF NOT EXISTS prd_category_points
     deleted     TINYINT     NOT NULL DEFAULT 0,
     PRIMARY KEY (id),
     CONSTRAINT uk_cat_points UNIQUE (tenant_no, category_no)
+);
+
+CREATE TABLE IF NOT EXISTS msg_faq
+(
+    id          BIGINT(20)   NOT NULL AUTO_INCREMENT,
+    faq_no      VARCHAR(64)  NOT NULL,
+    question    VARCHAR(256) NOT NULL,
+    answer      TEXT         NOT NULL,
+    category    VARCHAR(64)  NOT NULL DEFAULT '',
+    sort        INT(11)      NOT NULL DEFAULT 0,
+    published   TINYINT(4)   NOT NULL DEFAULT 0,
+    tenant_no   VARCHAR(32)  NOT NULL DEFAULT 'MAIN',
+    created_at  DATETIME     NOT NULL,
+    created_by  VARCHAR(64)  DEFAULT NULL,
+    updated_at  DATETIME     NOT NULL,
+    updated_by  VARCHAR(64)  DEFAULT NULL,
+    version     BIGINT(20)   NOT NULL DEFAULT 0,
+    deleted     TINYINT(4)   NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_faq_no UNIQUE (faq_no)
 );
 
 -- 种子数据
@@ -7783,3 +7806,9 @@ SELECT r.role_code, r.point_code, 'OPS', NOW(), NOW() FROM (
  WHERE NOT EXISTS (
    SELECT 1 FROM sys_role_point x
     WHERE x.role_code = r.role_code AND x.point_code = r.point_code AND x.end_code = 'OPS');
+INSERT INTO msg_faq (faq_no, question, answer, category, sort, published,
+                     tenant_no, created_at, updated_at)
+VALUES ('FAQ-0001', '怎么取货？', '订单支付后会生成取货码，到自提点报码或出示二维码即可。', '履约', 1, 1, 'MAIN', NOW(), NOW()),
+       ('FAQ-0002', '能退款吗？', '未取货前可申请仅退款；小额订单支持极速退，立即到账。', '售后', 2, 1, 'MAIN', NOW(), NOW()),
+       ('FAQ-0003', '为什么我的券用不了？', '券有使用门槛与有效期，结算页会显示不可用原因。', '优惠', 3, 1, 'MAIN', NOW(), NOW()),
+       ('FAQ-0004', '到货时间怎么算？', '自提点页面会写明当日到货时间，一般为每晚 7 点前。', '履约', 4, 1, 'MAIN', NOW(), NOW());

@@ -24,4 +24,8 @@ public class MsgTicket extends BaseEntity {
     private String reply;
     private Long repliedAt;
     private String repliedBy;
+    /** 指派给的客服 staffNo */
+    private String assignedTo;
+    /** 指派时间（ms） */
+    private Long assignedAt;
 }

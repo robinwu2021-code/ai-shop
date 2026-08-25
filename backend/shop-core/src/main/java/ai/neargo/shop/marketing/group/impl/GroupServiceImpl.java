@@ -650,6 +650,20 @@ public class GroupServiceImpl implements GroupService {
     // ---------------------------------------------------------------- 平台侧（P-8.2）
 
     @Override
+    public List<GroupVOs.RequestVO> opsDemands(String status) {
+        /*
+         * 不带 userNo 条件 —— 这是平台视角，运营要看到所有邻居的需求单。
+         * requestList() 按当前登录者过滤，两者的区别就在这一行。
+         * scoped() = executeWithoutScope，需求单无商家数据域，跑起来一样。
+         */
+        String userNo = null; // 平台侧不带「我参没参团」的 interested 标记
+        return scoped(() -> requestMapper.selectList(Wrappers.<MktRequest>lambdaQuery()
+                        .eq(status != null && !status.isBlank(), MktRequest::getStatus, status)
+                        .orderByDesc(MktRequest::getId)))
+                .stream().map(r -> toRequestVO(r, false)).toList();
+    }
+
+    @Override
     public List<OpsGroupVOs.OpsQuoteVO> opsQuotes(String status) {
         var rows = scoped(() -> quoteMapper.selectList(Wrappers.<MktQuote>lambdaQuery()
                 .eq(status != null && !status.isBlank(), MktQuote::getStatus, status)

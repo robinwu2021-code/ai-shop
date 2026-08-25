@@ -32,19 +32,10 @@ POST /ops/stores/templates
 POST /ops/stores/templates/*/enabled
 #
 # ── 需求与拼团的审核动作（group.ts）——「发起/中止」有，「审核/改状态」没有
-GET /ops/demands
-POST /ops/demands/*/quotes
 POST /ops/groups/*/audit
 POST /ops/groups/*/status
 #
 # ── 常见问题（message.ts）
-GET /ops/faqs
-POST /ops/faqs
-POST /ops/faqs/*/published
 #
 # ── 零散：工单转派与代客操作、社区归档、代客下单
-POST /ops/communities/*/archive
-POST /ops/communities/*/unarchive
 POST /ops/orders/proxy
-POST /ops/tickets/*/assign
-POST /ops/tickets/*/proxy-actions

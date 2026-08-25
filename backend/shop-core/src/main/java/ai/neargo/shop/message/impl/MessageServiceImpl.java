@@ -18,6 +18,8 @@ import ai.neargo.shop.message.entity.MsgSubscribe;
 import ai.neargo.shop.message.entity.MsgTemplate;
 import ai.neargo.shop.message.entity.SysNotifyLog;
 import ai.neargo.shop.message.entity.MsgTicket;
+import ai.neargo.shop.message.entity.MsgFaq;
+import ai.neargo.shop.message.mapper.MessageMappers.FaqMapper;
 import ai.neargo.shop.message.mapper.MessageMappers.MessageMapper;
 import ai.neargo.shop.message.mapper.MessageMappers.SubscribeMapper;
 import ai.neargo.shop.message.mapper.MessageMappers.TemplateMapper;
@@ -35,13 +37,6 @@ public class MessageServiceImpl implements MessageService {
 
     private static final Logger log = LoggerFactory.getLogger(MessageServiceImpl.class);
 
-    /** 一期硬编码；M9 接运营配置后从 sys_config 读（接口不变）。 */
-    private static final List<FaqVO> FAQ = List.of(
-            new FaqVO("怎么取货？", "订单支付后会生成取货码，到自提点报码或出示二维码即可。", "履约"),
-            new FaqVO("能退款吗？", "未取货前可申请仅退款；小额订单支持极速退，立即到账。", "售后"),
-            new FaqVO("为什么我的券用不了？", "券有使用门槛与有效期，结算页会显示不可用原因。", "优惠"),
-            new FaqVO("到货时间怎么算？", "自提点页面会写明当日到货时间，一般为每晚 7 点前。", "履约"));
-
     private final MessageMapper messageMapper;
     private final TicketMapper ticketMapper;
     private final TemplateMapper templateMapper;
@@ -50,13 +45,17 @@ public class MessageServiceImpl implements MessageService {
     private final SubscribeMapper subscribeMapper;
     /** 外发模板的发送量从这张表数 —— 它们不写 notify_message */
     private final ai.neargo.shop.message.mapper.MessageMappers.NotifyLogMapper notifyLogMapper;
+    private final FaqMapper faqMapper;
+    private final ai.neargo.shop.spi.platform.AuditLogPort auditLogPort;
 
     public MessageServiceImpl(MessageMapper messageMapper, TicketMapper ticketMapper,
                               SubscribeMapper subscribeMapper,
                               TemplateMapper templateMapper,
                               ai.neargo.shop.spi.platform.SettingPort settingPort,
                               ai.neargo.shop.spi.platform.OpsStaffPort opsStaffPort,
-                              ai.neargo.shop.message.mapper.MessageMappers.NotifyLogMapper notifyLogMapper) {
+                              ai.neargo.shop.message.mapper.MessageMappers.NotifyLogMapper notifyLogMapper,
+                              FaqMapper faqMapper,
+                              ai.neargo.shop.spi.platform.AuditLogPort auditLogPort) {
         this.templateMapper = templateMapper;
         this.settingPort = settingPort;
         this.opsStaffPort = opsStaffPort;
@@ -64,6 +63,8 @@ public class MessageServiceImpl implements MessageService {
         this.ticketMapper = ticketMapper;
         this.subscribeMapper = subscribeMapper;
         this.notifyLogMapper = notifyLogMapper;
+        this.faqMapper = faqMapper;
+        this.auditLogPort = auditLogPort;
     }
 
     @Override
@@ -288,7 +289,11 @@ public class MessageServiceImpl implements MessageService {
 
     @Override
     public List<FaqVO> faq() {
-        return FAQ;
+        return faqMapper.selectList(Wrappers.<MsgFaq>lambdaQuery()
+                        .eq(MsgFaq::getPublished, true)
+                        .orderByAsc(MsgFaq::getSort))
+                .stream().map(f -> FaqVO.forC(f.getQuestion(), f.getAnswer(), f.getCategory()))
+                .toList();
     }
 
     // ---------------------------------------------------------------- 平台侧（P-14.2）
@@ -363,6 +368,88 @@ public class MessageServiceImpl implements MessageService {
     private MessageVO toVO(MsgMessage m) {
         return new MessageVO(m.getMessageNo(), m.getMsgType(), m.getTitle(), m.getBody(),
                 m.getLink(), Boolean.TRUE.equals(m.getIsRead()), m.getAt() == null ? 0L : m.getAt());
+    }
+
+    // ---------------------------------------------------------------- 运营侧 FAQ（P-14.2.4）
+
+    @Override
+    public ai.neargo.shop.common.PageData<FaqVO> opsFaqs(long page, long size) {
+        // 运营编辑视图：所有条目，含草稿
+        List<FaqVO> all = faqMapper.selectList(Wrappers.<MsgFaq>lambdaQuery()
+                        .orderByAsc(MsgFaq::getSort)).stream()
+                .map(this::toFaqVO).toList();
+        return ai.neargo.shop.common.PageData.ofAll(all, page, size);
+    }
+
+    @Override
+    @Transactional
+    public FaqVO saveFaq(SaveFaqCommand cmd, String operatorNo) {
+        if (cmd.faqNo() != null && !cmd.faqNo().isBlank()) {
+            // 更新
+            MsgFaq f = faqMapper.selectOne(Wrappers.<MsgFaq>lambdaQuery()
+                    .eq(MsgFaq::getFaqNo, cmd.faqNo()).last("limit 1"));
+            if (f == null) throw BizException.of(ErrorCode.NOT_FOUND);
+            f.setQuestion(cmd.question());
+            f.setAnswer(cmd.answer());
+            f.setCategory(cmd.category() == null ? f.getCategory() : cmd.category());
+            f.setSort(cmd.sort() == null ? f.getSort() : cmd.sort());
+            faqMapper.updateById(f);
+            auditLogPort.record("FAQ_UPDATE", f.getFaqNo(), cmd.question());
+            return toFaqVO(f);
+        }
+        // 新建
+        MsgFaq f = new MsgFaq();
+        f.setFaqNo(BizKey.next("FAQ"));
+        f.setQuestion(cmd.question());
+        f.setAnswer(cmd.answer() == null ? "" : cmd.answer());
+        f.setCategory(cmd.category() == null ? "" : cmd.category());
+        f.setSort(cmd.sort() == null ? 0 : cmd.sort());
+        f.setPublished(false); // 草稿状态，显式上架才对 C 端可见
+        faqMapper.insert(f);
+        auditLogPort.record("FAQ_CREATE", f.getFaqNo(), cmd.question());
+        return toFaqVO(f);
+    }
+
+    @Override
+    @Transactional
+    public FaqVO setFaqPublished(String faqNo, boolean published, String operatorNo) {
+        MsgFaq f = faqMapper.selectOne(Wrappers.<MsgFaq>lambdaQuery()
+                .eq(MsgFaq::getFaqNo, faqNo).last("limit 1"));
+        if (f == null) throw BizException.of(ErrorCode.NOT_FOUND);
+        if (published && (f.getAnswer() == null || f.getAnswer().isBlank())) {
+            // 空答案比没有条目更糟：用户点进去只看到空白
+            throw BizException.of(ErrorCode.BAD_REQUEST, "上架前答案不能为空");
+        }
+        f.setPublished(published);
+        faqMapper.updateById(f);
+        auditLogPort.record(published ? "FAQ_PUBLISH" : "FAQ_UNPUBLISH", faqNo, f.getQuestion());
+        return toFaqVO(f);
+    }
+
+    // ---------------------------------------------------------------- 运营侧工单（补齐）
+
+    @Override
+    @Transactional
+    public TicketVO assignTicket(String ticketNo, String assigneeNo, String operatorNo) {
+        MsgTicket t = requireTicket(ticketNo);
+        t.setAssignedTo(assigneeNo);
+        t.setAssignedAt(System.currentTimeMillis());
+        ticketMapper.updateById(t);
+        auditLogPort.record("TICKET_ASSIGN", ticketNo, "指派给 " + assigneeNo);
+        return toVO(t);
+    }
+
+    @Override
+    public TicketVO addProxyAction(String ticketNo, String action, String operatorNo) {
+        // 只写审计日志：代客操作本身已在对应业务端点完成，这里只留痕「在工单上下文里做的」
+        MsgTicket t = requireTicket(ticketNo);
+        auditLogPort.record("TICKET_PROXY_ACTION", ticketNo, action);
+        return toVO(t);
+    }
+
+    private FaqVO toFaqVO(MsgFaq f) {
+        return new FaqVO(f.getFaqNo(), f.getQuestion(), f.getAnswer(), f.getCategory(),
+                f.getSort(), f.getPublished());
     }
 
     private TicketVO toVO(MsgTicket t) {

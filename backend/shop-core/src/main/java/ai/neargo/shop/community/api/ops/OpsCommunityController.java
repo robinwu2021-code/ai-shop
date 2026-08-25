@@ -332,4 +332,28 @@ public class OpsCommunityController {
 
     public record ServiceFeeReq(Integer serviceFeeRate) {
     }
+
+    // ────────────────────────────────────────────────── 社区归档
+
+    /**
+     * 归档社区。已关闭的区不会被删除，只从默认列表消失 ——
+     * 需求单、订单等历史数据都留着，运营可随时恢复。
+     */
+    @PostMapping("/ops/communities/{communityNo}/archive")
+    @PreAuthorize("@perm.can('" + ai.neargo.shop.auth.Perms.COMMUNITY_UPDATE + "')")
+    public java.util.Map<String, Object> archiveCommunity(@PathVariable String communityNo) {
+        String operator = ai.neargo.shop.auth.SecurityUtils.currentUserNo();
+        long at = archiveService.archive(ai.neargo.shop.archive.ArchiveService.Kind.COMMUNITY,
+                communityNo, operator);
+        return java.util.Map.of("communityNo", communityNo, "archivedAt", at);
+    }
+
+    @PostMapping("/ops/communities/{communityNo}/unarchive")
+    @PreAuthorize("@perm.can('" + ai.neargo.shop.auth.Perms.COMMUNITY_UPDATE + "')")
+    public java.util.Map<String, Object> unarchiveCommunity(@PathVariable String communityNo) {
+        String operator = ai.neargo.shop.auth.SecurityUtils.currentUserNo();
+        archiveService.unarchive(ai.neargo.shop.archive.ArchiveService.Kind.COMMUNITY,
+                communityNo, operator);
+        return java.util.Map.of("communityNo", communityNo, "archivedAt", (Object) null);
+    }
 }
