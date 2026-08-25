@@ -87,12 +87,14 @@ class OpsMerchantPlanFlowTest {
         String biz = merchant("12601100001", "套餐·当场生效");
         String merchantNo = merchantNoOf(biz);
 
-        // FREE：默认店已占 1/1，第二家被拒
-        assertThat(createStore(biz, "被拒的第二家")).isEqualTo(70020);
+        // FREE：默认店已占 1/3（V221 起 FREE 给 3 家），开到第四家才被拒
+        assertThat(createStore(biz, "免费额度里的第二家")).isZero();
+        assertThat(createStore(biz, "免费额度里的第三家")).isZero();
+        assertThat(createStore(biz, "被拒的第四家")).isEqualTo(70020);
 
         JsonNode row = grant(merchantNo, "PRO", 12, "年框，销售小李谈的");
         assertThat(row.get("planCode").asString()).isEqualTo("PRO");
-        assertThat(row.get("storeQuota").asInt()).isEqualTo(3);
+        assertThat(row.get("storeQuota").asInt()).isEqualTo(10);
         assertThat(row.get("status").asString()).isEqualTo("ACTIVE");
         assertThat(row.get("expireAt").asLong()).isGreaterThan(System.currentTimeMillis());
 
@@ -101,9 +103,7 @@ class OpsMerchantPlanFlowTest {
          * 不能要求重新登录。中间隔一层的话，运营会在电话里对商家说「已经开好了」，
          * 而商家那边还是开不了店 —— 而这种故障没有任何报错可查。
          */
-        assertThat(createStore(biz, "第二家")).isZero();
-        assertThat(createStore(biz, "第三家")).isZero();
-        assertThat(createStore(biz, "第四家")).isEqualTo(70020);
+        assertThat(createStore(biz, "第四家")).isZero();
     }
 
     @Test
@@ -120,8 +120,8 @@ class OpsMerchantPlanFlowTest {
             // 返回体要带「有几家在用」—— 它是「只影响新订阅」那句话的具体量
             assertThat(def.get("subscriberCount").asInt()).isPositive();
 
-            // ★ 已订阅的这家：额度快照还是 3，照样能开到 3 家
-            assertThat(planService.current(merchantNo).storeQuota()).isEqualTo(3);
+            // ★ 已订阅的这家：额度快照还是 10，照样能接着开店
+            assertThat(planService.current(merchantNo).storeQuota()).isEqualTo(10);
             assertThat(createStore(biz, "第二家")).isZero();
 
             /*
@@ -130,7 +130,7 @@ class OpsMerchantPlanFlowTest {
              */
             grant(merchantNo, "PRO", null, "补一张发票，不延期");
             assertThat(planService.current(merchantNo).storeQuota())
-                    .as("只补缴不该把额度刷成新定义的 1").isEqualTo(3);
+                    .as("只补缴不该把额度刷成新定义的 1").isEqualTo(10);
 
             // 续费（months>0）才重读定义 —— 那是一次新的成交，按当下的价目走
             grant(merchantNo, "PRO", 6, "续 6 个月");
@@ -142,7 +142,7 @@ class OpsMerchantPlanFlowTest {
              * PRO=1 留给同一个 JVM 里后面的每一个用例 —— 表现是别处莫名撞额度，
              * 而那些用例与套餐毫无关系，排查时根本不会看到这里。
              */
-            saveDef("PRO", 3, 3, true, 14, true);
+            saveDef("PRO", 10, 3, true, 14, true);
         }
     }
 
@@ -180,11 +180,11 @@ class OpsMerchantPlanFlowTest {
         assertThat(createStore(biz, "第六家")).isEqualTo(70020);
 
         /*
-         * ★ 清空覆盖 = 回到档位快照（3），**不是设成 0**。
+         * ★ 清空覆盖 = 回到档位快照（PRO 的 10），**不是设成 0**。
          * 两者在界面上长得一样，而后者会让这家商家一家店都开不了。
          */
         JsonNode cleared = overrideQuota(merchantNo, null, null, "回到标准档");
-        assertThat(cleared.get("storeQuota").asInt()).isEqualTo(3);
+        assertThat(cleared.get("storeQuota").asInt()).isEqualTo(10);
         assertThat(cleared.get("quotaSource").asString()).isEqualTo("PLAN");
     }
 
@@ -207,7 +207,7 @@ class OpsMerchantPlanFlowTest {
         assertThat(plan.status()).isEqualTo(MchEntityPlan.GRACE);
         // ★ 三件事一件都没变：档位、额度、能力位
         assertThat(plan.planCode()).isEqualTo("PRO");
-        assertThat(plan.storeQuota()).isEqualTo(3);
+        assertThat(plan.storeQuota()).isEqualTo(10);
         assertThat(plan.crossStoreStats()).isTrue();
         assertThat(activeStores(merchantNo)).as("宽限期内一家店都不该被压").hasSize(2);
         // 额度也照常放行：宽限期是给人的缓冲，不是半残状态
@@ -225,10 +225,18 @@ class OpsMerchantPlanFlowTest {
 
         String defaultNo = defaultStoreNo(merchantNo);
 
-        // 宽限期也过完了（到期 10 天前 > 7 天）
-        expireAt(merchantNo, System.currentTimeMillis() - 10L * 86_400_000L);
-        planService.sweepExpiry(System.currentTimeMillis());
-        var swept = planService.sweepExpiry(System.currentTimeMillis());
+        // V221 之后 FREE 就是 3 家，这里一共只铺了三家 —— 照定义降下去一家都压不着，
+        // 「压了谁、留了谁」当场失去对象。把 FREE 临时按到 1，测的仍是选店规则本身。
+        int freeWas = pinFreeQuota(1);
+        MerchantPlanService.SweepResult swept;
+        try {
+            // 宽限期也过完了（到期 10 天前 > 7 天）
+            expireAt(merchantNo, System.currentTimeMillis() - 10L * 86_400_000L);
+            planService.sweepExpiry(System.currentTimeMillis());
+            swept = planService.sweepExpiry(System.currentTimeMillis());
+        } finally {
+            pinFreeQuota(freeWas);
+        }
         assertThat(swept.toExpired())
                 .as("第二次扫描必须什么都不做 —— 否则通知会发两遍，商家以为被降了两次")
                 .isZero();
@@ -273,9 +281,15 @@ class OpsMerchantPlanFlowTest {
                         .contentType(MediaType.APPLICATION_JSON).content("{\"active\":false}"))
                 .andExpect(jsonPath("$.code").value(0));
 
-        // 欠费降级：只剩默认店，另一家非默认店被平台压下
-        expireAt(merchantNo, System.currentTimeMillis() - 10L * 86_400_000L);
-        planService.sweepExpiry(System.currentTimeMillis());
+        // 欠费降级：只剩默认店，另一家非默认店被平台压下。
+        // FREE 现在是 3 家，照定义压不着任何一家 —— 临时按到 1，测的是「恢复认不认得出是谁压的」。
+        int freeWas = pinFreeQuota(1);
+        try {
+            expireAt(merchantNo, System.currentTimeMillis() - 10L * 86_400_000L);
+            planService.sweepExpiry(System.currentTimeMillis());
+        } finally {
+            pinFreeQuota(freeWas);
+        }
         assertThat(activeStores(merchantNo)).hasSize(1);
 
         // 补缴
@@ -422,6 +436,28 @@ class OpsMerchantPlanFlowTest {
     }
 
     /** 改档位定义要 {@code system:param:update} —— BD 做不了，用超管。 */
+    /**
+     * 临时改 FREE 的门店额度，返回旧值 —— 用完**必须**在 finally 里改回去。
+     *
+     * <p>降级压店的规则是「保留默认店 + 补满免费额度」。V221 把 FREE 抬到 3 家之后，
+     * 一个只开了三家店的商家降下去一家都压不着，几条测「压了谁、恢复了谁」的用例
+     * 就失去了对象。铺够五家店也行，但那只是把测试变慢：它们测的是**选店与标记规则**，
+     * 不是 FREE 的具体数值。
+     */
+    private int pinFreeQuota(int storeQuota) throws Exception {
+        int was = json.readTree(mvc().perform(get("/ops/plan-defs")
+                        .header("Authorization", "Bearer " + TestLogin.admin(mvc(), json)))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString())
+                .get("data").valueStream()
+                .filter(d -> "FREE".equals(d.get("planCode").asString()))
+                .findFirst().orElseThrow(() -> new AssertionError("档位 FREE 不存在"))
+                .get("storeQuota").asInt();
+        // FREE 的其余字段照种子给（V150）：无子账号、无跨店、不可试用
+        saveDef("FREE", storeQuota, 0, false, 0, true);
+        return was;
+    }
+
     private JsonNode saveDef(String planCode, int storeQuota, int staffQuota,
                              boolean crossStoreStats, int trialDays, boolean enabled) throws Exception {
         String body = "{\"storeQuota\":" + storeQuota + ",\"staffQuota\":" + staffQuota

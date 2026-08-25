@@ -6878,3 +6878,9 @@ INSERT INTO prd_spu_std (std_no, category_no, title, subtitle, cover, images, sp
   ('STD_OFF_6959752101678', 'CAT720', '鳕鱼烤鱼片', NULL, NULL, NULL, '[{"name": "重量", "templateNo": "SD_WEIGHT", "options": ["250g"], "optionCodes": ["W250G"]}]', '老先生', '6959752101678', 'OFF', 'ARCHIVED', 0, 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
   ('STD_OFF_6975682483042', 'CAT730', '汁汁桃桃桃汁饮料', NULL, NULL, NULL, '[{"name": "容量", "templateNo": "SD_VOLUME", "options": ["450ml"], "optionCodes": ["V450ML"]}]', 'Minute Maid', '6975682483042', 'OFF', 'ARCHIVED', 0, 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
   ('STD_OFF_6949682815974', 'CAT730', '兵團紅棗王', NULL, NULL, NULL, '[{"name": "重量", "templateNo": "SD_WEIGHT", "options": ["600g"], "optionCodes": ["W600G"]}]', '金谷園', '6949682815974', 'OFF', 'ARCHIVED', 0, 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0);
+UPDATE sys_merchant_plan_def SET store_quota = 3,  updated_at = NOW() WHERE plan_code = 'FREE';
+UPDATE sys_merchant_plan_def SET store_quota = 10, updated_at = NOW() WHERE plan_code = 'PRO';
+UPDATE sys_merchant_plan_def SET store_quota = 30, updated_at = NOW() WHERE plan_code = 'CHAIN';
+UPDATE mch_entity_plan SET store_quota = 3,  updated_at = NOW() WHERE plan_code = 'FREE'  AND store_quota = 1;
+UPDATE mch_entity_plan SET store_quota = 10, updated_at = NOW() WHERE plan_code = 'PRO'   AND store_quota = 3;
+UPDATE mch_entity_plan SET store_quota = 30, updated_at = NOW() WHERE plan_code = 'CHAIN' AND store_quota = 10;

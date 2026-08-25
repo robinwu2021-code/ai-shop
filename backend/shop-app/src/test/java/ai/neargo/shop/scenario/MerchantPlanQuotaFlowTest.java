@@ -1,6 +1,7 @@
 package ai.neargo.shop.scenario;
 
 import ai.neargo.shop.support.TestLogin;
+import ai.neargo.shop.support.TestPlan;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -55,16 +56,18 @@ class MerchantPlanQuotaFlowTest {
     }
 
     @Test
-    @DisplayName("★ 存量零行为变化：新入驻商家默认 FREE，第二家店被拒")
-    void freeMerchantCannotOpenSecondStore() throws Exception {
+    @DisplayName("★ FREE 是 3 家：第 4 家被拒，且报错要带够数让他知道下一步做什么")
+    void freeMerchantIsCappedAtThreeStores() throws Exception {
         String biz = merchant("12600900001", "额度·免费店");
 
-        // 入驻通过会自动建一家默认店（ensureDefaultStore），所以这里已经用掉 1/1
+        // 入驻通过会自动建一家默认店（ensureDefaultStore），所以这里已经用掉 1/3
         assertThat(storeCount(biz)).isEqualTo(1);
+        assertThat(createStore(biz, "第二家")).isZero();
+        assertThat(createStore(biz, "第三家")).isZero();
 
         String body = mvc().perform(post("/biz/store/create").header("Authorization", "Bearer " + biz)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"name\":\"第二家\",\"address\":\"某路 2 号\"}"))
+                        .content("{\"name\":\"第四家\",\"address\":\"某路 4 号\"}"))
                 .andReturn().getResponse().getContentAsString();
         JsonNode root = json.readTree(body);
         assertThat(root.get("code").asInt()).isEqualTo(70020);
@@ -74,7 +77,7 @@ class MerchantPlanQuotaFlowTest {
          * 只说「额度不足」，商家的下一步是打客服电话 —— 而他要做的是升套餐或停一家。
          */
         String msg = root.get("msg").asString();
-        assertThat(msg).contains("1").contains("FREE");
+        assertThat(msg).contains("3").contains("FREE");
     }
 
     @Test
@@ -83,16 +86,19 @@ class MerchantPlanQuotaFlowTest {
         String biz = merchant("12600900010", "额度·成长店");
         String merchantNo = merchantNoOf(biz);
 
-        // FREE 下第二家被拒
+        /*
+         * 先把这家压到一个**只给 1 家**的额度上，好用最少的店把闸门顶出来 ——
+         * 这条用例验的是「额度跟着订阅走」这个机制，不是 FREE 具体给几家
+         * （那个由 freeMerchantIsCappedAtThreeStores 单独守）。
+         */
+        TestPlan.grantQuota(planMapper, merchantNo, 1);
         assertThat(createStore(biz, "被拒的第二家")).isEqualTo(70020);
 
-        // 升到 PRO（3 家）—— 这里直接改库，运营端授予接口是 P3 的事
+        // 升到 PRO（10 家）—— 这里直接改库，运营端授予接口是 P3 的事
         upgradeToPro(merchantNo);
 
         assertThat(createStore(biz, "第二家")).isEqualTo(0);
         assertThat(createStore(biz, "第三家")).isEqualTo(0);
-        // 第四家超出 PRO 的 3 家
-        assertThat(createStore(biz, "第四家")).isEqualTo(70020);
         assertThat(storeCount(biz)).isEqualTo(3);
     }
 
@@ -101,7 +107,8 @@ class MerchantPlanQuotaFlowTest {
     void quotaCountsOnlyActiveStores() throws Exception {
         String biz = merchant("12600900020", "额度·停用再开");
         String merchantNo = merchantNoOf(biz);
-        upgradeToPro(merchantNo);
+        // 额度取 3 只为把闸门顶出来，与 PRO 的真实额度（10）无关
+        TestPlan.grantQuota(planMapper, merchantNo, 3);
 
         assertThat(createStore(biz, "第二家")).isEqualTo(0);
         assertThat(createStore(biz, "第三家")).isEqualTo(0);
@@ -122,7 +129,8 @@ class MerchantPlanQuotaFlowTest {
     void concurrentCreateDoesNotExceedQuota() throws Exception {
         String biz = merchant("12600900030", "额度·并发");
         String merchantNo = merchantNoOf(biz);
-        upgradeToPro(merchantNo);
+        // 额度取 3 只为把「只剩一个名额」这个局面造出来，与 PRO 的真实额度（10）无关
+        TestPlan.grantQuota(planMapper, merchantNo, 3);
         // 先占到 2/3，只剩一个名额
         assertThat(createStore(biz, "第二家")).isEqualTo(0);
 

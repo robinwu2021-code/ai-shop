@@ -85,8 +85,10 @@ class StoreAndStaffFlowTest {
     @DisplayName("★ 超出额度直接拒 —— 建出来却打不开的店比拒绝更难解释")
     void quotaIsEnforced() throws Exception {
         String token = merchant("12600129002", "门店测试店B");
-        // PRO = 3 家店：默认店 + 二店 + 三店 刚好占满，四店必须被拒
-        TestPlan.grantPro(mvc(), json, planMapper, token);
+        // 额度按住 3：默认店 + 二店 + 三店 刚好占满，四店必须被拒。
+        // 这里要的是「撞到闸门」这个局面，与 PRO 的真实额度（V221 起是 10）无关 ——
+        // 用 10 就得先建九家店，测试变慢，且看不出这一条在守什么。
+        TestPlan.grantQuota(planMapper, TestPlan.grantPro(mvc(), json, planMapper, token), 3);
         create(token, "二店", "");
         create(token, "三店", "");
 

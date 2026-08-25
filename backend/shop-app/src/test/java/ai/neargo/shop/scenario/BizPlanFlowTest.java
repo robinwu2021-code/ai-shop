@@ -87,7 +87,9 @@ class BizPlanFlowTest {
     void usageMatchesTheQuotaGate() throws Exception {
         String biz = merchant("12601200001", "商家套餐·用量口径");
         String merchantNo = merchantNoOf(biz);
-        grantPro(merchantNo);
+        // 额度按住 3：这条测的是「用量口径与闸门是否同一把尺」，与 PRO 的真实额度（10）无关，
+        // 用 10 的话要先建九家店才摸得到闸门，测试变慢且看不出重点。
+        ai.neargo.shop.support.TestPlan.grantQuota(planMapper, merchantNo, 3);
 
         JsonNode p = plan(biz);
         assertThat(p.get("planCode").asString()).isEqualTo("PRO");
@@ -122,6 +124,9 @@ class BizPlanFlowTest {
     @DisplayName("★ 试用当场生效：开通后立刻能建第二家店，且一主体只能试一次")
     void trialIsOneShotAndTakesEffectImmediately() throws Exception {
         String biz = merchant("12601200010", "商家套餐·试用");
+        // FREE 现在是 3 家（V221）。这条要的是「试用前建不了第二家」这个动作，
+        // 把额度按到 1 即可 —— 档位码保持 FREE，因为下面要断言它。
+        ai.neargo.shop.support.TestPlan.capStores(planMapper, merchantNoOf(biz), 1);
 
         JsonNode before = plan(biz);
         assertThat(before.get("planCode").asString()).isEqualTo("FREE");
@@ -188,7 +193,8 @@ class BizPlanFlowTest {
     void suspendedListNamesOnlyPlatformPressedStores() throws Exception {
         String biz = merchant("12601200040", "商家套餐·降级名单");
         String merchantNo = merchantNoOf(biz);
-        grantPro(merchantNo);
+        // 额度按住 3，好让下面的「降级压店」只需铺三家店
+        ai.neargo.shop.support.TestPlan.grantQuota(planMapper, merchantNo, 3);
         assertThat(createStore(biz, "第二家")).isZero();
         assertThat(createStore(biz, "第三家")).isZero();
 
@@ -200,11 +206,31 @@ class BizPlanFlowTest {
                 .andExpect(jsonPath("$.code").value(0));
         String selfPausedName = storeNameOf(biz, selfPaused);
 
-        // 到期 + 宽限期过完 → 降级压店
-        expireAt(merchantNo, System.currentTimeMillis() - 10L * 86_400_000L);
-        planService.sweepExpiry(System.currentTimeMillis());
+        /*
+         * 把 FREE 的额度临时按到 1 家。
+         *
+         * V221 之后 FREE 就是 3 家，而这里一共只铺了三家店 —— 照定义降级下去一家都压不着，
+         * 这条测的「压了谁、没压谁」当场失去对象。铺够五家店也能造出同一个局面，
+         * 但那只是把测试变慢：它测的是**区分两种只读**，不是额度的具体数值。
+         */
+        int freeWas = withDef("FREE", d -> {
+            int was = d.getStoreQuota();
+            d.setStoreQuota(1);
+            return was;
+        });
+        JsonNode p;
+        try {
+            // 到期 + 宽限期过完 → 降级压店
+            expireAt(merchantNo, System.currentTimeMillis() - 10L * 86_400_000L);
+            planService.sweepExpiry(System.currentTimeMillis());
+            p = plan(biz);
+        } finally {
+            withDef("FREE", d -> {
+                d.setStoreQuota(freeWas);
+                return freeWas;
+            });
+        }
 
-        JsonNode p = plan(biz);
         assertThat(p.get("status").asString()).isEqualTo(MchEntityPlan.EXPIRED);
         var names = p.get("suspendedStores").valueStream().map(JsonNode::asString).toList();
         assertThat(names).as("被平台压下的那一家要点名 —— 它正在丢单").hasSize(1);

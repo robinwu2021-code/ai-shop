@@ -37,9 +37,16 @@ public final class TestPlan {
     private TestPlan() {
     }
 
-    /** PRO：3 家店 / 3 个子账号 / 有跨店总览。测试里最常用的那一档。 */
+    /**
+     * PRO：10 家店 / 3 个子账号 / 有跨店总览。测试里最常用的那一档。
+     *
+     * <p><b>数值要与 {@code sys_merchant_plan_def} 的定义一致</b>（V221 起
+     * FREE 3 / PRO 10 / CHAIN 30）—— 对不上的话测试环境的产品定义与生产分岔，
+     * 而那正是这个类存在要防的事。想验「额度到顶」用 {@link #grantQuota}，
+     * 别把这里的数改小。
+     */
     public static void grantPro(EntityPlanMapper mapper, String merchantNo) {
-        grant(mapper, merchantNo, MchEntityPlan.PRO, 3, 3, true);
+        grant(mapper, merchantNo, MchEntityPlan.PRO, 10, 3, true);
     }
 
     /**
@@ -75,9 +82,9 @@ public final class TestPlan {
         return data.get("merchantNo").asString();
     }
 
-    /** CHAIN：10 家店 / 20 个子账号。需要更多门店的场景用这个。 */
+    /** CHAIN：30 家店 / 20 个子账号。需要更多门店的场景用这个。 */
     public static void grantChain(EntityPlanMapper mapper, String merchantNo) {
-        grant(mapper, merchantNo, MchEntityPlan.CHAIN, 10, 20, true);
+        grant(mapper, merchantNo, MchEntityPlan.CHAIN, 30, 20, true);
     }
 
     /**
@@ -88,6 +95,25 @@ public final class TestPlan {
      */
     public static void grantQuota(EntityPlanMapper mapper, String merchantNo, int storeQuota) {
         grant(mapper, merchantNo, MchEntityPlan.PRO, storeQuota, Math.max(storeQuota, 3), true);
+    }
+
+    /**
+     * 只把门店额度按住，**不动档位码** —— 「FREE 只能开一家」这类用例要的正是这个。
+     *
+     * <p>与 {@link #grantQuota} 的区别：那个会把主体顺手升到 PRO（它要的是 PRO 的能力位），
+     * 而这里保持原档。V221 把 FREE 抬到 3 家之后，想在测试里造出「额度到顶」的局面，
+     * 又不能改档位码（报错文案和断言都读它），就只剩这条路。
+     */
+    public static void capStores(EntityPlanMapper mapper, String merchantNo, int storeQuota) {
+        DataScopeContext.executeWithoutScope(() -> {
+            MchEntityPlan row = mapper.selectOne(Wrappers.<MchEntityPlan>lambdaQuery()
+                    .eq(MchEntityPlan::getEntityNo, merchantNo));
+            if (row == null) {
+                throw new AssertionError("主体 " + merchantNo + " 没有订阅行");
+            }
+            row.setStoreQuota(storeQuota);
+            return mapper.updateById(row);
+        });
     }
 
     /**
