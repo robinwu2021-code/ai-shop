@@ -27,4 +27,18 @@ public interface StoreShelfPort {
      * 重算总闸、回同步社区池。商家在处置期间的自主下架不受影响。
      */
     void platformRestore(String entityNo, String storeNo);
+
+    /**
+     * 主体的**可达社区变了**，把它全部商品的社区池重建一遍。
+     *
+     * <p>调用方是 merchant 域里那两处会改变可达范围的动作：主体激活（含补证照通过）
+     * 与经营范围保存。它们改的是 {@code mch_entity.status} / {@code mch_service_area}，
+     * 而 C 端可见性读的是 product 域的社区池 —— 中间没有任何东西把这件事接起来，
+     * 于是「审核通过了货还是搜不到」「范围改了货还留在旧小区」。
+     *
+     * <p><b>失败不该阻塞主流程</b>：审核通过、范围保存本身已经成功了，
+     * 池重建失败最多是可见性晚一步（商家下次上下架会自愈）。
+     * 让它把审核回滚掉是更坏的结果。
+     */
+    void resyncPools(String entityNo);
 }

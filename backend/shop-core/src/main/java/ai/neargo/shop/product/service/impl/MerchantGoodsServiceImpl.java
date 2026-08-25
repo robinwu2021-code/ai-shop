@@ -1409,6 +1409,23 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
      * <p>范围来自 {@link MerchantQueryPort#reachableCommunities}（ADR-009 三档已展开），
      * 不是 product 域自己去读商家的社区表：那样两处口径迟早分岔。
      */
+    @Override
+    @Transactional
+    public int resyncCommunityPools(String entityNo) {
+        if (entityNo == null || entityNo.isBlank()) {
+            return 0;
+        }
+        List<PrdGoods> all = DataScopeContext.executeWithoutScope(() ->
+                goodsMapper.selectList(Wrappers.<PrdGoods>lambdaQuery()
+                        .eq(PrdGoods::getEntityNo, entityNo)));
+        for (PrdGoods g : all) {
+            // 用主体级总闸，与上下架那条链路同一个判据。下架的走 syncPool(false) —— 
+            // 它会把残留的池行撤掉，这正是「范围改小了」要的效果
+            syncPool(g, Boolean.TRUE.equals(g.getOnSale()));
+        }
+        return all.size();
+    }
+
     private void syncPool(PrdGoods g, boolean onSale) {
         List<PrdCommunityPool> existing = DataScopeContext.executeWithoutScope(() ->
                 poolMapper.selectList(Wrappers.<PrdCommunityPool>lambdaQuery()

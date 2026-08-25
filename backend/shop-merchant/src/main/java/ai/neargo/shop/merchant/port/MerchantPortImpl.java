@@ -78,11 +78,27 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
     private final ai.neargo.shop.spi.user.PickupQueryPort pickupQueryPort;
     private final ai.neargo.shop.merchant.mapper.MerchantMappers.ChannelAreaMapper channelAreaMapper;
 
+    /**
+     * 主体激活 / 经营范围保存会改变**可达社区**，而 C 端可见性读的是 product 域的社区池。
+     *
+     * <p><b>为什么是 ObjectProvider 而不是直接注入</b>：直接注入会构成一个真实的构造环 ——
+     * merchant 域 → StoreShelfPort → MerchantGoodsService → GoodsService → 回到 merchant 域
+     * （商品要问「这家店可达哪些社区」）。Spring 默认禁止循环引用，整个上下文起不来。
+     *
+     * <p>环本身说明这两个域是双向的：可见性这件事，一半的事实在 merchant（谁可达哪儿），
+     * 一半在 product（哪件货在架）。真正拆开要引一层事件，那是更大的一次改动；
+     * 在此之前用延迟取代替，与 {@code SecurityConfig} 取 BizIdentityResolver 同一手法。
+     */
+    private final org.springframework.beans.factory.ObjectProvider<
+            ai.neargo.shop.spi.product.StoreShelfPort> storeShelfPort;
+
     public MerchantPortImpl(MchEntityMapper merchantMapper, MchEntityCommunityMapper merchantCommunityMapper,
                             MchPaymentMapper merchantPaymentMapper,
                             ai.neargo.shop.merchant.service.MerchantStoreService merchantStoreService,
                             ai.neargo.shop.spi.user.CommunityQueryPort communityQueryPort,
                             ai.neargo.shop.spi.platform.MasterDataPort masterDataPort,
+                            org.springframework.beans.factory.ObjectProvider<
+                                    ai.neargo.shop.spi.product.StoreShelfPort> storeShelfPort,
                             ai.neargo.shop.merchant.mapper.MerchantMappers.MchAccountMapper staffMapper,
                             ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper storeMapper,
                             tools.jackson.databind.ObjectMapper json,
@@ -109,6 +125,7 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
         this.staffMapper = staffMapper;
         this.storeMapper = storeMapper;
         this.masterDataPort = masterDataPort;
+        this.storeShelfPort = storeShelfPort;
         this.communityQueryPort = communityQueryPort;
         this.merchantCommunityMapper = merchantCommunityMapper;
         this.serviceAreaMapper = serviceAreaMapper;
@@ -663,6 +680,21 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
             ensureFreePlan(existing.getEntityNo());
             syncCommunities(existing.getEntityNo(), cmd.communityNos());
             ensurePayment(existing.getEntityNo(), type, cmd.settleAccountType());
+            /*
+             * ★ **补证照通过这一支尤其要重建社区池。**
+             *
+             * 无证照开店的商家在 PENDING_LICENSE 期间就把商品录好、上架了 ——
+             * 而那时 reachableCommunities 返回空（可见性闸门），所以池里一行都没有。
+             * 现在主体转 ACTIVE、可达社区有了，但**池不会自己变**：
+             * 它只在商品上下架时重建。
+             *
+             * 少了这一句，他补齐证照、审核通过之后那批货**仍然对买家不可见**，
+             * 而商家侧显示「在售」—— 要他把每件商品重新上下架一遍才好，
+             * 却没有任何地方告诉他要这么做。
+             * （门店与证照-产品方案里写着「补证照审核通过后，同一批商品立刻对买家可见」，
+             *   这一句就是那句话的实现。）
+             */
+            storeShelfPort.getObject().resyncPools(existing.getEntityNo());
             return existing.getEntityNo();
         }
 

@@ -147,6 +147,29 @@ public interface MerchantGoodsService {
     GoodsVO saveStoreStock(String merchantNo, String storeNo, String goodsNo, String skuNo, int stock);
 
     /**
+     * 把这个主体**全部商品**的社区池按当前可达范围重建一遍。
+     *
+     * <p><b>为什么需要它</b>：社区池（{@code prd_community_pool}）是派生索引，
+     * 而它此前**只在商品上下架时重建**。于是凡是「商品没动、可达社区变了」的场合，
+     * 池就停在旧答案上，且不报任何错：
+     * <ul>
+     *   <li>无证照开店的商家上架了一批货 —— 那时 {@code reachableCommunities} 返回空
+     *       （可见性闸门），池里一行都没有。<b>补齐证照、审核通过之后</b>主体变 ACTIVE、
+     *       可达社区有了，可池还是空的 —— 他那批货对买家仍然不可见，
+     *       而商家侧显示「在售」。要他把每件商品重新上下架一遍才好，
+     *       但没有任何地方告诉他要这么做</li>
+     *   <li>商家把经营范围从 A 小区改到 B 小区 —— 货留在 A 小区的池里，进不了 B 小区</li>
+     * </ul>
+     *
+     * <p>用的是每件商品**当前的主体级总闸**（{@code prd_goods.on_sale}），
+     * 与上下架那条链路逐字同一个判据 —— 另写一套迟早分岔，
+     * 而分岔的表现是「同一件货在两个入口下一个可见一个不可见」。
+     *
+     * @return 实际重建了几件商品，供调用方记日志
+     */
+    int resyncCommunityPools(String entityNo);
+
+    /**
      * 设置**这家店**的售价（商品域-优化总方案 批 C）。
      *
      * <p>与门店库存<b>回退方向相反</b>：没有行的店按主体价卖（fail-back）。

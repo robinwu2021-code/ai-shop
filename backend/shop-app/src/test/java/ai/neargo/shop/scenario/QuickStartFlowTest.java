@@ -236,6 +236,149 @@ class QuickStartFlowTest {
     }
 
     @Test
+    @DisplayName("★★★ 待补证照时上架的货，审核通过后**买家当场搜得到** —— 不用他再上下架一遍")
+    void goodsListedBeforeLicenseBecomeVisibleOnApproval() throws Exception {
+        // ★ 手机号不能与别的用例重复：同一个人的 quick-start 是幂等的（返回既有占位主体），
+        // 撞号会让另一条用例拿到「已经有壳了」而不是它要验的那个结果
+        String token = login("12600160012");
+        String merchantNo = quickStart(token, "先上货后补证的店");
+
+        /*
+         * 在 PENDING_LICENSE 期间就把货录好、上架 —— 这正是「先开店」要换来的东西：
+         * 等证照的那几天不是白等，准备工作可以先做完。
+         */
+        String goodsNo = json.readTree(mvc().perform(post("/biz/goods/save")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"categoryNo\":\"CAT210\",\"title\":\"等证期间就摆好的纸巾\","
+                                + "\"subtitle\":\"\",\"cover\":\"🧻\",\"images\":[],"
+                                + "\"specGroups\":[],\"skus\":[{\"optionValues\":[],\"price\":500,\"stock\":9}]}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString())
+                .get("data").get("goodsNo").asString();
+        approveGoods(goodsNo);
+        mvc().perform(post("/biz/goods/" + goodsNo + "/toggle")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"onSale\":true}"))
+                .andExpect(jsonPath("$.code").value(0));
+
+        // 此刻买家搜不到 —— 没证照的店不该有货露出去（可见性闸门）
+        assertThat(buyerSees("CM001", goodsNo)).as("没证照时买家不该看到这件货").isFalse();
+
+        approveLicense(token);
+
+        /*
+         * ★ **这一条是本用例的全部意义**。
+         *
+         * 社区池（prd_community_pool）是派生索引，而它此前**只在商品上下架时重建**。
+         * 上架发生在 PENDING_LICENSE 期间，那时可达社区是空的，所以池里一行都没有；
+         * 审核通过之后主体转 ACTIVE、可达社区有了，可池不会自己变 ——
+         * 于是他那批货**仍然对买家不可见**，而商家侧显示「在售」。
+         * 要他把每件商品重新上下架一遍才好，却没有任何地方告诉他要这么做。
+         *
+         * <p><b>两个调用点都能救这一条，所以它不足以同时验证两处</b>（实测：只撤其中任意一个，
+         * 这条仍然绿；两个都撤才红）。它们覆盖的是不同的因：
+         * <ul>
+         *   <li>{@code MerchantPortImpl.activate} —— <b>主体状态变了</b>（补证照通过）</li>
+         *   <li>{@code MerchantStoreServiceImpl.replaceAreas} —— <b>可达范围变了</b>（改经营范围）</li>
+         * </ul>
+         * 本条走的入驻审核链路两件事同时发生，所以两条都会触发。
+         * 只有后者能覆盖的那个场景见 {@code scopeChangeMovesGoodsOutOfOldCommunity}。
+         */
+        assertThat(buyerSees("CM001", goodsNo))
+                .as("补完证照，之前上架的货就该被买家搜到 —— 不该要求他再上下架一遍")
+                .isTrue();
+    }
+
+    @Test
+    @DisplayName("★★ 改经营范围：货跟着走 —— 旧小区搜不到了，新小区搜得到")
+    void scopeChangeMovesGoodsOutOfOldCommunity() throws Exception {
+        String token = login("12600160013");
+        String merchantNo = quickStart(token, "会改范围的店");
+        approveLicense(token);          // 先补证照，让它进 CM001
+        token = login("12600160013");   // 主体状态变了，重新登录拿作用域
+
+        String goodsNo = onSaleGoods(token, "改范围前就在卖的抽纸");
+        assertThat(buyerSees("CM001", goodsNo)).as("先确认它现在在 CM001 里").isTrue();
+
+        /*
+         * 把服务范围从 CM001 改成 CM002。**商品一个字都没动。**
+         *
+         * 社区池只在商品上下架时重建，所以少了 replaceAreas 里那句 resyncPools，
+         * 这一步之后两头都错、且都不报错：
+         *   · CM001 的买家**还能搜到并下单** —— 而他已经不送那儿了
+         *   · CM002 的买家搜不到 —— 而他明明改成送那儿了
+         * 商家侧看经营范围是对的，所以他不会想到要去逐个商品重新上下架。
+         */
+        mvc().perform(post("/biz/store").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"serviceAreas\":[{\"level\":\"COMMUNITY\",\"refCode\":\"CM002\"}]}"))
+                .andExpect(jsonPath("$.code").value(0));
+
+        assertThat(merchantQueryPort.reachableCommunities(merchantNo))
+                .as("范围本身确实改了").containsExactly("CM002");
+        assertThat(buyerSees("CM002", goodsNo))
+                .as("改到哪儿，货就该出现在哪儿").isTrue();
+        assertThat(buyerSees("CM001", goodsNo))
+                .as("旧小区必须搜不到了 —— 留着的话那儿的买家还能下他已经不送的单")
+                .isFalse();
+    }
+
+    /** 建一件商品、过审、上架，返回 goodsNo。CAT210 纸品清洁是无门槛类目，不牵扯资质 */
+    private String onSaleGoods(String token, String title) throws Exception {
+        String goodsNo = json.readTree(mvc().perform(post("/biz/goods/save")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"categoryNo\":\"CAT210\",\"title\":\"" + title + "\","
+                                + "\"subtitle\":\"\",\"cover\":\"🧻\",\"images\":[],"
+                                + "\"specGroups\":[],\"skus\":[{\"optionValues\":[],\"price\":500,\"stock\":9}]}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString())
+                .get("data").get("goodsNo").asString();
+        approveGoods(goodsNo);
+        mvc().perform(post("/biz/goods/" + goodsNo + "/toggle")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"onSale\":true}"))
+                .andExpect(jsonPath("$.code").value(0));
+        return goodsNo;
+    }
+
+    /** C 端按社区列货：这才是「买家看不看得见」的真实判据（读的是社区池，不是 reachableCommunities） */
+    private boolean buyerSees(String communityNo, String goodsNo) throws Exception {
+        String body = mvc().perform(get("/mp/goods")
+                        .param("communityNo", communityNo).param("size", "50"))
+                .andReturn().getResponse().getContentAsString();
+        return body.contains(goodsNo);
+    }
+
+    /** 走一遍补证照：提申请 → 运营通过。与 addingLicenseUpgradesTheSameShop 同一条路 */
+    private void approveLicense(String token) throws Exception {
+        mvc().perform(post("/biz/merchant/apply").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"先上货后补证的店（个体）\",\"subject\":\"INDIVIDUAL_BIZ\","
+                                + "\"contactName\":\"张三\",\"contactPhone\":\"13900000000\","
+                                + "\"category\":\"食品\",\"serviceScope\":\"COMMUNITY\","
+                                + "\"communityNos\":[\"CM001\"]}"))
+                .andExpect(jsonPath("$.code").value(0));
+        String applyNo = json.readTree(mvc().perform(get("/biz/merchant/apply")
+                        .header("Authorization", "Bearer " + token))
+                .andReturn().getResponse().getContentAsString())
+                .get("data").get("applyNo").asString();
+        mvc().perform(post("/ops/merchant/apply/" + applyNo + "/audit")
+                        .header("Authorization", "Bearer " + opsLogin())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"approved\":true}"))
+                .andExpect(jsonPath("$.code").value(0));
+    }
+
+    /** 商品审核走 goods 账号 —— bd 没有这个权限（用 bd 会拿到 10403，而那与商品本身无关） */
+    private void approveGoods(String goodsNo) throws Exception {
+        mvc().perform(post("/ops/goods/" + goodsNo + "/audit")
+                        .header("Authorization", "Bearer " + opsLogin("goods", "goods123"))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"approved\":true}"))
+                .andExpect(jsonPath("$.code").value(0));
+    }
+
+    @Test
     @DisplayName("★★ 证照数量上限：到顶之后建不出第 6 个主体")
     void entityQuotaIsEnforced() throws Exception {
         String token = login("12600160007");
@@ -320,8 +463,12 @@ class QuickStartFlowTest {
     }
 
     private String opsLogin() throws Exception {
+        return opsLogin("bd", "bd123");
+    }
+
+    private String opsLogin(String user, String pwd) throws Exception {
         String body = mvc().perform(post("/ops/auth/login").contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"username\":\"bd\",\"password\":\"bd123\"}"))
+                        .content("{\"username\":\"" + user + "\",\"password\":\"" + pwd + "\"}"))
                 .andReturn().getResponse().getContentAsString();
         return json.readTree(body).get("data").get("token").asString();
     }
