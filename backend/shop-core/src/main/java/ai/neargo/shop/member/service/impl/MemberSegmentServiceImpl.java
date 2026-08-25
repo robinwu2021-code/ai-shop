@@ -121,6 +121,15 @@ public class MemberSegmentServiceImpl implements MemberSegmentService {
     }
 
     @Override
+    public int matchedCount(String entityNo, String segmentNo) {
+        MbrSegment row = row(entityNo, segmentNo);
+        if (row == null) {
+            throw BizException.of(ErrorCode.MEMBER_SEGMENT_NOT_FOUND);
+        }
+        return memberService.match(entityNo, normalize(parse(row), row.getScopeStoreNo())).size();
+    }
+
+    @Override
     public List<String> resolve(String entityNo, String scopeStoreNo, MemberQuery rule) {
         return memberService.matchReachable(entityNo, normalize(rule, scopeStoreNo));
     }

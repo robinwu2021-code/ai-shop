@@ -227,6 +227,27 @@ public enum ErrorCode {
     /** 两边都是 0 张 = 一个不发奖的裂变活动，或者张数为负 */
     FISSION_REWARD_COUNT_INVALID(40010, "err.marketing.fission_reward_count_invalid"),
 
+    /*
+     * 券的新模型（P4）。这几条都堵在**建券**那一步 ——
+     * 沿用营销预算前置的结论：能在落库时算清的敞口，不留到核销那一刻去追。
+     */
+    /** 折扣填成了百分数（88）而不是万分比（8800）。差 100 倍，而两个数看着都像对的 */
+    COUPON_RATE_INVALID(40011, "err.marketing.coupon_rate_invalid"),
+    /**
+     * 下单抵扣的券不支持按类目/商品限定范围。
+     *
+     * <p>算价拿到的只有「哪个商家、多少钱」，没有商品明细 —— 放行的话，
+     * 写着「仅限粮油」的券买猫粮照样能用，而商家会认为是算错了钱。
+     * 到店核销的券不走算价，不受这条限制。
+     */
+    COUPON_SCOPE_UNSUPPORTED(40012, "err.marketing.coupon_scope_unsupported"),
+    /** 发行量改到低于已领张数 = 人为造出一个「已经超发了」的状态，没有补救动作 */
+    COUPON_TOTAL_BELOW_ISSUED(40013, "err.marketing.coupon_total_below_issued"),
+    /** 券已暂停或已结束，发不出去。与「发完了」分开：那个换一张券也没用 */
+    COUPON_NOT_ACTIVE(40014, "err.marketing.coupon_not_active"),
+    /** 本批敞口超出剩余预算。**整批拒绝，不部分发放** —— 部分发放留下的中间态说不清 */
+    COUPON_BUDGET_EXCEEDED(40015, "err.marketing.coupon_budget_exceeded"),
+
     // ---- 5xxxx 资金 ----
     SPLIT_RECEIVER_NOT_READY(50001, "err.settle.receiver_not_ready"),
     SPLIT_EXPIRED(50002, "err.settle.split_expired"),
