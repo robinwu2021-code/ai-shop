@@ -5,7 +5,7 @@
 
 ## 一、总览
 
-全库 **145** 张表、**211** 条引用关系，分 **15** 个域。
+全库 **153** 张表、**222** 条引用关系，分 **16** 个域。
 按「被引用次数」分三条带 —— **不是有向无环图**：域之间存在环
 （`cmt → mkt → usr → cmt`），强行分层会画错。
 
@@ -14,9 +14,9 @@
 | 域 | 前缀 | 表数 | 被几个域引用 |
 |---|---|---:|---:|
 | 消费者账号 | `usr_*` | 6 | 11 |
-| 商家主体与门店 | `mch_*` | 21 | 11 |
+| 商家主体与门店 | `mch_*` | 22 | 11 |
 | 社区与自提点 | `cmt_*` | 3 | 8 |
-| 商品与类目 | `prd_*` | 19 | 7 |
+| 商品与类目 | `prd_*` | 21 | 7 |
 | 购物车 | `trd_*` | 1 | 0 |
 | 交易 | `ord_*` | 6 | 7 |
 | 履约 | `ful_*` | 8 | 0 |
@@ -24,9 +24,10 @@
 | 积分 | `pts_*` | 2 | 0 |
 | 结算 | `stl_*` | 9 | 0 |
 | 评价 | `rvw_*` | 3 | 0 |
+| 消息与客服 | `msg_*` | 1 | 0 |
 | 内容 | `cnt_*` | 4 | 0 |
-| 会员 | `mbr_*` | 8 | 0 |
-| 券与活动 | `pmt_*` | 5 | 0 |
+| 会员 | `mbr_*` | 9 | 0 |
+| 券与活动 | `pmt_*` | 8 | 0 |
 | 系统 | `sys_*` | 21 | 0 |
 
 > `usr` 被 11 个域引用 —— 它是全库的锚点。改它的主键或语义，影响面是全局的。
@@ -48,7 +49,7 @@
 
 **跨域引用**：`usr_store_favorite.entity_no` → `mch_entity`、`usr_account.community_no` → `cmt_community`、`usr_account.pickup_no` → `cmt_pickup_point`、`usr_account.entity_no` → `mch_entity`
 
-### 商家主体与门店 `mch_*`（21 张）
+### 商家主体与门店 `mch_*`（22 张）
 
 ![商家主体与门店表关系](../diagrams/db-mch.svg)
 
@@ -75,6 +76,7 @@
 | `mch_fulfillment_channel` | 门店送货方式：每店每路一行的开关与配置 |
 | `mch_channel_pickup` | 自提路×取货点（P1 启用）。本店地址刻意不落行：门店地址天然是取货地址，存两份是漂移的起点 |
 | `mch_channel_area` | SUBSET 收窄：某店某路只适用哪些范围项（P2 启用） |
+| `mch_appointment_slot` | 门店预约时段与名额 |
 
 **跨域引用**：`mch_entity_apply.user_no` → `usr_account`、`mch_entity_community.community_no` → `cmt_community`、`mch_account.user_no` → `usr_account`、`mch_store_category.category_no` → `prd_category`、`mch_channel_pickup.pickup_no` → `cmt_pickup_point`
 
@@ -90,7 +92,7 @@
 
 **跨域引用**：`cmt_pickup_point.group_no` → `mkt_group_buy`、`cmt_community_apply.entity_no` → `mch_entity`
 
-### 商品与类目 `prd_*`（19 张）
+### 商品与类目 `prd_*`（21 张）
 
 ![商品与类目表关系](../diagrams/db-prd.svg)
 
@@ -115,8 +117,10 @@
 | `prd_merchant_spec` | 商家常用维度：引用，不是副本 |
 | `prd_merchant_spec_value` | 商家常用取值：他上次挑过的那几档，下次建品排在前面 |
 | `prd_merchant_spec_override` | 商家对平台规格的覆盖（用哪几个/什么顺序/叫什么） |
+| `prd_category_pay_mode` | 类目 × 支付方式：没有行即放行，插 allowed=0 才是禁止 |
+| `prd_category_points` | 类目积分规则：平台统一按类目管理，商家不配 |
 
-**跨域引用**：`prd_community_pool.community_no` → `cmt_community`、`prd_community_pool.entity_no` → `mch_entity`、`prd_goods.entity_no` → `mch_entity`、`prd_sku.entity_no` → `mch_entity`、`prd_spec_template.entity_no` → `mch_entity`、`prd_stock_lock.store_no` → `mch_store`、`prd_store_stock.store_no` → `mch_store`、`prd_store_stock.entity_no` → `mch_entity`、`prd_store_goods.store_no` → `mch_store`、`prd_store_goods.entity_no` → `mch_entity`、`prd_store_price.store_no` → `mch_store`、`prd_store_price.entity_no` → `mch_entity`、`prd_topic_goods.entity_no` → `mch_entity`、`prd_spec_dim.entity_no` → `mch_entity`、`prd_spec_value.entity_no` → `mch_entity`、`prd_merchant_spec.entity_no` → `mch_entity`、`prd_merchant_spec_value.entity_no` → `mch_entity`、`prd_merchant_spec_override.merchant_no` → `mch_entity`
+**跨域引用**：`prd_community_pool.community_no` → `cmt_community`、`prd_community_pool.entity_no` → `mch_entity`、`prd_community_pool.store_no` → `mch_store`、`prd_goods.entity_no` → `mch_entity`、`prd_sku.entity_no` → `mch_entity`、`prd_spec_template.entity_no` → `mch_entity`、`prd_stock_lock.store_no` → `mch_store`、`prd_store_stock.store_no` → `mch_store`、`prd_store_stock.entity_no` → `mch_entity`、`prd_store_goods.store_no` → `mch_store`、`prd_store_goods.entity_no` → `mch_entity`、`prd_store_price.store_no` → `mch_store`、`prd_store_price.entity_no` → `mch_entity`、`prd_topic_goods.entity_no` → `mch_entity`、`prd_spec_dim.entity_no` → `mch_entity`、`prd_spec_value.entity_no` → `mch_entity`、`prd_merchant_spec.entity_no` → `mch_entity`、`prd_merchant_spec_value.entity_no` → `mch_entity`、`prd_merchant_spec_override.merchant_no` → `mch_entity`
 
 ### 购物车 `trd_*`（1 张）
 
@@ -141,7 +145,7 @@
 | `ord_sub_order` | 子订单：商家视角，一次分账一条履约链 |
 | `ord_invoice_request` | 开票申请（平台开给消费者，ADR-017 §3.4 条件 2） |
 
-**跨域引用**：`ord_after_sale.user_no` → `usr_account`、`ord_after_sale.entity_no` → `mch_entity`、`ord_item.goods_no` → `prd_goods`、`ord_item.sku_no` → `prd_sku`、`ord_order.user_no` → `usr_account`、`ord_order.community_no` → `cmt_community`、`ord_sub_order.user_no` → `usr_account`、`ord_sub_order.entity_no` → `mch_entity`、`ord_sub_order.pickup_no` → `cmt_pickup_point`、`ord_sub_order.group_no` → `mkt_group_buy`、`ord_sub_order.store_no` → `mch_store`、`ord_sub_order.community_no` → `cmt_community`、`ord_invoice_request.user_no` → `usr_account`
+**跨域引用**：`ord_after_sale.user_no` → `usr_account`、`ord_after_sale.entity_no` → `mch_entity`、`ord_item.goods_no` → `prd_goods`、`ord_item.sku_no` → `prd_sku`、`ord_item.category_no` → `prd_category`、`ord_order.user_no` → `usr_account`、`ord_order.community_no` → `cmt_community`、`ord_sub_order.user_no` → `usr_account`、`ord_sub_order.entity_no` → `mch_entity`、`ord_sub_order.pickup_no` → `cmt_pickup_point`、`ord_sub_order.group_no` → `mkt_group_buy`、`ord_sub_order.store_no` → `mch_store`、`ord_sub_order.community_no` → `cmt_community`、`ord_invoice_request.user_no` → `usr_account`
 
 ### 履约 `ful_*`（8 张）
 
@@ -225,6 +229,14 @@
 
 **跨域引用**：`rvw_appeal.entity_no` → `mch_entity`、`rvw_review.sub_order_no` → `ord_sub_order`、`rvw_review.order_no` → `ord_order`、`rvw_review.goods_no` → `prd_goods`、`rvw_review.sku_no` → `prd_sku`、`rvw_review.entity_no` → `mch_entity`、`rvw_review.user_no` → `usr_account`、`rvw_review.store_no` → `mch_store`、`rvw_review_like.user_no` → `usr_account`
 
+### 消息与客服 `msg_*`（1 张）
+
+![消息与客服表关系](../diagrams/db-msg.svg)
+
+| 表 | 说明 |
+|---|---|
+| `msg_faq` | 常见问题（帮助中心） |
+
 ### 内容 `cnt_*`（4 张）
 
 ![内容表关系](../diagrams/db-cnt.svg)
@@ -238,7 +250,7 @@
 
 **跨域引用**：`cnt_post.community_no` → `cmt_community`、`cnt_post.sku_no` → `prd_sku`、`cnt_question.sku_no` → `prd_sku`
 
-### 会员 `mbr_*`（8 张）
+### 会员 `mbr_*`（9 张）
 
 ![会员表关系](../diagrams/db-mbr.svg)
 
@@ -252,10 +264,11 @@
 | `mbr_member_tag` | 会员标签关系：只存标签号，文本在字典里 |
 | `mbr_tag_merge_log` | 标签合并留痕：合并不可逆 |
 | `mbr_segment` | 人群：发券、活动受众、触达共用同一份条件 |
+| `mbr_reach_log` | 触达记录：频次闸查它，效果也算它 |
 
-**跨域引用**：`mbr_setting.entity_no` → `mch_entity`、`mbr_member.entity_no` → `mch_entity`、`mbr_member_store.entity_no` → `mch_entity`、`mbr_member_store.store_no` → `mch_store`、`mbr_member_source.entity_no` → `mch_entity`、`mbr_member_source.store_no` → `mch_store`、`mbr_tag.entity_no` → `mch_entity`、`mbr_member_tag.entity_no` → `mch_entity`、`mbr_tag_merge_log.entity_no` → `mch_entity`、`mbr_segment.entity_no` → `mch_entity`
+**跨域引用**：`mbr_setting.entity_no` → `mch_entity`、`mbr_member.entity_no` → `mch_entity`、`mbr_member_store.entity_no` → `mch_entity`、`mbr_member_store.store_no` → `mch_store`、`mbr_member_source.entity_no` → `mch_entity`、`mbr_member_source.store_no` → `mch_store`、`mbr_tag.entity_no` → `mch_entity`、`mbr_member_tag.entity_no` → `mch_entity`、`mbr_tag_merge_log.entity_no` → `mch_entity`、`mbr_segment.entity_no` → `mch_entity`、`mbr_reach_log.entity_no` → `mch_entity`
 
-### 券与活动 `pmt_*`（5 张）
+### 券与活动 `pmt_*`（8 张）
 
 ![券与活动表关系](../diagrams/db-pmt.svg)
 
@@ -266,8 +279,11 @@
 | `pmt_user_coupon` | 用户券：发到某个人手上的那一张，有自己的有效期 |
 | `pmt_coupon_issue` | 发放批次：发给谁、发了多少、跳过多少、谁发的 |
 | `pmt_apply` | 优惠发生记录：一单命中了什么、一张券被用了几次，线上线下同一张表 |
+| `pmt_activity` | 活动：触发条件 × 优惠形式 × 排期 × 限量 |
+| `pmt_activity_audience` | 活动受众：一行都没有 = 对所有人生效 |
+| `pmt_activity_goods` | 活动作用范围。用表不用 TEXT：要反查「这个商品在哪些活动里」 |
 
-**跨域引用**：`pmt_coupon.coupon_no` → `mkt_coupon`、`pmt_coupon.entity_no` → `mch_entity`、`pmt_coupon_scope.coupon_no` → `mkt_coupon`、`pmt_user_coupon.coupon_no` → `mkt_coupon`、`pmt_user_coupon.user_no` → `usr_account`、`pmt_user_coupon.entity_no` → `mch_entity`、`pmt_user_coupon.order_no` → `ord_order`、`pmt_coupon_issue.coupon_no` → `mkt_coupon`、`pmt_coupon_issue.entity_no` → `mch_entity`、`pmt_apply.user_no` → `usr_account`、`pmt_apply.entity_no` → `mch_entity`、`pmt_apply.store_no` → `mch_store`、`pmt_apply.order_no` → `ord_order`、`pmt_apply.sub_order_no` → `ord_sub_order`
+**跨域引用**：`pmt_coupon.coupon_no` → `mkt_coupon`、`pmt_coupon.entity_no` → `mch_entity`、`pmt_coupon_scope.coupon_no` → `mkt_coupon`、`pmt_user_coupon.coupon_no` → `mkt_coupon`、`pmt_user_coupon.user_no` → `usr_account`、`pmt_user_coupon.entity_no` → `mch_entity`、`pmt_user_coupon.order_no` → `ord_order`、`pmt_coupon_issue.coupon_no` → `mkt_coupon`、`pmt_coupon_issue.entity_no` → `mch_entity`、`pmt_apply.user_no` → `usr_account`、`pmt_apply.entity_no` → `mch_entity`、`pmt_apply.store_no` → `mch_store`、`pmt_apply.order_no` → `ord_order`、`pmt_apply.sub_order_no` → `ord_sub_order`、`pmt_activity.entity_no` → `mch_entity`、`pmt_activity.store_no` → `mch_store`、`pmt_activity_audience.entity_no` → `mch_entity`、`pmt_activity_goods.entity_no` → `mch_entity`
 
 ### 系统 `sys_*`（21 张）
 
