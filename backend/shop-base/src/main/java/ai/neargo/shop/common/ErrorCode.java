@@ -463,6 +463,20 @@ public enum ErrorCode {
      * 而那是发券场景里最贵的一个默认值。坏掉的人群一定是我们自己改字段改出来的。
      */
     MEMBER_SEGMENT_BROKEN(70044, "err.member.segment_broken"),
+
+    /**
+     * 这个支付通道还没接通 —— <b>不是他填错了什么</b>。
+     *
+     * <p>此前这里是 {@link #BAD_REQUEST}：商家把结算账号、执照照片、联系人一整张表填完，
+     * 点提交，得到一句「请求参数有误」。他会回去反复改那几个字段 ——
+     * 而无论怎么改都一样被拒，因为这个环境里根本没有装配任何
+     * {@code PayApplymentGateway} 实现（唯一那个是 stub，`shop.pay.stub` 默认关）。
+     *
+     * <p>与 {@link #STORE_QUOTA_EXCEEDED}、{@link #STORE_ADDRESS_REQUIRED} 同一个理由：
+     * <b>把「你改不了的事」说成「你填错了」，是这套系统里最贵的一类错误提示</b> ——
+     * 它让人一直试，而每一次试都不可能成功。
+     */
+    PAY_CHANNEL_UNAVAILABLE(70045, "err.pay.channel_unavailable"),
     /*
      * 准入矩阵拒绝了这个 (主体档位 × 履约方式) 组合。与 70013 分开：
      * 那个是「这件商品不支持这种送法」（换一种即可），

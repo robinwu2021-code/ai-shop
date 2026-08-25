@@ -294,7 +294,15 @@ public class MerchantPaymentServiceImpl implements MerchantPaymentService {
          */
         return Optional.ofNullable(gateways.get(payChannel))
                 .or(() -> Optional.ofNullable(gateways.get("STUB")))
-                .orElseThrow(() -> BizException.of(ErrorCode.BAD_REQUEST));
+                /*
+                 * **一个都没有 = 这个环境根本没接通道**，不是他填错了什么。
+                 *
+                 * 生产上目前正是这种状态：唯一的实现是 StubApplymentGateway，
+                 * 而 `shop.pay.stub` 默认关（「假装支付成功」是资金事故）。
+                 * 原先这里给 BAD_REQUEST —— 商家把整张进件表填完，
+                 * 只得到一句「请求参数有误」，然后回去反复改那几个字段。
+                 */
+                .orElseThrow(() -> BizException.of(ErrorCode.PAY_CHANNEL_UNAVAILABLE));
     }
 
     /** 缺什么就说缺什么 —— 「还差结算账户」比「审核中」有用得多。 */
