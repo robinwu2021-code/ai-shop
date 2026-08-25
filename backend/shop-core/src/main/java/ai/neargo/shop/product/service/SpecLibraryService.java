@@ -29,6 +29,19 @@ public interface SpecLibraryService {
     List<SpecTemplateVO> templatesForCategory(String merchantNo, String categoryNo);
 
     /**
+     * 这一类的**商品参数**（产地、保质期、材质…）—— {@code usage_type = PROP} 的那批。
+     *
+     * <p>与 {@link #templatesForCategory} 是同一条装配链路，只换 usage 判据：
+     * 类目绑定 → 本店覆盖（停用/改名/排序/加减档位）→ 他自己加进来的。
+     *
+     * <p><b>参数不参与 SKU</b>：买家不用挑，商家填一个值就行 ——
+     * 所以它不进 {@code spec_groups}，也不影响价格与库存。
+     * 混进销售规格的后果是「不锈钢 × 24cm × 黑色」变成一个要单独定价备货的行，
+     * 而他其实只想说「这口锅是不锈钢的」。
+     */
+    List<SpecTemplateVO> propsForCategory(String merchantNo, String categoryNo);
+
+    /**
      * 这家店<b>能用的全部规格维度</b>，给「加一个规格组」那个入口挑。
      *
      * <p>与 {@link #templatesForCategory} 的差别是**范围**：那个只给本类目配好的几条

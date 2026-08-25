@@ -453,6 +453,19 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         }
     }
 
+    /** 商品参数 JSON → VO。读不动就当没有 —— 一条脏数据不该让整个商品详情 500 */
+    private List<GoodsVO.GoodsParamVO> readParams(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return List.of();
+        }
+        try {
+            return json.readValue(raw, new TypeReference<List<GoodsVO.GoodsParamVO>>() {
+            });
+        } catch (Exception e) {
+            return List.of();
+        }
+    }
+
     private List<String> readList(String jsonArray) {
         if (jsonArray == null || jsonArray.isBlank()) {
             return List.of();
@@ -625,6 +638,18 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
          * 详情图，与 detail 同一口径：**不传 = 不改**，传空数组 = 清空。
          * 无条件覆盖的话，任何一次只改标题的保存都会把详情图清空，且不报错。
          */
+        if (cmd.params() != null) {
+            /*
+             * 商品参数（V250）。**不传 = 不改，传空数组 = 清空** —— 与 detailImages 同一口径。
+             *
+             * <p>只留有 label 的：端上把一个参数清空时发来的是 label 为空的那一条，
+             * 而「这一项没填」与「这一项被删掉」在展示上是同一件事，存两种没有意义。
+             */
+            List<GoodsParam> kept = cmd.params().stream()
+                    .filter(x -> x != null && x.label() != null && !x.label().isBlank())
+                    .toList();
+            g.setParams(kept.isEmpty() ? null : writeJson(kept));
+        }
         if (cmd.detailImages() != null) {
             g.setDetailImages(cmd.detailImages().isEmpty() ? null : writeJson(cmd.detailImages()));
         }
@@ -735,7 +760,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                 std.categoryNo(),
                 cmd.cover(), cmd.images(), merged, cmd.skus(), cmd.fulfillments(),
                 cmd.limitPerUser(), cmd.fresh(), cmd.service(), cmd.groupBuy(), cmd.stdNo(),
-                cmd.detail(), cmd.detailImages());
+                cmd.detail(), cmd.detailImages(), cmd.params());
     }
 
     /**
@@ -1207,7 +1232,9 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                 readMap(g.getTitleI18n()), readMap(g.getSubtitleI18n()),
                 g.getStdNo(),
                 g.getAuditReason(),
-                GoodsServiceImpl.groupBuyConf(g));
+                GoodsServiceImpl.groupBuyConf(g),
+                // 商家侧回显：不回显的话「打开编辑页再保存一次就把参数清空了」
+                readParams(g.getParams()));
     }
 
     /**
@@ -2211,7 +2238,9 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                 g.getStdNo(),
                 g.getAuditReason(),
                 // 「可开团的商品」那一栏就是按它筛的
-                GoodsServiceImpl.groupBuyConf(g));
+                GoodsServiceImpl.groupBuyConf(g),
+                // 商家侧回显：不回显的话「打开编辑页再保存一次就把参数清空了」
+                readParams(g.getParams()));
     }
 
     /**

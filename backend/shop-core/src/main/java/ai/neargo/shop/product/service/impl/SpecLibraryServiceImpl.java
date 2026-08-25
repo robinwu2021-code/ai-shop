@@ -87,6 +87,26 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
 
     @Override
     public List<SpecTemplateVO> templatesForCategory(String merchantNo, String categoryNo) {
+        return forCategory(merchantNo, categoryNo, PrdSpecDim.SALE);
+    }
+
+    /**
+     * 这一类的**商品参数**（产地、保质期、材质…）。
+     *
+     * <p>与销售规格<b>同一条装配链路</b>，只是 usage 判据换成 PROP ——
+     * 类目绑定 → 本店覆盖（停用/改名/排序/加减档位）→ 他自己加进来的，
+     * 一条都不少。分成两套代码的话，两边迟早不一致，而不一致的症状是
+     * 「参数那边的本店叫法没生效」这种没人会联想到重复实现的东西。
+     *
+     * <p><b>参数不参与 SKU</b>：买家不用挑，商家填一个值就行，
+     * 所以它不进 spec_groups，也不影响价格与库存。
+     */
+    @Override
+    public List<SpecTemplateVO> propsForCategory(String merchantNo, String categoryNo) {
+        return forCategory(merchantNo, categoryNo, PrdSpecDim.PROP);
+    }
+
+    private List<SpecTemplateVO> forCategory(String merchantNo, String categoryNo, String wantUsage) {
         if (categoryNo == null || categoryNo.isBlank()) {
             return List.of();
         }
@@ -138,7 +158,7 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
              */
             String usage = b.getUsageType() != null && !b.getUsageType().isBlank()
                     ? b.getUsageType() : dim.getUsageType();
-            if (!PrdSpecDim.SALE.equals(usage)) {
+            if (!wantUsage.equals(usage)) {
                 continue;
             }
             // 本店停用的维度：整条不下发。停用维度会连带它下面的取值一起消失
@@ -154,7 +174,14 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
             List<SpecTemplateVO.Option> options = ov.applyToValues(dim.getDimNo(),
                     optionsOf(merchantNo, dim, subsets.getOrDefault(b.getDimNo(), List.of())),
                     () -> optionsOf(merchantNo, dim, List.of()));
-            if (options.isEmpty()) {
+            /*
+             * 一个候选值都没有：**销售规格跳过，商品参数照给**。
+             *
+             * <p>销售规格没档位就分不了 SKU，那是运营配错了，不该让商家看见一个
+             * 点进去空白的规格。而参数本来就有「量纲型」的一类（功率、净重），
+             * 平台不会去枚举它的值 —— 让他自己填一个才是正解。
+             */
+            if (options.isEmpty() && PrdSpecDim.SALE.equals(wantUsage)) {
                 continue;
             }
             /*
@@ -184,8 +211,8 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
                     dimMapper.selectOne(Wrappers.<PrdSpecDim>lambdaQuery()
                             .eq(PrdSpecDim::getDimNo, dimNo)
                             .eq(PrdSpecDim::getStatus, PrdSpecDim.ACTIVE).last("limit 1")));
-            if (dim == null || !PrdSpecDim.SALE.equals(dim.getUsageType())) {
-                continue;   // 归档了或是 PROP：跳过而不是抛，理由同上面那条悬空绑定
+            if (dim == null || !wantUsage.equals(dim.getUsageType())) {
+                continue;   // 归档了或不是这一类用途：跳过而不是抛，理由同上面那条悬空绑定
             }
             // 类目没给子集，所以给全量值池，再让他自己的取舍去裁
             List<SpecTemplateVO.Option> options = ov.applyToValues(dimNo,

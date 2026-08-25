@@ -604,6 +604,60 @@ class OpsProductGovernFlowTest {
                 .andExpect(jsonPath("$.data.onSale").value(true));
     }
 
+    @Test
+    @DisplayName("★★★ 商品参数：平台配的产地/保质期到得了商家手上，且不会变成 SKU")
+    void productParamsReachMerchantAndDoNotBecomeSkus() throws Exception {
+        String biz = merchant("12600400120", "参数落地店");
+
+        /*
+         * 一、平台给蔬菜配的 PROP 维度必须下发到 /biz/spec-props。
+         * 此前它们只存在于库里 —— 建品页没有装它们的容器，于是运营配了也到不了商家。
+         */
+        String props = mvc().perform(get("/biz/spec-props").param("categoryNo", "CAT110")
+                        .header("Authorization", "Bearer " + biz))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        java.util.List<String> names = new java.util.ArrayList<>();
+        for (JsonNode t : json.readTree(props).get("data")) {
+            names.add(t.get("name").asString());
+        }
+        assertThat(names).as("平台给蔬菜配了产地与保质期，商家应当拿得到").contains("产地");
+
+        /*
+         * 二、**销售规格里不能出现它们。**混进去的后果是「本地 × 500g」变成一个
+         * 要单独定价备库存的行，而他只想说「这袋菜是本地的」。
+         */
+        String sale = mvc().perform(get("/biz/spec-templates").param("categoryNo", "CAT110")
+                        .header("Authorization", "Bearer " + biz))
+                .andReturn().getResponse().getContentAsString();
+        java.util.List<String> saleNames = new java.util.ArrayList<>();
+        for (JsonNode t : json.readTree(sale).get("data")) {
+            saleNames.add(t.get("name").asString());
+        }
+        assertThat(saleNames).as("产地是 PROP，不该出现在销售规格里").doesNotContain("产地");
+
+        // 三、存得进去、读得回来
+        String body = mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + biz)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"categoryNo\":\"CAT110\",\"title\":\"本地菠菜\",\"type\":\"NORMAL\","
+                                + "\"params\":[{\"dimNo\":\"SD_ORIGIN\",\"valueNo\":\"SV_ORGLOCAL\","
+                                + "\"code\":\"ORGLOCAL\",\"label\":\"本地\"}],"
+                                + "\"skus\":[{\"optionValues\":[],\"price\":350,\"stock\":20}]}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        String goodsNo = json.readTree(body).get("data").get("goodsNo").asString();
+
+        mvc().perform(get("/biz/goods/" + goodsNo).header("Authorization", "Bearer " + biz))
+                .andExpect(jsonPath("$.data.params[0].label").value("本地"))
+                .andExpect(jsonPath("$.data.params[0].code").value("ORGLOCAL"))
+                /*
+                 * **参数一条也不进 SKU。** 少了这一条断言，「参数混进笛卡尔积」
+                 * 这个回归不会有任何地方报错 —— 只是价格表凭空多出几倍行。
+                 */
+                .andExpect(jsonPath("$.data.skus.length()").value(1))
+                .andExpect(jsonPath("$.data.specGroups.length()").value(0));
+    }
+
     /** 建品并过审上架。 */
     private String listedGoods(String token, int stock) throws Exception {
         String goodsNo = pendingGoods(token, stock);

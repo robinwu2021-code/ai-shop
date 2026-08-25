@@ -310,7 +310,21 @@ public interface MerchantGoodsService {
                         * 图文详情区的长图（与顶部轮播 {@code images} 分开）。
                         * <b>不传 = 不改</b>，传空数组 = 清空。
                         */
-                       List<String> detailImages) {
+                       List<String> detailImages,
+                       /**
+                        * 商品参数（V250）：产地 / 保质期 / 材质这一类，<b>不分 SKU</b>。
+                        * <b>不传 = 不改</b>，传空数组 = 清空 —— 与 detailImages 同一口径。
+                        */
+                       List<GoodsParam> params) {
+    }
+
+    /**
+     * 一条商品参数。
+     *
+     * <p>{@code valueNo} 是平台值池里的编号，**有它才参与筛选与跨店比较**；
+     * 量纲型（功率、净重）平台不枚举值，那时只有 {@code label}。
+     */
+    record GoodsParam(String dimNo, String valueNo, String code, String label) {
     }
 
     /**

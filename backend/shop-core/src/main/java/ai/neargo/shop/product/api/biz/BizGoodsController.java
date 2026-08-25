@@ -139,7 +139,11 @@ public class BizGoodsController {
                         req.service().durationMin(), req.service().storeName()),
                 req.groupBuy() == null ? null : new MerchantGoodsService.GroupBuySpec(
                         req.groupBuy().minCount(), req.groupBuy().price()),
-                req.stdNo(), req.detail(), req.detailImages()));
+                req.stdNo(), req.detail(), req.detailImages(),
+                req.params() == null ? null : req.params().stream()
+                        .map(x -> new MerchantGoodsService.GoodsParam(
+                                x.dimNo(), x.valueNo(), x.code(), x.label()))
+                        .toList()));
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.GOODS + "')")
@@ -248,6 +252,20 @@ public class BizGoodsController {
     public List<SpecTemplateVO> specTemplates(@RequestParam(required = false) String categoryType,
                                               @RequestParam(required = false) String categoryNo) {
         return goodsService.specTemplates(BizContext.requireMerchantNo(), categoryType, categoryNo);
+    }
+
+    /**
+     * 这一类的**商品参数**（产地、保质期、材质…）。
+     *
+     * <p>与 {@code /biz/spec-templates} 分成两条端点，而不是加个 usage 参数：
+     * 它们在界面上是两块、语义也不同（一个分 SKU 一个不分），
+     * 合成一条的话端上每次都要先过滤一遍，而漏过滤的后果是
+     * 「产地」被当成规格建出来 —— 那正是这一期要消灭的东西。
+     */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.GOODS + "')")
+    @GetMapping("/biz/spec-props")
+    public List<SpecTemplateVO> specProps(@RequestParam(required = false) String categoryNo) {
+        return specLibrary.propsForCategory(BizContext.requireMerchantNo(), categoryNo);
     }
 
     /**
@@ -546,7 +564,13 @@ public class BizGoodsController {
                                /** 图文详情正文（纯文本）。不传 = 不改，传空串 = 清空 */
                                String detail,
                                /** 详情区长图。不传 = 不改，传空数组 = 清空 */
-                               List<String> detailImages) {
+                               List<String> detailImages,
+                               /** 商品参数（产地/保质期/材质…）。不传 = 不改，传空数组 = 清空 */
+                               List<GoodsParamReq> params) {
+    }
+
+    /** 一条商品参数。量纲型（功率、净重）平台不枚举值，那时只有 label */
+    public record GoodsParamReq(String dimNo, String valueNo, String code, String label) {
     }
 
     /** 生鲜段。留空 = 不改；只在品类是 FRESH 时写入 */

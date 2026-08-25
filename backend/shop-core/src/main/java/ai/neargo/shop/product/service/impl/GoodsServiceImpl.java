@@ -306,7 +306,24 @@ public class GoodsServiceImpl implements GoodsService {
                 null,
                 // 驳回原因也是店主和平台之间的事
                 null,
-                groupBuyConf(g));
+                groupBuyConf(g),
+                readParams(g.getParams()));
+    }
+
+    /**
+     * 商品参数 JSON → VO。**读不动就当没有**，与 readList 同一条规矩 ——
+     * 一条脏数据不该让整个商品详情 500。
+     */
+    private List<GoodsVO.GoodsParamVO> readParams(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return List.of();
+        }
+        try {
+            return this.json.readValue(raw, new TypeReference<List<GoodsVO.GoodsParamVO>>() {
+            });
+        } catch (Exception e) {
+            return List.of();
+        }
     }
 
     /** 配齐了团价与起团人数才算「能开团」—— 缺一个都开不出来 */

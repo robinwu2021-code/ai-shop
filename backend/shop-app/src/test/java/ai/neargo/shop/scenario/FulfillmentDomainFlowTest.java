@@ -193,7 +193,7 @@ class FulfillmentDomainFlowTest {
                 List.of(new MerchantGoodsService.Sku(null, List.of(), 1000L, null, 10, null, null, null)),
                 fulfillments,
                 // 限购 / 生鲜 / 服务 / 拼团四段都不传 = 不改；stdNo 不传 = 自建品，
-                // detail / detailImages 不传 = 不改 —— 本组只测履约方式
-                null, null, null, null, null, null, null);
+                // detail / detailImages / params 不传 = 不改 —— 本组只测履约方式
+                null, null, null, null, null, null, null, null);
     }
 }

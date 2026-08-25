@@ -114,6 +114,18 @@ public class PrdGoods extends BaseEntity {
      */
     private Boolean pendingOnSale;
 
+    /**
+     * 商品参数 JSON（V250）。产地 / 保质期 / 材质这一类 —— {@code usage_type=PROP}。
+     *
+     * <p><b>与 {@code spec_groups} 形状相同、语义相反</b>：那个的每一项都会进笛卡尔积
+     * 生成 SKU，这个一项也不进。混在一起的话价格表会凭空多出几倍行，
+     * 而商家只是想说「这口锅是不锈钢的」。
+     *
+     * <p>{@code [{"dimNo":"SD_ORIGIN","valueNo":"SV_LOCAL","code":"O_LOCAL","label":"本地"}]}；
+     * 量纲型（功率、净重）平台不枚举值，只有 label。
+     */
+    private String params;
+
     /** AUDITING / APPROVED / REJECTED —— 商家商品需平台审核（P-3.2.2）。 */
     private String auditStatus;
 

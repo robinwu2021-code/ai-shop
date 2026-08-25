@@ -95,7 +95,17 @@ public record GoodsVO(String goodsNo,
                        * 商家在商品里配好了团价，<b>开团入口从来没有出现过</b>，
                        * 而两处都不报错。
                        */
-                      GroupBuyConfVO groupBuy) {
+                      GroupBuyConfVO groupBuy,
+                      /**
+                       * 商品参数（V250）：产地 / 保质期 / 材质这一类，<b>不分 SKU</b>。
+                       * 买家侧原样展示；商家侧编辑页靠它回显 ——
+                       * 不回显的话，「打开编辑页再保存一次就把参数清空了」。
+                       */
+                      List<GoodsParamVO> params) {
+
+    /** 一条商品参数。量纲型（功率、净重）平台不枚举值，那时只有 label */
+    public record GoodsParamVO(String dimNo, String valueNo, String code, String label) {
+    }
 
     /** 商品上配好的拼团设置。开团那一步不能临时定价，价与人数都取自这里 */
     public record GroupBuyConfVO(int minCount, long price) {
