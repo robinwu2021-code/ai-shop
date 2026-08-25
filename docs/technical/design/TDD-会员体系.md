@@ -72,6 +72,8 @@ mbr_member                     -- 一个人 × 一家店 = 一行
 mbr_member_tag                 -- 标签是行不是 JSON：要按它筛人、统计人数
   entity_no, member_no, tag_type: SYS|MCH, tag, created_by
   UNIQUE(tenant_no, member_no, tag)
+  -- ★ 商家标签按**主体**存（entity_no），不按门店：同一个人在两家店买东西
+  --   仍是同一个「爱囤货」的人。门店维度只出现在筛选条件里
 
 mbr_tag_dict                   -- 商家标签字典（限量、可改名、可停用）
   entity_no, tag, usage_count, enabled
@@ -120,7 +122,7 @@ C 端（批次一只读）：`GET /mp/member/mine`（顺带补上三端唯一断
 | 新客 | 累计 1 单 |
 | 常客 | 近 90 天 2–5 单 |
 | 熟客 | 近 90 天 ≥6 单 |
-| 沉睡 | 曾下单且 `daysSinceLast > 60` |
+| 沉睡 | 曾下单且 `daysSinceLast > 60`（2026-08-24 拍板取 60 天，可配） |
 | 高客单 | 近 90 天客单价 ≥ 本店中位数 ×1.5 |
 
 ### 3.6 配置项（P4 零硬编码）
@@ -153,7 +155,8 @@ C 端（批次一只读）：`GET /mp/member/mine`（顺带补上三端唯一断
 ## 6. 实现任务（批次一）
 
 - [ ] 迁移：`mbr_member` / `mbr_member_tag` / `mbr_tag_dict`（+ 索引）
-- [ ] 入会：支付成功事件 → upsert 会员；扫码/收藏两条来源接入
+- [ ] 入会：支付成功事件 → upsert 会员；扫码/收藏/**主动加入**三条来源接入
+- [ ] C 端店铺页「加入会员」（`POST /mp/member/join`）
 - [ ] 存量回填任务（幂等、分批）
 - [ ] 系统标签每日重算任务 + 口径入 `sys_setting`
 - [ ] `/biz/members`（筛选 + 手机号精确）、`/biz/member-stats`
@@ -162,4 +165,6 @@ C 端（批次一只读）：`GET /mp/member/mine`（顺带补上三端唯一断
 - [ ] 文档：本 TDD 状态改「已实现」，并回填实际口径
 
 ---
-确认记录：待用户确认
+确认记录：
+- 2026-08-24 用户确认三条：沉睡 60 天 · 商家标签跨门店共享 · `SEARCH` 主动加入并入一期
+- 活动侧产品方案另见 [活动体系 · 产品方案](../../requirements/活动体系-需求.md)（同批评审）
