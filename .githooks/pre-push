@@ -16,6 +16,16 @@ if [ "${SKIP_COMPILE_GATE:-}" = "1" ]; then
 fi
 
 ROOT="$(git rev-parse --show-toplevel)"
+
+# ── 界面清单闸门 ────────────────────────────────────────────────────────────
+# 谁加了一页而没更新清单，就在这里被挡住。清单是三端 UI 的唯一索引
+# （docs/technical/design/ui-catalog.json），由 pages.json 与 nav.ts 生成 ——
+# 只要有人改了路由/标题/导航而没重跑生成器，这一条就会红。
+# 它很快（几十毫秒，纯读文件），所以不做「没动过就跳过」的判断。
+if ! python3 "$ROOT/scripts/gen-ui-catalog.py" --check; then
+  exit 1
+fi
+
 # 后端没动过就不必编 —— 别为改一行文案等两分钟
 if git diff --quiet "@{u}" HEAD -- backend 2>/dev/null; then
   echo "→ 本次推送未触及 backend/，跳过编译闸门"

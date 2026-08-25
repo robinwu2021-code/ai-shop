@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """把三端的界面扫成一份清单（JSON + 可发布的 HTML）。
 
-用法：python3 scripts/gen-ui-catalog.py
+用法：
+  python3 scripts/gen-ui-catalog.py            重新生成
+  python3 scripts/gen-ui-catalog.py --check    只校验（pre-push 闸门用；不一致就退出 1）
 
 来源都是**代码里已有的真源**，不手工维护第二份：
   · b-app / c-app  → `src/pages.json`（路由 + 导航栏标题 + tabBar）
@@ -14,6 +16,7 @@
 import json
 import pathlib
 import re
+import sys
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 OUT_JSON = ROOT / "docs/technical/design/ui-catalog.json"
@@ -111,6 +114,8 @@ def read_uni(app: str) -> list[dict]:
             "domain": domain_of(path),
             "tab": path in tabs,
             "status": "已实现",
+            "proto": PROTO_ANCHORS.get(app, {}).get(path),
+            "preview": DEV_ORIGIN[app] + "/" + path,
         })
     return out
 
@@ -131,7 +136,8 @@ def read_ops() -> list[dict]:
             href = re.search(r'href:\s*"([^"]+)"', s)
             if "children" not in s and href:
                 out.append({"app": "ops-web", "route": href.group(1), "title": section,
-                            "domain": section, "tab": False, "status": "已实现"})
+                            "domain": section, "tab": False, "status": "已实现",
+                            "proto": None, "preview": DEV_ORIGIN["ops-web"] + href.group(1)})
             continue
         # 叶子
         if s.startswith("{ href:") or s.startswith("{href:"):
@@ -151,8 +157,36 @@ def read_ops() -> list[dict]:
                 "matrix": matrix.group(1) if matrix else None,
                 "tab": False,
                 "status": "待建" if soon else "已实现",
+                "proto": None,
+                "preview": DEV_ORIGIN["ops-web"] + href.group(1),
             })
     return out
+
+
+# 原型稿（Artifact）。清单里每一条能点进去看那一屏长什么样。
+PROTO_URL = "https://claude.ai/code/artifact/459462f5-e7f7-485a-85b0-096ba9918b15"
+
+# 路由 → 原型里的锚点。已经有页面的也可以挂 —— 它们同样有原型稿
+PROTO_ANCHORS = {
+    "b-app": {
+        "pages/me/index": "s01",
+        "pages/members/index": "s02", "pages/members/filter": "s03",
+        "pages/members/detail": "s04", "pages/members/add": "s05",
+        "pages/member-tags/index": "s06", "pages/member-settings/index": "s07",
+        "pages/marketing/index": "s08", "pages/marketing/new": "s09",
+        "pages/marketing/audience": "s10", "pages/coupons/index": "s11",
+        "pages/coupon-edit/index": "s12", "pages/coupon-issue/index": "s13",
+        "pages/verify/index": "s14",
+    },
+    "c-app": {
+        "pages/store/index": "s15", "pages/member-card/index": "s16",
+        "pages/coupons/index": "s17",
+    },
+}
+
+# 本机 dev server 端口（mock 模式）。点「预览」直接进那一页，不用自己拼路由
+DEV_ORIGIN = {"b-app": "http://localhost:5175/#", "c-app": "http://localhost:5176/#",
+              "ops-web": "http://localhost:3000"}
 
 
 # 还没有页面、只有设计的：落地之后从这里删掉，它就会从 nav/pages.json 里自然出现
@@ -175,8 +209,11 @@ PROTOTYPES = [
 
 
 def main() -> None:
+    check = "--check" in sys.argv
     rows = read_uni("b-app") + read_uni("c-app") + read_ops()
-    rows += [{"app": a, "route": r, "title": t, "domain": d, "tab": False, "status": "原型"}
+    rows += [{"app": a, "route": r, "title": t, "domain": d, "tab": False, "status": "原型",
+              "proto": PROTO_ANCHORS.get(a, {}).get(r.lstrip("/")),
+              "preview": None}
              for a, r, t, d in PROTOTYPES]
 
     apps = {"b-app": "商家 App", "c-app": "买家小程序", "ops-web": "运营端"}
@@ -191,11 +228,38 @@ def main() -> None:
             "domains": [{"name": k, "pages": v} for k, v in domains.items()],
         })
 
-    OUT_JSON.write_text(json.dumps(catalog, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    fresh = json.dumps(catalog, ensure_ascii=False, indent=2) + "\n"
+
+    if check:
+        old = OUT_JSON.read_text(encoding="utf-8") if OUT_JSON.exists() else ""
+        if old != fresh:
+            print("✗ 界面清单过期了：有页面加了/改了/删了，但 ui-catalog.json 没跟上。", file=sys.stderr)
+            print("  跑一下：python3 scripts/gen-ui-catalog.py（然后把 JSON 一起提交）", file=sys.stderr)
+            _diff(json.loads(old) if old else {"apps": []}, catalog)
+            sys.exit(1)
+        print(f"✓ 界面清单是最新的（{catalog['total']} 个界面）")
+        return
+
+    OUT_JSON.write_text(fresh, encoding="utf-8")
     OUT_HTML.write_text(render(catalog), encoding="utf-8")
     print(f"{OUT_JSON.relative_to(ROOT)}: {catalog['total']} 个界面")
     for a in catalog["apps"]:
         print(f"  {a['label']:<12} {a['count']:>3} 个 · {len(a['domains'])} 个域")
+
+
+def _diff(old: dict, new: dict) -> None:
+    """把差在哪儿直接说出来 —— 只说「不一致」的闸门，人只会去跳过它。"""
+    def flat(c: dict) -> dict[str, str]:
+        return {f"{a['key']}{p['route']}": p["title"]
+                for a in c.get("apps", []) for d in a["domains"] for p in d["pages"]}
+    o, n = flat(old), flat(new)
+    for k in sorted(n.keys() - o.keys()):
+        print(f"  + 新增 {k}（{n[k]}）", file=sys.stderr)
+    for k in sorted(o.keys() - n.keys()):
+        print(f"  - 删除 {k}（{o[k]}）", file=sys.stderr)
+    for k in sorted(o.keys() & n.keys()):
+        if o[k] != n[k]:
+            print(f"  ~ 改名 {k}：{o[k]} → {n[k]}", file=sys.stderr)
 
 
 def render(cat: dict) -> str:
@@ -209,10 +273,18 @@ def render(cat: dict) -> str:
             for p in dom["pages"]:
                 badge = {"已实现": "ok", "原型": "proto", "待建": "soon"}[p["status"]]
                 extra = " · ".join(x for x in [p.get("group"), p.get("matrix")] if x)
+                links = ""
+                if p.get("proto"):
+                    links += (f'<a class="lk proto-lk" href="{PROTO_URL}#{p["proto"]}" '
+                              f'target="_blank" rel="noopener">原型</a>')
+                if p.get("preview"):
+                    links += (f'<a class="lk" href="{escape(p["preview"])}" '
+                              f'target="_blank" rel="noopener">预览</a>')
                 items.append(
                     f'<li><span class="t">{escape(p["title"])}</span>'
                     f'<code>{escape(p["route"])}</code>'
                     f'{f"<em>{escape(extra)}</em>" if extra else ""}'
+                    f'{links}'
                     f'<span class="b {badge}">{p["status"]}</span></li>')
             secs.append(f'<section><h3>{escape(dom["name"])}'
                         f'<span class="n">{len(dom["pages"])}</span></h3>'
@@ -256,6 +328,11 @@ li{background:var(--card);border:1px solid var(--rule);border-radius:8px;padding
 code{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--muted)}
 em{font-style:normal;font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--muted);
   opacity:.8}
+.lk{font-size:11.5px;padding:2px 8px;border-radius:6px;text-decoration:none;
+  border:1px solid var(--rule);color:var(--muted)}
+.lk:hover{color:var(--ink);border-color:var(--ink)}
+.lk.proto-lk{color:var(--proto);border-color:color-mix(in srgb,var(--proto) 40%,transparent)}
+.lk:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
 .b{margin-left:auto;font-size:11.5px;padding:2px 9px;border-radius:999px;white-space:nowrap}
 .b.ok{color:var(--ok);background:var(--ok-bg)}
 .b.proto{color:var(--proto);background:var(--proto-bg)}
@@ -273,6 +350,7 @@ footer{margin-top:70px;border-top:1px solid var(--rule);padding-top:16px;
 </header>
 {{BODY}}
 <footer>已实现 = 路由已存在　原型 = 只有设计稿　待建 = 导航里登记了但页面未建<br>
+「原型」跳设计稿对应的那一屏；「预览」跳本机 dev server（b-app 5175 / c-app 5176 / ops-web 3000，需先启动）<br>
 清单不手工维护：加了一页而清单没变，说明该重新跑一次生成器</footer>
 </div>
 """
