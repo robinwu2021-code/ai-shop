@@ -125,6 +125,8 @@ export default {
       buildOwnDim: "Build my own",
       buildOwnPh: "e.g. Spiciness",
       noMoreDim: "All specs for this category are in use",
+    restShow: "Other platform specs ({n})",
+    restHide: "Hide the others",
       typeMine: "Type a new option…",
       pickHint: "Also on the platform",
       addValueHint: "e.g. the platform has 500g and 1kg, but your bag is 750g. It lands on the same axis, so comparison still works.",

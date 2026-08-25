@@ -382,6 +382,23 @@ async function removeDim(g: StoreCategorySpecs, dim: SpecTemplate) {
 const picking = ref<string | null>(null);
 /** 这一类还能加的规格（已在用的不再列 —— 再列一遍他点了不知道发生了什么） */
 const pickable = ref<SpecTemplate[]>([]);
+
+/**
+ * 候选**分两段**：这一类平台配过的、和平台池里其余的通用规格。
+ *
+ * <p>此前是一个平铺列表，于是「手机数码」下面并排摆着口味、等级、尺码 ——
+ * 商家看到的是一堆与这一类毫无关系的东西。根因不是数据填错：
+ * 那批维度标着 `universal`，而 `universal` 的判据是**「值的含义是否跨类目一致」**
+ * （给跨店聚合用：锅的黑和手机的黑是同一个黑），它**没有**回答
+ * 「哪些类目该用它」。拿前者当后者用，「数码 → 口味」是必然结果。
+ *
+ * <p>**不拦着他选** —— 商家确实可能有平台没想到的用法（他那家店的耳机按口味分？
+ * 也许真有）—— 但不把二十来个无关维度摆在眼前。要用，展开一下就是。
+ */
+const pickCat = computed(() => pickable.value.filter((x) => x.categoryNo));
+const pickRest = computed(() => pickable.value.filter((x) => !x.categoryNo));
+/** 「其它平台规格」默认收起。展开一次就记住，别每换一个类目又收回去 */
+const showRest = ref(false);
 /** 自建配额。只在「加规格」这一刻有意义，所以放在面板里而不是页面顶部 */
 const ownUsed = ref(0);
 const ownMax = ref(10);
@@ -507,11 +524,24 @@ onShow(() => void load());
           <text class="sh-muted">{{ $t("mySpecs.pickHint") }}</text>
           <text class="sh-muted picker__quota">{{ $t("mySpecs.quotaShort", { used: ownUsed, max: ownMax }) }}</text>
         </view>
-        <view v-if="pickable.length" class="chips">
-          <text v-for="p in pickable" :key="p.templateNo" class="sh-chip chip"
+        <!-- 这一类平台配过的：默认摆出来，它们是平台针对这一类的判断 -->
+        <view v-if="pickCat.length" class="chips">
+          <text v-for="p in pickCat" :key="p.templateNo" class="sh-chip chip"
                 @tap="pickDim(g, p)">{{ p.name }}</text>
         </view>
-        <text v-else class="sh-muted picker__empty">{{ $t("mySpecs.noMoreDim") }}</text>
+        <!-- 其余通用规格：收起。展开才出现，理由见 pickCat 上面那段 -->
+        <view v-if="pickRest.length" class="picker__more">
+          <text class="link" @tap="showRest = !showRest">
+            {{ showRest ? $t("mySpecs.restHide") : $t("mySpecs.restShow", { n: pickRest.length }) }}
+          </text>
+        </view>
+        <view v-if="showRest && pickRest.length" class="chips">
+          <text v-for="p in pickRest" :key="p.templateNo" class="sh-chip chip"
+                @tap="pickDim(g, p)">{{ p.name }}</text>
+        </view>
+        <text v-if="!pickable.length" class="sh-muted picker__empty">
+          {{ $t("mySpecs.noMoreDim") }}
+        </text>
         <!-- 自己建放最后：顺序即建议，先看平台有没有现成的 -->
         <view class="picker__own" @tap="buildOwnDim(g)">
           <text class="picker__own-t">＋ {{ $t("mySpecs.buildOwnDim") }}</text>
@@ -628,6 +658,10 @@ onShow(() => void load());
 </template>
 
 <style scoped>
+.picker__more {
+  margin-top: 12rpx;
+}
+
 /*
  * 与「我的」那一页同一套行范式：**组内密排，间距只在组与组之间**。
  * 每行都套一张卡的话，一个类目下三四个规格就变成三四块互不相干的浮起色块，

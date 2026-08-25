@@ -1492,6 +1492,9 @@ function nearestDimName(input: string): SpecTemplate | null {
  * 面板里的三段。**顺序就是建议顺序**：这一类目平台配好的最该选，
  * 通用维度次之，自己建过的放最后（它们不参与跨店聚合）。
  */
+/** 「通用规格」那一组是否展开。默认收起 —— 见模板里那段注释 */
+const showUniversalDims = ref(false);
+
 const dimGroups = computed(() => [
   {
     key: "cat",
@@ -2359,10 +2362,22 @@ async function save(thenSubmit = false) {
           <text class="sh-h2">{{ $t("goods.pickDim") }}</text>
           <text class="link" @tap="showDimPicker = false">{{ $t("goods.pickDimClose") }}</text>
         </view>
+        <!--
+          「通用规格」那一组**默认收起**。它给的是平台池里所有 `universal` 的维度，
+          而 `universal` 的判据是「值的含义是否跨类目一致」（给跨店聚合用），
+          不是「哪些类目该用它」—— 于是手机数码下面会并排摆着口味、等级、尺码。
+          不拦着他选，但也不把二十来个无关维度摆在眼前。
+        -->
         <view v-for="grp in dimGroups" :key="grp.key">
           <view v-if="grp.items.length" class="picker__sec">
-            <text class="sh-muted picker__label">{{ $t(grp.labelKey) }}</text>
-            <view class="picker__row">
+            <text
+              class="sh-muted picker__label"
+              @tap="grp.key === 'universal' && (showUniversalDims = !showUniversalDims)"
+            >
+              {{ $t(grp.labelKey)
+              }}<template v-if="grp.key === 'universal'"> {{ showUniversalDims ? "▾" : "▸" }} ({{ grp.items.length }})</template>
+            </text>
+            <view v-if="grp.key !== 'universal' || showUniversalDims" class="picker__row">
               <text
                 v-for="d in grp.items"
                 :key="d.templateNo"

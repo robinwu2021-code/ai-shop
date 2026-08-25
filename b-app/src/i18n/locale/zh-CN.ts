@@ -193,6 +193,8 @@ export default {
       buildOwnDim: "自己建一个",
       buildOwnPh: "如 辣度",
       noMoreDim: "这一类的规格都在用了",
+    restShow: "其它平台规格（{n}）",
+    restHide: "收起其它规格",
       typeMine: "输入新的档位…",
       pickHint: "平台还有这些",
       addValueTitle: "这一档叫什么",
