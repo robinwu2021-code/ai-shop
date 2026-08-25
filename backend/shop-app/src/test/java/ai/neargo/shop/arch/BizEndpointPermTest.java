@@ -156,6 +156,8 @@ class BizEndpointPermTest {
          * 反过来留在 PUBLIC，任何持有 B 端会话的子账号都能给这家店塞模板。
          */
         put("/biz/spec-templates", BizPerms.GOODS);
+        // 商品参数（V250）：与销售规格同一条权限 —— 都是建品链路的一环
+        put("/biz/spec-props", BizPerms.GOODS);
         // 自定义规格（V195 的商家覆盖层）：与建品同一个码 —— 能建商品就能给它加一档规格，
         // 单独开一个码只会让「建品」这件事需要两个授权
         // 我的资质：与门店设置同一个码 —— 传证是店主的事，而 biz:store 正是那条线
