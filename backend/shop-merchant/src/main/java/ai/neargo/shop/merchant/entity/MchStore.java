@@ -189,4 +189,24 @@ public class MchStore extends BaseEntity {
     private String adcode;
     /** 地址经地理编码校验并标准化（V190）。没配地图密钥时保持 0，不拦保存 */
     private Boolean addressVerified;
+
+    /**
+     * 这家店是否接受<b>线下（当面）收款</b>。支付方式四层判定的第 ③ 层。
+     *
+     * <p><b>默认关</b>（与商品侧 pay_modes 的「默认放行」不同）：
+     * 它是「这家店愿不愿意」，属于商家的经营决定，不该由平台替他打开。
+     *
+     * <p>资质挂在<b>主体</b>上（{@code mch_qualification.entity_no}），
+     * 而这个开关在<b>门店</b>上 —— 一家主体下三家分店共用同一张证，
+     * 但可以只有临街那家开线下收款。<b>证是主体的，店是主体开的。</b>
+     */
+    private Integer offlinePayEnabled;
+
+    /**
+     * 货到付款（商家自送 + 线下付）。<b>单独一个开关，不跟着上面那个一起开。</b>
+     *
+     * <p>它是整张「支付方式 × 履约方式」组合表里<b>风险最高的一格</b> ——
+     * 拒收、跑单，损失全在商家。所以要商家在承担得起的时候自己打开。
+     */
+    private Integer codEnabled;
 }

@@ -176,5 +176,16 @@ public class StlBill extends BaseEntity {
     /** 见 {@link #INV_PENDING} 等。冗余一列是因为应付列表要按它筛。 */
     private String invoiceStatus;
 
+    /**
+     * 线下单<b>让掉</b>的佣金：<b>只记不扣</b>。
+     *
+     * <p>线下支付已拍板不抽佣，所以这一列不是「为了将来去收」，
+     * 而是<b>为了知道让了多少</b> —— 缺了它，连「线下这部分生意值多少钱」都算不出来，
+     * 将来无论继续免还是重新定价都没有依据。
+     *
+     * <p>与 {@link #commissionMinor} 并列才一眼看得出「本该收多少、实际收了 0」。
+     */
+    private Long waivedCommissionMinor;
+
 
 }

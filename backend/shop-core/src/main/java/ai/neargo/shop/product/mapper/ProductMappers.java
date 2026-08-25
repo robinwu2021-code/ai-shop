@@ -87,6 +87,16 @@ public final class ProductMappers {
             extends BaseMapper<ai.neargo.shop.product.entity.PrdMerchantSpecValue> {
     }
 
+    /** 类目 × 支付方式（四层判定的第 ① 层）。**没有行即放行**。 */
+    public interface CategoryPayModeMapper
+            extends BaseMapper<ai.neargo.shop.product.entity.PrdCategoryPayMode> {
+    }
+
+    /** 类目积分规则。平台统一按类目管理，商家不配。 */
+    public interface CategoryPointsMapper
+            extends BaseMapper<ai.neargo.shop.product.entity.PrdCategoryPoints> {
+    }
+
     public interface SkuMapper extends BaseMapper<PrdSku> {
 
         /**

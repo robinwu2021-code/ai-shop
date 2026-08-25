@@ -686,6 +686,43 @@ public enum ErrorCode {
      * 提醒挡不住「先启用、回头再配」，而回头往往就是几个月。
      */
     CATEGORY_HAS_NO_SPEC(80010, "err.category.has_no_spec"),
+    /**
+     * 所选支付方式这件商品不支持。
+     *
+     * <p>可用性是**四层取交集**（类目 → 主体资质 → 门店 → 商品），任何一层说不行就是不行。
+     * 不复用 {@code BAD_REQUEST}：商家看到「参数有误」会去查报文格式，
+     * 而真正的原因是某一层没放行 —— 方向完全反了。
+     */
+    PAY_MODE_NOT_SUPPORTED(80011, "err.pay_mode.not_supported"),
+    /**
+     * 主体没有有效资质，不能线下收款。
+     *
+     * <p><b>判据是「此刻有一张未过期的证」，不是「入驻时批过」。</b>
+     * MchQualification 的类注释里记着同一个坑的另一半：上架校验读的是审核时写死的
+     * {@code category_codes}，**证过期了那串编码不会变**，商家照样上架、平台收不到信号。
+     *
+     * <p>也不能依赖 {@code status=EXPIRED}：置这个状态的是定时任务，
+     * 而**生产只跑 api,ops 两个 profile，没有 worker，定时任务根本不跑**。
+     */
+    OFFLINE_PAY_NOT_QUALIFIED(80012, "err.offline_pay.not_qualified"),
+    /**
+     * 线下支付不能用平台券。
+     *
+     * <p>券要按**出资方**拆：商家券可以用（商家自己少收，与积分同理，平台不介入）；
+     * 平台券不行 —— 平台要把补贴的钱给商家，而线下**没有资金流可补**，
+     * 硬发就是平台白送且无处对账。区分依据现成：{@code ord_sub_order} 上早就分了
+     * {@code discount_platform} / {@code discount_merchant} 两列。
+     */
+    PLATFORM_COUPON_OFFLINE_FORBIDDEN(80013, "err.coupon.platform_offline_forbidden"),
+    /**
+     * 这个时段已经约满。
+     *
+     * <p>由**带条件的 UPDATE**（{@code WHERE booked < capacity}）影响 0 行触发 ——
+     * 不是「先查再改」，后者在并发下必然超约。与到店核销扣次数、库存锁定同一个做法。
+     */
+    APPOINTMENT_SLOT_FULL(80014, "err.appointment.slot_full"),
+    /** 这个时段未开放或已停约。与「约满」分开：一个是没名额了，一个是根本不开。 */
+    APPOINTMENT_SLOT_UNAVAILABLE(80015, "err.appointment.slot_unavailable"),
 
     /**
      * 截单时间不早于到货时间（P-3.3.2）。

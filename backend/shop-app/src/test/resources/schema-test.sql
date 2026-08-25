@@ -546,6 +546,8 @@ CREATE TABLE IF NOT EXISTS ord_order
     version BIGINT(20) NOT NULL DEFAULT 0,
     deleted TINYINT(4) NOT NULL DEFAULT 0,
     pay_scene VARCHAR(16) DEFAULT NULL,
+    offline_confirmed_by VARCHAR(64) DEFAULT NULL,
+    offline_confirmed_at BIGINT DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_order_no UNIQUE (order_no)
 );
@@ -705,6 +707,7 @@ CREATE TABLE IF NOT EXISTS prd_goods
     std_no VARCHAR(64) DEFAULT NULL,
     detail TEXT DEFAULT NULL,
     detail_images TEXT DEFAULT NULL,
+    pay_modes VARCHAR(128) NOT NULL DEFAULT '["ONLINE"]',
     PRIMARY KEY (id),
     CONSTRAINT uk_goods_no UNIQUE (goods_no)
 );
@@ -961,6 +964,7 @@ CREATE TABLE IF NOT EXISTS stl_bill
     subsidy_at BIGINT(20) DEFAULT NULL,
     funds_mode VARCHAR(16) NOT NULL DEFAULT 'AGGREGATED',
     points_cost_minor BIGINT(20) NOT NULL DEFAULT 0,
+    waived_commission_minor BIGINT NOT NULL DEFAULT 0,
     PRIMARY KEY (id),
     CONSTRAINT uk_settle_no UNIQUE (settle_no),
     CONSTRAINT uk_sub_order UNIQUE (sub_order_no)
@@ -1477,6 +1481,8 @@ CREATE TABLE IF NOT EXISTS mch_store
     announcement_until BIGINT(20) NULL,
     announcement_recent VARCHAR(512) NULL,
     announcement_at BIGINT(20) NULL,
+    offline_pay_enabled TINYINT NOT NULL DEFAULT 0,
+    cod_enabled TINYINT NOT NULL DEFAULT 0,
     PRIMARY KEY (id),
     CONSTRAINT uk_store_no UNIQUE (store_no)
 );
@@ -3564,6 +3570,40 @@ CREATE TABLE IF NOT EXISTS mbr_reach_log
     deleted TINYINT(4) NOT NULL DEFAULT 0,
     PRIMARY KEY (id),
     CONSTRAINT uk_mbr_reach_no UNIQUE (reach_no)
+);
+
+CREATE TABLE IF NOT EXISTS prd_category_pay_mode
+(
+    id          BIGINT      NOT NULL AUTO_INCREMENT,
+    category_no VARCHAR(64) NOT NULL,
+    pay_mode    VARCHAR(16) NOT NULL,
+    allowed     TINYINT     NOT NULL DEFAULT 1,
+    tenant_no   VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at  DATETIME    NOT NULL,
+    created_by  VARCHAR(64)          DEFAULT NULL,
+    updated_at  DATETIME    NOT NULL,
+    updated_by  VARCHAR(64)          DEFAULT NULL,
+    version     BIGINT      NOT NULL DEFAULT 0,
+    deleted     TINYINT     NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_cat_pay_mode UNIQUE (tenant_no, category_no, pay_mode)
+);
+
+CREATE TABLE IF NOT EXISTS prd_category_points
+(
+    id          BIGINT      NOT NULL AUTO_INCREMENT,
+    category_no VARCHAR(64) NOT NULL,
+    earn_mode   VARCHAR(16) NOT NULL,
+    earn_value  BIGINT      NOT NULL,
+    tenant_no   VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at  DATETIME    NOT NULL,
+    created_by  VARCHAR(64)          DEFAULT NULL,
+    updated_at  DATETIME    NOT NULL,
+    updated_by  VARCHAR(64)          DEFAULT NULL,
+    version     BIGINT      NOT NULL DEFAULT 0,
+    deleted     TINYINT     NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_cat_points UNIQUE (tenant_no, category_no)
 );
 
 -- 种子数据

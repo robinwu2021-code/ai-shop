@@ -68,6 +68,18 @@ public class PrdGoods extends BaseEntity {
     /** JSON 数组，如 {@code ["STORE_PICKUP","EXPRESS"]}。 */
     private String fulfillments;
 
+    /**
+     * 支持哪些支付方式（JSON 数组），取值域见 {@link ai.neargo.shop.common.PayModes}。
+     *
+     * <p>它是支付方式四层判定的<b>第 ④ 层</b>（类目 → 主体资质 → 门店 → 商品，取交集）。
+     * 这一层表达的是「<b>商家愿不愿意</b>」，而不是「够不够格」—— 后者在资质那一层。
+     *
+     * <p>⚠️ <b>别重蹈 {@code fulfillments} 的覆辙</b>：那一列曾是无取值域的自由 JSON、
+     * 建品时被写死、商家改不了，于是「这件商品支持怎么送」在商品侧从没真正表达过。
+     * 所以取值域常量、建品可选、下单校验三件事必须一起做完。
+     */
+    private String payModes;
+
     /** JSON：规格维度定义 {@code [{name,options[]}]}，单规格商品也有一组。 */
     private String specGroups;
 
