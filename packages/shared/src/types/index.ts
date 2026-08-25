@@ -3513,6 +3513,107 @@ export interface MemberTag {
 }
 
 /**
+ * 商家自己的券（P4，新模型 `pmt_coupon`）。
+ *
+ * @remarks **名字前缀 Merchant 是必要的**：`Coupon` 这个名字已经被老模型
+ * （平台券 / 领券中心那一套 `mkt_coupon`）占着，两者的字段形状完全不同。
+ * 同名会在 import 时静默取到另一个 —— 而 TS 只在字段对不上的那一行报错，
+ * 报的还是「类型不匹配」，看不出是拿错了类型。P9 老模型退场后可以去掉前缀。
+ *
+ * @remarks 七个维度是正交的，不是七个枚举值：**权益 × 门槛 × 范围 × 有效期 ×
+ * 发放 × 核销 × 次数**。老模型把这些压在一个 `type` 上，于是加一种玩法
+ * 就要改一次算价。
+ */
+export interface MerchantCoupon {
+  couponNo: string;
+  title: string;
+  /** `CASH` 现金 / `PERCENT` 折扣 / `GIFT` 兑换 / `FREE_SHIP` 免运费 */
+  benefitMode: string;
+  /** CASH = 面额（分）；PERCENT = **万分比**，8500 表示八五折（顾客付 85%） */
+  benefitValue: number;
+  /** 折扣封顶（分）。PERCENT 必填 —— 不封顶的敞口随订单金额无限放大 */
+  benefitCapMinor?: number | null;
+  /** GIFT 兑换哪件商品 */
+  benefitRef?: string | null;
+  minAmountMinor?: number | null;
+  minQty?: number | null;
+  /** `ALL` / `STORE` / `CATEGORY` / `GOODS`。**下单抵扣的券只能是前两种** */
+  scopeType: string;
+  scopeRefs: string[];
+  scopeDesc?: string | null;
+  /** `ABSOLUTE` 固定起止 / `RELATIVE` 领取后 N 天 */
+  validityMode: string;
+  startAt?: number | null;
+  endAt?: number | null;
+  validDays?: number | null;
+  /** `CENTER` 领券中心 / `TARGETED` 定向发 / `ACTIVITY` 活动发 */
+  issueMode: string;
+  /** `ORDER` 下单抵扣 / `STORE_CODE` 到店出示核销 */
+  redeemMode: string;
+  /** 一张能用几次。>1 就是次卡（豆浆 5 杯） */
+  timesTotal: number;
+  /** 发行量。空 = 不限（只有定向发放允许） */
+  totalCount?: number | null;
+  receivedCount: number;
+  perUserLimit: number;
+  budgetMinor?: number | null;
+  /**
+   * 最大敞口 = 发行量 × 单张最大优惠。
+   * **建券页要显示它** —— 商家填「1000 张 × 20 元」时心里想的是「发 1000 张」，
+   * 不是「最多赔两万」。
+   */
+  maxExposureMinor?: number | null;
+  /** `ACTIVE` / `PAUSED` 暂停发放（已领的不受影响）/ `ENDED` */
+  status: string;
+}
+
+/** 建券入参。`couponNo` 为空 = 新建 */
+export interface MerchantCouponDraft {
+  couponNo?: string;
+  title: string;
+  benefitMode: string;
+  benefitValue: number;
+  benefitCapMinor?: number | null;
+  benefitRef?: string | null;
+  minAmountMinor?: number | null;
+  minQty?: number | null;
+  scopeType?: string;
+  scopeRefs?: string[];
+  scopeDesc?: string | null;
+  validityMode?: string;
+  startAt?: number | null;
+  endAt?: number | null;
+  validDays?: number | null;
+  issueMode?: string;
+  redeemMode?: string;
+  timesTotal?: number;
+  totalCount?: number | null;
+  perUserLimit?: number;
+  budgetMinor?: number | null;
+}
+
+/**
+ * 一次定向发放的结果。
+ *
+ * @remarks `skipped` 与 `skipReasons` **必须显示在结果页上**：商家选了 37 个人、
+ * 实发 25 张，只说「发放成功」的话，他会以为发出去 37 张 —— 直到某个顾客说没收到。
+ */
+export interface CouponIssueBatch {
+  issueNo: string;
+  couponNo: string;
+  segmentNo?: string | null;
+  /** 人群此刻命中多少人 */
+  planned: number;
+  issued: number;
+  skipped: number;
+  /** `UNREACHABLE` 还没注册或已退订 / `ALREADY_HAS` 到每人上限 / `SOLD_OUT` 券发完 */
+  skipReasons: Array<{ reason: string; count: number }>;
+  amountMinor: number;
+  operatorNo?: string | null;
+  issuedAt: number;
+}
+
+/**
  * 会员经营口径（P3）。
  *
  * @remarks 切换 `memberScope` 会**改变「新客」的含义**：按门店时，

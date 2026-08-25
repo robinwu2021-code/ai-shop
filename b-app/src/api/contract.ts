@@ -47,6 +47,9 @@ import type {
   MerchantLoginResp,
   MerchantProfile,
   MerchantCustomer,
+  CouponIssueBatch,
+  MerchantCoupon,
+  MerchantCouponDraft,
   Member,
   MemberDetail,
   MemberSegment,
@@ -1015,6 +1018,38 @@ export interface MerchantApi {
   mPreviewMemberSegment(payload: {
     scopeStoreNo?: string; rule: MemberSegmentRule;
   }): Promise<MemberSegmentPreview>;
+
+  // ---- 券（P4，新模型）
+  /** 商家自己的券。`includeEnded` 为真时把已结束的也带上 */
+  mCoupons(includeEnded?: boolean): Promise<MerchantCoupon[]>;
+
+  mCoupon(couponNo: string): Promise<MerchantCoupon>;
+
+  /**
+   * 建券 / 改券。**敞口在这一步就要算清**，页面上四条硬校验与后端一致：
+   * 折扣券必须封顶；折扣率是**万分比**且不低于一折（填 88 表示顾客付 0.88%，
+   * 等于白送）；发行量只有定向发放允许留空；预算非零时必须兜得住
+   * 发行量 × 单张最大优惠。
+   *
+   * 还有一条容易被当成后端小气的：**下单抵扣的券不能按类目或商品限定范围** ——
+   * 算价拿不到商品明细，放行的话「仅限粮油」的券买猫粮照样能用。
+   * 要按品类限，就得改成到店核销。
+   */
+  mSaveCoupon(payload: MerchantCouponDraft): Promise<MerchantCoupon>;
+
+  /** 暂停 / 恢复 / 结束。**不动已经发到用户手上的券** —— 那是他已有的权益 */
+  mSetCouponStatus(couponNo: string, status: string): Promise<MerchantCoupon>;
+
+  /**
+   * 按人群定向发券。
+   *
+   * 返回里的 `skipped` / `skipReasons` **必须显示在结果页上** ——
+   * 不显示的话商家会以为人群里每个人都收到了。
+   * 超预算时整批拒绝（不部分发放），这时抛错而不是返回一个「发了一半」的结果。
+   */
+  mIssueCoupon(couponNo: string, segmentNo: string): Promise<CouponIssueBatch>;
+
+  mCouponIssues(couponNo?: string): Promise<CouponIssueBatch[]>;
 
   // ---- 结算（B-11.9）
   /**

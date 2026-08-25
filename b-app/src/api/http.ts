@@ -78,6 +78,8 @@ import type {
   MerchantCustomer,
   Member,
   MemberDetail,
+  CouponIssueBatch,
+  MerchantCoupon,
   MemberMergePreview,
   MemberSegment,
   MemberSegmentPreview,
@@ -409,6 +411,17 @@ export const httpApi: MerchantApi = {
     http.post<void>(buildPath(E.mRemoveMemberSegment.path, { segmentNo })),
   mPreviewMemberSegment: (payload) =>
     http.post<MemberSegmentPreview>(E.mPreviewMemberSegment.path, payload),
+
+  mCoupons: (includeEnded) =>
+    http.get<MerchantCoupon[]>(E.mCoupons.path, includeEnded ? { includeEnded: true } : undefined),
+  mCoupon: (couponNo) => http.get<MerchantCoupon>(buildPath(E.mCoupon.path, { couponNo })),
+  mSaveCoupon: (payload) => http.post<MerchantCoupon>(E.mSaveCoupon.path, payload),
+  mSetCouponStatus: (couponNo, status) =>
+    http.put<MerchantCoupon>(buildPath(E.mSetCouponStatus.path, { couponNo }), { status }),
+  mIssueCoupon: (couponNo, segmentNo) =>
+    http.post<CouponIssueBatch>(buildPath(E.mIssueCoupon.path, { couponNo }), { segmentNo }),
+  mCouponIssues: (couponNo) =>
+    http.get<CouponIssueBatch[]>(E.mCouponIssues.path, couponNo ? { couponNo } : undefined),
 
   mSettleList: (allStores) =>
     http.get<SettleBill[]>(E.mSettleList.path, allStores ? { allStores: true } : undefined),

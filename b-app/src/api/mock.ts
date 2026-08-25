@@ -83,7 +83,9 @@ function pointsAccount() {
 }
 import type { StaffLogRow } from "@shared/mock/db";
 import type {
+  CouponIssueBatch,
   MemberSegmentRule,
+  MerchantCoupon,
   MerchantPlan,
   CurrencyCode,
   MarketId,
@@ -3047,6 +3049,165 @@ export const mockApi: MerchantApi = {
       // 线索会员与退订的人进不了受众 —— 两个数都报，否则商家以为发漏了
       reachable: hit.filter((m) => m.status === "ACTIVE" && !m.reachOptOut).length,
     });
+  },
+
+  // ---------------------------------------------------------------- 券（P4）
+  async mCoupons(includeEnded) {
+    return delay(db.merchantCoupons
+        .filter((c) => includeEnded || c.status !== "ENDED")
+        .map((c) => ({ ...c })));
+  },
+
+  async mCoupon(couponNo) {
+    const c = db.merchantCoupons.find((x) => x.couponNo === couponNo);
+    if (!c) throw new ApiError(10404, "券不存在");
+    return delay({ ...c });
+  },
+
+  /**
+   * 建券。**四条硬校验与后端一字不差** —— mock 放宽的话，
+   * 演示时填得过、连真后端就被拒，而那时没人记得是哪一条拦的。
+   */
+  async mSaveCoupon(payload) {
+    const mode = payload.benefitMode || "CASH";
+    if (!payload.title?.trim()) throw new ApiError(10400, "请填券名");
+    if (mode === "PERCENT") {
+      const rate = payload.benefitValue ?? 0;
+      // 万分比：8500 = 八五折。填 88 表示顾客付 0.88%，等于白送
+      if (rate < 1000 || rate >= 10000) throw new ApiError(40011, "折扣要填万分比，如 8500 表示八五折");
+      if (!payload.benefitCapMinor) throw new ApiError(40003, "折扣券必须设封顶");
+    }
+    if (mode === "CASH" && !(payload.benefitValue > 0)) throw new ApiError(10400, "请填面额");
+    const itemScoped = payload.scopeType === "CATEGORY" || payload.scopeType === "GOODS";
+    if (itemScoped && (payload.redeemMode ?? "ORDER") === "ORDER") {
+      throw new ApiError(40012, "下单抵扣的券暂不支持按类目或商品限定，可改成到店核销");
+    }
+    const issueMode = payload.issueMode ?? "TARGETED";
+    if (payload.totalCount == null && issueMode !== "TARGETED") {
+      throw new ApiError(40004, "请填发行量");
+    }
+    const per = mode === "CASH" ? (payload.benefitValue ?? 0)
+      : mode === "PERCENT" ? (payload.benefitCapMinor ?? 0) : 0;
+    const exposure = payload.totalCount == null ? null : payload.totalCount * per * (payload.timesTotal ?? 1);
+    if (payload.budgetMinor && exposure != null && payload.budgetMinor < exposure) {
+      throw new ApiError(40005, "预算兜不住发行量 × 单张最大优惠");
+    }
+
+    const exist = payload.couponNo
+      ? db.merchantCoupons.find((x) => x.couponNo === payload.couponNo)
+      : undefined;
+    if (exist && payload.totalCount != null && payload.totalCount < exist.receivedCount) {
+      throw new ApiError(40013, "发行量不能低于已领张数");
+    }
+    const row: MerchantCoupon = {
+      couponNo: exist?.couponNo ?? `PC-${db.merchantCoupons.length + 1}`,
+      title: payload.title.trim(),
+      benefitMode: mode,
+      benefitValue: payload.benefitValue ?? 0,
+      benefitCapMinor: payload.benefitCapMinor ?? null,
+      benefitRef: payload.benefitRef ?? null,
+      minAmountMinor: payload.minAmountMinor ?? null,
+      minQty: payload.minQty ?? null,
+      scopeType: payload.scopeType ?? "ALL",
+      scopeRefs: payload.scopeRefs ?? [],
+      scopeDesc: payload.scopeDesc ?? null,
+      validityMode: payload.validityMode ?? "RELATIVE",
+      startAt: payload.startAt ?? null,
+      endAt: payload.endAt ?? null,
+      validDays: payload.validDays ?? 7,
+      issueMode,
+      redeemMode: payload.redeemMode ?? "ORDER",
+      timesTotal: payload.timesTotal ?? 1,
+      totalCount: payload.totalCount ?? null,
+      receivedCount: exist?.receivedCount ?? 0,
+      perUserLimit: payload.perUserLimit ?? 1,
+      budgetMinor: payload.budgetMinor ?? null,
+      maxExposureMinor: exposure,
+      status: exist?.status ?? "ACTIVE",
+    };
+    if (exist) Object.assign(exist, row);
+    else db.merchantCoupons.push(row);
+    persist();
+    return delay({ ...row });
+  },
+
+  async mSetCouponStatus(couponNo, status) {
+    const c = db.merchantCoupons.find((x) => x.couponNo === couponNo);
+    if (!c) throw new ApiError(10404, "券不存在");
+    if (c.status === "ENDED") throw new ApiError(10400, "已结束的券不能复活");
+    c.status = status;
+    persist();
+    return delay({ ...c });
+  },
+
+  /**
+   * 定向发券。**三类跳过分开算**，与后端同一口径 ——
+   * 只报一个「发放成功」的话，商家会以为人群里每个人都收到了。
+   */
+  async mIssueCoupon(couponNo, segmentNo) {
+    const c = db.merchantCoupons.find((x) => x.couponNo === couponNo);
+    if (!c) throw new ApiError(10404, "券不存在");
+    if (c.status !== "ACTIVE") throw new ApiError(40014, "这张券已暂停或已结束，发不出去");
+
+    const sg = db.memberSegments.find((x) => x.segmentNo === segmentNo);
+    const hit = sg ? matchSegment(sg.rule) : allMockMembers();
+    const reachable = hit.filter((m) => m.status === "ACTIVE" && !m.reachOptOut);
+    const unreachable = hit.length - reachable.length;
+
+    let alreadyHas = 0;
+    const targets: string[] = [];
+    for (const m of reachable) {
+      const held = (db.couponHolders[couponNo] ?? []).filter((x) => x === m.memberNo).length;
+      if (held >= c.perUserLimit) { alreadyHas++; continue; }
+      targets.push(m.memberNo);
+    }
+
+    let soldOut = 0;
+    let give = targets;
+    if (c.totalCount != null) {
+      const left = Math.max(0, c.totalCount - c.receivedCount);
+      if (give.length > left) { soldOut = give.length - left; give = give.slice(0, left); }
+    }
+
+    const per = c.benefitMode === "CASH" ? c.benefitValue
+      : c.benefitMode === "PERCENT" ? (c.benefitCapMinor ?? 0) : 0;
+    const amount = give.length * per * c.timesTotal;
+    if (c.budgetMinor) {
+      // 整批拒绝，不部分发放 —— 页面上那句话必须是真的
+      if (c.receivedCount * per + amount > c.budgetMinor) {
+        throw new ApiError(40015, "超出剩余预算，整批未发放");
+      }
+    }
+
+    db.couponHolders[couponNo] = [...(db.couponHolders[couponNo] ?? []), ...give];
+    c.receivedCount += give.length;
+
+    const reasons: Array<{ reason: string; count: number }> = [];
+    if (unreachable > 0) reasons.push({ reason: "UNREACHABLE", count: unreachable });
+    if (alreadyHas > 0) reasons.push({ reason: "ALREADY_HAS", count: alreadyHas });
+    if (soldOut > 0) reasons.push({ reason: "SOLD_OUT", count: soldOut });
+
+    const batch: CouponIssueBatch = {
+      issueNo: `PI-${db.couponIssues.length + 1}`,
+      couponNo,
+      segmentNo: segmentNo ?? null,
+      planned: hit.length,
+      issued: give.length,
+      skipped: unreachable + alreadyHas + soldOut,
+      skipReasons: reasons,
+      amountMinor: amount,
+      operatorNo: null,
+      issuedAt: Date.now(),
+    };
+    db.couponIssues.unshift(batch);
+    persist();
+    return delay({ ...batch });
+  },
+
+  async mCouponIssues(couponNo) {
+    return delay(db.couponIssues
+        .filter((b) => !couponNo || b.couponNo === couponNo)
+        .map((b) => ({ ...b })));
   },
 
   // ---------------------------------------------------------------- 结算

@@ -254,6 +254,24 @@
       "style": {
         "navigationBarTitleText": "会员设置"
       }
+    },
+    {
+      "path": "pages/coupons/index",
+      "style": {
+        "navigationBarTitleText": "优惠券"
+      }
+    },
+    {
+      "path": "pages/coupon-edit/index",
+      "style": {
+        "navigationBarTitleText": "新建券"
+      }
+    },
+    {
+      "path": "pages/coupon-issues/index",
+      "style": {
+        "navigationBarTitleText": "发放记录"
+      }
     }
   ],
   "globalStyle": {

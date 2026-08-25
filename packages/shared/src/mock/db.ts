@@ -9,7 +9,9 @@ import { currentLang } from "@shared/utils/locale";
 import { currentCurrency } from "@shared/utils/money";
 import { isoDate, todayAtLocal } from "@shared/utils/datetime";
 import type {
+  CouponIssueBatch,
   Member,
+  MerchantCoupon,
   MemberSegment,
   InvoiceRequest,
   OrderItem,
@@ -1036,6 +1038,45 @@ export const db = {
    * mock 也照这条规矩来，否则演示里那份名单会比真库"稳"，把 bug 藏住。
    */
   memberSegments: [] as MemberSegment[],
+
+  /**
+   * 商家自己建的券（P4）。种一张现成的：空列表的演示看不出
+   * 「发行量 / 已领 / 最大敞口」这三个数之间的关系，而那正是这一页要说清的事。
+   */
+  merchantCoupons: [
+    {
+      couponNo: "PC-DEMO-1",
+      title: "老客回归 · 满 30 减 5",
+      benefitMode: "CASH",
+      benefitValue: 500,
+      benefitCapMinor: null,
+      benefitRef: null,
+      minAmountMinor: 3000,
+      minQty: null,
+      scopeType: "ALL",
+      scopeRefs: [],
+      scopeDesc: null,
+      validityMode: "RELATIVE",
+      startAt: null,
+      endAt: null,
+      validDays: 7,
+      issueMode: "TARGETED",
+      redeemMode: "ORDER",
+      timesTotal: 1,
+      totalCount: 200,
+      receivedCount: 0,
+      perUserLimit: 1,
+      budgetMinor: 100000,
+      maxExposureMinor: 100000,
+      status: "ACTIVE",
+    },
+  ] as MerchantCoupon[],
+
+  /** 发放批次。**跳过明细存在这里** —— 结果页要能说出「12 跳过：9 人已达上限」 */
+  couponIssues: [] as CouponIssueBatch[],
+
+  /** 用户券：mock 里只用来算「每人限领」与已领张数 */
+  couponHolders: {} as Record<string, string[]>,
 
   /** 店铺门面（店主可改的部分）。C 端门店主页读的就是它 */
   store: {

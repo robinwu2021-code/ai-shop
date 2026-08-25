@@ -87,6 +87,10 @@ async function load() {
   goods.value = gs.records;
 }
 
+function goCoupons() {
+  uni.navigateTo({ url: "/pages/coupons/index" });
+}
+
 function startNew() {
   editing.value = true;
   form.value = {
@@ -184,6 +188,19 @@ onShow(load);
     <view class="head">
       <text class="sh-h1">{{ $t("marketing.title") }}</text>
       <text v-if="!editing" class="link" @tap="startNew">{{ $t("marketing.create") }}</text>
+    </view>
+
+    <!--
+      优惠券是另一套东西（P4 新模型）：活动作用在**这一单**上，券作用在**这个人**上。
+      放一个入口而不是并进上面的四类，是因为券要选人群、要算敞口、要看跳过明细 ——
+      塞进活动表单里会让这一页变成两页拼起来的样子。
+    -->
+    <view v-if="!editing" class="entry" @tap="goCoupons">
+      <view class="entry__main">
+        <text class="entry__t">{{ $t("coupons.title") }}</text>
+        <text class="sh-muted entry__d">{{ $t("marketing.couponEntryHint") }}</text>
+      </view>
+      <sh-icon name="chevronRight" :size="18" color="var(--sh-sub)"></sh-icon>
     </view>
 
     <!-- 新建表单 -->
@@ -308,6 +325,25 @@ onShow(load);
 </template>
 
 <style scoped>
+.entry {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--sh-surface);
+  border-radius: 16rpx;
+  padding: 24rpx;
+  margin-top: 16rpx;
+}
+.entry__t {
+  font-size: 28rpx;
+  font-weight: 600;
+}
+.entry__d {
+  display: block;
+  margin-top: 6rpx;
+  font-size: 24rpx;
+}
+
 .head {
   display: flex;
   align-items: center;

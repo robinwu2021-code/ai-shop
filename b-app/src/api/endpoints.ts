@@ -215,6 +215,12 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
   mSaveMemberSegment: { method: "POST", path: "/biz/member-segments", auth: true, summary: "存人群（存条件不存名单）" },
   mRemoveMemberSegment: { method: "POST", path: "/biz/member-segments/{segmentNo}/remove", auth: true, summary: "删人群（端上没有 DELETE，见 http-client）" },
   mPreviewMemberSegment: { method: "POST", path: "/biz/member-segments/preview", auth: true, summary: "试算命中与可触达" },
+  mCoupons: { method: "GET", path: "/biz/coupons", auth: true, summary: "券列表" },
+  mCoupon: { method: "GET", path: "/biz/coupons/{couponNo}", auth: true, summary: "券详情" },
+  mSaveCoupon: { method: "POST", path: "/biz/coupons", auth: true, summary: "建券 / 改券（敞口在这一步算清）" },
+  mSetCouponStatus: { method: "PUT", path: "/biz/coupons/{couponNo}/status", auth: true, summary: "暂停 / 恢复 / 结束" },
+  mIssueCoupon: { method: "POST", path: "/biz/coupons/{couponNo}/issue", auth: true, summary: "按人群定向发券" },
+  mCouponIssues: { method: "GET", path: "/biz/coupon-issues", auth: true, summary: "发放记录（含跳过明细）" },
 
   mRateCard: { method: "GET", path: "/biz/settle/rate-card", auth: true, summary: "费率卡" },
   mSettleList: { method: "GET", path: "/biz/settle/bills", auth: true, summary: "结算单列表" },
