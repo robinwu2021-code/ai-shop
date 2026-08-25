@@ -113,8 +113,11 @@ INSERT INTO sys_pay_channel (pay_channel, name, enabled,
     supports_subsidy, supports_split, supports_payout, ...)
 VALUES ('OFFLINE', '线下收款', 1, 0, 0, 0, ...);
 
--- 平台侧授权：线下支付按「商家 × 类目」放开，默认没有行 = 不允许
-CREATE TABLE mch_offline_pay_grant (...)  -- entity_no + category_no + 授权人 + 时间
+-- 线下支付的可用性判定改为**四层取交集**，见总纲 §3.1。
+-- 短期主力是「主体资质」这一层（读 mch_qualification 的当前状态，不是审核时写死的码）；
+-- 类目/门店/商品三层一期默认放行，但位置一开始就留出来。
+ALTER TABLE mch_store ADD COLUMN offline_pay_enabled TINYINT NOT NULL DEFAULT 0;  -- ③ 门店
+CREATE TABLE prd_category_pay_mode (...)   -- ① 平台 × 类目，没有行 = 放行
 
 -- 订单上的线下收款留痕
 ALTER TABLE ord_order ADD COLUMN offline_confirmed_by VARCHAR(64) NULL;
