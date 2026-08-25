@@ -42,6 +42,11 @@ public final class MemberMappers {
     public interface SegmentMapper extends BaseMapper<ai.neargo.shop.member.entity.MbrSegment> {
     }
 
+    /** 触达记录。频次闸与效果回看都读它 */
+    public interface ReachLogMapper
+            extends BaseMapper<ai.neargo.shop.member.entity.MbrReachLog> {
+    }
+
     public interface TagMergeLogMapper
             extends BaseMapper<ai.neargo.shop.member.entity.MbrTagMergeLog> {
     }

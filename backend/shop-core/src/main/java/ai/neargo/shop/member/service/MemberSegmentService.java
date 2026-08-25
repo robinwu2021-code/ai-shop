@@ -42,5 +42,14 @@ public interface MemberSegmentService {
     /** 这一个人此刻在不在这个人群里。活动受众判断用它 —— 同样是当场算 */
     boolean matches(String entityNo, String segmentNo, String memberNo);
 
+    /**
+     * 这个人群此刻命中的**全部**会员号（含不可触达的）。
+     *
+     * <p>与 {@link #resolve} 的差别：那条只给能收到东西的人，这条给全部 ——
+     * 触达要自己按原因分类跳过（线索 / 退订 / 还没注册），
+     * 只拿到「能发的那批」就说不出「为什么少了 12 个」。
+     */
+    List<String> matchAll(String entityNo, String segmentNo);
+
     List<String> resolve(String entityNo, String scopeStoreNo, MemberQuery rule);
 }

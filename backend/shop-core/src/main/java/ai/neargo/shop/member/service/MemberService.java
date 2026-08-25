@@ -77,6 +77,14 @@ public interface MemberService {
     ai.neargo.shop.member.dto.MemberVOs.MemberSettingVO saveSettings(
             String entityNo, String memberScope, Boolean autoJoinOnOrder);
 
+    /**
+     * 买家自己关掉/打开这家店的消息（C 端会员卡上的开关，P7）。
+     *
+     * <p><b>只有本人能改</b> —— 商家不能替顾客「重新订阅」。
+     * 退订这件事一旦可以被别人撤销，它就不再是承诺。
+     */
+    void setReachOptOut(String entityNo, String memberNo, boolean optOut);
+
     /** 按条件筛出会员号。人群与发放共用它 —— 三处各写一遍会算出三个数 */
     java.util.List<String> match(String entityNo,
                                  ai.neargo.shop.member.dto.MemberVOs.MemberQuery q);

@@ -249,6 +249,26 @@ public class MemberServiceImpl implements MemberService {
     }
 
     @Override
+    @Transactional
+    public void setReachOptOut(String entityNo, String memberNo, boolean optOut) {
+        MbrMember m = memberMapper.selectOne(Wrappers.<MbrMember>lambdaQuery()
+                .eq(MbrMember::getEntityNo, entityNo)
+                .eq(MbrMember::getMemberNo, memberNo).last("limit 1"));
+        if (m == null) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        /*
+         * 用 lambdaUpdate 显式 set，不用 updateById：后者跳过 null 之外还有一层坑 ——
+         * 这一列是 tinyint，从 1 改回 0 是「关掉退订」，那正是本人重新订阅的动作，
+         * 不能因为「0 看起来像空值」而被跳过。
+         */
+        memberMapper.update(null, Wrappers.<MbrMember>lambdaUpdate()
+                .eq(MbrMember::getId, m.getId())
+                .set(MbrMember::getReachOptOut, optOut ? 1 : 0));
+        log.info("[member] {} 的消息开关改为 {}", memberNo, optOut ? "关" : "开");
+    }
+
+    @Override
     public List<String> match(String entityNo, MemberQuery q) {
         return memberMapper.selectList(baseQuery(entityNo, q)).stream()
                 .map(MbrMember::getMemberNo).toList();

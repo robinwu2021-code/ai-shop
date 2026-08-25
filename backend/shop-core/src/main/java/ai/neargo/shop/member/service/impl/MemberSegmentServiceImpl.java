@@ -130,6 +130,15 @@ public class MemberSegmentServiceImpl implements MemberSegmentService {
     }
 
     @Override
+    public List<String> matchAll(String entityNo, String segmentNo) {
+        MbrSegment row = row(entityNo, segmentNo);
+        if (row == null) {
+            throw BizException.of(ErrorCode.MEMBER_SEGMENT_NOT_FOUND);
+        }
+        return memberService.match(entityNo, normalize(parse(row), row.getScopeStoreNo()));
+    }
+
+    @Override
     public boolean matches(String entityNo, String segmentNo, String memberNo) {
         MbrSegment row = row(entityNo, segmentNo);
         if (row == null) {
