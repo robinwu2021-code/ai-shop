@@ -53,6 +53,9 @@ class QuickStartFlowTest {
     @Autowired
     private ai.neargo.shop.merchant.mapper.MerchantMappers.MchAccountMapper accountMapper;
 
+    @Autowired
+    private ai.neargo.shop.product.mapper.ProductMappers.CommunityPoolMapper poolMapper;
+
     private MockMvc mvc() {
         return MockMvcBuilders.webAppContextSetup(context)
                 .apply(org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers
@@ -341,6 +344,41 @@ class QuickStartFlowTest {
                         .contentType(MediaType.APPLICATION_JSON).content("{\"onSale\":true}"))
                 .andExpect(jsonPath("$.code").value(0));
         return goodsNo;
+    }
+
+    @Test
+    @DisplayName("★ 池行记得住是哪家店摆的 —— 第 3 步按门店建池的前提")
+    void poolRowsCarryTheStore() throws Exception {
+        String token = login("12600160014");
+        String merchantNo = quickStart(token, "记门店号的店");
+        approveLicense(token);
+        token = login("12600160014");
+
+        String goodsNo = onSaleGoods(token, "带门店号入池的抽纸");
+        assertThat(buyerSees("CM001", goodsNo)).isTrue();
+
+        /*
+         * V240 起池行带 store_no。**这一步池仍是主体级口径**（一件货一行），
+         * 所以这里给的是默认店 —— 与迁移回填存量行是同一个答案。
+         * 第 3 步改成逐门店建池时，这一列会换成真正摆它的那家店。
+         *
+         * 现在就把它钉住：这一列要是一直是空的，第 3 步会在一个没人验过的
+         * 前提上继续盖东西。
+         */
+        String defaultStore = json.readTree(mvc().perform(get("/biz/store/list")
+                        .header("Authorization", "Bearer " + token))
+                .andReturn().getResponse().getContentAsString())
+                .get("data").get(0).get("storeNo").asString();
+
+        var rows = ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() ->
+                poolMapper.selectList(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                        .<ai.neargo.shop.product.entity.PrdCommunityPool>lambdaQuery()
+                        .eq(ai.neargo.shop.product.entity.PrdCommunityPool::getGoodsNo, goodsNo)));
+        assertThat(rows).as("上架进池了").isNotEmpty();
+        assertThat(rows).allSatisfy(r -> {
+            assertThat(r.getEntityNo()).isEqualTo(merchantNo);
+            assertThat(r.getStoreNo()).as("池行要记得住是哪家店摆的").isEqualTo(defaultStore);
+        });
     }
 
     /** C 端按社区列货：这才是「买家看不看得见」的真实判据（读的是社区池，不是 reachableCommunities） */

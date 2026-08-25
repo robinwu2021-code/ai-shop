@@ -313,6 +313,93 @@ class StoreFulfillmentFlowTest {
     }
 
     @Test
+    @DisplayName("★★ 按门店算可达：ALL 门店与主体口径**逐字相等** —— 这条钉住「今天零行为变化」")
+    void storeReachEqualsEntityReachWhenAllScope() {
+        String m = merchant("文三路 2 号");
+        String store = merchantQuery.defaultStoreNo(m).orElseThrow();
+        String c1 = openCommunity();
+        String c2 = openCommunity();
+        storeService.save(m, new ai.neargo.shop.merchant.service.MerchantStoreService.SaveCommand(
+                null, null, null, null, null, null, null, null, List.of(
+                        new ai.neargo.shop.merchant.service.MerchantStoreService.AreaCommand("COMMUNITY", c1),
+                        new ai.neargo.shop.merchant.service.MerchantStoreService.AreaCommand("COMMUNITY", c2))));
+        fulfillmentService.save(m, null, List.of(
+                new ChannelCmd(Fulfillments.STORE_PICKUP, true, null, null, null, null)));
+
+        /*
+         * ★ 线上今天**没有任何门店配过 SUBSET**（2026-08-25 查生产：SUBSET 0 条、
+         * mch_channel_area 0 行），所以全部走 ALL 分支。这条断言就是「切口径当天
+         * 零行为变化」的形式化：门店口径与主体口径必须给出同一个集合。
+         *
+         * 它红了就说明新口径在**存量数据上**已经与旧的不等价 —— 那时不该往下走第 3 步。
+         */
+        assertThat(merchantQuery.reachableCommunities(m, store))
+                .as("没配 SUBSET 的门店，可达集合必须与主体口径相等")
+                .containsExactlyInAnyOrderElementsOf(merchantQuery.reachableCommunities(m));
+        assertThat(merchantQuery.reachableCommunities(m, store)).contains(c1, c2);
+
+        // 不传门店 = 主体口径，与加这个重载之前逐字相同
+        assertThat(merchantQuery.reachableCommunities(m, null))
+                .containsExactlyInAnyOrderElementsOf(merchantQuery.reachableCommunities(m));
+    }
+
+    @Test
+    @DisplayName("★★ 按门店算可达：配了 SUBSET 的门店只到自己那几块，而主体口径仍是全部")
+    void subsetStoreOnlyReachesItsOwnAreas() {
+        String m = merchant("文三路 3 号");
+        String store = merchantQuery.defaultStoreNo(m).orElseThrow();
+        String inside = openCommunity();
+        String outside = openCommunity();
+        storeService.save(m, new ai.neargo.shop.merchant.service.MerchantStoreService.SaveCommand(
+                null, null, null, null, null, null, null, null, List.of(
+                        new ai.neargo.shop.merchant.service.MerchantStoreService.AreaCommand("COMMUNITY", inside),
+                        new ai.neargo.shop.merchant.service.MerchantStoreService.AreaCommand("COMMUNITY", outside))));
+        String areaInside = serviceAreaMapper.selectList(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                        .<ai.neargo.shop.merchant.entity.MchServiceArea>lambdaQuery()
+                        .eq(ai.neargo.shop.merchant.entity.MchServiceArea::getEntityNo, m)
+                        .eq(ai.neargo.shop.merchant.entity.MchServiceArea::getRefCode, inside))
+                .get(0).getAreaNo();
+
+        // 这家店的自送只覆盖 inside 一块
+        fulfillmentService.save(m, null, List.of(
+                new ChannelCmd(Fulfillments.MERCHANT_DELIVERY, true, null, null, "SUBSET", List.of(areaInside))));
+
+        assertThat(merchantQuery.reachableCommunities(m, store))
+                .as("门店口径只算它自己覆盖的那几块").containsExactly(inside);
+        /*
+         * ★ **主体口径不能跟着变**。商家详情页问的是「这家商家覆盖哪儿」，
+         * 那是主体级问题；跟着门店收窄的话，一家开了两个片区的商家会在自己主页上
+         * 只显示其中一片。
+         */
+        assertThat(merchantQuery.reachableCommunities(m))
+                .as("主体口径仍是全部足迹").contains(inside, outside);
+    }
+
+    @Test
+    @DisplayName("★★★ 「没配 SUBSET」不是「空子集」—— 混成一个的话全平台商品当场消失")
+    void noSubsetIsNotAnEmptySubset() {
+        String m = merchant("文三路 4 号");
+        String store = merchantQuery.defaultStoreNo(m).orElseThrow();
+        String c1 = openCommunity();
+        storeService.save(m, new ai.neargo.shop.merchant.service.MerchantStoreService.SaveCommand(
+                null, null, null, null, null, null, null, null, List.of(
+                        new ai.neargo.shop.merchant.service.MerchantStoreService.AreaCommand("COMMUNITY", c1))));
+        // 只开自提，scope_mode 走默认（ALL）—— 这就是线上每一家店今天的样子
+        fulfillmentService.save(m, null, List.of(
+                new ChannelCmd(Fulfillments.STORE_PICKUP, true, null, null, null, null)));
+
+        /*
+         * 实现里 storeSubsetAreaNos 返回 null 表示「这家店没在做子集这件事」，
+         * 返回空集表示「配了 SUBSET 但一块都没勾」。两者混成一个的后果不对称：
+         * 把 null 当空集 → **今天线上每一家店都被算成一块都不覆盖**，商品全线消失。
+         * 所以这条单独钉一次。
+         */
+        assertThat(merchantQuery.reachableCommunities(m, store))
+                .as("没配 SUBSET 的店 = 覆盖主体全足迹，不是覆盖零")
+                .containsExactly(c1);
+    }
+
+    @Test
     @DisplayName("范围子集：只能引用自己的范围项；按买家社区裁剪；EXPRESS 不允许收窄")
     void subsetNarrowsByBuyerCommunity() {
         String m = merchant("文三路 1 号");

@@ -42,6 +42,19 @@ public interface MerchantQueryPort {
     java.util.List<String> reachableCommunities(String merchantNo);
 
     /**
+     * 按<b>门店</b>算可达（可见性按门店算 · 第 1 步）。
+     *
+     * <p>与主体口径的差别只有一处：履约能力与地理子集按这家店取，
+     * 而不是取「任何一家门店送得到就算」的并集。多门店之后那个并集口径
+     * 会让 A 店的货出现在只有 B 店服务的社区里。
+     *
+     * @param storeNo 为空时**退回主体并集**，与 {@link #reachableCommunities(String)} 等价 ——
+     *                「这家商家覆盖哪儿」这类主体级问题继续用那一个，不该被这次改造波及
+     * @return 空表示这家店对谁都不可见
+     */
+    java.util.List<String> reachableCommunities(String merchantNo, String storeNo);
+
+    /**
      * 该主体的<b>默认门店</b>。下单时用它填 {@code ord_sub_order.store_no}（M2 双写）。
      *
      * <p>为什么下单只认默认门店：多门店放开（M6）之前，一个主体恰好一家店，

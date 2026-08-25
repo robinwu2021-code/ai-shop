@@ -1476,6 +1476,17 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
             row.setCommunityNo(communityNo);
             row.setGoodsNo(g.getGoodsNo());
             row.setEntityNo(g.getEntityNo());
+            /*
+             * 记下「这一行是哪家店摆的」（V240，可见性按门店算 · 第 2 步）。
+             *
+             * <b>这一步池还是主体级口径</b>，一件货在池里仍然只有一行，
+             * 所以这里给的是**默认店** —— 与迁移回填存量行用的是同一个答案。
+             * 第 3 步改成逐门店建池时，这里会换成真正摆它的那家店。
+             *
+             * 取不到默认店时留空而不是随便挑一家：兜错店的表现是
+             * 「单发到了没有这件货的店」，而那比留空难查得多（留空至少读侧知道自己不知道）。
+             */
+            row.setStoreNo(merchantPort.defaultStoreNo(g.getEntityNo()).orElse(null));
             row.setSortWeight(0);
             DataScopeContext.executeWithoutScope(() -> poolMapper.insert(row));
         }

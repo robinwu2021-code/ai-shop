@@ -150,6 +150,27 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
 
     @Override
     public List<String> reachableCommunities(String merchantNo) {
+        // 主体口径 = 不指定门店。**行为与加这个重载之前逐字相同**
+        return reachableCommunities(merchantNo, null);
+    }
+
+    /**
+     * 按<b>门店</b>算可达（可见性按门店算 · 第 1 步）。
+     *
+     * <p>与主体口径的唯一差别是把 {@code enabledFulfillments} 的门店参数喂上 ——
+     * 那个参数**本来就在**，只是可见性这条路一直传 null（「任何一家门店送得到
+     * 就算整个主体可达」）。多门店之后那个口径会让 A 店的货出现在只有 B 店服务的社区里，
+     * 见「可见性按门店算-方案」§2.1。
+     *
+     * <p>{@code storeNo} 为空时退回主体并集 —— 商家详情页那类「这家商家覆盖哪儿」
+     * 的问题仍然是主体级的，不该被这次改造波及。
+     *
+     * <p><b>今天这两条路的结果是相等的</b>：线上没有任何门店配过 {@code scope_mode=SUBSET}
+     * （2026-08-25 查生产：SUBSET 0 条、{@code mch_channel_area} 0 行），
+     * 全部走 ALL 分支 = 主体全足迹。这正是它能安全上线的原因。
+     */
+    @Override
+    public List<String> reachableCommunities(String merchantNo, String storeNo) {
         MchEntity m = DataScopeContext.executeWithoutScope(() ->
                 merchantMapper.selectOne(Wrappers.<MchEntity>lambdaQuery()
                         .eq(MchEntity::getEntityNo, merchantNo).last("limit 1")));
@@ -188,7 +209,7 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
          * 集合为空 = 该主体还没迁移到 channel 模型，回落旧列 —— 只读兼容期的约定，
          * 删列那一版一并删掉这个回落。
          */
-        java.util.Set<String> channels = enabledFulfillments(merchantNo, null);
+        java.util.Set<String> channels = enabledFulfillments(merchantNo, storeNo);
         boolean expressOn;
         boolean deliveryOn;
         boolean legacy = channels.isEmpty();
@@ -211,6 +232,27 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
                 serviceAreaMapper.selectList(Wrappers.<MchServiceArea>lambdaQuery()
                         .eq(MchServiceArea::getEntityNo, merchantNo)
                         .eq(MchServiceArea::getStatus, AREA_ACTIVE)));
+
+        /*
+         * 指定了门店时，把主体足迹裁剪成**这家店真正覆盖的那几块**。
+         *
+         * 裁剪只对 {@code scope_mode=SUBSET} 的路生效；ALL（默认，也是今天线上全部）
+         * 表示「这家店这一路覆盖主体的全部足迹」，裁剪后与不裁剪相等。
+         *
+         * <p><b>子集是按「路」配的，而可达是「任一路送得到就算」</b> ——
+         * 所以这里取的是该店所有 SUBSET 路的**并集**，再与主体足迹取交。
+         * 取交而不是直接用子集：{@code mch_channel_area} 引的是 {@code area_no}，
+         * 而主体足迹可能已经改小了（改经营范围时那些子集行不会跟着删），
+         * 不取交的话会算出主体已经不覆盖的地方。
+         */
+        if (storeNo != null && !storeNo.isBlank() && !areas.isEmpty()) {
+            java.util.Set<String> subsetAreaNos = storeSubsetAreaNos(merchantNo, storeNo);
+            if (subsetAreaNos != null) {
+                areas = areas.stream()
+                        .filter(a -> subsetAreaNos.contains(a.getAreaNo()))
+                        .toList();
+            }
+        }
 
         if (areas.isEmpty()) {
             /*
@@ -243,6 +285,37 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
             }
         }
         return List.copyOf(out);
+    }
+
+    /**
+     * 这家店通过 {@code scope_mode=SUBSET} 声明覆盖的 {@code area_no} 并集。
+     *
+     * @return {@code null} 表示这家店<b>没有任何 SUBSET 路</b>（全 ALL 或没配）——
+     *         此时不裁剪，用主体全足迹。<b>空集与 null 必须分开</b>：
+     *         空集是「配了 SUBSET 但一块都没勾」（他确实什么都不送），
+     *         而 null 是「没在做子集这件事」。混成一个的话，
+     *         今天线上每一家店（都没配 SUBSET）都会被算成「一块都不覆盖」——
+     *         全平台商品当场从 C 端消失
+     */
+    private java.util.Set<String> storeSubsetAreaNos(String merchantNo, String storeNo) {
+        List<ai.neargo.shop.merchant.entity.MchFulfillmentChannel> subsetRows =
+                DataScopeContext.executeWithoutScope(() -> fulfillmentChannelMapper.selectList(
+                        Wrappers.<ai.neargo.shop.merchant.entity.MchFulfillmentChannel>lambdaQuery()
+                                .eq(ai.neargo.shop.merchant.entity.MchFulfillmentChannel::getEntityNo, merchantNo)
+                                .eq(ai.neargo.shop.merchant.entity.MchFulfillmentChannel::getStoreNo, storeNo)
+                                .eq(ai.neargo.shop.merchant.entity.MchFulfillmentChannel::getScopeMode, "SUBSET")));
+        if (subsetRows.isEmpty()) {
+            return null;
+        }
+        java.util.Set<String> channels = subsetRows.stream()
+                .map(ai.neargo.shop.merchant.entity.MchFulfillmentChannel::getChannel)
+                .collect(java.util.stream.Collectors.toSet());
+        return DataScopeContext.executeWithoutScope(() -> channelAreaMapper.selectList(
+                        Wrappers.<ai.neargo.shop.merchant.entity.MchChannelArea>lambdaQuery()
+                                .eq(ai.neargo.shop.merchant.entity.MchChannelArea::getStoreNo, storeNo)
+                                .in(ai.neargo.shop.merchant.entity.MchChannelArea::getChannel, channels)))
+                .stream().map(ai.neargo.shop.merchant.entity.MchChannelArea::getAreaNo)
+                .collect(java.util.stream.Collectors.toSet());
     }
 
     @Override
