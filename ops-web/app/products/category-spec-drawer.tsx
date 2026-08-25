@@ -185,34 +185,63 @@ function BindingEditor({ c, all, editing, onChange }: {
   const rest = all.filter((d) => !pickedNos.has(d.dimNo) && d.status === "ACTIVE");
   const dimOf = (no: string) => all.find((d) => d.dimNo === no);
 
+  /*
+   * **销售规格与商品参数分开配置。**
+   *
+   * 它们的性质相反：销售规格进笛卡尔积生成 SKU，每一档要单独定价备库存；
+   * 商品参数一项也不进，买家不用挑，只是看。混在一张列表里配的后果是
+   * 「主维度」这个徽标会落到「产地」头上 —— 而参数根本没有主维度这回事，
+   * 排序也不影响任何东西（SKU 的排列由销售规格决定）。
+   *
+   * usage 判据取绑定上的覆盖，没有才回落维度自身 —— 与后端 forCategory 同一条：
+   * 同一个「口味」在熟食是 SALE、在预包装是 PROP。
+   */
+  const usageOf = (b: CategorySpecBinding) =>
+    b.usageType || dimOf(b.dimNo)?.usageType || "SALE";
+  const sale = picked.filter((b) => usageOf(b) !== "PROP");
+  const props = picked.filter((b) => usageOf(b) === "PROP");
+
+  /**
+   * 在**销售规格这一段之内**挪位置。
+   *
+   * <p>主维度 = 销售规格里排第一的那个。参数不参与 ——
+   * 上一版用的是整个 picked 的下标，于是参数排在最前面时，
+   * 「主维度」会落到参数头上，而那个标记在建品页决定「自动带出哪一组」。
+   */
   const move = (i: number, to: number) => {
-    if (to < 0 || to >= picked.length) return;
-    const next = [...picked];
+    if (to < 0 || to >= sale.length) return;
+    const next = [...sale];
     const [x] = next.splice(i, 1);
     next.splice(to, 0, x!);
-    // 主维度 = 排第一的那个，位置一变就跟着变
-    onChange(next.map((b, k) => ({ ...b, primary: k === 0 })));
+    onChange([...next.map((b, k) => ({ ...b, primary: k === 0 })), ...props]);
   };
 
   return (
     <div className="space-y-5">
-      <div>
-        <div className="mb-2 txt-label text-muted-foreground">{c.csPicked}</div>
+      {([
+        { key: "sale", rows: sale, title: c.csSectionSale, hint: c.csSectionSaleHint, isProp: false },
+        { key: "props", rows: props, title: c.csSectionProp, hint: c.csSectionPropHint, isProp: true },
+      ] as const).map((sec) => (
+      <div key={sec.key}>
+        <div className="mb-1 txt-label text-muted-foreground">{sec.title}</div>
+        <p className="mb-2 text-[12px] text-muted-foreground">{sec.hint}</p>
         <div className="space-y-2">
-          {picked.map((b, i) => {
+          {sec.rows.map((b, i) => {
             const d = dimOf(b.dimNo);
             if (!d) return null;
             return (
               <div key={b.dimNo} className="rounded-card border border-border p-3">
                 <div className="flex items-center gap-2">
                   <span className="font-semibold">{d.name}</span>
-                  {i === 0 && <Badge tone="default">{c.csPrimary}</Badge>}
+                  {/* 主维度只属于销售规格 —— 参数没有「自动带出哪一组」这回事 */}
+                  {!sec.isProp && i === 0 && <Badge tone="default">{c.csPrimary}</Badge>}
                   <Badge tone={d.universal ? "info" : "muted"}>
                     {d.universal ? c.csUniversal : c.csDedicated}
                   </Badge>
                   <span className="ml-auto flex gap-1">
-                    <Button size="sm" variant="ghost" onClick={() => move(i, i - 1)}>↑</Button>
-                    <Button size="sm" variant="ghost" onClick={() => move(i, i + 1)}>↓</Button>
+                    {/* 排序也只属于销售规格：SKU 的排列由它决定，参数排前排后没有区别 */}
+                    {!sec.isProp && <Button size="sm" variant="ghost" onClick={() => move(i, i - 1)}>↑</Button>}
+                    {!sec.isProp && <Button size="sm" variant="ghost" onClick={() => move(i, i + 1)}>↓</Button>}
                     <Button size="sm" variant="ghost"
                       onClick={() => onChange(picked.filter((x) => x.dimNo !== b.dimNo)
                         .map((x, k) => ({ ...x, primary: k === 0 })))}>
@@ -300,17 +329,32 @@ function BindingEditor({ c, all, editing, onChange }: {
               </div>
             );
           })}
-          {!picked.length && <p className="text-[13px] text-muted-foreground">{c.csNone}</p>}
+          {!sec.rows.length && <p className="text-[13px] text-muted-foreground">{c.csNone}</p>}
         </div>
       </div>
+      ))}
 
-      <div>
-        <div className="mb-2 txt-label text-muted-foreground">{c.csPickDims}</div>
+      {/*
+        候选也分两段：**加销售规格与加参数是两件事**。
+        一张混合列表里，运营点「产地」以为在配参数，实际上它会成为第 N 个销售维度
+        （usageType 跟着维度自身走，但主维度与排序的语义已经错位）。
+      */}
+      {([
+        { key: "sale", title: c.csPickSale, isProp: false },
+        { key: "props", title: c.csPickProp, isProp: true },
+      ] as const).map((sec) => {
+        const items = rest.filter((d) => (d.usageType === "PROP") === sec.isProp);
+        if (!items.length) return null;
+        return (
+      <div key={sec.key}>
+        <div className="mb-2 txt-label text-muted-foreground">{sec.title}</div>
         <div className="flex flex-wrap gap-1.5">
-          {rest.map((d) => (
+          {items.map((d) => (
             <button key={d.dimNo} type="button"
               onClick={() => onChange([...picked, {
-                dimNo: d.dimNo, usageType: d.usageType, primary: picked.length === 0,
+                dimNo: d.dimNo, usageType: d.usageType,
+                // 主维度只在销售规格里成立，且只有这一段还空着时才是它
+                primary: !sec.isProp && sale.length === 0,
                 required: false, valueNos: [], labels: {},
               }])}
               className="inline-flex items-center gap-1.5 rounded-chip border border-border
@@ -323,6 +367,8 @@ function BindingEditor({ c, all, editing, onChange }: {
           ))}
         </div>
       </div>
+        );
+      })}
     </div>
   );
 }
