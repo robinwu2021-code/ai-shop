@@ -86,6 +86,18 @@
       "autoPort": false
     },
     {
+      "_comment": "mock 数据跑 C 端：验证页面行为用，不依赖后端起没起。与 c-app-h5（5173，连 8081）分开，因为两者的 VITE_USE_MOCK 不同，同一个端口起不了两份。",
+      "name": "c-app-mock",
+      "runtimeExecutable": "/bin/zsh",
+      "runtimeArgs": [
+        "-lc",
+        "PORT=5178 VITE_USE_MOCK=1 VITE_API_BASE= npm run dev:h5"
+      ],
+      "cwd": "c-app",
+      "port": 5178,
+      "autoPort": false
+    },
+    {
       "_comment": "mock 数据跑 B 端：验证页面行为用，不依赖后端起没起。真机联调用 b-app-h5。",
       "name": "b-app-mock",
       "runtimeExecutable": "/bin/zsh",

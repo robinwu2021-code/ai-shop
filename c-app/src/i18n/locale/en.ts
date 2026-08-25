@@ -648,6 +648,13 @@ export default {
     earnChip: "Earn {n} pts",
   },
   coupon: {
+    storeOnly: "Show in store; not applied at checkout",
+    remaining: "{n} of {m} left",
+    showCode: "Show",
+    autoUse: "Applied at checkout",
+    usedUp: "Used up",
+    codeBody: "Show this code to the staff:\n\n{code}\n\n{n} redemptions left. Redeeming cannot be undone.",
+    codeClose: "Got it",
     title: "Vouchers",
     entryHint: "Claim · My vouchers",
     center: "Available {n}",

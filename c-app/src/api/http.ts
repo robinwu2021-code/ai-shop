@@ -5,7 +5,7 @@
 import { http } from "@shared/net/http-client";
 import { buildPath, ENDPOINTS } from "./endpoints";
 import type { CreateOrderReq, GoodsQuery, ShopApi } from "./contract";
-import type { InvoiceRequest, RegionOption,
+import type { InvoiceRequest, MyStoreCoupon, RegionOption,
   PhoneCapable,
 } from "@shared/types";
 // 入参的 wire 契约。satisfies 让「实际发出去的 body」在编译期受检 ——
@@ -154,6 +154,7 @@ export const httpApi: ShopApi = {
     http.post<AfterSale>(buildPath(ENDPOINTS.raiseDispute.path, { afterSaleNo }), { reason }),
 
   couponList: () => call<Coupon[]>("couponList"),
+  myStoreCoupons: () => call<MyStoreCoupon[]>("myStoreCoupons"),
   receiveCoupon: (couponNo) => call<UserCoupon>("receiveCoupon", { couponNo }),
 
   // ---- 拼团

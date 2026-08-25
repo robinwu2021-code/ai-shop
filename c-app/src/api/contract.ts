@@ -1,6 +1,7 @@
 // 唯一契约。页面只依赖这个接口，不感知 mock / 真实后端。
 // 端点对齐后端 C 端 BFF `/mp/**`（见 docs/api）。
 import type {
+  MyStoreCoupon,
   InvoiceRequest,
   InvoiceTitleType,
   AfterSale,
@@ -244,6 +245,12 @@ export interface ShopApi {
 
   // ---- 营销
   couponList(): Promise<Coupon[]>;
+  /**
+   * 商家发给我的券（新模型）。**与领券中心那批分开**：
+   * 这批是被动收到的，有到店码和次卡余次，老形状表达不了。
+   * 过期的也返回，端上折叠显示 —— 券包里突然少一张，用户会认为平台吞了它。
+   */
+  myStoreCoupons(): Promise<MyStoreCoupon[]>;
   /** 领券。返回的是**领到手的那张**（UserCoupon），不是券模板 */
   receiveCoupon(couponNo: string): Promise<UserCoupon>;
   /** 只取当前自提点的团 —— 成团单位是自提点 */

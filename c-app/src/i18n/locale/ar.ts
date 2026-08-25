@@ -648,6 +648,13 @@ export default {
     earnChip: "اكسب {n} نقطة",
   },
   coupon: {
+    storeOnly: "تُبرز في المتجر، لا تُطبق عند الدفع",
+    remaining: "متبقٍ {n} من {m}",
+    showCode: "إبراز",
+    autoUse: "تُطبق تلقائيًا عند الدفع",
+    usedUp: "استُهلكت",
+    codeBody: "أظهر هذا الرمز للموظف:\n\n{code}\n\nمتبقٍ {n} مرات. لا يمكن التراجع بعد الاستبدال.",
+    codeClose: "حسنًا",
     title: "القسائم",
     entryHint: "الحصول · قسائمي",
     center: "المتاحة {n}",

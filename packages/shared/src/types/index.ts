@@ -3614,6 +3614,34 @@ export interface CouponIssueBatch {
 }
 
 /**
+ * 买家券包里<b>商家发的那一张</b>（新模型，P6）。
+ *
+ * @remarks 与老的 `UserCoupon` 并存到 P9。**不能合并**：老形状里没有
+ * `redeemCode` 也没有次卡的 `remaining`，而这两样正是这批券的全部意义 ——
+ * 到店券没有码就出示不了，次卡不显示剩余次数就等于一次性券。
+ */
+export interface MyStoreCoupon {
+  userCouponNo: string;
+  couponNo: string;
+  title: string;
+  /** 「减 3 元」「8.5 折」「凭券兑换」这种人话，后端拼好 */
+  benefitText: string;
+  entityNo?: string | null;
+  /** `ORDER` 下单抵扣 / `STORE_CODE` 到店出示 */
+  redeemMode: string;
+  /** 到店出示的码。**只有 STORE_CODE 券有** —— 别给下单券显示码 */
+  redeemCode?: string | null;
+  minAmountMinor?: number | null;
+  timesTotal: number;
+  timesUsed: number;
+  /** 次卡还剩几次 */
+  remaining: number;
+  expireAt: number;
+  status: string;
+  usableNow: boolean;
+}
+
+/**
  * 到店核销：先看后核里「看」的那一步（P6）。
  *
  * @remarks 店员要先看到「什么券、还剩几次、能不能核」再按 ——

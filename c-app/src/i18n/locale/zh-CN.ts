@@ -683,6 +683,13 @@ export default {
     earnChip: "可得 {n} 积分",
   },
   coupon: {
+    storeOnly: "到店出示核销，不在结算时抵扣",
+    remaining: "还剩 {n} / {m} 次",
+    showCode: "出示",
+    autoUse: "下单自动抵扣",
+    usedUp: "已用完",
+    codeBody: "把这个码给店员：\n\n{code}\n\n还可核销 {n} 次。核销后不可撤销。",
+    codeClose: "知道了",
     title: "优惠券",
     entryHint: "领券 · 我的券",
     center: "领券中心 {n}",

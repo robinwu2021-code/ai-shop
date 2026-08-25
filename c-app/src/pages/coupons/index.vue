@@ -7,7 +7,7 @@ import { onShow } from "@dcloudio/uni-app";
 import { api } from "@/api";
 import { useI18n } from "vue-i18n";
 import { isoDate, money } from "@shared/utils/format";
-import type { Coupon } from "@shared/types";
+import type { Coupon, MyStoreCoupon } from "@shared/types";
 
 const { t } = useI18n();
 const tab = ref<"center" | "mine">("center");
@@ -30,8 +30,38 @@ function faceText(c: Coupon): string {
 const mine = computed(() => coupons.value.filter((c) => c.received));
 const shown = computed(() => (tab.value === "center" ? available.value : mine.value));
 
+/**
+ * 商家发给我的券（新模型）。**与领券中心那批分开显示**：
+ * 那批是自己领的，这批是被动收到的；而且这批里有到店券 —— 要出示码、
+ * 有次卡余次，混在一起会让人以为到店券也能在结算时抵扣。
+ */
+const storeCoupons = ref<MyStoreCoupon[]>([]);
+const mineUsable = computed(() => storeCoupons.value.filter((c) => c.usableNow));
+const mineDead = computed(() => storeCoupons.value.filter((c) => !c.usableNow));
+
 async function load() {
-  coupons.value = await api.couponList();
+  const [list, mineList] = await Promise.all([
+    api.couponList(),
+    // 没登录时这条会 401，券包空着就好，不该把整页搞挂
+    api.myStoreCoupons().catch(() => [] as MyStoreCoupon[]),
+  ]);
+  coupons.value = list;
+  storeCoupons.value = mineList;
+}
+
+/**
+ * 把码放大给店员看。**用 showModal 而不是跳一页**：
+ * 顾客是把手机递过去的，多一次跳转就多一次「返回键按错」。
+ * 码里去掉了 0/O/1/I/L，店员照着屏幕手输不会认错。
+ */
+function showCode(c: MyStoreCoupon) {
+  if (!c.redeemCode) return;
+  uni.showModal({
+    title: c.title,
+    content: String(t("coupon.codeBody", { code: c.redeemCode, n: c.remaining })),
+    showCancel: false,
+    confirmText: String(t("coupon.codeClose")),
+  });
 }
 
 async function receive(c: Coupon) {
@@ -59,11 +89,59 @@ onShow(load);
     <sh-tabs
       :items="[
         { key: 'center', label: String($t('coupon.center', { n: available.length })) },
-        { key: 'mine', label: String($t('coupon.mine', { n: mine.length })) },
+        { key: 'mine', label: String($t('coupon.mine', { n: mine.length + mineUsable.length })) },
       ]"
       :active="tab"
       @change="(k: string) => (tab = k as typeof tab)"
     ></sh-tabs>
+
+    <!--
+      商家发给我的券。放在券包顶部：它们是**别人主动发过来的**，
+      用户不知道自己有，藏在下面等于没发。
+    -->
+    <template v-if="tab === 'mine'">
+      <view v-for="c in mineUsable" :key="c.userCouponNo" class="ticket">
+        <view class="ticket__amount">
+          <text class="ticket__v sh-num">{{ c.benefitText }}</text>
+          <text class="ticket__cond sh-num">
+            {{ c.minAmountMinor
+              ? $t("coupon.threshold", { p: money(c.minAmountMinor) })
+              : $t("coupon.noThreshold") }}
+          </text>
+        </view>
+
+        <view class="ticket__main">
+          <text class="ticket__name">{{ c.title }}</text>
+          <!-- 到店券要说清「不能在结算时抵扣」，否则顾客会在收银台等着自动减 -->
+          <text v-if="c.redeemMode === 'STORE_CODE'" class="ticket__scope">
+            {{ $t("coupon.storeOnly") }}
+            <template v-if="c.timesTotal > 1">
+              · {{ $t("coupon.remaining", { n: c.remaining, m: c.timesTotal }) }}
+            </template>
+          </text>
+          <text class="ticket__exp sh-num">{{ $t("coupon.until", { d: isoDate(c.expireAt) }) }}</text>
+        </view>
+
+        <view v-if="c.redeemCode" class="ticket__btn" @tap="showCode(c)">
+          {{ $t("coupon.showCode") }}
+        </view>
+        <text v-else class="ticket__state ticket__state--ok">{{ $t("coupon.autoUse") }}</text>
+      </view>
+
+      <!-- 过期/用完的折叠在下面，但**不删掉**：券包里少一张，用户会以为平台吞了它 -->
+      <view v-for="c in mineDead" :key="c.userCouponNo" class="ticket is-expired">
+        <view class="ticket__amount">
+          <text class="ticket__v sh-num">{{ c.benefitText }}</text>
+        </view>
+        <view class="ticket__main">
+          <text class="ticket__name">{{ c.title }}</text>
+          <text class="ticket__exp sh-num">{{ $t("coupon.until", { d: isoDate(c.expireAt) }) }}</text>
+        </view>
+        <text class="ticket__state">
+          {{ c.remaining <= 0 ? $t("coupon.usedUp") : $t("coupon.expired") }}
+        </text>
+      </view>
+    </template>
 
     <!-- 券的形状：左边金额、右边规则，中间用色块分隔而不是虚线（扁平风） -->
     <view
@@ -99,7 +177,9 @@ onShow(load);
       <text v-else class="ticket__state ticket__state--ok">{{ $t("coupon.got") }}</text>
     </view>
 
-    <sh-empty bare v-if="!shown.length" :text='tab === "center" ? $t("coupon.centerEmpty") : $t("coupon.mineEmpty")'></sh-empty>
+    <sh-empty
+      bare
+      v-if="!shown.length && !(tab === 'mine' && storeCoupons.length)" :text='tab === "center" ? $t("coupon.centerEmpty") : $t("coupon.mineEmpty")'></sh-empty>
   </sh-scaffold>
 </template>
 

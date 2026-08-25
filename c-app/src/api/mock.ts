@@ -959,6 +959,66 @@ export const mockApi: ShopApi = {
     );
   },
 
+  /**
+   * 商家发给我的券（新模型）。mock 里种两张演示这批券**与领券中心那批的差别**：
+   * 一张下单抵扣（没有码），一张到店出示（有码、5 次的次卡）。
+   */
+  async myStoreCoupons() {
+    const day = 86400_000;
+    return delay([
+      {
+        userCouponNo: "PU-DEMO-1",
+        couponNo: "PC-DEMO-1",
+        title: "老客回归 · 满 30 减 5",
+        benefitText: "减 5 元",
+        entityNo: "M001",
+        redeemMode: "ORDER",
+        // 下单抵扣的券**不给码** —— 给了顾客会拿着手机去店里问
+        redeemCode: null,
+        minAmountMinor: 3000,
+        timesTotal: 1,
+        timesUsed: 0,
+        remaining: 1,
+        expireAt: Date.now() + 6 * day,
+        status: "UNUSED",
+        usableNow: true,
+      },
+      {
+        userCouponNo: "PU-DEMO-2",
+        couponNo: "PC-DEMO-2",
+        title: "豆浆五杯卡 · 到店出示",
+        benefitText: "凭券兑换",
+        entityNo: "M001",
+        redeemMode: "STORE_CODE",
+        redeemCode: "DEMO2345",
+        minAmountMinor: null,
+        timesTotal: 5,
+        timesUsed: 2,
+        remaining: 3,
+        expireAt: Date.now() + 25 * day,
+        status: "UNUSED",
+        usableNow: true,
+      },
+      {
+        userCouponNo: "PU-DEMO-3",
+        couponNo: "PC-DEMO-3",
+        title: "开业尝鲜 · 减 2 元",
+        benefitText: "减 2 元",
+        entityNo: "M001",
+        redeemMode: "ORDER",
+        redeemCode: null,
+        minAmountMinor: null,
+        timesTotal: 1,
+        timesUsed: 0,
+        remaining: 1,
+        // 过期的也留在券包里：突然少一张，用户的第一反应是「平台把我的券吞了」
+        expireAt: Date.now() - 2 * day,
+        status: "UNUSED",
+        usableNow: false,
+      },
+    ]);
+  },
+
   async receiveCoupon(couponNo) {
     const c = db.couponSeeds.find((x) => x.couponNo === couponNo);
     if (!c) throw new Error("优惠券不存在");

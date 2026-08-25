@@ -147,6 +147,7 @@ export const ENDPOINTS: Record<keyof ShopApi, EndpointDef> = {
   raiseDispute: { method: "POST", path: "/mp/after-sale/:afterSaleNo/escalate", auth: true, summary: "上升平台裁决" },
 
   couponList: { method: "GET", path: "/mp/coupon", auth: false, summary: "优惠券列表" },
+  myStoreCoupons: { method: "GET", path: "/mp/my-coupons", auth: true, summary: "商家发给我的券（含到店码）" },
   receiveCoupon: {
     method: "POST",
     path: "/mp/coupon/:couponNo/receive",
