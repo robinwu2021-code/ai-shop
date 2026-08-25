@@ -44,6 +44,8 @@ public final class BizKey {
     public static final String PROMO_ISSUE = "PI";
     /** 优惠发生记录：一单命中了什么、一张券被用了第几次 */
     public static final String PROMO_APPLY = "PA";
+    /** 活动（新模型 pmt_activity）。与老 mkt_campaign 的号分开 */
+    public static final String PROMO_ACTIVITY = "PT";
     public static final String ADDRESS = "AD";
     public static final String TICKET = "TK";
     public static final String MESSAGE = "MSG";

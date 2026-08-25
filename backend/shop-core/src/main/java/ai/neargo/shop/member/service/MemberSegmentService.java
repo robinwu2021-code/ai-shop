@@ -39,5 +39,8 @@ public interface MemberSegmentService {
     /** 这个人群此刻**命中**多少人（含发不出去的）。发放页要说「发了 25、跳过 12」 */
     int matchedCount(String entityNo, String segmentNo);
 
+    /** 这一个人此刻在不在这个人群里。活动受众判断用它 —— 同样是当场算 */
+    boolean matches(String entityNo, String segmentNo, String memberNo);
+
     List<String> resolve(String entityNo, String scopeStoreNo, MemberQuery rule);
 }

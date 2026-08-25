@@ -21,6 +21,32 @@ public interface MemberQueryPort {
     SegmentAudience resolveSegment(String entityNo, String segmentNo);
 
     /**
+     * 这个买家在这家主体的会员画像 —— <b>受众判断一次取回，不要逐条问</b>。
+     *
+     * <p>算价是在下单路径上，每多一次跨域调用都乘以订单量。此前的教训是
+     * 「一个活动一次查询」：三个活动就是三趟，而它们问的是同一个人。
+     *
+     * @return 他还不是这家店的会员时，{@code member} 为 false，其余字段为空 ——
+     *         <b>不是抛异常</b>：拉新活动要的正是这种人
+     */
+    MemberSnapshot judge(String entityNo, String userNo);
+
+    /**
+     * @param member     是不是这家主体的会员（{@code ACTIVE}，线索不算）
+     * @param level      NEW / REGULAR / LOYAL / SLEEPING
+     * @param source     首次来源
+     * @param tagNos     他身上的标签号
+     * @param segmentNos 他此刻命中的人群号。<b>当场算</b> —— 人群存的是条件不是名单
+     */
+    record MemberSnapshot(boolean member, String level, String source,
+                          java.util.Set<String> tagNos, java.util.Set<String> segmentNos) {
+
+        public static MemberSnapshot notMember() {
+            return new MemberSnapshot(false, null, null, java.util.Set.of(), java.util.Set.of());
+        }
+    }
+
+    /**
      * @param matched   条件命中多少人（含发不出去的）
      * @param reachable 其中<b>能真正收到东西</b>的。两个数都给，是因为
      *                  「发了 25 张、跳过 12 个」这句话必须说得出来 ——

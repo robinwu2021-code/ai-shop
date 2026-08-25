@@ -30,6 +30,19 @@ public final class PromotionMappers {
     public interface CouponIssueMapper extends BaseMapper<PmtCouponIssue> {
     }
 
+    public interface ActivityMapper extends BaseMapper<ai.neargo.shop.promotion.entity.PmtActivity> {
+    }
+
+    /** 受众。**一行都没有 = 对所有人生效** */
+    public interface ActivityAudienceMapper
+            extends BaseMapper<ai.neargo.shop.promotion.entity.PmtActivityAudience> {
+    }
+
+    /** 作用范围。按 ref_no 反查就是冲突提示要的那条路 */
+    public interface ActivityGoodsMapper
+            extends BaseMapper<ai.neargo.shop.promotion.entity.PmtActivityGoods> {
+    }
+
     /** 优惠发生记录。**只增不改**，撤销是往 {@code reverted_at} 上写一笔 */
     public interface ApplyMapper extends BaseMapper<PmtApply> {
     }

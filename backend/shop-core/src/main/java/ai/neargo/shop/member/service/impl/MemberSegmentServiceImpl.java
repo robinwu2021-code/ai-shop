@@ -130,6 +130,18 @@ public class MemberSegmentServiceImpl implements MemberSegmentService {
     }
 
     @Override
+    public boolean matches(String entityNo, String segmentNo, String memberNo) {
+        MbrSegment row = row(entityNo, segmentNo);
+        if (row == null) {
+            return false;
+        }
+        // 走同一条 match：人群页显示的人数与活动受众的判断必须来自同一个实现，
+        // 否则商家会看到「人群里有他」而活动对他不生效
+        return memberService.match(entityNo, normalize(parse(row), row.getScopeStoreNo()))
+                .contains(memberNo);
+    }
+
+    @Override
     public List<String> resolve(String entityNo, String scopeStoreNo, MemberQuery rule) {
         return memberService.matchReachable(entityNo, normalize(rule, scopeStoreNo));
     }

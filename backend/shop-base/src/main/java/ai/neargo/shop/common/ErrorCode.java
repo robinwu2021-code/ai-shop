@@ -259,6 +259,28 @@ public enum ErrorCode {
      */
     COUPON_REDEEM_CONFLICT(40017, "err.marketing.coupon_redeem_conflict"),
 
+    /*
+     * 活动的新模型（P5）。同样堵在**建活动**那一步 ——
+     * 活动一旦跑起来，钱是一单一单流出去的，没有「事后收紧」这个动作。
+     */
+    /** 长期活动没有限量也没有预算 = 永久敞口。商家想的是「一直有这个优惠」，不是「无论花多少」 */
+    ACTIVITY_ALWAYS_ON_NEEDS_CAP(40018, "err.marketing.activity_always_on_needs_cap"),
+    /** 改单价 / 送商品必须限量：单次成本由商品决定，不设上限时卖得越好亏得越多 */
+    ACTIVITY_QUOTA_REQUIRED(40019, "err.marketing.activity_quota_required"),
+    /** 改单价 / 送商品必须选商品。全店改价那叫调价，走商品编辑 */
+    ACTIVITY_GOODS_REQUIRED(40020, "err.marketing.activity_goods_required"),
+    /** 周期规则读不出来。**不能当成全天生效** —— 那不是商家的本意 */
+    ACTIVITY_RECURRING_RULE_INVALID(40021, "err.marketing.activity_recurring_rule_invalid"),
+    /** 限量改到低于已用。与券的发行量同理：人为造出一个「已经超发了」的状态 */
+    ACTIVITY_QUOTA_BELOW_USED(40022, "err.marketing.activity_quota_below_used"),
+    /**
+     * 已结束的活动不能改、也不能复活。
+     *
+     * <p>时段已过、限量已用，复活只会让它立刻又结束一次，而 {@code ended_reason}
+     * 会被覆盖成新的 —— 商家再也查不到当初为什么停。
+     */
+    ACTIVITY_ENDED_IMMUTABLE(40023, "err.marketing.activity_ended_immutable"),
+
     // ---- 5xxxx 资金 ----
     SPLIT_RECEIVER_NOT_READY(50001, "err.settle.receiver_not_ready"),
     SPLIT_EXPIRED(50002, "err.settle.split_expired"),
