@@ -5,6 +5,7 @@ import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.PageData;
+import ai.neargo.shop.member.dto.MemberVOs;
 import ai.neargo.shop.member.dto.MemberVOs.MemberDetailVO;
 import ai.neargo.shop.member.dto.MemberVOs.MemberQuery;
 import ai.neargo.shop.member.dto.MemberVOs.MemberSourceVO;
@@ -54,6 +55,9 @@ public class MemberServiceImpl implements MemberService {
     /** 详情页要显示他身上的标签。同域直接依赖，不必绕 Port */
     private final ai.neargo.shop.member.service.MemberTagService tagService;
 
+    /** 券包/会员卡上要显示店名 —— 号对顾客没有意义 */
+    private final ai.neargo.shop.spi.user.MerchantQueryPort merchantPort;
+
     /** 按标签筛人要读关系表。判 tagNo 存不存在是标签服务的事，这里只做交集 */
     private final ai.neargo.shop.member.mapper.MemberMappers.MemberTagMapper memberTagMapper;
 
@@ -62,8 +66,10 @@ public class MemberServiceImpl implements MemberService {
                              PersonPort personPort,
                              ai.neargo.shop.member.service.MemberTagService tagService,
                              ai.neargo.shop.member.mapper.MemberMappers.MemberTagMapper
-                                     memberTagMapper) {
+                                     memberTagMapper,
+                             ai.neargo.shop.spi.user.MerchantQueryPort merchantPort) {
         this.memberTagMapper = memberTagMapper;
+        this.merchantPort = merchantPort;
         this.memberMapper = memberMapper;
         this.storeMapper = storeMapper;
         this.sourceMapper = sourceMapper;
@@ -246,6 +252,61 @@ public class MemberServiceImpl implements MemberService {
         Page<MbrMember> page = memberMapper.selectPage(Page.of(pageNo, size), w);
         return PageData.of(page.getRecords().stream().map(m -> vo(m, q.storeNo())).toList(),
                 page.getTotal(), pageNo, size);
+    }
+
+    @Override
+    public List<MemberVOs.MyMembershipVO> myMemberships(String userNo) {
+        /*
+         * 绕开数据域：这一刻的会话是买家（SELF），而 mbr_member 按 entity_no 登记。
+         * 不绕的话查出来恒为空 —— 顾客会看到「你不是任何一家店的会员」，
+         * 而他明明刚在三家店买过东西。
+         */
+        return DataScopeContext.executeWithoutScope(() -> {
+            String personNo = personPort.findByUser(userNo)
+                    .map(PersonPort.PersonView::personNo).orElse(null);
+            if (personNo == null) {
+                return List.<MemberVOs.MyMembershipVO>of();
+            }
+            return memberMapper.selectList(Wrappers.<MbrMember>lambdaQuery()
+                            .eq(MbrMember::getPersonNo, personNo)
+                            .eq(MbrMember::getStatus, MbrMember.ACTIVE))
+                    .stream()
+                    .map(m -> new MemberVOs.MyMembershipVO(m.getEntityNo(),
+                            merchantPort.find(m.getEntityNo())
+                                    .map(x -> x.merchantName()).orElse(m.getEntityNo()),
+                            m.getLevel(), nz(m.getOrderCount()), nz(m.getTotalSpentMinor()),
+                            nz(m.getReachOptOut()) == 1, nz(m.getJoinedAt())))
+                    .toList();
+        });
+    }
+
+    @Override
+    @Transactional
+    public void setReachOptOutByUser(String userNo, String entityNo, boolean optOut) {
+        /*
+         * **按 userNo 反查会员号，不接受端上传来的 memberNo**：
+         * 会员号可猜，收下就等于「谁都能替别人退订」——
+         * 而退订这件事一旦能被别人代劳，它就不再是承诺。
+         */
+        DataScopeContext.executeWithoutScope(() -> {
+            String personNo = personPort.findByUser(userNo)
+                    .map(PersonPort.PersonView::personNo).orElse(null);
+            if (personNo == null) {
+                throw BizException.of(ErrorCode.NOT_FOUND);
+            }
+            MbrMember m = memberMapper.selectOne(Wrappers.<MbrMember>lambdaQuery()
+                    .eq(MbrMember::getEntityNo, entityNo)
+                    .eq(MbrMember::getPersonNo, personNo).last("limit 1"));
+            if (m == null) {
+                throw BizException.of(ErrorCode.NOT_FOUND);
+            }
+            memberMapper.update(null, Wrappers.<MbrMember>lambdaUpdate()
+                    .eq(MbrMember::getId, m.getId())
+                    .set(MbrMember::getReachOptOut, optOut ? 1 : 0));
+            log.info("[member] 用户 {} 把 {} 的消息开关改为 {}", userNo, entityNo,
+                    optOut ? "关" : "开");
+            return null;
+        });
     }
 
     @Override

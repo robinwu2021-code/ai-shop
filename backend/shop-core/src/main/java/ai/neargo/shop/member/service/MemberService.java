@@ -78,6 +78,22 @@ public interface MemberService {
             String entityNo, String memberScope, Boolean autoJoinOnOrder);
 
     /**
+     * 我是哪几家店的会员，以及每家的消息开关（C 端，P7）。
+     *
+     * <p>顾客要能一眼看到「谁在给我发消息」——**这是退订入口的前提**：
+     * 不知道自己是谁的会员，就无从关掉它。
+     */
+    java.util.List<ai.neargo.shop.member.dto.MemberVOs.MyMembershipVO> myMemberships(String userNo);
+
+    /**
+     * 买家自己关掉/打开某一家店的消息（C 端）。
+     *
+     * <p><b>按 userNo + entityNo 定位，不接受端上传来的 memberNo</b> ——
+     * 会员号可猜，收下就等于「谁都能替别人退订」。
+     */
+    void setReachOptOutByUser(String userNo, String entityNo, boolean optOut);
+
+    /**
      * 买家自己关掉/打开这家店的消息（C 端会员卡上的开关，P7）。
      *
      * <p><b>只有本人能改</b> —— 商家不能替顾客「重新订阅」。

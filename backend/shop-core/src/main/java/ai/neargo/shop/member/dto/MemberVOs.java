@@ -95,6 +95,17 @@ public final class MemberVOs {
     public record SegmentPreviewVO(int count, int reachable) {
     }
 
+    /**
+     * 「我是这家店的会员」（C 端）。
+     *
+     * @param reachOptOut 我关掉了这家店的消息没有。<b>只有本人能改</b>
+     * @param joinedAt    什么时候成为会员的 —— 顾客问「我怎么成了会员」时的答案
+     */
+    public record MyMembershipVO(String entityNo, String entityName, String level,
+                                 int orderCount, long totalSpentMinor,
+                                 boolean reachOptOut, long joinedAt) {
+    }
+
     public record MemberSettingVO(String memberScope, boolean autoJoinOnOrder) {
     }
 

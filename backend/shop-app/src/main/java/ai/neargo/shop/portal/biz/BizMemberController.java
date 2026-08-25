@@ -17,6 +17,7 @@ import ai.neargo.shop.member.dto.MemberVOs.MergePreviewVO;
 import ai.neargo.shop.member.dto.MemberVOs.TagVO;
 import ai.neargo.shop.member.service.MemberTagService;
 import ai.neargo.shop.member.dto.MemberVOs;
+import ai.neargo.shop.member.service.MemberReachService;
 import ai.neargo.shop.member.dto.MemberVOs.MemberSettingVO;
 import ai.neargo.shop.member.dto.MemberVOs.SegmentVO;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -46,10 +47,13 @@ public class BizMemberController {
     private final MemberTagService tagService;
 
     private final ai.neargo.shop.member.service.MemberSegmentService segmentService;
+    private final MemberReachService reachService;
 
     public BizMemberController(MemberService memberService, MemberTagService tagService,
-                               ai.neargo.shop.member.service.MemberSegmentService segmentService) {
+                               ai.neargo.shop.member.service.MemberSegmentService segmentService,
+                               MemberReachService reachService) {
         this.segmentService = segmentService;
+        this.reachService = reachService;
         this.memberService = memberService;
         this.tagService = tagService;
     }
@@ -191,6 +195,34 @@ public class BizMemberController {
         }
         return java.util.Arrays.stream(csv.split(",")).map(String::trim)
                 .filter(x -> !x.isEmpty()).toList();
+    }
+
+    // ------------------------------------------------------------------ 触达（P7）
+
+    /**
+     * 试算：这一次能发给多少人、多少人被拦下、分别为什么。<b>不发送</b>。
+     *
+     * <p>发消息是唯一会打扰真实用户的动作，所以它必须先算后发 ——
+     * 只报一个「发送成功」，商家会以为人群里每个人都收到了。
+     */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.CUSTOMER + "')")
+    @PostMapping("/biz/member-reach/plan")
+    public MemberReachService.ReachPlan planReach(@RequestBody ReachReq req) {
+        return reachService.plan(BizContext.requireMerchantNo(), req.segmentNo(), req.scene());
+    }
+
+    /**
+     * 真发。<b>要 {@code biz:campaign} 而不是 {@code biz:customer}</b>：
+     * 看会员的店员都有 customer 码，而给几百个人推消息不是店员该按的按钮。
+     */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.CAMPAIGN + "')")
+    @PostMapping("/biz/member-reach/send")
+    public MemberReachService.ReachResult sendReach(@RequestBody ReachReq req) {
+        return reachService.send(BizContext.requireMerchantNo(), req.segmentNo(), req.scene(),
+                req.title(), req.body(), SecurityUtils.currentUserNo());
+    }
+
+    public record ReachReq(String segmentNo, String scene, String title, String body) {
     }
 
     // ------------------------------------------------------------------ 人群（P3）
