@@ -68,6 +68,10 @@ class CategoryTreeFlowTest {
     @Autowired
     private ObjectMapper json;
 
+    /** 只用来插一行「三级类目」—— 那种形态现在建不出来，但线上有 7 个历史遗留 */
+    @Autowired
+    private ai.neargo.shop.product.mapper.ProductMappers.CategoryMapper categoryMapper;
+
 
     private MockMvc mvc() {
         return MockMvcBuilders.webAppContextSetup(context)
@@ -203,6 +207,124 @@ class CategoryTreeFlowTest {
                         .header("Authorization", "Bearer " + token))
                 .andExpect(jsonPath("$.code").value(0));
         assertThat(findFlat(listCategories(token, false), no)).isNotNull();
+    }
+
+    @Test
+    @DisplayName("★★ 没配规格的二级类目启用不了 —— 不然商家建的货全是归不了一的")
+    void unarchivingALevelTwoCategoryNeedsSpecs() throws Exception {
+        /*
+         * 守的是「197 件历史商品」那个坑的**根因**。
+         *
+         * <p>规格绑定挂在二级。一个二级类目一个维度都没配就被启用，商家往里放货时
+         * 建品页取不到任何维度，于是掉回老模板的品类兜底 —— 组名叫「规格」、
+         * 存进去没有 templateNo，那批货的值编号永远盖不上。而全程没有报错：
+         * 建品成功、页面正常，只有那一列 code 从来没存在过。
+         *
+         * <p>线上 198 件带规格的商品里 197 件就是这么来的，V229 用一整支迁移回填，
+         * 至今仍有 92 件填不了。所以是**当场拒绝**，不是给个能点掉的提醒。
+         */
+        // admin 而不是 goods：绑定类目规格要 PRODUCT_SPEC_UPDATE，goods 这个岗位没有
+        String token = opsLogin("admin", "admin123");
+        String lv1 = json.readTree(mvc().perform(post("/ops/categories")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"闸门测试·一级\",\"template\":\"STANDARD\"}"))
+                .andReturn().getResponse().getContentAsString()).get("data").get("categoryNo").asString();
+        String lv2 = json.readTree(mvc().perform(post("/ops/categories")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"闸门测试·二级\",\"parentNo\":\"" + lv1
+                                + "\",\"template\":\"STANDARD\"}"))
+                .andReturn().getResponse().getContentAsString()).get("data").get("categoryNo").asString();
+
+        mvc().perform(post("/ops/categories/" + lv2 + "/archive")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.code").value(0));
+
+        String denied = mvc().perform(post("/ops/categories/" + lv2 + "/unarchive")
+                        .header("Authorization", "Bearer " + token))
+                .andReturn().getResponse().getContentAsString();
+        assertThat(json.readTree(denied).get("code").asInt())
+                .as("没配规格就启用，等于放一批归不了一的货进来")
+                .isEqualTo(80010);
+
+        // 配上规格之后就该放行 —— 闸门是「先配再开」，不是「永远不许开」
+        mvc().perform(post("/ops/category-specs/" + lv2)
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("[{\"dimNo\":\"SD_WEIGHT\",\"primary\":true}]"))
+                .andExpect(jsonPath("$.code").value(0));
+        mvc().perform(post("/ops/categories/" + lv2 + "/unarchive")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.code").value(0));
+    }
+
+    @Test
+    @DisplayName("★ 三级类目的规格从父类目继承 —— 否则放进三级的货规格静默全空")
+    void levelThreeInheritsSpecsFromParent() throws Exception {
+        /*
+         * 绑定实际上全挂在二级（线上 175 条全在 level2，一级三级各 0 条）。
+         * 此前取规格是精确匹配类目号，于是货一旦落在三级类目，拿到的维度是空的 ——
+         * 症状是「规格库明明配了，建品页却没有」，指向的方向完全不对。
+         *
+         * <p><b>这是历史数据才有的形态</b>：现在建类目最多两级
+         * （{@code CATEGORY_TOO_DEEP}，见 cannotGoDeeperThanThreeLevels），
+         * 三级根本建不出来。但线上有 7 个三级类目是规则收紧之前留下的，底下压着 24 件货，
+         * 全是停用状态。哪天运营把其中一个恢复，那批货的规格就会静默全空。
+         *
+         * <p>所以这条测试**只能直接插一行**来复现 —— 走不了公开接口。
+         * 这不是绕过校验取巧，而是这段代码要守的本来就是「校验收紧之前留下的数据」。
+         */
+        String token = opsLogin("admin", "admin123");
+        String lv1 = json.readTree(mvc().perform(post("/ops/categories")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"继承测试·一级\",\"template\":\"STANDARD\"}"))
+                .andReturn().getResponse().getContentAsString()).get("data").get("categoryNo").asString();
+        String lv2 = json.readTree(mvc().perform(post("/ops/categories")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"继承测试·二级\",\"parentNo\":\"" + lv1
+                                + "\",\"template\":\"STANDARD\"}"))
+                .andReturn().getResponse().getContentAsString()).get("data").get("categoryNo").asString();
+        String lv3 = "CAT_LEGACY_L3";
+        ai.neargo.shop.product.entity.PrdCategory legacy = new ai.neargo.shop.product.entity.PrdCategory();
+        legacy.setCategoryNo(lv3);
+        legacy.setParentNo(lv2);
+        legacy.setLevel(3);
+        legacy.setName("继承测试·三级（历史遗留）");
+        legacy.setStatus("ACTIVE");
+        legacy.setSort(0);
+        categoryMapper.insert(legacy);
+
+        // 只给二级配规格，三级一条绑定都没有
+        mvc().perform(post("/ops/category-specs/" + lv2)
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("[{\"dimNo\":\"SD_WEIGHT\",\"primary\":true}]"))
+                .andExpect(jsonPath("$.code").value(0));
+
+        String bizToken = merchant("12600166001", "规格继承测试店");
+        String lv3Specs = mvc().perform(get("/biz/spec-templates?categoryNo=" + lv3)
+                        .header("Authorization", "Bearer " + bizToken))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        JsonNode arr = json.readTree(lv3Specs).get("data");
+        assertThat(arr).as("三级类目也该拿到规格，而不是空手而归").isNotNull();
+        /*
+         * 只断「父类目那个维度在里面」，不断条数：这个端点把规格库与老模板的品类兜底
+         * 合并后一起下发，条数会随兜底那批变化，而本条要守的是**继承有没有发生**。
+         */
+        boolean inherited = false;
+        for (JsonNode t : arr) {
+            if ("SD_WEIGHT".equals(t.path("templateNo").asString())) {
+                inherited = true;
+                break;
+            }
+        }
+        assertThat(inherited)
+                .as("父类目配的 SD_WEIGHT 该被三级继承 —— 拿不到就说明又退回精确匹配了")
+                .isTrue();
     }
 
     @Test

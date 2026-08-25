@@ -22,9 +22,14 @@ public interface SpuStdService {
      */
     List<SpuStdVO> search(String keyword, String categoryNo, int limit);
 
-    /** 运营端列表。{@code showArchived=false} 时不返回已归档的。 */
-    PageData<SpuStdVO> list(String keyword, String categoryNo, boolean showArchived,
-                            long page, long size);
+    /**
+     * 运营端列表。{@code showArchived=false} 时不返回已归档的。
+     *
+     * @param source 按出处筛：{@code OPS} 运营手录 / {@code OFF} 外部开放库导入。
+     *               空表示不筛。导进来的众包数据全是待审状态，混在自录的里面翻没法审
+     */
+    PageData<SpuStdVO> list(String keyword, String categoryNo, String source,
+                            boolean showArchived, long page, long size);
 
     /** 按编号取；查无此项返回 {@code null}（调用方决定是拒还是忽略）。 */
     SpuStdVO find(String stdNo);
@@ -42,6 +47,17 @@ public interface SpuStdService {
 
     /** 取消归档。 */
     SpuStdVO unarchive(String stdNo);
+
+    /**
+     * 批量改状态。返回**真正改动了的条数** —— 不是传进来的条数：
+     * 已经是目标状态的、查无此项的都不计，运营才看得出「点下去到底生效了几条」。
+     *
+     * <p><b>刻意只按明确给出的编号改，不支持「把符合筛选条件的全改了」。</b>
+     * 那 297 条众包标准品之所以是归档态，就是因为标题里混着品牌写法不一与错别字，
+     * 需要人过目；给一个「一键全放」的按钮，等于把这道人工闸门取消掉。
+     * 按页多选是有意的摩擦 —— 它逼着人先看见那一屏。
+     */
+    int bulkStatus(List<String> stdNos, String status);
 
     /**
      * @param categoryNo 必填：形态由它派生，商家取用时不可改

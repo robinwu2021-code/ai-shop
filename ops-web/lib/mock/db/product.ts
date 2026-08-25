@@ -194,13 +194,33 @@ export const topicGoods: Record<string, string[]> = {
   TP0002: [],
 };
 
+/**
+ * 标准品。**前四条是运营手录的（source=OPS），后面几条是外部开放库导进来的
+ * （source=OFF，全部待审）** —— 两种状态都要在 mock 上走得到：
+ * 真库里 OFF 那批有 297 条且全是归档态，界面上「批量启用」这条路
+ * 如果 mock 里没有归档行，做完根本看不出对不对。
+ */
 export const spuStds: SpuStd[] = [
-  { stdNo: "STD1001", categoryNo: "CAT110", categoryName: "蔬菜", title: "本地菠菜", subtitle: "当季叶菜", keywords: "菠菜 波斯菜 叶菜", status: "ACTIVE", refCount: 3,
+  { stdNo: "STD1001", categoryNo: "CAT110", categoryName: "蔬菜", title: "本地菠菜", subtitle: "当季叶菜", keywords: "菠菜 波斯菜 叶菜", status: "ACTIVE", source: "OPS", refCount: 3,
     specGroups: [{ name: "重量", options: ["500g", "1斤", "2斤"], optionCodes: ["W500G", "W1JIN", "W2JIN"] }] },
-  { stdNo: "STD1011", categoryNo: "CAT110", categoryName: "蔬菜", title: "土豆", subtitle: "根茎菜", keywords: "土豆 马铃薯 洋芋", status: "ACTIVE", refCount: 5,
+  { stdNo: "STD1011", categoryNo: "CAT110", categoryName: "蔬菜", title: "土豆", subtitle: "根茎菜", keywords: "土豆 马铃薯 洋芋", status: "ACTIVE", source: "OPS", refCount: 5,
     specGroups: [{ name: "重量", options: ["1斤", "2斤", "5斤"], optionCodes: ["W1JIN", "W2JIN", "W5JIN"] }] },
-  { stdNo: "STD2001", categoryNo: "CAT210", categoryName: "纸品清洁", title: "抽纸", subtitle: "家用抽取式面巾纸", keywords: "抽纸 面巾纸 纸巾", status: "ACTIVE", refCount: 2,
+  { stdNo: "STD2001", categoryNo: "CAT210", categoryName: "纸品清洁", title: "抽纸", subtitle: "家用抽取式面巾纸", keywords: "抽纸 面巾纸 纸巾", status: "ACTIVE", source: "OPS", refCount: 2,
     specGroups: [{ name: "规格", options: ["3包", "6包", "12包"], optionCodes: ["B3", "B6", "B12"] }] },
-  { stdNo: "STD2004", categoryNo: "CAT210", categoryName: "纸品清洁", title: "洗衣液", subtitle: "衣物清洁", keywords: "洗衣液 洗涤剂", status: "ACTIVE", refCount: 0,
+  { stdNo: "STD2004", categoryNo: "CAT210", categoryName: "纸品清洁", title: "洗衣液", subtitle: "衣物清洁", keywords: "洗衣液 洗涤剂", status: "ACTIVE", refCount: 0, source: "OPS",
     specGroups: [{ name: "规格", options: ["1L", "2L", "3L"], optionCodes: ["V1L", "V2L", "V3L"] }] },
+
+  // ── 导进来的：全部待审（archivedAt 有值），标题就是原始众包文案，好坏都留着 ──
+  { stdNo: "STD_OFF_6921168509256", categoryNo: "CAT730", categoryName: "饮料冲调", title: "农夫山泉", status: "ARCHIVED", archivedAt: "2026-08-25 12:24", refCount: 0, source: "OFF", barcode: "6921168509256",
+    specGroups: [{ name: "容量", options: ["550ml"], optionCodes: ["V550ML"] }] },
+  { stdNo: "STD_OFF_6902083881085", categoryNo: "CAT180", categoryName: "乳制品", title: "娃哈哈 AD 钙奶原味", status: "ARCHIVED", archivedAt: "2026-08-25 12:24", refCount: 0, source: "OFF", barcode: "6902083881085",
+    specGroups: [{ name: "容量", options: ["220ml"], optionCodes: ["V220ML"] }] },
+  { stdNo: "STD_OFF_6923644266066", categoryNo: "CAT180", categoryName: "乳制品", title: "纯牛奶", status: "ARCHIVED", archivedAt: "2026-08-25 12:24", refCount: 0, source: "OFF", barcode: "6923644266066",
+    specGroups: [{ name: "容量", options: ["250ml"], optionCodes: ["V250ML"] }] },
+  { stdNo: "STD_OFF_6920548862998", categoryNo: "CAT720", categoryName: "休闲零食", title: "旺仔QQ糖荔枝味", status: "ARCHIVED", archivedAt: "2026-08-25 12:24", refCount: 0, source: "OFF", barcode: "6920548862998",
+    specGroups: [{ name: "重量", options: ["70g"], optionCodes: ["W70G"] }] },
+  { stdNo: "STD_OFF_6908946290087", categoryNo: "CAT730", categoryName: "饮料冲调", title: "百事可乐", status: "ARCHIVED", archivedAt: "2026-08-25 12:24", refCount: 0, source: "OFF", barcode: "6908946290087",
+    specGroups: [{ name: "容量", options: ["330ml"], optionCodes: ["V330ML"] }] },
+  { stdNo: "STD_OFF_6907992500171", categoryNo: "CAT180", categoryName: "乳制品", title: "yili 安慕希希腊风味酸奶", status: "ARCHIVED", archivedAt: "2026-08-25 12:24", refCount: 0, source: "OFF", barcode: "6907992500171",
+    specGroups: [{ name: "容量", options: ["205ml"], optionCodes: ["V205ML"] }] },
 ];

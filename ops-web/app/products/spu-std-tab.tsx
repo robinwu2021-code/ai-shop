@@ -21,6 +21,7 @@ import { usePaging } from "@/lib/use-paging";
 import type { SpuStd } from "@/lib/types";
 import { ArchiveActions, ArchivedAt, archivedRowClass, ShowArchivedToggle } from "@/components/archive";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { Drawer, Field } from "@/components/ui/drawer";
@@ -55,9 +56,19 @@ export function SpuStdTab({ c, canEdit }: { c: ProductsCopy; canEdit: boolean })
   const [keyword, setKeyword] = useState("");
   const [categoryNo, setCategoryNo] = useState("");
   const [showArchived, setShowArchived] = useState(false);
+  const [source, setSource] = useState("");
   const [form, setForm] = useState<Form | null>(null);
+  /*
+   * 勾选**只在当前这一页有效**，翻页即清空。
+   *
+   * 跨页累积看着更"强"，但它会造出一种很糟的状态：运营翻了六页、勾了几十条，
+   * 而屏幕上只看得见最后一页 —— 点下去改了什么全凭记忆。那批导进来的标准品
+   * 之所以是待审状态，就是因为要人**过目**；跨页累积恰好把过目这件事架空了。
+   */
+  const [picked, setPicked] = useState<string[]>([]);
+  const clearPick = () => setPicked([]);
 
-  const q = { keyword, categoryNo, showArchived, page, size };
+  const q = { keyword, categoryNo, source, showArchived, page, size };
   const list = useQuery({ queryKey: ["spu-std", q], queryFn: () => api.listSpuStd(q) });
   // 类目要能选：标准品的类目**必填**，形态由它派生
   const cats = useQuery({ queryKey: ["categories"], queryFn: () => api.listCategories() });
@@ -88,12 +99,43 @@ export function SpuStdTab({ c, canEdit }: { c: ProductsCopy; canEdit: boolean })
     mutationFn: (no: string) => api.unarchiveSpuStd(no),
     onSuccess: () => { invalidate(); notify.success(c.stdToastUnarchived); },
   });
+  const bulk = useMutation({
+    mutationFn: (status: "ACTIVE" | "ARCHIVED") => api.bulkSpuStdStatus(picked, status),
+    // 报**真正改动的条数**而不是勾选数：勾了 20 条其中 17 条本来就是启用的，
+    // 说「已启用 20 条」是在骗人，而运营下一步就是按这个数去核对
+    onSuccess: (r) => { invalidate(); clearPick(); notify.success(fill(c.stdToastBulk, { n: String(r.changed) })); },
+  });
 
   const catOptions = (cats.data ?? []).map((x) => ({ value: x.categoryNo, label: x.name }));
 
+  const rows = list.data?.records ?? [];
+  const pageNos = rows.map((t) => t.stdNo);
+  const allPicked = pageNos.length > 0 && pageNos.every((no) => picked.includes(no));
+
   const columns: Column<SpuStd>[] = [
+    {
+      // 表头那个勾选框只管**本页**：它是「这一屏全选」，不是「全库全选」。
+      // 全库全选正是这里刻意不做的那件事 —— 见 picked 的注释
+      header: canEdit ? (
+        <Checkbox aria-label={c.stdPickAll} checked={allPicked}
+          onChange={(v) => setPicked(v ? pageNos : [])} />
+      ) : "",
+      width: "2.5rem",
+      cell: (t) => canEdit ? (
+        <Checkbox aria-label={t.title} checked={picked.includes(t.stdNo)}
+          onChange={(v) => setPicked((p) =>
+            v ? [...p, t.stdNo] : p.filter((x) => x !== t.stdNo))} />
+      ) : null,
+    },
     { header: c.stdColNo, cell: (t) => t.stdNo, numeric: true, align: "start" },
     { header: c.stdColTitle, cell: (t) => t.title },
+    {
+      // 出处：众包来的那批标题里混着品牌写法不一与错别字，运营得先知道自己在看哪一种
+      header: c.stdColSource,
+      cell: (t) => t.source === "OFF"
+        ? <Badge tone="warning">{c.stdSourceOff}</Badge>
+        : <Badge tone="muted">{c.stdSourceOps}</Badge>,
+    },
     { header: c.stdColCategory, cell: (t) => t.categoryName ?? t.categoryNo },
     {
       header: c.stdColSpecs,
@@ -190,10 +232,35 @@ export function SpuStdTab({ c, canEdit }: { c: ProductsCopy; canEdit: boolean })
         <FilterSelect aria-label={c.stdFilterCategory} value={categoryNo}
           onChange={(v) => { setCategoryNo(v); setPage(1); }}
           options={catOptions} allLabel={c.stdFilterCategoryAll} />
-        <ShowArchivedToggle checked={showArchived} onChange={(v) => { setShowArchived(v); setPage(1); }}
+        <FilterSelect aria-label={c.stdFilterSource} value={source}
+          onChange={(v) => { setSource(v); setPage(1); clearPick(); }}
+          options={[{ value: "OPS", label: c.stdSourceOps }, { value: "OFF", label: c.stdSourceOff }]}
+          allLabel={c.stdFilterSourceAll} />
+        <ShowArchivedToggle checked={showArchived} onChange={(v) => { setShowArchived(v); setPage(1); clearPick(); }}
           label={c.stdShowArchived} />
         {canEdit && <Button size="sm" onClick={() => setForm({ ...EMPTY, groups: [EMPTY_GROUP()] })}>{c.stdNew}</Button>}
       </Toolbar>
+
+      {picked.length > 0 && (
+        <div className="mb-2 flex items-center gap-2 rounded-field border border-line bg-surface-2 px-3 py-2">
+          <span className="text-sm text-fg-2">{fill(c.stdPickedN, { n: String(picked.length) })}</span>
+          <Button size="sm" loading={bulk.isPending} onClick={() => bulk.mutate("ACTIVE")}>
+            {c.stdBulkEnable}
+          </Button>
+          <Button size="sm" variant="outline" loading={bulk.isPending}
+            onClick={async () => {
+              const ok = await confirm({
+                title: fill(c.stdBulkArchiveTitle, { n: String(picked.length) }),
+                desc: c.stdConfirmArchiveDesc,
+                danger: true, confirmText: c.stdConfirmArchiveOk,
+              });
+              if (ok) bulk.mutate("ARCHIVED");
+            }}>
+            {c.stdBulkArchive}
+          </Button>
+          <Button size="sm" variant="ghost" onClick={clearPick}>{c.stdPickClear}</Button>
+        </div>
+      )}
 
       <DataTable
         columns={columns} rows={list.data?.records} loading={list.isLoading}
@@ -202,7 +269,8 @@ export function SpuStdTab({ c, canEdit }: { c: ProductsCopy; canEdit: boolean })
         rowClassName={archivedRowClass}
         empty={c.stdEmpty}
       />
-      <Pagination page={page} size={size} onSize={setSize} total={list.data?.total ?? 0} onPage={setPage} />
+      <Pagination page={page} size={size} onSize={setSize} total={list.data?.total ?? 0}
+        onPage={(p) => { setPage(p); clearPick(); }} />
 
       <Drawer
         open={!!form}

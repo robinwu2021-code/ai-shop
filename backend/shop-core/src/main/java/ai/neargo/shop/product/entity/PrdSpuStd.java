@@ -55,8 +55,26 @@ public class PrdSpuStd extends BaseEntity {
      */
     private String specGroups;
 
-    /** 别名/品牌/俗称，空格分隔。一期按名称搜索，不做条码（生鲜与手工品本来就没有条码）。 */
+    /** 别名/品牌/俗称，空格分隔。一期按名称搜索。 */
     private String keywords;
+
+    /**
+     * 商品条码（EAN-13/UPC）。<b>(tenant_no, barcode) 唯一</b>，见 V219 ——
+     * 同一条码在一个租户下只该有一条标准品，否则重复导入会悄悄堆出两份。
+     *
+     * <p><b>可以为空，而且空是常态</b>：生鲜、现做熟食、手工品、服务本来就没有条码。
+     * 所以它是个补充索引，不是身份 —— 身份仍是 {@link #stdNo}。
+     */
+    private String barcode;
+
+    /**
+     * 这条是<b>哪来的</b>：{@code OPS} 运营手录、{@code OFF} 从 Open Food Facts 导入。
+     *
+     * <p>记出处不是为了好看：外部开放库多带署名义务（ODbL 要求署名），
+     * 不记的话过几个月没人分得清哪些条目需要标注。运营侧也靠它把
+     * 「众包来的、还没人看过的」与「自己录的、已经确认过的」分开审。
+     */
+    private String source;
 
     /** {@link #ACTIVE} / {@link #ARCHIVED}。归档<b>不影响已引用的商品</b> —— 那是溯源不是外键。 */
     private String status;

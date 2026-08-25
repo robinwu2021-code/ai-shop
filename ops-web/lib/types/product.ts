@@ -468,4 +468,13 @@ export interface SpuStd extends Archivable {
   status?: string;
   /** 被引用次数。只服务排序与去重判断，不参与任何校验 */
   refCount?: number;
+  /** 商品条码。**空是常态** —— 生鲜、现做熟食、服务本来就没有条码 */
+  barcode?: string;
+  /**
+   * 出处：`OPS` 运营手录 / `OFF` 从开放库导入。
+   *
+   * <p>导进来的那批标题是原始众包文案（品牌写法不一、错别字都有），
+   * 所以全部落成归档态等人过目。运营靠这一列把「还没人看过的」与「自己录的」分开审。
+   */
+  source?: string;
 }

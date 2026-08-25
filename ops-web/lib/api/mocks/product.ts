@@ -321,6 +321,7 @@ export const productMock: ProductApi = {
         (t) =>
           db.liveHit(t, q.showArchived) &&
           db.eqHit(q.categoryNo, t.categoryNo) &&
+          db.eqHit(q.source, t.source) &&
           // 标题与别名一起搜：商家嘴里的「洋芋」与标题「土豆」对不上时，
           // 结果不是报错，是他以为标准库里没有 —— 然后自建一个
           db.kwHit(q.keyword, t.stdNo, t.title, t.keywords ?? ""),
@@ -360,6 +361,23 @@ export const productMock: ProductApi = {
    */
   archiveSpuStd: async (no) => wait(db.archiveRow(db.spuStds, "stdNo", no), 400),
   unarchiveSpuStd: async (no) => wait(db.unarchiveRow(db.spuStds, "stdNo", no), 400),
+
+  /*
+   * 批量改状态。**返回真正改动了的条数**，不是传进来的条数 ——
+   * 已经是目标状态的不计，运营才看得出「点下去到底生效了几条」。
+   * 与真实服务端同一条口径，否则 mock 上永远看不到「勾了 20 条只变了 3 条」这种情形。
+   */
+  bulkSpuStdStatus: async (stdNos, status) => {
+    let changed = 0;
+    for (const no of stdNos ?? []) {
+      const row = db.spuStds.find((t) => t.stdNo === no);
+      if (!row) continue;
+      const archived = !!row.archivedAt;
+      if (status === "ARCHIVED" && !archived) { db.archiveRow(db.spuStds, "stdNo", no); changed++; }
+      if (status === "ACTIVE" && archived) { db.unarchiveRow(db.spuStds, "stdNo", no); changed++; }
+    }
+    return wait({ changed }, 500);
+  },
 
   archiveCategory: async (categoryNo) => {
     const c = findCategory(categoryNo);

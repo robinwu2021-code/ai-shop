@@ -43,10 +43,11 @@ public class OpsSpuStdController {
     @GetMapping("/ops/spu-std")
     public PageData<SpuStdVO> list(@RequestParam(required = false) String keyword,
                                    @RequestParam(required = false) String categoryNo,
+                                   @RequestParam(required = false) String source,
                                    @RequestParam(defaultValue = "false") boolean showArchived,
                                    @RequestParam(defaultValue = "1") long page,
                                    @RequestParam(defaultValue = "20") long size) {
-        return service.list(keyword, categoryNo, showArchived, page, Math.min(size, 50));
+        return service.list(keyword, categoryNo, source, showArchived, page, Math.min(size, 50));
     }
 
     /**
@@ -81,6 +82,22 @@ public class OpsSpuStdController {
     @PostMapping("/ops/spu-std/{stdNo}/unarchive")
     public SpuStdVO unarchive(@PathVariable String stdNo) {
         return service.unarchive(stdNo);
+    }
+
+    /**
+     * 批量改状态。返回 {@code {"changed": n}} —— <b>真正改动了的条数</b>，
+     * 不是传进来的条数：已经是目标状态的不计。运营点完要看得出到底生效了几条。
+     *
+     * <p>只按明确给出的编号改，<b>没有「把符合筛选条件的全改了」</b>：
+     * 导进来的众包标准品之所以是归档态就是因为要人过目，一键全放等于取消这道闸门。
+     */
+    @PreAuthorize("@perm.can('" + Perms.PRODUCT_STD_UPDATE + "')")
+    @PostMapping("/ops/spu-std/bulk-status")
+    public Map<String, Integer> bulkStatus(@RequestBody BulkStatusReq req) {
+        return Map.of("changed", service.bulkStatus(req.stdNos(), req.status()));
+    }
+
+    public record BulkStatusReq(List<String> stdNos, String status) {
     }
 
     public record SaveReq(String stdNo, String categoryNo, String title,

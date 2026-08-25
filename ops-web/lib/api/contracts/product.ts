@@ -18,7 +18,7 @@ export interface ProductApi {
   // ── 标准品库（TDD-标准品库）—— **已接真后端** `/ops/spu-std`
 
   /** 标准品列表。按 `refCount` 倒序 —— 被引用得多的是「别的店都在用」，对录入的人是有效信号 */
-  listSpuStd(q?: { keyword?: string; categoryNo?: string; showArchived?: boolean; page?: number; size?: number }): Promise<Page<SpuStd>>;
+  listSpuStd(q?: { keyword?: string; categoryNo?: string; source?: string; showArchived?: boolean; page?: number; size?: number }): Promise<Page<SpuStd>>;
   /**
    * 新建 / 更新。**每个规格选项必须填 code** —— 后端会拒，前端也先拦一道：
    * 没有 code 的标准品与商家手输没有区别，它唯一的作用是让人**以为**规格统一了。
@@ -30,6 +30,12 @@ export interface ProductApi {
    */
   archiveSpuStd(stdNo: string): Promise<SpuStd>;
   unarchiveSpuStd(stdNo: string): Promise<SpuStd>;
+  /**
+   * 批量改状态。返回**真正改动了的条数** —— 不是传进来的条数：已经是目标状态的不计。
+   * 只按明确给出的编号改，没有「把符合筛选条件的全改了」：那批众包标准品之所以是
+   * 归档态就是因为要人过目，一键全放等于取消这道闸门。
+   */
+  bulkSpuStdStatus(stdNos: string[], status: "ACTIVE" | "ARCHIVED"): Promise<{ changed: number }>;
 
   // ── 主题分类（陈列，批 E）—— **已接真后端** `/ops/topics`
 

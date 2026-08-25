@@ -53,6 +53,7 @@ export const productHttp: ProductApi = {
   setTopicGoods: (topicNo, goodsNos) => client.post(`/ops/topics/${topicNo}/goods`, { goodsNos }),
   archiveSpuStd: (no) => client.post(`/ops/spu-std/${no}/archive`),
   unarchiveSpuStd: (no) => client.post(`/ops/spu-std/${no}/unarchive`),
+  bulkSpuStdStatus: (stdNos, status) => client.post("/ops/spu-std/bulk-status", { stdNos, status }),
 
   archiveCategory: (no) => client.post(`/ops/categories/${no}/archive`),
   unarchiveCategory: (no) => client.post(`/ops/categories/${no}/unarchive`),

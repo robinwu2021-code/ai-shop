@@ -4,6 +4,7 @@ import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.product.dto.CategorySpecVO;
 import ai.neargo.shop.product.dto.CategoryVO;
 import ai.neargo.shop.product.dto.SpecTemplateVO;
+import ai.neargo.shop.product.entity.PrdCategory;
 import ai.neargo.shop.product.entity.PrdCategorySpec;
 import ai.neargo.shop.product.entity.PrdCategorySpecValue;
 import ai.neargo.shop.product.entity.PrdMerchantSpecOverride;
@@ -60,6 +61,9 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
     /** 商家对平台规格的覆盖（V213）：本店用哪几个、什么顺序、叫什么 */
     private final ai.neargo.shop.product.mapper.ProductMappers.MerchantSpecOverrideMapper overrideMapper;
 
+    /** 只用来找父类目（规格挂在二级，货可能落在三级）。取名不取树：一次一行比拉整棵树便宜 */
+    private final ai.neargo.shop.product.mapper.ProductMappers.CategoryMapper categoryMapper;
+
     public SpecLibraryServiceImpl(SpecDimMapper dimMapper, SpecValueMapper valueMapper,
                                   CategorySpecMapper catSpecMapper,
                                   CategorySpecValueMapper catValueMapper,
@@ -67,7 +71,9 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
                                   SkuMapper skuMapper,
                                   ai.neargo.shop.product.mapper.ProductMappers.GoodsMapper goodsMapper,
                                   ai.neargo.shop.spi.user.StoreCategoryPort storeCategoryPort,
-                                  ai.neargo.shop.product.mapper.ProductMappers.MerchantSpecOverrideMapper overrideMapper) {
+                                  ai.neargo.shop.product.mapper.ProductMappers.MerchantSpecOverrideMapper overrideMapper,
+                                  ai.neargo.shop.product.mapper.ProductMappers.CategoryMapper categoryMapper) {
+        this.categoryMapper = categoryMapper;
         this.storeCategoryPort = storeCategoryPort;
         this.overrideMapper = overrideMapper;
         this.skuMapper = skuMapper;
@@ -84,17 +90,38 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
         if (categoryNo == null || categoryNo.isBlank()) {
             return List.of();
         }
-        List<PrdCategorySpec> binds = activeBindings(categoryNo);
+        /*
+         * **规格挂在哪一级，就从哪一级取** —— 找不到就往父类目找。
+         *
+         * <p>类目树允许三级，而规格绑定实际上全挂在**二级**（线上 175 条全在 level2，
+         * 一级三级各 0 条）。此前这里是精确匹配类目号：商家一旦把货放进一个三级类目，
+         * 拿到的维度是空的，于是建品页掉回老模板的品类兜底 —— 组名叫「规格」、
+         * 存进去没有 templateNo，整条归一链路静默落空。V229 回填时清掉的 197 件
+         * 历史商品里，就有一批是这么来的。
+         *
+         * <p>眼下线上 7 个三级类目全是停用状态，所以这是个**哑雷**：不修不疼，
+         * 但只要有人启用一个三级类目、商家往里放货，那批货的规格会悄悄全空 ——
+         * 而症状（"规格库明明配了，怎么建品页没有"）指向的方向完全不对。
+         *
+         * <p>**对二级没有任何影响**：二级的父是一级，而一级一条绑定都没有，
+         * 回溯到那里仍然是空 —— 行为与此前逐字相同。
+         */
+        String specCat = specCategoryOf(categoryNo);
+        List<PrdCategorySpec> binds = activeBindings(specCat);
         if (binds.isEmpty()) {
             return List.of();
         }
         Map<String, PrdSpecDim> dims = dimsOf(binds.stream().map(PrdCategorySpec::getDimNo).toList());
-        Map<String, List<PrdCategorySpecValue>> subsets = subsetsOf(categoryNo);
+        /*
+         * 值子集也跟着走同一级：绑定从父类目继承来的话，子集还按子类目查会查到空，
+         * 于是继承到的维度会把**整个平台值池**摊开给商家 —— 比没有更糟。
+         */
+        Map<String, List<PrdCategorySpecValue>> subsets = subsetsOf(specCat);
         /*
          * 商家的覆盖（V213）：本店用哪几个、什么顺序、叫什么。
          * **稀疏** —— 没有行就完全跟平台走，所以运营新加的维度会自动到达没动过手的商家。
          */
-        Overrides ov = overridesOf(merchantNo, categoryNo);
+        Overrides ov = overridesOf(merchantNo, specCat);
 
         List<SpecTemplateVO> out = new ArrayList<>();
         for (PrdCategorySpec b : binds) {
@@ -1388,6 +1415,37 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
     }
 
     // ---------------------------------------------------------------- helpers
+
+    /**
+     * 规格实际挂在哪一级：<b>自己有绑定就用自己，否则往上找最近的有绑定的祖先</b>。
+     *
+     * <p>最多往上走两层（树最深三级，见 {@code cannotGoDeeperThanThreeLevels}），
+     * 并且带一个环保护 —— 类目树的 parent_no 是数据，不是不可能被写坏的东西，
+     * 而这段代码跑在每次打开建品页的路径上，转起来就是一次线程占满。
+     *
+     * @return 有绑定的那一级的类目号；一路上去都没有就返回原类目号（调用方拿到空绑定）
+     */
+    private String specCategoryOf(String categoryNo) {
+        String cur = categoryNo;
+        java.util.Set<String> seen = new java.util.HashSet<>();
+        for (int hop = 0; hop < 3 && cur != null && !cur.isBlank() && seen.add(cur); hop++) {
+            if (!activeBindings(cur).isEmpty()) {
+                return cur;
+            }
+            cur = parentOf(cur);
+        }
+        return categoryNo;
+    }
+
+    /** 父类目号；查无此项或已是根返回 {@code null}。 */
+    private String parentOf(String categoryNo) {
+        PrdCategory row = DataScopeContext.executeWithoutScope(() ->
+                categoryMapper.selectOne(Wrappers.<PrdCategory>lambdaQuery()
+                        .eq(PrdCategory::getCategoryNo, categoryNo)
+                        .last("LIMIT 1")));
+        return row == null || row.getParentNo() == null || row.getParentNo().isBlank()
+                ? null : row.getParentNo();
+    }
 
     private List<PrdCategorySpec> activeBindings(String categoryNo) {
         return DataScopeContext.executeWithoutScope(() ->

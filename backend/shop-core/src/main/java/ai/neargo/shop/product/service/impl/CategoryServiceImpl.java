@@ -6,8 +6,10 @@ import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.product.dto.CategoryVO;
 import ai.neargo.shop.product.dto.OpsCategoryVO;
 import ai.neargo.shop.product.entity.PrdCategory;
+import ai.neargo.shop.product.entity.PrdCategorySpec;
 import ai.neargo.shop.product.entity.PrdGoods;
 import ai.neargo.shop.product.mapper.ProductMappers.CategoryMapper;
+import ai.neargo.shop.product.mapper.ProductMappers.CategorySpecMapper;
 import ai.neargo.shop.product.mapper.ProductMappers.GoodsMapper;
 import ai.neargo.shop.product.service.CategoryService;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -43,9 +45,13 @@ public class CategoryServiceImpl implements CategoryService {
 
     private final CategoryMapper categoryMapper;
     private final GoodsMapper goodsMapper;
+    /** 只用于启用类目时那道「有没有配规格」的闸门 */
+    private final CategorySpecMapper categorySpecMapper;
     private final ObjectMapper json;
 
-    public CategoryServiceImpl(CategoryMapper categoryMapper, GoodsMapper goodsMapper, ObjectMapper json) {
+    public CategoryServiceImpl(CategoryMapper categoryMapper, GoodsMapper goodsMapper,
+                               CategorySpecMapper categorySpecMapper, ObjectMapper json) {
+        this.categorySpecMapper = categorySpecMapper;
         this.categoryMapper = categoryMapper;
         this.goodsMapper = goodsMapper;
         this.json = json;
@@ -251,9 +257,36 @@ public class CategoryServiceImpl implements CategoryService {
                 throw BizException.of(ErrorCode.CATEGORY_PARENT_ARCHIVED);
             }
         }
+        /*
+         * **二级类目没配规格就不让启用。**
+         *
+         * <p>规格绑定挂在二级（线上 175 条全在这一层），而商品挂在类目上。
+         * 启用一个没配规格的二级类目，商家一往里放货，建品页因为一个维度都取不到
+         * 而掉回老模板的品类兜底 —— 组名叫「规格」、存进去没有 templateNo，
+         * 那批货的值编号永远盖不上，跨店比价与聚合对它们全部失效。
+         * 而这一切**没有任何报错**：建品成功、页面正常，只有那一列 code 从来没存在过。
+         *
+         * <p>线上 198 件历史商品里 197 件就是这么来的，V229 用一整支迁移回填，
+         * 至今还有 92 件填不了。所以这里当场拒绝，而不是给个可以点掉的提醒 ——
+         * 提醒挡不住「先启用、回头再配」，而回头往往就是几个月。
+         *
+         * <p>只管二级：一级不放商品；三级从父类目继承规格
+         * （见 SpecLibraryServiceImpl#specCategoryOf），父类目这道闸门已经守住了。
+         */
+        if (Integer.valueOf(2).equals(c.getLevel()) && !hasActiveSpec(categoryNo)) {
+            throw BizException.of(ErrorCode.CATEGORY_HAS_NO_SPEC);
+        }
         c.setStatus(ACTIVE);
         categoryMapper.updateById(c);
         return toOpsVO(c, counts(categoryNo));
+    }
+
+    /** 这个类目有没有至少一条启用中的规格绑定。 */
+    private boolean hasActiveSpec(String categoryNo) {
+        Long n = categorySpecMapper.selectCount(Wrappers.<PrdCategorySpec>lambdaQuery()
+                .eq(PrdCategorySpec::getCategoryNo, categoryNo)
+                .eq(PrdCategorySpec::getStatus, ACTIVE));
+        return n != null && n > 0;
     }
 
     // ───────────────────────────────────────────────────────────────────

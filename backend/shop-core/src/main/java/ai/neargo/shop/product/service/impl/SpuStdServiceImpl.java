@@ -65,11 +65,16 @@ public class SpuStdServiceImpl implements SpuStdService {
     }
 
     @Override
-    public PageData<SpuStdVO> list(String keyword, String categoryNo, boolean showArchived,
-                                   long page, long size) {
+    public PageData<SpuStdVO> list(String keyword, String categoryNo, String source,
+                                   boolean showArchived, long page, long size) {
         LambdaQueryWrapper<PrdSpuStd> w = Wrappers.<PrdSpuStd>lambdaQuery()
                 .eq(!showArchived, PrdSpuStd::getStatus, PrdSpuStd.ACTIVE)
-                .eq(notBlank(categoryNo), PrdSpuStd::getCategoryNo, categoryNo);
+                .eq(notBlank(categoryNo), PrdSpuStd::getCategoryNo, categoryNo)
+                /*
+                 * **按出处筛**。导进来的那 297 条众包数据（source=OFF）全是 ARCHIVED，
+                 * 要逐条过目才能放出去；混在运营自己录的那些里面翻，第一步就没法做。
+                 */
+                .eq(notBlank(source), PrdSpuStd::getSource, source);
         if (notBlank(keyword)) {
             w.and(q -> q.like(PrdSpuStd::getTitle, keyword)
                     .or().like(PrdSpuStd::getKeywords, keyword)
@@ -133,6 +138,34 @@ public class SpuStdServiceImpl implements SpuStdService {
         t.setStatus(PrdSpuStd.ARCHIVED);
         DataScopeContext.executeWithoutScope(() -> mapper.updateById(t));
         return toVOs(List.of(t)).get(0);
+    }
+
+    @Override
+    @Transactional
+    public int bulkStatus(List<String> stdNos, String status) {
+        if (stdNos == null || stdNos.isEmpty()) {
+            return 0;
+        }
+        if (!PrdSpuStd.ACTIVE.equals(status) && !PrdSpuStd.ARCHIVED.equals(status)) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        /*
+         * **一次上限 200 条**。上面是按页多选来的，一页最多 50，200 已经很宽；
+         * 不设上限的话，一个手搓的请求能把整库状态翻过去，而这张表是几百家店共用的主数据。
+         */
+        List<String> ids = stdNos.stream().filter(SpuStdServiceImpl::notBlank).distinct().toList();
+        if (ids.size() > 200) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        List<PrdSpuStd> rows = DataScopeContext.executeWithoutScope(() ->
+                mapper.selectList(Wrappers.<PrdSpuStd>lambdaQuery()
+                        .in(PrdSpuStd::getStdNo, ids)
+                        .ne(PrdSpuStd::getStatus, status)));   // 已经是目标状态的不动，也不计数
+        for (PrdSpuStd row : rows) {
+            row.setStatus(status);
+            DataScopeContext.executeWithoutScope(() -> mapper.updateById(row));
+        }
+        return rows.size();
     }
 
     @Override
@@ -217,7 +250,8 @@ public class SpuStdServiceImpl implements SpuStdService {
                 t.getTitle(), readMap(t.getTitleI18n()), t.getSubtitle(),
                 t.getCover(), readList(t.getImages()), readSpecGroups(t.getSpecGroups()),
                 t.getKeywords(), t.getStatus(),
-                t.getRefCount() == null ? 0 : t.getRefCount())).toList();
+                t.getRefCount() == null ? 0 : t.getRefCount(),
+                t.getBarcode(), t.getSource())).toList();
     }
 
     private String writeSpecGroups(List<MerchantGoodsService.SpecGroup> groups) {
