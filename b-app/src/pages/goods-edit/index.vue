@@ -1258,22 +1258,6 @@ function applyTemplateWith(tpl: SpecTemplate, o: { code?: string; label: string 
   applyTemplate({ ...tpl, options: [o] });
 }
 
-/** 把当前规格组存为「我的常用」，下次建品直接套 */
-async function saveAsTemplate(gi: number) {
-  const g = groups.value[gi];
-  if (!g?.name.trim()) {
-    uni.showToast({ title: t("goods.templateNeedName"), icon: "none" });
-    return;
-  }
-  try {
-    await api.mSaveSpecTemplate({ name: g.name.trim(), options: g.options });
-    templates.value = await api.mSpecTemplates(type.value);
-    uni.showToast({ title: t("goods.templateSaved"), icon: "none" });
-  } catch (e) {
-    uni.showToast({ title: (e as Error).message, icon: "none" });
-  }
-}
-
 /** 拉本店货架。取不到不该挡住建品：那时退回全量类目树，与改版前一样 */
 async function loadCategories() {
   // 取不到不该挡住整个编辑页：拿不到就退化成「不归类」，商品照样存得下
@@ -1431,120 +1415,21 @@ function pickDim(tpl: SpecTemplate) {
  * 商家确实会有平台没想到的维度（「辣度」「打磨程度」），
  * 堵死它的结果是他退回「＋ 规格组」手输，那才是真正掉出聚合的那条路。
  */
-async function addCustomGroup() {
-  if (groups.value.length >= 3) {
-    uni.showToast({ title: t("goods.groupLimit"), icon: "none" });
-    return;
-  }
-  const name = await new Promise<string>((resolve) => {
-    uni.showModal({
-      title: t("goods.customDim"),
-      content: t("goods.customDimHint"),
-      editable: true,
-      placeholderText: t("goods.groupNamePh"),
-      success: (r) => resolve(r.confirm ? (r.content ?? "") : ""),
-      fail: () => resolve(""),
-    });
-  });
-  if (!name.trim()) return;
-
-  /*
-   * **先问一句：是不是平台已经有的那个？**
-   *
-   * 后端有「与平台维度完全同名就直接用平台那个」的兜底，但它要商家恰好敲对字：
-   * 敲「味道」而平台叫「口味」就撞不上，于是多出一个只有他一家能用的维度，
-   * 他的货从此掉出跨店聚合 —— 而这个代价在界面上完全看不见。
-   *
-   * 判据放在端上：面板里那份 pickableDims 已经拿到了全部可选维度名，
-   * 不必为一次确认多打一个接口。近似只认两条最不会误判的
-   * （互相包含、只差一个字），宁可漏问也不要频繁地问错 ——
-   * 每次都弹的确认框，第三次起就没人读了。
-   */
-  const near = nearestDimName(name.trim());
-  if (near) {
-    const usePlatform = await new Promise<boolean>((resolve) => {
-      uni.showModal({
-        title: t("goods.dimNearTitle"),
-        content: t("goods.dimNearHint", { name: near.name }),
-        confirmText: t("goods.dimNearUse"),
-        cancelText: t("goods.dimNearKeep"),
-        success: (r) => resolve(!!r.confirm),
-        fail: () => resolve(false),
-      });
-    });
-    if (usePlatform) {
-      pickDim(near);
-      return;
-    }
-  }
-
-  try {
-    const dim = await api.mAddSpecDim(name.trim(), []);
-    /*
-     * 后端可能把它归到平台已有的维度上（重名兜底）。**那时不该再加一组** ——
-     * 他要的维度已经在页面上了，再加一个同名组只会让两组抢同一批 SKU 轴。
-     */
-    if (groups.value.some((g) => g.templateNo === dim.templateNo)) {
-      uni.showToast({ title: t("goods.dimAlready"), icon: "none" });
-    } else {
-      groups.value.push({ name: dim.name, options: [""], templateNo: dim.templateNo });
-      rebuild();
-    }
-    showDimPicker.value = false;
-    pickableDims.value = [];
-    await loadTemplates();
-  } catch (e) {
-    uni.showToast({ title: (e as Error).message, icon: "none" });
-  }
+/**
+ * 去「商品规格」加新的规格或档位。
+ *
+ * <p>**新增只在那一处。** 那里加一次全店通用、有编号、参与跨店比价；
+ * 在建品页手输只对这一件商品有效，而且从此掉出聚合 —— 代价看不见，
+ * 所以不能把这条路留在这里让人顺手走。
+ */
+function gotoMySpecs() {
+  showDimPicker.value = false;
+  uni.navigateTo({ url: ROUTES.mySpecs });
 }
 
 function removeGroup(i: number) {
   groups.value.splice(i, 1);
   rebuild();
-}
-
-function addOption(gi: number) {
-  const g = groups.value[gi]!;
-  g.options.push("");
-  // 手加的选项没有 code：它不是模板里的值，不该假装能参与聚合
-  if (g.codes) g.codes.push(undefined);
-}
-
-/**
- * 手改了模板带来的选项文字。
- *
- * <p>两件事：该位置原来的 code 作废（值已经不是模板那个值了），
- * 以及 —— **如果这一组是平台维度，把新写的这一档注册成自有值**。
- *
- * <p>为什么要注册：不注册的话它只是一个字符串，这件货的这个规格从此不参与
- * 跨店比价（线上 378 件商品 0 个 optionCode 就是这么来的）。注册之后它挂在
- * 平台的那根轴上，「谁家 750g 的米更便宜」才成立。
- *
- * <p>撞上平台已有的那一档时后端不新建，直接把那一档返回来 ——
- * 于是「自定义」不会变成制造重复值的机器。
- */
-async function onOptionEdited(gi: number, oi: number) {
-  const g = groups.value[gi]!;
-  const tpl = templates.value.find((x) => x.templateNo === g.templateNo);
-  const original = tpl?.options[oi]?.label;
-  const text = (g.options[oi] ?? "").trim();
-  if (g.codes && original !== undefined && text !== original) g.codes[oi] = undefined;
-  rebuild();
-
-  // 平台维度（templateNo 是 dimNo）下的新档才注册；自建维度里的选项在建维度时一起落
-  const known = tpl?.options.some((o) => o.label === text);
-  if (!text || !g.templateNo || !g.templateNo.startsWith("SD_") || known) return;
-  try {
-    const v = await api.mAddSpecValue(g.templateNo, text);
-    // 后端可能把它归到平台已有的那一档：以返回的文案为准，省得两处不一致
-    g.options[oi] = v.label;
-    if (g.codes) g.codes[oi] = v.code || undefined;
-    // 值池里多出来的这一档要能马上再选到
-    await loadTemplates();
-    rebuild();
-  } catch (e) {
-    uni.showToast({ title: (e as Error).message, icon: "none" });
-  }
 }
 
 /**
@@ -1603,53 +1488,63 @@ const dimGroups = computed(() => [
 ]);
 
 /**
- * 这一组还能点进来的平台档位。
- *
- * <p>按 `templateNo`（= dimNo）找回模板，扣掉已经填进去的 —— 平台维护的顺序
- * 就是运营在「类目 × 规格」里排的那个顺序，常用档位排在前面。
- *
- * <p>自建维度（`SD_` 之外）和手建的组没有模板，返回空：这里不该猜。
- */
-function pickableFor(gi: number): SpecOption[] {
-  const g = groups.value[gi];
-  if (!g?.templateNo) return [];
-  /*
-   * **两处都要找。** `templates` 只有本类目配好的那几条，而从选择面板挑来的
-   * 通用维度（口味、颜色）在 `pickableDims` 里 —— 只查前者的话，
-   * 他挑完通用维度反倒回到手输，而手输的值没有值编号，参与不了聚合：
-   * 「先看后挑」这一步的收益到这里就漏光了。
-   */
-  const tpl = templates.value.find((t) => t.templateNo === g.templateNo)
-    ?? pickableDims.value.find((t) => t.templateNo === g.templateNo);
-  if (!tpl) return [];
-  const used = new Set(g.options.map((o) => o.trim()).filter(Boolean));
-  return tpl.options.filter((o) => !used.has(o.label));
-}
-
-/**
  * 点一个档位填进去。**优先填进第一个空格子**，没有空格子才追加 ——
  * 否则自动建组留下的那个空输入框会一直杵在列表最上面，
  * 而他点了三下之后要回过头去删它。
  */
-function pickValue(gi: number, o: SpecOption) {
+/**
+ * 这一组能出现的**全部**档位：本店规格库里配的 ∪ 这件商品已经在用的。
+ *
+ * <p>并上「已经在用的」是为了老数据：早年手输的值不在规格库里，
+ * 不并的话它们会从界面上消失，而商品身上还带着 —— 他会以为规格丢了。
+ */
+function allOptionsOf(gi: number): SpecOption[] {
   const g = groups.value[gi];
-  if (!g) return;
-  const slot = g.options.findIndex((x) => !x.trim());
-  if (slot >= 0) {
-    g.options[slot] = o.label;
-    if (g.codes) g.codes[slot] = o.code || undefined;
-    else g.codes = g.options.map((_, i) => (i === slot ? o.code || undefined : undefined));
-  } else {
-    g.options.push(o.label);
-    if (g.codes) g.codes.push(o.code || undefined);
-  }
-  rebuild();
+  if (!g) return [];
+  const tpl = templates.value.find((t) => t.templateNo === g.templateNo)
+    ?? pickableDims.value.find((t) => t.templateNo === g.templateNo);
+  const out: SpecOption[] = [...(tpl?.options ?? [])];
+  const known = new Set(out.map((o) => o.label));
+  g.options.forEach((label, i) => {
+    const l = label.trim();
+    if (l && !known.has(l)) {
+      out.push({ label: l, code: g.codes?.[i] } as SpecOption);
+      known.add(l);
+    }
+  });
+  return out;
 }
 
-function removeOption(gi: number, oi: number) {
-  const g = groups.value[gi]!;
-  g.options.splice(oi, 1);
-  g.codes?.splice(oi, 1);
+/** 这一档这件商品有没有 */
+function optionOn(gi: number, o: SpecOption): boolean {
+  return !!groups.value[gi]?.options.some((x) => x.trim() === o.label);
+}
+
+/**
+ * 点一下开合这一档。
+ *
+ * <p><b>建品页只做减法。</b>新的规格与档位统一在「商品规格」里加 ——
+ * 那里加一次全店通用，而在建品页手输的值没有值编号，
+ * 三家店的「500g」「五百克」「0.5kg」永远聚不到一起，比价也就不成立。
+ * 这里能点回来的只是**本店已有的那些**，不是新造。
+ *
+ * <p>顺序始终按规格库的顺序重排，不按他点击的先后 ——
+ * 否则同一个维度在不同商品上顺序不同，价格表看起来像是乱的。
+ */
+function toggleOption(gi: number, o: SpecOption) {
+  const g = groups.value[gi];
+  if (!g) return;
+  const on = optionOn(gi, o);
+  const next = new Set(g.options.map((x) => x.trim()).filter(Boolean));
+  if (on) {
+    if (next.size <= 1) return;   // 最后一档不给关：一个档位都没有的规格组没有意义
+    next.delete(o.label);
+  } else {
+    next.add(o.label);
+  }
+  const all = allOptionsOf(gi);
+  g.options = all.filter((x) => next.has(x.label)).map((x) => x.label);
+  g.codes = all.filter((x) => next.has(x.label)).map((x) => x.code || undefined);
   rebuild();
 }
 
@@ -2424,15 +2319,11 @@ async function save(thenSubmit = false) {
         本来就该是两种默认。
       -->
       <view v-if="!specOpen" class="askspec" @tap="rememberSpecOpen(true)">
-        <view class="askspec__l">
-          <text class="askspec__t">{{ $t("goods.specAsk") }}</text>
-          <text class="sh-muted askspec__s">{{ $t("goods.specAskHint") }}</text>
-        </view>
+        <text class="askspec__t">{{ $t("goods.specAsk") }}</text>
         <text class="askspec__go">›</text>
       </view>
 
       <template v-if="specOpen">
-      <text class="sh-muted hint">{{ $t("goods.specHint") }}</text>
       <!--
         **代价当场可见。** 「3 × 2 = 6 个规格，要填 6 个价和库存」——
         此前页面从不提这件事，商家加完第二个维度才发现要填一屏，而那时已经填了一半。
@@ -2535,52 +2426,41 @@ async function save(thenSubmit = false) {
                   @tap="applyTemplate(tpl)">{{ tpl.name }}</text>
           </view>
         </view>
+        <!--
+          平台真的没有的维度（辣度、打磨程度）去「商品规格」加 ——
+          **新增统一在那一处**：那里加一次全店通用、有编号、参与比价，
+          而在这里手输只对这一件商品有效，且从此掉出跨店聚合。
+        -->
         <view class="picker__sec">
-          <!-- 最后一条路：平台真的没有的维度（辣度、打磨程度）。堵死它他只会退回手输 -->
-          <text class="link" @tap="addCustomGroup">{{ $t("goods.customDim") }}</text>
-          <text class="sh-muted picker__hint">{{ $t("goods.customDimCost") }}</text>
+          <text class="link" @tap="gotoMySpecs">{{ $t("goods.manageSpecs") }}</text>
         </view>
       </view>
 
+      <!--
+        **规格名只读，档位只做减法。**
+
+        <p>名字与档位都来自「商品规格」—— 那里改一次全店通用。
+        在这里手输的话，值没有编号，三家店的「500g」「五百克」「0.5kg」
+        永远聚不到一起，而这正是平台养这个规格库的全部理由；
+        而且同一个名字在不同商品上被改成不同写法，谁也说不清哪个才算数。
+
+        <p>所以这一格只回答一个问题：**这件货有哪几档**。
+        本店有的全列在这儿，这件没有的点掉。点掉的还能点回来 ——
+        那是恢复，不是新造。
+      -->
       <view v-for="(g, gi) in groups" :key="gi" class="group">
         <view class="group__head">
-          <input
-            v-model="g.name"
-            class="field__input flex1"
-            :placeholder="$t('goods.groupNamePh')"
-            @blur="rebuild"
-          />
-          <text class="del" @tap="saveAsTemplate(gi)">☆</text>
+          <text class="group__name">{{ g.name }}</text>
           <text class="del" @tap="removeGroup(gi)">✕</text>
         </view>
         <view class="opts">
-          <view v-for="(o, oi) in g.options" :key="oi" class="opt">
-            <input
-              v-model="g.options[oi]"
-              class="opt__input"
-              :placeholder="$t('goods.optionPh')"
-              @blur="onOptionEdited(gi, oi)"
-            />
-            <text v-if="g.options.length > 1" class="del small" @tap="removeOption(gi, oi)">✕</text>
-          </view>
-          <text class="link" @tap="addOption(gi)">{{ $t("goods.addOption") }}</text>
-        </view>
-        <!--
-          平台给这一维度配好的档位，点一下就进去。**从「打字」降到「点一下」** ——
-          手输的值没有规格编码，参与不了跨店聚合（三家店的「500g」「五百克」「0.5kg」
-          永远聚不到一起），而这个代价在输入框里是完全看不见的。
-          已经选进去的不再出现在这里：留着只会让他点出重复项。
-        -->
-        <view v-if="pickableFor(gi).length" class="picks">
-          <text class="sh-muted picks__hint">{{ $t("goods.pickValueHint") }}</text>
-          <view class="picks__row">
-            <text
-              v-for="o in pickableFor(gi)"
-              :key="o.code || o.label"
-              class="sh-chip picks__chip"
-              @tap="pickValue(gi, o)"
-            >{{ o.label }}</text>
-          </view>
+          <text
+            v-for="o in allOptionsOf(gi)"
+            :key="o.code || o.label"
+            class="sh-chip opt"
+            :class="{ 'opt--off': !optionOn(gi, o) }"
+            @tap="toggleOption(gi, o)"
+          >{{ o.label }}</text>
         </view>
       </view>
       </template>
@@ -2890,24 +2770,14 @@ async function save(thenSubmit = false) {
   display: flex;
   align-items: center;
   gap: 16rpx;
-  padding: 20rpx 0 4rpx;
-}
-
-.askspec__l {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 4rpx;
+  padding: 18rpx 0 2rpx;
 }
 
 .askspec__t {
+  flex: 1;
   font-size: 28rpx;
   font-weight: 600;
-  color: var(--sh-ink);
-}
-
-.askspec__s {
-  font-size: 24rpx;
+  color: var(--sh-primary);
 }
 
 .askspec__go {
@@ -2925,6 +2795,28 @@ async function save(thenSubmit = false) {
   font-weight: 600;
   color: var(--sh-primary);
   margin-top: 8rpx;
+}
+
+/* 规格名只读：它来自「商品规格」，在这儿改会让同一个名字在不同商品上写法不一 */
+.group__name {
+  flex: 1;
+  font-size: 28rpx;
+  font-weight: 600;
+  color: var(--sh-ink);
+}
+
+/*
+  档位是一排开关：本店有的全列出来，这件货没有的点掉。
+  关掉的压成描边灰字 —— 仍看得见「本店还有这一档」，与「这件货有」区分得开。
+*/
+.opt {
+  font-size: 24rpx;
+}
+
+.opt--off {
+  background: transparent;
+  border: 2rpx solid var(--sh-line);
+  color: var(--sh-sub);
 }
 
 /* 「收起」压在「更多规格」旁边：同一行两个链接，主次要分得出来 */
