@@ -9,6 +9,15 @@ spring:
       port: 6379
 
 shop:
+  # 人档手机号的 pepper 与 AES 密钥。
+  #
+  # **测试必须配上**，否则 `PhoneCrypto.encrypt` 返回 null、密文一直是空的 ——
+  # 于是所有「不给完整手机号」的断言都在一个**根本没有手机号可泄露**的环境里跑，
+  # 它们永远是绿的，也永远守不住任何东西（把脱敏改成明文返回，用例照样绿）。
+  # 这两个值只用于测试，与生产无关；生产的在服务器 .env 里，配了就不能换。
+  person:
+    phone-pepper: test-pepper-do-not-use-in-prod
+    phone-key: YWktc2hvcC10ZXN0LWtleS0zMmJ5dGVzLSEhYWFhYSE=
   web:
     # 对外域名。**生产默认空** —— 空时 StoreLinkService 返回 null，端上只显示
     # 小程序码、不显示链接（宁可少一样东西，也不发一个点不开的链接给商家去印）。

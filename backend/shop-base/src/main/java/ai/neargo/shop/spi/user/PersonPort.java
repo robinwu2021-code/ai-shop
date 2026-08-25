@@ -35,6 +35,17 @@ public interface PersonPort {
      *                  那条路要二次确认与审计日志，不走这个 Port
      * @param userNo    没绑账号时为空。会员据此判断这是不是「线索」
      */
+    /**
+     * 按手机号后四位找人档（运营端 P8）。
+     *
+     * <p><b>只接受恰好四位</b>，调用方负责校验。给前缀的话，运营端就成了
+     * 一本可翻的全平台通讯录 —— 而运营的读权限比商家宽得多。
+     *
+     * <p>后四位当然会撞：这正是要的效果 —— 运营看到几个候选，
+     * 再按别的线索（商家、下单时间）确认是哪一个，而不是直接拿到一个人。
+     */
+    java.util.List<String> findByPhoneTail(String phoneTail);
+
     record PersonView(String personNo, String phoneTail, String userNo) {
     }
 }

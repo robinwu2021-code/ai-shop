@@ -106,6 +106,42 @@ public final class MemberVOs {
                                  boolean reachOptOut, long joinedAt) {
     }
 
+    /**
+     * 运营侧看到的一条会员（P8）。
+     *
+     * @param phoneTail <b>只有后四位</b>。运营端不给完整号 ——
+     *                  给了就等于全平台会员库对内公开
+     * @param entityName 归属商家。只给主体号的话，运营端要自己去别处翻
+     */
+    public record OpsMemberVO(String memberNo, String personNo, String phoneTail,
+                              String entityNo, String entityName, String status,
+                              String source, String level, int orderCount,
+                              long totalSpentMinor, boolean reachOptOut, long joinedAt) {
+    }
+
+    /**
+     * 人档详情（运营侧）。
+     *
+     * @param userNo     绑没绑账号。空 = 只是个被商家录进来的号
+     * @param memberships 他是哪几家店的会员 —— <b>这正是人档存在的理由</b>：
+     *                    一份人档串起几家商家的会员关系
+     * @param merges     合并历史。<b>常年应该是空的</b>：会员必须有手机号之后，
+     *                   只剩换号撞档与人工纠错两种，不空就说明别处错了
+     */
+    public record OpsPersonVO(String personNo, String phoneTail, String userNo,
+                              List<OpsMemberVO> memberships, List<String> merges) {
+    }
+
+    /**
+     * 触达健康度（运营侧）。
+     *
+     * @param optOutRate 退订率。<b>这是这条线唯一的健康指标</b> ——
+     *                   发得多不算成绩，发到有人关掉才是问题
+     */
+    public record ReachStatVO(String entityNo, String entityName, int sent, int members,
+                              int optOut, double optOutRate) {
+    }
+
     public record MemberSettingVO(String memberScope, boolean autoJoinOnOrder) {
     }
 

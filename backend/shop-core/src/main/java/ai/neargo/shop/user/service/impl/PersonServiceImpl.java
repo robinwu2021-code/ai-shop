@@ -103,6 +103,18 @@ public class PersonServiceImpl implements PersonService {
     }
 
     @Override
+    public java.util.List<String> findByPhoneTail(String phoneTail) {
+        if (phoneTail == null || phoneTail.length() != 4) {
+            return java.util.List.of();
+        }
+        return ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() ->
+                personMapper.selectList(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                                .<UsrPerson>lambdaQuery()
+                                .eq(UsrPerson::getPhoneTail, phoneTail))
+                        .stream().map(UsrPerson::getPersonNo).toList());
+    }
+
+    @Override
     public Optional<UsrPerson> find(String personNo) {
         if (personNo == null || personNo.isBlank()) {
             return Optional.empty();

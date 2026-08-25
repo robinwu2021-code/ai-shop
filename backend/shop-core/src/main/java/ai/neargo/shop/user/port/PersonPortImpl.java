@@ -37,6 +37,11 @@ public class PersonPortImpl implements PersonPort {
         return personService.find(personNo).map(PersonPortImpl::view);
     }
 
+    @Override
+    public java.util.List<String> findByPhoneTail(String phoneTail) {
+        return personService.findByPhoneTail(phoneTail);
+    }
+
     private static PersonView view(UsrPerson p) {
         return new PersonView(p.getPersonNo(), p.getPhoneTail(), p.getUserNo());
     }

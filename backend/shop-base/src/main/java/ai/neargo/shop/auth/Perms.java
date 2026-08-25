@@ -201,6 +201,32 @@ public final class Perms {
     public static final String MARKETING_CAMPAIGN_READ = "marketing:campaign:read";
     public static final String MARKETING_CAMPAIGN_UPDATE = "marketing:campaign:update";
 
+    // ── 会员与人档（P8）─────────────────────────────────────────────────────
+    /**
+     * 跨商家看会员名单与归属。
+     *
+     * <p><b>看得到人，但看不到完整手机号</b> —— 运营端一律只给后四位。
+     * 需要完整号的场景只有申诉处置，那条路要单独的权限码 + 二次确认 + 留痕。
+     */
+    public static final String MEMBER_MEMBER_READ = "member:member:read";
+
+    /** 人档：名下有哪些会员关系、绑了哪个账号、合并过什么 */
+    public static final String MEMBER_PERSON_READ = "member:person:read";
+
+    /**
+     * 人工合并人档。<b>不可逆</b>：合并之后两份会员关系归到一起，拆不回来。
+     * 与只读分开，因为它会改变「这个人是谁」这件事本身。
+     */
+    public static final String MEMBER_PERSON_MERGE = "member:person:merge";
+
+    /**
+     * 查看完整手机号（申诉处置）。
+     *
+     * <p><b>单独一个码，且每次调用都写审计</b>：这是整个系统里唯一能把
+     * 「后四位」还原成一个真实号码的地方。谁在什么时候看了谁的号，必须留得下来。
+     */
+    public static final String MEMBER_PHONE_REVEAL = "member:phone:reveal";
+
     // ── 商家治理 ────────────────────────────────────────────────────────────
     public static final String MERCHANT_APPLY_AUDIT = "merchant:apply:audit";
     public static final String MERCHANT_READ = "merchant:merchant:read";
@@ -447,6 +473,7 @@ public final class Perms {
                     GROWTH_ATTRIBUTION_READ)),
 
             Map.entry("GOODS_OPS", List.of(AFTERSALE_REFUND_READ,
+                    MEMBER_MEMBER_READ, MEMBER_PERSON_READ,
                     AFTERSALE_TICKET_READ, COMMUNITY_READ,
                     DASHBOARD_OVERVIEW_READ, GROUP_CAMPAIGN_AUDIT, GROUP_CAMPAIGN_READ,
                     MARKETING_CAMPAIGN_READ, MARKETING_CAMPAIGN_UPDATE, MARKETING_COUPON_ISSUE,

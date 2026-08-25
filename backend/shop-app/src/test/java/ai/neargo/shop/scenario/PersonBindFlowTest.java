@@ -46,6 +46,9 @@ class PersonBindFlowTest {
     }
 
     /** 每条用例用不同号段，避免共享库里互相撞唯一键 */
+    @org.springframework.beans.factory.annotation.Autowired
+    private ai.neargo.shop.user.service.PhoneCrypto phoneCrypto;
+
     private static int seq = 0;
 
     private static String phone() {
@@ -63,18 +66,26 @@ class PersonBindFlowTest {
     }
 
     @Test
-    @DisplayName("★ 人档不存明文：只有哈希与后四位；没配密钥时连密文都不存")
+    @DisplayName("★★ 人档不存明文：哈希、后四位、密文三列里都找不到那串号码")
     void phoneIsNeverStoredInPlaintext() {
         String p = phone();
         UsrPerson person = personService.resolveOrCreateByPhone(p);
 
         assertThat(person.getPhoneHash()).isNotBlank().isNotEqualTo(p);
         assertThat(person.getPhoneTail()).isEqualTo(p.substring(p.length() - 4));
+
         /*
-         * 测试环境没配 shop.person.phone-key，所以密文为空 —— 这是**刻意的失败方式**：
-         * 明文永不落库这条不打折，缺密钥时宁可日后让本人重新验证一次。
+         * **这条断言原来写的是「密文为空」**，理由是「测试环境没配密钥」——
+         * 于是它在一个**根本没有手机号可泄露**的环境里跑，永远绿，
+         * 也永远守不住任何东西：把明文直接写进 phone_enc，它照样绿。
+         *
+         * 2026-08-25 给测试配上密钥之后暴露了这一点。断言改成对着**意图**：
+         * 那一列里不能出现明文，而解出来必须是原号 —— 两句话缺一不可，
+         * 只查前者的话，存一个乱码也能过。
          */
-        assertThat(person.getPhoneEnc()).isNull();
+        assertThat(person.getPhoneEnc()).as("密文列里不能出现明文").doesNotContain(p);
+        assertThat(phoneCrypto.decrypt(person.getPhoneEnc()))
+                .as("解出来要还是那个号，否则存的是别的东西").isEqualTo(p);
     }
 
     @Test

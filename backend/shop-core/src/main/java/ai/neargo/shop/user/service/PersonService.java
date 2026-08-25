@@ -20,6 +20,14 @@ public interface PersonService {
     Optional<UsrPerson> find(String personNo);
 
     /**
+     * 按手机号后四位找人档（运营端 P8）。
+     *
+     * <p>后四位会撞，这是有意的：运营看到几个候选再按别的线索确认，
+     * 而不是输四位就直接拿到一个人。
+     */
+    java.util.List<String> findByPhoneTail(String phoneTail);
+
+    /**
      * 登录成功之后把账号绑到人档上。<b>三种情况，两种一步到位</b>：
      *
      * <ul>
