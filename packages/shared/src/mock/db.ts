@@ -1549,6 +1549,72 @@ export const db = {
     },
   ] as Array<import("../types").Qualification>,
 
+  /*
+   * **商品参数**（usage_type=PROP）。与 specTemplates 分开存，
+   * 与后端分成 /biz/spec-templates 与 /biz/spec-props 两条端点同构 ——
+   * 混在一张表里靠字段过滤的话，端上漏过滤一次就把「产地」建成规格了，
+   * 而那正是这一期要消灭的东西。
+   *
+   * 线上 V196 给蔬菜/水果配的 PROP 是产地与保质期。
+   */
+  specProps: [
+    {
+      templateNo: "SD_ORIGIN",
+      scope: "PLATFORM" as const,
+      categoryType: CATEGORY_TYPE.FRESH,
+      categoryNo: "CAT110",
+      name: "产地",
+      options: [
+        { code: "ORGLOCAL", label: "本地" },
+        { code: "ORGCN", label: "国产" },
+        { code: "ORGIMP", label: "进口" },
+      ],
+    },
+    {
+      templateNo: "SD_SHELF_LIFE",
+      scope: "PLATFORM" as const,
+      categoryType: CATEGORY_TYPE.FRESH,
+      categoryNo: "CAT110",
+      name: "保质期",
+      options: [
+        { code: "SL3D", label: "3 天" },
+        { code: "SL7D", label: "7 天" },
+      ],
+    },
+    {
+      templateNo: "SD_ORIGIN_F",
+      scope: "PLATFORM" as const,
+      categoryType: CATEGORY_TYPE.FRESH,
+      categoryNo: "CAT120",
+      name: "产地",
+      options: [
+        { code: "ORGLOCAL", label: "本地" },
+        { code: "ORGCN", label: "国产" },
+        { code: "ORGIMP", label: "进口" },
+      ],
+    },
+    {
+      templateNo: "SD_MATERIAL",
+      scope: "PLATFORM" as const,
+      categoryType: CATEGORY_TYPE.NORMAL,
+      categoryNo: "CAT610",
+      name: "材质",
+      options: [
+        { code: "M_METAL", label: "金属" },
+        { code: "M_PLASTIC", label: "塑料" },
+      ],
+    },
+    {
+      /* 量纲型：平台不枚举值，让商家自己填 —— 端上要渲染成输入框而不是一排 chip */
+      templateNo: "SD_POWER",
+      scope: "PLATFORM" as const,
+      categoryType: CATEGORY_TYPE.NORMAL,
+      categoryNo: "CAT610",
+      name: "功率",
+      options: [],
+    },
+  ],
+
   specTemplates: [
     {
       templateNo: "ST_FRESH_WEIGHT",

@@ -283,6 +283,8 @@ export default {
     noMore: "لا مزيد من العناصر",
     specs: "الخيارات", specHint: "",
     specAsk: "إضافة خيارات",
+    params: "تفاصيل المنتج",
+    paramsHint: "تُعرض للمشتري؛ لا تؤثر على السعر أو المخزون",
     moreFromCat: "أيضاً لهذه الفئة",
     moreOther: "المزيد ({n})",
     moreFold: "أقل",

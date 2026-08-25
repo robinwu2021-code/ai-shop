@@ -1882,6 +1882,8 @@ export const mockApi: MerchantApi = {
       if (payload.detail !== undefined) seed.detail = payload.detail;
       // 详情图与 images 同一口径：不判空的话，只改标题就把详情图清空
       if (payload.detailImages !== undefined) seed.detailImages = payload.detailImages;
+      // 商品参数同一口径：不判空的话，只改标题就把参数清空
+      if (payload.params !== undefined) seed.params = payload.params;
       seed.price = price;
       seed.priceByMarket = priceByMarket;
       seed.specGroups = specGroups as (typeof seed.specGroups);
@@ -1923,6 +1925,7 @@ export const mockApi: MerchantApi = {
       cover: payload.cover || "📦",
       detail: payload.detail,
       detailImages: payload.detailImages ?? [],
+      params: payload.params ?? [],
       // 端上没传就给一个占位，传了就用他上传的那几张
       images: payload.images?.length ? payload.images : ["📦"],
       fulfillments: payload.fulfillments?.length ? payload.fulfillments : ["STORE_PICKUP"],
@@ -2293,6 +2296,17 @@ export const mockApi: MerchantApi = {
       (t) => t.scope === "MERCHANT" && t.merchantNo === merchantNo && !seen.has(t.templateNo),
     );
     return delay([...cat, ...universal, ...mine]);
+  },
+
+  /**
+   * 这一类的商品参数。**只按类目给**，不像销售规格那样还兜底通用池 ——
+   * 参数是「这一类的货该标什么」，跨类目摊开毫无意义
+   * （给一袋菜推荐「功率」）。
+   */
+  async mSpecProps(categoryNo) {
+    const picked = categoryNo?.trim();
+    if (!picked) return delay([]);
+    return delay(db.specProps.filter((t) => t.categoryNo === picked));
   },
 
   /**

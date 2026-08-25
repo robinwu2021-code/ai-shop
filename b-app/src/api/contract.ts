@@ -82,6 +82,7 @@ import type {
   SettleBill,
   ShareKit,
   SpecTemplate,
+  GoodsParam,
   SpuStd,
   StoreProfile,
   StoreQrcode,
@@ -240,6 +241,13 @@ export interface GoodsDraft {
    * <p>与 `images` 分开：那是详情页顶部可左右滑的方图，这些是正文下方一张接一张的长图。
    */
   detailImages?: string[];
+  /**
+   * **商品参数**（产地 / 保质期 / 材质…）。**不传 = 不改**，传空数组 = 清空。
+   *
+   * <p>与 `specGroups` 的差别是性质不是范围：那些进笛卡尔积生成 SKU，
+   * 这些一项也不进 —— 买家不用挑，只是看。
+   */
+  params?: GoodsParam[];
   /** 空数组 = 单规格。非空则 skus 必须是各组选项的笛卡尔积 */
   specGroups: SpecGroupDraft[];
   /** SKU 列表。单规格商品也有且仅有一条 */
@@ -767,6 +775,18 @@ export interface MerchantApi {
    * 于是多出一个只有他一家能用的维度，他的货从此掉出跨店聚合。
    */
   mPickableDims(categoryNo?: string): Promise<SpecTemplate[]>;
+  /**
+   * 这一类的**商品参数**（产地 / 保质期 / 材质…）。
+   *
+   * <p>与 {@link mSpecTemplates} 的差别不是范围而是**性质**：那些是销售规格，
+   * 买家要挑一档、每档单独定价单独算库存；这些只描述，不分 SKU、不影响价格。
+   * 混在一起的后果是「本地 × 500g」变成一个要单独定价备货的行，
+   * 而他只想说「这袋菜是本地的」。
+   *
+   * <p>形状复用 `SpecTemplate`：后端就是同一条装配链路出来的（只换 usage 判据），
+   * 端上再造一个几乎一样的类型只会让两边慢慢长歪。
+   */
+  mSpecProps(categoryNo?: string): Promise<SpecTemplate[]>;
   /**
    * 在**平台维度**下加一个自己的规格值：「我这袋是 750g，平台没这一档」。
    *

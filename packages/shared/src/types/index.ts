@@ -934,6 +934,23 @@ export interface VirtualSpec {
   deliverDesc: string;
 }
 
+/**
+ * 一条商品参数。
+ *
+ * <p>`valueNo` 是平台值池里的编号，**有它才参与筛选与跨店比较**；
+ * 量纲型（功率、净重）平台不枚举值，那时只有 `label`。
+ */
+export interface GoodsParam {
+  /** 所属规格维度（`usage_type=PROP`） */
+  dimNo: string;
+  /** 平台值编号。量纲型没有 */
+  valueNo?: string;
+  /** 平台值编码，跨店可比 */
+  code?: string;
+  /** 展示文案 */
+  label: string;
+}
+
 export interface Goods {
   /** 商品单号 */
   goodsNo: string;
@@ -953,6 +970,13 @@ export interface Goods {
    * 一张 1:3 的长图被塞进方形轮播里。
    */
   detailImages?: string[];
+  /**
+   * **商品参数**（产地 / 保质期 / 材质…）—— 规格库里 `usage_type=PROP` 的那批。
+   *
+   * <p>与 `specGroups` 形状相近、语义相反：那个的每一项都会进笛卡尔积生成 SKU，
+   * 这个一项也不进。买家不用挑，只是看；筛选靠 `code` / `valueNo`。
+   */
+  params?: GoodsParam[];
   /** 商品形态，与所属类目的 type 一致。决定详情页用哪套字段 */
   type: CategoryType;
   /** 所属类目 */

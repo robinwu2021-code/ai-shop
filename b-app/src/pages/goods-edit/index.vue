@@ -21,7 +21,7 @@ import type { GoodsGuess } from "@/api/contract";
 import { CATEGORY_TYPE, MARKETS, TEMPLATE_TO_TYPE } from "@shared/utils/constants";
 import { MAX_IMAGE_BYTES, pickImages } from "@shared/ports/media";
 import { toMajor, toMinor } from "@shared/utils/money";
-import type { Category, CategoryType, CurrencyCode, MarketId, I18nText, SpecOption, SpecTemplate, SpuStd, StoreCategory } from "@shared/types";
+import type { Category, CategoryType, CurrencyCode, MarketId, I18nText, GoodsParam, SpecOption, SpecTemplate, SpuStd, StoreCategory } from "@shared/types";
 
 const { t } = useI18n();
 const merchant = useMerchantStore();
@@ -595,7 +595,7 @@ async function select(path: Category[]) {
    * 与鲜花共用「包装：袋装/瓶装/罐装」，等于没有推荐）。类目级模板才有信息量，
    * 而它只有带上 categoryNo 才拿得到。
    */
-  await Promise.all([loadTemplates(), loadPickableDims()]);
+  await Promise.all([loadTemplates(), loadPickableDims(), loadProps()]);
   autoApplyDefaultSpec();
   // 展不展开取他上次在这一类的选择；没记录过就看有没有带出规格组
   restoreSpecOpen();
@@ -1512,6 +1512,59 @@ const moreFromCategory = computed(() =>
  * 不是「哪些类目该用它」，所以手机数码下面会并排摆着口味、等级、尺码。
  * 不拦着他选，但也不把二十来个无关维度摆在眼前。
  */
+/*
+ * 商品参数（V250）：产地 / 保质期 / 材质这一类。
+ *
+ * <p><b>与销售规格分开的理由是性质，不是范围</b>：规格进笛卡尔积生成 SKU，
+ * 每一档要单独定价与备库存；参数一项也不进，买家不用挑，只是看。
+ * 混在一起的话「本地 × 500g」变成一个要单独定价备货的行，
+ * 而他只想说「这袋菜是本地的」。
+ */
+const propDims = ref<SpecTemplate[]>([]);
+/** dimNo → 已选的那一项。量纲型没有候选值，存的是他自己填的文字 */
+const paramValues = ref<Record<string, GoodsParam>>({});
+
+async function loadProps() {
+  propDims.value = await api.mSpecProps(categoryNo.value || undefined).catch(() => []);
+}
+
+/** 点一下选中/取消。**再点一次取消** —— 不给「清空」按钮，一排 chip 自己就是开关 */
+function pickParam(dim: SpecTemplate, o: SpecOption) {
+  const cur = paramValues.value[dim.templateNo];
+  if (cur && cur.label === o.label) {
+    const next = { ...paramValues.value };
+    delete next[dim.templateNo];
+    paramValues.value = next;
+    return;
+  }
+  paramValues.value = {
+    ...paramValues.value,
+    /*
+     * **不填 valueNo。** 端上手里只有 code —— 它才是跨店可比的那个稳定编码，
+     * valueNo 是库里的行号。伪造一个行号发上去，后端存下来就是一条对不上的引用。
+     * 真要它的话该由后端按 dimNo + code 反查（与规格值那侧的 resolveValueNos 同一条路）。
+     */
+    [dim.templateNo]: { dimNo: dim.templateNo, code: o.code, label: o.label },
+  };
+}
+
+/**
+ * 量纲型（功率、净重）：平台不枚举值，他自己填。没有 code，因此不参与跨店比较。
+ *
+ * <p>从事件对象里取值而不是 `v-model`：`paramValues` 是一张
+ * dimNo → 值 的表，绑到它的某一项上要给每个维度各造一个 ref。
+ * 而 **uni 的事件对象是包装过的**，三端的 `detail` 形状不完全一致，
+ * 所以这里收得宽一点，取不到就当没填。
+ */
+function typeParam(dim: SpecTemplate, e: unknown) {
+  const detail = (e as { detail?: { value?: unknown } } | undefined)?.detail;
+  const v = String(detail?.value ?? "").trim();
+  const next = { ...paramValues.value };
+  if (v) next[dim.templateNo] = { dimNo: dim.templateNo, label: v };
+  else delete next[dim.templateNo];
+  paramValues.value = next;
+}
+
 const moreOther = computed(() => {
   /*
    * **还要跟前面那批去重。** 通用池里的「包装」与类目绑定的「包装」是
@@ -1718,6 +1771,12 @@ onLoad(async (q) => {
   detail.value = g.detail ?? "";
   // 详情图与轮播图同理：保存整份覆盖，不回显就等于「打开编辑页再保存一次就清空」
   detailImages.value = [...(g.detailImages ?? [])];
+  /*
+   * 商品参数要回显 —— 保存是整份覆盖，不回显就等于
+   * 「打开编辑页再保存一次，参数全没了」。与轮播图、三语原文是同一个形状的故障
+   * （都不报错，只是数据静静少了一截）。
+   */
+  paramValues.value = Object.fromEntries((g.params ?? []).map((x) => [x.dimNo, x]));
   isDraft.value = g.status === "DRAFT";
   type.value = g.type;
   categoryNo.value = g.categoryNo ?? "";
@@ -1728,6 +1787,8 @@ onLoad(async (q) => {
    */
   specOpen.value = (g.specGroups?.length ?? 0) > 0;
   if (!specOpen.value) restoreSpecOpen();
+  // 参数的候选也要取：不取的话编辑页那一段是空的，而商品身上明明带着值
+  void loadProps();
   /*
    * 履约方式与几段可选字段**都要回显**：保存是整份覆盖，回显不全就等于每保存一次
    * 清一次 —— 与轮播图、三语原文是同一个形状的故障（都不报错）。
@@ -1805,6 +1866,12 @@ async function save(thenSubmit = false) {
       images: images.value,
       // 详情图同理：空数组 = 清空，不传 = 不改。删光了不发就删不掉
       detailImages: detailImages.value,
+      /*
+       * 商品参数。**整份覆盖**（与 detailImages 同一口径）——
+       * 只发改过的那几条会让「取消一个参数」变成不可能：后端分不出
+       * 「他没动这一项」与「他把这一项去掉了」。
+       */
+      params: Object.values(paramValues.value),
       // 溯源。不传 = 自建品 / 已脱离 —— 后端据此清掉 std_no
       stdNo: stdNo.value || undefined,
       // 必填由 `missing` 守着（按钮点不动），这里不再兜 undefined ——
@@ -2262,10 +2329,12 @@ async function save(thenSubmit = false) {
           <text class="kv__k">{{ $t("goods.arrivalDesc") }}</text>
           <input v-model="fresh.arrivalDesc" class="field__input" />
         </view>
-        <view class="kv">
-          <text class="kv__k">{{ $t("goods.origin") }}</text>
-          <input v-model="fresh.origin" class="field__input" />
-        </view>
+        <!--
+          **产地这一格搬走了。** 它与规格库里的 `SD_ORIGIN`（usage_type=PROP）
+          是两套东西：商家在一处填了，另一处还是空的，而筛选读的是哪一处他不知道。
+          现在统一走上面的「商品参数」—— 那里的值带 code，参与筛选与跨店比较，
+          这个自由输入框不带。留着两处的代价是「填了没生效」，而它不报错。
+        -->
         <!-- 用 chip 而不是 switch：全仓没有第二处 switch，
              而 uni 的 switch 事件类型在 vue-tsc 下要额外收窄，不值得为一个开关引入 -->
         <view class="kv">
@@ -2495,6 +2564,45 @@ async function save(thenSubmit = false) {
         {{ $t("goods.manageSpecs") }}
       </text>
       </template>
+    </view>
+
+    <!--
+      **商品参数**：产地 / 保质期 / 材质这一类。
+
+      <p>与上面那张卡分开，因为它们的性质相反：规格进笛卡尔积生成 SKU、
+      每一档要单独定价备库存；参数一项也不进，买家不用挑，只是看。
+      摆在同一张卡里的话，商家没有任何线索分辨「填这个会不会让我多填一屏价格」。
+
+      <p>只在这一类配了参数时才出现 —— 没配的类目不该多一张空卡。
+    -->
+    <view v-if="propDims.length" class="sh-card mt">
+      <view class="sec">
+        <text class="sh-h2">{{ $t("goods.params") }}</text>
+      </view>
+      <text class="sh-muted hint">{{ $t("goods.paramsHint") }}</text>
+      <view v-for="d in propDims" :key="d.templateNo" class="param">
+        <text class="param__k">{{ d.name }}</text>
+        <!-- 有候选值：一排 chip，再点一次取消 -->
+        <view v-if="d.options.length" class="param__opts">
+          <text
+            v-for="o in d.options"
+            :key="o.code || o.label"
+            class="sh-chip param__chip"
+            :class="{ 'param__chip--on': paramValues[d.templateNo]?.label === o.label }"
+            @tap="pickParam(d, o)"
+          >{{ o.label }}</text>
+        </view>
+        <!--
+          量纲型（功率、净重）平台不枚举值 —— 给输入框。
+          硬摆一排 chip 的话，他要的那个数永远不在里面。
+        -->
+        <input
+          v-else
+          class="field__input param__input"
+          :value="paramValues[d.templateNo]?.label ?? ''"
+          @blur="typeParam(d, $event)"
+        />
+      </view>
     </view>
 
     <!-- SKU 矩阵 -->
@@ -2888,6 +2996,47 @@ async function save(thenSubmit = false) {
   display: block;
   font-size: 24rpx;
   margin-top: 16rpx;
+}
+
+/* 商品参数：一行一项，左键右值 */
+.param {
+  display: flex;
+  align-items: flex-start;
+  gap: 16rpx;
+  padding: 14rpx 0;
+  border-top: 2rpx solid var(--sh-line);
+}
+
+.param__k {
+  width: 140rpx;
+  flex: none;
+  font-size: 26rpx;
+  color: var(--sh-sub);
+  padding-top: 6rpx;
+}
+
+.param__opts {
+  flex: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+}
+
+.param__chip {
+  font-size: 24rpx;
+}
+
+/*
+  选中态用主色描边而不是实心：参数不影响价格与库存，
+  做得比规格还抢眼的话，商家会以为它更要紧。
+*/
+.param__chip--on {
+  color: var(--sh-primary-text);
+  background: var(--sh-primary-tint);
+}
+
+.param__input {
+  flex: 1;
 }
 
 /* 「收起」压在「更多规格」旁边：同一行两个链接，主次要分得出来 */

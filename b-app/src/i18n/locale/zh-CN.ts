@@ -390,6 +390,8 @@ export default {
     specs: "规格",
     specHint: "",
     specAsk: "添加规格",
+    params: "商品参数",
+    paramsHint: "只写给买家看，不影响价格和库存",
     moreFromCat: "这一类还能按",
     moreOther: "更多 ({n})",
     moreFold: "收起",

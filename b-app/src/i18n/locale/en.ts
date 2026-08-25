@@ -283,6 +283,8 @@ export default {
     noMore: "No more items",
     specs: "Variants", specHint: "",
     specAsk: "Add variants",
+    params: "Product details",
+    paramsHint: "Shown to buyers; does not affect price or stock",
     moreFromCat: "Also for this category",
     moreOther: "More ({n})",
     moreFold: "Less",
