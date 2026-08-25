@@ -25,7 +25,7 @@
 
 ## 1. 表与表之间的关系
 
-**共 18 张**：user 域 1（**person 平台人档**）、会员 9（setting / member / member_store /
+**共 19 张**：user 域 2（**person 平台人档** + person_merge_log）、会员 9（setting / member / member_store /
 member_source / tag / member_tag / tag_merge_log / segment / reach_log）、
 营销 8（activity / activity_audience / activity_goods / coupon / coupon_scope /
 user_coupon / coupon_issue / apply）。
@@ -64,6 +64,7 @@ erDiagram
 | 表 | 一句话 | 为什么必须独立 |
 |---|---|---|
 | `usr_person` | **平台人档：这个自然人**（不要求注册过）。手机号只在这里存一份密文 | 会员是"人 × 商家"的关系，先得有"人"；线索与正式会员因此不再需要事后合并 |
+| `usr_person_merge_log` | 谁的人档并进了谁、影响多少条会员关系 | 补号撞上线索档、换号都会触发合并；合并不可逆，要能回答「我的会员怎么少了一个」 |
 | `mbr_setting` | 这个主体的会员按主体经营还是按门店经营 | 开关要能随时切；放在主体表上会与商家资料的读写混在一起 |
 | `mbr_member` | **一个人 × 一家主体**的关系（主表） | 名单、分层、可触达状态的唯一真源 |
 | `mbr_member_store` | 他在**某一家门店**的往来与分层 | 十公里外那家店要按自己的口径看人；两级数据一直都算，开关只决定展示哪级 |
@@ -142,7 +143,7 @@ CREATE TABLE IF NOT EXISTS usr_person
 (
     id BIGINT(20) NOT NULL AUTO_INCREMENT,
     person_no VARCHAR(64) NOT NULL COMMENT '平台唯一身份。所有域引用它，而不是各存一份手机号',
-    phone_hash VARCHAR(64) DEFAULT NULL COMMENT '手机号的哈希，用来匹配同一个人。**不可逆**',
+    phone_hash VARCHAR(64) DEFAULT NULL COMMENT '手机号哈希，用来匹配同一个人。**不可逆**。微信登录未授权手机号时为空',
     phone_enc VARCHAR(255) DEFAULT NULL COMMENT '手机号密文，只有平台能解。商家侧永远只拿得到后四位',
     user_no VARCHAR(64) DEFAULT NULL COMMENT '他注册之后绑定的账号。没注册就是空 —— 人先于账号存在',
     merged_into VARCHAR(64) DEFAULT NULL COMMENT '换号/重复人档合并后指向的目标 person_no，保留不删',
@@ -157,8 +158,9 @@ CREATE TABLE IF NOT EXISTS usr_person
     PRIMARY KEY (id),
     UNIQUE KEY uk_person_no (person_no),
     UNIQUE KEY uk_person_phone (tenant_no, phone_hash),
-    UNIQUE KEY uk_person_user (tenant_no, user_no)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci COMMENT='平台人档：这个自然人。不要求注册过';
+    UNIQUE KEY uk_person_user (tenant_no, user_no),
+    CONSTRAINT ck_person_anchor CHECK (phone_hash IS NOT NULL OR user_no IS NOT NULL)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci COMMENT='平台人档：这个自然人。手机号与账号两把锚，至少有一把';
 ```
 
 **这张表把三个麻烦一次解决**：
@@ -171,12 +173,69 @@ CREATE TABLE IF NOT EXISTS usr_person
 3. **手机号只存一份**（还是密文）。`mbr_member` 上不再有 `phone` 列 ——
    商家库里散着一堆手机号，本身就是最容易出事的那种数据。
 
-**与账号的关系**：`usr_person.user_no` 是**可空的 1:1**。
-人先于账号存在；注册/登录拿到手机号后，按 `phone_hash` 找到人档、绑定账号，
-`usr_identity` 那条登录映射照旧由账号体系维护，两者互不干扰。
+#### 两把锚：手机号是主锚，账号是副锚
 
-**换号与重复**：同一个人换了手机号会产生第二个人档。提供合并（`merged_into`），
-规则与标签合并同形：关系行改指目标、源档保留、留一条合并日志。
+平台上**手机号是主身份**：C 端注册登录用它、商家录入会员用它、开店时联系人也落它
+（`mch_account` 背后的那个人同样是一份人档 —— 店主也可能是别家店的会员）。
+
+**唯一的例外是微信登录没授权手机号**。那时人档只有 `user_no` 这把副锚，
+`phone_hash` 为空 —— 所以约束是「两把锚至少有一把」，而不是「手机号必填」。
+
+这类人档的三个限制要在界面上说清：
+
+| 限制 | 表现 |
+|---|---|
+| 商家用手机号**搜不到他** | 他确实没有号可搜 |
+| 商家录入手机号**不会撞上他** | 两边没有可比对的东西，只能等他补号 |
+| 会员详情显示「未绑定手机号」 | 而不是显示一个空的后四位 |
+
+#### 补手机号那一刻：三种情况，只有一种要合并
+
+```
+他补号 / 首次用手机号登录 ──► 按 phone_hash 查人档
+        │
+        ├─ A. 查不到 ────────► 直接给当前人档补上 phone_hash。完事，什么都不用合并
+        │
+        ├─ B. 查到，且那份**没有 user_no**（商家早就录过他）
+        │        └─► **合并**：线索档并入当前账号档 —— 它下面的会员关系改指当前 person，
+        │            同 entity 的两条合成一条（保留更早 joined_at 与首次来源，
+        │            标签与备注并入，指标由订单重算），源档置 MERGED 保留
+        │
+        └─ C. 查到，且那份**有另一个 user_no**（两个账号都注册过）
+                 └─► **拒绝自动合并**。这是账号合并，牵连订单、积分、券的归属，
+                     必须走人工/运营流程。端上提示「该手机号已绑定其它账号」
+```
+
+**C 必须拒绝**，这是安全边界：允许自动合并等于「知道你手机号就能把你的账号并过来」。
+
+**换号**：解绑旧号 → 绑新号，走同一段逻辑（旧 `phone_hash` 置空、新号按 A/B/C 判）。
+旧号日后被别人使用时，不会连到这份人档。
+
+**合并留痕**：与标签合并同形，落 `usr_person_merge_log`（谁并入谁、影响多少条会员关系、
+谁操作的）。合并不可逆，没有日志就没法回答「我的会员怎么少了一个」。
+
+```sql
+CREATE TABLE IF NOT EXISTS usr_person_merge_log
+(
+    id BIGINT(20) NOT NULL AUTO_INCREMENT,
+    from_person_no VARCHAR(64) NOT NULL,
+    to_person_no VARCHAR(64) NOT NULL,
+    reason VARCHAR(32) NOT NULL COMMENT 'BIND_PHONE 补号撞上线索档 / CHANGE_PHONE 换号 / OPS 人工',
+    affected_members INT(11) NOT NULL DEFAULT 0,
+    operator_no VARCHAR(64) DEFAULT NULL COMMENT '人工合并时是谁',
+    merged_at BIGINT(20) NOT NULL,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT(20) NOT NULL DEFAULT 0,
+    deleted TINYINT(4) NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    KEY idx_person_merge_from (from_person_no),
+    KEY idx_person_merge_to (to_person_no, merged_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci COMMENT='人档合并留痕：合并不可逆';
+```
 
 ### 2.1 `mbr_setting` —— 主体的会员经营口径
 
@@ -740,7 +799,8 @@ classDiagram
         +PhoneHash phoneHash
         +UserNo user
         +PersonNo mergedInto
-        +void bind(UserNo)
+        +void bindPhone(Phone)   %% A/B/C 三种情况
+        +void bindAccount(UserNo)
         +void mergeInto(Person)
     }
     class Member {
@@ -855,7 +915,7 @@ classDiagram
 
 | 聚合根 | 边界内 | 不变量（由它自己守） |
 |---|---|---|
-| **Person**（user 域） | 自己 + 人档合并 | 一个手机号一份人档；账号是可空的 1:1；合并后源档保留 |
+| **Person**（user 域） | 自己 + 人档合并 | **两把锚至少有一把**（手机号 / 账号）；一个手机号一份人档；两个已注册账号**不自动合并**；合并后源档保留 |
 | **Member** | MemberStore / MemberSource / MemberTag | **一个 person 在一家主体只有一条**；线索不可触达；主体级与门店级指标一起更新 |
 | **Tag** | 自己 + 合并关系 | `tag_no` 不可变；SYS 标签不可改名不可合并；MERGED 后不可再被打上 |
 | **Segment** | 规则 | 规则里只存号（标签号/门店号），解析出人群时才落到具体 member |
@@ -876,9 +936,15 @@ classDiagram
 ② 商家手工录入手机号（本人可能还没注册）
    phone ──hash──► 找人档（没有就建，user_no 留空）──► member.status = LEAD
 
-③ 他注册/登录了
-   phone ──hash──► 找到人档 ──► 绑定 user_no
-                                └─► 该人档下**所有** LEAD 会员一次性转 ACTIVE，记 claimed_at
+③ 微信登录、没授权手机号
+   user_no ──► 建人档（phone_hash 空，只有账号这把锚）──► 照常入会
+              └─► 他此时**搜不到、也撞不上**商家录入的号，直到 ④
+
+④ 他补了手机号 / 首次用手机号登录
+   phone ──hash──► A 查不到：补上就好
+                   B 查到线索档：合并进来，同 entity 的两条会员合成一条
+                   C 查到别人的账号档：**拒绝**，走人工流程（见 §2.0）
+   绑定完成 ──► 该人档下所有 LEAD 会员一次性转 ACTIVE，记 claimed_at
 ```
 
 第 ③ 步是这套设计的关键：**一次绑定，三家商家的会员同时转正**。
