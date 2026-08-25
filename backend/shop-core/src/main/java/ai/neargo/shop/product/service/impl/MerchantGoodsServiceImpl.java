@@ -1430,6 +1430,22 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         return all.size();
     }
 
+    @Override
+    public int resyncAllCommunityPools() {
+        List<String> entityNos = DataScopeContext.executeWithoutScope(() ->
+                        goodsMapper.selectList(Wrappers.<PrdGoods>lambdaQuery()
+                                .select(PrdGoods::getEntityNo)))
+                .stream().map(PrdGoods::getEntityNo)
+                .filter(no -> no != null && !no.isBlank())
+                .distinct().toList();
+        int n = 0;
+        for (String entityNo : entityNos) {
+            n += resyncCommunityPools(entityNo);
+        }
+        log.info("[pool] 全量重建社区池：{} 个主体 / {} 件商品", entityNos.size(), n);
+        return n;
+    }
+
     /**
      * 算不出距离时写进 {@code sort_weight} 的数。
      *
