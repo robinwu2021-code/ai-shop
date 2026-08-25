@@ -254,23 +254,40 @@ POST /biz/coupon-redeem          { code, storeNo }  → { timesLeft, redeemedAt 
 
 ## 3. Controller 清单
 
-| 类 | 位置 | 负责的端点 | 备注 |
-|---|---|---|---|
-| `BizMemberController` | `portal/biz` | M1–M6 | 全部 `@PreAuthorize(CUSTOMER)`；`X-Store-No` 由 `BizContext` 取 |
-| `BizMemberTagController` | `portal/biz` | M7–M10 | 合并是写操作，`@Transactional` 在 service 层 |
-| `BizMemberSegmentController` | `portal/biz` | M11–M13 | 设置读写也放这儿（同一屏） |
-| `BizActivityController` | `portal/biz` | A1–A7 | `CAMPAIGN` |
-| `BizCouponController` | `portal/biz` | C1–C5 | `CAMPAIGN` |
-| `BizCouponRedeemController` | `portal/biz` | V1–V2 | **`VERIFY`**，与取货核销同一个码 |
-| `MpMemberController` | `portal/mp` | U1–U4 | 登录即可 |
-| `MpCouponController` | `portal/mp` | U5–U6 | 同上 |
-| `OpsMemberController` | `portal/ops` | O1–O4 | 手机号解密查看要**二次确认 + 审计日志** |
-| `OpsPromotionController` | `portal/ops` | O5–O7 | 扩现有营销页，不新开菜单组 |
+### 3.1 切多少个：按「谁在用」切，不按资源切
 
-**每个新端点都要在 `BizEndpointPermTest` 的决策表里登记一行**，否则架构用例会红 ——
-这条不是形式，它挡的是「新加的 /biz 端点忘了判权」。
+先用仓库现有的尺度量：这里最大的控制器 `BizMerchantController` 是**37 个端点、946 行**；
+`MpCatalogController` 19 个，`BizPickupController` 10 个，`BizDashboardController` 7 个。
 
----
+所以**一开始按资源切出来的 10 个控制器是切碎了**（36 个端点 / 10 = 平均 3.6 个一个）。
+member / tag / segment 各一个，本质是把表结构照搬到 URL 上：对写代码的人整齐，对用的人没意义。
+
+**判据换成三条同时成立**：同一个权限码 · 同一批使用者 · 同一屏操作。合并成 6 个：
+
+| 类 | 位置 | 端点 | 权限 | 为什么是一个 |
+|---|---|---|---|---|
+| `BizMemberController` | `portal/biz` | M1–M13（13） | `biz:customer` | 会员、标签、人群、口径**都在「会员」那一屏**，同一个人连着用 |
+| `BizPromotionController` | `portal/biz` | A1–A7 + C1–C5（12） | `biz:campaign` | 活动与券是营销页两个 tab；共用受众/范围/时间三段字段，拆开会让同一套校验散两处 |
+| `BizCouponRedeemController` | `portal/biz` | V1–V2（2） | **`biz:verify`** | **权限码不同必须分家** —— 店员有核销权、没有营销权 |
+| `MpMemberController` | `portal/mp` | U1–U6（6） | 登录即可 | 买家侧会员卡与券包是一件事的两面（卡里挂着券） |
+| `OpsMemberController` | `portal/ops` | O1–O4（4） | `member:*` | 运营端新菜单 `/members` |
+| `OpsPromotionController` | `portal/ops` | O5–O7（3） | `marketing:*` | 挂在现有营销页上，与会员是两个权限域 |
+
+### 3.2 那条不能合的线
+
+**核销独立，唯一理由是权限码。** 它走 `biz:verify`（与取货核销同码、同一批店员、同一页），
+营销走 `biz:campaign`（店员没有）。合进去要么核销页多要一个权限，要么营销端点被降权。
+
+> **控制器的边界应当与权限边界重合。** 一个类里混着两个权限码，
+> 迟早有人给新方法复制上一个错的注解 —— 那种错不报错，只会悄悄放行。
+
+### 3.3 大文件的真实风险，不该用切文件解决
+
+并行会话改同一个文件会撞（这个项目天天发生），但那是协作问题，拆 URL 解决不了 ——
+拆完撞的是另一个文件。真正的缓解是控制器只做「取参数、判权、调 service、拼 VO」：
+越薄，两个人同时改它的概率越低。
+
+**每个新端点都要在 `BizEndpointPermTest` 的决策表里登记一行**，否则架构用例会红。
 
 ## 4. Service 清单
 
