@@ -45,6 +45,9 @@ class ArchitectureTest {
     private static final String[] DOMAINS = {
             "user", "merchant", "community", "product", "trade",
             "fulfillment", "marketing", "settle", "message", "platform",
+            // member：会员（人 × 主体的关系，mbr_*）。**方向是单向的** ——
+            // 营销问会员「他是不是熟客」，会员不问营销；登记进来这条方向才有东西守着
+            "member",
             // content：内容与素材（帖子/问答/榜单/素材库）。有自己的表（cnt_*），
             // 所以是业务域而不是基础设施 —— 登记进来它才受域间依赖规则约束
             "content",

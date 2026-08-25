@@ -59,6 +59,9 @@ import java.util.stream.Collectors;
 @Service
 public class OrderServiceImpl implements OrderService {
 
+    private static final org.slf4j.Logger log =
+            org.slf4j.LoggerFactory.getLogger(OrderServiceImpl.class);
+
     /**
      * 支付时限**由平台配置决定**（P-4.2.3，{@code /orders?tab=close}）。
      *
@@ -98,6 +101,10 @@ public class OrderServiceImpl implements OrderService {
     private final ai.neargo.shop.spi.user.UserQueryPort userPort;
     private final IdempotencyService idempotency;
     private final OutboxEventBus eventBus;
+    /** 支付成功后告诉会员域「他买了一单」。trade 不认识会员表，也不该认识 */
+    private final ai.neargo.shop.spi.member.MemberEventPort memberEventPort;
+    /** 买家的人档号。没有（微信登录未授权手机号）就不入会 */
+    private final ai.neargo.shop.spi.user.PersonPort personPort;
 
     public OrderServiceImpl(OrderMapper orderMapper, SubOrderMapper subOrderMapper, OrderItemMapper itemMapper,
                             CartItemMapper cartMapper, GoodsQueryPort goodsPort, StockPort stockPort,
@@ -111,6 +118,8 @@ public class OrderServiceImpl implements OrderService {
                             ai.neargo.shop.spi.user.UserQueryPort userPort,
                             IdempotencyService idempotency, OutboxEventBus eventBus,
                             ai.neargo.shop.spi.user.AdmissionPort admissionPort,
+                            ai.neargo.shop.spi.member.MemberEventPort memberEventPort,
+                            ai.neargo.shop.spi.user.PersonPort personPort,
                             CloseRuleService closeRuleService) {
         this.orderMapper = orderMapper;
         this.subOrderMapper = subOrderMapper;
@@ -132,6 +141,8 @@ public class OrderServiceImpl implements OrderService {
         this.userPort = userPort;
         this.idempotency = idempotency;
         this.eventBus = eventBus;
+        this.memberEventPort = memberEventPort;
+        this.personPort = personPort;
     }
 
     // ---------------------------------------------------------------- 预览与下单
@@ -690,6 +701,29 @@ public class OrderServiceImpl implements OrderService {
             appendStatusLog(sub.getSubOrderNo(), next,
                     serviceLike ? "支付成功，凭码到店使用" : "支付成功，待备货",
                     OrdStatusLog.BY_SYSTEM, null);
+
+            /*
+             * 入会与会员指标（P1）。**在发分之前** —— 两者互不依赖，
+             * 但会员那条更靠近「他是谁」，出问题也更好排查。
+             *
+             * <p><b>没有人档就什么都不做</b>：微信登录没授权手机号的人不入会。
+             * 会员必须有已验证手机号是准入规则，而交易永远优先 ——
+             * 他照常买到东西，商家会在会员页顶部看到「另有 N 位买家未绑手机号，未计入」。
+             *
+             * <p>失败不阻塞支付：这一步是派生数据，夜里的全量重算会兜住；
+             * 而支付回调抛异常会让渠道重试，重试又会撞上「订单已支付」的幂等分支。
+             */
+            try {
+                String personNo = personPort.findByUser(order.getUserNo())
+                        .map(ai.neargo.shop.spi.user.PersonPort.PersonView::personNo).orElse(null);
+                memberEventPort.onOrderPaid(new ai.neargo.shop.spi.member.MemberEventPort.OrderPaid(
+                        sub.getSubOrderNo(), order.getUserNo(), personNo,
+                        sub.getEntityNo(), sub.getStoreNo(),
+                        sub.getPayAmount() == null ? 0L : sub.getPayAmount(),
+                        order.getPaidAt()));
+            } catch (RuntimeException e) {
+                log.warn("[member] 入会失败 sub={}：{}", sub.getSubOrderNo(), e.toString());
+            }
 
             /*
              * 发分。**基数是实付金额**（已扣券与积分），不含运费 ——

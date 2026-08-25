@@ -28,6 +28,10 @@ public final class BizKey {
      * 商家录进来的手机号，本人可能还没在平台出现过。会员挂在人档上，不挂账号上。
      */
     public static final String PERSON = "PS";
+    /** 会员：一个人 × 一家主体的关系。与 PERSON 分开 —— 一份人档可以是好几家店的会员 */
+    public static final String MEMBER = "MB";
+    /** 会员来源明细。每一次来源一行 */
+    public static final String MEMBER_SOURCE = "MS";
     public static final String ADDRESS = "AD";
     public static final String TICKET = "TK";
     public static final String MESSAGE = "MSG";

@@ -175,6 +175,10 @@ class BizEndpointPermTest {
 
         // ---- 门店经营面 ----
         put("/biz/store", BizPerms.STORE);
+        // 会员（P1）：沿用客户资产那个码 —— 会员就是「我的客户」那一页的升级版
+        put("/biz/members", BizPerms.CUSTOMER);
+        put("/biz/members/stats", BizPerms.CUSTOMER);
+        put("/biz/members/{memberNo}", BizPerms.CUSTOMER);
         // 只改公告：与整份门面同一个码 —— 它写的是同一张表的同一家店
         put("/biz/store/announcement", BizPerms.STORE);
         // 删一条常用语：还是那张表那一家店，同一个码

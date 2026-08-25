@@ -3146,6 +3146,107 @@ CREATE TABLE IF NOT EXISTS usr_person_merge_log
     PRIMARY KEY (id)
 );
 
+CREATE TABLE IF NOT EXISTS mbr_setting
+(
+    id BIGINT(20) NOT NULL AUTO_INCREMENT,
+    entity_no VARCHAR(64) NOT NULL,
+    member_scope VARCHAR(16) NOT NULL DEFAULT 'ENTITY',
+    auto_join_on_order TINYINT(4) NOT NULL DEFAULT 1,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT(20) NOT NULL DEFAULT 0,
+    deleted TINYINT(4) NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_mbr_setting_entity UNIQUE (tenant_no, entity_no)
+);
+
+CREATE TABLE IF NOT EXISTS mbr_member
+(
+    id BIGINT(20) NOT NULL AUTO_INCREMENT,
+    member_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    person_no VARCHAR(64) NOT NULL,
+    status VARCHAR(16) NOT NULL DEFAULT 'ACTIVE',
+    source VARCHAR(16) NOT NULL,
+    first_store_no VARCHAR(64) DEFAULT NULL,
+    first_order_at BIGINT(20) DEFAULT NULL,
+    last_order_at BIGINT(20) DEFAULT NULL,
+    order_count INT(11) NOT NULL DEFAULT 0,
+    total_spent_minor BIGINT(20) NOT NULL DEFAULT 0,
+    d90_order_count INT(11) NOT NULL DEFAULT 0,
+    d90_spent_minor BIGINT(20) NOT NULL DEFAULT 0,
+    level VARCHAR(16) DEFAULT NULL,
+    reach_opt_out TINYINT(4) NOT NULL DEFAULT 0,
+    remark VARCHAR(255) DEFAULT NULL,
+    joined_at BIGINT(20) NOT NULL,
+    claimed_at BIGINT(20) DEFAULT NULL,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT(20) NOT NULL DEFAULT 0,
+    deleted TINYINT(4) NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_mbr_member_no UNIQUE (member_no),
+    CONSTRAINT uk_mbr_member_person UNIQUE (tenant_no, entity_no, person_no)
+);
+
+CREATE TABLE IF NOT EXISTS mbr_member_store
+(
+    id BIGINT(20) NOT NULL AUTO_INCREMENT,
+    member_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    store_no VARCHAR(64) NOT NULL,
+    first_order_at BIGINT(20) DEFAULT NULL,
+    last_order_at BIGINT(20) DEFAULT NULL,
+    order_count INT(11) NOT NULL DEFAULT 0,
+    total_spent_minor BIGINT(20) NOT NULL DEFAULT 0,
+    d90_order_count INT(11) NOT NULL DEFAULT 0,
+    d90_spent_minor BIGINT(20) NOT NULL DEFAULT 0,
+    level VARCHAR(16) DEFAULT NULL,
+    is_first_store TINYINT(4) NOT NULL DEFAULT 0,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT(20) NOT NULL DEFAULT 0,
+    deleted TINYINT(4) NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_mbr_member_store UNIQUE (tenant_no, member_no, store_no)
+);
+
+CREATE TABLE IF NOT EXISTS mbr_member_source
+(
+    id BIGINT(20) NOT NULL AUTO_INCREMENT,
+    source_no VARCHAR(64) NOT NULL,
+    member_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    source_type VARCHAR(16) NOT NULL,
+    store_no VARCHAR(64) DEFAULT NULL,
+    link_no VARCHAR(64) DEFAULT NULL,
+    ref_no VARCHAR(64) DEFAULT NULL,
+    inviter_user_no VARCHAR(64) DEFAULT NULL,
+    inviter_role VARCHAR(16) DEFAULT NULL,
+    operator_no VARCHAR(64) DEFAULT NULL,
+    activity_no VARCHAR(64) DEFAULT NULL,
+    is_first TINYINT(4) NOT NULL DEFAULT 0,
+    occurred_at BIGINT(20) NOT NULL,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT(20) NOT NULL DEFAULT 0,
+    deleted TINYINT(4) NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_mbr_source_no UNIQUE (source_no)
+);
+
 -- 种子数据
 INSERT INTO sys_industry VALUES
 (1,'CATERING','餐饮',10,1,1,0,0,'微信小微白名单内','MAIN','2026-08-09 12:49:36','SYSTEM','2026-08-09 12:49:36',NULL,0,0),
