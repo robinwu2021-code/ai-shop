@@ -52,6 +52,18 @@ public interface MerchantAdminPort {
     String quickStart(QuickStartCommand cmd);
 
     /**
+     * 这个账号名下「待补证照」的占位主体（{@code PENDING_LICENSE}）。
+     *
+     * <p>入驻申请提交时用它认领：有占位主体就把申请单的 {@code entity_no} 预填成它，
+     * 于是审核通过时 {@link #activate} 走「已存在，就地升级」那一支 ——
+     * <b>他先开的那家店、录的那些商品原样留着</b>，只是从此对买家可见。
+     * 不认领的话会另建一个主体，那家店和它的货就永远留在看不见的旧主体下。
+     *
+     * @return 没有占位主体时 empty（正常入驻的人就是这种情况）
+     */
+    java.util.Optional<String> pendingLicenseEntityOf(String userNo);
+
+    /**
      * @param ownerUserNo 发起人（当前登录账号）
      * @param storeName   老板填的店名。<b>同时用作主体名</b> —— 补证照时再被执照上的正式名称覆盖
      * @param address     门店地址，可空（之后在店铺资料里补）

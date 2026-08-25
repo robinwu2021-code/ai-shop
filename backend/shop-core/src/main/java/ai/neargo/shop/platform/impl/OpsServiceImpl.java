@@ -395,6 +395,18 @@ public class OpsServiceImpl implements OpsService {
         apply.setIndustry(cmd.industry());
         apply.setStatus(MchEntityApply.PENDING);
         apply.setActiveOwner(cmd.userNo());   // 进行中才占名额，终态时置 NULL
+        /*
+         * **认领「待补证照」的占位主体**（无证照先开店那条路的收口）。
+         *
+         * 这个人如果已经用快速开店建过一家店，那家店和他录的商品都挂在一个
+         * PENDING_LICENSE 主体下。把申请单的 entity_no 预填成它，审核通过时
+         * {@code activate()} 就会走「已存在，就地升级」那一支 —— 店与货原样留着，
+         * 只是从此对买家可见。
+         *
+         * 不认领的话会另建一个主体：他补完证照满心欢喜地去看，发现店里空空如也，
+         * 而那家有货的店还在另一个看不见的主体下 —— 两家店，他只认得出一家。
+         */
+        merchantAdminPort.pendingLicenseEntityOf(cmd.userNo()).ifPresent(apply::setEntityNo);
         DataScopeContext.executeWithoutScope(() -> applyMapper.insert(apply));
         return apply.getApplyNo();
     }

@@ -166,6 +166,72 @@ class QuickStartFlowTest {
                 .as("审核通过的商家照常可见").isNotEmpty();
     }
 
+    @Test
+    @DisplayName("★★★ 补证照：店与货原样留着，从此对买家可见 —— 不是另开一家新店")
+    void addingLicenseUpgradesTheSameShop() throws Exception {
+        String token = login("12600160006");
+        String merchantNo = quickStart(token, "先开着的店");
+
+        /*
+         * 在占位主体下先干点活 —— 这正是「先开店」的意义所在。
+         * 补完证照如果这些东西不在了，等于让他白干一场。
+         */
+        String storeNo = json.readTree(mvc().perform(get("/biz/store/list")
+                        .header("Authorization", "Bearer " + token))
+                .andReturn().getResponse().getContentAsString())
+                .get("data").get(0).get("storeNo").asString();
+
+        // 此刻买家看不到
+        assertThat(merchantQueryPort.reachableCommunities(merchantNo)).isEmpty();
+
+        // 补证照：走的就是普通入驻申请，端上不需要知道「认领」这回事
+        String body = mvc().perform(post("/biz/merchant/apply").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"先开着的店（有限公司）\",\"subject\":\"INDIVIDUAL_BIZ\","
+                                + "\"contactName\":\"张三\",\"contactPhone\":\"13900000000\","
+                                + "\"category\":\"食品\",\"serviceScope\":\"COMMUNITY\","
+                                + "\"communityNos\":[\"CM001\"]}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        assertThat(body).isNotBlank();
+
+        String applyNo = json.readTree(mvc().perform(get("/biz/merchant/apply")
+                        .header("Authorization", "Bearer " + token))
+                .andReturn().getResponse().getContentAsString())
+                .get("data").get("applyNo").asString();
+
+        mvc().perform(post("/ops/merchant/apply/" + applyNo + "/audit")
+                        .header("Authorization", "Bearer " + opsLogin())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"approved\":true}"))
+                .andExpect(jsonPath("$.code").value(0));
+
+        /*
+         * **同一个主体，不是新建的**。这条断言是整个「先开店后补证照」成不成立的关键：
+         * 认领没做的话这里会是一个新主体号，而他先开的那家店还留在旧主体下 ——
+         * 两家店，他只认得出一家，且有货的那家永远不可见。
+         */
+        assertThat(merchantNoOf(token)).as("补证照升级的是同一个主体").isEqualTo(merchantNo);
+
+        String storesAfter = mvc().perform(get("/biz/store/list").header("Authorization", "Bearer " + token))
+                .andReturn().getResponse().getContentAsString();
+        assertThat(json.readTree(storesAfter).get("data")).as("没有多出一家店").hasSize(1);
+        assertThat(json.readTree(storesAfter).get("data").get(0).get("storeNo").asString())
+                .as("还是原来那家店").isEqualTo(storeNo);
+
+        // 从此对买家可见 —— 这才是补证照换来的东西
+        assertThat(merchantQueryPort.reachableCommunities(merchantNo))
+                .as("补完证照就该被买家看到").isNotEmpty();
+
+        // 升级时要把执照上的正式名称与法律形态补上（快速开店时这两项是空的）
+        var upgraded = entityMapper.selectOne(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                .<ai.neargo.shop.merchant.entity.MchEntity>lambdaQuery()
+                .eq(ai.neargo.shop.merchant.entity.MchEntity::getEntityNo, merchantNo));
+        assertThat(upgraded.getStatus()).isEqualTo("ACTIVE");
+        assertThat(upgraded.getName()).isEqualTo("先开着的店（有限公司）");
+        assertThat(upgraded.getLegalForm()).as("进件要用它，不能留空").isNotBlank();
+        assertThat(upgraded.getVerified()).as("审核通过才带认证标").isTrue();
+    }
+
     // ---------------------------------------------------------------- helpers
 
     private String quickStart(String token, String name) throws Exception {

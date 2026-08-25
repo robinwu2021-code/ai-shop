@@ -625,6 +625,25 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
                 merchantMapper.selectOne(Wrappers.<MchEntity>lambdaQuery()
                         .eq(MchEntity::getEntityNo, cmd.activatedEntityNo()).last("limit 1")));
         if (existing != null) {
+            /*
+             * **占位主体的「补证照」升级**，与「重复点通过」的幂等重放共用这一支。
+             *
+             * 两者的差别只在这里：占位主体是快速开店建的，身上有三样东西还空着 ——
+             *   name        当时填的是门店名，现在要换成执照上的正式名称
+             *   legal_form  当时不知道是个体户还是公司，进件那一步要用它
+             *   verified    「已认证」标是审核给的，自己开店不能带
+             * 而幂等重放的那份主体这三样早就对了。
+             *
+             * **只在升级时覆盖**，不能无条件写：重复点通过时无条件覆盖 name，
+             * 会把商家后来在 B 端改过的店名冲回申请时填的那一版 ——
+             * 与 applyProfile 用「非空才覆盖」防的是同一件事。
+             */
+            if (MchEntity.PENDING_LICENSE.equals(existing.getStatus())) {
+                existing.setName(name);
+                String canonical = masterDataPort.canonicalSubject(type);
+                existing.setLegalForm(canonical != null ? canonical : type);
+                existing.setVerified(true);
+            }
             existing.setStatus(ACTIVE);
             existing.setServiceScope(cmd.serviceScope());
             applyProfile(existing, cmd);
@@ -699,20 +718,9 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
          * 永远补不齐的占位主体。想在这个占位主体下再开一家店，走正常建店接口
          * （那时 BizContext 已经有了，不需要走这条路）。
          */
-        List<String> ownedEntityNos = DataScopeContext.executeWithoutScope(() ->
-                staffMapper.selectList(Wrappers.<ai.neargo.shop.merchant.entity.MchAccount>lambdaQuery()
-                        .eq(ai.neargo.shop.merchant.entity.MchAccount::getUserNo, ownerUserNo)
-                        .eq(ai.neargo.shop.merchant.entity.MchAccount::getIsOwner, true))
-                .stream().map(ai.neargo.shop.merchant.entity.MchAccount::getEntityNo).toList());
-        if (!ownedEntityNos.isEmpty()) {
-            MchEntity shell = DataScopeContext.executeWithoutScope(() ->
-                    merchantMapper.selectOne(Wrappers.<MchEntity>lambdaQuery()
-                            .in(MchEntity::getEntityNo, ownedEntityNos)
-                            .eq(MchEntity::getStatus, MchEntity.PENDING_LICENSE)
-                            .last("limit 1")));
-            if (shell != null) {
-                return shell.getEntityNo();
-            }
+        var shell = pendingLicenseEntityOf(ownerUserNo);
+        if (shell.isPresent()) {
+            return shell.get();
         }
 
         String name = cmd.storeName().trim();
@@ -754,6 +762,27 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
         ensureDefaultStore(m.getEntityNo(), name, cmd.address());
         ensureFreePlan(m.getEntityNo());
         return m.getEntityNo();
+    }
+
+    @Override
+    public java.util.Optional<String> pendingLicenseEntityOf(String userNo) {
+        if (userNo == null || userNo.isBlank()) {
+            return java.util.Optional.empty();
+        }
+        List<String> ownedEntityNos = DataScopeContext.executeWithoutScope(() ->
+                staffMapper.selectList(Wrappers.<ai.neargo.shop.merchant.entity.MchAccount>lambdaQuery()
+                        .eq(ai.neargo.shop.merchant.entity.MchAccount::getUserNo, userNo)
+                        .eq(ai.neargo.shop.merchant.entity.MchAccount::getIsOwner, true))
+                .stream().map(ai.neargo.shop.merchant.entity.MchAccount::getEntityNo).toList());
+        if (ownedEntityNos.isEmpty()) {
+            return java.util.Optional.empty();
+        }
+        MchEntity shell = DataScopeContext.executeWithoutScope(() ->
+                merchantMapper.selectOne(Wrappers.<MchEntity>lambdaQuery()
+                        .in(MchEntity::getEntityNo, ownedEntityNos)
+                        .eq(MchEntity::getStatus, MchEntity.PENDING_LICENSE)
+                        .last("limit 1")));
+        return java.util.Optional.ofNullable(shell).map(MchEntity::getEntityNo);
     }
 
     /**
