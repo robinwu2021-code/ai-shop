@@ -99,6 +99,8 @@ async function logout() {
 
 onShow(() => {
   void merchant.loadProfile().catch(() => null);
+  // 名下有几张证照 —— 决定「证照与账户」这一行出不出现
+  void merchant.ensureEntityGroups();
   void loadPlan();
   void loadHasPassword();
   // 从消息页返回时角标要立即回落，不等下一轮 30s 轮询
@@ -160,6 +162,26 @@ onShow(() => {
       -->
       <view v-if="merchant.can('biz:store')" class="cell" @tap="go(ROUTES.qualifications)">
         <text class="cell__label">{{ $t("stores.qualEntry") }}</text>
+        <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
+      </view>
+      <!--
+        证照与账户（多证照）。**只在名下不止一张证照时出现**。
+
+        单证照商家点进去只会看到一条记录，而上面那两行（收款设置、资质证件）
+        已经把他那张证照的全部内容拆开摆好了 —— 再多一个入口只会让他犹豫走哪个。
+        多证照时反过来：那两行只能管「当前这张」，第二张证照没有任何别的路进得去。
+
+        与「切换门店」是两条互不打架的路：那个是「我现在要在哪家店干活」（每天），
+        这个是「我名下有哪几张执照」（一年动不了几次），点它不会切换当前门店。
+      -->
+      <view
+        v-if="merchant.multiEntity && merchant.can('biz:store:admin')"
+        class="cell"
+        @tap="go(ROUTES.entities)"
+      >
+        <text class="cell__label">{{ $t("entities.title") }}</text>
+        <!-- 数的是**证照**不是门店：这一行进的是证照列表页，那里一条就是一张证照 -->
+        <text class="cell__sub">{{ $t("entities.count", { n: merchant.entityGroups.length }) }}</text>
         <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
       </view>
       <!--
@@ -265,6 +287,15 @@ onShow(() => {
   font-size: 28rpx;
   color: var(--sh-ink);
   flex-shrink: 0;
+}
+/* 右侧补充数字（「3 家门店」）：与主标题同一行、色浅一档，
+   不换行也不抢视线 —— 它是判断要不要点进去的依据，不是标题的一部分 */
+.cell__sub {
+  flex: 1;
+  min-width: 0;
+  text-align: end;
+  font-size: 24rpx;
+  color: var(--sh-sub);
 }
 /* 退出登录用警示色：它是不可逆动作，和「查看结算单」不该长得一样 */
 .cell__label--danger {

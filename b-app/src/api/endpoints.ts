@@ -59,6 +59,12 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
   mPickupCandidates: { method: "GET", path: "/biz/pickup-points/candidates", auth: true, summary: "门店可引用的取货点候选" },
   mSelfBuildPickup: { method: "POST", path: "/biz/pickup-points", auth: true, summary: "自建自提点（待运营核实）" },
   mStoreList: { method: "GET", path: "/biz/store/list", auth: true, summary: "我的门店" },
+
+  // 跨证照（多证照）。**故意不吃当前证照的范围** —— 那是「当前这一张」，
+  // 而这三个问的正是「当前之外我还有哪几张」
+  mMyStores: { method: "GET", path: "/biz/stores/mine", auth: true, summary: "我能进的所有门店（按证照分组）" },
+  mEntities: { method: "GET", path: "/biz/entities", auth: true, summary: "我名下的证照" },
+  mEntity: { method: "GET", path: "/biz/entity/:entityNo", auth: true, summary: "一张证照的详情与门店" },
   mCreateStore: { method: "POST", path: "/biz/store/create", auth: true, summary: "新建门店" },
   mRenameStore: { method: "POST", path: "/biz/store/:storeNo/rename", auth: true, summary: "改门店名与地址" },
   mSetStoreStatus: { method: "POST", path: "/biz/store/:storeNo/status", auth: true, summary: "停用/启用门店" },

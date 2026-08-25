@@ -154,6 +154,18 @@
       }
     },
     {
+      "path": "pages/entities/index",
+      "style": {
+        "navigationBarTitleText": "证照与账户"
+      }
+    },
+    {
+      "path": "pages/entity-detail/index",
+      "style": {
+        "navigationBarTitleText": "证照详情"
+      }
+    },
+    {
       "path": "pages/after-sale/index",
       "style": {
         "navigationBarTitleText": "售后处理"

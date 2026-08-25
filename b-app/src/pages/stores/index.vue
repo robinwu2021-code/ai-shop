@@ -36,6 +36,25 @@ const busy = ref(false);
 /** 新建表单：默认收起 —— 大多数商家只有一家店，天天看到一个空表单是噪音 */
 const adding = ref(false);
 const form = ref({ name: "", address: "" });
+/**
+ * 这家店挂在哪张证照下（02 屏）。
+ *
+ * <p><b>只有一张证照时这一步整个不渲染</b>（`merchant.multiEntity` 为 false）——
+ * 给单证照商家一个只有一个选项的单选是纯负担，而这类噪音最终会让他连真正
+ * 要选的那次也不看。空串 = 当前证照，与不传等价。
+ *
+ * <p>额度按证照算：挂到另一张下时撞的是**那张**的门店额度。所以这一步要在
+ * 填名字之前 —— 先选证照，那句「门店 2/3」才说的是对的那张。
+ */
+const entityNo = ref("");
+/**
+ * 选的是不是「当前证照之外」的那一张。
+ *
+ * <p>用来把上面那句额度提示换成一句不含数字的话 —— 见模板里的说明：
+ * `/biz/plan` 只给当前证照的额度，拿它去说另一张证照的事就是个错的数。
+ */
+const onOtherEntity = computed(() =>
+  !!entityNo.value && entityNo.value !== merchant.profile?.merchantNo);
 
 /** 可挑的收款号：只列**已开通**的。没开通的挂上去，下一单就收不了款 */
 const payOptions = computed(() =>
@@ -46,6 +65,12 @@ onShow(load);
 
 async function load() {
   stores.value = await api.mStoreList().catch(() => []);
+  /*
+   * **每次都重取**，不是 ensure。这一页会建店、会停用店，而分组正是「哪张证照下有几家店」——
+   * 用 ensure 的话建完店回到「我的」，那一行还写着建店之前的数字，
+   * 而他刚做完的事就是让那个数字变大。
+   */
+  void merchant.loadEntityGroups();
   payments.value = await api.mPayments().catch(() => []);
   // 静默失败：拿不到套餐只是少一句额度提示，不该让这一页报错
   plan.value = await api.mMyPlan().catch(() => null);
@@ -108,8 +133,13 @@ function create() {
   busy.value = true;
   void (async () => {
     try {
-      await api.mCreateStore({ name: form.value.name.trim(), address: form.value.address.trim() });
+      await api.mCreateStore({
+        name: form.value.name.trim(),
+        address: form.value.address.trim(),
+        ...(entityNo.value ? { entityNo: entityNo.value } : {}),
+      });
       form.value = { name: "", address: "" };
+      entityNo.value = "";
       adding.value = false;
     } catch (e) {
       // ★ 额度被挡**不走那个通用 toast** —— 见 onQuotaBlocked
@@ -164,8 +194,13 @@ async function onQuotaBlocked() {
     // 额度立即生效，所以**当场把他刚填的那家店建出来** ——
     // 让他再点一遍「保存」是把一次成功拆成两步，而中间那一步会掉人
     if (form.value.name.trim()) {
-      await api.mCreateStore({ name: form.value.name.trim(), address: form.value.address.trim() });
+      await api.mCreateStore({
+        name: form.value.name.trim(),
+        address: form.value.address.trim(),
+        ...(entityNo.value ? { entityNo: entityNo.value } : {}),
+      });
       form.value = { name: "", address: "" };
+      entityNo.value = "";
       adding.value = false;
     }
   } catch (e) {
@@ -350,11 +385,45 @@ function pickPayment(s: Store, payMerchantNo?: string) {
         **带上真实数字**（「成长版 · 门店 2/3」）—— 一句泛泛的「有上限」
         既不能让他放心也不能让他行动。
       -->
+      <!--
+        ★ 选了**另一张**证照时不能再显示这个数。
+
+        `plan` 来自 `/biz/plan`，问的是**当前证照**的额度；而额度是按证照算的
+        （`mch_entity_plan` 挂在 `entity_no` 上）。照原样显示的话，他选了「张记水果」
+        却看到「孵化版 · 门店 1/1」—— 那是另一张证照的数，他会以为自己建不了。
+        而端上今天拿不到别张证照的额度（那个接口只给当前这张），所以这里
+        **给一句诚实的话，而不是一个错的数**。
+      -->
       <text class="hint">
-        {{ plan
-          ? $t("plan.meSub", { name: plan.planName, used: plan.storeUsed, quota: plan.storeQuota })
-          : $t("stores.quotaHint") }}
+        {{ onOtherEntity
+          ? $t("stores.quotaOnThatEntity")
+          : (plan
+            ? $t("plan.meSub", { name: plan.planName, used: plan.storeUsed, quota: plan.storeQuota })
+            : $t("stores.quotaHint")) }}
       </text>
+
+      <!--
+        挂在哪张证照下。**只有多证照时才出现** —— 单证照商家看到的表单
+        与多证照之前一模一样。放在店名之前：先定证照，上面那句「门店 2/3」
+        才说的是对的那张证照的额度。
+      -->
+      <view v-if="merchant.multiEntity" class="field">
+        <text class="field__label">{{ $t("stores.underEntity") }}</text>
+        <view class="picks">
+          <view
+            v-for="g in merchant.entityGroups"
+            :key="g.entity.entityNo"
+            class="pick"
+            :class="{ 'is-on': entityNo === g.entity.entityNo
+              || (!entityNo && g.entity.entityNo === merchant.profile?.merchantNo) }"
+            @tap="entityNo = g.entity.entityNo"
+          >
+            <text class="pick__name">{{ g.entity.name }}</text>
+            <text class="pick__sub">{{ $t("entities.storeCount", { n: g.entity.storeCount }) }}</text>
+          </view>
+        </view>
+        <text class="hint">{{ $t("stores.underEntityHint") }}</text>
+      </view>
 
       <view class="field">
         <text class="field__label">{{ $t("stores.name") }}</text>
@@ -372,6 +441,35 @@ function pickPayment(s: Store, payMerchantNo?: string) {
 </template>
 
 <style scoped>
+.picks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+  margin-top: 12rpx;
+}
+.pick {
+  flex: 1 1 40%;
+  min-width: 220rpx;
+  padding: 16rpx 20rpx;
+  border: 3rpx solid var(--sh-line);
+  border-radius: 12rpx;
+  box-sizing: border-box;
+}
+.pick.is-on {
+  border-color: var(--sh-primary);
+}
+.pick__name {
+  display: block;
+  font-size: 26rpx;
+  color: var(--sh-ink);
+}
+.pick__sub {
+  display: block;
+  margin-top: 4rpx;
+  font-size: 22rpx;
+  color: var(--sh-sub);
+}
+
 /* 横向不再自己加内边距：页面边距由 sh-scaffold 统一给，这里再加一道，
    标题就比下方卡片多缩进一截（同一屏里两条左边界，看着像没对齐） */
 /* `<text>` 默认 inline —— 不给 block，标题与这行说明会**挤在同一行**

@@ -12,7 +12,7 @@
 //   3. **传了 ≠ 解锁了** —— 授权是平台看过证之后的动作
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
-import { onShow } from "@dcloudio/uni-app";
+import { onLoad, onShow } from "@dcloudio/uni-app";
 import { api } from "@/api";
 import { useMerchantStore } from "@/stores/merchant";
 import { pickImages } from "@shared/ports/media";
@@ -21,6 +21,13 @@ import type { AuthCodeInfo, MyQualifications, QualificationType } from "@shared/
 const { t } = useI18n();
 const merchant = useMerchantStore();
 
+/**
+ * 看/传**哪张证照**的证件。从证照详情页（多证照）进来时带上，其余情况为空。
+ *
+ * <p>空 = 当前证照，与多证照之前一模一样 —— 存量单证照账号永远走这一支。
+ * 传了别人的证照号后端直接 403，不会静默落到当前这张。
+ */
+const entityNo = ref("");
 const data = ref<MyQualifications | null>(null);
 const loading = ref(false);
 const uploading = ref(false);
@@ -41,7 +48,7 @@ const form = ref<{ qualType: QualificationType; qualName: string; qualNumber: st
 async function load() {
   loading.value = true;
   try {
-    data.value = await api.mQualifications();
+    data.value = await api.mQualifications(entityNo.value || undefined);
   } catch (e) {
     uni.showToast({ title: (e as Error).message, icon: "none" });
   } finally {
@@ -111,6 +118,8 @@ async function submit() {
       imageUrl: f.imageUrl || undefined,
       // 空 = 长期有效。不要拿 0 或一个很大的数字冒充：过期扫描会把前者当成已过期
       expireAt: f.expireAt ? Date.parse(f.expireAt) : null,
+      // 与读同一张证照 —— 少了它会「看的是第二张、传到第一张上」，而两边都不报错
+      ...(entityNo.value ? { entityNo: entityNo.value } : {}),
     });
     form.value = null;
     uni.showToast({ title: t("qual.submitted"), icon: "none" });
@@ -120,6 +129,9 @@ async function submit() {
   }
 }
 
+onLoad((q) => {
+  entityNo.value = q?.entityNo ?? "";
+});
 onShow(() => void load());
 </script>
 

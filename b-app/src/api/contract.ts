@@ -4,6 +4,8 @@
 // 类型全部来自 @shared/types —— **不在这里重复定义**。同一笔订单两端看到的是同一个
 // Order 结构，只是可见字段与可执行动作不同；各定义一份必然漂移。
 import type {
+  Entity,
+  EntityStores,
   GeoReverseResult,
   GeoTip,
   PickupCandidate,
@@ -370,7 +372,8 @@ export interface MerchantApi {
 
   // ---- 收款进件（ADR-002）—— **与入驻审核是两条独立链路**
   /** 每通道一条。微信过了、支付宝还没过是正常状态，合并成一个会让人以为都没好 */
-  mPayments(): Promise<PaymentApplyment[]>;
+  /** @param entityNo 看哪张证照的进件，不传 = 当前证照 */
+  mPayments(entityNo?: string): Promise<PaymentApplyment[]>;
   /** 结算账号明文只在这一次请求里存在：库里只留掩码，回显也只有掩码 */
   mSubmitPayment(payload: SubmitPaymentReq): Promise<PaymentApplyment>;
   /** 主动回查。留这个入口是因为**回调会丢**，丢了商家就永远停在「审核中」 */
@@ -428,8 +431,26 @@ export interface MerchantApi {
   mDropNoticeRecent(text: string): Promise<StoreProfile>;
 
   // ---- 门店管理（M6）—— 与 mStore 的分工：那个管**一家店的门面**，这个管**有几家店**
-  /** 含停用的。停用的也要看得见 —— 看不见的话商家会以为店被删了 */
+  /** 含停用的。停用的也要看得见 —— 看不见的话商家会以为店被删了。**只给当前证照的店** */
   mStoreList(): Promise<Store[]>;
+
+  // ---- 跨证照（多证照）。这三个**故意不吃当前证照的范围** ----
+  /**
+   * 我能进的所有门店，**按证照分组**（门店选择器）。
+   *
+   * <p>与 {@link mStoreList} 的分工：那个是「当前这张证照下的门店」，
+   * 这个是「我名下所有证照的门店」。没有分开的话，切到另一张证照的店这件事
+   * 根本无从发起 —— 列表里压根看不到它。
+   *
+   * <p>店员也能调，结果按授权裁剪：他只拿到 `mch_store_role` 授权到的那几家。
+   */
+  mMyStores(): Promise<EntityStores[]>;
+
+  /** 我名下的证照（只有我是持有人的那些）。「证照与账户」列表页用 */
+  mEntities(): Promise<Entity[]>;
+
+  /** 一张证照的详情与它的门店。**不是我的 → 403**（它存在，只是不属于我） */
+  mEntity(entityNo: string): Promise<EntityStores>;
 
   /**
    * 门店送货方式（方案 v4）：四路开关。storeNo 传 "default" = 默认门店 ——
@@ -492,7 +513,8 @@ export interface MerchantApi {
    * 于是「上架被拒 → 去哪补证」这条路在 B 端是断的 —— 他看到「你还没有该授权」，
    * 然后没有下一步（线上资质表 0 条、授权码全 NULL，就是这么来的）。
    */
-  mQualifications(): Promise<MyQualifications>;
+  /** @param entityNo 看哪张证照的证件，不传 = 当前证照（存量单证照账号永远不传） */
+  mQualifications(entityNo?: string): Promise<MyQualifications>;
   /** 传一张证。**传完不自动授码** —— 授权是平台看过证之后的动作，界面要说清楚 */
   mSaveQualification(payload: QualificationSaveReq): Promise<Qualification>;
   /**

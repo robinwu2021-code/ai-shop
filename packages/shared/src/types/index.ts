@@ -2060,6 +2060,8 @@ export interface QualificationSaveReq {
   qualNumber?: string;
   imageUrl?: string;
   expireAt?: number | null;
+  /** 传给哪张证照，可空 = 当前证照。多证照的老板从证照详情页进来时会带上它 */
+  entityNo?: string;
 }
 
 /**
@@ -2278,6 +2280,45 @@ export interface StoreCategory {
   onSaleCount: number;
   /** 待审的件数。它常常是「这一类为什么看起来没货」的答案 */
   pendingCount: number;
+}
+
+/**
+ * 一张**证照**（营业执照）。库里叫 `mch_entity`，**对外一律叫「证照」**——
+ * 老板不认识「主体」「实体」这两个词。
+ */
+export interface Entity {
+  entityNo: string;
+  /**
+   * 执照上的名称。**待补证照时它是老板随手填的店名**——
+   * 补齐执照、审核通过后被执照上的正式名称覆盖
+   */
+  name: string;
+  /**
+   * ACTIVE 营业中 / PENDING_LICENSE 待补证照 / SUSPENDED、BANNED 已停业。
+   * **端上照它给下一步**：待补证照给「去补执照」，已停业给客服入口
+   */
+  status: MerchantStatus;
+  /** 平台已认证。待补证照恒为 false —— 这个标是审核给的，不能自己开店就带上 */
+  verified: boolean;
+  /** 个体户 / 有限公司…… 待补证照时为空，那时还不知道是哪种 */
+  legalForm?: string;
+  /** 这张证照下**我能进**的门店数。老板 = 全部；店员 = 只数被授权到的那几家 */
+  storeCount: number;
+  /** 默认证照。不带 `X-Store-No` 时后端解析到的就是它 */
+  isPrimary: boolean;
+  /** 我是不是这张证照的持有人。**只有持有人能改资料、交执照、挂收款号** */
+  canManage: boolean;
+}
+
+/**
+ * 一张证照 + 它下面我能进的门店。门店选择器按这个分组渲染。
+ *
+ * **为什么分组而不是拍平**：两家店同名是常事（「文三路店」在两张执照下各有一家），
+ * 拍平之后点哪个都不知道进了哪张证照，而进错的表现是「商品怎么全没了」。
+ */
+export interface EntityStores {
+  entity: Entity;
+  stores: Store[];
 }
 
 export interface Store {

@@ -431,6 +431,21 @@ function takePendingAfterSale(afterSaleNo: string): Order {
   return o;
 }
 
+/**
+ * 这张证照的资质桶。`entityNo` 为空 = 当前证照。
+ *
+ * <p>**分桶存**是这段 mock 的重点：资质挂在证照上，不是挂在账号上。
+ * 共用一份的话，「在证照详情页看的是第二张、传上去却落到第一张」——
+ * 这个最要命的错在 mock 下永远看不出来，而它正是 entityNo 这个参数要防的事。
+ *
+ * <p>不认识的证照号**直接拒**，与后端同一口径（403 而不是静默落到当前那张）。
+ */
+function qualsOf(entityNo?: string) {
+  if (!entityNo || entityNo === db.merchant.merchantNo) return db.myQualifications;
+  if (entityNo === db.secondEntity.entityNo) return db.secondEntityQualifications;
+  throw new ApiError(10403, "这张证照不属于你");
+}
+
 function requireStore(storeNo: string) {
   const s = db.stores.find((x) => x.storeNo === storeNo);
   if (!s) throw new Error("门店不存在");
@@ -764,6 +779,10 @@ export const mockApi: MerchantApi = {
   },
 
   async mSubmitPayment(payload) {
+    if (payload.entityNo && payload.entityNo === db.secondEntity.entityNo) {
+      // 第二张证照还没交执照，进件进不了 —— 与后端一致：没证照没法进件
+      throw new ApiError(10403, "这张证照还没交营业执照，先补上才能开通收款");
+    }
     /*
      * mock 也走「资料齐了才通过」这条规则：恒成功的 mock 会让端上
      * 「缺什么就说缺什么」那段界面永远走不到，而它正是商家最需要的一段。
@@ -897,24 +916,76 @@ export const mockApi: MerchantApi = {
     return delay(db.stores.map((s) => ({ ...s })));
   },
 
+  /**
+   * 按证照分组的门店。**与 mStoreList 是两个范围**：那个只给当前证照，这个给全部。
+   *
+   * <p>第一组是当前证照（种子里的「张记粮油」），第二组是老板的第二门生意
+   * （`db.secondEntity`，待补证照）。没有第二组的话，分组这件事在 mock 下看不出来。
+   */
+  async mMyStores() {
+    return delay([
+      {
+        entity: {
+          entityNo: db.merchant.merchantNo,
+          name: db.merchant.name,
+          status: db.merchant.status,
+          verified: db.merchant.status === "ACTIVE",
+          storeCount: db.stores.length,
+          isPrimary: true,
+          canManage: true,
+        },
+        stores: db.stores.map((s) => ({ ...s })),
+      },
+      {
+        entity: { ...db.secondEntity, storeCount: db.secondEntityStores.length },
+        stores: db.secondEntityStores.map((s) => ({ ...s })),
+      },
+    ]);
+  },
+
+  async mEntities() {
+    const groups = await this.mMyStores();
+    // 只给「我是持有人」的那些。mock 里两张都是他自己的
+    return delay(groups.filter((g) => g.entity.canManage).map((g) => ({ ...g.entity })));
+  },
+
+  async mEntity(entityNo) {
+    const groups = await this.mMyStores();
+    const hit = groups.find((g) => g.entity.entityNo === entityNo);
+    // 与真库同一口径：不是我的证照 → 拒，**不是回落到当前那张**
+    if (!hit) throw new ApiError(10403, "这张证照不属于你");
+    return delay(hit);
+  },
+
   async mCreateStore(payload) {
     /*
      * mock 也照额度拒。恒成功的 mock 会让「超额」那段界面永远走不到，
      * 而它是多门店里最常被触发的一条路径 —— FREE 档只能有一家店。
      */
-    if (db.stores.length >= db.storeQuota) {
-      throw new Error(`当前套餐最多 ${db.storeQuota} 家门店`);
+    /*
+     * 挂到第二张证照下时，撞的是**那张的额度**，不是当前这张的 ——
+     * 与后端一致（mch_entity_plan 挂在 entity_no 上）。mock 里第二张给 3 家，
+     * 好让「挂到另一张下能建成」这条路走得通。
+     */
+    const onSecond = !!payload.entityNo && payload.entityNo === db.secondEntity.entityNo;
+    if (payload.entityNo && !onSecond && payload.entityNo !== db.merchant.merchantNo) {
+      throw new ApiError(10403, "这张证照不属于你");
+    }
+    const bucket = onSecond ? db.secondEntityStores : db.stores;
+    const quota = onSecond ? 3 : db.storeQuota;
+    if (bucket.length >= quota) {
+      throw new Error(`当前套餐最多 ${quota} 家门店`);
     }
     const store = {
-      storeNo: `ST-MOCK-${db.stores.length + 1}`,
+      storeNo: onSecond ? `ST-MOCK-E2-${bucket.length + 1}` : `ST-MOCK-${bucket.length + 1}`,
       name: payload.name,
       address: payload.address ?? "",
-      isDefault: db.stores.length === 0,
+      isDefault: bucket.length === 0,
       status: "ACTIVE" as const,
       payReady: true,
       staffCount: 0,
     };
-    db.stores.push(store);
+    bucket.push(store);
     persist();
     return delay({ ...store });
   },
@@ -2196,10 +2267,10 @@ export const mockApi: MerchantApi = {
    * 我的资质。mock 里给一条「已传但还没授码」的样本 ——
    * 那正是这一页要说清楚的状态：传了 ≠ 解锁了。
    */
-  async mQualifications() {
+  async mQualifications(entityNo) {
     requireMerchant();
     return delay({
-      items: db.myQualifications,
+      items: qualsOf(entityNo),
       grantedCodes: ["FRESH_VEG", "FRESH_FRUIT"],
       catalog: [
         { code: "FRESH_VEG", name: "蔬菜", requiredQualification: "营业执照（食用农产品）",
@@ -2219,6 +2290,9 @@ export const mockApi: MerchantApi = {
   async mSaveQualification(payload) {
     requireMerchant();
     if (!payload.qualName?.trim()) throw new Error("先填证件名称");
+    // ★ 传到**哪张证照**上。共用一份的话，「看的是第二张、传到第一张」这个错
+    // 在 mock 下永远看不出来 —— 而那正是 entityNo 这个参数要防的事
+    const bucket = qualsOf(payload.entityNo);
     const created = {
       qualNo: nextNo("QL"),
       qualType: payload.qualType,
@@ -2228,7 +2302,14 @@ export const mockApi: MerchantApi = {
       expireAt: payload.expireAt ?? null,
       status: "VALID",
     };
-    db.myQualifications.push(created);
+    bucket.push(created);
+    /*
+     * **落盘**。原先这里漏了 persist()，表现是「传完看得见、刷新就没了」——
+     * db.ts 顶上那段注释点名的正是这一类漏配（已经因此漏过三次）。
+     * 多证照之后它更要紧：第二张证照的证件只存在这一个桶里，
+     * 不落盘的话「传到哪张证照上」这件事刷新一次就看不出来了。
+     */
+    persist();
     return delay(created);
   },
 

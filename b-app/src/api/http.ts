@@ -67,6 +67,8 @@ import type {
   PickupOrder,
   Quote,
   VerifyResult,
+  Entity,
+  EntityStores,
   Store,
   StoreCategory,
   PaymentApplyment,
@@ -124,7 +126,8 @@ export const httpApi: MerchantApi = {
   mApplyDraft: () => http.get<MerchantApplyStatus | null>(E.mApplyDraft.path),
   mMasterData: () => http.get<MasterData>(E.mMasterData.path),
 
-  mPayments: () => http.get<PaymentApplyment[]>(E.mPayments.path),
+  mPayments: (entityNo) =>
+    http.get<PaymentApplyment[]>(E.mPayments.path, entityNo ? { entityNo } : undefined),
   mSubmitPayment: (payload) =>
     http.post<PaymentApplyment>(E.mSubmitPayment.path, payload satisfies SubmitPaymentReq),
   mRefreshPayment: (payChannel) =>
@@ -169,6 +172,9 @@ export const httpApi: MerchantApi = {
   mEstates: (regionCode, opts) => http.get<EstateList>(E.mEstates.path, { regionCode, ...opts }),
   mEstateCounts: (parentCode) => http.get<Record<string, number>>(E.mEstateCounts.path, { parentCode }),
   mStoreList: () => http.get<Store[]>(E.mStoreList.path),
+  mMyStores: () => http.get<EntityStores[]>(E.mMyStores.path),
+  mEntities: () => http.get<Entity[]>(E.mEntities.path),
+  mEntity: (entityNo) => http.get<EntityStores>(buildPath(E.mEntity.path, { entityNo })),
   mCreateStore: (payload) =>
     http.post<Store>(E.mCreateStore.path, payload satisfies StoreEditReq),
   mRenameStore: (storeNo, payload) =>
@@ -180,7 +186,8 @@ export const httpApi: MerchantApi = {
   mSetStorePayment: (storeNo, payMerchantNo) =>
     http.post<Store>(buildPath(E.mSetStorePayment.path, { storeNo }),
       { payMerchantNo } satisfies SetStorePaymentReq),
-  mQualifications: () => http.get<MyQualifications>(E.mQualifications.path),
+  mQualifications: (entityNo) =>
+    http.get<MyQualifications>(E.mQualifications.path, entityNo ? { entityNo } : undefined),
   mSaveQualification: (payload) =>
     http.post<Qualification>(E.mSaveQualification.path, { ...payload }),
   mStoreCategories: (storeNo) =>

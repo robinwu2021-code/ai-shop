@@ -21,6 +21,8 @@ export const ROUTES = {
   storeCategories: "/pages/store-categories/index",
   mySpecs: "/pages/my-specs/index",
   qualifications: "/pages/qualifications/index",
+  entities: "/pages/entities/index",
+  entityDetail: "/pages/entity-detail/index",
   staff: "/pages/staff/index",
   staffDetail: "/pages/staff-detail/index",
   roleDetail: "/pages/role-detail/index",

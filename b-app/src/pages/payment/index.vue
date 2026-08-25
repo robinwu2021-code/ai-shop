@@ -10,7 +10,7 @@ const merchant = useMerchantStore();
 // 但通道没批就收不了钱。此前 B 端完全看不到这个状态 ——
 // 商家开完店、上完架，第一笔订单才发现收不了款，而那时只能打电话给运营。
 import { computed, ref } from "vue";
-import { onShow } from "@dcloudio/uni-app";
+import { onLoad, onShow } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
 import { api } from "@/api";
 import { pickImages } from "@shared/ports/media";
@@ -34,12 +34,17 @@ const uploading = ref(false);
 const missing = computed(() => current.value?.missing ?? []);
 const needLicense = computed(() => missing.value.includes("licenses"));
 
+/** 给哪张证照进件。从证照详情页（多证照）进来时带上，空 = 当前证照 */
+const entityNo = ref("");
+onLoad((q) => {
+  entityNo.value = q?.entityNo ?? "";
+});
 onShow(load);
 
 async function load() {
   loading.value = true;
   try {
-    list.value = await api.mPayments();
+    list.value = await api.mPayments(entityNo.value || undefined);
   } catch {
     list.value = [];
   } finally {
@@ -82,6 +87,8 @@ async function submit() {
       licenses: licenses.value,
       contactName: form.value.contactName,
       contactPhone: form.value.contactPhone,
+      // 与读同一张证照 —— 少了它会「看的是第二张、进件进到第一张上」
+      ...(entityNo.value ? { entityNo: entityNo.value } : {}),
     });
     list.value = [r, ...list.value.slice(1)];
     /*

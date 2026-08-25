@@ -3,7 +3,7 @@
     {
       "key": "b-app",
       "label": "商家 App",
-      "count": 44,
+      "count": 46,
       "domains": [
         {
           "name": "工作台",
@@ -321,6 +321,41 @@
           ]
         },
         {
+          "name": "其它",
+          "pages": [
+            {
+              "app": "b-app",
+              "route": "/pages/entities/index",
+              "title": "证照与账户",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "preview": "http://localhost:5175/#/pages/entities/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/entity-detail/index",
+              "title": "证照详情",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "preview": "http://localhost:5175/#/pages/entity-detail/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/member-add/index",
+              "title": "添加会员",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "preview": "http://localhost:5175/#/pages/member-add/index"
+            }
+          ]
+        },
+        {
           "name": "团购与求团",
           "pages": [
             {
@@ -482,21 +517,6 @@
               "status": "原型",
               "proto": "s13",
               "preview": null
-            }
-          ]
-        },
-        {
-          "name": "其它",
-          "pages": [
-            {
-              "app": "b-app",
-              "route": "/pages/member-add/index",
-              "title": "添加会员",
-              "domain": "其它",
-              "tab": false,
-              "status": "已实现",
-              "proto": null,
-              "preview": "http://localhost:5175/#/pages/member-add/index"
             }
           ]
         }
@@ -2312,5 +2332,5 @@
       ]
     }
   ],
-  "total": 190
+  "total": 192
 }

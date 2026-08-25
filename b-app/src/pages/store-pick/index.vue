@@ -9,20 +9,47 @@ import { computed, ref } from "vue";
 import { onLoad } from "@dcloudio/uni-app";
 import { useMerchantStore } from "@/stores/merchant";
 import { ROUTES } from "@/shared/nav";
+import { useI18n } from "vue-i18n";
+import type { EntityStores } from "@shared/types";
 
+const { t } = useI18n();
 const merchant = useMerchantStore();
 /** 进 App 的那一次：选完去工作台；从「我的」进来的：选完回上一页 */
 const entry = ref(false);
 const picked = ref("");
 
-const stores = computed(() => merchant.stores);
-const current = computed(() => merchant.stores.find((s) => s.storeNo === picked.value));
+/**
+ * 按证照分组。**选一家门店同时定了两件事**：用哪张证照、进哪家店 ——
+ * 这也是切证照的唯一入口（产品方案 §2.1：日常打交道的是门店，不是证照）。
+ *
+ * 拿不到分组（老后端、或这次请求失败）时退回单组：把 `merchant.stores` 当成
+ * 唯一一张证照的门店。**宁可少一个分组头，也不要整页空白** ——
+ * 他打开这一页是为了进店干活。
+ */
+const groups = computed<EntityStores[]>(() => {
+  if (merchant.entityGroups.length) return merchant.entityGroups;
+  return merchant.stores.length
+    ? [{ entity: null as never, stores: merchant.stores }]
+    : [];
+});
+/** 单证照时整个不画分组头 —— 只有一组的分组是纯噪音 */
+const grouped = computed(() => merchant.multiEntity);
+const current = computed(() =>
+  groups.value.flatMap((g) => g.stores).find((s) => s.storeNo === picked.value));
 
 onLoad(async (q) => {
   entry.value = q?.entry === "1";
-  await merchant.ensureStores();
+  await Promise.all([merchant.ensureStores(), merchant.ensureEntityGroups()]);
   picked.value = merchant.storeNo || merchant.usableStores[0]?.storeNo || "";
 });
+
+/** 证照状态 → 那一组标题右边的小字。营业中不出字：没问题的东西不该占视线 */
+function entityNote(g: EntityStores): string {
+  const st = g.entity?.status;
+  if (st === "PENDING_LICENSE") return t("storePick.entityPending");
+  if (st && st !== "ACTIVE") return t("storePick.entityClosed");
+  return "";
+}
 
 function choose(storeNo: string, status: string) {
   if (status !== "ACTIVE") return;
@@ -46,9 +73,14 @@ function confirm() {
     <text class="sh-h1">{{ $t("storePick.heading") }}</text>
     <text class="hint">{{ $t("storePick.hint") }}</text>
 
-    <view class="list">
+    <view v-for="g in groups" :key="g.entity?.entityNo || 'only'" class="list">
+      <!-- 分组头只在多证照时出现 -->
+      <view v-if="grouped" class="group">
+        <text class="group__name">{{ g.entity?.name }}</text>
+        <text v-if="entityNote(g)" class="group__note">{{ entityNote(g) }}</text>
+      </view>
       <view
-        v-for="s in stores"
+        v-for="s in g.stores"
         :key="s.storeNo"
         class="sh-card item"
         :class="{ 'is-on': s.storeNo === picked, 'is-off': s.status !== 'ACTIVE' }"
@@ -95,6 +127,21 @@ function confirm() {
   flex-direction: column;
   gap: 16rpx;
   margin-top: 24rpx;
+}
+.group {
+  display: flex;
+  align-items: baseline;
+  gap: 12rpx;
+  margin-top: 8rpx;
+}
+.group__name {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: var(--sh-sub);
+}
+.group__note {
+  font-size: 22rpx;
+  color: var(--sh-warn, var(--sh-sub));
 }
 .item {
   display: flex;

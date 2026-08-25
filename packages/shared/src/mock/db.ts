@@ -25,6 +25,8 @@ import type {
   StaffLog,
   MerchantRole,
   PaymentApplyment,
+  Entity,
+  Qualification,
   Store,
   StoreCategory,
   StoreProfile,
@@ -1056,6 +1058,46 @@ export const db = {
 
   /** 门店额度。改这个数就能在 mock 下体验 PRO/CHAIN 档 */
   storeQuota: 1,
+
+  /**
+   * **第二张证照**（多证照）—— 老板的第二门生意。
+   *
+   * <p>没有它的话，「按证照分组的门店选择器」「证照与账户」这两页在 mock 下
+   * 永远只有一组、一条，等于看不出它们和旧界面的区别 —— 而那个区别正是要验的东西。
+   *
+   * <p>刻意配成 `PENDING_LICENSE`（待补证照）：这是新老板最常见的处境，
+   * 也是唯一能同时验到「状态徽标」「去补执照」两条界面分支的状态。
+   * 想验「两张都正常营业」把 status 改成 ACTIVE 即可。
+   */
+  secondEntity: {
+    entityNo: "M-MOCK-2",
+    name: "张记水果",
+    status: "PENDING_LICENSE",
+    verified: false,
+    storeCount: 1,
+    isPrimary: false,
+    canManage: true,
+  } as Entity,
+
+  /**
+   * 第二张证照的证件。**与 `myQualifications` 分开存**：资质是挂在证照上的，
+   * 不是挂在账号上。共用一份的话，「在证照详情页看的是第二张、传上去却落到第一张」
+   * 这个最要命的错在 mock 下永远看不出来 —— 而那正是 entityNo 这个参数要防的事。
+   */
+  secondEntityQualifications: [] as Qualification[],
+
+  /** 第二张证照下的门店。与 `stores` 分开存 —— 它们不在同一张执照下 */
+  secondEntityStores: [
+    {
+      storeNo: "ST-MOCK-E2-1",
+      name: "张记水果 · 文一路店",
+      address: "文一路 128 号",
+      isDefault: true,
+      status: "ACTIVE",
+      payReady: false,
+      staffCount: 0,
+    },
+  ] as Store[],
 
   /**
    * 门店货架（TDD-品类约束全链路 §三）。按 storeNo 分组。

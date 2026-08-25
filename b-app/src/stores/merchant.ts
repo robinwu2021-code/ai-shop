@@ -4,7 +4,7 @@ import { defineStore } from "pinia";
 import { api } from "@/api";
 import { STORAGE } from "@shared/utils/constants";
 import { getPushDevice } from "@shared/ports/push";
-import type { LoginReq, MerchantProfile, Store } from "@shared/types";
+import type { EntityStores, LoginReq, MerchantProfile, Store } from "@shared/types";
 
 export const useMerchantStore = defineStore("merchant", {
   state: () => ({
@@ -47,6 +47,17 @@ export const useMerchantStore = defineStore("merchant", {
     scopeLoading: null as Promise<unknown> | null,
     /** 进行中的门店列表请求，供 ensureStores 去重。不持久化 */
     storesLoading: null as Promise<Store[]> | null,
+    /**
+     * 我名下**所有证照**及各自的门店（多证照）。
+     *
+     * <p>与 {@link stores} 是两个范围：那个是「当前这张证照下的门店」，
+     * 每次切店都跟着变；这个是「我一共有哪几张证照、每张下有哪几家店」，
+     * 只有选店页与证照页用得上。**不落本地存储** —— 它不是会话上下文，
+     * 存下来只会在证照状态变了之后给出一份过期的分组。
+     */
+    entityGroups: [] as EntityStores[],
+    /** 进行中的分组请求，供 ensureEntityGroups 去重。不持久化 */
+    groupsLoading: null as Promise<EntityStores[]> | null,
     /** 进行中的资料请求，供 ensureProfile 去重。不持久化 */
     profileLoading: null as Promise<unknown> | null,
   }),
@@ -65,6 +76,16 @@ export const useMerchantStore = defineStore("merchant", {
     categoryGateEnforced: (s) => s.switches.categoryGate === true,
     /** 只有一家店时不显示切换器 —— 给单店商家一个永远只有一个选项的下拉是纯噪音 */
     multiStore: (s) => s.stores.length > 1,
+    /**
+     * 名下不止一张证照。**绝大多数商家是 false** —— 界面上一切与证照有关的
+     * 分组头、归属小字、「挂在哪张证照下」都按它短路掉。
+     *
+     * <p>不短路的话，单证照商家会看到一个只有一组的分组、一个只有一个选项的单选，
+     * 那是纯负担；而这类噪音最终会让他连真正要选的那次也不看。
+     */
+    multiEntity: (s) => s.entityGroups.length > 1,
+    /** 我能进的所有门店，拍平。跨证照找一家店时用（比如从证照详情跳回选店） */
+    allStores: (s) => s.entityGroups.flatMap((g) => g.stores),
     /** 能进的门店（停业的不算）。选店页据它决定要不要出现 */
     usableStores: (s) => s.stores.filter((x) => x.status === "ACTIVE"),
     /**
@@ -183,6 +204,27 @@ export const useMerchantStore = defineStore("merchant", {
       return this.stores;
     },
 
+    /**
+     * 载入「我名下所有证照 + 各自的门店」。
+     *
+     * <p>失败**静默给空**：这一份只喂选店页与证照页，拿不到时那两页各自有
+     * 单证照的退路（选店页照 `stores` 画）。让它抛出去的话，一次网络抖动
+     * 会把整个选店页变成错误页，而他要做的只是进店干活。
+     */
+    async loadEntityGroups() {
+      this.entityGroups = await api.mMyStores().catch(() => []);
+      return this.entityGroups;
+    },
+
+    /** 与 {@link ensureStores} 同一个理由：页面各自调，只真正拉一次 */
+    async ensureEntityGroups() {
+      if (this.entityGroups.length) return this.entityGroups;
+      this.groupsLoading ??= this.loadEntityGroups().finally(() => {
+        this.groupsLoading = null;
+      });
+      return this.groupsLoading;
+    },
+
     /** 人在选店页点了一家：记下来，进 App 不再追问 */
     pickStore(storeNo: string) {
       this.storePicked = true;
@@ -190,11 +232,29 @@ export const useMerchantStore = defineStore("merchant", {
     },
 
     switchStore(storeNo: string) {
+      /*
+       * ★ 跨证照切店时，`stores` 整份都过期了。
+       *
+       * 后端按 `X-Store-No` 反查证照（多证照），所以切到另一张证照下的店之后，
+       * `/biz/store/list` 给的是**那张证照**的门店。本地这份还停在上一张 ——
+       * 于是门店切换条列的是另一张证照的店名，而当前门店已经换了家。
+       * 他会以为自己点错了，再点一次，又跳回来。
+       *
+       * 判据是「这家店不在当前这份列表里」= 它属于另一张证照。同证照内切店
+       * 不多发这一次请求 —— 那是最常见的操作。
+       */
+      const crossEntity = !!storeNo && this.stores.length > 0
+        && !this.stores.some((x) => x.storeNo === storeNo);
       this.storeNo = storeNo;
       if (storeNo) uni.setStorageSync(STORAGE.storeNo, storeNo);
       else uni.removeStorageSync(STORAGE.storeNo);
       // 角色跟着门店走 —— 换了店就要重新问「我在这家店能做什么」
       void this.loadScope();
+      if (crossEntity) {
+        // 资料也要重拉：店名、状态（待补证照 / 营业中）都是**按证照**的
+        void api.mStoreList().then((rows) => { this.stores = rows; }).catch(() => {});
+        void this.loadProfile().catch(() => {});
+      }
     },
 
     /**
