@@ -46,6 +46,21 @@ public class StlBill extends BaseEntity {
     public static final String MANUAL = "MANUAL";
     public static final String REVERSED = "REVERSED";
 
+    /**
+     * 线下（当面）收款的<b>终态</b>：账单一生成就是这个状态，之后不再变。
+     *
+     * <p><b>不进 {@link #PENDING}</b> —— 那是「等着分账」的意思，而线下单的钱
+     * 从来没进过平台，分个什么账。用它做终态而不是复用 {@link #SPLIT}，
+     * 是为了让「这笔钱平台碰过没有」在状态列上一眼看得出来：
+     * 对账时按状态一分，SPLIT 的那些能和通道流水对上，OFFLINE_SETTLED 的那些
+     * 本来就不该出现在通道流水里。混成一个状态，对不上的那几笔要人工翻订单才认得出。
+     *
+     * <p>结算域<b>早就有一条不走分账的路</b>（自营的
+     * {@link #PENDING_RECON} → {@link #CONFIRMED} → {@link #PAID}），
+     * 所以这里是加一个终态，不是造一条链路。
+     */
+    public static final String OFFLINE_SETTLED = "OFFLINE_SETTLED";
+
     private String settleNo;
     private String subOrderNo;
     private String orderNo;

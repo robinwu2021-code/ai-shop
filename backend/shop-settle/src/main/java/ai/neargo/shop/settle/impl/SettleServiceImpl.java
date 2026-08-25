@@ -9,6 +9,7 @@ import ai.neargo.shop.spi.user.PickupQueryPort;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.common.PayModes;
 import ai.neargo.shop.settle.dto.RateCardVO;
 import ai.neargo.shop.settle.dto.SettleBillVO;
 import ai.neargo.shop.settle.entity.StlBill;
@@ -170,8 +171,18 @@ public class SettleServiceImpl implements SettleService {
              * 商家自己让的利（discountMerchant）不补：那本来就是他出的。
              */
             long gross = src.payAmount() + src.discountPlatform() + src.pointsDeductMinor();
-            long commission = gross * rate / 10000;
             long serviceFee = serviceFeeOf(src, gross);
+
+            /*
+             * ★ 线下（当面）收款：**钱从没进过平台**，所以这张单既不抽佣也不分账。
+             *
+             * 佣金照原样算出来，只是不收 —— 算式一份，收不收是一个 if。
+             * 反过来（线下走一条自己的算法）的话，费率规则每改一次要改两处，
+             * 而漏改的那一处**没有任何地方会报错**：报表照出，数目悄悄不对。
+             */
+            boolean offline = PayModes.OFFLINE.equals(src.payChannel());
+            long ruleCommission = gross * rate / 10000;
+            long commission = offline ? 0L : ruleCommission;
 
             StlBill bill = new StlBill();
             bill.setSettleNo(BizKey.next(BizKey.SETTLE_BILL));
@@ -180,7 +191,21 @@ public class SettleServiceImpl implements SettleService {
             bill.setEntityNo(src.merchantNo());
             bill.setGrossMinor(gross);
             bill.setCommissionMinor(commission);
+            /*
+             * 让掉多少：**只记不扣**。线下单记 ruleCommission，线上单是 0。
+             * 它不是应收账款，没有任何地方会去收 —— 存在的理由只有一个：
+             * 知道让了多少。否则「线下这部分生意值多少钱」根本算不出来，
+             * 将来无论继续免还是重新定价都没有依据。
+             */
+            bill.setWaivedCommissionMinor(offline ? ruleCommission : 0L);
             bill.setServiceFeeMinor(serviceFee);
+            /*
+             * 通道与下单端。**payChannel 此前全库为 null** —— 它从没被传进结算域，
+             * 而下面入池流水那行已经在读它了（读到的一直是 null）。线下单靠它认，
+             * 所以这一步顺带把这个洞补上。
+             */
+            bill.setPayChannel(src.payChannel());
+            bill.setPayScene(src.payScene());
             /*
              * ★ 发分费用金：**单独一列，不并进 serviceFeeMinor**。
              *
@@ -242,7 +267,17 @@ public class SettleServiceImpl implements SettleService {
              */
             bill.setBusinessMode(mode);
             boolean selfOperated = MerchantQueryPort.MODE_SELF_OPERATED.equals(mode);
-            bill.setStatus(selfOperated ? StlBill.PENDING_RECON : StlBill.PENDING);
+            /*
+             * 线下**压过经营模式**决定状态：两条既有链路（自营对账、第三方分账）
+             * 描述的都是「平台手里这笔钱怎么流出去」，而线下压根没有这笔钱。
+             * 落成终态 OFFLINE_SETTLED，之后不再变。
+             *
+             * 进项票状态**仍按经营模式**，不跟着线下走：收不收票是税务的事，
+             * 与钱怎么收无关。不会因此卡住财务的待收票队列 ——
+             * billsAwaitingInvoice 筛的是 status=CONFIRMED，终态单进不去。
+             */
+            bill.setStatus(offline ? StlBill.OFFLINE_SETTLED
+                    : selfOperated ? StlBill.PENDING_RECON : StlBill.PENDING);
             bill.setInvoiceStatus(selfOperated ? StlBill.INV_PENDING : StlBill.INV_NONE);
             bill.setRetryCount(0);
             DataScopeContext.executeWithoutScope(() -> billMapper.insert(bill));
@@ -256,8 +291,23 @@ public class SettleServiceImpl implements SettleService {
              * refNo 用结算单号：对账时要能从池子的一笔回溯到是哪张单收的。
              */
             if (pointsFee > 0) {
+                /*
+                 * ⚠️ 通道**显式传 null**，不要改成 bill.getPayChannel()。
+                 *
+                 * 池子按 (market, pay_channel) 分桶记账，而**所有出池都传 null**
+                 * （PointsServiceImpl 的 MERCHANT_PAY 与 EXPIRE_INCOME 两处）——
+                 * null 落到列默认值 'WECHAT'，于是进出目前都在同一个桶里，是平的。
+                 *
+                 * 这一行此前读的 bill.getPayChannel() 恒为 null（那一列从没被写过），
+                 * 所以碰巧也落 WECHAT。本步开始真的写通道了：若照旧读它，
+                 * 线下单的入池会落进 OFFLINE 桶而出池还在 WECHAT 桶 ——
+                 * 两个桶一个单调涨一个单调负，而账面总额仍然是平的，
+                 * 只有翻「按通道」那张明细才看得出来。
+                 *
+                 * 要真按通道分桶，得进出两侧一起改，那是独立的一件事。
+                 */
                 pointsService.recordPoolFlow(StlPointsPool.MERCHANT_RECEIVE, pointsFee,
-                        src.merchantNo(), bill.getSettleNo(), bill.getPayChannel(), null);
+                        src.merchantNo(), bill.getSettleNo(), null, null);
             }
             created++;
         }
@@ -285,6 +335,17 @@ public class SettleServiceImpl implements SettleService {
         StlBill bill = require(settleNo);
         if (StlBill.SPLIT.equals(bill.getStatus()) || StlBill.REVERSED.equals(bill.getStatus())) {
             return;   // 幂等：重复执行不会重复打款
+        }
+        /*
+         * 线下单**永远不分账**：钱在商家自己口袋里，向二级商户发起分账
+         * 会从他的**其他**收入里划走这笔佣金 —— 而这单的佣金已经说好不收了。
+         *
+         * 直接返回而不是抛异常：批量分账任务是按状态捞单的，OFFLINE_SETTLED
+         * 本来就捞不到；能走到这儿的只有人工重放或将来某个新入口。
+         * 那种时候要的是「这单不动」，不是让整批任务红着停下。
+         */
+        if (StlBill.OFFLINE_SETTLED.equals(bill.getStatus())) {
+            return;
         }
 
         bill.setStatus(StlBill.SPLITTING);

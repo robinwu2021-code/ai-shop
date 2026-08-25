@@ -50,7 +50,8 @@ class PointsSubsidyFlowTest {
     @DisplayName("★ SettleSource 要把积分抵扣带出来 —— 结算域拿不到它就无从加回")
     void settleSourceCarriesPointsDeduction() {
         var src = new SettleSourcePort.SettleSource(
-                "SUB-X", "M0001", "PLATFORM", 8_000L, 1_000L, 0L, null, 1, "ST001", 2_000L, 0L);
+                "SUB-X", "M0001", "PLATFORM", 8_000L, 1_000L, 0L, null, 1, "ST001", 2_000L, 0L,
+                "WECHAT", "MP_WECHAT");
 
         assertThat(src.payAmount() + src.discountPlatform() + src.pointsDeductMinor())
                 .as("结算基数 = 实付 + 平台补贴 + 积分抵扣；缺一项商家就少收一项，"

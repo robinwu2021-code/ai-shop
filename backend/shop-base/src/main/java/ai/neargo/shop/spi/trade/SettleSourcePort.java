@@ -40,9 +40,20 @@ public interface SettleSourcePort {
      *                       费用金是平台<b>向发放商家收的</b>钱（入池）。
      *                       同一张单上两笔都可能有，而且收付双方通常不是同一家。
      */
+    /**
+     * @param payChannel 支付通道 WECHAT / ALIPAY / <b>OFFLINE</b>（{@code PayModes.OFFLINE}）。
+     *                   <b>取自主单，不是子单</b> —— 一次支付覆盖整张订单，跨商家合单时
+     *                   几家用的是同一个通道。
+     *                   <p>它此前<b>从没传进结算域</b>：{@code stl_bill.pay_channel} 全库为 null，
+     *                   而 generateForOrder 里已经有一处在读它（入池流水的通道字段）。
+     *                   线下单靠它认出来，所以顺带补上。
+     * @param payScene   下单端 MP_WECHAT / IOS / …（{@code PayScenes}）。与通道不是一回事：
+     *                   App 两个通道都能走。报表按端切分要用它
+     */
     record SettleSource(String subOrderNo, String merchantNo, String trafficSource,
                         long payAmount, long discountPlatform, long discountMerchant,
                         String pickupNo, int itemCount, String storeNo,
-                        long pointsDeductMinor, long pointsFeeMinor) {
+                        long pointsDeductMinor, long pointsFeeMinor,
+                        String payChannel, String payScene) {
     }
 }
