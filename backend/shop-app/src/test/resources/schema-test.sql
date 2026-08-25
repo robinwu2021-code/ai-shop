@@ -7738,3 +7738,47 @@ UPDATE prd_sku SET option_value_nos = '["SV_AREA_A5"]', updated_at = NOW(), upda
 UPDATE prd_sku SET option_value_nos = '["SV_COUNT_C1"]', updated_at = NOW(), updated_by = 'SYSTEM' WHERE sku_no = 'SK202608201713140328623' AND market = 'CN' AND option_values = '["每窗"]' AND (option_value_nos IS NULL OR option_value_nos IN ('', '[]'));
 UPDATE prd_sku SET option_value_nos = '["SV_TIMES_T1"]', updated_at = NOW(), updated_by = 'SYSTEM' WHERE sku_no = 'SK202608201713150332314' AND market = 'CN' AND option_values = '["单次"]' AND (option_value_nos IS NULL OR option_value_nos IN ('', '[]'));
 UPDATE prd_sku SET option_value_nos = '["SV_LENGTH_L1M"]', updated_at = NOW(), updated_by = 'SYSTEM' WHERE sku_no = 'SK202608201713150334016' AND market = 'CN' AND option_values = '["每米"]' AND (option_value_nos IS NULL OR option_value_nos IN ('', '[]'));
+INSERT INTO sys_function (function_code, name, end_code, icon, href, sort, enabled, created_at, updated_at)
+SELECT 'OPS_MEMBER', '会员与人档', 'OPS', 'UserCheck', '/members', 90, 1, NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_function x WHERE x.function_code='OPS_MEMBER');
+INSERT INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at)
+SELECT 'OPS_MEMBER', 'OPS_MEMBER', '会员名单', '会员', '/members', 'member:member:read', 'member:member:read', 'IMPLEMENTED', 1, 'P-7.4', 'MENU', 10, NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_function_point x WHERE x.point_code='OPS_MEMBER');
+INSERT INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at)
+SELECT 'OPS_MEMBER__TAB_PERSONS', 'OPS_MEMBER', '人档', '会员', '/members?tab=persons', 'member:person:read', 'member:person:read', 'IMPLEMENTED', 1, 'P-7.4', 'MENU', 20, NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_function_point x WHERE x.point_code='OPS_MEMBER__TAB_PERSONS');
+INSERT INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at)
+SELECT 'OPS_MEMBER__TAB_REACH', 'OPS_MEMBER', '触达健康度', '会员', '/members?tab=reach', 'member:member:read', 'member:member:read', 'IMPLEMENTED', 1, 'P-7.4', 'MENU', 30, NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_function_point x WHERE x.point_code='OPS_MEMBER__TAB_REACH');
+INSERT INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at)
+SELECT 'ACT__MEMBER_PERSON_MERGE', 'OPS_MEMBER', 'member:person:merge', '页面内操作', NULL, 'member:person:merge', 'member:person:merge', 'IMPLEMENTED', 1, NULL, 'ACTION', 910, NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_function_point x WHERE x.point_code='ACT__MEMBER_PERSON_MERGE');
+INSERT INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at)
+SELECT 'ACT__MEMBER_PHONE_REVEAL', 'OPS_MEMBER', 'member:phone:reveal', '页面内操作', NULL, 'member:phone:reveal', 'member:phone:reveal', 'IMPLEMENTED', 1, NULL, 'ACTION', 911, NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_function_point x WHERE x.point_code='ACT__MEMBER_PHONE_REVEAL');
+INSERT INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at)
+SELECT 'OPS_MARKETING__TAB_PROMOCOUPONS', 'OPS_MARKETING', '券敞口', '敞口', '/marketing?tab=promoCoupons', 'marketing:coupon:read', 'marketing:coupon:read', 'IMPLEMENTED', 1, 'P-7.1', 'MENU', 60, NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_function_point x WHERE x.point_code='OPS_MARKETING__TAB_PROMOCOUPONS');
+INSERT INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at)
+SELECT 'OPS_MARKETING__TAB_PROMOACTIVITIES', 'OPS_MARKETING', '活动敞口', '敞口', '/marketing?tab=promoActivities', 'marketing:campaign:read', 'marketing:campaign:read', 'IMPLEMENTED', 1, 'P-7.2', 'MENU', 70, NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_function_point x WHERE x.point_code='OPS_MARKETING__TAB_PROMOACTIVITIES');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT r.role_code, r.point_code, 'OPS', NOW(), NOW() FROM (
+  SELECT 'SUPER_ADMIN' AS role_code, 'OPS_MEMBER' AS point_code UNION ALL
+  SELECT 'SUPER_ADMIN', 'OPS_MEMBER__TAB_PERSONS' UNION ALL
+  SELECT 'SUPER_ADMIN', 'OPS_MEMBER__TAB_REACH' UNION ALL
+  SELECT 'SUPER_ADMIN', 'ACT__MEMBER_PERSON_MERGE' UNION ALL
+  SELECT 'SUPER_ADMIN', 'ACT__MEMBER_PHONE_REVEAL' UNION ALL
+  SELECT 'SUPER_ADMIN', 'OPS_MARKETING__TAB_PROMOCOUPONS' UNION ALL
+  SELECT 'SUPER_ADMIN', 'OPS_MARKETING__TAB_PROMOACTIVITIES' UNION ALL
+  SELECT 'GOODS_OPS', 'OPS_MEMBER' UNION ALL
+  SELECT 'GOODS_OPS', 'OPS_MEMBER__TAB_PERSONS' UNION ALL
+  SELECT 'GOODS_OPS', 'OPS_MEMBER__TAB_REACH' UNION ALL
+  SELECT 'GOODS_OPS', 'OPS_MARKETING__TAB_PROMOCOUPONS' UNION ALL
+  SELECT 'GOODS_OPS', 'OPS_MARKETING__TAB_PROMOACTIVITIES' UNION ALL
+  SELECT 'CAMPAIGN_OPS', 'OPS_MARKETING__TAB_PROMOCOUPONS' UNION ALL
+  SELECT 'CAMPAIGN_OPS', 'OPS_MARKETING__TAB_PROMOACTIVITIES'
+) r
+ WHERE NOT EXISTS (
+   SELECT 1 FROM sys_role_point x
+    WHERE x.role_code = r.role_code AND x.point_code = r.point_code AND x.end_code = 'OPS');

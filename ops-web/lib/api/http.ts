@@ -8,6 +8,7 @@ import { communityHttp } from "./https/community";
 import { fulfillmentHttp } from "./https/fulfillment";
 import { storeHttp } from "./https/store";
 import { marketingHttp } from "./https/marketing";
+import { memberHttp } from "./https/member";
 import { reviewHttp } from "./https/review";
 import { afterSaleHttp } from "./https/aftersale";
 import { groupHttp } from "./https/group";
@@ -31,6 +32,7 @@ export const HTTP_SLICES = {
   fulfillment: fulfillmentHttp,
   store: storeHttp,
   marketing: marketingHttp,
+  member: memberHttp,
   review: reviewHttp,
   aftersale: afterSaleHttp,
   group: groupHttp,
@@ -47,5 +49,5 @@ export const HTTP_SLICES = {
 export const httpApi: Api = {
   ...dashboardHttp, ...merchantHttp, ...orderHttp, ...paymentHttp,
   ...communityHttp, ...fulfillmentHttp, ...storeHttp,
-  ...marketingHttp, ...reviewHttp, ...afterSaleHttp, ...groupHttp, ...productHttp, ...financeHttp, ...iamHttp, ...growthHttp, ...riskHttp, ...messageHttp, ...contentHttp, ...systemHttp,
+  ...marketingHttp, ...reviewHttp, ...afterSaleHttp, ...groupHttp, ...productHttp, ...financeHttp, ...iamHttp, ...growthHttp, ...riskHttp, ...messageHttp, ...contentHttp, ...systemHttp, ...memberHttp,
 };

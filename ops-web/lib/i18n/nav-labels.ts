@@ -70,6 +70,13 @@ const OVERLAY: Record<string, Record<string, string>> = {
   极速退阈值配置: { en: "Instant-refund rules" },
   退款回退分账: { en: "Refund split reversal" },
 
+  会员与人档: { en: "Members & persons" },
+  会员名单: { en: "Member list" },
+  人档: { en: "Person records" },
+  触达健康度: { en: "Messaging health" },
+  券敞口: { en: "Coupon exposure" },
+  活动敞口: { en: "Activity exposure" },
+  敞口: { en: "Exposure" },
   营销活动: { en: "Marketing" },
   券模板: { en: "Coupon templates" },
   发放记录: { en: "Issue records" },

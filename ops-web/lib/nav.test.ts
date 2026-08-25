@@ -194,7 +194,7 @@ describe("矩阵覆盖率（docs/requirements/需求矩阵-三端.md §六）", 
 
 describe("待建域", () => {
   // 已交付的域清单。**页面存在才允许可点** —— 静态导出下点一个没有的路由就是 404。
-  const BUILT = ["dashboard", "merchant", "order", "community", "fulfillment", "store", "marketing", "review", "aftersale", "group", "product", "finance", "iam", "growth", "risk", "message", "content", "system"];
+  const BUILT = ["dashboard", "merchant", "order", "community", "fulfillment", "store", "marketing", "review", "aftersale", "group", "product", "finance", "iam", "growth", "risk", "message", "content", "system", "member"];
 
   it("未交付的 section 必须 soon（否则 Rail 点进去 404）", () => {
     const clickableButUnbuilt = NAV.filter((s) => !s.soon && !BUILT.includes(s.key)).map((s) => s.key);

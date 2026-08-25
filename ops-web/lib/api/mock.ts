@@ -9,6 +9,7 @@ import { communityMock } from "./mocks/community";
 import { fulfillmentMock } from "./mocks/fulfillment";
 import { storeMock } from "./mocks/store";
 import { marketingMock } from "./mocks/marketing";
+import { memberMock } from "./mocks/member";
 import { reviewMock } from "./mocks/review";
 import { afterSaleMock } from "./mocks/aftersale";
 import { groupMock } from "./mocks/group";
@@ -31,6 +32,7 @@ export const MOCK_SLICES = {
   fulfillment: fulfillmentMock,
   store: storeMock,
   marketing: marketingMock,
+  member: memberMock,
   review: reviewMock,
   aftersale: afterSaleMock,
   group: groupMock,
@@ -47,5 +49,5 @@ export const MOCK_SLICES = {
 export const mockApi: Api = {
   ...dashboardMock, ...merchantMock, ...orderMock, ...paymentMock,
   ...communityMock, ...fulfillmentMock, ...storeMock,
-  ...marketingMock, ...reviewMock, ...afterSaleMock, ...groupMock, ...productMock, ...financeMock, ...iamMock, ...growthMock, ...riskMock, ...messageMock, ...contentMock, ...systemMock,
+  ...marketingMock, ...reviewMock, ...afterSaleMock, ...groupMock, ...productMock, ...financeMock, ...iamMock, ...growthMock, ...riskMock, ...messageMock, ...contentMock, ...systemMock, ...memberMock,
 };

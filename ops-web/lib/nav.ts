@@ -214,6 +214,26 @@ export const NAV: NavSection[] = [
       { href: "/marketing?tab=campaigns", label: "活动", perm: "marketing:campaign:update", group: "活动", matrix: "P-7.2", ready: true },
       { href: "/marketing?tab=slots", label: "首页楼层与 Banner", perm: "marketing:slot:update", group: "内容位", matrix: "P-7.3", ready: true },
       { href: "/marketing?tab=member", label: "会员卡与权益", perm: "marketing:member:update", group: "会员", matrix: "P-7.4", phase: 2, ready: true },
+      /*
+       * 敞口两条：看的是「谁家的券会失控」，是营销的事，权限码也是 marketing:*。
+       * 挂到会员 section 下面会让看会员的人顺带拿到营销的入口。
+       */
+      { href: "/marketing?tab=promoCoupons", label: "券敞口", perm: "marketing:coupon:read", group: "敞口", matrix: "P-7.1", ready: true },
+      { href: "/marketing?tab=promoActivities", label: "活动敞口", perm: "marketing:campaign:read", group: "敞口", matrix: "P-7.2", ready: true },
+    ],
+  },
+
+  // ── P-7.5 会员与人档（P8 落地）─────────────────────────────────────────
+  //
+  // **单独一个菜单而不是挂在营销下面**：营销页回答「发了什么」，这一页回答
+  // 「这个人是谁家的会员」「谁家的券会失控」。两者的权限域也不同
+  // （member:* 与 marketing:*），挂在一起会让看会员的人顺带拿到改券的入口。
+  {
+    key: "member", label: "会员与人档", icon: "UserCheck", module: "member", href: "/members",
+    children: [
+      { href: "/members", label: "会员名单", perm: "member:member:read", group: "会员", matrix: "P-7.4", ready: true },
+      { href: "/members?tab=persons", label: "人档", perm: "member:person:read", group: "会员", matrix: "P-7.4", ready: true },
+      { href: "/members?tab=reach", label: "触达健康度", perm: "member:member:read", group: "会员", matrix: "P-7.4", ready: true },
     ],
   },
 

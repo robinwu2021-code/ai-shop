@@ -24,6 +24,7 @@ import type { RiskApi } from "./contracts/risk";
 import type { MessageApi } from "./contracts/message";
 import type { ContentApi } from "./contracts/content";
 import type { SystemApi } from "./contracts/system";
+import type { MemberApi } from "./contracts/member";
 
 // 查询参数集中在 query.ts；此处再导出，保持 `@/lib/api` 的对外导出面不变。
 export * from "./query";
@@ -31,9 +32,10 @@ export type { LoginResp } from "./contracts/dashboard";
 export type {
   DashboardApi, MerchantApi, OrderApi, PaymentApi, CommunityApi, FulfillmentApi, StoreApi,
   MarketingApi, ReviewApi, AfterSaleApi, GroupApi, ProductApi, FinanceApi, IamApi, GrowthApi, RiskApi, MessageApi, ContentApi, SystemApi,
+  MemberApi,
 };
 
 export interface Api
   extends DashboardApi, MerchantApi, OrderApi, PaymentApi, CommunityApi, FulfillmentApi, StoreApi,
     MarketingApi, ReviewApi, AfterSaleApi, GroupApi, ProductApi, FinanceApi, IamApi, GrowthApi, RiskApi,
-    MessageApi, ContentApi, SystemApi {}
+    MessageApi, ContentApi, SystemApi, MemberApi {}
