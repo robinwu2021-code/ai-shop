@@ -76,6 +76,19 @@ export const useMerchantStore = defineStore("merchant", {
     currentStore: (s) => s.stores.find((x) => x.storeNo === s.storeNo) ?? null,
     /** 已入驻且正常经营 —— 未通过审核不能上架、不能收款 */
     isActive: (s) => s.profile?.status === "ACTIVE",
+    /**
+     * 能不能进经营台干活 —— 比 {@link isActive} 宽一档。
+     *
+     * **待补证照（无证照先开店）的人要能干活**：录商品、配范围、加员工、印店铺码，
+     * 把准备工作做完，只是买家还看不到他。拿 `isActive` 卡他的话，
+     * 他建完店登录进来看到的是「还没有开店 · 去入驻」—— 那句话在说他刚做的事不存在。
+     *
+     * **接生意那一类仍然用 `isActive`**（比如「我要报价」）：他现在履约不了，
+     * 报了价也是空头承诺。两个 getter 的差别就是这条线。
+     */
+    canOperate: (s) => s.profile?.status === "ACTIVE" || s.profile?.status === "PENDING_LICENSE",
+    /** 开了店但还没交证照 —— 首页据此常驻一条「还不能开张营业」 */
+    pendingLicense: (s) => s.profile?.status === "PENDING_LICENSE",
     /** 是否承接自提点 → 决定工作台是否出现「履约台」入口（ADR-005） */
     isPickupPoint: (s) => !!s.profile?.isPickupPoint,
     /**

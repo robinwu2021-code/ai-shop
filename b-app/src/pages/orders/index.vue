@@ -111,7 +111,7 @@ const allStores = ref(false);
 const empty = computed(() => !loading.value && !list.value.length);
 
 async function load() {
-  if (!merchant.isActive) return;
+  if (!merchant.canOperate) return;
   loading.value = true;
   try {
     const scope = { size: 50, allStores: allStores.value || undefined };

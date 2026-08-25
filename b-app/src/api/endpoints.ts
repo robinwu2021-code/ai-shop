@@ -23,6 +23,7 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
   mProfile: { method: "GET", path: "/biz/merchant/profile", auth: true, summary: "商家资料" },
 
   mApply: { method: "POST", path: "/biz/merchant/apply", auth: true, summary: "提交入驻申请" },
+  mQuickStart: { method: "POST", path: "/biz/merchant/quick-start", auth: true, summary: "无证照快速开店" },
   mApplyDraft: { method: "GET", path: "/biz/merchant/apply", auth: true, summary: "上次入驻申请" },
   mMasterData: { method: "GET", path: "/common/master-data", auth: false, summary: "平台主数据（行业/主体/通道）" },
 

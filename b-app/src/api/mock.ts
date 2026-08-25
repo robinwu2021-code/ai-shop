@@ -632,6 +632,22 @@ export const mockApi: MerchantApi = {
     return delay({ ...db.merchant });
   },
 
+  async mQuickStart(payload) {
+    /*
+     * 无证照快速开店。与 mApply 的差别就是这个 status —— **不进审核队列**，
+     * 当场就能干活，只是买家看不到（真实后端的可见性闸门按主体状态挡，
+     * mock 这边没有 C 端可见性可模拟，所以只体现在状态上）。
+     */
+    db.merchant = {
+      ...db.merchant,
+      merchantNo: db.merchant.merchantNo || nextNo("M"),
+      name: payload.storeName,
+      status: "PENDING_LICENSE",
+    };
+    persist();
+    return delay({ ...db.merchant });
+  },
+
   async mApplyDraft() {
     return delay(db.merchantApply ? { ...db.merchantApply } : null);
   },

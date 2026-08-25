@@ -67,6 +67,19 @@ const visible = computed(() => {
  */
 const blockers = computed(() => {
   const list: { key: string; route: string }[] = [];
+  /*
+   * **还没交证照 —— 这条排在最前，也是唯一一条「店开着但一单也不会来」的。**
+   *
+   * 无证照快速开店的人，店建好了、货也能录，但买家看不到他（后端可见性闸门
+   * 按主体状态挡）。不常驻这一条的话，他会以为已经开张了，过几天才发现
+   * 一单没有 —— 而那时他既不知道差什么，也不知道去哪补。
+   *
+   * 不判 `can()`：这是主体级的事，店员看到也无妨（他确实在一家还没开张的店里干活），
+   * 而下面两条是权限相关的，见方法注释。
+   */
+  if (merchant.pendingLicense) {
+    list.push({ key: "license", route: ROUTES.apply });
+  }
   if (merchant.can("biz:finance") && !canReceive.value) {
     list.push({ key: "payment", route: ROUTES.payment });
   }
@@ -140,7 +153,7 @@ const ownedRate = computed(() =>
 
 async function load() {
   await merchant.loadProfile().catch(() => null);
-  if (!merchant.isActive) return;
+  if (!merchant.canOperate) return;
   // 门店要先定下来：它决定后面这一屏所有数字属于哪家店
   await merchant.loadStores();
   /*
@@ -189,16 +202,59 @@ function goApply() {
   uni.navigateTo({ url: merchant.isLogin ? ROUTES.apply : ROUTES.login });
 }
 
+/**
+ * 先开店：填个店名就把店建起来，执照以后再补。
+ *
+ * <p><b>把它摆在「去入驻」旁边，而不是藏在里面</b>：那张入驻表单要填行业、
+ * 主体类型、经营范围、结算账户、传执照 —— 对一个只想先看看这东西能不能用的
+ * 街边小店老板，那是一道劝退墙。这条路只问一句「店叫什么」。
+ *
+ * <p>补证照走的还是入驻表单，服务端会认领这家店 —— 他现在录的商品都还在。
+ */
+const opening = ref(false);
+async function goQuickStart() {
+  if (!merchant.isLogin) {
+    uni.navigateTo({ url: ROUTES.login });
+    return;
+  }
+  if (opening.value) return;
+  const name = await new Promise<string>((resolve) => {
+    uni.showModal({
+      title: String(t("home.quickStartTitle")),
+      content: String(t("home.quickStartBody")),
+      editable: true,
+      placeholderText: String(t("home.quickStartPh")),
+      success: (r) => resolve(r.confirm ? (r.content ?? "") : ""),
+      fail: () => resolve(""),
+    });
+  });
+  if (!name.trim()) return;
+  opening.value = true;
+  try {
+    await api.mQuickStart({ storeName: name.trim() });
+    // 重新拉一次资料 —— 状态、门店、权限全变了
+    await merchant.loadProfile();
+    await load();
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: "none" });
+  } finally {
+    opening.value = false;
+  }
+}
+
 onShow(load);
 </script>
 
 <template>
   <sh-scaffold title-key="tab.home" tab="home">
     <!-- 未入驻：整屏只讲一件事 —— 去开张 -->
-    <view v-if="!merchant.isActive" class="empty">
+    <view v-if="!merchant.canOperate" class="empty">
       <text class="sh-h1">{{ $t("home.notMerchant") }}</text>
       <text class="sh-muted mt">{{ $t("home.notMerchantHint") }}</text>
-      <view class="sh-btn go" @tap="goApply">{{ $t("home.goApply") }}</view>
+      <view class="sh-btn go" @tap="goQuickStart">
+        {{ opening ? $t("common.loading") : $t("home.quickStart") }}
+      </view>
+      <text class="applylink" @tap="goApply">{{ $t("home.goApplyWithLicense") }}</text>
     </view>
 
     <template v-else>
@@ -489,6 +545,12 @@ onShow(load);
   margin-top: 8rpx;
 }
 /* 未入驻的整屏空态：它带标题与主按钮，不是通用空态那一行灰字，所以留在页面里 */
+.applylink {
+  display: block;
+  margin-top: 24rpx;
+  font-size: 26rpx;
+  color: var(--sh-primary-text);
+}
 .empty {
   text-align: center;
   padding: 80rpx 40rpx;

@@ -1927,8 +1927,20 @@ export type MerchantStatus =
   | "APPLYING" // 已提交，待审核（对应申请单 PENDING）
   | "REVIEWING" // 已受理，客服正在看 —— 让商家知道「有人在看」
   | "REJECTED" // 驳回，可补料重提
+  | "PENDING_LICENSE" // 无证照先开店：能干活，但还不能开张营业（买家看不到）
   | "ACTIVE" // 正常经营
   | "SUSPENDED"; // 被封禁或被冻结 —— 见下方「为什么没有 FROZEN」
+
+/*
+ * **PENDING_LICENSE 与 SUSPENDED 的区别不是程度，是方向。**
+ *
+ * 被封的店「不能干活」；待补证照的店「能干活但不能开张」—— 他要进经营台
+ * 录商品、配范围、加员工，把准备工作做完，只是买家还看不到他。
+ * 所以它不能像 FROZEN 那样折叠进 SUSPENDED：折叠了 b-app 会按停业渲染整个工作台。
+ *
+ * ⚠️ 它也**不是 NONE**：那句「还没有开店 · 去入驻」对一个已经建好店、
+ * 录了几十件商品的人来说，是在说他做的事不存在。
+ */
 
 /*
  * **为什么这里没有 FROZEN**（库里 mch_entity.status 是 ACTIVE/SUSPENDED/FROZEN）：

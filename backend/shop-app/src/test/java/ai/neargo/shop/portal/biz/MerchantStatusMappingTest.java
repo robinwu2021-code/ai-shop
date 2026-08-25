@@ -75,6 +75,20 @@ class MerchantStatusMappingTest {
     }
 
     @Test
+    @DisplayName("★★ 待补证照单独一个词 —— 折叠进 SUSPENDED 会把先开店的人当成被封的店")
+    void pendingLicenseIsNotSuspended() {
+        /*
+         * 无证照快速开店建出来的占位主体。它与 SUSPENDED 的区别不是程度，是方向：
+         * 被封的店<b>不能干活</b>，待补证照的店<b>能干活但不能开张</b> ——
+         * 他要进经营台录商品、配范围、加员工，把准备工作做完。
+         *
+         * 折叠的话 b-app 会按停业渲染整个工作台，而他什么也没做错。
+         */
+        assertThat(BizMerchantController.bizStatus("PENDING_LICENSE"))
+                .isEqualTo("PENDING_LICENSE");
+    }
+
+    @Test
     @DisplayName("未知状态一律按 SUSPENDED 兜底 —— 宁可误挡不能误放")
     void unknownStatusFailsClosed() {
         // 将来库里多出一个没人认识的状态时，放错了是让一家本该停业的店继续卖货

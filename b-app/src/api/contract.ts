@@ -343,6 +343,14 @@ export interface MerchantApi {
 
   mApply(payload: MerchantApplyReq): Promise<MerchantProfile>;
   /**
+   * 无证照快速开店：填个店名就把店开起来，不进审核队列。
+   *
+   * 与 {@link mApply} 是两条路：那条要交执照、等平台审；这条让老板先把准备工作
+   * 做完（录商品、配范围、加员工），**补齐证照之前买家看不到、也下不了单**。
+   * 之后补证照走的还是 `mApply`，服务端会认领这家店，店与货原样留着。
+   */
+  mQuickStart(payload: { storeName: string; address?: string }): Promise<MerchantProfile>;
+  /**
    * 上次申请。返回的是**申请单**而不是请求体 —— 回填要用的是「上次填了什么」，
    * 而「审到哪一步、为什么被驳回」和它是同一份数据，拆成两条接口只会让两边不同步。
    */

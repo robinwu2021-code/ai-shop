@@ -143,7 +143,7 @@ function applyError(e: unknown) {
 
 async function load() {
   await merchant.ensureProfile().catch(() => null);
-  if (!merchant.isActive) return;
+  if (!merchant.canOperate) return;
   await merchant.ensureStores();
   /*
    * 判权状态要先到位。`can()` 在权限没加载时 fail-closed 返回 false，

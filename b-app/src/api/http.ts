@@ -115,6 +115,7 @@ export const httpApi: MerchantApi = {
   mProfile: () => http.get<MerchantProfile>(E.mProfile.path),
 
   mApply: (payload: MerchantApplyReq) => http.post<MerchantProfile>(E.mApply.path, payload),
+  mQuickStart: (payload) => http.post<MerchantProfile>(E.mQuickStart.path, payload),
   mApplyDraft: () => http.get<MerchantApplyStatus | null>(E.mApplyDraft.path),
   mMasterData: () => http.get<MasterData>(E.mMasterData.path),
 

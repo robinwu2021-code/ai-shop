@@ -228,7 +228,7 @@ function switchCategory(no: string) {
 }
 
 async function load(more = false) {
-  if (!merchant.isActive) return;
+  if (!merchant.canOperate) return;
   if (more && (!hasMore.value || loading.value)) return;
   loading.value = true;
   try {

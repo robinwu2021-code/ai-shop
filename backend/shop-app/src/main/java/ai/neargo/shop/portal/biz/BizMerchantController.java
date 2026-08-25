@@ -887,7 +887,22 @@ public class BizMerchantController {
      * 宁可误挡也不能误放 —— 放错了是让一家本该停业的店继续卖货。
      */
     static String bizStatus(String status) {
-        return "ACTIVE".equals(status) ? "ACTIVE" : "SUSPENDED";
+        if ("ACTIVE".equals(status)) {
+            return "ACTIVE";
+        }
+        /*
+         * **待补证照要单独有一个词，不能折叠进 SUSPENDED。**
+         *
+         * 其余非 ACTIVE 状态（SUSPENDED / FROZEN / 未知）折叠是对的 ——
+         * 冻结与封禁对「我现在能不能干活」的答案一样：不能。
+         * 但快速开店建出来的占位主体答案是「能干活，只是还不能开张营业」：
+         * 他要进经营台录商品、配范围、加员工。折叠成 SUSPENDED 的话
+         * b-app 会把他当成被封禁的店，整个工作台按停业渲染 —— 而他什么也没做错。
+         */
+        if (ai.neargo.shop.merchant.entity.MchEntity.PENDING_LICENSE.equals(status)) {
+            return "PENDING_LICENSE";
+        }
+        return "SUSPENDED";
     }
 
     /** 登录手机号已在 UserVO 里按 C 端同口径脱敏，B 端只用来展示「已绑定 138****8000」。 */
