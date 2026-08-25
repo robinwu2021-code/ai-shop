@@ -29,14 +29,44 @@ import { describe, expect, it } from "vitest";
 const ROOT = join(import.meta.dirname, "../../..");
 const MIGRATION_DIR = join(ROOT, "backend/shop-app/src/main/resources/db/migration");
 
-/** 文件里**声明过**的建表（不管解析器读不读得到） */
+/** `V15__x.sql` → 15。**按数字排，不按文件名字典序** —— 否则 V15 会排在 V2 前面。 */
+function versionOf(file: string): number {
+  const m = /^V(\d+)__/.exec(file);
+  return m ? Number(m[1]) : Number.MAX_SAFE_INTEGER;
+}
+
+/**
+ * 文件里**声明过**、并且**到今天仍然叫这个名字**的建表。
+ *
+ * <p><b>改名要一起重放</b>：V162 把六张 `msg_*` 改成了 `notify_*`
+ * （`ALTER TABLE … RENAME TO`，旧迁移一个字没动，所以 Flyway 校验和不变）。
+ * 只扫 `CREATE TABLE` 的话，那六个**旧名字**会被当成「声明过的表」，
+ * 而解析器重放过改名、手里只有新名字 —— 于是这条用例长期报它们「读不到」。
+ * 那六条是噪音，但代价不只是难看：**真出问题时会被它们淹掉**，
+ * 而这条用例存在的全部理由就是及早发现那种静默错位。
+ *
+ * <p>建表与改名放在**同一个正则**里按出现顺序处理，理由与 SchemaParityTest 相同：
+ * 先看到改名再看到建表的话，改名会落空。
+ */
 function declaredTables(): Map<string, string> {
   const out = new Map<string, string>();
   if (!existsSync(MIGRATION_DIR)) return out;
-  for (const f of readdirSync(MIGRATION_DIR).filter((x) => x.endsWith(".sql"))) {
+  const files = readdirSync(MIGRATION_DIR)
+    .filter((x) => x.endsWith(".sql"))
+    .sort((a, b) => versionOf(a) - versionOf(b));
+  for (const f of files) {
     const src = readFileSync(join(MIGRATION_DIR, f), "utf8");
-    for (const m of src.matchAll(/CREATE TABLE(?: IF NOT EXISTS)?\s+(\w+)/gi)) {
-      out.set(m[1]!, f);
+    const re = /CREATE TABLE(?: IF NOT EXISTS)?\s+(\w+)|ALTER TABLE\s+(\w+)\s+RENAME TO\s+(\w+)/gi;
+    for (const m of src.matchAll(re)) {
+      if (m[1]) {
+        out.set(m[1], f);
+        continue;
+      }
+      // 改名：旧名字不再存在，新名字继承它原来的出处（找起来仍指向建表那一支）
+      const from = m[2]!;
+      const to = m[3]!;
+      out.set(to, out.get(from) ?? f);
+      out.delete(from);
     }
   }
   return out;
