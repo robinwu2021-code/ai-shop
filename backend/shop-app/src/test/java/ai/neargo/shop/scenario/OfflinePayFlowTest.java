@@ -1,11 +1,13 @@
 package ai.neargo.shop.scenario;
 
 import ai.neargo.common.data.scope.DataScopeContext;
+import ai.neargo.shop.common.Fulfillments;
 import ai.neargo.shop.common.PayModes;
 import ai.neargo.shop.merchant.entity.MchAccount;
 import ai.neargo.shop.merchant.entity.MchQualification;
 import ai.neargo.shop.merchant.entity.MchStore;
 import ai.neargo.shop.merchant.mapper.MerchantMappers;
+import ai.neargo.shop.merchant.service.StoreFulfillmentService;
 import ai.neargo.shop.product.entity.PrdGoods;
 import ai.neargo.shop.product.mapper.ProductMappers;
 import ai.neargo.shop.spi.user.QualificationPort;
@@ -25,6 +27,8 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
+
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -63,6 +67,8 @@ class OfflinePayFlowTest {
     private TradeMappers.SubOrderMapper subOrderMapper;
     @Autowired
     private MerchantMappers.MchAccountMapper staffMapper;
+    @Autowired
+    private StoreFulfillmentService fulfillmentService;
 
     private MockMvc mvc() {
         return MockMvcBuilders.webAppContextSetup(context)
@@ -89,6 +95,11 @@ class OfflinePayFlowTest {
             for (MchStore st : storeMapper.selectList(Wrappers.<MchStore>lambdaQuery()
                     .eq(MchStore::getEntityNo, SEED_ENTITY))) {
                 st.setOfflinePayEnabled(1);
+                // 自取的取货地址就是门店地址（服务端刻意不另存一份）。种子店没地址，
+                // 下面开自取通道会被 STORE_ADDRESS_REQUIRED 拦住
+                if (st.getAddress() == null || st.getAddress().isBlank()) {
+                    st.setAddress("测试路 1 号");
+                }
                 storeMapper.updateById(st);
             }
             for (PrdGoods g : goodsMapper.selectList(Wrappers.<PrdGoods>lambdaQuery()
@@ -116,6 +127,25 @@ class OfflinePayFlowTest {
             }
             return null;
         });
+        /*
+         * ⚠️ **门店的履约通道也要自己开。** 商品说支持只是必要条件 ——
+         * 下单还要问「这家店这一路开没开」，规则是
+         * 「渠道行为空 = 该店还没迁到 channel 模型，按旧口径放行」。
+         *
+         * 种子店一行都没有，所以本类单独跑时怎么都通。而只要**任何**别的用例
+         * 给这家店存过一次渠道（DeliveryRadiusFlowTest 开自送就会建出第一行），
+         * 集合就不再是空的 —— 于是本类那三条「断言 80011」的用例会拿到 70013：
+         * **被测的支付方式那道闸根本没执行**，用例红得莫名其妙，
+         * 而在别的顺序下它们又是绿的，绿得同样莫名其妙。
+         *
+         * 开成全集是刻意的：空集本来就等价于全放行，这么写只是把它显式化，
+         * 不会收窄任何别的用例的前提。
+         */
+        fulfillmentService.save(SEED_ENTITY, null, List.of(
+                new StoreFulfillmentService.ChannelCmd(Fulfillments.STORE_PICKUP, true, null, null, null, null),
+                new StoreFulfillmentService.ChannelCmd(Fulfillments.NEIGHBOR_PICKUP, true, null, null, null, null),
+                new StoreFulfillmentService.ChannelCmd(Fulfillments.MERCHANT_DELIVERY, true, null, null, null, null),
+                new StoreFulfillmentService.ChannelCmd(Fulfillments.EXPRESS, true, null, null, null, null)));
     }
 
     @Test

@@ -1,11 +1,13 @@
 package ai.neargo.shop.scenario;
 
 import ai.neargo.common.data.scope.DataScopeContext;
+import ai.neargo.shop.common.Fulfillments;
 import ai.neargo.shop.common.PayModes;
 import ai.neargo.shop.merchant.entity.MchAccount;
 import ai.neargo.shop.merchant.entity.MchQualification;
 import ai.neargo.shop.merchant.entity.MchStore;
 import ai.neargo.shop.merchant.mapper.MerchantMappers;
+import ai.neargo.shop.merchant.service.StoreFulfillmentService;
 import ai.neargo.shop.product.entity.PrdGoods;
 import ai.neargo.shop.product.mapper.ProductMappers;
 import ai.neargo.shop.settle.SettleService;
@@ -82,6 +84,8 @@ class OfflineSettleFlowTest {
     private MerchantMappers.QualificationMapper qualMapper;
     @Autowired
     private MerchantMappers.MchAccountMapper staffMapper;
+    @Autowired
+    private StoreFulfillmentService fulfillmentService;
 
     private MockMvc mvc() {
         return MockMvcBuilders.webAppContextSetup(context)
@@ -108,11 +112,18 @@ class OfflineSettleFlowTest {
             for (MchStore st : storeMapper.selectList(Wrappers.<MchStore>lambdaQuery()
                     .eq(MchStore::getEntityNo, SEED_ENTITY))) {
                 st.setOfflinePayEnabled(1);
+                // 门店自取的取货地址就是门店地址（服务端刻意不另存一份）——
+                // 种子店没地址，开自取会被 STORE_ADDRESS_REQUIRED 拦住
+                if (st.getAddress() == null || st.getAddress().isBlank()) {
+                    st.setAddress("测试路 1 号");
+                }
                 storeMapper.updateById(st);
             }
             for (PrdGoods g : goodsMapper.selectList(Wrappers.<PrdGoods>lambdaQuery()
                     .eq(PrdGoods::getEntityNo, SEED_ENTITY))) {
                 g.setPayModes("[\"ONLINE\",\"OFFLINE\"]");
+                // 开成全集而不是只留自取：**把共享种子改窄，等于把这个坑挪给别人**
+                g.setFulfillments("[\"STORE_PICKUP\",\"NEIGHBOR_PICKUP\",\"MERCHANT_DELIVERY\",\"EXPRESS\"]");
                 goodsMapper.updateById(g);
             }
             if (staffMapper.selectCount(Wrappers.<MchAccount>lambdaQuery()
@@ -128,6 +139,20 @@ class OfflineSettleFlowTest {
             }
             return null;
         });
+        /*
+         * ⚠️ **门店的自取通道要自己开，不能靠种子。**
+         *
+         * 下单那道闸的规则是「渠道行为空 = 该店还没迁到 channel 模型，按旧口径放行」。
+         * 种子店一行都没有，所以单独跑时怎么下都通 —— 而只要**任何**别的用例
+         * 给这家店存过一次渠道（DeliveryRadiusFlowTest 开自送就会建出第一行），
+         * 集合就不再是空的，自取立刻变成「本店不支持」，本类五条全红。
+         *
+         * 这就是那种**单独跑绿、全量跑红**的形态：最容易被当成「我这儿明明是好的」
+         * 而放过去。所以前提要自己建，不管别人先跑了什么。
+         */
+        fulfillmentService.save(SEED_ENTITY, null, List.of(
+                new StoreFulfillmentService.ChannelCmd(
+                        Fulfillments.STORE_PICKUP, true, null, null, null, null)));
     }
 
     @Test
