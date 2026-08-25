@@ -6955,3 +6955,6 @@ UPDATE prd_spec_value SET aliases = '["5斤", "5斤装"]', updated_at = NOW(), u
 UPDATE prd_spec_value SET aliases = '["10斤", "10斤装"]', updated_at = NOW(), updated_by = 'SYSTEM' WHERE value_no = 'SV_WEIGHT_W5KG';
 UPDATE prd_spec_value SET aliases = '["20斤", "20斤装"]', updated_at = NOW(), updated_by = 'SYSTEM' WHERE value_no = 'SV_WEIGHT_W10KG';
 UPDATE prd_spec_value SET aliases = '["1000ml", "1升", "1000ml装", "1升装"]', updated_at = NOW(), updated_by = 'SYSTEM' WHERE value_no = 'SV_VOLUME_V1L';
+UPDATE prd_spec_template
+SET name = '数量', updated_at = NOW(), updated_by = 'SYSTEM'
+WHERE template_no = 'SPT_SEED_NORMAL_COUNT' AND name = '规格';
