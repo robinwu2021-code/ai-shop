@@ -11,12 +11,13 @@
 ## 一、总览：三块数据，五张新表
 
 ```
-会员域 mbr_*                    营销域 mkt_*（扩展为主）
-├─ mbr_member        关系       ├─ mkt_coupon            券模板（+11 列）
-├─ mbr_member_tag    标签       ├─ mkt_user_coupon       用户券（+4 列）
-├─ mbr_tag_dict      标签字典   ├─ mkt_campaign          活动（+6 列）
-└─ mbr_reach_log     触达       ├─ mkt_campaign_audience 活动受众（新）
-                                └─ mkt_promotion_apply   一单用了哪些优惠（新）
+会员域 mbr_*                          营销域 mkt_*（扩展为主）
+├─ mbr_member         关系（主体级）  ├─ mkt_coupon            券模板（+12 列）
+├─ mbr_member_store   门店往来        ├─ mkt_user_coupon       用户券（+5 列）
+├─ mbr_member_source  来源明细        ├─ mkt_campaign          活动（+6 列）
+├─ mbr_member_tag     标签关系        ├─ mkt_campaign_audience 活动受众（新）
+├─ mbr_tag_dict       标签字典        └─ mkt_promotion_apply   一单用了哪些优惠（新）
+└─ mbr_reach_log      触达
 ```
 
 **为什么营销侧以扩展为主**：`mkt_coupon` 的五段模型今天已经有三段（权益/门槛/时间），
@@ -42,10 +43,8 @@ CREATE TABLE IF NOT EXISTS mbr_member
     user_no VARCHAR(64) DEFAULT NULL COMMENT '平台用户。线索会员为空，认领后回填',
     phone VARCHAR(32) DEFAULT NULL COMMENT '手工录入时的手机号。线索去重靠它；有 user_no 后仍保留，用于二次认领核对',
     status VARCHAR(16) NOT NULL DEFAULT 'ACTIVE' COMMENT 'LEAD 线索（不可触达/不进受众）/ ACTIVE / BLOCKED 被商家拉黑',
-    source VARCHAR(16) NOT NULL COMMENT '首次来源 ORDER/SHARE/SCAN/MANUAL/FAVORITE/SEARCH。首次即定，后续来源进 source_extra',
-    source_detail VARCHAR(512) DEFAULT NULL COMMENT 'JSON：inviterNo/shareCode/campaignNo/operatorNo/storeNo。只记来源不记谁分享的，分享激励就没法结算',
-    source_extra VARCHAR(255) DEFAULT NULL COMMENT 'JSON 数组：后续出现过的其它来源，去重',
-    first_store_no VARCHAR(64) DEFAULT NULL COMMENT '第一次在哪家门店发生关系。筛选「只看南门店的会员」用它与订单一起判',
+    source VARCHAR(16) NOT NULL COMMENT '首次来源 ORDER/SHARE/SCAN/MANUAL/FAVORITE/SEARCH。首次即定；每一次来源的明细在 mbr_member_source',
+    first_store_no VARCHAR(64) DEFAULT NULL COMMENT '第一次在哪家门店发生关系。冗余自 mbr_member_source，为了列表不回表',
     first_order_at BIGINT(20) DEFAULT NULL,
     last_order_at BIGINT(20) DEFAULT NULL,
     order_count INT(11) NOT NULL DEFAULT 0,
@@ -78,7 +77,81 @@ CREATE TABLE IF NOT EXISTS mbr_member
 > 认领时把线索行的 `user_no` 补上；若该 `user_no` 已有一行（他自己下过单），
 > 则**合并**：保留更早的 `joined_at` 与 `source`，标签与备注并入，另一行软删。
 
-### 2.2 `mbr_member_tag` —— 标签是行，不是 JSON
+### 2.1b `mbr_member_store` —— 会员 × 门店的往来（回答「他是哪家店的客人」）
+
+会员关系挂在**主体**上（标签跨门店共享、同一个人不该在三家店各算一次），
+但**每家门店的往来必须分开记**：多店商家问的是「南门店有多少熟客」「文三店谁在沉睡」。
+两者都要，所以是一主一从两张表，不是二选一。
+
+```sql
+CREATE TABLE IF NOT EXISTS mbr_member_store
+(
+    id BIGINT(20) NOT NULL AUTO_INCREMENT,
+    member_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL COMMENT '冗余：按主体+门店筛时不回表',
+    store_no VARCHAR(64) NOT NULL,
+    first_order_at BIGINT(20) DEFAULT NULL,
+    last_order_at BIGINT(20) DEFAULT NULL,
+    order_count INT(11) NOT NULL DEFAULT 0,
+    total_spent_minor BIGINT(20) NOT NULL DEFAULT 0,
+    d90_order_count INT(11) NOT NULL DEFAULT 0,
+    d90_spent_minor BIGINT(20) NOT NULL DEFAULT 0,
+    is_first_store TINYINT(4) NOT NULL DEFAULT 0 COMMENT '他是从这家店进来的',
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT(20) NOT NULL DEFAULT 0,
+    deleted TINYINT(4) NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_member_store (tenant_no, member_no, store_no),
+    KEY idx_member_store_last (entity_no, store_no, last_order_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci COMMENT='会员在某家门店的往来。主体级的总数在 mbr_member';
+```
+
+**分层算在哪一级**：`mbr_member.level` 是**主体级**（他对这个商家是不是熟客），
+门店级只给数字不给层 —— 一个人在总店 8 单、在南门店 1 单，
+说他"在南门店是新客"没有任何可行动的含义，反而会让商家给老客发新人券。
+
+### 2.1c `mbr_member_source` —— 每一次来源都留痕
+
+```sql
+CREATE TABLE IF NOT EXISTS mbr_member_source
+(
+    id BIGINT(20) NOT NULL AUTO_INCREMENT,
+    source_no VARCHAR(64) NOT NULL,
+    member_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    source_type VARCHAR(16) NOT NULL COMMENT 'ORDER/SHARE/SCAN/MANUAL/FAVORITE/SEARCH',
+    store_no VARCHAR(64) DEFAULT NULL COMMENT '从哪家门店进来的',
+    link_no VARCHAR(64) DEFAULT NULL COMMENT '哪一条分享链接/店铺码（可回查落地页与投放位）',
+    inviter_user_no VARCHAR(64) DEFAULT NULL COMMENT '谁发的这条链接。分享激励结算读它',
+    inviter_role VARCHAR(16) DEFAULT NULL COMMENT 'MERCHANT 商家自己发的 / STAFF 员工 / CUSTOMER 老客转发',
+    operator_no VARCHAR(64) DEFAULT NULL COMMENT 'MANUAL 时哪个员工录的。录错了要找得到人',
+    campaign_no VARCHAR(64) DEFAULT NULL COMMENT '因为哪场活动进来的',
+    is_first TINYINT(4) NOT NULL DEFAULT 0 COMMENT '这条是不是首次来源',
+    occurred_at BIGINT(20) NOT NULL,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT(20) NOT NULL DEFAULT 0,
+    deleted TINYINT(4) NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_member_source_no (source_no),
+    KEY idx_source_member (member_no, occurred_at),
+    KEY idx_source_inviter (entity_no, inviter_user_no, occurred_at),
+    KEY idx_source_campaign (campaign_no)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci COMMENT='会员来源明细：哪家店、哪条链接、谁发的、谁录的、因哪场活动';
+```
+
+> **为什么不塞 JSON**：「李姐帮我拉来多少人」「上个月的店铺码带来几个会员」
+> 「小王录的那批人有几个真的来消费了」—— 这三个问题都是按列聚合，
+> JSON 里只能全表扫。而第一个问题正是分享激励要结算的那个数。
+
+### 2.2 `mbr_member_tag` —— 关系存 `tag_no`，不存文本
 
 ```sql
 CREATE TABLE IF NOT EXISTS mbr_member_tag
@@ -86,8 +159,8 @@ CREATE TABLE IF NOT EXISTS mbr_member_tag
     id BIGINT(20) NOT NULL AUTO_INCREMENT,
     entity_no VARCHAR(64) NOT NULL COMMENT '冗余主体号：按标签筛人时不必回表',
     member_no VARCHAR(64) NOT NULL,
+    tag_no VARCHAR(64) NOT NULL COMMENT '指向 mbr_tag_dict。**不存标签文本** —— 改名要改成千上万行，且历史统计会断',
     tag_type VARCHAR(8) NOT NULL COMMENT 'SYS 系统算的（只读）/ MCH 商家打的',
-    tag VARCHAR(32) NOT NULL,
     tagged_by VARCHAR(64) DEFAULT NULL COMMENT '谁打的。SYS 为空',
     tagged_at BIGINT(20) NOT NULL,
     tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
@@ -98,23 +171,24 @@ CREATE TABLE IF NOT EXISTS mbr_member_tag
     version BIGINT(20) NOT NULL DEFAULT 0,
     deleted TINYINT(4) NOT NULL DEFAULT 0,
     PRIMARY KEY (id),
-    UNIQUE KEY uk_member_tag (tenant_no, member_no, tag),
-    KEY idx_tag_entity_tag (entity_no, tag)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci COMMENT='会员标签：系统算的与商家打的各一类';
+    UNIQUE KEY uk_member_tag (tenant_no, member_no, tag_no),
+    KEY idx_tag_entity_tag (entity_no, tag_no)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci COMMENT='会员标签关系：只存标签号，文本在字典里';
 ```
 
-> 存 JSON 列的话，「打了『爱囤货』的有多少人」这种最常见的问题要全表扫 + 解析。
-
-### 2.3 `mbr_tag_dict` —— 商家标签字典（限量、可改名、可停用）
+### 2.3 `mbr_tag_dict` —— 标签字典（改名、停用、合并都在这里）
 
 ```sql
 CREATE TABLE IF NOT EXISTS mbr_tag_dict
 (
     id BIGINT(20) NOT NULL AUTO_INCREMENT,
-    entity_no VARCHAR(64) NOT NULL,
-    tag VARCHAR(32) NOT NULL,
-    usage_count INT(11) NOT NULL DEFAULT 0 COMMENT '打了多少人。改名/停用前要让商家看见影响面',
-    enabled TINYINT(4) NOT NULL DEFAULT 1,
+    tag_no VARCHAR(64) NOT NULL COMMENT '不可变。改名改的是 name，关系行一行都不用动',
+    entity_no VARCHAR(64) NOT NULL COMMENT '属主体：跨门店共享（2026-08-24 拍板）',
+    name VARCHAR(32) NOT NULL,
+    tag_type VARCHAR(8) NOT NULL DEFAULT 'MCH' COMMENT 'SYS 系统标签也进字典，便于统一展示与统计',
+    status VARCHAR(16) NOT NULL DEFAULT 'ACTIVE' COMMENT 'ACTIVE / DISABLED 停用（老的还在、新的打不了）/ MERGED 已并入别的标签',
+    merged_into VARCHAR(64) DEFAULT NULL COMMENT 'MERGED 时指向目标 tag_no。留着不删 —— 活动受众与筛选快照可能还引用它',
+    usage_count INT(11) NOT NULL DEFAULT 0 COMMENT '打了多少人。改名/停用/合并前要让商家看见影响面',
     tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
     created_at DATETIME NOT NULL,
     created_by VARCHAR(64) DEFAULT NULL,
@@ -123,9 +197,56 @@ CREATE TABLE IF NOT EXISTS mbr_tag_dict
     version BIGINT(20) NOT NULL DEFAULT 0,
     deleted TINYINT(4) NOT NULL DEFAULT 0,
     PRIMARY KEY (id),
-    UNIQUE KEY uk_tag_dict (tenant_no, entity_no, tag)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci COMMENT='商家标签字典：属主体，跨门店共享';
+    UNIQUE KEY uk_tag_no (tag_no),
+    UNIQUE KEY uk_tag_name (tenant_no, entity_no, name),
+    KEY idx_tag_dict_entity (entity_no, status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci COMMENT='标签字典：tag_no 不可变，name 可改';
 ```
+
+#### 2.3.1 改名 / 停用 / 合并 / 删除，四件事四种处理
+
+| 动作 | 做什么 | 为什么 |
+|---|---|---|
+| **改名** | 只改 `mbr_tag_dict.name` | 关系行存的是 `tag_no`，一行都不用动；历史统计不断（同一个标签换了个叫法，还是同一个标签） |
+| **停用** | `status=DISABLED` | 新的打不上去，已经打的照常显示与可筛 —— 直接删会让商家的历史筛选条件突然少一半人 |
+| **合并** | 见下 | 「爱囤货」与「囤货党」是同一批人，商家迟早会想合 |
+| **删除** | **不提供物理删** | 引用它的活动受众、筛选快照、发券记录都会变成悬空 |
+
+**合并的执行顺序**（一个事务，幂等）：
+
+1. 把源标签的关系行改指目标：`UPDATE mbr_member_tag SET tag_no = 目标 WHERE tag_no = 源`；
+   与目标已有的行冲突时（这个人两个标签都有）删掉重复的那一行 —— 唯一键 `uk_member_tag` 会挡住。
+2. 源标签 `status=MERGED`、`merged_into=目标`，**保留**。
+3. 改写所有引用：`mkt_campaign_audience` 中 `audience_type=TAG` 且值为源的行改成目标；
+   会员筛选的保存条件同理。
+4. 重算两个标签的 `usage_count`。
+5. 落一条 `mbr_tag_merge_log`（谁在什么时候把谁并进了谁、影响多少人）——
+   合并是不可逆的批量操作，没有日志就没法回答「上周那批人的标签为什么变了」。
+
+```sql
+CREATE TABLE IF NOT EXISTS mbr_tag_merge_log
+(
+    id BIGINT(20) NOT NULL AUTO_INCREMENT,
+    entity_no VARCHAR(64) NOT NULL,
+    from_tag_no VARCHAR(64) NOT NULL,
+    to_tag_no VARCHAR(64) NOT NULL,
+    affected_count INT(11) NOT NULL DEFAULT 0,
+    operator_no VARCHAR(64) DEFAULT NULL,
+    merged_at BIGINT(20) NOT NULL,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT(20) NOT NULL DEFAULT 0,
+    deleted TINYINT(4) NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    KEY idx_tag_merge_entity (entity_no, merged_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci COMMENT='标签合并留痕：合并不可逆，要能回答「这批人的标签为什么变了」';
+```
+
+**系统标签不参与改名与合并**：它的名字就是口径（「沉睡」= 60 天没来），
+改名会让两个商家对同一个词的理解不同。
 
 ### 2.4 `mbr_reach_log` —— 触达记录（频次闸与效果都靠它）
 
@@ -169,7 +290,8 @@ ALTER TABLE mkt_coupon
     ADD COLUMN validity_mode VARCHAR(16) DEFAULT NULL COMMENT 'ABSOLUTE 绝对起止（默认）/ RELATIVE 领取后 N 天',
     ADD COLUMN valid_days INT(11) DEFAULT NULL COMMENT 'RELATIVE 时的天数',
     ADD COLUMN issue_mode VARCHAR(16) DEFAULT NULL COMMENT 'CENTER 领券中心 / TARGETED 定向 / CAMPAIGN 活动发 / CODE 发码。空 = CENTER',
-    ADD COLUMN redeem_mode VARCHAR(16) DEFAULT NULL COMMENT 'ORDER 下单抵扣（默认）/ STORE_CODE 到店出示核销。STORE_CODE 不参与下单算价';
+    ADD COLUMN redeem_mode VARCHAR(16) DEFAULT NULL COMMENT 'ORDER 下单抵扣（默认）/ STORE_CODE 到店出示核销 / AUTO 自动生效。STORE_CODE 不参与下单算价',
+    ADD COLUMN times_total INT(11) DEFAULT NULL COMMENT '一张券能用几次。空或 1 = 一次性；N = 次卡（豆浆 5 杯）。次卡只多这一列，不新建表';
 ```
 
 > `scope_desc` 保留但降级为**展示文案**：规则以 `scope_type/scope_refs` 为准。
@@ -182,7 +304,8 @@ ALTER TABLE mkt_user_coupon
     ADD COLUMN expire_at BIGINT(20) DEFAULT NULL COMMENT '这一张的失效时刻。RELATIVE 券领取时算出来落库 —— 不能每次读时现算，券模板改了会把已领的券一起改掉',
     ADD COLUMN redeem_code VARCHAR(32) DEFAULT NULL COMMENT '到店核销码。只有 STORE_CODE 券有',
     ADD COLUMN verified_by VARCHAR(64) DEFAULT NULL COMMENT '哪个店员核销的',
-    ADD COLUMN verified_store_no VARCHAR(64) DEFAULT NULL COMMENT '在哪家门店核销的';
+    ADD COLUMN verified_store_no VARCHAR(64) DEFAULT NULL COMMENT '在哪家门店核销的',
+    ADD COLUMN times_used INT(11) NOT NULL DEFAULT 0 COMMENT '次卡已核销几次。用满才转 USED';
 ```
 
 ### 2.7 `mkt_campaign` 扩展（目的 / 排期 / 限量 / 引用券）
@@ -286,6 +409,7 @@ erDiagram
 │  └─────┴─────┴─────┴─────┘        │
 │  本月新增 12 · 可触达 118          │
 │                                    │
+│  门店 [全部 ▾]                     │   ← 多店主体才出现；切了之后下面的数字与列表都按这家店算
 │  [🔍 手机号完整匹配        ] [筛选]│   ← 只认完整号码，输一半不给结果
 │  标签: (爱囤货) (只要土鸡蛋) (+)   │   ← 点标签即筛选，可多选（或）
 │                                    │
@@ -313,8 +437,16 @@ erDiagram
 
 ```
 ┌─ 张阿姨 ─────────────────────────┐
-│ ···1234   来自 分享（李姐）       │   来源写清「谁分享的」
+│ ···1234   来自 分享（李姐）       │   来源写清「谁发的链接」
 │ 加入 2026-03-12 · 首单 03-12      │
+│ 首次进店：南门店                  │   ← 从哪家门店进来的
+│ ┌ 各店往来 ─────────────────┐    │
+│ │ 南门店  18 单 / ¥1,420     │    │   ← mbr_member_store，多店才显示
+│ │ 总店     5 单 / ¥422       │    │
+│ └────────────────────────────┘    │
+│ 来源轨迹                          │   ← mbr_member_source，按时间倒序
+│  03-12 分享 · 李姐转发 · 南门店   │
+│  05-02 扫码 · 总店门口码          │
 │ 近90天 0 单 / ¥0 · 累计 23 单/¥1,842│
 │ 标签 (爱囤货)(不要辣) [＋ 打标]    │   系统标签是灰的、不可删
 │ 备注 三单元，晚上来               │
@@ -339,6 +471,31 @@ erDiagram
 │   「线索」：不会收到任何消息，     │
 │   等他自己注册后自动认领。        │
 │                        [ 保存 ]   │
+└───────────────────────────────────┘
+```
+
+### 3.3b B 端 · 标签管理（改名 / 停用 / 合并）
+
+```
+┌─ 标签 ───────────────────────────┐
+│ 系统标签（不可改）                │
+│  新客 38 · 常客 62 · 熟客 17      │
+│  沉睡 24 · 高客单 9               │
+│ ─────────────────────────────    │
+│ 我的标签                    [新建]│
+│  爱囤货      41 人   [改名][合并] │
+│  囤货党      12 人   [改名][合并] │
+│  不要辣       7 人   [停用]       │
+└───────────────────────────────────┘
+
+合并对话框
+┌───────────────────────────────────┐
+│ 把「囤货党」并入 [爱囤货 ▾]        │
+│ 12 人会改成「爱囤货」，其中 5 人   │   ← 必须先算出影响面再让他按
+│ 两个标签都有，合并后只保留一个。   │
+│ ⓘ 合并不可撤销；引用了「囤货党」的 │
+│   1 个活动会自动改为「爱囤货」。   │   ← 引用方一起改写，别留悬空
+│              [取消]  [确认合并]   │
 └───────────────────────────────────┘
 ```
 
