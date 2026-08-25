@@ -76,6 +76,9 @@ class PointsClientSwitchFlowTest {
     @Autowired
     private ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper merchantMapper;
 
+    private final java.util.Set<String> communityPointsOff = new java.util.HashSet<>();
+    private final java.util.Set<String> merchantPointsOff = new java.util.HashSet<>();
+
     /**
      * ⚠️ <b>必须还原</b>。策略存在 setting 表里，而同一个 Spring 上下文被整个测试套件共用 ——
      * 留一条「禁 MP_WECHAT 发放」在库里，后面几十个跟积分沾边的用例会莫名其妙变红，
@@ -90,21 +93,59 @@ class PointsClientSwitchFlowTest {
     void openPointsSwitches() {
         DataScopeContext.executeWithoutScope(() -> {
             for (CmtCommunity c : communityMapper.selectList(null)) {
-                c.setPointsEnabled(true);
-                communityMapper.updateById(c);
+                if (!Boolean.TRUE.equals(c.getPointsEnabled())) {
+                    communityPointsOff.add(c.getCommunityNo());
+                    c.setPointsEnabled(true);
+                    communityMapper.updateById(c);
+                }
             }
             for (MchEntity m : merchantMapper.selectList(null)) {
-                m.setPointsEnabled(true);
-                merchantMapper.updateById(m);
+                if (!Boolean.TRUE.equals(m.getPointsEnabled())) {
+                    merchantPointsOff.add(m.getEntityNo());
+                    m.setPointsEnabled(true);
+                    merchantMapper.updateById(m);
+                }
             }
             return null;
         });
         settingPort.put(KEY, ALL_OPEN, "TEST");
     }
 
+    /**
+     * ⚠️ 只把**本用例真的打开过**的那些关回去。
+     *
+     * 留着的话，此后所有下单链路都会真的发分、真的建积分账户 ——
+     * 而别的用例里「这个用户还没有积分账户」是个隐含前提
+     * （{@code PointsDeductFlowTest.givePoints} 用的是 insert 不是 upsert）。
+     * 撞上就是 DuplicateKeyException，报错里一个字都不会提到积分开关。
+     */
+    private void restorePointsSwitches() {
+        if (communityPointsOff.isEmpty() && merchantPointsOff.isEmpty()) {
+            return;
+        }
+        DataScopeContext.executeWithoutScope(() -> {
+            for (CmtCommunity c : communityMapper.selectList(null)) {
+                if (communityPointsOff.contains(c.getCommunityNo())) {
+                    c.setPointsEnabled(false);
+                    communityMapper.updateById(c);
+                }
+            }
+            for (MchEntity m : merchantMapper.selectList(null)) {
+                if (merchantPointsOff.contains(m.getEntityNo())) {
+                    m.setPointsEnabled(false);
+                    merchantMapper.updateById(m);
+                }
+            }
+            return null;
+        });
+        communityPointsOff.clear();
+        merchantPointsOff.clear();
+    }
+
     @AfterEach
     void restorePolicy() {
         settingPort.put(KEY, ALL_OPEN, "TEST");
+        restorePointsSwitches();
     }
 
     private MockMvc mvc() {

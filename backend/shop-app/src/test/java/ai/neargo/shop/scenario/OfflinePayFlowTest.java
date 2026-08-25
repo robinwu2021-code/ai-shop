@@ -74,6 +74,10 @@ class OfflinePayFlowTest {
     private ai.neargo.shop.community.mapper.CommunityMappers.CommunityMapper communityMapper;
     @Autowired
     private MerchantMappers.MchEntityMapper merchantMapper;
+
+    /** 本用例打开过的开关，@AfterEach 关回去。只记「原本是关的」那些 */
+    private final java.util.Set<String> communityPointsOff = new java.util.HashSet<>();
+    private final java.util.Set<String> merchantPointsOff = new java.util.HashSet<>();
     @Autowired
     private org.springframework.jdbc.core.JdbcTemplate jdbc;
 
@@ -168,6 +172,7 @@ class OfflinePayFlowTest {
     void restoreChannels() {
         DataScopeContext.executeWithoutScope(() -> jdbc.update(
                 "DELETE FROM mch_fulfillment_channel WHERE entity_no = ?", SEED_ENTITY));
+        restorePointsSwitches();
     }
 
     @Test
@@ -390,19 +395,56 @@ class OfflinePayFlowTest {
     /**
      * 打开积分的四级开关（L2 社区 / L3 商家）。默认全关是设计如此 ——
      * 所以「线上没抵扣」说明不了链路是通是断，而测试里不开就验不到任何积分逻辑。
+     *
+     * <p>⚠️ <b>这是全局开关，用完必须还原</b>（{@link #restorePointsSwitches()}）。
+     * 留着的话，此后所有下单链路都会真的发分、真的建积分账户 ——
+     * 而别的用例里「这个用户还没有积分账户」是个隐含前提：
+     * {@code PointsDeductFlowTest.givePoints} 用的是 {@code insert} 不是 upsert，
+     * 撞上就是 DuplicateKeyException，而它的报错里一个字都不会提到线下支付。
+     * 我第一版就是这么把那两条弄红的。
      */
     private void openPointsSwitches() {
         DataScopeContext.executeWithoutScope(() -> {
             for (var c : communityMapper.selectList(null)) {
-                c.setPointsEnabled(true);
-                communityMapper.updateById(c);
+                if (!Boolean.TRUE.equals(c.getPointsEnabled())) {
+                    communityPointsOff.add(c.getCommunityNo());
+                    c.setPointsEnabled(true);
+                    communityMapper.updateById(c);
+                }
             }
             for (var m : merchantMapper.selectList(null)) {
-                m.setPointsEnabled(true);
-                merchantMapper.updateById(m);
+                if (!Boolean.TRUE.equals(m.getPointsEnabled())) {
+                    merchantPointsOff.add(m.getEntityNo());
+                    m.setPointsEnabled(true);
+                    merchantMapper.updateById(m);
+                }
             }
             return null;
         });
+    }
+
+    /** 只把**本用例真的打开过**的那些关回去 —— 别人本来就开着的不动。 */
+    private void restorePointsSwitches() {
+        if (communityPointsOff.isEmpty() && merchantPointsOff.isEmpty()) {
+            return;
+        }
+        DataScopeContext.executeWithoutScope(() -> {
+            for (var c : communityMapper.selectList(null)) {
+                if (communityPointsOff.contains(c.getCommunityNo())) {
+                    c.setPointsEnabled(false);
+                    communityMapper.updateById(c);
+                }
+            }
+            for (var m : merchantMapper.selectList(null)) {
+                if (merchantPointsOff.contains(m.getEntityNo())) {
+                    m.setPointsEnabled(false);
+                    merchantMapper.updateById(m);
+                }
+            }
+            return null;
+        });
+        communityPointsOff.clear();
+        merchantPointsOff.clear();
     }
 
     // ── helpers ──────────────────────────────────────────────
