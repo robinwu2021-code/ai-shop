@@ -102,6 +102,8 @@ class M9bBizGoodsFlowTest {
          *       而线上真有商家这么写：10斤、20斤、5斤、3斤 —— 生鲜按斤卖是常态。</li>
          *   <li>{@code 500 ML} —— 库里是「500ml」。中间一个空格、单位大写，
          *       此前直接 `label.trim()` 比对，差一个字符就分家。</li>
+         *   <li>{@code 20片} —— 计件那一类。正式标签是「20件装」，商家按量词写。
+         *       库里原先连 20 这一档都没有（只到 12），见 V223。</li>
          * </ul>
          *
          * <p><b>别拿「单个」这类做用例</b>：CAT280/CAT740 把 C1 改名叫「单个」，
@@ -118,8 +120,9 @@ class M9bBizGoodsFlowTest {
                                 + "\"subtitle\":\"测试\",\"cover\":\"📦\",\"images\":[],"
                                 + "\"specGroups\":["
                                 + "{\"name\":\"重量\",\"templateNo\":\"SD_WEIGHT\",\"options\":[\"10斤\"]},"
-                                + "{\"name\":\"容量\",\"templateNo\":\"SD_VOLUME\",\"options\":[\"500 ML\"]}],"
-                                + "\"skus\":[{\"optionValues\":[\"10斤\",\"500 ML\"],"
+                                + "{\"name\":\"容量\",\"templateNo\":\"SD_VOLUME\",\"options\":[\"500 ML\"]},"
+                                + "{\"name\":\"数量\",\"templateNo\":\"SD_COUNT\",\"options\":[\"20片\"]}],"
+                                + "\"skus\":[{\"optionValues\":[\"10斤\",\"500 ML\",\"20片\"],"
                                 + "\"price\":500,\"stock\":9}]}"))
                 .andExpect(jsonPath("$.code").value(0))
                 .andReturn().getResponse().getContentAsString();
@@ -137,7 +140,7 @@ class M9bBizGoodsFlowTest {
                 .as("两个规格都该盖上值编号 —— 空的话这件商品跟别家永远比不了价")
                 .isNotNull();
         JsonNode arr = json.readTree(nos);
-        assertThat(arr.size()).as("两个规格组就该有两个值编号").isEqualTo(2);
+        assertThat(arr.size()).as("三个规格组就该有三个值编号").isEqualTo(3);
         /*
          * **断到确切编号，不能只断「非空」**。只断非空的话，商家自助建值那条路
          * （ensureValue 会给本店造一个新值）也能让它变绿 —— 而那恰恰是要防的：
@@ -150,6 +153,9 @@ class M9bBizGoodsFlowTest {
         assertThat(arr.get(1).asString())
                 .as("「500 ML」跟库里的「500ml」是同一档 —— 差一个空格、一个大小写都不该分家")
                 .isEqualTo("SV_VOLUME_V500ML");
+        assertThat(arr.get(2).asString())
+                .as("「20片」和别家的「20只」是同一个数 —— 量词不同不该分家")
+                .isEqualTo("SV_COUNT_C20");
     }
 
     @Test
