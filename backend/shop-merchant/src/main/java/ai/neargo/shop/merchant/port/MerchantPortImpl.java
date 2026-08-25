@@ -715,7 +715,7 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
 
     @Override
     @Transactional
-    public String quickStart(QuickStartCommand cmd) {
+    public QuickStartResult quickStart(QuickStartCommand cmd) {
         String ownerUserNo = cmd.ownerUserNo();
         if (ownerUserNo == null || ownerUserNo.isBlank()
                 || cmd.storeName() == null || cmd.storeName().isBlank()) {
@@ -731,7 +731,7 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
          */
         var shell = pendingLicenseEntityOf(ownerUserNo);
         if (shell.isPresent()) {
-            return shell.get();
+            return new QuickStartResult(shell.get(), defaultStoreNoOf(shell.get()));
         }
 
         requireEntityQuota(ownerUserNo);
@@ -774,7 +774,21 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
         ensureOwnerStaff(m.getEntityNo(), ownerUserNo);
         ensureDefaultStore(m.getEntityNo(), name, cmd.address());
         ensureFreePlan(m.getEntityNo());
-        return m.getEntityNo();
+        /*
+         * 门店号一并返回。调用方拿它当 X-Store-No 进这家新店 —— 身份解析按门店反查主体，
+         * 而这个账号名下可能已经有另一张执照（多证照），按默认主体解析出来的是**旧的那家**。
+         */
+        return new QuickStartResult(m.getEntityNo(), defaultStoreNoOf(m.getEntityNo()));
+    }
+
+    /** 主体的默认门店号。解除数据域的理由同 {@link #ensureDefaultStore} —— 建主体时作用域还不存在。 */
+    private String defaultStoreNoOf(String merchantNo) {
+        var store = DataScopeContext.executeWithoutScope(() ->
+                storeMapper.selectOne(Wrappers.<ai.neargo.shop.merchant.entity.MchStore>lambdaQuery()
+                        .eq(ai.neargo.shop.merchant.entity.MchStore::getEntityNo, merchantNo)
+                        .eq(ai.neargo.shop.merchant.entity.MchStore::getIsDefault, true)
+                        .last("limit 1")));
+        return store == null ? null : store.getStoreNo();
     }
 
     @Override

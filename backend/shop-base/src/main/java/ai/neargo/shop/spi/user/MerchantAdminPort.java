@@ -47,9 +47,9 @@ public interface MerchantAdminPort {
      * 这既是防连点，也避免账号里堆出一串永远补不齐的空壳。
      * 想在这个占位主体下再开一家店，走正常的建店接口即可（那时已经有 BizContext）。
      *
-     * @return merchantNo；已有占位主体时返回既有的那个
+     * @return 新建（或既有）的占位主体 + 它的默认门店号，见 {@link QuickStartResult}
      */
-    String quickStart(QuickStartCommand cmd);
+    QuickStartResult quickStart(QuickStartCommand cmd);
 
     /**
      * 这个账号名下「待补证照」的占位主体（{@code PENDING_LICENSE}）。
@@ -69,6 +69,19 @@ public interface MerchantAdminPort {
      * @param address     门店地址，可空（之后在店铺资料里补）
      */
     record QuickStartCommand(String ownerUserNo, String storeName, String address) {
+    }
+
+    /**
+     * <b>门店号也要返回</b>，不只是主体号。
+     *
+     * <p>因为「他刚开的是哪家店」这件事，调用方没有别的途径知道：这个账号名下
+     * 可能已经有另一张执照（多证照），那时按默认主体解析出来的是<b>旧的那家</b>——
+     * 端上会拿到一个「建成功了」的响应，里面却是上一家店的资料。
+     *
+     * <p>门店号同时是端上进这家新店要用的 {@code X-Store-No}：身份解析按门店反查主体
+     * （见 {@code BizIdentityResolver}），没有它就进不去刚建好的店。
+     */
+    record QuickStartResult(String entityNo, String storeNo) {
     }
 
     /**

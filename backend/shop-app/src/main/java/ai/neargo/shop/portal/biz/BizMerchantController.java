@@ -239,7 +239,7 @@ public class BizMerchantController {
     @PostMapping("/biz/merchant/quick-start")
     public MerchantProfileVO quickStart(@RequestBody QuickStartReq req) {
         String userNo = SecurityUtils.currentUserNo();
-        merchantAdminPort.quickStart(new MerchantAdminPort.QuickStartCommand(
+        var created = merchantAdminPort.quickStart(new MerchantAdminPort.QuickStartCommand(
                 userNo, req.storeName(), req.address()));
         /*
          * **不能用 profile()** —— 它读的是 BizContext，而那是过滤器在<b>请求进来那一刻</b>
@@ -248,8 +248,12 @@ public class BizMerchantController {
          * 的响应，只能靠再刷一次才看得到自己的店。
          *
          * 走 profileOf 现算一次作用域 —— 与登录接口同一条路（那里 BizContext 也还是空的）。
+         *
+         * **要把刚建出来的门店号喂进解析**：这个账号名下可能已经有另一张执照
+         * （多证照，比如老板开第二门生意），不带门店号的话解析出来的是他的<b>默认主体</b>——
+         * 端上会拿到一个「建成功了」的响应，里面却是上一家店的名字和状态。
          */
-        return profileOf(userNo, phoneOf(userNo));
+        return build(userNo, identityResolver.resolve(userNo, created.storeNo()), phoneOf(userNo));
     }
 
     /** @param storeName 店名，必填；<b>同时用作主体名</b>，补证照时再被执照上的正式名称覆盖 */

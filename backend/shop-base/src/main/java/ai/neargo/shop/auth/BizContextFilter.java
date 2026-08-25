@@ -18,6 +18,15 @@ import java.io.IOException;
  * 传了一个自己没权限的门店号：**直接不认，回落到默认店**而不是照它查 ——
  * 越权门店的数据一行都不能出去；而这里不抛错是因为它多半只是端上缓存了一个旧门店号
  * （店被停用了、授权被收回了），让整个 App 报错不如把他带回默认店。
+ *
+ * <p><b>门店号要在解析<i>之前</i>就交给解析器</b>（{@link BizIdentityResolver#resolve(String, String)}）。
+ * 这里原来是先 {@code resolve(userNo)} 再把门店套上去 —— 单主体时等价，
+ * 而一个人有两张营业执照时，那个顺序会让他进 B 主体的店却仍以 A 主体的身份查库：
+ * 权限、商品、订单全是 A 的，页面照常打开。所以解析要「按店反查主体」，
+ * 而门店号只有这一层拿得到。
+ *
+ * <p>套门店这一步<b>仍然保留</b>，它守的是另一件事：同一个主体下，店员只被授权到部分门店。
+ * 解析器认执照，这里认门店，两层各管各的。
  */
 public class BizContextFilter extends OncePerRequestFilter {
 
@@ -50,7 +59,8 @@ public class BizContextFilter extends OncePerRequestFilter {
         try {
             SecurityUtils.currentUser()
                     .filter(LoginUser::isConsumer)
-                    .ifPresent(u -> BizContext.set(withRequestedStore(resolver.resolve(u.userNo()), req)));
+                    .ifPresent(u -> BizContext.set(withRequestedStore(
+                            resolver.resolve(u.userNo(), req.getHeader(STORE_HEADER)), req)));
             chain.doFilter(req, resp);
         } finally {
             BizContext.clear();

@@ -106,8 +106,51 @@ public class BizIdentityResolverImpl implements BizIdentityResolver {
                 .collect(Collectors.toUnmodifiableSet());
     }
 
+    /**
+     * 「他现在站在哪家店里」→「那家店是哪个主体的」→ 用哪条成员关系解析。
+     *
+     * <p><b>三道闸，缺一不可</b>：
+     * <ol>
+     *   <li>没传门店号 → 默认主体（{@code memberships} 已按 is_primary 排序）。
+     *       绝大多数请求走这里，与多证照之前的行为一模一样</li>
+     *   <li>门店号查不到（被删了、端上编的）→ 默认主体</li>
+     *   <li>查到了，但那家店的主体<b>不在我的成员关系里</b> → 默认主体。
+     *       ★ 这一条是越权闸：{@code X-Store-No} 是客户端可控的请求头，
+     *       没有这一条，伪造一个别人家的门店号就能把 {@code merchantNo} 解析成别人的主体，
+     *       之后整个请求都按那个主体查库 —— 而页面照常打开，不会有任何报错</li>
+     * </ol>
+     *
+     * <p><b>为什么不在这里再查一遍「这家店我有没有授权」</b>：店员只被授权到主体下的部分门店，
+     * 但那一层由 {@code storeNos} 与 {@link ai.neargo.shop.auth.BizContextFilter} 把关 ——
+     * 同主体下越店的话 {@code storeNos} 里没有它，当前门店会回落到默认店。
+     * 这里只负责「认哪张执照」，两层各管各的，合在一起反而说不清谁在守什么。
+     *
+     * <p>解除数据域的理由与下面查主体一致：这是身份解析<b>本身</b>，跑在作用域建立之前，
+     * 不解除的话这条 select 会被拼上一个空的主体条件，静默查不到 —— 表现为
+     * 「切了门店但主体没变」，而那正是这个方法要修的毛病。
+     */
+    private ai.neargo.shop.merchant.entity.MchAccount membershipFor(
+            java.util.List<ai.neargo.shop.merchant.entity.MchAccount> memberships, String storeNo) {
+        var fallback = memberships.get(0);
+        if (storeNo == null || storeNo.isBlank() || memberships.size() == 1) {
+            // 只有一张执照时连查都不用查 —— 绝大多数商家是这一支，别为多证照给他们加一次查询
+            return fallback;
+        }
+        MchStore store = DataScopeContext.executeWithoutScope(() ->
+                storeMapper.selectOne(Wrappers.<MchStore>lambdaQuery()
+                        .eq(MchStore::getStoreNo, storeNo)
+                        .last("limit 1")));
+        if (store == null) {
+            return fallback;
+        }
+        return memberships.stream()
+                .filter(m -> m.getEntityNo().equals(store.getEntityNo()))
+                .findFirst()
+                .orElse(fallback);
+    }
+
     @Override
-    public BizContext resolve(String userNo) {
+    public BizContext resolve(String userNo, String storeNo) {
         /*
          * 我参与的主体，默认主体优先。**排序是确定的**（is_primary 倒序 + id 正序）——
          * 不给排序的 limit 1 会在多主体时随机挑一个，而"今天进的是 A 店、明天是 B 店"
@@ -132,7 +175,22 @@ public class BizIdentityResolverImpl implements BizIdentityResolver {
             // 不是商家：空作用域 = 所有 /biz/** 都 403。fail-closed
             return BizContext.NONE;
         }
-        // M1 仍只取一个主体 —— BizContext 扩成多主体是 M6 的事，这一期要零行为变化
+        /*
+         * **按门店反查主体**（多证照）。
+         *
+         * 端上带了 X-Store-No 就以它为准：一个人名下可能有两张执照，
+         * 「他现在是哪个主体」的答案只能来自「他现在站在哪家店里」。
+         * 不带、或带了一个不属于他的门店号 → 回落到默认主体（memberships 已按
+         * is_primary 排过序），**不是报错**：端上多半只是缓存了一个旧门店号
+         * （店停用了、授权收回了），让整个 App 报错不如把他带回自己的默认店。
+         *
+         * ★ 这是整条多证照改造里唯一有越权面的地方。守住它的是下面这个 filter：
+         *   反查出来的 entityNo 必须落在**他自己的成员关系集合**里，
+         *   否则整个丢掉。传一个别人家真实存在的门店号，得到的只会是自己的默认主体 ——
+         *   而不是那家店的主体。少了这个 filter，伪造一个请求头就能读别人的库存和订单，
+         *   且不会有任何报错。
+         */
+        var membership = membershipFor(memberships, storeNo);
         /*
          * **必须解除数据域**（mch_entity/mch_store 于批② 注册进 DataScopeRegistration）。
          *
@@ -158,7 +216,7 @@ public class BizIdentityResolverImpl implements BizIdentityResolver {
          */
         MchEntity merchant = DataScopeContext.executeWithoutScope(() ->
                 merchantMapper.selectOne(Wrappers.<MchEntity>lambdaQuery()
-                        .eq(MchEntity::getEntityNo, memberships.get(0).getEntityNo())
+                        .eq(MchEntity::getEntityNo, membership.getEntityNo())
                         .in(MchEntity::getStatus, MchEntity.ACTIVE, MchEntity.PENDING_LICENSE)
                         .last("limit 1")));
         if (merchant == null) {
@@ -174,7 +232,6 @@ public class BizIdentityResolverImpl implements BizIdentityResolver {
          * 给店员按主体展开的话，加一个店员等于把所有门店都交出去 ——
          * 而「A 店店员能看到 B 店订单」这种越权不会报错，只会安静地多看到一些东西。
          */
-        var membership = memberships.get(0);
         /*
          * 每家店上我持有的**全部**角色（V18 起一人一店可多角色）。
          *
