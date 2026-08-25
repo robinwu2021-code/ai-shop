@@ -5,7 +5,7 @@
 
 ## 一、总览
 
-全库 **128** 张表、**186** 条引用关系，分 **13** 个域。
+全库 **145** 张表、**211** 条引用关系，分 **15** 个域。
 按「被引用次数」分三条带 —— **不是有向无环图**：域之间存在环
 （`cmt → mkt → usr → cmt`），强行分层会画错。
 
@@ -13,25 +13,27 @@
 
 | 域 | 前缀 | 表数 | 被几个域引用 |
 |---|---|---:|---:|
-| 消费者账号 | `usr_*` | 4 | 10 |
-| 商家主体与门店 | `mch_*` | 21 | 9 |
+| 消费者账号 | `usr_*` | 6 | 11 |
+| 商家主体与门店 | `mch_*` | 21 | 11 |
 | 社区与自提点 | `cmt_*` | 3 | 8 |
 | 商品与类目 | `prd_*` | 19 | 7 |
 | 购物车 | `trd_*` | 1 | 0 |
-| 交易 | `ord_*` | 6 | 6 |
+| 交易 | `ord_*` | 6 | 7 |
 | 履约 | `ful_*` | 8 | 0 |
-| 营销与团购 | `mkt_*` | 15 | 3 |
+| 营销与团购 | `mkt_*` | 15 | 4 |
 | 积分 | `pts_*` | 2 | 0 |
 | 结算 | `stl_*` | 9 | 0 |
 | 评价 | `rvw_*` | 3 | 0 |
 | 内容 | `cnt_*` | 4 | 0 |
-| 系统 | `sys_*` | 20 | 0 |
+| 会员 | `mbr_*` | 8 | 0 |
+| 券与活动 | `pmt_*` | 5 | 0 |
+| 系统 | `sys_*` | 21 | 0 |
 
-> `usr` 被 10 个域引用 —— 它是全库的锚点。改它的主键或语义，影响面是全局的。
+> `usr` 被 11 个域引用 —— 它是全库的锚点。改它的主键或语义，影响面是全局的。
 
 ## 二、分域
 
-### 消费者账号 `usr_*`（4 张）
+### 消费者账号 `usr_*`（6 张）
 
 ![消费者账号表关系](../diagrams/db-usr.svg)
 
@@ -41,6 +43,8 @@
 | `usr_store_favorite` | 收藏的店 |
 | `usr_account` | 消费者账号：与商家账号 mch_account 彻底独立，不关联 |
 | `usr_identity` | 用户登录凭证。一个人多条，新增来源只是多一行，不再改表 |
+| `usr_person` | 平台人档：这个自然人，以已验证的手机号为准 |
+| `usr_person_merge_log` | 人档合并留痕：合并不可逆 |
 
 **跨域引用**：`usr_store_favorite.entity_no` → `mch_entity`、`usr_account.community_no` → `cmt_community`、`usr_account.pickup_no` → `cmt_pickup_point`、`usr_account.entity_no` → `mch_entity`
 
@@ -234,7 +238,38 @@
 
 **跨域引用**：`cnt_post.community_no` → `cmt_community`、`cnt_post.sku_no` → `prd_sku`、`cnt_question.sku_no` → `prd_sku`
 
-### 系统 `sys_*`（20 张）
+### 会员 `mbr_*`（8 张）
+
+![会员表关系](../diagrams/db-mbr.svg)
+
+| 表 | 说明 |
+|---|---|
+| `mbr_setting` | 会员经营口径：按主体还是按门店 |
+| `mbr_member` | 会员：一个人与一家主体的关系 |
+| `mbr_member_store` | 会员在某家门店的往来与分层。单店主体不写这张表 |
+| `mbr_member_source` | 会员来源明细：哪家店、哪条链接、谁发的、谁录的、因哪场活动 |
+| `mbr_tag` | 标签字典：tag_no 不可变、name 可改。不存人数，要用时 COUNT |
+| `mbr_member_tag` | 会员标签关系：只存标签号，文本在字典里 |
+| `mbr_tag_merge_log` | 标签合并留痕：合并不可逆 |
+| `mbr_segment` | 人群：发券、活动受众、触达共用同一份条件 |
+
+**跨域引用**：`mbr_setting.entity_no` → `mch_entity`、`mbr_member.entity_no` → `mch_entity`、`mbr_member_store.entity_no` → `mch_entity`、`mbr_member_store.store_no` → `mch_store`、`mbr_member_source.entity_no` → `mch_entity`、`mbr_member_source.store_no` → `mch_store`、`mbr_tag.entity_no` → `mch_entity`、`mbr_member_tag.entity_no` → `mch_entity`、`mbr_tag_merge_log.entity_no` → `mch_entity`、`mbr_segment.entity_no` → `mch_entity`
+
+### 券与活动 `pmt_*`（5 张）
+
+![券与活动表关系](../diagrams/db-pmt.svg)
+
+| 表 | 说明 |
+|---|---|
+| `pmt_coupon` | 券模板：权益 × 门槛 × 范围 × 有效期 × 发放 × 核销 × 次数 |
+| `pmt_coupon_scope` | 券的适用范围（规则）。scope_desc 只是文案 |
+| `pmt_user_coupon` | 用户券：发到某个人手上的那一张，有自己的有效期 |
+| `pmt_coupon_issue` | 发放批次：发给谁、发了多少、跳过多少、谁发的 |
+| `pmt_apply` | 优惠发生记录：一单命中了什么、一张券被用了几次，线上线下同一张表 |
+
+**跨域引用**：`pmt_coupon.coupon_no` → `mkt_coupon`、`pmt_coupon.entity_no` → `mch_entity`、`pmt_coupon_scope.coupon_no` → `mkt_coupon`、`pmt_user_coupon.coupon_no` → `mkt_coupon`、`pmt_user_coupon.user_no` → `usr_account`、`pmt_user_coupon.entity_no` → `mch_entity`、`pmt_user_coupon.order_no` → `ord_order`、`pmt_coupon_issue.coupon_no` → `mkt_coupon`、`pmt_coupon_issue.entity_no` → `mch_entity`、`pmt_apply.user_no` → `usr_account`、`pmt_apply.entity_no` → `mch_entity`、`pmt_apply.store_no` → `mch_store`、`pmt_apply.order_no` → `ord_order`、`pmt_apply.sub_order_no` → `ord_sub_order`
+
+### 系统 `sys_*`（21 张）
 
 ![系统表关系](../diagrams/db-sys.svg)
 
@@ -259,7 +294,8 @@
 | `sys_notify_log` | 短信/邮件发送记录 |
 | `sys_job_run` | 定时任务运行记录（一个任务一行） |
 | `sys_merchant_plan_def` | 增值包档位定义 |
-| `sys_media_asset` | 场景×通道触达配置 |
+| `sys_media_asset` | 图片资产记账：空间统计与回收清单的唯一依据 |
+| `sys_media_purge_batch` | 图片回收批次：一次人工确认对应一行 |
 
 **跨域引用**：`sys_idempotent.user_no` → `usr_account`、`sys_ops_staff.merchant_no` → `mch_entity`、`sys_ops_staff.community_no` → `cmt_community`、`sys_ops_staff.pickup_no` → `cmt_pickup_point`、`sys_role.entity_no` → `mch_entity`、`sys_role_point.entity_no` → `mch_entity`、`sys_media_asset.entity_no` → `mch_entity`、`sys_media_asset.store_no` → `mch_store`
 
