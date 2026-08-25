@@ -1,23 +1,32 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="680" height="216" viewBox="0 0 680 216" role="img" font-family="system-ui,-apple-system,'PingFang SC',sans-serif">
-<title>券与活动 表关系</title><desc>5 张表，箭头由引用方指向被引用方。</desc>
+<title>券与活动 表关系</title><desc>8 张表，箭头由引用方指向被引用方。</desc>
 <defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
 <path d="M2 1L8 5L2 9" fill="none" stroke="#8A94A2" stroke-width="1.4" stroke-linecap="round"/></marker>
 <style>.n{font-weight:500;fill:#161A21}.s{font-size:11px;fill:#5A6472}
 .l{font-size:10.5px;fill:#5A6472;paint-order:stroke;stroke:#F7F9FB;stroke-width:3.5;stroke-linejoin:round}.b{font-size:11px;fill:#5A6472;letter-spacing:.1em}
 .ar{stroke:#8A94A2;stroke-width:1.3;fill:none}</style></defs>
-<rect x="63" y="30" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="148" y="50" text-anchor="middle" font-size="13">pmt_coupon</text>
-<text class="s" x="148" y="65" text-anchor="middle">券模板：权益 × 门槛 × 范围…</text>
-<rect x="255" y="30" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="340" y="50" text-anchor="middle" font-size="13">pmt_coupon_scope</text>
-<text class="s" x="340" y="65" text-anchor="middle">券的适用范围（规则）。scope_d…</text>
-<rect x="447" y="30" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="532" y="50" text-anchor="middle" font-size="13">pmt_user_coupon</text>
-<text class="s" x="532" y="65" text-anchor="middle">用户券：发到某个人手上的那一…</text>
-<rect x="159" y="146" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="244" y="166" text-anchor="middle" font-size="13">pmt_coupon_issue</text>
-<text class="s" x="244" y="181" text-anchor="middle">发放批次：发给谁、发了多少、跳…</text>
-<rect x="351" y="146" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="436" y="166" text-anchor="middle" font-size="13">pmt_apply</text>
-<text class="s" x="436" y="181" text-anchor="middle">优惠发生记录：一单命中了什么…</text>
+<rect x="31" y="30" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
+<text class="n" x="100" y="50" text-anchor="middle" font-size="13">pmt_coupon</text>
+<text class="s" x="100" y="65" text-anchor="middle">券模板：权益 × 门槛 ×…</text>
+<rect x="191" y="30" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
+<text class="n" x="260" y="50" text-anchor="middle" font-size="13">pmt_coupon_scope</text>
+<text class="s" x="260" y="65" text-anchor="middle">券的适用范围（规则）。sc…</text>
+<rect x="351" y="30" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
+<text class="n" x="420" y="50" text-anchor="middle" font-size="13">pmt_user_coupon</text>
+<text class="s" x="420" y="65" text-anchor="middle">用户券：发到某个人手上…</text>
+<rect x="511" y="30" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
+<text class="n" x="580" y="50" text-anchor="middle" font-size="13">pmt_coupon_issue</text>
+<text class="s" x="580" y="65" text-anchor="middle">发放批次：发给谁、发了…</text>
+<rect x="31" y="146" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
+<text class="n" x="100" y="166" text-anchor="middle" font-size="13">pmt_apply</text>
+<text class="s" x="100" y="181" text-anchor="middle">优惠发生记录：一单命中…</text>
+<rect x="191" y="146" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
+<text class="n" x="260" y="166" text-anchor="middle" font-size="13">pmt_activity</text>
+<text class="s" x="260" y="181" text-anchor="middle">活动：触发条件 × 优惠…</text>
+<rect x="351" y="146" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
+<text class="n" x="420" y="166" text-anchor="middle" font-size="9.5">pmt_activity_audience</text>
+<text class="s" x="420" y="181" text-anchor="middle">活动受众：一行都没有 =…</text>
+<rect x="511" y="146" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
+<text class="n" x="580" y="166" text-anchor="middle" font-size="11">pmt_activity_goods</text>
+<text class="s" x="580" y="181" text-anchor="middle">活动作用范围。用表不用…</text>
 </svg>
