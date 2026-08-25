@@ -178,6 +178,51 @@ class PointsClientSwitchFlowTest {
                 .isEqualTo(granted.points());
     }
 
+    // ── 线下：收不到费用金，所以不发分 ────────────────────────
+
+    @Test
+    @DisplayName("★★★ 当面付款的单不发积分 —— 那笔费用金收不到，发了就是给池子挂一笔永远不到的钱")
+    void offlineOrderEarnsNothing() {
+        String user = "U-PCS-9";
+        String subOrderNo = paidOrderWith(user, PayScenes.MP_WECHAT, PayModes.OFFLINE);
+
+        var r = pointsPort.grant(user, MERCHANT,
+                List.of(new PointsPort.EarnLine("G0001", null, 10_000L)), subOrderNo);
+
+        assertThat(r.points())
+                .as("线上靠分账扣费用金，自营从应付货款里净出来 —— 线下两条路都没有")
+                .isZero();
+        assertThat(r.feeMinor())
+                .as("**费用金也必须是 0**：只挡分不挡费的话，池子反而多收了一笔没有对价的钱")
+                .isZero();
+        assertThat(pointsService.canEarn(subOrderNo).reason())
+                .as("要说得出原因，否则商家问「为什么这单没发分」没人答得上来")
+                .isNotBlank();
+    }
+
+    @Test
+    @DisplayName("★★ 对照：同一个商家的线上单照发 —— 否则上一条可能只是「谁都不发」")
+    void onlineOrderStillEarns() {
+        String user = "U-PCS-10";
+        String subOrderNo = paidOrderWith(user, PayScenes.MP_WECHAT, "WECHAT");
+
+        assertThat(pointsPort.grant(user, MERCHANT,
+                List.of(new PointsPort.EarnLine("G0001", null, 10_000L)), subOrderNo).points())
+                .isPositive();
+    }
+
+    @Test
+    @DisplayName("★★ 线下单仍然可以【用】积分抵扣 —— 发放与核销是两件事，别一起关掉")
+    void offlineCanStillRedeem() {
+        String user = "U-PCS-11";
+        balance(user, 5_000L);
+
+        assertThat(pointsService.deductible(user, MERCHANT, 100_000L,
+                PayModes.OFFLINE, PayScenes.MP_WECHAT).maxPoints())
+                .as("抵扣的成本本来就在商家（当面少收即是抵扣），与收不收得到费用金无关")
+                .isPositive();
+    }
+
     // ── 回收：不经任何端判定 ──────────────────────────────────
 
     @Test
@@ -293,6 +338,10 @@ class PointsClientSwitchFlowTest {
      * 把整条下单链路拉进来的话，任何一处不相干的改动都会让它们红。
      */
     private String orderPaidFrom(String userNo, String scene) {
+        return paidOrderWith(userNo, scene, "WECHAT");
+    }
+
+    private String paidOrderWith(String userNo, String scene, String payChannel) {
         String orderNo = "ORD-PCS-" + System.nanoTime();
         String subOrderNo = "SUB-" + orderNo;
         DataScopeContext.executeWithoutScope(() -> {
@@ -302,6 +351,7 @@ class PointsClientSwitchFlowTest {
             o.setStatus(OrdOrder.PAID);
             o.setPayAmount(10_000L);
             o.setPayScene(scene);
+            o.setPayChannel(payChannel);
             orderMapper.insert(o);
 
             OrdSubOrder sub = new OrdSubOrder();

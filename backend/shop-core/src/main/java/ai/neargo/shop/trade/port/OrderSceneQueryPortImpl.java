@@ -30,16 +30,26 @@ public class OrderSceneQueryPortImpl implements OrderSceneQueryPort {
      * <p>这里只读一列用于平台策略，不做任何鉴权判定。
      */
     @Override
+    public String payChannelOfSubOrder(String subOrderNo) {
+        OrdOrder order = orderOfSubOrder(subOrderNo);
+        return order == null ? null : order.getPayChannel();
+    }
+
+    @Override
     public String paySceneOfSubOrder(String subOrderNo) {
+        OrdOrder order = orderOfSubOrder(subOrderNo);
+        return order == null ? null : order.getPayScene();
+    }
+
+    private OrdOrder orderOfSubOrder(String subOrderNo) {
         OrdSubOrder sub = DataScopeContext.executeWithoutScope(() ->
                 subOrderMapper.selectOne(Wrappers.<OrdSubOrder>lambdaQuery()
                         .eq(OrdSubOrder::getSubOrderNo, subOrderNo).last("LIMIT 1")));
         if (sub == null) {
             return null;
         }
-        OrdOrder order = DataScopeContext.executeWithoutScope(() ->
+        return DataScopeContext.executeWithoutScope(() ->
                 orderMapper.selectOne(Wrappers.<OrdOrder>lambdaQuery()
                         .eq(OrdOrder::getOrderNo, sub.getOrderNo()).last("LIMIT 1")));
-        return order == null ? null : order.getPayScene();
     }
 }

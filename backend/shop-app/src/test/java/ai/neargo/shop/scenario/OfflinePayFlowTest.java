@@ -13,6 +13,7 @@ import ai.neargo.shop.product.mapper.ProductMappers;
 import ai.neargo.shop.spi.user.QualificationPort;
 import ai.neargo.shop.support.TestLogin;
 import ai.neargo.shop.trade.entity.OrdOrder;
+import ai.neargo.shop.trade.entity.OrdSubOrder;
 import ai.neargo.shop.trade.mapper.TradeMappers;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.junit.jupiter.api.BeforeEach;
@@ -69,6 +70,10 @@ class OfflinePayFlowTest {
     private MerchantMappers.MchAccountMapper staffMapper;
     @Autowired
     private StoreFulfillmentService fulfillmentService;
+    @Autowired
+    private ai.neargo.shop.community.mapper.CommunityMappers.CommunityMapper communityMapper;
+    @Autowired
+    private MerchantMappers.MchEntityMapper merchantMapper;
     @Autowired
     private org.springframework.jdbc.core.JdbcTemplate jdbc;
 
@@ -325,6 +330,46 @@ class OfflinePayFlowTest {
     }
 
     @Test
+    @DisplayName("★★★ 走完整条线下链路：确认收款之后，子单上一分积分费用金都不该有")
+    void offlineOrderAccruesNoPointsFee() throws Exception {
+        String token = login("13400188009");
+        addToCart(token, "G0001", "SK0001", 1);
+        String orderNo = createOffline(token, "offline-nopoints");
+        String subOrderNo = subOrderNoOf(token, orderNo);
+
+        /*
+         * ⚠️ **必须先把积分四级开关打开。** 它们默认全关（逐级灰度），不开的话
+         * 费用金为 0 的真正原因是商家开关，与被测的「线下不发分」那道闸毫无关系 ——
+         * 这条用例会绿得毫无意义。
+         *
+         * 消融时逮到的：撤掉被测的闸，这条**照样是绿的**，而另一个类里那条立刻红了。
+         * 我在下面几行的注释里刚写过这个坑，还是踩了。
+         */
+        openPointsSwitches();
+
+        confirm(bizToken(), subOrderNo).andExpect(jsonPath("$.code").value(0));
+
+        /*
+         * ⚠️ 这一条与 PointsClientSwitchFlowTest 那条**不重复**：那边直接调发分入口，
+         * 这边走的是真实链路（下单 → 商家确认收款 → markPaid 内部发分）。
+         * 判定读的是订单上的 pay_channel，而那一列正是在 markPaid 里写的 ——
+         * 只有真跑一遍，才验得到「写入与读取的先后」对不对。
+         *
+         * 断言落在**费用金**上而不是积分数上：积分数为 0 也可能是商家开关没开
+         * （四级开关默认全关），那样这条用例会绿得毫无意义。费用金只在真发了分时才非 0。
+         */
+        OrdSubOrder sub = DataScopeContext.executeWithoutScope(() ->
+                subOrderMapper.selectOne(Wrappers.<OrdSubOrder>lambdaQuery()
+                        .eq(OrdSubOrder::getSubOrderNo, subOrderNo).last("LIMIT 1")));
+        assertThat(sub.getPointsFeeMinor() == null ? 0L : sub.getPointsFeeMinor())
+                .as("线下收不到这笔钱 —— 记上就是给积分池挂一笔永远不到账的应收")
+                .isZero();
+        assertThat(Boolean.TRUE.equals(sub.getPointsGranted()))
+                .as("发分标记也不该被置上，否则将来补发逻辑会跳过这一单")
+                .isFalse();
+    }
+
+    @Test
     @DisplayName("★ 下单端快照进 pay_scene —— 积分发放的端判定读它")
     void paySceneIsSnapshotted() throws Exception {
         String token = login("13400188006");
@@ -340,6 +385,24 @@ class OfflinePayFlowTest {
         assertThat(order(orderNo).getPayScene())
                 .as("这一列 V1 baseline 就有，缺的一直是这行写入")
                 .isEqualTo("MP_WECHAT");
+    }
+
+    /**
+     * 打开积分的四级开关（L2 社区 / L3 商家）。默认全关是设计如此 ——
+     * 所以「线上没抵扣」说明不了链路是通是断，而测试里不开就验不到任何积分逻辑。
+     */
+    private void openPointsSwitches() {
+        DataScopeContext.executeWithoutScope(() -> {
+            for (var c : communityMapper.selectList(null)) {
+                c.setPointsEnabled(true);
+                communityMapper.updateById(c);
+            }
+            for (var m : merchantMapper.selectList(null)) {
+                m.setPointsEnabled(true);
+                merchantMapper.updateById(m);
+            }
+            return null;
+        });
     }
 
     // ── helpers ──────────────────────────────────────────────

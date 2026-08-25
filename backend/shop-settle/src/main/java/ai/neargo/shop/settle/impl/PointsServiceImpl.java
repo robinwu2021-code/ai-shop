@@ -373,6 +373,24 @@ public class PointsServiceImpl implements PointsService {
     @Override
     public PointsAvailability canEarn(String subOrderNo) {
         /*
+         * ⚠️ **线下（当面）收款的单不发积分**，这不是策略开关，是一条算得清的账。
+         *
+         * 发分要向商家收费用金进积分池 —— 那笔钱是**将来用户在别家花掉这些分时，
+         * 平台要付给收单方的钱**。线上单靠分账扣走；自营单从平台欠商家的货款里净出来
+         * （财务按 net_minor 打款，而 net 已经减过费用金）。
+         *
+         * 线下单两条路都没有：钱在商家自己口袋里，平台不欠他任何款，
+         * **这笔费用金收不到**。照发不误的话，池子账面上会挂着一笔永远不会到的钱，
+         * 而恒等式（池子余额 == 流通中积分 × 汇率）会随线下成交量单调失衡 ——
+         * 且账面总额看着一直是平的，只有对账时逐笔查才发现。
+         *
+         * 不做成开关是刻意的：做成开关就会有人打开它，而打开它没有对应的收款机制。
+         * 要支持的话得先有「按商家挂应收、下次线上结算净出来」那一套，那是另一件事。
+         */
+        if (PayModes.OFFLINE.equals(orderSceneQueryPort.payChannelOfSubOrder(subOrderNo))) {
+            return PointsAvailability.no("当面付款的订单不发放积分");
+        }
+        /*
          * ⚠️ 这里读的是**订单快照**，不是当前请求。
          *
          * 发放发生在支付/完成那一刻，而那时用户可能已经换了端，

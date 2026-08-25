@@ -24,4 +24,15 @@ public interface OrderSceneQueryPort {
      * {@code null} —— 调用方按「认不出端」处理，也就是<b>不拦</b>。
      */
     String paySceneOfSubOrder(String subOrderNo);
+
+    /**
+     * 子单所属订单的 {@code ord_order.pay_channel}（{@code PayModes.OFFLINE} / WECHAT / …）。
+     *
+     * <p>与 {@link #paySceneOfSubOrder} 同一个理由放在这里：<b>读的必须是订单上的那一份</b>。
+     * 发分发生在支付成功那一刻，而「这单是怎么付的」只有订单说了算 ——
+     * 从调用方传进来的话，总有一天会有人传当前请求里的值。
+     *
+     * <p>查不到订单时返回 {@code null}，调用方按「认不出」处理。
+     */
+    String payChannelOfSubOrder(String subOrderNo);
 }
