@@ -248,6 +248,17 @@ public enum ErrorCode {
     /** 本批敞口超出剩余预算。**整批拒绝，不部分发放** —— 部分发放留下的中间态说不清 */
     COUPON_BUDGET_EXCEEDED(40015, "err.marketing.coupon_budget_exceeded"),
 
+    /** 核销码在这家店查不到。**不区分「不存在」与「是别家的」** —— 区分了就成了枚举工具 */
+    COUPON_CODE_NOT_FOUND(40016, "err.marketing.coupon_code_not_found"),
+    /**
+     * 这一次核销没抢到（带条件的 UPDATE 影响 0 行）。
+     *
+     * <p>两个店员同时扫同一张码时只有一条能改到行。让另一条明确失败，
+     * 而不是让它以为成功 —— 一张 5 次的次卡被扣 1 次却核销了两杯，
+     * 这种错在对账时看起来只是「数字对不上」。
+     */
+    COUPON_REDEEM_CONFLICT(40017, "err.marketing.coupon_redeem_conflict"),
+
     // ---- 5xxxx 资金 ----
     SPLIT_RECEIVER_NOT_READY(50001, "err.settle.receiver_not_ready"),
     SPLIT_EXPIRED(50002, "err.settle.split_expired"),

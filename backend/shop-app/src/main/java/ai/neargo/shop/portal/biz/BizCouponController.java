@@ -6,6 +6,7 @@ import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.promotion.dto.CouponVOs.CouponIssueVO;
 import ai.neargo.shop.promotion.dto.CouponVOs.CouponSaveCmd;
 import ai.neargo.shop.promotion.dto.CouponVOs.CouponVO;
+import ai.neargo.shop.promotion.service.CouponRedeemService;
 import ai.neargo.shop.promotion.service.CouponService;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -30,9 +31,11 @@ import java.util.List;
 public class BizCouponController {
 
     private final CouponService couponService;
+    private final CouponRedeemService redeemService;
 
-    public BizCouponController(CouponService couponService) {
+    public BizCouponController(CouponService couponService, CouponRedeemService redeemService) {
         this.couponService = couponService;
+        this.redeemService = redeemService;
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.CAMPAIGN + "')")
@@ -84,6 +87,39 @@ public class BizCouponController {
     @GetMapping("/biz/coupon-issues")
     public List<CouponIssueVO> issues(@RequestParam(required = false) String couponNo) {
         return couponService.issues(BizContext.requireMerchantNo(), couponNo);
+    }
+
+    // ------------------------------------------------------------------ 到店核销（P6）
+
+    /**
+     * 先看后核。<b>要 {@code biz:verify} 而不是 {@code biz:campaign}</b>：
+     * 核销的人是收银台前的店员，建券的人是老板 —— 自提核销用的也是这个码，
+     * 店员本来就在这条链路上，不新增培训成本。
+     */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.VERIFY + "')")
+    @GetMapping("/biz/coupon-redeem/{code}")
+    public CouponRedeemService.RedeemView peek(@PathVariable String code) {
+        return redeemService.peek(BizContext.requireMerchantNo(), code);
+    }
+
+    /**
+     * 核销一次。<b>不可撤销</b> —— 东西已经给出去了，端上那个按钮上要写这句话。
+     *
+     * <p>3 秒内重复提交会返回上一次的结果（{@code duplicated=true}）而不是报错：
+     * 报错会让店员以为刚才那下没成功，于是再按一次。
+     */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.VERIFY + "')")
+    @PostMapping("/biz/coupon-redeem")
+    public CouponRedeemService.RedeemResult redeem(@RequestBody RedeemReq req) {
+        /*
+         * 门店取的是 requireStoreNo（取不到就 403），**不回落默认店**：
+         * 核销记录上的门店是对账依据，落错一家的表现是「数字都对，只是不是那家店的」。
+         */
+        return redeemService.redeem(BizContext.requireMerchantNo(), req.code(),
+                BizContext.requireStoreNo(), SecurityUtils.currentUserNo());
+    }
+
+    public record RedeemReq(String code) {
     }
 
     public record StatusReq(String status) {

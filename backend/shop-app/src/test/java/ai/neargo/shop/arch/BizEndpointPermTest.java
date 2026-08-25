@@ -208,6 +208,9 @@ class BizEndpointPermTest {
         put("/biz/coupons/{couponNo}/status", BizPerms.CAMPAIGN);
         put("/biz/coupons/{couponNo}/issue", BizPerms.CAMPAIGN);
         put("/biz/coupon-issues", BizPerms.CAMPAIGN);
+        // 核销的人是收银台前的店员，不是建券的老板 —— 与自提核销同一个码
+        put("/biz/coupon-redeem/{code}", BizPerms.VERIFY);
+        put("/biz/coupon-redeem", BizPerms.VERIFY);
         // 只改公告：与整份门面同一个码 —— 它写的是同一张表的同一家店
         put("/biz/store/announcement", BizPerms.STORE);
         // 删一条常用语：还是那张表那一家店，同一个码

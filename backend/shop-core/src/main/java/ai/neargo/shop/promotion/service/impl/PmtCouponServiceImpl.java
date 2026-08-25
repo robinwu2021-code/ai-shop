@@ -326,6 +326,9 @@ public class PmtCouponServiceImpl implements CouponService {
             uc.setExpireAt(PmtCoupon.RELATIVE.equals(c.getValidityMode())
                     ? now + (long) c.getValidDays() * DAY
                     : nz(c.getEndAt()));
+            if (PmtCoupon.REDEEM_STORE_CODE.equals(c.getRedeemMode())) {
+                uc.setRedeemCode(redeemCode());
+            }
             userCouponMapper.insert(uc);
         }
 
@@ -362,6 +365,25 @@ public class PmtCouponServiceImpl implements CouponService {
                                 PmtCouponIssue::getCouponNo, couponNo)
                         .orderByDesc(PmtCouponIssue::getId))
                 .stream().map(this::issueVo).toList();
+    }
+
+    /**
+     * 到店核销码。
+     *
+     * <p><b>去掉 0/O/1/I/L</b>：店员是照着顾客手机屏幕手输的，这几个字符在小屏上
+     * 分不清，输错一个就是「没找到这张券」，而顾客会坚持说码是对的。
+     *
+     * <p>8 位、32 个字符 ≈ 1 万亿种组合，配合「必须带 entityNo 查」，
+     * 猜码这条路不成立。撞库不是威胁模型 —— 真正的威胁是**输错**。
+     */
+    private static String redeemCode() {
+        final String alphabet = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
+        java.security.SecureRandom rnd = new java.security.SecureRandom();
+        StringBuilder sb = new StringBuilder(8);
+        for (int i = 0; i < 8; i++) {
+            sb.append(alphabet.charAt(rnd.nextInt(alphabet.length())));
+        }
+        return sb.toString();
     }
 
     /** 三类跳过存成 `原因:数量` —— 界面要把话说全，不能只报一个总数 */
