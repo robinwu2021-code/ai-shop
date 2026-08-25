@@ -54,6 +54,12 @@ export const RULES = [
   ["GET", /^\/ops\/merchants\/mode-risk$/, "merchant:mode:read"],
   // 积分资金看板。**是资金表不是营销表** —— 读它的是财务
   ["GET", /^\/ops\/points\/overview$/, "finance:settle:read"],
+  // 类目策略：能不能当面付、发多少积分。挂**类目**码不挂规格码 ——
+  // 改「这一类能不能当面付」与改规格绑定不是同一类决定
+  ["GET", /^\/ops\/category-pay-modes$/, "product:category:read"],
+  ["POST", /^\/ops\/category-pay-modes\//, "product:category:update"],
+  ["GET", /^\/ops\/category-points$/, "product:category:read"],
+  ["POST", /^\/ops\/category-points\//, "product:category:update"],
   // 积分端策略（哪个端不发放/不核销、线下能不能抵）。挂在结算码下而不是营销码下：
   // 关掉一个端的发放，减少的是**平台对用户的负债**，那是资金决定不是活动决定
   ["GET", /^\/ops\/points\/client-policy$/, "finance:settle:read"],

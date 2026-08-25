@@ -478,3 +478,50 @@ export interface SpuStd extends Archivable {
    */
   source?: string;
 }
+
+/**
+ * 类目 × 支付方式（线下）。
+ *
+ * **`offlineAllowed` 的默认是「允许」**：后端那张表的语义是
+ * 「没有行即放行，插 allowed=0 才是禁止」。设计成白名单的话，
+ * 上线当天得先把 57 个类目全配一遍才有人下得了单。
+ */
+export interface CategoryPayMode {
+  categoryNo: string;
+  categoryName: string;
+  parentName: string;
+  offlineAllowed: boolean;
+  /** 是否**显式配过**。与 offlineAllowed 分开：没配过也是允许，但两者含义不同 */
+  configured: boolean;
+}
+
+/**
+ * 类目 × 积分发放规则。**平台按类目统一管理，商家不参与配置** ——
+ * 依据是实测：线上 199 件商品里，用商品级配置配了积分的是 0 件。
+ *
+ * `earnValue` 是**整数**：FIXED 存分、RATIO 存万分比（千分之一 = 10）。
+ * 不用浮点 —— 金额与比例一旦用 double，对账时的分位差没人说得清。
+ */
+export interface CategoryPoints {
+  categoryNo: string;
+  categoryName: string;
+  parentName: string;
+  /** FIXED 定额 / RATIO 按成交额比例；**空 = 没配**，走平台兜底 */
+  earnMode: "FIXED" | "RATIO" | null;
+  earnValue: number | null;
+}
+
+/**
+ * 积分的**端策略**。存的是**禁用名单，不是允许名单** ——
+ * `X-Client` 头今天还没有哪个端全量在发，用允许名单会让开关一上线就把全站积分静默关掉。
+ *
+ * ⚠️ 它**不是合规硬闸**：端标识来自客户端、可伪造，只能用于平台策略。
+ */
+export interface ClientPointsPolicy {
+  /** 这些端不发放积分 */
+  earnDeny: string[];
+  /** 这些端不能用积分抵扣 */
+  redeemDeny: string[];
+  /** 当面付能不能用积分抵扣。**默认开** —— 成本本来就在商家，线下反而比线上简单 */
+  offlineRedeem: boolean;
+}

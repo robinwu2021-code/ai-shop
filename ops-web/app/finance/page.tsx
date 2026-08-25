@@ -26,6 +26,7 @@ import { InvoiceTab } from "./invoice-tab";
 // 费率单独成块：它与结算那几个 tab 只共用文案表，且形状是版本化的、与配置卡完全不同
 import { FeeRuleTab } from "./fee-rule-tab";
 import { PointsTab } from "./points-tab";
+import { PointsPolicyTab } from "./points-policy-tab";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DataTable, type Column } from "@/components/ui/data-table";
@@ -41,7 +42,7 @@ import { Toolbar } from "@/components/ui/toolbar";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 
 type Copy = (typeof FINANCE_COPY)["zh"];
-const TAB_KEYS = ["settlements", "splits", "refund-back", "rates", "points", "withdraw", "invoice"] as const;
+const TAB_KEYS = ["settlements", "splits", "refund-back", "rates", "points", "points-policy", "withdraw", "invoice"] as const;
 
 const TRAFFIC_LABEL = (c: Copy): Record<TrafficSource, string> => ({
   MERCHANT_OWNED: c.trafficMerchantOwned,
@@ -265,6 +266,10 @@ function FinanceInner() {
 
       {tab === "rates" && <FeeRuleTab c={c} canEdit={canEditRate} />}
       {tab === "points" && <PointsTab c={c} />}
+
+      {/* 端开关。**写权限用 settle:execute** —— 它决定用户在某个端能不能拿到/用掉积分，
+          而积分是平台对用户的负债，不是营销活动 */}
+      {tab === "points-policy" && <PointsPolicyTab c={c} canEdit={allow("finance:settle:execute")} />}
 
       {dialog}
     </div>

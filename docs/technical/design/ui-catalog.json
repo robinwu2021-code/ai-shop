@@ -1073,7 +1073,7 @@
     {
       "key": "ops-web",
       "label": "运营端",
-      "count": 122,
+      "count": 125,
       "domains": [
         {
           "name": "经营看板",
@@ -1408,6 +1408,30 @@
               "status": "已实现",
               "proto": null,
               "preview": "http://localhost:3000/products?tab=category-spec"
+            },
+            {
+              "app": "ops-web",
+              "route": "/products?tab=category-pay-mode",
+              "title": "类目 × 支付方式",
+              "domain": "商品与类目",
+              "group": "类目",
+              "matrix": "P-3.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "preview": "http://localhost:3000/products?tab=category-pay-mode"
+            },
+            {
+              "app": "ops-web",
+              "route": "/products?tab=category-points",
+              "title": "类目 × 积分",
+              "domain": "商品与类目",
+              "group": "类目",
+              "matrix": "P-3.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "preview": "http://localhost:3000/products?tab=category-points"
             },
             {
               "app": "ops-web",
@@ -1996,6 +2020,18 @@
               "status": "已实现",
               "proto": null,
               "preview": "http://localhost:3000/finance?tab=points"
+            },
+            {
+              "app": "ops-web",
+              "route": "/finance?tab=points-policy",
+              "title": "积分端开关",
+              "domain": "结算与资金",
+              "group": "分账结算",
+              "matrix": "P-12.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "preview": "http://localhost:3000/finance?tab=points-policy"
             },
             {
               "app": "ops-web",
@@ -2601,5 +2637,5 @@
       ]
     }
   ],
-  "total": 208
+  "total": 211
 }

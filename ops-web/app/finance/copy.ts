@@ -2,6 +2,18 @@
 import type { PageCopy } from "@/lib/use-copy";
 
 const zh = {
+  ppTitle: "积分端开关",
+  ppLoading: "加载中…",
+  ppNotSecurityGate: "⚠️ 这不是合规硬闸。端标识来自客户端请求头、天然可伪造，而且今天还不是每个端都在发。它能做到的是「让自报家门的那个端不发/不用积分」，做不到的是「保证某个端一定拿不到积分」——要后者得在端侧和签名上做文章。另：这里存的是**禁用名单**，没勾中的端一律照常。",
+  ppEarnDeny: "这些端不发放积分",
+  ppEarnHint: "判定读的是**下单时的端快照**，不是当前请求 —— 发分发生在支付成功那一刻，那条路上常常根本没有用户在场（支付回调、超时自动确认）。改这里只影响将来，已经发出去的分不追回。",
+  ppRedeemDeny: "这些端不能用积分抵扣",
+  ppRedeemHint: "判定读的是**当前请求的端** —— 抵扣是用户当场发起的动作，与发放恰好相反。结算页会显示余额并说明原因，不会把入口静默藏掉。",
+  ppOfflineRedeem: "当面付款可以用积分抵扣",
+  ppOfflineHint: "默认开。积分成本本来就在商家（ADR-006），线下反而比线上简单：商家当面少收即是抵扣，平台零动作。关掉的话，所有当面付的单都拿不到抵扣额度。",
+  ppOddPair: "{clients} 配成了「不发放但可核销」。这是合法组合（停止发分、但已有的分还能花掉），所以不拦你 —— 如果不是有意的，记得两边一起勾。",
+  ppSave: "保存",
+  ppSaving: "保存中…",
   ptHint: "恒等式：流通中的积分应当等于池子里的钱。两个数分开看的话，失衡要等到有人主动比对才会发现 —— 所以这一页把差额直接算出来。本页只读：池子的钱由流水推出，要调整就补一笔有类型的流水。",
   ptCirculating: "流通中的积分",
   ptPoolBalance: "池子余额",
@@ -234,6 +246,18 @@ const zh = {
 };
 
 const en: typeof zh = {
+  ppTitle: "Points client policy",
+  ppLoading: "Loading…",
+  ppNotSecurityGate: "⚠️ This is not a security gate. The client identifier comes from a request header and can be forged, and not every client sends it yet. It can stop a client that identifies itself; it cannot guarantee a given client never earns points — that needs client-side work and signing. Note this stores a deny list: clients not selected are unaffected.",
+  ppEarnDeny: "These clients do not earn points",
+  ppEarnHint: "Judged against the client recorded on the order, not the current request — points are granted at payment, and there is often no user present at all (payment callback, auto-confirm). Changes affect future grants only; points already granted are never clawed back.",
+  ppRedeemDeny: "These clients cannot redeem points",
+  ppRedeemHint: "Judged against the current request's client — redeeming is something the user does right now, the opposite of earning. Checkout still shows the balance and the reason; the entry point is never silently hidden.",
+  ppOfflineRedeem: "Points can be redeemed when paying on site",
+  ppOfflineHint: "On by default. The cost of points sits with the merchant (ADR-006), so paying on site is simpler than online: the merchant just collects less. Turning this off removes redemption from every on-site order.",
+  ppOddPair: "{clients} set to earn-denied but redeem-allowed. That is a valid combination (stop granting, let existing points be spent), so it is not blocked — but if it was not deliberate, set both.",
+  ppSave: "Save",
+  ppSaving: "Saving…",
   ptHint: "Identity: points in circulation should equal the money in the pool. Viewed separately, an imbalance only surfaces when someone compares them by hand — so this page computes the gap directly. Read-only: the pool balance is derived from flows; to adjust it, post a typed flow.",
   ptCirculating: "Points in circulation",
   ptPoolBalance: "Pool balance",

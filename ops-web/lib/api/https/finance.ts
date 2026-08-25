@@ -1,9 +1,12 @@
 // 覆盖范围：分账结算（P-12.1）。
 import { client } from "../http-client";
 import type { FinanceApi } from "../contracts/finance";
+import type { ClientPointsPolicy } from "@/lib/types";
 
 export const financeHttp: FinanceApi = {
   pointsOverview: (market) => client.get("/ops/points/overview", { market: market ?? "CN" }),
+  pointsClientPolicy: () => client.get<ClientPointsPolicy>("/ops/points/client-policy"),
+  savePointsClientPolicy: (v) => client.post<ClientPointsPolicy>("/ops/points/client-policy", v),
   listSettlements: (q) => client.get("/ops/settlements", q),
   listSplitRecords: (q) => client.get("/ops/split-records", q),
   listRefundSplitBacks: () => client.get("/ops/refund-split-backs"),

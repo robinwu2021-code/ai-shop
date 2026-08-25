@@ -7837,3 +7837,30 @@ VALUES ('FAQ-0001', '怎么取货？', '订单支付后会生成取货码，到�
        ('FAQ-0002', '能退款吗？', '未取货前可申请仅退款；小额订单支持极速退，立即到账。', '售后', 2, 1, 'MAIN', NOW(), NOW()),
        ('FAQ-0003', '为什么我的券用不了？', '券有使用门槛与有效期，结算页会显示不可用原因。', '优惠', 3, 1, 'MAIN', NOW(), NOW()),
        ('FAQ-0004', '到货时间怎么算？', '自提点页面会写明当日到货时间，一般为每晚 7 点前。', '履约', 4, 1, 'MAIN', NOW(), NOW());
+INSERT INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at)
+SELECT 'OPS_PRODUCT__TAB_CATEGORY_PAY_MODE', 'OPS_PRODUCT', '类目 × 支付方式', '类目', '/products?tab=category-pay-mode', 'product:category:read', 'product:category:read', 'IMPLEMENTED', 1, 'P-3.1', 'MENU', 63, NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_function_point x WHERE x.point_code='OPS_PRODUCT__TAB_CATEGORY_PAY_MODE');
+INSERT INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at)
+SELECT 'OPS_PRODUCT__TAB_CATEGORY_POINTS', 'OPS_PRODUCT', '类目 × 积分', '类目', '/products?tab=category-points', 'product:category:read', 'product:category:read', 'IMPLEMENTED', 1, 'P-3.1', 'MENU', 64, NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_function_point x WHERE x.point_code='OPS_PRODUCT__TAB_CATEGORY_POINTS');
+INSERT INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at)
+SELECT 'OPS_FINANCE__TAB_POINTS_POLICY', 'OPS_FINANCE', '积分端开关', '分账结算', '/finance?tab=points-policy', 'finance:settle:read', 'finance:settle:read', 'IMPLEMENTED', 1, 'P-12.1', 'MENU', 51, NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_function_point x WHERE x.point_code='OPS_FINANCE__TAB_POINTS_POLICY');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'SUPER_ADMIN', 'OPS_PRODUCT__TAB_CATEGORY_PAY_MODE', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPER_ADMIN' AND x.point_code='OPS_PRODUCT__TAB_CATEGORY_PAY_MODE');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'GOODS_OPS', 'OPS_PRODUCT__TAB_CATEGORY_PAY_MODE', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='GOODS_OPS' AND x.point_code='OPS_PRODUCT__TAB_CATEGORY_PAY_MODE');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'SUPER_ADMIN', 'OPS_PRODUCT__TAB_CATEGORY_POINTS', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPER_ADMIN' AND x.point_code='OPS_PRODUCT__TAB_CATEGORY_POINTS');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'GOODS_OPS', 'OPS_PRODUCT__TAB_CATEGORY_POINTS', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='GOODS_OPS' AND x.point_code='OPS_PRODUCT__TAB_CATEGORY_POINTS');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'SUPER_ADMIN', 'OPS_FINANCE__TAB_POINTS_POLICY', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPER_ADMIN' AND x.point_code='OPS_FINANCE__TAB_POINTS_POLICY');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'FINANCE', 'OPS_FINANCE__TAB_POINTS_POLICY', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='FINANCE' AND x.point_code='OPS_FINANCE__TAB_POINTS_POLICY');

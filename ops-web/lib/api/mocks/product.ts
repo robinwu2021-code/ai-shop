@@ -181,6 +181,20 @@ function asGoods(goodsNo: string): ProductGoods | undefined {
   };
 }
 
+/**
+ * 二级类目（未归档）。类目 × 支付方式 / 积分 / 规格三张表**共用同一份骨架** ——
+ * 三页并排放着，行不一样多的话，运营会以为哪一页漏了类目。
+ */
+function leafCategories() {
+  return db.categories.filter((cat) => cat.level === 2 && !cat.archivedAt);
+}
+function parentNameOf(cat: Category) {
+  return db.categories.find((p) => p.categoryNo === cat.parentNo)?.name ?? "";
+}
+/** 保存后的覆盖值。mock 不落库，但改完要看得见变化，否则以为按钮没生效 */
+const mockPayModes = new Map<string, boolean>();
+const mockPoints = new Map<string, { earnMode: "FIXED" | "RATIO" | null; earnValue: number | null }>();
+
 export const productMock: ProductApi = {
   listGoodsAuditQueue: (q = {}) =>
     // 队列只给待审的：已处理的属于历史，混在待办里会让人重复审
@@ -645,6 +659,50 @@ export const productMock: ProductApi = {
       };
     });
     return productMock.listCategorySpecs();
+  },
+
+  /*
+   * 类目 × 支付方式 / 积分。**mock 里刻意各留一部分没配** ——
+   * 全配满的话，「还有多少类目没配」这条缺口提示永远不出现，等于没做。
+   * 与上面 MOCK_CATEGORY_SPECS 只覆盖一部分类目是同一个理由。
+   */
+  listCategoryPayModes: () =>
+    wait(leafCategories().map((cat, i) => ({
+      categoryNo: cat.categoryNo,
+      categoryName: cat.name,
+      parentName: parentNameOf(cat),
+      // 每 7 个禁一个，让「被禁」那一行长什么样看得见
+      offlineAllowed: i % 7 !== 3,
+      configured: i % 7 === 3,
+    }))),
+
+  saveCategoryPayMode: (categoryNo, offlineAllowed) => {
+    mockPayModes.set(categoryNo, offlineAllowed);
+    return productMock.listCategoryPayModes().then((rows) =>
+      rows.map((r) => (mockPayModes.has(r.categoryNo)
+        ? { ...r, offlineAllowed: mockPayModes.get(r.categoryNo)!, configured: !mockPayModes.get(r.categoryNo)! }
+        : r)));
+  },
+
+  listCategoryPoints: () =>
+    wait(leafCategories().map((cat, i) => {
+      const saved = mockPoints.get(cat.categoryNo);
+      if (saved) return { categoryNo: cat.categoryNo, categoryName: cat.name, parentName: parentNameOf(cat), ...saved };
+      // 三分之一配了规则，其余留空 —— 「没配」是这一页的主角
+      const mode = i % 3 === 0 ? "RATIO" : i % 3 === 1 ? "FIXED" : null;
+      return {
+        categoryNo: cat.categoryNo,
+        categoryName: cat.name,
+        parentName: parentNameOf(cat),
+        earnMode: mode as "FIXED" | "RATIO" | null,
+        earnValue: mode === "RATIO" ? 50 : mode === "FIXED" ? 100 : null,
+      };
+    })),
+
+  saveCategoryPoints: (categoryNo, v) => {
+    if (v.earnMode) mockPoints.set(categoryNo, v);
+    else mockPoints.delete(categoryNo);
+    return productMock.listCategoryPoints();
   },
 
   listCategorySpecs: () =>

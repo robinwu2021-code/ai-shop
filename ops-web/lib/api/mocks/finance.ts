@@ -6,6 +6,7 @@ import { WITHDRAW_TRANSITIONS } from "@/lib/types";
 import { MAX_SPLIT_RETRY, SETTLE_FREEZE_MIN_DAYS } from "@/lib/constants";
 import { SETTLE_TRANSITIONS, type Settlement } from "@/lib/types";
 import type { FinanceApi } from "../contracts/finance";
+import type { ClientPointsPolicy } from "@/lib/types";
 import { fail, notFound } from "@/lib/biz-error";
 import { wait } from "./_wait";
 
@@ -23,6 +24,9 @@ function assertBalanced(s: Settlement) {
   }
 }
 
+/** mock 不落库，但改完要看得见变化，否则以为按钮没生效 */
+let mockClientPolicy: ClientPointsPolicy = { earnDeny: [], redeemDeny: [], offlineRedeem: true };
+
 export const financeMock: FinanceApi = {
   // 两条轨道都给：运营要回答的是「这家店的钱到哪一步了」，
   // 分开查等于让一家同时有自营店和第三方店的商家在两个页面之间对照
@@ -32,6 +36,22 @@ export const financeMock: FinanceApi = {
    * 造一份天然不平的假数据，会让人误以为页面坏了。
    * 真接口下这两个数由流水推出来，对不上才是真信号。
    */
+  /*
+   * 端策略。mock 里**默认什么都不禁** —— 与后端默认值一致。
+   * 造一个「已经禁了两个端」的初值会让人以为线上就是那样，
+   * 而这一页的第一职责恰恰是「现在到底禁了谁」。
+   */
+  pointsClientPolicy: async () => wait({ ...mockClientPolicy }),
+
+  savePointsClientPolicy: async (v) => {
+    mockClientPolicy = {
+      earnDeny: [...v.earnDeny],
+      redeemDeny: [...v.redeemDeny],
+      offlineRedeem: v.offlineRedeem,
+    };
+    return wait({ ...mockClientPolicy });
+  },
+
   pointsOverview: async (market = "CN") => {
     return wait({
       circulatingPoints: 12_800,

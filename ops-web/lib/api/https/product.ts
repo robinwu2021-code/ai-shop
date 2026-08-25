@@ -1,7 +1,7 @@
 // 覆盖范围：商品与类目（P-3）。
 import { client } from "../http-client";
 import type { ProductApi } from "../contracts/product";
-import type { Category, CategoryArchiveImpact, CategorySpec, CategorySpecBinding, SpecDim, SpecValue, Page, ProductGoods, Sku, SpecTemplate } from "@/lib/types";
+import type { Category, CategoryArchiveImpact, CategoryPayMode, CategoryPoints, CategorySpec, CategorySpecBinding, SpecDim, SpecValue, Page, ProductGoods, Sku, SpecTemplate } from "@/lib/types";
 
 /** `GET /ops/goods` 的原样返回形状（`OpsGoodsListVO`，见后端 product/dto）。 */
 interface BackendGoodsPage {
@@ -119,6 +119,12 @@ export const productHttp: ProductApi = {
   categoryArchiveImpact: (no) =>
     client.get<CategoryArchiveImpact>(`/ops/categories/${no}/archive-impact`),
   listCategorySpecs: () => client.get<CategorySpec[]>("/ops/category-specs"),
+  listCategoryPayModes: () => client.get<CategoryPayMode[]>("/ops/category-pay-modes"),
+  saveCategoryPayMode: (categoryNo, offlineAllowed) =>
+    client.post<CategoryPayMode[]>(`/ops/category-pay-modes/${categoryNo}`, { offlineAllowed }),
+  listCategoryPoints: () => client.get<CategoryPoints[]>("/ops/category-points"),
+  saveCategoryPoints: (categoryNo, v) =>
+    client.post<CategoryPoints[]>(`/ops/category-points/${categoryNo}`, v),
 
   // ── 规格库（V195）
   listSpecDims: (q) => client.get<SpecDim[]>("/ops/spec-dims", q),

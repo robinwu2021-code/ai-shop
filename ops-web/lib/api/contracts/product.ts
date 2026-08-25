@@ -1,5 +1,7 @@
 // 覆盖范围：类目（P-3.1）、商品池（P-3.2）、库存与预售（P-3.3）。
-import type { GoodsAudit, GoodsDetail, Category, CategoryArchiveImpact, CategorySpec, CategorySpecBinding, SpecDim, SpecValue, Page, ProductGoods, Sku, SpecTemplate, SpuStd, Topic } from "@/lib/types";
+import type {
+  CategoryPayMode,
+  CategoryPoints, GoodsAudit, GoodsDetail, Category, CategoryArchiveImpact, CategorySpec, CategorySpecBinding, SpecDim, SpecValue, Page, ProductGoods, Sku, SpecTemplate, SpuStd, Topic } from "@/lib/types";
 import type { CategoryQ, SkuQ, SpecTemplateQ } from "../query";
 
 export interface ProductApi {
@@ -144,6 +146,21 @@ export interface ProductApi {
    * 运营看这张表是为了横向比较「哪一类配得全、哪一类还空着」，翻页只会碍事。
    */
   listCategorySpecs(): Promise<CategorySpec[]>;
+
+  /**
+   * 类目 × 支付方式。**没配的类目也返回** —— 只返回配过的，运营看到一张短表，
+   * 而看不出「还有 40 个类目没配」，那正是这一页要回答的问题。
+   */
+  listCategoryPayModes(): Promise<CategoryPayMode[]>;
+  saveCategoryPayMode(categoryNo: string, offlineAllowed: boolean): Promise<CategoryPayMode[]>;
+
+  /** 类目 × 积分。同样全量返回，理由同上 */
+  listCategoryPoints(): Promise<CategoryPoints[]>;
+  /** `earnMode` 传 null = 清除这条规则，回到平台兜底 */
+  saveCategoryPoints(
+    categoryNo: string,
+    v: { earnMode: "FIXED" | "RATIO" | null; earnValue: number | null },
+  ): Promise<CategoryPoints[]>;
 
   // ── 规格库（V195）—— 与类目分开的一套 `product:spec:*`
 

@@ -150,6 +150,10 @@ export const NAV: NavSection[] = [
       { href: "/products?tab=spec-common", label: "通用规格", perm: "product:spec:read", group: "规格", matrix: "P-3.4", ready: true },
       { href: "/products?tab=spec-special", label: "专用规格", perm: "product:spec:read", group: "规格", matrix: "P-3.4", ready: true },
       { href: "/products?tab=category-spec", label: "类目 × 规格", perm: "product:spec:read", group: "规格", matrix: "P-3.4", ready: true },
+      // 类目策略两条：权限跟**类目**走不跟规格走 —— 改「能不能当面付」与改规格绑定
+      // 不是同一类决定，配规格的人不该顺手拿到改支付方式的权限
+      { href: "/products?tab=category-pay-mode", label: "类目 × 支付方式", perm: "product:category:read", group: "类目", matrix: "P-3.1", ready: true },
+      { href: "/products?tab=category-points", label: "类目 × 积分", perm: "product:category:read", group: "类目", matrix: "P-3.1", ready: true },
       // 标准品库（TDD-标准品库）。**单独一个权限码**而不是复用 product:category:*：
       // 类目决定「这类货要什么资质」（准入门槛），标准品决定「这件货长什么样」（录入模板）——
       // 让能改准入的人才能录标准品，会把一件运营日常挡在一个很高的门后面
@@ -273,6 +277,7 @@ export const NAV: NavSection[] = [
       // 服务侧 overview 早就实现了，而运营端此前一个积分接口都没有：
       // 池子对不对得上，只能连数据库看
       { href: "/finance?tab=points", label: "积分资金看板", perm: "finance:settle:read", group: "分账结算", matrix: "P-12.1", ready: true },
+      { href: "/finance?tab=points-policy", label: "积分端开关", perm: "finance:settle:read", group: "分账结算", matrix: "P-12.1", ready: true },
 
       { href: "/finance?tab=rates", label: "分档费率与服务费", perm: "finance:rate:update", group: "费率", matrix: "P-12.1", ready: true },
       { href: "/finance?tab=withdraw", label: "提现审批", perm: "finance:withdraw:approve", group: "提现与税", matrix: "P-12.2", phase: 2, ready: true },

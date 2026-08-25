@@ -1,5 +1,6 @@
 // 覆盖范围：分账结算（P-12.1）与提现·发票·个税（P-12.2）。
-import type { PointsOverview, AfterSale, BusinessMode, EffectiveFeeRates, FeeRuleVersion, FeeTrafficSource, InvoiceRequest, Page, Settlement, SplitLog, TaxRule, Withdrawal } from "@/lib/types";
+import type {
+  ClientPointsPolicy, PointsOverview, AfterSale, BusinessMode, EffectiveFeeRates, FeeRuleVersion, FeeTrafficSource, InvoiceRequest, Page, Settlement, SplitLog, TaxRule, Withdrawal } from "@/lib/types";
 import type { PageQ, SettlementQ } from "../query";
 
 export interface FinanceApi {
@@ -9,6 +10,15 @@ export interface FinanceApi {
    * 而那之后恒等式失衡就再也说不清是哪一笔。
    */
   pointsOverview(market?: string): Promise<PointsOverview>;
+
+  /**
+   * 积分的**端策略**：哪个端不发放、哪个端不核销、当面付能不能抵扣。
+   *
+   * ⚠️ 存的是**禁用名单**（`X-Client` 还没全量在发，允许名单会静默关掉全站积分），
+   * 而且**不是合规硬闸** —— 端标识来自客户端、可伪造。
+   */
+  pointsClientPolicy(): Promise<ClientPointsPolicy>;
+  savePointsClientPolicy(v: ClientPointsPolicy): Promise<ClientPointsPolicy>;
 
   /** 结算单列表。**自营与第三方都在这里** —— 不该因经营模式分成两个入口。 */
   /**
