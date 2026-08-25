@@ -714,6 +714,13 @@ public class OrderServiceImpl implements OrderService {
          */
         couponPort.markUsed(userNo, cmd.couponNo(), orderNo, discounts.coupon());
 
+        /*
+         * 活动扣限量。**放在这里而不是算价那一步**：算价会被反复调用
+         * （预览、改地址、改数量），在那儿扣的话，一个只是看看的用户能把限量耗光。
+         * 与订单同事务：扣量失败要能连订单一起回滚，否则会「量扣了、单没成」。
+         */
+        campaignPort.commit(orderNo, discounts.auto());
+
         // ⑦ 发事件（只写 outbox，与业务同事务）
         eventBus.publish(new OrderEvents.OrderCreated(orderNo, userNo, subOrderNos, split.payAmount()));
 

@@ -98,10 +98,34 @@ public interface CampaignPort {
      * （{@code mkt_campaign.entity_no NOT NULL}，活动是店铺级的，平台不出这个钱）。
      * 券那边需要这个字段是因为平台券与商家券并存。
      */
-    record Discount(long total, List<MerchantDiscount> shares) {
+    /**
+     * 下单成功后回执：<b>把这一单真的用掉的活动记下来</b>。
+     *
+     * <p>新模型的活动有限量（{@code quota}）—— 不在这一步扣，限量就永远不会推进，
+     * 那个字段等于摆设。放在下单落库之后、与订单同事务：
+     * 扣量失败要能连订单一起回滚，否则会出现「量扣了、单没成」。
+     *
+     * <p>老实现是空的：{@code mkt_campaign} 没有限量这个概念。
+     */
+    void commit(String orderNo, Discount discount);
+
+    /**
+     * 活动优惠的分摊结果。
+     *
+     * <p>没有 {@code byMerchant} 字段 —— 店铺活动的出资方**恒为商家**。
+     *
+     * @param applied 这一单命中了哪些活动。<b>算价时就要带出来</b> ——
+     *                事后靠金额反推「是哪个活动减的」，在两个活动减一样多的时候无解，
+     *                而限量要扣的正是那个具体的活动
+     */
+    record Discount(long total, List<MerchantDiscount> shares, List<AppliedActivity> applied) {
+
+        public Discount(long total, List<MerchantDiscount> shares) {
+            this(total, shares, List.of());
+        }
 
         public static Discount none() {
-            return new Discount(0L, List.of());
+            return new Discount(0L, List.of(), List.of());
         }
 
         public long of(String merchantNo) {
@@ -111,5 +135,9 @@ public interface CampaignPort {
     }
 
     record MerchantDiscount(String merchantNo, long amount) {
+    }
+
+    /** @param qty 这一单用掉几份限量。满减类是 1 单 1 份 */
+    record AppliedActivity(String activityNo, String merchantNo, long amountMinor, int qty) {
     }
 }
