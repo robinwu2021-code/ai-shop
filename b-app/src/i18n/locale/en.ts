@@ -283,6 +283,7 @@ export default {
     noMore: "No more items",
     specs: "Variants", specHint: "",
     specAsk: "Add variants",
+    moreFromCat: "Also for this category",
     manageSpecs: "Add in My Variants",
     specAskHint: "",
     specFold: "Collapse",

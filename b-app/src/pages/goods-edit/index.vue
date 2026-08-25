@@ -595,7 +595,7 @@ async function select(path: Category[]) {
    * 与鲜花共用「包装：袋装/瓶装/罐装」，等于没有推荐）。类目级模板才有信息量，
    * 而它只有带上 categoryNo 才拿得到。
    */
-  await loadTemplates();
+  await Promise.all([loadTemplates(), loadPickableDims()]);
   autoApplyDefaultSpec();
   // 展不展开取他上次在这一类的选择；没记录过就看有没有带出规格组
   restoreSpecOpen();
@@ -1394,18 +1394,45 @@ async function openDimPicker() {
     return;
   }
   showDimPicker.value = true;
-  if (!pickableDims.value.length) {
-    pickableDims.value = await api.mPickableDims(categoryNo.value || undefined).catch(() => []);
-  }
+  await loadPickableDims();
+}
+
+/**
+ * 取「还能加哪些维度」。
+ *
+ * <p><b>选完类目就取，不等他点开面板</b>：规格区末尾那行「这一类还能按 …」
+ * 靠它渲染，懒加载的话那一行永远不出现 —— 而它恰恰是让商家知道
+ * 「这一类不止一种分法」的唯一地方。
+ *
+ * <p>换了类目要重取：候选是按类目算的，留着上一类的会推错。
+ */
+async function loadPickableDims() {
+  pickableDims.value = await api.mPickableDims(categoryNo.value || undefined).catch(() => []);
 }
 
 /** 挑中一个平台/自建维度：连同它的取值一起进来，值编号跟着走 */
 function pickDim(tpl: SpecTemplate) {
-  if (groups.value.some((g) => g.templateNo === tpl.templateNo)) {
+  // 候选列表已经滤过一遍，这里再兜一道：同名即同一件事，编号不同是内部实现
+  if (usedDimNames.value.has(tpl.name.trim())
+      || groups.value.some((g) => g.templateNo === tpl.templateNo)) {
     uni.showToast({ title: t("goods.dimAlready"), icon: "none" });
     return;
   }
-  groups.value.push({ name: tpl.name, options: [""], codes: [undefined], templateNo: tpl.templateNo });
+  /*
+   * **档位默认全开**，与「我的规格」里加一个规格时同一条规矩：
+   * 他加这个维度就是要用它，进来却是一排关着的档位，还得再点一遍才算数。
+   * 不合适的那几档点掉就是了 —— 这一页只做减法。
+   *
+   * <p>没有档位可带的（自建维度刚建出来还没配值）才留一个空位。
+   */
+  groups.value.push(tpl.options.length
+    ? {
+      name: tpl.name,
+      options: tpl.options.map((o) => o.label),
+      codes: tpl.options.map((o) => o.code || undefined),
+      templateNo: tpl.templateNo,
+    }
+    : { name: tpl.name, options: [""], codes: [undefined], templateNo: tpl.templateNo });
   showDimPicker.value = false;
   rebuild();
 }
@@ -1469,21 +1496,56 @@ function nearestDimName(input: string): SpecTemplate | null {
 /** 「通用规格」那一组是否展开。默认收起 —— 见模板里那段注释 */
 const showUniversalDims = ref(false);
 
+/**
+ * 已经在用的维度**不再出现在候选里**。
+ *
+ * <p>此前只在 `pickDim` 里按 `templateNo` 拦一道，而同一个「重量」在类目绑定
+ * 与候选池里是**两个不同的 templateNo**（一个来自 /biz/spec-templates，
+ * 一个来自 /biz/spec-dims）—— 于是拦不住，点一下就多出第二个「重量」组，
+ * 两组档位还不一样（一组是本店确认过的，一组是平台原样）。
+ *
+ * <p><b>按名字判重</b>：两个同名维度在商家眼里就是同一件事，编号不同是我们的内部事情。
+ */
+const usedDimNames = computed(
+  () => new Set(groups.value.map((g) => g.name.trim()).filter(Boolean)),
+);
+
+function unused(list: SpecTemplate[]): SpecTemplate[] {
+  return list.filter(
+    (d) => !usedDimNames.value.has(d.name.trim())
+      && !groups.value.some((g) => g.templateNo === d.templateNo),
+  );
+}
+
+/**
+ * 本类目还没用上的维度 —— **摆在眼前，不藏在面板后面**。
+ *
+ * <p>平台已经替这一类回答过「该按什么分」（蔬菜：重量 / 包装 / 等级），
+ * 而默认只带出主维度那一个。其余几条藏在「＋ 规格」两层之后的话，
+ * 商家会以为这一类只能按一种方式分 —— 那是平台配置白做了。
+ *
+ * <p><b>只摆出来让他点，不自动加。</b>三条全自动带出来意味着每件菜都变成
+ * 一堆 SKU（3 × 4 × 4），那是帮倒忙。
+ */
+const moreFromCategory = computed(() =>
+  unused(pickableDims.value.filter((d) => d.categoryNo)).slice(0, 4),
+);
+
 const dimGroups = computed(() => [
   {
     key: "cat",
     labelKey: "goods.dimFromCategory",
-    items: pickableDims.value.filter((d) => d.categoryNo),
+    items: unused(pickableDims.value.filter((d) => d.categoryNo)),
   },
   {
     key: "universal",
     labelKey: "goods.dimUniversal",
-    items: pickableDims.value.filter((d) => !d.categoryNo && d.scope === "PLATFORM"),
+    items: unused(pickableDims.value.filter((d) => !d.categoryNo && d.scope === "PLATFORM")),
   },
   {
     key: "mine",
     labelKey: "goods.dimMine",
-    items: pickableDims.value.filter((d) => d.scope === "MERCHANT"),
+    items: unused(pickableDims.value.filter((d) => d.scope === "MERCHANT")),
   },
 ]);
 
@@ -2463,6 +2525,17 @@ async function save(thenSubmit = false) {
           >{{ o.label }}</text>
         </view>
       </view>
+
+      <!-- 这一类还能按什么分：一点成组，代价由上面那行 skuCost 当场说清 -->
+      <view v-if="moreFromCategory.length" class="more">
+        <text class="sh-muted more__k">{{ $t("goods.moreFromCat") }}</text>
+        <text
+          v-for="d in moreFromCategory"
+          :key="d.templateNo"
+          class="sh-chip more__chip"
+          @tap="pickDim(d)"
+        >＋ {{ d.name }}</text>
+      </view>
       </template>
     </view>
 
@@ -2813,10 +2886,34 @@ async function save(thenSubmit = false) {
   font-size: 24rpx;
 }
 
+/*
+  关掉的档位：**虚线描边**，一眼看得出「还在，只是这件货没有」，
+  而且点得回来。用实线灰底的话像是被禁用了，他不会再去点它。
+*/
 .opt--off {
   background: transparent;
-  border: 2rpx solid var(--sh-line);
+  border: 2rpx dashed var(--sh-line);
   color: var(--sh-sub);
+  text-decoration: line-through;
+}
+
+/* 这一类还能按什么分 */
+.more {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12rpx;
+  margin-top: 16rpx;
+}
+
+.more__k {
+  font-size: 24rpx;
+}
+
+.more__chip {
+  font-size: 24rpx;
+  color: var(--sh-primary-text);
+  background: var(--sh-primary-tint);
 }
 
 /* 「收起」压在「更多规格」旁边：同一行两个链接，主次要分得出来 */

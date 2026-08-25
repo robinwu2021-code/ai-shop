@@ -283,6 +283,7 @@ export default {
     noMore: "لا مزيد من العناصر",
     specs: "الخيارات", specHint: "",
     specAsk: "إضافة خيارات",
+    moreFromCat: "أيضاً لهذه الفئة",
     manageSpecs: "أضف في خياراتي",
     specAskHint: "",
     specFold: "طي",

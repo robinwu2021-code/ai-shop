@@ -1649,6 +1649,60 @@ export const db = {
         { code: "W5JIN", label: "5 斤" },
       ],
     },
+    /*
+     * 蔬菜与水果的**其余销售维度**。线上 V196 给 CAT110 绑的是
+     * 重量(主) / 包装 / 等级 / 产地 / 保质期 五条，mock 只配主维度那一条的话，
+     * 建品页看着像「这一类只能按一种方式分」—— 与线上正相反，
+     * 而人是照着 mock 判断功能做没做的。
+     * （产地与保质期是 usage_type=PROP，不分 SKU，等商品参数那一期再进 mock。）
+     */
+    {
+      templateNo: "ST_CAT110_PACK",
+      scope: "PLATFORM" as const,
+      categoryType: CATEGORY_TYPE.FRESH,
+      categoryNo: "CAT110",
+      name: "包装",
+      options: [
+        { code: "PBULK", label: "散装" },
+        { code: "PBAG", label: "袋装" },
+        { code: "PBOX", label: "盒装" },
+      ],
+    },
+    {
+      templateNo: "ST_CAT110_GRADE",
+      scope: "PLATFORM" as const,
+      categoryType: CATEGORY_TYPE.FRESH,
+      categoryNo: "CAT110",
+      name: "等级",
+      options: [
+        { code: "GRD1", label: "普通" },
+        { code: "GRD2", label: "精选" },
+      ],
+    },
+    {
+      templateNo: "ST_CAT120_GRADE",
+      scope: "PLATFORM" as const,
+      categoryType: CATEGORY_TYPE.FRESH,
+      categoryNo: "CAT120",
+      name: "等级",
+      options: [
+        { code: "G_STD", label: "标准果" },
+        { code: "G_BIG", label: "大果" },
+        { code: "G_GIFT", label: "礼盒装" },
+      ],
+    },
+    {
+      templateNo: "ST_CAT120_PACK",
+      scope: "PLATFORM" as const,
+      categoryType: CATEGORY_TYPE.FRESH,
+      categoryNo: "CAT120",
+      name: "包装",
+      options: [
+        { code: "PBULK", label: "散装" },
+        { code: "PBOX", label: "盒装" },
+        { code: "PGIFT", label: "礼盒装" },
+      ],
+    },
     {
       templateNo: "ST_CAT210_PACK",
       scope: "PLATFORM" as const,
