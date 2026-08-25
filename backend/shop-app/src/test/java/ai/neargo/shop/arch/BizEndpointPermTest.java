@@ -63,6 +63,11 @@ class BizEndpointPermTest {
             // 「我能进哪几家店」——门店切换器要用，结果按 storeNos 裁剪。
             // 要 biz:store 的话店员一家都切不了，而多门店授权正是为他准备的
             "/biz/store/list",
+            // 跨证照的门店切换器（多证照）。与 /biz/store/list 同一个理由，
+            // 只是范围从「当前这张证照」扩到「我名下全部证照」——
+            // 它同样按 storeNos 口径裁剪，店员只拿到自己被授权的那几家。
+            // 挂 biz:store:admin 的话，「A 店店长 + B 店店员」这种人一家都切不了
+            "/biz/stores/mine",
             // 主数据与上传：登录后人人可用，不含任何一家店的数据
             // 行政区划与 /biz/communities 同性质：主数据，不含任何一家店的数据。
             // 要 biz:store 的话，还没建店的申请人就挑不了经营范围
@@ -86,6 +91,13 @@ class BizEndpointPermTest {
      * {@code docs/requirements/三端角色权限功能对齐清单.md} §4。
      */
     private static final Map<String, String> REQUIRED = new LinkedHashMap<>() {{
+        // ---- 履约：三种活面对三种对象 ----
+        // ---- 证照（多证照）：与建店同一档敏感度，只有老板拿得到这个码 ----
+        // BizPerms.assignableCodes() 显式排除了 STORE_ADMIN，自定义角色勾不到它，
+        // 于是「只有老板能管证照」是结构保证的，不用另立一个新权限码
+        put("/biz/entities", BizPerms.STORE_ADMIN);
+        put("/biz/entity/{entityNo}", BizPerms.STORE_ADMIN);
+
         // ---- 履约：三种活面对三种对象 ----
         put("/biz/pickup/arrived", BizPerms.RECEIVE);
         put("/biz/pickup/picking", BizPerms.RECEIVE);

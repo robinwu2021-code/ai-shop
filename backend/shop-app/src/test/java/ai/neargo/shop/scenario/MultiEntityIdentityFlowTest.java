@@ -1,6 +1,7 @@
 package ai.neargo.shop.scenario;
 
 import ai.neargo.shop.support.TestLogin;
+import ai.neargo.shop.support.TestPlan;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -51,6 +52,9 @@ class MultiEntityIdentityFlowTest {
 
     @Autowired
     private ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper storeMapper;
+
+    @Autowired
+    private ai.neargo.shop.merchant.mapper.MerchantMappers.EntityPlanMapper planMapper;
 
     private MockMvc mvc() {
         return MockMvcBuilders.webAppContextSetup(context)
@@ -132,6 +136,111 @@ class MultiEntityIdentityFlowTest {
         assertThat(merchantNoOf(token, "ST_NOT_EXIST_9999")).isEqualTo(entity);
     }
 
+    // ------------------------------------------------------------ B2：跨证照查询
+
+    @Test
+    @DisplayName("★★ 门店切换器一次给出两张证照下的店，且按证照分组")
+    void myStoresSpansAllEntities() throws Exception {
+        String phone = "12600170030";
+        String token = merchant(phone, "分组·第一张");
+        String firstEntity = merchantNoOf(token, null);
+        String secondEntity = quickStart(token, "分组·第二张");
+        token = login(phone);
+
+        JsonNode groups = okData(token, "/biz/stores/mine");
+        var entityNos = groups.valueStream()
+                .map(g -> g.get("entity").get("entityNo").asString()).toList();
+        assertThat(entityNos)
+                .as("两张证照都要在，且默认那张在前 —— 端上不重排，顺序就是这里给的")
+                .containsExactly(firstEntity, secondEntity);
+
+        /*
+         * ★ 分组而不是拍平：两家店同名是常事（「文三路店」在两张执照下各有一家）。
+         * 拍平之后老板在切换器里看到两个一模一样的条目，点哪个都不知道进了哪张执照 ——
+         * 而进错执照的表现是「商品怎么全没了」。
+         */
+        for (JsonNode g : groups) {
+            assertThat(g.get("stores")).as("每张证照下至少有它的默认店").isNotEmpty();
+            assertThat(g.get("entity").get("storeCount").asInt())
+                    .as("计数与列表长度必须是同一个数，对不上会让人以为有店没显示出来")
+                    .isEqualTo(g.get("stores").size());
+        }
+
+        // ★ 对照：老接口只看得到当前那一张证照。这正是 /biz/stores/mine 存在的理由
+        JsonNode oldList = okData(token, "/biz/store/list");
+        assertThat(oldList.size()).as("/biz/store/list 仍然只给当前证照的店").isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("★★ 店员的门店切换器只给他被授权的那几家，且他看不到证照管理")
+    void staffSeesOnlyGrantedStores() throws Exception {
+        String boss = merchant("12600170040", "有两家店的老板");
+        String merchantNo = merchantNoOf(boss, null);
+        TestPlan.grantQuota(planMapper, merchantNo, 3);
+        String secondStore = createStore(boss, "只授权这一家");
+        String defaultStore = defaultStoreNo(boss);
+
+        // 招一个店员，只授权他进第二家店
+        String staffPhone = "12600170042";
+        String staffNo = json.readTree(mvc().perform(post("/biz/staff")
+                        .header("Authorization", "Bearer " + boss)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"loginPhone\":\"" + staffPhone + "\"}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString())
+                .get("data").get("mchAccountNo").asString();
+        mvc().perform(post("/biz/staff/" + staffNo + "/store")
+                        .header("Authorization", "Bearer " + boss)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"storeNo\":\"" + secondStore + "\",\"role\":\"CLERK\"}"))
+                .andExpect(jsonPath("$.code").value(0));
+
+        // 店员是独立登录（principal 是 mch_account_no，不是 C 端 userNo）
+        String staff = TestLogin.merchantStaff(mvc(), json, otpStore, staffPhone);
+
+        JsonNode groups = okData(staff, "/biz/stores/mine");
+        var stores = groups.valueStream()
+                .flatMap(g -> g.get("stores").valueStream())
+                .map(x -> x.get("storeNo").asString()).toList();
+        assertThat(stores).as("被授权的那家要在").contains(secondStore);
+        assertThat(stores)
+                .as("没授权的店一家都不能出现 —— 端上会把它渲染成一个点进去必然 403 的条目")
+                .doesNotContain(defaultStore);
+        assertThat(groups.get(0).get("entity").get("canManage").asBoolean())
+                .as("店员不是这张证照的老板").isFalse();
+
+        /*
+         * ★ 证照管理是老板的事：STORE_ADMIN 不在 assignableCodes 里，
+         * 自定义角色勾不到它 —— 所以「只有老板能管证照」是结构保证的，不靠文案约束。
+         */
+        mvc().perform(get("/biz/entities").header("Authorization", "Bearer " + staff))
+                .andExpect(jsonPath("$.code").value(org.hamcrest.Matchers.not(0)));
+    }
+
+    @Test
+    @DisplayName("★★ 越权：拿别人的证照号问详情，403 而不是 404 —— 它存在，只是不属于你")
+    void entityDetailRefusesForeignEntities() throws Exception {
+        String mine = merchant("12600170050", "详情·我的");
+        String myEntity = merchantNoOf(mine, null);
+        String others = merchant("12600170051", "详情·别人的");
+        String othersEntity = merchantNoOf(others, null);
+
+        assertThat(okData(mine, "/biz/entity/" + myEntity).get("entity").get("entityNo").asString())
+                .isEqualTo(myEntity);
+
+        /*
+         * 给 404 的话他会以为自己记错了证照号而反复去找 —— 而真正该说的是「这不是你的」。
+         * 这一条同时是越权断言：详情里带着门店列表与收款信息，漏出去就是别人家的经营数据。
+         */
+        String body = mvc().perform(get("/biz/entity/" + othersEntity)
+                        .header("Authorization", "Bearer " + mine))
+                .andReturn().getResponse().getContentAsString();
+        assertThat(json.readTree(body).get("code").asInt())
+                .as("别人的证照必须拒，且不能是 0").isNotZero();
+        assertThat(body).as("拒绝的响应里不该夹带别人家的任何字段")
+                .doesNotContain("详情·别人的");
+    }
+
     // ------------------------------------------------------------ 脚手架
 
     /** 带（或不带）X-Store-No 问一次 /biz/context，返回解析出来的主体号。 */
@@ -145,6 +254,13 @@ class MultiEntityIdentityFlowTest {
             req = req.header("X-Store-No", storeNo);
         }
         String body = mvc().perform(req)
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        return json.readTree(body).get("data");
+    }
+
+    private JsonNode okData(String token, String path) throws Exception {
+        String body = mvc().perform(get(path).header("Authorization", "Bearer " + token))
                 .andExpect(jsonPath("$.code").value(0))
                 .andReturn().getResponse().getContentAsString();
         return json.readTree(body).get("data");
@@ -171,6 +287,16 @@ class MultiEntityIdentityFlowTest {
                         .eq(ai.neargo.shop.merchant.entity.MchStore::getIsDefault, true)
                         .last("limit 1")));
         return store == null ? "" : store.getStoreNo();
+    }
+
+    /** 建一家店并返回它的门店号。 */
+    private String createStore(String token, String name) throws Exception {
+        String body = mvc().perform(post("/biz/store/create").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"" + name + "\"}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        return json.readTree(body).get("data").get("storeNo").asString();
     }
 
     private String quickStart(String token, String storeName) throws Exception {
