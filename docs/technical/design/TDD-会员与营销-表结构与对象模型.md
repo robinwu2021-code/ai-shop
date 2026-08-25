@@ -25,6 +25,10 @@
 
 ## 1. 表与表之间的关系
 
+**共 17 张**：会员 9（setting / member / member_store / member_source / tag / member_tag /
+tag_merge_log / segment / reach_log）、营销 8（activity / activity_audience / activity_goods /
+coupon / coupon_scope / user_coupon / coupon_issue / apply）。
+
 ### 1.1 全景
 
 ```mermaid
@@ -44,7 +48,7 @@ erDiagram
     pmt_coupon      ||--o{ pmt_user_coupon      : "发出去的每一张"
     pmt_coupon      ||--o{ pmt_coupon_issue     : "每一批发放"
     mbr_segment     ||--o{ pmt_coupon_issue     : "发给哪一群人"
-    pmt_user_coupon ||--o{ pmt_redeem_log       : "次卡会核销多次"
+    pmt_user_coupon ||--o{ pmt_apply            : "被用掉的每一次（次卡多行）"
     pmt_apply       }o--|| pmt_activity         : "这一单命中的活动"
     pmt_apply       }o--|| pmt_user_coupon      : "这一单用掉的券"
 ```
@@ -57,7 +61,7 @@ erDiagram
 | `mbr_member` | **一个人 × 一家主体**的关系（主表） | 名单、分层、可触达状态的唯一真源 |
 | `mbr_member_store` | 他在**某一家门店**的往来与分层 | 十公里外那家店要按自己的口径看人；两级数据一直都算，开关只决定展示哪级 |
 | `mbr_member_source` | **每一次**来源：哪家店、哪条链接、谁发的、谁录的、哪场活动 | 「李姐拉来多少人」是按列聚合的问题，塞 JSON 只能全表扫 |
-| `mbr_tag` | 标签字典：`tag_no` 不可变、`name` 可改 | 改名不动关系行；合并要留下 `merged_into` |
+| `mbr_tag` | 标签字典：`tag_no` 不可变、`name` 可改 | 改名不动关系行；合并要留下 `merged_into`。**不存人数**，要用时 COUNT |
 | `mbr_member_tag` | 谁被打了哪个标签 | 按标签筛人、按标签统计人数 |
 | `mbr_tag_merge_log` | 谁在什么时候把哪个标签并进了哪个 | 合并不可逆，要能回答「这批人的标签怎么变了」 |
 | `mbr_segment` | 一组筛选条件 = 一个人群，可命名保存 | 发券、活动受众、触达都要引用「同一群人」，条件散在各处会对不上 |
@@ -68,8 +72,7 @@ erDiagram
 | `pmt_coupon` | 券模板 = 权益 × 门槛 × 范围 × 有效期 × 发放 × 核销 × 次数 | 券是资产的模具，与活动解耦 |
 | `pmt_user_coupon` | 发到某个人手上的**那一张** | 有自己的有效期与状态，活动结束不该动它 |
 | `pmt_coupon_issue` | 一批发放（发给哪个人群、发了多少、谁发的） | 定向发券要能回看与追责 |
-| `pmt_redeem_log` | 每一次核销 | 次卡要核销多次；线下核销要留下谁、在哪家店 |
-| `pmt_apply` | 这一单命中了哪些优惠、各减了多少、谁出的钱 | 活动效果、券对账、会员来源归因，三件事都读它 |
+| `pmt_apply` | **优惠发生记录**：一单命中了什么、一张券被用了第几次 | 活动效果、券对账、来源归因三件事都读它；线上抵扣与线下核销合并在这一张，券的钱只记一处 |
 
 ### 1.3 三条贯穿的规则
 
@@ -77,7 +80,38 @@ erDiagram
 2. **凡是"给谁"，都指向 `mbr_segment` 或标签号**，不各自存一份 JSON 条件 ——
    否则同一群人在发券、活动、触达三处会算出三个数。
 3. **凡是"发生过什么"，都单独留一行**（`mbr_member_source` / `mbr_reach_log` /
-   `pmt_redeem_log` / `pmt_apply`）：这些是事实，不是状态；用状态字段覆盖会丢掉历史。
+   `pmt_apply`）：这些是事实，不是状态；用状态字段覆盖会丢掉历史。
+
+### 1.4 会员表是哪一张：`mbr_member`
+
+**`mbr_member` 就是会员表**，一行 = 一个人在一家主体的会员身份。
+`mbr_member_store` **不是第二张会员表**，它是同一份事实的门店粒度汇总，
+里面**没有任何身份字段**（没有 status / source / phone / 标签 / 退订状态）——
+不会出现「两边身份不一致」这种问题。
+
+即便如此，「一次入会写两行」仍然值得压到最小。三条规矩：
+
+1. **单店主体不写门店行。** 绝大多数商家只有一家店，门店行等于主表的复制。
+   只有 `mch_store` 数 > 1 的主体才写 `mbr_member_store`；读的时候没有门店行就回落主表。
+2. **写入只有一个入口**（`MemberService.applyOrder`），同一事务里更新两级指标 ——
+   不是两个地方各自维护。
+3. **夜间全量重算兜底**（幂等）：两级指标的**唯一真源是订单**（`ord_sub_order`），
+   两张表都只是派生缓存。对不上就以订单为准重算，不需要人工对账。
+
+### 1.5 哪些冗余保留、哪些去掉
+
+「不要双写」这条规矩要分清三种东西，它们看起来都是"存了两份"：
+
+| 类型 | 判据 | 处理 |
+|---|---|---|
+| **并发计数器** | 用来做原子扣减、防超发 | **必须保留**：`pmt_coupon.received_count`、`pmt_activity.quota_used` / `budget_used_minor`、`pmt_user_coupon.times_used`。它们不是缓存，是并发控制的手段 —— 用 COUNT 代替就没法在一条 UPDATE 里判「还有没有」 |
+| **派生缓存** | 能从真源算出来，只是为了查得快 | **能去就去，去不掉的标注真源 + 重算任务**：会员两级指标（真源=订单，夜间重算）保留；`mbr_tag.usage_count` **去掉**，改查询时 COUNT（标签总量小，几十行，COUNT 比维护一致性便宜） |
+| **事实快照** | 记录"当时是什么样"，本来就该与现状不同 | **保留且不可改**：`mbr_member_source`（入会那一刻谁带来的 —— 归因表 `mkt_attribution` 有滚动窗口，过了窗口就查不到，快照必须自己留一份）、`pmt_coupon_issue.rule_snapshot`（发放当时的人群条件） |
+
+**本次因此砍掉一张表**：原设计里的 `pmt_redeem_log` 与 `pmt_apply` 有实打实的重叠 ——
+券在下单抵扣时两边都要写一行。合并成 `pmt_apply` 一张：券的每一次使用就是它的一行，
+线上带 `order_no`、线下带 `store_no` + `operator_no`，次卡用 N 次就是 N 行。
+**券的钱只在一处记**，结算对账不必两表相加。
 
 ---
 
@@ -225,7 +259,6 @@ CREATE TABLE IF NOT EXISTS mbr_tag
     tag_type VARCHAR(8) NOT NULL DEFAULT 'MCH' COMMENT 'SYS 系统算的（不可改名不可合并）/ MCH 商家的',
     status VARCHAR(16) NOT NULL DEFAULT 'ACTIVE' COMMENT 'ACTIVE / DISABLED 停用（老的还在、新的打不了）/ MERGED 已并入',
     merged_into VARCHAR(64) DEFAULT NULL COMMENT 'MERGED 时指向目标 tag_no，保留不删',
-    usage_count INT(11) NOT NULL DEFAULT 0,
     tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
     created_at DATETIME NOT NULL,
     created_by VARCHAR(64) DEFAULT NULL,
@@ -523,7 +556,7 @@ CREATE TABLE IF NOT EXISTS pmt_coupon_scope
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci COMMENT='券的适用范围（规则）。scope_desc 只是文案';
 ```
 
-### 3.4 `pmt_user_coupon` / `pmt_redeem_log`
+### 3.4 `pmt_user_coupon`
 
 ```sql
 CREATE TABLE IF NOT EXISTS pmt_user_coupon
@@ -552,34 +585,6 @@ CREATE TABLE IF NOT EXISTS pmt_user_coupon
     KEY idx_pmt_uc_user (user_no, status, expire_at),
     KEY idx_pmt_uc_coupon (coupon_no, status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci COMMENT='用户券：发到某个人手上的那一张，有自己的有效期';
-
-CREATE TABLE IF NOT EXISTS pmt_redeem_log
-(
-    id BIGINT(20) NOT NULL AUTO_INCREMENT,
-    redeem_no VARCHAR(64) NOT NULL,
-    user_coupon_no VARCHAR(64) NOT NULL,
-    coupon_no VARCHAR(64) NOT NULL,
-    user_no VARCHAR(64) NOT NULL,
-    redeem_mode VARCHAR(16) NOT NULL COMMENT 'ORDER 下单抵扣 / STORE_CODE 到店核销',
-    order_no VARCHAR(64) DEFAULT NULL COMMENT 'ORDER 时用在哪一单；取消订单按它退回',
-    store_no VARCHAR(64) DEFAULT NULL COMMENT 'STORE_CODE 时在哪家门店',
-    operator_no VARCHAR(64) DEFAULT NULL COMMENT '哪个店员核销的',
-    amount_minor BIGINT(20) NOT NULL DEFAULT 0 COMMENT '这一次抵了多少（GIFT 为 0）',
-    reverted_at BIGINT(20) DEFAULT NULL COMMENT '退回（订单取消）。线下核销不可撤销，恒为空',
-    redeemed_at BIGINT(20) NOT NULL,
-    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
-    created_at DATETIME NOT NULL,
-    created_by VARCHAR(64) DEFAULT NULL,
-    updated_at DATETIME NOT NULL,
-    updated_by VARCHAR(64) DEFAULT NULL,
-    version BIGINT(20) NOT NULL DEFAULT 0,
-    deleted TINYINT(4) NOT NULL DEFAULT 0,
-    PRIMARY KEY (id),
-    UNIQUE KEY uk_pmt_redeem_no (redeem_no),
-    KEY idx_pmt_redeem_uc (user_coupon_no, redeemed_at),
-    KEY idx_pmt_redeem_store (store_no, redeemed_at)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci COMMENT='券的每一次核销。次卡会有多行';
-```
 
 ### 3.5 `pmt_coupon_issue` —— 每一批发放
 
@@ -617,24 +622,30 @@ CREATE TABLE IF NOT EXISTS pmt_coupon_issue
 > `skipped_count` 与 §UI 的那条规则对应：**不静默少发**。
 > 界面要能说出「25 发出、12 跳过（其中 9 人 7 天内收过、3 人是线索）」。
 
-### 3.6 `pmt_apply` —— 这一单命中了哪些优惠
+### 3.6 `pmt_apply` —— 优惠发生记录（线上抵扣与线下核销统一在这一张）
+
+原设计里还有一张 `pmt_redeem_log`，与本表**实打实地重叠**：一张券在下单抵扣时两边各写一行，
+金额要两处对得上。合并掉之后，**券的每一次使用就是这张表的一行** ——
+线上带 `order_no`，线下带 `store_no` + `operator_no`，次卡用 5 次就是 5 行。
 
 ```sql
 CREATE TABLE IF NOT EXISTS pmt_apply
 (
     id BIGINT(20) NOT NULL AUTO_INCREMENT,
     apply_no VARCHAR(64) NOT NULL,
-    order_no VARCHAR(64) NOT NULL,
-    sub_order_no VARCHAR(64) DEFAULT NULL COMMENT '按商家拆的那一单；跨商家的平台券会有多行',
-    entity_no VARCHAR(64) DEFAULT NULL,
-    store_no VARCHAR(64) DEFAULT NULL,
-    user_no VARCHAR(64) NOT NULL,
     promo_type VARCHAR(16) NOT NULL COMMENT 'ACTIVITY 活动 / COUPON 券 / POINTS 积分',
     promo_no VARCHAR(64) NOT NULL COMMENT '活动号 / 用户券号 / 积分流水号',
-    amount_minor BIGINT(20) NOT NULL DEFAULT 0,
-    funder VARCHAR(16) NOT NULL DEFAULT 'MERCHANT' COMMENT '与结算拆分同一口径',
+    user_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(64) DEFAULT NULL,
+    store_no VARCHAR(64) DEFAULT NULL COMMENT '线下核销在哪家门店；线上单填出货门店',
+    order_no VARCHAR(64) DEFAULT NULL COMMENT '线上抵扣用在哪一单。线下核销为空',
+    sub_order_no VARCHAR(64) DEFAULT NULL COMMENT '按商家拆的那一单；跨商家的平台券会有多行',
+    redeem_mode VARCHAR(16) NOT NULL DEFAULT 'ORDER' COMMENT 'ORDER 下单抵扣 / STORE_CODE 到店核销 / AUTO 自动生效',
+    operator_no VARCHAR(64) DEFAULT NULL COMMENT '线下核销时是哪个店员',
+    amount_minor BIGINT(20) NOT NULL DEFAULT 0 COMMENT '这一次减了多少。兑换类为 0',
+    funder VARCHAR(16) NOT NULL DEFAULT 'MERCHANT' COMMENT 'PLATFORM / MERCHANT，与结算拆分同一口径',
     applied_at BIGINT(20) NOT NULL,
-    reverted_at BIGINT(20) DEFAULT NULL COMMENT '订单取消/退款时置。效果统计要排除它',
+    reverted_at BIGINT(20) DEFAULT NULL COMMENT '订单取消/退款时置。**线下核销不可撤销**，那一行恒为空',
     tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
     created_at DATETIME NOT NULL,
     created_by VARCHAR(64) DEFAULT NULL,
@@ -646,9 +657,13 @@ CREATE TABLE IF NOT EXISTS pmt_apply
     UNIQUE KEY uk_pmt_apply_no (apply_no),
     KEY idx_pmt_apply_order (order_no),
     KEY idx_pmt_apply_promo (promo_type, promo_no, applied_at),
-    KEY idx_pmt_apply_entity (entity_no, applied_at)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci COMMENT='一单命中了哪些优惠：活动效果、券对账、来源归因都读它';
+    KEY idx_pmt_apply_entity (entity_no, applied_at),
+    KEY idx_pmt_apply_store (store_no, applied_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci COMMENT='优惠发生记录：一单命中了什么、一张券被用了几次，线上线下同一张表';
 ```
+
+**三件事都读它**：活动效果（按 `promo_no` 聚合）、券的核销与对账（按用户券号）、
+会员来源归因（因哪场活动第一次下单）。
 
 ---
 
@@ -745,9 +760,8 @@ classDiagram
         +int timesUsed
         +Status status
         +bool usableAt(long, Basket)
-        +RedeemLog redeem(...)
+        +PromotionApply redeem(...)
     }
-    class RedeemLog
     class CouponIssue
     class PromotionApply
 
@@ -763,7 +777,7 @@ classDiagram
     Activity "0..1" o-- "0..1" Coupon
     Coupon "1" *-- "0..*" UserCoupon
     Coupon "1" o-- "0..*" CouponIssue
-    UserCoupon "1" *-- "0..*" RedeemLog
+    UserCoupon "1" o-- "0..*" PromotionApply
     Segment "1" o-- "0..*" CouponIssue
 ```
 
@@ -776,7 +790,7 @@ classDiagram
 | **Segment** | 规则 | 规则里只存号（标签号/门店号），解析出人群时才落到具体 member |
 | **Activity** | Audience / GoodsScope | 排期与限量的判断只在 `isActiveAt` 与 `quota`；受众为空即全体 |
 | **Coupon** | 自己（模板） | 发出的每一张是 **UserCoupon** 的事，模板改动不影响已发出的券 |
-| **UserCoupon** | RedeemLog | 有效期与次数在自己身上；核销一次落一行；线下核销不可撤销 |
+| **UserCoupon** | 自己 + 它在 `pmt_apply` 里的使用记录 | 有效期与次数在自己身上；用一次落一行 apply；线下核销不可撤销 |
 
 > **Coupon 与 UserCoupon 是两个聚合根，不是一个。** 这条是整套模型里最要紧的一句：
 > 模板是商家的东西，券是用户的资产。改模板、停发、活动结束，
@@ -803,7 +817,7 @@ classDiagram
 | 旧表 | 新表 | 怎么退 |
 |---|---|---|
 | `mkt_coupon` | `pmt_coupon` + `pmt_coupon_scope` | 新服务上线后停止写旧表；观察一周；删表 |
-| `mkt_user_coupon` | `pmt_user_coupon` + `pmt_redeem_log` | 同上。测试数据不迁移 |
+| `mkt_user_coupon` | `pmt_user_coupon`（核销记录进 `pmt_apply`） | 同上。测试数据不迁移 |
 | `mkt_campaign` | `pmt_activity` + `_audience` + `_goods` | 同上 |
 | `mkt_coupon_issue` | `pmt_coupon_issue` | 同上 |
 | `mkt_attribution*` | **保留** | 归因是另一件事（谁带来的流量），会员来源引用它的结论 |
