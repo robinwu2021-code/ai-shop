@@ -102,6 +102,18 @@ public class PrdGoods extends BaseEntity {
 
     private Boolean onSale;
 
+    /**
+     * 重审期间记住的**上架意向**（V247）。
+     *
+     * <p>保存会把 {@code on_sale} 置 false 送去重审（审核期间不该在卖，这是对的），
+     * 过审时用这一列把它放回去。没有它的话，商家改个错别字就把自己的货下架了 ——
+     * 而列表里写着「已过审」，看不出还差一步。
+     *
+     * <p><b>不是「过审即置真」</b>：那会推翻既有设计（过审 ≠ 上架，有测试锁着），
+     * 并且会让没有店级行的门店跟着一起在架。这里只恢复他真的表达过的那一份。
+     */
+    private Boolean pendingOnSale;
+
     /** AUDITING / APPROVED / REJECTED —— 商家商品需平台审核（P-3.2.2）。 */
     private String auditStatus;
 

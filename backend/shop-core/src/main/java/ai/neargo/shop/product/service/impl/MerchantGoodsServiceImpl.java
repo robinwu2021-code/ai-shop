@@ -650,6 +650,12 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
          */
         boolean stayDraft = isNew || DRAFT.equals(g.getAuditStatus());
         g.setAuditStatus(stayDraft ? DRAFT : AUDITING);
+        /*
+         * **先把「它本来在卖」记下来，再下架送审**（V247）。
+         * 不记的话，改一个在售商品的错别字就等于把它永久下架 ——
+         * 过审后没有任何一处会把它放回去。
+         */
+        g.setPendingOnSale(Boolean.TRUE.equals(g.getOnSale()));
         g.setOnSale(false);
 
         if (isNew) {
@@ -1700,6 +1706,12 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
          */
         if (DRAFT.equals(g.getAuditStatus())) {
             g.setAuditStatus(AUDITING);
+            /*
+             * **提交审核就是「我要卖它」**，把意向记下（V247）。
+             * 新品此前没有任何地方表达过这件事：on_sale 一直是 false，
+             * 过审后仍是 false，于是他提交完以为在卖了，其实一件也卖不出去。
+             */
+            g.setPendingOnSale(true);
             DataScopeContext.executeWithoutScope(() -> goodsMapper.updateById(g));
         }
         return toVO(g);
@@ -1872,24 +1884,28 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
             g.setOnSale(false);
         } else {
             /*
-             * **过审即上架。**
+             * **过审时把上架意向兑现**（V247）。
              *
-             * 此前过审只改 audit_status，on_sale 停在 false（`save` 每次都置 false），
-             * 于是商家提交完还要再点一次「上架」才卖得出去。两个后果：
+             * 意向只有两个来源：他点过「提交审核」（新品），或者这件货本来就在卖
+             * （改了一下送去重审）。两者都是他自己表达过的，过审是平台同意 ——
+             * 再要一次点击不增加任何信息。
              *
-             *   1. 新品提交后他以为在卖了，其实一件也卖不出去 ——
-             *      而商品列表里它显示「已过审」，看不出还差一步；
-             *   2. 更常见的一种：**改一个在售商品的错别字，它就永远下架了** ——
-             *      保存把 on_sale 置 false 送去重审，过审后没人把它放回去。
-             *      商家不会想到「改个字要重新上架一次」，直到发现这件货没单。
-             *
-             * 提交审核本身就是「我要卖它」的表达，过审是平台同意 —— 两边都点过头了，
-             * 再要一次点击不增加任何信息。真要下架他有现成的下架按钮。
+             * <b>不是无条件置真。</b>试过那么写，10 条测试红：
+             *   - M9aOpsFlowTest.goodsAuditQueueOnlyPending 断言过审后 OFF_SALE ——
+             *     「过审 ≠ 上架」是既有设计，不是疏漏；
+             *   - StoreGoodsFlowTest.storeWithoutRowIsNotOnSale ——
+             *     主体级 on_sale 一开，没有店级行的门店会跟着一起在架，
+             *     正好与商家刚做的事相反。
+             * 只恢复他真的表达过的那一份，这两条就都不受影响。
              */
-            g.setOnSale(true);
+            if (Boolean.TRUE.equals(g.getPendingOnSale())) {
+                g.setOnSale(true);
+            }
         }
+        // 用完清零：留着的话下一次审核会把一个过期的意向再兑现一遍
+        g.setPendingOnSale(false);
         DataScopeContext.executeWithoutScope(() -> goodsMapper.updateById(g));
-        syncPool(g, approved);
+        syncPool(g, Boolean.TRUE.equals(g.getOnSale()));
         return toVO(g);
     }
 

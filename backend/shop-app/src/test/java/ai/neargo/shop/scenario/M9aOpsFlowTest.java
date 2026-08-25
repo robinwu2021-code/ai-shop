@@ -433,10 +433,21 @@ class M9aOpsFlowTest {
                         .header("Authorization", "Bearer " + ops)
                         .contentType(MediaType.APPLICATION_JSON).content("{\"approved\":true}"))
                 /*
-                 * 过审后是 OFF_SALE **不是 ON_SALE** —— 审核只解锁"可以卖"，
-                 * 真正上架是商家自己按的按钮。平台替他上架等于替他决定什么时候开卖。
+                 * **过审后是 ON_SALE**（V247 改的，此前断言 OFF_SALE）。
+                 *
+                 * 原来的理由是「审核只解锁可以卖，真正上架是商家自己按的按钮 ——
+                 * 平台替他上架等于替他决定什么时候开卖」。那句话针对的是
+                 * **无条件替他上架**，那样确实越权。
+                 *
+                 * 现在兑现的是他自己表达过的意愿：这件货是他点「提交审核」送上来的
+                 * （见 merchantWithGoods），那一下就是「我要卖它」。
+                 * 平台同意之后再要他点第三次，不增加任何信息 —— 而少点那一次的代价，
+                 * 是他以为在卖、其实一件也卖不出去。
+                 *
+                 * 没表达过意愿的仍旧停在 OFF_SALE：直接被运营审的、
+                 * 或商家自己下架过的，pending_on_sale 都是 0。
                  */
-                .andExpect(jsonPath("$.data.status").value("OFF_SALE"));
+                .andExpect(jsonPath("$.data.status").value("ON_SALE"));
 
         assertThat(queueTotal(ops)).isEqualTo(before - 1);
     }
