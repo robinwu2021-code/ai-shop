@@ -48,6 +48,8 @@ import type {
   MerchantProfile,
   MerchantCustomer,
   ActivityConflict,
+  ReachPlan,
+  ReachResult,
   CouponIssueBatch,
   CouponRedeemResult,
   CouponRedeemView,
@@ -1085,6 +1087,18 @@ export interface MerchantApi {
 
   /** 冲突提示。不阻止保存，但要在保存前说出来 */
   mActivityConflicts(goodsNos: string[]): Promise<ActivityConflict[]>;
+
+  // ---- 触达（P7）
+  /**
+   * 群发试算。**先算后发** —— 这是唯一会打扰真实用户的动作。
+   * `scene` 决定频次闸的档位：`NOTICE` 公告 / `WAKEUP` 唤回 / `COUPON` 发券通知。
+   */
+  mPlanReach(payload: { segmentNo?: string; scene: string }): Promise<ReachPlan>;
+
+  /** 真发。跳过分布要显示在结果里，不能只报一句「发送成功」 */
+  mSendReach(payload: {
+    segmentNo?: string; scene: string; title: string; body: string;
+  }): Promise<ReachResult>;
 
   // ---- 结算（B-11.9）
   /**

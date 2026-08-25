@@ -175,6 +175,9 @@ onShow(load);
       <text class="sh-chip" @tap="go('/pages/member-segments/index')">
         {{ $t("memberSegments.title") }}
       </text>
+      <text class="sh-chip" @tap="go('/pages/member-reach/index')">
+        {{ $t("reach.entry") }}
+      </text>
       <text class="sh-chip sh-chip--primary" @tap="go('/pages/member-add/index')">
         ＋ {{ $t("memberAdd.title") }}
       </text>

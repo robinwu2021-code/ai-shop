@@ -10,6 +10,7 @@ import { currentCurrency } from "@shared/utils/money";
 import { isoDate, todayAtLocal } from "@shared/utils/datetime";
 import type {
   CouponIssueBatch,
+  MyMembership,
   StoreActivity,
   Member,
   MerchantCoupon,
@@ -1191,6 +1192,39 @@ export const db = {
       liveNow: false,
     },
   ] as StoreActivity[],
+
+  /**
+   * 触达频次闸：场景 → (会员号 → 上次发送时刻)。
+   *
+   * <p>按场景分开存，与真库同一条规矩：公告与唤回不共用一档 ——
+   * 一周三条公告让人烦，一周唤回三次让人拉黑。
+   */
+  /**
+   * 我（买家）是哪几家店的会员（P7）。**两家：一家开着消息、一家已关** ——
+   * 只种一家的话，看不出这个开关是每家一个的。
+   */
+  myMemberships: [
+    {
+      entityNo: "M001",
+      entityName: "张记生鲜",
+      level: "REGULAR",
+      orderCount: 6,
+      totalSpentMinor: 27270,
+      reachOptOut: false,
+      joinedAt: Date.now() - 60 * 86400_000,
+    },
+    {
+      entityNo: "M002",
+      entityName: "老张粮油店",
+      level: "NEW",
+      orderCount: 1,
+      totalSpentMinor: 1280,
+      reachOptOut: true,
+      joinedAt: Date.now() - 9 * 86400_000,
+    },
+  ] as MyMembership[],
+
+  reachSentAt: {} as Record<string, Record<string, number>>,
 
   /** 到店核销：券号 → 已核几次。次卡演示要看得见「还剩几次」 */
   couponRedeemed: {} as Record<string, number>,

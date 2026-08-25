@@ -5,7 +5,7 @@
 import { http } from "@shared/net/http-client";
 import { buildPath, ENDPOINTS } from "./endpoints";
 import type { CreateOrderReq, GoodsQuery, ShopApi } from "./contract";
-import type { InvoiceRequest, MyStoreCoupon, RegionOption,
+import type { InvoiceRequest, MyMembership, MyStoreCoupon, RegionOption,
   PhoneCapable,
 } from "@shared/types";
 // 入参的 wire 契约。satisfies 让「实际发出去的 body」在编译期受检 ——
@@ -83,7 +83,17 @@ function call<T>(
 ): Promise<T> {
   const ep = ENDPOINTS[key];
   const url = buildPath(ep.path, p);
-  return ep.method === "GET" ? http.get<T>(url, d) : http.post<T>(url, d);
+  /*
+   * **按端点表里声明的方法发**，不是「非 GET 即 POST」。
+   *
+   * 原来那句 `ep.method === "GET" ? get : post` 把 PUT 静默降级成了 POST ——
+   * 端点表里写着 PUT、真实后端上是 PUT，而端上发出去的是 POST：
+   * 405，而且是运行时才知道。mock 下永远看不出来（mock 不看方法）。
+   */
+  if (ep.method === "GET") {
+    return http.get<T>(url, d);
+  }
+  return ep.method === "PUT" ? http.put<T>(url, d) : http.post<T>(url, d);
 }
 
 export const httpApi: ShopApi = {
@@ -155,6 +165,9 @@ export const httpApi: ShopApi = {
 
   couponList: () => call<Coupon[]>("couponList"),
   myStoreCoupons: () => call<MyStoreCoupon[]>("myStoreCoupons"),
+  myMemberships: () => call<MyMembership[]>("myMemberships"),
+  setMembershipReach: (entityNo, optOut) =>
+    call<void>("setMembershipReach", { entityNo }, { optOut }),
   receiveCoupon: (couponNo) => call<UserCoupon>("receiveCoupon", { couponNo }),
 
   // ---- 拼团

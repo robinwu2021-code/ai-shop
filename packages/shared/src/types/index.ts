@@ -3513,6 +3513,42 @@ export interface MemberTag {
 }
 
 /**
+ * 群发试算结果（P7）。
+ *
+ * @remarks `skips` 必须显示出来：商家选了 30 个人实发 8 个，
+ * 只说「发送成功」的话他会以为 30 个人都收到了。
+ * 原因码：`TOO_SOON` 最近发过 / `OPT_OUT` 已退订 / `LEAD` 线索会员 / `NO_ACCOUNT` 还没注册。
+ */
+export interface ReachPlan {
+  matched: number;
+  reachable: number;
+  skips: Array<{ reason: string; count: number }>;
+}
+
+export interface ReachResult {
+  taskNo: string;
+  sent: number;
+  skipped: number;
+  skips: Array<{ reason: string; count: number }>;
+}
+
+/**
+ * 「我是这家店的会员」（C 端，P7）。
+ *
+ * @remarks 这一页是发消息功能的前提：顾客要能看到**谁在给他发消息**并且能关掉。
+ */
+export interface MyMembership {
+  entityNo: string;
+  entityName: string;
+  level?: string | null;
+  orderCount: number;
+  totalSpentMinor: number;
+  /** 我关掉了这家店的消息没有。**只有本人能改** */
+  reachOptOut: boolean;
+  joinedAt: number;
+}
+
+/**
  * 商家活动（P5，新模型 `pmt_activity`）。
  *
  * @remarks 名字带 Store 前缀是因为 `MarketingCampaign` 已经被老模型占着。

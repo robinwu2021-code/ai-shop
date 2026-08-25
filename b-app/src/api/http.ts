@@ -79,6 +79,8 @@ import type {
   Member,
   MemberDetail,
   ActivityConflict,
+  ReachPlan,
+  ReachResult,
   CouponIssueBatch,
   CouponRedeemResult,
   CouponRedeemView,
@@ -438,6 +440,8 @@ export const httpApi: MerchantApi = {
     http.put<StoreActivity>(buildPath(E.mSetActivityStatus.path, { activityNo }), { status }),
   mActivityConflicts: (goodsNos) =>
     http.post<ActivityConflict[]>(E.mActivityConflicts.path, { goodsNos }),
+  mPlanReach: (payload) => http.post<ReachPlan>(E.mPlanReach.path, payload),
+  mSendReach: (payload) => http.post<ReachResult>(E.mSendReach.path, payload),
 
   mSettleList: (allStores) =>
     http.get<SettleBill[]>(E.mSettleList.path, allStores ? { allStores: true } : undefined),

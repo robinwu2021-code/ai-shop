@@ -9,7 +9,14 @@
 // 迁移到真实后端时，端点表不用改：`VITE_USE_MOCK=0` 之后走的就是这张表。
 import type { ShopApi } from "./contract";
 
-export type HttpMethod = "GET" | "POST";
+/**
+ * C 端此前只用过 GET/POST。**PUT 是这次第一次出现**（关掉某家店的消息）——
+ * 加进来的同时要改 `http.ts` 的 `call`：它原来是「非 GET 即 POST」，
+ * 会把 PUT 静默降级，端点表写着 PUT 而实际发出去的是 POST，运行时才 405。
+ *
+ * ⚠️ 小程序的 `uni.request` 不支持 PATCH（B 端为它退过一次改动），所以这里没有它。
+ */
+export type HttpMethod = "GET" | "POST" | "PUT";
 
 export interface EndpointDef {
   method: HttpMethod;
@@ -148,6 +155,13 @@ export const ENDPOINTS: Record<keyof ShopApi, EndpointDef> = {
 
   couponList: { method: "GET", path: "/mp/coupon", auth: false, summary: "优惠券列表" },
   myStoreCoupons: { method: "GET", path: "/mp/my-coupons", auth: true, summary: "商家发给我的券（含到店码）" },
+  myMemberships: { method: "GET", path: "/mp/my-memberships", auth: true, summary: "我是哪几家店的会员" },
+  setMembershipReach: {
+    method: "PUT",
+    path: "/mp/my-memberships/:entityNo/reach",
+    auth: true,
+    summary: "关掉/打开某家店的消息",
+  },
   receiveCoupon: {
     method: "POST",
     path: "/mp/coupon/:couponNo/receive",

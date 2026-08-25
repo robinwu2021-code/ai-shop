@@ -124,6 +124,12 @@
       }
     },
     {
+      "path": "pages/my-memberships/index",
+      "style": {
+        "navigationBarTitleText": "我的会员与消息"
+      }
+    },
+    {
       "path": "pages/coupons/index",
       "style": {
         "navigationBarTitleText": ""

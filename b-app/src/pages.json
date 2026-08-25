@@ -284,6 +284,12 @@
       "style": {
         "navigationBarTitleText": "新建活动"
       }
+    },
+    {
+      "path": "pages/member-reach/index",
+      "style": {
+        "navigationBarTitleText": "给会员发消息"
+      }
     }
   ],
   "globalStyle": {

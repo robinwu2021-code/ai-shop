@@ -3,7 +3,7 @@
     {
       "key": "b-app",
       "label": "商家 App",
-      "count": 53,
+      "count": 54,
       "domains": [
         {
           "name": "工作台",
@@ -392,6 +392,16 @@
               "status": "已实现",
               "proto": null,
               "preview": "http://localhost:5175/#/pages/activity-edit/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/member-reach/index",
+              "title": "给会员发消息",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "preview": "http://localhost:5175/#/pages/member-reach/index"
             }
           ]
         },
@@ -595,7 +605,7 @@
     {
       "key": "c-app",
       "label": "买家小程序",
-      "count": 30,
+      "count": 31,
       "domains": [
         {
           "name": "工作台",
@@ -884,6 +894,21 @@
               "status": "已实现",
               "proto": null,
               "preview": "http://localhost:5176/#/pages/points/index"
+            }
+          ]
+        },
+        {
+          "name": "其它",
+          "pages": [
+            {
+              "app": "c-app",
+              "route": "/pages/my-memberships/index",
+              "title": "我的会员与消息",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "preview": "http://localhost:5176/#/pages/my-memberships/index"
             }
           ]
         },
@@ -2402,5 +2427,5 @@
       ]
     }
   ],
-  "total": 199
+  "total": 201
 }

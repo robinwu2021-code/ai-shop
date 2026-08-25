@@ -1019,6 +1019,22 @@ export const mockApi: ShopApi = {
     ]);
   },
 
+  /**
+   * 我是哪几家店的会员。mock 里给两家：一家开着消息、一家已经关了 ——
+   * 只给一家的话，看不出这个开关是**每家一个**的。
+   */
+  async myMemberships() {
+    return delay(db.myMemberships.map((m) => ({ ...m })));
+  },
+
+  async setMembershipReach(entityNo, optOut) {
+    const m = db.myMemberships.find((x) => x.entityNo === entityNo);
+    if (!m) throw new Error("你还不是这家店的会员");
+    m.reachOptOut = optOut;
+    persist();
+    return delay(undefined as unknown as void);
+  },
+
   async receiveCoupon(couponNo) {
     const c = db.couponSeeds.find((x) => x.couponNo === couponNo);
     if (!c) throw new Error("优惠券不存在");

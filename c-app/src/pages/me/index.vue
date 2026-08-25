@@ -102,6 +102,10 @@ function gotoMessages() {
   uni.navigateTo({ url: ROUTES.messages });
 }
 
+function gotoMemberships() {
+  uni.navigateTo({ url: ROUTES.myMemberships });
+}
+
 function gotoCoupons() {
   uni.navigateTo({ url: ROUTES.coupons });
 }
@@ -262,6 +266,11 @@ onShow(() => {
       <view class="cell" @tap="gotoCoupons">
         <text class="cell__label">{{ $t("coupon.title") }}</text>
         <text class="cell__value">{{ $t("coupon.entryHint") }}</text>
+      </view>
+      <!-- 会员与消息：**退订入口必须在显眼处**，藏起来的开关等于没有 -->
+      <view class="cell" @tap="gotoMemberships">
+        <text class="cell__label">{{ $t("myMembership.title") }}</text>
+        <text class="cell__value">{{ $t("myMembership.entryHint") }}</text>
       </view>
       <view v-if="FEATURES.cards" class="cell" @tap="gotoCards">
         <text class="cell__label">{{ $t("cards.title") }}</text>

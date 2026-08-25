@@ -3053,6 +3053,55 @@ export const mockApi: MerchantApi = {
     });
   },
 
+  // ---------------------------------------------------------------- 触达（P7）
+  /**
+   * 群发试算。**四类跳过与后端同一口径** —— mock 里少算一类，
+   * 演示时看到的「能发 12 人」到了真实环境会变成别的数，而没人知道差在哪。
+   */
+  async mPlanReach(payload) {
+    const all = allMockMembers();
+    const gate = db.reachSentAt[payload.scene] ?? {};
+    const minDays = payload.scene === "WAKEUP" ? 14 : payload.scene === "COUPON" ? 7 : 3;
+    const now = Date.now();
+
+    let tooSoon = 0;
+    let optOut = 0;
+    let lead = 0;
+    let reachable = 0;
+    for (const m of all) {
+      if (m.status === "LEAD") { lead++; continue; }          // 线索一律不发
+      if (m.reachOptOut) { optOut++; continue; }
+      const last = gate[m.memberNo];
+      if (last && now - last < minDays * 86400_000) { tooSoon++; continue; }
+      reachable++;
+    }
+    const skips: Array<{ reason: string; count: number }> = [];
+    if (tooSoon > 0) skips.push({ reason: "TOO_SOON", count: tooSoon });
+    if (optOut > 0) skips.push({ reason: "OPT_OUT", count: optOut });
+    if (lead > 0) skips.push({ reason: "LEAD", count: lead });
+    return delay({ matched: all.length, reachable, skips });
+  },
+
+  async mSendReach(payload) {
+    const plan = await this.mPlanReach(payload);
+    const now = Date.now();
+    const gate = db.reachSentAt[payload.scene] ?? (db.reachSentAt[payload.scene] = {});
+    const minDays = payload.scene === "WAKEUP" ? 14 : payload.scene === "COUPON" ? 7 : 3;
+    for (const m of allMockMembers()) {
+      if (m.status === "LEAD" || m.reachOptOut) continue;
+      const last = gate[m.memberNo];
+      if (last && now - last < minDays * 86400_000) continue;
+      gate[m.memberNo] = now;      // 记下来，第二次发就会被频次闸拦住
+    }
+    persist();
+    return delay({
+      taskNo: `RC-${Date.now()}`,
+      sent: plan.reachable,
+      skipped: plan.matched - plan.reachable,
+      skips: plan.skips,
+    });
+  },
+
   // ---------------------------------------------------------------- 活动（P5）
   async mActivities(includeEnded) {
     return delay(db.storeActivities

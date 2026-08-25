@@ -495,6 +495,7 @@ export const ROUTES = {
   order: "/pages/order/index",
   afterSale: "/pages/after-sale/index",
   coupons: "/pages/coupons/index",
+  myMemberships: "/pages/my-memberships/index",
   cards: "/pages/cards/index",
   messages: "/pages/messages/index",
   requestCreate: "/pages/request-create/index",
