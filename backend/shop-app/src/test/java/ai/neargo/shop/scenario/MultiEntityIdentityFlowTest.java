@@ -241,6 +241,93 @@ class MultiEntityIdentityFlowTest {
                 .doesNotContain("详情·别人的");
     }
 
+    // ------------------------------------------------------------ B3：既有接口加可选 entityNo
+
+    @Test
+    @DisplayName("★★ 老板在证照管理页直接给另一张证照传执照 —— 不用先切到那张证照下的店")
+    void entityNoParamTargetsAnotherOwnedEntity() throws Exception {
+        String phone = "12600170060";
+        String token = merchant(phone, "两张证照·第一张");
+        String first = merchantNoOf(token, null);
+        String second = quickStart(token, "两张证照·第二张");
+        token = login(phone);
+
+        // 给第二张证照传一张营业执照。**当前证照仍是第一张** —— 这正是这条参数存在的理由
+        mvc().perform(post("/biz/qualifications/save").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"qualType\":\"BUSINESS_LICENSE\",\"qualName\":\"第二张的执照\","
+                                + "\"imageUrl\":\"https://x/y.jpg\",\"entityNo\":\"" + second + "\"}"))
+                .andExpect(jsonPath("$.code").value(0));
+
+        var onSecond = okData(token, "/biz/qualifications?entityNo=" + second)
+                .get("items").valueStream().map(i -> i.get("qualName").asString()).toList();
+        assertThat(onSecond).as("传到第二张证照上了").contains("第二张的执照");
+
+        /*
+         * ★ 不传参数时必须是原行为（当前证照 = 第一张）。
+         * 这一条守的是**存量单证照账号**：他们永远不传这个参数，行为一个字都不能变。
+         */
+        var onCurrent = okData(token, "/biz/qualifications")
+                .get("items").valueStream().map(i -> i.get("qualName").asString()).toList();
+        assertThat(onCurrent).as("没传参数就是当前证照，不该看到第二张的证").doesNotContain("第二张的执照");
+        assertThat(merchantNoOf(token, null)).as("当前证照没有被这次操作改掉").isEqualTo(first);
+    }
+
+    @Test
+    @DisplayName("★★ 越权：传别人的 entityNo → 403，而不是静默落到自己的证照上")
+    void entityNoParamRefusesForeignEntity() throws Exception {
+        String mine = merchant("12600170070", "参数·我的");
+        String myEntity = merchantNoOf(mine, null);
+        String others = merchant("12600170071", "参数·别人的");
+        String othersEntity = merchantNoOf(others, null);
+
+        /*
+         * ★ **静默回落是这里最危险的实现**：他以为在给别人（或另一张）证照传证，
+         * 实际动的是当前这张，两边都不报错。所以必须是 403，而且不能留下痕迹。
+         */
+        String body = mvc().perform(post("/biz/qualifications/save")
+                        .header("Authorization", "Bearer " + mine)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"qualType\":\"BUSINESS_LICENSE\",\"qualName\":\"越权的执照\","
+                                + "\"imageUrl\":\"https://x/y.jpg\",\"entityNo\":\"" + othersEntity + "\"}"))
+                .andReturn().getResponse().getContentAsString();
+        assertThat(json.readTree(body).get("code").asInt()).as("别人的证照必须拒").isNotZero();
+
+        var onMine = okData(mine, "/biz/qualifications")
+                .get("items").valueStream().map(i -> i.get("qualName").asString()).toList();
+        assertThat(onMine).as("更不能静默落到我自己的证照上 —— 那是最难发现的一种错")
+                .doesNotContain("越权的执照");
+        assertThat(merchantNoOf(mine, null)).isEqualTo(myEntity);
+
+        // 收款进件同一条闸
+        assertThat(codeOf(get("/biz/merchant/payment?entityNo=" + othersEntity), mine)).isNotZero();
+    }
+
+    @Test
+    @DisplayName("★★ 建店时挂到另一张证照下 —— 撞的是那张证照的额度，不是当前这张的")
+    void createStoreCanTargetAnotherOwnedEntity() throws Exception {
+        String phone = "12600170080";
+        String token = merchant(phone, "建店·第一张");
+        String first = merchantNoOf(token, null);
+        String second = quickStart(token, "建店·第二张");
+        token = login(phone);
+
+        String body = mvc().perform(post("/biz/store/create").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"挂在第二张下的分店\",\"entityNo\":\"" + second + "\"}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        String storeNo = json.readTree(body).get("data").get("storeNo").asString();
+
+        // ★ 真的挂在第二张证照下：带上它的门店号解析出来的主体就是第二张
+        assertThat(merchantNoOf(token, storeNo)).isEqualTo(second);
+        // ★ 当前证照（第一张）的门店列表里不该多出这家店
+        var current = okData(token, "/biz/store/list").valueStream()
+                .map(x -> x.get("storeNo").asString()).toList();
+        assertThat(current).as("它不属于当前证照").doesNotContain(storeNo);
+        assertThat(merchantNoOf(token, null)).isEqualTo(first);
+    }
+
     // ------------------------------------------------------------ 脚手架
 
     /** 带（或不带）X-Store-No 问一次 /biz/context，返回解析出来的主体号。 */
@@ -257,6 +344,13 @@ class MultiEntityIdentityFlowTest {
                 .andExpect(jsonPath("$.code").value(0))
                 .andReturn().getResponse().getContentAsString();
         return json.readTree(body).get("data");
+    }
+
+    private int codeOf(org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder req,
+                       String token) throws Exception {
+        String body = mvc().perform(req.header("Authorization", "Bearer " + token))
+                .andReturn().getResponse().getContentAsString();
+        return json.readTree(body).get("code").asInt();
     }
 
     private JsonNode okData(String token, String path) throws Exception {

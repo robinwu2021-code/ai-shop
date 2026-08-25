@@ -57,4 +57,32 @@ public interface MerchantEntityService {
      * 拼上去 —— 那是跨域拼接，放进本服务的话 merchant 域就要去依赖资质与支付两个域的读侧。
      */
     EntityStoresVO detail(String userNo, String entityNo);
+
+    /**
+     * 「这次操作作用在哪张证照上」的<b>唯一判定点</b>（线 B · B3）。
+     *
+     * <p>既有的商家侧接口都隐式作用在 {@code BizContext.requireMerchantNo()} 上 ——
+     * 也就是「当前那一张证照」。多证照之后，老板要能在证照管理页里直接改<b>另一张</b>
+     * 的资料、交它的执照、挂它的收款号，而不必先切到那张证照下的某家店去。
+     * 办法是给这些接口加一个可选的 {@code entityNo}。
+     *
+     * <p><b>而那个参数是端上传进来的</b>，所以必须有一处集中的归属校验：
+     * <ul>
+     *   <li>没传 → 原行为，返回 {@code BizContext.requireMerchantNo()}。
+     *       存量单证照账号一个字都不用改</li>
+     *   <li>传了、且我是它的 owner → 用它</li>
+     *   <li>传了、但不是我的 → {@code FORBIDDEN}。<b>不是静默回落到当前证照</b> ——
+     *       静默回落会把「改 B 证照的执照」变成「改 A 证照的执照」，
+     *       他以为改的是那张，实际动的是这张，而两边都不会报错</li>
+     * </ul>
+     *
+     * <p><b>要求 owner 而不只是成员</b>：这些接口改的是执照、收款账号这类东西，
+     * 与建店同一档敏感度。店员在别人店里有成员行，但那不是他的证照。
+     *
+     * @param userNo       当前登录人。<b>调用方必须传 {@code SecurityUtils.currentUserNo()}</b>，
+     *                     绝不能接受端上传进来的值 —— 那样这个校验就等于没有
+     * @param entityNoParam 端上传的证照号，可空
+     * @return 本次操作真正作用到的证照号
+     */
+    String requireOwned(String userNo, String entityNoParam);
 }

@@ -75,6 +75,8 @@ public class BizMerchantController {
     private final ai.neargo.shop.product.service.CategoryService categoryService;
     /** 无证照快速开店：建占位主体 + 默认门店，不进审核队列 */
     private final MerchantAdminPort merchantAdminPort;
+    /** 多证照：本次操作作用在哪张证照上，唯一判定点（见 {@code requireOwned}） */
+    private final ai.neargo.shop.merchant.service.MerchantEntityService entityService;
 
     public BizMerchantController(MerchantService merchantService, OpsService opsService,
                                  UserService userService, BizIdentityResolver identityResolver,
@@ -90,7 +92,9 @@ public class BizMerchantController {
                                  StoreCategoryService storeCategoryService,
                                  ai.neargo.shop.merchant.service.MerchantGovernService governService,
                                  ai.neargo.shop.product.service.CategoryService categoryService,
-                                 MerchantAdminPort merchantAdminPort) {
+                                 MerchantAdminPort merchantAdminPort,
+                                 ai.neargo.shop.merchant.service.MerchantEntityService entityService) {
+        this.entityService = entityService;
         this.categoryService = categoryService;
         this.merchantAdminPort = merchantAdminPort;
         this.governService = governService;
@@ -142,6 +146,18 @@ public class BizMerchantController {
             return nz(me.phone());
         }
         return nz(staffService.loginPhoneOf(principal));
+    }
+
+    /**
+     * 本次操作作用在哪张证照上。
+     *
+     * <p>薄薄一层，只为把「当前登录人」这个参数锁死 —— 归属校验本身在
+     * {@link ai.neargo.shop.merchant.service.MerchantEntityService#requireOwned} 里，
+     * 那是唯一一份。这里绝不能把 {@code userNo} 也做成参数：那样端上传谁的都行，
+     * 校验就等于没有。
+     */
+    private String ownedEntity(String entityNoParam) {
+        return entityService.requireOwned(SecurityUtils.currentUserNo(), entityNoParam);
     }
 
     /**
@@ -279,8 +295,11 @@ public class BizMerchantController {
      */
     @PreAuthorize("@perm.canBiz('" + BizPerms.STORE + "')")
     @GetMapping("/biz/qualifications")
-    public MyQualificationsVO qualifications() {
-        String merchantNo = BizContext.requireMerchantNo();
+    public MyQualificationsVO qualifications(
+            @RequestParam(required = false) String entityNo) {
+        // 多证照：证照管理页要能直接看另一张的证件，不必先切到那张证照下的某家店去。
+        // 不传 = 当前证照（原行为）；传了别人的 = 403，不是静默回落
+        String merchantNo = ownedEntity(entityNo);
         /*
          * **码 → 类目名在这一层拼**，不在商家域拼：商家域不读商品域的类目
          * （见 CategoryUsagePort 的说明，那条边界立过一次）。应用层同时看得见两个域，
@@ -323,7 +342,7 @@ public class BizMerchantController {
     @PostMapping("/biz/qualifications/save")
     public ai.neargo.shop.merchant.service.MerchantGovernService.QualificationVO saveQualification(
             @RequestBody SaveQualReq req) {
-        String merchantNo = BizContext.requireMerchantNo();
+        String merchantNo = ownedEntity(req.entityNo());
         return governService.saveQualification(merchantNo,
                 new ai.neargo.shop.merchant.service.MerchantGovernService.SaveQualificationCommand(req.qualNo(), req.qualType(),
                         req.qualName(), req.qualNumber(), req.imageUrl(), req.expireAt()),
@@ -340,8 +359,9 @@ public class BizMerchantController {
                                      List<AuthCodeInfoVO> catalog) {
     }
 
+    /** @param entityNo 传给哪张证照，可空 = 当前证照（存量单证照账号永远不传） */
     public record SaveQualReq(String qualNo, String qualType, String qualName,
-                              String qualNumber, String imageUrl, Long expireAt) {
+                              String qualNumber, String imageUrl, Long expireAt, String entityNo) {
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.STORE + "')")
@@ -515,8 +535,8 @@ public class BizMerchantController {
      */
     @PreAuthorize("@perm.canBiz('" + BizPerms.FINANCE + "')")
     @GetMapping("/biz/merchant/payment")
-    public List<PaymentApplymentVO> payments() {
-        return paymentService.list(BizContext.requireMerchantNo());
+    public List<PaymentApplymentVO> payments(@RequestParam(required = false) String entityNo) {
+        return paymentService.list(ownedEntity(entityNo));
     }
 
     /**
@@ -528,7 +548,7 @@ public class BizMerchantController {
     @PreAuthorize("@perm.canBiz('" + BizPerms.FINANCE + "')")
     @PostMapping("/biz/merchant/payment")
     public PaymentApplymentVO submitPayment(@RequestBody PaymentReq req) {
-        return paymentService.submit(BizContext.requireMerchantNo(),
+        return paymentService.submit(ownedEntity(req.entityNo()),
                 new MerchantPaymentService.SubmitCommand(
                         req.payChannel(), req.settleAccountType(), req.settleAccount(),
                         req.licenses(), req.contactName(), req.contactPhone(), req.storeNo()));
@@ -567,7 +587,7 @@ public class BizMerchantController {
      */
     public record PaymentReq(String payChannel, String settleAccountType, String settleAccount,
                              List<String> licenses, String contactName, String contactPhone,
-                             String storeNo) {
+                             String storeNo, String entityNo) {
     }
 
     // ---------------------------------------------------------------- 门店管理（M6）
@@ -598,7 +618,13 @@ public class BizMerchantController {
     @PreAuthorize("@perm.canBiz('" + BizPerms.STORE_ADMIN + "')")
     @PostMapping("/biz/store/create")
     public StoreVO createStore(@RequestBody StoreCreateReq req) {
-        String merchantNo = BizContext.requireMerchantNo();
+        /*
+         * 「这家店挂在哪张证照下」（02 屏）。不传 = 当前证照，与单证照时代一模一样。
+         *
+         * 注意额度是**按证照**算的（mch_entity_plan 挂在 entity_no 上），所以挂到
+         * 另一张证照下时，撞的是那张的额度 —— 这正是应该的：额度是那张证照买的。
+         */
+        String merchantNo = ownedEntity(req.entityNo());
         StoreVO store = storeAdminService.create(merchantNo, req.name(), req.address());
         /*
          * 建店时把货架也摆上（TDD-品类约束全链路 §3.2）。
@@ -703,7 +729,12 @@ public class BizMerchantController {
      * @param categoryNos 这家店摆哪些货架；<b>为空 = 复制默认店的</b>（多门店商家开分店
      *                    卖的多半是同一批货），没有默认店则先空着，建品时自动加入
      */
-    public record StoreCreateReq(String name, String address, List<String> categoryNos) {
+    /**
+     * @param entityNo 这家店挂在哪张证照下（02 屏「选/建证照」）。
+     *                 <b>可空 = 当前证照</b> —— 只有一张证照的账号端上整个不渲染这一步
+     */
+    public record StoreCreateReq(String name, String address, List<String> categoryNos,
+                                 String entityNo) {
     }
 
     public record StoreCategoriesReq(List<StoreCategoryItemReq> items) {

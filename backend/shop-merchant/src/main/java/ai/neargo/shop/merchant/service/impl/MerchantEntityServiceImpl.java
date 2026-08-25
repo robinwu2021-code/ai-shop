@@ -82,6 +82,30 @@ public class MerchantEntityServiceImpl implements MerchantEntityService {
                 .orElseThrow(() -> BizException.of(ErrorCode.NOT_FOUND));
     }
 
+    @Override
+    public String requireOwned(String userNo, String entityNoParam) {
+        if (entityNoParam == null || entityNoParam.isBlank()) {
+            // 原行为：作用在当前证照上。绝大多数请求走这一支
+            return ai.neargo.shop.auth.BizContext.requireMerchantNo();
+        }
+        String current = ai.neargo.shop.auth.BizContext.current().merchantNo();
+        if (entityNoParam.equals(current)) {
+            // 传的就是当前证照 —— 连查都不用查
+            return entityNoParam;
+        }
+        boolean owned = memberships(userNo).stream()
+                .anyMatch(m -> Boolean.TRUE.equals(m.getIsOwner())
+                        && entityNoParam.equals(m.getEntityNo()));
+        if (!owned) {
+            /*
+             * **拒绝，而不是回落到当前证照**。回落的话「改 B 证照的执照」会静默变成
+             * 「改 A 证照的执照」—— 他以为改的是那张，实际动的是这张，两边都不报错。
+             */
+            throw BizException.of(ErrorCode.FORBIDDEN);
+        }
+        return entityNoParam;
+    }
+
     /**
      * 我在经营侧的全部成员行，<b>默认证照在前</b>（与身份解析同一个排序）。
      *
