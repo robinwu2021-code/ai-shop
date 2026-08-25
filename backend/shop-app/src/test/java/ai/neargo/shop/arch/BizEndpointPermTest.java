@@ -92,6 +92,11 @@ class BizEndpointPermTest {
      */
     private static final Map<String, String> REQUIRED = new LinkedHashMap<>() {{
         // ---- 履约：三种活面对三种对象 ----
+        // 证照识别：与「传资质证件」同一档 —— 能传证的人才能让系统替他读证。
+        // 它不落任何东西（不写库、不进桶），但读到的是身份证与执照的完整字段，
+        // 所以不能按 PUBLIC 放行
+        put("/biz/qualifications/recognize", BizPerms.STORE);
+
         // ---- 证照（多证照）：与建店同一档敏感度，只有老板拿得到这个码 ----
         // BizPerms.assignableCodes() 显式排除了 STORE_ADMIN，自定义角色勾不到它，
         // 于是「只有老板能管证照」是结构保证的，不用另立一个新权限码
