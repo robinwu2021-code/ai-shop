@@ -96,7 +96,8 @@ CREATE TABLE IF NOT EXISTS mbr_member_store
     total_spent_minor BIGINT(20) NOT NULL DEFAULT 0,
     d90_order_count INT(11) NOT NULL DEFAULT 0,
     d90_spent_minor BIGINT(20) NOT NULL DEFAULT 0,
-    is_first_store TINYINT(4) NOT NULL DEFAULT 0 COMMENT '他是从这家店进来的',
+    level VARCHAR(16) DEFAULT NULL COMMENT '这家店自己的分层。只有主体开了「按门店经营会员」时才展示（见 §2.1d）',
+    is_first_store TINYINT(4) NOT NULL DEFAULT 0 COMMENT '他是从这家店进来的（来源门店）',
     tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
     created_at DATETIME NOT NULL,
     created_by VARCHAR(64) DEFAULT NULL,
@@ -110,9 +111,47 @@ CREATE TABLE IF NOT EXISTS mbr_member_store
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci COMMENT='会员在某家门店的往来。主体级的总数在 mbr_member';
 ```
 
-**分层算在哪一级**：`mbr_member.level` 是**主体级**（他对这个商家是不是熟客），
-门店级只给数字不给层 —— 一个人在总店 8 单、在南门店 1 单，
-说他"在南门店是新客"没有任何可行动的含义，反而会让商家给老客发新人券。
+**两级分层都算、按开关展示**（见 §2.1d）：`mbr_member.level` 是主体级，
+`mbr_member_store.level` 是门店级，两份都由每日任务算好落库。
+展示哪一份由主体的「会员经营口径」决定 —— 底层不因这个开关而变，
+所以商家随时可以切换，不需要迁移任何数据。
+
+### 2.1d 会员经营口径：按主体，还是按门店
+
+**同一个模型要装下两种真实情况。**
+
+| 情况 | 例子 | 商家要的 |
+|---|---|---|
+| **按主体**（默认，多数） | 一条街上的两家小店、总店 + 分店 | 会员是"这个商家的会员"，在哪家买都算数；一份名单、一套标签 |
+| **按门店** | 城东城西各一家、相隔十公里 | **另一家店的会员对这家没用** —— 他不会跑十公里来买菜。名单、分层、活动都要按店各算各的 |
+
+所以在主体上开一个开关，而不是二选一地写死模型：
+
+```sql
+ALTER TABLE mch_entity
+    ADD COLUMN member_scope VARCHAR(16) NOT NULL DEFAULT 'ENTITY' COMMENT '会员经营口径：ENTITY 按主体（默认）/ STORE 按门店。只影响展示与分层口径，不影响底层存储';
+```
+
+**开关影响什么、不影响什么**（这是它能随时切的原因）：
+
+| | ENTITY（默认） | STORE |
+|---|---|---|
+| 存储 | `mbr_member` + `mbr_member_store` 两张表都写 | **完全相同** |
+| 会员列表默认视角 | 全部门店合并 | 默认当前门店，门店选择器**不可为空** |
+| 顶部四层数字 | 按主体累计 | 按所选门店 |
+| 分层用哪一份 | `mbr_member.level` | `mbr_member_store.level` |
+| 「新客」的含义 | 对这个商家第一次买 | **对这家店第一次买**（在别的店买过也算新客 —— 这正是十公里外那家店要的） |
+| 标签 | 主体级共享 | **仍是主体级共享** |
+| 触达频次闸 | 按 (主体, 人) | **仍按 (主体, 人)** |
+| 活动受众 | 主体全部会员 | 自动限定在活动所属门店的会员 |
+
+两条**刻意不跟着开关变**的：
+
+1. **标签仍属主体**。「爱囤货」是这个人的属性，不因他在哪家店买而不同；
+   按门店各存一份的话，多店商家要重打一遍，而两份很快就不一致（8-24 已拍板，这里不改）。
+   门店维度体现在**筛选**上：「南门店的会员里，打了爱囤货的」。
+2. **频次闸仍按人**。若按门店算，三家店就是三倍轰炸 —— 而挨骂的是平台的通知权限，
+   不是某一家店。界面上要直说：「他 5 天前收到过总店的消息，本次跳过」。
 
 ### 2.1c `mbr_member_source` —— 每一次来源都留痕
 
@@ -409,7 +448,9 @@ erDiagram
 │  └─────┴─────┴─────┴─────┘        │
 │  本月新增 12 · 可触达 118          │
 │                                    │
-│  门店 [全部 ▾]                     │   ← 多店主体才出现；切了之后下面的数字与列表都按这家店算
+│  门店 [全部 ▾]              [⚙]    │   ← 多店才出现。按主体经营时可选「全部」；
+│                                    │      按门店经营时必须选一家，默认当前门店
+│                                    │      ⚙ 里切换「会员按主体 / 按门店经营」
 │  [🔍 手机号完整匹配        ] [筛选]│   ← 只认完整号码，输一半不给结果
 │  标签: (爱囤货) (只要土鸡蛋) (+)   │   ← 点标签即筛选，可多选（或）
 │                                    │
