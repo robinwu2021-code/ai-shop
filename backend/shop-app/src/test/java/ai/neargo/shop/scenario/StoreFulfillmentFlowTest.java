@@ -313,6 +313,49 @@ class StoreFulfillmentFlowTest {
     }
 
     @Test
+    @DisplayName("★★★ 切口径：A 店的货不再出现在只有 B 店服务的社区里")
+    void goodsOfStoreAIsNotVisibleInCommunityOnlyStoreBServes() {
+        String m = merchant("文三路 5 号");
+        String storeA = merchantQuery.defaultStoreNo(m).orElseThrow();
+        String cmA = openCommunity();
+        String cmB = openCommunity();
+
+        // 主体足迹两块都要（子集是从主体足迹里挑的）
+        storeService.save(m, new ai.neargo.shop.merchant.service.MerchantStoreService.SaveCommand(
+                null, null, null, null, null, null, null, null, List.of(
+                        new ai.neargo.shop.merchant.service.MerchantStoreService.AreaCommand("COMMUNITY", cmA),
+                        new ai.neargo.shop.merchant.service.MerchantStoreService.AreaCommand("COMMUNITY", cmB))));
+        String areaA = areaNoOf(m, cmA);
+
+        // A 店的自送只覆盖 cmA
+        fulfillmentService.save(m, storeA, List.of(
+                new ChannelCmd(Fulfillments.MERCHANT_DELIVERY, true, null, null, "SUBSET", List.of(areaA))));
+
+        /*
+         * ★ 这就是方案 §2.1 那个场景的核心断言。
+         *
+         * 改造之前可见性取的是**主体并集**（enabledFulfillments(merchantNo, null)），
+         * 所以 A 店的货会同时进 cmA 和 cmB 的池 —— 而 A 店根本不送 cmB。
+         * cmB 的买家搜到它、下了单，货送不到。
+         *
+         * 撤掉 reachableCommunities 的门店裁剪，这一条必须立刻红。
+         */
+        assertThat(merchantQuery.reachableCommunities(m, storeA))
+                .as("A 店只服务 cmA").containsExactly(cmA);
+        assertThat(merchantQuery.reachableCommunities(m, storeA))
+                .as("A 店不该把货带进它不送的 cmB").doesNotContain(cmB);
+    }
+
+    /** 取这个主体在这个社区上的 service_area 主键 —— 配 SUBSET 时要引它 */
+    private String areaNoOf(String merchantNo, String communityNo) {
+        return serviceAreaMapper.selectList(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                        .<ai.neargo.shop.merchant.entity.MchServiceArea>lambdaQuery()
+                        .eq(ai.neargo.shop.merchant.entity.MchServiceArea::getEntityNo, merchantNo)
+                        .eq(ai.neargo.shop.merchant.entity.MchServiceArea::getRefCode, communityNo))
+                .get(0).getAreaNo();
+    }
+
+    @Test
     @DisplayName("★★ 按门店算可达：ALL 门店与主体口径**逐字相等** —— 这条钉住「今天零行为变化」")
     void storeReachEqualsEntityReachWhenAllScope() {
         String m = merchant("文三路 2 号");

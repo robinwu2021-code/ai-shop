@@ -319,6 +319,24 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
     }
 
     @Override
+    public java.util.Map<String, int[]> coordsOfStores(java.util.Collection<String> storeNos) {
+        if (storeNos == null || storeNos.isEmpty()) {
+            return java.util.Map.of();
+        }
+        java.util.Map<String, int[]> out = new java.util.HashMap<>();
+        DataScopeContext.executeWithoutScope(() -> storeMapper.selectList(
+                        Wrappers.<ai.neargo.shop.merchant.entity.MchStore>lambdaQuery()
+                                .in(ai.neargo.shop.merchant.entity.MchStore::getStoreNo, storeNos)))
+                .forEach(st -> {
+                    // 同 coordsOfCommunities：没标点的不放进来，别拿 (0,0) 算出一个看着正常的数
+                    if (st.getLatE6() != null && st.getLngE6() != null) {
+                        out.put(st.getStoreNo(), new int[]{st.getLatE6(), st.getLngE6()});
+                    }
+                });
+        return out;
+    }
+
+    @Override
     public java.util.Set<String> allowedPickupNos(String merchantNo) {
         if (merchantNo == null || merchantNo.isBlank()) {
             return java.util.Set.of();

@@ -99,6 +99,8 @@ public class OrderServiceImpl implements OrderService {
     private final PickupQueryPort pickupPort;
     /** 取买家绑定的社区，下单时固化到主单 —— 运营按社区做数据域隔离 */
     private final ai.neargo.shop.spi.user.UserQueryPort userPort;
+    /** 挑「服务这个社区的最近门店」时要它给社区坐标 */
+    private final ai.neargo.shop.spi.user.CommunityQueryPort communityPort;
     private final IdempotencyService idempotency;
     private final OutboxEventBus eventBus;
     /** 支付成功后告诉会员域「他买了一单」。trade 不认识会员表，也不该认识 */
@@ -116,6 +118,7 @@ public class OrderServiceImpl implements OrderService {
                             StatusLogMapper statusLogMapper,
                             PickupQueryPort pickupPort,
                             ai.neargo.shop.spi.user.UserQueryPort userPort,
+                            ai.neargo.shop.spi.user.CommunityQueryPort communityPort,
                             IdempotencyService idempotency, OutboxEventBus eventBus,
                             ai.neargo.shop.spi.user.AdmissionPort admissionPort,
                             ai.neargo.shop.spi.member.MemberEventPort memberEventPort,
@@ -139,6 +142,7 @@ public class OrderServiceImpl implements OrderService {
         this.statusLogMapper = statusLogMapper;
         this.pickupPort = pickupPort;
         this.userPort = userPort;
+        this.communityPort = communityPort;
         this.idempotency = idempotency;
         this.eventBus = eventBus;
         this.memberEventPort = memberEventPort;
@@ -264,17 +268,90 @@ public class OrderServiceImpl implements OrderService {
                 .map(ai.neargo.shop.spi.user.PickupQueryPort.PickupBrief::ownerStoreNo)
                 .filter(no -> no != null && !no.isBlank())
                 .orElse(null);
+        /*
+         * 买家所在社区 —— 用来挑「真的服务他的那家店」（可见性按门店算 · 第 4 步）。
+         *
+         * <p><b>不能用 {@code SecurityUtils.currentUserNo()}</b>：它取不到人时**抛**
+         * UnauthorizedException，而这个方法会被 {@code capability()} 这类
+         * <b>没有登录会话</b>的路径调到（未登录也能看「这单能怎么付」）。
+         * 用 currentUser() 的 Optional 版本：取不到人就当成「不知道他在哪个社区」，
+         * 回落默认店，与改造前逐字相同。
+         *
+         * 取不到（没登录、或没设过默认地址）时这一档自然跳过。
+         */
+        String communityNo = SecurityUtils.currentUser()
+                .map(ai.neargo.shop.auth.LoginUser::userNo)
+                .flatMap(userPort::communityOf)
+                .orElse(null);
         for (String merchantNo : merchantNos) {
             // 一次订单可以拆给多家商家，自提点只可能属于其中一家（或谁都不属于）
             boolean mine = pickupStoreNo != null
                     && merchantPort.storeNos(merchantNo).contains(pickupStoreNo);
             if (mine) {
                 out.put(merchantNo, pickupStoreNo);
+                continue;
+            }
+            /*
+             * ★ **挑真的服务这个社区的那家店**，而不是一律默认店。
+             *
+             * 可见性已经按门店算了（第 3 步）：买家能看到这件货，是因为**某一家**店
+             * 既摆着它又服务他所在的社区。单却落到默认店的话，可见性与履约对不上 ——
+             * 页面上一切正常，而单发给了一家既没有这件货、也不送这个小区的店。
+             *
+             * 多家都服务时取**最近**的那家（与 C 端列表展示的是同一家，
+             * 池里的 sort_weight 装的就是这个距离）。一家都不服务时回落默认店：
+             * 那多半是买家没设地址，或者货是从商家主页直接进来的 —— 拒单太重。
+             */
+            String served = communityNo == null ? null
+                    : nearestServingStore(merchantNo, communityNo);
+            if (served != null) {
+                out.put(merchantNo, served);
             } else {
                 merchantPort.defaultStoreNo(merchantNo).ifPresent(no -> out.put(merchantNo, no));
             }
         }
         return out;
+    }
+
+    /**
+     * 这个主体名下**服务该社区**的门店里离得最近的那家；一家都没有时返回 null。
+     *
+     * <p>「服务」的判据与可见性同一个出口（{@code reachableCommunities(entityNo, storeNo)}）——
+     * 另写一套迟早分岔，而分岔的表现是「他看得见却下不了单」或者反过来。
+     */
+    private String nearestServingStore(String merchantNo, String communityNo) {
+        List<String> stores = merchantPort.storeNos(merchantNo);
+        if (stores.isEmpty()) {
+            return null;
+        }
+        List<String> serving = stores.stream()
+                .filter(st -> merchantPort.reachableCommunities(merchantNo, st).contains(communityNo))
+                .toList();
+        if (serving.isEmpty()) {
+            return null;
+        }
+        if (serving.size() == 1) {
+            return serving.get(0);
+        }
+        var cc = communityPort.coordsOfCommunities(java.util.List.of(communityNo)).get(communityNo);
+        var sc = merchantPort.coordsOfStores(serving);
+        if (cc == null || sc.isEmpty()) {
+            // 算不出距离就按门店号取定的那家 —— **必须确定**，否则同一个买家两次下单可能落到两家店
+            return serving.stream().sorted().findFirst().orElse(null);
+        }
+        return serving.stream()
+                .sorted(java.util.Comparator
+                        .comparingLong((String st) -> {
+                            int[] p = sc.get(st);
+                            if (p == null) {
+                                return Long.MAX_VALUE;
+                            }
+                            long dLat = (long) (p[0] - cc[0]);
+                            long dLng = (long) (p[1] - cc[1]);
+                            return dLat * dLat + dLng * dLng;
+                        })
+                        .thenComparing(java.util.function.Function.identity()))
+                .findFirst().orElse(null);
     }
 
     /**

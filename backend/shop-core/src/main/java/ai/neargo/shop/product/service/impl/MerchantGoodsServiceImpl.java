@@ -78,6 +78,8 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
     private final GoodsService goodsService;
     private final CommunityPoolMapper poolMapper;
     private final ai.neargo.shop.spi.user.MerchantQueryPort merchantPort;
+    /** 建池时算「哪家店离这个社区最近」要它给社区坐标 */
+    private final ai.neargo.shop.spi.user.CommunityQueryPort communityQueryPort;
     /** 平台开关（V209）—— 类目闸门开不开由运营在界面上定，不再是一条配置 */
     private final ai.neargo.shop.spi.platform.PlatformSwitchPort switchPort;
     private final ai.neargo.shop.spi.user.AdmissionPort admissionPort;
@@ -101,6 +103,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                                     SpecTemplateMapper templateMapper,
                                     GoodsService goodsService, CommunityPoolMapper poolMapper,
                                     ai.neargo.shop.spi.user.MerchantQueryPort merchantPort,
+                                    ai.neargo.shop.spi.user.CommunityQueryPort communityQueryPort,
                                     ai.neargo.shop.spi.platform.PlatformSwitchPort switchPort,
                                     ai.neargo.shop.spi.user.AdmissionPort admissionPort,
                                     ai.neargo.shop.product.service.CategoryService categoryService,
@@ -120,6 +123,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         this.spuStdService = spuStdService;
         this.poolMapper = poolMapper;
         this.merchantPort = merchantPort;
+        this.communityQueryPort = communityQueryPort;
         this.switchPort = switchPort;
         this.admissionPort = admissionPort;
         this.goodsMapper = goodsMapper;
@@ -1426,6 +1430,33 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         return all.size();
     }
 
+    /**
+     * 算不出距离时写进 {@code sort_weight} 的数。
+     *
+     * <p><b>不能写 0</b>：0 会让缺坐标的门店排到最前面，恰好与「就近展示」相反。
+     * 取一个比地球上任何两点距离都大的数，缺坐标的店自然排到最后。
+     */
+    private static final int UNKNOWN_DISTANCE_M = 99_999_999;
+
+    /**
+     * 重建这件货的社区池。<b>按门店算</b>（可见性按门店算 · 第 3 步）。
+     *
+     * <p>口径：
+     * <pre>
+     * 货 G 在社区 C 可见  ⟺  ∃ 门店 S：S 在架卖 G  ∧  S 可达 C
+     * </pre>
+     *
+     * <p>改造之前这里算的是「主体可达 × 商品在架」，两个问题：
+     * <ul>
+     *   <li>A 店的货会出现在只有 B 店服务的社区里（可达取的是主体并集）</li>
+     *   <li>{@code prd_store_goods}（门店选品）在整条可见性链路上一个读者都没有</li>
+     * </ul>
+     *
+     * <p><b>「这家店卖不卖」沿用三态语义</b>（与 {@code prd_store_stock} 逐字一致）：
+     * 一条店级行都没有 → 主体下所有 ACTIVE 门店都算在架；有了任意一条 → 转店级管理，
+     * 没有行的店视为未上架。改成「没有行就不卖」的话，存量商家（全部没有店级行）
+     * 会在切口径当天从 C 端集体消失。
+     */
     private void syncPool(PrdGoods g, boolean onSale) {
         List<PrdCommunityPool> existing = DataScopeContext.executeWithoutScope(() ->
                 poolMapper.selectList(Wrappers.<PrdCommunityPool>lambdaQuery()
@@ -1437,59 +1468,131 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
             }
             return;
         }
-        List<String> want = merchantPort.reachableCommunities(g.getEntityNo());
+
+        // 想要的 (社区, 门店) 组合
+        Map<String, String> want = new LinkedHashMap<>();   // key = 社区|门店
+        List<String> sellingStores = storesSelling(g);
+        for (String storeNo : sellingStores) {
+            for (String communityNo : merchantPort.reachableCommunities(g.getEntityNo(), storeNo)) {
+                want.put(communityNo + "|" + storeNo, communityNo);
+            }
+        }
+
         /*
-         * **空集要喊出来。**上架 + 可达社区为空 = 商品从所有池里撤出，
+         * **空集要喊出来。**上架 + 一个 (社区,门店) 都没有 = 商品从所有池里撤出，
          * 而商家侧仍显示「在售」—— 买家在任何地方都搜不到，且不报任何错。
          *
          * 空集本身是合法语义（PICKUP 没框范围 = 没有落点），所以不在这里拦，
-         * 但它 99% 是配置缺失而不是本意：线上 6 家商家全是 PICKUP 且
-         * mch_service_area 一行都没有 —— 任何一家重新上架，货就当场隐身。
-         * 日志是运营能看见这件事的唯一通道。
+         * 但它 99% 是配置缺失而不是本意。日志是运营能看见这件事的唯一通道。
          */
-        if (onSale && want.isEmpty()) {
-            log.warn("[pool] 商家 {} 上架 {} 但可达社区为空 —— 商品对所有买家不可见。"
-                    + "多半是没配经营范围（PICKUP 必须框范围）", g.getEntityNo(), g.getGoodsNo());
+        if (want.isEmpty()) {
+            log.warn("[pool] 商家 {} 上架 {} 但没有任何「门店 × 可达社区」组合 —— "
+                            + "商品对所有买家不可见。多半是没配经营范围（PICKUP 必须框范围），"
+                            + "也可能是所有门店都没把它摆上货架（在架门店 {} 家）",
+                    g.getEntityNo(), g.getGoodsNo(), sellingStores.size());
         }
-        List<String> have = existing.stream().map(PrdCommunityPool::getCommunityNo).toList();
-        // 差集增删，不是"先全删再全插"：池表有 uk_community_goods 唯一键，
-        // 而删除是逻辑删 —— 删完再插同一对会撞键（这个坑在商家社区表上刚踩过）
+
+        // 差集增删，不是「先全删再全插」：唯一键含 (community_no, goods_no, store_no)
+        // 而删除是逻辑删 —— 删完再插同一组会撞键
+        Set<String> have = new java.util.HashSet<>();
         for (PrdCommunityPool row : existing) {
-            if (!want.contains(row.getCommunityNo())) {
+            String key = row.getCommunityNo() + "|" + nz(row.getStoreNo());
+            have.add(key);
+            if (!want.containsKey(key)) {
                 DataScopeContext.executeWithoutScope(() -> poolMapper.deleteById(row.getId()));
             }
         }
-        for (String communityNo : want) {
-            if (have.contains(communityNo)) {
+
+        Map<String, Integer> distances = distancesFor(want.values(), sellingStores);
+        for (Map.Entry<String, String> e : want.entrySet()) {
+            if (have.contains(e.getKey())) {
                 continue;
             }
+            String communityNo = e.getValue();
+            String storeNo = e.getKey().substring(e.getKey().indexOf('|') + 1);
             /*
              * 先试着复活被逻辑删的行。**下架是逻辑删，而唯一键不含 deleted** ——
-             * 直接 insert 会撞 uk_community_goods，表现为上架接口 500，
-             * 而商家看到的是「系统开小差」，与商品本身毫无关系。
+             * 直接 insert 会撞唯一键，表现为上架接口 500，而商家看到的是「系统开小差」。
              */
             if (DataScopeContext.executeWithoutScope(() ->
-                    poolMapper.revive(communityNo, g.getGoodsNo())) > 0) {
+                    poolMapper.revive(communityNo, g.getGoodsNo(), storeNo)) > 0) {
                 continue;
             }
             PrdCommunityPool row = new PrdCommunityPool();
             row.setCommunityNo(communityNo);
             row.setGoodsNo(g.getGoodsNo());
             row.setEntityNo(g.getEntityNo());
-            /*
-             * 记下「这一行是哪家店摆的」（V240，可见性按门店算 · 第 2 步）。
-             *
-             * <b>这一步池还是主体级口径</b>，一件货在池里仍然只有一行，
-             * 所以这里给的是**默认店** —— 与迁移回填存量行用的是同一个答案。
-             * 第 3 步改成逐门店建池时，这里会换成真正摆它的那家店。
-             *
-             * 取不到默认店时留空而不是随便挑一家：兜错店的表现是
-             * 「单发到了没有这件货的店」，而那比留空难查得多（留空至少读侧知道自己不知道）。
-             */
-            row.setStoreNo(merchantPort.defaultStoreNo(g.getEntityNo()).orElse(null));
-            row.setSortWeight(0);
+            row.setStoreNo(storeNo);
+            // 就近展示：一件货被两家店摆着、都服务这个社区时，C 端按这个数升序取第一条
+            row.setSortWeight(distances.getOrDefault(communityNo + "|" + storeNo, UNKNOWN_DISTANCE_M));
             DataScopeContext.executeWithoutScope(() -> poolMapper.insert(row));
         }
+    }
+
+    /**
+     * 主体下**在架卖这件货**的门店。三态语义见 {@link #syncPool}。
+     *
+     * <p>只算 ACTIVE 门店：停用的店不该把货带进任何社区。
+     */
+    private List<String> storesSelling(PrdGoods g) {
+        List<String> activeStores = merchantPort.storeNos(g.getEntityNo());
+        if (activeStores.isEmpty()) {
+            return List.of();
+        }
+        List<ai.neargo.shop.product.entity.PrdStoreGoods> rows = storeGoodsRows(g.getGoodsNo());
+        if (rows.isEmpty()) {
+            // 一条店级行都没有 → 走主体总闸，所有门店都算在架（存量商家全在这一支）
+            return activeStores;
+        }
+        Set<String> on = rows.stream()
+                .filter(r -> Boolean.TRUE.equals(r.getOnSale()))
+                .map(ai.neargo.shop.product.entity.PrdStoreGoods::getStoreNo)
+                .collect(java.util.stream.Collectors.toSet());
+        return activeStores.stream().filter(on::contains).toList();
+    }
+
+    /**
+     * 每个 (社区, 门店) 的直线距离（米）。<b>批量取坐标</b> ——
+     * 一次上架要建几十行，逐个查就是几十次往返。
+     *
+     * <p>任一端没标过点就不进结果，调用方回落到 {@link #UNKNOWN_DISTANCE_M}。
+     */
+    private Map<String, Integer> distancesFor(java.util.Collection<String> communityNos,
+                                              List<String> storeNos) {
+        if (communityNos.isEmpty() || storeNos.isEmpty()) {
+            return Map.of();
+        }
+        Map<String, int[]> cc = communityQueryPort.coordsOfCommunities(new java.util.HashSet<>(communityNos));
+        Map<String, int[]> sc = merchantPort.coordsOfStores(storeNos);
+        Map<String, Integer> out = new java.util.HashMap<>();
+        for (Map.Entry<String, int[]> c : cc.entrySet()) {
+            for (Map.Entry<String, int[]> st : sc.entrySet()) {
+                out.put(c.getKey() + "|" + st.getKey(),
+                        distanceMeters(c.getValue(), st.getValue()));
+            }
+        }
+        return out;
+    }
+
+    /**
+     * 两点直线距离（米），球面近似。
+     *
+     * <p>**只用来排序，不展示给人**，所以不必上 Haversine 的精度 ——
+     * 但也不能用平面欧氏：经度一度的实际长度随纬度收缩，
+     * 不乘 cos(lat) 的话南北向会被系统性地算短。
+     */
+    private static int distanceMeters(int[] a, int[] b) {
+        double latA = a[0] / 1e6;
+        double latB = b[0] / 1e6;
+        double dLat = (latA - latB) * 111_320.0;
+        double dLng = (a[1] - b[1]) / 1e6 * 111_320.0
+                * Math.cos(Math.toRadians((latA + latB) / 2));
+        double d = Math.sqrt(dLat * dLat + dLng * dLng);
+        return d >= UNKNOWN_DISTANCE_M ? UNKNOWN_DISTANCE_M - 1 : (int) Math.round(d);
+    }
+
+    private static String nz(String s) {
+        return s == null ? "" : s;
     }
 
     @Override

@@ -220,9 +220,11 @@ public final class ProductMappers {
          */
         @Update("""
                 UPDATE prd_community_pool SET deleted = 0, version = version + 1
-                WHERE community_no = #{communityNo} AND goods_no = #{goodsNo} AND deleted = 1
+                WHERE community_no = #{communityNo} AND goods_no = #{goodsNo}
+                  AND store_no = #{storeNo} AND deleted = 1
                 """)
-        int revive(@Param("communityNo") String communityNo, @Param("goodsNo") String goodsNo);
+        int revive(@Param("communityNo") String communityNo, @Param("goodsNo") String goodsNo,
+                   @Param("storeNo") String storeNo);
     }
 
     public interface StockLockMapper extends BaseMapper<PrdStockLock> {

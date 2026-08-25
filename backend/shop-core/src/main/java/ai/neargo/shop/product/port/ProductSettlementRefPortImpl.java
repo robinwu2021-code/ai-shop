@@ -27,6 +27,10 @@ public class ProductSettlementRefPortImpl implements SettlementRefPort {
         this.poolMapper = poolMapper;
     }
 
+    private static String nz(String s) {
+        return s == null ? "" : s;
+    }
+
     @Override
     public int repointSettlement(String fromNo, String intoNo) {
         if (fromNo == null || intoNo == null || fromNo.isBlank() || fromNo.equals(intoNo)) {
@@ -38,19 +42,26 @@ public class ProductSettlementRefPortImpl implements SettlementRefPort {
             if (rows.isEmpty()) {
                 return 0;
             }
-            // 同一件货在两条聚落上各摆了一次时，直接改会撞 (community_no, goods_no) 唯一键
-            Set<String> already = new HashSet<>(poolMapper
+            /*
+             * 同一件货在两条聚落上各摆了一次时，直接改会撞唯一键。
+             *
+             * **去重维度跟着唯一键走**（V241 起是三元组）：同一件货在两条聚落上
+             * 由**不同门店**摆着时，合并后是两行合法数据，不该被当成重复删掉一条 ——
+             * 删掉的话那家店的货在合并后的聚落里就没了，而没有任何地方会报错。
+             */
+            Set<String> already = new java.util.HashSet<>(poolMapper
                     .selectList(Wrappers.<PrdCommunityPool>lambdaQuery()
                             .eq(PrdCommunityPool::getCommunityNo, intoNo))
-                    .stream().map(PrdCommunityPool::getGoodsNo).toList());
+                    .stream().map(r -> r.getGoodsNo() + "|" + nz(r.getStoreNo())).toList());
             int n = 0;
             for (PrdCommunityPool r : rows) {
-                if (already.contains(r.getGoodsNo())) {
+                String key = r.getGoodsNo() + "|" + nz(r.getStoreNo());
+                if (already.contains(key)) {
                     poolMapper.deleteById(r.getId());
                 } else {
                     r.setCommunityNo(intoNo);
                     poolMapper.updateById(r);
-                    already.add(r.getGoodsNo());
+                    already.add(key);
                 }
                 n++;
             }

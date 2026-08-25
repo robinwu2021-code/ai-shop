@@ -660,7 +660,7 @@ CREATE TABLE IF NOT EXISTS prd_community_pool
     deleted TINYINT(4) NOT NULL DEFAULT 0,
     store_no VARCHAR(64) DEFAULT NULL,
     PRIMARY KEY (id),
-    CONSTRAINT uk_community_goods UNIQUE (community_no,goods_no)
+    CONSTRAINT uk_community_goods_store UNIQUE (community_no, goods_no, store_no)
 );
 
 CREATE TABLE IF NOT EXISTS prd_goods
@@ -3467,6 +3467,79 @@ CREATE TABLE IF NOT EXISTS pmt_apply
     deleted TINYINT(4) NOT NULL DEFAULT 0,
     PRIMARY KEY (id),
     CONSTRAINT uk_pmt_apply_no UNIQUE (apply_no)
+);
+
+CREATE TABLE IF NOT EXISTS pmt_activity
+(
+    id BIGINT(20) NOT NULL AUTO_INCREMENT,
+    activity_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    store_no VARCHAR(64) DEFAULT NULL,
+    name VARCHAR(128) NOT NULL,
+    goal VARCHAR(16) DEFAULT NULL,
+    trigger_type VARCHAR(16) NOT NULL,
+    trigger_amount_minor BIGINT(20) DEFAULT NULL,
+    trigger_qty INT(11) DEFAULT NULL,
+    benefit_type VARCHAR(16) NOT NULL,
+    benefit_amount_minor BIGINT(20) DEFAULT NULL,
+    benefit_qty INT(11) DEFAULT NULL,
+    benefit_ref VARCHAR(64) DEFAULT NULL,
+    schedule_type VARCHAR(16) NOT NULL DEFAULT 'ONE_OFF',
+    start_at BIGINT(20) DEFAULT NULL,
+    end_at BIGINT(20) DEFAULT NULL,
+    schedule_rule VARCHAR(255) DEFAULT NULL,
+    quota INT(11) DEFAULT NULL,
+    quota_used INT(11) NOT NULL DEFAULT 0,
+    budget_minor BIGINT(20) DEFAULT NULL,
+    budget_used_minor BIGINT(20) NOT NULL DEFAULT 0,
+    status VARCHAR(16) NOT NULL DEFAULT 'DRAFT',
+    ended_reason VARCHAR(16) DEFAULT NULL,
+    archived_at DATETIME DEFAULT NULL,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT(20) NOT NULL DEFAULT 0,
+    deleted TINYINT(4) NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_pmt_activity_no UNIQUE (activity_no)
+);
+
+CREATE TABLE IF NOT EXISTS pmt_activity_audience
+(
+    id BIGINT(20) NOT NULL AUTO_INCREMENT,
+    activity_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    audience_type VARCHAR(16) NOT NULL,
+    audience_value VARCHAR(64) NOT NULL,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT(20) NOT NULL DEFAULT 0,
+    deleted TINYINT(4) NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_pmt_audience UNIQUE (tenant_no, activity_no, audience_type, audience_value)
+);
+
+CREATE TABLE IF NOT EXISTS pmt_activity_goods
+(
+    id BIGINT(20) NOT NULL AUTO_INCREMENT,
+    activity_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    scope_type VARCHAR(16) NOT NULL DEFAULT 'GOODS',
+    ref_no VARCHAR(64) NOT NULL,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT(20) NOT NULL DEFAULT 0,
+    deleted TINYINT(4) NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_pmt_activity_goods UNIQUE (tenant_no, activity_no, scope_type, ref_no)
 );
 
 -- 种子数据

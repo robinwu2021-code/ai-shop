@@ -62,6 +62,27 @@ public class CommunityQueryPortImpl implements CommunityQueryPort {
     }
 
     @Override
+    public java.util.Map<String, int[]> coordsOfCommunities(
+            java.util.Collection<String> communityNos) {
+        if (communityNos == null || communityNos.isEmpty()) {
+            return java.util.Map.of();
+        }
+        java.util.Map<String, int[]> out = new java.util.HashMap<>();
+        DataScopeContext.executeWithoutScope(() -> communityMapper.selectList(
+                        com.baomidou.mybatisplus.core.toolkit.Wrappers
+                                .<ai.neargo.shop.community.entity.CmtCommunity>lambdaQuery()
+                                .in(ai.neargo.shop.community.entity.CmtCommunity::getCommunityNo, communityNos)))
+                .forEach(c -> {
+                    // 没标过点的不放进结果 —— 调用方据此走「算不出距离」那一支。
+                    // 放个 (0,0) 进去会算出一条到几内亚湾的距离，而那是个看着正常的数
+                    if (c.getLatE6() != null && c.getLngE6() != null) {
+                        out.put(c.getCommunityNo(), new int[]{c.getLatE6(), c.getLngE6()});
+                    }
+                });
+        return out;
+    }
+
+    @Override
     public String communityName(String communityNo) {
         if (communityNo == null || communityNo.isBlank()) {
             return communityNo;

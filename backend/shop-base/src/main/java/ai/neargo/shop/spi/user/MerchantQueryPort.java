@@ -226,6 +226,14 @@ public interface MerchantQueryPort {
     java.util.Map<String, String> entityOfStores(java.util.Collection<String> storeNos);
 
     /**
+     * 这些门店的坐标（gcj02, E6）。与 {@link CommunityQueryPort#coordsOfCommunities} 配对，
+     * 用来算「哪家店离这个社区最近」。
+     *
+     * @return 只含**标过点**的门店；没标点的不出现 —— 调用方据此走「算不出距离」那一支
+     */
+    java.util.Map<String, int[]> coordsOfStores(java.util.Collection<String> storeNos);
+
+    /**
      * @param merchantNo   商家业务键
      * @param merchantName 展示名（下单快照用，商家改名不影响历史订单）
      * @param canSell      是否可上架售卖（审核通过且未封禁）

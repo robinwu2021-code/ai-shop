@@ -48,4 +48,14 @@ public interface CommunityQueryPort {
      * 空白会让商家以为「这一条坏了」而去删掉它。
      */
     String communityName(String communityNo);
+
+    /**
+     * 这些社区的坐标（gcj02, E6）。<b>建社区池时用来算「哪家店离这儿最近」。</b>
+     *
+     * <p>批量取而不是逐个查：一次上架要给几十个社区建池行，逐个查就是几十次往返。
+     *
+     * @return 只含**有坐标**的那些；没标过点的社区不出现在结果里 ——
+     *         调用方据此走「算不出距离」那一支，而不是拿 (0,0) 去算出一个地球另一端的距离
+     */
+    java.util.Map<String, int[]> coordsOfCommunities(Collection<String> communityNos);
 }
