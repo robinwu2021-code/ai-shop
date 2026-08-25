@@ -1611,6 +1611,17 @@ function applyBulkStock() {
  */
 onShow(() => {
   if (channelsLoaded.value) void loadStoreChannels();
+  /*
+   * **规格也要重拉**，理由与送货方式一模一样：商家可能刚从「我的规格」回来，
+   * 在那边给这一类停了一个维度、改了本店叫法、或者加了一个维度进来。
+   * 不重拉的话，建品页手里还是**进来那一刻**的那份 —— 他会以为那一页白设了，
+   * 而这正是今天在送货方式上踩过的同一个坑（注释写着会重拉，其实没有 onShow）。
+   *
+   * <p>只在已经选了类目时拉：没选类目时那份是「他自己的常用」，与门店设置无关。
+   * `loadTemplates` 里的 `primeMainGroup` 有 `groups.length` 闸，
+   * 已经建过组的不会被它覆盖。
+   */
+  if (categoryNo.value) void loadTemplates();
 });
 
 onLoad(async (q) => {
