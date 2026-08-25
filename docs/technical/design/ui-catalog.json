@@ -1,0 +1,1923 @@
+{
+  "apps": [
+    {
+      "key": "b-app",
+      "label": "商家 App",
+      "count": 43,
+      "domains": [
+        {
+          "name": "工作台",
+          "pages": [
+            {
+              "app": "b-app",
+              "route": "/pages/home/index",
+              "title": "工作台",
+              "domain": "工作台",
+              "tab": true,
+              "status": "已实现"
+            }
+          ]
+        },
+        {
+          "name": "订单与履约",
+          "pages": [
+            {
+              "app": "b-app",
+              "route": "/pages/orders/index",
+              "title": "订单",
+              "domain": "订单与履约",
+              "tab": true,
+              "status": "已实现"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/order/index",
+              "title": "详情",
+              "domain": "订单与履约",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/verify/index",
+              "title": "核销台",
+              "domain": "订单与履约",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/picking/index",
+              "title": "分拣单",
+              "domain": "订单与履约",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/delivery/index",
+              "title": "商家自送",
+              "domain": "订单与履约",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/after-sale/index",
+              "title": "售后处理",
+              "domain": "订单与履约",
+              "tab": false,
+              "status": "已实现"
+            }
+          ]
+        },
+        {
+          "name": "商品",
+          "pages": [
+            {
+              "app": "b-app",
+              "route": "/pages/goods-list/index",
+              "title": "商品",
+              "domain": "商品",
+              "tab": true,
+              "status": "已实现"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/goods-edit/index",
+              "title": "编辑商品",
+              "domain": "商品",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/store-categories/index",
+              "title": "类目与规格",
+              "domain": "商品",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/my-specs/index",
+              "title": "商品规格",
+              "domain": "商品",
+              "tab": false,
+              "status": "已实现"
+            }
+          ]
+        },
+        {
+          "name": "账号与设置",
+          "pages": [
+            {
+              "app": "b-app",
+              "route": "/pages/me/index",
+              "title": "我的",
+              "domain": "账号与设置",
+              "tab": true,
+              "status": "已实现"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/login/index",
+              "title": "商家登录",
+              "domain": "账号与设置",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/apply/index",
+              "title": "入驻申请",
+              "domain": "账号与设置",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/staff-detail/index",
+              "title": "员工详情",
+              "domain": "账号与设置",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/role-detail/index",
+              "title": "角色",
+              "domain": "账号与设置",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/staff/index",
+              "title": "员工",
+              "domain": "账号与设置",
+              "tab": false,
+              "status": "已实现"
+            }
+          ]
+        },
+        {
+          "name": "消息与评价",
+          "pages": [
+            {
+              "app": "b-app",
+              "route": "/pages/messages/index",
+              "title": "消息",
+              "domain": "消息与评价",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/reviews/index",
+              "title": "评价与回复",
+              "domain": "消息与评价",
+              "tab": false,
+              "status": "已实现"
+            }
+          ]
+        },
+        {
+          "name": "门店",
+          "pages": [
+            {
+              "app": "b-app",
+              "route": "/pages/stores/index",
+              "title": "门店管理",
+              "domain": "门店",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/qualifications/index",
+              "title": "资质证照",
+              "domain": "门店",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/store/index",
+              "title": "店铺设置",
+              "domain": "门店",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/store-notice/index",
+              "title": "公告",
+              "domain": "门店",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/store-scope/index",
+              "title": "经营范围与送货",
+              "domain": "门店",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/store-pick/index",
+              "title": "选择门店",
+              "domain": "门店",
+              "tab": false,
+              "status": "已实现"
+            }
+          ]
+        },
+        {
+          "name": "钱",
+          "pages": [
+            {
+              "app": "b-app",
+              "route": "/pages/payment/index",
+              "title": "收款设置",
+              "domain": "钱",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/settle/index",
+              "title": "结算单",
+              "domain": "钱",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/plan/index",
+              "title": "我的套餐",
+              "domain": "钱",
+              "tab": false,
+              "status": "已实现"
+            }
+          ]
+        },
+        {
+          "name": "团购与求团",
+          "pages": [
+            {
+              "app": "b-app",
+              "route": "/pages/quotes/index",
+              "title": "邻里求团报价",
+              "domain": "团购与求团",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/groups/index",
+              "title": "商家团",
+              "domain": "团购与求团",
+              "tab": false,
+              "status": "已实现"
+            }
+          ]
+        },
+        {
+          "name": "数据",
+          "pages": [
+            {
+              "app": "b-app",
+              "route": "/pages/stats/index",
+              "title": "经营数据",
+              "domain": "数据",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/cross-store/index",
+              "title": "跨店总览",
+              "domain": "数据",
+              "tab": false,
+              "status": "已实现"
+            }
+          ]
+        },
+        {
+          "name": "会员与营销",
+          "pages": [
+            {
+              "app": "b-app",
+              "route": "/pages/marketing/index",
+              "title": "营销活动",
+              "domain": "会员与营销",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/customers/index",
+              "title": "我的客户",
+              "domain": "会员与营销",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/members/index",
+              "title": "会员总览",
+              "domain": "会员与营销",
+              "tab": false,
+              "status": "原型"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/members/detail",
+              "title": "会员详情",
+              "domain": "会员与营销",
+              "tab": false,
+              "status": "原型"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/members/add",
+              "title": "手工录入会员",
+              "domain": "会员与营销",
+              "tab": false,
+              "status": "原型"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/member-tags/index",
+              "title": "标签与合并",
+              "domain": "会员与营销",
+              "tab": false,
+              "status": "原型"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/member-settings/index",
+              "title": "会员口径设置",
+              "domain": "会员与营销",
+              "tab": false,
+              "status": "原型"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/segments/index",
+              "title": "人群",
+              "domain": "会员与营销",
+              "tab": false,
+              "status": "原型"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/coupons/index",
+              "title": "券列表",
+              "domain": "会员与营销",
+              "tab": false,
+              "status": "原型"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/coupon-edit/index",
+              "title": "新建券",
+              "domain": "会员与营销",
+              "tab": false,
+              "status": "原型"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/coupon-issue/index",
+              "title": "发放结果",
+              "domain": "会员与营销",
+              "tab": false,
+              "status": "原型"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "c-app",
+      "label": "买家小程序",
+      "count": 30,
+      "domains": [
+        {
+          "name": "工作台",
+          "pages": [
+            {
+              "app": "c-app",
+              "route": "/pages/home/index",
+              "title": "社区好物",
+              "domain": "工作台",
+              "tab": true,
+              "status": "已实现"
+            }
+          ]
+        },
+        {
+          "name": "商品",
+          "pages": [
+            {
+              "app": "c-app",
+              "route": "/pages/category/index",
+              "title": "分类",
+              "domain": "商品",
+              "tab": true,
+              "status": "已实现"
+            },
+            {
+              "app": "c-app",
+              "route": "/pages/goods/index",
+              "title": "商品详情",
+              "domain": "商品",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "c-app",
+              "route": "/pages/search/index",
+              "title": "搜索",
+              "domain": "商品",
+              "tab": false,
+              "status": "已实现"
+            }
+          ]
+        },
+        {
+          "name": "订单与履约",
+          "pages": [
+            {
+              "app": "c-app",
+              "route": "/pages/cart/index",
+              "title": "购物车",
+              "domain": "订单与履约",
+              "tab": true,
+              "status": "已实现"
+            },
+            {
+              "app": "c-app",
+              "route": "/pages/order-confirm/index",
+              "title": "确认订单",
+              "domain": "订单与履约",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "c-app",
+              "route": "/pages/pay/index",
+              "title": "收银台",
+              "domain": "订单与履约",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "c-app",
+              "route": "/pages/orders/index",
+              "title": "我的订单",
+              "domain": "订单与履约",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "c-app",
+              "route": "/pages/order/index",
+              "title": "订单详情",
+              "domain": "订单与履约",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "c-app",
+              "route": "/pages/after-sale/index",
+              "title": "申请售后",
+              "domain": "订单与履约",
+              "tab": false,
+              "status": "已实现"
+            }
+          ]
+        },
+        {
+          "name": "账号与设置",
+          "pages": [
+            {
+              "app": "c-app",
+              "route": "/pages/me/index",
+              "title": "我的",
+              "domain": "账号与设置",
+              "tab": true,
+              "status": "已实现"
+            },
+            {
+              "app": "c-app",
+              "route": "/pages/address/index",
+              "title": "收货地址",
+              "domain": "账号与设置",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "c-app",
+              "route": "/pages/login/index",
+              "title": "登录",
+              "domain": "账号与设置",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "c-app",
+              "route": "/pages/legal/index",
+              "title": "协议与条款",
+              "domain": "账号与设置",
+              "tab": false,
+              "status": "已实现"
+            }
+          ]
+        },
+        {
+          "name": "店铺与逛",
+          "pages": [
+            {
+              "app": "c-app",
+              "route": "/pages/merchant/index",
+              "title": "商家主页",
+              "domain": "店铺与逛",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "c-app",
+              "route": "/pages/merchants/index",
+              "title": "附近商家",
+              "domain": "店铺与逛",
+              "tab": true,
+              "status": "已实现"
+            },
+            {
+              "app": "c-app",
+              "route": "/pages/community/index",
+              "title": "选择社区自提点",
+              "domain": "店铺与逛",
+              "tab": false,
+              "status": "已实现"
+            }
+          ]
+        },
+        {
+          "name": "团购与求团",
+          "pages": [
+            {
+              "app": "c-app",
+              "route": "/pages/group/index",
+              "title": "团购详情",
+              "domain": "团购与求团",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "c-app",
+              "route": "/pages/groups/index",
+              "title": "拼团",
+              "domain": "团购与求团",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "c-app",
+              "route": "/pages/request/index",
+              "title": "求团详情",
+              "domain": "团购与求团",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "c-app",
+              "route": "/pages/request-create/index",
+              "title": "发起求团",
+              "domain": "团购与求团",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "c-app",
+              "route": "/pages/group-host/index",
+              "title": "我发起的团",
+              "domain": "团购与求团",
+              "tab": false,
+              "status": "已实现"
+            }
+          ]
+        },
+        {
+          "name": "消息与评价",
+          "pages": [
+            {
+              "app": "c-app",
+              "route": "/pages/review-write/index",
+              "title": "发表评价",
+              "domain": "消息与评价",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "c-app",
+              "route": "/pages/messages/index",
+              "title": "消息",
+              "domain": "消息与评价",
+              "tab": false,
+              "status": "已实现"
+            }
+          ]
+        },
+        {
+          "name": "钱",
+          "pages": [
+            {
+              "app": "c-app",
+              "route": "/pages/points/index",
+              "title": "我的积分",
+              "domain": "钱",
+              "tab": false,
+              "status": "已实现"
+            }
+          ]
+        },
+        {
+          "name": "会员与营销",
+          "pages": [
+            {
+              "app": "c-app",
+              "route": "/pages/coupons/index",
+              "title": "我的券",
+              "domain": "会员与营销",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "c-app",
+              "route": "/pages/cards/index",
+              "title": "我的卡包",
+              "domain": "会员与营销",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "c-app",
+              "route": "/pages/member-card/index",
+              "title": "我的会员卡",
+              "domain": "会员与营销",
+              "tab": false,
+              "status": "原型"
+            },
+            {
+              "app": "c-app",
+              "route": "/pages/coupons/index",
+              "title": "券包（含次卡出示）",
+              "domain": "会员与营销",
+              "tab": false,
+              "status": "原型"
+            }
+          ]
+        },
+        {
+          "name": "门店",
+          "pages": [
+            {
+              "app": "c-app",
+              "route": "/pages/store/index",
+              "title": "店铺主页",
+              "domain": "门店",
+              "tab": false,
+              "status": "已实现"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ops-web",
+      "label": "运营端",
+      "count": 116,
+      "domains": [
+        {
+          "name": "经营看板",
+          "pages": [
+            {
+              "app": "ops-web",
+              "route": "/",
+              "title": "经营看板",
+              "domain": "经营看板",
+              "tab": false,
+              "status": "已实现"
+            }
+          ]
+        },
+        {
+          "name": "商家治理",
+          "pages": [
+            {
+              "app": "ops-web",
+              "route": "/merchants",
+              "title": "商家治理",
+              "domain": "商家治理",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/merchants",
+              "title": "入驻审核",
+              "domain": "商家治理",
+              "group": "入驻与资质",
+              "matrix": "P-11.1",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/merchants?tab=list",
+              "title": "商家档案",
+              "domain": "商家治理",
+              "group": "入驻与资质",
+              "matrix": "P-11.1",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/merchants?tab=stores",
+              "title": "门店档案",
+              "domain": "商家治理",
+              "group": "入驻与资质",
+              "matrix": "P-11.2",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/merchants?tab=categories",
+              "title": "类目授权",
+              "domain": "商家治理",
+              "group": "入驻与资质",
+              "matrix": "P-11.1",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/merchants?tab=qualifications",
+              "title": "资质档案",
+              "domain": "商家治理",
+              "group": "入驻与资质",
+              "matrix": "P-11.1",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/merchants?tab=admission",
+              "title": "准入与保证金",
+              "domain": "商家治理",
+              "group": "入驻与资质",
+              "matrix": "P-11.1",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/merchants?tab=mode-risk",
+              "title": "无照自营风险",
+              "domain": "商家治理",
+              "group": "入驻与资质",
+              "matrix": "P-11.1",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/merchants?tab=verify",
+              "title": "认证标管理",
+              "domain": "商家治理",
+              "group": "信用与处置",
+              "matrix": "P-11.1",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/merchants?tab=credit",
+              "title": "信用档案",
+              "domain": "商家治理",
+              "group": "信用与处置",
+              "matrix": "P-11.1",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/merchants?tab=ban",
+              "title": "违规处置与封禁",
+              "domain": "商家治理",
+              "group": "信用与处置",
+              "matrix": "P-11.1",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/merchants?tab=plans",
+              "title": "增值包与额度",
+              "domain": "商家治理",
+              "group": "增值包",
+              "matrix": "P-11.2",
+              "tab": false,
+              "status": "已实现"
+            }
+          ]
+        },
+        {
+          "name": "门店主页",
+          "pages": [
+            {
+              "app": "ops-web",
+              "route": "/stores",
+              "title": "门店主页",
+              "domain": "门店主页",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/stores",
+              "title": "店招公告审核",
+              "domain": "门店主页",
+              "group": "模板与合规",
+              "matrix": "P-10.1",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/stores?tab=template",
+              "title": "主页模板配置",
+              "domain": "门店主页",
+              "group": "模板与合规",
+              "matrix": "P-10.1",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/stores?tab=qrcode",
+              "title": "店铺码生成导出",
+              "domain": "门店主页",
+              "group": "获客",
+              "matrix": "P-10.1",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/stores?tab=effect",
+              "title": "获客效果看板",
+              "domain": "门店主页",
+              "group": "获客",
+              "matrix": "P-10.1",
+              "tab": false,
+              "status": "已实现"
+            }
+          ]
+        },
+        {
+          "name": "商品与类目",
+          "pages": [
+            {
+              "app": "ops-web",
+              "route": "/products",
+              "title": "商品与类目",
+              "domain": "商品与类目",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/products",
+              "title": "平台类目树",
+              "domain": "商品与类目",
+              "group": "类目",
+              "matrix": "P-3.1",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/products?tab=skus",
+              "title": "商品池与审核",
+              "domain": "商品与类目",
+              "group": "商品",
+              "matrix": "P-3.2",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/products?tab=audit",
+              "title": "商品审核队列",
+              "domain": "商品与类目",
+              "group": "商品",
+              "matrix": "P-3.2",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/products?tab=stock",
+              "title": "预售额度与超卖",
+              "domain": "商品与类目",
+              "group": "库存与预售",
+              "matrix": "P-3.3",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/products?tab=templates",
+              "title": "规格模板维护",
+              "domain": "商品与类目",
+              "group": "规格模板",
+              "matrix": "P-3.4",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/products?tab=spec-common",
+              "title": "通用规格",
+              "domain": "商品与类目",
+              "group": "规格",
+              "matrix": "P-3.4",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/products?tab=spec-special",
+              "title": "专用规格",
+              "domain": "商品与类目",
+              "group": "规格",
+              "matrix": "P-3.4",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/products?tab=category-spec",
+              "title": "类目 × 规格",
+              "domain": "商品与类目",
+              "group": "规格",
+              "matrix": "P-3.4",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/products?tab=spu-std",
+              "title": "标准品库",
+              "domain": "商品与类目",
+              "group": "标准品",
+              "matrix": "P-3.5",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/products?tab=topics",
+              "title": "主题分类",
+              "domain": "商品与类目",
+              "group": "陈列",
+              "matrix": "P-3.6",
+              "tab": false,
+              "status": "已实现"
+            }
+          ]
+        },
+        {
+          "name": "交易订单",
+          "pages": [
+            {
+              "app": "ops-web",
+              "route": "/orders",
+              "title": "交易订单",
+              "domain": "交易订单",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/orders",
+              "title": "订单检索",
+              "domain": "交易订单",
+              "group": "订单",
+              "matrix": "P-4.1",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/orders?tab=exception",
+              "title": "异常单处理",
+              "domain": "交易订单",
+              "group": "订单",
+              "matrix": "P-4.1",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/orders?tab=proxy",
+              "title": "代客下单/取消",
+              "domain": "交易订单",
+              "group": "订单",
+              "matrix": "P-4.1",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/orders?tab=pay",
+              "title": "支付流水核对",
+              "domain": "交易订单",
+              "group": "支付",
+              "matrix": "P-4.2",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/orders?tab=repair",
+              "title": "掉单补偿",
+              "domain": "交易订单",
+              "group": "支付",
+              "matrix": "P-4.2",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/orders?tab=close",
+              "title": "关单策略配置",
+              "domain": "交易订单",
+              "group": "支付",
+              "matrix": "P-4.2",
+              "tab": false,
+              "status": "已实现"
+            }
+          ]
+        },
+        {
+          "name": "履约调度",
+          "pages": [
+            {
+              "app": "ops-web",
+              "route": "/fulfillment",
+              "title": "履约调度",
+              "domain": "履约调度",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/fulfillment",
+              "title": "到货批次与配车",
+              "domain": "履约调度",
+              "group": "到货与分拣",
+              "matrix": "P-5.1",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/fulfillment?tab=sorting",
+              "title": "按自提点汇总分拣",
+              "domain": "履约调度",
+              "group": "到货与分拣",
+              "matrix": "P-5.1",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/fulfillment?tab=redeem",
+              "title": "核销监控与逾期",
+              "domain": "履约调度",
+              "group": "核销",
+              "matrix": "P-5.1",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/fulfillment?tab=overdue",
+              "title": "逾期规则配置",
+              "domain": "履约调度",
+              "group": "核销",
+              "matrix": "P-5.1",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/fulfillment?tab=express",
+              "title": "快递与轨迹",
+              "domain": "履约调度",
+              "group": "物流",
+              "matrix": "P-5.2",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/fulfillment?tab=freight",
+              "title": "运费模板与超区",
+              "domain": "履约调度",
+              "group": "物流",
+              "matrix": "P-5.2",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/fulfillment?tab=carrier",
+              "title": "第三方运力配置",
+              "domain": "履约调度",
+              "group": "物流",
+              "matrix": "P-5.2",
+              "tab": false,
+              "status": "已实现"
+            }
+          ]
+        },
+        {
+          "name": "售后治理",
+          "pages": [
+            {
+              "app": "ops-web",
+              "route": "/after-sales",
+              "title": "售后治理",
+              "domain": "售后治理",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/after-sales",
+              "title": "售后工单池",
+              "domain": "售后治理",
+              "group": "处置",
+              "matrix": "P-6.1",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/after-sales?tab=intervene",
+              "title": "平台介入裁决",
+              "domain": "售后治理",
+              "group": "处置",
+              "matrix": "P-6.1",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/after-sales?tab=fastrefund",
+              "title": "极速退阈值配置",
+              "domain": "售后治理",
+              "group": "规则",
+              "matrix": "P-6.1",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/finance?tab=refund-back",
+              "title": "退款回退分账",
+              "domain": "售后治理",
+              "group": "规则",
+              "matrix": "P-6.1",
+              "tab": false,
+              "status": "已实现"
+            }
+          ]
+        },
+        {
+          "name": "营销活动",
+          "pages": [
+            {
+              "app": "ops-web",
+              "route": "/marketing",
+              "title": "营销活动",
+              "domain": "营销活动",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/marketing",
+              "title": "券模板",
+              "domain": "营销活动",
+              "group": "优惠券",
+              "matrix": "P-7.1",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/marketing?tab=issues",
+              "title": "发放记录",
+              "domain": "营销活动",
+              "group": "优惠券",
+              "matrix": "P-7.1",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/marketing?tab=campaigns",
+              "title": "活动",
+              "domain": "营销活动",
+              "group": "活动",
+              "matrix": "P-7.2",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/marketing?tab=slots",
+              "title": "首页楼层与 Banner",
+              "domain": "营销活动",
+              "group": "内容位",
+              "matrix": "P-7.3",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/marketing?tab=member",
+              "title": "会员卡与权益",
+              "domain": "营销活动",
+              "group": "会员",
+              "matrix": "P-7.4",
+              "tab": false,
+              "status": "已实现"
+            }
+          ]
+        },
+        {
+          "name": "团购与求团",
+          "pages": [
+            {
+              "app": "ops-web",
+              "route": "/groups",
+              "title": "团购与求团",
+              "domain": "团购与求团",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/groups",
+              "title": "商家团",
+              "domain": "团购与求团",
+              "group": "商家团",
+              "matrix": "P-8.1",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/groups?tab=demands",
+              "title": "需求单池与指派",
+              "domain": "团购与求团",
+              "group": "求团撮合",
+              "matrix": "P-8.2",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/groups?tab=quotes",
+              "title": "改价留痕与毁约",
+              "domain": "团购与求团",
+              "group": "求团撮合",
+              "matrix": "P-8.2",
+              "tab": false,
+              "status": "已实现"
+            }
+          ]
+        },
+        {
+          "name": "增长与归因",
+          "pages": [
+            {
+              "app": "ops-web",
+              "route": "/growth",
+              "title": "增长与归因",
+              "domain": "增长与归因",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/growth",
+              "title": "归因规则",
+              "domain": "增长与归因",
+              "group": "归因引擎",
+              "matrix": "P-9.1",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/growth?tab=traces",
+              "title": "归因链路审计",
+              "domain": "增长与归因",
+              "group": "归因引擎",
+              "matrix": "P-9.1",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/growth?tab=fission",
+              "title": "邀请有礼配置",
+              "domain": "增长与归因",
+              "group": "裂变活动",
+              "matrix": "P-9.2",
+              "tab": false,
+              "status": "已实现"
+            }
+          ]
+        },
+        {
+          "name": "结算与资金",
+          "pages": [
+            {
+              "app": "ops-web",
+              "route": "/finance",
+              "title": "结算与资金",
+              "domain": "结算与资金",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/finance",
+              "title": "结算单与分账",
+              "domain": "结算与资金",
+              "group": "分账结算",
+              "matrix": "P-12.1",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/finance?tab=splits",
+              "title": "分账明细",
+              "domain": "结算与资金",
+              "group": "分账结算",
+              "matrix": "P-12.1",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/finance?tab=refund-back",
+              "title": "退款回退分账",
+              "domain": "结算与资金",
+              "group": "分账结算",
+              "matrix": "P-12.1",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/finance?tab=points",
+              "title": "积分资金看板",
+              "domain": "结算与资金",
+              "group": "分账结算",
+              "matrix": "P-12.1",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/finance?tab=rates",
+              "title": "分档费率与服务费",
+              "domain": "结算与资金",
+              "group": "费率",
+              "matrix": "P-12.1",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/finance?tab=withdraw",
+              "title": "提现审批",
+              "domain": "结算与资金",
+              "group": "提现与税",
+              "matrix": "P-12.2",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/finance?tab=invoice",
+              "title": "发票与个税",
+              "domain": "结算与资金",
+              "group": "提现与税",
+              "matrix": "P-12.2",
+              "tab": false,
+              "status": "已实现"
+            }
+          ]
+        },
+        {
+          "name": "评价治理",
+          "pages": [
+            {
+              "app": "ops-web",
+              "route": "/reviews",
+              "title": "评价治理",
+              "domain": "评价治理",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/reviews",
+              "title": "评价审核",
+              "domain": "评价治理",
+              "group": "审核",
+              "matrix": "P-13.1",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/reviews?tab=appeals",
+              "title": "恶意差评申诉裁决",
+              "domain": "评价治理",
+              "group": "审核",
+              "matrix": "P-13.1",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/reviews?tab=score",
+              "title": "评分算法参数",
+              "domain": "评价治理",
+              "group": "评分",
+              "matrix": "P-13.1",
+              "tab": false,
+              "status": "已实现"
+            }
+          ]
+        },
+        {
+          "name": "消息与客服",
+          "pages": [
+            {
+              "app": "ops-web",
+              "route": "/messages",
+              "title": "消息与客服",
+              "domain": "消息与客服",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/messages",
+              "title": "通道总览",
+              "domain": "消息与客服",
+              "group": "触达",
+              "matrix": "P-14.1",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/messages?tab=sms",
+              "title": "短信",
+              "domain": "消息与客服",
+              "group": "触达",
+              "matrix": "P-14.1",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/messages?tab=mail",
+              "title": "邮件",
+              "domain": "消息与客服",
+              "group": "触达",
+              "matrix": "P-14.1",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/messages?tab=wxsub",
+              "title": "微信订阅消息",
+              "domain": "消息与客服",
+              "group": "触达",
+              "matrix": "P-14.1",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/messages?tab=apppush",
+              "title": "App 推送",
+              "domain": "消息与客服",
+              "group": "触达",
+              "matrix": "P-14.1",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/messages?tab=inapp",
+              "title": "站内信模板",
+              "domain": "消息与客服",
+              "group": "触达",
+              "matrix": "P-14.1",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/messages?tab=notifyLog",
+              "title": "发送记录",
+              "domain": "消息与客服",
+              "group": "触达",
+              "matrix": "P-14.1",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/messages?tab=broadcast",
+              "title": "营销广播",
+              "domain": "消息与客服",
+              "group": "触达",
+              "matrix": "P-14.1",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/messages?tab=tickets",
+              "title": "客服工单与代客留痕",
+              "domain": "消息与客服",
+              "group": "客服",
+              "matrix": "P-14.2",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/messages?tab=faq",
+              "title": "帮助中心维护",
+              "domain": "消息与客服",
+              "group": "客服",
+              "matrix": "P-14.2",
+              "tab": false,
+              "status": "已实现"
+            }
+          ]
+        },
+        {
+          "name": "社区与网点",
+          "pages": [
+            {
+              "app": "ops-web",
+              "route": "/communities",
+              "title": "社区与网点",
+              "domain": "社区与网点",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/communities",
+              "title": "社区网格",
+              "domain": "社区与网点",
+              "group": "社区网格",
+              "matrix": "P-2.1",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/communities?tab=applies",
+              "title": "商家提报",
+              "domain": "社区与网点",
+              "group": "社区网格",
+              "matrix": "P-2.1",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/communities?tab=regions",
+              "title": "区划维护",
+              "domain": "社区与网点",
+              "group": "社区网格",
+              "matrix": "P-2.1",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/communities?tab=pickups",
+              "title": "自提点",
+              "domain": "社区与网点",
+              "group": "自提点",
+              "matrix": "P-2.2",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/communities?tab=neighbor",
+              "title": "临时点监控",
+              "domain": "社区与网点",
+              "group": "自提点",
+              "matrix": "P-2.2",
+              "tab": false,
+              "status": "已实现"
+            }
+          ]
+        },
+        {
+          "name": "素材与内容",
+          "pages": [
+            {
+              "app": "ops-web",
+              "route": "/contents",
+              "title": "素材与内容",
+              "domain": "素材与内容",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/contents",
+              "title": "素材中心与分发",
+              "domain": "素材与内容",
+              "group": "素材",
+              "matrix": "P-15.1",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/contents?tab=audit",
+              "title": "种草内容审核",
+              "domain": "素材与内容",
+              "group": "内容",
+              "matrix": "P-15.2",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/contents?tab=rank",
+              "title": "榜单与问答",
+              "domain": "素材与内容",
+              "group": "内容",
+              "matrix": "P-15.2",
+              "tab": false,
+              "status": "已实现"
+            }
+          ]
+        },
+        {
+          "name": "风控",
+          "pages": [
+            {
+              "app": "ops-web",
+              "route": "/risk",
+              "title": "风控",
+              "domain": "风控",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/risk",
+              "title": "风险事件",
+              "domain": "风控",
+              "group": "识别",
+              "matrix": "P-16.2",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/risk?tab=blacklist",
+              "title": "黑名单与申诉",
+              "domain": "风控",
+              "group": "处置",
+              "matrix": "P-16.2",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/risk?tab=rules",
+              "title": "拦截规则配置",
+              "domain": "风控",
+              "group": "处置",
+              "matrix": "P-16.2",
+              "tab": false,
+              "status": "已实现"
+            }
+          ]
+        },
+        {
+          "name": "员工与权限",
+          "pages": [
+            {
+              "app": "ops-web",
+              "route": "/iam",
+              "title": "员工与权限",
+              "domain": "员工与权限",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/iam",
+              "title": "员工账号与数据域",
+              "domain": "员工与权限",
+              "group": "账号",
+              "matrix": "P-1.1",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/iam?tab=roles",
+              "title": "角色与权限",
+              "domain": "员工与权限",
+              "group": "账号",
+              "matrix": "P-1.1",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/iam?tab=menu",
+              "title": "菜单顺序",
+              "domain": "员工与权限",
+              "group": "账号",
+              "matrix": "P-1.1",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/iam?tab=audit",
+              "title": "操作审计日志",
+              "domain": "员工与权限",
+              "group": "审计",
+              "matrix": "P-1.1",
+              "tab": false,
+              "status": "已实现"
+            }
+          ]
+        },
+        {
+          "name": "系统配置",
+          "pages": [
+            {
+              "app": "ops-web",
+              "route": "/system",
+              "title": "系统配置",
+              "domain": "系统配置",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/system",
+              "title": "外观与规则文案",
+              "domain": "系统配置",
+              "group": "外观与语言",
+              "matrix": "P-17.1",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/system?tab=market",
+              "title": "市场/货币/汇率",
+              "domain": "系统配置",
+              "group": "外观与语言",
+              "matrix": "P-17.1",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/system?tab=flags",
+              "title": "开关与灰度",
+              "domain": "系统配置",
+              "group": "运行配置",
+              "matrix": "P-17.1",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/system?tab=storage",
+              "title": "存储空间治理",
+              "domain": "系统配置",
+              "group": "运行配置",
+              "matrix": "P-17.1",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/system?tab=industry",
+              "title": "行业与小微白名单",
+              "domain": "系统配置",
+              "group": "经营范围",
+              "matrix": "P-17.1",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/system?tab=authCode",
+              "title": "经营授权码",
+              "domain": "系统配置",
+              "group": "经营范围",
+              "matrix": "P-17.1",
+              "tab": false,
+              "status": "已实现"
+            },
+            {
+              "app": "ops-web",
+              "route": "/system?tab=scope",
+              "title": "经营范围开关",
+              "domain": "系统配置",
+              "group": "经营范围",
+              "matrix": "P-17.1",
+              "tab": false,
+              "status": "已实现"
+            }
+          ]
+        },
+        {
+          "name": "会员与营销",
+          "pages": [
+            {
+              "app": "ops-web",
+              "route": "/members",
+              "title": "会员总览（跨商家）",
+              "domain": "会员与营销",
+              "tab": false,
+              "status": "原型"
+            },
+            {
+              "app": "ops-web",
+              "route": "/members?tab=person",
+              "title": "人档与合并",
+              "domain": "会员与营销",
+              "tab": false,
+              "status": "原型"
+            },
+            {
+              "app": "ops-web",
+              "route": "/members?tab=reach",
+              "title": "触达监控",
+              "domain": "会员与营销",
+              "tab": false,
+              "status": "原型"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "total": 189
+}
