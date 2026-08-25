@@ -14,7 +14,7 @@ import { useI18n } from "vue-i18n";
 import { api } from "@/api";
 import { useMerchantStore } from "@/stores/merchant";
 import { money } from "@shared/utils/money";
-import type { Member, MemberStats } from "@shared/types";
+import type { Member, MemberStats, MemberTag } from "@shared/types";
 
 const { t } = useI18n();
 const merchant = useMerchantStore();
@@ -30,6 +30,10 @@ const storeNo = ref("");
 const phone = ref("");
 /** 输了号但不足 11 位时给一句解释 —— 否则他会以为「这个人不见了」 */
 const phonePartial = computed(() => phone.value.length > 0 && phone.value.length < 11);
+
+/** 选中的标签。**取交集** —— 点第二个是想收窄，并集会让人数反而涨 */
+const pickedTags = ref<string[]>([]);
+const tags = ref<MemberTag[]>([]);
 
 const LEVELS = ["NEW", "REGULAR", "LOYAL", "SLEEPING"] as const;
 
@@ -51,6 +55,7 @@ async function load() {
       api.mMembers({
         storeNo: storeNo.value || undefined,
         level: level.value || undefined,
+        tagNos: pickedTags.value.length ? pickedTags.value.join(",") : undefined,
         phone: phone.value.length >= 11 ? phone.value : undefined,
         page: 1,
         size: 50,
@@ -58,6 +63,10 @@ async function load() {
     ]);
     stats.value = s;
     list.value = page.records;
+    if (!tags.value.length) {
+      tags.value = (await api.mMemberTags().catch(() => []))
+        .filter((x) => x.status === "ACTIVE");
+    }
   } catch (e) {
     uni.showToast({ title: (e as Error).message, icon: "none" });
   } finally {
@@ -68,6 +77,56 @@ async function load() {
 function pickLevel(v: string) {
   level.value = level.value === v ? "" : v;
   void load();
+}
+
+function toggleTag(no: string) {
+  pickedTags.value = pickedTags.value.includes(no)
+    ? pickedTags.value.filter((x) => x !== no)
+    : [...pickedTags.value, no];
+  void load();
+}
+
+/**
+ * 把**当前这组筛选条件**存成人群。
+ *
+ * 在筛出来的地方存，而不是另开一个筛选器 —— 少一处口径，也少一次「为什么两边人数不一样」。
+ * 存的是条件不是名单：发券那一刻会重算，所以这里先把试算的两个数摆给他看。
+ */
+async function saveAsSegment() {
+  const rule = {
+    level: level.value || undefined,
+    tagNos: pickedTags.value.length ? [...pickedTags.value] : undefined,
+  };
+  const pv = await api.mPreviewMemberSegment({
+    scopeStoreNo: storeNo.value || undefined,
+    rule,
+  }).catch(() => null);
+  if (!pv) return;
+  uni.showModal({
+    /*
+     * 试算结果放**标题**，不能放 content —— `editable: true` 时 content 是
+     * 输入框的初始值，不是说明文字。放那儿的话，商家按下确定就存出一个
+     * 叫「命中 1 人，其中 1 人能收到消息」的人群，而他并不觉得自己输了这行字。
+     * 两个数都报：线索会员与退订的人进不了受众，只报命中数他会以为发漏了。
+     */
+    title: t("members.segmentPreview", { n: pv.count, m: pv.reachable }),
+    editable: true,
+    placeholderText: t("members.segmentNamePh"),
+    success: async (r) => {
+      const name = (r.content ?? "").trim();
+      if (!r.confirm || !name) return;
+      try {
+        await api.mSaveMemberSegment({
+          name,
+          scopeStoreNo: storeNo.value || undefined,
+          rule,
+        });
+        uni.showToast({ title: t("members.segmentSaved"), icon: "none" });
+      } catch (e) {
+        uni.showToast({ title: (e as Error).message, icon: "none" });
+      }
+    },
+  });
 }
 
 function pickStore() {
@@ -113,6 +172,9 @@ onShow(load);
         {{ storeNo ? storeName(storeNo) : $t("members.allStores") }} ▾
       </text>
       <text class="sh-chip" @tap="go('/pages/member-tags/index')">{{ $t("memberTags.title") }}</text>
+      <text class="sh-chip" @tap="go('/pages/member-segments/index')">
+        {{ $t("memberSegments.title") }}
+      </text>
       <text class="sh-chip sh-chip--primary" @tap="go('/pages/member-add/index')">
         ＋ {{ $t("memberAdd.title") }}
       </text>
@@ -142,6 +204,29 @@ onShow(load);
     -->
     <view v-if="stats && stats.unlinkedBuyers > 0" class="notice">
       {{ $t("members.unlinked", { n: stats.unlinkedBuyers }) }}
+    </view>
+
+    <!--
+      标签筛选。**取交集**：点第二个标签是想收窄。
+      筛出来之后可以直接存成人群 —— 条件在哪儿筛就在哪儿存。
+    -->
+    <view v-if="tags.length" class="tagbar">
+      <text
+        v-for="tg in tags"
+        :key="tg.tagNo"
+        class="sh-chip"
+        :class="{ 'sh-chip--primary': pickedTags.includes(tg.tagNo) }"
+        @tap="toggleTag(tg.tagNo)"
+      >
+        {{ tg.name }}
+      </text>
+      <text
+        v-if="pickedTags.length || level"
+        class="sh-chip sh-chip--primary"
+        @tap="saveAsSegment"
+      >
+        ＋ {{ $t("members.saveSegment") }}
+      </text>
     </view>
 
     <view class="search">
@@ -182,6 +267,15 @@ onShow(load);
     </view>
 
     <text v-if="list.length" class="tip">{{ $t("members.privacyHint") }}</text>
+
+    <!-- 口径开关只给店主：它一改，全主体的分层与所有活动受众跟着变 -->
+    <text
+      v-if="merchant.can('biz:store:admin')"
+      class="settings"
+      @tap="go('/pages/member-settings/index')"
+    >
+      {{ $t("memberSettings.entry") }}
+    </text>
   </sh-scaffold>
 </template>
 
@@ -191,6 +285,18 @@ onShow(load);
   align-items: center;
   gap: 12rpx;
   margin-bottom: 12rpx;
+}
+.tagbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+  margin-top: 16rpx;
+}
+.settings {
+  display: block;
+  margin-top: 16rpx;
+  font-size: 24rpx;
+  color: var(--sh-primary-text);
 }
 /* 四格数字：点得动，所以要有可点的样子（选中时主色底） */
 .quad {

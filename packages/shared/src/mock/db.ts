@@ -10,6 +10,7 @@ import { currentCurrency } from "@shared/utils/money";
 import { isoDate, todayAtLocal } from "@shared/utils/datetime";
 import type {
   Member,
+  MemberSegment,
   InvoiceRequest,
   OrderItem,
   Region,
@@ -1015,8 +1016,26 @@ export const db = {
     { tagNo: "MT-2", name: "不要辣", tagType: "MCH", status: "ACTIVE" },
   ] as Array<{ tagNo: string; name: string; tagType: string; status: string }>,
 
-  /** 会员号 → 标签号。**存号不存文本**，与真库同一条规矩：改名不动这里 */
-  memberTagRel: {} as Record<string, string[]>,
+  /**
+   * 会员号 → 标签号。**存号不存文本**，与真库同一条规矩：改名不动这里。
+   *
+   * <p>种两条不是为了好看：空的话每个标签都是「0 人」，
+   * 而**多标签取交集**（选两个是「都要满足」）在演示里就一次也演不出来 ——
+   * 这里 MB-MOCK-2 两个标签都有，筛「爱囤货」得 2 人、再加「不要辣」得 1 人。
+   */
+  memberTagRel: {
+    "MB-MOCK-1": ["MT-1"],
+    "MB-MOCK-2": ["MT-1", "MT-2"],
+  } as Record<string, string[]>,
+
+  /** 会员经营口径（P3）。默认按主体 —— 多数商家只有一家店，那也是对的默认 */
+  memberSetting: { memberScope: "ENTITY", autoJoinOnOrder: true },
+
+  /**
+   * 存下来的人群（P3）。**只存条件不存名单** ——
+   * mock 也照这条规矩来，否则演示里那份名单会比真库"稳"，把 bug 藏住。
+   */
+  memberSegments: [] as MemberSegment[],
 
   /** 店铺门面（店主可改的部分）。C 端门店主页读的就是它 */
   store: {

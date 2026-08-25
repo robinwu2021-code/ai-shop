@@ -79,9 +79,12 @@ import type {
   Member,
   MemberDetail,
   MemberMergePreview,
+  MemberSegment,
+  MemberSegmentPreview,
+  MemberSetting,
   MemberStats,
-  MerchantStats,
   MemberTag,
+  MerchantStats,
   MerchantTodo,
   Order,
   PageResult,
@@ -381,12 +384,10 @@ export const httpApi: MerchantApi = {
     } satisfies ToggleCampaignReq),
 
   mCustomers: () => http.get<MerchantCustomer[]>(E.mCustomers.path),
-
-  mSettleList: (allStores) =>
-    http.get<SettleBill[]>(E.mSettleList.path, allStores ? { allStores: true } : undefined),
   mMembers: (q) => http.get<PageResult<Member>>(E.mMembers.path, { ...(q ?? {}) }),
   mMemberStats: (storeNo) => http.get<MemberStats>(E.mMemberStats.path, { storeNo }),
   mMemberDetail: (memberNo) =>
+    http.get<MemberDetail>(buildPath(E.mMemberDetail.path, { memberNo })),
   mEnrollMember: (payload) => http.post<Member>(E.mEnrollMember.path, payload),
   mPatchMember: (memberNo, payload) =>
     http.put<Member>(buildPath(E.mPatchMember.path, { memberNo }), payload),
@@ -398,9 +399,19 @@ export const httpApi: MerchantApi = {
   mMergeMemberTag: (tagNo, payload) =>
     http.post<MemberMergePreview>(buildPath(E.mMergeMemberTag.path, { tagNo }), payload),
 
+  mMemberSettings: () => http.get<MemberSetting>(E.mMemberSettings.path),
+  mSaveMemberSettings: (payload) =>
+    http.put<MemberSetting>(E.mSaveMemberSettings.path, payload),
+  mMemberSegments: () => http.get<MemberSegment[]>(E.mMemberSegments.path),
+  mSaveMemberSegment: (payload) =>
+    http.post<MemberSegment>(E.mSaveMemberSegment.path, payload),
+  mRemoveMemberSegment: (segmentNo) =>
+    http.post<void>(buildPath(E.mRemoveMemberSegment.path, { segmentNo })),
+  mPreviewMemberSegment: (payload) =>
+    http.post<MemberSegmentPreview>(E.mPreviewMemberSegment.path, payload),
+
   mSettleList: (allStores) =>
     http.get<SettleBill[]>(E.mSettleList.path, allStores ? { allStores: true } : undefined),
-    http.get<MemberDetail>(buildPath(E.mMemberDetail.path, { memberNo })),
   mRateCard: () => http.get<RateCard>(E.mRateCard.path),
   mReportShortage: (subOrderNo, payload) =>
     http.post<PickupOrder>(buildPath(E.mReportShortage.path, { orderNo: subOrderNo }), {

@@ -242,6 +242,18 @@
       "style": {
         "navigationBarTitleText": "标签"
       }
+    },
+    {
+      "path": "pages/member-segments/index",
+      "style": {
+        "navigationBarTitleText": "人群"
+      }
+    },
+    {
+      "path": "pages/member-settings/index",
+      "style": {
+        "navigationBarTitleText": "会员设置"
+      }
     }
   ],
   "globalStyle": {

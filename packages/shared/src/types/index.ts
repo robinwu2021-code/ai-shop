@@ -817,6 +817,13 @@ export interface SpuStd {
   status?: string;
   /** 被引用次数，只给运营排序用 */
   refCount?: number;
+  /** 商品条码。**空是常态** —— 生鲜、现做熟食、服务本来就没有条码 */
+  barcode?: string;
+  /**
+   * 出处：`OPS` 运营手录 / `OFF` 从 Open Food Facts 导入。
+   * 众包来的那批全是待审状态，运营靠它把「还没人看过的」与「自己录的」分开审。
+   */
+  source?: string;
 }
 
 /** 规格维度，例：{ name: "重量", options: ["约5斤", "约10斤"] } */
@@ -3503,6 +3510,62 @@ export interface MemberTag {
   status: string;
   /** 打了多少人。服务端 COUNT 出来的，不是冗余列 */
   count: number;
+}
+
+/**
+ * 会员经营口径（P3）。
+ *
+ * @remarks 切换 `memberScope` 会**改变「新客」的含义**：按门店时，
+ * 在别的店买过的人在这家店仍算新客。这句话必须写在开关旁边 ——
+ * 不写的话，商家会以为自己把数据弄丢了。
+ * 实际上两份指标一直都在算，**切回来一个数都不少**。
+ */
+export interface MemberSetting {
+  /** `ENTITY` 按主体（默认）/ `STORE` 按门店 */
+  memberScope: string;
+  /** 支付成功自动入会。关掉之后只剩手工录入与本人主动加入 */
+  autoJoinOnOrder: boolean;
+}
+
+/**
+ * 人群：一组筛选条件，可命名保存、反复用。
+ *
+ * @remarks **存的是条件不是名单**。名单每天都在变（有人昨天刚下单就不再沉睡），
+ * `lastCount` 只是「上次算于 countedAt 时」的展示值 —— 发券与触达前会当场重算。
+ */
+export interface MemberSegment {
+  segmentNo: string;
+  name: string;
+  /** 限定门店。空 = 全主体 */
+  scopeStoreNo?: string | null;
+  rule: MemberSegmentRule;
+  lastCount: number;
+  countedAt?: number | null;
+}
+
+/** 人群条件。**只存号**（标签号/门店号）—— 标签改名之后条件还得成立 */
+export interface MemberSegmentRule {
+  level?: string | null;
+  source?: string | null;
+  status?: string | null;
+  /** **取交集**：选两个标签是「都要满足」。界面上写「同时含以下标签」 */
+  tagNos?: string[];
+  lastOrderBefore?: number | null;
+  lastOrderAfter?: number | null;
+  spentMin?: number | null;
+  spentMax?: number | null;
+}
+
+/**
+ * 人群试算。
+ *
+ * @remarks 两个数都要显示：`count` 是条件命中多少人，`reachable` 是其中
+ * **能真正收到东西**的有多少（线索会员与退订的人进不了受众）。
+ * 只显示 count 的话，商家在人群页看到 120、发放页发出 96，他会以为发漏了。
+ */
+export interface MemberSegmentPreview {
+  count: number;
+  reachable: number;
 }
 
 /**

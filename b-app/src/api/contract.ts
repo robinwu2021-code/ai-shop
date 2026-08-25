@@ -49,10 +49,14 @@ import type {
   MerchantCustomer,
   Member,
   MemberDetail,
+  MemberSegment,
+  MemberSegmentPreview,
+  MemberSegmentRule,
+  MemberSetting,
   MemberMergePreview,
   MemberStats,
-  MerchantStats,
   MemberTag,
+  MerchantStats,
   MerchantTodo,
   Order,
   PageQuery,
@@ -921,9 +925,6 @@ export interface MerchantApi {
   // ---- 客户与复购（B-11.2.8）
   mCustomers(): Promise<MerchantCustomer[]>;
 
-  // ---- 结算（B-11.9）
-  /**
-   * 结算流水。**一笔子订单一行**，不是周期账单。
   /**
    * 会员列表。
    *
@@ -933,6 +934,8 @@ export interface MerchantApi {
    */
   mMembers(q?: {
     storeNo?: string; level?: string; source?: string; status?: string; phone?: string;
+    /** 逗号分隔的标签号。**取交集**：选两个是「都要满足」 */
+    tagNos?: string;
     lastOrderBefore?: number; lastOrderAfter?: number; spentMin?: number; spentMax?: number;
     page?: number; size?: number;
   }): Promise<PageResult<Member>>;
@@ -941,6 +944,7 @@ export interface MerchantApi {
   mMemberStats(storeNo?: string): Promise<MemberStats>;
 
   mMemberDetail(memberNo: string): Promise<MemberDetail>;
+
   /**
    * 手工录入一个手机号。
    *
@@ -978,10 +982,43 @@ export interface MerchantApi {
     intoTagNo: string; confirm?: boolean;
   }): Promise<MemberMergePreview>;
 
+  /** 会员经营口径（按主体 / 按门店）+ 支付自动入会开关 */
+  mMemberSettings(): Promise<MemberSetting>;
+
+  /**
+   * 改经营口径。**只有店主能改**（`biz:store:admin`）—— 它一改，
+   * 全主体的分层与所有活动受众跟着变。
+   *
+   * 界面上必须写清两件事：改成按门店后，在别的店买过的人**在这家店仍算新客**；
+   * 以及**随时可以切回来，一个数都不少**（两份指标一直都在算）。
+   */
+  mSaveMemberSettings(payload: {
+    memberScope?: string; autoJoinOnOrder?: boolean;
+  }): Promise<MemberSetting>;
+
+  /** 人群列表。`lastCount` 只是「上次算于 X 时」，别拿它当当前人数用 */
+  mMemberSegments(): Promise<MemberSegment[]>;
+
+  /**
+   * 存人群。**存的是条件不是名单** —— 发券那一刻会重算，
+   * 「那一刻命中了谁」记在发放记录里。
+   *
+   * 传 `segmentNo` 是改；不传且同名视为改同一个（不报重名错）。
+   */
+  mSaveMemberSegment(payload: {
+    segmentNo?: string; name: string; scopeStoreNo?: string; rule: MemberSegmentRule;
+  }): Promise<MemberSegment>;
+
+  mRemoveMemberSegment(segmentNo: string): Promise<void>;
+
+  /** 试算：命中多少人、其中多少人能真正收到。**两个数都要显示** */
+  mPreviewMemberSegment(payload: {
+    scopeStoreNo?: string; rule: MemberSegmentRule;
+  }): Promise<MemberSegmentPreview>;
+
   // ---- 结算（B-11.9）
   /**
    * 结算流水。**一笔子订单一行**，不是周期账单。
-
    *
    * @param allStores 是否看全部门店。默认（false）只看当前门店 ——
    *                  与订单页同一套惯例；「全部」对老板和店员不是一回事，后端按授权收窄

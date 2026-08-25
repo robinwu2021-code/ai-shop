@@ -83,6 +83,7 @@ function pointsAccount() {
 }
 import type { StaffLogRow } from "@shared/mock/db";
 import type {
+  MemberSegmentRule,
   MerchantPlan,
   CurrencyCode,
   MarketId,
@@ -235,6 +236,32 @@ function mockMemberTags(): Record<string, string[]> {
 
 function countTag(tagNo: string) {
   return Object.values(db.memberTagRel).filter((tags) => tags.includes(tagNo)).length;
+}
+
+/**
+ * 按人群条件筛人。**与列表筛选同一处**（真库那边也是一个 baseQuery）——
+ * 两处各写一遍，同一群人会算出两个数，而演示时没人分得清哪个对。
+ *
+ * <p>标签**取交集**：选两个标签是「都要满足」。
+ */
+function matchSegment(rule: MemberSegmentRule) {
+  let out = allMockMembers();
+  if (rule.level) out = out.filter((m) => m.level === rule.level);
+  if (rule.source) out = out.filter((m) => m.source === rule.source);
+  if (rule.status) out = out.filter((m) => m.status === rule.status);
+  if (rule.tagNos?.length) {
+    out = out.filter((m) =>
+      rule.tagNos!.every((t) => (db.memberTagRel[m.memberNo] ?? []).includes(t)));
+  }
+  if (rule.lastOrderBefore) {
+    out = out.filter((m) => (m.lastOrderAt ?? 0) <= rule.lastOrderBefore!);
+  }
+  if (rule.lastOrderAfter) {
+    out = out.filter((m) => (m.lastOrderAt ?? 0) >= rule.lastOrderAfter!);
+  }
+  if (rule.spentMin) out = out.filter((m) => m.totalSpentMinor >= rule.spentMin!);
+  if (rule.spentMax) out = out.filter((m) => m.totalSpentMinor <= rule.spentMax!);
+  return out;
 }
 
 /** 字典 + 人数。**人数是数出来的**，与真库一样不存冗余列 */
@@ -2781,54 +2808,6 @@ export const mockApi: MerchantApi = {
     return delay(rows);
   },
 
-  // ---------------------------------------------------------------- 结算
-  /**
-   * 费率卡。**费率是万分比整数**（与后端 RateCardVO 一致）：2% 存成 200。
-   * 直接当百分数显示会把 2% 显示成 200%，这种错在界面上看着还挺"合理"。
-   */
-  async mRateCard() {
-    const pct = (r: number) => Math.round(r * 10000);
-    return delay({
-      merchantOwnedRate: pct(SETTLE.commissionRate.MERCHANT_OWNED),
-      platformRate: pct(SETTLE.commissionRate.PLATFORM),
-      note: "自带客流（扫店铺码进店）零佣金；平台客流按公示费率收取。费率以下单时快照为准，调整不影响历史订单。",
-    });
-  },
-
-  async mSettleList(allStores) {
-    const merchantNo = db.merchant.merchantNo;
-    /*
-     * **一个子订单一行**，与后端 stl_bill 同形 —— 这里此前造的是一套「按周聚合的账单」
-     * （billNo / periodStart / orderCount），后端从来没有过那个模型。
-     * 页面照着 mock 写，于是连真后端时字段整片 undefined，而 mock 下一直是绿的。
-     */
-    const settled = db.orders.filter(
-      (o) => belongsToMerchant(o, merchantNo) && ["COMPLETED", "REFUNDED"].includes(o.status),
-    );
-    const home = db.stores.find((s) => s.isDefault) ?? db.stores[0];
-    const scope = allStores ? null : home?.storeNo;
-
-    return delay(
-      settled
-        .filter(() => !scope || Boolean(home))
-        .map((o) => {
-          const gross = o.amount.payableMinor;
-          // 佣金按客流来源分档：自带客流零佣金（ADR-004 §6）
-          const rate = SETTLE.commissionRate[o.trafficSource ?? "PLATFORM"];
-          const commission = Math.round(gross * rate);
-          // 自提点履约服务费按件。供货方付、承接方收，两个角色都是自己时账面抵消
-          const serviceFee =
-            o.fulfillment === "STORE_PICKUP"
-              ? o.items.reduce((n, it) => n + it.qty, 0) * SETTLE.fulfillFeePerItemMinor
-              : 0;
-          return {
-            settleNo: `SB${o.orderNo}`,
-            subOrderNo: o.orderNo,
-            orderNo: o.orderNo,
-            merchantNo,
-            grossMinor: gross,
-            commissionMinor: commission,
-            serviceFeeMinor: serviceFee,
   // ---------------------------------------------------------------- 会员（P1）
   /**
    * 会员名单。mock 里由订单聚合出来，与真库同一口径（**分层先判沉睡**）。
@@ -2843,6 +2822,11 @@ export const mockApi: MerchantApi = {
     if (f.level) out = out.filter((m) => m.level === f.level);
     if (f.source) out = out.filter((m) => m.source === f.source);
     if (f.status) out = out.filter((m) => m.status === f.status);
+    if (f.tagNos) {
+      // 与真库同一条：**取交集**，选两个标签是「都要满足」
+      const want = f.tagNos.split(",").filter(Boolean);
+      out = out.filter((m) => want.every((t) => (db.memberTagRel[m.memberNo] ?? []).includes(t)));
+    }
     if (f.phone) {
       // 与真库同一条规矩：**完整号才匹配**，给一半查不到人
       const full = f.phone;
@@ -2858,7 +2842,6 @@ export const mockApi: MerchantApi = {
     });
   },
 
-      tags: mockTags().filter((t) => (mockMemberTags()[memberNo] ?? []).includes(t.tagNo)),
   async mMemberStats() {
     const rows = allMockMembers();
     const by = (lv: string) => rows.filter((m) => m.level === lv).length;
@@ -2872,6 +2855,34 @@ export const mockApi: MerchantApi = {
       // 演示一个非零值：商家一定会拿订单数与会员数对，这一行就是解释差额的地方
       unlinkedBuyers: 3,
     });
+  },
+
+  async mMemberDetail(memberNo) {
+    const m = allMockMembers().find((x) => x.memberNo === memberNo);
+    if (!m) throw new ApiError(10404, "会员不存在");
+    const stores = db.stores.slice(0, 2).map((s, i) => ({
+      storeNo: s.storeNo,
+      orderCount: Math.max(1, m.orderCount - i),
+      totalSpentMinor: Math.round(m.totalSpentMinor / (i + 1)),
+      lastOrderAt: m.lastOrderAt ?? Date.now(),
+      isFirstStore: i === 0,
+    }));
+    return delay({
+      member: m,
+      stores,
+      tags: mockTags().filter((t) => (mockMemberTags()[memberNo] ?? []).includes(t.tagNo)),
+      sources: [
+        {
+          sourceType: m.source, storeNo: stores[0]?.storeNo ?? null, linkNo: null,
+          inviterUserNo: m.source === "SHARE" ? "李姐" : null,
+          inviterRole: m.source === "SHARE" ? "CUSTOMER" : null,
+          operatorNo: null, activityNo: null, isFirst: true,
+          occurredAt: m.joinedAt,
+        },
+      ],
+    });
+  },
+
   async mEnrollMember(payload) {
     const tail = (payload.phone ?? "").slice(-4);
     const exist = mockMembers().find((m) => m.phoneTail === tail);
@@ -2974,6 +2985,70 @@ export const mockApi: MerchantApi = {
       referencedActivities: 0, applied: true });
   },
 
+  // ---------------------------------------------------------------- 口径与人群（P3）
+  async mMemberSettings() {
+    return delay({ ...db.memberSetting });
+  },
+
+  async mSaveMemberSettings(payload) {
+    if (payload.memberScope) db.memberSetting.memberScope = payload.memberScope;
+    if (payload.autoJoinOnOrder !== undefined) {
+      db.memberSetting.autoJoinOnOrder = payload.autoJoinOnOrder;
+    }
+    persist();
+    return delay({ ...db.memberSetting });
+  },
+
+  async mMemberSegments() {
+    return delay(db.memberSegments.map((sg) => ({ ...sg })));
+  },
+
+  async mSaveMemberSegment(payload) {
+    const hit = db.memberSegments.find(
+      (x) => x.segmentNo === payload.segmentNo || x.name === payload.name,
+    );
+    // 与真库同一条：同名视为改同一个，不报重名错 —— 报了他只会存成「…2」
+    const count = matchSegment(payload.rule).length;
+    if (hit) {
+      Object.assign(hit, {
+        name: payload.name,
+        scopeStoreNo: payload.scopeStoreNo ?? null,
+        rule: payload.rule,
+        lastCount: count,
+        countedAt: Date.now(),
+      });
+      persist();
+      return delay({ ...hit });
+    }
+    const sg = {
+      segmentNo: `SG-${db.memberSegments.length + 1}`,
+      name: payload.name,
+      scopeStoreNo: payload.scopeStoreNo ?? null,
+      rule: payload.rule,
+      lastCount: count,
+      countedAt: Date.now(),
+    };
+    db.memberSegments.push(sg);
+    persist();
+    return delay({ ...sg });
+  },
+
+  async mRemoveMemberSegment(segmentNo) {
+    const i = db.memberSegments.findIndex((x) => x.segmentNo === segmentNo);
+    if (i >= 0) db.memberSegments.splice(i, 1);
+    persist();
+    return delay(undefined as unknown as void);
+  },
+
+  async mPreviewMemberSegment(payload) {
+    const hit = matchSegment(payload.rule);
+    return delay({
+      count: hit.length,
+      // 线索会员与退订的人进不了受众 —— 两个数都报，否则商家以为发漏了
+      reachable: hit.filter((m) => m.status === "ACTIVE" && !m.reachOptOut).length,
+    });
+  },
+
   // ---------------------------------------------------------------- 结算
   /**
    * 费率卡。**费率是万分比整数**（与后端 RateCardVO 一致）：2% 存成 200。
@@ -3022,33 +3097,6 @@ export const mockApi: MerchantApi = {
             grossMinor: gross,
             commissionMinor: commission,
             serviceFeeMinor: serviceFee,
-  },
-
-  async mMemberDetail(memberNo) {
-    const m = allMockMembers().find((x) => x.memberNo === memberNo);
-    if (!m) throw new ApiError(10404, "会员不存在");
-    const stores = db.stores.slice(0, 2).map((s, i) => ({
-      storeNo: s.storeNo,
-      orderCount: Math.max(1, m.orderCount - i),
-      totalSpentMinor: Math.round(m.totalSpentMinor / (i + 1)),
-      lastOrderAt: m.lastOrderAt ?? Date.now(),
-      isFirstStore: i === 0,
-    }));
-    return delay({
-      member: m,
-      stores,
-      sources: [
-        {
-          sourceType: m.source, storeNo: stores[0]?.storeNo ?? null, linkNo: null,
-          inviterUserNo: m.source === "SHARE" ? "李姐" : null,
-          inviterRole: m.source === "SHARE" ? "CUSTOMER" : null,
-          operatorNo: null, activityNo: null, isFirst: true,
-          occurredAt: m.joinedAt,
-        },
-      ],
-    });
-  },
-
             netMinor: gross - commission - serviceFee,
             trafficSource: o.trafficSource ?? "PLATFORM",
             commissionRate: Math.round(rate * 10000),

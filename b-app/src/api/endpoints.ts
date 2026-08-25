@@ -209,6 +209,12 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
   mCreateMemberTag: { method: "POST", path: "/biz/member-tags", auth: true, summary: "新建标签" },
   mEditMemberTag: { method: "PUT", path: "/biz/member-tags/{tagNo}", auth: true, summary: "改名 / 停用" },
   mMergeMemberTag: { method: "POST", path: "/biz/member-tags/{tagNo}/merge", auth: true, summary: "合并（confirm=false 只试算）" },
+  mMemberSettings: { method: "GET", path: "/biz/member-settings", auth: true, summary: "会员经营口径" },
+  mSaveMemberSettings: { method: "PUT", path: "/biz/member-settings", auth: true, summary: "改口径（店主）" },
+  mMemberSegments: { method: "GET", path: "/biz/member-segments", auth: true, summary: "人群列表" },
+  mSaveMemberSegment: { method: "POST", path: "/biz/member-segments", auth: true, summary: "存人群（存条件不存名单）" },
+  mRemoveMemberSegment: { method: "POST", path: "/biz/member-segments/{segmentNo}/remove", auth: true, summary: "删人群（端上没有 DELETE，见 http-client）" },
+  mPreviewMemberSegment: { method: "POST", path: "/biz/member-segments/preview", auth: true, summary: "试算命中与可触达" },
 
   mRateCard: { method: "GET", path: "/biz/settle/rate-card", auth: true, summary: "费率卡" },
   mSettleList: { method: "GET", path: "/biz/settle/bills", auth: true, summary: "结算单列表" },
