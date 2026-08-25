@@ -526,6 +526,16 @@ async function togglePick(g: StoreCategorySpecs) {
   pickable.value = all.filter((x) => !have.has(x.templateNo));
   ownUsed.value = mine.filter((d) => d.status === "ACTIVE").length;
   ownMax.value = mine[0]?.dimQuota ?? 10;
+  /*
+   * **这一类没有平台配过的候选时，把通用那段直接摊开。**
+   *
+   * 收起通用规格是为了不让「口味」并排摆在数码类目下（aaf2a743）—— 那个理由
+   * 只在**有主候选**时成立：主候选把注意力占住了，通用的收起来才是降噪。
+   * 一条主候选都没有的时候收起来，面板打开就是空的：一个能点的都没有，
+   * 只有一行「其它平台规格（5）」和「自己建一个」。他点「加规格」是要加规格，
+   * 结果还得再点一次才看得见东西 —— 那一步没有替他挡掉任何噪声。
+   */
+  if (!pickCat.value.length && pickRest.value.length) showRest.value = true;
 }
 
 async function pickDim(g: StoreCategorySpecs, picked: SpecTemplate) {
@@ -616,7 +626,7 @@ onShow(() => void load());
         <view class="btn-add" :class="{ 'btn-add--on': picking === g.categoryNo }"
               @tap="togglePick(g)">
           <sh-icon :name="picking === g.categoryNo ? 'close' : 'plus'" :size="24"
-                   :color="picking === g.categoryNo ? 'var(--sh-on-primary)' : 'var(--sh-primary)'" />
+                   :color="picking === g.categoryNo ? 'var(--sh-sub)' : 'var(--sh-primary)'" />
           <text class="btn-add__t">{{ picking === g.categoryNo ? $t("mySpecs.collapse") : $t("mySpecs.addDim") }}</text>
         </view>
       </view>
@@ -628,31 +638,44 @@ onShow(() => void load());
         且截断在小屏上没有任何提示（实测「颜色」与「自己建一个」都看不见）。
       -->
       <view v-if="picking === g.categoryNo" class="picker">
-        <view class="picker__head">
-          <text class="sh-muted">{{ $t("mySpecs.pickHint") }}</text>
-          <text class="sh-muted picker__quota">{{ $t("mySpecs.quotaShort", { used: ownUsed, max: ownMax }) }}</text>
-        </view>
+        <!--
+          配额**不在这一行**。它与「平台还有这些」无关 —— 一句提示右边挂着
+          「自建 0 / 10」，两件事挤在一行，谁也读不出它们的关系。
+          它只在「自己建一个」那一刻有意义，所以搬到那一格里去了。
+        -->
+        <text class="sh-muted picker__hint">{{ $t("mySpecs.pickHint") }}</text>
         <!-- 这一类平台配过的：默认摆出来，它们是平台针对这一类的判断 -->
         <view v-if="pickCat.length" class="chips">
+          <!-- 带 ＋：一排光秃秃的词看不出是可点的，还是「已经有了」的清单 -->
           <text v-for="p in pickCat" :key="p.templateNo" class="sh-chip chip"
-                @tap="pickDim(g, p)">{{ p.name }}</text>
+                @tap="pickDim(g, p)">＋ {{ p.name }}</text>
         </view>
-        <!-- 其余通用规格：收起。展开才出现，理由见 pickCat 上面那段 -->
-        <view v-if="pickRest.length" class="picker__more">
+        <!--
+          其余通用规格：有主候选时收起（理由见 pickCat 上面那段），
+          没有主候选时已经在 togglePick 里摊开了。
+          **开合链接放在 chip 下面**：摊开的时候它顶在上面像个小标题，
+          而这一段里唯一该被先看到的是那排能点的规格。
+        -->
+        <view v-if="showRest && pickRest.length" class="chips">
+          <text v-for="p in pickRest" :key="p.templateNo" class="sh-chip chip"
+                @tap="pickDim(g, p)">＋ {{ p.name }}</text>
+        </view>
+        <view v-if="pickRest.length && pickCat.length" class="picker__more">
           <text class="link" @tap="showRest = !showRest">
             {{ showRest ? $t("mySpecs.restHide") : $t("mySpecs.restShow", { n: pickRest.length }) }}
           </text>
-        </view>
-        <view v-if="showRest && pickRest.length" class="chips">
-          <text v-for="p in pickRest" :key="p.templateNo" class="sh-chip chip"
-                @tap="pickDim(g, p)">{{ p.name }}</text>
         </view>
         <text v-if="!pickable.length" class="sh-muted picker__empty">
           {{ $t("mySpecs.noMoreDim") }}
         </text>
         <!-- 自己建放最后：顺序即建议，先看平台有没有现成的 -->
         <view class="picker__own" @tap="buildOwnDim(g)">
-          <text class="picker__own-t">＋ {{ $t("mySpecs.buildOwnDim") }}</text>
+          <view class="picker__own-line">
+            <text class="picker__own-t">＋ {{ $t("mySpecs.buildOwnDim") }}</text>
+            <text class="sh-muted picker__quota">
+              {{ $t("mySpecs.quotaShort", { used: ownUsed, max: ownMax }) }}
+            </text>
+          </view>
           <text class="sh-muted picker__own-s">{{ $t("mySpecs.buildOwnCost") }}</text>
         </view>
       </view>
@@ -842,8 +865,14 @@ onShow(() => void load());
   border-radius: 9999px;
   background: var(--sh-primary-tint);
 }
+/*
+  展开后这个按钮变成「收起」——**它是关闭动作，不该是整屏最重的元素。**
+  上一版填实心主色，于是一个「收起」比下面所有可点的规格都抢眼，
+  而它恰恰是这一刻最不需要被点的那个。改成透明描边：认得出、不喊叫。
+*/
 .btn-add--on {
-  background: var(--sh-primary);
+  background: transparent;
+  border: 2rpx solid var(--sh-line);
 }
 .btn-add__t {
   font-size: 24rpx;
@@ -851,7 +880,7 @@ onShow(() => void load());
   color: var(--sh-primary-text);
 }
 .btn-add--on .btn-add__t {
-  color: var(--sh-on-primary);
+  color: var(--sh-sub);
 }
 
 /* 加规格面板：页内一段，不是弹层 */
@@ -860,14 +889,23 @@ onShow(() => void load());
   padding: 20rpx 22rpx;
   /* 圆角五档：16/24/32/44/full —— 20 不在其中 */
   border-radius: 24rpx;
-  background: var(--sh-faint);
+  /*
+    **描边而不是灰底。** 卡片本身已经是浅色，再压一块 `--sh-faint` 上去，
+    两层灰几乎分不开 —— 面板看起来不像一块可操作的区域，像卡片自己变脏了。
+    一条描边把边界说清楚，同时把对比度留给里面的 chip。
+  */
+  background: var(--sh-surface);
+  border: 2rpx solid var(--sh-line);
 }
-.picker__head {
+.picker__hint {
+  display: block;
+  font-size: 24rpx;
+  margin-bottom: 16rpx;
+}
+.picker__own-line {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  font-size: 24rpx;
-  margin-bottom: 16rpx;
 }
 .picker__quota {
   font-size: 24rpx;
