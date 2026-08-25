@@ -284,6 +284,8 @@ export default {
     specs: "Variants", specHint: "",
     specAsk: "Add variants",
     moreFromCat: "Also for this category",
+    moreOther: "More ({n})",
+    moreFold: "Less",
     manageSpecs: "Add in My Variants",
     specAskHint: "",
     specFold: "Collapse",

@@ -391,6 +391,8 @@ export default {
     specHint: "",
     specAsk: "添加规格",
     moreFromCat: "这一类还能按",
+    moreOther: "更多 ({n})",
+    moreFold: "收起",
     manageSpecs: "去「商品规格」新增",
     specAskHint: "",
     specFold: "收起",

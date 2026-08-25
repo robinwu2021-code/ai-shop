@@ -662,10 +662,7 @@ const hydrating = ref(false);
 const groups = ref<{ name: string; options: string[]; codes?: (string | undefined)[]; templateNo?: string }[]>([]);
 /** 可用模板：平台按类目预置 + 本商家存的常用 */
 const templates = ref<SpecTemplate[]>([]);
-/** 他自己存过的规格组（带档位）。平台那批已经由选类目自动预填，不必再列一遍 */
-const myTemplates = computed(() => templates.value.filter((t) => t.scope === "MERCHANT"));
 /** 「加规格组」时的维度选择面板：本类目已配 → 平台通用 → 自建 */
-const showDimPicker = ref(false);
 const pickableDims = ref<SpecTemplate[]>([]);
 /** 正在生成图文详情 */
 const generating = ref(false);
@@ -1238,7 +1235,6 @@ function applyTemplate(tpl: SpecTemplate) {
     uni.showToast({ title: t("goods.groupLimit"), icon: "none" });
     return;
   } else groups.value.push(row);
-  showDimPicker.value = false;
   rebuild();
 }
 
@@ -1376,26 +1372,6 @@ function primeMainGroup() {
   rebuild();
 }
 
-/**
- * 「加一个规格组」—— **先看平台有什么，再挑**。
- *
- * <p>从前这里直接塞一个空组：两个空输入框，而「规格名该填什么」恰恰是此刻最难的一步。
- * 旁边还有个「自定义规格」，点开是个空对话框，让他凭记忆敲一个维度名。
- * 两条路都是<b>盲输</b>，而盲输的代价看不见：手输的规格组没有维度编号，
- * 值也没有值编号 —— 这件货从此不参与任何跨店聚合，界面上却毫无区别。
- *
- * <p>后端本来有「与平台维度重名就用平台那个」的兜底，但它要商家<b>恰好敲对字</b>：
- * 敲「味道」而平台叫「口味」就撞不上。先看后挑，比敲对字可靠得多。
- */
-async function openDimPicker() {
-  // 三个维度已经是 3×3×3=27 个 SKU，手机上再多就没法维护了
-  if (groups.value.length >= 3) {
-    uni.showToast({ title: t("goods.groupLimit"), icon: "none" });
-    return;
-  }
-  showDimPicker.value = true;
-  await loadPickableDims();
-}
 
 /**
  * 取「还能加哪些维度」。
@@ -1433,7 +1409,6 @@ function pickDim(tpl: SpecTemplate) {
       templateNo: tpl.templateNo,
     }
     : { name: tpl.name, options: [""], codes: [undefined], templateNo: tpl.templateNo });
-  showDimPicker.value = false;
   rebuild();
 }
 
@@ -1450,7 +1425,6 @@ function pickDim(tpl: SpecTemplate) {
  * 所以不能把这条路留在这里让人顺手走。
  */
 function gotoMySpecs() {
-  showDimPicker.value = false;
   uni.navigateTo({ url: ROUTES.mySpecs });
 }
 
@@ -1528,26 +1502,36 @@ function unused(list: SpecTemplate[]): SpecTemplate[] {
  * 一堆 SKU（3 × 4 × 4），那是帮倒忙。
  */
 const moreFromCategory = computed(() =>
-  unused(pickableDims.value.filter((d) => d.categoryNo)).slice(0, 4),
+  unused(pickableDims.value.filter((d) => d.categoryNo)),
 );
 
-const dimGroups = computed(() => [
-  {
-    key: "cat",
-    labelKey: "goods.dimFromCategory",
-    items: unused(pickableDims.value.filter((d) => d.categoryNo)),
-  },
-  {
-    key: "universal",
-    labelKey: "goods.dimUniversal",
-    items: unused(pickableDims.value.filter((d) => !d.categoryNo && d.scope === "PLATFORM")),
-  },
-  {
-    key: "mine",
-    labelKey: "goods.dimMine",
-    items: unused(pickableDims.value.filter((d) => d.scope === "MERCHANT")),
-  },
-]);
+/**
+ * 通用与自建的维度 —— **收在「更多」后面**。
+ *
+ * <p>`universal` 的判据是「值的含义跨类目一致」（给跨店聚合用），
+ * 不是「哪些类目该用它」，所以手机数码下面会并排摆着口味、等级、尺码。
+ * 不拦着他选，但也不把二十来个无关维度摆在眼前。
+ */
+const moreOther = computed(() => {
+  /*
+   * **还要跟前面那批去重。** 通用池里的「包装」与类目绑定的「包装」是
+   * 两个不同的 templateNo，`unused()` 只挡「已经在用的」，挡不住这一对 ——
+   * 展开「更多」后会看到两个「＋ 包装」，点哪个都对，但看起来像出了错。
+   * 与判重同一条规矩：同名即同一件事。
+   */
+  const shown = new Set(moreFromCategory.value.map((d) => d.name.trim()));
+  const seen = new Set<string>();
+  return unused([
+    ...pickableDims.value.filter((d) => !d.categoryNo && d.scope === "PLATFORM"),
+    ...pickableDims.value.filter((d) => d.scope === "MERCHANT"),
+  ]).filter((d) => {
+    const n = d.name.trim();
+    if (shown.has(n) || seen.has(n)) return false;
+    seen.add(n);
+    return true;
+  });
+});
+
 
 /**
  * 点一个档位填进去。**优先填进第一个空格子**，没有空格子才追加 ——
@@ -2364,7 +2348,6 @@ async function save(thenSubmit = false) {
             没有维度编号也没有值编号，这件货从此不参与跨店聚合。
             现在点进去先看平台有什么，「自己起个名」在面板最下面。
           -->
-          <text class="link" @tap="openDimPicker">{{ $t("goods.addGroup") }}</text>
           <text class="link link--quiet" @tap="rememberSpecOpen(false)">{{ $t("goods.specFold") }}</text>
         </view>
       </view>
@@ -2446,57 +2429,6 @@ async function save(thenSubmit = false) {
 
       <!-- 模板：点一下替代逐个手输。平台模板带 code，商家自存的只有文字 -->
       <!-- 维度选择面板：顺序即建议顺序，越靠前越该被选中 -->
-      <view v-if="showDimPicker" class="picker">
-        <view class="picker__head">
-          <text class="sh-h2">{{ $t("goods.pickDim") }}</text>
-          <text class="link" @tap="showDimPicker = false">{{ $t("goods.pickDimClose") }}</text>
-        </view>
-        <!--
-          「通用规格」那一组**默认收起**。它给的是平台池里所有 `universal` 的维度，
-          而 `universal` 的判据是「值的含义是否跨类目一致」（给跨店聚合用），
-          不是「哪些类目该用它」—— 于是手机数码下面会并排摆着口味、等级、尺码。
-          不拦着他选，但也不把二十来个无关维度摆在眼前。
-        -->
-        <view v-for="grp in dimGroups" :key="grp.key">
-          <view v-if="grp.items.length" class="picker__sec">
-            <text
-              class="sh-muted picker__label"
-              @tap="grp.key === 'universal' && (showUniversalDims = !showUniversalDims)"
-            >
-              {{ $t(grp.labelKey)
-              }}<template v-if="grp.key === 'universal'"> {{ showUniversalDims ? "▾" : "▸" }} ({{ grp.items.length }})</template>
-            </text>
-            <view v-if="grp.key !== 'universal' || showUniversalDims" class="picker__row">
-              <text
-                v-for="d in grp.items"
-                :key="d.templateNo"
-                class="sh-chip"
-                :class="{ 'sh-chip--primary': grp.key === 'cat' }"
-                @tap="pickDim(d)"
-              >{{ d.name }}</text>
-            </view>
-          </view>
-        </view>
-        <!--
-          我的常用：他自己存过的整组（带档位）。原来挂在「套用模板」下面，
-          与这里的维度是同一类选择 —— 摆在一处才看得出「先看现成的，再自己起名」。
-        -->
-        <view v-if="myTemplates.length" class="picker__sec">
-          <text class="sh-muted picker__label">{{ $t("goods.tplMine") }}</text>
-          <view class="picker__row">
-            <text v-for="tpl in myTemplates" :key="tpl.templateNo" class="sh-chip"
-                  @tap="applyTemplate(tpl)">{{ tpl.name }}</text>
-          </view>
-        </view>
-        <!--
-          平台真的没有的维度（辣度、打磨程度）去「商品规格」加 ——
-          **新增统一在那一处**：那里加一次全店通用、有编号、参与比价，
-          而在这里手输只对这一件商品有效，且从此掉出跨店聚合。
-        -->
-        <view class="picker__sec">
-          <text class="link" @tap="gotoMySpecs">{{ $t("goods.manageSpecs") }}</text>
-        </view>
-      </view>
 
       <!--
         **规格名只读，档位只做减法。**
@@ -2526,16 +2458,42 @@ async function save(thenSubmit = false) {
         </view>
       </view>
 
-      <!-- 这一类还能按什么分：一点成组，代价由上面那行 skuCost 当场说清 -->
-      <view v-if="moreFromCategory.length" class="more">
-        <text class="sh-muted more__k">{{ $t("goods.moreFromCat") }}</text>
+      <!--
+        **这一页不新增规格，只把能用的摆出来。**
+
+        <p>新的规格与档位统一在「商品规格」里加 —— 那里加一次全店通用、有编号、
+        参与跨店比价；在建品页新造只对这一件商品有效，而代价（掉出聚合）看不见。
+        所以这里没有输入框、没有「自定义」，只有一排现成的，点一下就用上。
+
+        <p>本类目的排在前面（平台已经替这一类回答过「该按什么分」），
+        通用与自建的收在「更多」后面 —— 它们跨类目通用，摆在眼前多半不对题。
+      -->
+      <view v-if="moreFromCategory.length || moreOther.length" class="more">
         <text
           v-for="d in moreFromCategory"
           :key="d.templateNo"
           class="sh-chip more__chip"
           @tap="pickDim(d)"
         >＋ {{ d.name }}</text>
+        <template v-if="showUniversalDims">
+          <text
+            v-for="d in moreOther"
+            :key="d.templateNo"
+            class="sh-chip more__chip more__chip--q"
+            @tap="pickDim(d)"
+          >＋ {{ d.name }}</text>
+        </template>
+        <text
+          v-if="moreOther.length"
+          class="link more__toggle"
+          @tap="showUniversalDims = !showUniversalDims"
+        >{{ showUniversalDims ? $t("goods.moreFold") : $t("goods.moreOther", { n: moreOther.length }) }}</text>
       </view>
+
+      <!-- 平台真没有的（辣度、打磨程度）去那边加。压到最轻：多数人用不到 -->
+      <text class="link link--quiet more__manage" @tap="gotoMySpecs">
+        {{ $t("goods.manageSpecs") }}
+      </text>
       </template>
     </view>
 
@@ -2914,6 +2872,22 @@ async function save(thenSubmit = false) {
   font-size: 24rpx;
   color: var(--sh-primary-text);
   background: var(--sh-primary-tint);
+}
+
+/* 通用/自建的压一档：本类目那几条才是平台针对这一类的回答 */
+.more__chip--q {
+  color: var(--sh-sub);
+  background: var(--sh-faint);
+}
+
+.more__toggle {
+  font-size: 24rpx;
+}
+
+.more__manage {
+  display: block;
+  font-size: 24rpx;
+  margin-top: 16rpx;
 }
 
 /* 「收起」压在「更多规格」旁边：同一行两个链接，主次要分得出来 */

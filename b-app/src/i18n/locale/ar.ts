@@ -284,6 +284,8 @@ export default {
     specs: "الخيارات", specHint: "",
     specAsk: "إضافة خيارات",
     moreFromCat: "أيضاً لهذه الفئة",
+    moreOther: "المزيد ({n})",
+    moreFold: "أقل",
     manageSpecs: "أضف في خياراتي",
     specAskHint: "",
     specFold: "طي",
