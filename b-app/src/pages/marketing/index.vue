@@ -87,6 +87,10 @@ async function load() {
   goods.value = gs.records;
 }
 
+function goActivities() {
+  uni.navigateTo({ url: "/pages/activities/index" });
+}
+
 function goCoupons() {
   uni.navigateTo({ url: "/pages/coupons/index" });
 }
@@ -195,6 +199,15 @@ onShow(load);
       放一个入口而不是并进上面的四类，是因为券要选人群、要算敞口、要看跳过明细 ——
       塞进活动表单里会让这一页变成两页拼起来的样子。
     -->
+    <!-- 新模型的活动（P5）。老的四类活动还在下面，两套并存到旧表退场 -->
+    <view v-if="!editing" class="entry" @tap="goActivities">
+      <view class="entry__main">
+        <text class="entry__t">{{ $t("activities.title") }}</text>
+        <text class="sh-muted entry__d">{{ $t("marketing.activityEntryHint") }}</text>
+      </view>
+      <sh-icon name="chevronRight" :size="18" color="var(--sh-sub)"></sh-icon>
+    </view>
+
     <view v-if="!editing" class="entry" @tap="goCoupons">
       <view class="entry__main">
         <text class="entry__t">{{ $t("coupons.title") }}</text>

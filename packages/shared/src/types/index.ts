@@ -3513,6 +3513,86 @@ export interface MemberTag {
 }
 
 /**
+ * 商家活动（P5，新模型 `pmt_activity`）。
+ *
+ * @remarks 名字带 Store 前缀是因为 `MarketingCampaign` 已经被老模型占着。
+ * 四类玩法在这里是**取值组合**而不是一个 type：
+ * 满减 = AMOUNT × CUT，限时特价 = GOODS × PRICE，买赠 = QTY × GIFT，发券 = NONE × COUPON。
+ */
+export interface StoreActivity {
+  activityNo: string;
+  name: string;
+  /** `ACQUIRE` 拉新 / `WAKEUP` 唤回 / `CLEAR` 清库存 / `BASKET` 提客单。只影响建的时候的默认值 */
+  goal?: string | null;
+  storeNo?: string | null;
+  /** `NONE` / `AMOUNT` 满额 / `QTY` 件数 / `GOODS` 命中商品 */
+  triggerType: string;
+  triggerAmountMinor?: number | null;
+  triggerQty?: number | null;
+  /** `CUT` 减钱 / `PRICE` 改单价 / `GIFT` 送商品 / `COUPON` 发券 */
+  benefitType: string;
+  benefitAmountMinor?: number | null;
+  benefitQty?: number | null;
+  benefitRef?: string | null;
+  /** `ONE_OFF` 短期 / `ALWAYS_ON` 长期 / `RECURRING` 周期 */
+  scheduleType: string;
+  startAt?: number | null;
+  endAt?: number | null;
+  /** RECURRING 的 JSON：`{"weekdays":[3],"from":"08:00","to":"20:00"}` */
+  scheduleRule?: string | null;
+  quota?: number | null;
+  quotaUsed: number;
+  quotaLeft?: number | null;
+  budgetMinor?: number | null;
+  budgetUsedMinor: number;
+  /** 最大敞口 = 限量 × 单次优惠。建活动页要显示它 */
+  maxExposureMinor?: number | null;
+  /** 空数组 = **对所有人生效**。老活动迁过来就是这个状态 */
+  audiences: Array<{ type: string; value: string }>;
+  goodsNos: string[];
+  /** `DRAFT` / `RUNNING` / `PAUSED` / `ENDED` */
+  status: string;
+  /** `EXPIRED` / `QUOTA` / `BUDGET` / `MANUAL`。商家问「怎么停了」要有答案 */
+  endedReason?: string | null;
+  /**
+   * 此刻是不是真的在生效。**与 status 分开**：周期活动在非时段里 status 仍是 RUNNING，
+   * 而商家问的是「现在减不减」。
+   */
+  liveNow: boolean;
+}
+
+/** 建活动入参。`activityNo` 为空 = 新建 */
+export interface StoreActivityDraft {
+  activityNo?: string;
+  name: string;
+  goal?: string | null;
+  storeNo?: string | null;
+  triggerType?: string;
+  triggerAmountMinor?: number | null;
+  triggerQty?: number | null;
+  benefitType: string;
+  benefitAmountMinor?: number | null;
+  benefitQty?: number | null;
+  benefitRef?: string | null;
+  scheduleType?: string;
+  startAt?: number | null;
+  endAt?: number | null;
+  scheduleRule?: string | null;
+  quota?: number | null;
+  budgetMinor?: number | null;
+  audiences?: Array<{ type: string; value: string }>;
+  goodsNos?: string[];
+}
+
+/** 冲突提示：这件商品已经在另一个还在跑的活动里 */
+export interface ActivityConflict {
+  goodsNo: string;
+  activityNo: string;
+  activityName: string;
+  benefitType: string;
+}
+
+/**
  * 商家自己的券（P4，新模型 `pmt_coupon`）。
  *
  * @remarks **名字前缀 Merchant 是必要的**：`Coupon` 这个名字已经被老模型

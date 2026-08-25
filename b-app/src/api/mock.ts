@@ -83,9 +83,11 @@ function pointsAccount() {
 }
 import type { StaffLogRow } from "@shared/mock/db";
 import type {
+  ActivityConflict,
   CouponIssueBatch,
   MemberSegmentRule,
   MerchantCoupon,
+  StoreActivity,
   MerchantPlan,
   CurrencyCode,
   MarketId,
@@ -3049,6 +3051,119 @@ export const mockApi: MerchantApi = {
       // 线索会员与退订的人进不了受众 —— 两个数都报，否则商家以为发漏了
       reachable: hit.filter((m) => m.status === "ACTIVE" && !m.reachOptOut).length,
     });
+  },
+
+  // ---------------------------------------------------------------- 活动（P5）
+  async mActivities(includeEnded) {
+    return delay(db.storeActivities
+        .filter((a) => includeEnded || a.status !== "ENDED")
+        .map((a) => ({ ...a })));
+  },
+
+  async mActivity(activityNo) {
+    const a = db.storeActivities.find((x) => x.activityNo === activityNo);
+    if (!a) throw new ApiError(10404, "活动不存在");
+    return delay({ ...a });
+  },
+
+  /**
+   * 建 / 改活动。**三条硬校验与后端一字不差** ——
+   * mock 放宽的话，演示时填得过、连真后端被拒，而那时没人记得是哪一条拦的。
+   */
+  async mSaveActivity(payload) {
+    /*
+     * **先脱响应式外壳**（同 mSaveStore / mSaveGoods）：`goodsNos` 与 `audiences`
+     * 是页面 `form.value` 里的 reactive 代理数组，而 `delay()` 用 structuredClone
+     * 返回副本 —— Chrome **拒绝克隆 Proxy**，于是保存活动会弹一句
+     * 「Failed to execute 'structuredClone'…」，商家看到的是保存失败，
+     * 而他什么也没做错。深拷贝一次 ＝ HTTP 上的 JSON 往返，真实链路里本来就有这一步。
+     */
+    payload = JSON.parse(JSON.stringify(payload)) as typeof payload;
+    if (!payload.name?.trim()) throw new ApiError(10400, "请给活动起个名");
+    const schedule = payload.scheduleType ?? "ONE_OFF";
+    const capped = payload.quota != null || (payload.budgetMinor ?? 0) > 0;
+    if (schedule === "ALWAYS_ON" && !capped) {
+      throw new ApiError(40018, "长期活动必须设限量或预算，否则没有停下来的那一天");
+    }
+    const itemCost = payload.benefitType === "PRICE" || payload.benefitType === "GIFT";
+    if (itemCost && payload.quota == null) {
+      throw new ApiError(40019, "改价和送商品的活动必须设限量");
+    }
+    if (itemCost && !payload.goodsNos?.length) {
+      throw new ApiError(40020, "请选择参加活动的商品");
+    }
+    if (schedule === "RECURRING" && !payload.scheduleRule?.includes("weekdays")) {
+      throw new ApiError(40021, "请设置周期规则（周几、几点到几点）");
+    }
+
+    const exist = payload.activityNo
+      ? db.storeActivities.find((x) => x.activityNo === payload.activityNo)
+      : undefined;
+    if (exist?.status === "ENDED") {
+      throw new ApiError(40023, "已结束的活动不能修改或重新开启，请复制一个新的");
+    }
+    const per = payload.benefitType === "CUT" ? (payload.benefitAmountMinor ?? 0) : 0;
+    const row: StoreActivity = {
+      activityNo: exist?.activityNo ?? `PT-${db.storeActivities.length + 1}`,
+      name: payload.name.trim(),
+      goal: payload.goal ?? null,
+      storeNo: payload.storeNo ?? null,
+      triggerType: payload.triggerType ?? "NONE",
+      triggerAmountMinor: payload.triggerAmountMinor ?? null,
+      triggerQty: payload.triggerQty ?? null,
+      benefitType: payload.benefitType,
+      benefitAmountMinor: payload.benefitAmountMinor ?? null,
+      benefitQty: payload.benefitQty ?? null,
+      benefitRef: payload.benefitRef ?? null,
+      scheduleType: schedule,
+      startAt: payload.startAt ?? null,
+      endAt: payload.endAt ?? null,
+      scheduleRule: payload.scheduleRule ?? null,
+      quota: payload.quota ?? null,
+      quotaUsed: exist?.quotaUsed ?? 0,
+      quotaLeft: payload.quota == null ? null : payload.quota - (exist?.quotaUsed ?? 0),
+      budgetMinor: payload.budgetMinor ?? null,
+      budgetUsedMinor: exist?.budgetUsedMinor ?? 0,
+      maxExposureMinor: payload.quota == null ? null : payload.quota * per,
+      audiences: payload.audiences ?? [],
+      goodsNos: payload.goodsNos ?? [],
+      status: exist?.status ?? "RUNNING",
+      endedReason: exist?.endedReason ?? null,
+      liveNow: (exist?.status ?? "RUNNING") === "RUNNING" && schedule !== "RECURRING",
+    };
+    if (exist) Object.assign(exist, row);
+    else db.storeActivities.unshift(row);
+    persist();
+    return delay({ ...row });
+  },
+
+  async mSetActivityStatus(activityNo, status) {
+    const a = db.storeActivities.find((x) => x.activityNo === activityNo);
+    if (!a) throw new ApiError(10404, "活动不存在");
+    if (a.status === "ENDED") {
+      throw new ApiError(40023, "已结束的活动不能修改或重新开启，请复制一个新的");
+    }
+    a.status = status;
+    a.liveNow = status === "RUNNING" && a.scheduleType !== "RECURRING";
+    if (status === "ENDED") a.endedReason = "MANUAL";
+    persist();
+    return delay({ ...a });
+  },
+
+  async mActivityConflicts(goodsNos) {
+    // 同样先脱代理：这个入参也是页面上的 reactive 数组
+    goodsNos = JSON.parse(JSON.stringify(goodsNos)) as string[];
+    const out: ActivityConflict[] = [];
+    for (const a of db.storeActivities) {
+      if (a.status !== "RUNNING") continue;   // 已结束的不算冲突
+      for (const g of a.goodsNos) {
+        if (goodsNos.includes(g)) {
+          out.push({ goodsNo: g, activityNo: a.activityNo, activityName: a.name,
+            benefitType: a.benefitType });
+        }
+      }
+    }
+    return delay(out);
   },
 
   // ---------------------------------------------------------------- 券（P4）

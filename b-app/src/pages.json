@@ -272,6 +272,18 @@
       "style": {
         "navigationBarTitleText": "发放记录"
       }
+    },
+    {
+      "path": "pages/activities/index",
+      "style": {
+        "navigationBarTitleText": "店铺活动"
+      }
+    },
+    {
+      "path": "pages/activity-edit/index",
+      "style": {
+        "navigationBarTitleText": "新建活动"
+      }
     }
   ],
   "globalStyle": {

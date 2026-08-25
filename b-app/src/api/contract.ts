@@ -47,11 +47,14 @@ import type {
   MerchantLoginResp,
   MerchantProfile,
   MerchantCustomer,
+  ActivityConflict,
   CouponIssueBatch,
   CouponRedeemResult,
   CouponRedeemView,
   MerchantCoupon,
   MerchantCouponDraft,
+  StoreActivity,
+  StoreActivityDraft,
   Member,
   MemberDetail,
   MemberSegment,
@@ -1064,6 +1067,24 @@ export interface MerchantApi {
    * **这不是失败**：要提示「刚才那次已经成功」，而不是报错让他再按一次。
    */
   mRedeemCoupon(code: string): Promise<CouponRedeemResult>;
+
+  // ---- 活动（P5，新模型）
+  mActivities(includeEnded?: boolean): Promise<StoreActivity[]>;
+
+  mActivity(activityNo: string): Promise<StoreActivity>;
+
+  /**
+   * 建 / 改活动。**端上的校验与后端一字不差**：
+   * 长期活动必须有限量或预算（没有结束时间又没上限 = 永久敞口）；
+   * 改单价与送商品必须限量且必须选商品（单次成本由商品决定，卖得越好亏得越多）。
+   */
+  mSaveActivity(payload: StoreActivityDraft): Promise<StoreActivity>;
+
+  /** 启停 / 结束。**已结束的不能复活** —— 复活会覆盖掉「当初为什么停」 */
+  mSetActivityStatus(activityNo: string, status: string): Promise<StoreActivity>;
+
+  /** 冲突提示。不阻止保存，但要在保存前说出来 */
+  mActivityConflicts(goodsNos: string[]): Promise<ActivityConflict[]>;
 
   // ---- 结算（B-11.9）
   /**

@@ -3,7 +3,7 @@
     {
       "key": "b-app",
       "label": "商家 App",
-      "count": 51,
+      "count": 53,
       "domains": [
         {
           "name": "工作台",
@@ -372,6 +372,26 @@
               "status": "已实现",
               "proto": null,
               "preview": "http://localhost:5175/#/pages/coupon-issues/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/activities/index",
+              "title": "店铺活动",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "preview": "http://localhost:5175/#/pages/activities/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/activity-edit/index",
+              "title": "新建活动",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "preview": "http://localhost:5175/#/pages/activity-edit/index"
             }
           ]
         },
@@ -2382,5 +2402,5 @@
       ]
     }
   ],
-  "total": 197
+  "total": 199
 }

@@ -223,6 +223,11 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
   mCouponIssues: { method: "GET", path: "/biz/coupon-issues", auth: true, summary: "发放记录（含跳过明细）" },
   mPeekCouponCode: { method: "GET", path: "/biz/coupon-redeem/{code}", auth: true, summary: "先看：这张券能不能核" },
   mRedeemCoupon: { method: "POST", path: "/biz/coupon-redeem", auth: true, summary: "到店核销一次（不可撤销）" },
+  mActivities: { method: "GET", path: "/biz/activities", auth: true, summary: "活动列表" },
+  mActivity: { method: "GET", path: "/biz/activities/{activityNo}", auth: true, summary: "活动详情" },
+  mSaveActivity: { method: "POST", path: "/biz/activities", auth: true, summary: "建 / 改活动（敞口在这一步算清）" },
+  mSetActivityStatus: { method: "PUT", path: "/biz/activities/{activityNo}/status", auth: true, summary: "启停 / 结束" },
+  mActivityConflicts: { method: "POST", path: "/biz/activity-conflicts", auth: true, summary: "这些商品已经在哪些活动里" },
 
   mRateCard: { method: "GET", path: "/biz/settle/rate-card", auth: true, summary: "费率卡" },
   mSettleList: { method: "GET", path: "/biz/settle/bills", auth: true, summary: "结算单列表" },

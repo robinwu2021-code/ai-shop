@@ -78,10 +78,12 @@ import type {
   MerchantCustomer,
   Member,
   MemberDetail,
+  ActivityConflict,
   CouponIssueBatch,
   CouponRedeemResult,
   CouponRedeemView,
   MerchantCoupon,
+  StoreActivity,
   MemberMergePreview,
   MemberSegment,
   MemberSegmentPreview,
@@ -427,6 +429,15 @@ export const httpApi: MerchantApi = {
   mPeekCouponCode: (code) =>
     http.get<CouponRedeemView>(buildPath(E.mPeekCouponCode.path, { code })),
   mRedeemCoupon: (code) => http.post<CouponRedeemResult>(E.mRedeemCoupon.path, { code }),
+
+  mActivities: (includeEnded) =>
+    http.get<StoreActivity[]>(E.mActivities.path, includeEnded ? { includeEnded: true } : undefined),
+  mActivity: (activityNo) => http.get<StoreActivity>(buildPath(E.mActivity.path, { activityNo })),
+  mSaveActivity: (payload) => http.post<StoreActivity>(E.mSaveActivity.path, payload),
+  mSetActivityStatus: (activityNo, status) =>
+    http.put<StoreActivity>(buildPath(E.mSetActivityStatus.path, { activityNo }), { status }),
+  mActivityConflicts: (goodsNos) =>
+    http.post<ActivityConflict[]>(E.mActivityConflicts.path, { goodsNos }),
 
   mSettleList: (allStores) =>
     http.get<SettleBill[]>(E.mSettleList.path, allStores ? { allStores: true } : undefined),
