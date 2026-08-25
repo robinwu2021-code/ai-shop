@@ -121,9 +121,12 @@ SHA256: 2D:33:A1:46:12:BE:AF:22:E9:F7:DD:45:06:C9:8A:C0:3D:CA:41:18:78:5A:A9:2E:
   `sdkConfigs.push.unipush.offline` 改 `true`，后端零改动；
 - iOS 的 APNs 证书，依赖 Apple 开发者账号。
 
-**不要把个推 SDK 手写进 `android-shell/`。** 那个壳自述是开发预览用的 WebView 壳
-（见 `MainActivity` 类注释），没有原生能力，注定不是上架的那个包 ——
-写进去的集成代码会连壳一起丢掉。
+**不要把新的原生 SDK 手写进 `android-shell/`。** 那个壳是开发预览用的 WebView 壳
+（见 `android-shell/README.md`），注定不是上架的那个包 ——
+写进去的集成代码不会跟着上架，到时候要在离线包里重做一遍。
+
+（个推是例外：壳里**已经**接了原生个推 + `PushBridge` JS 桥，为的是在没有离线包的
+那段时间能验推送。上架那条路仍然走 uni-push 2.0，端上不写原生代码。）
 
 ## 6. 高德地图 Key（2026-08-22 接入）
 

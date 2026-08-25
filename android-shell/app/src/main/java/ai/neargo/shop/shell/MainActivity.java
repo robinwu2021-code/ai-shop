@@ -16,8 +16,11 @@ import androidx.appcompat.app.AppCompatActivity;
 /**
  * C 端的 WebView 壳。
  *
- * <p><b>这不是 uni-app 的原生打包</b>：原生打包要 DCloud appid + HBuilderX（GUI）
- * 或离线 SDK，这里都拿不到。所以走 H5 构建产物 + WebView 的路子 ——
+ * <p><b>这不是 uni-app 的原生打包</b>。写这个壳的时候离线 SDK 还没拿到，
+ * 现在拿到了 —— B 端真机包走的是 DCloud 离线打包（{@code HBuilder-Integrate-AS/simpleDemo}），
+ * 见 {@code android-shell/README.md}。<b>那里的 applicationId 与本工程 merchant flavor
+ * 相同</b>（{@code top.hxmall.bapp}），装一个会顶掉另一个，别拿错包交付。
+ * 这个壳仍然有用：走 H5 构建产物 + WebView 的路子 ——
  * 页面、路由、样式与真机一致。原生能力按需在壳里补：<b>推送已接</b>（个推原生 SDK +
  * {@link PushBridge} JS 桥，见 ShellApplication/PushIntentService）；微信/支付宝支付、
  * 扫码仍未接。用来看界面、走流程、验推送够，联调支付不够。
