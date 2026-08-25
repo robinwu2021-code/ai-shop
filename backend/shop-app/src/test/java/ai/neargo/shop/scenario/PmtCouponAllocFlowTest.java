@@ -139,7 +139,9 @@ class PmtCouponAllocFlowTest {
         String uc = give(user, "M-A", 1_000, 0, PmtCoupon.REDEEM_ORDER, 1);
         String orderNo = "O-PMT-" + seq;
 
-        couponPort.markUsed(user, uc, orderNo);
+        CouponPort.Allocation alloc = couponPort.allocate(user, uc,
+                List.of(new CouponPort.MerchantAmount("M-A", 9_000)));
+        couponPort.markUsed(user, uc, orderNo, alloc);
 
         PmtUserCoupon after = userCouponMapper.selectOne(Wrappers.<PmtUserCoupon>lambdaQuery()
                 .eq(PmtUserCoupon::getUserCouponNo, uc).last("limit 1"));
@@ -151,6 +153,9 @@ class PmtCouponAllocFlowTest {
         assertThat(trail).as("券的每一次使用都要留一行").hasSize(1);
         assertThat(trail.get(0).getPromoNo()).isEqualTo(uc);
         assertThat(trail.get(0).getRevertedAt()).isNull();
+        // 记的是**当时减了多少**：事后重算会因为门槛/封顶被改过而对不上账
+        assertThat(trail.get(0).getAmountMinor())
+                .as("pmt_apply 要记下这一单实际减掉的钱").isEqualTo(1_000);
 
         couponPort.release(orderNo);
 
@@ -171,7 +176,7 @@ class PmtCouponAllocFlowTest {
         String user = "U-PMT-" + (++seq);
         String uc = give(user, "M-A", 0, 0, PmtCoupon.REDEEM_ORDER, 5);
 
-        couponPort.markUsed(user, uc, "O-CARD-1-" + seq);
+        couponPort.markUsed(user, uc, "O-CARD-1-" + seq, CouponPort.Allocation.none());
         PmtUserCoupon one = userCouponMapper.selectOne(Wrappers.<PmtUserCoupon>lambdaQuery()
                 .eq(PmtUserCoupon::getUserCouponNo, uc).last("limit 1"));
         assertThat(one.getTimesUsed()).isEqualTo(1);

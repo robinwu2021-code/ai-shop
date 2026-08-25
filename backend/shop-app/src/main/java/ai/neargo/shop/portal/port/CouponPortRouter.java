@@ -43,11 +43,12 @@ public class CouponPortRouter implements CouponPort {
     }
 
     @Override
-    public void markUsed(String userNo, String userCouponNo, String orderNo) {
+    public void markUsed(String userNo, String userCouponNo, String orderNo,
+                         Allocation allocation) {
         if (promo.owns(userNo, userCouponNo)) {
-            promo.markUsed(userNo, userCouponNo, orderNo);
+            promo.markUsed(userNo, userCouponNo, orderNo, allocation);
         } else {
-            legacy.markUsed(userNo, userCouponNo, orderNo);
+            legacy.markUsed(userNo, userCouponNo, orderNo, allocation);
         }
     }
 

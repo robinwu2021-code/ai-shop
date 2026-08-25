@@ -91,7 +91,10 @@ public class CouponPortImpl implements CouponPort {
 
     @Override
     @Transactional
-    public void markUsed(String userNo, String userCouponNo, String orderNo) {
+    public void markUsed(String userNo, String userCouponNo, String orderNo,
+                         Allocation allocation) {
+        // 老模型没有「优惠发生记录」这张表，减了多少只能靠重算 —— 所以这里用不上 allocation。
+        // 这正是新模型要多写一行 pmt_apply 的原因，P9 老表退场时这个空实现一起消失
         if (userCouponNo == null || userCouponNo.isBlank()) {
             return;
         }

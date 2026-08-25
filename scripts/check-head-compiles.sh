@@ -12,9 +12,28 @@
 # SysRegion.rural、CommunityVO 的新字段），它们停在 M 列、混在一堆无关改动中间，
 # 比 `??` 更难看见。那次让 HEAD 编译过需要 27 个文件，其中 14 个是 M 不是 `??`。
 #
+# 编完之后**还要跑全量测试**，判据是「只准变短，不准变长」：
+# 与 backend/known-failures.txt 比对，新增失败就挡住推送。
+#
+# 为什么闸门只能立在这里：云端 CI 编不了后端（私有父 POM 只在本机 ~/.m2），
+# .github/workflows/backend.yml 每次都是 skipped —— 查过最近的运行记录，一次没跑过。
+# 于是 1205 条测试此前**没有任何地方在自动跑**，唯一的防线是「谁记得在本机跑一遍」。
+#
+# 耗时实测 3 分 07 秒（2026-08-25，含编译）。只在本次推送动过 backend/ 时触发
+# （判断在 .githooks/pre-push 里），所以前端推送不受影响。
+#
 # 用法：
 #   scripts/check-head-compiles.sh            # 检查 HEAD
 #   scripts/check-head-compiles.sh <commit>   # 检查任意提交
+#
+# 逃生门：
+#   SKIP_COMPILE_GATE=1   整个闸门都跳过（.githooks/pre-push 里判断）
+#   SKIP_TEST_GATE=1      只编译、不跑测试
+#
+# 什么时候该用 SKIP_TEST_GATE：**共享工作区里别人写到一半时不该用** ——
+# 这个脚本跑的是干净 HEAD 副本，别人未提交的半成品影响不到它。
+# 真正该用的场合是「你已经知道这次全量会红成一片、且原因与你无关」，
+# 比如刚有人把一支坏迁移推进了 HEAD，你正在推的恰好是修它的那一条。
 set -euo pipefail
 
 REF="${1:-HEAD}"
@@ -48,3 +67,81 @@ else
   echo "  别替别人提交，把缺的符号名报给对应会话。"
   exit 1
 fi
+
+if [ "${SKIP_TEST_GATE:-}" = "1" ]; then
+  echo "⚠ 已跳过测试闸门（SKIP_TEST_GATE=1）"
+  exit 0
+fi
+
+KNOWN="$ROOT/backend/known-failures.txt"
+if [ ! -f "$KNOWN" ]; then
+  echo "✗ 找不到 $KNOWN —— 没有基线就没法判断「有没有变长」，不能放行"
+  exit 1
+fi
+
+# 日志**写在 worktree 外面**：退出时 trap 会把 worktree 整个删掉，
+# 写在里面的话，失败信息里那句「完整日志：…」指向的文件已经不存在了。
+# 模板里的 X **必须在结尾**：BSD 的 mktemp（macOS）只替换结尾那串 X，
+# 写成 `head-test.XXXXXX.log` 会原样造出一个名叫 XXXXXX 的文件，
+# 于是失败信息里给出的路径每次都一样、还会互相覆盖。
+LOG="$(mktemp "${TMPDIR:-/tmp}/head-test.XXXXXX")"
+echo "→ mvn test（全量，约 3 分钟）"
+START=$(date +%s)
+set +e
+(cd "$WT/backend" && mvn -o -B test) > "$LOG" 2>&1
+set -e
+echo "  用时 $(( $(date +%s) - START )) 秒"
+
+# ── 保险：测试没跑起来 ≠ 通过 ──
+#
+# maven 因为别的原因中途死掉时，「没有失败」和「一条都没跑」在输出上长得一样。
+# 没有这一步的话，闸门会在最该拦住的时候安静放行。
+TOTAL="$(grep -oE '^\[(INFO|ERROR)\] Tests run: [0-9]+, Failures: [0-9]+, Errors: [0-9]+, Skipped: [0-9]+$' "$LOG" \
+  | tail -1 | sed -E 's/.*Tests run: ([0-9]+),.*/\1/')"
+if [ -z "$TOTAL" ] || [ "$TOTAL" -lt 800 ]; then
+  echo ""
+  echo "✗ 全量测试没有正常跑起来（识别到 ${TOTAL:-0} 条，正常在 1200 上下）。"
+  echo "  这不是「全绿」，是**没测**。日志：$LOG"
+  tail -30 "$LOG"
+  exit 1
+fi
+
+# surefire 的失败清单长这样（:行号 或 » 异常 两种收尾都有）：
+#   [ERROR]   M9bBizGoodsFlowTest.handTypedSpecStillLands:149 期望 ...
+#   [ERROR]   SpecLibraryCoverageTest.exactlyOnePrimary » IllegalState ...
+# 清单里存的是全限定名，这里两边都归到 Class.method 再比。
+# ⚠ 两个 grep 都要 `|| true`：一条失败都没有时 grep 返回 1，
+# 而 `set -e` 会让脚本**在最该放行的时候当场死掉**（写的时候就踩了一次）。
+NOW="$WT/now.txt"; BASE="$WT/known.txt"
+{ grep -E '^\[ERROR\]   [A-Za-z0-9_]+\.[a-zA-Z0-9_]+' "$LOG" || true; } \
+  | sed -E 's/^\[ERROR\]   ([A-Za-z0-9_]+)\.([a-zA-Z0-9_]+).*/\1.\2/' | sort -u > "$NOW"
+{ grep -vE '^#|^$' "$KNOWN" || true; } \
+  | sed -E 's/.*\.([A-Za-z0-9_]+)\.([a-zA-Z0-9_]+)$/\1.\2/' | sort -u > "$BASE"
+
+NEW="$(comm -23 "$NOW" "$BASE")"
+FIXED="$(comm -13 "$NOW" "$BASE")"
+
+echo "  全量 $TOTAL 跑 / $(wc -l < "$NOW" | tr -d ' ') 红（基线 $(wc -l < "$BASE" | tr -d ' ') 条）"
+
+if [ -n "$FIXED" ]; then
+  echo ""
+  echo "🎉 这几条已经修好了，请从 backend/known-failures.txt 里删掉对应行："
+  echo "$FIXED" | sed 's/^/    /'
+  echo "  （清单只准变短 —— 不删的话，下次有人把它改回去也没人发现）"
+fi
+
+if [ -n "$NEW" ]; then
+  echo ""
+  echo "✗ 新增了测试失败，这些不在 backend/known-failures.txt 里："
+  echo "$NEW" | sed 's/^/    /'
+  echo ""
+  echo "  完整日志：$LOG"
+  echo "  ⚠ 先确认是不是自己引起的：这个脚本跑的是**干净 HEAD 副本**，"
+  echo "    共享工作区里别人未提交的改动影响不到它 —— 所以这里红了，"
+  echo "    要么是 HEAD 上的真回归，要么是别人已经提交进 HEAD 的问题。"
+  echo "    后者请把失败的用例名报给对应会话，别替别人改。"
+  exit 1
+fi
+
+echo "✓ 没有新增失败（基线 $(wc -l < "$BASE" | tr -d ' ') 条一条没多）"
+rm -f "$LOG"   # 通过就不留垃圾；上面每条失败路径都保留它并打印路径

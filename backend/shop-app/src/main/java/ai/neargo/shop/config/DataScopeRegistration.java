@@ -158,5 +158,53 @@ public class DataScopeRegistration implements DataScopeRegistrar {
          * 那时要连同「这个会话到底带哪几个维度」一起验，别照抄 prd_goods 的写法 ——
          * 上面这次 1=0 就是照抄来的。
          */
+
+        /*
+         * ─────────── 会员（mbr_*，P1–P3） ───────────
+         *
+         * 只登记 MERCHANT：这几张表上没有 user_no —— 会员挂的是**人档**（person_no），
+         * 不是账号。所以 C 端会话（SELF 维度）读它们会被判成 1=0 而不是放行。
+         *
+         * **因此所有系统链路的读写必须显式豁免**，已经做了：
+         * `MemberServiceImpl.onOrderPaid`（买家自己付钱那一刻，会话是 SELF）、
+         * `claimByPerson`（登录后转正，同样是 SELF）。
+         * 少豁免一处的症状是<b>入会静默不发生</b>：订单正常、日志干净、会员数不涨，
+         * 而商家两周后才会发现「买了这么多人怎么会员只有几个」。
+         * MemberEnrollScopeTest 拿一个 SELF 会话跑完整入会，就是守这一条。
+         *
+         * 运营端将来要看会员（P8）时，这里要补 COMMUNITY/PICKUP —— 漏一个，
+         * 配了那个维度的运营看到的是空列表而不是报错。
+         */
+        registry.register("mbr_member", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        registry.register("mbr_member_store", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        registry.register("mbr_member_source", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        registry.register("mbr_setting", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        registry.register("mbr_tag", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        registry.register("mbr_member_tag", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        registry.register("mbr_tag_merge_log", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        registry.register("mbr_segment", Map.of(ScopeDim.MERCHANT, "entity_no"));
+
+        /*
+         * ─────────── 券的新模型（pmt_*，P4） ───────────
+         *
+         * 用户券与优惠发生记录**两个维度都要登记**：商家要看自己发出去多少（MERCHANT），
+         * 买家要看自己的券包（SELF）。只登记一个的话，另一边整页空白而不报错。
+         *
+         * `pmt_coupon` / `pmt_coupon_scope` 只有 MERCHANT：券模板是商家的资产。
+         * 平台券的 entity_no 为空 —— 平台侧读它走的是 ops 会话（ALL），不受影响；
+         * 而下单算价读模板时会话是 SELF，所以 `CouponAllocServiceImpl` 里
+         * 那几处读模板/用户券都是 executeWithoutScope 的。
+         *
+         * `pmt_coupon_scope` 没有 entity_no（它挂在 coupon_no 上），
+         * 因此**不登记**：它从不作为检索入口，总是随券模板一起查。
+         */
+        registry.register("pmt_coupon", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        registry.register("pmt_user_coupon", Map.of(
+                ScopeDim.SELF, "user_no",
+                ScopeDim.MERCHANT, "entity_no"));
+        registry.register("pmt_coupon_issue", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        registry.register("pmt_apply", Map.of(
+                ScopeDim.SELF, "user_no",
+                ScopeDim.MERCHANT, "entity_no"));
     }
 }

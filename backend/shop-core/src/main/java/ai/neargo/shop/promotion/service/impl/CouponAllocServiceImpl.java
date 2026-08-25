@@ -108,7 +108,8 @@ public class CouponAllocServiceImpl implements CouponAllocService {
 
     @Override
     @Transactional
-    public void markUsed(String userNo, String userCouponNo, String orderNo) {
+    public void markUsed(String userNo, String userCouponNo, String orderNo,
+                         CouponPort.Allocation allocation) {
         if (userCouponNo == null || userCouponNo.isBlank()) {
             return;
         }
@@ -134,9 +135,13 @@ public class CouponAllocServiceImpl implements CouponAllocService {
         row.setEntityNo(coupon.getEntityNo());
         row.setOrderNo(orderNo);
         row.setRedeemMode(PmtCoupon.REDEEM_ORDER);
-        // 金额这里不重算：重算依赖的规则会变，而这一行记的是**当时减了多少**。
-        // 由调用方在同一事务里补写（下单链路知道最终分摊），补不上就是 0 —— 见 P4 收尾
-        row.setAmountMinor(0L);
+        /*
+         * **金额由下单链路带过来，不在这里重算。**
+         *
+         * 重算依赖的规则会变：同一张券三个月后再算，可能因为门槛改过、封顶调过
+         * 而与当时的账对不上。这一行记的是「当时减了多少」，是事实不是派生值。
+         */
+        row.setAmountMinor(allocation == null ? 0L : allocation.totalDiscount());
         row.setFunder(coupon.getFunder());
         row.setAppliedAt(System.currentTimeMillis());
         DataScopeContext.executeWithoutScope(() -> applyMapper.insert(row));

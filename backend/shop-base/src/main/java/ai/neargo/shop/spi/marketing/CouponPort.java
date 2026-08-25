@@ -18,8 +18,16 @@ public interface CouponPort {
      */
     Allocation allocate(String userNo, String userCouponNo, List<MerchantAmount> groups);
 
-    /** 下单成功后核销。 */
-    void markUsed(String userNo, String userCouponNo, String orderNo);
+    /**
+     * 下单成功后核销。
+     *
+     * @param allocation 这一单<b>实际减掉的分摊</b>（{@link #allocate} 的返回值原样带过来）。
+     *                   新模型要把它记进 {@code pmt_apply} —— 那一行记的是
+     *                   「<b>当时</b>减了多少」，而重算依赖的规则会变：
+     *                   同一张券在三个月后重算，可能因为门槛改过、封顶调过而对不上账。
+     *                   老实现忽略这个参数（它只在用户券上盖一个 order_no）。
+     */
+    void markUsed(String userNo, String userCouponNo, String orderNo, Allocation allocation);
 
     /** 订单取消/关闭时退回券。 */
     void release(String orderNo);

@@ -1,5 +1,6 @@
 package ai.neargo.shop.member.service.impl;
 
+import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
@@ -73,10 +74,27 @@ public class MemberServiceImpl implements MemberService {
 
     // ---------------------------------------------------------------- 写
 
+    /**
+     * 支付成功即入会。
+     *
+     * <p><b>整段绕开数据域</b>（{@code executeWithoutScope}）：这一刻的会话是<b>买家自己</b>
+     * （SELF 维度），而 {@code mbr_*} 只按 {@code entity_no}（MERCHANT）登记 ——
+     * 会员挂的是人档不是账号，这几张表上根本没有 user_no。
+     * 数据域是 fail-closed 的：维度对不上时 handler 拼的是 {@code 1=0} 而不是放行，
+     * 于是 <b>select 查不到、insert 之后的 update 影响 0 行</b>，
+     * 而接口成功、日志干净、订单一切正常。商家要到两周后才会发现
+     * 「买了这么多人，怎么会员只有几个」。
+     */
     @Override
     @Transactional
     public void onOrderPaid(String subOrderNo, String userNo, String personNo,
                             String entityNo, String storeNo, long amountMinor, long paidAt) {
+        DataScopeContext.executeWithoutScope(() ->
+                doOnOrderPaid(subOrderNo, personNo, entityNo, storeNo, amountMinor, paidAt));
+    }
+
+    private void doOnOrderPaid(String subOrderNo, String personNo,
+                               String entityNo, String storeNo, long amountMinor, long paidAt) {
         if (personNo == null || personNo.isBlank()) {
             /*
              * 没有人档 = 他还没绑手机号。**这一单照常成立，只是不计进任何会员名单** ——
@@ -169,6 +187,11 @@ public class MemberServiceImpl implements MemberService {
         if (personNo == null || personNo.isBlank()) {
             return 0;
         }
+        // 同 onOrderPaid：这一刻的会话是刚登录的买家（SELF），而这张表按 entity_no 登记
+        return DataScopeContext.executeWithoutScope(() -> doClaimByPerson(personNo));
+    }
+
+    private int doClaimByPerson(String personNo) {
         List<MbrMember> leads = memberMapper.selectList(Wrappers.<MbrMember>lambdaQuery()
                 .eq(MbrMember::getPersonNo, personNo)
                 .eq(MbrMember::getStatus, MbrMember.LEAD));

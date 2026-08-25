@@ -22,8 +22,14 @@ public interface CouponAllocService {
     CouponPort.Allocation allocate(String userNo, String userCouponNo,
                                    List<CouponPort.MerchantAmount> groups);
 
-    /** 下单成功后占用这张券，并记一行 {@code pmt_apply} */
-    void markUsed(String userNo, String userCouponNo, String orderNo);
+    /**
+     * 下单成功后占用这张券，并记一行 {@code pmt_apply}。
+     *
+     * @param allocation 这一单实际减掉多少。<b>不在这里重算</b> ——
+     *                   重算依赖的规则会变，而这一行记的是「当时减了多少」
+     */
+    void markUsed(String userNo, String userCouponNo, String orderNo,
+                  ai.neargo.shop.spi.marketing.CouponPort.Allocation allocation);
 
     /** 订单取消/关闭时退回，并把那一行 {@code pmt_apply} 标记为已撤销 */
     void release(String orderNo);

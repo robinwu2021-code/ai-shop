@@ -628,8 +628,14 @@ public class OrderServiceImpl implements OrderService {
                 .eq(TrdCartItem::getUserNo, userNo)
                 .in(TrdCartItem::getSkuNo, split.items.stream().map(Line::skuNo).toList()));
 
-        // 核销券。放在落库之后：券核销失败要能连订单一起回滚
-        couponPort.markUsed(userNo, cmd.couponNo(), orderNo);
+        /*
+         * 核销券。放在落库之后：券核销失败要能连订单一起回滚。
+         *
+         * **把分摊结果一起带过去**：营销域要记一行「这一单这张券减了多少」，
+         * 而那个数只有这里知道 —— 它是这一单算价的结果，事后重算会因为
+         * 券的门槛/封顶被改过而对不上。
+         */
+        couponPort.markUsed(userNo, cmd.couponNo(), orderNo, discounts.coupon());
 
         // ⑦ 发事件（只写 outbox，与业务同事务）
         eventBus.publish(new OrderEvents.OrderCreated(orderNo, userNo, subOrderNos, split.payAmount()));
