@@ -981,6 +981,52 @@ classDiagram
 
 ---
 
+## 4.4 分几个模块：两个**域包**，不新建 Maven 模块
+
+问的是「会员与营销算一个模块还是两个」。先把这个项目里「模块」的两种含义分开：
+
+| | 是什么 | 现状 |
+|---|---|---|
+| **Maven 模块** | 物理边界：`shop-base` / `shop-core` / `shop-merchant` / `shop-settle` / `shop-channel` / `shop-notify` / `shop-app` | 7 个，**按分层与部署单元切**，不按业务域切 |
+| **域包** | 业务边界：`ai.neargo.shop.{user,merchant,community,product,trade,fulfillment,marketing,settle,message,platform,content,risk}` | 12 个，`ArchitectureTest.svcModulesMustNotDependOnEachOther` 逐对断言**不得互相依赖**，跨域一律走 `spi` 的 Port |
+
+**这个项目的域边界是包 + ArchUnit 守的，不是 Maven 模块。**
+`marketing`、`product`、`trade` 全都住在 `shop-core` 里，会员没有理由特殊。
+
+### 结论：`member` 与 `promotion` 两个域包，都落在 `shop-core`
+
+| 方案 | 判断 |
+|---|---|
+| **A. 两个域包（推荐）** `ai.neargo.shop.member` + `ai.neargo.shop.promotion`，登记进 `DOMAINS`，跨域走 Port | ✅ 与既有 12 个域同构；ArchUnit 立刻开始守方向 |
+| B. 合成一个包（`growth`） | ❌ 会员与营销的依赖是**单向**的（营销要问会员「他是不是熟客」，会员不问营销）。合成一个包，ArchUnit 就管不住这个方向，早晚出现会员反向 import 营销 |
+| C. 新建 Maven 模块 `shop-member` / `shop-promotion` | ❌ 此刻代价为负：私有父 POM 只存在于开发机的 `~/.m2`（云端 CI 编不了后端），模块越多这条链越长；而收益（编译隔离）在这个体量上感知不到 |
+| D. 并进现有 `marketing` 包 | ❌ 那个包已经装着团购、求团、裂变、归因、内容位；再塞会员与新券制，它会变成第二个「什么都有」的地方 |
+
+### 为什么偏偏是两个包，而不是一个
+
+依赖方向是单向的，写下来就清楚：
+
+```
+promotion ──MemberQueryPort──► member      受众判断：他是不是熟客/沉睡/带某标签
+member    ──(只存 activityNo 字符串)──► ✗   来源里记「因哪场活动进来的」，但不 import 营销的类
+trade     ──ActivityPort / CouponPort──► promotion
+trade     ──MemberEventPort──► member
+```
+
+合成一个包之后，这条方向没有任何东西守着 —— 而它一旦被破坏（会员的分层逻辑里
+直接读了活动表），两者就再也拆不开了。**分包的成本是今天写两个 Port，
+收益是这条线以后一直是直的。**
+
+### 什么时候才该拆成 Maven 模块
+
+给三条**可测量**的触发条件，满足任意一条再拆，别凭感觉：
+
+1. 营销需要**独立发版节奏**（比如活动改一次要热更，而会员一个月不动）；
+2. 会员数据要**独立库/独立扩容**（会员表量级到订单表那个量级）；
+3. 出现**第二个消费方**（比如另一个 App 或对外开放接口只要会员这一块）。
+
+在那之前，两个域包 + Port 已经把边界立住了；拆模块只是把同一条边界换个物理形式。
+
 ## 5. 旧表退场路径
 
 | 旧表 | 新表 | 怎么退 |
