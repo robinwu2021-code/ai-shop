@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, useRef, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth, type Role } from "@/lib/auth";
 import { api } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
@@ -36,28 +36,41 @@ const DEMO_SCOPE: Partial<Record<Role, { merchantNo?: string; communityNo?: stri
  * 真实后端只认凭据，角色来自 STAFF 账号自身。
  */
 export default function LoginPage() {
+  return <Suspense><LoginForm /></Suspense>;
+}
+
+function LoginForm() {
   const router = useRouter();
   const login = useAuth((s) => s.login);
   const { t } = useI18n();
-  const [username, setUsername] = useState("admin");
-  const [password, setPassword] = useState("");
+  const params = useSearchParams();
+  const [username, setUsername] = useState(params.get("u") ?? "admin");
+  const [password, setPassword] = useState(params.get("p") ?? "");
   const [forgot, setForgot] = useState(false);
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
+  const didAutoLogin = useRef(false);
 
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
+  // ?u=admin&p=xxx → 自动提交一次（测试用）
+  useEffect(() => {
+    const u = params.get("u");
+    const p = params.get("p");
+    if (u && p && !didAutoLogin.current) {
+      didAutoLogin.current = true;
+      doLogin(u, p);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function doLogin(u: string, p: string) {
     setBusy(true);
     setErr("");
     try {
-      // 后端据 token 里的角色鉴权；前端只负责把凭据递过去
-      const r = await api.login(username, password);
+      const r = await api.login(u, p);
       login({
         username: r.username,
         role: r.role,
         token: r.token,
-        // 判权靠它。漏传的话 perms 是空数组 = 零权限 = 登录后一片空白，
-        // 而且不报错 —— 这一处在改造时漏了，靠浏览器实测才发现
         perms: r.perms,
         merchantNo: r.merchantNo,
         communityNo: r.communityNo,
@@ -68,6 +81,13 @@ export default function LoginPage() {
     } finally {
       setBusy(false);
     }
+  }
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setErr("");
+    await doLogin(username, password);
   }
 
   return (
