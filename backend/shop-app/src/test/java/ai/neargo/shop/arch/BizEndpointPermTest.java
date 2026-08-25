@@ -197,7 +197,7 @@ class BizEndpointPermTest {
         put("/biz/member-tags/{tagNo}", BizPerms.CUSTOMER);
         put("/biz/member-tags/{tagNo}/merge", BizPerms.CUSTOMER);
         put("/biz/member-segments", BizPerms.CUSTOMER);
-        put("/biz/member-segments/{segmentNo}", BizPerms.CUSTOMER);
+        put("/biz/member-segments/{segmentNo}/remove", BizPerms.CUSTOMER);
         put("/biz/member-segments/preview", BizPerms.CUSTOMER);
         // 同一路径两个方法两种权限：读是 biz:customer，改是 biz:store:admin
         // （改口径会改变全主体「新客」的含义）。表里按更严的那个记
@@ -366,11 +366,26 @@ class BizEndpointPermTest {
                     if (!m.find()) {
                         continue;
                     }
-                    // 注解块：往上找 3 行内有没有 canBiz
+                    /*
+                     * 往上走过整个「注解 + 注释」块找 canBiz，**不是往上数固定几行**。
+                     *
+                     * 此前写死 3 行，于是在 @PreAuthorize 与 @PostMapping 之间夹一段
+                     * 五行的注释，就会被报成「表里定了权限但代码里没有 @PreAuthorize」——
+                     * 而那个端点在运行时明明是受保护的。假警报和漏报一样伤：
+                     * 这条用例的价值全在于它红的时候人会当真。
+                     *
+                     * 停在**空行或上一个方法的结尾**：注解块不会跨过这两者。
+                     */
                     boolean has = false;
-                    for (int k = Math.max(0, i - 3); k < i; k++) {
-                        if (lines[k].contains("canBiz") || lines[k].contains("canAnyBiz")) {
+                    for (int k = i - 1; k >= 0; k--) {
+                        String up = lines[k].trim();
+                        if (up.isEmpty() || up.equals("}") || up.startsWith("public ")
+                                || up.startsWith("private ") || up.startsWith("return ")) {
+                            break;
+                        }
+                        if (up.contains("canBiz") || up.contains("canAnyBiz")) {
                             has = true;
+                            break;
                         }
                     }
                     if (!has) {

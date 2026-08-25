@@ -19,7 +19,6 @@ import ai.neargo.shop.member.service.MemberTagService;
 import ai.neargo.shop.member.dto.MemberVOs;
 import ai.neargo.shop.member.dto.MemberVOs.MemberSettingVO;
 import ai.neargo.shop.member.dto.MemberVOs.SegmentVO;
-import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -235,8 +234,13 @@ public class BizMemberController {
                 req.scopeStoreNo(), req.rule() == null ? emptyRule() : req.rule());
     }
 
+    /*
+     * 用 POST /remove 而不是 DELETE：端上那个 http 客户端只有 GET/POST/PUT
+     * （小程序的 RequestOptions 不认 PATCH，为它退过一次改动）。
+     * 为一个端点给传输层加一种方法，代价大过它省下的那点语义。
+     */
     @PreAuthorize("@perm.canBiz('" + BizPerms.CUSTOMER + "')")
-    @DeleteMapping("/biz/member-segments/{segmentNo}")
+    @PostMapping("/biz/member-segments/{segmentNo}/remove")
     public void removeSegment(@PathVariable String segmentNo) {
         segmentService.remove(BizContext.requireMerchantNo(), segmentNo);
     }
