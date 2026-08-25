@@ -6307,3 +6307,168 @@ UPDATE prd_category SET name_en = 'Repair & Install', updated_at = NOW()
 UPDATE sys_region
 SET rural = 1
 WHERE level = 'VILLAGE' AND name REGEXP '(村委会|村民委员会)$';
+INSERT INTO prd_category
+(category_no, parent_no, level, name, name_en, icon, sort, template,
+ attr_template, qualification_required, required_code, status,
+ tenant_no, created_at, created_by, updated_at, updated_by, version, deleted)
+SELECT * FROM (SELECT
+ 'CAT145' AS category_no, 'CAT100' AS parent_no, 2 AS level, '豆制品' AS name, 'Bean Products' AS name_en,
+ NULL AS icon, 45 AS sort, 'FRESH' AS template, NULL AS attr_template,
+ '["食品经营许可证"]' AS qualification_required, 'FOOD' AS required_code, 'ARCHIVED' AS status,
+ 'MAIN' AS tenant_no, NOW() AS created_at, 'SYSTEM' AS created_by, NOW() AS updated_at,
+ 'SYSTEM' AS updated_by, 0 AS version, 0 AS deleted) t
+WHERE NOT EXISTS (SELECT 1 FROM prd_category c WHERE c.category_no = 'CAT145');
+INSERT INTO prd_category
+(category_no, parent_no, level, name, name_en, icon, sort, template,
+ attr_template, qualification_required, required_code, status,
+ tenant_no, created_at, created_by, updated_at, updated_by, version, deleted)
+SELECT * FROM (SELECT
+ 'CAT185' AS category_no, 'CAT100' AS parent_no, 2 AS level, '预制半成品菜' AS name, 'Prepared Dishes' AS name_en,
+ NULL AS icon, 85 AS sort, 'STANDARD' AS template, NULL AS attr_template,
+ '["食品经营许可证"]' AS qualification_required, 'FOOD' AS required_code, 'ARCHIVED' AS status,
+ 'MAIN' AS tenant_no, NOW() AS created_at, 'SYSTEM' AS created_by, NOW() AS updated_at,
+ 'SYSTEM' AS updated_by, 0 AS version, 0 AS deleted) t
+WHERE NOT EXISTS (SELECT 1 FROM prd_category c WHERE c.category_no = 'CAT185');
+INSERT INTO prd_category
+(category_no, parent_no, level, name, name_en, icon, sort, template,
+ attr_template, qualification_required, required_code, status,
+ tenant_no, created_at, created_by, updated_at, updated_by, version, deleted)
+SELECT * FROM (SELECT
+ 'CAT195' AS category_no, 'CAT100' AS parent_no, 2 AS level, '冷冻速食' AS name, 'Frozen Food' AS name_en,
+ NULL AS icon, 95 AS sort, 'STANDARD' AS template, NULL AS attr_template,
+ '["仅销售预包装食品备案"]' AS qualification_required, 'PACKAGED_FOOD' AS required_code, 'ARCHIVED' AS status,
+ 'MAIN' AS tenant_no, NOW() AS created_at, 'SYSTEM' AS created_by, NOW() AS updated_at,
+ 'SYSTEM' AS updated_by, 0 AS version, 0 AS deleted) t
+WHERE NOT EXISTS (SELECT 1 FROM prd_category c WHERE c.category_no = 'CAT195');
+INSERT INTO prd_category
+(category_no, parent_no, level, name, name_en, icon, sort, template,
+ attr_template, qualification_required, required_code, status,
+ tenant_no, created_at, created_by, updated_at, updated_by, version, deleted)
+SELECT * FROM (SELECT
+ 'CAT295' AS category_no, 'CAT200' AS parent_no, 2 AS level, '洗护清洁' AS name, 'Cleaning & Care' AS name_en,
+ NULL AS icon, 15 AS sort, 'STANDARD' AS template, NULL AS attr_template,
+ NULL AS qualification_required, 'DAILY' AS required_code, 'ARCHIVED' AS status,
+ 'MAIN' AS tenant_no, NOW() AS created_at, 'SYSTEM' AS created_by, NOW() AS updated_at,
+ 'SYSTEM' AS updated_by, 0 AS version, 0 AS deleted) t
+WHERE NOT EXISTS (SELECT 1 FROM prd_category c WHERE c.category_no = 'CAT295');
+INSERT INTO prd_category
+(category_no, parent_no, level, name, name_en, icon, sort, template,
+ attr_template, qualification_required, required_code, status,
+ tenant_no, created_at, created_by, updated_at, updated_by, version, deleted)
+SELECT * FROM (SELECT
+ 'CAT285' AS category_no, 'CAT200' AS parent_no, 2 AS level, '五金电料' AS name, 'Hardware & Electrical' AS name_en,
+ NULL AS icon, 85 AS sort, 'STANDARD' AS template, NULL AS attr_template,
+ NULL AS qualification_required, 'DAILY' AS required_code, 'ARCHIVED' AS status,
+ 'MAIN' AS tenant_no, NOW() AS created_at, 'SYSTEM' AS created_by, NOW() AS updated_at,
+ 'SYSTEM' AS updated_by, 0 AS version, 0 AS deleted) t
+WHERE NOT EXISTS (SELECT 1 FROM prd_category c WHERE c.category_no = 'CAT285');
+INSERT INTO prd_category
+(category_no, parent_no, level, name, name_en, icon, sort, template,
+ attr_template, qualification_required, required_code, status,
+ tenant_no, created_at, created_by, updated_at, updated_by, version, deleted)
+SELECT * FROM (SELECT
+ 'CAT375' AS category_no, 'CAT300' AS parent_no, 2 AS level, '照护陪护' AS name, 'Caregiving' AS name_en,
+ NULL AS icon, 75 AS sort, 'SERVICE' AS template, NULL AS attr_template,
+ NULL AS qualification_required, 'HOUSEKEEPING' AS required_code, 'ARCHIVED' AS status,
+ 'MAIN' AS tenant_no, NOW() AS created_at, 'SYSTEM' AS created_by, NOW() AS updated_at,
+ 'SYSTEM' AS updated_by, 0 AS version, 0 AS deleted) t
+WHERE NOT EXISTS (SELECT 1 FROM prd_category c WHERE c.category_no = 'CAT375');
+INSERT INTO prd_category
+(category_no, parent_no, level, name, name_en, icon, sort, template,
+ attr_template, qualification_required, required_code, status,
+ tenant_no, created_at, created_by, updated_at, updated_by, version, deleted)
+SELECT * FROM (SELECT
+ 'CAT385' AS category_no, 'CAT300' AS parent_no, 2 AS level, '搬家搬运' AS name, 'Moving & Hauling' AS name_en,
+ NULL AS icon, 85 AS sort, 'SERVICE' AS template, NULL AS attr_template,
+ NULL AS qualification_required, NULL AS required_code, 'ARCHIVED' AS status,
+ 'MAIN' AS tenant_no, NOW() AS created_at, 'SYSTEM' AS created_by, NOW() AS updated_at,
+ 'SYSTEM' AS updated_by, 0 AS version, 0 AS deleted) t
+WHERE NOT EXISTS (SELECT 1 FROM prd_category c WHERE c.category_no = 'CAT385');
+INSERT INTO prd_category
+(category_no, parent_no, level, name, name_en, icon, sort, template,
+ attr_template, qualification_required, required_code, status,
+ tenant_no, created_at, created_by, updated_at, updated_by, version, deleted)
+SELECT * FROM (SELECT
+ 'CAT395' AS category_no, 'CAT300' AS parent_no, 2 AS level, '回收' AS name, 'Recycling' AS name_en,
+ NULL AS icon, 95 AS sort, 'SERVICE' AS template, NULL AS attr_template,
+ NULL AS qualification_required, NULL AS required_code, 'ARCHIVED' AS status,
+ 'MAIN' AS tenant_no, NOW() AS created_at, 'SYSTEM' AS created_by, NOW() AS updated_at,
+ 'SYSTEM' AS updated_by, 0 AS version, 0 AS deleted) t
+WHERE NOT EXISTS (SELECT 1 FROM prd_category c WHERE c.category_no = 'CAT395');
+INSERT INTO prd_category
+(category_no, parent_no, level, name, name_en, icon, sort, template,
+ attr_template, qualification_required, required_code, status,
+ tenant_no, created_at, created_by, updated_at, updated_by, version, deleted)
+SELECT * FROM (SELECT
+ 'CAT760' AS category_no, 'CAT700' AS parent_no, 2 AS level, '方便速食' AS name, 'Instant Food' AS name_en,
+ NULL AS icon, 60 AS sort, 'STANDARD' AS template, NULL AS attr_template,
+ '["仅销售预包装食品备案"]' AS qualification_required, 'PACKAGED_FOOD' AS required_code, 'ARCHIVED' AS status,
+ 'MAIN' AS tenant_no, NOW() AS created_at, 'SYSTEM' AS created_by, NOW() AS updated_at,
+ 'SYSTEM' AS updated_by, 0 AS version, 0 AS deleted) t
+WHERE NOT EXISTS (SELECT 1 FROM prd_category c WHERE c.category_no = 'CAT760');
+INSERT INTO prd_category
+(category_no, parent_no, level, name, name_en, icon, sort, template,
+ attr_template, qualification_required, required_code, status,
+ tenant_no, created_at, created_by, updated_at, updated_by, version, deleted)
+SELECT * FROM (SELECT
+ 'CAT410' AS category_no, 'CAT400' AS parent_no, 2 AS level, '服务次卡' AS name, 'Service Passes' AS name_en,
+ NULL AS icon, 10 AS sort, 'VOUCHER' AS template, NULL AS attr_template,
+ NULL AS qualification_required, NULL AS required_code, 'ARCHIVED' AS status,
+ 'MAIN' AS tenant_no, NOW() AS created_at, 'SYSTEM' AS created_by, NOW() AS updated_at,
+ 'SYSTEM' AS updated_by, 0 AS version, 0 AS deleted) t
+WHERE NOT EXISTS (SELECT 1 FROM prd_category c WHERE c.category_no = 'CAT410');
+INSERT INTO prd_category
+(category_no, parent_no, level, name, name_en, icon, sort, template,
+ attr_template, qualification_required, required_code, status,
+ tenant_no, created_at, created_by, updated_at, updated_by, version, deleted)
+SELECT * FROM (SELECT
+ 'CAT420' AS category_no, 'CAT400' AS parent_no, 2 AS level, '代金券' AS name, 'Gift Vouchers' AS name_en,
+ NULL AS icon, 20 AS sort, 'VOUCHER' AS template, NULL AS attr_template,
+ NULL AS qualification_required, NULL AS required_code, 'ARCHIVED' AS status,
+ 'MAIN' AS tenant_no, NOW() AS created_at, 'SYSTEM' AS created_by, NOW() AS updated_at,
+ 'SYSTEM' AS updated_by, 0 AS version, 0 AS deleted) t
+WHERE NOT EXISTS (SELECT 1 FROM prd_category c WHERE c.category_no = 'CAT420');
+INSERT INTO prd_category
+(category_no, parent_no, level, name, name_en, icon, sort, template,
+ attr_template, qualification_required, required_code, status,
+ tenant_no, created_at, created_by, updated_at, updated_by, version, deleted)
+SELECT * FROM (SELECT
+ 'CAT530' AS category_no, 'CAT500' AS parent_no, 2 AS level, '生活缴费' AS name, 'Utility Payments' AS name_en,
+ NULL AS icon, 30 AS sort, 'VIRTUAL' AS template, NULL AS attr_template,
+ NULL AS qualification_required, NULL AS required_code, 'ARCHIVED' AS status,
+ 'MAIN' AS tenant_no, NOW() AS created_at, 'SYSTEM' AS created_by, NOW() AS updated_at,
+ 'SYSTEM' AS updated_by, 0 AS version, 0 AS deleted) t
+WHERE NOT EXISTS (SELECT 1 FROM prd_category c WHERE c.category_no = 'CAT530');
+INSERT INTO prd_category
+(category_no, parent_no, level, name, name_en, icon, sort, template,
+ attr_template, qualification_required, required_code, status,
+ tenant_no, created_at, created_by, updated_at, updated_by, version, deleted)
+SELECT * FROM (SELECT
+ 'CAT540' AS category_no, 'CAT500' AS parent_no, 2 AS level, '交通出行卡' AS name, 'Transit Cards' AS name_en,
+ NULL AS icon, 40 AS sort, 'VIRTUAL' AS template, NULL AS attr_template,
+ NULL AS qualification_required, NULL AS required_code, 'ARCHIVED' AS status,
+ 'MAIN' AS tenant_no, NOW() AS created_at, 'SYSTEM' AS created_by, NOW() AS updated_at,
+ 'SYSTEM' AS updated_by, 0 AS version, 0 AS deleted) t
+WHERE NOT EXISTS (SELECT 1 FROM prd_category c WHERE c.category_no = 'CAT540');
+INSERT INTO prd_category
+(category_no, parent_no, level, name, name_en, icon, sort, template,
+ attr_template, qualification_required, required_code, status,
+ tenant_no, created_at, created_by, updated_at, updated_by, version, deleted)
+SELECT * FROM (SELECT
+ 'CAT940' AS category_no, 'CAT900' AS parent_no, 2 AS level, '成人服饰' AS name, 'Apparel' AS name_en,
+ NULL AS icon, 40 AS sort, 'STANDARD' AS template, NULL AS attr_template,
+ NULL AS qualification_required, NULL AS required_code, 'ARCHIVED' AS status,
+ 'MAIN' AS tenant_no, NOW() AS created_at, 'SYSTEM' AS created_by, NOW() AS updated_at,
+ 'SYSTEM' AS updated_by, 0 AS version, 0 AS deleted) t
+WHERE NOT EXISTS (SELECT 1 FROM prd_category c WHERE c.category_no = 'CAT940');
+INSERT INTO prd_category
+(category_no, parent_no, level, name, name_en, icon, sort, template,
+ attr_template, qualification_required, required_code, status,
+ tenant_no, created_at, created_by, updated_at, updated_by, version, deleted)
+SELECT * FROM (SELECT
+ 'CAT950' AS category_no, 'CAT900' AS parent_no, 2 AS level, '童装' AS name, 'Kidswear' AS name_en,
+ NULL AS icon, 50 AS sort, 'STANDARD' AS template, NULL AS attr_template,
+ NULL AS qualification_required, NULL AS required_code, 'ARCHIVED' AS status,
+ 'MAIN' AS tenant_no, NOW() AS created_at, 'SYSTEM' AS created_by, NOW() AS updated_at,
+ 'SYSTEM' AS updated_by, 0 AS version, 0 AS deleted) t
+WHERE NOT EXISTS (SELECT 1 FROM prd_category c WHERE c.category_no = 'CAT950');
