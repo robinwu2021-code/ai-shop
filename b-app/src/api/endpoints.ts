@@ -146,6 +146,7 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
   mSpecTemplates: { method: "GET", path: "/biz/spec-templates", auth: true, summary: "规格模板" },
   mPickableDims: { method: "GET", path: "/biz/spec-dims", auth: true, summary: "加规格组时能挑的维度（本类目已配 + 平台通用 + 自建）" },
   mSpecProps: { method: "GET", path: "/biz/spec-props", auth: true, summary: "这一类的商品参数（产地/保质期/材质，不分 SKU）" },
+  mPickableProps: { method: "GET", path: "/biz/pickable-props", auth: true, summary: "还能加进这一类的商品参数（本类目已配 + 平台通用 + 自建）" },
   mAddSpecValue: { method: "POST", path: "/biz/spec-values", auth: true, summary: "在平台维度下加一个自有规格值" },
   mAddSpecDim: { method: "POST", path: "/biz/spec-dims", auth: true, summary: "自建规格维度（只本店可用）" },
   mMySpecDims: { method: "GET", path: "/biz/my-spec-dims", auth: true, summary: "我建的规格维度（含用量与配额）" },

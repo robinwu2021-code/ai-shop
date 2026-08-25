@@ -788,6 +788,14 @@ export interface MerchantApi {
    */
   mSpecProps(categoryNo?: string): Promise<SpecTemplate[]>;
   /**
+   * 还能加进这一类的**商品参数**。与 {@link mPickableDims} 是同一对关系
+   * （那个之于销售规格），差别只在 usage。
+   *
+   * <p>参数也要能加：平台给这一类配的几条是起点不是上限 ——
+   * 卖山货的想标「海拔」，平台没配，他该有地方把它加进来。
+   */
+  mPickableProps(categoryNo?: string): Promise<SpecTemplate[]>;
+  /**
    * 在**平台维度**下加一个自己的规格值：「我这袋是 750g，平台没这一档」。
    *
    * <p>它挂在平台维度上，所以与平台值天然同轴 —— 跨店比价照样成立。

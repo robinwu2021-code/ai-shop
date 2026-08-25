@@ -2228,10 +2228,37 @@ export const mockApi: MerchantApi = {
     // 不传就用第一家店 —— mock 的演示会话只有一家在用
     const key = storeNo || db.stores[0]?.storeNo || "";
     const cats = db.storeCategories[key] ?? [];
+    /*
+     * **要套用本店覆盖。** 真后端的 dimsByStore 走的是 templatesForCategory，
+     * 覆盖（停用 / 改名 / 停档位）天然生效；mock 这里此前直接读模板表，
+     * 于是「移除一个规格」→ 重新取一次 → 它又回来了，而后端其实已经记下了。
+     * 这类 mock 与后端的分歧最难查：页面上看着像功能没做。
+     */
+    const applyOv = (list: typeof db.specTemplates, categoryNo: string) => {
+      const ov = mockSpecOverride.get(categoryNo) ?? [];
+      return list
+        .filter((t) => t.categoryNo === categoryNo)
+        .filter((t) => {
+          const o = ov.find((x) => x.dimNo === t.templateNo);
+          return !o || o.enabled;
+        })
+        .map((t) => {
+          const o = ov.find((x) => x.dimNo === t.templateNo);
+          if (!o) return t;
+          const off = new Set(o.values.filter((v) => !v.enabled).map((v) => v.code));
+          return {
+            ...t,
+            name: o.label?.trim() || t.name,
+            options: t.options.filter((x) => !off.has(x.code ?? x.label)),
+          };
+        });
+    };
     return delay(cats.map((c) => ({
       categoryNo: c.categoryNo,
       categoryName: c.name,
-      dims: db.specTemplates.filter((t) => t.categoryNo === c.categoryNo),
+      dims: applyOv(db.specTemplates, c.categoryNo),
+      // 商品参数与销售规格并排下发 —— 与真后端 StoreCategorySpecVO 同一形状
+      props: applyOv(db.specProps, c.categoryNo),
     })));
   },
 
@@ -2303,6 +2330,28 @@ export const mockApi: MerchantApi = {
    * 参数是「这一类的货该标什么」，跨类目摊开毫无意义
    * （给一袋菜推荐「功率」）。
    */
+  /**
+   * 还能加进这一类的参数：本类目已配 → 平台通用（mock 里就是别的类目那几条去重）。
+   * 与 mPickableDims 同一形状 —— 端上那一段代码两栏共用，形状不同就得分叉。
+   */
+  async mPickableProps(categoryNo) {
+    const picked = categoryNo?.trim();
+    const cat = picked ? db.specProps.filter((t) => t.categoryNo === picked) : [];
+    /*
+     * 按名字去重：同一个「产地」在几个类目下各有一条，摆三遍毫无意义。
+     * ⚠️ 别写成 `!seen.has(n) && !seen.add(n)` —— `Set.add` 返回 Set（真值），
+     * 那个 `!` 恒为 false，于是候选**永远是空的**（我刚踩过）。
+     */
+    const seen = new Set(cat.map((t) => t.name));
+    const rest = [];
+    for (const t of db.specProps) {
+      if (seen.has(t.name)) continue;
+      seen.add(t.name);
+      rest.push(t);
+    }
+    return delay([...cat, ...rest]);
+  },
+
   async mSpecProps(categoryNo) {
     const picked = categoryNo?.trim();
     if (!picked) return delay([]);

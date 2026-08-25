@@ -123,6 +123,9 @@ export default {
 
     mySpecs: {
       title: "My specs", intro: "Every spec you can use when adding a product. Build your own if the platform has none.",
+    tabDims: "Variants",
+    tabProps: "Details",
+    introProps: "Origin, shelf life and the like — description only; no effect on price or stock.",
       quota: "used / limit",
       adjust: "Adjust",
       remove: "Remove",

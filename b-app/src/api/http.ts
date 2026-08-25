@@ -316,6 +316,7 @@ export const httpApi: MerchantApi = {
     http.get<SpecTemplate[]>(E.mSpecTemplates.path, { categoryType, categoryNo } satisfies SpecTemplatesQuery),
   mPickableDims: (categoryNo) => http.get<SpecTemplate[]>(E.mPickableDims.path, { categoryNo }),
   mSpecProps: (categoryNo) => http.get<SpecTemplate[]>(E.mSpecProps.path, { categoryNo }),
+  mPickableProps: (categoryNo) => http.get<SpecTemplate[]>(E.mPickableProps.path, { categoryNo }),
   mAddSpecValue: (dimNo, label) =>
     http.post<{ valueNo: string; code: string; label: string }>(E.mAddSpecValue.path, { dimNo, label }),
   mAddSpecDim: (name, labels) => http.post<SpecTemplate>(E.mAddSpecDim.path, { name, labels }),

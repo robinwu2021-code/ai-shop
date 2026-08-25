@@ -1593,6 +1593,42 @@ export const db = {
         { code: "ORGIMP", label: "进口" },
       ],
     },
+    /* 演示会话那家店的货架是纸品清洁与米面粮油 —— 不给它们配参数的话，
+       打开「商品参数」那一栏是空的，看着像功能没做 */
+    {
+      templateNo: "SD_ORIGIN_G",
+      scope: "PLATFORM" as const,
+      categoryType: CATEGORY_TYPE.NORMAL,
+      categoryNo: "CAT130",
+      name: "产地",
+      options: [
+        { code: "ORGLOCAL", label: "本地" },
+        { code: "ORGCN", label: "国产" },
+        { code: "ORGIMP", label: "进口" },
+      ],
+    },
+    {
+      templateNo: "SD_SHELF_LIFE_G",
+      scope: "PLATFORM" as const,
+      categoryType: CATEGORY_TYPE.NORMAL,
+      categoryNo: "CAT130",
+      name: "保质期",
+      options: [
+        { code: "SL6M", label: "6 个月" },
+        { code: "SL12M", label: "12 个月" },
+      ],
+    },
+    {
+      templateNo: "SD_MATERIAL_P",
+      scope: "PLATFORM" as const,
+      categoryType: CATEGORY_TYPE.NORMAL,
+      categoryNo: "CAT210",
+      name: "材质",
+      options: [
+        { code: "M_WOOD", label: "原木浆" },
+        { code: "M_MIX", label: "混合浆" },
+      ],
+    },
     {
       templateNo: "SD_MATERIAL",
       scope: "PLATFORM" as const,

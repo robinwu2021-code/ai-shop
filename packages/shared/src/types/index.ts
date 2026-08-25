@@ -4025,7 +4025,15 @@ export interface StoreCategorySpecs {
   categoryNo: string;
   /** 店主改过名的用店主的叫法（「好菜」而不是「蔬菜」）—— 这一页是给他看的 */
   categoryName: string;
+  /** 销售规格：买家要挑一档，每档单独定价、单独算库存 */
   dims: SpecTemplate[];
+  /**
+   * 商品参数：只描述，不分 SKU、不影响价格与库存。
+   *
+   * <p>与 `dims` 并排而不是合成一列加个字段：它们在界面上是两块，
+   * 合成一列端上每处都要先过滤，而漏过滤一次就是「产地」被当成规格。
+   */
+  props?: SpecTemplate[];
 }
 
 /**

@@ -190,6 +190,9 @@ export default {
     mySpecs: {
       title: "商品规格",
       intro: "建品时能用的规格都在这里。平台没有的可以自己建。",
+    tabDims: "销售规格",
+    tabProps: "商品参数",
+    introProps: "产地、保质期这类只描述的信息。不分档、不影响价格和库存。",
       quota: "已建 / 上限",
       adjust: "调整",
       remove: "移除",

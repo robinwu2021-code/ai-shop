@@ -27,6 +27,29 @@ const merchant = useMerchantStore();
 
 /** 本店货架类目各自能用的规格。只读，但它让这一页永远不空 */
 const byCategory = ref<StoreCategorySpecs[]>([]);
+
+/*
+ * 这一页管两件东西：**销售规格**（买家要挑一档，每档单独定价备库存）与
+ * **商品参数**（只描述，不分 SKU、不影响价格）。
+ *
+ * <p>做成页面级切换而不是每张卡里再分两段：一次只管一件事，
+ * 两段并排会让每张卡长一倍，而商家进来通常只为改其中一件。
+ * 切换之后**所有交互原样复用** —— 拖动、改名、加减档位、加/移除，
+ * 作用在哪个列表上由这里决定，不必写两遍（写两遍就迟早不一致）。
+ */
+const tab = ref<"dims" | "props">("dims");
+
+/** 把新加的那条塞进**当前这一栏**的列表，另一栏原样带着 */
+function withAdded(g: StoreCategorySpecs, one: SpecTemplate): StoreCategorySpecs {
+  return tab.value === "dims"
+    ? { ...g, dims: [...(g.dims ?? []), one] }
+    : { ...g, props: [...(g.props ?? []), one] };
+}
+
+/** 当前这一栏在管的列表 */
+function listOf(g: StoreCategorySpecs) {
+  return (tab.value === "dims" ? g.dims : g.props) ?? [];
+}
 const loading = ref(false);
 
 
@@ -314,11 +337,19 @@ async function commit(
   patch?: { dimNo: string; label?: string; values: string[]; dropped: string[] },
   removeDimNo?: string,
 ) {
-  const seq = order ?? g.dims.map((t) => t.templateNo);
+  /*
+   * **两个列表一起提交。** 后端那侧是「先清后写」，只发一半的话另一半的覆盖
+   * 会被清掉：改过的本店叫法丢了，移除过的规格自己回来了 —— 而这两件都不报错。
+   * 移除是靠一条 `enabled:false` 表达的，所以被移除的那些也必须留在载荷里。
+   */
+  const otherKey = tab.value === "dims" ? "props" : "dims";
+  const other = (g[otherKey] ?? []).map((t) => t.templateNo);
+  const seq = [...(order ?? listOf(g).map((t) => t.templateNo)), ...other];
+  const all = [...(g.dims ?? []), ...(g.props ?? [])];
   const dims = seq
     .filter((no) => no !== removeDimNo)
     .map((no) => {
-      const t = g.dims.find((x) => x.templateNo === no);
+      const t = all.find((x) => x.templateNo === no);
       const isPatched = patch && patch.dimNo === no;
       const codes = isPatched ? patch.values : (t?.options ?? []).map((o) => o.code ?? "");
       const gone = isPatched ? patch.dropped : [];
@@ -342,9 +373,16 @@ async function commit(
   if (removeDimNo) {
     dims.push({ dimNo: removeDimNo, enabled: false, label: undefined, values: [] });
   }
-  const merged = await api.mSaveSpecOverride(g.categoryNo, dims);
-  const i = byCategory.value.findIndex((x) => x.categoryNo === g.categoryNo);
-  if (i >= 0) byCategory.value[i] = { ...g, dims: merged };
+  await api.mSaveSpecOverride(g.categoryNo, dims);
+  /*
+   * **整页重取，不拿返回值就地打补丁。**
+   *
+   * <p>那个接口回的是**销售规格**那一份，而这一页现在管两栏 ——
+   * 就地打补丁的话，在「商品参数」栏里做的增删改界面上纹丝不动
+   * （实测：加得进去、移除点了没反应），而后端其实已经改了。
+   * 多一次请求换掉一整类「看起来没生效」的故障，值。
+   */
+  await load();
 }
 
 async function saveDim(g: StoreCategorySpecs) {
@@ -391,7 +429,7 @@ function onDragStart(g: StoreCategorySpecs, dimNo: string, e: TouchEvent) {
   dragPending.value = dimNo;
   dragOriginY.value = t.clientY;
   dragShift.value = 0;
-  dragTo.value = g.dims.findIndex((x) => x.templateNo === dimNo);
+  dragTo.value = listOf(g).findIndex((x) => x.templateNo === dimNo);
   // 行高按下时量一次：档位多的行更高，写死的话拖两行就错位
   uni.createSelectorQuery().in(instance).select(".spec")
     .boundingClientRect((r) => {
@@ -416,9 +454,9 @@ function onDragMove(g: StoreCategorySpecs, e: TouchEvent) {
     return;
   }
   dragShift.value = t.clientY - dragOriginY.value;
-  const from = g.dims.findIndex((x) => x.templateNo === dragFrom.value);
+  const from = listOf(g).findIndex((x) => x.templateNo === dragFrom.value);
   const delta = Math.round(dragShift.value / (rowH.value || 64));
-  dragTo.value = Math.max(0, Math.min(g.dims.length - 1, from + delta));
+  dragTo.value = Math.max(0, Math.min(listOf(g).length - 1, from + delta));
 }
 
 async function onDragEnd() {
@@ -430,11 +468,11 @@ async function onDragEnd() {
   dragShift.value = 0;
   dragTo.value = -1;
   if (!from || to < 0) return;
-  const g = byCategory.value.find((x) => x.dims.some((t) => t.templateNo === from));
+  const g = byCategory.value.find((x) => listOf(x).some((t) => t.templateNo === from));
   if (!g) return;
-  const i = g.dims.findIndex((t) => t.templateNo === from);
+  const i = listOf(g).findIndex((t) => t.templateNo === from);
   if (i === to) return;   // 没挪动：不必往后端跑一趟
-  const seq = moveItem(g.dims.map((t) => t.templateNo), i, to);
+  const seq = moveItem(listOf(g).map((t) => t.templateNo), i, to);
   dimLanded.value = from;
   setTimeout(() => { dimLanded.value = ""; }, 320);
   try {
@@ -449,7 +487,7 @@ const dimLanded = ref("");
 
 /** 顺序改的是「这一类用哪几个规格」，点了立即生效 —— 不必为挪一位进一次编辑态 */
 async function moveDim(g: StoreCategorySpecs, dimNo: string, delta: number) {
-  const seq = g.dims.map((t) => t.templateNo);
+  const seq = listOf(g).map((t) => t.templateNo);
   const i = seq.indexOf(dimNo);
   const to = i + delta;
   if (i < 0 || to < 0 || to >= seq.length) return;
@@ -519,10 +557,13 @@ async function togglePick(g: StoreCategorySpecs) {
   picking.value = g.categoryNo;
   pickable.value = [];
   const [all, mine] = await Promise.all([
-    api.mPickableDims(g.categoryNo).catch(() => []),
+    // 候选也跟着当前这一栏走 —— 在「商品参数」里加出来的必须是参数
+    (tab.value === "dims"
+      ? api.mPickableDims(g.categoryNo)
+      : api.mPickableProps(g.categoryNo)).catch(() => []),
     api.mMySpecDims().catch(() => []),
   ]);
-  const have = new Set(g.dims.map((t) => t.templateNo));
+  const have = new Set(listOf(g).map((t) => t.templateNo));
   pickable.value = all.filter((x) => !have.has(x.templateNo));
   ownUsed.value = mine.filter((d) => d.status === "ACTIVE").length;
   ownMax.value = mine[0]?.dimQuota ?? 10;
@@ -542,8 +583,8 @@ async function pickDim(g: StoreCategorySpecs, picked: SpecTemplate) {
   platformNames.value[picked.templateNo] = picked.name;
   try {
     // 新加的规格默认全档位：他加它就是想用，再让他逐个点一遍是白费一步
-    const seq = [...g.dims.map((x) => x.templateNo), picked.templateNo];
-    await commit({ ...g, dims: [...g.dims, picked] }, seq);
+    const seq = [...listOf(g).map((x) => x.templateNo), picked.templateNo];
+    await commit(withAdded(g, picked), seq);
     picking.value = null;
   } catch (e) {
     uni.showToast({ title: (e as Error).message, icon: "none" });
@@ -579,13 +620,13 @@ async function buildOwnDim(g: StoreCategorySpecs) {
   if (!name.trim()) return;
   try {
     const dim = await api.mAddSpecDim(name.trim(), []);
-    if (g.dims.some((x) => x.templateNo === dim.templateNo)) {
+    if (listOf(g).some((x) => x.templateNo === dim.templateNo)) {
       uni.showToast({ title: t("mySpecs.dimAlready"), icon: "none" });
       return;
     }
     platformNames.value[dim.templateNo] = dim.name;
-    const seq = [...g.dims.map((x) => x.templateNo), dim.templateNo];
-    await commit({ ...g, dims: [...g.dims, dim] }, seq);
+    const seq = [...listOf(g).map((x) => x.templateNo), dim.templateNo];
+    await commit(withAdded(g, dim), seq);
     picking.value = null;
     // 刚建出来时一个档位都没有，那一行会显示「还没加档位」，把下一步推到他面前
     await load();
@@ -613,7 +654,21 @@ onShow(() => void load());
 
 <template>
   <sh-scaffold title-key="mySpecs.title" :denied="!merchant.can('biz:goods')">
-    <text class="sh-muted intro">{{ $t("mySpecs.intro") }}</text>
+    <!--
+      两栏切换。**一次只管一件事** —— 两段并排会让每张卡长一倍，
+      而商家进来通常只为改其中一件。切过去之后所有交互原样复用。
+    -->
+    <view class="tabs">
+      <text class="tab" :class="{ 'tab--on': tab === 'dims' }" @tap="tab = 'dims'">
+        {{ $t("mySpecs.tabDims") }}
+      </text>
+      <text class="tab" :class="{ 'tab--on': tab === 'props' }" @tap="tab = 'props'">
+        {{ $t("mySpecs.tabProps") }}
+      </text>
+    </view>
+    <text class="sh-muted intro">
+      {{ $t(tab === "dims" ? "mySpecs.intro" : "mySpecs.introProps") }}
+    </text>
 
     <view v-for="g in byCategory" :key="g.categoryNo" class="cat">
       <view class="cat__head">
@@ -680,7 +735,7 @@ onShow(() => void load());
         </view>
       </view>
 
-      <view v-for="t in g.dims" :key="t.templateNo" class="spec"
+      <view v-for="t in listOf(g)" :key="t.templateNo" class="spec"
             :class="{
               'spec--drag': dragFrom === t.templateNo,
               'spec--land': dimLanded === t.templateNo,
@@ -778,7 +833,7 @@ onShow(() => void load());
         </template>
       </view>
 
-      <text v-if="!g.dims.length && picking !== g.categoryNo" class="cat__empty">
+      <text v-if="!listOf(g).length && picking !== g.categoryNo" class="cat__empty">
         {{ $t("mySpecs.catNoDims") }}
       </text>
 
@@ -816,6 +871,29 @@ onShow(() => void load());
  * 每行都套一张卡的话，一个类目下三四个规格就变成三四块互不相干的浮起色块，
  * 中间的留白比行本身还显眼 —— 看着像四个功能模块，而它们只是一份清单。
  */
+/* 两栏切换：与全站 seg 同形，但这一页只有两个，不必引入组件 */
+.tabs {
+  display: flex;
+  gap: 8rpx;
+  margin: 0 26rpx 16rpx;
+}
+
+.tab {
+  flex: 1;
+  text-align: center;
+  padding: 14rpx 0;
+  font-size: 26rpx;
+  color: var(--sh-sub);
+  border-radius: 16rpx;
+  background: var(--sh-faint);
+}
+
+.tab--on {
+  color: var(--sh-on-primary);
+  background: var(--sh-primary);
+  font-weight: 600;
+}
+
 .intro {
   display: block;
   padding: 0 8rpx;
