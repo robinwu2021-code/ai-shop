@@ -61,12 +61,32 @@ export function scanEndpoints(root = ROOT) {
     const re = /@(Get|Post|Put|Delete)Mapping\(\s*(?:value\s*=\s*)?"(\/ops[^"]*)"/g;
     const marks = [];
     for (let m; (m = re.exec(src)); ) marks.push({ i: m.index, method: m[1].toUpperCase(), path: m[2] });
+    // @PreAuthorize 的位置，**两种写法都要认**。
+    //
+    // 早先这里假定它一律写在 @XxxMapping **之后**，窗口从本 Mapping 开到下一个 Mapping。
+    // 可库里有几个文件写在**前面**（OpsSpuStdController、OpsMemberController、
+    // OpsPromotionController），于是那些文件里每个端点被安上了**下一个方法的权限码**，
+    // 而最后一个端点找不到注解 → 被报成「没判权」。
+    //
+    // 症状极难看出来：矩阵照常生成、条数对得上，只是某几格的答案是错的 ——
+    // 而这张表存在的全部意义就是回答「谁能访问什么」。
+    // （第一版反过来只往前找，扫出 28 个假的「无判权端点」，全是各文件的第一个端点。）
+    //
+    // 现在按**就近**配对：在「上一个 Mapping ~ 下一个 Mapping」这段里，
+    // 取离本 Mapping 字符距离最近的那个注解。写在前面时它紧挨着（几十个字符），
+    // 写在后面时更近（几个字符），而隔壁方法的那个总是隔着一整个方法体。
+    const pres = [...src.matchAll(/@PreAuthorize[^\n]*Perms\.(\w+)/g)]
+      .map((m) => ({ i: m.index, perm: m[1] }));
     for (let k = 0; k < marks.length; k++) {
-      // **注解在 Mapping 之后**：窗口往后开到下一个 Mapping 为止。
-      // 第一版往前找，扫出 28 个「无判权端点」——全是各文件的第一个端点，纯属方向搞反。
-      const win = src.slice(marks[k].i, k + 1 < marks.length ? marks[k + 1].i : src.length);
-      const pa = [...win.matchAll(/@PreAuthorize[^\n]*Perms\.(\w+)/g)].pop();
-      out.push({ method: marks[k].method, path: marks[k].path, perm: pa ? pa[1] : null });
+      const lo = k > 0 ? marks[k - 1].i : -1;
+      const hi = k + 1 < marks.length ? marks[k + 1].i : src.length;
+      let best = null;
+      for (const pre of pres) {
+        if (pre.i <= lo || pre.i >= hi) continue;
+        const d = Math.abs(pre.i - marks[k].i);
+        if (best === null || d < best.d) best = { perm: pre.perm, d };
+      }
+      out.push({ method: marks[k].method, path: marks[k].path, perm: best ? best.perm : null });
     }
   }
   out.sort((a, b) => `${a.path} ${a.method}`.localeCompare(`${b.path} ${b.method}`));
