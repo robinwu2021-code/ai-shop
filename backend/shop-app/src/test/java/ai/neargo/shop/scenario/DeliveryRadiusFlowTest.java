@@ -71,9 +71,48 @@ class DeliveryRadiusFlowTest {
     @Autowired
     private ProductMappers.GoodsMapper goodsMapper;
 
+    /*
+     * **物理删除，不能用 mapper.delete。**
+     * FulfillmentChannel 带 @TableLogic，`delete` 只把行标成 deleted=1，
+     * 而 `uk_store_channel(tenant_no, store_no, channel)` 里没有 deleted ——
+     * 于是下一个用例再开同一路通道时撞唯一键（实测 DuplicateKeyException）。
+     * 这与 prd_category_spec 那处是同一个形状。
+     */
+    @Autowired
+    private org.springframework.jdbc.core.JdbcTemplate jdbc;
+
+    /** enableSelfDelivery 动手之前 G0001 原本的履约声明，用完放回去 */
+    private String goodsFulfillmentsBackup;
+
+    /**
+     * **把动过的共享种子还原。**
+     *
+     * <p>这个类为了走到半径这一层，改了两处**全局种子**：把 M0001 的门店履约通道
+     * 整份替换成只剩「商家自送」，并把 G0001 的 fulfillments 改成两项。
+     * 两处都不还原的话，后面每一个从种子商家下 STORE_PICKUP 单的用例都会被
+     * 闸二拒掉 70013 ——「所选商品不支持该配送方式」。
+     *
+     * <p>实测代价：全量 1348 条里有 **68 条**红在这上面，占清单一大半。
+     * 而它们**单独跑全是绿的** —— 这类故障最难认领：每个人在自己那一类里跑都好好的，
+     * 只有全量才红，于是所有人都以为是别人的问题。
+     */
     @AfterEach
     void clearAuth() {
         SecurityContextHolder.clearContext();
+        DataScopeContext.executeWithoutScope(() -> {
+            // 通道行删干净 = 回到「这家店还没迁移到 channel 模型」，闸二按空集放行
+            jdbc.update("DELETE FROM mch_fulfillment_channel WHERE entity_no = ?", MERCHANT);
+            if (goodsFulfillmentsBackup != null) {
+                PrdGoods g = goodsMapper.selectOne(Wrappers.<PrdGoods>lambdaQuery()
+                        .eq(PrdGoods::getGoodsNo, "G0001").last("limit 1"));
+                if (g != null) {
+                    g.setFulfillments(goodsFulfillmentsBackup);
+                    goodsMapper.updateById(g);
+                }
+            }
+            return null;
+        });
+        goodsFulfillmentsBackup = null;
     }
 
     @Test
@@ -168,6 +207,10 @@ class DeliveryRadiusFlowTest {
         DataScopeContext.executeWithoutScope(() -> {
             PrdGoods g = goodsMapper.selectOne(Wrappers.<PrdGoods>lambdaQuery()
                     .eq(PrdGoods::getGoodsNo, "G0001").last("limit 1"));
+            // 先记下原样 —— 这是全局种子，@AfterEach 要放回去
+            if (goodsFulfillmentsBackup == null) {
+                goodsFulfillmentsBackup = g.getFulfillments();
+            }
             g.setFulfillments("[\"STORE_PICKUP\",\"MERCHANT_DELIVERY\"]");
             return goodsMapper.updateById(g);
         });
