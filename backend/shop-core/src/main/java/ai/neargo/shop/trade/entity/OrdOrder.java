@@ -18,6 +18,18 @@ public class OrdOrder extends BaseEntity {
 
     public static final String WAIT_PAY = "WAIT_PAY";
     public static final String PAID = "PAID";
+
+    /**
+     * 选了线下支付、等商家确认收款。
+     *
+     * <p><b>只有主单有这个状态，子单没有</b>：确认收款前子单保持 {@code WAIT_PAY}，
+     * 与线上单一致。给子单也加一个状态的话，商家的待办列表、售后入口、
+     * 履约台三处都要各判一次「这个新状态算不算已付」——而它们判的是同一件事。
+     *
+     * <p>它与 {@code WAIT_PAY} 的差别只在**谁来推进**：线上是支付回调，
+     * 线下是商家在 b 端点「确认收款」。两者最终都走同一个 {@code markPaid}。
+     */
+    public static final String WAIT_OFFLINE_PAY = "WAIT_OFFLINE_PAY";
     public static final String CANCELLED = "CANCELLED";
     public static final String CLOSED = "CLOSED";
 

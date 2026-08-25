@@ -141,7 +141,7 @@ class DeliveryRadiusFlowTest {
     private OrderService.CreateOrderCommand deliveryOrder(String addressId) {
         return new OrderService.CreateOrderCommand(
                 List.of(new OrderService.CreateOrderCommand.Item("G0001", "SK0001", 1)),
-                Fulfillments.MERCHANT_DELIVERY, null, addressId, null, 0L, null, null);
+                Fulfillments.MERCHANT_DELIVERY, null, addressId, null, 0L, null, null, null, null);
     }
 
     /** 幂等键要各测各的，否则第二次调用会直接拿到第一次的结果，校验根本没跑 */

@@ -15,6 +15,21 @@ import java.util.List;
 public interface MerchantOrderService {
 
     /**
+     * 确认已收到线下货款 —— 线下支付这条路上<b>唯一推进订单的动作</b>。
+     *
+     * <p>内部复用 {@code markPaid}：库存转实扣、入会、发分、结算触发、积分实扣
+     * <b>全部与线上单同一条路径</b>。不复用的话，这五件事要在这里再写一遍，
+     * 而它们中任何一件写漏了都不会立刻报错。
+     *
+     * <p><b>操作人要留痕</b>：平台不碰这笔钱，出纠纷时平台能提供的只有
+     * 「谁在什么时候点的确认」。缺了它，争议就变成两边各执一词。
+     *
+     * @param operator 操作方。**当前传主体号** —— 与本域既有的 log(…, operatorNo) 同一口径；
+     *                 要精确到人得等 BizContext 带上操作员标识，那是另一件事
+     */
+    OrderVO confirmOfflinePay(String merchantNo, String storeNo, String subOrderNo, String operator);
+
+    /**
      * 商家订单列表。
      *
      * @param storeNos 只看这些门店的单。

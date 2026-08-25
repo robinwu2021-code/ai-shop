@@ -146,7 +146,7 @@ class MicroPayCapabilityFlowTest {
          */
         var cap = orderService.capability(new OrderService.CreateOrderCommand(
                 java.util.List.of(new OrderService.CreateOrderCommand.Item("G0001", "SK0001", 1)),
-                "STORE_PICKUP", "PP0001", null, null, 0L, null, null));
+                "STORE_PICKUP", "PP0001", null, null, 0L, null, null, null, null));
 
         assertThat(cap.usablePayMethods())
                 .as("null = 未配置，端上不该拦；空数组 = 真的没有交集，端上必须拦")

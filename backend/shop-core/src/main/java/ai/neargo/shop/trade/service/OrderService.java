@@ -84,9 +84,15 @@ public interface OrderService {
      * @param appointmentAt 预约开始时间戳。<b>仅 {@code APPOINTMENT} 履约需要，且必填</b> ——
      *                      缺了商家不知道该几点上门，买家也不知道自己约了没有
      */
+    /**
+     * @param payMode   {@link ai.neargo.shop.common.PayModes} 的取值。空按 {@code ONLINE} 处理 ——
+     *                  存量端上不传这个字段，不能因为补了它就让老版本下不了单
+     * @param payScene  下单端（{@link ai.neargo.shop.common.PayScenes}），由网关从
+     *                  {@code X-Client} 头解析。<b>快照进订单</b>，积分发放的端判定读它
+     */
     record CreateOrderCommand(List<Item> items, String fulfillment, String pickupNo,
                               String addressId, String couponNo, Long usePoints, String remark,
-                              Long appointmentAt) {
+                              Long appointmentAt, String payMode, String payScene) {
 
         public record Item(String goodsNo, String skuNo, int qty) {
         }

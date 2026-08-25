@@ -8,6 +8,7 @@ import ai.neargo.shop.trade.dto.OrderVO;
 import ai.neargo.shop.trade.entity.OrdItem;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.common.PayModes;
 import ai.neargo.shop.trade.entity.OrdStatusLog;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
 import ai.neargo.shop.trade.mapper.TradeMappers.StatusLogMapper;
@@ -17,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 import ai.neargo.shop.trade.mapper.TradeMappers.OrderItemMapper;
 import ai.neargo.shop.trade.mapper.TradeMappers.SubOrderMapper;
 import ai.neargo.common.data.scope.DataScopeContext;
+import ai.neargo.shop.trade.entity.OrdOrder;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import org.springframework.stereotype.Service;
@@ -31,12 +33,23 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
     private final StatusLogMapper statusLogMapper;
     /** 社区在**主单**上，子单没有 —— 运营按社区做数据域隔离，所以平台侧要 join 出来 */
     private final ai.neargo.shop.trade.mapper.TradeMappers.OrderMapper orderMapper;
+    /**
+     * 确认收款要复用它的 {@code markPaid}。
+     *
+     * <p>方向是单向的（merchant → order），{@code OrderServiceImpl} 不反向依赖本类，
+     * 所以不构成构造环 —— 这一点特意确认过：这个仓库刚被一条
+     * merchant → StoreShelfPort → MerchantGoodsService → GoodsService → merchant
+     * 的环整得上下文起不来。
+     */
+    private final ai.neargo.shop.trade.service.OrderService orderService;
     /** 顾客列表要昵称与头像；**完整手机号不出这个 Port**（B12） */
     private final UserQueryPort userPort;
 
     public MerchantOrderServiceImpl(SubOrderMapper subOrderMapper, OrderItemMapper itemMapper,
                                     ai.neargo.shop.trade.mapper.TradeMappers.OrderMapper orderMapper,
+                                    ai.neargo.shop.trade.service.OrderService orderService,
                                     StatusLogMapper statusLogMapper, UserQueryPort userPort) {
+        this.orderService = orderService;
         this.subOrderMapper = subOrderMapper;
         this.itemMapper = itemMapper;
         this.statusLogMapper = statusLogMapper;
@@ -83,6 +96,61 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
                 shipped ? "商家改快递单号：" + old + " → " + no : "商家发货：" + no,
                 merchantNo);
         return toVO(sub);
+    }
+
+    @Override
+    @Transactional
+    public OrderVO confirmOfflinePay(String merchantNo, String storeNo, String subOrderNo,
+                                     String operator) {
+        OrdSubOrder sub = require(merchantNo, storeNo, subOrderNo);
+        /*
+         * ⚠️ **必须绕过数据域**。B 端会话是 SELF 维度，而 ord_order 按买家登记 ——
+         * 维度对不上时 DataScopeHandler fail-closed 拼 `1=0`：
+         * **查不到、update 影响 0 行，而接口成功、日志干净**。
+         * 第一版没加，症状是这里恒抛「订单状态不允许该操作」，
+         * 而子单明明就在眼前 —— 归属已由上面的 require(merchantNo, storeNo, …) 判过了。
+         */
+        OrdOrder order = DataScopeContext.executeWithoutScope(() ->
+                orderMapper.selectOne(Wrappers.<OrdOrder>lambdaQuery()
+                        .eq(OrdOrder::getOrderNo, sub.getOrderNo()).last("LIMIT 1")));
+        if (order == null || !OrdOrder.WAIT_OFFLINE_PAY.equals(order.getStatus())) {
+            /*
+             * 不是「等确认收款」的单一律拒。包括线上单 —— 否则商家点一下
+             * 就能把一笔没付钱的线上单标成已付，那是凭空发货。
+             */
+            throw BizException.of(ErrorCode.ORDER_STATE_ILLEGAL);
+        }
+        /*
+         * 留痕先写：markPaid 里会发事件、触发结算，那些都可能失败重试，
+         * 而「谁点的确认」这件事不该跟着重试语义走。
+         */
+        order.setOfflineConfirmedBy(operator);
+        order.setOfflineConfirmedAt(System.currentTimeMillis());
+        DataScopeContext.executeWithoutScope(() -> orderMapper.updateById(order));
+
+        /*
+         * **复用 markPaid**，payChannel 传 OFFLINE。
+         *
+         * 它是幂等的（已 PAID 直接返回），且不关心钱从哪来 ——
+         * 微信回调与这里是同一个方法的两个调用方。
+         * payTradeNo 记操作人：线下没有支付流水号，而这一列是对账时回溯用的，
+         * 留空等于把这单从对账链路上摘掉。
+         */
+        /*
+         * ⚠️ **整段绕过数据域**。markPaid 内部还要读写 ord_order / ord_sub_order / 库存，
+         * 而它此前**只被支付回调调用**（那条路上没有会话），所以从没撞过数据域。
+         * 从 B 端会话调它，那些读会被 fail-closed 拼成 `1=0` —— 症状是
+         * 「确认收款报订单不存在」，而订单就在眼前。
+         *
+         * 归属已经由上面的 require(merchantNo, storeNo, …) 判过：绕过的是数据域，不是鉴权。
+         */
+        DataScopeContext.executeWithoutScope(() -> {
+            orderService.markPaid(order.getOrderNo(), PayModes.OFFLINE, "OFFLINE:" + operator);
+            return null;
+        });
+        OrdSubOrder after = require(merchantNo, storeNo, subOrderNo);
+        log(after, after.getStatus(), "商家确认已收到线下货款", merchantNo);
+        return toVO(after);
     }
 
     @Override

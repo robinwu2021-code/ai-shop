@@ -20,6 +20,7 @@ import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.Fulfillments;
+import ai.neargo.shop.common.PayModes;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.event.OutboxEventBus;
@@ -84,6 +85,11 @@ public class OrderServiceImpl implements OrderService {
     private final SubOrderMapper subOrderMapper;
     private final ai.neargo.shop.spi.user.AdmissionPort admissionPort;
     private final OrderItemMapper itemMapper;
+    /**
+     * 支付方式可用性的唯一判定入口（四层取交集）。
+     * <b>别在本类里再判一遍</b> —— 结算页与商品详情页会因此各说各话。
+     */
+    private final ai.neargo.shop.product.service.PayModeService payModeService;
     private final CartItemMapper cartMapper;
     private final GoodsQueryPort goodsPort;
     private final StockPort stockPort;
@@ -109,6 +115,7 @@ public class OrderServiceImpl implements OrderService {
     private final ai.neargo.shop.spi.user.PersonPort personPort;
 
     public OrderServiceImpl(OrderMapper orderMapper, SubOrderMapper subOrderMapper, OrderItemMapper itemMapper,
+                            ai.neargo.shop.product.service.PayModeService payModeService,
                             CartItemMapper cartMapper, GoodsQueryPort goodsPort, StockPort stockPort,
                             MerchantQueryPort merchantPort,
                             ai.neargo.shop.spi.user.MerchantAdminPort merchantAdminPort,
@@ -124,6 +131,7 @@ public class OrderServiceImpl implements OrderService {
                             ai.neargo.shop.spi.member.MemberEventPort memberEventPort,
                             ai.neargo.shop.spi.user.PersonPort personPort,
                             CloseRuleService closeRuleService) {
+        this.payModeService = payModeService;
         this.orderMapper = orderMapper;
         this.subOrderMapper = subOrderMapper;
         this.admissionPort = admissionPort;
@@ -460,6 +468,12 @@ public class OrderServiceImpl implements OrderService {
         Map<String, String> storeOfMerchant = storesOf(cmd, split);
 
         requireFulfillmentSupported(cmd.fulfillment(), split, storeOfMerchant, userNo);
+        /*
+         * 支付方式的三道校验。**全部前置且只读**，不改上面任何分支的顺序 ——
+         * create 是全站最要害的方法，加东西的正确姿势是「在它之前挡住」，
+         * 不是「在它中间插一脚」。
+         */
+        String payMode = requirePayModeSupported(cmd, split, storeOfMerchant);
         requireReceiverWhenShipped(cmd, userNo);
         requireWithinDeliveryRadius(cmd, split, userNo);
         requirePickupPointWhenPickup(cmd);
@@ -482,7 +496,7 @@ public class OrderServiceImpl implements OrderService {
         try {
             List<StockPort.SkuQty> lock = new ArrayList<>();
             for (Group g : split.groups) {
-                String storeNo = storeOfMerchant.get(g.merchantNo);
+                String storeNo = storeOfMerchant.get(g.merchantNo());
                 for (Line i : g.lines) {
                     // 赠品与付费件是同一个 SKU（活动表里没有「赠哪件」），合并成一次锁
                     lock.add(new StockPort.SkuQty(
@@ -500,7 +514,7 @@ public class OrderServiceImpl implements OrderService {
             try {
                 List<StockPort.SkuQty> paidOnly = new ArrayList<>();
                 for (Group g : split.groups) {
-                    String storeNo = storeOfMerchant.get(g.merchantNo);
+                    String storeNo = storeOfMerchant.get(g.merchantNo());
                     for (Line i : g.lines) {
                         paidOnly.add(new StockPort.SkuQty(i.skuNo(), i.qty(), storeNo));
                     }
@@ -542,6 +556,20 @@ public class OrderServiceImpl implements OrderService {
                                 subOrderNoOf.get(g.merchantNo)))
                         .toList());
 
+        /*
+         * 线下支付**不能用平台券** —— 券要按出资方拆开看：
+         *   商家券：商家自己少收，与积分同理，平台不介入 → 可以用
+         *   平台券：平台要把补贴的钱给商家，而线下**没有资金流可补** → 不行
+         * 硬发就是平台白送且无处对账。区分依据是现成的：
+         * 下面落库时本来就要分 discountPlatform / discountMerchant 两列。
+         *
+         * **拦在这里而不是支付后**：付过钱再告诉他「这张券不能用」，他要先退款才能重下。
+         */
+        if (PayModes.OFFLINE.equals(payMode) && discounts.total() > 0
+                && split.groups().stream().anyMatch(g -> discounts.platformFunded(g.merchantNo()) > 0)) {
+            throw BizException.of(ErrorCode.PLATFORM_COUPON_OFFLINE_FORBIDDEN);
+        }
+
         // ⑥ 落库：主单 + 子单 + 行，同一事务
         OrdOrder order = new OrdOrder();
         order.setOrderNo(orderNo);
@@ -553,7 +581,19 @@ public class OrderServiceImpl implements OrderService {
         order.setFreightAmount(split.freightAmount());
         order.setDiscountAmount(discounts.total());
         order.setCurrency(CURRENCY_CNY);
-        order.setStatus(OrdOrder.WAIT_PAY);
+        /*
+         * 线下支付落 WAIT_OFFLINE_PAY：钱还没收到，**不能算已支付** ——
+         * 直接落 PAID 的话，商家一旦收不到钱，退款链路要去退一笔平台从没收过的钱。
+         * 库存照常锁（下面 confirm 之后才转实扣），与线上单一致。
+         */
+        order.setStatus(PayModes.OFFLINE.equals(payMode)
+                ? OrdOrder.WAIT_OFFLINE_PAY : OrdOrder.WAIT_PAY);
+        /*
+         * 下单端快照。**列从 V1 baseline 就有，缺的一直是这一行写入。**
+         * 积分发放的端判定读它 —— 发放发生时可能没有任何「当前端」
+         * （超时自动完成是系统动作），只有下单这一刻的端是确定的。
+         */
+        order.setPayScene(cmd.payScene());
         /*
          * 社区固化到主单上。**运营按社区做数据域隔离** —— 不写的话，
          * 平台端按社区筛订单永远是空的，而列表本身是好的，看起来只是「这个社区没单」。
@@ -1353,6 +1393,59 @@ public class OrderServiceImpl implements OrderService {
      * <p>拦在**创建**这一步，不是支付后：付过钱再告诉他「地址没选」，
      * 他要先退款才能重下。
      */
+    /**
+     * 用户选的支付方式，购物车里<b>每一件</b>商品在<b>它所属的门店</b>都得支持。
+     *
+     * <p>与 {@link #requireFulfillmentSupported} 同一条判法：按「每一件都支持」而不是
+     * 「有一件支持」—— 支付方式是整单一个，只要有一件不支持，这一单就付不成。
+     *
+     * <p><b>不传按 ONLINE</b>：存量端上没有这个字段，不能因为补了它就让老版本下不了单。
+     *
+     * @return 归一化后的支付方式，供落库使用
+     */
+    private String requirePayModeSupported(CreateOrderCommand cmd, Split split,
+                                           Map<String, String> storeOfMerchant) {
+        String payMode = cmd.payMode() == null || cmd.payMode().isBlank()
+                ? PayModes.ONLINE : cmd.payMode();
+        if (!PayModes.isValid(payMode)) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        if (PayModes.ONLINE.equals(payMode)) {
+            return payMode;   // 线上不受四层约束，见 PayModeService#availablePayModes
+        }
+        /*
+         * 线下 × 履约方式：只有「当面能收到钱」的那几种。
+         *
+         * **排除快递**：货已经寄出去了，没有「当面收款」的那一刻。
+         * **排除自提点自提**：自提点承接的是别家商家的货，让它代收货款
+         * 立刻变成资金归集 —— 与 ADR-002 要避开的二清是同一件事。
+         */
+        if (!OFFLINE_PAYABLE.contains(cmd.fulfillment())) {
+            throw BizException.of(ErrorCode.PAY_MODE_NOT_SUPPORTED);
+        }
+        for (Group g : split.groups()) {
+            String storeNo = storeOfMerchant.get(g.merchantNo());
+            for (Line line : g.lines()) {
+                if (!payModeService.availablePayModes(line.snapshot().goodsNo(), storeNo)
+                        .contains(payMode)) {
+                    throw BizException.of(ErrorCode.PAY_MODE_NOT_SUPPORTED);
+                }
+            }
+        }
+        return payMode;
+    }
+
+    /**
+     * 允许线下支付的履约方式 —— 判据是「<b>有没有当面收钱的那一刻</b>」。
+     *
+     * <p>货到付款（{@code MERCHANT_DELIVERY}）在列，但它另有一道门店级开关
+     * （{@code mch_store.cod_enabled}）：它是整张组合表里风险最高的一格，
+     * 拒收跑单的损失全在商家，所以要商家自己打开。
+     */
+    private static final java.util.Set<String> OFFLINE_PAYABLE = java.util.Set.of(
+            Fulfillments.STORE_PICKUP, Fulfillments.MERCHANT_DELIVERY,
+            Fulfillments.STORE_VERIFY, Fulfillments.APPOINTMENT);
+
     private void requireReceiverWhenShipped(CreateOrderCommand cmd, String userNo) {
         if (cmd.fulfillment() == null || !SHIPPED_FULFILLMENTS.contains(cmd.fulfillment())) {
             return;

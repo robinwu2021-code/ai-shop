@@ -65,7 +65,7 @@ public class MpTradeController {
 
     @PostMapping("/mp/order/preview")
     public OrderVO preview(@RequestBody CreateOrderReq req) {
-        return orderService.preview(req.toCommand());
+        return orderService.preview(req.toCommand(null));
     }
 
     /**
@@ -77,17 +77,23 @@ public class MpTradeController {
      */
     @PostMapping("/mp/order/capability")
     public ai.neargo.shop.trade.dto.CheckoutCapabilityVO capability(@RequestBody CreateOrderReq req) {
-        return orderService.capability(req.toCommand());
+        return orderService.capability(req.toCommand(null));
     }
 
     /**
      * 下单。{@code Idempotency-Key} 走请求头而不是请求体 ——
      * 它是传输层语义（重试同一个请求），放进业务体会诱使有人为了「重新下单」而换 key。
      */
+    /**
+     * @param client 下单端（{@code X-Client}）。<b>只用于平台策略判定</b>（哪个端能发/用积分），
+     *               它来自客户端、天然可伪造，<b>绝不能用于权限或资金判定</b>。
+     *               不传时留空 —— 存量端上没有这个头，不能因为补了它就让老版本下不了单。
+     */
     @PostMapping("/mp/order")
     public OrderVO create(@RequestBody CreateOrderReq req,
-                          @RequestHeader(value = "Idempotency-Key", required = false) String idemKey) {
-        return orderService.create(req.toCommand(), idemKey == null ? req.idempotencyKey() : idemKey);
+                          @RequestHeader(value = "Idempotency-Key", required = false) String idemKey,
+                          @RequestHeader(value = "X-Client", required = false) String client) {
+        return orderService.create(req.toCommand(client), idemKey == null ? req.idempotencyKey() : idemKey);
     }
 
     @PostMapping("/mp/order/{orderNo}/pay")
@@ -194,17 +200,23 @@ public class MpTradeController {
     public record CreateOrderReq(List<Item> items, String fulfillment, String pickupNo, String addressId,
                                  String couponNo, Long usePoints, String remark, String idempotencyKey,
                                  // 上门预约的时段。APPOINTMENT 履约必填，其余忽略
-                                 Long appointmentAt) {
+                                 Long appointmentAt,
+                                 /*
+                                  * 支付方式（PayModes）。**不传按 ONLINE**：
+                                  * 存量端上没有这个字段，不能因为补了它就让老版本下不了单。
+                                  */
+                                 String payMode) {
 
         public record Item(String goodsNo, String skuNo, int qty) {
         }
 
-        OrderService.CreateOrderCommand toCommand() {
+        OrderService.CreateOrderCommand toCommand(String payScene) {
             return new OrderService.CreateOrderCommand(
                     items == null ? List.of() : items.stream()
                             .map(i -> new OrderService.CreateOrderCommand.Item(i.goodsNo(), i.skuNo(), i.qty()))
                             .toList(),
-                    fulfillment, pickupNo, addressId, couponNo, usePoints, remark, appointmentAt);
+                    fulfillment, pickupNo, addressId, couponNo, usePoints, remark, appointmentAt,
+                    payMode, payScene);
         }
     }
 }

@@ -22,6 +22,18 @@ public final class OrderStateMachine {
     /** 主单允许的迁移。 */
     private static final Map<String, Set<String>> ORDER = Map.of(
             OrdOrder.WAIT_PAY, Set.of(OrdOrder.PAID, OrdOrder.CANCELLED, OrdOrder.CLOSED),
+            /*
+             * 线下支付：下单即落这里，等商家确认收款。
+             *
+             * **没有 → WAIT_PAY 这条边**：改主意想线上付要重新下单。
+             * 允许来回切的话，「这一单到底收没收到钱」就有了两个真源
+             * （商家的确认 与 支付回调），而它们可能同时到达。
+             *
+             * **也没有 → CLOSED**：CLOSED 是「超时未支付自动关」，
+             * 而线下单的超时是「商家一直没确认收款」——语义不同，走 CANCELLED
+             * 并写明原因，商家在列表里看到的才是「已取消：超时未确认收款」。
+             */
+            OrdOrder.WAIT_OFFLINE_PAY, Set.of(OrdOrder.PAID, OrdOrder.CANCELLED),
             OrdOrder.PAID, Set.of(),          // 已支付不再有主单级迁移，后续变化都在子单
             OrdOrder.CANCELLED, Set.of(),
             OrdOrder.CLOSED, Set.of());

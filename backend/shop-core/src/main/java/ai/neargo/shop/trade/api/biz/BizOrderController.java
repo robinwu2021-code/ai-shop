@@ -108,6 +108,24 @@ public class BizOrderController {
         return merchantOrderService.delivered(ctx.requireMerchantNo(), ctx.currentStoreNo(), subOrderNo);
     }
 
+    /**
+     * 确认已收到线下货款。
+     *
+     * <p><b>权限用 {@code RECEIVE} 不用 {@code ORDER_VIEW}</b>：后者是只读权限，
+     * 连配送员（{@code COURIER} 角色）都持有 —— 给只读角色一个能把订单推成「已支付」
+     * 的动作是越权。{@code RECEIVE} 是「收东西」那一类，与核销、到货确认同族。
+     *
+     * <p>⚠️ <b>买家侧没有这个入口</b>。钱是当面给商家的，只有商家知道收没收到；
+     * 让买家能点，等于让他自己宣布已付款。
+     */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.RECEIVE + "')")
+    @PostMapping("/biz/order/{subOrderNo}/confirm-offline-pay")
+    public OrderVO confirmOfflinePay(@PathVariable String subOrderNo) {
+        var ctx = BizContext.current();
+        return merchantOrderService.confirmOfflinePay(
+                ctx.requireMerchantNo(), ctx.currentStoreNo(), subOrderNo, ctx.requireMerchantNo());
+    }
+
     /** @param expressNo 快递单号 */
     public record ShipReq(String expressNo) {
     }
