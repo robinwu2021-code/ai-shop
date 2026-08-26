@@ -15,6 +15,7 @@ import { onLoad, onShow } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
 import { api } from "@/api";
 import { useMerchantStore } from "@/stores/merchant";
+import { buildSpecOverride } from "@/utils/spec-override";
 import { ROUTES } from "@/shared/nav";
 import { SHOW_CATEGORY_GATE, SHOW_FRESH_FIELDS } from "@/shared/flags";
 import type { GoodsGuess } from "@/api/contract";
@@ -1559,6 +1560,89 @@ async function loadProps() {
   propDims.value = await api.mSpecProps(categoryNo.value || undefined).catch(() => []);
 }
 
+/*
+ * **参数可以在这里现加**（规格不行）。
+ *
+ * <p>两者的代价不一样。规格进笛卡尔积、要单独定价备库存，在建品页现造一个
+ * 只对这一件商品成立的维度，等于给自己开一条以后对不上账的路 ——
+ * 所以规格一律去「商品规格和参数」加一次，全店通用。
+ * 而参数是写给买家看的一行字：「海拔 1200 米」平台不会替他想到，
+ * 他也不该为了标一行字先跳出去一趟、回来再重填一遍这件货。
+ *
+ * <p><b>但加出来的东西是一样的</b>：走同一个 `mAddSpecDim(PROP)` 落进规格库、
+ * 拿到编号、挂到这个类目下 —— 下次建同类的品它就在那儿了。
+ * 「只在这一件商品上有效」的私有字符串一条都不造，那是掉出聚合的那条路。
+ */
+const addingParam = ref(false);
+const newParam = ref("");
+
+/** 正在给哪个参数填值；null = 没在填。只对「平台没配候选值」的那些出现 */
+const addingValueFor = ref<SpecTemplate | null>(null);
+const newParamValue = ref("");
+
+async function confirmAddParam() {
+  const name = newParam.value.trim();
+  if (!name || !categoryNo.value) return;
+  try {
+    const dim = await api.mAddSpecDim(name, [], "PROP");
+    /*
+     * **挂到这个类目下**，否则它只是躺在规格库里：下次进来这一页看不到它，
+     * 而他明明刚建过 —— 与「我的规格」里加一个是同一条路，所以用同一个载荷拼装。
+     *
+     * <p>当前状态从**这两条按类目取的接口**拿，不从「本店货架类目」那份拿：
+     * 这件货的类目不一定在他的货架上（货架是他摆出来卖的那几类，
+     * 而建品页可以选到任何类目）。拿不到卡就静静不保存 —— 加完什么都没发生，
+     * 而这条路上没有任何东西会报错。实测就是这么撞上的（蔬菜不在货架上）。
+     *
+     * <p>先取一份当前状态是因为后端先清后写：少带一条就抹掉一条。
+     */
+    const [dims, props] = await Promise.all([
+      api.mSpecTemplates(undefined, categoryNo.value).catch(() => []),
+      api.mSpecProps(categoryNo.value).catch(() => []),
+    ]);
+    await api.mSaveSpecOverride(
+      categoryNo.value,
+      buildSpecOverride({
+        g: { categoryNo: categoryNo.value, categoryName: "", dims, props },
+        added: dim,
+      }),
+    );
+    await loadProps();
+    addingParam.value = false;
+    newParam.value = "";
+    // 撞上平台已有的同名参数时后端直接返回它 —— 说一声，否则他以为自己白填了
+    if (dim.name !== name) {
+      uni.showToast({ title: t("mySpecs.valueMerged", { name: dim.name }), icon: "none" });
+    }
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: "none" });
+  }
+}
+
+/**
+ * 给一个没有候选值的参数填一个值。
+ *
+ * <p><b>填的是规格库里的一档，不是这件货身上的一个字符串。</b>
+ * 「海拔」这种量纲型平台不会枚举值，但他填的「1200 米」仍然要拿到编号 ——
+ * 否则三家店的「1200米」「1200 m」「一千二」永远聚不到一起，
+ * 而那正是养这个库的全部理由。落库之后它也成了下一件货的候选。
+ */
+async function confirmParamValue() {
+  const d = addingValueFor.value;
+  const text = newParamValue.value.trim();
+  if (!d || !text) return;
+  try {
+    const added = await api.mAddSpecValue(d.templateNo, text);
+    await loadProps();
+    const fresh = propDims.value.find((x) => x.templateNo === d.templateNo) ?? d;
+    pickParam(fresh, { code: added.code || added.valueNo, label: added.label });
+    addingValueFor.value = null;
+    newParamValue.value = "";
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: "none" });
+  }
+}
+
 /** 点一下选中/取消。**再点一次取消** —— 不给「清空」按钮，一排 chip 自己就是开关 */
 function pickParam(dim: SpecTemplate, o: SpecOption) {
   const cur = paramValues.value[dim.templateNo];
@@ -2554,6 +2638,16 @@ async function save(thenSubmit = false) {
         <text class="sh-h2">{{ $t("goods.params") }}</text>
       </view>
 
+      <!--
+        **加参数固定在标题下**，位置与规格那边的候选栏一致。
+        规格那栏摆的是「平台还有这些」（这一页不新增），参数这栏只有一个 ＋ ——
+        因为参数没有「候选维度」可摆：propDims 已经把这一类有的全列出来了，
+        缺的那个只可能是平台没想到的（海拔、辣度），得他自己说。
+      -->
+      <view class="addbar">
+        <text class="sh-chip addbar__chip" @tap="addingParam = true">＋ {{ $t("goods.addParam") }}</text>
+      </view>
+
       <!-- 与规格同一条：常驻展开，理由见上面那段 -->
       <!--
         **参数是单值，规格是多值** —— 一件货有三档重量，但只有一个产地。
@@ -2573,18 +2667,61 @@ async function save(thenSubmit = false) {
           >{{ o.label }}</text>
         </view>
         <!--
-          **没有候选值时不给输入框。**
-          上一版给的是自由输入（量纲型的「功率」平台不枚举值），
-          但手输的值没有 code —— 不参与筛选、不参与跨店比较，
-          与手输规格值掉出聚合是同一个问题。这一页只做减法，
-          平台没配的去「商品规格」加一次，全店通用且带编号。
+          **没有候选值时给一个「＋ 填一个」，而不是一句「平台还没配值」。**
+          量纲型的参数（功率、海拔、净重）平台本来就不会枚举值，
+          刚自建出来的参数更是必然一个值都没有 —— 停在那句话上就是死胡同。
+          但填的东西**落进规格库拿编号**（见 confirmParamValue），
+          不是这件货身上的一个私有字符串：后者不参与筛选，也不参与跨店比较。
         -->
-        <text v-else class="sh-muted param__empty">{{ $t("goods.paramNoValue") }}</text>
+        <view v-else class="param__opts">
+          <text class="sh-chip addbar__chip" @tap="addingValueFor = d">＋ {{ $t("goods.paramFill") }}</text>
+        </view>
       </view>
       <text class="link link--quiet more__manage" @tap="gotoMySpecs">
         {{ $t("goods.manageSpecs") }}
       </text>
     </view>
+
+    <!--
+      **加参数 / 填一个值走弹层**，与「商品规格和参数」那一页同一个形状：
+      候选（这里没有）在上、自己填在下，代价就写在输入框下面。
+      不用 uni.showModal —— 它的标题与输入框不是同一套字，排版不归我们管。
+    -->
+    <sh-sheet
+      :visible="addingParam"
+      :title="$t('goods.addParam')"
+      :hint="$t('goods.addParamHint')"
+      @close="addingParam = false; newParam = ''"
+    >
+      <view class="build">
+        <input
+          v-model="newParam"
+          class="build__input"
+          :placeholder="$t('goods.addParamPh')"
+          @confirm="confirmAddParam"
+        />
+        <text class="link build__ok" @tap="confirmAddParam">{{ $t("goods.save") }}</text>
+      </view>
+      <text class="sh-muted build__s">{{ $t("goods.addParamCost") }}</text>
+    </sh-sheet>
+
+    <sh-sheet
+      :visible="!!addingValueFor"
+      :title="addingValueFor ? addingValueFor.name : ''"
+      :hint="$t('goods.paramFillHint')"
+      @close="addingValueFor = null; newParamValue = ''"
+    >
+      <view class="build">
+        <input
+          v-model="newParamValue"
+          class="build__input"
+          :placeholder="$t('goods.paramFillPh')"
+          @confirm="confirmParamValue"
+        />
+        <text class="link build__ok" @tap="confirmParamValue">{{ $t("goods.save") }}</text>
+      </view>
+      <text class="sh-muted build__s">{{ $t("goods.paramFillCost") }}</text>
+    </sh-sheet>
 
     <!-- SKU 矩阵 -->
     <view class="sh-card mt">
@@ -3007,6 +3144,35 @@ async function save(thenSubmit = false) {
   color: var(--sh-sub);
 }
 
+
+/* 弹层里那一行输入：输入框吃满，保存压在右边 —— 与「商品规格和参数」那一页同形 */
+.build {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  margin-top: 20rpx;
+}
+
+.build__input {
+  flex: 1;
+  height: 76rpx;
+  padding: 0 24rpx;
+  border-radius: 16rpx;
+  background: var(--sh-faint);
+  font-size: 28rpx;
+  color: var(--sh-ink);
+}
+
+.build__ok {
+  font-size: 28rpx;
+  font-weight: 600;
+}
+
+.build__s {
+  display: block;
+  margin-top: 12rpx;
+  font-size: 24rpx;
+}
 
 /* 专业商家的入口：与切换器同一行右侧，压到最轻 */
 /*

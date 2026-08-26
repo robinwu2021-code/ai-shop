@@ -2158,7 +2158,14 @@ export const mockApi: MerchantApi = {
       })
       .filter((x): x is NonNullable<typeof x> => !!x && x.options.length > 0);
 
-    return delay([...catLevel, ...added, ...mine]);
+    /*
+     * **挑了类目就不再把自建规格整份倒出来。**后端这条路是 forCategory：
+     * 类目绑定 + 本店覆盖 + 他加进这个类目的，没有「我建过的全都算」这一档。
+     * mock 多给的话，任何按这份结果回写覆盖的调用方（建品页加参数走的就是这条），
+     * 都会把毫不相干的自建规格一并挂到这个类目下 —— 而他从没这么说过。
+     * 自建规格作为**候选**出现在哪里，由 mPickableDims 回答，不是这里。
+     */
+    return delay([...catLevel, ...added]);
   },
 
   /**
@@ -2169,7 +2176,14 @@ export const mockApi: MerchantApi = {
     requireMerchant();
     const text = label.trim();
     if (!text) throw new Error("先填规格值");
-    const tpl = db.specTemplates.find((t) => t.templateNo === dimNo);
+    /*
+     * **两张表都要找。** 商品参数（db.specProps）也会走这条路：
+     * 建品页给「海拔」填一个值时 dimNo 指的是一个 PROP 维度，
+     * 只找 specTemplates 的话 tpl 是 undefined —— 于是值静静地没落到任何地方，
+     * 而接口返回成功。后端那侧是同一张 prd_spec_dim，不存在这个分叉。
+     */
+    const tpl = db.specTemplates.find((t) => t.templateNo === dimNo)
+      ?? db.specProps.find((t) => t.templateNo === dimNo);
     const hit = tpl?.options.find((o) => o.label === text);
     if (hit) return delay({ valueNo: dimNo + "_" + (hit.code ?? text), code: hit.code ?? "", label: hit.label });
     /*
@@ -2395,7 +2409,48 @@ export const mockApi: MerchantApi = {
   async mSpecProps(categoryNo) {
     const picked = categoryNo?.trim();
     if (!picked) return delay([]);
-    return delay(db.specProps.filter((t) => t.categoryNo === picked));
+    const ov = mockSpecOverride.get(picked) ?? [];
+    const bound = db.specProps
+      .filter((t) => t.categoryNo === picked)
+      .filter((t) => {
+        const o = ov.find((x) => x.dimNo === t.templateNo);
+        return !o || o.enabled;
+      })
+      .map((t) => {
+        const o = ov.find((x) => x.dimNo === t.templateNo);
+        if (!o) return t;
+        const off = new Set(o.values.filter((v) => !v.enabled).map((v) => v.code));
+        return {
+          ...t,
+          name: o.label?.trim() || t.name,
+          options: t.options.filter((x) => !off.has(x.code ?? x.label)),
+        };
+      });
+    /*
+     * **他自己加进来的参数**（建品页的「＋ 加参数」、「商品规格和参数」里加的）：
+     * 类目没绑，但覆盖里有它。与 mSpecTemplates 最后那一段同一件事。
+     *
+     * <p>与规格那侧唯一的差别：**一个值都没有也要给出来**。
+     * 刚建出来的参数必然是这个样子（建的时候只填了名字），
+     * 按「空的就跳过」处理的话，他加完什么都不会发生 —— 而后端照给
+     * （SpecLibraryServiceImpl：空档位只跳过 SALE，PROP 照发）。
+     */
+    const shown = new Set(bound.map((t) => t.templateNo));
+    const added = ov
+      .filter((o) => o.enabled && !shown.has(o.dimNo))
+      .map((o) => {
+        const t = db.specProps.find((x) => x.templateNo === o.dimNo);
+        if (!t) return undefined;
+        const off = new Set(o.values.filter((v) => !v.enabled).map((v) => v.code));
+        return {
+          ...t,
+          categoryNo: picked,
+          name: o.label?.trim() || t.name,
+          options: t.options.filter((x) => !off.has(x.code ?? x.label)),
+        };
+      })
+      .filter((x): x is NonNullable<typeof x> => !!x);
+    return delay([...bound, ...added]);
   },
 
   /**

@@ -20,7 +20,8 @@ import { useI18n } from "vue-i18n";
 import { onShow } from "@dcloudio/uni-app";
 import { api } from "@/api";
 import { useMerchantStore } from "@/stores/merchant";
-import type { MerchantSpecDim, SpecOption, SpecOverride, SpecTemplate, StoreCategorySpecs } from "@shared/types";
+import { buildSpecOverride } from "@/utils/spec-override";
+import type { MerchantSpecDim, SpecOption, SpecTemplate, StoreCategorySpecs } from "@shared/types";
 
 const { t } = useI18n();
 const merchant = useMerchantStore();
@@ -343,41 +344,16 @@ async function commit(
   removeDimNo?: string,
 ) {
   /*
-   * **两个列表一起提交。** 后端那侧是「先清后写」，只发一半的话另一半的覆盖
-   * 会被清掉：改过的本店叫法丢了，移除过的规格自己回来了 —— 而这两件都不报错。
-   * 移除是靠一条 `enabled:false` 表达的，所以被移除的那些也必须留在载荷里。
+   * 载荷怎么拼见 buildSpecOverride —— 关键一条是**两个列表一起提交**
+   * （后端先清后写，只发一半会把另一半的覆盖清掉，而且不报错）。
+   * `order` 只给当前这一栏，另一栏由它按原顺序补在后面。
    */
-  const otherKey = tab.value === "dims" ? "props" : "dims";
-  const other = (g[otherKey] ?? []).map((t) => t.templateNo);
-  const seq = [...(order ?? listOf(g).map((t) => t.templateNo)), ...other];
-  const all = [...(g.dims ?? []), ...(g.props ?? [])];
-  const dims = seq
-    .filter((no) => no !== removeDimNo)
-    .map((no) => {
-      const t = all.find((x) => x.templateNo === no);
-      const isPatched = patch && patch.dimNo === no;
-      const codes = isPatched ? patch.values : (t?.options ?? []).map((o) => o.code ?? "");
-      const gone = isPatched ? patch.dropped : [];
-      const label = isPatched ? patch.label : t?.name;
-      return {
-        dimNo: no,
-        enabled: true,
-        /*
-         * **原样提交，不在这里判「改没改」。**端上手里的 name 已经是合并后的，
-         * 要比对得另外拿一份平台原名，而那个值只在部分路径上才有 ——
-         * 判漏了就落一堆等于原名的覆盖，而那会让运营以后的改名到不了这家店。
-         * 后端有平台原名，让它去比。
-         */
-        label: label?.trim() || undefined,
-        values: [
-          ...codes.map((code) => ({ code, enabled: true })),
-          ...gone.map((code) => ({ code, enabled: false })),
-        ],
-      };
-    });
-  if (removeDimNo) {
-    dims.push({ dimNo: removeDimNo, enabled: false, label: undefined, values: [] });
-  }
+  const dims = buildSpecOverride({
+    g,
+    order: order ?? listOf(g).map((t) => t.templateNo),
+    patch,
+    removeDimNo,
+  });
   await api.mSaveSpecOverride(g.categoryNo, dims);
   /*
    * **整页重取，不拿返回值就地打补丁。**
