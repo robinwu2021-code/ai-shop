@@ -8,6 +8,8 @@ import com.baomidou.mybatisplus.extension.plugins.inner.DataPermissionIntercepto
 import com.baomidou.mybatisplus.extension.plugins.inner.OptimisticLockerInnerInterceptor;
 import com.baomidou.mybatisplus.extension.plugins.inner.PaginationInnerInterceptor;
 import org.mybatis.spring.annotation.MapperScan;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.FilterType;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -34,9 +36,8 @@ import java.util.List;
  */
 @MapperScan(basePackages = "ai.neargo.shop",
         markerInterface = com.baomidou.mybatisplus.core.mapper.BaseMapper.class,
-        excludeFilters = @org.springframework.context.annotation.ComponentScan.Filter(
-                type = org.springframework.context.annotation.FilterType.REGEX,
-                pattern = "ai\\.neargo\\.shop\\.inventory\\..*"))
+        excludeFilters = @ComponentScan.Filter(
+                type = FilterType.REGEX, pattern = "ai\\.neargo\\.shop\\.inventory\\..*"))
 /*
  * 第二个 @MapperScan：**不继承 BaseMapper 的 Mapper**。
  *
