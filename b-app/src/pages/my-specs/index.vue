@@ -299,6 +299,11 @@ const ownValueWord = computed(() =>
  * 而他正在给「产地」加一个值。**举错例子比不举例更糟**：他会照着例子理解
  * 这一栏是干什么的，然后把参数当成规格用。
  */
+/* 「加规格」那一屏也有两套词：在参数栏里说「平台可选规格」是说错了对象 */
+const pickHintWord = computed(() =>
+  t(tab.value === "dims" ? "mySpecs.pickHint" : "mySpecs.pickHintProps"));
+const buildOwnPhWord = computed(() =>
+  t(tab.value === "dims" ? "mySpecs.buildOwnPh" : "mySpecs.buildOwnPhProps"));
 const noMoreValueWord = computed(() =>
   t(tab.value === "dims" ? "mySpecs.noMoreValue" : "mySpecs.noMorePropValue"));
 const valuePhWord = computed(() =>
@@ -888,7 +893,7 @@ onShow(() => void load());
     <sh-sheet
       :visible="!!sheetStep"
       :title="sheetTitle"
-      :hint="sheetStep === 'pick' ? $t('mySpecs.pickHint') : ''"
+      :hint="sheetStep === 'pick' ? pickHintWord : ''"
       @close="closeSheet"
     >
       <!-- ① 挑一个平台现成的，或自己建 -->
@@ -924,7 +929,7 @@ onShow(() => void load());
             <input
               v-model="buildName"
               class="field__input build__input"
-              :placeholder="$t('mySpecs.buildOwnPh')"
+              :placeholder="buildOwnPhWord"
               @confirm="confirmBuild(pickingCat)"
             />
             <text class="link build__ok" @tap="confirmBuild(pickingCat)">

@@ -2673,9 +2673,12 @@ async function save(thenSubmit = false) {
       每一档要单独定价备库存；参数一项也不进，买家不用挑，只是看。
       摆在同一张卡里的话，商家没有任何线索分辨「填这个会不会让我多填一屏价格」。
 
-      <p>只在这一类配了参数时才出现 —— 没配的类目不该多一张空卡。
+      <p><b>选定类目后这张卡一定在，哪怕这一类一个参数都没配。</b>
+      此前的条件是「有参数才显示」，而**新建参数的入口就在这张卡里** ——
+      于是平台没配参数的类目成了死结：他想加第一个参数，可那个按钮所在的卡
+      因为没有参数而不显示。空卡的代价是一小段留白，死结的代价是这个功能不存在。
     -->
-    <view v-if="propDims.length" class="sh-card mt">
+    <view v-if="categoryNo" class="sh-card mt">
       <!--
         **加参数在标题行右边**，与「商品规格和参数」页类目卡上的那个加按钮
         同一个位置、同一个样子 —— 同一件事在两页别长两张脸。
@@ -2693,12 +2696,15 @@ async function save(thenSubmit = false) {
       </view>
 
       <!-- 与规格同一条：常驻展开，理由见上面那段 -->
+      <!-- 这一类还没配参数：说清现状，并把唯一的下一步摆在眼前 -->
+      <text v-if="!propDims.length" class="sh-muted hint">{{ $t("goods.paramsEmpty") }}</text>
       <!--
         **参数是单值，规格是多值** —— 一件货有三档重量，但只有一个产地。
         所以这里的 chip 是单选（再点取消），而规格那边是开关（本店有的全列、
         这件货没有的点掉）。两块长得像、行为不同，得说出来。
       -->
-      <text class="sh-muted hint">{{ $t("goods.paramsPick") }}</text>
+      <!-- 一个参数都没有时不说「每项单选」—— 那句话此刻没有对象 -->
+      <text v-if="propDims.length" class="sh-muted hint">{{ $t("goods.paramsPick") }}</text>
       <view v-for="d in propDims" :key="d.templateNo" class="param">
         <text class="param__k">{{ d.name }}</text>
         <!--
