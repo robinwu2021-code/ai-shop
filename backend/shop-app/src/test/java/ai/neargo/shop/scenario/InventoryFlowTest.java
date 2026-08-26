@@ -1,6 +1,7 @@
 package ai.neargo.shop.scenario;
 
 import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.invbridge.InventoryBackfillService;
 import ai.neargo.shop.inventory.service.InboundService;
 import ai.neargo.shop.inventory.service.InventoryAclService;
 import ai.neargo.shop.inventory.service.LocationService;
@@ -58,6 +59,9 @@ class InventoryFlowTest {
     TransferService transfers;
     @Autowired
     StockQueryService query;
+
+    @Autowired
+    InventoryBackfillService backfill;
 
     @Test
     @DisplayName("★★★ 进货 → 下单预留 → 支付出库：预留不动实存，付款才扣")
@@ -185,6 +189,37 @@ class InventoryFlowTest {
         // 原行还在，多出一行反向 —— 不是把那一行改掉或删掉
         assertThat(query.ledger(f.owner, f.item, f.location, null, 50).entries())
                 .hasSize(rowsBefore + 1);
+    }
+
+    @Test
+    @DisplayName("★★★ 存量搬运幂等 —— 重跑不会把库存搬两遍")
+    void backfillIsIdempotent() {
+        // 平台侧的存量（DevSeeder 种的 SKU）搬一批
+        InventoryBackfillService.Report first = backfill.run(false, 50);
+        int movedFirst = first.moved();
+        assertThat(movedFirst).as("第一轮应当搬到东西").isGreaterThan(0);
+
+        InventoryBackfillService.Report second = backfill.run(false, 50);
+        /*
+         * 第二轮一条都不该再搬。
+         *
+         * 幂等靠的是 INIT 单（source_type=INIT + source_ref=平台键），
+         * **不是「余额是不是 0」** —— 搬完之后正常出入库会让余额变成任何数，
+         * 拿它当判据的话，卖掉几件之后重跑会再搬一遍。
+         */
+        assertThat(second.moved()).as("重跑不该再搬").isZero();
+        assertThat(second.skipped()).as("应当全部跳过").isGreaterThan(0);
+    }
+
+    @Test
+    @DisplayName("★★★ 搬完之后对差必须干净 —— 这是 G3 闸门的判据")
+    void backfillLeavesNoDiff() {
+        backfill.run(false, 50);
+        InventoryBackfillService.Report diff = backfill.diffOnly(50);
+
+        assertThat(diff.clean())
+                .as("搬过的条目两边的数必须一致，否则不得切真相源；差异：%s", diff.diffs())
+                .isTrue();
     }
 
     // ────────────────────────────────────────────────────────────────────
