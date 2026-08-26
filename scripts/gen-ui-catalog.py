@@ -248,8 +248,6 @@ PROTOTYPES = [
     ("ops-web", "/members?tab=person", "人档与合并", "会员与营销"),
     ("ops-web", "/members?tab=reach", "触达监控", "会员与营销"),
     # 商家资金全链路：接口都在、B 端没有出口的那几页
-    ("b-app", "/pages/points/index", "积分成本总览", "钱"),
-    ("b-app", "/pages/points-records/index", "发分明细", "钱"),
     ("b-app", "/pages/income/index", "我的收入（到账进度）", "钱"),
 ]
 

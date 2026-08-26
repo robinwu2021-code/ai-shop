@@ -88,6 +88,18 @@
       }
     },
     {
+      "path": "pages/points/index",
+      "style": {
+        "navigationBarTitleText": "积分"
+      }
+    },
+    {
+      "path": "pages/points-records/index",
+      "style": {
+        "navigationBarTitleText": "发分明细"
+      }
+    },
+    {
       "path": "pages/stores/index",
       "style": {
         "navigationBarTitleText": "门店管理"
