@@ -11,7 +11,7 @@
 > 与 [B端功能矩阵-按角色](./B端功能矩阵-按角色.md) 的分工：那份是**角色视角**
 > （谁能碰哪些路径），这份是**功能视角**（哪个功能点归哪个码、画在哪一页）。
 
-统计：**13 个权限码 × 6 个角色 × 128 个受控功能点**
+统计：**13 个权限码 × 6 个角色 × 131 个受控功能点**
 （另有 28 个登录即可、1 个「任一权限即可」）。
 
 > ⚠️ 角色列只有 6 个平台预置角色。商家自定义角色（V71 `mch_role`）按主体存库，
@@ -21,7 +21,7 @@
 
 | 权限码 | 常量 | 含义 | 功能点数 | 老板 | 店长 | 店员 | 理货员 | 配送员 | 客服 |
 |---|---|---|---|---|---|---|---|---|---|
-| `biz:goods` | `GOODS` | 建/改商品、上下架、规格模板、识图 | 19 | ✅ | ✅ | — | — | — | — |
+| `biz:goods` | `GOODS` | 建/改商品、上下架、规格模板、识图 | 22 | ✅ | ✅ | — | — | — | — |
 | `biz:store` | `STORE` | 门店经营面：装修、配送规则、店铺码、分享物料 | 19 | ✅ | ✅ | — | — | — | — |
 | `biz:store:admin` | `STORE_ADMIN` | 建店、改名、停用、设默认店、挂收款号 | 18 | ✅ | — | — | — | — | — |
 | `biz:campaign` | `CAMPAIGN` | 营销活动、开团、报价 | 16 | ✅ | ✅ | — | — | — | — |
@@ -58,6 +58,9 @@
 | 停用/启用自建维度 | POST | `/biz/my-spec-dims/{dimNo}/archive` | `mArchiveSpecDim` | — |
 | 给自建维度改名 | POST | `/biz/my-spec-dims/{dimNo}/rename` | `mRenameSpecDim` | — |
 | 还能加进这一类的商品参数（本类目已配 + 平台通用 + 自建） | GET | `/biz/pickable-props` | `mPickableProps` | my-specs |
+| 导出本店全部规格行的条码/货号/单位 | GET | `/biz/sku-identity/export` | `mSkuIdentityExport` | sku-identity |
+| 商品编码批量导入 | POST | `/biz/sku-identity/import` | `mSkuIdentityImport` | sku-identity |
+| 商品编码导入试算（不写库） | POST | `/biz/sku-identity/import/plan` | `mSkuIdentityPlan` | sku-identity |
 | 加规格组时能挑的维度（本类目已配 + 平台通用 + 自建） | GET | `/biz/spec-dims` | `mPickableDims` | goods-edit、my-specs |
 | 自建规格维度（只本店可用） | POST | `/biz/spec-dims` | `mAddSpecDim` | goods-edit、my-specs |
 | 某个规格下平台有的全部档位（加档位的候选） | GET | `/biz/spec-dims/{dimNo}/values` | `mDimValues` | goods-edit、my-specs |
@@ -327,6 +330,7 @@
 | `role-detail` | `biz:store:admin` | `biz:store:admin` | 老板 | — |
 | `schedule` | **无** | `biz:store` | 老板、店长、店员、理货员、配送员、客服 | 店员（缺 biz:store）　理货员（缺 biz:store）　配送员（缺 biz:store）　客服（缺 biz:store） |
 | `settle` | `biz:finance` | `biz:finance` | 老板 | — |
+| `sku-identity` | `biz:goods` | `biz:goods` | 老板、店长 | — |
 | `staff` | `biz:store:admin` | `biz:store:admin` | 老板 | — |
 | `staff-detail` | `biz:store:admin` | `biz:store:admin` | 老板 | — |
 | `stats` | `biz:customer` | `biz:customer` | 老板、店长 | — |
