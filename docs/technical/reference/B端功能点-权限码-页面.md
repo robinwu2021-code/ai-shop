@@ -11,7 +11,7 @@
 > 与 [B端功能矩阵-按角色](./B端功能矩阵-按角色.md) 的分工：那份是**角色视角**
 > （谁能碰哪些路径），这份是**功能视角**（哪个功能点归哪个码、画在哪一页）。
 
-统计：**13 个权限码 × 6 个角色 × 127 个受控功能点**
+统计：**13 个权限码 × 6 个角色 × 128 个受控功能点**
 （另有 28 个登录即可、1 个「任一权限即可」）。
 
 > ⚠️ 角色列只有 6 个平台预置角色。商家自定义角色（V71 `mch_role`）按主体存库，
@@ -26,7 +26,7 @@
 | `biz:store:admin` | `STORE_ADMIN` | 建店、改名、停用、设默认店、挂收款号 | 18 | ✅ | — | — | — | — | — |
 | `biz:campaign` | `CAMPAIGN` | 营销活动、开团、报价 | 16 | ✅ | ✅ | — | — | — | — |
 | `biz:customer` | `CUSTOMER` | 顾客列表（含累计消费额）、经营数据 | 15 | ✅ | ✅ | — | — | — | — |
-| `biz:finance` | `FINANCE` | 结算账单、费率卡、收款进件、积分开关 | 14 | ✅ | — | — | — | — | — |
+| `biz:finance` | `FINANCE` | 结算账单、费率卡、收款进件、积分开关 | 15 | ✅ | — | — | — | — | — |
 | `biz:verify` | `VERIFY` | 核销、批量核销、按码搜索 | 7 | ✅ | ✅ | ✅ | — | — | — |
 | `biz:receive` | `RECEIVE` | 到货登记、分拣单、短少上报 | 4 | ✅ | ✅ | ✅ | ✅ | — | — |
 | `biz:stock` | `STOCK` | 改库存（含门店库存） | 4 | ✅ | ✅ | ✅ | ✅ | — | — |
@@ -194,6 +194,7 @@
 | 发分服务费明细（按单） | GET | `/biz/points/records` | `mPointsRecords` | points-records、settle |
 | 开/关本店积分 | POST | `/biz/points/toggle` | `mPointsToggle` | points、settle |
 | 结算单列表 | GET | `/biz/settle/bills` | `mSettleList` | settle |
+| 收入按状态汇总 | GET | `/biz/settle/income` | `mIncomeSummary` | income |
 | 费率卡 | GET | `/biz/settle/rate-card` | `mRateCard` | settle |
 | —（b-app 未接） | — | `/biz/settle/bills/{}` | — | — |
 | —（b-app 未接） | — | `/biz/settle/invoice-title` | — | — |
@@ -303,6 +304,7 @@
 | `goods-list` | `biz:stock` | `biz:store`、`biz:stock`、`biz:goods` | 老板、店长、店员、理货员 | 店员（缺 biz:store、biz:goods）　理货员（缺 biz:store、biz:goods） |
 | `groups` | `biz:campaign` | `biz:campaign`、`biz:stock` | 老板、店长 | — |
 | `home` | **无** | `biz:customer`、`biz:finance`、`biz:store` | 老板、店长、店员、理货员、配送员、客服 | 店长（缺 biz:finance）　店员（缺 biz:customer、biz:finance、biz:store）　理货员（缺 biz:customer、biz:finance、biz:store）　配送员（缺 biz:customer、biz:finance、biz:store）　客服（缺 biz:customer、biz:finance、biz:store） |
+| `income` | **无** | `biz:finance` | 老板、店长、店员、理货员、配送员、客服 | 店长（缺 biz:finance）　店员（缺 biz:finance）　理货员（缺 biz:finance）　配送员（缺 biz:finance）　客服（缺 biz:finance） |
 | `marketing` | `biz:campaign` | `biz:campaign`、`biz:stock` | 老板、店长 | — |
 | `me` | **无** | `biz:store:admin` | 老板、店长、店员、理货员、配送员、客服 | 店长（缺 biz:store:admin）　店员（缺 biz:store:admin）　理货员（缺 biz:store:admin）　配送员（缺 biz:store:admin）　客服（缺 biz:store:admin） |
 | `member-add` | `biz:customer` | `biz:customer` | 老板、店长 | — |
