@@ -75,7 +75,8 @@
 | `afterSale` | [`AfterSale`](#aftersale) | 否 | 售后单。订单状态只有粗粒度的 REFUNDING/REFUNDED，细节在这里 |
 | `merchantNo` | `string` | 否 | 本单归属的商家。**一单只属于一个商家** —— 购物车跨商家时拆成多笔子订单（E3）。 不拆的话分账无从谈起：一笔钱要分给几家、各分多少，没有承载的单据。 |
 | `merchantName` | `string` | 否 | 商家名快照 |
-| `payGroupNo` | `string` | 否 | 支付组号。同一次结算拆出的子订单共享它，**一次支付付掉整组**。 用户感知是「买了一次」，资金与分账感知是「N 笔各归各家」。 |
+| `payGroupNo` | `string` | 否 | 支付组号。同一次结算拆出的子订单共享它，**一次支付付掉整组**。 用户感知是「买了一次」，资金与分账感知是「N 笔各归各家」。 ⚠️ **后端叫 `payOrderNo`，库里是 `ord_order.order_no`** —— 三处三个名字。 按这个名去后端或库里找会找不到（2026-08-17 人工测试时撞到）。 |
+| `subOrders` | [`Order`](#order)\[\] | 否 | **仅支付视角**：这次付款覆盖的各商家订单。订单视角为空。 后端 `OrderVO` 一直在发（同一个结构承担订单/支付两种视角）， 端上此前没声明 —— 于是收银台是整条拆单链路里**唯一哑掉的一屏**： 购物车说会拆 2 单、确认页说会拆 2 单、订单详情各自标着商家， 中间付款那一步却只有一个总额。 |
 
 
 #### POST `/mp/after-sale/{afterSaleNo}/ship`
@@ -118,7 +119,8 @@
 | `afterSale` | [`AfterSale`](#aftersale) | 否 | 售后单。订单状态只有粗粒度的 REFUNDING/REFUNDED，细节在这里 |
 | `merchantNo` | `string` | 否 | 本单归属的商家。**一单只属于一个商家** —— 购物车跨商家时拆成多笔子订单（E3）。 不拆的话分账无从谈起：一笔钱要分给几家、各分多少，没有承载的单据。 |
 | `merchantName` | `string` | 否 | 商家名快照 |
-| `payGroupNo` | `string` | 否 | 支付组号。同一次结算拆出的子订单共享它，**一次支付付掉整组**。 用户感知是「买了一次」，资金与分账感知是「N 笔各归各家」。 |
+| `payGroupNo` | `string` | 否 | 支付组号。同一次结算拆出的子订单共享它，**一次支付付掉整组**。 用户感知是「买了一次」，资金与分账感知是「N 笔各归各家」。 ⚠️ **后端叫 `payOrderNo`，库里是 `ord_order.order_no`** —— 三处三个名字。 按这个名去后端或库里找会找不到（2026-08-17 人工测试时撞到）。 |
+| `subOrders` | [`Order`](#order)\[\] | 否 | **仅支付视角**：这次付款覆盖的各商家订单。订单视角为空。 后端 `OrderVO` 一直在发（同一个结构承担订单/支付两种视角）， 端上此前没声明 —— 于是收银台是整条拆单链路里**唯一哑掉的一屏**： 购物车说会拆 2 单、确认页说会拆 2 单、订单详情各自标着商家， 中间付款那一步却只有一个总额。 |
 
 
 #### GET `/mp/after-sale/reasons`
@@ -214,6 +216,17 @@
 
 ### community
 
+#### GET `/mp/community`
+
+全部已开通社区（附近为空时的出路）　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`Community`](#community)\[\]
+
+
 #### GET `/mp/community/nearby`
 
 附近社区与自提点　🔒
@@ -228,6 +241,17 @@
 **出参**（`data`）
 
 类型：[`Community`](#community)\[\]
+
+
+#### GET `/mp/community/regions`
+
+有已开通社区的区域清单　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`RegionOption`](#regionoption)\[\]
 
 
 ### coupon
@@ -344,17 +368,20 @@
 | `origin` | `string` | 否 | FRESH：产地 |
 | `durationMin` | `number` | 否 | SERVICE：服务时长（分钟） |
 | `storeName` | `string` | 否 | SERVICE：可核销门店 |
-| `slots` | [`AppointmentSlot`](#appointmentslot)\[\] | 否 | SERVICE + APPOINTMENT：可预约时段 |
-| `card` | [`CardSpec`](#cardspec) | 否 | CARD |
-| `virtual` | [`VirtualSpec`](#virtualspec) | 否 | VIRTUAL |
-| `promotions` | [`Promotion`](#promotion)\[\] | 否 | 促销（一期只有买 N 送 M） |
+| `slots` | [`AppointmentSlot`](#appointmentslot)\[\] | 否 | SERVICE + APPOINTMENT：可预约时段。**后端未下发** |
+| `card` | [`CardSpec`](#cardspec) | 否 | CARD。**后端未下发** |
+| `virtual` | [`VirtualSpec`](#virtualspec) | 否 | VIRTUAL。**后端未下发** |
+| `promotions` | [`Promotion`](#promotion)\[\] | 否 | 促销（一期只有买 N 送 M）。**后端未下发** |
 | `groupBuy` | `object`（见下） | 否 | 商家为本商品开放的拼团档：够 minCount 人享 price。不配则本商品不能发起团 |
-| `points` | `number` | 否 | 本商品每件赠送的积分。不同商品可以给不同积分，不配则按成交额比例默认发放 |
+| `points` | `number` | 否 | 本商品每件赠送的积分。**后端未下发**：库里有 `prd_goods.points_config` 这一列， 但全仓没有任何读写。等积分域接上再兑现。 |
 | `limitPerUser` | `number` | 是 | 每人限购，0 = 不限 |
 | `onSale` | `boolean` | 是 | 是否在售。下架后详情页仍可访问（历史订单要点得进去），但不可下单 |
-| `status` | [`GoodsStatus`](#goodsstatus) | 否 | 审核与在售状态（**只有商家侧 `/biz/goods` 下发**，C 端拿不到也不需要）。 为什么不能只看 `onSale`：新建和每次改动都会回到审核中，而那时 `onSale` 是 false —— 界面照着布尔值写就成了「已下架 + 上架按钮」， 点下去后端必然拒（70003「商品还在审核中」）。**商家看到的是一个永远点不动的按钮**。 待审是 `PENDING`（词典 §11 的通用状态词表；库里那列仍叫 AUDITING， 但那是审核结果那一轴的列名，不出现在契约里）。 |
+| `detail` | `string` | 否 | 图文详情正文（纯文本）。空 = 商家没写 —— 端上整段不渲染， 别拿一个空白区块占着详情页。 |
+| `status` | [`GoodsStatus`](#goodsstatus) | 否 | — |
+| `auditReason` | `string` | 否 | 最近一次驳回 / 平台强制下架的原因（**只在商家侧与运营端下发，C 端恒空**）。 **没有它，商家面对 `REJECTED` 只能猜要改什么** —— 审计日志只有运营看得到。 平台强制下架时后端会带「平台强制下架」前缀，商家据此知道是自己被驳 还是被平台下的。过审时清空。 ⚠️ 后端 `GoodsVO` 一直在发它，`MerchantGoodsService` 的注释甚至写着 「它会出现在商家 B 端（`auditReason`）」—— 而端上从没声明这个字段。 那句注释描述的是一件**从未发生过**的事。 |
 | `titleI18n` | [`Record_string_string`](#record_string_string) | 否 | 三语标题原文，**只有商家侧 `/biz/goods/{no}` 下发**。 编辑页按语言逐格填，而保存是整份覆盖 —— 拿不到原文就只能回填当前那一格， 于是用中文改一次，英文与阿语就被清空了。**这个故障不报错**： C 端缺译文时回落中文，看起来一切正常。 |
 | `subtitleI18n` | [`Record_string_string`](#record_string_string) | 否 | 三语副标题原文，同 `titleI18n` |
+| `stdNo` | `string` | 否 | 引用的平台标准品；空 = 自建品。**只有商家侧与运营端下发，C 端恒空。** <p>必须下发：编辑页保存是整份覆盖，拿不到它就等于 **打开编辑页再保存一次就自动脱离了标准品** —— 商品从此不再被收敛， 而界面上没有任何变化。与 `titleI18n` / `priceByMarket` 是同一个形状的故障。 |
 
 `groupBuy` 的字段：
 
@@ -623,7 +650,8 @@
 | `afterSale` | [`AfterSale`](#aftersale) | 否 | 售后单。订单状态只有粗粒度的 REFUNDING/REFUNDED，细节在这里 |
 | `merchantNo` | `string` | 否 | 本单归属的商家。**一单只属于一个商家** —— 购物车跨商家时拆成多笔子订单（E3）。 不拆的话分账无从谈起：一笔钱要分给几家、各分多少，没有承载的单据。 |
 | `merchantName` | `string` | 否 | 商家名快照 |
-| `payGroupNo` | `string` | 否 | 支付组号。同一次结算拆出的子订单共享它，**一次支付付掉整组**。 用户感知是「买了一次」，资金与分账感知是「N 笔各归各家」。 |
+| `payGroupNo` | `string` | 否 | 支付组号。同一次结算拆出的子订单共享它，**一次支付付掉整组**。 用户感知是「买了一次」，资金与分账感知是「N 笔各归各家」。 ⚠️ **后端叫 `payOrderNo`，库里是 `ord_order.order_no`** —— 三处三个名字。 按这个名去后端或库里找会找不到（2026-08-17 人工测试时撞到）。 |
+| `subOrders` | [`Order`](#order)\[\] | 否 | **仅支付视角**：这次付款覆盖的各商家订单。订单视角为空。 后端 `OrderVO` 一直在发（同一个结构承担订单/支付两种视角）， 端上此前没声明 —— 于是收银台是整条拆单链路里**唯一哑掉的一屏**： 购物车说会拆 2 单、确认页说会拆 2 单、订单详情各自标着商家， 中间付款那一步却只有一个总额。 |
 
 
 #### GET `/mp/group-buy/hosted`
@@ -1094,7 +1122,8 @@
 | `desc` | `string` | 是 | 店铺简介 |
 | `serviceScope` | [`ServiceScope`](#servicescope) | 否 | 期望经营范围（ADR-009） |
 | `communityNos` | `string`\[\] | 否 | 期望覆盖的社区 |
-| `licenses` | `string`\[\] | 否 | 已传的资质图 |
+| `licenses` | `string`\[\] | 否 | 已传的资质图（只有图片 URL，看不出是哪种证、什么时候过期） |
+| `qualificationItems` | [`QualificationItem`](#qualificationitem)\[\] | 否 | 结构化资质（V79）：**哪张证、证件号、有效期**。 ⚠️ 这一段的标题写着「用于驳回后回填」，而此前只回填了  {@link  licenses }  ——只有图片。**证件类型、编号、有效期三项全丢**，商家重提时得逐格再填一遍， 而这正是本段注释想避免的那件事：「把补交变成重来」。 后端 `MerchantApplyVO` 一直在发它（审核台就靠它看类型与有效期）， 端上这里没声明。 |
 | `industry` | `string` | 否 | 申请时选的行业。驳回回填要用它 —— 换个行业可能连主体类型都得跟着换 |
 | `asPickupPoint` | `boolean` | 否 | 是否愿意承接自提点（ADR-005）。 **只是意愿，不代表点已建立** —— 建点要谈服务费口径，一期由运营在通过后另行处理。 所以商家勾了这一项、通过后却还没看到履约台，是正常的中间状态而不是故障。 |
 
@@ -1125,7 +1154,8 @@
 | `desc` | `string` | 是 | 店铺简介 |
 | `serviceScope` | [`ServiceScope`](#servicescope) | 否 | 期望经营范围（ADR-009） |
 | `communityNos` | `string`\[\] | 否 | 期望覆盖的社区 |
-| `licenses` | `string`\[\] | 否 | 已传的资质图 |
+| `licenses` | `string`\[\] | 否 | 已传的资质图（只有图片 URL，看不出是哪种证、什么时候过期） |
+| `qualificationItems` | [`QualificationItem`](#qualificationitem)\[\] | 否 | 结构化资质（V79）：**哪张证、证件号、有效期**。 ⚠️ 这一段的标题写着「用于驳回后回填」，而此前只回填了  {@link  licenses }  ——只有图片。**证件类型、编号、有效期三项全丢**，商家重提时得逐格再填一遍， 而这正是本段注释想避免的那件事：「把补交变成重来」。 后端 `MerchantApplyVO` 一直在发它（审核台就靠它看类型与有效期）， 端上这里没声明。 |
 | `industry` | `string` | 否 | 申请时选的行业。驳回回填要用它 —— 换个行业可能连主体类型都得跟着换 |
 | `asPickupPoint` | `boolean` | 否 | 是否愿意承接自提点（ADR-005）。 **只是意愿，不代表点已建立** —— 建点要谈服务费口径，一期由运营在通过后另行处理。 所以商家勾了这一项、通过后却还没看到履约台，是正常的中间状态而不是故障。 |
 
@@ -1279,7 +1309,8 @@
 | `afterSale` | [`AfterSale`](#aftersale) | 否 | 售后单。订单状态只有粗粒度的 REFUNDING/REFUNDED，细节在这里 |
 | `merchantNo` | `string` | 否 | 本单归属的商家。**一单只属于一个商家** —— 购物车跨商家时拆成多笔子订单（E3）。 不拆的话分账无从谈起：一笔钱要分给几家、各分多少，没有承载的单据。 |
 | `merchantName` | `string` | 否 | 商家名快照 |
-| `payGroupNo` | `string` | 否 | 支付组号。同一次结算拆出的子订单共享它，**一次支付付掉整组**。 用户感知是「买了一次」，资金与分账感知是「N 笔各归各家」。 |
+| `payGroupNo` | `string` | 否 | 支付组号。同一次结算拆出的子订单共享它，**一次支付付掉整组**。 用户感知是「买了一次」，资金与分账感知是「N 笔各归各家」。 ⚠️ **后端叫 `payOrderNo`，库里是 `ord_order.order_no`** —— 三处三个名字。 按这个名去后端或库里找会找不到（2026-08-17 人工测试时撞到）。 |
+| `subOrders` | [`Order`](#order)\[\] | 否 | **仅支付视角**：这次付款覆盖的各商家订单。订单视角为空。 后端 `OrderVO` 一直在发（同一个结构承担订单/支付两种视角）， 端上此前没声明 —— 于是收银台是整条拆单链路里**唯一哑掉的一屏**： 购物车说会拆 2 单、确认页说会拆 2 单、订单详情各自标着商家， 中间付款那一步却只有一个总额。 |
 
 
 #### GET `/mp/order`
@@ -1346,7 +1377,8 @@
 | `afterSale` | [`AfterSale`](#aftersale) | 否 | 售后单。订单状态只有粗粒度的 REFUNDING/REFUNDED，细节在这里 |
 | `merchantNo` | `string` | 否 | 本单归属的商家。**一单只属于一个商家** —— 购物车跨商家时拆成多笔子订单（E3）。 不拆的话分账无从谈起：一笔钱要分给几家、各分多少，没有承载的单据。 |
 | `merchantName` | `string` | 否 | 商家名快照 |
-| `payGroupNo` | `string` | 否 | 支付组号。同一次结算拆出的子订单共享它，**一次支付付掉整组**。 用户感知是「买了一次」，资金与分账感知是「N 笔各归各家」。 |
+| `payGroupNo` | `string` | 否 | 支付组号。同一次结算拆出的子订单共享它，**一次支付付掉整组**。 用户感知是「买了一次」，资金与分账感知是「N 笔各归各家」。 ⚠️ **后端叫 `payOrderNo`，库里是 `ord_order.order_no`** —— 三处三个名字。 按这个名去后端或库里找会找不到（2026-08-17 人工测试时撞到）。 |
+| `subOrders` | [`Order`](#order)\[\] | 否 | **仅支付视角**：这次付款覆盖的各商家订单。订单视角为空。 后端 `OrderVO` 一直在发（同一个结构承担订单/支付两种视角）， 端上此前没声明 —— 于是收银台是整条拆单链路里**唯一哑掉的一屏**： 购物车说会拆 2 单、确认页说会拆 2 单、订单详情各自标着商家， 中间付款那一步却只有一个总额。 |
 
 
 #### POST `/mp/order/{orderNo}/after-sale`
@@ -1398,7 +1430,8 @@
 | `afterSale` | [`AfterSale`](#aftersale) | 否 | 售后单。订单状态只有粗粒度的 REFUNDING/REFUNDED，细节在这里 |
 | `merchantNo` | `string` | 否 | 本单归属的商家。**一单只属于一个商家** —— 购物车跨商家时拆成多笔子订单（E3）。 不拆的话分账无从谈起：一笔钱要分给几家、各分多少，没有承载的单据。 |
 | `merchantName` | `string` | 否 | 商家名快照 |
-| `payGroupNo` | `string` | 否 | 支付组号。同一次结算拆出的子订单共享它，**一次支付付掉整组**。 用户感知是「买了一次」，资金与分账感知是「N 笔各归各家」。 |
+| `payGroupNo` | `string` | 否 | 支付组号。同一次结算拆出的子订单共享它，**一次支付付掉整组**。 用户感知是「买了一次」，资金与分账感知是「N 笔各归各家」。 ⚠️ **后端叫 `payOrderNo`，库里是 `ord_order.order_no`** —— 三处三个名字。 按这个名去后端或库里找会找不到（2026-08-17 人工测试时撞到）。 |
+| `subOrders` | [`Order`](#order)\[\] | 否 | **仅支付视角**：这次付款覆盖的各商家订单。订单视角为空。 后端 `OrderVO` 一直在发（同一个结构承担订单/支付两种视角）， 端上此前没声明 —— 于是收银台是整条拆单链路里**唯一哑掉的一屏**： 购物车说会拆 2 单、确认页说会拆 2 单、订单详情各自标着商家， 中间付款那一步却只有一个总额。 |
 
 
 #### POST `/mp/order/{orderNo}/cancel`
@@ -1441,7 +1474,8 @@
 | `afterSale` | [`AfterSale`](#aftersale) | 否 | 售后单。订单状态只有粗粒度的 REFUNDING/REFUNDED，细节在这里 |
 | `merchantNo` | `string` | 否 | 本单归属的商家。**一单只属于一个商家** —— 购物车跨商家时拆成多笔子订单（E3）。 不拆的话分账无从谈起：一笔钱要分给几家、各分多少，没有承载的单据。 |
 | `merchantName` | `string` | 否 | 商家名快照 |
-| `payGroupNo` | `string` | 否 | 支付组号。同一次结算拆出的子订单共享它，**一次支付付掉整组**。 用户感知是「买了一次」，资金与分账感知是「N 笔各归各家」。 |
+| `payGroupNo` | `string` | 否 | 支付组号。同一次结算拆出的子订单共享它，**一次支付付掉整组**。 用户感知是「买了一次」，资金与分账感知是「N 笔各归各家」。 ⚠️ **后端叫 `payOrderNo`，库里是 `ord_order.order_no`** —— 三处三个名字。 按这个名去后端或库里找会找不到（2026-08-17 人工测试时撞到）。 |
+| `subOrders` | [`Order`](#order)\[\] | 否 | **仅支付视角**：这次付款覆盖的各商家订单。订单视角为空。 后端 `OrderVO` 一直在发（同一个结构承担订单/支付两种视角）， 端上此前没声明 —— 于是收银台是整条拆单链路里**唯一哑掉的一屏**： 购物车说会拆 2 单、确认页说会拆 2 单、订单详情各自标着商家， 中间付款那一步却只有一个总额。 |
 
 
 #### POST `/mp/order/{orderNo}/pay`
@@ -1484,7 +1518,8 @@
 | `afterSale` | [`AfterSale`](#aftersale) | 否 | 售后单。订单状态只有粗粒度的 REFUNDING/REFUNDED，细节在这里 |
 | `merchantNo` | `string` | 否 | 本单归属的商家。**一单只属于一个商家** —— 购物车跨商家时拆成多笔子订单（E3）。 不拆的话分账无从谈起：一笔钱要分给几家、各分多少，没有承载的单据。 |
 | `merchantName` | `string` | 否 | 商家名快照 |
-| `payGroupNo` | `string` | 否 | 支付组号。同一次结算拆出的子订单共享它，**一次支付付掉整组**。 用户感知是「买了一次」，资金与分账感知是「N 笔各归各家」。 |
+| `payGroupNo` | `string` | 否 | 支付组号。同一次结算拆出的子订单共享它，**一次支付付掉整组**。 用户感知是「买了一次」，资金与分账感知是「N 笔各归各家」。 ⚠️ **后端叫 `payOrderNo`，库里是 `ord_order.order_no`** —— 三处三个名字。 按这个名去后端或库里找会找不到（2026-08-17 人工测试时撞到）。 |
+| `subOrders` | [`Order`](#order)\[\] | 否 | **仅支付视角**：这次付款覆盖的各商家订单。订单视角为空。 后端 `OrderVO` 一直在发（同一个结构承担订单/支付两种视角）， 端上此前没声明 —— 于是收银台是整条拆单链路里**唯一哑掉的一屏**： 购物车说会拆 2 单、确认页说会拆 2 单、订单详情各自标着商家， 中间付款那一步却只有一个总额。 |
 
 
 #### POST `/mp/order/{orderNo}/reorder`
@@ -1730,6 +1765,7 @@
 | `store` | [`StoreFront`](#storefront) | 是 | 店主自己维护的门面内容 |
 | `goods` | [`Goods`](#goods)\[\] | 是 | 在售商品。首屏展示，分页靠单独的商品列表接口 |
 | `favorited` | `boolean` | 是 | 我是否收藏了这家店 |
+| `closed` | `boolean` | 否 | 已停业（门店非 ACTIVE：商家自助停用或平台强制下线）。 **是标志而不是 404**：扫码进来的老客要知道「店关了」，不是「链接坏了」。 端上据此盖「已停业」并禁掉加购。 ⚠️ 后端 `StoreHomeVO` 一直在发这个字段，这里此前没声明 —— 于是**扫码进一家已停业的店，看起来与正常营业毫无区别**， 加购、下单一路走到底，最后在库存或下单闸门上撞一个说不清的错误。 |
 
 
 #### POST `/mp/store/{merchantNo}/favorite`
@@ -1867,6 +1903,17 @@
 | `merchantNo` | `string` | 否 | 常去的店。与 communityNo 正交 —— 可以在 A 社区却常买 B 店（ADR-004 §5.1） |
 
 
+#### POST `/mp/user/deregister`
+
+注销账号（匿名化 + 解绑凭证，交易记录留存）　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`any`
+
+
 #### POST `/mp/user/login`
 
 登录建户　🔒
@@ -1913,6 +1960,76 @@
 **出参**（`data`）
 
 类型：`any`
+
+
+#### POST `/mp/user/phone/bind`
+
+绑定手机号（验证码）　🔒
+
+**入参**
+
+请求体：[`BindPhoneReq`](#bindphonereq)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `phone` | `string` | 是 | — |
+| `code` | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`User`](#user)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `cUserNo` | `string` | 是 | C 端用户单号。前缀 `cUser` 是有意的：B 端商家、平台 STAFF 是**另外两个账号池**，单号不通用 |
+| `nickname` | `string` | 是 | 昵称。微信授权取来的，用户可改 |
+| `avatar` | `string` | 是 | 头像 URL |
+| `phone` | `string` | 是 | 手机号。已脱敏（中间四位星号），完整号码不下发到端上 |
+| `communityNo` | `string` | 否 | 当前绑定的社区。未绑定时为空 —— 首页的商品可见范围依赖它 |
+| `pickupNo` | `string` | 否 | 默认自提点。下单时预选，用户可改 |
+| `merchantNo` | `string` | 否 | 常去的店。与 communityNo 正交 —— 可以在 A 社区却常买 B 店（ADR-004 §5.1） |
+
+
+#### GET `/mp/user/phone/capable`
+
+一键授权当前可不可用（游客可读）　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`PhoneCapable`](#phonecapable)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `capable` | `boolean` | 是 | true = 显示「微信一键获取」；false = 显示手机号 + 验证码 |
+
+
+#### POST `/mp/user/phone/wx`
+
+微信一键授权绑定手机号　🔒
+
+**入参**
+
+请求体：[`WxPhoneReq`](#wxphonereq)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `code` | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`User`](#user)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `cUserNo` | `string` | 是 | C 端用户单号。前缀 `cUser` 是有意的：B 端商家、平台 STAFF 是**另外两个账号池**，单号不通用 |
+| `nickname` | `string` | 是 | 昵称。微信授权取来的，用户可改 |
+| `avatar` | `string` | 是 | 头像 URL |
+| `phone` | `string` | 是 | 手机号。已脱敏（中间四位星号），完整号码不下发到端上 |
+| `communityNo` | `string` | 否 | 当前绑定的社区。未绑定时为空 —— 首页的商品可见范围依赖它 |
+| `pickupNo` | `string` | 否 | 默认自提点。下单时预选，用户可改 |
+| `merchantNo` | `string` | 否 | 常去的店。与 communityNo 正交 —— 可以在 A 社区却常买 B 店（ADR-004 §5.1） |
 
 
 #### GET `/mp/user/profile`
@@ -2049,6 +2166,15 @@
 | `communityNo` | `string` | 是 | 要绑定的社区。**商品可见范围依赖它**，绑错了首页就是别的小区的货 |
 | `pickupNo` | `string` | 是 | 默认自提点，须属于该社区 |
 
+### BindPhoneReq
+
+绑定手机号（验证码）。号码要以**字符串**传 —— 见 phone-gate.vue 里那段注释
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `phone` | `string` | 是 | — |
+| `code` | `string` | 是 | — |
+
 ### CardSpec
 
 卡券属性（CARD）
@@ -2080,6 +2206,8 @@
 | `qty` | `number` | 是 | 数量 |
 | `type` | [`CategoryType`](#categorytype) | 是 | 商品形态 |
 | `fulfillment` | [`FulfillmentType`](#fulfillmenttype) | 是 | 用户选定的履约方式。跨履约方式的商品结算时会拆单 |
+| `merchantNo` | `string` | 是 | 所属商家。**后端 `CartItemVO` 一直在发这两个字段，是这里此前没声明**—— 于是数据到了端上就被丢掉，购物车只能按履约方式分组，店名一个字都显示不出来。 后果不是「少个标签」：用户从头到尾看到「一单」，提交后拿到的是按商家拆出的 N 笔子订单（`ord_sub_order`）。见 TDD-购物车商家可见。 |
+| `merchantName` | `string` | 是 | 商家名。**购物车按它分组** —— 一车东西来自几家店， 结算时会拆成几笔子订单，分组是把这件事提前说清楚（见 TDD-购物车商家可见）。 |
 | `invalidReason` | `string` | 否 | 失效原因，如「已下架」「库存不足」。有值即不可勾选结算 |
 | `giftQty` | `number` | 否 | 买赠自动带出的赠品件数（不计价） |
 | `giftLabel` | `string` | 否 | 赠品说明，如「买 2 送 1」 |
@@ -2131,6 +2259,8 @@
 | `name` | `string` | 是 | 社区名（小区名） |
 | `address` | `string` | 是 | 社区地址 |
 | `cityCode` | `string` | 是 | 所属城市。全市范围的商家靠它判定可达 |
+| `regionCode` | `string` | 否 | 所属街道/镇（9 位区划码）。商家框范围时「按街道看聚落」靠它 —— 不下发的话端上只能拿到一锅平铺清单，街道视图无从分组。 |
+| `kind` | `string` | 否 | ESTATE 小区 / VILLAGE 村。只是展示标签，不参与匹配 |
 | `distance` | `number` | 是 | 米 |
 | `pickups` | [`Pickup`](#pickup)\[\] | 是 | 本社区可用的自提点 |
 
@@ -2307,17 +2437,20 @@
 | `origin` | `string` | 否 | FRESH：产地 |
 | `durationMin` | `number` | 否 | SERVICE：服务时长（分钟） |
 | `storeName` | `string` | 否 | SERVICE：可核销门店 |
-| `slots` | [`AppointmentSlot`](#appointmentslot)\[\] | 否 | SERVICE + APPOINTMENT：可预约时段 |
-| `card` | [`CardSpec`](#cardspec) | 否 | CARD |
-| `virtual` | [`VirtualSpec`](#virtualspec) | 否 | VIRTUAL |
-| `promotions` | [`Promotion`](#promotion)\[\] | 否 | 促销（一期只有买 N 送 M） |
+| `slots` | [`AppointmentSlot`](#appointmentslot)\[\] | 否 | SERVICE + APPOINTMENT：可预约时段。**后端未下发** |
+| `card` | [`CardSpec`](#cardspec) | 否 | CARD。**后端未下发** |
+| `virtual` | [`VirtualSpec`](#virtualspec) | 否 | VIRTUAL。**后端未下发** |
+| `promotions` | [`Promotion`](#promotion)\[\] | 否 | 促销（一期只有买 N 送 M）。**后端未下发** |
 | `groupBuy` | `object`（见下） | 否 | 商家为本商品开放的拼团档：够 minCount 人享 price。不配则本商品不能发起团 |
-| `points` | `number` | 否 | 本商品每件赠送的积分。不同商品可以给不同积分，不配则按成交额比例默认发放 |
+| `points` | `number` | 否 | 本商品每件赠送的积分。**后端未下发**：库里有 `prd_goods.points_config` 这一列， 但全仓没有任何读写。等积分域接上再兑现。 |
 | `limitPerUser` | `number` | 是 | 每人限购，0 = 不限 |
 | `onSale` | `boolean` | 是 | 是否在售。下架后详情页仍可访问（历史订单要点得进去），但不可下单 |
-| `status` | [`GoodsStatus`](#goodsstatus) | 否 | 审核与在售状态（**只有商家侧 `/biz/goods` 下发**，C 端拿不到也不需要）。 为什么不能只看 `onSale`：新建和每次改动都会回到审核中，而那时 `onSale` 是 false —— 界面照着布尔值写就成了「已下架 + 上架按钮」， 点下去后端必然拒（70003「商品还在审核中」）。**商家看到的是一个永远点不动的按钮**。 待审是 `PENDING`（词典 §11 的通用状态词表；库里那列仍叫 AUDITING， 但那是审核结果那一轴的列名，不出现在契约里）。 |
+| `detail` | `string` | 否 | 图文详情正文（纯文本）。空 = 商家没写 —— 端上整段不渲染， 别拿一个空白区块占着详情页。 |
+| `status` | [`GoodsStatus`](#goodsstatus) | 否 | — |
+| `auditReason` | `string` | 否 | 最近一次驳回 / 平台强制下架的原因（**只在商家侧与运营端下发，C 端恒空**）。 **没有它，商家面对 `REJECTED` 只能猜要改什么** —— 审计日志只有运营看得到。 平台强制下架时后端会带「平台强制下架」前缀，商家据此知道是自己被驳 还是被平台下的。过审时清空。 ⚠️ 后端 `GoodsVO` 一直在发它，`MerchantGoodsService` 的注释甚至写着 「它会出现在商家 B 端（`auditReason`）」—— 而端上从没声明这个字段。 那句注释描述的是一件**从未发生过**的事。 |
 | `titleI18n` | [`Record_string_string`](#record_string_string) | 否 | 三语标题原文，**只有商家侧 `/biz/goods/{no}` 下发**。 编辑页按语言逐格填，而保存是整份覆盖 —— 拿不到原文就只能回填当前那一格， 于是用中文改一次，英文与阿语就被清空了。**这个故障不报错**： C 端缺译文时回落中文，看起来一切正常。 |
 | `subtitleI18n` | [`Record_string_string`](#record_string_string) | 否 | 三语副标题原文，同 `titleI18n` |
+| `stdNo` | `string` | 否 | 引用的平台标准品；空 = 自建品。**只有商家侧与运营端下发，C 端恒空。** <p>必须下发：编辑页保存是整份覆盖，拿不到它就等于 **打开编辑页再保存一次就自动脱离了标准品** —— 商品从此不再被收敛， 而界面上没有任何变化。与 `titleI18n` / `priceByMarket` 是同一个形状的故障。 |
 
 `groupBuy` 的字段：
 
@@ -2328,10 +2461,11 @@
 
 ### GoodsStatus
 
-商品状态。 ⚠️ 待审用 `PENDING` 不用 `AUDITING` —— ops-web 的 `SkuStatus` 一直用 `PENDING`，同一件事两个词。词典 §11 的通用状态词表规定「已提交待处理」= `PENDING`。
+商家侧商品状态。 <p><b>DRAFT 与 PENDING 是两件事</b>：草稿是「还没提交，等你」，待审是「已提交，等平台」—— 说错了商家的下一步就错了。也与 OFF_SALE（点一下就能卖）分开。
 
 枚举取值：
 
+- `DRAFT`
 - `ON_SALE`
 - `OFF_SALE`
 - `PENDING`
@@ -2339,7 +2473,7 @@
 
 ### GrantType
 
-登录方式。 · WX_MINI  小程序静默登录（只拿 openid，拿不到手机号） · WX_PHONE 小程序一键取手机号（推荐：一次授权直接拿到号，省掉短信） · WX_OPEN  App 微信开放平台 · APPLE    Apple 登录（iOS 上架硬要求） · PHONE_OTP 手机号 + 短信验证码（全端兜底，也是商家账号的主标识）
+登录方式。 · WX_MINI  小程序静默登录（只拿 openid，拿不到手机号） · WX_PHONE 小程序一键取手机号（推荐：一次授权直接拿到号，省掉短信） · WX_OPEN  App 微信开放平台 · APPLE    Apple 登录（iOS 上架硬要求） · PHONE_OTP 手机号 + 短信验证码（全端兜底，也是商家账号的主标识） · PASSWORD  手机号 + 密码（**只有 B 端有**）。商家一天开好几次 App，   每次等一条短信是实打实的摩擦；而它与其它方式最本质的差别是**不建户** ——   能用密码登录的前提是他已经设过密码，而设密码本身要先登录。
 
 枚举取值：
 
@@ -2348,6 +2482,7 @@
 - `WX_OPEN`
 - `PHONE_OTP`
 - `APPLE`
+- `PASSWORD`
 
 ### GroupBuy
 
@@ -2621,7 +2756,8 @@
 | `desc` | `string` | 是 | 店铺简介 |
 | `serviceScope` | [`ServiceScope`](#servicescope) | 否 | 期望经营范围（ADR-009） |
 | `communityNos` | `string`\[\] | 否 | 期望覆盖的社区 |
-| `licenses` | `string`\[\] | 否 | 已传的资质图 |
+| `licenses` | `string`\[\] | 否 | 已传的资质图（只有图片 URL，看不出是哪种证、什么时候过期） |
+| `qualificationItems` | [`QualificationItem`](#qualificationitem)\[\] | 否 | 结构化资质（V79）：**哪张证、证件号、有效期**。 ⚠️ 这一段的标题写着「用于驳回后回填」，而此前只回填了  {@link  licenses }  ——只有图片。**证件类型、编号、有效期三项全丢**，商家重提时得逐格再填一遍， 而这正是本段注释想避免的那件事：「把补交变成重来」。 后端 `MerchantApplyVO` 一直在发它（审核台就靠它看类型与有效期）， 端上这里没声明。 |
 | `industry` | `string` | 否 | 申请时选的行业。驳回回填要用它 —— 换个行业可能连主体类型都得跟着换 |
 | `asPickupPoint` | `boolean` | 否 | 是否愿意承接自提点（ADR-005）。 **只是意愿，不代表点已建立** —— 建点要谈服务费口径，一期由运营在通过后另行处理。 所以商家勾了这一项、通过后却还没看到履约台，是正常的中间状态而不是故障。 |
 
@@ -2713,7 +2849,8 @@
 | `afterSale` | [`AfterSale`](#aftersale) | 否 | 售后单。订单状态只有粗粒度的 REFUNDING/REFUNDED，细节在这里 |
 | `merchantNo` | `string` | 否 | 本单归属的商家。**一单只属于一个商家** —— 购物车跨商家时拆成多笔子订单（E3）。 不拆的话分账无从谈起：一笔钱要分给几家、各分多少，没有承载的单据。 |
 | `merchantName` | `string` | 否 | 商家名快照 |
-| `payGroupNo` | `string` | 否 | 支付组号。同一次结算拆出的子订单共享它，**一次支付付掉整组**。 用户感知是「买了一次」，资金与分账感知是「N 笔各归各家」。 |
+| `payGroupNo` | `string` | 否 | 支付组号。同一次结算拆出的子订单共享它，**一次支付付掉整组**。 用户感知是「买了一次」，资金与分账感知是「N 笔各归各家」。 ⚠️ **后端叫 `payOrderNo`，库里是 `ord_order.order_no`** —— 三处三个名字。 按这个名去后端或库里找会找不到（2026-08-17 人工测试时撞到）。 |
+| `subOrders` | [`Order`](#order)\[\] | 否 | **仅支付视角**：这次付款覆盖的各商家订单。订单视角为空。 后端 `OrderVO` 一直在发（同一个结构承担订单/支付两种视角）， 端上此前没声明 —— 于是收银台是整条拆单链路里**唯一哑掉的一屏**： 购物车说会拆 2 单、确认页说会拆 2 单、订单详情各自标着商家， 中间付款那一步却只有一个总额。 |
 
 ### OrderAmount
 
@@ -2775,8 +2912,7 @@
 
 - `WAIT_PAY`
 - `PAID`
-- `ARRIVED`
-- `SHIPPED`
+- `FULFILLING`
 - `COMPLETED`
 - `CANCELLED`
 - `REFUNDED`
@@ -2788,6 +2924,14 @@
 | `status` | [`OrderStatus`](#orderstatus) | 是 | 流转到的状态 |
 | `label` | `string` | 是 | 展示文案，如「已到货，请到自提点取货」。后端下发已本地化 |
 | `at` | `number` | 是 | 发生时间 |
+
+### PhoneCapable
+
+微信一键取手机号当前可不可用。 <p>由后端说了算：它取决于小程序认证状态与通道开关，端上判不出来。 写死在端上的话，认证下来之后还要再发一次版。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `capable` | `boolean` | 是 | true = 显示「微信一键获取」；false = 显示手机号 + 验证码 |
 
 ### Pickup
 
@@ -2966,9 +3110,23 @@
 | `priceMinor` | `number` | 是 | 改价后的单价（最小货币单位） |
 | `at` | `number` | 是 | 改价时间 |
 
+### Record_string_number
+
+类型：`object`
+
 ### Record_string_string
 
 类型：`object`
+
+### RegionOption
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `regionCode` | `string` | 是 | 区县级国标码（6 位）。社区可能挂在街道级，聚合时截到区县 |
+| `name` | `string` | 是 | 区县名，如「西湖区」 |
+| `cityCode` | `string` | 是 | 所属市码（4 位） |
+| `cityName` | `string` | 是 | 所属市名。同名区县全国很多（如「城关区」），不带市名用户分不清是哪一个 |
+| `communityCount` | `number` | 是 | 该区县下已开通的社区数。「西湖区 · 2 个小区」比光秃秃一个区名有用得多 |
 
 ### ReorderResult
 
@@ -3071,6 +3229,8 @@
 | `originPrice` | `number` | 否 | 划线价（最小货币单位）。为空表示不展示划线价 |
 | `stock` | `number` | 是 | 可售库存。下单时服务端二次校验，端上这个值只用于展示与预校验 |
 | `nominalGram` | `number` | 否 | FRESH 且按重计价：标称重量（克） |
+| `priceByMarket` | [`Record_string_number`](#record_string_number) | 否 | 各市场价（市场码 → 最小货币单位）。**只有商家侧 `/biz/goods/{no}` 下发，C 端恒空。** <p>编辑页按市场逐格填，而保存是**整份覆盖** —— 拿不到整张表就只能回填当前 那一格，于是改一次标题，其余市场的价格行就被删了，且不报错： 那两个市场的买家从此看不到这件商品。与 `titleI18n` 是同一个形状的故障。 |
+| `storePrice` | `number` | 否 | 本店单独定的价（最小货币单位）。**只在 B 端下发，空 = 同主体价**，不是 0。 <p>与门店库存回退方向相反：没设过价的店按主体价卖，没设过库存的店按 0 卖 —— 价格视为 0 就是白送。 |
 
 ### SpecGroup
 
@@ -3099,6 +3259,7 @@
 | `store` | [`StoreFront`](#storefront) | 是 | 店主自己维护的门面内容 |
 | `goods` | [`Goods`](#goods)\[\] | 是 | 在售商品。首屏展示，分页靠单独的商品列表接口 |
 | `favorited` | `boolean` | 是 | 我是否收藏了这家店 |
+| `closed` | `boolean` | 否 | 已停业（门店非 ACTIVE：商家自助停用或平台强制下线）。 **是标志而不是 404**：扫码进来的老客要知道「店关了」，不是「链接坏了」。 端上据此盖「已停业」并禁掉加购。 ⚠️ 后端 `StoreHomeVO` 一直在发这个字段，这里此前没声明 —— 于是**扫码进一家已停业的店，看起来与正常营业毫无区别**， 加购、下单一路走到底，最后在库存或下单闸门上撞一个说不清的错误。 |
 
 ### TrafficSource
 
@@ -3179,3 +3340,11 @@
 | `goods` | `number` | 是 | — |
 | `service` | `number` | 是 | — |
 | `speed` | `number` | 是 | — |
+
+### WxPhoneReq
+
+微信一键授权：端上只拿得到 code，换号在后端做
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `code` | `string` | 是 | — |

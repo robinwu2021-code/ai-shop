@@ -81,7 +81,8 @@
 | `afterSale` | [`AfterSale`](#aftersale) | 否 | 售后单。订单状态只有粗粒度的 REFUNDING/REFUNDED，细节在这里 |
 | `merchantNo` | `string` | 否 | 本单归属的商家。**一单只属于一个商家** —— 购物车跨商家时拆成多笔子订单（E3）。 不拆的话分账无从谈起：一笔钱要分给几家、各分多少，没有承载的单据。 |
 | `merchantName` | `string` | 否 | 商家名快照 |
-| `payGroupNo` | `string` | 否 | 支付组号。同一次结算拆出的子订单共享它，**一次支付付掉整组**。 用户感知是「买了一次」，资金与分账感知是「N 笔各归各家」。 |
+| `payGroupNo` | `string` | 否 | 支付组号。同一次结算拆出的子订单共享它，**一次支付付掉整组**。 用户感知是「买了一次」，资金与分账感知是「N 笔各归各家」。 ⚠️ **后端叫 `payOrderNo`，库里是 `ord_order.order_no`** —— 三处三个名字。 按这个名去后端或库里找会找不到（2026-08-17 人工测试时撞到）。 |
+| `subOrders` | [`Order`](#order)\[\] | 否 | **仅支付视角**：这次付款覆盖的各商家订单。订单视角为空。 后端 `OrderVO` 一直在发（同一个结构承担订单/支付两种视角）， 端上此前没声明 —— 于是收银台是整条拆单链路里**唯一哑掉的一屏**： 购物车说会拆 2 单、确认页说会拆 2 单、订单详情各自标着商家， 中间付款那一步却只有一个总额。 |
 
 
 #### POST `/biz/after-sale/{afterSaleNo}/receive`
@@ -124,7 +125,8 @@
 | `afterSale` | [`AfterSale`](#aftersale) | 否 | 售后单。订单状态只有粗粒度的 REFUNDING/REFUNDED，细节在这里 |
 | `merchantNo` | `string` | 否 | 本单归属的商家。**一单只属于一个商家** —— 购物车跨商家时拆成多笔子订单（E3）。 不拆的话分账无从谈起：一笔钱要分给几家、各分多少，没有承载的单据。 |
 | `merchantName` | `string` | 否 | 商家名快照 |
-| `payGroupNo` | `string` | 否 | 支付组号。同一次结算拆出的子订单共享它，**一次支付付掉整组**。 用户感知是「买了一次」，资金与分账感知是「N 笔各归各家」。 |
+| `payGroupNo` | `string` | 否 | 支付组号。同一次结算拆出的子订单共享它，**一次支付付掉整组**。 用户感知是「买了一次」，资金与分账感知是「N 笔各归各家」。 ⚠️ **后端叫 `payOrderNo`，库里是 `ord_order.order_no`** —— 三处三个名字。 按这个名去后端或库里找会找不到（2026-08-17 人工测试时撞到）。 |
+| `subOrders` | [`Order`](#order)\[\] | 否 | **仅支付视角**：这次付款覆盖的各商家订单。订单视角为空。 后端 `OrderVO` 一直在发（同一个结构承担订单/支付两种视角）， 端上此前没声明 —— 于是收银台是整条拆单链路里**唯一哑掉的一屏**： 购物车说会拆 2 单、确认页说会拆 2 单、订单详情各自标着商家， 中间付款那一步却只有一个总额。 |
 
 
 #### POST `/biz/after-sale/{afterSaleNo}/reject`
@@ -173,7 +175,8 @@
 | `afterSale` | [`AfterSale`](#aftersale) | 否 | 售后单。订单状态只有粗粒度的 REFUNDING/REFUNDED，细节在这里 |
 | `merchantNo` | `string` | 否 | 本单归属的商家。**一单只属于一个商家** —— 购物车跨商家时拆成多笔子订单（E3）。 不拆的话分账无从谈起：一笔钱要分给几家、各分多少，没有承载的单据。 |
 | `merchantName` | `string` | 否 | 商家名快照 |
-| `payGroupNo` | `string` | 否 | 支付组号。同一次结算拆出的子订单共享它，**一次支付付掉整组**。 用户感知是「买了一次」，资金与分账感知是「N 笔各归各家」。 |
+| `payGroupNo` | `string` | 否 | 支付组号。同一次结算拆出的子订单共享它，**一次支付付掉整组**。 用户感知是「买了一次」，资金与分账感知是「N 笔各归各家」。 ⚠️ **后端叫 `payOrderNo`，库里是 `ord_order.order_no`** —— 三处三个名字。 按这个名去后端或库里找会找不到（2026-08-17 人工测试时撞到）。 |
+| `subOrders` | [`Order`](#order)\[\] | 否 | **仅支付视角**：这次付款覆盖的各商家订单。订单视角为空。 后端 `OrderVO` 一直在发（同一个结构承担订单/支付两种视角）， 端上此前没声明 —— 于是收银台是整条拆单链路里**唯一哑掉的一屏**： 购物车说会拆 2 单、确认页说会拆 2 单、订单详情各自标着商家， 中间付款那一步却只有一个总额。 |
 
 
 ### auth
@@ -212,6 +215,28 @@
 **出参**（`data`）
 
 类型：`any`
+
+
+#### POST `/biz/auth/password`
+
+设置登录密码　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`any`
+
+
+#### GET `/biz/auth/password`
+
+是否已设密码　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`HasPasswordResp`](#haspasswordresp)
 
 
 #### POST `/biz/auth/staff-login`
@@ -567,7 +592,9 @@ _无字段_
 |---|---|---|:---:|---|
 | `page` | query | `number` | 否 | 页码，从 1 起 |
 | `size` | query | `number` | 否 | 每页条数 |
-| `status` | query | [`GoodsStatus`](#goodsstatus) | 否 | 状态筛选，取值见对应枚举 |
+| `status` | query | [`GoodsStatus`](#goodsstatus) \| `string` | 否 | 状态筛选，取值见对应枚举 |
+| `keyword` | query | `string` | 否 | 搜索关键词 |
+| `categoryNo` | query | `string` | 否 | 类目单号 |
 
 **出参**（`data`）
 
@@ -619,17 +646,81 @@ _无字段_
 | `origin` | `string` | 否 | FRESH：产地 |
 | `durationMin` | `number` | 否 | SERVICE：服务时长（分钟） |
 | `storeName` | `string` | 否 | SERVICE：可核销门店 |
-| `slots` | [`AppointmentSlot`](#appointmentslot)\[\] | 否 | SERVICE + APPOINTMENT：可预约时段 |
-| `card` | [`CardSpec`](#cardspec) | 否 | CARD |
-| `virtual` | [`VirtualSpec`](#virtualspec) | 否 | VIRTUAL |
-| `promotions` | [`Promotion`](#promotion)\[\] | 否 | 促销（一期只有买 N 送 M） |
+| `slots` | [`AppointmentSlot`](#appointmentslot)\[\] | 否 | SERVICE + APPOINTMENT：可预约时段。**后端未下发** |
+| `card` | [`CardSpec`](#cardspec) | 否 | CARD。**后端未下发** |
+| `virtual` | [`VirtualSpec`](#virtualspec) | 否 | VIRTUAL。**后端未下发** |
+| `promotions` | [`Promotion`](#promotion)\[\] | 否 | 促销（一期只有买 N 送 M）。**后端未下发** |
 | `groupBuy` | `object`（见下） | 否 | 商家为本商品开放的拼团档：够 minCount 人享 price。不配则本商品不能发起团 |
-| `points` | `number` | 否 | 本商品每件赠送的积分。不同商品可以给不同积分，不配则按成交额比例默认发放 |
+| `points` | `number` | 否 | 本商品每件赠送的积分。**后端未下发**：库里有 `prd_goods.points_config` 这一列， 但全仓没有任何读写。等积分域接上再兑现。 |
 | `limitPerUser` | `number` | 是 | 每人限购，0 = 不限 |
 | `onSale` | `boolean` | 是 | 是否在售。下架后详情页仍可访问（历史订单要点得进去），但不可下单 |
-| `status` | [`GoodsStatus`](#goodsstatus) | 否 | 审核与在售状态（**只有商家侧 `/biz/goods` 下发**，C 端拿不到也不需要）。 为什么不能只看 `onSale`：新建和每次改动都会回到审核中，而那时 `onSale` 是 false —— 界面照着布尔值写就成了「已下架 + 上架按钮」， 点下去后端必然拒（70003「商品还在审核中」）。**商家看到的是一个永远点不动的按钮**。 待审是 `PENDING`（词典 §11 的通用状态词表；库里那列仍叫 AUDITING， 但那是审核结果那一轴的列名，不出现在契约里）。 |
+| `detail` | `string` | 否 | 图文详情正文（纯文本）。空 = 商家没写 —— 端上整段不渲染， 别拿一个空白区块占着详情页。 |
+| `status` | [`GoodsStatus`](#goodsstatus) | 否 | — |
+| `auditReason` | `string` | 否 | 最近一次驳回 / 平台强制下架的原因（**只在商家侧与运营端下发，C 端恒空**）。 **没有它，商家面对 `REJECTED` 只能猜要改什么** —— 审计日志只有运营看得到。 平台强制下架时后端会带「平台强制下架」前缀，商家据此知道是自己被驳 还是被平台下的。过审时清空。 ⚠️ 后端 `GoodsVO` 一直在发它，`MerchantGoodsService` 的注释甚至写着 「它会出现在商家 B 端（`auditReason`）」—— 而端上从没声明这个字段。 那句注释描述的是一件**从未发生过**的事。 |
 | `titleI18n` | [`Record_string_string`](#record_string_string) | 否 | 三语标题原文，**只有商家侧 `/biz/goods/{no}` 下发**。 编辑页按语言逐格填，而保存是整份覆盖 —— 拿不到原文就只能回填当前那一格， 于是用中文改一次，英文与阿语就被清空了。**这个故障不报错**： C 端缺译文时回落中文，看起来一切正常。 |
 | `subtitleI18n` | [`Record_string_string`](#record_string_string) | 否 | 三语副标题原文，同 `titleI18n` |
+| `stdNo` | `string` | 否 | 引用的平台标准品；空 = 自建品。**只有商家侧与运营端下发，C 端恒空。** <p>必须下发：编辑页保存是整份覆盖，拿不到它就等于 **打开编辑页再保存一次就自动脱离了标准品** —— 商品从此不再被收敛， 而界面上没有任何变化。与 `titleI18n` / `priceByMarket` 是同一个形状的故障。 |
+
+`groupBuy` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `minCount` | `number` | 是 | — |
+| `price` | `number` | 是 | — |
+
+
+#### POST `/biz/goods/{goodsNo}/presale`
+
+改截单与到货说明　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `goodsNo` | path | `string` | 是 | 商品单号 |
+
+**出参**（`data`）
+
+类型：[`Goods`](#goods)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `goodsNo` | `string` | 是 | 商品单号 |
+| `title` | `string` | 是 | 商品标题 |
+| `subtitle` | `string` | 是 | 副标题/卖点一句话 |
+| `cover` | `string` | 是 | 封面图 URL。列表页用这一张 |
+| `images` | `string`\[\] | 是 | 详情轮播图 URL 列表 |
+| `type` | [`CategoryType`](#categorytype) | 是 | 商品形态，与所属类目的 type 一致。决定详情页用哪套字段 |
+| `categoryNo` | `string` | 是 | 所属类目 |
+| `merchant` | [`MerchantBrief`](#merchantbrief) | 是 | 所属商家 —— 商品与服务都要展示商家信息 |
+| `rating` | `number` | 否 | 本商品的评分与评价数（区别于商家整体评分） |
+| `ratingCount` | `number` | 否 | 本商品的评价条数 |
+| `price` | `number` | 是 | 展示价（最小货币单位），取各 SKU 最低价 |
+| `originPrice` | `number` | 否 | 划线价（最小货币单位） |
+| `fulfillments` | [`FulfillmentType`](#fulfillmenttype)\[\] | 是 | 支持的履约方式。**数组**：同一商品可以既自提又快递，下单时由用户选 |
+| `specGroups` | [`SpecGroup`](#specgroup)\[\] | 是 | 规格维度定义；单规格商品也有一组 |
+| `skus` | [`Sku`](#sku)\[\] | 是 | SKU 列表。单规格商品也有且仅有一条 |
+| `sales` | `number` | 是 | 累计销量，展示用 |
+| `cutoffAt` | `number` | 否 | FRESH：预售截单时间戳 |
+| `arrivalDesc` | `string` | 否 | FRESH：预计到货描述 |
+| `weighed` | `boolean` | 否 | FRESH：是否按实称多退少补 |
+| `origin` | `string` | 否 | FRESH：产地 |
+| `durationMin` | `number` | 否 | SERVICE：服务时长（分钟） |
+| `storeName` | `string` | 否 | SERVICE：可核销门店 |
+| `slots` | [`AppointmentSlot`](#appointmentslot)\[\] | 否 | SERVICE + APPOINTMENT：可预约时段。**后端未下发** |
+| `card` | [`CardSpec`](#cardspec) | 否 | CARD。**后端未下发** |
+| `virtual` | [`VirtualSpec`](#virtualspec) | 否 | VIRTUAL。**后端未下发** |
+| `promotions` | [`Promotion`](#promotion)\[\] | 否 | 促销（一期只有买 N 送 M）。**后端未下发** |
+| `groupBuy` | `object`（见下） | 否 | 商家为本商品开放的拼团档：够 minCount 人享 price。不配则本商品不能发起团 |
+| `points` | `number` | 否 | 本商品每件赠送的积分。**后端未下发**：库里有 `prd_goods.points_config` 这一列， 但全仓没有任何读写。等积分域接上再兑现。 |
+| `limitPerUser` | `number` | 是 | 每人限购，0 = 不限 |
+| `onSale` | `boolean` | 是 | 是否在售。下架后详情页仍可访问（历史订单要点得进去），但不可下单 |
+| `detail` | `string` | 否 | 图文详情正文（纯文本）。空 = 商家没写 —— 端上整段不渲染， 别拿一个空白区块占着详情页。 |
+| `status` | [`GoodsStatus`](#goodsstatus) | 否 | — |
+| `auditReason` | `string` | 否 | 最近一次驳回 / 平台强制下架的原因（**只在商家侧与运营端下发，C 端恒空**）。 **没有它，商家面对 `REJECTED` 只能猜要改什么** —— 审计日志只有运营看得到。 平台强制下架时后端会带「平台强制下架」前缀，商家据此知道是自己被驳 还是被平台下的。过审时清空。 ⚠️ 后端 `GoodsVO` 一直在发它，`MerchantGoodsService` 的注释甚至写着 「它会出现在商家 B 端（`auditReason`）」—— 而端上从没声明这个字段。 那句注释描述的是一件**从未发生过**的事。 |
+| `titleI18n` | [`Record_string_string`](#record_string_string) | 否 | 三语标题原文，**只有商家侧 `/biz/goods/{no}` 下发**。 编辑页按语言逐格填，而保存是整份覆盖 —— 拿不到原文就只能回填当前那一格， 于是用中文改一次，英文与阿语就被清空了。**这个故障不报错**： C 端缺译文时回落中文，看起来一切正常。 |
+| `subtitleI18n` | [`Record_string_string`](#record_string_string) | 否 | 三语副标题原文，同 `titleI18n` |
+| `stdNo` | `string` | 否 | 引用的平台标准品；空 = 自建品。**只有商家侧与运营端下发，C 端恒空。** <p>必须下发：编辑页保存是整份覆盖，拿不到它就等于 **打开编辑页再保存一次就自动脱离了标准品** —— 商品从此不再被收敛， 而界面上没有任何变化。与 `titleI18n` / `priceByMarket` 是同一个形状的故障。 |
 
 `groupBuy` 的字段：
 
@@ -684,17 +775,81 @@ _无字段_
 | `origin` | `string` | 否 | FRESH：产地 |
 | `durationMin` | `number` | 否 | SERVICE：服务时长（分钟） |
 | `storeName` | `string` | 否 | SERVICE：可核销门店 |
-| `slots` | [`AppointmentSlot`](#appointmentslot)\[\] | 否 | SERVICE + APPOINTMENT：可预约时段 |
-| `card` | [`CardSpec`](#cardspec) | 否 | CARD |
-| `virtual` | [`VirtualSpec`](#virtualspec) | 否 | VIRTUAL |
-| `promotions` | [`Promotion`](#promotion)\[\] | 否 | 促销（一期只有买 N 送 M） |
+| `slots` | [`AppointmentSlot`](#appointmentslot)\[\] | 否 | SERVICE + APPOINTMENT：可预约时段。**后端未下发** |
+| `card` | [`CardSpec`](#cardspec) | 否 | CARD。**后端未下发** |
+| `virtual` | [`VirtualSpec`](#virtualspec) | 否 | VIRTUAL。**后端未下发** |
+| `promotions` | [`Promotion`](#promotion)\[\] | 否 | 促销（一期只有买 N 送 M）。**后端未下发** |
 | `groupBuy` | `object`（见下） | 否 | 商家为本商品开放的拼团档：够 minCount 人享 price。不配则本商品不能发起团 |
-| `points` | `number` | 否 | 本商品每件赠送的积分。不同商品可以给不同积分，不配则按成交额比例默认发放 |
+| `points` | `number` | 否 | 本商品每件赠送的积分。**后端未下发**：库里有 `prd_goods.points_config` 这一列， 但全仓没有任何读写。等积分域接上再兑现。 |
 | `limitPerUser` | `number` | 是 | 每人限购，0 = 不限 |
 | `onSale` | `boolean` | 是 | 是否在售。下架后详情页仍可访问（历史订单要点得进去），但不可下单 |
-| `status` | [`GoodsStatus`](#goodsstatus) | 否 | 审核与在售状态（**只有商家侧 `/biz/goods` 下发**，C 端拿不到也不需要）。 为什么不能只看 `onSale`：新建和每次改动都会回到审核中，而那时 `onSale` 是 false —— 界面照着布尔值写就成了「已下架 + 上架按钮」， 点下去后端必然拒（70003「商品还在审核中」）。**商家看到的是一个永远点不动的按钮**。 待审是 `PENDING`（词典 §11 的通用状态词表；库里那列仍叫 AUDITING， 但那是审核结果那一轴的列名，不出现在契约里）。 |
+| `detail` | `string` | 否 | 图文详情正文（纯文本）。空 = 商家没写 —— 端上整段不渲染， 别拿一个空白区块占着详情页。 |
+| `status` | [`GoodsStatus`](#goodsstatus) | 否 | — |
+| `auditReason` | `string` | 否 | 最近一次驳回 / 平台强制下架的原因（**只在商家侧与运营端下发，C 端恒空**）。 **没有它，商家面对 `REJECTED` 只能猜要改什么** —— 审计日志只有运营看得到。 平台强制下架时后端会带「平台强制下架」前缀，商家据此知道是自己被驳 还是被平台下的。过审时清空。 ⚠️ 后端 `GoodsVO` 一直在发它，`MerchantGoodsService` 的注释甚至写着 「它会出现在商家 B 端（`auditReason`）」—— 而端上从没声明这个字段。 那句注释描述的是一件**从未发生过**的事。 |
 | `titleI18n` | [`Record_string_string`](#record_string_string) | 否 | 三语标题原文，**只有商家侧 `/biz/goods/{no}` 下发**。 编辑页按语言逐格填，而保存是整份覆盖 —— 拿不到原文就只能回填当前那一格， 于是用中文改一次，英文与阿语就被清空了。**这个故障不报错**： C 端缺译文时回落中文，看起来一切正常。 |
 | `subtitleI18n` | [`Record_string_string`](#record_string_string) | 否 | 三语副标题原文，同 `titleI18n` |
+| `stdNo` | `string` | 否 | 引用的平台标准品；空 = 自建品。**只有商家侧与运营端下发，C 端恒空。** <p>必须下发：编辑页保存是整份覆盖，拿不到它就等于 **打开编辑页再保存一次就自动脱离了标准品** —— 商品从此不再被收敛， 而界面上没有任何变化。与 `titleI18n` / `priceByMarket` 是同一个形状的故障。 |
+
+`groupBuy` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `minCount` | `number` | 是 | — |
+| `price` | `number` | 是 | — |
+
+
+#### POST `/biz/goods/{goodsNo}/store-price`
+
+改当前门店售价　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `goodsNo` | path | `string` | 是 | 商品单号 |
+
+**出参**（`data`）
+
+类型：[`Goods`](#goods)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `goodsNo` | `string` | 是 | 商品单号 |
+| `title` | `string` | 是 | 商品标题 |
+| `subtitle` | `string` | 是 | 副标题/卖点一句话 |
+| `cover` | `string` | 是 | 封面图 URL。列表页用这一张 |
+| `images` | `string`\[\] | 是 | 详情轮播图 URL 列表 |
+| `type` | [`CategoryType`](#categorytype) | 是 | 商品形态，与所属类目的 type 一致。决定详情页用哪套字段 |
+| `categoryNo` | `string` | 是 | 所属类目 |
+| `merchant` | [`MerchantBrief`](#merchantbrief) | 是 | 所属商家 —— 商品与服务都要展示商家信息 |
+| `rating` | `number` | 否 | 本商品的评分与评价数（区别于商家整体评分） |
+| `ratingCount` | `number` | 否 | 本商品的评价条数 |
+| `price` | `number` | 是 | 展示价（最小货币单位），取各 SKU 最低价 |
+| `originPrice` | `number` | 否 | 划线价（最小货币单位） |
+| `fulfillments` | [`FulfillmentType`](#fulfillmenttype)\[\] | 是 | 支持的履约方式。**数组**：同一商品可以既自提又快递，下单时由用户选 |
+| `specGroups` | [`SpecGroup`](#specgroup)\[\] | 是 | 规格维度定义；单规格商品也有一组 |
+| `skus` | [`Sku`](#sku)\[\] | 是 | SKU 列表。单规格商品也有且仅有一条 |
+| `sales` | `number` | 是 | 累计销量，展示用 |
+| `cutoffAt` | `number` | 否 | FRESH：预售截单时间戳 |
+| `arrivalDesc` | `string` | 否 | FRESH：预计到货描述 |
+| `weighed` | `boolean` | 否 | FRESH：是否按实称多退少补 |
+| `origin` | `string` | 否 | FRESH：产地 |
+| `durationMin` | `number` | 否 | SERVICE：服务时长（分钟） |
+| `storeName` | `string` | 否 | SERVICE：可核销门店 |
+| `slots` | [`AppointmentSlot`](#appointmentslot)\[\] | 否 | SERVICE + APPOINTMENT：可预约时段。**后端未下发** |
+| `card` | [`CardSpec`](#cardspec) | 否 | CARD。**后端未下发** |
+| `virtual` | [`VirtualSpec`](#virtualspec) | 否 | VIRTUAL。**后端未下发** |
+| `promotions` | [`Promotion`](#promotion)\[\] | 否 | 促销（一期只有买 N 送 M）。**后端未下发** |
+| `groupBuy` | `object`（见下） | 否 | 商家为本商品开放的拼团档：够 minCount 人享 price。不配则本商品不能发起团 |
+| `points` | `number` | 否 | 本商品每件赠送的积分。**后端未下发**：库里有 `prd_goods.points_config` 这一列， 但全仓没有任何读写。等积分域接上再兑现。 |
+| `limitPerUser` | `number` | 是 | 每人限购，0 = 不限 |
+| `onSale` | `boolean` | 是 | 是否在售。下架后详情页仍可访问（历史订单要点得进去），但不可下单 |
+| `detail` | `string` | 否 | 图文详情正文（纯文本）。空 = 商家没写 —— 端上整段不渲染， 别拿一个空白区块占着详情页。 |
+| `status` | [`GoodsStatus`](#goodsstatus) | 否 | — |
+| `auditReason` | `string` | 否 | 最近一次驳回 / 平台强制下架的原因（**只在商家侧与运营端下发，C 端恒空**）。 **没有它，商家面对 `REJECTED` 只能猜要改什么** —— 审计日志只有运营看得到。 平台强制下架时后端会带「平台强制下架」前缀，商家据此知道是自己被驳 还是被平台下的。过审时清空。 ⚠️ 后端 `GoodsVO` 一直在发它，`MerchantGoodsService` 的注释甚至写着 「它会出现在商家 B 端（`auditReason`）」—— 而端上从没声明这个字段。 那句注释描述的是一件**从未发生过**的事。 |
+| `titleI18n` | [`Record_string_string`](#record_string_string) | 否 | 三语标题原文，**只有商家侧 `/biz/goods/{no}` 下发**。 编辑页按语言逐格填，而保存是整份覆盖 —— 拿不到原文就只能回填当前那一格， 于是用中文改一次，英文与阿语就被清空了。**这个故障不报错**： C 端缺译文时回落中文，看起来一切正常。 |
+| `subtitleI18n` | [`Record_string_string`](#record_string_string) | 否 | 三语副标题原文，同 `titleI18n` |
+| `stdNo` | `string` | 否 | 引用的平台标准品；空 = 自建品。**只有商家侧与运营端下发，C 端恒空。** <p>必须下发：编辑页保存是整份覆盖，拿不到它就等于 **打开编辑页再保存一次就自动脱离了标准品** —— 商品从此不再被收敛， 而界面上没有任何变化。与 `titleI18n` / `priceByMarket` 是同一个形状的故障。 |
 
 `groupBuy` 的字段：
 
@@ -742,17 +897,81 @@ _无字段_
 | `origin` | `string` | 否 | FRESH：产地 |
 | `durationMin` | `number` | 否 | SERVICE：服务时长（分钟） |
 | `storeName` | `string` | 否 | SERVICE：可核销门店 |
-| `slots` | [`AppointmentSlot`](#appointmentslot)\[\] | 否 | SERVICE + APPOINTMENT：可预约时段 |
-| `card` | [`CardSpec`](#cardspec) | 否 | CARD |
-| `virtual` | [`VirtualSpec`](#virtualspec) | 否 | VIRTUAL |
-| `promotions` | [`Promotion`](#promotion)\[\] | 否 | 促销（一期只有买 N 送 M） |
+| `slots` | [`AppointmentSlot`](#appointmentslot)\[\] | 否 | SERVICE + APPOINTMENT：可预约时段。**后端未下发** |
+| `card` | [`CardSpec`](#cardspec) | 否 | CARD。**后端未下发** |
+| `virtual` | [`VirtualSpec`](#virtualspec) | 否 | VIRTUAL。**后端未下发** |
+| `promotions` | [`Promotion`](#promotion)\[\] | 否 | 促销（一期只有买 N 送 M）。**后端未下发** |
 | `groupBuy` | `object`（见下） | 否 | 商家为本商品开放的拼团档：够 minCount 人享 price。不配则本商品不能发起团 |
-| `points` | `number` | 否 | 本商品每件赠送的积分。不同商品可以给不同积分，不配则按成交额比例默认发放 |
+| `points` | `number` | 否 | 本商品每件赠送的积分。**后端未下发**：库里有 `prd_goods.points_config` 这一列， 但全仓没有任何读写。等积分域接上再兑现。 |
 | `limitPerUser` | `number` | 是 | 每人限购，0 = 不限 |
 | `onSale` | `boolean` | 是 | 是否在售。下架后详情页仍可访问（历史订单要点得进去），但不可下单 |
-| `status` | [`GoodsStatus`](#goodsstatus) | 否 | 审核与在售状态（**只有商家侧 `/biz/goods` 下发**，C 端拿不到也不需要）。 为什么不能只看 `onSale`：新建和每次改动都会回到审核中，而那时 `onSale` 是 false —— 界面照着布尔值写就成了「已下架 + 上架按钮」， 点下去后端必然拒（70003「商品还在审核中」）。**商家看到的是一个永远点不动的按钮**。 待审是 `PENDING`（词典 §11 的通用状态词表；库里那列仍叫 AUDITING， 但那是审核结果那一轴的列名，不出现在契约里）。 |
+| `detail` | `string` | 否 | 图文详情正文（纯文本）。空 = 商家没写 —— 端上整段不渲染， 别拿一个空白区块占着详情页。 |
+| `status` | [`GoodsStatus`](#goodsstatus) | 否 | — |
+| `auditReason` | `string` | 否 | 最近一次驳回 / 平台强制下架的原因（**只在商家侧与运营端下发，C 端恒空**）。 **没有它，商家面对 `REJECTED` 只能猜要改什么** —— 审计日志只有运营看得到。 平台强制下架时后端会带「平台强制下架」前缀，商家据此知道是自己被驳 还是被平台下的。过审时清空。 ⚠️ 后端 `GoodsVO` 一直在发它，`MerchantGoodsService` 的注释甚至写着 「它会出现在商家 B 端（`auditReason`）」—— 而端上从没声明这个字段。 那句注释描述的是一件**从未发生过**的事。 |
 | `titleI18n` | [`Record_string_string`](#record_string_string) | 否 | 三语标题原文，**只有商家侧 `/biz/goods/{no}` 下发**。 编辑页按语言逐格填，而保存是整份覆盖 —— 拿不到原文就只能回填当前那一格， 于是用中文改一次，英文与阿语就被清空了。**这个故障不报错**： C 端缺译文时回落中文，看起来一切正常。 |
 | `subtitleI18n` | [`Record_string_string`](#record_string_string) | 否 | 三语副标题原文，同 `titleI18n` |
+| `stdNo` | `string` | 否 | 引用的平台标准品；空 = 自建品。**只有商家侧与运营端下发，C 端恒空。** <p>必须下发：编辑页保存是整份覆盖，拿不到它就等于 **打开编辑页再保存一次就自动脱离了标准品** —— 商品从此不再被收敛， 而界面上没有任何变化。与 `titleI18n` / `priceByMarket` 是同一个形状的故障。 |
+
+`groupBuy` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `minCount` | `number` | 是 | — |
+| `price` | `number` | 是 | — |
+
+
+#### POST `/biz/goods/{goodsNo}/submit`
+
+提交审核（草稿→待审）　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `goodsNo` | path | `string` | 是 | 商品单号 |
+
+**出参**（`data`）
+
+类型：[`Goods`](#goods)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `goodsNo` | `string` | 是 | 商品单号 |
+| `title` | `string` | 是 | 商品标题 |
+| `subtitle` | `string` | 是 | 副标题/卖点一句话 |
+| `cover` | `string` | 是 | 封面图 URL。列表页用这一张 |
+| `images` | `string`\[\] | 是 | 详情轮播图 URL 列表 |
+| `type` | [`CategoryType`](#categorytype) | 是 | 商品形态，与所属类目的 type 一致。决定详情页用哪套字段 |
+| `categoryNo` | `string` | 是 | 所属类目 |
+| `merchant` | [`MerchantBrief`](#merchantbrief) | 是 | 所属商家 —— 商品与服务都要展示商家信息 |
+| `rating` | `number` | 否 | 本商品的评分与评价数（区别于商家整体评分） |
+| `ratingCount` | `number` | 否 | 本商品的评价条数 |
+| `price` | `number` | 是 | 展示价（最小货币单位），取各 SKU 最低价 |
+| `originPrice` | `number` | 否 | 划线价（最小货币单位） |
+| `fulfillments` | [`FulfillmentType`](#fulfillmenttype)\[\] | 是 | 支持的履约方式。**数组**：同一商品可以既自提又快递，下单时由用户选 |
+| `specGroups` | [`SpecGroup`](#specgroup)\[\] | 是 | 规格维度定义；单规格商品也有一组 |
+| `skus` | [`Sku`](#sku)\[\] | 是 | SKU 列表。单规格商品也有且仅有一条 |
+| `sales` | `number` | 是 | 累计销量，展示用 |
+| `cutoffAt` | `number` | 否 | FRESH：预售截单时间戳 |
+| `arrivalDesc` | `string` | 否 | FRESH：预计到货描述 |
+| `weighed` | `boolean` | 否 | FRESH：是否按实称多退少补 |
+| `origin` | `string` | 否 | FRESH：产地 |
+| `durationMin` | `number` | 否 | SERVICE：服务时长（分钟） |
+| `storeName` | `string` | 否 | SERVICE：可核销门店 |
+| `slots` | [`AppointmentSlot`](#appointmentslot)\[\] | 否 | SERVICE + APPOINTMENT：可预约时段。**后端未下发** |
+| `card` | [`CardSpec`](#cardspec) | 否 | CARD。**后端未下发** |
+| `virtual` | [`VirtualSpec`](#virtualspec) | 否 | VIRTUAL。**后端未下发** |
+| `promotions` | [`Promotion`](#promotion)\[\] | 否 | 促销（一期只有买 N 送 M）。**后端未下发** |
+| `groupBuy` | `object`（见下） | 否 | 商家为本商品开放的拼团档：够 minCount 人享 price。不配则本商品不能发起团 |
+| `points` | `number` | 否 | 本商品每件赠送的积分。**后端未下发**：库里有 `prd_goods.points_config` 这一列， 但全仓没有任何读写。等积分域接上再兑现。 |
+| `limitPerUser` | `number` | 是 | 每人限购，0 = 不限 |
+| `onSale` | `boolean` | 是 | 是否在售。下架后详情页仍可访问（历史订单要点得进去），但不可下单 |
+| `detail` | `string` | 否 | 图文详情正文（纯文本）。空 = 商家没写 —— 端上整段不渲染， 别拿一个空白区块占着详情页。 |
+| `status` | [`GoodsStatus`](#goodsstatus) | 否 | — |
+| `auditReason` | `string` | 否 | 最近一次驳回 / 平台强制下架的原因（**只在商家侧与运营端下发，C 端恒空**）。 **没有它，商家面对 `REJECTED` 只能猜要改什么** —— 审计日志只有运营看得到。 平台强制下架时后端会带「平台强制下架」前缀，商家据此知道是自己被驳 还是被平台下的。过审时清空。 ⚠️ 后端 `GoodsVO` 一直在发它，`MerchantGoodsService` 的注释甚至写着 「它会出现在商家 B 端（`auditReason`）」—— 而端上从没声明这个字段。 那句注释描述的是一件**从未发生过**的事。 |
+| `titleI18n` | [`Record_string_string`](#record_string_string) | 否 | 三语标题原文，**只有商家侧 `/biz/goods/{no}` 下发**。 编辑页按语言逐格填，而保存是整份覆盖 —— 拿不到原文就只能回填当前那一格， 于是用中文改一次，英文与阿语就被清空了。**这个故障不报错**： C 端缺译文时回落中文，看起来一切正常。 |
+| `subtitleI18n` | [`Record_string_string`](#record_string_string) | 否 | 三语副标题原文，同 `titleI18n` |
+| `stdNo` | `string` | 否 | 引用的平台标准品；空 = 自建品。**只有商家侧与运营端下发，C 端恒空。** <p>必须下发：编辑页保存是整份覆盖，拿不到它就等于 **打开编辑页再保存一次就自动脱离了标准品** —— 商品从此不再被收敛， 而界面上没有任何变化。与 `titleI18n` / `priceByMarket` 是同一个形状的故障。 |
 
 `groupBuy` 的字段：
 
@@ -806,17 +1025,20 @@ _无字段_
 | `origin` | `string` | 否 | FRESH：产地 |
 | `durationMin` | `number` | 否 | SERVICE：服务时长（分钟） |
 | `storeName` | `string` | 否 | SERVICE：可核销门店 |
-| `slots` | [`AppointmentSlot`](#appointmentslot)\[\] | 否 | SERVICE + APPOINTMENT：可预约时段 |
-| `card` | [`CardSpec`](#cardspec) | 否 | CARD |
-| `virtual` | [`VirtualSpec`](#virtualspec) | 否 | VIRTUAL |
-| `promotions` | [`Promotion`](#promotion)\[\] | 否 | 促销（一期只有买 N 送 M） |
+| `slots` | [`AppointmentSlot`](#appointmentslot)\[\] | 否 | SERVICE + APPOINTMENT：可预约时段。**后端未下发** |
+| `card` | [`CardSpec`](#cardspec) | 否 | CARD。**后端未下发** |
+| `virtual` | [`VirtualSpec`](#virtualspec) | 否 | VIRTUAL。**后端未下发** |
+| `promotions` | [`Promotion`](#promotion)\[\] | 否 | 促销（一期只有买 N 送 M）。**后端未下发** |
 | `groupBuy` | `object`（见下） | 否 | 商家为本商品开放的拼团档：够 minCount 人享 price。不配则本商品不能发起团 |
-| `points` | `number` | 否 | 本商品每件赠送的积分。不同商品可以给不同积分，不配则按成交额比例默认发放 |
+| `points` | `number` | 否 | 本商品每件赠送的积分。**后端未下发**：库里有 `prd_goods.points_config` 这一列， 但全仓没有任何读写。等积分域接上再兑现。 |
 | `limitPerUser` | `number` | 是 | 每人限购，0 = 不限 |
 | `onSale` | `boolean` | 是 | 是否在售。下架后详情页仍可访问（历史订单要点得进去），但不可下单 |
-| `status` | [`GoodsStatus`](#goodsstatus) | 否 | 审核与在售状态（**只有商家侧 `/biz/goods` 下发**，C 端拿不到也不需要）。 为什么不能只看 `onSale`：新建和每次改动都会回到审核中，而那时 `onSale` 是 false —— 界面照着布尔值写就成了「已下架 + 上架按钮」， 点下去后端必然拒（70003「商品还在审核中」）。**商家看到的是一个永远点不动的按钮**。 待审是 `PENDING`（词典 §11 的通用状态词表；库里那列仍叫 AUDITING， 但那是审核结果那一轴的列名，不出现在契约里）。 |
+| `detail` | `string` | 否 | 图文详情正文（纯文本）。空 = 商家没写 —— 端上整段不渲染， 别拿一个空白区块占着详情页。 |
+| `status` | [`GoodsStatus`](#goodsstatus) | 否 | — |
+| `auditReason` | `string` | 否 | 最近一次驳回 / 平台强制下架的原因（**只在商家侧与运营端下发，C 端恒空**）。 **没有它，商家面对 `REJECTED` 只能猜要改什么** —— 审计日志只有运营看得到。 平台强制下架时后端会带「平台强制下架」前缀，商家据此知道是自己被驳 还是被平台下的。过审时清空。 ⚠️ 后端 `GoodsVO` 一直在发它，`MerchantGoodsService` 的注释甚至写着 「它会出现在商家 B 端（`auditReason`）」—— 而端上从没声明这个字段。 那句注释描述的是一件**从未发生过**的事。 |
 | `titleI18n` | [`Record_string_string`](#record_string_string) | 否 | 三语标题原文，**只有商家侧 `/biz/goods/{no}` 下发**。 编辑页按语言逐格填，而保存是整份覆盖 —— 拿不到原文就只能回填当前那一格， 于是用中文改一次，英文与阿语就被清空了。**这个故障不报错**： C 端缺译文时回落中文，看起来一切正常。 |
 | `subtitleI18n` | [`Record_string_string`](#record_string_string) | 否 | 三语副标题原文，同 `titleI18n` |
+| `stdNo` | `string` | 否 | 引用的平台标准品；空 = 自建品。**只有商家侧与运营端下发，C 端恒空。** <p>必须下发：编辑页保存是整份覆盖，拿不到它就等于 **打开编辑页再保存一次就自动脱离了标准品** —— 商品从此不再被收敛， 而界面上没有任何变化。与 `titleI18n` / `priceByMarket` 是同一个形状的故障。 |
 
 `groupBuy` 的字段：
 
@@ -858,13 +1080,41 @@ _无字段_
 | `subtitle` | `string` | 是 | 基准语言（zh-CN）的副标题/卖点 |
 | `titleI18n` | [`Record_string_string`](#record_string_string) | 是 | 标题的三语原文，键是 Lang。缺译的语言按 R9 回落展示中文 |
 | `subtitleI18n` | [`Record_string_string`](#record_string_string) | 是 | 副标题的三语原文，同上 |
-| `type` | [`CategoryType`](#categorytype) | 是 | 商品形态，决定履约与合规（生鲜要截单、服务不发货、iOS 可售规则） |
-| `categoryNo` | `string` | 否 | 类目单号。选填，决定归类与经营准入 —— 与 `type` 是两个正交维度 |
+| `categoryNo` | `string` | 是 | 类目单号。**必填，且是唯一的分类输入** —— 商品形态（生鲜要截单、服务不发货、iOS 可售规则）由它派生，请求体里不再有 `type`。 |
 | `cover` | `string` | 否 | 封面图 URL（来自 mUploadImage）。漏传的话 C 端列表里是一块留白，且不报错 |
 | `images` | `string`\[\] | 否 | 详情轮播图 |
+| `detail` | `string` | 否 | 图文详情正文（纯文本）。**空串也要发** —— 后端「不传 = 不改」，删光了不发就删不掉 |
 | `specGroups` | [`SpecGroupDraft`](#specgroupdraft)\[\] | 是 | 空数组 = 单规格。非空则 skus 必须是各组选项的笛卡尔积 |
 | `fulfillments` | `string`\[\] | 否 | 支持的履约方式；不传 = 不改（新建默认四种全支持） |
 | `skus` | [`SkuDraft`](#skudraft)\[\] | 是 | SKU 列表。单规格商品也有且仅有一条 |
+| `limitPerUser` | `number` | 否 | 每人限购，0 = 不限。不传 = 不改 |
+| `fresh` | `object`（见下） | 否 | 生鲜段：截单 / 到货描述 / 是否按实称 / 产地。不传 = 不改 |
+| `service` | `object`（见下） | 否 | 服务段：时长 / 可核销门店。不传 = 不改 |
+| `groupBuy` | `object`（见下） | 否 | 拼团档：起团人数 + 团价，要么都给要么都不给 |
+| `stdNo` | `string` | 否 | 引用的平台标准品。传了它，服务端会用标准品的 categoryNo 与 optionCode **覆盖**请求里的值；不传 = 自建品 / 脱离标准品。 |
+
+`fresh` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `cutoffAt` | `number` | 否 | 当天几点前下单（毫秒时间戳）。与「到点」是两件事：截单管下单，到点管到货 |
+| `arrivalDesc` | `string` | 否 | 预计到货描述，如「次日 17:00 前到点」 |
+| `weighed` | `boolean` | 否 | 是否按实称多退少补 |
+| `origin` | `string` | 否 | 产地 |
+
+`service` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `durationMin` | `number` | 否 | 服务时长（分钟） |
+| `storeName` | `string` | 否 | 可核销门店名 |
+
+`groupBuy` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `minCount` | `number` | 否 | 起团人数，最小 2 —— 一个人不叫团 |
+| `price` | `number` | 否 | 团购价（最小货币单位） |
 
 **出参**（`data`）
 
@@ -894,17 +1144,20 @@ _无字段_
 | `origin` | `string` | 否 | FRESH：产地 |
 | `durationMin` | `number` | 否 | SERVICE：服务时长（分钟） |
 | `storeName` | `string` | 否 | SERVICE：可核销门店 |
-| `slots` | [`AppointmentSlot`](#appointmentslot)\[\] | 否 | SERVICE + APPOINTMENT：可预约时段 |
-| `card` | [`CardSpec`](#cardspec) | 否 | CARD |
-| `virtual` | [`VirtualSpec`](#virtualspec) | 否 | VIRTUAL |
-| `promotions` | [`Promotion`](#promotion)\[\] | 否 | 促销（一期只有买 N 送 M） |
+| `slots` | [`AppointmentSlot`](#appointmentslot)\[\] | 否 | SERVICE + APPOINTMENT：可预约时段。**后端未下发** |
+| `card` | [`CardSpec`](#cardspec) | 否 | CARD。**后端未下发** |
+| `virtual` | [`VirtualSpec`](#virtualspec) | 否 | VIRTUAL。**后端未下发** |
+| `promotions` | [`Promotion`](#promotion)\[\] | 否 | 促销（一期只有买 N 送 M）。**后端未下发** |
 | `groupBuy` | `object`（见下） | 否 | 商家为本商品开放的拼团档：够 minCount 人享 price。不配则本商品不能发起团 |
-| `points` | `number` | 否 | 本商品每件赠送的积分。不同商品可以给不同积分，不配则按成交额比例默认发放 |
+| `points` | `number` | 否 | 本商品每件赠送的积分。**后端未下发**：库里有 `prd_goods.points_config` 这一列， 但全仓没有任何读写。等积分域接上再兑现。 |
 | `limitPerUser` | `number` | 是 | 每人限购，0 = 不限 |
 | `onSale` | `boolean` | 是 | 是否在售。下架后详情页仍可访问（历史订单要点得进去），但不可下单 |
-| `status` | [`GoodsStatus`](#goodsstatus) | 否 | 审核与在售状态（**只有商家侧 `/biz/goods` 下发**，C 端拿不到也不需要）。 为什么不能只看 `onSale`：新建和每次改动都会回到审核中，而那时 `onSale` 是 false —— 界面照着布尔值写就成了「已下架 + 上架按钮」， 点下去后端必然拒（70003「商品还在审核中」）。**商家看到的是一个永远点不动的按钮**。 待审是 `PENDING`（词典 §11 的通用状态词表；库里那列仍叫 AUDITING， 但那是审核结果那一轴的列名，不出现在契约里）。 |
+| `detail` | `string` | 否 | 图文详情正文（纯文本）。空 = 商家没写 —— 端上整段不渲染， 别拿一个空白区块占着详情页。 |
+| `status` | [`GoodsStatus`](#goodsstatus) | 否 | — |
+| `auditReason` | `string` | 否 | 最近一次驳回 / 平台强制下架的原因（**只在商家侧与运营端下发，C 端恒空**）。 **没有它，商家面对 `REJECTED` 只能猜要改什么** —— 审计日志只有运营看得到。 平台强制下架时后端会带「平台强制下架」前缀，商家据此知道是自己被驳 还是被平台下的。过审时清空。 ⚠️ 后端 `GoodsVO` 一直在发它，`MerchantGoodsService` 的注释甚至写着 「它会出现在商家 B 端（`auditReason`）」—— 而端上从没声明这个字段。 那句注释描述的是一件**从未发生过**的事。 |
 | `titleI18n` | [`Record_string_string`](#record_string_string) | 否 | 三语标题原文，**只有商家侧 `/biz/goods/{no}` 下发**。 编辑页按语言逐格填，而保存是整份覆盖 —— 拿不到原文就只能回填当前那一格， 于是用中文改一次，英文与阿语就被清空了。**这个故障不报错**： C 端缺译文时回落中文，看起来一切正常。 |
 | `subtitleI18n` | [`Record_string_string`](#record_string_string) | 否 | 三语副标题原文，同 `titleI18n` |
+| `stdNo` | `string` | 否 | 引用的平台标准品；空 = 自建品。**只有商家侧与运营端下发，C 端恒空。** <p>必须下发：编辑页保存是整份覆盖，拿不到它就等于 **打开编辑页再保存一次就自动脱离了标准品** —— 商品从此不再被收敛， 而界面上没有任何变化。与 `titleI18n` / `priceByMarket` 是同一个形状的故障。 |
 
 `groupBuy` 的字段：
 
@@ -1346,7 +1599,8 @@ _无字段_
 | `afterSale` | [`AfterSale`](#aftersale) | 否 | 售后单。订单状态只有粗粒度的 REFUNDING/REFUNDED，细节在这里 |
 | `merchantNo` | `string` | 否 | 本单归属的商家。**一单只属于一个商家** —— 购物车跨商家时拆成多笔子订单（E3）。 不拆的话分账无从谈起：一笔钱要分给几家、各分多少，没有承载的单据。 |
 | `merchantName` | `string` | 否 | 商家名快照 |
-| `payGroupNo` | `string` | 否 | 支付组号。同一次结算拆出的子订单共享它，**一次支付付掉整组**。 用户感知是「买了一次」，资金与分账感知是「N 笔各归各家」。 |
+| `payGroupNo` | `string` | 否 | 支付组号。同一次结算拆出的子订单共享它，**一次支付付掉整组**。 用户感知是「买了一次」，资金与分账感知是「N 笔各归各家」。 ⚠️ **后端叫 `payOrderNo`，库里是 `ord_order.order_no`** —— 三处三个名字。 按这个名去后端或库里找会找不到（2026-08-17 人工测试时撞到）。 |
+| `subOrders` | [`Order`](#order)\[\] | 否 | **仅支付视角**：这次付款覆盖的各商家订单。订单视角为空。 后端 `OrderVO` 一直在发（同一个结构承担订单/支付两种视角）， 端上此前没声明 —— 于是收银台是整条拆单链路里**唯一哑掉的一屏**： 购物车说会拆 2 单、确认页说会拆 2 单、订单详情各自标着商家， 中间付款那一步却只有一个总额。 |
 
 
 #### POST `/biz/order/{orderNo}/delivered`
@@ -1389,7 +1643,8 @@ _无字段_
 | `afterSale` | [`AfterSale`](#aftersale) | 否 | 售后单。订单状态只有粗粒度的 REFUNDING/REFUNDED，细节在这里 |
 | `merchantNo` | `string` | 否 | 本单归属的商家。**一单只属于一个商家** —— 购物车跨商家时拆成多笔子订单（E3）。 不拆的话分账无从谈起：一笔钱要分给几家、各分多少，没有承载的单据。 |
 | `merchantName` | `string` | 否 | 商家名快照 |
-| `payGroupNo` | `string` | 否 | 支付组号。同一次结算拆出的子订单共享它，**一次支付付掉整组**。 用户感知是「买了一次」，资金与分账感知是「N 笔各归各家」。 |
+| `payGroupNo` | `string` | 否 | 支付组号。同一次结算拆出的子订单共享它，**一次支付付掉整组**。 用户感知是「买了一次」，资金与分账感知是「N 笔各归各家」。 ⚠️ **后端叫 `payOrderNo`，库里是 `ord_order.order_no`** —— 三处三个名字。 按这个名去后端或库里找会找不到（2026-08-17 人工测试时撞到）。 |
+| `subOrders` | [`Order`](#order)\[\] | 否 | **仅支付视角**：这次付款覆盖的各商家订单。订单视角为空。 后端 `OrderVO` 一直在发（同一个结构承担订单/支付两种视角）， 端上此前没声明 —— 于是收银台是整条拆单链路里**唯一哑掉的一屏**： 购物车说会拆 2 单、确认页说会拆 2 单、订单详情各自标着商家， 中间付款那一步却只有一个总额。 |
 
 
 #### POST `/biz/order/{orderNo}/ship`
@@ -1438,7 +1693,8 @@ _无字段_
 | `afterSale` | [`AfterSale`](#aftersale) | 否 | 售后单。订单状态只有粗粒度的 REFUNDING/REFUNDED，细节在这里 |
 | `merchantNo` | `string` | 否 | 本单归属的商家。**一单只属于一个商家** —— 购物车跨商家时拆成多笔子订单（E3）。 不拆的话分账无从谈起：一笔钱要分给几家、各分多少，没有承载的单据。 |
 | `merchantName` | `string` | 否 | 商家名快照 |
-| `payGroupNo` | `string` | 否 | 支付组号。同一次结算拆出的子订单共享它，**一次支付付掉整组**。 用户感知是「买了一次」，资金与分账感知是「N 笔各归各家」。 |
+| `payGroupNo` | `string` | 否 | 支付组号。同一次结算拆出的子订单共享它，**一次支付付掉整组**。 用户感知是「买了一次」，资金与分账感知是「N 笔各归各家」。 ⚠️ **后端叫 `payOrderNo`，库里是 `ord_order.order_no`** —— 三处三个名字。 按这个名去后端或库里找会找不到（2026-08-17 人工测试时撞到）。 |
+| `subOrders` | [`Order`](#order)\[\] | 否 | **仅支付视角**：这次付款覆盖的各商家订单。订单视角为空。 后端 `OrderVO` 一直在发（同一个结构承担订单/支付两种视角）， 端上此前没声明 —— 于是收银台是整条拆单链路里**唯一哑掉的一屏**： 购物车说会拆 2 单、确认页说会拆 2 单、订单详情各自标着商家， 中间付款那一步却只有一个总额。 |
 
 
 ### pickup
@@ -1491,7 +1747,8 @@ _无字段_
 | `afterSale` | [`AfterSale`](#aftersale) | 否 | 售后单。订单状态只有粗粒度的 REFUNDING/REFUNDED，细节在这里 |
 | `merchantNo` | `string` | 否 | 本单归属的商家。**一单只属于一个商家** —— 购物车跨商家时拆成多笔子订单（E3）。 不拆的话分账无从谈起：一笔钱要分给几家、各分多少，没有承载的单据。 |
 | `merchantName` | `string` | 否 | 商家名快照 |
-| `payGroupNo` | `string` | 否 | 支付组号。同一次结算拆出的子订单共享它，**一次支付付掉整组**。 用户感知是「买了一次」，资金与分账感知是「N 笔各归各家」。 |
+| `payGroupNo` | `string` | 否 | 支付组号。同一次结算拆出的子订单共享它，**一次支付付掉整组**。 用户感知是「买了一次」，资金与分账感知是「N 笔各归各家」。 ⚠️ **后端叫 `payOrderNo`，库里是 `ord_order.order_no`** —— 三处三个名字。 按这个名去后端或库里找会找不到（2026-08-17 人工测试时撞到）。 |
+| `subOrders` | [`Order`](#order)\[\] | 否 | **仅支付视角**：这次付款覆盖的各商家订单。订单视角为空。 后端 `OrderVO` 一直在发（同一个结构承担订单/支付两种视角）， 端上此前没声明 —— 于是收银台是整条拆单链路里**唯一哑掉的一屏**： 购物车说会拆 2 单、确认页说会拆 2 单、订单详情各自标着商家， 中间付款那一步却只有一个总额。 |
 
 
 #### POST `/biz/pickup/arrived`
@@ -1596,7 +1853,8 @@ _无字段_
 | `afterSale` | [`AfterSale`](#aftersale) | 否 | 售后单。订单状态只有粗粒度的 REFUNDING/REFUNDED，细节在这里 |
 | `merchantNo` | `string` | 否 | 本单归属的商家。**一单只属于一个商家** —— 购物车跨商家时拆成多笔子订单（E3）。 不拆的话分账无从谈起：一笔钱要分给几家、各分多少，没有承载的单据。 |
 | `merchantName` | `string` | 否 | 商家名快照 |
-| `payGroupNo` | `string` | 否 | 支付组号。同一次结算拆出的子订单共享它，**一次支付付掉整组**。 用户感知是「买了一次」，资金与分账感知是「N 笔各归各家」。 |
+| `payGroupNo` | `string` | 否 | 支付组号。同一次结算拆出的子订单共享它，**一次支付付掉整组**。 用户感知是「买了一次」，资金与分账感知是「N 笔各归各家」。 ⚠️ **后端叫 `payOrderNo`，库里是 `ord_order.order_no`** —— 三处三个名字。 按这个名去后端或库里找会找不到（2026-08-17 人工测试时撞到）。 |
+| `subOrders` | [`Order`](#order)\[\] | 否 | **仅支付视角**：这次付款覆盖的各商家订单。订单视角为空。 后端 `OrderVO` 一直在发（同一个结构承担订单/支付两种视角）， 端上此前没声明 —— 于是收银台是整条拆单链路里**唯一哑掉的一屏**： 购物车说会拆 2 单、确认页说会拆 2 单、订单详情各自标着商家， 中间付款那一步却只有一个总额。 |
 
 
 #### POST `/biz/pickup/verify/batch`
@@ -2040,6 +2298,19 @@ _无字段_
 | `merchantNo` | `string` | 否 | scope=MERCHANT 时归属的商家 |
 
 
+### spu-std
+
+#### GET `/biz/spu-std`
+
+标准品搜索（建品用）　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`SpuStd`](#spustd)\[\]
+
+
 ### staff
 
 #### GET `/biz/staff`
@@ -2205,6 +2476,36 @@ _无字段_
 | `serviceAreas` | [`ServiceArea`](#servicearea)\[\] | 否 | 地理覆盖项，可跨粒度组合（三个小区 + 一个区）。 **空的含义由 `fulfillmentReach` 决定**，这是这个字段最容易踩的地方： PICKUP 空 = 谁也看不到（没配自提点就没法履约）； ONSITE / SHIPPING 空 = 不限。同一个空数组两种意思，所以别拿它判「有没有设置过」。 |
 
 
+#### GET `/biz/store/{storeNo}/categories`
+
+本店经营类目　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `storeNo` | path | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`StoreCategory`](#storecategory)\[\]
+
+
+#### POST `/biz/store/{storeNo}/categories`
+
+整份替换本店经营类目　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `storeNo` | path | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`StoreCategory`](#storecategory)\[\]
+
+
 #### POST `/biz/store/{storeNo}/default`
 
 设为默认店　🔒
@@ -2285,6 +2586,7 @@ _无字段_
 |---|---|:---:|---|
 | `name` | `string` | 是 | 门店名 |
 | `address` | `string` | 否 | 门店地址 |
+| `categoryNos` | `string`\[\] | 否 | 这家店摆哪些货架（**只有新建时有意义**，改名时后端忽略）。 <p><b>不传 = 复制默认店的</b>：多门店商家开分店卖的多半是同一批货， 从零勾选是纯负担。一个都没有也合法 —— 建品时会自动加入。 |
 
 **出参**（`data`）
 
@@ -2352,6 +2654,7 @@ _无字段_
 |---|---|:---:|---|
 | `name` | `string` | 是 | 门店名 |
 | `address` | `string` | 否 | 门店地址 |
+| `categoryNos` | `string`\[\] | 否 | 这家店摆哪些货架（**只有新建时有意义**，改名时后端忽略）。 <p><b>不传 = 复制默认店的</b>：多门店商家开分店卖的多半是同一批货， 从零勾选是纯负担。一个都没有也合法 —— 建品时会自动加入。 |
 
 **出参**（`data`）
 
@@ -2395,7 +2698,11 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `url` | `string` | 是 | 扫码后进入的落地页地址，带 merchant_no 归因参数 |
+| `merchantNo` | `string` | 否 | 商家单号 |
+| `storeCode` | `string` | 否 | 印在贴纸上的短码。**去掉了 0/O/1/I/L**，让人手输时不会认错 |
+| `url` | `string,null` | 否 | 落地页链接。**未配对外域名时为 null** —— 端上据此不显示链接那一行。 ⚠️ 此前后端在两处各写死一个 `https://shop.example.com/s/<code>` 占位域名， 商家复制出去的链接与印出去的贴纸**全都指向一个不存在的地方**， 而这两个功能点在清单上标着「已实现」。不发假链接比发一个点不开的强。 |
+| `imageBase64` | `string,null` | 否 | 店铺**小程序码**的 PNG base64（不含 `data:` 前缀）。通道未开启时为 null。 用小程序码而不是 H5 链接：ADR-004 的主获客路径是「码印在包装袋上，老客扫码直达」， 而小程序码**不依赖备案域名**（备案要 7–20 个工作日），扫了直接进门店页。 |
+| `printableHint` | `string` | 否 | 打印建议，服务端给的一句话 |
 
 
 #### GET `/biz/store/share-kit`
@@ -2625,6 +2932,7 @@ _无字段_
 | `level` | `number` | 是 | 1–3。**三级封顶** |
 | `name` | `string` | 是 | 类目名（后端按 Accept-Language 下发已本地化文案） |
 | `icon` | `string` | 否 | 类目图标 URL。运营没配就是空串，端上按占位渲染 |
+| `template` | `string` | 否 | 该类目的**品类模板**：`STANDARD` / `FRESH` / `SERVICE` / `VOUCHER`。 <p><b>它就是「品类」，只是另一套码</b>（STANDARD↔NORMAL、VOUCHER↔CARD， 见 `TEMPLATE_TO_TYPE`）。选定类目即可推出品类 —— 让商家把同一件事填两遍， 唯一的产出是两者可能互相矛盾，而矛盾没有任何一处会拦。 |
 | `sort` | `number` | 是 | 同级内的展示顺序，小的在前。运营在后台拖动排序改的就是它 |
 | `children` | [`Category`](#category)\[\] | 是 | 子类目。叶子是空数组而不是 undefined —— 端上少一次判空 |
 
@@ -2814,17 +3122,20 @@ _无字段_
 | `origin` | `string` | 否 | FRESH：产地 |
 | `durationMin` | `number` | 否 | SERVICE：服务时长（分钟） |
 | `storeName` | `string` | 否 | SERVICE：可核销门店 |
-| `slots` | [`AppointmentSlot`](#appointmentslot)\[\] | 否 | SERVICE + APPOINTMENT：可预约时段 |
-| `card` | [`CardSpec`](#cardspec) | 否 | CARD |
-| `virtual` | [`VirtualSpec`](#virtualspec) | 否 | VIRTUAL |
-| `promotions` | [`Promotion`](#promotion)\[\] | 否 | 促销（一期只有买 N 送 M） |
+| `slots` | [`AppointmentSlot`](#appointmentslot)\[\] | 否 | SERVICE + APPOINTMENT：可预约时段。**后端未下发** |
+| `card` | [`CardSpec`](#cardspec) | 否 | CARD。**后端未下发** |
+| `virtual` | [`VirtualSpec`](#virtualspec) | 否 | VIRTUAL。**后端未下发** |
+| `promotions` | [`Promotion`](#promotion)\[\] | 否 | 促销（一期只有买 N 送 M）。**后端未下发** |
 | `groupBuy` | `object`（见下） | 否 | 商家为本商品开放的拼团档：够 minCount 人享 price。不配则本商品不能发起团 |
-| `points` | `number` | 否 | 本商品每件赠送的积分。不同商品可以给不同积分，不配则按成交额比例默认发放 |
+| `points` | `number` | 否 | 本商品每件赠送的积分。**后端未下发**：库里有 `prd_goods.points_config` 这一列， 但全仓没有任何读写。等积分域接上再兑现。 |
 | `limitPerUser` | `number` | 是 | 每人限购，0 = 不限 |
 | `onSale` | `boolean` | 是 | 是否在售。下架后详情页仍可访问（历史订单要点得进去），但不可下单 |
-| `status` | [`GoodsStatus`](#goodsstatus) | 否 | 审核与在售状态（**只有商家侧 `/biz/goods` 下发**，C 端拿不到也不需要）。 为什么不能只看 `onSale`：新建和每次改动都会回到审核中，而那时 `onSale` 是 false —— 界面照着布尔值写就成了「已下架 + 上架按钮」， 点下去后端必然拒（70003「商品还在审核中」）。**商家看到的是一个永远点不动的按钮**。 待审是 `PENDING`（词典 §11 的通用状态词表；库里那列仍叫 AUDITING， 但那是审核结果那一轴的列名，不出现在契约里）。 |
+| `detail` | `string` | 否 | 图文详情正文（纯文本）。空 = 商家没写 —— 端上整段不渲染， 别拿一个空白区块占着详情页。 |
+| `status` | [`GoodsStatus`](#goodsstatus) | 否 | — |
+| `auditReason` | `string` | 否 | 最近一次驳回 / 平台强制下架的原因（**只在商家侧与运营端下发，C 端恒空**）。 **没有它，商家面对 `REJECTED` 只能猜要改什么** —— 审计日志只有运营看得到。 平台强制下架时后端会带「平台强制下架」前缀，商家据此知道是自己被驳 还是被平台下的。过审时清空。 ⚠️ 后端 `GoodsVO` 一直在发它，`MerchantGoodsService` 的注释甚至写着 「它会出现在商家 B 端（`auditReason`）」—— 而端上从没声明这个字段。 那句注释描述的是一件**从未发生过**的事。 |
 | `titleI18n` | [`Record_string_string`](#record_string_string) | 否 | 三语标题原文，**只有商家侧 `/biz/goods/{no}` 下发**。 编辑页按语言逐格填，而保存是整份覆盖 —— 拿不到原文就只能回填当前那一格， 于是用中文改一次，英文与阿语就被清空了。**这个故障不报错**： C 端缺译文时回落中文，看起来一切正常。 |
 | `subtitleI18n` | [`Record_string_string`](#record_string_string) | 否 | 三语副标题原文，同 `titleI18n` |
+| `stdNo` | `string` | 否 | 引用的平台标准品；空 = 自建品。**只有商家侧与运营端下发，C 端恒空。** <p>必须下发：编辑页保存是整份覆盖，拿不到它就等于 **打开编辑页再保存一次就自动脱离了标准品** —— 商品从此不再被收敛， 而界面上没有任何变化。与 `titleI18n` / `priceByMarket` 是同一个形状的故障。 |
 
 `groupBuy` 的字段：
 
@@ -2835,10 +3146,11 @@ _无字段_
 
 ### GoodsStatus
 
-商品状态。 ⚠️ 待审用 `PENDING` 不用 `AUDITING` —— ops-web 的 `SkuStatus` 一直用 `PENDING`，同一件事两个词。词典 §11 的通用状态词表规定「已提交待处理」= `PENDING`。
+商家侧商品状态。 <p><b>DRAFT 与 PENDING 是两件事</b>：草稿是「还没提交，等你」，待审是「已提交，等平台」—— 说错了商家的下一步就错了。也与 OFF_SALE（点一下就能卖）分开。
 
 枚举取值：
 
+- `DRAFT`
 - `ON_SALE`
 - `OFF_SALE`
 - `PENDING`
@@ -2856,7 +3168,7 @@ _无字段_
 
 ### GrantType
 
-登录方式。 · WX_MINI  小程序静默登录（只拿 openid，拿不到手机号） · WX_PHONE 小程序一键取手机号（推荐：一次授权直接拿到号，省掉短信） · WX_OPEN  App 微信开放平台 · APPLE    Apple 登录（iOS 上架硬要求） · PHONE_OTP 手机号 + 短信验证码（全端兜底，也是商家账号的主标识）
+登录方式。 · WX_MINI  小程序静默登录（只拿 openid，拿不到手机号） · WX_PHONE 小程序一键取手机号（推荐：一次授权直接拿到号，省掉短信） · WX_OPEN  App 微信开放平台 · APPLE    Apple 登录（iOS 上架硬要求） · PHONE_OTP 手机号 + 短信验证码（全端兜底，也是商家账号的主标识） · PASSWORD  手机号 + 密码（**只有 B 端有**）。商家一天开好几次 App，   每次等一条短信是实打实的摩擦；而它与其它方式最本质的差别是**不建户** ——   能用密码登录的前提是他已经设过密码，而设密码本身要先登录。
 
 枚举取值：
 
@@ -2865,6 +3177,7 @@ _无字段_
 - `WX_OPEN`
 - `PHONE_OTP`
 - `APPLE`
+- `PASSWORD`
 
 ### GroupBuy
 
@@ -3298,7 +3611,8 @@ _无字段_
 | `afterSale` | [`AfterSale`](#aftersale) | 否 | 售后单。订单状态只有粗粒度的 REFUNDING/REFUNDED，细节在这里 |
 | `merchantNo` | `string` | 否 | 本单归属的商家。**一单只属于一个商家** —— 购物车跨商家时拆成多笔子订单（E3）。 不拆的话分账无从谈起：一笔钱要分给几家、各分多少，没有承载的单据。 |
 | `merchantName` | `string` | 否 | 商家名快照 |
-| `payGroupNo` | `string` | 否 | 支付组号。同一次结算拆出的子订单共享它，**一次支付付掉整组**。 用户感知是「买了一次」，资金与分账感知是「N 笔各归各家」。 |
+| `payGroupNo` | `string` | 否 | 支付组号。同一次结算拆出的子订单共享它，**一次支付付掉整组**。 用户感知是「买了一次」，资金与分账感知是「N 笔各归各家」。 ⚠️ **后端叫 `payOrderNo`，库里是 `ord_order.order_no`** —— 三处三个名字。 按这个名去后端或库里找会找不到（2026-08-17 人工测试时撞到）。 |
+| `subOrders` | [`Order`](#order)\[\] | 否 | **仅支付视角**：这次付款覆盖的各商家订单。订单视角为空。 后端 `OrderVO` 一直在发（同一个结构承担订单/支付两种视角）， 端上此前没声明 —— 于是收银台是整条拆单链路里**唯一哑掉的一屏**： 购物车说会拆 2 单、确认页说会拆 2 单、订单详情各自标着商家， 中间付款那一步却只有一个总额。 |
 
 ### OrderAmount
 
@@ -3351,8 +3665,7 @@ _无字段_
 
 - `WAIT_PAY`
 - `PAID`
-- `ARRIVED`
-- `SHIPPED`
+- `FULFILLING`
 - `COMPLETED`
 - `CANCELLED`
 - `REFUNDED`
@@ -3365,13 +3678,13 @@ _无字段_
 | `label` | `string` | 是 | 展示文案，如「已到货，请到自提点取货」。后端下发已本地化 |
 | `at` | `number` | 是 | 发生时间 |
 
-### Partial_Record_CurrencyCode_number
+### Partial_Record_MarketId_number
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `CNY` | `number` | 否 | — |
-| `USD` | `number` | 否 | — |
-| `AED` | `number` | 否 | — |
+| `CN` | `number` | 否 | — |
+| `AE` | `number` | 否 | — |
+| `US` | `number` | 否 | — |
 
 ### PaymentApplyStatus
 
@@ -3628,6 +3941,10 @@ _无字段_
 |---|---|:---:|---|
 | `imageUrl` | `string` | 是 | 待识别的商品图 URL（先走 upload/image 拿到）。返回识别出的标题与类目建议 |
 
+### Record_string_number
+
+类型：`object`
+
 ### Record_string_string
 
 类型：`object`
@@ -3729,13 +4046,41 @@ _无字段_
 | `subtitle` | `string` | 是 | 基准语言（zh-CN）的副标题/卖点 |
 | `titleI18n` | [`Record_string_string`](#record_string_string) | 是 | 标题的三语原文，键是 Lang。缺译的语言按 R9 回落展示中文 |
 | `subtitleI18n` | [`Record_string_string`](#record_string_string) | 是 | 副标题的三语原文，同上 |
-| `type` | [`CategoryType`](#categorytype) | 是 | 商品形态，决定履约与合规（生鲜要截单、服务不发货、iOS 可售规则） |
-| `categoryNo` | `string` | 否 | 类目单号。选填，决定归类与经营准入 —— 与 `type` 是两个正交维度 |
+| `categoryNo` | `string` | 是 | 类目单号。**必填，且是唯一的分类输入** —— 商品形态（生鲜要截单、服务不发货、iOS 可售规则）由它派生，请求体里不再有 `type`。 |
 | `cover` | `string` | 否 | 封面图 URL（来自 mUploadImage）。漏传的话 C 端列表里是一块留白，且不报错 |
 | `images` | `string`\[\] | 否 | 详情轮播图 |
+| `detail` | `string` | 否 | 图文详情正文（纯文本）。**空串也要发** —— 后端「不传 = 不改」，删光了不发就删不掉 |
 | `specGroups` | [`SpecGroupDraft`](#specgroupdraft)\[\] | 是 | 空数组 = 单规格。非空则 skus 必须是各组选项的笛卡尔积 |
 | `fulfillments` | `string`\[\] | 否 | 支持的履约方式；不传 = 不改（新建默认四种全支持） |
 | `skus` | [`SkuDraft`](#skudraft)\[\] | 是 | SKU 列表。单规格商品也有且仅有一条 |
+| `limitPerUser` | `number` | 否 | 每人限购，0 = 不限。不传 = 不改 |
+| `fresh` | `object`（见下） | 否 | 生鲜段：截单 / 到货描述 / 是否按实称 / 产地。不传 = 不改 |
+| `service` | `object`（见下） | 否 | 服务段：时长 / 可核销门店。不传 = 不改 |
+| `groupBuy` | `object`（见下） | 否 | 拼团档：起团人数 + 团价，要么都给要么都不给 |
+| `stdNo` | `string` | 否 | 引用的平台标准品。传了它，服务端会用标准品的 categoryNo 与 optionCode **覆盖**请求里的值；不传 = 自建品 / 脱离标准品。 |
+
+`fresh` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `cutoffAt` | `number` | 否 | 当天几点前下单（毫秒时间戳）。与「到点」是两件事：截单管下单，到点管到货 |
+| `arrivalDesc` | `string` | 否 | 预计到货描述，如「次日 17:00 前到点」 |
+| `weighed` | `boolean` | 否 | 是否按实称多退少补 |
+| `origin` | `string` | 否 | 产地 |
+
+`service` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `durationMin` | `number` | 否 | 服务时长（分钟） |
+| `storeName` | `string` | 否 | 可核销门店名 |
+
+`groupBuy` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `minCount` | `number` | 否 | 起团人数，最小 2 —— 一个人不叫团 |
+| `price` | `number` | 否 | 团购价（最小货币单位） |
 
 ### SaveSpecTemplateReq
 
@@ -3860,6 +4205,8 @@ _无字段_
 | `originPrice` | `number` | 否 | 划线价（最小货币单位）。为空表示不展示划线价 |
 | `stock` | `number` | 是 | 可售库存。下单时服务端二次校验，端上这个值只用于展示与预校验 |
 | `nominalGram` | `number` | 否 | FRESH 且按重计价：标称重量（克） |
+| `priceByMarket` | [`Record_string_number`](#record_string_number) | 否 | 各市场价（市场码 → 最小货币单位）。**只有商家侧 `/biz/goods/{no}` 下发，C 端恒空。** <p>编辑页按市场逐格填，而保存是**整份覆盖** —— 拿不到整张表就只能回填当前 那一格，于是改一次标题，其余市场的价格行就被删了，且不报错： 那两个市场的买家从此看不到这件商品。与 `titleI18n` 是同一个形状的故障。 |
+| `storePrice` | `number` | 否 | 本店单独定的价（最小货币单位）。**只在 B 端下发，空 = 同主体价**，不是 0。 <p>与门店库存回退方向相反：没设过价的店按主体价卖，没设过库存的店按 0 卖 —— 价格视为 0 就是白送。 |
 
 ### SkuDraft
 
@@ -3870,8 +4217,10 @@ SKU 草稿。`optionValues` 的顺序与 `specGroups` 一一对应 —— 这是
 | `skuNo` | `string` | 否 | 已有 SKU 带上原编号，改价改库存不会丢历史订单的引用 |
 | `optionValues` | `string`\[\] | 是 | 各规格维度上的取值，顺序与 specGroups 一一对应 |
 | `price` | `number` | 是 | 当前市场的价（最小货币单位）。兼容单市场调用 |
-| `priceByMarket` | [`Partial_Record_CurrencyCode_number`](#partial_record_currencycode_number) | 否 | **按市场分别定价**（B6）。未填的市场不在该市场售卖 —— 汇率换算出的价没有价格心理学（¥29.9 → $4.19 不是任何人会标的价）， 且汇率一动全店价格跟着抖，而商家并没有调价。 |
+| `priceByMarket` | [`Partial_Record_MarketId_number`](#partial_record_marketid_number) | 否 | **按市场分别定价**（B6）。未填的市场不在该市场售卖 —— 汇率换算出的价没有价格心理学（¥29.9 → $4.19 不是任何人会标的价）， 且汇率一动全店价格跟着抖，而商家并没有调价。 <p>⚠️ 键是**市场码**（CN/AE/US），不是币种码。这两套码一一对应，所以写错了 不报任何错 —— 但落到 `prd_sku.market` 上就成了一行 `market='CNY'` 的死数据： C 端按市场取价永远取不到它。此前端上按 `currency` 发，于是每个新 SKU 多一行脏数据， 且商家在 AED/USD 页签填的价**在那两个市场一分钱也卖不出去**。 |
 | `stock` | `number` | 是 | 可售库存 |
+| `originPrice` | `number` | 否 | 划线价（最小货币单位）。**留空 = 不改**，传 0 = 清掉。 <p>它是派生展示值（标折扣用），不是定价 —— 必须**高于售价**， 否则渲染出来是个「涨价了」的折扣标，后端会拒。 <p>此前有列、有契约、**没有写入路径**：折扣标因此永远不出现。 |
+| `nominalGram` | `number` | 否 | 标称重量（克），生鲜按重计价用。**留空 = 不改**，传 0 = 清掉。 「按标称预扣、称重后多退少补」这条链靠它，没有它整条链跑不起来。 |
 
 ### SpecGroup
 
@@ -3926,6 +4275,25 @@ SKU 草稿。`optionValues` 的顺序与 `specGroups` 一一对应 —— 这是
 - `PLATFORM`
 - `MERCHANT`
 
+### SpuStd
+
+平台标准品（TDD-标准品库）：商家引用建品的**模子**。 <p>**无价、无库存、无履约** —— 那些永远是商家的。它存在的理由是 `specGroups` 里的 `optionCode`：没有标准品，三家店各自录「本地菠菜」得到三个毫无关系的商品， 聚合、比价、统计全都无从谈起。 <p>取用时端上只是把字段**填进表单**，商家可以改标题与图；但**类目与 optionCode 由服务端强制以标准品为准** —— 能改掉的话，标准品就退化成一个填表助手。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `stdNo` | `string` | 是 | — |
+| `categoryNo` | `string` | 是 | 所属类目。取用后**改不掉**：类目决定形态（生鲜要截单、服务不发货） |
+| `categoryName` | `string` | 否 | 类目名，展示用 |
+| `title` | `string` | 是 | — |
+| `titleI18n` | [`Record_string_string`](#record_string_string) | 否 | — |
+| `subtitle` | `string` | 否 | — |
+| `cover` | `string` | 否 | — |
+| `images` | `string`\[\] | 否 | — |
+| `specGroups` | [`SpecGroup`](#specgroup)\[\] | 是 | 每个选项都带 `optionCode` —— 跨店可比靠的就是它 |
+| `keywords` | `string` | 否 | 别名/品牌/俗称，搜索用。端上可以不展示 |
+| `status` | `string` | 否 | — |
+| `refCount` | `number` | 否 | 被引用次数，只给运营排序用 |
+
 ### StaffLog
 
 一条员工与授权的变更记录（B-11.10.3）。 **授权变更是权限扩散的唯一入口** —— 加人、停用、给角色、撤角色。 别的动作都有业务单据兜底，唯独这几个此前做完就没了： 三个月后问「谁把张三提成了店长」，库里只有一行当前状态。
@@ -3972,8 +4340,6 @@ SKU 草稿。`optionValues` 的顺序与 `specGroups` 一一对应 —— 这是
 
 ### Store
 
-门店（商家侧管理用）。 <p><b>门店与主体是关联不是归属</b>：换执照店照开。所以 `storeNo` 一旦生成就不再变 —— 评价、订单、顾客的「我常逛的店」都挂在它上面。
-
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `storeNo` | `string` | 是 | 门店号。一旦生成不再变 —— 换主体只换归属，不换它 |
@@ -3988,6 +4354,19 @@ SKU 草稿。`optionValues` 的顺序与 `specGroups` 一一对应 —— 这是
 | `ratingCount` | `number` | 否 | 计入门店评分的条数。**0 = 暂无评价**，不是 0 分 |
 | `planSuspended` | `boolean` | 否 | 这家店的只读**是套餐降级压下来的**，不是店主自己停的。 <p>两者的 `status` 一模一样（都是 `READONLY`），而端上要给的下一步完全不同： 降级压的要**补缴/升档**，自己停的**点一下启用就开**。 不分开的表现是店主反复点那个对降级店无效的启用按钮。 |
 
+### StoreCategory
+
+门店经营类目 —— 商家给自己的店摆的<b>货架</b>。 <p>与「主体已获授权的类目」是两件事：那是<b>平台批的证</b>（能不能卖这一类）， 这是<b>商家的货架</b>（店里怎么摆）。责任人不同，所以不合成一个字段。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `categoryNo` | `string` | 是 | 平台类目号。**改显示名不动它** —— 跨店聚合与比价都认这个 |
+| `name` | `string` | 是 | 展示名：`displayName` 有就用它，否则是平台类目名。直接照它渲染 |
+| `platformName` | `string` | 是 | 平台类目名。改名时要让商家看得见自己改的是谁 |
+| `displayName` | `string` | 否 | 商家改的名。空 = 用平台名，不是「叫空字符串」 |
+| `sort` | `number` | 是 | 店内展示顺序，小的在前。商家拖出来的顺序 |
+| `goodsCount` | `number` | 是 | 这个货架上有几件商品 —— **撤架之前商家要看得见代价**（有货就撤不掉） |
+
 ### StoreEditReq
 
 新建/改名门店。门面其余部分（公告/营业时间/主推）走 SaveStoreReqBody
@@ -3996,6 +4375,7 @@ SKU 草稿。`optionValues` 的顺序与 `specGroups` 一一对应 —— 这是
 |---|---|:---:|---|
 | `name` | `string` | 是 | 门店名 |
 | `address` | `string` | 否 | 门店地址 |
+| `categoryNos` | `string`\[\] | 否 | 这家店摆哪些货架（**只有新建时有意义**，改名时后端忽略）。 <p><b>不传 = 复制默认店的</b>：多门店商家开分店卖的多半是同一批货， 从零勾选是纯负担。一个都没有也合法 —— 建品时会自动加入。 |
 
 ### StoreProfile
 
@@ -4019,7 +4399,11 @@ SKU 草稿。`optionValues` 的顺序与 `specGroups` 一一对应 —— 这是
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `url` | `string` | 是 | 扫码后进入的落地页地址，带 merchant_no 归因参数 |
+| `merchantNo` | `string` | 否 | 商家单号 |
+| `storeCode` | `string` | 否 | 印在贴纸上的短码。**去掉了 0/O/1/I/L**，让人手输时不会认错 |
+| `url` | `string,null` | 否 | 落地页链接。**未配对外域名时为 null** —— 端上据此不显示链接那一行。 ⚠️ 此前后端在两处各写死一个 `https://shop.example.com/s/<code>` 占位域名， 商家复制出去的链接与印出去的贴纸**全都指向一个不存在的地方**， 而这两个功能点在清单上标着「已实现」。不发假链接比发一个点不开的强。 |
+| `imageBase64` | `string,null` | 否 | 店铺**小程序码**的 PNG base64（不含 `data:` 前缀）。通道未开启时为 null。 用小程序码而不是 H5 链接：ADR-004 的主获客路径是「码印在包装袋上，老客扫码直达」， 而小程序码**不依赖备案域名**（备案要 7–20 个工作日），扫了直接进门店页。 |
+| `printableHint` | `string` | 否 | 打印建议，服务端给的一句话 |
 
 ### StoreRole
 

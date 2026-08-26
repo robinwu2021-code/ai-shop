@@ -3426,7 +3426,7 @@ _无字段_
 
 #### PUT `/ops/merchants/{merchantNo}/auth-codes`
 
-改一个商家的类目授权范围
+全量覆盖经营授权码
 
 **入参**
 
@@ -3438,29 +3438,13 @@ _无字段_
 
 **出参**（`data`）
 
-类型：[`Merchant`](#merchant)
+类型：[`AuthCodeSetResult`](#authcodesetresult)
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `archivedAt` | `string,null` | 否 | 归档时间。**软删除标记** —— 有值即视为已删除，列表默认不返回。 契约禁止 `delete*`，一律 `archive*` / `unarchive*`（工程约定 §10.6）。 |
-| `merchantNo` | `string` | 是 | 商家单号 |
-| `name` | `string` | 是 | 店铺名 |
-| `tier` | [`#/definitions/MerchantTier`](#definitionsmerchanttier) | 是 | 商家分层，为引入大商家预留 |
-| `status` | [`#/definitions/MerchantStatus`](#definitionsmerchantstatus) | 是 | **经营状态**（不是审核状态 —— 审核在申请单上）。合法迁移见 `MERCHANT_TRANSITIONS` |
-| `communityNos` | `string`\[\] | 是 | 服务的社区。**是列表不是单个** —— 一家店可以服务多个社区 （后端 `mch_entity_community`，服务范围三档见 ADR-009）。 此前这里是单个 `communityNo`，多社区商家只会显示其中一个。 |
-| `contactName` | `string` | 是 | 联系人姓名 |
-| `contactPhone` | `string` | 是 | 展示一律脱敏（中间四位掩码），完整号码不下发前端 |
-| `categoryCodes` | `string`\[\] | 是 | 经营类目编码，审核通过后即类目授权范围（P-11.1.3） |
-| `verified` | `boolean` | 是 | 认证标（P-11.1.2） |
-| `qualifications` | `string`\[\] | 否 | 已登记的结构化资质名。授权需要资质的类目码时要对照它。 **必须是可选的。** 后端 `MerchantProfileVO` 曾经完全没有这个字段， 而这里声明成必填 `string[]` —— 类型检查过得去，真接口下 `m.qualifications.length` 直接抛 TypeError。只有 mock 有这个字段，所以一直没暴露。 「契约有、后端不发」是字段问题，不是类型问题：**别把 `?` 去掉**。 |
-| `breachCount` | `number` | 是 | 信用档案：毁约次数（P-11.1.5 / ADR-003） |
-| `settleAccountReady` | `boolean` | 是 | 分账接收方报备状态（P-12.1.1，ADR-002） |
-| `createdAt` | `string` | 是 | 入驻申请提交时间 |
-| `auditRemark` | `string` | 否 | 最近一次审核意见（驳回原因/补交项） |
-| `asPickupPoint` | `boolean` | 否 | 申请人是否愿意承接自提点（ADR-005）。 **只是意愿，通过审核不会自动建点** —— 自提点的服务费口径是逐点线下谈的， 没有一个默认值能覆盖。放在审核页上是为了让运营**看见有人在等**： 不显示的话，申请人勾了这一项、通过后什么也没发生，而中间没有任何一处会报错。 |
-| `legalForm` | [`#/definitions/LegalForm`](#definitionslegalform) \| `null` | 否 | 主体档位。**准入档位完全由它决定** —— 保证金、限额、禁售品类都按它取策略。 此前档案里没有它：运营看得到「这家被限额 500」，看不到「因为它是无照自然人」， 于是只会来问为什么。 |
-| `fundsMode` | [`#/definitions/FundsMode`](#definitionsfundsmode) | 否 | 资金路径（轴②）：钱先进谁的账户。 **与经营模式（`StoreMode.businessMode`，轴③）是两件事** —— 这个说钱先进谁的账户，那个说谁是销售主体。两者正交： 「直连 + 自营」（钱进商家户却说平台是卖方）是非法组合，要拦。 而「要不要给积分补差」判的是**这一列** —— 钱在商家账户才需要补进去。 |
-| `agriProducer` | `boolean` | 否 | 农业生产者。**无照主体走归集的唯一例外** —— 平台可自开农产品收购发票，成本有合法凭证。 |
+| `codes` | `string`\[\] | 是 | 改完之后持有的码（全量） |
+| `revoked` | `string`\[\] | 是 | 这次撤掉的码。空数组 = 只加不减 |
+| `affected` | `number` | 是 | 因撤码而下次上架会被拒的在架商品数 |
 
 
 #### PUT `/ops/merchants/{merchantNo}/funds-mode`
@@ -4111,6 +4095,51 @@ _无字段_
 类型：`object`
 
 
+#### GET `/ops/notify-channels/registry`
+
+渠道注册表（触达推送中台 N2）：类型×供应商×接入范围×归属 + 读时派生状态
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`NotifyChannelRow`](#notifychannelrow)\[\]
+
+
+#### POST `/ops/notify-channels/registry/{channelNo}/enabled`
+
+软启停某条渠道（N2）
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `channelNo` | path | `string` | 是 | — |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`NotifyChannelRow`](#notifychannelrow)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `channelNo` | `string` | 是 | 渠道编号（业务主键，启停用它） |
+| `channelType` | `string` | 是 | SMS / MAIL / WXSUB / PUSH / INAPP |
+| `provider` | `string` | 是 | ALI / SMTP / WECHAT / GETUI / FCM / APNS / INTERNAL |
+| `scope` | `string` | 是 | 接入范围 PLATFORM / MERCHANT / TEST |
+| `ownerNo` | `string` | 是 | scope=MERCHANT 的商家号；平台/测试为空串 |
+| `enabled` | `boolean` | 是 | 软开关（运营即时启停） |
+| `status` | `string` | 是 | 读时派生 UNCONFIGURED / STUB / READY / DISABLED / DEGRADED |
+| `priority` | `number` | 是 | 同类型同供应商多实例的选择优先级，小者先 |
+| `credRef` | `string,null` | 否 | 凭据引用（env 前缀），不含密钥明文；可空 |
+| `configJson` | `string` | 是 | 非密参数（签名/模板号/topic），JSON 串 |
+| `missingCreds` | `string`\[\] | 是 | 平台接入还缺哪些环境变量（供运维照配）；商家/测试接入为空 |
+| `locked` | `boolean` | 是 | INAPP 恒锁定：站内信不可关 |
+
+
 #### GET `/ops/notify-channels/wx-templates`
 
 getWxTemplates
@@ -4180,6 +4209,19 @@ _无字段_
 类型：`object`
 
 
+#### GET `/ops/notify-logs/push-devices`
+
+某收件人绑定的推送终端列表（仅 PUSH 测试用）
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`PushDevice`](#pushdevice)\[\]
+
+
 #### POST `/ops/notify-logs/test-inapp`
 
 站内信的模拟发送：往某个收件箱塞一条
@@ -4246,6 +4288,99 @@ _无字段_
 | `updatedBy` | `string` | 是 | 最后修改人（STAFF 账号） |
 
 
+#### GET `/ops/push-tasks`
+
+营销广播任务列表（N6）
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`object`（见下）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `records` | [`NotifyPushTask`](#notifypushtask)\[\] | 是 | — |
+| `total` | `integer` | 是 | — |
+| `page` | `integer` | 是 | — |
+| `size` | `integer` | 是 | — |
+
+
+#### POST `/ops/push-tasks`
+
+新建广播（N6）
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`NotifyPushTask`](#notifypushtask)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `taskNo` | `string` | 是 | 任务号 |
+| `name` | `string` | 是 | 任务名（运营自己看的） |
+| `audienceType` | `string` | 是 | 人群 ALL_APP_USER（消费者）/ ALL_STAFF（商家员工） |
+| `channel` | `string` | 是 | 下发通道，一期仅 PUSH |
+| `title` | `string` | 是 | — |
+| `body` | `string` | 是 | — |
+| `link` | `string,null` | 否 | 点开落点，可空 |
+| `scheduledAt` | `string,null` | 否 | 定时下发时刻 ISO；空=尽快发 |
+| `status` | `string` | 是 | QUEUED / RUNNING / DONE / CANCELLED |
+| `estimatedCount` | `number` | 是 | 创建时预估触达人数 |
+| `sentCount` | `number` | 是 | 实际发出条数 |
+| `finishedAt` | `string,null` | 否 | — |
+
+
+#### POST `/ops/push-tasks/{taskNo}/cancel`
+
+取消广播（仅 QUEUED 可取消）
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `taskNo` | path | `string` | 是 | — |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`NotifyPushTask`](#notifypushtask)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `taskNo` | `string` | 是 | 任务号 |
+| `name` | `string` | 是 | 任务名（运营自己看的） |
+| `audienceType` | `string` | 是 | 人群 ALL_APP_USER（消费者）/ ALL_STAFF（商家员工） |
+| `channel` | `string` | 是 | 下发通道，一期仅 PUSH |
+| `title` | `string` | 是 | — |
+| `body` | `string` | 是 | — |
+| `link` | `string,null` | 否 | 点开落点，可空 |
+| `scheduledAt` | `string,null` | 否 | 定时下发时刻 ISO；空=尽快发 |
+| `status` | `string` | 是 | QUEUED / RUNNING / DONE / CANCELLED |
+| `estimatedCount` | `number` | 是 | 创建时预估触达人数 |
+| `sentCount` | `number` | 是 | 实际发出条数 |
+| `finishedAt` | `string,null` | 否 | — |
+
+
+#### GET `/ops/push-tasks/estimate`
+
+预估触达：**建任务前**先看某人群当下覆盖多少人（N6b）
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`object`
+
+
 #### GET `/ops/tickets`
 
 listTickets
@@ -4292,7 +4427,7 @@ _无字段_
 | `assignee` | `string` | 否 | 处理人（员工登录名）；未分派为空 |
 | `proxyActions` | `string`\[\] | 否 | 代客操作留痕（P-14.2.3）：谁、对什么、做了什么。 **可选，不要去掉 `?`。** 后端 `TicketVO` 目前不下发这个字段 （`MessageVOs.java` 里只有 ticketNo/subject/content/orderNo/status/reply/createdAt/repliedAt）， 只有 mock 有。声明成必填数组 + `page.tsx` 直接 `.length` = 真接口下抛 TypeError。 与 `Merchant.qualifications` 同一形状，由 `ops-contract-fields` 守卫抓出。 |
 | `createdAt` | `string` | 是 | 提单时间 |
-| `reply` | `string` | 否 | 客服回复正文。**用户在 C 端工单详情页看的就是这个字段**。 此前它在三层上各缺一处：后端 `msg_ticket` 建表就留了 `reply`/`replied_at`/`replied_by` 且注释写明「代客操作要能追到人」，但没有任何代码写过它们； 契约里也从没定义过「回复」这个动作（只有分派、关闭、代客留痕）。 于是用户提单后反复点开详情，看到的永远是空的，而且不报任何错。 |
+| `reply` | `string` | 否 | 客服回复正文。**用户在 C 端工单详情页看的就是这个字段**。 此前它在三层上各缺一处：后端 `notify_ticket` 建表就留了 `reply`/`replied_at`/`replied_by` 且注释写明「代客操作要能追到人」，但没有任何代码写过它们； 契约里也从没定义过「回复」这个动作（只有分派、关闭、代客留痕）。 于是用户提单后反复点开详情，看到的永远是空的，而且不报任何错。 |
 | `repliedAt` | `string` | 否 | 回复时间；未回复为空 |
 | `repliedBy` | `string` | 否 | 回复人（员工登录名）。回复署的是平台的名，必须能追到人 |
 
@@ -4323,7 +4458,7 @@ _无字段_
 | `assignee` | `string` | 否 | 处理人（员工登录名）；未分派为空 |
 | `proxyActions` | `string`\[\] | 否 | 代客操作留痕（P-14.2.3）：谁、对什么、做了什么。 **可选，不要去掉 `?`。** 后端 `TicketVO` 目前不下发这个字段 （`MessageVOs.java` 里只有 ticketNo/subject/content/orderNo/status/reply/createdAt/repliedAt）， 只有 mock 有。声明成必填数组 + `page.tsx` 直接 `.length` = 真接口下抛 TypeError。 与 `Merchant.qualifications` 同一形状，由 `ops-contract-fields` 守卫抓出。 |
 | `createdAt` | `string` | 是 | 提单时间 |
-| `reply` | `string` | 否 | 客服回复正文。**用户在 C 端工单详情页看的就是这个字段**。 此前它在三层上各缺一处：后端 `msg_ticket` 建表就留了 `reply`/`replied_at`/`replied_by` 且注释写明「代客操作要能追到人」，但没有任何代码写过它们； 契约里也从没定义过「回复」这个动作（只有分派、关闭、代客留痕）。 于是用户提单后反复点开详情，看到的永远是空的，而且不报任何错。 |
+| `reply` | `string` | 否 | 客服回复正文。**用户在 C 端工单详情页看的就是这个字段**。 此前它在三层上各缺一处：后端 `notify_ticket` 建表就留了 `reply`/`replied_at`/`replied_by` 且注释写明「代客操作要能追到人」，但没有任何代码写过它们； 契约里也从没定义过「回复」这个动作（只有分派、关闭、代客留痕）。 于是用户提单后反复点开详情，看到的永远是空的，而且不报任何错。 |
 | `repliedAt` | `string` | 否 | 回复时间；未回复为空 |
 | `repliedBy` | `string` | 否 | 回复人（员工登录名）。回复署的是平台的名，必须能追到人 |
 
@@ -4354,7 +4489,7 @@ _无字段_
 | `assignee` | `string` | 否 | 处理人（员工登录名）；未分派为空 |
 | `proxyActions` | `string`\[\] | 否 | 代客操作留痕（P-14.2.3）：谁、对什么、做了什么。 **可选，不要去掉 `?`。** 后端 `TicketVO` 目前不下发这个字段 （`MessageVOs.java` 里只有 ticketNo/subject/content/orderNo/status/reply/createdAt/repliedAt）， 只有 mock 有。声明成必填数组 + `page.tsx` 直接 `.length` = 真接口下抛 TypeError。 与 `Merchant.qualifications` 同一形状，由 `ops-contract-fields` 守卫抓出。 |
 | `createdAt` | `string` | 是 | 提单时间 |
-| `reply` | `string` | 否 | 客服回复正文。**用户在 C 端工单详情页看的就是这个字段**。 此前它在三层上各缺一处：后端 `msg_ticket` 建表就留了 `reply`/`replied_at`/`replied_by` 且注释写明「代客操作要能追到人」，但没有任何代码写过它们； 契约里也从没定义过「回复」这个动作（只有分派、关闭、代客留痕）。 于是用户提单后反复点开详情，看到的永远是空的，而且不报任何错。 |
+| `reply` | `string` | 否 | 客服回复正文。**用户在 C 端工单详情页看的就是这个字段**。 此前它在三层上各缺一处：后端 `notify_ticket` 建表就留了 `reply`/`replied_at`/`replied_by` 且注释写明「代客操作要能追到人」，但没有任何代码写过它们； 契约里也从没定义过「回复」这个动作（只有分派、关闭、代客留痕）。 于是用户提单后反复点开详情，看到的永远是空的，而且不报任何错。 |
 | `repliedAt` | `string` | 否 | 回复时间；未回复为空 |
 | `repliedBy` | `string` | 否 | 回复人（员工登录名）。回复署的是平台的名，必须能追到人 |
 
@@ -4385,7 +4520,7 @@ _无字段_
 | `assignee` | `string` | 否 | 处理人（员工登录名）；未分派为空 |
 | `proxyActions` | `string`\[\] | 否 | 代客操作留痕（P-14.2.3）：谁、对什么、做了什么。 **可选，不要去掉 `?`。** 后端 `TicketVO` 目前不下发这个字段 （`MessageVOs.java` 里只有 ticketNo/subject/content/orderNo/status/reply/createdAt/repliedAt）， 只有 mock 有。声明成必填数组 + `page.tsx` 直接 `.length` = 真接口下抛 TypeError。 与 `Merchant.qualifications` 同一形状，由 `ops-contract-fields` 守卫抓出。 |
 | `createdAt` | `string` | 是 | 提单时间 |
-| `reply` | `string` | 否 | 客服回复正文。**用户在 C 端工单详情页看的就是这个字段**。 此前它在三层上各缺一处：后端 `msg_ticket` 建表就留了 `reply`/`replied_at`/`replied_by` 且注释写明「代客操作要能追到人」，但没有任何代码写过它们； 契约里也从没定义过「回复」这个动作（只有分派、关闭、代客留痕）。 于是用户提单后反复点开详情，看到的永远是空的，而且不报任何错。 |
+| `reply` | `string` | 否 | 客服回复正文。**用户在 C 端工单详情页看的就是这个字段**。 此前它在三层上各缺一处：后端 `notify_ticket` 建表就留了 `reply`/`replied_at`/`replied_by` 且注释写明「代客操作要能追到人」，但没有任何代码写过它们； 契约里也从没定义过「回复」这个动作（只有分派、关闭、代客留痕）。 于是用户提单后反复点开详情，看到的永远是空的，而且不报任何错。 |
 | `repliedAt` | `string` | 否 | 回复时间；未回复为空 |
 | `repliedBy` | `string` | 否 | 回复人（员工登录名）。回复署的是平台的名，必须能追到人 |
 
@@ -5247,6 +5382,263 @@ _无字段_
 | `name` | `string` | 是 | 规格维度名，如「重量」「香型」 |
 | `options` | [`#/definitions/SpecTemplateOption`](#definitionsspectemplateoption)\[\] | 是 | 选项。整体替换，不做逐项 diff |
 | `createdAt` | `string` | 否 | — |
+
+
+#### GET `/ops/spu-std`
+
+标准品列表
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`object`（见下）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `records` | [`SpuStd`](#spustd)\[\] | 是 | — |
+| `total` | `integer` | 是 | — |
+| `page` | `integer` | 是 | — |
+| `size` | `integer` | 是 | — |
+
+
+#### POST `/ops/spu-std`
+
+新建 / 更新
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`SpuStd`](#spustd)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `archivedAt` | `string,null` | 否 | 归档时间。**软删除标记** —— 有值即视为已删除，列表默认不返回。 契约禁止 `delete*`，一律 `archive*` / `unarchive*`（工程约定 §10.6）。 |
+| `stdNo` | `string` | 是 | — |
+| `categoryNo` | `string` | 是 | 所属类目。商家取用后**改不掉**（服务端覆盖）：类目决定形态 |
+| `categoryName` | `string` | 否 | — |
+| `title` | `string` | 是 | — |
+| `titleI18n` | [`#/definitions/Record<string,string>`](#definitionsrecordstringstring) | 否 | — |
+| `subtitle` | `string` | 否 | — |
+| `cover` | `string` | 否 | — |
+| `images` | `string`\[\] | 否 | — |
+| `specGroups` | `object`（见下）\[\] | 是 | 每个选项都必须带 `optionCode` —— 这是标准品存在的唯一理由 |
+| `keywords` | `string` | 否 | 别名/品牌/俗称，空格分隔。商家搜「洋芋」也要能命中标题是「土豆」的那条 |
+| `status` | `string` | 否 | — |
+| `refCount` | `number` | 否 | 被引用次数。只服务排序与去重判断，不参与任何校验 |
+
+`specGroups[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `name` | `string` | 是 | — |
+| `options` | `string`\[\] | 是 | — |
+| `optionCodes` | `string`\[\] | 否 | — |
+| `templateNo` | `string` | 否 | — |
+
+
+#### POST `/ops/spu-std/{no}/archive`
+
+归档
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`SpuStd`](#spustd)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `archivedAt` | `string,null` | 否 | 归档时间。**软删除标记** —— 有值即视为已删除，列表默认不返回。 契约禁止 `delete*`，一律 `archive*` / `unarchive*`（工程约定 §10.6）。 |
+| `stdNo` | `string` | 是 | — |
+| `categoryNo` | `string` | 是 | 所属类目。商家取用后**改不掉**（服务端覆盖）：类目决定形态 |
+| `categoryName` | `string` | 否 | — |
+| `title` | `string` | 是 | — |
+| `titleI18n` | [`#/definitions/Record<string,string>`](#definitionsrecordstringstring) | 否 | — |
+| `subtitle` | `string` | 否 | — |
+| `cover` | `string` | 否 | — |
+| `images` | `string`\[\] | 否 | — |
+| `specGroups` | `object`（见下）\[\] | 是 | 每个选项都必须带 `optionCode` —— 这是标准品存在的唯一理由 |
+| `keywords` | `string` | 否 | 别名/品牌/俗称，空格分隔。商家搜「洋芋」也要能命中标题是「土豆」的那条 |
+| `status` | `string` | 否 | — |
+| `refCount` | `number` | 否 | 被引用次数。只服务排序与去重判断，不参与任何校验 |
+
+`specGroups[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `name` | `string` | 是 | — |
+| `options` | `string`\[\] | 是 | — |
+| `optionCodes` | `string`\[\] | 否 | — |
+| `templateNo` | `string` | 否 | — |
+
+
+#### POST `/ops/spu-std/{no}/unarchive`
+
+unarchiveSpuStd
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`SpuStd`](#spustd)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `archivedAt` | `string,null` | 否 | 归档时间。**软删除标记** —— 有值即视为已删除，列表默认不返回。 契约禁止 `delete*`，一律 `archive*` / `unarchive*`（工程约定 §10.6）。 |
+| `stdNo` | `string` | 是 | — |
+| `categoryNo` | `string` | 是 | 所属类目。商家取用后**改不掉**（服务端覆盖）：类目决定形态 |
+| `categoryName` | `string` | 否 | — |
+| `title` | `string` | 是 | — |
+| `titleI18n` | [`#/definitions/Record<string,string>`](#definitionsrecordstringstring) | 否 | — |
+| `subtitle` | `string` | 否 | — |
+| `cover` | `string` | 否 | — |
+| `images` | `string`\[\] | 否 | — |
+| `specGroups` | `object`（见下）\[\] | 是 | 每个选项都必须带 `optionCode` —— 这是标准品存在的唯一理由 |
+| `keywords` | `string` | 否 | 别名/品牌/俗称，空格分隔。商家搜「洋芋」也要能命中标题是「土豆」的那条 |
+| `status` | `string` | 否 | — |
+| `refCount` | `number` | 否 | 被引用次数。只服务排序与去重判断，不参与任何校验 |
+
+`specGroups[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `name` | `string` | 是 | — |
+| `options` | `string`\[\] | 是 | — |
+| `optionCodes` | `string`\[\] | 否 | — |
+| `templateNo` | `string` | 否 | — |
+
+
+#### GET `/ops/topics`
+
+专题列表
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`Topic`](#topic)\[\]
+
+
+#### POST `/ops/topics`
+
+新建 / 改
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`Topic`](#topic)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `topicNo` | `string` | 是 | — |
+| `title` | `string` | 是 | — |
+| `subtitle` | `string` | 否 | 一句话说明，如「7 点前送到」。空 = 不展示副标题 |
+| `cover` | `string` | 否 | — |
+| `sort` | `number` | 是 | 首页排序，小的在前 |
+| `startAt` | `number` | 否 | 生效起止（毫秒）。**都可空 = 常设专题** —— 填一个假的结束时间会让它某天悄悄消失 |
+| `endAt` | `number` | 否 | — |
+| `status` | `string` | 否 | ACTIVE / ARCHIVED。归档不删：分享出去的海报还指着它 |
+| `goodsCount` | `number` | 是 | 专题里有几件商品。**空专题在 C 端是一个点进去什么都没有的入口**，列表要看得见 |
+
+
+#### POST `/ops/topics/{topicNo}/archived`
+
+归档 / 取消归档
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `topicNo` | path | `string` | 是 | — |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`Topic`](#topic)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `topicNo` | `string` | 是 | — |
+| `title` | `string` | 是 | — |
+| `subtitle` | `string` | 否 | 一句话说明，如「7 点前送到」。空 = 不展示副标题 |
+| `cover` | `string` | 否 | — |
+| `sort` | `number` | 是 | 首页排序，小的在前 |
+| `startAt` | `number` | 否 | 生效起止（毫秒）。**都可空 = 常设专题** —— 填一个假的结束时间会让它某天悄悄消失 |
+| `endAt` | `number` | 否 | — |
+| `status` | `string` | 否 | ACTIVE / ARCHIVED。归档不删：分享出去的海报还指着它 |
+| `goodsCount` | `number` | 是 | 专题里有几件商品。**空专题在 C 端是一个点进去什么都没有的入口**，列表要看得见 |
+
+
+#### GET `/ops/topics/{topicNo}/goods`
+
+专题里的商品，按专题内排序 */
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `topicNo` | path | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：`object`（见下）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `records` | [`ProductGoods`](#productgoods)\[\] | 是 | — |
+| `total` | `integer` | 是 | — |
+| `page` | `integer` | 是 | — |
+| `size` | `integer` | 是 | — |
+
+
+#### POST `/ops/topics/{topicNo}/goods`
+
+整份替换专题里的商品，顺序即展示顺序
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `topicNo` | path | `string` | 是 | — |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：`object`（见下）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `records` | [`ProductGoods`](#productgoods)\[\] | 是 | — |
+| `total` | `integer` | 是 | — |
+| `page` | `integer` | 是 | — |
+| `size` | `integer` | 是 | — |
 
 
 ### review
@@ -6503,6 +6895,16 @@ _无字段_
 | `merchantCount` | `number` | 是 | 持有该码的商家数 —— 停之前要知道影响面 |
 | `categoryCount` | `number` | 是 | 引用该码的在用类目数。> 0 时停用会被拒（那些类目会变成永远拒绝所有人） |
 
+### AuthCodeSetResult
+
+改授权码的结果。 <p>`affected` 是**代价**，不是统计：撤掉一个码，那些在架商品下次上架就会被拒。 运营按下确认之前看不见它的话，一次「顺手收紧」会在几天后变成商家的 「我的货怎么上不去了」，而两件事没人会联系起来。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `codes` | `string`\[\] | 是 | 改完之后持有的码（全量） |
+| `revoked` | `string`\[\] | 是 | 这次撤掉的码。空数组 = 只加不减 |
+| `affected` | `number` | 是 | 因撤码而下次上架会被拒的在架商品数 |
+
 ### BlacklistEntry
 
 | 字段 | 类型 | 必填 | 说明 |
@@ -7138,7 +7540,8 @@ KPI 卡（金额为最小货币单位整数）。
 | `subject` | `string` | 是 | 法律形态 NATURAL_PERSON / INDIVIDUAL / ENTERPRISE |
 | `contactName` | `string` | 是 | 联系人姓名。审核要打电话找人 |
 | `contactPhone` | `string` | 是 | 联系手机号（申请人自己填的，不一定是登录号）。**通过后它就是商家账号的登录号** |
-| `category` | `string` | 是 | 主营类目 |
+| `category` | `string` | 是 | 主营类目。**商家自己的说法**（「食品」），不是权威码 |
+| `categoryCodes` | `string`\[\] | 否 | 审核通过时授予的经营类目码 —— **平台的裁定**，与 `category` 并存。 <p>两者分开是为了留痕：追溯时要的恰恰是这两者的差 （「他说卖食品，我们批的是预包装食品」）。 |
 | `desc` | `string` | 是 | 店铺简介。通过后会写进主体档案，C 端门店页读的就是它 |
 | `industry` | `string` | 否 | 行业。**决定这家店能不能以小微进件** —— 审核页要看得到它， 否则运营批了一个行业不允许小微的小微商家，通道那边才会拒。 |
 | `serviceScope` | `string` | 否 | 期望服务范围。**商家可以留空，但通过时必须确定** —— 空的后果是商家上着架却对谁都不可见，且没有任何报错。 |
@@ -7298,12 +7701,32 @@ KPI 卡（金额为最小货币单位整数）。
 | `key` | `string` | 是 | — |
 | `value` | `string` | 是 | — |
 
+### NotifyChannelRow
+
+渠道注册表一行（触达推送中台 N2/N4）。一条 = 类型×供应商×接入范围×归属。 类型/供应商/接入范围/状态用 string（同 NotifyLog.bizType）：取值随后端演进， 端上不硬编码一份联合类型。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `channelNo` | `string` | 是 | 渠道编号（业务主键，启停用它） |
+| `channelType` | `string` | 是 | SMS / MAIL / WXSUB / PUSH / INAPP |
+| `provider` | `string` | 是 | ALI / SMTP / WECHAT / GETUI / FCM / APNS / INTERNAL |
+| `scope` | `string` | 是 | 接入范围 PLATFORM / MERCHANT / TEST |
+| `ownerNo` | `string` | 是 | scope=MERCHANT 的商家号；平台/测试为空串 |
+| `enabled` | `boolean` | 是 | 软开关（运营即时启停） |
+| `status` | `string` | 是 | 读时派生 UNCONFIGURED / STUB / READY / DISABLED / DEGRADED |
+| `priority` | `number` | 是 | 同类型同供应商多实例的选择优先级，小者先 |
+| `credRef` | `string,null` | 否 | 凭据引用（env 前缀），不含密钥明文；可空 |
+| `configJson` | `string` | 是 | 非密参数（签名/模板号/topic），JSON 串 |
+| `missingCreds` | `string`\[\] | 是 | 平台接入还缺哪些环境变量（供运维照配）；商家/测试接入为空 |
+| `locked` | `boolean` | 是 | INAPP 恒锁定：站内信不可关 |
+
 ### NotifyLog
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `notifyNo` | `string` | 是 | — |
 | `channel` | [`#/definitions/NotifyChannel`](#definitionsnotifychannel) | 是 | — |
+| `provider` | `string,null` | 否 | 供应商 ALI/SMTP/WECHAT/GETUI/FCM/APNS（N3）；旧行与单供应商推出为空 |
 | `bizType` | `string` | 是 | OTP / OPS_INIT_PASSWORD / OPS_RESET_PASSWORD / TEST |
 | `target` | `string` | 是 | — |
 | `templateCode` | `string,null` | 否 | 短信是阿里云模板号；邮件是主题 |
@@ -7312,6 +7735,25 @@ KPI 卡（金额为最小货币单位整数）。
 | `providerMsgId` | `string,null` | 否 | 阿里云 BizId / 邮件 Message-ID |
 | `operatorNo` | `string,null` | 否 | — |
 | `createdAt` | `string` | 是 | — |
+
+### NotifyPushTask
+
+平台营销广播推送任务（触达推送中台 N6）。运营主动发起的群发： 圈人群 → 预估触达 → 定时下发。与事件驱动触达（发给用户的必达通知）分开。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `taskNo` | `string` | 是 | 任务号 |
+| `name` | `string` | 是 | 任务名（运营自己看的） |
+| `audienceType` | `string` | 是 | 人群 ALL_APP_USER（消费者）/ ALL_STAFF（商家员工） |
+| `channel` | `string` | 是 | 下发通道，一期仅 PUSH |
+| `title` | `string` | 是 | — |
+| `body` | `string` | 是 | — |
+| `link` | `string,null` | 否 | 点开落点，可空 |
+| `scheduledAt` | `string,null` | 否 | 定时下发时刻 ISO；空=尽快发 |
+| `status` | `string` | 是 | QUEUED / RUNNING / DONE / CANCELLED |
+| `estimatedCount` | `number` | 是 | 创建时预估触达人数 |
+| `sentCount` | `number` | 是 | 实际发出条数 |
+| `finishedAt` | `string,null` | 否 | — |
 
 ### NotifyQuota
 
@@ -7472,6 +7914,19 @@ KPI 卡（金额为最小货币单位整数）。
 | `status` | `string` | 是 | 商品状态：AUDITING / ON_SALE / OFF_SALE / REJECTED |
 | `skus` | [`#/definitions/GoodsSkuRow`](#definitionsgoodsskurow)\[\] | 是 | 这件商品下的所有规格 |
 | `storeOnSale` | `boolean,null` | 否 | 门店投影（列表查询带 `storeNo` 时才有值）：这件商品在**那家店**上不上架。 `null`/缺失 = 未按店管理，跟随主体级 `status` —— 与「在那家店下架了」是两回事， 显示成同一个「否」会让运营去催商家上架一件其实全店都在卖的商品。 |
+
+### PushDevice
+
+某收件人绑定的一台推送终端（运营端「选择终端发起测试」用）。 `clientId` 是原始设备标识，发送时回传；`clientIdMask` 只用于展示。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `receiverType` | `string` | 是 | — |
+| `platform` | `string` | 是 | — |
+| `provider` | `string` | 是 | — |
+| `clientId` | `string` | 是 | — |
+| `clientIdMask` | `string` | 是 | — |
+| `updatedAt` | `string` | 否 | — |
 
 ### Qualification
 
@@ -7795,6 +8250,33 @@ KPI 卡（金额为最小货币单位整数）。
 | `message` | `string,null` | 否 | 失败原因。**这一列是这张表存在的意义** |
 | `createdAt` | `number` | 是 | 指令时刻（毫秒） |
 
+### SpuStd
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `archivedAt` | `string,null` | 否 | 归档时间。**软删除标记** —— 有值即视为已删除，列表默认不返回。 契约禁止 `delete*`，一律 `archive*` / `unarchive*`（工程约定 §10.6）。 |
+| `stdNo` | `string` | 是 | — |
+| `categoryNo` | `string` | 是 | 所属类目。商家取用后**改不掉**（服务端覆盖）：类目决定形态 |
+| `categoryName` | `string` | 否 | — |
+| `title` | `string` | 是 | — |
+| `titleI18n` | [`#/definitions/Record<string,string>`](#definitionsrecordstringstring) | 否 | — |
+| `subtitle` | `string` | 否 | — |
+| `cover` | `string` | 否 | — |
+| `images` | `string`\[\] | 否 | — |
+| `specGroups` | `object`（见下）\[\] | 是 | 每个选项都必须带 `optionCode` —— 这是标准品存在的唯一理由 |
+| `keywords` | `string` | 否 | 别名/品牌/俗称，空格分隔。商家搜「洋芋」也要能命中标题是「土豆」的那条 |
+| `status` | `string` | 否 | — |
+| `refCount` | `number` | 否 | 被引用次数。只服务排序与去重判断，不参与任何校验 |
+
+`specGroups[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `name` | `string` | 是 | — |
+| `options` | `string`\[\] | 是 | — |
+| `optionCodes` | `string`\[\] | 否 | — |
+| `templateNo` | `string` | 否 | — |
+
 ### Staff
 
 | 字段 | 类型 | 必填 | 说明 |
@@ -7946,9 +8428,25 @@ KPI 卡（金额为最小货币单位整数）。
 | `assignee` | `string` | 否 | 处理人（员工登录名）；未分派为空 |
 | `proxyActions` | `string`\[\] | 否 | 代客操作留痕（P-14.2.3）：谁、对什么、做了什么。 **可选，不要去掉 `?`。** 后端 `TicketVO` 目前不下发这个字段 （`MessageVOs.java` 里只有 ticketNo/subject/content/orderNo/status/reply/createdAt/repliedAt）， 只有 mock 有。声明成必填数组 + `page.tsx` 直接 `.length` = 真接口下抛 TypeError。 与 `Merchant.qualifications` 同一形状，由 `ops-contract-fields` 守卫抓出。 |
 | `createdAt` | `string` | 是 | 提单时间 |
-| `reply` | `string` | 否 | 客服回复正文。**用户在 C 端工单详情页看的就是这个字段**。 此前它在三层上各缺一处：后端 `msg_ticket` 建表就留了 `reply`/`replied_at`/`replied_by` 且注释写明「代客操作要能追到人」，但没有任何代码写过它们； 契约里也从没定义过「回复」这个动作（只有分派、关闭、代客留痕）。 于是用户提单后反复点开详情，看到的永远是空的，而且不报任何错。 |
+| `reply` | `string` | 否 | 客服回复正文。**用户在 C 端工单详情页看的就是这个字段**。 此前它在三层上各缺一处：后端 `notify_ticket` 建表就留了 `reply`/`replied_at`/`replied_by` 且注释写明「代客操作要能追到人」，但没有任何代码写过它们； 契约里也从没定义过「回复」这个动作（只有分派、关闭、代客留痕）。 于是用户提单后反复点开详情，看到的永远是空的，而且不报任何错。 |
 | `repliedAt` | `string` | 否 | 回复时间；未回复为空 |
 | `repliedBy` | `string` | 否 | 回复人（员工登录名）。回复署的是平台的名，必须能追到人 |
+
+### Topic
+
+主题分类（陈列）。 <p><b>与类目正交、与活动分开</b>：类目回答「这是什么货、要什么资质」， 活动回答「打几折」，主题只回答「这周首页摆什么」。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `topicNo` | `string` | 是 | — |
+| `title` | `string` | 是 | — |
+| `subtitle` | `string` | 否 | 一句话说明，如「7 点前送到」。空 = 不展示副标题 |
+| `cover` | `string` | 否 | — |
+| `sort` | `number` | 是 | 首页排序，小的在前 |
+| `startAt` | `number` | 否 | 生效起止（毫秒）。**都可空 = 常设专题** —— 填一个假的结束时间会让它某天悄悄消失 |
+| `endAt` | `number` | 否 | — |
+| `status` | `string` | 否 | ACTIVE / ARCHIVED。归档不删：分享出去的海报还指着它 |
+| `goodsCount` | `number` | 是 | 专题里有几件商品。**空专题在 C 端是一个点进去什么都没有的入口**，列表要看得见 |
 
 ### TrendPoint
 
