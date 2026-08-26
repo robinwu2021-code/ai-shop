@@ -20,6 +20,7 @@ export const ROUTES = {
   stores: "/pages/stores/index",
   storeCategories: "/pages/store-categories/index",
   mySpecs: "/pages/my-specs/index",
+  skuIdentity: "/pages/sku-identity/index",
   qualifications: "/pages/qualifications/index",
   entities: "/pages/entities/index",
   entityDetail: "/pages/entity-detail/index",

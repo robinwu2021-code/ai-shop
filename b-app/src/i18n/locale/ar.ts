@@ -96,6 +96,7 @@ export default {
     noticeEntry: "الإعلان",
     catalogEntry: "فئاتي", catalogEntryHint: "ما تعرضه وكيف تسمّيه",
     specsEntry: "مواصفات المنتجات", specsEntryHint: "المواصفات المستخدمة في كل فئة",
+    skuIdentityEntry: "استيراد وتصدير أكواد المنتجات", skuIdentityEntryHint: "الباركود ورقم الصنف والوحدة، دفعة واحدة",
     notMerchant: "لا يوجد متجر بعد", notMerchantHint: "استمارة واحدة للبدء، وبلا تراخيص للأفراد",
     goApply: "تقديم الطلب", auditing: "قيد المراجعة، وبعد الموافقة يمكنك عرض المنتجات",
     quickStart: "افتح متجرك أولاً",

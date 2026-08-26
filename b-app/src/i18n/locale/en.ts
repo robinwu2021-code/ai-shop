@@ -96,6 +96,7 @@ export default {
     noticeEntry: "Notice",
     catalogEntry: "My categories", catalogEntryHint: "What you stock and what to call it",
     specsEntry: "Product specs", specsEntryHint: "Which specs each category uses",
+    skuIdentityEntry: "Product codes: import & export", skuIdentityEntryHint: "Barcode / SKU code / unit, in bulk",
     notMerchant: "No shop yet", notMerchantHint: "One form to open. No licence needed for individuals.",
     goApply: "Apply", auditing: "Under review. You can list products once approved.",
     quickStart: "Open your shop first",

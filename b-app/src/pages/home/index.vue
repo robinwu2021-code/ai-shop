@@ -373,6 +373,17 @@ onShow(load);
         <text class="sh-muted">{{ $t("home.specsEntryHint") }}</text>
       </view>
 
+      <!--
+        **有页面没有门，等于没做。**这一页（商品编码批量导入导出）第一版就漏了入口：
+        路由注册了、包也打进去了，而全 app 没有一个地方跳得过去 ——
+        真机上装完才发现。与「商品规格」当年那次同一个形状
+        （见 store-categories 里那段注释：合并入口只合了名字，规格页从此没有门）。
+      -->
+      <view v-if="merchant.can('biz:goods')" class="sh-card entry" @tap="open(ROUTES.skuIdentity)">
+        <text class="sh-h2">{{ $t("home.skuIdentityEntry") }}</text>
+        <text class="sh-muted">{{ $t("home.skuIdentityEntryHint") }}</text>
+      </view>
+
 
 
 

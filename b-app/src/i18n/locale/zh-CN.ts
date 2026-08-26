@@ -148,6 +148,8 @@ export default {
     catalogEntryHint: "摆哪几类、叫什么",
     specsEntry: "商品规格",
     specsEntryHint: "每类用哪些规格",
+    skuIdentityEntry: "商品编码导入导出",
+    skuIdentityEntryHint: "条码 / 货号 / 单位，批量改",
     notMerchant: "还没有开店",
     notMerchantHint: "填一张表就能开张，个人主体免资质",
     goApply: "去入驻",
