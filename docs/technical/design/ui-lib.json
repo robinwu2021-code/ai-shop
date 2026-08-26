@@ -258,7 +258,7 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 245,
+        "b-app": 241,
         "c-app": 39
       }
     },
@@ -764,7 +764,7 @@
         "unicode-bidi": "isolate"
       },
       "usage": {
-        "b-app": 145,
+        "b-app": 135,
         "c-app": 129
       }
     },
@@ -1142,6 +1142,23 @@
       "why": "不用 uni.showModal（字不归我们管）、不做页内展开（会把下文顶走）"
     },
     {
+      "name": "sh-stat",
+      "file": "packages/ui/src/components/sh-stat.vue",
+      "scope": "跨端",
+      "lines": 113,
+      "props": [
+        "items: readonly StatItem[]",
+        "boxed?: boolean",
+        "active?: string"
+      ],
+      "usage": {
+        "b-app": 5,
+        "c-app": 0
+      },
+      "note": "数字格",
+      "why": "几个大数一排，每格一句小标签。收编自 5 页 4 种档位（44/700 · 40/700 · 40/600 · 32/600）"
+    },
+    {
       "name": "sh-tabbar",
       "file": "packages/ui/src/components/sh-tabbar.vue",
       "scope": "跨端",
@@ -1293,11 +1310,12 @@
       "file": "b-app/src/pages/activities/index.vue",
       "components": [
         "sh-empty",
-        "sh-scaffold"
+        "sh-scaffold",
+        "sh-stat"
       ],
-      "libClassHits": 12,
-      "localSelectors": 15,
-      "localCssLines": 70,
+      "libClassHits": 9,
+      "localSelectors": 11,
+      "localCssLines": 52,
       "rolled": [
         {
           "id": "sysmodal",
@@ -1412,19 +1430,13 @@
       "file": "b-app/src/pages/coupon-issues/index.vue",
       "components": [
         "sh-empty",
-        "sh-scaffold"
+        "sh-scaffold",
+        "sh-stat"
       ],
-      "libClassHits": 9,
-      "localSelectors": 17,
-      "localCssLines": 79,
+      "libClassHits": 6,
+      "localSelectors": 11,
+      "localCssLines": 55,
       "rolled": [
-        {
-          "id": "stat",
-          "label": "统计数字格",
-          "lib": null,
-          "rule": "^\\s*\\.(trio|quad|nums|stat|kpi)\\b",
-          "gap": true
-        },
         {
           "id": "listrow",
           "label": "列表行",
@@ -1451,13 +1463,6 @@
           "lib": "sh-sheet",
           "rule": "showModal\\(|showActionSheet\\(",
           "gap": false
-        },
-        {
-          "id": "stat",
-          "label": "统计数字格",
-          "lib": null,
-          "rule": "^\\s*\\.(trio|quad|nums|stat|kpi)\\b",
-          "gap": true
         },
         {
           "id": "listrow",
@@ -1509,11 +1514,12 @@
       "components": [
         "sh-empty",
         "sh-icon",
-        "sh-scaffold"
+        "sh-scaffold",
+        "sh-stat"
       ],
-      "libClassHits": 21,
-      "localSelectors": 19,
-      "localCssLines": 101,
+      "libClassHits": 20,
+      "localSelectors": 13,
+      "localCssLines": 71,
       "rolled": [
         {
           "id": "sysmodal",
@@ -1521,20 +1527,6 @@
           "lib": "sh-sheet",
           "rule": "showModal\\(|showActionSheet\\(",
           "gap": false
-        },
-        {
-          "id": "segment",
-          "label": "选中态自画",
-          "lib": ".sh-chip--primary",
-          "rule": "(--on|--off|is-on)\\s*[,{]",
-          "gap": false
-        },
-        {
-          "id": "stat",
-          "label": "统计数字格",
-          "lib": null,
-          "rule": "^\\s*\\.(trio|quad|nums|stat|kpi)\\b",
-          "gap": true
         },
         {
           "id": "listrow",
@@ -1965,11 +1957,12 @@
       "page": "member-reach",
       "file": "b-app/src/pages/member-reach/index.vue",
       "components": [
-        "sh-scaffold"
+        "sh-scaffold",
+        "sh-stat"
       ],
-      "libClassHits": 18,
-      "localSelectors": 19,
-      "localCssLines": 80,
+      "libClassHits": 15,
+      "localSelectors": 13,
+      "localCssLines": 57,
       "rolled": [
         {
           "id": "sysmodal",
@@ -1977,13 +1970,6 @@
           "lib": "sh-sheet",
           "rule": "showModal\\(|showActionSheet\\(",
           "gap": false
-        },
-        {
-          "id": "stat",
-          "label": "统计数字格",
-          "lib": null,
-          "rule": "^\\s*\\.(trio|quad|nums|stat|kpi)\\b",
-          "gap": true
         },
         {
           "id": "listrow",
@@ -2468,11 +2454,12 @@
       "file": "b-app/src/pages/sku-identity/index.vue",
       "components": [
         "sh-scaffold",
-        "sh-section"
+        "sh-section",
+        "sh-stat"
       ],
-      "libClassHits": 27,
-      "localSelectors": 28,
-      "localCssLines": 130,
+      "libClassHits": 23,
+      "localSelectors": 22,
+      "localCssLines": 105,
       "rolled": [
         {
           "id": "sysmodal",
@@ -2480,20 +2467,6 @@
           "lib": "sh-sheet",
           "rule": "showModal\\(|showActionSheet\\(",
           "gap": false
-        },
-        {
-          "id": "segment",
-          "label": "选中态自画",
-          "lib": ".sh-chip--primary",
-          "rule": "(--on|--off|is-on)\\s*[,{]",
-          "gap": false
-        },
-        {
-          "id": "stat",
-          "label": "统计数字格",
-          "lib": null,
-          "rule": "^\\s*\\.(trio|quad|nums|stat|kpi)\\b",
-          "gap": true
         },
         {
           "id": "listrow",
@@ -2871,20 +2844,6 @@
       ]
     },
     {
-      "id": "stat",
-      "label": "统计数字格",
-      "lib": null,
-      "gap": true,
-      "rule": "^\\s*\\.(trio|quad|nums|stat|kpi)\\b",
-      "pages": [
-        "coupon-issues",
-        "coupons",
-        "customers",
-        "member-reach",
-        "sku-identity"
-      ]
-    },
-    {
       "id": "chipdel",
       "label": "可删标签",
       "lib": null,
@@ -2975,13 +2934,11 @@
         "activity-edit",
         "apply",
         "cross-store",
-        "customers",
         "goods-edit",
         "login",
         "member-settings",
         "my-specs",
         "points",
-        "sku-identity",
         "store-categories",
         "store-notice",
         "store-pick",
@@ -3073,8 +3030,8 @@
   "counts": {
     "tokens": 10,
     "blocks": 36,
-    "components": 18,
+    "components": 19,
     "pages": 52,
-    "gapKinds": 7
+    "gapKinds": 6
   }
 }

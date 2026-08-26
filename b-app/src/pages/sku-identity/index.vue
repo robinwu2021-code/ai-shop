@@ -169,24 +169,15 @@ function arrow(from?: string | null, to?: string | null): string {
         四个数各回答一件事。少了「没变化」那一格，商家会把「改 3 行」
         读成「另外 197 行失败了」—— 而那三个数字里最让人安心的恰恰是它。
       -->
-      <view class="nums">
-        <view class="num">
-          <text class="num__v">{{ report.total }}</text>
-          <text class="sh-muted num__k">{{ $t("skuIdentity.total") }}</text>
-        </view>
-        <view class="num">
-          <text class="num__v num__v--on">{{ report.willSet }}</text>
-          <text class="sh-muted num__k">{{ $t("skuIdentity.willSet") }}</text>
-        </view>
-        <view class="num">
-          <text class="num__v">{{ report.noChange }}</text>
-          <text class="sh-muted num__k">{{ $t("skuIdentity.noChange") }}</text>
-        </view>
-        <view class="num">
-          <text class="num__v" :class="{ 'num__v--bad': hasProblems }">{{ report.problems.length }}</text>
-          <text class="sh-muted num__k">{{ $t("skuIdentity.problem") }}</text>
-        </view>
-      </view>
+      <sh-stat
+        :items="[
+          { value: report.total, label: String($t('skuIdentity.total')) },
+          { value: report.willSet, label: String($t('skuIdentity.willSet')), tone: 'primary' },
+          { value: report.noChange, label: String($t('skuIdentity.noChange')) },
+          { value: report.problems.length, label: String($t('skuIdentity.problem')),
+            tone: hasProblems ? 'bad' : undefined },
+        ]"
+      ></sh-stat>
 
       <!--
         问题逐行列，**带行号**。「有 3 行有问题」他无从下手，
@@ -289,37 +280,11 @@ function arrow(from?: string | null, to?: string | null): string {
   width: 100%;
 }
 
-/* 四个数一行摆开：它们要被一眼比较，竖排就成了四段独立的文字 */
-.nums {
-  display: flex;
-  margin-top: 20rpx;
-}
 
-.num {
-  flex: 1;
-  text-align: center;
-}
 
-.num__v {
-  display: block;
-  font-size: 40rpx;
-  font-weight: 600;
-  color: var(--sh-ink);
-}
 
-.num__v--on {
-  color: var(--sh-primary-text);
-}
 
-.num__v--bad {
-  color: var(--sh-danger);
-}
 
-.num__k {
-  display: block;
-  margin-top: 4rpx;
-  font-size: 24rpx;
-}
 
 .probs {
   margin-top: 20rpx;

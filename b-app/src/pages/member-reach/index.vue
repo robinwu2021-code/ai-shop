@@ -145,22 +145,14 @@ onShow(() => {
 
     <!-- ③ 试算：三个数字在写内容之前就摆出来 -->
     <view v-if="plan" class="sh-card mt">
-      <view class="trio">
-        <view class="trio__i">
-          <text class="trio__n sh-num">{{ plan.matched }}</text>
-          <text class="trio__l">{{ $t("reach.matched") }}</text>
-        </view>
-        <view class="trio__i">
-          <text class="trio__n sh-num is-ok">{{ plan.reachable }}</text>
-          <text class="trio__l">{{ $t("reach.reachable") }}</text>
-        </view>
-        <view class="trio__i">
-          <text class="trio__n sh-num" :class="{ 'is-warn': plan.matched > plan.reachable }">
-            {{ plan.matched - plan.reachable }}
-          </text>
-          <text class="trio__l">{{ $t("reach.skipped") }}</text>
-        </view>
-      </view>
+      <sh-stat
+        :items="[
+          { value: plan.matched, label: String($t('reach.matched')) },
+          { value: plan.reachable, label: String($t('reach.reachable')), tone: 'ok' },
+          { value: plan.matched - plan.reachable, label: String($t('reach.skipped')),
+            tone: plan.matched > plan.reachable ? 'warn' : undefined },
+        ]"
+      ></sh-stat>
       <view v-if="plan.skips.length" class="reasons">
         <text v-for="s in plan.skips" :key="s.reason" class="reason">
           {{ $t(`reach.reason.${s.reason}`, { n: s.count }) }}
@@ -225,29 +217,6 @@ onShow(() => {
 .row__v {
   font-size: 28rpx;
   color: var(--sh-primary-text);
-}
-.trio {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12rpx;
-}
-.trio__i {
-  text-align: center;
-}
-.trio__n {
-  display: block;
-  font-size: 40rpx;
-  font-weight: 600;
-}
-.trio__n.is-ok {
-  color: var(--sh-success);
-}
-.trio__n.is-warn {
-  color: var(--sh-warning);
-}
-.trio__l {
-  font-size: 24rpx;
-  color: var(--sh-sub);
 }
 .reasons {
   display: flex;

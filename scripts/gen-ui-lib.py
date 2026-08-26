@@ -105,6 +105,7 @@ COMP_NOTES = {
     "sh-rating": ("评分", "底层灰星 + 上层主色星按百分比裁切 —— 半星图标只能表达 0.5 粒度，4.3 会被抹成 4.5"),
     "sh-theme-sheet": ("外观面板", "9 套皮肤 × 明暗 × 语言，选中即时全局生效"),
     "sh-add": ("＋ 加一项按钮", "收编自 goods-edit 与 my-specs 里**逐字节相同**的 `.btn-add`。`active` 是展开态：同一个按钮管开合"),
+    "sh-stat": ("数字格", "几个大数一排，每格一句小标签。收编自 5 页 4 种档位（44/700 · 40/700 · 40/600 · 32/600）", "`boxed` 才可点 —— 点了没反应的控件比没有控件更糟，所以底色与可点由同一个开关管"),
     "sh-uploader": ("图片格", "已传的缩略图排一行，末尾一个「＋」。收编自 apply / payment / qualifications / goods-edit 四份", "详情图那种**竖排 + 每行 ↑↓✕** 的排序件不归它管 —— 名字像、东西不同"),
     "sh-section": ("卡内标题行", "收编自 goods-edit 与 sku-identity **逐字节相同**的 `.sec`（8 处调用点）。右侧动作直接进插槽，**不套壳** —— `.sec` 是 space-between，多一层就把「三个孩子摊开」变成「两组左右分」"),
     "sh-savebar": ("底部未保存条", "收编自 store 与 store-scope 里**逐字节相同**的 `.savebar`。自带流内占位 —— 收编前两页都被它盖住了最后一段内容"),
@@ -144,6 +145,20 @@ SAMPLES = {
                '<span class="add__t">收起</span></div>'
                '<div class="add add--sm">{{icon:plus:10:var(--sh-primary)}}'
                '<span class="add__t">加值</span></div>'),
+    "sh-stat": ('<div class="st" style="grid-template-columns:repeat(3,1fr)">'
+                '<div class="st__i"><span class="st__n sh-num">128</span>'
+                '<span class="st__l">计划发放</span></div>'
+                '<div class="st__i"><span class="st__n sh-num st__n--ok">126</span>'
+                '<span class="st__l">已发放</span></div>'
+                '<div class="st__i"><span class="st__n sh-num st__n--warn">2</span>'
+                '<span class="st__l">跳过</span></div></div>'
+                '<div class="st" style="grid-template-columns:repeat(3,1fr);margin-top:8px">'
+                '<div class="st__i st__i--box is-on"><span class="st__n sh-num">42</span>'
+                '<span class="st__l">活跃</span></div>'
+                '<div class="st__i st__i--box"><span class="st__n sh-num">18</span>'
+                '<span class="st__l">新客</span></div>'
+                '<div class="st__i st__i--box"><span class="st__n sh-num st__n--primary">7</span>'
+                '<span class="st__l">沉睡</span></div></div>'),
     "sh-uploader": ('<div class="up">'
                     '<div class="up__cell" style="width:52px;height:52px">'
                     '<div class="up__img" style="width:52px;height:52px;display:flex;'
@@ -363,7 +378,10 @@ ROLLED = [
     # 收成组件只会多一个 props 去表达「这里松一点」。
     ("sechead", "分段标题（只有标题）", r'class="sh-h2 (?:sec|grp)\b', r"^\s*\.(sec__h|grp)\b",
      None, ".sh-h2 + 间距档"),
-    ("stat",    "统计数字格",      None, r"^\s*\.(trio|quad|nums|stat|kpi)\b",   None,       None),
+    # `nums` 从名单里去掉：`coupons` 的 `.nums` 只是两行灰字并排，不是数字格 ——
+    # 按名字判第四次误命中了（前三次：addbtn/candchip、卡内标题行/分段标题、可删标签）。
+    # `effect` 补进来：`activities` 画的就是这个东西，只是没叫这个名。
+    ("stat",    "统计数字格",      None, r"^\s*\.(trio|quad|stat|kpi|effect__)\b", "sh-stat", None),
     ("listrow", "列表行",         None, r"^\s*\.(row|item)\b",                  None,       None),
     ("kv",      "键值行",         None, r"^\s*\.(kv|rule|prob|field__head)\b",  None,       None),
     ("addbtn",  "＋ 加一项按钮",   None, r"^\s*\.btn-add\b",                     None,       None),

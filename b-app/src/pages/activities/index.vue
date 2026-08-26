@@ -136,22 +136,16 @@ onShow(load);
             效果卡：**用掉多少、花了多少、还剩多少**。
             没有转化率、没有 UV —— 商家在这一页要决定的只有「要不要接着跑」。
           -->
-          <view class="effect">
-            <view class="effect__i">
-              <text class="effect__n sh-num">{{ a.quotaUsed }}</text>
-              <text class="effect__l">{{ $t("activities.used") }}</text>
-            </view>
-            <view class="effect__i">
-              <text class="effect__n sh-num">{{ money(a.budgetUsedMinor) }}</text>
-              <text class="effect__l">{{ $t("activities.spent") }}</text>
-            </view>
-            <view class="effect__i">
-              <text class="effect__n sh-num" :class="{ 'is-warn': (a.quotaLeft ?? 99) <= 10 }">
-                {{ a.quotaLeft == null ? $t("activities.unlimited") : a.quotaLeft }}
-              </text>
-              <text class="effect__l">{{ $t("activities.left") }}</text>
-            </view>
-          </view>
+          <sh-stat
+            class="effect"
+            :items="[
+              { value: a.quotaUsed, label: String($t('activities.used')) },
+              { value: money(a.budgetUsedMinor), label: String($t('activities.spent')) },
+              { value: a.quotaLeft == null ? String($t('activities.unlimited')) : a.quotaLeft,
+                label: String($t('activities.left')),
+                tone: (a.quotaLeft ?? 99) <= 10 ? 'warn' : undefined },
+            ]"
+          ></sh-stat>
 
           <view v-if="a.status !== 'ENDED'" class="acts">
             <text class="sh-link" @tap="go(`/pages/activity-edit/index?activityNo=${a.activityNo}`)">
@@ -211,32 +205,16 @@ onShow(load);
   margin-top: 4rpx;
   font-size: 24rpx;
 }
-.effect {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12rpx;
-  margin-top: 16rpx;
-  padding-top: 16rpx;
-  border-top: 2rpx solid var(--sh-faint);
-}
-.effect__i {
-  text-align: center;
-}
-.effect__n {
-  display: block;
-  font-size: 32rpx;
-  font-weight: 600;
-}
-.effect__n.is-warn {
-  color: var(--sh-warning);
-}
-.effect__l {
-  font-size: 22rpx;
-  color: var(--sh-sub);
-}
 .acts {
   display: flex;
   gap: 24rpx;
   margin-top: 16rpx;
+}
+/* 效果数据与上面的活动信息之间的分隔线。**只留版面，不留样式** ——
+   数字与标签的档位归 sh-stat，这里只说明「它和上面是两段」 */
+.effect {
+  margin-top: 16rpx;
+  padding-top: 16rpx;
+  border-top: 2rpx solid var(--sh-faint);
 }
 </style>

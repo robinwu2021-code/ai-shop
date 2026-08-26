@@ -65,22 +65,14 @@ onShow(load);
     <!-- 刚发完那一批：三个数字并排，跳过原因逐条列出 -->
     <view v-if="latest" class="sh-card fresh">
       <text class="fresh__t">{{ $t("couponIssues.done", { title: couponTitle(latest.couponNo) }) }}</text>
-      <view class="trio">
-        <view class="trio__i">
-          <text class="trio__n sh-num">{{ latest.planned }}</text>
-          <text class="trio__l">{{ $t("couponIssues.planned") }}</text>
-        </view>
-        <view class="trio__i">
-          <text class="trio__n sh-num is-ok">{{ latest.issued }}</text>
-          <text class="trio__l">{{ $t("couponIssues.issued") }}</text>
-        </view>
-        <view class="trio__i">
-          <text class="trio__n sh-num" :class="{ 'is-warn': latest.skipped > 0 }">
-            {{ latest.skipped }}
-          </text>
-          <text class="trio__l">{{ $t("couponIssues.skipped") }}</text>
-        </view>
-      </view>
+      <sh-stat
+        :items="[
+          { value: latest.planned, label: String($t('couponIssues.planned')) },
+          { value: latest.issued, label: String($t('couponIssues.issued')), tone: 'ok' },
+          { value: latest.skipped, label: String($t('couponIssues.skipped')),
+            tone: latest.skipped > 0 ? 'warn' : undefined },
+        ]"
+      ></sh-stat>
 
       <view v-if="latest.skipReasons.length" class="reasons">
         <text v-for="r in latest.skipReasons" :key="r.reason" class="reason">
@@ -124,30 +116,6 @@ onShow(load);
 .fresh__t {
   font-size: 28rpx;
   font-weight: 600;
-}
-.trio {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12rpx;
-  margin-top: 16rpx;
-}
-.trio__i {
-  text-align: center;
-}
-.trio__n {
-  display: block;
-  font-size: 40rpx;
-  font-weight: 600;
-}
-.trio__n.is-ok {
-  color: var(--sh-success);
-}
-.trio__n.is-warn {
-  color: var(--sh-warning);
-}
-.trio__l {
-  font-size: 24rpx;
-  color: var(--sh-sub);
 }
 .reasons {
   display: flex;

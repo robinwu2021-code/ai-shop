@@ -193,18 +193,17 @@ onShow(load);
     </view>
 
     <!-- 四层数字即入口：点一个就按那一层筛，再点一下取消 -->
-    <view class="quad">
-      <view
-        v-for="lv in LEVELS"
-        :key="lv"
-        class="quad__i"
-        :class="{ 'is-on': level === lv }"
-        @tap="pickLevel(lv)"
-      >
-        <text class="quad__n sh-num" :class="{ 'is-warn': lv === 'SLEEPING' }">{{ countOf(lv) }}</text>
-        <text class="quad__l">{{ $t(`members.level.${lv}`) }}</text>
-      </view>
-    </view>
+    <sh-stat
+      boxed
+      :active="level"
+      :items="LEVELS.map((lv) => ({
+        key: lv,
+        value: countOf(lv),
+        label: String($t(`members.level.${lv}`)),
+        tone: lv === 'SLEEPING' ? 'primary' : undefined,
+      }))"
+      @pick="pickLevel"
+    ></sh-stat>
 
     <text v-if="stats" class="sh-muted sub">
       {{ $t("members.summary", { n: stats.newThisMonth, m: stats.reachable }) }}
@@ -309,37 +308,6 @@ onShow(load);
   margin-top: 16rpx;
   font-size: 24rpx;
   color: var(--sh-primary-text);
-}
-/* 四格数字：点得动，所以要有可点的样子（选中时主色底） */
-.quad {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 12rpx;
-}
-.quad__i {
-  background: var(--sh-card);
-  border-radius: 24rpx;
-  padding: 20rpx 8rpx;
-  text-align: center;
-}
-.quad__i.is-on {
-  background: var(--sh-primary-tint);
-}
-.quad__n {
-  display: block;
-  font-size: 40rpx;
-  font-weight: 600;
-  line-height: 1.2;
-  color: var(--sh-ink);
-}
-.quad__n.is-warn {
-  color: var(--sh-primary);
-}
-.quad__l {
-  display: block;
-  margin-top: 6rpx;
-  font-size: 24rpx;
-  color: var(--sh-sub);
 }
 .sub {
   display: block;

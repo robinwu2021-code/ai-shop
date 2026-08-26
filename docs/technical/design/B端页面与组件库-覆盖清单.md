@@ -16,20 +16,22 @@
 |---|---|
 | B 端页面 | **52** |
 | 完全没有自造形态的页 | **5**（`income` `member-add` `points-records` `staff-detail` `stats`） |
-| 自造形态实例 | **120 处 / 15 类** |
+| 自造形态实例 | **113 处 / 14 类** |
 | 页面自己的样式 | 1 119 条选择器 · 5 583 行 |
 
 **这 16 类要分成两堆看，责任完全不同：**
 
 - **8 类是库里有、页面没用** —— 这是纪律问题，改页面就行
-- **7 类是库里根本没有** —— 这是**库的缺口**，不是页面的错。
+- **6 类是库里根本没有** —— 这是**库的缺口**，不是页面的错。
   在补上之前，要求「所有页面基于组件库」是做不到的
 
 > **已收编（2026-08-26）**：`sh-add`（＋ 加一项按钮）· `sh-savebar`（底部未保存条）·
 > `sh-section`（卡内标题行）· `.sh-link`（文字动作，两端 12 处定义 / 9 种写法 / 2 个名字）·
-> `sh-uploader`（图片格，四页各一份）。
+> `sh-uploader`（图片格，四页各一份）· `sh-stat`（数字格，五页四种档位）。
 > 前三件在页面里本来就是**逐字节相同**的复制品，收进库是纯搬运；`.sh-link` 见 §九。
-> 缺件从 10 类降到 **7 类**，自造实例 126 → 120。
+> 缺件从 10 类降到 **6 类**，自造实例 126 → 113。
+> **顺带把 §4.2 那个真缺陷修掉了**：`customers` 的 `var(--sh-card)` 拼错导致四个筛选格透明 ——
+> 格子归 `sh-stat` 之后底色走 `--sh-surface`，`skin-vars` 那道守卫从红转绿。
 > 收益不平均：`store` 从 4 处自造降到 1 处，`sku-identity` 少了一整类；
 > 而 `goods-edit` 仍有 9 类 —— 它剩下的都是真缺件（列表行、键值行、上传格）。
 
@@ -54,6 +56,9 @@
   表达选中的页面不会被判进来（那正是库件用法）。
 - 「白块自画」判的是同一条规则里同时出现 `background: var(--sh-surface)` 与 `border-radius`。
   这是 `.sh-card` / `.sh-block` 的形状被重写了一遍。
+- 「统计数字格」先前按名字判，把 `coupons` 的 `.nums`（其实是两行并排的灰字）算了进来 ——
+  **这是按名字判第四次误命中**。名单去掉 `nums`、补上 `effect__`（`activities` 画的
+  就是这个东西，只是没叫这个名）。
 - 「可删标签」判的是**标签上那个 `✕` 字符**，不是类名。先前按 `.del` 判会把
   `role-detail` 的危险按钮（`sh-btn sh-btn--danger del`）算进来 —— 已改掉。
   这条留在这儿，是想说明这类扫描的误判长什么样。
@@ -81,21 +86,20 @@
 
 ---
 
-## 四、库里没有 —— 缺件排行（7 类）
+## 四、库里没有 —— 缺件排行（6 类）
 
-这七件是「所有页面基于组件库」的**前置条件**。按有多少页在重复造排序。
+这六件是「所有页面基于组件库」的**前置条件**。按有多少页在重复造排序。
 
 | # | 缺件 | 页数 | 现在各页怎么造的 |
 |---|---|---:|---|
 | 1 | **列表行** `sh-row` | **32** | 各自定义 `.row` / `.item`：`sku-identity` 是 `1rpx` 上边框，`store-categories` 是 `2rpx`，`goods-list` 干脆只有 `margin-bottom` |
 | 2 | **键值行** `sh-kv` | 6 | `goods-edit .kv` · `sku-identity .rule/.prob` · `qualifications` … 左键右值，键宽各写各的（140rpx / 180rpx） |
-| 3 | **统计数字格** `sh-stat` | 5 | `.trio`（coupon-issues 与 member-reach **逐字节相同**）· `.quad`（customers，40rpx/600）· `.nums`（sku-identity，40rpx/700） |
-| 4 | **可删标签** `sh-chip` 的可删形态 | 4 | `my-specs` chip 内嵌 `.val__x`；`goods-edit` 行尾独立的 `.del`；`store-notice .recent__x`；`store-scope .item__x`。**连字符都不统一**：三处用 `✕`（U+2715），`store-scope` 用 `×`（U+00D7） |
-| 5 | **候选标签（虚线药丸）** | 3 | goods-edit `.addbar__chip` · my-specs `.chip` · cross-store。**这是与 `sh-add` 分工不同的第二种「＋」**：虚线＝点一下当场加进来，浅底按钮＝点一下开弹层再填。分工是对的，缺的是把虚线那档收成 `.sh-chip` 的一个变体 |
-| 6 | **搜索框** `sh-search` | 2 | customers / goods-list |
-| 7 | 悬浮新建按钮 `sh-fab` | 1 | goods-list |
+| 3 | **可删标签** `sh-chip` 的可删形态 | 4 | `my-specs` chip 内嵌 `.val__x`；`goods-edit` 行尾独立的 `.del`；`store-notice .recent__x`；`store-scope .item__x`。**连字符都不统一**：三处用 `✕`（U+2715），`store-scope` 用 `×`（U+00D7） |
+| 4 | **候选标签（虚线药丸）** | 3 | goods-edit `.addbar__chip` · my-specs `.chip` · cross-store。**这是与 `sh-add` 分工不同的第二种「＋」**：虚线＝点一下当场加进来，浅底按钮＝点一下开弹层再填。分工是对的，缺的是把虚线那档收成 `.sh-chip` 的一个变体 |
+| 5 | **搜索框** `sh-search` | 2 | customers / goods-list |
+| 6 | 悬浮新建按钮 `sh-fab` | 1 | goods-list |
 
-~~原第 4、5、8、9 四件（卡内标题行、图片上传格、＋ 加一项按钮、底部固定条）~~ **已收编**，见 §七。
+~~原第 3、4、5、8、9 五件（统计数字格、卡内标题行、图片上传格、＋ 加一项按钮、底部固定条）~~ **已收编**，见 §七。
 
 ---
 
@@ -246,14 +250,14 @@ my-specs .cat  = background: var(--sh-surface); border-radius: 24rpx; overflow: 
 | `sh-savebar` | 底部未保存条（说明 + 放弃 + 保存），**自带流内占位** | `visible`, `text`, `discardText`, `saveText` | store · store-scope |
 | `sh-section` | 卡内标题行：左标题 + 右动作（插槽**不套壳**，保住 space-between 的三孩子布局） | `title`, `pad` | goods-edit ×5 · sku-identity ×2 · my-specs ×1 |
 | `sh-uploader` | 图片格：缩略图排一行 + 末尾「＋」。**格子尺寸留给调用点**（执照是横的、主图是方的），**圆角/「＋」字符/上传中提示三处漂移收掉** | `list`, `max`, `w`, `h`, `uploading`, `removable`, `badge` | apply · payment · qualifications · goods-edit |
+| `sh-stat` | 数字格：大数 + 小标签。**档位先定后收**（40rpx/600，见 §八 待决 3），语义色四档，`boxed` 才可点 | `items`, `boxed`, `active` | coupon-issues · member-reach · customers · sku-identity · activities |
 
-**还要补的六件**：
+**还要补的五件**：
 
 | 组件 | 形态 | props（建议） |
 |---|---|---|
 | `sh-row` | 列表行：左主体 + 右值 + 可选箭头，整行可点 | `title`, `sub`, `value`, `arrow`, `@tap` |
 | `sh-kv` | 键值行：定宽键 + 自适应值 | `label`, `keyWidth?`, slot |
-| `sh-stat` | 数字格：2–4 格，数字 + 标签，可点即筛 | `items`, `active?`, `@pick` |
 | `sh-savebar` | 底部固定条，自带安全区与 tabbar 让位 | slot |
 | `sh-search` | 搜索框 | `modelValue`, `placeholder`, `@confirm` |
 | `sh-fab` | 悬浮新建按钮（自动避让 tabbar） | `text`, `@tap` |
@@ -348,7 +352,7 @@ my-specs .cat  = background: var(--sh-surface); border-radius: 24rpx; overflow: 
 | # | 待决 | 说明 |
 |---|---|---|
 | 1 | **`uni.showModal` 要不要一刀切掉** | 26 页在用。全换成 `sh-sheet` 是一笔不小的改动，但留着就等于承认「一半的弹层不归设计系统管」。折中方案：只换**带输入**的那 10 处（系统弹框的输入框最难看），确认型的先留 |
-| 2 | 缺件补齐后，要不要立**「新页面不许自造」的闸门** | 判据可以直接复用本文的 `ROLLED` 规则（已在生成器里），按棘轮：现有 120 处登记为已知欠账，新增的拦下 |
+| 2 | 缺件补齐后，要不要立**「新页面不许自造」的闸门** | 判据可以直接复用本文的 `ROLLED` 规则（已在生成器里），按棘轮：现有 113 处登记为已知欠账，新增的拦下 |
 | 3 | **数字格用 40 还是 44、600 还是 700** | ✅ **已定：40rpx / 600**。不是投票 —— 字阶写着「700 只给价格」，而这四处是发放数 / 触达数 / 会员数 / 命中数，一个都不是价格；44rpx 也不在字阶上。40/600 恰好是 `customers` 现在的值：四处里唯一合规的那一个 |
 | 4 | **`stores` 的「切店」用 600 加重** | ✅ **已定：换形态，不加字重**。改成 `sh-btn sh-btn--soft sh-btn--sm`（一枚 tint 小胶囊），旁边三个仍是文字动作。**加粗只是把同一个形状描得更黑**，一行里四个都是文字时，重的那个仍要找；换成胶囊一眼就分得出。顺带补了库里缺的 `.sh-btn--sm`（`login` / `sku-identity` / `store-scope` 三处早就各自覆盖 `.sh-btn` 内边距取 26rpx，这一档本来就存在，只是没有名字） |
 | 5 | **超大数字（60 / 72rpx）没有档** | ✅ **已定：字阶加第八档 `.txt-mega` = 60rpx**。三处独立越过 48（`order` 应收 72、`income`/`points` 结存 60）——**三处走到同一个方向，说明缺的是档不是纪律**。取 60 顺着字阶自己的顶端比例（40→48 是 1.2，48→60 是 1.25），`order` 的 72 一并收进来（弹层里只有它一个大数，30px 与 36px 买不到什么）。**只加这一档**，再有页面想更大先问它是不是也属于收款台。规范本体《画原型的十二条》条 4 已同步改成八档 |
