@@ -1,7 +1,13 @@
 package ai.neargo.shop.scenario;
 
 import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.event.SysOutbox;
+import ai.neargo.shop.event.SysOutboxMapper;
 import ai.neargo.shop.invbridge.InventoryBackfillService;
+import ai.neargo.shop.inventory.entity.InvOutbox;
+import ai.neargo.shop.inventory.mapper.InventoryMappers.OutboxMapper;
+import ai.neargo.shop.inventory.service.InventoryEventSink;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import ai.neargo.shop.inventory.service.InboundService;
 import ai.neargo.shop.inventory.service.InventoryAclService;
 import ai.neargo.shop.inventory.service.InventorySnapshotService;
@@ -67,6 +73,18 @@ class InventoryFlowTest {
 
     @Autowired
     InventorySnapshotService snapshots;
+
+    /**
+     * **required = false**：一个实现都没有时要让断言说出「没有出口」，
+     * 而不是整个测试类因注入失败起不来 —— 那时报的是 UnsatisfiedDependency，
+     * 看的人会去查 Spring 装配，而真正的问题是这个 SPI 没人实现。
+     */
+    @Autowired(required = false)
+    java.util.List<InventoryEventSink> sinks;
+    @Autowired
+    OutboxMapper invOutboxMapper;
+    @Autowired
+    SysOutboxMapper sysOutboxMapper;
 
     @Test
     @DisplayName("★★★ 进货 → 下单预留 → 支付出库：预留不动实存，付款才扣")
@@ -283,6 +301,41 @@ class InventoryFlowTest {
     }
 
     // ────────────────────────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("★★★ 进销存的事件有去处 —— SPI 一个实现都没有时，它们会永远堆着")
+    void inventoryEventsReachThePlatformOutbox() {
+        assertThat(sinks == null ? java.util.List.<InventoryEventSink>of() : sinks)
+                .as("InventoryEventSink 一个实现都没有的话，InvOutboxDispatchJob **不标已发**，"
+                        + "事件在 inv_outbox 里越堆越多 —— 那是有意的（比静默丢掉好），但不是去处")
+                .isNotEmpty();
+
+        Fixture f = fixture();
+        inbound.postDirectly(purchase(f, 5), "老板");
+
+        List<InvOutbox> events = invOutboxMapper.selectList(Wrappers.<InvOutbox>lambdaQuery()
+                .eq(InvOutbox::getOwnerId, f.owner));
+        assertThat(events).as("过账要落一条出站事件").isNotEmpty();
+
+        // 走一遍 sink：事件该进平台的 sys_outbox，与订单/售后走同一条投递链
+        InvOutbox e = events.get(0);
+        long before = sysOutboxMapper.selectCount(Wrappers.<SysOutbox>lambdaQuery()
+                .eq(SysOutbox::getAggregateId, f.owner));
+        for (InventoryEventSink sink : sinks) {
+            assertThat(sink.deliver(e.getEventNo(), e.getOwnerId(), e.getEventType(), e.getPayload()))
+                    .as("投递失败要返回 false 让它重投，不能吞掉当成功").isTrue();
+        }
+        long after = sysOutboxMapper.selectCount(Wrappers.<SysOutbox>lambdaQuery()
+                .eq(SysOutbox::getAggregateId, f.owner));
+        assertThat(after).as("事件要落进平台 outbox").isGreaterThan(before);
+
+        SysOutbox row = sysOutboxMapper.selectList(Wrappers.<SysOutbox>lambdaQuery()
+                .eq(SysOutbox::getAggregateId, f.owner)).get(0);
+        assertThat(row.getEventType())
+                .as("**要带域前缀** —— 平台的 eventType 是全局的，"
+                        + "进销存的 POSTED 与订单的 POSTED 撞在一起，消费方分不出是谁的")
+                .startsWith("INV_");
+    }
 
     private record Fixture(int seq, String owner, String location, String item) {
     }
