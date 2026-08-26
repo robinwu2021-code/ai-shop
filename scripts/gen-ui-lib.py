@@ -298,6 +298,85 @@ def read_components() -> list[dict]:
     return out
 
 
+
+# ══════════════════════════════════════════════════════════════════════
+# 页面 × 组件库：每一页用了库里的什么、又自己造了什么
+#
+# **判据是正则，会有误判**，所以判据本身也写进清单（`rule` 字段）——
+# 读的人能自己核，不必信这份扫描。宁可判得保守：拿不准的不算「自造」。
+#
+# lib=None 表示**库里没有这个件**，那一行就是缺口，不是页面的错。
+# ══════════════════════════════════════════════════════════════════════
+
+# (id, 名称, 在模板/脚本里找, 在样式里找, 若这个库件已被使用则不算自造, 对应库件)
+ROLLED = [
+    ("tabs",    "分栏切换",       None, r"^\s*\.tabs?\b",                       "sh-tabs",  "sh-tabs"),
+    ("empty",   "空态",           None, r"^\s*\.empty\b",                       "sh-empty", "sh-empty"),
+    ("sheet",   "弹层 / 遮罩",     None, r"^\s*\.(mask|dlg|modal|popup)\b",      "sh-sheet", "sh-sheet"),
+    ("sysmodal","系统弹框",       r"showModal\(|showActionSheet\(", None,        None,       "sh-sheet"),
+    ("arrow",   "文字当箭头",      r"[›»]\s*</text>", None,                       None,       "sh-icon(chevronRight)"),
+    ("segment", "选中态自画",      None, r"(--on|--off|is-on)\s*[,{]",             None,       ".sh-chip--primary"),
+    ("blockdup","白块自画",        None, r"background:\s*var\(--sh-surface\)[^}]*border-radius", None, ".sh-block / .sh-card"),
+    # ↓ 库里没有的：这几行是缺口
+    ("section", "卡内标题行",      None, r"^\s*\.(sec|cat__head|grp__head|sec__h)\b", None, None),
+    ("stat",    "统计数字格",      None, r"^\s*\.(trio|quad|nums|stat|kpi)\b",   None,       None),
+    ("listrow", "列表行",         None, r"^\s*\.(row|item)\b",                  None,       None),
+    ("kv",      "键值行",         None, r"^\s*\.(kv|rule|prob|field__head)\b",  None,       None),
+    ("addbtn",  "＋ 加一项按钮",   None, r"^\s*\.(btn-add|addbar)\b",            None,       None),
+    # 判据要认「标签上的那个 ✕」，不能只认类名 —— role-detail 的 `.del` 是一个
+    # 危险按钮（`sh-btn sh-btn--danger del`），按类名会被误判成可删标签。
+    ("chipdel", "可删标签",
+     r'class="[^"]*(?:val__x|__x|\bdel\b)[^"]*"[^>]*>\s*[✕×]', None,           None,       None),
+    ("savebar", "底部固定条",      None, r"position:\s*fixed[^}]*bottom:\s*0",    None,       None),
+    ("search",  "搜索框",         None, r"^\s*\.search\b",                      None,       None),
+    ("uploader","图片上传格",      r"pickImages\(|chooseImages\(", None,          None,       None),
+    ("fab",     "悬浮新建按钮",    None, r"^\s*\.fab\b",                         None,       None),
+]
+
+B_PAGES = ROOT / "b-app/src/pages"
+
+
+def read_pages(comps: list[dict], blocks: list[dict]) -> list[dict]:
+    comp_names = [c["name"] for c in comps]
+    lib_classes = [b["class"].lstrip(".") for b in blocks]
+    out = []
+    for f in sorted(B_PAGES.rglob("*.vue")):
+        src = f.read_text(encoding="utf-8")
+        m = re.search(r"<template>(.*)</template>", src, re.S)
+        tpl = re.sub(r"<!--.*?-->", "", m.group(1), flags=re.S) if m else ""
+        css = strip_comments("\n".join(re.findall(r"<style[^>]*>(.*?)</style>", src, re.S)))
+        used = [c for c in comp_names if re.search(rf"<{c}[\s>]", tpl)]
+        hits = sum(len(re.findall(r"[\"' ]" + re.escape(c) + r"[\"' ]", tpl)) for c in lib_classes)
+        rolled = []
+        for rid, label, tp, cp, skip_if, lib in ROLLED:
+            if skip_if and skip_if in used:
+                continue
+            if (tp and re.search(tp, src)) or (cp and re.search(cp, css, re.M)):
+                rolled.append({"id": rid, "label": label, "lib": lib,
+                               "rule": tp or cp, "gap": lib is None})
+        out.append({
+            "page": str(f.relative_to(B_PAGES).parent).replace("\\", "/"),
+            "file": str(f.relative_to(ROOT)),
+            "components": used,
+            "libClassHits": hits,
+            "localSelectors": len(re.findall(r"\{", css)),
+            "localCssLines": len([l for l in css.split("\n") if l.strip()]),
+            "rolled": rolled,
+        })
+    return out
+
+
+def gaps_of(pages: list[dict]) -> list[dict]:
+    """把自造形态按「多少页在重复造」排序。库里没有的排前面 —— 那才是缺口。"""
+    agg: dict[str, dict] = {}
+    for p in pages:
+        for r in p["rolled"]:
+            a = agg.setdefault(r["id"], {"id": r["id"], "label": r["label"], "lib": r["lib"],
+                                         "gap": r["gap"], "rule": r["rule"], "pages": []})
+            a["pages"].append(p["page"])
+    return sorted(agg.values(), key=lambda a: (not a["gap"], -len(a["pages"])))
+
+
 # ══════════════════════════════════════════════════════════════════════
 # 组装清单
 # ══════════════════════════════════════════════════════════════════════
@@ -327,6 +406,8 @@ def build() -> dict:
                       "c-app": class_usage(".field", ["c-app/src"])},
         })
     comps = read_components()
+    pages = read_pages(comps, blocks)
+    gaps = gaps_of(pages)
     return {
         "generatedFrom": ["packages/shared/src/design/tokens.ts",
                           "packages/shared/src/design/icons.ts",
@@ -353,8 +434,12 @@ def build() -> dict:
         },
         "blocks": sorted(blocks, key=lambda b: (b["group"], b["class"])),
         "components": [{k: v for k, v in c.items() if k != "css"} for c in comps],
+        "pages": pages,
+        "gaps": gaps,
         "counts": {"tokens": len(tok["radius"]) + len(tok["spacing"]),
-                   "blocks": len(blocks), "components": len(comps)},
+                   "blocks": len(blocks), "components": len(comps),
+                   "pages": len(pages),
+                   "gapKinds": len([g for g in gaps if g["gap"]])},
     }
 
 
@@ -550,6 +635,45 @@ def render(cat: dict, base: dict, comps: list[dict], dens: dict, icons: dict) ->
         "<code>&lt;style scoped&gt;</code>，只有结构是写的。",
         "".join(cards), "components")
 
+    # ── 页面 × 组件库 ───────────────────────────────────────
+    pages, gaps = cat["pages"], cat["gaps"]
+    zero = [p for p in pages if not p["rolled"]]
+    inst = sum(len(p["rolled"]) for p in pages)
+    grow_cells = []
+    for g in gaps:
+        who = '<span class="gapb">库里没有</span>' if g["gap"] else f'<code>{escape(str(g["lib"]))}</code>'
+        grow_cells.append(f'<tr><td><code>{escape(g["label"])}</code></td>'
+                          f'<td class="cnt">{len(g["pages"])}</td><td>{who}</td>'
+                          f'<td class="pl">{escape("、".join(g["pages"]))}</td></tr>')
+    grows = "".join(grow_cells)
+    CLEAN = '<span class="clean">全部走库件</span>'
+    prows = []
+    for pg in sorted(pages, key=lambda x: (-len(x["rolled"]), -x["localSelectors"])):
+        used = "".join(f'<span class="ok">{c.replace("sh-","").replace("biz-","")}</span>'
+                       for c in pg["components"] if c != "sh-scaffold")
+        roll = "".join(f'<span class="{"gap" if r["gap"] else "dup"}">{r["label"]}</span>'
+                       for r in pg["rolled"])
+        prows.append(
+            f'<tr><td><code>{pg["page"]}</code></td>'
+            f'<td class="cnt">{pg["localSelectors"]}</td>'
+            f'<td class="cnt">{pg["libClassHits"]}</td>'
+            f'<td class="pills">{used or "—"}</td>'
+            f'<td class="pills">{roll or CLEAN}</td></tr>')
+    sec("页面 × 组件库",
+        f"B 端 <b>{len(pages)} 个页面</b>逐页扫过：用了库里的什么、又自己造了什么。"
+        f"<b>只有 {len(zero)} 页完全没有自造形态</b>，其余合计 <b>{inst} 处</b>。"
+        "<b>判据是正则，会有误判</b> —— 判据本身写在 <code>ui-lib.json</code> 的 "
+        "<code>rule</code> 字段里，可以自己核。"
+        "<span class='gap'>红</span>＝库里没有这个件（是<b>库的缺口</b>，不是页面的错）；"
+        "<span class='dup'>黄</span>＝库里有，但这一页没用。",
+        f'<h3>缺什么 · 谁在重复造</h3><div class="scroll"><table class="ts">'
+        f'<thead><tr><th>形态</th><th>页数</th><th>库里对应</th><th>哪些页</th></tr></thead>'
+        f'<tbody>{grows}</tbody></table></div>'
+        f'<h3 style="margin-top:26px">逐页</h3><div class="scroll"><table class="ts pgt">'
+        f'<thead><tr><th>页面</th><th>本页选择器</th><th>库类命中</th><th>用了库件</th>'
+        f'<th>自己造的</th></tr></thead><tbody>{"".join(prows)}</tbody></table></div>',
+        "pages")
+
     # ── 一屏合成 ────────────────────────────────────────────
     sec("合起来是这样", "同一屏、同一套令牌，浅色与深色只差根节点上的一个属性 —— 零重载换肤。",
         f'<div class="pair"><figure>{phone(full_screen(icons))}<figcaption>浅色</figcaption></figure>'
@@ -564,7 +688,8 @@ def render(cat: dict, base: dict, comps: list[dict], dens: dict, icons: dict) ->
             .replace("{{NAV}}", nav)
             .replace("{{BODY}}", "".join(P))
             .replace("{{NB}}", str(cat["counts"]["blocks"]))
-            .replace("{{NC}}", str(cat["counts"]["components"])))
+            .replace("{{NC}}", str(cat["counts"]["components"]))
+            .replace("{{NP}}", str(cat["counts"]["pages"])))
 
 
 # ── 样例（只写结构，不写样式） ────────────────────────────────
@@ -720,6 +845,25 @@ table.ts th{text-align:left;font-size:11.5px;color:var(--muted);font-weight:600;
   padding:6px 10px;border-bottom:1px solid var(--rule)}
 table.ts td{padding:8px 10px;border-bottom:1px solid var(--rule);vertical-align:middle}
 td.samp{width:46%}
+td.cnt{font-family:"IBM Plex Mono",monospace;font-size:12px;text-align:right;width:5em}
+td.pl{font-size:11.5px;color:var(--muted);line-height:1.7}
+/* 形态名与页面名不折行：折了之后「＋ 加一项按钮」会断成三行，扫不动 */
+table.ts td:first-child{white-space:nowrap}
+td.pills{line-height:2}
+.pgt code{font-size:11.5px}
+.ok,.gap,.dup,.clean,.gapb{display:inline-block;font-size:11px;padding:1px 7px;border-radius:999px;
+  margin:0 4px 3px 0;white-space:nowrap}
+.ok{background:var(--sheet);color:var(--muted);border:1px solid var(--rule)}
+/* 两类不能只靠色相分 —— 一屏几百枚 pill，红与琥珀在小尺寸下几乎是同一个颜色。
+   照设计语言自己那条：**靠形态分**（实底 vs 虚线描边），颜色只作辅助。 */
+.gap,.gapb{background:rgba(225,37,27,.12);color:var(--accent)}
+.dup{background:transparent;border:1px dashed #B08A3C;color:#8A6A2F}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]) .dup{color:#D9B45F;
+  border-color:#8A6A2F}}
+:root[data-theme=dark] .dup{color:#D9B45F;border-color:#8A6A2F}
+.clean{background:rgba(27,127,75,.12);color:#1B7F4B}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]) .clean{color:#4ED08A}}
+:root[data-theme=dark] .clean{color:#4ED08A}
 .pair{display:flex;gap:22px;flex-wrap:wrap;margin-top:16px}
 figure{margin:0}
 figcaption{font-size:12px;color:var(--muted);margin-top:8px;text-align:center}
@@ -783,7 +927,7 @@ footer{margin-top:80px;border-top:1px solid var(--rule);padding-top:16px;
 <header>
   <div class="eyebrow">ai-shop · UI 标准库 · 由真源生成</div>
   <h1>UI 标准库清单与原型</h1>
-  <p class="sub">令牌 · {{NB}} 个公共积木 · {{NC}} 个组件。
+  <p class="sub">令牌 · {{NB}} 个公共积木 · {{NC}} 个组件 · B 端 {{NP}} 页逐页覆盖。
   <b>这一页里的每一个色块、每一个圆角、每一条声明，都是从代码里读出来再渲染的</b> ——
   不存在「照着规范画」这一步，所以它不会与规范不一致。<br>
   画布按 <b>375pt</b>（<code>1rpx = 0.5px</code>），皮肤 <code>brand</code>（虹选红，B 端默认）。<br>
@@ -828,6 +972,10 @@ def main() -> None:
               if b["usage"]["b-app"] + b["usage"]["c-app"] == 0]
     if unused:
         print(f"  ⚠ 清单里有、代码里没人用：{', '.join(unused)}")
+    print(f"  B 端 {cat['counts']['pages']} 页扫过：{cat['counts']['gapKinds']} 类形态库里没有")
+    for g in cat["gaps"]:
+        if g["gap"]:
+            print(f"    缺 {g['label']:<12} {len(g['pages']):>2} 页各造一份")
     print(f"{OUT_HTML.relative_to(ROOT)}: 原型页（可直接发布成 Artifact）")
 
 
