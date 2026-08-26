@@ -162,12 +162,27 @@ onShow(load);
     </view>
 
     <!--
-      **毛利这一张卡先不画。** 原型上有它，而后端的 `MonthlyVO` 里没有这个数
-      （opening / purchased / sold / lost / adjusted / closing / balanced，就这七个）。
-      画一张空卡或者前端自己拿「销量 × 当前成本价」凑一个，都是把一个没有真源的数
-      摆成有真源的样子 —— 而毛利恰恰是商家会拿去报税的那个数。
-      要补的是后端的算法与「估算」口径，不是这一屏的布局。
+      **这里给的是成本，不是毛利。**
+
+      毛利 = 收入 − 成本，而收入不在进销存域：出库单只带成本、不带售价
+      （同一件货不同渠道价不一样，写进来就有了第二个真源）。
+      原型上那张「毛利（估算）」的卡，前端只能拿「销量 × 当前售价」去凑 ——
+      促销、多渠道、改价之后统统对不上，而毛利恰恰是商家会拿去报税的那个数。
+
+      销货成本是这个域自己的真源（台账每一笔都带当时的单位成本），给得起就给。
     -->
+    <view v-if="monthly" class="sh-block">
+      <sh-section pad :title="String($t('stockReport.money'))"></sh-section>
+      <view class="blk">
+        <sh-kv between :label="String($t('stockReport.soldCost'))">
+          <text class="txt-price sh-num">¥{{ yuan(monthly.soldCostMinor) }}</text>
+        </sh-kv>
+        <sh-kv between :label="String($t('stockReport.lostCost'))">
+          <text class="sh-num is-out">¥{{ yuan(monthly.lostCostMinor) }}</text>
+        </sh-kv>
+        <text class="txt-caption note">{{ $t("stockReport.moneyHint") }}</text>
+      </view>
+    </view>
   </sh-scaffold>
 </template>
 
@@ -205,6 +220,10 @@ onShow(load);
 }
 .slow {
   padding: 12rpx 0;
+}
+.note {
+  display: block;
+  margin-top: 12rpx;
 }
 .slow__main > text {
   display: block;

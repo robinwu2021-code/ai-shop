@@ -61,6 +61,13 @@ public class InventoryReportServiceImpl implements InventoryReportService {
         int sold = 0;
         int lost = 0;
         int adjusted = 0;
+        /*
+         * 成本**按每一笔当时的单位成本累加**，不是「件数 × 当前成本价」——
+         * 进价一波动，后者会把上个月的账算成今天的价。
+         * 没有单位成本的行按 0 计：宁可少算，不要用一个猜的价去填。
+         */
+        long soldCostMinor = 0;
+        long lostCostMinor = 0;
         for (InvLedger e : rows) {
             int d = e.getQtyDelta();
             String r = e.getReasonCode();
@@ -68,9 +75,11 @@ public class InventoryReportServiceImpl implements InventoryReportService {
                 purchased += d;
             } else if (InvEnums.OutboundPurpose.SALE.equals(r)) {
                 sold += -d;
+                soldCostMinor += costOf(e);
             } else if (InvEnums.OutboundPurpose.SCRAP.equals(r)
                     || InvEnums.OutboundPurpose.COUNT_LOSS.equals(r)) {
                 lost += -d;
+                lostCostMinor += costOf(e);
             } else {
                 // 退货入、盘盈、领用、调拨、期初、其它 —— 一律归「调」。
                 // **兜底分支是有意的**：新加一个 reasonCode 时它会自动落进来，
@@ -84,7 +93,14 @@ public class InventoryReportServiceImpl implements InventoryReportService {
         // 分类之和 == 本期净变动：漏归一类就为假
         int sumOfDelta = rows.stream().mapToInt(InvLedger::getQtyDelta).sum();
         boolean balanced = net == sumOfDelta;
-        return new MonthlyVO(month, opening, purchased, sold, lost, adjusted, closing, balanced);
+        return new MonthlyVO(month, opening, purchased, sold, lost, adjusted, closing, balanced,
+                soldCostMinor, lostCostMinor);
+    }
+
+    /** 一行台账的成本金额（分）。没有单位成本就是 0 —— 不拿当前价去填 */
+    private long costOf(InvLedger e) {
+        return e.getUnitCostMinor() == null ? 0L
+                : e.getUnitCostMinor() * Math.abs(e.getQtyDelta());
     }
 
     @Override

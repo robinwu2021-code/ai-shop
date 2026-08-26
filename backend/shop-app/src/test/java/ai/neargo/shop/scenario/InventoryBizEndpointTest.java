@@ -276,7 +276,9 @@ class InventoryBizEndpointTest {
 
         JsonNode m = ok(get("/biz/inventory/report/monthly?month=2026-08"), s.token);
         for (String f : List.of("month", "opening", "purchased", "sold",
-                "lost", "adjusted", "closing", "balanced")) {
+                "lost", "adjusted", "closing", "balanced",
+                // 成本两项。**没有毛利** —— 毛利要减收入，而售价不在这个域
+                "soldCostMinor", "lostCostMinor")) {
             assertThat(m.has(f)).as("StockMonthly 读 %s —— 界面上要能算得通那条式子", f).isTrue();
         }
 

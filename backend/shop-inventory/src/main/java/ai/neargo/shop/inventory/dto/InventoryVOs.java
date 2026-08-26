@@ -47,9 +47,25 @@ public final class InventoryVOs {
     public record SummaryVO(int itemCount, int shortageCount, int staleCount) {
     }
 
-    /** 进销存月报的五个数。界面上要能看出 {@code 期初 + 进 − 销 − 损 ± 调 = 期末}。 */
+    /**
+     * 进销存月报。件数那几个要能在界面上看出 {@code 期初 + 进 − 销 − 损 ± 调 = 期末}。
+     *
+     * <h2>为什么没有毛利</h2>
+     * 毛利 = 收入 − 成本，而<b>收入不在这个域</b>：出库单只带成本、不带售价
+     *（同一件货不同渠道价不一样，写进来就有了第二个真源）。
+     * 硬凑一个「销量 × 当前售价」出来，它会在促销、多渠道、改价之后统统对不上 ——
+     * 而毛利恰恰是商家会拿去报税的那个数。
+     *
+     * <p>能诚实给的是<b>销货成本</b>：台账每一行都带 {@code unit_cost_minor}，
+     * 按笔累加是这个域自己的真源。毛利要由**知道收入的那一侧**用它减出来。
+     *
+     * @param soldCostMinor 本月销售出库的成本合计（分）。<b>按每一笔当时的单位成本累加</b>，
+     *                      不是「销量 × 当前成本价」—— 后者在进价波动时会把上个月的账算错
+     * @param lostCostMinor 本月报损 + 盘亏的成本合计（分）。它是「这个月亏了多少钱」那个数
+     */
     public record MonthlyVO(String month, int opening, int purchased, int sold,
-                            int lost, int adjusted, int closing, boolean balanced) {
+                            int lost, int adjusted, int closing, boolean balanced,
+                            long soldCostMinor, long lostCostMinor) {
     }
 
     /**

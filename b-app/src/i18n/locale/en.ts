@@ -1760,6 +1760,10 @@ entryHint: "Who buys · who lapsed", total: "Customers", repeatRate: "Repeat rat
     pressed: "{n} units tied up · about ¥{money}",
     pressedQty: "{n} units tied up",
     noData: "No data for this month yet.",
+    money: "Money this month",
+    soldCost: "Cost of goods sold",
+    lostCost: "Cost lost (scrap + count loss)",
+    moneyHint: "Totalled from the unit cost recorded on each movement, not \"quantity × today's cost price\" — the latter reprices last month at today's rates. There is no gross profit here: that needs revenue, and sale prices are not recorded on the stock side (the same item is priced differently per channel).",
   },
   locations: {
     title: "Locations & warehouses",

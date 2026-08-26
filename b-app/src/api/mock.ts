@@ -4241,6 +4241,8 @@ export const mockApi: MerchantApi = {
     return delay({
       month, opening: 320, purchased: 480, sold: 512, lost: 9, adjusted: 0,
       closing: 279, balanced: true,
+      // 按笔累加的成本，不是「件数 × 当前成本价」
+      soldCostMinor: 1_612_800, lostCostMinor: 37_800,
     });
   },
 
