@@ -332,6 +332,48 @@
       "style": {
         "navigationBarTitleText": "库存明细"
       }
+    },
+    {
+      "path": "pages/stock-check/index",
+      "style": {
+        "navigationBarTitleText": "盘点"
+      }
+    },
+    {
+      "path": "pages/purchase-edit/index",
+      "style": {
+        "navigationBarTitleText": "记一笔进货"
+      }
+    },
+    {
+      "path": "pages/stock-docs/index",
+      "style": {
+        "navigationBarTitleText": "出入库单据"
+      }
+    },
+    {
+      "path": "pages/stock-out/index",
+      "style": {
+        "navigationBarTitleText": "报损出库"
+      }
+    },
+    {
+      "path": "pages/transfer/index",
+      "style": {
+        "navigationBarTitleText": "调拨"
+      }
+    },
+    {
+      "path": "pages/stock-report/index",
+      "style": {
+        "navigationBarTitleText": "进销存报表"
+      }
+    },
+    {
+      "path": "pages/locations/index",
+      "style": {
+        "navigationBarTitleText": "库位与仓"
+      }
     }
   ],
   "globalStyle": {

@@ -126,6 +126,7 @@ import type {
   Qualification, MerchantSpecDim, StoreCategorySpecs, SpecOverride, SpecOption,
   StockSummary, StockBalance, StockItemDetail, StockLedgerPage, StockDocument,
   StockMonthly, StockRank, StockLocation, StockLineReq, StockCountFilled,
+  StockCount, StockTransfer,
 } from "@shared/types";
 
 export const httpApi: MerchantApi = {
@@ -515,10 +516,12 @@ export const httpApi: MerchantApi = {
   // **裸数组直接当 body 发** —— 后端收的是 `List<Filled>`，包一层 `{lines}` 会解成空列表，
   // 而空列表在盘点里是「一件都没盘」，不报错
   mCountOpen: (itemIds) => http.post<string>(E.mCountOpen.path, { itemIds }),
+  mCountDetail: (no) => http.get<StockCount>(buildPath(E.mCountDetail.path, { no })),
   mCountFill: (no, lines) => http.put<void>(buildPath(E.mCountFill.path, { no }), lines),
   mCountPost: (no) => http.post<void>(buildPath(E.mCountPost.path, { no })),
 
   mTransferCreate: (req) => http.post<string>(E.mTransferCreate.path, req),
+  mTransferDetail: (no) => http.get<StockTransfer>(buildPath(E.mTransferDetail.path, { no })),
   mTransferShip: (no) => http.post<void>(buildPath(E.mTransferShip.path, { no })),
   mTransferReceive: (no) => http.post<void>(buildPath(E.mTransferReceive.path, { no })),
 

@@ -3,10 +3,13 @@ package ai.neargo.shop.inventory.service.impl;
 import ai.neargo.shop.inventory.config.ConditionalOnInventory;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.inventory.dto.InventoryVOs;
+import ai.neargo.shop.inventory.entity.InvItem;
 import ai.neargo.shop.inventory.entity.InvStockBalance;
 import ai.neargo.shop.inventory.entity.InvStockCount;
 import ai.neargo.shop.inventory.entity.InvStockCountLine;
 import ai.neargo.shop.inventory.mapper.InventoryMappers.BalanceMapper;
+import ai.neargo.shop.inventory.mapper.InventoryMappers.ItemMapper;
 import ai.neargo.shop.inventory.mapper.InventoryMappers.StockCountLineMapper;
 import ai.neargo.shop.inventory.mapper.InventoryMappers.StockCountMapper;
 import ai.neargo.shop.inventory.service.InboundService;
@@ -21,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -30,20 +34,55 @@ import java.util.stream.Collectors;
 @Service
 public class StockCountServiceImpl implements StockCountService {
 
+    private final ItemMapper itemMapper;
     private final StockCountMapper countMapper;
     private final StockCountLineMapper lineMapper;
     private final BalanceMapper balanceMapper;
     private final InboundService inbound;
     private final OutboundService outbound;
 
-    public StockCountServiceImpl(StockCountMapper countMapper, StockCountLineMapper lineMapper,
+    public StockCountServiceImpl(ItemMapper itemMapper,
+                                 StockCountMapper countMapper, StockCountLineMapper lineMapper,
                                  BalanceMapper balanceMapper, InboundService inbound,
                                  OutboundService outbound) {
+        this.itemMapper = itemMapper;
         this.countMapper = countMapper;
         this.lineMapper = lineMapper;
         this.balanceMapper = balanceMapper;
         this.inbound = inbound;
         this.outbound = outbound;
+    }
+
+    @Override
+    public InventoryVOs.CountVO detail(String ownerId, String countNo) {
+        InvStockCount head = countMapper.selectOne(Wrappers.<InvStockCount>lambdaQuery()
+                .eq(InvStockCount::getOwnerId, ownerId).eq(InvStockCount::getCountNo, countNo));
+        if (head == null) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        List<InvStockCountLine> rows = lineMapper.selectList(Wrappers.<InvStockCountLine>lambdaQuery()
+                .eq(InvStockCountLine::getOwnerId, ownerId)
+                .eq(InvStockCountLine::getCountNo, countNo)
+                .orderByAsc(InvStockCountLine::getLineNo));
+
+        Map<String, InvItem> items = new HashMap<>();
+        for (InvItem it : itemMapper.selectList(Wrappers.<InvItem>lambdaQuery()
+                .eq(InvItem::getOwnerId, ownerId))) {
+            items.put(it.getItemId(), it);
+        }
+
+        List<InventoryVOs.CountLineVO> lines = new ArrayList<>();
+        for (InvStockCountLine r : rows) {
+            InvItem it = items.get(r.getItemId());
+            lines.add(new InventoryVOs.CountLineVO(r.getItemId(),
+                    it == null ? r.getItemId() : it.getName(),
+                    it == null ? null : it.getSpecText(),
+                    it == null ? null : it.getBaseUom(),
+                    r.getBookQty() == null ? 0 : r.getBookQty(),
+                    r.getCountedQty(), r.getDiffQty(), r.getReasonCode()));
+        }
+        return new InventoryVOs.CountVO(head.getCountNo(), head.getStatus(), head.getLocationId(),
+                head.getStartedAt(), head.getOperator(), lines);
     }
 
     @Override

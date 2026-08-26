@@ -322,10 +322,12 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
   mOutboundVoid: { method: "POST", path: "/biz/inventory/outbounds/:no/void", auth: true, summary: "作废出库单" },
 
   mCountOpen: { method: "POST", path: "/biz/inventory/counts", auth: true, summary: "开盘点单（锁账面数）" },
+  mCountDetail: { method: "GET", path: "/biz/inventory/counts/:no", auth: true, summary: "读回盘点单（含账面快照）" },
   mCountFill: { method: "PUT", path: "/biz/inventory/counts/:no/lines", auth: true, summary: "填实盘数" },
   mCountPost: { method: "POST", path: "/biz/inventory/counts/:no/post", auth: true, summary: "盘点过账" },
 
   mTransferCreate: { method: "POST", path: "/biz/inventory/transfers", auth: true, summary: "建调拨单" },
+  mTransferDetail: { method: "GET", path: "/biz/inventory/transfers/:no", auth: true, summary: "读回调拨单" },
   mTransferShip: { method: "POST", path: "/biz/inventory/transfers/:no/ship", auth: true, summary: "调拨发出" },
   mTransferReceive: { method: "POST", path: "/biz/inventory/transfers/:no/receive", auth: true, summary: "调拨收货" },
 

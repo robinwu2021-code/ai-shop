@@ -100,6 +100,7 @@ import type {
   // 进销存（P-18）
   StockSummary, StockBalance, StockItemDetail, StockLedgerPage, StockDocument,
   StockMonthly, StockRank, StockLocation, StockLineReq, StockCountFilled,
+  StockCount, StockTransfer,
 } from "@shared/types";
 
 /** 拍照识别的结果。全部是**建议值**，店主可改可弃 */
@@ -1277,12 +1278,16 @@ export interface MerchantApi {
 
   /** 开一张盘点单 → 单号。**开单那一刻锁账面数**，盘的过程中照常卖不影响差异 */
   mCountOpen(itemIds: string[]): Promise<string>;
+  /** 读回一张盘点单。**账面数是开单那一刻的快照**，端上直接用它算差异 */
+  mCountDetail(no: string): Promise<StockCount>;
   mCountFill(no: string, lines: StockCountFilled[]): Promise<void>;
   /** 过账：盘盈生成入库单、盘亏生成出库单 —— 盘点自己不改库存，走同一个过账口 */
   mCountPost(no: string): Promise<void>;
 
   /** 调拨 → 单号。**一定生成两张单**，哪怕骑车十分钟就送到 */
   mTransferCreate(req: { fromLocationId: string; toLocationId: string; lines: StockLineReq[] }): Promise<string>;
+  /** 读回一张调拨单。**草稿态没有行**（行在发出的那张出库单上），不是空单 */
+  mTransferDetail(no: string): Promise<StockTransfer>;
   mTransferShip(no: string): Promise<void>;
   mTransferReceive(no: string): Promise<void>;
 

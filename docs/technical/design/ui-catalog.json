@@ -351,28 +351,6 @@
               "proto": null,
               "protoUrl": null,
               "preview": "http://localhost:5175/#/pages/member-reach/index"
-            },
-            {
-              "app": "b-app",
-              "route": "/pages/stock/index",
-              "title": "库存",
-              "domain": "其它",
-              "tab": false,
-              "status": "已实现",
-              "proto": null,
-              "protoUrl": null,
-              "preview": "http://localhost:5175/#/pages/stock/index"
-            },
-            {
-              "app": "b-app",
-              "route": "/pages/stock-detail/index",
-              "title": "库存明细",
-              "domain": "其它",
-              "tab": false,
-              "status": "已实现",
-              "proto": null,
-              "protoUrl": null,
-              "preview": "http://localhost:5175/#/pages/stock-detail/index"
             }
           ]
         },
@@ -736,14 +714,36 @@
           "pages": [
             {
               "app": "b-app",
+              "route": "/pages/stock/index",
+              "title": "库存",
+              "domain": "进销存",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/stock/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/stock-detail/index",
+              "title": "库存明细",
+              "domain": "进销存",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/stock-detail/index"
+            },
+            {
+              "app": "b-app",
               "route": "/pages/stock-check/index",
               "title": "盘点",
               "domain": "进销存",
               "tab": false,
-              "status": "原型",
-              "proto": "s03",
-              "protoUrl": "https://claude.ai/code/artifact/f3904519-ea36-4bc0-b231-d113b696f7e0",
-              "preview": null
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/stock-check/index"
             },
             {
               "app": "b-app",
@@ -751,10 +751,10 @@
               "title": "记一笔进货",
               "domain": "进销存",
               "tab": false,
-              "status": "原型",
-              "proto": "s04",
-              "protoUrl": "https://claude.ai/code/artifact/f3904519-ea36-4bc0-b231-d113b696f7e0",
-              "preview": null
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/purchase-edit/index"
             },
             {
               "app": "b-app",
@@ -762,10 +762,10 @@
               "title": "出入库单据",
               "domain": "进销存",
               "tab": false,
-              "status": "原型",
-              "proto": "s05",
-              "protoUrl": "https://claude.ai/code/artifact/f3904519-ea36-4bc0-b231-d113b696f7e0",
-              "preview": null
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/stock-docs/index"
             },
             {
               "app": "b-app",
@@ -773,10 +773,10 @@
               "title": "报损出库",
               "domain": "进销存",
               "tab": false,
-              "status": "原型",
-              "proto": "s06",
-              "protoUrl": "https://claude.ai/code/artifact/f3904519-ea36-4bc0-b231-d113b696f7e0",
-              "preview": null
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/stock-out/index"
             },
             {
               "app": "b-app",
@@ -784,10 +784,10 @@
               "title": "调拨",
               "domain": "进销存",
               "tab": false,
-              "status": "原型",
-              "proto": "s07",
-              "protoUrl": "https://claude.ai/code/artifact/f3904519-ea36-4bc0-b231-d113b696f7e0",
-              "preview": null
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/transfer/index"
             },
             {
               "app": "b-app",
@@ -795,10 +795,10 @@
               "title": "进销存报表",
               "domain": "进销存",
               "tab": false,
-              "status": "原型",
-              "proto": "s08",
-              "protoUrl": "https://claude.ai/code/artifact/f3904519-ea36-4bc0-b231-d113b696f7e0",
-              "preview": null
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/stock-report/index"
             },
             {
               "app": "b-app",
@@ -806,10 +806,10 @@
               "title": "库位与仓",
               "domain": "进销存",
               "tab": false,
-              "status": "原型",
-              "proto": "s09",
-              "protoUrl": "https://claude.ai/code/artifact/f3904519-ea36-4bc0-b231-d113b696f7e0",
-              "preview": null
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/locations/index"
             }
           ]
         }

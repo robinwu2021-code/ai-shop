@@ -22,6 +22,14 @@ public interface TransferService {
     /** 收到：生成入库单，货从 TRANSIT 移到目标库位。 */
     void receive(String ownerId, String transferNo, String operator);
 
+    /**
+     * 读回一张调拨单。
+     *
+     * <p>行取自**发出那张出库单** —— 草稿态还没有行，界面上要把这一点说清楚，
+     * 否则一张还没发出的调拨单看起来像「空单」。
+     */
+    ai.neargo.shop.inventory.dto.InventoryVOs.TransferVO detail(String ownerId, String transferNo);
+
     record Line(String itemId, int qty) {
     }
 }

@@ -4,6 +4,7 @@ import ai.neargo.shop.inventory.config.ConditionalOnInventory;
 import ai.neargo.shop.auth.BizContext;
 import ai.neargo.shop.auth.BizPerms;
 import ai.neargo.shop.auth.SecurityUtils;
+import ai.neargo.shop.inventory.dto.InventoryVOs;
 import ai.neargo.shop.inventory.service.InboundService;
 import ai.neargo.shop.inventory.service.InventoryAclService;
 import ai.neargo.shop.inventory.service.LocationService;
@@ -13,6 +14,7 @@ import ai.neargo.shop.inventory.service.TransferService;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -108,6 +110,16 @@ public class BizStockDocController {
         return counts.open(owner(), location(), req.itemIds(), SecurityUtils.currentUserNo());
     }
 
+    /**
+     * 读回一张盘点单。<b>{@code bookQty} 是开单那一刻的快照</b>，端上直接用它算差异 ——
+     * 拿当前余额顶替的话，盘的过程中卖掉的量会被算成盘亏。
+     */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
+    @GetMapping("/biz/inventory/counts/{no}")
+    public InventoryVOs.CountVO count(@PathVariable String no) {
+        return counts.detail(owner(), no);
+    }
+
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
     @PutMapping("/biz/inventory/counts/{no}/lines")
     public void fillCount(@PathVariable String no, @RequestBody List<StockCountService.Filled> lines) {
@@ -128,6 +140,13 @@ public class BizStockDocController {
                 .map(l -> new TransferService.Line(l.itemId(), l.qty())).toList();
         return transfers.create(owner(), req.fromLocationId(), req.toLocationId(),
                 lines, SecurityUtils.currentUserNo());
+    }
+
+    /** 读回一张调拨单。**草稿态没有行**（行在发出的那张出库单上），不是空单 */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
+    @GetMapping("/biz/inventory/transfers/{no}")
+    public InventoryVOs.TransferVO transfer(@PathVariable String no) {
+        return transfers.detail(owner(), no);
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")

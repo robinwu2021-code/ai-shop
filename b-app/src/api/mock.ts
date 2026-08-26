@@ -109,6 +109,8 @@ import type {
   StockBalance,
   StockLedgerRow,
   StockDocument,
+  StockCount,
+  StockTransfer,
 } from "@shared/types";
 
 /** 当前登录商家；未入驻时抛错，页面据此引导去入驻 */
@@ -4182,6 +4184,23 @@ export const mockApi: MerchantApi = {
   async mCountOpen() {
     return delay("CNT-24082601");
   },
+  /** 账面数是开单那一刻的快照 —— mock 里也给成与当前余额**不同**的数，
+   *  否则「用当前余额顶替」这个错在 mock 下永远看不出来 */
+  async mCountDetail(no) {
+    return delay({
+      countNo: no,
+      status: "COUNTING",
+      locationId: "L1",
+      startedAt: "2026-08-26T09:02:00",
+      operator: "张伟",
+      lines: [
+        { itemId: "I1", name: "东北大米", specText: "5斤装", baseUom: "袋", bookQty: 5, countedQty: null, diffQty: null },
+        { itemId: "I4", name: "土鸡蛋", specText: "30枚装", baseUom: "箱", bookQty: 48, countedQty: null, diffQty: null },
+        { itemId: "I3", name: "陈醋", specText: "500ml", baseUom: "瓶", bookQty: 24, countedQty: null, diffQty: null },
+      ],
+    } satisfies StockCount);
+  },
+
   async mCountFill() {
     return delay(undefined);
   },
@@ -4192,6 +4211,18 @@ export const mockApi: MerchantApi = {
   async mTransferCreate() {
     return delay("TRF-24082507");
   },
+  async mTransferDetail(no) {
+    return delay({
+      transferNo: no,
+      status: "SHIPPED",
+      fromLocationId: "L3", fromLocationName: "城西仓",
+      toLocationId: "L1", toLocationName: "文三路店",
+      shippedAt: "2026-08-26T07:30:00",
+      totalQty: 20,
+      lines: [{ itemId: "I1", name: "东北大米", specText: "5斤装", qty: 20, uom: "袋" }],
+    } satisfies StockTransfer);
+  },
+
   async mTransferShip() {
     return delay(undefined);
   },
@@ -4214,8 +4245,10 @@ export const mockApi: MerchantApi = {
   },
 
   async mStockRanking(q) {
+    // slow 的 qty 是**库存量**（后端取 onHand），且 **costAmountMinor 是 null** ——
+    // mock 里塞一个金额进去，界面就会显示一个真接口永远不会给的数
     return (q?.type === "slow"
-      ? delay([{ itemId: "I3", name: "陈醋", specText: "500ml", qty: 0, costAmountMinor: 12000 }])
+      ? delay([{ itemId: "I3", name: "陈醋", specText: "500ml", qty: 24, costAmountMinor: null }])
       : delay([
           { itemId: "I1", name: "东北大米", specText: "5斤装", qty: 186, costAmountMinor: 781200 },
           { itemId: "I4", name: "土鸡蛋", specText: "30枚装", qty: 142, costAmountMinor: 397600 },

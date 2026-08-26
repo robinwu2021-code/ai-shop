@@ -35,6 +35,16 @@ public interface StockCountService {
     void adjustOne(String ownerId, String locationId, String itemId, int countedQty,
                    String reasonCode, String operator);
 
+    /**
+     * 读回一张盘点单（含<b>开单那一刻的账面数</b>）。
+     *
+     * <p>没有这个口的时候，端上只能拿当前余额当账面数显示 ——
+     * 而盘的过程中照常卖，那样算出来的差异会把中间卖掉的量记成盘亏。
+     * 这一条正是 {@code countUsesSnapshotBookQty} 守的那件事，
+     * 界面上也得守住，否则不变式只在服务层成立。
+     */
+    ai.neargo.shop.inventory.dto.InventoryVOs.CountVO detail(String ownerId, String countNo);
+
     record Filled(String itemId, int countedQty, String reasonCode) {
     }
 }

@@ -4361,13 +4361,23 @@ export interface StockMonthly {
   balanced: boolean;
 }
 
-/** 榜单一行（`RankVO`）。 */
+/**
+ * 榜单一行（`RankVO`）。
+ *
+ * @remarks `qty` 两种榜含义不同：动销榜是**销量**，滞销榜是**库存量**（后端取 onHand）。
+ *   同一个字段两种意思不是好设计，但那是后端已有的形状 —— 端上照它读，不自己改名。
+ */
 export interface StockRank {
   itemId: string;
   name: string;
   specText?: string;
   qty: number;
-  costAmountMinor?: number;
+  /**
+   * 金额（分）。**滞销榜不算这个数，会是 `null`** ——
+   * 后端没配 `NON_NULL`，null 是照常下发的，所以类型要允许它。
+   * 兜底成 0 会让人以为这批货不值钱，而它恰恰是压着钱的那批。
+   */
+  costAmountMinor?: number | null;
 }
 
 /** 库位（`InvLocation`）。**仓是一种库位，不是一种门店** */
@@ -4397,4 +4407,46 @@ export interface StockCountFilled {
   itemId: string;
   countedQty: number;
   reasonCode?: string;
+}
+
+/**
+ * 一张盘点单（`CountVO`）。**`bookQty` 是开单那一刻的快照** ——
+ * 端上不要拿当前余额去顶替它：盘的过程中照常卖，用当前数算差异，
+ * 中间卖掉的量会被算成盘亏，而那是一笔凭空出现的损失。
+ */
+export interface StockCount {
+  countNo: string;
+  /** COUNTING 进行中 / POSTED 已过账 */
+  status: string;
+  locationId?: string;
+  startedAt?: string;
+  operator?: string;
+  lines: StockCountLine[];
+}
+
+export interface StockCountLine {
+  itemId: string;
+  name: string;
+  specText?: string;
+  baseUom?: string;
+  bookQty: number;
+  /** 还没填时是 null，**不是 0** —— 0 的意思是「盘了，一件不差」 */
+  countedQty?: number | null;
+  diffQty?: number | null;
+  reasonCode?: string;
+}
+
+/** 一张调拨单（`TransferVO`）。**草稿态没有行**（行在发出的那张出库单上），不是空单 */
+export interface StockTransfer {
+  transferNo: string;
+  /** DRAFT 草稿 / SHIPPED 已发出 / RECEIVED 已收到 */
+  status: string;
+  fromLocationId?: string;
+  fromLocationName?: string;
+  toLocationId?: string;
+  toLocationName?: string;
+  shippedAt?: string;
+  receivedAt?: string;
+  totalQty: number;
+  lines: { itemId: string; name: string; specText?: string; qty: number; uom?: string }[];
 }

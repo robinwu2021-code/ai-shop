@@ -69,4 +69,37 @@ public final class InventoryVOs {
      */
     public record RankVO(String itemId, String name, String specText, int qty, Long costAmountMinor) {
     }
+
+    /**
+     * 一张盘点单。<b>{@code bookQty} 是开单那一刻的快照</b> ——
+     * 端上不要拿当前余额去顶替它：盘的过程中照常卖，用当前数算差异，
+     * 中间卖掉的量会被算成盘亏，而那是一笔凭空出现的损失。
+     */
+    public record CountVO(String countNo, String status, String locationId,
+                          LocalDateTime startedAt, String operator, List<CountLineVO> lines) {
+    }
+
+    /**
+     * @param diffQty 实盘 − 账面。<b>没填实盘时为 null</b>，不是 0 ——
+     *                0 的意思是「盘了，一件不差」，与「还没盘」是两件事
+     */
+    public record CountLineVO(String itemId, String name, String specText, String baseUom,
+                              int bookQty, Integer countedQty, Integer diffQty, String reasonCode) {
+    }
+
+    /**
+     * 一张调拨单。
+     *
+     * <p>行取自<b>发出那张出库单</b>（调拨不另建行表）—— 还没发出时没有行，
+     * 这一点在界面上要说清楚，否则草稿态的调拨单看起来像「空单」。
+     */
+    public record TransferVO(String transferNo, String status,
+                             String fromLocationId, String fromLocationName,
+                             String toLocationId, String toLocationName,
+                             LocalDateTime shippedAt, LocalDateTime receivedAt,
+                             int totalQty, List<TransferLineVO> lines) {
+    }
+
+    public record TransferLineVO(String itemId, String name, String specText, int qty, String uom) {
+    }
 }

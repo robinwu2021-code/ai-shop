@@ -104,6 +104,7 @@ class BizEndpointPermTest {
         // 界面上的「改数」，底下是一次单件盘点 —— 便捷端点，不是第二条改余额的路
         put("/biz/inventory/adjust", BizPerms.STOCK);
         put("/biz/inventory/counts", BizPerms.STOCK);
+        put("/biz/inventory/counts/{no}", BizPerms.STOCK);
         put("/biz/inventory/counts/{no}/lines", BizPerms.STOCK);
         put("/biz/inventory/counts/{no}/post", BizPerms.STOCK);
         put("/biz/inventory/inbounds", BizPerms.STOCK);
@@ -117,6 +118,7 @@ class BizEndpointPermTest {
         put("/biz/inventory/outbounds/{no}/void", BizPerms.STOCK);
         put("/biz/inventory/documents", BizPerms.STOCK);
         put("/biz/inventory/transfers", BizPerms.STOCK);
+        put("/biz/inventory/transfers/{no}", BizPerms.STOCK);
         put("/biz/inventory/transfers/{no}/ship", BizPerms.STOCK);
         put("/biz/inventory/transfers/{no}/receive", BizPerms.STOCK);
         put("/biz/inventory/locations", BizPerms.STOCK);
