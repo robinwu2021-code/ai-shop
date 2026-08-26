@@ -10,6 +10,8 @@
 **「Controller 拆得太细」这个判断不成立** —— 中位数 3~5 个端点，是 REST 控制器的正常粒度。
 真问题在**另一头**：3 个巨型控制器，其中 `BizMerchantController` 一个类
 **40 个端点 / 1022 行 / 九个不相干的节**。
+（📌 2026-08-26 已拆三块，现在 **22 个端点 / 734 行 / 3 个资源**，见 §5.2。
+本节以下的数字都是**评审当时**的快照，故意不改 —— 改了就看不出拆了多少。）
 
 而更值得改的是第三件事：**拆分轴不一致**。同一层里三种轴混用，
 所以「新端点该放哪」这个问题每次都要靠人拍。
@@ -54,7 +56,7 @@ OpsPointsController        /ops/points/overview
 
 | 控制器 | 端点 | 行 |
 |---|---|---|
-| `BizMerchantController` | 40 | 1022 |
+| `BizMerchantController` | 40 | 1022 |  ← 现 22 / 734
 | `BizGoodsController` | 26 | 657 |
 | `OpsPlatformController` | 22 | 379 |
 
@@ -156,27 +158,56 @@ OpsPointsController        /ops/points/overview
 | 控制器 | 资源数 | 建议 |
 |---|---|---|
 | `BizGoodsController` | 11 | goods 之外挂着 8 种 `spec-*` → 规格单列一个控制器 |
-| `BizMerchantController` | 10 | 见 §5.2 |
+| `BizMerchantController` | 10 | 见 §5.2 —— **已拆到 3，出榜** |
 
 ⚠️ `MpCatalogController`（6 个）**可能是合理的** —— 它是 C 端首页的 BFF 聚合。
 拆之前先确认这一点，别为了达标拆掉一个有意为之的聚合层。
 
-### 5.2 该做但不急（大、要排期）
+### 5.2 拆 `BizMerchantController`（2026-08-26 已做三块，出榜）
 
-拆 `BizMerchantController`。按路径前缀分，九个节大致落成：
+原计划与实际落地的对照 —— **计划错了两处，照实记下来**：
 
 ```
-BizStoreProfileController      /biz/store          店铺资料
-BizQualificationController     /biz/qualifications 我的资质
-BizStoreFulfillmentController  /biz/stores/*/fulfillment + /biz/appointment-slots
-BizStoreAdminController        /biz/stores         门店管理
-BizStaffController             /biz/staff /biz/roles /biz/role-perms
-BizMerchantController          /biz/merchant       只剩主体本身
-（社区提报与收款进件各自已有去处）
+计划                                          实际
+─────────────────────────────────────────    ────────────────────────────────────────
+BizStoreFulfillmentController                 ✅ 一样        1021 → 949   c317a970
+  /biz/stores/*/fulfillment + appointment-slots
+BizStaffController                            ✅ 一样         949 → 812   ac38c7c1
+  /biz/staff /biz/roles /biz/role-perms
+（社区提报「已有去处」）                        ❌ **没有去处**  812 → 734   82d49ffe
+                                              新建 BizCommunityApplyController
+BizQualificationController  /biz/qualifications  ⬜ 未做（见下方欠账）
+BizStoreAdminController     /biz/store/*          ⬜ 未做（见下方欠账）
+BizStoreProfileController   /biz/store            ⬜ 未做
+BizMerchantController       只剩主体本身            现在 3 个资源，已在阈值内
 ```
 
-⚠️ **这是纯搬家，必须单独一次提交、不夹带任何行为变化。**
+计划错的两处：
+
+1. **「社区提报与收款进件各自已有去处」——「已有」是我没查就写的。**
+   社区提报没有任何现成控制器可并，收款进件也没有（它就在 `/biz/merchant/payment`
+   下面，留在原类里反而是对的）。写评审时凭「听起来该有」下了结论。
+
+2. **漏了 `BizCertController` 已经拿着 `/biz/qualifications/recognize`。**
+   所以 `BizQualificationController` 建起来之后，这个资源会由两个类共同服务。
+   那不是疏漏 —— `BizCertController` 的注释写明它是唯一一个收敏感图像且刻意不落库的
+   端点，合并会让「哪些端点会存图」这个问题没人答得清。这个理由成立，不动它，
+   两边 javadoc 互相指路即可。
+
+**剩下两块之前要先还的债**：资质、收款进件、门店管理三节共用私有方法
+`ownedEntity`（多证照的越权闸）。检查本身在 `MerchantEntityService.requireOwned`，
+只有一份；但「`userNo` 绝不能做成参数」这条口径写在控制器的私有方法上，
+复制到三个新类里就成了三份。**先把它提成一份共享的，再动那三节** ——
+提升本身不是搬家，得单独一个提交。
+
+⚠️ **每一块都是纯搬家，必须单独一次提交、不夹带任何行为变化。**
 混在一起的话，出问题不知道回滚哪个 —— 与四轴对账那一步 6a/6b 的分法同一个理由。
+三次都验了同一件事：把 HEAD 的对应行段抽出来 `diff` 新文件，**0 行差异**；
+原类的 diff **全删除、零新增**。这两条不成立就不叫搬家。
+
+📌 顺带修了判据本身（`e61f925e`）：`/biz/roles` 与 `/biz/role/{code}` 被数成两个资源
+（单复数假阳性），以及**基线里拆完的行不删也不报** —— 名单上的类是免检的，
+锈住的棘轮等于没有棘轮。改完立刻用上：第三块拆完，闸门直接指名该删哪一行。
 
 ### 5.3 不该做
 
