@@ -21,6 +21,19 @@ function assertOpen(d: ReconDiff) {
 }
 
 export const paymentMock: PaymentApi = {
+  /*
+   * mock 里**固定返回「渠道账单未接入」** —— 那是今天的真实情况。
+   * 造成 true 的话，开发期永远看不到那条提示条长什么样，
+   * 而它恰恰是这一页最要紧的一句：不说的话「今天没有差异」是句假话。
+   */
+  reconCoverage: async () =>
+    wait({
+      channelBillConnected: false,
+      note: "当前只有平台侧自查：扫我方停在待支付的收款流水，逐笔向通道查单。"
+        + "「渠道扣了钱而我方没有记录」这一类差异**现在看不见** —— "
+        + "要等通道开放账单下载能力。所以这张表为空不等于今天账是平的。",
+    }),
+
   listReconDiffs: (q = {}) =>
     wait(
       db.paginate(db.reconDiffs, q.page, q.size, (d) =>

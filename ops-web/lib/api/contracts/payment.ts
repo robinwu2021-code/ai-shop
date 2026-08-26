@@ -1,5 +1,6 @@
 // 覆盖范围：支付管理（P-4.2 支付流水核对 / 掉单补偿 / 关单策略配置）。
-import type { CloseRule, Page, ReconDiff, RecoverAction } from "@/lib/types";
+import type {
+  ReconCoverage, CloseRule, Page, ReconDiff, RecoverAction } from "@/lib/types";
 import type { PageQ } from "../query";
 
 export type ReconQ = PageQ & { billDate?: string; type?: string; status?: string };
@@ -7,6 +8,12 @@ export type ReconQ = PageQ & { billDate?: string; type?: string; status?: string
 export interface PaymentApi {
   /** 对账差异列表（P-4.2.1）。 */
   listReconDiffs(q?: ReconQ): Promise<Page<ReconDiff>>;
+  /**
+   * 对账覆盖范围。**页面必须显示它** —— 后端 `ReconService` 的类注释写着
+   * 「页面照它显示提示条，否则『今天没有差异』是句假话」，
+   * 而这个接口在 2026-08-26 之前**没有任何调用方**，所以那句假话一直挂着。
+   */
+  reconCoverage(): Promise<ReconCoverage>;
 
   /**
    * 处置一条差异（P-4.2.1 / 4.2.2）。

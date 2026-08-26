@@ -390,3 +390,20 @@ export interface BuyerInvoiceRequest {
   rejectReason?: string | null;
   createdAt?: number | null;
 }
+
+/**
+ * 对账的**覆盖范围说明**。
+ *
+ * ⚠️ 它存在的理由只有一个：**不说的话「今天没有差异」是句假话。**
+ * 一期只有平台侧自查（扫我方停在 PENDING 的收款逐笔查单），
+ * 渠道账单比对要等通道能力 —— 也就是说「渠道扣了钱而我方没记录」
+ * 那一整类差异**现在根本看不见**。
+ *
+ * `note` **直接展示，不在端上写死** —— 写死的话，后端接上渠道账单之后，
+ * 页面还在说「看不见」。
+ */
+export interface ReconCoverage {
+  /** 渠道账单是否已接入。false 时 note 必须显示给运营 */
+  channelBillConnected: boolean;
+  note: string;
+}

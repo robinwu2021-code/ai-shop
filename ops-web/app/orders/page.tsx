@@ -97,6 +97,20 @@ function OrdersInner() {
     type: tab === "repair" ? "CHANNEL_ONLY" : diffType,
     status: tab === "repair" ? "PENDING" : reconStatus,
   };
+  /*
+   * 覆盖范围说明。**单独一个查询、不跟着列表走** ——
+   * 后端把它做成独立端点的理由就是这个：列表是分页包，
+   * 把说明挂在分页包上，翻到第二页时它就没了。
+   *
+   * ⚠️ 拿不到时**不显示提示条**（而不是显示一句写死的）：
+   * 端上写死的话，后端接上渠道账单之后页面还在说「看不见」。
+   */
+  const coverage = useQuery({
+    queryKey: ["recon-coverage"],
+    queryFn: () => api.reconCoverage(),
+    enabled: tab === "pay" || tab === "repair",
+  });
+
   const recon = useQuery({
     queryKey: ["recon", reconQ],
     queryFn: () => api.listReconDiffs(reconQ),
@@ -256,6 +270,18 @@ function OrdersInner() {
       {(tab === "pay" || tab === "repair") && (
         <>
           <Notice className="mb-3">{tab === "repair" ? c.repairNotice : c.payNotice}</Notice>
+          {/*
+            ⚠️ **这一条不能省，而且空表时更要显示。**
+            后端 ReconService 的类注释写着「页面照它显示提示条，
+            否则『今天没有差异』是句假话」—— 而这个接口在此之前
+            没有任何调用方，所以那句假话一直挂在这一页上。
+
+            渠道账单接上之后 channelBillConnected 变 true，这条自然消失 ——
+            判据来自后端，端上不做第二套。
+          */}
+          {coverage.data && !coverage.data.channelBillConnected && (
+            <Notice className="mb-3" tone="warning">{coverage.data.note}</Notice>
+          )}
           <Toolbar search={keyword} onSearch={(v) => { setKeyword(v); setPage(1); }} searchPlaceholder={c.searchRecon}>
             {tab === "pay" && (
               <>
