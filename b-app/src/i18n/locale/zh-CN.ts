@@ -231,6 +231,7 @@ export default {
       foot: "自建规格只有本店能用，不参与跨店比价 —— 平台有的尽量用平台的。",
       addValue: "加档位",
       addDim: "加规格",
+      addProp: "加参数",
       collapse: "收起",
       quotaShort: "自建 {used} / {max}",
       own: "本店",
@@ -554,6 +555,45 @@ export default {
     offlineCancel: "还没收到",
     waitOfflinePay: "待当面收款",
   },
+
+  points: {
+
+    title: "积分",
+
+    periodExpense: "本期发分服务费",
+
+    periodHint: "{p} · 结算时从货款里扣",
+
+    switch: "本店积分",
+
+    switchHint: "开启后顾客在你这消费可得积分，你按发放额付服务费",
+
+    closeOnlyFuture: "关闭只影响将来：已发出的分仍然有效，已扣的服务费不退",
+
+    forced: "平台已强制开启本店积分，不能关闭",
+
+    rule: "发放规则",
+
+    rulePlatform: "平台统一",
+
+    ruleHint: "按类目统一设置，商家不单独配 —— 具体比例见平台公布的类目规则",
+
+    records: "查看发分明细",
+
+    recordsTitle: "发分明细",
+
+    periodTotal: "本期合计",
+
+    recordsEmpty: "本期还没有发分记录",
+
+    granted: "发放 {n} 分",
+
+    notGranted: "未发放",
+
+    notGrantedWhy: "当面付款的订单不发放积分",
+
+  },
+
 
   schedule: {
 

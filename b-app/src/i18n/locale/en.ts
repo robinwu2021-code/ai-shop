@@ -154,6 +154,7 @@ export default {
       addValue: "Add option",
       addValueTitle: "Name this option",
       addDim: "Add spec",
+      addProp: "Add detail",
       collapse: "Close",
       quotaShort: "own {used} / {max}",
       own: "mine",
@@ -408,6 +409,45 @@ export default {
     items: "Items", shipped: "Shipped", deliveredDone: "Marked delivered",
     offlinePay: "Confirm payment", offlinePayTitle: "Confirm cash received on site", offlineDue: "Amount due", offlineDeducted: "{v} already covered by points — collect only the amount above", offlineNotCustodied: "The platform does not hold this money — the customer pays you directly; we only record this confirmation", offlinePaid: "Payment confirmed", offlineCancel: "Not yet received", waitOfflinePay: "Awaiting cash on site",
   },
+
+  points: {
+
+    title: "Points",
+
+    periodExpense: "Points fee this period",
+
+    periodHint: "{p} · deducted at settlement",
+
+    switch: "Points at this store",
+
+    switchHint: "When on, customers earn points here and you pay a fee on what is issued",
+
+    closeOnlyFuture: "Turning it off only affects the future: points already issued stay valid, fees already charged are not refunded",
+
+    forced: "The platform has force-enabled points for this store; it cannot be turned off",
+
+    rule: "Earning rules",
+
+    rulePlatform: "Set by platform",
+
+    ruleHint: "Configured per category by the platform, not per merchant — see the published category rules",
+
+    records: "View fee details",
+
+    recordsTitle: "Points fee details",
+
+    periodTotal: "Period total",
+
+    recordsEmpty: "No points issued this period",
+
+    granted: "{n} points issued",
+
+    notGranted: "Not issued",
+
+    notGrantedWhy: "Orders paid on site do not earn points",
+
+  },
+
 
   schedule: {
 

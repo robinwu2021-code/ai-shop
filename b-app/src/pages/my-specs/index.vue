@@ -682,7 +682,9 @@ onShow(() => void load());
               @tap="togglePick(g)">
           <sh-icon :name="picking === g.categoryNo ? 'close' : 'plus'" :size="24"
                    :color="picking === g.categoryNo ? 'var(--sh-sub)' : 'var(--sh-primary)'" />
-          <text class="btn-add__t">{{ picking === g.categoryNo ? $t("mySpecs.collapse") : $t("mySpecs.addDim") }}</text>
+          <text class="btn-add__t">{{ picking === g.categoryNo
+              ? $t("mySpecs.collapse")
+              : $t(tab === "dims" ? "mySpecs.addDim" : "mySpecs.addProp") }}</text>
         </view>
       </view>
 

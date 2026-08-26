@@ -2576,6 +2576,44 @@ async function save(thenSubmit = false) {
       <template v-if="specOpen">
 
       <!--
+        **候选固定在标题下，不再垂在最底下。**
+        它回答的是「还能按什么分」，与下面「这一件货有哪几档」是两个问题；
+        垂在底部的话，商家填完档位往下滚，又撞见一排长得差不多的 chip。
+      -->
+      <!--
+        **这一页不新增规格，只把能用的摆出来。**
+
+        <p>新的规格与档位统一在「商品规格」里加 —— 那里加一次全店通用、有编号、
+        参与跨店比价；在建品页新造只对这一件商品有效，而代价（掉出聚合）看不见。
+        所以这里没有输入框、没有「自定义」，只有一排现成的，点一下就用上。
+
+        <p>本类目的排在前面（平台已经替这一类回答过「该按什么分」），
+        通用与自建的收在「更多」后面 —— 它们跨类目通用，摆在眼前多半不对题。
+      -->
+      <view v-if="moreFromCategory.length || moreOther.length" class="addbar">
+        <text
+          v-for="d in moreFromCategory"
+          :key="d.templateNo"
+          class="sh-chip addbar__chip"
+          @tap="pickDim(d)"
+        >＋ {{ d.name }}</text>
+        <template v-if="showUniversalDims">
+          <text
+            v-for="d in moreOther"
+            :key="d.templateNo"
+            class="sh-chip addbar__chip addbar__chip--q"
+            @tap="pickDim(d)"
+          >＋ {{ d.name }}</text>
+        </template>
+        <text
+          v-if="moreOther.length"
+          class="link addbar__more"
+          @tap="showUniversalDims = !showUniversalDims"
+        >{{ showUniversalDims ? $t("goods.moreFold") : $t("goods.moreOther", { n: moreOther.length }) }}</text>
+      </view>
+
+
+      <!--
         **跟着品类走的推荐规格，直接摊开成 chip。**
 
         此前平台模板藏在「套用模板」后面，要先点「＋规格组」或点那个链接
@@ -2613,38 +2651,6 @@ async function save(thenSubmit = false) {
             @tap="toggleOption(gi, o)"
           >{{ o.label }}</text>
         </view>
-      </view>
-
-      <!--
-        **这一页不新增规格，只把能用的摆出来。**
-
-        <p>新的规格与档位统一在「商品规格」里加 —— 那里加一次全店通用、有编号、
-        参与跨店比价；在建品页新造只对这一件商品有效，而代价（掉出聚合）看不见。
-        所以这里没有输入框、没有「自定义」，只有一排现成的，点一下就用上。
-
-        <p>本类目的排在前面（平台已经替这一类回答过「该按什么分」），
-        通用与自建的收在「更多」后面 —— 它们跨类目通用，摆在眼前多半不对题。
-      -->
-      <view v-if="moreFromCategory.length || moreOther.length" class="more">
-        <text
-          v-for="d in moreFromCategory"
-          :key="d.templateNo"
-          class="sh-chip more__chip"
-          @tap="pickDim(d)"
-        >＋ {{ d.name }}</text>
-        <template v-if="showUniversalDims">
-          <text
-            v-for="d in moreOther"
-            :key="d.templateNo"
-            class="sh-chip more__chip more__chip--q"
-            @tap="pickDim(d)"
-          >＋ {{ d.name }}</text>
-        </template>
-        <text
-          v-if="moreOther.length"
-          class="link more__toggle"
-          @tap="showUniversalDims = !showUniversalDims"
-        >{{ showUniversalDims ? $t("goods.moreFold") : $t("goods.moreOther", { n: moreOther.length }) }}</text>
       </view>
 
       <!-- 平台真没有的（辣度、打磨程度）去那边加。压到最轻：多数人用不到 -->
@@ -2930,50 +2936,6 @@ async function save(thenSubmit = false) {
       而它们的改动节奏也完全不同 —— 价格是建品时定一次，库存是每天都在动。
       分开之后，「改库存」这件高频事不必先滚过一整片价格字段。
     -->
-    <!--
-      **商品编码：自成一段，不塞进价格卡。**
-
-      <p>塞进价格切换器之后那一行是「售价 成本价 划线价 条码 货号 单位」六项，
-      手机上挤成一坨；而且它们本来就不是价格，并排放着商家得先分辨再选。
-
-      <p>整段默认不出现 —— 社区店大半的货没有条码。用过一次的人记在本机，
-      这件货身上有值时也自动展开（见 externalOn）。
-    -->
-    <view class="sh-card mt">
-      <view class="sec">
-        <text class="sh-h2">{{ $t("goods.secCode") }}</text>
-        <view v-if="externalOn" class="sec__ops">
-          <text class="link link--quiet" @tap="rememberExternal(false)">{{ $t("goods.specFold") }}</text>
-        </view>
-      </view>
-      <view v-if="!externalOn" class="askspec" @tap="rememberExternal(true)">
-        <text class="sh-muted askspec__t">{{ $t("goods.extShow") }}</text>
-        <text class="askspec__go">›</text>
-      </view>
-      <template v-else>
-        <text class="sh-muted hint">{{ $t("goods.codeHint") }}</text>
-        <!-- 一行一个字段；多规格时每个规格一行，与价格卡同构 -->
-        <view v-for="f in extFields" :key="f.key" class="codeblock">
-          <text class="codeblock__k">{{ $t(f.labelKey) }}</text>
-          <view v-for="(r, i) in rows" :key="i" class="pr">
-            <text v-if="multi" class="pr__k">{{ r.optionValues.join(" · ") }}</text>
-            <input
-              v-if="f.key === 'barcode'"
-              v-model="r.barcode"
-              class="pr__v pr__v--wide sh-num"
-            />
-            <input v-else-if="f.key === 'code'" v-model="r.merchantSkuCode" class="pr__v pr__v--wide" />
-            <input
-              v-else
-              v-model="r.saleUnit"
-              class="pr__v pr__v--wide"
-              :placeholder="$t('goods.unitPh')"
-            />
-          </view>
-        </view>
-      </template>
-    </view>
-
     <view class="sh-card mt">
       <view class="sec">
         <text class="sh-h2">{{ $t("goods.secStock") }}</text>
@@ -3018,6 +2980,51 @@ async function save(thenSubmit = false) {
         <input v-model="limitPerUser" class="pr__v pr__v--n pr__v--pad sh-num" type="number" />
       </view>
     </view>
+
+    <!--
+      **商品编码：自成一段，不塞进价格卡。**
+
+      <p>塞进价格切换器之后那一行是「售价 成本价 划线价 条码 货号 单位」六项，
+      手机上挤成一坨；而且它们本来就不是价格，并排放着商家得先分辨再选。
+
+      <p>整段默认不出现 —— 社区店大半的货没有条码。用过一次的人记在本机，
+      这件货身上有值时也自动展开（见 externalOn）。
+    -->
+    <view class="sh-card mt">
+      <view class="sec">
+        <text class="sh-h2">{{ $t("goods.secCode") }}</text>
+        <view v-if="externalOn" class="sec__ops">
+          <text class="link link--quiet" @tap="rememberExternal(false)">{{ $t("goods.specFold") }}</text>
+        </view>
+      </view>
+      <view v-if="!externalOn" class="askspec" @tap="rememberExternal(true)">
+        <text class="sh-muted askspec__t">{{ $t("goods.extShow") }}</text>
+        <text class="askspec__go">›</text>
+      </view>
+      <template v-else>
+        <text class="sh-muted hint">{{ $t("goods.codeHint") }}</text>
+        <!-- 一行一个字段；多规格时每个规格一行，与价格卡同构 -->
+        <view v-for="f in extFields" :key="f.key" class="codeblock">
+          <text class="codeblock__k">{{ $t(f.labelKey) }}</text>
+          <view v-for="(r, i) in rows" :key="i" class="pr">
+            <text v-if="multi" class="pr__k">{{ r.optionValues.join(" · ") }}</text>
+            <input
+              v-if="f.key === 'barcode'"
+              v-model="r.barcode"
+              class="pr__v pr__v--wide sh-num"
+            />
+            <input v-else-if="f.key === 'code'" v-model="r.merchantSkuCode" class="pr__v pr__v--wide" />
+            <input
+              v-else
+              v-model="r.saleUnit"
+              class="pr__v pr__v--wide"
+              :placeholder="$t('goods.unitPh')"
+            />
+          </view>
+        </view>
+      </template>
+    </view>
+
 
     <!--
       差什么就说什么 —— 灰按钮只说明「不行」，不说明「下一步做什么」。
@@ -3118,6 +3125,11 @@ async function save(thenSubmit = false) {
   而它其实只是「这件货没有这一档」。而且「默认全选」让商家一进来就背着
   一堆他没选过的档位，删比选累。
 */
+/* 档位缩进在规格名下：视觉上是「这个规格的档」，不是又一排并列的东西 */
+.opts {
+  padding-left: 20rpx;
+}
+
 .opt--on {
   background: var(--sh-primary-tint);
   color: var(--sh-primary-text);
@@ -3162,6 +3174,51 @@ async function save(thenSubmit = false) {
 }
 
 /* 专业商家的入口：与切换器同一行右侧，压到最轻 */
+/*
+  **「加规格」与「选档位」必须一眼分得开。**
+
+  上一版两者都是 sh-chip：同样的圆角、同样的底色、同样的字号，只差一个 ＋，
+  而且一个在卡顶一个在卡底 —— 商家分不清哪排是「加一个维度」、哪排是「选这件货的档」。
+
+  现在给两套完全不同的形：
+    加规格 = **虚线描边 + 主色 + ＋ 前缀 + 无底色**  → 「这是个动作」
+    选档位 = **实心底 + 无前缀 + 缩进在规格名下**    → 「这是个选项」
+  再加上位置分离（加规格固定在标题下、档位跟在各自的规格名下），
+  两者在形、色、位三个维度上都不一样。
+*/
+.addbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12rpx;
+  padding-bottom: 16rpx;
+  border-bottom: 2rpx solid var(--sh-line);
+  margin-bottom: 8rpx;
+}
+
+.addbar__k {
+  font-size: 24rpx;
+}
+
+.addbar__chip {
+  font-size: 24rpx;
+  padding: 6rpx 18rpx;
+  border-radius: 999rpx;
+  color: var(--sh-primary-text);
+  border: 2rpx dashed var(--sh-primary);
+  background: transparent;
+}
+
+/* 通用/自建压一档：本类目那几条才是平台针对这一类的回答 */
+.addbar__chip--q {
+  color: var(--sh-sub);
+  border-color: var(--sh-line);
+}
+
+.addbar__more {
+  font-size: 24rpx;
+}
+
 /* 商品编码：一个字段一小段，段内每个规格一行 */
 .codeblock {
   padding: 12rpx 0;
