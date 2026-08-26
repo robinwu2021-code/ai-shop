@@ -1565,6 +1565,7 @@ entryHint: "من يشتري · من توقف", total: "العملاء", repeatRa
     stores: "إدارة المتاجر",
     payment: "إعدادات التحصيل",
     staff: "الموظفون",
+    income: "دخلي",
     settle: "كشف التسوية", stats: "بيانات الأعمال", help: "مساعدة التجار", logout: "تسجيل الخروج",
     notLogin: "غير مسجّل", notLoginHint: "سجّل الدخول لإدارة متجرك",
     statusNONE: "غير مسجّل", statusAPPLYING: "قيد المراجعة", statusREJECTED: "مرفوض", statusACTIVE: "نشط", statusSUSPENDED: "موقوف",

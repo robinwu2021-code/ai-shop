@@ -1565,6 +1565,7 @@ entryHint: "Who buys · who lapsed", total: "Customers", repeatRate: "Repeat rat
     stores: "Stores",
     payment: "Payouts",
     staff: "Staff",
+    income: "My income",
     settle: "Settlement", stats: "Business data", help: "Merchant help", logout: "Sign out",
     notLogin: "Not signed in", notLoginHint: "Sign in to manage your shop",
     statusNONE: "Not registered", statusAPPLYING: "Under review", statusREJECTED: "Rejected", statusACTIVE: "Active", statusSUSPENDED: "Suspended",

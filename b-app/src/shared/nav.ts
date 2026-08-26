@@ -32,6 +32,7 @@ export const ROUTES = {
   reviews: "/pages/reviews/index",
   quotes: "/pages/quotes/index",
   groups: "/pages/groups/index",
+  income: "/pages/income/index",
   settle: "/pages/settle/index",
   stats: "/pages/stats/index",
   crossStore: "/pages/cross-store/index",

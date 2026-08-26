@@ -133,6 +133,19 @@ onShow(() => {
     -->
     <view class="cells">
       <!-- 结算与经营数据按 perms 裁剪：店员看不到「钱」，也看不到客户资产 -->
+      <!--
+        **「我的收入」补一个门。** 这一页（B-11.9）此前全 app 没有一处跳得过去 ——
+        路由注册了、也随包发到了线上，而它自己是好的。真机上验别的东西时撞出来的。
+
+        <p>摆这儿的判据只有两条：它要 `biz:finance`（与结算同一个），
+        而结算是明细、收入是总览 —— 总览在明细之前。
+        <b>这是补位不是定案</b>：做「钱」那条线的人如果另有排布（比如提到工作台），
+        以那边为准，把这一行删掉就是。有门总比没门强。
+      -->
+      <view v-if="merchant.can('biz:finance')" class="cell" @tap="go(ROUTES.income)">
+        <text class="cell__label">{{ $t("me.income") }}</text>
+        <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
+      </view>
       <view v-if="merchant.can('biz:finance')" class="cell" @tap="go(ROUTES.settle)">
         <text class="cell__label">{{ $t("me.settle") }}</text>
         <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
