@@ -12,6 +12,7 @@ import { onShow } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
 import { api } from "@/api";
 import { useMerchantStore } from "@/stores/merchant";
+import { confirm } from "@ai-shop/ui/prompt";
 
 const { t } = useI18n();
 const merchant = useMerchantStore();
@@ -199,14 +200,7 @@ async function publish() {
  */
 async function withdraw() {
   if (saving.value) return;
-  const ok = await new Promise<boolean>((resolve) => {
-    uni.showModal({
-      title: String(t("store.noticeWithdraw")),
-      content: String(t("store.noticeWithdrawAsk")),
-      success: (r) => resolve(!!r.confirm),
-      fail: () => resolve(false),
-    });
-  });
+  const ok = await confirm({ title: String(String(t("store.noticeWithdraw"))), hint: String(String(t("store.noticeWithdrawAsk"))) });
   if (!ok) return;
   text.value = "";
   until.value = null;
@@ -245,8 +239,8 @@ onShow(load);
         <text
           v-for="o in TTL_OPTIONS"
           :key="o.key"
-          class="ttl__i"
-          :class="{ 'is-on': ttlKey === o.key }"
+          class="sh-chip"
+          :class="{ 'sh-chip--primary': ttlKey === o.key }"
           @tap="pickTtl(o.key)"
         >{{ $t(`store.ttl.${o.key}`) }}</text>
         <text v-if="untilText" class="ttl__at">{{ untilText }}</text>
@@ -325,17 +319,6 @@ onShow(load);
   align-items: center;
   gap: 12rpx;
   margin-top: 16rpx;
-}
-.ttl__i {
-  padding: 10rpx 20rpx;
-  border-radius: 24rpx;
-  background: var(--sh-faint);
-  color: var(--sh-sub);
-  font-size: 24rpx;
-}
-.ttl__i.is-on {
-  background: var(--sh-primary-tint);
-  color: var(--sh-primary-text);
 }
 .ttl__at {
   margin-left: auto;

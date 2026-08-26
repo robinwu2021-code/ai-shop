@@ -15,6 +15,7 @@ import { api } from "@/api";
 import { useMerchantStore } from "@/stores/merchant";
 import { canPickFile, pickCsvFile, saveCsv } from "@/utils/csv-file";
 import type { SkuIdentityReport } from "@shared/types";
+import { confirm } from "@ai-shop/ui/prompt";
 
 const { t } = useI18n();
 const merchant = useMerchantStore();
@@ -65,17 +66,10 @@ async function check() {
   }
 }
 
-async function confirm() {
+async function applyImport() {
   const r = report.value;
   if (!r || !r.willSet) return;
-  const ok = await new Promise<boolean>((resolve) => {
-    uni.showModal({
-      title: t("skuIdentity.confirmTitle"),
-      content: t("skuIdentity.confirmBody", { n: r.willSet }),
-      success: (x) => resolve(!!x.confirm),
-      fail: () => resolve(false),
-    });
-  });
+  const ok = await confirm({ title: String(t("skuIdentity.confirmTitle")), hint: String(t("skuIdentity.confirmBody", { n: r.willSet })) });
   if (!ok) return;
   busy.value = true;
   try {
@@ -113,18 +107,15 @@ function arrow(from?: string | null, to?: string | null): string {
     <view class="sh-card">
       <text class="sh-h2">{{ $t("skuIdentity.howTitle") }}</text>
       <view class="rules">
-        <view class="rule">
-          <text class="rule__k">{{ $t("skuIdentity.ruleMissingK") }}</text>
+        <sh-kv :label="String($t('skuIdentity.ruleMissingK'))" divided :key-width="180">
           <text class="sh-muted rule__v">{{ $t("skuIdentity.ruleMissingV") }}</text>
-        </view>
-        <view class="rule">
-          <text class="rule__k">{{ $t("skuIdentity.ruleBlankK") }}</text>
+        </sh-kv>
+        <sh-kv :label="String($t('skuIdentity.ruleBlankK'))" divided :key-width="180">
           <text class="sh-muted rule__v">{{ $t("skuIdentity.ruleBlankV") }}</text>
-        </view>
-        <view class="rule">
-          <text class="rule__k">{{ $t("skuIdentity.ruleDashK") }}</text>
+        </sh-kv>
+        <sh-kv :label="String($t('skuIdentity.ruleDashK'))" divided :key-width="180">
           <text class="sh-muted rule__v">{{ $t("skuIdentity.ruleDashV") }}</text>
-        </view>
+        </sh-kv>
       </view>
     </view>
 
@@ -184,10 +175,13 @@ function arrow(from?: string | null, to?: string | null): string {
         「第 14 行：货号 HX-9 在本店找不到」他一眼就知道去 Excel 里改哪儿。
       -->
       <view v-if="hasProblems" class="probs">
-        <view v-for="p in report.problems" :key="p.line" class="prob">
-          <text class="prob__l">{{ $t("skuIdentity.line", { n: p.line }) }}</text>
-          <text class="prob__r">{{ p.reason }}</text>
-        </view>
+        <sh-kv
+          v-for="p in report.problems"
+          :key="p.line"
+          class="prob"
+          :key-width="120"
+          :label="String($t('skuIdentity.line', { n: p.line }))"
+        >{{ p.reason }}</sh-kv>
       </view>
 
       <!-- 前后对照：让他确认「改的是不是我想的那些」 -->
@@ -241,30 +235,12 @@ function arrow(from?: string | null, to?: string | null): string {
   margin-top: 16rpx;
 }
 
-.rule {
-  display: flex;
-  gap: 16rpx;
-  padding: 12rpx 0;
-  border-top: 1rpx solid var(--sh-line-soft, var(--sh-line));
-}
 
 .rule:first-child {
   border-top: none;
 }
 
-.rule__k {
-  width: 180rpx;
-  flex: none;
-  font-size: 26rpx;
-  font-weight: 600;
-  color: var(--sh-ink);
-}
 
-.rule__v {
-  flex: 1;
-  font-size: 24rpx;
-  line-height: 1.6;
-}
 
 .paste {
   margin-top: 16rpx;
@@ -293,25 +269,18 @@ function arrow(from?: string | null, to?: string | null): string {
   background: var(--sh-danger-tint);
 }
 
+/* 只留本页版面与语义色：排法归 sh-kv。行号是红的 —— 这一块整个是「出错的行」 */
 .prob {
-  display: flex;
-  gap: 12rpx;
   padding: 6rpx 0;
-}
-
-.prob__l {
-  flex: none;
-  font-size: 24rpx;
-  font-weight: 600;
-  color: var(--sh-danger);
-}
-
-.prob__r {
-  flex: 1;
   font-size: 24rpx;
   line-height: 1.5;
-  color: var(--sh-ink);
 }
+.prob .kv__k {
+  color: var(--sh-danger);
+  font-weight: 600;
+}
+
+
 
 .prev {
   margin-top: 20rpx;

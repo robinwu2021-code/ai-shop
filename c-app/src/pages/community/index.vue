@@ -464,7 +464,7 @@ onLoad(load);
   margin-top: 6rpx;
 }
 .pk__addr {
-  font-size: 22rpx;
+  font-size: 24rpx;
   color: var(--sh-sub);
 }
 .pk__right {
@@ -478,7 +478,7 @@ onLoad(load);
   border-radius: 999px;
   background: var(--sh-primary-tint);
   color: var(--sh-primary-text);
-  font-size: 22rpx;
+  font-size: 24rpx;
 }
 .pk__dist {
   font-size: 24rpx;

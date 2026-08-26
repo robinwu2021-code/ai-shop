@@ -23,6 +23,7 @@ import { useI18n } from "vue-i18n";
 import { api } from "@/api";
 import { useMerchantStore } from "@/stores/merchant";
 import type { MerchantPlan } from "@shared/types";
+import { confirm } from "@ai-shop/ui/prompt";
 
 const { t } = useI18n();
 const merchant = useMerchantStore();
@@ -69,15 +70,7 @@ async function startTrial() {
   const p = plan.value;
   if (!p?.trialTier || trialing.value) return;
   const tier = p.tiers.find((x) => x.planCode === p.trialTier);
-  const ok = await new Promise<boolean>((resolve) => {
-    uni.showModal({
-      title: String(t("plan.trialConfirmTitle", { n: p.trialDays ?? 0 })),
-      content: String(t("plan.trialConfirmBody", { name: tier?.name ?? p.trialTier })),
-      confirmText: String(t("plan.trialConfirmOk")),
-      success: (r) => resolve(!!r.confirm),
-      fail: () => resolve(false),
-    });
-  });
+  const ok = await confirm({ title: String(String(t("plan.trialConfirmTitle", { n: p.trialDays ?? 0 }))), hint: String(String(t("plan.trialConfirmBody", { name: tier?.name ?? p.trialTier }))), confirmText: String(String(t("plan.trialConfirmOk"))) });
   if (!ok) return;
   trialing.value = true;
   try {
@@ -98,11 +91,10 @@ async function startTrial() {
  * 比一开始就写明「联系平台开通」更让人觉得被耍了。
  */
 function contact() {
-  uni.showModal({
+  void confirm({
     title: String(t("plan.contactTitle")),
-    content: String(t("plan.contactBody")),
-    showCancel: false,
-    confirmText: String(t("common.confirm")),
+    hint: String(t("plan.contactBody")),
+    alert: true,
   });
 }
 

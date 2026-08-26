@@ -715,7 +715,7 @@ onMounted(async () => {
 .mode {
   flex: 1;
   padding: 20rpx;
-  border-radius: 20rpx;
+  border-radius: 16rpx;
   border: 2rpx solid var(--sh-line);
   background: var(--sh-bg);
 }
@@ -731,7 +731,7 @@ onMounted(async () => {
 .mode__d {
   display: block;
   margin-top: 6rpx;
-  font-size: 22rpx;
+  font-size: 24rpx;
   line-height: 1.4;
   color: var(--sh-sub);
 }

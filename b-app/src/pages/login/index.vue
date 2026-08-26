@@ -15,6 +15,7 @@ import { api } from "@/api";
 import { useMerchantStore } from "@/stores/merchant";
 import { ROUTES } from "@/shared/nav";
 import { loginMethods, type LoginMethod } from "@shared/ports/auth";
+import { confirm } from "@ai-shop/ui/prompt";
 
 const { t } = useI18n();
 const merchant = useMerchantStore();
@@ -105,10 +106,10 @@ async function sendCode() {
 }
 
 function showAgreement() {
-  uni.showModal({
-    title: t("login.agreementTitle"),
-    content: t("login.agreementBody"),
-    showCancel: false,
+  void confirm({
+    title: String(t("login.agreementTitle")),
+    hint: String(t("login.agreementBody")),
+    alert: true,
   });
 }
 

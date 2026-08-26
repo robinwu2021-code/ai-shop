@@ -12,6 +12,7 @@ import { api } from "@/api";
 import { useMerchantStore } from "@/stores/merchant";
 import { ROUTES } from "@/shared/nav";
 import type { MerchantRole, MerchantStaff, PermOption } from "@shared/types";
+import { confirm } from "@ai-shop/ui/prompt";
 
 const { t, te } = useI18n();
 
@@ -120,14 +121,7 @@ async function remove() {
     uni.showToast({ title: t("staff.roleInUse", { n: r.usedBy }), icon: "none" });
     return;
   }
-  const ok = await new Promise<boolean>((resolve) => {
-    uni.showModal({
-      title: t("staff.roleDelete"),
-      content: t("staff.roleDeleteHint"),
-      success: (res) => resolve(!!res.confirm),
-      fail: () => resolve(false),
-    });
-  });
+  const ok = await confirm({ title: String(t("staff.roleDelete")), hint: String(t("staff.roleDeleteHint")), danger: true });
   if (!ok) return;
   try {
     await api.mDeleteRole(r.roleCode);

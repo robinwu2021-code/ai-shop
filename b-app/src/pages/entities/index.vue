@@ -158,10 +158,13 @@ function addOne() {
   background: var(--sh-sub);
 }
 .dot.is-ok {
-  background: var(--sh-ok, #22a06b);
+  /* 此前写的是 var(--sh-ok, #22a06b) —— 而皮肤里**没有 --sh-ok 这个变量**
+     （语义色叫 --sh-success），于是一直落在兜底的硬编码色上：换肤与深色模式都跟不上 */
+  background: var(--sh-success);
 }
 .dot.is-warn {
-  background: var(--sh-warn, #e08b00);
+  /* 同上：--sh-warn 不存在，语义色叫 --sh-warning */
+  background: var(--sh-warning);
 }
 .dot.is-off {
   background: var(--sh-line);

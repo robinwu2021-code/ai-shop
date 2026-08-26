@@ -884,7 +884,7 @@ onShow(() => {
 .sheet__t {
   display: block;
   margin-bottom: 20rpx;
-  font-size: 32rpx;
+  font-size: 34rpx;
   font-weight: 600;
   color: var(--sh-ink);
 }

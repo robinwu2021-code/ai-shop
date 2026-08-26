@@ -14,6 +14,7 @@ import { api } from "@/api";
 import { useMerchantStore } from "@/stores/merchant";
 import { money } from "@shared/utils/money";
 import type { MemberSegment, MerchantCoupon } from "@shared/types";
+import { confirm } from "@ai-shop/ui/prompt";
 
 const { t } = useI18n();
 const merchant = useMerchantStore();
@@ -88,14 +89,7 @@ async function issue(c: MerchantCoupon) {
   if (pick < 0) return;
   const seg = segments.value[pick]!;
 
-  const ok = await new Promise<boolean>((resolve) => {
-    uni.showModal({
-      title: t("coupons.issueTitle", { name: seg.name }),
-      content: t("coupons.issueBody", { n: seg.lastCount, title: c.title }),
-      success: (r) => resolve(!!r.confirm),
-      fail: () => resolve(false),
-    });
-  });
+  const ok = await confirm({ title: String(t("coupons.issueTitle", { name: seg.name })), hint: String(t("coupons.issueBody", { n: seg.lastCount, title: c.title })) });
   if (!ok) return;
 
   try {

@@ -249,7 +249,7 @@ onShareAppMessage(() => {
 
 <style scoped>
 .quote__norating {
-  font-size: 22rpx;
+  font-size: 24rpx;
   color: var(--sh-sub);
 }
 

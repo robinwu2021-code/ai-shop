@@ -356,6 +356,8 @@ def usage(name: str, roots: list[str]) -> int:
 
 
 def class_usage(cls: str, roots: list[str]) -> int:
+    """注：调用点也可能在组件里（如 `.sh-btn--danger-solid` 只在 sh-confirm 用），
+    所以 packages/ui 也要扫 —— 否则清单会报「定义了没人用」，而它其实在用。"""
     n = 0
     pat = re.compile(r"[\"' ]" + re.escape(cls.lstrip(".")) + r"[\"' ]")
     for r in roots:
@@ -425,7 +427,9 @@ ROLLED = [
     # `effect` 补进来：`activities` 画的就是这个东西，只是没叫这个名。
     ("stat",    "统计数字格",      None, r"^\s*\.(trio|quad|stat|kpi|effect__)\b", "sh-stat", None),
     ("listrow", "列表行",         None, r"^\s*\.(row|item)\b",                  None,       None),
-    ("kv",      "键值行",         None, r"^\s*\.(kv|rule|prob|field__head)\b",  None,       None),
+    # 键值行判**声明**不判名字：`activities` 的 `.rule` 是 `display: block` 的
+    # 一行灰字，不是「左键右值」。按名字判第九次误命中。
+    ("kv",      "键值行", None, r"\.(?:kv|rule|prob)\b[^{}]*\{[^}]*display:\s*flex", None, None),
     ("addbtn",  "＋ 加一项按钮",   None, r"^\s*\.btn-add\b",                     None,       None),
     # 虚线药丸是**另一件事**，goods-edit 的注释里把两者的分工写死了：
     # 虚线＝候选（点一下当场加进来），浅底按钮＝入口（点一下开弹层再填）。
@@ -444,7 +448,11 @@ ROLLED = [
     ("savebar", "底部固定条",      None, r"position:\s*fixed[^}]*bottom:\s*0",    None,       None),
     # 搜索框判**形态**不判名字：`customers` 的 `.search` 只是 `margin-top: 16rpx`
     # 包着一个 `.field__input`（手机号查询），不是搜索框。按名字判第六次误命中。
-    ("search",  "搜索框",         None, r"\.search\b[^{}]*\{[^}]*background:",   None,       None),
+    # 「搜索框」这条判据**撤掉了**：真正的只有 goods-list 一处
+    # （customers 的 `.search` 只是 margin 包着一个 field__input，是手机号查询）。
+    # **一处不构成组件** —— 收成 sh-search 只会多一个只有一个调用点的件，
+    # 而这套界面已经因为「只有一个调用点也收」被质疑过一次（sh-fab 那次收了，
+    # 因为它藏着 tabBar 避让的知识；搜索框没有那样的知识）。
     # 判据要认「自己画了格子」，不是「调了选图」—— 收编成 sh-uploader 之后，
     # 选图逻辑仍然归页面（那是业务：传几张、传到哪、失败怎么办），
     # 只有 UI 归组件。只认 pickImages 的话，四页收编完清单一动不动。
@@ -562,7 +570,7 @@ def build() -> dict:
         blocks.append({
             "class": cls, "group": group, "when": when, "avoid": avoid,
             "decl": decl, "px": {k: rpx2px(v) for k, v in decl.items()},
-            "usage": {"b-app": class_usage(cls, ["b-app/src"]),
+            "usage": {"b-app": class_usage(cls, ["b-app/src", "packages/ui/src"]),
                       "c-app": class_usage(cls, ["c-app/src"])},
         })
     # .field 只定义在 b-app/App.vue，base.css 里没有
@@ -571,7 +579,7 @@ def build() -> dict:
             "class": ".field", "group": "表单", "when": BLOCK_NOTES[".field"][1],
             "avoid": BLOCK_NOTES[".field"][2], "decl": dens["field"],
             "px": {k: rpx2px(v) for k, v in dens["field"].items()},
-            "usage": {"b-app": class_usage(".field", ["b-app/src"]),
+            "usage": {"b-app": class_usage(".field", ["b-app/src", "packages/ui/src"]),
                       "c-app": class_usage(".field", ["c-app/src"])},
         })
     comps = read_components()

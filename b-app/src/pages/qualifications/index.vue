@@ -202,18 +202,15 @@ onShow(() => void load());
     <!-- 上传表单 -->
     <view v-if="form" class="sh-card mt">
       <text class="sh-h2">{{ $t("qual.add") }}</text>
-      <view class="kv">
-        <text class="kv__k">{{ $t("qual.fieldName") }}</text>
+      <sh-kv :label="String($t('qual.fieldName'))">
         <input v-model="form.qualName" class="field__input" />
-      </view>
-      <view class="kv">
-        <text class="kv__k">{{ $t("qual.fieldNumber") }}</text>
+      </sh-kv>
+      <sh-kv :label="String($t('qual.fieldNumber'))">
         <input v-model="form.qualNumber" class="field__input" />
-      </view>
-      <view class="kv">
-        <text class="kv__k">{{ $t("qual.fieldExpire") }}</text>
+      </sh-kv>
+      <sh-kv :label="String($t('qual.fieldExpire'))">
         <input v-model="form.expireAt" class="field__input" placeholder="2027-12-31" />
-      </view>
+      </sh-kv>
       <text class="sh-muted hint">{{ $t("qual.expireHint") }}</text>
       <view class="kv kv--top">
         <text class="kv__k">{{ $t("qual.fieldPhoto") }}</text>
@@ -318,19 +315,8 @@ onShow(() => void load());
   font-size: 24rpx;
   line-height: 1.5;
 }
-.kv {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
-  margin-top: 16rpx;
-}
 .kv--top {
   align-items: flex-start;
-}
-.kv__k {
-  flex: 0 0 160rpx;
-  font-size: 26rpx;
-  color: var(--sh-sub);
 }
 .field__input {
   flex: 1;

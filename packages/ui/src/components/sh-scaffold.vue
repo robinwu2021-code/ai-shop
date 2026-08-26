@@ -75,6 +75,7 @@ watch(() => props.titleKey, applyTitle);
     <!-- 输入弹层的壳。挂在这里而不是各页自己摆：`prompt()` 要能在任何一段
          业务代码里 await，而那段代码未必知道自己所在的页面摆没摆过弹层 -->
     <sh-prompt></sh-prompt>
+    <sh-confirm></sh-confirm>
     <app-overlay></app-overlay>
   </view>
 </template>

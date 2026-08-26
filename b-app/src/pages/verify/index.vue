@@ -14,6 +14,7 @@ import { api } from "@/api";
 import { ROUTES } from "@/shared/nav";
 import { scanCode } from "@shared/ports/scan";
 import { money } from "@shared/utils/money";
+import { confirm } from "@ai-shop/ui/prompt";
 import type {
   CouponRedeemView,
   Order,
@@ -69,17 +70,7 @@ async function scanCoupon() {
 async function redeemCoupon() {
   const v = couponView.value;
   if (!v || !v.redeemable || busy.value) return;
-  const ok = await new Promise<boolean>((resolve) => {
-    uni.showModal({
-      title: t("verify.couponConfirmTitle", { title: v.title }),
-      content: v.timesTotal > 1
-        ? t("verify.couponConfirmTimes", { n: v.remaining - 1 })
-        : t("verify.couponConfirmOnce"),
-      confirmText: String(t("verify.couponConfirmBtn")),
-      success: (r) => resolve(!!r.confirm),
-      fail: () => resolve(false),
-    });
-  });
+  const ok = await confirm({ title: String(t("verify.couponConfirmTitle", { title: v.title })), hint: String(v.timesTotal > 1 ? t("verify.couponConfirmTimes", { n: v.remaining - 1 }) : t("verify.couponConfirmOnce")), confirmText: String(String(t("verify.couponConfirmBtn"))) });
   if (!ok) return;
 
   busy.value = true;
@@ -479,7 +470,7 @@ onShow(load);
 .done {
   margin-top: 16rpx;
   padding: 16rpx;
-  border-radius: 12rpx;
+  border-radius: 16rpx;
   background: var(--sh-success-tint);
   font-size: 26rpx;
 }
@@ -623,7 +614,7 @@ onShow(load);
   gap: 16rpx;
   padding: 20rpx 24rpx;
   margin: 0 8rpx;
-  border-radius: 20rpx;
+  border-radius: 16rpx;
   background: var(--sh-warning-tint);
   color: var(--sh-warning);
   font-size: 26rpx;

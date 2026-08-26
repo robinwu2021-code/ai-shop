@@ -13,7 +13,7 @@ import { useI18n } from "vue-i18n";
 import { api } from "@/api";
 import { useMerchantStore } from "@/stores/merchant";
 import type { MemberSegment, MemberTag } from "@shared/types";
-import { prompt } from "@ai-shop/ui/prompt";
+import { confirm, prompt } from "@ai-shop/ui/prompt";
 
 const { t } = useI18n();
 const merchant = useMerchantStore();
@@ -78,14 +78,10 @@ async function rename(sg: MemberSegment) {
   }));
 }
 
-function remove(sg: MemberSegment) {
-  uni.showModal({
-    title: t("memberSegments.removeTitle", { name: sg.name }),
-    content: t("memberSegments.removeBody"),
-    success: (r) => {
-      if (r.confirm) run(() => api.mRemoveMemberSegment(sg.segmentNo));
-    },
-  });
+async function remove(sg: MemberSegment) {
+  if (await confirm({ title: String(t("memberSegments.removeTitle", { name: sg.name })), hint: String(t("memberSegments.removeBody")), danger: true })) {
+    run(() => api.mRemoveMemberSegment(sg.segmentNo));
+  }
 }
 
 /** 重算一次：条件原样存回去，服务端顺手把命中人数刷新 */
@@ -152,7 +148,7 @@ onShow(load);
 .stamp {
   display: block;
   margin-top: 4rpx;
-  font-size: 22rpx;
+  font-size: 24rpx;
 }
 .acts {
   display: flex;

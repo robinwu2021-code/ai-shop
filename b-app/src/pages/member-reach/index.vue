@@ -14,6 +14,7 @@ import { useI18n } from "vue-i18n";
 import { api } from "@/api";
 import { useMerchantStore } from "@/stores/merchant";
 import type { MemberSegment, ReachPlan, ReachResult } from "@shared/types";
+import { confirm } from "@ai-shop/ui/prompt";
 
 const { t } = useI18n();
 const merchant = useMerchantStore();
@@ -79,16 +80,7 @@ const segmentName = computed(() => {
 async function send() {
   const p = plan.value;
   if (!p || !canSend.value) return;
-  const ok = await new Promise<boolean>((resolve) => {
-    uni.showModal({
-      // 人数写在标题里：他按下去之前就该看见这个数
-      title: t("reach.confirmTitle", { n: p.reachable }),
-      content: t("reach.confirmBody"),
-      confirmText: String(t("reach.confirmBtn")),
-      success: (r) => resolve(!!r.confirm),
-      fail: () => resolve(false),
-    });
-  });
+  const ok = await confirm({ title: String(t("reach.confirmTitle", { n: p.reachable })), hint: String(t("reach.confirmBody")), confirmText: String(String(t("reach.confirmBtn"))) });
   if (!ok) return;
 
   busy.value = true;
@@ -228,7 +220,7 @@ onShow(() => {
   font-size: 24rpx;
   color: var(--sh-sub);
   background: var(--sh-faint);
-  border-radius: 8rpx;
+  border-radius: 16rpx;
   padding: 6rpx 12rpx;
 }
 .area {

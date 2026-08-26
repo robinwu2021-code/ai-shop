@@ -56,17 +56,15 @@ onLoad(async (q) => {
         <text v-if="data.member.firstStoreNo" class="sh-muted">
           {{ $t("memberDetail.firstStore", { s: storeName(data.member.firstStoreNo) }) }}
         </text>
-        <view class="kv mt">
-          <text class="sh-muted">{{ $t("memberDetail.lifetime") }}</text>
+        <sh-kv between :label="String($t('memberDetail.lifetime'))" class="kv mt">
           <text class="sh-num val">
             {{ $t("members.stat", {
               n: data.member.orderCount, m: money(data.member.totalSpentMinor) }) }}
           </text>
-        </view>
-        <view class="kv">
-          <text class="sh-muted">{{ $t("memberDetail.d90") }}</text>
+        </sh-kv>
+        <sh-kv between :label="String($t('memberDetail.d90'))" class="kv">
           <text class="sh-num val">{{ data.member.d90OrderCount }}</text>
-        </view>
+        </sh-kv>
       </view>
 
       <!-- 各店往来：多店商家问的是「南门店有多少熟客」，单店没有这个问题 -->
@@ -124,11 +122,8 @@ onLoad(async (q) => {
 .mt-card {
   margin-top: 16rpx;
 }
+/* 只留本页版面：排法（两端对齐）归 sh-kv */
 .kv {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16rpx;
   font-size: 26rpx;
   padding: 6rpx 0;
 }

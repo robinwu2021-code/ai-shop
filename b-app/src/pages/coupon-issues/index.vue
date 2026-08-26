@@ -127,7 +127,7 @@ onShow(load);
   font-size: 24rpx;
   color: var(--sh-sub);
   background: var(--sh-faint);
-  border-radius: 8rpx;
+  border-radius: 16rpx;
   padding: 6rpx 12rpx;
 }
 .amount {

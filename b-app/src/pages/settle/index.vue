@@ -17,6 +17,7 @@ import { api } from "@/api";
 import { useMerchantStore } from "@/stores/merchant";
 import { money } from "@shared/utils/money";
 import { monthDay } from "@shared/utils/datetime";
+import { confirm } from "@ai-shop/ui/prompt";
 import type {
   MerchantPointAccount,
   MerchantPointsRecord,
@@ -88,14 +89,7 @@ async function togglePoints() {
   const p = points.value;
   if (!p || p.forced || togglingPoints.value) return;
   const on = !p.enabled;
-  const res = await new Promise<boolean>((resolve) => {
-    uni.showModal({
-      title: t(on ? "settle.pointsOnTitle" : "settle.pointsOffTitle"),
-      content: t(on ? "settle.pointsOnHint" : "settle.pointsOffHint"),
-      success: (r) => resolve(!!r.confirm),
-      fail: () => resolve(false),
-    });
-  });
+  const res = await confirm({ title: String(t(on ? "settle.pointsOnTitle" : "settle.pointsOffTitle")), hint: String(t(on ? "settle.pointsOnHint" : "settle.pointsOffHint")) });
   if (!res) return;
   togglingPoints.value = true;
   try {

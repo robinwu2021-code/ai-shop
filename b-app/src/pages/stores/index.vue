@@ -14,7 +14,7 @@ import { api, ApiError } from "@/api";
 import { ROUTES } from "@/shared/nav";
 import { money } from "@shared/utils/money";
 import type { CrossStoreOverview, MerchantPlan, PaymentApplyment, Store } from "@shared/types";
-import { prompt } from "@ai-shop/ui/prompt";
+import { confirm, prompt } from "@ai-shop/ui/prompt";
 
 /**
  * 门店额度用尽（后端 `ErrorCode.STORE_QUOTA_EXCEEDED`）。
@@ -168,23 +168,14 @@ function create() {
 async function onQuotaBlocked() {
   const p = plan.value ?? (await api.mMyPlan().catch(() => null));
   const canTrial = !!p?.trialTier;
-  const r = await new Promise<UniApp.ShowModalRes | null>((resolve) => {
-    uni.showModal({
-      title: String(t("plan.blockedTitle")),
-      content: String(t("plan.blockedBody", {
-        name: p?.planName ?? "",
-        quota: p?.storeQuota ?? stores.value.length,
-      })),
-      // 主按钮就是那条出路：能试用给试用，否则给「查看套餐」
-      confirmText: canTrial
-        ? String(t("plan.blockedTrial", { n: p?.trialDays ?? 0 }))
-        : String(t("plan.blockedView")),
-      cancelText: String(t("common.cancel")),
-      success: resolve,
-      fail: () => resolve(null),
-    });
+  const ok = await confirm({
+    title: String(t("plan.blockedTitle")),
+    hint: String(t("plan.blockedBody", { name: p?.planName ?? "" })),
+    confirmText: String(
+      canTrial ? t("plan.blockedTrial", { n: p?.trialDays ?? 0 }) : t("plan.blockedView"),
+    ),
   });
-  if (!r?.confirm) return;
+  if (!ok) return;
   if (!canTrial) {
     uni.navigateTo({ url: ROUTES.plan });
     return;
@@ -458,7 +449,7 @@ function pickPayment(s: Store, payMerchantNo?: string) {
 .pick__sub {
   display: block;
   margin-top: 4rpx;
-  font-size: 22rpx;
+  font-size: 24rpx;
   color: var(--sh-sub);
 }
 

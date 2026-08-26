@@ -142,10 +142,9 @@ async function refresh() {
       <!-- 驳回原因要显眼：不给原因，商家只会反复重提同一份资料 -->
       <text v-if="p.rejectReason" class="reason">{{ p.rejectReason }}</text>
 
-      <view v-if="p.canReceiveMoney" class="kv">
-        <text class="kv__k">{{ $t("payment.settleAccount") }}</text>
-        <text class="kv__v">{{ p.settleAccountMasked }}</text>
-      </view>
+      <sh-kv v-if="p.canReceiveMoney" between :label="String($t('payment.settleAccount'))">
+        <text>{{ p.settleAccountMasked }}</text>
+      </sh-kv>
 
       <!-- 还缺什么，逐条列出来。「还差结算账户」比「审核中」有用得多 -->
       <view v-else-if="p.missing.length" class="miss">
@@ -245,19 +244,6 @@ async function refresh() {
   font-size: 24rpx;
   line-height: 1.5;
   color: var(--sh-danger);
-}
-.kv {
-  display: flex;
-  justify-content: space-between;
-  margin-top: 20rpx;
-}
-.kv__k {
-  font-size: 24rpx;
-  color: var(--sh-sub);
-}
-.kv__v {
-  font-size: 28rpx;
-  color: var(--sh-ink);
 }
 .miss {
   margin-top: 20rpx;

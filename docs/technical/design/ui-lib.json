@@ -258,7 +258,7 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 241,
+        "b-app": 240,
         "c-app": 39
       }
     },
@@ -500,7 +500,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 71,
+        "b-app": 73,
         "c-app": 27
       }
     },
@@ -564,7 +564,7 @@
         "padding": "var(--sh-pad-card, 16px)"
       },
       "usage": {
-        "b-app": 148,
+        "b-app": 149,
         "c-app": 57
       }
     },
@@ -596,7 +596,7 @@
         "line-height": "1.4"
       },
       "usage": {
-        "b-app": 71,
+        "b-app": 78,
         "c-app": 36
       }
     },
@@ -636,7 +636,7 @@
         "color": "#fff"
       },
       "usage": {
-        "b-app": 0,
+        "b-app": 1,
         "c-app": 0
       }
     },
@@ -654,7 +654,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 12,
+        "b-app": 15,
         "c-app": 2
       }
     },
@@ -764,7 +764,7 @@
         "unicode-bidi": "isolate"
       },
       "usage": {
-        "b-app": 135,
+        "b-app": 138,
         "c-app": 129
       }
     },
@@ -792,7 +792,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 91,
+        "b-app": 97,
         "c-app": 56
       }
     },
@@ -866,7 +866,7 @@
         "color": "var(--sh-primary-text)"
       },
       "usage": {
-        "b-app": 49,
+        "b-app": 56,
         "c-app": 22
       }
     },
@@ -980,7 +980,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 88,
+        "b-app": 89,
         "c-app": 0
       }
     },
@@ -1018,7 +1018,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 1,
+        "b-app": 2,
         "c-app": 0
       }
     }
@@ -1058,6 +1058,19 @@
       },
       "note": "勾选框 / 单选点",
       "why": "四页各画一个、**四种尺寸**（28/36/44/44）。勾用 `check` 图标 —— 那个图标是这次一起补进 icons.ts 的"
+    },
+    {
+      "name": "sh-confirm",
+      "file": "packages/ui/src/components/sh-confirm.vue",
+      "scope": "跨端",
+      "lines": 81,
+      "props": [],
+      "usage": {
+        "b-app": 0,
+        "c-app": 0
+      },
+      "note": "—",
+      "why": "—"
     },
     {
       "name": "sh-cover",
@@ -1111,7 +1124,7 @@
       "name": "sh-icon-btn",
       "file": "packages/ui/src/components/sh-icon-btn.vue",
       "scope": "跨端",
-      "lines": 57,
+      "lines": 68,
       "props": [
         "name: IconName",
         "size?: number",
@@ -1141,6 +1154,24 @@
       },
       "note": "单色图标",
       "why": "内联 SVG 转 CSS mask，颜色吃 var(--sh-*) —— 换肤零成本。**不用 emoji**：各系统字形不一且是彩色的"
+    },
+    {
+      "name": "sh-kv",
+      "file": "packages/ui/src/components/sh-kv.vue",
+      "scope": "跨端",
+      "lines": 73,
+      "props": [
+        "label: string",
+        "between?: boolean",
+        "keyWidth?: number",
+        "divided?: boolean"
+      ],
+      "usage": {
+        "b-app": 18,
+        "c-app": 0
+      },
+      "note": "—",
+      "why": "—"
     },
     {
       "name": "sh-option",
@@ -1210,7 +1241,7 @@
       "name": "sh-scaffold",
       "file": "packages/ui/src/components/sh-scaffold.vue",
       "scope": "跨端",
-      "lines": 171,
+      "lines": 172,
       "props": [
         "padded?: boolean",
         "titleKey?: string",
@@ -1451,24 +1482,10 @@
       "localCssLines": 52,
       "rolled": [
         {
-          "id": "sysmodal",
-          "label": "系统弹框",
-          "lib": "sh-sheet",
-          "rule": "showModal\\(|showActionSheet\\(",
-          "gap": false
-        },
-        {
           "id": "listrow",
           "label": "列表行",
           "lib": null,
           "rule": "^\\s*\\.(row|item)\\b",
-          "gap": true
-        },
-        {
-          "id": "kv",
-          "label": "键值行",
-          "lib": null,
-          "rule": "^\\s*\\.(kv|rule|prob|field__head)\\b",
           "gap": true
         }
       ]
@@ -1619,27 +1636,13 @@
       ],
       "libClassHits": 30,
       "localSelectors": 38,
-      "localCssLines": 173,
+      "localCssLines": 172,
       "rolled": [
-        {
-          "id": "sysmodal",
-          "label": "系统弹框",
-          "lib": "sh-sheet",
-          "rule": "showModal\\(|showActionSheet\\(",
-          "gap": false
-        },
         {
           "id": "segment",
           "label": "选中态自画（含未拆出的）",
           "lib": ".sh-chip--primary",
           "rule": "(--on|--off|is-on)\\s*[,{]",
-          "gap": false
-        },
-        {
-          "id": "candchip",
-          "label": "虚线药丸",
-          "lib": ".sh-chip--dashed",
-          "rule": "border:\\s*2rpx dashed var\\(--sh-primary\\)",
           "gap": false
         }
       ]
@@ -1733,27 +1736,21 @@
         "sh-cover",
         "sh-icon-btn",
         "sh-icon",
+        "sh-kv",
         "sh-scaffold",
         "sh-section",
         "sh-sheet",
         "sh-uploader"
       ],
-      "libClassHits": 123,
-      "localSelectors": 89,
-      "localCssLines": 482,
+      "libClassHits": 130,
+      "localSelectors": 81,
+      "localCssLines": 437,
       "rolled": [
         {
           "id": "sysmodal",
           "label": "系统弹框",
           "lib": "sh-sheet",
           "rule": "showModal\\(|showActionSheet\\(",
-          "gap": false
-        },
-        {
-          "id": "segment",
-          "label": "选中态自画（含未拆出的）",
-          "lib": ".sh-chip--primary",
-          "rule": "(--on|--off|is-on)\\s*[,{]",
           "gap": false
         },
         {
@@ -1769,13 +1766,6 @@
           "lib": ".sh-h2 + 间距档",
           "rule": "class=\"sh-h2 (?:sec|grp)\\b",
           "gap": false
-        },
-        {
-          "id": "kv",
-          "label": "键值行",
-          "lib": null,
-          "rule": "^\\s*\\.(kv|rule|prob|field__head)\\b",
-          "gap": true
         },
         {
           "id": "glyphicon",
@@ -1828,13 +1818,6 @@
           "lib": "sh-icon-btn / sh-icon(close)",
           "rule": "class=\"[^\"]*\"[^>]*>\\s*[✕×]\\s*<",
           "gap": false
-        },
-        {
-          "id": "search",
-          "label": "搜索框",
-          "lib": null,
-          "rule": "\\.search\\b[^{}]*\\{[^}]*background:",
-          "gap": true
         }
       ]
     },
@@ -1908,13 +1891,6 @@
       "localSelectors": 21,
       "localCssLines": 100,
       "rolled": [
-        {
-          "id": "sysmodal",
-          "label": "系统弹框",
-          "lib": "sh-sheet",
-          "rule": "showModal\\(|showActionSheet\\(",
-          "gap": false
-        },
         {
           "id": "segment",
           "label": "选中态自画（含未拆出的）",
@@ -2009,24 +1985,18 @@
       "page": "member-detail",
       "file": "b-app/src/pages/member-detail/index.vue",
       "components": [
+        "sh-kv",
         "sh-scaffold"
       ],
-      "libClassHits": 17,
+      "libClassHits": 15,
       "localSelectors": 8,
-      "localCssLines": 39,
+      "localCssLines": 35,
       "rolled": [
         {
           "id": "listrow",
           "label": "列表行",
           "lib": null,
           "rule": "^\\s*\\.(row|item)\\b",
-          "gap": true
-        },
-        {
-          "id": "kv",
-          "label": "键值行",
-          "lib": null,
-          "rule": "^\\s*\\.(kv|rule|prob|field__head)\\b",
           "gap": true
         }
       ]
@@ -2070,13 +2040,6 @@
       "localCssLines": 38,
       "rolled": [
         {
-          "id": "sysmodal",
-          "label": "系统弹框",
-          "lib": "sh-sheet",
-          "rule": "showModal\\(|showActionSheet\\(",
-          "gap": false
-        },
-        {
           "id": "listrow",
           "label": "列表行",
           "lib": null,
@@ -2096,13 +2059,6 @@
       "localSelectors": 6,
       "localCssLines": 30,
       "rolled": [
-        {
-          "id": "sysmodal",
-          "label": "系统弹框",
-          "lib": "sh-sheet",
-          "rule": "showModal\\(|showActionSheet\\(",
-          "gap": false
-        },
         {
           "id": "listrow",
           "label": "列表行",
@@ -2178,13 +2134,6 @@
       "localCssLines": 217,
       "rolled": [
         {
-          "id": "sysmodal",
-          "label": "系统弹框",
-          "lib": "sh-sheet",
-          "rule": "showModal\\(|showActionSheet\\(",
-          "gap": false
-        },
-        {
           "id": "blockdup",
           "label": "白块自画",
           "lib": ".sh-block / .sh-card",
@@ -2253,21 +2202,14 @@
       "page": "payment",
       "file": "b-app/src/pages/payment/index.vue",
       "components": [
+        "sh-kv",
         "sh-scaffold",
         "sh-uploader"
       ],
       "libClassHits": 22,
-      "localSelectors": 19,
-      "localCssLines": 81,
-      "rolled": [
-        {
-          "id": "kv",
-          "label": "键值行",
-          "lib": null,
-          "rule": "^\\s*\\.(kv|rule|prob|field__head)\\b",
-          "gap": true
-        }
-      ]
+      "localSelectors": 16,
+      "localCssLines": 68,
+      "rolled": []
     },
     {
       "page": "picking",
@@ -2309,13 +2251,6 @@
       "localCssLines": 73,
       "rolled": [
         {
-          "id": "sysmodal",
-          "label": "系统弹框",
-          "lib": "sh-sheet",
-          "rule": "showModal\\(|showActionSheet\\(",
-          "gap": false
-        },
-        {
           "id": "sechead",
           "label": "分段标题（只有标题）",
           "lib": ".sh-h2 + 间距档",
@@ -2353,25 +2288,19 @@
       "file": "b-app/src/pages/qualifications/index.vue",
       "components": [
         "sh-empty",
+        "sh-kv",
         "sh-scaffold",
         "sh-uploader"
       ],
       "libClassHits": 23,
-      "localSelectors": 22,
-      "localCssLines": 111,
+      "localSelectors": 20,
+      "localCssLines": 100,
       "rolled": [
         {
           "id": "listrow",
           "label": "列表行",
           "lib": null,
           "rule": "^\\s*\\.(row|item)\\b",
-          "gap": true
-        },
-        {
-          "id": "kv",
-          "label": "键值行",
-          "lib": null,
-          "rule": "^\\s*\\.(kv|rule|prob|field__head)\\b",
           "gap": true
         }
       ]
@@ -2427,15 +2356,7 @@
       "libClassHits": 15,
       "localSelectors": 8,
       "localCssLines": 37,
-      "rolled": [
-        {
-          "id": "sysmodal",
-          "label": "系统弹框",
-          "lib": "sh-sheet",
-          "rule": "showModal\\(|showActionSheet\\(",
-          "gap": false
-        }
-      ]
+      "rolled": []
     },
     {
       "page": "schedule",
@@ -2468,13 +2389,6 @@
       "localCssLines": 83,
       "rolled": [
         {
-          "id": "sysmodal",
-          "label": "系统弹框",
-          "lib": "sh-sheet",
-          "rule": "showModal\\(|showActionSheet\\(",
-          "gap": false
-        },
-        {
           "id": "listrow",
           "label": "列表行",
           "lib": null,
@@ -2487,33 +2401,20 @@
       "page": "sku-identity",
       "file": "b-app/src/pages/sku-identity/index.vue",
       "components": [
+        "sh-kv",
         "sh-scaffold",
         "sh-section",
         "sh-stat"
       ],
       "libClassHits": 23,
-      "localSelectors": 22,
-      "localCssLines": 105,
+      "localSelectors": 18,
+      "localCssLines": 79,
       "rolled": [
-        {
-          "id": "sysmodal",
-          "label": "系统弹框",
-          "lib": "sh-sheet",
-          "rule": "showModal\\(|showActionSheet\\(",
-          "gap": false
-        },
         {
           "id": "listrow",
           "label": "列表行",
           "lib": null,
           "rule": "^\\s*\\.(row|item)\\b",
-          "gap": true
-        },
-        {
-          "id": "kv",
-          "label": "键值行",
-          "lib": null,
-          "rule": "^\\s*\\.(kv|rule|prob|field__head)\\b",
           "gap": true
         }
       ]
@@ -2577,15 +2478,7 @@
       "libClassHits": 13,
       "localSelectors": 25,
       "localCssLines": 134,
-      "rolled": [
-        {
-          "id": "sysmodal",
-          "label": "系统弹框",
-          "lib": "sh-sheet",
-          "rule": "showModal\\(|showActionSheet\\(",
-          "gap": false
-        }
-      ]
+      "rolled": []
     },
     {
       "page": "store-categories",
@@ -2623,25 +2516,10 @@
         "sh-icon-btn",
         "sh-scaffold"
       ],
-      "libClassHits": 8,
-      "localSelectors": 21,
-      "localCssLines": 109,
-      "rolled": [
-        {
-          "id": "sysmodal",
-          "label": "系统弹框",
-          "lib": "sh-sheet",
-          "rule": "showModal\\(|showActionSheet\\(",
-          "gap": false
-        },
-        {
-          "id": "segment",
-          "label": "选中态自画（含未拆出的）",
-          "lib": ".sh-chip--primary",
-          "rule": "(--on|--off|is-on)\\s*[,{]",
-          "gap": false
-        }
-      ]
+      "libClassHits": 10,
+      "localSelectors": 19,
+      "localCssLines": 98,
+      "rolled": []
     },
     {
       "page": "store-pick",
@@ -2688,13 +2566,6 @@
       "localCssLines": 185,
       "rolled": [
         {
-          "id": "sysmodal",
-          "label": "系统弹框",
-          "lib": "sh-sheet",
-          "rule": "showModal\\(|showActionSheet\\(",
-          "gap": false
-        },
-        {
           "id": "arrow",
           "label": "文字当箭头",
           "lib": "sh-icon(chevronRight)",
@@ -2720,15 +2591,7 @@
       "libClassHits": 31,
       "localSelectors": 28,
       "localCssLines": 130,
-      "rolled": [
-        {
-          "id": "sysmodal",
-          "label": "系统弹框",
-          "lib": "sh-sheet",
-          "rule": "showModal\\(|showActionSheet\\(",
-          "gap": false
-        }
-      ]
+      "rolled": []
     },
     {
       "page": "verify",
@@ -2743,13 +2606,6 @@
       "localSelectors": 38,
       "localCssLines": 192,
       "rolled": [
-        {
-          "id": "sysmodal",
-          "label": "系统弹框",
-          "lib": "sh-sheet",
-          "rule": "showModal\\(|showActionSheet\\(",
-          "gap": false
-        },
         {
           "id": "segment",
           "label": "选中态自画（含未拆出的）",
@@ -2810,76 +2666,19 @@
       ]
     },
     {
-      "id": "kv",
-      "label": "键值行",
-      "lib": null,
-      "gap": true,
-      "rule": "^\\s*\\.(kv|rule|prob|field__head)\\b",
-      "pages": [
-        "activities",
-        "goods-edit",
-        "member-detail",
-        "payment",
-        "qualifications",
-        "sku-identity"
-      ]
-    },
-    {
-      "id": "search",
-      "label": "搜索框",
-      "lib": null,
-      "gap": true,
-      "rule": "\\.search\\b[^{}]*\\{[^}]*background:",
-      "pages": [
-        "goods-list"
-      ]
-    },
-    {
       "id": "sysmodal",
       "label": "系统弹框",
       "lib": "sh-sheet",
       "gap": false,
       "rule": "showModal\\(|showActionSheet\\(",
       "pages": [
-        "activities",
         "coupons",
-        "cross-store",
         "customers",
         "goods-edit",
-        "login",
         "marketing",
         "member-reach",
-        "member-segments",
-        "member-settings",
         "member-tags",
-        "my-specs",
-        "picking",
-        "plan",
-        "role-detail",
-        "settle",
-        "sku-identity",
-        "store",
-        "store-notice",
-        "store-scope",
-        "stores",
-        "verify"
-      ]
-    },
-    {
-      "id": "segment",
-      "label": "选中态自画（含未拆出的）",
-      "lib": ".sh-chip--primary",
-      "gap": false,
-      "rule": "(--on|--off|is-on)\\s*[,{]",
-      "pages": [
-        "activity-edit",
-        "apply",
-        "cross-store",
-        "goods-edit",
-        "login",
-        "store-notice",
-        "store-pick",
-        "verify"
+        "picking"
       ]
     },
     {
@@ -2896,6 +2695,21 @@
         "me",
         "messages",
         "my-specs"
+      ]
+    },
+    {
+      "id": "segment",
+      "label": "选中态自画（含未拆出的）",
+      "lib": ".sh-chip--primary",
+      "gap": false,
+      "rule": "(--on|--off|is-on)\\s*[,{]",
+      "pages": [
+        "activity-edit",
+        "apply",
+        "cross-store",
+        "login",
+        "store-pick",
+        "verify"
       ]
     },
     {
@@ -2944,23 +2758,13 @@
         "marketing",
         "store-scope"
       ]
-    },
-    {
-      "id": "candchip",
-      "label": "虚线药丸",
-      "lib": ".sh-chip--dashed",
-      "gap": false,
-      "rule": "border:\\s*2rpx dashed var\\(--sh-primary\\)",
-      "pages": [
-        "cross-store"
-      ]
     }
   ],
   "counts": {
     "tokens": 10,
     "blocks": 38,
-    "components": 25,
+    "components": 27,
     "pages": 52,
-    "gapKinds": 3
+    "gapKinds": 1
   }
 }

@@ -17,6 +17,7 @@ import { saveBase64Image } from "@/utils/image";
 import { useMerchantStore } from "@/stores/merchant";
 import { FULFILLMENT_REACH, SERVICE_SCOPE } from "@shared/utils/constants";
 import type { Poster, ShareKit, StoreProfile, StoreQrcode } from "@shared/types";
+import { confirm } from "@ai-shop/ui/prompt";
 
 const { t } = useI18n();
 const merchant = useMerchantStore();
@@ -142,16 +143,19 @@ void locateWithFeedback;
 
 onBackPress(() => {
   if (!dirty.value) return false;
-  uni.showModal({
-    title: t("store.leaveTitle"),
-    content: t("store.leaveBody"),
-    confirmText: t("store.discard"),
-    success: (r) => {
-      if (r.confirm) {
-        discard();
-        uni.navigateBack();
-      }
-    },
+  /*
+   * **不能 await**：`onBackPress` 要**同步**返回布尔来决定拦不拦这一次返回，
+   * 改成 async 的话返回的是 Promise —— 恒真，于是永远拦住，退不出去。
+   * 所以这里问完再自己 navigateBack，本次返回先拦下。
+   */
+  void confirm({
+    title: String(t("store.leaveTitle")),
+    hint: String(t("store.leaveBody")),
+    confirmText: String(t("store.discard")),
+  }).then((ok) => {
+    if (!ok) return;
+    discard();
+    uni.navigateBack();
   });
   return true;
 });

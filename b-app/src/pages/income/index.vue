@@ -120,7 +120,7 @@ onShow(() => {
 }
 /* 同一页上比 .amt 小一档的金额（在途/待结/线下），名字要说清它是钱 */
 .amt-sm {
-  font-size: 36rpx;
+  font-size: 34rpx;
   font-weight: 700;
   color: var(--sh-ink);
 }

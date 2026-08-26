@@ -13,6 +13,7 @@ import { api } from "@/api";
 import { useMerchantStore } from "@/stores/merchant";
 import { money } from "@shared/utils/money";
 import type { StoreActivity } from "@shared/types";
+import { confirm } from "@ai-shop/ui/prompt";
 
 const { t } = useI18n();
 const merchant = useMerchantStore();
@@ -87,14 +88,10 @@ function toggle(a: StoreActivity) {
 }
 
 /** 结束不可逆：确认框里要说清「不能再打开」，而不是只问「确定吗」 */
-function end(a: StoreActivity) {
-  uni.showModal({
-    title: t("activities.endTitle", { name: a.name }),
-    content: t("activities.endBody"),
-    success: (r) => {
-      if (r.confirm) run(() => api.mSetActivityStatus(a.activityNo, "ENDED"));
-    },
-  });
+async function end(a: StoreActivity) {
+  if (await confirm({ title: String(t("activities.endTitle", { name: a.name })), hint: String(t("activities.endBody")), danger: true })) {
+    run(() => api.mSetActivityStatus(a.activityNo, "ENDED"));
+  }
 }
 
 onShow(load);
@@ -179,7 +176,7 @@ onShow(load);
 .group__d {
   display: block;
   margin-top: 4rpx;
-  font-size: 22rpx;
+  font-size: 24rpx;
   line-height: 1.5;
 }
 .item {

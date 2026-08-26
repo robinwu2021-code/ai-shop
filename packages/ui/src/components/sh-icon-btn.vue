@@ -17,10 +17,15 @@
 //   ❌ chip 内嵌   my-specs 的档位 ✕ —— 在药丸内部，跟着 chip 的字号走
 //   ❌ 图片角标    sh-uploader 的删除 —— 探出格子外的小圆点，另一套几何
 //
-// **点按区偏小是继承来的，没有在这里偷偷改**：`my-specs` 的 `.ic` 是 52rpx（26px），
-// 而 `b-app/App.vue` 里写着「88rpx ≈ 44pt，是点按目标的下限」。
-// 现在默认沿用 56rpx —— 改大会顶高所有列表行，而这一轮没有办法在真机上验。
-// **这件事记在覆盖清单的待决里**，不在收编时夹带。
+// **点按区补到 44pt，而版面一点没动**（2026-08-26 处置）：
+// `b-app/App.vue` 里写着「88rpx ≈ 44pt，是点按目标的下限」，
+// 而各页原本的图标钮是 52–56rpx（26–28px），**都不到一半**。
+//
+// 直接把方框改大会顶高所有列表行。做法是**负外边距**：
+// 元素本身撑到 `box + 32rpx`（56 → 88rpx，正好 44pt），
+// 再用 `margin: -16rpx` 把多出来的部分从版面里减回去 ——
+// **手指碰到的是 88rpx，排版占的还是 56rpx**。
+// 这比伪元素可靠：小程序对伪元素的点按区不保证。
 import { computed } from "vue";
 import type { IconName } from "@shared/design/icons";
 
@@ -38,7 +43,13 @@ const props = withDefaults(
 
 defineEmits<{ (e: "tap"): void }>();
 
-const boxStyle = computed(() => ({ width: `${props.box}rpx`, height: `${props.box}rpx` }));
+/** 见文件头：撑大 32rpx 再用负外边距减回去 —— 手指碰 88，版面占 56 */
+const HIT_PAD = 32;
+const boxStyle = computed(() => ({
+  width: `${props.box + HIT_PAD}rpx`,
+  height: `${props.box + HIT_PAD}rpx`,
+  margin: `${-HIT_PAD / 2}rpx`,
+}));
 </script>
 
 <template>

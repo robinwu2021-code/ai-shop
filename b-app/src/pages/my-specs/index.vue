@@ -22,6 +22,7 @@ import { api } from "@/api";
 import { useMerchantStore } from "@/stores/merchant";
 import { buildSpecOverride } from "@/utils/spec-override";
 import type { MerchantSpecDim, SpecOption, SpecTemplate, StoreCategorySpecs } from "@shared/types";
+import { confirm } from "@ai-shop/ui/prompt";
 
 const { t } = useI18n();
 const merchant = useMerchantStore();
@@ -516,14 +517,7 @@ async function moveDim(g: StoreCategorySpecs, dimNo: string, delta: number) {
 
 /** 移除一个规格。**先问一句** —— 它下面那几档的取舍会跟着一起没 */
 async function removeDim(g: StoreCategorySpecs, dim: SpecTemplate) {
-  const ok = await new Promise<boolean>((resolve) => {
-    uni.showModal({
-      title: t("mySpecs.removeTitle"),
-      content: t("mySpecs.removeConfirm", { name: dim.name }),
-      success: (r) => resolve(!!r.confirm),
-      fail: () => resolve(false),
-    });
-  });
+  const ok = await confirm({ title: String(t("mySpecs.removeTitle")), hint: String(t("mySpecs.removeConfirm", { name: dim.name })), danger: true });
   if (!ok) return;
   try {
     await commit(g, undefined, undefined, dim.templateNo);
@@ -1163,7 +1157,7 @@ onShow(() => void load());
 */
 .spec--drag {
   background: var(--sh-faint);
-  box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.14);
+  box-shadow: 0 8rpx 24rpx var(--sh-scrim);
   border-radius: 16rpx;
   /* 拖动中不要过渡 transform：否则元素追不上手指，像在拖一根皮筋 */
   transition: background-color 0.18s ease, box-shadow 0.18s ease;
@@ -1275,7 +1269,7 @@ onShow(() => void load());
 
 /* 同上：抬起来，而不是变透明 */
 .val--drag {
-  box-shadow: 0 6rpx 18rpx rgba(0, 0, 0, 0.18);
+  box-shadow: 0 6rpx 18rpx var(--sh-scrim);
   /* 跟手期间关掉 transform 过渡 */
   transition: box-shadow 0.18s ease, background-color 0.18s ease;
   position: relative;

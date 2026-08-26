@@ -23,6 +23,7 @@ import { CATEGORY_TYPE, MARKETS, TEMPLATE_TO_TYPE } from "@shared/utils/constant
 import { MAX_IMAGE_BYTES, pickImages } from "@shared/ports/media";
 import { toMajor, toMinor } from "@shared/utils/money";
 import type { Category, CategoryType, CurrencyCode, MarketId, I18nText, GoodsParam, SpecOption, SpecTemplate, SpuStd, StoreCategory } from "@shared/types";
+import { confirm } from "@ai-shop/ui/prompt";
 
 const { t } = useI18n();
 const merchant = useMerchantStore();
@@ -330,7 +331,7 @@ const fulfillmentClosed = computed(
  * <p>再点一次已选项**不取消**：履约方式必填，允许取消只会多出一个
  * 「一种都没选」的中间态，而它唯一的用途是让保存按钮变灰。
  */
-function pickFulfillment(f: string) {
+async function pickFulfillment(f: string) {
   /*
    * 没开通的那一路**点不动**，并且说清去哪开 —— 直接让他勾上的话，
    * 商品保存得下去，买家却下不了单，而两处都不报错。
@@ -344,14 +345,15 @@ function pickFulfillment(f: string) {
      * 而且挂在那儿时谁都看不出它要开的是哪一路。
      * 现在点灰掉的那一路就问他去不去开，问句里带着这一路的名字。
      */
-    uni.showModal({
-      title: String(t("goods.fulfillmentClosedTip")),
-      content: String(t("goods.fulfillmentClosedAsk", {
-        s: String(t(`goods.fulfillmentType.${f}`)),
-      })),
-      confirmText: String(t("goods.toStoreScope")),
-      success: (r) => { if (r.confirm) toStoreScope(); },
-    });
+    if (
+      await confirm({
+        title: String(t("goods.fulfillmentClosedTip")),
+        hint: String(t("goods.fulfillmentClosedAsk", { s: String(t(`goods.fulfillmentType.${f}`)) })),
+        confirmText: String(t("goods.toStoreScope")),
+      })
+    ) {
+      toStoreScope();
+    }
     return;
   }
   fulfillments.value = [f];
@@ -664,13 +666,7 @@ async function genDetail() {
     return;
   }
   if (detail.value.trim()) {
-    const ok = await new Promise<boolean>((resolve) => {
-      uni.showModal({
-        content: t("goods.genDetailOverwrite"),
-        success: (r) => resolve(Boolean(r.confirm)),
-        fail: () => resolve(false),
-      });
-    });
+    const ok = await confirm({ title: String(t("goods.genDetailOverwrite")), danger: true });
     if (!ok) return;
   }
   generating.value = true;
@@ -2133,12 +2129,15 @@ async function save(thenSubmit = false) {
      */
     if ((e as { code?: number }).code === FULFILLMENT_NOT_SUPPORTED) {
       void loadStoreChannels();   // 顺手把名单刷新到最新，chip 上立刻能看出是哪一路
-      uni.showModal({
-        title: String(t("goods.fulfillmentRejected")),
-        content: String(t("goods.fulfillmentRejectedHint")),
-        confirmText: String(t("goods.toStoreScope")),
-        success: (r) => { if (r.confirm) toStoreScope(); },
-      });
+      if (
+        await confirm({
+          title: String(t("goods.fulfillmentRejected")),
+          hint: String(t("goods.fulfillmentRejectedHint")),
+          confirmText: String(t("goods.toStoreScope")),
+        })
+      ) {
+        toStoreScope();
+      }
       return;
     }
     uni.showToast({ title: (e as Error).message, icon: "none" });
@@ -2202,8 +2201,11 @@ async function save(thenSubmit = false) {
             <text
               v-for="l in LANGS"
               :key="l.id"
-              class="lang"
-              :class="{ 'is-on': lang === l.id, 'is-empty': l.id !== 'zh-CN' && !title[l.id].trim() }"
+              class="sh-chip"
+              :class="{
+                'sh-chip--primary': lang === l.id,
+                'is-empty': l.id !== 'zh-CN' && !title[l.id].trim(),
+              }"
               @tap="lang = l.id"
             >
               {{ $t(l.key) }}
@@ -2478,14 +2480,12 @@ async function save(thenSubmit = false) {
       <!-- 生鲜段：形态由类目带出，所以选完类目这一段自动出现 -->
       <view v-if="SHOW_FRESH_FIELDS && isFresh" class="field">
         <text class="field__label">{{ $t("goods.freshSection") }}</text>
-        <view class="kv">
-          <text class="kv__k">{{ $t("goods.cutoffAt") }}</text>
+        <sh-kv :label="String($t('goods.cutoffAt'))">
           <input v-model="fresh.cutoffAt" class="field__input" placeholder="2026-08-22T18:00" />
-        </view>
-        <view class="kv">
-          <text class="kv__k">{{ $t("goods.arrivalDesc") }}</text>
+        </sh-kv>
+        <sh-kv :label="String($t('goods.arrivalDesc'))">
           <input v-model="fresh.arrivalDesc" class="field__input" />
-        </view>
+        </sh-kv>
         <!--
           **产地这一格搬走了。** 它与规格库里的 `SD_ORIGIN`（usage_type=PROP）
           是两套东西：商家在一处填了，另一处还是空的，而筛选读的是哪一处他不知道。
@@ -2494,8 +2494,7 @@ async function save(thenSubmit = false) {
         -->
         <!-- 用 chip 而不是 switch：全仓没有第二处 switch，
              而 uni 的 switch 事件类型在 vue-tsc 下要额外收窄，不值得为一个开关引入 -->
-        <view class="kv">
-          <text class="kv__k">{{ $t("goods.weighed") }}</text>
+        <sh-kv :label="String($t('goods.weighed'))">
           <text
             class="sh-chip"
             :class="{ 'sh-chip--primary': fresh.weighed }"
@@ -2503,21 +2502,19 @@ async function save(thenSubmit = false) {
           >
             {{ fresh.weighed ? $t("common.yes") : $t("common.no") }}
           </text>
-        </view>
+        </sh-kv>
         <text class="sh-muted hint">{{ $t("goods.freshTip") }}</text>
       </view>
 
       <!-- 服务段 -->
       <view v-if="isService" class="field">
         <text class="field__label">{{ $t("goods.serviceSection") }}</text>
-        <view class="kv">
-          <text class="kv__k">{{ $t("goods.durationMin") }}</text>
+        <sh-kv :label="String($t('goods.durationMin'))">
           <input v-model="service.durationMin" class="field__input" type="number" />
-        </view>
-        <view class="kv">
-          <text class="kv__k">{{ $t("goods.verifyStore") }}</text>
+        </sh-kv>
+        <sh-kv :label="String($t('goods.verifyStore'))">
           <input v-model="service.storeName" class="field__input" />
-        </view>
+        </sh-kv>
       </view>
 
     </view>
@@ -2645,14 +2642,26 @@ async function save(thenSubmit = false) {
           <text class="group__name">{{ g.name }}</text>
           <sh-icon-btn name="close" @tap="removeGroup(gi)"></sh-icon-btn>
         </view>
+        <!--
+          **多选靠形态说，不靠字重说。**
+
+          <p>此前选中态是「tint 底 + 2rpx 主色实线描边 + 600」，而参数值（单选）
+          是「tint 底」—— 两块长得像、行为相反（这一档是开关，参数是单选），
+          于是靠一句提示文案说明。问题在于**视觉重量指向了错的那件事**：
+          规格档位更重，读起来像「这一排更要紧」，而不是「这一排能多选」。
+
+          <p>现在改成：选中的档位前面带一个 ✓，样式一律走 `.sh-chip--primary`。
+          **勾是「已选上，可以再点掉」的通用记号**，一眼就与单选分得开；
+          而描边与加粗都不再需要 —— 字阶那条也写着 600 只给标题与按钮。
+        -->
         <view class="opts">
           <text
             v-for="o in allOptionsOf(gi)"
             :key="o.code || o.label"
             class="sh-chip opt"
-            :class="optionOn(gi, o) ? 'opt--on' : 'opt--off'"
+            :class="{ 'sh-chip--primary': optionOn(gi, o) }"
             @tap="toggleOption(gi, o)"
-          >{{ o.label }}</text>
+          >{{ optionOn(gi, o) ? "✓ " : "" }}{{ o.label }}</text>
         </view>
       </view>
 
@@ -2795,8 +2804,8 @@ async function save(thenSubmit = false) {
           <text
             v-for="f in priceFields"
             :key="f.key"
-            class="seg"
-            :class="{ 'is-on': priceField === f.key }"
+            class="sh-chip"
+            :class="{ 'sh-chip--primary': priceField === f.key }"
             @tap="priceField = f.key"
           >
             {{ $t(f.labelKey) }}
@@ -2806,9 +2815,9 @@ async function save(thenSubmit = false) {
           <text
             v-for="m in MARKET_CURRENCIES"
             :key="m.currency"
-            class="lang"
+            class="sh-chip"
             :class="{
-              'is-on': market === m.currency,
+              'sh-chip--primary': market === m.currency,
               'is-empty': unpricedMarkets.includes(m.currency),
             }"
             @tap="market = m.currency"
@@ -2960,8 +2969,7 @@ async function save(thenSubmit = false) {
         只能讲清楚 —— 团价由商家在商品上配，开团人不能自己定价。
       -->
       <view class="field">
-        <view class="kv">
-          <text class="kv__k">{{ $t("goods.groupBuyOn") }}</text>
+        <sh-kv :label="String($t('goods.groupBuyOn'))">
           <text
             class="sh-chip"
             :class="{ 'sh-chip--primary': groupBuyOpen }"
@@ -2969,16 +2977,14 @@ async function save(thenSubmit = false) {
           >
             {{ groupBuyOpen ? $t("common.yes") : $t("common.no") }}
           </text>
-        </view>
+        </sh-kv>
         <template v-if="groupBuyOpen">
-          <view class="kv">
-            <text class="kv__k">{{ $t("goods.groupMinCount") }}</text>
+          <sh-kv :label="String($t('goods.groupMinCount'))">
             <input v-model="groupBuy.minCount" class="field__input" type="number" />
-          </view>
-          <view class="kv">
-            <text class="kv__k">{{ $t("goods.groupPrice") }}</text>
+          </sh-kv>
+          <sh-kv :label="String($t('goods.groupPrice'))">
             <input v-model="groupBuy.price" class="field__input" type="digit" />
-          </view>
+          </sh-kv>
           <text class="sh-muted hint">{{ $t("goods.groupBuyOnHint") }}</text>
         </template>
       </view>
@@ -3133,7 +3139,8 @@ async function save(thenSubmit = false) {
   flex: 1;
   font-size: 28rpx;
   font-weight: 600;
-  color: var(--sh-primary);
+  /* 同上：文字色走 primary-text */
+  color: var(--sh-primary-text);
 }
 
 
@@ -3172,19 +3179,7 @@ async function save(thenSubmit = false) {
   padding-left: 20rpx;
 }
 
-.opt--on {
-  background: var(--sh-primary-tint);
-  color: var(--sh-primary-text);
-  border: 2rpx solid var(--sh-primary);
-  font-weight: 600;
-}
 
-/* 未选中：安静的灰，**不划删除线** —— 它不是被作废，只是还没选 */
-.opt--off {
-  background: var(--sh-faint);
-  border: 2rpx solid transparent;
-  color: var(--sh-sub);
-}
 
 
 /* 弹层里「自己填」那一段的小标题 —— 与候选拉开，说明它是另一回事 */
@@ -3402,20 +3397,10 @@ async function save(thenSubmit = false) {
   display: flex;
   gap: 8rpx;
 }
-.lang {
-  padding: 8rpx 18rpx;
-  border-radius: 16rpx;
-  background: var(--sh-faint);
-  color: var(--sh-sub);
-  font-size: 24rpx;
-}
-.lang.is-on {
-  background: var(--sh-primary-tint);
-  color: var(--sh-primary-text);
-  font-weight: 600;
-}
 /* 未填的语言标出来 —— 否则要逐个点过去才知道漏了哪门 */
-.lang.is-empty::after {
+/* 「这门语言 / 这个市场还没填」的提示点。**挂在本页自己的 .is-empty 上** ——
+   药丸本身已经归 .sh-chip 了，而「没填」是这一页的业务状态，不是药丸的一档 */
+.is-empty::after {
   content: " ·";
   color: var(--sh-warning);
 }
@@ -3597,17 +3582,6 @@ async function save(thenSubmit = false) {
   display: flex;
   gap: 8rpx;
 }
-.seg {
-  padding: 8rpx 20rpx;
-  border-radius: 16rpx;
-  font-size: 24rpx;
-  color: var(--sh-sub);
-  background: var(--sh-faint);
-}
-.seg.is-on {
-  color: var(--sh-primary-text);
-  background: var(--sh-primary-tint);
-}
 /*
  * 缺货：这一格要能被扫到，它是「填完还差什么」里最常漏的一项。
  * **随布局改版换过两次类名**（.row__input → .grp__v → .pr__v）。
@@ -3623,18 +3597,6 @@ async function save(thenSubmit = false) {
 /* 计数与标签同行右对齐：「已添加 2 / 9」比一句「最多 9 张」有用 */
 .imgs__n {
   flex-shrink: 0;
-}
-/* 标签 + 输入框一行。标签固定宽度，几行叠起来时冒号后的输入框才对得齐 */
-.kv {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
-  margin-top: 16rpx;
-}
-.kv__k {
-  flex: 0 0 160rpx;
-  font-size: 26rpx;
-  color: var(--sh-sub);
 }
 .kv .field__input {
   flex: 1;

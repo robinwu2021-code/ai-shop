@@ -296,7 +296,7 @@ onLoad((q) => {
 .mask {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.45);
+  background: var(--sh-scrim);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -305,12 +305,12 @@ onLoad((q) => {
 .dlg {
   width: 600rpx;
   padding: 40rpx;
-  border-radius: 28rpx;
+  border-radius: 32rpx;
   background: var(--sh-bg);
 }
 .dlg__title {
   display: block;
-  font-size: 32rpx;
+  font-size: 34rpx;
   font-weight: 600;
   color: var(--sh-ink);
   margin-bottom: 20rpx;

@@ -12,6 +12,7 @@ import { useI18n } from "vue-i18n";
 import { api } from "@/api";
 import { useMerchantStore } from "@/stores/merchant";
 import type { MemberSetting } from "@shared/types";
+import { confirm } from "@ai-shop/ui/prompt";
 
 const { t } = useI18n();
 const merchant = useMerchantStore();
@@ -36,15 +37,16 @@ async function save(patch: { memberScope?: string; autoJoinOnOrder?: boolean }) 
 }
 
 /** 切口径前先确认一次：它影响全主体的分层与所有活动受众 */
-function pickScope(v: string) {
+async function pickScope(v: string) {
   if (!setting.value || setting.value.memberScope === v) return;
-  uni.showModal({
-    title: t("memberSettings.confirmTitle"),
-    content: t(v === "STORE" ? "memberSettings.confirmStore" : "memberSettings.confirmEntity"),
-    success: (r) => {
-      if (r.confirm) void save({ memberScope: v });
-    },
-  });
+  if (
+    await confirm({
+      title: String(t("memberSettings.confirmTitle")),
+      hint: String(t(v === "STORE" ? "memberSettings.confirmStore" : "memberSettings.confirmEntity")),
+    })
+  ) {
+    void save({ memberScope: v });
+  }
 }
 
 // 用一个可点的 chip 而不是 <switch>：这个仓库里一处原生 switch 都没有，

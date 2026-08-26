@@ -70,6 +70,58 @@ export function prompt(opts: PromptOptions): Promise<string | null> {
   });
 }
 
+// ── 确认弹层 ────────────────────────────────────────────────────────
+//
+// `showModal` 的确认框有 25 处。它们的代价比带输入的那 12 处轻 ——
+// 只是「字不是我们的」—— 但**有一件事系统弹框做不到**：
+// 危险操作与普通确认在它那里长得一模一样，都是「取消 / 确定」两个蓝字。
+//
+// 而这套设计语言里危险操作是有专门一档的：`.sh-btn--danger-solid`
+//（红实心，**只留给二次确认那一击**）。它此前**两端引用数是 0** ——
+// 清单每次跑都报「定义了没人用」。不是没人需要，是没有地方用它：
+// 二次确认全在系统弹框里，而那里没有我们的按钮。
+
+export interface ConfirmOptions {
+  title: string;
+  /** 说明。确认框里它就是说明，没有 showModal 那种二义 */
+  hint?: string;
+  confirmText?: string;
+  cancelText?: string;
+  /** 危险操作：确定键用红实心。**这是系统弹框给不了的那一档** */
+  danger?: boolean;
+  /** 只有一个「知道了」（如「怎么升级」这类纯告知） */
+  alert?: boolean;
+}
+
+interface ConfirmState extends ConfirmOptions {
+  visible: boolean;
+}
+
+export const confirmState = reactive<ConfirmState>({ visible: false, title: "" });
+
+let settleConfirm: ((v: boolean) => void) | null = null;
+
+/** 确认。确定 `true`，取消 `false`。 */
+export function confirm(opts: ConfirmOptions): Promise<boolean> {
+  settleConfirm?.(false);
+  Object.assign(confirmState, {
+    hint: "", confirmText: "", cancelText: "", danger: false, alert: false,
+    ...opts,
+    visible: true,
+  });
+  return new Promise((resolve) => {
+    settleConfirm = resolve;
+  });
+}
+
+/** 由 sh-confirm 调用，页面不用管 */
+export function closeConfirm(ok: boolean): void {
+  confirmState.visible = false;
+  const done = settleConfirm;
+  settleConfirm = null;
+  done?.(ok);
+}
+
 /** 由 sh-prompt 调用，页面不用管 */
 export function closePrompt(value: string | null): void {
   promptState.visible = false;

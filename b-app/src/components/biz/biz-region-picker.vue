@@ -1377,7 +1377,7 @@ function close() {
 }
 .group {
   padding: 20rpx 32rpx 8rpx;
-  font-size: 22rpx;
+  font-size: 24rpx;
   letter-spacing: 0.06em;
   color: var(--sh-sub);
   background: var(--sh-bg);
@@ -1556,8 +1556,8 @@ function close() {
 .chosen__audit {
   flex-shrink: 0;
   padding: 2rpx 12rpx;
-  border-radius: 12rpx;
-  font-size: 22rpx;
+  border-radius: 16rpx;
+  font-size: 24rpx;
   background: var(--sh-warning-tint);
   color: var(--sh-warning);
 }

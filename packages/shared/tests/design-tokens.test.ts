@@ -349,7 +349,12 @@ describe("皮肤对比度：可读性是硬约束，不是审美偏好", () => {
       for (const f of walk(join(ROOT, dir))) {
         if (!/\.(vue|css)$/.test(f)) continue;
         const src = readFileSync(f, "utf8");
-        if (/(?<!-text)color:\s*var\(--sh-primary\)\s*;/.test(src)) {
+        // ⚠️ `(?<![-\w])` 而不是 `(?<!-text)`：这一条判的是**文字色**，
+        // 而 `border-color:` / `border-bottom-color:` / `background-color:`
+        // 的结尾也是 `color:`。2026-08-26 实测：9 个「违规」里 **7 个是描边**，
+        // 只有 2 个是真的把主色当字色。**一条报七个假的断言等于没有断言** ——
+        // 与 typography 那条「700 只给价格」漏认 amt/due 是同一类问题。
+        if (/(?<![-\w])color:\s*var\(--sh-primary\)\s*;/.test(src)) {
           offenders.push(f.replace(ROOT + "/", ""));
         }
       }

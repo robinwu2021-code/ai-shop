@@ -17,6 +17,7 @@ import { useMerchantStore } from "@/stores/merchant";
 import { ROUTES } from "@/shared/nav";
 import { money } from "@shared/utils/money";
 import { FULFILLMENT_REACH, SERVICE_SCOPE } from "@shared/utils/constants";
+import { confirm } from "@ai-shop/ui/prompt";
 import type {
   CommunityApply,
   DeliveryRule,
@@ -158,12 +159,15 @@ async function toggleChannel(channel: string) {
   }
   // 门店自取的取货地址就是门店地址：没地址先说清楚、给入口，不把请求打到后端再看一句报错
   if (channel === "STORE_PICKUP" && !row.enabled && !form.value.address) {
-    uni.showModal({
-      title: t("store.sumNoAddress"),
-      content: t("store.needAddressBody"),
-      confirmText: t("store.goAddress"),
-      success: (r) => { if (r.confirm) goAddress(); },
-    });
+    if (
+      await confirm({
+        title: String(t("store.sumNoAddress")),
+        hint: String(t("store.needAddressBody")),
+        confirmText: String(t("store.goAddress")),
+      })
+    ) {
+      goAddress();
+    }
     return;
   }
   if (row.enabled) {
@@ -175,16 +179,7 @@ async function toggleChannel(channel: string) {
     const body = impacted.length
       ? t("store.offConfirmList", { n: impacted.length }) + "\n" + names + more
       : t("store.offConfirmBody");
-    const ok = await new Promise<boolean>((resolve) => {
-      uni.showModal({
-        title: t("store.offConfirmTitle", { s: t(`channel.${channel}`) }),
-        content: body,
-        cancelText: t("store.offKeep"),
-        confirmText: t("store.offAnyway"),
-        success: (r) => resolve(!!r.confirm),
-        fail: () => resolve(false),
-      });
-    });
+    const ok = await confirm({ title: String(t("store.offConfirmTitle", { s: t(`channel.${channel}`) })), hint: String(body), confirmText: String(t("store.offAnyway")) });
     if (!ok) return;
   }
   await persistChannels(next, channel);
@@ -360,16 +355,19 @@ function discard() {
 /** 返回时拦未保存：丢改动要他自己点头 */
 onBackPress(() => {
   if (!dirty.value) return false;
-  uni.showModal({
-    title: t("store.leaveTitle"),
-    content: t("store.leaveBody"),
-    confirmText: t("store.discard"),
-    success: (r) => {
-      if (r.confirm) {
-        discard();
-        uni.navigateBack();
-      }
-    },
+  /*
+   * **不能 await**：`onBackPress` 要**同步**返回布尔来决定拦不拦这一次返回，
+   * 改成 async 的话返回的是 Promise —— 恒真，于是永远拦住，退不出去。
+   * 所以这里问完再自己 navigateBack，本次返回先拦下。
+   */
+  void confirm({
+    title: String(t("store.leaveTitle")),
+    hint: String(t("store.leaveBody")),
+    confirmText: String(t("store.discard")),
+  }).then((ok) => {
+    if (!ok) return;
+    discard();
+    uni.navigateBack();
   });
   return true;
 });

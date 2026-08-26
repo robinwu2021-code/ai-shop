@@ -284,7 +284,7 @@ onLoad((q) => {
 .exposure {
   margin-top: 16rpx;
   padding: 16rpx;
-  border-radius: 12rpx;
+  border-radius: 16rpx;
   background: var(--sh-primary-tint);
   font-size: 26rpx;
   font-weight: 600;

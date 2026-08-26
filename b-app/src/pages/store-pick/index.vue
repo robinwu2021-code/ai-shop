@@ -138,7 +138,7 @@ function confirm() {
   color: var(--sh-sub);
 }
 .group__note {
-  font-size: 22rpx;
+  font-size: 24rpx;
   color: var(--sh-warn, var(--sh-sub));
 }
 .item {

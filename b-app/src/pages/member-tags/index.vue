@@ -12,7 +12,7 @@ import { useI18n } from "vue-i18n";
 import { api } from "@/api";
 import { useMerchantStore } from "@/stores/merchant";
 import type { MemberTag } from "@shared/types";
-import { prompt } from "@ai-shop/ui/prompt";
+import { confirm, prompt } from "@ai-shop/ui/prompt";
 
 const { t } = useI18n();
 const merchant = useMerchantStore();
@@ -81,18 +81,7 @@ async function merge(tg: MemberTag) {
   const into = others[pick]!;
 
   const preview = await api.mMergeMemberTag(tg.tagNo, { intoTagNo: into.tagNo });
-  const ok = await new Promise<boolean>((resolve) => {
-    uni.showModal({
-      title: t("memberTags.mergeTitle", { a: tg.name, b: into.name }),
-      content: t("memberTags.mergeBody", {
-        n: preview.affectedMembers,
-        b: into.name,
-        m: preview.bothTagged,
-      }),
-      success: (r) => resolve(!!r.confirm),
-      fail: () => resolve(false),
-    });
-  });
+  const ok = await confirm({ title: String(t("memberTags.mergeTitle", { a: tg.name, b: into.name })), hint: String(t("memberTags.mergeBody", { n: preview.affectedMembers })) });
   if (!ok) return;
   await run(() => api.mMergeMemberTag(tg.tagNo, { intoTagNo: into.tagNo, confirm: true }));
   uni.showToast({ title: t("memberTags.merged"), icon: "none" });

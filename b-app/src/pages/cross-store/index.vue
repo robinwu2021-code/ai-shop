@@ -32,6 +32,7 @@ import { useMerchantStore } from "@/stores/merchant";
 import { ROUTES } from "@/shared/nav";
 import { money } from "@shared/utils/money";
 import type { CrossStoreCompare } from "@shared/types";
+import { confirm } from "@ai-shop/ui/prompt";
 
 /**
  * 能力位不足（后端 `ErrorCode.PLAN_CAPABILITY_REQUIRED`）。
@@ -184,11 +185,10 @@ function upgrade() {
     uni.navigateTo({ url: ROUTES.plan });
     return;
   }
-  uni.showModal({
+  void confirm({
     title: String(t("crossStore.upgradeTitle")),
-    content: String(t("crossStore.upgradeHow")),
-    showCancel: false,
-    confirmText: String(t("common.confirm")),
+    hint: String(t("crossStore.upgradeHow")),
+    alert: true,
   });
 }
 
@@ -410,9 +410,18 @@ onShow(load);
   background: var(--sh-primary);
   color: var(--sh-on-primary);
 }
+/*
+ * 演示数据的标记：**灰底，不是虚线药丸**。
+ *
+ * 虚线药丸在这套界面里有确定的意思 —— 「候选：点一下就加进来」
+ *（见 base.css 的 .sh-chip--dashed）。拿它标「这是演示数据」是
+ * **同一个视觉两个意思**：商家看到虚线会以为点一下能把这家店加进来。
+ *
+ * 演示数据也不是警告（那是 --warning 那一档），它只是「这不是真的」——
+ * 最轻的一档灰底 chip 就够，所以这里只声明一条：不要主色。
+ */
 .tag--demo {
-  border: 2rpx dashed var(--sh-primary);
-  color: var(--sh-primary-text);
+  opacity: 0.7;
 }
 .grid {
   display: flex;

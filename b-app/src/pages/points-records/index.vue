@@ -69,7 +69,7 @@ onShow(() => {
 }
 .line + .line { margin-top: 6rpx; }
 .total {
-  font-size: 36rpx;
+  font-size: 34rpx;
   font-weight: 700;
   color: var(--sh-ink);
 }

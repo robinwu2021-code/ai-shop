@@ -400,7 +400,7 @@ function navToStore() {
   border-radius: 999px;
   background: var(--sh-primary-tint);
   color: var(--sh-primary-text);
-  font-size: 22rpx;
+  font-size: 24rpx;
 }
 .closed {
   padding: 20rpx 24rpx;

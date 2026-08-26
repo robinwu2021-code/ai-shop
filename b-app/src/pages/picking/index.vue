@@ -13,7 +13,7 @@ import { useI18n } from "vue-i18n";
 import { api } from "@/api";
 import { ROUTES } from "@/shared/nav";
 import type { Order, PickingRow, PickupOrder } from "@shared/types";
-import { prompt } from "@ai-shop/ui/prompt";
+import { confirm, prompt } from "@ai-shop/ui/prompt";
 
 const { t } = useI18n();
 
@@ -133,14 +133,15 @@ async function markAllArrived() {
     uni.showToast({ title: t("picking.arrivedDoneTitle", { n: changed.length }), icon: "none" });
     return;
   }
-  uni.showModal({
-    title: t("picking.arrivedDoneTitle", { n: changed.length }),
-    content: t("picking.arrivedDoneBody"),
-    confirmText: t("picking.goVerify"),
-    success: (r) => {
-      if (r.confirm) uni.navigateTo({ url: ROUTES.verify });
-    },
-  });
+  if (
+    await confirm({
+      title: String(t("picking.arrivedDoneTitle", { n: changed.length })),
+      hint: String(t("picking.arrivedDoneBody")),
+      confirmText: String(t("picking.goVerify")),
+    })
+  ) {
+    uni.navigateTo({ url: ROUTES.verify });
+  }
 }
 
 onShow(load);

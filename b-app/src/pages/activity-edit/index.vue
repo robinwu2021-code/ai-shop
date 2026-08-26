@@ -367,10 +367,10 @@ onLoad((q) => {
   margin-bottom: 16rpx;
 }
 .steps__i {
-  font-size: 22rpx;
+  font-size: 24rpx;
   color: var(--sh-sub);
   background: var(--sh-faint);
-  border-radius: 8rpx;
+  border-radius: 16rpx;
   padding: 8rpx 12rpx;
 }
 .steps__i.is-on {
@@ -431,7 +431,7 @@ onLoad((q) => {
 .conflict {
   margin-top: 16rpx;
   padding: 16rpx;
-  border-radius: 12rpx;
+  border-radius: 16rpx;
   background: var(--sh-warning-tint);
 }
 .conflict__l {
@@ -442,12 +442,12 @@ onLoad((q) => {
 .conflict__h {
   display: block;
   margin-top: 8rpx;
-  font-size: 22rpx;
+  font-size: 24rpx;
 }
 .exposure {
   margin-top: 16rpx;
   padding: 16rpx;
-  border-radius: 12rpx;
+  border-radius: 16rpx;
   background: var(--sh-primary-tint);
   font-size: 26rpx;
   font-weight: 600;
