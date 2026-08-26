@@ -7,7 +7,7 @@
 > 端点→权限取自 `BizEndpointPermTest.REQUIRED` —— 最后那份是唯一**被守卫强制对过账**的
 > 清单（每个 `/biz` 端点都必须在里面有个说法，漏登记就红），所以比任何手写文档都可信。
 
-统计：**6 个角色 × 13 个权限点 × 131 个受控端点**。
+统计：**6 个角色 × 13 个权限点 × 157 个受控端点**。
 
 ## 一、角色 × 权限
 
@@ -16,15 +16,15 @@
 
 | 权限点 | 含义 | 端点数 | OWNER | MANAGER | CLERK | PICKER | COURIER | CS |
 |---|---|---|---|---|---|---|---|---|
+| `STOCK` | 改库存（含门店库存） | 26 | ✅ | ✅ | ✅ | ✅ | — | — |
 | `GOODS` | 建/改商品、上下架、规格模板、识图 | 22 | ✅ | ✅ | — | — | — | — |
 | `STORE` | 门店经营面：装修、配送规则、店铺码、分享物料 | 19 | ✅ | ✅ | — | — | — | — |
-| `STORE_ADMIN` | 建店、改名、停用、设默认店、挂收款号 | 18 | ✅ | — | — | — | — | — |
+| `STORE_ADMIN` | 建店、改名、停用、设默认店、挂收款号 | 19 | ✅ | — | — | — | — | — |
+| `CUSTOMER` | 顾客列表（含累计消费额）、经营数据 | 18 | ✅ | ✅ | — | — | — | — |
 | `CAMPAIGN` | 营销活动、开团、报价 | 16 | ✅ | ✅ | — | — | — | — |
-| `CUSTOMER` | 顾客列表（含累计消费额）、经营数据 | 15 | ✅ | ✅ | — | — | — | — |
 | `FINANCE` | 结算账单、费率卡、收款进件、积分开关 | 15 | ✅ | — | — | — | — | — |
 | `VERIFY` | 核销、批量核销、按码搜索 | 7 | ✅ | ✅ | ✅ | — | — | — |
 | `RECEIVE` | 到货登记、分拣单、短少上报 | 4 | ✅ | ✅ | ✅ | ✅ | — | — |
-| `STOCK` | 改库存（含门店库存） | 4 | ✅ | ✅ | ✅ | ✅ | — | — |
 | `AFTERSALE` | 售后同意/驳回/收货 | 4 | ✅ | ✅ | — | — | — | ✅ |
 | `REVIEW` | 评价回复、差评申诉 | 3 | ✅ | ✅ | — | — | — | ✅ |
 | `SHIP` | 发货、标记自送送达 | 2 | ✅ | ✅ | ✅ | — | ✅ | — |
@@ -34,6 +34,35 @@
 —— 它们是「能把钱和人改掉」的那几组，连店长都不下放。
 
 ## 二、每个权限点覆盖的端点
+
+### `STOCK`　（OWNER、MANAGER、CLERK、PICKER）
+
+- `/biz/goods`
+- `/biz/goods/{goodsNo}`
+- `/biz/goods/{goodsNo}/stock`
+- `/biz/goods/{goodsNo}/store-stock`
+- `/biz/inventory/adjust`
+- `/biz/inventory/balances`
+- `/biz/inventory/counts`
+- `/biz/inventory/counts/{no}`
+- `/biz/inventory/counts/{no}/lines`
+- `/biz/inventory/counts/{no}/post`
+- `/biz/inventory/documents`
+- `/biz/inventory/inbounds`
+- `/biz/inventory/inbounds/{no}`
+- `/biz/inventory/inbounds/{no}/post`
+- `/biz/inventory/inbounds/{no}/void`
+- `/biz/inventory/items/{itemId}`
+- `/biz/inventory/ledger`
+- `/biz/inventory/locations`
+- `/biz/inventory/outbounds`
+- `/biz/inventory/outbounds/{no}/post`
+- `/biz/inventory/outbounds/{no}/void`
+- `/biz/inventory/summary`
+- `/biz/inventory/transfers`
+- `/biz/inventory/transfers/{no}`
+- `/biz/inventory/transfers/{no}/receive`
+- `/biz/inventory/transfers/{no}/ship`
 
 ### `GOODS`　（OWNER、MANAGER）
 
@@ -86,6 +115,7 @@
 
 - `/biz/entities`
 - `/biz/entity/{entityNo}`
+- `/biz/inventory/locations/{id}/source`
 - `/biz/member-settings`
 - `/biz/plan`
 - `/biz/plan/trial`
@@ -102,6 +132,27 @@
 - `/biz/store/{storeNo}/payment`
 - `/biz/store/{storeNo}/rename`
 - `/biz/store/{storeNo}/status`
+
+### `CUSTOMER`　（OWNER、MANAGER）
+
+- `/biz/cross-store/compare`
+- `/biz/cross-store/overview`
+- `/biz/customers`
+- `/biz/dashboard/stats`
+- `/biz/inventory/export`
+- `/biz/inventory/report/monthly`
+- `/biz/inventory/report/ranking`
+- `/biz/member-reach/plan`
+- `/biz/member-segments`
+- `/biz/member-segments/preview`
+- `/biz/member-segments/{segmentNo}/remove`
+- `/biz/member-tags`
+- `/biz/member-tags/{tagNo}`
+- `/biz/member-tags/{tagNo}/merge`
+- `/biz/members`
+- `/biz/members/stats`
+- `/biz/members/tags`
+- `/biz/members/{memberNo}`
 
 ### `CAMPAIGN`　（OWNER、MANAGER）
 
@@ -121,24 +172,6 @@
 - `/biz/groups`
 - `/biz/member-reach/send`
 - `/biz/quote/{quoteNo}/revise`
-
-### `CUSTOMER`　（OWNER、MANAGER）
-
-- `/biz/cross-store/compare`
-- `/biz/cross-store/overview`
-- `/biz/customers`
-- `/biz/dashboard/stats`
-- `/biz/member-reach/plan`
-- `/biz/member-segments`
-- `/biz/member-segments/preview`
-- `/biz/member-segments/{segmentNo}/remove`
-- `/biz/member-tags`
-- `/biz/member-tags/{tagNo}`
-- `/biz/member-tags/{tagNo}/merge`
-- `/biz/members`
-- `/biz/members/stats`
-- `/biz/members/tags`
-- `/biz/members/{memberNo}`
 
 ### `FINANCE`　（OWNER）
 
@@ -174,13 +207,6 @@
 - `/biz/pickup/arrived`
 - `/biz/pickup/picking`
 - `/biz/pickup/{orderNo}/report`
-
-### `STOCK`　（OWNER、MANAGER、CLERK、PICKER）
-
-- `/biz/goods`
-- `/biz/goods/{goodsNo}`
-- `/biz/goods/{goodsNo}/stock`
-- `/biz/goods/{goodsNo}/store-stock`
 
 ### `AFTERSALE`　（OWNER、MANAGER、CS）
 

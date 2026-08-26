@@ -11,7 +11,7 @@
 > 与 [B端功能矩阵-按角色](./B端功能矩阵-按角色.md) 的分工：那份是**角色视角**
 > （谁能碰哪些路径），这份是**功能视角**（哪个功能点归哪个码、画在哪一页）。
 
-统计：**13 个权限码 × 6 个角色 × 131 个受控功能点**
+统计：**13 个权限码 × 6 个角色 × 157 个受控功能点**
 （另有 28 个登录即可、1 个「任一权限即可」）。
 
 > ⚠️ 角色列只有 6 个平台预置角色。商家自定义角色（V71 `mch_role`）按主体存库，
@@ -21,15 +21,15 @@
 
 | 权限码 | 常量 | 含义 | 功能点数 | 老板 | 店长 | 店员 | 理货员 | 配送员 | 客服 |
 |---|---|---|---|---|---|---|---|---|---|
+| `biz:stock` | `STOCK` | 改库存（含门店库存） | 26 | ✅ | ✅ | ✅ | ✅ | — | — |
 | `biz:goods` | `GOODS` | 建/改商品、上下架、规格模板、识图 | 22 | ✅ | ✅ | — | — | — | — |
 | `biz:store` | `STORE` | 门店经营面：装修、配送规则、店铺码、分享物料 | 19 | ✅ | ✅ | — | — | — | — |
-| `biz:store:admin` | `STORE_ADMIN` | 建店、改名、停用、设默认店、挂收款号 | 18 | ✅ | — | — | — | — | — |
+| `biz:store:admin` | `STORE_ADMIN` | 建店、改名、停用、设默认店、挂收款号 | 19 | ✅ | — | — | — | — | — |
+| `biz:customer` | `CUSTOMER` | 顾客列表（含累计消费额）、经营数据 | 18 | ✅ | ✅ | — | — | — | — |
 | `biz:campaign` | `CAMPAIGN` | 营销活动、开团、报价 | 16 | ✅ | ✅ | — | — | — | — |
-| `biz:customer` | `CUSTOMER` | 顾客列表（含累计消费额）、经营数据 | 15 | ✅ | ✅ | — | — | — | — |
 | `biz:finance` | `FINANCE` | 结算账单、费率卡、收款进件、积分开关 | 15 | ✅ | — | — | — | — | — |
 | `biz:verify` | `VERIFY` | 核销、批量核销、按码搜索 | 7 | ✅ | ✅ | ✅ | — | — | — |
 | `biz:receive` | `RECEIVE` | 到货登记、分拣单、短少上报 | 4 | ✅ | ✅ | ✅ | ✅ | — | — |
-| `biz:stock` | `STOCK` | 改库存（含门店库存） | 4 | ✅ | ✅ | ✅ | ✅ | — | — |
 | `biz:aftersale` | `AFTERSALE` | 售后同意/驳回/收货 | 4 | ✅ | ✅ | — | — | — | ✅ |
 | `biz:review` | `REVIEW` | 评价回复、差评申诉 | 3 | ✅ | ✅ | — | — | — | ✅ |
 | `biz:ship` | `SHIP` | 发货、标记自送送达 | 2 | ✅ | ✅ | ✅ | — | ✅ | — |
@@ -40,6 +40,40 @@
 ## 二、功能点明细（按权限码分组）
 
 「页面」列为空 = **后端有能力、b-app 没有入口**，见 §四。
+
+### `biz:stock`　改库存（含门店库存）
+
+**可用角色**：老板、店长、店员、理货员
+
+| 功能点 | 方法 | 端点 | 契约方法 | 页面 |
+|---|---|---|---|---|
+| 商品列表 | GET | `/biz/goods` | `mGoodsList` | goods-list、groups、marketing |
+| 商品详情 | GET | `/biz/goods/:goodsNo` | `mGoodsDetail` | goods-edit |
+| 改库存 | POST | `/biz/goods/:goodsNo/stock` | `mSaveStock` | goods-list |
+| 改当前门店库存 | POST | `/biz/goods/:goodsNo/store-stock` | `mSaveStoreStock` | goods-list |
+| 直接改数（走盘点，落单落流水） | POST | `/biz/inventory/adjust` | `mStockAdjust` | stock-detail |
+| 库存列表（默认只给要处理的） | GET | `/biz/inventory/balances` | `mStockBalances` | purchase-edit、stock、stock-check、stock-out、transfer |
+| 开盘点单（锁账面数） | POST | `/biz/inventory/counts` | `mCountOpen` | stock-check |
+| 读回盘点单（含账面快照） | GET | `/biz/inventory/counts/:no` | `mCountDetail` | stock-check |
+| 填实盘数 | PUT | `/biz/inventory/counts/:no/lines` | `mCountFill` | stock-check |
+| 盘点过账 | POST | `/biz/inventory/counts/:no/post` | `mCountPost` | stock-check |
+| 出入库单据 | GET | `/biz/inventory/documents` | `mStockDocuments` | stock-docs |
+| 记一笔进货 | POST | `/biz/inventory/inbounds` | `mInboundCreate` | purchase-edit |
+| 改进货草稿 | PUT | `/biz/inventory/inbounds/:no` | `mInboundUpdate` | — |
+| 进货过账 | POST | `/biz/inventory/inbounds/:no/post` | `mInboundPost` | purchase-edit |
+| 作废入库单 | POST | `/biz/inventory/inbounds/:no/void` | `mInboundVoid` | — |
+| 单件库存明细 | GET | `/biz/inventory/items/:itemId` | `mStockItem` | stock-detail |
+| 库存变动明细 | GET | `/biz/inventory/ledger` | `mStockLedger` | stock-detail |
+| 库位与仓 | GET | `/biz/inventory/locations` | `mStockLocations` | locations、transfer |
+| 加一个仓 | POST | `/biz/inventory/locations` | `mWarehouseCreate` | locations |
+| 报损/领用出库 | POST | `/biz/inventory/outbounds` | `mOutboundCreate` | stock-out |
+| 出库过账 | POST | `/biz/inventory/outbounds/:no/post` | `mOutboundPost` | stock-out |
+| 作废出库单 | POST | `/biz/inventory/outbounds/:no/void` | `mOutboundVoid` | — |
+| 库存总览三个数 | GET | `/biz/inventory/summary` | `mStockSummary` | home、stock |
+| 建调拨单 | POST | `/biz/inventory/transfers` | `mTransferCreate` | transfer |
+| 读回调拨单 | GET | `/biz/inventory/transfers/:no` | `mTransferDetail` | transfer |
+| 调拨收货 | POST | `/biz/inventory/transfers/:no/receive` | `mTransferReceive` | transfer |
+| 调拨发出 | POST | `/biz/inventory/transfers/:no/ship` | `mTransferShip` | transfer |
 
 ### `biz:goods`　建/改商品、上下架、规格模板、识图
 
@@ -111,6 +145,7 @@
 |---|---|---|---|---|
 | 我名下的证照 | GET | `/biz/entities` | `mEntities` | entities |
 | 一张证照的详情与门店 | GET | `/biz/entity/:entityNo` | `mEntity` | entity-detail |
+| 设发货源 | PUT | `/biz/inventory/locations/:id/source` | `mLocationSetSource` | locations |
 | 会员经营口径 | GET | `/biz/member-settings` | `mMemberSettings` | member-settings |
 | 改口径（店主） | PUT | `/biz/member-settings` | `mSaveMemberSettings` | member-settings |
 | 我的套餐（档位/用量/三档对比） | GET | `/biz/plan` | `mMyPlan` | me、plan、stores |
@@ -130,6 +165,35 @@
 | 改门店名与地址 | POST | `/biz/store/:storeNo/rename` | `mRenameStore` | stores |
 | 停用/启用门店 | POST | `/biz/store/:storeNo/status` | `mSetStoreStatus` | stores |
 | 新建门店 | POST | `/biz/store/create` | `mCreateStore` | stores |
+
+### `biz:customer`　顾客列表（含累计消费额）、经营数据
+
+**可用角色**：老板、店长
+
+| 功能点 | 方法 | 端点 | 契约方法 | 页面 |
+|---|---|---|---|---|
+| 跨店对比（销售额/订单/复购/缺货） | GET | `/biz/cross-store/compare` | `mCrossStoreCompare` | cross-store |
+| 跨店总览（按店并列今日/本月/待办） | GET | `/biz/cross-store/overview` | `mCrossStoreOverview` | stores |
+| 客户与复购（跨店总览在用） | GET | `/biz/customers` | `mCustomers` | — |
+| 经营数据 | GET | `/biz/dashboard/stats` | `mStats` | home、stats |
+| 进销存月报 | GET | `/biz/inventory/report/monthly` | `mStockMonthly` | stock-report |
+| 动销/滞销榜 | GET | `/biz/inventory/report/ranking` | `mStockRanking` | stock-report |
+| 群发试算：能发多少、跳过多少 | POST | `/biz/member-reach/plan` | `mPlanReach` | member-reach |
+| 人群列表 | GET | `/biz/member-segments` | `mMemberSegments` | coupon-issues、coupons、member-reach、member-segments |
+| 存人群（存条件不存名单） | POST | `/biz/member-segments` | `mSaveMemberSegment` | customers、member-segments |
+| 删人群（端上没有 DELETE，见 http-client） | POST | `/biz/member-segments/{segmentNo}/remove` | `mRemoveMemberSegment` | member-segments |
+| 试算命中与可触达 | POST | `/biz/member-segments/preview` | `mPreviewMemberSegment` | customers |
+| 标签字典（含人数） | GET | `/biz/member-tags` | `mMemberTags` | customers、member-add、member-segments、member-tags |
+| 新建标签 | POST | `/biz/member-tags` | `mCreateMemberTag` | member-tags |
+| 改名 / 停用 | PUT | `/biz/member-tags/{tagNo}` | `mEditMemberTag` | member-tags |
+| 合并（confirm=false 只试算） | POST | `/biz/member-tags/{tagNo}/merge` | `mMergeMemberTag` | member-tags |
+| 会员列表（筛选+分页） | GET | `/biz/members` | `mMembers` | customers |
+| 手工录入（未注册记为线索） | POST | `/biz/members` | `mEnrollMember` | member-add |
+| 会员详情：各店往来与来源轨迹 | GET | `/biz/members/{memberNo}` | `mMemberDetail` | member-detail |
+| 改备注 / 拉黑 | PUT | `/biz/members/{memberNo}` | `mPatchMember` | — |
+| 四层人数与未计入买家 | GET | `/biz/members/stats` | `mMemberStats` | customers |
+| 批量打标 / 去标 | POST | `/biz/members/tags` | `mTagMembers` | — |
+| —（b-app 未接） | — | `/biz/inventory/export` | — | — |
 
 ### `biz:campaign`　营销活动、开团、报价
 
@@ -157,32 +221,6 @@
 | 开团 | POST | `/biz/groups` | `mCreateGroup` | groups |
 | 群发（会打扰真实用户） | POST | `/biz/member-reach/send` | `mSendReach` | member-reach |
 | —（b-app 未接） | — | `/biz/quote/{}/revise` | — | — |
-
-### `biz:customer`　顾客列表（含累计消费额）、经营数据
-
-**可用角色**：老板、店长
-
-| 功能点 | 方法 | 端点 | 契约方法 | 页面 |
-|---|---|---|---|---|
-| 跨店对比（销售额/订单/复购/缺货） | GET | `/biz/cross-store/compare` | `mCrossStoreCompare` | cross-store |
-| 跨店总览（按店并列今日/本月/待办） | GET | `/biz/cross-store/overview` | `mCrossStoreOverview` | stores |
-| 客户与复购（跨店总览在用） | GET | `/biz/customers` | `mCustomers` | — |
-| 经营数据 | GET | `/biz/dashboard/stats` | `mStats` | home、stats |
-| 群发试算：能发多少、跳过多少 | POST | `/biz/member-reach/plan` | `mPlanReach` | member-reach |
-| 人群列表 | GET | `/biz/member-segments` | `mMemberSegments` | coupon-issues、coupons、member-reach、member-segments |
-| 存人群（存条件不存名单） | POST | `/biz/member-segments` | `mSaveMemberSegment` | customers、member-segments |
-| 删人群（端上没有 DELETE，见 http-client） | POST | `/biz/member-segments/{segmentNo}/remove` | `mRemoveMemberSegment` | member-segments |
-| 试算命中与可触达 | POST | `/biz/member-segments/preview` | `mPreviewMemberSegment` | customers |
-| 标签字典（含人数） | GET | `/biz/member-tags` | `mMemberTags` | customers、member-add、member-segments、member-tags |
-| 新建标签 | POST | `/biz/member-tags` | `mCreateMemberTag` | member-tags |
-| 改名 / 停用 | PUT | `/biz/member-tags/{tagNo}` | `mEditMemberTag` | member-tags |
-| 合并（confirm=false 只试算） | POST | `/biz/member-tags/{tagNo}/merge` | `mMergeMemberTag` | member-tags |
-| 会员列表（筛选+分页） | GET | `/biz/members` | `mMembers` | customers |
-| 手工录入（未注册记为线索） | POST | `/biz/members` | `mEnrollMember` | member-add |
-| 会员详情：各店往来与来源轨迹 | GET | `/biz/members/{memberNo}` | `mMemberDetail` | member-detail |
-| 改备注 / 拉黑 | PUT | `/biz/members/{memberNo}` | `mPatchMember` | — |
-| 四层人数与未计入买家 | GET | `/biz/members/stats` | `mMemberStats` | customers |
-| 批量打标 / 去标 | POST | `/biz/members/tags` | `mTagMembers` | — |
 
 ### `biz:finance`　结算账单、费率卡、收款进件、积分开关
 
@@ -231,17 +269,6 @@
 | 破损短少上报 | POST | `/biz/pickup/:orderNo/report` | `mReportShortage` | picking |
 | 标记到货 | POST | `/biz/pickup/arrived` | `mMarkArrived` | picking |
 | 分拣单 | GET | `/biz/pickup/picking` | `mPickingList` | picking |
-
-### `biz:stock`　改库存（含门店库存）
-
-**可用角色**：老板、店长、店员、理货员
-
-| 功能点 | 方法 | 端点 | 契约方法 | 页面 |
-|---|---|---|---|---|
-| 商品列表 | GET | `/biz/goods` | `mGoodsList` | goods-list、groups、marketing |
-| 商品详情 | GET | `/biz/goods/:goodsNo` | `mGoodsDetail` | goods-edit |
-| 改库存 | POST | `/biz/goods/:goodsNo/stock` | `mSaveStock` | goods-list |
-| 改当前门店库存 | POST | `/biz/goods/:goodsNo/store-stock` | `mSaveStoreStock` | goods-list |
 
 ### `biz:aftersale`　售后同意/驳回/收货
 
@@ -306,8 +333,9 @@
 | `goods-edit` | `biz:goods` | `biz:goods`、`biz:store`、`biz:stock` | 老板、店长 | — |
 | `goods-list` | `biz:stock` | `biz:store`、`biz:stock`、`biz:goods` | 老板、店长、店员、理货员 | 店员（缺 biz:store、biz:goods）　理货员（缺 biz:store、biz:goods） |
 | `groups` | `biz:campaign` | `biz:campaign`、`biz:stock` | 老板、店长 | — |
-| `home` | **无** | `biz:customer`、`biz:finance`、`biz:store` | 老板、店长、店员、理货员、配送员、客服 | 店长（缺 biz:finance）　店员（缺 biz:customer、biz:finance、biz:store）　理货员（缺 biz:customer、biz:finance、biz:store）　配送员（缺 biz:customer、biz:finance、biz:store）　客服（缺 biz:customer、biz:finance、biz:store） |
+| `home` | **无** | `biz:customer`、`biz:finance`、`biz:store`、`biz:stock` | 老板、店长、店员、理货员、配送员、客服 | 店长（缺 biz:finance）　店员（缺 biz:customer、biz:finance、biz:store）　理货员（缺 biz:customer、biz:finance、biz:store）　配送员（缺 biz:customer、biz:finance、biz:store、biz:stock）　客服（缺 biz:customer、biz:finance、biz:store、biz:stock） |
 | `income` | **无** | `biz:finance` | 老板、店长、店员、理货员、配送员、客服 | 店长（缺 biz:finance）　店员（缺 biz:finance）　理货员（缺 biz:finance）　配送员（缺 biz:finance）　客服（缺 biz:finance） |
+| `locations` | `biz:store:admin` | `biz:stock`、`biz:store:admin` | 老板 | — |
 | `marketing` | `biz:campaign` | `biz:campaign`、`biz:stock` | 老板、店长 | — |
 | `me` | **无** | `biz:store:admin` | 老板、店长、店员、理货员、配送员、客服 | 店长（缺 biz:store:admin）　店员（缺 biz:store:admin）　理货员（缺 biz:store:admin）　配送员（缺 biz:store:admin）　客服（缺 biz:store:admin） |
 | `member-add` | `biz:customer` | `biz:customer` | 老板、店长 | — |
@@ -324,6 +352,7 @@
 | `plan` | `biz:store:admin` | `biz:store:admin` | 老板 | — |
 | `points` | **无** | `biz:finance` | 老板、店长、店员、理货员、配送员、客服 | 店长（缺 biz:finance）　店员（缺 biz:finance）　理货员（缺 biz:finance）　配送员（缺 biz:finance）　客服（缺 biz:finance） |
 | `points-records` | **无** | `biz:finance` | 老板、店长、店员、理货员、配送员、客服 | 店长（缺 biz:finance）　店员（缺 biz:finance）　理货员（缺 biz:finance）　配送员（缺 biz:finance）　客服（缺 biz:finance） |
+| `purchase-edit` | `biz:stock` | `biz:stock` | 老板、店长、店员、理货员 | — |
 | `qualifications` | `biz:store` | `biz:store` | 老板、店长 | — |
 | `quotes` | `biz:campaign` | `biz:campaign` | 老板、店长 | — |
 | `reviews` | `biz:review` | `biz:review` | 老板、店长、客服 | — |
@@ -334,11 +363,18 @@
 | `staff` | `biz:store:admin` | `biz:store:admin` | 老板 | — |
 | `staff-detail` | `biz:store:admin` | `biz:store:admin` | 老板 | — |
 | `stats` | `biz:customer` | `biz:customer` | 老板、店长 | — |
+| `stock` | `biz:stock` | `biz:stock` | 老板、店长、店员、理货员 | — |
+| `stock-check` | `biz:stock` | `biz:stock` | 老板、店长、店员、理货员 | — |
+| `stock-detail` | `biz:stock` | `biz:stock` | 老板、店长、店员、理货员 | — |
+| `stock-docs` | `biz:stock` | `biz:stock` | 老板、店长、店员、理货员 | — |
+| `stock-out` | `biz:stock` | `biz:stock` | 老板、店长、店员、理货员 | — |
+| `stock-report` | `biz:customer` | `biz:customer` | 老板、店长 | — |
 | `store` | `biz:store` | `biz:store` | 老板、店长 | — |
 | `store-categories` | `biz:store:admin` | `biz:store` | 老板 | — |
 | `store-notice` | `biz:store` | `biz:store` | 老板、店长 | — |
 | `store-scope` | `biz:store` | `biz:store` | 老板、店长 | — |
 | `stores` | `biz:store:admin` | `biz:finance`、`biz:store:admin`、`biz:customer` | 老板 | — |
+| `transfer` | `biz:stock` | `biz:stock` | 老板、店长、店员、理货员 | — |
 | `verify` | `biz:verify` | `biz:verify` | 老板、店长、店员 | — |
 
 > 「进得来的角色」只按 `denied` 门禁算，**不含页面内部按 `can()` 逐块裁的部分** ——
@@ -351,6 +387,7 @@
 |---|---|---|
 | `/biz/deposit` | `biz:finance` | 老板 |
 | `/biz/deposit/txns` | `biz:finance` | 老板 |
+| `/biz/inventory/export` | `biz:customer` | 老板、店长 |
 | `/biz/merchant/payment/store/{}` | `biz:finance` | 老板 |
 | `/biz/qualifications/recognize` | `biz:store` | 老板、店长 |
 | `/biz/quote/{}/revise` | `biz:campaign` | 老板、店长 |
@@ -373,6 +410,9 @@
 | 地图上选中的小区直接开通 | `/biz/communities/from-map` | `mOpenCommunityFromMap` | `biz:store` |
 | 客户与复购（跨店总览在用） | `/biz/customers` | `mCustomers` | `biz:customer` |
 | 改截单与到货说明 | `/biz/goods/:goodsNo/presale` | `mSavePresale` | `biz:goods` |
+| 改进货草稿 | `/biz/inventory/inbounds/:no` | `mInboundUpdate` | `biz:stock` |
+| 作废入库单 | `/biz/inventory/inbounds/:no/void` | `mInboundVoid` | `biz:stock` |
+| 作废出库单 | `/biz/inventory/outbounds/:no/void` | `mOutboundVoid` | `biz:stock` |
 | 改备注 / 拉黑 | `/biz/members/{memberNo}` | `mPatchMember` | `biz:customer` |
 | 批量打标 / 去标 | `/biz/members/tags` | `mTagMembers` | `biz:customer` |
 | 停用/启用自建维度 | `/biz/my-spec-dims/{dimNo}/archive` | `mArchiveSpecDim` | `biz:goods` |
