@@ -3,7 +3,7 @@
     {
       "key": "b-app",
       "label": "商家 App",
-      "count": 59,
+      "count": 68,
       "domains": [
         {
           "name": "工作台",
@@ -705,6 +705,110 @@
               "status": "原型",
               "proto": "s13",
               "protoUrl": "https://claude.ai/code/artifact/459462f5-e7f7-485a-85b0-096ba9918b15",
+              "preview": null
+            }
+          ]
+        },
+        {
+          "name": "进销存",
+          "pages": [
+            {
+              "app": "b-app",
+              "route": "/pages/stock/index",
+              "title": "库存",
+              "domain": "进销存",
+              "tab": false,
+              "status": "原型",
+              "proto": "s01",
+              "protoUrl": "https://claude.ai/code/artifact/f3904519-ea36-4bc0-b231-d113b696f7e0",
+              "preview": null
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/stock-detail/index",
+              "title": "库存明细",
+              "domain": "进销存",
+              "tab": false,
+              "status": "原型",
+              "proto": "s02",
+              "protoUrl": "https://claude.ai/code/artifact/f3904519-ea36-4bc0-b231-d113b696f7e0",
+              "preview": null
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/stock-check/index",
+              "title": "盘点",
+              "domain": "进销存",
+              "tab": false,
+              "status": "原型",
+              "proto": "s03",
+              "protoUrl": "https://claude.ai/code/artifact/f3904519-ea36-4bc0-b231-d113b696f7e0",
+              "preview": null
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/purchase-edit/index",
+              "title": "记一笔进货",
+              "domain": "进销存",
+              "tab": false,
+              "status": "原型",
+              "proto": "s04",
+              "protoUrl": "https://claude.ai/code/artifact/f3904519-ea36-4bc0-b231-d113b696f7e0",
+              "preview": null
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/stock-docs/index",
+              "title": "出入库单据",
+              "domain": "进销存",
+              "tab": false,
+              "status": "原型",
+              "proto": "s05",
+              "protoUrl": "https://claude.ai/code/artifact/f3904519-ea36-4bc0-b231-d113b696f7e0",
+              "preview": null
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/stock-out/index",
+              "title": "报损出库",
+              "domain": "进销存",
+              "tab": false,
+              "status": "原型",
+              "proto": "s06",
+              "protoUrl": "https://claude.ai/code/artifact/f3904519-ea36-4bc0-b231-d113b696f7e0",
+              "preview": null
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/transfer/index",
+              "title": "调拨",
+              "domain": "进销存",
+              "tab": false,
+              "status": "原型",
+              "proto": "s07",
+              "protoUrl": "https://claude.ai/code/artifact/f3904519-ea36-4bc0-b231-d113b696f7e0",
+              "preview": null
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/stock-report/index",
+              "title": "进销存报表",
+              "domain": "进销存",
+              "tab": false,
+              "status": "原型",
+              "proto": "s08",
+              "protoUrl": "https://claude.ai/code/artifact/f3904519-ea36-4bc0-b231-d113b696f7e0",
+              "preview": null
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/locations/index",
+              "title": "库位与仓",
+              "domain": "进销存",
+              "tab": false,
+              "status": "原型",
+              "proto": "s09",
+              "protoUrl": "https://claude.ai/code/artifact/f3904519-ea36-4bc0-b231-d113b696f7e0",
               "preview": null
             }
           ]
@@ -2717,5 +2821,5 @@
       ]
     }
   ],
-  "total": 218
+  "total": 227
 }

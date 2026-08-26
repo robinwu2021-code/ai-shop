@@ -189,6 +189,16 @@ PROTO_URL_BY_ROUTE = {
         "pages/income/index": "https://claude.ai/code/artifact/ea3b41e2-06e9-4040-907f-3003087a693c",
         "pages/payment/index": "https://claude.ai/code/artifact/ea3b41e2-06e9-4040-907f-3003087a693c",
         "pages/settle/index": "https://claude.ai/code/artifact/ea3b41e2-06e9-4040-907f-3003087a693c",
+        # 进销存九屏（另一份 artifact）：库存 / 明细 / 盘点 / 进货 / 单据 / 报损 / 调拨 / 报表 / 库位
+        "pages/stock/index": "https://claude.ai/code/artifact/f3904519-ea36-4bc0-b231-d113b696f7e0",
+        "pages/stock-detail/index": "https://claude.ai/code/artifact/f3904519-ea36-4bc0-b231-d113b696f7e0",
+        "pages/stock-check/index": "https://claude.ai/code/artifact/f3904519-ea36-4bc0-b231-d113b696f7e0",
+        "pages/purchase-edit/index": "https://claude.ai/code/artifact/f3904519-ea36-4bc0-b231-d113b696f7e0",
+        "pages/stock-docs/index": "https://claude.ai/code/artifact/f3904519-ea36-4bc0-b231-d113b696f7e0",
+        "pages/stock-out/index": "https://claude.ai/code/artifact/f3904519-ea36-4bc0-b231-d113b696f7e0",
+        "pages/transfer/index": "https://claude.ai/code/artifact/f3904519-ea36-4bc0-b231-d113b696f7e0",
+        "pages/stock-report/index": "https://claude.ai/code/artifact/f3904519-ea36-4bc0-b231-d113b696f7e0",
+        "pages/locations/index": "https://claude.ai/code/artifact/f3904519-ea36-4bc0-b231-d113b696f7e0",
     },
 }
 
@@ -222,6 +232,16 @@ PROTO_ANCHORS = {
         "pages/points/index": "s05", "pages/points-records/index": "s06",
         "pages/income/index": "s07", "pages/payment/index": "s08",
         "pages/settle/index": "s10",
+        # 进销存九屏
+        "pages/stock/index": "s01",
+        "pages/stock-detail/index": "s02",
+        "pages/stock-check/index": "s03",
+        "pages/purchase-edit/index": "s04",
+        "pages/stock-docs/index": "s05",
+        "pages/stock-out/index": "s06",
+        "pages/transfer/index": "s07",
+        "pages/stock-report/index": "s08",
+        "pages/locations/index": "s09",
     },
     "c-app": {
         "pages/store/index": "s15", "pages/member-card/index": "s16",
@@ -248,6 +268,16 @@ PROTOTYPES = [
     ("ops-web", "/members", "会员总览（跨商家）", "会员与营销"),
     ("ops-web", "/members?tab=person", "人档与合并", "会员与营销"),
     ("ops-web", "/members?tab=reach", "触达监控", "会员与营销"),
+    # 进销存九屏：需求见 docs/requirements/进销存-需求.md，落地后从这里删掉
+    ("b-app", "/pages/stock/index", "库存", "进销存"),
+    ("b-app", "/pages/stock-detail/index", "库存明细", "进销存"),
+    ("b-app", "/pages/stock-check/index", "盘点", "进销存"),
+    ("b-app", "/pages/purchase-edit/index", "记一笔进货", "进销存"),
+    ("b-app", "/pages/stock-docs/index", "出入库单据", "进销存"),
+    ("b-app", "/pages/stock-out/index", "报损出库", "进销存"),
+    ("b-app", "/pages/transfer/index", "调拨", "进销存"),
+    ("b-app", "/pages/stock-report/index", "进销存报表", "进销存"),
+    ("b-app", "/pages/locations/index", "库位与仓", "进销存"),
     # 商家资金全链路：接口都在、B 端没有出口的那几页
 ]
 
