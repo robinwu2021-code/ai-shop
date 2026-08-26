@@ -17,7 +17,6 @@ import ai.neargo.shop.merchant.service.MerchantStaffService;
 import ai.neargo.shop.merchant.service.StoreAdminService;
 import ai.neargo.shop.merchant.service.StoreCategoryService;
 import ai.neargo.shop.merchant.service.MerchantStoreService;
-import ai.neargo.shop.merchant.service.StoreFulfillmentService;
 import ai.neargo.shop.merchant.service.MerchantService;
 import ai.neargo.shop.community.service.CommunityAdminService;
 import ai.neargo.shop.spi.user.MerchantAdminPort;
@@ -56,8 +55,6 @@ public class BizMerchantController {
     private final UserService userService;
     private final BizIdentityResolver identityResolver;
     private final MerchantStoreService storeService;
-    private final StoreFulfillmentService fulfillmentService;
-    private final ai.neargo.shop.merchant.service.AppointmentSlotService appointmentSlotService;
     private final MerchantPaymentService paymentService;
     private final StoreAdminService storeAdminService;
     /** 门店货架 —— 建店时一并摆上，之后商家自己调 */
@@ -82,8 +79,6 @@ public class BizMerchantController {
     public BizMerchantController(MerchantService merchantService, OpsService opsService,
                                  UserService userService, BizIdentityResolver identityResolver,
                                  MerchantStoreService storeService,
-                                 StoreFulfillmentService fulfillmentService,
-                                 ai.neargo.shop.merchant.service.AppointmentSlotService appointmentSlotService,
                                  MerchantPaymentService paymentService,
                                  StoreAdminService storeAdminService,
                                  MerchantStaffService staffService,
@@ -106,8 +101,6 @@ public class BizMerchantController {
         this.communityService = communityService;
         this.roleService = roleService;
         this.storeService = storeService;
-        this.fulfillmentService = fulfillmentService;
-        this.appointmentSlotService = appointmentSlotService;
         this.paymentService = paymentService;
         this.storeAdminService = storeAdminService;
         this.staffService = staffService;
@@ -429,71 +422,6 @@ public class BizMerchantController {
 
     /** @param text 要从常用里删掉的那一句，按原文匹配 */
     public record RecentReq(String text) {
-    }
-
-    // ---------------------------------------------------------------- 门店送货方式（方案 v4）
-
-    /**
-     * 门店履约全景：四路各一行（开关/置灰原因/快递模板）。
-     * {@code storeNo} 空 = 默认门店 —— 单店商家的端上不用感知门店号。
-     */
-    @PreAuthorize("@perm.canBiz('" + BizPerms.STORE + "')")
-    @GetMapping("/biz/stores/{storeNo}/fulfillment")
-    public StoreFulfillmentService.FulfillmentVO storeFulfillment(@PathVariable String storeNo) {
-        return fulfillmentService.get(BizContext.requireMerchantNo(),
-                "default".equals(storeNo) ? null : storeNo);
-    }
-
-    /**
-     * 全量保存门店送货方式。「关一路」是 enabled=false 不是删行 —— 配置原地保留。
-     */
-    @PreAuthorize("@perm.canBiz('" + BizPerms.STORE + "')")
-    @PutMapping("/biz/stores/{storeNo}/fulfillment")
-    public StoreFulfillmentService.FulfillmentVO saveStoreFulfillment(
-            @PathVariable String storeNo, @RequestBody FulfillmentReq req) {
-        return fulfillmentService.save(BizContext.requireMerchantNo(),
-                "default".equals(storeNo) ? null : storeNo, req.channels());
-    }
-
-    /** 对齐 shared {@code StoreFulfillment}。 */
-    public record FulfillmentReq(java.util.List<StoreFulfillmentService.ChannelCmd> channels) {
-    }
-
-    // ---------------------------------------------------------------- 预约排期
-
-    /**
-     * 本店的时段列表。<b>连约满的和停掉的一起列</b> ——
-     * 只给「还能约的」的话，商家看不出「为什么这周没人约」到底是
-     * 「没开时段」还是「开的都满了」，而这两件事该做的动作完全相反。
-     */
-    @PreAuthorize("@perm.canBiz('" + BizPerms.STORE + "')")
-    @GetMapping("/biz/stores/{storeNo}/appointment-slots")
-    public java.util.List<ai.neargo.shop.merchant.service.AppointmentSlotService.SlotVO> slots(
-            @PathVariable String storeNo,
-            @RequestParam long from, @RequestParam long to) {
-        return appointmentSlotService.list(storeNo, from, to, false);
-    }
-
-    /** 开一个时段。 */
-    @PreAuthorize("@perm.canBiz('" + BizPerms.STORE + "')")
-    @PostMapping("/biz/stores/{storeNo}/appointment-slots")
-    public ai.neargo.shop.merchant.service.AppointmentSlotService.SlotVO openSlot(@PathVariable String storeNo,
-                                                 @RequestBody SlotReq req) {
-        return appointmentSlotService.open(BizContext.requireMerchantNo(), storeNo,
-                req.startAt(), req.endAt(), req.capacity());
-    }
-
-    /**
-     * 停约。<b>不删行，也不动已经约进来的单</b> —— 语义是「别再往里放人」。
-     * 赶人得先有一套通知与补偿的规则，在那之前悄悄取消别人的预约比不支持停约糟得多。
-     */
-    @PreAuthorize("@perm.canBiz('" + BizPerms.STORE + "')")
-    @PostMapping("/biz/appointment-slots/{slotNo}/close")
-    public ai.neargo.shop.merchant.service.AppointmentSlotService.SlotVO closeSlot(@PathVariable String slotNo) {
-        return appointmentSlotService.close(BizContext.requireMerchantNo(), slotNo);
-    }
-
-    public record SlotReq(long startAt, long endAt, int capacity) {
     }
 
     // ---------------------------------------------------------------- 提报新社区（ADR-013 阶段三）
