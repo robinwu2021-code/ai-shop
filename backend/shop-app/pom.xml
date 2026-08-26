@@ -40,6 +40,11 @@
         </dependency>
         <dependency>
             <groupId>ai.neargo.shop</groupId>
+            <artifactId>shop-inventory</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>ai.neargo.shop</groupId>
             <artifactId>shop-channel</artifactId>
             <version>${project.version}</version>
         </dependency>

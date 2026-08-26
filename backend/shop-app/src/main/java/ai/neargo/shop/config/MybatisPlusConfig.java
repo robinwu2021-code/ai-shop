@@ -21,8 +21,22 @@ import java.util.List;
  * —— 表现为「总数 100 条但只能翻 3 页」，且不报错。
  */
 @Configuration
+/*
+ * ⚠️ **进销存的 Mapper 必须排除在外**。
+ *
+ * 这个扫描是按 `ai.neargo.shop` 全包扫的，而 `ai.neargo.shop.inventory` 走的是
+ * **另一个数据源**（见 InventoryDataSourceConfig）。不排除的话，inv_* 的 Mapper 会被
+ * 注册到平台的 SqlSessionFactory 上 —— 于是查 inv_stock_balance 打到 ai_shop 库，
+ * 报的是「表不存在」，而排查方向会指向迁移没跑，不会指向数据源接错。
+ *
+ * 两头夹：这里排除，那边按 inventory.mapper 包显式绑到 invSqlSessionFactory。
+ * 少任何一头都只在跑到那一行时才炸。
+ */
 @MapperScan(basePackages = "ai.neargo.shop",
-        markerInterface = com.baomidou.mybatisplus.core.mapper.BaseMapper.class)
+        markerInterface = com.baomidou.mybatisplus.core.mapper.BaseMapper.class,
+        excludeFilters = @org.springframework.context.annotation.ComponentScan.Filter(
+                type = org.springframework.context.annotation.FilterType.REGEX,
+                pattern = "ai\\.neargo\\.shop\\.inventory\\..*"))
 /*
  * 第二个 @MapperScan：**不继承 BaseMapper 的 Mapper**。
  *

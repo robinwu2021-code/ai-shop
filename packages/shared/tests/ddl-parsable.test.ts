@@ -23,11 +23,17 @@
 import { readdirSync, readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 // @ts-expect-error -- 生成器是 .mjs，没有类型声明；它是 DDL 解析的唯一真源
-import { readColumnNames } from "../../../scripts/lib/ddl.mjs";
+import { readColumnNames, MIGRATION_DIR as PLATFORM_MIG, INVENTORY_MIGRATION_DIR }
+  from "../../../scripts/lib/ddl.mjs";
 import { describe, expect, it } from "vitest";
 
 const ROOT = join(import.meta.dirname, "../../..");
-const MIGRATION_DIR = join(ROOT, "backend/shop-app/src/main/resources/db/migration");
+/**
+ * 两条 Flyway 历史都要扫：平台的 `db/migration`，以及**进销存独立库**的 `db/inventory`。
+ * 少扫后者的话，inv_* 的 17 张表在这条守卫眼里不存在 ——
+ * 表现是实体对齐守卫报「实体多出一堆字段」，而排查方向会指向实体写错。
+ */
+const MIGRATION_DIRS = [PLATFORM_MIG, INVENTORY_MIGRATION_DIR].map((d) => join(ROOT, d));
 
 /** `V15__x.sql` → 15。**按数字排，不按文件名字典序** —— 否则 V15 会排在 V2 前面。 */
 function versionOf(file: string): number {
@@ -50,12 +56,13 @@ function versionOf(file: string): number {
  */
 function declaredTables(): Map<string, string> {
   const out = new Map<string, string>();
-  if (!existsSync(MIGRATION_DIR)) return out;
-  const files = readdirSync(MIGRATION_DIR)
+  for (const dir of MIGRATION_DIRS) {
+  if (!existsSync(dir)) continue;
+  const files = readdirSync(dir)
     .filter((x) => x.endsWith(".sql"))
     .sort((a, b) => versionOf(a) - versionOf(b));
   for (const f of files) {
-    const src = readFileSync(join(MIGRATION_DIR, f), "utf8");
+    const src = readFileSync(join(dir, f), "utf8");
     const re = /CREATE TABLE(?: IF NOT EXISTS)?\s+(\w+)|ALTER TABLE\s+(\w+)\s+RENAME TO\s+(\w+)/gi;
     for (const m of src.matchAll(re)) {
       if (m[1]) {
@@ -69,6 +76,7 @@ function declaredTables(): Map<string, string> {
       out.delete(from);
     }
   }
+  }
   return out;
 }
 
@@ -76,14 +84,14 @@ describe("建表 DDL 必须可解析", () => {
   const declared = declaredTables();
 
   it("解析没失效 —— 一张表都没扫到时不能静默通过", () => {
-    if (!existsSync(MIGRATION_DIR)) return; // 只装前端的场景
+    if (!MIGRATION_DIRS.some(existsSync)) return; // 只装前端的场景
     expect(declared.size, "一张建表都没扫到，迁移目录变了？").toBeGreaterThan(30);
   });
 
   it("★★★ 每张声明过的表，解析器都必须读得到", () => {
     if (!declared.size) return;
     const parsed = new Set<string>(
-      [...(readColumnNames(ROOT) as Map<string, unknown>).keys()],
+      [...(readColumnNames(ROOT, MIGRATION_DIRS.map((d) => d.slice(ROOT.length + 1))) as Map<string, unknown>).keys()],
     );
     const missing = [...declared.entries()]
       .filter(([t]) => !parsed.has(t))

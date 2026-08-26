@@ -18,7 +18,7 @@ import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 // @ts-expect-error -- 生成器是 .mjs，没有类型声明；它是 DDL 解析的唯一真源
-import { readSchema, AUDIT } from "../../../scripts/lib/ddl.mjs";
+import { readSchema, AUDIT, MIGRATION_DIR, INVENTORY_MIGRATION_DIR } from "../../../scripts/lib/ddl.mjs";
 
 const ROOT = join(import.meta.dirname, "../../..");
 const BACKEND = join(ROOT, "backend");
@@ -67,7 +67,7 @@ function scanEntities(dir: string, out = new Map<string, { file: string; fields:
 }
 
 const schema: Map<string, { cols: { name: string }[] }> = existsSync(BACKEND)
-  ? readSchema(ROOT)
+  ? readSchema(ROOT, [MIGRATION_DIR, INVENTORY_MIGRATION_DIR])
   : new Map();
 const entities = existsSync(BACKEND) ? scanEntities(BACKEND) : new Map();
 

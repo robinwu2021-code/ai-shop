@@ -1,6 +1,14 @@
 -- ============================================================================
 -- 进销存独立库 · 基线
 --
+-- ── 审计列的规矩（全库一致，不逐表重复）──
+-- ① **每张表都有 created_by**：「谁建的」是这套东西的领域数据，不是顺带记的审计。
+-- ② **只追加 / 写一次的三张没有 updated_at / updated_by**：
+--    inv_ledger（流水不可变）· inv_item_ref（引用是加/删不是改）· inv_reservation_line（全成或全败）。
+--    **没有这两列，就没有「改一行」这个动作** —— 不变式 I3 由表结构本身兜住，
+--    而不是靠代码里记得别写 update。实体那边也分两个基类，继承关系即是这条规矩。
+-- ③ 其余十四张都有 updated_at / updated_by。
+--
 -- 这是**另一个数据库**的第一条迁移，与 ai_shop 的 Flyway 历史互不知情。
 -- 分开的理由见 TDD-进销存领域模型：进销存要能独立交付，
 -- 而带着平台 260 条迁移交付出去，第一句话就得是「请先装一个 ai_shop」。
@@ -90,6 +98,9 @@ CREATE TABLE IF NOT EXISTS inv_uom
     divisible  TINYINT     NOT NULL DEFAULT 0 COMMENT '1=可拆分（称重品）。称重品与计件品的分界',
     sort       INT         NOT NULL DEFAULT 0,
     created_at DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by      VARCHAR(64) DEFAULT NULL COMMENT '谁建的。业务键：商家账号 / 运营账号 / SYSTEM',
+    updated_at      DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    updated_by      VARCHAR(64) DEFAULT NULL,
     PRIMARY KEY (id),
     UNIQUE KEY uk_uom (uom_code)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci COMMENT='计量单位字典';
@@ -182,6 +193,8 @@ CREATE TABLE IF NOT EXISTS inv_stock_balance
     version       BIGINT      NOT NULL DEFAULT 0 COMMENT '乐观锁',
     created_at    DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at    DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_by      VARCHAR(64) DEFAULT NULL COMMENT '谁建的。业务键：商家账号 / 运营账号 / SYSTEM',
+    updated_by      VARCHAR(64) DEFAULT NULL,
     PRIMARY KEY (id),
     -- 身份三元组，无可空项。并发下靠这个唯一键 + 条件更新防超卖
     UNIQUE KEY uk_balance (owner_id, item_id, location_id),
@@ -212,6 +225,7 @@ CREATE TABLE IF NOT EXISTS inv_ledger
     occurred_at     DATETIME    NOT NULL COMMENT '业务发生时间，跟单据走（可回填）',
     created_at      DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '落库时间。**排序一律用 id 不用它** —— 时钟回拨会让游标漏行',
     operator        VARCHAR(64) DEFAULT NULL COMMENT '谁干的。这一列是这张表存在的一半理由',
+    created_by      VARCHAR(64) DEFAULT NULL COMMENT '谁建的。业务键：商家账号 / 运营账号 / SYSTEM',
     PRIMARY KEY (id),
     -- 幂等：过账重放不会写两行。与预留、单据同一手法，不发明第二套
     UNIQUE KEY uk_doc_line (doc_no, line_no),
@@ -242,6 +256,7 @@ CREATE TABLE IF NOT EXISTS inv_reservation
     created_at     DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     created_by     VARCHAR(64) DEFAULT NULL,
     updated_at     DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    updated_by      VARCHAR(64) DEFAULT NULL,
     PRIMARY KEY (id),
     UNIQUE KEY uk_reservation (owner_id, reservation_id),
     -- 重试幂等靠它：同一个订单号再来一次，返回原结果而不是再占一份
@@ -260,6 +275,7 @@ CREATE TABLE IF NOT EXISTS inv_reservation_line
     location_id    VARCHAR(32) NOT NULL,
     qty            INT         NOT NULL,
     created_at     DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by      VARCHAR(64) DEFAULT NULL COMMENT '谁建的。业务键：商家账号 / 运营账号 / SYSTEM',
     PRIMARY KEY (id),
     UNIQUE KEY uk_res_line (reservation_id, line_no),
     KEY idx_res_line_item (owner_id, item_id, location_id)
@@ -309,6 +325,9 @@ CREATE TABLE IF NOT EXISTS inv_inbound_line
     batch_no        VARCHAR(32) DEFAULT NULL COMMENT '留位',
     expire_at       DATE        DEFAULT NULL COMMENT '留位',
     created_at      DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by      VARCHAR(64) DEFAULT NULL COMMENT '谁建的。业务键：商家账号 / 运营账号 / SYSTEM',
+    updated_at      DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    updated_by      VARCHAR(64) DEFAULT NULL,
     PRIMARY KEY (id),
     UNIQUE KEY uk_inbound_line (inbound_no, line_no),
     KEY idx_inbound_line_item (owner_id, item_id)
@@ -360,6 +379,9 @@ CREATE TABLE IF NOT EXISTS inv_outbound_line
     unit_cost_minor BIGINT      DEFAULT NULL COMMENT '★ 出库时结转的成本**快照**。成本会变，历史出库单跟着现价变等于历史毛利每天都在动',
     batch_no        VARCHAR(32) DEFAULT NULL COMMENT '留位',
     created_at      DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by      VARCHAR(64) DEFAULT NULL COMMENT '谁建的。业务键：商家账号 / 运营账号 / SYSTEM',
+    updated_at      DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    updated_by      VARCHAR(64) DEFAULT NULL,
     PRIMARY KEY (id),
     UNIQUE KEY uk_outbound_line (outbound_no, line_no),
     KEY idx_outbound_line_item (owner_id, item_id)
@@ -386,6 +408,7 @@ CREATE TABLE IF NOT EXISTS inv_stock_count
     created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     created_by  VARCHAR(64)  DEFAULT NULL,
     updated_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    updated_by      VARCHAR(64) DEFAULT NULL,
     PRIMARY KEY (id),
     UNIQUE KEY uk_count (owner_id, count_no),
     KEY idx_count_loc (owner_id, location_id, status)
@@ -404,6 +427,8 @@ CREATE TABLE IF NOT EXISTS inv_stock_count_line
     reason_code VARCHAR(16) DEFAULT NULL COMMENT '差异原因',
     created_at  DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at  DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_by      VARCHAR(64) DEFAULT NULL COMMENT '谁建的。业务键：商家账号 / 运营账号 / SYSTEM',
+    updated_by      VARCHAR(64) DEFAULT NULL,
     PRIMARY KEY (id),
     UNIQUE KEY uk_count_line (count_no, line_no),
     KEY idx_count_line_item (owner_id, item_id)
@@ -431,6 +456,7 @@ CREATE TABLE IF NOT EXISTS inv_transfer_order
     created_at         DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     created_by         VARCHAR(64)  DEFAULT NULL,
     updated_at         DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    updated_by      VARCHAR(64) DEFAULT NULL,
     PRIMARY KEY (id),
     UNIQUE KEY uk_transfer (owner_id, transfer_no),
     KEY idx_transfer_status (owner_id, status)
@@ -455,6 +481,9 @@ CREATE TABLE IF NOT EXISTS inv_outbox
     last_error    VARCHAR(512) DEFAULT NULL,
     created_at    DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     sent_at       DATETIME    DEFAULT NULL,
+    created_by      VARCHAR(64) DEFAULT NULL COMMENT '谁建的。业务键：商家账号 / 运营账号 / SYSTEM',
+    updated_at      DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    updated_by      VARCHAR(64) DEFAULT NULL,
     PRIMARY KEY (id),
     UNIQUE KEY uk_event (event_no),
     KEY idx_outbox_pending (status, next_retry_at)

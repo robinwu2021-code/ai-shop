@@ -31,6 +31,10 @@
         <!-- 独立成工程的两个域：变更节奏与外部依赖都与核心域不同，最可能先拆微服务 -->
         <module>shop-merchant</module>
         <module>shop-settle</module>
+        <!-- 进销存：**独立数据源与独立迁移历史**（db/inventory），将来可独立交付。
+             与 settle/merchant 同级的理由不同 —— 那两个是「变更节奏不同」，
+             这个是「数据边界不同」：它的表不在 ai_shop 里 -->
+        <module>shop-inventory</module>
         <!-- 外部通道适配：只装适配器，不装业务判断 -->
         <module>shop-channel</module>
         <!-- 触达中台：短信/邮件/微信订阅/聚合推送/平台直连推送 通道适配 -->

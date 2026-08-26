@@ -20,6 +20,15 @@ import { join } from "node:path";
 
 export const MIGRATION_DIR = "backend/shop-app/src/main/resources/db/migration";
 
+/**
+ * 进销存的迁移目录。**另一个库、另一条 Flyway 历史**，迁移号从 V1 重新开始。
+ *
+ * 默认不进 `readSchema` —— 平台侧的生成器（ER 图、表清单、schema-lineage 的
+ * python 对照）都只认 ai_shop 那一套，混进去会让它们凭空多出 17 张表。
+ * 需要它的只有两条守卫（实体对齐 / DDL 可解析），它们显式传第二个参数。
+ */
+export const INVENTORY_MIGRATION_DIR = "backend/shop-inventory/src/main/resources/db/inventory";
+
 /** 每张表都有、不参与任何业务关系的审计列 */
 export const AUDIT = new Set([
   "id", "tenant_no", "created_at", "created_by", "updated_at", "updated_by", "version", "deleted",
@@ -54,11 +63,14 @@ const commentOf = (s) => s?.match(/COMMENT\s+'([^']*)'/)?.[1] ?? "";
  *
  * @param {string} root 仓库根目录
  */
-export function readSchema(root) {
+export function readSchema(root, dirs = [MIGRATION_DIR]) {
   const tables = new Map();
-  const dir = join(root, MIGRATION_DIR);
-  if (!existsSync(dir)) return tables;
-  const sql = concatMigrations(dir);
+  const present = dirs.map((d) => join(root, d)).filter((d) => existsSync(d));
+  if (present.length === 0) return tables;
+  // 各目录**各自按版本号排序后再拼**：两条 Flyway 历史都从 V1 开始，
+  // 混在一起排会让 inv 的 V1 插到平台的 V1 后面。表是两套互不相干的，
+  // 顺序无所谓 —— 但这句要写明，免得以后有人以为编号可以合并。
+  const sql = present.map(concatMigrations).join("\n");
 
   for (const m of sql.matchAll(
     // 收尾只认「行首的 `)` 一直到 `;`」——**表选项一律不作要求**。
@@ -271,9 +283,9 @@ export function readSchema(root) {
 }
 
 /** 只要列名的扁平视图 —— 给不关心类型/注释的消费方 */
-export function readColumnNames(root) {
+export function readColumnNames(root, dirs) {
   const out = new Map();
-  for (const [name, def] of readSchema(root)) {
+  for (const [name, def] of readSchema(root, dirs)) {
     out.set(name, { cols: def.cols.map((c) => c.name), comment: def.comment });
   }
   return out;
