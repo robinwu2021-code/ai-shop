@@ -41,10 +41,22 @@ public interface InventoryBackfillService {
      * @param skipped   已经搬过（有 INIT 单）而跳过的
      * @param diffs     两边数不一致的明细 —— <b>空列表是唯一可接受的结果</b>
      */
-    record Report(int scannedSkus, int moved, int skipped, List<Diff> diffs) {
+    record Report(int scannedSkus, int moved, int skipped, boolean clean, List<Diff> diffs) {
 
-        public boolean clean() {
-            return diffs.isEmpty();
+        /*
+         * clean **必须是一个字段，不能只是一个方法**。
+         *
+         * 它原本写成 `boolean clean() { return diffs.isEmpty(); }` —— Java record
+         * 只序列化它的组件，额外的访问器 Jackson 一律不出，于是 JSON 里根本没有这一列。
+         * 前端读到 undefined，而 undefined 是 falsy：对差**干净的时候**界面照样显示
+         * 「有差异，不得切换」。不报错，且方向恰好是「永远不让切」——
+         * 看起来像很保守，实际是这个闸门坏了而没有人会发现。
+         *
+         * 保留 4 参构造：clean 由 diffs 推出来，调用方**不该自己传** ——
+         * 传错一次，G3 的唯一判据就废了。
+         */
+        public Report(int scannedSkus, int moved, int skipped, List<Diff> diffs) {
+            this(scannedSkus, moved, skipped, diffs.isEmpty(), diffs);
         }
     }
 

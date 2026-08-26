@@ -32,9 +32,20 @@ export const inventoryMock: InventoryApi = {
   listInvHealth: (q = {}) =>
     wait(mockInvHealth.filter((r) => !q.kind || r.kind === q.kind).slice(0, q.limit ?? 200)),
 
-  listInvLedger: (q) =>
-    // 游标是 id：传了就取比它小的（倒序翻页）
-    wait(mockInvLedger.filter((r) => !q.cursor || r.id < q.cursor).slice(0, q.size ?? 50)),
+  /*
+   * **形状要与后端逐字一致**（`LedgerPageVO{entries,nextCursor}`）。
+   * 这一条是这次踩过的坑：mock 按前端自己拟的形状写，于是 mock 自查里两边自洽，
+   * 而接上真后端才发现对不上 —— mock 的价值全在「它替身的是真的那个」。
+   */
+  listInvLedger: (q) => {
+    const rows = mockInvLedger.filter((r) => !q.cursor || r.id < q.cursor)
+      .slice(0, q.size ?? 50);
+    const last = rows[rows.length - 1];
+    return wait({
+      entries: rows,
+      nextCursor: rows.length < (q.size ?? 50) ? null : (last?.id ?? null),
+    });
+  },
 
   getInvRecon: () =>
     wait({

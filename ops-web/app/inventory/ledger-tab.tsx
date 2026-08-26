@@ -12,7 +12,7 @@ import { useState } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { fmtTime } from "@/lib/utils";
-import type { InvLedgerRow } from "@/lib/types";
+import type { InvLedgerPage, InvLedgerRow } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DataTable, type Column } from "@/components/ui/data-table";
@@ -25,21 +25,22 @@ const SIZE = 20;
 
 export function LedgerTab({ c }: { c: InventoryCopy }) {
   // 输入框与生效值分开：每敲一个字就打一次接口，台账这种大表扛不住
-  const [ownerInput, setOwnerInput] = useState("");
+  const [entityInput, setEntityInput] = useState("");
   const [itemInput, setItemInput] = useState("");
-  const [q, setQ] = useState<{ ownerId?: string; itemId?: string }>({});
+  const [q, setQ] = useState<{ entityNo: string; itemId?: string } | null>(null);
 
   const list = useInfiniteQuery({
     queryKey: ["inv-ledger", q],
     initialPageParam: undefined as number | undefined,
-    queryFn: ({ pageParam }) => api.listInvLedger({ ...q, cursor: pageParam, size: SIZE }),
-    // 游标 = 上一页最后一行的 id。**不足一页就没有下一页**，
-    // 用「最后一页返回 0 行」当终点的话，到底时会多打一次空请求
-    getNextPageParam: (last: InvLedgerRow[]) =>
-      last.length < SIZE ? undefined : last[last.length - 1]?.id,
+    queryFn: ({ pageParam }) => api.listInvLedger({ ...q!, cursor: pageParam, size: SIZE }),
+    // **没选商家就不发请求**：后端的 entityNo 是必填，空着发出去只会拿回 400，
+    // 而界面上会显示成「加载失败」—— 让人以为接口坏了，其实是还没输入
+    enabled: !!q,
+    // 游标由服务端给。**不要自己拿最后一行的 id 去推** —— 同一毫秒有多笔时会漏行
+    getNextPageParam: (last: InvLedgerPage) => last.nextCursor ?? undefined,
   });
 
-  const rows = list.data?.pages.flat() ?? [];
+  const rows: InvLedgerRow[] = list.data?.pages.flatMap((p) => p.entries) ?? [];
 
   const columns: Column<InvLedgerRow>[] = [
     { header: c.invColTime, cell: (r) => <span className="tabular-nums">{fmtTime(r.occurredAt)}</span> },
@@ -78,8 +79,8 @@ export function LedgerTab({ c }: { c: InventoryCopy }) {
 
       <Toolbar>
         <Input
-          value={ownerInput}
-          onChange={(e) => setOwnerInput(e.target.value)}
+          value={entityInput}
+          onChange={(e) => setEntityInput(e.target.value)}
           placeholder={c.invLedgerOwnerPh}
           className="w-48"
         />
@@ -90,7 +91,8 @@ export function LedgerTab({ c }: { c: InventoryCopy }) {
           className="w-48"
         />
         <Button
-          onClick={() => setQ({ ownerId: ownerInput || undefined, itemId: itemInput || undefined })}
+          disabled={!entityInput.trim()}
+          onClick={() => setQ({ entityNo: entityInput.trim(), itemId: itemInput || undefined })}
         >
           {c.invLedgerSearch}
         </Button>
@@ -98,11 +100,11 @@ export function LedgerTab({ c }: { c: InventoryCopy }) {
 
       <DataTable
         columns={columns}
-        rows={rows}
+        rows={q ? rows : []}
         loading={list.isLoading}
         error={list.error}
         onRetry={() => list.refetch()}
-        empty={c.invLedgerEmpty}
+        empty={q ? c.invLedgerEmpty : c.invLedgerPickOwner}
         rowKey={(r) => String(r.id)}
       />
 

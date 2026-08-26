@@ -40,14 +40,18 @@ public class OpsInventoryController {
     }
 
     /**
-     * 库存健康度：负库存 / 零库存仍在架 / 长期未动销。
+     * <b>某一个商家</b>的库存余额（默认只给有待办标记的：缺货 / 滞销）。
      *
-     * <p>下钻到商家 → SKU。**这些商品正在给买家制造失败的下单** ——
-     * 一个下不了单的商品比没有这个商品更贵：那次点击是花钱买来的。
+     * <p><b>它一度叫 {@code /ops/inventory/health}，那个名字是错的</b>：
+     * 它必须先知道看哪个商家（{@code entityNo} 必填），而运营要的「健康度」是
+     * <b>不知道该看谁</b>时的那一屏 —— 平台上此刻有哪些商家的库存正在制造失败的下单。
+     * 两件事共用一个名字的代价是运营端照着名字接了过来，拿到的却是 400。
+     * 平台级那一个在 {@code shop-app} 的 {@code OpsInventoryHealthController}：
+     * 它要同时读平台侧的「在架」与本域的余额，而<b>本域不认识平台的表</b>。
      */
     @PreAuthorize("@perm.can('" + Perms.PRODUCT_SKU_READ + "')")
-    @GetMapping("/ops/inventory/health")
-    public List<BalanceVO> health(@RequestParam String entityNo,
+    @GetMapping("/ops/inventory/balances")
+    public List<BalanceVO> balances(@RequestParam String entityNo,
                                   @RequestParam(defaultValue = "todo") String type,
                                   @RequestParam(defaultValue = "100") int size) {
         return query.balances(acl.ownerIdOf(entityNo), null, type, Math.min(size, PAGE_MAX));

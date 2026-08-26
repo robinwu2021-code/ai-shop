@@ -35,6 +35,17 @@ export interface InvLedgerRow {
 }
 
 /** 对差报告。**`clean` 是切真相源的唯一判据** —— 连续 N 天为真才准切 */
+/**
+ * 台账一页。**后端返回的是分页对象，不是裸数组** ——
+ * `nextCursor` 由服务端给，前端不要拿「最后一行的 id」自己推：
+ * 那样在同一毫秒有多笔时会漏行，而漏的那几行不会有任何报错。
+ */
+export interface InvLedgerPage {
+  entries: InvLedgerRow[];
+  /** null = 没有下一页 */
+  nextCursor?: number | null;
+}
+
 export interface InvReconReport {
   scannedSkus: number;
   moved: number;

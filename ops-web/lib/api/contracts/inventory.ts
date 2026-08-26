@@ -1,6 +1,6 @@
 // 进销存（P-18）—— `/ops/inventory/**`。**独立模块**：与商品域不共契约文件，
 // 它将来要能单独交付。
-import type { InvHealthRow, InvLedgerRow, InvReconReport } from "@/lib/types";
+import type { InvHealthRow, InvLedgerPage, InvReconReport } from "@/lib/types";
 
 export interface InventoryApi {
   // 三个都只读：运营不改商家库存 —— 改了之后「这个数是谁改的」就多一个答案，而商家不会知道。
@@ -15,10 +15,13 @@ export interface InventoryApi {
   /**
    * 商家台账（只读）。客服回答「我的货怎么少了」时的依据。
    *
-   * `cursor` 传上一页最后一行的 `id` —— **游标不是页码**：
-   * 时间游标会因时钟回拨漏行，而漏的那几行不会有任何报错。
+   * **`entityNo` 必填**：台账天然是「看某一个商家」的东西 —— 客服手上永远
+   * 先有一个商家，再有那句「我的货怎么少了」。后端也是这么定的，不传就是 400。
+   *
+   * `cursor` 传上一页返回的 `nextCursor` —— **游标不是页码**，也不要自己拿
+   * 最后一行的 id 去推：同一毫秒有多笔时会漏行，而漏的那几行不会有任何报错。
    */
-  listInvLedger(q: { ownerId?: string; itemId?: string; cursor?: number; size?: number }): Promise<InvLedgerRow[]>;
+  listInvLedger(q: { entityNo: string; itemId?: string; cursor?: number; size?: number }): Promise<InvLedgerPage>;
 
   /**
    * 库存对差。**这是 G3 闸门的数据来源**：`clean` 连续 N 天为真才准切真相源。
