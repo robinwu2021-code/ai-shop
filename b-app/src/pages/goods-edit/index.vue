@@ -2527,7 +2527,7 @@ async function save(thenSubmit = false) {
       <view class="cat-sheet" @tap.stop>
         <view class="cat-sheet__bar">
           <text class="cat-sheet__title">{{ $t("goods.pickStd") }}</text>
-          <text class="cat-sheet__close" @tap="showStd = false">×</text>
+          <sh-icon-btn name="close" :size="28" :box="48" @tap="showStd = false"></sh-icon-btn>
         </view>
         <view class="std-search">
           <input
@@ -2643,7 +2643,7 @@ async function save(thenSubmit = false) {
       <view v-for="(g, gi) in groups" :key="gi" class="group">
         <view class="group__head">
           <text class="group__name">{{ g.name }}</text>
-          <text class="del" @tap="removeGroup(gi)">✕</text>
+          <sh-icon-btn name="close" @tap="removeGroup(gi)"></sh-icon-btn>
         </view>
         <view class="opts">
           <text
@@ -3711,12 +3711,6 @@ async function save(thenSubmit = false) {
 }
 .flex1 {
   flex: 1;
-}
-.del {
-  width: 56rpx;
-  text-align: center;
-  color: var(--sh-sub);
-  font-size: 28rpx;
 }
 .del.small {
   width: 40rpx;

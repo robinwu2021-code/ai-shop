@@ -105,6 +105,7 @@ COMP_NOTES = {
     "sh-rating": ("评分", "底层灰星 + 上层主色星按百分比裁切 —— 半星图标只能表达 0.5 粒度，4.3 会被抹成 4.5"),
     "sh-theme-sheet": ("外观面板", "9 套皮肤 × 明暗 × 语言，选中即时全局生效"),
     "sh-add": ("＋ 加一项按钮", "收编自 goods-edit 与 my-specs 里**逐字节相同**的 `.btn-add`。`active` 是展开态：同一个按钮管开合"),
+    "sh-icon-btn": ("图标按钮", "行尾的删除、弹层右上角的关闭、列表行上的编辑。收编的是**「文字当图标」**这件事 —— 两端曾有 11 处文字 ✕/×，其中 `store-scope` 用的还是 `×`(U+00D7)", "输入框内的清空、chip 内嵌的 ✕、图片角标的删除**不归它管** —— 尺寸受宿主约束，是另一套几何"),
     "sh-stat": ("数字格", "几个大数一排，每格一句小标签。收编自 5 页 4 种档位（44/700 · 40/700 · 40/600 · 32/600）", "`boxed` 才可点 —— 点了没反应的控件比没有控件更糟，所以底色与可点由同一个开关管"),
     "sh-uploader": ("图片格", "已传的缩略图排一行，末尾一个「＋」。收编自 apply / payment / qualifications / goods-edit 四份", "详情图那种**竖排 + 每行 ↑↓✕** 的排序件不归它管 —— 名字像、东西不同"),
     "sh-section": ("卡内标题行", "收编自 goods-edit 与 sku-identity **逐字节相同**的 `.sec`（8 处调用点）。右侧动作直接进插槽，**不套壳** —— `.sec` 是 space-between，多一层就把「三个孩子摊开」变成「两组左右分」"),
@@ -145,6 +146,12 @@ SAMPLES = {
                '<span class="add__t">收起</span></div>'
                '<div class="add add--sm">{{icon:plus:10:var(--sh-primary)}}'
                '<span class="add__t">加值</span></div>'),
+    "sh-icon-btn": ('<div class="sh-card" style="display:flex;align-items:center;gap:6px">'
+                    '<span class="txt-strong" style="flex:1">500g / 袋</span>'
+                    '<div class="ib" style="width:28px;height:28px">'
+                    '{{icon:sliders:18:var(--sh-primary-text)}}</div>'
+                    '<div class="ib" style="width:28px;height:28px">'
+                    '{{icon:close:17:var(--sh-ink)}}</div></div>'),
     "sh-stat": ('<div class="st" style="grid-template-columns:repeat(3,1fr)">'
                 '<div class="st__i"><span class="st__n sh-num">128</span>'
                 '<span class="st__l">计划发放</span></div>'
@@ -391,8 +398,11 @@ ROLLED = [
     ("candchip","候选标签（虚线药丸）", None, r"border:\s*2rpx dashed var\(--sh-primary\)", None, None),
     # 判据要认「标签上的那个 ✕」，不能只认类名 —— role-detail 的 `.del` 是一个
     # 危险按钮（`sh-btn sh-btn--danger del`），按类名会被误判成可删标签。
-    ("chipdel", "可删标签",
-     r'class="[^"]*(?:val__x|__x|\bdel\b)[^"]*"[^>]*>\s*[✕×]', None,           None,       None),
+    # 收编 sh-icon-btn 之后改判「文字当图标」：**库里有 close 图标，这些还在用字符**。
+    # 先前叫「可删标签」并算成缺件，其实不对 —— 缺的从来不是件，是纪律：
+    # 同一个动作 store-scope 用 `×`(U+00D7)、其余用 `✕`(U+2715)，连字符都不是同一个。
+    ("glyphicon", "文字当图标（✕/×）",
+     r'class="[^"]*"[^>]*>\s*[✕×]\s*<', None,        None,   "sh-icon-btn / sh-icon(close)"),
     ("savebar", "底部固定条",      None, r"position:\s*fixed[^}]*bottom:\s*0",    None,       None),
     ("search",  "搜索框",         None, r"^\s*\.search\b",                      None,       None),
     # 判据要认「自己画了格子」，不是「调了选图」—— 收编成 sh-uploader 之后，

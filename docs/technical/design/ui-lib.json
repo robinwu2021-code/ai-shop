@@ -1038,6 +1038,24 @@
       "why": "抽出来不是因为重复，是**观感会漂**：曾在 27 个页面各写一份，padding 在 60/80/100rpx 之间随手取"
     },
     {
+      "name": "sh-icon-btn",
+      "file": "packages/ui/src/components/sh-icon-btn.vue",
+      "scope": "跨端",
+      "lines": 57,
+      "props": [
+        "name: IconName",
+        "size?: number",
+        "box?: number",
+        "color?: string"
+      ],
+      "usage": {
+        "b-app": 6,
+        "c-app": 0
+      },
+      "note": "图标按钮",
+      "why": "行尾的删除、弹层右上角的关闭、列表行上的编辑。收编的是**「文字当图标」**这件事 —— 两端曾有 11 处文字 ✕/×，其中 `store-scope` 用的还是 `×`(U+00D7)"
+    },
+    {
       "name": "sh-icon",
       "file": "packages/ui/src/components/sh-icon.vue",
       "scope": "跨端",
@@ -1048,7 +1066,7 @@
         "color?: string"
       ],
       "usage": {
-        "b-app": 25,
+        "b-app": 23,
         "c-app": 4
       },
       "note": "单色图标",
@@ -1128,7 +1146,7 @@
       "name": "sh-sheet",
       "file": "packages/ui/src/components/sh-sheet.vue",
       "scope": "跨端",
-      "lines": 106,
+      "lines": 101,
       "props": [
         "visible: boolean",
         "title: string",
@@ -1615,14 +1633,15 @@
       "components": [
         "sh-add",
         "sh-cover",
+        "sh-icon-btn",
         "sh-scaffold",
         "sh-section",
         "sh-sheet",
         "sh-uploader"
       ],
       "libClassHits": 118,
-      "localSelectors": 96,
-      "localCssLines": 511,
+      "localSelectors": 95,
+      "localCssLines": 505,
       "rolled": [
         {
           "id": "sysmodal",
@@ -1674,11 +1693,11 @@
           "gap": true
         },
         {
-          "id": "chipdel",
-          "label": "可删标签",
-          "lib": null,
-          "rule": "class=\"[^\"]*(?:val__x|__x|\\bdel\\b)[^\"]*\"[^>]*>\\s*[✕×]",
-          "gap": true
+          "id": "glyphicon",
+          "label": "文字当图标（✕/×）",
+          "lib": "sh-icon-btn / sh-icon(close)",
+          "rule": "class=\"[^\"]*\"[^>]*>\\s*[✕×]\\s*<",
+          "gap": false
         }
       ]
     },
@@ -1723,6 +1742,13 @@
           "lib": null,
           "rule": "^\\s*\\.(row|item)\\b",
           "gap": true
+        },
+        {
+          "id": "glyphicon",
+          "label": "文字当图标（✕/×）",
+          "lib": "sh-icon-btn / sh-icon(close)",
+          "rule": "class=\"[^\"]*\"[^>]*>\\s*[✕×]\\s*<",
+          "gap": false
         },
         {
           "id": "search",
@@ -2094,6 +2120,7 @@
       "components": [
         "sh-add",
         "sh-empty",
+        "sh-icon-btn",
         "sh-icon",
         "sh-scaffold",
         "sh-section",
@@ -2139,11 +2166,11 @@
           "gap": true
         },
         {
-          "id": "chipdel",
-          "label": "可删标签",
-          "lib": null,
-          "rule": "class=\"[^\"]*(?:val__x|__x|\\bdel\\b)[^\"]*\"[^>]*>\\s*[✕×]",
-          "gap": true
+          "id": "glyphicon",
+          "label": "文字当图标（✕/×）",
+          "lib": "sh-icon-btn / sh-icon(close)",
+          "rule": "class=\"[^\"]*\"[^>]*>\\s*[✕×]\\s*<",
+          "gap": false
         }
       ]
     },
@@ -2605,11 +2632,12 @@
       "page": "store-notice",
       "file": "b-app/src/pages/store-notice/index.vue",
       "components": [
+        "sh-icon-btn",
         "sh-scaffold"
       ],
       "libClassHits": 8,
-      "localSelectors": 22,
-      "localCssLines": 115,
+      "localSelectors": 21,
+      "localCssLines": 109,
       "rolled": [
         {
           "id": "sysmodal",
@@ -2624,13 +2652,6 @@
           "lib": ".sh-chip--primary",
           "rule": "(--on|--off|is-on)\\s*[,{]",
           "gap": false
-        },
-        {
-          "id": "chipdel",
-          "label": "可删标签",
-          "lib": null,
-          "rule": "class=\"[^\"]*(?:val__x|__x|\\bdel\\b)[^\"]*\"[^>]*>\\s*[✕×]",
-          "gap": true
         }
       ]
     },
@@ -2664,6 +2685,7 @@
       "page": "store-scope",
       "file": "b-app/src/pages/store-scope/index.vue",
       "components": [
+        "sh-icon-btn",
         "sh-savebar",
         "sh-scaffold",
         "biz-pickup-sheet",
@@ -2671,8 +2693,8 @@
         "biz-store-tag"
       ],
       "libClassHits": 22,
-      "localSelectors": 46,
-      "localCssLines": 239,
+      "localSelectors": 45,
+      "localCssLines": 233,
       "rolled": [
         {
           "id": "sysmodal",
@@ -2700,13 +2722,6 @@
           "label": "列表行",
           "lib": null,
           "rule": "^\\s*\\.(row|item)\\b",
-          "gap": true
-        },
-        {
-          "id": "chipdel",
-          "label": "可删标签",
-          "lib": null,
-          "rule": "class=\"[^\"]*(?:val__x|__x|\\bdel\\b)[^\"]*\"[^>]*>\\s*[✕×]",
           "gap": true
         }
       ]
@@ -2841,19 +2856,6 @@
         "payment",
         "qualifications",
         "sku-identity"
-      ]
-    },
-    {
-      "id": "chipdel",
-      "label": "可删标签",
-      "lib": null,
-      "gap": true,
-      "rule": "class=\"[^\"]*(?:val__x|__x|\\bdel\\b)[^\"]*\"[^>]*>\\s*[✕×]",
-      "pages": [
-        "goods-edit",
-        "my-specs",
-        "store-notice",
-        "store-scope"
       ]
     },
     {
@@ -2994,6 +2996,18 @@
       ]
     },
     {
+      "id": "glyphicon",
+      "label": "文字当图标（✕/×）",
+      "lib": "sh-icon-btn / sh-icon(close)",
+      "gap": false,
+      "rule": "class=\"[^\"]*\"[^>]*>\\s*[✕×]\\s*<",
+      "pages": [
+        "goods-edit",
+        "goods-list",
+        "my-specs"
+      ]
+    },
+    {
       "id": "tabs",
       "label": "分栏切换",
       "lib": "sh-tabs",
@@ -3030,8 +3044,8 @@
   "counts": {
     "tokens": 10,
     "blocks": 36,
-    "components": 19,
+    "components": 20,
     "pages": 52,
-    "gapKinds": 6
+    "gapKinds": 5
   }
 }

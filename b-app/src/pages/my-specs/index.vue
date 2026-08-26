@@ -839,12 +839,18 @@ onShow(() => void load());
           <!-- 自建的标出来：它不参与跨店比价，而那是看不见的差别 -->
           <text v-if="t.scope === 'MERCHANT'" class="spec__own">{{ $t("mySpecs.own") }}</text>
           <view class="spec__spacer"></view>
-          <view class="ic ic--act" @tap.stop="startEditDim(g, t)">
-            <sh-icon name="sliders" :size="36" color="var(--sh-primary)" />
-          </view>
-          <view class="ic" @tap.stop="removeDim(g, t)">
-            <sh-icon name="close" :size="34" color="var(--sh-ink)" />
-          </view>
+          <sh-icon-btn
+            name="sliders"
+            :size="36"
+            color="var(--sh-primary-text)"
+            @tap="startEditDim(g, t)"
+          ></sh-icon-btn>
+          <sh-icon-btn
+            name="close"
+            :size="34"
+            color="var(--sh-ink)"
+            @tap="removeDim(g, t)"
+          ></sh-icon-btn>
         </view>
         <!-- 单行省略：换行撑高的话，一屏就少看两个规格 -->
         <text class="spec__vals" @tap="startEditDim(g, t)">{{ t.options.map((o) => o.label).join(" · ") || $t("mySpecs.noValueYet") }}</text>

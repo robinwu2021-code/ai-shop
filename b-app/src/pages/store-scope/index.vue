@@ -408,7 +408,7 @@ onShow(() => {
             <text v-if="splitName(a).path" class="item__path">{{ splitName(a).path }}</text>
           </view>
           <text v-if="areaPending(a)" class="sh-chip sh-chip--warning">{{ $t("store.areaPending") }}</text>
-          <text class="item__x" @tap="removeArea(a)">×</text>
+          <sh-icon-btn name="close" @tap="removeArea(a)"></sh-icon-btn>
         </view>
       </view>
 
@@ -605,12 +605,6 @@ onShow(() => {
   display: block;
   margin-top: 2rpx;
   font-size: 24rpx;
-  color: var(--sh-sub);
-}
-.item__x {
-  flex-shrink: 0;
-  padding: 0 12rpx;
-  font-size: 30rpx;
   color: var(--sh-sub);
 }
 .add {

@@ -293,7 +293,7 @@ onShow(load);
       <view class="recent">
         <view v-for="(r, i) in recent" :key="i" class="recent__row">
           <text class="recent__i" @tap="text = r">{{ r }}</text>
-          <text v-if="BACKEND_READY" class="recent__x" @tap.stop="dropRecent(r)">✕</text>
+          <sh-icon-btn v-if="BACKEND_READY" name="close" @tap="dropRecent(r)"></sh-icon-btn>
         </view>
       </view>
     </view>
@@ -405,13 +405,6 @@ onShow(load);
   display: flex;
   align-items: center;
   gap: 12rpx;
-}
-/* ✕ 只占一小格，且与文字分开点：整行都是「换上这句」，删除是那一小块 */
-.recent__x {
-  flex-shrink: 0;
-  padding: 12rpx 16rpx;
-  font-size: 24rpx;
-  color: var(--sh-sub);
 }
 .recent__i {
   flex: 1;

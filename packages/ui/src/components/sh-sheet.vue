@@ -31,7 +31,7 @@ const emit = defineEmits<{ close: [] }>();
       <view class="sheet__grip" />
       <view class="sheet__head">
         <text class="sheet__title">{{ title }}</text>
-        <text class="sheet__close" @tap="emit('close')">✕</text>
+        <sh-icon-btn name="close" :size="28" :box="48" @tap="emit('close')"></sh-icon-btn>
       </view>
       <text v-if="hint" class="sheet__hint">{{ hint }}</text>
       <slot />
@@ -91,11 +91,6 @@ const emit = defineEmits<{ close: [] }>();
   color: var(--sh-ink);
 }
 
-.sheet__close {
-  font-size: 30rpx;
-  color: var(--sh-sub);
-  padding: 4rpx 8rpx;
-}
 
 .sheet__hint {
   display: block;
