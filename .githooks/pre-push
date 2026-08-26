@@ -61,6 +61,27 @@ if ! node "$GATE_WT/scripts/check-ops-orphan.mjs" --check; then
   exit 1
 fi
 
+# 生成物有没有跟着源码走。**在本条之前只有界面清单有闸门**，
+# 其余五个生成器谁都不盯，于是一直在漂：2026-08-26 重跑一次，
+# API 清单 +51/−16、B 端功能点矩阵 +192/−69。
+# 清单的价值全在「说的是真话」—— 漏了十几个接口的清单比没有清单更糟。
+#
+# ⚠️ 它会**真的写文件**，所以必须跑在 $GATE_WT（HEAD 干净副本）上，
+# 不碰任何人的工作区。与编译闸门同一条规矩：判的是「推出去的那份对不对」。
+#
+# ⚠️ 这一条与上面两道不同：**它需要 node_modules**（gen-api-detail 用了 yaml 包）。
+# worktree 里没有，所以软链主仓的过去。链而不是装：npm i 要几十秒，
+# 而这道闸本身只有几百毫秒 —— 为一道闸让每次推送多等半分钟不划算。
+# 主仓没装依赖时跳过并说明，**不静默放行**：说不清自己有没有跑，比没跑更糟。
+if [ -d "$ROOT/node_modules" ]; then
+  ln -sfn "$ROOT/node_modules" "$GATE_WT/node_modules"
+  if ! node "$GATE_WT/scripts/check-generated-docs.mjs" --check; then
+    exit 1
+  fi
+else
+  echo "⚠ 跳过生成物闸门：本机没有 node_modules（跑一次 npm i 就会启用）"
+fi
+
 # 后端没动过就不必编 —— 别为改一行文案等两分钟
 if git diff --quiet "@{u}" HEAD -- backend 2>/dev/null; then
   echo "→ 本次推送未触及 backend/，跳过编译闸门"
