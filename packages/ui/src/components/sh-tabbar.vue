@@ -98,7 +98,7 @@ watch(
    * 两者只差一点点明度 —— 滚动到底部时列表卡片像是溢出到了菜单里。
    * 一条 hairline 加一层很浅的上投影：静止时是分界，滚动时是「页面在它下面走」。
    */
-  border-top: 2rpx solid var(--sh-line);
+  border-top: var(--sh-hairline);
   box-shadow: 0 -6rpx 20rpx var(--sh-scrim);
   padding: 14rpx 0 calc(14rpx + env(safe-area-inset-bottom));
 }

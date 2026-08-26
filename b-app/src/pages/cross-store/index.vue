@@ -202,7 +202,7 @@ onShow(load);
     70023 管「这家店买没买」。两者不能合并，解法不一样。
   -->
   <sh-scaffold title-key="crossStore.title" :denied="!merchant.can('biz:customer')">
-    <text class="sh-h1">{{ $t("crossStore.title") }}</text>
+    <text class="txt-display">{{ $t("crossStore.title") }}</text>
     <text class="sh-muted sub">{{ $t("crossStore.subtitle") }}</text>
 
     <!--
@@ -221,7 +221,7 @@ onShow(load);
 
     <!-- 真的拿不到数（网络/500）：这是故障，给重试，不给营销 -->
     <view v-if="failed && !locked" class="sh-card fail">
-      <text class="sh-h2">{{ $t("crossStore.failed") }}</text>
+      <text class="txt-title">{{ $t("crossStore.failed") }}</text>
       <view class="sh-btn fail__go" @tap="load">{{ $t("common.retry") }}</view>
     </view>
 
@@ -234,7 +234,7 @@ onShow(load);
       -->
       <view class="sh-card rating">
         <view class="rating__row">
-          <text class="sh-h2">{{ $t("crossStore.rating") }}</text>
+          <text class="txt-title">{{ $t("crossStore.rating") }}</text>
           <template v-if="shownCompare.ratingCount">
             <sh-rating :value="shownCompare.rating"></sh-rating>
           </template>
@@ -444,7 +444,7 @@ onShow(load);
   display: flex;
   margin-top: 16rpx;
   padding-top: 20rpx;
-  border-top: 2rpx solid var(--sh-faint);
+  border-top: var(--sh-hairline-soft);
 }
 .todo__i {
   flex: 1;

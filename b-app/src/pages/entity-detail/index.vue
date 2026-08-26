@@ -91,7 +91,7 @@ function goPickStore() {
 <template>
   <sh-scaffold title-key="entityDetail.title">
     <view v-if="denied" class="sh-card">
-      <text class="sh-h1">{{ $t("entityDetail.denied") }}</text>
+      <text class="txt-display">{{ $t("entityDetail.denied") }}</text>
       <text class="hint">{{ $t("entityDetail.deniedHint") }}</text>
     </view>
 

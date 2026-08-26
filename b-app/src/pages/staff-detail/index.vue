@@ -83,7 +83,7 @@ onShow(load);
       <!-- ① 认人 -->
       <view class="sh-card">
         <view class="head">
-          <text class="sh-h1">{{ nameOf(staff) }}</text>
+          <text class="txt-display">{{ nameOf(staff) }}</text>
           <text v-if="staff.isOwner" class="tag tag--primary">{{ $t("staff.owner") }}</text>
           <text v-else-if="staff.status !== 'ACTIVE'" class="tag">{{ $t("staff.disabled") }}</text>
         </view>
@@ -99,7 +99,7 @@ onShow(load);
            角色本身能做什么点进角色详情看 —— 在这里再铺一遍并集，
            两处会各自漂移，而漂移的那份没人会发现。 -->
       <view v-if="!staff.isOwner" class="sh-card mt">
-        <text class="sh-h2">{{ $t("staff.grants") }}</text>
+        <text class="txt-title">{{ $t("staff.grants") }}</text>
         <text class="sh-muted note">{{ $t("staff.grantHint") }}</text>
         <view v-for="st in stores" :key="st.storeNo" class="store">
           <text class="store__name">{{ st.name }}</text>
@@ -118,7 +118,7 @@ onShow(load);
 
       <!-- ③ 只看这个人的变更记录 -->
       <view class="sh-card mt">
-        <text class="sh-h2">{{ $t("staff.logs") }}</text>
+        <text class="txt-title">{{ $t("staff.logs") }}</text>
         <text v-if="!logs.length" class="sh-muted note">{{ $t("staff.logsEmpty") }}</text>
         <view v-for="(l, i) in logs" :key="i" class="log">
           <text class="log__t sh-num">{{ datetime(l.at) }}</text>
@@ -129,7 +129,7 @@ onShow(load);
 
       <!-- ④ 危险动作放最后，且把「停用」与「收回授权」分开说 -->
       <view v-if="!staff.isOwner" class="sh-card mt danger">
-        <text class="sh-h2">{{ $t("staff.dangerTitle") }}</text>
+        <text class="txt-title">{{ $t("staff.dangerTitle") }}</text>
         <text class="sh-muted note">
           {{ staff.status === "ACTIVE" ? $t("staff.disableHint") : $t("staff.enableHint") }}
         </text>
@@ -205,7 +205,7 @@ onShow(load);
   align-items: baseline;
   gap: 16rpx;
   padding: 12rpx 0;
-  border-top: 2rpx solid var(--sh-line);
+  border-top: var(--sh-hairline);
   font-size: 24rpx;
 }
 .log__t {
@@ -219,7 +219,7 @@ onShow(load);
 .log__a {
   font-size: 24rpx;
 }
-.danger .sh-h2 {
+.danger .txt-title {
   color: var(--sh-danger);
 }
 </style>

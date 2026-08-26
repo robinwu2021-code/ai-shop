@@ -282,7 +282,7 @@ async function doLogin(method: LoginMethod) {
 .modes {
   display: flex;
   margin-bottom: 32rpx;
-  border-bottom: 2rpx solid var(--sh-line);
+  border-bottom: var(--sh-hairline);
 }
 .modes__i {
   flex: 1;

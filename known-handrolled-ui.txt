@@ -1,0 +1,77 @@
+# 已知「库里有这个件、页面还是自己画了一份」的欠账。
+# 判据在 scripts/gen-ui-lib.py 的 ROLLED 表，闸门是 scripts/check-handrolled-ui.mjs。
+#
+# 这份名单**只准变短**：登记在这里的页面是免检的，改用组件之后要把那一行删掉
+# （守卫会主动点名陈行）。不删的话它将来又自造起来也不会有人发现 ——
+# 一份锈掉的基线等于给那个页面发了终身免检。
+#
+# 缺口类（列表行）不在这份名单里，它已论证不该做成组件，见
+# docs/technical/design/B端页面与组件库-覆盖清单.md §九。
+#
+# 基线建立于 2026-08-26，B 端 61 页扫过，共 33 处。
+
+
+# ── 系统弹框（10 处）→ 用 sh-sheet
+# `showActionSheet` 的「选一项」10 处。**不是换皮肤，是换交互形态** ——
+# 系统动作面板从底部升起、点外部关闭、Android 与 iOS 各长各的样；
+# 换成 sh-sheet 是把它变成我们自己的弹层，交互路径跟着变。
+# 要动就整批动并逐页看过，一处一处改会让同一个 app 里两种面板并存。
+coupons sysmodal
+customers sysmodal
+goods-edit sysmodal
+locations sysmodal
+marketing sysmodal
+member-reach sysmodal
+member-tags sysmodal
+picking sysmodal
+stock-report sysmodal
+transfer sysmodal
+
+# ── 白块自画（7 处）→ 用 .sh-block / .sh-card
+# 页面自己重画了 `.sh-block` / `.sh-card` 的形状（面色 + 圆角）。
+# 这是最该改的一类：判据就是「照抄了积木的声明」，直接换类名即可，
+# 不涉及交互也不涉及版面。留在基线里是因为要逐页核对内边距，没排上这一轮。
+goods-edit blockdup
+goods-list blockdup
+home blockdup
+marketing blockdup
+me blockdup
+messages blockdup
+my-specs blockdup
+
+# ── 选中态自画（含未拆出的）（6 处）→ 用 .sh-chip--primary
+# 剩下的都是**不成族的独一份**：下划线 tab、步骤条、数字高亮各一处。
+# 收编只会给库里添几个「只有一个调用点」的件 —— 那不是组件，那是把页面样式
+# 搬了个家。成族的（开关 / 勾选框 / 选项卡片）这一轮已经拆出去做成了
+# sh-switch / sh-check / sh-option。
+activity-edit segment
+apply segment
+cross-store segment
+login segment
+store-pick segment
+verify segment
+
+# ── 文字当图标（✕/×）（3 处）→ 用 sh-icon-btn / sh-icon(close)
+# （未写明理由 —— 补上）
+goods-edit glyphicon
+goods-list glyphicon
+my-specs glyphicon
+
+# ── 文字当箭头（3 处）→ 用 sh-icon(chevronRight)
+# `marketing` / `store-scope` 这几处的 `›` **贴在文本节点尾部**
+# （`{{ 店名 }} ›`），不是独立元素。换成 sh-icon 要先把文本拆成两个节点，
+# 顺带影响这一行的基线对齐 —— 值得做，但不是改个标签那么简单。
+locations arrow
+marketing arrow
+store-scope arrow
+
+# ── 分段标题（只有标题）（2 处）→ 用 .sh-h2 + 间距档
+# （未写明理由 —— 补上）
+goods-edit sechead
+store-categories sechead
+
+# ── 弹层 / 遮罩（2 处）→ 用 sh-sheet
+# 自画的遮罩 + 弹层。sh-sheet 能装下，判据也是对的 ——
+# 卡在这两处的动画时长与关闭手势和 sh-sheet 不同，换过去要对一遍手感。
+goods-list sheet
+order sheet

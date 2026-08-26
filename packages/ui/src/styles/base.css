@@ -40,6 +40,22 @@
   /* 弹层遮罩。它压在所有皮肤之上，故不随主色变；但集中一处定义 ——
      之前 4 个文件各抄一份 rgba(10,12,16,.45)，改一次要找四个地方 */
   --sh-scrim: rgba(10, 12, 16, 0.45);
+  /* 标准描边。**理由与上面那条遮罩一模一样**：会话开始时 25 个文件各写各的，
+     `2rpx solid var(--sh-line)` 抄了 28 份，另有 7 份 faint、4 份 1rpx、1 份 1px ——
+     同一条线在同一个应用里有四种粗细。
+
+     为什么是变量而不是 `.sh-hairline` 积木类：这一族只有**一条声明**。
+     积木类（.sh-card / .sh-chip）替掉一个元素的整体长相，而分隔线只是
+     `.foot`、`.row`、`.tabs` 这些**已经有语义类**的元素身上的一条边 ——
+     再挂一个表现类上去，元素就同时背着语义名和表现名，读起来更乱。
+     变量塞进原来那条 `border-top:` 里，模板一个字都不用动。
+
+     ⚠️ 1rpx 与 2rpx 不是随手写的差别：1rpx = 0.5px，在 2x 屏上正好一个物理像素，
+     是经典的 hairline 写法。但全仓 28 : 4，房子的规矩是 2rpx，
+     所以那 4 处跟着统一 —— 它们会比之前粗一个物理像素，这是有意的。 */
+  --sh-hairline: 2rpx solid var(--sh-line);
+  /* 更淡的一档。用在「同一块卡片内部的次级分段」上，不是另一种线 */
+  --sh-hairline-soft: 2rpx solid var(--sh-faint);
   --sh-success: #12b76a;
   --sh-success-tint: rgba(18, 183, 106, 0.14);
   --sh-warning: #f79009;
@@ -425,6 +441,17 @@ uni-page-wrapper[style*="--window-bottom"] {
 
    顺带把层级排开：此前一页里十个元素都是 24rpx，字段标签、说明文字、小按钮
    同一档 —— 信息层级被压平，看不出主次。现在：输入 30 > 标签 26 > 说明 24。 */
+/* 字段头：标签在左，动作在右（多语言切换、「从标准品填充」这类）。
+   **它此前定义在 goods-edit 自己的 style 里**，却顶着 `field__` 前缀 ——
+   一个只有那一页认得的类，名字却宣称自己属于两端共用的表单族。
+   找 `.field__*` 的人在 base.css 里翻不到它，会以为是漏了一档。
+   定义搬过来，调用点一个没动（仍是 goods-edit 的 5 处）。 */
+.field__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12rpx;
+}
 .field__label {
   display: block;
   font-size: 26rpx;
@@ -657,14 +684,21 @@ uni-page-wrapper[style*="--window-bottom"] {
   color: var(--sh-sub);
 }
 
-/* 区块标题：靠字重与留白分段，不用分隔线 */
+/* ── 字阶的旧名。**只剩 C 端还在用（h1×3 / h2×27），B 端已清零** ──────────────
+   两条与 .txt-display / .txt-title **逐行相同**，不是「相近」是同值。
+
+   一档两个名字的代价不在样式，在清单：标准库表里 .txt-title 长期显示「引用 0」，
+   读起来像一档没人要的字号，而它其实是全项目用得最多的标题档 —— 只是都挂在
+   .sh-h2 名下。**清单说了假话，比清单缺一行更糟。**
+
+   为什么留着而不是一次删干净：C 端这一轮不动。等 C 端那 30 处改完，
+   这两条连同注释一起删掉，字阶就只剩一套名字。 */
 .sh-h1 {
   font-size: 40rpx;
   font-weight: 700;
   line-height: 1.2;
   color: var(--sh-ink);
 }
-/* 与 .txt-title 同值 —— 保留这个名字是因为它已被十几个页面引用 */
 .sh-h2 {
   font-size: 34rpx;
   font-weight: 600;

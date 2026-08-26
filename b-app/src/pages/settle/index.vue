@@ -115,13 +115,13 @@ onShow(load);
 
 <template>
   <sh-scaffold title-key="settle.title" :denied="!merchant.can('biz:finance')">
-    <text class="sh-h1">{{ $t("settle.title") }}</text>
+    <text class="txt-display">{{ $t("settle.title") }}</text>
 
     <!-- 费率卡放在账单**之前**：先说清楚怎么算，再看算出来多少。
          把费率讲明白是「自带客流零佣金」这个策略能起作用的前提 —— 商家算不清自己能拿多少，
          就不会有动力把老客带进来 -->
     <view v-if="rate" class="sh-card ratecard">
-      <text class="sh-h2">{{ $t("settle.rateTitle") }}</text>
+      <text class="txt-title">{{ $t("settle.rateTitle") }}</text>
       <view class="ratecard__row">
         <text class="sh-chip sh-chip--primary">{{ $t("order.trafficMERCHANT_OWNED") }}</text>
         <text class="ratecard__v sh-num">{{ pct(rate.merchantOwnedRate) }}</text>
@@ -140,7 +140,7 @@ onShow(load);
     -->
     <view v-if="points" class="sh-card points">
       <view class="points__head">
-        <text class="sh-h2">{{ $t("settle.pointsTitle") }}</text>
+        <text class="txt-title">{{ $t("settle.pointsTitle") }}</text>
         <text
           v-if="!points.forced"
           class="sh-chip"

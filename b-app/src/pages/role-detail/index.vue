@@ -154,7 +154,7 @@ onShow(load);
     </view>
 
     <view class="sh-card mt">
-      <text class="sh-h2">{{ $t("staff.rolePermTitle") }}</text>
+      <text class="txt-title">{{ $t("staff.rolePermTitle") }}</text>
       <!-- 管员工的权限为什么不在这里，页面上直说 —— 不解释的话下一个人会以为是漏了 -->
       <text class="sh-muted note">{{ $t("staff.rolePermHint") }}</text>
       <view class="chips">
@@ -169,7 +169,7 @@ onShow(load);
     </view>
 
     <view v-if="!isNew && holders.length" class="sh-card mt">
-      <text class="sh-h2">{{ $t("staff.roleHolders", { n: holders.length }) }}</text>
+      <text class="txt-title">{{ $t("staff.roleHolders", { n: holders.length }) }}</text>
       <view
         v-for="h in holders"
         :key="h.mchAccountNo"
@@ -220,7 +220,7 @@ onShow(load);
   align-items: center;
   justify-content: space-between;
   padding: 16rpx 0;
-  border-top: 2rpx solid var(--sh-line);
+  border-top: var(--sh-hairline);
   font-size: 24rpx;
   color: var(--sh-ink);
 }

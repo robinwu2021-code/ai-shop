@@ -123,13 +123,13 @@ async function refresh() {
 <template>
   <sh-scaffold title-key="payment.title" :denied="!merchant.can('biz:finance')">
     <view class="head">
-      <text class="sh-h1">{{ $t("payment.title") }}</text>
+      <text class="txt-display">{{ $t("payment.title") }}</text>
       <text class="sh-muted mt">{{ $t("payment.hint") }}</text>
     </view>
 
     <view v-for="p in list" :key="p.payChannel" class="sh-card ch">
       <view class="ch__top">
-        <text class="sh-h2">{{ p.channelName }}</text>
+        <text class="txt-title">{{ p.channelName }}</text>
         <!--
           状态一律照 canReceiveMoney 显示，不在端上比 applyStatus ——
           比错的表现是「显示能收钱但收不了」，要到第一笔订单才暴露
@@ -155,7 +155,7 @@ async function refresh() {
 
     <!-- 已经能收钱就不再显示表单：重复进件会拿到新的商户号，历史分账仍指向旧号 -->
     <view v-if="current && !done" class="sh-card mt-card">
-      <text class="sh-h2">{{ $t("payment.formTitle") }}</text>
+      <text class="txt-title">{{ $t("payment.formTitle") }}</text>
       <text class="hint">{{ $t("payment.formHint") }}</text>
 
       <view class="field">

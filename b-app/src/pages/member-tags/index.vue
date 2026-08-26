@@ -155,7 +155,7 @@ onShow(load);
   line-height: 1.6;
 }
 .item {
-  border-top: 2rpx solid var(--sh-faint);
+  border-top: var(--sh-hairline-soft);
   padding-top: 16rpx;
   margin-top: 16rpx;
 }

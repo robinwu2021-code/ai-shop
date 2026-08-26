@@ -100,7 +100,7 @@ onShow(() => {
 <template>
   <sh-scaffold title-key="schedule.title" :denied="!canEdit">
     <view class="sh-card">
-      <text class="sh-h2">{{ $t("schedule.newSlot") }}</text>
+      <text class="txt-title">{{ $t("schedule.newSlot") }}</text>
       <view class="row">
         <text class="sh-muted">{{ $t("schedule.day") }}</text>
         <input v-model.number="form.dayOffset" class="field__input row__in sh-num" type="number" />
@@ -126,7 +126,7 @@ onShow(() => {
       而这两件事该做的动作完全相反。
     -->
     <view class="sh-card mt">
-      <text class="sh-h2">{{ $t("schedule.list") }}</text>
+      <text class="txt-title">{{ $t("schedule.list") }}</text>
       <text v-if="!slots.length" class="sh-muted hint">{{ $t("schedule.empty") }}</text>
       <view v-for="s in slots" :key="s.slotNo" class="slot">
         <view class="slot__main">
@@ -173,7 +173,7 @@ onShow(() => {
   align-items: center;
   gap: 20rpx;
   padding: 18rpx 0;
-  border-top: 2rpx solid var(--sh-line);
+  border-top: var(--sh-hairline);
 }
 .slot__main {
   flex: 1;

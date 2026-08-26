@@ -158,7 +158,7 @@ onShow(load);
         {{ $t("staff.add") }}
       </view>
       <view v-else class="sh-card mt-card">
-        <text class="sh-h2">{{ $t("staff.add") }}</text>
+        <text class="txt-title">{{ $t("staff.add") }}</text>
         <text class="hint">{{ $t("staff.addHint") }}</text>
         <view class="field">
           <text class="field__label">{{ $t("staff.phone") }}</text>

@@ -876,7 +876,7 @@ onShow(() => {
 .poster__img {
   width: 100%;
   border-radius: 24rpx;
-  border: 2rpx solid var(--sh-line);
+  border: var(--sh-hairline);
 }
 .poster__save {
   margin-top: 16rpx;

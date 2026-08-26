@@ -301,20 +301,20 @@ async function submit() {
 <template>
   <sh-scaffold title-key="apply.title">
     <view class="head">
-      <text class="sh-h1">{{ $t("apply.title") }}</text>
+      <text class="txt-display">{{ $t("apply.title") }}</text>
       <text class="sh-muted mt">{{ $t("apply.hint") }}</text>
     </view>
 
     <!-- 审核中/驳回：不重复渲染整张表，先把状态说清楚 -->
     <view v-if="status === 'APPLYING'" class="sh-card status">
-      <text class="sh-h2">{{ $t("apply.statusAPPLYING") }}</text>
+      <text class="txt-title">{{ $t("apply.statusAPPLYING") }}</text>
       <text class="sh-muted mt">{{ $t("apply.statusAPPLYINGHint") }}</text>
     </view>
 
     <!-- 驳回：**必须说清楚为什么** —— 只显示「已驳回」等于让人猜，
          下面的表单已回填上次内容，改缺的那一项再交即可 -->
     <view v-if="status === 'REJECTED'" class="sh-card rejected">
-      <text class="sh-h2">{{ $t("apply.statusREJECTED") }}</text>
+      <text class="txt-title">{{ $t("apply.statusREJECTED") }}</text>
       <text class="reason">{{ merchant.profile?.rejectReason || $t("apply.rejectFallback") }}</text>
       <text class="sh-muted mt">{{ $t("apply.rejectedHint") }}</text>
     </view>
@@ -402,7 +402,7 @@ async function submit() {
       选小了整片小区都搜不到这家店。所以给后果说明，不只给三个单选。
     -->
     <view class="sh-card mt-card">
-      <text class="sh-h2">{{ $t("store.scope") }}</text>
+      <text class="txt-title">{{ $t("store.scope") }}</text>
       <text class="hint">{{ $t("apply.scopeHint") }}</text>
 
       <view
@@ -450,7 +450,7 @@ async function submit() {
     <view class="sh-card mt-card">
       <view class="switch-row" @tap="form.asPickupPoint = !form.asPickupPoint">
         <view class="switch-row__text">
-          <text class="sh-h2">{{ $t("apply.asPickup") }}</text>
+          <text class="txt-title">{{ $t("apply.asPickup") }}</text>
           <text class="hint">{{ $t("apply.asPickupHint") }}</text>
         </view>
         <sh-switch :model-value="form.asPickupPoint"></sh-switch>
@@ -459,7 +459,7 @@ async function submit() {
 
     <view class="sh-card mt-card">
       <text class="field__label">{{ $t("apply.settle") }}</text>
-      <text class="sh-h2">{{ $t(`apply.${settleType}`) }}</text>
+      <text class="txt-title">{{ $t(`apply.${settleType}`) }}</text>
       <text class="hint">{{ $t("apply.settleHint") }}</text>
       <!-- 免执照档位：整块隐藏，换一句说明。对自然人要执照本来就是错的 -->
       <view v-if="!needLicense" class="license">
@@ -533,7 +533,7 @@ async function submit() {
 .qual {
   margin-top: 20rpx;
   padding: 20rpx;
-  border: 1px solid var(--sh-line);
+  border: var(--sh-hairline);
   border-radius: 16rpx;
 }
 .qual__head { display: flex; justify-content: space-between; align-items: center; }

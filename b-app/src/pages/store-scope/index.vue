@@ -392,7 +392,7 @@ onShow(() => {
     <!-- ① 经营范围（主体级） -->
     <view class="sh-card">
       <view class="head">
-        <text class="sh-h2">{{ $t("store.scope") }}</text>
+        <text class="txt-title">{{ $t("store.scope") }}</text>
         <text class="head__sub">{{ $t("store.scopeAll") }}</text>
       </view>
       <text class="hint">{{ $t("store.scopeLead") }}</text>
@@ -432,7 +432,7 @@ onShow(() => {
     <!-- ② 送货方式（门店级，即点即存） -->
     <view v-if="fulfillment" class="sh-card mt">
       <view class="head">
-        <text class="sh-h2">{{ $t("store.fulfillCard") }}</text>
+        <text class="txt-title">{{ $t("store.fulfillCard") }}</text>
       </view>
 
       <template v-for="c in channelRows" :key="c.channel">
@@ -578,7 +578,7 @@ onShow(() => {
   align-items: center;
   gap: 16rpx;
   padding: 18rpx 0;
-  border-bottom: 2rpx solid var(--sh-line);
+  border-bottom: var(--sh-hairline);
 }
 .item__main {
   flex: 1;
@@ -610,7 +610,7 @@ onShow(() => {
 .progress {
   margin-top: 16rpx;
   padding-top: 12rpx;
-  border-top: 2rpx solid var(--sh-line);
+  border-top: var(--sh-hairline);
 }
 /* 送货方式：紧凑开关行 */
 .ch {
@@ -618,7 +618,7 @@ onShow(() => {
   align-items: center;
   gap: 24rpx;
   padding: 22rpx 0;
-  border-bottom: 2rpx solid var(--sh-line);
+  border-bottom: var(--sh-hairline);
 }
 .ch.is-off {
   opacity: 0.55;
@@ -656,7 +656,7 @@ onShow(() => {
   justify-content: space-between;
   gap: 16rpx;
   padding: 16rpx 0 16rpx 24rpx;
-  border-bottom: 2rpx solid var(--sh-line);
+  border-bottom: var(--sh-hairline);
 }
 /* 缺配置是**状态**不是装饰：左侧一条竖杠 + 文字变色，不换整块底色 */
 .sum--warn {
@@ -674,7 +674,7 @@ onShow(() => {
   align-items: center;
   justify-content: space-between;
   padding: 14rpx 0;
-  border-bottom: 2rpx solid var(--sh-line);
+  border-bottom: var(--sh-hairline);
 }
 .subset__t {
   font-size: 26rpx;

@@ -108,7 +108,7 @@ onShow(load);
 
 <template>
   <sh-scaffold title-key="afterSale.title" :denied="!merchant.can('biz:aftersale')">
-    <text class="sh-h1">{{ $t("afterSale.title") }}</text>
+    <text class="txt-display">{{ $t("afterSale.title") }}</text>
 
     <sh-empty v-if="!list.length" :text='$t("afterSale.empty")'></sh-empty>
 

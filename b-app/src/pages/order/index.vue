@@ -151,7 +151,7 @@ onLoad((q) => {
       </view>
 
       <view class="sh-card mt">
-        <text class="sh-h2">{{ $t("order.items") }}</text>
+        <text class="txt-title">{{ $t("order.items") }}</text>
         <view v-for="it in order.items" :key="it.skuNo" class="item">
           <sh-cover class="item__cover" :src="it.cover"></sh-cover>
           <view class="item__main">
@@ -173,14 +173,14 @@ onLoad((q) => {
         中间要有一屏让老板核对金额。
       -->
       <view v-if="canConfirmOffline" class="sh-card mt">
-        <text class="sh-h2">{{ $t("order.offlinePay") }}</text>
+        <text class="txt-title">{{ $t("order.offlinePay") }}</text>
         <text class="sh-muted due__hint">{{ $t("order.offlineNotCustodied") }}</text>
         <view class="sh-btn mt-s" @tap="offlineAsking = true">{{ $t("order.offlinePay") }}</view>
       </view>
 
       <!-- 快递发货：运单号回填（B-11.4.3） -->
       <view v-if="canShip" class="sh-card mt">
-        <text class="sh-h2">{{ $t("order.ship") }}</text>
+        <text class="txt-title">{{ $t("order.ship") }}</text>
         <input
           v-model="expressNo"
           class="field__input mt-s"
@@ -193,7 +193,7 @@ onLoad((q) => {
 
       <!-- 商家自送：老板点一下就是送到了，不做骑手轨迹（ADR-005 §5） -->
       <view v-if="canDeliver" class="sh-card mt">
-        <text class="sh-h2">{{ $t("order.delivered") }}</text>
+        <text class="txt-title">{{ $t("order.delivered") }}</text>
         <view class="sh-btn mt-s" @tap="delivered">{{ $t("order.delivered") }}</view>
       </view>
 
@@ -214,7 +214,7 @@ onLoad((q) => {
         <view class="dlg" @tap.stop>
           <text class="dlg__title">{{ $t("order.offlinePayTitle") }}</text>
           <text class="sh-muted">{{ $t("order.offlineDue") }}</text>
-          <text class="due sh-num">{{ money(dueMinor, order.amount.currency) }}</text>
+          <text class="txt-mega due sh-num">{{ money(dueMinor, order.amount.currency) }}</text>
           <text v-if="deductedMinor > 0" class="due__deducted">
             {{ $t("order.offlineDeducted", { v: money(deductedMinor, order.amount.currency) }) }}
           </text>
@@ -315,15 +315,12 @@ onLoad((q) => {
   color: var(--sh-ink);
   margin-bottom: 20rpx;
 }
-/* 应收金额是这一屏唯一要一眼看清的东西 —— 老板照着它收钱 */
+/* 应收金额是这一屏唯一要一眼看清的东西 —— 老板照着它收钱。
+   字号字重全交给 `.txt-mega`（字阶第八档，60rpx/700）：**此前这里是把那一档
+   的四行声明照抄了一遍**，注释还写着「= 字阶的 .txt-mega」—— 于是清单里
+   .txt-mega 永远显示「定义了没人用」，而它明明就用在这。 */
 .due {
   display: block;
-  /* 60rpx = 字阶的 .txt-mega（收款台那一档）。此前是 72rpx —— 越档，
-     而弹层里本来就只有它一个大数，30px 与 36px 的差别买不到什么 */
-  font-size: 60rpx;
-  font-weight: 700;
-  line-height: 1.2;
-  color: var(--sh-ink);
 }
 .due__deducted {
   display: block;

@@ -74,7 +74,7 @@ onShow(() => {
 
       <view class="sh-card mt">
         <view class="line" @tap="toggle">
-          <text class="sh-h2">{{ $t("points.switch") }}</text>
+          <text class="txt-title">{{ $t("points.switch") }}</text>
           <sh-switch :model-value="account.enabled" :disabled="!!lockedReason"></sh-switch>
         </view>
         <text class="sh-muted sub">{{ $t("points.switchHint") }}</text>
@@ -93,7 +93,7 @@ onShow(() => {
       -->
       <view class="sh-card mt">
         <view class="line">
-          <text class="sh-h2">{{ $t("points.rule") }}</text>
+          <text class="txt-title">{{ $t("points.rule") }}</text>
           <text class="sh-chip">{{ $t("points.rulePlatform") }}</text>
         </view>
         <text class="sh-muted sub">{{ $t("points.ruleHint") }}</text>

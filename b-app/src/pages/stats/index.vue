@@ -45,7 +45,7 @@ onShow(load);
   <sh-scaffold title-key="stats.title" :denied="!merchant.can('biz:customer')">
     <template v-if="stats">
       <view class="sh-card block">
-        <text class="sh-h2">{{ $t("stats.today") }}</text>
+        <text class="txt-title">{{ $t("stats.today") }}</text>
         <view class="pair">
           <view class="pair__i">
             <text class="pair__v sh-num">{{ stats.todayOrders }}</text>
@@ -59,7 +59,7 @@ onShow(load);
       </view>
 
       <view class="sh-card block">
-        <text class="sh-h2">{{ $t("stats.month") }}</text>
+        <text class="txt-title">{{ $t("stats.month") }}</text>
         <view class="pair">
           <view class="pair__i">
             <text class="pair__v sh-num">{{ stats.monthOrders }}</text>
@@ -75,7 +75,7 @@ onShow(load);
       <!-- 自带客流：这个平台特有的经营指标，直接对应费率 -->
       <view class="sh-card owned">
         <view class="owned__row">
-          <text class="sh-h2">{{ $t("stats.ownedTraffic") }}</text>
+          <text class="txt-title">{{ $t("stats.ownedTraffic") }}</text>
           <text class="owned__v sh-num">{{ ownedPct }}%</text>
         </view>
         <view class="bar">
@@ -86,7 +86,7 @@ onShow(load);
 
       <view class="sh-card block">
         <view class="rate">
-          <text class="sh-h2">{{ $t("stats.rating") }}</text>
+          <text class="txt-title">{{ $t("stats.rating") }}</text>
           <!-- 零评价时不画星：给商家看一个凭空的 5.0，他会以为真有人评过 -->
           <sh-rating v-if="stats.ratingCount > 0" :value="stats.rating"></sh-rating>
         </view>
@@ -95,7 +95,7 @@ onShow(load);
     </template>
     <!-- 多店才有「比」这回事。一家店时这一行是纯噪音 -->
     <view v-if="merchant.multiStore" class="sh-card cmp" @tap="goCompare">
-      <text class="sh-h2">{{ $t("stats.compareEntry") }}</text>
+      <text class="txt-title">{{ $t("stats.compareEntry") }}</text>
       <sh-icon name="chevronRight" :size="18" color="var(--sh-sub)"></sh-icon>
     </view>
   </sh-scaffold>

@@ -107,7 +107,7 @@ onShow(load);
 
 <template>
   <sh-scaffold title-key="delivery.title" :denied="!merchant.can('biz:ship')">
-    <text class="sh-h1">{{ $t("delivery.title") }}</text>
+    <text class="txt-display">{{ $t("delivery.title") }}</text>
 
     <!--
       规则卡片只给能改门店经营面的人（`biz:store`）。店员与配送员进得来这一页
@@ -115,7 +115,7 @@ onShow(load);
       比不画它更糟。
     -->
     <view v-if="canRule && rule" class="sh-card mt">
-      <text class="sh-h2">{{ $t("delivery.rule") }}</text>
+      <text class="txt-title">{{ $t("delivery.rule") }}</text>
 
       <view class="field">
         <text class="field__label">{{ $t("delivery.radius") }}</text>
@@ -139,7 +139,7 @@ onShow(load);
     </view>
 
     <view class="list-head">
-      <text class="sh-h2">{{ $t("delivery.pending") }}</text>
+      <text class="txt-title">{{ $t("delivery.pending") }}</text>
       <text class="sh-muted sh-num">{{ pending.length }}</text>
     </view>
 

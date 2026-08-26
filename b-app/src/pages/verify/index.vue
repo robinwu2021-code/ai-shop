@@ -236,7 +236,7 @@ onShow(load);
 
 <template>
   <sh-scaffold title-key="verify.title" :denied="!merchant.can('biz:verify')">
-    <text class="sh-h1">{{ $t("verify.title") }}</text>
+    <text class="txt-display">{{ $t("verify.title") }}</text>
 
     <!--
       两种核销并排。**不自动识别码的类型**：码长得像，认错的代价是
@@ -404,7 +404,7 @@ onShow(load);
     </view>
 
     <view class="list-head">
-      <text class="sh-h2">{{ $t("verify.waiting") }}</text>
+      <text class="txt-title">{{ $t("verify.waiting") }}</text>
       <text class="sh-muted sh-num">{{ waiting.length }}</text>
     </view>
 
@@ -446,7 +446,7 @@ onShow(load);
 .peek {
   margin-top: 20rpx;
   padding-top: 20rpx;
-  border-top: 2rpx solid var(--sh-faint);
+  border-top: var(--sh-hairline-soft);
 }
 .peek__t {
   display: block;
@@ -588,7 +588,7 @@ onShow(load);
   align-items: center;
   gap: 20rpx;
   padding: 16rpx 0;
-  border-top: 2rpx solid var(--sh-line);
+  border-top: var(--sh-hairline);
 }
 .cand__main {
   flex: 1;

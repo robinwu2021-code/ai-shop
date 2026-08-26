@@ -233,7 +233,7 @@ onShow(load);
   padding: 12rpx 0;
 }
 .led + .led {
-  border-top: 2rpx solid var(--sh-faint);
+  border-top: var(--sh-hairline-soft);
 }
 .led__main {
   flex: 1;

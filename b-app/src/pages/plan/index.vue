@@ -109,7 +109,7 @@ onShow(load);
   -->
   <sh-scaffold title-key="plan.title" :denied="!merchant.can('biz:store:admin')">
     <view v-if="failed" class="sh-card fail">
-      <text class="sh-h2">{{ $t("plan.failed") }}</text>
+      <text class="txt-title">{{ $t("plan.failed") }}</text>
       <view class="sh-btn fail__go" @tap="load">{{ $t("common.retry") }}</view>
     </view>
 
@@ -117,7 +117,7 @@ onShow(load);
       <!-- 当前档位 -->
       <view class="sh-card cur">
         <view class="cur__head">
-          <text class="sh-h1">{{ plan.planName }}</text>
+          <text class="txt-display">{{ plan.planName }}</text>
           <text class="sh-chip" :class="statusTone">{{ $t(`plan.status${plan.status}`) }}</text>
         </view>
         <text v-if="daysLeft !== null" class="sh-muted">
@@ -164,7 +164,7 @@ onShow(load);
       </view>
 
       <!-- 三档对比 -->
-      <text class="sh-h2 sec">{{ $t("plan.tiers") }}</text>
+      <text class="txt-title sec">{{ $t("plan.tiers") }}</text>
       <view v-for="tier in plan.tiers" :key="tier.planCode" class="sh-card tier">
         <view class="tier__head">
           <text class="tier__name">{{ tier.name }}</text>
@@ -256,7 +256,7 @@ onShow(load);
   gap: 12rpx;
   margin-bottom: 6rpx;
 }
-/* 34rpx/600 = 字阶的标题档（同 .sh-h2）。原先的 32rpx 不在字阶上：
+/* 34rpx/600 = 字阶的标题档（同 .txt-title）。原先的 32rpx 不在字阶上：
    与 34 只差 1px，分不出层级，却让「调整全局标题字号」这类改动漏掉这一处 */
 .tier__name {
   font-size: 34rpx;

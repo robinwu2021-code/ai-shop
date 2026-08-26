@@ -256,7 +256,7 @@ function pickPayment(s: Store, payMerchantNo?: string) {
     -->
     <view v-for="s in rows" :key="s.storeNo" class="sh-card st">
       <view class="st__top">
-        <text class="sh-h2">{{ s.name }}</text>
+        <text class="txt-title">{{ s.name }}</text>
         <view class="tags">
           <text v-if="s.storeNo === merchant.storeNo" class="tag tag--primary">{{ $t("stores.currentTag") }}</text>
           <text v-if="s.isDefault" class="tag">{{ $t("stores.default") }}</text>
@@ -367,7 +367,7 @@ function pickPayment(s: Store, payMerchantNo?: string) {
     </view>
 
     <view v-else class="sh-card mt-card">
-      <text class="sh-h2">{{ $t("stores.add") }}</text>
+      <text class="txt-title">{{ $t("stores.add") }}</text>
       <!--
         额度说明放在表单里而不是报错后才说：让人白填一遍再被拒是没道理的。
         **带上真实数字**（「成长版 · 门店 2/3」）—— 一句泛泛的「有上限」
@@ -539,7 +539,7 @@ function pickPayment(s: Store, payMerchantNo?: string) {
 .today {
   margin-top: 16rpx;
   padding-top: 16rpx;
-  border-top: 2rpx solid var(--sh-faint);
+  border-top: var(--sh-hairline-soft);
 }
 .today__line {
   display: block;

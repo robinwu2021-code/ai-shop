@@ -90,6 +90,9 @@ interface Row {
   saleUnit: string;
 }
 
+
+// ── 一、货号与标准品 ────────────────────────────────────────────────────────
+//    从平台标准品填充，或自己起一个货号
 /** 空价格表：三个市场各一格 */
 function emptyPrices(): Record<CurrencyCode, string> {
   return { CNY: "", USD: "", AED: "" };
@@ -164,6 +167,9 @@ function detachStd() {
   stdTitle.value = "";
 }
 
+
+// ── 二、商品图（状态） ──────────────────────────────────────────────────────
+//    cover 与 images 存储上分两个字段，界面上合成一组
 /**
  * 商品主图。拍一张就有，替掉 emoji 占位（E9）。
  *
@@ -219,6 +225,9 @@ const LANGS = [
   { id: "en" as const, key: "goods.langEn" },
   { id: "ar" as const, key: "goods.langAr" },
 ];
+
+// ── 三、标题与多语言 ────────────────────────────────────────────────────────
+//    中/英/阿三份文案，untranslated 盯着没填的那几格
 const lang = ref<"zh-CN" | "en" | "ar">("zh-CN");
 const title = ref<I18nText>({ "zh-CN": "", en: "", ar: "" });
 const subtitle = ref<I18nText>({ "zh-CN": "", en: "", ar: "" });
@@ -245,6 +254,9 @@ const type = ref<CategoryType>(CATEGORY_TYPE.NORMAL as CategoryType);
  */
 const PHYSICAL_FULFILLMENTS = ["STORE_PICKUP", "NEIGHBOR_PICKUP", "MERCHANT_DELIVERY", "EXPRESS"];
 const SERVICE_FULFILLMENTS = ["STORE_VERIFY", "APPOINTMENT"];
+
+// ── 四、渠道 · 履约 · 团购 ────────────────────────────────────────────
+//    实物与服务两套履约集合，门店渠道决定哪些能开
 const fulfillments = ref<string[]>([]);
 const fulfillmentOptions = computed(() =>
   type.value === CATEGORY_TYPE.SERVICE ? SERVICE_FULFILLMENTS : PHYSICAL_FULFILLMENTS,
@@ -409,6 +421,9 @@ const isService = computed(() => type.value === CATEGORY_TYPE.SERVICE);
  * 类目决定归类与经营准入，运营可维护。合成一个控件的话，
  * 商家改一次类目会连带改掉履约方式 —— 而他只是想把货归得更准一点。
  */
+
+// ── 五、类目 ────────────────────────────────────────────────────────────────
+//    父子两级 + 最近用过；选中类目会连带定履约与默认规格
 /** 图文详情正文。纯文本、不做多语言 —— 逼商家填三遍的结果是两遍空着 */
 const detail = ref("");
 /**
@@ -633,6 +648,29 @@ function findPath(nodes: Category[], target: string, trail: Category[] = []): Ca
   }
   return [];
 }
+
+/** 拉本店货架。取不到不该挡住建品：那时退回全量类目树，与改版前一样 */
+async function loadCategories() {
+  // 取不到不该挡住整个编辑页：拿不到就退化成「不归类」，商品照样存得下
+  categoryTree.value = prunable(await api.mCategoryTree().catch(() => []));
+}
+
+/**
+ * 砍掉商家自助建不了的那几支。
+ *
+ * <p>这条规则原先长在品类 chip 上（"一期只开 NORMAL/FRESH/SERVICE 三个"）——
+ * 品类改成由类目派生之后，它必须跟着搬到**类目树**上：留着虚拟/卡券的类目，
+ * 商家选进去就得到一个建了也卖不出去的商品，而形态那行还会理直气壮地写着「卡券」。
+ *
+ * <p>按 `template` 砍而不是按名字：类目名运营随时可改，模板是判据。
+ * 一级砍掉整支 —— 虚拟与卡券在树上本来就是独立的一级分支。
+ */
+function prunable(tree: Category[]): Category[] {
+  return tree.filter((c) => !c.template || ALLOWED_TEMPLATES.includes(c.template));
+}
+
+// ── 六、规格状态与详情生成 ──────────────────────────────────────────────────
+//    groups/templates 是下面第八、九节的共同底座
 /**
  * 正在把已有商品回填进表单。
  *
@@ -691,6 +729,9 @@ async function genDetail() {
   }
 }
 
+
+// ── 七、价格 · 成本 · 毛利 ────────────────────────────────────────────
+//    三个市场各一套价，毛利与低于成本的告警都在这
 /**
  * 价格卡此刻在编辑**哪一个字段**。
  *
@@ -924,6 +965,9 @@ const unpricedMarkets = computed(() =>
  *
  * 端差异都在 ports/media 与服务端：小程序不能跑本地模型，所以识别统一在服务端。
  */
+
+// ── 八、商品图（操作） ──────────────────────────────────────────────────────
+//    选图、上传、设封面、识图回填
 /**
  * 详情轮播图。**这个入口此前根本不存在** —— 契约里 `GoodsDraft.images` 一直有，
  * 页面没填，于是提交体里没有这一项；而后端那时是无条件覆盖，
@@ -1133,6 +1177,9 @@ async function applyGuess(guess: GoodsGuess) {
   }
 }
 
+
+// ── 九、SKU 矩阵：重建与模板 ────────────────────────────────────────────
+//    规格组的笛卡尔积 → 行；套模板是它的入口
 function keyOf(values: string[]): string {
   return values.join("");
 }
@@ -1283,26 +1330,10 @@ function applyTemplateWith(tpl: SpecTemplate, o: { code?: string; label: string 
   applyTemplate({ ...tpl, options: [o] });
 }
 
-/** 拉本店货架。取不到不该挡住建品：那时退回全量类目树，与改版前一样 */
-async function loadCategories() {
-  // 取不到不该挡住整个编辑页：拿不到就退化成「不归类」，商品照样存得下
-  categoryTree.value = prunable(await api.mCategoryTree().catch(() => []));
-}
 
-/**
- * 砍掉商家自助建不了的那几支。
- *
- * <p>这条规则原先长在品类 chip 上（"一期只开 NORMAL/FRESH/SERVICE 三个"）——
- * 品类改成由类目派生之后，它必须跟着搬到**类目树**上：留着虚拟/卡券的类目，
- * 商家选进去就得到一个建了也卖不出去的商品，而形态那行还会理直气壮地写着「卡券」。
- *
- * <p>按 `template` 砍而不是按名字：类目名运营随时可改，模板是判据。
- * 一级砍掉整支 —— 虚拟与卡券在树上本来就是独立的一级分支。
- */
-function prunable(tree: Category[]): Category[] {
-  return tree.filter((c) => !c.template || ALLOWED_TEMPLATES.includes(c.template));
-}
 
+// ── 十、规格维度 ────────────────────────────────────────────────────────────
+//    平台模板 / 商家自存 / 按类目推荐，三个来源
 /**
  * 推荐规格 = 平台模板。**商家自存的不算推荐** —— 那是他自己的历史，
  * 摊在最显眼处会盖住平台的统一口径（平台模板带 code，聚合靠它）。
@@ -1540,6 +1571,9 @@ const moreFromCategory = computed(() =>
  * 不是「哪些类目该用它」，所以手机数码下面会并排摆着口味、等级、尺码。
  * 不拦着他选，但也不把二十来个无关维度摆在眼前。
  */
+
+// ── 十一、参数 ──────────────────────────────────────────────────────────────
+//    不参与组合的属性（产地、材质）—— 与规格分开的理由见 propDims
 /*
  * 商品参数（V250）：产地 / 保质期 / 材质这一类。
  *
@@ -1730,6 +1764,9 @@ const moreOther = computed(() => {
  * 否则自动建组留下的那个空输入框会一直杵在列表最上面，
  * 而他点了三下之后要回过头去删它。
  */
+
+// ── 十二、选项勾选 ──────────────────────────────────────────────────────────
+//    维度内选值，并上「已经在用的」以兼容老数据
 /**
  * 这一组能出现的**全部**档位：本店规格库里配的 ∪ 这件商品已经在用的。
  *
@@ -1786,6 +1823,9 @@ function toggleOption(gi: number, o: SpecOption) {
   rebuild();
 }
 
+
+// ── 十三、批量填充 ──────────────────────────────────────────────────────────
+//    价与库存拆成两个动作，理由见 applyBulkPrice
 /**
  * 批量填价。**拆成价与库存两个动作** —— 两者现在分属两张卡，
  * 一个按钮同时改两边的话，商家在库存卡点「批量填入」会顺带改掉价格。
@@ -1996,6 +2036,9 @@ onLoad(async (q) => {
   });
 });
 
+
+// ── 十四、保存 ──────────────────────────────────────────────────────────────
+//    存草稿 / 存并提交审核
 async function save(thenSubmit = false) {
   if (!canSave.value || saving.value) return;
   saving.value = true;
@@ -2154,15 +2197,15 @@ async function save(thenSubmit = false) {
     :denied="!merchant.can('biz:goods')"
   >
     <!-- 页内不再重复标题：`sh-scaffold` 已用同一个 title-key 写进导航栏，
-         页面顶部再画一遍 `sh-h1` 是一字不差的重复，白占首屏一行 -->
+         页面顶部再画一遍 `txt-display` 是一字不差的重复，白占首屏一行 -->
     <view class="sh-card">
       <!--
         分区标题。此前**整页只有规格卡与 SKU 卡有标题**，前面 11 个字段组挤在
         一张无标题的卡里 —— 而字段标签（.field__label 26rpx 灰）与说明文字
         （.sh-muted 26rpx 灰）是同字号同颜色，于是「哪里是一节的开头」无从判断。
-        分成四节各给一个 sh-h2，层级才立得起来：标题 34rpx 深 > 标签 26rpx 深 > 说明 26rpx 灰。
+        分成四节各给一个 txt-title，层级才立得起来：标题 34rpx 深 > 标签 26rpx 深 > 说明 26rpx 灰。
       -->
-      <text class="sh-h2 sec__h">{{ $t("goods.secBasic") }}</text>
+      <text class="txt-title sec__h">{{ $t("goods.secBasic") }}</text>
 
       <!--
         商品图。**主图就是第一张** —— 此前主图与轮播图是两个相邻的图片控件，
@@ -2271,7 +2314,7 @@ async function save(thenSubmit = false) {
       商家要在两处描述同一件事，而两处都不像是同一节。
     -->
     <view class="sh-card mt">
-      <text class="sh-h2 sec__h">{{ $t("goods.detail") }}</text>
+      <text class="txt-title sec__h">{{ $t("goods.detail") }}</text>
 
       <!--
         图文详情：**纯文本长文**，不做富文本 —— 手机端做不出像样的富文本编辑，
@@ -2345,7 +2388,7 @@ async function save(thenSubmit = false) {
     </view>
 
     <view class="sh-card mt">
-      <text class="sh-h2 sec__h">{{ $t("goods.secCategory") }}</text>
+      <text class="txt-title sec__h">{{ $t("goods.secCategory") }}</text>
 
       <view class="field">
         <text class="field__label">{{ $t("goods.category") }} *</text>
@@ -3243,7 +3286,7 @@ async function save(thenSubmit = false) {
   align-items: center;
   gap: 12rpx;
   padding-bottom: 16rpx;
-  border-bottom: 2rpx solid var(--sh-line);
+  border-bottom: var(--sh-hairline);
   margin-bottom: 8rpx;
 }
 
@@ -3257,7 +3300,7 @@ async function save(thenSubmit = false) {
 /* 商品编码：一个字段一小段，段内每个规格一行 */
 .codeblock {
   padding: 12rpx 0;
-  border-top: 2rpx solid var(--sh-line);
+  border-top: var(--sh-hairline);
 }
 
 .codeblock__k {
@@ -3286,7 +3329,7 @@ async function save(thenSubmit = false) {
   align-items: flex-start;
   gap: 16rpx;
   padding: 14rpx 0;
-  border-top: 2rpx solid var(--sh-line);
+  border-top: var(--sh-hairline);
 }
 
 .param__k {
@@ -3341,7 +3384,7 @@ async function save(thenSubmit = false) {
   700 只给价格，别的东西要突出靠颜色与留白，不靠再加一道粗体）。
   这条规则是对的：这一页已经有 34rpx 深色的节标题，
   与 28rpx 的字段标签差着 6rpx 与一整个卡片间距，够分。
-  所以只加粗字段标签，节标题维持 .sh-h2 的 600。
+  所以只加粗字段标签，节标题维持 .txt-title 的 600。
 */
 
 
@@ -3386,12 +3429,6 @@ async function save(thenSubmit = false) {
 
 .mt {
   margin-top: 16rpx;
-}
-.field__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 12rpx;
 }
 .langs {
   display: flex;
@@ -3688,7 +3725,7 @@ async function save(thenSubmit = false) {
   align-items: center;
   justify-content: space-between;
   padding: 24rpx;
-  border-bottom: 2rpx solid var(--sh-line);
+  border-bottom: var(--sh-hairline);
 }
 .cat-sheet__title {
   font-weight: 600;
@@ -3698,7 +3735,7 @@ async function save(thenSubmit = false) {
   align-items: center;
   justify-content: space-between;
   padding: 28rpx 24rpx;
-  border-bottom: 2rpx solid var(--sh-line);
+  border-bottom: var(--sh-hairline);
 }
 .cat-lv {
   margin-top: 12rpx;

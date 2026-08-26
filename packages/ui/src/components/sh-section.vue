@@ -6,7 +6,7 @@
 // `my-specs` 的 `.cat__head` 是同一个形状多一层块内留白。合计 8 处调用点。
 //
 // **不收编的是哪一个**：`groups` 与 `plan` 里也有个 `.sec`，但那是
-// `<text class="sh-h2 sec">` —— **卡外的分组小标题**，只有 margin，没有右侧动作。
+// `<text class="txt-title sec">` —— **卡外的分组小标题**，只有 margin，没有右侧动作。
 // 名字一样、东西不同，归成一类会把「两种形态」误读成「一种被画了两遍」。
 //
 // **与 `.sh-block__head` 的关系，说清楚**：那是同一个想法在另一个容器里的样子
@@ -30,7 +30,7 @@ withDefaults(
 
 <template>
   <view class="sec" :class="{ 'sec--pad': pad }">
-    <text class="sh-h2">{{ title }}</text>
+    <text class="txt-title">{{ title }}</text>
     <slot></slot>
   </view>
 </template>

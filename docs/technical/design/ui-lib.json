@@ -223,6 +223,28 @@
   },
   "blocks": [
     {
+      "class": ".field__head",
+      "group": "其它",
+      "when": "—",
+      "avoid": "—",
+      "decl": {
+        "display": "flex",
+        "align-items": "center",
+        "justify-content": "space-between",
+        "margin-bottom": "12rpx"
+      },
+      "px": {
+        "display": "flex",
+        "align-items": "center",
+        "justify-content": "space-between",
+        "margin-bottom": "6px"
+      },
+      "usage": {
+        "b-app": 5,
+        "c-app": 0
+      }
+    },
+    {
       "class": ".sh-block__head--tabs",
       "group": "其它",
       "when": "—",
@@ -258,7 +280,7 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 244,
+        "b-app": 255,
         "c-app": 39
       }
     },
@@ -280,7 +302,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 0,
+        "b-app": 4,
         "c-app": 0
       }
     },
@@ -302,7 +324,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 5,
+        "b-app": 18,
         "c-app": 0
       }
     },
@@ -324,7 +346,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 0,
+        "b-app": 21,
         "c-app": 0
       }
     },
@@ -368,7 +390,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 0,
+        "b-app": 1,
         "c-app": 0
       }
     },
@@ -390,7 +412,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 1,
+        "b-app": 5,
         "c-app": 0
       }
     },
@@ -412,7 +434,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 1,
+        "b-app": 12,
         "c-app": 0
       }
     },
@@ -434,7 +456,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 0,
+        "b-app": 2,
         "c-app": 0
       }
     },
@@ -456,15 +478,15 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 0,
+        "b-app": 75,
         "c-app": 0
       }
     },
     {
       "class": ".sh-h1",
       "group": "字阶（旧名）",
-      "when": "页面级标题。与 .txt-display 同值",
-      "avoid": "新代码优先 .txt-*",
+      "when": "与 .txt-display 逐行相同。**B 端已清零，只剩 C 端**",
+      "avoid": "C 端改完即删",
       "decl": {
         "font-size": "40rpx",
         "font-weight": "700",
@@ -478,15 +500,15 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 18,
+        "b-app": 0,
         "c-app": 3
       }
     },
     {
       "class": ".sh-h2",
       "group": "字阶（旧名）",
-      "when": "区块标题。与 .txt-title 同值",
-      "avoid": "新代码优先 .txt-*",
+      "when": "与 .txt-title 逐行相同。**B 端已清零，只剩 C 端**",
+      "avoid": "C 端改完即删",
       "decl": {
         "font-size": "34rpx",
         "font-weight": "600",
@@ -500,7 +522,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 73,
+        "b-app": 0,
         "c-app": 27
       }
     },
@@ -522,7 +544,7 @@
         "overflow": "hidden"
       },
       "usage": {
-        "b-app": 2,
+        "b-app": 7,
         "c-app": 12
       }
     },
@@ -564,7 +586,7 @@
         "padding": "var(--sh-pad-card, 16px)"
       },
       "usage": {
-        "b-app": 153,
+        "b-app": 179,
         "c-app": 57
       }
     },
@@ -596,7 +618,7 @@
         "line-height": "1.4"
       },
       "usage": {
-        "b-app": 79,
+        "b-app": 86,
         "c-app": 36
       }
     },
@@ -654,7 +676,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 15,
+        "b-app": 21,
         "c-app": 2
       }
     },
@@ -710,7 +732,7 @@
         "font-weight": "400"
       },
       "usage": {
-        "b-app": 37,
+        "b-app": 49,
         "c-app": 1
       }
     },
@@ -726,7 +748,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 3,
+        "b-app": 5,
         "c-app": 0
       }
     },
@@ -764,7 +786,7 @@
         "unicode-bidi": "isolate"
       },
       "usage": {
-        "b-app": 145,
+        "b-app": 183,
         "c-app": 129
       }
     },
@@ -792,7 +814,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 100,
+        "b-app": 107,
         "c-app": 56
       }
     },
@@ -810,7 +832,7 @@
         "color": "var(--sh-danger)"
       },
       "usage": {
-        "b-app": 1,
+        "b-app": 2,
         "c-app": 9
       }
     },
@@ -866,7 +888,7 @@
         "color": "var(--sh-primary-text)"
       },
       "usage": {
-        "b-app": 57,
+        "b-app": 60,
         "c-app": 22
       }
     },
@@ -884,7 +906,7 @@
         "color": "var(--sh-warning)"
       },
       "usage": {
-        "b-app": 10,
+        "b-app": 12,
         "c-app": 6
       }
     },
@@ -954,7 +976,7 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 1,
+        "b-app": 6,
         "c-app": 0
       }
     },
@@ -980,7 +1002,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 89,
+        "b-app": 91,
         "c-app": 0
       }
     },
@@ -1002,7 +1024,7 @@
         "margin-bottom": "6px"
       },
       "usage": {
-        "b-app": 71,
+        "b-app": 74,
         "c-app": 0
       }
     },
@@ -1036,7 +1058,7 @@
         "small?: boolean"
       ],
       "usage": {
-        "b-app": 3,
+        "b-app": 7,
         "c-app": 0
       },
       "note": "＋ 加一项按钮",
@@ -1053,7 +1075,7 @@
         "disabled?: boolean"
       ],
       "usage": {
-        "b-app": 4,
+        "b-app": 5,
         "c-app": 0
       },
       "note": "勾选框 / 单选点",
@@ -1099,7 +1121,7 @@
         "bare?: boolean"
       ],
       "usage": {
-        "b-app": 29,
+        "b-app": 37,
         "c-app": 17
       },
       "note": "空态",
@@ -1167,7 +1189,7 @@
         "divided?: boolean"
       ],
       "usage": {
-        "b-app": 19,
+        "b-app": 33,
         "c-app": 0
       },
       "note": "—",
@@ -1250,7 +1272,7 @@
         "deniedText?: string"
       ],
       "usage": {
-        "b-app": 54,
+        "b-app": 61,
         "c-app": 29
       },
       "note": "页面外壳",
@@ -1266,7 +1288,7 @@
         "pad?: boolean"
       ],
       "usage": {
-        "b-app": 10,
+        "b-app": 15,
         "c-app": 0
       },
       "note": "卡内标题行",
@@ -1283,7 +1305,7 @@
         "hint?: string"
       ],
       "usage": {
-        "b-app": 3,
+        "b-app": 6,
         "c-app": 0
       },
       "note": "底部弹层",
@@ -1348,7 +1370,7 @@
         "active: string"
       ],
       "usage": {
-        "b-app": 8,
+        "b-app": 9,
         "c-app": 7
       },
       "note": "筛选条",
@@ -1742,9 +1764,9 @@
         "sh-sheet",
         "sh-uploader"
       ],
-      "libClassHits": 130,
-      "localSelectors": 81,
-      "localCssLines": 437,
+      "libClassHits": 135,
+      "localSelectors": 80,
+      "localCssLines": 431,
       "rolled": [
         {
           "id": "sysmodal",
@@ -1834,13 +1856,6 @@
       "localCssLines": 92,
       "rolled": [
         {
-          "id": "sechead",
-          "label": "分段标题（只有标题）",
-          "lib": ".sh-h2 + 间距档",
-          "rule": "class=\"sh-h2 (?:sec|grp)\\b",
-          "gap": false
-        },
-        {
           "id": "listrow",
           "label": "列表行",
           "lib": null,
@@ -1879,6 +1894,42 @@
       "localSelectors": 7,
       "localCssLines": 31,
       "rolled": []
+    },
+    {
+      "page": "locations",
+      "file": "b-app/src/pages/locations/index.vue",
+      "components": [
+        "sh-add",
+        "sh-empty",
+        "sh-scaffold",
+        "sh-section"
+      ],
+      "libClassHits": 11,
+      "localSelectors": 9,
+      "localCssLines": 37,
+      "rolled": [
+        {
+          "id": "sysmodal",
+          "label": "系统弹框",
+          "lib": "sh-sheet",
+          "rule": "showModal\\(|showActionSheet\\(",
+          "gap": false
+        },
+        {
+          "id": "arrow",
+          "label": "文字当箭头",
+          "lib": "sh-icon(chevronRight)",
+          "rule": "[›»]\\s*</text>",
+          "gap": false
+        },
+        {
+          "id": "listrow",
+          "label": "列表行",
+          "lib": null,
+          "rule": "^\\s*\\.(row|item)\\b",
+          "gap": true
+        }
+      ]
     },
     {
       "page": "login",
@@ -2156,9 +2207,9 @@
         "sh-cover",
         "sh-scaffold"
       ],
-      "libClassHits": 38,
+      "libClassHits": 39,
       "localSelectors": 21,
-      "localCssLines": 115,
+      "localCssLines": 111,
       "rolled": [
         {
           "id": "sheet",
@@ -2249,15 +2300,7 @@
       "libClassHits": 22,
       "localSelectors": 18,
       "localCssLines": 73,
-      "rolled": [
-        {
-          "id": "sechead",
-          "label": "分段标题（只有标题）",
-          "lib": ".sh-h2 + 间距档",
-          "rule": "class=\"sh-h2 (?:sec|grp)\\b",
-          "gap": false
-        }
-      ]
+      "rolled": []
     },
     {
       "page": "points",
@@ -2282,6 +2325,29 @@
       "localSelectors": 6,
       "localCssLines": 15,
       "rolled": []
+    },
+    {
+      "page": "purchase-edit",
+      "file": "b-app/src/pages/purchase-edit/index.vue",
+      "components": [
+        "sh-add",
+        "sh-empty",
+        "sh-kv",
+        "sh-scaffold",
+        "sh-sheet"
+      ],
+      "libClassHits": 28,
+      "localSelectors": 13,
+      "localCssLines": 54,
+      "rolled": [
+        {
+          "id": "listrow",
+          "label": "列表行",
+          "lib": null,
+          "rule": "^\\s*\\.(row|item)\\b",
+          "gap": true
+        }
+      ]
     },
     {
       "page": "qualifications",
@@ -2474,9 +2540,30 @@
         "sh-stat",
         "sh-tabs"
       ],
-      "libClassHits": 13,
-      "localSelectors": 8,
-      "localCssLines": 37,
+      "libClassHits": 14,
+      "localSelectors": 10,
+      "localCssLines": 45,
+      "rolled": [
+        {
+          "id": "listrow",
+          "label": "列表行",
+          "lib": null,
+          "rule": "^\\s*\\.(row|item)\\b",
+          "gap": true
+        }
+      ]
+    },
+    {
+      "page": "stock-check",
+      "file": "b-app/src/pages/stock-check/index.vue",
+      "components": [
+        "sh-check",
+        "sh-empty",
+        "sh-scaffold"
+      ],
+      "libClassHits": 33,
+      "localSelectors": 12,
+      "localCssLines": 53,
       "rolled": [
         {
           "id": "listrow",
@@ -2501,6 +2588,72 @@
       "localSelectors": 13,
       "localCssLines": 57,
       "rolled": []
+    },
+    {
+      "page": "stock-docs",
+      "file": "b-app/src/pages/stock-docs/index.vue",
+      "components": [
+        "sh-empty",
+        "sh-scaffold",
+        "sh-tabs"
+      ],
+      "libClassHits": 10,
+      "localSelectors": 13,
+      "localCssLines": 49,
+      "rolled": [
+        {
+          "id": "listrow",
+          "label": "列表行",
+          "lib": null,
+          "rule": "^\\s*\\.(row|item)\\b",
+          "gap": true
+        }
+      ]
+    },
+    {
+      "page": "stock-out",
+      "file": "b-app/src/pages/stock-out/index.vue",
+      "components": [
+        "sh-add",
+        "sh-empty",
+        "sh-kv",
+        "sh-scaffold",
+        "sh-sheet"
+      ],
+      "libClassHits": 24,
+      "localSelectors": 10,
+      "localCssLines": 45,
+      "rolled": [
+        {
+          "id": "listrow",
+          "label": "列表行",
+          "lib": null,
+          "rule": "^\\s*\\.(row|item)\\b",
+          "gap": true
+        }
+      ]
+    },
+    {
+      "page": "stock-report",
+      "file": "b-app/src/pages/stock-report/index.vue",
+      "components": [
+        "sh-empty",
+        "sh-kv",
+        "sh-scaffold",
+        "sh-section"
+      ],
+      "libClassHits": 25,
+      "localSelectors": 12,
+      "localCssLines": 41,
+      "rolled": [
+        {
+          "id": "sysmodal",
+          "label": "系统弹框",
+          "lib": "sh-sheet",
+          "rule": "showModal\\(|showActionSheet\\(",
+          "gap": false
+        }
+      ]
     },
     {
       "page": "store",
@@ -2631,6 +2784,36 @@
       "rolled": []
     },
     {
+      "page": "transfer",
+      "file": "b-app/src/pages/transfer/index.vue",
+      "components": [
+        "sh-add",
+        "sh-empty",
+        "sh-kv",
+        "sh-scaffold",
+        "sh-sheet"
+      ],
+      "libClassHits": 37,
+      "localSelectors": 14,
+      "localCssLines": 58,
+      "rolled": [
+        {
+          "id": "sysmodal",
+          "label": "系统弹框",
+          "lib": "sh-sheet",
+          "rule": "showModal\\(|showActionSheet\\(",
+          "gap": false
+        },
+        {
+          "id": "listrow",
+          "label": "列表行",
+          "lib": null,
+          "rule": "^\\s*\\.(row|item)\\b",
+          "gap": true
+        }
+      ]
+    },
+    {
       "page": "verify",
       "file": "b-app/src/pages/verify/index.vue",
       "components": [
@@ -2679,6 +2862,7 @@
         "entities",
         "goods-list",
         "groups",
+        "locations",
         "login",
         "marketing",
         "member-detail",
@@ -2689,6 +2873,7 @@
         "order",
         "orders",
         "picking",
+        "purchase-edit",
         "qualifications",
         "quotes",
         "reviews",
@@ -2697,9 +2882,13 @@
         "sku-identity",
         "staff",
         "stock",
+        "stock-check",
+        "stock-docs",
+        "stock-out",
         "store-categories",
         "store-pick",
         "store-scope",
+        "transfer",
         "verify"
       ]
     },
@@ -2713,10 +2902,13 @@
         "coupons",
         "customers",
         "goods-edit",
+        "locations",
         "marketing",
         "member-reach",
         "member-tags",
-        "picking"
+        "picking",
+        "stock-report",
+        "transfer"
       ]
     },
     {
@@ -2751,19 +2943,6 @@
       ]
     },
     {
-      "id": "sechead",
-      "label": "分段标题（只有标题）",
-      "lib": ".sh-h2 + 间距档",
-      "gap": false,
-      "rule": "class=\"sh-h2 (?:sec|grp)\\b",
-      "pages": [
-        "goods-edit",
-        "groups",
-        "plan",
-        "store-categories"
-      ]
-    },
-    {
       "id": "glyphicon",
       "label": "文字当图标（✕/×）",
       "lib": "sh-icon-btn / sh-icon(close)",
@@ -2776,6 +2955,29 @@
       ]
     },
     {
+      "id": "arrow",
+      "label": "文字当箭头",
+      "lib": "sh-icon(chevronRight)",
+      "gap": false,
+      "rule": "[›»]\\s*</text>",
+      "pages": [
+        "locations",
+        "marketing",
+        "store-scope"
+      ]
+    },
+    {
+      "id": "sechead",
+      "label": "分段标题（只有标题）",
+      "lib": ".sh-h2 + 间距档",
+      "gap": false,
+      "rule": "class=\"sh-h2 (?:sec|grp)\\b",
+      "pages": [
+        "goods-edit",
+        "store-categories"
+      ]
+    },
+    {
       "id": "sheet",
       "label": "弹层 / 遮罩",
       "lib": "sh-sheet",
@@ -2785,24 +2987,13 @@
         "goods-list",
         "order"
       ]
-    },
-    {
-      "id": "arrow",
-      "label": "文字当箭头",
-      "lib": "sh-icon(chevronRight)",
-      "gap": false,
-      "rule": "[›»]\\s*</text>",
-      "pages": [
-        "marketing",
-        "store-scope"
-      ]
     }
   ],
   "counts": {
     "tokens": 10,
-    "blocks": 38,
+    "blocks": 39,
     "components": 27,
-    "pages": 54,
+    "pages": 61,
     "gapKinds": 1
   }
 }

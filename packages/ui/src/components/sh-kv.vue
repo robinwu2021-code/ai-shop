@@ -55,7 +55,7 @@ withDefaults(
    同一条线在两台手机上粗细不同 */
 .kv.is-divided {
   padding: 12rpx 0;
-  border-top: 2rpx solid var(--sh-line);
+  border-top: var(--sh-hairline);
 }
 .kv__k {
   font-size: 26rpx;

@@ -150,7 +150,7 @@ onShow(load);
 <template>
   <sh-scaffold title-key="picking.title" :denied="!merchant.can('biz:receive')">
     <view class="head">
-      <text class="sh-h1">{{ $t("picking.title") }}</text>
+      <text class="txt-display">{{ $t("picking.title") }}</text>
       <text class="sh-muted">{{ $t("picking.total", { n: totalQty }) }}</text>
     </view>
 

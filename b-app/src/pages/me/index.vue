@@ -109,14 +109,14 @@ onShow(() => {
 <template>
   <sh-scaffold title-key="tab.me" tab="me">
     <view v-if="!merchant.isLogin" class="sh-card head" @tap="goLogin">
-      <text class="sh-h2">{{ $t("me.notLogin") }}</text>
+      <text class="txt-title">{{ $t("me.notLogin") }}</text>
       <text class="sh-muted">{{ $t("me.notLoginHint") }}</text>
     </view>
 
     <view v-else class="sh-card head">
       <text class="head__logo">{{ merchant.profile?.logo || MERCHANT_LOGO_FALLBACK }}</text>
       <view class="head__main">
-        <text class="sh-h2">{{ merchant.profile?.name || $t("me.store") }}</text>
+        <text class="txt-title">{{ merchant.profile?.name || $t("me.store") }}</text>
         <text class="sh-chip" :class="merchant.isActive ? 'sh-chip--primary' : 'sh-chip--warning'">
           {{ $t(statusKey) }}
         </text>

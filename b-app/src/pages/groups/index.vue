@@ -60,10 +60,10 @@ onShow(load);
 
 <template>
   <sh-scaffold title-key="groups.title" :denied="!merchant.can('biz:campaign')">
-    <text class="sh-h1">{{ $t("groups.title") }}</text>
+    <text class="txt-display">{{ $t("groups.title") }}</text>
     <text class="sh-muted intro">{{ $t("groups.intro") }}</text>
 
-    <text class="sh-h2 sec">{{ $t("groups.running") }}</text>
+    <text class="txt-title sec">{{ $t("groups.running") }}</text>
     <sh-empty v-if="!groups.length" :text='$t("groups.noRunning")'></sh-empty>
 
     <view v-for="g in groups" :key="g.groupNo" class="sh-card item">
@@ -88,7 +88,7 @@ onShow(load);
       </view>
     </view>
 
-    <text class="sh-h2 sec">{{ $t("groups.canOpen") }}</text>
+    <text class="txt-title sec">{{ $t("groups.canOpen") }}</text>
     <sh-empty v-if="!groupable.length" :text='$t("groups.noGroupable")'></sh-empty>
 
     <view v-for="g in groupable" :key="g.goodsNo" class="sh-card row">

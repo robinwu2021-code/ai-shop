@@ -141,7 +141,7 @@ onShow(() => void load());
 
     <!-- 已传的证 -->
     <view class="sh-card mt">
-      <text class="sh-h2">{{ $t("qual.mine") }}</text>
+      <text class="txt-title">{{ $t("qual.mine") }}</text>
       <sh-empty v-if="!loading && !data?.items.length" :text='$t("qual.emptyMine")'></sh-empty>
       <view v-for="q in data?.items ?? []" :key="q.qualNo" class="row">
         <view class="row__main">
@@ -163,7 +163,7 @@ onShow(() => void load());
 
     <!-- 已解锁 -->
     <view v-if="unlocked.length" class="sh-card mt">
-      <text class="sh-h2">{{ $t("qual.unlocked") }}</text>
+      <text class="txt-title">{{ $t("qual.unlocked") }}</text>
       <view class="cats">
         <text v-for="c in unlocked" :key="c.code" class="sh-chip sh-chip--primary">
           {{ (c.categoryNames ?? []).length ? (c.categoryNames ?? []).join("、") : c.name }}
@@ -181,7 +181,7 @@ onShow(() => void load());
         而是「还没授权」。照旧说「还不能卖」是在制造一个不存在的障碍 ——
         商家会以为要先等平台核完才能上架，而他其实现在就能上。
       -->
-      <text class="sh-h2">{{ $t(merchant.categoryGateEnforced ? "qual.locked" : "qual.notGranted") }}</text>
+      <text class="txt-title">{{ $t(merchant.categoryGateEnforced ? "qual.locked" : "qual.notGranted") }}</text>
       <view v-for="c in locked" :key="c.code" class="lock">
         <view class="lock__main">
           <text class="lock__cats">
@@ -201,7 +201,7 @@ onShow(() => void load());
 
     <!-- 上传表单 -->
     <view v-if="form" class="sh-card mt">
-      <text class="sh-h2">{{ $t("qual.add") }}</text>
+      <text class="txt-title">{{ $t("qual.add") }}</text>
       <sh-kv :label="String($t('qual.fieldName'))">
         <input v-model="form.qualName" class="field__input" />
       </sh-kv>
@@ -248,7 +248,7 @@ onShow(() => void load());
   align-items: center;
   gap: 16rpx;
   padding: 16rpx 0;
-  border-bottom: 2rpx solid var(--sh-line);
+  border-bottom: var(--sh-hairline);
 }
 .row__main {
   flex: 1;

@@ -76,7 +76,7 @@ function addOne() {
 
 <template>
   <sh-scaffold title-key="entities.title">
-    <text class="sh-h1">{{ $t("entities.heading") }}</text>
+    <text class="txt-display">{{ $t("entities.heading") }}</text>
     <text class="hint">{{ $t("entities.hint") }}</text>
 
     <view v-if="loading && !rows.length" class="hint">{{ $t("common.loading") }}</view>

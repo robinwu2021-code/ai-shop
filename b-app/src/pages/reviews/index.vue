@@ -96,7 +96,7 @@ onShow(load);
 <template>
   <sh-scaffold title-key="reviews.title" :denied="!merchant.can('biz:review')">
     <view class="head">
-      <text class="sh-h1">{{ $t("reviews.title") }}</text>
+      <text class="txt-display">{{ $t("reviews.title") }}</text>
       <text v-if="pending" class="sh-chip sh-chip--warning">
         {{ $t("reviews.pending", { n: pending }) }}
       </text>

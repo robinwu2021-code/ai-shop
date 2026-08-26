@@ -69,7 +69,7 @@ onLoad(async (q) => {
 
       <!-- 各店往来：多店商家问的是「南门店有多少熟客」，单店没有这个问题 -->
       <view v-if="showStores" class="sh-card mt-card">
-        <text class="sh-h2">{{ $t("memberDetail.stores") }}</text>
+        <text class="txt-title">{{ $t("memberDetail.stores") }}</text>
         <view v-for="s in data.stores" :key="s.storeNo" class="kv line">
           <text>
             {{ storeName(s.storeNo) }}
@@ -83,7 +83,7 @@ onLoad(async (q) => {
 
       <!-- 来源轨迹：谁发的链接、哪个员工录的，都要写出来 -->
       <view class="sh-card mt-card">
-        <text class="sh-h2">{{ $t("memberDetail.sources") }}</text>
+        <text class="txt-title">{{ $t("memberDetail.sources") }}</text>
         <view v-for="(s, i) in data.sources" :key="i" class="kv line">
           <text>
             {{ monthDay(s.occurredAt) }} · {{ $t(`members.source.${s.sourceType}`) }}
@@ -128,7 +128,7 @@ onLoad(async (q) => {
   padding: 6rpx 0;
 }
 .kv.line {
-  border-top: 2rpx solid var(--sh-faint);
+  border-top: var(--sh-hairline-soft);
   padding-top: 12rpx;
   margin-top: 12rpx;
 }

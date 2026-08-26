@@ -73,7 +73,7 @@ onShow(load);
 
 <template>
   <sh-scaffold title-key="quotes.title" :denied="!merchant.can('biz:campaign')">
-    <text class="sh-h1">{{ $t("quotes.title") }}</text>
+    <text class="txt-display">{{ $t("quotes.title") }}</text>
     <text class="sh-muted intro">{{ $t("quotes.intro") }}</text>
 
     <sh-empty v-if="!list.length" :text='$t("quotes.empty")'></sh-empty>

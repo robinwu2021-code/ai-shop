@@ -70,7 +70,7 @@ function confirm() {
 
 <template>
   <sh-scaffold title-key="storePick.title">
-    <text class="sh-h1">{{ $t("storePick.heading") }}</text>
+    <text class="txt-display">{{ $t("storePick.heading") }}</text>
     <text class="hint">{{ $t("storePick.hint") }}</text>
 
     <view v-for="g in groups" :key="g.entity?.entityNo || 'only'" class="list">

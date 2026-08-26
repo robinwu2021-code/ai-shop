@@ -105,7 +105,7 @@ function arrow(from?: string | null, to?: string | null): string {
       或者更糟：以为空列会被保留，而我们真按「清空」处理。
     -->
     <view class="sh-card">
-      <text class="sh-h2">{{ $t("skuIdentity.howTitle") }}</text>
+      <text class="txt-title">{{ $t("skuIdentity.howTitle") }}</text>
       <view class="rules">
         <sh-kv :label="String($t('skuIdentity.ruleMissingK'))" divided :key-width="180">
           <text class="sh-muted rule__v">{{ $t("skuIdentity.ruleMissingV") }}</text>
@@ -155,7 +155,7 @@ function arrow(from?: string | null, to?: string | null): string {
 
     <!-- 第三步：核对。**这一屏才是这个功能的主体** -->
     <view v-if="report" class="sh-card mt">
-      <text class="sh-h2">{{ $t("skuIdentity.step3") }}</text>
+      <text class="txt-title">{{ $t("skuIdentity.step3") }}</text>
       <!--
         四个数各回答一件事。少了「没变化」那一格，商家会把「改 3 行」
         读成「另外 197 行失败了」—— 而那三个数字里最让人安心的恰恰是它。
@@ -293,7 +293,7 @@ function arrow(from?: string | null, to?: string | null): string {
 
 .row {
   padding: 14rpx 0;
-  border-top: 1rpx solid var(--sh-line-soft, var(--sh-line));
+  border-top: var(--sh-hairline-soft);
 }
 
 .row__t {

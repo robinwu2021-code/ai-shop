@@ -61,7 +61,7 @@ defineEmits<{ (e: "discard"): void; (e: "save"): void }>();
   background: var(--sh-surface);
   /* 这条 hairline 与 sh-tabbar 顶部那条同源：白条压在浅灰页面上，
      不加分界时列表像是溢出到条里去了 */
-  border-top: 2rpx solid var(--sh-line);
+  border-top: var(--sh-hairline);
 }
 .bar__t {
   flex: 1;

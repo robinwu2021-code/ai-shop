@@ -261,7 +261,7 @@ function close() {
   align-items: center;
   gap: 20rpx;
   padding: 22rpx 32rpx;
-  border-bottom: 2rpx solid var(--sh-line);
+  border-bottom: var(--sh-hairline);
 }
 .row.is-off {
   opacity: 0.6;
@@ -360,6 +360,6 @@ function close() {
 .foot {
   padding: 16rpx 24rpx;
   padding-bottom: calc(16rpx + env(safe-area-inset-bottom));
-  border-top: 2rpx solid var(--sh-line);
+  border-top: var(--sh-hairline);
 }
 </style>

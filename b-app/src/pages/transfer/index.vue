@@ -138,7 +138,7 @@ async function receive() {
   if (!doc.value || busy.value) return;
   const ok = await confirm({
     title: String(t("transfer.receiveTitle")),
-    content: String(t("transfer.receiveBody", {
+    hint: String(t("transfer.receiveBody", {
       n: doc.value.totalQty, to: doc.value.toLocationName ?? "",
     })),
   });

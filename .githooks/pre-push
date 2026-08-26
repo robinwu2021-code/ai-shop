@@ -124,6 +124,48 @@ else
   echo "⚠ 跳过设计守卫：本机没有 node_modules（跑一次 npm i 就会启用）"
 fi
 
+# 自造件棘轮：**新页面不许自造库里已经有的件**。
+#
+# 为什么这一刻才立：2026-08-26 这一轮把缺件补齐（库 14 → 27 个组件，
+# 缺口 16 类 → 1 类）。闸门要立在刚清完的时候 —— 早了是恒红，晚了就又长回来。
+# `sh-tabs` 的方块 tab 收编过一次，没有闸门，后来新页面又各画各的。
+#
+# 判据不在这里，在 gen-ui-lib.py 的 ROLLED 表 —— 所以这里先重跑生成器再判，
+# 免得清单本身是陈的。纯 python，worktree 里不需要依赖。
+# 已知的 33 处欠账记在 known-handrolled-ui.txt，**只准变短**：
+# 修好了不删那一行，那个页面将来又自造起来也不会有人发现。
+if python3 "$GATE_WT/scripts/gen-ui-lib.py" >/dev/null 2>&1; then
+  if ! node "$GATE_WT/scripts/check-handrolled-ui.mjs" --check --root="$GATE_WT"; then
+    exit 1
+  fi
+else
+  echo "⚠ 跳过自造件棘轮：ui-lib 生成器在 HEAD 副本里跑不起来"
+fi
+
+# 类型检查（两端 uni-app）。**这一条是被一个真缺陷催出来的**：
+# 仓库里一直有 `npm run type-check` 脚本，却没挂在任何闸门上，于是
+# `stock-check` 与 `transfer` 把 showModal 换成 confirm() 时留下了 `content:` ——
+# ConfirmOptions 没这个字段，**说明文字被静默丢掉**：盘点看不到差异件数、
+# 收货看不到数量和去向。页面照样跑、H5 照样构建、没有任何报错。
+#
+# 两端加起来不到 5 秒，比下面的后端编译便宜得多，所以不做「没动过就跳过」。
+# worktree 里要把两端各自的 node_modules 也软链过去（npm workspaces 没把
+# uni-app 那套类型全提到根上）。
+if [ -d "$ROOT/node_modules" ]; then
+  ln -sfn "$ROOT/b-app/node_modules" "$GATE_WT/b-app/node_modules" 2>/dev/null
+  ln -sfn "$ROOT/c-app/node_modules" "$GATE_WT/c-app/node_modules" 2>/dev/null
+  for app in b-app c-app; do
+    if ! (cd "$GATE_WT/$app" && npx vue-tsc --noEmit 2>&1); then
+      echo "✗ $app 类型检查没过（上面是原始输出）。本机重现："
+      echo "    cd $app && npx vue-tsc --noEmit"
+      echo "  判据取自 HEAD —— 工作区里没提交的改动不会让你被挡住。"
+      exit 1
+    fi
+  done
+else
+  echo "⚠ 跳过类型检查：本机没有 node_modules（跑一次 npm i 就会启用）"
+fi
+
 # 后端没动过就不必编 —— 别为改一行文案等两分钟
 if git diff --quiet "@{u}" HEAD -- backend 2>/dev/null; then
   echo "→ 本次推送未触及 backend/，跳过编译闸门"

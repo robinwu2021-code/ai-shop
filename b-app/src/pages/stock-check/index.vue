@@ -109,7 +109,7 @@ async function submit() {
   if (!doc.value || !filledCount.value) return;
   const ok = await confirm({
     title: String(t("stockCheck.confirmTitle")),
-    content: String(t("stockCheck.confirmBody", { n: totalDiff.value })),
+    hint: String(t("stockCheck.confirmBody", { n: totalDiff.value })),
   });
   if (!ok) return;
 

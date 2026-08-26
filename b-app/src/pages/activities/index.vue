@@ -212,6 +212,6 @@ onShow(load);
 .effect {
   margin-top: 16rpx;
   padding-top: 16rpx;
-  border-top: 2rpx solid var(--sh-faint);
+  border-top: var(--sh-hairline-soft);
 }
 </style>

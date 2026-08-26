@@ -150,7 +150,7 @@ async function save(items: { categoryNo: string; displayName?: string; sort: num
 <template>
   <sh-scaffold title-key="storeCategories.title" :denied="!merchant.can('biz:store:admin')">
     <view v-for="top in tree" :key="top.categoryNo" class="sh-card grp">
-      <text class="sh-h2">{{ top.name }}</text>
+      <text class="txt-title">{{ top.name }}</text>
       <view class="opts">
         <!--
           只列二级（平台类目就是两级）。一级是**分组标题，不是可选项** ——
@@ -179,7 +179,7 @@ async function save(items: { categoryNo: string; displayName?: string; sort: num
     </view>
 
     <view v-if="picked.length" class="sh-card">
-      <text class="sh-h2">{{ $t("storeCategories.mine") }}</text>
+      <text class="txt-title">{{ $t("storeCategories.mine") }}</text>
       <text class="sh-muted mt">{{ $t("storeCategories.renameHint") }}</text>
       <view v-for="c in picked" :key="c.categoryNo" class="row">
         <!--
@@ -218,7 +218,7 @@ async function save(items: { categoryNo: string; displayName?: string; sort: num
       放在类目之后：规格是按本店摆出来的类目分组的，先有类目才谈得上规格。
     -->
     <view v-if="merchant.can('biz:goods')" class="sh-card specs" @tap="goSpecs">
-      <text class="sh-h2">{{ $t("storeCategories.specsEntry") }}</text>
+      <text class="txt-title">{{ $t("storeCategories.specsEntry") }}</text>
       <sh-icon name="chevronRight" :size="18" color="var(--sh-sub)"></sh-icon>
     </view>
   </sh-scaffold>
@@ -280,7 +280,7 @@ async function save(items: { categoryNo: string; displayName?: string; sort: num
   align-items: center;
   gap: 16rpx;
   padding: 20rpx 0;
-  border-top: 2rpx solid var(--sh-line);
+  border-top: var(--sh-hairline);
 }
 
 .row__main {

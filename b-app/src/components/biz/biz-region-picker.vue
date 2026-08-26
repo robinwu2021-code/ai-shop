@@ -1321,7 +1321,7 @@ function close() {
   align-items: center;
   gap: 20rpx;
   padding: 20rpx 32rpx;
-  border-bottom: 2rpx solid var(--sh-line);
+  border-bottom: var(--sh-hairline);
 }
 .row__main {
   flex: 1;
@@ -1387,7 +1387,7 @@ function close() {
   align-items: center;
   gap: 16rpx;
   padding: 20rpx 8rpx;
-  border-bottom: 1rpx solid var(--sh-line);
+  border-bottom: var(--sh-hairline);
 }
 .place__main {
   flex: 1;
@@ -1440,7 +1440,7 @@ function close() {
   flex-direction: column;
   gap: 4rpx;
   padding: 16rpx 20rpx;
-  border-bottom: 1rpx solid var(--sh-line);
+  border-bottom: var(--sh-hairline);
 }
 .apply__poi-row:last-child {
   border-bottom: none;
@@ -1477,7 +1477,7 @@ function close() {
 .foot {
   padding: 16rpx 24rpx;
   padding-bottom: calc(16rpx + env(safe-area-inset-bottom));
-  border-top: 2rpx solid var(--sh-line);
+  border-top: var(--sh-hairline);
 }
 
 /* 被上级覆盖的行：能看见、点得动（点了会说明原因），但明显是「不用再选」的样子 */
@@ -1537,7 +1537,7 @@ function close() {
   color: var(--sh-ink);
 }
 .chosen__row + .chosen__row {
-  border-top: 2rpx solid var(--sh-line);
+  border-top: var(--sh-hairline);
 }
 .chosen__name {
   flex: 1;
@@ -1567,7 +1567,7 @@ function close() {
   display: flex;
   gap: 44rpx;
   padding: 4rpx 32rpx 0;
-  border-bottom: 2rpx solid var(--sh-line);
+  border-bottom: var(--sh-hairline);
 }
 .tab {
   position: relative;

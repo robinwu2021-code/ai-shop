@@ -203,7 +203,7 @@ onShow(() => {
 
     <!-- 门面：只有三个字段。公告在自己的页（pages/store-notice）里，即改即发 -->
     <view class="sh-card">
-      <text class="sh-h2">{{ $t("store.decorate") }}</text>
+      <text class="txt-title">{{ $t("store.decorate") }}</text>
 
       <view class="field">
         <text class="field__label">{{ $t("store.openHours") }}</text>
@@ -241,7 +241,7 @@ onShow(() => {
 
     <!-- 获客工具：店铺码 + 分享文案合一卡。一期主获客路径的商家侧（ADR-004 决策 3） -->
     <view class="sh-card mt">
-      <text class="sh-h2">{{ $t("store.tools") }}</text>
+      <text class="txt-title">{{ $t("store.tools") }}</text>
 
       <view class="qr">
         <view class="qr__box">
@@ -394,7 +394,7 @@ onShow(() => {
 .kitwrap {
   margin-top: 24rpx;
   padding-top: 24rpx;
-  border-top: 2rpx solid var(--sh-line);
+  border-top: var(--sh-hairline);
 }
 .poster {
   margin-top: 20rpx;
@@ -402,7 +402,7 @@ onShow(() => {
 .poster__img {
   width: 100%;
   border-radius: 24rpx;
-  border: 2rpx solid var(--sh-line);
+  border: var(--sh-hairline);
 }
 .poster__save {
   margin-top: 16rpx;

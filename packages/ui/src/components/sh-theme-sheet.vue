@@ -51,7 +51,7 @@ function close() {
     <view class="sheet__mask" @tap="close" />
     <view class="sheet__panel" :class="app.dirClass">
       <view class="sheet__grip" />
-      <text class="sh-h2">{{ $t("theme.title") }}</text>
+      <text class="txt-title">{{ $t("theme.title") }}</text>
 
       <!-- 两组配色分开：纯白底组只换主色与字色，整套组连背景一起换。
            **色点上不写字** —— 颜色本身就是最清楚的标识，压上文字反而看不清色；

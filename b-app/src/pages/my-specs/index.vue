@@ -1067,7 +1067,7 @@ onShow(() => void load());
 .cat__foot {
   display: block;
   padding: 18rpx 26rpx;
-  border-top: 1rpx solid var(--sh-line);
+  border-top: var(--sh-hairline);
 }
 .cat__empty {
   font-size: 24rpx;
@@ -1088,7 +1088,7 @@ onShow(() => void load());
 .sheet-own {
   margin-top: 24rpx;
   padding-top: 20rpx;
-  border-top: 2rpx solid var(--sh-line);
+  border-top: var(--sh-hairline);
 }
 
 /* 自建那一行：输入框 + 一个动作，与这一页其余部分同一套排版 */
@@ -1147,7 +1147,7 @@ onShow(() => void load());
   transition: transform 0.18s ease, background-color 0.18s ease, box-shadow 0.18s ease;
 }
 .spec + .spec {
-  border-top: 1rpx solid var(--sh-line);
+  border-top: var(--sh-hairline);
 }
 /*
   拿起来的样子：抬一层 + 底色 + 轻微放大。
