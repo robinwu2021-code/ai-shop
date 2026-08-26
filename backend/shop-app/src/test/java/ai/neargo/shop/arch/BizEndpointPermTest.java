@@ -171,6 +171,10 @@ class BizEndpointPermTest {
         put("/biz/store-spec-dims", BizPerms.GOODS);
         put("/biz/spec-override/{categoryNo}", BizPerms.GOODS);
         put("/biz/spec-dims/{dimNo}/values", BizPerms.GOODS);
+        // 商品编码批量导入导出（P4）：改的是商品数据，用同一个码
+        put("/biz/sku-identity/export", BizPerms.GOODS);
+        put("/biz/sku-identity/import/plan", BizPerms.GOODS);
+        put("/biz/sku-identity/import", BizPerms.GOODS);
         put("/biz/my-spec-dims/{dimNo}/rename", BizPerms.GOODS);
         put("/biz/my-spec-dims/{dimNo}/archive", BizPerms.GOODS);
         // 标准品搜索（TDD-标准品库）：建品链路的一环，与规格模板同一档 ——
