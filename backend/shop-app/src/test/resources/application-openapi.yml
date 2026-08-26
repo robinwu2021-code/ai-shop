@@ -1,0 +1,18 @@
+# 开放接口测试的 profile 覆盖。
+#
+# **为什么要另一套内存库**：`@Profile("openapi")` 与 api/ops 互斥，
+# 带上它就是**另一个 Spring 上下文**。而 H2 用的是 `DB_CLOSE_DELAY=-1` 的
+# 共享内存库 —— 第二个上下文起来时会再跑一遍 `schema-test.sql`，
+# 在同一个库上撞主键（`sys_industry`），然后**这一次失败会拖垮之后所有上下文**：
+# 单独跑每个类都绿，一起跑全红，而报错指向的类与真因毫不相干。
+#
+# 换个库名就各起各的。不走「第二个上下文跳过初始化」那条路：
+# 那会让这一类的绿依赖于「它不是第一个跑的」，而测试顺序不该是正确性的一部分。
+spring:
+  datasource:
+    url: jdbc:h2:mem:shop_openapi;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1
+
+shop:
+  inventory:
+    datasource:
+      url: jdbc:h2:mem:inv_openapi;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1
