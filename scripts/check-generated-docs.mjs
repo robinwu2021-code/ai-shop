@@ -36,6 +36,7 @@ const GENERATORS = [
   ["gen-biz-feature-perm-matrix.mjs", ["docs/technical/reference/B端功能点-权限码-页面.md"]],
   ["gen-perm-endpoint-matrix.mjs", ["packages/shared/tests/fixtures/ops-role-endpoint-matrix.json"]],
   ["gen-table-inventory.mjs", ["docs/technical/reference/数据库表清单.md"]],
+  ["gen-c-feature-matrix.mjs", ["docs/technical/reference/C端功能点-登录态-页面.md"]],
 ];
 
 const sha = (p) => (existsSync(p) ? createHash("sha1").update(readFileSync(p)).digest("hex") : "∅");
