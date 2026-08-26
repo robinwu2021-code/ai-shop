@@ -156,7 +156,7 @@ function goPickStore() {
         </view>
         <!-- R8：这里不给「进店」，只给一条回选店页的路 -->
         <text class="hint">{{ $t("entityDetail.storesReadonly") }}</text>
-        <text class="link" @tap="goPickStore">{{ $t("entityDetail.goPick") }}</text>
+        <text class="sh-link" @tap="goPickStore">{{ $t("entityDetail.goPick") }}</text>
       </view>
     </template>
   </sh-scaffold>
@@ -231,10 +231,8 @@ function goPickStore() {
   font-size: 24rpx;
   color: var(--sh-sub);
 }
-.link {
+.sh-link {
   display: block;
   margin-top: 12rpx;
-  font-size: 26rpx;
-  color: var(--sh-primary);
 }
 </style>

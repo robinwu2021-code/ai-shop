@@ -141,9 +141,9 @@ onShow(load);
           </text>
         </view>
         <view class="acts">
-          <text class="act" @tap="rename(tg)">{{ $t("memberTags.rename") }}</text>
-          <text class="act" @tap="merge(tg)">{{ $t("memberTags.merge") }}</text>
-          <text class="act" @tap="toggleEnabled(tg)">
+          <text class="sh-link" @tap="rename(tg)">{{ $t("memberTags.rename") }}</text>
+          <text class="sh-link" @tap="merge(tg)">{{ $t("memberTags.merge") }}</text>
+          <text class="sh-link" @tap="toggleEnabled(tg)">
             {{ tg.status === "ACTIVE" ? $t("memberTags.disable") : $t("memberTags.enable") }}
           </text>
         </view>
@@ -197,10 +197,6 @@ onShow(load);
   display: flex;
   gap: 24rpx;
   margin-top: 12rpx;
-}
-.act {
-  font-size: 24rpx;
-  color: var(--sh-primary-text);
 }
 .tip {
   display: block;

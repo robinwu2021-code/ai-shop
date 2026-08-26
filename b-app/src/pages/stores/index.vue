@@ -351,15 +351,15 @@ function pickPayment(s: Store, payMerchantNo?: string) {
         -->
         <text
           v-if="s.storeNo !== merchant.storeNo && s.status === 'ACTIVE'"
-          class="act act--go"
+          class="sh-link act--go"
           @tap="switchTo(s)"
         >{{ $t("stores.switchTo") }}</text>
         <!--
           改名。后端与契约一直都在，**这一页却只有建店/停用/设默认/挂收款号四个动作** ——
           于是开错一个字的店名只能停用重建，而重建会丢掉这家店的历史。
         -->
-        <text class="act" @tap="rename(s)">{{ $t("stores.rename") }}</text>
-        <text v-if="!s.isDefault && s.status === 'ACTIVE'" class="act" @tap="makeDefault(s)">
+        <text class="sh-link" @tap="rename(s)">{{ $t("stores.rename") }}</text>
+        <text v-if="!s.isDefault && s.status === 'ACTIVE'" class="sh-link" @tap="makeDefault(s)">
           {{ $t("stores.setDefault") }}
         </text>
         <!-- 默认店没有停用入口：后端也会拒，但按钮就不该出现在那儿 -->
@@ -367,8 +367,8 @@ function pickPayment(s: Store, payMerchantNo?: string) {
           降级压下的店**不给「启用」按钮**：点了后端也不会放行（额度还是不够），
           而一个点了没反应的按钮比没有按钮更让人困惑。给的是「去看套餐」。
         -->
-        <text v-if="s.planSuspended" class="act" @tap="goPlan">{{ $t("stores.planSuspendedAct") }}</text>
-        <text v-else-if="!s.isDefault" class="act" @tap="toggleStatus(s)">
+        <text v-if="s.planSuspended" class="sh-link" @tap="goPlan">{{ $t("stores.planSuspendedAct") }}</text>
+        <text v-else-if="!s.isDefault" class="sh-link" @tap="toggleStatus(s)">
           {{ s.status === "ACTIVE" ? $t("stores.disable") : $t("stores.enable") }}
         </text>
       </view>
@@ -530,10 +530,6 @@ function pickPayment(s: Store, payMerchantNo?: string) {
   display: flex;
   gap: 24rpx;
   margin-top: 20rpx;
-}
-.act {
-  font-size: 24rpx;
-  color: var(--sh-primary-text);
 }
 /* 切店是这一页最常用的一下：加重，与「改名/设默认」这类偶发动作拉开 */
 .act--go {

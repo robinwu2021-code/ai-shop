@@ -648,6 +648,58 @@
       }
     },
     {
+      "class": ".sh-link",
+      "group": "按钮",
+      "when": "文字动作：列表行尾的「改名 / 停用」、卡里的「展开 / 去管理」",
+      "avoid": "它不是按钮 —— 要底色就用 .sh-btn--soft",
+      "decl": {
+        "color": "var(--sh-primary-text)",
+        "font-size": "24rpx",
+        "font-weight": "400"
+      },
+      "px": {
+        "color": "var(--sh-primary-text)",
+        "font-size": "12px",
+        "font-weight": "400"
+      },
+      "usage": {
+        "b-app": 37,
+        "c-app": 1
+      }
+    },
+    {
+      "class": ".sh-link--quiet",
+      "group": "按钮",
+      "when": "压成灰：「收起」这类不该抢眼的",
+      "avoid": "—",
+      "decl": {
+        "color": "var(--sh-sub)"
+      },
+      "px": {
+        "color": "var(--sh-sub)"
+      },
+      "usage": {
+        "b-app": 3,
+        "c-app": 0
+      }
+    },
+    {
+      "class": ".sh-link--warn",
+      "group": "按钮",
+      "when": "要当心的文字动作（申诉、撤回）",
+      "avoid": "真危险的操作用 .sh-btn--danger",
+      "decl": {
+        "color": "var(--sh-warning)"
+      },
+      "px": {
+        "color": "var(--sh-warning)"
+      },
+      "usage": {
+        "b-app": 1,
+        "c-app": 0
+      }
+    },
+    {
       "class": ".sh-num",
       "group": "数字",
       "when": "金额、结存、差异、百分比 —— 等宽且 RTL 下强制 LTR",
@@ -1175,9 +1227,9 @@
         "sh-empty",
         "sh-scaffold"
       ],
-      "libClassHits": 9,
-      "localSelectors": 16,
-      "localCssLines": 74,
+      "libClassHits": 12,
+      "localSelectors": 15,
+      "localCssLines": 70,
       "rolled": [
         {
           "id": "sysmodal",
@@ -1327,9 +1379,9 @@
         "sh-empty",
         "sh-scaffold"
       ],
-      "libClassHits": 13,
-      "localSelectors": 10,
-      "localCssLines": 51,
+      "libClassHits": 16,
+      "localSelectors": 9,
+      "localCssLines": 47,
       "rolled": [
         {
           "id": "sysmodal",
@@ -1490,9 +1542,9 @@
       "components": [
         "sh-scaffold"
       ],
-      "libClassHits": 8,
+      "libClassHits": 9,
       "localSelectors": 15,
-      "localCssLines": 74,
+      "localCssLines": 72,
       "rolled": [
         {
           "id": "arrow",
@@ -1513,9 +1565,9 @@
         "sh-section",
         "sh-sheet"
       ],
-      "libClassHits": 103,
-      "localSelectors": 105,
-      "localCssLines": 573,
+      "libClassHits": 118,
+      "localSelectors": 103,
+      "localCssLines": 565,
       "rolled": [
         {
           "id": "sysmodal",
@@ -1754,9 +1806,9 @@
         "sh-icon",
         "sh-scaffold"
       ],
-      "libClassHits": 59,
-      "localSelectors": 21,
-      "localCssLines": 107,
+      "libClassHits": 61,
+      "localSelectors": 20,
+      "localCssLines": 102,
       "rolled": [
         {
           "id": "sysmodal",
@@ -1893,9 +1945,9 @@
         "sh-empty",
         "sh-scaffold"
       ],
-      "libClassHits": 4,
-      "localSelectors": 9,
-      "localCssLines": 42,
+      "libClassHits": 7,
+      "localSelectors": 8,
+      "localCssLines": 38,
       "rolled": [
         {
           "id": "sysmodal",
@@ -1953,9 +2005,9 @@
         "sh-empty",
         "sh-scaffold"
       ],
-      "libClassHits": 9,
-      "localSelectors": 11,
-      "localCssLines": 54,
+      "libClassHits": 12,
+      "localSelectors": 10,
+      "localCssLines": 50,
       "rolled": [
         {
           "id": "sysmodal",
@@ -2283,9 +2335,9 @@
         "sh-rating",
         "sh-scaffold"
       ],
-      "libClassHits": 9,
-      "localSelectors": 23,
-      "localCssLines": 130,
+      "libClassHits": 12,
+      "localSelectors": 22,
+      "localCssLines": 124,
       "rolled": [
         {
           "id": "listrow",
@@ -2424,9 +2476,9 @@
         "sh-scaffold",
         "sh-tabs"
       ],
-      "libClassHits": 30,
-      "localSelectors": 24,
-      "localCssLines": 109,
+      "libClassHits": 31,
+      "localSelectors": 23,
+      "localCssLines": 105,
       "rolled": [
         {
           "id": "arrow",
@@ -2649,9 +2701,9 @@
       "components": [
         "sh-scaffold"
       ],
-      "libClassHits": 24,
-      "localSelectors": 31,
-      "localCssLines": 143,
+      "libClassHits": 29,
+      "localSelectors": 30,
+      "localCssLines": 139,
       "rolled": [
         {
           "id": "sysmodal",
@@ -2676,9 +2728,9 @@
         "sh-empty",
         "sh-scaffold"
       ],
-      "libClassHits": 40,
+      "libClassHits": 42,
       "localSelectors": 39,
-      "localCssLines": 200,
+      "localCssLines": 198,
       "rolled": [
         {
           "id": "tabs",
@@ -2990,7 +3042,7 @@
   ],
   "counts": {
     "tokens": 10,
-    "blocks": 31,
+    "blocks": 34,
     "components": 17,
     "pages": 52,
     "gapKinds": 8

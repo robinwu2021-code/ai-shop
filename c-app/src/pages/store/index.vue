@@ -275,7 +275,7 @@ function navToStore() {
         <text class="sh-h2">{{
           hasFrequent ? $t("store.frequent") : $t("store.hot")
         }}</text>
-        <text v-if="hasFrequent" class="link" @tap="reorder">{{
+        <text v-if="hasFrequent" class="sh-link" @tap="reorder">{{
           $t("store.reorder")
         }}</text>
       </view>
@@ -466,11 +466,6 @@ function navToStore() {
 .sec {
   align-items: center;
   justify-content: space-between;
-}
-.link {
-  font-size: 26rpx;
-  font-weight: 600;
-  color: var(--sh-primary-text);
 }
 /* 底和圆角由外层 .sh-block 给 —— 常买行在块内成行，不再各自一张卡 */
 .freq {

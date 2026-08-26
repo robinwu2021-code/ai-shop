@@ -2233,7 +2233,7 @@ async function save(thenSubmit = false) {
           <text class="std-on__txt">{{ $t("goods.fromStd", { s: stdTitle || stdNo }) }}</text>
           <text class="std-on__off" @tap="detachStd">{{ $t("goods.detachStd") }}</text>
         </view>
-        <text v-else class="link std-link" @tap="showStd = true">{{ $t("goods.pickStd") }}</text>
+        <text v-else class="sh-link std-link" @tap="showStd = true">{{ $t("goods.pickStd") }}</text>
       </view>
       <view class="field">
         <!--
@@ -2287,7 +2287,7 @@ async function save(thenSubmit = false) {
             模型不知道这家店真实的产地与保质期，一键写进详情
             等于替商家做了他没做过的承诺。让他改，比让他从空白开始容易得多。
           -->
-          <text class="link" @tap="genDetail">
+          <text class="sh-link" @tap="genDetail">
             {{ generating ? $t("goods.genDetailing") : $t("goods.genDetail") }}
           </text>
         </view>
@@ -2468,7 +2468,7 @@ async function save(thenSubmit = false) {
         </text>
         <view v-else-if="channelsState === 'error'" class="inline">
           <text class="sh-muted hint flex1">{{ $t("goods.channelsFailed") }}</text>
-          <text class="link" @tap="loadStoreChannels">{{ $t("common.retry") }}</text>
+          <text class="sh-link" @tap="loadStoreChannels">{{ $t("common.retry") }}</text>
         </view>
 
         <!-- 编辑老商品：原来那一路被门店关掉了。**不替他改**，只说出来 -->
@@ -2612,7 +2612,7 @@ async function save(thenSubmit = false) {
         </template>
         <text
           v-if="moreOther.length"
-          class="link addbar__more"
+          class="sh-link addbar__more"
           @tap="showUniversalDims = !showUniversalDims"
         >{{ showUniversalDims ? $t("goods.moreFold") : $t("goods.moreOther", { n: moreOther.length }) }}</text>
       </view>
@@ -2659,7 +2659,7 @@ async function save(thenSubmit = false) {
       </view>
 
       <!-- 平台真没有的（辣度、打磨程度）去那边加。压到最轻：多数人用不到 -->
-      <text class="link link--quiet more__manage" @tap="gotoMySpecs">
+      <text class="sh-link sh-link--quiet more__manage" @tap="gotoMySpecs">
         {{ $t("goods.manageSpecs") }}
       </text>
     </view>
@@ -2724,7 +2724,7 @@ async function save(thenSubmit = false) {
           <sh-add small :text="String($t('goods.paramFill'))" @tap="openParamValue(d)"></sh-add>
         </view>
       </view>
-      <text class="link link--quiet more__manage" @tap="gotoMySpecs">
+      <text class="sh-link sh-link--quiet more__manage" @tap="gotoMySpecs">
         {{ $t("goods.manageSpecs") }}
       </text>
     </view>
@@ -2747,7 +2747,7 @@ async function save(thenSubmit = false) {
           :placeholder="$t('goods.addParamPh')"
           @confirm="confirmAddParam"
         />
-        <text class="link build__ok" @tap="confirmAddParam">{{ $t("goods.save") }}</text>
+        <text class="sh-link build__ok" @tap="confirmAddParam">{{ $t("goods.save") }}</text>
       </view>
       <text class="sh-muted build__s">{{ $t("goods.addParamCost") }}</text>
     </sh-sheet>
@@ -2776,7 +2776,7 @@ async function save(thenSubmit = false) {
           :placeholder="$t('goods.paramFillPh')"
           @confirm="confirmParamValue"
         />
-        <text class="link build__ok" @tap="confirmParamValue">{{ $t("goods.save") }}</text>
+        <text class="sh-link build__ok" @tap="confirmParamValue">{{ $t("goods.save") }}</text>
       </view>
       <text class="sh-muted build__s">{{ $t("goods.paramFillCost") }}</text>
     </sh-sheet>
@@ -2844,7 +2844,7 @@ async function save(thenSubmit = false) {
           type="digit"
           :placeholder="$t(aggregated ? 'goods.priceAggregated' : 'goods.bulkPrice')"
         />
-        <text class="link" @tap="applyBulkPrice">{{ $t("goods.applyAll") }}</text>
+        <text class="sh-link" @tap="applyBulkPrice">{{ $t("goods.applyAll") }}</text>
       </view>
       <!-- 成本多半各规格一个数，但「都填同一个」也常见（同一箱货拆规格卖） -->
       <view v-if="multi && priceField === 'cost'" class="bulk">
@@ -2854,7 +2854,7 @@ async function save(thenSubmit = false) {
           type="digit"
           :placeholder="$t('goods.bulkCost')"
         />
-        <text class="link" @tap="applyBulkCost">{{ $t("goods.applyAll") }}</text>
+        <text class="sh-link" @tap="applyBulkCost">{{ $t("goods.applyAll") }}</text>
       </view>
 
       <!--
@@ -3005,7 +3005,7 @@ async function save(thenSubmit = false) {
           type="number"
           :placeholder="$t('goods.bulkStock')"
         />
-        <text class="link" @tap="applyBulkStock">{{ $t("goods.applyAll") }}</text>
+        <text class="sh-link" @tap="applyBulkStock">{{ $t("goods.applyAll") }}</text>
       </view>
 
       <view v-for="(r, i) in rows" :key="i" class="pr">
@@ -3049,7 +3049,7 @@ async function save(thenSubmit = false) {
       <sh-section :title="String($t('goods.secCode'))">
         <text
           v-if="externalOn"
-          class="link link--quiet"
+          class="sh-link sh-link--quiet"
           @tap="rememberExternal(false)"
         >{{ $t("goods.specFold") }}</text>
       </sh-section>
@@ -3351,10 +3351,6 @@ async function save(thenSubmit = false) {
 }
 
 
-/* 「收起」压在「更多规格」旁边：同一行两个链接，主次要分得出来 */
-.link--quiet {
-  color: var(--sh-sub);
-}
 
 
 
@@ -3767,11 +3763,6 @@ async function save(thenSubmit = false) {
   font-size: 24rpx;
   color: var(--sh-warning);
   line-height: 1.5;
-}
-.link {
-  font-size: 24rpx;
-  font-weight: 600;
-  color: var(--sh-primary-text);
 }
 .group {
   margin-top: 20rpx;

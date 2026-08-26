@@ -154,13 +154,13 @@ onShow(load);
           </view>
 
           <view v-if="a.status !== 'ENDED'" class="acts">
-            <text class="act" @tap="go(`/pages/activity-edit/index?activityNo=${a.activityNo}`)">
+            <text class="sh-link" @tap="go(`/pages/activity-edit/index?activityNo=${a.activityNo}`)">
               {{ $t("activities.edit") }}
             </text>
-            <text class="act" @tap="toggle(a)">
+            <text class="sh-link" @tap="toggle(a)">
               {{ a.status === "RUNNING" ? $t("activities.pause") : $t("activities.resume") }}
             </text>
-            <text class="act" @tap="end(a)">{{ $t("activities.end") }}</text>
+            <text class="sh-link" @tap="end(a)">{{ $t("activities.end") }}</text>
           </view>
         </view>
       </view>
@@ -238,9 +238,5 @@ onShow(load);
   display: flex;
   gap: 24rpx;
   margin-top: 16rpx;
-}
-.act {
-  font-size: 24rpx;
-  color: var(--sh-primary-text);
 }
 </style>

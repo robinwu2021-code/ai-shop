@@ -188,7 +188,7 @@ onShow(load);
           </text>
         </view>
         <!-- 预置角色改不了，但可以「以它为起点」建一个自己的 -->
-        <text v-if="r.builtin" class="act" @tap="copyRole(r)">{{ $t("staff.copyRole") }}</text>
+        <text v-if="r.builtin" class="sh-link" @tap="copyRole(r)">{{ $t("staff.copyRole") }}</text>
         <text v-else class="row__go" @tap="openRole(r)">›</text>
       </view>
 
@@ -272,10 +272,6 @@ onShow(load);
 }
 .tag--primary {
   background: var(--sh-primary-tint);
-  color: var(--sh-primary-text);
-}
-.act {
-  font-size: 24rpx;
   color: var(--sh-primary-text);
 }
 .add {

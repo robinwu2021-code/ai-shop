@@ -362,7 +362,7 @@ onShow(load);
       </view>
 
       <!-- 高峰期一次来七八个邻居，逐张扫要等七八次往返 -->
-      <text class="link" @tap="batchMode = true">{{ $t("verify.batchEnter") }}</text>
+      <text class="sh-link" @tap="batchMode = true">{{ $t("verify.batchEnter") }}</text>
     </view>
 
     <!-- 批量核销：连续扫码攒起来，最后一次提交 -->
@@ -409,7 +409,7 @@ onShow(load);
         </view>
       </view>
 
-      <text class="link" @tap="exitBatch">{{ $t("verify.batchExit") }}</text>
+      <text class="sh-link" @tap="exitBatch">{{ $t("verify.batchExit") }}</text>
     </view>
 
     <view class="list-head">
@@ -548,11 +548,9 @@ onShow(load);
   font-size: 24rpx;
   color: var(--sh-danger);
 }
-.link {
+.sh-link {
   display: block;
   margin-top: 20rpx;
-  font-size: 24rpx;
-  color: var(--sh-primary-text);
 }
 .is-disabled {
   opacity: 0.45;

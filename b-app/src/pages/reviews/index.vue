@@ -166,10 +166,10 @@ onShow(load);
       <view v-else-if="replying !== r.reviewNo" class="acts">
         <!-- 已回复的不再给入口：那条路后端是关着的（见 startReply 的注释）。
              上面的「我的回复」块已经把回复内容显示出来了，这里不需要再有按钮 -->
-        <text v-if="!r.reply" class="link" @tap="startReply(r)">
+        <text v-if="!r.reply" class="sh-link" @tap="startReply(r)">
           {{ $t("reviews.reply") }}
         </text>
-        <text v-if="canAppeal(r)" class="link link--warn" @tap="appealing = r.reviewNo">
+        <text v-if="canAppeal(r)" class="sh-link sh-link--warn" @tap="appealing = r.reviewNo">
           {{ $t("reviews.appeal") }}
         </text>
       </view>
@@ -213,9 +213,6 @@ onShow(load);
   display: flex;
   gap: 28rpx;
   margin-top: 16rpx;
-}
-.link--warn {
-  color: var(--sh-warning);
 }
 
 .head {
@@ -302,11 +299,8 @@ onShow(load);
   background: var(--sh-faint);
   color: var(--sh-sub);
 }
-.link {
+.sh-link {
   display: inline-block;
   margin-top: 20rpx;
-  font-size: 24rpx;
-  font-weight: 600;
-  color: var(--sh-primary-text);
 }
 </style>

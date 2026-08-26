@@ -191,7 +191,7 @@ onShow(load);
   <sh-scaffold title-key="marketing.title" :denied="!merchant.can('biz:campaign')">
     <view class="head">
       <text class="sh-h1">{{ $t("marketing.title") }}</text>
-      <text v-if="!editing" class="link" @tap="startNew">{{ $t("marketing.create") }}</text>
+      <text v-if="!editing" class="sh-link" @tap="startNew">{{ $t("marketing.create") }}</text>
     </view>
 
     <!--
@@ -328,7 +328,7 @@ onShow(load);
         </text>
         <text class="sh-muted sh-num">{{ $t("marketing.used", { n: c.usedCount }) }}</text>
       </view>
-      <text v-if="c.status !== 'ENDED'" class="link act" @tap="toggle(c)">
+      <text v-if="c.status !== 'ENDED'" class="sh-link act" @tap="toggle(c)">
         {{ c.status === "RUNNING" ? $t("marketing.pause") : $t("marketing.resume") }}
       </text>
     </view>
@@ -364,11 +364,6 @@ onShow(load);
 }
 .mt {
   margin-top: 16rpx;
-}
-.link {
-  font-size: 24rpx;
-  font-weight: 600;
-  color: var(--sh-primary-text);
 }
 .row {
   display: flex;

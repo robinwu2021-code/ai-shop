@@ -157,13 +157,13 @@ onShow(load);
       </text>
 
       <view class="acts">
-        <text v-if="c.status === 'ACTIVE'" class="act" @tap="issue(c)">
+        <text v-if="c.status === 'ACTIVE'" class="sh-link" @tap="issue(c)">
           {{ $t("coupons.issue") }}
         </text>
-        <text class="act" @tap="go(`/pages/coupon-edit/index?couponNo=${c.couponNo}`)">
+        <text class="sh-link" @tap="go(`/pages/coupon-edit/index?couponNo=${c.couponNo}`)">
           {{ $t("coupons.edit") }}
         </text>
-        <text v-if="c.status !== 'ENDED'" class="act" @tap="toggleStatus(c)">
+        <text v-if="c.status !== 'ENDED'" class="sh-link" @tap="toggleStatus(c)">
           {{ c.status === "ACTIVE" ? $t("coupons.pause") : $t("coupons.resume") }}
         </text>
       </view>
@@ -213,10 +213,6 @@ onShow(load);
   display: flex;
   gap: 24rpx;
   margin-top: 16rpx;
-}
-.act {
-  font-size: 24rpx;
-  color: var(--sh-primary-text);
 }
 .tip {
   display: block;

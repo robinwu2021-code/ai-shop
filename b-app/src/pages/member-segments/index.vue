@@ -121,9 +121,9 @@ onShow(load);
         {{ $t("memberSegments.countedAt", { t: countedAt(sg.countedAt) }) }}
       </text>
       <view class="acts">
-        <text class="act" @tap="recount(sg)">{{ $t("memberSegments.recount") }}</text>
-        <text class="act" @tap="rename(sg)">{{ $t("memberSegments.rename") }}</text>
-        <text class="act" @tap="remove(sg)">{{ $t("memberSegments.remove") }}</text>
+        <text class="sh-link" @tap="recount(sg)">{{ $t("memberSegments.recount") }}</text>
+        <text class="sh-link" @tap="rename(sg)">{{ $t("memberSegments.rename") }}</text>
+        <text class="sh-link" @tap="remove(sg)">{{ $t("memberSegments.remove") }}</text>
       </view>
     </view>
 
@@ -163,10 +163,6 @@ onShow(load);
   display: flex;
   gap: 24rpx;
   margin-top: 16rpx;
-}
-.act {
-  font-size: 24rpx;
-  color: var(--sh-primary-text);
 }
 .tip {
   display: block;
