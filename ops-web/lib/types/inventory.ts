@@ -50,6 +50,16 @@ export interface InvReconReport {
   scannedSkus: number;
   moved: number;
   skipped: number;
+  /**
+   * 扫到了但**还没搬**的。**它必须是 0 才准切真相源** ——
+   * 没搬的那些在进销存侧余额是 0，切过去就是「全都卖不了」。
+   *
+   * 这一列原本不存在：`moveOne` 只算不写时故意不把没搬过的算成差异，
+   * `doRun` 又把它们计成既不 moved 也不 skipped，于是它们在报告里一个字都不出现，
+   * 而 `clean` 只看 diffs —— 闸门守着一个它没在看的东西。
+   */
+  pending: number;
+  /** 没有差异**且**没有待搬的。两者缺一都不算干净 */
   clean: boolean;
   diffs: InvReconDiff[];
 }

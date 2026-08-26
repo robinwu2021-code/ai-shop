@@ -43,19 +43,33 @@ public class InventoryBackfillJob {
         this.jobs = jobs;
     }
 
-    /** 默认每十分钟一批。分批跑，中断了下一轮从没搬的那条继续（靠 INIT 单幂等）。 */
+    /**
+     * 上一轮扫到哪儿了。
+     *
+     * <p><b>它必须存在</b>：没有游标时每一轮都从第一行扫同样一批，第二轮起全是
+     * 「已搬过」，报告长得和「搬完了」一模一样，而第 {@code batch+1} 个 SKU 永远搬不到。
+     *
+     * <p>只放在内存里：进程重启就从头再扫一遍 —— 慢，但**不会漏**（已搬的会被跳过）。
+     * 落库要新开一张表与一次迁移，而这件事本身是一次性的，不值得。
+     */
+    private Long cursor;
+
+    /** 默认每十分钟一批。**扫到末尾就从头再来** —— 这样新建的 SKU 下一圈会被带上。 */
     @Scheduled(cron = "${shop.inventory.backfill.cron:0 */10 * * * *}")
     @SchedulerLock(name = "inv-backfill", lockAtLeastFor = "PT30S", lockAtMostFor = "PT30M")
     public void run() {
         jobs.run("inv-backfill", () -> {
-            Report r = backfill.run(dryRun, batch);
+            Report r = backfill.run(dryRun, batch, cursor);
+            cursor = r.nextAfterId();   // null = 扫完了，下一轮从头开始
             if (!r.clean()) {
-                // 对差不为零要看得见 —— 它是 G3 闸门拦下来的那个数
-                log.warn("库存搬运对差 {} 条，**不得切换真相源**；前三条：{}",
-                        r.diffs().size(), r.diffs().stream().limit(3).toList());
+                // 对差不为零、或还有没搬的，都要看得见 —— 它是 G3 闸门拦下来的那个数
+                log.warn("库存搬运：对差 {} 条、待搬 {} 个，**不得切换真相源**；前三条差异：{}",
+                        r.diffs().size(), r.pending(), r.diffs().stream().limit(3).toList());
             }
             return "scanned=" + r.scannedSkus() + " moved=" + r.moved()
-                    + " skipped=" + r.skipped() + " diffs=" + r.diffs().size()
+                    + " skipped=" + r.skipped() + " pending=" + r.pending()
+                    + " diffs=" + r.diffs().size()
+                    + (r.nextAfterId() == null ? " (到末尾)" : " (下一轮 after=" + r.nextAfterId() + ")")
                     + (dryRun ? " (dry-run)" : "");
         });
     }

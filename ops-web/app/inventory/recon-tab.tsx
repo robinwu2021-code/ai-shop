@@ -56,12 +56,14 @@ export function ReconTab({ c }: { c: InventoryCopy }) {
           {"　"}
           <span className="tabular-nums">
             {c.invReconScanned} {r.scannedSkus} · {c.invReconSkipped} {r.skipped} ·{" "}
-            {c.invReconDiffs} {r.diffs.length}
+            {c.invReconPending} {r.pending} · {c.invReconDiffs} {r.diffs.length}
           </span>
         </Notice>
       )}
 
-      {r && !r.clean && <Notice tone="warning">{c.invReconHowTo}</Notice>}
+      {/* 待搬与有差异是**两种**不合格，理由与处置都不同，分开说 */}
+      {r && r.pending > 0 && <Notice tone="warning">{c.invReconPendingHint}</Notice>}
+      {r && r.diffs.length > 0 && <Notice tone="warning">{c.invReconHowTo}</Notice>}
 
       <DataTable
         columns={columns}

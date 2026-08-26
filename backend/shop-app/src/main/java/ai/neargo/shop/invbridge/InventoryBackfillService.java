@@ -28,20 +28,38 @@ import java.util.List;
 public interface InventoryBackfillService {
 
     /**
-     * @param dryRun 只算不写。**先跑一次 dryRun 看报告**，再决定要不要真搬
-     * @param limit  一次最多处理多少个 SKU；分批跑，别让一次搬运变成一个长事务
+     * @param dryRun  只算不写。**先跑一次 dryRun 看报告**，再决定要不要真搬
+     * @param limit   一次最多处理多少个 SKU；分批跑，别让一次搬运变成一个长事务
+     * @param afterId <b>游标：只扫 {@code prd_sku.id} 大于它的行</b>；{@code null} 从头开始。
+     *
+     *                <p>它原本不存在，每一轮都从第一行扫 {@code LIMIT limit×4} ——
+     *                于是第二轮起扫到的是同一批、全部「已搬过」，报告长得
+     *                <b>和「搬完了」一模一样</b>，而第 501 个 SKU 永远搬不到。
+     *                注释里写的「分批跑，中断了下一轮从没搬的那条继续」当时是假的。
      */
-    Report run(boolean dryRun, int limit);
-
-    /** 只对差，不搬。切真相源之前每天跑一次，直到连续为零。 */
-    Report diffOnly(int limit);
+    Report run(boolean dryRun, int limit, Long afterId);
 
     /**
-     * @param moved     本次真正搬了几条余额
-     * @param skipped   已经搬过（有 INIT 单）而跳过的
-     * @param diffs     两边数不一致的明细 —— <b>空列表是唯一可接受的结果</b>
+     * 只对差，不搬。切真相源之前每天跑一次，直到连续为零。
+     *
+     * <p><b>内部翻到底</b>，不是只看一批：一道只抽样的闸门比没有闸门更坏 ——
+     * 它给的是「看过的那些没问题」，而读的人以为是「没问题」。
+     *
+     * @param maxScan 最多扫多少个 SKU 才停。停下来时 {@code clean} 一律为 false
+     *                并在日志里说明被截断（<b>不静默截断</b>）
      */
-    record Report(int scannedSkus, int moved, int skipped, boolean clean, List<Diff> diffs) {
+    Report diffOnly(int maxScan);
+
+    /**
+     * @param moved       本次真正搬了几条余额
+     * @param skipped     已经搬过（有 INIT 单）而跳过的
+     * @param pending     扫到了但**还没搬**的。<b>切真相源之前它必须是 0</b> ——
+     *                    没搬的那些在进销存侧余额为 0，切过去就是「全都卖不了」
+     * @param nextAfterId 下一轮的游标；{@code null} = 这一轮已经扫到末尾
+     * @param diffs       两边数不一致的明细 —— <b>空列表是唯一可接受的结果</b>
+     */
+    record Report(int scannedSkus, int moved, int skipped, int pending, boolean clean,
+                  Long nextAfterId, List<Diff> diffs) {
 
         /*
          * clean **必须是一个字段，不能只是一个方法**。
@@ -52,11 +70,19 @@ public interface InventoryBackfillService {
          * 「有差异，不得切换」。不报错，且方向恰好是「永远不让切」——
          * 看起来像很保守，实际是这个闸门坏了而没有人会发现。
          *
-         * 保留 4 参构造：clean 由 diffs 推出来，调用方**不该自己传** ——
+         * 保留便利构造：clean 由 diffs 与 pending 推出来，调用方**不该自己传** ——
          * 传错一次，G3 的唯一判据就废了。
+         *
+         * <b>clean 不只是「没有差异」，还要「没有待搬的」。</b>
+         * 原来只看 diffs：而 {@code moveOne} 在只算不写时**故意不把没搬过的算成差异**
+         * （「没搬过的当然对不上」），{@code doRun} 又把它们计成既不 moved 也不 skipped ——
+         * 于是没搬过的 SKU 在报告里一个字都不出现，`clean` 照样是 true。
+         * 那句「连续为零才准切」守的是一个它没在看的东西。
          */
-        public Report(int scannedSkus, int moved, int skipped, List<Diff> diffs) {
-            this(scannedSkus, moved, skipped, diffs.isEmpty(), diffs);
+        public Report(int scannedSkus, int moved, int skipped, int pending,
+                      Long nextAfterId, List<Diff> diffs) {
+            this(scannedSkus, moved, skipped, pending, diffs.isEmpty() && pending == 0,
+                    nextAfterId, diffs);
         }
     }
 

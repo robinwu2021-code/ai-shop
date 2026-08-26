@@ -199,12 +199,12 @@ class InventoryFlowTest {
     @Test
     @DisplayName("★★★ 存量搬运幂等 —— 重跑不会把库存搬两遍")
     void backfillIsIdempotent() {
-        // 平台侧的存量（DevSeeder 种的 SKU）搬一批
-        InventoryBackfillService.Report first = backfill.run(false, 50);
+        // 平台侧的存量（DevSeeder 种的 SKU）搬一批。**同一个窗口**跑两次
+        InventoryBackfillService.Report first = backfill.run(false, 50, null);
         int movedFirst = first.moved();
         assertThat(movedFirst).as("第一轮应当搬到东西").isGreaterThan(0);
 
-        InventoryBackfillService.Report second = backfill.run(false, 50);
+        InventoryBackfillService.Report second = backfill.run(false, 50, null);
         /*
          * 第二轮一条都不该再搬。
          *
@@ -219,12 +219,50 @@ class InventoryFlowTest {
     @Test
     @DisplayName("★★★ 搬完之后对差必须干净 —— 这是 G3 闸门的判据")
     void backfillLeavesNoDiff() {
-        backfill.run(false, 50);
-        InventoryBackfillService.Report diff = backfill.diffOnly(50);
+        // **搬到末尾**再对差。只搬一批就对差，等于拿「看过的那些」当「全部」
+        Long cursor = null;
+        do {
+            InventoryBackfillService.Report r = backfill.run(false, 50, cursor);
+            cursor = r.nextAfterId();
+        } while (cursor != null);
+
+        InventoryBackfillService.Report diff = backfill.diffOnly(5000);
 
         assertThat(diff.clean())
-                .as("搬过的条目两边的数必须一致，否则不得切真相源；差异：%s", diff.diffs())
+                .as("搬过的条目两边的数必须一致且没有待搬的，否则不得切真相源；"
+                        + "差异：%s，待搬：%d", diff.diffs(), diff.pending())
                 .isTrue();
+    }
+
+    @Test
+    @DisplayName("★★★ 搬运会**前进** —— 没有游标时第二轮扫的是同一批，第 501 个永远搬不到")
+    void backfillAdvancesPastTheFirstBatch() {
+        // 一次只搬一个，逼出「有没有前进」这件事
+        InventoryBackfillService.Report first = backfill.run(false, 1, null);
+        assertThat(first.nextAfterId())
+                .as("还没扫完就必须给出下一轮的游标 —— 没有它，下一轮又从第一行开始")
+                .isNotNull();
+
+        InventoryBackfillService.Report second = backfill.run(false, 1, first.nextAfterId());
+        assertThat(second.scannedSkus()).as("第二轮应当扫到东西").isGreaterThan(0);
+        assertThat(second.nextAfterId())
+                .as("两轮的游标必须不同，相同就说明原地踏步")
+                .isNotEqualTo(first.nextAfterId());
+    }
+
+    @Test
+    @DisplayName("★★★ 还有没搬的时候 clean 必须是 false —— 它是闸门，不是「看过的那些没问题」")
+    void pendingKeepsTheGateClosed() {
+        // 只搬一个，剩下的都还没搬
+        backfill.run(false, 1, null);
+        InventoryBackfillService.Report diff = backfill.diffOnly(5000);
+
+        assertThat(diff.pending())
+                .as("没搬的必须出现在报告里；原来它既不算 moved 也不算 skipped，一个字都不出现")
+                .isGreaterThan(0);
+        assertThat(diff.clean())
+                .as("还有 %d 个没搬就说「干净」，等于切换那天这些货全都卖不了", diff.pending())
+                .isFalse();
     }
 
     @Test

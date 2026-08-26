@@ -58,17 +58,52 @@ public class InventoryBackfillServiceImpl implements InventoryBackfillService {
         this.query = query;
     }
 
-    @Override
-    public Report run(boolean dryRun, int limit) {
-        return doRun(dryRun, limit);
-    }
+    /** 一次对差最多翻多少轮。防的是「平台侧无限长」把一次日常对差跑成一场全表扫描 */
+    private static final int DIFF_PAGES_MAX = 200;
 
     @Override
-    public Report diffOnly(int limit) {
-        return doRun(true, limit);
+    public Report run(boolean dryRun, int limit, Long afterId) {
+        return doRun(dryRun, limit, afterId);
     }
 
-    private Report doRun(boolean dryRun, int limit) {
+    /**
+     * 对差**翻到底**，不是只看一批。
+     *
+     * <p>一道只抽样的闸门比没有闸门更坏：它给的是「看过的那些没问题」，
+     * 而读的人以为是「没问题」。翻不完时 {@code clean} 一律 false 且日志说明 ——
+     * <b>不静默截断</b>。
+     */
+    @Override
+    public Report diffOnly(int maxScan) {
+        int page = Math.max(1, Math.min(maxScan, 500));
+        Long cursor = null;
+        int scanned = 0;
+        int moved = 0;
+        int skipped = 0;
+        int pending = 0;
+        List<Diff> diffs = new ArrayList<>();
+
+        for (int i = 0; i < DIFF_PAGES_MAX; i++) {
+            Report r = doRun(true, page, cursor);
+            scanned += r.scannedSkus();
+            moved += r.moved();
+            skipped += r.skipped();
+            pending += r.pending();
+            diffs.addAll(r.diffs());
+            cursor = r.nextAfterId();
+            if (cursor == null) {
+                return new Report(scanned, moved, skipped, pending, null, diffs);
+            }
+            if (scanned >= maxScan) {
+                break;
+            }
+        }
+        // 没翻完：**明说**，并强制 clean=false。少报一个 pending 都会让闸门放行
+        log.warn("对差未扫完（已扫 {}，上限 {}）—— 本次结论不得当作 G3 判据", scanned, maxScan);
+        return new Report(scanned, moved, skipped, pending, false, cursor, diffs);
+    }
+
+    private Report doRun(boolean dryRun, int limit, Long afterId) {
         /*
          * 平台的 prd_sku 是「一市场一行」（唯一键 entity_no, sku_no, market），
          * 而**库存不分市场**（货就那么多，卖到哪个市场都是同一批）。
@@ -76,17 +111,34 @@ public class InventoryBackfillServiceImpl implements InventoryBackfillService {
          * 每个市场一遍，而 N 是多少取决于运营开了几个市场。
          */
         Map<String, PrdSku> bySku = new LinkedHashMap<>();
-        for (PrdSku row : DataScopeContext.executeWithoutScope(() ->
+        Long lastId = null;
+        boolean exhausted = true;
+        List<PrdSku> rows = DataScopeContext.executeWithoutScope(() ->
                 skuMapper.selectList(Wrappers.<PrdSku>lambdaQuery()
-                        .orderByAsc(PrdSku::getId).last("LIMIT " + (limit * 4L))))) {
+                        .gt(afterId != null, PrdSku::getId, afterId)
+                        .orderByAsc(PrdSku::getId).last("LIMIT " + (limit * 4L))));
+        for (PrdSku row : rows) {
+            lastId = row.getId();
             bySku.putIfAbsent(row.getSkuNo(), row);
             if (bySku.size() >= limit) {
+                // 还有没读到的行 —— 下一轮从 lastId 之后继续
+                exhausted = false;
                 break;
             }
+        }
+        // 取满了这一页也可能还有下一页（去重后不足 limit，但行数取满了）
+        if (rows.size() >= limit * 4L) {
+            exhausted = false;
         }
 
         int moved = 0;
         int skipped = 0;
+        /*
+         * 扫到了但还没搬的。**原来它一个字都不出现** —— moveOne 只算不写时返回 -1，
+         * 而这里只统计 1 与 0，于是「还有几百个没搬」在报告里是不可见的，
+         * 而 clean 又只看 diffs。切真相源的判据于是守着一个它没在看的东西。
+         */
+        int pending = 0;
         List<Diff> diffs = new ArrayList<>();
 
         for (PrdSku sku : bySku.values()) {
@@ -106,6 +158,7 @@ public class InventoryBackfillServiceImpl implements InventoryBackfillService {
                         nz(sku.getStock()), dryRun, diffs);
                 moved += r == 1 ? 1 : 0;
                 skipped += r == 0 ? 1 : 0;
+                pending += r == -1 ? 1 : 0;
             } else {
                 for (PrdStoreStock st : storeRows) {
                     String locationId = acl.locationIdOf(entityNo, st.getStoreNo());
@@ -113,11 +166,13 @@ public class InventoryBackfillServiceImpl implements InventoryBackfillService {
                             locationId, nz(st.getStock()), dryRun, diffs);
                     moved += r == 1 ? 1 : 0;
                     skipped += r == 0 ? 1 : 0;
+                    pending += r == -1 ? 1 : 0;
                 }
             }
         }
 
-        Report report = new Report(bySku.size(), moved, skipped, diffs);
+        Report report = new Report(bySku.size(), moved, skipped, pending,
+                exhausted ? null : lastId, diffs);
         log.info("库存搬运{}：扫描 {} 个 SKU，搬 {} 条，跳过 {} 条，对差 {} 条{}",
                 dryRun ? "（只算不写）" : "", report.scannedSkus(), report.moved(),
                 report.skipped(), report.diffs().size(), report.clean() ? " —— 干净" : " ★");

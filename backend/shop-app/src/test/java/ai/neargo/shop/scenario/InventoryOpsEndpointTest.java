@@ -138,16 +138,18 @@ class InventoryOpsEndpointTest {
     }
 
     @Test
-    @DisplayName("★★★ /ops/inventory/recon 的 clean 是字段不是方法 —— 前端拿它当 G3 判据")
+    @DisplayName("★★★ /ops/inventory/recon：clean 是字段不是方法，且 pending 要在 —— 前端拿它当 G3 判据")
     void reconExposesCleanAsField() throws Exception {
         JsonNode r = ok("/ops/inventory/recon?limit=20", opsLogin());
-        for (String field : List.of("scannedSkus", "moved", "skipped", "clean", "diffs")) {
+        for (String field : List.of("scannedSkus", "moved", "skipped", "pending", "clean", "diffs")) {
             assertThat(r.has(field))
                     .as("ops-web 的 InvReconReport 读 %s；clean 缺了会被读成 undefined，"
                             + "而 undefined 在界面上长得和「干净」一样", field)
                     .isTrue();
         }
         assertThat(r.get("diffs").isArray()).isTrue();
+        // pending 缺了闸门就只剩「有没有差异」，而没搬过来的一个字都不会出现
+        assertThat(r.get("pending").isNumber()).as("pending 必须是个数，不能是 null").isTrue();
     }
 
     @Test

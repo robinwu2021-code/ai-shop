@@ -51,7 +51,9 @@ export const inventoryMock: InventoryApi = {
     wait({
       scannedSkus: 216,
       moved: 0,
-      skipped: 216,
+      skipped: 214,
+      // 刻意留两个没搬：没搬的和有差异的是**两种**不合格，界面要分得开
+      pending: 2,
       // **故意不干净**：全绿的样子谁都想得出来，不干净时怎么读才是这一页的价值
       clean: false,
       diffs: [
