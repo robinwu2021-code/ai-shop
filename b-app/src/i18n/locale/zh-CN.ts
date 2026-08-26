@@ -188,7 +188,7 @@ export default {
   },
 
     mySpecs: {
-      title: "商品规格",
+      title: "商品规格和参数",
       intro: "建品时能用的规格都在这里。平台没有的可以自己建。",
     tabDims: "销售规格",
     tabProps: "商品参数",

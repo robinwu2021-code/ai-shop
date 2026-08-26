@@ -526,6 +526,17 @@ async function removeDim(g: StoreCategorySpecs, dim: SpecTemplate) {
  * 且截断在小屏上没有任何提示（实测「颜色」与「自己建一个」都看不见）。
  */
 const picking = ref<string | null>(null);
+
+/** 弹层要的是那个类目对象（里面有 dims/props），不是一个号 */
+const pickingCat = computed(
+  () => byCategory.value.find((x) => x.categoryNo === picking.value) ?? null,
+);
+
+function closePick() {
+  picking.value = null;
+  building.value = "";
+  buildName.value = "";
+}
 /** 这一类还能加的规格（已在用的不再列 —— 再列一遍他点了不知道发生了什么） */
 const pickable = ref<SpecTemplate[]>([]);
 
@@ -605,10 +616,6 @@ async function pickDim(g: StoreCategorySpecs, picked: SpecTemplate) {
 const building = ref("");
 const buildName = ref("");
 
-function startBuild(categoryNo: string) {
-  building.value = categoryNo;
-  buildName.value = "";
-}
 
 /**
  * 自己建一个平台没有的规格 / 参数。
@@ -692,73 +699,6 @@ onShow(() => void load());
           <text class="btn-add__t">{{ picking === g.categoryNo
               ? $t("mySpecs.collapse")
               : $t(tab === "dims" ? "mySpecs.addDim" : "mySpecs.addProp") }}</text>
-        </view>
-      </view>
-
-      <!--
-        加规格：**页内展开一段，不弹层**。
-        候选有多少条取决于平台配了多少规格（现在 12 个，运营再加就更多），
-        而弹层的高度由屏幕决定、不由内容决定 —— 它迟早会截断，
-        且截断在小屏上没有任何提示（实测「颜色」与「自己建一个」都看不见）。
-      -->
-      <view v-if="picking === g.categoryNo" class="picker">
-        <!--
-          配额**不在这一行**。它与「平台还有这些」无关 —— 一句提示右边挂着
-          「自建 0 / 10」，两件事挤在一行，谁也读不出它们的关系。
-          它只在「自己建一个」那一刻有意义，所以搬到那一格里去了。
-        -->
-        <text class="sh-muted picker__hint">{{ $t("mySpecs.pickHint") }}</text>
-        <!-- 这一类平台配过的：默认摆出来，它们是平台针对这一类的判断 -->
-        <view v-if="pickCat.length" class="chips">
-          <!-- 带 ＋：一排光秃秃的词看不出是可点的，还是「已经有了」的清单 -->
-          <text v-for="p in pickCat" :key="p.templateNo" class="sh-chip chip"
-                @tap="pickDim(g, p)">＋ {{ p.name }}</text>
-        </view>
-        <!--
-          其余通用规格：有主候选时收起（理由见 pickCat 上面那段），
-          没有主候选时已经在 togglePick 里摊开了。
-          **开合链接放在 chip 下面**：摊开的时候它顶在上面像个小标题，
-          而这一段里唯一该被先看到的是那排能点的规格。
-        -->
-        <view v-if="showRest && pickRest.length" class="chips">
-          <text v-for="p in pickRest" :key="p.templateNo" class="sh-chip chip"
-                @tap="pickDim(g, p)">＋ {{ p.name }}</text>
-        </view>
-        <view v-if="pickRest.length && pickCat.length" class="picker__more">
-          <text class="link" @tap="showRest = !showRest">
-            {{ showRest ? $t("mySpecs.restHide") : $t("mySpecs.restShow", { n: pickRest.length }) }}
-          </text>
-        </view>
-        <text v-if="!pickable.length" class="sh-muted picker__empty">
-          {{ $t("mySpecs.noMoreDim") }}
-        </text>
-        <!-- 自己建放最后：顺序即建议，先看平台有没有现成的 -->
-        <!--
-          自己建一个：**页内一行输入**，不用系统弹框。
-          系统弹框的标题与输入框不是同一套字，字号行高都不归我们管 ——
-          看起来就是「粗糙、字不齐」，而那一点改不了。
-        -->
-        <view v-if="building !== g.categoryNo" class="picker__own" @tap="startBuild(g.categoryNo)">
-          <view class="picker__own-line">
-            <text class="picker__own-t">
-              ＋ {{ $t(tab === "dims" ? "mySpecs.buildOwnDim" : "mySpecs.buildOwnProp") }}
-            </text>
-            <text class="sh-muted picker__quota">
-              {{ $t("mySpecs.quotaShort", { used: ownUsed, max: ownMax }) }}
-            </text>
-          </view>
-          <text class="sh-muted picker__own-s">{{ $t("mySpecs.buildOwnCost") }}</text>
-        </view>
-        <view v-else class="build">
-          <input
-            v-model="buildName"
-            class="field__input build__input"
-            :placeholder="$t('mySpecs.buildOwnPh')"
-            :focus="true"
-            @confirm="confirmBuild(g)"
-          />
-          <text class="link build__ok" @tap="confirmBuild(g)">{{ $t("mySpecs.save") }}</text>
-          <text class="link link--quiet build__no" @tap="building = ''">{{ $t("mySpecs.cancel") }}</text>
         </view>
       </view>
 
@@ -885,6 +825,67 @@ onShow(() => void load());
       配额挪进了「加规格」面板 —— 那是唯一需要知道它的时刻。
     -->
     <text class="sh-muted foot">{{ $t("mySpecs.foot") }}</text>
+
+    <!--
+      **加规格 / 加参数走弹层，不在页内展开。**
+
+      <p>页内展开会把下面的类目卡整段顶走，商家一边挑一边失去上下文
+      （他本来是在看「这一类现在有哪几个」）；弹层把注意力收在一件事上，做完就回到原地。
+
+      <p>用自己的 sh-sheet 而不是 uni.showModal：后者的标题与输入框不是同一套字，
+      字号行高都不归我们管 —— 「粗糙、字不齐」改不掉。
+      而 sh-sheet 有 max-height + 滚动，候选从 5 条长到 25 条也不会把上半截顶出视口。
+    -->
+    <sh-sheet
+      :visible="!!pickingCat"
+      :title="$t(tab === 'dims' ? 'mySpecs.addDim' : 'mySpecs.addProp')"
+      :hint="$t('mySpecs.pickHint')"
+      @close="closePick"
+    >
+      <template v-if="pickingCat">
+        <view v-if="pickCat.length" class="chips sheet-gap">
+          <text v-for="p in pickCat" :key="p.templateNo" class="sh-chip chip"
+                @tap="pickDim(pickingCat, p)">＋ {{ p.name }}</text>
+        </view>
+        <view v-if="showRest && pickRest.length" class="chips sheet-gap">
+          <text v-for="p in pickRest" :key="p.templateNo" class="sh-chip chip"
+                @tap="pickDim(pickingCat, p)">＋ {{ p.name }}</text>
+        </view>
+        <view v-if="pickRest.length && pickCat.length" class="picker__more">
+          <text class="link" @tap="showRest = !showRest">
+            {{ showRest ? $t("mySpecs.restHide") : $t("mySpecs.restShow", { n: pickRest.length }) }}
+          </text>
+        </view>
+        <text v-if="!pickable.length" class="sh-muted picker__empty">
+          {{ $t("mySpecs.noMoreDim") }}
+        </text>
+
+        <!-- 自己建放最后：顺序即建议，先看平台有没有现成的 -->
+        <view class="sheet-own">
+          <view class="picker__own-line">
+            <text class="picker__own-t">
+              {{ $t(tab === "dims" ? "mySpecs.buildOwnDim" : "mySpecs.buildOwnProp") }}
+            </text>
+            <text class="sh-muted picker__quota">
+              {{ $t("mySpecs.quotaShort", { used: ownUsed, max: ownMax }) }}
+            </text>
+          </view>
+          <view class="build">
+            <input
+              v-model="buildName"
+              class="field__input build__input"
+              :placeholder="$t('mySpecs.buildOwnPh')"
+              @confirm="confirmBuild(pickingCat)"
+            />
+            <text class="link build__ok" @tap="confirmBuild(pickingCat)">
+              {{ $t("mySpecs.save") }}
+            </text>
+          </view>
+          <text class="sh-muted picker__own-s">{{ $t("mySpecs.buildOwnCost") }}</text>
+        </view>
+      </template>
+    </sh-sheet>
+
   </sh-scaffold>
 </template>
 
@@ -1007,7 +1008,19 @@ onShow(() => void load());
   font-size: 24rpx;
   margin-bottom: 16rpx;
 }
-/* 自建那一行：输入框 + 两个动作，与这一页其余部分同一套排版 */
+/* 弹层里各段之间留口气 */
+.sheet-gap {
+  margin-top: 20rpx;
+}
+
+/* 自己建一个：与候选之间用一条线隔开 —— 顺序即建议，先看平台有没有现成的 */
+.sheet-own {
+  margin-top: 24rpx;
+  padding-top: 20rpx;
+  border-top: 2rpx solid var(--sh-line);
+}
+
+/* 自建那一行：输入框 + 一个动作，与这一页其余部分同一套排版 */
 .build {
   display: flex;
   align-items: center;
