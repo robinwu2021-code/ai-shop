@@ -496,12 +496,13 @@ async function submit() {
               @input="q.expireAt = Number(($event as any).detail.value) || null"
             />
           </view>
-          <view class="shots">
-            <image v-if="q.imageUrl" :src="q.imageUrl" class="shot" mode="aspectFill" />
-            <view class="shot shot--add" @tap="addLicense(i)">
-              <text>{{ uploading ? $t("apply.uploading") : "＋" }}</text>
-            </view>
-          </view>
+          <sh-uploader
+            :list="q.imageUrl ? [q.imageUrl] : []"
+            :w="140"
+            :uploading="uploading"
+            @add="addLicense(i)"
+            @tap-item="addLicense(i)"
+          ></sh-uploader>
         </view>
 
         <view class="qual__add">
@@ -550,25 +551,6 @@ async function submit() {
 }
 .cb.is-on { background: var(--sh-primary); border-color: var(--sh-primary-text); }
 
-.shots {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16rpx;
-  margin-top: 20rpx;
-}
-.shot {
-  width: 140rpx;
-  height: 140rpx;
-  border-radius: 24rpx;
-  background: var(--sh-faint);
-}
-.shot--add {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 40rpx;
-  color: var(--sh-sub);
-}
 
 .head {
   padding: 32rpx 8rpx 28rpx;

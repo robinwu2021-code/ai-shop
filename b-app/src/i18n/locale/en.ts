@@ -85,7 +85,6 @@ export default {
     statusREJECTED: "Rejected",
     rejectFallback: "Your details did not pass review. Please add what is missing and resubmit.",
     rejectedHint: "Your previous answers are filled in below — fix the item above and resubmit, no need to start over.",
-    uploading: "Uploading",
     resubmit: "Edit and resubmit",
     required: "Please fill in the required fields",
   },

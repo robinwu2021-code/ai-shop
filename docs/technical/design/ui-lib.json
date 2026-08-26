@@ -1014,7 +1014,7 @@
         "mode?: string"
       ],
       "usage": {
-        "b-app": 9,
+        "b-app": 7,
         "c-app": 10
       },
       "note": "商品封面",
@@ -1189,6 +1189,27 @@
       "why": "9 套皮肤 × 明暗 × 语言，选中即时全局生效"
     },
     {
+      "name": "sh-uploader",
+      "file": "packages/ui/src/components/sh-uploader.vue",
+      "scope": "跨端",
+      "lines": 139,
+      "props": [
+        "list: readonly string[]",
+        "max?: number",
+        "w?: number",
+        "h?: number",
+        "uploading?: boolean",
+        "removable?: boolean",
+        "badge?: string"
+      ],
+      "usage": {
+        "b-app": 4,
+        "c-app": 0
+      },
+      "note": "图片格",
+      "why": "已传的缩略图排一行，末尾一个「＋」。收编自 apply / payment / qualifications / goods-edit 四份"
+    },
+    {
       "name": "app-overlay",
       "file": "b-app/src/components/app-overlay.vue",
       "scope": "B 端",
@@ -1351,11 +1372,12 @@
       "page": "apply",
       "file": "b-app/src/pages/apply/index.vue",
       "components": [
-        "sh-scaffold"
+        "sh-scaffold",
+        "sh-uploader"
       ],
       "libClassHits": 45,
-      "localSelectors": 42,
-      "localCssLines": 172,
+      "localSelectors": 39,
+      "localCssLines": 153,
       "rolled": [
         {
           "id": "segment",
@@ -1363,13 +1385,6 @@
           "lib": ".sh-chip--primary",
           "rule": "(--on|--off|is-on)\\s*[,{]",
           "gap": false
-        },
-        {
-          "id": "uploader",
-          "label": "图片上传格",
-          "lib": null,
-          "rule": "pickImages\\(|chooseImages\\(",
-          "gap": true
         }
       ]
     },
@@ -1610,11 +1625,12 @@
         "sh-cover",
         "sh-scaffold",
         "sh-section",
-        "sh-sheet"
+        "sh-sheet",
+        "sh-uploader"
       ],
       "libClassHits": 118,
-      "localSelectors": 103,
-      "localCssLines": 565,
+      "localSelectors": 96,
+      "localCssLines": 511,
       "rolled": [
         {
           "id": "sysmodal",
@@ -1670,13 +1686,6 @@
           "label": "可删标签",
           "lib": null,
           "rule": "class=\"[^\"]*(?:val__x|__x|\\bdel\\b)[^\"]*\"[^>]*>\\s*[✕×]",
-          "gap": true
-        },
-        {
-          "id": "uploader",
-          "label": "图片上传格",
-          "lib": null,
-          "rule": "pickImages\\(|chooseImages\\(",
           "gap": true
         }
       ]
@@ -2205,24 +2214,18 @@
       "page": "payment",
       "file": "b-app/src/pages/payment/index.vue",
       "components": [
-        "sh-scaffold"
+        "sh-scaffold",
+        "sh-uploader"
       ],
       "libClassHits": 22,
-      "localSelectors": 22,
-      "localCssLines": 100,
+      "localSelectors": 19,
+      "localCssLines": 81,
       "rolled": [
         {
           "id": "kv",
           "label": "键值行",
           "lib": null,
           "rule": "^\\s*\\.(kv|rule|prob|field__head)\\b",
-          "gap": true
-        },
-        {
-          "id": "uploader",
-          "label": "图片上传格",
-          "lib": null,
-          "rule": "pickImages\\(|chooseImages\\(",
           "gap": true
         }
       ]
@@ -2323,13 +2326,13 @@
       "page": "qualifications",
       "file": "b-app/src/pages/qualifications/index.vue",
       "components": [
-        "sh-cover",
         "sh-empty",
-        "sh-scaffold"
+        "sh-scaffold",
+        "sh-uploader"
       ],
       "libClassHits": 23,
-      "localSelectors": 25,
-      "localCssLines": 129,
+      "localSelectors": 22,
+      "localCssLines": 111,
       "rolled": [
         {
           "id": "listrow",
@@ -2343,13 +2346,6 @@
           "label": "键值行",
           "lib": null,
           "rule": "^\\s*\\.(kv|rule|prob|field__head)\\b",
-          "gap": true
-        },
-        {
-          "id": "uploader",
-          "label": "图片上传格",
-          "lib": null,
-          "rule": "pickImages\\(|chooseImages\\(",
           "gap": true
         }
       ]
@@ -2889,19 +2885,6 @@
       ]
     },
     {
-      "id": "uploader",
-      "label": "图片上传格",
-      "lib": null,
-      "gap": true,
-      "rule": "pickImages\\(|chooseImages\\(",
-      "pages": [
-        "apply",
-        "goods-edit",
-        "payment",
-        "qualifications"
-      ]
-    },
-    {
       "id": "chipdel",
       "label": "可删标签",
       "lib": null,
@@ -3090,8 +3073,8 @@
   "counts": {
     "tokens": 10,
     "blocks": 36,
-    "components": 17,
+    "components": 18,
     "pages": 52,
-    "gapKinds": 8
+    "gapKinds": 7
   }
 }

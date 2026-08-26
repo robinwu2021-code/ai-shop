@@ -189,12 +189,12 @@ async function refresh() {
       <view v-if="needLicense" class="field">
         <text class="field__label">{{ $t("payment.licenses") }}</text>
         <text class="hint">{{ $t("payment.licensesHint") }}</text>
-        <view class="shots">
-          <image v-for="(url, i) in licenses" :key="i" :src="url" class="shot" mode="aspectFill" />
-          <view class="shot shot--add" @tap="addLicense">
-            <text>{{ uploading ? "…" : "+" }}</text>
-          </view>
-        </view>
+        <sh-uploader
+          :list="licenses"
+          :w="160"
+          :uploading="uploading"
+          @add="addLicense"
+        ></sh-uploader>
       </view>
 
       <view class="sh-btn submit" @tap="submit">
@@ -281,25 +281,6 @@ async function refresh() {
   margin-top: 10rpx;
   font-size: 24rpx;
   line-height: 1.5;
-  color: var(--sh-sub);
-}
-.shots {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16rpx;
-  margin-top: 16rpx;
-}
-.shot {
-  width: 160rpx;
-  height: 160rpx;
-  border-radius: 24rpx;
-  background: var(--sh-faint);
-}
-.shot--add {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 48rpx;
   color: var(--sh-sub);
 }
 .submit {

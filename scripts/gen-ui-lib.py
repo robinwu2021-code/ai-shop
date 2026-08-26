@@ -105,6 +105,7 @@ COMP_NOTES = {
     "sh-rating": ("评分", "底层灰星 + 上层主色星按百分比裁切 —— 半星图标只能表达 0.5 粒度，4.3 会被抹成 4.5"),
     "sh-theme-sheet": ("外观面板", "9 套皮肤 × 明暗 × 语言，选中即时全局生效"),
     "sh-add": ("＋ 加一项按钮", "收编自 goods-edit 与 my-specs 里**逐字节相同**的 `.btn-add`。`active` 是展开态：同一个按钮管开合"),
+    "sh-uploader": ("图片格", "已传的缩略图排一行，末尾一个「＋」。收编自 apply / payment / qualifications / goods-edit 四份", "详情图那种**竖排 + 每行 ↑↓✕** 的排序件不归它管 —— 名字像、东西不同"),
     "sh-section": ("卡内标题行", "收编自 goods-edit 与 sku-identity **逐字节相同**的 `.sec`（8 处调用点）。右侧动作直接进插槽，**不套壳** —— `.sec` 是 space-between，多一层就把「三个孩子摊开」变成「两组左右分」"),
     "sh-savebar": ("底部未保存条", "收编自 store 与 store-scope 里**逐字节相同**的 `.savebar`。自带流内占位 —— 收编前两页都被它盖住了最后一段内容"),
     "biz-region-picker": ("经营范围选择器", "省市区 / 小区 / 村三级 + 提报。全项目最大的单文件组件"),
@@ -143,6 +144,18 @@ SAMPLES = {
                '<span class="add__t">收起</span></div>'
                '<div class="add add--sm">{{icon:plus:10:var(--sh-primary)}}'
                '<span class="add__t">加值</span></div>'),
+    "sh-uploader": ('<div class="up">'
+                    '<div class="up__cell" style="width:52px;height:52px">'
+                    '<div class="up__img" style="width:52px;height:52px;display:flex;'
+                    'align-items:center;justify-content:center">🧾</div>'
+                    '<span class="up__badge">主图</span>'
+                    '<span class="up__del">×</span></div>'
+                    '<div class="up__cell" style="width:52px;height:52px">'
+                    '<div class="up__img" style="width:52px;height:52px;display:flex;'
+                    'align-items:center;justify-content:center">🥬</div>'
+                    '<span class="up__del">×</span></div>'
+                    '<div class="up__add" style="width:52px;height:52px">'
+                    '<span class="up__plus">＋</span></div></div>'),
     "sh-section": ('<div class="sec"><span class="sh-h2">商品参数</span>'
                    '<div class="add">{{icon:plus:12:var(--sh-primary)}}'
                    '<span class="add__t">加参数</span></div></div>'
@@ -364,7 +377,10 @@ ROLLED = [
      r'class="[^"]*(?:val__x|__x|\bdel\b)[^"]*"[^>]*>\s*[✕×]', None,           None,       None),
     ("savebar", "底部固定条",      None, r"position:\s*fixed[^}]*bottom:\s*0",    None,       None),
     ("search",  "搜索框",         None, r"^\s*\.search\b",                      None,       None),
-    ("uploader","图片上传格",      r"pickImages\(|chooseImages\(", None,          None,       None),
+    # 判据要认「自己画了格子」，不是「调了选图」—— 收编成 sh-uploader 之后，
+    # 选图逻辑仍然归页面（那是业务：传几张、传到哪、失败怎么办），
+    # 只有 UI 归组件。只认 pickImages 的话，四页收编完清单一动不动。
+    ("uploader","图片上传格",      r"pickImages\(|chooseImages\(", None,   "sh-uploader", None),
     ("fab",     "悬浮新建按钮",    None, r"^\s*\.fab\b",                         None,       None),
 ]
 

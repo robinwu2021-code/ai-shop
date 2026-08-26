@@ -134,7 +134,6 @@ export default {
     statusREJECTED: "已驳回",
     rejectFallback: "资料未通过审核，请补充后重新提交",
     rejectedHint: "下面已回填你上次填的内容，改掉上面说的那一项再提交即可，不用重填。",
-    uploading: "上传中",
     resubmit: "修改并重新提交",
     required: "请把必填项填完",
   },

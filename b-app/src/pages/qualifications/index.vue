@@ -217,10 +217,15 @@ onShow(() => void load());
       <text class="sh-muted hint">{{ $t("qual.expireHint") }}</text>
       <view class="kv kv--top">
         <text class="kv__k">{{ $t("qual.fieldPhoto") }}</text>
-        <view class="photo" @tap="pickPhoto">
-          <sh-cover v-if="form.imageUrl" class="photo__img" :src="form.imageUrl"></sh-cover>
-          <text v-else class="photo__plus">{{ uploading ? "…" : "＋" }}</text>
-        </view>
+        <sh-uploader
+          :list="form.imageUrl ? [form.imageUrl] : []"
+          :max="1"
+          :w="160"
+          :h="112"
+          :uploading="uploading"
+          @add="pickPhoto"
+          @tap-item="pickPhoto"
+        ></sh-uploader>
       </view>
       <view class="acts">
         <view class="sh-btn sh-btn--muted" @tap="form = null">{{ $t("common.cancel") }}</view>
@@ -336,24 +341,6 @@ onShow(() => void load());
   background: var(--sh-faint);
   font-size: 28rpx;
   color: var(--sh-ink);
-}
-.photo {
-  width: 160rpx;
-  height: 112rpx;
-  border-radius: 16rpx;
-  background: var(--sh-faint);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.photo__img {
-  width: 160rpx;
-  height: 112rpx;
-  border-radius: 16rpx;
-}
-.photo__plus {
-  font-size: 40rpx;
-  color: var(--sh-sub);
 }
 .acts {
   display: flex;

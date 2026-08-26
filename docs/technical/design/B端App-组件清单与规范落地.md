@@ -11,7 +11,7 @@
 
 ## 一、一句话
 
-B 端 52 个页面共用 **17 个组件 + 32 个公共类**，
+B 端 52 个页面共用 **18 个组件 + 32 个公共类**，
 但页面自己还另写了 **5 965 行 scoped CSS、1 119 条选择器** ——
 **平均每页 114 行样式、21 条选择器**。组件库覆盖的是「壳与积木」，
 「一页长什么样」基本仍由各页自己决定。
@@ -168,6 +168,7 @@ easycom 前缀 `biz-`（业务件）与 `app-`（外壳件）。
 |---|---|---|
 | **数字格**（几个大数 + 小标签） | `coupon-issues` / `member-reach` / `customers` / `activities` | 前两个的 `.trio` **逐字节相同**；`customers` 的 `.quad` 是同一件事的第三种写法（40rpx/600 vs 44rpx/700），且带着 4.2 的 bug |
 | **底部保存条** | `store` / `store-scope` | ~~`.savebar` 逐字节相同~~ → **已收编为 `sh-savebar`**（2026-08-26） |
+| **图片上传格** | apply / payment / qualifications / goods-edit | ~~四页各一份~~ → **已收编为 `sh-uploader`**（2026-08-26）。`goods-edit` 的详情图（`.dimgs`：竖排 + 每行 ↑↓✕）是另一个形态，仍在页面里 |
 | **表单件** | `.field` 7 页、`.field__label` 2 页、`.field__input` 1 页、`.field__area` 1 页重定义 | `base.css` 的注释里已经记过一次同样的漂移（「4 个页面 88rpx/30rpx，3 个页面 84rpx/28rpx」）——**它又长回来了** |
 
 ### 4.5 三处自建弹层没走 `sh-sheet`

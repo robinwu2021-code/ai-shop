@@ -2181,18 +2181,16 @@ async function save(thenSubmit = false) {
             {{ $t("goods.imagesCount", { n: photos.length, m: PHOTO_LIMIT }) }}
           </text>
         </view>
-        <view class="imgs">
-          <view v-for="(img, i) in photos" :key="img + i" class="imgs__cell" @tap="tapPhoto(i)">
-            <sh-cover class="imgs__img" :src="img"></sh-cover>
-            <!-- 角标而不是另起一行说明：哪张是封面必须**看图就知道**，
-                 靠位置约定（"第一张"）的话，滑动之后没人数得清自己在第几张 -->
-            <text v-if="i === 0" class="imgs__badge">{{ $t("goods.coverBadge") }}</text>
-            <text class="imgs__del" @tap.stop="removePhoto(i)">×</text>
-          </view>
-          <view v-if="photos.length < PHOTO_LIMIT" class="imgs__add" @tap="addImages">
-            <text class="imgs__plus">{{ uploading ? "…" : "＋" }}</text>
-          </view>
-        </view>
+        <sh-uploader
+          :list="photos"
+          :max="PHOTO_LIMIT"
+          :uploading="uploading"
+          removable
+          :badge="String($t('goods.coverBadge'))"
+          @add="addImages"
+          @remove="removePhoto"
+          @tap-item="tapPhoto"
+        ></sh-uploader>
         <text class="sh-muted hint">{{ $t("goods.photosHint") }}</text>
       </view>
 
@@ -3381,18 +3379,6 @@ async function save(thenSubmit = false) {
   所以只加粗字段标签，节标题维持 .sh-h2 的 600。
 */
 
-/* 主图角标：压在第一格左下角，看图就知道哪张是封面 */
-.imgs__badge {
-  position: absolute;
-  left: 0;
-  bottom: 0;
-  padding: 4px 8rpx;
-  border-top-right-radius: 8rpx;
-  background: var(--sh-primary);
-  color: var(--sh-on-primary);
-  font-size: 24rpx;
-  line-height: 1.1;
-}
 
 /*
   图文详情正文：起步 3 行，随内容长高，长到屏高六成为止。
@@ -3513,24 +3499,6 @@ async function save(thenSubmit = false) {
 .sec__h {
   display: block;
   margin-bottom: 24rpx;
-}
-.imgs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12rpx;
-  margin-top: 12rpx;
-}
-.imgs__cell {
-  position: relative;
-  width: 104rpx;
-  height: 104rpx;
-}
-.imgs__img {
-  width: 104rpx;
-  height: 104rpx;
-  border-radius: 16rpx;
-  /* 老商品的封面是 emoji，走 sh-cover 的文字分支；不给字号会缩成一个点 */
-  font-size: 48rpx;
 }
 /*
  * 一行一个规格、一个数字。价格卡与库存卡共用这一套 ——
@@ -3685,37 +3653,6 @@ async function save(thenSubmit = false) {
 /* 计数与标签同行右对齐：「已添加 2 / 9」比一句「最多 9 张」有用 */
 .imgs__n {
   flex-shrink: 0;
-}
-.imgs__del {
-  position: absolute;
-  top: -10rpx;
-  right: -10rpx;
-  width: 40rpx;
-  height: 40rpx;
-  line-height: 36rpx;
-  text-align: center;
-  border-radius: 50%;
-  background: var(--sh-ink);
-  color: var(--sh-bg);
-  font-size: 26rpx;
-}
-.imgs__add {
-  width: 104rpx;
-  height: 104rpx;
-  /*
-   * 用填充底色而不是虚线框：`2rpx` 在 375 视口下换算成 **1px 以下**，
-   * 浏览器取整成 0 —— 边框写了却一条线也画不出来（实测 computed 为 0px）。
-   * 底色不受这个取整影响，而且与主图那个空态方框是同一种表达。
-   */
-  background: var(--sh-faint);
-  border-radius: 16rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.imgs__plus {
-  font-size: 40rpx;
-  color: var(--sh-sub);
 }
 /* 标签 + 输入框一行。标签固定宽度，几行叠起来时冒号后的输入框才对得齐 */
 .kv {
