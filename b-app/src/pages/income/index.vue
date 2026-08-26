@@ -64,7 +64,7 @@ onShow(() => {
       <view v-if="sum.inFlightMinor > 0" class="sh-card mt hold">
         <view class="line">
           <text class="sh-muted">{{ $t("income.inFlight") }}</text>
-          <text class="sh-num strong">{{ money(sum.inFlightMinor) }}</text>
+          <text class="sh-num amt-sm">{{ money(sum.inFlightMinor) }}</text>
         </view>
         <text class="sub sh-muted">
           {{ $t("income.inFlightHint", { n: sum.inFlightCount }) }}
@@ -78,7 +78,7 @@ onShow(() => {
       <view class="sh-card mt">
         <view class="line">
           <text class="sh-muted">{{ $t("income.pending") }}</text>
-          <text class="sh-num strong">{{ money(sum.pendingMinor) }}</text>
+          <text class="sh-num amt-sm">{{ money(sum.pendingMinor) }}</text>
         </view>
         <text class="sub sh-muted">{{ $t("income.pendingHint") }}</text>
       </view>
@@ -90,7 +90,7 @@ onShow(() => {
       <view v-if="sum.offlineMinor > 0" class="sh-card mt">
         <view class="line">
           <text class="sh-muted">{{ $t("income.offline") }}</text>
-          <text class="sh-num strong">{{ money(sum.offlineMinor) }}</text>
+          <text class="sh-num amt-sm">{{ money(sum.offlineMinor) }}</text>
         </view>
         <text class="sub sh-muted">{{ $t("income.offlineHint") }}</text>
       </view>
@@ -118,7 +118,8 @@ onShow(() => {
   align-items: baseline;
   justify-content: space-between;
 }
-.strong {
+/* 同一页上比 .amt 小一档的金额（在途/待结/线下），名字要说清它是钱 */
+.amt-sm {
   font-size: 36rpx;
   font-weight: 700;
   color: var(--sh-ink);

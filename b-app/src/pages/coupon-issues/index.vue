@@ -136,8 +136,8 @@ onShow(load);
 }
 .trio__n {
   display: block;
-  font-size: 44rpx;
-  font-weight: 700;
+  font-size: 40rpx;
+  font-weight: 600;
 }
 .trio__n.is-ok {
   color: var(--sh-success);

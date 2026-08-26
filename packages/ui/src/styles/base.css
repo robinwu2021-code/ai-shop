@@ -680,6 +680,25 @@ uni-page-wrapper[style*="--window-bottom"] {
   font-weight: 600;
   line-height: 1.4;
 }
+/*
+ * 小一号的按钮：**放在一行文字动作里当主操作用**。
+ *
+ * <p>为什么需要它：`stores` 想让「切到这家」比旁边的「改名 / 设默认 / 停用」重一档，
+ * 做法是给那个文字动作加 `font-weight: 600` —— 而字阶那条写着
+ * **600 只给标题与按钮**，文字动作两者都不是。
+ *
+ * <p>正确的解法是**换形态而不是加字重**：把主操作做成一枚 tint 胶囊，
+ * 旁边仍是文字。这与「危险操作靠形态而不是靠颜色区分」是同一条原则 ——
+ * 加粗只是把同一个形状描得更黑，一行里四个都是文字时，重的那个仍要找。
+ *
+ * <p>字号 26rpx 不是新起的：`login` 的「获取验证码」、`sku-identity` 的
+ * 「导出/选文件」、`store-scope` 的「收起」三处覆盖 `.sh-btn` 内边距时，
+ * 取的都是 26rpx —— 这一档本来就存在，只是没有名字。
+ */
+.sh-btn--sm {
+  padding: 12rpx 28rpx;
+  font-size: 26rpx;
+}
 .sh-btn--soft {
   background: var(--sh-primary-tint);
   color: var(--sh-primary-text);

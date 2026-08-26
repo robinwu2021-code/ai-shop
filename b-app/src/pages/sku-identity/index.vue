@@ -303,7 +303,7 @@ function arrow(from?: string | null, to?: string | null): string {
 .num__v {
   display: block;
   font-size: 40rpx;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--sh-ink);
 }
 

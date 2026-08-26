@@ -81,10 +81,13 @@ const emit = defineEmits<{ close: [] }>();
   gap: 16rpx;
 }
 
+/* 34rpx/600 = 字阶的 .txt-title。此前是 32rpx/700 —— 32 不在七档上，
+   而 700 按字阶只给价格。**组件库带头破的那一档，页面照抄不奇怪**：
+   goods-list 的 .sheet__t 与 order 的 .dlg__title 也都是 32rpx。 */
 .sheet__title {
   flex: 1;
-  font-size: 32rpx;
-  font-weight: 700;
+  font-size: 34rpx;
+  font-weight: 600;
   color: var(--sh-ink);
 }
 

@@ -567,7 +567,7 @@
         "line-height": "1.4"
       },
       "usage": {
-        "b-app": 70,
+        "b-app": 71,
         "c-app": 36
       }
     },
@@ -630,6 +630,24 @@
       }
     },
     {
+      "class": ".sh-btn--sm",
+      "group": "按钮",
+      "when": "小一号：**放在一行文字动作里当主操作**（stores 的「切到这家」）",
+      "avoid": "整屏的主操作用默认尺寸",
+      "decl": {
+        "padding": "12rpx 28rpx",
+        "font-size": "26rpx"
+      },
+      "px": {
+        "padding": "6px 14px",
+        "font-size": "13px"
+      },
+      "usage": {
+        "b-app": 1,
+        "c-app": 0
+      }
+    },
+    {
       "class": ".sh-btn--soft",
       "group": "按钮",
       "when": "次要操作：tint 底 + 主色字",
@@ -643,7 +661,7 @@
         "color": "var(--sh-primary-text)"
       },
       "usage": {
-        "b-app": 23,
+        "b-app": 24,
         "c-app": 7
       }
     },
@@ -663,7 +681,7 @@
         "font-weight": "400"
       },
       "usage": {
-        "b-app": 37,
+        "b-app": 36,
         "c-app": 1
       }
     },
@@ -1081,7 +1099,7 @@
       "name": "sh-sheet",
       "file": "packages/ui/src/components/sh-sheet.vue",
       "scope": "跨端",
-      "lines": 103,
+      "lines": 106,
       "props": [
         "visible: boolean",
         "title: string",
@@ -2701,9 +2719,9 @@
       "components": [
         "sh-scaffold"
       ],
-      "libClassHits": 29,
-      "localSelectors": 30,
-      "localCssLines": 139,
+      "libClassHits": 31,
+      "localSelectors": 29,
+      "localCssLines": 136,
       "rolled": [
         {
           "id": "sysmodal",
@@ -3042,7 +3060,7 @@
   ],
   "counts": {
     "tokens": 10,
-    "blocks": 34,
+    "blocks": 35,
     "components": 17,
     "pages": 52,
     "gapKinds": 8

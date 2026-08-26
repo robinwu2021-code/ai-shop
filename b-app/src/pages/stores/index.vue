@@ -351,7 +351,7 @@ function pickPayment(s: Store, payMerchantNo?: string) {
         -->
         <text
           v-if="s.storeNo !== merchant.storeNo && s.status === 'ACTIVE'"
-          class="sh-link act--go"
+          class="sh-btn sh-btn--soft sh-btn--sm"
           @tap="switchTo(s)"
         >{{ $t("stores.switchTo") }}</text>
         <!--
@@ -530,10 +530,6 @@ function pickPayment(s: Store, payMerchantNo?: string) {
   display: flex;
   gap: 24rpx;
   margin-top: 20rpx;
-}
-/* 切店是这一页最常用的一下：加重，与「改名/设默认」这类偶发动作拉开 */
-.act--go {
-  font-weight: 600;
 }
 .field {
   margin-top: 20rpx;

@@ -84,8 +84,12 @@ describe("字阶", () => {
     for (const f of vueFiles) {
       for (const r of rules(styleBlocks(readFileSync(f, "utf8")))) {
         if (!/font-weight:\s*(700|800|900|bold)/.test(r.body)) continue;
-        // 价格类选择器：price / now / amount / total / 以及金额专用的 sh-num
-        if (/(price|__now|amount|total|money|sum|fee)\b/i.test(r.sel)) continue;
+        // 价格类选择器：price / now / amount / total / 以及金额专用的 sh-num。
+        // **`amt` 与 `due` 是 2026-08-26 补的**：income / points 的 `.amt`、
+        // order 的 `.due`（应收）都是 `money(...)` 渲染出来的金额，而名单只认全称，
+        // 于是四处真价格被当成违规报了出来。**一条报四个假的断言等于没有断言** ——
+        // 真正那一处（sh-sheet 的标题用了 700）就淹在里面。
+        if (/(price|__now|amount|amt|due|total|money|sum|fee)\b/i.test(r.sel)) continue;
         if (NON_TEXT.test(r.sel)) continue;
         offenders.push(`${rel(f)}  ${r.sel}`);
       }
