@@ -103,7 +103,7 @@ const draft = ref<{
 function startEditDim(g: StoreCategorySpecs, t: SpecTemplate) {
   editingDim.value = editKey(g.categoryNo, t.templateNo);
   editingCat.value = g;
-  // 从「加规格」那一步进来的：让弹层翻到编辑页，而不是关掉再开一个
+  // 从「加规格」那一步进来的：让弹层翻到档位页，而不是关掉再开一个
   picking.value = null;
   draft.value = {
     dimNo: t.templateNo,
@@ -117,6 +117,8 @@ function startEditDim(g: StoreCategorySpecs, t: SpecTemplate) {
     labels: Object.fromEntries(t.options.map((o) => [o.code ?? "", o.label])),
     dropped: [],
   };
+  // 必须在 draft 落定之后 —— 它读的就是 draft.dimNo
+  void loadValCands();
 }
 
 /**
@@ -304,23 +306,21 @@ const valuePhWord = computed(() =>
 const valueHintWord = computed(() =>
   t(tab.value === "dims" ? "mySpecs.addValueHint" : "mySpecs.addPropValueHint"));
 
-const addingVal = ref(false);
 const valCands = ref<SpecOption[]>([]);
 const newVal = ref("");
 
-async function openAddValue() {
-  const d = draft.value;
-  addingVal.value = true;
+/**
+ * 取这个规格还能加的档位。**在打开档位那一屏时就取**，不再单开一层。
+ *
+ * <p>上一版「＋ 加档位」是弹层里的又一步，于是「已经有哪几档」和「还能加哪几档」
+ * 分在两屏 —— 而他要做的判断（这一档我要不要）需要同时看见两边。
+ */
+async function loadValCands() {
   valCands.value = [];
-  newVal.value = "";
+  const d = draft.value;
   const all = await api.mDimValues(d.dimNo).catch(() => []);
   const have = new Set(d.values.map((v) => v.code));
   valCands.value = all.filter((o) => !have.has(o.code ?? ""));
-}
-
-function closeAddValue() {
-  addingVal.value = false;
-  newVal.value = "";
 }
 
 /** 用上一档：**已经去掉过的要从 dropped 里摘回来**，否则提交时又被显式关掉 */
@@ -332,8 +332,10 @@ function useValue(code: string, label: string) {
 }
 
 function pickValue(o: SpecOption) {
-  useValue(o.code ?? "", o.label);
-  closeAddValue();
+  const code = o.code ?? "";
+  useValue(code, o.label);
+  // 加进来的从候选里摘掉：留着的话同一档在这一屏出现两次，点第二次什么也不会发生
+  valCands.value = valCands.value.filter((x) => (x.code ?? "") !== code);
 }
 
 /** 平台没有的那一档（750g）：落进平台这个规格下，所以仍在同一根轴上 */
@@ -347,7 +349,8 @@ async function confirmNewValue() {
     if (added.label !== name) {
       uni.showToast({ title: t("mySpecs.valueMerged", { name: added.label }), icon: "none" });
     }
-    closeAddValue();
+    newVal.value = "";
+    valCands.value = valCands.value.filter((x) => x.label !== added.label);
   } catch (e) {
     uni.showToast({ title: (e as Error).message, icon: "none" });
   }
@@ -559,27 +562,72 @@ function closePick() {
  * 那一下本来是「改着改着发现这一个该排前面」，而列表行上本来就有手柄 ——
  * 关掉弹层再拖，比多一个只在某一种状态下才存在的手柄好解释。
  */
-type SheetStep = "pick" | "edit" | "values";
+type SheetStep = "pick" | "rename" | "values";
 const sheetStep = computed<SheetStep | null>(() => {
-  if (addingVal.value) return "values";
-  if (editingDim.value) return "edit";
+  if (renaming.value) return "rename";
+  if (editingDim.value) return "values";
   return picking.value ? "pick" : null;
 });
 
 function closeSheet() {
-  addingVal.value = false;
   newVal.value = "";
   editingDim.value = null;
   editingCat.value = null;
+  renaming.value = null;
   closePick();
 }
 
-/** 标题跟着步骤走。编辑那一步用规格自己的名字 —— 他正在改的就是它 */
+/** 标题：改哪一条就写哪一条的名字，加规格那一步写「加规格」 */
 const sheetTitle = computed(() => {
-  if (sheetStep.value === "values") return valueWord.value;
-  if (sheetStep.value === "edit") return draft.value.platformName || draft.value.label;
+  if (sheetStep.value === "rename") return t("mySpecs.rename");
+  if (sheetStep.value === "values") return draft.value.platformName || draft.value.label;
   return t(tab.value === "dims" ? "mySpecs.addDim" : "mySpecs.addProp");
 });
+
+/*
+ * **改名与改档位是两件事，各自一屏、各自一个保存。**
+ *
+ * <p>摞在一起时那一屏要同时回答两个问题：「它该叫什么」和「它有哪几档」——
+ * 而商家来这一页十次有九次只为后者。更实的问题是那个「保存」：
+ * 它一次提交两样东西，于是「我只想加一档」和「我只想改个叫法」
+ * 走的是同一条会把另一半也写一遍的路。
+ *
+ * <p>入口也分开：点名字 = 改名（虚线下划线，一眼看出这行字可以改），
+ * 点值那行或右边的滑杆 = 改档位。
+ */
+const renaming = ref<string | null>(null);
+const renameCat = ref<StoreCategorySpecs | null>(null);
+const renameDraft = ref({ dimNo: "", platformName: "", label: "" });
+
+function startRename(g: StoreCategorySpecs, tpl: SpecTemplate) {
+  renaming.value = editKey(g.categoryNo, tpl.templateNo);
+  renameCat.value = g;
+  renameDraft.value = {
+    dimNo: tpl.templateNo,
+    // 平台原名当占位符：清空 = 用回平台的叫法
+    platformName: platformNames.value[tpl.templateNo] ?? tpl.name,
+    label: tpl.name,
+  };
+}
+
+/** 只改名字：**档位原样带回去**（后端先清后写，不带就等于把档位取舍全清了） */
+async function saveRename() {
+  const g = renameCat.value;
+  const d = renameDraft.value;
+  if (!g) return;
+  const cur = listOf(g).find((x) => x.templateNo === d.dimNo);
+  try {
+    await commit(g, undefined, {
+      dimNo: d.dimNo,
+      label: d.label,
+      values: (cur?.options ?? []).map((o) => o.code ?? ""),
+      dropped: [],
+    });
+    closeSheet();
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: "none" });
+  }
+}
 /** 这一类还能加的规格（已在用的不再列 —— 再列一遍他点了不知道发生了什么） */
 const pickable = ref<SpecTemplate[]>([]);
 
@@ -784,7 +832,8 @@ onShow(() => void load());
           >
             <sh-icon name="grip" :size="28" color="var(--sh-sub)" />
           </view>
-          <text class="spec__name">{{ t.name }}</text>
+          <!-- 虚线下划线：一眼看出这行字可以改，而不必再摆一个图标 -->
+          <text class="spec__name" @tap.stop="startRename(g, t)">{{ t.name }}</text>
           <!-- 自建的标出来：它不参与跨店比价，而那是看不见的差别 -->
           <text v-if="t.scope === 'MERCHANT'" class="spec__own">{{ $t("mySpecs.own") }}</text>
           <view class="spec__spacer"></view>
@@ -796,7 +845,7 @@ onShow(() => void load());
           </view>
         </view>
         <!-- 单行省略：换行撑高的话，一屏就少看两个规格 -->
-        <text class="spec__vals">{{ t.options.map((o) => o.label).join(" · ") || $t("mySpecs.noValueYet") }}</text>
+        <text class="spec__vals" @tap="startEditDim(g, t)">{{ t.options.map((o) => o.label).join(" · ") || $t("mySpecs.noValueYet") }}</text>
       </view>
 
       <text v-if="!listOf(g).length && picking !== g.categoryNo" class="cat__empty">
@@ -886,10 +935,12 @@ onShow(() => void load());
         </view>
       </template>
 
-      <!-- ② 起名 + 配档位。名字的占位符是平台原名：清空 = 用回平台的叫法 -->
-      <template v-else-if="sheetStep === 'edit' && editingCat">
-        <input v-model="draft.label" class="field__input edit__input sheet-gap"
-               :placeholder="draft.platformName" />
+      <!--
+        ② 改档位。**只管档位** —— 已有的、还能加的、自己填的，全在这一屏，
+        因为「这一档我要不要」这个判断需要同时看见两边。
+      -->
+      <template v-else-if="sheetStep === 'values' && editingCat">
+        <text class="sh-muted sheet-lead">{{ $t("mySpecs.valsLead") }}</text>
         <!--
           档位可以拖。**落点按 chip 的中心点算**，不像规格行那样按行高除 ——
           chip 是横向换行的二维排列，「位移 ÷ 行高」在这里没有意义：
@@ -916,27 +967,16 @@ onShow(() => void load());
             {{ draft.labels[v.code] ?? v.code }}
             <text class="val__x" @tap.stop="dropValue(v.code)">✕</text>
           </text>
-          <text class="sh-chip val val--add" @tap="openAddValue()">＋ {{ valueWord }}</text>
         </view>
-        <text class="sh-muted edit__tip">{{ $t("mySpecs.renameTip") }}</text>
-        <view class="edit__acts">
-          <view class="sh-btn sh-btn--soft edit__btn" @tap="closeSheet">
-            {{ $t("mySpecs.cancel") }}
-          </view>
-          <view class="sh-btn edit__btn" @tap="saveDim(editingCat)">{{ $t("mySpecs.save") }}</view>
-        </view>
-      </template>
 
-      <!-- ③ 加档位 / 加值。返回上一步，不是关掉整层 -->
-      <template v-else-if="sheetStep === 'values'">
-        <view class="back" @tap="closeAddValue">
-          <text class="back__t">‹ {{ draft.platformName || draft.label }}</text>
+        <!-- 平台还有的：点一下加进来 -->
+        <view v-if="valCands.length" class="sheet-own">
+          <text class="picker__own-t picker__own-t--quiet">{{ $t("mySpecs.pickHint") }}</text>
+          <view class="chips sheet-gap">
+            <text v-for="o in valCands" :key="o.code || o.label" class="sh-chip chip"
+                  @tap="pickValue(o)">＋ {{ o.label }}</text>
+          </view>
         </view>
-        <view v-if="valCands.length" class="chips sheet-gap">
-          <text v-for="o in valCands" :key="o.code || o.label" class="sh-chip chip"
-                @tap="pickValue(o)">＋ {{ o.label }}</text>
-        </view>
-        <text v-else class="sh-muted picker__empty">{{ noMoreValueWord }}</text>
 
         <view class="sheet-own">
           <view class="picker__own-line">
@@ -949,11 +989,35 @@ onShow(() => void load());
               :placeholder="valuePhWord"
               @confirm="confirmNewValue"
             />
-            <text class="link build__ok" @tap="confirmNewValue">{{ $t("mySpecs.save") }}</text>
+            <text class="link build__ok" @tap="confirmNewValue">{{ $t("mySpecs.add") }}</text>
           </view>
           <text class="sh-muted picker__own-s">{{ valueHintWord }}</text>
         </view>
+
+        <view class="edit__acts">
+          <view class="sh-btn sh-btn--soft edit__btn" @tap="closeSheet">
+            {{ $t("mySpecs.cancel") }}
+          </view>
+          <view class="sh-btn edit__btn" @tap="saveDim(editingCat)">{{ $t("mySpecs.save") }}</view>
+        </view>
       </template>
+
+      <!--
+        ③ 改名。**只管名字** —— 一个输入框一个保存，占位符是平台原名：
+        清空就是「用回平台的叫法」。
+      -->
+      <template v-else-if="sheetStep === 'rename'">
+        <input v-model="renameDraft.label" class="field__input edit__input sheet-gap"
+               :placeholder="renameDraft.platformName" />
+        <text class="sh-muted edit__tip">{{ $t("mySpecs.renameTip") }}</text>
+        <view class="edit__acts">
+          <view class="sh-btn sh-btn--soft edit__btn" @tap="closeSheet">
+            {{ $t("mySpecs.cancel") }}
+          </view>
+          <view class="sh-btn edit__btn" @tap="saveRename">{{ $t("mySpecs.save") }}</view>
+        </view>
+      </template>
+
     </sh-sheet>
 
   </sh-scaffold>
@@ -1187,6 +1251,8 @@ onShow(() => void load());
   gap: 8rpx;
 }
 .spec__name {
+  /* 可改的字：虚线下划线是最省地方的「这里能点」*/
+  border-bottom: 1rpx dashed var(--sh-line);
   font-size: 28rpx;
   /* 一行里它是主角，用 400 会被下面那行档位拉成同一层。
      字阶只给 400/600/700 三档（守卫测住），所以取 600 而不是原型里的 500 */
@@ -1233,14 +1299,17 @@ onShow(() => void load());
   margin-left: -10rpx;
 }
 
-/* 返回上一步：只在「加档位」那一步出现，压得比标题轻 */
-.back {
-  margin-bottom: 8rpx;
+/* 这一屏在管什么，一句话 */
+.sheet-lead {
+  display: block;
+  margin-top: 8rpx;
+  font-size: 24rpx;
 }
 
-.back__t {
-  font-size: 26rpx;
-  color: var(--sh-primary);
+/* 「平台还有这些」压得比「自己填」轻：前者是挑，后者要他动脑子起名 */
+.picker__own-t--quiet {
+  color: var(--sh-sub);
+  font-weight: 400;
 }
 
 .edit__input {

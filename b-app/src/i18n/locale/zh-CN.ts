@@ -214,6 +214,8 @@ export default {
       noMoreValue: "平台在这个规格下没有别的档位了，自己填一个",
       buildOwnValue: "自己填一档",
       addPropValue: "加值",
+      add: "加上",
+      valsLead: "点档位上的 ✕ 去掉不用的，按住拖动调顺序。改名字在列表里点规格名。",
       noMorePropValue: "平台在这一项下没有别的可选值了，自己填一个",
       addPropValuePh: "填一个值",
       addPropValueHint: "比如平台只有本地、国产，而你这批是云南的。填进去后它和平台那几个在同一根轴上，买家筛选照常。",

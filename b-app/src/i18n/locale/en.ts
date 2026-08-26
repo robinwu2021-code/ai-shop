@@ -144,6 +144,8 @@ export default {
       noMoreValue: "The platform has no other options here — type your own",
       buildOwnValue: "Type your own",
       addPropValue: "Add value",
+      add: "Add",
+      valsLead: "Tap ✕ on an option to drop it, press and drag to reorder. To rename, tap the spec name in the list.",
       noMorePropValue: "The platform has no other values here — type your own",
       addPropValuePh: "Type a value",
       addPropValueHint: "e.g. the platform has Local and Domestic, but yours is from Yunnan. It lands on the same axis, so filtering still works.",
