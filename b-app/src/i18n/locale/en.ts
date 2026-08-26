@@ -141,6 +141,8 @@ export default {
       pickHint: "Also on the platform",
       addValueHint: "e.g. the platform has 500g and 1kg, but your bag is 750g. It lands on the same axis, so comparison still works.",
       addValuePh: "e.g. 750g", valueMerged: "The platform already has “{name}” — using it",
+      noMoreValue: "The platform has no other options here — type your own",
+      buildOwnValue: "Type your own",
       adjustHint: "✕ removes an option, ＋ picks one from the platform or adds your own. Renaming only affects your store — comparison still works.",
       save: "Save", cancel: "Cancel", reset: "Reset to platform", saved: "Saved",
       catNoDims: "No specs configured for this category yet — ask ops to add them",

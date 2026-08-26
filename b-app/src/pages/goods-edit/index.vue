@@ -488,80 +488,16 @@ function pickParent(c: Category) {
 const RECENT_CATS_KEY = "biz.recentCategories";
 
 /*
- * 「这个类目上次展没展开规格」记在本机。
+ * 【已移除】specOpen / paramOpen —— 规格与参数现在**常驻展开**。
  *
- * <p><b>不同商家的管理方式，由他自己的历史表达 —— 不由平台判断他是谁。</b>
- * 张姐第一次上菠菜时点开又收起了，下次她的蔬菜就默认收起；
- * 老陈每次上大米都展开重量，下次直接给他展开。**没有人需要配置任何东西。**
+ * <p>收起态是为了替不分规格的商家省一屏，但账压在了另一头：
+ * 他看不见这一类到底有哪些规格，而「还能按什么分」恰恰是建品时最难的一步 ——
+ * **藏起来的东西不会被想起来**。省下的一屏，代价是他要等买家问
+ * 「有没有大份的」才发现自己漏了。
  *
- * <p>为什么不上后端：一张表、一次迁移、一条接口，换来的是同一件事。
- * 与同一页的「最近用过的类目」（{@link RECENT_CATS_KEY}）同一套机制。
- *
- * <p>为什么不按类目在平台侧配一个默认值：那要有人先过一遍 73 个类目表，
- * 而配错了商家还不知道能改。他自己点过的那一次，比任何人的猜测都准。
+ * <p>「记住他上次是开是合」更糟：同一个类目，换台手机就是另一套默认，
+ * 而他不知道为什么。默认值要能被解释，本机记忆解释不了。
  */
-const SPEC_OPEN_KEY = "biz.specOpenByCategory";
-const PARAM_OPEN_KEY = "biz.paramOpenByCategory";
-
-/** 规格区是否展开。收起时只剩一行「这件货要分档卖？」 */
-const specOpen = ref(false);
-/**
- * 商品参数区是否展开。
- *
- * <p><b>与规格同一套机制，不是复制一份</b>：不需要的人不该被占着屏幕 ——
- * 蔬菜配了产地/保质期/材质，而卖散装菠菜的一个都不填。
- * 两个 key 分开存：同一个类目下，他可能要规格不要参数，反过来也一样。
- */
-const paramOpen = ref(false);
-
-function openMap(key: string): Record<string, boolean> {
-  try {
-    return (uni.getStorageSync(key) as Record<string, boolean>) || {};
-  } catch {
-    return {};
-  }
-}
-
-/** 记一笔「他在这一类是开还是合」。记的是**这一类**，不是全局 */
-function rememberOpen(key: string, flag: { value: boolean }, open: boolean) {
-  flag.value = open;
-  const no = categoryNo.value;
-  if (!no) return;
-  try {
-    uni.setStorageSync(key, { ...openMap(key), [no]: open });
-  } catch {
-    /* 存不下就算了：下次按默认走，不影响这次操作 */
-  }
-}
-
-/** 选完类目时取上次的选择；没记录过就用 fallback 定 */
-function restoreOpen(key: string, flag: { value: boolean }, fallback: () => boolean) {
-  const no = categoryNo.value;
-  if (!no) return;
-  const remembered = openMap(key)[no];
-  flag.value = remembered === undefined ? fallback() : remembered;
-}
-
-function restoreSpecOpen() {
-  restoreOpen(SPEC_OPEN_KEY, specOpen, () => groups.value.length > 0);
-}
-
-function rememberSpecOpen(open: boolean) {
-  rememberOpen(SPEC_OPEN_KEY, specOpen, open);
-}
-
-/*
- * 参数没记录过时**默认收起**（规格是「有组就展开」）。
- * 两者不同是因为代价不同：规格自动带出来的那一组是他多半要用的，
- * 而参数是平台备着的一排选项，不填也完全成立 —— 默认摊开等于每件货都多一屏。
- */
-function restoreParamOpen() {
-  restoreOpen(PARAM_OPEN_KEY, paramOpen, () => false);
-}
-
-function rememberParamOpen(open: boolean) {
-  rememberOpen(PARAM_OPEN_KEY, paramOpen, open);
-}
 const recentCats = ref<{ categoryNo: string; name: string }[]>([]);
 
 function loadRecentCats() {
@@ -643,9 +579,6 @@ async function select(path: Category[]) {
    * 现在收起态直接摆候选（＋重量 ＋包装 …），他点一个才成组 ——
    * 少一次「先撤销系统替我做的事」。
    */
-  // 展不展开取他上次在这一类的选择；没记录过就看有没有带出规格组
-  restoreSpecOpen();
-  restoreParamOpen();
 }
 
 /**
@@ -1491,12 +1424,6 @@ async function loadPickableDims() {
 }
 
 /** 挑中一个平台/自建维度：连同它的取值一起进来，值编号跟着走 */
-/** 收起态点候选：加进来并顺手展开 —— 他要的是「开始分档」，不是「加一条然后自己去展开」 */
-function pickDimAndOpen(tpl: SpecTemplate) {
-  pickDim(tpl);
-  rememberSpecOpen(true);
-}
-
 function pickDim(tpl: SpecTemplate) {
   // 候选列表已经滤过一遍，这里再兜一道：同名即同一件事，编号不同是内部实现
   if (usedDimNames.value.has(tpl.name.trim())
@@ -1875,20 +1802,8 @@ onLoad(async (q) => {
   type.value = g.type;
   categoryNo.value = g.categoryNo ?? "";
   catPath.value = categoryNo.value ? findPath(categoryTree.value, categoryNo.value) : [];
-  /*
-   * 编辑已有商品：**它本来就有规格组就一定展开** —— 收起会让他以为规格丢了。
-   * 没有规格组的才落回「他上次在这一类的选择」。
-   */
-  specOpen.value = (g.specGroups?.length ?? 0) > 0;
-  if (!specOpen.value) restoreSpecOpen();
   // 参数的候选也要取：不取的话编辑页那一段是空的，而商品身上明明带着值
   void loadProps();
-  /*
-   * 已经填过参数的一定展开 —— 与规格同一条：收起会让他以为参数丢了。
-   * 没填过的才落回「他上次在这一类的选择」。
-   */
-  paramOpen.value = (g.params?.length ?? 0) > 0;
-  if (!paramOpen.value) restoreParamOpen();
   /*
    * **这件货身上有条码/货号/单位就自动展开** —— 收起会让他以为自己填的没了。
    * 与「已填过参数就展开」「已有规格组就展开」是同一条。
@@ -2528,52 +2443,18 @@ async function save(thenSubmit = false) {
           它唯一还独占的是「我的常用」，已经折进下面的「＋ 规格组」面板里，
           与本类目 / 平台通用 / 自己起名摆在一处：**一个入口，一次选择。**
         -->
-        <view v-if="specOpen" class="sec__ops">
-          <!--
-            **一个入口，不是两个。** 从前「＋ 规格组」（空框手输）与「＋ 自定义规格」
-            （空对话框凭记忆敲名字）并排摆着，两条都是盲输，而盲输的代价看不见：
-            没有维度编号也没有值编号，这件货从此不参与跨店聚合。
-            现在点进去先看平台有什么，「自己起个名」在面板最下面。
-          -->
-          <text class="link link--quiet" @tap="rememberSpecOpen(false)">{{ $t("goods.specFold") }}</text>
-        </view>
       </view>
 
       <!--
-        **不分规格的货，这一整块是收起的。**
+        **规格常驻展开，没有收起态。**
 
-        <p>社区店大半的货没有规格 —— 菠菜就是菠菜，称重卖。
-        对这些货，「规格组」「最多 3 组」这些词一个都不成立，却占着屏幕最显眼的一段。
-        收起之后只剩一句问话，他点或不点就是答案 —— 不必判断他是专业还是业余，
-        而且判断错了的代价只是多点一次。
+        <p>上一版对「不分规格的货」整块收起，为的是省一屏。但它省错了地方：
+        菠菜的商家往下滑一段就过去了，而**该分档却没想到分档**的商家，
+        要等买家问「有没有五斤装」才发现 —— 前者的代价是两秒，后者是一笔生意。
 
-        <p>展开与否记在**这个类目**上（见 SPEC_OPEN_KEY）：同一个商家卖菠菜和卖电子秤
-        本来就该是两种默认。
+        <p>「记住他上次是开是合」也一并去掉：默认值要能被解释，
+        而「因为你上次在这一类收起过」解释不了，换台手机还会变。
       -->
-      <!--
-        **收起态直接摆候选，不再只问一句。**
-        上一版是「这件货要分档卖？›」—— 他点进去才知道有哪些可选，
-        等于用一次点击换一句废话。现在一行浅字 + 一排候选：
-        不分规格的人扫一眼就过，要分的人一点成组，都省掉那一次点击。
-      -->
-      <view v-if="!specOpen" class="askspec">
-        <text class="sh-muted askspec__t">{{ $t("goods.specAsk") }}</text>
-        <view class="more">
-          <text
-            v-for="d in moreFromCategory"
-            :key="d.templateNo"
-            class="sh-chip more__chip"
-            @tap="pickDimAndOpen(d)"
-          >＋ {{ d.name }}</text>
-          <text
-            v-if="moreOther.length"
-            class="link more__toggle"
-            @tap="rememberSpecOpen(true)"
-          >{{ $t("goods.moreOther", { n: moreOther.length }) }}</text>
-        </view>
-      </view>
-
-      <template v-if="specOpen">
 
       <!--
         **候选固定在标题下，不再垂在最底下。**
@@ -2657,7 +2538,6 @@ async function save(thenSubmit = false) {
       <text class="link link--quiet more__manage" @tap="gotoMySpecs">
         {{ $t("goods.manageSpecs") }}
       </text>
-      </template>
     </view>
 
     <!--
@@ -2672,55 +2552,38 @@ async function save(thenSubmit = false) {
     <view v-if="propDims.length" class="sh-card mt">
       <view class="sec">
         <text class="sh-h2">{{ $t("goods.params") }}</text>
-        <view v-if="paramOpen" class="sec__ops">
-          <text class="link link--quiet" @tap="rememberParamOpen(false)">{{ $t("goods.specFold") }}</text>
-        </view>
       </view>
 
+      <!-- 与规格同一条：常驻展开，理由见上面那段 -->
       <!--
-        **与规格同一条：不填的人整块收起。**
-        蔬菜配了产地/保质期/材质，而卖散装菠菜的一个都不填 ——
-        常驻展开等于每件货都多占一屏。展不展开记在这个类目上。
+        **参数是单值，规格是多值** —— 一件货有三档重量，但只有一个产地。
+        所以这里的 chip 是单选（再点取消），而规格那边是开关（本店有的全列、
+        这件货没有的点掉）。两块长得像、行为不同，得说出来。
       -->
-      <view v-if="!paramOpen" class="askspec" @tap="rememberParamOpen(true)">
-        <view class="askspec__l">
-          <text class="askspec__t">{{ $t("goods.paramsAsk") }}</text>
-          <text class="sh-muted askspec__s">{{ $t("goods.paramsHint") }}</text>
+      <text class="sh-muted hint">{{ $t("goods.paramsPick") }}</text>
+      <view v-for="d in propDims" :key="d.templateNo" class="param">
+        <text class="param__k">{{ d.name }}</text>
+        <view v-if="d.options.length" class="param__opts">
+          <text
+            v-for="o in d.options"
+            :key="o.code || o.label"
+            class="sh-chip param__chip"
+            :class="{ 'param__chip--on': paramValues[d.templateNo]?.label === o.label }"
+            @tap="pickParam(d, o)"
+          >{{ o.label }}</text>
         </view>
-        <text class="askspec__go">›</text>
-      </view>
-
-      <template v-if="paramOpen">
         <!--
-          **参数是单值，规格是多值** —— 一件货有三档重量，但只有一个产地。
-          所以这里的 chip 是单选（再点取消），而规格那边是开关（本店有的全列、
-          这件货没有的点掉）。两块长得像、行为不同，得说出来。
+          **没有候选值时不给输入框。**
+          上一版给的是自由输入（量纲型的「功率」平台不枚举值），
+          但手输的值没有 code —— 不参与筛选、不参与跨店比较，
+          与手输规格值掉出聚合是同一个问题。这一页只做减法，
+          平台没配的去「商品规格」加一次，全店通用且带编号。
         -->
-        <text class="sh-muted hint">{{ $t("goods.paramsPick") }}</text>
-        <view v-for="d in propDims" :key="d.templateNo" class="param">
-          <text class="param__k">{{ d.name }}</text>
-          <view v-if="d.options.length" class="param__opts">
-            <text
-              v-for="o in d.options"
-              :key="o.code || o.label"
-              class="sh-chip param__chip"
-              :class="{ 'param__chip--on': paramValues[d.templateNo]?.label === o.label }"
-              @tap="pickParam(d, o)"
-            >{{ o.label }}</text>
-          </view>
-          <!--
-            **没有候选值时不给输入框。**
-            上一版给的是自由输入（量纲型的「功率」平台不枚举值），
-            但手输的值没有 code —— 不参与筛选、不参与跨店比较，
-            与手输规格值掉出聚合是同一个问题。这一页只做减法，
-            平台没配的去「商品规格」加一次，全店通用且带编号。
-          -->
-          <text v-else class="sh-muted param__empty">{{ $t("goods.paramNoValue") }}</text>
-        </view>
-        <text class="link link--quiet more__manage" @tap="gotoMySpecs">
-          {{ $t("goods.manageSpecs") }}
-        </text>
-      </template>
+        <text v-else class="sh-muted param__empty">{{ $t("goods.paramNoValue") }}</text>
+      </view>
+      <text class="link link--quiet more__manage" @tap="gotoMySpecs">
+        {{ $t("goods.manageSpecs") }}
+      </text>
     </view>
 
     <!-- SKU 矩阵 -->
@@ -3144,34 +3007,6 @@ async function save(thenSubmit = false) {
   color: var(--sh-sub);
 }
 
-/* 这一类还能按什么分 */
-.more {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 12rpx;
-  margin-top: 16rpx;
-}
-
-.more__k {
-  font-size: 24rpx;
-}
-
-.more__chip {
-  font-size: 24rpx;
-  color: var(--sh-primary-text);
-  background: var(--sh-primary-tint);
-}
-
-/* 通用/自建的压一档：本类目那几条才是平台针对这一类的回答 */
-.more__chip--q {
-  color: var(--sh-sub);
-  background: var(--sh-faint);
-}
-
-.more__toggle {
-  font-size: 24rpx;
-}
 
 /* 专业商家的入口：与切换器同一行右侧，压到最轻 */
 /*

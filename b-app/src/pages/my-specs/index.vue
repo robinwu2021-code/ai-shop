@@ -20,7 +20,7 @@ import { useI18n } from "vue-i18n";
 import { onShow } from "@dcloudio/uni-app";
 import { api } from "@/api";
 import { useMerchantStore } from "@/stores/merchant";
-import type { MerchantSpecDim, SpecOverride, SpecTemplate, StoreCategorySpecs } from "@shared/types";
+import type { MerchantSpecDim, SpecOption, SpecOverride, SpecTemplate, StoreCategorySpecs } from "@shared/types";
 
 const { t } = useI18n();
 const merchant = useMerchantStore();
@@ -266,56 +266,61 @@ function dropValue(code: string) {
   draft.value.dropped = [...draft.value.dropped, code];
 }
 
-/**
- * 加一档：**先给候选，自己填放最后**。
+/*
+ * 加一档：**与「加规格」同一个弹层，不用系统控件。**
  *
- * <p>类目通常只裁了平台值池里的几档，而他要加的往往正是没裁进来的那一档。
- * 直接弹输入框的话他只能手输，而手输的值没有编码 —— 跨店聚合就此断掉。
+ * <p>上一版是 `uni.showActionSheet` 排候选 + `uni.showModal` 手输，两级系统控件：
+ * 排版不归我们管（「粗糙、字不齐」就是这么来的），候选一多就是一条长长的滚动条，
+ * 而且「自己填」混在候选列表的最后一行 —— 它与前面那些不是一类东西，
+ * 长得一样就等于没说清代价（自己填的那一档只有本店认得）。
+ *
+ * <p>现在与「加规格」一模一样：一排候选 chip 在上，自己填在下面单开一段。
+ * 同一件事在两处长同一个样，商家学一次就够。
  */
-async function addValue() {
+const addingVal = ref(false);
+const valCands = ref<SpecOption[]>([]);
+const newVal = ref("");
+
+async function openAddValue() {
   const d = draft.value;
+  addingVal.value = true;
+  valCands.value = [];
+  newVal.value = "";
   const all = await api.mDimValues(d.dimNo).catch(() => []);
   const have = new Set(d.values.map((v) => v.code));
-  const rest = all.filter((o) => !have.has(o.code ?? ""));
+  valCands.value = all.filter((o) => !have.has(o.code ?? ""));
+}
 
-  const i = await new Promise<number>((resolve) => {
-    uni.showActionSheet({
-      itemList: [...rest.map((o) => o.label), t("mySpecs.typeMine")],
-      success: (r) => resolve(r.tapIndex),
-      fail: () => resolve(-1),
-    });
-  });
-  if (i < 0) return;
+function closeAddValue() {
+  addingVal.value = false;
+  newVal.value = "";
+}
 
-  const use = (code: string, label: string) => {
-    if (!d.values.some((x) => x.code === code)) d.values = [...d.values, { code }];
-    d.dropped = d.dropped.filter((c) => c !== code);
-    d.labels[code] = label;
-  };
+/** 用上一档：**已经去掉过的要从 dropped 里摘回来**，否则提交时又被显式关掉 */
+function useValue(code: string, label: string) {
+  const d = draft.value;
+  if (!d.values.some((x) => x.code === code)) d.values = [...d.values, { code }];
+  d.dropped = d.dropped.filter((c) => c !== code);
+  d.labels[code] = label;
+}
 
-  if (i < rest.length) {
-    const o = rest[i]!;
-    use(o.code ?? "", o.label);
-    return;
-  }
+function pickValue(o: SpecOption) {
+  useValue(o.code ?? "", o.label);
+  closeAddValue();
+}
 
-  const text = await new Promise<string>((resolve) => {
-    uni.showModal({
-      title: t("mySpecs.addValueTitle"),
-      editable: true,
-      placeholderText: t("mySpecs.addValuePh"),
-      success: (r) => resolve(r.confirm ? (r.content ?? "") : ""),
-      fail: () => resolve(""),
-    });
-  });
-  if (!text.trim()) return;
+/** 平台没有的那一档（750g）：落进平台这个规格下，所以仍在同一根轴上 */
+async function confirmNewValue() {
+  const name = newVal.value.trim();
+  if (!name) return;
   try {
-    const added = await api.mAddSpecValue(d.dimNo, text.trim());
-    use(added.code || added.valueNo, added.label);
+    const added = await api.mAddSpecValue(draft.value.dimNo, name);
+    useValue(added.code || added.valueNo, added.label);
     // 撞上平台已有的那一档时后端直接返回它 —— 说一声，否则他以为自己白填了
-    if (added.label !== text.trim()) {
+    if (added.label !== name) {
       uni.showToast({ title: t("mySpecs.valueMerged", { name: added.label }), icon: "none" });
     }
+    closeAddValue();
   } catch (e) {
     uni.showToast({ title: (e as Error).message, icon: "none" });
   }
@@ -642,8 +647,20 @@ async function confirmBuild(g: StoreCategorySpecs) {
     await commit(withAdded(g, dim), seq);
     building.value = "";
     picking.value = null;
-    // 刚建出来时一个档位都没有，那一行会显示「还没加档位」，把下一步推到他面前
     await load();
+    /*
+     * **建完直接进这一条的编辑态。**
+     *
+     * <p>自己建出来的规格一个档位都没有 —— 「辣度」而没有「微辣/中辣」，
+     * 在建品页是选不出任何东西的一行。上一版把他放回列表，让他自己找到刚建的那行
+     * 再点开：多两步，而且中间那一屏没有任何信息告诉他还没完。
+     *
+     * <p>要**从 load() 之后的新数据里**取那一条：commit 的返回是合并结果，
+     * 这里的 g 是提交前的旧快照，拿它去 startEditDim 会连档位一起是旧的。
+     */
+    const fresh = byCategory.value.find((x) => x.categoryNo === g.categoryNo);
+    const row = fresh && listOf(fresh).find((x) => x.templateNo === dim.templateNo);
+    if (fresh && row) startEditDim(fresh, row);
   } catch (e) {
     uni.showToast({ title: (e as Error).message, icon: "none" });
   }
@@ -787,7 +804,7 @@ onShow(() => void load());
                 {{ draft.labels[v.code] ?? v.code }}
                 <text class="val__x" @tap.stop="dropValue(v.code)">✕</text>
               </text>
-              <text class="sh-chip val val--add" @tap="addValue()">＋ {{ $t("mySpecs.addValue") }}</text>
+              <text class="sh-chip val val--add" @tap="openAddValue()">＋ {{ $t("mySpecs.addValue") }}</text>
             </view>
             <text class="sh-muted edit__tip">{{ $t("mySpecs.renameTip") }}</text>
             <view class="edit__acts">
@@ -884,6 +901,39 @@ onShow(() => void load());
           <text class="sh-muted picker__own-s">{{ $t("mySpecs.buildOwnCost") }}</text>
         </view>
       </template>
+    </sh-sheet>
+
+    <!--
+      **加档位与加规格长同一个样。**（见 openAddValue 那段注释）
+      候选在上、自己填在下单开一段 —— 后者只有本店认得，长得一样就说不清这个代价。
+    -->
+    <sh-sheet
+      :visible="addingVal"
+      :title="$t('mySpecs.addValue')"
+      :hint="valCands.length ? $t('mySpecs.pickHint') : ''"
+      @close="closeAddValue"
+    >
+      <view v-if="valCands.length" class="chips sheet-gap">
+        <text v-for="o in valCands" :key="o.code || o.label" class="sh-chip chip"
+              @tap="pickValue(o)">＋ {{ o.label }}</text>
+      </view>
+      <text v-else class="sh-muted picker__empty">{{ $t("mySpecs.noMoreValue") }}</text>
+
+      <view class="sheet-own">
+        <view class="picker__own-line">
+          <text class="picker__own-t">{{ $t("mySpecs.buildOwnValue") }}</text>
+        </view>
+        <view class="build">
+          <input
+            v-model="newVal"
+            class="field__input build__input"
+            :placeholder="$t('mySpecs.addValuePh')"
+            @confirm="confirmNewValue"
+          />
+          <text class="link build__ok" @tap="confirmNewValue">{{ $t("mySpecs.save") }}</text>
+        </view>
+        <text class="sh-muted picker__own-s">{{ $t("mySpecs.addValueHint") }}</text>
+      </view>
     </sh-sheet>
 
   </sh-scaffold>

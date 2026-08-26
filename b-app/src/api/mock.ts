@@ -2255,22 +2255,43 @@ export const mockApi: MerchantApi = {
      */
     const applyOv = (list: typeof db.specTemplates, categoryNo: string) => {
       const ov = mockSpecOverride.get(categoryNo) ?? [];
-      return list
+      const dress = (t: (typeof list)[number]) => {
+        const o = ov.find((x) => x.dimNo === t.templateNo);
+        if (!o) return t;
+        const off = new Set(o.values.filter((v) => !v.enabled).map((v) => v.code));
+        return {
+          ...t,
+          name: o.label?.trim() || t.name,
+          options: t.options.filter((x) => !off.has(x.code ?? x.label)),
+        };
+      };
+      const bound = list
         .filter((t) => t.categoryNo === categoryNo)
         .filter((t) => {
           const o = ov.find((x) => x.dimNo === t.templateNo);
           return !o || o.enabled;
         })
-        .map((t) => {
-          const o = ov.find((x) => x.dimNo === t.templateNo);
-          if (!o) return t;
-          const off = new Set(o.values.filter((v) => !v.enabled).map((v) => v.code));
-          return {
-            ...t,
-            name: o.label?.trim() || t.name,
-            options: t.options.filter((x) => !off.has(x.code ?? x.label)),
-          };
-        });
+        .map(dress);
+      /*
+       * **他自己加进来的规格也要给** —— 与后端 forCategory 里 `ov.addedDims()`
+       * 那一段对齐（SpecLibraryServiceImpl）。类目没绑但他在「我的规格」里加了：
+       * 只认类目绑定的话，加进来的规格落了库却永远不显示，界面上就是
+       * 「点了 ＋ 选了一个，什么都没发生」—— 而后端其实已经记下了。
+       * 自建规格必然走这条路（它天生不绑任何类目），于是整条自建链路在 mock 上
+       * 看起来像没做完，实测就这么绕了一圈。
+       */
+      const shown = new Set(bound.map((t) => t.templateNo));
+      const added = ov
+        .filter((o) => o.enabled && !shown.has(o.dimNo))
+        .map((o) => list.find((t) => t.templateNo === o.dimNo))
+        .filter((t): t is (typeof list)[number] => !!t)
+        .map(dress);
+      // 排过序的在前，没排过的跟在后面 —— 拖动排序在 mock 上也要看得出生效
+      const at = (no: string) => {
+        const i = ov.findIndex((o) => o.dimNo === no);
+        return i < 0 ? Number.MAX_SAFE_INTEGER : i;
+      };
+      return [...bound, ...added].sort((a, b) => at(a.templateNo) - at(b.templateNo));
     };
     return delay(cats.map((c) => ({
       categoryNo: c.categoryNo,
