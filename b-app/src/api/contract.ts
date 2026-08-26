@@ -177,6 +177,18 @@ export interface SkuDraft {
    * 不校验与售价的大小关系 —— 引流款本来就可能亏本卖。
    */
   costPrice?: number;
+  /**
+   * 商品条码 EAN-13 / UPC（V252）。**只在商家侧下发** —— 它是商家与供应商/ERP
+   * 之间的键，对买家没有用处，而条码还能反查到进货渠道。
+   */
+  barcode?: string;
+  /** 商家自有货号。他 ERP 里的主键，同样只在商家侧下发 */
+  merchantSkuCode?: string;
+  /**
+   * 计量单位（件 / 斤 / kg / 份）。**买家侧也要** ——
+   * 「5」到底是 5 件还是 5 斤，买家同样需要知道才判断得了贵不贵。
+   */
+  saleUnit?: string;
 }
 
 /**

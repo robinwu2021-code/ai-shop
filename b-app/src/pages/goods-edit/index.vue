@@ -77,6 +77,15 @@ interface Row {
    * 填了就在售价旁边实时算毛利；不填这一行就不出现。
    */
   costMajor: string;
+  /**
+   * 商品条码 EAN-13 / UPC（V252）。与 ERP、收银秤、供应商的通用键。
+   * **空是常态** —— 生鲜、现做熟食、手工品本来就没有条码。
+   */
+  barcode: string;
+  /** 商家自有货号。他自己 ERP 里的主键，对账靠它 */
+  merchantSkuCode: string;
+  /** 计量单位（件 / 斤 / kg / 份）。称重品与计件品的分界 */
+  saleUnit: string;
 }
 
 /** 空价格表：三个市场各一格 */
@@ -759,7 +768,35 @@ const priceField = ref<PriceField>("price");
  * 那时它是个恒定的标签，占一行却什么都不让人选。
  * 标称重量只对生鲜有意义（按标称预扣、称重后多退少补）。
  */
-type PriceField = "price" | "cost" | "origin" | "gram";
+type PriceField = "price" | "cost" | "origin" | "gram" | "barcode" | "code" | "unit";
+
+/*
+ * **条码/货号/单位默认不出现。**
+ *
+ * <p>它们是专业商家的东西：两百个品、有自己的 ERP、要对账。
+ * 而社区店大半的货没有条码（生鲜、现做熟食、手工品），把三列摆在
+ * 每个人的价格卡里，等于让所有人替少数人付注意力。
+ *
+ * <p>入口**由数据自动点亮**：这件货身上但凡有一个值，进来就是展开的 ——
+ * 收起会让他以为自己填的货号丢了。此外记在本机（与「最近用过的类目」同一套）：
+ * 用过一次的人多半一直要用，不必每次去点。
+ */
+const EXTERNAL_KEY = "biz.skuExternalOn";
+const externalOn = ref(false);
+
+function rememberExternal(on: boolean) {
+  externalOn.value = on;
+  try {
+    uni.setStorageSync(EXTERNAL_KEY, on);
+  } catch {
+    /* 存不下就算了：下次按默认走，不影响这次操作 */
+  }
+}
+/** 这三个是文本不是数字：不挂货币符号，输入框也要宽一些 */
+const isTextField = computed(
+  () => priceField.value === "barcode" || priceField.value === "code" || priceField.value === "unit",
+);
+
 const priceFields = computed<{ key: PriceField; labelKey: string }[]>(() => {
   const out: { key: PriceField; labelKey: string }[] = [
     { key: "price", labelKey: "goods.fieldPrice" },
@@ -769,6 +806,11 @@ const priceFields = computed<{ key: PriceField; labelKey: string }[]>(() => {
   ];
   // 标称重量属于「按标称预扣」那条链，与生鲜段一起收着（见 flags.ts）
   if (SHOW_FRESH_FIELDS && isFresh.value) out.push({ key: "gram", labelKey: "goods.fieldGram" });
+  if (externalOn.value) {
+    out.push({ key: "barcode", labelKey: "goods.fieldBarcode" });
+    out.push({ key: "code", labelKey: "goods.fieldSkuCode" });
+    out.push({ key: "unit", labelKey: "goods.fieldUnit" });
+  }
   return out;
 });
 
@@ -816,6 +858,9 @@ const rows = ref<Row[]>([
     originMajor: "",
     nominalGram: "",
     costMajor: "",
+    barcode: "",
+    merchantSkuCode: "",
+    saleUnit: "",
   },
 ]);
 
@@ -1180,6 +1225,10 @@ function rebuild() {
         originMajor: rows.value[0]?.originMajor ?? "",
         nominalGram: rows.value[0]?.nominalGram ?? "",
         costMajor: rows.value[0]?.costMajor ?? "",
+        // 外部身份跟着第一行走：单规格拆成多规格时，原来那条 SKU 的条码不该凭空消失
+        barcode: rows.value[0]?.barcode ?? "",
+        merchantSkuCode: rows.value[0]?.merchantSkuCode ?? "",
+        saleUnit: rows.value[0]?.saleUnit ?? "",
       },
     ];
     return;
@@ -1244,6 +1293,10 @@ function rebuild() {
       nominalGram: old?.nominalGram ?? "",
       // 成本跟着价一起继承：加一个包装规格，进价多半还是那个进价
       costMajor: old?.costMajor ?? "",
+      barcode: old?.barcode ?? "",
+      merchantSkuCode: old?.merchantSkuCode ?? "",
+      // 单位多半整件货一样：没有旧值时沿用第一行的，省得逐行敲「斤」
+      saleUnit: old?.saleUnit ?? rows.value[0]?.saleUnit ?? "",
     };
   });
 }
@@ -1729,6 +1782,10 @@ onShow(() => {
 
 onLoad(async (q) => {
   loadRecentCats();
+  // 用过一次条码/货号的人多半一直要用，不必每次去点
+  try {
+    externalOn.value = uni.getStorageSync(EXTERNAL_KEY) === true;
+  } catch { /* 读不到就按默认收着 */ }
   if (!q?.goodsNo) {
     await Promise.all([loadTemplates(), loadCategories(), loadStoreChannels()]);
     return;
@@ -1813,6 +1870,13 @@ onLoad(async (q) => {
   paramOpen.value = (g.params?.length ?? 0) > 0;
   if (!paramOpen.value) restoreParamOpen();
   /*
+   * **这件货身上有条码/货号/单位就自动展开** —— 收起会让他以为自己填的没了。
+   * 与「已填过参数就展开」「已有规格组就展开」是同一条。
+   */
+  if (rows.value.some((r) => r.barcode || r.merchantSkuCode || r.saleUnit)) {
+    externalOn.value = true;
+  }
+  /*
    * 履约方式与几段可选字段**都要回显**：保存是整份覆盖，回显不全就等于每保存一次
    * 清一次 —— 与轮播图、三语原文是同一个形状的故障（都不报错）。
    */
@@ -1868,6 +1932,9 @@ onLoad(async (q) => {
       originMajor: k.originPrice ? toMajor(k.originPrice) : "",
       nominalGram: k.nominalGram ? String(k.nominalGram) : "",
       costMajor: k.costPrice ? toMajor(k.costPrice) : "",
+      barcode: k.barcode ?? "",
+      merchantSkuCode: k.merchantSkuCode ?? "",
+      saleUnit: k.saleUnit ?? "",
     };
   });
 });
@@ -1973,6 +2040,14 @@ async function save(thenSubmit = false) {
           nominalGram: r.nominalGram.trim() ? Number(r.nominalGram) || 0 : undefined,
           // 成本价同一口径：空串 = 不改（他没碰这一格），填 0 = 清掉
           costPrice: r.costMajor.trim() ? toMinor(r.costMajor) : undefined,
+          /*
+           * 外部身份三件套：**原样发，包括空串** —— 后端「不传 = 不改，空串 = 清空」，
+           * 而端上这三格永远是有值的（空字符串），所以发的就是他此刻看到的那份。
+           * 判空改成 undefined 的话，他把货号删掉就删不掉了。
+           */
+          barcode: r.barcode.trim(),
+          merchantSkuCode: r.merchantSkuCode.trim(),
+          saleUnit: r.saleUnit.trim(),
         };
       }),
     });
@@ -2676,6 +2751,13 @@ async function save(thenSubmit = false) {
             {{ $t(f.labelKey) }}
           </text>
         </view>
+        <!--
+          **专业商家的入口，压到最轻。** 多数人用不到条码与货号；
+          用得到的人点一次就一直开着（记在本机），而这件货身上有值时进来就是开的。
+        -->
+        <text class="link link--quiet ext-toggle" @tap="rememberExternal(!externalOn)">
+          {{ externalOn ? $t("goods.extHide") : $t("goods.extShow") }}
+        </text>
         <view v-if="MULTI_MARKET_UI" class="langs">
           <text
             v-for="m in MARKET_CURRENCIES"
@@ -2773,6 +2855,24 @@ async function save(thenSubmit = false) {
           <text class="pr__cur">g</text>
           <input v-model="rows[0]!.nominalGram" class="pr__v sh-num" type="number" />
         </view>
+        <!--
+          外部身份三件套：**默认不出现**。见 externalOn 上面那段 ——
+          社区店大半的货没有条码，摆在每个人的价格卡里是让所有人替少数人付注意力。
+        -->
+        <template v-if="externalOn">
+          <view class="pr">
+            <text class="pr__k">{{ $t("goods.fieldBarcode") }}</text>
+            <input v-model="rows[0]!.barcode" class="pr__v pr__v--wide sh-num" />
+          </view>
+          <view class="pr">
+            <text class="pr__k">{{ $t("goods.fieldSkuCode") }}</text>
+            <input v-model="rows[0]!.merchantSkuCode" class="pr__v pr__v--wide" />
+          </view>
+          <view class="pr">
+            <text class="pr__k">{{ $t("goods.fieldUnit") }}</text>
+            <input v-model="rows[0]!.saleUnit" class="pr__v pr__v--wide" :placeholder="$t('goods.unitPh')" />
+          </view>
+        </template>
       </template>
 
       <!--
@@ -2782,7 +2882,8 @@ async function save(thenSubmit = false) {
       <template v-else>
         <view v-for="(r, i) in rows" :key="i" class="pr">
           <text class="pr__k">{{ r.optionValues.join(" · ") }}</text>
-          <text class="pr__cur">{{ priceField === "gram" ? "g" : "￥" }}</text>
+          <!-- 条码/货号/单位不是钱也不是克重，不该挂货币符号 -->
+          <text v-if="!isTextField" class="pr__cur">{{ priceField === "gram" ? "g" : "￥" }}</text>
           <input
             v-if="priceField === 'price'"
             v-model="r.priceMajor[market]"
@@ -2802,6 +2903,22 @@ async function save(thenSubmit = false) {
             class="pr__v sh-num"
             :class="{ 'is-bad': badOrigin(r) }"
             type="digit"
+          />
+          <input
+            v-else-if="priceField === 'barcode'"
+            v-model="r.barcode"
+            class="pr__v pr__v--wide sh-num"
+          />
+          <input
+            v-else-if="priceField === 'code'"
+            v-model="r.merchantSkuCode"
+            class="pr__v pr__v--wide"
+          />
+          <input
+            v-else-if="priceField === 'unit'"
+            v-model="r.saleUnit"
+            class="pr__v pr__v--wide"
+            :placeholder="$t('goods.unitPh')"
           />
           <input v-else v-model="r.nominalGram" class="pr__v sh-num" type="number" />
         </view>
@@ -3037,6 +3154,18 @@ async function save(thenSubmit = false) {
 
 .more__toggle {
   font-size: 24rpx;
+}
+
+/* 专业商家的入口：与切换器同一行右侧，压到最轻 */
+.ext-toggle {
+  font-size: 24rpx;
+  margin-left: auto;
+}
+
+/* 条码/货号/单位是文本，比金额格宽 */
+.pr__v--wide {
+  width: 300rpx;
+  text-align: left;
 }
 
 .more__manage {

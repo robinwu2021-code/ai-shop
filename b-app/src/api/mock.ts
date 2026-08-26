@@ -1837,6 +1837,18 @@ export const mockApi: MerchantApi = {
         // 成本价同一条规矩：mock 不落盘的话「填了、保存后消失」，
         // 而毛利那行会跟着一起不见 —— 看着像算错了，其实是没存
         costPrice: k.costPrice,
+        /*
+         * 外部身份三件套（V252）。空串 = 清空。
+         *
+         * <p>**这里不模拟「不传 = 不改」那一半**：b-app 这三格永远会发
+         * （空串或有值），所以 mock 里没有「不传」这个输入。
+         * 真后端仍要区分两者 —— 将来的导入接口可能只发改动的那几列。
+         * mock 不落盘的话「填了条码、保存后消失」，而 mock 恰恰是开发期
+         * 唯一看得见的那一份。
+         */
+        barcode: k.barcode || undefined,
+        merchantSkuCode: k.merchantSkuCode || undefined,
+        saleUnit: k.saleUnit || undefined,
       }));
 
     /**
