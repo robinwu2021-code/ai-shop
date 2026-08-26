@@ -6,6 +6,7 @@
 import { Suspense, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { ReconAxes } from "./recon-axes";
 import { usePageTab, useNavTabs } from "@/lib/use-page-tab";
 import { usePaging } from "@/lib/use-paging";
 import { useCan } from "@/lib/use-can";
@@ -269,6 +270,8 @@ function OrdersInner() {
 
       {(tab === "pay" || tab === "repair") && (
         <>
+          {/* 四轴总览摆在最上面：先回答「哪一类在看、哪一类没看」，再看具体差异 */}
+          {tab === "pay" && <ReconAxes c={c} />}
           <Notice className="mb-3">{tab === "repair" ? c.repairNotice : c.payNotice}</Notice>
           {/*
             ⚠️ **这一条不能省，而且空表时更要显示。**

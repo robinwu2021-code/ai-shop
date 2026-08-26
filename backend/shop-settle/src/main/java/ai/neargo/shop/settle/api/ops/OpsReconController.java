@@ -53,6 +53,22 @@ public class OpsReconController {
      * <p>单独一个端点而不是塞进列表响应：列表是分页包，
      * 把说明挂在分页包上，翻到第二页时它就没了。
      */
+    /**
+     * 四条对账轴的总览：各自扫出多少、各自查不到什么。
+     *
+     * <p><b>它会真的跑一轮扫描</b>（而不是读缓存）——
+     * 对账页是「今天有没有对不上」的入口，读一份过期的结果比不读更坏。
+     *
+     * <p>⚠️ <b>每条轴的 coverage 都要显示。</b> 四条轴今天都只有 A 侧（我方自查）：
+     * 渠道账单、分账查询、银行流水三种外部数据都还没接。
+     * 不把这句话显示出来的话，「今天没有差异」对四条轴都是假话。
+     */
+    @GetMapping("/ops/payments/recon-axes")
+    @PreAuthorize("@perm.can('" + Perms.FINANCE_RECON_READ + "')")
+    public java.util.List<ReconService.AxisReport> axes() {
+        return reconService.scanAllAxes(System.currentTimeMillis());
+    }
+
     @GetMapping("/ops/payments/recon-coverage")
     @PreAuthorize("@perm.can('" + Perms.FINANCE_RECON_READ + "')")
     public ReconService.Coverage coverage() {

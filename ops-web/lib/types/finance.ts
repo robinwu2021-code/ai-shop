@@ -423,3 +423,21 @@ export interface ReconCoverage {
   channelBillConnected: boolean;
   note: string;
 }
+
+/**
+ * 一条对账轴的一轮结果。
+ *
+ * ⚠️ **`coverage.note` 必须显示** —— 四条轴今天都只有 A 侧（我方自查），
+ * 渠道账单、分账查询、银行流水三种外部数据都还没接。
+ * 不说的话，「今天没有差异」对四条轴都是假话。
+ *
+ * `error` 非空 = **这条轴今天没跑成**。它与「零差异」在页面上长得一样、
+ * 含义却完全相反，所以要单独标出来。
+ */
+export interface ReconAxisReport {
+  /** PAYMENT 收款 / SPLIT 分账 / PAYOUT 出款 / POINTS_POOL 积分池 */
+  axis: string;
+  outcome?: { scanned: number; resolved: number; opened: number; deferred: number } | null;
+  coverage: { complete: boolean; note: string };
+  error?: string | null;
+}

@@ -56,6 +56,8 @@ export const RULES = [
   // 而登记付款用 payout:execute —— 今天两个码都在 FINANCE 一个角色上
   // （Perms 的注释里记着这是「改配置解决不了」的一条），但登记表按码走，
   // 将来拆角色时不用再回来改这里。
+  // 四轴对账总览。与 recon-diffs 同一个码 —— 它们是同一件事的两个视图
+  ["GET", /^\/ops\/payments\/recon-axes$/, "finance:recon:read"],
   ["GET", /^\/ops\/payables/, "finance:settle:read"],
   ["POST", /^\/ops\/payables\/[^/]+\/confirm$/, "finance:settle:execute"],
   ["POST", /^\/ops\/payables\/[^/]+\/paid$/, "finance:payout:execute"],

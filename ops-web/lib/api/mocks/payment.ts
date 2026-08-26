@@ -34,6 +34,39 @@ export const paymentMock: PaymentApi = {
         + "要等通道开放账单下载能力。所以这张表为空不等于今天账是平的。",
     }),
 
+  /*
+   * 四条轴。**各造一种形态**：正常有差异、零差异、跑失败。
+   * 全造成「零差异」的话，「这条轴今天没跑成」那个提示永远看不见 ——
+   * 而它与「今天没问题」在页面上长得一样、含义完全相反。
+   */
+  reconAxes: async () =>
+    wait([
+      {
+        axis: "PAYMENT",
+        outcome: { scanned: 12, resolved: 2, opened: 1, deferred: 1 },
+        coverage: { complete: false, note: "只有平台侧自查，渠道账单比对未接入 —— 「渠道扣了钱而我方没记录」这一类看不见。" },
+        error: null,
+      },
+      {
+        axis: "SPLIT",
+        outcome: { scanned: 8, resolved: 0, opened: 8, deferred: 0 },
+        coverage: { complete: false, note: "分账网关目前是桩实现，每一笔已发出的单都不会有回执 —— 这条轴报出来的量反映的是这件事，不是通道出了问题。" },
+        error: null,
+      },
+      {
+        axis: "PAYOUT",
+        outcome: { scanned: 3, resolved: 0, opened: 0, deferred: 0 },
+        coverage: { complete: false, note: "只查「已付款没流水号」与「一个流水号多张单」。银行流水未接入 —— 钱到底有没有划出去看不见。" },
+        error: null,
+      },
+      {
+        axis: "POINTS_POOL",
+        outcome: null,
+        coverage: { complete: false, note: "只判恒等式，不逐笔定位。失衡目前只写日志，没有告警接收方。" },
+        error: "java.lang.IllegalStateException: 积分池快照读取超时",
+      },
+    ]),
+
   listReconDiffs: (q = {}) =>
     wait(
       db.paginate(db.reconDiffs, q.page, q.size, (d) =>

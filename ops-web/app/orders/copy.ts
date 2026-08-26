@@ -158,6 +158,21 @@ const zh = {
   drawerParent: "父单 {no}",
   loading: "加载中…",
   noSiblings: "无 —— 本次结算只涉及一个商家",
+
+  // ── 四轴对账总览 ──
+  axesTitle: "对账覆盖",
+  axesSubtitle: "四条轴各跑一轮",
+  axesLoading: "正在跑四条轴…",
+  axesBroken: "{axes} 今天没跑成 —— **这一类差异今天没有人在看**。它与「零差异」在页面上长得一样，含义完全相反。",
+  axisName_PAYMENT: "收款",
+  axisName_SPLIT: "分账",
+  axisName_PAYOUT: "出款",
+  axisName_POINTS_POOL: "积分池",
+  axisFailed: "没跑成",
+  axisClean: "无新差异",
+  axisOpened: "新增 {n} 条",
+  axisCounts: "扫 {scanned} · 自动收口 {resolved} · 判不了 {deferred}",
+
 };
 
 const en: typeof zh = {
@@ -313,6 +328,20 @@ const en: typeof zh = {
   drawerParent: "Parent order {no}",
   loading: "Loading…",
   noSiblings: "None — this checkout involved a single merchant",
+
+  axesTitle: "Reconciliation coverage",
+  axesSubtitle: "one pass per axis",
+  axesLoading: "Running all four axes…",
+  axesBroken: "{axes} did not run today — **nobody is watching this class of difference right now**. It looks identical to «no differences» on this page but means the opposite.",
+  axisName_PAYMENT: "Collection",
+  axisName_SPLIT: "Split",
+  axisName_PAYOUT: "Payout",
+  axisName_POINTS_POOL: "Points pool",
+  axisFailed: "Did not run",
+  axisClean: "No new differences",
+  axisOpened: "{n} new",
+  axisCounts: "{scanned} scanned · {resolved} auto-closed · {deferred} undecidable",
+
 };
 
 export const ORDERS_COPY: PageCopy<typeof zh> = { zh, en };

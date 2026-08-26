@@ -1,6 +1,7 @@
 // 覆盖范围：支付管理（P-4.2 支付流水核对 / 掉单补偿 / 关单策略配置）。
 import type {
-  ReconCoverage, CloseRule, Page, ReconDiff, RecoverAction } from "@/lib/types";
+  ReconCoverage,
+  ReconAxisReport, CloseRule, Page, ReconDiff, RecoverAction } from "@/lib/types";
 import type { PageQ } from "../query";
 
 export type ReconQ = PageQ & { billDate?: string; type?: string; status?: string };
@@ -14,6 +15,8 @@ export interface PaymentApi {
    * 而这个接口在 2026-08-26 之前**没有任何调用方**，所以那句假话一直挂着。
    */
   reconCoverage(): Promise<ReconCoverage>;
+  /** 四条轴各跑一轮。**会真的扫描** —— 对账页读一份过期的结果比不读更坏 */
+  reconAxes(): Promise<ReconAxisReport[]>;
 
   /**
    * 处置一条差异（P-4.2.1 / 4.2.2）。
