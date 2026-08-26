@@ -351,6 +351,28 @@
               "proto": null,
               "protoUrl": null,
               "preview": "http://localhost:5175/#/pages/member-reach/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/stock/index",
+              "title": "库存",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/stock/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/stock-detail/index",
+              "title": "库存明细",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/stock-detail/index"
             }
           ]
         },
@@ -712,28 +734,6 @@
         {
           "name": "进销存",
           "pages": [
-            {
-              "app": "b-app",
-              "route": "/pages/stock/index",
-              "title": "库存",
-              "domain": "进销存",
-              "tab": false,
-              "status": "原型",
-              "proto": "s01",
-              "protoUrl": "https://claude.ai/code/artifact/f3904519-ea36-4bc0-b231-d113b696f7e0",
-              "preview": null
-            },
-            {
-              "app": "b-app",
-              "route": "/pages/stock-detail/index",
-              "title": "库存明细",
-              "domain": "进销存",
-              "tab": false,
-              "status": "原型",
-              "proto": "s02",
-              "protoUrl": "https://claude.ai/code/artifact/f3904519-ea36-4bc0-b231-d113b696f7e0",
-              "preview": null
-            },
             {
               "app": "b-app",
               "route": "/pages/stock-check/index",

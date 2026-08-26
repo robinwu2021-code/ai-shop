@@ -123,7 +123,10 @@ import type {
   PickupCandidate,
   RegionSearchResult,
   MyQualifications,
-  Qualification, MerchantSpecDim, StoreCategorySpecs, SpecOverride, SpecOption,} from "@shared/types";
+  Qualification, MerchantSpecDim, StoreCategorySpecs, SpecOverride, SpecOption,
+  StockSummary, StockBalance, StockItemDetail, StockLedgerPage, StockDocument,
+  StockMonthly, StockRank, StockLocation, StockLineReq, StockCountFilled,
+} from "@shared/types";
 
 export const httpApi: MerchantApi = {
   mSendOtp: (phone) => http.post<void>(E.mSendOtp.path, { phone }),
@@ -492,4 +495,39 @@ export const httpApi: MerchantApi = {
     http.post<void>(E.mRegisterPushToken.path, { platform, provider, clientId }),
   mUnregisterPushToken: (clientId) =>
     http.post<void>(E.mUnregisterPushToken.path, { clientId }),
+
+  // ---- 进销存（P-18）
+  mStockSummary: () => http.get<StockSummary>(E.mStockSummary.path),
+  mStockBalances: (q) => http.get<StockBalance[]>(E.mStockBalances.path, q),
+  mStockItem: (itemId) => http.get<StockItemDetail>(buildPath(E.mStockItem.path, { itemId })),
+  mStockLedger: (q) => http.get<StockLedgerPage>(E.mStockLedger.path, q),
+  mStockAdjust: (req) => http.post<void>(E.mStockAdjust.path, req),
+
+  mInboundCreate: (req) => http.post<string>(E.mInboundCreate.path, req),
+  mInboundUpdate: (no, req) => http.put<void>(buildPath(E.mInboundUpdate.path, { no }), req),
+  mInboundPost: (no) => http.post<void>(buildPath(E.mInboundPost.path, { no })),
+  mInboundVoid: (no) => http.post<void>(buildPath(E.mInboundVoid.path, { no })),
+
+  mOutboundCreate: (req) => http.post<string>(E.mOutboundCreate.path, req),
+  mOutboundPost: (no) => http.post<void>(buildPath(E.mOutboundPost.path, { no })),
+  mOutboundVoid: (no) => http.post<void>(buildPath(E.mOutboundVoid.path, { no })),
+
+  // **裸数组直接当 body 发** —— 后端收的是 `List<Filled>`，包一层 `{lines}` 会解成空列表，
+  // 而空列表在盘点里是「一件都没盘」，不报错
+  mCountOpen: (itemIds) => http.post<string>(E.mCountOpen.path, { itemIds }),
+  mCountFill: (no, lines) => http.put<void>(buildPath(E.mCountFill.path, { no }), lines),
+  mCountPost: (no) => http.post<void>(buildPath(E.mCountPost.path, { no })),
+
+  mTransferCreate: (req) => http.post<string>(E.mTransferCreate.path, req),
+  mTransferShip: (no) => http.post<void>(buildPath(E.mTransferShip.path, { no })),
+  mTransferReceive: (no) => http.post<void>(buildPath(E.mTransferReceive.path, { no })),
+
+  mStockDocuments: (q) => http.get<StockDocument[]>(E.mStockDocuments.path, q),
+  mStockMonthly: (month) => http.get<StockMonthly>(E.mStockMonthly.path, { month }),
+  mStockRanking: (q) => http.get<StockRank[]>(E.mStockRanking.path, q),
+
+  mStockLocations: () => http.get<StockLocation[]>(E.mStockLocations.path),
+  mWarehouseCreate: (name) => http.post<string>(E.mWarehouseCreate.path, { name }),
+  mLocationSetSource: (id, sourceLocationId) =>
+    http.put<void>(buildPath(E.mLocationSetSource.path, { id }), { sourceLocationId }),
 };

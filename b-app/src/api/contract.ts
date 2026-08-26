@@ -96,7 +96,11 @@ import type {
   StoreFulfillment,
   MyQualifications,
   Qualification,
-  QualificationSaveReq, MerchantSpecDim, StoreCategorySpecs, SpecOverride, SpecOption,} from "@shared/types";
+  QualificationSaveReq, MerchantSpecDim, StoreCategorySpecs, SpecOverride, SpecOption,
+  // 进销存（P-18）
+  StockSummary, StockBalance, StockItemDetail, StockLedgerPage, StockDocument,
+  StockMonthly, StockRank, StockLocation, StockLineReq, StockCountFilled,
+} from "@shared/types";
 
 /** 拍照识别的结果。全部是**建议值**，店主可改可弃 */
 export interface GoodsGuess {
@@ -328,6 +332,7 @@ import type {
   SubmitPaymentReq,
   TogglePointsReq,
   OpenFromMapReq,
+  StockInboundReq, StockOutboundReq,
 } from "./requests";
 
 /** 缓存里的一条小区。坐标必有 —— 没坐标的在服务端就被滤掉了（买家定位落不进去） */
@@ -1229,4 +1234,68 @@ export interface MerchantApi {
    * 上一班的人不能继续收到这家店的订单推送。
    */
   mUnregisterPushToken(clientId: string): Promise<void>;
+
+  // ---- 进销存（P-18 / B-1…B-21）。**独立模块、独立库**，见 shop-inventory
+  //
+  // 这一组的形状**逐字对着后端 record 抄**，不照界面拟：运营端那三页就是照自拟的
+  // 形状接的，mock 也照那份写，于是 mock 自查全过而真接口一个都调不通。
+
+  /** 库存总览三个数：在售 SKU / 缺货 / 滞销 */
+  mStockSummary(): Promise<StockSummary>;
+  /**
+   * 库存列表。
+   *
+   * @param filter `todo` 只给有待办标记的（默认，**要处理的排最前**）· `all` 全部 ·
+   *               `reserved` 有预留。一屏 200 多个 SKU，按字母排等于没排 ——
+   *               商家打开这一页只为两件事：哪件断了、哪件压着
+   */
+  mStockBalances(q?: { filter?: string; size?: number }): Promise<StockBalance[]>;
+  /** 单件明细：各库位分布 + 条码货号 */
+  mStockItem(itemId: string): Promise<StockItemDetail>;
+  /** 变动明细。每一行都带操作人、单据号、变动前后 —— 「昨天还有 20 袋今天剩 3 袋」从这里回答 */
+  mStockLedger(q?: { itemId?: string; cursor?: number; size?: number }): Promise<StockLedgerPage>;
+  /**
+   * 直接改数（把实存改成点出来的数）。
+   *
+   * **它不是「设置库存」** —— 后端按盘点走：生成一张单、落一行流水。
+   * 差异不为 0 时 `reasonCode` 必填，否则这个月报损了多少永远汇总不出来。
+   */
+  mStockAdjust(req: { itemId: string; countedQty: number; reasonCode?: string }): Promise<void>;
+
+  /** 记一笔进货 → 单号。存草稿用它，过账另调 */
+  mInboundCreate(req: StockInboundReq): Promise<string>;
+  mInboundUpdate(no: string, req: StockInboundReq): Promise<void>;
+  /** 过账。**过账才动库存**，草稿不动 */
+  mInboundPost(no: string): Promise<void>;
+  /** 作废。**已过账的只能整单作废重录** —— 改单据等于改历史 */
+  mInboundVoid(no: string): Promise<void>;
+
+  /** 报损/领用出库 → 单号。`purpose` 见 InvEnums.OutboundPurpose */
+  mOutboundCreate(req: StockOutboundReq): Promise<string>;
+  mOutboundPost(no: string): Promise<void>;
+  mOutboundVoid(no: string): Promise<void>;
+
+  /** 开一张盘点单 → 单号。**开单那一刻锁账面数**，盘的过程中照常卖不影响差异 */
+  mCountOpen(itemIds: string[]): Promise<string>;
+  mCountFill(no: string, lines: StockCountFilled[]): Promise<void>;
+  /** 过账：盘盈生成入库单、盘亏生成出库单 —— 盘点自己不改库存，走同一个过账口 */
+  mCountPost(no: string): Promise<void>;
+
+  /** 调拨 → 单号。**一定生成两张单**，哪怕骑车十分钟就送到 */
+  mTransferCreate(req: { fromLocationId: string; toLocationId: string; lines: StockLineReq[] }): Promise<string>;
+  mTransferShip(no: string): Promise<void>;
+  mTransferReceive(no: string): Promise<void>;
+
+  /** 单据中心。`kind` 空=全部，否则 IN / OUT / COUNT / TRANSFER */
+  mStockDocuments(q?: { kind?: string; size?: number }): Promise<StockDocument[]>;
+  /** 月报。`month` 形如 2026-08 */
+  mStockMonthly(month: string): Promise<StockMonthly>;
+  /** 榜单。`type` fast 动销 / slow 滞销 */
+  mStockRanking(q?: { type?: string; size?: number }): Promise<StockRank[]>;
+
+  /** 库位与仓。**在途是一个真实的库位**，不是「暂时没有」 */
+  mStockLocations(): Promise<StockLocation[]>;
+  mWarehouseCreate(name: string): Promise<string>;
+  /** 设发货源。**不允许接力**（A→B→C）：第一个后果是环，第二个是没人说得清货从哪出 */
+  mLocationSetSource(id: string, sourceLocationId: string | null): Promise<void>;
 }

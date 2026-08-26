@@ -303,6 +303,39 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
     auth: true,
     summary: "解绑推送设备（登出前，共用设备换班必须解）",
   },
+
+  // ── 进销存（P-18）。**注释别夹在 `{` 与 `method:` 之间** ——
+  // 端点表的解析器认那个位置，夹进去这条端点会静默不进 spec。
+  mStockSummary: { method: "GET", path: "/biz/inventory/summary", auth: true, summary: "库存总览三个数" },
+  mStockBalances: { method: "GET", path: "/biz/inventory/balances", auth: true, summary: "库存列表（默认只给要处理的）" },
+  mStockItem: { method: "GET", path: "/biz/inventory/items/:itemId", auth: true, summary: "单件库存明细" },
+  mStockLedger: { method: "GET", path: "/biz/inventory/ledger", auth: true, summary: "库存变动明细" },
+  mStockAdjust: { method: "POST", path: "/biz/inventory/adjust", auth: true, summary: "直接改数（走盘点，落单落流水）" },
+
+  mInboundCreate: { method: "POST", path: "/biz/inventory/inbounds", auth: true, summary: "记一笔进货" },
+  mInboundUpdate: { method: "PUT", path: "/biz/inventory/inbounds/:no", auth: true, summary: "改进货草稿" },
+  mInboundPost: { method: "POST", path: "/biz/inventory/inbounds/:no/post", auth: true, summary: "进货过账" },
+  mInboundVoid: { method: "POST", path: "/biz/inventory/inbounds/:no/void", auth: true, summary: "作废入库单" },
+
+  mOutboundCreate: { method: "POST", path: "/biz/inventory/outbounds", auth: true, summary: "报损/领用出库" },
+  mOutboundPost: { method: "POST", path: "/biz/inventory/outbounds/:no/post", auth: true, summary: "出库过账" },
+  mOutboundVoid: { method: "POST", path: "/biz/inventory/outbounds/:no/void", auth: true, summary: "作废出库单" },
+
+  mCountOpen: { method: "POST", path: "/biz/inventory/counts", auth: true, summary: "开盘点单（锁账面数）" },
+  mCountFill: { method: "PUT", path: "/biz/inventory/counts/:no/lines", auth: true, summary: "填实盘数" },
+  mCountPost: { method: "POST", path: "/biz/inventory/counts/:no/post", auth: true, summary: "盘点过账" },
+
+  mTransferCreate: { method: "POST", path: "/biz/inventory/transfers", auth: true, summary: "建调拨单" },
+  mTransferShip: { method: "POST", path: "/biz/inventory/transfers/:no/ship", auth: true, summary: "调拨发出" },
+  mTransferReceive: { method: "POST", path: "/biz/inventory/transfers/:no/receive", auth: true, summary: "调拨收货" },
+
+  mStockDocuments: { method: "GET", path: "/biz/inventory/documents", auth: true, summary: "出入库单据" },
+  mStockMonthly: { method: "GET", path: "/biz/inventory/report/monthly", auth: true, summary: "进销存月报" },
+  mStockRanking: { method: "GET", path: "/biz/inventory/report/ranking", auth: true, summary: "动销/滞销榜" },
+
+  mStockLocations: { method: "GET", path: "/biz/inventory/locations", auth: true, summary: "库位与仓" },
+  mWarehouseCreate: { method: "POST", path: "/biz/inventory/locations", auth: true, summary: "加一个仓" },
+  mLocationSetSource: { method: "PUT", path: "/biz/inventory/locations/:id/source", auth: true, summary: "设发货源" },
 };
 
 export function buildPath(path: string, params: Record<string, string | number>): string {

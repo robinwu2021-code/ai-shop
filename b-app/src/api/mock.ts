@@ -106,6 +106,9 @@ import type {
   Category,
   CategoryType,
   SkuIdentityReport,
+  StockBalance,
+  StockLedgerRow,
+  StockDocument,
 } from "@shared/types";
 
 /** 当前登录商家；未入驻时抛错，页面据此引导去入驻 */
@@ -4102,4 +4105,179 @@ export const mockApi: MerchantApi = {
   async mUnregisterPushToken() {
     return delay(undefined);
   },
+
+  // ---- 进销存（P-18）
+  //
+  // **形状逐字对着后端的 record**（`InventoryVOs` / `Biz*Controller`），
+  // 不照界面拟。运营端那三页就是照自拟的形状接的、mock 也照那份写，
+  // 于是两边自洽、mock 自查全过，而真接口一个都调不通 ——
+  // **替身与真身对不上时，替身跑得越顺，越看不出问题。**
+  //
+  // 种子刻意「不干净」：有缺货、有滞销、有预留。全绿的库存页看不出这一页是干什么的。
+
+  async mStockSummary() {
+    return delay({ itemCount: 216, shortageCount: 6, staleCount: 12 });
+  },
+
+  async mStockBalances(q) {
+    const all = invBalances();
+    const filter = q?.filter ?? "todo";
+    const picked = filter === "all" ? all
+      : filter === "reserved" ? all.filter((b) => b.reserved > 0)
+      : all.filter((b) => b.flags.length > 0);
+    return delay(picked.slice(0, q?.size ?? 100));
+  },
+
+  async mStockItem(itemId) {
+    const b = invBalances().find((x) => x.itemId === itemId) ?? invBalances()[0]!;
+    return delay({
+      itemId: b.itemId, name: b.name, specText: b.specText, baseUom: b.baseUom,
+      barcode: "6901234567892", itemCode: "LM-05",
+      onHand: b.onHand, reserved: b.reserved, available: b.available,
+      byLocation: [
+        { locationId: "L1", locationName: "文三路店", onHand: 5 },
+        { locationId: "L2", locationName: "古墩路店", onHand: 12 },
+        { locationId: "L3", locationName: "城西仓", onHand: 40 },
+      ],
+    });
+  },
+
+  async mStockLedger(q) {
+    const size = q?.size ?? 20;
+    const rows = invLedger().filter((r) => !q?.cursor || r.id < q.cursor).slice(0, size);
+    const last = rows[rows.length - 1];
+    return delay({
+      entries: rows,
+      nextCursor: rows.length < size ? null : (last?.id ?? null),
+    });
+  },
+
+  async mStockAdjust() {
+    return delay(undefined);
+  },
+
+  async mInboundCreate() {
+    return delay("IN-24082601");
+  },
+  async mInboundUpdate() {
+    return delay(undefined);
+  },
+  async mInboundPost() {
+    return delay(undefined);
+  },
+  async mInboundVoid() {
+    return delay(undefined);
+  },
+
+  async mOutboundCreate() {
+    return delay("OUT-2408260032");
+  },
+  async mOutboundPost() {
+    return delay(undefined);
+  },
+  async mOutboundVoid() {
+    return delay(undefined);
+  },
+
+  async mCountOpen() {
+    return delay("CNT-24082601");
+  },
+  async mCountFill() {
+    return delay(undefined);
+  },
+  async mCountPost() {
+    return delay(undefined);
+  },
+
+  async mTransferCreate() {
+    return delay("TRF-24082507");
+  },
+  async mTransferShip() {
+    return delay(undefined);
+  },
+  async mTransferReceive() {
+    return delay(undefined);
+  },
+
+  async mStockDocuments(q) {
+    const all = invDocuments();
+    return delay((q?.kind ? all.filter((d) => d.kind === q.kind) : all).slice(0, q?.size ?? 50));
+  },
+
+  async mStockMonthly(month) {
+    // 期初 + 进 − 销 − 损 ± 调 = 期末。**这条式子在界面上要能算得通** ——
+    // 对不上说明台账漏了一笔，那正是这张报表存在的理由
+    return delay({
+      month, opening: 320, purchased: 480, sold: 512, lost: 9, adjusted: 0,
+      closing: 279, balanced: true,
+    });
+  },
+
+  async mStockRanking(q) {
+    return (q?.type === "slow"
+      ? delay([{ itemId: "I3", name: "陈醋", specText: "500ml", qty: 0, costAmountMinor: 12000 }])
+      : delay([
+          { itemId: "I1", name: "东北大米", specText: "5斤装", qty: 186, costAmountMinor: 781200 },
+          { itemId: "I4", name: "土鸡蛋", specText: "30枚装", qty: 142, costAmountMinor: 397600 },
+          { itemId: "I5", name: "面粉", specText: "10斤装", qty: 97, costAmountMinor: 291000 },
+        ]));
+  },
+
+  async mStockLocations() {
+    return delay([
+      { locationId: "L1", name: "文三路店", kind: "STORE", externalRef: "S0001", sourceLocationId: "L3" },
+      { locationId: "L2", name: "古墩路店", kind: "STORE", externalRef: "S0002" },
+      { locationId: "L3", name: "城西仓", kind: "WAREHOUSE" },
+      // 在途是**真实的库位**，不是「暂时没有」—— 调拨途中的货停在这里，合计才守恒
+      { locationId: "L0", name: "在途", kind: "TRANSIT", status: "SYSTEM" },
+    ]);
+  },
+
+  async mWarehouseCreate() {
+    return delay("L4");
+  },
+  async mLocationSetSource() {
+    return delay(undefined);
+  },
 };
+
+// ── 进销存的假数据 ──────────────────────────────────────────────────────
+
+function invBalances(): StockBalance[] {
+  return [
+    { itemId: "I1", name: "东北大米", specText: "5斤装", baseUom: "袋",
+      onHand: 5, reserved: 2, available: 3, flags: ["SHORTAGE"], lastMovedAt: "2026-08-26T14:22:00" },
+    { itemId: "I2", name: "小米", specText: "2斤装", baseUom: "袋",
+      onHand: 0, reserved: 0, available: 0, flags: ["SHORTAGE"], lastMovedAt: "2026-08-24T10:00:00" },
+    { itemId: "I3", name: "陈醋", specText: "500ml", baseUom: "瓶",
+      onHand: 24, reserved: 0, available: 24, flags: ["STALE"], lastMovedAt: "2026-05-26T09:00:00" },
+    { itemId: "I4", name: "土鸡蛋", specText: "30枚装", baseUom: "箱",
+      onHand: 48, reserved: 0, available: 48, flags: [], lastMovedAt: "2026-08-25T18:40:00" },
+  ];
+}
+
+function invLedger(): StockLedgerRow[] {
+  return [
+    { id: 8812345, docKind: "OUT", docNo: "OUT-2408260031", reasonCode: "SALE",
+      qtyDelta: -2, balanceAfter: 3, occurredAt: "2026-08-26T14:22:00", operator: "系统" },
+    { id: 8812344, docKind: "OUT", docNo: "CNT-24082601", reasonCode: "COUNT_LOSS",
+      qtyDelta: -1, balanceAfter: 5, occurredAt: "2026-08-26T09:10:00", operator: "张伟" },
+    { id: 8812343, docKind: "IN", docNo: "IN-24082502", reasonCode: "PURCHASE",
+      qtyDelta: 20, balanceAfter: 6, occurredAt: "2026-08-25T18:40:00", operator: "老板" },
+  ];
+}
+
+function invDocuments(): StockDocument[] {
+  return [
+    { kind: "OUT", docNo: "OUT-2408260031", status: "POSTED", subtitle: "订单 SO-88213",
+      totalQty: -2, occurredAt: "2026-08-26T14:22:00", operator: "系统" },
+    { kind: "OUT", docNo: "OUT-2408260029", status: "POSTED", subtitle: "来自 CNT-24082601",
+      totalQty: -3, occurredAt: "2026-08-26T09:10:00" },
+    { kind: "OUT", docNo: "OUT-2408260028", status: "DRAFT", subtitle: "报损",
+      totalQty: -2, occurredAt: "2026-08-26T08:50:00", operator: "张伟" },
+    { kind: "IN", docNo: "IN-24082502", status: "POSTED", subtitle: "老周粮油",
+      totalQty: 54, occurredAt: "2026-08-25T18:40:00", operator: "老板" },
+    { kind: "TRANSFER", docNo: "TRF-24082507", status: "SHIPPED", subtitle: "城西仓 → 文三路店",
+      totalQty: 20, occurredAt: "2026-08-26T07:30:00" },
+  ];
+}

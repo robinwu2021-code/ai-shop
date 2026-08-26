@@ -320,6 +320,18 @@
       "style": {
         "navigationBarTitleText": "给会员发消息"
       }
+    },
+    {
+      "path": "pages/stock/index",
+      "style": {
+        "navigationBarTitleText": "库存"
+      }
+    },
+    {
+      "path": "pages/stock-detail/index",
+      "style": {
+        "navigationBarTitleText": "库存明细"
+      }
     }
   ],
   "globalStyle": {

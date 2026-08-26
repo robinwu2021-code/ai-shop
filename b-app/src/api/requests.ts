@@ -499,3 +499,30 @@ export interface StaffLoginReq {
   /** 短信验证码 */
   code: string;
 }
+
+// ── 进销存单据的请求体 ──────────────────────────────────────────────────
+// 对着 `BizStockDocController` 的 record 抄。`occurredAt` 是**发生日期**
+// 而不是录入时间：昨天进的货今天补录，账要落在昨天。
+
+import type { StockLineReq } from "@shared/types";
+
+export interface StockInboundReq {
+  /** PURCHASE 采购 / RETURN 退货 / TRANSFER_IN 调拨入 / COUNT_GAIN 盘盈 / OTHER */
+  sourceType: string;
+  /** 供应商**随手填的一行字，不建档案** —— 小店的供应商是微信里那个人 */
+  supplierName?: string;
+  occurredAt?: string;
+  remark?: string;
+  lines: StockLineReq[];
+}
+
+export interface StockOutboundReq {
+  /** SALE 销售 / TRANSFER_OUT 调拨出 / SCRAP 报损 / COUNT_LOSS 盘亏 / INTERNAL 领用 / OTHER。
+   *  **SALE 不接受手工创建** —— 否则商家能凭空造销量 */
+  purpose: string;
+  /** SCRAP 必填：BROKEN 损坏 / EXPIRED 过期 / GIFT 赠送 / OTHER。**枚举不是自由文本** */
+  reasonCode?: string;
+  occurredAt?: string;
+  remark?: string;
+  lines: StockLineReq[];
+}

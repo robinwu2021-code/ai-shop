@@ -4271,3 +4271,130 @@ export interface AfterSale {
   /** 售后自己的时间线（申请 → 同意 → 寄回 → 退款），与订单时间线分开 */
   timeline?: { status: string; label: string; at: number }[];
 }
+
+// ── 进销存（P-18 / B-1…B-21）────────────────────────────────────────────
+//
+// **逐字对着后端的 record 抄**，不是照界面拟的。上一轮运营端就是照自拟的形状
+// 接的，mock 也照那份写，于是两边自洽、mock 自查全过，而真接口一个都调不通。
+// 对照：`shop-inventory/.../dto/InventoryVOs.java` 与各 `Biz*Controller` 的 Req。
+
+/** 库存总览的三个数（`SummaryVO`）。 */
+export interface StockSummary {
+  itemCount: number;
+  shortageCount: number;
+  staleCount: number;
+}
+
+/** 一行库存（`BalanceVO`）。 */
+export interface StockBalance {
+  itemId: string;
+  name: string;
+  specText?: string;
+  baseUom?: string;
+  onHand: number;
+  reserved: number;
+  /** 可用 = 实存 − 预留。预留是别人下了单还没付钱的量，付了款才真扣 */
+  available: number;
+  safetyStock?: number;
+  /** 最后一次动过的时间；滞销判据 */
+  lastMovedAt?: string;
+  /** SHORTAGE 缺货 · STALE 滞销。**空数组 = 这件没事** */
+  flags: string[];
+}
+
+/** 某个物料在各库位的分布（`ItemDetailVO`）。 */
+export interface StockItemDetail {
+  itemId: string;
+  name: string;
+  specText?: string;
+  baseUom?: string;
+  barcode?: string;
+  itemCode?: string;
+  onHand: number;
+  reserved: number;
+  available: number;
+  byLocation: { locationId: string; locationName: string; onHand: number }[];
+}
+
+/** 台账一行（`LedgerVO`）。**不可变** —— 只有查看，没有编辑 */
+export interface StockLedgerRow {
+  id: number;
+  docKind: "IN" | "OUT";
+  docNo: string;
+  reasonCode: string;
+  qtyDelta: number;
+  balanceAfter: number;
+  occurredAt: string;
+  operator?: string;
+}
+
+/** 台账一页（`LedgerPageVO`）。游标由服务端给，前端不要自己拿最后一行的 id 推 */
+export interface StockLedgerPage {
+  entries: StockLedgerRow[];
+  nextCursor?: number | null;
+}
+
+/** 单据中心的一行（`DocumentVO`）。四类单据长得不一样，下发的是它们的交集 */
+export interface StockDocument {
+  /** IN 入库 · OUT 出库 · COUNT 盘点 · TRANSFER 调拨 */
+  kind: string;
+  docNo: string;
+  /** DRAFT / POSTED / VOIDED，调拨还有 SHIPPED / RECEIVED */
+  status: string;
+  /** 「订单 SO-88213」「来自 CNT-24082601」这类一句话出处 */
+  subtitle?: string;
+  totalQty: number;
+  occurredAt: string;
+  operator?: string;
+}
+
+/** 进销存月报（`MonthlyVO`）。界面上要能看出 期初 + 进 − 销 − 损 ± 调 = 期末 */
+export interface StockMonthly {
+  month: string;
+  opening: number;
+  purchased: number;
+  sold: number;
+  lost: number;
+  adjusted: number;
+  closing: number;
+  /** 算式对不对得上。**对不上要显眼**，那说明台账漏了一笔 */
+  balanced: boolean;
+}
+
+/** 榜单一行（`RankVO`）。 */
+export interface StockRank {
+  itemId: string;
+  name: string;
+  specText?: string;
+  qty: number;
+  costAmountMinor?: number;
+}
+
+/** 库位（`InvLocation`）。**仓是一种库位，不是一种门店** */
+export interface StockLocation {
+  locationId: string;
+  name: string;
+  /** STORE 门店 · WAREHOUSE 仓 · TRANSIT 在途（系统的，不可删） */
+  kind: string;
+  /** 门店库位对应的 storeNo */
+  externalRef?: string;
+  /** 发货源：设了之后这家店下单扣的是源仓的库存。**不允许接力** */
+  sourceLocationId?: string;
+  isDefault?: number;
+  status?: string;
+}
+
+/** 单据行（`LineReq`）。`unitCostMinor` 只有入库要 */
+export interface StockLineReq {
+  itemId: string;
+  qty: number;
+  uom?: string;
+  unitCostMinor?: number;
+}
+
+/** 盘点填数（`StockCountService.Filled`）。差异不为 0 时 `reasonCode` 必填 */
+export interface StockCountFilled {
+  itemId: string;
+  countedQty: number;
+  reasonCode?: string;
+}
