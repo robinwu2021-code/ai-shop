@@ -793,8 +793,7 @@ onShow(() => void load());
     </text>
 
     <view v-for="g in byCategory" :key="g.categoryNo" class="cat">
-      <view class="cat__head">
-        <text class="cat__name">{{ g.categoryName }}</text>
+      <sh-section pad :title="g.categoryName">
         <!--
           **带字的按钮，不是裸图标。**一个 ＋ 摆在标题栏里认不出是加什么 ——
           这一页上「加规格」与「加档位」是两件事，各自的入口离得不远。
@@ -806,7 +805,7 @@ onShow(() => void load());
           :active="picking === g.categoryNo"
           @tap="togglePick(g)"
         ></sh-add>
-      </view>
+      </sh-section>
 
       <view v-for="t in listOf(g)" :key="t.templateNo" class="spec"
             :class="{
@@ -1070,19 +1069,6 @@ onShow(() => void load());
   background: var(--sh-surface);
   border-radius: 24rpx;
   overflow: hidden;
-}
-.cat__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 24rpx 26rpx 16rpx;
-}
-.cat__name {
-  /* 字阶是 24/26/28/30/34/40/48 —— 32 不在上面，取 34 */
-  font-size: 34rpx;
-  font-weight: 600;
-  letter-spacing: 0.01em;
-  color: var(--sh-ink);
 }
 .cat__empty,
 .cat__foot {

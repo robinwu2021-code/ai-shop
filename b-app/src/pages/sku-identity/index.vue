@@ -130,23 +130,21 @@ function arrow(from?: string | null, to?: string | null): string {
 
     <!-- 第一步：把现状拿下来。**先导出再改**是唯一不会认错行的路 -->
     <view class="sh-card mt">
-      <view class="sec">
-        <text class="sh-h2">{{ $t("skuIdentity.step1") }}</text>
+      <sh-section :title="String($t('skuIdentity.step1'))">
         <view class="sh-btn sh-btn--soft act" :class="{ 'sh-btn--muted': busy }" @tap="doExport">
           {{ $t("skuIdentity.export") }}
         </view>
-      </view>
+      </sh-section>
       <text class="sh-muted hint">{{ $t("skuIdentity.exportHint") }}</text>
     </view>
 
     <!-- 第二步：把改好的表交回来 -->
     <view class="sh-card mt">
-      <view class="sec">
-        <text class="sh-h2">{{ $t("skuIdentity.step2") }}</text>
+      <sh-section :title="String($t('skuIdentity.step2'))">
         <view v-if="canPickFile" class="sh-btn sh-btn--soft act" @tap="choose">
           {{ $t("skuIdentity.choose") }}
         </view>
-      </view>
+      </sh-section>
       <!--
         **粘贴这条路两端都留着。**小程序没有 file input，而商家真会
         在电脑上打开这一页（/b/ 就是网页）。少一条路等于少一半的人能用。
@@ -234,11 +232,6 @@ function arrow(from?: string | null, to?: string | null): string {
   margin-top: 20rpx;
 }
 
-.sec {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
 
 .act {
   padding: 10rpx 26rpx;

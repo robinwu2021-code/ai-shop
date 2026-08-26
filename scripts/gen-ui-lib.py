@@ -100,6 +100,7 @@ COMP_NOTES = {
     "sh-rating": ("评分", "底层灰星 + 上层主色星按百分比裁切 —— 半星图标只能表达 0.5 粒度，4.3 会被抹成 4.5"),
     "sh-theme-sheet": ("外观面板", "9 套皮肤 × 明暗 × 语言，选中即时全局生效"),
     "sh-add": ("＋ 加一项按钮", "收编自 goods-edit 与 my-specs 里**逐字节相同**的 `.btn-add`。`active` 是展开态：同一个按钮管开合"),
+    "sh-section": ("卡内标题行", "收编自 goods-edit 与 sku-identity **逐字节相同**的 `.sec`（8 处调用点）。右侧动作直接进插槽，**不套壳** —— `.sec` 是 space-between，多一层就把「三个孩子摊开」变成「两组左右分」"),
     "sh-savebar": ("底部未保存条", "收编自 store 与 store-scope 里**逐字节相同**的 `.savebar`。自带流内占位 —— 收编前两页都被它盖住了最后一段内容"),
     "biz-region-picker": ("经营范围选择器", "省市区 / 小区 / 村三级 + 提报。全项目最大的单文件组件"),
     "biz-pickup-sheet": ("自提点选择弹层", "自带 mask 与 panel，**没走 sh-sheet**"),
@@ -137,6 +138,11 @@ SAMPLES = {
                '<span class="add__t">收起</span></div>'
                '<div class="add add--sm">{{icon:plus:10:var(--sh-primary)}}'
                '<span class="add__t">加值</span></div>'),
+    "sh-section": ('<div class="sec"><span class="sh-h2">商品参数</span>'
+                   '<div class="add">{{icon:plus:12:var(--sh-primary)}}'
+                   '<span class="add__t">加参数</span></div></div>'
+                   '<div class="sec" style="margin-top:10px">'
+                   '<span class="sh-h2">库存</span></div>'),
     "sh-savebar": ('<div class="bar bar--demo"><span class="bar__t">有未保存的修改</span>'
                    '<span class="sh-btn sh-btn--muted bar__discard">放弃</span>'
                    '<span class="sh-btn bar__save">保存</span></div>'),
@@ -329,7 +335,16 @@ ROLLED = [
     ("segment", "选中态自画",      None, r"(--on|--off|is-on)\s*[,{]",             None,       ".sh-chip--primary"),
     ("blockdup","白块自画",        None, r"background:\s*var\(--sh-surface\)[^}]*border-radius", None, ".sh-block / .sh-card"),
     # ↓ 库里没有的：这几行是缺口
-    ("section", "卡内标题行",      None, r"^\s*\.(sec|cat__head|grp__head|sec__h)\b", None, None),
+    # 卡内标题行判**声明**不判名字：`groups` / `plan` 里也有个 `.sec`，
+    # 但那是 `<text class="sh-h2 sec">` —— 只有标题、只有 margin，没有右侧动作。
+    # 按名字归成一类，会把「两种形态」误读成「一种被画了两遍」（与 addbtn/candchip 同一课）。
+    ("section", "卡内标题行", None,
+     r"\.(?:sec|cat__head|grp__head)\b[^{}]*\{[^}]*justify-content:\s*space-between", None, None),
+    # 只有标题、靠 margin 分段的那一种。**它不缺组件，缺的是间距档** ——
+    # 各页写的是 24rpx / 40rpx 8rpx 16rpx / 28rpx 0，差别是真实的版面决定，
+    # 收成组件只会多一个 props 去表达「这里松一点」。
+    ("sechead", "分段标题（只有标题）", r'class="sh-h2 (?:sec|grp)\b', r"^\s*\.(sec__h|grp)\b",
+     None, ".sh-h2 + 间距档"),
     ("stat",    "统计数字格",      None, r"^\s*\.(trio|quad|nums|stat|kpi)\b",   None,       None),
     ("listrow", "列表行",         None, r"^\s*\.(row|item)\b",                  None,       None),
     ("kv",      "键值行",         None, r"^\s*\.(kv|rule|prob|field__head)\b",  None,       None),

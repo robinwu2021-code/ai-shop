@@ -16,19 +16,20 @@
 |---|---|
 | B 端页面 | **52** |
 | 完全没有自造形态的页 | **5**（`income` `member-add` `points-records` `staff-detail` `stats`） |
-| 自造形态实例 | **125 处 / 16 类** |
+| 自造形态实例 | **124 处 / 16 类** |
 | 页面自己的样式 | 1 119 条选择器 · 5 583 行 |
 
 **这 16 类要分成两堆看，责任完全不同：**
 
-- **7 类是库里有、页面没用** —— 这是纪律问题，改页面就行
-- **9 类是库里根本没有** —— 这是**库的缺口**，不是页面的错。
+- **8 类是库里有、页面没用** —— 这是纪律问题，改页面就行
+- **8 类是库里根本没有** —— 这是**库的缺口**，不是页面的错。
   在补上之前，要求「所有页面基于组件库」是做不到的
 
-> **已收编两件（2026-08-26）**：`sh-add`（＋ 加一项按钮）与 `sh-savebar`（底部未保存条）。
-> 它们在四个页面里本来就是**逐字节相同**的复制品，收进库是纯搬运。
-> 缺件从 10 类降到 9 类，自造实例从 126 降到 125 —— 数字变化不大，
-> 但 `store` 从「4 处自造」降到「1 处」，是本轮唯一一个整页接近达标的。
+> **已收编三件（2026-08-26）**：`sh-add`（＋ 加一项按钮）· `sh-savebar`（底部未保存条）·
+> `sh-section`（卡内标题行）。三件在页面里本来就是**逐字节相同**的复制品，收进库是纯搬运。
+> 缺件从 10 类降到 **8 类**，自造实例 126 → 124。
+> 收益不平均：`store` 从 4 处自造降到 1 处，`sku-identity` 少了一整类；
+> 而 `goods-edit` 仍有 9 类 —— 它剩下的都是真缺件（列表行、键值行、上传格）。
 
 **最大的一条不是缺件，是弃用**：**26 个页面（正好一半）**用 `uni.showModal` /
 `uni.showActionSheet` 做确认与输入，而全 B 端只有 **2 页**用了 `sh-sheet` ——
@@ -70,6 +71,7 @@
 | 分栏切换 | 3 | `sh-tabs` | my-specs, picking, verify |
 | 弹层 / 遮罩 | 2 | `sh-sheet` | goods-list, order |
 | 空态 | 1 | `sh-empty` | home |
+| 分段标题（只有标题） | 4 | `.sh-h2` + 间距档 | goods-edit(`.sec__h`), groups, plan, store-categories(`.grp`)。**这一条不缺组件，缺的是间距档** —— 各页写的是 24rpx / 40rpx 8rpx 16rpx / 28rpx 0，差别是真实的版面决定 |
 
 > `sh-tabs` 的类注释里写着：抽它出来时两端有两套实现（chip 横排 / 方块），
 > **统一成了 chip 那套**。而 `my-specs` 又把方块那套画了回来（见 §六）。
@@ -77,23 +79,22 @@
 
 ---
 
-## 四、库里没有 —— 缺件排行（9 类）
+## 四、库里没有 —— 缺件排行（8 类）
 
-这九件是「所有页面基于组件库」的**前置条件**。按有多少页在重复造排序。
+这八件是「所有页面基于组件库」的**前置条件**。按有多少页在重复造排序。
 
 | # | 缺件 | 页数 | 现在各页怎么造的 |
 |---|---|---:|---|
 | 1 | **列表行** `sh-row` | **32** | 各自定义 `.row` / `.item`：`sku-identity` 是 `1rpx` 上边框，`store-categories` 是 `2rpx`，`goods-list` 干脆只有 `margin-bottom` |
 | 2 | **键值行** `sh-kv` | 6 | `goods-edit .kv` · `sku-identity .rule/.prob` · `qualifications` … 左键右值，键宽各写各的（140rpx / 180rpx） |
 | 3 | **统计数字格** `sh-stat` | 5 | `.trio`（coupon-issues 与 member-reach **逐字节相同**）· `.quad`（customers，40rpx/600）· `.nums`（sku-identity，40rpx/700） |
-| 4 | **卡内标题行** `sh-section` | 5 | `goods-edit`/`sku-identity` 的 `.sec` 完全相同；`my-specs` 叫 `.cat__head`，标题用 `.cat__name` 而不是 `.sh-h2` |
-| 5 | **图片上传格** `sh-uploader` | 4 | apply / payment / qualifications / goods-edit 各一份；**goods-edit 一页里就有两套**（`.imgs` 主图、`.dimgs` 详情图） |
-| 6 | **可删标签** `sh-chip` 的可删形态 | 4 | `my-specs` chip 内嵌 `.val__x`；`goods-edit` 行尾独立的 `.del`；`store-notice .recent__x`；`store-scope .item__x`。**连字符都不统一**：三处用 `✕`（U+2715），`store-scope` 用 `×`（U+00D7） |
-| 7 | **候选标签（虚线药丸）** | 3 | goods-edit `.addbar__chip` · my-specs `.chip` · cross-store。**这是与 `sh-add` 分工不同的第二种「＋」**：虚线＝点一下当场加进来，浅底按钮＝点一下开弹层再填。分工是对的，缺的是把虚线那档收成 `.sh-chip` 的一个变体 |
-| 8 | **搜索框** `sh-search` | 2 | customers / goods-list |
-| 9 | 悬浮新建按钮 `sh-fab` | 1 | goods-list |
+| 4 | **图片上传格** `sh-uploader` | 4 | apply / payment / qualifications / goods-edit 各一份；**goods-edit 一页里就有两套**（`.imgs` 主图、`.dimgs` 详情图） |
+| 5 | **可删标签** `sh-chip` 的可删形态 | 4 | `my-specs` chip 内嵌 `.val__x`；`goods-edit` 行尾独立的 `.del`；`store-notice .recent__x`；`store-scope .item__x`。**连字符都不统一**：三处用 `✕`（U+2715），`store-scope` 用 `×`（U+00D7） |
+| 6 | **候选标签（虚线药丸）** | 3 | goods-edit `.addbar__chip` · my-specs `.chip` · cross-store。**这是与 `sh-add` 分工不同的第二种「＋」**：虚线＝点一下当场加进来，浅底按钮＝点一下开弹层再填。分工是对的，缺的是把虚线那档收成 `.sh-chip` 的一个变体 |
+| 7 | **搜索框** `sh-search` | 2 | customers / goods-list |
+| 8 | 悬浮新建按钮 `sh-fab` | 1 | goods-list |
 
-~~原第 8、9 两件（＋ 加一项按钮、底部固定条）~~ **已收编**，见 §七。
+~~原第 4、8、9 三件（卡内标题行、＋ 加一项按钮、底部固定条）~~ **已收编**，见 §七。
 
 ---
 
@@ -106,10 +107,10 @@
 
 | 页面 | 选择器 | 库类 | 用了库件 | 自己造的 |
 |---|---:|---:|---|---|
-| `goods-edit` | 107 | 108 | **add**, cover, sheet | 系统弹框, 文字当箭头, 选中态自画, 白块自画, 卡内标题行, 键值行, 候选标签, 可删标签, 图片上传格 |
-| `my-specs` | 54 | 21 | **add**, empty, icon, sheet | 分栏切换, 系统弹框, 选中态自画, 白块自画, 卡内标题行, 候选标签, 可删标签 |
+| `goods-edit` | 105 | 108 | **add**, **section**, cover, sheet | 系统弹框, 文字当箭头, 选中态自画, 白块自画, 卡内标题行, 键值行, 候选标签, 可删标签, 图片上传格 |
+| `my-specs` | 52 | 21 | **add**, **section**, empty, icon, sheet | 分栏切换, 系统弹框, 选中态自画, 白块自画, 候选标签, 可删标签 |
 | `goods-list` | 40 | 7 | cover, empty, tabs, store-tag | 弹层/遮罩, 系统弹框, 白块自画, 列表行, 搜索框, 悬浮新建按钮 |
-| `sku-identity` | 29 | 29 | — | 系统弹框, 选中态自画, 卡内标题行, 统计数字格, 列表行, 键值行 |
+| `sku-identity` | 28 | 29 | **section** | 系统弹框, 选中态自画, 统计数字格, 列表行, 键值行 |
 | `store-scope` | 45 | 22 | **savebar**, pickup-sheet, region-picker, store-tag | 系统弹框, 文字当箭头, 选中态自画, 列表行, 可删标签 |
 | `verify` | 39 | 40 | empty | 分栏切换, 系统弹框, 文字当箭头, 选中态自画, 列表行 |
 | `customers` | 19 | 21 | empty, icon | 系统弹框, 选中态自画, 统计数字格, 列表行, 搜索框 |
@@ -224,7 +225,7 @@ my-specs .cat  = background: var(--sh-surface); border-radius: 24rpx; overflow: 
 
 按「改动小 / 收益大」排，前两条基本是纯搬运：
 
-1. ~~**`.btn-add` 收进库**~~ ✅ **已做**（`sh-add`，四处调用点）。`.sec` 同理，仍待做 → `sh-section`
+1. ~~**`.btn-add` 与 `.sec` 收进库**~~ ✅ **已做**：`sh-add`（4 处）+ `sh-section`（8 处）
 2. **`my-specs` 的分栏换成 `sh-tabs`**、`.cat` 换成 `.sh-block` —— 删代码，不写代码
 3. **统一选中态**：全域走 `.sh-chip--primary`，多选加 `✓`，单选不加；
    去掉 `.opt--on` 的描边与 600
@@ -242,12 +243,12 @@ my-specs .cat  = background: var(--sh-surface); border-radius: 24rpx; overflow: 
 |---|---|---|---|
 | `sh-add` | ＋ 加一项胶囊按钮，`active` 时换 ✕ 变描边 | `text`, `activeText`, `active`, `small` | goods-edit ×2 · my-specs ×1 |
 | `sh-savebar` | 底部未保存条（说明 + 放弃 + 保存），**自带流内占位** | `visible`, `text`, `discardText`, `saveText` | store · store-scope |
+| `sh-section` | 卡内标题行：左标题 + 右动作（插槽**不套壳**，保住 space-between 的三孩子布局） | `title`, `pad` | goods-edit ×5 · sku-identity ×2 · my-specs ×1 |
 
-**还要补的八件**：
+**还要补的七件**：
 
 | 组件 | 形态 | props（建议） |
 |---|---|---|
-| `sh-section` | 卡内标题行：左标题（`.sh-h2`）+ 右动作槽 | `title`, slot `action` |
 | `sh-row` | 列表行：左主体 + 右值 + 可选箭头，整行可点 | `title`, `sub`, `value`, `arrow`, `@tap` |
 | `sh-kv` | 键值行：定宽键 + 自适应值 | `label`, `keyWidth?`, slot |
 | `sh-stat` | 数字格：2–4 格，数字 + 标签，可点即筛 | `items`, `active?`, `@pick` |
@@ -269,7 +270,7 @@ my-specs .cat  = background: var(--sh-surface); border-radius: 24rpx; overflow: 
 | # | 待决 | 说明 |
 |---|---|---|
 | 1 | **`uni.showModal` 要不要一刀切掉** | 26 页在用。全换成 `sh-sheet` 是一笔不小的改动，但留着就等于承认「一半的弹层不归设计系统管」。折中方案：只换**带输入**的那 10 处（系统弹框的输入框最难看），确认型的先留 |
-| 2 | 缺件补齐后，要不要立**「新页面不许自造」的闸门** | 判据可以直接复用本文的 `ROLLED` 规则（已在生成器里），按棘轮：现有 125 处登记为已知欠账，新增的拦下 |
+| 2 | 缺件补齐后，要不要立**「新页面不许自造」的闸门** | 判据可以直接复用本文的 `ROLLED` 规则（已在生成器里），按棘轮：现有 124 处登记为已知欠账，新增的拦下 |
 | 3 | `goods-edit` 3 933 行 / 110 条选择器要不要拆 | 它一页占了商品域样式的四成。补完组件后应该能掉一大半，届时再看还剩什么 |
 
 ---

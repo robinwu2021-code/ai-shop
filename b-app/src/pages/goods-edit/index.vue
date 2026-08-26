@@ -2560,16 +2560,14 @@ async function save(thenSubmit = false) {
     <!-- 类目选择弹层：一次只显示一层，选到叶子自动收起 -->
     <!-- 规格组 -->
     <view class="sh-card mt">
-      <view class="sec">
-        <text class="sh-h2">{{ $t("goods.specs") }}</text>
-        <!--
+      <!--
           **「套用模板」这个入口没了。** 选完类目已经把本店确认过的那一组
           （名字 + 档位 + code）直接预填进来了，而它展开后列出的第一条
           恰恰就是刚预填的那一组 —— 同一件事出现两次，第二次没有新信息。
           它唯一还独占的是「我的常用」，已经折进下面的「＋ 规格组」面板里，
           与本类目 / 平台通用 / 自己起名摆在一处：**一个入口，一次选择。**
         -->
-      </view>
+      <sh-section :title="String($t('goods.specs'))"></sh-section>
 
       <!--
         **规格常驻展开，没有收起态。**
@@ -2687,10 +2685,9 @@ async function save(thenSubmit = false) {
         而「加参数」不是候选，是一个开弹层的入口。只有一枚 chip 却独占一整行，
         看上去也像个被落下的按钮。
       -->
-      <view class="sec">
-        <text class="sh-h2">{{ $t("goods.params") }}</text>
+      <sh-section :title="String($t('goods.params'))">
         <sh-add :text="String($t('goods.addParam'))" @tap="addingParam = true"></sh-add>
-      </view>
+      </sh-section>
 
       <!-- 与规格同一条：常驻展开，理由见上面那段 -->
       <!-- 这一类还没配参数：说清现状，并把唯一的下一步摆在眼前 -->
@@ -2786,8 +2783,7 @@ async function save(thenSubmit = false) {
 
     <!-- SKU 矩阵 -->
     <view class="sh-card mt">
-      <view class="sec">
-        <text class="sh-h2">{{ $t("goods.skuMatrix") }}</text>
+      <sh-section :title="String($t('goods.skuMatrix'))">
         <!--
           **字段切换，不是展开。**
 
@@ -2822,7 +2818,7 @@ async function save(thenSubmit = false) {
             {{ m.currency }}
           </text>
         </view>
-      </view>
+      </sh-section>
       <!-- 「按市场分别定价」的说明只在多市场打开时才有意义 -->
       <text v-if="MULTI_MARKET_UI" class="sh-muted hint">{{ $t("goods.marketPriceHint") }}</text>
       <!-- 归集路径必须说清「这不是最终售价」—— 只改标签不解释，
@@ -2998,9 +2994,7 @@ async function save(thenSubmit = false) {
       分开之后，「改库存」这件高频事不必先滚过一整片价格字段。
     -->
     <view class="sh-card mt">
-      <view class="sec">
-        <text class="sh-h2">{{ $t("goods.secStock") }}</text>
-      </view>
+      <sh-section :title="String($t('goods.secStock'))"></sh-section>
       <text class="sh-muted hint">{{ $t("goods.stockHint") }}</text>
 
       <!-- 与价格卡同构：同样的分组、同样的规格名、同样的「统一填入」 -->
@@ -3052,12 +3046,13 @@ async function save(thenSubmit = false) {
       这件货身上有值时也自动展开（见 externalOn）。
     -->
     <view class="sh-card mt">
-      <view class="sec">
-        <text class="sh-h2">{{ $t("goods.secCode") }}</text>
-        <view v-if="externalOn" class="sec__ops">
-          <text class="link link--quiet" @tap="rememberExternal(false)">{{ $t("goods.specFold") }}</text>
-        </view>
-      </view>
+      <sh-section :title="String($t('goods.secCode'))">
+        <text
+          v-if="externalOn"
+          class="link link--quiet"
+          @tap="rememberExternal(false)"
+        >{{ $t("goods.specFold") }}</text>
+      </sh-section>
       <view v-if="!externalOn" class="askspec" @tap="rememberExternal(true)">
         <text class="sh-muted askspec__t">{{ $t("goods.extShow") }}</text>
         <text class="askspec__go">›</text>
@@ -3742,11 +3737,6 @@ async function save(thenSubmit = false) {
   flex: 1;
   margin-top: 0;
 }
-.sec {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
 .mini {
   padding: 16rpx 28rpx;
   border-radius: 16rpx;
@@ -3755,10 +3745,6 @@ async function save(thenSubmit = false) {
   font-size: 24rpx;
   font-weight: 600;
   text-align: center;
-}
-.sec__ops {
-  display: flex;
-  gap: 24rpx;
 }
 .hint {
   display: block;

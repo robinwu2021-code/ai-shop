@@ -471,7 +471,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 78,
+        "b-app": 71,
         "c-app": 27
       }
     },
@@ -1010,6 +1010,22 @@
       "why": "**每页根元素必须是它** —— 否则小程序端换肤 / RTL / 三语标题全不生效"
     },
     {
+      "name": "sh-section",
+      "file": "packages/ui/src/components/sh-section.vue",
+      "scope": "跨端",
+      "lines": 49,
+      "props": [
+        "title: string",
+        "pad?: boolean"
+      ],
+      "usage": {
+        "b-app": 8,
+        "c-app": 0
+      },
+      "note": "卡内标题行",
+      "why": "收编自 goods-edit 与 sku-identity **逐字节相同**的 `.sec`（8 处调用点）。右侧动作直接进插槽，**不套壳** —— `.sec` 是 space-between，多一层就把「三个孩子摊开」变成「两组左右分」"
+    },
+    {
       "name": "sh-sheet",
       "file": "packages/ui/src/components/sh-sheet.vue",
       "scope": "跨端",
@@ -1494,11 +1510,12 @@
         "sh-add",
         "sh-cover",
         "sh-scaffold",
+        "sh-section",
         "sh-sheet"
       ],
-      "libClassHits": 108,
-      "localSelectors": 107,
-      "localCssLines": 582,
+      "libClassHits": 103,
+      "localSelectors": 105,
+      "localCssLines": 573,
       "rolled": [
         {
           "id": "sysmodal",
@@ -1529,11 +1546,11 @@
           "gap": false
         },
         {
-          "id": "section",
-          "label": "卡内标题行",
-          "lib": null,
-          "rule": "^\\s*\\.(sec|cat__head|grp__head|sec__h)\\b",
-          "gap": true
+          "id": "sechead",
+          "label": "分段标题（只有标题）",
+          "lib": ".sh-h2 + 间距档",
+          "rule": "class=\"sh-h2 (?:sec|grp)\\b",
+          "gap": false
         },
         {
           "id": "kv",
@@ -1636,11 +1653,11 @@
       "localCssLines": 92,
       "rolled": [
         {
-          "id": "section",
-          "label": "卡内标题行",
-          "lib": null,
-          "rule": "^\\s*\\.(sec|cat__head|grp__head|sec__h)\\b",
-          "gap": true
+          "id": "sechead",
+          "label": "分段标题（只有标题）",
+          "lib": ".sh-h2 + 间距档",
+          "rule": "class=\"sh-h2 (?:sec|grp)\\b",
+          "gap": false
         },
         {
           "id": "listrow",
@@ -1985,11 +2002,12 @@
         "sh-empty",
         "sh-icon",
         "sh-scaffold",
+        "sh-section",
         "sh-sheet"
       ],
       "libClassHits": 21,
-      "localSelectors": 54,
-      "localCssLines": 250,
+      "localSelectors": 52,
+      "localCssLines": 238,
       "rolled": [
         {
           "id": "tabs",
@@ -2018,13 +2036,6 @@
           "lib": ".sh-block / .sh-card",
           "rule": "background:\\s*var\\(--sh-surface\\)[^}]*border-radius",
           "gap": false
-        },
-        {
-          "id": "section",
-          "label": "卡内标题行",
-          "lib": null,
-          "rule": "^\\s*\\.(sec|cat__head|grp__head|sec__h)\\b",
-          "gap": true
         },
         {
           "id": "candchip",
@@ -2170,11 +2181,11 @@
           "gap": false
         },
         {
-          "id": "section",
-          "label": "卡内标题行",
-          "lib": null,
-          "rule": "^\\s*\\.(sec|cat__head|grp__head|sec__h)\\b",
-          "gap": true
+          "id": "sechead",
+          "label": "分段标题（只有标题）",
+          "lib": ".sh-h2 + 间距档",
+          "rule": "class=\"sh-h2 (?:sec|grp)\\b",
+          "gap": false
         }
       ]
     },
@@ -2361,11 +2372,12 @@
       "page": "sku-identity",
       "file": "b-app/src/pages/sku-identity/index.vue",
       "components": [
-        "sh-scaffold"
+        "sh-scaffold",
+        "sh-section"
       ],
-      "libClassHits": 29,
-      "localSelectors": 29,
-      "localCssLines": 135,
+      "libClassHits": 27,
+      "localSelectors": 28,
+      "localCssLines": 130,
       "rolled": [
         {
           "id": "sysmodal",
@@ -2380,13 +2392,6 @@
           "lib": ".sh-chip--primary",
           "rule": "(--on|--off|is-on)\\s*[,{]",
           "gap": false
-        },
-        {
-          "id": "section",
-          "label": "卡内标题行",
-          "lib": null,
-          "rule": "^\\s*\\.(sec|cat__head|grp__head|sec__h)\\b",
-          "gap": true
         },
         {
           "id": "stat",
@@ -2510,6 +2515,13 @@
           "label": "选中态自画",
           "lib": ".sh-chip--primary",
           "rule": "(--on|--off|is-on)\\s*[,{]",
+          "gap": false
+        },
+        {
+          "id": "sechead",
+          "label": "分段标题（只有标题）",
+          "lib": ".sh-h2 + 间距档",
+          "rule": "class=\"sh-h2 (?:sec|grp)\\b",
           "gap": false
         },
         {
@@ -2778,20 +2790,6 @@
       ]
     },
     {
-      "id": "section",
-      "label": "卡内标题行",
-      "lib": null,
-      "gap": true,
-      "rule": "^\\s*\\.(sec|cat__head|grp__head|sec__h)\\b",
-      "pages": [
-        "goods-edit",
-        "groups",
-        "my-specs",
-        "plan",
-        "sku-identity"
-      ]
-    },
-    {
       "id": "uploader",
       "label": "图片上传格",
       "lib": null,
@@ -2944,6 +2942,19 @@
       ]
     },
     {
+      "id": "sechead",
+      "label": "分段标题（只有标题）",
+      "lib": ".sh-h2 + 间距档",
+      "gap": false,
+      "rule": "class=\"sh-h2 (?:sec|grp)\\b",
+      "pages": [
+        "goods-edit",
+        "groups",
+        "plan",
+        "store-categories"
+      ]
+    },
+    {
       "id": "tabs",
       "label": "分栏切换",
       "lib": "sh-tabs",
@@ -2980,8 +2991,8 @@
   "counts": {
     "tokens": 10,
     "blocks": 31,
-    "components": 16,
+    "components": 17,
     "pages": 52,
-    "gapKinds": 9
+    "gapKinds": 8
   }
 }
