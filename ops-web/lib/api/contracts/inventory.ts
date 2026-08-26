@@ -1,6 +1,6 @@
 // 进销存（P-18）—— `/ops/inventory/**`。**独立模块**：与商品域不共契约文件，
 // 它将来要能单独交付。
-import type { InvHealthRow, InvLedgerPage, InvReconReport } from "@/lib/types";
+import type { InvBalanceRow, InvHealthRow, InvLedgerPage, InvReconReport } from "@/lib/types";
 
 export interface InventoryApi {
   // 三个都只读：运营不改商家库存 —— 改了之后「这个数是谁改的」就多一个答案，而商家不会知道。
@@ -11,6 +11,14 @@ export interface InventoryApi {
    * 这三类商品**正在给买家制造失败的下单** —— 点进去、加购、然后发现买不了。
    */
   listInvHealth(q?: { kind?: InvHealthRow["kind"]; limit?: number }): Promise<InvHealthRow[]>;
+
+  /**
+   * **某一个商家**的库存待办（健康度页点进一行之后看的）。
+   *
+   * `type` 默认 `todo`（只给有标记的：缺货 / 滞销）· `all` 全部 · `reserved` 有预留。
+   * `entityNo` 必填 —— 这一页的前提就是「已经知道要看谁」。
+   */
+  listInvBalances(q: { entityNo: string; type?: string; size?: number }): Promise<InvBalanceRow[]>;
 
   /**
    * 商家台账（只读）。客服回答「我的货怎么少了」时的依据。

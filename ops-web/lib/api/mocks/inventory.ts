@@ -1,5 +1,5 @@
 // 进销存（P-18）的内存 mock。三个都只读。
-import type { InvHealthRow, InvLedgerRow } from "@/lib/types";
+import type { InvBalanceRow, InvHealthRow, InvLedgerRow } from "@/lib/types";
 import type { InventoryApi } from "../contracts/inventory";
 import { wait } from "./_wait";
 
@@ -29,6 +29,17 @@ const mockInvLedger: InvLedgerRow[] = [
 ];
 
 export const inventoryMock: InventoryApi = {
+  /** 某一个商家的库存待办。形状照 `BalanceVO`，不照界面拟 */
+  listInvBalances: () =>
+    wait<InvBalanceRow[]>([
+      { itemId: "ITM0001", name: "东北大米", specText: "5斤装", baseUom: "袋",
+        onHand: -3, reserved: 0, available: -3, safetyStock: 10,
+        lastMovedAt: "2026-08-26T14:22:00", flags: ["SHORTAGE"] },
+      { itemId: "ITM0003", name: "陈醋", specText: "500ml", baseUom: "瓶",
+        onHand: 24, reserved: 0, available: 24, safetyStock: null,
+        lastMovedAt: "2026-05-26T09:00:00", flags: ["STALE"] },
+    ]),
+
   listInvHealth: (q = {}) =>
     wait(mockInvHealth.filter((r) => !q.kind || r.kind === q.kind).slice(0, q.limit ?? 200)),
 

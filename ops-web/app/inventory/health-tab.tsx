@@ -9,9 +9,10 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import type { InvHealthRow } from "@/lib/types";
+import type { InvBalanceRow, InvHealthRow } from "@/lib/types";
 import { Badge, type BadgeTone } from "@/components/ui/badge";
 import { DataTable, type Column } from "@/components/ui/data-table";
+import { Drawer } from "@/components/ui/drawer";
 import { Notice } from "@/components/ui/notice";
 import { Tabs } from "@/components/ui/tabs";
 import type { InventoryCopy } from "./copy";
@@ -20,6 +21,21 @@ type Kind = InvHealthRow["kind"] | "ALL";
 
 export function HealthTab({ c }: { c: InventoryCopy }) {
   const [kind, setKind] = useState<Kind>("ALL");
+
+  /**
+   * 点进某一行看这个商家的**全部**库存待办。
+   *
+   * 健康度那一屏是「不知道该看谁」时的扫描，一个商家只出它最要紧的那几行；
+   * 而运营点进来是因为**已经知道要看谁**了 —— 这时要的是这家店的整张待办表，
+   * 那正是 `/ops/inventory/balances`（它一度也叫 health，改名让路给平台级那个）。
+   */
+  const [drill, setDrill] = useState<InvHealthRow | null>(null);
+
+  const balances = useQuery({
+    queryKey: ["inv-balances", drill?.entityNo],
+    queryFn: () => api.listInvBalances({ entityNo: drill!.entityNo, type: "todo" }),
+    enabled: !!drill,
+  });
 
   const list = useQuery({
     queryKey: ["inv-health", kind],
@@ -39,6 +55,42 @@ export function HealthTab({ c }: { c: InventoryCopy }) {
   const kindLabel: Record<InvHealthRow["kind"], string> = {
     NEGATIVE: c.invHealthNegative, ZERO_ON_SALE: c.invHealthZeroOnSale, STALE: c.invHealthStale,
   };
+
+  /** 下钻表。**带 flags 那一列** —— 点进来是为了看「这家店哪几件在出事」 */
+  const balanceColumns: Column<InvBalanceRow>[] = [
+    {
+      header: c.invColItem,
+      cell: (b) => (
+        <div>
+          <div>{b.name}</div>
+          <div className="text-xs text-muted-foreground">{b.specText ?? b.itemId}</div>
+        </div>
+      ),
+    },
+    {
+      header: "",
+      cell: (b) => (
+        <>
+          {b.flags.map((f) => (
+            <Badge key={f} tone={f === "SHORTAGE" ? "danger" : "muted"}>
+              {f === "SHORTAGE" ? c.invFlagShortage : c.invFlagStale}
+            </Badge>
+          ))}
+        </>
+      ),
+    },
+    { header: c.invColOnHand, numeric: true, cell: (b) => b.onHand },
+    { header: c.invColReserved, numeric: true, cell: (b) => b.reserved },
+    {
+      header: c.invColAvailable,
+      numeric: true,
+      cell: (b) => (
+        <span className={b.available < 0 ? "font-semibold text-destructive" : undefined}>
+          {b.available}
+        </span>
+      ),
+    },
+  ];
 
   const columns: Column<InvHealthRow>[] = [
     { header: "", cell: (r) => <Badge tone={kindTone[r.kind]}>{kindLabel[r.kind]}</Badge> },
@@ -103,7 +155,33 @@ export function HealthTab({ c }: { c: InventoryCopy }) {
         onRetry={() => list.refetch()}
         empty={c.invHealthEmpty}
         rowKey={(r) => `${r.entityNo}-${r.itemId}-${r.kind}`}
+        rowProps={(r) => ({
+          onClick: () => setDrill(r),
+          className: "cursor-pointer",
+        })}
       />
+
+      {/*
+        下钻。**只读，与外面同一条口径** —— 运营改了商家的数，
+        「这个数是谁改的」就多一个答案，而商家不会知道。
+      */}
+      <Drawer
+        open={!!drill}
+        onOpenChange={(o) => !o && setDrill(null)}
+        title={drill ? (drill.merchantName ?? drill.entityNo) : ""}
+        desc={drill?.storeNo ?? drill?.entityNo}
+        width="w-[720px]"
+      >
+        <DataTable
+          columns={balanceColumns}
+          rows={balances.data}
+          loading={balances.isLoading}
+          error={balances.error}
+          onRetry={() => balances.refetch()}
+          empty={c.invBalancesEmpty}
+          rowKey={(b) => b.itemId}
+        />
+      </Drawer>
     </div>
   );
 }

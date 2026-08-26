@@ -21,6 +21,26 @@ export interface InvHealthRow {
   idleDays?: number;
 }
 
+/**
+ * 某一个商家的一行库存余额（`BalanceVO`）。健康度页点进某一行时看的东西。
+ *
+ * <p>与 {@link InvHealthRow} **不是同一件事**：那边是「不知道该看谁」时的平台级扫描，
+ * 这边必须先知道看哪个商家。两者共用过同一个路径名，代价是运营端照着名字接错。
+ */
+export interface InvBalanceRow {
+  itemId: string;
+  name: string;
+  specText?: string;
+  baseUom?: string;
+  onHand: number;
+  reserved: number;
+  available: number;
+  safetyStock?: number | null;
+  lastMovedAt?: string | null;
+  /** SHORTAGE 缺货 · STALE 滞销。**空数组 = 这件没事** */
+  flags: string[];
+}
+
 /** 台账一行。**不可变** —— 这里永远只有查看，没有编辑 */
 export interface InvLedgerRow {
   id: number;
