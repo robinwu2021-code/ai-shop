@@ -2597,14 +2597,14 @@ async function save(thenSubmit = false) {
         <text
           v-for="d in moreFromCategory"
           :key="d.templateNo"
-          class="sh-chip addbar__chip"
+          class="sh-chip sh-chip--dashed"
           @tap="pickDim(d)"
         >＋ {{ d.name }}</text>
         <template v-if="showUniversalDims">
           <text
             v-for="d in moreOther"
             :key="d.templateNo"
-            class="sh-chip addbar__chip addbar__chip--q"
+            class="sh-chip sh-chip--dashed sh-chip--dashed-quiet"
             @tap="pickDim(d)"
           >＋ {{ d.name }}</text>
         </template>
@@ -2761,7 +2761,7 @@ async function save(thenSubmit = false) {
         <text
           v-for="o in paramCands"
           :key="o.code || o.label"
-          class="sh-chip addbar__chip"
+          class="sh-chip sh-chip--dashed"
           @tap="pickParamCand(o)"
         >＋ {{ o.label }}</text>
       </view>
@@ -3259,27 +3259,7 @@ async function save(thenSubmit = false) {
 }
 
 
-/*
- * **这套界面里 ＋ 有两种，形状分得开：**
- *   虚线药丸（.addbar__chip / 弹层里的候选）= **候选**，点一下当场加进来
- *   浅底按钮（<sh-add>）                    = **入口**，点一下开一个弹层去加
- * 一律用虚线的话，「点了就有」和「点了还要再填一屏」长成一个样。
- *
- * <p>候选只声明「与默认 chip 的差别」—— 字号、内边距、圆角一律吃 .sh-chip：
- * 自己再写一份 `6rpx 18rpx` 的话，同一张卡里候选比档位矮一圈，
- * 而两者本来就该是同一颗药丸的两种状态。
- */
-.addbar__chip {
-  color: var(--sh-primary-text);
-  border: 2rpx dashed var(--sh-primary);
-  background: transparent;
-}
 
-/* 通用/自建压一档：本类目那几条才是平台针对这一类的回答 */
-.addbar__chip--q {
-  color: var(--sh-sub);
-  border-color: var(--sh-line);
-}
 
 .addbar__more {
   font-size: 24rpx;

@@ -532,6 +532,29 @@ uni-page-wrapper[style*="--window-bottom"] {
   background: var(--sh-primary-tint);
   color: var(--sh-primary-text);
 }
+/*
+ * 虚线药丸＝**候选**：点一下当场加进来。
+ *
+ * <p><b>与浅底按钮（`sh-add`）是两件事，形状分得开</b>（这条分工是
+ * `goods-edit` 里写死的，收进来时一并带过来）：
+ * 虚线＝点了就有；浅底按钮＝点了还要再填一屏。一律用虚线的话，
+ * 「点了就有」与「点了还要再填一屏」长成一个样。
+ *
+ * <p>它只声明**与默认 chip 的差别** —— 字号、内边距、圆角一律吃 `.sh-chip`：
+ * 自己再写一份的话，同一张卡里候选会比档位矮一圈，
+ * 而两者本来就该是同一颗药丸的两种状态。
+ *
+ * <p>`--dashed-quiet` 是压一档的候选（跨类目通用的那些，摆在眼前多半不对题）。
+ */
+.sh-chip--dashed {
+  background: transparent;
+  border: 2rpx dashed var(--sh-primary);
+  color: var(--sh-primary-text);
+}
+.sh-chip--dashed-quiet {
+  border-color: var(--sh-line);
+  color: var(--sh-sub);
+}
 .sh-chip--warning {
   background: var(--sh-warning-tint);
   color: var(--sh-warning);

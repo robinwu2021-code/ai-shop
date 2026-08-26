@@ -815,6 +815,44 @@
       }
     },
     {
+      "class": ".sh-chip--dashed",
+      "group": "标签",
+      "when": "**候选**：点一下当场加进来",
+      "avoid": "点了还要再填一屏的是入口，用 `sh-add`",
+      "decl": {
+        "background": "transparent",
+        "border": "2rpx dashed var(--sh-primary)",
+        "color": "var(--sh-primary-text)"
+      },
+      "px": {
+        "background": "transparent",
+        "border": "1px dashed var(--sh-primary)",
+        "color": "var(--sh-primary-text)"
+      },
+      "usage": {
+        "b-app": 6,
+        "c-app": 0
+      }
+    },
+    {
+      "class": ".sh-chip--dashed-quiet",
+      "group": "标签",
+      "when": "压一档的候选（跨类目通用的那些）",
+      "avoid": "—",
+      "decl": {
+        "border-color": "var(--sh-line)",
+        "color": "var(--sh-sub)"
+      },
+      "px": {
+        "border-color": "var(--sh-line)",
+        "color": "var(--sh-sub)"
+      },
+      "usage": {
+        "b-app": 1,
+        "c-app": 0
+      }
+    },
+    {
       "class": ".sh-chip--primary",
       "group": "标签",
       "when": "选中态 / 与主色相关的状态",
@@ -998,7 +1036,7 @@
         "small?: boolean"
       ],
       "usage": {
-        "b-app": 4,
+        "b-app": 3,
         "c-app": 0
       },
       "note": "＋ 加一项按钮",
@@ -1036,6 +1074,21 @@
       },
       "note": "空态",
       "why": "抽出来不是因为重复，是**观感会漂**：曾在 27 个页面各写一份，padding 在 60/80/100rpx 之间随手取"
+    },
+    {
+      "name": "sh-fab",
+      "file": "packages/ui/src/components/sh-fab.vue",
+      "scope": "跨端",
+      "lines": 43,
+      "props": [
+        "text: string"
+      ],
+      "usage": {
+        "b-app": 1,
+        "c-app": 0
+      },
+      "note": "悬浮新建按钮",
+      "why": "贴右下角压在列表上。**只有一个调用点仍然收进来** —— 收的不是重复，是那一行 `bottom` 里的知识：抬到 tabBar 上方一指宽，否则想点新建却切了页"
     },
     {
       "name": "sh-icon-btn",
@@ -1519,10 +1572,10 @@
         },
         {
           "id": "candchip",
-          "label": "候选标签（虚线药丸）",
-          "lib": null,
+          "label": "虚线药丸",
+          "lib": ".sh-chip--dashed",
           "rule": "border:\\s*2rpx dashed var\\(--sh-primary\\)",
-          "gap": true
+          "gap": false
         }
       ]
     },
@@ -1551,13 +1604,6 @@
           "label": "列表行",
           "lib": null,
           "rule": "^\\s*\\.(row|item)\\b",
-          "gap": true
-        },
-        {
-          "id": "search",
-          "label": "搜索框",
-          "lib": null,
-          "rule": "^\\s*\\.search\\b",
           "gap": true
         }
       ]
@@ -1639,9 +1685,9 @@
         "sh-sheet",
         "sh-uploader"
       ],
-      "libClassHits": 118,
-      "localSelectors": 95,
-      "localCssLines": 505,
+      "libClassHits": 122,
+      "localSelectors": 93,
+      "localCssLines": 496,
       "rolled": [
         {
           "id": "sysmodal",
@@ -1686,13 +1732,6 @@
           "gap": true
         },
         {
-          "id": "candchip",
-          "label": "候选标签（虚线药丸）",
-          "lib": null,
-          "rule": "border:\\s*2rpx dashed var\\(--sh-primary\\)",
-          "gap": true
-        },
-        {
           "id": "glyphicon",
           "label": "文字当图标（✕/×）",
           "lib": "sh-icon-btn / sh-icon(close)",
@@ -1707,13 +1746,14 @@
       "components": [
         "sh-cover",
         "sh-empty",
+        "sh-fab",
         "sh-scaffold",
         "sh-tabs",
         "biz-store-tag"
       ],
       "libClassHits": 7,
-      "localSelectors": 40,
-      "localCssLines": 226,
+      "localSelectors": 39,
+      "localCssLines": 212,
       "rolled": [
         {
           "id": "sheet",
@@ -1754,14 +1794,7 @@
           "id": "search",
           "label": "搜索框",
           "lib": null,
-          "rule": "^\\s*\\.search\\b",
-          "gap": true
-        },
-        {
-          "id": "fab",
-          "label": "悬浮新建按钮",
-          "lib": null,
-          "rule": "^\\s*\\.fab\\b",
+          "rule": "\\.search\\b[^{}]*\\{[^}]*background:",
           "gap": true
         }
       ]
@@ -2126,9 +2159,9 @@
         "sh-section",
         "sh-sheet"
       ],
-      "libClassHits": 21,
-      "localSelectors": 52,
-      "localCssLines": 238,
+      "libClassHits": 24,
+      "localSelectors": 51,
+      "localCssLines": 233,
       "rolled": [
         {
           "id": "tabs",
@@ -2157,13 +2190,6 @@
           "lib": ".sh-block / .sh-card",
           "rule": "background:\\s*var\\(--sh-surface\\)[^}]*border-radius",
           "gap": false
-        },
-        {
-          "id": "candchip",
-          "label": "候选标签（虚线药丸）",
-          "lib": null,
-          "rule": "border:\\s*2rpx dashed var\\(--sh-primary\\)",
-          "gap": true
         },
         {
           "id": "glyphicon",
@@ -2859,34 +2885,11 @@
       ]
     },
     {
-      "id": "candchip",
-      "label": "候选标签（虚线药丸）",
-      "lib": null,
-      "gap": true,
-      "rule": "border:\\s*2rpx dashed var\\(--sh-primary\\)",
-      "pages": [
-        "cross-store",
-        "goods-edit",
-        "my-specs"
-      ]
-    },
-    {
       "id": "search",
       "label": "搜索框",
       "lib": null,
       "gap": true,
-      "rule": "^\\s*\\.search\\b",
-      "pages": [
-        "customers",
-        "goods-list"
-      ]
-    },
-    {
-      "id": "fab",
-      "label": "悬浮新建按钮",
-      "lib": null,
-      "gap": true,
-      "rule": "^\\s*\\.fab\\b",
+      "rule": "\\.search\\b[^{}]*\\{[^}]*background:",
       "pages": [
         "goods-list"
       ]
@@ -3031,6 +3034,16 @@
       ]
     },
     {
+      "id": "candchip",
+      "label": "虚线药丸",
+      "lib": ".sh-chip--dashed",
+      "gap": false,
+      "rule": "border:\\s*2rpx dashed var\\(--sh-primary\\)",
+      "pages": [
+        "cross-store"
+      ]
+    },
+    {
       "id": "empty",
       "label": "空态",
       "lib": "sh-empty",
@@ -3043,9 +3056,9 @@
   ],
   "counts": {
     "tokens": 10,
-    "blocks": 36,
-    "components": 20,
+    "blocks": 38,
+    "components": 21,
     "pages": 52,
-    "gapKinds": 5
+    "gapKinds": 3
   }
 }

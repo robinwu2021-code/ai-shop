@@ -615,9 +615,11 @@ onShow(() => {
       不放在导航栏右上：`sh-scaffold` 的标题栏在原生包里是系统导航栏，
       那个位置在 App / 小程序 / H5 三端不一致。
     -->
-    <view v-if="merchant.can('biz:goods')" class="fab" @tap="edit()">
-      ＋ {{ $t("goods.add") }}
-    </view>
+    <sh-fab
+      v-if="merchant.can('biz:goods')"
+      :text="`＋ ${$t('goods.add')}`"
+      @tap="edit()"
+    ></sh-fab>
 
     <!--
       分享单品浮层。**不做成新页面**：这是「顺手转发一下」的动作，跳一页再跳回来
@@ -731,33 +733,6 @@ onShow(() => {
 .bar__tabs {
   flex: 1;
   min-width: 0;
-}
-/*
- * 新建商品：右下悬浮。
- *
- * `position: fixed` 在 uni 的三端一致（小程序里也生效），
- * 底部留 128rpx 是给 tabBar 让位 —— 压在 tabBar 上的话，
- * 「商品」那个 tab 就点不着了。
- */
-.fab {
-  position: fixed;
-  right: 32rpx;
-  /*
-   * 抬到 tabBar 上方一指宽。128rpx 时它几乎贴着菜单，拇指落点与「商品」那个
-   * tab 只差几毫米 —— 想点新建却切了页。tabBar 自身高度约 130rpx（含安全区），
-   * 再留 60rpx 的空当。
-   */
-  bottom: calc(190rpx + env(safe-area-inset-bottom));
-  z-index: 10;
-  padding: 20rpx 36rpx;
-  border-radius: 9999px;
-  background: var(--sh-primary);
-  color: var(--sh-on-primary);
-  font-size: 28rpx;
-  font-weight: 600;
-  white-space: nowrap;
-  /* 阴影用 scrim（皮肤里那层半透明黑）：写死 rgba 在深色皮肤下会糊成一团 */
-  box-shadow: 0 8rpx 24rpx var(--sh-scrim);
 }
 /* 列表密度对齐 C 端（平台版式约定）：卡片之间只留一条缝。
    商家一天要扫几十次这类列表，行距每多 10rpx，一屏就少一行。 */

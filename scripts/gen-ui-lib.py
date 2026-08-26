@@ -61,6 +61,8 @@ BLOCK_NOTES = {
     ".sh-block__head": ("容器", "块内标题行（横向留白 26rpx，列表行仍通铺到边）", "—"),
     ".sh-chip": ("标签", "状态、分类、筛选项。tint 色块，不描边", "可点的主操作用 .sh-btn"),
     ".sh-chip--primary": ("标签", "选中态 / 与主色相关的状态", "—"),
+    ".sh-chip--dashed": ("标签", "**候选**：点一下当场加进来", "点了还要再填一屏的是入口，用 `sh-add`"),
+    ".sh-chip--dashed-quiet": ("标签", "压一档的候选（跨类目通用的那些）", "—"),
     ".sh-chip--warning": ("标签", "要留意但还不算错（待审、将过期）", "—"),
     ".sh-chip--danger": ("标签", "已经出错或被拒", "危险**操作**用 .sh-btn--danger"),
     ".sh-link": ("按钮", "文字动作：列表行尾的「改名 / 停用」、卡里的「展开 / 去管理」", "它不是按钮 —— 要底色就用 .sh-btn--soft"),
@@ -105,6 +107,7 @@ COMP_NOTES = {
     "sh-rating": ("评分", "底层灰星 + 上层主色星按百分比裁切 —— 半星图标只能表达 0.5 粒度，4.3 会被抹成 4.5"),
     "sh-theme-sheet": ("外观面板", "9 套皮肤 × 明暗 × 语言，选中即时全局生效"),
     "sh-add": ("＋ 加一项按钮", "收编自 goods-edit 与 my-specs 里**逐字节相同**的 `.btn-add`。`active` 是展开态：同一个按钮管开合"),
+    "sh-fab": ("悬浮新建按钮", "贴右下角压在列表上。**只有一个调用点仍然收进来** —— 收的不是重复，是那一行 `bottom` 里的知识：抬到 tabBar 上方一指宽，否则想点新建却切了页", "它此前写死 190rpx，而 tabBar 的真高在 `--sh-tabbar-h` 里 —— 改菜单高度那个数不会跟着动，且没有任何症状"),
     "sh-icon-btn": ("图标按钮", "行尾的删除、弹层右上角的关闭、列表行上的编辑。收编的是**「文字当图标」**这件事 —— 两端曾有 11 处文字 ✕/×，其中 `store-scope` 用的还是 `×`(U+00D7)", "输入框内的清空、chip 内嵌的 ✕、图片角标的删除**不归它管** —— 尺寸受宿主约束，是另一套几何"),
     "sh-stat": ("数字格", "几个大数一排，每格一句小标签。收编自 5 页 4 种档位（44/700 · 40/700 · 40/600 · 32/600）", "`boxed` 才可点 —— 点了没反应的控件比没有控件更糟，所以底色与可点由同一个开关管"),
     "sh-uploader": ("图片格", "已传的缩略图排一行，末尾一个「＋」。收编自 apply / payment / qualifications / goods-edit 四份", "详情图那种**竖排 + 每行 ↑↓✕** 的排序件不归它管 —— 名字像、东西不同"),
@@ -146,6 +149,9 @@ SAMPLES = {
                '<span class="add__t">收起</span></div>'
                '<div class="add add--sm">{{icon:plus:10:var(--sh-primary)}}'
                '<span class="add__t">加值</span></div>'),
+    "sh-fab": ('<div style="position:relative;height:64px">'
+               '<div class="fab" style="position:absolute;bottom:0;inset-inline-end:0">'
+               '＋ 新建商品</div></div>'),
     "sh-icon-btn": ('<div class="sh-card" style="display:flex;align-items:center;gap:6px">'
                     '<span class="txt-strong" style="flex:1">500g / 袋</span>'
                     '<div class="ib" style="width:28px;height:28px">'
@@ -395,7 +401,10 @@ ROLLED = [
     # 虚线药丸是**另一件事**，goods-edit 的注释里把两者的分工写死了：
     # 虚线＝候选（点一下当场加进来），浅底按钮＝入口（点一下开弹层再填）。
     # 归成一类会把「已经有两种形状且是故意的」误读成「一种形状被画了两遍」。
-    ("candchip","候选标签（虚线药丸）", None, r"border:\s*2rpx dashed var\(--sh-primary\)", None, None),
+    # 虚线药丸已收进 `.sh-chip--dashed`。仍然命中的是 `cross-store` 的 `.tag--demo` ——
+    # **同一个视觉、另一个意思**（它标的是「演示数据」，不是「点一下就加」）。
+    # 那是误用而不是缺件，所以 lib 指向库里的那一档。
+    ("candchip","虚线药丸", None, r"border:\s*2rpx dashed var\(--sh-primary\)", None, ".sh-chip--dashed"),
     # 判据要认「标签上的那个 ✕」，不能只认类名 —— role-detail 的 `.del` 是一个
     # 危险按钮（`sh-btn sh-btn--danger del`），按类名会被误判成可删标签。
     # 收编 sh-icon-btn 之后改判「文字当图标」：**库里有 close 图标，这些还在用字符**。
@@ -404,7 +413,9 @@ ROLLED = [
     ("glyphicon", "文字当图标（✕/×）",
      r'class="[^"]*"[^>]*>\s*[✕×]\s*<', None,        None,   "sh-icon-btn / sh-icon(close)"),
     ("savebar", "底部固定条",      None, r"position:\s*fixed[^}]*bottom:\s*0",    None,       None),
-    ("search",  "搜索框",         None, r"^\s*\.search\b",                      None,       None),
+    # 搜索框判**形态**不判名字：`customers` 的 `.search` 只是 `margin-top: 16rpx`
+    # 包着一个 `.field__input`（手机号查询），不是搜索框。按名字判第六次误命中。
+    ("search",  "搜索框",         None, r"\.search\b[^{}]*\{[^}]*background:",   None,       None),
     # 判据要认「自己画了格子」，不是「调了选图」—— 收编成 sh-uploader 之后，
     # 选图逻辑仍然归页面（那是业务：传几张、传到哪、失败怎么办），
     # 只有 UI 归组件。只认 pickImages 的话，四页收编完清单一动不动。
@@ -781,6 +792,8 @@ BLOCK_DEMOS = {
                        '<span class="sh-h2">标题</span><span class="sh-muted">副标</span></div></div>',
     ".sh-chip": '<span class="sh-chip">默认</span>',
     ".sh-chip--primary": '<span class="sh-chip sh-chip--primary">进行中</span>',
+    ".sh-chip--dashed": '<span class="sh-chip sh-chip--dashed">＋ 重量</span>',
+    ".sh-chip--dashed-quiet": '<span class="sh-chip sh-chip--dashed sh-chip--dashed-quiet">＋ 颜色</span>',
     ".sh-chip--warning": '<span class="sh-chip sh-chip--warning">待审核</span>',
     ".sh-chip--danger": '<span class="sh-chip sh-chip--danger">已拒绝</span>',
     ".sh-link": '<span class="sh-link">改名</span>',

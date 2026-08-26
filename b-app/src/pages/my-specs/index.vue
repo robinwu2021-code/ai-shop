@@ -902,11 +902,11 @@ onShow(() => void load());
       <!-- ① 挑一个平台现成的，或自己建 -->
       <template v-if="sheetStep === 'pick' && pickingCat">
         <view v-if="pickCat.length" class="chips sheet-gap">
-          <text v-for="p in pickCat" :key="p.templateNo" class="sh-chip chip"
+          <text v-for="p in pickCat" :key="p.templateNo" class="sh-chip sh-chip--dashed"
                 @tap="pickDim(pickingCat, p)">＋ {{ p.name }}</text>
         </view>
         <view v-if="showRest && pickRest.length" class="chips sheet-gap">
-          <text v-for="p in pickRest" :key="p.templateNo" class="sh-chip chip"
+          <text v-for="p in pickRest" :key="p.templateNo" class="sh-chip sh-chip--dashed"
                 @tap="pickDim(pickingCat, p)">＋ {{ p.name }}</text>
         </view>
         <view v-if="pickRest.length && pickCat.length" class="picker__more">
@@ -981,7 +981,7 @@ onShow(() => void load());
         <view v-if="valCands.length" class="sheet-own">
           <text class="picker__own-t picker__own-t--quiet">{{ $t("mySpecs.pickHint") }}</text>
           <view class="chips sheet-gap">
-            <text v-for="o in valCands" :key="o.code || o.label" class="sh-chip chip"
+            <text v-for="o in valCands" :key="o.code || o.label" class="sh-chip sh-chip--dashed"
                   @tap="pickValue(o)">＋ {{ o.label }}</text>
           </view>
         </view>
@@ -1136,18 +1136,6 @@ onShow(() => void load());
   display: flex;
   flex-wrap: wrap;
   gap: 14rpx;
-}
-/*
- * 候选：**虚线描边、透明底、带 ＋**，与建品页那一排逐字同形（.addbar__chip）。
- *
- * <p>此前这里是实心灰底 —— 同一个动作（点一下加进来）在两页长成两个样子，
- * 而灰底那种正是这一页「已经有了的档位」的样子：一屏里两种含义共用一张脸。
- * 虚线在这套界面里只表示一件事：**它还不在这儿，点了才进来。**
- */
-.chip {
-  color: var(--sh-primary-text);
-  border: 2rpx dashed var(--sh-primary);
-  background: transparent;
 }
 
 .picker__own-t {
