@@ -190,9 +190,9 @@
 | 收款进件状态 | GET | `/biz/merchant/payment` | `mPayments` | entity-detail、home、payment、stores |
 | 补交资料并提交进件 | POST | `/biz/merchant/payment` | `mSubmitPayment` | payment |
 | 回查进件结果 | POST | `/biz/merchant/payment/:payChannel/refresh` | `mRefreshPayment` | payment |
-| 本期发分服务费与开关状态 | GET | `/biz/points/account` | `mPointsAccount` | settle |
-| 发分服务费明细（按单） | GET | `/biz/points/records` | `mPointsRecords` | settle |
-| 开/关本店积分 | POST | `/biz/points/toggle` | `mPointsToggle` | settle |
+| 本期发分服务费与开关状态 | GET | `/biz/points/account` | `mPointsAccount` | points、settle |
+| 发分服务费明细（按单） | GET | `/biz/points/records` | `mPointsRecords` | points-records、settle |
+| 开/关本店积分 | POST | `/biz/points/toggle` | `mPointsToggle` | points、settle |
 | 结算单列表 | GET | `/biz/settle/bills` | `mSettleList` | settle |
 | 费率卡 | GET | `/biz/settle/rate-card` | `mRateCard` | settle |
 | —（b-app 未接） | — | `/biz/settle/bills/{}` | — | — |
@@ -317,6 +317,8 @@
 | `payment` | `biz:finance` | `biz:finance` | 老板 | — |
 | `picking` | `biz:receive` | `biz:receive`、`biz:verify` | 老板、店长、店员、理货员 | 理货员（缺 biz:verify） |
 | `plan` | `biz:store:admin` | `biz:store:admin` | 老板 | — |
+| `points` | **无** | `biz:finance` | 老板、店长、店员、理货员、配送员、客服 | 店长（缺 biz:finance）　店员（缺 biz:finance）　理货员（缺 biz:finance）　配送员（缺 biz:finance）　客服（缺 biz:finance） |
+| `points-records` | **无** | `biz:finance` | 老板、店长、店员、理货员、配送员、客服 | 店长（缺 biz:finance）　店员（缺 biz:finance）　理货员（缺 biz:finance）　配送员（缺 biz:finance）　客服（缺 biz:finance） |
 | `qualifications` | `biz:store` | `biz:store` | 老板、店长 | — |
 | `quotes` | `biz:campaign` | `biz:campaign` | 老板、店长 | — |
 | `reviews` | `biz:review` | `biz:review` | 老板、店长、客服 | — |
