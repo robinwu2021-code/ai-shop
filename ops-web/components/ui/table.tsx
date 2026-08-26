@@ -15,9 +15,14 @@ export function Table({ className, ...props }: React.HTMLAttributes<HTMLTableEle
 export function THead({ className, ...props }: React.HTMLAttributes<HTMLTableSectionElement>) {
   // 表头 = 一条色块（bg-muted），代替下划线。
   // - whitespace-nowrap：表头是短词，折行会让整张表变高；列窄了应该横向滚动（Table 已有 overflow-x-auto）
+  // - text-left 用 `:not(.text-end):not(.text-center)` 圈住：**后代选择器会压过列自己身上的
+  //   对齐类**（`.thead th` 是 0,2,1，`.text-end` 是 0,1,0）。没有这个 :not 时，
+  //   DataTable 的 `numeric` 只对行体生效，表头全部靠左 —— 于是「条数」「实存」这类列
+  //   列名与数字各靠一边，扫描时视线要来回跳，而 data-table.tsx 的注释里写的
+  //   「表头跟着一起右对齐」一直是**没兑现**的。全站的数值列都中招，不止某一页。
   // - sticky：滚过一屏后列名不能消失。**底色必须不透明**，否则内容会从表头下面透出来
   // - 高度走 --row-h：此前硬写 h-11，与行体的 --row-h 打架，密度切换对列表页近乎无效
-  return <thead className={cn("sticky top-0 z-[var(--z-sticky)] bg-muted [&_th]:h-[var(--row-h)] [&_th]:whitespace-nowrap [&_th]:px-3.5 [&_th]:text-left [&_th]:align-middle [&_th]:text-xs [&_th]:font-medium [&_th]:text-muted-foreground", className)} {...props} />;
+  return <thead className={cn("sticky top-0 z-[var(--z-sticky)] bg-muted [&_th]:h-[var(--row-h)] [&_th]:whitespace-nowrap [&_th]:px-3.5 [&_th:not(.text-end):not(.text-center)]:text-left [&_th]:align-middle [&_th]:text-xs [&_th]:font-medium [&_th]:text-muted-foreground", className)} {...props} />;
 }
 export function TBody({
   className, striped = true, ...props
