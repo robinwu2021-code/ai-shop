@@ -567,7 +567,7 @@
         "line-height": "1.4"
       },
       "usage": {
-        "b-app": 73,
+        "b-app": 70,
         "c-app": 36
       }
     },
@@ -625,7 +625,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 13,
+        "b-app": 12,
         "c-app": 2
       }
     },
@@ -888,6 +888,24 @@
   ],
   "components": [
     {
+      "name": "sh-add",
+      "file": "packages/ui/src/components/sh-add.vue",
+      "scope": "跨端",
+      "lines": 82,
+      "props": [
+        "text: string",
+        "activeText?: string",
+        "active?: boolean",
+        "small?: boolean"
+      ],
+      "usage": {
+        "b-app": 4,
+        "c-app": 0
+      },
+      "note": "＋ 加一项按钮",
+      "why": "收编自 goods-edit 与 my-specs 里**逐字节相同**的 `.btn-add`。`active` 是展开态：同一个按钮管开合"
+    },
+    {
       "name": "sh-cover",
       "file": "packages/ui/src/components/sh-cover.vue",
       "scope": "跨端",
@@ -931,7 +949,7 @@
         "color?: string"
       ],
       "usage": {
-        "b-app": 28,
+        "b-app": 25,
         "c-app": 4
       },
       "note": "单色图标",
@@ -953,6 +971,24 @@
       },
       "note": "评分",
       "why": "底层灰星 + 上层主色星按百分比裁切 —— 半星图标只能表达 0.5 粒度，4.3 会被抹成 4.5"
+    },
+    {
+      "name": "sh-savebar",
+      "file": "packages/ui/src/components/sh-savebar.vue",
+      "scope": "跨端",
+      "lines": 80,
+      "props": [
+        "visible: boolean",
+        "text: string",
+        "discardText: string",
+        "saveText: string"
+      ],
+      "usage": {
+        "b-app": 2,
+        "c-app": 0
+      },
+      "note": "底部未保存条",
+      "why": "收编自 store 与 store-scope 里**逐字节相同**的 `.savebar`。自带流内占位 —— 收编前两页都被它盖住了最后一段内容"
     },
     {
       "name": "sh-scaffold",
@@ -1327,6 +1363,13 @@
           "lib": ".sh-chip--primary",
           "rule": "(--on|--off|is-on)\\s*[,{]",
           "gap": false
+        },
+        {
+          "id": "candchip",
+          "label": "候选标签（虚线药丸）",
+          "lib": null,
+          "rule": "border:\\s*2rpx dashed var\\(--sh-primary\\)",
+          "gap": true
         }
       ]
     },
@@ -1448,14 +1491,14 @@
       "page": "goods-edit",
       "file": "b-app/src/pages/goods-edit/index.vue",
       "components": [
+        "sh-add",
         "sh-cover",
-        "sh-icon",
         "sh-scaffold",
         "sh-sheet"
       ],
       "libClassHits": 108,
-      "localSelectors": 110,
-      "localCssLines": 598,
+      "localSelectors": 107,
+      "localCssLines": 582,
       "rolled": [
         {
           "id": "sysmodal",
@@ -1500,10 +1543,10 @@
           "gap": true
         },
         {
-          "id": "addbtn",
-          "label": "＋ 加一项按钮",
+          "id": "candchip",
+          "label": "候选标签（虚线药丸）",
           "lib": null,
-          "rule": "^\\s*\\.(btn-add|addbar)\\b",
+          "rule": "border:\\s*2rpx dashed var\\(--sh-primary\\)",
           "gap": true
         },
         {
@@ -1938,14 +1981,15 @@
       "page": "my-specs",
       "file": "b-app/src/pages/my-specs/index.vue",
       "components": [
+        "sh-add",
         "sh-empty",
         "sh-icon",
         "sh-scaffold",
         "sh-sheet"
       ],
       "libClassHits": 21,
-      "localSelectors": 58,
-      "localCssLines": 270,
+      "localSelectors": 54,
+      "localCssLines": 250,
       "rolled": [
         {
           "id": "tabs",
@@ -1983,10 +2027,10 @@
           "gap": true
         },
         {
-          "id": "addbtn",
-          "label": "＋ 加一项按钮",
+          "id": "candchip",
+          "label": "候选标签（虚线药丸）",
           "lib": null,
-          "rule": "^\\s*\\.(btn-add|addbar)\\b",
+          "rule": "border:\\s*2rpx dashed var\\(--sh-primary\\)",
           "gap": true
         },
         {
@@ -2424,13 +2468,14 @@
       "file": "b-app/src/pages/store/index.vue",
       "components": [
         "sh-icon",
+        "sh-savebar",
         "sh-scaffold",
         "biz-store-tag",
         "biz-time-range"
       ],
-      "libClassHits": 14,
-      "localSelectors": 28,
-      "localCssLines": 156,
+      "libClassHits": 13,
+      "localSelectors": 25,
+      "localCssLines": 134,
       "rolled": [
         {
           "id": "sysmodal",
@@ -2438,13 +2483,6 @@
           "lib": "sh-sheet",
           "rule": "showModal\\(|showActionSheet\\(",
           "gap": false
-        },
-        {
-          "id": "savebar",
-          "label": "底部固定条",
-          "lib": null,
-          "rule": "position:\\s*fixed[^}]*bottom:\\s*0",
-          "gap": true
         }
       ]
     },
@@ -2546,14 +2584,15 @@
       "page": "store-scope",
       "file": "b-app/src/pages/store-scope/index.vue",
       "components": [
+        "sh-savebar",
         "sh-scaffold",
         "biz-pickup-sheet",
         "biz-region-picker",
         "biz-store-tag"
       ],
-      "libClassHits": 25,
-      "localSelectors": 49,
-      "localCssLines": 262,
+      "libClassHits": 22,
+      "localSelectors": 46,
+      "localCssLines": 239,
       "rolled": [
         {
           "id": "sysmodal",
@@ -2588,13 +2627,6 @@
           "label": "可删标签",
           "lib": null,
           "rule": "class=\"[^\"]*(?:val__x|__x|\\bdel\\b)[^\"]*\"[^>]*>\\s*[✕×]",
-          "gap": true
-        },
-        {
-          "id": "savebar",
-          "label": "底部固定条",
-          "lib": null,
-          "rule": "position:\\s*fixed[^}]*bottom:\\s*0",
           "gap": true
         }
       ]
@@ -2786,6 +2818,18 @@
       ]
     },
     {
+      "id": "candchip",
+      "label": "候选标签（虚线药丸）",
+      "lib": null,
+      "gap": true,
+      "rule": "border:\\s*2rpx dashed var\\(--sh-primary\\)",
+      "pages": [
+        "cross-store",
+        "goods-edit",
+        "my-specs"
+      ]
+    },
+    {
       "id": "search",
       "label": "搜索框",
       "lib": null,
@@ -2794,28 +2838,6 @@
       "pages": [
         "customers",
         "goods-list"
-      ]
-    },
-    {
-      "id": "addbtn",
-      "label": "＋ 加一项按钮",
-      "lib": null,
-      "gap": true,
-      "rule": "^\\s*\\.(btn-add|addbar)\\b",
-      "pages": [
-        "goods-edit",
-        "my-specs"
-      ]
-    },
-    {
-      "id": "savebar",
-      "label": "底部固定条",
-      "lib": null,
-      "gap": true,
-      "rule": "position:\\s*fixed[^}]*bottom:\\s*0",
-      "pages": [
-        "store",
-        "store-scope"
       ]
     },
     {
@@ -2958,8 +2980,8 @@
   "counts": {
     "tokens": 10,
     "blocks": 31,
-    "components": 14,
+    "components": 16,
     "pages": 52,
-    "gapKinds": 10
+    "gapKinds": 9
   }
 }

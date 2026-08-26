@@ -99,6 +99,8 @@ COMP_NOTES = {
     "sh-sheet": ("底部弹层", "不用 uni.showModal（字不归我们管）、不做页内展开（会把下文顶走）"),
     "sh-rating": ("评分", "底层灰星 + 上层主色星按百分比裁切 —— 半星图标只能表达 0.5 粒度，4.3 会被抹成 4.5"),
     "sh-theme-sheet": ("外观面板", "9 套皮肤 × 明暗 × 语言，选中即时全局生效"),
+    "sh-add": ("＋ 加一项按钮", "收编自 goods-edit 与 my-specs 里**逐字节相同**的 `.btn-add`。`active` 是展开态：同一个按钮管开合"),
+    "sh-savebar": ("底部未保存条", "收编自 store 与 store-scope 里**逐字节相同**的 `.savebar`。自带流内占位 —— 收编前两页都被它盖住了最后一段内容"),
     "biz-region-picker": ("经营范围选择器", "省市区 / 小区 / 村三级 + 提报。全项目最大的单文件组件"),
     "biz-pickup-sheet": ("自提点选择弹层", "自带 mask 与 panel，**没走 sh-sheet**"),
     "biz-time-range": ("时段输入", "不让人手敲 —— 手敲的结果是全角横线、少个冒号、写成「6点半到9点」"),
@@ -129,6 +131,15 @@ SAMPLES = {
                       '<span class="tag__switch">切换</span></div>'
                       '<div class="tag tag--flat">{{icon:store:9:var(--sh-sub)}}'
                       '<span class="tag__name">城南店</span></div>'),
+    "sh-add": ('<div class="add">{{icon:plus:12:var(--sh-primary)}}'
+               '<span class="add__t">加参数</span></div>'
+               '<div class="add add--on">{{icon:close:12:var(--sh-sub)}}'
+               '<span class="add__t">收起</span></div>'
+               '<div class="add add--sm">{{icon:plus:10:var(--sh-primary)}}'
+               '<span class="add__t">加值</span></div>'),
+    "sh-savebar": ('<div class="bar bar--demo"><span class="bar__t">有未保存的修改</span>'
+                   '<span class="sh-btn sh-btn--muted bar__discard">放弃</span>'
+                   '<span class="sh-btn bar__save">保存</span></div>'),
     "biz-time-range": ('<div class="tr"><div class="tr__box">08:00</div>'
                        '<span class="tr__sep">–</span>'
                        '<div class="tr__box is-empty">结束时间</div></div>'),
@@ -322,7 +333,11 @@ ROLLED = [
     ("stat",    "统计数字格",      None, r"^\s*\.(trio|quad|nums|stat|kpi)\b",   None,       None),
     ("listrow", "列表行",         None, r"^\s*\.(row|item)\b",                  None,       None),
     ("kv",      "键值行",         None, r"^\s*\.(kv|rule|prob|field__head)\b",  None,       None),
-    ("addbtn",  "＋ 加一项按钮",   None, r"^\s*\.(btn-add|addbar)\b",            None,       None),
+    ("addbtn",  "＋ 加一项按钮",   None, r"^\s*\.btn-add\b",                     None,       None),
+    # 虚线药丸是**另一件事**，goods-edit 的注释里把两者的分工写死了：
+    # 虚线＝候选（点一下当场加进来），浅底按钮＝入口（点一下开弹层再填）。
+    # 归成一类会把「已经有两种形状且是故意的」误读成「一种形状被画了两遍」。
+    ("candchip","候选标签（虚线药丸）", None, r"border:\s*2rpx dashed var\(--sh-primary\)", None, None),
     # 判据要认「标签上的那个 ✕」，不能只认类名 —— role-detail 的 `.del` 是一个
     # 危险按钮（`sh-btn sh-btn--danger del`），按类名会被误判成可删标签。
     ("chipdel", "可删标签",
@@ -914,6 +929,8 @@ footer{margin-top:80px;border-top:1px solid var(--rule);padding-top:16px;
 .up .ic{display:inline-block;flex-shrink:0;-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;
   -webkit-mask-position:center;mask-position:center;-webkit-mask-size:contain;mask-size:contain}
 .up .tabbar.tabbar--demo{position:static;max-width:none;padding-bottom:7px}
+.up .bar.bar--demo{position:static;padding-bottom:10px}
+.up .add{display:inline-flex;margin:0 6px 6px 0}
 .up .sheet-demo{position:relative;height:210px;background:var(--sh-scrim);border-radius:8px;
   overflow:hidden}
 .up .sheet-demo .sheet__panel{position:absolute;left:0;right:0;bottom:0;padding-bottom:16px}

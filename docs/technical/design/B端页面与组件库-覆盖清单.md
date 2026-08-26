@@ -16,14 +16,19 @@
 |---|---|
 | B 端页面 | **52** |
 | 完全没有自造形态的页 | **5**（`income` `member-add` `points-records` `staff-detail` `stats`） |
-| 自造形态实例 | **126 处 / 17 类** |
+| 自造形态实例 | **125 处 / 16 类** |
 | 页面自己的样式 | 1 119 条选择器 · 5 583 行 |
 
-**这 17 类要分成两堆看，责任完全不同：**
+**这 16 类要分成两堆看，责任完全不同：**
 
 - **7 类是库里有、页面没用** —— 这是纪律问题，改页面就行
-- **10 类是库里根本没有** —— 这是**库的缺口**，不是页面的错。
+- **9 类是库里根本没有** —— 这是**库的缺口**，不是页面的错。
   在补上之前，要求「所有页面基于组件库」是做不到的
+
+> **已收编两件（2026-08-26）**：`sh-add`（＋ 加一项按钮）与 `sh-savebar`（底部未保存条）。
+> 它们在四个页面里本来就是**逐字节相同**的复制品，收进库是纯搬运。
+> 缺件从 10 类降到 9 类，自造实例从 126 降到 125 —— 数字变化不大，
+> 但 `store` 从「4 处自造」降到「1 处」，是本轮唯一一个整页接近达标的。
 
 **最大的一条不是缺件，是弃用**：**26 个页面（正好一半）**用 `uni.showModal` /
 `uni.showActionSheet` 做确认与输入，而全 B 端只有 **2 页**用了 `sh-sheet` ——
@@ -72,9 +77,9 @@
 
 ---
 
-## 四、库里没有 —— 缺件排行（10 类）
+## 四、库里没有 —— 缺件排行（9 类）
 
-这十件是「所有页面基于组件库」的**前置条件**。按有多少页在重复造排序。
+这九件是「所有页面基于组件库」的**前置条件**。按有多少页在重复造排序。
 
 | # | 缺件 | 页数 | 现在各页怎么造的 |
 |---|---|---:|---|
@@ -84,13 +89,11 @@
 | 4 | **卡内标题行** `sh-section` | 5 | `goods-edit`/`sku-identity` 的 `.sec` 完全相同；`my-specs` 叫 `.cat__head`，标题用 `.cat__name` 而不是 `.sh-h2` |
 | 5 | **图片上传格** `sh-uploader` | 4 | apply / payment / qualifications / goods-edit 各一份；**goods-edit 一页里就有两套**（`.imgs` 主图、`.dimgs` 详情图） |
 | 6 | **可删标签** `sh-chip` 的可删形态 | 4 | `my-specs` chip 内嵌 `.val__x`；`goods-edit` 行尾独立的 `.del`；`store-notice .recent__x`；`store-scope .item__x`。**连字符都不统一**：三处用 `✕`（U+2715），`store-scope` 用 `×`（U+00D7） |
-| 7 | **搜索框** `sh-search` | 2 | customers / goods-list |
-| 8 | **＋ 加一项按钮** `sh-add` | 2 | `goods-edit` 与 `my-specs` 的 `.btn-add` **完全相同** —— 这一件已经是同一个东西了，只差收进库里 |
-| 9 | **底部固定条** `sh-savebar` | 2 | `store` 与 `store-scope` 的 `.savebar` **逐字节相同** |
-| 10 | 悬浮新建按钮 `sh-fab` | 1 | goods-list |
+| 7 | **候选标签（虚线药丸）** | 3 | goods-edit `.addbar__chip` · my-specs `.chip` · cross-store。**这是与 `sh-add` 分工不同的第二种「＋」**：虚线＝点一下当场加进来，浅底按钮＝点一下开弹层再填。分工是对的，缺的是把虚线那档收成 `.sh-chip` 的一个变体 |
+| 8 | **搜索框** `sh-search` | 2 | customers / goods-list |
+| 9 | 悬浮新建按钮 `sh-fab` | 1 | goods-list |
 
-**第 8、9 两件已经是逐字节相同的复制品**，收进库里是纯搬运，没有设计决策要做 ——
-建议从这两件开始，成本最低、示范作用最强。
+~~原第 8、9 两件（＋ 加一项按钮、底部固定条）~~ **已收编**，见 §七。
 
 ---
 
@@ -103,11 +106,11 @@
 
 | 页面 | 选择器 | 库类 | 用了库件 | 自己造的 |
 |---|---:|---:|---|---|
-| `goods-edit` | 110 | 108 | cover, icon, sheet | 系统弹框, 文字当箭头, 选中态自画, 白块自画, 卡内标题行, 键值行, ＋加一项, 可删标签, 图片上传格 |
-| `my-specs` | 58 | 21 | empty, icon, sheet | 分栏切换, 系统弹框, 选中态自画, 白块自画, 卡内标题行, ＋加一项, 可删标签 |
+| `goods-edit` | 107 | 108 | **add**, cover, sheet | 系统弹框, 文字当箭头, 选中态自画, 白块自画, 卡内标题行, 键值行, 候选标签, 可删标签, 图片上传格 |
+| `my-specs` | 54 | 21 | **add**, empty, icon, sheet | 分栏切换, 系统弹框, 选中态自画, 白块自画, 卡内标题行, 候选标签, 可删标签 |
 | `goods-list` | 40 | 7 | cover, empty, tabs, store-tag | 弹层/遮罩, 系统弹框, 白块自画, 列表行, 搜索框, 悬浮新建按钮 |
 | `sku-identity` | 29 | 29 | — | 系统弹框, 选中态自画, 卡内标题行, 统计数字格, 列表行, 键值行 |
-| `store-scope` | 49 | 25 | pickup-sheet, region-picker, store-tag | 系统弹框, 文字当箭头, 选中态自画, 列表行, 底部固定条 |
+| `store-scope` | 45 | 22 | **savebar**, pickup-sheet, region-picker, store-tag | 系统弹框, 文字当箭头, 选中态自画, 列表行, 可删标签 |
 | `verify` | 39 | 40 | empty | 分栏切换, 系统弹框, 文字当箭头, 选中态自画, 列表行 |
 | `customers` | 19 | 21 | empty, icon | 系统弹框, 选中态自画, 统计数字格, 列表行, 搜索框 |
 | `marketing` | 21 | 59 | empty, icon | 系统弹框, 文字当箭头, 白块自画, 列表行 |
@@ -221,7 +224,7 @@ my-specs .cat  = background: var(--sh-surface); border-radius: 24rpx; overflow: 
 
 按「改动小 / 收益大」排，前两条基本是纯搬运：
 
-1. **`.btn-add` 与 `.sec` 收进库**（两页已逐字节相同）→ `sh-add` / `sh-section`
+1. ~~**`.btn-add` 收进库**~~ ✅ **已做**（`sh-add`，四处调用点）。`.sec` 同理，仍待做 → `sh-section`
 2. **`my-specs` 的分栏换成 `sh-tabs`**、`.cat` 换成 `.sh-block` —— 删代码，不写代码
 3. **统一选中态**：全域走 `.sh-chip--primary`，多选加 `✓`，单选不加；
    去掉 `.opt--on` 的描边与 600
@@ -231,7 +234,16 @@ my-specs .cat  = background: var(--sh-surface); border-radius: 24rpx; overflow: 
 
 ---
 
-## 七、要补的十件（建议形态）
+## 七、要补的件（建议形态）
+
+**已做（2026-08-26）**：
+
+| 组件 | 形态 | props | 收编了谁 |
+|---|---|---|---|
+| `sh-add` | ＋ 加一项胶囊按钮，`active` 时换 ✕ 变描边 | `text`, `activeText`, `active`, `small` | goods-edit ×2 · my-specs ×1 |
+| `sh-savebar` | 底部未保存条（说明 + 放弃 + 保存），**自带流内占位** | `visible`, `text`, `discardText`, `saveText` | store · store-scope |
+
+**还要补的八件**：
 
 | 组件 | 形态 | props（建议） |
 |---|---|---|
@@ -242,11 +254,11 @@ my-specs .cat  = background: var(--sh-surface); border-radius: 24rpx; overflow: 
 | `sh-savebar` | 底部固定条，自带安全区与 tabbar 让位 | slot |
 | `sh-search` | 搜索框 | `modelValue`, `placeholder`, `@confirm` |
 | `sh-uploader` | 图片格：已传缩略 + 「＋」格 + 上限提示 | `list`, `max`, `@change` |
-| `sh-add` | ＋ 加一项胶囊按钮（已有现成实现） | `text`, `size?`, `@tap` |
 | `sh-fab` | 悬浮新建按钮（自动避让 tabbar） | `text`, `@tap` |
 | `.sh-chip` 可删形态 | chip 内嵌 ✕ | `removable`, `@remove` |
+| `.sh-chip` 候选形态 | 虚线药丸（＝点一下当场加进来） | `candidate` |
 
-**加这十件是「让所有页面基于组件库」这条目标的前置条件**，不是锦上添花：
+**补齐这几件是「让所有页面基于组件库」这条目标的前置条件**，不是锦上添花：
 在它们存在之前，任何一页要画一行列表、一个数字格、一个上传格，
 除了自己写没有第二条路。
 
@@ -257,7 +269,7 @@ my-specs .cat  = background: var(--sh-surface); border-radius: 24rpx; overflow: 
 | # | 待决 | 说明 |
 |---|---|---|
 | 1 | **`uni.showModal` 要不要一刀切掉** | 26 页在用。全换成 `sh-sheet` 是一笔不小的改动，但留着就等于承认「一半的弹层不归设计系统管」。折中方案：只换**带输入**的那 10 处（系统弹框的输入框最难看），确认型的先留 |
-| 2 | 十件补齐后，要不要立**「新页面不许自造」的闸门** | 判据可以直接复用本文的 `ROLLED` 规则（已在生成器里），按棘轮：现有 126 处登记为已知欠账，新增的拦下 |
+| 2 | 缺件补齐后，要不要立**「新页面不许自造」的闸门** | 判据可以直接复用本文的 `ROLLED` 规则（已在生成器里），按棘轮：现有 125 处登记为已知欠账，新增的拦下 |
 | 3 | `goods-edit` 3 933 行 / 110 条选择器要不要拆 | 它一页占了商品域样式的四成。补完组件后应该能掉一大半，届时再看还剩什么 |
 
 ---

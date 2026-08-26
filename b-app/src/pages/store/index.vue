@@ -281,11 +281,14 @@ onShow(() => {
       </view>
     </view>
 
-    <view v-if="dirty" class="savebar">
-      <text class="savebar__t">{{ $t("store.unsaved") }}</text>
-      <text class="mini" @tap="discard">{{ $t("store.discard") }}</text>
-      <view class="sh-btn savebar__save" @tap="save">{{ $t("common.save") }}</view>
-    </view>
+    <sh-savebar
+      :visible="dirty"
+      :text="String($t('store.unsaved'))"
+      :discard-text="String($t('store.discard'))"
+      :save-text="String($t('common.save'))"
+      @discard="discard"
+      @save="save"
+    ></sh-savebar>
   </sh-scaffold>
 </template>
 
@@ -408,28 +411,6 @@ onShow(() => {
   font-size: 26rpx;
   line-height: 1.7;
   color: var(--sh-ink);
-}
-.savebar {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 40;
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
-  padding: 20rpx 24rpx;
-  padding-bottom: calc(20rpx + env(safe-area-inset-bottom));
-  background: var(--sh-surface);
-  border-top: 2rpx solid var(--sh-line);
-}
-.savebar__t {
-  flex: 1;
-  font-size: 26rpx;
-  color: var(--sh-sub);
-}
-.savebar__save {
-  padding: 20rpx 48rpx;
 }
 
 /* 门牌号：接在地址下面，视觉上属于同一格 */

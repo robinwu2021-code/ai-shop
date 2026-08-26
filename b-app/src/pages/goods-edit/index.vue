@@ -2689,10 +2689,7 @@ async function save(thenSubmit = false) {
       -->
       <view class="sec">
         <text class="sh-h2">{{ $t("goods.params") }}</text>
-        <view class="btn-add" @tap="addingParam = true">
-          <sh-icon name="plus" :size="24" color="var(--sh-primary)" />
-          <text class="btn-add__t">{{ $t("goods.addParam") }}</text>
-        </view>
+        <sh-add :text="String($t('goods.addParam'))" @tap="addingParam = true"></sh-add>
       </view>
 
       <!-- 与规格同一条：常驻展开，理由见上面那段 -->
@@ -2727,10 +2724,7 @@ async function save(thenSubmit = false) {
             :class="{ 'param__chip--on': paramValues[d.templateNo]?.label === o.label }"
             @tap="pickParam(d, o)"
           >{{ o.label }}</text>
-          <view class="btn-add btn-add--sm" @tap="openParamValue(d)">
-            <sh-icon name="plus" :size="20" color="var(--sh-primary)" />
-            <text class="btn-add__t">{{ $t("goods.paramFill") }}</text>
-          </view>
+          <sh-add small :text="String($t('goods.paramFill'))" @tap="openParamValue(d)"></sh-add>
         </view>
       </view>
       <text class="link link--quiet more__manage" @tap="gotoMySpecs">
@@ -3207,26 +3201,8 @@ async function save(thenSubmit = false) {
 
 
 /* 弹层里「自己填」那一段的小标题 —— 与候选拉开，说明它是另一回事 */
-/* 加入口：与「商品规格和参数」页的 .btn-add 逐字同形 */
-.btn-add {
-  display: flex;
-  align-items: center;
-  gap: 8rpx;
-  padding: 10rpx 22rpx;
-  border-radius: 9999px;
-  background: var(--sh-primary-tint);
-}
 
-/* 跟在值后面的那个小一号：与一排 chip 并列，不该比它们高 */
-.btn-add--sm {
-  padding: 4rpx 16rpx;
-}
 
-.btn-add__t {
-  font-size: 24rpx;
-  font-weight: 600;
-  color: var(--sh-primary-text);
-}
 
 /* 与「商品规格和参数」页的 .picker__own-t 同一套：26/600/主色 —— 同一段东西同一张脸 */
 .param__own {
@@ -3293,7 +3269,7 @@ async function save(thenSubmit = false) {
 /*
  * **这套界面里 ＋ 有两种，形状分得开：**
  *   虚线药丸（.addbar__chip / 弹层里的候选）= **候选**，点一下当场加进来
- *   浅底按钮（.btn-add）                    = **入口**，点一下开一个弹层去加
+ *   浅底按钮（<sh-add>）                    = **入口**，点一下开一个弹层去加
  * 一律用虚线的话，「点了就有」和「点了还要再填一屏」长成一个样。
  *
  * <p>候选只声明「与默认 chip 的差别」—— 字号、内边距、圆角一律吃 .sh-chip：

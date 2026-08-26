@@ -534,11 +534,14 @@ onShow(() => {
     ></biz-region-picker>
 
     <!-- 吸底保存条：范围有未保存改动时才浮现 -->
-    <view v-if="dirty" class="savebar">
-      <text class="savebar__t">{{ $t("store.unsaved") }}</text>
-      <text class="sh-btn sh-btn--muted savebar__discard" @tap="discard">{{ $t("store.discard") }}</text>
-      <view class="sh-btn savebar__save" @tap="save">{{ $t("common.save") }}</view>
-    </view>
+    <sh-savebar
+      :visible="dirty"
+      :text="String($t('store.unsaved'))"
+      :discard-text="String($t('store.discard'))"
+      :save-text="String($t('common.save'))"
+      @discard="discard"
+      @save="save"
+    ></sh-savebar>
   </sh-scaffold>
 </template>
 
@@ -791,34 +794,10 @@ onShow(() => {
  * 既不同形也不同高，并排时基线都对不齐。收窄内边距是为了不让它在一行里占太满，
  * 形状与配色仍走设计系统。
  */
-.rate__cancel,
-.savebar__discard {
+.rate__cancel {
   flex-shrink: 0;
   padding: 24rpx 32rpx;
   font-size: 26rpx;
   font-weight: 400;
-}
-/* 吸底保存条：transform 框内 fixed 会跟着窄栏收窄（见 sh-scaffold） */
-.savebar {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 40;
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
-  padding: 20rpx 24rpx;
-  padding-bottom: calc(20rpx + env(safe-area-inset-bottom));
-  background: var(--sh-surface);
-  border-top: 2rpx solid var(--sh-line);
-}
-.savebar__t {
-  flex: 1;
-  font-size: 26rpx;
-  color: var(--sh-sub);
-}
-.savebar__save {
-  padding: 20rpx 48rpx;
 }
 </style>

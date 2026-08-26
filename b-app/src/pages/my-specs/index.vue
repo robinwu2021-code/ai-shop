@@ -800,14 +800,12 @@ onShow(() => void load());
           这一页上「加规格」与「加档位」是两件事，各自的入口离得不远。
           展开后同一个位置变「收起」：同一个按钮管开合，不必再找关掉它的地方。
         -->
-        <view class="btn-add" :class="{ 'btn-add--on': picking === g.categoryNo }"
-              @tap="togglePick(g)">
-          <sh-icon :name="picking === g.categoryNo ? 'close' : 'plus'" :size="24"
-                   :color="picking === g.categoryNo ? 'var(--sh-sub)' : 'var(--sh-primary)'" />
-          <text class="btn-add__t">{{ picking === g.categoryNo
-              ? $t("mySpecs.collapse")
-              : $t(tab === "dims" ? "mySpecs.addDim" : "mySpecs.addProp") }}</text>
-        </view>
+        <sh-add
+          :text="String($t(tab === 'dims' ? 'mySpecs.addDim' : 'mySpecs.addProp'))"
+          :active-text="String($t('mySpecs.collapse'))"
+          :active="picking === g.categoryNo"
+          @tap="togglePick(g)"
+        ></sh-add>
       </view>
 
       <view v-for="t in listOf(g)" :key="t.templateNo" class="spec"
@@ -1101,32 +1099,6 @@ onShow(() => void load());
   color: var(--sh-sub);
 }
 
-/* 加规格按钮：带字，展开后同一位置变「收起」 */
-.btn-add {
-  display: flex;
-  align-items: center;
-  gap: 8rpx;
-  padding: 10rpx 22rpx;
-  border-radius: 9999px;
-  background: var(--sh-primary-tint);
-}
-/*
-  展开后这个按钮变成「收起」——**它是关闭动作，不该是整屏最重的元素。**
-  上一版填实心主色，于是一个「收起」比下面所有可点的规格都抢眼，
-  而它恰恰是这一刻最不需要被点的那个。改成透明描边：认得出、不喊叫。
-*/
-.btn-add--on {
-  background: transparent;
-  border: 2rpx solid var(--sh-line);
-}
-.btn-add__t {
-  font-size: 24rpx;
-  font-weight: 600;
-  color: var(--sh-primary-text);
-}
-.btn-add--on .btn-add__t {
-  color: var(--sh-sub);
-}
 
 /* 弹层里各段之间留口气 */
 .sheet-gap {
