@@ -46,9 +46,6 @@ import java.time.LocalDateTime;
         sqlSessionFactoryRef = "invSqlSessionFactory")
 public class InventoryDataSourceConfig {
 
-    /** 迁移脚本位置。与平台的 {@code classpath:db/migration} **必须不同目录**。 */
-    static final String MIGRATION_LOCATION = "classpath:db/inventory";
-
     /** 本领域自己的 Flyway 历史表，不与平台的 {@code flyway_schema_history} 混用。 */
     static final String HISTORY_TABLE = "inv_flyway_history";
 
@@ -70,7 +67,7 @@ public class InventoryDataSourceConfig {
     Flyway invFlyway(DataSource invDataSource, InventoryProperties props) {
         Flyway flyway = Flyway.configure()
                 .dataSource(invDataSource)
-                .locations(MIGRATION_LOCATION)
+                .locations(props.getFlywayLocations())
                 .table(HISTORY_TABLE)
                 .baselineOnMigrate(true)
                 .baselineVersion("0")

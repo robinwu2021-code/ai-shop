@@ -20,6 +20,15 @@ public class InventoryProperties {
      */
     private boolean flywayEnabled = true;
 
+    /**
+     * 迁移脚本位置。
+     *
+     * <p><b>可配的理由不是为了测试</b>：D4 规划里服务侧要关掉自跑迁移、由流水线单独跑，
+     * 那时位置也可能不同。测试顺带用它指向 H2 等价脚本 ——
+     * 生产那份是 MySQL 语法，H2 跑不了。
+     */
+    private String flywayLocations = "classpath:db/inventory";
+
     private Datasource datasource = new Datasource();
 
     public boolean isEnabled() {
@@ -36,6 +45,14 @@ public class InventoryProperties {
 
     public void setFlywayEnabled(boolean flywayEnabled) {
         this.flywayEnabled = flywayEnabled;
+    }
+
+    public String getFlywayLocations() {
+        return flywayLocations;
+    }
+
+    public void setFlywayLocations(String flywayLocations) {
+        this.flywayLocations = flywayLocations;
     }
 
     public Datasource getDatasource() {

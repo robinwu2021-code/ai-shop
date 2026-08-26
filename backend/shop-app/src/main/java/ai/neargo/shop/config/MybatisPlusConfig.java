@@ -36,6 +36,10 @@ import java.util.List;
  */
 @MapperScan(basePackages = "ai.neargo.shop",
         markerInterface = com.baomidou.mybatisplus.core.mapper.BaseMapper.class,
+        // **工厂点名**：两个 SqlSessionFactory 并存时，不点名就按类型挑，
+        // 挑到进销存那个（刻意不装拦截器）的表现是运行到某一行才炸。
+        // 见 PlatformDataSourceConfig 的类注释。
+        sqlSessionFactoryRef = "sqlSessionFactory",
         excludeFilters = @ComponentScan.Filter(
                 type = FilterType.REGEX, pattern = "ai\\.neargo\\.shop\\.inventory\\..*"))
 /*
@@ -50,7 +54,8 @@ import java.util.List;
  * 免得又把「谁都能当 Mapper」这条口子开回来。
  */
 @MapperScan(basePackages = {"ai.neargo.shop.archive", "ai.neargo.shop.media"},
-        annotationClass = org.apache.ibatis.annotations.Mapper.class)
+        annotationClass = org.apache.ibatis.annotations.Mapper.class,
+        sqlSessionFactoryRef = "sqlSessionFactory")
 public class MybatisPlusConfig {
 
     @Bean

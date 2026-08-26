@@ -29,21 +29,24 @@ spring:
 # Flyway 关掉，理由与上面那条一样（V1 是 MySQL 语法）；
 # 建表走 INIT=RUNSCRIPT —— 它在连接建立那一刻执行，
 # 早于任何 Mapper 用到它，不必再排 bean 的先后。
-# ⚠️ **暂时关着**（2026-08-26）。打开它会让 Spring Boot 的 DataSourceAutoConfiguration
-# 与 MybatisPlusAutoConfiguration 整体退让（两者都是 @ConditionalOnMissingBean），
-# 于是平台侧连自己的 SqlSessionFactory 都没有，全部 Mapper 静默绑到进销存那个
-# **刻意不装拦截器**的工厂上 —— 丢的不只是乐观锁，**DataScope 越权防线也一起丢**。
-# 更隐蔽的是 spring.sql.init 只作用于主数据源：主数据源没了之后，平台的建表脚本
-# 会灌进进销存那个库，两套表挤在一个库里而测试照样全绿。
+# 进销存独立库：**另一个内存库**（inv ≠ shop）。
+# 这一点本身就是「两个库真的分开了」的验证 —— 跨库 join 在这里会直接失败，
+# 而不是像同库那样悄悄成功。
 #
-# 打开它的前提是**先把平台的 DataSource 与 SqlSessionFactory 显式接管过来**
-# （@Primary + 复用 MybatisPlusProperties），那是一次单独的、要跑全量回归的改动，
-# 不该夹在功能提交里。跟踪见开发计划 S0-b。
+# 打开它的前提是平台侧的 DataSource / SqlSessionFactory / TransactionManager
+# **已经被 PlatformDataSourceConfig 显式接管**（三处自动配置都是
+# @ConditionalOnMissingBean，第二个数据源一出现就整体退让）。
+#
+# **Flyway 照常跑，只是换一份 H2 等价脚本**（db/inventory-h2，由 gen-test-schema.py
+# 从 db/inventory 重放生成）。这样测试走的是**真实的建表路径**，而不是绕过它。
+#
+# 试过 `INIT=RUNSCRIPT FROM 'classpath:…'`：H2 2.4 上它**静默建 0 张表**，
+# 不报错也不建表 —— 单独跑一个 JDBC 连接验过。别再用它。
 shop:
   inventory:
-    enabled: false
-    flyway-enabled: false
+    enabled: true
+    flyway-locations: classpath:db/inventory-h2
     datasource:
-      url: "jdbc:h2:mem:inv;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1;INIT=RUNSCRIPT FROM 'classpath:schema-inventory-test.sql'"
+      url: jdbc:h2:mem:inv;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1
       username: sa
       password: ""
