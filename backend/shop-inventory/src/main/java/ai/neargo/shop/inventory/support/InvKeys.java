@@ -35,6 +35,8 @@ public final class InvKeys {
     public static final String OWNER = "OWN";
     /** 领域事件 */
     public static final String EVENT = "EVT";
+    /** Open API 凭证 */
+    public static final String CREDENTIAL = "CRD";
 
     private static final DateTimeFormatter TS = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
     private static final AtomicInteger SEQ = new AtomicInteger(0);
@@ -47,5 +49,21 @@ public final class InvKeys {
         int rnd = ThreadLocalRandom.current().nextInt(1000);
         return prefix + LocalDateTime.now().format(TS)
                 + String.format("%04d", seq) + String.format("%03d", rnd);
+    }
+
+    /**
+     * Open API 的 secret。
+     *
+     * <p><b>与业务键不是一回事，所以不走 {@link #next}</b>：业务键要人念得出、
+     * 按时间排得动，而这三条恰恰是密钥不能有的性质 —— 带时间戳的密钥泄露了半截
+     * 就能猜出另半截。这里要的只有一件事：<b>不可预测</b>。
+     *
+     * <p>用 {@code SecureRandom}。{@code ThreadLocalRandom}（上面那个键生成器用的）
+     * 是可预测的伪随机 —— 拿它当密钥，看几个样本就能推出种子。
+     */
+    public static String secret() {
+        byte[] buf = new byte[32];
+        new java.security.SecureRandom().nextBytes(buf);
+        return java.util.HexFormat.of().formatHex(buf);
     }
 }

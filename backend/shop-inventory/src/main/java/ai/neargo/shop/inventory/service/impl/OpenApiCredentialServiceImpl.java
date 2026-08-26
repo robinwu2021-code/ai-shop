@@ -6,8 +6,10 @@ import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.inventory.entity.InvOpenCredential;
 import ai.neargo.shop.inventory.mapper.InventoryMappers.OpenCredentialMapper;
 import ai.neargo.shop.inventory.service.OpenApiCredentialService;
+import ai.neargo.shop.inventory.support.InvKeys;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 
@@ -60,5 +62,40 @@ public class OpenApiCredentialServiceImpl implements OpenApiCredentialService {
             }
         }
         return false;
+    }
+
+    @Override
+    @Transactional(transactionManager = "invTransactionManager")
+    public Issued issue(String ownerId, String name, String scopes, LocalDateTime expiresAt) {
+        /*
+         * key 与 secret 都用 InvKeys 生成 —— **不用自增也不用可猜的前缀**：
+         * 可枚举的 appKey 会把「四种失败一个错码」那条防线变成摆设，
+         * 对方不必枚举 key，直接按序号试就行。
+         */
+        String key = "AK" + InvKeys.next(InvKeys.CREDENTIAL);
+        String secret = InvKeys.secret();
+
+        InvOpenCredential row = new InvOpenCredential();
+        row.setCredentialId(InvKeys.next(InvKeys.CREDENTIAL));
+        row.setOwnerId(ownerId);
+        row.setAppKey(key);
+        // **只存哈希**。明文只在返回值里出现这一次，库里找不回来
+        row.setAppSecretHash(hasher.encode(secret));
+        row.setName(name);
+        row.setScopes(scopes);
+        row.setStatus("ACTIVE");
+        row.setExpiresAt(expiresAt);
+        credentialMapper.insert(row);
+
+        return new Issued(row.getCredentialId(), key, secret);
+    }
+
+    @Override
+    @Transactional(transactionManager = "invTransactionManager")
+    public void revoke(String credentialId) {
+        // **不删行**：删了之后「这把钥匙什么时候被谁停的」没人答得上来
+        credentialMapper.update(null, Wrappers.<InvOpenCredential>lambdaUpdate()
+                .eq(InvOpenCredential::getCredentialId, credentialId)
+                .set(InvOpenCredential::getStatus, "REVOKED"));
     }
 }

@@ -1,8 +1,6 @@
 package ai.neargo.shop.scenario;
 
-import ai.neargo.shop.auth.PasswordHasher;
-import ai.neargo.shop.inventory.entity.InvOpenCredential;
-import ai.neargo.shop.inventory.mapper.InventoryMappers.OpenCredentialMapper;
+import ai.neargo.shop.inventory.service.OpenApiCredentialService;
 import ai.neargo.shop.inventory.service.InboundService;
 import ai.neargo.shop.inventory.service.InventoryAclService;
 import ai.neargo.shop.inventory.service.StockQueryService;
@@ -56,9 +54,7 @@ class InventoryOpenApiTest {
     @Autowired
     private StockQueryService query;
     @Autowired
-    private OpenCredentialMapper credentialMapper;
-    @Autowired
-    private PasswordHasher hasher;
+    private OpenApiCredentialService credentials;
 
     private MockMvc mvc() {
         return MockMvcBuilders.webAppContextSetup(context)
@@ -182,20 +178,23 @@ class InventoryOpenApiTest {
                 InvEnums.InboundSource.PURCHASE, null, "老周粮油", LocalDateTime.now(), null,
                 List.of(new InboundService.Line(itemId, 10, "袋", 4200L))), "老板");
 
-        String key = "APPKEY-" + seq;
-        String secret = "s3cret-" + seq;
-        InvOpenCredential row = new InvOpenCredential();
-        row.setCredentialId("CRED-" + seq);
-        row.setOwnerId(owner);
-        row.setAppKey(key);
-        row.setAppSecretHash(hasher.encode(secret));
-        row.setName("测试对接");
-        row.setScopes(scopes);
-        row.setStatus(status);
-        row.setExpiresAt(expiresAt);
-        credentialMapper.insert(row);
+        /*
+         * **走签发口，不直接插表**。
+         *
+         * 第一版是 `credentialMapper.insert(row)` —— 被 `inventory-write-ownership`
+         * 守卫当场拦下（域外写 inv_* 表）。而我之所以那么写，是因为当时
+         * **根本没有签发凭证的口**：开放接口写完了，却没有任何办法发出一把钥匙。
+         * 守卫拦的是一个真问题，不是测试的不便。
+         */
+        OpenApiCredentialService.Issued issued =
+                credentials.issue(owner, "测试对接", scopes, expiresAt);
 
-        return new Cred(key, secret, owner, location, itemId);
+        // 吊销态要单独造：签发口只发 ACTIVE 的（没人会「签发一把已经作废的钥匙」）
+        if (!"ACTIVE".equals(status)) {
+            credentials.revoke(issued.credentialId());
+        }
+
+        return new Cred(issued.appKey(), issued.appSecret(), owner, location, itemId);
     }
 
     private int onHand(Cred c) {
