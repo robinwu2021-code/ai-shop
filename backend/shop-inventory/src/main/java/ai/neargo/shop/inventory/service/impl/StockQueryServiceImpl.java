@@ -3,6 +3,7 @@ package ai.neargo.shop.inventory.service.impl;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.inventory.dto.InventoryVOs.BalanceVO;
+import ai.neargo.shop.inventory.dto.InventoryVOs.DocumentVO;
 import ai.neargo.shop.inventory.dto.InventoryVOs.ItemDetailVO;
 import ai.neargo.shop.inventory.dto.InventoryVOs.LedgerPageVO;
 import ai.neargo.shop.inventory.dto.InventoryVOs.LedgerVO;
@@ -18,6 +19,14 @@ import ai.neargo.shop.inventory.mapper.InventoryMappers.ItemMapper;
 import ai.neargo.shop.inventory.mapper.InventoryMappers.ItemRefMapper;
 import ai.neargo.shop.inventory.mapper.InventoryMappers.LedgerMapper;
 import ai.neargo.shop.inventory.mapper.InventoryMappers.LocationMapper;
+import ai.neargo.shop.inventory.entity.InvInboundOrder;
+import ai.neargo.shop.inventory.entity.InvOutboundOrder;
+import ai.neargo.shop.inventory.entity.InvStockCount;
+import ai.neargo.shop.inventory.entity.InvTransferOrder;
+import ai.neargo.shop.inventory.mapper.InventoryMappers.InboundOrderMapper;
+import ai.neargo.shop.inventory.mapper.InventoryMappers.OutboundOrderMapper;
+import ai.neargo.shop.inventory.mapper.InventoryMappers.StockCountMapper;
+import ai.neargo.shop.inventory.mapper.InventoryMappers.TransferOrderMapper;
 import ai.neargo.shop.inventory.service.StockQueryService;
 import ai.neargo.shop.inventory.support.InvEnums;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -45,15 +54,25 @@ public class StockQueryServiceImpl implements StockQueryService {
     private final ItemRefMapper refMapper;
     private final LedgerMapper ledgerMapper;
     private final LocationMapper locationMapper;
+    private final InboundOrderMapper inboundMapper;
+    private final OutboundOrderMapper outboundMapper;
+    private final StockCountMapper countMapper;
+    private final TransferOrderMapper transferMapper;
 
     public StockQueryServiceImpl(BalanceMapper balanceMapper, ItemMapper itemMapper,
                                  ItemRefMapper refMapper, LedgerMapper ledgerMapper,
-                                 LocationMapper locationMapper) {
+                                 LocationMapper locationMapper, InboundOrderMapper inboundMapper,
+                                 OutboundOrderMapper outboundMapper, StockCountMapper countMapper,
+                                 TransferOrderMapper transferMapper) {
         this.balanceMapper = balanceMapper;
         this.itemMapper = itemMapper;
         this.refMapper = refMapper;
         this.ledgerMapper = ledgerMapper;
         this.locationMapper = locationMapper;
+        this.inboundMapper = inboundMapper;
+        this.outboundMapper = outboundMapper;
+        this.countMapper = countMapper;
+        this.transferMapper = transferMapper;
     }
 
     @Override
@@ -123,7 +142,67 @@ public class StockQueryServiceImpl implements StockQueryService {
         return new LedgerPageVO(out, next);
     }
 
+    @Override
+    public List<DocumentVO> documents(String ownerId, String locationId, String kind, int limit) {
+        List<DocumentVO> out = new ArrayList<>();
+        if (kind == null || "IN".equals(kind)) {
+            for (InvInboundOrder h : inboundMapper.selectList(Wrappers.<InvInboundOrder>lambdaQuery()
+                    .eq(InvInboundOrder::getOwnerId, ownerId)
+                    .eq(locationId != null, InvInboundOrder::getLocationId, locationId)
+                    .orderByDesc(InvInboundOrder::getId).last("LIMIT " + limit))) {
+                // 差异字段收进 subtitle 由服务端拼：让端上按 kind 分四种拼法，
+                // 那四段文案迟早各自漂
+                out.add(new DocumentVO("IN", h.getInboundNo(), h.getStatus(),
+                        subtitle(h.getSourceType(), h.getSupplierName(), h.getSourceRef()),
+                        h.getTotalQty(), h.getOccurredAt(), h.getCreatedBy()));
+            }
+        }
+        if (kind == null || "OUT".equals(kind)) {
+            for (InvOutboundOrder h : outboundMapper.selectList(Wrappers.<InvOutboundOrder>lambdaQuery()
+                    .eq(InvOutboundOrder::getOwnerId, ownerId)
+                    .eq(locationId != null, InvOutboundOrder::getLocationId, locationId)
+                    .orderByDesc(InvOutboundOrder::getId).last("LIMIT " + limit))) {
+                out.add(new DocumentVO("OUT", h.getOutboundNo(), h.getStatus(),
+                        subtitle(h.getPurpose(), h.getReasonCode(), h.getSourceRef()),
+                        -h.getTotalQty(), h.getOccurredAt(), h.getCreatedBy()));
+            }
+        }
+        if (kind == null || "COUNT".equals(kind)) {
+            for (InvStockCount h : countMapper.selectList(Wrappers.<InvStockCount>lambdaQuery()
+                    .eq(InvStockCount::getOwnerId, ownerId)
+                    .eq(locationId != null, InvStockCount::getLocationId, locationId)
+                    .orderByDesc(InvStockCount::getId).last("LIMIT " + limit))) {
+                out.add(new DocumentVO("COUNT", h.getCountNo(), h.getStatus(),
+                        subtitle("盘点", h.getScope(), null), 0, h.getStartedAt(), h.getOperator()));
+            }
+        }
+        if (kind == null || "TRANSFER".equals(kind)) {
+            for (InvTransferOrder h : transferMapper.selectList(Wrappers.<InvTransferOrder>lambdaQuery()
+                    .eq(InvTransferOrder::getOwnerId, ownerId)
+                    .orderByDesc(InvTransferOrder::getId).last("LIMIT " + limit))) {
+                out.add(new DocumentVO("TRANSFER", h.getTransferNo(), h.getStatus(),
+                        subtitle("调拨", h.getFromLocationId(), h.getToLocationId()),
+                        0, h.getShippedAt(), h.getOperator()));
+            }
+        }
+        // 四类合成一个列表后统一按时间倒序 —— 端上拿到的就是它要显示的顺序
+        return out.stream()
+                .sorted(Comparator.comparing(DocumentVO::occurredAt,
+                        Comparator.nullsLast(Comparator.reverseOrder())))
+                .limit(limit).toList();
+    }
+
     // ────────────────────────────────────────────────────────────────────
+
+    private static String subtitle(String a, String b, String c) {
+        StringBuilder sb = new StringBuilder();
+        for (String s : new String[]{a, b, c}) {
+            if (s != null && !s.isBlank()) {
+                sb.append(sb.isEmpty() ? "" : " · ").append(s);
+            }
+        }
+        return sb.toString();
+    }
 
     private List<InvStockBalance> rows(String ownerId, String locationId) {
         return balanceMapper.selectList(Wrappers.<InvStockBalance>lambdaQuery()

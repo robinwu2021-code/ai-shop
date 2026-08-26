@@ -13,6 +13,13 @@ public class InventoryProperties {
     /** 打开进销存领域（独立数据源 + 独立迁移）。默认关，存量部署零变化。 */
     private boolean enabled = false;
 
+    /**
+     * 本模块自己跑迁移。**多实例部署或流水线统一迁移时关掉它**
+     * （见开发计划 D4：服务侧 flyway 关闭，迁移由流水线单独跑一次）。
+     * 关掉之后表结构由外部保证 —— 本模块不再检查，也不会因此拒绝启动。
+     */
+    private boolean flywayEnabled = true;
+
     private Datasource datasource = new Datasource();
 
     public boolean isEnabled() {
@@ -21,6 +28,14 @@ public class InventoryProperties {
 
     public void setEnabled(boolean enabled) {
         this.enabled = enabled;
+    }
+
+    public boolean isFlywayEnabled() {
+        return flywayEnabled;
+    }
+
+    public void setFlywayEnabled(boolean flywayEnabled) {
+        this.flywayEnabled = flywayEnabled;
     }
 
     public Datasource getDatasource() {

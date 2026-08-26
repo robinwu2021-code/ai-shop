@@ -52,7 +52,21 @@ public final class InventoryVOs {
                             int lost, int adjusted, int closing, boolean balanced) {
     }
 
+    /**
+     * 单据中心的一行。四类单据长得不一样，**下发的是它们的交集** ——
+     * 差异字段（供应商、原因、来源单号）都收进 {@code subtitle}，
+     * 由服务端拼好：让端上按 kind 分四种拼法，那四段文案迟早各自漂。
+     */
+    public record DocumentVO(String kind, String docNo, String status, String subtitle,
+                             int totalQty, LocalDateTime occurredAt, String operator) {
+    }
+
     /** 榜单一行。 */
-    public record RankVO(String itemId, String name, String specText, int qty, Long amountMinor) {
+    /**
+     * @param costAmountMinor <b>销货成本，不是销售额</b>。
+     *        毛利算不出来 —— 售价在销售域，本域刻意没有它（出库单只带成本不带售价）。
+     *        毛利由调用方拿订单金额减去这个数，见 {@code InventoryReportService} 类注释
+     */
+    public record RankVO(String itemId, String name, String specText, int qty, Long costAmountMinor) {
     }
 }

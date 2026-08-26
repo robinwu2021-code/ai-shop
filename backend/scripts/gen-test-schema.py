@@ -13,7 +13,11 @@
 测试库和生产库结构不一致，而 SchemaDriftTest 又只比对列集合，可能刚好放过。
 所以重放是必须的，不是优化。
 
-用法：python3 backend/scripts/gen-test-schema.py
+用法：python3 backend/scripts/gen-test-schema.py [输出文件] [迁移源目录]
+
+**第二个参数**是给进销存独立库用的：它有自己的一条 Flyway 历史（db/inventory），
+表也不在 ai_shop 里，所以要单独生成一份 H2 schema，而不是并进平台那一份 ——
+并进去的话平台的 SchemaDriftTest 会把 17 张 inv_ 表当成平台表来比对。
 """
 import pathlib
 import re
@@ -52,6 +56,7 @@ def main():
     # 文件其实在手工维护），而发现分叉的唯一办法就是先生成一份出来 diff ——
     # 直接覆盖的话，分叉会被自己的产物盖掉，再也看不出差在哪。
     out_path = pathlib.Path(sys.argv[1]).resolve() if len(sys.argv) > 1 else OUT
+    src_dir = pathlib.Path(sys.argv[2]).resolve() if len(sys.argv) > 2 else MIGRATION_DIR
 
     tables = {}   # name -> list[str] 列/约束定义，保持顺序
     order = []
@@ -62,7 +67,7 @@ def main():
     # 于是 V15 的 ALTER 在建表之前重放 —— alter_table() 里 tables.get() 拿到 None
     # 就直接 return，**不报错、不提示**，产出一份缺列的 schema。
     # 缺的列只有等某个测试恰好用到它才会暴露，而多数测试用不到。
-    for f in sorted(MIGRATION_DIR.glob("V*.sql"),
+    for f in sorted(src_dir.glob("V*.sql"),
                     key=lambda p: int(re.match(r"V(\d+)", p.name).group(1))):
         replay(f.read_text(), tables, order, seeds, renames)
 

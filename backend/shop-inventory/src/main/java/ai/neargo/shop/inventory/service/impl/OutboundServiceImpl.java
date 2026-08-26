@@ -163,9 +163,29 @@ public class OutboundServiceImpl implements OutboundService {
     }
 
     private Long costOf(String ownerId, String itemId) {
-        InvItem item = itemMapper.selectOne(Wrappers.<InvItem>lambdaQuery()
-                .eq(InvItem::getOwnerId, ownerId).eq(InvItem::getItemId, itemId));
+        InvItem item = itemOf(ownerId, itemId);
         return item == null ? null : item.getDefaultCostMinor();
+    }
+
+    /**
+     * 行上的计量单位是**物料基本单位的快照**。
+     *
+     * <p>系统开的单（销售出库、盘亏、调拨出）不知道单位，这里补上 ——
+     * 留空的话，导出给 ERP 的那一列是空的，而「5」到底是 5 件还是 5 斤没人知道。
+     * 存快照而不是每次去查物料：物料改了单位（只在没有流水时才允许），
+     * 历史单据仍要能按当时的单位解释。
+     */
+    private String uomOf(String ownerId, String itemId, String given) {
+        if (given != null && !given.isBlank()) {
+            return given;
+        }
+        InvItem item = itemOf(ownerId, itemId);
+        return item == null ? "PIECE" : item.getBaseUom();
+    }
+
+    private InvItem itemOf(String ownerId, String itemId) {
+        return itemMapper.selectOne(Wrappers.<InvItem>lambdaQuery()
+                .eq(InvItem::getOwnerId, ownerId).eq(InvItem::getItemId, itemId));
     }
 
     private void validate(Draft draft) {
@@ -192,7 +212,7 @@ public class OutboundServiceImpl implements OutboundService {
             row.setOwnerId(draft.ownerId());
             row.setItemId(l.itemId());
             row.setQty(l.qty());
-            row.setUom(l.uom());
+            row.setUom(uomOf(draft.ownerId(), l.itemId(), l.uom()));
             lineMapper.insert(row);
         }
     }

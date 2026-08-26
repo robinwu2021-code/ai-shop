@@ -1,6 +1,8 @@
 package ai.neargo.shop.inventory.entity;
 
+import com.baomidou.mybatisplus.annotation.FieldFill;
 import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import lombok.Getter;
 import lombok.Setter;
@@ -23,11 +25,14 @@ import java.time.LocalDateTime;
  * 不变式 I3 由类型兜住，而不是靠代码里记得别写 update。
  * 其余十四张继承 {@link InvMutableEntity}。
  *
- * <p><b>审计列不自动填</b>：平台那套 {@code @TableField(fill = ...)} 依赖注册在平台
- * SqlSessionFactory 上的 MetaObjectHandler，而本领域的工厂刻意不装任何插件。
- * {@code createdAt} 由 DDL 的 {@code DEFAULT CURRENT_TIMESTAMP} 兜底；
- * <b>{@code createdBy} 由 Service 显式写</b> —— 「谁改的」是这套东西的领域数据，
- * 不是顺带记的审计。
+ * <p><b>时间列由本域自己的填充器写</b>（{@code InventoryDataSourceConfig} 里那个
+ * MetaObjectHandler）。刻意不装的是**拦截器**（DataScope / 分页 / 乐观锁）——
+ * 填充器不是拦截器，它不改 SQL 语义，只是把两个时间戳补上。
+ * 不装它的话 MyBatis-Plus 会把 null 显式写进 INSERT，
+ * 把 DDL 上的 {@code DEFAULT CURRENT_TIMESTAMP} 顶掉，报的是「created_at 不能为空」。
+ *
+ * <p><b>{@code createdBy} 仍然由 Service 显式写</b> —— 「谁改的」是这套东西的领域数据，
+ * 不是顺带记的审计，不该由一个通用填充器猜。
  */
 @Getter
 @Setter
@@ -37,6 +42,7 @@ public abstract class InvEntity {
     @TableId(type = IdType.AUTO)
     private Long id;
 
+    @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createdAt;
 
     /** 谁建的。业务键：商家账号 / 运营账号 / {@code SYSTEM}。 */

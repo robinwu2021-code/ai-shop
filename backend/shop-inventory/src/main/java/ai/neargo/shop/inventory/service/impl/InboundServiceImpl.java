@@ -159,6 +159,16 @@ public class InboundServiceImpl implements InboundService {
         itemMapper.updateById(item);
     }
 
+    /** 同出库：行上的单位是物料基本单位的快照，系统开单（退货/盘盈/调拨入）时没传就取。 */
+    private String uomOf(String ownerId, String itemId, String given) {
+        if (given != null && !given.isBlank()) {
+            return given;
+        }
+        InvItem item = itemMapper.selectOne(Wrappers.<InvItem>lambdaQuery()
+                .eq(InvItem::getOwnerId, ownerId).eq(InvItem::getItemId, itemId));
+        return item == null ? "PIECE" : item.getBaseUom();
+    }
+
     private void validate(Draft draft) {
         if (draft.lines() == null || draft.lines().isEmpty()) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
@@ -195,7 +205,7 @@ public class InboundServiceImpl implements InboundService {
             row.setOwnerId(draft.ownerId());
             row.setItemId(l.itemId());
             row.setQty(l.qty());
-            row.setUom(l.uom());
+            row.setUom(uomOf(draft.ownerId(), l.itemId(), l.uom()));
             row.setUnitCostMinor(l.unitCostMinor());
             lineMapper.insert(row);
         }

@@ -1,5 +1,7 @@
 package ai.neargo.shop.inventory.entity;
 
+import com.baomidou.mybatisplus.annotation.FieldFill;
+import com.baomidou.mybatisplus.annotation.TableField;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -16,6 +18,7 @@ import java.time.LocalDateTime;
 @Setter
 public abstract class InvMutableEntity extends InvEntity {
 
+    @TableField(fill = FieldFill.INSERT_UPDATE)
     private LocalDateTime updatedAt;
 
     private String updatedBy;

@@ -1,5 +1,9 @@
 package ai.neargo.shop.inventory.config;
 
+import com.baomidou.mybatisplus.core.MybatisConfiguration;
+import com.baomidou.mybatisplus.core.config.GlobalConfig;
+import com.baomidou.mybatisplus.core.handlers.MetaObjectHandler;
+import com.baomidou.mybatisplus.core.toolkit.GlobalConfigUtils;
 import com.baomidou.mybatisplus.extension.spring.MybatisSqlSessionFactoryBean;
 import com.zaxxer.hikari.HikariDataSource;
 import org.apache.ibatis.session.SqlSessionFactory;
@@ -14,6 +18,8 @@ import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.transaction.PlatformTransactionManager;
 
 import javax.sql.DataSource;
+
+import java.time.LocalDateTime;
 
 /**
  * 进销存的**独立数据源**装配。
@@ -63,7 +69,7 @@ public class InventoryDataSourceConfig {
      * 迁移在数据源之后、SqlSessionFactory 之前跑 —— 靠参数依赖表达顺序，不靠 {@code @DependsOn} 的字符串。
      */
     @Bean
-    Flyway invFlyway(DataSource invDataSource) {
+    Flyway invFlyway(DataSource invDataSource, InventoryProperties props) {
         Flyway flyway = Flyway.configure()
                 .dataSource(invDataSource)
                 .locations(MIGRATION_LOCATION)
@@ -71,7 +77,9 @@ public class InventoryDataSourceConfig {
                 .baselineOnMigrate(true)
                 .baselineVersion("0")
                 .load();
-        flyway.migrate();
+        if (props.isFlywayEnabled()) {
+            flyway.migrate();
+        }
         return flyway;
     }
 
@@ -82,8 +90,30 @@ public class InventoryDataSourceConfig {
         bean.setTypeAliasesPackage("ai.neargo.shop.inventory.entity");
         bean.setMapperLocations(new PathMatchingResourcePatternResolver()
                 .getResources("classpath*:mapper/inventory/*.xml"));
-        // 刻意不 setPlugins(...)：平台的 DataScope / 分页 / 乐观锁拦截器都不装到这里
+        // 刻意不 setPlugins(...)：平台的 DataScope / 分页 / 乐观锁**拦截器**都不装到这里。
+        // 但**填充器要装** —— 它不改 SQL 语义，只补两个时间戳；不装的话 MyBatis-Plus
+        // 会把 null 显式写进 INSERT，顶掉 DDL 上的 DEFAULT CURRENT_TIMESTAMP
+        GlobalConfig global = GlobalConfigUtils.defaults();
+        global.setMetaObjectHandler(invMetaObjectHandler());
+        bean.setGlobalConfig(global);
+        bean.setConfiguration(new MybatisConfiguration());
         return bean.getObject();
+    }
+
+    /** 只补时间戳。**不猜 createdBy** —— 「谁改的」由 Service 显式写。 */
+    private MetaObjectHandler invMetaObjectHandler() {
+        return new MetaObjectHandler() {
+            @Override
+            public void insertFill(org.apache.ibatis.reflection.MetaObject metaObject) {
+                strictInsertFill(metaObject, "createdAt", LocalDateTime.class, LocalDateTime.now());
+                strictInsertFill(metaObject, "updatedAt", LocalDateTime.class, LocalDateTime.now());
+            }
+
+            @Override
+            public void updateFill(org.apache.ibatis.reflection.MetaObject metaObject) {
+                strictUpdateFill(metaObject, "updatedAt", LocalDateTime.class, LocalDateTime.now());
+            }
+        };
     }
 
     @Bean

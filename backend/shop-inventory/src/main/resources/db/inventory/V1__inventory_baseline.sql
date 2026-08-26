@@ -105,15 +105,34 @@ CREATE TABLE IF NOT EXISTS inv_uom
     UNIQUE KEY uk_uom (uom_code)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci COMMENT='计量单位字典';
 
-INSERT INTO inv_uom (uom_code, name, divisible, sort) VALUES
-    ('PIECE', '件',  0, 10),
-    ('BAG',   '袋',  0, 20),
-    ('BOX',   '箱',  0, 30),
-    ('BOTTLE','瓶',  0, 40),
-    ('PORTION','份', 0, 50),
-    ('JIN',   '斤',  1, 60),
-    ('KG',    '公斤', 1, 70),
-    ('G',     '克',  1, 80);
+-- 种子写成**可重入**形式（SELECT … FROM DUAL WHERE NOT EXISTS）。
+-- 裸 VALUES 撞上唯一键就是 1062，而重跑不是异常情况：迁移中途失败、本地库来回切分支、
+-- 测试用 H2 的 INIT=RUNSCRIPT（每建一条连接跑一遍）都会让它再跑一次。
+-- 这一条是被测试环境逼出来的，但**它防的是生产上的重跑**。
+INSERT INTO inv_uom (uom_code, name, divisible, sort)
+SELECT 'PIECE', '件', 0, 10 FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM inv_uom x WHERE x.uom_code = 'PIECE');
+INSERT INTO inv_uom (uom_code, name, divisible, sort)
+SELECT 'BAG', '袋', 0, 20 FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM inv_uom x WHERE x.uom_code = 'BAG');
+INSERT INTO inv_uom (uom_code, name, divisible, sort)
+SELECT 'BOX', '箱', 0, 30 FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM inv_uom x WHERE x.uom_code = 'BOX');
+INSERT INTO inv_uom (uom_code, name, divisible, sort)
+SELECT 'BOTTLE', '瓶', 0, 40 FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM inv_uom x WHERE x.uom_code = 'BOTTLE');
+INSERT INTO inv_uom (uom_code, name, divisible, sort)
+SELECT 'PORTION', '份', 0, 50 FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM inv_uom x WHERE x.uom_code = 'PORTION');
+INSERT INTO inv_uom (uom_code, name, divisible, sort)
+SELECT 'JIN', '斤', 1, 60 FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM inv_uom x WHERE x.uom_code = 'JIN');
+INSERT INTO inv_uom (uom_code, name, divisible, sort)
+SELECT 'KG', '公斤', 1, 70 FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM inv_uom x WHERE x.uom_code = 'KG');
+INSERT INTO inv_uom (uom_code, name, divisible, sort)
+SELECT 'G', '克', 1, 80 FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM inv_uom x WHERE x.uom_code = 'G');
 
 
 -- ─────────────────────────────────────────────────────────────────────────────

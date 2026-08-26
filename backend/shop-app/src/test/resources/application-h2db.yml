@@ -20,3 +20,20 @@ spring:
     init:
       mode: always
       schema-locations: classpath:schema-test.sql
+
+# ── 进销存独立库 ────────────────────────────────────────────────────────
+# 它是**另一个数据源**，所以要另一个内存库；名字不同（inv ≠ shop），
+# 这一点本身就是「两个库真的分开了」的验证：跨库 join 在这里会直接失败，
+# 而不是像同库那样悄悄成功。
+#
+# Flyway 关掉，理由与上面那条一样（V1 是 MySQL 语法）；
+# 建表走 INIT=RUNSCRIPT —— 它在连接建立那一刻执行，
+# 早于任何 Mapper 用到它，不必再排 bean 的先后。
+shop:
+  inventory:
+    enabled: true
+    flyway-enabled: false
+    datasource:
+      url: "jdbc:h2:mem:inv;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1;INIT=RUNSCRIPT FROM 'classpath:schema-inventory-test.sql'"
+      username: sa
+      password: ""
