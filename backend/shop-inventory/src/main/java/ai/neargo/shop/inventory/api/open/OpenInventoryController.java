@@ -51,10 +51,24 @@ public class OpenInventoryController {
         this.counts = counts;
     }
 
+    /*
+     * 三个口的鉴权头都是 **required = false**。
+     *
+     * 默认（必填）的话，对方漏带头会被 Spring 在进 service 之前挡下来，
+     * 抛 MissingRequestHeaderException → 落到通用错误上，对方看到的是
+     * **10500「服务器内部错」** —— 于是他会拿它来报「你们服务端坏了」，
+     * 而真相是他自己少带了一个头。
+     *
+     * 更糟的是 {@code OpenApiCredentialService.ownerOf} 里那句
+     * `if (appKey == null) throw UNAUTHORIZED` **永远走不到** ——
+     * 一段看着周全、实际是死的防御。放进来才让它活过来，
+     * 也才对得上那句「四种失败一个错码」。
+     */
+
     /** 物料与结存：ERP 按 {@code merchant_sku_code} / {@code barcode} 对上自己的货。 */
     @GetMapping("/open/v1/items")
-    public List<BalanceVO> items(@RequestHeader("X-App-Key") String key,
-                                 @RequestHeader("X-App-Secret") String secret,
+    public List<BalanceVO> items(@RequestHeader(value = "X-App-Key", required = false) String key,
+                                 @RequestHeader(value = "X-App-Secret", required = false) String secret,
                                  @RequestParam(required = false) String locationId,
                                  @RequestParam(defaultValue = "100") int size) {
         String owner = credentials.ownerOf(key, secret, SCOPE_READ);
@@ -68,8 +82,8 @@ public class OpenInventoryController {
      * 而漏的那几行不会有任何报错 —— 对方的账从此少一块，且查不出少在哪。
      */
     @GetMapping("/open/v1/stock-ledger")
-    public LedgerPageVO ledger(@RequestHeader("X-App-Key") String key,
-                               @RequestHeader("X-App-Secret") String secret,
+    public LedgerPageVO ledger(@RequestHeader(value = "X-App-Key", required = false) String key,
+                               @RequestHeader(value = "X-App-Secret", required = false) String secret,
                                @RequestParam(required = false) Long since,
                                @RequestParam(defaultValue = "100") int size) {
         String owner = credentials.ownerOf(key, secret, SCOPE_READ);
@@ -86,8 +100,8 @@ public class OpenInventoryController {
      * 不另建一张幂等表，那样多一个要过期清理的东西。
      */
     @PostMapping("/open/v1/stock:sync")
-    public SyncResult sync(@RequestHeader("X-App-Key") String key,
-                           @RequestHeader("X-App-Secret") String secret,
+    public SyncResult sync(@RequestHeader(value = "X-App-Key", required = false) String key,
+                           @RequestHeader(value = "X-App-Secret", required = false) String secret,
                            @RequestBody SyncReq req) {
         String owner = credentials.ownerOf(key, secret, SCOPE_SYNC);
         for (SyncLine l : req.lines()) {
