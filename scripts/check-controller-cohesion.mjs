@@ -64,6 +64,16 @@ for (const p of files) {
     // 路径变量与配置占位不算资源
     if (seg && !seg.startsWith("{") && !seg.startsWith("$")) segs.add(seg);
   }
+  // 单复数归一：`/biz/roles` 与 `/biz/role/{code}` 是同一个资源的两种写法，
+  // 数成 2 个是判据的假阳性 —— 它会把「这个类装多了」的信号浪费在一处命名不一致上。
+  //
+  // **只在单数形与复数形同时出现在同一个类里时才合并**，这是能写的最窄的规则：
+  // 它动不了任何只用一种写法的控制器（`communities` 不会被削成 `communitie`），
+  // 也不碰 `spec-dims`/`spec-values` 这种真的是不同资源的连字符复合词。
+  // 全量跑下来它只碰到 3 个类：BizStaff(4→3)、MpStore(4→3)、OpsOrder(2→1)。
+  for (const s of [...segs]) {
+    if (s.endsWith("s") && segs.has(s.slice(0, -1))) segs.delete(s);
+  }
   if (segs.size > LIMIT) rows.push({ name, segs: [...segs].sort() });
 }
 
@@ -80,10 +90,25 @@ for (const r of rows) {
   console.log(`   ${fresh.includes(r) ? "★新增" : "     "} ${String(r.segs.length).padStart(2)} 个资源  ${r.name.padEnd(30)} ${r.segs.join(" ")}`);
 }
 
+// 基线里已经不超标的行 —— 拆完了却忘了删。
+// 不报的话棘轮就锈住了：那个类将来长回 8 个资源也没人吭声，因为它还在名单上。
+const stale = [...known].filter((n) => !rows.some((r) => r.name === n));
+
+if (stale.length) {
+  console.log(`\n✅ 已经不超标了，把这 ${stale.length} 行从基线里删掉：`);
+  for (const n of stale) console.log(`      ${n}`);
+}
+
 if (process.argv.includes("--check") && fresh.length) {
   console.error(`\n✗ ${fresh.length} 个控制器装了不止一个资源。`);
   console.error("  要么把新端点放到对应资源的控制器里（没有就新建一个），");
   console.error("  要么登记进 backend/known-fat-controllers.txt 并写明为什么。");
   console.error("  ⚠️ 别为了达标把一个资源硬拆成两半 —— 判据是资源数，不是端点数。");
+  process.exit(1);
+}
+
+if (process.argv.includes("--check") && stale.length) {
+  console.error(`\n✗ 基线里有 ${stale.length} 行已经不超标了，删掉它。`);
+  console.error("  留着的话这几个类将来长回去不会有人发现 —— 名单上的类是免检的。");
   process.exit(1);
 }

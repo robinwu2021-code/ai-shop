@@ -31,6 +31,8 @@ MpCatalogController
 OpsPlatformController
 BizMemberController
 BizDashboardController
-MpStoreController
+# MpStoreController 于 2026-08-26 出榜。**它没被拆，是判据数错了** ——
+# `/mp/stores` 与 `/mp/store/{no}` 被当成两个资源，归一后它是 3 个（attribution/order/store），
+# 正好在阈值上。判据改动见 check-controller-cohesion.mjs 里的单复数归一那一段。
 OpsNotifyLogController
 OpsPlatformConfigController
