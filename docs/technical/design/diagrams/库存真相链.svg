@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="612" viewBox="0 0 960 612" role="img" font-family="system-ui,-apple-system,'PingFang SC',sans-serif">
+<title>库存的一条真相链：谁改库存 → 存在哪 → 留什么证据 → 谁靠它吃饭</title><desc>四层：写入口 / 真相源 / 证据（新增 prd_stock_ledger）/ 消费者。现状缺的是第三层，缺了它第四层一件都建不起来。虚线框与虚线箭头是本方案新增或后期的部分。</desc>
+<defs>
+<marker id="pa" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+<path d="M2 1L8 5L2 9" fill="none" stroke="#8A94A2" stroke-width="1.4" stroke-linecap="round"/></marker>
+<marker id="pd" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+<path d="M2 1L8 5L2 9" fill="none" stroke="#B39A6A" stroke-width="1.4" stroke-linecap="round"/></marker>
+<style>
+.bx{fill:#FFFFFF;stroke:#D5DBE3;stroke-width:1.2}
+.bn{fill:#FFFDF6;stroke:#D9C89A;stroke-width:1.4;stroke-dasharray:5 3}
+.bg{fill:#F3F6FA;stroke:#C8D0DA;stroke-width:1.2}
+.n{font-size:13.5px;font-weight:600;fill:#161A21}
+.nb{font-size:15px;font-weight:700;fill:#161A21}
+.s{font-size:11px;fill:#5A6472}
+.band{font-size:11.5px;fill:#7B8695;letter-spacing:.08em}
+.l{font-size:10.5px;fill:#5A6472;paint-order:stroke;stroke:#FFFFFF;stroke-width:3.5;stroke-linejoin:round}
+.lw{font-size:10.5px;fill:#8A7434;paint-order:stroke;stroke:#FFFFFF;stroke-width:3.5;stroke-linejoin:round}
+.ar{stroke:#8A94A2;stroke-width:1.3;fill:none}
+.ard{stroke:#B39A6A;stroke-width:1.3;fill:none;stroke-dasharray:5 3}
+.sep{stroke:#E6EAEF;stroke-width:1}
+.tag{font-size:10px;fill:#8A7434;font-weight:600}
+</style></defs>
+
+<text class="band" x="30" y="26">① 写入口 · 谁能改库存</text>
+<line class="sep" x1="30" y1="36" x2="930" y2="36"/>
+
+<rect class="bx" x="30" y="48" width="167" height="64" rx="8"/>
+<text class="n" x="42" y="72">建品页手改</text><text class="s" x="42" y="92">已有 · 改完无痕迹</text>
+<rect class="bn" x="213" y="48" width="167" height="64" rx="8"/>
+<text class="n" x="225" y="72">盘点 / 调整</text><text class="s" x="225" y="92">P1 新增</text>
+<rect class="bn" x="396" y="48" width="167" height="64" rx="8"/>
+<text class="n" x="408" y="72">调拨（仓 → 店）</text><text class="s" x="408" y="92">P3 新增</text>
+<rect class="bn" x="579" y="48" width="167" height="64" rx="8"/>
+<text class="n" x="591" y="72">ERP 推送</text><text class="s" x="591" y="92">P5 · 仅 ERP 权威时</text>
+<rect class="bx" x="762" y="48" width="167" height="64" rx="8"/>
+<text class="n" x="774" y="72">下单 / 支付</text><text class="s" x="774" y="92">已有 · lock → confirm</text>
+
+<path class="ar" marker-end="url(#pa)" d="M113 112 L113 190"/>
+<path class="ar" marker-end="url(#pa)" d="M296 112 L296 160 L400 160 L400 190"/>
+<path class="ard" marker-end="url(#pd)" d="M479 112 L479 190"/>
+<path class="ard" marker-end="url(#pd)" d="M662 112 L662 160 L520 160 L520 190"/>
+<path class="ar" marker-end="url(#pa)" d="M845 112 L845 190"/>
+
+<text class="band" x="30" y="216">② 真相源 · 库存就存在这里，扣减在这里保持原子</text>
+<line class="sep" x1="30" y1="226" x2="930" y2="226"/>
+
+<rect class="bx" x="30" y="190" width="260" height="0" rx="8" opacity="0"/>
+<rect class="bx" x="30" y="238" width="260" height="76" rx="8"/>
+<text class="n" x="42" y="262">prd_sku.stock</text>
+<text class="s" x="42" y="282">主体总量 · locked_stock</text><text class="s" x="42" y="300">presale_quota / sold_count</text>
+<rect class="bx" x="310" y="238" width="260" height="76" rx="8"/>
+<text class="n" x="322" y="262">prd_store_stock</text>
+<text class="s" x="322" y="282">门店级覆盖层：有行则按店算</text><text class="s" x="322" y="300">一条都没有 → 回退主体总量</text>
+<rect class="bg" x="590" y="238" width="339" height="76" rx="8"/>
+<text class="n" x="602" y="262">prd_stock_lock</text>
+<text class="s" x="602" y="282">下单预占 · 释放/确认据此幂等</text><text class="s" x="602" y="300">预占不是库存变动，不进流水</text>
+
+<path class="ar" marker-end="url(#pa)" d="M160 314 L160 366"/>
+<path class="ar" marker-end="url(#pa)" d="M440 314 L440 366"/>
+<path class="ar" marker-end="url(#pa)" d="M760 314 L760 366"/>
+<text class="l" x="770" y="342">仅 confirm 落一行</text>
+
+<text class="band" x="30" y="392">③ 证据 · 本方案的地基（P1 新增）</text>
+<line class="sep" x1="30" y1="402" x2="930" y2="402"/>
+
+<rect class="bn" x="30" y="366" width="899" height="0" opacity="0"/>
+<rect class="bn" x="30" y="414" width="899" height="86" rx="8"/>
+<text class="tag" x="898" y="436" text-anchor="end">NEW</text>
+<text class="nb" x="46" y="440">prd_stock_ledger　每一次库存变动一行，只追加不修改</text>
+<text class="s" x="46" y="462">sku_no · store_no（空=主体级，与 prd_store_stock 同口径）· biz_type · biz_no · qty_delta（带符号）· stock_after（变动后结存）</text>
+<text class="s" x="46" y="482">唯一键 (biz_type, biz_no, sku_no, store_no) 做幂等；上一行 stock_after + 本行 qty_delta ≠ 本行 stock_after ⇒ 有人绕过流水直接改了库存</text>
+
+<text class="band" x="30" y="526">④ 消费者 · 现在一件都建不起来，因为③是空的</text>
+<line class="sep" x1="30" y1="536" x2="930" y2="536"/>
+
+<path class="ar" marker-end="url(#pa)" d="M136 500 L136 548"/>
+<path class="ar" marker-end="url(#pa)" d="M365 500 L365 548"/>
+<path class="ar" marker-end="url(#pa)" d="M594 500 L594 548"/>
+<path class="ard" marker-end="url(#pd)" d="M823 500 L823 548"/>
+
+<rect class="bx" x="30" y="548" width="213" height="50" rx="8"/>
+<text class="n" x="42" y="570">「昨天怎么少了 17 袋」</text><text class="s" x="42" y="589">按 SKU 回放，能指到人</text>
+<rect class="bn" x="259" y="548" width="213" height="50" rx="8"/>
+<text class="n" x="271" y="570">rpt_daily_sku（P2）</text><text class="s" x="271" y="589">动销榜 / 滞销 / 周转</text>
+<rect class="bn" x="488" y="548" width="213" height="50" rx="8"/>
+<text class="n" x="500" y="570">缺货与超卖治理</text><text class="s" x="500" y="589">负库存、零库存仍在架</text>
+<rect class="bn" x="717" y="548" width="213" height="50" rx="8"/>
+<text class="n" x="729" y="570">ERP 增量拉取（P5）</text><text class="s" x="729" y="589">按 id 游标，不做全量对账</text>
+</svg>
