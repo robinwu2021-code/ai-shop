@@ -2184,7 +2184,7 @@ export const mockApi: MerchantApi = {
   },
 
   /** 自建维度：只在本店可用，不参与跨店比价 */
-  async mAddSpecDim(name, labels) {
+  async mAddSpecDim(name, labels, usageType) {
     const merchantNo = requireMerchant();
     const nm = name.trim();
     if (!nm) throw new Error("先填规格名");
@@ -2199,7 +2199,13 @@ export const mockApi: MerchantApi = {
      *     库里就有两个同名维度，而建品页会并排列出两个，他分不出该选哪个。
      * mock 不照做的话，开发期永远看不到这两种合并，而它们正是这条路最容易撞上的。
      */
-    const hit = db.specTemplates.find(
+    /*
+     * **建到哪张表跟着 usageType 走。** mock 里销售规格与商品参数是两份
+     * （与后端两条端点同构），一律往 specTemplates 里塞的话，
+     * 在「商品参数」栏建出来的东西会出现在规格那一栏 —— 而它本该是参数。
+     */
+    const into = usageType === "PROP" ? db.specProps : db.specTemplates;
+    const hit = into.find(
       (t) => t.name === nm && (t.scope === "PLATFORM" || t.merchantNo === merchantNo),
     );
     if (hit) return delay(hit);
@@ -2211,7 +2217,7 @@ export const mockApi: MerchantApi = {
       name: nm,
       options: labels.map((l) => l.trim()).filter(Boolean).map((label) => ({ label })),
     };
-    db.specTemplates.push(created);
+    into.push(created);
     return delay(created);
   },
 

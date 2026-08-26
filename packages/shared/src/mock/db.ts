@@ -1563,6 +1563,11 @@ export const db = {
    *
    * 线上 V196 给蔬菜/水果配的 PROP 是产地与保质期。
    */
+  /*
+   * 显式标类型：字面量推断出来的是「这几条的联合」，
+   * 而商家自建的参数（scope=MERCHANT、没有 categoryNo）塞不进去。
+   * specTemplates 那边同理 —— 它本来就是 SpecTemplate[]。
+   */
   specProps: [
     {
       templateNo: "SD_ORIGIN",
@@ -1655,7 +1660,7 @@ export const db = {
       name: "功率",
       options: [],
     },
-  ],
+  ] as SpecTemplate[],
 
   specTemplates: [
     {

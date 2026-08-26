@@ -824,7 +824,12 @@ export interface MerchantApi {
    * 与平台维度重名时后端直接返回平台那个：他要的是「按这个维度分规格」，
    * 而不是拥有一个自己的颜色维度。
    */
-  mAddSpecDim(name: string, labels: string[]): Promise<SpecTemplate>;
+  /**
+   * @param usageType `SALE`（默认，销售规格）/ `PROP`（商品参数）。
+   *   **在「商品参数」栏里建出来的必须是参数** —— 建成销售规格的话它会跑去分 SKU，
+   *   而他只是想标一个「海拔」。不传按 SALE，老调用方行为不变。
+   */
+  mAddSpecDim(name: string, labels: string[], usageType?: "SALE" | "PROP"): Promise<SpecTemplate>;
 
   /**
    * 「我的规格」：这家店自己建的维度 + 用量 + 配额。

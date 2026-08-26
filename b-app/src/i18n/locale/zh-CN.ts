@@ -200,6 +200,7 @@ export default {
       // 说清连带后果：他对这个规格做过的档位取舍会一起没
       removeConfirm: "「{name}」以及你在它下面留的档位都会从这一类里去掉。已建好的商品不受影响。", removed: "已移除（点一下加回来）",
       buildOwnDim: "自己建一个",
+      buildOwnProp: "自己建一个参数",
       buildOwnPh: "如 辣度",
       noMoreDim: "这一类的规格都在用了",
     restShow: "其它平台规格（{n}）",

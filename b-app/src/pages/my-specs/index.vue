@@ -601,25 +601,31 @@ async function pickDim(g: StoreCategorySpecs, picked: SpecTemplate) {
  * <p>后端有两道兜底：与平台维度重名直接给平台那个（他要的是「按这个分规格」，
  * 不是「拥有一个自己的颜色」）；与自己已建的重名则复用，不会造出两个「辣度」。
  */
-async function buildOwnDim(g: StoreCategorySpecs) {
-  const name = await new Promise<string>((resolve) => {
-    /*
-     * **editable 的弹框不能带 content。**uni 在 editable=true 时把 content
-     * 当成输入框的**预填值**，不是说明文字 —— 于是那段解释被塞进输入框，
-     * 他打开就看到一框字，还得先全删掉才能打自己的名字。
-     * 该说的话在面板上（「只本店可用，不参与跨店比价」），那里不会挡着他输入。
-     */
-    uni.showModal({
-      title: t("mySpecs.buildOwnDim"),
-      editable: true,
-      placeholderText: t("mySpecs.buildOwnPh"),
-      success: (r) => resolve(r.confirm ? (r.content ?? "") : ""),
-      fail: () => resolve(""),
-    });
-  });
-  if (!name.trim()) return;
+/** 正在自建的那个类目号；空 = 没在建。页内一行输入，不用系统弹框 */
+const building = ref("");
+const buildName = ref("");
+
+function startBuild(categoryNo: string) {
+  building.value = categoryNo;
+  buildName.value = "";
+}
+
+/**
+ * 自己建一个平台没有的规格 / 参数。
+ *
+ * <p><b>页内一行输入，不用 `uni.showModal`。</b>系统弹框的标题与输入框不是同一套字，
+ * 字号、行高、对齐都不归我们管 —— 看起来就是「粗糙、字不齐」，而这一点改不了。
+ * 而且它 `editable=true` 时把 content 当预填值（不是说明），能放的说明只有一个
+ * placeholder。页内输入则与这一页其余部分同一套排版，说明也能好好放在下面。
+ *
+ * <p>建出来的是规格还是参数，**跟着当前这一栏走** —— 在「商品参数」里建出一个
+ * 销售规格，会让它跑去分 SKU，而他只是想标一个「海拔」。
+ */
+async function confirmBuild(g: StoreCategorySpecs) {
+  const name = buildName.value.trim();
+  if (!name) return;
   try {
-    const dim = await api.mAddSpecDim(name.trim(), []);
+    const dim = await api.mAddSpecDim(name, [], tab.value === "props" ? "PROP" : "SALE");
     if (listOf(g).some((x) => x.templateNo === dim.templateNo)) {
       uni.showToast({ title: t("mySpecs.dimAlready"), icon: "none" });
       return;
@@ -627,6 +633,7 @@ async function buildOwnDim(g: StoreCategorySpecs) {
     platformNames.value[dim.templateNo] = dim.name;
     const seq = [...listOf(g).map((x) => x.templateNo), dim.templateNo];
     await commit(withAdded(g, dim), seq);
+    building.value = "";
     picking.value = null;
     // 刚建出来时一个档位都没有，那一行会显示「还没加档位」，把下一步推到他面前
     await load();
@@ -726,14 +733,32 @@ onShow(() => void load());
           {{ $t("mySpecs.noMoreDim") }}
         </text>
         <!-- 自己建放最后：顺序即建议，先看平台有没有现成的 -->
-        <view class="picker__own" @tap="buildOwnDim(g)">
+        <!--
+          自己建一个：**页内一行输入**，不用系统弹框。
+          系统弹框的标题与输入框不是同一套字，字号行高都不归我们管 ——
+          看起来就是「粗糙、字不齐」，而那一点改不了。
+        -->
+        <view v-if="building !== g.categoryNo" class="picker__own" @tap="startBuild(g.categoryNo)">
           <view class="picker__own-line">
-            <text class="picker__own-t">＋ {{ $t("mySpecs.buildOwnDim") }}</text>
+            <text class="picker__own-t">
+              ＋ {{ $t(tab === "dims" ? "mySpecs.buildOwnDim" : "mySpecs.buildOwnProp") }}
+            </text>
             <text class="sh-muted picker__quota">
               {{ $t("mySpecs.quotaShort", { used: ownUsed, max: ownMax }) }}
             </text>
           </view>
           <text class="sh-muted picker__own-s">{{ $t("mySpecs.buildOwnCost") }}</text>
+        </view>
+        <view v-else class="build">
+          <input
+            v-model="buildName"
+            class="field__input build__input"
+            :placeholder="$t('mySpecs.buildOwnPh')"
+            :focus="true"
+            @confirm="confirmBuild(g)"
+          />
+          <text class="link build__ok" @tap="confirmBuild(g)">{{ $t("mySpecs.save") }}</text>
+          <text class="link link--quiet build__no" @tap="building = ''">{{ $t("mySpecs.cancel") }}</text>
         </view>
       </view>
 
@@ -982,6 +1007,23 @@ onShow(() => void load());
   font-size: 24rpx;
   margin-bottom: 16rpx;
 }
+/* 自建那一行：输入框 + 两个动作，与这一页其余部分同一套排版 */
+.build {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  padding-top: 12rpx;
+}
+
+.build__input {
+  flex: 1;
+}
+
+.build__ok,
+.build__no {
+  font-size: 26rpx;
+}
+
 .picker__own-line {
   display: flex;
   align-items: baseline;

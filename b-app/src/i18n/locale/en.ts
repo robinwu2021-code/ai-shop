@@ -132,6 +132,7 @@ export default {
       removeTitle: "Drop this spec?",
       removeConfirm: "“{name}” and the options you kept under it will be removed from this category. Existing products are unaffected.", removed: "Removed (tap to add back)",
       buildOwnDim: "Build my own",
+      buildOwnProp: "Create a detail",
       buildOwnPh: "e.g. Spiciness",
       noMoreDim: "All specs for this category are in use",
     restShow: "Other platform specs ({n})",

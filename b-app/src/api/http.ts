@@ -319,7 +319,8 @@ export const httpApi: MerchantApi = {
   mPickableProps: (categoryNo) => http.get<SpecTemplate[]>(E.mPickableProps.path, { categoryNo }),
   mAddSpecValue: (dimNo, label) =>
     http.post<{ valueNo: string; code: string; label: string }>(E.mAddSpecValue.path, { dimNo, label }),
-  mAddSpecDim: (name, labels) => http.post<SpecTemplate>(E.mAddSpecDim.path, { name, labels }),
+  mAddSpecDim: (name, labels, usageType) =>
+    http.post<SpecTemplate>(E.mAddSpecDim.path, { name, labels, usageType }),
   mMySpecDims: () => http.get<MerchantSpecDim[]>(E.mMySpecDims.path),
   mStoreSpecDims: (storeNo) => http.get<StoreCategorySpecs[]>(E.mStoreSpecDims.path, { storeNo }),
   mDimValues: (dimNo) => http.get<SpecOption[]>(E.mDimValues.path.replace("{dimNo}", dimNo)),
