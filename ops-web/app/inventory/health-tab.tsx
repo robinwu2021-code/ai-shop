@@ -9,16 +9,16 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import type { InvHealthRow } from "@/lib/types/product";
+import type { InvHealthRow } from "@/lib/types";
 import { Badge, type BadgeTone } from "@/components/ui/badge";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { Notice } from "@/components/ui/notice";
 import { Tabs } from "@/components/ui/tabs";
-import type { ProductsCopy } from "./copy";
+import type { InventoryCopy } from "./copy";
 
 type Kind = InvHealthRow["kind"] | "ALL";
 
-export function InvHealthTab({ c }: { c: ProductsCopy }) {
+export function HealthTab({ c }: { c: InventoryCopy }) {
   const [kind, setKind] = useState<Kind>("ALL");
 
   const list = useQuery({

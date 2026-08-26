@@ -137,15 +137,6 @@ export const NAV: NavSection[] = [
       // 那边是全量池按状态筛，这边只有待审队列 —— 审核员日常只用这一个
       { href: "/products?tab=audit", label: "商品审核队列", perm: "product:sku:audit", group: "商品", matrix: "P-3.2", ready: true },
       { href: "/products?tab=stock", label: "预售额度与超卖", perm: "product:stock:update", group: "库存与预售", matrix: "P-3.3", ready: true },
-      /*
-       * 进销存三页（只读）。**权限用 product:sku:read，与三个端点上的 @PreAuthorize 同一把** ——
-       * 界面闸门与后端闸门错开的后果是「菜单点得进、进去一片 403」，
-       * 而看的人只会认为功能坏了。上面那条 stock 页的 ui 码（product:stock:update）
-       * 是界面自己的码，后端并不存在，别照抄。
-       */
-      { href: "/products?tab=inv-health", label: "库存健康度", perm: "product:sku:read", group: "库存与预售", matrix: "P-3.3", ready: true },
-      { href: "/products?tab=inv-ledger", label: "库存流水", perm: "product:sku:read", group: "库存与预售", matrix: "P-3.3", ready: true },
-      { href: "/products?tab=inv-recon", label: "库存对差", perm: "product:sku:read", group: "库存与预售", matrix: "P-3.3", ready: true },
       // 规格模板（P-3.4 / E27）。**归类目权限不归商品权限**：模板按品类预置，
       // 与类目树、资质码字典是同一拨人在配。此前 B-4.4 商家能选模板而平台没有维护入口 ——
       // 三端联动表把这条记成「❌ 断裂：模板是死的」
@@ -171,6 +162,26 @@ export const NAV: NavSection[] = [
       // 而主题只是「这周首页摆什么」—— 改动最频繁、后果最轻的一档，
       // 挂在类目那个高门槛下面等于让一件运营日常天天找人开权限
       { href: "/products?tab=topics", label: "主题分类", perm: "product:topic:read", group: "陈列", matrix: "P-3.6", ready: true },
+    ],
+  },
+
+
+  // ── P-18 进销存 ────────────────────────────────────────────────────────
+  //
+  // **独立成 section，不做「商品与类目」的 tab。** 进销存有独立的库、独立的
+  // Java 模块，将来要能单独交付；在菜单里把它塞进商品页，等于在界面上先把这条
+  // 边界抹掉 —— 而抹掉之后没有人会记得它曾经存在。
+  //
+  // module 填 `product` 而不是 `inventory`：这个字段是**权限码前缀**（canModule 过滤），
+  // 三个端点判的都是 `product:sku:read`。填 `inventory` 的话没有任何 UI 码以它开头，
+  // canModule 会走「这个模块不受权限约束」那条分支返回 true —— 于是整个 section
+  // 对所有人可见，靠叶子逐条兜底。看着能用，但闸门已经空了一层。
+  {
+    key: "inventory", label: "进销存", icon: "Boxes", module: "product", href: "/inventory",
+    children: [
+      { href: "/inventory", label: "库存健康度", perm: "product:sku:read", group: "库存治理", matrix: "P-18.1", ready: true },
+      { href: "/inventory?tab=ledger", label: "库存流水", perm: "product:sku:read", group: "库存治理", matrix: "P-18.2", ready: true },
+      { href: "/inventory?tab=recon", label: "库存对差", perm: "product:sku:read", group: "切换判据", matrix: "P-18.3", ready: true },
     ],
   },
 

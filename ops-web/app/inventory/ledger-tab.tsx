@@ -11,18 +11,19 @@
 import { useState } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import type { InvLedgerRow } from "@/lib/types/product";
+import { fmtTime } from "@/lib/utils";
+import type { InvLedgerRow } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { Input } from "@/components/ui/input";
 import { Notice } from "@/components/ui/notice";
 import { Toolbar } from "@/components/ui/toolbar";
-import type { ProductsCopy } from "./copy";
+import type { InventoryCopy } from "./copy";
 
 const SIZE = 20;
 
-export function InvLedgerTab({ c }: { c: ProductsCopy }) {
+export function LedgerTab({ c }: { c: InventoryCopy }) {
   // 输入框与生效值分开：每敲一个字就打一次接口，台账这种大表扛不住
   const [ownerInput, setOwnerInput] = useState("");
   const [itemInput, setItemInput] = useState("");
@@ -41,7 +42,7 @@ export function InvLedgerTab({ c }: { c: ProductsCopy }) {
   const rows = list.data?.pages.flat() ?? [];
 
   const columns: Column<InvLedgerRow>[] = [
-    { header: c.invColTime, cell: (r) => <span className="tabular-nums">{r.occurredAt}</span> },
+    { header: c.invColTime, cell: (r) => <span className="tabular-nums">{fmtTime(r.occurredAt)}</span> },
     {
       header: c.invColDoc,
       cell: (r) => (
@@ -51,7 +52,11 @@ export function InvLedgerTab({ c }: { c: ProductsCopy }) {
         </div>
       ),
     },
-    { header: c.invColReason, cell: (r) => r.reasonCode },
+    {
+      header: c.invColReason,
+      // 认不出的码原样显示。空白会让人以为「这笔没有原因」，而它其实只是没翻译
+      cell: (r) => (c as Record<string, string>)[`invReason${r.reasonCode}`] ?? r.reasonCode,
+    },
     {
       header: c.invColDelta,
       numeric: true,

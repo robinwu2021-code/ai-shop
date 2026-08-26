@@ -12,6 +12,7 @@ export * from "./review";
 export * from "./aftersale";
 export * from "./group";
 export * from "./product";
+export * from "./inventory";
 export * from "./finance";
 export * from "./iam";
 export * from "./growth";

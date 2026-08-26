@@ -27,9 +27,6 @@ import { CategoryPointsTab } from "./category-points-tab";
 import { CategoriesTab } from "./categories-tab";
 import { SpuStdTab } from "./spu-std-tab";
 import { TopicsTab } from "./topics-tab";
-import { InvHealthTab } from "./inv-health-tab";
-import { InvLedgerTab } from "./inv-ledger-tab";
-import { InvReconTab } from "./inv-recon-tab";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -48,9 +45,7 @@ import { Tree, type TreeNode } from "@/components/ui/tree";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 
 type Copy = (typeof PRODUCTS_COPY)["zh"];
-const TAB_KEYS = ["categories", "skus", "audit", "stock",
-  // 进销存三页（只读）：健康度 / 流水 / 对差。顺序与 lib/nav.ts 的叶子一致
-  "inv-health", "inv-ledger", "inv-recon", "templates",
+const TAB_KEYS = ["categories", "skus", "audit", "stock", "templates",
   // 规格库（V195）：通用 / 专用 / 类目×规格 —— 三件事分成三页，见 lib/nav.ts 的说明
   "spec-common", "spec-special", "category-spec", "category-pay-mode", "category-points",
   "spu-std", "topics"] as const;   // 顺序与 lib/nav.ts 的叶子一致
@@ -400,10 +395,6 @@ function ProductsInner() {
       )}
 
       {/* 规格模板（P-3.4 / E27）：平台侧终于有了维护入口 —— B-4.4 商家选到的不再是一张空表 */}
-      {tab === "inv-health" && <InvHealthTab c={c} />}
-      {tab === "inv-ledger" && <InvLedgerTab c={c} />}
-      {tab === "inv-recon" && <InvReconTab c={c} />}
-
       {tab === "templates" && <SpecTemplateTab c={c} canEdit={canEditCategory} />}
       {/* 通用与专用是同一个组件的两个分区：判据是「值的含义是否跨类目一致」，
           而不是两套数据 —— 拆成两个组件只会让两边的编辑逻辑各漂各的 */}

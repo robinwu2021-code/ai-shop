@@ -1,5 +1,4 @@
 // 覆盖范围：商品与类目（P-3）。
-import type { InvHealthRow, InvLedgerRow, InvReconReport } from "@/lib/types/product";
 import { client } from "../http-client";
 import type { ProductApi } from "../contracts/product";
 import type { Category, CategoryArchiveImpact, CategoryPayMode, CategoryPoints, CategorySpec, CategorySpecBinding, SpecDim, SpecValue, Page, ProductGoods, Sku, SpecTemplate } from "@/lib/types";
@@ -143,23 +142,6 @@ export const productHttp: ProductApi = {
     client.post<BackendSpecTemplate>(`/ops/spec-templates/${no}/archive`).then(toSpecTemplate),
   unarchiveSpecTemplate: (no) =>
     client.post<BackendSpecTemplate>(`/ops/spec-templates/${no}/unarchive`).then(toSpecTemplate),
-
-  // ── 库存治理（进销存独立库）—— 三个都只读
-
-  listInvHealth: (q = {}) =>
-    client.get<InvHealthRow[]>("/ops/inventory/health", {
-      kind: q.kind, limit: q.limit ?? 200,
-    }),
-
-  /** 游标传上一页最后一行的 `id`；**不是页码** —— 时间游标会因时钟回拨漏行 */
-  listInvLedger: (q) =>
-    client.get<InvLedgerRow[]>("/ops/inventory/ledger", {
-      ownerId: q.ownerId, itemId: q.itemId, cursor: q.cursor, size: q.size ?? 50,
-    }),
-
-  getInvRecon: (q = {}) =>
-    client.get<InvReconReport>("/ops/inventory/recon", { limit: q.limit ?? 500 }),
-
 };
 
 /** `GET /ops/skus` 的原样返回形状（`OpsSkuDetailVO`，见后端 product/dto）。 */

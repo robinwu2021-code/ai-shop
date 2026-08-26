@@ -9,13 +9,13 @@
 // 两者都是「没看到差异行」，但一个是可以切、一个是不知道能不能切。
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import type { InvReconDiff } from "@/lib/types/product";
+import type { InvReconDiff } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { Notice } from "@/components/ui/notice";
-import type { ProductsCopy } from "./copy";
+import type { InventoryCopy } from "./copy";
 
-export function InvReconTab({ c }: { c: ProductsCopy }) {
+export function ReconTab({ c }: { c: InventoryCopy }) {
   const recon = useQuery({ queryKey: ["inv-recon"], queryFn: () => api.getInvRecon() });
   const r = recon.data;
 

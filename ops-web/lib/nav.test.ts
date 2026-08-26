@@ -177,6 +177,8 @@ describe("矩阵覆盖率（docs/requirements/需求矩阵-三端.md §六）", 
     "P-5.1", "P-5.2", "P-6.1", "P-7.1", "P-7.2", "P-7.3", "P-7.4", "P-8.1", "P-8.2",
     "P-9.1", "P-9.2", "P-10.1", "P-11.1", "P-11.2", "P-12.1", "P-12.2", "P-13.1", "P-14.1",
     "P-14.2", "P-15.1", "P-15.2", "P-16.1", "P-16.2", "P-17.1",
+    // P-18 进销存：独立模块、独立库，运营端三页全只读
+    "P-18.1", "P-18.2", "P-18.3",
   ];
 
   const covered = new Set(NAV.flatMap((s) => (s.children ?? []).map((l) => l.matrix).filter(Boolean) as string[]));
@@ -194,7 +196,7 @@ describe("矩阵覆盖率（docs/requirements/需求矩阵-三端.md §六）", 
 
 describe("待建域", () => {
   // 已交付的域清单。**页面存在才允许可点** —— 静态导出下点一个没有的路由就是 404。
-  const BUILT = ["dashboard", "merchant", "order", "community", "fulfillment", "store", "marketing", "review", "aftersale", "group", "product", "finance", "iam", "growth", "risk", "message", "content", "system", "member"];
+  const BUILT = ["dashboard", "merchant", "order", "community", "fulfillment", "store", "marketing", "review", "aftersale", "group", "product", "finance", "iam", "growth", "risk", "message", "content", "system", "member", "inventory"];
 
   it("未交付的 section 必须 soon（否则 Rail 点进去 404）", () => {
     const clickableButUnbuilt = NAV.filter((s) => !s.soon && !BUILT.includes(s.key)).map((s) => s.key);

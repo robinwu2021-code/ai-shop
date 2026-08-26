@@ -37,6 +37,11 @@ const OVERLAY: Record<string, Record<string, string>> = {
   平台类目树: { en: "Category tree" },
   商品池与审核: { en: "Product pool & review" },
   预售额度与超卖: { en: "Presale quota & oversell" },
+
+  // ── P-18 进销存（独立 section，不在商品域下）
+  进销存: { en: "Inventory" },
+  库存治理: { en: "Stock governance" },
+  切换判据: { en: "Cutover gate" },
   库存健康度: { en: "Stock health" },
   库存流水: { en: "Stock ledger" },
   库存对差: { en: "Stock reconciliation" },

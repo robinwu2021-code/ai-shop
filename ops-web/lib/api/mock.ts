@@ -14,6 +14,7 @@ import { reviewMock } from "./mocks/review";
 import { afterSaleMock } from "./mocks/aftersale";
 import { groupMock } from "./mocks/group";
 import { productMock } from "./mocks/product";
+import { inventoryMock } from "./mocks/inventory";
 import { financeMock } from "./mocks/finance";
 import { iamMock } from "./mocks/iam";
 import { growthMock } from "./mocks/growth";
@@ -37,6 +38,7 @@ export const MOCK_SLICES = {
   aftersale: afterSaleMock,
   group: groupMock,
   product: productMock,
+  inventory: inventoryMock,
   finance: financeMock,
   iam: iamMock,
   growth: growthMock,
@@ -49,5 +51,5 @@ export const MOCK_SLICES = {
 export const mockApi: Api = {
   ...dashboardMock, ...merchantMock, ...orderMock, ...paymentMock,
   ...communityMock, ...fulfillmentMock, ...storeMock,
-  ...marketingMock, ...reviewMock, ...afterSaleMock, ...groupMock, ...productMock, ...financeMock, ...iamMock, ...growthMock, ...riskMock, ...messageMock, ...contentMock, ...systemMock, ...memberMock,
+  ...marketingMock, ...reviewMock, ...afterSaleMock, ...groupMock, ...productMock, ...financeMock, ...iamMock, ...growthMock, ...riskMock, ...messageMock, ...contentMock, ...systemMock, ...memberMock, ...inventoryMock,
 };
