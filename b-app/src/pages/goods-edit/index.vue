@@ -2715,8 +2715,8 @@ async function save(thenSubmit = false) {
           <text
             v-for="o in d.options"
             :key="o.code || o.label"
-            class="sh-chip param__chip"
-            :class="{ 'param__chip--on': paramValues[d.templateNo]?.label === o.label }"
+            class="sh-chip"
+            :class="{ 'sh-chip--primary': paramValues[d.templateNo]?.label === o.label }"
             @tap="pickParam(d, o)"
           >{{ o.label }}</text>
           <sh-add small :text="String($t('goods.paramFill'))" @tap="openParamValue(d)"></sh-add>
@@ -3150,9 +3150,7 @@ async function save(thenSubmit = false) {
   档位是一排开关：本店有的全列出来，这件货没有的点掉。
   关掉的压成描边灰字 —— 仍看得见「本店还有这一档」，与「这件货有」区分得开。
 */
-.opt {
-  font-size: 24rpx;
-}
+
 
 /*
   关掉的档位：**虚线描边**，一眼看得出「还在，只是这件货没有」，
@@ -3311,18 +3309,14 @@ async function save(thenSubmit = false) {
   gap: 12rpx;
 }
 
-.param__chip {
-  font-size: 24rpx;
-}
-
 /*
-  选中态用主色描边而不是实心：参数不影响价格与库存，
-  做得比规格还抢眼的话，商家会以为它更要紧。
+  参数值的选中态**就是库标准的 `.sh-chip--primary`**（tint 底 + primary-text），
+  此前本页自己写了一遍，逐字相同 —— 删掉不改任何观感。
+
+  留住当初那句判断：**参数不影响价格与库存，做得比规格还抢眼的话，
+  商家会以为它更要紧** —— 所以它用的是最轻的那一档选中态，
+  而不是规格档位那种带描边加粗的。
 */
-.param__chip--on {
-  color: var(--sh-primary-text);
-  background: var(--sh-primary-tint);
-}
 
 
 

@@ -866,7 +866,7 @@
         "color": "var(--sh-primary-text)"
       },
       "usage": {
-        "b-app": 48,
+        "b-app": 49,
         "c-app": 22
       }
     },
@@ -1738,9 +1738,9 @@
         "sh-sheet",
         "sh-uploader"
       ],
-      "libClassHits": 122,
-      "localSelectors": 92,
-      "localCssLines": 492,
+      "libClassHits": 123,
+      "localSelectors": 89,
+      "localCssLines": 482,
       "rolled": [
         {
           "id": "sysmodal",
