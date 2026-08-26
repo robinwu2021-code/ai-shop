@@ -408,7 +408,7 @@ B 端 token 有效期短、绑设备、要短信验证码 —— 那是给人用
 - [ ] 迁移：建 `prd_stock_ledger`
 - [ ] 迁移：回填 `INIT` 行（主体级 + 已有店级行）
 - [ ] `StockPortImpl` 收口写入点：`confirm` / 退款回补各落一行，与业务同事务
-- [ ] `MerchantGoodsServiceImpl` 改库存的三处写入点接流水（`ADJUST`）
+- [ ] `MerchantGoodsServiceImpl` 改库存的写入点接流水（`ADJUST`）—— **实际是 4 处不是 3 处**，逐处见[代码结构与现状对齐 §4.1](./进销存-代码结构与现状对齐.md)
 - [ ] 实体 `PrdStockLedger` + mapper（迁移加表必须补实体，否则那些列永远读出 null）
 - [ ] B 端：SKU 库存变动明细页 + 盘点入口（权限 `biz:stock`）
 - [ ] 自校验守卫（跑批一处 + 测试一处），撤掉修复必须变红且点名

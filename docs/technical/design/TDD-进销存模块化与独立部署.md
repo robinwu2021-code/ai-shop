@@ -146,7 +146,8 @@ prd_purchase_note/_item （P2 新增）
 
 > 顺带：这条守卫今天就会红一次 —— `stockPort.confirm` 走的是 `StockPortImpl`（在 inventory 里，✅），
 > 但 `MerchantGoodsServiceImpl` 直接写 `prd_sku` 的 stock 列（改库存入口）。
-> **那正是 P1 要收口的三处写入点** —— 守卫与 P1 是同一件事的两面。
+> **那正是 P1 要收口的写入点** —— 守卫与 P1 是同一件事的两面。
+> （逐处数清楚是 **12 处**，见[代码结构与现状对齐 §4.1](./进销存-代码结构与现状对齐.md)。）
 
 ### 3.4 什么时候翻盘（写下来，免得每季度重议）
 
