@@ -138,6 +138,13 @@
     },
     "type": [
       {
+        "class": ".txt-mega",
+        "size": "60rpx",
+        "px": "30px",
+        "weight": "700",
+        "lineHeight": "1.1"
+      },
+      {
         "class": ".txt-hero",
         "size": "48rpx",
         "px": "24px",
@@ -336,6 +343,28 @@
         "font-size": "24px",
         "font-weight": "700",
         "line-height": "1.15",
+        "color": "var(--sh-ink)"
+      },
+      "usage": {
+        "b-app": 0,
+        "c-app": 0
+      }
+    },
+    {
+      "class": ".txt-mega",
+      "group": "字阶",
+      "when": "**收款台那一档**：商家照着它收钱、对账，隔着柜台一米要读准",
+      "avoid": "只是「想大一点」用 .txt-hero",
+      "decl": {
+        "font-size": "60rpx",
+        "font-weight": "700",
+        "line-height": "1.1",
+        "color": "var(--sh-ink)"
+      },
+      "px": {
+        "font-size": "30px",
+        "font-weight": "700",
+        "line-height": "1.1",
         "color": "var(--sh-ink)"
       },
       "usage": {
@@ -3060,7 +3089,7 @@
   ],
   "counts": {
     "tokens": 10,
-    "blocks": 35,
+    "blocks": 36,
     "components": 17,
     "pages": 52,
     "gapKinds": 8

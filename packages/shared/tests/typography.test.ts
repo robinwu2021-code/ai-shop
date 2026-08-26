@@ -15,8 +15,11 @@ const ROOT = join(import.meta.dirname, "../../..");
 const BASE_CSS = join(ROOT, "packages/ui/src/styles/base.css");
 const VUE_ROOTS = ["c-app", "b-app", "packages/ui"];
 
-/** 字阶允许的字号（rpx）。改这里之前先想清楚：多一档就是多一次「这两个到底差在哪」。 */
-const SCALE = [24, 26, 28, 30, 34, 40, 48];
+/** 字阶允许的字号（rpx）。改这里之前先想清楚：多一档就是多一次「这两个到底差在哪」。
+ *  **60 是 2026-08-26 加的**：`order` 的应收 72rpx、`income`/`points` 的结存 60rpx
+ *  三处各自越过了 48 —— 独立走到同一个方向说明这一档真的缺（收款台要隔着柜台读准）。
+ *  取 60 是顺着字阶顶端的比例（40→48 是 1.2，48→60 是 1.25），72 一并收到这一档。 */
+const SCALE = [24, 26, 28, 30, 34, 40, 48, 60];
 
 /**
  * 豁免：与「文字排版」无关的字号。
@@ -58,9 +61,9 @@ describe("字阶", () => {
     expect(vueFiles.length).toBeGreaterThan(20);
   });
 
-  it("base.css 里八个 .txt-* 类齐全 —— 它们是字阶的唯一落点", () => {
+  it("base.css 里九个 .txt-* 类齐全 —— 它们是字阶的唯一落点", () => {
     const css = readFileSync(BASE_CSS, "utf8");
-    const missing = ["hero", "display", "price", "title", "strong", "body", "sub", "caption"]
+    const missing = ["mega", "hero", "display", "price", "title", "strong", "body", "sub", "caption"]
       .filter((n) => !new RegExp(`\\.txt-${n}\\s*\\{`).test(css));
     expect(missing, `base.css 缺这几档：${missing.join(", ")}`).toEqual([]);
   });

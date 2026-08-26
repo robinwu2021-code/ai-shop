@@ -72,6 +72,7 @@ BLOCK_NOTES = {
     ".sh-btn--muted": ("按钮", "不强调的操作（取消、稍后）", "—"),
     ".sh-btn--danger": ("按钮", "危险操作：**描边 + 墨字**，靠形态与主按钮区分", "红实心留给二次确认"),
     ".sh-btn--danger-solid": ("按钮", "二次确认弹层里的最终一击", "页面上不要用 —— 会与主按钮撞色"),
+    ".txt-mega": ("字阶", "**收款台那一档**：商家照着它收钱、对账，隔着柜台一米要读准", "只是「想大一点」用 .txt-hero"),
     ".txt-hero": ("字阶", "整页只有一个的大数（详情页主价、评分）", "—"),
     ".txt-display": ("字阶", "区块级大数", "—"),
     ".txt-price": ("字阶", "列表里的价格：与标题同字号，靠字重顶出来", "非价格不要用 700"),
@@ -415,7 +416,7 @@ def gaps_of(pages: list[dict]) -> list[dict]:
 # 组装清单
 # ══════════════════════════════════════════════════════════════════════
 
-TYPE_CLASSES = [".txt-hero", ".txt-display", ".txt-price", ".txt-title",
+TYPE_CLASSES = [".txt-mega", ".txt-hero", ".txt-display", ".txt-price", ".txt-title",
                 ".txt-strong", ".txt-body", ".txt-sub", ".txt-caption"]
 
 
@@ -748,7 +749,8 @@ BLOCK_DEMOS = {
     ".sh-btn--muted": '<div class="sh-btn sh-btn--muted">稍后再说</div>',
     ".sh-btn--danger": '<div class="sh-btn sh-btn--danger">停用员工</div>',
     ".sh-btn--danger-solid": '<div class="sh-btn sh-btn--danger-solid">确认停用</div>',
-    ".txt-hero": '<span class="txt-hero">¥128.00</span>',
+    ".txt-mega": '<span class="txt-mega sh-num">¥128.00</span>',
+    ".txt-hero": '<span class="txt-hero">¥98.00</span>',
     ".txt-display": '<span class="txt-display">1,284</span>',
     ".txt-price": '<span class="txt-price">¥28.50</span>',
     ".txt-title": '<span class="txt-title">今日经营</span>',

@@ -318,7 +318,9 @@ onLoad((q) => {
 /* 应收金额是这一屏唯一要一眼看清的东西 —— 老板照着它收钱 */
 .due {
   display: block;
-  font-size: 72rpx;
+  /* 60rpx = 字阶的 .txt-mega（收款台那一档）。此前是 72rpx —— 越档，
+     而弹层里本来就只有它一个大数，30px 与 36px 的差别买不到什么 */
+  font-size: 60rpx;
   font-weight: 700;
   line-height: 1.2;
   color: var(--sh-ink);
