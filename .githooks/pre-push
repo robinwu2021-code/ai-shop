@@ -61,6 +61,14 @@ if ! node "$GATE_WT/scripts/check-ops-orphan.mjs" --check; then
   exit 1
 fi
 
+# Controller 粒度：一个类只装一个资源（阈值 3）。判据是**路径第一段的种数**，
+# 不是端点数 —— 按端点数定阈值会逼人把一个资源硬拆成两半来达标。
+# 由来：BizMerchantController 一个类 40 端点 / 1022 行 / 九个不相干的节，
+# 而每个往里加的人都有一个局部合理的理由。这道闸就是补那一眼。
+if ! node "$GATE_WT/scripts/check-controller-cohesion.mjs" --check; then
+  exit 1
+fi
+
 # 生成物有没有跟着源码走。**在本条之前只有界面清单有闸门**，
 # 其余五个生成器谁都不盯，于是一直在漂：2026-08-26 重跑一次，
 # API 清单 +51/−16、B 端功能点矩阵 +192/−69。
