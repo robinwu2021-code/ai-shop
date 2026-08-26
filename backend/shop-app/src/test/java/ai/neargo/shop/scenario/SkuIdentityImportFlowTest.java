@@ -189,13 +189,15 @@ class SkuIdentityImportFlowTest {
         String skuNo = firstSkuNo(token, goodsNo);
         importCsv(token, "skuNo,条码,货号,单位\n" + skuNo + ",6906666666666,HX-RT,件");
 
-        String csv = mvc().perform(get("/biz/sku-identity/export")
+        String body = mvc().perform(get("/biz/sku-identity/export")
                         .header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.code").value(0))
                 .andReturn().getResponse().getContentAsString();
+        String csv = json.readTree(body).get("data").get("csv").asString();
         /*
-         * 导出这一条**必须断言内容**而不是只看状态码：全局 ApiResponseWrapper
-         * 会把非 String 返回值包成 ApiResult，第一版就是这么静静回了 500 的 JSON。
-         * 只断言 200 的话，这个接口坏了测试也不会红。
+         * 导出这一条**必须断言内容**而不是只看状态码：第一版返回
+         * ResponseEntity<byte[]>，被全局 ApiResponseWrapper 包了一手，
+         * 稳定回 500 的 JSON —— 只断言 200 的话，这个接口坏了测试也不会红。
          */
         assertThat(csv).contains("6906666666666").contains("HX-RT");
 

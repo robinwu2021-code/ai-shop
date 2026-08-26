@@ -82,6 +82,7 @@ import type {
   Review,
   SettleBill,
   ShareKit,
+  SkuIdentityReport,
   SpecTemplate,
   GoodsParam,
   SpuStd,
@@ -818,6 +819,24 @@ export interface MerchantApi {
    * 抽不出来会拒，端上提示商家把数量写清楚。
    */
   mAddSpecValue(dimNo: string, label: string): Promise<{ valueNo: string; code: string; label: string }>;
+
+  // ---- 商品编码批量导入导出（P4）
+  /**
+   * 导出本店全部规格行的条码 / 货号 / 单位。
+   *
+   * <p>回的是 CSV 文本，不是文件流 —— 端上要先拿到内容才能显示、才能转 Blob 存盘，
+   * 而 http 客户端只认 `{code,msg,data}` 信封（裸文件会被判成「响应格式不符合契约」）。
+   */
+  mSkuIdentityExport(): Promise<{ csv: string }>;
+  /**
+   * 试算：这份表会改什么、哪几行有问题。**不写库**。
+   *
+   * <p>批量写入必须先算后做：只报一个「导入成功」，商家会以为每行都生效了，
+   * 而匹配不上的那些恰恰是他最需要知道的。
+   */
+  mSkuIdentityPlan(csv: string): Promise<SkuIdentityReport>;
+  /** 真写。只写没问题的行，问题照旧报出来 */
+  mSkuIdentityImport(csv: string): Promise<SkuIdentityReport>;
   /**
    * 自建一个规格维度（平台没有的，如「辣度」）。
    *

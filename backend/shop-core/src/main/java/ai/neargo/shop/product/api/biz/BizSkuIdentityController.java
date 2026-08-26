@@ -33,22 +33,29 @@ public class BizSkuIdentityController {
     /**
      * 导出本店全部规格行的身份三列。
      *
-     * <p><b>返回类型必须是 String。</b>全局的 {@code ApiResponseWrapper} 会把任何返回值
-     * 包成 {@code ApiResult}，只放过 {@code String}（它自己的注释里写着为什么：
-     * 包成对象再交给 StringHttpMessageConverter 会 ClassCastException）。
-     * 我第一版返回 {@code ResponseEntity<byte[]>}，于是这个接口稳定地回 500 ——
-     * 而全站此前一个 ResponseEntity 都没有，也就没人踩过这颗雷。
+     * <p><b>CSV 放在信封里回，不回裸文件。</b>试过两条更「正统」的路，都不通：
      *
-     * <p><b>不设 Content-Disposition。</b>那要一个 {@code HttpServletResponse} 参数，
-     * 而这个类在 {@code ai.neargo.shop.product..} 下 —— 架构守卫禁止领域包碰 web 运行时
-     * （理由写在规则里：读了 request 就只能在 HTTP 线程里跑）。文件名由端上决定，
-     * 反正它本来就要把文本转成 Blob 才能存盘，顺手起个名不多一步。
+     * <ul>
+     *   <li>{@code ResponseEntity<byte[]>} —— 全局 {@code ApiResponseWrapper} 会把
+     *       任何返回值包成 {@code ApiResult}（只放过 String），于是稳定回 500。
+     *       全站此前一个 ResponseEntity 都没有，也就没人踩过这颗雷。</li>
+     *   <li>裸 {@code String} + {@code text/csv} —— 服务端这侧通了，但**端上不认**：
+     *       shared 的 http-client 见到不是 {@code {code,msg,data}} 的响应，
+     *       直接判「响应格式不符合契约」。为一个导出改动全站的网络层不值当。</li>
+     * </ul>
+     *
+     * <p>文件名也交给端上：它本来就要把这段文本转成 Blob 才能存盘，顺手起个名不多一步。
+     * （而且设 Content-Disposition 要 {@code HttpServletResponse} 参数，
+     * 架构守卫禁止 {@code product..} 碰 web 运行时。）
      */
     @PreAuthorize("@perm.canBiz('" + BizPerms.GOODS + "')")
-    @GetMapping(value = "/biz/sku-identity/export", produces = "text/csv;charset=UTF-8")
-    public String export() {
-        return service.exportCsv(BizContext.requireMerchantNo());
+    @GetMapping("/biz/sku-identity/export")
+    public ExportFile export() {
+        return new ExportFile(service.exportCsv(BizContext.requireMerchantNo()));
     }
+
+    /** 导出的正文。单独一个记录而不是裸字符串：将来要加「导出了几行」不必改形状 */
+    public record ExportFile(String csv) {}
 
     /** 试算：这份表会改什么、哪几行有问题。<b>不写库</b> */
     @PreAuthorize("@perm.canBiz('" + BizPerms.GOODS + "')")

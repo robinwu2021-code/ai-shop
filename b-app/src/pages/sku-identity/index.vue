@@ -1,0 +1,398 @@
+<script setup lang="ts">
+/*
+ * 商品编码批量导入导出（P4）。
+ *
+ * <p>条码 / 货号 / 单位是接 ERP、收银秤、供应商的唯一凭据，
+ * 而它们此前只能在建品页一件一件填 —— 五件货可以，两百件不行。
+ *
+ * <p><b>这一页的形状由一件事决定：批量写入的危险不是报错，是它报成功。</b>
+ * 所以「导入」不是一个按钮，是三步：先看这份表要改什么 → 确认 → 才写。
+ * 与「给会员发消息」同一条规矩（那边叫试算，这边叫核对）。
+ */
+import { computed, ref } from "vue";
+import { useI18n } from "vue-i18n";
+import { api } from "@/api";
+import { useMerchantStore } from "@/stores/merchant";
+import { canPickFile, pickCsvFile, saveCsv } from "@/utils/csv-file";
+import type { SkuIdentityReport } from "@shared/types";
+
+const { t } = useI18n();
+const merchant = useMerchantStore();
+
+const csv = ref("");
+const report = ref<SkuIdentityReport | null>(null);
+const busy = ref(false);
+/** 试算过之后才允许真写；改了内容就得重算 —— 否则「确认」确认的是上一份表 */
+const checked = ref(false);
+
+async function doExport() {
+  busy.value = true;
+  try {
+    const res = await api.mSkuIdentityExport();
+    const stamp = new Date().toISOString().slice(0, 10);
+    saveCsv(res.csv, `商品编码-${stamp}.csv`, t);
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: "none" });
+  } finally {
+    busy.value = false;
+  }
+}
+
+async function choose() {
+  const text = await pickCsvFile();
+  if (text === null) return;
+  csv.value = text;
+  onEdited();
+  void check();
+}
+
+/** 内容一变，上一次的核对结果就作废 */
+function onEdited() {
+  checked.value = false;
+  report.value = null;
+}
+
+async function check() {
+  if (!csv.value.trim()) return;
+  busy.value = true;
+  try {
+    report.value = await api.mSkuIdentityPlan(csv.value);
+    checked.value = true;
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: "none" });
+  } finally {
+    busy.value = false;
+  }
+}
+
+async function confirm() {
+  const r = report.value;
+  if (!r || !r.willSet) return;
+  const ok = await new Promise<boolean>((resolve) => {
+    uni.showModal({
+      title: t("skuIdentity.confirmTitle"),
+      content: t("skuIdentity.confirmBody", { n: r.willSet }),
+      success: (x) => resolve(!!x.confirm),
+      fail: () => resolve(false),
+    });
+  });
+  if (!ok) return;
+  busy.value = true;
+  try {
+    const done = await api.mSkuIdentityImport(csv.value);
+    report.value = done;
+    checked.value = false;
+    csv.value = "";
+    uni.showToast({ title: t("skuIdentity.done", { n: done.willSet }), icon: "none" });
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: "none" });
+  } finally {
+    busy.value = false;
+  }
+}
+
+const hasProblems = computed(() => (report.value?.problems.length ?? 0) > 0);
+
+/** 一格的前后对照。没变的列显示为「—」，别让他在一堆没动的值里找那一个改动 */
+function arrow(from?: string | null, to?: string | null): string {
+  const f = from || "";
+  const g = to || "";
+  if (f === g) return f || "—";
+  return `${f || "空"} → ${g || "空"}`;
+}
+</script>
+
+<template>
+  <sh-scaffold title-key="skuIdentity.title" :denied="!merchant.can('biz:goods')">
+    <!--
+      **规则写在动手之前，不写在出错之后。**这三条决定了他的表会被怎么读，
+      而其中第二条与建品页里「清空输入框就是清空」的直觉正好相反 ——
+      不先说清，他会以为空列会被清掉，于是不敢用这个功能；
+      或者更糟：以为空列会被保留，而我们真按「清空」处理。
+    -->
+    <view class="sh-card">
+      <text class="sh-h2">{{ $t("skuIdentity.howTitle") }}</text>
+      <view class="rules">
+        <view class="rule">
+          <text class="rule__k">{{ $t("skuIdentity.ruleMissingK") }}</text>
+          <text class="sh-muted rule__v">{{ $t("skuIdentity.ruleMissingV") }}</text>
+        </view>
+        <view class="rule">
+          <text class="rule__k">{{ $t("skuIdentity.ruleBlankK") }}</text>
+          <text class="sh-muted rule__v">{{ $t("skuIdentity.ruleBlankV") }}</text>
+        </view>
+        <view class="rule">
+          <text class="rule__k">{{ $t("skuIdentity.ruleDashK") }}</text>
+          <text class="sh-muted rule__v">{{ $t("skuIdentity.ruleDashV") }}</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 第一步：把现状拿下来。**先导出再改**是唯一不会认错行的路 -->
+    <view class="sh-card mt">
+      <view class="sec">
+        <text class="sh-h2">{{ $t("skuIdentity.step1") }}</text>
+        <view class="sh-btn sh-btn--soft act" :class="{ 'sh-btn--muted': busy }" @tap="doExport">
+          {{ $t("skuIdentity.export") }}
+        </view>
+      </view>
+      <text class="sh-muted hint">{{ $t("skuIdentity.exportHint") }}</text>
+    </view>
+
+    <!-- 第二步：把改好的表交回来 -->
+    <view class="sh-card mt">
+      <view class="sec">
+        <text class="sh-h2">{{ $t("skuIdentity.step2") }}</text>
+        <view v-if="canPickFile" class="sh-btn sh-btn--soft act" @tap="choose">
+          {{ $t("skuIdentity.choose") }}
+        </view>
+      </view>
+      <!--
+        **粘贴这条路两端都留着。**小程序没有 file input，而商家真会
+        在电脑上打开这一页（/b/ 就是网页）。少一条路等于少一半的人能用。
+      -->
+      <textarea
+        v-model="csv"
+        class="field__area paste"
+        :placeholder="$t('skuIdentity.pastePh')"
+        @input="onEdited"
+      />
+      <view class="acts">
+        <view class="sh-btn act--wide" :class="{ 'sh-btn--muted': busy || !csv.trim() }" @tap="check">
+          {{ $t("skuIdentity.check") }}
+        </view>
+      </view>
+    </view>
+
+    <!-- 第三步：核对。**这一屏才是这个功能的主体** -->
+    <view v-if="report" class="sh-card mt">
+      <text class="sh-h2">{{ $t("skuIdentity.step3") }}</text>
+      <!--
+        四个数各回答一件事。少了「没变化」那一格，商家会把「改 3 行」
+        读成「另外 197 行失败了」—— 而那三个数字里最让人安心的恰恰是它。
+      -->
+      <view class="nums">
+        <view class="num">
+          <text class="num__v">{{ report.total }}</text>
+          <text class="sh-muted num__k">{{ $t("skuIdentity.total") }}</text>
+        </view>
+        <view class="num">
+          <text class="num__v num__v--on">{{ report.willSet }}</text>
+          <text class="sh-muted num__k">{{ $t("skuIdentity.willSet") }}</text>
+        </view>
+        <view class="num">
+          <text class="num__v">{{ report.noChange }}</text>
+          <text class="sh-muted num__k">{{ $t("skuIdentity.noChange") }}</text>
+        </view>
+        <view class="num">
+          <text class="num__v" :class="{ 'num__v--bad': hasProblems }">{{ report.problems.length }}</text>
+          <text class="sh-muted num__k">{{ $t("skuIdentity.problem") }}</text>
+        </view>
+      </view>
+
+      <!--
+        问题逐行列，**带行号**。「有 3 行有问题」他无从下手，
+        「第 14 行：货号 HX-9 在本店找不到」他一眼就知道去 Excel 里改哪儿。
+      -->
+      <view v-if="hasProblems" class="probs">
+        <view v-for="p in report.problems" :key="p.line" class="prob">
+          <text class="prob__l">{{ $t("skuIdentity.line", { n: p.line }) }}</text>
+          <text class="prob__r">{{ p.reason }}</text>
+        </view>
+      </view>
+
+      <!-- 前后对照：让他确认「改的是不是我想的那些」 -->
+      <view v-if="report.samples.length" class="prev">
+        <text class="sh-muted prev__t">{{ $t("skuIdentity.previewTitle") }}</text>
+        <view v-for="s in report.samples" :key="s.skuNo" class="row">
+          <text class="row__t">{{ s.goods }}<text v-if="s.spec" class="sh-muted"> · {{ s.spec }}</text></text>
+          <view class="row__cells">
+            <text class="cell">{{ $t("skuIdentity.barcode") }} {{ arrow(s.barcodeFrom, s.barcodeTo) }}</text>
+            <text class="cell">{{ $t("skuIdentity.code") }} {{ arrow(s.codeFrom, s.codeTo) }}</text>
+            <text class="cell">{{ $t("skuIdentity.unit") }} {{ arrow(s.unitFrom, s.unitTo) }}</text>
+          </view>
+        </view>
+      </view>
+
+      <view class="acts">
+        <view
+          class="sh-btn act--wide"
+          :class="{ 'sh-btn--muted': busy || !checked || !report.willSet }"
+          @tap="confirm"
+        >
+          {{ $t("skuIdentity.apply", { n: report.willSet }) }}
+        </view>
+      </view>
+    </view>
+
+    <text class="sh-muted foot">{{ $t("skuIdentity.foot") }}</text>
+  </sh-scaffold>
+</template>
+
+<style scoped>
+.mt {
+  margin-top: 20rpx;
+}
+
+.sec {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.act {
+  padding: 10rpx 26rpx;
+  font-size: 26rpx;
+}
+
+.hint {
+  display: block;
+  margin-top: 12rpx;
+  font-size: 24rpx;
+  line-height: 1.6;
+}
+
+/* 规则表：左边一个词、右边一句话 —— 他扫左边就够，右边是给存疑的人看的 */
+.rules {
+  margin-top: 16rpx;
+}
+
+.rule {
+  display: flex;
+  gap: 16rpx;
+  padding: 12rpx 0;
+  border-top: 1rpx solid var(--sh-line-soft, var(--sh-line));
+}
+
+.rule:first-child {
+  border-top: none;
+}
+
+.rule__k {
+  width: 180rpx;
+  flex: none;
+  font-size: 26rpx;
+  font-weight: 600;
+  color: var(--sh-ink);
+}
+
+.rule__v {
+  flex: 1;
+  font-size: 24rpx;
+  line-height: 1.6;
+}
+
+.paste {
+  margin-top: 16rpx;
+  min-height: 200rpx;
+  font-size: 24rpx;
+}
+
+.acts {
+  margin-top: 20rpx;
+}
+
+.act--wide {
+  width: 100%;
+}
+
+/* 四个数一行摆开：它们要被一眼比较，竖排就成了四段独立的文字 */
+.nums {
+  display: flex;
+  margin-top: 20rpx;
+}
+
+.num {
+  flex: 1;
+  text-align: center;
+}
+
+.num__v {
+  display: block;
+  font-size: 40rpx;
+  font-weight: 700;
+  color: var(--sh-ink);
+}
+
+.num__v--on {
+  color: var(--sh-primary-text);
+}
+
+.num__v--bad {
+  color: var(--sh-danger);
+}
+
+.num__k {
+  display: block;
+  margin-top: 4rpx;
+  font-size: 24rpx;
+}
+
+.probs {
+  margin-top: 20rpx;
+  padding: 16rpx 20rpx;
+  border-radius: 16rpx;
+  background: var(--sh-danger-tint);
+}
+
+.prob {
+  display: flex;
+  gap: 12rpx;
+  padding: 6rpx 0;
+}
+
+.prob__l {
+  flex: none;
+  font-size: 24rpx;
+  font-weight: 600;
+  color: var(--sh-danger);
+}
+
+.prob__r {
+  flex: 1;
+  font-size: 24rpx;
+  line-height: 1.5;
+  color: var(--sh-ink);
+}
+
+.prev {
+  margin-top: 20rpx;
+}
+
+.prev__t {
+  display: block;
+  font-size: 24rpx;
+}
+
+.row {
+  padding: 14rpx 0;
+  border-top: 1rpx solid var(--sh-line-soft, var(--sh-line));
+}
+
+.row__t {
+  display: block;
+  font-size: 26rpx;
+  font-weight: 600;
+  color: var(--sh-ink);
+}
+
+.row__cells {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8rpx 20rpx;
+  margin-top: 6rpx;
+}
+
+.cell {
+  font-size: 24rpx;
+  color: var(--sh-sub);
+}
+
+.foot {
+  display: block;
+  margin-top: 24rpx;
+  padding: 0 8rpx;
+  font-size: 24rpx;
+  line-height: 1.6;
+}
+</style>

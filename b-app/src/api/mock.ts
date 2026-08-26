@@ -105,12 +105,210 @@ import type {
   VerifyBatchResult,
   Category,
   CategoryType,
+  SkuIdentityReport,
 } from "@shared/types";
 
 /** 当前登录商家；未入驻时抛错，页面据此引导去入驻 */
 function requireMerchant(): string {
   if (!db.merchant.merchantNo) throw new Error("尚未入驻");
   return db.merchant.merchantNo;
+}
+
+/*
+ * ── 商品编码（条码/货号/单位）批量导入导出的实现 ──────────────────────
+ *
+ * 规则与后端 `SkuIdentityServiceImpl` 逐条对齐。**这里最容易出的问题不是写错，
+ * 是写宽**：mock 宽一分，商家就会在 mock 上验出一个后端不认的用法，
+ * 而那种分歧的症状是「在我这儿好好的」。
+ */
+
+interface IdentityRow {
+  skuNo: string;
+  goods: string;
+  spec: string;
+  barcode?: string;
+  code?: string;
+  unit?: string;
+}
+
+/** 本店全部规格行。mock 的真源在 goodsSeeds[].skus 上，直接改那儿 */
+function identityRows(): IdentityRow[] {
+  const merchantNo = requireMerchant();
+  const out: IdentityRow[] = [];
+  for (const g of db.goodsSeeds.filter((x) => x.merchantNo === merchantNo)) {
+    for (const s of g.skus) {
+      out.push({
+        skuNo: s.skuNo,
+        goods: pick(g.title),
+        spec: (s.optionValues ?? []).map((v) => pick(v)).join(" · "),
+        barcode: s.barcode,
+        code: s.merchantSkuCode,
+        unit: s.saleUnit,
+      });
+    }
+  }
+  return out;
+}
+
+function csvCell(v?: string): string {
+  if (!v) return "";
+  return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
+}
+
+/** 够用的 CSV 解析：双引号包裹、引号内的逗号与换行、"" 转义 */
+function parseCsv(text: string): string[][] {
+  const rows: string[][] = [];
+  if (!text) return rows;
+  const t = text.charCodeAt(0) === 0xfeff ? text.slice(1) : text;
+  let cur: string[] = [];
+  let cell = "";
+  let inQuote = false;
+  for (let i = 0; i < t.length; i++) {
+    const c = t[i];
+    if (inQuote) {
+      if (c === '"') {
+        if (t[i + 1] === '"') { cell += '"'; i++; } else { inQuote = false; }
+      } else cell += c;
+      continue;
+    }
+    if (c === '"') inQuote = true;
+    else if (c === ",") { cur.push(cell); cell = ""; }
+    else if (c === "\r") { /* \r\n 与 \n 都收 */ }
+    else if (c === "\n") { cur.push(cell); cell = ""; rows.push(cur); cur = []; }
+    else cell += c;
+  }
+  if (cell || cur.length) { cur.push(cell); rows.push(cur); }
+  return rows;
+}
+
+/**
+ * 合并一个格子与现值 —— **整个功能的安全边界**：
+ * 整列不在表头 → 原值；格子空 → 原值；格子写 `-` → 清空。
+ */
+function mergeCell(cell: string | undefined, current: string | undefined, present: boolean) {
+  if (!present || cell === undefined) return current;
+  const v = cell.trim();
+  if (!v) return current;
+  return v === "-" ? undefined : v;
+}
+
+function runIdentityImport(csv: string, write: boolean): SkuIdentityReport {
+  const merchantNo = requireMerchant();
+  const rows = parseCsv(csv);
+  const problems: SkuIdentityReport["problems"] = [];
+  const samples: SkuIdentityReport["samples"] = [];
+  if (!rows.length) {
+    return { total: 0, willSet: 0, noChange: 0, problems: [{ line: 1, reason: "文件是空的" }], samples };
+  }
+
+  const known = ["skuNo", "商品", "规格", "条码", "货号", "单位"];
+  const col: Record<string, number> = {};
+  (rows[0] ?? []).forEach((h, i) => {
+    const t = (h ?? "").trim();
+    const hit = known.find((k) => k.toLowerCase() === t.toLowerCase());
+    if (hit && col[hit] === undefined) col[hit] = i;
+  });
+  if (col["skuNo"] === undefined && col["货号"] === undefined) {
+    problems.push({ line: 1, reason: "表头里既没有 skuNo 也没有货号，认不出每一行对应哪个规格。请用导出的文件改，别自己新建" });
+    return { total: 0, willSet: 0, noChange: 0, problems, samples };
+  }
+
+  // 真源是 goodsSeeds[].skus 上的那几个字段
+  const all: { seedSku: Record<string, unknown>; row: IdentityRow }[] = [];
+  for (const g of db.goodsSeeds.filter((x) => x.merchantNo === merchantNo)) {
+    for (const s of g.skus) {
+      all.push({
+        seedSku: s as unknown as Record<string, unknown>,
+        row: {
+          skuNo: s.skuNo, goods: pick(g.title),
+          spec: (s.optionValues ?? []).map((v) => pick(v)).join(" · "),
+          barcode: s.barcode, code: s.merchantSkuCode, unit: s.saleUnit,
+        },
+      });
+    }
+  }
+  const bySkuNo = new Map(all.map((x) => [x.row.skuNo, x]));
+  const byCode = new Map(all.filter((x) => x.row.code).map((x) => [x.row.code as string, x]));
+
+  const cell = (r: string[], name: string) => {
+    const i = col[name];
+    return i === undefined || i >= r.length ? undefined : r[i];
+  };
+  const codeTakenAt = new Map<string, number>();
+  const touched = new Set<string>();
+  const pending: { target: Record<string, unknown>; barcode?: string; code?: string; unit?: string }[] = [];
+  let total = 0, willSet = 0, noChange = 0;
+
+  for (let i = 1; i < rows.length; i++) {
+    const r = rows[i] ?? [];
+    const line = i + 1;
+    if (r.every((c) => !c || !c.trim())) continue;   // 尾部空行是常态
+    total++;
+
+    const skuNo = cell(r, "skuNo");
+    const rawCode = cell(r, "货号");
+    let hit = undefined as (typeof all)[number] | undefined;
+    if (skuNo && skuNo.trim()) {
+      hit = bySkuNo.get(skuNo.trim());
+      if (!hit) { problems.push({ line, reason: skuNo + " 不是本店的规格行" }); continue; }
+    } else if (rawCode && rawCode.trim() && rawCode.trim() !== "-") {
+      // 货号回退：他的 ERP 只认货号 —— 先解析成行，再谈写什么
+      hit = byCode.get(rawCode.trim());
+      if (!hit) { problems.push({ line, reason: "货号 " + rawCode.trim() + " 在本店找不到对应的规格行" }); continue; }
+    } else {
+      problems.push({ line, reason: "这一行既没有 skuNo 也没有货号，认不出改哪一行" });
+      continue;
+    }
+
+    if (touched.has(hit.row.skuNo)) {
+      problems.push({ line, reason: "同一个规格行在文件里出现了不止一次" });
+      continue;
+    }
+    touched.add(hit.row.skuNo);
+
+    const barcode = mergeCell(cell(r, "条码"), hit.row.barcode, col["条码"] !== undefined);
+    const code = mergeCell(rawCode, hit.row.code, col["货号"] !== undefined);
+    const unit = mergeCell(cell(r, "单位"), hit.row.unit, col["单位"] !== undefined);
+
+    if (code && code !== hit.row.code) {
+      const owner = byCode.get(code);
+      const dup = codeTakenAt.get(code);
+      if (owner && owner.row.skuNo !== hit.row.skuNo) {
+        problems.push({ line, reason: "货号 " + code + " 已经被本店另一个规格行占着" });
+        continue;
+      }
+      if (dup !== undefined) {
+        problems.push({ line, reason: "货号 " + code + " 与第 " + dup + " 行重复" });
+        continue;
+      }
+      codeTakenAt.set(code, line);
+    }
+
+    if (barcode === hit.row.barcode && code === hit.row.code && unit === hit.row.unit) {
+      noChange++;
+      continue;
+    }
+    if (samples.length < 20) {
+      samples.push({
+        skuNo: hit.row.skuNo, goods: hit.row.goods, spec: hit.row.spec,
+        barcodeFrom: hit.row.barcode, barcodeTo: barcode,
+        codeFrom: hit.row.code, codeTo: code,
+        unitFrom: hit.row.unit, unitTo: unit,
+      });
+    }
+    willSet++;
+    pending.push({ target: hit.seedSku, barcode, code, unit });
+  }
+
+  if (write) {
+    for (const p of pending) {
+      p.target.barcode = p.barcode;
+      p.target.merchantSkuCode = p.code;
+      p.target.saleUnit = p.unit;
+    }
+    persist();
+  }
+  return { total, willSet, noChange, problems, samples };
 }
 
 function findOrder(orderNo: string): Order {
@@ -2204,6 +2402,31 @@ export const mockApi: MerchantApi = {
     const code = dimNo + "_M" + ((tpl?.options.length ?? 0) + 1);
     tpl?.options.push({ code, label: text });
     return delay({ valueNo: code, code, label: text });
+  },
+
+  // ---- 商品编码批量导入导出（P4）
+  //
+  // **规则与后端 SkuIdentityServiceImpl 逐条对齐**，尤其是那三行安全边界：
+  // 整列缺席 = 不碰、空格子 = 不改、`-` = 清空。
+  // mock 上宽松一分，商家就会在 mock 里验出一个后端不认的用法。
+
+  async mSkuIdentityExport() {
+    const rows = identityRows();
+    const head = ["skuNo", "商品", "规格", "条码", "货号", "单位"].join(",");
+    const body = rows.map((r) => [
+      r.skuNo, csvCell(r.goods), csvCell(r.spec),
+      csvCell(r.barcode), csvCell(r.code), csvCell(r.unit),
+    ].join(",")).join("\n");
+    // BOM：不带的话 Excel 按 GBK 读，表头直接是乱码
+    return delay({ csv: "\ufeff" + head + "\n" + body + "\n" });
+  },
+
+  async mSkuIdentityPlan(csv) {
+    return delay(runIdentityImport(csv, false));
+  },
+
+  async mSkuIdentityImport(csv) {
+    return delay(runIdentityImport(csv, true));
   },
 
   /** 自建维度：只在本店可用，不参与跨店比价 */

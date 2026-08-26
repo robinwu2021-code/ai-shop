@@ -108,6 +108,7 @@ import type {
   Review,
   SettleBill,
   ShareKit,
+  SkuIdentityReport,
   SpecTemplate,
   SpuStd,
   StoreProfile,
@@ -320,6 +321,9 @@ export const httpApi: MerchantApi = {
   mPickableProps: (categoryNo) => http.get<SpecTemplate[]>(E.mPickableProps.path, { categoryNo }),
   mAddSpecValue: (dimNo, label) =>
     http.post<{ valueNo: string; code: string; label: string }>(E.mAddSpecValue.path, { dimNo, label }),
+  mSkuIdentityExport: () => http.get<{ csv: string }>(E.mSkuIdentityExport.path),
+  mSkuIdentityPlan: (csv) => http.post<SkuIdentityReport>(E.mSkuIdentityPlan.path, { csv }),
+  mSkuIdentityImport: (csv) => http.post<SkuIdentityReport>(E.mSkuIdentityImport.path, { csv }),
   mAddSpecDim: (name, labels, usageType) =>
     http.post<SpecTemplate>(E.mAddSpecDim.path, { name, labels, usageType }),
   mMySpecDims: () => http.get<MerchantSpecDim[]>(E.mMySpecDims.path),

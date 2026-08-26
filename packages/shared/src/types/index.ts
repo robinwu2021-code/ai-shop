@@ -4044,6 +4044,34 @@ export interface SpecOption {
 }
 
 /**
+ * 商品编码批量导入的试算 / 结果（P4）。
+ *
+ * <p>四个数各回答一件事：**这份表有多少行、会改几行、几行没变化、几行有问题**。
+ * 少了「没变化」那一格，商家会把「改了 3 行」读成「另外 197 行失败了」。
+ */
+export interface SkuIdentityReport {
+  /** 数据行数，不含表头 */
+  total: number;
+  /** 会真正写下去的行数 */
+  willSet: number;
+  /** 匹配上了但三列都没变的行数 */
+  noChange: number;
+  problems: { line: number; reason: string }[];
+  /** 前几行的前后对照，让他确认「改的是不是我想的那些」 */
+  samples: {
+    skuNo: string;
+    goods: string;
+    spec: string;
+    barcodeFrom?: string | null;
+    barcodeTo?: string | null;
+    codeFrom?: string | null;
+    codeTo?: string | null;
+    unitFrom?: string | null;
+    unitTo?: string | null;
+  }[];
+}
+
+/**
  * 规格模板。两层：
  *   · PLATFORM —— 平台按类目预置，可聚合可筛选
  *   · MERCHANT —— 商家把自己常用的存下来，第二次建品直接套

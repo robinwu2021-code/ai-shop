@@ -3,7 +3,7 @@
     {
       "key": "b-app",
       "label": "商家 App",
-      "count": 58,
+      "count": 59,
       "domains": [
         {
           "name": "工作台",
@@ -252,6 +252,17 @@
               "proto": "s04",
               "protoUrl": "https://claude.ai/code/artifact/ea3b41e2-06e9-4040-907f-3003087a693c",
               "preview": "http://localhost:5175/#/pages/schedule/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/sku-identity/index",
+              "title": "商品编码导入导出",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/sku-identity/index"
             },
             {
               "app": "b-app",
@@ -2706,5 +2717,5 @@
       ]
     }
   ],
-  "total": 217
+  "total": 218
 }

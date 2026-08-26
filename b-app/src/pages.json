@@ -124,6 +124,12 @@
       }
     },
     {
+      "path": "pages/sku-identity/index",
+      "style": {
+        "navigationBarTitleText": "商品编码导入导出"
+      }
+    },
+    {
       "path": "pages/qualifications/index",
       "style": {
         "navigationBarTitleText": "资质证照"
