@@ -635,7 +635,14 @@ async function select(path: Category[]) {
    * 而它只有带上 categoryNo 才拿得到。
    */
   await Promise.all([loadTemplates(), loadPickableDims(), loadProps()]);
-  autoApplyDefaultSpec();
+  /*
+   * **不再自动建规格组。**
+   *
+   * <p>档位改成「一个都不预选」之后，自动建出来的是一个空壳：占着一张展开的卡，
+   * 里面一排灰着的档位，而他还没说这件货要不要分档。
+   * 现在收起态直接摆候选（＋重量 ＋包装 …），他点一个才成组 ——
+   * 少一次「先撤销系统替我做的事」。
+   */
   // 展不展开取他上次在这一类的选择；没记录过就看有没有带出规格组
   restoreSpecOpen();
   restoreParamOpen();
@@ -806,13 +813,21 @@ const priceFields = computed<{ key: PriceField; labelKey: string }[]>(() => {
   ];
   // 标称重量属于「按标称预扣」那条链，与生鲜段一起收着（见 flags.ts）
   if (SHOW_FRESH_FIELDS && isFresh.value) out.push({ key: "gram", labelKey: "goods.fieldGram" });
-  if (externalOn.value) {
-    out.push({ key: "barcode", labelKey: "goods.fieldBarcode" });
-    out.push({ key: "code", labelKey: "goods.fieldSkuCode" });
-    out.push({ key: "unit", labelKey: "goods.fieldUnit" });
-  }
   return out;
 });
+
+/*
+ * **条码/货号/单位不进价格切换器。**
+ *
+ * <p>塞进去之后那一行是「售价 成本价 划线价 条码 货号 单位」六项，在手机上挤成一坨，
+ * 而且它们本来就不是价格 —— 把不同性质的东西并排放，商家得先分辨再选。
+ * 现在它们自成一段（见模板里的 ext 卡），段内一行一个字段，与价格卡互不干扰。
+ */
+const extFields = computed<{ key: "barcode" | "code" | "unit"; labelKey: string }[]>(() => [
+  { key: "barcode", labelKey: "goods.fieldBarcode" },
+  { key: "code", labelKey: "goods.fieldSkuCode" },
+  { key: "unit", labelKey: "goods.fieldUnit" },
+]);
 
 /**
  * 毛利。**填了成本才算** —— 没填时这一行整个不出现，
@@ -1382,7 +1397,7 @@ async function loadTemplates() {
   templates.value = await api
     .mSpecTemplates(type.value, categoryNo.value || undefined)
     .catch(() => []);
-  primeMainGroup();
+  // primeMainGroup 已移除：见 select() 里那段 —— 不自动建组，摆候选让他点
 }
 
 /**
@@ -1443,9 +1458,14 @@ function primeMainGroup() {
    */
   groups.value.push({
     name: main.name,
-    options: main.options.length ? main.options.map((o) => o.label) : [""],
-    // code 一起带 —— 没有它这一组就掉出跨店比价，那是平台养这个规格库的全部理由
-    codes: main.options.length ? main.options.map((o) => o.code) : [undefined],
+    /*
+     * **一个档位都不预选。** 上一版把本店确认过的那几档全填进去，
+     * 而商家进来面对的是一排「已经替你选好」的东西 —— 删比选累，
+     * 而且他很容易不假思索地留着，于是库里出现一批他并没有卖的规格。
+     * 现在档位一律灰着摆出来，他点哪个是哪个。
+     */
+    options: [],
+    codes: [],
     templateNo: main.templateNo,
   });
   /*
@@ -1471,6 +1491,12 @@ async function loadPickableDims() {
 }
 
 /** 挑中一个平台/自建维度：连同它的取值一起进来，值编号跟着走 */
+/** 收起态点候选：加进来并顺手展开 —— 他要的是「开始分档」，不是「加一条然后自己去展开」 */
+function pickDimAndOpen(tpl: SpecTemplate) {
+  pickDim(tpl);
+  rememberSpecOpen(true);
+}
+
 function pickDim(tpl: SpecTemplate) {
   // 候选列表已经滤过一遍，这里再兜一道：同名即同一件事，编号不同是内部实现
   if (usedDimNames.value.has(tpl.name.trim())
@@ -1485,14 +1511,8 @@ function pickDim(tpl: SpecTemplate) {
    *
    * <p>没有档位可带的（自建维度刚建出来还没配值）才留一个空位。
    */
-  groups.value.push(tpl.options.length
-    ? {
-      name: tpl.name,
-      options: tpl.options.map((o) => o.label),
-      codes: tpl.options.map((o) => o.code || undefined),
-      templateNo: tpl.templateNo,
-    }
-    : { name: tpl.name, options: [""], codes: [undefined], templateNo: tpl.templateNo });
+  // 同上：加进来的规格档位也一个不预选，灰着等他点
+  groups.value.push({ name: tpl.name, options: [], codes: [], templateNo: tpl.templateNo });
   rebuild();
 }
 
@@ -2530,27 +2550,30 @@ async function save(thenSubmit = false) {
         <p>展开与否记在**这个类目**上（见 SPEC_OPEN_KEY）：同一个商家卖菠菜和卖电子秤
         本来就该是两种默认。
       -->
-      <view v-if="!specOpen" class="askspec" @tap="rememberSpecOpen(true)">
-        <text class="askspec__t">{{ $t("goods.specAsk") }}</text>
-        <text class="askspec__go">›</text>
+      <!--
+        **收起态直接摆候选，不再只问一句。**
+        上一版是「这件货要分档卖？›」—— 他点进去才知道有哪些可选，
+        等于用一次点击换一句废话。现在一行浅字 + 一排候选：
+        不分规格的人扫一眼就过，要分的人一点成组，都省掉那一次点击。
+      -->
+      <view v-if="!specOpen" class="askspec">
+        <text class="sh-muted askspec__t">{{ $t("goods.specAsk") }}</text>
+        <view class="more">
+          <text
+            v-for="d in moreFromCategory"
+            :key="d.templateNo"
+            class="sh-chip more__chip"
+            @tap="pickDimAndOpen(d)"
+          >＋ {{ d.name }}</text>
+          <text
+            v-if="moreOther.length"
+            class="link more__toggle"
+            @tap="rememberSpecOpen(true)"
+          >{{ $t("goods.moreOther", { n: moreOther.length }) }}</text>
+        </view>
       </view>
 
       <template v-if="specOpen">
-      <!--
-        **代价当场可见。** 「3 × 2 = 6 个规格，要填 6 个价和库存」——
-        此前页面从不提这件事，商家加完第二个维度才发现要填一屏，而那时已经填了一半。
-      -->
-      <text v-if="skuCost" class="skucost">{{ skuCost }}</text>
-      <!--
-        自动套上的默认规格要**说清是谁替他填的、并且能一键撤销**：
-        不说的话，商家会以为这几个规格是系统强加的，而它其实只是个起点。
-      -->
-      <view v-if="autoSpecNo && groups.length" class="inline">
-        <text class="sh-muted hint flex1">
-          {{ $t("goods.specAuto", { s: catPath[catPath.length - 1]?.name || "" }) }}
-        </text>
-        <text class="link" @tap="clearAutoSpec">{{ $t("goods.specAutoUndo") }}</text>
-      </view>
 
       <!--
         **跟着品类走的推荐规格，直接摊开成 chip。**
@@ -2560,39 +2583,6 @@ async function save(thenSubmit = false) {
         更要命的是 `prd_spec_template` 线上是空表，`v-if="templates.length"`
         永远为假，于是这个入口从上线到现在一次都没出现过（V174 补了种子数据）。
 
-        只在**还没建过规格组**时显示：已经动手填了的人不需要再被推荐一次。
-      -->
-      <view v-if="suggestedSpecs.length && !groups.length" class="tplchips">
-        <!--
-          标题跟着**实际给出的是哪一层**走：有类目级模板就说类目名
-          （「休闲零食常用规格」），否则说品类名（「普通实物常用规格」）。
-          恒定说品类的话，商家看到「普通实物常用规格」下面挂着「段位 1/2/3段」
-          会以为推错了 —— 那其实是婴幼儿食品这个类目专属的。
-        -->
-        <!--
-          **一行一个维度，问句 + 前三档**，不是「标题 + 一排名字」。
-
-          <p>此前这里是「普通实物常用规格：包装 · 香型」—— 读起来像个分区标题，
-          看不出点了会发生什么；而且点完只建出一个空组，取值还要在组里再点一轮。
-          现在每个维度自己一行：左边问「按包装分规格？」，右边摆前三档，
-          **点档位一步到位**（建组并带上这一档），点问句只建组不带值。
-        -->
-        <view v-for="tpl in suggestedSpecs" :key="tpl.templateNo" class="tplsug">
-          <text class="tplsug__q" @tap="applyTemplateEmpty(tpl)">
-            {{ $t("goods.tplAsk", { s: tpl.name }) }}
-          </text>
-          <view class="tplsug__opts">
-            <text
-              v-for="o in tpl.options.slice(0, 3)"
-              :key="o.label"
-              class="sh-chip"
-              @tap="applyTemplateWith(tpl, o)"
-            >
-              {{ o.label }}
-            </text>
-          </view>
-        </view>
-      </view>
 
       <!-- 模板：点一下替代逐个手输。平台模板带 code，商家自存的只有文字 -->
       <!-- 维度选择面板：顺序即建议顺序，越靠前越该被选中 -->
@@ -2619,7 +2609,7 @@ async function save(thenSubmit = false) {
             v-for="o in allOptionsOf(gi)"
             :key="o.code || o.label"
             class="sh-chip opt"
-            :class="{ 'opt--off': !optionOn(gi, o) }"
+            :class="optionOn(gi, o) ? 'opt--on' : 'opt--off'"
             @tap="toggleOption(gi, o)"
           >{{ o.label }}</text>
         </view>
@@ -2751,13 +2741,6 @@ async function save(thenSubmit = false) {
             {{ $t(f.labelKey) }}
           </text>
         </view>
-        <!--
-          **专业商家的入口，压到最轻。** 多数人用不到条码与货号；
-          用得到的人点一次就一直开着（记在本机），而这件货身上有值时进来就是开的。
-        -->
-        <text class="link link--quiet ext-toggle" @tap="rememberExternal(!externalOn)">
-          {{ externalOn ? $t("goods.extHide") : $t("goods.extShow") }}
-        </text>
         <view v-if="MULTI_MARKET_UI" class="langs">
           <text
             v-for="m in MARKET_CURRENCIES"
@@ -2855,24 +2838,6 @@ async function save(thenSubmit = false) {
           <text class="pr__cur">g</text>
           <input v-model="rows[0]!.nominalGram" class="pr__v sh-num" type="number" />
         </view>
-        <!--
-          外部身份三件套：**默认不出现**。见 externalOn 上面那段 ——
-          社区店大半的货没有条码，摆在每个人的价格卡里是让所有人替少数人付注意力。
-        -->
-        <template v-if="externalOn">
-          <view class="pr">
-            <text class="pr__k">{{ $t("goods.fieldBarcode") }}</text>
-            <input v-model="rows[0]!.barcode" class="pr__v pr__v--wide sh-num" />
-          </view>
-          <view class="pr">
-            <text class="pr__k">{{ $t("goods.fieldSkuCode") }}</text>
-            <input v-model="rows[0]!.merchantSkuCode" class="pr__v pr__v--wide" />
-          </view>
-          <view class="pr">
-            <text class="pr__k">{{ $t("goods.fieldUnit") }}</text>
-            <input v-model="rows[0]!.saleUnit" class="pr__v pr__v--wide" :placeholder="$t('goods.unitPh')" />
-          </view>
-        </template>
       </template>
 
       <!--
@@ -2882,8 +2847,7 @@ async function save(thenSubmit = false) {
       <template v-else>
         <view v-for="(r, i) in rows" :key="i" class="pr">
           <text class="pr__k">{{ r.optionValues.join(" · ") }}</text>
-          <!-- 条码/货号/单位不是钱也不是克重，不该挂货币符号 -->
-          <text v-if="!isTextField" class="pr__cur">{{ priceField === "gram" ? "g" : "￥" }}</text>
+          <text class="pr__cur">{{ priceField === "gram" ? "g" : "￥" }}</text>
           <input
             v-if="priceField === 'price'"
             v-model="r.priceMajor[market]"
@@ -2903,22 +2867,6 @@ async function save(thenSubmit = false) {
             class="pr__v sh-num"
             :class="{ 'is-bad': badOrigin(r) }"
             type="digit"
-          />
-          <input
-            v-else-if="priceField === 'barcode'"
-            v-model="r.barcode"
-            class="pr__v pr__v--wide sh-num"
-          />
-          <input
-            v-else-if="priceField === 'code'"
-            v-model="r.merchantSkuCode"
-            class="pr__v pr__v--wide"
-          />
-          <input
-            v-else-if="priceField === 'unit'"
-            v-model="r.saleUnit"
-            class="pr__v pr__v--wide"
-            :placeholder="$t('goods.unitPh')"
           />
           <input v-else v-model="r.nominalGram" class="pr__v sh-num" type="number" />
         </view>
@@ -2982,6 +2930,50 @@ async function save(thenSubmit = false) {
       而它们的改动节奏也完全不同 —— 价格是建品时定一次，库存是每天都在动。
       分开之后，「改库存」这件高频事不必先滚过一整片价格字段。
     -->
+    <!--
+      **商品编码：自成一段，不塞进价格卡。**
+
+      <p>塞进价格切换器之后那一行是「售价 成本价 划线价 条码 货号 单位」六项，
+      手机上挤成一坨；而且它们本来就不是价格，并排放着商家得先分辨再选。
+
+      <p>整段默认不出现 —— 社区店大半的货没有条码。用过一次的人记在本机，
+      这件货身上有值时也自动展开（见 externalOn）。
+    -->
+    <view class="sh-card mt">
+      <view class="sec">
+        <text class="sh-h2">{{ $t("goods.secCode") }}</text>
+        <view v-if="externalOn" class="sec__ops">
+          <text class="link link--quiet" @tap="rememberExternal(false)">{{ $t("goods.specFold") }}</text>
+        </view>
+      </view>
+      <view v-if="!externalOn" class="askspec" @tap="rememberExternal(true)">
+        <text class="sh-muted askspec__t">{{ $t("goods.extShow") }}</text>
+        <text class="askspec__go">›</text>
+      </view>
+      <template v-else>
+        <text class="sh-muted hint">{{ $t("goods.codeHint") }}</text>
+        <!-- 一行一个字段；多规格时每个规格一行，与价格卡同构 -->
+        <view v-for="f in extFields" :key="f.key" class="codeblock">
+          <text class="codeblock__k">{{ $t(f.labelKey) }}</text>
+          <view v-for="(r, i) in rows" :key="i" class="pr">
+            <text v-if="multi" class="pr__k">{{ r.optionValues.join(" · ") }}</text>
+            <input
+              v-if="f.key === 'barcode'"
+              v-model="r.barcode"
+              class="pr__v pr__v--wide sh-num"
+            />
+            <input v-else-if="f.key === 'code'" v-model="r.merchantSkuCode" class="pr__v pr__v--wide" />
+            <input
+              v-else
+              v-model="r.saleUnit"
+              class="pr__v pr__v--wide"
+              :placeholder="$t('goods.unitPh')"
+            />
+          </view>
+        </view>
+      </template>
+    </view>
+
     <view class="sh-card mt">
       <view class="sec">
         <text class="sh-h2">{{ $t("goods.secStock") }}</text>
@@ -3120,11 +3112,24 @@ async function save(thenSubmit = false) {
   关掉的档位：**虚线描边**，一眼看得出「还在，只是这件货没有」，
   而且点得回来。用实线灰底的话像是被禁用了，他不会再去点它。
 */
+/*
+  **选中高亮、未选中灰。**
+  上一版反过来：默认全选中，取消变虚线+删除线 —— 一排划掉的字读起来像「作废」，
+  而它其实只是「这件货没有这一档」。而且「默认全选」让商家一进来就背着
+  一堆他没选过的档位，删比选累。
+*/
+.opt--on {
+  background: var(--sh-primary-tint);
+  color: var(--sh-primary-text);
+  border: 2rpx solid var(--sh-primary);
+  font-weight: 600;
+}
+
+/* 未选中：安静的灰，**不划删除线** —— 它不是被作废，只是还没选 */
 .opt--off {
-  background: transparent;
-  border: 2rpx dashed var(--sh-line);
+  background: var(--sh-faint);
+  border: 2rpx solid transparent;
   color: var(--sh-sub);
-  text-decoration: line-through;
 }
 
 /* 这一类还能按什么分 */
@@ -3157,9 +3162,18 @@ async function save(thenSubmit = false) {
 }
 
 /* 专业商家的入口：与切换器同一行右侧，压到最轻 */
-.ext-toggle {
-  font-size: 24rpx;
-  margin-left: auto;
+/* 商品编码：一个字段一小段，段内每个规格一行 */
+.codeblock {
+  padding: 12rpx 0;
+  border-top: 2rpx solid var(--sh-line);
+}
+
+.codeblock__k {
+  display: block;
+  font-size: 26rpx;
+  font-weight: 600;
+  color: var(--sh-ink);
+  margin-bottom: 6rpx;
 }
 
 /* 条码/货号/单位是文本，比金额格宽 */

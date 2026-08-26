@@ -348,6 +348,8 @@ export default {
     fieldBarcode: "الباركود",
     fieldSkuCode: "رمز الصنف",
     fieldUnit: "الوحدة",
+    secCode: "الرموز",
+    codeHint: "لأنظمة ERP والموازين والموردين. اختياري.",
     unitPh: "قطعة / جين / كغ",
     extShow: "إضافة باركود ورمز",
     extHide: "إخفاء الباركود والرمز",

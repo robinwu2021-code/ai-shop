@@ -348,6 +348,8 @@ export default {
     fieldBarcode: "Barcode",
     fieldSkuCode: "SKU code",
     fieldUnit: "Unit",
+    secCode: "Codes",
+    codeHint: "For ERP, scales and suppliers. Optional — selling works without them.",
     unitPh: "pc / jin / kg",
     extShow: "Add barcode & SKU code",
     extHide: "Hide barcode & SKU code",

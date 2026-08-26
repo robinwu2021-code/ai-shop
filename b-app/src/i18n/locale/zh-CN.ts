@@ -468,6 +468,8 @@ export default {
     fieldBarcode: "条码",
     fieldSkuCode: "货号",
     fieldUnit: "单位",
+    secCode: "商品编码",
+    codeHint: "给 ERP、收银秤、供应商看的。不填不影响卖货。",
     unitPh: "件 / 斤 / kg",
     extShow: "录条码与货号",
     extHide: "收起条码与货号",
