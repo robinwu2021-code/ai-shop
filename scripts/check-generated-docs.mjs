@@ -38,6 +38,7 @@ const GENERATORS = [
   ["gen-table-inventory.mjs", ["docs/technical/reference/数据库表清单.md"]],
   ["gen-c-feature-matrix.mjs", ["docs/technical/reference/C端功能点-登录态-页面.md"]],
   ["gen-backend-layers.mjs", ["docs/technical/reference/后端分层清单.md"]],
+  ["gen-ui-lib.py", ["docs/technical/design/ui-lib.json"]],
 ];
 
 const sha = (p) => (existsSync(p) ? createHash("sha1").update(readFileSync(p)).digest("hex") : "∅");
@@ -46,7 +47,9 @@ const drifted = [];
 for (const [script, outputs] of GENERATORS) {
   const before = outputs.map((o) => sha(join(ROOT, o)));
   try {
-    execFileSync("node", [join(ROOT, "scripts", script)], { cwd: ROOT, stdio: "pipe" });
+    // 生成器不限语言：UI 标准库是 python，其余是 node
+    const runner = script.endsWith(".py") ? "python3" : "node";
+    execFileSync(runner, [join(ROOT, "scripts", script)], { cwd: ROOT, stdio: "pipe" });
   } catch (e) {
     console.error(`✗ ${script} 跑不起来：${e.message.split("\n")[0]}`);
     process.exit(1);

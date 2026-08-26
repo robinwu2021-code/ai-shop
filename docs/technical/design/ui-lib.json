@@ -1,0 +1,1123 @@
+{
+  "generatedFrom": [
+    "packages/shared/src/design/tokens.ts",
+    "packages/shared/src/design/icons.ts",
+    "packages/ui/src/styles/base.css",
+    "b-app/src/App.vue",
+    "packages/ui/src/components/*.vue",
+    "b-app/src/components/**/*.vue"
+  ],
+  "canvas": {
+    "base": "375pt",
+    "rpxToPx": 0.5,
+    "skin": "brand"
+  },
+  "tokens": {
+    "radius": {
+      "sm": {
+        "rpx": "16rpx",
+        "px": "8px"
+      },
+      "md": {
+        "rpx": "24rpx",
+        "px": "12px"
+      },
+      "lg": {
+        "rpx": "32rpx",
+        "px": "16px"
+      },
+      "xl": {
+        "rpx": "44rpx",
+        "px": "22px"
+      },
+      "full": {
+        "rpx": "9999px",
+        "px": "9999px"
+      }
+    },
+    "spacing": {
+      "xs": {
+        "rpx": "8rpx",
+        "px": "4px"
+      },
+      "sm": {
+        "rpx": "16rpx",
+        "px": "8px"
+      },
+      "md": {
+        "rpx": "28rpx",
+        "px": "14px"
+      },
+      "lg": {
+        "rpx": "40rpx",
+        "px": "20px"
+      },
+      "xl": {
+        "rpx": "64rpx",
+        "px": "32px"
+      }
+    },
+    "skins": [
+      {
+        "id": "brand",
+        "color": "#E1251B"
+      },
+      {
+        "id": "fresh",
+        "color": "#00B578"
+      },
+      {
+        "id": "promo",
+        "color": "#D24600"
+      },
+      {
+        "id": "blue",
+        "color": "#2C69FF"
+      },
+      {
+        "id": "mono",
+        "color": "#18181B"
+      },
+      {
+        "id": "crimson",
+        "color": "#D6303A"
+      },
+      {
+        "id": "amber",
+        "color": "#A46911"
+      },
+      {
+        "id": "teal",
+        "color": "#008484"
+      },
+      {
+        "id": "violet",
+        "color": "#7A4CE0"
+      }
+    ],
+    "semantic": {
+      "--sh-success": "#12b76a",
+      "--sh-success-tint": "rgba(18, 183, 106, 0.14)",
+      "--sh-warning": "#f79009",
+      "--sh-warning-tint": "rgba(247, 144, 9, 0.14)",
+      "--sh-danger": "#f04438",
+      "--sh-danger-tint": "rgba(240, 68, 56, 0.14)"
+    },
+    "constants": {
+      "--sh-tabbar-h": "124rpx",
+      "--sh-app-max": "100%",
+      "--sh-scrim": "rgba(10, 12, 16, 0.45)"
+    },
+    "skinVars": {
+      "light": {
+        "--sh-primary": "#E1251B",
+        "--sh-primary-tint": "rgba(225, 37, 27, 0.12)",
+        "--sh-primary-text": "#B31710",
+        "--sh-on-primary": "#FFFFFF",
+        "--sh-bg": "#ECEDEF",
+        "--sh-surface": "#FFFFFF",
+        "--sh-elev": "#FFFFFF",
+        "--sh-ink": "#17181A",
+        "--sh-sub": "#63676E",
+        "--sh-faint": "#E4E5E8",
+        "--sh-line": "#DCDEE2"
+      },
+      "dark": {
+        "--sh-primary": "#FF5A4D",
+        "--sh-primary-tint": "rgba(255, 90, 77, 0.2)",
+        "--sh-primary-text": "#FF5A4D",
+        "--sh-on-primary": "#14161A",
+        "--sh-bg": "#000000",
+        "--sh-surface": "#161719",
+        "--sh-elev": "#1D2023",
+        "--sh-ink": "#F3F4F6",
+        "--sh-sub": "#9AA1AC",
+        "--sh-faint": "#23262B",
+        "--sh-line": "#2E3036"
+      }
+    },
+    "type": [
+      {
+        "class": ".txt-hero",
+        "size": "48rpx",
+        "px": "24px",
+        "weight": "700",
+        "lineHeight": "1.15"
+      },
+      {
+        "class": ".txt-display",
+        "size": "40rpx",
+        "px": "20px",
+        "weight": "700",
+        "lineHeight": "1.2"
+      },
+      {
+        "class": ".txt-price",
+        "size": "34rpx",
+        "px": "17px",
+        "weight": "700",
+        "lineHeight": "1.3"
+      },
+      {
+        "class": ".txt-title",
+        "size": "34rpx",
+        "px": "17px",
+        "weight": "600",
+        "lineHeight": "1.3"
+      },
+      {
+        "class": ".txt-strong",
+        "size": "30rpx",
+        "px": "15px",
+        "weight": "600",
+        "lineHeight": "1.4"
+      },
+      {
+        "class": ".txt-body",
+        "size": "28rpx",
+        "px": "14px",
+        "weight": "400",
+        "lineHeight": "1.5"
+      },
+      {
+        "class": ".txt-sub",
+        "size": "26rpx",
+        "px": "13px",
+        "weight": "400",
+        "lineHeight": "1.5"
+      },
+      {
+        "class": ".txt-caption",
+        "size": "24rpx",
+        "px": "12px",
+        "weight": "400",
+        "lineHeight": "1.4"
+      }
+    ],
+    "density": {
+      "c": {
+        "--sh-pad-card": "32rpx",
+        "--sh-pad-page": "28rpx",
+        "--sh-pad-empty": "72rpx",
+        "--sh-gap-tabs": "20rpx",
+        "--sh-fs-sub": "26rpx"
+      },
+      "b": {
+        "--sh-pad-card": "24rpx",
+        "--sh-pad-page": "24rpx",
+        "--sh-pad-empty": "48rpx",
+        "--sh-gap-tabs": "16rpx",
+        "--sh-fs-sub": "24rpx"
+      },
+      "field": {
+        "margin-top": "20rpx"
+      }
+    }
+  },
+  "blocks": [
+    {
+      "class": ".sh-block__head--tabs",
+      "group": "其它",
+      "when": "—",
+      "avoid": "—",
+      "decl": {
+        "display": "block",
+        "padding-bottom": "0"
+      },
+      "px": {
+        "display": "block",
+        "padding-bottom": "0"
+      },
+      "usage": {
+        "b-app": 0,
+        "c-app": 3
+      }
+    },
+    {
+      "class": ".sh-muted",
+      "group": "字阶",
+      "when": "次要文字。**字号走密度变量**，B 端自动降到 24rpx",
+      "avoid": "—",
+      "decl": {
+        "color": "var(--sh-sub)",
+        "font-size": "var(--sh-fs-sub, 26rpx)",
+        "font-weight": "400",
+        "line-height": "1.5"
+      },
+      "px": {
+        "color": "var(--sh-sub)",
+        "font-size": "var(--sh-fs-sub, 13px)",
+        "font-weight": "400",
+        "line-height": "1.5"
+      },
+      "usage": {
+        "b-app": 245,
+        "c-app": 39
+      }
+    },
+    {
+      "class": ".txt-body",
+      "group": "字阶",
+      "when": "正文",
+      "avoid": "—",
+      "decl": {
+        "font-size": "28rpx",
+        "font-weight": "400",
+        "line-height": "1.5",
+        "color": "var(--sh-ink)"
+      },
+      "px": {
+        "font-size": "14px",
+        "font-weight": "400",
+        "line-height": "1.5",
+        "color": "var(--sh-ink)"
+      },
+      "usage": {
+        "b-app": 0,
+        "c-app": 0
+      }
+    },
+    {
+      "class": ".txt-caption",
+      "group": "字阶",
+      "when": "最弱一档：单位、脚注",
+      "avoid": "低于这一档就读不清了，不要再小",
+      "decl": {
+        "font-size": "24rpx",
+        "font-weight": "400",
+        "line-height": "1.4",
+        "color": "var(--sh-sub)"
+      },
+      "px": {
+        "font-size": "12px",
+        "font-weight": "400",
+        "line-height": "1.4",
+        "color": "var(--sh-sub)"
+      },
+      "usage": {
+        "b-app": 0,
+        "c-app": 0
+      }
+    },
+    {
+      "class": ".txt-display",
+      "group": "字阶",
+      "when": "区块级大数",
+      "avoid": "—",
+      "decl": {
+        "font-size": "40rpx",
+        "font-weight": "700",
+        "line-height": "1.2",
+        "color": "var(--sh-ink)"
+      },
+      "px": {
+        "font-size": "20px",
+        "font-weight": "700",
+        "line-height": "1.2",
+        "color": "var(--sh-ink)"
+      },
+      "usage": {
+        "b-app": 0,
+        "c-app": 0
+      }
+    },
+    {
+      "class": ".txt-hero",
+      "group": "字阶",
+      "when": "整页只有一个的大数（详情页主价、评分）",
+      "avoid": "—",
+      "decl": {
+        "font-size": "48rpx",
+        "font-weight": "700",
+        "line-height": "1.15",
+        "color": "var(--sh-ink)"
+      },
+      "px": {
+        "font-size": "24px",
+        "font-weight": "700",
+        "line-height": "1.15",
+        "color": "var(--sh-ink)"
+      },
+      "usage": {
+        "b-app": 0,
+        "c-app": 0
+      }
+    },
+    {
+      "class": ".txt-price",
+      "group": "字阶",
+      "when": "列表里的价格：与标题同字号，靠字重顶出来",
+      "avoid": "非价格不要用 700",
+      "decl": {
+        "font-size": "34rpx",
+        "font-weight": "700",
+        "line-height": "1.3",
+        "color": "var(--sh-ink)"
+      },
+      "px": {
+        "font-size": "17px",
+        "font-weight": "700",
+        "line-height": "1.3",
+        "color": "var(--sh-ink)"
+      },
+      "usage": {
+        "b-app": 0,
+        "c-app": 0
+      }
+    },
+    {
+      "class": ".txt-strong",
+      "group": "字阶",
+      "when": "需要比正文重一档的行",
+      "avoid": "—",
+      "decl": {
+        "font-size": "30rpx",
+        "font-weight": "600",
+        "line-height": "1.4",
+        "color": "var(--sh-ink)"
+      },
+      "px": {
+        "font-size": "15px",
+        "font-weight": "600",
+        "line-height": "1.4",
+        "color": "var(--sh-ink)"
+      },
+      "usage": {
+        "b-app": 0,
+        "c-app": 0
+      }
+    },
+    {
+      "class": ".txt-sub",
+      "group": "字阶",
+      "when": "次要信息",
+      "avoid": "B 端次要文字走 .sh-muted（字号跟密度变量）",
+      "decl": {
+        "font-size": "26rpx",
+        "font-weight": "400",
+        "line-height": "1.5",
+        "color": "var(--sh-sub)"
+      },
+      "px": {
+        "font-size": "13px",
+        "font-weight": "400",
+        "line-height": "1.5",
+        "color": "var(--sh-sub)"
+      },
+      "usage": {
+        "b-app": 0,
+        "c-app": 0
+      }
+    },
+    {
+      "class": ".txt-title",
+      "group": "字阶",
+      "when": "区块标题",
+      "avoid": "—",
+      "decl": {
+        "font-size": "34rpx",
+        "font-weight": "600",
+        "line-height": "1.3",
+        "color": "var(--sh-ink)"
+      },
+      "px": {
+        "font-size": "17px",
+        "font-weight": "600",
+        "line-height": "1.3",
+        "color": "var(--sh-ink)"
+      },
+      "usage": {
+        "b-app": 0,
+        "c-app": 0
+      }
+    },
+    {
+      "class": ".sh-h1",
+      "group": "字阶（旧名）",
+      "when": "页面级标题。与 .txt-display 同值",
+      "avoid": "新代码优先 .txt-*",
+      "decl": {
+        "font-size": "40rpx",
+        "font-weight": "700",
+        "line-height": "1.2",
+        "color": "var(--sh-ink)"
+      },
+      "px": {
+        "font-size": "20px",
+        "font-weight": "700",
+        "line-height": "1.2",
+        "color": "var(--sh-ink)"
+      },
+      "usage": {
+        "b-app": 18,
+        "c-app": 3
+      }
+    },
+    {
+      "class": ".sh-h2",
+      "group": "字阶（旧名）",
+      "when": "区块标题。与 .txt-title 同值",
+      "avoid": "新代码优先 .txt-*",
+      "decl": {
+        "font-size": "34rpx",
+        "font-weight": "600",
+        "line-height": "1.3",
+        "color": "var(--sh-ink)"
+      },
+      "px": {
+        "font-size": "17px",
+        "font-weight": "600",
+        "line-height": "1.3",
+        "color": "var(--sh-ink)"
+      },
+      "usage": {
+        "b-app": 78,
+        "c-app": 27
+      }
+    },
+    {
+      "class": ".sh-block",
+      "group": "容器",
+      "when": "标题与内容同属一个白块 —— 灰缝只剩块与块之间那一道",
+      "avoid": "只有内容没有标题时用 .sh-card",
+      "decl": {
+        "background": "var(--sh-surface)",
+        "border-radius": "32rpx",
+        "padding": "24rpx 0",
+        "overflow": "hidden"
+      },
+      "px": {
+        "background": "var(--sh-surface)",
+        "border-radius": "16px",
+        "padding": "12px 0",
+        "overflow": "hidden"
+      },
+      "usage": {
+        "b-app": 0,
+        "c-app": 12
+      }
+    },
+    {
+      "class": ".sh-block__head",
+      "group": "容器",
+      "when": "块内标题行（横向留白 26rpx，列表行仍通铺到边）",
+      "avoid": "—",
+      "decl": {
+        "display": "flex",
+        "align-items": "baseline",
+        "gap": "16rpx",
+        "padding": "0 26rpx 16rpx"
+      },
+      "px": {
+        "display": "flex",
+        "align-items": "baseline",
+        "gap": "8px",
+        "padding": "0 13px 8px"
+      },
+      "usage": {
+        "b-app": 0,
+        "c-app": 12
+      }
+    },
+    {
+      "class": ".sh-card",
+      "group": "容器",
+      "when": "一条内容一张卡：列表行、表单分区、统计块",
+      "avoid": "块内还要分小节时用 .sh-block",
+      "decl": {
+        "background": "var(--sh-surface)",
+        "border-radius": "32rpx",
+        "padding": "var(--sh-pad-card, 32rpx)"
+      },
+      "px": {
+        "background": "var(--sh-surface)",
+        "border-radius": "16px",
+        "padding": "var(--sh-pad-card, 16px)"
+      },
+      "usage": {
+        "b-app": 148,
+        "c-app": 57
+      }
+    },
+    {
+      "class": ".sh-btn",
+      "group": "按钮",
+      "when": "一屏一个主操作，实心胶囊",
+      "avoid": "并排两个主按钮时次要那个降成 --soft",
+      "decl": {
+        "display": "block",
+        "text-align": "center",
+        "padding": "30rpx 0",
+        "border-radius": "9999px",
+        "background": "var(--sh-primary)",
+        "color": "var(--sh-on-primary)",
+        "font-size": "30rpx",
+        "font-weight": "600",
+        "line-height": "1.4"
+      },
+      "px": {
+        "display": "block",
+        "text-align": "center",
+        "padding": "15px 0",
+        "border-radius": "9999px",
+        "background": "var(--sh-primary)",
+        "color": "var(--sh-on-primary)",
+        "font-size": "15px",
+        "font-weight": "600",
+        "line-height": "1.4"
+      },
+      "usage": {
+        "b-app": 73,
+        "c-app": 36
+      }
+    },
+    {
+      "class": ".sh-btn--danger",
+      "group": "按钮",
+      "when": "危险操作：**描边 + 墨字**，靠形态与主按钮区分",
+      "avoid": "红实心留给二次确认",
+      "decl": {
+        "background": "transparent",
+        "color": "var(--sh-ink)",
+        "border": "2rpx solid var(--sh-danger)",
+        "padding": "28rpx 0"
+      },
+      "px": {
+        "background": "transparent",
+        "color": "var(--sh-ink)",
+        "border": "1px solid var(--sh-danger)",
+        "padding": "14px 0"
+      },
+      "usage": {
+        "b-app": 2,
+        "c-app": 0
+      }
+    },
+    {
+      "class": ".sh-btn--danger-solid",
+      "group": "按钮",
+      "when": "二次确认弹层里的最终一击",
+      "avoid": "页面上不要用 —— 会与主按钮撞色",
+      "decl": {
+        "background": "var(--sh-danger)",
+        "color": "#fff"
+      },
+      "px": {
+        "background": "var(--sh-danger)",
+        "color": "#fff"
+      },
+      "usage": {
+        "b-app": 0,
+        "c-app": 0
+      }
+    },
+    {
+      "class": ".sh-btn--muted",
+      "group": "按钮",
+      "when": "不强调的操作（取消、稍后）",
+      "avoid": "—",
+      "decl": {
+        "background": "var(--sh-faint)",
+        "color": "var(--sh-sub)"
+      },
+      "px": {
+        "background": "var(--sh-faint)",
+        "color": "var(--sh-sub)"
+      },
+      "usage": {
+        "b-app": 13,
+        "c-app": 2
+      }
+    },
+    {
+      "class": ".sh-btn--soft",
+      "group": "按钮",
+      "when": "次要操作：tint 底 + 主色字",
+      "avoid": "—",
+      "decl": {
+        "background": "var(--sh-primary-tint)",
+        "color": "var(--sh-primary-text)"
+      },
+      "px": {
+        "background": "var(--sh-primary-tint)",
+        "color": "var(--sh-primary-text)"
+      },
+      "usage": {
+        "b-app": 23,
+        "c-app": 7
+      }
+    },
+    {
+      "class": ".sh-num",
+      "group": "数字",
+      "when": "金额、结存、差异、百分比 —— 等宽且 RTL 下强制 LTR",
+      "avoid": "非数字不要加",
+      "decl": {
+        "font-variant-numeric": "tabular-nums",
+        "font-feature-settings": "\"tnum\" 1",
+        "direction": "ltr",
+        "unicode-bidi": "isolate"
+      },
+      "px": {
+        "font-variant-numeric": "tabular-nums",
+        "font-feature-settings": "\"tnum\" 1",
+        "direction": "ltr",
+        "unicode-bidi": "isolate"
+      },
+      "usage": {
+        "b-app": 145,
+        "c-app": 129
+      }
+    },
+    {
+      "class": ".sh-chip",
+      "group": "标签",
+      "when": "状态、分类、筛选项。tint 色块，不描边",
+      "avoid": "可点的主操作用 .sh-btn",
+      "decl": {
+        "display": "inline-block",
+        "padding": "8rpx 20rpx",
+        "border-radius": "9999px",
+        "font-size": "24rpx",
+        "line-height": "1.3",
+        "background": "var(--sh-faint)",
+        "color": "var(--sh-sub)"
+      },
+      "px": {
+        "display": "inline-block",
+        "padding": "4px 10px",
+        "border-radius": "9999px",
+        "font-size": "12px",
+        "line-height": "1.3",
+        "background": "var(--sh-faint)",
+        "color": "var(--sh-sub)"
+      },
+      "usage": {
+        "b-app": 95,
+        "c-app": 56
+      }
+    },
+    {
+      "class": ".sh-chip--danger",
+      "group": "标签",
+      "when": "已经出错或被拒",
+      "avoid": "危险**操作**用 .sh-btn--danger",
+      "decl": {
+        "background": "var(--sh-danger-tint)",
+        "color": "var(--sh-danger)"
+      },
+      "px": {
+        "background": "var(--sh-danger-tint)",
+        "color": "var(--sh-danger)"
+      },
+      "usage": {
+        "b-app": 0,
+        "c-app": 9
+      }
+    },
+    {
+      "class": ".sh-chip--primary",
+      "group": "标签",
+      "when": "选中态 / 与主色相关的状态",
+      "avoid": "—",
+      "decl": {
+        "background": "var(--sh-primary-tint)",
+        "color": "var(--sh-primary-text)"
+      },
+      "px": {
+        "background": "var(--sh-primary-tint)",
+        "color": "var(--sh-primary-text)"
+      },
+      "usage": {
+        "b-app": 52,
+        "c-app": 22
+      }
+    },
+    {
+      "class": ".sh-chip--warning",
+      "group": "标签",
+      "when": "要留意但还不算错（待审、将过期）",
+      "avoid": "—",
+      "decl": {
+        "background": "var(--sh-warning-tint)",
+        "color": "var(--sh-warning)"
+      },
+      "px": {
+        "background": "var(--sh-warning-tint)",
+        "color": "var(--sh-warning)"
+      },
+      "usage": {
+        "b-app": 10,
+        "c-app": 6
+      }
+    },
+    {
+      "class": ".field",
+      "group": "表单",
+      "when": "字段之间的间距（B 端专有）",
+      "avoid": "—",
+      "decl": {
+        "margin-top": "20rpx"
+      },
+      "px": {
+        "margin-top": "10px"
+      },
+      "usage": {
+        "b-app": 51,
+        "c-app": 16
+      }
+    },
+    {
+      "class": ".field__area",
+      "group": "表单",
+      "when": "多行输入",
+      "avoid": "—",
+      "decl": {
+        "width": "100%",
+        "box-sizing": "border-box",
+        "height": "140rpx",
+        "padding": "20rpx 24rpx",
+        "border-radius": "24rpx",
+        "background": "var(--sh-faint)",
+        "font-size": "28rpx",
+        "color": "var(--sh-ink)"
+      },
+      "px": {
+        "width": "100%",
+        "box-sizing": "border-box",
+        "height": "70px",
+        "padding": "10px 12px",
+        "border-radius": "12px",
+        "background": "var(--sh-faint)",
+        "font-size": "14px",
+        "color": "var(--sh-ink)"
+      },
+      "usage": {
+        "b-app": 6,
+        "c-app": 0
+      }
+    },
+    {
+      "class": ".field__hint",
+      "group": "表单",
+      "when": "规则说明，最弱一档",
+      "avoid": "报错不要用它 —— 那要有颜色",
+      "decl": {
+        "display": "block",
+        "margin-top": "10rpx",
+        "font-size": "24rpx",
+        "color": "var(--sh-sub)",
+        "line-height": "1.5"
+      },
+      "px": {
+        "display": "block",
+        "margin-top": "5px",
+        "font-size": "12px",
+        "color": "var(--sh-sub)",
+        "line-height": "1.5"
+      },
+      "usage": {
+        "b-app": 0,
+        "c-app": 0
+      }
+    },
+    {
+      "class": ".field__input",
+      "group": "表单",
+      "when": "单行输入",
+      "avoid": "—",
+      "decl": {
+        "height": "88rpx",
+        "padding": "0 24rpx",
+        "border-radius": "24rpx",
+        "background": "var(--sh-faint)",
+        "font-size": "30rpx",
+        "color": "var(--sh-ink)"
+      },
+      "px": {
+        "height": "44px",
+        "padding": "0 12px",
+        "border-radius": "12px",
+        "background": "var(--sh-faint)",
+        "font-size": "15px",
+        "color": "var(--sh-ink)"
+      },
+      "usage": {
+        "b-app": 88,
+        "c-app": 0
+      }
+    },
+    {
+      "class": ".field__label",
+      "group": "表单",
+      "when": "字段标签",
+      "avoid": "—",
+      "decl": {
+        "display": "block",
+        "font-size": "26rpx",
+        "color": "var(--sh-sub)",
+        "margin-bottom": "12rpx"
+      },
+      "px": {
+        "display": "block",
+        "font-size": "13px",
+        "color": "var(--sh-sub)",
+        "margin-bottom": "6px"
+      },
+      "usage": {
+        "b-app": 70,
+        "c-app": 0
+      }
+    },
+    {
+      "class": ".sh-ph",
+      "group": "表单",
+      "when": "占位文字色。**必须显式给**：三端默认占位色各不相同",
+      "avoid": "要配 placeholder-style 一起用",
+      "decl": {
+        "color": "var(--sh-sub)"
+      },
+      "px": {
+        "color": "var(--sh-sub)"
+      },
+      "usage": {
+        "b-app": 1,
+        "c-app": 0
+      }
+    }
+  ],
+  "components": [
+    {
+      "name": "sh-cover",
+      "file": "packages/ui/src/components/sh-cover.vue",
+      "scope": "跨端",
+      "lines": 51,
+      "props": [
+        "src?: string",
+        "mode?: string"
+      ],
+      "usage": {
+        "b-app": 9,
+        "c-app": 10
+      },
+      "note": "商品封面",
+      "why": "`cover` 字段二义：种子是 emoji、商家上传后是 COS URL。14 处渲染点都没分流过"
+    },
+    {
+      "name": "sh-empty",
+      "file": "packages/ui/src/components/sh-empty.vue",
+      "scope": "跨端",
+      "lines": 41,
+      "props": [
+        "text?: string",
+        "compact?: boolean",
+        "bare?: boolean"
+      ],
+      "usage": {
+        "b-app": 27,
+        "c-app": 17
+      },
+      "note": "空态",
+      "why": "抽出来不是因为重复，是**观感会漂**：曾在 27 个页面各写一份，padding 在 60/80/100rpx 之间随手取"
+    },
+    {
+      "name": "sh-icon",
+      "file": "packages/ui/src/components/sh-icon.vue",
+      "scope": "跨端",
+      "lines": 48,
+      "props": [
+        "name: IconName",
+        "size?: number",
+        "color?: string"
+      ],
+      "usage": {
+        "b-app": 28,
+        "c-app": 4
+      },
+      "note": "单色图标",
+      "why": "内联 SVG 转 CSS mask，颜色吃 var(--sh-*) —— 换肤零成本。**不用 emoji**：各系统字形不一且是彩色的"
+    },
+    {
+      "name": "sh-rating",
+      "file": "packages/ui/src/components/sh-rating.vue",
+      "scope": "跨端",
+      "lines": 56,
+      "props": [
+        "value: number",
+        "size?: number",
+        "showValue?: boolean"
+      ],
+      "usage": {
+        "b-app": 3,
+        "c-app": 4
+      },
+      "note": "评分",
+      "why": "底层灰星 + 上层主色星按百分比裁切 —— 半星图标只能表达 0.5 粒度，4.3 会被抹成 4.5"
+    },
+    {
+      "name": "sh-scaffold",
+      "file": "packages/ui/src/components/sh-scaffold.vue",
+      "scope": "跨端",
+      "lines": 168,
+      "props": [
+        "padded?: boolean",
+        "titleKey?: string",
+        "tab?: string",
+        "denied?: boolean",
+        "deniedText?: string"
+      ],
+      "usage": {
+        "b-app": 52,
+        "c-app": 29
+      },
+      "note": "页面外壳",
+      "why": "**每页根元素必须是它** —— 否则小程序端换肤 / RTL / 三语标题全不生效"
+    },
+    {
+      "name": "sh-sheet",
+      "file": "packages/ui/src/components/sh-sheet.vue",
+      "scope": "跨端",
+      "lines": 103,
+      "props": [
+        "visible: boolean",
+        "title: string",
+        "hint?: string"
+      ],
+      "usage": {
+        "b-app": 3,
+        "c-app": 0
+      },
+      "note": "底部弹层",
+      "why": "不用 uni.showModal（字不归我们管）、不做页内展开（会把下文顶走）"
+    },
+    {
+      "name": "sh-tabbar",
+      "file": "packages/ui/src/components/sh-tabbar.vue",
+      "scope": "跨端",
+      "lines": 152,
+      "props": [
+        "active: string"
+      ],
+      "usage": {
+        "b-app": 0,
+        "c-app": 0
+      },
+      "note": "自定义底部菜单",
+      "why": "原生 tabBar 字号锁死、不吃 CSS 变量、不吃 i18n，三件事自定义之后自然解决"
+    },
+    {
+      "name": "sh-tabs",
+      "file": "packages/ui/src/components/sh-tabs.vue",
+      "scope": "跨端",
+      "lines": 61,
+      "props": [
+        "items: readonly { key: string",
+        "label: string }[]",
+        "active: string"
+      ],
+      "usage": {
+        "b-app": 4,
+        "c-app": 7
+      },
+      "note": "筛选条",
+      "why": "抽之前两端有两套实现（chip 横排 / 方块），同一个产品里两种筛选条"
+    },
+    {
+      "name": "sh-theme-sheet",
+      "file": "packages/ui/src/components/sh-theme-sheet.vue",
+      "scope": "跨端",
+      "lines": 241,
+      "props": [
+        "visible: boolean"
+      ],
+      "usage": {
+        "b-app": 1,
+        "c-app": 1
+      },
+      "note": "外观面板",
+      "why": "9 套皮肤 × 明暗 × 语言，选中即时全局生效"
+    },
+    {
+      "name": "app-overlay",
+      "file": "b-app/src/components/app-overlay.vue",
+      "scope": "B 端",
+      "lines": 9,
+      "props": [],
+      "usage": {
+        "b-app": 1,
+        "c-app": 0
+      },
+      "note": "应用常驻层",
+      "why": "B 端是空壳，但**不能删** —— sh-scaffold 无条件渲染它"
+    },
+    {
+      "name": "biz-pickup-sheet",
+      "file": "b-app/src/components/biz/biz-pickup-sheet.vue",
+      "scope": "B 端",
+      "lines": 365,
+      "props": [
+        "visible: boolean",
+        "storeNo: string",
+        "selected: string[]"
+      ],
+      "usage": {
+        "b-app": 1,
+        "c-app": 0
+      },
+      "note": "自提点选择弹层",
+      "why": "自带 mask 与 panel，**没走 sh-sheet**"
+    },
+    {
+      "name": "biz-region-picker",
+      "file": "b-app/src/components/biz/biz-region-picker.vue",
+      "scope": "B 端",
+      "lines": 1628,
+      "props": [
+        "visible: boolean",
+        "areas: ServiceArea[]"
+      ],
+      "usage": {
+        "b-app": 1,
+        "c-app": 0
+      },
+      "note": "经营范围选择器",
+      "why": "省市区 / 小区 / 村三级 + 提报。全项目最大的单文件组件"
+    },
+    {
+      "name": "biz-store-tag",
+      "file": "b-app/src/components/biz/biz-store-tag.vue",
+      "scope": "B 端",
+      "lines": 81,
+      "props": [
+        "readonly?: boolean"
+      ],
+      "usage": {
+        "b-app": 4,
+        "c-app": 0
+      },
+      "note": "当前门店胶囊",
+      "why": "可点 = 门店管理入口；readonly = 只说清这屏属于哪家店"
+    },
+    {
+      "name": "biz-time-range",
+      "file": "b-app/src/components/biz/biz-time-range.vue",
+      "scope": "B 端",
+      "lines": 85,
+      "props": [
+        "modelValue: string",
+        "clearable?: boolean"
+      ],
+      "usage": {
+        "b-app": 2,
+        "c-app": 0
+      },
+      "note": "时段输入",
+      "why": "不让人手敲 —— 手敲的结果是全角横线、少个冒号、写成「6点半到9点」"
+    }
+  ],
+  "counts": {
+    "tokens": 10,
+    "blocks": 31,
+    "components": 14
+  }
+}
