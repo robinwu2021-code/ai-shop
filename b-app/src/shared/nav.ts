@@ -39,6 +39,19 @@ export const ROUTES = {
   plan: "/pages/plan/index",
   customers: "/pages/customers/index",
   marketing: "/pages/marketing/index",
+
+  // ── 进销存（P-18）。**库存页是这一块的枢纽** ——
+  // 工作台只开一道门到它，其余五屏从它里面进。
+  // 每屏各在工作台/我的上摆一个入口的话，就回到「同一件事三个门，人记不住走哪个」
+  stock: "/pages/stock/index",
+  stockDetail: "/pages/stock-detail/index",
+  stockCheck: "/pages/stock-check/index",
+  purchaseEdit: "/pages/purchase-edit/index",
+  stockDocs: "/pages/stock-docs/index",
+  stockOut: "/pages/stock-out/index",
+  transfer: "/pages/transfer/index",
+  stockReport: "/pages/stock-report/index",
+  locations: "/pages/locations/index",
 } as const;
 
 /**

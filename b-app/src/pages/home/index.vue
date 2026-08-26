@@ -12,13 +12,19 @@ import { useMerchantStore } from "@/stores/merchant";
 import { ROUTES } from "@/shared/nav";
 import { money } from "@shared/utils/money";
 import { FULFILLMENT_REACH, SERVICE_SCOPE } from "@shared/utils/constants";
-import type { MerchantStats, MerchantTodo, PaymentApplyment, StoreProfile } from "@shared/types";
+import type { MerchantStats, MerchantTodo, PaymentApplyment, StockSummary, StoreProfile } from "@shared/types";
 import { prompt } from "@ai-shop/ui/prompt";
 
 const { t } = useI18n();
 const merchant = useMerchantStore();
 
 const todo = ref<MerchantTodo | null>(null);
+/**
+ * 库存待办的三个数。**与 todo 分开取** —— 它在另一个域（进销存独立库），
+ * 而且理货员常常有 `biz:stock` 却没有 `biz:order:view`：
+ * 混进 todo 的话，他一进工作台 mTodo 被拒，连库存这道门也跟着没了。
+ */
+const stockSummary = ref<StockSummary | null>(null);
 const stats = ref<MerchantStats | null>(null);
 
 /*
@@ -125,7 +131,18 @@ const noticeValue = computed(() => {
  */
 const cells = computed(() => {
   const t = todo.value;
-  if (!t) return [];
+  // **库存那格不依赖 todo**：理货员有 biz:stock 却常常没有 biz:order:view，
+  // 早退的话他连这道门都没有 —— 而改库存正是他每天的活
+  const stockCell = merchant.can("biz:stock") && stockSummary.value
+    ? [{
+        key: "stock",
+        // 「要处理」= 缺货 + 滞销。两个数加起来才是他今天要看的量
+        n: stockSummary.value.shortageCount + stockSummary.value.staleCount,
+        route: ROUTES.stock,
+        perm: "biz:stock",
+      }]
+    : [];
+  if (!t) return stockCell;
   // 显式标注：否则 TS 会把 route 收窄成 base 里那几个字面量，splice 进来的核销/分拣路由报错
   const base: { key: string; n: number; route: string; perm: string }[] = [
     { key: "toShip", n: t.toShip, route: ROUTES.orders, perm: "biz:ship" },
@@ -145,7 +162,7 @@ const cells = computed(() => {
     base.splice(2, 0, { key: "toVerify", n: t.toVerify, route: ROUTES.verify, perm: "biz:verify" });
     base.splice(3, 0, { key: "toPick", n: t.toPick, route: ROUTES.picking, perm: "biz:receive" });
   }
-  return base.filter((c) => merchant.can(c.perm));
+  return [...base.filter((c) => merchant.can(c.perm)), ...stockCell];
 });
 
 const ownedRate = computed(() =>
@@ -180,11 +197,13 @@ async function load() {
    * 后三条是每次进首页都必然 403 的请求 —— 日志里三条噪音、首屏多三个来回，
    * 而它们的结果本来就不会被画出来（`blockers` 与 `stats` 卡片各自判过 `can()`）。
    */
-  [todo.value, stats.value, payments.value, store.value] = await Promise.all([
+  [todo.value, stats.value, payments.value, store.value, stockSummary.value] = await Promise.all([
     api.mTodo().catch(() => null),
     merchant.can("biz:customer") ? api.mStats().catch(() => null) : null,
     merchant.can("biz:finance") ? api.mPayments().catch(() => []) : [],
     merchant.can("biz:store") ? api.mStore().catch(() => null) : null,
+    // 没权限的先别发 —— 与上面三条同一条规矩
+    merchant.can("biz:stock") ? api.mStockSummary().catch(() => null) : null,
   ]);
 }
 
@@ -247,7 +266,7 @@ onShow(load);
   <sh-scaffold title-key="tab.home" tab="home">
     <!-- 未入驻：整屏只讲一件事 —— 去开张 -->
     <view v-if="!merchant.canOperate" class="empty">
-      <text class="sh-h1">{{ $t("home.notMerchant") }}</text>
+      <text class="txt-display">{{ $t("home.notMerchant") }}</text>
       <text class="sh-muted mt">{{ $t("home.notMerchantHint") }}</text>
       <view class="sh-btn go" @tap="goQuickStart">
         {{ opening ? $t("common.loading") : $t("home.quickStart") }}
@@ -279,7 +298,7 @@ onShow(load);
       </view>
 
       <view v-if="stats" class="sh-card stats">
-        <text class="sh-h2">{{ $t("home.today") }}</text>
+        <text class="txt-title">{{ $t("home.today") }}</text>
         <view class="stats__row">
           <view class="stats__item">
             <text class="stats__v sh-num">{{ stats.todayOrders }}</text>
@@ -300,7 +319,7 @@ onShow(load);
       <!-- 自带客流占比：这是商家最该关心的数字，它直接决定费率档（ADR-004 §6） -->
       <view v-if="stats" class="sh-card owned">
         <view class="owned__row">
-          <text class="sh-h2">{{ $t("home.ownedTraffic") }}</text>
+          <text class="txt-title">{{ $t("home.ownedTraffic") }}</text>
           <text class="owned__v sh-num">{{ ownedRate }}</text>
         </view>
         <text class="sh-muted">{{ $t("home.ownedTrafficHint") }}</text>
@@ -329,7 +348,7 @@ onShow(load);
         v-if="merchant.isPickupPoint && (merchant.can('biz:verify') || merchant.can('biz:receive'))"
         class="sh-card entry fulfill"
       >
-        <text class="sh-h2 fulfill__title">{{ $t("home.fulfillEntry") }}</text>
+        <text class="txt-title fulfill__title">{{ $t("home.fulfillEntry") }}</text>
         <view class="fulfill__row">
           <view v-if="merchant.can('biz:receive')" class="fulfill__half" @tap="open(ROUTES.picking)">
             <text class="fulfill__n sh-num" :class="{ 'is-zero': !todo?.toPick }">{{ todo?.toPick ?? 0 }}</text>
@@ -344,15 +363,15 @@ onShow(load);
 
       <!-- 拆两页（方案 v3）：范围与送货是开店的两个决策；装修与获客是日常内容 -->
       <view v-if="merchant.can('biz:store')" class="sh-card entry entry--kv" @tap="open(ROUTES.storeNotice)">
-        <text class="sh-h2">{{ $t("home.noticeEntry") }}</text>
+        <text class="txt-title">{{ $t("home.noticeEntry") }}</text>
         <text v-if="noticeValue" class="entry__v">{{ noticeValue }}</text>
       </view>
 
       <view v-if="merchant.can('biz:store')" class="sh-card entry" @tap="open(ROUTES.storeScope)">
-        <text class="sh-h2">{{ $t("home.scopeEntry") }}</text>
+        <text class="txt-title">{{ $t("home.scopeEntry") }}</text>
       </view>
       <view v-if="merchant.can('biz:store')" class="sh-card entry" @tap="open(ROUTES.store)">
-        <text class="sh-h2">{{ $t("home.storeEntry") }}</text>
+        <text class="txt-title">{{ $t("home.storeEntry") }}</text>
       </view>
 
       <!--
@@ -362,12 +381,12 @@ onShow(load);
         埋在二级的结果是「找不到」：进类目页、再找一张卡、才到得了。
       -->
       <view v-if="merchant.can('biz:store:admin')" class="sh-card entry" @tap="open(ROUTES.storeCategories)">
-        <text class="sh-h2">{{ $t("home.catalogEntry") }}</text>
+        <text class="txt-title">{{ $t("home.catalogEntry") }}</text>
         <text class="sh-muted">{{ $t("home.catalogEntryHint") }}</text>
       </view>
 
       <view v-if="merchant.can('biz:goods')" class="sh-card entry" @tap="open(ROUTES.mySpecs)">
-        <text class="sh-h2">{{ $t("home.specsEntry") }}</text>
+        <text class="txt-title">{{ $t("home.specsEntry") }}</text>
         <text class="sh-muted">{{ $t("home.specsEntryHint") }}</text>
       </view>
 
@@ -378,7 +397,7 @@ onShow(load);
         （见 store-categories 里那段注释：合并入口只合了名字，规格页从此没有门）。
       -->
       <view v-if="merchant.can('biz:goods')" class="sh-card entry" @tap="open(ROUTES.skuIdentity)">
-        <text class="sh-h2">{{ $t("home.skuIdentityEntry") }}</text>
+        <text class="txt-title">{{ $t("home.skuIdentityEntry") }}</text>
         <text class="sh-muted">{{ $t("home.skuIdentityEntryHint") }}</text>
       </view>
 
@@ -389,15 +408,15 @@ onShow(load);
 
 
       <view v-if="merchant.can('biz:campaign')" class="sh-card entry" @tap="open(ROUTES.marketing)">
-        <text class="sh-h2">{{ $t("home.marketingEntry") }}</text>
+        <text class="txt-title">{{ $t("home.marketingEntry") }}</text>
       </view>
 
       <view v-if="merchant.can('biz:campaign')" class="sh-card entry" @tap="open(ROUTES.groups)">
-        <text class="sh-h2">{{ $t("home.groupEntry") }}</text>
+        <text class="txt-title">{{ $t("home.groupEntry") }}</text>
       </view>
 
       <view v-if="merchant.can('biz:campaign')" class="sh-card entry" @tap="open(ROUTES.quotes)">
-        <text class="sh-h2">{{ $t("home.quoteEntry") }}</text>
+        <text class="txt-title">{{ $t("home.quoteEntry") }}</text>
       </view>
     </template>
   </sh-scaffold>

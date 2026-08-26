@@ -11,6 +11,7 @@ import { onShow } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
 import { api } from "@/api";
 import { useMerchantStore } from "@/stores/merchant";
+import { ROUTES } from "@/shared/nav";
 import type { StockBalance, StockSummary } from "@shared/types";
 
 const { t } = useI18n();
@@ -70,6 +71,30 @@ function idleDays(b: StockBalance): number | null {
   return Math.max(0, Math.floor(ms / 86400000));
 }
 
+/**
+ * 这一块的其余五屏从这里进。
+ *
+ * **每屏各在工作台/我的上摆一个门是错的** —— 那就回到「同一件事三个入口，
+ * 人记不住走哪个」。工作台只开一道门到库存，库存页当枢纽。
+ *
+ * 每一条按**它自己那一页的权限**判，不是按本页的：报表要 `biz:customer`、
+ * 库位要 `biz:store:admin`。按本页判的话，店员会看到一道点进去就是
+ * 「这页不该你看」的门 —— 那比没有门更让人困惑。
+ */
+const entries = computed(() => [
+  { key: "purchase", route: ROUTES.purchaseEdit, perm: "biz:stock" },
+  { key: "check", route: ROUTES.stockCheck, perm: "biz:stock" },
+  { key: "out", route: ROUTES.stockOut, perm: "biz:stock" },
+  { key: "docs", route: ROUTES.stockDocs, perm: "biz:stock" },
+  { key: "transfer", route: ROUTES.transfer, perm: "biz:stock" },
+  { key: "report", route: ROUTES.stockReport, perm: "biz:customer" },
+  { key: "locations", route: ROUTES.locations, perm: "biz:store:admin" },
+].filter((e) => merchant.can(e.perm)));
+
+function go(route: string) {
+  uni.navigateTo({ url: route });
+}
+
 function openItem(b: StockBalance) {
   uni.navigateTo({ url: `/pages/stock-detail/index?itemId=${encodeURIComponent(b.itemId)}` });
 }
@@ -88,6 +113,18 @@ onShow(load);
       ]"
       @pick="pickStat"
     ></sh-stat>
+
+    <!-- 这一块的其余五屏从这里进；每条按它自己那一页的权限判 -->
+    <scroll-view scroll-x class="entries" :show-scrollbar="false">
+      <text
+        v-for="e in entries"
+        :key="e.key"
+        class="sh-chip entries__item"
+        @tap="go(e.route)"
+      >
+        {{ $t(`stock.entry.${e.key}`) }}
+      </text>
+    </scroll-view>
 
     <sh-tabs :items="TABS" :active="filter" @change="pickFilter"></sh-tabs>
 
@@ -134,6 +171,14 @@ onShow(load);
 </template>
 
 <style scoped>
+.entries {
+  white-space: nowrap;
+  margin-bottom: 16rpx;
+}
+.entries__item {
+  display: inline-block;
+  margin-right: 12rpx;
+}
 .row {
   margin-bottom: 14rpx;
 }
