@@ -17,7 +17,6 @@ import ai.neargo.shop.merchant.service.StoreAdminService;
 import ai.neargo.shop.merchant.service.StoreCategoryService;
 import ai.neargo.shop.merchant.service.MerchantStoreService;
 import ai.neargo.shop.merchant.service.MerchantService;
-import ai.neargo.shop.community.service.CommunityAdminService;
 import ai.neargo.shop.spi.user.MerchantAdminPort;
 import ai.neargo.shop.spi.user.MerchantQueryPort;
 import ai.neargo.shop.user.service.UserService;
@@ -59,10 +58,6 @@ public class BizMerchantController {
     /** 门店货架 —— 建店时一并摆上，之后商家自己调 */
     private final StoreCategoryService storeCategoryService;
     private final MerchantStaffService staffService;
-    /** 提报新社区（ADR-013 阶段三）：社区是 community 域的主数据，商家只是提报方 */
-    private final ai.neargo.shop.community.service.CommunityAdminService communityAdminService;
-    /** 读侧：地图直开之后要按 `/biz/communities` 的同一个形状把它回给端上 */
-    private final ai.neargo.shop.community.service.CommunityService communityService;
     /** 资金路径 —— B 端价格字段叫什么由它决定，判据与积分能力同一根轴 */
     private final MerchantQueryPort merchantQueryPort;
     /** 资质：商家自己传证、看有效期、看这张证能解锁哪几类 */
@@ -80,8 +75,6 @@ public class BizMerchantController {
                                  MerchantPaymentService paymentService,
                                  StoreAdminService storeAdminService,
                                  MerchantStaffService staffService,
-                                 ai.neargo.shop.community.service.CommunityAdminService communityAdminService,
-                                 ai.neargo.shop.community.service.CommunityService communityService,
                                  MerchantQueryPort merchantQueryPort,
                                  StoreCategoryService storeCategoryService,
                                  ai.neargo.shop.merchant.service.MerchantGovernService governService,
@@ -94,8 +87,6 @@ public class BizMerchantController {
         this.governService = governService;
         this.storeCategoryService = storeCategoryService;
         this.merchantQueryPort = merchantQueryPort;
-        this.communityAdminService = communityAdminService;
-        this.communityService = communityService;
         this.storeService = storeService;
         this.paymentService = paymentService;
         this.storeAdminService = storeAdminService;
@@ -420,75 +411,6 @@ public class BizMerchantController {
     public record RecentReq(String text) {
     }
 
-    // ---------------------------------------------------------------- 提报新社区（ADR-013 阶段三）
-
-    /**
-     * 提报一个平台还没有的小区。
-     *
-     * <p>在这之前商家<b>无路可走</b>：覆盖项只能从已有社区里勾，而「让平台加一个小区」
-     * 没有入口 —— 只能找 BD 口头说，说完没人知道进展。
-     *
-     * <p>要 {@code biz:store} 权限：它与设经营范围是同一件事的两半 ——
-     * 能决定「我做哪儿」的人，才该能提「这儿还没开」。
-     */
-    @PreAuthorize("@perm.canBiz('" + BizPerms.STORE + "')")
-    @PostMapping("/biz/communities/apply")
-    public CommunityAdminService.ApplyVO applyCommunity(@RequestBody CommunityApplyReq req) {
-        return communityAdminService.submitApply(BizContext.requireMerchantNo(),
-                req.name(), req.address(), req.regionCode(), req.note(),
-                req.kind(), req.originCode(), req.latE6(), req.lngE6());
-    }
-
-    /**
-     * 从地图上选中一个点，**直接开通聚落并返回**（不再提报、不用等）。
-     *
-     * <p>与 {@code /biz/communities/apply} 的关系：那条留给「地图上查无此地」的手动补录；
-     * 正常路径是搜到即用 —— 数据来自高德（名字、门牌、坐标都是它给的），
-     * 落哪个街道由逆地理定夺，重复由三道闸挡住（见 openFromMap 的注释）。
-     */
-    @PreAuthorize("@perm.canBiz('" + BizPerms.STORE + "')")
-    @PostMapping("/biz/communities/from-map")
-    public ai.neargo.shop.community.dto.CommunityVO openCommunityFromMap(@RequestBody FromMapReq req) {
-        var opened = communityAdminService.openFromMap(BizContext.requireMerchantNo(),
-                req.name(), req.address(), req.latE6(), req.lngE6(), req.streetCode());
-        /*
-         * **回的是与 `/biz/communities` 同一个形状**，不是运营端那个 VO。
-         * 端上拿到它就直接塞进「可选聚落」那份列表 —— 两个形状不一样的话，
-         * 新开的这条会缺 address/pickups，在列表里长得与其它条目不同，
-         * 而这种差异只在「刚加完那一瞬间」出现，最难复现。
-         */
-        return communityService.detail(opened.communityNo());
-    }
-
-    /**
-     * @param streetCode 端上已知的街道码（9 位），只在服务端逆地理不可用时兜底
-     */
-    public record FromMapReq(String name, String address, int latE6, int lngE6, String streetCode) {
-    }
-
-    /**
-     * 我提报过的。
-     *
-     * <p>没有这个列表，提报出去等于石沉大海：商家不知道批没批、被驳回的理由是什么，
-     * 只会隔几天再提一次同样的 —— 而那正是运营队列里出现重复条目的来源。
-     */
-    @PreAuthorize("@perm.canBiz('" + BizPerms.STORE + "')")
-    @GetMapping("/biz/communities/applies")
-    public List<CommunityAdminService.ApplyVO> myCommunityApplies() {
-        return communityAdminService.appliesOf(BizContext.requireMerchantNo());
-    }
-
-    /** @param regionCode 商家选的区划，**只是建议** —— 最终以运营裁决时填的为准 */
-    public record CommunityApplyReq(String name, String address, String regionCode, String note,
-                                    /** ESTATE 小区 / VILLAGE 村。不传按 ESTATE */
-                                    String kind,
-                                    /** 提报村时从词典选中的官方村码 */
-                                    String originCode,
-                                    /** 提报时的定位，可空 —— H5 拿不到权限时照样能提 */
-                                    Integer latE6, Integer lngE6) {
-    }
-
-    // ---------------------------------------------------------------- 收款进件
 
     /**
      * 我的收款进件状态（每通道一条）。

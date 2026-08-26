@@ -8,21 +8,21 @@
 # 拆一个删一行。拆的时候：**纯搬家，单独一次提交，不夹带任何行为变化** ——
 # 混在一起的话，出问题不知道回滚哪个。
 
-# ── 优先级最高的两个（>10 个资源）──
+# ── 优先级最高的一个（>10 个资源）──
 # 规格那套长出来的：goods 之外还挂着 8 种 spec-*。建议按 spec 单列一个控制器
 BizGoodsController
-# 原本九个不相干的节：店铺资料/资质/送货方式/预约排期/社区提报/收款进件/门店管理/员工授权/角色
-# ⚠️ 预约排期是 2026-08-26 本轮加进去的 —— 加的时候理由局部合理（和送货方式同类、
-#    权限也一样），错在没回头看这个类已经 1022 行了。拆法见架构评审 §5.2
+
+# BizMerchantController 于 2026-08-26 出榜 —— **它是真拆了的**，不是判据放宽。
+# 拆之前：1021 行、九个不相干的节（店铺资料/资质/送货方式/预约排期/社区提报/
+# 收款进件/门店管理/员工授权/角色）。三次纯搬家，每次单独一个提交：
+#     送货方式 + 预约排期 → BizStoreFulfillmentController   1021 → 949
+#     员工与授权 + 角色   → BizStaffController               949 → 812
+#     提报新社区          → BizCommunityApplyController      812 → 734
+# 现在 3 个资源（merchant / qualifications / store），正好在阈值上。
 #
-# 进度（拆一块、单独一次提交、纯搬家）：
-#   ✅ 送货方式 + 预约排期  → BizStoreFulfillmentController（1021 → 949 行）
-#   ✅ 员工与授权 + 角色    → BizStaffController（949 → 812 行，一次带走 4 个资源）
-#   ⬜ 我的资质            → BizQualificationController
-#   ⬜ 门店管理（M6）      → BizStoreAdminController
-# 现在 4 个资源：communities / merchant / qualifications / store。
-# 拆完资质与门店管理就剩「主体本身 + 店铺资料 + 社区提报」，那时再看要不要继续。
-BizMerchantController
+# **还剩两块可拆，但先得还一笔债**：资质、收款进件、门店管理三节共用私有方法
+# `ownedEntity`（多证照的越权闸）。把一个安全检查复制到三个新控制器里，
+# 是这类重构最容易走偏的地方 —— 要先把它提成一份共享的，再动那三节。
 
 # ── 其余 8 个 ──
 # 登录/注册/资料/地址/注销挤在一起。login/logout/otp/token 是一组（认证），其余是资料
