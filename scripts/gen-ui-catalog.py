@@ -177,6 +177,15 @@ PROTO_URL_BY_ROUTE = {
     "b-app": {
         "pages/goods-edit/index": "https://claude.ai/code/artifact/9eb1a32a-a74b-40d2-b6c3-1a4cb394f02e",
         "pages/my-specs/index": "https://claude.ai/code/artifact/9eb1a32a-a74b-40d2-b6c3-1a4cb394f02e",
+        # 商家资金全链路（订单 / 积分 / 资金八屏）
+        "pages/orders/index": "https://claude.ai/code/artifact/feceebc7-49da-4b4b-bdf4-4411ae384c24",
+        "pages/order/index": "https://claude.ai/code/artifact/feceebc7-49da-4b4b-bdf4-4411ae384c24",
+        "pages/schedule/index": "https://claude.ai/code/artifact/feceebc7-49da-4b4b-bdf4-4411ae384c24",
+        "pages/points/index": "https://claude.ai/code/artifact/feceebc7-49da-4b4b-bdf4-4411ae384c24",
+        "pages/points-records/index": "https://claude.ai/code/artifact/feceebc7-49da-4b4b-bdf4-4411ae384c24",
+        "pages/income/index": "https://claude.ai/code/artifact/feceebc7-49da-4b4b-bdf4-4411ae384c24",
+        "pages/payment/index": "https://claude.ai/code/artifact/feceebc7-49da-4b4b-bdf4-4411ae384c24",
+        "pages/settle/index": "https://claude.ai/code/artifact/feceebc7-49da-4b4b-bdf4-4411ae384c24",
     },
 }
 
@@ -203,6 +212,12 @@ PROTO_ANCHORS = {
         # 规格原型（另一份 artifact，见 PROTO_URL_BY_ROUTE）
         "pages/goods-edit/index": "s19",
         "pages/my-specs/index": "s23",
+        # 商家资金全链路八屏（另一份 artifact）
+        "pages/orders/index": "s01", "pages/order/index": "s02",
+        "pages/schedule/index": "s03",
+        "pages/points/index": "s04", "pages/points-records/index": "s05",
+        "pages/income/index": "s06", "pages/payment/index": "s07",
+        "pages/settle/index": "s08",
     },
     "c-app": {
         "pages/store/index": "s15", "pages/member-card/index": "s16",
@@ -229,6 +244,10 @@ PROTOTYPES = [
     ("ops-web", "/members", "会员总览（跨商家）", "会员与营销"),
     ("ops-web", "/members?tab=person", "人档与合并", "会员与营销"),
     ("ops-web", "/members?tab=reach", "触达监控", "会员与营销"),
+    # 商家资金全链路：接口都在、B 端没有出口的那几页
+    ("b-app", "/pages/points/index", "积分成本总览", "钱"),
+    ("b-app", "/pages/points-records/index", "发分明细", "钱"),
+    ("b-app", "/pages/income/index", "我的收入（到账进度）", "钱"),
 ]
 
 
