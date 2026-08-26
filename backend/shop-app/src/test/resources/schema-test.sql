@@ -3662,6 +3662,44 @@ CREATE TABLE IF NOT EXISTS mch_appointment_slot
     CONSTRAINT uk_slot_no UNIQUE (slot_no)
 );
 
+CREATE TABLE IF NOT EXISTS sys_job_def
+(
+    id               BIGINT       NOT NULL AUTO_INCREMENT,
+    job_name         VARCHAR(64)  NOT NULL,
+    display_name     VARCHAR(64)  NOT NULL,
+    owner_module     VARCHAR(32)  NOT NULL,
+    cron             VARCHAR(64)  NOT NULL,
+    enabled          TINYINT      NOT NULL DEFAULT 1,
+    lock_at_most_sec INT          NOT NULL DEFAULT 1800,
+    manual_trigger   TINYINT      NOT NULL DEFAULT 1,
+    log_every_run    TINYINT      NOT NULL DEFAULT 1,
+    description      VARCHAR(255),
+    tenant_no        VARCHAR(32)  NOT NULL DEFAULT 'MAIN',
+    created_at       DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at       DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    updated_by       VARCHAR(64),
+    version          BIGINT       NOT NULL DEFAULT 0,
+    deleted          TINYINT      NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_job_def_name UNIQUE (job_name)
+);
+
+CREATE TABLE IF NOT EXISTS sys_job_log
+(
+    id           BIGINT       NOT NULL AUTO_INCREMENT,
+    job_name     VARCHAR(64)  NOT NULL,
+    started_at   DATETIME(3)  NOT NULL,
+    duration_ms  BIGINT       NOT NULL DEFAULT 0,
+    status       VARCHAR(16)  NOT NULL,
+    detail       VARCHAR(255),
+    error        VARCHAR(1024),
+    trigger_type VARCHAR(16)  NOT NULL DEFAULT 'CRON',
+    instance     VARCHAR(64),
+    tenant_no    VARCHAR(32)  NOT NULL DEFAULT 'MAIN',
+    created_at   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id)
+);
+
 -- 种子数据
 INSERT INTO sys_industry VALUES
 (1,'CATERING','餐饮',10,1,1,0,0,'微信小微白名单内','MAIN','2026-08-09 12:49:36','SYSTEM','2026-08-09 12:49:36',NULL,0,0),
