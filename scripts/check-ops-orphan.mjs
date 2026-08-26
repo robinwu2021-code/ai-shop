@@ -64,8 +64,24 @@ for (const r of rows) {
   console.log(`   ${fresh.includes(r) ? "★新增" : "     "} ${r.method} ${r.path}`);
 }
 
+// 基线里已经接上出口的行 —— 补完了却忘了删。
+// 与 check-controller-cohesion 的同一个漏洞：名单上的条目是免检的，
+// 不删的话它将来被摘掉出口也不会有人发现，而这份清单的整个价值就是「只准变短」。
+const stale = [...known].filter((k) => !rows.some((r) => `${r.method} ${r.path}` === k));
+
+if (stale.length) {
+  console.log(`\n✅ 这 ${stale.length} 条已经有出口了，把它们从基线里删掉：`);
+  for (const k of stale) console.log(`      ${k}`);
+}
+
 if (check && fresh.length) {
   console.error(`\n✗ 新增了 ${fresh.length} 条「做了没入口」的端点。`);
   console.error("  要么给它加运营端出口，要么登记进 ops-web/known-orphan-endpoints.txt 并写明为什么。");
+  process.exit(1);
+}
+
+if (check && stale.length) {
+  console.error(`\n✗ 基线里有 ${stale.length} 条已经接上出口了，删掉它们。`);
+  console.error("  留着的话，将来那个出口被摘掉也不会有人发现 —— 名单上的条目是免检的。");
   process.exit(1);
 }
