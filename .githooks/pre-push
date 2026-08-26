@@ -57,6 +57,15 @@ fi
 # 它表现为「这个功能我们做过啊」，而运营点不到。
 # 2026-08-26 首扫 18 条，其中 13 条是整条自营应付+发票链路，
 # 而那是当时唯一真能把钱付出去的路。
+# 同一条判据的 App 端：**页面注册了、app 里没有一处跳得过去**。
+# 2026-08-26 一天撞三次（my-specs 更早那次、income 已随包上了线、
+# sku-identity 装到真机才发现）。三次都不报错 —— 页面是好的、路由是对的、
+# 包也打进去了，只是点不到；而在 H5 上验页面时直接改 hash 进去，
+# 「有没有门」这件事从来不在验证路径上。
+if ! node "$GATE_WT/scripts/check-app-orphan.mjs" --check; then
+  exit 1
+fi
+
 if ! node "$GATE_WT/scripts/check-ops-orphan.mjs" --check; then
   exit 1
 fi
