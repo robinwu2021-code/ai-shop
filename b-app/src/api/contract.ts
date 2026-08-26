@@ -4,6 +4,7 @@
 // 类型全部来自 @shared/types —— **不在这里重复定义**。同一笔订单两端看到的是同一个
 // Order 结构，只是可见字段与可执行动作不同；各定义一份必然漂移。
 import type {
+  IncomeSummary,
   AppointmentSlot,
   Entity,
   EntityStores,
@@ -1181,6 +1182,9 @@ export interface MerchantApi {
   ): Promise<PickupOrder>;
 
   // ---- 积分（商家侧只有成本与开关，看不到抵扣与补差）
+  /** 收入按状态汇总（四个数）。**门店收窄与 mSettleBills 逐字一致** —— 否则总览与明细对不上 */
+  mIncomeSummary(allStores?: boolean): Promise<IncomeSummary>;
+
   mPointsAccount(): Promise<MerchantPointAccount>;
   /** 发分服务费明细：一单一条，数据来自 stl_bill.points_fee_minor */
   mPointsRecords(q?: PointsRecordQuery): Promise<MerchantPointsRecord[]>;

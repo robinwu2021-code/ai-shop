@@ -33,7 +33,8 @@ DOMAINS = [
                     "member-detail",
                     "member-tags", "member-settings", "segments", "coupon-edit", "coupon-issue", "member-card"]),
     ("团购与求团", ["groups", "quotes", "requests", "group", "request", "request-create", "group-host"]),
-    ("钱", ["settle", "payment", "plan", "wallet", "points", "invoice"]),
+    ("钱", ["settle", "payment", "plan", "wallet", "points", "points-records",
+            "income", "invoice"]),
     ("数据", ["stats", "cross-store"]),
     ("账号与设置", ["login", "me", "apply", "staff", "staff-detail", "role-detail",
                     "settings", "address", "profile", "legal"]),
@@ -248,7 +249,6 @@ PROTOTYPES = [
     ("ops-web", "/members?tab=person", "人档与合并", "会员与营销"),
     ("ops-web", "/members?tab=reach", "触达监控", "会员与营销"),
     # 商家资金全链路：接口都在、B 端没有出口的那几页
-    ("b-app", "/pages/income/index", "我的收入（到账进度）", "钱"),
 ]
 
 

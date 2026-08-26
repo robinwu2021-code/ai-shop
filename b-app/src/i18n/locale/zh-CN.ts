@@ -557,6 +557,35 @@ export default {
     waitOfflinePay: "待当面收款",
   },
 
+  income: {
+
+    title: "我的收入",
+
+    scopeCurrent: "仅本店 · 点击看全部",
+
+    scopeAll: "全部门店 · 点击只看本店",
+
+    received: "已到账",
+
+    receivedHint: "通道确认已划入你的收款账户，平台不经手",
+
+    inFlight: "已发起，等通道确认",
+
+    inFlightHint: "{n} 笔",
+
+    stuckDays: "最早一笔已等 {d} 天",
+
+    pending: "待结算",
+
+    pendingHint: "售后期结束后自动结算",
+
+    offline: "当面收款",
+
+    offlineHint: "这部分你已经收到了，无需结算",
+
+  },
+
+
   points: {
 
     title: "积分",

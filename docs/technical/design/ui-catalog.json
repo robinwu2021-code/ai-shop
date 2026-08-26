@@ -255,17 +255,6 @@
             },
             {
               "app": "b-app",
-              "route": "/pages/points-records/index",
-              "title": "发分明细",
-              "domain": "其它",
-              "tab": false,
-              "status": "已实现",
-              "proto": "s06",
-              "protoUrl": "https://claude.ai/code/artifact/ea3b41e2-06e9-4040-907f-3003087a693c",
-              "preview": "http://localhost:5175/#/pages/points-records/index"
-            },
-            {
-              "app": "b-app",
               "route": "/pages/entities/index",
               "title": "证照与账户",
               "domain": "其它",
@@ -359,6 +348,17 @@
           "pages": [
             {
               "app": "b-app",
+              "route": "/pages/income/index",
+              "title": "我的收入",
+              "domain": "钱",
+              "tab": false,
+              "status": "已实现",
+              "proto": "s07",
+              "protoUrl": "https://claude.ai/code/artifact/ea3b41e2-06e9-4040-907f-3003087a693c",
+              "preview": "http://localhost:5175/#/pages/income/index"
+            },
+            {
+              "app": "b-app",
               "route": "/pages/points/index",
               "title": "积分",
               "domain": "钱",
@@ -367,6 +367,17 @@
               "proto": "s05",
               "protoUrl": "https://claude.ai/code/artifact/ea3b41e2-06e9-4040-907f-3003087a693c",
               "preview": "http://localhost:5175/#/pages/points/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/points-records/index",
+              "title": "发分明细",
+              "domain": "钱",
+              "tab": false,
+              "status": "已实现",
+              "proto": "s06",
+              "protoUrl": "https://claude.ai/code/artifact/ea3b41e2-06e9-4040-907f-3003087a693c",
+              "preview": "http://localhost:5175/#/pages/points-records/index"
             },
             {
               "app": "b-app",
@@ -400,17 +411,6 @@
               "proto": null,
               "protoUrl": null,
               "preview": "http://localhost:5175/#/pages/plan/index"
-            },
-            {
-              "app": "b-app",
-              "route": "/pages/income/index",
-              "title": "我的收入（到账进度）",
-              "domain": "钱",
-              "tab": false,
-              "status": "原型",
-              "proto": "s07",
-              "protoUrl": "https://claude.ai/code/artifact/ea3b41e2-06e9-4040-907f-3003087a693c",
-              "preview": null
             }
           ]
         },

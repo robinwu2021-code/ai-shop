@@ -545,6 +545,41 @@ public class SettleServiceImpl implements SettleService {
     // ---------------------------------------------------------------- 查询
 
     @Override
+    public IncomeSummaryVO incomeSummary(String merchantNo, java.util.Collection<String> storeNos) {
+        /*
+         * **复用 merchantBills**，不另写一份查询。
+         *
+         * 那个方法里有一段实测出来的归属规则（无门店归属的存量流水要放行，
+         * 否则开了两家店的商家结算页会突然变空）。在这里重写一遍，
+         * 两处迟早走岔 —— 而走岔的表现是「总览的数和明细加起来对不上」，
+         * 那比两处都错更难查。
+         */
+        long received = 0, inFlight = 0, pending = 0, offline = 0;
+        int inFlightCount = 0;
+        Long oldest = null;
+        for (SettleBillVO b : merchantBills(merchantNo, storeNos)) {
+            String st = b.status();
+            if (StlBill.SPLIT_CONFIRMED.equals(st) || StlBill.PAID.equals(st)) {
+                received += b.netMinor();
+            } else if (StlBill.SPLIT.equals(st)) {
+                // 已发起、等回执。**此前它混在「已到账」里** —— 而底下是桩，一分钱没动
+                inFlight += b.netMinor();
+                inFlightCount++;
+                if (b.splitAt() != null && (oldest == null || b.splitAt() < oldest)) {
+                    oldest = b.splitAt();
+                }
+            } else if (StlBill.OFFLINE_SETTLED.equals(st)) {
+                // 当面收款：**他早就拿到了**，不该混进「待结算」让他以为平台还欠着
+                offline += b.netMinor();
+            } else if (!StlBill.REVERSED.equals(st)) {
+                // 其余都算待结算。REVERSED 排除 —— 那是退款回退，不是收入
+                pending += b.netMinor();
+            }
+        }
+        return new IncomeSummaryVO(received, inFlight, pending, offline, inFlightCount, oldest);
+    }
+
+    @Override
     public List<SettleBillVO> merchantBills(String merchantNo, java.util.Collection<String> storeNos) {
         /*
          * 收窄的同时**必须放行没有门店归属的行**（store_no 为空 = V14 之前的存量流水）。

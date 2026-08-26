@@ -44,6 +44,7 @@ import type {
   OpenFromMapReq,
 } from "./requests";
 import type {
+  IncomeSummary,
   AppointmentSlot,
   BizScope,
   AfterSale,
@@ -459,6 +460,8 @@ export const httpApi: MerchantApi = {
   mPlanReach: (payload) => http.post<ReachPlan>(E.mPlanReach.path, payload),
   mSendReach: (payload) => http.post<ReachResult>(E.mSendReach.path, payload),
 
+  mIncomeSummary: (allStores) =>
+    http.get<IncomeSummary>(E.mIncomeSummary.path, allStores ? { allStores: true } : undefined),
   mSettleList: (allStores) =>
     http.get<SettleBill[]>(E.mSettleList.path, allStores ? { allStores: true } : undefined),
   mRateCard: () => http.get<RateCard>(E.mRateCard.path),

@@ -411,6 +411,35 @@ export default {
     offlinePay: "تأكيد الاستلام", offlinePayTitle: "تأكيد استلام المبلغ نقدًا", offlineDue: "المبلغ المستحق", offlineDeducted: "تم خصم {v} بالنقاط — حصّل المبلغ أعلاه فقط", offlineNotCustodied: "المنصة لا تحتفظ بهذا المبلغ — يدفع العميل لك مباشرة، ونحن نسجّل هذا التأكيد فقط", offlinePaid: "تم تأكيد الاستلام", offlineCancel: "لم يُستلم بعد", waitOfflinePay: "بانتظار الدفع نقدًا",
   },
 
+  income: {
+
+    title: "دخلي",
+
+    scopeCurrent: "هذا المتجر · اضغط للكل",
+
+    scopeAll: "كل المتاجر · اضغط لهذا فقط",
+
+    received: "تم الاستلام",
+
+    receivedHint: "أكدت القناة تحويله إلى حسابك؛ المنصة لا تحتفظ به",
+
+    inFlight: "تم الإرسال، بانتظار تأكيد القناة",
+
+    inFlightHint: "{n} عملية",
+
+    stuckDays: "أقدمها انتظرت {d} يومًا",
+
+    pending: "بانتظار التسوية",
+
+    pendingHint: "تتم التسوية تلقائيًا بعد انتهاء فترة ما بعد البيع",
+
+    offline: "دفع نقدي",
+
+    offlineHint: "استلمت هذا بالفعل — لا حاجة للتسوية",
+
+  },
+
+
   points: {
 
     title: "النقاط",

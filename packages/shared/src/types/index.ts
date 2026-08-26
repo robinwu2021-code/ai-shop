@@ -1287,6 +1287,11 @@ export interface BizScope {
  * - `RETRYING` 失败重试中 · `MANUAL` 转人工（重试用尽，**不会自动再动钱**）
  * - `REVERSED` 已回退（退款前必须先回退分账）
  * - `OFFLINE_SETTLED` 当面收款，不走分账（钱从没进过平台）
+ * - 自营轨道：`PENDING_RECON` 待对账 · `CONFIRMED` 已确认应付 · `PAID` 已付款（自营终态）
+ *
+ * ⚠️ **两条轨道互不相通**：第三方的单不会走到 `PAID`，自营的单不会走到 `SPLIT` ——
+ * 它们的钱根本不是同一条路径下去的。此前 shared 这份漏了自营那三个值，
+ * 于是 b-app 判 `status === "PAID"` 时类型说「不可能」，而后端一直在下发。
  *
  * ⚠️ **`SPLIT` 曾经同时表示「指令已发出」与「钱已到」**，而底下调的是桩实现 ——
  * 账面显示已分账而一分钱没动。2026-08-26 拆开：`SPLIT` 退回「已发出」，
@@ -1300,6 +1305,9 @@ export type SettleBillStatus =
   | "SPLIT"
   | "SPLIT_CONFIRMED"
   | "OFFLINE_SETTLED"
+  | "PENDING_RECON"
+  | "CONFIRMED"
+  | "PAID"
   | "RETRYING"
   | "MANUAL"
   | "REVERSED";
@@ -1356,6 +1364,27 @@ export type TrafficSource = "MERCHANT_OWNED" | "PLATFORM";
  * ⚠️ 列表只是**那一刻**的快照，不是承诺：真正的判定在下单那条带条件的
  * UPDATE 里。两个人同时看到同一个「剩 1」，只有一个抢得到。
  */
+/**
+ * 商家收入按状态汇总。
+ *
+ * ⚠️ **四个数是四种状态，不是四个口袋** —— 它们加起来等于全部结算单。
+ * 结算页此前只显示一个「商家实得」，读起来像已到手：商家拿它去对银行流水，
+ * 对不上就来找客服，而客服看到的状态也只有一个词。
+ */
+export interface IncomeSummary {
+  /** 已到账：通道回执确认过的 */
+  receivedMinor: number;
+  /** 已发起、等通道确认。**此前它混在「已到账」里**，而底下是桩 */
+  inFlightMinor: number;
+  /** 待结算 */
+  pendingMinor: number;
+  /** 当面收款：**他早就拿到了**，无需结算 */
+  offlineMinor: number;
+  inFlightCount: number;
+  /** 最早一笔在途的发起时刻。**「卡了多久」是商家真正想问的** */
+  oldestInFlightAt?: number | null;
+}
+
 export interface AppointmentSlot {
   slotNo: string;
   storeNo: string;

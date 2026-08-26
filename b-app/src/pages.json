@@ -88,6 +88,12 @@
       }
     },
     {
+      "path": "pages/income/index",
+      "style": {
+        "navigationBarTitleText": "我的收入"
+      }
+    },
+    {
       "path": "pages/points/index",
       "style": {
         "navigationBarTitleText": "积分"

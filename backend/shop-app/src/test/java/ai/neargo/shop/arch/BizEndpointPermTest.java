@@ -273,6 +273,7 @@ class BizEndpointPermTest {
 
         // ---- 钱 ----
         put("/biz/settle/bills", BizPerms.FINANCE);
+        put("/biz/settle/income", BizPerms.FINANCE);
         put("/biz/settle/bills/{settleNo}", BizPerms.FINANCE);
         put("/biz/settle/rate-card", BizPerms.FINANCE);
         // 进项票是财务的事，与结算单同一档：能看账的人才该经手开票与对账

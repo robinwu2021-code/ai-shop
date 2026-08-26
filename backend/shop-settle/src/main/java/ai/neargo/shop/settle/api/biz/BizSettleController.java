@@ -56,6 +56,22 @@ public class BizSettleController {
         return settleService.merchantBills(BizContext.requireMerchantNo(), scope);
     }
 
+    /**
+     * 收入总览：按状态汇总的四个数。
+     *
+     * <p><b>门店收窄与 {@code /bills} 逐字一致</b> —— 两处不同的话，
+     * 总览的数和明细列表加起来就对不上，而那种错查起来比两处都错更费劲。
+     */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.FINANCE + "')")
+    @GetMapping("/biz/settle/income")
+    public SettleService.IncomeSummaryVO income(@RequestParam(required = false) Boolean allStores) {
+        var ctx = BizContext.current();
+        java.util.Collection<String> scope = Boolean.TRUE.equals(allStores)
+                ? ctx.allowedStoresOrAll()
+                : java.util.List.of(ctx.currentStoreNo() == null ? "" : ctx.currentStoreNo());
+        return settleService.incomeSummary(BizContext.requireMerchantNo(), scope);
+    }
+
     @PreAuthorize("@perm.canBiz('" + BizPerms.FINANCE + "')")
     @GetMapping("/biz/settle/bills/{settleNo}")
     public SettleBillVO bill(@PathVariable String settleNo) {

@@ -399,7 +399,7 @@ export const ENUM_REGISTRY: EnumEntry[] = [
   { decl: "shared:StaffRole", dom: "merchant", shape: "CLASS", verdict: "OK" },
   { decl: "shared:SettleBillStatus", dom: "settle", shape: "STATUS", verdict: "OK",
     note: "2026-08-11 已收敛为后端 StlBill 的取值。此前是 PENDING/PARTIAL/DONE/EXPIRED —— 一套后端从来没有过的词，配的是同样虚构的「周期账单」结构；b-app 结算页整片字段连真后端都是 undefined，靠 mock 才看起来是好的。做 P4 结算分店时撞出来。**2026-08-26 拆开 SPLIT**：此前它同时表示「分账指令已发出」与「资金已划转」，而底下调的是 StubSplitGateway —— 账面显示已分账而一分钱没动，商家看着以为钱在路上。现在 SPLIT 退回「已发出」，到账另立 SPLIT_CONFIRMED，且**只能由通道回执产生**（不给人工入口，与提现单 APPROVED→PAID 同一条规矩）。另补 OFFLINE_SETTLED：当面收款的钱从没进过平台，不走分账。",
-    words: ["SPLITTING", "SPLIT", "SPLIT_CONFIRMED", "OFFLINE_SETTLED", "RETRYING", "MANUAL", "REVERSED"] },
+    words: ["SPLITTING", "SPLIT", "SPLIT_CONFIRMED", "OFFLINE_SETTLED", "RETRYING", "MANUAL", "REVERSED", "PENDING_RECON", "CONFIRMED", "PAID"] },
   { decl: "shared:MerchantApplyReviewStatus", dom: "merchant", shape: "STATUS", verdict: "OK",
     words: ["REVIEWING"] },
   { decl: "shared:PickupOwnerType", dom: "community", shape: "CLASS", verdict: "OK" },

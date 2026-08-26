@@ -83,6 +83,7 @@ function pointsAccount() {
 }
 import type { StaffLogRow } from "@shared/mock/db";
 import type {
+  SettleBill,
   AppointmentSlot,
   ActivityConflict,
   CouponIssueBatch,
@@ -3573,6 +3574,28 @@ export const mockApi: MerchantApi = {
       merchantOwnedRate: pct(SETTLE.commissionRate.MERCHANT_OWNED),
       platformRate: pct(SETTLE.commissionRate.PLATFORM),
       note: "自带客流（扫店铺码进店）零佣金；平台客流按公示费率收取。费率以下单时快照为准，调整不影响历史订单。",
+    });
+  },
+
+  /**
+   * 收入汇总。**从 mSettleList 的结果推**，不另写一套 ——
+   * 两处口径不同的话，总览的数和明细加起来对不上，
+   * 而那是这一屏最不该出的错（商家会以为钱少了）。
+   */
+  async mIncomeSummary(allStores) {
+    const bills = await this.mSettleList(allStores);
+    const sum = (f: (b: SettleBill) => boolean) =>
+      bills.filter(f).reduce((n, b) => n + b.netMinor, 0);
+    const inFlight = bills.filter((b) => b.status === "SPLIT");
+    return delay({
+      receivedMinor: sum((b) => b.status === "SPLIT_CONFIRMED" || b.status === "PAID"),
+      inFlightMinor: sum((b) => b.status === "SPLIT"),
+      pendingMinor: sum((b) => !["SPLIT", "SPLIT_CONFIRMED", "PAID", "OFFLINE_SETTLED", "REVERSED"].includes(b.status)),
+      offlineMinor: sum((b) => b.status === "OFFLINE_SETTLED"),
+      inFlightCount: inFlight.length,
+      oldestInFlightAt: inFlight.length
+        ? Math.min(...inFlight.map((b) => b.splitAt ?? b.createdAt))
+        : null,
     });
   },
 

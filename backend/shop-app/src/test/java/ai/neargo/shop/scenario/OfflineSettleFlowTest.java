@@ -322,6 +322,60 @@ class OfflineSettleFlowTest {
         assertThat(reload(bill.getSettleNo()).getStatus()).isEqualTo(StlBill.OFFLINE_SETTLED);
     }
 
+    @Test
+    @DisplayName("★★★ 收入四个数加起来 = 全部结算单总额 —— 它们是四种状态，不是四个口袋")
+    void incomeSummaryCoversEveryBill() throws Exception {
+        // 造齐四种：线下（无需结算）、线上待结算、已发起、已到账
+        billOfOfflineOrder("13400288012", "income-offline");
+        StlBill pending = billOfOnlineOrder("13400288013", "income-pending");
+        StlBill inFlight = billOfOnlineOrder("13400288014", "income-inflight");
+        StlBill received = billOfOnlineOrder("13400288015", "income-received");
+        for (StlBill b : List.of(inFlight, received)) {
+            DataScopeContext.executeWithoutScope(() -> {
+                StlBill x = reload(b.getSettleNo());
+                x.setBusinessMode(ai.neargo.shop.spi.user.MerchantQueryPort.MODE_THIRD_PARTY);
+                x.setStatus(StlBill.PENDING);
+                return billMapper.updateById(x);
+            });
+            settleService.executeSplit(b.getSettleNo());
+        }
+        settleService.confirmSplit(received.getSettleNo(), "CH-INCOME");
+
+        var sum = settleService.incomeSummary(SEED_ENTITY, List.of());
+        long total = DataScopeContext.executeWithoutScope(() ->
+                        billMapper.selectList(Wrappers.<StlBill>lambdaQuery()
+                                .eq(StlBill::getEntityNo, SEED_ENTITY))).stream()
+                .filter(b -> !StlBill.REVERSED.equals(b.getStatus()))
+                .mapToLong(b -> b.getNetMinor() == null ? 0L : b.getNetMinor()).sum();
+
+        /*
+         * ⚠️ **这一条是这一步的完成判据。** 四个数是同一批单子按状态切开的，
+         * 加起来必须等于总额 —— 少一档就意味着有一批钱在总览上凭空消失，
+         * 而商家看到的是「我的收入比实际少」，那是最伤信任的一类错。
+         */
+        assertThat(sum.receivedMinor() + sum.inFlightMinor() + sum.pendingMinor() + sum.offlineMinor())
+                .as("四个数是四种状态，不是四个口袋 —— 加起来必须等于全部结算单")
+                .isEqualTo(total);
+
+        assertThat(sum.offlineMinor()).as("当面收款那部分他早就拿到了").isPositive();
+        assertThat(sum.inFlightMinor()).as("已发起等确认 —— 此前它混在「已到账」里").isPositive();
+        assertThat(sum.receivedMinor()).as("只有回执确认过的才算到账").isPositive();
+        /*
+         * ⚠️ **不断绝对笔数。** 同一个 Spring 上下文里别的用例也会造在途单
+         * （M7SettleFlowTest 就会），断 `isEqualTo(1)` 的结果是
+         * **单独跑绿、全量跑红**，而报错说的是「期望 1 实际 4」——
+         * 与真实原因（别人也造了单）毫不相干。
+         *
+         * 断「至少有我造的那一笔」才是这条用例真正要证明的东西。
+         */
+        assertThat(sum.inFlightCount())
+                .as("至少要数到我刚造的那一笔")
+                .isGreaterThanOrEqualTo(1);
+        assertThat(sum.oldestInFlightAt())
+                .as("「卡了多久」是商家真正想问的 —— 只给金额他看不出是一笔大的还是很多笔")
+                .isNotNull();
+    }
+
     // ── helpers ──────────────────────────────────────────────
 
     /** 走完整条线下链路（下单 → 商家确认收款），返回生成出来的那张账单。 */

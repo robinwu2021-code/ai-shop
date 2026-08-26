@@ -29,6 +29,34 @@ public interface SettleService {
      */
     boolean confirmSplit(String settleNo, String channelRef);
 
+    /**
+     * 商家的收入按状态汇总。
+     *
+     * <p><b>四个数是四种状态，不是四个口袋</b> —— 它们加起来等于这家商家全部结算单的总额。
+     *
+     * <p>为什么要有它：结算页此前只显示一个「商家实得」，读起来像已到手 ——
+     * 商家拿它去对银行流水，对不上就来找客服，而客服看到的状态也只有一个词。
+     *
+     * @param storeNos 门店收窄。**复用 {@link #merchantBills} 的同一套归属判断** ——
+     *                 两处各写一遍收窄逻辑，迟早会走岔，而走岔的表现是
+     *                 「总览的数和明细列表加起来对不上」
+     */
+    IncomeSummaryVO incomeSummary(String merchantNo, java.util.Collection<String> storeNos);
+
+    /**
+     * @param receivedMinor  已到账：通道回执确认过的（{@code SPLIT_CONFIRMED} / 自营 {@code PAID}）
+     * @param inFlightMinor  已发起，等通道确认（{@code SPLIT}）——
+     *                       <b>这一档是本批新拆出来的</b>，此前它混在「已到账」里
+     * @param pendingMinor   待结算（{@code PENDING} / {@code PENDING_RECON} / {@code SPLITTING} / 重试中）
+     * @param offlineMinor   当面收款（{@code OFFLINE_SETTLED}）：<b>这部分他早就拿到了</b>，无需结算
+     * @param inFlightCount  在途笔数。只给金额的话，商家看不出「是一笔大的卡住了还是很多笔」
+     * @param oldestInFlightAt 最早一笔在途的发起时刻；没有在途时为 null。
+     *                       <b>它是「卡了多久」的唯一线索</b> —— 而那正是商家真正想问的
+     */
+    record IncomeSummaryVO(long receivedMinor, long inFlightMinor, long pendingMinor,
+                           long offlineMinor, int inFlightCount, Long oldestInFlightAt) {
+    }
+
     /** 执行分账。**幂等**：重复执行不会重复打款。 */
     void executeSplit(String settleNo);
 

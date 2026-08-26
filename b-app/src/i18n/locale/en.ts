@@ -411,6 +411,35 @@ export default {
     offlinePay: "Confirm payment", offlinePayTitle: "Confirm cash received on site", offlineDue: "Amount due", offlineDeducted: "{v} already covered by points — collect only the amount above", offlineNotCustodied: "The platform does not hold this money — the customer pays you directly; we only record this confirmation", offlinePaid: "Payment confirmed", offlineCancel: "Not yet received", waitOfflinePay: "Awaiting cash on site",
   },
 
+  income: {
+
+    title: "My income",
+
+    scopeCurrent: "This store · tap for all",
+
+    scopeAll: "All stores · tap for this one",
+
+    received: "Received",
+
+    receivedHint: "Confirmed by the channel and paid into your account; the platform does not hold it",
+
+    inFlight: "Sent, awaiting channel confirmation",
+
+    inFlightHint: "{n} items",
+
+    stuckDays: "oldest has waited {d} days",
+
+    pending: "Awaiting settlement",
+
+    pendingHint: "Settled automatically once the after-sales window closes",
+
+    offline: "Paid on site",
+
+    offlineHint: "You already received this — no settlement needed",
+
+  },
+
+
   points: {
 
     title: "Points",

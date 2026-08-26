@@ -246,6 +246,8 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
   //
   // 商家**不感知积分抵扣**（V34）：他收到的是订单全额减各项费用。
   // 这里只有他自己发分的成本，以及开关。
+  mIncomeSummary: { method: "GET", path: "/biz/settle/income", auth: true, summary: "收入按状态汇总" },
+
   mPointsAccount: {
     method: "GET",
     path: "/biz/points/account",
