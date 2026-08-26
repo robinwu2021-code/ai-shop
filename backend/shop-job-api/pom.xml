@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>ai.neargo.shop</groupId>
+        <artifactId>shop-parent</artifactId>
+        <version>0.1.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>shop-job-api</artifactId>
+    <packaging>jar</packaging>
+    <description>定时任务 · 契约包（零依赖：不引 Spring，不引 shop-base）</description>
+
+    <!-- ⚠️ **这里一个 dependency 都不能加。**
+         两条理由，都不是洁癖：
+
+         1. 业务侧要实现 JobHandler 的不止平台。shop-inventory 是独立交付的领域，
+            它刻意不依赖平台语义（见 InventoryDataSourceConfig 的类注释）。
+            契约若放进 shop-base，等于让它为一个接口把整个平台地基拖进去。
+
+         2. shop-base 把 mybatis-plus-spring-boot4-starter 作为**编译依赖**引入。
+            worker 只要顺着依赖链碰到它，MyBatis 就进了 classpath ——
+            native 镜像会因此多背一套反射配置，而**没有任何报错**。
+
+         加依赖前先问：这个 record 真的需要它吗？答案基本都是不需要。 -->
+
+</project>

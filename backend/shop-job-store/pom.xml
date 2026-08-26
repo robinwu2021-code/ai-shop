@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>ai.neargo.shop</groupId>
+        <artifactId>shop-parent</artifactId>
+        <version>0.1.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>shop-job-store</artifactId>
+    <packaging>jar</packaging>
+    <description>定时任务 · 独立库持久层（JdbcClient 手写 SQL，不引 Spring Data、不引 shop-base）</description>
+
+    <!-- ⚠️ **依赖清单是这个模块的设计的一部分，加之前先读完这段。**
+
+         这里刻意**不**用 spring-boot-starter-data-jdbc。它会拖进
+         spring-data-jdbc / spring-data-relational / spring-data-commons 三个 jar（约 2.6MB），
+         换来的是 repository 代理 —— 而代理正是 native 镜像最难处理的东西，
+         Spring Data AOT 存在的意义就是替这些代理补生成。
+
+         **不用代理，这个问题根本不存在。** 本模块 3 张表、十来条 SQL，
+         JdbcClient（在 spring-jdbc 里，Spring Framework 自带）就够，
+         而且 record + 显式 RowMapper 天然没有反射，native 侧零配置。
+
+         同理**不引 shop-base**：它把 mybatis-plus-spring-boot4-starter 作为编译依赖，
+         顺着依赖链就会把 MyBatis 塞进 worker 的 classpath，
+         native 镜像因此多背一套反射配置，而**没有任何报错**。
+         代价是 BizException / ErrorCode 用不了 —— 这个模块自己抛标准异常。 -->
+    <dependencies>
+        <dependency>
+            <groupId>ai.neargo.shop</groupId>
+            <artifactId>shop-job-api</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <!-- JdbcClient + Hikari + @ConfigurationProperties。**不是** starter-data-jdbc -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-jdbc</artifactId>
+        </dependency>
+        <!-- 迁移自己带：独立库不能指望别人帮它跑迁移 -->
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-mysql</artifactId>
+        </dependency>
+        <!-- 测试用内存库。生产是 MariaDB；H2 只验装配与 SQL 形状，不验方言 -->
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+</project>

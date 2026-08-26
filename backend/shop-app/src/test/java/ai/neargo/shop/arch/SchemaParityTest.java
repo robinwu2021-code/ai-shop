@@ -32,10 +32,11 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class SchemaParityTest {
 
-    /** 建表 或 改名，**一个正则**，这样两者能按出现顺序处理（见 {@link #collect}） */
-    private static final Pattern CREATE_OR_RENAME = Pattern.compile(
+    /** 建表 / 改名 / 删表，**一个正则**，这样三者能按出现顺序处理（见 {@link #collect}） */
+    private static final Pattern CREATE_OR_RENAME_OR_DROP = Pattern.compile(
             "CREATE TABLE IF NOT EXISTS (\\w+)"
-                    + "|ALTER TABLE\\s+(\\w+)\\s+RENAME TO\\s+(\\w+)",
+                    + "|ALTER TABLE\\s+(\\w+)\\s+RENAME TO\\s+(\\w+)"
+                    + "|DROP TABLE(?:\\s+IF EXISTS)?\\s+(\\w+)",
             Pattern.CASE_INSENSITIVE);
 
     @Test
@@ -74,23 +75,32 @@ class SchemaParityTest {
     }
 
     /**
-     * 收集这段 SQL 里表名的**净变化**：建表加进来，{@code RENAME TO} 就地改名。
+     * 收集这段 SQL 里表名的**净变化**：建表加进来，{@code RENAME TO} 就地改名，
+     * {@code DROP TABLE} 拿掉。
      *
      * <p>不认改名的话，这条守卫会拿**改名前**的表名去测试 schema 里找，
      * 报「msg_message 没建」—— 而它其实建了，只是叫 notify_message 了。
      * 报错文案指向「加迁移忘了同步测试 schema」，把人引向一个不存在的问题。
      *
-     * <p>建表与改名必须**按出现顺序**处理（用一个合并的正则一次扫过去），
-     * 而不是先收全部建表再收全部改名：同一个文件里先改名后建同名表是合法的。
+     * <p><b>不认删表也一样会误报</b>：一张后来被 DROP 掉的表，生成器重放时不会出现在
+     * schema-test.sql 里（那是对的），而这条守卫却仍拿它去找，报「忘了同步」。
+     * 上一次是 sys_job_def / sys_job_log —— 定时任务的表迁进独立库之后被 V262 删掉，
+     * 生成器与守卫给出了相反的结论，而错的是守卫。
+     *
+     * <p>三者必须**按出现顺序**处理（用一个合并的正则一次扫过去），
+     * 而不是先收全部建表再收全部改名/删表：同一个文件里先删后建同名表是合法的，
+     * 分开收就会把「建」当成先发生的那一个。
      */
     private static void collect(String sql, Set<String> out) {
-        Matcher m = CREATE_OR_RENAME.matcher(sql);
+        Matcher m = CREATE_OR_RENAME_OR_DROP.matcher(sql);
         while (m.find()) {
             if (m.group(1) != null) {
                 out.add(m.group(1).toLowerCase());
-            } else {
+            } else if (m.group(2) != null) {
                 out.remove(m.group(2).toLowerCase());
                 out.add(m.group(3).toLowerCase());
+            } else {
+                out.remove(m.group(4).toLowerCase());
             }
         }
     }

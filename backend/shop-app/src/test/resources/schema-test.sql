@@ -3662,44 +3662,6 @@ CREATE TABLE IF NOT EXISTS mch_appointment_slot
     CONSTRAINT uk_slot_no UNIQUE (slot_no)
 );
 
-CREATE TABLE IF NOT EXISTS sys_job_def
-(
-    id               BIGINT       NOT NULL AUTO_INCREMENT,
-    job_name         VARCHAR(64)  NOT NULL,
-    display_name     VARCHAR(64)  NOT NULL,
-    owner_module     VARCHAR(32)  NOT NULL,
-    cron             VARCHAR(64)  NOT NULL,
-    enabled          TINYINT      NOT NULL DEFAULT 1,
-    lock_at_most_sec INT          NOT NULL DEFAULT 1800,
-    manual_trigger   TINYINT      NOT NULL DEFAULT 1,
-    log_every_run    TINYINT      NOT NULL DEFAULT 1,
-    description      VARCHAR(255),
-    tenant_no        VARCHAR(32)  NOT NULL DEFAULT 'MAIN',
-    created_at       DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at       DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    updated_by       VARCHAR(64),
-    version          BIGINT       NOT NULL DEFAULT 0,
-    deleted          TINYINT      NOT NULL DEFAULT 0,
-    PRIMARY KEY (id),
-    CONSTRAINT uk_job_def_name UNIQUE (job_name)
-);
-
-CREATE TABLE IF NOT EXISTS sys_job_log
-(
-    id           BIGINT       NOT NULL AUTO_INCREMENT,
-    job_name     VARCHAR(64)  NOT NULL,
-    started_at   DATETIME(3)  NOT NULL,
-    duration_ms  BIGINT       NOT NULL DEFAULT 0,
-    status       VARCHAR(16)  NOT NULL,
-    detail       VARCHAR(255),
-    error        VARCHAR(1024),
-    trigger_type VARCHAR(16)  NOT NULL DEFAULT 'CRON',
-    instance     VARCHAR(64),
-    tenant_no    VARCHAR(32)  NOT NULL DEFAULT 'MAIN',
-    created_at   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (id)
-);
-
 -- 种子数据
 INSERT INTO sys_industry VALUES
 (1,'CATERING','餐饮',10,1,1,0,0,'微信小微白名单内','MAIN','2026-08-09 12:49:36','SYSTEM','2026-08-09 12:49:36',NULL,0,0),
@@ -7929,3 +7891,30 @@ VALUES
     ('FINANCE', 'OPS_FINANCE__TAB_PAYABLES', 'OPS', NOW(), NOW()),
     ('FINANCE', 'OPS_FINANCE__TAB_PURCHASE_INVOICES', 'OPS', NOW(), NOW()),
     ('FINANCE', 'OPS_FINANCE__TAB_BUYER_INVOICES', 'OPS', NOW(), NOW());
+INSERT INTO sys_function
+    (function_code, name, end_code, icon, href, sort, enabled, created_at, updated_at)
+VALUES ('OPS_INVENTORY', '进销存', 'OPS', 'Boxes', '/inventory', 45, 1, NOW(), NOW());
+INSERT INTO sys_function_point
+    (point_code, function_code, name, group_name, href, ui_perm_code, perm_code,
+     backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at)
+VALUES
+    ('OPS_INVENTORY', 'OPS_INVENTORY', '库存健康度', '库存治理',
+     '/inventory', 'product:sku:read', 'product:sku:read',
+     'IMPLEMENTED', 1, 'P-18.1', 'MENU', 10, NOW(), NOW()),
+    ('OPS_INVENTORY__TAB_LEDGER', 'OPS_INVENTORY', '库存流水', '库存治理',
+     '/inventory?tab=ledger', 'product:sku:read', 'product:sku:read',
+     'IMPLEMENTED', 1, 'P-18.2', 'MENU', 20, NOW(), NOW()),
+    ('OPS_INVENTORY__TAB_RECON', 'OPS_INVENTORY', '库存对差', '切换判据',
+     '/inventory?tab=recon', 'product:sku:read', 'product:sku:read',
+     'IMPLEMENTED', 1, 'P-18.3', 'MENU', 30, NOW(), NOW());
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+VALUES
+    ('SUPER_ADMIN', 'OPS_INVENTORY', 'OPS', NOW(), NOW()),
+    ('SUPER_ADMIN', 'OPS_INVENTORY__TAB_LEDGER', 'OPS', NOW(), NOW()),
+    ('SUPER_ADMIN', 'OPS_INVENTORY__TAB_RECON', 'OPS', NOW(), NOW()),
+    ('GOODS_OPS', 'OPS_INVENTORY', 'OPS', NOW(), NOW()),
+    ('GOODS_OPS', 'OPS_INVENTORY__TAB_LEDGER', 'OPS', NOW(), NOW()),
+    ('GOODS_OPS', 'OPS_INVENTORY__TAB_RECON', 'OPS', NOW(), NOW()),
+    ('AUDITOR', 'OPS_INVENTORY', 'OPS', NOW(), NOW()),
+    ('AUDITOR', 'OPS_INVENTORY__TAB_LEDGER', 'OPS', NOW(), NOW()),
+    ('AUDITOR', 'OPS_INVENTORY__TAB_RECON', 'OPS', NOW(), NOW());

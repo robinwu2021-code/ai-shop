@@ -23,6 +23,14 @@
 
     <!-- 模块数 = 未来可能的部署单元数；域数 = 包数（TDD-backend §4.1） -->
     <modules>
+        <!-- 定时任务契约：**零依赖**（连 Spring 都不引）。
+             业务侧实现 JobHandler，worker 只认名字。
+             不放进 shop-base 的理由见它自己的 pom 注释 —— 一句话：
+             shop-base 会把 mybatis-plus 拖给每一个引用者，而 worker 要的正是干净 -->
+        <module>shop-job-api</module>
+        <!-- 定时任务持久层：独立库 + JdbcClient 手写 SQL。
+             不引 Spring Data（代理是 native 的负担），不引 shop-base（会拖来 MyBatis） -->
+        <module>shop-job-store</module>
         <!-- 地基：横切基础设施 + 跨域契约。零业务依赖，谁都能依赖 -->
         <module>shop-base</module>
         <!-- 领域服务实现（jar，不可独立启动） -->
