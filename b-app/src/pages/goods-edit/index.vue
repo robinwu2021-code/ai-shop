@@ -2676,18 +2676,20 @@ async function save(thenSubmit = false) {
       <p>只在这一类配了参数时才出现 —— 没配的类目不该多一张空卡。
     -->
     <view v-if="propDims.length" class="sh-card mt">
+      <!--
+        **加参数在标题行右边**，与「商品规格和参数」页类目卡上的那个加按钮
+        同一个位置、同一个样子 —— 同一件事在两页别长两张脸。
+
+        <p>它不摆在标题下方：那一排的位置属于**候选**（规格卡就是这么用的），
+        而「加参数」不是候选，是一个开弹层的入口。只有一枚 chip 却独占一整行，
+        看上去也像个被落下的按钮。
+      -->
       <view class="sec">
         <text class="sh-h2">{{ $t("goods.params") }}</text>
-      </view>
-
-      <!--
-        **加参数固定在标题下**，位置与规格那边的候选栏一致。
-        规格那栏摆的是「平台还有这些」（这一页不新增），参数这栏只有一个 ＋ ——
-        因为参数没有「候选维度」可摆：propDims 已经把这一类有的全列出来了，
-        缺的那个只可能是平台没想到的（海拔、辣度），得他自己说。
-      -->
-      <view class="addbar">
-        <text class="sh-chip addbar__chip" @tap="addingParam = true">＋ {{ $t("goods.addParam") }}</text>
+        <view class="btn-add" @tap="addingParam = true">
+          <sh-icon name="plus" :size="24" color="var(--sh-primary)" />
+          <text class="btn-add__t">{{ $t("goods.addParam") }}</text>
+        </view>
       </view>
 
       <!-- 与规格同一条：常驻展开，理由见上面那段 -->
@@ -2719,7 +2721,10 @@ async function save(thenSubmit = false) {
             :class="{ 'param__chip--on': paramValues[d.templateNo]?.label === o.label }"
             @tap="pickParam(d, o)"
           >{{ o.label }}</text>
-          <text class="sh-chip addbar__chip" @tap="openParamValue(d)">＋ {{ $t("goods.paramFill") }}</text>
+          <view class="btn-add btn-add--sm" @tap="openParamValue(d)">
+            <sh-icon name="plus" :size="20" color="var(--sh-primary)" />
+            <text class="btn-add__t">{{ $t("goods.paramFill") }}</text>
+          </view>
         </view>
       </view>
       <text class="link link--quiet more__manage" @tap="gotoMySpecs">
@@ -3143,17 +3148,6 @@ async function save(thenSubmit = false) {
   color: var(--sh-sub);
 }
 
-/*
-  加一维要多填几行，当场说出来。用主色是因为它是**代价**不是提示 ——
-  灰字会被当成又一句说明，而这一句正是他最该看见的。
-*/
-.skucost {
-  display: block;
-  font-size: 24rpx;
-  font-weight: 600;
-  color: var(--sh-primary);
-  margin-top: 8rpx;
-}
 
 /* 规格名只读：它来自「商品规格」，在这儿改会让同一个名字在不同商品上写法不一 */
 .group__name {
@@ -3183,6 +3177,11 @@ async function save(thenSubmit = false) {
 */
 /* 档位缩进在规格名下：视觉上是「这个规格的档」，不是又一排并列的东西 */
 .opts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12rpx;
+  margin-top: 16rpx;
   padding-left: 20rpx;
 }
 
@@ -3202,12 +3201,34 @@ async function save(thenSubmit = false) {
 
 
 /* 弹层里「自己填」那一段的小标题 —— 与候选拉开，说明它是另一回事 */
+/* 加入口：与「商品规格和参数」页的 .btn-add 逐字同形 */
+.btn-add {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  padding: 10rpx 22rpx;
+  border-radius: 9999px;
+  background: var(--sh-primary-tint);
+}
+
+/* 跟在值后面的那个小一号：与一排 chip 并列，不该比它们高 */
+.btn-add--sm {
+  padding: 4rpx 16rpx;
+}
+
+.btn-add__t {
+  font-size: 24rpx;
+  font-weight: 600;
+  color: var(--sh-primary-text);
+}
+
+/* 与「商品规格和参数」页的 .picker__own-t 同一套：26/600/主色 —— 同一段东西同一张脸 */
 .param__own {
   display: block;
   margin-top: 28rpx;
   font-size: 26rpx;
   font-weight: 600;
-  color: var(--sh-ink);
+  color: var(--sh-primary-text);
 }
 
 /* 弹层里那一行输入：输入框吃满，保存压在右边 —— 与「商品规格和参数」那一页同形 */
@@ -3262,14 +3283,18 @@ async function save(thenSubmit = false) {
   margin-bottom: 8rpx;
 }
 
-.addbar__k {
-  font-size: 24rpx;
-}
 
+/*
+ * **这套界面里 ＋ 有两种，形状分得开：**
+ *   虚线药丸（.addbar__chip / 弹层里的候选）= **候选**，点一下当场加进来
+ *   浅底按钮（.btn-add）                    = **入口**，点一下开一个弹层去加
+ * 一律用虚线的话，「点了就有」和「点了还要再填一屏」长成一个样。
+ *
+ * <p>候选只声明「与默认 chip 的差别」—— 字号、内边距、圆角一律吃 .sh-chip：
+ * 自己再写一份 `6rpx 18rpx` 的话，同一张卡里候选比档位矮一圈，
+ * 而两者本来就该是同一颗药丸的两种状态。
+ */
 .addbar__chip {
-  font-size: 24rpx;
-  padding: 6rpx 18rpx;
-  border-radius: 999rpx;
   color: var(--sh-primary-text);
   border: 2rpx dashed var(--sh-primary);
   background: transparent;
@@ -3348,33 +3373,14 @@ async function save(thenSubmit = false) {
   background: var(--sh-primary-tint);
 }
 
-.param__input {
-  flex: 1;
-}
 
 /* 「收起」压在「更多规格」旁边：同一行两个链接，主次要分得出来 */
 .link--quiet {
   color: var(--sh-sub);
 }
 
-/* 推荐规格：一行一个维度 —— 左边问句、右边前三档，点档位一步成组 */
-.tplsug {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
-  padding: 12rpx 0;
-}
 
-.tplsug__q {
-  font-size: 26rpx;
-  color: var(--sh-sub);
-}
 
-.tplsug__opts {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12rpx;
-}
 
 /*
   字段标签在这一页改成**深色半粗**。
@@ -3493,19 +3499,12 @@ async function save(thenSubmit = false) {
   font-size: 24rpx;
   padding: 14rpx 24rpx;
 }
-/* 标准品入口：未取用是一行可点的占位，取用后变成一枚可撤的徽标 */
-.std-pick,
+/* 标准品入口：取用后是一枚可撤的徽标 */
 .std-on {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 20rpx 0;
-}
-.std-pick__val {
-  font-size: 26rpx;
-  /* 不用主色当文字色（design-tokens 守卫）：主色留给按钮与选中态，
-     一行可点的入口靠右侧箭头指路就够了 */
-  color: var(--sh-sub);
 }
 .std-on__txt {
   font-size: 26rpx;
@@ -3710,51 +3709,6 @@ async function save(thenSubmit = false) {
 .is-bad {
   color: var(--sh-danger);
 }
-/* 推荐规格 chip 行 */
-.tplchips {
-  margin-top: 16rpx;
-}
-.tplchips__t {
-  display: block;
-  margin-bottom: 12rpx;
-}
-.tplchips__row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12rpx;
-}
-/* 识别候选条：不用主色底，它是提示不是操作区 —— 主色留给按钮与选中态 */
-.sug {
-  margin-top: 16rpx;
-  padding: 16rpx;
-  border-radius: 16rpx;
-  background: var(--sh-faint);
-}
-.sug__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 8rpx;
-}
-.sug__t {
-  font-size: 26rpx;
-  color: var(--sh-ink);
-}
-.sug__ops {
-  display: flex;
-  align-items: center;
-  gap: 20rpx;
-}
-.sug__skip {
-  font-size: 24rpx;
-  color: var(--sh-sub);
-}
-.sug__l {
-  display: block;
-  font-size: 26rpx;
-  color: var(--sh-sub);
-  line-height: 1.6;
-}
 /* 计数与标签同行右对齐：「已添加 2 / 9」比一句「最多 9 张」有用 */
 .imgs__n {
   flex-shrink: 0;
@@ -3824,34 +3778,6 @@ async function save(thenSubmit = false) {
   display: flex;
   gap: 24rpx;
 }
-.tpls {
-  margin-top: 20rpx;
-  padding: 20rpx;
-  border-radius: 24rpx;
-  background: var(--sh-faint);
-}
-.tpls__hint {
-  display: block;
-  margin-bottom: 16rpx;
-  line-height: 1.6;
-}
-.tpl {
-  padding: 18rpx 20rpx;
-  border-radius: 24rpx;
-  background: var(--sh-surface);
-  margin-bottom: 12rpx;
-}
-.tpl__head {
-  display: flex;
-  align-items: center;
-  gap: 12rpx;
-  margin-bottom: 8rpx;
-}
-.tpl__name {
-  font-size: 28rpx;
-  font-weight: 600;
-  color: var(--sh-ink);
-}
 .hint {
   display: block;
   margin-top: 10rpx;
@@ -3900,73 +3826,8 @@ async function save(thenSubmit = false) {
   width: 40rpx;
   font-size: 24rpx;
 }
-.opts {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 12rpx;
-  margin-top: 16rpx;
-}
-.opt {
-  display: flex;
-  align-items: center;
-  background: var(--sh-faint);
-  border-radius: 16rpx;
-  padding: 0 8rpx 0 16rpx;
-}
-/* 维度选择面板：三段分开，顺序即建议顺序 */
-.picker {
-  margin-top: 16rpx;
-  padding: 20rpx;
-  border-radius: 16rpx;
-  background: var(--sh-faint);
-}
-.picker__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-.picker__sec {
-  margin-top: 20rpx;
-}
-.picker__label {
-  font-size: 24rpx;
-}
-.picker__row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12rpx;
-  margin-top: 10rpx;
-}
-.picker__hint {
-  display: block;
-  margin-top: 8rpx;
-  font-size: 24rpx;
-}
 
-/* 平台档位点选区：贴在选项输入下面，和输入框拉开一点但仍在同一组里 */
-.picks {
-  margin-top: 12rpx;
-}
-.picks__hint {
-  font-size: 24rpx;
-}
-.picks__row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12rpx;
-  margin-top: 8rpx;
-}
-.picks__chip {
-  font-size: 24rpx;
-}
 
-.opt__input {
-  width: 150rpx;
-  height: 64rpx;
-  font-size: 24rpx;
-  color: var(--sh-ink);
-}
 .bulk {
   display: flex;
   align-items: center;
@@ -3981,33 +3842,6 @@ async function save(thenSubmit = false) {
   background: var(--sh-faint);
   font-size: 24rpx;
   color: var(--sh-ink);
-}
-.from {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  margin-top: 20rpx;
-}
-.from__v {
-  font-size: 34rpx;
-  font-weight: 600;
-  color: var(--sh-primary-text);
-}
-.cat-pick {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 20rpx 24rpx;
-  border: 2rpx solid var(--sh-line);
-  /* 与本页其它表单控件同档（16rpx）。此前写 var(--sh-radius) —— 该变量不存在
-     且没给兜底，圆角实际是 0，在一片圆角控件里方棱棱地突兀 */
-  border-radius: 16rpx;
-}
-.cat-pick__ph {
-  color: var(--sh-sub);
-}
-.cat-pick__arrow {
-  color: var(--sh-sub);
 }
 .cat-mask {
   position: fixed;

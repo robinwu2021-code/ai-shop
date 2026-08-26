@@ -1123,25 +1123,6 @@ onShow(() => void load());
   color: var(--sh-sub);
 }
 
-/* 加规格面板：页内一段，不是弹层 */
-.picker {
-  margin: 0 26rpx 20rpx;
-  padding: 20rpx 22rpx;
-  /* 圆角五档：16/24/32/44/full —— 20 不在其中 */
-  border-radius: 24rpx;
-  /*
-    **描边而不是灰底。** 卡片本身已经是浅色，再压一块 `--sh-faint` 上去，
-    两层灰几乎分不开 —— 面板看起来不像一块可操作的区域，像卡片自己变脏了。
-    一条描边把边界说清楚，同时把对比度留给里面的 chip。
-  */
-  background: var(--sh-surface);
-  border: 2rpx solid var(--sh-line);
-}
-.picker__hint {
-  display: block;
-  font-size: 24rpx;
-  margin-bottom: 16rpx;
-}
 /* 弹层里各段之间留口气 */
 .sheet-gap {
   margin-top: 20rpx;
@@ -1166,8 +1147,7 @@ onShow(() => void load());
   flex: 1;
 }
 
-.build__ok,
-.build__no {
+.build__ok {
   font-size: 26rpx;
 }
 
@@ -1188,14 +1168,19 @@ onShow(() => void load());
   flex-wrap: wrap;
   gap: 14rpx;
 }
+/*
+ * 候选：**虚线描边、透明底、带 ＋**，与建品页那一排逐字同形（.addbar__chip）。
+ *
+ * <p>此前这里是实心灰底 —— 同一个动作（点一下加进来）在两页长成两个样子，
+ * 而灰底那种正是这一页「已经有了的档位」的样子：一屏里两种含义共用一张脸。
+ * 虚线在这套界面里只表示一件事：**它还不在这儿，点了才进来。**
+ */
 .chip {
-  font-size: 24rpx;
+  color: var(--sh-primary-text);
+  border: 2rpx dashed var(--sh-primary);
+  background: transparent;
 }
-.picker__own {
-  margin-top: 18rpx;
-  padding-top: 16rpx;
-  border-top: 1rpx solid var(--sh-line);
-}
+
 .picker__own-t {
   display: block;
   font-size: 26rpx;
@@ -1251,7 +1236,12 @@ onShow(() => void load());
   gap: 8rpx;
 }
 .spec__name {
-  /* 可改的字：虚线下划线是最省地方的「这里能点」*/
+  /*
+    可改的字：虚线下划线是最省地方的「这里能点」。
+    **必须 inline-block** —— uni 里 <text> 在 flex 行里是 block，
+    下划线会从名字一路拉到行尾，看着是一条分隔线而不是一处可点的字。
+  */
+  display: inline-block;
   border-bottom: 1rpx dashed var(--sh-line);
   font-size: 28rpx;
   /* 一行里它是主角，用 400 会被下面那行档位拉成同一层。
@@ -1357,10 +1347,7 @@ onShow(() => void load());
   60% { transform: scale(0.97); }
   100% { transform: scale(1); }
 }
-.val--add {
-  color: var(--sh-primary-text);
-  border: 1rpx dashed var(--sh-primary);
-}
+
 .val__x {
   margin-left: 8rpx;
   font-size: 24rpx;
