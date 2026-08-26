@@ -2321,8 +2321,15 @@ export const mockApi: MerchantApi = {
    * 不落库 —— mock 没有覆盖表，而这一步真正要验的是端上提交的形状对不对。
    */
   async mDimValues(dimNo) {
-    // mock 里模板表就是值池：这个维度的全部档位
-    return delay(db.specTemplates.find((t) => t.templateNo === dimNo)?.options ?? []);
+    /*
+     * mock 里模板表就是值池：这个维度的全部档位。
+     * **两张表都要找** —— 商品参数在 db.specProps 里，只找 specTemplates 的话
+     * 参数那侧的候选永远是空的，界面上就是「平台没给这一项配可选值」，
+     * 而平台明明配了。后端那侧是同一张 prd_spec_dim，不存在这个分叉。
+     */
+    const t = db.specTemplates.find((x) => x.templateNo === dimNo)
+      ?? db.specProps.find((x) => x.templateNo === dimNo);
+    return delay(t?.options ?? []);
   },
 
   async mSaveSpecOverride(categoryNo, dims) {

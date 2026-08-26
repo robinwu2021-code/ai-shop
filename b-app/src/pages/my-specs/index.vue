@@ -278,6 +278,27 @@ function dropValue(code: string) {
  * <p>现在与「加规格」一模一样：一排候选 chip 在上，自己填在下面单开一段。
  * 同一件事在两处长同一个样，商家学一次就够。
  */
+/*
+ * **档位与值是同一件事，两栏只是叫法不同。**销售规格下面那些叫「档位」
+ * （10 斤、25 斤，每一档要单独定价备库存），商品参数下面那些叫「可选值」
+ * （本地、国产，只是写给买家看）。交互一模一样，措辞跟着当前这一栏走 ——
+ * 在参数栏里写「加档位」，他会以为填了就要多定一份价。
+ */
+const valueWord = computed(() => t(tab.value === "dims" ? "mySpecs.addValue" : "mySpecs.addPropValue"));
+const ownValueWord = computed(() =>
+  t(tab.value === "dims" ? "mySpecs.buildOwnValue" : "mySpecs.buildOwnPropValue"));
+/*
+ * 例子也得跟着换。参数栏里挂着「比如你这袋是 750g」，说的是重量分档 ——
+ * 而他正在给「产地」加一个值。**举错例子比不举例更糟**：他会照着例子理解
+ * 这一栏是干什么的，然后把参数当成规格用。
+ */
+const noMoreValueWord = computed(() =>
+  t(tab.value === "dims" ? "mySpecs.noMoreValue" : "mySpecs.noMorePropValue"));
+const valuePhWord = computed(() =>
+  t(tab.value === "dims" ? "mySpecs.addValuePh" : "mySpecs.addPropValuePh"));
+const valueHintWord = computed(() =>
+  t(tab.value === "dims" ? "mySpecs.addValueHint" : "mySpecs.addPropValueHint"));
+
 const addingVal = ref(false);
 const valCands = ref<SpecOption[]>([]);
 const newVal = ref("");
@@ -780,7 +801,7 @@ onShow(() => void load());
                 {{ draft.labels[v.code] ?? v.code }}
                 <text class="val__x" @tap.stop="dropValue(v.code)">✕</text>
               </text>
-              <text class="sh-chip val val--add" @tap="openAddValue()">＋ {{ $t("mySpecs.addValue") }}</text>
+              <text class="sh-chip val val--add" @tap="openAddValue()">＋ {{ valueWord }}</text>
             </view>
             <text class="sh-muted edit__tip">{{ $t("mySpecs.renameTip") }}</text>
             <view class="edit__acts">
@@ -794,7 +815,7 @@ onShow(() => void load());
       </view>
 
       <text v-if="!listOf(g).length && picking !== g.categoryNo" class="cat__empty">
-        {{ $t("mySpecs.catNoDims") }}
+        {{ $t(tab === "dims" ? "mySpecs.catNoDims" : "mySpecs.catNoProps") }}
       </text>
 
       <!--
@@ -885,7 +906,7 @@ onShow(() => void load());
     -->
     <sh-sheet
       :visible="addingVal"
-      :title="$t('mySpecs.addValue')"
+      :title="valueWord"
       :hint="valCands.length ? $t('mySpecs.pickHint') : ''"
       @close="closeAddValue"
     >
@@ -893,22 +914,22 @@ onShow(() => void load());
         <text v-for="o in valCands" :key="o.code || o.label" class="sh-chip chip"
               @tap="pickValue(o)">＋ {{ o.label }}</text>
       </view>
-      <text v-else class="sh-muted picker__empty">{{ $t("mySpecs.noMoreValue") }}</text>
+      <text v-else class="sh-muted picker__empty">{{ noMoreValueWord }}</text>
 
       <view class="sheet-own">
         <view class="picker__own-line">
-          <text class="picker__own-t">{{ $t("mySpecs.buildOwnValue") }}</text>
+          <text class="picker__own-t">{{ ownValueWord }}</text>
         </view>
         <view class="build">
           <input
             v-model="newVal"
             class="field__input build__input"
-            :placeholder="$t('mySpecs.addValuePh')"
+            :placeholder="valuePhWord"
             @confirm="confirmNewValue"
           />
           <text class="link build__ok" @tap="confirmNewValue">{{ $t("mySpecs.save") }}</text>
         </view>
-        <text class="sh-muted picker__own-s">{{ $t("mySpecs.addValueHint") }}</text>
+        <text class="sh-muted picker__own-s">{{ valueHintWord }}</text>
       </view>
     </sh-sheet>
 

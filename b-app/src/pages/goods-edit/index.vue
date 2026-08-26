@@ -1576,9 +1576,52 @@ async function loadProps() {
 const addingParam = ref(false);
 const newParam = ref("");
 
-/** 正在给哪个参数填值；null = 没在填。只对「平台没配候选值」的那些出现 */
+/** 正在给哪个参数加值；null = 没在加 */
 const addingValueFor = ref<SpecTemplate | null>(null);
 const newParamValue = ref("");
+/** 平台在这个参数下有、而这一类没配进来的那些值 —— 与「加档位」同一条：先给候选 */
+const paramCands = ref<SpecOption[]>([]);
+
+async function openParamValue(d: SpecTemplate) {
+  addingValueFor.value = d;
+  newParamValue.value = "";
+  paramCands.value = [];
+  const all = await api.mDimValues(d.templateNo).catch(() => []);
+  const have = new Set(d.options.map((o) => o.code ?? o.label));
+  paramCands.value = all.filter((o) => !have.has(o.code ?? o.label));
+}
+
+/*
+ * 副标题要说当下这一屏的实话，三种情况说三句：
+ *   有候选           → 「平台还有这些」
+ *   没候选但这一项有值 → 不说话（下面那排就是它的值，再说一句是废话）
+ *   两样都没有        → 「平台没给这一项配可选值」，这才是那句该出现的时候
+ * 一律写死一句的话，总有一屏在说假话 —— 而假话比没话更贵。
+ */
+const paramSheetHint = computed(() => {
+  if (paramCands.value.length) return t("goods.paramMore");
+  return addingValueFor.value?.options.length ? "" : t("goods.paramFillHint");
+});
+
+function closeParamValue() {
+  addingValueFor.value = null;
+  newParamValue.value = "";
+  paramCands.value = [];
+}
+
+/**
+ * 挑一个平台已有的值。**只落在这件货身上，不改本店配置。**
+ *
+ * <p>他这一下的意思是「这袋菜是云南的」，不是「以后蔬菜这一类都要有云南这一档」。
+ * 顺手把它写进类目覆盖的话，全店所有蔬菜的参数列表都跟着变了 ——
+ * 而他从没这么说过。要改那个，去「商品规格和参数」，那里的每一下都是全店的。
+ */
+function pickParamCand(o: SpecOption) {
+  const d = addingValueFor.value;
+  if (!d) return;
+  pickParam(d, o);
+  closeParamValue();
+}
 
 async function confirmAddParam() {
   const name = newParam.value.trim();
@@ -1636,8 +1679,7 @@ async function confirmParamValue() {
     await loadProps();
     const fresh = propDims.value.find((x) => x.templateNo === d.templateNo) ?? d;
     pickParam(fresh, { code: added.code || added.valueNo, label: added.label });
-    addingValueFor.value = null;
-    newParamValue.value = "";
+    closeParamValue();
   } catch (e) {
     uni.showToast({ title: (e as Error).message, icon: "none" });
   }
@@ -2657,7 +2699,19 @@ async function save(thenSubmit = false) {
       <text class="sh-muted hint">{{ $t("goods.paramsPick") }}</text>
       <view v-for="d in propDims" :key="d.templateNo" class="param">
         <text class="param__k">{{ d.name }}</text>
-        <view v-if="d.options.length" class="param__opts">
+        <!--
+          **「＋ 加值」永远在**，不是只在一个候选都没有的时候才出现。
+          平台给这一类配的那几个值是起点不是上限：产地列着本地/国产/进口，
+          而他这批菜就是云南来的。上一版只在空列表时给入口 ——
+          于是「有候选」反倒成了死路，他只能挑一个最接近的，或者干脆不填。
+
+          <p>量纲型的参数（功率、海拔、净重）平台本来就不枚举值，
+          刚自建出来的参数更是必然一个值都没有 —— 那种情况下这个 ＋ 就是唯一的路。
+
+          <p>填的东西**落进规格库拿编号**（见 confirmParamValue），
+          不是这件货身上的一个私有字符串：后者不参与筛选，也不参与跨店比较。
+        -->
+        <view class="param__opts">
           <text
             v-for="o in d.options"
             :key="o.code || o.label"
@@ -2665,16 +2719,7 @@ async function save(thenSubmit = false) {
             :class="{ 'param__chip--on': paramValues[d.templateNo]?.label === o.label }"
             @tap="pickParam(d, o)"
           >{{ o.label }}</text>
-        </view>
-        <!--
-          **没有候选值时给一个「＋ 填一个」，而不是一句「平台还没配值」。**
-          量纲型的参数（功率、海拔、净重）平台本来就不会枚举值，
-          刚自建出来的参数更是必然一个值都没有 —— 停在那句话上就是死胡同。
-          但填的东西**落进规格库拿编号**（见 confirmParamValue），
-          不是这件货身上的一个私有字符串：后者不参与筛选，也不参与跨店比较。
-        -->
-        <view v-else class="param__opts">
-          <text class="sh-chip addbar__chip" @tap="addingValueFor = d">＋ {{ $t("goods.paramFill") }}</text>
+          <text class="sh-chip addbar__chip" @tap="openParamValue(d)">＋ {{ $t("goods.paramFill") }}</text>
         </view>
       </view>
       <text class="link link--quiet more__manage" @tap="gotoMySpecs">
@@ -2708,9 +2753,20 @@ async function save(thenSubmit = false) {
     <sh-sheet
       :visible="!!addingValueFor"
       :title="addingValueFor ? addingValueFor.name : ''"
-      :hint="$t('goods.paramFillHint')"
-      @close="addingValueFor = null; newParamValue = ''"
+      :hint="paramSheetHint"
+      @close="closeParamValue"
     >
+      <!-- 候选在上：平台这个参数下有、而这一类没配进来的那些 -->
+      <view v-if="paramCands.length" class="param__opts">
+        <text
+          v-for="o in paramCands"
+          :key="o.code || o.label"
+          class="sh-chip addbar__chip"
+          @tap="pickParamCand(o)"
+        >＋ {{ o.label }}</text>
+      </view>
+      <!-- 自己填放最后：顺序即建议，先看平台有没有现成的 -->
+      <text class="param__own">{{ $t("goods.paramFillOwn") }}</text>
       <view class="build">
         <input
           v-model="newParamValue"
@@ -3144,6 +3200,15 @@ async function save(thenSubmit = false) {
   color: var(--sh-sub);
 }
 
+
+/* 弹层里「自己填」那一段的小标题 —— 与候选拉开，说明它是另一回事 */
+.param__own {
+  display: block;
+  margin-top: 28rpx;
+  font-size: 26rpx;
+  font-weight: 600;
+  color: var(--sh-ink);
+}
 
 /* 弹层里那一行输入：输入框吃满，保存压在右边 —— 与「商品规格和参数」那一页同形 */
 .build {
