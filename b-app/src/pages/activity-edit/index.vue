@@ -208,16 +208,15 @@ onLoad((q) => {
     <view v-if="step === 1" class="sh-card">
       <text class="field__label">{{ $t("activityEdit.goalQ") }}</text>
       <view class="opts">
-        <view
+        <sh-option
           v-for="g in GOALS"
           :key="g.key"
-          class="opt"
-          :class="{ 'is-on': form.goal === g.key }"
+          :selected="form.goal === g.key"
           @tap="pickGoal(g.key)"
         >
           <text class="opt__t">{{ $t(`activityEdit.goal.${g.key}`) }}</text>
           <text class="sh-muted opt__d">{{ $t(`activityEdit.goalHint.${g.key}`) }}</text>
-        </view>
+        </sh-option>
       </view>
       <view class="row mt">
         <text class="row__label">{{ $t("activityEdit.name") }}</text>
@@ -334,16 +333,15 @@ onLoad((q) => {
     <view v-if="step === 4" class="sh-card">
       <text class="field__label">{{ $t("activityEdit.audienceQ") }}</text>
       <view class="opts">
-        <view
+        <sh-option
           v-for="a in ['', 'NON_MEMBER', 'LEVEL:SLEEPING', 'LEVEL:LOYAL']"
           :key="a || 'all'"
-          class="opt"
-          :class="{ 'is-on': form.audienceType === a }"
+          :selected="form.audienceType === a"
           @tap="form.audienceType = a"
         >
           <text class="opt__t">{{ $t(`activityEdit.audience.${a || "ALL"}`) }}</text>
           <text class="sh-muted opt__d">{{ $t(`activityEdit.audienceHint.${a || "ALL"}`) }}</text>
-        </view>
+        </sh-option>
       </view>
     </view>
 
@@ -384,16 +382,6 @@ onLoad((q) => {
 }
 .opts {
   margin-top: 12rpx;
-}
-.opt {
-  border: 2rpx solid var(--sh-faint);
-  border-radius: 12rpx;
-  padding: 20rpx;
-  margin-top: 12rpx;
-}
-.opt.is-on {
-  border-color: var(--sh-primary);
-  background: var(--sh-primary-tint);
 }
 .opt__t {
   display: block;

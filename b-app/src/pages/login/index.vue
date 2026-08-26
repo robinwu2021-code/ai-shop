@@ -240,7 +240,7 @@ async function doLogin(method: LoginMethod) {
 
     <!-- 协议勾选：注册的合规前置，默认不勾 -->
     <view class="agree" @tap="agreed = !agreed">
-      <text class="agree__box" :class="{ 'is-on': agreed }">{{ agreed ? "✓" : "" }}</text>
+      <sh-check :model-value="agreed"></sh-check>
       <text class="agree__text">
         {{ $t("login.agreePrefix") }}
         <text class="agree__link" @tap.stop="showAgreement">{{ $t("login.agreementTitle") }}</text>
@@ -360,20 +360,6 @@ async function doLogin(method: LoginMethod) {
   align-items: center;
   gap: 16rpx;
   margin: 32rpx 8rpx 0;
-}
-.agree__box {
-  width: 36rpx;
-  height: 36rpx;
-  border-radius: 16rpx;
-  background: var(--sh-faint);
-  color: var(--sh-on-primary);
-  font-size: 24rpx;
-  text-align: center;
-  line-height: 36rpx;
-  flex-shrink: 0;
-}
-.agree__box.is-on {
-  background: var(--sh-primary);
 }
 .agree__text {
   flex: 1;

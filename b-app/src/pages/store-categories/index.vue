@@ -157,11 +157,11 @@ async function save(items: { categoryNo: string; displayName?: string; sort: num
           让它可选的话，「食品生鲜」这种大筐会成为最省事的选择，
           而店铺页里的货架分类就此失去意义。
         -->
-        <view
+        <sh-option
           v-for="c in top.children ?? []"
           :key="c.categoryNo"
           class="opt"
-          :class="{ 'opt--on': pickedNos.has(c.categoryNo) }"
+          :selected="pickedNos.has(c.categoryNo)"
           @tap="toggle(c)"
         >
           <text class="opt__name">{{ c.name }}</text>
@@ -174,7 +174,7 @@ async function save(items: { categoryNo: string; displayName?: string; sort: num
             那句「缺少经营这一类的资质」既说不出缺哪张，也说不出去哪申请。
           -->
           <text v-if="ungranted(c)" class="opt__gate">{{ $t("storeCategories.needCert") }}</text>
-        </view>
+        </sh-option>
       </view>
     </view>
 
@@ -252,18 +252,13 @@ async function save(items: { categoryNo: string; displayName?: string; sort: num
 }
 
 .opt {
+  /* 只留版面：描边、圆角、选中态都归 sh-option */
   display: flex;
   align-items: center;
   gap: 8rpx;
   padding: 12rpx 24rpx;
-  border: 2rpx solid var(--sh-line);
-  border-radius: 16rpx;
 }
 
-.opt--on {
-  border-color: var(--sh-primary);
-  background: var(--sh-primary-tint);
-}
 
 .opt__name {
   font-size: 26rpx;

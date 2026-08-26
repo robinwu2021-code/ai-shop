@@ -1043,6 +1043,23 @@
       "why": "收编自 goods-edit 与 my-specs 里**逐字节相同**的 `.btn-add`。`active` 是展开态：同一个按钮管开合"
     },
     {
+      "name": "sh-check",
+      "file": "packages/ui/src/components/sh-check.vue",
+      "scope": "跨端",
+      "lines": 65,
+      "props": [
+        "modelValue: boolean",
+        "round?: boolean",
+        "disabled?: boolean"
+      ],
+      "usage": {
+        "b-app": 4,
+        "c-app": 0
+      },
+      "note": "勾选框 / 单选点",
+      "why": "四页各画一个、**四种尺寸**（28/36/44/44）。勾用 `check` 图标 —— 那个图标是这次一起补进 icons.ts 的"
+    },
+    {
       "name": "sh-cover",
       "file": "packages/ui/src/components/sh-cover.vue",
       "scope": "跨端",
@@ -1124,6 +1141,22 @@
       },
       "note": "单色图标",
       "why": "内联 SVG 转 CSS mask，颜色吃 var(--sh-*) —— 换肤零成本。**不用 emoji**：各系统字形不一且是彩色的"
+    },
+    {
+      "name": "sh-option",
+      "file": "packages/ui/src/components/sh-option.vue",
+      "scope": "跨端",
+      "lines": 56,
+      "props": [
+        "selected?: boolean",
+        "disabled?: boolean"
+      ],
+      "usage": {
+        "b-app": 6,
+        "c-app": 0
+      },
+      "note": "选项卡片",
+      "why": "整块可选，比 chip 重比按钮轻 —— 每个选项里通常还有一行说明"
     },
     {
       "name": "sh-prompt",
@@ -1241,6 +1274,22 @@
       },
       "note": "数字格",
       "why": "几个大数一排，每格一句小标签。收编自 5 页 4 种档位（44/700 · 40/700 · 40/600 · 32/600）"
+    },
+    {
+      "name": "sh-switch",
+      "file": "packages/ui/src/components/sh-switch.vue",
+      "scope": "跨端",
+      "lines": 80,
+      "props": [
+        "modelValue: boolean",
+        "disabled?: boolean"
+      ],
+      "usage": {
+        "b-app": 3,
+        "c-app": 0
+      },
+      "note": "开关",
+      "why": "三页各画一个，**三个数没有一个对得上**（宽 84/88、圆角 胶囊/24rpx、位移 40/42/46）。全 B 端零处原生 `&lt;switch&gt;`"
     },
     {
       "name": "sh-tabbar",
@@ -1428,11 +1477,12 @@
       "page": "activity-edit",
       "file": "b-app/src/pages/activity-edit/index.vue",
       "components": [
+        "sh-option",
         "sh-scaffold"
       ],
       "libClassHits": 34,
-      "localSelectors": 23,
-      "localCssLines": 117,
+      "localSelectors": 21,
+      "localCssLines": 107,
       "rolled": [
         {
           "id": "segment",
@@ -1446,13 +1496,6 @@
           "label": "列表行",
           "lib": null,
           "rule": "^\\s*\\.(row|item)\\b",
-          "gap": true
-        },
-        {
-          "id": "optcard",
-          "label": "选项卡片",
-          "lib": null,
-          "rule": "名册：activity-edit .opt（逐处核过）",
           "gap": true
         }
       ]
@@ -1481,12 +1524,14 @@
       "page": "apply",
       "file": "b-app/src/pages/apply/index.vue",
       "components": [
+        "sh-check",
         "sh-scaffold",
+        "sh-switch",
         "sh-uploader"
       ],
       "libClassHits": 45,
-      "localSelectors": 39,
-      "localCssLines": 153,
+      "localSelectors": 33,
+      "localCssLines": 127,
       "rolled": [
         {
           "id": "segment",
@@ -1494,20 +1539,6 @@
           "lib": ".sh-chip--primary",
           "rule": "(--on|--off|is-on)\\s*[,{]",
           "gap": false
-        },
-        {
-          "id": "switchctl",
-          "label": "开关",
-          "lib": null,
-          "rule": "名册：apply .toggle（逐处核过）",
-          "gap": true
-        },
-        {
-          "id": "checkctl",
-          "label": "勾选框",
-          "lib": null,
-          "rule": "名册：apply .cb（逐处核过）",
-          "gap": true
         }
       ]
     },
@@ -1870,11 +1901,12 @@
       "page": "login",
       "file": "b-app/src/pages/login/index.vue",
       "components": [
+        "sh-check",
         "sh-scaffold"
       ],
       "libClassHits": 18,
-      "localSelectors": 23,
-      "localCssLines": 114,
+      "localSelectors": 21,
+      "localCssLines": 100,
       "rolled": [
         {
           "id": "sysmodal",
@@ -1895,13 +1927,6 @@
           "label": "列表行",
           "lib": null,
           "rule": "^\\s*\\.(row|item)\\b",
-          "gap": true
-        },
-        {
-          "id": "checkctl",
-          "label": "勾选框",
-          "lib": null,
-          "rule": "名册：login .agree__box（逐处核过）",
           "gap": true
         }
       ]
@@ -2064,11 +2089,12 @@
       "page": "member-settings",
       "file": "b-app/src/pages/member-settings/index.vue",
       "components": [
+        "sh-option",
         "sh-scaffold"
       ],
       "libClassHits": 8,
-      "localSelectors": 8,
-      "localCssLines": 40,
+      "localSelectors": 6,
+      "localCssLines": 30,
       "rolled": [
         {
           "id": "sysmodal",
@@ -2078,24 +2104,10 @@
           "gap": false
         },
         {
-          "id": "segment",
-          "label": "选中态自画（含未拆出的）",
-          "lib": ".sh-chip--primary",
-          "rule": "(--on|--off|is-on)\\s*[,{]",
-          "gap": false
-        },
-        {
           "id": "listrow",
           "label": "列表行",
           "lib": null,
           "rule": "^\\s*\\.(row|item)\\b",
-          "gap": true
-        },
-        {
-          "id": "optcard",
-          "label": "选项卡片",
-          "lib": null,
-          "rule": "名册：member-settings .opt（逐处核过）",
           "gap": true
         }
       ]
@@ -2316,27 +2328,13 @@
       "page": "points",
       "file": "b-app/src/pages/points/index.vue",
       "components": [
-        "sh-scaffold"
+        "sh-scaffold",
+        "sh-switch"
       ],
       "libClassHits": 14,
-      "localSelectors": 10,
-      "localCssLines": 49,
-      "rolled": [
-        {
-          "id": "segment",
-          "label": "选中态自画（含未拆出的）",
-          "lib": ".sh-chip--primary",
-          "rule": "(--on|--off|is-on)\\s*[,{]",
-          "gap": false
-        },
-        {
-          "id": "switchctl",
-          "label": "开关",
-          "lib": null,
-          "rule": "名册：points .sw（逐处核过）",
-          "gap": true
-        }
-      ]
+      "localSelectors": 5,
+      "localCssLines": 27,
+      "rolled": []
     },
     {
       "page": "points-records",
@@ -2595,19 +2593,13 @@
       "components": [
         "sh-empty",
         "sh-icon",
+        "sh-option",
         "sh-scaffold"
       ],
       "libClassHits": 8,
-      "localSelectors": 16,
-      "localCssLines": 73,
+      "localSelectors": 15,
+      "localCssLines": 67,
       "rolled": [
-        {
-          "id": "segment",
-          "label": "选中态自画（含未拆出的）",
-          "lib": ".sh-chip--primary",
-          "rule": "(--on|--off|is-on)\\s*[,{]",
-          "gap": false
-        },
         {
           "id": "sechead",
           "label": "分段标题（只有标题）",
@@ -2620,13 +2612,6 @@
           "label": "列表行",
           "lib": null,
           "rule": "^\\s*\\.(row|item)\\b",
-          "gap": true
-        },
-        {
-          "id": "optcard",
-          "label": "选项卡片",
-          "lib": null,
-          "rule": "名册：store-categories .opt（逐处核过）",
           "gap": true
         }
       ]
@@ -2662,11 +2647,12 @@
       "page": "store-pick",
       "file": "b-app/src/pages/store-pick/index.vue",
       "components": [
+        "sh-check",
         "sh-scaffold"
       ],
       "libClassHits": 4,
-      "localSelectors": 18,
-      "localCssLines": 89,
+      "localSelectors": 15,
+      "localCssLines": 70,
       "rolled": [
         {
           "id": "segment",
@@ -2681,13 +2667,6 @@
           "lib": null,
           "rule": "^\\s*\\.(row|item)\\b",
           "gap": true
-        },
-        {
-          "id": "checkctl",
-          "label": "勾选框",
-          "lib": null,
-          "rule": "名册：store-pick .item__radio（逐处核过）",
-          "gap": true
         }
       ]
     },
@@ -2695,16 +2674,18 @@
       "page": "store-scope",
       "file": "b-app/src/pages/store-scope/index.vue",
       "components": [
+        "sh-check",
         "sh-icon-btn",
         "sh-savebar",
         "sh-scaffold",
+        "sh-switch",
         "biz-pickup-sheet",
         "biz-region-picker",
         "biz-store-tag"
       ],
       "libClassHits": 22,
-      "localSelectors": 45,
-      "localCssLines": 233,
+      "localSelectors": 38,
+      "localCssLines": 185,
       "rolled": [
         {
           "id": "sysmodal",
@@ -2721,31 +2702,10 @@
           "gap": false
         },
         {
-          "id": "segment",
-          "label": "选中态自画（含未拆出的）",
-          "lib": ".sh-chip--primary",
-          "rule": "(--on|--off|is-on)\\s*[,{]",
-          "gap": false
-        },
-        {
           "id": "listrow",
           "label": "列表行",
           "lib": null,
           "rule": "^\\s*\\.(row|item)\\b",
-          "gap": true
-        },
-        {
-          "id": "switchctl",
-          "label": "开关",
-          "lib": null,
-          "rule": "名册：store-scope .switch（逐处核过）",
-          "gap": true
-        },
-        {
-          "id": "checkctl",
-          "label": "勾选框",
-          "lib": null,
-          "rule": "名册：store-scope .row__check（逐处核过）",
           "gap": true
         }
       ]
@@ -2754,11 +2714,12 @@
       "page": "stores",
       "file": "b-app/src/pages/stores/index.vue",
       "components": [
+        "sh-option",
         "sh-scaffold"
       ],
       "libClassHits": 31,
-      "localSelectors": 29,
-      "localCssLines": 136,
+      "localSelectors": 28,
+      "localCssLines": 130,
       "rolled": [
         {
           "id": "sysmodal",
@@ -2766,20 +2727,6 @@
           "lib": "sh-sheet",
           "rule": "showModal\\(|showActionSheet\\(",
           "gap": false
-        },
-        {
-          "id": "segment",
-          "label": "选中态自画（含未拆出的）",
-          "lib": ".sh-chip--primary",
-          "rule": "(--on|--off|is-on)\\s*[,{]",
-          "gap": false
-        },
-        {
-          "id": "optcard",
-          "label": "选项卡片",
-          "lib": null,
-          "rule": "名册：stores .pick（逐处核过）",
-          "gap": true
         }
       ]
     },
@@ -2878,44 +2825,6 @@
       ]
     },
     {
-      "id": "optcard",
-      "label": "选项卡片",
-      "lib": null,
-      "gap": true,
-      "rule": "名册：activity-edit .opt（逐处核过）",
-      "pages": [
-        "activity-edit",
-        "member-settings",
-        "store-categories",
-        "stores"
-      ]
-    },
-    {
-      "id": "checkctl",
-      "label": "勾选框",
-      "lib": null,
-      "gap": true,
-      "rule": "名册：apply .cb（逐处核过）",
-      "pages": [
-        "apply",
-        "login",
-        "store-pick",
-        "store-scope"
-      ]
-    },
-    {
-      "id": "switchctl",
-      "label": "开关",
-      "lib": null,
-      "gap": true,
-      "rule": "名册：apply .toggle（逐处核过）",
-      "pages": [
-        "apply",
-        "points",
-        "store-scope"
-      ]
-    },
-    {
       "id": "search",
       "label": "搜索框",
       "lib": null,
@@ -2968,13 +2877,8 @@
         "cross-store",
         "goods-edit",
         "login",
-        "member-settings",
-        "points",
-        "store-categories",
         "store-notice",
         "store-pick",
-        "store-scope",
-        "stores",
         "verify"
       ]
     },
@@ -3055,8 +2959,8 @@
   "counts": {
     "tokens": 10,
     "blocks": 38,
-    "components": 22,
+    "components": 25,
     "pages": 52,
-    "gapKinds": 6
+    "gapKinds": 3
   }
 }

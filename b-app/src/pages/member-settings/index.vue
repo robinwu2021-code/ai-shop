@@ -62,23 +62,15 @@ onShow(load);
     <view class="sh-card">
       <text class="field__label">{{ $t("memberSettings.scope") }}</text>
 
-      <view
-        class="opt"
-        :class="{ 'is-on': setting?.memberScope === 'ENTITY' }"
-        @tap="pickScope('ENTITY')"
-      >
+      <sh-option :selected="setting?.memberScope === 'ENTITY'" @tap="pickScope('ENTITY')">
         <text class="opt__t">{{ $t("memberSettings.entity") }}</text>
         <text class="sh-muted opt__d">{{ $t("memberSettings.entityHint") }}</text>
-      </view>
+      </sh-option>
 
-      <view
-        class="opt"
-        :class="{ 'is-on': setting?.memberScope === 'STORE' }"
-        @tap="pickScope('STORE')"
-      >
+      <sh-option :selected="setting?.memberScope === 'STORE'" @tap="pickScope('STORE')">
         <text class="opt__t">{{ $t("memberSettings.store") }}</text>
         <text class="sh-muted opt__d">{{ $t("memberSettings.storeHint") }}</text>
-      </view>
+      </sh-option>
 
       <!-- 这一句是这一页最重要的一行：不写它，没人敢动上面那两个 -->
       <text class="tip">{{ $t("memberSettings.reversible") }}</text>
@@ -105,16 +97,6 @@ onShow(load);
 <style scoped>
 .mt {
   margin-top: 16rpx;
-}
-.opt {
-  border: 2rpx solid var(--sh-faint);
-  border-radius: 12rpx;
-  padding: 20rpx;
-  margin-top: 16rpx;
-}
-.opt.is-on {
-  border-color: var(--sh-primary);
-  background: var(--sh-primary-tint);
 }
 .opt__t {
   display: block;

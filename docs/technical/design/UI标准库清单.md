@@ -10,7 +10,7 @@
 
 ## 一、这一份是什么
 
-**标准库 = 令牌 + 积木 + 组件三层**，一共 10 档令牌、38 个公共积木、22 个组件。
+**标准库 = 令牌 + 积木 + 组件三层**，一共 10 档令牌、38 个公共积木、25 个组件。
 清单与原型**是同一条命令跑出来的**，所以「规范怎么说」与「原型长什么样」不可能对不上。
 
 三份 UI 文档的分工，别混：
@@ -37,7 +37,7 @@
 | 真源 | 供给 |
 |---|---|
 | `packages/shared/src/design/tokens.ts` | 圆角五档 · 间距五档 · 九套皮肤 |
-| `packages/shared/src/design/icons.ts` | 18 个图标（内联 SVG） |
+| `packages/shared/src/design/icons.ts` | **19** 个图标（内联 SVG；`check` 是 2026-08-26 补的） |
 | `packages/ui/src/styles/base.css` | 皮肤变量 · 全部积木的真实声明 |
 | `b-app/src/App.vue` | B 端密度覆盖 · `.field` |
 | `packages/ui/src/components/*.vue` · `b-app/src/components/**` | 组件 props / 行数 / scoped 样式 |
@@ -144,7 +144,7 @@ C 端是顾客逛店（松一点显精致），B 端是店主一天扫几十次�
 
 ---
 
-## 五、组件（22 个）
+## 五、组件（25 个）
 
 `easycom` 自动注册，写标签即可，不用 import。
 
@@ -165,6 +165,9 @@ C 端是顾客逛店（松一点显精致），B 端是店主一天扫几十次�
 | `sh-icon-btn` | 跨端 | 47 | 7/0 | 4 |
 | `sh-fab` | 跨端 | 41 | 1/0 | 1 |
 | `sh-prompt` | 跨端 | 100 | 由 scaffold 渲染 | 0 |
+| `sh-switch` | 跨端 | 71 | 3/0 | 2 |
+| `sh-check` | 跨端 | 63 | 4/0 | 3 |
+| `sh-option` | 跨端 | 56 | 5/0 | 2 |
 | `sh-add` | 跨端 | 82 | 4/0 | 4 |
 | `sh-savebar` | 跨端 | 80 | 2/0 | 4 |
 | `biz-region-picker` | B 端 | **1 628** | 1/— | 2 |

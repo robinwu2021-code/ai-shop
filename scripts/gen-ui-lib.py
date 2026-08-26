@@ -112,6 +112,9 @@ COMP_NOTES = {
     "sh-icon-btn": ("图标按钮", "行尾的删除、弹层右上角的关闭、列表行上的编辑。收编的是**「文字当图标」**这件事 —— 两端曾有 11 处文字 ✕/×，其中 `store-scope` 用的还是 `×`(U+00D7)", "输入框内的清空、chip 内嵌的 ✕、图片角标的删除**不归它管** —— 尺寸受宿主约束，是另一套几何"),
     "sh-stat": ("数字格", "几个大数一排，每格一句小标签。收编自 5 页 4 种档位（44/700 · 40/700 · 40/600 · 32/600）", "`boxed` 才可点 —— 点了没反应的控件比没有控件更糟，所以底色与可点由同一个开关管"),
     "sh-uploader": ("图片格", "已传的缩略图排一行，末尾一个「＋」。收编自 apply / payment / qualifications / goods-edit 四份", "详情图那种**竖排 + 每行 ↑↓✕** 的排序件不归它管 —— 名字像、东西不同"),
+    "sh-switch": ("开关", "三页各画一个，**三个数没有一个对得上**（宽 84/88、圆角 胶囊/24rpx、位移 40/42/46）。全 B 端零处原生 `&lt;switch&gt;`", "位移由几何算出：88 − 40 − 4×2 = 40，不是量出来的"),
+    "sh-check": ("勾选框 / 单选点", "四页各画一个、**四种尺寸**（28/36/44/44）。勾用 `check` 图标 —— 那个图标是这次一起补进 icons.ts 的", "`apply` 原本的描边是 `1px`，越出 rpx 体系：在 430 的 Pro Max 上还是 1px，不跟着机型缩放"),
+    "sh-option": ("选项卡片", "整块可选，比 chip 重比按钮轻 —— 每个选项里通常还有一行说明", "**组件管选中的样子，页面留版面**：`stores` 的 flex 宽度、`store-categories` 的内边距都仍在页面里"),
     "sh-section": ("卡内标题行", "收编自 goods-edit 与 sku-identity **逐字节相同**的 `.sec`（8 处调用点）。右侧动作直接进插槽，**不套壳** —— `.sec` 是 space-between，多一层就把「三个孩子摊开」变成「两组左右分」"),
     "sh-savebar": ("底部未保存条", "收编自 store 与 store-scope 里**逐字节相同**的 `.savebar`。自带流内占位 —— 收编前两页都被它盖住了最后一段内容"),
     "biz-region-picker": ("经营范围选择器", "省市区 / 小区 / 村三级 + 提报。全项目最大的单文件组件"),
@@ -193,6 +196,19 @@ SAMPLES = {
                     '<span class="up__del">×</span></div>'
                     '<div class="up__add" style="width:52px;height:52px">'
                     '<span class="up__plus">＋</span></div></div>'),
+    "sh-switch": ('<div style="display:flex;gap:12px;align-items:center">'
+                  '<div class="sw"><div class="sw__knob"></div></div>'
+                  '<div class="sw is-on"><div class="sw__knob"></div></div>'
+                  '<div class="sw is-on is-off"><div class="sw__knob"></div></div></div>'),
+    "sh-check": ('<div style="display:flex;gap:12px;align-items:center">'
+                 '<div class="ck"></div>'
+                 '<div class="ck is-on">{{icon:check:13:var(--sh-on-primary)}}</div>'
+                 '<div class="ck is-round"></div>'
+                 '<div class="ck is-round is-on">{{icon:check:13:var(--sh-on-primary)}}</div></div>'),
+    "sh-option": ('<div class="opt is-on"><div class="txt-strong">按人数封顶</div>'
+                  '<div class="sh-muted">发满 200 人自动停</div></div>'
+                  '<div class="opt" style="margin-top:8px"><div class="txt-strong">按预算封顶</div>'
+                  '<div class="sh-muted">花满设定金额自动停</div></div>'),
     "sh-section": ('<div class="sec"><span class="sh-h2">商品参数</span>'
                    '<div class="add">{{icon:plus:12:var(--sh-primary)}}'
                    '<span class="add__t">加参数</span></div></div>'
@@ -461,6 +477,8 @@ def read_pages(comps: list[dict], blocks: list[dict]) -> list[dict]:
         # 不是正则猜的 —— 这类控件用名字判会把五种东西归成一类（第八次教训）。
         page_name = str(f.relative_to(B_PAGES).parent).replace("\\", "/")
         for fam, _, items in FAMILIES:
+            if FAM_COMP[fam] in used:
+                continue
             for pg, root, _, _ in items:
                 if pg == page_name:
                     rolled.append({"id": FAM_ID[fam], "label": fam, "lib": None,
@@ -523,43 +541,10 @@ FAMILIES = [
 
 
 FAM_ID = {"开关": "switchctl", "勾选框": "checkctl", "选项卡片": "optcard"}
+# 收编成了哪个件：页面用上它，这一族就不再算这一页的自造
+FAM_COMP = {"开关": "sh-switch", "勾选框": "sh-check", "选项卡片": "sh-option"}
 
 
-def compare_css(pages_dir) -> str:
-    """把对照里用到的页面样式读出来、折半成 px、收进 .cmp 作用域。
-
-    **只读不抄**：改了页面这份对照跟着变，不会出现「文档说的是三个月前的样子」。
-    """
-    out = []
-    for _, _, items in FAMILIES:
-        for page, root, on, _ in items:
-            src = (pages_dir / page / "index.vue").read_text(encoding="utf-8")
-            css = strip_comments("\n".join(re.findall(r"<style[^>]*>(.*?)</style>", src, re.S)))
-            for sel, body in rules_of(css):
-                # 只收这个族用到的那几条（根类、选中类、以及它们的子元素）
-                if not re.match(rf"^\.(?:{re.escape(root)})\b", sel):
-                    continue
-                scoped = ",".join(f".cmp .p-{page} {x.strip()}" for x in sel.split(","))
-                out.append(f"{scoped}{{{rpx2px(body)}}}")
-    return "\n".join(out)
-
-
-def render_compare() -> str:
-    from html import escape
-    secs = []
-    for name, why, items in FAMILIES:
-        cells = []
-        for page, root, on, tpl in items:
-            off = tpl.replace(" {on}", "").replace("{on}", "")
-            onn = tpl.replace("{on}", on)
-            cells.append(
-                f'<div class="cmp__c"><div class="cmp__box p-{page}">'
-                f'<div class="cmp__pair">{off}{onn}</div></div>'
-                f'<code>{escape(page)} .{escape(root)}</code></div>')
-        secs.append(f'<h3 class="grp">{escape(name)}<span class="n">{len(items)} 页各一份</span></h3>'
-                    f'<p class="hint">{md(why)}</p>'
-                    f'<div class="cmps">{"".join(cells)}</div>')
-    return "".join(secs)
 
 # ══════════════════════════════════════════════════════════════════════
 # 组装清单
@@ -858,14 +843,6 @@ def render(cat: dict, base: dict, comps: list[dict], dens: dict, icons: dict) ->
         f'<th>自己造的</th></tr></thead><tbody>{"".join(prows)}</tbody></table></div>',
         "pages")
 
-    # ── 选中态对照 ──────────────────────────────────────────
-    sec("「选中态」拆开是五种控件",
-        "扫描把 `--on / is-on` 归成一类「选中态自画」，共 13 页。**拆开看是五种不同的控件**，"
-        "而其中三种**库里根本没有** —— 一个名字盖住了三个缺件。"
-        "下面每一格左边是未选中、右边是选中，**样式从各页的 `.vue` 里读**，不是抄进来的。"
-        "<b>全 B 端没有一处用原生 `&lt;switch&gt;` / `&lt;checkbox&gt;` / `&lt;radio&gt;`。</b>",
-        f'<div class="cmp">{render_compare()}</div>', "compare")
-
     # ── 一屏合成 ────────────────────────────────────────────
     sec("合起来是这样", "同一屏、同一套令牌，浅色与深色只差根节点上的一个属性 —— 零重载换肤。",
         f'<div class="pair"><figure>{phone(full_screen(icons))}<figcaption>浅色</figcaption></figure>'
@@ -876,7 +853,7 @@ def render(cat: dict, base: dict, comps: list[dict], dens: dict, icons: dict) ->
                   [("color", "色"), ("radius", "圆角/间距"), ("type", "字阶"), ("density", "密度"),
                    ("blocks", "积木"), ("components", "组件"), ("screen", "合成")])
     return (TEMPLATE
-            .replace("{{CSS}}", proto_css(base, comps, dens) + "\n" + compare_css(B_PAGES))
+            .replace("{{CSS}}", proto_css(base, comps, dens))
             .replace("{{NAV}}", nav)
             .replace("{{BODY}}", "".join(P))
             .replace("{{NB}}", str(cat["counts"]["blocks"]))
@@ -1086,13 +1063,6 @@ p.when{margin:7px 0 3px;font-size:12.5px;line-height:1.6}
 p.avoid{margin:0;font-size:11.5px;line-height:1.6;color:var(--muted)}
 .decl{margin-top:9px;padding-top:8px;border-top:1px dashed var(--rule);line-height:1.75}
 .decl .px{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--accent);opacity:.75}
-.cmps{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px;
-  margin-bottom:8px}
-.cmp__c{display:flex;flex-direction:column;gap:6px}
-.cmp__box{background:var(--sh-bg,#ECEDEF);border:1px solid var(--rule);border-radius:10px;
-  padding:14px;display:flex;align-items:center;justify-content:center;min-height:64px}
-.cmp__pair{display:flex;align-items:center;gap:14px}
-.cmp__c>code{font-size:11px;color:var(--muted)}
 .cp{display:grid;grid-template-columns:auto 1fr;align-items:start}
 /* 样张固定 375 宽（那是画布本身，不能缩），窄屏下让**它自己**横向滚，页面本体不动 */
 .c__demo{padding:14px;border-right:1px solid var(--rule);overflow-x:auto}

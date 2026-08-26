@@ -453,9 +453,7 @@ async function submit() {
           <text class="sh-h2">{{ $t("apply.asPickup") }}</text>
           <text class="hint">{{ $t("apply.asPickupHint") }}</text>
         </view>
-        <view class="toggle" :class="{ 'is-on': form.asPickupPoint }">
-          <view class="toggle__dot" />
-        </view>
+        <sh-switch :model-value="form.asPickupPoint"></sh-switch>
       </view>
     </view>
 
@@ -484,7 +482,7 @@ async function submit() {
           />
           <view class="qual__row">
             <view class="qual__forever" @tap="foreverFlags[i] = !foreverFlags[i]">
-              <view class="cb" :class="{ 'is-on': foreverFlags[i] }" />
+              <sh-check :model-value="foreverFlags[i]"></sh-check>
               <text>{{ $t("apply.qualForever") }}</text>
             </view>
             <input
@@ -545,11 +543,6 @@ async function submit() {
 .qual__forever { display: flex; align-items: center; gap: 8rpx; }
 .qual__date { flex: 1; }
 .qual__add { display: flex; gap: 24rpx; margin-top: 20rpx; color: var(--sh-primary-text); }
-.cb {
-  width: 28rpx; height: 28rpx;
-  border: 1px solid var(--sh-line); border-radius: 16rpx;
-}
-.cb.is-on { background: var(--sh-primary); border-color: var(--sh-primary-text); }
 
 
 .head {
@@ -592,27 +585,6 @@ async function submit() {
 }
 .switch-row__text {
   flex: 1;
-}
-.toggle {
-  width: 88rpx;
-  height: 48rpx;
-  border-radius: 9999px;
-  background: var(--sh-faint);
-  padding: 4rpx;
-  transition: background 0.2s ease;
-}
-.toggle.is-on {
-  background: var(--sh-primary);
-}
-.toggle__dot {
-  width: 40rpx;
-  height: 40rpx;
-  border-radius: 9999px;
-  background: var(--sh-surface);
-  transition: transform 0.2s ease;
-}
-.toggle.is-on .toggle__dot {
-  transform: translateX(40rpx);
 }
 .license {
   margin-top: 20rpx;

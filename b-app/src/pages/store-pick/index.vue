@@ -97,9 +97,7 @@ function confirm() {
             </template>
           </text>
         </view>
-        <view class="item__radio" :class="{ 'is-on': s.storeNo === picked }">
-          <text v-if="s.storeNo === picked" class="item__tick">✓</text>
-        </view>
+        <sh-check round :model-value="s.storeNo === picked"></sh-check>
       </view>
     </view>
 
@@ -174,25 +172,6 @@ function confirm() {
   margin-top: 4rpx;
   font-size: 24rpx;
   color: var(--sh-sub);
-}
-.item__radio {
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 44rpx;
-  height: 44rpx;
-  border-radius: 9999px;
-  border: 3rpx solid var(--sh-line);
-  box-sizing: border-box;
-}
-.item__radio.is-on {
-  border-color: var(--sh-primary);
-  background: var(--sh-primary);
-}
-.item__tick {
-  font-size: 24rpx;
-  color: var(--sh-on-primary);
 }
 .enter {
   margin-top: 32rpx;

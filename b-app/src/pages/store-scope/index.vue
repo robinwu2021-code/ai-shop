@@ -443,9 +443,10 @@ onShow(() => {
             <text class="ch__name">{{ $t(`channel.${c.channel}`) }}</text>
             <text class="ch__desc" :class="{ 'ch__desc--warn': c.locked }">{{ c.locked ? $t("store.channelLocked") : c.denied ? $t("store.channelDenied") : $t(`store.channelDesc.${c.channel}`) }}</text>
           </view>
-          <view class="switch" :class="{ 'is-on': c.enabled, 'is-busy': savingChannel === c.channel }">
-            <view class="switch__knob"></view>
-          </view>
+          <sh-switch
+            :model-value="c.enabled"
+            :disabled="savingChannel === c.channel"
+          ></sh-switch>
         </view>
 
         <!-- 开着的路：一行配置摘要 -->
@@ -502,9 +503,7 @@ onShow(() => {
             <view v-if="!subsetAll" class="subset__list">
               <view v-for="a in activeAreas" :key="a.areaNo || a.refCode" class="subset__row" @tap="toggleSubsetArea(a)">
                 <text class="subset__name">{{ splitName(a).main }}<text v-if="isWhole(a)" class="item__whole"> {{ $t("store.whole") }}</text></text>
-                <view class="row__check" :class="{ 'is-on': subsetPicked.includes(a.areaNo || '') }">
-                  <text v-if="subsetPicked.includes(a.areaNo || '')" class="row__tick">✓</text>
-                </view>
+                <sh-check :model-value="subsetPicked.includes(a.areaNo || '')"></sh-check>
               </view>
               <text v-if="!activeAreas.length" class="hint">{{ $t("store.subset.noAreas") }}</text>
             </view>
@@ -643,35 +642,6 @@ onShow(() => {
   line-height: 1.5;
   color: var(--sh-sub);
 }
-.switch {
-  flex-shrink: 0;
-  position: relative;
-  width: 88rpx;
-  height: 48rpx;
-  border-radius: 9999px;
-  background: var(--sh-faint);
-  border: 2rpx solid var(--sh-line);
-  box-sizing: border-box;
-  transition: background 0.15s;
-}
-.switch__knob {
-  position: absolute;
-  top: 4rpx;
-  left: 4rpx;
-  width: 36rpx;
-  height: 36rpx;
-  border-radius: 9999px;
-  background: var(--sh-surface);
-  box-shadow: 0 2rpx 4rpx var(--sh-scrim);
-  transition: left 0.15s;
-}
-.switch.is-on {
-  background: var(--sh-primary);
-  border-color: var(--sh-primary);
-}
-.switch.is-on .switch__knob {
-  left: 46rpx;
-}
 .switch.is-busy {
   opacity: 0.6;
 }
@@ -731,25 +701,6 @@ onShow(() => {
   min-width: 0;
   font-size: 26rpx;
   color: var(--sh-ink);
-}
-.row__check {
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 44rpx;
-  height: 44rpx;
-  border-radius: 9999px;
-  border: 3rpx solid var(--sh-line);
-  box-sizing: border-box;
-}
-.row__check.is-on {
-  border-color: var(--sh-primary);
-  background: var(--sh-primary);
-}
-.row__tick {
-  font-size: 24rpx;
-  color: var(--sh-on-primary);
 }
 .sum__t {
   flex: 1;

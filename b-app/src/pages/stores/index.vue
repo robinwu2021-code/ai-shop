@@ -407,17 +407,17 @@ function pickPayment(s: Store, payMerchantNo?: string) {
       <view v-if="merchant.multiEntity" class="field">
         <text class="field__label">{{ $t("stores.underEntity") }}</text>
         <view class="picks">
-          <view
+          <sh-option
             v-for="g in merchant.entityGroups"
             :key="g.entity.entityNo"
             class="pick"
-            :class="{ 'is-on': entityNo === g.entity.entityNo
-              || (!entityNo && g.entity.entityNo === merchant.profile?.merchantNo) }"
+            :selected="entityNo === g.entity.entityNo
+              || (!entityNo && g.entity.entityNo === merchant.profile?.merchantNo)"
             @tap="entityNo = g.entity.entityNo"
           >
             <text class="pick__name">{{ g.entity.name }}</text>
             <text class="pick__sub">{{ $t("entities.storeCount", { n: g.entity.storeCount }) }}</text>
-          </view>
+          </sh-option>
         </view>
         <text class="hint">{{ $t("stores.underEntityHint") }}</text>
       </view>
@@ -445,15 +445,10 @@ function pickPayment(s: Store, payMerchantNo?: string) {
   margin-top: 12rpx;
 }
 .pick {
+  /* 只留版面：描边、圆角、选中态都归 sh-option */
   flex: 1 1 40%;
   min-width: 220rpx;
   padding: 16rpx 20rpx;
-  border: 3rpx solid var(--sh-line);
-  border-radius: 12rpx;
-  box-sizing: border-box;
-}
-.pick.is-on {
-  border-color: var(--sh-primary);
 }
 .pick__name {
   display: block;

@@ -75,7 +75,7 @@ onShow(() => {
       <view class="sh-card mt">
         <view class="line" @tap="toggle">
           <text class="sh-h2">{{ $t("points.switch") }}</text>
-          <view class="sw" :class="{ 'sw--on': account.enabled, 'sw--lock': !!lockedReason }" />
+          <sh-switch :model-value="account.enabled" :disabled="!!lockedReason"></sh-switch>
         </view>
         <text class="sh-muted sub">{{ $t("points.switchHint") }}</text>
         <!--
@@ -134,27 +134,4 @@ onShow(() => {
   line-height: 1.5;
   color: var(--sh-primary-text);
 }
-.sw {
-  width: 84rpx;
-  height: 48rpx;
-  border-radius: 24rpx;
-  background: var(--sh-line);
-  position: relative;
-  flex: none;
-}
-.sw::after {
-  content: "";
-  position: absolute;
-  width: 36rpx;
-  height: 36rpx;
-  border-radius: 50%;
-  background: #fff;
-  top: 6rpx;
-  left: 6rpx;
-  transition: left 0.15s;
-}
-.sw--on { background: var(--sh-primary); }
-.sw--on::after { left: 42rpx; }
-/* 锁住时降饱和 —— 与「关着」在视觉上要分得开 */
-.sw--lock { opacity: 0.45; }
 </style>
