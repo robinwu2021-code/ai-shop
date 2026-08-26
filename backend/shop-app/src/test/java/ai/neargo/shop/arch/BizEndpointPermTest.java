@@ -91,6 +91,40 @@ class BizEndpointPermTest {
      * {@code docs/requirements/三端角色权限功能对齐清单.md} §4。
      */
     private static final Map<String, String> REQUIRED = new LinkedHashMap<>() {{
+        // ---- 进销存（inv_*，独立库）----
+        // 三档权限，判据是「这个动作能改什么」而不是「它在哪一屏」：
+        //   · biz:stock          改库存与开单 —— 店员与理货员每天的活
+        //   · biz:customer       报表与导出 —— 含毛利与销量，是**经营数据**，
+        //                        店员有 biz:stock 但不该看得到
+        //   · biz:store:admin    建仓与改发货源 —— 门店级配置，与改库存是两拨人
+        put("/biz/inventory/summary", BizPerms.STOCK);
+        put("/biz/inventory/balances", BizPerms.STOCK);
+        put("/biz/inventory/items/{itemId}", BizPerms.STOCK);
+        put("/biz/inventory/ledger", BizPerms.STOCK);
+        // 界面上的「改数」，底下是一次单件盘点 —— 便捷端点，不是第二条改余额的路
+        put("/biz/inventory/adjust", BizPerms.STOCK);
+        put("/biz/inventory/counts", BizPerms.STOCK);
+        put("/biz/inventory/counts/{no}/lines", BizPerms.STOCK);
+        put("/biz/inventory/counts/{no}/post", BizPerms.STOCK);
+        put("/biz/inventory/inbounds", BizPerms.STOCK);
+        put("/biz/inventory/inbounds/{no}", BizPerms.STOCK);
+        put("/biz/inventory/inbounds/{no}/post", BizPerms.STOCK);
+        put("/biz/inventory/inbounds/{no}/void", BizPerms.STOCK);
+        // 出库单**不接受 purpose=SALE**（销售出库只能由预留 commit 产生），
+        // 这一条是 Service 里的闸门，不靠权限码兜
+        put("/biz/inventory/outbounds", BizPerms.STOCK);
+        put("/biz/inventory/outbounds/{no}/post", BizPerms.STOCK);
+        put("/biz/inventory/outbounds/{no}/void", BizPerms.STOCK);
+        put("/biz/inventory/documents", BizPerms.STOCK);
+        put("/biz/inventory/transfers", BizPerms.STOCK);
+        put("/biz/inventory/transfers/{no}/ship", BizPerms.STOCK);
+        put("/biz/inventory/transfers/{no}/receive", BizPerms.STOCK);
+        put("/biz/inventory/locations", BizPerms.STOCK);
+        put("/biz/inventory/locations/{id}/source", BizPerms.STORE_ADMIN);
+        put("/biz/inventory/report/monthly", BizPerms.CUSTOMER);
+        put("/biz/inventory/report/ranking", BizPerms.CUSTOMER);
+        put("/biz/inventory/export", BizPerms.CUSTOMER);
+
         // ---- 履约：三种活面对三种对象 ----
         // 证照识别：与「传资质证件」同一档 —— 能传证的人才能让系统替他读证。
         // 它不落任何东西（不写库、不进桶），但读到的是身份证与执照的完整字段，
