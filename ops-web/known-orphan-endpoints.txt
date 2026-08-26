@@ -1,0 +1,40 @@
+# 后端做了、运营端**没有入口**的 /ops 端点 —— 只准变短，不准变长。
+#
+# 生成于 2026-08-26，HEAD 上 326 个 /ops 端点里的 18 条。
+# 用 `node scripts/check-ops-orphan.mjs` 重新扫；`--check` 会挡住新增。
+#
+# 为什么要盯着它：「画了没后端」在切真后端时会立刻 404，看得见；
+# 「做了没入口」不报任何错 —— 它表现为「这个功能我们做过啊」，而运营点不到。
+#
+# 修一条删一行。删空那天把 --check 换成「必须为空」。
+
+# ── 结算与资金（13 条）。**这一组是重点** ──
+# 自营应付 + 进项票 + 销项开票整条链后端已实现、运营端零入口，
+# 而这是今天唯一真能把钱付出去的路（第三方那条走分账，而分账网关是桩）。
+# 见 docs/requirements/PRD-商家资金到账与对账.md
+GET /ops/payables
+POST /ops/payables/{settleNo}/confirm
+POST /ops/payables/{settleNo}/no-invoice
+POST /ops/payables/{settleNo}/paid
+GET /ops/purchase-invoices
+POST /ops/purchase-invoices/{invoiceNo}/verify
+POST /ops/purchase-invoices/{invoiceNo}/reject
+GET /ops/invoice-requests
+POST /ops/invoice-requests/{requestNo}/issued
+POST /ops/invoice-requests/{requestNo}/reject
+GET /ops/finance/invoice-title
+POST /ops/finance/invoice-title
+# ⚠️ ReconService.coverage() 的注释写着「页面照它显示提示条，
+#    否则『今天没有差异』是句假话」—— 而这个接口今天没有任何调用方。
+GET /ops/payments/recon-coverage
+
+# ── 其余 5 条（非本域）──
+# 商家收款额度用尽时改不了
+PUT /ops/admission/pay-quota/{merchantNo}
+# 触达配置，属另一条线（shop-notify 那批）
+GET /ops/scene-channel
+POST /ops/scene-channel/{scene}/{audience}/{channel}
+# 订单总览：运营端走的是别的入口，可能是重复能力，待确认后删或补
+GET /ops/order
+# 社区池重算，运维动作，可能本来就不该有界面
+POST /ops/community-pool/resync

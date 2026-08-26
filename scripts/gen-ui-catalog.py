@@ -177,15 +177,17 @@ PROTO_URL_BY_ROUTE = {
     "b-app": {
         "pages/goods-edit/index": "https://claude.ai/code/artifact/9eb1a32a-a74b-40d2-b6c3-1a4cb394f02e",
         "pages/my-specs/index": "https://claude.ai/code/artifact/9eb1a32a-a74b-40d2-b6c3-1a4cb394f02e",
-        # 商家资金全链路（订单 / 积分 / 资金八屏）
-        "pages/orders/index": "https://claude.ai/code/artifact/feceebc7-49da-4b4b-bdf4-4411ae384c24",
-        "pages/order/index": "https://claude.ai/code/artifact/feceebc7-49da-4b4b-bdf4-4411ae384c24",
-        "pages/schedule/index": "https://claude.ai/code/artifact/feceebc7-49da-4b4b-bdf4-4411ae384c24",
-        "pages/points/index": "https://claude.ai/code/artifact/feceebc7-49da-4b4b-bdf4-4411ae384c24",
-        "pages/points-records/index": "https://claude.ai/code/artifact/feceebc7-49da-4b4b-bdf4-4411ae384c24",
-        "pages/income/index": "https://claude.ai/code/artifact/feceebc7-49da-4b4b-bdf4-4411ae384c24",
-        "pages/payment/index": "https://claude.ai/code/artifact/feceebc7-49da-4b4b-bdf4-4411ae384c24",
-        "pages/settle/index": "https://claude.ai/code/artifact/feceebc7-49da-4b4b-bdf4-4411ae384c24",
+        # 商家端界面原型（十屏）。**另有一份链路视角的**（入驻→出款七环 + 运营端对照），
+        # 那份回答「断在哪」，这份回答「长什么样」—— 不合并是因为两种读法的人不同
+        "pages/home/index": "https://claude.ai/code/artifact/ea3b41e2-06e9-4040-907f-3003087a693c",
+        "pages/orders/index": "https://claude.ai/code/artifact/ea3b41e2-06e9-4040-907f-3003087a693c",
+        "pages/order/index": "https://claude.ai/code/artifact/ea3b41e2-06e9-4040-907f-3003087a693c",
+        "pages/schedule/index": "https://claude.ai/code/artifact/ea3b41e2-06e9-4040-907f-3003087a693c",
+        "pages/points/index": "https://claude.ai/code/artifact/ea3b41e2-06e9-4040-907f-3003087a693c",
+        "pages/points-records/index": "https://claude.ai/code/artifact/ea3b41e2-06e9-4040-907f-3003087a693c",
+        "pages/income/index": "https://claude.ai/code/artifact/ea3b41e2-06e9-4040-907f-3003087a693c",
+        "pages/payment/index": "https://claude.ai/code/artifact/ea3b41e2-06e9-4040-907f-3003087a693c",
+        "pages/settle/index": "https://claude.ai/code/artifact/ea3b41e2-06e9-4040-907f-3003087a693c",
     },
 }
 
@@ -212,12 +214,13 @@ PROTO_ANCHORS = {
         # 规格原型（另一份 artifact，见 PROTO_URL_BY_ROUTE）
         "pages/goods-edit/index": "s19",
         "pages/my-specs/index": "s23",
-        # 商家资金全链路八屏（另一份 artifact）
-        "pages/orders/index": "s01", "pages/order/index": "s02",
-        "pages/schedule/index": "s03",
-        "pages/points/index": "s04", "pages/points-records/index": "s05",
-        "pages/income/index": "s06", "pages/payment/index": "s07",
-        "pages/settle/index": "s08",
+        # 商家端界面原型十屏（另一份 artifact）
+        "pages/home/index": "s01",
+        "pages/orders/index": "s02", "pages/order/index": "s03",
+        "pages/schedule/index": "s04",
+        "pages/points/index": "s05", "pages/points-records/index": "s06",
+        "pages/income/index": "s07", "pages/payment/index": "s08",
+        "pages/settle/index": "s10",
     },
     "c-app": {
         "pages/store/index": "s15", "pages/member-card/index": "s16",

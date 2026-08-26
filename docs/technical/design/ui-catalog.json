@@ -15,8 +15,8 @@
               "domain": "工作台",
               "tab": true,
               "status": "已实现",
-              "proto": null,
-              "protoUrl": null,
+              "proto": "s01",
+              "protoUrl": "https://claude.ai/code/artifact/ea3b41e2-06e9-4040-907f-3003087a693c",
               "preview": "http://localhost:5175/#/pages/home/index"
             }
           ]
@@ -31,8 +31,8 @@
               "domain": "订单与履约",
               "tab": true,
               "status": "已实现",
-              "proto": "s01",
-              "protoUrl": "https://claude.ai/code/artifact/feceebc7-49da-4b4b-bdf4-4411ae384c24",
+              "proto": "s02",
+              "protoUrl": "https://claude.ai/code/artifact/ea3b41e2-06e9-4040-907f-3003087a693c",
               "preview": "http://localhost:5175/#/pages/orders/index"
             },
             {
@@ -42,8 +42,8 @@
               "domain": "订单与履约",
               "tab": false,
               "status": "已实现",
-              "proto": "s02",
-              "protoUrl": "https://claude.ai/code/artifact/feceebc7-49da-4b4b-bdf4-4411ae384c24",
+              "proto": "s03",
+              "protoUrl": "https://claude.ai/code/artifact/ea3b41e2-06e9-4040-907f-3003087a693c",
               "preview": "http://localhost:5175/#/pages/order/index"
             },
             {
@@ -249,8 +249,8 @@
               "domain": "其它",
               "tab": false,
               "status": "已实现",
-              "proto": "s03",
-              "protoUrl": "https://claude.ai/code/artifact/feceebc7-49da-4b4b-bdf4-4411ae384c24",
+              "proto": "s04",
+              "protoUrl": "https://claude.ai/code/artifact/ea3b41e2-06e9-4040-907f-3003087a693c",
               "preview": "http://localhost:5175/#/pages/schedule/index"
             },
             {
@@ -424,8 +424,8 @@
               "domain": "钱",
               "tab": false,
               "status": "已实现",
-              "proto": "s07",
-              "protoUrl": "https://claude.ai/code/artifact/feceebc7-49da-4b4b-bdf4-4411ae384c24",
+              "proto": "s08",
+              "protoUrl": "https://claude.ai/code/artifact/ea3b41e2-06e9-4040-907f-3003087a693c",
               "preview": "http://localhost:5175/#/pages/payment/index"
             },
             {
@@ -435,8 +435,8 @@
               "domain": "钱",
               "tab": false,
               "status": "已实现",
-              "proto": "s08",
-              "protoUrl": "https://claude.ai/code/artifact/feceebc7-49da-4b4b-bdf4-4411ae384c24",
+              "proto": "s10",
+              "protoUrl": "https://claude.ai/code/artifact/ea3b41e2-06e9-4040-907f-3003087a693c",
               "preview": "http://localhost:5175/#/pages/settle/index"
             },
             {
@@ -457,8 +457,8 @@
               "domain": "钱",
               "tab": false,
               "status": "原型",
-              "proto": "s04",
-              "protoUrl": "https://claude.ai/code/artifact/feceebc7-49da-4b4b-bdf4-4411ae384c24",
+              "proto": "s05",
+              "protoUrl": "https://claude.ai/code/artifact/ea3b41e2-06e9-4040-907f-3003087a693c",
               "preview": null
             },
             {
@@ -468,8 +468,8 @@
               "domain": "钱",
               "tab": false,
               "status": "原型",
-              "proto": "s05",
-              "protoUrl": "https://claude.ai/code/artifact/feceebc7-49da-4b4b-bdf4-4411ae384c24",
+              "proto": "s06",
+              "protoUrl": "https://claude.ai/code/artifact/ea3b41e2-06e9-4040-907f-3003087a693c",
               "preview": null
             },
             {
@@ -479,8 +479,8 @@
               "domain": "钱",
               "tab": false,
               "status": "原型",
-              "proto": "s06",
-              "protoUrl": "https://claude.ai/code/artifact/feceebc7-49da-4b4b-bdf4-4411ae384c24",
+              "proto": "s07",
+              "protoUrl": "https://claude.ai/code/artifact/ea3b41e2-06e9-4040-907f-3003087a693c",
               "preview": null
             }
           ]

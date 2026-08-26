@@ -52,6 +52,15 @@ if ! node "$GATE_WT/scripts/check-ops-contract.mjs" --check; then
   exit 1
 fi
 
+# 反向那一侧：**后端做了、运营端没有入口**。两个方向都要盯 ——
+# 「画了没后端」在切真后端时会 404，看得见；「做了没入口」不报任何错，
+# 它表现为「这个功能我们做过啊」，而运营点不到。
+# 2026-08-26 首扫 18 条，其中 13 条是整条自营应付+发票链路，
+# 而那是当时唯一真能把钱付出去的路。
+if ! node "$GATE_WT/scripts/check-ops-orphan.mjs" --check; then
+  exit 1
+fi
+
 # 后端没动过就不必编 —— 别为改一行文案等两分钟
 if git diff --quiet "@{u}" HEAD -- backend 2>/dev/null; then
   echo "→ 本次推送未触及 backend/，跳过编译闸门"
