@@ -55,4 +55,18 @@ public interface ReconAxis {
     }
 
     Coverage coverage();
+
+    /**
+     * 「这条差异没有支付通道」的占位值。
+     *
+     * <p>⚠️ `stl_recon_diff.pay_channel` 是 <b>NOT NULL 且进了唯一键</b>
+     * （`bill_date + pay_channel + payment_no + diff_type`）——
+     * 那张表是**为收款对账设计的**，而收款一定有通道。
+     *
+     * <p>出款走网银、积分池根本不涉及通道，所以要一个显式的「不适用」。
+     * <b>不改那个唯一键</b>：它正在保证收款差异不重复，
+     * 而为了两条新轴去动一条在跑的资金约束，风险与收益不成比例。
+     * 用占位值的代价只是多一个词，而且它在页面上是看得懂的。
+     */
+    String CHANNEL_NA = "N/A";
 }

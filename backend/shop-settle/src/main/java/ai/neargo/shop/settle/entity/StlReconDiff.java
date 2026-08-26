@@ -35,6 +35,14 @@ public class StlReconDiff extends BaseEntity {
     public static final String RESOLVED = "RESOLVED";
     public static final String IGNORED = "IGNORED";
 
+    /**
+     * 哪条对账轴发现的。<b>它决定这条差异该找谁处置</b> ——
+     * 收款找支付通道、分账找分账通道、出款找财务、积分池是账不是人。
+     *
+     * <p>存量行默认 {@code PAYMENT}：一期只有收款自查一个产出方，所以默认值就是真值。
+     */
+    private String axis;
+
     private String diffNo;
     private String billDate;
     private String payChannel;

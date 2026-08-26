@@ -7,6 +7,7 @@ import ai.neargo.shop.settle.entity.StlPayment;
 import ai.neargo.shop.settle.entity.StlReconDiff;
 import ai.neargo.shop.settle.mapper.SettleMappers;
 import ai.neargo.shop.settle.service.ReconService;
+import ai.neargo.shop.settle.service.recon.ReconAxis;
 import ai.neargo.shop.spi.pay.PayQueryPort;
 import ai.neargo.shop.spi.trade.OrderRepairPort;
 import ai.neargo.common.data.scope.DataScopeContext;
@@ -38,6 +39,17 @@ public class ReconServiceImpl implements ReconService {
     private final SettleMappers.PaymentMapper paymentMapper;
     private final SettleMappers.ReconDiffMapper diffMapper;
     private final PayQueryPort payQueryPort;
+    /**
+     * 所有对账轴。
+     *
+     * ⚠️ **用 ObjectProvider 而不是直接注入 `List<ReconAxis>`** ——
+     * `PaymentReconAxis` 反过来依赖本类（它是纯委托），直接注入会形成构造器环，
+     * 而那个环报出来的是 `Requested bean is currently in creation`，
+     * 与「对账」两个字毫无关系。延迟取解开它，代价只是一次 getBeanProvider。
+     *
+     * 新增一条轴只要加一个 @Component，不用改这里。
+     */
+    private final org.springframework.beans.factory.ObjectProvider<ReconAxis> axes;
     private final OrderRepairPort orderRepairPort;
 
     /**
@@ -52,11 +64,13 @@ public class ReconServiceImpl implements ReconService {
                             SettleMappers.ReconDiffMapper diffMapper,
                             PayQueryPort payQueryPort,
                             OrderRepairPort orderRepairPort,
+                            org.springframework.beans.factory.ObjectProvider<ReconAxis> axes,
                             @Value("${shop.recon.stale-minutes:20}") int staleMinutes) {
         this.paymentMapper = paymentMapper;
         this.diffMapper = diffMapper;
         this.payQueryPort = payQueryPort;
         this.orderRepairPort = orderRepairPort;
+        this.axes = axes;
         this.staleMinutes = staleMinutes;
     }
 
@@ -66,6 +80,26 @@ public class ReconServiceImpl implements ReconService {
      * 加了的话，一笔补回失败就把整批回滚 —— 已经补好的几十笔跟着退回去，
      * 而下一轮会再补一次。批量任务的第一原则是「一颗坏苹果不能毁掉整筐」。
      */
+    /**
+     * 跑所有轴。<b>逐条 try/catch</b> —— 一条轴炸了不该让另外三条也失去发现能力。
+     *
+     * <p>失败的那条把原因带回去而不是静默跳过：一条「今天没扫」的轴
+     * 与一条「今天零差异」的轴在页面上长得一模一样，而它们的含义完全相反。
+     */
+    @Override
+    public List<AxisReport> scanAllAxes(long now) {
+        List<AxisReport> out = new java.util.ArrayList<>();
+        for (ReconAxis axis : axes) {   // ObjectProvider 可迭代
+            try {
+                out.add(new AxisReport(axis.code(), axis.scan(now), axis.coverage(), null));
+            } catch (Exception e) {
+                log.error("对账轴跑失败：axis={}", axis.code(), e);
+                out.add(new AxisReport(axis.code(), null, axis.coverage(), e.toString()));
+            }
+        }
+        return out;
+    }
+
     @Override
     public ScanResult scan(long now) {
         long cutoff = now - staleMinutes * 60_000L;

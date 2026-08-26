@@ -1,5 +1,7 @@
 package ai.neargo.shop.settle.service;
 
+import ai.neargo.shop.settle.service.recon.ReconAxis;
+
 import java.util.List;
 
 /**
@@ -69,6 +71,27 @@ public interface ReconService {
      * @param note                 覆盖范围说明，直接展示
      */
     record Coverage(boolean channelBillConnected, String note) {
+    }
+
+    /**
+     * 跑<b>所有对账轴</b>并返回每条的结果与覆盖范围。
+     *
+     * <p>与 {@link #scan} 的分工：那个只跑收款轴（既有定时任务在调，签名不动）；
+     * 这个是四条轴的总入口。
+     *
+     * <p><b>一条轴炸了不影响其余三条</b> —— 对账是发现机制，
+     * 让它因为某一条的问题整体停摆，等于同时失去另外三条的发现能力。
+     */
+    List<AxisReport> scanAllAxes(long now);
+
+    /**
+     * @param axis     轴标识，与 {@code stl_recon_diff.axis} 一致
+     * @param outcome  扫描结果；这一轴跑失败时为 null
+     * @param coverage 覆盖范围说明。**页面必须显示** —— 不说的话「今天没有差异」是句假话
+     * @param error    这一轴跑失败的原因；成功时为 null
+     */
+    record AxisReport(String axis, ReconAxis.ScanOutcome outcome,
+                      ReconAxis.Coverage coverage, String error) {
     }
 
     /**
