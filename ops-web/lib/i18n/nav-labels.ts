@@ -37,6 +37,18 @@ const OVERLAY: Record<string, Record<string, string>> = {
   平台类目树: { en: "Category tree" },
   商品池与审核: { en: "Product pool & review" },
   预售额度与超卖: { en: "Presale quota & oversell" },
+  库存健康度: { en: "Stock health" },
+  库存流水: { en: "Stock ledger" },
+  库存对差: { en: "Stock reconciliation" },
+  // 以下七条是 V251 / V253 两轮菜单合入时漏补的译文，守卫一直红着 —— 恒红的守卫
+  // 挡不住下一次漏登记，所以一并补上（只加行，不动既有行）。
+  "类目 × 支付方式": { en: "Category × payment mode" },
+  "类目 × 积分": { en: "Category × points" },
+  积分端开关: { en: "Points switches" },
+  应付与发票: { en: "Payables & invoices" },
+  自营应付账款: { en: "Self-operated payables" },
+  进项票: { en: "Purchase invoices" },
+  买家开票申请: { en: "Buyer invoice requests" },
   规格模板维护: { en: "Spec templates" },
   通用规格: { en: "Universal specs" },
   专用规格: { en: "Dedicated specs" },

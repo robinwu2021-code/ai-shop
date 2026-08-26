@@ -137,6 +137,15 @@ export const NAV: NavSection[] = [
       // 那边是全量池按状态筛，这边只有待审队列 —— 审核员日常只用这一个
       { href: "/products?tab=audit", label: "商品审核队列", perm: "product:sku:audit", group: "商品", matrix: "P-3.2", ready: true },
       { href: "/products?tab=stock", label: "预售额度与超卖", perm: "product:stock:update", group: "库存与预售", matrix: "P-3.3", ready: true },
+      /*
+       * 进销存三页（只读）。**权限用 product:sku:read，与三个端点上的 @PreAuthorize 同一把** ——
+       * 界面闸门与后端闸门错开的后果是「菜单点得进、进去一片 403」，
+       * 而看的人只会认为功能坏了。上面那条 stock 页的 ui 码（product:stock:update）
+       * 是界面自己的码，后端并不存在，别照抄。
+       */
+      { href: "/products?tab=inv-health", label: "库存健康度", perm: "product:sku:read", group: "库存与预售", matrix: "P-3.3", ready: true },
+      { href: "/products?tab=inv-ledger", label: "库存流水", perm: "product:sku:read", group: "库存与预售", matrix: "P-3.3", ready: true },
+      { href: "/products?tab=inv-recon", label: "库存对差", perm: "product:sku:read", group: "库存与预售", matrix: "P-3.3", ready: true },
       // 规格模板（P-3.4 / E27）。**归类目权限不归商品权限**：模板按品类预置，
       // 与类目树、资质码字典是同一拨人在配。此前 B-4.4 商家能选模板而平台没有维护入口 ——
       // 三端联动表把这条记成「❌ 断裂：模板是死的」

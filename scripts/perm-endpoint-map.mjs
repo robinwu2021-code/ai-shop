@@ -131,6 +131,12 @@ export const RULES = [
   // 同 /ops/goods 的形状：`(\/|$)` 才盖得住域根 `GET /ops/skus`。
   // 必须排在上面那条之后 —— 规则第一条命中生效，写反了 oversell 之外的写动作会被判成只读
   ["GET", /^\/ops\/skus(\/|$)/, "product:sku:read"],
+  // 进销存的三个运营端只读口（健康度 / 台账 / 对差）。**归 product:sku:read
+  // 而不是新造 product:stock:read**：三个 Controller 上的 @PreAuthorize 判的就是它，
+  // 这里换个码等于让登记表描述一件与代码不符的事，而这张表正是「谁能访问什么」的判据。
+  // 只有 GET —— 进销存在运营端**没有写口**，这一行的窄正是它的意思：
+  // 运营改了商家的数，「这个数是谁改的」就多一个答案，而商家不会知道。
+  ["GET", /^\/ops\/inventory(\/|$)/, "product:sku:read"],
   ["GET", /^\/ops\/categories/, "product:category:read"],
   ["*", /^\/ops\/categories/, "product:category:update"],
   // 规格模板（P-3.4）。**归类目维护面不归审核面**：模板按品类预置，
