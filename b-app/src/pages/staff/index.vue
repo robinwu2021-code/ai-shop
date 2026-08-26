@@ -151,7 +151,7 @@ onShow(load);
           </view>
           <text class="row__sub sh-muted">{{ summary(s) }}</text>
         </view>
-        <text class="row__go">›</text>
+        <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
       </view>
 
       <view v-if="!adding" class="sh-btn sh-btn--soft add" @tap="adding = true">
@@ -189,7 +189,7 @@ onShow(load);
         </view>
         <!-- 预置角色改不了，但可以「以它为起点」建一个自己的 -->
         <text v-if="r.builtin" class="sh-link" @tap="copyRole(r)">{{ $t("staff.copyRole") }}</text>
-        <text v-else class="row__go" @tap="openRole(r)">›</text>
+        <sh-icon v-else @tap="openRole(r)" name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
       </view>
 
       <view class="sh-btn sh-btn--soft add" @tap="openRole({ roleCode: '' } as MerchantRole)">
@@ -257,10 +257,6 @@ onShow(load);
 }
 .row__phone {
   font-size: 24rpx;
-}
-.row__go {
-  font-size: 34rpx;
-  color: var(--sh-sub);
 }
 .tag {
   padding: 4rpx 14rpx;

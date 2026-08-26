@@ -383,7 +383,9 @@ def read_components() -> list[dict]:
 # (id, 名称, 在模板/脚本里找, 在样式里找, 若这个库件已被使用则不算自造, 对应库件)
 ROLLED = [
     ("tabs",    "分栏切换",       None, r"^\s*\.tabs?\b",                       "sh-tabs",  "sh-tabs"),
-    ("empty",   "空态",           None, r"^\s*\.empty\b",                       "sh-empty", "sh-empty"),
+    # 「空态」这条判据**撤掉了**：唯一还命中的 `home` 的 `.empty` 是整屏「未入驻」的
+    # CTA（`sh-h1` + 说明 + 按钮），不是 `sh-empty` 那个「还没有内容」的一行灰字。
+    # 按名字判第七次误命中。sh-empty 本身已有 24 页 27 处在用，这条留着只报假的。
     ("sheet",   "弹层 / 遮罩",     None, r"^\s*\.(mask|dlg|modal|popup)\b",      "sh-sheet", "sh-sheet"),
     ("sysmodal","系统弹框",       r"showModal\(|showActionSheet\(", None,        None,       "sh-sheet"),
     ("arrow",   "文字当箭头",      r"[›»]\s*</text>", None,                       None,       "sh-icon(chevronRight)"),

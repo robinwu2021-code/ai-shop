@@ -109,7 +109,7 @@ function goPickStore() {
       <view class="sh-card block" @tap="editQuals">
         <view class="block__row">
           <text class="block__title">{{ $t("entityDetail.license") }}</text>
-          <text class="block__go">›</text>
+          <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
         </view>
         <text class="block__val" :class="{ 'is-empty': !license }">
           {{ license ? license.qualName : $t("entityDetail.licenseEmpty") }}
@@ -121,7 +121,7 @@ function goPickStore() {
       <view class="sh-card block" @tap="editPayment">
         <view class="block__row">
           <text class="block__title">{{ $t("entityDetail.payment") }}</text>
-          <text class="block__go">›</text>
+          <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
         </view>
         <text class="block__val" :class="{ 'is-empty': !payReady }">
           {{ payReady ? $t("entityDetail.payReady") : $t("entityDetail.payNotReady") }}
@@ -132,7 +132,7 @@ function goPickStore() {
       <view class="sh-card block" @tap="editQuals">
         <view class="block__row">
           <text class="block__title">{{ $t("entityDetail.quals") }}</text>
-          <text class="block__go">›</text>
+          <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
         </view>
         <text class="block__val" :class="{ 'is-empty': !others.length }">
           {{ others.length ? $t("entityDetail.qualsCount", { n: others.length }) : $t("entityDetail.qualsEmpty") }}
@@ -197,10 +197,6 @@ function goPickStore() {
   font-size: 28rpx;
   font-weight: 600;
   color: var(--sh-ink);
-}
-.block__go {
-  font-size: 32rpx;
-  color: var(--sh-sub);
 }
 .block__val {
   display: block;

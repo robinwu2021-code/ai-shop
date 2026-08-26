@@ -94,7 +94,7 @@ function addOne() {
             {{ statusText(e.status) }} · {{ $t("entities.storeCount", { n: e.storeCount }) }}
           </text>
         </view>
-        <text class="item__go">›</text>
+        <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
       </view>
     </view>
 
@@ -165,11 +165,6 @@ function addOne() {
 }
 .dot.is-off {
   background: var(--sh-line);
-}
-.item__go {
-  flex-shrink: 0;
-  font-size: 32rpx;
-  color: var(--sh-sub);
 }
 .add {
   margin-top: 32rpx;

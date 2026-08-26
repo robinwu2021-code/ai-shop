@@ -183,7 +183,7 @@ onShow(load);
         @tap="openStaff(h.mchAccountNo)"
       >
         <text>{{ h.displayName || h.loginPhone }}</text>
-        <text class="row__go">›</text>
+        <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
       </view>
     </view>
 
@@ -229,9 +229,6 @@ onShow(load);
   border-top: 2rpx solid var(--sh-line);
   font-size: 24rpx;
   color: var(--sh-ink);
-}
-.row__go {
-  color: var(--sh-sub);
 }
 .save {
   margin-top: 24rpx;

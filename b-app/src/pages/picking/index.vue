@@ -155,22 +155,14 @@ onShow(load);
 
     <text class="sh-muted reporthint">{{ $t("picking.reportHint") }}</text>
 
-    <view class="tabs">
-      <text
-        class="sh-chip"
-        :class="{ 'sh-chip--primary': view === 'goods' }"
-        @tap="view = 'goods'"
-      >
-        {{ $t("picking.byGoods") }}
-      </text>
-      <text
-        class="sh-chip"
-        :class="{ 'sh-chip--primary': view === 'buyer' }"
-        @tap="view = 'buyer'"
-      >
-        {{ $t("picking.byBuyer") }}
-      </text>
-    </view>
+    <sh-tabs
+      :items="[
+        { key: 'goods', label: String($t('picking.byGoods')) },
+        { key: 'buyer', label: String($t('picking.byBuyer')) },
+      ]"
+      :active="view"
+      @change="(k: string) => (view = k as 'goods' | 'buyer')"
+    ></sh-tabs>
 
     <sh-empty v-if="!rows.length" :text='$t("picking.empty")'></sh-empty>
 
@@ -239,11 +231,6 @@ onShow(load);
   display: block;
   margin: 0 8rpx 20rpx;
   line-height: 1.6;
-}
-.tabs {
-  display: flex;
-  gap: 12rpx;
-  margin-bottom: 16rpx;
 }
 .tabs .sh-chip {
   font-size: 24rpx;

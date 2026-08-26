@@ -15,13 +15,13 @@
 | | 数 |
 |---|---|
 | B 端页面 | **52** |
-| 完全没有自造形态的页 | **5**（`income` `member-add` `points-records` `staff-detail` `stats`） |
-| 自造形态实例 | **104 处 / 13 类** |
+| 完全没有自造形态的页 | **6**（`entity-detail` `income` `member-add` `points-records` `staff-detail` `stats`） |
+| 自造形态实例 | **93 处 / 11 类** |
 | 页面自己的样式 | 1 119 条选择器 · 5 583 行 |
 
 **这 16 类要分成两堆看，责任完全不同：**
 
-- **8 类是库里有、页面没用** —— 这是纪律问题，改页面就行
+- **8 类是库里有、页面没用** —— 这是纪律问题，改页面就行（其中三类已清零：分栏切换、空态、＋加一项）
 - **3 类是库里根本没有** —— 而这 3 类**都不是「没人做」，是「没定」**：
   列表行（32 页，§九已论证**不该做成组件**）· 键值行（6 页，键宽 140/180 两种要拍）·
   搜索框（1 页，两种形态要拍）。**「库的缺口」这一堆实际上已经清空了**
@@ -61,6 +61,7 @@
   表达选中的页面不会被判进来（那正是库件用法）。
 - 「白块自画」判的是同一条规则里同时出现 `background: var(--sh-surface)` 与 `border-radius`。
   这是 `.sh-card` / `.sh-block` 的形状被重写了一遍。
+- 「空态」先前按名字判，把 `home` 的整屏 CTA 算了进来 —— **第七次**，这条判据已撤掉。
 - 「搜索框」先前按名字判，把 `customers` 的 `.search`（只有一条 `margin-top`）算了进来 ——
   **这是按名字判第六次误命中**，改判成「有底色的那种才算」。
 - 「统计数字格」先前按名字判，把 `coupons` 的 `.nums`（其实是两行并排的灰字）算了进来 ——
@@ -72,7 +73,7 @@
 
 ---
 
-## 三、库里有，页面没用（7 类）
+## 三、库里有，页面没用
 
 改这七类不需要新增任何组件，是**纯纪律**。
 
@@ -80,11 +81,11 @@
 |---|---:|---|---|
 | **系统弹框** | **26** | `sh-sheet` | activities, coupons, cross-store, customers, goods-edit, goods-list, home, login, marketing, me, member-reach, member-segments, member-settings, member-tags, my-specs, picking, plan, role-detail, settle, sku-identity, store, store-categories, store-notice, store-scope, stores, verify |
 | **选中态自画** | **16** | `.sh-chip--primary` | activity-edit, apply, cross-store, customers, goods-edit, login, member-settings, my-specs, points, sku-identity, store-categories, store-notice, store-pick, store-scope, stores, verify |
-| 文字当箭头（`›`） | 8 | `sh-icon name="chevronRight"` | entities, entity-detail, goods-edit, marketing, role-detail, staff, store-scope, verify |
+| 文字当箭头（`›`） | ~~8~~ → **2** | `sh-icon name="chevronRight"` | 9 处**独立**的 `<text>›</text>` 已换成图标（22rpx，与现有 16 处里的 11 处同档）。剩下 `marketing` / `store-scope` 是**贴在文字尾**的 `›`（`{{ 店名 }} ›`）—— 那要动文本节点，是另一种形态 |
 | 白块自画 | 7 | `.sh-card` / `.sh-block` | goods-edit, goods-list, home, marketing, me, messages, my-specs |
-| 分栏切换 | 3 | `sh-tabs` | my-specs, picking, verify |
+| ~~分栏切换~~ ✅ | ~~3~~ → **0** | `sh-tabs` | `picking` 的容器与库件**逐字相同**，整条删；`verify` 只留 margin-top；**`my-specs` 是真收敛** —— 它画的等宽方块 tab 正是 `sh-tabs` 当初统一掉的那一个 |
 | 弹层 / 遮罩 | 2 | `sh-sheet` | goods-list, order |
-| 空态 | 1 | `sh-empty` | home |
+| ~~空态~~ | ~~1~~ → **判据撤掉** | `sh-empty` | `home` 的 `.empty` 是整屏「未入驻」的 CTA（`sh-h1` + 说明 + 按钮），**不是**「还没有内容」那一行灰字 —— **按名字判第七次误命中**。`sh-empty` 本身 24 页 27 处在用，这条留着只报假的 |
 | **文字当图标（✕/×）** | 3 | `sh-icon-btn` / `sh-icon(close)` | goods-edit · goods-list · my-specs。收编前是 11 处 / 5 种角色，**连字符都不统一**（`store-scope` 用 `×` U+00D7，其余 `✕` U+2715）。行尾删除与弹层关闭 5 处已换成真图标；剩下的输入框清空、chip 内嵌、图片角标**尺寸受宿主约束，是另一套几何** |
 | 分段标题（只有标题） | 4 | `.sh-h2` + 间距档 | goods-edit(`.sec__h`), groups, plan, store-categories(`.grp`)。**这一条不缺组件，缺的是间距档** —— 各页写的是 24rpx / 40rpx 8rpx 16rpx / 28rpx 0，差别是真实的版面决定 |
 
@@ -411,7 +412,7 @@ my-specs .cat  = background: var(--sh-surface); border-radius: 24rpx; overflow: 
 | # | 待决 | 说明 |
 |---|---|---|
 | 1 | ~~`uni.showModal` 要不要一刀切掉~~ | ✅ **带输入的 12 处已全换**（`editable` 归零，见 §十）—— 那一批是真出过事的。**剩下 25 处确认型仍在用**，代价只是「字不是我们的」。要不要继续换，留给下一轮 |
-| 2 | 缺件补齐后，要不要立**「新页面不许自造」的闸门** | 判据可以直接复用本文的 `ROLLED` 规则（已在生成器里），按棘轮：现有 104 处登记为已知欠账，新增的拦下 |
+| 2 | 缺件补齐后，要不要立**「新页面不许自造」的闸门** | 判据可以直接复用本文的 `ROLLED` 规则（已在生成器里），按棘轮：现有 93 处登记为已知欠账，新增的拦下 |
 | 3 | **数字格用 40 还是 44、600 还是 700** | ✅ **已定：40rpx / 600**。不是投票 —— 字阶写着「700 只给价格」，而这四处是发放数 / 触达数 / 会员数 / 命中数，一个都不是价格；44rpx 也不在字阶上。40/600 恰好是 `customers` 现在的值：四处里唯一合规的那一个 |
 | 4 | **`stores` 的「切店」用 600 加重** | ✅ **已定：换形态，不加字重**。改成 `sh-btn sh-btn--soft sh-btn--sm`（一枚 tint 小胶囊），旁边三个仍是文字动作。**加粗只是把同一个形状描得更黑**，一行里四个都是文字时，重的那个仍要找；换成胶囊一眼就分得出。顺带补了库里缺的 `.sh-btn--sm`（`login` / `sku-identity` / `store-scope` 三处早就各自覆盖 `.sh-btn` 内边距取 26rpx，这一档本来就存在，只是没有名字） |
 | 5 | **图标按钮的点按区只有 56rpx（28px）** | 新浮现。`b-app/App.vue` 里写着「88rpx ≈ 44pt，是点按目标的下限」，而 `my-specs` 的 `.ic` 一直是 52rpx，`sh-icon-btn` 沿用了 56rpx。**没有在收编时夹带改大** —— 改大会顶高所有列表行，而这一轮无法在真机上验。要么承认图标钮是例外，要么单独做一次并验过 |

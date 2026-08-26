@@ -3053,7 +3053,7 @@ async function save(thenSubmit = false) {
       </sh-section>
       <view v-if="!externalOn" class="askspec" @tap="rememberExternal(true)">
         <text class="sh-muted askspec__t">{{ $t("goods.extShow") }}</text>
-        <text class="askspec__go">›</text>
+        <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
       </view>
       <template v-else>
         <text class="sh-muted hint">{{ $t("goods.codeHint") }}</text>
@@ -3136,10 +3136,6 @@ async function save(thenSubmit = false) {
   color: var(--sh-primary);
 }
 
-.askspec__go {
-  font-size: 34rpx;
-  color: var(--sh-sub);
-}
 
 
 /* 规格名只读：它来自「商品规格」，在这儿改会让同一个名字在不同商品上写法不一 */

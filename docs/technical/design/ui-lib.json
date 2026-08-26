@@ -792,7 +792,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 95,
+        "b-app": 91,
         "c-app": 56
       }
     },
@@ -866,7 +866,7 @@
         "color": "var(--sh-primary-text)"
       },
       "usage": {
-        "b-app": 52,
+        "b-app": 48,
         "c-app": 22
       }
     },
@@ -1119,7 +1119,7 @@
         "color?: string"
       ],
       "usage": {
-        "b-app": 23,
+        "b-app": 32,
         "c-app": 4
       },
       "note": "单色图标",
@@ -1268,7 +1268,7 @@
         "active: string"
       ],
       "usage": {
-        "b-app": 4,
+        "b-app": 7,
         "c-app": 7
       },
       "note": "筛选条",
@@ -1645,19 +1645,13 @@
       "page": "entities",
       "file": "b-app/src/pages/entities/index.vue",
       "components": [
+        "sh-icon",
         "sh-scaffold"
       ],
       "libClassHits": 4,
-      "localSelectors": 15,
-      "localCssLines": 70,
+      "localSelectors": 14,
+      "localCssLines": 65,
       "rolled": [
-        {
-          "id": "arrow",
-          "label": "文字当箭头",
-          "lib": "sh-icon(chevronRight)",
-          "rule": "[›»]\\s*</text>",
-          "gap": false
-        },
         {
           "id": "listrow",
           "label": "列表行",
@@ -1671,20 +1665,13 @@
       "page": "entity-detail",
       "file": "b-app/src/pages/entity-detail/index.vue",
       "components": [
+        "sh-icon",
         "sh-scaffold"
       ],
       "libClassHits": 9,
-      "localSelectors": 15,
-      "localCssLines": 72,
-      "rolled": [
-        {
-          "id": "arrow",
-          "label": "文字当箭头",
-          "lib": "sh-icon(chevronRight)",
-          "rule": "[›»]\\s*</text>",
-          "gap": false
-        }
-      ]
+      "localSelectors": 14,
+      "localCssLines": 68,
+      "rolled": []
     },
     {
       "page": "goods-edit",
@@ -1693,27 +1680,21 @@
         "sh-add",
         "sh-cover",
         "sh-icon-btn",
+        "sh-icon",
         "sh-scaffold",
         "sh-section",
         "sh-sheet",
         "sh-uploader"
       ],
       "libClassHits": 122,
-      "localSelectors": 93,
-      "localCssLines": 496,
+      "localSelectors": 92,
+      "localCssLines": 492,
       "rolled": [
         {
           "id": "sysmodal",
           "label": "系统弹框",
           "lib": "sh-sheet",
           "rule": "showModal\\(|showActionSheet\\(",
-          "gap": false
-        },
-        {
-          "id": "arrow",
-          "label": "文字当箭头",
-          "lib": "sh-icon(chevronRight)",
-          "rule": "[›»]\\s*</text>",
           "gap": false
         },
         {
@@ -1844,13 +1825,6 @@
       "localSelectors": 30,
       "localCssLines": 154,
       "rolled": [
-        {
-          "id": "empty",
-          "label": "空态",
-          "lib": "sh-empty",
-          "rule": "^\\s*\\.empty\\b",
-          "gap": false
-        },
         {
           "id": "blockdup",
           "label": "白块自画",
@@ -2149,31 +2123,18 @@
         "sh-icon",
         "sh-scaffold",
         "sh-section",
-        "sh-sheet"
+        "sh-sheet",
+        "sh-tabs"
       ],
       "libClassHits": 24,
-      "localSelectors": 51,
-      "localCssLines": 233,
+      "localSelectors": 49,
+      "localCssLines": 217,
       "rolled": [
-        {
-          "id": "tabs",
-          "label": "分栏切换",
-          "lib": "sh-tabs",
-          "rule": "^\\s*\\.tabs?\\b",
-          "gap": false
-        },
         {
           "id": "sysmodal",
           "label": "系统弹框",
           "lib": "sh-sheet",
           "rule": "showModal\\(|showActionSheet\\(",
-          "gap": false
-        },
-        {
-          "id": "segment",
-          "label": "选中态自画",
-          "lib": ".sh-chip--primary",
-          "rule": "(--on|--off|is-on)\\s*[,{]",
           "gap": false
         },
         {
@@ -2267,19 +2228,13 @@
       "components": [
         "sh-cover",
         "sh-empty",
-        "sh-scaffold"
+        "sh-scaffold",
+        "sh-tabs"
       ],
-      "libClassHits": 17,
-      "localSelectors": 12,
-      "localCssLines": 61,
+      "libClassHits": 13,
+      "localSelectors": 11,
+      "localCssLines": 56,
       "rolled": [
-        {
-          "id": "tabs",
-          "label": "分栏切换",
-          "lib": "sh-tabs",
-          "rule": "^\\s*\\.tabs?\\b",
-          "gap": false
-        },
         {
           "id": "sysmodal",
           "label": "系统弹框",
@@ -2426,24 +2381,18 @@
       "page": "role-detail",
       "file": "b-app/src/pages/role-detail/index.vue",
       "components": [
+        "sh-icon",
         "sh-scaffold"
       ],
       "libClassHits": 15,
-      "localSelectors": 9,
-      "localCssLines": 40,
+      "localSelectors": 8,
+      "localCssLines": 37,
       "rolled": [
         {
           "id": "sysmodal",
           "label": "系统弹框",
           "lib": "sh-sheet",
           "rule": "showModal\\(|showActionSheet\\(",
-          "gap": false
-        },
-        {
-          "id": "arrow",
-          "label": "文字当箭头",
-          "lib": "sh-icon(chevronRight)",
-          "rule": "[›»]\\s*</text>",
           "gap": false
         }
       ]
@@ -2534,20 +2483,14 @@
       "file": "b-app/src/pages/staff/index.vue",
       "components": [
         "sh-empty",
+        "sh-icon",
         "sh-scaffold",
         "sh-tabs"
       ],
       "libClassHits": 31,
-      "localSelectors": 23,
-      "localCssLines": 105,
+      "localSelectors": 22,
+      "localCssLines": 101,
       "rolled": [
-        {
-          "id": "arrow",
-          "label": "文字当箭头",
-          "lib": "sh-icon(chevronRight)",
-          "rule": "[›»]\\s*</text>",
-          "gap": false
-        },
         {
           "id": "listrow",
           "label": "列表行",
@@ -2768,31 +2711,19 @@
       "file": "b-app/src/pages/verify/index.vue",
       "components": [
         "sh-empty",
-        "sh-scaffold"
+        "sh-icon",
+        "sh-scaffold",
+        "sh-tabs"
       ],
-      "libClassHits": 42,
-      "localSelectors": 39,
-      "localCssLines": 198,
+      "libClassHits": 38,
+      "localSelectors": 38,
+      "localCssLines": 192,
       "rolled": [
-        {
-          "id": "tabs",
-          "label": "分栏切换",
-          "lib": "sh-tabs",
-          "rule": "^\\s*\\.tabs?\\b",
-          "gap": false
-        },
         {
           "id": "sysmodal",
           "label": "系统弹框",
           "lib": "sh-sheet",
           "rule": "showModal\\(|showActionSheet\\(",
-          "gap": false
-        },
-        {
-          "id": "arrow",
-          "label": "文字当箭头",
-          "lib": "sh-icon(chevronRight)",
-          "rule": "[›»]\\s*</text>",
           "gap": false
         },
         {
@@ -2923,30 +2854,12 @@
         "goods-edit",
         "login",
         "member-settings",
-        "my-specs",
         "points",
         "store-categories",
         "store-notice",
         "store-pick",
         "store-scope",
         "stores",
-        "verify"
-      ]
-    },
-    {
-      "id": "arrow",
-      "label": "文字当箭头",
-      "lib": "sh-icon(chevronRight)",
-      "gap": false,
-      "rule": "[›»]\\s*</text>",
-      "pages": [
-        "entities",
-        "entity-detail",
-        "goods-edit",
-        "marketing",
-        "role-detail",
-        "staff",
-        "store-scope",
         "verify"
       ]
     },
@@ -2992,18 +2905,6 @@
       ]
     },
     {
-      "id": "tabs",
-      "label": "分栏切换",
-      "lib": "sh-tabs",
-      "gap": false,
-      "rule": "^\\s*\\.tabs?\\b",
-      "pages": [
-        "my-specs",
-        "picking",
-        "verify"
-      ]
-    },
-    {
       "id": "sheet",
       "label": "弹层 / 遮罩",
       "lib": "sh-sheet",
@@ -3015,6 +2916,17 @@
       ]
     },
     {
+      "id": "arrow",
+      "label": "文字当箭头",
+      "lib": "sh-icon(chevronRight)",
+      "gap": false,
+      "rule": "[›»]\\s*</text>",
+      "pages": [
+        "marketing",
+        "store-scope"
+      ]
+    },
+    {
       "id": "candchip",
       "label": "虚线药丸",
       "lib": ".sh-chip--dashed",
@@ -3022,16 +2934,6 @@
       "rule": "border:\\s*2rpx dashed var\\(--sh-primary\\)",
       "pages": [
         "cross-store"
-      ]
-    },
-    {
-      "id": "empty",
-      "label": "空态",
-      "lib": "sh-empty",
-      "gap": false,
-      "rule": "^\\s*\\.empty\\b",
-      "pages": [
-        "home"
       ]
     }
   ],

@@ -780,13 +780,22 @@ onShow(() => void load());
       两栏切换。**一次只管一件事** —— 两段并排会让每张卡长一倍，
       而商家进来通常只为改其中一件。切过去之后所有交互原样复用。
     -->
+    <!--
+      **换回 chip 那套。** 这里原本是等宽方块 tab（选中填主色实底）——
+      而 sh-tabs 的类注释里写着：抽它出来时两端有两套实现（chip 横排 / 方块），
+      **统一成了 chip 那套**。一个被明确废掉的形态在这一页重新长了出来，
+      说明当时只改了代码，没有留下拦住它的东西。
+      外层壳只为那条横向留白（本页内容通铺到边）：sh-tabs 是多根组件，class 透不过去。
+    -->
     <view class="tabs">
-      <text class="tab" :class="{ 'tab--on': tab === 'dims' }" @tap="tab = 'dims'">
-        {{ $t("mySpecs.tabDims") }}
-      </text>
-      <text class="tab" :class="{ 'tab--on': tab === 'props' }" @tap="tab = 'props'">
-        {{ $t("mySpecs.tabProps") }}
-      </text>
+      <sh-tabs
+        :items="[
+          { key: 'dims', label: String($t('mySpecs.tabDims')) },
+          { key: 'props', label: String($t('mySpecs.tabProps')) },
+        ]"
+        :active="tab"
+        @change="(k: string) => (tab = k as 'dims' | 'props')"
+      ></sh-tabs>
     </view>
     <text class="sh-muted intro">
       {{ $t(tab === "dims" ? "mySpecs.intro" : "mySpecs.introProps") }}
@@ -1041,28 +1050,12 @@ onShow(() => void load());
  * 每行都套一张卡的话，一个类目下三四个规格就变成三四块互不相干的浮起色块，
  * 中间的留白比行本身还显眼 —— 看着像四个功能模块，而它们只是一份清单。
  */
-/* 两栏切换：与全站 seg 同形，但这一页只有两个，不必引入组件 */
+/* 只留横向留白：本页内容通铺到边，分栏要与卡片对齐 */
 .tabs {
-  display: flex;
-  gap: 8rpx;
-  margin: 0 26rpx 16rpx;
+  margin: 0 26rpx;
 }
 
-.tab {
-  flex: 1;
-  text-align: center;
-  padding: 14rpx 0;
-  font-size: 26rpx;
-  color: var(--sh-sub);
-  border-radius: 16rpx;
-  background: var(--sh-faint);
-}
 
-.tab--on {
-  color: var(--sh-on-primary);
-  background: var(--sh-primary);
-  font-weight: 600;
-}
 
 .intro {
   display: block;

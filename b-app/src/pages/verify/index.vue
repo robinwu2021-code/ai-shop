@@ -251,17 +251,17 @@ onShow(load);
       两种核销并排。**不自动识别码的类型**：码长得像，认错的代价是
       核销掉不该核的东西，而线下核销不可撤销 —— 让店员说出他在核什么。
     -->
+    <!-- 套一层壳只为那条 margin-top：sh-tabs 是多根组件，class 透不过去
+         （goods-list 里记过同一件事） -->
     <view class="tabs">
-      <text
-        class="sh-chip"
-        :class="{ 'sh-chip--primary': tab === 'pickup' }"
-        @tap="tab = 'pickup'"
-      >{{ $t("verify.tabPickup") }}</text>
-      <text
-        class="sh-chip"
-        :class="{ 'sh-chip--primary': tab === 'coupon' }"
-        @tap="tab = 'coupon'"
-      >{{ $t("verify.tabCoupon") }}</text>
+      <sh-tabs
+        :items="[
+          { key: 'pickup', label: String($t('verify.tabPickup')) },
+          { key: 'coupon', label: String($t('verify.tabCoupon')) },
+        ]"
+        :active="tab"
+        @change="(k: string) => (tab = k as 'pickup' | 'coupon')"
+      ></sh-tabs>
     </view>
 
     <!-- 券核销：先看后核 -->
@@ -427,7 +427,7 @@ onShow(load);
       @tap="goToPicking"
     >
       <text>{{ $t("picking.verifyPrepHint", { n: preparingCount }) }}</text>
-      <text class="prep-hint__go">›</text>
+      <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
     </view>
     <sh-empty v-else-if="!waiting.length" :text='$t("verify.empty")'></sh-empty>
 
@@ -448,10 +448,9 @@ onShow(load);
 </template>
 
 <style scoped>
+/* 只留上边距：gap 与下边距归 sh-tabs */
 .tabs {
-  display: flex;
-  gap: 12rpx;
-  margin: 16rpx 0;
+  margin-top: 16rpx;
 }
 .peek {
   margin-top: 20rpx;
@@ -628,10 +627,6 @@ onShow(load);
   background: var(--sh-warning-tint);
   color: var(--sh-warning);
   font-size: 26rpx;
-}
-.prep-hint__go {
-  flex-shrink: 0;
-  font-size: 28rpx;
 }
 /* 列表密度对齐 C 端（平台版式约定）：卡片之间只留一条缝、正文行高 1.35。
    商家一天要扫几十次这类列表，行距每多 10rpx，一屏就少一行。 */
