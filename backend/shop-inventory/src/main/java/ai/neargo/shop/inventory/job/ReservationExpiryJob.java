@@ -1,5 +1,6 @@
 package ai.neargo.shop.inventory.job;
 
+import ai.neargo.shop.inventory.config.ConditionalOnInventory;
 import ai.neargo.shop.inventory.service.ReservationService;
 import ai.neargo.shop.job.JobSupport;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
@@ -20,6 +21,7 @@ import org.springframework.stereotype.Component;
  * 一笔没人管的预留会一直占着那几件货，而商品在 C 端显示售罄。
  */
 @Profile("worker")
+@ConditionalOnInventory
 @Component
 public class ReservationExpiryJob {
 

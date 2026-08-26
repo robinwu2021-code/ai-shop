@@ -1,5 +1,6 @@
 package ai.neargo.shop.inventory.service.impl;
 
+import ai.neargo.shop.inventory.config.ConditionalOnInventory;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.inventory.entity.InvLocation;
@@ -14,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 
 /** 库位实现。 */
+@ConditionalOnInventory
 @Service
 public class LocationServiceImpl implements LocationService {
 

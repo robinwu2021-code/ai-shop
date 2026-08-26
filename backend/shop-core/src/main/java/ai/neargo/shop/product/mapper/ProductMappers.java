@@ -127,6 +127,19 @@ public final class ProductMappers {
         int confirmStock(@Param("skuNo") String skuNo, @Param("qty") int qty);
 
         /**
+         * 退货入库：**只加 stock，不碰 locked_stock**。
+         *
+         * <p>这一笔的锁早在支付时就转成实扣了（confirm 把两个数一起减掉），
+         * 现在货回来只是实存变多 —— 去动 locked_stock 会让它变成负数，
+         * 而那个数一旦为负，之后每一次下单的「够不够」都算错。
+         */
+        @Update("""
+                UPDATE prd_sku SET stock = stock + #{qty}, version = version + 1
+                 WHERE sku_no = #{skuNo} AND deleted = 0
+                """)
+        int restoreStock(@Param("skuNo") String skuNo, @Param("qty") int qty);
+
+        /**
          * 预售成交（P-3.3.1）：现货不足时的**第二级闸门**，与 {@link #lockStock} 同一套手法 ——
          * 三个条件全写在 WHERE 里，靠影响行数判断，绝不先查后改。
          *
@@ -196,6 +209,14 @@ public final class ProductMappers {
                   AND locked_stock >= #{qty} AND stock >= #{qty}
                 """)
         int confirmStock(@Param("storeNo") String storeNo, @Param("skuNo") String skuNo,
+                         @Param("qty") int qty);
+
+        /** 店级退货入库。理由与 {@code SkuMapper.restoreStock} 相同：只加 stock。 */
+        @Update("""
+                UPDATE prd_store_stock SET stock = stock + #{qty}, version = version + 1
+                 WHERE store_no = #{storeNo} AND sku_no = #{skuNo} AND deleted = 0
+                """)
+        int restoreStock(@Param("storeNo") String storeNo, @Param("skuNo") String skuNo,
                          @Param("qty") int qty);
     }
 

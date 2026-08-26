@@ -1,5 +1,6 @@
 package ai.neargo.shop.inventory.api.ops;
 
+import ai.neargo.shop.inventory.config.ConditionalOnInventory;
 import ai.neargo.shop.auth.Perms;
 import ai.neargo.shop.inventory.dto.InventoryVOs.BalanceVO;
 import ai.neargo.shop.inventory.dto.InventoryVOs.LedgerPageVO;
@@ -24,6 +25,7 @@ import java.util.List;
  * 只读页挂写码，等于**只有能改的人才看得到账** —— 而看账的是运营与客服。
  */
 @Profile("ops")
+@ConditionalOnInventory
 @RestController
 public class OpsInventoryController {
 

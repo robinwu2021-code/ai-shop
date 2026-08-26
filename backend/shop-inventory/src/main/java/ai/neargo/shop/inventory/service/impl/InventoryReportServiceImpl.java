@@ -1,5 +1,6 @@
 package ai.neargo.shop.inventory.service.impl;
 
+import ai.neargo.shop.inventory.config.ConditionalOnInventory;
 import ai.neargo.shop.inventory.dto.InventoryVOs.BalanceVO;
 import ai.neargo.shop.inventory.dto.InventoryVOs.MonthlyVO;
 import ai.neargo.shop.inventory.dto.InventoryVOs.RankVO;
@@ -27,6 +28,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /** 报表实现：直接聚合流水。 */
+@ConditionalOnInventory
 @Service
 public class InventoryReportServiceImpl implements InventoryReportService {
 

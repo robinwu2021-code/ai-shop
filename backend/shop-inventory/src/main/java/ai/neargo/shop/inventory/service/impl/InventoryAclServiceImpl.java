@@ -1,5 +1,6 @@
 package ai.neargo.shop.inventory.service.impl;
 
+import ai.neargo.shop.inventory.config.ConditionalOnInventory;
 import ai.neargo.shop.inventory.entity.InvItem;
 import ai.neargo.shop.inventory.entity.InvItemRef;
 import ai.neargo.shop.inventory.entity.InvLedger;
@@ -19,6 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /** 防腐层实现。 */
+@ConditionalOnInventory
 @Service
 public class InventoryAclServiceImpl implements InventoryAclService {
 

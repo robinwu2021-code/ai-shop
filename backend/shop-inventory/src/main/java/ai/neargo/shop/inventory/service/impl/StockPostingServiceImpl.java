@@ -1,5 +1,6 @@
 package ai.neargo.shop.inventory.service.impl;
 
+import ai.neargo.shop.inventory.config.ConditionalOnInventory;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.inventory.entity.InvLedger;
@@ -31,6 +32,7 @@ import java.util.List;
  * 并发下另一笔可能插在中间，算出来的数会与库里真实结存对不上，
  * 而回放守卫查的正是这一列 —— 算错的话守卫会报一堆假红，真问题反而被淹掉。
  */
+@ConditionalOnInventory
 @Service
 public class StockPostingServiceImpl implements StockPostingService {
 

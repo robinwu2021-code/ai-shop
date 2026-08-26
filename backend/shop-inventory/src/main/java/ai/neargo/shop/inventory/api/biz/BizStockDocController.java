@@ -1,5 +1,6 @@
 package ai.neargo.shop.inventory.api.biz;
 
+import ai.neargo.shop.inventory.config.ConditionalOnInventory;
 import ai.neargo.shop.auth.BizContext;
 import ai.neargo.shop.auth.BizPerms;
 import ai.neargo.shop.auth.SecurityUtils;
@@ -30,6 +31,7 @@ import java.util.List;
  * 这里放行的话，商家能凭空造一笔销量，而动销榜、毛利、月报全按它算。
  */
 @Profile("api")
+@ConditionalOnInventory
 @RestController
 public class BizStockDocController {
 

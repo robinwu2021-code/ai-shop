@@ -16,9 +16,12 @@ import ai.neargo.shop.spi.user.UserQueryPort;
 import ai.neargo.shop.trade.dto.AfterSaleVO;
 import ai.neargo.shop.trade.dto.OpsAfterSaleVO;
 import ai.neargo.shop.trade.entity.OrdAfterSale;
+import ai.neargo.shop.spi.product.StockPort;
+import ai.neargo.shop.trade.entity.OrdItem;
 import ai.neargo.shop.trade.entity.OrdStatusLog;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
 import ai.neargo.shop.trade.mapper.TradeMappers.AfterSaleMapper;
+import ai.neargo.shop.trade.mapper.TradeMappers.OrderItemMapper;
 import ai.neargo.shop.trade.mapper.TradeMappers.StatusLogMapper;
 import ai.neargo.shop.trade.mapper.TradeMappers.SubOrderMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -29,6 +32,7 @@ import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -69,11 +73,14 @@ public class AfterSaleServiceImpl implements AfterSaleService {
     /** 仲裁台要看「谁的店、谁买的」——消费者自己的售后单不需要这两个 Port */
     private final MerchantQueryPort merchantPort;
     private final UserQueryPort userPort;
+    private final StockPort stockPort;
+    private final OrderItemMapper orderItemMapper;
 
     public AfterSaleServiceImpl(AfterSaleMapper afterSaleMapper, SubOrderMapper subOrderMapper,
                                 StatusLogMapper statusLogMapper, SettlePort settlePort,
                                 OutboxEventBus eventBus, ObjectMapper json,
-                                MerchantQueryPort merchantPort, UserQueryPort userPort) {
+                                MerchantQueryPort merchantPort, UserQueryPort userPort,
+                                StockPort stockPort, OrderItemMapper orderItemMapper) {
         this.afterSaleMapper = afterSaleMapper;
         this.subOrderMapper = subOrderMapper;
         this.statusLogMapper = statusLogMapper;
@@ -82,6 +89,8 @@ public class AfterSaleServiceImpl implements AfterSaleService {
         this.json = json;
         this.merchantPort = merchantPort;
         this.userPort = userPort;
+        this.stockPort = stockPort;
+        this.orderItemMapper = orderItemMapper;
     }
 
     @Override
@@ -317,7 +326,11 @@ public class AfterSaleServiceImpl implements AfterSaleService {
         // ② 再退款
         settlePort.refund(as.getSubOrderNo(), as.getRefundMinor(), as.getReason());
 
-        // ③ 落终态
+        // ③ 退货类的把货加回来
+        restoreStockIfReturned(as);
+
+        // ④ 落终态。**回补的标记与状态一起写** —— 分两次写的话，
+        //    中间挂掉会让重试再补一次，而多出来的那几件不会有任何地方报错
         as.setStatus(OrdAfterSale.REFUNDED);
         as.setRefundedAt(System.currentTimeMillis());
         update(as);
@@ -331,6 +344,41 @@ public class AfterSaleServiceImpl implements AfterSaleService {
         appendLog(as.getSubOrderNo(), OrdAfterSale.REFUNDED, label, OrdStatusLog.BY_SYSTEM, null);
         eventBus.publish(new OrderEvents.AfterSaleRefunded(as.getAfterSaleNo(), as.getSubOrderNo(),
                 as.getUserNo(), as.getRefundMinor()));
+    }
+
+    /**
+     * 退货入库（V256）。
+     *
+     * <p><b>判据是售后类型，不是「退款成功」</b>：
+     * {@code REFUND_ONLY} 货根本没回来，补了就是凭空多出几件；
+     * {@code RETURN_REFUND} 货回到店里了，不补的话库里当它卖掉了，
+     * 这一件会被再卖一次，且要等到发货那天才发现；
+     * {@code EXCHANGE} 一出一入净变动为零，平台侧没有库存流水，这一期不动。
+     *
+     * <p>此前这条路径**从来没有实现过** —— 注释说「发事件，下游据此回补库存」，
+     * 而商品域一个消费者都没有。这里改成由 trade 直接调 Port：
+     * 与 {@code OrderServiceImpl} 里 {@code stockPort.release()} 同一个形状，
+     * 不新增跨域依赖，也不需要事件带上它本来没有的行明细。
+     */
+    private void restoreStockIfReturned(OrdAfterSale as) {
+        if (!OrdAfterSale.RETURN_REFUND.equals(as.getType())
+                || Integer.valueOf(1).equals(as.getStockRestored())) {
+            return;
+        }
+        OrdSubOrder sub = subOrderOf(as.getSubOrderNo());
+        List<OrdItem> items = DataScopeContext.executeWithoutScope(() ->
+                orderItemMapper.selectList(Wrappers.<OrdItem>lambdaQuery()
+                        .eq(OrdItem::getSubOrderNo, as.getSubOrderNo())));
+        if (items.isEmpty()) {
+            return;
+        }
+        List<StockPort.SkuQty> lines = new ArrayList<>();
+        for (OrdItem it : items) {
+            lines.add(new StockPort.SkuQty(it.getSkuNo(), it.getQty(),
+                    sub == null ? null : sub.getStoreNo()));
+        }
+        stockPort.restore(as.getAfterSaleNo(), lines);
+        as.setStockRestored(1);
     }
 
     // ---------------------------------------------------------------- 装配

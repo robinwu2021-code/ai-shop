@@ -1,7 +1,10 @@
 package ai.neargo.shop.scenario;
 
 import ai.neargo.shop.support.TestLogin;
+import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.merchant.entity.MchEntity;
+import ai.neargo.shop.product.entity.PrdSku;
+import ai.neargo.shop.product.mapper.ProductMappers;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.junit.jupiter.api.DisplayName;
@@ -40,6 +43,10 @@ class M5AfterSaleFlowTest {
 
     @Autowired
     private WebApplicationContext context;
+
+    /** 直接读实存用 —— 断言不该经过任何会顺手改数的接口。 */
+    @Autowired
+    private ProductMappers.SkuMapper skuMapper;
 
     @Autowired
     private ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper entityMapperForFunds;
@@ -499,6 +506,54 @@ class M5AfterSaleFlowTest {
     private String detail(String token, String afterSaleNo) throws Exception {
         return mvc().perform(get("/mp/after-sale/" + afterSaleNo).header("Authorization", "Bearer " + token))
                 .andReturn().getResponse().getContentAsString();
+    }
+
+    @Test
+    @DisplayName("★★★ 退货退款要把货加回库存（V256）—— 此前这条路径从来没有实现过")
+    void returnRefundRestoresStock() throws Exception {
+        int before = stockOf("SK0003");
+
+        Ordered o = placeAndPay("13200132080", 6980L);
+        assertThat(stockOf("SK0003")).as("支付成功先扣掉").isEqualTo(before - 1);
+
+        String asNo = applyAfterSale(o, "RETURN_REFUND", "不合适");
+        String biz = loginAsOwnerOf("M0001", "13200132081");
+        approve(biz, asNo);
+        mvc().perform(post("/mp/after-sale/" + asNo + "/ship")
+                .header("Authorization", "Bearer " + o.userToken)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"expressCompany\":\"顺丰\",\"expressNo\":\"SF-RS-1\"}"));
+        mvc().perform(post("/biz/after-sale/" + asNo + "/receive")
+                        .header("Authorization", "Bearer " + biz))
+                .andExpect(jsonPath("$.data.status").value("REFUNDED"));
+
+        /*
+         * 货回到店里了，库存必须回到下单前。
+         *
+         * 不补的话库里当它卖掉了 —— 这一件会被再卖一次，而且要等到发货那天才发现。
+         * 撤掉 AfterSaleServiceImpl.restoreStockIfReturned 这一条就红。
+         */
+        assertThat(stockOf("SK0003")).as("退货入库后应回到下单前").isEqualTo(before);
+    }
+
+    @Test
+    @DisplayName("★★★ 仅退款**不**回补库存 —— 货根本没回来，补了就是凭空多出几件")
+    void refundOnlyDoesNotRestoreStock() throws Exception {
+        int before = stockOf("SK0003");
+
+        Ordered o = placeAndPay("13200132082", 6980L);
+        String asNo = applyAfterSale(o, "REFUND_ONLY", "不想要了");
+        approve(loginAsOwnerOf("M0001", "13200132083"), asNo);
+
+        assertThat(stockOf("SK0003")).as("仅退款不回补").isEqualTo(before - 1);
+    }
+
+    /** 直接读库里的实存 —— 这一条断言不该经过任何会顺手改数的接口。 */
+    private int stockOf(String skuNo) {
+        return DataScopeContext.executeWithoutScope(() ->
+                skuMapper.selectList(Wrappers.<PrdSku>lambdaQuery()
+                                .eq(PrdSku::getSkuNo, skuNo))
+                        .stream().mapToInt(PrdSku::getStock).max().orElse(0));
     }
 
     private void approve(String bizToken, String afterSaleNo) throws Exception {

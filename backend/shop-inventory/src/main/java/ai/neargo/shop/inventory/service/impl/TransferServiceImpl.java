@@ -1,5 +1,6 @@
 package ai.neargo.shop.inventory.service.impl;
 
+import ai.neargo.shop.inventory.config.ConditionalOnInventory;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.inventory.entity.InvOutboundLine;
@@ -27,6 +28,7 @@ import java.util.List;
  * 就有了「以哪一份为准」的问题 —— 而两份对不上时没人知道该信谁。
  * 草稿期的行暂存在出库单草稿里。
  */
+@ConditionalOnInventory
 @Service
 public class TransferServiceImpl implements TransferService {
 

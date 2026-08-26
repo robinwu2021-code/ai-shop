@@ -148,6 +148,28 @@ public class StockPortImpl implements StockPort {
         });
     }
 
+    @Override
+    @Transactional
+    public void restore(String restoreNo, List<SkuQty> items) {
+        for (SkuQty it : items) {
+            if (it.qty() <= 0) {
+                continue;
+            }
+            /*
+             * 走哪条路径的判据与扣减完全一致（hasStoreStock）——
+             * 两处判据不一致的话，会出现「从店级扣、回补到主体级」这种半边账，
+             * 而两个数都还是正的，没有任何地方会报错。
+             */
+            if (it.storeNo() != null && hasStoreStock(it.skuNo())) {
+                DataScopeContext.executeWithoutScope(
+                        () -> storeStockMapper.restoreStock(it.storeNo(), it.skuNo(), it.qty()));
+            } else {
+                DataScopeContext.executeWithoutScope(
+                        () -> skuMapper.restoreStock(it.skuNo(), it.qty()));
+            }
+        }
+    }
+
     /**
      * 这个 SKU 启用分店库存了吗 —— **只要有任意一条行就算启用**。
      *

@@ -1,5 +1,6 @@
 package ai.neargo.shop.inventory.api.biz;
 
+import ai.neargo.shop.inventory.config.ConditionalOnInventory;
 import ai.neargo.shop.auth.BizContext;
 import ai.neargo.shop.auth.BizPerms;
 import ai.neargo.shop.inventory.dto.InventoryVOs.DocumentVO;
@@ -31,6 +32,7 @@ import java.util.List;
  * <p>毛利不在这里算：本域只出销量与**销货成本**，售价在销售域。
  */
 @Profile("api")
+@ConditionalOnInventory
 @RestController
 public class BizStockReportController {
 

@@ -74,4 +74,11 @@ public class OrdAfterSale extends BaseEntity {
 
     /** 对应的退款流水号（stl_payment.payment_no）。退款要重试，重试要幂等，幂等靠它。 */
     private String refundPaymentNo;
+    /**
+     * 已回补过库存（V256）。**只有 {@code RETURN_REFUND} 会置位**。
+     *
+     * <p>与回补动作在同一个事务里写：回补成功而状态没落库时，重试据此跳过 ——
+     * 否则会多补一次，而多出来的那几件不会有任何地方报错。
+     */
+    private Integer stockRestored;
 }

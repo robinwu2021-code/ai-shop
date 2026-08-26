@@ -27,6 +27,27 @@ public interface StockPort {
     void confirm(String lockNo);
 
     /**
+     * 退货入库：把货加回来。
+     *
+     * <p><b>触发判据是售后类型，不是「退款成功」</b> —— 这条判断留在调用方（trade），
+     * 因为只有它认得 {@code ord_after_sale.type}：
+     * {@code REFUND_ONLY} 不回补（货根本没回来）、{@code RETURN_REFUND} 回补、
+     * {@code EXCHANGE} 一出一入（平台侧没有流水，净变动为零，这一期不动）。
+     *
+     * <p><b>为什么这条以前不存在</b>：{@code doRefund} 的注释写着「发事件，下游据此回补库存」，
+     * 事件也确实发了 —— 但商品域一个消费者都没有。表现是**退货退款之后库存从不回补**：
+     * 货回到店里了，而库里当它卖掉了，于是这一件会被再卖一次，
+     * 且要等到发货那天才发现。
+     *
+     * <p>幂等由调用方保证（{@code ord_after_sale.stock_restored} 一次性置位）——
+     * 这里不做第二道，因为平台侧还没有库存流水；等真相源切到进销存之后，
+     * 幂等由流水的唯一键 {@code (doc_no, line_no)} 天然兜住。
+     *
+     * @param restoreNo 售后单号，仅用于日志与将来的流水单号
+     */
+    void restore(String restoreNo, List<SkuQty> items);
+
+    /**
      * @param storeNo 这一行在**哪家店**履约，决定扣谁的库存。可空。
      *
      * <p><b>门店放在行上而不是整次调用上</b>：一笔跨商家的订单会拆成多个子单，

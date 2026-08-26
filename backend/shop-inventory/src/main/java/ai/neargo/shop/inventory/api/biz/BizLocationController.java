@@ -1,5 +1,6 @@
 package ai.neargo.shop.inventory.api.biz;
 
+import ai.neargo.shop.inventory.config.ConditionalOnInventory;
 import ai.neargo.shop.auth.BizContext;
 import ai.neargo.shop.auth.BizPerms;
 import ai.neargo.shop.auth.SecurityUtils;
@@ -24,6 +25,7 @@ import java.util.List;
  * 建仓是门店级配置，与「改库存」是两拨人。
  */
 @Profile("api")
+@ConditionalOnInventory
 @RestController
 public class BizLocationController {
 

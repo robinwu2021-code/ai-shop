@@ -1,5 +1,6 @@
 package ai.neargo.shop.inventory.service.impl;
 
+import ai.neargo.shop.inventory.config.ConditionalOnInventory;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.inventory.entity.InvItem;
@@ -21,6 +22,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /** 出库单实现。 */
+@ConditionalOnInventory
 @Service
 public class OutboundServiceImpl implements OutboundService {
 

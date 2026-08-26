@@ -492,6 +492,7 @@ CREATE TABLE IF NOT EXISTS ord_after_sale
     dispute_reason VARCHAR(512) DEFAULT NULL,
     points_offset_minor BIGINT(20) NOT NULL DEFAULT 0,
     refund_payment_no VARCHAR(64) DEFAULT NULL,
+    stock_restored TINYINT NOT NULL DEFAULT 0,
     PRIMARY KEY (id),
     CONSTRAINT uk_after_sale_no UNIQUE (after_sale_no)
 );

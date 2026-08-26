@@ -1,5 +1,6 @@
 package ai.neargo.shop.inventory.service.impl;
 
+import ai.neargo.shop.inventory.config.ConditionalOnInventory;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.inventory.entity.InvInboundLine;
@@ -21,6 +22,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /** 入库单实现。改余额一律经 {@link StockPostingService}，这里只管单据本身。 */
+@ConditionalOnInventory
 @Service
 public class InboundServiceImpl implements InboundService {
 

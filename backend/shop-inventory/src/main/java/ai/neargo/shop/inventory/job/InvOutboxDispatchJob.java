@@ -1,5 +1,6 @@
 package ai.neargo.shop.inventory.job;
 
+import ai.neargo.shop.inventory.config.ConditionalOnInventory;
 import ai.neargo.shop.inventory.entity.InvOutbox;
 import ai.neargo.shop.inventory.mapper.InventoryMappers.OutboxMapper;
 import ai.neargo.shop.inventory.service.InventoryEventSink;
@@ -23,6 +24,7 @@ import java.util.List;
  * 前面几个月的事件已经没了，而没有任何记录说明它们去哪了。
  */
 @Profile("worker")
+@ConditionalOnInventory
 @Component
 public class InvOutboxDispatchJob {
 

@@ -1,9 +1,7 @@
 package ai.neargo.shop.inventory.config;
 
-import com.baomidou.mybatisplus.core.MybatisConfiguration;
 import com.baomidou.mybatisplus.core.config.GlobalConfig;
 import com.baomidou.mybatisplus.core.handlers.MetaObjectHandler;
-import com.baomidou.mybatisplus.core.toolkit.GlobalConfigUtils;
 import com.baomidou.mybatisplus.extension.spring.MybatisSqlSessionFactoryBean;
 import com.zaxxer.hikari.HikariDataSource;
 import org.apache.ibatis.session.SqlSessionFactory;
@@ -93,10 +91,16 @@ public class InventoryDataSourceConfig {
         // 刻意不 setPlugins(...)：平台的 DataScope / 分页 / 乐观锁**拦截器**都不装到这里。
         // 但**填充器要装** —— 它不改 SQL 语义，只补两个时间戳；不装的话 MyBatis-Plus
         // 会把 null 显式写进 INSERT，顶掉 DDL 上的 DEFAULT CURRENT_TIMESTAMP
-        GlobalConfig global = GlobalConfigUtils.defaults();
+        //
+        // ⚠️ **必须新建 GlobalConfig，不能用 GlobalConfigUtils.defaults()**。
+        // 那个方法返回的是共享实例，在它上面 setMetaObjectHandler 会一路污染到平台那套
+        // SqlSessionFactory —— 症状是平台实体更新时报
+        // 「Parameter 'MP_OPTLOCK_VERSION_ORIGINAL' not found」，
+        // 而错误里没有任何一个字提到进销存。
+        GlobalConfig global = new GlobalConfig();
+        global.setDbConfig(new GlobalConfig.DbConfig());
         global.setMetaObjectHandler(invMetaObjectHandler());
         bean.setGlobalConfig(global);
-        bean.setConfiguration(new MybatisConfiguration());
         return bean.getObject();
     }
 

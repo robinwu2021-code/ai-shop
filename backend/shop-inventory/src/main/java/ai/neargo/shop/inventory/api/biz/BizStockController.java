@@ -1,5 +1,6 @@
 package ai.neargo.shop.inventory.api.biz;
 
+import ai.neargo.shop.inventory.config.ConditionalOnInventory;
 import ai.neargo.shop.auth.BizContext;
 import ai.neargo.shop.auth.BizPerms;
 import ai.neargo.shop.auth.SecurityUtils;
@@ -33,6 +34,7 @@ import java.util.List;
  * 所有余额变动都必须有单据，这条不因为「只改一件」而放宽。
  */
 @Profile("api")
+@ConditionalOnInventory
 @RestController
 public class BizStockController {
 
