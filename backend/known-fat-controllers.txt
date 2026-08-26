@@ -16,11 +16,12 @@ BizGoodsController
 #    权限也一样），错在没回头看这个类已经 1022 行了。拆法见架构评审 §5.2
 #
 # 进度（拆一块、单独一次提交、纯搬家）：
-#   ✅ 送货方式 + 预约排期 → BizStoreFulfillmentController（1021 → 949 行，9 → 8 个资源）
-#   ⬜ 我的资质        → BizQualificationController
-#   ⬜ 门店管理（M6）  → BizStoreAdminController
-#   ⬜ 员工与授权 + 角色 → BizStaffController
-# 剩 merchant 主体本身 + 店铺资料 + 社区提报，那时候再看要不要继续拆。
+#   ✅ 送货方式 + 预约排期  → BizStoreFulfillmentController（1021 → 949 行）
+#   ✅ 员工与授权 + 角色    → BizStaffController（949 → 812 行，一次带走 4 个资源）
+#   ⬜ 我的资质            → BizQualificationController
+#   ⬜ 门店管理（M6）      → BizStoreAdminController
+# 现在 4 个资源：communities / merchant / qualifications / store。
+# 拆完资质与门店管理就剩「主体本身 + 店铺资料 + 社区提报」，那时再看要不要继续。
 BizMerchantController
 
 # ── 其余 8 个 ──
