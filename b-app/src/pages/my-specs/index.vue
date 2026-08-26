@@ -77,6 +77,8 @@ async function load() {
  * 而他这次多半只想动其中一个，剩下的都在那儿等着他误触。
  */
 const editingDim = ref<string | null>(null);
+/** 正在编辑的那条属于哪个类目 —— 保存要用它，而弹层里没有 v-for 的 g */
+const editingCat = ref<StoreCategorySpecs | null>(null);
 
 /**
  * 编辑态的键要**连类目一起**：同一个规格（SD_PACK「包装」）会出现在好几个类目下，
@@ -100,6 +102,9 @@ const draft = ref<{
 
 function startEditDim(g: StoreCategorySpecs, t: SpecTemplate) {
   editingDim.value = editKey(g.categoryNo, t.templateNo);
+  editingCat.value = g;
+  // 从「加规格」那一步进来的：让弹层翻到编辑页，而不是关掉再开一个
+  picking.value = null;
   draft.value = {
     dimNo: t.templateNo,
     /*
@@ -393,7 +398,7 @@ async function saveDim(g: StoreCategorySpecs) {
     await commit(g, undefined, {
       dimNo: d.dimNo, label: d.label, values: d.values.map((v) => v.code), dropped: d.dropped,
     });
-    editingDim.value = null;
+    closeSheet();
   } catch (e) {
     uni.showToast({ title: (e as Error).message, icon: "none" });
   }
@@ -514,7 +519,7 @@ async function removeDim(g: StoreCategorySpecs, dim: SpecTemplate) {
   if (!ok) return;
   try {
     await commit(g, undefined, undefined, dim.templateNo);
-    if (editingDim.value === editKey(g.categoryNo, dim.templateNo)) editingDim.value = null;
+    if (editingDim.value === editKey(g.categoryNo, dim.templateNo)) closeSheet();
   } catch (e) {
     uni.showToast({ title: (e as Error).message, icon: "none" });
   }
@@ -539,6 +544,42 @@ function closePick() {
   building.value = "";
   buildName.value = "";
 }
+
+/**
+ * **加、编辑、加档位是同一个弹层的三步，不是三个容器。**
+ *
+ * <p>此前「加规格」是弹层、而它的下一步（起名 + 配档位）是页内展开的一块 ——
+ * 同一件事做到一半换了容器，而且两处各有一个装着同一个名字的输入框：
+ * 在弹层里输入「辣度」，页内又冒出一个写着「辣度」的框，他分不清哪个才算数。
+ *
+ * <p>现在一路都在这一层里：挑 / 建 → 起名配档位 → 加档位 → 回上一步 → 保存。
+ * 「一次只做一件事，做完回到原地」这句话，得由容器本身说出来。
+ *
+ * <p>代价说清楚：**编辑态里拖不了规格行了**（弹层里拖不动它下面那张列表）。
+ * 那一下本来是「改着改着发现这一个该排前面」，而列表行上本来就有手柄 ——
+ * 关掉弹层再拖，比多一个只在某一种状态下才存在的手柄好解释。
+ */
+type SheetStep = "pick" | "edit" | "values";
+const sheetStep = computed<SheetStep | null>(() => {
+  if (addingVal.value) return "values";
+  if (editingDim.value) return "edit";
+  return picking.value ? "pick" : null;
+});
+
+function closeSheet() {
+  addingVal.value = false;
+  newVal.value = "";
+  editingDim.value = null;
+  editingCat.value = null;
+  closePick();
+}
+
+/** 标题跟着步骤走。编辑那一步用规格自己的名字 —— 他正在改的就是它 */
+const sheetTitle = computed(() => {
+  if (sheetStep.value === "values") return valueWord.value;
+  if (sheetStep.value === "edit") return draft.value.platformName || draft.value.label;
+  return t(tab.value === "dims" ? "mySpecs.addDim" : "mySpecs.addProp");
+});
 /** 这一类还能加的规格（已在用的不再列 —— 再列一遍他点了不知道发生了什么） */
 const pickable = ref<SpecTemplate[]>([]);
 
@@ -669,7 +710,7 @@ async function resetOverride(g: StoreCategorySpecs) {
     const merged = await api.mSaveSpecOverride(g.categoryNo, []);
     const i = byCategory.value.findIndex((x) => x.categoryNo === g.categoryNo);
     if (i >= 0) byCategory.value[i] = { ...g, dims: merged };
-    editingDim.value = null;
+    closeSheet();
   } catch (e) {
     uni.showToast({ title: (e as Error).message, icon: "none" });
   }
@@ -722,96 +763,40 @@ onShow(() => void load());
               'spec--land': dimLanded === t.templateNo,
             }"
             :style="dragFrom === t.templateNo ? { transform: `translateY(${dragShift}px)` } : ''">
-        <!-- 只读：一次只调一个规格，其余保持这一行的样子 -->
-        <template v-if="editingDim !== editKey(g.categoryNo, t.templateNo)">
-          <view class="spec__head">
-            <!--
-              **拖动只认手柄这一格。** 事件此前挂在整行上，与它上面那句注释正好相反 ——
-              于是点右边的齿轮或 ✕ 时手指微动几像素就变成一次拖动，
-              而他以为自己点的是按钮。这是「很容易误触」的全部原因。
-            -->
-            <!-- size 的单位是 rpx（见 sh-icon）—— 原型里手柄 14px ≈ 28rpx -->
-            <view
-              class="ic ic--grip"
-              @touchstart="onDragStart(g, t.templateNo, $event)"
-              @touchmove.stop.prevent="onDragMove(g, $event)"
-              @touchend="onDragEnd"
-              @touchcancel="onDragEnd"
-            >
-              <sh-icon name="grip" :size="28" color="var(--sh-sub)" />
-            </view>
-            <text class="spec__name">{{ t.name }}</text>
-            <!-- 自建的标出来：它不参与跨店比价，而那是看不见的差别 -->
-            <text v-if="t.scope === 'MERCHANT'" class="spec__own">{{ $t("mySpecs.own") }}</text>
-            <view class="spec__spacer"></view>
-            <view class="ic ic--act" @tap.stop="startEditDim(g, t)">
-              <sh-icon name="sliders" :size="36" color="var(--sh-primary)" />
-            </view>
-            <view class="ic" @tap.stop="removeDim(g, t)">
-              <sh-icon name="close" :size="34" color="var(--sh-ink)" />
-            </view>
+        <!--
+          **行永远是这一行的样子。**改这一条走弹层（见 sheetStep）——
+          页内展开会把下面的规格整段顶走，而他改的时候正需要看着
+          「这一类现在有哪几个」。
+        -->
+        <view class="spec__head">
+          <!--
+            **拖动只认手柄这一格。** 事件此前挂在整行上，与它上面那句注释正好相反 ——
+            于是点右边的齿轮或 ✕ 时手指微动几像素就变成一次拖动，
+            而他以为自己点的是按钮。这是「很容易误触」的全部原因。
+          -->
+          <!-- size 的单位是 rpx（见 sh-icon）—— 原型里手柄 14px ≈ 28rpx -->
+          <view
+            class="ic ic--grip"
+            @touchstart="onDragStart(g, t.templateNo, $event)"
+            @touchmove.stop.prevent="onDragMove(g, $event)"
+            @touchend="onDragEnd"
+            @touchcancel="onDragEnd"
+          >
+            <sh-icon name="grip" :size="28" color="var(--sh-sub)" />
           </view>
-          <!-- 单行省略：换行撑高的话，一屏就少看两个规格 -->
-          <text class="spec__vals">{{ t.options.map((o) => o.label).join(" · ") || $t("mySpecs.noValueYet") }}</text>
-        </template>
-
-        <!-- 编辑这一个：整块浅色底，滚动时看得出「我在改哪一行」 -->
-        <template v-else>
-          <view class="edit">
-            <!--
-              **编辑态里也能拖。**他常常是「改着改着发现这一个该排前面」——
-              为挪一位而先保存、再拖、再点回来，是三步做一件事。
-            -->
-            <!-- 同样只认手柄：挂在整行上的话，他点改名输入框就会被当成拖动 -->
-            <view class="edit__row">
-              <view
-                class="ic ic--grip"
-                @touchstart="onDragStart(g, t.templateNo, $event)"
-                @touchmove.stop.prevent="onDragMove(g, $event)"
-                @touchend="onDragEnd"
-                @touchcancel="onDragEnd"
-              >
-                <sh-icon name="grip" :size="28" color="var(--sh-sub)" />
-              </view>
-              <input v-model="draft.label" class="edit__input" :placeholder="draft.platformName" />
-            </view>
-            <!--
-              档位也能拖。**落点按 chip 的中心点算**，不像规格行那样按行高除 ——
-              chip 是横向换行的二维排列，"位移 ÷ 行高" 在这里没有意义：
-              同一行里左右挪一格与换到下一行，位移可能完全一样。
-            -->
-            <view class="vals">
-              <text
-                v-for="(v, vi) in draft.values"
-                :key="v.code"
-                class="sh-chip val"
-                :class="{
-                  'val--drag': valDragFrom === vi,
-                  'val--slot': valDragFrom >= 0 && valDragTo === vi && valDragFrom !== vi,
-                  'val--land': valLanded === v.code,
-                }"
-                :style="valDragFrom === vi
-                  ? { transform: `translate(${valShift.x}px, ${valShift.y}px)` }
-                  : ''"
-                @touchstart="onValDragStart(vi, $event)"
-                @touchmove.stop.prevent="onValDragMove($event)"
-                @touchend="onValDragEnd"
-                @touchcancel="onValDragEnd"
-              >
-                {{ draft.labels[v.code] ?? v.code }}
-                <text class="val__x" @tap.stop="dropValue(v.code)">✕</text>
-              </text>
-              <text class="sh-chip val val--add" @tap="openAddValue()">＋ {{ valueWord }}</text>
-            </view>
-            <text class="sh-muted edit__tip">{{ $t("mySpecs.renameTip") }}</text>
-            <view class="edit__acts">
-              <view class="sh-btn sh-btn--soft edit__btn" @tap="editingDim = null">
-                {{ $t("mySpecs.cancel") }}
-              </view>
-              <view class="sh-btn edit__btn" @tap="saveDim(g)">{{ $t("mySpecs.save") }}</view>
-            </view>
+          <text class="spec__name">{{ t.name }}</text>
+          <!-- 自建的标出来：它不参与跨店比价，而那是看不见的差别 -->
+          <text v-if="t.scope === 'MERCHANT'" class="spec__own">{{ $t("mySpecs.own") }}</text>
+          <view class="spec__spacer"></view>
+          <view class="ic ic--act" @tap.stop="startEditDim(g, t)">
+            <sh-icon name="sliders" :size="36" color="var(--sh-primary)" />
           </view>
-        </template>
+          <view class="ic" @tap.stop="removeDim(g, t)">
+            <sh-icon name="close" :size="34" color="var(--sh-ink)" />
+          </view>
+        </view>
+        <!-- 单行省略：换行撑高的话，一屏就少看两个规格 -->
+        <text class="spec__vals">{{ t.options.map((o) => o.label).join(" · ") || $t("mySpecs.noValueYet") }}</text>
       </view>
 
       <text v-if="!listOf(g).length && picking !== g.categoryNo" class="cat__empty">
@@ -841,22 +826,24 @@ onShow(() => void load());
     <text class="sh-muted foot">{{ $t("mySpecs.foot") }}</text>
 
     <!--
-      **加规格 / 加参数走弹层，不在页内展开。**
+      **整条链路一个弹层，三步。**（为什么见 sheetStep 那段注释）
 
-      <p>页内展开会把下面的类目卡整段顶走，商家一边挑一边失去上下文
-      （他本来是在看「这一类现在有哪几个」）；弹层把注意力收在一件事上，做完就回到原地。
+      <p>挑 / 建 → 起名配档位 → 加档位 → 回上一步 → 保存。
+      中途不换容器，也不叠第二层 —— 叠起来的话两层遮罩一起压暗，
+      而他分不清「✕」关的是哪一层。
 
       <p>用自己的 sh-sheet 而不是 uni.showModal：后者的标题与输入框不是同一套字，
       字号行高都不归我们管 —— 「粗糙、字不齐」改不掉。
       而 sh-sheet 有 max-height + 滚动，候选从 5 条长到 25 条也不会把上半截顶出视口。
     -->
     <sh-sheet
-      :visible="!!pickingCat"
-      :title="$t(tab === 'dims' ? 'mySpecs.addDim' : 'mySpecs.addProp')"
-      :hint="$t('mySpecs.pickHint')"
-      @close="closePick"
+      :visible="!!sheetStep"
+      :title="sheetTitle"
+      :hint="sheetStep === 'pick' ? $t('mySpecs.pickHint') : ''"
+      @close="closeSheet"
     >
-      <template v-if="pickingCat">
+      <!-- ① 挑一个平台现成的，或自己建 -->
+      <template v-if="sheetStep === 'pick' && pickingCat">
         <view v-if="pickCat.length" class="chips sheet-gap">
           <text v-for="p in pickCat" :key="p.templateNo" class="sh-chip chip"
                 @tap="pickDim(pickingCat, p)">＋ {{ p.name }}</text>
@@ -898,39 +885,75 @@ onShow(() => void load());
           <text class="sh-muted picker__own-s">{{ $t("mySpecs.buildOwnCost") }}</text>
         </view>
       </template>
-    </sh-sheet>
 
-    <!--
-      **加档位与加规格长同一个样。**（见 openAddValue 那段注释）
-      候选在上、自己填在下单开一段 —— 后者只有本店认得，长得一样就说不清这个代价。
-    -->
-    <sh-sheet
-      :visible="addingVal"
-      :title="valueWord"
-      :hint="valCands.length ? $t('mySpecs.pickHint') : ''"
-      @close="closeAddValue"
-    >
-      <view v-if="valCands.length" class="chips sheet-gap">
-        <text v-for="o in valCands" :key="o.code || o.label" class="sh-chip chip"
-              @tap="pickValue(o)">＋ {{ o.label }}</text>
-      </view>
-      <text v-else class="sh-muted picker__empty">{{ noMoreValueWord }}</text>
+      <!-- ② 起名 + 配档位。名字的占位符是平台原名：清空 = 用回平台的叫法 -->
+      <template v-else-if="sheetStep === 'edit' && editingCat">
+        <input v-model="draft.label" class="field__input edit__input sheet-gap"
+               :placeholder="draft.platformName" />
+        <!--
+          档位可以拖。**落点按 chip 的中心点算**，不像规格行那样按行高除 ——
+          chip 是横向换行的二维排列，「位移 ÷ 行高」在这里没有意义：
+          同一行里左右挪一格与换到下一行，位移可能完全一样。
+        -->
+        <view class="vals">
+          <text
+            v-for="(v, vi) in draft.values"
+            :key="v.code"
+            class="sh-chip val"
+            :class="{
+              'val--drag': valDragFrom === vi,
+              'val--slot': valDragFrom >= 0 && valDragTo === vi && valDragFrom !== vi,
+              'val--land': valLanded === v.code,
+            }"
+            :style="valDragFrom === vi
+              ? { transform: `translate(${valShift.x}px, ${valShift.y}px)` }
+              : ''"
+            @touchstart="onValDragStart(vi, $event)"
+            @touchmove.stop.prevent="onValDragMove($event)"
+            @touchend="onValDragEnd"
+            @touchcancel="onValDragEnd"
+          >
+            {{ draft.labels[v.code] ?? v.code }}
+            <text class="val__x" @tap.stop="dropValue(v.code)">✕</text>
+          </text>
+          <text class="sh-chip val val--add" @tap="openAddValue()">＋ {{ valueWord }}</text>
+        </view>
+        <text class="sh-muted edit__tip">{{ $t("mySpecs.renameTip") }}</text>
+        <view class="edit__acts">
+          <view class="sh-btn sh-btn--soft edit__btn" @tap="closeSheet">
+            {{ $t("mySpecs.cancel") }}
+          </view>
+          <view class="sh-btn edit__btn" @tap="saveDim(editingCat)">{{ $t("mySpecs.save") }}</view>
+        </view>
+      </template>
 
-      <view class="sheet-own">
-        <view class="picker__own-line">
-          <text class="picker__own-t">{{ ownValueWord }}</text>
+      <!-- ③ 加档位 / 加值。返回上一步，不是关掉整层 -->
+      <template v-else-if="sheetStep === 'values'">
+        <view class="back" @tap="closeAddValue">
+          <text class="back__t">‹ {{ draft.platformName || draft.label }}</text>
         </view>
-        <view class="build">
-          <input
-            v-model="newVal"
-            class="field__input build__input"
-            :placeholder="valuePhWord"
-            @confirm="confirmNewValue"
-          />
-          <text class="link build__ok" @tap="confirmNewValue">{{ $t("mySpecs.save") }}</text>
+        <view v-if="valCands.length" class="chips sheet-gap">
+          <text v-for="o in valCands" :key="o.code || o.label" class="sh-chip chip"
+                @tap="pickValue(o)">＋ {{ o.label }}</text>
         </view>
-        <text class="sh-muted picker__own-s">{{ valueHintWord }}</text>
-      </view>
+        <text v-else class="sh-muted picker__empty">{{ noMoreValueWord }}</text>
+
+        <view class="sheet-own">
+          <view class="picker__own-line">
+            <text class="picker__own-t">{{ ownValueWord }}</text>
+          </view>
+          <view class="build">
+            <input
+              v-model="newVal"
+              class="field__input build__input"
+              :placeholder="valuePhWord"
+              @confirm="confirmNewValue"
+            />
+            <text class="link build__ok" @tap="confirmNewValue">{{ $t("mySpecs.save") }}</text>
+          </view>
+          <text class="sh-muted picker__own-s">{{ valueHintWord }}</text>
+        </view>
+      </template>
     </sh-sheet>
 
   </sh-scaffold>
@@ -1210,18 +1233,18 @@ onShow(() => void load());
   margin-left: -10rpx;
 }
 
-/* 编辑态：整块浅色底 —— 滚动时看得出「我正在改哪一行」 */
-.edit {
-  margin: -14rpx -26rpx;
-  padding: 20rpx 26rpx 24rpx;
-  background: var(--sh-primary-tint);
+/* 返回上一步：只在「加档位」那一步出现，压得比标题轻 */
+.back {
+  margin-bottom: 8rpx;
 }
-.edit__row {
-  display: flex;
-  align-items: center;
-  gap: 8rpx;
+
+.back__t {
+  font-size: 26rpx;
+  color: var(--sh-primary);
 }
+
 .edit__input {
+  width: 100%;
   flex: 1;
   padding: 14rpx 20rpx;
   border-radius: 16rpx;

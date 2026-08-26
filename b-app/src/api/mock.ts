@@ -2194,8 +2194,16 @@ export const mockApi: MerchantApi = {
     if (/重量|容量|长度|口径|净含量/.test(tpl?.name ?? "") && !/\d/.test(text)) {
       throw new Error("这一档要写清数量，例如 750g 或 1.5kg");
     }
-    tpl?.options.push({ label: text });
-    return delay({ valueNo: dimNo + "_M" + db.specTemplates.length, code: "", label: text });
+    /*
+     * **新建的值也要有 code。**此前 push 进去的是 `{ label }`（没有 code），
+     * 返回的也是 `code: ""` —— 于是端上只能退回用 valueNo 当 code，
+     * 而下一次再取候选时值池里那一条仍然没有 code，两边对不上：
+     * 同一个「中辣」既算「已经有了」又算「还能加」，连点两下就出现两个。
+     * 后端那侧每个值都有 valueNo，不存在没编码的值。
+     */
+    const code = dimNo + "_M" + ((tpl?.options.length ?? 0) + 1);
+    tpl?.options.push({ code, label: text });
+    return delay({ valueNo: code, code, label: text });
   },
 
   /** 自建维度：只在本店可用，不参与跨店比价 */
