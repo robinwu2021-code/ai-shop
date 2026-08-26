@@ -970,7 +970,7 @@ export default {
     commission: "عمولة المنصة", fulfillFee: "رسوم تنفيذ نقطة الاستلام",
     store: "الفرع", payTo: "يُحوَّل إلى",
     scopeCurrent: "هذا الفرع", scopeAll: "كل الفروع",
-    statusPENDING: "بانتظار التقسيم", statusSPLITTING: "جارٍ التقسيم", statusSPLIT: "تم التقسيم",
+    statusPENDING: "بانتظار التقسيم", statusSPLITTING: "جارٍ التقسيم", statusSPLIT: "تم الإرسال، بانتظار تأكيد القناة", statusSPLIT_CONFIRMED: "تم الاستلام", statusOFFLINE_SETTLED: "دفع نقدي — لا تسوية",
     statusRETRYING: "إعادة المحاولة", statusMANUAL: "مراجعة يدوية", statusREVERSED: "تم الاسترجاع",
     rateHint: "طلبات عملائك الخاصين بعمولة أقل أو بلا عمولة — أنت من جلبهم.",
     pendingHint: "⚠️ نسب العمولة ورسوم التنفيذ قيم مؤقتة بانتظار الإعلان (B9 / B10). الطلبات المستردة مخصومة بالفعل.",

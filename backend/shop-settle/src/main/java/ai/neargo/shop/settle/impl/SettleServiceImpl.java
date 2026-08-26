@@ -329,12 +329,63 @@ public class SettleServiceImpl implements SettleService {
 
     // ---------------------------------------------------------------- 分账
 
+    /**
+     * ⚠️ <b>只该由通道回执调用。</b> 这是唯一能进 {@code SPLIT_CONFIRMED} 的入口，
+     * 而 {@code SPLIT_CONFIRMED} 是「钱真的到了」——
+     * 开一个人工入口等于允许在钱没到账时把单子做平。
+     */
+    @Override
+    @Transactional
+    public boolean confirmSplit(String settleNo, String channelRef) {
+        StlBill bill = require(settleNo);
+        if (StlBill.SPLIT_CONFIRMED.equals(bill.getStatus())) {
+            // 幂等：回执会重投。**不重写时间戳** —— 改晚了会让对账把一条正常单
+            // 算成「发出很久才确认」，而那是分账轴要捞的差异类型
+            return false;
+        }
+        if (!StlBill.SPLIT.equals(bill.getStatus())) {
+            /*
+             * 没发过分账指令的单收到确认回执 —— 这本身就是一条**该被看见的异常**
+             * （回执串了单、或我方漏记了指令）。但这里不抛：回执链路上抛异常会让通道重投，
+             * 而重投解决不了串单。留给对账去认领。
+             */
+            log.warn("收到分账确认回执，但这单没有发出过指令：settleNo={} status={} ref={}",
+                    settleNo, bill.getStatus(), channelRef);
+            return false;
+        }
+        bill.setStatus(StlBill.SPLIT_CONFIRMED);
+        bill.setSplitConfirmedAt(System.currentTimeMillis());
+        update(bill);
+        /*
+         * 留一条流水。**不走 callProvider** —— 那个方法会真的去调通道，
+         * 而我们现在处理的正是通道打回来的回执，再调一次是把因果关系倒过来。
+         */
+        StlSplitLog entry = new StlSplitLog();
+        entry.setSettleNo(bill.getSettleNo());
+        entry.setSubOrderNo(bill.getSubOrderNo());
+        entry.setSplitAction("SPLIT_CONFIRM");
+        entry.setAmountMinor(nz(bill.getSplitAmountMinor()));
+        entry.setRequestNo("CFM-" + settleNo);
+        entry.setResult("SUCCESS");
+        entry.setMessage(channelRef);
+        // `at` 是必填列（业务时刻，与 created_at 的落库时刻分开）—— 照抄 callProvider 时漏了它
+        entry.setAt(System.currentTimeMillis());
+        entry.setTenantNo("MAIN");
+        entry.setCreatedAt(LocalDateTime.now());
+        DataScopeContext.executeWithoutScope(() -> splitLogMapper.insert(entry));
+        return true;
+    }
+
     @Override
     @Transactional
     public void executeSplit(String settleNo) {
         StlBill bill = require(settleNo);
-        if (StlBill.SPLIT.equals(bill.getStatus()) || StlBill.REVERSED.equals(bill.getStatus())) {
-            return;   // 幂等：重复执行不会重复打款
+        if (StlBill.SPLIT.equals(bill.getStatus())
+                || StlBill.SPLIT_CONFIRMED.equals(bill.getStatus())
+                || StlBill.REVERSED.equals(bill.getStatus())) {
+            // 幂等：重复执行不会重复打款。**SPLIT_CONFIRMED 也要挡** ——
+            // 少了它，一笔已确认到账的单被重放时会再发一次分账指令
+            return;
         }
         /*
          * 线下单**永远不分账**：钱在商家自己口袋里，向二级商户发起分账
@@ -439,7 +490,15 @@ public class SettleServiceImpl implements SettleService {
         if (StlBill.REVERSED.equals(bill.getStatus())) {
             return true;
         }
-        if (!StlBill.SPLIT.equals(bill.getStatus())) {
+        /*
+         * **两种都算「分过账」**：指令已发出（SPLIT）与已确认到账（SPLIT_CONFIRMED）。
+         *
+         * 只认 SPLIT_CONFIRMED 的话，一笔「已发出但还没回执」的单退款时会走进下面那个
+         * 分支直接置 REVERSED —— 而通道那边可能正要把钱划走，于是钱划出去了而账上写着已回退。
+         * 只认 SPLIT 则相反：确认到账的单退不了。
+         */
+        if (!StlBill.SPLIT.equals(bill.getStatus())
+                && !StlBill.SPLIT_CONFIRMED.equals(bill.getStatus())) {
             // **没分过账就不发回退指令** —— 发了只会收到「找不到分账单」的错误，
             // 徒增一条失败日志，还会让排查的人以为真出了问题
             bill.setStatus(StlBill.REVERSED);

@@ -376,7 +376,12 @@ export function useSettleStatusMap(): StatusMap<SettleStatus> {
   return {
     PENDING: { label: t("settleStatus.PENDING"), tone: "warning" },
     SPLITTING: { label: t("settleStatus.SPLITTING"), tone: "info" },
-    SPLIT: { label: t("settleStatus.SPLIT"), tone: "success" },
+    // ⚠️ SPLIT 从 success 降成 info：它**不表示钱到了**，只表示指令发出去了。
+    // 用绿色的话，运营扫一眼列表会以为这些单都结清了 —— 而底下还是桩。
+    SPLIT: { label: t("settleStatus.SPLIT"), tone: "info" },
+    SPLIT_CONFIRMED: { label: t("settleStatus.SPLIT_CONFIRMED"), tone: "success" },
+    // 线下单用中性色：它是**正常终态**而不是成就 —— 平台压根没经手这笔钱
+    OFFLINE_SETTLED: { label: t("settleStatus.OFFLINE_SETTLED"), tone: "muted" },
     RETRYING: { label: t("settleStatus.RETRYING"), tone: "warning" },
     MANUAL: { label: t("settleStatus.MANUAL"), tone: "danger" },
     REVERSED: { label: t("settleStatus.REVERSED"), tone: "muted" },

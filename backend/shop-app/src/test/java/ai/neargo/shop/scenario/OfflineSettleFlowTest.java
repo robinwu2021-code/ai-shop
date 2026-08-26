@@ -261,6 +261,67 @@ class OfflineSettleFlowTest {
                 .isEmpty();
     }
 
+    @Test
+    @DisplayName("★★★ 桩网关推不到「已到账」—— 它模拟的是发指令，不是钱到")
+    void stubGatewayNeverConfirms() throws Exception {
+        StlBill bill = billOfOnlineOrder("13400288009", "settle-split-1");
+        // 自营单不走分账，这里换一张第三方的：直接改经营模式最省事，
+        // 而本条要验的是 executeSplit 之后停在哪，与它怎么来的无关
+        DataScopeContext.executeWithoutScope(() -> {
+            StlBill b = reload(bill.getSettleNo());
+            b.setBusinessMode(ai.neargo.shop.spi.user.MerchantQueryPort.MODE_THIRD_PARTY);
+            b.setStatus(StlBill.PENDING);
+            return billMapper.updateById(b);
+        });
+
+        settleService.executeSplit(bill.getSettleNo());
+
+        StlBill after = reload(bill.getSettleNo());
+        assertThat(after.getStatus())
+                .as("桩返回成功只表示**受理成功**。让它自己推到终态，"
+                        + "等于用一个桩把整本账做平 —— 之后再也分不清哪些钱真的到了")
+                .isEqualTo(StlBill.SPLIT);
+        assertThat(after.getSplitAt()).as("指令发出的时刻要有").isNotNull();
+        assertThat(after.getSplitConfirmedAt())
+                .as("到账时刻**必须为空** —— 没有任何回执说过钱到了")
+                .isNull();
+    }
+
+    @Test
+    @DisplayName("★★★ 只有回执能进终态，且幂等不改时间戳")
+    void confirmSplitIsTheOnlyDoorAndIsIdempotent() throws Exception {
+        StlBill bill = billOfOnlineOrder("13400288010", "settle-split-2");
+        DataScopeContext.executeWithoutScope(() -> {
+            StlBill b = reload(bill.getSettleNo());
+            b.setBusinessMode(ai.neargo.shop.spi.user.MerchantQueryPort.MODE_THIRD_PARTY);
+            b.setStatus(StlBill.PENDING);
+            return billMapper.updateById(b);
+        });
+        settleService.executeSplit(bill.getSettleNo());
+
+        assertThat(settleService.confirmSplit(bill.getSettleNo(), "CH-001")).isTrue();
+        StlBill first = reload(bill.getSettleNo());
+        assertThat(first.getStatus()).isEqualTo(StlBill.SPLIT_CONFIRMED);
+        assertThat(first.getSplitConfirmedAt()).isNotNull();
+
+        /*
+         * 回执会重投。**重复确认不能改时间戳** —— 改晚了会让对账把一条正常单
+         * 算成「发出很久才确认」，而那正是分账轴要捞的差异类型（工单第 6 步）。
+         */
+        assertThat(settleService.confirmSplit(bill.getSettleNo(), "CH-001")).isFalse();
+        assertThat(reload(bill.getSettleNo()).getSplitConfirmedAt())
+                .isEqualTo(first.getSplitConfirmedAt());
+    }
+
+    @Test
+    @DisplayName("★★ 没发过指令的单收到确认回执 —— 不迁移状态，也不抛（抛了通道会一直重投）")
+    void confirmWithoutInstructionDoesNothing() throws Exception {
+        StlBill bill = billOfOfflineOrder("13400288011", "settle-split-3");
+        // 线下单是 OFFLINE_SETTLED，从来没发过分账指令
+        assertThat(settleService.confirmSplit(bill.getSettleNo(), "CH-STRAY")).isFalse();
+        assertThat(reload(bill.getSettleNo()).getStatus()).isEqualTo(StlBill.OFFLINE_SETTLED);
+    }
+
     // ── helpers ──────────────────────────────────────────────
 
     /** 走完整条线下链路（下单 → 商家确认收款），返回生成出来的那张账单。 */

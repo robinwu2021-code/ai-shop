@@ -976,6 +976,7 @@ CREATE TABLE IF NOT EXISTS stl_bill
     funds_mode VARCHAR(16) NOT NULL DEFAULT 'AGGREGATED',
     points_cost_minor BIGINT(20) NOT NULL DEFAULT 0,
     waived_commission_minor BIGINT NOT NULL DEFAULT 0,
+    split_confirmed_at BIGINT DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_settle_no UNIQUE (settle_no),
     CONSTRAINT uk_sub_order UNIQUE (sub_order_no)

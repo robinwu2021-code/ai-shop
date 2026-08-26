@@ -1282,14 +1282,24 @@ export interface BizScope {
  * > 描述的是「周期账单」而不是「按子单的分账流水」。内联时对所有工具不可见，
  * > 具名化之后才暴露出来（见 enum-registry 里这条的 note）。
  *
- * - `PENDING` 待分账 · `SPLITTING` 分账中 · `SPLIT` 已分账
+ * - `PENDING` 待分账 · `SPLITTING` 分账中
+ * - `SPLIT` **指令已发出，等通道确认** · `SPLIT_CONFIRMED` **已到账**（终态）
  * - `RETRYING` 失败重试中 · `MANUAL` 转人工（重试用尽，**不会自动再动钱**）
  * - `REVERSED` 已回退（退款前必须先回退分账）
+ * - `OFFLINE_SETTLED` 当面收款，不走分账（钱从没进过平台）
+ *
+ * ⚠️ **`SPLIT` 曾经同时表示「指令已发出」与「钱已到」**，而底下调的是桩实现 ——
+ * 账面显示已分账而一分钱没动。2026-08-26 拆开：`SPLIT` 退回「已发出」，
+ * 到账另立 `SPLIT_CONFIRMED`，且**只能由通道回执产生**。
+ * 端上措辞跟着改：`SPLIT` 不能再叫「已结算」——
+ * 商家拿它去对银行流水，对不上就来找客服，而客服看到的状态也是同一个词。
  */
 export type SettleBillStatus =
   | "PENDING"
   | "SPLITTING"
   | "SPLIT"
+  | "SPLIT_CONFIRMED"
+  | "OFFLINE_SETTLED"
   | "RETRYING"
   | "MANUAL"
   | "REVERSED";

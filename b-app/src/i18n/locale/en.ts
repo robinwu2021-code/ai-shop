@@ -970,7 +970,7 @@ export default {
     commission: "Platform commission", fulfillFee: "Pickup fulfilment fee",
     store: "Store", payTo: "Paid to",
     scopeCurrent: "This store", scopeAll: "All stores",
-    statusPENDING: "Pending", statusSPLITTING: "Splitting", statusSPLIT: "Split",
+    statusPENDING: "Pending", statusSPLITTING: "Splitting", statusSPLIT: "Sent, awaiting channel confirmation", statusSPLIT_CONFIRMED: "Received", statusOFFLINE_SETTLED: "Paid on site — no settlement",
     statusRETRYING: "Retrying", statusMANUAL: "Manual review", statusREVERSED: "Reversed",
     rateHint: "Orders from your own customers carry a lower — often zero — commission. You brought them in.",
     pendingHint: "⚠️ Commission and fulfilment fee rates are placeholders pending publication (B9 / B10). Refunded orders are already deducted.",

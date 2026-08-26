@@ -36,7 +36,7 @@ onShow(() => {
       </view>
     </view>
 
-    <text v-if="!rows.length" class="sh-muted empty">{{ $t("points.recordsEmpty") }}</text>
+    <sh-empty v-if="!rows.length" :text="$t('points.recordsEmpty')" />
 
     <view v-for="r in rows" :key="r.settleNo" class="sh-card mt" :class="{ 'is-none': !r.points }">
       <view class="line">
@@ -74,12 +74,6 @@ onShow(() => {
   color: var(--sh-ink);
 }
 .sub { font-size: 26rpx; color: var(--sh-sub); }
-.empty {
-  display: block;
-  margin-top: 40rpx;
-  text-align: center;
-  font-size: 26rpx;
-}
 /* 未发放那几条压低存在感：它们不是账，是解释 */
 .is-none { opacity: 0.72; }
 </style>

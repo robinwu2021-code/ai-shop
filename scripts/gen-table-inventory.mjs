@@ -57,7 +57,9 @@ function bizKey(def) {
 const lines = [];
 lines.push(`# 数据库表清单（${tables.size} 张）`);
 lines.push("");
-lines.push("> **自动生成，请勿手改** —— `node scripts/gen-table-inventory.mjs`。");
+// 抬头的措辞要能被 doc-standard 那道守卫认出来：它找的是「由 `<脚本>`」这个句式。
+// 少一个「由」字就会被报成「标了勿手改却没有生成脚本」—— 而脚本一直好好地在那儿。
+lines.push("> **自动生成，请勿手改** —— 由 `node scripts/gen-table-inventory.mjs` 生成。");
 lines.push("> 真源是 `backend/shop-app/src/main/resources/db/migration/V*.sql`，");
 lines.push("> 与 [数据库-ER图](./数据库-ER图.md) 共用同一个解析器（`scripts/lib/ddl.mjs`），所以两份不会互相矛盾。");
 lines.push(">");

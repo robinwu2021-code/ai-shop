@@ -211,7 +211,10 @@ export const zh = {
   categoryTemplate: { STANDARD: "标品", FRESH: "生鲜", SERVICE: "服务", VIRTUAL: "虚拟", VOUCHER: "卡券" },
   skuStatus: { DRAFT: "草稿", PENDING: "待审核", ON_SALE: "在售", OFF_SALE: "已下架", REJECTED: "已驳回" },
   settleStatus: {
-    PENDING: "待分账", SPLITTING: "分账中", SPLIT: "已分账",
+    PENDING: "待分账", SPLITTING: "分账中",
+    // ⚠️ SPLIT 不是「已到账」—— 它只表示指令发出去了。到账是 SPLIT_CONFIRMED
+    SPLIT: "已发起，等确认", SPLIT_CONFIRMED: "已到账",
+    OFFLINE_SETTLED: "当面收款",
     RETRYING: "重试中",
     MANUAL: "转人工",
     REVERSED: "已回退分账",

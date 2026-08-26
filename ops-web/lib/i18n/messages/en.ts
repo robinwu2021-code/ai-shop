@@ -213,7 +213,10 @@ export const en: Messages = {
   categoryTemplate: { STANDARD: "Standard goods", FRESH: "Fresh produce", SERVICE: "Service", VIRTUAL: "Virtual", VOUCHER: "Voucher" },
   skuStatus: { DRAFT: "Draft", PENDING: "Pending review", ON_SALE: "On sale", OFF_SALE: "Off sale", REJECTED: "Rejected" },
   settleStatus: {
-    PENDING: "Split pending", SPLITTING: "Splitting", SPLIT: "Split done",
+    PENDING: "Split pending", SPLITTING: "Splitting",
+    // ⚠️ SPLIT is not "money arrived" — it only means the instruction was sent
+    SPLIT: "Sent, awaiting confirmation", SPLIT_CONFIRMED: "Received",
+    OFFLINE_SETTLED: "Paid on site",
     RETRYING: "Retrying",
     MANUAL: "Manual review",
     REVERSED: "Split reversed",

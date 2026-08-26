@@ -132,6 +132,9 @@ export const ENUM_REGISTRY: EnumEntry[] = [
     // FULFILLING 是领域特有词：L1 表里没有能表达「交付方已行动、等交接完成」的通用词。
     // 它替下了 ARRIVED/SHIPPED —— 那两个是「状态 × 履约」的组合，不是状态
     words: ["WAIT_PAY", "WAIT_OFFLINE_PAY", "PAID", "FULFILLING", "COMPLETED", "REFUNDED"] },
+  { decl: "shared:PAY_MODE", dom: "trade", shape: "CLASS", verdict: "OK",
+    note: "支付方式 ONLINE / OFFLINE。**与「支付通道」（WECHAT/ALIPAY/H5）是两根轴，别混** —— 一笔订单要同时确定两者。⚠️ ONLINE 永远可用：四层判定（商品→类目→主体资质→门店）只收窄 OFFLINE，不这么定的话配错任何一层都会出现「这件商品谁也买不了」，那比多开一种支付方式糟得多。与后端 PayModes 逐字一致",
+    words: ["ONLINE", "OFFLINE"] },
   { decl: "shared:DELIVERY_SHAPE", dom: "trade", shape: "CLASS", verdict: "OK",
     note: "履约方式的**交付形态**（自己去取 / 送到手上 / 去消费服务 / 服务上门 / 即时发放）。"
       + "它是订单状态与履约方式之间的中间层：状态集合封闭，履约集合开放，"
@@ -223,8 +226,8 @@ export const ENUM_REGISTRY: EnumEntry[] = [
   { decl: "ops-web:QuestionStatus", dom: "content", shape: "STATUS", verdict: "OK",
     words: ["ANSWERED", "OFFLINE"] },
   { decl: "ops-web:SettleStatus", dom: "finance", shape: "STATUS", verdict: "OK",
-    note: "**已收敛到后端口径（2026-08-11）**。此前 ops-web 这份是按「周期结算单」设计的，而后端从来是「订单成交即生成一张」的即时模型 —— 页面按周期汇总的样子做了很久，对不上任何真实数据。随 /ops/settlements 落地一并对齐：FAILED 拆成 RETRYING（自动重试中）与 MANUAL（重试用尽转人工），FROZEN_BACK 去掉（后端没有超时解冻这件事），补上自营轨道的 PENDING_RECON/CONFIRMED/PAID。**两条轨道互不相通**：第三方的单不会走到 PAID，自营的单不会走到 SPLIT",
-    words: ["SPLITTING", "SPLIT", "RETRYING", "MANUAL", "REVERSED", "PENDING_RECON", "CONFIRMED", "PAID"] },
+    note: "**已收敛到后端口径（2026-08-11）**。此前 ops-web 这份是按「周期结算单」设计的，而后端从来是「订单成交即生成一张」的即时模型 —— 页面按周期汇总的样子做了很久，对不上任何真实数据。随 /ops/settlements 落地一并对齐：FAILED 拆成 RETRYING（自动重试中）与 MANUAL（重试用尽转人工），FROZEN_BACK 去掉（后端没有超时解冻这件事），补上自营轨道的 PENDING_RECON/CONFIRMED/PAID。**两条轨道互不相通**：第三方的单不会走到 PAID，自营的单不会走到 SPLIT。**2026-08-26 拆开 SPLIT**：此前它同时表示「分账指令已发出」与「资金已划转」，而底下调的是 StubSplitGateway —— 账面显示已分账而一分钱没动，商家看着以为钱在路上。现在 SPLIT 退回「已发出」，到账另立 SPLIT_CONFIRMED，且**只能由通道回执产生**（不给人工入口，与提现单 APPROVED→PAID 同一条规矩）。另补 OFFLINE_SETTLED：当面收款的钱从没进过平台，不走分账。",
+    words: ["SPLITTING", "SPLIT", "SPLIT_CONFIRMED", "OFFLINE_SETTLED", "RETRYING", "MANUAL", "REVERSED", "PENDING_RECON", "CONFIRMED", "PAID"] },
   { decl: "ops-web:WithdrawStatus", dom: "finance", shape: "STATUS", verdict: "PLANNED",
     note: "【只读对账】提现整块后端未实现（库里没有 stl_withdraw）。PAID 不在 L1 表内，实现时一并定名",
     words: ["PAID"] },
@@ -306,7 +309,7 @@ export const ENUM_REGISTRY: EnumEntry[] = [
     note: "与 growth 的 AttrSource 同义：STORE_CODE↔MERCHANT_OWNED、INVITER↔INVITE" },
   { decl: "ops-web:OrderStatus", dom: "order", shape: "STATUS", verdict: "OK",
     // 与 shared:OrderStatus 同一套抽象状态（2026-08-17 三端统一）
-    words: ["WAIT_PAY", "PAID", "FULFILLING", "COMPLETED", "REFUNDED"] },
+    words: ["WAIT_PAY", "WAIT_OFFLINE_PAY", "PAID", "FULFILLING", "COMPLETED", "REFUNDED"] },
   { decl: "ops-web:PayChannel", dom: "payment", shape: "CLASS", verdict: "PLANNED",
     note: "多一个 BALANCE，后端未实现" },
   { decl: "ops-web:ReconDiffType", dom: "payment", shape: "CLASS", verdict: "PLANNED",
@@ -395,8 +398,8 @@ export const ENUM_REGISTRY: EnumEntry[] = [
     words: ["DISABLED"] },
   { decl: "shared:StaffRole", dom: "merchant", shape: "CLASS", verdict: "OK" },
   { decl: "shared:SettleBillStatus", dom: "settle", shape: "STATUS", verdict: "OK",
-    note: "2026-08-11 已收敛为后端 StlBill 的取值。此前是 PENDING/PARTIAL/DONE/EXPIRED —— 一套后端从来没有过的词，配的是同样虚构的「周期账单」结构；b-app 结算页整片字段连真后端都是 undefined，靠 mock 才看起来是好的。做 P4 结算分店时撞出来",
-    words: ["SPLITTING", "SPLIT", "RETRYING", "MANUAL", "REVERSED"] },
+    note: "2026-08-11 已收敛为后端 StlBill 的取值。此前是 PENDING/PARTIAL/DONE/EXPIRED —— 一套后端从来没有过的词，配的是同样虚构的「周期账单」结构；b-app 结算页整片字段连真后端都是 undefined，靠 mock 才看起来是好的。做 P4 结算分店时撞出来。**2026-08-26 拆开 SPLIT**：此前它同时表示「分账指令已发出」与「资金已划转」，而底下调的是 StubSplitGateway —— 账面显示已分账而一分钱没动，商家看着以为钱在路上。现在 SPLIT 退回「已发出」，到账另立 SPLIT_CONFIRMED，且**只能由通道回执产生**（不给人工入口，与提现单 APPROVED→PAID 同一条规矩）。另补 OFFLINE_SETTLED：当面收款的钱从没进过平台，不走分账。",
+    words: ["SPLITTING", "SPLIT", "SPLIT_CONFIRMED", "OFFLINE_SETTLED", "RETRYING", "MANUAL", "REVERSED"] },
   { decl: "shared:MerchantApplyReviewStatus", dom: "merchant", shape: "STATUS", verdict: "OK",
     words: ["REVIEWING"] },
   { decl: "shared:PickupOwnerType", dom: "community", shape: "CLASS", verdict: "OK" },

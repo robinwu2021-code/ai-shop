@@ -9,10 +9,20 @@ import type { TrafficSource } from "./order";
  * 自营 PENDING_RECON → CONFIRMED → PAID（对账 → 确认 → 财务付款）。
  * 合成一条会让「已完成」在两种模式下指向完全不同的事。
  */
+/**
+ * ⚠️ **`SPLIT` 曾经同时表示「指令已发出」与「钱已到」**，而底下调的是桩实现 ——
+ * 账面显示已分账而一分钱没动。2026-08-26 拆开，到账另立 `SPLIT_CONFIRMED`。
+ *
+ * ⚠️ 说明写在这里而不是夹在值之间：`enum-registry` 的扫描正则只认
+ * 「值行 + 行尾注释」，**整行注释会把 union 打断** ——
+ * 打断之后这个枚举在登记表里会被报成「代码里已不存在」。
+ */
 export type SettleStatus =
   | "PENDING"        // 第三方：已生成，待下发分账指令
   | "SPLITTING"      // 指令已下发，等回执
-  | "SPLIT"          // 分账成功（第三方终态）
+  | "SPLIT"           // 指令已发出，等通道确认（**不是终态、也不表示钱到了**）
+  | "SPLIT_CONFIRMED" // 已到账（第三方终态）—— 只能由通道回执产生
+  | "OFFLINE_SETTLED" // 当面收款：钱从没进过平台，不走分账
   | "RETRYING"       // 失败重试中
   | "MANUAL"         // 转人工
   | "REVERSED"       // 已回退分账
@@ -30,7 +40,13 @@ export const SETTLE_TRANSITIONS: Record<SettleStatus, SettleStatus[]> = {
   SPLITTING: ["SPLIT", "RETRYING"],
   RETRYING: ["SPLITTING", "MANUAL"],
   MANUAL: [],
-  SPLIT: ["REVERSED"],
+  // SPLIT 有两条出边：等到回执 → SPLIT_CONFIRMED；退款 → REVERSED。
+  // **回执没到也能回退** —— 通道那边可能正要划钱，不给这条边的话，
+  // 一笔「已发出未确认」的单退款时无路可走
+  SPLIT: ["SPLIT_CONFIRMED", "REVERSED"],
+  SPLIT_CONFIRMED: ["REVERSED"],
+  // 线下单是终态：钱从没进过平台，没有任何资金动作可做
+  OFFLINE_SETTLED: [],
   REVERSED: [],
   // 自营轨道
   PENDING_RECON: ["CONFIRMED"],

@@ -41,7 +41,26 @@ public class StlBill extends BaseEntity {
 
     public static final String PENDING = "PENDING";
     public static final String SPLITTING = "SPLITTING";
+    /**
+     * <b>分账指令已发出，等通道确认。</b>
+     *
+     * <p>⚠️ <b>它不是终态，也不表示钱到了。</b> 到账是 {@link #SPLIT_CONFIRMED}。
+     *
+     * <p>此前这一个值同时表示两件事，而底下调的是 {@code StubSplitGateway} ——
+     * 账面显示已分账，一分钱都没有真的动过，而商家看着以为钱在路上。
+     */
     public static final String SPLIT = "SPLIT";
+    /**
+     * <b>通道回执确认已到账。</b>分账链路的终态。
+     *
+     * <p>⚠️ <b>只能由回执产生，不给人工入口。</b>
+     * 与 {@code stl_withdraw} 的 {@code APPROVED → PAID} 同一条规矩：
+     * 让人手动把单子做平，之后对账差额永远说不清是「通道慢了」还是「有人点早了」。
+     *
+     * <p>所以桩网关永远停在 {@link #SPLIT} —— 那正是它该待的地方：
+     * 指令「发」出去了（发给了一个桩），而没有任何回执说钱到了。
+     */
+    public static final String SPLIT_CONFIRMED = "SPLIT_CONFIRMED";
     public static final String RETRYING = "RETRYING";
     public static final String MANUAL = "MANUAL";
     public static final String REVERSED = "REVERSED";
@@ -81,7 +100,15 @@ public class StlBill extends BaseEntity {
     private Integer commissionRate;
 
     private String status;
+    /** <b>指令发出</b>的时刻。与 {@link #splitConfirmedAt} 分开 —— 两者的间隔是对账要盯的 */
     private Long splitAt;
+    /**
+     * 回执确认<b>到账</b>的时刻；空 = 还没确认。
+     *
+     * <p>存量的 SPLIT 行这一列都是空的：它们是桩时代产生的，本来就不知道到没到账 ——
+     * 回填一个时间等于凭空断言那些钱到了。
+     */
+    private Long splitConfirmedAt;
     private Integer retryCount;
     private String lastError;
     /**

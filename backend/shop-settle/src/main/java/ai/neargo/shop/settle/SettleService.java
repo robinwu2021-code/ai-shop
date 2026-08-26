@@ -13,6 +13,22 @@ public interface SettleService {
     /** 支付成功后按子单生成结算单。**幂等**：事件重投不会重复生成。 */
     int generateForOrder(String orderNo);
 
+    /**
+     * <b>通道回执确认分账已到账。</b>把 {@code SPLIT} 推到终态 {@code SPLIT_CONFIRMED}。
+     *
+     * <p>⚠️ <b>这是进入终态的唯一入口，并且只该由回执调用。</b>
+     * 不给运营端、不给人工按钮 —— 与提现单 {@code APPROVED → PAID} 同一条规矩：
+     * 让人手动把单子做平，之后对账差额永远说不清是「通道慢了」还是「有人点早了」。
+     *
+     * <p><b>幂等</b>：已经是终态的重复调用直接返回，不重复写时间戳 ——
+     * 回执会重投，而 {@code split_confirmed_at} 被改晚会让对账把一条正常单
+     * 算成「发出很久才确认」。
+     *
+     * @param channelRef 通道那边的分账单号，用于对账时回溯
+     * @return 是否真的发生了状态迁移（false = 本来就是终态，或这单压根没分过账）
+     */
+    boolean confirmSplit(String settleNo, String channelRef);
+
     /** 执行分账。**幂等**：重复执行不会重复打款。 */
     void executeSplit(String settleNo);
 
