@@ -747,6 +747,9 @@ CREATE TABLE IF NOT EXISTS prd_sku
     arrive_at DATETIME DEFAULT NULL,
     cost_price BIGINT(20) DEFAULT NULL,
     option_value_nos VARCHAR(512) DEFAULT NULL,
+    barcode VARCHAR(32) DEFAULT NULL,
+    merchant_sku_code VARCHAR(64) DEFAULT NULL,
+    sale_unit VARCHAR(16) DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_entity_sku_market UNIQUE (entity_no,sku_no,market)
 );

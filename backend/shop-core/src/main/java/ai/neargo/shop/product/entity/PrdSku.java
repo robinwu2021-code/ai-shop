@@ -46,11 +46,67 @@ public class PrdSku extends BaseEntity {
      */
     private String optionValueNos;
 
+    /**
+     * 商品条码 EAN-13 / UPC（V252）。与 ERP、收银秤、供应商发货单的通用键。
+     *
+     * <p><b>可空，且空是常态</b>：生鲜、现做熟食、手工品本来就没有条码。
+     *
+     * <p><b>不是唯一键</b> —— 同一包饼干在十家店都有，它是**查找键不是身份键**。
+     * 做成唯一的话，第二家店录同一个条码就插不进去。
+     */
+    /*
+     * **updateStrategy = ALWAYS 是「清空」那一半的命根子**：
+     * MyBatis-Plus 的 updateById 默认跳过 null 字段，于是
+     * 商家把条码删掉、保存、它又回来了 —— 而这件事不报错。
+     * 契约写的是「不传 = 不改，传空串 = 清空」，后半靠这个注解才成立。
+     */
+    @com.baomidou.mybatisplus.annotation.TableField(
+            updateStrategy = com.baomidou.mybatisplus.annotation.FieldStrategy.ALWAYS)
+    private String barcode;
+
+    /**
+     * 商家自有货号（V252）。他自己 ERP 里的主键，对账靠它。
+     *
+     * <p>在**商家自己的命名空间**里唯一（{@code uk_sku_merchant_code}），不跨商家。
+     * 允许多行 NULL —— 没填货号的 SKU 有的是。
+     */
+    /*
+     * **updateStrategy = ALWAYS 是「清空」那一半的命根子**：
+     * MyBatis-Plus 的 updateById 默认跳过 null 字段，于是
+     * 商家把货号删掉、保存、它又回来了 —— 而这件事不报错。
+     * 契约写的是「不传 = 不改，传空串 = 清空」，后半靠这个注解才成立。
+     */
+    @com.baomidou.mybatisplus.annotation.TableField(
+            updateStrategy = com.baomidou.mybatisplus.annotation.FieldStrategy.ALWAYS)
+    private String merchantSkuCode;
+
+    /**
+     * 计量单位（件 / 斤 / kg / 份）（V252）。称重品与计件品的分界，
+     * 也是导出给 ERP 时必须带的一列 —— 没有它，「5」到底是 5 件还是 5 斤没人知道。
+     */
+    /*
+     * **updateStrategy = ALWAYS 是「清空」那一半的命根子**：
+     * MyBatis-Plus 的 updateById 默认跳过 null 字段，于是
+     * 商家把计量单位删掉、保存、它又回来了 —— 而这件事不报错。
+     * 契约写的是「不传 = 不改，传空串 = 清空」，后半靠这个注解才成立。
+     */
+    @com.baomidou.mybatisplus.annotation.TableField(
+            updateStrategy = com.baomidou.mybatisplus.annotation.FieldStrategy.ALWAYS)
+    private String saleUnit;
+
     /** 展示用拼接文案，后端下发 —— 端上自己拼会在多语言分隔符上出岔子。 */
     private String spec;
 
     /** 最小货币单位（分）。整数，绝不用浮点。 */
     private Long price;
+    /*
+     * **updateStrategy = ALWAYS**：契约写的是「留空 = 不改，<= 0 = 清掉」，
+     * 而 updateById 默认跳过 null 字段 —— 于是 setXxx(null) 根本没写进去，
+     * **商家把它删掉、保存、它自己回来了**，且不报错，他只会以为没点上保存。
+     * 2026-08-26 用例验过：不加这个注解，清空一定失败。
+     */
+    @com.baomidou.mybatisplus.annotation.TableField(
+            updateStrategy = com.baomidou.mybatisplus.annotation.FieldStrategy.ALWAYS)
     private Long originPrice;
 
     /**
@@ -61,6 +117,14 @@ public class PrdSku extends BaseEntity {
      *
      * <p>不校验「必须低于售价」：引流款本来就可能亏本卖，拦住它等于替商家做生意。
      */
+    /*
+     * **updateStrategy = ALWAYS**：契约写的是「留空 = 不改，<= 0 = 清掉」，
+     * 而 updateById 默认跳过 null 字段 —— 于是 setXxx(null) 根本没写进去，
+     * **商家把它删掉、保存、它自己回来了**，且不报错，他只会以为没点上保存。
+     * 2026-08-26 用例验过：不加这个注解，清空一定失败。
+     */
+    @com.baomidou.mybatisplus.annotation.TableField(
+            updateStrategy = com.baomidou.mybatisplus.annotation.FieldStrategy.ALWAYS)
     private Long costPrice;
 
     private Integer stock;
@@ -69,6 +133,14 @@ public class PrdSku extends BaseEntity {
     private Integer lockedStock;
 
     /** FRESH 且按重计价：标称重量（克）。 */
+    /*
+     * **updateStrategy = ALWAYS**：契约写的是「留空 = 不改，<= 0 = 清掉」，
+     * 而 updateById 默认跳过 null 字段 —— 于是 setXxx(null) 根本没写进去，
+     * **商家把它删掉、保存、它自己回来了**，且不报错，他只会以为没点上保存。
+     * 2026-08-26 用例验过：不加这个注解，清空一定失败。
+     */
+    @com.baomidou.mybatisplus.annotation.TableField(
+            updateStrategy = com.baomidou.mybatisplus.annotation.FieldStrategy.ALWAYS)
     private Integer nominalGram;
 
     /**

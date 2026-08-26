@@ -144,6 +144,13 @@ public record GoodsVO(String goodsNo,
      *                      <b>商家改一次标题，其余市场的价格行就被删了</b>，且不报错。
      *                      与 {@code titleI18n} 是逐字同款的形状 —— 那个当年补了下发，这个没补。
      */
+    /**
+     * @param barcode         商品条码。**只在商家侧下发** —— 买家不需要它，
+     *                        而它是商家与供应商/ERP 之间的键
+     * @param merchantSkuCode 商家自有货号，同上
+     * @param saleUnit        计量单位（件/斤/kg/份）。**买家侧也要** ——
+     *                        「5」到底是 5 件还是 5 斤，买家同样需要知道
+     */
     public record SkuVO(String skuNo,
                         List<String> optionValues,
                         String spec,
@@ -166,6 +173,9 @@ public record GoodsVO(String goodsNo,
                          *
                          * <p>空 = 没填过。端上据此决定要不要显示毛利那一行。
                          */
-                        Long costPrice) {
+                        Long costPrice,
+                        String barcode,
+                        String merchantSkuCode,
+                        String saleUnit) {
     }
 }

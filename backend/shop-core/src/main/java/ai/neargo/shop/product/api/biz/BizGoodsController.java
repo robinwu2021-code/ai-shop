@@ -128,7 +128,8 @@ public class BizGoodsController {
                 req.skus() == null ? List.of() : req.skus().stream()
                         .map(s -> new MerchantGoodsService.Sku(
                                 s.skuNo(), s.optionValues(), s.price(), s.priceByMarket(), s.stock(),
-                                s.originPrice(), s.nominalGram(), s.costPrice()))
+                                s.originPrice(), s.nominalGram(), s.costPrice(),
+                                s.barcode(), s.merchantSkuCode(), s.saleUnit()))
                         .toList(),
                 req.fulfillments(),
                 req.limitPerUser(),
@@ -616,7 +617,16 @@ public class BizGoodsController {
                          Map<String, Long> priceByMarket, int stock,
                          Long originPrice, Integer nominalGram,
                          /** 成本价（最小货币单位）。不传 = 不改，&lt;= 0 = 清空 */
-                         Long costPrice) {
+                         Long costPrice,
+                         /**
+                          * 商品条码 EAN-13 / UPC。<b>不传 = 不改，传空串 = 清空</b>。
+                          * 与 ERP、收银秤、供应商发货单的通用键 —— 平台生成的 skuNo 它们都不认识。
+                          */
+                         String barcode,
+                         /** 商家自有货号。他 ERP 里的主键，在他自己的命名空间里唯一 */
+                         String merchantSkuCode,
+                         /** 计量单位（件/斤/kg/份）。称重品与计件品的分界 */
+                         String saleUnit) {
     }
 
     public record ToggleReq(Boolean onSale) {

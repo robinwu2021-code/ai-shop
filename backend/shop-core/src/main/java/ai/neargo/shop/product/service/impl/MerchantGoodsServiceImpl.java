@@ -928,6 +928,18 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                 if (sku.costPrice() != null) {
                     row.setCostPrice(sku.costPrice() <= 0 ? null : sku.costPrice());
                 }
+                /*
+                 * **外部身份三件套**（V252）：条码 / 商家自有货号 / 计量单位。
+                 * 都是「不传 = 不改，传空串 = 清空」—— 与 detail、detailImages 同一口径。
+                 *
+                 * <p>不校验条码格式：EAN-13 与 UPC 长度不同，还有店内自编码（20/21 开头）
+                 * 与称重码这些变体；在这里拦一道，商家扫出来一个合法但不在我们白名单里的
+                 * 条码就录不进去，而他手上那包货确实印着它。
+                 * 校验该发生在**导入**那一步（能一次说清哪几行有问题），不是逐条录入时。
+                 */
+                row.setBarcode(blankToNull(sku.barcode(), row.getBarcode()));
+                row.setMerchantSkuCode(blankToNull(sku.merchantSkuCode(), row.getMerchantSkuCode()));
+                row.setSaleUnit(blankToNull(sku.saleUnit(), row.getSaleUnit()));
                 PrdSku toSave = row;
                 DataScopeContext.executeWithoutScope(() ->
                         fresh ? skuMapper.insert(toSave) : skuMapper.updateById(toSave));
@@ -1888,6 +1900,20 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         return v == null ? 0 : v;
     }
 
+    /**
+     * 「不传 = 不改，传空串 = 清空」这一口径的公共写法。
+     *
+     * <p>三个字段各写一遍 if 的话，迟早有一个漏掉「空串 = 清空」那一半 ——
+     * 而那一半的症状是「商家把货号删掉、保存、它又回来了」，不报错。
+     */
+    private static String blankToNull(String incoming, String current) {
+        if (incoming == null) {
+            return current;             // 不传 = 不改
+        }
+        String v = incoming.trim();
+        return v.isEmpty() ? null : v;  // 空串 = 清空
+    }
+
     @Override
     @Transactional
     public GoodsVO audit(String goodsNo, boolean approved, String reason) {
@@ -2280,11 +2306,27 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                 .filter(r -> r.getCostPrice() != null)
                 .collect(java.util.stream.Collectors.toMap(PrdSku::getSkuNo, PrdSku::getCostPrice,
                         (a, b) -> a));
+        /*
+         * 条码与货号同理：**只在商家侧补**（V252）。买家侧恒发 null ——
+         * 它们是商家与供应商/ERP 之间的键，而条码还能反查到进货渠道。
+         *
+         * 与成本价同一条：按 skuNo 取基准市场那一行，它们不随售卖市场变。
+         */
+        Map<String, String> barcodeBySku = rows.stream()
+                .filter(r -> r.getBarcode() != null)
+                .collect(java.util.stream.Collectors.toMap(PrdSku::getSkuNo, PrdSku::getBarcode,
+                        (a, b) -> a));
+        Map<String, String> codeBySku = rows.stream()
+                .filter(r -> r.getMerchantSkuCode() != null)
+                .collect(java.util.stream.Collectors.toMap(PrdSku::getSkuNo,
+                        PrdSku::getMerchantSkuCode, (a, b) -> a));
         return skus.stream()
                 .map(s -> new GoodsVO.SkuVO(s.skuNo(), s.optionValues(), s.spec(), s.price(),
                         s.originPrice(), s.stock(), s.nominalGram(),
                         bySku.getOrDefault(s.skuNo(), Map.of()), s.storePrice(),
-                        costBySku.get(s.skuNo())))
+                        costBySku.get(s.skuNo()),
+                        // 条码与货号在这里补上；计量单位买家侧已经带了，原样透传
+                        barcodeBySku.get(s.skuNo()), codeBySku.get(s.skuNo()), s.saleUnit()))
                 .toList();
     }
 
@@ -2303,7 +2345,8 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         if (!prices.isEmpty()) {
             skus = skus.stream().map(s -> new GoodsVO.SkuVO(s.skuNo(), s.optionValues(), s.spec(),
                     s.price(), s.originPrice(), s.stock(), s.nominalGram(), s.priceByMarket(),
-                    prices.get(s.skuNo()), s.costPrice())).toList();
+                    prices.get(s.skuNo()), s.costPrice(),
+                    s.barcode(), s.merchantSkuCode(), s.saleUnit())).toList();
         }
         Map<String, PrdStoreStock> byStore = DataScopeContext.executeWithoutScope(() ->
                         storeStockMapper.selectList(Wrappers.<PrdStoreStock>lambdaQuery()
@@ -2330,7 +2373,8 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
             int available = Math.max(stock - locked, 0);
             return new GoodsVO.SkuVO(sku.skuNo(), sku.optionValues(), sku.spec(),
                     sku.price(), sku.originPrice(), available, sku.nominalGram(),
-                    sku.priceByMarket(), sku.storePrice(), sku.costPrice());
+                    sku.priceByMarket(), sku.storePrice(), sku.costPrice(),
+                    sku.barcode(), sku.merchantSkuCode(), sku.saleUnit());
         }).toList();
     }
 

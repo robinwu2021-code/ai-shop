@@ -664,6 +664,106 @@ class OpsProductGovernFlowTest {
                 .andExpect(jsonPath("$.data.specGroups.length()").value(0));
     }
 
+    @Test
+    @DisplayName("★★★ SKU 的外部身份：条码/货号/单位存得进读得回，且条码可以跨店重复")
+    void skuCarriesExternalIdentity() throws Exception {
+        String biz = merchant("12600400120", "外部身份店");
+        String body = mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + biz)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"categoryNo\":\"CAT210\",\"title\":\"带条码的饼干\",\"type\":\"NORMAL\","
+                                + "\"skus\":[{\"optionValues\":[],\"price\":1000,\"stock\":5,"
+                                + "\"barcode\":\"6901234567890\",\"merchantSkuCode\":\"R-2024-005\","
+                                + "\"saleUnit\":\"件\"}]}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        String goodsNo = json.readTree(body).get("data").get("goodsNo").asString();
+
+        mvc().perform(get("/biz/goods/" + goodsNo).header("Authorization", "Bearer " + biz))
+                .andExpect(jsonPath("$.data.skus[0].barcode").value("6901234567890"))
+                .andExpect(jsonPath("$.data.skus[0].merchantSkuCode").value("R-2024-005"))
+                .andExpect(jsonPath("$.data.skus[0].saleUnit").value("件"));
+
+        /*
+         * **同一个条码在另一家店必须录得进去。**
+         *
+         * <p>同一包饼干在十家店都有 —— 条码是**查找键不是身份键**。
+         * 做成唯一键的话，第二家店录同一个条码就插不进去，而他手上那包货
+         * 确实印着它。这条断言是 V252 里「barcode 只建普通索引」的守卫：
+         * 哪天有人「顺手」把它改成唯一索引，这里会红。
+         */
+        String other = merchant("12600400130", "另一家也卖这饼干");
+        mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + other)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"categoryNo\":\"CAT210\",\"title\":\"同款饼干\",\"type\":\"NORMAL\","
+                                + "\"skus\":[{\"optionValues\":[],\"price\":1100,\"stock\":3,"
+                                + "\"barcode\":\"6901234567890\"}]}"))
+                .andExpect(jsonPath("$.code").value(0));
+
+        /*
+         * **不传 = 不改，传空串 = 清空。** 少了后半，商家把货号删掉、保存、
+         * 它又回来了 —— 而这件事不报错。
+         */
+        /*
+         * **必须回传 skuNo。** 行是按 skuNo 匹配的：不传就当新行，
+         * 生成一个新号插进去、旧行被清掉 —— 外部身份跟着一起没了，且不报错。
+         * b-app 一直回传（`skuNo: r.skuNo`），这里照真实调用写。
+         *
+         * <p>⚠️ 将来做 ERP 导入时这一条要特别小心：**按货号导入**的那条路
+         * 必须先用货号反查出 skuNo，否则一次导入就把所有条码洗掉。
+         */
+        String skuNo = json.readTree(
+                mvc().perform(get("/biz/goods/" + goodsNo).header("Authorization", "Bearer " + biz))
+                        .andReturn().getResponse().getContentAsString())
+                .get("data").get("skus").get(0).get("skuNo").asString();
+        mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + biz)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"goodsNo\":\"" + goodsNo + "\",\"categoryNo\":\"CAT210\","
+                        + "\"title\":\"带条码的饼干\",\"type\":\"NORMAL\","
+                        + "\"skus\":[{\"skuNo\":\"" + skuNo + "\","
+                        + "\"optionValues\":[],\"price\":1000,\"stock\":5,"
+                        + "\"merchantSkuCode\":\"\"}]}"));
+        mvc().perform(get("/biz/goods/" + goodsNo).header("Authorization", "Bearer " + biz))
+                .andExpect(jsonPath("$.data.skus[0].merchantSkuCode").doesNotExist())
+                // 没传的那两个原样留着 —— 「不传 = 不改」的另一半
+                .andExpect(jsonPath("$.data.skus[0].barcode").value("6901234567890"));
+    }
+
+    @Test
+    @DisplayName("★★ 划线价与成本价要删得掉 —— updateById 默认跳过 null，删了会自己回来")
+    void clearableSkuFieldsActuallyClear() throws Exception {
+        String biz = merchant("12600400140", "删得掉店");
+        String body = mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + biz)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"categoryNo\":\"CAT210\",\"title\":\"有划线价的货\",\"type\":\"NORMAL\","
+                                + "\"skus\":[{\"optionValues\":[],\"price\":1000,\"stock\":5,"
+                                + "\"originPrice\":1500,\"costPrice\":700,\"nominalGram\":500}]}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        String goodsNo = json.readTree(body).get("data").get("goodsNo").asString();
+        String skuNo = json.readTree(
+                mvc().perform(get("/biz/goods/" + goodsNo).header("Authorization", "Bearer " + biz))
+                        .andReturn().getResponse().getContentAsString())
+                .get("data").get("skus").get(0).get("skuNo").asString();
+
+        /*
+         * 契约写的是「留空 = 不改，<= 0 = 清掉」。而 `updateById` 默认跳过 null 字段，
+         * 于是 `setOriginPrice(null)` 根本没写进去 —— **商家把划线价删掉，它自己回来了**，
+         * 而这件事不报错，他只会以为自己没点保存。
+         */
+        mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + biz)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"goodsNo\":\"" + goodsNo + "\",\"categoryNo\":\"CAT210\","
+                        + "\"title\":\"有划线价的货\",\"type\":\"NORMAL\","
+                        + "\"skus\":[{\"skuNo\":\"" + skuNo + "\","
+                        + "\"optionValues\":[],\"price\":1000,\"stock\":5,"
+                        + "\"originPrice\":0,\"costPrice\":0,\"nominalGram\":0}]}"));
+
+        mvc().perform(get("/biz/goods/" + goodsNo).header("Authorization", "Bearer " + biz))
+                .andExpect(jsonPath("$.data.skus[0].originPrice").doesNotExist())
+                .andExpect(jsonPath("$.data.skus[0].costPrice").doesNotExist())
+                .andExpect(jsonPath("$.data.skus[0].nominalGram").doesNotExist());
+    }
+
     /** 建品并过审上架。 */
     private String listedGoods(String token, int stock) throws Exception {
         String goodsNo = pendingGoods(token, stock);

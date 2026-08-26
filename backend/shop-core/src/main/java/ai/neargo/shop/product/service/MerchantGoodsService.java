@@ -381,9 +381,17 @@ public interface MerchantGoodsService {
      * @param costPrice 成本价（最小货币单位）。{@code null} = 不改，{@code <= 0} = 清空。
      *                  只用来给商家算毛利，不参与任何对外计价。
      */
+    /**
+     * @param barcode          商品条码 EAN-13 / UPC。**留空 = 不改**，与其余可选字段同口径
+     * @param merchantSkuCode  商家自有货号（他 ERP 里的主键）
+     * @param saleUnit         计量单位（件/斤/kg/份）
+     *
+     * <p>这三列是 ERP 对接的前提：平台生成的 {@code skuNo} 外部系统一个都不认识。
+     */
     record Sku(String skuNo, List<String> optionValues, long price,
                Map<String, Long> priceByMarket, int stock,
-               Long originPrice, Integer nominalGram, Long costPrice) {
+               Long originPrice, Integer nominalGram, Long costPrice,
+               String barcode, String merchantSkuCode, String saleUnit) {
     }
 
     record SpecOption(String code, String label) {

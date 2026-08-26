@@ -358,7 +358,17 @@ public class GoodsServiceImpl implements GoodsService {
                  */
                 null,
                 // 成本价同理：进货价是商家的经营秘密，买家端恒空
-                null);
+                null,
+                /*
+                 * **条码与货号不发给买家**：它们是商家与供应商/ERP 之间的键，
+                 * 对买家没有用处，而条码还能反查到进货渠道。
+                 */
+                null, null,
+                /*
+                 * **计量单位买家也要**：「5」到底是 5 件还是 5 斤，
+                 * 不说清楚他没法判断贵不贵 —— 这正是它与前两列的差别。
+                 */
+                s.getSaleUnit());
     }
 
     private List<String> readList(String jsonArray) {
