@@ -59,7 +59,12 @@ class ArchitectureTest {
             // 是业务域。**这条是被本测试自己抓出来的** —— 风控域落地时建了新顶层包
             // 却没登记，于是它有半天时间不受域间依赖规则约束：那期间任何一处
             // 跨域直连（比如直接读 ord_sub_order 而不走 Port）都不会被拦下来
-            "risk"};
+            "risk",
+            // inventory：进销存（inv_*，**独立库、独立数据源**）。登记进来的分量比别的域更重 ——
+            // 它的表不在 ai_shop 里，一旦哪个域直接 import 了它的实体或 Mapper，
+            // 那不只是耦合，是**跨库直连**：编译得过、启动得起来，跑到那一行才炸。
+            // 唯一合法的入口是 shop-base 里的 Port。
+            "inventory"};
 
     /** {@link #DOMAINS} 的 ArchUnit 包表达式形式（{@code ai.neargo.shop.x..}）。 */
     private static String[] domainPackages() {
