@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>ai.neargo.shop</groupId>
+        <artifactId>shop-parent</artifactId>
+        <version>0.1.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>shop-job</artifactId>
+    <packaging>jar</packaging>
+    <description>定时任务 · 独立可部署的调度器（不含任何业务代码）</description>
+
+    <!-- ⚠️ **这个模块的依赖清单就是它的定义，加之前先读完。**
+
+         **没有 starter-web，这不是遗漏。** 运营端直读 job 库、不与 worker 通信
+         （理由见方案 §2.2：worker 挂了的时候页面必须还能显示「最后一次跑是 2 小时前」，
+         那正是最需要看的时刻）。既然没有人调 worker，它就不需要监听端口 ——
+         少一个端口、少一份攻击面、少一堆自动配置。
+         健康状况看 job_run 表，那本来就是这个模块对外的唯一视图。
+
+         **HTTP 客户端用 JDK 自带的 java.net.http**，不引任何 HTTP 库。
+
+         **不引任何业务模块**（shop-core / shop-merchant / …）。这是整件事的全部要点：
+         worker 里若编译进业务代码，业务发版后 worker 不重启就跑着上一版逻辑，
+         而「不重启 worker」正是做这件事的理由。任务体留在业务系统，worker 只知道名字。 -->
+    <dependencies>
+        <dependency>
+            <groupId>ai.neargo.shop</groupId>
+            <artifactId>shop-job-api</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>ai.neargo.shop</groupId>
+            <artifactId>shop-job-store</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <!-- ⚠️ **显式声明，不要白蹭 flyway-core 的传递依赖。**
+             它现在确实把 jackson-databind 带进来了，但那是 flyway 的实现细节；
+             哪天 flyway 换了 JSON 库，这里会在**运行期**才炸，而错误里不会有一个字提到 flyway。 -->
+        <dependency>
+            <groupId>tools.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.mysql</groupId>
+            <artifactId>mysql-connector-j</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- 复用 store 的 H2 建库支撑，避免第二份 schema 加载逻辑 -->
+        <dependency>
+            <groupId>ai.neargo.shop</groupId>
+            <artifactId>shop-job-store</artifactId>
+            <version>${project.version}</version>
+            <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <mainClass>ai.neargo.job.worker.JobApplication</mainClass>
+                </configuration>
+                <executions>
+                    <execution><goals><goal>repackage</goal></goals></execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>

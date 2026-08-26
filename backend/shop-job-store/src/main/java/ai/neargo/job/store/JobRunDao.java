@@ -114,9 +114,20 @@ public class JobRunDao {
                 .update();
     }
 
-    /** 下次什么时候跑。注册表算好后写进来，页面上直接显示，省得运营自己解 cron。 */
+    /**
+     * 下次什么时候跑。注册表算好后写进来，页面上直接显示，省得运营自己解 cron。
+     *
+     * <p><b>要能建行，不能只 UPDATE。</b>{@code job_run} 的行本来是
+     * {@link #markStarted} 建的，而那要等第一次执行之后 ——
+     * 于是全新安装时每个任务的「下次执行」都是空的，**恰恰是最需要它的时刻**
+     * （一个任务都还没跑过，运营唯一能确认「它排上了」的证据就是这一列）。
+     */
     public void updateNextRunAt(String jobName, LocalDateTime nextRunAt) {
-        jdbc.sql("UPDATE job_run SET next_run_at = :at WHERE job_name = :n")
+        int updated = jdbc.sql("UPDATE job_run SET next_run_at = :at WHERE job_name = :n")
                 .param("at", nextRunAt).param("n", jobName).update();
+        if (updated == 0) {
+            jdbc.sql("INSERT INTO job_run (job_name, next_run_at) VALUES (:n, :at)")
+                    .param("n", jobName).param("at", nextRunAt).update();
+        }
     }
 }

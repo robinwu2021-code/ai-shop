@@ -31,6 +31,9 @@
         <!-- 定时任务持久层：独立库 + JdbcClient 手写 SQL。
              不引 Spring Data（代理是 native 的负担），不引 shop-base（会拖来 MyBatis） -->
         <module>shop-job-store</module>
+        <!-- 定时任务调度器：**独立可部署单元**，不含任何业务代码。
+             没有 starter-web 是有意的（运营端读库不调它），HTTP 客户端用 JDK 自带的 -->
+        <module>shop-job</module>
         <!-- 地基：横切基础设施 + 跨域契约。零业务依赖，谁都能依赖 -->
         <module>shop-base</module>
         <!-- 领域服务实现（jar，不可独立启动） -->

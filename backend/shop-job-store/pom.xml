@@ -58,4 +58,19 @@
         </dependency>
     </dependencies>
 
+    <build>
+        <plugins>
+            <!-- 把测试支撑打成 test-jar 给 shop-job 用。
+                 **不是为了省事，是为了不出现第二份 schema 加载逻辑** ——
+                 复制一份的话，改了 db/job 之后两处要同步，而漏掉的那一处照样绿。 -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <executions>
+                    <execution><goals><goal>test-jar</goal></goals></execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
 </project>

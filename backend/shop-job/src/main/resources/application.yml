@@ -1,0 +1,34 @@
+# 定时任务调度器 —— 独立进程的默认配置。
+#
+# **库连接与密钥不写在这里**，从环境变量注入（见下面每一处的 ${} 默认值）。
+# 这份文件进仓库，凭据不进仓库。
+spring:
+  application:
+    name: ai-shop-job
+  # 不是 Web 应用：没有人调 worker，运营端直读 job 库。见 JobApplication 的类注释
+  main:
+    web-application-type: none
+
+shop:
+  job:
+    # store 模块的开关。worker 没有库就没有意义，所以这里默认开 —— 与业务侧相反
+    enabled: true
+    datasource:
+      url: ${JOB_DB_URL:jdbc:mysql://127.0.0.1:3306/ai_shop_job?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai}
+      username: ${JOB_DB_USER:ai_shop_job}
+      password: ${JOB_DB_PASSWORD:}
+      max-pool-size: 5
+    worker:
+      instance: ${JOB_WORKER_INSTANCE:job-1}
+      poll-interval: 30s
+      pool-size: 4
+      # 走 127.0.0.1 不走域名：这条调用是内网的，不该经过 nginx，
+      # 也不该受公网证书与备案的影响
+      targets:
+        PLATFORM: ${JOB_TARGET_PLATFORM:http://127.0.0.1:8081}
+      token: ${JOB_TOKEN:}
+      log-retention-days: 30
+
+logging:
+  level:
+    ai.neargo.job: INFO

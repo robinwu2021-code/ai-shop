@@ -6,8 +6,6 @@ import org.springframework.jdbc.datasource.SimpleDriverDataSource;
 import javax.sql.DataSource;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.Statement;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -21,7 +19,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * {@code scripts/gen-test-schema.py} 从 {@code db/job} 重放生成，全仓唯一一份），
  * 文件不在就直接失败并说清楚该跑哪条命令。
  */
-final class JobStoreTestSupport {
+public final class JobStoreTestSupport {
 
     /** 每个测试一个独立库名，避免用例之间互相看见对方的数据。 */
     private static final AtomicInteger SEQ = new AtomicInteger();
@@ -29,7 +27,7 @@ final class JobStoreTestSupport {
     private JobStoreTestSupport() {
     }
 
-    static JdbcClient freshDatabase() {
+    public static JdbcClient freshDatabase() {
         DataSource ds = new SimpleDriverDataSource(
                 new org.h2.Driver(),
                 "jdbc:h2:mem:jobstore" + SEQ.incrementAndGet()
@@ -39,24 +37,33 @@ final class JobStoreTestSupport {
         return JdbcClient.create(ds);
     }
 
+    /**
+     * H2 等价脚本从 <b>classpath</b> 读，不按文件路径找。
+     *
+     * <p>它由 {@code scripts/gen-test-schema.py} 从 {@code db/job} 重放生成，
+     * 与迁移一起住在本模块里 —— 迁移的归属者也该是它的生成物的归属者。
+     * 放到别的模块去，那个模块就得知道本模块的目录结构，而它没有理由知道。
+     *
+     * <p><b>刻意不在别处留副本</b>：副本会腐烂 —— 改了源迁移而忘了同步，
+     * 测试照样绿，绿的是一张过时的表。
+     */
     private static String h2Schema() {
-        Path here = Path.of("").toAbsolutePath();
-        Path backend = here.getFileName().toString().equals("backend") ? here : here.getParent();
-        Path script = backend.resolve("shop-app/src/test/resources/db/job-h2/V1__job_baseline.sql");
-        if (!Files.exists(script)) {
-            throw new IllegalStateException("""
-                    找不到 H2 等价脚本：%s
+        String path = "db/job-h2/V1__job_baseline.sql";
+        try (java.io.InputStream in = JobStoreTestSupport.class.getClassLoader()
+                .getResourceAsStream(path)) {
+            if (in == null) {
+                throw new IllegalStateException("""
+                        classpath 上找不到 %s
 
-                    它是生成物，不是手写的。改完 db/job/V*.sql 后重跑：
-                      python3 backend/scripts/gen-test-schema.py \\
-                        backend/shop-app/src/test/resources/db/job-h2/V1__job_baseline.sql \\
-                        backend/shop-job-store/src/main/resources/db/job
-                    """.formatted(script));
-        }
-        try {
-            return Files.readString(script, StandardCharsets.UTF_8);
+                        它是生成物，不是手写的。改完 db/job/V*.sql 后重跑：
+                          python3 backend/scripts/gen-test-schema.py \\
+                            backend/shop-job-store/src/test/resources/db/job-h2/V1__job_baseline.sql \\
+                            backend/shop-job-store/src/main/resources/db/job
+                        """.formatted(path));
+            }
+            return new String(in.readAllBytes(), StandardCharsets.UTF_8);
         } catch (IOException e) {
-            throw new IllegalStateException("读不了 " + script, e);
+            throw new IllegalStateException("读不了 " + path, e);
         }
     }
 

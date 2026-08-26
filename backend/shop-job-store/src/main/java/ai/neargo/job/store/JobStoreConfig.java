@@ -5,7 +5,7 @@ import org.flywaydb.core.Flyway;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
+import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -33,8 +33,15 @@ import javax.sql.DataSource;
  *
  * <p>注入靠 bean 名字区分（{@code jobDataSource} / {@code jobJdbcClient}），
  * 不靠 {@code @Qualifier} 字符串散落在各处。
+ *
+ * <p><b>为什么是 {@code @AutoConfiguration} 而不是 {@code @Configuration}</b>：
+ * 本模块会被两个应用引用（worker 与 shop-app 的运营端），而它们的 {@code @SpringBootApplication}
+ * 都扫不到 {@code ai.neargo.job.store} 这个包。靠组件扫描的话，每个使用方都得记得
+ * 加一句 {@code @ComponentScan} —— **忘了的症状是 NoSuchBeanDefinitionException，
+ * 而报错指向的是使用方自己的某个 Bean，不是这里**。
+ * 自动配置让人忘不掉：引了依赖、开了开关，就装上了。
  */
-@Configuration
+@AutoConfiguration
 @EnableConfigurationProperties(JobStoreProperties.class)
 @ConditionalOnProperty(prefix = "shop.job", name = "enabled", havingValue = "true")
 public class JobStoreConfig {
