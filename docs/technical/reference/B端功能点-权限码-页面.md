@@ -60,7 +60,7 @@
 | 还能加进这一类的商品参数（本类目已配 + 平台通用 + 自建） | GET | `/biz/pickable-props` | `mPickableProps` | my-specs |
 | 加规格组时能挑的维度（本类目已配 + 平台通用 + 自建） | GET | `/biz/spec-dims` | `mPickableDims` | goods-edit、my-specs |
 | 自建规格维度（只本店可用） | POST | `/biz/spec-dims` | `mAddSpecDim` | goods-edit、my-specs |
-| 某个规格下平台有的全部档位（加档位的候选） | GET | `/biz/spec-dims/{dimNo}/values` | `mDimValues` | my-specs |
+| 某个规格下平台有的全部档位（加档位的候选） | GET | `/biz/spec-dims/{dimNo}/values` | `mDimValues` | goods-edit、my-specs |
 | 本店用哪几个规格、什么顺序、叫什么 | POST | `/biz/spec-override/{categoryNo}` | `mSaveSpecOverride` | goods-edit、my-specs |
 | 这一类的商品参数（产地/保质期/材质，不分 SKU） | GET | `/biz/spec-props` | `mSpecProps` | goods-edit |
 | 规格模板 | GET | `/biz/spec-templates` | `mSpecTemplates` | goods-edit |
