@@ -327,3 +327,66 @@ export interface TaxRule {
   /** 最后修改人（STAFF 账号） */
   updatedBy: string;
 }
+
+/**
+ * 进项票（供应商开给平台的）。自营链路专用 —— **票到才付款**。
+ *
+ * `titleMatched` 是后端算好的：抬头与主体名对不上时不给核验通过，
+ * 而这一条**在界面上必须显示原因** —— 财务看到「不能核验」而不知道为什么，
+ * 只会去问开票的人，而对方也不知道。
+ */
+export interface PurchaseInvoice {
+  invoiceNo: string;
+  entityNo: string;
+  /** 所属账期 yyyyMM */
+  period: string;
+  invoiceCode: string;
+  invoiceNumber: string;
+  invoiceType: string;
+  titleName: string;
+  titleTaxNo: string;
+  amountMinor: number;
+  taxAmountMinor: number;
+  /** 万分比 */
+  taxRate: number;
+  invoiceDate?: number | null;
+  imageUrl?: string | null;
+  /** PENDING / SUBMITTED / VERIFIED / REJECTED */
+  status: string;
+  rejectReason?: string | null;
+  /** 抬头与主体名是否一致。**后端算，端上不重算** —— 两处判会走岔 */
+  titleMatched: boolean;
+  /** 这张票覆盖了哪些结算单 */
+  settleNos: string[];
+}
+
+/**
+ * 买家的开票申请（`/ops/invoice-requests`）。
+ *
+ * ⚠️ **这个域里有三张不同的「票」，名字很近，别混：**
+ *
+ * | 类型 | 谁开给谁 | 决定什么 | 端点 |
+ * |---|---|---|---|
+ * | {@link PurchaseInvoice} 进项票 | 供应商 → 平台 | 平台能不能付款（票到付款）| `/ops/purchase-invoices` |
+ * | {@link InvoiceRequest} 商家开票申请 | 平台 → 商家 | 商家的服务费发票 | `/ops/finance/invoices` |
+ * | 本类型 买家开票申请 | 平台 → 买家 | 买家能不能报销 | `/ops/invoice-requests` |
+ *
+ * 前两个此前已有类型，本类型是补的 —— 它按订单走（`orderNo`），前两个按主体/账期走。
+ */
+export interface BuyerInvoiceRequest {
+  requestNo: string;
+  orderNo: string;
+  /** PERSONAL / COMPANY */
+  titleType: string;
+  title: string;
+  taxNo?: string | null;
+  email?: string | null;
+  amountMinor: number;
+  /** PENDING / ISSUED / REJECTED */
+  status: string;
+  /** 已开出的发票号 */
+  invoiceNo?: string | null;
+  issuedAt?: number | null;
+  rejectReason?: string | null;
+  createdAt?: number | null;
+}

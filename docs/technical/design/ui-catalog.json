@@ -1106,7 +1106,7 @@
     {
       "key": "ops-web",
       "label": "运营端",
-      "count": 125,
+      "count": 128,
       "domains": [
         {
           "name": "经营看板",
@@ -2044,6 +2044,42 @@
             },
             {
               "app": "ops-web",
+              "route": "/finance?tab=payables",
+              "title": "自营应付账款",
+              "domain": "结算与资金",
+              "group": "应付与发票",
+              "matrix": "P-12.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "preview": "http://localhost:3000/finance?tab=payables"
+            },
+            {
+              "app": "ops-web",
+              "route": "/finance?tab=purchase-invoices",
+              "title": "进项票",
+              "domain": "结算与资金",
+              "group": "应付与发票",
+              "matrix": "P-12.2",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "preview": "http://localhost:3000/finance?tab=purchase-invoices"
+            },
+            {
+              "app": "ops-web",
+              "route": "/finance?tab=buyer-invoices",
+              "title": "买家开票申请",
+              "domain": "结算与资金",
+              "group": "应付与发票",
+              "matrix": "P-12.2",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "preview": "http://localhost:3000/finance?tab=buyer-invoices"
+            },
+            {
+              "app": "ops-web",
               "route": "/finance?tab=points",
               "title": "积分资金看板",
               "domain": "结算与资金",
@@ -2670,5 +2706,5 @@
       ]
     }
   ],
-  "total": 214
+  "total": 217
 }

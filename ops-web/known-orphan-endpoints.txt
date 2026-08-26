@@ -12,16 +12,6 @@
 # 自营应付 + 进项票 + 销项开票整条链后端已实现、运营端零入口，
 # 而这是今天唯一真能把钱付出去的路（第三方那条走分账，而分账网关是桩）。
 # 见 docs/requirements/PRD-商家资金到账与对账.md
-GET /ops/payables
-POST /ops/payables/{settleNo}/confirm
-POST /ops/payables/{settleNo}/no-invoice
-POST /ops/payables/{settleNo}/paid
-GET /ops/purchase-invoices
-POST /ops/purchase-invoices/{invoiceNo}/verify
-POST /ops/purchase-invoices/{invoiceNo}/reject
-GET /ops/invoice-requests
-POST /ops/invoice-requests/{requestNo}/issued
-POST /ops/invoice-requests/{requestNo}/reject
 GET /ops/finance/invoice-title
 POST /ops/finance/invoice-title
 # ⚠️ ReconService.coverage() 的注释写着「页面照它显示提示条，

@@ -276,6 +276,9 @@ export const NAV: NavSection[] = [
       // 积分资金看板。**是资金表不是营销表** —— 读它的是财务。
       // 服务侧 overview 早就实现了，而运营端此前一个积分接口都没有：
       // 池子对不对得上，只能连数据库看
+      { href: "/finance?tab=payables", label: "自营应付账款", perm: "finance:settle:read", group: "应付与发票", matrix: "P-12.1", ready: true },
+      { href: "/finance?tab=purchase-invoices", label: "进项票", perm: "finance:invoice:read", group: "应付与发票", matrix: "P-12.2", ready: true },
+      { href: "/finance?tab=buyer-invoices", label: "买家开票申请", perm: "finance:invoice:read", group: "应付与发票", matrix: "P-12.2", ready: true },
       { href: "/finance?tab=points", label: "积分资金看板", perm: "finance:settle:read", group: "分账结算", matrix: "P-12.1", ready: true },
       { href: "/finance?tab=points-policy", label: "积分端开关", perm: "finance:settle:read", group: "分账结算", matrix: "P-12.1", ready: true },
 

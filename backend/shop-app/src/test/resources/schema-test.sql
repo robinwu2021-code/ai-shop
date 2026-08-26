@@ -7867,3 +7867,24 @@ SELECT 'SUPER_ADMIN', 'OPS_FINANCE__TAB_POINTS_POLICY', 'OPS', NOW(), NOW() FROM
 INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
 SELECT 'FINANCE', 'OPS_FINANCE__TAB_POINTS_POLICY', 'OPS', NOW(), NOW() FROM DUAL
  WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='FINANCE' AND x.point_code='OPS_FINANCE__TAB_POINTS_POLICY');
+INSERT INTO sys_function_point
+    (point_code, function_code, name, group_name, href, ui_perm_code, perm_code,
+     backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at)
+VALUES
+    ('OPS_FINANCE__TAB_PAYABLES', 'OPS_FINANCE', '自营应付账款', '应付与发票',
+     '/finance?tab=payables', 'finance:settle:read', 'finance:settle:read',
+     'IMPLEMENTED', 1, 'P-12.1', 'MENU', 52, NOW(), NOW()),
+    ('OPS_FINANCE__TAB_PURCHASE_INVOICES', 'OPS_FINANCE', '进项票', '应付与发票',
+     '/finance?tab=purchase-invoices', 'finance:invoice:read', 'finance:invoice:read',
+     'IMPLEMENTED', 1, 'P-12.2', 'MENU', 53, NOW(), NOW()),
+    ('OPS_FINANCE__TAB_BUYER_INVOICES', 'OPS_FINANCE', '买家开票申请', '应付与发票',
+     '/finance?tab=buyer-invoices', 'finance:invoice:read', 'finance:invoice:read',
+     'IMPLEMENTED', 1, 'P-12.2', 'MENU', 54, NOW(), NOW());
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+VALUES
+    ('SUPER_ADMIN', 'OPS_FINANCE__TAB_PAYABLES', 'OPS', NOW(), NOW()),
+    ('SUPER_ADMIN', 'OPS_FINANCE__TAB_PURCHASE_INVOICES', 'OPS', NOW(), NOW()),
+    ('SUPER_ADMIN', 'OPS_FINANCE__TAB_BUYER_INVOICES', 'OPS', NOW(), NOW()),
+    ('FINANCE', 'OPS_FINANCE__TAB_PAYABLES', 'OPS', NOW(), NOW()),
+    ('FINANCE', 'OPS_FINANCE__TAB_PURCHASE_INVOICES', 'OPS', NOW(), NOW()),
+    ('FINANCE', 'OPS_FINANCE__TAB_BUYER_INVOICES', 'OPS', NOW(), NOW());

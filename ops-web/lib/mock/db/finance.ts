@@ -1,6 +1,6 @@
 // 结算与资金 mock（P-12）。覆盖五种状态与两类失败（可重试 / 已超时），
 // 否则「重试上限」与「超时兜底」两条规则在页面上验不到。
-import type { FeeRuleVersion, Settlement, SplitLog } from "@/lib/types";
+import type { BuyerInvoiceRequest, FeeRuleVersion, PurchaseInvoice, Settlement, SplitLog } from "@/lib/types";
 
 /**
  * 结算单：**一个子订单一张**，与后端 `stl_bill` 同形。
@@ -9,6 +9,36 @@ import type { FeeRuleVersion, Settlement, SplitLog } from "@/lib/types";
  * 那份 mock 好看但对不上任何真实数据。
  */
 export const settlements: Settlement[] = [
+  /*
+   * ── 自营应付账款三档。**各档都要有** ──
+   * 只造「待付款」的话，「票还没到所以付不了」那条分支永远看不见 ——
+   * 而它恰恰是这一页最要紧的规则（票到付款）。与上面造两种小微形态同一个理由。
+   */
+  {
+    // ① 待对账：还没人认这个数，付不了也收不了票
+    settleNo: "ST9101", subOrderNo: "SUB2026082601", orderNo: "SO2026082601", merchantNo: "M801",
+    grossMinor: 128_000, commissionMinor: 6_400, serviceFeeMinor: 1_920, netMinor: 119_680,
+    trafficSource: "PLATFORM", commissionRate: 500, status: "PENDING_RECON",
+    createdAt: 1_756_166_400_000, storeNo: "ST801", payMerchantNo: null,
+    businessMode: "SELF_OPERATED", invoiceStatus: "PENDING_INVOICE",
+  },
+  {
+    // ② 已对账、票还没到 → **点「登记付款」应当被拦**，这一条是这页的主角
+    settleNo: "ST9102", subOrderNo: "SUB2026082602", orderNo: "SO2026082602", merchantNo: "M802",
+    grossMinor: 96_000, commissionMinor: 4_800, serviceFeeMinor: 1_440, netMinor: 89_760,
+    trafficSource: "PLATFORM", commissionRate: 500, status: "CONFIRMED",
+    createdAt: 1_756_080_000_000, storeNo: "ST802", payMerchantNo: null,
+    businessMode: "SELF_OPERATED", invoiceStatus: "PENDING_INVOICE",
+  },
+  {
+    // ③ 无票供应商：不进发票流程，但**要在列表上标出来** ——
+    //    让财务在付款前就看见「这笔付出去是不能列支的」，而不是月末报税才发现
+    settleNo: "ST9103", subOrderNo: "SUB2026082603", orderNo: "SO2026082603", merchantNo: "M803",
+    grossMinor: 24_000, commissionMinor: 1_200, serviceFeeMinor: 360, netMinor: 22_440,
+    trafficSource: "PLATFORM", commissionRate: 500, status: "CONFIRMED",
+    createdAt: 1_755_993_600_000, storeNo: "ST803", payMerchantNo: null,
+    businessMode: "SELF_OPERATED", invoiceStatus: "NO_INVOICE",
+  },
   {
     // 自带客流 → 佣金 0（R16 建议值）
     settleNo: "ST9001", subOrderNo: "SUB2026080501", orderNo: "SO2026080501", merchantNo: "M903",
@@ -79,4 +109,47 @@ export const feeRules: FeeRuleVersion[] = [
     rateBp: 0, effectiveFrom: 0, enabled: 1, remark: "自营先与第三方取齐" },
   { ruleNo: "FR-INIT-SO-PLAT", businessMode: "SELF_OPERATED", trafficSource: "PLATFORM",
     rateBp: 500, effectiveFrom: 0, enabled: 1, remark: "自营先与第三方取齐" },
+];
+
+/**
+ * 进项票。**两种都要有**：抬头对得上的（能核验）与对不上的（不能核验，
+ * 而界面要说清是这个原因）。只造能过的话，那条拦截分支永远看不见。
+ */
+export const purchaseInvoices: PurchaseInvoice[] = [
+  {
+    invoiceNo: "PI2026080001", entityNo: "M801", period: "202608",
+    invoiceCode: "3100213130", invoiceNumber: "00841122", invoiceType: "SPECIAL",
+    titleName: "杭州小林果蔬有限公司", titleTaxNo: "91330100MA2xxxxx1A",
+    amountMinor: 128_000, taxAmountMinor: 14_690, taxRate: 1300,
+    invoiceDate: 1_756_080_000_000, imageUrl: null,
+    status: "SUBMITTED", rejectReason: null, titleMatched: true,
+    settleNos: ["ST9101"],
+  },
+  {
+    // 抬头对不上 —— 点核验应当被拦，且要说清原因
+    invoiceNo: "PI2026080002", entityNo: "M802", period: "202608",
+    invoiceCode: "3100213130", invoiceNumber: "00841135", invoiceType: "NORMAL",
+    titleName: "杭州小林果蔬商行", titleTaxNo: "91330100MA2xxxxx2B",
+    amountMinor: 96_000, taxAmountMinor: 11_010, taxRate: 1300,
+    invoiceDate: 1_755_993_600_000, imageUrl: null,
+    status: "SUBMITTED", rejectReason: null, titleMatched: false,
+    settleNos: ["ST9102"],
+  },
+];
+
+/** 买家的开票申请。个人抬头与公司抬头各一条 —— 公司的要税号，个人的没有 */
+export const buyerInvoiceRequests: BuyerInvoiceRequest[] = [
+  {
+    requestNo: "IR2026082601", orderNo: "SO2026082611", titleType: "COMPANY",
+    title: "杭州某某科技有限公司", taxNo: "91330100MA2yyyyy1C",
+    email: "fin@example.com", amountMinor: 45_800, status: "PENDING",
+    invoiceNo: null, issuedAt: null, rejectReason: null, createdAt: 1_756_166_400_000,
+  },
+  {
+    requestNo: "IR2026082602", orderNo: "SO2026082612", titleType: "PERSONAL",
+    title: "王女士", taxNo: null,
+    email: "wang@example.com", amountMinor: 16_800, status: "ISSUED",
+    invoiceNo: "0084119922", issuedAt: 1_756_080_000_000, rejectReason: null,
+    createdAt: 1_755_993_600_000,
+  },
 ];

@@ -52,6 +52,20 @@ export const RULES = [
   // 两者都决定钱怎么走，分成两套权限只会让配的人漏配其中一半
   ["PUT", /^\/ops\/merchants\/[^/]+\/funds-mode$/, "merchant:mode:update"],
   ["GET", /^\/ops\/merchants\/mode-risk$/, "merchant:mode:read"],
+  // 自营应付账款。**制单与付款分权**：确认对账用 settle:execute，
+  // 而登记付款用 payout:execute —— 今天两个码都在 FINANCE 一个角色上
+  // （Perms 的注释里记着这是「改配置解决不了」的一条），但登记表按码走，
+  // 将来拆角色时不用再回来改这里。
+  ["GET", /^\/ops\/payables/, "finance:settle:read"],
+  ["POST", /^\/ops\/payables\/[^/]+\/confirm$/, "finance:settle:execute"],
+  ["POST", /^\/ops\/payables\/[^/]+\/paid$/, "finance:payout:execute"],
+  ["POST", /^\/ops\/payables\/[^/]+\/no-invoice$/, "finance:invoice:verify"],
+  // 进项票：它决定平台能不能付款，所以核验权与开票权同一个码
+  ["GET", /^\/ops\/purchase-invoices/, "finance:invoice:read"],
+  ["POST", /^\/ops\/purchase-invoices\//, "finance:invoice:verify"],
+  // 买家开票申请（按订单走），与上面那张进项票是反方向的两张票
+  ["GET", /^\/ops\/invoice-requests/, "finance:invoice:read"],
+  ["POST", /^\/ops\/invoice-requests\//, "finance:invoice:verify"],
   // 积分资金看板。**是资金表不是营销表** —— 读它的是财务
   ["GET", /^\/ops\/points\/overview$/, "finance:settle:read"],
   // 类目策略：能不能当面付、发多少积分。挂**类目**码不挂规格码 ——

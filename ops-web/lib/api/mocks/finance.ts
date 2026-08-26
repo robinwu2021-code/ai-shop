@@ -27,6 +27,13 @@ function assertBalanced(s: Settlement) {
 /** mock 不落库，但改完要看得见变化，否则以为按钮没生效 */
 let mockClientPolicy: ClientPointsPolicy = { earnDeny: [], redeemDeny: [], offlineRedeem: true };
 
+/** 取一张应付单，找不到就报错 —— mock 里也要报，否则开发期点到不存在的单是静默的 */
+function mustBill(settleNo: string) {
+  const b = db.settlements.find((x) => x.settleNo === settleNo);
+  if (!b) fail("结算单不存在", "Settlement not found");
+  return b;
+}
+
 export const financeMock: FinanceApi = {
   // 两条轨道都给：运营要回答的是「这家店的钱到哪一步了」，
   // 分开查等于让一家同时有自营店和第三方店的商家在两个页面之间对照
@@ -71,6 +78,85 @@ export const financeMock: FinanceApi = {
    * 于是 mock 下一切正常、真接口下 `rows.filter is not a function` 整页崩。
    * mock 与真接口形状不一致时，mock 不再是「后端的替身」，而是一层遮罩。
    */
+  // ── 自营应付账款 ──
+  //
+  // **mock 里各档都要有**：只造「待付款」的话，「票还没到所以付不了」
+  // 那条分支永远看不见，而它恰恰是这一页最要紧的规则（票到付款）。
+  listPayables: async (q = {}) =>
+    wait(db.settlements.filter((s) =>
+      s.businessMode === "SELF_OPERATED"
+      && db.eqHit(q.status, s.status)
+      && db.eqHit(q.entityNo, s.merchantNo))),
+
+  confirmPayable: async (settleNo) => {
+    const b = mustBill(settleNo);
+    // 未对账不能付款 —— 付了一个双方还没认的数
+    if (b.status !== "PENDING_RECON") fail("只有待对账的单能确认", "Only bills awaiting reconciliation can be confirmed");
+    b.status = "CONFIRMED";
+    return wait({ ...b });
+  },
+
+  payPayable: async (settleNo, paymentRef) => {
+    const b = mustBill(settleNo);
+    if (b.status !== "CONFIRMED") fail("只有已对账的单能登记付款", "Only reconciled bills can be marked paid");
+    // 票到付款：要么票已核验，要么显式标过无票供应商
+    if (b.invoiceStatus !== "VERIFIED" && b.invoiceStatus !== "NO_INVOICE") {
+      fail("票还没到 —— 核验进项票，或先标记为无票供应商",
+        "Invoice not received — verify it, or mark the supplier as invoice-exempt");
+    }
+    b.status = "PAID";
+    b.paymentRef = paymentRef;
+    return wait({ ...b });
+  },
+
+  markNoInvoice: async (settleNo) => {
+    const b = mustBill(settleNo);
+    b.invoiceStatus = "NO_INVOICE";
+    return wait({ ...b });
+  },
+
+  // ── 进项票 ──
+  listPurchaseInvoices: async (q = {}) =>
+    wait(db.purchaseInvoices.filter((i) => db.eqHit(q.status, i.status))),
+
+  verifyPurchaseInvoice: async (invoiceNo) => {
+    const i = db.purchaseInvoices.find((x) => x.invoiceNo === invoiceNo);
+    if (!i) fail("发票不存在", "Invoice not found");
+    // 抬头对不上不给过 —— 而界面上要说清是这个原因
+    if (!i.titleMatched) fail("抬头与主体名不一致，不能核验", "Title does not match the entity name");
+    i.status = "VERIFIED";
+    return wait({ ...i });
+  },
+
+  rejectPurchaseInvoice: async (invoiceNo, reason) => {
+    const i = db.purchaseInvoices.find((x) => x.invoiceNo === invoiceNo);
+    if (!i) fail("发票不存在", "Invoice not found");
+    i.status = "REJECTED";
+    i.rejectReason = reason;
+    return wait({ ...i });
+  },
+
+  // ── 买家开票申请 ──
+  listBuyerInvoiceRequests: async (q = {}) =>
+    wait(db.buyerInvoiceRequests.filter((r) => db.eqHit(q.status, r.status))),
+
+  markBuyerInvoiceIssued: async (requestNo, invoiceNo) => {
+    const r = db.buyerInvoiceRequests.find((x) => x.requestNo === requestNo);
+    if (!r) fail("申请不存在", "Request not found");
+    r.status = "ISSUED";
+    r.invoiceNo = invoiceNo;
+    r.issuedAt = Date.now();
+    return wait({ ...r });
+  },
+
+  rejectBuyerInvoiceRequest: async (requestNo, reason) => {
+    const r = db.buyerInvoiceRequests.find((x) => x.requestNo === requestNo);
+    if (!r) fail("申请不存在", "Request not found");
+    r.status = "REJECTED";
+    r.rejectReason = reason;
+    return wait({ ...r });
+  },
+
   listSettlements: async (q = {}) =>
     wait(db.paginate(db.settlements, 1, 100, (s) =>
       db.eqHit(q.merchantNo, s.merchantNo)

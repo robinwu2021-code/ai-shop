@@ -1,12 +1,36 @@
 // 覆盖范围：分账结算（P-12.1）。
 import { client } from "../http-client";
 import type { FinanceApi } from "../contracts/finance";
-import type { ClientPointsPolicy } from "@/lib/types";
+import type {
+  PurchaseInvoice,
+  BuyerInvoiceRequest, Settlement, ClientPointsPolicy } from "@/lib/types";
 
 export const financeHttp: FinanceApi = {
   pointsOverview: (market) => client.get("/ops/points/overview", { market: market ?? "CN" }),
   pointsClientPolicy: () => client.get<ClientPointsPolicy>("/ops/points/client-policy"),
   savePointsClientPolicy: (v) => client.post<ClientPointsPolicy>("/ops/points/client-policy", v),
+  // ── 自营应付账款（后端十个端点早已实现，此前运营端零入口）
+  listPayables: (q) => client.get<Settlement[]>("/ops/payables", q),
+  confirmPayable: (settleNo) => client.post<Settlement>(`/ops/payables/${settleNo}/confirm`),
+  payPayable: (settleNo, paymentRef) =>
+    client.post<Settlement>(`/ops/payables/${settleNo}/paid`, { paymentRef }),
+  markNoInvoice: (settleNo, reason) =>
+    client.post<Settlement>(`/ops/payables/${settleNo}/no-invoice`, { reason }),
+
+  // ── 进项票
+  listPurchaseInvoices: (q) => client.get<PurchaseInvoice[]>("/ops/purchase-invoices", q),
+  verifyPurchaseInvoice: (invoiceNo) =>
+    client.post<PurchaseInvoice>(`/ops/purchase-invoices/${invoiceNo}/verify`),
+  rejectPurchaseInvoice: (invoiceNo, reason) =>
+    client.post<PurchaseInvoice>(`/ops/purchase-invoices/${invoiceNo}/reject`, { reason }),
+
+  // ── 买家开票申请
+  listBuyerInvoiceRequests: (q) => client.get<BuyerInvoiceRequest[]>("/ops/invoice-requests", q),
+  markBuyerInvoiceIssued: (requestNo, invoiceNo) =>
+    client.post<BuyerInvoiceRequest>(`/ops/invoice-requests/${requestNo}/issued`, { invoiceNo }),
+  rejectBuyerInvoiceRequest: (requestNo, reason) =>
+    client.post<BuyerInvoiceRequest>(`/ops/invoice-requests/${requestNo}/reject`, { reason }),
+
   listSettlements: (q) => client.get("/ops/settlements", q),
   listSplitRecords: (q) => client.get("/ops/split-records", q),
   listRefundSplitBacks: () => client.get("/ops/refund-split-backs"),

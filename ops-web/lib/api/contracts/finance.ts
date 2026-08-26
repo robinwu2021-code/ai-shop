@@ -1,5 +1,7 @@
 // 覆盖范围：分账结算（P-12.1）与提现·发票·个税（P-12.2）。
 import type {
+  PurchaseInvoice,
+  BuyerInvoiceRequest,
   ClientPointsPolicy, PointsOverview, AfterSale, BusinessMode, EffectiveFeeRates, FeeRuleVersion, FeeTrafficSource, InvoiceRequest, Page, Settlement, SplitLog, TaxRule, Withdrawal } from "@/lib/types";
 import type { PageQ, SettlementQ } from "../query";
 
@@ -27,6 +29,29 @@ export interface FinanceApi {
    * 此前这里声明成 `Settlement[]`，真接口下 `rows.filter is not a function` 整页崩，
    * 而 mock 里是数组，所以本地怎么点都正常。
    */
+  // ── 自营应付账款（P-12.1）。**今天唯一真能把钱付出去的路** ——
+  // 第三方走分账而分账网关是桩。后端十个端点早已实现，此前运营端零入口。
+  /** @param status 空 = 全部；常用 PENDING_RECON（待对账）/ CONFIRMED（待付款） */
+  listPayables(q?: { status?: string; entityNo?: string }): Promise<Settlement[]>;
+  /** 确认对账：双方认了这个数。**之后才能收票、付款** */
+  confirmPayable(settleNo: string): Promise<Settlement>;
+  /** 登记已付款。`paymentRef` 是网银流水号 —— 没有它，之后对账差额永远说不清 */
+  payPayable(settleNo: string, paymentRef: string): Promise<Settlement>;
+  /** 标记无票供应商：**不进发票流程，但要在应付列表上标出来** —— 让财务付款前就看见 */
+  markNoInvoice(settleNo: string, reason: string): Promise<Settlement>;
+
+  // ── 进项票（供应商开给平台）
+  listPurchaseInvoices(q?: { status?: string }): Promise<PurchaseInvoice[]>;
+  verifyPurchaseInvoice(invoiceNo: string): Promise<PurchaseInvoice>;
+  rejectPurchaseInvoice(invoiceNo: string, reason: string): Promise<PurchaseInvoice>;
+
+  // ── 买家的开票申请（/ops/invoice-requests）。
+  // ⚠️ 与既有的 `listSettleInvoices`（**商家**开票申请，/ops/finance/invoices）
+  // 是两回事：那个按主体与账期走，这个按订单走。三张票的区别见 BuyerInvoiceRequest 的注释
+  listBuyerInvoiceRequests(q?: { status?: string }): Promise<BuyerInvoiceRequest[]>;
+  markBuyerInvoiceIssued(requestNo: string, invoiceNo: string): Promise<BuyerInvoiceRequest>;
+  rejectBuyerInvoiceRequest(requestNo: string, reason: string): Promise<BuyerInvoiceRequest>;
+
   listSettlements(q?: { status?: string; merchantNo?: string; businessMode?: string }): Promise<Page<Settlement>>;
   /*
    * **运营端不下发分账、不解冻**：分账的下发与回退有它们自己的触发路径

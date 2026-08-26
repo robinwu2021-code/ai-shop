@@ -243,6 +243,47 @@ const zh = {
   fieldFreezeDays: "超时兜底天数",
   /** `{n}` 是最小天数 */
   freezeHint: "冻结超过该天数仍未分账成功，解冻回平台。至少 {n} 天 —— 太短会把还在正常重试的单提前收走。",
+
+  // ── 自营应付账款 ──
+  pyTitle: "自营应付账款",
+  pyNotice: "自营供应商的货款走这条路：待对账 → 确认对账 → 收票（或标无票）→ 登记付款。⚠️ **票到付款**：没有核验过的进项票、也没标过无票供应商的，付不了 —— 那样付出去的钱是不能列支的。",
+  pySummary: "待付 {n} 笔 · {amount}",
+  pyEmpty: "没有自营应付单",
+  pyColBill: "结算单", pyColNet: "应付", pyColStatus: "状态",
+  pyColInvoice: "进项票", pyColRef: "付款流水号",
+  pyConfirm: "确认对账", pyNoInvoice: "标为无票供应商", pyPay: "登记付款",
+  pyConfirmPay: "确认", pyRefPlaceholder: "网银流水号",
+  payNeedConfirm: "先确认对账", payNeedInvoice: "票还没到", payAlreadyPaid: "已付款",
+  payableStatus_PENDING_RECON: "待对账", payableStatus_CONFIRMED: "待付款", payableStatus_PAID: "已付款",
+  invoiceStatus_PENDING_INVOICE: "待收票", invoiceStatus_SUBMITTED: "已提交",
+  invoiceStatus_VERIFIED: "已核验", invoiceStatus_REJECTED: "已驳回",
+  invoiceStatus_NO_INVOICE: "无票供应商",
+
+  // ── 进项票 ──
+  piTitle: "进项票",
+  piNotice: "供应商开给平台的票，它决定**平台能不能付款**。抬头与主体名对不上的不能核验 —— 那种票入不了账，硬核验过去只会把问题推到报税那天。",
+  piSummary: "待核验 {n} 张", piEmpty: "没有待处理的进项票",
+  piColInvoice: "发票", piColTitle: "抬头", piColAmount: "金额",
+  piColSettle: "覆盖结算单", piColStatus: "状态",
+  piVerify: "核验通过", piReject: "驳回",
+  piCannotVerify: "抬头不符，不能核验", piTitleMismatch: "抬头与主体名不一致",
+  piRejectPlaceholder: "驳回原因（原样回商家）",
+  purchaseInvoiceStatus_PENDING: "待提交", purchaseInvoiceStatus_SUBMITTED: "待核验",
+  purchaseInvoiceStatus_VERIFIED: "已核验", purchaseInvoiceStatus_REJECTED: "已驳回",
+
+  // ── 买家开票申请 ──
+  brTitle: "买家开票申请",
+  brNotice: "买家为自己的订单要的发票，决定他能不能报销。⚠️ 与「进项票」「商家开票申请」是三张不同的票：这一页按**订单**走，另两页按主体与账期走。",
+  brSummary: "待处理 {n} 条", brEmpty: "没有待处理的开票申请",
+  brColOrder: "订单", brColTitle: "抬头", brColAmount: "金额", brColStatus: "状态",
+  brMarkIssued: "标记已开", brReject: "驳回", brNoTaxNo: "缺税号",
+  brInvoiceNoPlaceholder: "发票号码", brRejectPlaceholder: "驳回原因（原样回买家）",
+  titleType_PERSONAL: "个人", titleType_COMPANY: "单位",
+  buyerInvoiceStatus_PENDING: "待开票", buyerInvoiceStatus_ISSUED: "已开票",
+  buyerInvoiceStatus_REJECTED: "已驳回",
+
+  all: "全部", confirm: "确认", cancel: "取消",
+
 };
 
 const en: typeof zh = {
@@ -478,6 +519,45 @@ const en: typeof zh = {
   fieldFreezeDays: "Fallback window (days)",
   freezeHint:
     "Funds frozen longer than this without a successful payout are released back to the platform. At least {n} days — any shorter and orders still retrying normally get pulled early.",
+
+  pyTitle: "Self-operated payables",
+  pyNotice: "How self-operated suppliers get paid: awaiting reconciliation → confirmed → invoice received (or marked exempt) → payment logged. ⚠️ **Invoice before payment**: without a verified purchase invoice, or an explicit invoice-exempt mark, it cannot be paid — that money would not be deductible.",
+  pySummary: "{n} unpaid · {amount}",
+  pyEmpty: "No self-operated payables",
+  pyColBill: "Settlement", pyColNet: "Payable", pyColStatus: "Status",
+  pyColInvoice: "Invoice", pyColRef: "Bank reference",
+  pyConfirm: "Confirm reconciliation", pyNoInvoice: "Mark invoice-exempt", pyPay: "Log payment",
+  pyConfirmPay: "Confirm", pyRefPlaceholder: "Bank reference no.",
+  payNeedConfirm: "Reconcile first", payNeedInvoice: "Invoice not received", payAlreadyPaid: "Paid",
+  payableStatus_PENDING_RECON: "Awaiting reconciliation", payableStatus_CONFIRMED: "Awaiting payment",
+  payableStatus_PAID: "Paid",
+  invoiceStatus_PENDING_INVOICE: "Awaiting invoice", invoiceStatus_SUBMITTED: "Submitted",
+  invoiceStatus_VERIFIED: "Verified", invoiceStatus_REJECTED: "Rejected",
+  invoiceStatus_NO_INVOICE: "Invoice-exempt",
+
+  piTitle: "Purchase invoices",
+  piNotice: "Invoices suppliers issue to the platform — they decide whether the platform can pay. An invoice whose title does not match the entity name cannot be verified; forcing it through only defers the problem to tax filing.",
+  piSummary: "{n} awaiting verification", piEmpty: "No purchase invoices to handle",
+  piColInvoice: "Invoice", piColTitle: "Title", piColAmount: "Amount",
+  piColSettle: "Covers", piColStatus: "Status",
+  piVerify: "Verify", piReject: "Reject",
+  piCannotVerify: "Title mismatch — cannot verify", piTitleMismatch: "Title does not match entity",
+  piRejectPlaceholder: "Reason (sent to the merchant verbatim)",
+  purchaseInvoiceStatus_PENDING: "Pending", purchaseInvoiceStatus_SUBMITTED: "Awaiting verification",
+  purchaseInvoiceStatus_VERIFIED: "Verified", purchaseInvoiceStatus_REJECTED: "Rejected",
+
+  brTitle: "Buyer invoice requests",
+  brNotice: "Invoices buyers request for their own orders. ⚠️ Three different invoices live in this area: this page is keyed by **order**, the other two by entity and period.",
+  brSummary: "{n} pending", brEmpty: "No pending invoice requests",
+  brColOrder: "Order", brColTitle: "Title", brColAmount: "Amount", brColStatus: "Status",
+  brMarkIssued: "Mark issued", brReject: "Reject", brNoTaxNo: "Missing tax no.",
+  brInvoiceNoPlaceholder: "Invoice number", brRejectPlaceholder: "Reason (sent to the buyer verbatim)",
+  titleType_PERSONAL: "Personal", titleType_COMPANY: "Company",
+  buyerInvoiceStatus_PENDING: "Pending", buyerInvoiceStatus_ISSUED: "Issued",
+  buyerInvoiceStatus_REJECTED: "Rejected",
+
+  all: "All", confirm: "Confirm", cancel: "Cancel",
+
 };
 
 export const FINANCE_COPY: PageCopy<typeof zh> = { zh, en };

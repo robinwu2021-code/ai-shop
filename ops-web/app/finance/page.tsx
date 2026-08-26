@@ -27,6 +27,9 @@ import { InvoiceTab } from "./invoice-tab";
 import { FeeRuleTab } from "./fee-rule-tab";
 import { PointsTab } from "./points-tab";
 import { PointsPolicyTab } from "./points-policy-tab";
+import { PayablesTab } from "./payables-tab";
+import { PurchaseInvoiceTab } from "./purchase-invoice-tab";
+import { BuyerInvoiceTab } from "./buyer-invoice-tab";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DataTable, type Column } from "@/components/ui/data-table";
@@ -42,7 +45,8 @@ import { Toolbar } from "@/components/ui/toolbar";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 
 type Copy = (typeof FINANCE_COPY)["zh"];
-const TAB_KEYS = ["settlements", "splits", "refund-back", "rates", "points", "points-policy", "withdraw", "invoice"] as const;
+const TAB_KEYS = ["settlements", "splits", "refund-back", "payables", "purchase-invoices",
+  "buyer-invoices", "rates", "points", "points-policy", "withdraw", "invoice"] as const;
 
 const TRAFFIC_LABEL = (c: Copy): Record<TrafficSource, string> => ({
   MERCHANT_OWNED: c.trafficMerchantOwned,
@@ -265,6 +269,24 @@ function FinanceInner() {
       {tab === "invoice" && <InvoiceTab c={c} canEdit={canInvoice} />}
 
       {tab === "rates" && <FeeRuleTab c={c} canEdit={canEditRate} />}
+      {/*
+        自营应付那一整条。**后端十个端点早已实现，此前运营端零入口** ——
+        而这是今天唯一真能把钱付出去的路（第三方走分账，而分账网关是桩）。
+        「登记付款」单独要 finance:payout:execute：制单与付款分权，
+        虽然今天两个码都在 FINANCE 一个角色上（见 Perms 的注释），
+        但界面按码判，将来拆角色时不用再改这里。
+      */}
+      {tab === "payables" && (
+        <PayablesTab c={c} canEdit={allow("finance:settle:execute")}
+          canPay={allow("finance:payout:execute")} />
+      )}
+      {tab === "purchase-invoices" && (
+        <PurchaseInvoiceTab c={c} canVerify={allow("finance:invoice:verify")} />
+      )}
+      {tab === "buyer-invoices" && (
+        <BuyerInvoiceTab c={c} canIssue={allow("finance:invoice:verify")} />
+      )}
+
       {tab === "points" && <PointsTab c={c} />}
 
       {/* 端开关。**写权限用 settle:execute** —— 它决定用户在某个端能不能拿到/用掉积分，
