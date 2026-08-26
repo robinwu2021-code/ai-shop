@@ -343,6 +343,48 @@ CREATE TABLE IF NOT EXISTS inv_outbox
     CONSTRAINT uk_event UNIQUE (event_no)
 );
 
+CREATE TABLE IF NOT EXISTS inv_daily_snapshot
+(
+    id                BIGINT      NOT NULL AUTO_INCREMENT,
+    owner_id          VARCHAR(32) NOT NULL,
+    stat_date         DATE        NOT NULL,
+    item_id           VARCHAR(32) NOT NULL,
+    location_id       VARCHAR(32) NOT NULL,
+    opening_qty       INT         NOT NULL DEFAULT 0,
+    inbound_qty       INT         NOT NULL DEFAULT 0,
+    outbound_qty      INT         NOT NULL DEFAULT 0,
+    sold_qty          INT         NOT NULL DEFAULT 0,
+    sold_cost_minor   BIGINT      NOT NULL DEFAULT 0,
+    closing_qty       INT         NOT NULL DEFAULT 0,
+    created_at        DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by        VARCHAR(64) DEFAULT NULL,
+    updated_at        DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    updated_by        VARCHAR(64) DEFAULT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_snapshot UNIQUE (owner_id, stat_date, item_id, location_id)
+);
+
+CREATE TABLE IF NOT EXISTS inv_open_credential
+(
+    id              BIGINT       NOT NULL AUTO_INCREMENT,
+    credential_id   VARCHAR(32)  NOT NULL,
+    owner_id        VARCHAR(32)  NOT NULL,
+    app_key         VARCHAR(64)  NOT NULL,
+    app_secret_hash VARCHAR(128) NOT NULL,
+    name            VARCHAR(64)  DEFAULT NULL,
+    scopes          VARCHAR(255) NOT NULL DEFAULT 'read',
+    status          VARCHAR(16)  NOT NULL DEFAULT 'ACTIVE',
+    expires_at      DATETIME     DEFAULT NULL,
+    last_used_at    DATETIME     DEFAULT NULL,
+    created_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by      VARCHAR(64)  DEFAULT NULL,
+    updated_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    updated_by      VARCHAR(64)  DEFAULT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_credential UNIQUE (credential_id),
+    CONSTRAINT uk_app_key UNIQUE (app_key)
+);
+
 -- 种子数据
 INSERT INTO inv_uom (uom_code, name, divisible, sort)
 SELECT 'PIECE', '件', 0, 10 FROM DUAL

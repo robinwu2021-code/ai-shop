@@ -157,6 +157,9 @@ L.push("> **已查过、不是缺陷的几条**（判据的边界，不是代码
 L.push("> - `PmtCouponServiceImpl` 实现的是 `CouponService`（新旧两套券模型并存期，");
 L.push(">   impl 带 `Pmt` 前缀区分）—— 按同名匹配必然报出来。");
 L.push("> - `CommonMetaController` 走 `/common/master-data`：**三端共用的主数据，故意不带端前缀**。");
+L.push("> - `OpenInventoryController` 走 `/open/v1/**`：**给商家自己的 ERP / 收银系统用的第四个面**，");
+L.push(">   独立的 `@Profile(\"openapi\")` —— 外部流量 QPS 不可控、要单独限流、要独立故障域。");
+L.push(">   它不带 `/biz` 前缀是有意的：那三个前缀对应的是「谁在看屏幕」，而这一面没有屏幕。");
 L.push("> - `MediaReadController` 的前缀来自配置（`${shop.upload.private-prefix:/media}`），");
 L.push(">   静态扫描读不出是必然的。");
 L.push(">");

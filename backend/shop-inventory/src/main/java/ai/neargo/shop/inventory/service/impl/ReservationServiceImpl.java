@@ -140,6 +140,27 @@ public class ReservationServiceImpl implements ReservationService {
 
     @Override
     @Transactional(transactionManager = "invTransactionManager")
+    public void releaseByRef(String externalRef) {
+        InvReservation head = byRef(externalRef);
+        if (head != null) {
+            release(head.getOwnerId(), externalRef);
+        }
+    }
+
+    @Override
+    @Transactional(transactionManager = "invTransactionManager")
+    public String commitByRef(String externalRef, String operator) {
+        InvReservation head = byRef(externalRef);
+        if (head == null) {
+            // **不抛**：确认一个不存在的预留，多半是这一单根本没走预留（历史单、
+            // 或切换真相源之前下的）。抛出去会让支付回调失败重试，而重试永远不会成功
+            return null;
+        }
+        return commit(head.getOwnerId(), externalRef, operator);
+    }
+
+    @Override
+    @Transactional(transactionManager = "invTransactionManager")
     public String restore(String ownerId, String afterSaleNo, List<Line> lines, String operator) {
         if (lines == null || lines.isEmpty()) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
@@ -179,6 +200,12 @@ public class ReservationServiceImpl implements ReservationService {
         return lineMapper.selectList(Wrappers.<InvReservationLine>lambdaQuery()
                 .eq(InvReservationLine::getReservationId, reservationId)
                 .orderByAsc(InvReservationLine::getLineNo));
+    }
+
+    /** 按单号反查（订单号平台内全局唯一）。 */
+    private InvReservation byRef(String externalRef) {
+        return resMapper.selectOne(Wrappers.<InvReservation>lambdaQuery()
+                .eq(InvReservation::getExternalRef, externalRef).last("LIMIT 1"));
     }
 
     private InvReservation find(String ownerId, String externalRef) {

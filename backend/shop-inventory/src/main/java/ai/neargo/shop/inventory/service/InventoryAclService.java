@@ -34,4 +34,23 @@ public interface InventoryAclService {
      */
     String upsertItem(String entityNo, String skuNo, String name, String specText,
                       String barcode, String merchantSkuCode, String saleUnit);
+
+    /**
+     * 按平台 SKU 反查业主 —— <b>交易域手里只有 skuNo，没有主体号</b>。
+     *
+     * <p>走 {@code inv_item_ref}（{@code system=AISHOP}）反查：SKU 在平台内全局唯一，
+     * 所以这一条是确定的。找不到说明这个 SKU 还没投影过来。
+     *
+     * @return 业主号；投影过来之前返回 {@code null}
+     */
+    String ownerOfSku(String skuNo);
+
+    /** 按平台 SKU 反查物料。同 {@link #ownerOfSku} 走外部引用表。 */
+    String itemIdOfSku(String skuNo);
+
+    /**
+     * 按业主 + 平台门店号取库位。{@code storeNo} 为空时给默认库位 ——
+     * 那是存量「主体级库存」的落点。
+     */
+    String locationOfStore(String ownerId, String storeNo);
 }

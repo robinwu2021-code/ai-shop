@@ -4,6 +4,7 @@ import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.invbridge.InventoryBackfillService;
 import ai.neargo.shop.inventory.service.InboundService;
 import ai.neargo.shop.inventory.service.InventoryAclService;
+import ai.neargo.shop.inventory.service.InventorySnapshotService;
 import ai.neargo.shop.inventory.service.LocationService;
 import ai.neargo.shop.inventory.service.OutboundService;
 import ai.neargo.shop.inventory.service.ReservationService;
@@ -17,6 +18,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -62,6 +64,9 @@ class InventoryFlowTest {
 
     @Autowired
     InventoryBackfillService backfill;
+
+    @Autowired
+    InventorySnapshotService snapshots;
 
     @Test
     @DisplayName("★★★ 进货 → 下单预留 → 支付出库：预留不动实存，付款才扣")
@@ -220,6 +225,23 @@ class InventoryFlowTest {
         assertThat(diff.clean())
                 .as("搬过的条目两边的数必须一致，否则不得切真相源；差异：%s", diff.diffs())
                 .isTrue();
+    }
+
+    @Test
+    @DisplayName("★★ 日快照可重跑 —— 派生数据，删光重算结果逐字相同")
+    void snapshotIsRepeatable() {
+        Fixture f = fixture();
+        inbound.postDirectly(purchase(f, 12), "老板");
+        reservations.reserve(f.owner, "SO-" + f.seq, List.of(
+                new ReservationService.Line(f.item, f.location, 5)), 900);
+        reservations.commit(f.owner, "SO-" + f.seq, "SYSTEM");
+
+        LocalDate today = LocalDate.now();
+        int first = snapshots.buildFor(today);
+        int second = snapshots.buildFor(today);
+
+        assertThat(first).as("当天有变动就该有快照行").isGreaterThan(0);
+        assertThat(second).as("重跑行数相同 —— 先删后插，不是往上叠").isEqualTo(first);
     }
 
     // ────────────────────────────────────────────────────────────────────

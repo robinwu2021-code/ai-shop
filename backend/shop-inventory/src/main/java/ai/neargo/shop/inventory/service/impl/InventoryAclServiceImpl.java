@@ -175,4 +175,34 @@ public class InventoryAclServiceImpl implements InventoryAclService {
         row.setCreatedBy("SYSTEM");
         refMapper.insert(row);
     }
+
+    @Override
+    public String ownerOfSku(String skuNo) {
+        InvItemRef ref = refBySku(skuNo);
+        return ref == null ? null : ref.getOwnerId();
+    }
+
+    @Override
+    public String itemIdOfSku(String skuNo) {
+        InvItemRef ref = refBySku(skuNo);
+        return ref == null ? null : ref.getItemId();
+    }
+
+    @Override
+    public String locationOfStore(String ownerId, String storeNo) {
+        if (storeNo == null || storeNo.isBlank()) {
+            return locations.defaultLocation(ownerId);
+        }
+        InvLocation row = locationMapper.selectOne(Wrappers.<InvLocation>lambdaQuery()
+                .eq(InvLocation::getOwnerId, ownerId)
+                .eq(InvLocation::getExternalRef, storeNo).last("LIMIT 1"));
+        return row == null ? locations.defaultLocation(ownerId) : row.getLocationId();
+    }
+
+    /** SKU 在平台内全局唯一，所以按 (system=AISHOP, ref) 反查是确定的一条。 */
+    private InvItemRef refBySku(String skuNo) {
+        return refMapper.selectOne(Wrappers.<InvItemRef>lambdaQuery()
+                .eq(InvItemRef::getRefSystem, InvEnums.RefSystem.AISHOP)
+                .eq(InvItemRef::getRef, skuNo).last("LIMIT 1"));
+    }
 }

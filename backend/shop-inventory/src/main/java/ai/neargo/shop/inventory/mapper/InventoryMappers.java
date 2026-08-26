@@ -8,6 +8,8 @@ import ai.neargo.shop.inventory.entity.InvLedger;
 import ai.neargo.shop.inventory.entity.InvLocation;
 import ai.neargo.shop.inventory.entity.InvOutboundLine;
 import ai.neargo.shop.inventory.entity.InvOutboundOrder;
+import ai.neargo.shop.inventory.entity.InvDailySnapshot;
+import ai.neargo.shop.inventory.entity.InvOpenCredential;
 import ai.neargo.shop.inventory.entity.InvOutbox;
 import ai.neargo.shop.inventory.entity.InvOwner;
 import ai.neargo.shop.inventory.entity.InvReservation;
@@ -141,5 +143,14 @@ public final class InventoryMappers {
     // ── 事件出站 ──────────────────────────────────────────────────────────
     /** 独立库用不了平台的 {@code sys_outbox}，自己带一份。投递侧将来换 MQ，写入侧不动。 */
     public interface OutboxMapper extends BaseMapper<InvOutbox> {
+    }
+
+    // ── 派生与对外 ────────────────────────────────────────────────────────
+    /** 日快照。**派生数据**：删光重跑一遍就回来了，所以重跑是它的正常工作方式。 */
+    public interface DailySnapshotMapper extends BaseMapper<InvDailySnapshot> {
+    }
+
+    /** Open API 凭证。{@code app_secret} 只存 bcrypt 哈希。 */
+    public interface OpenCredentialMapper extends BaseMapper<InvOpenCredential> {
     }
 }

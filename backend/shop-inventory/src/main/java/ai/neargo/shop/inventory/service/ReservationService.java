@@ -42,6 +42,18 @@ public interface ReservationService {
     void release(String ownerId, String externalRef);
 
     /**
+     * 按调用方的单号释放 —— <b>不需要 ownerId</b>。
+     *
+     * <p>交易域手里只有订单号：它不认识业主，也不该认识。
+     * 订单号在平台内全局唯一，据它反查预留是确定的一条。
+     * 找不到就什么都不做（幂等：超时任务与用户取消会撞车）。
+     */
+    void releaseByRef(String externalRef);
+
+    /** 按调用方的单号确认。理由同 {@link #releaseByRef}。 */
+    String commitByRef(String externalRef, String operator);
+
+    /**
      * 退货入库 —— 协议的第四个动作，<b>今天平台侧的缺口</b>。
      *
      * <p>触发判据是**售后类型**而不是「退款成功」：
