@@ -72,6 +72,9 @@ watch(() => props.titleKey, applyTitle);
       <slot v-else />
     </view>
     <sh-tabbar v-if="tab" :active="tab"></sh-tabbar>
+    <!-- 输入弹层的壳。挂在这里而不是各页自己摆：`prompt()` 要能在任何一段
+         业务代码里 await，而那段代码未必知道自己所在的页面摆没摆过弹层 -->
+    <sh-prompt></sh-prompt>
     <app-overlay></app-overlay>
   </view>
 </template>

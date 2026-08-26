@@ -103,6 +103,7 @@ COMP_NOTES = {
     "sh-icon": ("单色图标", "内联 SVG 转 CSS mask，颜色吃 var(--sh-*) —— 换肤零成本。**不用 emoji**：各系统字形不一且是彩色的"),
     "sh-tabs": ("筛选条", "抽之前两端有两套实现（chip 横排 / 方块），同一个产品里两种筛选条"),
     "sh-cover": ("商品封面", "`cover` 字段二义：种子是 emoji、商家上传后是 COS URL。14 处渲染点都没分流过"),
+    "sh-prompt": ("输入弹层的壳", "页面不摆它 —— 只 `await prompt({...})`。由 sh-scaffold 无条件渲染，因为那段业务代码未必知道自己所在的页面摆没摆过弹层"),
     "sh-sheet": ("底部弹层", "不用 uni.showModal（字不归我们管）、不做页内展开（会把下文顶走）"),
     "sh-rating": ("评分", "底层灰星 + 上层主色星按百分比裁切 —— 半星图标只能表达 0.5 粒度，4.3 会被抹成 4.5"),
     "sh-theme-sheet": ("外观面板", "9 套皮肤 × 明暗 × 语言，选中即时全局生效"),
@@ -132,6 +133,14 @@ SAMPLES = {
                   '<span class="rating__bg">★★★★★</span>'
                   '<span class="rating__fg" style="width:86%">★★★★★</span></div>'
                   '<span class="rating__value sh-num" style="font-size:13px">4.3</span></div>'),
+    "sh-prompt": ('<div class="sheet-demo"><div class="pr__panel">'
+                  '<div class="pr__grip"></div>'
+                  '<span class="pr__title">改门店价</span>'
+                  '<span class="pr__hint">仅调整本门店售价，清空后与主体价一致</span>'
+                  '<div class="field__input pr__input"><span class="sh-ph">¥12.80</span></div>'
+                  '<div class="pr__acts">'
+                  '<span class="sh-btn sh-btn--muted pr__act">取消</span>'
+                  '<span class="sh-btn pr__act">确定</span></div></div></div>'),
     "sh-sheet": ('<div class="sheet-demo"><div class="sheet__panel">'
                  '<div class="sheet__grip"></div>'
                  '<div class="sheet__head"><span class="sheet__title">选择规格</span>'
@@ -1016,7 +1025,8 @@ footer{margin-top:80px;border-top:1px solid var(--rule);padding-top:16px;
 .up .add{display:inline-flex;margin:0 6px 6px 0}
 .up .sheet-demo{position:relative;height:210px;background:var(--sh-scrim);border-radius:8px;
   overflow:hidden}
-.up .sheet-demo .sheet__panel{position:absolute;left:0;right:0;bottom:0;padding-bottom:16px}
+.up .sheet-demo .sheet__panel,
+.up .sheet-demo .pr__panel{position:absolute;left:0;right:0;bottom:0;padding-bottom:16px}
 .up .icons{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
 .up .ico{display:flex;flex-direction:column;align-items:center;gap:4px}
 .up .ico code{font-size:9px;color:var(--sh-sub)}

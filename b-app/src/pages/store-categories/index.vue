@@ -16,6 +16,7 @@ import { ROUTES } from "@/shared/nav";
 import { handOffGoodsCategory } from "@/shared/handoff";
 import { SHOW_CATEGORY_GATE } from "@/shared/flags";
 import type { Category, StoreCategory } from "@shared/types";
+import { prompt } from "@ai-shop/ui/prompt";
 
 /**
  * 撤架被拒（后端 `STORE_CATEGORY_IN_USE`）。
@@ -109,23 +110,21 @@ async function toggle(c: Category) {
 }
 
 /** 改显示名。它只是**皮** —— categoryNo 不变，所以跨店聚合与比价都不受影响 */
-function rename(c: StoreCategory) {
-  uni.showModal({
+async function rename(c: StoreCategory) {
+  const input = await prompt({
     title: String(t("storeCategories.rename")),
-    editable: true,
-    placeholderText: c.platformName,
-    content: c.displayName ?? "",
-    success: (r) => {
-      if (!r.confirm) return;
-      const name = (r.content ?? "").trim();
-      save(picked.value.map((x, i) => ({
-        categoryNo: x.categoryNo,
-        // 清空 = 回到平台名，是合法操作，不是「叫空字符串」
-        displayName: x.categoryNo === c.categoryNo ? name : x.displayName,
-        sort: i,
-      })));
-    },
+    placeholder: c.platformName,
+    value: c.displayName ?? "",
   });
+  // 清空 = 回到平台名，是合法操作，不是「叫空字符串」——
+  // 所以只有**取消**（null）才提前返回，空串要走下去
+  if (input === null) return;
+  const name = input.trim();
+  save(picked.value.map((x, i) => ({
+    categoryNo: x.categoryNo,
+    displayName: x.categoryNo === c.categoryNo ? name : x.displayName,
+    sort: i,
+  })));
 }
 
 async function save(items: { categoryNo: string; displayName?: string; sort: number }[]) {

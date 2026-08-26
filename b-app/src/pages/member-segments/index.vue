@@ -13,6 +13,7 @@ import { useI18n } from "vue-i18n";
 import { api } from "@/api";
 import { useMerchantStore } from "@/stores/merchant";
 import type { MemberSegment, MemberTag } from "@shared/types";
+import { prompt } from "@ai-shop/ui/prompt";
 
 const { t } = useI18n();
 const merchant = useMerchantStore();
@@ -65,22 +66,16 @@ function countedAt(ts?: number | null) {
   return `${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 
-function rename(sg: MemberSegment) {
-  uni.showModal({
-    title: t("memberSegments.rename"),
-    editable: true,
-    content: sg.name,
-    success: (r) => {
-      const name = (r.content ?? "").trim();
-      if (!r.confirm || !name || name === sg.name) return;
-      run(() => api.mSaveMemberSegment({
-        segmentNo: sg.segmentNo,
-        name,
-        scopeStoreNo: sg.scopeStoreNo ?? undefined,
-        rule: sg.rule,
-      }));
-    },
-  });
+async function rename(sg: MemberSegment) {
+  const input = await prompt({ title: String(t("memberSegments.rename")), value: sg.name });
+  const name = (input ?? "").trim();
+  if (!name || name === sg.name) return;
+  run(() => api.mSaveMemberSegment({
+    segmentNo: sg.segmentNo,
+    name,
+    scopeStoreNo: sg.scopeStoreNo ?? undefined,
+    rule: sg.rule,
+  }));
 }
 
 function remove(sg: MemberSegment) {

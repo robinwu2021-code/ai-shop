@@ -12,6 +12,7 @@ import { useI18n } from "vue-i18n";
 import { api } from "@/api";
 import { useMerchantStore } from "@/stores/merchant";
 import type { MemberTag } from "@shared/types";
+import { prompt } from "@ai-shop/ui/prompt";
 
 const { t } = useI18n();
 const merchant = useMerchantStore();
@@ -39,30 +40,19 @@ async function run(fn: () => Promise<unknown>) {
   }
 }
 
-function create() {
-  uni.showModal({
-    title: t("memberTags.newTitle"),
-    editable: true,
-    placeholderText: t("memberTags.newPh"),
-    success: (r) => {
-      const name = (r.content ?? "").trim();
-      if (!r.confirm || !name) return;
-      run(() => api.mCreateMemberTag(name));
-    },
-  });
+async function create() {
+  const name = ((await prompt({
+    title: String(t("memberTags.newTitle")),
+    placeholder: String(t("memberTags.newPh")),
+  })) ?? "").trim();
+  if (!name) return;
+  run(() => api.mCreateMemberTag(name));
 }
 
-function rename(tg: MemberTag) {
-  uni.showModal({
-    title: t("memberTags.rename"),
-    editable: true,
-    content: tg.name,
-    success: (r) => {
-      const name = (r.content ?? "").trim();
-      if (!r.confirm || !name || name === tg.name) return;
-      run(() => api.mEditMemberTag(tg.tagNo, { name }));
-    },
-  });
+async function rename(tg: MemberTag) {
+  const name = ((await prompt({ title: String(t("memberTags.rename")), value: tg.name })) ?? "").trim();
+  if (!name || name === tg.name) return;
+  run(() => api.mEditMemberTag(tg.tagNo, { name }));
 }
 
 function toggleEnabled(tg: MemberTag) {

@@ -9,6 +9,7 @@ import { refreshUnread, unreadCount } from "@/stores/messages";
 import { ROUTES } from "@/shared/nav";
 import { api } from "@/api";
 import type { MerchantPlan } from "@shared/types";
+import { prompt } from "@ai-shop/ui/prompt";
 
 const { t } = useI18n();
 const merchant = useMerchantStore();
@@ -65,15 +66,12 @@ async function loadHasPassword() {
  * 为它建一页要连带处理返回、校验、键盘遮挡三件事，收益不抵成本。
  */
 async function editPassword() {
-  const pwd = await new Promise<string>((resolve) => {
-    uni.showModal({
-      title: t(hasPassword.value ? "me.passwordSet" : "me.passwordUnset"),
-      editable: true,
-      placeholderText: t("login.passwordPh"),
-      success: (r) => resolve(r.confirm ? (r.content ?? "") : ""),
-      fail: () => resolve(""),
-    });
-  });
+  // password: true —— showModal 做不到打点，输密码时整屏都看得见
+  const pwd = (await prompt({
+    title: String(t(hasPassword.value ? "me.passwordSet" : "me.passwordUnset")),
+    placeholder: String(t("login.passwordPh")),
+    password: true,
+  })) ?? "";
   if (!pwd.trim()) return;
   // 与后端 PWD_MIN_LEN 一致；端上先挡一道是为了少一次必失败的往返
   if (pwd.trim().length < 6) {

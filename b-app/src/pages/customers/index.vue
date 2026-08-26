@@ -16,6 +16,7 @@ import { useMerchantStore } from "@/stores/merchant";
 import { FEATURES } from "@shared/utils/constants";
 import { money } from "@shared/utils/money";
 import type { Member, MemberStats, MemberTag } from "@shared/types";
+import { prompt } from "@ai-shop/ui/prompt";
 
 const { t } = useI18n();
 const merchant = useMerchantStore();
@@ -103,31 +104,27 @@ async function saveAsSegment() {
     rule,
   }).catch(() => null);
   if (!pv) return;
-  uni.showModal({
-    /*
-     * 试算结果放**标题**，不能放 content —— `editable: true` 时 content 是
-     * 输入框的初始值，不是说明文字。放那儿的话，商家按下确定就存出一个
-     * 叫「命中 1 人，其中 1 人能收到消息」的人群，而他并不觉得自己输了这行字。
-     * 两个数都报：线索会员与退订的人进不了受众，只报命中数他会以为发漏了。
-     */
-    title: t("members.segmentPreview", { n: pv.count, m: pv.reachable }),
-    editable: true,
-    placeholderText: t("members.segmentNamePh"),
-    success: async (r) => {
-      const name = (r.content ?? "").trim();
-      if (!r.confirm || !name) return;
-      try {
-        await api.mSaveMemberSegment({
-          name,
-          scopeStoreNo: storeNo.value || undefined,
-          rule,
-        });
-        uni.showToast({ title: t("members.segmentSaved"), icon: "none" });
-      } catch (e) {
-        uni.showToast({ title: (e as Error).message, icon: "none" });
-      }
-    },
+  /*
+   * 试算结果现在走 `hint`（说明），不必再挤进标题 ——
+   * 当初挤进标题是因为 `showModal` 的 `content` 在 `editable` 下是**初值**：
+   * 放那儿的话商家按下确定就存出一个叫「命中 1 人…」的人群，
+   * 而他并不觉得自己输了这行字。`prompt()` 把说明与初值拆成两个参数，
+   * 这个坑靠签名就没了（另外两处一直错着的，见 prompt.ts）。
+   * 两个数都报：线索会员与退订的人进不了受众，只报命中数他会以为发漏了。
+   */
+  const input = await prompt({
+    title: String(t("members.saveSegment")),
+    hint: String(t("members.segmentPreview", { n: pv.count, m: pv.reachable })),
+    placeholder: String(t("members.segmentNamePh")),
   });
+  const name = (input ?? "").trim();
+  if (!name) return;
+  try {
+    await api.mSaveMemberSegment({ name, scopeStoreNo: storeNo.value || undefined, rule });
+    uni.showToast({ title: t("members.segmentSaved"), icon: "none" });
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: "none" });
+  }
 }
 
 function pickStore() {

@@ -12,6 +12,7 @@ import { SHOW_CATEGORY_GATE } from "@/shared/flags";
 import { money } from "@shared/utils/money";
 import { saveBase64Image } from "@/utils/image";
 import type { Category, Goods, GoodsStatus, Poster, StoreCategory } from "@shared/types";
+import { prompt } from "@ai-shop/ui/prompt";
 
 const { t } = useI18n();
 const merchant = useMerchantStore();
@@ -301,16 +302,12 @@ async function editStock(g: Goods) {
   const sku = g.skus[0];
   if (!sku) return;
 
-  const value = await new Promise<string>((resolve) => {
-    uni.showModal({
-      title: t("goods.editStock"),
-      editable: true,
-      placeholderText: String(sku.stock),
-      success: (r) => resolve(r.confirm ? (r.content ?? "") : ""),
-      fail: () => resolve(""),
-    });
+  const value = await prompt({
+    title: String(t("goods.editStock")),
+    placeholder: String(sku.stock),
+    type: "number",
   });
-  if (!value.trim()) return; // 空输入 = 取消
+  if (!value?.trim()) return; // 取消或空输入
 
   const n = Number(value.trim());
   // 负数与非数字要挡住 —— 库存写成 -5 之后 C 端的置灰与到货提醒逻辑全乱
@@ -354,18 +351,21 @@ async function editStorePrice(g: Goods) {
   if (!sku) return;
 
   const current = sku.storePrice ?? sku.price;
-  const value = await new Promise<string>((resolve) => {
-    uni.showModal({
-      title: t("goods.editStorePrice"),
-      content: t("goods.storePriceTip"),
-      editable: true,
-      placeholderText: money(current),
-      success: (r) => resolve(r.confirm ? (r.content ?? "") : ""),
-      fail: () => resolve(""),
-    });
+  const value = await prompt({
+    title: String(t("goods.editStorePrice")),
+    // 说明走 hint。此前塞在 showModal 的 content 里，而 editable 下那是**初值** ——
+    // 商家打开就看见一句「仅调整本门店售价…」躺在输入框里，得先清空才能填价
+    hint: String(t("goods.storePriceTip")),
+    placeholder: money(current),
+    type: "digit",
   });
-  // 取消对话框与「清空输入框再确定」是两件事：前者什么都不做，后者是撤销本店价
-  if (value === "") return;
+  /*
+   * 取消与「清空输入框再确定」是两件事：前者什么都不做，后者是撤销本店价。
+   * **此前这一条只写在注释里没有实现** —— showModal 的回调把取消也 resolve 成 ""，
+   * 于是「清空后确定」和「取消」走同一条分支，撤销本店价这件事根本做不到。
+   * prompt() 取消返回 null、清空返回 ""，两者才真的分得开。
+   */
+  if (value === null) return;
 
   const raw = value.trim();
   const price = raw ? Math.round(Number(raw) * 100) : null;

@@ -13,6 +13,7 @@ import { useI18n } from "vue-i18n";
 import { api } from "@/api";
 import { ROUTES } from "@/shared/nav";
 import type { Order, PickingRow, PickupOrder } from "@shared/types";
+import { prompt } from "@ai-shop/ui/prompt";
 
 const { t } = useI18n();
 
@@ -89,16 +90,12 @@ async function report(orderNo: string, skuNo: string, expectedQty: number) {
   });
   if (res < 0) return;
 
-  const qtyInput = await new Promise<string>((resolve) => {
-    uni.showModal({
-      title: t("picking.qtyTitle", { s: kinds[res]! }),
-      editable: true,
-      placeholderText: String(expectedQty),
-      content: String(expectedQty),
-      success: (r) => resolve(r.confirm ? (r.content ?? "") : ""),
-      fail: () => resolve(""),
-    });
-  });
+  const qtyInput = (await prompt({
+    title: String(t("picking.qtyTitle", { s: kinds[res]! })),
+    value: String(expectedQty),
+    placeholder: String(expectedQty),
+    type: "number",
+  })) ?? "";
   if (!qtyInput.trim()) return;
   const qty = Number(qtyInput.trim());
   if (!Number.isFinite(qty) || qty < 1 || !Number.isInteger(qty)) {
@@ -106,15 +103,10 @@ async function report(orderNo: string, skuNo: string, expectedQty: number) {
     return;
   }
 
-  const note = await new Promise<string>((resolve) => {
-    uni.showModal({
-      title: kinds[res]!,
-      editable: true,
-      placeholderText: t("picking.notePh"),
-      success: (r) => resolve(r.confirm ? (r.content ?? "") : ""),
-      fail: () => resolve(""),
-    });
-  });
+  const note = (await prompt({
+    title: String(kinds[res]!),
+    placeholder: String(t("picking.notePh")),
+  })) ?? "";
   if (!note.trim()) return;
 
   await api.mReportShortage(orderNo, {

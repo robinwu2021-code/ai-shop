@@ -14,6 +14,7 @@ import { api, ApiError } from "@/api";
 import { ROUTES } from "@/shared/nav";
 import { money } from "@shared/utils/money";
 import type { CrossStoreOverview, MerchantPlan, PaymentApplyment, Store } from "@shared/types";
+import { prompt } from "@ai-shop/ui/prompt";
 
 /**
  * 门店额度用尽（后端 `ErrorCode.STORE_QUOTA_EXCEEDED`）。
@@ -215,18 +216,14 @@ async function onQuotaBlocked() {
  * 只传 name 的话地址会被后端当成「改成空」——「改个名字顺手把地址清了」
  * 是那种要过很久才有人发现的错。改地址本身另说，这里只保证不弄丢它。
  */
-function rename(s: Store) {
-  uni.showModal({
-    title: t("stores.rename"),
-    editable: true,
-    placeholderText: t("stores.namePh"),
-    content: s.name,
-    success: (r) => {
-      const name = (r.content ?? "").trim();
-      if (!r.confirm || !name || name === s.name) return;
-      run(() => api.mRenameStore(s.storeNo, { name, address: s.address }));
-    },
-  });
+async function rename(s: Store) {
+  const name = ((await prompt({
+    title: String(t("stores.rename")),
+    placeholder: String(t("stores.namePh")),
+    value: s.name,
+  })) ?? "").trim();
+  if (!name || name === s.name) return;
+  run(() => api.mRenameStore(s.storeNo, { name, address: s.address }));
 }
 
 /** 停用是「不再接新单」，已有的单照常履约 —— 文案要说清，否则没人敢点 */

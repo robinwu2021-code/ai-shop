@@ -1126,6 +1126,19 @@
       "why": "内联 SVG 转 CSS mask，颜色吃 var(--sh-*) —— 换肤零成本。**不用 emoji**：各系统字形不一且是彩色的"
     },
     {
+      "name": "sh-prompt",
+      "file": "packages/ui/src/components/sh-prompt.vue",
+      "scope": "跨端",
+      "lines": 109,
+      "props": [],
+      "usage": {
+        "b-app": 0,
+        "c-app": 0
+      },
+      "note": "输入弹层的壳",
+      "why": "页面不摆它 —— 只 `await prompt({...})`。由 sh-scaffold 无条件渲染，因为那段业务代码未必知道自己所在的页面摆没摆过弹层"
+    },
+    {
       "name": "sh-rating",
       "file": "packages/ui/src/components/sh-rating.vue",
       "scope": "跨端",
@@ -1164,7 +1177,7 @@
       "name": "sh-scaffold",
       "file": "packages/ui/src/components/sh-scaffold.vue",
       "scope": "跨端",
-      "lines": 168,
+      "lines": 171,
       "props": [
         "padded?: boolean",
         "titleKey?: string",
@@ -1763,13 +1776,6 @@
           "gap": false
         },
         {
-          "id": "sysmodal",
-          "label": "系统弹框",
-          "lib": "sh-sheet",
-          "rule": "showModal\\(|showActionSheet\\(",
-          "gap": false
-        },
-        {
           "id": "blockdup",
           "label": "白块自画",
           "lib": ".sh-block / .sh-card",
@@ -1843,13 +1849,6 @@
           "label": "空态",
           "lib": "sh-empty",
           "rule": "^\\s*\\.empty\\b",
-          "gap": false
-        },
-        {
-          "id": "sysmodal",
-          "label": "系统弹框",
-          "lib": "sh-sheet",
-          "rule": "showModal\\(|showActionSheet\\(",
           "gap": false
         },
         {
@@ -1959,13 +1958,6 @@
       "localSelectors": 12,
       "localCssLines": 75,
       "rolled": [
-        {
-          "id": "sysmodal",
-          "label": "系统弹框",
-          "lib": "sh-sheet",
-          "rule": "showModal\\(|showActionSheet\\(",
-          "gap": false
-        },
         {
           "id": "blockdup",
           "label": "白块自画",
@@ -2625,13 +2617,6 @@
       "localCssLines": 73,
       "rolled": [
         {
-          "id": "sysmodal",
-          "label": "系统弹框",
-          "lib": "sh-sheet",
-          "rule": "showModal\\(|showActionSheet\\(",
-          "gap": false
-        },
-        {
           "id": "segment",
           "label": "选中态自画",
           "lib": ".sh-chip--primary",
@@ -2906,11 +2891,8 @@
         "cross-store",
         "customers",
         "goods-edit",
-        "goods-list",
-        "home",
         "login",
         "marketing",
-        "me",
         "member-reach",
         "member-segments",
         "member-settings",
@@ -2922,7 +2904,6 @@
         "settle",
         "sku-identity",
         "store",
-        "store-categories",
         "store-notice",
         "store-scope",
         "stores",
@@ -3057,7 +3038,7 @@
   "counts": {
     "tokens": 10,
     "blocks": 38,
-    "components": 21,
+    "components": 22,
     "pages": 52,
     "gapKinds": 3
   }

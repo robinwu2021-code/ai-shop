@@ -13,6 +13,7 @@ import { ROUTES } from "@/shared/nav";
 import { money } from "@shared/utils/money";
 import { FULFILLMENT_REACH, SERVICE_SCOPE } from "@shared/utils/constants";
 import type { MerchantStats, MerchantTodo, PaymentApplyment, StoreProfile } from "@shared/types";
+import { prompt } from "@ai-shop/ui/prompt";
 
 const { t } = useI18n();
 const merchant = useMerchantStore();
@@ -218,17 +219,14 @@ async function goQuickStart() {
     return;
   }
   if (opening.value) return;
-  const name = await new Promise<string>((resolve) => {
-    uni.showModal({
-      title: String(t("home.quickStartTitle")),
-      content: String(t("home.quickStartBody")),
-      editable: true,
-      placeholderText: String(t("home.quickStartPh")),
-      success: (r) => resolve(r.confirm ? (r.content ?? "") : ""),
-      fail: () => resolve(""),
-    });
+  // hint 是说明、value 是初值 —— 此前用 showModal 的 content 传说明，
+  // 而 editable 下 content 是**初值**：新商家按下确定，店名就成了那一整段话
+  const name = await prompt({
+    title: String(t("home.quickStartTitle")),
+    hint: String(t("home.quickStartBody")),
+    placeholder: String(t("home.quickStartPh")),
   });
-  if (!name.trim()) return;
+  if (!name?.trim()) return;
   opening.value = true;
   try {
     await api.mQuickStart({ storeName: name.trim() });
