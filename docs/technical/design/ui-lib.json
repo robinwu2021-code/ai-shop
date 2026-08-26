@@ -258,7 +258,7 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 240,
+        "b-app": 244,
         "c-app": 39
       }
     },
@@ -302,7 +302,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 0,
+        "b-app": 5,
         "c-app": 0
       }
     },
@@ -390,7 +390,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 0,
+        "b-app": 1,
         "c-app": 0
       }
     },
@@ -412,7 +412,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 0,
+        "b-app": 1,
         "c-app": 0
       }
     },
@@ -522,7 +522,7 @@
         "overflow": "hidden"
       },
       "usage": {
-        "b-app": 0,
+        "b-app": 2,
         "c-app": 12
       }
     },
@@ -564,7 +564,7 @@
         "padding": "var(--sh-pad-card, 16px)"
       },
       "usage": {
-        "b-app": 149,
+        "b-app": 153,
         "c-app": 57
       }
     },
@@ -596,7 +596,7 @@
         "line-height": "1.4"
       },
       "usage": {
-        "b-app": 78,
+        "b-app": 79,
         "c-app": 36
       }
     },
@@ -710,7 +710,7 @@
         "font-weight": "400"
       },
       "usage": {
-        "b-app": 36,
+        "b-app": 37,
         "c-app": 1
       }
     },
@@ -764,7 +764,7 @@
         "unicode-bidi": "isolate"
       },
       "usage": {
-        "b-app": 138,
+        "b-app": 145,
         "c-app": 129
       }
     },
@@ -792,7 +792,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 97,
+        "b-app": 100,
         "c-app": 56
       }
     },
@@ -810,7 +810,7 @@
         "color": "var(--sh-danger)"
       },
       "usage": {
-        "b-app": 0,
+        "b-app": 1,
         "c-app": 9
       }
     },
@@ -866,7 +866,7 @@
         "color": "var(--sh-primary-text)"
       },
       "usage": {
-        "b-app": 56,
+        "b-app": 57,
         "c-app": 22
       }
     },
@@ -954,7 +954,7 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 0,
+        "b-app": 1,
         "c-app": 0
       }
     },
@@ -1002,7 +1002,7 @@
         "margin-bottom": "6px"
       },
       "usage": {
-        "b-app": 70,
+        "b-app": 71,
         "c-app": 0
       }
     },
@@ -1099,7 +1099,7 @@
         "bare?: boolean"
       ],
       "usage": {
-        "b-app": 27,
+        "b-app": 29,
         "c-app": 17
       },
       "note": "空态",
@@ -1167,7 +1167,7 @@
         "divided?: boolean"
       ],
       "usage": {
-        "b-app": 18,
+        "b-app": 19,
         "c-app": 0
       },
       "note": "—",
@@ -1250,7 +1250,7 @@
         "deniedText?: string"
       ],
       "usage": {
-        "b-app": 52,
+        "b-app": 54,
         "c-app": 29
       },
       "note": "页面外壳",
@@ -1266,7 +1266,7 @@
         "pad?: boolean"
       ],
       "usage": {
-        "b-app": 8,
+        "b-app": 10,
         "c-app": 0
       },
       "note": "卡内标题行",
@@ -1300,7 +1300,7 @@
         "active?: string"
       ],
       "usage": {
-        "b-app": 5,
+        "b-app": 7,
         "c-app": 0
       },
       "note": "数字格",
@@ -1348,7 +1348,7 @@
         "active: string"
       ],
       "usage": {
-        "b-app": 7,
+        "b-app": 8,
         "c-app": 7
       },
       "note": "筛选条",
@@ -2466,6 +2466,43 @@
       "rolled": []
     },
     {
+      "page": "stock",
+      "file": "b-app/src/pages/stock/index.vue",
+      "components": [
+        "sh-empty",
+        "sh-scaffold",
+        "sh-stat",
+        "sh-tabs"
+      ],
+      "libClassHits": 13,
+      "localSelectors": 8,
+      "localCssLines": 37,
+      "rolled": [
+        {
+          "id": "listrow",
+          "label": "列表行",
+          "lib": null,
+          "rule": "^\\s*\\.(row|item)\\b",
+          "gap": true
+        }
+      ]
+    },
+    {
+      "page": "stock-detail",
+      "file": "b-app/src/pages/stock-detail/index.vue",
+      "components": [
+        "sh-empty",
+        "sh-kv",
+        "sh-scaffold",
+        "sh-section",
+        "sh-stat"
+      ],
+      "libClassHits": 20,
+      "localSelectors": 13,
+      "localCssLines": 57,
+      "rolled": []
+    },
+    {
       "page": "store",
       "file": "b-app/src/pages/store/index.vue",
       "components": [
@@ -2659,6 +2696,7 @@
         "settle",
         "sku-identity",
         "staff",
+        "stock",
         "store-categories",
         "store-pick",
         "store-scope",
@@ -2764,7 +2802,7 @@
     "tokens": 10,
     "blocks": 38,
     "components": 27,
-    "pages": 52,
+    "pages": 54,
     "gapKinds": 1
   }
 }
