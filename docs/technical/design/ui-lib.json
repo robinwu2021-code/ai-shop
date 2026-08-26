@@ -1436,7 +1436,7 @@
       "rolled": [
         {
           "id": "segment",
-          "label": "选中态自画",
+          "label": "选中态自画（含未拆出的）",
           "lib": ".sh-chip--primary",
           "rule": "(--on|--off|is-on)\\s*[,{]",
           "gap": false
@@ -1446,6 +1446,13 @@
           "label": "列表行",
           "lib": null,
           "rule": "^\\s*\\.(row|item)\\b",
+          "gap": true
+        },
+        {
+          "id": "optcard",
+          "label": "选项卡片",
+          "lib": null,
+          "rule": "名册：activity-edit .opt（逐处核过）",
           "gap": true
         }
       ]
@@ -1483,10 +1490,24 @@
       "rolled": [
         {
           "id": "segment",
-          "label": "选中态自画",
+          "label": "选中态自画（含未拆出的）",
           "lib": ".sh-chip--primary",
           "rule": "(--on|--off|is-on)\\s*[,{]",
           "gap": false
+        },
+        {
+          "id": "switchctl",
+          "label": "开关",
+          "lib": null,
+          "rule": "名册：apply .toggle（逐处核过）",
+          "gap": true
+        },
+        {
+          "id": "checkctl",
+          "label": "勾选框",
+          "lib": null,
+          "rule": "名册：apply .cb（逐处核过）",
+          "gap": true
         }
       ]
     },
@@ -1578,7 +1599,7 @@
         },
         {
           "id": "segment",
-          "label": "选中态自画",
+          "label": "选中态自画（含未拆出的）",
           "lib": ".sh-chip--primary",
           "rule": "(--on|--off|is-on)\\s*[,{]",
           "gap": false
@@ -1699,7 +1720,7 @@
         },
         {
           "id": "segment",
-          "label": "选中态自画",
+          "label": "选中态自画（含未拆出的）",
           "lib": ".sh-chip--primary",
           "rule": "(--on|--off|is-on)\\s*[,{]",
           "gap": false
@@ -1864,7 +1885,7 @@
         },
         {
           "id": "segment",
-          "label": "选中态自画",
+          "label": "选中态自画（含未拆出的）",
           "lib": ".sh-chip--primary",
           "rule": "(--on|--off|is-on)\\s*[,{]",
           "gap": false
@@ -1874,6 +1895,13 @@
           "label": "列表行",
           "lib": null,
           "rule": "^\\s*\\.(row|item)\\b",
+          "gap": true
+        },
+        {
+          "id": "checkctl",
+          "label": "勾选框",
+          "lib": null,
+          "rule": "名册：login .agree__box（逐处核过）",
           "gap": true
         }
       ]
@@ -2051,7 +2079,7 @@
         },
         {
           "id": "segment",
-          "label": "选中态自画",
+          "label": "选中态自画（含未拆出的）",
           "lib": ".sh-chip--primary",
           "rule": "(--on|--off|is-on)\\s*[,{]",
           "gap": false
@@ -2061,6 +2089,13 @@
           "label": "列表行",
           "lib": null,
           "rule": "^\\s*\\.(row|item)\\b",
+          "gap": true
+        },
+        {
+          "id": "optcard",
+          "label": "选项卡片",
+          "lib": null,
+          "rule": "名册：member-settings .opt（逐处核过）",
           "gap": true
         }
       ]
@@ -2289,10 +2324,17 @@
       "rolled": [
         {
           "id": "segment",
-          "label": "选中态自画",
+          "label": "选中态自画（含未拆出的）",
           "lib": ".sh-chip--primary",
           "rule": "(--on|--off|is-on)\\s*[,{]",
           "gap": false
+        },
+        {
+          "id": "switchctl",
+          "label": "开关",
+          "lib": null,
+          "rule": "名册：points .sw（逐处核过）",
+          "gap": true
         }
       ]
     },
@@ -2561,7 +2603,7 @@
       "rolled": [
         {
           "id": "segment",
-          "label": "选中态自画",
+          "label": "选中态自画（含未拆出的）",
           "lib": ".sh-chip--primary",
           "rule": "(--on|--off|is-on)\\s*[,{]",
           "gap": false
@@ -2578,6 +2620,13 @@
           "label": "列表行",
           "lib": null,
           "rule": "^\\s*\\.(row|item)\\b",
+          "gap": true
+        },
+        {
+          "id": "optcard",
+          "label": "选项卡片",
+          "lib": null,
+          "rule": "名册：store-categories .opt（逐处核过）",
           "gap": true
         }
       ]
@@ -2602,7 +2651,7 @@
         },
         {
           "id": "segment",
-          "label": "选中态自画",
+          "label": "选中态自画（含未拆出的）",
           "lib": ".sh-chip--primary",
           "rule": "(--on|--off|is-on)\\s*[,{]",
           "gap": false
@@ -2621,7 +2670,7 @@
       "rolled": [
         {
           "id": "segment",
-          "label": "选中态自画",
+          "label": "选中态自画（含未拆出的）",
           "lib": ".sh-chip--primary",
           "rule": "(--on|--off|is-on)\\s*[,{]",
           "gap": false
@@ -2631,6 +2680,13 @@
           "label": "列表行",
           "lib": null,
           "rule": "^\\s*\\.(row|item)\\b",
+          "gap": true
+        },
+        {
+          "id": "checkctl",
+          "label": "勾选框",
+          "lib": null,
+          "rule": "名册：store-pick .item__radio（逐处核过）",
           "gap": true
         }
       ]
@@ -2666,7 +2722,7 @@
         },
         {
           "id": "segment",
-          "label": "选中态自画",
+          "label": "选中态自画（含未拆出的）",
           "lib": ".sh-chip--primary",
           "rule": "(--on|--off|is-on)\\s*[,{]",
           "gap": false
@@ -2676,6 +2732,20 @@
           "label": "列表行",
           "lib": null,
           "rule": "^\\s*\\.(row|item)\\b",
+          "gap": true
+        },
+        {
+          "id": "switchctl",
+          "label": "开关",
+          "lib": null,
+          "rule": "名册：store-scope .switch（逐处核过）",
+          "gap": true
+        },
+        {
+          "id": "checkctl",
+          "label": "勾选框",
+          "lib": null,
+          "rule": "名册：store-scope .row__check（逐处核过）",
           "gap": true
         }
       ]
@@ -2699,10 +2769,17 @@
         },
         {
           "id": "segment",
-          "label": "选中态自画",
+          "label": "选中态自画（含未拆出的）",
           "lib": ".sh-chip--primary",
           "rule": "(--on|--off|is-on)\\s*[,{]",
           "gap": false
+        },
+        {
+          "id": "optcard",
+          "label": "选项卡片",
+          "lib": null,
+          "rule": "名册：stores .pick（逐处核过）",
+          "gap": true
         }
       ]
     },
@@ -2728,7 +2805,7 @@
         },
         {
           "id": "segment",
-          "label": "选中态自画",
+          "label": "选中态自画（含未拆出的）",
           "lib": ".sh-chip--primary",
           "rule": "(--on|--off|is-on)\\s*[,{]",
           "gap": false
@@ -2801,6 +2878,44 @@
       ]
     },
     {
+      "id": "optcard",
+      "label": "选项卡片",
+      "lib": null,
+      "gap": true,
+      "rule": "名册：activity-edit .opt（逐处核过）",
+      "pages": [
+        "activity-edit",
+        "member-settings",
+        "store-categories",
+        "stores"
+      ]
+    },
+    {
+      "id": "checkctl",
+      "label": "勾选框",
+      "lib": null,
+      "gap": true,
+      "rule": "名册：apply .cb（逐处核过）",
+      "pages": [
+        "apply",
+        "login",
+        "store-pick",
+        "store-scope"
+      ]
+    },
+    {
+      "id": "switchctl",
+      "label": "开关",
+      "lib": null,
+      "gap": true,
+      "rule": "名册：apply .toggle（逐处核过）",
+      "pages": [
+        "apply",
+        "points",
+        "store-scope"
+      ]
+    },
+    {
       "id": "search",
       "label": "搜索框",
       "lib": null,
@@ -2843,7 +2958,7 @@
     },
     {
       "id": "segment",
-      "label": "选中态自画",
+      "label": "选中态自画（含未拆出的）",
       "lib": ".sh-chip--primary",
       "gap": false,
       "rule": "(--on|--off|is-on)\\s*[,{]",
@@ -2942,6 +3057,6 @@
     "blocks": 38,
     "components": 22,
     "pages": 52,
-    "gapKinds": 3
+    "gapKinds": 6
   }
 }
