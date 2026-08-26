@@ -43,23 +43,36 @@ public class LocationServiceImpl implements LocationService {
     public void setSource(String ownerId, String locationId, String sourceLocationId, String operator) {
         InvLocation self = require(ownerId, locationId);
         if (sourceLocationId == null || sourceLocationId.isBlank()) {
-            self.setSourceLocationId(null);
-        } else {
-            if (sourceLocationId.equals(locationId)) {
-                throw BizException.of(ErrorCode.BAD_REQUEST);
-            }
-            InvLocation source = require(ownerId, sourceLocationId);
             /*
-             * **不允许链式**：被指向的那个自己必须不再指向别处。
+             * **清空必须显式 set null，不能靠 updateById**。
              *
-             * 拦在保存这一步，而不是在扣减时顺着找 —— 顺着找的第一个后果是环（死循环），
-             * 第二个是「货到底从哪出」要看链条有多长，而没人会去看。
+             * MyBatis-Plus 的 updateById 默认跳过 null 字段（FieldStrategy.NOT_NULL）——
+             * `self.setSourceLocationId(null)` 之后再 updateById，那一列**原样不动**。
+             * 于是商家在库位页选「发自己的」，界面没报错、也没生效，
+             * 而下一单照旧从源仓扣 —— 他会以为是自己没点到。
              */
-            if (source.getSourceLocationId() != null && !source.getSourceLocationId().isBlank()) {
-                throw BizException.of(ErrorCode.BAD_REQUEST);
-            }
-            self.setSourceLocationId(sourceLocationId);
+            locationMapper.update(null, Wrappers.<InvLocation>lambdaUpdate()
+                    .eq(InvLocation::getOwnerId, ownerId)
+                    .eq(InvLocation::getLocationId, locationId)
+                    .set(InvLocation::getSourceLocationId, null)
+                    .set(InvLocation::getUpdatedBy, operator));
+            return;
         }
+
+        if (sourceLocationId.equals(locationId)) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        InvLocation source = require(ownerId, sourceLocationId);
+        /*
+         * **不允许链式**：被指向的那个自己必须不再指向别处。
+         *
+         * 拦在保存这一步，而不是在扣减时顺着找 —— 顺着找的第一个后果是环（死循环），
+         * 第二个是「货到底从哪出」要看链条有多长，而没人会去看。
+         */
+        if (source.getSourceLocationId() != null && !source.getSourceLocationId().isBlank()) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        self.setSourceLocationId(sourceLocationId);
         self.setUpdatedBy(operator);
         locationMapper.updateById(self);
     }

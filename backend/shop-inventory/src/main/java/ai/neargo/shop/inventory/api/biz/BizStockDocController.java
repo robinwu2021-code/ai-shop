@@ -58,8 +58,8 @@ public class BizStockDocController {
     // ── 入库 ──────────────────────────────────────────────────────────
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
     @PostMapping("/biz/inventory/inbounds")
-    public String createInbound(@RequestBody InboundReq req) {
-        return inbound.createDraft(draftOf(req));
+    public InventoryVOs.DocNoVO createInbound(@RequestBody InboundReq req) {
+        return new InventoryVOs.DocNoVO(inbound.createDraft(draftOf(req)));
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
@@ -84,11 +84,11 @@ public class BizStockDocController {
     // ── 出库（报损 / 领用；SALE 被 Service 挡住） ──────────────────────
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
     @PostMapping("/biz/inventory/outbounds")
-    public String createOutbound(@RequestBody OutboundReq req) {
+    public InventoryVOs.DocNoVO createOutbound(@RequestBody OutboundReq req) {
         List<OutboundService.Line> lines = req.lines().stream()
                 .map(l -> new OutboundService.Line(l.itemId(), l.qty(), l.uom())).toList();
-        return outbound.createDraft(new OutboundService.Draft(owner(), location(), req.purpose(),
-                null, null, req.reasonCode(), req.occurredAt(), req.remark(), lines));
+        return new InventoryVOs.DocNoVO(outbound.createDraft(new OutboundService.Draft(owner(), location(), req.purpose(),
+                null, null, req.reasonCode(), req.occurredAt(), req.remark(), lines)));
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
@@ -106,8 +106,9 @@ public class BizStockDocController {
     // ── 盘点 ──────────────────────────────────────────────────────────
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
     @PostMapping("/biz/inventory/counts")
-    public String openCount(@RequestBody CountOpenReq req) {
-        return counts.open(owner(), location(), req.itemIds(), SecurityUtils.currentUserNo());
+    public InventoryVOs.DocNoVO openCount(@RequestBody CountOpenReq req) {
+        return new InventoryVOs.DocNoVO(
+                counts.open(owner(), location(), req.itemIds(), SecurityUtils.currentUserNo()));
     }
 
     /**
@@ -135,11 +136,11 @@ public class BizStockDocController {
     // ── 调拨 ──────────────────────────────────────────────────────────
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
     @PostMapping("/biz/inventory/transfers")
-    public String createTransfer(@RequestBody TransferReq req) {
+    public InventoryVOs.DocNoVO createTransfer(@RequestBody TransferReq req) {
         List<TransferService.Line> lines = req.lines().stream()
                 .map(l -> new TransferService.Line(l.itemId(), l.qty())).toList();
-        return transfers.create(owner(), req.fromLocationId(), req.toLocationId(),
-                lines, SecurityUtils.currentUserNo());
+        return new InventoryVOs.DocNoVO(transfers.create(owner(), req.fromLocationId(), req.toLocationId(),
+                lines, SecurityUtils.currentUserNo()));
     }
 
     /** 读回一张调拨单。**草稿态没有行**（行在发出的那张出库单上），不是空单 */

@@ -102,4 +102,18 @@ public final class InventoryVOs {
 
     public record TransferLineVO(String itemId, String name, String specText, int qty, String uom) {
     }
+
+    /**
+     * 新建单据的返回：**一个对象，不是裸字符串**。
+     *
+     * <p>{@code ApiResponseWrapper} 把 {@code String} 返回<b>故意排除</b>在信封之外
+     *（{@code StringHttpMessageConverter} 的经典坑），于是 {@code return docNo} 发出去的是
+     * 裸串 {@code IN2026…}。而端上的 http 客户端读 {@code body.code} ——
+     * 拿到裸串直接抛「响应格式不符合契约」。
+     *
+     * <p>症状很坏：<b>服务端把单建好了，端上报错</b>。商家会再点一次，
+     * 于是一次操作留下两张草稿单，而他看到的只有两次失败。
+     */
+    public record DocNoVO(String no) {
+    }
 }

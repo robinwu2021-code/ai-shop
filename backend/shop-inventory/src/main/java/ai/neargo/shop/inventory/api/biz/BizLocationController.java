@@ -4,6 +4,7 @@ import ai.neargo.shop.inventory.config.ConditionalOnInventory;
 import ai.neargo.shop.auth.BizContext;
 import ai.neargo.shop.auth.BizPerms;
 import ai.neargo.shop.auth.SecurityUtils;
+import ai.neargo.shop.inventory.dto.InventoryVOs;
 import ai.neargo.shop.inventory.entity.InvLocation;
 import ai.neargo.shop.inventory.service.InventoryAclService;
 import ai.neargo.shop.inventory.service.LocationService;
@@ -45,8 +46,9 @@ public class BizLocationController {
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.STORE_ADMIN + "')")
     @PostMapping("/biz/inventory/locations")
-    public String createWarehouse(@RequestBody WarehouseReq req) {
-        return locations.createWarehouse(owner(), req.name(), SecurityUtils.currentUserNo());
+    public InventoryVOs.DocNoVO createWarehouse(@RequestBody WarehouseReq req) {
+        return new InventoryVOs.DocNoVO(
+                locations.createWarehouse(owner(), req.name(), SecurityUtils.currentUserNo()));
     }
 
     /** 设发货源。**链式指向在 Service 里被拦住** —— 环与「货从哪出」都从那里起。 */

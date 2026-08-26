@@ -504,23 +504,35 @@ export const httpApi: MerchantApi = {
   mStockLedger: (q) => http.get<StockLedgerPage>(E.mStockLedger.path, q),
   mStockAdjust: (req) => http.post<void>(E.mStockAdjust.path, req),
 
-  mInboundCreate: (req) => http.post<string>(E.mInboundCreate.path, req),
+  /*
+   * 五个「新建」口返回的是 **`{no}` 而不是裸字符串**。
+   *
+   * `ApiResponseWrapper` 把 `String` 返回**故意排除**在 `{code,msg,data}` 信封之外
+   *（StringHttpMessageConverter 的经典坑），于是裸串到了这里，
+   * 而 http 客户端读 `body.code` —— 直接抛「响应格式不符合契约」。
+   * 症状很坏：**服务端把单建好了，端上报错**，商家再点一次就是两张草稿单。
+   *
+   * 契约仍是 `Promise<string>`：页面要的是单号，不该知道 wire 上多包了一层。
+   */
+  mInboundCreate: (req) => http.post<{ no: string }>(E.mInboundCreate.path, req).then((r) => r.no),
   mInboundUpdate: (no, req) => http.put<void>(buildPath(E.mInboundUpdate.path, { no }), req),
   mInboundPost: (no) => http.post<void>(buildPath(E.mInboundPost.path, { no })),
   mInboundVoid: (no) => http.post<void>(buildPath(E.mInboundVoid.path, { no })),
 
-  mOutboundCreate: (req) => http.post<string>(E.mOutboundCreate.path, req),
+  mOutboundCreate: (req) => http.post<{ no: string }>(E.mOutboundCreate.path, req).then((r) => r.no),
   mOutboundPost: (no) => http.post<void>(buildPath(E.mOutboundPost.path, { no })),
   mOutboundVoid: (no) => http.post<void>(buildPath(E.mOutboundVoid.path, { no })),
 
   // **裸数组直接当 body 发** —— 后端收的是 `List<Filled>`，包一层 `{lines}` 会解成空列表，
   // 而空列表在盘点里是「一件都没盘」，不报错
-  mCountOpen: (itemIds) => http.post<string>(E.mCountOpen.path, { itemIds }),
+  mCountOpen: (itemIds) =>
+    http.post<{ no: string }>(E.mCountOpen.path, { itemIds }).then((r) => r.no),
   mCountDetail: (no) => http.get<StockCount>(buildPath(E.mCountDetail.path, { no })),
   mCountFill: (no, lines) => http.put<void>(buildPath(E.mCountFill.path, { no }), lines),
   mCountPost: (no) => http.post<void>(buildPath(E.mCountPost.path, { no })),
 
-  mTransferCreate: (req) => http.post<string>(E.mTransferCreate.path, req),
+  mTransferCreate: (req) =>
+    http.post<{ no: string }>(E.mTransferCreate.path, req).then((r) => r.no),
   mTransferDetail: (no) => http.get<StockTransfer>(buildPath(E.mTransferDetail.path, { no })),
   mTransferShip: (no) => http.post<void>(buildPath(E.mTransferShip.path, { no })),
   mTransferReceive: (no) => http.post<void>(buildPath(E.mTransferReceive.path, { no })),
@@ -530,7 +542,8 @@ export const httpApi: MerchantApi = {
   mStockRanking: (q) => http.get<StockRank[]>(E.mStockRanking.path, q),
 
   mStockLocations: () => http.get<StockLocation[]>(E.mStockLocations.path),
-  mWarehouseCreate: (name) => http.post<string>(E.mWarehouseCreate.path, { name }),
+  mWarehouseCreate: (name) =>
+    http.post<{ no: string }>(E.mWarehouseCreate.path, { name }).then((r) => r.no),
   mLocationSetSource: (id, sourceLocationId) =>
     http.put<void>(buildPath(E.mLocationSetSource.path, { id }), { sourceLocationId }),
 };
