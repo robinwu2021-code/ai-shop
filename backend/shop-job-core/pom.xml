@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>ai.neargo.shop</groupId>
+        <artifactId>shop-parent</artifactId>
+        <version>0.1.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>shop-job-core</artifactId>
+    <packaging>jar</packaging>
+    <description>定时任务 · 调度引擎（注册表 / 执行器 / 同步）。两个宿主共用：独立 worker 与业务实例内的 worker</description>
+
+    <!-- ⚠️ **为什么把引擎从 shop-job 里抽出来。**
+
+         `shop-job` 是可启动的 Spring Boot 应用，产物是 repackage 过的 fat jar ——
+         别的模块依赖它会把整个应用连同它的启动类一起拖进来。
+         而**同一套调度逻辑有两个宿主**：
+           · 独立进程（shop-job，走 HTTP 调业务）
+           · 业务实例内（shop-app 的 worker profile，走进程内 handler）
+         引擎抄两份的话，「先在业务实例内跑通、观察一周、再拆出去」这条路
+         就变成了「两套代码各自演进」，而拆出去那天没人能证明行为一样。
+
+         依赖仍然极少：只有 shop-job-api（零依赖）与 shop-job-store。
+         **不依赖 shop-base**（那会拖来 MyBatis），也不引 web。 -->
+    <dependencies>
+        <dependency>
+            <groupId>ai.neargo.shop</groupId>
+            <artifactId>shop-job-api</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>ai.neargo.shop</groupId>
+            <artifactId>shop-job-store</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-context</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>ai.neargo.shop</groupId>
+            <artifactId>shop-job-store</artifactId>
+            <version>${project.version}</version>
+            <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+</project>

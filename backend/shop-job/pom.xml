@@ -36,7 +36,7 @@
         </dependency>
         <dependency>
             <groupId>ai.neargo.shop</groupId>
-            <artifactId>shop-job-store</artifactId>
+            <artifactId>shop-job-core</artifactId>
             <version>${project.version}</version>
         </dependency>
         <!-- ⚠️ **显式声明，不要白蹭 flyway-core 的传递依赖。**

@@ -1,4 +1,4 @@
-package ai.neargo.job.worker;
+package ai.neargo.job.engine;
 
 import ai.neargo.job.api.TriggerType;
 import ai.neargo.job.store.JobDefinitionDao;
@@ -33,7 +33,7 @@ import java.util.concurrent.ScheduledFuture;
  * 漏掉一种变化（比如「cron 改了同时又被关掉」）的补丁式实现，症状是某个任务卡在旧频率上，
  * 而没有任何地方会报错。
  */
-class JobRegistry {
+public class JobRegistry {
 
     private static final Logger log = LoggerFactory.getLogger(JobRegistry.class);
 
@@ -48,7 +48,7 @@ class JobRegistry {
     private record Scheduled(String cron, ScheduledFuture<?> future) {
     }
 
-    JobRegistry(TaskScheduler scheduler, JobDefinitionDao definitions, JobRunDao runs, JobRunner runner) {
+    public JobRegistry(TaskScheduler scheduler, JobDefinitionDao definitions, JobRunDao runs, JobRunner runner) {
         this.scheduler = scheduler;
         this.definitions = definitions;
         this.runs = runs;
@@ -60,7 +60,7 @@ class JobRegistry {
      *
      * @return 这一轮实际发生的变化，供日志与测试断言
      */
-    synchronized SyncReport sync() {
+    public synchronized SyncReport sync() {
         List<JobDefinitionRow> wanted = definitions.findSchedulable();
         Set<String> wantedNames = new HashSet<>();
         int added = 0, rescheduled = 0, removed = 0, invalid = 0;
@@ -136,15 +136,15 @@ class JobRegistry {
     }
 
     /** 立即跑一次（运营点了「立即执行」）。**仍走业务侧的锁**，正在跑时会被拒。 */
-    void triggerNow(String jobName) {
+    public void triggerNow(String jobName) {
         scheduler.schedule(() -> runOne(jobName, TriggerType.MANUAL), java.time.Instant.now());
     }
 
     /** 当前排上了哪些，测试与排查用。 */
-    Set<String> scheduledNames() {
+    public Set<String> scheduledNames() {
         return Set.copyOf(scheduled.keySet());
     }
 
-    record SyncReport(int added, int rescheduled, int removed, int invalid, int total) {
+    public record SyncReport(int added, int rescheduled, int removed, int invalid, int total) {
     }
 }

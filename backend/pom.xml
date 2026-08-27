@@ -35,6 +35,10 @@
         <!-- 定时任务持久层：独立库 + JdbcClient 手写 SQL。
              不引 Spring Data（代理是 native 的负担），不引 shop-base（会拖来 MyBatis） -->
         <module>shop-job-store</module>
+        <!-- 定时任务调度引擎：注册表/执行器/同步。**两个宿主共用** ——
+             独立 worker 与业务实例内的 worker。抽出来是为了「先在业务实例内跑通、
+             观察一周、再拆出去」这条路上两边跑的是同一套代码 -->
+        <module>shop-job-core</module>
         <!-- 定时任务调度器：**独立可部署单元**，不含任何业务代码。
              没有 starter-web 是有意的（运营端读库不调它），HTTP 客户端用 JDK 自带的 -->
         <module>shop-job</module>

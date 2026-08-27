@@ -1,4 +1,4 @@
-package ai.neargo.job.worker;
+package ai.neargo.job.engine;
 
 import ai.neargo.job.store.JobLogDao;
 import org.slf4j.Logger;
@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
  * <p>分批删而不是一条 {@code DELETE} 删干净：一次删几十万行会长时间持锁，
  * 而这张表同时正被写入。
  */
-class LogPurge {
+public class LogPurge {
 
     private static final Logger log = LoggerFactory.getLogger(LogPurge.class);
 
@@ -23,12 +23,12 @@ class LogPurge {
     private final JobLogDao logs;
     private final JobWorkerProperties props;
 
-    LogPurge(JobLogDao logs, JobWorkerProperties props) {
+    public LogPurge(JobLogDao logs, JobWorkerProperties props) {
         this.logs = logs;
         this.props = props;
     }
 
-    int purge() {
+    public int purge() {
         LocalDateTime before = LocalDateTime.now().minusDays(props.getLogRetentionDays());
         int total = 0;
         for (int i = 0; i < MAX_BATCHES_PER_RUN; i++) {

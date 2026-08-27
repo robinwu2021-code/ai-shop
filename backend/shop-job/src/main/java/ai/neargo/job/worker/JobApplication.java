@@ -20,7 +20,8 @@ import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
  * 只要注册表还持有它，JVM 就不会退。不需要额外的 keep-alive。
  */
 @SpringBootApplication
-@ConfigurationPropertiesScan
+// 扫到 ai.neargo.job 这一层：引擎的属性类在 ...job.engine，只扫本包会漏掉它
+@ConfigurationPropertiesScan("ai.neargo.job")
 public class JobApplication {
 
     public static void main(String[] args) {

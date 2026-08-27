@@ -1,5 +1,6 @@
 package ai.neargo.shop.settle.job;
 
+import org.springframework.context.annotation.Bean;
 import ai.neargo.job.api.JobDeclaration;
 import ai.neargo.job.api.JobHandler;
 import ai.neargo.job.api.JobInvocation;
@@ -55,7 +56,8 @@ public class ReconScanJob implements JobHandler {
     }
 
     /** 声明。displayName 是**运营页面直接显示的那句话** —— 不能是锁名，运营看不懂。 */
-    public JobDeclaration declaration() {
+    @Bean
+    public JobDeclaration reconscanDeclaration() {
         return new JobDeclaration("recon-scan", "对账自查",
                 "扫出平台账与渠道账对不上的流水：补回漏记的、关掉该关的，其余留待下轮",
                 "shop-settle", "0 */10 * * * *", true, 60, 540, true, true);

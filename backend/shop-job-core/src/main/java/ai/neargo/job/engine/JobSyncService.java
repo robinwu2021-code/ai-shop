@@ -1,4 +1,4 @@
-package ai.neargo.job.worker;
+package ai.neargo.job.engine;
 
 import ai.neargo.job.api.JobDeclaration;
 import ai.neargo.job.store.JobDefinitionDao;
@@ -11,7 +11,7 @@ import java.util.List;
 /**
  * 每一轮轮询做两件事：**去业务系统问声明 → 把注册表对齐到库**。
  */
-class JobSyncService {
+public class JobSyncService {
 
     private static final Logger log = LoggerFactory.getLogger(JobSyncService.class);
 
@@ -20,7 +20,7 @@ class JobSyncService {
     private final JobRegistry registry;
     private final JobWorkerProperties props;
 
-    JobSyncService(JobDeclarationSource source, JobDefinitionDao definitions,
+    public JobSyncService(JobDeclarationSource source, JobDefinitionDao definitions,
                    JobRegistry registry, JobWorkerProperties props) {
         this.source = source;
         this.definitions = definitions;
@@ -28,7 +28,7 @@ class JobSyncService {
         this.props = props;
     }
 
-    void syncOnce() {
+    public void syncOnce() {
         refreshDeclarations();
         JobRegistry.SyncReport r = registry.sync();
         if (r.added() + r.rescheduled() + r.removed() + r.invalid() > 0) {
@@ -47,7 +47,17 @@ class JobSyncService {
      * 一次网络抖动换来全线停摆，这是本类里最危险的一条路径。
      */
     private void refreshDeclarations() {
-        for (String target : props.getTargets().keySet()) {
+        /*
+         * **进程内形态没有 target 的概念。**
+         *
+         * 独立 worker 要按 target 分别去问各个业务系统；而跑在业务实例内时，
+         * 声明就在同一个进程里，问谁都是问自己。配置里 targets 为空时用一个占位名走一遍 ——
+         * 不这么做的话循环一次都不进，表现是「同步跑了、没报错、job_definition 还是空的」，
+         * 而运营页面上什么都看不到。
+         */
+        var targets = props.getTargets().isEmpty()
+                ? java.util.List.of("LOCAL") : props.getTargets().keySet();
+        for (String target : targets) {
             List<JobDeclaration> declarations;
             try {
                 declarations = source.fetch(target);

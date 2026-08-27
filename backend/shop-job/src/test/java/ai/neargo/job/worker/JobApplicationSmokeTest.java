@@ -1,5 +1,7 @@
 package ai.neargo.job.worker;
 
+import ai.neargo.job.engine.JobRegistry;
+import ai.neargo.job.engine.JobSyncService;
 import ai.neargo.job.store.JobDefinitionDao;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

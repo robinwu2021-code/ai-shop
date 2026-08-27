@@ -1,4 +1,4 @@
-package ai.neargo.job.worker;
+package ai.neargo.job.engine;
 
 import ai.neargo.job.api.JobInvocation;
 import ai.neargo.job.api.JobStatus;
@@ -18,7 +18,7 @@ import java.util.UUID;
 /**
  * 跑一轮：落库 → 发出去 → 记结果。**这是 worker 里唯一有状态机的地方。**
  */
-class JobRunner {
+public class JobRunner {
 
     private static final Logger log = LoggerFactory.getLogger(JobRunner.class);
 
@@ -27,14 +27,14 @@ class JobRunner {
     private final JobLogDao logs;
     private final JobWorkerProperties props;
 
-    JobRunner(JobInvoker invoker, JobRunDao runs, JobLogDao logs, JobWorkerProperties props) {
+    public JobRunner(JobInvoker invoker, JobRunDao runs, JobLogDao logs, JobWorkerProperties props) {
         this.invoker = invoker;
         this.runs = runs;
         this.logs = logs;
         this.props = props;
     }
 
-    void run(JobDefinitionRow def, TriggerType trigger) {
+    public void run(JobDefinitionRow def, TriggerType trigger) {
         String runId = UUID.randomUUID().toString();
         LocalDateTime startedAt = LocalDateTime.now();
         long t0 = System.nanoTime();

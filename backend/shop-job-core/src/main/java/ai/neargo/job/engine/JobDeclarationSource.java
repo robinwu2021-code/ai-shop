@@ -1,4 +1,4 @@
-package ai.neargo.job.worker;
+package ai.neargo.job.engine;
 
 import ai.neargo.job.api.JobDeclaration;
 
@@ -15,8 +15,8 @@ import java.util.List;
  * 拆开之后它才显形 —— 这类「合并时看不见、拆开才冒出来」的耦合，
  * 正是先做独立进程能提前暴露的东西。
  */
-interface JobDeclarationSource {
+public interface JobDeclarationSource {
 
     /** @return 该业务系统当前代码里声明的全部任务；取不到时抛异常，由调用方决定怎么办 */
-    List<JobDeclaration> fetch(String target);
+    public List<JobDeclaration> fetch(String target);
 }

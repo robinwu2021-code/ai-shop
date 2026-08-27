@@ -16,6 +16,14 @@
     <description>启动模块：portal(三端 Controller) + config + 装配。单体形态依赖全部 svc。</description>
 
     <dependencies>
+        <!-- 定时任务调度引擎。**业务实例内的 worker 用它**（J2/G2 阶段）——
+             与独立 worker 跑的是同一套代码，「先在业务实例内跑通、观察一周、再拆出去」
+             这条路上才不会变成两套各自演进的实现 -->
+        <dependency>
+            <groupId>ai.neargo.shop</groupId>
+            <artifactId>shop-job-core</artifactId>
+            <version>${project.version}</version>
+        </dependency>
         <dependency>
             <groupId>ai.neargo.shop</groupId>
             <artifactId>shop-base</artifactId>

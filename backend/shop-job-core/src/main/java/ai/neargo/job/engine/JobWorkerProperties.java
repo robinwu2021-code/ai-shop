@@ -1,4 +1,4 @@
-package ai.neargo.job.worker;
+package ai.neargo.job.engine;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 

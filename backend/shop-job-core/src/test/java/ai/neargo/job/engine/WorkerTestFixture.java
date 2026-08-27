@@ -1,4 +1,4 @@
-package ai.neargo.job.worker;
+package ai.neargo.job.engine;
 
 import ai.neargo.job.api.JobDeclaration;
 import ai.neargo.job.api.JobInvocation;

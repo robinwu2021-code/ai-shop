@@ -148,15 +148,23 @@ public class PointsActivateJob {
         };
     }
 
-    /** 两条声明。displayName 是运营页面直接显示的那句话。 */
+    /*
+     * 两条声明**各自一个 bean**，不能合成一个 List<JobDeclaration> 的 bean ——
+     * Spring 注入 List<JobDeclaration> 时收集的是「类型为 JobDeclaration 的 bean」，
+     * 不会把一个本身是 List 的 bean 摊开。合着写编译过、启动也过，
+     * 只是那两个任务**永远不会出现在注册表里**，而页面上什么都看不到。
+     */
     @Bean
-    public List<JobDeclaration> pointsJobDeclarations() {
-        return List.of(
-                JobDeclaration.daily("points-activate", "待生效积分转正",
-                        "把过了售后期的待生效积分转成可用余额。不跑的话用户的分永远停在「待生效」",
-                        "shop-settle", "0 5 0 * * *"),
-                JobDeclaration.daily("points-expire", "闲置积分清零",
-                        "把闲置满期的账户余额清空并计入平台收入。不跑的话积分池只增不减，对不平",
-                        "shop-settle", "0 20 0 * * *"));
+    public JobDeclaration pointsActivateDeclaration() {
+        return JobDeclaration.daily("points-activate", "待生效积分转正",
+                "把过了售后期的待生效积分转成可用余额。不跑的话用户的分永远停在「待生效」",
+                "shop-settle", "0 5 0 * * *");
+    }
+
+    @Bean
+    public JobDeclaration pointsExpireDeclaration() {
+        return JobDeclaration.daily("points-expire", "闲置积分清零",
+                "把闲置满期的账户余额清空并计入平台收入。不跑的话积分池只增不减，对不平",
+                "shop-settle", "0 20 0 * * *");
     }
 }

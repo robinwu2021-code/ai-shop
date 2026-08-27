@@ -1,5 +1,6 @@
 package ai.neargo.shop.config;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import ai.neargo.shop.auth.ApiAuthEntryPoint;
 import ai.neargo.shop.auth.BizContextFilter;
 import ai.neargo.shop.auth.BizIdentityResolver;
@@ -30,6 +31,19 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
  */
 @Configuration
 @EnableMethodSecurity   // 开 @PreAuthorize("@perm.can('码')")，仅 /ops 使用
+/*
+ * ⚠️ **只在 Web 应用里装**。
+ *
+ * worker profile 把 web-application-type 设成 none（批量任务与 API 抢线程池时，
+ * 结算跑一轮能把下单拖到超时）。没有这个条件的话，Spring 仍会去建 consumerChain，
+ * 而 HttpSecurity 在非 Web 上下文里根本不存在 —— **worker 直接起不来**，
+ * 报的是「No qualifying bean of type HttpSecurity」，一个字都不提 profile。
+ *
+ * 这个缺陷躺了很久没被发现，因为 **worker 从来没被部署过**：
+ * 生产跑 api,ops，而 14 个定时任务全挂在 worker 上。
+ * 「默认关着的那一半没人测」——而关着的那一半恰恰是要启用的那一半。
+ */
+@ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
 public class SecurityConfig {
 
     /**
